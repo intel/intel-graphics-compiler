@@ -156,7 +156,7 @@ set_target_properties(IGA_OLIB PROPERTIES
     COMPILE_DEFINITIONS                        "${IGA_DEFINITIONS}"
     COMPILER_FLAGS                             "${IGA_COMPILER_FLAGS}"
     LINK_FLAGS                                 "${IGA_LINK_FLAGS}"
-	FOLDER                                     "IGAProjs"
+    FOLDER                                     "IGAProjs"
   )
 
 if(IGC_BUILD AND MSVC)
@@ -228,7 +228,7 @@ set_target_properties(IGA_ENC_LIB PROPERTIES
     COMPILE_DEFINITIONS                        "${IGA_ENC_LIB_DEFINITIONS}"
     COMPILER_FLAGS                             "${IGA_COMPILER_FLAGS}"
     LINK_FLAGS                                 "${IGA_LINK_FLAGS}"
-	FOLDER                                     "IGAProjs"
+    FOLDER                                     "IGAProjs"
   )
 
 if(IGC_BUILD AND MSVC)
@@ -258,7 +258,7 @@ set(IGA_DLL_LINK_FLAGS ${IGA_LINK_FLAGS})
 # TRB: why do we APPEND here instead of setting these?
 set_property(TARGET IGA_DLL APPEND PROPERTY
     OUTPUT_NAME                                 "iga${TARGET_MODIFIER}"
-	)
+    )
 set_property(TARGET IGA_DLL APPEND PROPERTY
     COMPILE_DEFINITIONS                         ${IGA_DLL_DEFINITIONS}
   )

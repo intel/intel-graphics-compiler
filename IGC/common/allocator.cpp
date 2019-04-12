@@ -274,7 +274,7 @@ inline void* CAllocator::Malloc(size_t size)
 {
     void* ptr = NULL;
 
-	ptr = malloc(size);
+    ptr = malloc(size);
 
 #ifdef _DEBUG
     if(ptr)

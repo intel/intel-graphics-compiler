@@ -342,12 +342,12 @@ namespace IGC
 
     // Built-in image functions
     // These values need to match the runtime equivalent
-#define LEGACY_CLK_ADDRESS_NONE                 	    0x00
-#define LEGACY_CLK_ADDRESS_CLAMP                	    0x01
-#define LEGACY_CLK_ADDRESS_CLAMP_TO_EDGE        	    0x02
-#define LEGACY_CLK_ADDRESS_REPEAT               	    0x03
-#define LEGACY_CLK_ADDRESS_MIRRORED_REPEAT      	    0x04
-#define LEGACY_CLK_ADDRESS_MIRRORED_REPEAT_101_INTEL 	0x05
+#define LEGACY_CLK_ADDRESS_NONE                         0x00
+#define LEGACY_CLK_ADDRESS_CLAMP                        0x01
+#define LEGACY_CLK_ADDRESS_CLAMP_TO_EDGE                0x02
+#define LEGACY_CLK_ADDRESS_REPEAT                       0x03
+#define LEGACY_CLK_ADDRESS_MIRRORED_REPEAT              0x04
+#define LEGACY_CLK_ADDRESS_MIRRORED_REPEAT_101_INTEL     0x05
 
 #define LEGACY_CLK_NORMALIZED_COORDS_FALSE   0x00
 #define LEGACY_CLK_NORMALIZED_COORDS_TRUE    0x08
@@ -363,10 +363,10 @@ namespace IGC
     // These values need to match SPIR sampler enum
 #define SPIR_CLK_ADDRESS_NONE                       0x00
 #define SPIR_CLK_ADDRESS_CLAMP_TO_EDGE              0x02
-#define SPIR_CLK_ADDRESS_CLAMP			            0x04
+#define SPIR_CLK_ADDRESS_CLAMP                        0x04
 #define SPIR_CLK_ADDRESS_REPEAT                     0x06
 #define SPIR_CLK_ADDRESS_MIRRORED_REPEAT            0x08
-#define SPIR_CLK_ADDRESS_MIRRORED_REPEAT_101_INTEL 	0x0A
+#define SPIR_CLK_ADDRESS_MIRRORED_REPEAT_101_INTEL     0x0A
 
 #define SPIR_CLK_NORMALIZED_COORDS_FALSE   0x00
 #define SPIR_CLK_NORMALIZED_COORDS_TRUE    0x01

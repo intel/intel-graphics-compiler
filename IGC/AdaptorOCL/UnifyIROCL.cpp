@@ -205,12 +205,12 @@ static void CommonOCLBasedPasses(
             "-v512:512:512-v1024:1024:1024-n8:16:32";
     }
     pContext->getModule()->setDataLayout(dataLayout);
-	BuiltinGenericModule->setDataLayout(dataLayout);
-	if( BuiltinSizeModule )
-	{
-	    BuiltinSizeModule->setDataLayout(dataLayout);
-	}
-		
+    BuiltinGenericModule->setDataLayout(dataLayout);
+    if( BuiltinSizeModule )
+    {
+        BuiltinSizeModule->setDataLayout(dataLayout);
+    }
+        
     MetaDataUtils *pMdUtils = pContext->getMetaDataUtils();
     
     //extracting OCL version major before SPIRMetadataTranslation pass deletes its metadata node
@@ -282,10 +282,10 @@ static void CommonOCLBasedPasses(
         IF_DEBUG_INFO(mpm.add(new ImplicitGlobalId());)
     }
 
-	if (IGC_IS_FLAG_ENABLED(EnableCodeAssumption))
-	{
-		mpm.add(new CodeAssumption());
-	}
+    if (IGC_IS_FLAG_ENABLED(EnableCodeAssumption))
+    {
+        mpm.add(new CodeAssumption());
+    }
 
     mpm.add(new PreBIImportAnalysis());
     mpm.add(createBuiltInImportPass(std::move(BuiltinGenericModule), std::move(BuiltinSizeModule)));

@@ -73,18 +73,18 @@ numBBs(numBB), numAddrs(0), indirectUses(NULL), pointsToSets(NULL), addrPointsTo
 
     if( numAddrs > 0 )
     {
-		for( unsigned int i = 0; i < numAddrs; i++ )
-			regVars.push_back(NULL);
+        for( unsigned int i = 0; i < numAddrs; i++ )
+            regVars.push_back(NULL);
 
         for (auto decl : declares)
-		{
-			if( ( decl->getRegFile() == G4_ADDRESS ) &&
-				decl->getAliasDeclare() == NULL &&
-				decl->getRegVar()->getId() != UNDEFINED_VAL)
-			{
-				regVars[decl->getRegVar()->getId()] = decl->getRegVar();
-			}
-		}
+        {
+            if( ( decl->getRegFile() == G4_ADDRESS ) &&
+                decl->getAliasDeclare() == NULL &&
+                decl->getRegVar()->getId() != UNDEFINED_VAL)
+            {
+                regVars[decl->getRegVar()->getId()] = decl->getRegVar();
+            }
+        }
 
         pointsToSets = new REGVAR_VECTOR[numAddrs];
         addrPointsToSetIndex = new unsigned[numAddrs];
@@ -130,10 +130,10 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph & fg)
     // keep a list of address taken variables
     std::vector<G4_RegVar*> addrTakenVariables;
     for (BB_LIST_ITER it = fg.BBs.begin(), itend = fg.BBs.end(); it != itend; ++it)
-	{
-		G4_BB* bb = (*it);
-		for (INST_LIST_ITER iter = bb->begin(), iterEnd = bb->end(); iter != iterEnd; ++iter)
-		{
+    {
+        G4_BB* bb = (*it);
+        for (INST_LIST_ITER iter = bb->begin(), iterEnd = bb->end(); iter != iterEnd; ++iter)
+        {
             G4_INST* inst = (*iter);
             for (int i = 0; i < G4_MAX_SRCS; i++)
             {
@@ -147,12 +147,12 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph & fg)
     }
 
     // first compute the points-to set for each address variable
-	for (BB_LIST_ITER it = fg.BBs.begin(), itend = fg.BBs.end(); it != itend; ++it)
-	{
-		G4_BB* bb = (*it);
-		for (INST_LIST_ITER iter = bb->begin(), iterEnd = bb->end(); iter != iterEnd; ++iter)
-		{
-			G4_INST* inst = (*iter);
+    for (BB_LIST_ITER it = fg.BBs.begin(), itend = fg.BBs.end(); it != itend; ++it)
+    {
+        G4_BB* bb = (*it);
+        for (INST_LIST_ITER iter = bb->begin(), iterEnd = bb->end(); iter != iterEnd; ++iter)
+        {
+            G4_INST* inst = (*iter);
 
             if(inst->isPseudoKill() || inst->isLifeTimeEnd())
             {
@@ -375,23 +375,23 @@ LivenessAnalysis::LivenessAnalysis(
         bool verifyRA,
         bool forceRun) :
         numVarId(0), numSplitVar(0), numSplitStartID(0), numUnassignedVarId(0), numAddrId(0), selectedRF(kind), m(4096),
-		fg(g.kernel.fg), pointsToAnalysis(g.pointsToAnalysis), gra(g)
+        fg(g.kernel.fg), pointsToAnalysis(g.pointsToAnalysis), gra(g)
 {
-	//
-	// NOTE:
-	// The maydef sets are simply aliases to the mayuse sets, since their uses are
-	// mutually exclusive.
-	//
-	// Go over each reg var if it's a liveness candidate, assign id for bitset.
-	//
+    //
+    // NOTE:
+    // The maydef sets are simply aliases to the mayuse sets, since their uses are
+    // mutually exclusive.
+    //
+    // Go over each reg var if it's a liveness candidate, assign id for bitset.
+    //
     bool areAllPhyRegAssigned = !forceRun;
 
     DECLARE_LIST_ITER di = gra.kernel.Declares.begin();
     while (di != gra.kernel.Declares.end())
-	{
-		G4_Declare* decl = *di;
-		if (livenessCandidate(decl, verifyRA) && decl->getAliasDeclare() == NULL )
-		{
+    {
+        G4_Declare* decl = *di;
+        if (livenessCandidate(decl, verifyRA) && decl->getAliasDeclare() == NULL )
+        {
             if (decl->getIsSplittedDcl())
             {
                 decl->setSplitVarStartID(0);
@@ -401,16 +401,16 @@ LivenessAnalysis::LivenessAnalysis(
                 auto declSplitDcl = gra.getSplittedDeclare(decl);
                 if (declSplitDcl->getIsSplittedDcl())
                 {
-	                if (numSplitStartID == 0)
-	                {
-	                    numSplitStartID = numVarId;
-	                }
+                    if (numSplitStartID == 0)
+                    {
+                        numSplitStartID = numVarId;
+                    }
 
-	                if (declSplitDcl->getSplitVarStartID() == 0)
-	                {
+                    if (declSplitDcl->getSplitVarStartID() == 0)
+                    {
                         declSplitDcl->setSplitVarStartID(numVarId);
-	                }
-	                numSplitVar ++;
+                    }
+                    numSplitVar ++;
                 }
                 else
                 {
@@ -418,15 +418,15 @@ LivenessAnalysis::LivenessAnalysis(
                 }
             }
 
-			// participate liveness analysis
-			decl->getRegVar()->setId(numVarId++);
+            // participate liveness analysis
+            decl->getRegVar()->setId(numVarId++);
 
             if (decl->getRegVar()->getPhyReg() == NULL && !decl->getIsPartialDcl())
                 numUnassignedVarId++;
 
-			//
-			// dump Reg Var info for debugging
-			//
+            //
+            // dump Reg Var info for debugging
+            //
 
             if( decl->getRegVar()->isPhyRegAssigned() == false )
             {
@@ -434,71 +434,71 @@ LivenessAnalysis::LivenessAnalysis(
             }
 #ifdef DEBUG_VERBOSE_ON
             DEBUG_EMIT(decl->getRegVar());
-			DEBUG_VERBOSE(" id = " << decl->getRegVar()->getId() << std::endl);
+            DEBUG_VERBOSE(" id = " << decl->getRegVar()->getId() << std::endl);
 #endif
-		}
-		//
-		// those reg vars that are not candidates, set their id to
-		// undefined value
-		//
-		else
-		{
-			decl->getRegVar()->setId(UNDEFINED_VAL);
-		}
+        }
+        //
+        // those reg vars that are not candidates, set their id to
+        // undefined value
+        //
+        else
+        {
+            decl->getRegVar()->setId(UNDEFINED_VAL);
+        }
         di++;
-	}
+    }
 
-	// For Alias Dcl
+    // For Alias Dcl
     for (auto decl : gra.kernel.Declares)
-	{
-		if (livenessCandidate(decl, verifyRA) && (decl)->getAliasDeclare() != NULL)
-		{
-			// It is an alias declaration. Set its id = base declaration id
-			(decl)->getRegVar()->setId((decl)->getAliasDeclare()->getRegVar()->getId());
-		}
+    {
+        if (livenessCandidate(decl, verifyRA) && (decl)->getAliasDeclare() != NULL)
+        {
+            // It is an alias declaration. Set its id = base declaration id
+            (decl)->getRegVar()->setId((decl)->getAliasDeclare()->getRegVar()->getId());
+        }
 #ifdef DEBUG_VERBOSE_ON
-		DEBUG_EMIT((decl)->getRegVar());
-		DEBUG_VERBOSE(" id = " << (decl)->getRegVar()->getId() << std::endl);
+        DEBUG_EMIT((decl)->getRegVar());
+        DEBUG_VERBOSE(" id = " << (decl)->getRegVar()->getId() << std::endl);
 #endif
-	}
+    }
 
-	//
-	// if no chosen candidate for reg allocation return
-	//
-	if (numVarId == 0 ||
+    //
+    // if no chosen candidate for reg allocation return
+    //
+    if (numVarId == 0 ||
         (verifyRA == false &&
          areAllPhyRegAssigned == true))
-	{
+    {
         // If all variables have physical register assignments
         // there are no candidates for allocation
         numVarId = 0;
-		return;
-	}
+        return;
+    }
 
-	//
-	// put selected reg vars into vars[]
-	//
-	vars.resize(numVarId);
-	for (auto dcl : gra.kernel.Declares)
-	{
-		if (livenessCandidate(dcl, verifyRA) &&
-			dcl->getAliasDeclare() == NULL)
-		{
-			G4_RegVar* var = dcl->getRegVar();
-			vars[var->getId()] = var;
+    //
+    // put selected reg vars into vars[]
+    //
+    vars.resize(numVarId);
+    for (auto dcl : gra.kernel.Declares)
+    {
+        if (livenessCandidate(dcl, verifyRA) &&
+            dcl->getAliasDeclare() == NULL)
+        {
+            G4_RegVar* var = dcl->getRegVar();
+            vars[var->getId()] = var;
 
-			if (var->getDeclare()->getHasFileScope())
-			{
-				fileScopeVars.push_back(var);
-			}
-		}
-	}
+            if (var->getDeclare()->getHasFileScope())
+            {
+                fileScopeVars.push_back(var);
+            }
+        }
+    }
 
     addr_taken = BitSet(numVarId, false);
 
-	numBBId = (unsigned) fg.BBs.size();
+    numBBId = (unsigned) fg.BBs.size();
 
-	def_in.resize(numBBId);
+    def_in.resize(numBBId);
     def_out.resize(numBBId);
     use_in.resize(numBBId);
     use_out.resize(numBBId);
@@ -506,30 +506,30 @@ LivenessAnalysis::LivenessAnalysis(
     use_kill.resize(numBBId);
     indr_use.resize(numBBId);
 
-	for (unsigned i = 0; i < numBBId; i++)
-	{
-		def_in[i]  = BitSet(numVarId, false);
-		def_out[i] = BitSet(numVarId, false);
-		use_in[i]  = BitSet(numVarId, false);
-		use_out[i] = BitSet(numVarId, false);
-		use_gen[i] = BitSet(numVarId, false);
-		use_kill[i]= BitSet(numVarId, false);
-		indr_use[i]= BitSet(numVarId, false);
-	}
+    for (unsigned i = 0; i < numBBId; i++)
+    {
+        def_in[i]  = BitSet(numVarId, false);
+        def_out[i] = BitSet(numVarId, false);
+        use_in[i]  = BitSet(numVarId, false);
+        use_out[i] = BitSet(numVarId, false);
+        use_gen[i] = BitSet(numVarId, false);
+        use_kill[i]= BitSet(numVarId, false);
+        indr_use[i]= BitSet(numVarId, false);
+    }
 
-	numFnId = (unsigned) fg.funcInfoTable.size();
+    numFnId = (unsigned) fg.funcInfoTable.size();
     maydef.resize(numFnId);
 }
 
 LivenessAnalysis::~LivenessAnalysis()
 {
-	//
-	// if no chosen candidate for reg allocation return
-	//
-	if (numVarId == 0)
-	{
-		return;
-	}
+    //
+    // if no chosen candidate for reg allocation return
+    //
+    if (numVarId == 0)
+    {
+        return;
+    }
 
     for (auto it : neverDefinedRows)
     {
@@ -568,16 +568,16 @@ bool LivenessAnalysis::livenessCandidate(G4_Declare* decl, bool verifyRA)
 
 void LivenessAnalysis::updateKillSetForDcl(G4_Declare* dcl, BitSet* curBBGen, BitSet* curBBKill, G4_BB* curBB, BitSet* entryBBGen, BitSet* entryBBKill, G4_BB* entryBB, unsigned scopeID)
 {
-	if (scopeID != 0 &&
-		scopeID != UINT_MAX &&
-		dcl->getScopeID() == scopeID)
-	{
-		entryBBKill->set(dcl->getRegVar()->getId(), true);
-		entryBBGen->set(dcl->getRegVar()->getId(), false);
+    if (scopeID != 0 &&
+        scopeID != UINT_MAX &&
+        dcl->getScopeID() == scopeID)
+    {
+        entryBBKill->set(dcl->getRegVar()->getId(), true);
+        entryBBGen->set(dcl->getRegVar()->getId(), false);
 #ifdef DEBUG_VERBOSE_ON
-		DEBUG_VERBOSE("Killed sub-routine scope " << dcl->getName() << " at bb with id = " << entryBB->getId() << std::endl);
+        DEBUG_VERBOSE("Killed sub-routine scope " << dcl->getName() << " at bb with id = " << entryBB->getId() << std::endl);
 #endif
-	}
+    }
 }
 
 // Scoping info is stored per decl. A variable can be either global scope (default),
@@ -589,7 +589,7 @@ void LivenessAnalysis::updateKillSetForDcl(G4_Declare* dcl, BitSet* curBBGen, Bi
 // then generated code will be so too.
 void LivenessAnalysis::performScoping(BitSet* curBBGen, BitSet* curBBKill, G4_BB* curBB, BitSet* entryBBGen, BitSet* entryBBKill, G4_BB* entryBB)
 {
-	unsigned scopeID = curBB->getScopeID();
+    unsigned scopeID = curBB->getScopeID();
     for( INST_LIST_ITER it = curBB->begin();
         it != curBB->end();
         it++ )
@@ -743,25 +743,25 @@ void LivenessAnalysis::detectNeverDefinedVarRows()
 //
 void LivenessAnalysis::computeLiveness(bool computePseudoKill)
 {
-	//
-	// no reg var is selected, then no need to compute liveness
-	//
-	if (getNumSelectedVar() == 0)
-	{
-		return;
-	}
+    //
+    // no reg var is selected, then no need to compute liveness
+    //
+    if (getNumSelectedVar() == 0)
+    {
+        return;
+    }
 
     startTimer(TIMER_LIVENESS);
 
 #ifdef DEBUG_VERBOSE_ON
-	std::vector<FuncInfo*>& fns = fg.funcInfoTable;
+    std::vector<FuncInfo*>& fns = fg.funcInfoTable;
 #endif
-	//
-	// mark input arguments live at the entry of kernel
+    //
+    // mark input arguments live at the entry of kernel
     // mark output arguments live at the exit of kernel
-	//
-	BitSet inputDefs(numVarId, false);
-	BitSet outputUses(numVarId, false);
+    //
+    BitSet inputDefs(numVarId, false);
+    BitSet outputUses(numVarId, false);
 
     for (unsigned i = 0; i < numVarId; i++)
     {
@@ -774,13 +774,13 @@ void LivenessAnalysis::computeLiveness(bool computePseudoKill)
                (fg.builder->getIsKernel() ||
                 (fg.getIsStackCallFunc() &&
                  fg.builder->getArgSize() == 0)))) ||
-			( decl->getHasFileScope() && fg.getIsStackCallFunc() ) ||
+            ( decl->getHasFileScope() && fg.getIsStackCallFunc() ) ||
             (fg.builder->getOption(vISA_enablePreemption) &&
              decl == fg.builder->getBuiltinR0()) )
         {
             inputDefs.set( i, true );
 #ifdef DEBUG_VERBOSE_ON
-			DEBUG_VERBOSE("First def input = " << decl->getName() << std::endl);
+            DEBUG_VERBOSE("First def input = " << decl->getName() << std::endl);
 #endif
         }
         if ((decl->isOutput() == true &&
@@ -789,13 +789,13 @@ void LivenessAnalysis::computeLiveness(bool computePseudoKill)
                 (fg.getIsStackCallFunc() &&
                  fg.builder->getRetVarSize() == 0)))) ||
             (decl->getHasFileScope() &&
-			(fg.getIsStackCallFunc() || fg.getHasStackCalls())) ||
-			(fg.builder->getOption(vISA_enablePreemption) &&
-			  decl == fg.builder->getBuiltinR0()))
+            (fg.getIsStackCallFunc() || fg.getHasStackCalls())) ||
+            (fg.builder->getOption(vISA_enablePreemption) &&
+              decl == fg.builder->getBuiltinR0()))
         {
             outputUses.set( i, true );
 #ifdef DEBUG_VERBOSE_ON
-			DEBUG_VERBOSE("First def output	= " << decl->getName() << std::endl);
+            DEBUG_VERBOSE("First def output    = " << decl->getName() << std::endl);
 #endif
         }
     }
@@ -813,20 +813,20 @@ void LivenessAnalysis::computeLiveness(bool computePseudoKill)
         detectNeverDefinedVarRows();
 
     //
-	// compute def_out and use_in vectors for each BB
-	//
-	for (BB_LIST_ITER it = fg.BBs.begin(); it != fg.BBs.end(); ++it)
-	{
+    // compute def_out and use_in vectors for each BB
+    //
+    for (BB_LIST_ITER it = fg.BBs.begin(); it != fg.BBs.end(); ++it)
+    {
         G4_BB * bb = *it;
-		unsigned id = bb->getId();
-		if (computePseudoKill)
-		{
-			computeGenKillandPseudoKill((*it), def_out[id], use_in[id], use_gen[id], use_kill[id]);
-		}
-		else
-		{
-			computeGenKill((*it), def_out[id], use_in[id], use_gen[id], use_kill[id]);
-		}
+        unsigned id = bb->getId();
+        if (computePseudoKill)
+        {
+            computeGenKillandPseudoKill((*it), def_out[id], use_in[id], use_gen[id], use_kill[id]);
+        }
+        else
+        {
+            computeGenKill((*it), def_out[id], use_in[id], use_gen[id], use_kill[id]);
+        }
 
         //
         // exit block: mark output parameters live
@@ -835,43 +835,43 @@ void LivenessAnalysis::computeLiveness(bool computePseudoKill)
         {
             use_out[id] = outputUses;
         }
-	}
+    }
 
     G4_BB* subEntryBB = NULL;
     BitSet* subEntryKill = NULL;
     BitSet* subEntryGen = NULL;
 
-	if (fg.builder->getOptions()->getTarget() == VISA_CM)
-	{
-		//
-		// Top-down order of BB list iteration guarantees that
-		// entry BB of each sub-routine will be seen before any other
-		// BBs belonging to that sub-routine. This assumes that BBs of
-		// a sub-routine are laid out back to back in bb list.
-		//
+    if (fg.builder->getOptions()->getTarget() == VISA_CM)
+    {
+        //
+        // Top-down order of BB list iteration guarantees that
+        // entry BB of each sub-routine will be seen before any other
+        // BBs belonging to that sub-routine. This assumes that BBs of
+        // a sub-routine are laid out back to back in bb list.
+        //
         for (auto bb : fg.BBs)
-		{
-			unsigned id = bb->getId();
+        {
+            unsigned id = bb->getId();
 
-			if (bb->getScopeID() != 0 &&
-				bb->getScopeID() != UINT_MAX)
-			{
-				subEntryBB = fg.sortedFuncTable[bb->getScopeID() - 1]->getInitBB();
-				unsigned entryBBID = subEntryBB->getId();
-				subEntryKill = &use_kill[entryBBID];
-				subEntryGen = &use_gen[entryBBID];
-			}
+            if (bb->getScopeID() != 0 &&
+                bb->getScopeID() != UINT_MAX)
+            {
+                subEntryBB = fg.sortedFuncTable[bb->getScopeID() - 1]->getInitBB();
+                unsigned entryBBID = subEntryBB->getId();
+                subEntryKill = &use_kill[entryBBID];
+                subEntryGen = &use_gen[entryBBID];
+            }
 
-			//
-			// Mark explicitly scoped variables as kills
-			//
-			performScoping(&use_gen[id], &use_kill[id], bb, subEntryGen, subEntryKill, subEntryBB);
-		}
-	}
+            //
+            // Mark explicitly scoped variables as kills
+            //
+            performScoping(&use_gen[id], &use_kill[id], bb, subEntryGen, subEntryKill, subEntryBB);
+        }
+    }
 
-	//
-	// compute indr accesses
-	//
+    //
+    // compute indr accesses
+    //
     if( selectedRF & G4_GRF )
     {
         // only GRF variables can have their address taken
@@ -881,18 +881,18 @@ void LivenessAnalysis::computeLiveness(bool computePseudoKill)
             for( unsigned i = 0; i < grfVecPtr->size(); i++ )
             {
                 G4_RegVar* addrTaken =(*grfVecPtr)[i];
-				indr_use[bb->getId()].set( addrTaken->getId(), true );
+                indr_use[bb->getId()].set( addrTaken->getId(), true );
                 addr_taken.set(addrTaken->getId(), true);
             }
         }
     }
-	//
-	// Perform inter-procedural context-sensitive flow analysis.
-	// This is required when the CFG involves function calls with multiple calling
-	// contexts for the same function, as peforming just a context-insensitive
-	// analysis results in uses being propgated along paths that are not feasible
-	// in the actual program.
-	//
+    //
+    // Perform inter-procedural context-sensitive flow analysis.
+    // This is required when the CFG involves function calls with multiple calling
+    // contexts for the same function, as peforming just a context-insensitive
+    // analysis results in uses being propgated along paths that are not feasible
+    // in the actual program.
+    //
 
     if (performIPA() && fg.builder->getOption(vISA_hierarchicaIPA))
     {
@@ -902,349 +902,349 @@ void LivenessAnalysis::computeLiveness(bool computePseudoKill)
     }
 
     // IPA is currently very slow for large number of call sites, so disable it to save compile time
-	if (performIPA() && fg.getNumCalls() < 1024)
+    if (performIPA() && fg.getNumCalls() < 1024)
     {
 
-		//
-		// Bitsets used to calcuate function summaries for inter-procedural liveness analysis.
-		//
-		std::vector<BitSet> bypass_in(numBBId);
-		std::vector<BitSet> bypass_out(numBBId);
-		std::vector<BitSet> bypass(numFnId);
-		std::vector<BitSet>& mayuse_in(use_in);
-		std::vector<BitSet>& mayuse_out(use_out);
-		std::vector<BitSet> mayuse(numFnId);
+        //
+        // Bitsets used to calcuate function summaries for inter-procedural liveness analysis.
+        //
+        std::vector<BitSet> bypass_in(numBBId);
+        std::vector<BitSet> bypass_out(numBBId);
+        std::vector<BitSet> bypass(numFnId);
+        std::vector<BitSet>& mayuse_in(use_in);
+        std::vector<BitSet>& mayuse_out(use_out);
+        std::vector<BitSet> mayuse(numFnId);
 
-		std::vector<BitSet> maydef_in(numBBId);
-		std::vector<BitSet> maydef_out(numBBId);
+        std::vector<BitSet> maydef_in(numBBId);
+        std::vector<BitSet> maydef_out(numBBId);
 
-		for (unsigned i = 0; i < numBBId; i++)
-		{
-			bypass_in[i]  = use_gen[i];
-			bypass_out[i] = BitSet(numVarId, false);
-			maydef_in[i]  = BitSet(numVarId, false);
-			maydef_out[i] = def_out[i];
-		}
+        for (unsigned i = 0; i < numBBId; i++)
+        {
+            bypass_in[i]  = use_gen[i];
+            bypass_out[i] = BitSet(numVarId, false);
+            maydef_in[i]  = BitSet(numVarId, false);
+            maydef_out[i] = def_out[i];
+        }
 
-		for (unsigned i = 0; i < numFnId; i++)
-		{
-			unsigned fid = fg.funcInfoTable[i]->getId();
-			unsigned iid = fg.funcInfoTable[i]->getInitBB()->getId();
-			unsigned eid = fg.funcInfoTable[i]->getExitBB()->getId();
-			bypass[fid] = bypass_in[iid];
-			mayuse[fid] = mayuse_in[iid];
-			maydef[fid] = maydef_out[eid];
-		}
+        for (unsigned i = 0; i < numFnId; i++)
+        {
+            unsigned fid = fg.funcInfoTable[i]->getId();
+            unsigned iid = fg.funcInfoTable[i]->getInitBB()->getId();
+            unsigned eid = fg.funcInfoTable[i]->getExitBB()->getId();
+            bypass[fid] = bypass_in[iid];
+            mayuse[fid] = mayuse_in[iid];
+            maydef[fid] = maydef_out[eid];
+        }
 
-		//
-		// Determine use sets.
-		//
-		// Initialize set used for calculating function summaries for functions with multiple
-		// callers.
-		//
-		std::list<G4_BB*>::iterator it = fg.BBs.begin();
+        //
+        // Determine use sets.
+        //
+        // Initialize set used for calculating function summaries for functions with multiple
+        // callers.
+        //
+        std::list<G4_BB*>::iterator it = fg.BBs.begin();
 
-		for ( ; it != fg.BBs.end(); ++it) {
-			FuncInfo* funcInfoBB = (*it)->getCalleeInfo();
+        for ( ; it != fg.BBs.end(); ++it) {
+            FuncInfo* funcInfoBB = (*it)->getCalleeInfo();
 
-			if ((*it)->getBBType() & G4_BB_CALL_TYPE)
-			{
-				MUST_BE_TRUE(funcInfoBB != NULL, ERROR_REGALLOC);
-				MUST_BE_TRUE((*it)->Succs.front()->getBBType() & G4_BB_INIT_TYPE, ERROR_REGALLOC);
-				MUST_BE_TRUE((*it)->Succs.size() == 1, ERROR_REGALLOC);
-			}
-			else if ((*it)->getBBType() & G4_BB_RETURN_TYPE)
-			{
-				MUST_BE_TRUE((*it)->Preds.front()->getBBType() & G4_BB_EXIT_TYPE, ERROR_REGALLOC);
-				MUST_BE_TRUE((*it)->Preds.size() == 1, ERROR_REGALLOC);
-			}
-			else if ((*it)->getBBType() & G4_BB_INIT_TYPE)
-			{
-				std::list<G4_BB*>::iterator jt = (*it)->Preds.begin();
-				for ( ; jt != (*it)->Preds.end(); ++jt)
-				{
-					MUST_BE_TRUE((*jt)->getBBType() & G4_BB_CALL_TYPE, ERROR_REGALLOC);
-				}
-				if ((*it)->Preds.size() > 1)
-				{
-					MUST_BE_TRUE(
-						(*it)->Preds.front()->getCalleeInfo()->doIPA() == true,
-						 ERROR_REGALLOC);
-				}
-				else if ((*it)->Preds.size() > 0)
-				{
-					MUST_BE_TRUE(
-						(*it)->Preds.front()->getCalleeInfo()->doIPA() == false,
-						 ERROR_REGALLOC);
-				}
-			}
-			else if ((*it)->getBBType() & G4_BB_EXIT_TYPE)
-			{
-				std::list<G4_BB*>::iterator jt = (*it)->Succs.begin();
-				for ( ; jt != (*it)->Succs.end(); ++jt)
-				{
-					MUST_BE_TRUE((*jt)->getBBType() & G4_BB_RETURN_TYPE, ERROR_REGALLOC);
-				}
-
-				unsigned int bbid = (*it)->getId();
-				//
-				// Required pessimistic initialization for bypass out set.
-				//
-				bypass_out[bbid].setAll();
-			}
-		}
-		//
-		// Backward flow analysis to calculate use(live) sets.
-		//    We perform three fixed point iterations.
-		//    The first two are required to calculate function summaries.
-		//    The function summaries are represented by two sets - the bypass set and the
-		//    mayuse sets.
-		//    The third one performs the actual liveness analysis considering each function
-		//    call and its related subgraph as a blackbox, using just the calculated function
-		//    summaries for it.
-		//
-		bool change = true;
-		//
-		// Phase (1) - determine bypass sets for each function
-		//    The set of registers which if live at the RETURN NODE will be live at the
-		//    CALL node. Typically these are the variables that are not used at all by
-		//    the called function.
-		//
-		while (change)
-		{
-			change = false;
-			BB_LIST::iterator rit = fg.BBs.end();
-			do
-			{
-				//
-				//    bypass_out[n] =
-				//       (if type(n) == cgf_exit_block)
-				//          output_uses[n]
-				//       (if type(n) == call and f == callee[n])
-				//			(bypass[f] and bypass_in[return_node(n)]
-				//       (if type(n) != CALL and  type(n) != EXIT)
-				//			bypass_in[s1] + bypass_in[s2] + ...
-				//             where s1 s2 ... are the successors of n
-				//    bypass_in[n]  = use[n] + (bypass_out - use_kill[n])
-				//
-				--rit;
-				if (contextSensitiveBackwardDataAnalyze(
-						(*rit), bypass_in, bypass_out, mayuse, bypass, outputUses, &bypass, G4_BB_EXIT_TYPE))
-				{
-					change = true;
-				}
-			}
-			while(rit != fg.BBs.begin());
-		}
-
-		change = true;
-		//
-		// Phase (2) - determine mayuse sets for each function
-		//    The set of registers that may be used by the called function. This describes
-		//    the set of registers which are always live at INIT node independent of the
-		//    calling context. Typically these are the registers that are used to pass
-		//    arguments to the called function.
-		//
-		while (change)
-		{
-			change = false;
-			BB_LIST::iterator rit = fg.BBs.end();
-			do
-			{
-				//
-				//    mayuse_out[n] =
-				//       (if type(n) == cgf_exit_block)
-				//          output_uses[n]
-				//       (if type(n) == call and f == callee[n])
-				//			mayuse[f] + (bypass[f] and mayuse_in[return_node(n)]
-				//       (if type(n) != CALL and  type(n) != EXIT)
-				//			mayuse_in[s1] + mayuse_in[s2] + ...
-				//             where s1 s2 ... are the successors of n
-				//    mayuse_in[n]  = use[n] + (mayuse_out - use_kill[n])
-				//
-				--rit;
-				if (contextSensitiveBackwardDataAnalyze(
-						(*rit), mayuse_in, mayuse_out, mayuse, bypass, outputUses, &mayuse, G4_BB_EXIT_TYPE))
-				{
-					change = true;
-				}
-
-			}
-			while(rit != fg.BBs.begin());
-		}
-	//
-	// dump vectors for debugging
-	//
-#ifdef DEBUG_VERBOSE_ON
-	dump_bb_vector("BYPASS IN", fg.BBs, bypass_in);
-	dump_bb_vector("BYPASS OUT", fg.BBs, bypass_out);
-	dump_fn_vector("BYPASS", fns, bypass);
-	dump_bb_vector("MAYUSE IN", fg.BBs, mayuse_in);
-	dump_bb_vector("MAYUSE OUT", fg.BBs, mayuse_out);
-	dump_fn_vector("MAYUSE", fns, mayuse);
-#endif
-
-		if (fg.builder->getOptions()->getTarget() == VISA_CM)
-		{
-			for (unsigned i = 0; i < numFnId; i++)
-			{
-				unsigned funcScopeID = fg.funcInfoTable[i]->getScopeID();
-				for (unsigned j = 0; j < numVarId; j++)
-				{
-					G4_Declare *decl = vars[j]->getDeclare();
-					unsigned declScopeID = decl->getScopeID();
-					if (declScopeID != 0 &&
-						funcScopeID >= declScopeID)
-					{
-						mayuse[i].set(j, false);
-					}
-				}
-			}
-		}
-
-		//
-		// The use_in/use_out sets will be initialized with the values of mayuse_in/mayuse_out
-		// because the mayuse_in/mayuse_out sets are aliases to the use_in/use_out. This should
-		// speed up the fixed-point iterations for use_in/use_out.
-		//
-		change = true;
-		//
-		// Phase (3) - determine use sets for each block
-		//    Performs the actual liveness analysis considering each function call and its
-		//    related subgraph as a blackbox, by using just the calculated function summaries
-		//    for it.
-		//
-		while (change)
-		{
-			change = false;
-			BB_LIST::iterator rit = fg.BBs.end();
-			do
-			{
-				//
-				//    live_out[n] =
-				//       (if type(n) == cgf_exit_block)
-				//          output_uses[n]
-				//       (if type(n) == call and f == callee[n])
-				//			mayuse[f] + (bypass[f] and live_in[return_node(n)]
-				//       (if type(n) != CALL)
-				//			use_in[s1] + use_in[s2] + ...
-				//             where s1 s2 ... are the successors of n
-				//    live_in[n]  = use[n] + (live_out - use_kill[n])
-				//
-				--rit;
-				if (contextSensitiveBackwardDataAnalyze((*rit), use_in, use_out, mayuse, bypass, outputUses, NULL, 0))
-				{
-					change = true;
-				}
-
-			}
-			while(rit != fg.BBs.begin());
-		}
-
-		//
-		// Determine def sets.
-		//
-
-		//
-		// Forward flow analysis to propagate defs.
-		//    We perform two fixed iterations. The first is used to calculate the function
-		//    summary required to propagate def. The function summary is represented by the
-		//    maydef set.
-		//    The second fixed point iteration performs the actual propagation of defs for the
-		//    complete flow graph, considering each function call and its related subgraph as
-		//    a blackbox, using just the calculated function summary for it.
-		//
-		change = true;
-		//
-		// Phase (1) - determine maydef sets for each function
-		//    The maydef set represents the set of def that may be defined and thus propagated
-		//    in the function along some path.
-		//
-		while (change)
-		{
-			change = false;
-			for (BB_LIST::iterator it = fg.BBs.begin(); it != fg.BBs.end(); it++)
-			{
-				//
-				// maydef_in[n] =
-				//    (if type(n) == cgf_entry_block)
-				//        input_defs[n]
-				//    (if type(n) == return and f == callee[n])
-				//        maydef[f] + maydef_out[call_node(n)]
-				//           where type(n) == return and f == callee[n]
-				//    (if type(n) != RETURN and  type(n) != INIT)
-				//	      maydef_out[p1] + maydef_out[p2] + ...
-				//           where p1 p2 ... are the predecessors of n
-				//
-				if (contextSensitiveForwardDataAnalyze(
-						(*it), maydef_in, maydef_out, maydef, inputDefs, &maydef, G4_BB_INIT_TYPE))
-				{
-					change = true;
-				}
-
-			}
-		}
-	//
-	// dump vectors for debugging
-	//
-#ifdef DEBUG_VERBOSE_ON
-	dump_bb_vector("MAYDEF IN", fg.BBs, maydef_in);
-	dump_bb_vector("MAYDEF OUT", fg.BBs, maydef_out);
-	dump_fn_vector("MAYDEF", fns, maydef);
-#endif
-
-	    if (fg.builder->getOptions()->getTarget() == VISA_CM)
-	    {
-		    for (unsigned i = 0; i < numFnId; i++)
-		    {
-			    unsigned funcScopeID = fg.funcInfoTable[i]->getScopeID();
-			    for (unsigned j = 0; j < numVarId; j++)
-			    {
-				    G4_Declare *decl = vars[j]->getDeclare();
-				    unsigned declScopeID = decl->getScopeID();
-					if (declScopeID != 0 &&
-						funcScopeID >= declScopeID)
-				    {
-					    maydef[i].set(j, false);
-				    }
-			    }
+            if ((*it)->getBBType() & G4_BB_CALL_TYPE)
+            {
+                MUST_BE_TRUE(funcInfoBB != NULL, ERROR_REGALLOC);
+                MUST_BE_TRUE((*it)->Succs.front()->getBBType() & G4_BB_INIT_TYPE, ERROR_REGALLOC);
+                MUST_BE_TRUE((*it)->Succs.size() == 1, ERROR_REGALLOC);
             }
-	    }
+            else if ((*it)->getBBType() & G4_BB_RETURN_TYPE)
+            {
+                MUST_BE_TRUE((*it)->Preds.front()->getBBType() & G4_BB_EXIT_TYPE, ERROR_REGALLOC);
+                MUST_BE_TRUE((*it)->Preds.size() == 1, ERROR_REGALLOC);
+            }
+            else if ((*it)->getBBType() & G4_BB_INIT_TYPE)
+            {
+                std::list<G4_BB*>::iterator jt = (*it)->Preds.begin();
+                for ( ; jt != (*it)->Preds.end(); ++jt)
+                {
+                    MUST_BE_TRUE((*jt)->getBBType() & G4_BB_CALL_TYPE, ERROR_REGALLOC);
+                }
+                if ((*it)->Preds.size() > 1)
+                {
+                    MUST_BE_TRUE(
+                        (*it)->Preds.front()->getCalleeInfo()->doIPA() == true,
+                         ERROR_REGALLOC);
+                }
+                else if ((*it)->Preds.size() > 0)
+                {
+                    MUST_BE_TRUE(
+                        (*it)->Preds.front()->getCalleeInfo()->doIPA() == false,
+                         ERROR_REGALLOC);
+                }
+            }
+            else if ((*it)->getBBType() & G4_BB_EXIT_TYPE)
+            {
+                std::list<G4_BB*>::iterator jt = (*it)->Succs.begin();
+                for ( ; jt != (*it)->Succs.end(); ++jt)
+                {
+                    MUST_BE_TRUE((*jt)->getBBType() & G4_BB_RETURN_TYPE, ERROR_REGALLOC);
+                }
 
-		change = true;
-		//
-		// Phase (2) - determine def sets for each block
-		//    Performs the actual propagation of defs for the complete flow graph,
-		//    considering each function call and its related subgraph as a blackbox,
-		//    using just the calculated function summary for it.
-		//
-		while (change)
-		{
-			change = false;
-			for (BB_LIST::iterator it = fg.BBs.begin(); it != fg.BBs.end(); it++)
-			{
-				//
-				// def_in[n] =
-				//    (if type(n) == cgf_entry_block)
-				//        input_defs[n]
-				//    (if type(n) == return and f == callee[n])
-				//        def[f] + def_out[call_node(n)]
-				//           where type(n) == return and f == callee[n]
-				//    (if type(n) != RETURN)
-				//	      def_out[p1] + def_out[p2] + ...
-				//           where p1 p2 ... are the predecessors of n
-				//
-				if (contextSensitiveForwardDataAnalyze((*it), def_in, def_out, maydef, inputDefs, NULL, 0))
-				{
-					change = true;
-				}
-			}
-		}
-	}
-	//
-	// Peform intra-procedural context-insensitive flow analysis.
-	//
-	else {
+                unsigned int bbid = (*it)->getId();
+                //
+                // Required pessimistic initialization for bypass out set.
+                //
+                bypass_out[bbid].setAll();
+            }
+        }
+        //
+        // Backward flow analysis to calculate use(live) sets.
+        //    We perform three fixed point iterations.
+        //    The first two are required to calculate function summaries.
+        //    The function summaries are represented by two sets - the bypass set and the
+        //    mayuse sets.
+        //    The third one performs the actual liveness analysis considering each function
+        //    call and its related subgraph as a blackbox, using just the calculated function
+        //    summaries for it.
+        //
+        bool change = true;
+        //
+        // Phase (1) - determine bypass sets for each function
+        //    The set of registers which if live at the RETURN NODE will be live at the
+        //    CALL node. Typically these are the variables that are not used at all by
+        //    the called function.
+        //
+        while (change)
+        {
+            change = false;
+            BB_LIST::iterator rit = fg.BBs.end();
+            do
+            {
+                //
+                //    bypass_out[n] =
+                //       (if type(n) == cgf_exit_block)
+                //          output_uses[n]
+                //       (if type(n) == call and f == callee[n])
+                //            (bypass[f] and bypass_in[return_node(n)]
+                //       (if type(n) != CALL and  type(n) != EXIT)
+                //            bypass_in[s1] + bypass_in[s2] + ...
+                //             where s1 s2 ... are the successors of n
+                //    bypass_in[n]  = use[n] + (bypass_out - use_kill[n])
+                //
+                --rit;
+                if (contextSensitiveBackwardDataAnalyze(
+                        (*rit), bypass_in, bypass_out, mayuse, bypass, outputUses, &bypass, G4_BB_EXIT_TYPE))
+                {
+                    change = true;
+                }
+            }
+            while(rit != fg.BBs.begin());
+        }
+
+        change = true;
+        //
+        // Phase (2) - determine mayuse sets for each function
+        //    The set of registers that may be used by the called function. This describes
+        //    the set of registers which are always live at INIT node independent of the
+        //    calling context. Typically these are the registers that are used to pass
+        //    arguments to the called function.
+        //
+        while (change)
+        {
+            change = false;
+            BB_LIST::iterator rit = fg.BBs.end();
+            do
+            {
+                //
+                //    mayuse_out[n] =
+                //       (if type(n) == cgf_exit_block)
+                //          output_uses[n]
+                //       (if type(n) == call and f == callee[n])
+                //            mayuse[f] + (bypass[f] and mayuse_in[return_node(n)]
+                //       (if type(n) != CALL and  type(n) != EXIT)
+                //            mayuse_in[s1] + mayuse_in[s2] + ...
+                //             where s1 s2 ... are the successors of n
+                //    mayuse_in[n]  = use[n] + (mayuse_out - use_kill[n])
+                //
+                --rit;
+                if (contextSensitiveBackwardDataAnalyze(
+                        (*rit), mayuse_in, mayuse_out, mayuse, bypass, outputUses, &mayuse, G4_BB_EXIT_TYPE))
+                {
+                    change = true;
+                }
+
+            }
+            while(rit != fg.BBs.begin());
+        }
+    //
+    // dump vectors for debugging
+    //
+#ifdef DEBUG_VERBOSE_ON
+    dump_bb_vector("BYPASS IN", fg.BBs, bypass_in);
+    dump_bb_vector("BYPASS OUT", fg.BBs, bypass_out);
+    dump_fn_vector("BYPASS", fns, bypass);
+    dump_bb_vector("MAYUSE IN", fg.BBs, mayuse_in);
+    dump_bb_vector("MAYUSE OUT", fg.BBs, mayuse_out);
+    dump_fn_vector("MAYUSE", fns, mayuse);
+#endif
+
+        if (fg.builder->getOptions()->getTarget() == VISA_CM)
+        {
+            for (unsigned i = 0; i < numFnId; i++)
+            {
+                unsigned funcScopeID = fg.funcInfoTable[i]->getScopeID();
+                for (unsigned j = 0; j < numVarId; j++)
+                {
+                    G4_Declare *decl = vars[j]->getDeclare();
+                    unsigned declScopeID = decl->getScopeID();
+                    if (declScopeID != 0 &&
+                        funcScopeID >= declScopeID)
+                    {
+                        mayuse[i].set(j, false);
+                    }
+                }
+            }
+        }
+
+        //
+        // The use_in/use_out sets will be initialized with the values of mayuse_in/mayuse_out
+        // because the mayuse_in/mayuse_out sets are aliases to the use_in/use_out. This should
+        // speed up the fixed-point iterations for use_in/use_out.
+        //
+        change = true;
+        //
+        // Phase (3) - determine use sets for each block
+        //    Performs the actual liveness analysis considering each function call and its
+        //    related subgraph as a blackbox, by using just the calculated function summaries
+        //    for it.
+        //
+        while (change)
+        {
+            change = false;
+            BB_LIST::iterator rit = fg.BBs.end();
+            do
+            {
+                //
+                //    live_out[n] =
+                //       (if type(n) == cgf_exit_block)
+                //          output_uses[n]
+                //       (if type(n) == call and f == callee[n])
+                //            mayuse[f] + (bypass[f] and live_in[return_node(n)]
+                //       (if type(n) != CALL)
+                //            use_in[s1] + use_in[s2] + ...
+                //             where s1 s2 ... are the successors of n
+                //    live_in[n]  = use[n] + (live_out - use_kill[n])
+                //
+                --rit;
+                if (contextSensitiveBackwardDataAnalyze((*rit), use_in, use_out, mayuse, bypass, outputUses, NULL, 0))
+                {
+                    change = true;
+                }
+
+            }
+            while(rit != fg.BBs.begin());
+        }
+
+        //
+        // Determine def sets.
+        //
+
+        //
+        // Forward flow analysis to propagate defs.
+        //    We perform two fixed iterations. The first is used to calculate the function
+        //    summary required to propagate def. The function summary is represented by the
+        //    maydef set.
+        //    The second fixed point iteration performs the actual propagation of defs for the
+        //    complete flow graph, considering each function call and its related subgraph as
+        //    a blackbox, using just the calculated function summary for it.
+        //
+        change = true;
+        //
+        // Phase (1) - determine maydef sets for each function
+        //    The maydef set represents the set of def that may be defined and thus propagated
+        //    in the function along some path.
+        //
+        while (change)
+        {
+            change = false;
+            for (BB_LIST::iterator it = fg.BBs.begin(); it != fg.BBs.end(); it++)
+            {
+                //
+                // maydef_in[n] =
+                //    (if type(n) == cgf_entry_block)
+                //        input_defs[n]
+                //    (if type(n) == return and f == callee[n])
+                //        maydef[f] + maydef_out[call_node(n)]
+                //           where type(n) == return and f == callee[n]
+                //    (if type(n) != RETURN and  type(n) != INIT)
+                //          maydef_out[p1] + maydef_out[p2] + ...
+                //           where p1 p2 ... are the predecessors of n
+                //
+                if (contextSensitiveForwardDataAnalyze(
+                        (*it), maydef_in, maydef_out, maydef, inputDefs, &maydef, G4_BB_INIT_TYPE))
+                {
+                    change = true;
+                }
+
+            }
+        }
+    //
+    // dump vectors for debugging
+    //
+#ifdef DEBUG_VERBOSE_ON
+    dump_bb_vector("MAYDEF IN", fg.BBs, maydef_in);
+    dump_bb_vector("MAYDEF OUT", fg.BBs, maydef_out);
+    dump_fn_vector("MAYDEF", fns, maydef);
+#endif
+
+        if (fg.builder->getOptions()->getTarget() == VISA_CM)
+        {
+            for (unsigned i = 0; i < numFnId; i++)
+            {
+                unsigned funcScopeID = fg.funcInfoTable[i]->getScopeID();
+                for (unsigned j = 0; j < numVarId; j++)
+                {
+                    G4_Declare *decl = vars[j]->getDeclare();
+                    unsigned declScopeID = decl->getScopeID();
+                    if (declScopeID != 0 &&
+                        funcScopeID >= declScopeID)
+                    {
+                        maydef[i].set(j, false);
+                    }
+                }
+            }
+        }
+
+        change = true;
+        //
+        // Phase (2) - determine def sets for each block
+        //    Performs the actual propagation of defs for the complete flow graph,
+        //    considering each function call and its related subgraph as a blackbox,
+        //    using just the calculated function summary for it.
+        //
+        while (change)
+        {
+            change = false;
+            for (BB_LIST::iterator it = fg.BBs.begin(); it != fg.BBs.end(); it++)
+            {
+                //
+                // def_in[n] =
+                //    (if type(n) == cgf_entry_block)
+                //        input_defs[n]
+                //    (if type(n) == return and f == callee[n])
+                //        def[f] + def_out[call_node(n)]
+                //           where type(n) == return and f == callee[n]
+                //    (if type(n) != RETURN)
+                //          def_out[p1] + def_out[p2] + ...
+                //           where p1 p2 ... are the predecessors of n
+                //
+                if (contextSensitiveForwardDataAnalyze((*it), def_in, def_out, maydef, inputDefs, NULL, 0))
+                {
+                    change = true;
+                }
+            }
+        }
+    }
+    //
+    // Peform intra-procedural context-insensitive flow analysis.
+    //
+    else {
 
         if (fg.builder->getOptions()->getTarget() == VISA_3D &&
             (selectedRF & G4_GRF || selectedRF & G4_FLAG) &&
@@ -1263,58 +1263,58 @@ void LivenessAnalysis::computeLiveness(bool computePseudoKill)
 #endif
         }
 
-		//
-		// backward flow analysis to propagate uses (locate last uses)
-		//
+        //
+        // backward flow analysis to propagate uses (locate last uses)
+        //
 
         bool change = true;
 
-		while (change)
-		{
-			change = false;
-			BB_LIST::iterator rit = fg.BBs.end();
-			do
-			{
-				//
-				// use_out = use_in(s1) + use_in(s2) + ...
-				// where s1 s2 ... are the successors of bb
-				// use_in  = use_gen + (use_out - use_kill)
-				//
-				--rit;
-				if (contextFreeUseAnalyze((*rit)))
-				{
-					change = true;
-				}
+        while (change)
+        {
+            change = false;
+            BB_LIST::iterator rit = fg.BBs.end();
+            do
+            {
+                //
+                // use_out = use_in(s1) + use_in(s2) + ...
+                // where s1 s2 ... are the successors of bb
+                // use_in  = use_gen + (use_out - use_kill)
+                //
+                --rit;
+                if (contextFreeUseAnalyze((*rit)))
+                {
+                    change = true;
+                }
 
-			}
-			while (rit != fg.BBs.begin());
-		}
+            }
+            while (rit != fg.BBs.begin());
+        }
 
-		//
-		// forward flow analysis to propagate defs (locate first defs)
-		//
+        //
+        // forward flow analysis to propagate defs (locate first defs)
+        //
 
-		//
-		// initialize entry block with payload input
-		//
-		def_in[fg.getEntryBB()->getId()] = inputDefs;
-		change = true;
-		while (change)
-		{
-			change = false;
+        //
+        // initialize entry block with payload input
+        //
+        def_in[fg.getEntryBB()->getId()] = inputDefs;
+        change = true;
+        while (change)
+        {
+            change = false;
             for (auto bb : fg.BBs)
-			{
-				//
-				// def_in   = def_out(p1) + def_out(p2) + ... where p1 p2 ... are the predecessors of bb
-				// def_out |= def_in
-				//
-				if (contextFreeDefAnalyze(bb))
-				{
-					change = true;
-				}
-			}
-		}
-	}
+            {
+                //
+                // def_in   = def_out(p1) + def_out(p2) + ... where p1 p2 ... are the predecessors of bb
+                // def_out |= def_in
+                //
+                if (contextFreeDefAnalyze(bb))
+                {
+                    change = true;
+                }
+            }
+        }
+    }
 
 #if 0
     // debug code to compare old v. new IPA
@@ -1389,9 +1389,9 @@ void LivenessAnalysis::computeLiveness(bool computePseudoKill)
     }
 #endif
 
-	//
-	// dump vectors for debugging
-	//
+    //
+    // dump vectors for debugging
+    //
 #if 0
     {
         dump_bb_vector("DEF IN", fg.BBs, def_in);
@@ -1785,12 +1785,12 @@ void LivenessAnalysis::hierarchicalIPA(const BitSet& kernelInput, const BitSet& 
 // determine if the dst writes the whole region of target declare
 //
 bool LivenessAnalysis::writeWholeRegion(G4_BB* bb,
-										G4_INST* inst,
-										G4_DstRegRegion* dst,
+                                        G4_INST* inst,
+                                        G4_DstRegRegion* dst,
                                         const Options *opt) const
 {
-	unsigned execSize = inst->getExecSize();
-	MUST_BE_TRUE(dst->getBase()->isRegVar(), ERROR_REGALLOC);
+    unsigned execSize = inst->getExecSize();
+    MUST_BE_TRUE(dst->getBase()->isRegVar(), ERROR_REGALLOC);
 
     if( bb->isInSimdFlow() && !inst->isWriteEnableInst() && opt->getTarget() != VISA_3D )
     {
@@ -1816,32 +1816,32 @@ bool LivenessAnalysis::writeWholeRegion(G4_BB* bb,
         }
     }
 
-	//
-	// Find Primary Variable Declare
-	//
+    //
+    // Find Primary Variable Declare
+    //
 
-	G4_Declare* decl = ((G4_RegVar*)dst->getBase())->getDeclare();
-	G4_Declare* primaryDcl = decl;
+    G4_Declare* decl = ((G4_RegVar*)dst->getBase())->getDeclare();
+    G4_Declare* primaryDcl = decl;
     while( primaryDcl->getAliasDeclare() )
     {
         primaryDcl = primaryDcl->getAliasDeclare();
     }
 
-	//
-	//  Cannot write whole register if
-	//     * alias offset in non zero
-	//     * reg or sub-reg offset is non zero
-	//     * horiz stride is non zero
-	//     * predicate is non null
-	//
-	if (decl->getAliasOffset() != 0 ||
-		dst->getRegAccess() != Direct ||
-		dst->getRegOff() != 0 ||
-		dst->getSubRegOff() != 0 ||
-		dst->getHorzStride() != 1 ||
-		inst->isPartialWrite() ) {
-		return false;
-	}
+    //
+    //  Cannot write whole register if
+    //     * alias offset in non zero
+    //     * reg or sub-reg offset is non zero
+    //     * horiz stride is non zero
+    //     * predicate is non null
+    //
+    if (decl->getAliasOffset() != 0 ||
+        dst->getRegAccess() != Direct ||
+        dst->getRegOff() != 0 ||
+        dst->getSubRegOff() != 0 ||
+        dst->getHorzStride() != 1 ||
+        inst->isPartialWrite() ) {
+        return false;
+    }
 
      //
     // For CISA3, pseudo-callee-save and pseudo-caller-save insts
@@ -1852,23 +1852,23 @@ bool LivenessAnalysis::writeWholeRegion(G4_BB* bb,
         return true;
     }
 
-   	//
+       //
     // If the region does not cover the whole declare then it does not write the whole region.
-   	//
+       //
 
     if (G4_Type_Table[dst->getType()].byteSize * execSize !=
-	    G4_Type_Table[primaryDcl->getElemType()].byteSize * primaryDcl->getNumElems() * primaryDcl->getNumRows()) {
-   		return false;
+        G4_Type_Table[primaryDcl->getElemType()].byteSize * primaryDcl->getNumElems() * primaryDcl->getNumRows()) {
+           return false;
     }
 
-	return true;
+    return true;
 }
 
 //
 // determine if the dst writes the whole region of target declare
 //
 bool LivenessAnalysis::writeWholeRegion(G4_BB* bb,
-										G4_INST* inst,
+                                        G4_INST* inst,
                                         G4_VarBase* flagReg,
                                         const Options *opt)
 {
@@ -2023,120 +2023,120 @@ void LivenessAnalysis::footprintSrc( G4_INST* i,
 }
 
 void LivenessAnalysis::computeGenKill(G4_BB* bb,
-	BitSet& def_out,
-	BitSet& use_in,
-	BitSet& use_gen,
-	BitSet& use_kill)
+    BitSet& def_out,
+    BitSet& use_in,
+    BitSet& use_gen,
+    BitSet& use_kill)
 {
-	//
-	// Mark each fcall as using all globals and arg pre-defined var
-	//
-	if (bb->isEndWithFCall() && (selectedRF & G4_GRF))
-	{
+    //
+    // Mark each fcall as using all globals and arg pre-defined var
+    //
+    if (bb->isEndWithFCall() && (selectedRF & G4_GRF))
+    {
         for (auto globals = fileScopeVars.begin(), end = fileScopeVars.end();
              globals != end;
              globals++)
         {
-			use_gen.set((*globals)->getId(), true);
-			use_kill.set((*globals)->getId(), true);
-			def_out.set((*globals)->getId(), true);
-		}
+            use_gen.set((*globals)->getId(), true);
+            use_kill.set((*globals)->getId(), true);
+            def_out.set((*globals)->getId(), true);
+        }
 
-		G4_Declare* arg = fg.builder->getStackCallArg();
-		G4_Declare* ret = fg.builder->getStackCallRet();
+        G4_Declare* arg = fg.builder->getStackCallArg();
+        G4_Declare* ret = fg.builder->getStackCallRet();
 
-		G4_FCALL* fcall = fg.builder->getFcallInfo(bb->back());
-		MUST_BE_TRUE(fcall != NULL, "fcall info not found");
+        G4_FCALL* fcall = fg.builder->getFcallInfo(bb->back());
+        MUST_BE_TRUE(fcall != NULL, "fcall info not found");
 
-		// arg var is a use and a kill at each fcall
-		if (fcall->getArgSize() != 0)
-		{
-			use_gen.set(arg->getRegVar()->getId(), true);
-		}
-		use_kill.set(arg->getRegVar()->getId(), true);
+        // arg var is a use and a kill at each fcall
+        if (fcall->getArgSize() != 0)
+        {
+            use_gen.set(arg->getRegVar()->getId(), true);
+        }
+        use_kill.set(arg->getRegVar()->getId(), true);
 
-		// ret var is a kill at each fcall
-		use_kill.set(ret->getRegVar()->getId(), true);
-		if (fcall->getRetSize() != 0)
-		{
-			def_out.set(ret->getRegVar()->getId(), true);
-		}
-	}
+        // ret var is a kill at each fcall
+        use_kill.set(ret->getRegVar()->getId(), true);
+        if (fcall->getRetSize() != 0)
+        {
+            def_out.set(ret->getRegVar()->getId(), true);
+        }
+    }
 
     for (INST_LIST::reverse_iterator rit = bb->rbegin(), rend = bb->rend(); rit != rend; ++rit)
     {
-		G4_INST* i = (*rit);
-		G4_DstRegRegion* dst = i->getDst();
+        G4_INST* i = (*rit);
+        G4_DstRegRegion* dst = i->getDst();
 
-		if (i->opcode() == G4_pseudo_lifetime_end)
-		{
-			continue;
-		}
+        if (i->opcode() == G4_pseudo_lifetime_end)
+        {
+            continue;
+        }
 
-		if (dst != NULL)
-		{
-			G4_DstRegRegion* dstrgn = dst;
+        if (dst != NULL)
+        {
+            G4_DstRegRegion* dstrgn = dst;
 
-			if (dstrgn->getBase()->isRegAllocPartaker())
-			{
-				G4_Declare* topdcl = GetTopDclFromRegRegion(dstrgn);
-				unsigned id = topdcl->getRegVar()->getId();
+            if (dstrgn->getBase()->isRegAllocPartaker())
+            {
+                G4_Declare* topdcl = GetTopDclFromRegRegion(dstrgn);
+                unsigned id = topdcl->getRegVar()->getId();
 
-				if (i->opcode() == G4_pseudo_kill)
-				{
-					// Mark kill, reset gen
-					use_kill.set(id, true);
-					use_gen.set(id, false);
+                if (i->opcode() == G4_pseudo_kill)
+                {
+                    // Mark kill, reset gen
+                    use_kill.set(id, true);
+                    use_gen.set(id, false);
 
-					continue;
-				}
+                    continue;
+                }
 
-				if (dstrgn->getRegAccess() == Direct)
-				{
-					def_out.set(id, true);
-					//
-					// if the inst writes the whole region the var declared, we set use_kill
-					// so that use of var will not pass through (i.e., var's interval starts
-					// at this instruction.
-					//
-					if (writeWholeRegion(bb, i, dstrgn, fg.builder->getOptions()))
-					{
-						use_kill.set(id, true);
-						use_gen.set(id, false);
-					}
-					else
-					{
-						use_gen.set(id, true);
-					}
-				}
-				else
-				{
-					use_gen.set(id, true);
-				}
-			}
-		}
+                if (dstrgn->getRegAccess() == Direct)
+                {
+                    def_out.set(id, true);
+                    //
+                    // if the inst writes the whole region the var declared, we set use_kill
+                    // so that use of var will not pass through (i.e., var's interval starts
+                    // at this instruction.
+                    //
+                    if (writeWholeRegion(bb, i, dstrgn, fg.builder->getOptions()))
+                    {
+                        use_kill.set(id, true);
+                        use_gen.set(id, false);
+                    }
+                    else
+                    {
+                        use_gen.set(id, true);
+                    }
+                }
+                else
+                {
+                    use_gen.set(id, true);
+                }
+            }
+        }
 
-		//
-		// process each source operand
-		//
-		for (unsigned j = 0; j < G4_MAX_SRCS; j++)
-		{
-			G4_Operand* src = i->getSrc(j);
+        //
+        // process each source operand
+        //
+        for (unsigned j = 0; j < G4_MAX_SRCS; j++)
+        {
+            G4_Operand* src = i->getSrc(j);
 
-			if (src == NULL)
-			{
-				continue;
-			}
-			if (src->isSrcRegRegion())
-			{
-				G4_Declare* topdcl = GetTopDclFromRegRegion(src);
-				G4_VarBase* base = (topdcl != NULL ? topdcl->getRegVar() :
-					src->asSrcRegRegion()->getBase());
+            if (src == NULL)
+            {
+                continue;
+            }
+            if (src->isSrcRegRegion())
+            {
+                G4_Declare* topdcl = GetTopDclFromRegRegion(src);
+                G4_VarBase* base = (topdcl != NULL ? topdcl->getRegVar() :
+                    src->asSrcRegRegion()->getBase());
 
-				if (base->isRegAllocPartaker())
-				{
-					use_gen.set(((G4_RegVar*)base)->getId(), true);
-				}
+                if (base->isRegAllocPartaker())
+                {
+                    use_gen.set(((G4_RegVar*)base)->getId(), true);
+                }
 
                 if ((selectedRF & G4_GRF) && src->getRegAccess() == IndirGRF)
                 {
@@ -2151,76 +2151,76 @@ void LivenessAnalysis::computeGenKill(G4_BB* bb,
                         use_gen.set(id, true);
                     }
                 }
-			}
-			//
-			// treat the addr expr as both a use and a partial def
-			//
-			else if (src->isAddrExp() && // (&BLK)
-				((G4_AddrExp*)src)->getRegVar()->isRegAllocPartaker() &&
-				((G4_AddrExp*)src)->getRegVar()->isSpilled() == false)
-			{
-				unsigned srcId = ((G4_AddrExp*)src)->getRegVar()->getId();
-				use_gen.set(srcId, true);
-				def_out.set(srcId, true);
-			}
-		}
+            }
+            //
+            // treat the addr expr as both a use and a partial def
+            //
+            else if (src->isAddrExp() && // (&BLK)
+                ((G4_AddrExp*)src)->getRegVar()->isRegAllocPartaker() &&
+                ((G4_AddrExp*)src)->getRegVar()->isSpilled() == false)
+            {
+                unsigned srcId = ((G4_AddrExp*)src)->getRegVar()->getId();
+                use_gen.set(srcId, true);
+                def_out.set(srcId, true);
+            }
+        }
 
-		//
-		// Process condMod
-		//
-		G4_CondMod* mod = i->getCondMod();
-		if (mod != NULL) {
-			G4_VarBase *flagReg = mod->getBase();
-			if (flagReg != NULL)
-			{
-				if (flagReg->asRegVar()->isRegAllocPartaker())
-				{
-					G4_Declare* topdcl = flagReg->asRegVar()->getDeclare();
-					MUST_BE_TRUE(topdcl->getAliasDeclare() == NULL, "Invalid alias flag decl.");
-					unsigned id = topdcl->getRegVar()->getId();
+        //
+        // Process condMod
+        //
+        G4_CondMod* mod = i->getCondMod();
+        if (mod != NULL) {
+            G4_VarBase *flagReg = mod->getBase();
+            if (flagReg != NULL)
+            {
+                if (flagReg->asRegVar()->isRegAllocPartaker())
+                {
+                    G4_Declare* topdcl = flagReg->asRegVar()->getDeclare();
+                    MUST_BE_TRUE(topdcl->getAliasDeclare() == NULL, "Invalid alias flag decl.");
+                    unsigned id = topdcl->getRegVar()->getId();
 
-					def_out.set(id, true);
+                    def_out.set(id, true);
 
-					if (writeWholeRegion(bb, i, flagReg, fg.builder->getOptions()))
-					{
-						use_kill.set(id, true);
-						use_gen.set(id, false);
-					}
-					else
-					{
-						use_gen.set(id, true);
-					}
-				}
-			}
-			else
-			{
-				MUST_BE_TRUE((i->opcode() == G4_sel ||
-					i->opcode() == G4_csel) &&
-					i->getCondMod() != NULL,
-					"Invalid CondMod");
-			}
-		}
+                    if (writeWholeRegion(bb, i, flagReg, fg.builder->getOptions()))
+                    {
+                        use_kill.set(id, true);
+                        use_gen.set(id, false);
+                    }
+                    else
+                    {
+                        use_gen.set(id, true);
+                    }
+                }
+            }
+            else
+            {
+                MUST_BE_TRUE((i->opcode() == G4_sel ||
+                    i->opcode() == G4_csel) &&
+                    i->getCondMod() != NULL,
+                    "Invalid CondMod");
+            }
+        }
 
-		//
-		// Process predicate
-		//
-		G4_Predicate* predicate = i->getPredicate();
-		if (predicate != NULL) {
-			G4_VarBase *flagReg = predicate->getBase();
-			MUST_BE_TRUE(flagReg->asRegVar()->getDeclare()->getAliasDeclare() == NULL, "Invalid alias flag decl.");
-			if (flagReg->asRegVar()->isRegAllocPartaker())
-			{
-				use_gen.set(((G4_RegVar*)flagReg)->getId(), true);
-			}
-		}
-	}
+        //
+        // Process predicate
+        //
+        G4_Predicate* predicate = i->getPredicate();
+        if (predicate != NULL) {
+            G4_VarBase *flagReg = predicate->getBase();
+            MUST_BE_TRUE(flagReg->asRegVar()->getDeclare()->getAliasDeclare() == NULL, "Invalid alias flag decl.");
+            if (flagReg->asRegVar()->isRegAllocPartaker())
+            {
+                use_gen.set(((G4_RegVar*)flagReg)->getId(), true);
+            }
+        }
+    }
 
-	//
-	// initialize use_in
-	//
-	use_in = use_gen;
+    //
+    // initialize use_in
+    //
+    use_in = use_gen;
 
-	return;
+    return;
 }
 
 void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
@@ -2744,84 +2744,84 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
 //
 bool LivenessAnalysis::contextSensitiveBackwardDataAnalyze(
          G4_BB* bb,
-		 std::vector<BitSet>& data_in,
-		 std::vector<BitSet>& data_out,
-		 std::vector<BitSet>& mayuse,
-		 std::vector<BitSet>& bypass,
-		 BitSet&               output_uses,
-		 std::vector<BitSet>* summary,
-		 int no_prop_types)
+         std::vector<BitSet>& data_in,
+         std::vector<BitSet>& data_out,
+         std::vector<BitSet>& mayuse,
+         std::vector<BitSet>& bypass,
+         BitSet&               output_uses,
+         std::vector<BitSet>* summary,
+         int no_prop_types)
 {
-	bool changed  = false;
-	unsigned bbid = bb->getId();
+    bool changed  = false;
+    unsigned bbid = bb->getId();
 
-	//
-	// Handle the exit block
-	// data_out[n] = output_uses[n]
-	//
-	if (bb->Succs.empty())
-	{
-		data_out[bbid]  = output_uses;
-		changed = false;
-	}
-	//
-	// Handle call blocks that belong to the same graph cut (inter-procedural boundaries)
-	// data_out[n] = mayuse[f] + (bypass[f] & data_in[return_node(n)]
-	// where type(n) == call and f == callee[n]
-	//
-	else if (bb->getBBType() & G4_BB_CALL_TYPE)
-	{
-		BitSet old(std::move(data_out[bbid]));
+    //
+    // Handle the exit block
+    // data_out[n] = output_uses[n]
+    //
+    if (bb->Succs.empty())
+    {
+        data_out[bbid]  = output_uses;
+        changed = false;
+    }
+    //
+    // Handle call blocks that belong to the same graph cut (inter-procedural boundaries)
+    // data_out[n] = mayuse[f] + (bypass[f] & data_in[return_node(n)]
+    // where type(n) == call and f == callee[n]
+    //
+    else if (bb->getBBType() & G4_BB_CALL_TYPE)
+    {
+        BitSet old(std::move(data_out[bbid]));
 
-		FuncInfo* callee = bb->getCalleeInfo();
-		data_out[bbid] = mayuse[callee->getId()];
+        FuncInfo* callee = bb->getCalleeInfo();
+        data_out[bbid] = mayuse[callee->getId()];
 
-		BitSet prop_data(bypass[callee->getId()]);
-		prop_data &= data_in[bb->BBAfterCall()->getId()];
-		data_out[bbid] |= prop_data;
+        BitSet prop_data(bypass[callee->getId()]);
+        prop_data &= data_in[bb->BBAfterCall()->getId()];
+        data_out[bbid] |= prop_data;
 
-		changed = (old != data_out[bbid]);
-	}
-	//
-	// Handle all other blocks acroos which we need to propagate flow information
-	// data_out = data_in(s1) + data_in(s2) + ...
-	// where s1 s2 ... are the successors of bb
-	//
-	else if (!(bb->getBBType() & no_prop_types))
-	{
-		BitSet old(std::move(data_out[bbid]));
+        changed = (old != data_out[bbid]);
+    }
+    //
+    // Handle all other blocks acroos which we need to propagate flow information
+    // data_out = data_in(s1) + data_in(s2) + ...
+    // where s1 s2 ... are the successors of bb
+    //
+    else if (!(bb->getBBType() & no_prop_types))
+    {
+        BitSet old(std::move(data_out[bbid]));
 
-		data_out[bbid].clear();
+        data_out[bbid].clear();
 
         for (BB_LIST_ITER it = bb->Succs.begin(), end = bb->Succs.end(); it != end; it++)
-		{
-			data_out[bbid] |= data_in[(*it)->getId()];
-		}
+        {
+            data_out[bbid] |= data_in[(*it)->getId()];
+        }
 
-		changed = (old != data_out[bbid]);
-	}
+        changed = (old != data_out[bbid]);
+    }
 
-	//
-	// data_in = use_gen + (data_out - use_kill)
-	//
-	data_in[bbid] = data_out[bbid];
+    //
+    // data_in = use_gen + (data_out - use_kill)
+    //
+    data_in[bbid] = data_out[bbid];
     data_in[bbid] -= use_kill[bbid];
     data_in[bbid] |= use_gen[bbid];
 
-	//
-	// summary = data_in[init_node(f)]
-	//
-	if (summary)
-	{
-		if ( bb->getBBType() == G4_BB_INIT_TYPE )
-		{
-			FuncInfo* itsFuncInfo = bb->getFuncInfo();
-			MUST_BE_TRUE(itsFuncInfo->getInitBB() == bb, ERROR_REGALLOC);
-			(*summary)[itsFuncInfo->getId()] = data_in[bbid];
-		}
-	}
+    //
+    // summary = data_in[init_node(f)]
+    //
+    if (summary)
+    {
+        if ( bb->getBBType() == G4_BB_INIT_TYPE )
+        {
+            FuncInfo* itsFuncInfo = bb->getFuncInfo();
+            MUST_BE_TRUE(itsFuncInfo->getInitBB() == bb, ERROR_REGALLOC);
+            (*summary)[itsFuncInfo->getId()] = data_in[bbid];
+        }
+    }
 
-	return changed;
+    return changed;
 }
 
 //
@@ -2829,77 +2829,77 @@ bool LivenessAnalysis::contextSensitiveBackwardDataAnalyze(
 //
 bool LivenessAnalysis::contextSensitiveForwardDataAnalyze(
          G4_BB* bb,
-		 std::vector<BitSet>& data_in,
-		 std::vector<BitSet>& data_out,
-		 std::vector<BitSet>& maydef,
-		 BitSet&               input_defs,
-		 std::vector<BitSet>* summary,
-		 int no_prop_types)
+         std::vector<BitSet>& data_in,
+         std::vector<BitSet>& data_out,
+         std::vector<BitSet>& maydef,
+         BitSet&               input_defs,
+         std::vector<BitSet>* summary,
+         int no_prop_types)
 {
-	bool changed  = false;
-	unsigned bbid = bb->getId();
+    bool changed  = false;
+    unsigned bbid = bb->getId();
 
-	//
-	// Handle the entry block
-	// data_in[n] = input_defs
-	//
-	if (bb->Preds.empty())
-	{
-		data_in[bbid] = input_defs;
-		changed = false;
-	}
-	//
-	// Handle call blocks that belong to the same graph cut (inter-procedural boundaries)
-	// data_in[n] = maydef[f] + data_out[call_node(n)]
-	// where type(n) == return and f == callee[n]
-	//
-	else if (bb->getBBType() & G4_BB_RETURN_TYPE)
-	{
-		BitSet old(std::move(data_in[bbid]));
+    //
+    // Handle the entry block
+    // data_in[n] = input_defs
+    //
+    if (bb->Preds.empty())
+    {
+        data_in[bbid] = input_defs;
+        changed = false;
+    }
+    //
+    // Handle call blocks that belong to the same graph cut (inter-procedural boundaries)
+    // data_in[n] = maydef[f] + data_out[call_node(n)]
+    // where type(n) == return and f == callee[n]
+    //
+    else if (bb->getBBType() & G4_BB_RETURN_TYPE)
+    {
+        BitSet old(std::move(data_in[bbid]));
 
-		FuncInfo* callee = bb->BBBeforeCall()->getCalleeInfo();
+        FuncInfo* callee = bb->BBBeforeCall()->getCalleeInfo();
 
-		data_in[bbid] = maydef[callee->getId()];
-		data_in[bbid] |= data_out[bb->BBBeforeCall()->getId()];
+        data_in[bbid] = maydef[callee->getId()];
+        data_in[bbid] |= data_out[bb->BBBeforeCall()->getId()];
 
-		changed = (old != data_in[bbid]);
-	}
-	//
-	// Handle all other blocks across which we need to propagate flow information
-	// data_in = data_out(p1) + data_out(p2) + ...
-	// where p1 p2 ... are the predecessors of bb
-	//
-	else if (!(bb->getBBType() & no_prop_types))
-	{
-		BitSet old(std::move(data_in[bbid]));
+        changed = (old != data_in[bbid]);
+    }
+    //
+    // Handle all other blocks across which we need to propagate flow information
+    // data_in = data_out(p1) + data_out(p2) + ...
+    // where p1 p2 ... are the predecessors of bb
+    //
+    else if (!(bb->getBBType() & no_prop_types))
+    {
+        BitSet old(std::move(data_in[bbid]));
 
         for (BB_LIST_ITER it = bb->Preds.begin(), end = bb->Preds.end(); it != end; it++)
-		{
-			data_in[bbid] |= data_out[(*it)->getId()];
-		}
+        {
+            data_in[bbid] |= data_out[(*it)->getId()];
+        }
 
-		changed = (old != data_in[bbid]);
-	}
+        changed = (old != data_in[bbid]);
+    }
 
-	//
-	// data_out += data_in
-	//
+    //
+    // data_out += data_in
+    //
     data_out[bbid] |= data_in[bbid];
 
-	//
-	// summary = data_out[exit_node(f)]
-	//
-	if (summary)
-	{
-		if ( bb->getBBType() == G4_BB_EXIT_TYPE )
-		{
-			FuncInfo* itsFuncInfo = bb->getFuncInfo();
-			MUST_BE_TRUE(itsFuncInfo->getExitBB() == bb, ERROR_REGALLOC);
-			(*summary)[itsFuncInfo->getId()] = data_out[bbid];
-		}
-	}
+    //
+    // summary = data_out[exit_node(f)]
+    //
+    if (summary)
+    {
+        if ( bb->getBBType() == G4_BB_EXIT_TYPE )
+        {
+            FuncInfo* itsFuncInfo = bb->getFuncInfo();
+            MUST_BE_TRUE(itsFuncInfo->getExitBB() == bb, ERROR_REGALLOC);
+            (*summary)[itsFuncInfo->getId()] = data_out[bbid];
+        }
+    }
 
-	return changed;
+    return changed;
 }
 
 //
@@ -2908,34 +2908,34 @@ bool LivenessAnalysis::contextSensitiveForwardDataAnalyze(
 //
 bool LivenessAnalysis::contextFreeUseAnalyze(G4_BB* bb)
 {
-	bool changed;
+    bool changed;
 
-	unsigned bbid = bb->getId();
+    unsigned bbid = bb->getId();
 
-	if (bb->Succs.empty()) // exit block
-	{
-		changed = false;
-	}
+    if (bb->Succs.empty()) // exit block
+    {
+        changed = false;
+    }
 
-	else
-	{
-		BitSet old = use_out[bbid];
+    else
+    {
+        BitSet old = use_out[bbid];
         for (BB_LIST_ITER it = bb->Succs.begin(), end = bb->Succs.end(); it != end; it++)
-		{
-			use_out[bbid] |= use_in[(*it)->getId()];
-		}
+        {
+            use_out[bbid] |= use_in[(*it)->getId()];
+        }
 
-		changed = (old != use_out[bbid]);
-	}
+        changed = (old != use_out[bbid]);
+    }
 
-	//
-	// in = gen + (out - kill)
-	//
-	use_in[bbid] = use_out[bbid];
+    //
+    // in = gen + (out - kill)
+    //
+    use_in[bbid] = use_out[bbid];
     use_in[bbid] -= use_kill[bbid];
     use_in[bbid] |= use_gen[bbid];
 
-	return changed;
+    return changed;
 }
 
 //
@@ -2944,60 +2944,60 @@ bool LivenessAnalysis::contextFreeUseAnalyze(G4_BB* bb)
 //
 bool LivenessAnalysis::contextFreeDefAnalyze(G4_BB* bb)
 {
-	bool changed  = false;
-	unsigned bbid = bb->getId();
+    bool changed  = false;
+    unsigned bbid = bb->getId();
 
-	if (bb->Preds.empty())
-	{
-		changed = false;
-	}
-	else
-	{
-		BitSet old = def_in[bbid];
+    if (bb->Preds.empty())
+    {
+        changed = false;
+    }
+    else
+    {
+        BitSet old = def_in[bbid];
 
         for (BB_LIST_ITER it = bb->Preds.begin(), end = bb->Preds.end(); it != end; it++)
-		{
-			def_in[bbid] |= def_out[(*it)->getId()];
-		}
+        {
+            def_in[bbid] |= def_out[(*it)->getId()];
+        }
 
-		changed = (old != def_in[bbid]);
-	}
+        changed = (old != def_in[bbid]);
+    }
 
-	 def_out[bb->getId()] |= def_in[bb->getId()];
+     def_out[bb->getId()] |= def_in[bb->getId()];
 
-	 return changed;
+     return changed;
 }
 
 void LivenessAnalysis::dump_bb_vector(char* vname, std::list<G4_BB*>& bbs, std::vector<BitSet>& vec)
 {
-	std::cerr << vname << "\n";
-	for (BB_LIST_ITER it = bbs.begin(); it != bbs.end(); it++)
-	{
-		G4_BB* bb = (*it);
-		std::cerr << "    BB" << bb->getId() << "\n";
+    std::cerr << vname << "\n";
+    for (BB_LIST_ITER it = bbs.begin(); it != bbs.end(); it++)
+    {
+        G4_BB* bb = (*it);
+        std::cerr << "    BB" << bb->getId() << "\n";
         const BitSet& in = vec[bb->getId()];
-		std::cerr << "        ";
+        std::cerr << "        ";
         for (unsigned i = 0; i < in.getSize(); i+= 10)
-		{
-			//
-			// dump 10 bits a group
-			//
-			for (unsigned j = i; j < in.getSize() && j < i+10; j++)
-			{
+        {
+            //
+            // dump 10 bits a group
+            //
+            for (unsigned j = i; j < in.getSize() && j < i+10; j++)
+            {
                 std::cerr << (in.isSet(j) ? "1" : "0");
-			}
-			std::cerr << " ";
-		}
-		std::cerr << "\n";
-	}
+            }
+            std::cerr << " ";
+        }
+        std::cerr << "\n";
+    }
 }
 
 void LivenessAnalysis::dump_fn_vector(char* vname, std::vector<FuncInfo*>& fns, std::vector<BitSet>& vec)
 {
-	DEBUG_VERBOSE(vname << std::endl);
-	for (std::vector<FuncInfo*>::iterator it = fns.begin(); it != fns.end(); it++)
-	{
-		FuncInfo* funcInfo = (*it);
+    DEBUG_VERBOSE(vname << std::endl);
+    for (std::vector<FuncInfo*>::iterator it = fns.begin(); it != fns.end(); it++)
+    {
+        FuncInfo* funcInfo = (*it);
 
         DEBUG_VERBOSE("    FN" << funcInfo->getId() << std::endl);
         const BitSet& in = vec[funcInfo->getId()];
@@ -3071,13 +3071,13 @@ bool LivenessAnalysis::isLiveAtEntry(G4_BB* bb, unsigned var_id) const
 //
 bool LivenessAnalysis::isLiveAtExit(G4_BB* bb, unsigned var_id) const
 {
-	return use_out[bb->getId()].isSet( var_id ) && def_out[bb->getId()].isSet( var_id );
+    return use_out[bb->getId()].isSet( var_id ) && def_out[bb->getId()].isSet( var_id );
 }
 
 
 void GlobalRA::markBlockLocalVar(G4_RegVar* var, unsigned bbId)
 {
-	G4_Declare* dcl = var->getDeclare();
+    G4_Declare* dcl = var->getDeclare();
 
     while( dcl->getAliasDeclare() != NULL )
     {
@@ -3085,25 +3085,25 @@ void GlobalRA::markBlockLocalVar(G4_RegVar* var, unsigned bbId)
     }
 
     if( dcl->getHasFileScope() ||
-    	dcl->isInput() ||
-     	dcl->isOutput())
+        dcl->isInput() ||
+         dcl->isOutput())
     {
         // Filescope variables are never block local
         setBBId(dcl, UINT_MAX - 1);
     }
     else
     {
-    	if (getBBId(dcl) == bbId)
-	    {
-		    // Do nothing.
-    	}
-	    else if (getBBId(dcl) == UINT_MAX)
-    	{
-    		setBBId(dcl, bbId);
-	    }
-    	else {
-	    	setBBId(dcl, UINT_MAX - 1);
-	    }
+        if (getBBId(dcl) == bbId)
+        {
+            // Do nothing.
+        }
+        else if (getBBId(dcl) == UINT_MAX)
+        {
+            setBBId(dcl, bbId);
+        }
+        else {
+            setBBId(dcl, UINT_MAX - 1);
+        }
     }
 }
 
@@ -3333,46 +3333,46 @@ void GlobalRA::markGraphBlockLocalVars(bool doLocalRA)
 //
 void GlobalRA::setABIForStackCallFunctionCalls()
 {
-	// For each G4_pseudo_fcall inst, create dst of GRF type
-	// with physical register 1.0 pre-assigned to it.
-	// Similarly, for G4_pseudo_fret create src of GRF type
-	// with physical register 1.0 pre-assigned to it.
-	// Each will use 2 dwords of r1.0.
-	int call_id = 0, ret_id = 0;
+    // For each G4_pseudo_fcall inst, create dst of GRF type
+    // with physical register 1.0 pre-assigned to it.
+    // Similarly, for G4_pseudo_fret create src of GRF type
+    // with physical register 1.0 pre-assigned to it.
+    // Each will use 2 dwords of r1.0.
+    int call_id = 0, ret_id = 0;
 
-	for( BB_LIST_ITER it = kernel.fg.BBs.begin();
-		it != kernel.fg.BBs.end();
-		it++ )
-	{
-		G4_BB* bb = (*it);
-		if( bb->isEndWithFCall() )
-		{
+    for( BB_LIST_ITER it = kernel.fg.BBs.begin();
+        it != kernel.fg.BBs.end();
+        it++ )
+    {
+        G4_BB* bb = (*it);
+        if( bb->isEndWithFCall() )
+        {
             char* n = kernel.fg.builder->getNameString(kernel.fg.mem, 25,
                 kernel.fg.builder->getIsKernel() ? "FCALL_RET_LOC_k_%d" : "FCALL_RET_LOC_f%d_%d",
                 kernel.fg.builder->getCUnitId(), call_id++);
 
-			G4_INST* fcall = bb->back();
+            G4_INST* fcall = bb->back();
             // Set call dst to r1.0, here reserve 8 dwords in r1.0 for the use of call dst
             // The call dst requires only 2 dword, so in VISAKernelImpl::expandIndirectCallWithRegTarget
             // we take r1.2, r1.3 as the tmp register for calculating the call target offset, if required.
             // That function assumes r1.0 is reserved here and r1.2, r1.3 won't be used
-			G4_Declare* r1_dst = kernel.fg.builder->createDeclareNoLookup(n, G4_GRF, 8, 1, Type_UD);
-			r1_dst->getRegVar()->setPhyReg(regPool.getGreg(1), 0);
+            G4_Declare* r1_dst = kernel.fg.builder->createDeclareNoLookup(n, G4_GRF, 8, 1, Type_UD);
+            r1_dst->getRegVar()->setPhyReg(regPool.getGreg(1), 0);
             G4_DstRegRegion* dstRgn = kernel.fg.builder->createDstRegRegion(Direct, r1_dst->getRegVar(), 0, 0, 1, Type_UD);
-			fcall->setDest(dstRgn);
-		}
+            fcall->setDest(dstRgn);
+        }
 
-		if( bb->isEndWithFRet() )
-		{
+        if( bb->isEndWithFRet() )
+        {
             char* n = kernel.fg.builder->getNameString(kernel.fg.mem, 25,
                 kernel.fg.builder->getIsKernel() ? "FRET_RET_LOC_k_%d" : "FRET_RET_LOC_f%d_%d",
                 kernel.fg.builder->getCUnitId(), ret_id++);
-			G4_INST* fret = bb->back();
-			RegionDesc* rd = kernel.fg.builder->createRegionDesc(2, 2, 1);
-			G4_Declare* r1_src = kernel.fg.builder->createDeclareNoLookup(n, G4_INPUT, 8, 1, Type_UD);
-			r1_src->getRegVar()->setPhyReg(regPool.getGreg(1), 0);
+            G4_INST* fret = bb->back();
+            RegionDesc* rd = kernel.fg.builder->createRegionDesc(2, 2, 1);
+            G4_Declare* r1_src = kernel.fg.builder->createDeclareNoLookup(n, G4_INPUT, 8, 1, Type_UD);
+            r1_src->getRegVar()->setPhyReg(regPool.getGreg(1), 0);
             G4_Operand* srcRgn = kernel.fg.builder->createSrcRegRegion(Mod_src_undef, Direct, r1_src->getRegVar(), 0, 0, rd, Type_UD);
-			fret->setSrc(srcRgn, 0);
+            fret->setSrc(srcRgn, 0);
             if (fret->getExecSize() == 1)
             {
                 //due to <2;2,1> regioning we must update exec size as well
@@ -3382,8 +3382,8 @@ void GlobalRA::setABIForStackCallFunctionCalls()
             {
                 kernel.getKernelDebugInfo()->setFretVar(GetTopDclFromRegRegion(fret->getSrc(0)));
             }
-		}
-	}
+        }
+    }
 }
 
 // Function to verify RA results
@@ -4032,13 +4032,13 @@ int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
 
     }
 
-	if (builder.getOption(vISA_DumpDotAll))
+    if (builder.getOption(vISA_DumpDotAll))
     {
         kernel.dumpDotFile("PreRegAlloc");
     }
 
-	kernel.fg.callerSaveAreaOffset = kernel.fg.calleeSaveAreaOffset = kernel.fg.paramOverflowAreaOffset =
-		kernel.fg.paramOverflowAreaSize = kernel.fg.fileScopeSaveAreaSize = 0;
+    kernel.fg.callerSaveAreaOffset = kernel.fg.calleeSaveAreaOffset = kernel.fg.paramOverflowAreaOffset =
+        kernel.fg.paramOverflowAreaSize = kernel.fg.fileScopeSaveAreaSize = 0;
 
     //
     // Perform flow-insensitive points-to-analysis.
@@ -4053,25 +4053,25 @@ int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
     //
     gra.assignLocForReturnAddr();
 
-	if (kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc())
-	{
-		// REVIEW
-		// For now the following are disabled if the graph contains stack calls.
-		unsigned fileScopeAreaSize;
+    if (kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc())
+    {
+        // REVIEW
+        // For now the following are disabled if the graph contains stack calls.
+        unsigned fileScopeAreaSize;
 
-		gra.setABIForStackCallFunctionCalls();
+        gra.setABIForStackCallFunctionCalls();
 
-		//
-		// Localize each filescope variable reference to each cut, i.e. have one representative
-		// per cut, but each cut representative will be assigned the same frame offset in the
-		// GENX_MAIN frame.
-		//
-		kernel.fg.addFrameSetupDeclares(builder, regPool);
-		kernel.fg.doFilescopeVarLayout(builder, kernel.Declares, fileScopeAreaSize);
-		kernel.fg.fileScopeSaveAreaSize = fileScopeAreaSize;
+        //
+        // Localize each filescope variable reference to each cut, i.e. have one representative
+        // per cut, but each cut representative will be assigned the same frame offset in the
+        // GENX_MAIN frame.
+        //
+        kernel.fg.addFrameSetupDeclares(builder, regPool);
+        kernel.fg.doFilescopeVarLayout(builder, kernel.Declares, fileScopeAreaSize);
+        kernel.fg.fileScopeSaveAreaSize = fileScopeAreaSize;
 
-		kernel.fg.NormalizeFlowGraph();
-	}
+        kernel.fg.NormalizeFlowGraph();
+    }
 
     //FIXME: here is a temp WA
     if (kernel.fg.funcInfoTable.size() > 0 &&
@@ -4080,34 +4080,34 @@ int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
         kernel.getOptions()->setOption(vISAOptions::vISA_LocalRA, false);
     }
 
-	//
-	// Mark block local variables for the whole graph prior to performing liveness analysis.
-	// 1. Is required for flag/address register allocation
-	// 2. We must make sure the reference number, reference BB(which will be identified in local RA as well) happens only one time.
+    //
+    // Mark block local variables for the whole graph prior to performing liveness analysis.
+    // 1. Is required for flag/address register allocation
+    // 2. We must make sure the reference number, reference BB(which will be identified in local RA as well) happens only one time.
        // Otherwise, there will be correctness issue
-	gra.markGraphBlockLocalVars( kernel.fg.builder->getOption(vISA_LocalRA));
+    gra.markGraphBlockLocalVars( kernel.fg.builder->getOption(vISA_LocalRA));
 
-	if (kernel.fg.builder->getOptions()->getTarget() == VISA_CM)
-	{
-		kernel.fg.markScope();
-	}
+    if (kernel.fg.builder->getOptions()->getTarget() == VISA_CM)
+    {
+        kernel.fg.markScope();
+    }
 
-	//
-	// perform graph coloring for whole program
-	//
+    //
+    // perform graph coloring for whole program
+    //
 
-	if(kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc())
-	{
-		kernel.fg.addSaveRestorePseudoDeclares(builder);
-	}
+    if(kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc())
+    {
+        kernel.fg.addSaveRestorePseudoDeclares(builder);
+    }
 
-	int status = gra.coloringRegAlloc();
+    int status = gra.coloringRegAlloc();
 
-	recordRAStats(builder, kernel, status);
-	if (status != CM_SUCCESS)
-	{
-		return status;
-	}
+    recordRAStats(builder, kernel, status);
+    if (status != CM_SUCCESS)
+    {
+        return status;
+    }
 
     if (builder.getOption(vISA_VerifyRA))
     {
@@ -4119,5 +4119,5 @@ int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
     }
 
 
-	return status;
+    return status;
 }

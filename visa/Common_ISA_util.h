@@ -92,7 +92,7 @@ extern VISA_Modifier Get_Common_ISA_SrcMod_From_G4_Mod(G4_SrcModifier mod );
 
 inline uint32_t getVersionAsInt(uint32_t major, uint32_t minor)
 {
-	return major * 100 + minor;
+    return major * 100 + minor;
 }
 
 inline unsigned int Get_CISA_PreDefined_Var_Count()
@@ -127,7 +127,7 @@ getSendMsgLengthBitOffset ()
 inline unsigned
 getSendHeaderPresentBitOffset ()
 {
-	return SEND_GT_MSG_HEADER_PRESENT_BIT_OFFSET;
+    return SEND_GT_MSG_HEADER_PRESENT_BIT_OFFSET;
 }
 
 VISA_Type getVectorOperandType(const common_isa_header& isaHeader, const kernel_format_t* header, const vector_opnd& opnd);

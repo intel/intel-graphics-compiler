@@ -37,32 +37,32 @@ unsigned long bitsFlagRegNum[2] = {128, 128};
 ///
 BinaryEncodingBase::Status BinaryEncodingBase::WriteToDatFile()
 {
-	std::string binFileName = fileName + ".dat";
-	std::string errStr;
-	ofstream os(binFileName.c_str(), ios::binary);
-	if (!os)
-	{
-		errStr = "Can't open " + binFileName + ".\n";
-		MUST_BE_TRUE(0, errStr);
-		return FAILURE;
-	}
+    std::string binFileName = fileName + ".dat";
+    std::string errStr;
+    ofstream os(binFileName.c_str(), ios::binary);
+    if (!os)
+    {
+        errStr = "Can't open " + binFileName + ".\n";
+        MUST_BE_TRUE(0, errStr);
+        return FAILURE;
+    }
 
-	for (unsigned i = 0, size = (unsigned) binInstList.size(); i < size; i++)
-	{
-		BinInst *bin = binInstList[i];
+    for (unsigned i = 0, size = (unsigned) binInstList.size(); i < size; i++)
+    {
+        BinInst *bin = binInstList[i];
 
-		if ( GetCompactCtrl(bin) )
-		{
-			os.write(reinterpret_cast<char *>(&(bin->Bytes)), BYTES_PER_INST / 2);
-		}
-		else
-		{
-			os.write(reinterpret_cast<char *>(&(bin->Bytes)), BYTES_PER_INST);
-		}
-	};
-	os.close();
+        if ( GetCompactCtrl(bin) )
+        {
+            os.write(reinterpret_cast<char *>(&(bin->Bytes)), BYTES_PER_INST / 2);
+        }
+        else
+        {
+            os.write(reinterpret_cast<char *>(&(bin->Bytes)), BYTES_PER_INST);
+        }
+    };
+    os.close();
 
-	return SUCCESS;
+    return SUCCESS;
 }
 
 void EncodingHelper::dumpOptReport(int totalInst,
@@ -85,10 +85,10 @@ void EncodingHelper::dumpOptReport(int totalInst,
         }
         if (((float)(totalInst)) != 0.0)
         {
-	        optReport<< setprecision(0)
-	            << (float)(numCompactedInst*100)/(float)(totalInst)
-	            << "% instructions of this kernel are compacted."
-	            <<endl;
+            optReport<< setprecision(0)
+                << (float)(numCompactedInst*100)/(float)(totalInst)
+                << "% instructions of this kernel are compacted."
+                <<endl;
         }
         optReport<<endl;
         closeOptReportStream(optReport);
@@ -159,18 +159,18 @@ void BinaryEncodingBase::ProduceBinaryBuf(void* &handle)
 // Additionally, invm and sqrtm math instructions must also be align16
 void BinaryEncodingBase::FixAlign16Inst(G4_INST* inst)
 {
-	inst->setOptionOn(InstOpt_Align16);
+    inst->setOptionOn(InstOpt_Align16);
 
-	// convert dst to align16
-	G4_DstRegRegion* dst = inst->getDst();
-	dst->setWriteMask(ChannelEnable_XYZW);
+    // convert dst to align16
+    G4_DstRegRegion* dst = inst->getDst();
+    dst->setWriteMask(ChannelEnable_XYZW);
 
-	// convert sources to align16	
+    // convert sources to align16    
     for (int k = 0, numSrc = inst->getNumSrc(); k < numSrc; k++)
-	{
-		ASSERT_USER(inst->getSrc(k)->isSrcRegRegion(), "Unexpected src to be converted to ALIGN16!");
-		G4_SrcRegRegion* src = inst->getSrc(k)->asSrcRegRegion();
-		src->setSwizzle(src->isScalar() ? "r" : "xyzw");
+    {
+        ASSERT_USER(inst->getSrc(k)->isSrcRegRegion(), "Unexpected src to be converted to ALIGN16!");
+        G4_SrcRegRegion* src = inst->getSrc(k)->asSrcRegRegion();
+        src->setSwizzle(src->isScalar() ? "r" : "xyzw");
         if (inst->opcode() == G4_math && (inst->asMathInst()->getMathCtrl() == MATH_INVM || inst->asMathInst()->getMathCtrl() == MATH_RSQRTM))
         {
             switch (inst->getSrc(k)->getType())
@@ -186,89 +186,89 @@ void BinaryEncodingBase::FixAlign16Inst(G4_INST* inst)
                 MUST_BE_TRUE(false, "Not implemented");
             }
         }
-	}
+    }
 
-	bool isDoubleInst = (dst->getType() == Type_DF);
-	if (inst->getExecSize() == 1)
-	{
-		int subRegOffset = dst->getLinearizedStart() % 16;
-		if (inst->getCondMod())
-		{
-			G4_CondModifier mod = inst->getCondMod()->getMod();
-			if (subRegOffset != 0 && (mod == Mod_g || mod == Mod_ge || mod == Mod_l || mod == Mod_le))
-			{
-				MUST_BE_TRUE(false, "Invalid alignment for align16 inst of execsize 1 and offset" << (short)subRegOffset << "):\t");
-			}
-		}
-		ChannelEnable writeMask = NoChannelEnable;
-		switch (subRegOffset / 4)
-		{
-		case 0:
-			writeMask = isDoubleInst ? ChannelEnable_XY : ChannelEnable_X;
-			break;
-		case 1:
-			writeMask = ChannelEnable_Y;
-			break;
-		case 2:
-			writeMask = isDoubleInst ? ChannelEnable_ZW : ChannelEnable_Z;
-			break;
-		case 3:
-			writeMask = ChannelEnable_W;
-			break;
-		default:
-			MUST_BE_TRUE(false, "unexpected subreg value");
-		}
-		dst->setWriteMask(writeMask);
-		dst->setLeftBound(dst->getLeftBound() - subRegOffset);
-		dst->setRightBound(dst->getLeftBound() + 16);
-		inst->setExecSize(isDoubleInst ? 2 : 4);
-		G4_Predicate* pred = inst->getPredicate();
-		if (pred != NULL)
-		{
-			pred->setAlign16PredicateControl(PRED_ALIGN16_X);
-		}
-	}
+    bool isDoubleInst = (dst->getType() == Type_DF);
+    if (inst->getExecSize() == 1)
+    {
+        int subRegOffset = dst->getLinearizedStart() % 16;
+        if (inst->getCondMod())
+        {
+            G4_CondModifier mod = inst->getCondMod()->getMod();
+            if (subRegOffset != 0 && (mod == Mod_g || mod == Mod_ge || mod == Mod_l || mod == Mod_le))
+            {
+                MUST_BE_TRUE(false, "Invalid alignment for align16 inst of execsize 1 and offset" << (short)subRegOffset << "):\t");
+            }
+        }
+        ChannelEnable writeMask = NoChannelEnable;
+        switch (subRegOffset / 4)
+        {
+        case 0:
+            writeMask = isDoubleInst ? ChannelEnable_XY : ChannelEnable_X;
+            break;
+        case 1:
+            writeMask = ChannelEnable_Y;
+            break;
+        case 2:
+            writeMask = isDoubleInst ? ChannelEnable_ZW : ChannelEnable_Z;
+            break;
+        case 3:
+            writeMask = ChannelEnable_W;
+            break;
+        default:
+            MUST_BE_TRUE(false, "unexpected subreg value");
+        }
+        dst->setWriteMask(writeMask);
+        dst->setLeftBound(dst->getLeftBound() - subRegOffset);
+        dst->setRightBound(dst->getLeftBound() + 16);
+        inst->setExecSize(isDoubleInst ? 2 : 4);
+        G4_Predicate* pred = inst->getPredicate();
+        if (pred != NULL)
+        {
+            pred->setAlign16PredicateControl(PRED_ALIGN16_X);
+        }
+    }
 
-	// for double/half inst, we have to additionally fix the source as it doesn't support the .r swizzle
-	if (isDoubleInst)
-	{
+    // for double/half inst, we have to additionally fix the source as it doesn't support the .r swizzle
+    if (isDoubleInst)
+    {
         for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i)
-		{
-			MUST_BE_TRUE(inst->getSrc(i)->isSrcRegRegion(), "source must have a region");
-			G4_SrcRegRegion* src = inst->getSrc(i)->asSrcRegRegion();
-			RegionDesc *rd = src->getRegion();
-			if (src->isScalar() ||
-				(rd->width == 2 && rd->horzStride == 0 && rd->vertStride == 2))
-			{
-				int subRegOffset = src->getLinearizedStart() % 16;
-				MUST_BE_TRUE(subRegOffset == 0 || subRegOffset == 8, "double source must be 8 byte aligned");
-				src->setSwizzle((char *)(subRegOffset == 0 ? "xyxy" : "zwzw"));
-				// this forces to subreg to be 16 byte aligned
-				src->setLeftBound(src->getLeftBound() - subRegOffset);
-				src->setRightBound(src->getLeftBound() + 16);
-			}
-		}
-	}
+        {
+            MUST_BE_TRUE(inst->getSrc(i)->isSrcRegRegion(), "source must have a region");
+            G4_SrcRegRegion* src = inst->getSrc(i)->asSrcRegRegion();
+            RegionDesc *rd = src->getRegion();
+            if (src->isScalar() ||
+                (rd->width == 2 && rd->horzStride == 0 && rd->vertStride == 2))
+            {
+                int subRegOffset = src->getLinearizedStart() % 16;
+                MUST_BE_TRUE(subRegOffset == 0 || subRegOffset == 8, "double source must be 8 byte aligned");
+                src->setSwizzle((char *)(subRegOffset == 0 ? "xyxy" : "zwzw"));
+                // this forces to subreg to be 16 byte aligned
+                src->setLeftBound(src->getLeftBound() - subRegOffset);
+                src->setRightBound(src->getLeftBound() + 16);
+            }
+        }
+    }
 }
 
 void BinaryEncodingBase::FixMathInst(G4_INST* inst)
 {
-	MUST_BE_TRUE(inst->isMath(), "Expect math instruction");
+    MUST_BE_TRUE(inst->isMath(), "Expect math instruction");
     for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i)
-	{
-		G4_Operand* src = inst->getSrc(i);
-		if (src && src->isSrcRegRegion())
-		{
-			G4_SrcRegRegion* srcRegion = src->asSrcRegRegion();
-			RegionDesc* region = srcRegion->getRegion();
-			if (inst->getExecSize() > 1 &&
-				region->vertStride == 1 && region->width == 1 && region->horzStride == 0)
-			{
-				// rewrite <1;1,0> to <2;2,1> to avoid simulator warning
-				srcRegion->setRegion(kernel.fg.builder->createRegionDesc(2, 2, 1));
-			}
-		}
-	}
+    {
+        G4_Operand* src = inst->getSrc(i);
+        if (src && src->isSrcRegRegion())
+        {
+            G4_SrcRegRegion* srcRegion = src->asSrcRegRegion();
+            RegionDesc* region = srcRegion->getRegion();
+            if (inst->getExecSize() > 1 &&
+                region->vertStride == 1 && region->width == 1 && region->horzStride == 0)
+            {
+                // rewrite <1;1,0> to <2;2,1> to avoid simulator warning
+                srcRegion->setRegion(kernel.fg.builder->createRegionDesc(2, 2, 1));
+            }
+        }
+    }
 }
 
 
@@ -294,21 +294,21 @@ void BinaryEncodingBase::FixInst()
             }
 
             bool isAlign16 = kernel.fg.builder->hasIEEEDivSqrt() && (inst->opcode() == G4_madm ||
-				(inst->isMath() && inst->asMathInst()->isIEEEMath()));
+                (inst->isMath() && inst->asMathInst()->isIEEEMath()));
 
             if (!isAlign16)
-			{
-				isAlign16 = (!align1Ternary) && (inst->getNumSrc() == 3) && !inst->isSend();
-			}
+            {
+                isAlign16 = (!align1Ternary) && (inst->getNumSrc() == 3) && !inst->isSend();
+            }
 
             if (isAlign16)
             {
-				FixAlign16Inst(inst);
+                FixAlign16Inst(inst);
             }
-			else if (inst->isMath())
-			{
-				FixMathInst(inst);
-			}
+            else if (inst->isMath())
+            {
+                FixMathInst(inst);
+            }
         }
     }
 }

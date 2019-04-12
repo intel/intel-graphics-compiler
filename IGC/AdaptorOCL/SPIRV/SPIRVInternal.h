@@ -842,7 +842,7 @@ void getFunctionTypeParameterTypes(llvm::FunctionType* FT,
     std::vector<Type*>& ArgTys);
 Function *getOrCreateFunction(Module *M, Type *RetTy,
     ArrayRef<Type *> ArgTypes, StringRef Name, bool Mangle = false,
-	IGCLLVM::AttributeSet *Attrs = nullptr, bool takeName = true);
+    IGCLLVM::AttributeSet *Attrs = nullptr, bool takeName = true);
 std::vector<Value *> getArguments(CallInst* CI);
 
 void decorateSPIRVBuiltin(std::string &S);

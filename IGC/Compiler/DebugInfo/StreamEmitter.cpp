@@ -115,12 +115,12 @@ public:
         // This is required for resolution of strings
         // referenced in string pool table.
         // Added during LLVM 3.3 -> 3.5 upgrade
-		if (is64Bit())
-		{
-			return ELF::R_X86_64_32;
-		}
-		
-		return ELF::R_386_32;
+        if (is64Bit())
+        {
+            return ELF::R_X86_64_32;
+        }
+        
+        return ELF::R_386_32;
     }
 
     virtual unsigned GetRelocType(const MCValue &target, const MCFixup &fixup,
@@ -130,7 +130,7 @@ public:
 
         MCSymbolRefExpr::VariantKind modifier = target.isAbsolute() ?
             MCSymbolRefExpr::VK_None : target.getSymA()->getKind();
-		unsigned type = ELF::R_X86_64_NONE;
+        unsigned type = ELF::R_X86_64_NONE;
         if (getEMachine() == ELF::EM_X86_64)
         {
             if (isPCRel)
@@ -309,7 +309,7 @@ class VISAAsmBackend : public IGCLLVM::MCAsmBackend
 public:
     VISAAsmBackend(StringRef targetTriple, bool is64Bit)
         : IGCLLVM::MCAsmBackend(),
-		m_targetTriple(targetTriple), m_is64Bit(is64Bit) {}
+        m_targetTriple(targetTriple), m_is64Bit(is64Bit) {}
 
     unsigned getNumFixupKinds() const override
     {
@@ -337,30 +337,30 @@ public:
     }
 
 #if LLVM_VERSION_MAJOR == 4
-	void applyFixup(const MCFixup &fixup, char *pData, unsigned dataSize, uint64_t value, bool isPCRel) const override
-	{
-		unsigned size = 1 << getFixupKindLog2Size(fixup.getKind());
+    void applyFixup(const MCFixup &fixup, char *pData, unsigned dataSize, uint64_t value, bool isPCRel) const override
+    {
+        unsigned size = 1 << getFixupKindLog2Size(fixup.getKind());
 
-		assert(fixup.getOffset() + size <= dataSize &&
-		    "Invalid fixup offset!");
+        assert(fixup.getOffset() + size <= dataSize &&
+            "Invalid fixup offset!");
 
-		// Check that uppper bits are either all zeros or all ones.
-		// Specifically ignore overflow/underflow as long as the leakage is
-		// limited to the lower bits. This is to remain compatible with
-		// other assemblers.
-		assert(isIntN(size * 8 + 1, value) &&
-			"value does not fit in the fixup field");
+        // Check that uppper bits are either all zeros or all ones.
+        // Specifically ignore overflow/underflow as long as the leakage is
+        // limited to the lower bits. This is to remain compatible with
+        // other assemblers.
+        assert(isIntN(size * 8 + 1, value) &&
+            "value does not fit in the fixup field");
 
-		for (unsigned i = 0; i != size; ++i)
-		{
-			pData[fixup.getOffset() + i] = uint8_t(value >> (i * 8));
-		}
-	}
+        for (unsigned i = 0; i != size; ++i)
+        {
+            pData[fixup.getOffset() + i] = uint8_t(value >> (i * 8));
+        }
+    }
 #elif LLVM_VERSION_MAJOR >= 7    
-	void applyFixup(const MCAssembler &Asm, const MCFixup &fixup,
-  	                const MCValue &Target, MutableArrayRef<char> Data,
-  	                uint64_t value, bool IsResolved,
-  	                const MCSubtargetInfo *STI) const override
+    void applyFixup(const MCAssembler &Asm, const MCFixup &fixup,
+                      const MCValue &Target, MutableArrayRef<char> Data,
+                      uint64_t value, bool IsResolved,
+                      const MCSubtargetInfo *STI) const override
     {
         unsigned size = 1 << getFixupKindLog2Size(fixup.getKind());
 
@@ -421,7 +421,7 @@ public:
 #elif LLVM_VERSION_MAJOR >= 7
     bool writeNopData(raw_ostream &OS, uint64_t Count) const override
     {
-		const char nop = (char) 0x90;
+        const char nop = (char) 0x90;
         for (uint64_t i = 0; i < Count; ++i)
         {
             OS.write(&nop, 1);
@@ -444,25 +444,25 @@ public:
         return createELFObjectWriter(pMOTW, os,  /*IsLittleEndian=*/true);
     }
 #elif LLVM_VERSION_MAJOR >= 7
-	std::unique_ptr<MCObjectWriter> createObjectWriter(llvm::raw_pwrite_stream &os) const
-	{
-		Triple triple(m_targetTriple);
-		uint8_t osABI = MCELFObjectTargetWriter::getOSABI(triple.getOS());
-		uint16_t eMachine = m_is64Bit ? ELF::EM_X86_64 : ELF::EM_386;
-		// Only i386 uses Rel instead of RelA.
-		bool hasRelocationAddend = eMachine != ELF::EM_386;		
-		std::unique_ptr<MCELFObjectTargetWriter> pMOTW
-			= llvm::make_unique<VISAELFObjectWriter>(m_is64Bit, osABI, eMachine, hasRelocationAddend);
-		return createELFObjectWriter(std::move(pMOTW), os,  /*IsLittleEndian=*/true);
-	}
+    std::unique_ptr<MCObjectWriter> createObjectWriter(llvm::raw_pwrite_stream &os) const
+    {
+        Triple triple(m_targetTriple);
+        uint8_t osABI = MCELFObjectTargetWriter::getOSABI(triple.getOS());
+        uint16_t eMachine = m_is64Bit ? ELF::EM_X86_64 : ELF::EM_386;
+        // Only i386 uses Rel instead of RelA.
+        bool hasRelocationAddend = eMachine != ELF::EM_386;        
+        std::unique_ptr<MCELFObjectTargetWriter> pMOTW
+            = llvm::make_unique<VISAELFObjectWriter>(m_is64Bit, osABI, eMachine, hasRelocationAddend);
+        return createELFObjectWriter(std::move(pMOTW), os,  /*IsLittleEndian=*/true);
+    }
 #endif
 
 #if LLVM_VERSION_MAJOR >= 7
-	std::unique_ptr<MCObjectTargetWriter> createObjectTargetWriter() const override
-	{
+    std::unique_ptr<MCObjectTargetWriter> createObjectTargetWriter() const override
+    {
         assert(false && "TODO: implement this");
         llvm_unreachable("Unimplemented");
-	}
+    }
 #endif
 };
 
@@ -501,7 +501,7 @@ StreamEmitter::StreamEmitter(raw_pwrite_stream& outStream, const std::string& da
     // Create new MC context
     m_pContext = new MCContext((const llvm::MCAsmInfo*)m_pAsmInfo, regInfo, m_pObjFileInfo, m_pSrcMgr);
 
-	Triple triple = Triple(GetTargetTriple());
+    Triple triple = Triple(GetTargetTriple());
 
     m_pObjFileInfo->InitMCObjectFileInfo(Triple(GetTargetTriple()), false, CodeModel::Default, *m_pContext);  
 
@@ -519,21 +519,21 @@ StreamEmitter::StreamEmitter(raw_pwrite_stream& outStream, const std::string& da
 
     m_pMCStreamer->InitSections(isNoExecStack);
 #elif LLVM_VERSION_MAJOR >= 7
-	m_pDataLayout = new DataLayout(dataLayout);
-	m_pSrcMgr = new SourceMgr();
-	m_pAsmInfo = new VISAMCAsmInfo(GetPointerSize());
-	m_pObjFileInfo = new MCObjectFileInfo();
+    m_pDataLayout = new DataLayout(dataLayout);
+    m_pSrcMgr = new SourceMgr();
+    m_pAsmInfo = new VISAMCAsmInfo(GetPointerSize());
+    m_pObjFileInfo = new MCObjectFileInfo();
 
-	MCRegisterInfo *regInfo = nullptr;
+    MCRegisterInfo *regInfo = nullptr;
 
-	// Create new MC context
-	m_pContext = new MCContext((const llvm::MCAsmInfo*)m_pAsmInfo, regInfo, m_pObjFileInfo, m_pSrcMgr);
+    // Create new MC context
+    m_pContext = new MCContext((const llvm::MCAsmInfo*)m_pAsmInfo, regInfo, m_pObjFileInfo, m_pSrcMgr);
 
-	Triple triple = Triple(GetTargetTriple());
-	m_pObjFileInfo->InitMCObjectFileInfo(Triple(GetTargetTriple()), false, *m_pContext);
+    Triple triple = Triple(GetTargetTriple());
+    m_pObjFileInfo->InitMCObjectFileInfo(Triple(GetTargetTriple()), false, *m_pContext);
 
-	bool is64Bit = GetPointerSize() == 8;
-	uint8_t osABI = MCELFObjectTargetWriter::getOSABI(triple.getOS());
+    bool is64Bit = GetPointerSize() == 8;
+    uint8_t osABI = MCELFObjectTargetWriter::getOSABI(triple.getOS());
     // Earlier eMachine was set to ELF::EM_X86_64 or ELF::EM_386
     // This creates a problem for gdb so it is now set to 182
     // which is an encoding reserved for Intel. It is not part of
@@ -542,22 +542,22 @@ StreamEmitter::StreamEmitter(raw_pwrite_stream& outStream, const std::string& da
     uint16_t eMachine =
         isDirectElf ? EM_INTEL_GEN :
         is64Bit ? ELF::EM_X86_64 : ELF::EM_386;
-	bool hasRelocationAddend = is64Bit;
-	std::unique_ptr<MCAsmBackend> pAsmBackend
-		= llvm::make_unique<VISAAsmBackend>(GetTargetTriple(), is64Bit);
-	std::unique_ptr<MCELFObjectTargetWriter> pTargetObjectWriter
-		= llvm::make_unique<VISAELFObjectWriter>(is64Bit, osABI, eMachine, hasRelocationAddend);
-	std::unique_ptr<MCObjectWriter> pObjectWriter
-		= createELFObjectWriter(std::move(pTargetObjectWriter), outStream, true);
-	std::unique_ptr<MCCodeEmitter> pCodeEmitter
-		= llvm::make_unique<VISAMCCodeEmitter>();
+    bool hasRelocationAddend = is64Bit;
+    std::unique_ptr<MCAsmBackend> pAsmBackend
+        = llvm::make_unique<VISAAsmBackend>(GetTargetTriple(), is64Bit);
+    std::unique_ptr<MCELFObjectTargetWriter> pTargetObjectWriter
+        = llvm::make_unique<VISAELFObjectWriter>(is64Bit, osABI, eMachine, hasRelocationAddend);
+    std::unique_ptr<MCObjectWriter> pObjectWriter
+        = createELFObjectWriter(std::move(pTargetObjectWriter), outStream, true);
+    std::unique_ptr<MCCodeEmitter> pCodeEmitter
+        = llvm::make_unique<VISAMCCodeEmitter>();
 
-	bool isRelaxAll = false;
-	bool isNoExecStack = false;
-	m_pMCStreamer = createELFStreamer(*m_pContext,
-		std::move(pAsmBackend), std::move(pObjectWriter), std::move(pCodeEmitter), isRelaxAll);
+    bool isRelaxAll = false;
+    bool isNoExecStack = false;
+    m_pMCStreamer = createELFStreamer(*m_pContext,
+        std::move(pAsmBackend), std::move(pObjectWriter), std::move(pCodeEmitter), isRelaxAll);
 
-	m_pMCStreamer->InitSections(isNoExecStack);
+    m_pMCStreamer->InitSections(isNoExecStack);
 #endif
 }
 

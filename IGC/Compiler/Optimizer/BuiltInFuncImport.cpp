@@ -714,7 +714,7 @@ void BIImport::removeFunctionBitcasts(Module &M)
                             pDstFunc = Function::Create(pInstCall->getFunctionType(), funcTobeChanged->getLinkage(), funcTobeChanged->getName(), &M);
                             if (IGCLLVM::GetFuncArgSize(pDstFunc) != IGCLLVM::GetFuncArgSize(funcTobeChanged)) continue;
                             // Need to copy the attributes over too.
-							IGCLLVM::AttributeSet FuncAttrs = funcTobeChanged->getAttributes();
+                            IGCLLVM::AttributeSet FuncAttrs = funcTobeChanged->getAttributes();
                             pDstFunc->setAttributes(FuncAttrs);
 
                             // Go through and convert function arguments over, remembering the mapping.
@@ -795,7 +795,7 @@ void BIImport::InitializeBIFlags(Module &M)
     initializeVarWithValue("__CRMacros",
         pCtx->platform.hasCorrectlyRoundedMacros() ? 1 : 0);
 
-	if (StringRef(pCtx->getModule()->getTargetTriple()).size() > 0)
+    if (StringRef(pCtx->getModule()->getTargetTriple()).size() > 0)
     {
         initializeVarWithValue("__APIRS", false);
     }

@@ -83,14 +83,14 @@ public:
         memset(m_CompileShaderStats, 0, sizeof(int)* STATS_MAX_SHADER_STATS_ITEMS);
     }
 
-	void printShaderStats(ShaderHash hash, ShaderType shaderType, const std::string &postFix);
-	void printOpcodeStats(ShaderHash hash, ShaderType shaderType, const std::string &postFix);
-	void parseIsaShader(ShaderHash hash, ShaderType shaderType, SIMDMode simd);
-	int  getShaderStats(SHADER_STATS_ITEMS compileInterval);
-	void sumShaderStat(SHADER_STATS_ITEMS compileInterval, int count);
-	void miscSumShaderStat(ShaderStats* sStats);
-	void printSumShaderStats();
-	ShaderType m_shaderType;
+    void printShaderStats(ShaderHash hash, ShaderType shaderType, const std::string &postFix);
+    void printOpcodeStats(ShaderHash hash, ShaderType shaderType, const std::string &postFix);
+    void parseIsaShader(ShaderHash hash, ShaderType shaderType, SIMDMode simd);
+    int  getShaderStats(SHADER_STATS_ITEMS compileInterval);
+    void sumShaderStat(SHADER_STATS_ITEMS compileInterval, int count);
+    void miscSumShaderStat(ShaderStats* sStats);
+    void printSumShaderStats();
+    ShaderType m_shaderType;
 
 private:
     int m_CompileShaderStats[STATS_MAX_SHADER_STATS_ITEMS];
@@ -121,7 +121,7 @@ private:
     if( shaderStats ) \
         { \
         (shaderStats)->printShaderStats( hash, shaderType, postFix ); \
-		(shaderStats)->printOpcodeStats( hash, shaderType, postFix ); \
+        (shaderStats)->printOpcodeStats( hash, shaderType, postFix ); \
         } \
     } while (0)
 #else

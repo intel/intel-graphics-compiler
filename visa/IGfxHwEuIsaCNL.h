@@ -283,10 +283,10 @@ When bit 10 is set (NoDDClr), the destination register scoreboard will NOT be cl
 When this field is not all-zero, hardware does not protect against destination hazards for the instruction.  This is typically used to assemble data in a fine grained fashion (e.g. matrix-vector compute with dot-product instructions), where the data integrity is guaranteed by software based on the intended usage of instruction sequences.
 \*****************************************************************************/
 typedef enum tagDEPCTRL {
-    DEPCTRL_NONE            = 0x0,	// Destination dependency checked and cleared (normal)
-    DEPCTRL_NODDCLR         = 0x1,	// Destination dependency checked but not cleared
-    DEPCTRL_NODDCHK         = 0x2,	// Destination dependency not checked but cleared
-    DEPCTRL_NODDCLR_NODDCHK = 0x3,	// Destination dependency not checked and not cleared
+    DEPCTRL_NONE            = 0x0,    // Destination dependency checked and cleared (normal)
+    DEPCTRL_NODDCLR         = 0x1,    // Destination dependency checked but not cleared
+    DEPCTRL_NODDCHK         = 0x2,    // Destination dependency not checked but cleared
+    DEPCTRL_NODDCLR_NODDCHK = 0x3,    // Destination dependency not checked and not cleared
 } DEPCTRL;
 
 /*****************************************************************************\
@@ -296,7 +296,7 @@ This field provides explicit control for thread switching.
 typedef enum tagTHREADCTRL {
     THREADCTRL_NORMAL = 0x0,   // Up to the GEN execution units to manage thread switching. This is the normal (and unnamed) mode. In this mode, for example, if the current instruction cannot proceed due to operand dependencies, the EU switches to the next available thread to fill the compute pipe. In another example, if the current instruction is ready to go, however, there is another thread with higher priority that also has an instruction ready, the EU switches to that thread.,            Execution may or may not be preempted by another thread following this instruction.
     THREADCTRL_ATOMIC = 0x1,   // Prevent any thread switch immediately following this instruction. Always execute the next instruction (which may not be next sequentially if the current instruction branches).,            The next instruction gets highest priority in the thread arbitration for the execution pipelines.
-    THREADCTRL_SWITCH = 0x2,   // A forced thread switch occurs after the current instruction is executed and before the next instruction. In addition, a long delay (longer than the execution pipe latency) is introduced for the current thread. Particularly, the instruction queue of the current thread is flushed after the current instruction is dispatched for execution. ,			Switch is designed primarily as a safety feature in case there are race conditions for certain instructions.,            Force a switch to another thread after this instruction and before the next instruction.
+    THREADCTRL_SWITCH = 0x2,   // A forced thread switch occurs after the current instruction is executed and before the next instruction. In addition, a long delay (longer than the execution pipe latency) is introduced for the current thread. Particularly, the instruction queue of the current thread is flushed after the current instruction is dispatched for execution. ,            Switch is designed primarily as a safety feature in case there are race conditions for certain instructions.,            Force a switch to another thread after this instruction and before the next instruction.
     THREADCTRL_NOPREEMPT = 0x3,  // A thread wont stop on this instruction even after receiving a pre-emption request.
 } THREADCTRL;
 
@@ -457,12 +457,12 @@ typedef enum tagTERNARYALIGN1VERTSTRIDE {
 
 typedef enum tagSATURATE {
     SATURATE_NO_DESTINATION_MODIFICATION = 0x0,
-    SATURATE_SAT                         = 0x1,	// Saturate the output
+    SATURATE_SAT                         = 0x1,    // Saturate the output
 } SATURATE;
 
 typedef enum tagACCWRCTRL {
     ACCWRCTRL_DON_T_WRITE_TO_ACC = 0x0,
-    ACCWRCTRL_UPDATE_ACC         = 0x1,	// Write result to the ACC, and destination
+    ACCWRCTRL_UPDATE_ACC         = 0x1,    // Write result to the ACC, and destination
 } ACCWRCTRL;
 
 typedef enum tagACCESSMODE {
@@ -492,8 +492,8 @@ typedef enum tagDEBUGCTRL {
 } DEBUGCTRL;
 
 typedef enum tagEOT {
-	EOT_THREAD_IS_NOT_TERMINATED = 0x0,
-	EOT_EOT                      = 0x1,
+    EOT_THREAD_IS_NOT_TERMINATED = 0x0,
+    EOT_EOT                      = 0x1,
 } EOT;
 
 typedef enum tagMASKCTRL {
@@ -1332,10 +1332,10 @@ typedef struct tagEU_INSTRUCTION_OPERAND_CONTROLS {
         return TheStructure.StructureEu_Instruction_Controls_AAccessmodeIsAlign1.DestinationRegisterRegion;
     }
 
-	__CODEGEN_INLINE void SetDestinationAddressingMode(ADDRMODE DestinationAddressingModeValue) {
+    __CODEGEN_INLINE void SetDestinationAddressingMode(ADDRMODE DestinationAddressingModeValue) {
 
-		GetDestinationRegisterRegion_Align1().SetDestinationAddressingMode(DestinationAddressingModeValue);
-	}
+        GetDestinationRegisterRegion_Align1().SetDestinationAddressingMode(DestinationAddressingModeValue);
+    }
 
 } __CODEGEN_ATTRIBUTES_STRUCTURE EU_INSTRUCTION_OPERAND_CONTROLS;
 
@@ -2908,12 +2908,12 @@ typedef union tagEU_INSTRUCTION_BASIC_TWO_SRC {
     } Common;
 
     struct tagImmsourceSrc1RegfileIsImm {
-		DWORD __CODEGEN_UNIQUE(Overridden)[2];
+        DWORD __CODEGEN_UNIQUE(Overridden)[2];
         EU_INSTRUCTION_SOURCES_REG_IMM Immsource;
     } ImmsourceSrc1RegfileIsImm;
 
     struct tagRegsourceSrc1RegfileNotImm {
-		DWORD __CODEGEN_UNIQUE(Overridden)[2];
+        DWORD __CODEGEN_UNIQUE(Overridden)[2];
         EU_INSTRUCTION_SOURCES_REG_REG Regsource;
     } RegsourceSrc1RegfileNotImm;
     DWORD RawData[4];
@@ -2959,15 +2959,15 @@ typedef union tagEU_INSTRUCTION_BASIC_TWO_SRC {
         return Common.OperandControls;
     }
 
-	__CODEGEN_INLINE EU_INSTRUCTION_SOURCES_REG_IMM& GetImmsource() {
-		__CODEGEN_GET_MACRO();
-		return ImmsourceSrc1RegfileIsImm.Immsource;
-	}
+    __CODEGEN_INLINE EU_INSTRUCTION_SOURCES_REG_IMM& GetImmsource() {
+        __CODEGEN_GET_MACRO();
+        return ImmsourceSrc1RegfileIsImm.Immsource;
+    }
 
-	__CODEGEN_INLINE EU_INSTRUCTION_SOURCES_REG_REG& GetRegsource() {
-		__CODEGEN_GET_MACRO();
-		return RegsourceSrc1RegfileNotImm.Regsource;
-	}
+    __CODEGEN_INLINE EU_INSTRUCTION_SOURCES_REG_REG& GetRegsource() {
+        __CODEGEN_GET_MACRO();
+        return RegsourceSrc1RegfileNotImm.Regsource;
+    }
 
 } __CODEGEN_ATTRIBUTES_STRUCTURE EU_INSTRUCTION_BASIC_TWO_SRC;
 
@@ -3041,19 +3041,19 @@ typedef union tagEU_INSTRUCTION_BASIC_THREE_SRC {
     DWORD RawData[4];
 
     typedef enum tagSOURCE_DATA_TYPE {
-        SOURCE_DATA_TYPE_F  = 0x0,	// single precision Float (32-bit)
-        SOURCE_DATA_TYPE_D  = 0x1,	// signed Doubleword integer
-        SOURCE_DATA_TYPE_UD = 0x2,	// Unsigned Doubleword integer
-        SOURCE_DATA_TYPE_DF = 0x3,	// Double precision Float (64-bit)
-        SOURCE_DATA_TYPE_HF = 0x4,	// Half Float (16-bit)
+        SOURCE_DATA_TYPE_F  = 0x0,    // single precision Float (32-bit)
+        SOURCE_DATA_TYPE_D  = 0x1,    // signed Doubleword integer
+        SOURCE_DATA_TYPE_UD = 0x2,    // Unsigned Doubleword integer
+        SOURCE_DATA_TYPE_DF = 0x3,    // Double precision Float (64-bit)
+        SOURCE_DATA_TYPE_HF = 0x4,    // Half Float (16-bit)
     } SOURCE_DATA_TYPE;
 
     typedef enum tagDESTINATION_DATA_TYPE {
-        DESTINATION_DATA_TYPE_F  = 0x0,	// single precision Float (32-bit)
-        DESTINATION_DATA_TYPE_D  = 0x1,	// signed Doubleword integer
-        DESTINATION_DATA_TYPE_UD = 0x2,	// Unsigned Doubleword integer
-        DESTINATION_DATA_TYPE_DF = 0x3,	// Double precision Float (64-bit)
-        DESTINATION_DATA_TYPE_HF = 0x4,	// Half Float (16-bit)
+        DESTINATION_DATA_TYPE_F  = 0x0,    // single precision Float (32-bit)
+        DESTINATION_DATA_TYPE_D  = 0x1,    // signed Doubleword integer
+        DESTINATION_DATA_TYPE_UD = 0x2,    // Unsigned Doubleword integer
+        DESTINATION_DATA_TYPE_DF = 0x3,    // Double precision Float (64-bit)
+        DESTINATION_DATA_TYPE_HF = 0x4,    // Half Float (16-bit)
     } DESTINATION_DATA_TYPE;
 
 
@@ -4733,18 +4733,18 @@ typedef union tagEU_INSTRUCTION_MATH {
     } ACCESSMODE;
 
     typedef enum tagNIBCTRL {
-        NIBCTRL_ODD  = 0x0,	// Use an odd 1/8th for DMask/VMask and ARF (first, third, fifth, or seventh depending on QtrCtrl).
-        NIBCTRL_EVEN = 0x1,	// Use an even 1/8th for DMask/VMask and ARF (second, fourth, sixth, or eighth depending on QtrCtrl).
+        NIBCTRL_ODD  = 0x0,    // Use an odd 1/8th for DMask/VMask and ARF (first, third, fifth, or seventh depending on QtrCtrl).
+        NIBCTRL_EVEN = 0x1,    // Use an even 1/8th for DMask/VMask and ARF (second, fourth, sixth, or eighth depending on QtrCtrl).
     } NIBCTRL;
 
     //typedef enum tagACCWRCTRL {
     //    ACCWRCTRL_DON_T_WRITE_TO_ACC = 0x0,
-    //    ACCWRCTRL_UPDATE_ACC         = 0x1,	// Write result to the ACC, and destination
+    //    ACCWRCTRL_UPDATE_ACC         = 0x1,    // Write result to the ACC, and destination
     //} ACCWRCTRL;
 
     typedef enum tagCMPTCTRL {
-        CMPTCTRL_NOCOMPACTION = 0x0,	// No compaction. 128-bit native instruction supporting all instruction options.
-        CMPTCTRL_COMPACTED    = 0x1,	// Compaction is enabled. 64-bit compact instruction supporting only some instruction variations.
+        CMPTCTRL_NOCOMPACTION = 0x0,    // No compaction. 128-bit native instruction supporting all instruction options.
+        CMPTCTRL_COMPACTED    = 0x1,    // Compaction is enabled. 64-bit compact instruction supporting only some instruction variations.
     } CMPTCTRL;
 
     // INITIALIZATION
@@ -5317,18 +5317,18 @@ typedef union tagEU_INSTRUCTION_SEND {
     } ACCESSMODE;
 
     typedef enum tagNIBCTRL {
-        NIBCTRL_ODD  = 0x0,	// Use an odd 1/8th for DMask/VMask and ARF (first, third, fifth, or seventh depending on QtrCtrl).
-        NIBCTRL_EVEN = 0x1,	// Use an even 1/8th for DMask/VMask and ARF (second, fourth, sixth, or eighth depending on QtrCtrl).
+        NIBCTRL_ODD  = 0x0,    // Use an odd 1/8th for DMask/VMask and ARF (first, third, fifth, or seventh depending on QtrCtrl).
+        NIBCTRL_EVEN = 0x1,    // Use an even 1/8th for DMask/VMask and ARF (second, fourth, sixth, or eighth depending on QtrCtrl).
     } NIBCTRL;
 
     //typedef enum tagACCWRCTRL {
     //    ACCWRCTRL_DON_T_WRITE_TO_ACC = 0x0,
-    //    ACCWRCTRL_UPDATE_ACC         = 0x1,	// Write result to the ACC, and destination
+    //    ACCWRCTRL_UPDATE_ACC         = 0x1,    // Write result to the ACC, and destination
     //} ACCWRCTRL;
 
     typedef enum tagCMPTCTRL {
-        CMPTCTRL_NOCOMPACTION = 0x0,	// No compaction. 128-bit native instruction supporting all instruction options.
-        CMPTCTRL_COMPACTED    = 0x1,	// Compaction is enabled. 64-bit compact instruction supporting only some instruction variations.
+        CMPTCTRL_NOCOMPACTION = 0x0,    // No compaction. 128-bit native instruction supporting all instruction options.
+        CMPTCTRL_COMPACTED    = 0x1,    // Compaction is enabled. 64-bit compact instruction supporting only some instruction variations.
     } CMPTCTRL;
 
     typedef enum tagDEBUGCTRL {
@@ -5337,13 +5337,13 @@ typedef union tagEU_INSTRUCTION_SEND {
     } DEBUGCTRL;
 
     typedef enum tagPREDINV {
-        PREDINV_POSITIVE = 0x0,	// Positive polarity of predication. Use the predication mask produced by PredCtrl
-        PREDINV_NEGATIVE = 0x1,	// Negative polarity of predication. If PredCtrl is nonzero, invert the predication mask.
+        PREDINV_POSITIVE = 0x0,    // Positive polarity of predication. Use the predication mask produced by PredCtrl
+        PREDINV_NEGATIVE = 0x1,    // Negative polarity of predication. If PredCtrl is nonzero, invert the predication mask.
     } PREDINV;
 
     //typedef enum tagSATURATE {
     //    SATURATE_NO_DESTINATION_MODIFICATION = 0x0,
-    //    SATURATE_SAT                         = 0x1,	// Saturate the output
+    //    SATURATE_SAT                         = 0x1,    // Saturate the output
     //} SATURATE;
 
     // ENUMERATION DEBUG
@@ -5702,7 +5702,7 @@ typedef union tagEU_INSTRUCTION_SENDS {
         This field allows the insertion of a breakpoint at the current instruction. When the bit is set, hardware automatically stores the current IP in CR register and jumps to the System IP (SIP) BEFORE executing the current instruction.
         \*****************************************************************************/
         DWORD ControlsB_Debugctrl                 : BITFIELD_BIT(       30); // DEBUGCTRL
-        DWORD Exdesc1111 				          : BITFIELD_BIT(       31); // LOD COMPENSATION BIT, MANUALLY ADDED
+        DWORD Exdesc1111                           : BITFIELD_BIT(       31); // LOD COMPENSATION BIT, MANUALLY ADDED
         DWORD FlagRegisterNumberSubregisterNumber : BITFIELD_RANGE( 32, 33); //
         DWORD Maskctrl                            : BITFIELD_BIT(       34); //
         DWORD DestinationRegisterFile             : BITFIELD_BIT(       35); // RegFile[0]
@@ -6144,13 +6144,13 @@ typedef union tagEU_INSTRUCTION_SENDS {
         PropertySaturationIsTrue.ControlsB_Saturate = ControlsB_SaturateValue;
     }
 
-	//note:  unique for sends encoding
+    //note:  unique for sends encoding
     __CODEGEN_INLINE QWORD GetSource1_SourceAddressImmediateSign9() {
         __CODEGEN_GET_MACRO();
         return (QWORD)Source1AddressingModeIsIndirect.Source1AddressImmediateSign9;
     }
 
-	//note: unique for sends encoding
+    //note: unique for sends encoding
     __CODEGEN_INLINE void SetSource1_SourceAddressImmediateSign9(QWORD Source1AddressImmediateSign9Value) {
         __CODEGEN_SET_MACRO(Source1AddressImmediateSign9Value);
         Source1AddressingModeIsIndirect.Source1AddressImmediateSign9 = Source1AddressImmediateSign9Value;

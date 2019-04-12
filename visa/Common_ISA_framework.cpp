@@ -455,7 +455,7 @@ void CisaBinary::finalizeRelocationTables()
 
     for(int i = 0; i < m_header.num_functions; i++)
     {
-		reloc_syms_func[i].resolved_index = static_cast<unsigned short>(i);
+        reloc_syms_func[i].resolved_index = static_cast<unsigned short>(i);
         reloc_syms_func[i].symbolic_index = static_cast<unsigned short>(i);
     }
 
@@ -496,10 +496,10 @@ void CisaBinary::writeIsaAsmFile(string filename, string isaasmStr) const
     ofstream isaasm;
     isaasm.open(filename.c_str());
 
-	if (isaasm.fail())
-	{
-		MUST_BE_TRUE(false, "Failed to write CISA ASM to file");
-	}
+    if (isaasm.fail())
+    {
+        MUST_BE_TRUE(false, "Failed to write CISA ASM to file");
+    }
 
     isaasm << isaasmStr;
     isaasm.close();

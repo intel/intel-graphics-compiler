@@ -361,8 +361,8 @@ bool PhyRegUsage::findContiguousGRFFromBanks(G4_Declare *dcl,
         dclBC == BANK_CONFLICT_SECOND_HALF_ODD) && (dcl->getNumRows() > 1);
 
     if ((dclBC != BANK_CONFLICT_NONE) &&
-    	(align == Either) &&
-    	(dcl->getNumRows() <= 1))
+        (align == Either) &&
+        (dcl->getNumRows() <= 1))
     {
         align = gra.getBankAlign(dcl);
     }
@@ -521,7 +521,7 @@ bool PhyRegUsage::findContiguousNoWrapGRF(bool availRegs[],
             }
 
             if (numRegNeeded == 0 ||
-            	i + numRegNeeded > endPos)
+                i + numRegNeeded > endPos)
                 return false; // no available regs
             //
             // find contiguous numRegNeeded registers
@@ -572,17 +572,17 @@ bool PhyRegUsage::findContiguousNoWrapAddrFlag(bool availRegs[],
         // some register assignments need special alignment, we check
         // whether the alignment criteria is met.
         //
-        if (subAlign == Sixteen_Word && i != 0)	{	// Sixteen_Word sub-align should have i=0
+        if (subAlign == Sixteen_Word && i != 0)    {    // Sixteen_Word sub-align should have i=0
             return false;
-        } else if ((subAlign > Eight_Word && subAlign < Sixteen_Word && i != (unsigned)(Sixteen_Word - subAlign)) ||	// 9_Word~15_Word align
-            (subAlign == Eight_Word && i % 8 != 0) ||	// 8_Word align, i must be divided by 8
+        } else if ((subAlign > Eight_Word && subAlign < Sixteen_Word && i != (unsigned)(Sixteen_Word - subAlign)) ||    // 9_Word~15_Word align
+            (subAlign == Eight_Word && i % 8 != 0) ||    // 8_Word align, i must be divided by 8
             (i & 0x1 && subAlign == Even_Word) || // i is odd but intv needs to be even aligned
             (subAlign == Four_Word && (i % 4 != 0))) // 4_word alignment
             i++;
         else
         {
             if (numRegNeeded == 0 ||
-            	i + numRegNeeded > endPos)
+                i + numRegNeeded > endPos)
             {
                 return false; // no available regs
             }
@@ -931,7 +931,7 @@ PhyRegUsage::PhyReg PhyRegUsage::findGRFSubReg(const bool forbidden[],
     return phyReg;
 }
 
-bool PhyRegUsage::assignGRFRegsFromBanks(LiveRange*	 varBasis,
+bool PhyRegUsage::assignGRFRegsFromBanks(LiveRange*     varBasis,
     G4_Align  align,
     const bool*     forbidden,
     ColorHeuristic  heuristic,
@@ -996,12 +996,12 @@ bool PhyRegUsage::assignGRFRegsFromBanks(LiveRange*	 varBasis,
 // To support sub-reg alignment
 //
 bool PhyRegUsage::assignRegs(bool  highInternalConflict,
-    LiveRange*		 varBasis,
+    LiveRange*         varBasis,
     const bool*     forbidden,
-    G4_Align		 align,
+    G4_Align         align,
     G4_SubReg_Align subAlign,
     ColorHeuristic  heuristic,
-    float			 spillCost)
+    float             spillCost)
 {
     colorHeuristic = heuristic;
 

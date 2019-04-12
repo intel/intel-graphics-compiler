@@ -281,7 +281,7 @@ void CoalescingEngine::ProcessTuple(Instruction *tupleGeneratingInstruction)
         //If it belongs to CCTuple, it has an unique offset in that CCTuple.
         //Three cases are considered:
         //1) No value have CCtuple assigned -> create new CCTuple and assign offsets.
-        //	a) if platform supports split-send, then some (arbitrary) split point should be determined
+        //    a) if platform supports split-send, then some (arbitrary) split point should be determined
         //2) At least one value belongs to a CCtuple (we say it is 'anchored' (constrained) to that tuple)
         //   and all values belong to the same CCtuple
         //3) More than one value belong to a tuple, and they belong to different (>1) tuples: NOT implemented
@@ -766,14 +766,14 @@ bool CoalescingEngine::IsInsertionSlotAvailable(
 
     if( nodeToCheck == NULL ) {
         //tuple   :  X       CC1   CC2
-        //payload :  <slot>   v1		v2
+        //payload :  <slot>   v1        v2
         //Means: Tuple has no live interval (X) that is live at the point the payload is
         //defined. It means, that a given 'register slot' can be used to issue a 'mov'
         //with an immediate (or isolated) value.
     } else {
         //tuple   :  CC0       CC1   CC2
-        // ....		  | <- lifetime	
-        //payload :  <slot>    v1		v2
+        // ....          | <- lifetime    
+        //payload :  <slot>    v1        v2
         // .....      | <- lifetime
         //Here we need to check whether the value in CC is live
         //and intersects with the desired <slot> .

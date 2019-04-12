@@ -261,7 +261,7 @@ iga::Op BinaryEncodingIGA::getIGAOp(G4_opcode op, G4_INST *inst) const
         {
             igaOp = iga::Op::WAIT;
         }
-    	break;
+        break;
     case G4_send:
         {
             igaOp = iga::Op::SEND;
@@ -600,13 +600,13 @@ void BinaryEncodingIGA::DoAll()
                 if (igaInst->isMacro())
                 {
                     RegRef regRef = getIGARegRef(dst);
-					Region::Horz hstride = getIGAHorz(dst->getHorzStride());
+                    Region::Horz hstride = getIGAHorz(dst->getHorzStride());
                     igaInst->setMacroDestination(
                         dstModifier,
                         getIGARegName(dst),
                         regRef,
                         getIGAImplAcc(dst->getAccRegSel()),
-						hstride,
+                        hstride,
                         type);
                 }
                 else if (dst->getRegAccess() == Direct)
@@ -708,7 +708,7 @@ void BinaryEncodingIGA::DoAll()
                                 getIGARegName(srcRegion),
                                 regRef,
                                 getIGAImplAcc(accRegSel),
-								region,
+                                region,
                                 type);
                         }
                         else if (srcRegion->getRegAccess() == Direct)
@@ -798,7 +798,7 @@ void BinaryEncodingIGA::DoAll()
     }
 
 
-	bool dontCompactProlog = kernel.fg.builder->needsToLoadLocalID();
+    bool dontCompactProlog = kernel.fg.builder->needsToLoadLocalID();
 
     KernelEncoder encoder(IGAKernel, autoCompact, dontCompactProlog);
     encoder.encode();

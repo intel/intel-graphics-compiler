@@ -47,7 +47,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define MY_CDECL
 
 #else
-	
+    
 #define MY_EXTERN_C    extern "C"
 #define MY_DLLEXPORT   
 #define MY_CALLINGSTD

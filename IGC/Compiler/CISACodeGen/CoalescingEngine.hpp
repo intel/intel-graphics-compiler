@@ -226,7 +226,7 @@ public:
 
         inline void InitializeIndexWithCCRoot(int index, ElementNode* elNode)
         {
-//			assert( OffsetToCCMap.count(index) == 0 );
+//            assert( OffsetToCCMap.count(index) == 0 );
             OffsetToCCMap[index] = elNode;
 
             ResizeBounds(index);

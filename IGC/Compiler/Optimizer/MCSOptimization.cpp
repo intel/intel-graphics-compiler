@@ -88,7 +88,7 @@ char MCSOptimization::ID = 0;
 
 bool MCSOptimization::runOnFunction(Function &F)
 {
-	
+    
     if (IGC_IS_FLAG_ENABLED(DisableMCSOpt))
     {
         return false;
@@ -140,8 +140,8 @@ void MCSOptimization::visitCallInst(llvm::CallInst &I)
             }
         }
         ExtractElementInst* EEI = nullptr;
-		for (auto useItr : ldMcs->users())
-		{
+        for (auto useItr : ldMcs->users())
+        {
             if(ExtractElementInst* ee1 = dyn_cast<ExtractElementInst>(useItr))
             {
                 if(ConstantInt* channel = dyn_cast<ConstantInt>(ee1->getOperand(1)))
@@ -153,12 +153,12 @@ void MCSOptimization::visitCallInst(llvm::CallInst &I)
                     }
                 }
             }
-		}
-		
-		if (EEI != nullptr)
-		{
-			if (EEI->hasOneUse())
-				return; //only one use of EEI -- noOptimization
+        }
+        
+        if (EEI != nullptr)
+        {
+            if (EEI->hasOneUse())
+                return; //only one use of EEI -- noOptimization
 
             LdmsInstrinsic* firstUse = nullptr;
 
@@ -180,9 +180,9 @@ void MCSOptimization::visitCallInst(llvm::CallInst &I)
 
             //collect all blocks where this EEI insts is getting used
             std::set<BasicBlock*> useBlocks;
-			for (auto BitcastUses = EEI->user_begin(); BitcastUses != EEI->user_end(); BitcastUses++)
-			{
-				Instruction* ldmsInst = dyn_cast<Instruction>(*BitcastUses);
+            for (auto BitcastUses = EEI->user_begin(); BitcastUses != EEI->user_end(); BitcastUses++)
+            {
+                Instruction* ldmsInst = dyn_cast<Instruction>(*BitcastUses);
                 if (ldmsInst)
                 {
                     if (ConstantInt* CI = dyn_cast<ConstantInt>(ldmsInst->getOperand(0)))
@@ -194,9 +194,9 @@ void MCSOptimization::visitCallInst(llvm::CallInst &I)
                         return;
                     }
                 }
-			}
+            }
 
-			//iterate over useBlocks.
+            //iterate over useBlocks.
             //For each useBlock, collect all the ldms insts present within the use block corresponding to this EEI 
             for (auto BB : useBlocks)
             {
@@ -283,9 +283,9 @@ void MCSOptimization::visitCallInst(llvm::CallInst &I)
 
                 }
             }
-			m_changed = true;
-		}
-	}
+            m_changed = true;
+        }
+    }
 }
 
 namespace IGC {

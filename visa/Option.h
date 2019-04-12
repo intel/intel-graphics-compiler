@@ -154,19 +154,19 @@ public:
         return getTarget() == VISA_CM;
     }
 
-	// APIs used by vISA clients (explicitly setting options)
+    // APIs used by vISA clients (explicitly setting options)
     void setOption(vISAOptions option, bool val);
     void setOption(vISAOptions option, uint32_t val);
     void setOption(vISAOptions options, const char* str);
 
-	// APIs used by vISA itself to set options internally
-	void setOptionInternally(vISAOptions option, bool val);
-	void setOptionInternally(vISAOptions option, uint32_t val);
-	void setOptionInternally(vISAOptions options, const char* str);
+    // APIs used by vISA itself to set options internally
+    void setOptionInternally(vISAOptions option, bool val);
+    void setOptionInternally(vISAOptions option, uint32_t val);
+    void setOptionInternally(vISAOptions options, const char* str);
 
     static void showUsage(std::ostream& output);
 
-	std::stringstream& getArgString();
+    std::stringstream& getArgString();
     std::string getEncoderOutputFile();
     // Debug print of options
     void dump(void) const;

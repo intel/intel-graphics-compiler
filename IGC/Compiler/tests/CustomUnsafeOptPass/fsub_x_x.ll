@@ -33,9 +33,9 @@ entry:
   ret void
 }
 
-; CHECK: 		[[SUB:%[a-zA-Z0-9]+]] = fsub float %x, %x
-; CHECK-NOT: 	store float [[SUB]]
-; CHECK: 		store float 0.000000e+00
+; CHECK:         [[SUB:%[a-zA-Z0-9]+]] = fsub float %x, %x
+; CHECK-NOT:     store float [[SUB]]
+; CHECK:         store float 0.000000e+00
 
 !IGCMetadata = !{!0}
 

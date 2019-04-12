@@ -39,41 +39,41 @@ using namespace vISA;
 void*
 ArenaHeader::AllocSpace (size_t size)
 {
-	assert( WordAlign (size_t (_nextByte)) == size_t (_nextByte) );
-	void * allocSpace = _nextByte;
+    assert( WordAlign (size_t (_nextByte)) == size_t (_nextByte) );
+    void * allocSpace = _nextByte;
 
-	if (size)
-	{
-		size = WordAlign (size);
+    if (size)
+    {
+        size = WordAlign (size);
 
-		if (_nextByte + size <= _lastByte) {
-			_nextByte += size;
-		}
+        if (_nextByte + size <= _lastByte) {
+            _nextByte += size;
+        }
 
-		else {
-			allocSpace = 0;
-		}
-	}
-	else
-	{
-		allocSpace = 0;
-	}
+        else {
+            allocSpace = 0;
+        }
+    }
+    else
+    {
+        allocSpace = 0;
+    }
 
-	return allocSpace;
+    return allocSpace;
 }
 
 void
 ArenaManager::FreeArenas()
 {
-	while (_arenas)
-	{
+    while (_arenas)
+    {
 #ifdef COLLECT_ALLOCATION_STATS
         currentMallocSize -= _arenas->size;
 #endif
-		unsigned char* killed = (unsigned char*) _arenas;
-		_arenas = _arenas->_nextArena;
-		delete [] killed;
-	}
+        unsigned char* killed = (unsigned char*) _arenas;
+        _arenas = _arenas->_nextArena;
+        delete [] killed;
+    }
 
-	_arenas = 0;
+    _arenas = 0;
 }

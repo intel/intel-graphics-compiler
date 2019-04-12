@@ -104,13 +104,13 @@ float __attribute__((overloadable)) atomic_cmpxchg(volatile __local float *p, fl
 #define CLK_AVC_ME_SUBPIXEL_MODE_HPEL_INTEL                0x1
 #define CLK_AVC_ME_SUBPIXEL_MODE_QPEL_INTEL                0x3
 
-#define CLK_AVC_ME_COST_PRECISION_QPEL_INTEL	           0x0
-#define CLK_AVC_ME_COST_PRECISION_HPEL_INTEL	           0x1
+#define CLK_AVC_ME_COST_PRECISION_QPEL_INTEL               0x0
+#define CLK_AVC_ME_COST_PRECISION_HPEL_INTEL               0x1
 #define CLK_AVC_ME_COST_PRECISION_PEL_INTEL                0x2
-#define CLK_AVC_ME_COST_PRECISION_DPEL_INTEL	           0x3
+#define CLK_AVC_ME_COST_PRECISION_DPEL_INTEL               0x3
 
 #define CLK_AVC_ME_BIDIR_WEIGHT_QUARTER_INTEL                      0x10
-#define CLK_AVC_ME_BIDIR_WEIGHT_THIRD_INTEL    	                   0x15
+#define CLK_AVC_ME_BIDIR_WEIGHT_THIRD_INTEL                           0x15
 #define CLK_AVC_ME_BIDIR_WEIGHT_HALF_INTEL                         0x20
 #define CLK_AVC_ME_BIDIR_WEIGHT_TWO_THIRD_INTEL                    0x2B
 #define CLK_AVC_ME_BIDIR_WEIGHT_THREE_QUARTER_INTEL                0x30

@@ -1280,9 +1280,9 @@ void CompileUnit::constructSubrangeDIE(DIE &Buffer, DISubrange* SR, DIE *IndexTy
     int64_t DefaultLowerBound = getDefaultLowerBound();
     int64_t Count = SR->getCount()
 #if LLVM_VERSION_MAJOR >= 7
-		.dyn_cast<ConstantInt*>()->getSExtValue()
+        .dyn_cast<ConstantInt*>()->getSExtValue()
 #endif
-		;
+        ;
 
     if (DefaultLowerBound == -1 || LowerBound != DefaultLowerBound)
     {

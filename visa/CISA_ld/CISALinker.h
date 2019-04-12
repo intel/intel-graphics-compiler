@@ -103,20 +103,20 @@ private:
 
     int InitGlobalInfoTables();
     void ClearGlobalInfoTables();
-	int GetGlobalUnitInfo(
-		const std::string& unitName,
-		CompiledUnitInfo *& globalUnitInfo);
+    int GetGlobalUnitInfo(
+        const std::string& unitName,
+        CompiledUnitInfo *& globalUnitInfo);
     int GetGlobalUnitClosure(
         const std::string& unitName,
         CompiledUnitClosure *& globalUnitClosure);
-	int GetGlobalVarInfo(
-		const std::string& unitName,
-		CompiledVarInfo *& globalUnitInfo);
-	int GetGlobalVarClosure(
+    int GetGlobalVarInfo(
+        const std::string& unitName,
+        CompiledVarInfo *& globalUnitInfo);
+    int GetGlobalVarClosure(
         const std::string& unitName,
         CompiledVarClosure *& globalVarClosure);
-	int CreateKernelClosures(
-		const std::string& knlName, CompiledUnitClosureList& knlClosureList);
+    int CreateKernelClosures(
+        const std::string& knlName, CompiledUnitClosureList& knlClosureList);
     int LinkCisaObjInfos(const std::string& knlName);
     int LinkLocalCisaObjInfos(
         CisaObjInfo& cisaObjInfo,
@@ -132,20 +132,20 @@ private:
         CompiledUnitInfo& linkedUnitInfo);
     int BuildLinkedVarInfo(CisaHeader& linkedUnitHdr);
     int BuildRelocSymTab(RelocTab& dst, RelocTab& src);
-	int UpdateLinkedCisaImageOffsetsAndSize();
-	int CalculateSize(CompiledUnitInfo& unit, bool isFunction);
-	int CalculateSize(CompiledVarInfo& var);
-	int CalculateSize(RelocTab& symTab);
+    int UpdateLinkedCisaImageOffsetsAndSize();
+    int CalculateSize(CompiledUnitInfo& unit, bool isFunction);
+    int CalculateSize(CompiledVarInfo& var);
+    int CalculateSize(RelocTab& symTab);
     int AllocateCisaObjInfos(int numCisaObjs);
     int ReadCisaFileObj(const char *cisaFileName, CisaObjInfo& cisaObjInfo);
     int WriteCisaFileObj(const char *cisaFileName);
     int ReadCisaMemObj(const CisaObj& cisaObj, CisaObjInfo& cisaObjInfo);
-	int WriteCisaMemObj(CisaObj& cisaObj);
+    int WriteCisaMemObj(CisaObj& cisaObj);
     int WriteCisaMemObj();
-	int WriteCisaCompiledUnitInfo(CompiledUnitInfo& knlUnitInfo, bool isFunction);
-	int WriteCisaVarInfo(CompiledVarInfo& var);
-	int WriteRelocSymTab(RelocTab& symTab);
-	int WriteCisaCompiledUnitData(CompiledUnitInfo& unitInfo);
+    int WriteCisaCompiledUnitInfo(CompiledUnitInfo& knlUnitInfo, bool isFunction);
+    int WriteCisaVarInfo(CompiledVarInfo& var);
+    int WriteRelocSymTab(RelocTab& symTab);
+    int WriteCisaCompiledUnitData(CompiledUnitInfo& unitInfo);
     int ExtractCisaMemObjHdr(
         CisaHeader& cisaHdr, unsigned& cisaBytePos, const void *cisaBuffer);
 
@@ -161,14 +161,14 @@ private:
     LinkedUnitIndexToClosureMap _linkedUnitIndexToClosureMap;
 
     GlobalVarNameToInfoMap      _globalVarNameToInfoMap;
-	CompiledVarInfo            *_localVarMap;
+    CompiledVarInfo            *_localVarMap;
     LinkedVarIndexToClosureMap  _linkedVarIndexToClosureMap;
 
     CompiledUnitClosureList     _pendingLocalClosures;
     CompiledUnitClosureList     _pendingExternClosures;
 
     int                         _countLinkedUnits;
-	int                         _countLinkedVars;
+    int                         _countLinkedVars;
     int                         _numCisaObjInfos;
     CisaObjInfo                *_cisaObjInfos;
     unsigned                    _linkedCisaImageSize;

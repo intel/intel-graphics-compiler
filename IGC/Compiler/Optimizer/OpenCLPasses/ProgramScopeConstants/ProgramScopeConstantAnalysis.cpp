@@ -147,7 +147,7 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module &M)
     }
 
     MetaDataUtils *mdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-	ModuleMetaData *modMd = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+    ModuleMetaData *modMd = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
 
     if (inlineConstantBuffer.size() > 0)
     {
@@ -214,21 +214,21 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module &M)
 
             if (info.AddressSpaceWherePointerResides == ADDRESS_SPACE_GLOBAL)
             {
-				PointerProgramBinaryInfo ppbi;
-				ppbi.PointerBufferIndex = 0;
-				ppbi.PointerOffset = int_cast<int32_t>(info.PointerOffsetFromBufferBase);
-				ppbi.PointeeBufferIndex = 0;
-				ppbi.PointeeAddressSpace = info.AddressSpacePointedTo;
-				modMd->GlobalPointerProgramBinaryInfos.push_back(ppbi);
+                PointerProgramBinaryInfo ppbi;
+                ppbi.PointerBufferIndex = 0;
+                ppbi.PointerOffset = int_cast<int32_t>(info.PointerOffsetFromBufferBase);
+                ppbi.PointeeBufferIndex = 0;
+                ppbi.PointeeAddressSpace = info.AddressSpacePointedTo;
+                modMd->GlobalPointerProgramBinaryInfos.push_back(ppbi);
             }
             else if (info.AddressSpaceWherePointerResides == ADDRESS_SPACE_CONSTANT)
             {
-				PointerProgramBinaryInfo ppbi;
-				ppbi.PointerBufferIndex = 0;
-				ppbi.PointerOffset = int_cast<int32_t>(info.PointerOffsetFromBufferBase);
-				ppbi.PointeeBufferIndex = 0;
-				ppbi.PointeeAddressSpace = info.AddressSpacePointedTo;
-				modMd->ConstantPointerProgramBinaryInfos.push_back(ppbi);
+                PointerProgramBinaryInfo ppbi;
+                ppbi.PointerBufferIndex = 0;
+                ppbi.PointerOffset = int_cast<int32_t>(info.PointerOffsetFromBufferBase);
+                ppbi.PointeeBufferIndex = 0;
+                ppbi.PointeeAddressSpace = info.AddressSpacePointedTo;
+                modMd->ConstantPointerProgramBinaryInfos.push_back(ppbi);
             }
             else
             {

@@ -261,7 +261,7 @@ void ShaderIOAnalysis::addOutputDecl(GenIntrinsicInst* inst)
         otype == SHADER_OUTPUT_TYPE_CLIPDISTANCE_HI ||
         otype == SHADER_OUTPUT_TYPE_VIEWPORT_ARRAY_INDEX ||
         otype == SHADER_OUTPUT_TYPE_RENDER_TARGET_ARRAY_INDEX ||
-		otype == SHADER_OUTPUT_TYPE_POINTWIDTH)
+        otype == SHADER_OUTPUT_TYPE_POINTWIDTH)
     {
         switch (m_shaderType)
         {

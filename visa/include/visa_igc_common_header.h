@@ -59,9 +59,9 @@ typedef enum
 
 typedef enum
 {
-	// FIXME: why not expose PREDEF_SURF_0 etc. directly?
+    // FIXME: why not expose PREDEF_SURF_0 etc. directly?
     PREDEFINED_SURFACE_SLM = 0,
-	PREDEFINED_SURFACE_T252 = 4,
+    PREDEFINED_SURFACE_T252 = 4,
     PREDEFINED_SURFACE_T255 = 5,
     PREDEFINED_SURFACE_LAST = PREDEFINED_SURFACE_T255
 } PreDefined_Surface;

@@ -4685,7 +4685,7 @@ Error ModuleSummaryIndexBitcodeReader::parseValueSymbolTable(
       if (GlobalValue::isLocalLinkage(Linkage))
         OriginalNameID = GlobalValue::getGUID(ValueName);
 
-	  ValueIdToCallGraphGUIDMap[ValueID] =
+      ValueIdToCallGraphGUIDMap[ValueID] =
           std::make_pair(ValueGUID, OriginalNameID);
       ValueName.clear();
       break;
@@ -4706,7 +4706,7 @@ Error ModuleSummaryIndexBitcodeReader::parseValueSymbolTable(
       auto OriginalNameID = FunctionGUID;
       if (GlobalValue::isLocalLinkage(Linkage))
         OriginalNameID = GlobalValue::getGUID(ValueName);
-	  ValueIdToCallGraphGUIDMap[ValueID] =
+      ValueIdToCallGraphGUIDMap[ValueID] =
           std::make_pair(FunctionGUID, OriginalNameID);
 
       ValueName.clear();

@@ -686,7 +686,7 @@ bool PrivateMemoryResolution::resolveAllocaInstuctions(bool stackCall)
     // is alloca in the callee. Save the total private memory to the metadata.
     unsigned int totalPrivateMemPerWI = m_ModAllocaInfo->getTotalPrivateMemPerWI(m_currFunction);
 
-	// This change is only till the FuncMD is ported to new MD framework
+    // This change is only till the FuncMD is ported to new MD framework
     ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
     assert(modMD && "Invalid metadata utils wrapper");
     modMD->FuncMD[m_currFunction].privateMemoryPerWI = totalPrivateMemPerWI;

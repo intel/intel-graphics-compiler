@@ -1398,11 +1398,11 @@ bool VectorPreProcess::runOnFunction(Function& F)
     if (Simplified)
     {
         changed = true;
-		auto new_end = std::remove_if(m_WorkList.begin(), m_WorkList.end(),
+        auto new_end = std::remove_if(m_WorkList.begin(), m_WorkList.end(),
                        [](Value *V) -> bool {
-			return !V || (!isAbstractStoreInst(V) && !isAbstractLoadInst(V));
+            return !V || (!isAbstractStoreInst(V) && !isAbstractLoadInst(V));
         });
-		m_WorkList.erase(new_end, m_WorkList.end());
+        m_WorkList.erase(new_end, m_WorkList.end());
     }
 
     // Split vectors

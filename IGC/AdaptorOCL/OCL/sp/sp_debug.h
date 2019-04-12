@@ -97,23 +97,23 @@ MACRO: ICBE_DEBUG_BREAK
 MACRO: ICBE_ASSERT
 \*****************************************************************************/
 #if defined(_DEBUG)
-	#define ICBE_ASSERT( expr )                                         \
-		if( !(expr) )                                                   \
-		{                                                               \
-			ICBE_DPF( GFXDBG_CRITICAL, "ASSERTION FAILURE:\n" );  \
-			ICBE_DPF( GFXDBG_CRITICAL, "  ( "#expr" )\n" );       \
-			ICBE_DPF( GFXDBG_CRITICAL, "  File:%s\n", __FILE__ ); \
-			ICBE_DPF( GFXDBG_CRITICAL, "  Function:%s\n", __FUNCTION__ ); \
-			ICBE_DPF( GFXDBG_CRITICAL, "  Line:%d\n", __LINE__ ); \
-			if( true )                                                  \
-			{                                                           \
-				ICBE_DEBUG_BREAK;                                       \
-			}                                                           \
-			else                                                        \
-			{                                                           \
-				assert(0 && " Invalid expression");                     \
-			}                                                           \
-		}
+    #define ICBE_ASSERT( expr )                                         \
+        if( !(expr) )                                                   \
+        {                                                               \
+            ICBE_DPF( GFXDBG_CRITICAL, "ASSERTION FAILURE:\n" );  \
+            ICBE_DPF( GFXDBG_CRITICAL, "  ( "#expr" )\n" );       \
+            ICBE_DPF( GFXDBG_CRITICAL, "  File:%s\n", __FILE__ ); \
+            ICBE_DPF( GFXDBG_CRITICAL, "  Function:%s\n", __FUNCTION__ ); \
+            ICBE_DPF( GFXDBG_CRITICAL, "  Line:%d\n", __LINE__ ); \
+            if( true )                                                  \
+            {                                                           \
+                ICBE_DEBUG_BREAK;                                       \
+            }                                                           \
+            else                                                        \
+            {                                                           \
+                assert(0 && " Invalid expression");                     \
+            }                                                           \
+        }
 #else
     #define ICBE_ASSERT( expr )
 #endif // _DEBUG

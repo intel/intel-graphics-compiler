@@ -32,16 +32,16 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace IGCLLVM
 {
 #if LLVM_VERSION_MAJOR == 4
-	using llvm::DISubprogram;
+    using llvm::DISubprogram;
 #elif LLVM_VERSION_MAJOR >= 7
-	class DISubprogram : public llvm::DISubprogram
-	{
-	public:
-		inline llvm::DINodeArray getVariables() 
-		{
-			return llvm::DISubprogram::getRetainedNodes();
-		}
-	};
+    class DISubprogram : public llvm::DISubprogram
+    {
+    public:
+        inline llvm::DINodeArray getVariables() 
+        {
+            return llvm::DISubprogram::getRetainedNodes();
+        }
+    };
 #endif
 }
 

@@ -62,8 +62,8 @@ class PushAnalysis : public llvm::ModulePass
     static const uint32_t m_pMaxNumOfDSPushedInputs;
     static const uint32_t m_pMaxNumOfGSPushedInputs;
 
-	bool m_funcTypeChanged;
-	std::map <llvm::Function*, bool> m_isFuncTypeChanged;
+    bool m_funcTypeChanged;
+    std::map <llvm::Function*, bool> m_isFuncTypeChanged;
 
     llvm::Module* m_module;
     llvm::Function *m_pFunction;
@@ -82,9 +82,9 @@ class PushAnalysis : public llvm::ModulePass
     llvm::DenseMap<llvm::Instruction*, bool> m_statelessLoads;
     uint    m_cbToLoad;
     uint    m_maxStatelessOffset;
-	int    m_argIndex;
-	std::vector < llvm::Value* > m_argList;
-	FunctionUpgrader m_pFuncUpgrade;
+    int    m_argIndex;
+    std::vector < llvm::Value* > m_argList;
+    FunctionUpgrader m_pFuncUpgrade;
 
     // Helper function
     /// Return true if the constant is in the range which we are allowed to push
@@ -144,23 +144,23 @@ public:
         AU.addRequired<PullConstantHeuristics>();
     }
 
-	llvm::Value* addArgumentAndMetadata(llvm::Type *pType, std::string argName, IGC::WIAnalysis::WIDependancy dependency);
-	bool runOnModule(llvm::Module& ) override;
+    llvm::Value* addArgumentAndMetadata(llvm::Type *pType, std::string argName, IGC::WIAnalysis::WIDependancy dependency);
+    bool runOnModule(llvm::Module& ) override;
     void ProcessFunction();
     void AnalyzeFunction(llvm::Function *F)
     {
         m_pFunction = F;
         m_module = F->getParent();
 
-		// We need to initialize m_argIndex and m_argList appropriately as there might be some arguments added before push analysis stage
-		m_argIndex = 0;
-		m_argList.clear();
-		for (auto arg = m_pFunction->arg_begin(); arg != m_pFunction->arg_end(); ++arg)
-		{
-			m_argList.push_back(&(*arg));
-			m_argIndex++;
-		}
-		m_argIndex = m_argIndex - 1;
+        // We need to initialize m_argIndex and m_argList appropriately as there might be some arguments added before push analysis stage
+        m_argIndex = 0;
+        m_argList.clear();
+        for (auto arg = m_pFunction->arg_begin(); arg != m_pFunction->arg_end(); ++arg)
+        {
+            m_argList.push_back(&(*arg));
+            m_argIndex++;
+        }
+        m_argIndex = m_argIndex - 1;
 
         if (m_pMdUtils->findFunctionsInfoItem(F) != m_pMdUtils->end_FunctionsInfo())
         {

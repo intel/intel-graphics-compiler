@@ -160,7 +160,7 @@ int getGenxPlatformEncoding()
 
 void InitStepping()
 {
-	stepping = Step_none;
+    stepping = Step_none;
 }
 
 int SetStepping( const char * str ) {
@@ -232,6 +232,6 @@ G4_Type_Info G4_Type_Table[Type_UNDEF+1] = {
     {Type_UQ, 64, 8, 0xFF, "uq"},
     {Type_HF, 16, 2, 0x3, "hf"},
     {Type_NF, 64, 8, 0xFF, "nf"},
-	{Type_UNDEF, 0, 0, 0x0, "none"}
+    {Type_UNDEF, 0, 0, 0x0, "none"}
 };
 

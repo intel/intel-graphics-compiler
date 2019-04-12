@@ -484,10 +484,10 @@ struct DebugInfoFormat
         }
     }
 
-	uint16_t numSubs
-	SubroutineInfo subInfo[numSubs];
+    uint16_t numSubs
+    SubroutineInfo subInfo[numSubs];
 
-	CallFrameInfo frameInfo;
+    CallFrameInfo frameInfo;
 }
 
 struct CISAMap
@@ -500,7 +500,7 @@ struct SubroutineInfo
 {
     VarName subName;
     uint32_t startVISAOffset;
-	uint32_t endVISAOffset;
+    uint32_t endVISAOffset;
     VarLiveIntervalVISA retVal;
 }
 
@@ -538,21 +538,21 @@ struct VarAlloc
 {
     uint8_t virtualType; // Virtual register type from CISA file: 0 - address, 1 - flag, 2 - GRF
     uint8_t physicalType; // Physical register type allocated by RA: 0 - address, 1 - flag, 2 - GRF, 3 - memory
-	Mapping mapping;
+    Mapping mapping;
 }
 
 union Mapping
 {
-	struct Register
-	{
-		uint16_t regNum;
-		uint16_t subRegNum; // for GRF, in byte offset
-	}
-	struct Memory
-	{
+    struct Register
+    {
+        uint16_t regNum;
+        uint16_t subRegNum; // for GRF, in byte offset
+    }
+    struct Memory
+    {
         uint32_t isBaseOffBEFP : 1; // MSB of 32-bit field denotes whether base if off BE_FP (0) or absolute (1)
-		int32_t memoryOffset : 31; // memory offset
-	}
+        int32_t memoryOffset : 31; // memory offset
+    }
 }
 
 struct VarLiveIntervalVISA
@@ -598,9 +598,9 @@ struct RegInfoMapping
 struct RegInfo
 {
     // GRF file r0.0 -> srcRegOff = 0, r1.0 -> srcRegOff = 32.
-	// Addr and flag registers can be represented beyond GRF file size of 4k. But not currently required since they are not callee save.
-	uint16_t srcRegOff;
-	uint16_t numBytes;
+    // Addr and flag registers can be represented beyond GRF file size of 4k. But not currently required since they are not callee save.
+    uint16_t srcRegOff;
+    uint16_t numBytes;
 }
 
 */

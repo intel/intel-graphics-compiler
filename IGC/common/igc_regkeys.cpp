@@ -314,35 +314,35 @@ static const char* GetOptionFile()
 // hash:abcdabcdabcdabcd-ffffffffffffffff,aaaaaaaaaaaaaaaa
 static void ParseHashRange(std::string line, std::vector<HashRange>& ranges)
 {
-	size_t sPos = line.find("hash:");
-	if(sPos == std::string::npos)
-	{
-		return;
-	}
-	// re-initialize ranges
-	ranges.clear();
-	std::string vString = line.substr(sPos + 5);
-	std::string token;
-	std::stringstream sline(vString);
-	while(std::getline(sline, token, ','))
-	{
-		size_t dash = token.find('-');
-		std::string start = token.substr(0, dash);
-		std::string end;
-		if(dash == std::string::npos)
-		{
-			end = start;
-		}
-		else
-		{
-			end = token.substr(dash + 1);
-		}
-		HashRange range;
-		range.start = std::stoull(start, nullptr, 16);
-		range.end = std::stoull(end, nullptr, 16);
-		ranges.push_back(range);
-	}
-	
+    size_t sPos = line.find("hash:");
+    if(sPos == std::string::npos)
+    {
+        return;
+    }
+    // re-initialize ranges
+    ranges.clear();
+    std::string vString = line.substr(sPos + 5);
+    std::string token;
+    std::stringstream sline(vString);
+    while(std::getline(sline, token, ','))
+    {
+        size_t dash = token.find('-');
+        std::string start = token.substr(0, dash);
+        std::string end;
+        if(dash == std::string::npos)
+        {
+            end = start;
+        }
+        else
+        {
+            end = token.substr(dash + 1);
+        }
+        HashRange range;
+        range.start = std::stoull(start, nullptr, 16);
+        range.end = std::stoull(end, nullptr, 16);
+        ranges.push_back(range);
+    }
+    
 }
 
 static void declareIGCKey(std::string& line, const char* dataType, const char* regkeyName, std::vector<HashRange>& hashes, SRegKeyVariableMetaData* regKey)
@@ -378,44 +378,44 @@ static void LoadDebugFlagsFromFile()
 thread_local unsigned long long g_CurrentShaderHash = 0;
 bool CheckHashRange(const std::vector<HashRange>& hashes)
 {
-	if(hashes.empty())
-	{
-		return true;
-	}
-	for(auto it : hashes)
-	{
-		if(g_CurrentShaderHash >= it.start && g_CurrentShaderHash <= it.end)
-		{
-			return true;
-		}
-	}
-	return false;
+    if(hashes.empty())
+    {
+        return true;
+    }
+    for(auto it : hashes)
+    {
+        if(g_CurrentShaderHash >= it.start && g_CurrentShaderHash <= it.end)
+        {
+            return true;
+        }
+    }
+    return false;
 }
 
 static void LoadFromRegKeyOrEnvVar()
 {
-	SRegKeyVariableMetaData* pRegKeyVariable = (SRegKeyVariableMetaData*)&g_RegKeyList;
-	unsigned NUM_REGKEY_ENTRIES = sizeof(SRegKeysList) / sizeof(SRegKeyVariableMetaData);
-	for (DWORD i = 0; i < NUM_REGKEY_ENTRIES; i++)
-	{
-		debugString value = { 0 };
-		const char* name = pRegKeyVariable[i].GetName();
+    SRegKeyVariableMetaData* pRegKeyVariable = (SRegKeyVariableMetaData*)&g_RegKeyList;
+    unsigned NUM_REGKEY_ENTRIES = sizeof(SRegKeysList) / sizeof(SRegKeyVariableMetaData);
+    for (DWORD i = 0; i < NUM_REGKEY_ENTRIES; i++)
+    {
+        debugString value = { 0 };
+        const char* name = pRegKeyVariable[i].GetName();
 
-		bool isSet = ReadIGCRegistry(
-			name,
-			&value,
-			sizeof(value));
+        bool isSet = ReadIGCRegistry(
+            name,
+            &value,
+            sizeof(value));
 
-		if (isSet)
-		{
-			memcpy(pRegKeyVariable[i].m_string, value, sizeof(value));
-		}
-	}
+        if (isSet)
+        {
+            memcpy(pRegKeyVariable[i].m_string, value, sizeof(value));
+        }
+    }
 }
 
 void SetCurrentDebugHash(unsigned long long hash)
 {
-	g_CurrentShaderHash = hash;
+    g_CurrentShaderHash = hash;
 }
 
 /*****************************************************************************\
@@ -435,85 +435,85 @@ Output:
 \*****************************************************************************/
 void LoadRegistryKeys( void )
 {
-	// only load the debug flags once before compiling to avoid any multi-threading issue
-	static std::mutex loadFlags;
-	static volatile bool flagsSet = false;
+    // only load the debug flags once before compiling to avoid any multi-threading issue
+    static std::mutex loadFlags;
+    static volatile bool flagsSet = false;
     loadFlags.lock();
-	if(!flagsSet)
-	{
+    if(!flagsSet)
+    {
         flagsSet = true;
-		// dump out IGC.xml for the registry manager
-		DumpIGCRegistryKeyDefinitions();
-		LoadDebugFlagsFromFile();
-		LoadFromRegKeyOrEnvVar();
+        // dump out IGC.xml for the registry manager
+        DumpIGCRegistryKeyDefinitions();
+        LoadDebugFlagsFromFile();
+        LoadFromRegKeyOrEnvVar();
 
-		if(IGC_IS_FLAG_ENABLED(LLVMCommandLine))
-		{
-			std::vector<char*> args;
-			args.push_back((char *)("IGC"));
-			ParseCStringVector(args, IGC_GET_REGKEYSTRING(LLVMCommandLine));
-			llvm::cl::ParseCommandLineOptions(args.size(), &args[0]);
-		}
+        if(IGC_IS_FLAG_ENABLED(LLVMCommandLine))
+        {
+            std::vector<char*> args;
+            args.push_back((char *)("IGC"));
+            ParseCStringVector(args, IGC_GET_REGKEYSTRING(LLVMCommandLine));
+            llvm::cl::ParseCommandLineOptions(args.size(), &args[0]);
+        }
 
-		if(IGC_IS_FLAG_ENABLED(DisableIGCOptimizations))
-		{
-			IGC_SET_FLAG_VALUE(DisableLLVMGenericOptimizations, true);
-			IGC_SET_FLAG_VALUE(DisableCodeSinking, true);
-			IGC_SET_FLAG_VALUE(DisableDeSSA, true);
-			//disable now until we figure out the issue
-			//IGC_SET_FLAG_VALUE(DisablePayloadCoalescing, true);
-			IGC_SET_FLAG_VALUE(DisableSendS, true);
-			IGC_SET_FLAG_VALUE(EnableVISANoSchedule, true);
-			IGC_SET_FLAG_VALUE(DisableUniformAnalysis, true);
-			IGC_SET_FLAG_VALUE(DisablePushConstant, true);
-			IGC_SET_FLAG_VALUE(DisableConstantCoalescing, true);
-			IGC_SET_FLAG_VALUE(DisableURBWriteMerge, true);
-			IGC_SET_FLAG_VALUE(DisableCodeHoisting, true);
-			IGC_SET_FLAG_VALUE(DisableEmptyBlockRemoval, true);
-			IGC_SET_FLAG_VALUE(DisableSIMD32Slicing, true);
-			IGC_SET_FLAG_VALUE(DisableCSEL, true);
-			IGC_SET_FLAG_VALUE(DisableFlagOpt, true);
-			IGC_SET_FLAG_VALUE(DisableScalarAtomics, true);
-		}
+        if(IGC_IS_FLAG_ENABLED(DisableIGCOptimizations))
+        {
+            IGC_SET_FLAG_VALUE(DisableLLVMGenericOptimizations, true);
+            IGC_SET_FLAG_VALUE(DisableCodeSinking, true);
+            IGC_SET_FLAG_VALUE(DisableDeSSA, true);
+            //disable now until we figure out the issue
+            //IGC_SET_FLAG_VALUE(DisablePayloadCoalescing, true);
+            IGC_SET_FLAG_VALUE(DisableSendS, true);
+            IGC_SET_FLAG_VALUE(EnableVISANoSchedule, true);
+            IGC_SET_FLAG_VALUE(DisableUniformAnalysis, true);
+            IGC_SET_FLAG_VALUE(DisablePushConstant, true);
+            IGC_SET_FLAG_VALUE(DisableConstantCoalescing, true);
+            IGC_SET_FLAG_VALUE(DisableURBWriteMerge, true);
+            IGC_SET_FLAG_VALUE(DisableCodeHoisting, true);
+            IGC_SET_FLAG_VALUE(DisableEmptyBlockRemoval, true);
+            IGC_SET_FLAG_VALUE(DisableSIMD32Slicing, true);
+            IGC_SET_FLAG_VALUE(DisableCSEL, true);
+            IGC_SET_FLAG_VALUE(DisableFlagOpt, true);
+            IGC_SET_FLAG_VALUE(DisableScalarAtomics, true);
+        }
 
-		if(IGC_IS_FLAG_ENABLED(ShaderDumpEnableAll))
-		{
-			IGC_SET_FLAG_VALUE(ShaderDumpEnable, true);
-			IGC_SET_FLAG_VALUE(EnableVISASlowpath, true);
-			IGC_SET_FLAG_VALUE(EnableVISADumpCommonISA, true);
-		}
+        if(IGC_IS_FLAG_ENABLED(ShaderDumpEnableAll))
+        {
+            IGC_SET_FLAG_VALUE(ShaderDumpEnable, true);
+            IGC_SET_FLAG_VALUE(EnableVISASlowpath, true);
+            IGC_SET_FLAG_VALUE(EnableVISADumpCommonISA, true);
+        }
 
-		if(IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
-		{
-			IGC_SET_FLAG_VALUE(DumpLLVMIR, true);
-			IGC_SET_FLAG_VALUE(EnableCosDump, true);
+        if(IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
+        {
+            IGC_SET_FLAG_VALUE(DumpLLVMIR, true);
+            IGC_SET_FLAG_VALUE(EnableCosDump, true);
             IGC_SET_FLAG_VALUE(DumpOCLProgramInfo, true);
-			IGC_SET_FLAG_VALUE(EnableVISAOutput, true);
-			IGC_SET_FLAG_VALUE(EnableVISABinary, true);
-			IGC_SET_FLAG_VALUE(EnableVISADumpCommonISA, true);
-			IGC_SET_FLAG_VALUE(EnableCapsDump, true);
-		}
+            IGC_SET_FLAG_VALUE(EnableVISAOutput, true);
+            IGC_SET_FLAG_VALUE(EnableVISABinary, true);
+            IGC_SET_FLAG_VALUE(EnableVISADumpCommonISA, true);
+            IGC_SET_FLAG_VALUE(EnableCapsDump, true);
+        }
 
 
-		switch(IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth))
-		{
-		case 32:
-			IGC_SET_FLAG_VALUE(EnableOCLSIMD32, true);
-			IGC_SET_FLAG_VALUE(EnableOCLSIMD16, false);
-			break;
-		case 16:
-			IGC_SET_FLAG_VALUE(EnableOCLSIMD32, false);
-			IGC_SET_FLAG_VALUE(EnableOCLSIMD16, true);
-			break;
-		case 8:
-			IGC_SET_FLAG_VALUE(EnableOCLSIMD32, false);
-			IGC_SET_FLAG_VALUE(EnableOCLSIMD16, false);
-			break;
-		default:
-			// Non-valid value is ignored (using default).
-			IGC_SET_FLAG_VALUE(ForceOCLSIMDWidth, 0);
-		}
-	}
+        switch(IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth))
+        {
+        case 32:
+            IGC_SET_FLAG_VALUE(EnableOCLSIMD32, true);
+            IGC_SET_FLAG_VALUE(EnableOCLSIMD16, false);
+            break;
+        case 16:
+            IGC_SET_FLAG_VALUE(EnableOCLSIMD32, false);
+            IGC_SET_FLAG_VALUE(EnableOCLSIMD16, true);
+            break;
+        case 8:
+            IGC_SET_FLAG_VALUE(EnableOCLSIMD32, false);
+            IGC_SET_FLAG_VALUE(EnableOCLSIMD16, false);
+            break;
+        default:
+            // Non-valid value is ignored (using default).
+            IGC_SET_FLAG_VALUE(ForceOCLSIMDWidth, 0);
+        }
+    }
     loadFlags.unlock();
 }
 #endif

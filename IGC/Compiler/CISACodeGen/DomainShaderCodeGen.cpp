@@ -298,7 +298,7 @@ void CDomainShader::AddEpilogue(llvm::ReturnInst* pRet)
     {
         CVariable* channelMask = ImmToVariable(0xFF, ISA_TYPE_D);
         CVariable* URBHandle = GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_D, EALIGN_GRF);
-	    encoder.SetNoMask();
+        encoder.SetNoMask();
         encoder.SetSrcRegion(0, 0, 1, 0);
         encoder.Or(URBHandle, GetURBOutputHandle(), ImmToVariable(0x0000F000, ISA_TYPE_D));
         encoder.Push();

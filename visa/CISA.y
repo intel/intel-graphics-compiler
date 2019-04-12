@@ -232,12 +232,12 @@ VISA_RawOpnd* rawOperandArray[16];
     VISA_Align       align;
 
     VISAAtomicOps     atomic_op;
-	VISASampler3DSubOpCode sample3DOp;
+    VISASampler3DSubOpCode sample3DOp;
 
     MEDIA_LD_mod           media_mode;
     bool                   oword_mod;
     VISAChannelMask        s_channel; // Cannot use ChannelMask here as it's a member of union where non-trivial constructor is not allowed.
-	CHANNEL_OUTPUT_FORMAT  s_channel_output;
+    CHANNEL_OUTPUT_FORMAT  s_channel_output;
     COMMON_ISA_VME_OP_MODE     VME_type;
     Common_VISA_EMask_Ctrl  emask;
     OutputFormatControl cntrl;
@@ -250,8 +250,8 @@ VISA_RawOpnd* rawOperandArray[16];
 
     // CPS LOD compensation enable for 3d sample.
     bool cps;
-	bool non_uniform_sampler;
-	bool flag;
+    bool non_uniform_sampler;
+    bool flag;
 }
 
 %start CISAStmt
@@ -274,7 +274,7 @@ VISA_RawOpnd* rawOperandArray[16];
 %token SAT                  /* .sat */
 %token PIXEL_NULL_MASK      /* .pixel_null_mask */
 %token CPS                  /* .cps */
-%token NON_UNIFORM_SAMPLER	/* .divS */
+%token NON_UNIFORM_SAMPLER    /* .divS */
 %token ALIAS
 %token ALIGN
 %token RAW_SEND_STRING      /* raw_send */
@@ -751,10 +751,10 @@ DirectiveAttr: DIRECTIVE_KERNEL_ATTR VAR '=' ASM_FILE_NAME
                {
                    pCisaBuilder->CISA_attr_directive($2, $4, CISAlineno);
                };
-			   | DIRECTIVE_KERNEL_ATTR VAR '='
-			   {
-				   pCisaBuilder->CISA_attr_directive($2, nullptr, CISAlineno);
-			   };
+               | DIRECTIVE_KERNEL_ATTR VAR '='
+               {
+                   pCisaBuilder->CISA_attr_directive($2, nullptr, CISAlineno);
+               };
 
 /* ----- .function ----- */
                //     1           2
@@ -911,15 +911,15 @@ CISAInst: LogicInstruction
          };
 
 
-                        //   1       2				3             4           5                       6                      7
+                        //   1       2                3             4           5                       6                      7
 LogicInstruction : Predicate BINARY_LOGIC_OP InstModifier  ExecSize VecDstOperand_G_I VecSrcOperand_G_I_IMM VecSrcOperand_G_I_IMM
          {
              pCisaBuilder->CISA_create_logic_instruction($1.cisa_gen_opnd, $2, $3, $4.emask, $4.exec_size, $5.cisa_gen_opnd, $6.cisa_gen_opnd, $7.cisa_gen_opnd, NULL, NULL, CISAlineno);
          };
-		 | Predicate BINARY_LOGIC_OP InstModifier  ExecSize VAR VAR VAR
-		 {
+         | Predicate BINARY_LOGIC_OP InstModifier  ExecSize VAR VAR VAR
+         {
              pCisaBuilder->CISA_create_logic_instruction($2, $4.emask, $4.exec_size, $5, $6, $7, CISAlineno);
-		 };
+         };
          | Predicate TERNARY_LOGIC_OP InstModifier  ExecSize VecDstOperand_G_I VecSrcOperand_G_I_IMM VecSrcOperand_G_I_IMM VecSrcOperand_G_I_IMM
          {
              pCisaBuilder->CISA_create_logic_instruction($1.cisa_gen_opnd, $2, $3, $4.emask, $4.exec_size, $5.cisa_gen_opnd, $6.cisa_gen_opnd, $7.cisa_gen_opnd, $8.cisa_gen_opnd, NULL, CISAlineno);
@@ -929,15 +929,15 @@ LogicInstruction : Predicate BINARY_LOGIC_OP InstModifier  ExecSize VecDstOperan
              pCisaBuilder->CISA_create_logic_instruction($1.cisa_gen_opnd, $2, $3, $4.emask, $4.exec_size, $5.cisa_gen_opnd, $6.cisa_gen_opnd, $7.cisa_gen_opnd, $8.cisa_gen_opnd, $9.cisa_gen_opnd, CISAlineno);
          };
 
-                       //   1       2				3            4             5                    6
+                       //   1       2                3            4             5                    6
 UnaryLogicInstruction : Predicate UNARY_LOGIC_OP InstModifier  ExecSize VecDstOperand_G_I VecSrcOperand_G_I_IMM
          {
              pCisaBuilder->CISA_create_logic_instruction($1.cisa_gen_opnd, $2, $3, $4.emask, $4.exec_size, $5.cisa_gen_opnd, $6.cisa_gen_opnd, NULL, NULL, NULL, CISAlineno);
          }
-		 | Predicate UNARY_LOGIC_OP InstModifier  ExecSize VAR VAR
-		 {
+         | Predicate UNARY_LOGIC_OP InstModifier  ExecSize VAR VAR
+         {
              pCisaBuilder->CISA_create_logic_instruction($2, $4.emask, $4.exec_size, $5, $6, NULL, CISAlineno);
-		 };
+         };
 
                       //  1         2           3              4              5         6
 MathInstruction_2OPND : Predicate MATH2_OP InstModifier ExecSize VecDstOperand_G_I VecSrcOperand_G_I_IMM
@@ -1020,10 +1020,10 @@ MovInstruction : Predicate MOV_OP InstModifier ExecSize VecDstOperand_G_I_A VecS
          {
              pCisaBuilder->CISA_create_mov_instruction($1.cisa_gen_opnd, $2, $4.emask, $4.exec_size, $3, $5.cisa_gen_opnd, $6.cisa_gen_opnd, CISAlineno);
          };
-		 | Predicate MOV_OP InstModifier ExecSize VecDstOperand_G_I_A VAR
-		 {
+         | Predicate MOV_OP InstModifier ExecSize VecDstOperand_G_I_A VAR
+         {
              pCisaBuilder->CISA_create_mov_instruction($5.cisa_gen_opnd, $6, CISAlineno);
-		 };
+         };
 
                 //   1       2            3            4
 MovsInstruction : MOVS_OP ExecSize DstStateOperand SrcStateOperand
@@ -1044,8 +1044,8 @@ CmpInstruction :  CMP_OP ConditionalModifier ExecSize VAR VecSrcOperand_G_I_IMM 
          {
              pCisaBuilder->CISA_create_cmp_instruction($2.cisa_mod, ISA_CMP, $3.emask, $3.exec_size, $4, $5.cisa_gen_opnd, $6.cisa_gen_opnd, CISAlineno);
          };
-		 //	1		2					3		4					5						6
-		 |  CMP_OP ConditionalModifier ExecSize VecDstOperand_G_I_A VecSrcOperand_G_I_IMM VecSrcOperand_G_I_IMM
+         //    1        2                    3        4                    5                        6
+         |  CMP_OP ConditionalModifier ExecSize VecDstOperand_G_I_A VecSrcOperand_G_I_IMM VecSrcOperand_G_I_IMM
          {
              pCisaBuilder->CISA_create_cmp_instruction($2.cisa_mod, ISA_CMP, $3.emask, $3.exec_size, $4.cisa_gen_opnd, $5.cisa_gen_opnd, $6.cisa_gen_opnd, CISAlineno);
          };
@@ -1122,19 +1122,19 @@ SampleInstruction: SAMPLE_OP SAMPLER_CHANNEL SIMDMode VAR VAR RawOperand RawOper
                pCisaBuilder->CISA_create_sample_instruction($1, ChannelMask::createFromAPI($2), (int)$3, "", $4, $5.cisa_gen_opnd, $6.cisa_gen_opnd, $7.cisa_gen_opnd, $8.cisa_gen_opnd, CISAlineno);
            };
 
-           //        1         2            3                      4          5							 6				 7		  8						9   10  11			12
+           //        1         2            3                      4          5                             6                 7          8                        9   10  11            12
 Sample3dInstruction: Predicate SAMPLE_3D_OP PIXEL_NULL_MASK_ENABLE CPS_ENABLE NON_UNIFORM_SAMPLER_ENABLE SAMPLER_CHANNEL ExecSize VecSrcOperand_G_I_IMM VAR VAR RawOperand RawOperandArray
            {
                pCisaBuilder->create3DSampleInstruction( $1.cisa_gen_opnd, $2, $3, $4, $5, ChannelMask::createFromAPI($6), $7.emask, $7.exec_size, $8.cisa_gen_opnd, $9, $10, $11.cisa_gen_opnd, (unsigned int) $12, rawOperandArray, CISAlineno);
            };
 
-           //      1         2          3                      4               5        6						7   8          9
+           //      1         2          3                      4               5        6                        7   8          9
 Load3dInstruction: Predicate LOAD_3D_OP PIXEL_NULL_MASK_ENABLE SAMPLER_CHANNEL ExecSize VecSrcOperand_G_I_IMM VAR RawOperand RawOperandArray
            {
                pCisaBuilder->create3DLoadInstruction( $1.cisa_gen_opnd, $2, $3, ChannelMask::createFromAPI($4), $5.emask, $5.exec_size, $6.cisa_gen_opnd, $7, $8.cisa_gen_opnd, (unsigned int) $9, rawOperandArray, CISAlineno);
            };
 
-           //         1         2             3                      4               5        6						7   8   9          10
+           //         1         2             3                      4               5        6                        7   8   9          10
 Gather43dInstruction: Predicate SAMPLE4_3D_OP PIXEL_NULL_MASK_ENABLE SAMPLER_CHANNEL ExecSize VecSrcOperand_G_I_IMM VAR VAR RawOperand RawOperandArray
            {
               pCisaBuilder->createSample4Instruction( $1.cisa_gen_opnd, $2, $3, ChannelMask::createFromAPI($4), $5.emask, $5.exec_size, $6.cisa_gen_opnd, $7, $8, $9.cisa_gen_opnd, (unsigned int) $10, rawOperandArray, CISAlineno );
@@ -1157,18 +1157,18 @@ RTWriteOperandParse: /* empty */
             }
             | RTWriteOperandParse VecSrcOperand_G_IMM
             {
-				RTWriteOperands.push_back($2.cisa_gen_opnd);
+                RTWriteOperands.push_back($2.cisa_gen_opnd);
             }
             | RTWriteOperandParse RawOperand
             {
-			    RTWriteOperands.push_back($2.cisa_gen_opnd);
+                RTWriteOperands.push_back($2.cisa_gen_opnd);
             }
             //          1           2               3               4         5     6
 RTWriteInstruction: Predicate    RTWRITE_OP_3D    RTWRITE_MODE    ExecSize    VAR   RTWriteOperandParse
            {
                pCisaBuilder->CISA_create_rtwrite_3d_instruction( $1.cisa_gen_opnd, $3, $4.emask, (unsigned int)$4.exec_size, $5,
                                                                   RTWriteOperands, CISAlineno );
-			   RTWriteOperands.clear();
+               RTWriteOperands.clear();
            };
 
             //          1           2               3           4        5          6         7             8               9
@@ -1332,35 +1332,35 @@ RawSendInstruction: Predicate  RAW_SEND_STRING  ExecSize HEX_NUMBER NUMBER NUMBE
         {
             pCisaBuilder->CISA_create_raw_send_instruction(ISA_RAW_SEND, false, $3.emask, $3.exec_size, $1.cisa_gen_opnd, (unsigned)$4, (unsigned char)$5, (unsigned char)$6, $7.cisa_gen_opnd, $8.cisa_gen_opnd, $9.cisa_gen_opnd, CISAlineno);
         };
-		//    1             2               3       4       5      6            7               8           9
-		| Predicate  RAW_SENDC_STRING  ExecSize HEX_NUMBER NUMBER NUMBER VecSrcOperand_G_IMM RawOperand RawOperand
-		{
-			pCisaBuilder->CISA_create_raw_send_instruction(ISA_RAW_SEND, true, $3.emask, $3.exec_size, $1.cisa_gen_opnd, (unsigned)$4, (unsigned char)$5, (unsigned char)$6, $7.cisa_gen_opnd, $8.cisa_gen_opnd, $9.cisa_gen_opnd, CISAlineno);
-		}
+        //    1             2               3       4       5      6            7               8           9
+        | Predicate  RAW_SENDC_STRING  ExecSize HEX_NUMBER NUMBER NUMBER VecSrcOperand_G_IMM RawOperand RawOperand
+        {
+            pCisaBuilder->CISA_create_raw_send_instruction(ISA_RAW_SEND, true, $3.emask, $3.exec_size, $1.cisa_gen_opnd, (unsigned)$4, (unsigned char)$5, (unsigned char)$6, $7.cisa_gen_opnd, $8.cisa_gen_opnd, $9.cisa_gen_opnd, CISAlineno);
+        }
 
-		//			1						2
-LifetimeStartInst: LIFETIME_START_OP		VAR
-		{
-			pCisaBuilder->CISA_create_lifetime_inst((unsigned char)0, $2, CISAlineno);
-		};
+        //            1                        2
+LifetimeStartInst: LIFETIME_START_OP        VAR
+        {
+            pCisaBuilder->CISA_create_lifetime_inst((unsigned char)0, $2, CISAlineno);
+        };
 
-		//			1						2
-LifetimeEndInst:  LIFETIME_END_OP			VAR
-		{
-			pCisaBuilder->CISA_create_lifetime_inst((unsigned char)1, $2, CISAlineno);
-		};
-		//              1             2           3        4       5      6          7              8                  9               10         11        12
+        //            1                        2
+LifetimeEndInst:  LIFETIME_END_OP            VAR
+        {
+            pCisaBuilder->CISA_create_lifetime_inst((unsigned char)1, $2, CISAlineno);
+        };
+        //              1             2           3        4       5      6          7              8                  9               10         11        12
 RawSendsInstruction: Predicate RAW_SENDS_STRING ElemNum ElemNum  ElemNum ElemNum ExecSize VecSrcOperand_G_IMM   VecSrcOperand_G_IMM RawOperand RawOperand RawOperand
         {
             pCisaBuilder->CISA_create_raw_sends_instruction(ISA_RAW_SENDS, false, $7.emask, $7.exec_size, $1.cisa_gen_opnd, $8.cisa_gen_opnd, (unsigned char)$3, (unsigned char)$4,
-			    (unsigned char)$5, (unsigned char)$6, $9.cisa_gen_opnd, $10.cisa_gen_opnd, $11.cisa_gen_opnd, $12.cisa_gen_opnd, CISAlineno);
+                (unsigned char)$5, (unsigned char)$6, $9.cisa_gen_opnd, $10.cisa_gen_opnd, $11.cisa_gen_opnd, $12.cisa_gen_opnd, CISAlineno);
         };
-		//    1             2              3       4       5        6        7                         8             9          10        11
-		| Predicate  RAW_SENDSC_STRING  ElemNum ElemNum ElemNum ExecSize VecSrcOperand_G_IMM VecSrcOperand_G_IMM RawOperand RawOperand RawOperand
-		{
-			pCisaBuilder->CISA_create_raw_sends_instruction(ISA_RAW_SENDS, true, $6.emask, $6.exec_size, $1.cisa_gen_opnd, $7.cisa_gen_opnd, 0, (unsigned char)$3,
-			    (unsigned char)$4, (unsigned char)$5, $8.cisa_gen_opnd, $9.cisa_gen_opnd, $10.cisa_gen_opnd, $11.cisa_gen_opnd, CISAlineno);
-		}
+        //    1             2              3       4       5        6        7                         8             9          10        11
+        | Predicate  RAW_SENDSC_STRING  ElemNum ElemNum ElemNum ExecSize VecSrcOperand_G_IMM VecSrcOperand_G_IMM RawOperand RawOperand RawOperand
+        {
+            pCisaBuilder->CISA_create_raw_sends_instruction(ISA_RAW_SENDS, true, $6.emask, $6.exec_size, $1.cisa_gen_opnd, $7.cisa_gen_opnd, 0, (unsigned char)$3,
+                (unsigned char)$4, (unsigned char)$5, $8.cisa_gen_opnd, $9.cisa_gen_opnd, $10.cisa_gen_opnd, $11.cisa_gen_opnd, CISAlineno);
+        }
 NO_OPND_INST: CACHE_FLUSH_OP
              {
                 pCisaBuilder->CISA_create_NO_OPND_instruction($1);
@@ -1373,22 +1373,22 @@ NO_OPND_INST: CACHE_FLUSH_OP
               {
                   pCisaBuilder->CISA_create_yield_instruction($1);
               };
-			  | FENCE_GLOBAL_OP
-			  {
-				    pCisaBuilder->CISA_create_fence_instruction($1, 0x0);
-			  }
-			  | FENCE_GLOBAL_OP FENCE_OPTIONS
-			  {
-				    pCisaBuilder->CISA_create_fence_instruction($1, $2);
-			  }
-			  | FENCE_LOCAL_OP
-			  {
-				    pCisaBuilder->CISA_create_fence_instruction($1, 0x20);
-			  }
-			  | FENCE_LOCAL_OP FENCE_OPTIONS
-			  {
-				    pCisaBuilder->CISA_create_fence_instruction($1, $2 | 0x20);
-			  }
+              | FENCE_GLOBAL_OP
+              {
+                    pCisaBuilder->CISA_create_fence_instruction($1, 0x0);
+              }
+              | FENCE_GLOBAL_OP FENCE_OPTIONS
+              {
+                    pCisaBuilder->CISA_create_fence_instruction($1, $2);
+              }
+              | FENCE_LOCAL_OP
+              {
+                    pCisaBuilder->CISA_create_fence_instruction($1, 0x20);
+              }
+              | FENCE_LOCAL_OP FENCE_OPTIONS
+              {
+                    pCisaBuilder->CISA_create_fence_instruction($1, $2 | 0x20);
+              }
               | FENCE_SW_OP
               {
                     pCisaBuilder->CISA_create_fence_instruction($1, 0x80);
@@ -1461,11 +1461,11 @@ SrcModifier : '(' '-' ')'
            // $$.srcMod = Mod_Minus_Abs;
             $$.mod = MODIFIER_NEG_ABS;
           }
-		  | '(' '~' ')'
-		  {
-		    $$.mod = MODIFIER_NOT;
-		  }
-		  ;
+          | '(' '~' ')'
+          {
+            $$.mod = MODIFIER_NOT;
+          }
+          ;
 
 ConditionalModifier :   /* empty */
             {
@@ -1636,13 +1636,13 @@ RawOperand : /* empty */ {
 
 RawOperandArray : /* empty */
                {
-					$$ = 0;
+                    $$ = 0;
                };
-			   | RawOperandArray RawOperand
-			   {
-					rawOperandArray[$1++] = (VISA_RawOpnd*) $2.cisa_gen_opnd;
-					$$ = $1;
-			   }
+               | RawOperandArray RawOperand
+               {
+                    rawOperandArray[$1++] = (VISA_RawOpnd*) $2.cisa_gen_opnd;
+                    $$ = $1;
+               }
 
                   //   1         2        3
 DstGeneralOperand :  VAR TwoDimOffset DstRegion
@@ -1702,7 +1702,7 @@ SrcGeneralOperand_1 : SrcModifier VAR TwoDimOffset SrcRegion
 SrcImmOperand: Imm {$$ = $1;}
               | DFImm {$$ = $1;}
               | FpImm {$$ = $1;}
-			        | HFImm {$$ = $1;};
+                    | HFImm {$$ = $1;};
 
                     //   1           2           3
 SrcIndirectOperand: IndirectVar IndirectRegion DataType
@@ -2025,7 +2025,7 @@ DataType: ITYPE {$$ = $1;}
         | DFTYPE {$$ = $1;}
         | FTYPE {$$ = $1;}
         | VTYPE {$$ = $1;};
-		| HFTYPE {$$ = $1;};
+        | HFTYPE {$$ = $1;};
 
 /* ----- Others ----------------------------------------- */
 CommentLine : COMMENT_LINE

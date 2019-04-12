@@ -70,7 +70,7 @@ namespace IGC
             LIBMOD_DP_CONV_I32,      // dp_to_[u]int32 & [u]int32_to_dp
             LIBMOD_DP_CONV_SP,       // dp_to_sp & sp_to_dp
             LIBMOD_DP_SQRT,          // dp_sqrt
-			LIBMOD_SP_DIV,           // sp_div
+            LIBMOD_SP_DIV,           // sp_div
 
             // This must be the last entry
             NUM_LIBMODS
@@ -93,7 +93,7 @@ namespace IGC
             FUNCTION_DP_TO_SP,
             FUNCTION_SP_TO_DP,
             FUNCTION_DP_SQRT,
-			FUNCTION_SP_DIV,
+            FUNCTION_SP_DIV,
 
             NUM_FUNCTION_IDS
         };
@@ -122,11 +122,11 @@ namespace IGC
         // Pass identification, replacement for typeid
         static char ID;
 
-		// For pass registration
-		PreCompiledFuncImport() :
-			ModulePass(ID),
-			m_emuKind(EMU_UNUSED)
-		{};
+        // For pass registration
+        PreCompiledFuncImport() :
+            ModulePass(ID),
+            m_emuKind(EMU_UNUSED)
+        {};
 
         PreCompiledFuncImport(CodeGenContext *CGCtx, uint32_t TheEmuKind);
 
@@ -152,7 +152,7 @@ namespace IGC
         void visitFCmpInst(llvm::FCmpInst& I);
         void visitCallInst(llvm::CallInst& I);
 
-		static void checkAndSetEnableSubroutine(CodeGenContext *CGCtx);
+        static void checkAndSetEnableSubroutine(CodeGenContext *CGCtx);
 
     private:
         void processDivide(llvm::BinaryOperator &inst, EmulatedFunctions function);
@@ -162,21 +162,21 @@ namespace IGC
         llvm::Value* createFlagValue(llvm::Function *F);
         uint32_t getFCmpMask(llvm::CmpInst::Predicate Pred);
 
-		// Metadata & implicit args (IA)
-		//   FuncNeedIA: original Functions that needs IA
-		//   NewFuncWithIA: NewFuncWithIA[i] is the new function
-		//                  of FuncNeedIA[i], with IA appended
-		//                  to the new function's argument list.
-		llvm::SmallVector<llvm::Function*, 8> FuncNeedIA;
-		llvm::SmallVector<llvm::Function*, 8> NewFuncWithIA;
-		llvm::DenseMap<llvm::Function *, ImplicitArgs *> FuncsImpArgs;
-		void addMDFuncEntryForEmulationFunc(llvm::Function *F);
-		bool usePrivateMemory(llvm::Function *F);
-		void createFuncWithIA();
-		void replaceFunc(llvm::Function* old_func, llvm::Function* new_func);
-		llvm::FunctionType* getNewFuncType(
-			llvm::Function* pFunc, const ImplicitArgs* pImplicitArgs);
-		ImplicitArgs* getImplicitArgs(llvm::Function *F);
+        // Metadata & implicit args (IA)
+        //   FuncNeedIA: original Functions that needs IA
+        //   NewFuncWithIA: NewFuncWithIA[i] is the new function
+        //                  of FuncNeedIA[i], with IA appended
+        //                  to the new function's argument list.
+        llvm::SmallVector<llvm::Function*, 8> FuncNeedIA;
+        llvm::SmallVector<llvm::Function*, 8> NewFuncWithIA;
+        llvm::DenseMap<llvm::Function *, ImplicitArgs *> FuncsImpArgs;
+        void addMDFuncEntryForEmulationFunc(llvm::Function *F);
+        bool usePrivateMemory(llvm::Function *F);
+        void createFuncWithIA();
+        void replaceFunc(llvm::Function* old_func, llvm::Function* new_func);
+        llvm::FunctionType* getNewFuncType(
+            llvm::Function* pFunc, const ImplicitArgs* pImplicitArgs);
+        ImplicitArgs* getImplicitArgs(llvm::Function *F);
 
         bool preProcessDouble();
         void eraseFunction(llvm::Module* M, llvm::Function *F) {
@@ -184,12 +184,12 @@ namespace IGC
             delete F;
         }
 
-		// Check if subroutine call is needed and set it if so.
-		void checkAndSetEnableSubroutine();
-		CodeGenContext* m_pCtx;
-		bool m_enableSubroutineCallForEmulation;
+        // Check if subroutine call is needed and set it if so.
+        void checkAndSetEnableSubroutine();
+        CodeGenContext* m_pCtx;
+        bool m_enableSubroutineCallForEmulation;
 
-		IGCMD::MetaDataUtils *m_pMdUtils;
+        IGCMD::MetaDataUtils *m_pMdUtils;
         llvm::Module *m_pModule;
 
         /// @brief  Indicates if the pass changed the processed function
@@ -197,12 +197,12 @@ namespace IGC
 
         const static char *m_sFunctionNames[NUM_FUNCTIONS][NUM_TYPES];
 
-		/// @brief  Kind of emulations. Its bits are defined by EmuKind.
-		const uint32_t m_emuKind;
-		bool isDPEmu() const { return (m_emuKind & EmuKind::EMU_DP) > 0; }
-		bool isI64DivRem() const { return (m_emuKind & EmuKind::EMU_I64DIVREM) > 0; }
+        /// @brief  Kind of emulations. Its bits are defined by EmuKind.
+        const uint32_t m_emuKind;
+        bool isDPEmu() const { return (m_emuKind & EmuKind::EMU_DP) > 0; }
+        bool isI64DivRem() const { return (m_emuKind & EmuKind::EMU_I64DIVREM) > 0; }
         bool isSPDiv() const { return (m_emuKind & EmuKind::EMU_SP_DIV) > 0; }
-		bool isDPConvFunc(llvm::Function *F) const;
+        bool isDPConvFunc(llvm::Function *F) const;
 
         bool m_libModuleToBeImported[NUM_LIBMODS];
         bool m_libModuleAlreadyImported[NUM_LIBMODS];

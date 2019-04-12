@@ -32,66 +32,66 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace IGCLLVM
 {
 #if LLVM_VERSION_MAJOR == 4
-	using llvm::IRBuilder;
+    using llvm::IRBuilder;
 #elif LLVM_VERSION_MAJOR >= 7
-	template <typename T = llvm::ConstantFolder,
-		typename Inserter = llvm::IRBuilderDefaultInserter>
-		class IRBuilder : public llvm::IRBuilder<T, Inserter>
-	{
-	public:
-		IRBuilder(llvm::LLVMContext &C, const T &F, Inserter I = Inserter(),
-			llvm::MDNode *FPMathTag = nullptr,
-			llvm::ArrayRef<llvm::OperandBundleDef> OpBundles = llvm::None)
-			: llvm::IRBuilder<T, Inserter>(C, F, I, FPMathTag, OpBundles) {}
+    template <typename T = llvm::ConstantFolder,
+        typename Inserter = llvm::IRBuilderDefaultInserter>
+        class IRBuilder : public llvm::IRBuilder<T, Inserter>
+    {
+    public:
+        IRBuilder(llvm::LLVMContext &C, const T &F, Inserter I = Inserter(),
+            llvm::MDNode *FPMathTag = nullptr,
+            llvm::ArrayRef<llvm::OperandBundleDef> OpBundles = llvm::None)
+            : llvm::IRBuilder<T, Inserter>(C, F, I, FPMathTag, OpBundles) {}
 
-		explicit IRBuilder(llvm::LLVMContext &C, llvm::MDNode *FPMathTag = nullptr,
-			llvm::ArrayRef<llvm::OperandBundleDef> OpBundles = llvm::None)
-			: llvm::IRBuilder<T, Inserter>(C, FPMathTag, OpBundles) {}
+        explicit IRBuilder(llvm::LLVMContext &C, llvm::MDNode *FPMathTag = nullptr,
+            llvm::ArrayRef<llvm::OperandBundleDef> OpBundles = llvm::None)
+            : llvm::IRBuilder<T, Inserter>(C, FPMathTag, OpBundles) {}
 
-		explicit IRBuilder(llvm::BasicBlock *TheBB, llvm::MDNode *FPMathTag = nullptr)
-			: llvm::IRBuilder<T, Inserter>(TheBB, FPMathTag) {}
+        explicit IRBuilder(llvm::BasicBlock *TheBB, llvm::MDNode *FPMathTag = nullptr)
+            : llvm::IRBuilder<T, Inserter>(TheBB, FPMathTag) {}
 
-		explicit IRBuilder(llvm::Instruction *IP, llvm::MDNode *FPMathTag = nullptr,
-			llvm::ArrayRef<llvm::OperandBundleDef> OpBundles = llvm::None)
-			: llvm::IRBuilder<T, Inserter>(IP, FPMathTag, OpBundles) {}
+        explicit IRBuilder(llvm::Instruction *IP, llvm::MDNode *FPMathTag = nullptr,
+            llvm::ArrayRef<llvm::OperandBundleDef> OpBundles = llvm::None)
+            : llvm::IRBuilder<T, Inserter>(IP, FPMathTag, OpBundles) {}
 
-		IRBuilder(llvm::BasicBlock *TheBB, llvm::BasicBlock::iterator IP, const T &F,
-			llvm::MDNode *FPMathTag = nullptr,
-			llvm::ArrayRef<llvm::OperandBundleDef> OpBundles = llvm::None)
-			: llvm::IRBuilder<T, Inserter>(TheBB, IP, F, FPMathTag, OpBundles) {}
+        IRBuilder(llvm::BasicBlock *TheBB, llvm::BasicBlock::iterator IP, const T &F,
+            llvm::MDNode *FPMathTag = nullptr,
+            llvm::ArrayRef<llvm::OperandBundleDef> OpBundles = llvm::None)
+            : llvm::IRBuilder<T, Inserter>(TheBB, IP, F, FPMathTag, OpBundles) {}
 
-		IRBuilder(llvm::BasicBlock *TheBB, llvm::BasicBlock::iterator IP,
-			llvm::MDNode *FPMathTag = nullptr,
-			llvm::ArrayRef<llvm::OperandBundleDef> OpBundles = llvm::None)
-			: llvm::IRBuilder<T, Inserter>(TheBB, IP, FPMathTag, OpBundles) {}
+        IRBuilder(llvm::BasicBlock *TheBB, llvm::BasicBlock::iterator IP,
+            llvm::MDNode *FPMathTag = nullptr,
+            llvm::ArrayRef<llvm::OperandBundleDef> OpBundles = llvm::None)
+            : llvm::IRBuilder<T, Inserter>(TheBB, IP, FPMathTag, OpBundles) {}
 
-		inline llvm::CallInst *CreateMemCpy(llvm::Value *Dst, llvm::Value *Src, uint64_t Size, unsigned Align,
-			bool isVolatile = false, llvm::MDNode *TBAATag = nullptr,
-			llvm::MDNode *TBAAStructTag = nullptr,
-			llvm::MDNode *ScopeTag = nullptr,
-			llvm::MDNode *NoAliasTag = nullptr)
-		{
-			return llvm::IRBuilder<T, Inserter>::CreateMemCpy(Dst, Align, Src, Align, Size,
-				isVolatile, TBAATag, TBAAStructTag, ScopeTag,
-				NoAliasTag);
-		}
+        inline llvm::CallInst *CreateMemCpy(llvm::Value *Dst, llvm::Value *Src, uint64_t Size, unsigned Align,
+            bool isVolatile = false, llvm::MDNode *TBAATag = nullptr,
+            llvm::MDNode *TBAAStructTag = nullptr,
+            llvm::MDNode *ScopeTag = nullptr,
+            llvm::MDNode *NoAliasTag = nullptr)
+        {
+            return llvm::IRBuilder<T, Inserter>::CreateMemCpy(Dst, Align, Src, Align, Size,
+                isVolatile, TBAATag, TBAAStructTag, ScopeTag,
+                NoAliasTag);
+        }
 
-		inline llvm::CallInst *CreateMemCpy(llvm::Value *Dst, llvm::Value *Src, llvm::Value *Size, unsigned Align,
-			bool isVolatile = false, llvm::MDNode *TBAATag = nullptr,
-			llvm::MDNode *TBAAStructTag = nullptr,
-			llvm::MDNode *ScopeTag = nullptr,
-			llvm::MDNode *NoAliasTag = nullptr)
-		{
-			return llvm::IRBuilder<T, Inserter>::CreateMemCpy(Dst, Align, Src, Align, Size,
-				isVolatile, TBAATag, TBAAStructTag, ScopeTag,
-				NoAliasTag);
-		}
+        inline llvm::CallInst *CreateMemCpy(llvm::Value *Dst, llvm::Value *Src, llvm::Value *Size, unsigned Align,
+            bool isVolatile = false, llvm::MDNode *TBAATag = nullptr,
+            llvm::MDNode *TBAAStructTag = nullptr,
+            llvm::MDNode *ScopeTag = nullptr,
+            llvm::MDNode *NoAliasTag = nullptr)
+        {
+            return llvm::IRBuilder<T, Inserter>::CreateMemCpy(Dst, Align, Src, Align, Size,
+                isVolatile, TBAATag, TBAAStructTag, ScopeTag,
+                NoAliasTag);
+        }
 
         inline llvm::AllocaInst *CreateAlloca(llvm::Type *Ty, llvm::Value *ArraySize = nullptr, const llvm::Twine &Name = "") 
         {
             return llvm::IRBuilder<T, Inserter>::CreateAlloca(Ty, 0/*for IGC addrSpace in alloca is always 0*/, ArraySize, Name);
         }
-	};
+    };
 #endif
 }
 

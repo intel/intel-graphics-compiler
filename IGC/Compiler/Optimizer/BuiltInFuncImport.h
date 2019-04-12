@@ -74,7 +74,7 @@ namespace IGC
         bool runOnModule(llvm::Module &M) override;
 
         static void supportOldManglingSchemes(llvm::Module &M);
-		static std::unique_ptr<llvm::Module> Construct(llvm::Module &M, CLElfLib::CElfReader * pElfReader, bool hasSizet);
+        static std::unique_ptr<llvm::Module> Construct(llvm::Module &M, CLElfLib::CElfReader * pElfReader, bool hasSizet);
     protected:
         /// @brief Get all the functions called by given function.
         /// @param [IN] pFunc The given function.
@@ -94,12 +94,12 @@ namespace IGC
         static llvm::Function *GetBuiltinFunction(llvm::StringRef funcName, llvm::Module* GenericModule);
         llvm::Function *GetBuiltinFunction2(llvm::StringRef funcName) const;
 
-		/// @brief  Read elf Header file that is constructed by Build Packager and write to a DenseMap.
-		static void WriteElfHeaderToMap(llvm::DenseMap<llvm::StringRef, int> &Map, char* pData, size_t dataSize);
+        /// @brief  Read elf Header file that is constructed by Build Packager and write to a DenseMap.
+        static void WriteElfHeaderToMap(llvm::DenseMap<llvm::StringRef, int> &Map, char* pData, size_t dataSize);
 
     protected:
         /// Builtin module - contains the source function definition to import
-		std::unique_ptr<llvm::Module> m_GenericModule;
+        std::unique_ptr<llvm::Module> m_GenericModule;
         std::unique_ptr<llvm::Module> m_SizeModule;
     };
 

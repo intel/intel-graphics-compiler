@@ -227,9 +227,9 @@ enum SGVUsage
     POSITION_Y_OFFSET,
     RENDER_TARGET_ARRAY_INDEX,
     MSAA_RATE,
-	VF_XP0,
-	VF_XP1,
-	VF_XP2,
+    VF_XP0,
+    VF_XP1,
+    VF_XP2,
     NUM_SGV,
 };
 

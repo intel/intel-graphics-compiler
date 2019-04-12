@@ -375,7 +375,7 @@ mutateFunction(Function *F,
 
 CallInst *
 addCallInst(Module *M, StringRef FuncName, Type *RetTy, ArrayRef<Value *> Args,
-	IGCLLVM::AttributeSet *Attrs, Instruction *Pos, bool Mangle, StringRef InstName,
+    IGCLLVM::AttributeSet *Attrs, Instruction *Pos, bool Mangle, StringRef InstName,
     bool TakeFuncName) {
   auto F = getOrCreateFunction(M, RetTy, getTypes(Args),
       FuncName, Mangle, Attrs, TakeFuncName);

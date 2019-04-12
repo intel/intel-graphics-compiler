@@ -122,9 +122,9 @@ unsigned countTotalInstructions(const Function *F, bool CheckSendMsg = true) {
 
 void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, 
 #if LLVM_VERSION_MAJOR >= 7
-	ScalarEvolution &SE, 
+    ScalarEvolution &SE, 
 #endif
-	TTI::UnrollingPreferences &UP)
+    TTI::UnrollingPreferences &UP)
 {
     unsigned LoopUnrollThreshold = ctx->m_DriverInfo.GetLoopUnrollThreshold();
 
@@ -150,9 +150,9 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L,
     }
 
 #if LLVM_VERSION_MAJOR == 4
-	ScalarEvolution *SE = &dummyPass->getAnalysisIfAvailable<ScalarEvolutionWrapperPass>()->getSE();
-	if (!SE)
-		return;
+    ScalarEvolution *SE = &dummyPass->getAnalysisIfAvailable<ScalarEvolutionWrapperPass>()->getSE();
+    if (!SE)
+        return;
 #endif
 
     unsigned sendMessage = 0;

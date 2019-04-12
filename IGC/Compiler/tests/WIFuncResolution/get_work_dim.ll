@@ -42,6 +42,6 @@ define i32 @foo(<8 x i32> %r0, <8 x i32> %payloadHeader, i32 %workDim) nounwind 
 !5 = !{i32 1}
 !6 = !{i32 2}
 
-; CHECK: 		ret i32 %workDim
+; CHECK:         ret i32 %workDim
 
-; CHECK-NOT: 	call i32 @__builtin_IB_get_work_dim()
+; CHECK-NOT:     call i32 @__builtin_IB_get_work_dim()

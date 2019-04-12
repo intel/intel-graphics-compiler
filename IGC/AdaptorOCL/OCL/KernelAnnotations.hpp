@@ -87,7 +87,7 @@ struct PointerArgumentAnnotation : KernelArgumentAnnotation
     DWORD  LocationIndex;
     DWORD  LocationCount;
     bool   IsEmulationArgument;
-	bool   IsBindlessAccess;
+    bool   IsBindlessAccess;
 
     static bool compare( const PointerArgumentAnnotation* a, const PointerArgumentAnnotation* b )
     {
@@ -163,10 +163,10 @@ struct ImageArgumentAnnotation : KernelArgumentAnnotation
     DWORD  BindingTableIndex;
     DWORD  LocationIndex;
     DWORD  LocationCount;
-	DWORD  PayloadPosition;
-	bool   AccessedByIntCoords;
+    DWORD  PayloadPosition;
+    bool   AccessedByIntCoords;
     bool   AccessedByFloatCoords;
-	bool   IsBindlessAccess;
+    bool   IsBindlessAccess;
     bool   IsEmulationArgument;
 };
 
@@ -201,8 +201,8 @@ struct SamplerArgumentAnnotation : KernelArgumentAnnotation
     DWORD  SamplerTableIndex;
     DWORD  LocationIndex;
     DWORD  LocationCount;
-	DWORD  PayloadPosition;
-	bool   IsBindlessAccess;
+    DWORD  PayloadPosition;
+    bool   IsBindlessAccess;
     bool   IsEmulationArgument;
 };
 
@@ -295,7 +295,7 @@ struct ExecutionEnivronment
     bool   CompiledForGreaterThan4GBBuffers           = false;
     DWORD  FixedWorkgroupSize[3];
     DWORD  NumGRFRequired;
-	DWORD  WorkgroupWalkOrder[3] = { 3, 3, 3 };
+    DWORD  WorkgroupWalkOrder[3] = { 3, 3, 3 };
     bool   HasGlobalAtomics                           = false;
 };
 

@@ -130,32 +130,32 @@ using namespace llvm;
 // upgrade bitcast to addrspacecast when necessary
 //===----------------------------------------------------------------------===//
 Instruction *upgradeBitCastInst(unsigned Opc, Value *V, Type *DestTy,
-	Instruction *&Temp) {
-	if (Opc != Instruction::BitCast)
-		return nullptr;
+    Instruction *&Temp) {
+    if (Opc != Instruction::BitCast)
+        return nullptr;
 
-	Type *SrcTy = V->getType();
-	if (SrcTy->isPtrOrPtrVectorTy() && DestTy->isPtrOrPtrVectorTy() &&
-		SrcTy->getPointerAddressSpace() != DestTy->getPointerAddressSpace()) {
-		// Convert it to 'addrspacecast' instead.
-		return CastInst::Create(Instruction::AddrSpaceCast, V, DestTy);
-	}
+    Type *SrcTy = V->getType();
+    if (SrcTy->isPtrOrPtrVectorTy() && DestTy->isPtrOrPtrVectorTy() &&
+        SrcTy->getPointerAddressSpace() != DestTy->getPointerAddressSpace()) {
+        // Convert it to 'addrspacecast' instead.
+        return CastInst::Create(Instruction::AddrSpaceCast, V, DestTy);
+    }
 
-	return nullptr;
+    return nullptr;
 }
 
 Value *upgradeBitCastExpr(unsigned Opc, Constant *C, Type *DestTy) {
-	if (Opc != Instruction::BitCast)
-		return nullptr;
+    if (Opc != Instruction::BitCast)
+        return nullptr;
 
-	Type *SrcTy = C->getType();
-	if (SrcTy->isPtrOrPtrVectorTy() && DestTy->isPtrOrPtrVectorTy() &&
-		SrcTy->getPointerAddressSpace() != DestTy->getPointerAddressSpace()) {
-		// Convert it to 'addrspacecast' instead.
-		return ConstantExpr::getAddrSpaceCast(C, DestTy);
-	}
+    Type *SrcTy = C->getType();
+    if (SrcTy->isPtrOrPtrVectorTy() && DestTy->isPtrOrPtrVectorTy() &&
+        SrcTy->getPointerAddressSpace() != DestTy->getPointerAddressSpace()) {
+        // Convert it to 'addrspacecast' instead.
+        return ConstantExpr::getAddrSpaceCast(C, DestTy);
+    }
 
-	return nullptr;
+    return nullptr;
 }
 
 namespace {
@@ -1268,9 +1268,9 @@ static uint64_t getRawAttributeMask(Attribute::AttrKind Val) {
     llvm_unreachable("allocsize not supported in raw format");
     break;
   default:
-	  llvm_unreachable("Unsupported attribute type");
+      llvm_unreachable("Unsupported attribute type");
     break;
-	  //return 0;
+      //return 0;
   }  
 }
 
@@ -2844,8 +2844,8 @@ Error BitcodeReader::globalCleanup() {
 
   // Look for intrinsic functions which need to be upgraded at some point
   for (Function &F : *TheModule) {
-	//LLVM_UPGRADE_TODO
-	//check this funciton upgradeDebugIntrinsics (in llvm 4.0 not present)
+    //LLVM_UPGRADE_TODO
+    //check this funciton upgradeDebugIntrinsics (in llvm 4.0 not present)
     //MDLoader->upgradeDebugIntrinsics(F);
     Function *NewFn;
     if (UpgradeIntrinsicFunction(&F, NewFn))
@@ -3387,9 +3387,9 @@ Error BitcodeReader::parseModule(uint64_t ResumeBit,
       std::string S;
       if (convertToString(Record, 0, S))
         return error("Invalid record");
-	  size_t index = S.find("-a64:64:64");
-	  if (index != std::string::npos)
-		  S.replace(index, 10, "");
+      size_t index = S.find("-a64:64:64");
+      if (index != std::string::npos)
+          S.replace(index, 10, "");
       TheModule->setDataLayout(S);
       break;
     }

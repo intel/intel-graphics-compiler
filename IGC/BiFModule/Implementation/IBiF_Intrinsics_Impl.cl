@@ -786,7 +786,7 @@ double __builtin_spirv_OpenCL_ceil_f64(double x ){
 
 INLINE
 double __builtin_spirv_OpenCL_fabs_f64(double x ){
-	double neg = -x;
+    double neg = -x;
     return (x >= 0) ?  x : neg;
 }
 

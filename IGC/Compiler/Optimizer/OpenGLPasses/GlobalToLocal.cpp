@@ -80,7 +80,7 @@ bool GlobalToLocal::runOnFunction(llvm::Function &F)
     }
     Instruction* topFirstBB = &(*F.getEntryBlock().begin());
 
-	IGCLLVM::IRBuilder<> builder(topFirstBB);
+    IGCLLVM::IRBuilder<> builder(topFirstBB);
 
     Module::GlobalListType&  globalList = F.getParent()->getGlobalList();
     for(auto GI = globalList.begin(), GE = globalList.end(); GI != GE; ++GI)
@@ -92,8 +92,8 @@ bool GlobalToLocal::runOnFunction(llvm::Function &F)
             // If these constant expressions are not removed it causes issues when replaceAllUsesWith() 
             // is called on the Global
             global->removeDeadConstantUsers();
-			
-			builder.SetInsertPoint(topFirstBB);
+            
+            builder.SetInsertPoint(topFirstBB);
             Instruction* alloc = builder.CreateAlloca(global->getType()->getPointerElementType());
             if(global->hasInitializer())
             {

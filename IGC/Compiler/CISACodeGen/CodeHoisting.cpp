@@ -91,11 +91,11 @@ IGC_INITIALIZE_PASS_END(CodeHoisting, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY
         for (po_iterator<DomTreeNode*> domIter = po_begin(PDT->getRootNode()),
             domEnd = po_end(PDT->getRootNode()); domIter != domEnd; ++domIter)
         {
-			auto bb = domIter->getBlock();
-			if (bb != nullptr)
-			{
-				hoistURBWriteInBB(*(bb));
-			}
+            auto bb = domIter->getBlock();
+            if (bb != nullptr)
+            {
+                hoistURBWriteInBB(*(bb));
+            }
         }
 
         // MapVector preserves the insertion order during iteration

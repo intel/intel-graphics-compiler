@@ -191,14 +191,14 @@ bool isA64Ptr(llvm::PointerType *PT, CodeGenContext* pContext);
 ///       FunctionInfoMetaData must have type UserFunction.
 inline bool isEntryFunc(const IGCMD::MetaDataUtils *pM, const llvm::Function *CF)
 {
-	llvm::Function *F = const_cast<llvm::Function*>(CF);
-	if (F == nullptr || F->empty() ||
-		pM->findFunctionsInfoItem(F) == pM->end_FunctionsInfo())
-		return false;
+    llvm::Function *F = const_cast<llvm::Function*>(CF);
+    if (F == nullptr || F->empty() ||
+        pM->findFunctionsInfoItem(F) == pM->end_FunctionsInfo())
+        return false;
 
-	IGCMD::FunctionInfoMetaDataHandle Info = pM->getFunctionsInfoItem(F);
-	assert(Info->isTypeHasValue() && "FunctionInfoMetaData missing type!");
-	return Info->getType() == FunctionTypeMD::KernelFunction;
+    IGCMD::FunctionInfoMetaDataHandle Info = pM->getFunctionsInfoItem(F);
+    assert(Info->isTypeHasValue() && "FunctionInfoMetaData missing type!");
+    return Info->getType() == FunctionTypeMD::KernelFunction;
 }
 
 // Return a unique entry function.
@@ -300,10 +300,10 @@ bool isNoOpInst(llvm::Instruction* I, CodeGenContext* Ctx);
 // CxtI is the instruction at which V is checked whether
 // it is positive or not. 
 bool valueIsPositive(
-	llvm::Value* V,
-	const llvm::DataLayout *DL,
-	llvm::AssumptionCache *AC = nullptr,
-	llvm::Instruction *CxtI = nullptr);
+    llvm::Value* V,
+    const llvm::DataLayout *DL,
+    llvm::AssumptionCache *AC = nullptr,
+    llvm::Instruction *CxtI = nullptr);
 
 inline float GetThreadOccupancyPerSubslice(SIMDMode simdMode, unsigned threadGroupSize, unsigned hwThreadPerSubslice, unsigned slmSize, unsigned slmSizePerSubSlice)
 {

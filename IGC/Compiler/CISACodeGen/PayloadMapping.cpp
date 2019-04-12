@@ -613,14 +613,14 @@ Value* PayloadMapping::GetPayloadElementToValueMapping(const Instruction *inst, 
     if (const SampleIntrinsic* sampleInst = dyn_cast<SampleIntrinsic>(inst))
     {
         payloadValue = GetPayloadElementToValueMapping_sample(sampleInst, index);
-		assert(payloadValue != nullptr);
+        assert(payloadValue != nullptr);
         m_PayloadMappingCache.insert(std::pair<std::pair<const llvm::Instruction*, uint>, Value*>(instIndexPair, payloadValue));
         return payloadValue;
     }
     else if (const SamplerLoadIntrinsic* sampleInst = dyn_cast<SamplerLoadIntrinsic>(inst))
     {
         payloadValue = GetPayloadElementToValueMapping_LDMS(sampleInst, index);
-		assert(payloadValue != nullptr);
+        assert(payloadValue != nullptr);
         m_PayloadMappingCache.insert(std::pair<std::pair<const llvm::Instruction*, uint>, Value*>(instIndexPair, payloadValue));
         return payloadValue;
     }
@@ -630,12 +630,12 @@ Value* PayloadMapping::GetPayloadElementToValueMapping(const Instruction *inst, 
     {
     case GenISAIntrinsic::GenISA_URBWrite:
         payloadValue = GetPayloadElementToValueMapping_URBWrite(intrinsicInst, index);
-		assert(payloadValue != nullptr);
+        assert(payloadValue != nullptr);
         m_PayloadMappingCache.insert(std::pair<std::pair<const llvm::Instruction*, uint>, Value*>(instIndexPair, payloadValue));
         return payloadValue;
     case GenISAIntrinsic::GenISA_RTWrite:
         payloadValue = GetPayloadElementToValueMapping_RTWrite(intrinsicInst, index);
-		assert(payloadValue != nullptr);
+        assert(payloadValue != nullptr);
         m_PayloadMappingCache.insert(std::pair<std::pair<const llvm::Instruction*, uint>, Value*>(instIndexPair, payloadValue));
         return payloadValue;
     default:

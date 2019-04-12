@@ -235,17 +235,17 @@ TypesLegalizationPass::ResolveValue( Instruction *ip,Value *val,SmallVector<unsi
   }
   else if (auto *II = dyn_cast<IntrinsicInst>(val))
   {
-	  switch (II->getIntrinsicID())
-	  {
-	  case Intrinsic::uadd_with_overflow:
-	  {
-		  // This gets handled in the legalizer.
-		  IRBuilder<> builder(ip);
-		  return builder.CreateExtractValue(val, indices);
-	  }
-	  default:
-		  break;
-	  }
+      switch (II->getIntrinsicID())
+      {
+      case Intrinsic::uadd_with_overflow:
+      {
+          // This gets handled in the legalizer.
+          IRBuilder<> builder(ip);
+          return builder.CreateExtractValue(val, indices);
+      }
+      default:
+          break;
+      }
   }
   else if ((isa<Argument>(val) || isa<CallInst>(val)) &&
     val->getType()->isStructTy()) { 

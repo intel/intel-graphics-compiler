@@ -61,7 +61,7 @@ int main(int argc, char **argv)
     unsigned char data;
     while(fread(&data, 1, 1, input))
     {
-    	is_eol = count ? !(count % 20) : 0;
+        is_eol = count ? !(count % 20) : 0;
         fprintf(output, "%s0x%.2x, ", is_eol? "\n    ":"", data);
         count++;
     }

@@ -153,12 +153,12 @@ private:
   }
 
   void dupMemoryAttribute(LoadInst *NewLD, LoadInst *RefLD, unsigned Off) const {
-    unsigned Align = getAlignment(RefLD);	
-	
+    unsigned Align = getAlignment(RefLD);    
+    
     NewLD->setVolatile(RefLD->isVolatile());
     NewLD->setAlignment(unsigned(MinAlign(Align, Off)));
     NewLD->setOrdering(RefLD->getOrdering());
-	IGCLLVM::CopySyncScopeID(NewLD, RefLD);    
+    IGCLLVM::CopySyncScopeID(NewLD, RefLD);    
   }
 
   void dupMemoryAttribute(StoreInst *NewST, StoreInst *RefST, unsigned Off) const {
@@ -167,7 +167,7 @@ private:
     NewST->setVolatile(RefST->isVolatile());
     NewST->setAlignment(unsigned(MinAlign(Align, Off)));
     NewST->setOrdering(RefST->getOrdering());
-	IGCLLVM::CopySyncScopeID(NewST, RefST);
+    IGCLLVM::CopySyncScopeID(NewST, RefST);
   }
 
   bool expandArguments(Function &F);

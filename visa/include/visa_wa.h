@@ -189,17 +189,17 @@ typedef struct _VISA_WA_TABLE
     "Limit the number of live sends to work-around HW hang bug.",
     VISA_WA_BUG_TYPE_HANG)
 
-	VISA_WA_DECLARE(
+    VISA_WA_DECLARE(
     Wa_1406950495,
     "Do not read ce0 to work-around HW bug.",
     VISA_WA_BUG_TYPE_HANG)
 
-	VISA_WA_DECLARE(
+    VISA_WA_DECLARE(
     Wa_1606931601,
     "Split simd16 to two simd8 if src0 is scalar and src1 and src2 have bundle conflict.",
     VISA_WA_BUG_TYPE_UNKNOWN)
-	
-	VISA_WA_DECLARE(
+    
+    VISA_WA_DECLARE(
     WaSwapForSrc1Replicate,
     "swap src1 with src2 or src0 when src1 is replicate, there is no scalar mux in src1.",
     VISA_WA_BUG_TYPE_UNKNOWN)

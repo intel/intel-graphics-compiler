@@ -73,7 +73,7 @@ bool VariableReuseAnalysis::runOnFunction(Function &F)
   m_WIA = &(getAnalysis<WIAnalysis>());
   if (IGC_IS_FLAG_DISABLED(DisableDeSSA))
   {
-	m_DeSSA = &getAnalysis<DeSSA>();
+    m_DeSSA = &getAnalysis<DeSSA>();
   }
   m_LV = &(getAnalysis<LiveVarsAnalysis>().getLiveVars());
   m_PatternMatch = &getAnalysis<CodeGenPatternMatch>();

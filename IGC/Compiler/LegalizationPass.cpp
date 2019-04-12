@@ -196,77 +196,77 @@ void Legalization::visitBinaryOperator(llvm::BinaryOperator &I)
         I.replaceAllUsesWith(result);
         I.eraseFromParent();
     }
-	else if (I.getOpcode() == Instruction::And || I.getOpcode() == Instruction::Or)
-	{
-		// convert (!a and !b) to !(a or b)
-		// convert (!a or !b) to !(a and b)
-		// then remove the negate by flipping all the uses (select or branch)
-		Value *src0 = I.getOperand(0);
-		Value *src1 = I.getOperand(1);
-		if (IGCLLVM::BinaryOperator::isNot(src0) &&
+    else if (I.getOpcode() == Instruction::And || I.getOpcode() == Instruction::Or)
+    {
+        // convert (!a and !b) to !(a or b)
+        // convert (!a or !b) to !(a and b)
+        // then remove the negate by flipping all the uses (select or branch)
+        Value *src0 = I.getOperand(0);
+        Value *src1 = I.getOperand(1);
+        if (IGCLLVM::BinaryOperator::isNot(src0) &&
             IGCLLVM::BinaryOperator::isNot(src1) &&
-			src0->hasOneUse() && src1->hasOneUse()) {
-			// check all uses are select or branch
-			bool flippable = true;
-			for (auto U = I.user_begin(), E = I.user_end(); U != E; ++U)
-			{
-				if (!isa<SelectInst>(*U) && !isa<BranchInst>(*U))
-				{
-					flippable = false;
-					break;
-				}
+            src0->hasOneUse() && src1->hasOneUse()) {
+            // check all uses are select or branch
+            bool flippable = true;
+            for (auto U = I.user_begin(), E = I.user_end(); U != E; ++U)
+            {
+                if (!isa<SelectInst>(*U) && !isa<BranchInst>(*U))
+                {
+                    flippable = false;
+                    break;
+                }
                 // check select i1 with I not used as condition
                 if (isa<SelectInst>(*U) && U->getOperand(0) != &I)
                 {
                     flippable = false;
                     break;
                 }
-			}
-			if (flippable)
-			{
-				Value *invert;
-				if (I.getOpcode() == Instruction::And)
-				{
-					invert =
-						llvm::BinaryOperator::CreateOr(
-							cast<llvm::Instruction>(src0)->getOperand(0),
-							cast<llvm::Instruction>(src1)->getOperand(0),
-							"",
-							&I);
-				}
-				else
-				{
-					invert =
-						llvm::BinaryOperator::CreateAnd(
-							cast<llvm::Instruction>(src0)->getOperand(0),
-							cast<llvm::Instruction>(src1)->getOperand(0),
-							"",
-							&I);
-				}
+            }
+            if (flippable)
+            {
+                Value *invert;
+                if (I.getOpcode() == Instruction::And)
+                {
+                    invert =
+                        llvm::BinaryOperator::CreateOr(
+                            cast<llvm::Instruction>(src0)->getOperand(0),
+                            cast<llvm::Instruction>(src1)->getOperand(0),
+                            "",
+                            &I);
+                }
+                else
+                {
+                    invert =
+                        llvm::BinaryOperator::CreateAnd(
+                            cast<llvm::Instruction>(src0)->getOperand(0),
+                            cast<llvm::Instruction>(src1)->getOperand(0),
+                            "",
+                            &I);
+                }
                 while (!I.user_empty())
-				{
+                {
                     auto U = I.user_begin();
-					if (SelectInst* s = dyn_cast<SelectInst>(*U))
-					{
+                    if (SelectInst* s = dyn_cast<SelectInst>(*U))
+                    {
                         Value* trueValue = s->getTrueValue();
                         Value* falseValue = s->getFalseValue();
                         s->setOperand(1, falseValue);
                         s->setOperand(2, trueValue);
                         s->setOperand(0, invert);
-					}
-					else if (BranchInst* br = dyn_cast<BranchInst>(*U))
-					{
-						assert(br->isConditional());
-						br->swapSuccessors();
-						br->setCondition(invert);
-					}
-				}
-				I.eraseFromParent();
-				cast<llvm::Instruction>(src0)->eraseFromParent();
-				cast<llvm::Instruction>(src1)->eraseFromParent();
-			}
-		}
-	}
+                    }
+                    else if (BranchInst* br = dyn_cast<BranchInst>(*U))
+                    {
+                        assert(br->isConditional());
+                        br->swapSuccessors();
+                        br->setCondition(invert);
+                    }
+                }
+                I.eraseFromParent();
+                cast<llvm::Instruction>(src0)->eraseFromParent();
+                cast<llvm::Instruction>(src1)->eraseFromParent();
+            }
+        }
+    }
     m_ctx->m_instrTypes.numInsts++;
 }
 

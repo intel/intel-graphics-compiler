@@ -66,52 +66,52 @@ using namespace CLElfLib;
 
 
 static cl::opt<std::string>
-	InputBCFilename(cl::Positional, cl::desc("<input .llvm file>"), cl::init("-"));
+    InputBCFilename(cl::Positional, cl::desc("<input .llvm file>"), cl::init("-"));
 static cl::opt<std::string>
-	InputFuncList("funcList", cl::desc("<input .llvm file>"));
+    InputFuncList("funcList", cl::desc("<input .llvm file>"));
 static cl::opt<std::string>
-	OutputPath(cl::Positional, cl::desc("<output .llvm file>"), cl::init("-"));
+    OutputPath(cl::Positional, cl::desc("<output .llvm file>"), cl::init("-"));
 static cl::opt<bool>
-	IncludeSizet("includeSizet", cl::desc("if the module has size_t"));
+    IncludeSizet("includeSizet", cl::desc("if the module has size_t"));
 
 void MakeHeader(StringRef Func, SmallVector<char, 0> &headerVector, int index)
 {
-	//This is for creating the header file
-	short Func_Size = (short)Func.size();
-	headerVector.push_back((char)Func_Size);
-	headerVector.push_back((char)(Func_Size >> 8));
-	for (short func_iterate = 0; func_iterate < Func_Size; func_iterate++)
-	{
-		headerVector.push_back(Func[func_iterate]);
-	}
-	headerVector.push_back((char)index);
-	headerVector.push_back((char)(index >> 8));
+    //This is for creating the header file
+    short Func_Size = (short)Func.size();
+    headerVector.push_back((char)Func_Size);
+    headerVector.push_back((char)(Func_Size >> 8));
+    for (short func_iterate = 0; func_iterate < Func_Size; func_iterate++)
+    {
+        headerVector.push_back(Func[func_iterate]);
+    }
+    headerVector.push_back((char)index);
+    headerVector.push_back((char)(index >> 8));
 }
 
 void CreateElfSection(CLElfLib::CElfWriter* pWriter, CLElfLib::SSectionNode sectionNode, std::string Name, char* pData, unsigned DataSize)
 {
-	// Create section
-	sectionNode.Name = Name;
-	sectionNode.pData = pData;
-	sectionNode.DataSize = DataSize;
-	sectionNode.Flags = 0;
-	sectionNode.Type = SH_TYPE_PROG_BITS;
+    // Create section
+    sectionNode.Name = Name;
+    sectionNode.pData = pData;
+    sectionNode.DataSize = DataSize;
+    sectionNode.Flags = 0;
+    sectionNode.Type = SH_TYPE_PROG_BITS;
 
-	// Add it to the file
-	pWriter->AddSection(&sectionNode);
+    // Add it to the file
+    pWriter->AddSection(&sectionNode);
 }
 
 
 std::unique_ptr<Module> LocalCloneModule(
-	const Module *M, ValueToValueMapTy &VMap,
+    const Module *M, ValueToValueMapTy &VMap,
     std::vector<GlobalValue*> &ExtractValues,
     std::map<const llvm::Function*, std::set<StringRef>> &FuncMap) {
-	// First off, we need to create the new module.
-	std::unique_ptr<Module> New =
-		llvm::make_unique<Module>(M->getModuleIdentifier(), M->getContext());
-	New->setDataLayout("");
-	New->setTargetTriple("");
-	New->setModuleInlineAsm(M->getModuleInlineAsm());
+    // First off, we need to create the new module.
+    std::unique_ptr<Module> New =
+        llvm::make_unique<Module>(M->getModuleIdentifier(), M->getContext());
+    New->setDataLayout("");
+    New->setTargetTriple("");
+    New->setModuleInlineAsm(M->getModuleInlineAsm());
 
     
     auto mapGlobal = [&](const GlobalVariable *I)
@@ -215,40 +215,40 @@ std::unique_ptr<Module> LocalCloneModule(
         }
     }
 
-	// And named metadata....
-	for (Module::const_named_metadata_iterator I = M->named_metadata_begin(),
-		E = M->named_metadata_end(); I != E; ++I) {
-		const NamedMDNode &NMD = *I;
-		NamedMDNode *NewNMD = New->getOrInsertNamedMetadata(NMD.getName());
-		for (unsigned i = 0, e = NMD.getNumOperands(); i != e; ++i)
-			NewNMD->addOperand(MapMetadata(NMD.getOperand(i), VMap));
-	}
+    // And named metadata....
+    for (Module::const_named_metadata_iterator I = M->named_metadata_begin(),
+        E = M->named_metadata_end(); I != E; ++I) {
+        const NamedMDNode &NMD = *I;
+        NamedMDNode *NewNMD = New->getOrInsertNamedMetadata(NMD.getName());
+        for (unsigned i = 0, e = NMD.getNumOperands(); i != e; ++i)
+            NewNMD->addOperand(MapMetadata(NMD.getOperand(i), VMap));
+    }
 
-	return New;
+    return New;
 }
-	
+    
 int main(int argc, char *argv[])
 {
-	LLVMContext Context;
-	SMDiagnostic Err;
-	std::map<std::string, std::vector<GlobalValue*>> Map;
-	cl::ParseCommandLineOptions(argc, argv);
-	CLElfLib::CElfWriter* pWriter = CLElfLib::CElfWriter::Create(EH_TYPE_NONE, EH_MACHINE_NONE, 0);
-	CLElfLib::SSectionNode sectionNode;
+    LLVMContext Context;
+    SMDiagnostic Err;
+    std::map<std::string, std::vector<GlobalValue*>> Map;
+    cl::ParseCommandLineOptions(argc, argv);
+    CLElfLib::CElfWriter* pWriter = CLElfLib::CElfWriter::Create(EH_TYPE_NONE, EH_MACHINE_NONE, 0);
+    CLElfLib::SSectionNode sectionNode;
 
-	ErrorOr<std::unique_ptr<MemoryBuffer>> FileOrErr =
-		MemoryBuffer::getFileOrSTDIN(InputBCFilename);
-	std::unique_ptr<llvm::MemoryBuffer> genericBufferPtr(FileOrErr.get().release());
-	Expected<std::unique_ptr<Module>> M = llvm::parseBitcodeFile(genericBufferPtr->getMemBufferRef(), Context);
+    ErrorOr<std::unique_ptr<MemoryBuffer>> FileOrErr =
+        MemoryBuffer::getFileOrSTDIN(InputBCFilename);
+    std::unique_ptr<llvm::MemoryBuffer> genericBufferPtr(FileOrErr.get().release());
+    Expected<std::unique_ptr<Module>> M = llvm::parseBitcodeFile(genericBufferPtr->getMemBufferRef(), Context);
     if (llvm::Error EC = M.takeError())
     {
         Err.print("Unable to Parse bitcode", errs());
         return -1;
     }
 
-	auto &Bif_FunctionList = M.get()->getFunctionList();
-	auto &GlobalList = M.get()->getGlobalList();
-	std::vector<GlobalValue*> NotFound;
+    auto &Bif_FunctionList = M.get()->getFunctionList();
+    auto &GlobalList = M.get()->getGlobalList();
+    std::vector<GlobalValue*> NotFound;
     std::vector<std::string> NotFound_names;
 
     if (InputFuncList.empty())
@@ -303,8 +303,8 @@ int main(int argc, char *argv[])
 
     std::map<const llvm::Function*, std::set<StringRef>> FuncToGlobalsMap;
 
-	for (auto &iterator3 : GlobalList)
-	{
+    for (auto &iterator3 : GlobalList)
+    {
         std::function<void(User*)> findUsers = [&](User* U)
         {
             if (auto inst = dyn_cast<Instruction>(U))
@@ -322,7 +322,7 @@ int main(int argc, char *argv[])
                 {
                     findUsers(Users2);
                 }
-				return;
+                return;
             }
         };
 
@@ -331,36 +331,36 @@ int main(int argc, char *argv[])
             findUsers(Users);
         }
         Map[iterator3.getName().str()].push_back(&iterator3);
-	}
+    }
 
-	Map["other"] = NotFound;
-		
-	//At this point we have the bins and the functions that go inside each bin
+    Map["other"] = NotFound;
+        
+    //At this point we have the bins and the functions that go inside each bin
 
-	std::map<std::string, std::string> ElfMap;
+    std::map<std::string, std::string> ElfMap;
 
-	// Need to construct the header file
-	SmallVector<char, 0> headerVector;
+    // Need to construct the header file
+    SmallVector<char, 0> headerVector;
 
-	int counter;
-	if (IncludeSizet)
-		counter = 6;
-	else
-		counter = 2;
+    int counter;
+    if (IncludeSizet)
+        counter = 6;
+    else
+        counter = 2;
 
-	for (auto map_iterator : Map)
-	{
+    for (auto map_iterator : Map)
+    {
         std::vector<GlobalValue*> ExtractValue = map_iterator.second;
-		llvm::ValueToValueMapTy Val;
-		std::unique_ptr<Module> M1 = LocalCloneModule(M.get().get(),
+        llvm::ValueToValueMapTy Val;
+        std::unique_ptr<Module> M1 = LocalCloneModule(M.get().get(),
             Val, ExtractValue, FuncToGlobalsMap);
-		legacy::PassManager Passes;
-		SmallVector<char, 0> Buffer;
-		raw_svector_ostream OS(Buffer);
-		Passes.add(createBitcodeWriterPass(OS, false));
-		Passes.run(*M1.get());
-		ElfMap[map_iterator.first] = OS.str().str();
-	}
+        legacy::PassManager Passes;
+        SmallVector<char, 0> Buffer;
+        raw_svector_ostream OS(Buffer);
+        Passes.add(createBitcodeWriterPass(OS, false));
+        Passes.run(*M1.get());
+        ElfMap[map_iterator.first] = OS.str().str();
+    }
 
     for (auto map_iterator : Map) 
     {
@@ -373,53 +373,53 @@ int main(int argc, char *argv[])
     }
 
 
-	//Adding the global Header file now that it is constructed
-	raw_svector_ostream OS(headerVector);
-	CreateElfSection(pWriter,
-		sectionNode,
-		"Header",
-		const_cast<char*>(OS.str().data()),
-		OS.str().size());
+    //Adding the global Header file now that it is constructed
+    raw_svector_ostream OS(headerVector);
+    CreateElfSection(pWriter,
+        sectionNode,
+        "Header",
+        const_cast<char*>(OS.str().data()),
+        OS.str().size());
 
-	if (IncludeSizet)
-	{
+    if (IncludeSizet)
+    {
         std::string sizetPath;
         #ifdef _WIN32
             sizetPath = InputBCFilename.substr(0, InputBCFilename.find_last_of("\\/"));
         #else
             sizetPath = InputBCFilename.substr(0, InputBCFilename.find_last_of("/"));
         #endif
-	    
-		std::unique_ptr<Module> M_sizet_32 =
-			getLazyIRFileModule(sizetPath + "//IGCsize_t_32.bc", Err, Context, true);
-		if (!M_sizet_32) {
-			Err.print("function-import-sizet_32", errs());
-		}
+        
+        std::unique_ptr<Module> M_sizet_32 =
+            getLazyIRFileModule(sizetPath + "//IGCsize_t_32.bc", Err, Context, true);
+        if (!M_sizet_32) {
+            Err.print("function-import-sizet_32", errs());
+        }
 
-		std::unique_ptr<Module> M_sizet_64 =
-			getLazyIRFileModule(sizetPath + "//IGCsize_t_64.bc", Err, Context, true);
-		if (!M_sizet_64) {
-			Err.print("function-import-sizet_64", errs());
-		}
+        std::unique_ptr<Module> M_sizet_64 =
+            getLazyIRFileModule(sizetPath + "//IGCsize_t_64.bc", Err, Context, true);
+        if (!M_sizet_64) {
+            Err.print("function-import-sizet_64", errs());
+        }
 
-		SmallVector<char, 0> headerVector_sizet_32;
-		SmallVector<char, 0> headerVector_sizet_64;
-			
-		for (auto &iterator1 : M_sizet_32->getFunctionList())
-		{
-			auto Func = iterator1.getName();
-			if (iterator1.isMaterializable())
-				MakeHeader(Func, headerVector_sizet_32, 4);
-		}
-		for (auto &iterator1 : M_sizet_64->getFunctionList())
-		{
-			auto Func = iterator1.getName();
-			if (iterator1.isMaterializable())
-				MakeHeader(Func, headerVector_sizet_64, 5);
-		}
+        SmallVector<char, 0> headerVector_sizet_32;
+        SmallVector<char, 0> headerVector_sizet_64;
+            
+        for (auto &iterator1 : M_sizet_32->getFunctionList())
+        {
+            auto Func = iterator1.getName();
+            if (iterator1.isMaterializable())
+                MakeHeader(Func, headerVector_sizet_32, 4);
+        }
+        for (auto &iterator1 : M_sizet_64->getFunctionList())
+        {
+            auto Func = iterator1.getName();
+            if (iterator1.isMaterializable())
+                MakeHeader(Func, headerVector_sizet_64, 5);
+        }
 
-		raw_svector_ostream OS_sizet_32(headerVector_sizet_32);
-		raw_svector_ostream OS_sizet_64(headerVector_sizet_64);
+        raw_svector_ostream OS_sizet_32(headerVector_sizet_32);
+        raw_svector_ostream OS_sizet_64(headerVector_sizet_64);
 
         if (Error EC = M_sizet_32->materializeAll())
         {
@@ -431,76 +431,76 @@ int main(int argc, char *argv[])
             Err.print("Unable to Parse bitcode", errs());
         }
         
-		legacy::PassManager Passes1;
-		SmallVector<char, 0> Buffer_sizet32;
-		raw_svector_ostream OS_sizet32(Buffer_sizet32);
-		Passes1.add(createBitcodeWriterPass(OS_sizet32, true));
-		Passes1.run(*M_sizet_32.get());
+        legacy::PassManager Passes1;
+        SmallVector<char, 0> Buffer_sizet32;
+        raw_svector_ostream OS_sizet32(Buffer_sizet32);
+        Passes1.add(createBitcodeWriterPass(OS_sizet32, true));
+        Passes1.run(*M_sizet_32.get());
 
-		legacy::PassManager Passes2;
-		SmallVector<char, 0> Buffer_sizet64;
-		raw_svector_ostream OS_sizet64(Buffer_sizet64);
-		Passes2.add(createBitcodeWriterPass(OS_sizet64, true));
-		Passes2.run(*M_sizet_64.get());
-		
-		//Inserting the header files for size_t and the .bc files for size_t
-		CreateElfSection(pWriter,
-			sectionNode,
-			"Header_sizet_32",
-			const_cast<char*>(OS_sizet_32.str().data()),
-			OS_sizet_32.str().size());
-		
-		CreateElfSection(pWriter,
-			sectionNode,
-			"Header_sizet_64",
-			const_cast<char*>(OS_sizet_64.str().data()),
-			OS_sizet_64.str().size());
-		
-		CreateElfSection(pWriter,
-			sectionNode,
-			"IGCsize_t_32",
-			const_cast<char*>(OS_sizet32.str().data()),
-			OS_sizet32.str().size());
+        legacy::PassManager Passes2;
+        SmallVector<char, 0> Buffer_sizet64;
+        raw_svector_ostream OS_sizet64(Buffer_sizet64);
+        Passes2.add(createBitcodeWriterPass(OS_sizet64, true));
+        Passes2.run(*M_sizet_64.get());
+        
+        //Inserting the header files for size_t and the .bc files for size_t
+        CreateElfSection(pWriter,
+            sectionNode,
+            "Header_sizet_32",
+            const_cast<char*>(OS_sizet_32.str().data()),
+            OS_sizet_32.str().size());
+        
+        CreateElfSection(pWriter,
+            sectionNode,
+            "Header_sizet_64",
+            const_cast<char*>(OS_sizet_64.str().data()),
+            OS_sizet_64.str().size());
+        
+        CreateElfSection(pWriter,
+            sectionNode,
+            "IGCsize_t_32",
+            const_cast<char*>(OS_sizet32.str().data()),
+            OS_sizet32.str().size());
 
-		CreateElfSection(pWriter,
-			sectionNode,
-			"IGCsize_t_64",
-			const_cast<char*>(OS_sizet64.str().data()),
-			OS_sizet64.str().size());
-	}
-	
-	//Now to add all of the sections in the file
-	for (auto elf_iterator : ElfMap) 
-	{
-		CreateElfSection(pWriter,
-			sectionNode,
-			elf_iterator.first,
-			const_cast<char*>(elf_iterator.second.data()),
-			elf_iterator.second.size());
-	}
+        CreateElfSection(pWriter,
+            sectionNode,
+            "IGCsize_t_64",
+            const_cast<char*>(OS_sizet64.str().data()),
+            OS_sizet64.str().size());
+    }
+    
+    //Now to add all of the sections in the file
+    for (auto elf_iterator : ElfMap) 
+    {
+        CreateElfSection(pWriter,
+            sectionNode,
+            elf_iterator.first,
+            const_cast<char*>(elf_iterator.second.data()),
+            elf_iterator.second.size());
+    }
 
-	// Resolve size of ELF blob
-	size_t dataSize = 0;
-	char* ElfBlob = NULL;
-	pWriter->ResolveBinary(ElfBlob, dataSize);
-	ElfBlob = new char[dataSize];
-	if (ElfBlob == NULL)
-	{
-		return -1;
-	}
-	pWriter->ResolveBinary(ElfBlob, dataSize);
+    // Resolve size of ELF blob
+    size_t dataSize = 0;
+    char* ElfBlob = NULL;
+    pWriter->ResolveBinary(ElfBlob, dataSize);
+    ElfBlob = new char[dataSize];
+    if (ElfBlob == NULL)
+    {
+        return -1;
+    }
+    pWriter->ResolveBinary(ElfBlob, dataSize);
 
-	// Write ELF file to disk
-	std::ofstream ofs(OutputPath, std::ifstream::binary);
-	ofs.write(ElfBlob, dataSize);
-	delete[] ElfBlob;
-	if (!ofs.good())
-	{
-		return -1;
-	}
-	ofs.close();
-	CLElfLib::CElfWriter::Delete(pWriter);
-	
+    // Write ELF file to disk
+    std::ofstream ofs(OutputPath, std::ifstream::binary);
+    ofs.write(ElfBlob, dataSize);
+    delete[] ElfBlob;
+    if (!ofs.good())
+    {
+        return -1;
+    }
+    ofs.close();
+    CLElfLib::CElfWriter::Delete(pWriter);
+    
   return 0;
 }
 

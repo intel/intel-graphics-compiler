@@ -102,27 +102,27 @@ void CComputeShader::ParseShaderSpecificOpcode(llvm::Instruction* inst)
         case GenISAIntrinsic::GenISA_storestructured2:
         case GenISAIntrinsic::GenISA_storestructured3:
         case GenISAIntrinsic::GenISA_storestructured4:
-			m_numberOfUntypedAccess++;
-			break;
+            m_numberOfUntypedAccess++;
+            break;
         case GenISAIntrinsic::GenISA_ldstructured:
             m_numberOfUntypedAccess++;
-			m_num1DAccesses++;
+            m_num1DAccesses++;
             break;
-		case GenISAIntrinsic::GenISA_ldptr:
-			if (llvm::ConstantInt *pInt = llvm::dyn_cast<llvm::ConstantInt>(intr->getOperand(1)))
-			{
-				int index = int_cast<int>(pInt->getZExtValue());
-				index == 0 ? m_num1DAccesses++ : m_num2DAccesses++;
-			}
-			else
-			{
-				m_num2DAccesses++;
-			}
-			break;
+        case GenISAIntrinsic::GenISA_ldptr:
+            if (llvm::ConstantInt *pInt = llvm::dyn_cast<llvm::ConstantInt>(intr->getOperand(1)))
+            {
+                int index = int_cast<int>(pInt->getZExtValue());
+                index == 0 ? m_num1DAccesses++ : m_num2DAccesses++;
+            }
+            else
+            {
+                m_num2DAccesses++;
+            }
+            break;
         default:
             break;
         }
-    }	
+    }    
 }
 
 void CComputeShader::CreateThreadPayloadData(void* & pThreadPayload, uint& threadPayloadSize)
@@ -246,8 +246,8 @@ void CComputeShader::InitEncoder(SIMDMode simdMode, bool canAbortOnSpill, Shader
     m_pThread_ID_in_Group_Z = nullptr;
     m_numberOfTypedAccess   = 0;
     m_numberOfUntypedAccess = 0;
-	m_num1DAccesses = 0;
-	m_num2DAccesses = 0;
+    m_num1DAccesses = 0;
+    m_num2DAccesses = 0;
     CShader::InitEncoder(simdMode, canAbortOnSpill, shaderMode);
 }
 

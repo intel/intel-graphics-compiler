@@ -153,10 +153,10 @@ char StatelessToStatefull::ID = 0;
 StatelessToStatefull::StatelessToStatefull(bool hasBufOff)
     : FunctionPass(ID),
       m_hasBufferOffsetArg(hasBufOff),
-	  m_hasOptionalBufferOffsetArg(false),
-	  m_ACT(nullptr),
+      m_hasOptionalBufferOffsetArg(false),
+      m_ACT(nullptr),
       m_pImplicitArgs(nullptr),
-	  m_pKernelArgs(nullptr),
+      m_pKernelArgs(nullptr),
       m_changed (false)
 {
     initializeStatelessToStatefullPass(*PassRegistry::getPassRegistry());
@@ -175,30 +175,30 @@ bool StatelessToStatefull::runOnFunction(llvm::Function &F)
         return false;
     }
 
-	if (IGC_IS_FLAG_ENABLED(EnableCodeAssumption))
-	{
-		// Use assumption cache
-		m_ACT = &getAnalysis<AssumptionCacheTracker>();
-		AssumptionCache& AC = m_ACT->getAssumptionCache(F);
-		CodeAssumption::addAssumption(&F, &AC);
-	}
-	else
-	{
-		m_ACT = nullptr;
-	}
+    if (IGC_IS_FLAG_ENABLED(EnableCodeAssumption))
+    {
+        // Use assumption cache
+        m_ACT = &getAnalysis<AssumptionCacheTracker>();
+        AssumptionCache& AC = m_ACT->getAssumptionCache(F);
+        CodeAssumption::addAssumption(&F, &AC);
+    }
+    else
+    {
+        m_ACT = nullptr;
+    }
 
-	// Caching arguments during the transformation
-	m_hasOptionalBufferOffsetArg =
-		(m_hasBufferOffsetArg && IGC_IS_FLAG_ENABLED(EnableOptionalBufferOffset));
+    // Caching arguments during the transformation
+    m_hasOptionalBufferOffsetArg =
+        (m_hasBufferOffsetArg && IGC_IS_FLAG_ENABLED(EnableOptionalBufferOffset));
 
     m_pImplicitArgs = new ImplicitArgs(F, pMdUtils);
-	m_pKernelArgs = new KernelArgs(F, &(F.getParent()->getDataLayout()), pMdUtils, modMD);
+    m_pKernelArgs = new KernelArgs(F, &(F.getParent()->getDataLayout()), pMdUtils, modMD);
 
     visit(F);
 
-	finalizeArgInitialValue(&F);
+    finalizeArgInitialValue(&F);
     delete m_pImplicitArgs;
-	delete m_pKernelArgs;
+    delete m_pKernelArgs;
     return m_changed;
 }
 
@@ -331,7 +331,7 @@ bool StatelessToStatefull::getOffsetFromGEP(
 bool StatelessToStatefull::pointerIsPositiveOffsetFromKernelArgument(
     Function* F,Value* V, Value*& offset, unsigned int& argNumber)
 {
-	AssumptionCache* AC = getAC(F);
+    AssumptionCache* AC = getAC(F);
 
     PointerType* ptrType = dyn_cast<PointerType>(V->getType());
     assert(ptrType && "Expected scalar Pointer (No support to vector of pointers");
@@ -369,7 +369,7 @@ bool StatelessToStatefull::pointerIsPositiveOffsetFromKernelArgument(
             // 
             // Note that offset should be positive for any implicit ptr argument
             if (!arg->isImplicitArg() &&
-				(!m_hasBufferOffsetArg || m_hasOptionalBufferOffsetArg) &&
+                (!m_hasBufferOffsetArg || m_hasOptionalBufferOffsetArg) &&
                 IGC_IS_FLAG_DISABLED(SToSProducesPositivePointer))
             {
                 // [This is conservative path]
@@ -386,10 +386,10 @@ bool StatelessToStatefull::pointerIsPositiveOffsetFromKernelArgument(
                     }
                 }
 
-				if (m_hasOptionalBufferOffsetArg)
-				{
-					updateArgInfo(arg, gepProducesPositivePointer);
-				}
+                if (m_hasOptionalBufferOffsetArg)
+                {
+                    updateArgInfo(arg, gepProducesPositivePointer);
+                }
             }
             if ((gepProducesPositivePointer || m_hasBufferOffsetArg) &&
                 getOffsetFromGEP(F, GEPs, argNumber, arg->isImplicitArg(), offset))
@@ -404,71 +404,71 @@ bool StatelessToStatefull::pointerIsPositiveOffsetFromKernelArgument(
 
 void StatelessToStatefull::visitCallInst(CallInst &I) 
 {
-	if (auto Inst = dyn_cast<GenIntrinsicInst>(&I))
-	{
-		if (Inst->getIntrinsicID() == GenISAIntrinsic::GenISA_simdBlockRead ||
-			Inst->getIntrinsicID() == GenISAIntrinsic::GenISA_simdBlockWrite)
-		{
-			Module *M = Inst->getParent()->getParent()->getParent();
-			Function* F = Inst->getParent()->getParent();
-			const DebugLoc &DL = Inst->getDebugLoc();
-			Type* int32Ty = Type::getInt32Ty(M->getContext());
-			Value* ptr = Inst->getOperand(0);
-			PointerType* ptrTy = dyn_cast<PointerType>(ptr->getType());
-			// If not global/constant, skip.
-			if (ptrTy->getPointerAddressSpace() != ADDRESS_SPACE_GLOBAL &&
-				ptrTy->getPointerAddressSpace() != ADDRESS_SPACE_CONSTANT) {
-				return;
-			}
+    if (auto Inst = dyn_cast<GenIntrinsicInst>(&I))
+    {
+        if (Inst->getIntrinsicID() == GenISAIntrinsic::GenISA_simdBlockRead ||
+            Inst->getIntrinsicID() == GenISAIntrinsic::GenISA_simdBlockWrite)
+        {
+            Module *M = Inst->getParent()->getParent()->getParent();
+            Function* F = Inst->getParent()->getParent();
+            const DebugLoc &DL = Inst->getDebugLoc();
+            Type* int32Ty = Type::getInt32Ty(M->getContext());
+            Value* ptr = Inst->getOperand(0);
+            PointerType* ptrTy = dyn_cast<PointerType>(ptr->getType());
+            // If not global/constant, skip.
+            if (ptrTy->getPointerAddressSpace() != ADDRESS_SPACE_GLOBAL &&
+                ptrTy->getPointerAddressSpace() != ADDRESS_SPACE_CONSTANT) {
+                return;
+            }
 
-			Value* offset = nullptr;
-			unsigned int baseArgNumber = 0;
-			if (pointerIsPositiveOffsetFromKernelArgument(F, ptr, offset, baseArgNumber))
-			{		
+            Value* offset = nullptr;
+            unsigned int baseArgNumber = 0;
+            if (pointerIsPositiveOffsetFromKernelArgument(F, ptr, offset, baseArgNumber))
+            {        
                 ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
                 FunctionMetaData *funcMD = &modMD->FuncMD[F];
                 ResourceAllocMD *resAllocMD = &funcMD->resAllocMD;
                 assert(resAllocMD->argAllocMDList.size() > 0 && "ArgAllocMDList is empty.");
                 ArgAllocMD *argAlloc = &resAllocMD->argAllocMDList[baseArgNumber];
-				
+                
                 Constant* resourceNumber = ConstantInt::get(int32Ty, argAlloc->indexType);
                 unsigned addrSpace = EncodeAS4GFXResource(*resourceNumber, BufferType::UAV, 0);
                 setPointerSizeTo32bit(addrSpace, I.getParent()->getParent()->getParent());
 
-				if (Inst->getIntrinsicID() == GenISAIntrinsic::GenISA_simdBlockRead)
-				{
-					PointerType* pTy = PointerType::get(Inst->getType(), addrSpace);
-					Instruction* pPtrToInt = IntToPtrInst::Create(Instruction::IntToPtr, offset, pTy, "", Inst);
-					Function    * simdMediaBlockReadFunc = GenISAIntrinsic::getDeclaration(
-						M,
-						GenISAIntrinsic::GenISA_simdBlockRead,
-						{Inst->getType(),pTy});
-					Instruction * simdMediaBlockRead = CallInst::Create(simdMediaBlockReadFunc, {pPtrToInt}, "", Inst);
-					simdMediaBlockRead->setDebugLoc(DL);
-					Inst->replaceAllUsesWith(simdMediaBlockRead);
-					Inst->eraseFromParent();
-				}
-				else
-				{				
-					PointerType* pTy = PointerType::get(Inst->getOperand(1)->getType(), addrSpace);
-					Instruction* pPtrToInt = IntToPtrInst::Create(Instruction::IntToPtr, offset, pTy, "", Inst);
-					SmallVector<Value*, 2> args;
-					args.push_back(pPtrToInt);
-					args.push_back(Inst->getOperand(1));
-					Function    * simdMediaBlockWriteFunc = GenISAIntrinsic::getDeclaration(
-						M,
-						GenISAIntrinsic::GenISA_simdBlockWrite,
-						{pTy,Inst->getOperand(1)->getType()});
-					Instruction * simdMediaBlockWrite = CallInst::Create(simdMediaBlockWriteFunc, args, "", Inst);
-					simdMediaBlockWrite->setDebugLoc(DL);
-					Inst->replaceAllUsesWith(simdMediaBlockWrite);
-					Inst->eraseFromParent();
-				}
+                if (Inst->getIntrinsicID() == GenISAIntrinsic::GenISA_simdBlockRead)
+                {
+                    PointerType* pTy = PointerType::get(Inst->getType(), addrSpace);
+                    Instruction* pPtrToInt = IntToPtrInst::Create(Instruction::IntToPtr, offset, pTy, "", Inst);
+                    Function    * simdMediaBlockReadFunc = GenISAIntrinsic::getDeclaration(
+                        M,
+                        GenISAIntrinsic::GenISA_simdBlockRead,
+                        {Inst->getType(),pTy});
+                    Instruction * simdMediaBlockRead = CallInst::Create(simdMediaBlockReadFunc, {pPtrToInt}, "", Inst);
+                    simdMediaBlockRead->setDebugLoc(DL);
+                    Inst->replaceAllUsesWith(simdMediaBlockRead);
+                    Inst->eraseFromParent();
+                }
+                else
+                {                
+                    PointerType* pTy = PointerType::get(Inst->getOperand(1)->getType(), addrSpace);
+                    Instruction* pPtrToInt = IntToPtrInst::Create(Instruction::IntToPtr, offset, pTy, "", Inst);
+                    SmallVector<Value*, 2> args;
+                    args.push_back(pPtrToInt);
+                    args.push_back(Inst->getOperand(1));
+                    Function    * simdMediaBlockWriteFunc = GenISAIntrinsic::getDeclaration(
+                        M,
+                        GenISAIntrinsic::GenISA_simdBlockWrite,
+                        {pTy,Inst->getOperand(1)->getType()});
+                    Instruction * simdMediaBlockWrite = CallInst::Create(simdMediaBlockWriteFunc, args, "", Inst);
+                    simdMediaBlockWrite->setDebugLoc(DL);
+                    Inst->replaceAllUsesWith(simdMediaBlockWrite);
+                    Inst->eraseFromParent();
+                }
 
                 m_changed = true;
-			}
-		}
-	}
+            }
+        }
+    }
 
 }
 
@@ -625,42 +625,42 @@ void StatelessToStatefull::setPointerSizeTo32bit(int32_t AddrSpace, Module* M)
 }
 
 void StatelessToStatefull::updateArgInfo(
-	const KernelArg *kernelArg, bool isPositive)
+    const KernelArg *kernelArg, bool isPositive)
 {
-	auto II = m_argsInfo.find(kernelArg);
-	if (II == m_argsInfo.end())
-	{
-		m_argsInfo[kernelArg] = 1; // default to true
-	}
-	if (!isPositive)
-	{
-		m_argsInfo[kernelArg] = 0;
-	}
+    auto II = m_argsInfo.find(kernelArg);
+    if (II == m_argsInfo.end())
+    {
+        m_argsInfo[kernelArg] = 1; // default to true
+    }
+    if (!isPositive)
+    {
+        m_argsInfo[kernelArg] = 0;
+    }
 }
 
 void StatelessToStatefull::finalizeArgInitialValue(Function *F)
 {
-	if (!m_hasOptionalBufferOffsetArg)
-	{
-		return;
-	}
+    if (!m_hasOptionalBufferOffsetArg)
+    {
+        return;
+    }
 
-	Module *M = F->getParent();
-	Type* int32Ty = Type::getInt32Ty(M->getContext());
-	Value *ZeroValue = ConstantInt::get(int32Ty, 0);
+    Module *M = F->getParent();
+    Type* int32Ty = Type::getInt32Ty(M->getContext());
+    Value *ZeroValue = ConstantInt::get(int32Ty, 0);
 
-	for (auto II : m_argsInfo)
-	{
-		const KernelArg* kernelArg = II.first;
-		int mapVal = II.second;
-		bool allOffsetPositive = (mapVal == 1);
-		if (allOffsetPositive)
-		{
-			const KernelArg *offsetArg = getBufferOffsetKernelArg(kernelArg);
+    for (auto II : m_argsInfo)
+    {
+        const KernelArg* kernelArg = II.first;
+        int mapVal = II.second;
+        bool allOffsetPositive = (mapVal == 1);
+        if (allOffsetPositive)
+        {
+            const KernelArg *offsetArg = getBufferOffsetKernelArg(kernelArg);
             assert(offsetArg && "Missing BufferOffset arg!");
-			Value *BufferOffsetArg = const_cast<Argument *>(offsetArg->getArg());
-			BufferOffsetArg->replaceAllUsesWith(ZeroValue);
-		}
-	}
-	m_argsInfo.clear();
+            Value *BufferOffsetArg = const_cast<Argument *>(offsetArg->getArg());
+            BufferOffsetArg->replaceAllUsesWith(ZeroValue);
+        }
+    }
+    m_argsInfo.clear();
 }

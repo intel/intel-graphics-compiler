@@ -52,7 +52,7 @@ char CheckInstrTypes::ID = 0;
 
 CheckInstrTypes::CheckInstrTypes(IGC::SInstrTypes* instrList) : FunctionPass(ID), g_InstrTypes(instrList)
 {
-    initializeLoopInfoWrapperPassPass(*PassRegistry::getPassRegistry());	
+    initializeLoopInfoWrapperPassPass(*PassRegistry::getPassRegistry());    
     initializeCheckInstrTypesPass(*PassRegistry::getPassRegistry());
 
     instrList->CorrelatedValuePropagationEnable = false;

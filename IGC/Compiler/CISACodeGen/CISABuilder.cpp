@@ -380,7 +380,7 @@ void CEncoder::Jump(CVariable* flag, uint label)
     // control flow instructions cannot be broken down into lower SIMD
     Common_VISA_EMask_Ctrl emask = m_encoderState.m_noMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1;
     Common_ISA_Exec_Size execSize = visaExecSize(m_program->m_dispatchSize);
-	if (flag == nullptr || flag->IsUniform())
+    if (flag == nullptr || flag->IsUniform())
     {
         execSize = EXEC_SIZE_1;
     }
@@ -5441,7 +5441,7 @@ void CEncoder::SetVISAWaTable(WA_TABLE const& waTable)
     m_WaTable.WaNoSimd16TernarySrc0Imm = waTable.WaNoSimd16TernarySrc0Imm;
     m_WaTable.Wa_1406306137 = waTable.Wa_1406306137;
     m_WaTable.Wa_2201674230 = waTable.Wa_2201674230;
-	m_WaTable.Wa_1406950495 = waTable.Wa_1406950495;
+    m_WaTable.Wa_1406950495 = waTable.Wa_1406950495;
 }
 
 void CEncoder::GetRowAndColOffset(CVariable* var, unsigned int subVar, unsigned int subReg, unsigned char& rowOff, unsigned char& colOff)

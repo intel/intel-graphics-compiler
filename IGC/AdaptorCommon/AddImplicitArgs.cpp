@@ -214,8 +214,8 @@ void AddImplicitArgs::updateNewFuncArgs(llvm::Function* pFunc, llvm::Function* p
     Function::arg_iterator currArg = pNewFunc->arg_begin();
     std::map<void*, unsigned int> argMap;
     std::vector<std::pair<llvm::Instruction*, unsigned int>> newAddr;
-	bool fullDebugInfo = false;
-	IF_DEBUG_INFO(bool lineNumbersOnly = false;)
+    bool fullDebugInfo = false;
+    IF_DEBUG_INFO(bool lineNumbersOnly = false;)
     IF_DEBUG_INFO(CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();)
     IF_DEBUG_INFO(DebugMetadataInfo::hasAnyDebugInfo(ctx, fullDebugInfo, lineNumbersOnly);)
 

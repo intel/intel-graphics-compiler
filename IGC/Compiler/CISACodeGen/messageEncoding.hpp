@@ -493,7 +493,7 @@ struct SEUSamplerMessageDescriptorGen7 //Gen8 uses the same
             unsigned int       ResponseLength                      : 5;
             unsigned int       MessageLength                       : 4;
             unsigned int       FP16Input                           : 1;
-            unsigned int       FP16Return						   : 1;
+            unsigned int       FP16Return                           : 1;
             unsigned int       EndOfThread                         : 1;    // bool
         } All;
 

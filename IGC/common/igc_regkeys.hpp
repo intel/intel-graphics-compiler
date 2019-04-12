@@ -44,8 +44,8 @@ typedef char debugString[256];
 #include <vector>
 struct HashRange
 {
-	unsigned long long start;
-	unsigned long long end;
+    unsigned long long start;
+    unsigned long long end;
 };
 
 struct SRegKeyVariableMetaData
@@ -55,8 +55,8 @@ struct SRegKeyVariableMetaData
         unsigned    m_Value;
         debugString m_string;
     };
-	std::vector<HashRange> hashes;
-	virtual const char* GetName() const = 0;
+    std::vector<HashRange> hashes;
+    virtual const char* GetName() const = 0;
     virtual ~SRegKeyVariableMetaData()
     {
 
@@ -77,11 +77,11 @@ struct SRegKeyVariableMetaData_##regkeyName : public SRegKeyVariableMetaData \
     const char* GetName() const                     \
     {                                               \
         return #regkeyName;                         \
-    }												\
-	unsigned GetDefault() const				\
-	{												\
-		return (unsigned)defaultValue;				\
-	}												\
+    }                                                \
+    unsigned GetDefault() const                \
+    {                                                \
+        return (unsigned)defaultValue;                \
+    }                                                \
 } regkeyName
 
 // XMACRO defining the regkeys

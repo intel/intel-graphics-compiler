@@ -349,8 +349,8 @@ namespace IGC
         **         If the HS kernel uses a barrier function, software must restrict the Instance Count 
         **         to the number of threads that can be simultaneously active within a subslice.Factors 
         **         which must be considered includes scratch memory availability.
-        **         Value	     	Description
-        **         [0, 15]	 	    representing[1, 16] instances */
+        **         Value             Description
+        **         [0, 15]             representing[1, 16] instances */
 
         llvm::GlobalVariable* pGlobal = GetModule()->getGlobalVariable("TessInputControlPointCount");
         unsigned int inputControlPointCount = int_cast<unsigned int>(llvm::cast<llvm::ConstantInt>(pGlobal->getInitializer())->getZExtValue());

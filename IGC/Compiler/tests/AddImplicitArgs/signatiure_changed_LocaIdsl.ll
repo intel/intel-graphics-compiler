@@ -40,5 +40,5 @@ define i32 @foo(i32 %x) nounwind {
 !7 =  !{i32 8}
 !8 =  !{i32 9}
 
-; CHECK: 		define i32 @foo(i32 %x, i16 %localIdX, i16 %localIdY, i16 %localIdZ)
-; CHECK-NOT:	define i32 @foo(i32 %x)
+; CHECK:         define i32 @foo(i32 %x, i16 %localIdX, i16 %localIdY, i16 %localIdZ)
+; CHECK-NOT:    define i32 @foo(i32 %x)

@@ -107,7 +107,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-	const char *knlName = argv[argc - 1];
+    const char *knlName = argv[argc - 1];
     ASSERT(
         strstr(knlName, cisaExt) == NULL,
         "The last argument must be the kernel name");
@@ -129,4 +129,4 @@ int main(int argc, char *argv[])
 
     return 0;
 }
-#endif	// STANDALONE_MODE
+#endif    // STANDALONE_MODE

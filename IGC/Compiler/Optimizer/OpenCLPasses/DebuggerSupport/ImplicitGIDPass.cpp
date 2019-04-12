@@ -80,10 +80,10 @@ bool ImplicitGlobalId::runOnModule(Module& M)
     bool changed = false;
     for (Module::iterator fi = M.begin(), fe = M.end(); fi != fe; ++fi)
     {
-		if (!(*fi).isDeclaration())
-		{
-			changed |= runOnFunction(*fi);
-		}
+        if (!(*fi).isDeclaration())
+        {
+            changed |= runOnFunction(*fi);
+        }
     }
 
     return changed;
@@ -271,7 +271,7 @@ Value* ImplicitGlobalId::CreateGetId(unsigned dim, IRBuilder<> &B, GlobalOrLocal
         assert(pNewFunc && "Failed to create new function declaration");
 
         // Set function attributes
-		IGCLLVM::AttributeSet funcAttrs;
+        IGCLLVM::AttributeSet funcAttrs;
         AttrBuilder attBuilder;
         attBuilder.addAttribute(Attribute::NoUnwind).addAttribute(Attribute::ReadNone);
         funcAttrs = IGCLLVM::AttributeSet::get(pNewFunc->getContext(), IGCLLVM::AttributeSet::FunctionIndex, attBuilder);

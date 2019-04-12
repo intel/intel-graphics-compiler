@@ -81,13 +81,13 @@ static int pendingBracket;
 
 %%
 
-([ \t]*\n[ \t]*)+		{TRACE("\n** DELIMITER");
-						return STMT_DELIM;}
-([ \t]*"\\n"[ \t]*)+	{TRACE("\n** DELIMITER");
-						return STMT_DELIM;}
-"//"[^\n]*				{TRACE("\n** COMMENT TEXT");
-						CISAlval.string = strdup(yytext);
-						return COMMENT_LINE; }
+([ \t]*\n[ \t]*)+        {TRACE("\n** DELIMITER");
+                        return STMT_DELIM;}
+([ \t]*"\\n"[ \t]*)+    {TRACE("\n** DELIMITER");
+                        return STMT_DELIM;}
+"//"[^\n]*                {TRACE("\n** COMMENT TEXT");
+                        CISAlval.string = strdup(yytext);
+                        return COMMENT_LINE; }
 
 "/*"           BEGIN(eat_comment);
 <eat_comment>[^*]* /* eat anything that is not a * */
@@ -110,139 +110,139 @@ static int pendingBracket;
 ".resolvedIndex"  {TRACE("\n** RESOLVED INDEX "); return DIRECTIVE_RESOLVED_INDEX;}
 
 "."implicit[a-zA-Z0-9_\-$@?]* {
-				TRACE("\n**  IMPLICIT_INPUT ");
-				CISAlval.string = strdup(yytext);
-				CISAlval.string[yyleng] = '\0';
-				return IMPLICIT_INPUT;
+                TRACE("\n**  IMPLICIT_INPUT ");
+                CISAlval.string = strdup(yytext);
+                CISAlval.string[yyleng] = '\0';
+                return IMPLICIT_INPUT;
               }
 
 "."(add|sub|inc|dec|min|max|xchg|cmpxchg|and|or|xor|minsint|maxsint|fmax|fmin|fcmpwr)   {
-			   TRACE("\n** Atomic Operations ");
-			   CISAlval.atomic_op = str2atomic_opcode(yytext + 1);
-			   return ATOMIC_SUB_OP;
-		   }
+               TRACE("\n** Atomic Operations ");
+               CISAlval.atomic_op = str2atomic_opcode(yytext + 1);
+               return ATOMIC_SUB_OP;
+           }
 
 not|cbit|fbh|fbl|bfrev {
-			   TRACE("\n** Unary Logic INST ");
-			   CISAlval.opcode = str2opcode(yytext);
-			   return UNARY_LOGIC_OP;
-		   }
+               TRACE("\n** Unary Logic INST ");
+               CISAlval.opcode = str2opcode(yytext);
+               return UNARY_LOGIC_OP;
+           }
 
 bfe {
-			   TRACE("\n** Ternary Logic INST ");
-			   CISAlval.opcode = str2opcode(yytext);
-			   return TERNARY_LOGIC_OP;
+               TRACE("\n** Ternary Logic INST ");
+               CISAlval.opcode = str2opcode(yytext);
+               return TERNARY_LOGIC_OP;
 }
 
 bfi {
-			   TRACE("\n** Quaternary Logic INST ");
-			   CISAlval.opcode = str2opcode(yytext);
-			   return QUATERNARY_LOGIC_OP;
+               TRACE("\n** Quaternary Logic INST ");
+               CISAlval.opcode = str2opcode(yytext);
+               return QUATERNARY_LOGIC_OP;
 }
 
 
 inv|log|exp|sqrt|rsqrt|sin|cos|sqrtm {
-			   TRACE("\n** 2 operands math INST ");
-			   CISAlval.opcode = str2opcode(yytext);
-			   return MATH2_OP;
+               TRACE("\n** 2 operands math INST ");
+               CISAlval.opcode = str2opcode(yytext);
+               return MATH2_OP;
            }
 
 div|mod|pow|divm {
-			   TRACE("\n** 3 operands math INST ");
-			   CISAlval.opcode = str2opcode(yytext);
-			   return MATH3_OP;
+               TRACE("\n** 3 operands math INST ");
+               CISAlval.opcode = str2opcode(yytext);
+               return MATH3_OP;
            }
 
 frc|lzd|rndd|rndu|rnde|rndz {
-			   TRACE("\n** Frc INST ");
-			   CISAlval.opcode = str2opcode(yytext);
-			   return ARITH2_OP;
+               TRACE("\n** Frc INST ");
+               CISAlval.opcode = str2opcode(yytext);
+               return ARITH2_OP;
            }
 
 add|avg|dp2|dp3|dp4|dph|line|mul|pow|mulh|sad2|plane {
-			   TRACE("\n** MATH INST ");
-			   CISAlval.opcode = str2opcode(yytext);
-			   return ARITH3_OP;
+               TRACE("\n** MATH INST ");
+               CISAlval.opcode = str2opcode(yytext);
+               return ARITH3_OP;
            }
 
 mad|lrp|sad2add {
-			   TRACE("\n** MATH INST ");
-			   CISAlval.opcode = str2opcode(yytext);
-			   return ARITH4_OP;
+               TRACE("\n** MATH INST ");
+               CISAlval.opcode = str2opcode(yytext);
+               return ARITH4_OP;
            }
 
 and|or|xor|shl|shr|asr {
-			   TRACE("\n** Binary Logic INST ");
-			   CISAlval.opcode = str2opcode(yytext);
-			   return BINARY_LOGIC_OP;
-		   }
+               TRACE("\n** Binary Logic INST ");
+               CISAlval.opcode = str2opcode(yytext);
+               return BINARY_LOGIC_OP;
+           }
 
 rol|ror {
-			   TRACE("\n** Binary Logic INST ");
-			   CISAlval.opcode = str2opcode(yytext);
-			   return BINARY_LOGIC_OP;
-		   }
+               TRACE("\n** Binary Logic INST ");
+               CISAlval.opcode = str2opcode(yytext);
+               return BINARY_LOGIC_OP;
+           }
 
 
 addc|subb {
-			   TRACE("\n** MATH INST ");
-			   CISAlval.opcode = str2opcode(yytext);
-			   return ARITH4_OP2;
+               TRACE("\n** MATH INST ");
+               CISAlval.opcode = str2opcode(yytext);
+               return ARITH4_OP2;
            }
 
 asin|acos|atan {
-			   TRACE("\n** ANTI TRIGONOMETRIC INST ");
-			   CISAlval.opcode = str2opcode(yytext);
-			   return ANTI_TRIG_OP;
+               TRACE("\n** ANTI TRIGONOMETRIC INST ");
+               CISAlval.opcode = str2opcode(yytext);
+               return ANTI_TRIG_OP;
            }
 
 addr_add   {
-			   TRACE("\n** Addr add INST ");
-			   CISAlval.opcode = str2opcode(yytext);
-			   return ADDR_ADD_OP;
-		   }
+               TRACE("\n** Addr add INST ");
+               CISAlval.opcode = str2opcode(yytext);
+               return ADDR_ADD_OP;
+           }
 
 sel {
-			   TRACE("\n** Mod INST ");
-			   CISAlval.opcode = str2opcode(yytext);
-			   return SEL_OP;
+               TRACE("\n** Mod INST ");
+               CISAlval.opcode = str2opcode(yytext);
+               return SEL_OP;
            }
 
 min {
-			   TRACE("\n** MIN INST ");
-			   CISAlval.opcode = ISA_FMINMAX;
-			   return MIN_OP;
+               TRACE("\n** MIN INST ");
+               CISAlval.opcode = ISA_FMINMAX;
+               return MIN_OP;
            }
 
 max {
-			   TRACE("\n** MAX INST ");
-			   CISAlval.opcode = ISA_FMINMAX;
-			   return MAX_OP;
+               TRACE("\n** MAX INST ");
+               CISAlval.opcode = ISA_FMINMAX;
+               return MAX_OP;
            }
 
 mov {
-			   TRACE("\n** MOV INST ");
-			   CISAlval.opcode = str2opcode(yytext);
-			   return MOV_OP;
-		   }
+               TRACE("\n** MOV INST ");
+               CISAlval.opcode = str2opcode(yytext);
+               return MOV_OP;
+           }
 
 movs {
-			   TRACE("\n** MOVS INST ");
-			   CISAlval.opcode = str2opcode(yytext);
-			   return MOVS_OP;
-		   }
+               TRACE("\n** MOVS INST ");
+               CISAlval.opcode = str2opcode(yytext);
+               return MOVS_OP;
+           }
 
 setp {
-			   TRACE("\n** SETP INST ");
-			   CISAlval.opcode = str2opcode(yytext);
-			   return SETP_OP;
-		   }
+               TRACE("\n** SETP INST ");
+               CISAlval.opcode = str2opcode(yytext);
+               return SETP_OP;
+           }
 
 cmp {
-			   TRACE("\n** compare INST ");
-			   CISAlval.opcode = str2opcode(yytext);
-			   return CMP_OP;
-		   }
+               TRACE("\n** compare INST ");
+               CISAlval.opcode = str2opcode(yytext);
+               return CMP_OP;
+           }
 
 svm_block_ld|svm_block_st|svm_scatter|svm_gather|svm_gather4scaled|svm_scatter4scaled|svm_atomic {
     TRACE("\n** svm INST ");
@@ -258,27 +258,27 @@ svm_block_ld|svm_block_st|svm_scatter|svm_gather|svm_gather4scaled|svm_scatter4s
 }
 
 oword_ld|oword_st|oword_ld_unaligned {
-			   TRACE("\n** oword_load INST ");
-			   CISAlval.opcode = str2opcode(yytext);
-			   return OWORD_OP;
-		   }
+               TRACE("\n** oword_load INST ");
+               CISAlval.opcode = str2opcode(yytext);
+               return OWORD_OP;
+           }
 
 media_ld|media_st {
-			   TRACE("\n** media INST ");
-			   CISAlval.opcode = str2opcode(yytext);
-			   return MEDIA_OP;
+               TRACE("\n** media INST ");
+               CISAlval.opcode = str2opcode(yytext);
+               return MEDIA_OP;
            }
 
 gather|scatter {
-			   TRACE("\n** gather/scatter INST ");
-			   CISAlval.opcode = str2opcode(yytext);
-			   return SCATTER_OP;
+               TRACE("\n** gather/scatter INST ");
+               CISAlval.opcode = str2opcode(yytext);
+               return SCATTER_OP;
            }
 
 gather4_typed|scatter4_typed {
                 TRACE("\n** gather/scatter typed INST ");
-			   CISAlval.opcode = str2opcode(yytext);
-			   return SCATTER_TYPED_OP;
+               CISAlval.opcode = str2opcode(yytext);
+               return SCATTER_TYPED_OP;
 }
 
 gather_scaled|scatter_scaled {
@@ -295,8 +295,8 @@ gather4_scaled|scatter4_scaled {
 
 barrier {
                TRACE("\n** barrier INST ");
-			   CISAlval.opcode = str2opcode(yytext);
-			   return BARRIER_OP;
+               CISAlval.opcode = str2opcode(yytext);
+               return BARRIER_OP;
 }
 
 sbarrier.signal {
@@ -313,31 +313,31 @@ sbarrier.wait {
 
 sampler_cache_flush {
                TRACE("\n** sampler_cache_flush INST ");
-			   CISAlval.opcode = str2opcode(yytext);
-			   return CACHE_FLUSH_OP;
+               CISAlval.opcode = str2opcode(yytext);
+               return CACHE_FLUSH_OP;
 }
 
 wait {
                TRACE("\n** wait INST ");
-			   CISAlval.opcode = str2opcode(yytext);
-			   return WAIT_OP;
+               CISAlval.opcode = str2opcode(yytext);
+               return WAIT_OP;
 }
 
 fence_global {
-			   TRACE("\n** fence global INST ");
-			   CISAlval.opcode = str2opcode("fence");
-			   return FENCE_GLOBAL_OP;
+               TRACE("\n** fence global INST ");
+               CISAlval.opcode = str2opcode("fence");
+               return FENCE_GLOBAL_OP;
 }
 fence_local {
-			   TRACE("\n** fence local INST ");
-			   CISAlval.opcode = str2opcode("fence");
-			   return FENCE_LOCAL_OP;
+               TRACE("\n** fence local INST ");
+               CISAlval.opcode = str2opcode("fence");
+               return FENCE_LOCAL_OP;
 }
 
 fence_sw {
-			   TRACE("\n** fence SW INST ");
-			   CISAlval.opcode = str2opcode("fence");
-			   return FENCE_SW_OP;
+               TRACE("\n** fence SW INST ");
+               CISAlval.opcode = str2opcode("fence");
+               return FENCE_SW_OP;
 }
 
 yield {
@@ -347,9 +347,9 @@ yield {
 }
 
 untyped_atomic {
-			   TRACE("\n** atomic INST ");
-			   CISAlval.opcode = str2opcode(yytext);
-			   return ATOMIC_OP;
+               TRACE("\n** atomic INST ");
+               CISAlval.opcode = str2opcode(yytext);
+               return ATOMIC_OP;
            }
 
 dword_atomic {
@@ -365,83 +365,83 @@ typed_atomic {
 }
 
 sample|load {
-			   TRACE("\n** sample INST ");
-			   CISAlval.opcode = str2opcode(yytext);
-			   return SAMPLE_OP;
+               TRACE("\n** sample INST ");
+               CISAlval.opcode = str2opcode(yytext);
+               return SAMPLE_OP;
            }
 sample_unorm {
-			   TRACE("\n** sample INST ");
-			   CISAlval.opcode = str2opcode(yytext);
-			   return SAMPLE_UNORM_OP;
-		   }
+               TRACE("\n** sample INST ");
+               CISAlval.opcode = str2opcode(yytext);
+               return SAMPLE_UNORM_OP;
+           }
 
 vme_ime {
-			   TRACE("\n** VME_IME INST ");
-			   CISAlval.opcode = str2opcode(yytext);
-			   return VME_IME_OP;
+               TRACE("\n** VME_IME INST ");
+               CISAlval.opcode = str2opcode(yytext);
+               return VME_IME_OP;
            }
 vme_sic {
-			   TRACE("\n** VME_SIC INST ");
-			   CISAlval.opcode = str2opcode(yytext);
-			   return VME_SIC_OP;
+               TRACE("\n** VME_SIC INST ");
+               CISAlval.opcode = str2opcode(yytext);
+               return VME_SIC_OP;
            }
 vme_fbr {
-			   TRACE("\n** VME_FBR INST ");
-			   CISAlval.opcode = str2opcode(yytext);
-			   return VME_FBR_OP;
+               TRACE("\n** VME_FBR INST ");
+               CISAlval.opcode = str2opcode(yytext);
+               return VME_FBR_OP;
            }
 
 jmp|call|ret|fret|fcall|goto {
-			   TRACE("\n** branch INST ");
-			   CISAlval.opcode = str2opcode(yytext);
-			   return BRANCH_OP;
+               TRACE("\n** branch INST ");
+               CISAlval.opcode = str2opcode(yytext);
+               return BRANCH_OP;
 }
 
 ifcall {
     TRACE("\n** indirect call INST ");
     CISAlval.opcode = ISA_IFCALL;
-	return IFCALL;
+    return IFCALL;
 }
 
 faddr {
     TRACE("\n** function address INST ");
     CISAlval.opcode = ISA_FADDR;
-	return FADDR;
+    return FADDR;
 }
 
 switchjmp {
-			   TRACE("\n** branch INST ");
-			   CISAlval.opcode = str2opcode(yytext);
-			   return SWITCHJMP_OP;
-		   }
+               TRACE("\n** branch INST ");
+               CISAlval.opcode = str2opcode(yytext);
+               return SWITCHJMP_OP;
+           }
 
 if|while|else|do|endif|break|cont  {
-			   TRACE("\n** SIMDCF ");
-			   CISAlval.opcode = str2opcode(yytext);
-			   return SIMDCF_OP;
-		   }
+               TRACE("\n** SIMDCF ");
+               CISAlval.opcode = str2opcode(yytext);
+               return SIMDCF_OP;
+           }
 raw_send {
               TRACE("\n** RAW_SEND ");
-			  CISAlval.opcode = ISA_RAW_SEND;
-			  return RAW_SEND_STRING;
+              CISAlval.opcode = ISA_RAW_SEND;
+              return RAW_SEND_STRING;
          }
 
 raw_sendc {
               TRACE("\n** RAW_SENDC ");
-			  CISAlval.opcode = ISA_RAW_SEND;
-			  return RAW_SENDC_STRING;
+              CISAlval.opcode = ISA_RAW_SEND;
+              return RAW_SENDC_STRING;
           }
 
 raw_sends {
               TRACE("\n** RAW_SENDS ");
-			  CISAlval.opcode = ISA_RAW_SENDS;
-			  return RAW_SENDS_STRING;
+              CISAlval.opcode = ISA_RAW_SENDS;
+              return RAW_SENDS_STRING;
           }
 
 raw_sendsc {
               TRACE("\n** RAW_SENDSC ");
-			  CISAlval.opcode = ISA_RAW_SENDS;
-			  return RAW_SENDSC_STRING;
+              CISAlval.opcode = ISA_RAW_SENDS;
+              return RAW_SENDSC_STRING;
           }
 avs {
         TRACE("\n** AVS INST ");
@@ -463,70 +463,70 @@ LOC {
 
 sample_3d|sample_b|sample_l|sample_c|sample_d|sample_b_c|sample_l_c|sample_d_c|sample_lz|sample_c_lz {
     TRACE("\n** SAMPLE_3D ");
-	CISAlval.sample3DOp = str2SampleOpcode(yytext);
-	return SAMPLE_3D_OP;
+    CISAlval.sample3DOp = str2SampleOpcode(yytext);
+    return SAMPLE_3D_OP;
 }
 
 load_3d|load_mcs|load_2dms_w|load_lz {
-	TRACE("\n** LOAD_3D ");
-	CISAlval.sample3DOp = str2SampleOpcode(yytext);
-	return LOAD_3D_OP;
+    TRACE("\n** LOAD_3D ");
+    CISAlval.sample3DOp = str2SampleOpcode(yytext);
+    return LOAD_3D_OP;
 }
 
 sample4|sample4_c|sample4_po|sample4_po_c {
-	TRACE("\n** SAMPLE4_3D ");
-	CISAlval.sample3DOp = str2SampleOpcode(yytext);
-	return SAMPLE4_3D_OP;
+    TRACE("\n** SAMPLE4_3D ");
+    CISAlval.sample3DOp = str2SampleOpcode(yytext);
+    return SAMPLE4_3D_OP;
 }
 
 resinfo {
-	TRACE("\n** RESINFO_3D ");
-	CISAlval.opcode = str2opcode("info_3d");
-	return RESINFO_OP_3D;
-	}
+    TRACE("\n** RESINFO_3D ");
+    CISAlval.opcode = str2opcode("info_3d");
+    return RESINFO_OP_3D;
+    }
 
 sampleinfo {
-	TRACE("\n** SAMPLEINFO_3D ");
-	CISAlval.opcode = str2opcode("info_3d");
-	return SAMPLEINFO_OP_3D;
-	}
+    TRACE("\n** SAMPLEINFO_3D ");
+    CISAlval.opcode = str2opcode("info_3d");
+    return SAMPLEINFO_OP_3D;
+    }
 
 rt_write_3d {
     TRACE("\n** RTWRITE_3D ");
-	CISAlval.opcode = str2opcode("rt_write_3d");
-	return RTWRITE_OP_3D;
+    CISAlval.opcode = str2opcode("rt_write_3d");
+    return RTWRITE_OP_3D;
     }
 
 urb_write_3d {
     TRACE("\n** URBWRITE_3D ");
-	CISAlval.opcode = str2opcode("urb_write_3d");
-	return URBWRITE_OP_3D;
+    CISAlval.opcode = str2opcode("urb_write_3d");
+    return URBWRITE_OP_3D;
     }
 
 lifetime"."start {
-	TRACE("\n** Lifetime.start ");
-	CISAlval.opcode = str2opcode("lifetime");
-	return LIFETIME_START_OP;
-	}
+    TRACE("\n** Lifetime.start ");
+    CISAlval.opcode = str2opcode("lifetime");
+    return LIFETIME_START_OP;
+    }
 
 lifetime"."end {
-	TRACE("\n** Lifetime.end ");
-	CISAlval.opcode = str2opcode("lifetime");
-	return LIFETIME_END_OP;
+    TRACE("\n** Lifetime.end ");
+    CISAlval.opcode = str2opcode("lifetime");
+    return LIFETIME_END_OP;
     }
 
 ^[a-zA-Z_$@?][a-zA-Z0-9_\-$@?]*: {
-				TRACE("\n**  LABEL ");
-				CISAlval.string = strdup(yytext);
-				CISAlval.string[yyleng - 1] = '\0';
-				return LABEL;
+                TRACE("\n**  LABEL ");
+                CISAlval.string = strdup(yytext);
+                CISAlval.string[yyleng - 1] = '\0';
+                return LABEL;
               }
 
 0x[[:xdigit:]]+ {
-			     TRACE("\n** HEX NUMBER ");
-			     CISAlval.number = hexToint(yytext+2, yyleng-2);
-			     return HEX_NUMBER;
-			  }
+                 TRACE("\n** HEX NUMBER ");
+                 CISAlval.number = hexToint(yytext+2, yyleng-2);
+                 return HEX_NUMBER;
+              }
 
 "."(nomod|modified|top|bottom|top_mod|bottom_mod) {
                  TRACE("\n** MEDIA MODE :");
@@ -580,7 +580,7 @@ CM_AVS_(4|8|16)x(4|8) {
                 TRACE("\n** DOUBLE ");
                 CISAlval.fp = atof(yytext);
                 return DOUBLEFLOAT;
-			   }
+               }
 
 qAsmName[ ]*=[ ]* {TRACE("\n** File name of assembly "); CISAlval.string = "AsmName"; return ASM_NAME;}
 qSLMSize[ ]*=[ ]* {TRACE("\n** File name of assembly "); CISAlval.string = "SLMSize"; return SLM_SIZE;}
@@ -605,40 +605,40 @@ alias[ ]*=[ ]* {TRACE("\n** ALIAS "); return ALIAS;}
 
 
 [a-zA-Z_.][a-zA-Z0-9_\-$\\:/.]*"."cpp {
-			   TRACE("\n** CPP File Name ");
+               TRACE("\n** CPP File Name ");
                CISAlval.string = strdup(yytext);
                return CPP_FILE_NAME;
              }
 
 [a-zA-Z_.][a-zA-Z0-9_\-$\\:/.]*"."h {
-			   TRACE("\n** H File Name ");
+               TRACE("\n** H File Name ");
                CISAlval.string = strdup(yytext);
                return H_FILE_NAME;
              }
 
 [a-zA-Z_][a-zA-Z0-9_\-$\\:/.]*"."asm {
-			   TRACE("\n** Assemble File Name ");
+               TRACE("\n** Assemble File Name ");
                CISAlval.asm_name = strdup(yytext);
                return ASM_FILE_NAME;
-			 }
+             }
 
 "cm" {
-				TRACE("\n** cm attribute ");
-				CISAlval.asm_name = strdup(yytext);
-				return ATTR_CM;
-			}
+                TRACE("\n** cm attribute ");
+                CISAlval.asm_name = strdup(yytext);
+                return ATTR_CM;
+            }
 
 "3d" {
-				TRACE("\n** 3d attribute ");
-				CISAlval.asm_name = strdup(yytext);
-				return ATTR_3D;
-			}
+                TRACE("\n** 3d attribute ");
+                CISAlval.asm_name = strdup(yytext);
+                return ATTR_3D;
+            }
 
 "cs" {
-				TRACE("\n** cs attribute ");
-				CISAlval.asm_name = strdup(yytext);
-				return ATTR_CS;
-			}
+                TRACE("\n** cs attribute ");
+                CISAlval.asm_name = strdup(yytext);
+                return ATTR_CS;
+            }
 
 v_type[ ]*=[ ]*F {
                TRACE("\n** General variable type");
@@ -683,32 +683,32 @@ type[ ]*=[ ]*(ud|d|uw|w|ub|b|df|f|bool|uq|q|UD|D|UW|W|UB|B|DF|F|Bool|BOOL|UQ|Q|h
            }
 
 
-byte|word|dword|qword|oword|GRF|2GRF	{
-				//------- Align Support in Declaration -------------
-				TRACE("\n** AlignType ");
-				if (strcmp(yytext, "byte") == 0)
-					CISAlval.align = ALIGN_BYTE;
-				if (strcmp(yytext, "word") == 0)
-					CISAlval.align = ALIGN_WORD;
-				else if (strcmp(yytext, "dword") == 0)
-				CISAlval.align = ALIGN_DWORD;
-				else if (strcmp(yytext, "qword") == 0)
-					CISAlval.align = ALIGN_QWORD;
-				else if (strcmp(yytext, "oword") == 0)
-					CISAlval.align = ALIGN_OWORD;
-				else if (strcmp(yytext, "GRF") == 0)
-					CISAlval.align = ALIGN_GRF;
-				else if (strcmp(yytext, "2GRF") == 0)
-					CISAlval.align = ALIGN_2_GRF;
-				else
-					CISAlval.align = ALIGN_UNDEF;
+byte|word|dword|qword|oword|GRF|2GRF    {
+                //------- Align Support in Declaration -------------
+                TRACE("\n** AlignType ");
+                if (strcmp(yytext, "byte") == 0)
+                    CISAlval.align = ALIGN_BYTE;
+                if (strcmp(yytext, "word") == 0)
+                    CISAlval.align = ALIGN_WORD;
+                else if (strcmp(yytext, "dword") == 0)
+                CISAlval.align = ALIGN_DWORD;
+                else if (strcmp(yytext, "qword") == 0)
+                    CISAlval.align = ALIGN_QWORD;
+                else if (strcmp(yytext, "oword") == 0)
+                    CISAlval.align = ALIGN_OWORD;
+                else if (strcmp(yytext, "GRF") == 0)
+                    CISAlval.align = ALIGN_GRF;
+                else if (strcmp(yytext, "2GRF") == 0)
+                    CISAlval.align = ALIGN_2_GRF;
+                else
+                    CISAlval.align = ALIGN_UNDEF;
 
-				return ALIGNTYPE;
-			}
+                return ALIGNTYPE;
+            }
 
 M1|M2|M3|M4|M5|M6|M7|M8|M1_NM|M2_NM|M3_NM|M4_NM|M5_NM|M6_NM|M7_NM|M8_NM|NoMask {
-				TRACE("\n** EMASK control ");
-				CISAlval.emask = Get_CISA_Emask(yytext);
+                TRACE("\n** EMASK control ");
+                CISAlval.emask = Get_CISA_Emask(yytext);
                 return EMASK;
             }
 
@@ -727,8 +727,8 @@ M1|M2|M3|M4|M5|M6|M7|M8|M1_NM|M2_NM|M3_NM|M4_NM|M5_NM|M6_NM|M7_NM|M8_NM|NoMask {
 }
 
 ".divS" {
-	TRACE("\n** non-uniform Sampler State");
-	return NON_UNIFORM_SAMPLER;
+    TRACE("\n** non-uniform Sampler State");
+    return NON_UNIFORM_SAMPLER;
 }
 
 
@@ -738,22 +738,22 @@ M1|M2|M3|M4|M5|M6|M7|M8|M1_NM|M2_NM|M3_NM|M4_NM|M5_NM|M6_NM|M7_NM|M8_NM|NoMask {
               return COND_MOD;
            }
 
-:(df|DF)	{
-			  TRACE("\n** DFTYPE ");
-			  CISAlval.type = str2type(yytext, yyleng);
-			  return DFTYPE;
-		    }
+:(df|DF)    {
+              TRACE("\n** DFTYPE ");
+              CISAlval.type = str2type(yytext, yyleng);
+              return DFTYPE;
+            }
 
-:(f|F)	    {
-			  TRACE("\n** FTYPE ");
-			  CISAlval.type = str2type(yytext, yyleng);
-			  return FTYPE;
-		    }
+:(f|F)        {
+              TRACE("\n** FTYPE ");
+              CISAlval.type = str2type(yytext, yyleng);
+              return FTYPE;
+            }
 
-:(hf|HF)	{
-	TRACE("\n** HFTYPE ");
-	CISAlval.type = str2type(yytext, yyleng);
-	return HFTYPE;
+:(hf|HF)    {
+    TRACE("\n** HFTYPE ");
+    CISAlval.type = str2type(yytext, yyleng);
+    return HFTYPE;
 }
 
 :(ud|d|uw|w|ub|b|bool|UD|D|UW|W|UB|B|BOOL|Bool|q|uq|Q|UQ|hf|HF)  {
@@ -785,11 +785,11 @@ M1|M2|M3|M4|M5|M6|M7|M8|M1_NM|M2_NM|M3_NM|M4_NM|M5_NM|M6_NM|M7_NM|M8_NM|NoMask {
                return RIGHT_BRANKET;
            }
 
-"."((R|r)((G|g)?(B|b)?(A|a)?)|(G|g)((B|b)?(A|a)?)|(B|b)((A|a)?)|(A|a))	{
-			   TRACE("\n** CHANNEL MASK ");
-			   CISAlval.s_channel = ChannelMask::createFromString(yytext+1).getAPI();
-			   return SAMPLER_CHANNEL;
-		   }
+"."((R|r)((G|g)?(B|b)?(A|a)?)|(G|g)((B|b)?(A|a)?)|(B|b)((A|a)?)|(A|a))    {
+               TRACE("\n** CHANNEL MASK ");
+               CISAlval.s_channel = ChannelMask::createFromString(yytext+1).getAPI();
+               return SAMPLER_CHANNEL;
+           }
 
 "."(16-full|16-downsampled|8-full|8-downsampled) {
                TRACE("\n** OUTPUT_FORMAT ");
@@ -799,15 +799,15 @@ M1|M2|M3|M4|M5|M6|M7|M8|M1_NM|M2_NM|M3_NM|M4_NM|M5_NM|M6_NM|M7_NM|M8_NM|NoMask {
 
 "."("<"[a-zA-Z]+">")+ {
                TRACE("\n** RTWRITE OPTION ");
-			   CISAlval.string = strdup(yytext+1);
-			   return RTWRITE_OPTION;
+               CISAlval.string = strdup(yytext+1);
+               return RTWRITE_OPTION;
            }
 
-"."(0|A)(0|B)(0|G)(0|R)	{
-			   TRACE("\n** SLM CHANNELS ");
-			   CISAlval.s_channel = ChannelMask::createFromString(yytext+1).getAPI();
-			   return SLM_CHANNEL;
-		   }
+"."(0|A)(0|B)(0|G)(0|R)    {
+               TRACE("\n** SLM CHANNELS ");
+               CISAlval.s_channel = ChannelMask::createFromString(yytext+1).getAPI();
+               return SLM_CHANNEL;
+           }
 "."(inter|intra|both) {
                TRACE("\n** VME_TYPE ");
                CISAlval.VME_type = VMEType(yytext+1);
@@ -850,8 +850,8 @@ V0 {
 
 "."(E?I?S?C?R?(L1)?)     {
                    TRACE("\n** FENCE Options ");
-			        CISAlval.fence_options = FENCEOptions(yytext+1);
-			        return FENCE_OPTIONS;
+                    CISAlval.fence_options = FENCEOptions(yytext+1);
+                    return FENCE_OPTIONS;
                 }
 
 [ \n\t]+"\\"\n {TRACE("\n** Multiple instructions in a line");}   //gen4 define macro use "\n" to allow multiple instr in a line
@@ -871,7 +871,7 @@ VISA_Type str2type(char *str, int str_len)
     // find the starting of the type string
     int i;
     char *ty_str;
-	char lowered[20];
+    char lowered[20];
 
     //lower the chars
     for (i = 0; i < str_len; i++) {
@@ -901,89 +901,89 @@ VISA_Type str2type(char *str, int str_len)
 // convert "z" to Mod_z
 Common_ISA_Cond_Mod str2cond(char *str)
 {
-	for (int i = 0; i < ISA_CMP_UNDEF; i++)
-	    if (strcmp(Rel_op_str[i], str) == 0)
-	        return (Common_ISA_Cond_Mod)i;
+    for (int i = 0; i < ISA_CMP_UNDEF; i++)
+        if (strcmp(Rel_op_str[i], str) == 0)
+            return (Common_ISA_Cond_Mod)i;
 
-	YY_FATAL_ERROR("Invalid Data Type");
+    YY_FATAL_ERROR("Invalid Data Type");
 
-	return ISA_CMP_UNDEF;
+    return ISA_CMP_UNDEF;
 }
 
 unsigned digit_num(char d)
 {
-	if (d >= '0' && d <= '9')
-		return d - '0';
-	else if (d >= 'a' && d <= 'f')
-		return d - 'a' + 10;
-	else if (d >= 'A' && d <= 'F')
-		return d - 'A' + 10;
+    if (d >= '0' && d <= '9')
+        return d - '0';
+    else if (d >= 'a' && d <= 'f')
+        return d - 'a' + 10;
+    else if (d >= 'A' && d <= 'F')
+        return d - 'A' + 10;
 
-	YY_FATAL_ERROR("Invalid Hex Digit");
+    YY_FATAL_ERROR("Invalid Hex Digit");
 
-	return 0;
+    return 0;
 }
 
 // convert hex string to int
 int64_t hexToint(char *hex_str, int str_len)
 {
-	if (str_len > 16) { // make sure is within 32 bits
-		YY_FATAL_ERROR("Hex number larger than 8 digits");
-	}
+    if (str_len > 16) { // make sure is within 32 bits
+        YY_FATAL_ERROR("Hex number larger than 8 digits");
+    }
 
-	uint64_t result = 0;
+    uint64_t result = 0;
 
-	// starting from the last digit
+    // starting from the last digit
     for (int i = 0; i < str_len; i++)
-		result += (uint64_t)digit_num(*(hex_str+str_len-1-i)) << (i*4);
+        result += (uint64_t)digit_num(*(hex_str+str_len-1-i)) << (i*4);
 
-	return (int64_t) result;
+    return (int64_t) result;
 }
 
 // convert str to its corresponding opcode
 ISA_Opcode str2opcode(char* op_str)
 {
-	for (int i = 0; i < ISA_NUM_OPCODE; i++)
-	    if (strcmp(ISA_Inst_Table[i].str, op_str) == 0)
-	        return ISA_Inst_Table[i].op;
+    for (int i = 0; i < ISA_NUM_OPCODE; i++)
+        if (strcmp(ISA_Inst_Table[i].str, op_str) == 0)
+            return ISA_Inst_Table[i].op;
 
-	YY_FATAL_ERROR("Invalid OpCode");
+    YY_FATAL_ERROR("Invalid OpCode");
 
-	return ISA_RESERVED_0;
+    return ISA_RESERVED_0;
 }
 
 VISASampler3DSubOpCode str2SampleOpcode(char* str)
 {
-	for (int i = 0; i < ISA_NUM_OPCODE; i++)
-	    if (strcmp(SAMPLE_OP_3D_NAME[i], str) == 0)
-	        return (VISASampler3DSubOpCode) i;
+    for (int i = 0; i < ISA_NUM_OPCODE; i++)
+        if (strcmp(SAMPLE_OP_3D_NAME[i], str) == 0)
+            return (VISASampler3DSubOpCode) i;
 
-	YY_FATAL_ERROR("Invalid 3D Sample OpCode");
+    YY_FATAL_ERROR("Invalid 3D Sample OpCode");
 
-	return VISA_3D_TOTAL_NUM_OPS;
+    return VISA_3D_TOTAL_NUM_OPS;
 }
 
 VISAAtomicOps str2atomic_opcode(char *op_str)
 {
-	for (unsigned i = 0; i < ATOMIC_UNDEF; ++i)
-	    if (strcmp(CISAAtomicOpNames[i], op_str) == 0)
-	        return static_cast<VISAAtomicOps>(i);
+    for (unsigned i = 0; i < ATOMIC_UNDEF; ++i)
+        if (strcmp(CISAAtomicOpNames[i], op_str) == 0)
+            return static_cast<VISAAtomicOps>(i);
 
-	YY_FATAL_ERROR("Invalid Atomic OpCode");
+    YY_FATAL_ERROR("Invalid Atomic OpCode");
 
-	return ATOMIC_UNDEF;
+    return ATOMIC_UNDEF;
 }
 
 // convert str to its corresponding media load mode
 MEDIA_LD_mod mediaMode(char* str)
 {
-	for (int i = 0; i < MEDIA_LD_Mod_NUM; i++)
-	    if (!strcmp(media_ld_mod_str[i], str))
-	        return (MEDIA_LD_mod)i;
+    for (int i = 0; i < MEDIA_LD_Mod_NUM; i++)
+        if (!strcmp(media_ld_mod_str[i], str))
+            return (MEDIA_LD_mod)i;
 
-	YY_FATAL_ERROR("Invalid Medial Mode");
+    YY_FATAL_ERROR("Invalid Medial Mode");
 
-	return MEDIA_LD_nomod;
+    return MEDIA_LD_nomod;
 }
 
 // convert str to its corresponding avs output format control
@@ -1014,40 +1014,40 @@ unsigned char FENCEOptions(char *str)
     int count = strlen(str);
     unsigned char result=0;
     /*
-		Bit 0: commit enable
+        Bit 0: commit enable
         Bit 1: flush instruction cache if set.
-		Bit 2: flush sampler cache if set.
+        Bit 2: flush sampler cache if set.
         Bit 3: flush constant cache if set.
-		Bit 4: flush read-write cache if set.
-		Bit 5: reserved (global/SLM is determined by opcode)
-		Bit 6: flush L1
+        Bit 4: flush read-write cache if set.
+        Bit 5: reserved (global/SLM is determined by opcode)
+        Bit 6: flush L1
     */
     for(int i = 0; i < count; i++)
     {
-		if (str[i] == 'E')
-		{
-			result |= 1;
-		}
-		else if(str[i] == 'I')
+        if (str[i] == 'E')
+        {
+            result |= 1;
+        }
+        else if(str[i] == 'I')
         {
             result |= (1<<1);
         }
-		else if(str[i] == 'S')
+        else if(str[i] == 'S')
         {
             result |= (1<<2);
         }
-		else if(str[i] == 'C')
+        else if(str[i] == 'C')
         {
             result |= (1<<3);
         }
-		else if(str[i] == 'R')
+        else if(str[i] == 'R')
         {
             result |= (1<<4);
         }
-		else if (str[i] == 'L' && i + 1 < count && str[i+1] == '1')
-		{
-			result |= (1<<6);
-		}
+        else if (str[i] == 'L' && i + 1 < count && str[i+1] == '1')
+        {
+            result |= (1<<6);
+        }
     }
 
     return result;
@@ -1055,13 +1055,13 @@ unsigned char FENCEOptions(char *str)
 
 COMMON_ISA_VME_OP_MODE VMEType(char* str)
 {
-	for (int i = 0; i < VME_OP_MODE_NUM; i++)
-	    if (!strcmp(vme_op_mode_str[i], str))
-	        return (COMMON_ISA_VME_OP_MODE)i;
+    for (int i = 0; i < VME_OP_MODE_NUM; i++)
+        if (!strcmp(vme_op_mode_str[i], str))
+            return (COMMON_ISA_VME_OP_MODE)i;
 
-	YY_FATAL_ERROR("Invalid Medial Mode");
+    YY_FATAL_ERROR("Invalid Medial Mode");
 
-	return VME_OP_MODE_NUM;
+    return VME_OP_MODE_NUM;
 }
 
 Common_VISA_EMask_Ctrl Get_CISA_Emask(char* str)
@@ -1069,19 +1069,19 @@ Common_VISA_EMask_Ctrl Get_CISA_Emask(char* str)
 
     if(strcmp(str, "NoMask") == 0)
         return vISA_EMASK_M1_NM;
-	for (int i = 0; i < vISA_NUM_EMASK +1; i++)
+    for (int i = 0; i < vISA_NUM_EMASK +1; i++)
     {
-	    if (!strcmp(emask_str[i], str))
+        if (!strcmp(emask_str[i], str))
         {
 
 
-	        return (Common_VISA_EMask_Ctrl)i;
+            return (Common_VISA_EMask_Ctrl)i;
         }
     }
 
-	YY_FATAL_ERROR("Invalid emask ");
-	YY_FATAL_ERROR(str);
-	return vISA_EMASK_M1;
+    YY_FATAL_ERROR("Invalid emask ");
+    YY_FATAL_ERROR(str);
+    return vISA_EMASK_M1;
 }
 
 char *get_kernel_name(char *str, int str_len) {
@@ -1106,22 +1106,22 @@ char *get_kernel_name(char *str, int str_len) {
         return kernel_name;
     }
 
-	YY_FATAL_ERROR("Wrong kernel name");
+    YY_FATAL_ERROR("Wrong kernel name");
 
     return NULL;
 };
 
 CHANNEL_OUTPUT_FORMAT Get_Channel_Output(char* str)
 {
-	for (int i = 0; i < CHANNEL_OUTPUT_NUM; i++)
+    for (int i = 0; i < CHANNEL_OUTPUT_NUM; i++)
     {
-	    if (!strcmp(sampler_channel_output_str[i], str))
+        if (!strcmp(sampler_channel_output_str[i], str))
         {
-	        return (CHANNEL_OUTPUT_FORMAT)i;
+            return (CHANNEL_OUTPUT_FORMAT)i;
         }
     }
 
-	YY_FATAL_ERROR("Invalid channel output format ");
-	YY_FATAL_ERROR(str);
-	return CHANNEL_16_BIT_FULL;
+    YY_FATAL_ERROR("Invalid channel output format ");
+    YY_FATAL_ERROR(str);
+    return CHANNEL_16_BIT_FULL;
 }

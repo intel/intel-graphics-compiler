@@ -530,7 +530,7 @@ void LVN::replaceAllUses(G4_INST* defInst, bool negate, UseList& uses, G4_INST* 
             // so there is no need to check for combination of src modifiers.
             if (srcMod == Mod_src_undef)
             {
-            	srcMod = Mod_Minus;
+                srcMod = Mod_Minus;
             }
             else if (srcMod == Mod_Minus)
             {

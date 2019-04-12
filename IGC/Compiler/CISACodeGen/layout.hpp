@@ -58,14 +58,14 @@ private:
     llvm::BasicBlock *getLastReturnBlock(llvm::Function &Func);
     void LayoutBlocks(llvm::Function &func, llvm::LoopInfo &LI);
     void LayoutBlocks(llvm::Function &func);
-	llvm::BasicBlock *selectSucc(
-		llvm::BasicBlock *CurrBlk,
-		bool SelectNoInstBlk,
-		const llvm::LoopInfo& LI,
-		const std::set<llvm::BasicBlock*>& VisitSet);
+    llvm::BasicBlock *selectSucc(
+        llvm::BasicBlock *CurrBlk,
+        bool SelectNoInstBlk,
+        const llvm::LoopInfo& LI,
+        const std::set<llvm::BasicBlock*>& VisitSet);
 
 
-	llvm::PostDominatorTree *m_PDT;
+    llvm::PostDominatorTree *m_PDT;
 };
 
 }

@@ -17,9 +17,9 @@ else()
 endif()
 
 set(IGC_BUILD__HDR__Optimizer_IGCInstCombiner
-	"${IGC_BUILD__HDR__Optimizer_IGCInstCombiner}"
-	"${CMAKE_CURRENT_SOURCE_DIR}/IGCInstructionCombining.h"
-	)
+    "${IGC_BUILD__HDR__Optimizer_IGCInstCombiner}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/IGCInstructionCombining.h"
+    )
 
 if(LLVM_VERSION_MAJOR EQUAL 4 OR
    LLVM_VERSION_MAJOR EQUAL 7)
@@ -27,8 +27,8 @@ igc_sg_register(
     Compiler__Optimizer_IGCInstCombiner
     "IGCInstCombiner"
     GROUPS
-	  Optimizer__IGCInstCombiner_4_0
-	  Optimizer__IGCInstCombiner_7_0
+      Optimizer__IGCInstCombiner_4_0
+      Optimizer__IGCInstCombiner_7_0
     FILES
   )
 endif()

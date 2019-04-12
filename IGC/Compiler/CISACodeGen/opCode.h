@@ -204,15 +204,15 @@ DECLARE_OPCODE(GenISA_uavSerializeAll,  GenISAIntrinsic,     llvm_uavSerializeAl
 
 // Message Phases manipulation
 DECLARE_OPCODE(GenISA_createMessagePhases,      GenISAIntrinsic,      llvm_createMessagePhases, false,  false,  false,  false, false,  false, false  )
-DECLARE_OPCODE(GenISA_setMessagePhaseX,         GenISAIntrinsic,      llvm_setMessagePhaseX,  	false,  false,  false,  false, false,  false, false  )
-DECLARE_OPCODE(GenISA_setMessagePhaseXV,        GenISAIntrinsic,      llvm_setMessagePhaseXV,  	false,  false,  false,  false, false,  false, false  )
-DECLARE_OPCODE(GenISA_getMessagePhaseX,         GenISAIntrinsic,      llvm_getMessagePhaseX,  	false,  false,  false,  false, false,  false, false  )
-DECLARE_OPCODE(GenISA_getMessagePhaseXV,        GenISAIntrinsic,      llvm_getMessagePhaseXV,  	false,  false,  false,  false, false,  false, false  )
+DECLARE_OPCODE(GenISA_setMessagePhaseX,         GenISAIntrinsic,      llvm_setMessagePhaseX,      false,  false,  false,  false, false,  false, false  )
+DECLARE_OPCODE(GenISA_setMessagePhaseXV,        GenISAIntrinsic,      llvm_setMessagePhaseXV,      false,  false,  false,  false, false,  false, false  )
+DECLARE_OPCODE(GenISA_getMessagePhaseX,         GenISAIntrinsic,      llvm_getMessagePhaseX,      false,  false,  false,  false, false,  false, false  )
+DECLARE_OPCODE(GenISA_getMessagePhaseXV,        GenISAIntrinsic,      llvm_getMessagePhaseXV,      false,  false,  false,  false, false,  false, false  )
 DECLARE_OPCODE(GenISA_getMessagePhase,          GenISAIntrinsic,      llvm_getMessagePhase,     false,  false,  false,  false, false,  false, false  )
 DECLARE_OPCODE(GenISA_setMessagePhase,          GenISAIntrinsic,      llvm_setMessagePhase,     false,  false,  false,  false, false,  false, false  )
 
 // VME intrinsics
-DECLARE_OPCODE(GenISA_vmeSendIME,               GenISAIntrinsic,      llvm_vmeSendIME,        	false,  false,  false,  false, false,  false, false  )
+DECLARE_OPCODE(GenISA_vmeSendIME,               GenISAIntrinsic,      llvm_vmeSendIME,            false,  false,  false,  false, false,  false, false  )
 DECLARE_OPCODE(GenISA_vmeSendFBR,               GenISAIntrinsic,      llvm_vmeSendFBR,          false,  false,  false,  false, false,  false, false  )
 
 // Correctly rounded intrinsics

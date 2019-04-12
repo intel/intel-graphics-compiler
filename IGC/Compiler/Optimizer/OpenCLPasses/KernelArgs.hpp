@@ -191,8 +191,8 @@ namespace IGC
         /// @param  qualStr     The OpenCL access qualifier information for the kernel this argument belongs to
         /// @param  location_index The location_index for buffer
         /// @param  location_count The location_count for buffer
-		/// @param  needBindlessHandle   The presence of bindless resources in the shader 
-		/// @param  isEmulationArgument  The information, whether this is an emulation argument (IAB)
+        /// @param  needBindlessHandle   The presence of bindless resources in the shader 
+        /// @param  isEmulationArgument  The information, whether this is an emulation argument (IAB)
         KernelArg(const llvm::Argument* arg, const llvm::DataLayout* DL, const llvm::StringRef typeStr, const llvm::StringRef qualstr, int location_index, int location_count, bool needBindlessHandle, bool isEmulationArgument);
 
         /// @brief  Constructor.
@@ -314,8 +314,8 @@ namespace IGC
         /// @brief  The LLVM argument that represents this kernel argument
         const llvm::Argument*           m_arg;
         /// @brief  The argument number of the associated argument
-		///         For image dimension/BUFFER_OFFSET arguments this will return the argument number
-		///         of the assocaited image.
+        ///         For image dimension/BUFFER_OFFSET arguments this will return the argument number
+        ///         of the assocaited image.
         ///         For other arguments this will return the argument number of the LLVM argument
         unsigned int                    m_associatedArgNo;
         /// @brief  The argument struct offset in the associated struct explicit argument
@@ -330,10 +330,10 @@ namespace IGC
         int                             m_locationCount;
 
         /// @brief Indicates if resource if of needs an allocation
-        bool							m_needsAllocation;
+        bool                            m_needsAllocation;
 
         /// @brief Indicates if resource is an emulation argument (IAB)
-        bool							m_isEmulationArgument;
+        bool                            m_isEmulationArgument;
 
         /// @brief
         struct {

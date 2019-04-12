@@ -35,5 +35,5 @@ namespace IGC
     void SetWorkaroundTable(SKU_FEATURE_TABLE* pSkuFeatureTable, CPlatform* platform);
     void SetWorkaroundTable(const SUscSkuFeatureTable*, CPlatform* platform);
     void SetGTSystemInfo(const SUscGTSystemInfo*, CPlatform* platform);
-	void SetGTSystemInfo(const GT_SYSTEM_INFO*, CPlatform* platform);
+    void SetGTSystemInfo(const GT_SYSTEM_INFO*, CPlatform* platform);
 }

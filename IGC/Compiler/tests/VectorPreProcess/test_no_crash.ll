@@ -25,8 +25,8 @@
 ;======================= end_copyright_notice ==================================
 ;; Test this pass doesn't crash
 ;; Root cause: A vector instruction is mapped into a scalar sequence.
-;; 			   When handeleing the instruction and replacing it with another.
-;;			   the mapping needs to be updated with the new instruction
+;;                When handeleing the instruction and replacing it with another.
+;;               the mapping needs to be updated with the new instruction
 
 ; RUN: igc_opt -igc-vectorpreprocess -S %s -o %t.ll
 

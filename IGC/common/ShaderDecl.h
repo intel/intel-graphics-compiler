@@ -117,7 +117,7 @@ public:
     virtual unsigned int   GetCount( void ) const;
     unsigned int    GetMaxRegisters( void ) const;
 
-    void			GetListOfDeclared( const unsigned int** listOfDeclared, unsigned int &listSize ) const;
+    void            GetListOfDeclared( const unsigned int** listOfDeclared, unsigned int &listSize ) const;
     bool            GetNextUndeclared( const unsigned int nextUndeclaredHint, unsigned int& nextUndeclared );
     void            GetDeclaredIndexList( const ShaderRegisterIndexType** declaredIndex, unsigned int &listSize ) const;
     
@@ -533,9 +533,9 @@ public:
     unsigned int   GetNumIndexedOutputRegisters( void ) const;
 
     void    SetActualOutputRegistersCount( const unsigned int number );
-    void	SetAdditionalOutputsCount( const unsigned int number );
-    void	SetActualOutputIndexNumber( const unsigned int index, const unsigned int number );
-    void	SetAdditionalOutputIndexNumber( const unsigned int index, const unsigned int number );
+    void    SetAdditionalOutputsCount( const unsigned int number );
+    void    SetActualOutputIndexNumber( const unsigned int index, const unsigned int number );
+    void    SetAdditionalOutputIndexNumber( const unsigned int index, const unsigned int number );
 
     unsigned int   GetActualOutputRegistersCount( void ) const;
     unsigned int   GetAdditionalOutputsCount( void ) const;

@@ -620,7 +620,7 @@ namespace Legalizer {
     NewLd->setVolatile(RefLd->isVolatile());
     NewLd->setAlignment(int_cast<unsigned int>(MinAlign(Align, Off)));
     NewLd->setOrdering(RefLd->getOrdering());
-	IGCLLVM::CopySyncScopeID(NewLd, RefLd);
+    IGCLLVM::CopySyncScopeID(NewLd, RefLd);
   }
 
   template<> inline
@@ -632,7 +632,7 @@ namespace Legalizer {
     NewSt->setVolatile(RefSt->isVolatile());
     NewSt->setAlignment(int_cast<unsigned int>(MinAlign(Align, Off)));
     NewSt->setOrdering(RefSt->getOrdering());
-	IGCLLVM::CopySyncScopeID(NewSt, RefSt);    
+    IGCLLVM::CopySyncScopeID(NewSt, RefSt);    
   }
 
 } // End Legalizer namespace

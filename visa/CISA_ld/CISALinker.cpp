@@ -52,16 +52,16 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         return 1;                                                       \
     }
 
-#define BUF_APPEND_SCALAR(X)												\
-    memcpy(																	\
+#define BUF_APPEND_SCALAR(X)                                                \
+    memcpy(                                                                    \
         (char *)_cisaObjInfos[_numCisaObjInfos].buf + _cisaEmitBufOffset,   \
-        &X, sizeof(X));														\
+        &X, sizeof(X));                                                        \
     _cisaEmitBufOffset += sizeof(X);
 
-#define BUF_APPEND_VECTOR(X, Y)												\
-    memcpy(																	\
-        (char *)_cisaObjInfos[_numCisaObjInfos].buf + _cisaEmitBufOffset,	\
-        (X), Y);															\
+#define BUF_APPEND_VECTOR(X, Y)                                                \
+    memcpy(                                                                    \
+        (char *)_cisaObjInfos[_numCisaObjInfos].buf + _cisaEmitBufOffset,    \
+        (X), Y);                                                            \
     _cisaEmitBufOffset += Y;
 
 #define CLOSURE(x)     ((x).scratch)
@@ -80,12 +80,12 @@ CISALinker::CISALinker(
       _numCisaObjInfos(0), _cisaObjInfos(NULL)
 {
     _linkedUnitIndexToClosureMap.reserve(64);
-	if (externalAllocator) {
-		_allocator = externalAllocator;
-	}
-	else {
-		_allocator = (ExternalHeapAllocator*) malloc;
-	}
+    if (externalAllocator) {
+        _allocator = externalAllocator;
+    }
+    else {
+        _allocator = (ExternalHeapAllocator*) malloc;
+    }
 }
 
 CISALinker::~CISALinker()
@@ -118,7 +118,7 @@ CISALinker::LinkCisaFileObjs(
     TRY(AllocateCisaObjInfos(numCisaObjs));
 
     for (int i = 0; i < numCisaObjs; i++) {
-		const char *cisaExt = ".isa";
+        const char *cisaExt = ".isa";
         const char *cisaObjFile = cisaObjs[i];
         const char *argExt = strstr(cisaObjFile, cisaExt);
         ASSERT(
@@ -165,7 +165,7 @@ int
 CISALinker::InitGlobalInfoTables()
 {
     for (int i = 0; i < _numCisaObjInfos; i++) {
-		CisaObjInfo& cisaObjInfo = _cisaObjInfos[i];
+        CisaObjInfo& cisaObjInfo = _cisaObjInfos[i];
 
         for (int j = 0; j < cisaObjInfo.hdr.num_global_functions; j++) {
             int k = j + cisaObjInfo.hdr.num_extern_functions;
@@ -188,7 +188,7 @@ CISALinker::InitGlobalInfoTables()
     }
 
     for (int i = 0; i < _numCisaObjInfos; i++) {
-		CisaObjInfo& cisaObjInfo = _cisaObjInfos[i];
+        CisaObjInfo& cisaObjInfo = _cisaObjInfos[i];
 
         for (int j = 0; j < cisaObjInfo.hdr.num_global_variables; j++) {
             int k = j + cisaObjInfo.hdr.num_extern_variables;
@@ -324,7 +324,7 @@ CISALinker::LinkLocalCisaObjInfos(
     CisaObjInfo& cisaObjInfo, CompiledUnitClosureList& localUnitClosureList)
 {
     _localUnitMap = cisaObjInfo.hdr.functions;
-	_localVarMap  = cisaObjInfo.hdr.filescope_variables;
+    _localVarMap  = cisaObjInfo.hdr.filescope_variables;
     CompiledUnitClosureList::iterator iter = localUnitClosureList.begin();
 
     for ( ; iter != localUnitClosureList.end(); ++iter) {
@@ -352,7 +352,7 @@ CISALinker::LinkLocalCisaObjInfos(
 
     _pendingLocalClosures.clear();
     _localUnitMap = NULL;
-	_localVarMap = NULL;
+    _localVarMap = NULL;
 
     return 0;
 }
@@ -380,7 +380,7 @@ CISALinker::LinkExternCisaObjInfos()
             }
         }
 
-		CisaObjInfo& unitObjInfo = *(*iter)->unitObjInfo;
+        CisaObjInfo& unitObjInfo = *(*iter)->unitObjInfo;
         TRY(LinkLocalCisaObjInfos(unitObjInfo, localUnitClosuresList));
     }
 
@@ -542,8 +542,8 @@ CISALinker::RelocVariableSyms(CompiledUnitClosure& localUnitClosure)
 {
     CompiledUnitInfo& localUnitInfo = *localUnitClosure.unit;
     CompiledVarInfo *vars =
-		(CompiledVarInfo *)
-		localUnitClosure.unitObjInfo->hdr.filescope_variables;
+        (CompiledVarInfo *)
+        localUnitClosure.unitObjInfo->hdr.filescope_variables;
 
     for (int i = 0; i < localUnitInfo.variable_reloc_symtab.num_syms; i++) {
         int inputRefIndex =
@@ -628,15 +628,15 @@ CISALinker::BuildLinkedCisaObj(CompiledUnitClosureList& knlClosureList)
                 unitName, funcClosure,linkedObjInfo.hdr.functions[i]));
     }
 
-	linkedObjInfo.buf = NULL;
-	linkedObjInfo.size = 0;
+    linkedObjInfo.buf = NULL;
+    linkedObjInfo.size = 0;
 
     return 0;
 }
 
 int
 CISALinker::BuildLinkedUnitInfo(
-	const std::string &unitName, CompiledUnitClosure& objUnitClosure,
+    const std::string &unitName, CompiledUnitClosure& objUnitClosure,
     CompiledUnitInfo& linkedUnitInfo)
 {
     CompiledUnitInfo& objUnit = *objUnitClosure.unit;
@@ -690,7 +690,7 @@ CISALinker::BuildLinkedVarInfo(CisaHeader& linkedUnitHdr)
         linkedVariable.name_len = objVariable.name_len;
         linkedVariable.name = objVariable.name;
         linkedVariable.bit_properties = objVariable.bit_properties;
-		linkedVariable.num_elements = objVariable.num_elements;
+        linkedVariable.num_elements = objVariable.num_elements;
         linkedVariable.attribute_count = objVariable.attribute_count;
         linkedVariable.attributes = objVariable.attributes;
     }
@@ -739,10 +739,10 @@ CISALinker::UpdateLinkedCisaImageOffsetsAndSize()
         CompiledUnitInfo& unitInfo = linkedObjHdr.functions[i];
         unsigned unitDataStartOffset = _linkedCisaImageSize;
         unitInfo.offset = unitDataStartOffset;
-		_linkedCisaImageSize += unitInfo.size;
+        _linkedCisaImageSize += unitInfo.size;
     }
 
-	linkedObjInfo.size = _linkedCisaImageSize;
+    linkedObjInfo.size = _linkedCisaImageSize;
 
     return 0;
 }
@@ -789,7 +789,7 @@ CISALinker::CalculateSize(CompiledVarInfo& var)
     for (int i = 0; i < var.attribute_count; i++) {
         size += sizeof(var.attributes[i].nameIndex);
         size +=
-			sizeof(var.attributes[i].size) + var.attributes[i].size;
+            sizeof(var.attributes[i].size) + var.attributes[i].size;
     }
 
     return size;
@@ -839,7 +839,7 @@ CISALinker::ReadCisaMemObj(const CisaObj& cisaObj, CisaObjInfo& cisaObjInfo)
 
 inline int
 CISALinker::ExtractCisaMemObjHdr(
-	CisaHeader& cisaHdr, unsigned& cisaBytePos, const void *cisaBuffer)
+    CisaHeader& cisaHdr, unsigned& cisaBytePos, const void *cisaBuffer)
 {
     TRY(::processCommonISAHeader(cisaHdr, cisaBytePos, cisaBuffer, &_mem));
     ASSERT(
@@ -862,9 +862,9 @@ CISALinker::ReadCisaFileObj(const char *cisaFileName, CisaObjInfo& cisaObjInfo)
         fread(cisaBuffer, 1, fileSize, cisaFile) != 0,
         "Cannot read CISA object %s", cisaFileName);
     fclose(cisaFile);
-	CisaObj cisaObj;
-	cisaObj.buf = cisaBuffer;
-	cisaObj.size = fileSize;
+    CisaObj cisaObj;
+    cisaObj.buf = cisaBuffer;
+    cisaObj.size = fileSize;
 
     return ReadCisaMemObj(cisaObj, cisaObjInfo);
 }
@@ -953,7 +953,7 @@ CISALinker::WriteCisaCompiledUnitInfo(CompiledUnitInfo& unit, bool isFunction)
         BUF_APPEND_SCALAR(unit.num_gen_binaries);
     }
 
-	return 0;
+    return 0;
 }
 
 int
@@ -970,10 +970,10 @@ CISALinker::WriteCisaVarInfo(CompiledVarInfo& var)
         BUF_APPEND_SCALAR(var.attributes[i].nameIndex);
         BUF_APPEND_SCALAR(var.attributes[i].size);
         BUF_APPEND_VECTOR(
-			var.attributes[i].value.stringVal, var.attributes[i].size);
+            var.attributes[i].value.stringVal, var.attributes[i].size);
     }
 
-	return 0;
+    return 0;
 }
 
 int
@@ -986,7 +986,7 @@ CISALinker::WriteRelocSymTab(RelocTab& symTab)
         BUF_APPEND_SCALAR(symTab.reloc_syms[i].resolved_index);
     }
 
-	return 0;
+    return 0;
 }
 
 int
@@ -996,7 +996,7 @@ CISALinker::WriteCisaCompiledUnitData(CompiledUnitInfo& unitInfo)
         BUF_APPEND_VECTOR(unitInfo.cisa_binary_buffer, unitInfo.size);
     }
 
-	return 0;
+    return 0;
 }
 
 int
@@ -1007,9 +1007,9 @@ CISALinker::WriteCisaFileObj(const char *cisaFileName)
     ASSERT(cisaFile != NULL, "Cannot open %s for write", cisaFileName);
     CisaObjInfo& cisaObjInfo = _cisaObjInfos[_numCisaObjInfos];
     ASSERT(
-		fwrite(cisaObjInfo.buf, 1, cisaObjInfo.size, cisaFile) ==
+        fwrite(cisaObjInfo.buf, 1, cisaObjInfo.size, cisaFile) ==
         cisaObjInfo.size,
-		"Error in writing linked CISA object");
+        "Error in writing linked CISA object");
     fclose(cisaFile);
 
     return 0;

@@ -105,9 +105,9 @@ namespace vISA
 
         // Data
 
-        ArenaHeader*   _nextArena;	// Word aligned
-        unsigned char* _nextByte;	// Char aligned
-        unsigned char* _lastByte;	// Char aligned
+        ArenaHeader*   _nextArena;    // Word aligned
+        unsigned char* _nextByte;    // Char aligned
+        unsigned char* _lastByte;    // Char aligned
         size_t size;
     };
 

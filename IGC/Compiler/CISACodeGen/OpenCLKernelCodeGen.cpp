@@ -499,12 +499,12 @@ std::string COpenCLKernel::getSubGroupSizeString(SubGroupSizeMetaDataHandle& sub
 }
 std::string COpenCLKernel::getWorkgroupWalkOrderString(const IGC::WorkGroupWalkOrderMD& workgroupWalkOrder)
 {
-	std::string subTypeString = "intel_reqd_workgroup_walk_order(";
-	subTypeString += utostr(workgroupWalkOrder.dim0) + ",";
-	subTypeString += utostr(workgroupWalkOrder.dim1) + ",";
-	subTypeString += utostr(workgroupWalkOrder.dim2) + ",";
-	subTypeString += ")";
-	return subTypeString;
+    std::string subTypeString = "intel_reqd_workgroup_walk_order(";
+    subTypeString += utostr(workgroupWalkOrder.dim0) + ",";
+    subTypeString += utostr(workgroupWalkOrder.dim1) + ",";
+    subTypeString += utostr(workgroupWalkOrder.dim2) + ",";
+    subTypeString += ")";
+    return subTypeString;
 }
 std::string COpenCLKernel::getVecTypeHintString(VectorTypeHintMetaDataHandle& vecTypeHintInfo)
 {
@@ -720,16 +720,16 @@ void COpenCLKernel::CreateAnnotations(KernelArg* kernelArg, uint payloadPosition
     
             iOpenCL::PointerArgumentAnnotation *ptrAnnotation = new iOpenCL::PointerArgumentAnnotation();
 
-			if (argAlloc->type == ResourceTypeEnum::BindlessUAVResourceType)
-			{
-				ptrAnnotation->IsStateless = false;
-				ptrAnnotation->IsBindlessAccess = true;
-			}
-			else
-			{
-				ptrAnnotation->IsStateless = true;
-				ptrAnnotation->IsBindlessAccess = false;
-			}
+            if (argAlloc->type == ResourceTypeEnum::BindlessUAVResourceType)
+            {
+                ptrAnnotation->IsStateless = false;
+                ptrAnnotation->IsBindlessAccess = true;
+            }
+            else
+            {
+                ptrAnnotation->IsStateless = true;
+                ptrAnnotation->IsBindlessAccess = false;
+            }
 
             ptrAnnotation->AddressSpace         = addressSpace;
             ptrAnnotation->AnnotationSize       = sizeof(ptrAnnotation);
@@ -1048,8 +1048,8 @@ void COpenCLKernel::CreateAnnotations(KernelArg* kernelArg, uint payloadPosition
 
             imageInput->AccessedByFloatCoords = kernelArg->getImgAccessedFloatCoords();
             imageInput->AccessedByIntCoords   = kernelArg->getImgAccessedIntCoords();
-			imageInput->IsBindlessAccess = kernelArg->needsAllocation();
-			imageInput->PayloadPosition = payloadPosition;
+            imageInput->IsBindlessAccess = kernelArg->needsAllocation();
+            imageInput->PayloadPosition = payloadPosition;
 
             switch (resInfo.Type)
             {
@@ -1120,9 +1120,9 @@ void COpenCLKernel::CreateAnnotations(KernelArg* kernelArg, uint payloadPosition
             samplerArg->SamplerTableIndex                   = resInfo.Index;
             samplerArg->LocationIndex                       = kernelArg->getLocationIndex();
             samplerArg->LocationCount                       = kernelArg->getLocationCount();
-			samplerArg->IsBindlessAccess					= kernelArg->needsAllocation();
+            samplerArg->IsBindlessAccess                    = kernelArg->needsAllocation();
             samplerArg->IsEmulationArgument                 = kernelArg->isEmulationArgument();
-			samplerArg->PayloadPosition = payloadPosition;
+            samplerArg->PayloadPosition = payloadPosition;
 
             m_kernelInfo.m_samplerArgument.push_back(samplerArg);
         }
@@ -1771,7 +1771,7 @@ unsigned int COpenCLKernel::getBTI(SOpenCLKernelInfo::SResourceInfo& resInfo)
 void CollectProgramInfo(OpenCLProgramContext* ctx)
 {    
     MetaDataUtils mdUtils(ctx->getModule());
-	ModuleMetaData *modMD = ctx->getModuleMetaData();
+    ModuleMetaData *modMD = ctx->getModuleMetaData();
 
     if (!modMD->inlineConstantBuffers.empty())
     {
@@ -1806,7 +1806,7 @@ void CollectProgramInfo(OpenCLProgramContext* ctx)
         ctx->m_programInfo.m_initGlobalAnnotation.push_back(std::move(initGlobal));
     }
 
-	{
+    {
         auto &FuncMap = ctx->getModuleMetaData()->FuncMD;
         for (auto i : FuncMap)
         {
@@ -1832,10 +1832,10 @@ void CollectProgramInfo(OpenCLProgramContext* ctx)
          iter++)
     {
         std::unique_ptr<iOpenCL::GlobalPointerAnnotation> initGlobalPointer(new iOpenCL::GlobalPointerAnnotation());
-		initGlobalPointer->PointeeAddressSpace = iter->PointeeAddressSpace;
-		initGlobalPointer->PointeeBufferIndex  = iter->PointeeBufferIndex;
-		initGlobalPointer->PointerBufferIndex  = iter->PointerBufferIndex; 
-		initGlobalPointer->PointerOffset       = iter->PointerOffset;
+        initGlobalPointer->PointeeAddressSpace = iter->PointeeAddressSpace;
+        initGlobalPointer->PointeeBufferIndex  = iter->PointeeBufferIndex;
+        initGlobalPointer->PointerBufferIndex  = iter->PointerBufferIndex; 
+        initGlobalPointer->PointerOffset       = iter->PointerOffset;
         ctx->m_programInfo.m_initGlobalPointerAnnotation.push_back(std::move(initGlobalPointer));
     }
 
@@ -1844,10 +1844,10 @@ void CollectProgramInfo(OpenCLProgramContext* ctx)
          iter++)
     {
         std::unique_ptr<iOpenCL::ConstantPointerAnnotation> initConstantPointer(new iOpenCL::ConstantPointerAnnotation());
-		initConstantPointer->PointeeAddressSpace = iter->PointeeAddressSpace;
-		initConstantPointer->PointeeBufferIndex  = iter->PointeeBufferIndex;
-		initConstantPointer->PointerBufferIndex  = iter->PointerBufferIndex;
-		initConstantPointer->PointerOffset       = iter->PointerOffset;
+        initConstantPointer->PointeeAddressSpace = iter->PointeeAddressSpace;
+        initConstantPointer->PointeeBufferIndex  = iter->PointeeBufferIndex;
+        initConstantPointer->PointerBufferIndex  = iter->PointerBufferIndex;
+        initConstantPointer->PointerOffset       = iter->PointerOffset;
 
         ctx->m_programInfo.m_initConstantPointerAnnotation.push_back(std::move(initConstantPointer));
     }
@@ -1930,7 +1930,7 @@ void CodeGen(OpenCLProgramContext* ctx)
     MetaDataUtils *pMdUtils = ctx->getMetaDataUtils();
 
     //Clear spill parameters of retry manager in the very begining of code gen
-	ctx->m_retryManager.ClearSpillParams();
+    ctx->m_retryManager.ClearSpillParams();
 
     CShaderProgram::KernelShaderMap shaders;
     CodeGen(ctx, shaders);

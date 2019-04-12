@@ -938,64 +938,64 @@ __ocl_svml_dpow_cout_rare (__private const double *a, __private double *b, __pri
       iEY = iEYB - 0x3FF;
 
       if ((0x3FF <= iEYB) && iYIsFinite)
-	{
+    {
 
-	  if (iEY <= 20)
-	    {
+      if (iEY <= 20)
+        {
 
-	      if (((iYHi << iEY) << 12) | iYLo)
-		{
+          if (((iYHi << iEY) << 12) | iYLo)
+        {
 
-		  iYIsInt = 0;
-		}
-	      else
-		{
+          iYIsInt = 0;
+        }
+          else
+        {
 
-		  if ((iYHi << (iEY + 11)) & 0x80000000)
-		    {
-		      iYIsInt = 1;
-		    }
-		  else
-		    {
-		      iYIsInt = 2;
-		    }
-		}
-	    }
-	  else
-	    {
-	      if (iEY < 53)
-		{
-
-		  if ((iYLo << (iEY + 12 - 32 - 1)) << 1)
-		    {
-
-		      iYIsInt = 0;
-		    }
-		  else
-		    {
-
-		      if ((iYLo << (iEY + 12 - 32 - 1)) & 0x80000000)
-			{
-			  iYIsInt = 1;
-			}
-		      else
-			{
-			  iYIsInt = 2;
-			}
-		    }
-		}
-	      else
-		{
-
-		  iYIsInt = 2;
-		}
-	    }
-	}
+          if ((iYHi << (iEY + 11)) & 0x80000000)
+            {
+              iYIsInt = 1;
+            }
+          else
+            {
+              iYIsInt = 2;
+            }
+        }
+        }
       else
-	{
+        {
+          if (iEY < 53)
+        {
 
-	  iYIsInt = 0;
-	}
+          if ((iYLo << (iEY + 12 - 32 - 1)) << 1)
+            {
+
+              iYIsInt = 0;
+            }
+          else
+            {
+
+              if ((iYLo << (iEY + 12 - 32 - 1)) & 0x80000000)
+            {
+              iYIsInt = 1;
+            }
+              else
+            {
+              iYIsInt = 2;
+            }
+            }
+        }
+          else
+        {
+
+          iYIsInt = 2;
+        }
+        }
+    }
+      else
+    {
+
+      iYIsInt = 0;
+    }
     }
   else
     {
@@ -1009,526 +1009,526 @@ __ocl_svml_dpow_cout_rare (__private const double *a, __private double *b, __pri
     {
 
       iXIsFinite =
-	(((((__private _iml_dp_union_t *) & dX)->dwords.hi_dword >> 20) & 0x7FF) !=
-	 0x7FF);
+    (((((__private _iml_dp_union_t *) & dX)->dwords.hi_dword >> 20) & 0x7FF) !=
+     0x7FF);
 
       if ((iXIsFinite || iIsSigZeroX) && (iYIsFinite || iIsSigZeroY))
-	{
-
-	  if (dX != ((__constant double *) _vmldPowHATab)[852])
-	    {
-
-	      if (!
-		  ((dX == ((__constant double *) _vmldPowHATab)[854])
-		   && (iYIsInt || !iYIsFinite)))
-		{
-
-		  if (iXIsFinite && iYIsFinite)
-		    {
-
-		      if ((dX > ((__constant double *) _vmldPowHATab)[852])
-			  || iYIsInt)
-			{
-
-			  dbSignRes =
-			    ((__constant double *) _vmldPowHATab)[853 +
-							     (iSignX &
-							      iYIsInt)];
-
-			  iDenoExpAdd = 0;
-			  dbAX = dX;
-			  (((__private _iml_dp_union_t *) & dbAX)->dwords.hi_dword =
-			   (((__private _iml_dp_union_t *) & dbAX)->dwords.
-			    hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t) (0) <<
-						      31));
-
-			  if (iEXB == 0)
-			    {
-
-			      dbAX =
-				dbAX * ((__constant double *) _vmldPowHATab)[858];
-			      iDenoExpAdd = iDenoExpAdd - 200;
-			    }
-
-			  dbX1 = dbAX;
-			  (((__private _iml_dp_union_t *) & dbX1)->dwords.hi_dword =
-			   (((__private _iml_dp_union_t *) & dbX1)->dwords.
-			    hi_dword & 0x800FFFFF) | (((_iml_uint32_t) (0x3FF)
-						       & 0x7FF) << 20));
-
-			  iXHi =
-			    ((((__private _iml_dp_union_t *) & dbAX)->dwords.
-			      hi_dword >> 20) & 0x7FF);
-			  iXHi = iXHi << 20;
-			  iXHi =
-			    iXHi | (((__private _iml_dp_union_t *) & dbAX)->dwords.
-				    hi_dword & 0x000FFFFF);
-
-			  k = iXHi - 0x3FE7C000;
-			  k = k >> 20;
-			  k = k + iDenoExpAdd;
-
-			  i1 =
-			    (((__private _iml_dp_union_t *) & dbX1)->dwords.
-			     hi_dword & 0x000FFFFF);
-			  i1 = i1 & 0xFC000;
-			  i1 = i1 + 0x4000;
-			  i1 = i1 >> 15;
-
-			  dbRcp1 = ((__constant double *) _vmldPowHATab)[0 + i1];
-
-			  dbL1Hi =
-			    ((__constant double *) _vmldPowHATab)[33 + 2 * (i1) +
-							     0];
-			  dbL1Lo =
-			    ((__constant double *) _vmldPowHATab)[33 + 2 * (i1) +
-							     1];
-
-			  dbX2 = dbX1 * dbRcp1;
-
-			  i2 =
-			    (((__private _iml_dp_union_t *) & dbX2)->dwords.
-			     hi_dword & 0x000FFFFF);
-			  i2 = i2 & 0xFC00;
-			  i2 = i2 + 0x400;
-			  i2 = i2 >> 11;
-
-			  dbRcp2 = ((__constant double *) _vmldPowHATab)[99 + i2];
-
-			  dbL2Hi =
-			    ((__constant double *) _vmldPowHATab)[132 + 2 * (i2) +
-							     0];
-			  dbL2Lo =
-			    ((__constant double *) _vmldPowHATab)[132 + 2 * (i2) +
-							     1];
-
-			  dbX3 = dbX2 * dbRcp2;
-
-			  i3 =
-			    (((__private _iml_dp_union_t *) & dbX3)->dwords.
-			     hi_dword & 0x000FFFFF);
-			  i3 = i3 & 0xFF0;
-			  i3 = i3 + 0x10;
-			  i3 = i3 >> 5;
-
-			  dbRcp3C =
-			    ((__constant double *) _vmldPowHATab)[198 + i3];
-
-			  dbL3Hi =
-			    ((__constant double *) _vmldPowHATab)[327 + 2 * (i3) +
-							     0];
-			  dbL3Lo =
-			    ((__constant double *) _vmldPowHATab)[327 + 2 * (i3) +
-							     1];
-
-			  dbK = (double) k;
-			  dbT = (dbK + dbL1Hi);
-			  dbT = (dbT + dbL2Hi);
-			  dbT = (dbT + dbL3Hi);
-
-			  dbD = (dbL2Lo + dbL3Lo);
-			  dbD = (dbD + dbL1Lo);
-
-			  dbR1 = (dbX3 * dbRcp3C);
-			  dbCQ =
-			    (dbR1 - ((__constant double *) _vmldPowHATab)[856]);
-
-			  dbRcpC = (dbRcp1 * dbRcp2);
-			  dbRcpC = (dbRcpC * dbRcp3C);
-
-			  dbVTmp1 =
-			    ((dbX1) *
-			     (((__constant double *) _vmldPowHATab)[857]));
-			  dbVTmp2 = (dbVTmp1 - (dbX1));
-			  dbVTmp1 = (dbVTmp1 - dbVTmp2);
-			  dbVTmp2 = ((dbX1) - dbVTmp1);
-			  dbX1Hi = dbVTmp1;
-			  dbX1Lo = dbVTmp2;
-
-			  dbVTmp1 =
-			    ((dbRcpC) *
-			     (((__constant double *) _vmldPowHATab)[857]));
-			  dbVTmp2 = (dbVTmp1 - (dbRcpC));
-			  dbVTmp1 = (dbVTmp1 - dbVTmp2);
-			  dbVTmp2 = ((dbRcpC) - dbVTmp1);
-			  dbRcpCHi = dbVTmp1;
-			  dbRcpCLo = dbVTmp2;
-
-			  dbTmp1 = (dbX1Hi * dbRcpCHi);
-			  dbE = (dbTmp1 - dbR1);
-			  dbTmp1 = (dbX1Lo * dbRcpCHi);
-			  dbE = (dbE + dbTmp1);
-			  dbTmp1 = (dbX1Hi * dbRcpCLo);
-			  dbE = (dbE + dbTmp1);
-			  dbTmp1 = (dbX1Lo * dbRcpCLo);
-			  dbE = (dbE + dbTmp1);
-
-			  dbVTmp1 = ((dbT) + (dbCQ));
-			  dbTmp1 = ((dbT) - dbVTmp1);
-			  dbVTmp2 = (dbTmp1 + (dbCQ));
-			  dbT_CQHi = dbVTmp1;
-			  dbCQLo = dbVTmp2;
-
-			  iELogAX =
-			    ((((__private _iml_dp_union_t *) & dbT_CQHi)->dwords.
-			      hi_dword >> 20) & 0x7FF);
-
-			  if (iELogAX + iEYB < 11 + 2 * 0x3FF)
-			    {
-
-			      if (iELogAX + iEYB > -62 + 2 * 0x3FF)
-				{
-
-				  dbR = (dbCQ + dbE);
-
-				  dbLog2Poly =
-				    ((((((__constant double *) _vmldPowHATab)[844])
-				       * dbR +
-				       ((__constant double *) _vmldPowHATab)[843])
-				      * dbR +
-				      ((__constant double *) _vmldPowHATab)[842]) *
-				     dbR +
-				     ((__constant double *) _vmldPowHATab)[841]) *
-				    dbR;
-
-				  dbLogPart3 = (dbCQLo + dbE);
-				  dbLogPart3 = (dbD + dbLogPart3);
-
-				  dbVTmp1 = ((dbT_CQHi) + (dbLog2Poly));
-				  dbTmp1 = ((dbT_CQHi) - dbVTmp1);
-				  dbVTmp2 = (dbTmp1 + (dbLog2Poly));
-				  dbHH = dbVTmp1;
-				  dbHL = dbVTmp2;
-
-				  dbVTmp1 = ((dbHH) + (dbLogPart3));
-				  dbTmp1 = ((dbHH) - dbVTmp1);
-				  dbVTmp2 = (dbTmp1 + (dbLogPart3));
-				  dbHH = dbVTmp1;
-				  dbHLL = dbVTmp2;
-
-				  dbHLL = (dbHLL + dbHL);
-
-				  dbVTmp1 =
-				    ((dbHH) *
-				     (((__constant double *) _vmldPowHATab)[857]));
-				  dbVTmp2 = (dbVTmp1 - (dbHH));
-				  dbVTmp1 = (dbVTmp1 - dbVTmp2);
-				  dbVTmp2 = ((dbHH) - dbVTmp1);
-				  dbHH = dbVTmp1;
-				  dbHL = dbVTmp2;
-
-				  dbVTmp1 =
-				    ((dY) *
-				     (((__constant double *) _vmldPowHATab)[857]));
-				  dbVTmp2 = (dbVTmp1 - (dY));
-				  dbVTmp1 = (dbVTmp1 - dbVTmp2);
-				  dbVTmp2 = ((dY) - dbVTmp1);
-				  dbYHi = dbVTmp1;
-				  dbYLo = dbVTmp2;
-
-				  dbTmp1 = ((dbYHi) * (dbHH));
-				  dbTmp2 = ((dbYLo) * (dbHL));
-				  dbTmp2 = (dbTmp2 + (dbYHi) * (dbHL));
-				  dbTmp3 = (dbTmp2 + (dbYLo) * (dbHH));
-				  dbPH = dbTmp1;
-				  dbPL = dbTmp3;
-
-				  dbPLL = (dY * dbHLL);
-
-				  dbVTmp1 =
-				    (dbPH +
-				     ((__constant double *) _vmldPowHATab)[855]);
-				  iN =
-				    (((__private _iml_dp_union_t *) & dbVTmp1)->dwords.
-				     lo_dword);
-				  j = iN & 0x7F;
-				  iN = iN >> 7;
-				  dbVPHH =
-				    (dbVTmp1 -
-				     ((__constant double *) _vmldPowHATab)[855]);
-				  dbVPHL = (dbPH - dbVPHH);
-
-				  dbZ = (dbPLL + dbPL);
-				  dbZ = (dbZ + dbVPHL);
-
-				  dbExp2Poly =
-				    (((((((__constant double *)
-					  _vmldPowHATab)[849]) * dbZ +
-					((__constant double *) _vmldPowHATab)[848])
-				       * dbZ +
-				       ((__constant double *) _vmldPowHATab)[847])
-				      * dbZ +
-				      ((__constant double *) _vmldPowHATab)[846]) *
-				     dbZ +
-				     ((__constant double *) _vmldPowHATab)[845]) *
-				    dbZ;
-
-				  dbExp2PolyT =
-				    (dbExp2Poly *
-				     ((__constant double *) _vmldPowHATab)[585 +
-								      2 *
-								      (j) +
-								      0]);
-				  dbResLo =
-				    (dbExp2PolyT +
-				     ((__constant double *) _vmldPowHATab)[585 +
-								      2 *
-								      (j) +
-								      1]);
-				  dbResHi =
-				    ((__constant double *) _vmldPowHATab)[585 +
-								     2 * (j) +
-								     0];
-
-				  dbRes = (dbResHi + dbResLo);
-				  iERes =
-				    ((((__private _iml_dp_union_t *) & dbRes)->dwords.
-				      hi_dword >> 20) & 0x7FF) - 0x3FF;
-				  iERes = (iERes + iN);
-
-				  if (iERes < 1024)
-				    {
-				      if (iERes >= -1022)
-					{
-
-					  (((__private _iml_dp_union_t *) & dbRes)->
-					   dwords.hi_dword =
-					   (((__private _iml_dp_union_t *) & dbRes)->
-					    dwords.
-					    hi_dword & 0x800FFFFF) |
-					   (((_iml_uint32_t) (iERes + 0x3FF) &
-					     0x7FF) << 20));
-
-					  dbRes = dbRes * dbSignRes;
-					  dR = dbRes;
-					}
-				      else
-					{
-
-					  if (iERes >= -1022 - 10)
-					    {
-
-					      dbVTmp1 =
-						((dbResHi) + (dbResLo));
-					      dbTmp1 = ((dbResHi) - dbVTmp1);
-					      dbVTmp2 = (dbTmp1 + (dbResLo));
-					      dbResHi = dbVTmp1;
-					      dbResLo = dbVTmp2;
-					      dbVTmp1 =
-						((dbResHi) *
-						 (((__constant double *)
-						   _vmldPowHATab)[857]));
-					      dbVTmp2 = (dbVTmp1 - (dbResHi));
-					      dbVTmp1 = (dbVTmp1 - dbVTmp2);
-					      dbVTmp2 = ((dbResHi) - dbVTmp1);
-					      dbResHi = dbVTmp1;
-					      dbTmp2 = dbVTmp2;
-					      dbResLo = (dbResLo + dbTmp2);
-
-					      dbSignRes *=
-						((__constant double *)
-						 _vmldPowHATab)[859];
-					      iN = (iN + 200);
-
-					      dbTwoPowN =
-						((__constant double *)
-						 _vmldPowHATab)[853];
-					      (((__private _iml_dp_union_t *) &
-						dbTwoPowN)->dwords.hi_dword =
-					       (((__private _iml_dp_union_t *) &
-						 dbTwoPowN)->dwords.
-						hi_dword & 0x800FFFFF) |
-					       (((_iml_uint32_t) (iN + 0x3FF)
-						 & 0x7FF) << 20));
-
-					      dbResHi = (dbResHi * dbTwoPowN);
-
-					      dbResLo = (dbResLo * dbTwoPowN);
-
-					      dbRes = (dbResHi + dbResLo);
-					      dbRes = (dbRes * dbSignRes);
-
-					      dbVTmp1 =
-						((__constant double *)
-						 _vmldPowHATab)[851];
-					      dbVTmp1 = (dbVTmp1 * dbVTmp1);
-					      dbRes = (dbRes + dbVTmp1);
-
-					      dR = dbRes;
-					    }
-					  else
-					    {
-					      if (iERes >= -1074 - 10)
-						{
-
-						  dbSignRes *=
-						    ((__constant double *)
-						     _vmldPowHATab)[859];
-						  iN = iN + 200;
-
-						  dbTwoPowN =
-						    ((__constant double *)
-						     _vmldPowHATab)[853];
-						  (((__private _iml_dp_union_t *) &
-						    dbTwoPowN)->dwords.
-						   hi_dword =
-						   (((__private _iml_dp_union_t *) &
-						     dbTwoPowN)->dwords.
-						    hi_dword & 0x800FFFFF) |
-						   (((_iml_uint32_t)
-						     (iN +
-						      0x3FF) & 0x7FF) << 20));
-
-						  dbRes = (dbRes * dbTwoPowN);
-						  dbRes = (dbRes * dbSignRes);
-
-						  dbVTmp1 =
-						    ((__constant double *)
-						     _vmldPowHATab)[851];
-						  dbVTmp1 *= dbVTmp1;
-						  dbRes = (dbRes + dbVTmp1);
-
-						  dR = dbRes;
-						}
-					      else
-						{
-
-						  dbVTmp1 =
-						    ((__constant double *)
-						     _vmldPowHATab)[851];
-						  dbVTmp1 *= dbVTmp1;
-						  dbRes =
-						    (dbVTmp1 * dbSignRes);
-						  dR = dbRes;
-						}
-					    }
-					}
-				    }
-				  else
-				    {
-
-				      dbVTmp1 =
-					((__constant double *) _vmldPowHATab)[850];
-				      dbVTmp1 = (dbVTmp1 * dbVTmp1);
-				      dbRes = (dbVTmp1 * dbSignRes);
-				      dR = dbRes;
-				    }
-				}
-			      else
-				{
-
-				  dbVTmp1 =
-				    ((__constant double *) _vmldPowHATab)[853];
-				  dbVTmp1 =
-				    (dbVTmp1 +
-				     ((__constant double *) _vmldPowHATab)[851]);
-				  dR = (dbVTmp1 * dbSignRes);
-				}
-			    }
-			  else
-			    {
-
-			      iSign =
-				iSignY ^ (((__private _iml_dp_union_t *) & dbT_CQHi)->
-					  dwords.hi_dword >> 31);
-
-			      dbTmp1 =
-				((__constant double *) _vmldPowHATab)[850 +
-								 (iSign)];
-
-			      dbTmp1 = (dbTmp1 * dbTmp1);
-
-			      dbTmp1 = (dbTmp1 * dbSignRes);
-			      dR = dbTmp1;
-			    }
-			}
-		      else
-			{
-
-			  dbVTmp1 = ((__constant double *) _vmldPowHATab)[852];
-			  dbVTmp1 = dbVTmp1 / dbVTmp1;
-			  dR = dbVTmp1;
-			  nRet = 1;
-			}
-		    }
-		  else
-		    {
-
-		      if (iEXB < 0x3FF)
-			{
-
-			  if (iSignY)
-			    {
-
-			      dR = dY * dY;
-			    }
-			  else
-			    {
-
-			      dR = ((__constant double *) _vmldPowHATab)[852];
-			    }
-			}
-		      else
-			{
-
-			  if (iSignY)
-			    {
-
-			      dR =
-				((__constant double *) _vmldPowHATab)[852] *
-				((__constant double *) _vmldPowHATab)[853 +
-								 (iYIsInt &
-								  iSignX)];
-			    }
-			  else
-			    {
-
-			      dbTmp1 = dX * dX;
-			      dbTmp1 = dbTmp1 * dY;
-			      dR =
-				dbTmp1 *
-				((__constant double *) _vmldPowHATab)[853 +
-								 (iYIsInt &
-								  iSignX)];
-			    }
-			}
-		    }
-		}
-	      else
-		{
-
-		  dR = ((__constant double *) _vmldPowHATab)[853 + (iYIsInt & 1)];
-		}
-	    }
-	  else
-	    {
-
-	      dbTmp1 = dX * dX;
-
-	      if (iSignY)
-		{
-
-		  dR =
-		    ((__constant double *) _vmldPowHATab)[853 +
-						     (iYIsInt & iSignX)] /
-		    dbTmp1;
-		  nRet = 1;
-		}
-	      else
-		{
-
-		  dR =
-		    ((__constant double *) _vmldPowHATab)[853 +
-						     (iYIsInt & iSignX)] *
-		    dbTmp1;
-		}
-	    }
-	}
+    {
+
+      if (dX != ((__constant double *) _vmldPowHATab)[852])
+        {
+
+          if (!
+          ((dX == ((__constant double *) _vmldPowHATab)[854])
+           && (iYIsInt || !iYIsFinite)))
+        {
+
+          if (iXIsFinite && iYIsFinite)
+            {
+
+              if ((dX > ((__constant double *) _vmldPowHATab)[852])
+              || iYIsInt)
+            {
+
+              dbSignRes =
+                ((__constant double *) _vmldPowHATab)[853 +
+                                 (iSignX &
+                                  iYIsInt)];
+
+              iDenoExpAdd = 0;
+              dbAX = dX;
+              (((__private _iml_dp_union_t *) & dbAX)->dwords.hi_dword =
+               (((__private _iml_dp_union_t *) & dbAX)->dwords.
+                hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t) (0) <<
+                              31));
+
+              if (iEXB == 0)
+                {
+
+                  dbAX =
+                dbAX * ((__constant double *) _vmldPowHATab)[858];
+                  iDenoExpAdd = iDenoExpAdd - 200;
+                }
+
+              dbX1 = dbAX;
+              (((__private _iml_dp_union_t *) & dbX1)->dwords.hi_dword =
+               (((__private _iml_dp_union_t *) & dbX1)->dwords.
+                hi_dword & 0x800FFFFF) | (((_iml_uint32_t) (0x3FF)
+                               & 0x7FF) << 20));
+
+              iXHi =
+                ((((__private _iml_dp_union_t *) & dbAX)->dwords.
+                  hi_dword >> 20) & 0x7FF);
+              iXHi = iXHi << 20;
+              iXHi =
+                iXHi | (((__private _iml_dp_union_t *) & dbAX)->dwords.
+                    hi_dword & 0x000FFFFF);
+
+              k = iXHi - 0x3FE7C000;
+              k = k >> 20;
+              k = k + iDenoExpAdd;
+
+              i1 =
+                (((__private _iml_dp_union_t *) & dbX1)->dwords.
+                 hi_dword & 0x000FFFFF);
+              i1 = i1 & 0xFC000;
+              i1 = i1 + 0x4000;
+              i1 = i1 >> 15;
+
+              dbRcp1 = ((__constant double *) _vmldPowHATab)[0 + i1];
+
+              dbL1Hi =
+                ((__constant double *) _vmldPowHATab)[33 + 2 * (i1) +
+                                 0];
+              dbL1Lo =
+                ((__constant double *) _vmldPowHATab)[33 + 2 * (i1) +
+                                 1];
+
+              dbX2 = dbX1 * dbRcp1;
+
+              i2 =
+                (((__private _iml_dp_union_t *) & dbX2)->dwords.
+                 hi_dword & 0x000FFFFF);
+              i2 = i2 & 0xFC00;
+              i2 = i2 + 0x400;
+              i2 = i2 >> 11;
+
+              dbRcp2 = ((__constant double *) _vmldPowHATab)[99 + i2];
+
+              dbL2Hi =
+                ((__constant double *) _vmldPowHATab)[132 + 2 * (i2) +
+                                 0];
+              dbL2Lo =
+                ((__constant double *) _vmldPowHATab)[132 + 2 * (i2) +
+                                 1];
+
+              dbX3 = dbX2 * dbRcp2;
+
+              i3 =
+                (((__private _iml_dp_union_t *) & dbX3)->dwords.
+                 hi_dword & 0x000FFFFF);
+              i3 = i3 & 0xFF0;
+              i3 = i3 + 0x10;
+              i3 = i3 >> 5;
+
+              dbRcp3C =
+                ((__constant double *) _vmldPowHATab)[198 + i3];
+
+              dbL3Hi =
+                ((__constant double *) _vmldPowHATab)[327 + 2 * (i3) +
+                                 0];
+              dbL3Lo =
+                ((__constant double *) _vmldPowHATab)[327 + 2 * (i3) +
+                                 1];
+
+              dbK = (double) k;
+              dbT = (dbK + dbL1Hi);
+              dbT = (dbT + dbL2Hi);
+              dbT = (dbT + dbL3Hi);
+
+              dbD = (dbL2Lo + dbL3Lo);
+              dbD = (dbD + dbL1Lo);
+
+              dbR1 = (dbX3 * dbRcp3C);
+              dbCQ =
+                (dbR1 - ((__constant double *) _vmldPowHATab)[856]);
+
+              dbRcpC = (dbRcp1 * dbRcp2);
+              dbRcpC = (dbRcpC * dbRcp3C);
+
+              dbVTmp1 =
+                ((dbX1) *
+                 (((__constant double *) _vmldPowHATab)[857]));
+              dbVTmp2 = (dbVTmp1 - (dbX1));
+              dbVTmp1 = (dbVTmp1 - dbVTmp2);
+              dbVTmp2 = ((dbX1) - dbVTmp1);
+              dbX1Hi = dbVTmp1;
+              dbX1Lo = dbVTmp2;
+
+              dbVTmp1 =
+                ((dbRcpC) *
+                 (((__constant double *) _vmldPowHATab)[857]));
+              dbVTmp2 = (dbVTmp1 - (dbRcpC));
+              dbVTmp1 = (dbVTmp1 - dbVTmp2);
+              dbVTmp2 = ((dbRcpC) - dbVTmp1);
+              dbRcpCHi = dbVTmp1;
+              dbRcpCLo = dbVTmp2;
+
+              dbTmp1 = (dbX1Hi * dbRcpCHi);
+              dbE = (dbTmp1 - dbR1);
+              dbTmp1 = (dbX1Lo * dbRcpCHi);
+              dbE = (dbE + dbTmp1);
+              dbTmp1 = (dbX1Hi * dbRcpCLo);
+              dbE = (dbE + dbTmp1);
+              dbTmp1 = (dbX1Lo * dbRcpCLo);
+              dbE = (dbE + dbTmp1);
+
+              dbVTmp1 = ((dbT) + (dbCQ));
+              dbTmp1 = ((dbT) - dbVTmp1);
+              dbVTmp2 = (dbTmp1 + (dbCQ));
+              dbT_CQHi = dbVTmp1;
+              dbCQLo = dbVTmp2;
+
+              iELogAX =
+                ((((__private _iml_dp_union_t *) & dbT_CQHi)->dwords.
+                  hi_dword >> 20) & 0x7FF);
+
+              if (iELogAX + iEYB < 11 + 2 * 0x3FF)
+                {
+
+                  if (iELogAX + iEYB > -62 + 2 * 0x3FF)
+                {
+
+                  dbR = (dbCQ + dbE);
+
+                  dbLog2Poly =
+                    ((((((__constant double *) _vmldPowHATab)[844])
+                       * dbR +
+                       ((__constant double *) _vmldPowHATab)[843])
+                      * dbR +
+                      ((__constant double *) _vmldPowHATab)[842]) *
+                     dbR +
+                     ((__constant double *) _vmldPowHATab)[841]) *
+                    dbR;
+
+                  dbLogPart3 = (dbCQLo + dbE);
+                  dbLogPart3 = (dbD + dbLogPart3);
+
+                  dbVTmp1 = ((dbT_CQHi) + (dbLog2Poly));
+                  dbTmp1 = ((dbT_CQHi) - dbVTmp1);
+                  dbVTmp2 = (dbTmp1 + (dbLog2Poly));
+                  dbHH = dbVTmp1;
+                  dbHL = dbVTmp2;
+
+                  dbVTmp1 = ((dbHH) + (dbLogPart3));
+                  dbTmp1 = ((dbHH) - dbVTmp1);
+                  dbVTmp2 = (dbTmp1 + (dbLogPart3));
+                  dbHH = dbVTmp1;
+                  dbHLL = dbVTmp2;
+
+                  dbHLL = (dbHLL + dbHL);
+
+                  dbVTmp1 =
+                    ((dbHH) *
+                     (((__constant double *) _vmldPowHATab)[857]));
+                  dbVTmp2 = (dbVTmp1 - (dbHH));
+                  dbVTmp1 = (dbVTmp1 - dbVTmp2);
+                  dbVTmp2 = ((dbHH) - dbVTmp1);
+                  dbHH = dbVTmp1;
+                  dbHL = dbVTmp2;
+
+                  dbVTmp1 =
+                    ((dY) *
+                     (((__constant double *) _vmldPowHATab)[857]));
+                  dbVTmp2 = (dbVTmp1 - (dY));
+                  dbVTmp1 = (dbVTmp1 - dbVTmp2);
+                  dbVTmp2 = ((dY) - dbVTmp1);
+                  dbYHi = dbVTmp1;
+                  dbYLo = dbVTmp2;
+
+                  dbTmp1 = ((dbYHi) * (dbHH));
+                  dbTmp2 = ((dbYLo) * (dbHL));
+                  dbTmp2 = (dbTmp2 + (dbYHi) * (dbHL));
+                  dbTmp3 = (dbTmp2 + (dbYLo) * (dbHH));
+                  dbPH = dbTmp1;
+                  dbPL = dbTmp3;
+
+                  dbPLL = (dY * dbHLL);
+
+                  dbVTmp1 =
+                    (dbPH +
+                     ((__constant double *) _vmldPowHATab)[855]);
+                  iN =
+                    (((__private _iml_dp_union_t *) & dbVTmp1)->dwords.
+                     lo_dword);
+                  j = iN & 0x7F;
+                  iN = iN >> 7;
+                  dbVPHH =
+                    (dbVTmp1 -
+                     ((__constant double *) _vmldPowHATab)[855]);
+                  dbVPHL = (dbPH - dbVPHH);
+
+                  dbZ = (dbPLL + dbPL);
+                  dbZ = (dbZ + dbVPHL);
+
+                  dbExp2Poly =
+                    (((((((__constant double *)
+                      _vmldPowHATab)[849]) * dbZ +
+                    ((__constant double *) _vmldPowHATab)[848])
+                       * dbZ +
+                       ((__constant double *) _vmldPowHATab)[847])
+                      * dbZ +
+                      ((__constant double *) _vmldPowHATab)[846]) *
+                     dbZ +
+                     ((__constant double *) _vmldPowHATab)[845]) *
+                    dbZ;
+
+                  dbExp2PolyT =
+                    (dbExp2Poly *
+                     ((__constant double *) _vmldPowHATab)[585 +
+                                      2 *
+                                      (j) +
+                                      0]);
+                  dbResLo =
+                    (dbExp2PolyT +
+                     ((__constant double *) _vmldPowHATab)[585 +
+                                      2 *
+                                      (j) +
+                                      1]);
+                  dbResHi =
+                    ((__constant double *) _vmldPowHATab)[585 +
+                                     2 * (j) +
+                                     0];
+
+                  dbRes = (dbResHi + dbResLo);
+                  iERes =
+                    ((((__private _iml_dp_union_t *) & dbRes)->dwords.
+                      hi_dword >> 20) & 0x7FF) - 0x3FF;
+                  iERes = (iERes + iN);
+
+                  if (iERes < 1024)
+                    {
+                      if (iERes >= -1022)
+                    {
+
+                      (((__private _iml_dp_union_t *) & dbRes)->
+                       dwords.hi_dword =
+                       (((__private _iml_dp_union_t *) & dbRes)->
+                        dwords.
+                        hi_dword & 0x800FFFFF) |
+                       (((_iml_uint32_t) (iERes + 0x3FF) &
+                         0x7FF) << 20));
+
+                      dbRes = dbRes * dbSignRes;
+                      dR = dbRes;
+                    }
+                      else
+                    {
+
+                      if (iERes >= -1022 - 10)
+                        {
+
+                          dbVTmp1 =
+                        ((dbResHi) + (dbResLo));
+                          dbTmp1 = ((dbResHi) - dbVTmp1);
+                          dbVTmp2 = (dbTmp1 + (dbResLo));
+                          dbResHi = dbVTmp1;
+                          dbResLo = dbVTmp2;
+                          dbVTmp1 =
+                        ((dbResHi) *
+                         (((__constant double *)
+                           _vmldPowHATab)[857]));
+                          dbVTmp2 = (dbVTmp1 - (dbResHi));
+                          dbVTmp1 = (dbVTmp1 - dbVTmp2);
+                          dbVTmp2 = ((dbResHi) - dbVTmp1);
+                          dbResHi = dbVTmp1;
+                          dbTmp2 = dbVTmp2;
+                          dbResLo = (dbResLo + dbTmp2);
+
+                          dbSignRes *=
+                        ((__constant double *)
+                         _vmldPowHATab)[859];
+                          iN = (iN + 200);
+
+                          dbTwoPowN =
+                        ((__constant double *)
+                         _vmldPowHATab)[853];
+                          (((__private _iml_dp_union_t *) &
+                        dbTwoPowN)->dwords.hi_dword =
+                           (((__private _iml_dp_union_t *) &
+                         dbTwoPowN)->dwords.
+                        hi_dword & 0x800FFFFF) |
+                           (((_iml_uint32_t) (iN + 0x3FF)
+                         & 0x7FF) << 20));
+
+                          dbResHi = (dbResHi * dbTwoPowN);
+
+                          dbResLo = (dbResLo * dbTwoPowN);
+
+                          dbRes = (dbResHi + dbResLo);
+                          dbRes = (dbRes * dbSignRes);
+
+                          dbVTmp1 =
+                        ((__constant double *)
+                         _vmldPowHATab)[851];
+                          dbVTmp1 = (dbVTmp1 * dbVTmp1);
+                          dbRes = (dbRes + dbVTmp1);
+
+                          dR = dbRes;
+                        }
+                      else
+                        {
+                          if (iERes >= -1074 - 10)
+                        {
+
+                          dbSignRes *=
+                            ((__constant double *)
+                             _vmldPowHATab)[859];
+                          iN = iN + 200;
+
+                          dbTwoPowN =
+                            ((__constant double *)
+                             _vmldPowHATab)[853];
+                          (((__private _iml_dp_union_t *) &
+                            dbTwoPowN)->dwords.
+                           hi_dword =
+                           (((__private _iml_dp_union_t *) &
+                             dbTwoPowN)->dwords.
+                            hi_dword & 0x800FFFFF) |
+                           (((_iml_uint32_t)
+                             (iN +
+                              0x3FF) & 0x7FF) << 20));
+
+                          dbRes = (dbRes * dbTwoPowN);
+                          dbRes = (dbRes * dbSignRes);
+
+                          dbVTmp1 =
+                            ((__constant double *)
+                             _vmldPowHATab)[851];
+                          dbVTmp1 *= dbVTmp1;
+                          dbRes = (dbRes + dbVTmp1);
+
+                          dR = dbRes;
+                        }
+                          else
+                        {
+
+                          dbVTmp1 =
+                            ((__constant double *)
+                             _vmldPowHATab)[851];
+                          dbVTmp1 *= dbVTmp1;
+                          dbRes =
+                            (dbVTmp1 * dbSignRes);
+                          dR = dbRes;
+                        }
+                        }
+                    }
+                    }
+                  else
+                    {
+
+                      dbVTmp1 =
+                    ((__constant double *) _vmldPowHATab)[850];
+                      dbVTmp1 = (dbVTmp1 * dbVTmp1);
+                      dbRes = (dbVTmp1 * dbSignRes);
+                      dR = dbRes;
+                    }
+                }
+                  else
+                {
+
+                  dbVTmp1 =
+                    ((__constant double *) _vmldPowHATab)[853];
+                  dbVTmp1 =
+                    (dbVTmp1 +
+                     ((__constant double *) _vmldPowHATab)[851]);
+                  dR = (dbVTmp1 * dbSignRes);
+                }
+                }
+              else
+                {
+
+                  iSign =
+                iSignY ^ (((__private _iml_dp_union_t *) & dbT_CQHi)->
+                      dwords.hi_dword >> 31);
+
+                  dbTmp1 =
+                ((__constant double *) _vmldPowHATab)[850 +
+                                 (iSign)];
+
+                  dbTmp1 = (dbTmp1 * dbTmp1);
+
+                  dbTmp1 = (dbTmp1 * dbSignRes);
+                  dR = dbTmp1;
+                }
+            }
+              else
+            {
+
+              dbVTmp1 = ((__constant double *) _vmldPowHATab)[852];
+              dbVTmp1 = dbVTmp1 / dbVTmp1;
+              dR = dbVTmp1;
+              nRet = 1;
+            }
+            }
+          else
+            {
+
+              if (iEXB < 0x3FF)
+            {
+
+              if (iSignY)
+                {
+
+                  dR = dY * dY;
+                }
+              else
+                {
+
+                  dR = ((__constant double *) _vmldPowHATab)[852];
+                }
+            }
+              else
+            {
+
+              if (iSignY)
+                {
+
+                  dR =
+                ((__constant double *) _vmldPowHATab)[852] *
+                ((__constant double *) _vmldPowHATab)[853 +
+                                 (iYIsInt &
+                                  iSignX)];
+                }
+              else
+                {
+
+                  dbTmp1 = dX * dX;
+                  dbTmp1 = dbTmp1 * dY;
+                  dR =
+                dbTmp1 *
+                ((__constant double *) _vmldPowHATab)[853 +
+                                 (iYIsInt &
+                                  iSignX)];
+                }
+            }
+            }
+        }
+          else
+        {
+
+          dR = ((__constant double *) _vmldPowHATab)[853 + (iYIsInt & 1)];
+        }
+        }
       else
-	{
+        {
 
-	  dR = dX + dY;
-	}
+          dbTmp1 = dX * dX;
+
+          if (iSignY)
+        {
+
+          dR =
+            ((__constant double *) _vmldPowHATab)[853 +
+                             (iYIsInt & iSignX)] /
+            dbTmp1;
+          nRet = 1;
+        }
+          else
+        {
+
+          dR =
+            ((__constant double *) _vmldPowHATab)[853 +
+                             (iYIsInt & iSignX)] *
+            dbTmp1;
+        }
+        }
+    }
+      else
+    {
+
+      dR = dX + dY;
+    }
     }
   else
     {
@@ -1538,7 +1538,7 @@ __ocl_svml_dpow_cout_rare (__private const double *a, __private double *b, __pri
       dbVTmp2 = ((__constant double *) _vmldPowHATab)[853];
       (((__private _iml_dp_union_t *) & dbVTmp2)->dwords.hi_dword =
        (((__private _iml_dp_union_t *) & dbVTmp2)->dwords.
-	hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t) (iSign) << 31));
+    hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t) (iSign) << 31));
 
       dR = dbVTmp2 * dbVTmp2;
     }

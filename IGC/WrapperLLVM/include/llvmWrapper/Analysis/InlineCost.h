@@ -35,17 +35,17 @@ namespace IGCLLVM
     using llvm::InlineCost;
 #elif LLVM_VERSION_MAJOR >= 8
     class InlineCost : public llvm::InlineCost
-	{
-	public:	
-		static inline llvm::InlineCost getAlways() 
-		{
-			return llvm::InlineCost::getAlways("");
-		}
-		static inline llvm::InlineCost getNever() 
-		{
-			return llvm::InlineCost::getNever("");
-		}
-	};
+    {
+    public:    
+        static inline llvm::InlineCost getAlways() 
+        {
+            return llvm::InlineCost::getAlways("");
+        }
+        static inline llvm::InlineCost getNever() 
+        {
+            return llvm::InlineCost::getNever("");
+        }
+    };
 #endif
 }
 

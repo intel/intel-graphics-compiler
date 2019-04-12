@@ -66,7 +66,7 @@ namespace Legalizer {
 
     /// Standard binary operators
     ///
-	bool visitSelectInst(SelectInst &I);
+    bool visitSelectInst(SelectInst &I);
 
     bool visitICmpInst(ICmpInst &I);
 

@@ -60,7 +60,7 @@ INLINE bool IGIL_ValidNdrange( const ndrange_t range )
     {
         return false;
     }
-	else if( range.workDimension > 3 )
+    else if( range.workDimension > 3 )
     {
         return false;
     }

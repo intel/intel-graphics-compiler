@@ -53,7 +53,7 @@ KernelArg::KernelArg(KernelArg::ArgType argType, KernelArg::AccessQual accessQua
     m_structArgOffset(-1),
     m_locationIndex(-1),
     m_locationCount(-1),
-	m_needsAllocation(typeAlwaysNeedsAllocation()),
+    m_needsAllocation(typeAlwaysNeedsAllocation()),
     m_imageInfo({ false, false }),
     m_isEmulationArgument(false)
 {
@@ -70,7 +70,7 @@ KernelArg::KernelArg(const Argument* arg, const DataLayout* DL, const StringRef 
     m_structArgOffset(-1),
     m_locationIndex(location_index),
     m_locationCount(location_count),
-	m_needsAllocation(needBindlessHandle || typeAlwaysNeedsAllocation()),
+    m_needsAllocation(needBindlessHandle || typeAlwaysNeedsAllocation()),
     m_imageInfo({ false, false }),
     m_isEmulationArgument(isEmulationArgument)
 {
@@ -92,7 +92,7 @@ KernelArg::KernelArg(const ImplicitArg& implicitArg, const DataLayout* DL, const
     m_structArgOffset(structArgOffset),
     m_locationIndex(-1),
     m_locationCount(-1),
-	m_needsAllocation(typeAlwaysNeedsAllocation()),
+    m_needsAllocation(typeAlwaysNeedsAllocation()),
     m_imageInfo({ false, false }),
     m_isEmulationArgument(false)
 {

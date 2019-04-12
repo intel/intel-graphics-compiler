@@ -141,18 +141,18 @@ string printGlobalDeclName(const common_isa_header& isaHeader, const kernel_form
 
 static string printSurfaceName(uint32_t declID)
 {
-	stringstream sstr;
-	unsigned numPreDefinedSurf = Get_CISA_PreDefined_Surf_Count();
-	if (declID < numPreDefinedSurf)
-	{
-		sstr << vISAPreDefSurf[declID].name;
-	}
-	else
-	{
-		sstr << "T" << declID;
-	}
+    stringstream sstr;
+    unsigned numPreDefinedSurf = Get_CISA_PreDefined_Surf_Count();
+    if (declID < numPreDefinedSurf)
+    {
+        sstr << vISAPreDefSurf[declID].name;
+    }
+    else
+    {
+        sstr << "T" << declID;
+    }
 
-	return sstr.str();
+    return sstr.str();
 }
 
 string printVariableDeclName(const kernel_format_t* header, unsigned declID, Options *options, Common_ISA_State_Opnd_Class operand_prefix_kind = NOT_A_STATE_OPND)
@@ -1342,7 +1342,7 @@ static string printInstructionSampler(const kernel_format_t* header, const CISA_
         case ISA_3D_SAMPLE:
         {
             // [(P)] SAMPLE_3d[.pixel_null_mask][.cps][.divS].<channels> (exec_size)
-	        //   [(u_aoffimmi, v_aoffimii, r_aoffimmi)] <sampler> <surface>
+            //   [(u_aoffimmi, v_aoffimii, r_aoffimmi)] <sampler> <surface>
             //   <dst> <u> <v> <r> <ai>
             auto subop = getSubOpcodeByte(inst, i++);
 
@@ -1491,14 +1491,14 @@ static string printInstructionSampler(const kernel_format_t* header, const CISA_
         {
             VISASampler3DSubOpCode subop = (VISASampler3DSubOpCode)getPrimitiveOperand<uint8_t>(inst, i++);
             sstr << SAMPLE_OP_3D_NAME[subop];
-			sstr << " " << printExecutionSize(inst->opcode, inst->execsize) << " ";
+            sstr << " " << printExecutionSize(inst->opcode, inst->execsize) << " ";
 
             if (subop == VISA_3D_RESINFO)
             {
-				// channelMask
-				uint8_t channels = getPrimitiveOperand<uint8_t>(inst, i++);
-				ChannelMask chMask = ChannelMask::createFromBinary(ISA_3D_INFO, channels);
-				sstr << chMask.getString();
+                // channelMask
+                uint8_t channels = getPrimitiveOperand<uint8_t>(inst, i++);
+                ChannelMask chMask = ChannelMask::createFromBinary(ISA_3D_INFO, channels);
+                sstr << chMask.getString();
             }
             // surface
             sstr << " T" << printOperand(header, inst, i++, opt);
@@ -2011,17 +2011,17 @@ static string printInstructionSampler(const kernel_format_t* header, const CISA_
 
 static string printSurfaceIndex(uint8_t surface)
 {
-	stringstream sstr;
+    stringstream sstr;
     unsigned numPreDefinedSurfs = Get_CISA_PreDefined_Surf_Count();
     if (surface < numPreDefinedSurfs)
     {
-		sstr << " " << vISAPreDefSurf[surface].name;
+        sstr << " " << vISAPreDefSurf[surface].name;
     }
-	else
-	{
-		sstr << " " << "T" << (unsigned)surface;
-	}
-	return sstr.str();
+    else
+    {
+        sstr << " " << "T" << (unsigned)surface;
+    }
+    return sstr.str();
 }
 
 static string printInstructionDataport(const kernel_format_t* header, const CISA_INST* inst, Options *opt)

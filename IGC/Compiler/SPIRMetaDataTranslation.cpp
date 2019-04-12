@@ -200,18 +200,18 @@ bool SPIRMetaDataTranslation::runOnModule(Module& M)
             sgHandle->setSIMD_size(simd_size);
         }
 
-		// Handling Sub Group Size
-		SPIRMD::WorkgroupWalkOrderMetaDataHandle workgroupWalkOrder = spirKernel->getWorkgroupWalkOrder();
-		if (workgroupWalkOrder->hasValue())
-		{            
+        // Handling Sub Group Size
+        SPIRMD::WorkgroupWalkOrderMetaDataHandle workgroupWalkOrder = spirKernel->getWorkgroupWalkOrder();
+        if (workgroupWalkOrder->hasValue())
+        {            
             WorkGroupWalkOrderMD &igc_workGroupWalkOrder = funcMD.workGroupWalkOrder;
-			int dim0 = workgroupWalkOrder->getDim0();
-			int dim1 = workgroupWalkOrder->getDim1();
-			int dim2 = workgroupWalkOrder->getDim2();
+            int dim0 = workgroupWalkOrder->getDim0();
+            int dim1 = workgroupWalkOrder->getDim1();
+            int dim2 = workgroupWalkOrder->getDim2();
             igc_workGroupWalkOrder.dim0 = dim0;
             igc_workGroupWalkOrder.dim1 = dim1;
             igc_workGroupWalkOrder.dim2 = dim2;
-		}
+        }
 
         // Handling OpenCL Vector Type Hint
         SPIRMD::VectorTypeHintMetaDataHandle vectorTypeHint = spirKernel->getVectorTypeHint();

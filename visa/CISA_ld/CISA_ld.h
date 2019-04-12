@@ -28,13 +28,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define __CISA_LD_H__
 
 #ifdef STANDALONE_MODE
-	#define CISA_LD_DECLSPEC
+    #define CISA_LD_DECLSPEC
 #else
-	#ifdef DLL_MODE
-	#define CISA_LD_DECLSPEC __declspec(dllexport)
-	#else
-	#define CISA_LD_DECLSPEC __declspec(dllimport)
-	#endif
+    #ifdef DLL_MODE
+    #define CISA_LD_DECLSPEC __declspec(dllexport)
+    #else
+    #define CISA_LD_DECLSPEC __declspec(dllimport)
+    #endif
 #endif
 
 typedef void* ExternalHeapAllocator(unsigned size);

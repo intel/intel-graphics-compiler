@@ -947,11 +947,11 @@ public:
       auto iat = getInlinedAtFromScope(inst->getDIScope());
       if (!scope)
           nullptr;
-	  auto dbgValueInst = Builder.insertDbgValueIntrinsic(localVar, 0,
-		  createLocalVar(BM->get<SPIRVExtInst>(dbgValue.getVar())),
-		  createExpression(BM->get<SPIRVExtInst>(dbgValue.getExpression())),
-		  createLocation(inst->getLine()->getLine(), inst->getLine()->getColumn(), scope, iat),
-		  insertAtEnd);
+      auto dbgValueInst = Builder.insertDbgValueIntrinsic(localVar, 0,
+          createLocalVar(BM->get<SPIRVExtInst>(dbgValue.getVar())),
+          createExpression(BM->get<SPIRVExtInst>(dbgValue.getExpression())),
+          createLocation(inst->getLine()->getLine(), inst->getLine()->getColumn(), scope, iat),
+          insertAtEnd);
 
       return dbgValueInst;
   }
@@ -1912,9 +1912,9 @@ SPIRVToLLVM::postProcessFunctionsReturnStruct(Function *F) {
   for (auto I = F->user_begin(), E = F->user_end(); I != E;) {
     if (auto CI = dyn_cast<CallInst>(*I++)) {
       auto Args = getArguments(CI);
-	  IGCLLVM::IRBuilder<> builder(CI);
+      IGCLLVM::IRBuilder<> builder(CI);
       //auto Alloca = new AllocaInst(CI->getType(), "", CI);
-	  auto Alloca = builder.CreateAlloca(CI->getType());
+      auto Alloca = builder.CreateAlloca(CI->getType());
       Args.insert(Args.begin(), Alloca);
       auto NewCI = CallInst::Create(NewF, Args, "", CI);
       NewCI->setCallingConv(CI->getCallingConv());
@@ -2335,16 +2335,16 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
 
     if (BS == StorageClassFunction && !Init) {
         assert (BB && "Invalid BB");
-		IGCLLVM::IRBuilder<> builder(BB);
+        IGCLLVM::IRBuilder<> builder(BB);
         //return mapValue(BV, new AllocaInst(Ty, BV->getName(), BB));
-		return mapValue(BV, builder.CreateAlloca(Ty, nullptr, BV->getName()));
+        return mapValue(BV, builder.CreateAlloca(Ty, nullptr, BV->getName()));
     }
     auto AddrSpace = SPIRSPIRVAddrSpaceMap::rmap(BS);
     auto LVar = new GlobalVariable(*M, Ty, IsConst, LinkageTy, Initializer,
         BV->getName(), 0, GlobalVariable::NotThreadLocal, AddrSpace);
-	GlobalVariable::UnnamedAddr addrType = (IsConst && Ty->isArrayTy() &&
-		Ty->getArrayElementType()->isIntegerTy(8)) ? GlobalVariable::UnnamedAddr::Global : 
-		GlobalVariable::UnnamedAddr::None;
+    GlobalVariable::UnnamedAddr addrType = (IsConst && Ty->isArrayTy() &&
+        Ty->getArrayElementType()->isIntegerTy(8)) ? GlobalVariable::UnnamedAddr::Global : 
+        GlobalVariable::UnnamedAddr::None;
     LVar->setUnnamedAddr(addrType);
     SPIRVBuiltinVariableKind BVKind = BuiltInCount;
     if (BVar->isBuiltin(&BVKind))
@@ -2873,7 +2873,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
       auto *cmp2 = CmpInst::Create(Instruction::ICmp, llvm::CmpInst::ICMP_NE,
           out, zero, "", BB);
       // %and  = and %cmp1, %cmp2
-	  auto *and1 = BinaryOperator::CreateAnd(cmp1, cmp2, "", BB);
+      auto *and1 = BinaryOperator::CreateAnd(cmp1, cmp2, "", BB);
       // %add  = add %out, %b
       auto *add = BinaryOperator::CreateAdd(out, b, "", BB); 
       // %sel  = select %and, %add, %out
@@ -3905,7 +3905,7 @@ bool ReadSPIRV(LLVMContext &C, std::istream &IS, Module *&M,
 #if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
   if (DbgSaveTmpLLVM)
     dumpLLVM(M, DbgTmpLLVMFileName);
-#endif	
+#endif    
   if (!Succeed) {
     delete M;
     M = nullptr;

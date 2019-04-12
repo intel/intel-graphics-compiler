@@ -97,7 +97,7 @@ void FindInterestingConstants::FoldsToConstPropagate(llvm::Instruction* I)
 
         if (Instruction* useInst = dyn_cast<Instruction>(*UI))
         {
-            if (useInst->getParent() == I->getParent())	// TBD Do we need this
+            if (useInst->getParent() == I->getParent())    // TBD Do we need this
             {
                 if (FoldsToConst(I, useInst, propagate))
                 {

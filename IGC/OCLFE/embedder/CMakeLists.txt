@@ -37,13 +37,13 @@ function(igc_resource_embed_file symbolFilesVarName symbolName embeddedFilePath)
   endif()
 
   add_custom_command(OUTPUT "${_symbolFilePath}"
-					 COMMAND "${CMAKE_COMMAND}" -E make_directory "${IGC_BUILD__CTH_EMBEDDER_DIR}"
-					 COMMAND "${PYTHON_EXECUTABLE}"
-					 ARGS "${IGC_TOOLS_RESOURCE_LINKER}" "${embeddedFilePath}" "${_symbolFilePath}" "${symbolName}"
-					 DEPENDS ${IGC_TOOLS_RESOURCE_LINKER} ${_dependency} ${ARGN}
-					 DEPENDS "${IGC_BUILD__PROJ__BiFModule_OCL}"
-					 COMMENT "Linking Builtins"
-					)
+                     COMMAND "${CMAKE_COMMAND}" -E make_directory "${IGC_BUILD__CTH_EMBEDDER_DIR}"
+                     COMMAND "${PYTHON_EXECUTABLE}"
+                     ARGS "${IGC_TOOLS_RESOURCE_LINKER}" "${embeddedFilePath}" "${_symbolFilePath}" "${symbolName}"
+                     DEPENDS ${IGC_TOOLS_RESOURCE_LINKER} ${_dependency} ${ARGN}
+                     DEPENDS "${IGC_BUILD__PROJ__BiFModule_OCL}"
+                     COMMENT "Linking Builtins"
+                    )
 
   set("${symbolFilesVarName}" "${${symbolFilesVarName}}" "${_symbolFilePath}" PARENT_SCOPE)
 endfunction()

@@ -2249,47 +2249,47 @@ bool IGCConstProp::runOnFunction(Function &F)
             // Replace all of the uses of a variable with uses of the constant.
             I->replaceAllUsesWith(C);
 
-			if ( 0 /* isa<ConstantPointerNull>(C)*/) // disable optimization generating invalid IR until it gets re-written
-			{
-				// if we are changing function calls/ genisa intrinsics, then we need 
-				// to fix the function declarations to account for the change in pointer address type
-				for (Value::user_iterator UI = C->user_begin(), UE = C->user_end();
-					UI != UE; ++UI)
-				{
-					if (GenIntrinsicInst *genIntr = dyn_cast<GenIntrinsicInst>(*UI))
-					{
+            if ( 0 /* isa<ConstantPointerNull>(C)*/) // disable optimization generating invalid IR until it gets re-written
+            {
+                // if we are changing function calls/ genisa intrinsics, then we need 
+                // to fix the function declarations to account for the change in pointer address type
+                for (Value::user_iterator UI = C->user_begin(), UE = C->user_end();
+                    UI != UE; ++UI)
+                {
+                    if (GenIntrinsicInst *genIntr = dyn_cast<GenIntrinsicInst>(*UI))
+                    {
                                     GenISAIntrinsic::ID ID = genIntr->getIntrinsicID();
-						if (ID == GenISAIntrinsic::GenISA_storerawvector_indexed)
-						{
-							llvm::Type* tys[2];
-							tys[0] = genIntr->getOperand(0)->getType();
-							tys[1] = genIntr->getOperand(2)->getType();
-							GenISAIntrinsic::getDeclaration(F.getParent(),
-								llvm::GenISAIntrinsic::GenISA_storerawvector_indexed,
-								tys);
-						}
-						else if (ID == GenISAIntrinsic::GenISA_storeraw_indexed)
-						{
+                        if (ID == GenISAIntrinsic::GenISA_storerawvector_indexed)
+                        {
+                            llvm::Type* tys[2];
+                            tys[0] = genIntr->getOperand(0)->getType();
+                            tys[1] = genIntr->getOperand(2)->getType();
+                            GenISAIntrinsic::getDeclaration(F.getParent(),
+                                llvm::GenISAIntrinsic::GenISA_storerawvector_indexed,
+                                tys);
+                        }
+                        else if (ID == GenISAIntrinsic::GenISA_storeraw_indexed)
+                        {
                             llvm::Type* types[2] = {
                                 genIntr->getOperand(0)->getType(),
                                 genIntr->getOperand(1)->getType() };
 
-							GenISAIntrinsic::getDeclaration(F.getParent(),
-								llvm::GenISAIntrinsic::GenISA_storeraw_indexed,
+                            GenISAIntrinsic::getDeclaration(F.getParent(),
+                                llvm::GenISAIntrinsic::GenISA_storeraw_indexed,
                                 types);
-						}
-						else if (ID == GenISAIntrinsic::GenISA_ldrawvector_indexed || ID == GenISAIntrinsic::GenISA_ldraw_indexed)
-						{
-							llvm::Type* tys[2];
-							tys[0] = genIntr->getType();
-							tys[1] = genIntr->getOperand(0)->getType();
-							GenISAIntrinsic::getDeclaration(F.getParent(),
-								ID,
-								tys);
-						}
-					}
-				}
-			}
+                        }
+                        else if (ID == GenISAIntrinsic::GenISA_ldrawvector_indexed || ID == GenISAIntrinsic::GenISA_ldraw_indexed)
+                        {
+                            llvm::Type* tys[2];
+                            tys[0] = genIntr->getType();
+                            tys[1] = genIntr->getOperand(0)->getType();
+                            GenISAIntrinsic::getDeclaration(F.getParent(),
+                                ID,
+                                tys);
+                        }
+                    }
+                }
+            }
 
             // Remove the dead instruction.
             I->eraseFromParent();
@@ -2301,8 +2301,8 @@ bool IGCConstProp::runOnFunction(Function &F)
             continue;
         }
 
-		if (GetElementPtrInst *GEP = dyn_cast<GetElementPtrInst>(I))
-		{
+        if (GetElementPtrInst *GEP = dyn_cast<GetElementPtrInst>(I))
+        {
             if (m_enableSimplifyGEP && simplifyGEP(GEP))
             {
                 Changed = true;
@@ -2315,24 +2315,24 @@ bool IGCConstProp::runOnFunction(Function &F)
 
 namespace {
 
-	class IGCIndirectICBPropagaion : public FunctionPass
-	{
-	public:
-		static char ID;
-		IGCIndirectICBPropagaion() : FunctionPass(ID)
-		{
-			initializeIGCIndirectICBPropagaionPass(*PassRegistry::getPassRegistry());
-		}
-		virtual llvm::StringRef getPassName() const { return "Indirect ICB Propagaion"; }
-		virtual bool runOnFunction(Function &F);
-		virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const
-		{
-			AU.setPreservesCFG();
-			AU.addRequired<CodeGenContextWrapper>();
-		}
+    class IGCIndirectICBPropagaion : public FunctionPass
+    {
+    public:
+        static char ID;
+        IGCIndirectICBPropagaion() : FunctionPass(ID)
+        {
+            initializeIGCIndirectICBPropagaionPass(*PassRegistry::getPassRegistry());
+        }
+        virtual llvm::StringRef getPassName() const { return "Indirect ICB Propagaion"; }
+        virtual bool runOnFunction(Function &F);
+        virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const
+        {
+            AU.setPreservesCFG();
+            AU.addRequired<CodeGenContextWrapper>();
+        }
     private:
         bool isICBOffseted(llvm::LoadInst* inst, uint offset);
-	};
+    };
 
 } // namespace
 
@@ -2443,7 +2443,7 @@ bool IGCIndirectICBPropagaion::runOnFunction(Function &F)
         }
     }
 
-	return false;
+    return false;
 }
 
 bool IGCIndirectICBPropagaion::isICBOffseted(llvm::LoadInst* inst, uint offset) {
@@ -3017,100 +3017,100 @@ bool FlattenSmallSwitch::processSwitchInst(SwitchInst *SI)
         return false;
     }
 
-	// Dest will be the block that the control flow from the switch merges to.
-	// Currently, there are two options:
-	// 1. The Dest block is the default block from the switch
-	// 2. The Dest block is jumped to by all of the switch cases (and the default)
-	BasicBlock *Dest = nullptr;
-	{
-		const auto *CaseSucc = 
+    // Dest will be the block that the control flow from the switch merges to.
+    // Currently, there are two options:
+    // 1. The Dest block is the default block from the switch
+    // 2. The Dest block is jumped to by all of the switch cases (and the default)
+    BasicBlock *Dest = nullptr;
+    {
+        const auto *CaseSucc = 
 #if LLVM_VERSION_MAJOR == 4
-			SI->case_begin().getCaseSuccessor();
+            SI->case_begin().getCaseSuccessor();
 #elif LLVM_VERSION_MAJOR >= 7
             SI->case_begin()->getCaseSuccessor();
 #endif
-		auto *BI = dyn_cast<BranchInst>(CaseSucc->getTerminator());
+        auto *BI = dyn_cast<BranchInst>(CaseSucc->getTerminator());
 
-		if (BI == nullptr)
-			return false;
+        if (BI == nullptr)
+            return false;
 
-		if (BI->isConditional())
-			return false;
+        if (BI->isConditional())
+            return false;
 
-		// We know the first case jumps to this block.  Now let's
-		// see below whether all the cases jump to this same block.
-		Dest = BI->getSuccessor(0);
-	}
+        // We know the first case jumps to this block.  Now let's
+        // see below whether all the cases jump to this same block.
+        Dest = BI->getSuccessor(0);
+    }
 
-	// Does BB unconditionally branch to MergeBlock?
-	auto branchPattern = [](const BasicBlock *BB, const BasicBlock *MergeBlock)
-	{
-		auto *br = dyn_cast<BranchInst>(BB->getTerminator());
+    // Does BB unconditionally branch to MergeBlock?
+    auto branchPattern = [](const BasicBlock *BB, const BasicBlock *MergeBlock)
+    {
+        auto *br = dyn_cast<BranchInst>(BB->getTerminator());
 
-		if (br == nullptr)
-			return false;
+        if (br == nullptr)
+            return false;
 
-		if (br->isConditional())
-			return false;
+        if (br->isConditional())
+            return false;
 
-		if (br->getSuccessor(0) != MergeBlock)
-			return false;
+        if (br->getSuccessor(0) != MergeBlock)
+            return false;
 
-		return true;
-	};
+        return true;
+    };
 
-	// We can speculatively execute a basic block if it
-	// is small, unconditionally branches to Dest, and doesn't
-	// have high latency or unsafe to speculate instructions.
-	auto canSpeculateBlock = [&](BasicBlock *BB)
-	{
-		if (BB->size() > maxCaseInsts)
-			return false;
+    // We can speculatively execute a basic block if it
+    // is small, unconditionally branches to Dest, and doesn't
+    // have high latency or unsafe to speculate instructions.
+    auto canSpeculateBlock = [&](BasicBlock *BB)
+    {
+        if (BB->size() > maxCaseInsts)
+            return false;
 
-		if (!branchPattern(BB, Dest))
-			return false;
+        if (!branchPattern(BB, Dest))
+            return false;
 
-		for (auto &I : *BB)
-		{
-			auto *inst = &I;
+        for (auto &I : *BB)
+        {
+            auto *inst = &I;
 
-			if (isa<BranchInst>(inst))
-				continue;
+            if (isa<BranchInst>(inst))
+                continue;
 
-			// if there is any high-latency instruction in the switch,
-			// don't flatten it
-			if (isSampleInstruction(inst)  ||
-				isGather4Instruction(inst) ||
-				isInfoInstruction(inst)    ||
-				isLdInstruction(inst)      ||
-				// If the instruction can't be speculated (e.g., phi node),
-				// punt.
-				!isSafeToSpeculativelyExecute(inst))
-			{
-				return false;
-			}
-		}
+            // if there is any high-latency instruction in the switch,
+            // don't flatten it
+            if (isSampleInstruction(inst)  ||
+                isGather4Instruction(inst) ||
+                isInfoInstruction(inst)    ||
+                isLdInstruction(inst)      ||
+                // If the instruction can't be speculated (e.g., phi node),
+                // punt.
+                !isSafeToSpeculativelyExecute(inst))
+            {
+                return false;
+            }
+        }
 
-		return true;
-	};
+        return true;
+    };
 
-	for (auto &I : SI->cases())
-	{
-		BasicBlock *CaseDest = I.getCaseSuccessor();
+    for (auto &I : SI->cases())
+    {
+        BasicBlock *CaseDest = I.getCaseSuccessor();
 
-		if (!canSpeculateBlock(CaseDest))
-			return false;
-	}
+        if (!canSpeculateBlock(CaseDest))
+            return false;
+    }
 
-	// Is the default case of the switch the block
-	// where all other cases meet?
-	const bool DefaultMergeBlock = (Dest == Default);
+    // Is the default case of the switch the block
+    // where all other cases meet?
+    const bool DefaultMergeBlock = (Dest == Default);
 
-	// If we merge to the default block, there is no block
-	// we jump to beforehand so there is nothing to
-	// speculate.
-	if (!DefaultMergeBlock && !canSpeculateBlock(Default))
-		return false;
+    // If we merge to the default block, there is no block
+    // we jump to beforehand so there is nothing to
+    // speculate.
+    if (!DefaultMergeBlock && !canSpeculateBlock(Default))
+        return false;
 
     // Get all PHI nodes that needs to be replaced
     SmallVector<PHINode*, 4> PhiNodes;
@@ -3130,30 +3130,30 @@ bool FlattenSmallSwitch::processSwitchInst(SwitchInst *SI)
     if (PhiNodes.empty())
         return false;
 
-	// Move all instructions except the last (i.e., the branch)
-	// from BB to the InsertPoint.
-	auto splice = [](BasicBlock *BB, Instruction *InsertPoint)
-	{
-		Instruction* preIter = nullptr;
-		for (auto &iter : *BB)
-		{
-			if (preIter)
-			{
-				preIter->moveBefore(InsertPoint);
-			}
-			preIter = cast<Instruction>(&iter);
-		}
-	};
+    // Move all instructions except the last (i.e., the branch)
+    // from BB to the InsertPoint.
+    auto splice = [](BasicBlock *BB, Instruction *InsertPoint)
+    {
+        Instruction* preIter = nullptr;
+        for (auto &iter : *BB)
+        {
+            if (preIter)
+            {
+                preIter->moveBefore(InsertPoint);
+            }
+            preIter = cast<Instruction>(&iter);
+        }
+    };
 
     // move default block out
-	if (!DefaultMergeBlock)
-		splice(Default, SI);
+    if (!DefaultMergeBlock)
+        splice(Default, SI);
 
     // move case blocks out
-	for (auto &I : SI->cases())
+    for (auto &I : SI->cases())
     {
         BasicBlock *CaseDest = I.getCaseSuccessor();
-		splice(CaseDest, SI);
+        splice(CaseDest, SI);
     }
 
     // replaces PHI with select

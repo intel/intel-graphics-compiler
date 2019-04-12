@@ -366,7 +366,7 @@ static bool DeduceNonNullAttribute(Module &M)
             }
 
             if (NotNull) {
-				IGCLLVM::ArgumentAddAttr(Arg, Arg.getArgNo() + 1, llvm::Attribute::NonNull);
+                IGCLLVM::ArgumentAddAttr(Arg, Arg.getArgNo() + 1, llvm::Attribute::NonNull);
                 Modifided = true;
             }
         }
@@ -584,30 +584,30 @@ bool GenXFunctionGroupAnalysis::rebuild(llvm::Module *Mod) {
 
 void GenXFunctionGroupAnalysis::replaceEntryFunc(Function *OF, Function *NF)
 {
-	auto groupMapIter = GroupMap.find(OF);
-	FunctionGroup *FG = groupMapIter->second;
-	GroupMap.erase(groupMapIter);
+    auto groupMapIter = GroupMap.find(OF);
+    FunctionGroup *FG = groupMapIter->second;
+    GroupMap.erase(groupMapIter);
     GroupMap.insert(std::make_pair(NF, FG));
 
-	FG->replaceGroupHead(OF, NF);
+    FG->replaceGroupHead(OF, NF);
 
-	// For Entry func, SubGroupMap needs to be updated as well
-	auto SGIter = SubGroupMap.find(OF);
-	if (SGIter != SubGroupMap.end())
-	{
-		SubGroupMap.erase(SGIter);
-		SubGroupMap.insert(std::make_pair(NF, NF));
-	}
-	DenseMap<Function*, Function*>::iterator SGII, SGIE;
-	for (SGII = SubGroupMap.begin(), SGIE = SubGroupMap.end();
-		 SGII != SGIE; ++SGII)
-	{
-		Function *SGH = SGII->second;
-		if (SGH == OF)
-		{
-			SGII->second = NF;
-		}
-	}
+    // For Entry func, SubGroupMap needs to be updated as well
+    auto SGIter = SubGroupMap.find(OF);
+    if (SGIter != SubGroupMap.end())
+    {
+        SubGroupMap.erase(SGIter);
+        SubGroupMap.insert(std::make_pair(NF, NF));
+    }
+    DenseMap<Function*, Function*>::iterator SGII, SGIE;
+    for (SGII = SubGroupMap.begin(), SGIE = SubGroupMap.end();
+         SGII != SGIE; ++SGII)
+    {
+        Function *SGH = SGII->second;
+        if (SGH == OF)
+        {
+            SGII->second = NF;
+        }
+    }
 }
 
 void GenXFunctionGroupAnalysis::clear()

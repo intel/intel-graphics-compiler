@@ -91,7 +91,7 @@ namespace IGC
         static const llvm::StringRef GET_MAX_SUB_GROUP_SIZE;
         static const llvm::StringRef GET_SUB_GROUP_LOCAL_ID;
         static const llvm::StringRef SUB_GROUP_SHUFFLE;
-		static const llvm::StringRef SUB_GROUP_SHUFFLE_US;
+        static const llvm::StringRef SUB_GROUP_SHUFFLE_US;
         static const llvm::StringRef SUB_GROUP_SHUFFLE_F;
         static const llvm::StringRef SUB_GROUP_SHUFFLE_H;
         static const llvm::StringRef SUB_GROUP_SHUFFLE_B;
@@ -211,7 +211,7 @@ namespace IGC
         /// @brief  Indicates if the pass changed the processed function
         bool m_changed;
 
-		CodeGenContext* m_pCtx;
+        CodeGenContext* m_pCtx;
 
         /// @brief examine metadata for intel_reqd_sub_group_size
         int32_t GetSIMDSize(llvm::Function *F);

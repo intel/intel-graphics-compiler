@@ -83,114 +83,114 @@ CISA_IR_Builder::~CISA_IR_Builder()
 void CISA_IR_Builder::InitVisaWaTable(TARGET_PLATFORM platform, Stepping step)
 {
 
-	if ((platform == GENX_SKL && (step == Step_A || step == Step_B)) ||
-		(platform == GENX_BXT && step == Step_A))
-	{
-		VISA_WA_ENABLE(m_pWaTable, WaHeaderRequiredOnSimd16Sample16bit);
-	}
-	else
-	{
-		VISA_WA_DISABLE(m_pWaTable, WaHeaderRequiredOnSimd16Sample16bit);
-	}
+    if ((platform == GENX_SKL && (step == Step_A || step == Step_B)) ||
+        (platform == GENX_BXT && step == Step_A))
+    {
+        VISA_WA_ENABLE(m_pWaTable, WaHeaderRequiredOnSimd16Sample16bit);
+    }
+    else
+    {
+        VISA_WA_DISABLE(m_pWaTable, WaHeaderRequiredOnSimd16Sample16bit);
+    }
 
-	if ((platform == GENX_SKL) && (step == Step_A))
-	{
-		VISA_WA_ENABLE(m_pWaTable, WaSendsSrc1SizeLimitWhenEOT);
-	}
-	else
-	{
-		VISA_WA_DISABLE(m_pWaTable, WaSendsSrc1SizeLimitWhenEOT);
-	}
+    if ((platform == GENX_SKL) && (step == Step_A))
+    {
+        VISA_WA_ENABLE(m_pWaTable, WaSendsSrc1SizeLimitWhenEOT);
+    }
+    else
+    {
+        VISA_WA_DISABLE(m_pWaTable, WaSendsSrc1SizeLimitWhenEOT);
+    }
 
-	if ((platform == GENX_SKL && (step == Step_A || step == Step_B)) ||
-		(platform == GENX_BXT && step == Step_A))
-	{
-		VISA_WA_ENABLE(m_pWaTable, WaDisallow64BitImmMov);
-	}
-	else
-	{
-		VISA_WA_DISABLE(m_pWaTable, WaDisallow64BitImmMov);
-	}
+    if ((platform == GENX_SKL && (step == Step_A || step == Step_B)) ||
+        (platform == GENX_BXT && step == Step_A))
+    {
+        VISA_WA_ENABLE(m_pWaTable, WaDisallow64BitImmMov);
+    }
+    else
+    {
+        VISA_WA_DISABLE(m_pWaTable, WaDisallow64BitImmMov);
+    }
 
-	if (platform == GENX_BDW && step == Step_A)
-	{
-		VISA_WA_ENABLE(m_pWaTable, WaByteDstAlignRelaxedRule);
-	}
-	else
-	{
-		VISA_WA_DISABLE(m_pWaTable, WaByteDstAlignRelaxedRule);
-	}
+    if (platform == GENX_BDW && step == Step_A)
+    {
+        VISA_WA_ENABLE(m_pWaTable, WaByteDstAlignRelaxedRule);
+    }
+    else
+    {
+        VISA_WA_DISABLE(m_pWaTable, WaByteDstAlignRelaxedRule);
+    }
 
-	if (platform == GENX_SKL && step == Step_A)
-	{
-		VISA_WA_ENABLE(m_pWaTable, WaSIMD16SIMD32CallDstAlign);
-	}
-	else
-	{
-		VISA_WA_DISABLE(m_pWaTable, WaSIMD16SIMD32CallDstAlign);
-	}
+    if (platform == GENX_SKL && step == Step_A)
+    {
+        VISA_WA_ENABLE(m_pWaTable, WaSIMD16SIMD32CallDstAlign);
+    }
+    else
+    {
+        VISA_WA_DISABLE(m_pWaTable, WaSIMD16SIMD32CallDstAlign);
+    }
 
-	if (platform == GENX_BDW || platform == GENX_CHV ||
-		platform == GENX_BXT || platform == GENX_SKL)
-	{
-		VISA_WA_ENABLE(m_pWaTable, WaThreadSwitchAfterCall);
-	}
-	else
-	{
-		VISA_WA_DISABLE(m_pWaTable, WaThreadSwitchAfterCall);
-	}
+    if (platform == GENX_BDW || platform == GENX_CHV ||
+        platform == GENX_BXT || platform == GENX_SKL)
+    {
+        VISA_WA_ENABLE(m_pWaTable, WaThreadSwitchAfterCall);
+    }
+    else
+    {
+        VISA_WA_DISABLE(m_pWaTable, WaThreadSwitchAfterCall);
+    }
 
-	if ((platform == GENX_SKL && step < Step_E) ||
-		(platform == GENX_BXT && step <= Step_B))
-	{
-		VISA_WA_ENABLE(m_pWaTable, WaSrc1ImmHfNotAllowed);
-	}
-	else
-	{
-		VISA_WA_DISABLE(m_pWaTable, WaSrc1ImmHfNotAllowed);
-	}
+    if ((platform == GENX_SKL && step < Step_E) ||
+        (platform == GENX_BXT && step <= Step_B))
+    {
+        VISA_WA_ENABLE(m_pWaTable, WaSrc1ImmHfNotAllowed);
+    }
+    else
+    {
+        VISA_WA_DISABLE(m_pWaTable, WaSrc1ImmHfNotAllowed);
+    }
 
-	if (platform == GENX_SKL && step == Step_A)
-	{
-		VISA_WA_ENABLE(m_pWaTable, WaDstSubRegNumNotAllowedWithLowPrecPacked);
-	}
-	else
-	{
-		VISA_WA_DISABLE(m_pWaTable, WaDstSubRegNumNotAllowedWithLowPrecPacked);
-	}
+    if (platform == GENX_SKL && step == Step_A)
+    {
+        VISA_WA_ENABLE(m_pWaTable, WaDstSubRegNumNotAllowedWithLowPrecPacked);
+    }
+    else
+    {
+        VISA_WA_DISABLE(m_pWaTable, WaDstSubRegNumNotAllowedWithLowPrecPacked);
+    }
 
-	if ((platform == GENX_SKL && step < Step_C))
-	{
-		VISA_WA_ENABLE(m_pWaTable, WaDisableMixedModeLog);
-		VISA_WA_ENABLE(m_pWaTable, WaDisableMixedModeFdiv);
-		VISA_WA_ENABLE(m_pWaTable, WaDisableMixedModePow);
-	}
-	else
-	{
-		VISA_WA_DISABLE(m_pWaTable, WaDisableMixedModeLog);
-		VISA_WA_DISABLE(m_pWaTable, WaDisableMixedModeFdiv);
-		VISA_WA_DISABLE(m_pWaTable, WaDisableMixedModePow);
-	}
+    if ((platform == GENX_SKL && step < Step_C))
+    {
+        VISA_WA_ENABLE(m_pWaTable, WaDisableMixedModeLog);
+        VISA_WA_ENABLE(m_pWaTable, WaDisableMixedModeFdiv);
+        VISA_WA_ENABLE(m_pWaTable, WaDisableMixedModePow);
+    }
+    else
+    {
+        VISA_WA_DISABLE(m_pWaTable, WaDisableMixedModeLog);
+        VISA_WA_DISABLE(m_pWaTable, WaDisableMixedModeFdiv);
+        VISA_WA_DISABLE(m_pWaTable, WaDisableMixedModePow);
+    }
 
 
-	if ((platform == GENX_SKL && step < Step_C) ||
-		platform == GENX_CHV)
-	{
-		VISA_WA_ENABLE(m_pWaTable, WaFloatMixedModeSelNotAllowedWithPackedDestination);
-	}
-	else
-	{
-		VISA_WA_DISABLE(m_pWaTable, WaFloatMixedModeSelNotAllowedWithPackedDestination);
-	}
+    if ((platform == GENX_SKL && step < Step_C) ||
+        platform == GENX_CHV)
+    {
+        VISA_WA_ENABLE(m_pWaTable, WaFloatMixedModeSelNotAllowedWithPackedDestination);
+    }
+    else
+    {
+        VISA_WA_DISABLE(m_pWaTable, WaFloatMixedModeSelNotAllowedWithPackedDestination);
+    }
 
-	// always disable in offline mode
-	VISA_WA_DISABLE(m_pWaTable, WADisableWriteCommitForPageFault);
+    // always disable in offline mode
+    VISA_WA_DISABLE(m_pWaTable, WADisableWriteCommitForPageFault);
 
-	if ((platform == GENX_SKL && step < Step_D) ||
-		(platform == GENX_BXT && step == Step_A))
-	{
-		VISA_WA_ENABLE(m_pWaTable, WaDisableSIMD16On3SrcInstr);
-	}
+    if ((platform == GENX_SKL && step < Step_D) ||
+        (platform == GENX_BXT && step == Step_A))
+    {
+        VISA_WA_ENABLE(m_pWaTable, WaDisableSIMD16On3SrcInstr);
+    }
 
     if (platform == GENX_SKL && (step == Step_C || step == Step_D))
     {
@@ -201,15 +201,15 @@ void CISA_IR_Builder::InitVisaWaTable(TARGET_PLATFORM platform, Stepping step)
         VISA_WA_DISABLE(m_pWaTable, WaSendSEnableIndirectMsgDesc);
     }
 
-	if (platform == GENX_SKL || platform == GENX_BXT)
-	{
-		VISA_WA_ENABLE(m_pWaTable, WaClearArfDependenciesBeforeEot);
-	}
+    if (platform == GENX_SKL || platform == GENX_BXT)
+    {
+        VISA_WA_ENABLE(m_pWaTable, WaClearArfDependenciesBeforeEot);
+    }
 
-	if (platform == GENX_SKL && step == Step_A)
-	{
-		VISA_WA_ENABLE(m_pWaTable, WaDisableSendsSrc0DstOverlap);
-	}
+    if (platform == GENX_SKL && step == Step_A)
+    {
+        VISA_WA_ENABLE(m_pWaTable, WaDisableSendsSrc0DstOverlap);
+    }
 
     if (platform >= GENX_SKL)
     {
@@ -267,64 +267,64 @@ void CISA_IR_Builder::InitVisaWaTable(TARGET_PLATFORM platform, Stepping step)
 // note that this will break if we have more than one builder active,
 // since we rely on the pCisaBuilder to point to the current builder
 int CISA_IR_Builder::CreateBuilder(
-	CISA_IR_Builder *&builder,
-	vISABuilderMode mode,
-	CM_VISA_BUILDER_OPTION buildOption,
-	TARGET_PLATFORM platform,
-	int numArgs,
-	const char* flags[],
-	PVISA_WA_TABLE pWaTable,
-	bool initWA)
+    CISA_IR_Builder *&builder,
+    vISABuilderMode mode,
+    CM_VISA_BUILDER_OPTION buildOption,
+    TARGET_PLATFORM platform,
+    int numArgs,
+    const char* flags[],
+    PVISA_WA_TABLE pWaTable,
+    bool initWA)
 {
 
-	initTimer();
+    initTimer();
 
-	if (builder != NULL)
-	{
-		CmAssert(0);
-		return CM_FAILURE;
-	}
+    if (builder != NULL)
+    {
+        CmAssert(0);
+        return CM_FAILURE;
+    }
 
     startTimer(TIMER_TOTAL);
     startTimer(TIMER_BUILDER);  // builder time ends with we call compile (i.e., it covers the IR construction time)
     //this must be called before any other API.
     SetVisaPlatform(platform);
 
-	// initialize stepping to none in case it's not passed in
-	InitStepping();
+    // initialize stepping to none in case it's not passed in
+    InitStepping();
 
-	builder = new CISA_IR_Builder(buildOption, COMMON_ISA_MAJOR_VER, COMMON_ISA_MINOR_VER, pWaTable);
-	pCisaBuilder = builder;
+    builder = new CISA_IR_Builder(buildOption, COMMON_ISA_MAJOR_VER, COMMON_ISA_MINOR_VER, pWaTable);
+    pCisaBuilder = builder;
 
-	if (!builder->m_options.parseOptions(numArgs, flags))
-	{
-		delete builder;
-		CmAssert(0);
-		return CM_FAILURE;
-	}
+    if (!builder->m_options.parseOptions(numArgs, flags))
+    {
+        delete builder;
+        CmAssert(0);
+        return CM_FAILURE;
+    }
 
     builder->m_options.setTarget((mode == vISA_3D) ? VISA_3D : VISA_CM);
     builder->m_options.setOptionInternally(vISA_isParseMode, (mode == vISA_PARSER));
 
-	if (mode == vISA_PARSER)
-	{
-		builder->m_options.setOptionInternally(vISA_GeneratevISABInary, true);
-		/*
-			In parser mode we always want to dump out vISA
-			I don't feel like modifying FE, and dealing with FE/BE missmatch issues.
-		*/
-		builder->m_options.setOptionInternally(vISA_DumpvISA, true);
-		/*
-			Dumping out .asm and .dat files for BOTH mod. Since they are used in
-			simulation mode. Again can be pased by FE, but don't want to deal
-			with FE/BE miss match issues.
-		*/
-		if (buildOption != CM_CISA_BUILDER_CISA)
-		{
-			builder->m_options.setOptionInternally(vISA_outputToFile, true);
-			builder->m_options.setOptionInternally(vISA_GenerateBinary, true);
-		}
-	}
+    if (mode == vISA_PARSER)
+    {
+        builder->m_options.setOptionInternally(vISA_GeneratevISABInary, true);
+        /*
+            In parser mode we always want to dump out vISA
+            I don't feel like modifying FE, and dealing with FE/BE missmatch issues.
+        */
+        builder->m_options.setOptionInternally(vISA_DumpvISA, true);
+        /*
+            Dumping out .asm and .dat files for BOTH mod. Since they are used in
+            simulation mode. Again can be pased by FE, but don't want to deal
+            with FE/BE miss match issues.
+        */
+        if (buildOption != CM_CISA_BUILDER_CISA)
+        {
+            builder->m_options.setOptionInternally(vISA_outputToFile, true);
+            builder->m_options.setOptionInternally(vISA_GenerateBinary, true);
+        }
+    }
 
     // emit location info always for these cases
     if (mode == vISABuilderMode::vISA_MEDIA && builder->m_options.getOption(vISA_outputToFile))
@@ -332,12 +332,12 @@ int CISA_IR_Builder::CreateBuilder(
         builder->m_options.setOptionInternally(vISA_EmitLocation, true);
     }
 
-	// we must wait till after the options are processed,
-	// so that stepping is set and init will work properly
-	if (initWA)
-	{
-		builder->InitVisaWaTable(platform, GetStepping());
-	}
+    // we must wait till after the options are processed,
+    // so that stepping is set and init will work properly
+    if (initWA)
+    {
+        builder->InitVisaWaTable(platform, GetStepping());
+    }
 
     return CM_SUCCESS;
 }
@@ -826,10 +826,10 @@ int CISA_IR_Builder::Compile( const char* nameInput)
             m_currentKernel = kernel;
 
             int status =  kernel->compileFastPath();
-			if (status != CM_SUCCESS)
-			{
+            if (status != CM_SUCCESS)
+            {
                 stopTimer(TIMER_TOTAL);
-				return status;
+                return status;
             }
         }
 
@@ -904,41 +904,41 @@ int CISA_IR_Builder::Compile( const char* nameInput)
 
     }
 
-	if (IS_VISA_BOTH_PATH && m_options.getOption(vISA_DumpvISA))
-	{
-		unsigned int numGenBinariesWillBePatched = m_options.getuInt32Option(vISA_NumGenBinariesWillBePatched);
+    if (IS_VISA_BOTH_PATH && m_options.getOption(vISA_DumpvISA))
+    {
+        unsigned int numGenBinariesWillBePatched = m_options.getuInt32Option(vISA_NumGenBinariesWillBePatched);
 
-		if (numGenBinariesWillBePatched)
-		{
-			std::list< VISAKernelImpl *>::iterator iter = m_kernels.begin();
-			std::list< VISAKernelImpl *>::iterator end = m_kernels.end();
+        if (numGenBinariesWillBePatched)
+        {
+            std::list< VISAKernelImpl *>::iterator iter = m_kernels.begin();
+            std::list< VISAKernelImpl *>::iterator end = m_kernels.end();
 
-			int kernelCount = 0;
-			int functionCount = 0;
+            int kernelCount = 0;
+            int functionCount = 0;
 
-			//only patch for Both path; vISA path doesn't need this.
-			for (int i = 0; iter != end; iter++, i++)
-			{
-				VISAKernelImpl * kTemp = *iter;
-				void * genxBuffer = NULL;
-				unsigned int genxBufferSize = 0;
-				if (kTemp->getIsKernel())
-				{
-					genxBuffer = kTemp->getGenxBinaryBuffer();
-					genxBufferSize = kTemp->getGenxBinarySize();
-					m_cisaBinary->patchKernel(kernelCount, genxBufferSize, genxBuffer, getGenxPlatformEncoding());
-					kernelCount++;
-				}
-				else
-				{
-					m_cisaBinary->patchFunction(functionCount);
-					functionCount++;
-				}
-			}
-		}
+            //only patch for Both path; vISA path doesn't need this.
+            for (int i = 0; iter != end; iter++, i++)
+            {
+                VISAKernelImpl * kTemp = *iter;
+                void * genxBuffer = NULL;
+                unsigned int genxBufferSize = 0;
+                if (kTemp->getIsKernel())
+                {
+                    genxBuffer = kTemp->getGenxBinaryBuffer();
+                    genxBufferSize = kTemp->getGenxBinarySize();
+                    m_cisaBinary->patchKernel(kernelCount, genxBufferSize, genxBuffer, getGenxPlatformEncoding());
+                    kernelCount++;
+                }
+                else
+                {
+                    m_cisaBinary->patchFunction(functionCount);
+                    functionCount++;
+                }
+            }
+        }
 
-		status = m_cisaBinary->dumpToFile(name);
-	}
+        status = m_cisaBinary->dumpToFile(name);
+    }
 
     stopTimer(TIMER_TOTAL); // have to record total time before dump the timer
     if (m_options.getOption(vISA_dumpTimer))

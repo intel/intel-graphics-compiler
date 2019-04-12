@@ -891,7 +891,7 @@ public:
     typedef MetaDataList<ArgInfoMetaDataHandle> ImplicitArgInfoListList;        
     typedef NamedMetaDataValue<int32_t>::value_type PrivateMemoryPerWIType;        
         
-	typedef NamedMetaDataValue<int32_t>::value_type NeedBindlessHandleType;
+    typedef NamedMetaDataValue<int32_t>::value_type NeedBindlessHandleType;
 
 
 public:
@@ -1134,7 +1134,7 @@ private:
     llvm::MDNode* getThreadGroupSizeNode( const llvm::MDNode* pParentNode) const;    
     llvm::MDNode* getThreadGroupSizeHintNode( const llvm::MDNode* pParentNode) const;    
     llvm::MDNode* getSubGroupSizeNode( const llvm::MDNode* pParentNode) const;    
-	llvm::MDNode* getWorkgroupWalkOrderNode(const llvm::MDNode* pParentNode) const;
+    llvm::MDNode* getWorkgroupWalkOrderNode(const llvm::MDNode* pParentNode) const;
     llvm::Metadata* getLocalSizeNode( const llvm::MDNode* pParentNode) const;    
     llvm::MDNode* getOpenCLVectorTypeHintNode( const llvm::MDNode* pParentNode) const;    
 

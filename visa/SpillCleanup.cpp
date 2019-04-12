@@ -320,10 +320,10 @@ bool CoalesceSpillFills::fillHeuristic(std::list<INST_LIST_ITER>& coalesceableFi
     MUST_BE_TRUE(cMaxFillPayloadSize == 4, "Handle other max fill payload size");
 #endif
 
-	if (coalesceableFills.size() <= 1)
-	{
-		return false;
-	}
+    if (coalesceableFills.size() <= 1)
+    {
+        return false;
+    }
 
     min = 0xffffffff, max = 0;
     for (auto f : coalesceableFills)

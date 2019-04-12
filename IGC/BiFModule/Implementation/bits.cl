@@ -28,22 +28,22 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 uchar __builtin_spirv_OpBitReverse_i8(uchar Base)
 {
-	return  __builtin_IB_bfrev( (uint)Base) >> 24;
+    return  __builtin_IB_bfrev( (uint)Base) >> 24;
 }
 
 ushort __builtin_spirv_OpBitReverse_i16(ushort Base)
 {
-	return  __builtin_IB_bfrev( (uint)Base) >> 16;
+    return  __builtin_IB_bfrev( (uint)Base) >> 16;
 }
 
 uint __builtin_spirv_OpBitReverse_i32(uint Base)
 {
-	return __builtin_IB_bfrev(Base);
+    return __builtin_IB_bfrev(Base);
 }
 
 ulong __builtin_spirv_OpBitReverse_i64(ulong Base)
 {
-	return (__builtin_IB_bfrev((uint)Base) << 32) | __builtin_IB_bfrev((Base >> 32));
+    return (__builtin_IB_bfrev((uint)Base) << 32) | __builtin_IB_bfrev((Base >> 32));
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpBitReverse, uchar, uchar, i8 ) 
@@ -54,22 +54,22 @@ GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpBitReverse, ulong, ulong, i64 
 
 uchar __builtin_spirv_OpBitCount_i8(uchar Base)
 {
-	return __builtin_IB_popcount_1u8(Base);
+    return __builtin_IB_popcount_1u8(Base);
 }
 
 uchar __builtin_spirv_OpBitCount_i16(ushort Base)
 {
-	return (uchar)__builtin_IB_popcount_1u16(Base);
+    return (uchar)__builtin_IB_popcount_1u16(Base);
 }
 
 uchar __builtin_spirv_OpBitCount_i32(uint Base)
 {
-	return (uchar)__builtin_IB_popcount_1u32(Base);
+    return (uchar)__builtin_IB_popcount_1u32(Base);
 }
 
 uchar __builtin_spirv_OpBitCount_i64(ulong Base)
 {
-	return __builtin_spirv_OpBitCount_i32(Base >> 32) + __builtin_spirv_OpBitCount_i32((uint)Base);
+    return __builtin_spirv_OpBitCount_i32(Base >> 32) + __builtin_spirv_OpBitCount_i32((uint)Base);
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpBitCount, uchar, uchar, i8 ) 

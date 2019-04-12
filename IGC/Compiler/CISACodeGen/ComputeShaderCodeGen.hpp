@@ -73,8 +73,8 @@ protected:
 
     uint                   m_numberOfUntypedAccess;
     uint                   m_numberOfTypedAccess;
-	uint				   m_num1DAccesses;
-	uint				   m_num2DAccesses;
+    uint                   m_num1DAccesses;
+    uint                   m_num2DAccesses;
 
     bool                   m_dispatchAlongY;
     bool                   m_disableMidThreadPreemption;

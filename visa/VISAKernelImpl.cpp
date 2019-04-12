@@ -726,52 +726,52 @@ int VISAKernelImpl::CISABuildPreDefinedDecls()
         decl->stateVar.name_index = -1;
         if(IS_VISA_BOTH_PATH)
         {
-			const char* name = vISAPreDefSurf[i].name;
+            const char* name = vISAPreDefSurf[i].name;
             decl->stateVar.name_index = addStringPool(std::string(name));
             setNameIndexMap(std::string(name), decl);
         }
         if (IS_GEN_BOTH_PATH)
         {
-			if (i == PREDEFINED_SURFACE_T252)
-			{
-				decl->stateVar.dcl = m_builder->getBuiltinT252();
-			}
-			else
-			{
-				decl->stateVar.dcl = m_builder->createDeclareNoLookup(
-					"",
-					G4_GRF,
-					1,
-					1,
-					Type_UD);
-			}
+            if (i == PREDEFINED_SURFACE_T252)
+            {
+                decl->stateVar.dcl = m_builder->getBuiltinT252();
+            }
+            else
+            {
+                decl->stateVar.dcl = m_builder->createDeclareNoLookup(
+                    "",
+                    G4_GRF,
+                    1,
+                    1,
+                    Type_UD);
+            }
         }
         addSurface(decl);
     }
 
-	createBindlessSampler();
+    createBindlessSampler();
 
     return CM_SUCCESS;
 }
 
 void VISAKernelImpl::createBindlessSampler()
 {
-	m_bindlessSampler = (VISA_SamplerVar *)m_mem.alloc(sizeof(CISA_GEN_VAR));
-	m_bindlessSampler->type = SAMPLER_VAR;
-	m_bindlessSampler->index = 31;
-	m_bindlessSampler->stateVar.attributes = NULL;
-	m_bindlessSampler->stateVar.attribute_count = 0;
+    m_bindlessSampler = (VISA_SamplerVar *)m_mem.alloc(sizeof(CISA_GEN_VAR));
+    m_bindlessSampler->type = SAMPLER_VAR;
+    m_bindlessSampler->index = 31;
+    m_bindlessSampler->stateVar.attributes = NULL;
+    m_bindlessSampler->stateVar.attribute_count = 0;
 
-	if (IS_VISA_BOTH_PATH)
-	{
-		const char* name = BINDLESS_SAMPLER_NAME;
-		m_bindlessSampler->stateVar.name_index = addStringPool(std::string(name));
-		setNameIndexMap(std::string(name), m_bindlessSampler);
-	}
-	if (IS_GEN_BOTH_PATH)
-	{
-		m_bindlessSampler->stateVar.dcl = m_builder->getBuiltinBindlessSampler();
-	}
+    if (IS_VISA_BOTH_PATH)
+    {
+        const char* name = BINDLESS_SAMPLER_NAME;
+        m_bindlessSampler->stateVar.name_index = addStringPool(std::string(name));
+        setNameIndexMap(std::string(name), m_bindlessSampler);
+    }
+    if (IS_GEN_BOTH_PATH)
+    {
+        m_bindlessSampler->stateVar.dcl = m_builder->getBuiltinBindlessSampler();
+    }
 }
 
 void VISAKernelImpl::setDefaultVariableName(Common_ISA_Var_Class Ty, const char *&varName)
@@ -1164,8 +1164,8 @@ int VISAKernelImpl::CreateVISALabelVar(VISA_LabelOpnd *& opnd, const char* name,
         if(kind == LABEL_SUBROUTINE)
         {
             ((G4_Label*)opnd->g4opnd)->setFuncLabel(true);
-		}
-		else
+        }
+        else
         {
             ((G4_Label*)opnd->g4opnd)->setFuncLabel(false);
 
@@ -2280,19 +2280,19 @@ int VISAKernelImpl::CreateVISAStateOperand(VISA_VectorOpnd *&cisa_opnd, CISA_GEN
                 decl->index < Get_CISA_PreDefined_Surf_Count() )
             {
                 int64_t immVal = Get_PreDefined_Surf_Index(decl->index);
-				if (immVal == PREDEF_SURF_252)
-				{
-					// we have to keep it as a variable
-					cisa_opnd->g4opnd = m_builder->Create_Src_Opnd_From_Dcl(m_builder->getBuiltinT252(), m_builder->getRegionScalar());
-				}
-				else
-				{
-					if (m_options->getOption(vISA_noncoherentStateless) && immVal == PREDEF_SURF_255)
-					{
-						immVal = PREDEF_SURF_253;
-					}
-					cisa_opnd->g4opnd = m_builder->createImm(immVal, Type_UD);
-				}
+                if (immVal == PREDEF_SURF_252)
+                {
+                    // we have to keep it as a variable
+                    cisa_opnd->g4opnd = m_builder->Create_Src_Opnd_From_Dcl(m_builder->getBuiltinT252(), m_builder->getRegionScalar());
+                }
+                else
+                {
+                    if (m_options->getOption(vISA_noncoherentStateless) && immVal == PREDEF_SURF_255)
+                    {
+                        immVal = PREDEF_SURF_253;
+                    }
+                    cisa_opnd->g4opnd = m_builder->createImm(immVal, Type_UD);
+                }
             }
             else
             {
@@ -2641,9 +2641,9 @@ int VISAKernelImpl::GetPredefinedSurface(VISA_SurfaceVar *&predDcl, PreDefined_S
 
 int VISAKernelImpl::GetBindlessSampler(VISA_SamplerVar *&samplerDcl)
 {
-	int status = CM_SUCCESS;
-	samplerDcl = m_bindlessSampler;
-	return status;
+    int status = CM_SUCCESS;
+    samplerDcl = m_bindlessSampler;
+    return status;
 }
 /************* OPERANDS CREATION END   ******************/
 
@@ -5579,7 +5579,7 @@ int VISAKernelImpl::AppendVISA3dInfo(VISASampler3DSubOpCode subOpcode, Common_VI
         //subOP
         ADD_OPND(num_operands, opnd, this->CreateOtherOpndHelper(num_pred_desc_operands, num_operands, inst_desc, subOpcode));
         //channel
-		ADD_OPND(num_operands, opnd, this->CreateOtherOpndHelper(num_pred_desc_operands, num_operands, inst_desc, channels.getBinary(opcode)));
+        ADD_OPND(num_operands, opnd, this->CreateOtherOpndHelper(num_pred_desc_operands, num_operands, inst_desc, channels.getBinary(opcode)));
 
         ADD_OPND(num_operands, opnd, surface);
         if(subOpcode == VISA_3D_RESINFO)
@@ -5592,7 +5592,7 @@ int VISAKernelImpl::AppendVISA3dInfo(VISASampler3DSubOpCode subOpcode, Common_VI
         }
         ADD_OPND(num_operands, opnd, dst);
 
-		CHECK_NUM_OPNDS(inst_desc, num_operands, num_pred_desc_operands);
+        CHECK_NUM_OPNDS(inst_desc, num_operands, num_pred_desc_operands);
 
         CisaFramework::CisaInst * inst = new(m_mem)CisaFramework::CisaInst(m_mem);
 
@@ -7361,11 +7361,11 @@ int VISAKernelImpl::AppendVISALifetime(VISAVarLifetime startOrEnd, VISA_VectorOp
     {
         if(var->g4opnd->isGreg())
         {
-			properties |= (OPERAND_GENERAL << 4);
+            properties |= (OPERAND_GENERAL << 4);
         }
         else if(var->g4opnd->isAddress())
         {
-			properties |= (OPERAND_ADDRESS << 4);
+            properties |= (OPERAND_ADDRESS << 4);
         }
         else if(var->g4opnd->isFlag())
         {
@@ -7393,17 +7393,17 @@ int VISAKernelImpl::AppendVISALifetime(VISAVarLifetime startOrEnd, VISA_VectorOp
         opnd[1] = (VISA_opnd*)m_mem.alloc(sizeof(VISA_opnd));
         if(var->_opnd.v_opnd.tag == OPERAND_GENERAL)
         {
-			opnd[0]->_opnd.other_opnd |= (OPERAND_GENERAL << 4);
+            opnd[0]->_opnd.other_opnd |= (OPERAND_GENERAL << 4);
             opnd[1]->_opnd.other_opnd = var->_opnd.v_opnd.opnd_val.gen_opnd.index;
         }
         else if(var->_opnd.v_opnd.tag == OPERAND_ADDRESS)
         {
-			opnd[0]->_opnd.other_opnd |= (OPERAND_ADDRESS << 4);
+            opnd[0]->_opnd.other_opnd |= (OPERAND_ADDRESS << 4);
             opnd[1]->_opnd.other_opnd = var->_opnd.v_opnd.opnd_val.addr_opnd.index;
         }
         else if(var->_opnd.v_opnd.tag == OPERAND_PREDICATE)
         {
-			opnd[0]->_opnd.other_opnd |= (OPERAND_PREDICATE << 4);
+            opnd[0]->_opnd.other_opnd |= (OPERAND_PREDICATE << 4);
             opnd[1]->_opnd.other_opnd = var->_opnd.v_opnd.opnd_val.pred_opnd.index;
         }
         opnd[1]->opnd_type = CISA_OPND_OTHER;
@@ -8187,7 +8187,7 @@ G4_Operand* VISAKernelImpl::CommonISABuildPreDefinedSrc(int index, uint16_t vStr
     case PreDefinedVarsInternal::FE_SP:
     case PreDefinedVarsInternal::FE_FP:
     case PreDefinedVarsInternal::HW_TID:
-	case PreDefinedVarsInternal::DBG:
+    case PreDefinedVarsInternal::DBG:
     case PreDefinedVarsInternal::COLOR:
         {
         G4_Type type = Get_G4_Type_From_Common_ISA_Type(getPredefinedVarType(internalIndex));

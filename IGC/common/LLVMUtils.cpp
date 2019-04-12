@@ -81,7 +81,7 @@ IGCPassManager::~IGCPassManager()
 
 void DumpLLVMIR(IGC::CodeGenContext* pContext, const char* dumpName)
 {
-	SetCurrentDebugHash(pContext->hash.asmHash.value);
+    SetCurrentDebugHash(pContext->hash.asmHash.value);
     if (IGC_IS_FLAG_ENABLED(DumpLLVMIR))
     {
         pContext->getMetaDataUtils()->save(*pContext->getLLVMContext());

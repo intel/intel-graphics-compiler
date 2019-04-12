@@ -36,18 +36,18 @@ namespace IGCLLVM
 {
 #if LLVM_VERSION_MAJOR <= 7
     using llvm::TerminatorInst;
-	using llvm::BinaryOperator;
+    using llvm::BinaryOperator;
 #elif LLVM_VERSION_MAJOR >= 8
     using TerminatorInst = llvm::Instruction;
-	
-	class BinaryOperator : public llvm::BinaryOperator
-	{
-	public:
-		 static inline bool isNot(const llvm::Value *V)
-		 {
-			 return llvm::PatternMatch::match(V, llvm::PatternMatch::m_Not(llvm::PatternMatch::m_Value()));
-		 }
-	};
+    
+    class BinaryOperator : public llvm::BinaryOperator
+    {
+    public:
+         static inline bool isNot(const llvm::Value *V)
+         {
+             return llvm::PatternMatch::match(V, llvm::PatternMatch::m_Not(llvm::PatternMatch::m_Value()));
+         }
+    };
 #endif
 }
 

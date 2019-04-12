@@ -39,32 +39,32 @@ but these catch some common cases. */
 #define __LOp(x) *(int*)x
 
 #ifdef __STDC__
-#define	__P(p)	p
+#define    __P(p)    p
 #else
-#define	__P(p)	()
+#define    __P(p)    ()
 #endif
 
 /*
 * ANSI/POSIX
 */
 
-#define	MAXFLOAT	((float)3.40282346638528860e+38)
+#define    MAXFLOAT    ((float)3.40282346638528860e+38)
 
-#define	HUGE		MAXFLOAT
+#define    HUGE        MAXFLOAT
 
 /*
 * set X_TLOSS = pi*2**52, which is possibly defined in <values.h>
 * (one may replace the following line by "#include <values.h>")
 */
 
-#define X_TLOSS		1.41484755040568800000e+16 
+#define X_TLOSS        1.41484755040568800000e+16 
 
-#define	DOMAIN		1
-#define	SING		2
-#define	OVERFLOW	3
-#define	UNDERFLOW	4
-#define	TLOSS		5
-#define	PLOSS		6
+#define    DOMAIN        1
+#define    SING        2
+#define    OVERFLOW    3
+#define    UNDERFLOW    4
+#define    TLOSS        5
+#define    PLOSS        6
 
 extern double scalbn __P((double, int));
 

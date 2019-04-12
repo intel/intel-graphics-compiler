@@ -33,9 +33,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
               BuiltinName(2))
 
 #ifdef NO_ASSUME_SUPPORT
-#	define BuiltinVectorAssumeGE0(v) 
+#    define BuiltinVectorAssumeGE0(v) 
 #else
-#	define BuiltinVectorAssumeGE0(v) \
+#    define BuiltinVectorAssumeGE0(v) \
     __builtin_assume( (v.x) >= 0 ); \
     __builtin_assume( (v.y) >= 0 ); \
     __builtin_assume( (v.z) >= 0 );

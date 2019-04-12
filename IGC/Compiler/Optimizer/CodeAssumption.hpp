@@ -42,37 +42,37 @@ namespace IGC
         class MetaDataUtils;
     }
 
-	//
-	// CodeAssumption inserts llvm.assume to make sure some of code's
-	// attributes holds. For example, OCL's get_global_id() will be
-	// always positive, so we insert llvm.assume for its return value.
-	// This llvm.assume will help value tracking (verifying whether an
-	// value is positive or not). Currently, value tracking is used
-	// by StatelessToStateful optimization.
-	//
-	class CodeAssumption : public llvm::ModulePass {
-	public:
-		static char ID;
+    //
+    // CodeAssumption inserts llvm.assume to make sure some of code's
+    // attributes holds. For example, OCL's get_global_id() will be
+    // always positive, so we insert llvm.assume for its return value.
+    // This llvm.assume will help value tracking (verifying whether an
+    // value is positive or not). Currently, value tracking is used
+    // by StatelessToStateful optimization.
+    //
+    class CodeAssumption : public llvm::ModulePass {
+    public:
+        static char ID;
 
-		CodeAssumption() : ModulePass(ID), m_changed(false) {}
+        CodeAssumption() : ModulePass(ID), m_changed(false) {}
 
-		bool runOnModule(llvm::Module &) override;
+        bool runOnModule(llvm::Module &) override;
 
-		void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
-			AU.setPreservesCFG();
+        void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+            AU.setPreservesCFG();
             AU.addRequired<MetaDataUtilsWrapper>();
             AU.addRequired<CodeGenContextWrapper>();
-		}
+        }
 
-		// APIs used directly
-		static bool addAssumption(
-			llvm::Function* F,
-			llvm::AssumptionCache *AC);
+        // APIs used directly
+        static bool addAssumption(
+            llvm::Function* F,
+            llvm::AssumptionCache *AC);
 
         static bool IsSGIdUniform(IGCMD::MetaDataUtils* pMDU, ModuleMetaData *modMD, llvm::Function* F);
 
-	private:
-		bool m_changed;
+    private:
+        bool m_changed;
 
         IGCMD::MetaDataUtils* m_pMDUtils;
 
@@ -82,10 +82,10 @@ namespace IGC
         // Add llvm.assume to assist other optimization such statelessToStateful
         void addAssumption(llvm::Module* M);
 
-		// helpers
-		static bool isPositiveIndVar(
-			llvm::PHINode *PN,
-			const llvm::DataLayout *DL,
-			llvm::AssumptionCache *AC);
-	};
+        // helpers
+        static bool isPositiveIndVar(
+            llvm::PHINode *PN,
+            const llvm::DataLayout *DL,
+            llvm::AssumptionCache *AC);
+    };
 }

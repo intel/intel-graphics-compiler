@@ -123,7 +123,7 @@ void IGC::insertOCLMissingDebugConstMetadata(CodeGenContext* ctx)
             global_it != M->global_end();
             global_it++)
         {
-			auto g = &*global_it;//(global_it.operator llvm::GlobalVariable *());
+            auto g = &*global_it;//(global_it.operator llvm::GlobalVariable *());
 
             if (g->isConstant())
             {

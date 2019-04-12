@@ -53,22 +53,22 @@ G4_Declare* SpillManager::createNewSpillLocDeclare(G4_Declare* dcl)
         // take care different data type reg moves of spill code. For now, just
         // assume data types of addr reg are UW
         //
-		G4_Type type = dcl->getElemType();
-		MUST_BE_TRUE(type == Type_UW ||
-			         type == Type_W ||
-			         type == Type_UD ||
-			         type == Type_D, "addr reg's type should be UW or UD");
+        G4_Type type = dcl->getElemType();
+        MUST_BE_TRUE(type == Type_UW ||
+                     type == Type_W ||
+                     type == Type_UD ||
+                     type == Type_D, "addr reg's type should be UW or UD");
         MUST_BE_TRUE(dcl->getNumElems() <= getNumAddrRegisters(), "Addr reg Spill size exceeds 16 bytes");
     }
 
     G4_Declare* sp = dcl->getSpilledDeclare();
-	if (sp == NULL) // not yet created
+    if (sp == NULL) // not yet created
     {
         sp = builder.createAddrFlagSpillLoc(dcl);
-	    gra.setBBId(sp, bbId);
+        gra.setBBId(sp, bbId);
     }
 
-	return sp;
+    return sp;
 }
 
 //
@@ -97,16 +97,16 @@ G4_Declare* SpillManager::createNewTempAddrDeclare(G4_Declare* dcl)
 
 G4_Declare* SpillManager::createNewTempFlagDeclare(G4_Declare* dcl)
 {
-	char* name = builder.getNameString(builder.mem, 32, "Temp_FSPILL_%d", tempDclId++);
+    char* name = builder.getNameString(builder.mem, 32, "Temp_FSPILL_%d", tempDclId++);
 
     assert(dcl->getRegFile() == G4_FLAG && "dcl should be a flag");
     G4_Declare* sp = builder.createFlag(dcl->getNumberFlagElements(), name);
-	gra.setBBId(sp, bbId);
+    gra.setBBId(sp, bbId);
     sp->setSubRegAlign(dcl->getSubRegAlign());
     sp->setAlign(dcl->getAlign());
     gra.addAddrFlagSpillDcl(sp);
 
-	return sp;
+    return sp;
 }
 
 //
@@ -114,27 +114,27 @@ G4_Declare* SpillManager::createNewTempFlagDeclare(G4_Declare* dcl)
 //
 G4_Declare* SpillManager::createNewTempAddrDeclare(G4_Declare* dcl, uint16_t num_reg)
 {
-	char* name = builder.getNameString(builder.mem, 16, "Temp_ADDR_%d", tempDclId++);
+    char* name = builder.getNameString(builder.mem, 16, "Temp_ADDR_%d", tempDclId++);
 
-	G4_Type type = dcl->getElemType();
-	MUST_BE_TRUE(type == Type_UW ||
-		         type == Type_W ||
-				 type == Type_UD ||
-				 type == Type_D, "addr reg's type should be UW or UD");
+    G4_Type type = dcl->getElemType();
+    MUST_BE_TRUE(type == Type_UW ||
+                 type == Type_W ||
+                 type == Type_UD ||
+                 type == Type_D, "addr reg's type should be UW or UD");
     MUST_BE_TRUE(dcl->getNumRows() == 1, "Temp_ADDR should be only 1 row");
     MUST_BE_TRUE(dcl->getNumElems() <= getNumAddrRegisters(), "Temp_ADDR exceeds 16 bytes");
     G4_Declare* sp = builder.createDeclareNoLookup( name,
                                             G4_ADDRESS,
                                             num_reg,
                                             1, // 1 row
-											type);
-	gra.setBBId(sp, bbId);
+                                            type);
+    gra.setBBId(sp, bbId);
     // Live range of new temp addrs is short so that there is no point spilling them.
     // indicate this is for newly created addr temp so that RA won't spill it
     // in subsequent RA allocation
     gra.addAddrFlagSpillDcl(sp);
 
-	return sp;
+    return sp;
 }
 
 //
@@ -175,9 +175,9 @@ void SpillManager::genRegMov(G4_BB* bb,
                     execSize = 1;
                 }
                 else if(i > 2)
-				{
+                {
                     ASSERT_USER(false, "unsupported flag width");
-				}
+                }
 
                 srcRgn = builder.getRegionScalar();
             }
@@ -203,8 +203,8 @@ void SpillManager::genRegMov(G4_BB* bb,
                                 1,
                                 type);
 
-			G4_DstRegRegion* dstOpnd = builder.createDstRegRegion(Direct, dst, 0, dSubRegOff, 1, type);
-			builder.createInst(NULL, G4_pseudo_kill, NULL, false, 1, dstOpnd, NULL, NULL, 0);
+            G4_DstRegRegion* dstOpnd = builder.createDstRegRegion(Direct, dst, 0, dSubRegOff, 1, type);
+            builder.createInst(NULL, G4_pseudo_kill, NULL, false, 1, dstOpnd, NULL, NULL, 0);
 
             if (execSize != kernel.getSimdSize())
             {
@@ -234,7 +234,7 @@ void SpillManager::genRegMov(G4_BB* bb,
 void SpillManager::replaceSpilledDst(G4_BB* bb,
                                      INST_LIST_ITER it, // where new insts will be inserted
                                      G4_INST*       inst,
-									 PointsToAnalysis& pointsToAnalysis,
+                                     PointsToAnalysis& pointsToAnalysis,
                                      G4_Operand ** operands_analyzed,
                                      G4_Declare ** declares_created)
 {
@@ -314,7 +314,7 @@ void SpillManager::replaceSpilledDst(G4_BB* bb,
 
             if( !match_found )
             {
-			    pointsToAnalysis.insertAndMergeFilledAddr( dst->getBase()->asRegVar(), tmpDcl->getRegVar() );
+                pointsToAnalysis.insertAndMergeFilledAddr( dst->getBase()->asRegVar(), tmpDcl->getRegVar() );
             }
         }
         else
@@ -328,7 +328,7 @@ void SpillManager::replaceSpilledSrc(G4_BB* bb,
                                      INST_LIST_ITER it, // where new insts will be inserted
                                      G4_INST*       inst,
                                      unsigned       i,
-									 PointsToAnalysis& pointsToAnalysis,
+                                     PointsToAnalysis& pointsToAnalysis,
                                      G4_Operand ** operands_analyzed,
                                      G4_Declare ** declares_created)
 {
@@ -350,10 +350,10 @@ void SpillManager::replaceSpilledSrc(G4_BB* bb,
         G4_Declare* spDcl = ss->getBase()->asRegVar()->getDeclare()->getSpilledDeclare();
         if (ss->getRegAccess() == Direct)
         {
-			G4_SrcRegRegion* s = NULL;
-			if (inst->isSplitSend() && i == 3)
-			{
-				G4_Declare* tmpDcl = createNewTempAddrDeclare(spDcl, 1);
+            G4_SrcRegRegion* s = NULL;
+            if (inst->isSplitSend() && i == 3)
+            {
+                G4_Declare* tmpDcl = createNewTempAddrDeclare(spDcl, 1);
                 tmpDcl->setSubRegAlign(Four_Word);
                 // (W) mov (1) tmpDcl<1>:ud spDcl<0;1,0>:ud
                 auto movSrc = builder.Create_Src_Opnd_From_Dcl(spDcl, builder.getRegionScalar());
@@ -362,21 +362,21 @@ void SpillManager::replaceSpilledSrc(G4_BB* bb,
                     movSrc, nullptr, InstOpt_WriteEnable);
                 bb->insert(it, movInst);
 
-				s = builder.createSrcRegRegion(
-					Mod_src_undef,
-					Direct,
-					tmpDcl->getRegVar(),
-					0,
-					0,
-					ss->getRegion(),
-					spDcl->getElemType());
-				inst->setSrc(s, i);
-			}
-			else
-			{
-				G4_SrcRegRegion rgn(*ss, spDcl->getRegVar()); // using spDcl as new base
-				s = builder.createSrcRegRegion(rgn);
-			}
+                s = builder.createSrcRegRegion(
+                    Mod_src_undef,
+                    Direct,
+                    tmpDcl->getRegVar(),
+                    0,
+                    0,
+                    ss->getRegion(),
+                    spDcl->getElemType());
+                inst->setSrc(s, i);
+            }
+            else
+            {
+                G4_SrcRegRegion rgn(*ss, spDcl->getRegVar()); // using spDcl as new base
+                s = builder.createSrcRegRegion(rgn);
+            }
             inst->setSrc(s,i);
         }
         else if (ss->getRegAccess() == IndirGRF)
@@ -433,7 +433,7 @@ void SpillManager::replaceSpilledSrc(G4_BB* bb,
             inst->setSrc(s,i);
             if( !match_found )
             {
-			    pointsToAnalysis.insertAndMergeFilledAddr( ss->getBase()->asRegVar(), tmpDcl->getRegVar() );
+                pointsToAnalysis.insertAndMergeFilledAddr( ss->getBase()->asRegVar(), tmpDcl->getRegVar() );
             }
         }
         else
@@ -531,7 +531,7 @@ void SpillManager::replaceSpilledFlagDst(G4_BB*         bb,
 //
 void SpillManager::createSpillLocations(G4_Kernel& kernel)
 {
-	// set spill flag to indicate which vars are spilled
+    // set spill flag to indicate which vars are spilled
     for (LIVERANGE_LIST::const_iterator lt = spilledLRs.begin (); lt != spilledLRs.end (); ++lt)
     {
         LiveRange* lr = *lt;
@@ -543,9 +543,9 @@ void SpillManager::createSpillLocations(G4_Kernel& kernel)
         createNewSpillLocDeclare(dcl);
     }
     // take care of alias declares
-	DECLARE_LIST& declares = kernel.Declares;
-	for (DECLARE_LIST_ITER it = declares.begin(); it != declares.end(); it++)
-	{
+    DECLARE_LIST& declares = kernel.Declares;
+    for (DECLARE_LIST_ITER it = declares.begin(); it != declares.end(); it++)
+    {
         G4_Declare* dcl = (*it);
         if (!dcl->getRegVar()->isRegAllocPartaker()) // skip non reg alloc candidate
             continue;
@@ -566,16 +566,16 @@ void SpillManager::createSpillLocations(G4_Kernel& kernel)
 
 bool isSpillCandidateForLifetimeOpRemoval(G4_INST* inst)
 {
-	if(inst->isPseudoKill())
-	{
-		return inst->getDst()->isSpilled();
-	}
-	else if(inst->isLifeTimeEnd())
-	{
-		return inst->getSrc(0)->asSrcRegRegion()->isSpilled();
-	}
+    if(inst->isPseudoKill())
+    {
+        return inst->getDst()->isSpilled();
+    }
+    else if(inst->isLifeTimeEnd())
+    {
+        return inst->getSrc(0)->asSrcRegRegion()->isSpilled();
+    }
 
-	return false;
+    return false;
 }
 
 void SpillManager::insertSpillCode()
@@ -585,32 +585,32 @@ void SpillManager::insertSpillCode()
     //
     createSpillLocations(kernel);
 
-	FlowGraph& fg = kernel.fg;
-	for (BB_LIST_ITER bb_it = fg.BBs.begin(); bb_it != fg.BBs.end(); bb_it++)
-	{
+    FlowGraph& fg = kernel.fg;
+    for (BB_LIST_ITER bb_it = fg.BBs.begin(); bb_it != fg.BBs.end(); bb_it++)
+    {
         G4_BB* bb = *bb_it;
-		bbId = bb->getId();
-		//
-		// handle spill code for the current BB
-		//
+        bbId = bb->getId();
+        //
+        // handle spill code for the current BB
+        //
 
-		// In one iteration remove all spilled lifetime.start/end
-		// ops.
+        // In one iteration remove all spilled lifetime.start/end
+        // ops.
         bb->erase(
             std::remove_if(bb->begin(), bb->end(), isSpillCandidateForLifetimeOpRemoval),
             bb->end());
 
-	    for (INST_LIST_ITER inst_it = bb->begin(); inst_it != bb->end();)
-		{
-		    G4_INST* inst = *inst_it;
+        for (INST_LIST_ITER inst_it = bb->begin(); inst_it != bb->end();)
+        {
+            G4_INST* inst = *inst_it;
 
 
             G4_Operand * operands_analyzed[G4_MAX_SRCS] = {NULL, NULL, NULL};
             G4_Declare * declares_created[G4_MAX_SRCS] = {NULL, NULL, NULL};
             // insert spill inst for spilled srcs
-	        for (unsigned i = 0; i < G4_MAX_SRCS; i++)
-	        {
-		        replaceSpilledSrc(bb, inst_it, inst, i, pointsToAnalysis, operands_analyzed, declares_created);
+            for (unsigned i = 0; i < G4_MAX_SRCS; i++)
+            {
+                replaceSpilledSrc(bb, inst_it, inst, i, pointsToAnalysis, operands_analyzed, declares_created);
             }
             // insert spill inst for spilled dst
             replaceSpilledDst(bb, inst_it, inst, pointsToAnalysis, operands_analyzed, declares_created);
@@ -633,7 +633,7 @@ void SpillManager::insertSpillCode()
             }
             inst_it++;
         }
-		bbId = UINT_MAX;
+        bbId = UINT_MAX;
     }
 
 }

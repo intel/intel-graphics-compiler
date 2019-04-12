@@ -55,7 +55,7 @@ INLINE float libclc_expm1_f32(float x) {
     float two_to_jby64 = two_to_jby64_h + two_to_jby64_t;
 
     z2 = mad(z2, two_to_jby64, two_to_jby64_t) + (two_to_jby64_h - 1.0f);
-	//Make subnormals work
+    //Make subnormals work
     z2 = x == 0.f ? x : z2;
     z2 = x < X_MIN | m < -24 ? -1.0f : z2;
     z2 = x > X_MAX ? as_float(PINFBITPATT_SP32) : z2;

@@ -320,7 +320,7 @@ private:
 
     std::string m_filename;
     mutable unsigned m_instId;
-	Options *m_options;
+    Options *m_options;
 };
 
 }

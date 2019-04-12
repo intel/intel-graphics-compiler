@@ -77,12 +77,12 @@ void Layout::getAnalysisUsage(llvm::AnalysisUsage &AU) const
     // Doesn't change the IR at all, it juts move the blocks so no changes in the IR
     AU.setPreservesAll();
     AU.addRequired<llvm::LoopInfoWrapperPass>();
-	AU.addRequired<llvm::PostDominatorTreeWrapperPass>();
+    AU.addRequired<llvm::PostDominatorTreeWrapperPass>();
 }
 
 bool Layout::runOnFunction( Function& func )
 {
-	m_PDT = &getAnalysis<PostDominatorTreeWrapperPass>().getPostDomTree();
+    m_PDT = &getAnalysis<PostDominatorTreeWrapperPass>().getPostDomTree();
     LoopInfo& LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
     if (LI.empty())
     {
@@ -142,177 +142,177 @@ BasicBlock* Layout::getLastReturnBlock(Function &Func)
 // block, if it is false, select non-empty block.
 //
 BasicBlock* Layout::selectSucc(
-	BasicBlock *CurrBlk,
-	bool SelectNoInstBlk,
-	const LoopInfo& LI,
-	const std::set<BasicBlock*>& VisitSet)
+    BasicBlock *CurrBlk,
+    bool SelectNoInstBlk,
+    const LoopInfo& LI,
+    const std::set<BasicBlock*>& VisitSet)
 {
-	SmallVector<BasicBlock *, 4> Succs;
-	for (succ_iterator SI = succ_begin(CurrBlk), SE = succ_end(CurrBlk);
-		SI != SE; ++SI)
-	{
-		BasicBlock *succ = *SI;
-		if (VisitSet.count(succ) == 0 &&
-			((SelectNoInstBlk && succ->size() <= 1) ||
-			 (!SelectNoInstBlk && succ->size() > 1)))
-		{
-			Succs.push_back(succ);
-		}
-	}
+    SmallVector<BasicBlock *, 4> Succs;
+    for (succ_iterator SI = succ_begin(CurrBlk), SE = succ_end(CurrBlk);
+        SI != SE; ++SI)
+    {
+        BasicBlock *succ = *SI;
+        if (VisitSet.count(succ) == 0 &&
+            ((SelectNoInstBlk && succ->size() <= 1) ||
+             (!SelectNoInstBlk && succ->size() > 1)))
+        {
+            Succs.push_back(succ);
+        }
+    }
 
-	// Right now, only handle the case of two empty blocks.
-	// If it has no two empty blocks, just take the first
-	// one and return it.
-	if (Succs.size() != 2  || !SelectNoInstBlk) {
-		return Succs.empty() ? nullptr : Succs[0];
-	}
+    // Right now, only handle the case of two empty blocks.
+    // If it has no two empty blocks, just take the first
+    // one and return it.
+    if (Succs.size() != 2  || !SelectNoInstBlk) {
+        return Succs.empty() ? nullptr : Succs[0];
+    }
 
-	// For two empty blocks, the case we want to handle
-	// is the following:
-	//
-	//     (B0 = CurrBlk)
-	//   B0 : if (c) goto THEN  (else goto ELSE)
-	//   ELSE : goto B2
-	//   B1 : ....
-	//   B2 : ....
-	//    ......
-	//   Bn : 
-	//      (ELSE, B1, B2, ..., Bn) has END as single exit
-	//   THEN: goto END:
-	//   END :
-	//       PHI...
-	// 
-	// where ELSE and THEN are empty BBs, and END has phi in it.
-	// In this case, THEN and ELSE might have phi moves as the result
-	// DeSSA when emitting visa. For example, suppose  d0 = s0 will
-	// be emitted in THEN.  If s0 is dead after THEN, it would be good
-	// to lay out THEN right after B0 as the live-range of s0 will not
-	// be overlapped with ones in ELSE. (If s0 is live out of THEN,
-	// moving THEN right after B0 or right before END does not matter
-	// as far as liveness is concerned.).  To lay out THEN first, this
-	// function will select ELSE to return (as the algo does layout
-	// backward).
-	//
-	// For simplicity, assume those BBs are not inside loops. It could
-	// be applied to Loop later when appropriate testing is done.
-	BasicBlock *S0 = Succs[0], *S1 = Succs[1];
-	BasicBlock *SS0 = S0->getSingleSuccessor();
-	
-	if (SS0 && (SS0 != S1) && isa<PHINode>(&*SS0->begin()) &&
-		!LI.getLoopFor(S0) &&
-		m_PDT->dominates(SS0, S1))
-	{
-		return S1;
-	}
+    // For two empty blocks, the case we want to handle
+    // is the following:
+    //
+    //     (B0 = CurrBlk)
+    //   B0 : if (c) goto THEN  (else goto ELSE)
+    //   ELSE : goto B2
+    //   B1 : ....
+    //   B2 : ....
+    //    ......
+    //   Bn : 
+    //      (ELSE, B1, B2, ..., Bn) has END as single exit
+    //   THEN: goto END:
+    //   END :
+    //       PHI...
+    // 
+    // where ELSE and THEN are empty BBs, and END has phi in it.
+    // In this case, THEN and ELSE might have phi moves as the result
+    // DeSSA when emitting visa. For example, suppose  d0 = s0 will
+    // be emitted in THEN.  If s0 is dead after THEN, it would be good
+    // to lay out THEN right after B0 as the live-range of s0 will not
+    // be overlapped with ones in ELSE. (If s0 is live out of THEN,
+    // moving THEN right after B0 or right before END does not matter
+    // as far as liveness is concerned.).  To lay out THEN first, this
+    // function will select ELSE to return (as the algo does layout
+    // backward).
+    //
+    // For simplicity, assume those BBs are not inside loops. It could
+    // be applied to Loop later when appropriate testing is done.
+    BasicBlock *S0 = Succs[0], *S1 = Succs[1];
+    BasicBlock *SS0 = S0->getSingleSuccessor();
+    
+    if (SS0 && (SS0 != S1) && isa<PHINode>(&*SS0->begin()) &&
+        !LI.getLoopFor(S0) &&
+        m_PDT->dominates(SS0, S1))
+    {
+        return S1;
+    }
 
-	return S0;
+    return S0;
 }
 
 void Layout::LayoutBlocks(Function &func, LoopInfo &LI)
 {
-	std::vector<llvm::BasicBlock*> visitVec;
-	std::set<llvm::BasicBlock*> visitSet;
-	// Insertion Position per loop header
-	std::map<llvm::BasicBlock*, llvm::BasicBlock*> InsPos;
+    std::vector<llvm::BasicBlock*> visitVec;
+    std::set<llvm::BasicBlock*> visitSet;
+    // Insertion Position per loop header
+    std::map<llvm::BasicBlock*, llvm::BasicBlock*> InsPos;
 
-	llvm::BasicBlock* entry = &(func.getEntryBlock());
-	visitVec.push_back(entry);
-	visitSet.insert(entry); 
-	InsPos[entry] = entry;
+    llvm::BasicBlock* entry = &(func.getEntryBlock());
+    visitVec.push_back(entry);
+    visitSet.insert(entry); 
+    InsPos[entry] = entry;
 
-	while (!visitVec.empty())
-	{
-		llvm::BasicBlock* blk = visitVec.back();
-		llvm::Loop *curLoop = LI.getLoopFor(blk);
-		if (curLoop) 
-		{
-			auto hd = curLoop->getHeader();
-			if (blk == hd && InsPos.find(hd) == InsPos.end()) 
-			{
-				InsPos[blk] = blk;
-			}
-		}
-		// FIXME: this is a hack to workaround an irreducible test case
-		if (func.getName() == "ocl_test_kernel")
-		{
-			// push: time for DFS visit
-			PUSHSUCC(blk, SUCCANYLOOP, SUCCNOINST);
-			if (blk != visitVec.back())
-				continue;
-			// push: time for DFS visit
-			PUSHSUCC(blk, SUCCANYLOOP, SUCCHASINST);
-		}
-		else
-		{
-			// push: time for DFS visit
-			PUSHSUCC(blk, SUCCANYLOOP, SUCCHASINST);
-			if (blk != visitVec.back())
-				continue;
-			// push: time for DFS visit
-			if (BasicBlock *aBlk = selectSucc(blk, true, LI, visitSet))
-			{
-				visitVec.push_back(aBlk);
-				visitSet.insert(aBlk);
-				continue;
-			}
-			//PUSHSUCC(blk, SUCCANYLOOP, SUCCNOINST);
-		}
-		// pop: time to move the block to the right location
-		if (blk == visitVec.back())
-		{
-			visitVec.pop_back();
-			if (curLoop) 
-			{
-				auto hd = curLoop->getHeader();
-				if (blk != hd) 
-				{
-					// move the block to the beginning of the loop 
-					auto insp = InsPos[hd];
-					assert(insp);
-					if (blk != insp) 
-					{
-						blk->moveBefore(insp);
-						InsPos[hd] = blk;
-					}
-				}
-				else 
-				{
-					// move the entire loop to the beginning of
-					// the parent loop
-					auto LoopStart = InsPos[hd];
-					assert(LoopStart);
-					auto PaLoop = curLoop->getParentLoop();
-					auto PaHd = PaLoop ? PaLoop->getHeader() : entry;
-					auto insp = InsPos[PaHd];
-					if (LoopStart == hd)
-					{
-						// single-block loop
-						hd->moveBefore(insp);
-					}
-					else
-					{
-						// loop-header is not moved yet, so should be at the end
-						// use splice
-						llvm::Function::BasicBlockListType& BBList = func.getBasicBlockList();
-						BBList.splice(insp->getIterator(), BBList,
-							LoopStart->getIterator(),
-							hd->getIterator());
-						hd->moveBefore(LoopStart);
-					}
-					InsPos[PaHd] = hd;
-				}
-			}
-			else 
-			{
-				auto insp = InsPos[entry];
-				if (blk != insp)
-				{
-					blk->moveBefore(insp);
-					InsPos[entry] = blk;
-				}
-			}
-		}
-	}
+    while (!visitVec.empty())
+    {
+        llvm::BasicBlock* blk = visitVec.back();
+        llvm::Loop *curLoop = LI.getLoopFor(blk);
+        if (curLoop) 
+        {
+            auto hd = curLoop->getHeader();
+            if (blk == hd && InsPos.find(hd) == InsPos.end()) 
+            {
+                InsPos[blk] = blk;
+            }
+        }
+        // FIXME: this is a hack to workaround an irreducible test case
+        if (func.getName() == "ocl_test_kernel")
+        {
+            // push: time for DFS visit
+            PUSHSUCC(blk, SUCCANYLOOP, SUCCNOINST);
+            if (blk != visitVec.back())
+                continue;
+            // push: time for DFS visit
+            PUSHSUCC(blk, SUCCANYLOOP, SUCCHASINST);
+        }
+        else
+        {
+            // push: time for DFS visit
+            PUSHSUCC(blk, SUCCANYLOOP, SUCCHASINST);
+            if (blk != visitVec.back())
+                continue;
+            // push: time for DFS visit
+            if (BasicBlock *aBlk = selectSucc(blk, true, LI, visitSet))
+            {
+                visitVec.push_back(aBlk);
+                visitSet.insert(aBlk);
+                continue;
+            }
+            //PUSHSUCC(blk, SUCCANYLOOP, SUCCNOINST);
+        }
+        // pop: time to move the block to the right location
+        if (blk == visitVec.back())
+        {
+            visitVec.pop_back();
+            if (curLoop) 
+            {
+                auto hd = curLoop->getHeader();
+                if (blk != hd) 
+                {
+                    // move the block to the beginning of the loop 
+                    auto insp = InsPos[hd];
+                    assert(insp);
+                    if (blk != insp) 
+                    {
+                        blk->moveBefore(insp);
+                        InsPos[hd] = blk;
+                    }
+                }
+                else 
+                {
+                    // move the entire loop to the beginning of
+                    // the parent loop
+                    auto LoopStart = InsPos[hd];
+                    assert(LoopStart);
+                    auto PaLoop = curLoop->getParentLoop();
+                    auto PaHd = PaLoop ? PaLoop->getHeader() : entry;
+                    auto insp = InsPos[PaHd];
+                    if (LoopStart == hd)
+                    {
+                        // single-block loop
+                        hd->moveBefore(insp);
+                    }
+                    else
+                    {
+                        // loop-header is not moved yet, so should be at the end
+                        // use splice
+                        llvm::Function::BasicBlockListType& BBList = func.getBasicBlockList();
+                        BBList.splice(insp->getIterator(), BBList,
+                            LoopStart->getIterator(),
+                            hd->getIterator());
+                        hd->moveBefore(LoopStart);
+                    }
+                    InsPos[PaHd] = hd;
+                }
+            }
+            else 
+            {
+                auto insp = InsPos[entry];
+                if (blk != insp)
+                {
+                    blk->moveBefore(insp);
+                    InsPos[entry] = blk;
+                }
+            }
+        }
+    }
 
     // if function has a single exit, then the last block must be an exit
     // comment this out due to infinite loop example in OCL
@@ -398,10 +398,10 @@ void Layout::LayoutBlocks( Function &func )
     while ( !visitVec.empty() )
     {
         llvm::BasicBlock* blk = visitVec.back();
-		// push in the empty successor 
-		PUSHSUCC(blk, SUCCANYLOOP, SUCCNOINST);
-		if (blk != visitVec.back())
-			continue;
+        // push in the empty successor 
+        PUSHSUCC(blk, SUCCANYLOOP, SUCCNOINST);
+        if (blk != visitVec.back())
+            continue;
         // push in all the same-loop successors 
         PUSHSUCC(blk, SUCCANYLOOP, SUCCSZANY);
         // pop

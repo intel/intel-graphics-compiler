@@ -46,7 +46,7 @@ define i32 @foo(i32 %sampler, i32 %smpNormalized) nounwind {
 !4 = !{i32 30, !5}
 !5 = !{!"explicit_arg_num", i32 0}
 
-; CHECK: 		ret i32 %smpNormalized
-	
-; CHECK-NOT: 	call i32 @__builtin_IB_is_normalized_coords(i32 %sampler)
+; CHECK:         ret i32 %smpNormalized
+    
+; CHECK-NOT:     call i32 @__builtin_IB_is_normalized_coords(i32 %sampler)
 

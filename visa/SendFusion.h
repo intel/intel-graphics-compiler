@@ -29,11 +29,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace vISA
 {
-	class FlowGraph;
-	class G4_BB;
-	class Mem_Manager;
+    class FlowGraph;
+    class G4_BB;
+    class Mem_Manager;
 
-	bool doSendFusion(FlowGraph* CFG, vISA::Mem_Manager* MMgr);
+    bool doSendFusion(FlowGraph* CFG, vISA::Mem_Manager* MMgr);
 }
 
 #endif

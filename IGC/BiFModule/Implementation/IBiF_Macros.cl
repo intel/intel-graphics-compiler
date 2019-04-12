@@ -138,18 +138,18 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     __rettype##2 __func##_v2##__abbrargtype( __argtype##2 x ) {                 \
         return (__rettype##2)( __sfunc##_##__abbrargtype(x.s0),                               \
                                __sfunc##_##__abbrargtype(x.s1) );                             \
-    }                                                                       		      \
+    }                                                                                     \
     __rettype##3 __func##_v3##__abbrargtype( __argtype##3 x ) {                 \
         return (__rettype##3)( __sfunc##_##__abbrargtype(x.s0),                               \
                                __sfunc##_##__abbrargtype(x.s1),                               \
                                __sfunc##_##__abbrargtype(x.s2) );                             \
-    }                                                                       		      \
+    }                                                                                     \
     __rettype##4 __func##_v4##__abbrargtype( __argtype##4 x ) {                 \
         return (__rettype##4)( __sfunc##_##__abbrargtype(x.s0),                               \
                                __sfunc##_##__abbrargtype(x.s1),                               \
                                __sfunc##_##__abbrargtype(x.s2),                               \
                                __sfunc##_##__abbrargtype(x.s3) );                             \
-    }                                                                       		      \
+    }                                                                                     \
     __rettype##8 __func##_v8##__abbrargtype( __argtype##8 x ) {                 \
         return (__rettype##8)( __sfunc##_##__abbrargtype(x.s0),                               \
                                __sfunc##_##__abbrargtype(x.s1),                               \
@@ -159,7 +159,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                                __sfunc##_##__abbrargtype(x.s5),                               \
                                __sfunc##_##__abbrargtype(x.s6),                               \
                                __sfunc##_##__abbrargtype(x.s7) );                             \
-    }                                                                       		      \
+    }                                                                                     \
     __rettype##16 __func##_v16##__abbrargtype( __argtype##16 x ) {              \
         return (__rettype##16)( __sfunc##_##__abbrargtype(x.s0),                              \
                                 __sfunc##_##__abbrargtype(x.s1),                              \
@@ -355,97 +355,97 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 # define GENERATE_VECTOR_FUNCTIONS_1VALARG_1PTRARG( __func, __rettype, __addressspc, __argptrtype, __abbrargtype, __abbraddressspc ) \
     GENERATE_VECTOR_FUNCTIONS_1VALARG_1PTRARG_EXPLICIT( __func, __func, __rettype, __argptrtype, __addressspc, __argptrtype, __abbrargtype, __abbrargtype, __abbraddressspc )
 
-#define GENERATE_VECTOR_FUNCTIONS_2ARGS_EXPLICIT( __func, __sfunc, __rettype, __argtype, __abbrargtype ) 		\
+#define GENERATE_VECTOR_FUNCTIONS_2ARGS_EXPLICIT( __func, __sfunc, __rettype, __argtype, __abbrargtype )         \
     __rettype##2 __func##_v2##__abbrargtype##_v2##__abbrargtype( __argtype##2 x, __argtype##2 y ) {        \
-        return (__rettype##2)( __sfunc##_##__abbrargtype##_##__abbrargtype(x.s0, y.s0),           			\
-                               __sfunc##_##__abbrargtype##_##__abbrargtype(x.s1, y.s1) );                       	\
-    }                                                                       						\
-    __rettype##3 __func##_v3##__abbrargtype##_v3##__abbrargtype( __argtype##3 x, __argtype##3 y ) {    	\
-        return (__rettype##3)( __sfunc##_##__abbrargtype##_##__abbrargtype(x.s0, y.s0),                         	\
-                               __sfunc##_##__abbrargtype##_##__abbrargtype(x.s1, y.s1),                         	\
-                               __sfunc##_##__abbrargtype##_##__abbrargtype(x.s2, y.s2) );                       	\
-    }                                                                       						\
-    __rettype##4 __func##_v4##__abbrargtype##_v4##__abbrargtype( __argtype##4 x, __argtype##4 y ) {    	\
-        return (__rettype##4)( __sfunc##_##__abbrargtype##_##__abbrargtype(x.s0, y.s0),                         	\
-                               __sfunc##_##__abbrargtype##_##__abbrargtype(x.s1, y.s1),                         	\
-                               __sfunc##_##__abbrargtype##_##__abbrargtype(x.s2, y.s2),                         	\
-                               __sfunc##_##__abbrargtype##_##__abbrargtype(x.s3, y.s3) );                       	\
-    }                                                                       						\
-    __rettype##8 __func##_v8##__abbrargtype##_v8##__abbrargtype( __argtype##8 x, __argtype##8 y ) {    	\
-        return (__rettype##8)( __sfunc##_##__abbrargtype##_##__abbrargtype(x.s0, y.s0),                         	\
-                               __sfunc##_##__abbrargtype##_##__abbrargtype(x.s1, y.s1),                         	\
-                               __sfunc##_##__abbrargtype##_##__abbrargtype(x.s2, y.s2),                         	\
-                               __sfunc##_##__abbrargtype##_##__abbrargtype(x.s3, y.s3),                         	\
-                               __sfunc##_##__abbrargtype##_##__abbrargtype(x.s4, y.s4),                         	\
-                               __sfunc##_##__abbrargtype##_##__abbrargtype(x.s5, y.s5),                         	\
-                               __sfunc##_##__abbrargtype##_##__abbrargtype(x.s6, y.s6),                         	\
-                               __sfunc##_##__abbrargtype##_##__abbrargtype(x.s7, y.s7) );                       	\
-    }                                                                       						\
-    __rettype##16 __func##_v16##__abbrargtype##_v16##__abbrargtype( __argtype##16 x, __argtype##16 y ) { 	\
-        return (__rettype##16)( __sfunc##_##__abbrargtype##_##__abbrargtype(x.s0, y.s0),                        	\
-                                __sfunc##_##__abbrargtype##_##__abbrargtype(x.s1, y.s1),                        	\
-                                __sfunc##_##__abbrargtype##_##__abbrargtype(x.s2, y.s2),                        	\
-                                __sfunc##_##__abbrargtype##_##__abbrargtype(x.s3, y.s3),                        	\
-                                __sfunc##_##__abbrargtype##_##__abbrargtype(x.s4, y.s4),                        	\
-                                __sfunc##_##__abbrargtype##_##__abbrargtype(x.s5, y.s5),                        	\
-                                __sfunc##_##__abbrargtype##_##__abbrargtype(x.s6, y.s6),                        	\
-                                __sfunc##_##__abbrargtype##_##__abbrargtype(x.s7, y.s7),                        	\
-                                __sfunc##_##__abbrargtype##_##__abbrargtype(x.s8, y.s8),                        	\
-                                __sfunc##_##__abbrargtype##_##__abbrargtype(x.s9, y.s9),                        	\
-                                __sfunc##_##__abbrargtype##_##__abbrargtype(x.sa, y.sa),                        	\
-                                __sfunc##_##__abbrargtype##_##__abbrargtype(x.sb, y.sb),                        	\
-                                __sfunc##_##__abbrargtype##_##__abbrargtype(x.sc, y.sc),                        	\
-                                __sfunc##_##__abbrargtype##_##__abbrargtype(x.sd, y.sd),                        	\
-                                __sfunc##_##__abbrargtype##_##__abbrargtype(x.se, y.se),                        	\
-                                __sfunc##_##__abbrargtype##_##__abbrargtype(x.sf, y.sf) );                      	\
+        return (__rettype##2)( __sfunc##_##__abbrargtype##_##__abbrargtype(x.s0, y.s0),                       \
+                               __sfunc##_##__abbrargtype##_##__abbrargtype(x.s1, y.s1) );                           \
+    }                                                                                               \
+    __rettype##3 __func##_v3##__abbrargtype##_v3##__abbrargtype( __argtype##3 x, __argtype##3 y ) {        \
+        return (__rettype##3)( __sfunc##_##__abbrargtype##_##__abbrargtype(x.s0, y.s0),                             \
+                               __sfunc##_##__abbrargtype##_##__abbrargtype(x.s1, y.s1),                             \
+                               __sfunc##_##__abbrargtype##_##__abbrargtype(x.s2, y.s2) );                           \
+    }                                                                                               \
+    __rettype##4 __func##_v4##__abbrargtype##_v4##__abbrargtype( __argtype##4 x, __argtype##4 y ) {        \
+        return (__rettype##4)( __sfunc##_##__abbrargtype##_##__abbrargtype(x.s0, y.s0),                             \
+                               __sfunc##_##__abbrargtype##_##__abbrargtype(x.s1, y.s1),                             \
+                               __sfunc##_##__abbrargtype##_##__abbrargtype(x.s2, y.s2),                             \
+                               __sfunc##_##__abbrargtype##_##__abbrargtype(x.s3, y.s3) );                           \
+    }                                                                                               \
+    __rettype##8 __func##_v8##__abbrargtype##_v8##__abbrargtype( __argtype##8 x, __argtype##8 y ) {        \
+        return (__rettype##8)( __sfunc##_##__abbrargtype##_##__abbrargtype(x.s0, y.s0),                             \
+                               __sfunc##_##__abbrargtype##_##__abbrargtype(x.s1, y.s1),                             \
+                               __sfunc##_##__abbrargtype##_##__abbrargtype(x.s2, y.s2),                             \
+                               __sfunc##_##__abbrargtype##_##__abbrargtype(x.s3, y.s3),                             \
+                               __sfunc##_##__abbrargtype##_##__abbrargtype(x.s4, y.s4),                             \
+                               __sfunc##_##__abbrargtype##_##__abbrargtype(x.s5, y.s5),                             \
+                               __sfunc##_##__abbrargtype##_##__abbrargtype(x.s6, y.s6),                             \
+                               __sfunc##_##__abbrargtype##_##__abbrargtype(x.s7, y.s7) );                           \
+    }                                                                                               \
+    __rettype##16 __func##_v16##__abbrargtype##_v16##__abbrargtype( __argtype##16 x, __argtype##16 y ) {     \
+        return (__rettype##16)( __sfunc##_##__abbrargtype##_##__abbrargtype(x.s0, y.s0),                            \
+                                __sfunc##_##__abbrargtype##_##__abbrargtype(x.s1, y.s1),                            \
+                                __sfunc##_##__abbrargtype##_##__abbrargtype(x.s2, y.s2),                            \
+                                __sfunc##_##__abbrargtype##_##__abbrargtype(x.s3, y.s3),                            \
+                                __sfunc##_##__abbrargtype##_##__abbrargtype(x.s4, y.s4),                            \
+                                __sfunc##_##__abbrargtype##_##__abbrargtype(x.s5, y.s5),                            \
+                                __sfunc##_##__abbrargtype##_##__abbrargtype(x.s6, y.s6),                            \
+                                __sfunc##_##__abbrargtype##_##__abbrargtype(x.s7, y.s7),                            \
+                                __sfunc##_##__abbrargtype##_##__abbrargtype(x.s8, y.s8),                            \
+                                __sfunc##_##__abbrargtype##_##__abbrargtype(x.s9, y.s9),                            \
+                                __sfunc##_##__abbrargtype##_##__abbrargtype(x.sa, y.sa),                            \
+                                __sfunc##_##__abbrargtype##_##__abbrargtype(x.sb, y.sb),                            \
+                                __sfunc##_##__abbrargtype##_##__abbrargtype(x.sc, y.sc),                            \
+                                __sfunc##_##__abbrargtype##_##__abbrargtype(x.sd, y.sd),                            \
+                                __sfunc##_##__abbrargtype##_##__abbrargtype(x.se, y.se),                            \
+                                __sfunc##_##__abbrargtype##_##__abbrargtype(x.sf, y.sf) );                          \
     }
 
 #define GENERATE_VECTOR_FUNCTIONS_2ARGS( __func, __rettype, __argtype, __abbrargtype )     \
     GENERATE_VECTOR_FUNCTIONS_2ARGS_EXPLICIT( __func, __func, __rettype, __argtype, __abbrargtype )
 
 #define GENERATE_VECTOR_FUNCTIONS_2ARGS_VV( __func, __rettype, __argtype0, __argtype1, __abbrargtype0, __abbrargtype1 ) \
-    __rettype##2 __func##_v2##__abbrargtype0##_v2##__abbrargtype1( __argtype0##2 x, __argtype1##2 y ) {  	\
-        return (__rettype##2)( __func##_##__abbrargtype0##_##__abbrargtype1(x.s0, y.s0),                          	\
-                               __func##_##__abbrargtype0##_##__abbrargtype1(x.s1, y.s1) );                        	\
-    }                                                                       						\
-    __rettype##3 __func##_v3##__abbrargtype0##_v3##__abbrargtype1( __argtype0##3 x, __argtype1##3 y ) {  	\
-        return (__rettype##3)( __func##_##__abbrargtype0##_##__abbrargtype1(x.s0, y.s0),                          	\
-                               __func##_##__abbrargtype0##_##__abbrargtype1(x.s1, y.s1),                          	\
-                               __func##_##__abbrargtype0##_##__abbrargtype1(x.s2, y.s2) );                        	\
-    }                                                                       						\
-    __rettype##4 __func##_v4##__abbrargtype0##_v4##__abbrargtype1( __argtype0##4 x, __argtype1##4 y ) {  	\
-        return (__rettype##4)( __func##_##__abbrargtype0##_##__abbrargtype1(x.s0, y.s0),                          	\
-                               __func##_##__abbrargtype0##_##__abbrargtype1(x.s1, y.s1),                          	\
-                               __func##_##__abbrargtype0##_##__abbrargtype1(x.s2, y.s2),                          	\
-                               __func##_##__abbrargtype0##_##__abbrargtype1(x.s3, y.s3) );                        	\
-    }                                                                       						\
-    __rettype##8 __func##_v8##__abbrargtype0##_v8##__abbrargtype1( __argtype0##8 x, __argtype1##8 y ) {  	\
-        return (__rettype##8)( __func##_##__abbrargtype0##_##__abbrargtype1(x.s0, y.s0),                          	\
-                               __func##_##__abbrargtype0##_##__abbrargtype1(x.s1, y.s1),                          	\
-                               __func##_##__abbrargtype0##_##__abbrargtype1(x.s2, y.s2),                          	\
-                               __func##_##__abbrargtype0##_##__abbrargtype1(x.s3, y.s3),                          	\
-                               __func##_##__abbrargtype0##_##__abbrargtype1(x.s4, y.s4),                          	\
-                               __func##_##__abbrargtype0##_##__abbrargtype1(x.s5, y.s5),                          	\
-                               __func##_##__abbrargtype0##_##__abbrargtype1(x.s6, y.s6),                          	\
-                               __func##_##__abbrargtype0##_##__abbrargtype1(x.s7, y.s7) );                        	\
-    }                                                                       						\
+    __rettype##2 __func##_v2##__abbrargtype0##_v2##__abbrargtype1( __argtype0##2 x, __argtype1##2 y ) {      \
+        return (__rettype##2)( __func##_##__abbrargtype0##_##__abbrargtype1(x.s0, y.s0),                              \
+                               __func##_##__abbrargtype0##_##__abbrargtype1(x.s1, y.s1) );                            \
+    }                                                                                               \
+    __rettype##3 __func##_v3##__abbrargtype0##_v3##__abbrargtype1( __argtype0##3 x, __argtype1##3 y ) {      \
+        return (__rettype##3)( __func##_##__abbrargtype0##_##__abbrargtype1(x.s0, y.s0),                              \
+                               __func##_##__abbrargtype0##_##__abbrargtype1(x.s1, y.s1),                              \
+                               __func##_##__abbrargtype0##_##__abbrargtype1(x.s2, y.s2) );                            \
+    }                                                                                               \
+    __rettype##4 __func##_v4##__abbrargtype0##_v4##__abbrargtype1( __argtype0##4 x, __argtype1##4 y ) {      \
+        return (__rettype##4)( __func##_##__abbrargtype0##_##__abbrargtype1(x.s0, y.s0),                              \
+                               __func##_##__abbrargtype0##_##__abbrargtype1(x.s1, y.s1),                              \
+                               __func##_##__abbrargtype0##_##__abbrargtype1(x.s2, y.s2),                              \
+                               __func##_##__abbrargtype0##_##__abbrargtype1(x.s3, y.s3) );                            \
+    }                                                                                               \
+    __rettype##8 __func##_v8##__abbrargtype0##_v8##__abbrargtype1( __argtype0##8 x, __argtype1##8 y ) {      \
+        return (__rettype##8)( __func##_##__abbrargtype0##_##__abbrargtype1(x.s0, y.s0),                              \
+                               __func##_##__abbrargtype0##_##__abbrargtype1(x.s1, y.s1),                              \
+                               __func##_##__abbrargtype0##_##__abbrargtype1(x.s2, y.s2),                              \
+                               __func##_##__abbrargtype0##_##__abbrargtype1(x.s3, y.s3),                              \
+                               __func##_##__abbrargtype0##_##__abbrargtype1(x.s4, y.s4),                              \
+                               __func##_##__abbrargtype0##_##__abbrargtype1(x.s5, y.s5),                              \
+                               __func##_##__abbrargtype0##_##__abbrargtype1(x.s6, y.s6),                              \
+                               __func##_##__abbrargtype0##_##__abbrargtype1(x.s7, y.s7) );                            \
+    }                                                                                               \
     __rettype##16 __func##_v16##__abbrargtype0##_v16##__abbrargtype1( __argtype0##16 x, __argtype1##16 y ) { \
-        return (__rettype##16)( __func##_##__abbrargtype0##_##__abbrargtype1(x.s0, y.s0),                         	\
-                                __func##_##__abbrargtype0##_##__abbrargtype1(x.s1, y.s1),                         	\
-                                __func##_##__abbrargtype0##_##__abbrargtype1(x.s2, y.s2),                         	\
-                                __func##_##__abbrargtype0##_##__abbrargtype1(x.s3, y.s3),                         	\
-                                __func##_##__abbrargtype0##_##__abbrargtype1(x.s4, y.s4),                         	\
-                                __func##_##__abbrargtype0##_##__abbrargtype1(x.s5, y.s5),                         	\
-                                __func##_##__abbrargtype0##_##__abbrargtype1(x.s6, y.s6),                         	\
-                                __func##_##__abbrargtype0##_##__abbrargtype1(x.s7, y.s7),                         	\
-                                __func##_##__abbrargtype0##_##__abbrargtype1(x.s8, y.s8),                         	\
-                                __func##_##__abbrargtype0##_##__abbrargtype1(x.s9, y.s9),                         	\
-                                __func##_##__abbrargtype0##_##__abbrargtype1(x.sa, y.sa),                         	\
-                                __func##_##__abbrargtype0##_##__abbrargtype1(x.sb, y.sb),                         	\
-                                __func##_##__abbrargtype0##_##__abbrargtype1(x.sc, y.sc),                         	\
-                                __func##_##__abbrargtype0##_##__abbrargtype1(x.sd, y.sd),                         	\
-                                __func##_##__abbrargtype0##_##__abbrargtype1(x.se, y.se),                         	\
-                                __func##_##__abbrargtype0##_##__abbrargtype1(x.sf, y.sf) );                       	\
+        return (__rettype##16)( __func##_##__abbrargtype0##_##__abbrargtype1(x.s0, y.s0),                             \
+                                __func##_##__abbrargtype0##_##__abbrargtype1(x.s1, y.s1),                             \
+                                __func##_##__abbrargtype0##_##__abbrargtype1(x.s2, y.s2),                             \
+                                __func##_##__abbrargtype0##_##__abbrargtype1(x.s3, y.s3),                             \
+                                __func##_##__abbrargtype0##_##__abbrargtype1(x.s4, y.s4),                             \
+                                __func##_##__abbrargtype0##_##__abbrargtype1(x.s5, y.s5),                             \
+                                __func##_##__abbrargtype0##_##__abbrargtype1(x.s6, y.s6),                             \
+                                __func##_##__abbrargtype0##_##__abbrargtype1(x.s7, y.s7),                             \
+                                __func##_##__abbrargtype0##_##__abbrargtype1(x.s8, y.s8),                             \
+                                __func##_##__abbrargtype0##_##__abbrargtype1(x.s9, y.s9),                             \
+                                __func##_##__abbrargtype0##_##__abbrargtype1(x.sa, y.sa),                             \
+                                __func##_##__abbrargtype0##_##__abbrargtype1(x.sb, y.sb),                             \
+                                __func##_##__abbrargtype0##_##__abbrargtype1(x.sc, y.sc),                             \
+                                __func##_##__abbrargtype0##_##__abbrargtype1(x.sd, y.sd),                             \
+                                __func##_##__abbrargtype0##_##__abbrargtype1(x.se, y.se),                             \
+                                __func##_##__abbrargtype0##_##__abbrargtype1(x.sf, y.sf) );                           \
     }
 
 // TODO: get rid of this #else case when the legalizer can
@@ -477,18 +477,18 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     __rettype##2 __func##_v2##__abbrvargtype##_##__abbrsargtype( __vargtype##2 x, __sargtype y ) {   \
         return (__rettype##2)( __func##_##__abbrvargtype##_##__abbrsargtype(x.s0, y),                             \
                                __func##_##__abbrvargtype##_##__abbrsargtype(x.s1, y) );                           \
-    }                                                                       					  \
+    }                                                                                             \
     __rettype##3 __func##_v3##__abbrvargtype##_##__abbrsargtype( __vargtype##3 x, __sargtype y ) {   \
         return (__rettype##3)( __func##_##__abbrvargtype##_##__abbrsargtype(x.s0, y),                             \
                                __func##_##__abbrvargtype##_##__abbrsargtype(x.s1, y),                             \
                                __func##_##__abbrvargtype##_##__abbrsargtype(x.s2, y) );                           \
-    }                                                                       					  \
+    }                                                                                             \
     __rettype##4 __func##_v4##__abbrvargtype##_##__abbrsargtype( __vargtype##4 x, __sargtype y ) {   \
         return (__rettype##4)( __func##_##__abbrvargtype##_##__abbrsargtype(x.s0, y),                             \
                                __func##_##__abbrvargtype##_##__abbrsargtype(x.s1, y),                             \
                                __func##_##__abbrvargtype##_##__abbrsargtype(x.s2, y),                             \
                                __func##_##__abbrvargtype##_##__abbrsargtype(x.s3, y) );                           \
-    }                                                                       					  \
+    }                                                                                             \
     __rettype##8 __func##_v8##__abbrvargtype##_##__abbrsargtype( __vargtype##8 x, __sargtype y ) {   \
         return (__rettype##8)( __func##_##__abbrvargtype##_##__abbrsargtype(x.s0, y),                             \
                                __func##_##__abbrvargtype##_##__abbrsargtype(x.s1, y),                             \
@@ -498,7 +498,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                                __func##_##__abbrvargtype##_##__abbrsargtype(x.s5, y),                             \
                                __func##_##__abbrvargtype##_##__abbrsargtype(x.s6, y),                             \
                                __func##_##__abbrvargtype##_##__abbrsargtype(x.s7, y) );                           \
-    }                                                                       					  \
+    }                                                                                             \
     __rettype##16 __func##_v16##__abbrvargtype##_##__abbrsargtype( __vargtype##16 x, __sargtype y ) {\
         return (__rettype##16)( __func##_##__abbrvargtype##_##__abbrsargtype(x.s0, y),                            \
                                 __func##_##__abbrvargtype##_##__abbrsargtype(x.s1, y),                            \
@@ -522,18 +522,18 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     __rettype##2 __func##_##__abbrsargtype##_v2##__abbrvargtype( __sargtype x, __vargtype##2 y ) {   \
         return (__rettype##2)( __func##_##__abbrsargtype##_##__abbrvargtype(x, y.s0),                             \
                                __func##_##__abbrsargtype##_##__abbrvargtype(x, y.s1) );                           \
-    }                                                                       					  \
+    }                                                                                             \
     __rettype##3 __func##_##__abbrsargtype##_v3##__abbrvargtype( __sargtype x, __vargtype##3 y ) {   \
         return (__rettype##3)( __func##_##__abbrsargtype##_##__abbrvargtype(x, y.s0),                             \
                                __func##_##__abbrsargtype##_##__abbrvargtype(x, y.s1),                             \
                                __func##_##__abbrsargtype##_##__abbrvargtype(x, y.s2) );                           \
-    }                                                                       					  \
+    }                                                                                             \
     __rettype##4 __func##_##__abbrsargtype##_v4##__abbrvargtype( __sargtype x, __vargtype##4 y ) {   \
         return (__rettype##4)( __func##_##__abbrsargtype##_##__abbrvargtype(x, y.s0),                             \
                                __func##_##__abbrsargtype##_##__abbrvargtype(x, y.s1),                             \
                                __func##_##__abbrsargtype##_##__abbrvargtype(x, y.s2),                             \
                                __func##_##__abbrsargtype##_##__abbrvargtype(x, y.s3) );                           \
-    }                                                                       					  \
+    }                                                                                             \
     __rettype##8 __func##_##__abbrsargtype##_v8##__abbrvargtype( __sargtype x, __vargtype##8 y ) {   \
         return (__rettype##8)( __func##_##__abbrsargtype##_##__abbrvargtype(x, y.s0),                             \
                                __func##_##__abbrsargtype##_##__abbrvargtype(x, y.s1),                             \
@@ -543,7 +543,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                                __func##_##__abbrsargtype##_##__abbrvargtype(x, y.s5),                             \
                                __func##_##__abbrsargtype##_##__abbrvargtype(x, y.s6),                             \
                                __func##_##__abbrsargtype##_##__abbrvargtype(x, y.s7) );                           \
-    }                                                                       					  \
+    }                                                                                             \
     __rettype##16 __func##_##__abbrsargtype##_v16##__abbrvargtype( __sargtype x, __vargtype##16 y ) {\
         return (__rettype##16)( __func##_##__abbrsargtype##_##__abbrvargtype(x, y.s0),                            \
                                 __func##_##__abbrsargtype##_##__abbrvargtype(x, y.s1),                            \
@@ -564,22 +564,22 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     }
 
 #define GENERATE_VECTOR_FUNCTIONS_3ARGS_SELECT( __sfunc, __rettype, __argtype, __abbrrettype, __abbrargtype ) \
-    __rettype##2 __builtin_spirv_OpenCL_select##_v2##__abbrrettype##_v2##__abbrrettype##_v2##__abbrargtype( __rettype##2 x, __rettype##2 y, __argtype##2 z ) {	         \
+    __rettype##2 __builtin_spirv_OpenCL_select##_v2##__abbrrettype##_v2##__abbrrettype##_v2##__abbrargtype( __rettype##2 x, __rettype##2 y, __argtype##2 z ) {             \
         return (__rettype##2)( __sfunc(x.s0, y.s0, z.s0),                   \
                                __sfunc(x.s1, y.s1, z.s1) );                 \
-    }                                                                       							  \
-    __rettype##3 __builtin_spirv_OpenCL_select##_v3##__abbrrettype##_v3##__abbrrettype##_v3##__abbrargtype( __rettype##3 x, __rettype##3 y, __argtype##3 z ) { 			 \
+    }                                                                                                     \
+    __rettype##3 __builtin_spirv_OpenCL_select##_v3##__abbrrettype##_v3##__abbrrettype##_v3##__abbrargtype( __rettype##3 x, __rettype##3 y, __argtype##3 z ) {              \
         return (__rettype##3)( __sfunc(x.s0, y.s0, z.s0),                   \
                                __sfunc(x.s1, y.s1, z.s1),                   \
                                __sfunc(x.s2, y.s2, z.s2) );                 \
-    }                                                                       						          \
-    __rettype##4 __builtin_spirv_OpenCL_select##_v4##__abbrrettype##_v4##__abbrrettype##_v4##__abbrargtype( __rettype##4 x, __rettype##4 y, __argtype##4 z ) { 			 \
+    }                                                                                                         \
+    __rettype##4 __builtin_spirv_OpenCL_select##_v4##__abbrrettype##_v4##__abbrrettype##_v4##__abbrargtype( __rettype##4 x, __rettype##4 y, __argtype##4 z ) {              \
         return (__rettype##4)( __sfunc(x.s0, y.s0, z.s0),                   \
                                __sfunc(x.s1, y.s1, z.s1),                   \
                                __sfunc(x.s2, y.s2, z.s2),                   \
                                __sfunc(x.s3, y.s3, z.s3) );                 \
-    }                                                                       						          \
-    __rettype##8 __builtin_spirv_OpenCL_select##_v8##__abbrrettype##_v8##__abbrrettype##_v8##__abbrargtype( __rettype##8 x, __rettype##8 y, __argtype##8 z ) { 			 \
+    }                                                                                                         \
+    __rettype##8 __builtin_spirv_OpenCL_select##_v8##__abbrrettype##_v8##__abbrrettype##_v8##__abbrargtype( __rettype##8 x, __rettype##8 y, __argtype##8 z ) {              \
         return (__rettype##8)( __sfunc(x.s0, y.s0, z.s0),                   \
                                __sfunc(x.s1, y.s1, z.s1),                   \
                                __sfunc(x.s2, y.s2, z.s2),                   \
@@ -588,8 +588,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                                __sfunc(x.s5, y.s5, z.s5),                   \
                                __sfunc(x.s6, y.s6, z.s6),                   \
                                __sfunc(x.s7, y.s7, z.s7) );                 \
-    }                                                                       							  \
-    __rettype##16 __builtin_spirv_OpenCL_select##_v16##__abbrrettype##_v16##__abbrrettype##_v16##__abbrargtype( __rettype##16 x, __rettype##16 y, __argtype##16 z ) { 	 \
+    }                                                                                                     \
+    __rettype##16 __builtin_spirv_OpenCL_select##_v16##__abbrrettype##_v16##__abbrrettype##_v16##__abbrargtype( __rettype##16 x, __rettype##16 y, __argtype##16 z ) {      \
         return (__rettype##16)( __sfunc(x.s0, y.s0, z.s0),                  \
                                 __sfunc(x.s1, y.s1, z.s1),                  \
                                 __sfunc(x.s2, y.s2, z.s2),                  \
@@ -661,18 +661,18 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     __rettype##2 __func##_v2##__abbrvargtype##_v2##__abbrvargtype##_##__abbrsargtype( __vargtype##2 x, __vargtype##2 y, __sargtype z ) { \
         return (__rettype##2)( __func##_##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype(x.s0, y.s0, z),                       \
                                __func##_##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype(x.s1, y.s1, z) );                     \
-    }                                                                       							     \
+    }                                                                                                        \
     __rettype##3 __func##_v3##__abbrvargtype##_v3##__abbrvargtype##_##__abbrsargtype( __vargtype##3 x, __vargtype##3 y, __sargtype z ) { \
         return (__rettype##3)( __func##_##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype(x.s0, y.s0, z),                       \
                                __func##_##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype(x.s1, y.s1, z),                       \
                                __func##_##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype(x.s2, y.s2, z) );                     \
-    }                                                                       							     \
+    }                                                                                                        \
     __rettype##4 __func##_v4##__abbrvargtype##_v4##__abbrvargtype##_##__abbrsargtype( __vargtype##4 x, __vargtype##4 y, __sargtype z ) { \
         return (__rettype##4)( __func##_##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype(x.s0, y.s0, z),                       \
                                __func##_##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype(x.s1, y.s1, z),                       \
                                __func##_##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype(x.s2, y.s2, z),                       \
                                __func##_##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype(x.s3, y.s3, z) );                     \
-    }                                                                       							     \
+    }                                                                                                        \
     __rettype##8 __func##_v8##__abbrvargtype##_v8##__abbrvargtype##_##__abbrsargtype( __vargtype##8 x, __vargtype##8 y, __sargtype z ) { \
         return (__rettype##8)( __func##_##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype(x.s0, y.s0, z),                       \
                                __func##_##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype(x.s1, y.s1, z),                       \
@@ -682,7 +682,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                                __func##_##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype(x.s5, y.s5, z),                       \
                                __func##_##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype(x.s6, y.s6, z),                       \
                                __func##_##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype(x.s7, y.s7, z) );                     \
-    }                                                                       							     \
+    }                                                                                                        \
     __rettype##16 __func##_v16##__abbrvargtype##_v16##__abbrvargtype##_##__abbrsargtype( __vargtype##16 x, __vargtype##16 y, __sargtype z ) { \
         return (__rettype##16)( __func##_##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype(x.s0, y.s0, z),                      \
                                 __func##_##__abbrvargtype##_##__abbrvargtype##_##__abbrsargtype(x.s1, y.s1, z),                      \
@@ -706,18 +706,18 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     __rettype##2 __func##_v2##__abbrvargtype##_##__abbrsargtype##_##__abbrsargtype( __vargtype##2 x, __sargtype y, __sargtype z ) { \
         return (__rettype##2)( __func##_##__abbrvargtype##_##__abbrsargtype##_##__abbrsargtype(x.s0, y, z),                          \
                                __func##_##__abbrvargtype##_##__abbrsargtype##_##__abbrsargtype(x.s1, y, z) );                        \
-    }                                                                       							     \
+    }                                                                                                        \
     __rettype##3 __func##_v3##__abbrvargtype##_##__abbrsargtype##_##__abbrsargtype( __vargtype##3 x, __sargtype y, __sargtype z ) { \
         return (__rettype##3)( __func##_##__abbrvargtype##_##__abbrsargtype##_##__abbrsargtype(x.s0, y, z),                          \
                                __func##_##__abbrvargtype##_##__abbrsargtype##_##__abbrsargtype(x.s1, y, z),                          \
                                __func##_##__abbrvargtype##_##__abbrsargtype##_##__abbrsargtype(x.s2, y, z) );                        \
-    }                                                                       							     \
+    }                                                                                                        \
     __rettype##4 __func##_v4##__abbrvargtype##_##__abbrsargtype##_##__abbrsargtype( __vargtype##4 x, __sargtype y, __sargtype z ) { \
         return (__rettype##4)( __func##_##__abbrvargtype##_##__abbrsargtype##_##__abbrsargtype(x.s0, y, z),                          \
                                __func##_##__abbrvargtype##_##__abbrsargtype##_##__abbrsargtype(x.s1, y, z),                          \
                                __func##_##__abbrvargtype##_##__abbrsargtype##_##__abbrsargtype(x.s2, y, z),                          \
                                __func##_##__abbrvargtype##_##__abbrsargtype##_##__abbrsargtype(x.s3, y, z) );                        \
-    }                                                                       							     \
+    }                                                                                                        \
     __rettype##8 __func##_v8##__abbrvargtype##_##__abbrsargtype##_##__abbrsargtype( __vargtype##8 x, __sargtype y, __sargtype z ) { \
         return (__rettype##8)( __func##_##__abbrvargtype##_##__abbrsargtype##_##__abbrsargtype(x.s0, y, z),                          \
                                __func##_##__abbrvargtype##_##__abbrsargtype##_##__abbrsargtype(x.s1, y, z),                          \
@@ -727,7 +727,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                                __func##_##__abbrvargtype##_##__abbrsargtype##_##__abbrsargtype(x.s5, y, z),                          \
                                __func##_##__abbrvargtype##_##__abbrsargtype##_##__abbrsargtype(x.s6, y, z),                          \
                                __func##_##__abbrvargtype##_##__abbrsargtype##_##__abbrsargtype(x.s7, y, z) );                        \
-    }                                                                       							     \
+    }                                                                                                        \
     __rettype##16 __func##_v16##__abbrvargtype##_##__abbrsargtype##_##__abbrsargtype( __vargtype##16 x, __sargtype y, __sargtype z ) { \
         return (__rettype##16)( __func##_##__abbrvargtype##_##__abbrsargtype##_##__abbrsargtype(x.s0, y, z),                         \
                                 __func##_##__abbrvargtype##_##__abbrsargtype##_##__abbrsargtype(x.s1, y, z),                         \
@@ -751,18 +751,18 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     __rettype##2 __func##_##__abbrsargtype##_##__abbrsargtype##_v2##__abbrvargtype( __sargtype x, __sargtype y, __vargtype##2 z ) { \
         return (__rettype##2)( __func##_##__abbrsargtype##_##__abbrsargtype##_##__abbrvargtype(x, y, z.s0),                          \
                                __func##_##__abbrsargtype##_##__abbrsargtype##_##__abbrvargtype(x, y, z.s1) );                        \
-    }                                                                       							     \
+    }                                                                                                        \
     __rettype##3 __func##_##__abbrsargtype##_##__abbrsargtype##_v3##__abbrvargtype( __sargtype x, __sargtype y, __vargtype##3 z ) { \
         return (__rettype##3)( __func##_##__abbrsargtype##_##__abbrsargtype##_##__abbrvargtype(x, y, z.s0),                          \
                                __func##_##__abbrsargtype##_##__abbrsargtype##_##__abbrvargtype(x, y, z.s1),                          \
                                __func##_##__abbrsargtype##_##__abbrsargtype##_##__abbrvargtype(x, y, z.s2) );                        \
-    }                                                                       							     \
+    }                                                                                                        \
     __rettype##4 __func##_##__abbrsargtype##_##__abbrsargtype##_v4##__abbrvargtype( __sargtype x, __sargtype y, __vargtype##4 z ) { \
         return (__rettype##4)( __func##_##__abbrsargtype##_##__abbrsargtype##_##__abbrvargtype(x, y, z.s0),                          \
                                __func##_##__abbrsargtype##_##__abbrsargtype##_##__abbrvargtype(x, y, z.s1),                          \
                                __func##_##__abbrsargtype##_##__abbrsargtype##_##__abbrvargtype(x, y, z.s2),                          \
                                __func##_##__abbrsargtype##_##__abbrsargtype##_##__abbrvargtype(x, y, z.s3) );                        \
-    }                                                                       							     \
+    }                                                                                                        \
     __rettype##8 __func##_##__abbrsargtype##_##__abbrsargtype##_v8##__abbrvargtype( __sargtype x, __sargtype y, __vargtype##8 z ) { \
         return (__rettype##8)( __func##_##__abbrsargtype##_##__abbrsargtype##_##__abbrvargtype(x, y, z.s0),                          \
                                __func##_##__abbrsargtype##_##__abbrsargtype##_##__abbrvargtype(x, y, z.s1),                          \
@@ -772,7 +772,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                                __func##_##__abbrsargtype##_##__abbrsargtype##_##__abbrvargtype(x, y, z.s5),                          \
                                __func##_##__abbrsargtype##_##__abbrsargtype##_##__abbrvargtype(x, y, z.s6),                          \
                                __func##_##__abbrsargtype##_##__abbrsargtype##_##__abbrvargtype(x, y, z.s7) );                        \
-    }                                                                       							     \
+    }                                                                                                        \
     __rettype##16 __func##_##__abbrsargtype##_##__abbrsargtype##_v16##__abbrvargtype( __sargtype x, __sargtype y, __vargtype##16 z ) { \
         return (__rettype##16)( __func##_##__abbrsargtype##_##__abbrsargtype##_##__abbrvargtype(x, y, z.s0),                         \
                                 __func##_##__abbrsargtype##_##__abbrsargtype##_##__abbrvargtype(x, y, z.s1),                         \
@@ -841,18 +841,18 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     __rettype##2 __func##_v2##__abbrrettype##_v2##__abbrargtype( __argtype##2 x ) {                 \
         return (__rettype##2)( __func##_##__abbrrettype##_##__abbrargtype(x.s0),                                \
                                __func##_##__abbrrettype##_##__abbrargtype(x.s1) );                              \
-    }                                                                       		\
+    }                                                                               \
     __rettype##3 __func##_v3##__abbrrettype##_v3##__abbrargtype( __argtype##3 x ) {                 \
         return (__rettype##3)( __func##_##__abbrrettype##_##__abbrargtype(x.s0),                               \
                                __func##_##__abbrrettype##_##__abbrargtype(x.s1),                                \
                                __func##_##__abbrrettype##_##__abbrargtype(x.s2) );                              \
-    }                                                                       		\
+    }                                                                               \
     __rettype##4 __func##_v4##__abbrrettype##_v4##__abbrargtype( __argtype##4 x ) {                 \
         return (__rettype##4)( __func##_##__abbrrettype##_##__abbrargtype(x.s0),                                \
                                __func##_##__abbrrettype##_##__abbrargtype(x.s1),                                \
                                __func##_##__abbrrettype##_##__abbrargtype(x.s2),                                \
                                __func##_##__abbrrettype##_##__abbrargtype(x.s3) );                              \
-    }                                                                      		 \
+    }                                                                               \
     __rettype##8 __func##_v8##__abbrrettype##_v8##__abbrargtype( __argtype##8 x ) {                 \
         return (__rettype##8)( __func##_##__abbrrettype##_##__abbrargtype(x.s0),                                \
                                __func##_##__abbrrettype##_##__abbrargtype(x.s1),                                \
@@ -862,7 +862,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                                __func##_##__abbrrettype##_##__abbrargtype(x.s5),                                \
                                __func##_##__abbrrettype##_##__abbrargtype(x.s6),                                \
                                __func##_##__abbrrettype##_##__abbrargtype(x.s7) );                              \
-    }                                                                       		\
+    }                                                                               \
     __rettype##16 __func##_v16##__abbrrettype##_v16##__abbrargtype( __argtype##16 x ) {              \
         return (__rettype##16)( __func##_##__abbrrettype##_##__abbrargtype(x.s0),                               \
                                 __func##_##__abbrrettype##_##__abbrargtype(x.s1),                               \
@@ -880,22 +880,22 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                                 __func##_##__abbrrettype##_##__abbrargtype(x.sd),                               \
                                 __func##_##__abbrrettype##_##__abbrargtype(x.se),                               \
                                 __func##_##__abbrrettype##_##__abbrargtype(x.sf) );                             \
-    }                                                                       		\
+    }                                                                               \
     __rettype##2 __func##_RTE_v2##__abbrrettype##_v2##__abbrargtype( __argtype##2 x ) {           \
         return (__rettype##2)( __func##_RTE_##__abbrrettype##_##__abbrargtype(x.s0),                          \
                                __func##_RTE_##__abbrrettype##_##__abbrargtype(x.s1) );                        \
-    }                                                                       		\
+    }                                                                               \
     __rettype##3 __func##_RTE_v3##__abbrrettype##_v3##__abbrargtype( __argtype##3 x ) {           \
         return (__rettype##3)( __func##_RTE_##__abbrrettype##_##__abbrargtype(x.s0),                          \
                                __func##_RTE_##__abbrrettype##_##__abbrargtype(x.s1),                          \
                                __func##_RTE_##__abbrrettype##_##__abbrargtype(x.s2) );                        \
-    }                                                                       		\
+    }                                                                               \
     __rettype##4 __func##_RTE_v4##__abbrrettype##_v4##__abbrargtype( __argtype##4 x ) {           \
         return (__rettype##4)( __func##_RTE_##__abbrrettype##_##__abbrargtype(x.s0),                          \
                                __func##_RTE_##__abbrrettype##_##__abbrargtype(x.s1),                          \
                                __func##_RTE_##__abbrrettype##_##__abbrargtype(x.s2),                          \
                                __func##_RTE_##__abbrrettype##_##__abbrargtype(x.s3) );                        \
-    }                                                                       		\
+    }                                                                               \
     __rettype##8 __func##_RTE_v8##__abbrrettype##_v8##__abbrargtype( __argtype##8 x ) {           \
         return (__rettype##8)( __func##_RTE_##__abbrrettype##_##__abbrargtype(x.s0),                          \
                                __func##_RTE_##__abbrrettype##_##__abbrargtype(x.s1),                          \
@@ -905,7 +905,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                                __func##_RTE_##__abbrrettype##_##__abbrargtype(x.s5),                          \
                                __func##_RTE_##__abbrrettype##_##__abbrargtype(x.s6),                          \
                                __func##_RTE_##__abbrrettype##_##__abbrargtype(x.s7) );                        \
-    }                                                                       		\
+    }                                                                               \
     __rettype##16 __func##_RTE_v16##__abbrrettype##_v16##__abbrargtype( __argtype##16 x ) {        \
         return (__rettype##16)( __func##_RTE_##__abbrrettype##_##__abbrargtype(x.s0),                         \
                                 __func##_RTE_##__abbrrettype##_##__abbrargtype(x.s1),                         \
@@ -923,16 +923,16 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                                 __func##_RTE_##__abbrrettype##_##__abbrargtype(x.sd),                         \
                                 __func##_RTE_##__abbrrettype##_##__abbrargtype(x.se),                         \
                                 __func##_RTE_##__abbrrettype##_##__abbrargtype(x.sf) );                       \
-    }                                                                       		\
+    }                                                                               \
     __rettype##2 __func##_RTZ_v2##__abbrrettype##_v2##__abbrargtype( __argtype##2 x ) {           \
         return (__rettype##2)( __func##_RTZ_##__abbrrettype##_##__abbrargtype(x.s0),                          \
                                __func##_RTZ_##__abbrrettype##_##__abbrargtype(x.s1) );                        \
-    }                                                                       		    \
+    }                                                                                   \
     __rettype##3 __func##_RTZ_v3##__abbrrettype##_v3##__abbrargtype( __argtype##3 x ) {            \
         return (__rettype##3)( __func##_RTZ_##__abbrrettype##_##__abbrargtype(x.s0),                          \
                                __func##_RTZ_##__abbrrettype##_##__abbrargtype(x.s1),                          \
                                __func##_RTZ_##__abbrrettype##_##__abbrargtype(x.s2) );                        \
-    }                                                                       		    \
+    }                                                                                   \
     __rettype##4 __func##_RTZ_v4##__abbrrettype##_v4##__abbrargtype( __argtype##4 x ) {            \
         return (__rettype##4)( __func##_RTZ_##__abbrrettype##_##__abbrargtype(x.s0),                          \
                                __func##_RTZ_##__abbrrettype##_##__abbrargtype(x.s1),                          \

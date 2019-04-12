@@ -31,13 +31,13 @@ using namespace llvm;
 
 void FunctionUpgrader::SetFunctionToUpgrade(llvm::Function* pFunction)
 {
-	m_pFunction = pFunction;
+    m_pFunction = pFunction;
 }
 
 void FunctionUpgrader::Clean()
 {
-	m_pFunction = nullptr;
-	m_pNewArguments.clear();
+    m_pFunction = nullptr;
+    m_pNewArguments.clear();
     m_placeHolders.clear();
 }
 
@@ -53,44 +53,44 @@ llvm::Value* FunctionUpgrader::AddArgument(llvm::StringRef argName, llvm::Type* 
         builder.SetInsertPoint(&*m_pFunction->begin()->begin());
     }
     llvm::AllocaInst* pPlaceHolderArgAlloc = builder.CreateAlloca(argType, 0, "");
-	// Create place holder load, which will simulate the argument for now
+    // Create place holder load, which will simulate the argument for now
     llvm::LoadInst* PlaceHolderArg = builder.CreateLoad(pPlaceHolderArgAlloc, argName);
 
-	m_pNewArguments[PlaceHolderArg] = nullptr;
+    m_pNewArguments[PlaceHolderArg] = nullptr;
     m_placeHolders.push_back(PlaceHolderArg);
 
-	return PlaceHolderArg;
+    return PlaceHolderArg;
 }
 
 bool FunctionUpgrader::IsUsedPlacedHolder(llvm::Value* PlaceHolderToCheck)
 {
-	return m_pNewArguments.find((LoadInst*)PlaceHolderToCheck) != m_pNewArguments.end();
+    return m_pNewArguments.find((LoadInst*)PlaceHolderToCheck) != m_pNewArguments.end();
 }
 
 Argument* FunctionUpgrader::GetArgumentFromRebuild(llvm::Value* pPlaceHolderArg)
 {
-	return GetArgumentFromRebuild((LoadInst*)pPlaceHolderArg);
+    return GetArgumentFromRebuild((LoadInst*)pPlaceHolderArg);
 }
 
 Argument* FunctionUpgrader::GetArgumentFromRebuild(llvm::LoadInst* pPlaceHolderArg)
 {
-	if (IsUsedPlacedHolder(pPlaceHolderArg))
-	{
-		if (m_pNewArguments[pPlaceHolderArg] != nullptr)
-		{
-			return m_pNewArguments[pPlaceHolderArg];
-		}
-		else
-		{
-			assert(false && "There is no created new argument, did you call RebuildFunction?");
-			return nullptr;
-		}
-	}
-	else
-	{
-		assert(false && "Didn't found new argument!");
-		return nullptr;
-	}
+    if (IsUsedPlacedHolder(pPlaceHolderArg))
+    {
+        if (m_pNewArguments[pPlaceHolderArg] != nullptr)
+        {
+            return m_pNewArguments[pPlaceHolderArg];
+        }
+        else
+        {
+            assert(false && "There is no created new argument, did you call RebuildFunction?");
+            return nullptr;
+        }
+    }
+    else
+    {
+        assert(false && "Didn't found new argument!");
+        return nullptr;
+    }
 }
 
 std::vector<LoadInst*> FunctionUpgrader::GetPlaceholderVec()
@@ -105,129 +105,129 @@ uint32_t FunctionUpgrader::GetArgumentsSize()
 
 Function* FunctionUpgrader::RebuildFunction()
 {
-	Function* pFunctionRebuild = UpgradeFunctionWithNewArgs();
+    Function* pFunctionRebuild = UpgradeFunctionWithNewArgs();
 
-	auto i_arg_old = m_pFunction->arg_begin();
-	auto i_arg_new = pFunctionRebuild->arg_begin();
+    auto i_arg_old = m_pFunction->arg_begin();
+    auto i_arg_new = pFunctionRebuild->arg_begin();
 
-	// Replace all usage in new method from old arguments to new arguments
-	while(i_arg_old != m_pFunction->arg_end())
-	{
+    // Replace all usage in new method from old arguments to new arguments
+    while(i_arg_old != m_pFunction->arg_end())
+    {
 #if LLVM_VERSION_MAJOR == 4
-		i_arg_old->replaceAllUsesWith(&*i_arg_new);
+        i_arg_old->replaceAllUsesWith(&*i_arg_new);
 #elif LLVM_VERSION_MAJOR >= 7
-		i_arg_old->replaceAllUsesWith(i_arg_new);
+        i_arg_old->replaceAllUsesWith(i_arg_new);
 #endif
-		++i_arg_old;
-		++i_arg_new;
-	}
+        ++i_arg_old;
+        ++i_arg_new;
+    }
 
-	// Replace all usage in new method from place holder to real argument
-	for (auto it = m_pNewArguments.begin(); it != m_pNewArguments.end(); ++it)
-	{
-		it->first->replaceAllUsesWith(it->second);
-	}
+    // Replace all usage in new method from place holder to real argument
+    for (auto it = m_pNewArguments.begin(); it != m_pNewArguments.end(); ++it)
+    {
+        it->first->replaceAllUsesWith(it->second);
+    }
 
-	CleanPlaceHoldersArgs();
+    CleanPlaceHoldersArgs();
 
-	pFunctionRebuild->copyAttributesFrom(m_pFunction);
-	pFunctionRebuild->setSubprogram(m_pFunction->getSubprogram());
-	m_pFunction->setSubprogram(nullptr);
-	pFunctionRebuild->takeName(m_pFunction);
+    pFunctionRebuild->copyAttributesFrom(m_pFunction);
+    pFunctionRebuild->setSubprogram(m_pFunction->getSubprogram());
+    m_pFunction->setSubprogram(nullptr);
+    pFunctionRebuild->takeName(m_pFunction);
 
-	return pFunctionRebuild;
+    return pFunctionRebuild;
 }
 
 FunctionType* FunctionUpgrader::UpgradeFunctionTypeWithNewArgs()
 {
-	std::vector<Type*> args;
+    std::vector<Type*> args;
 
-	// Get from old function all arguments type
-	for (auto i = m_pFunction->arg_begin(); i != m_pFunction->arg_end(); ++i)
-	{
-		args.push_back(i->getType());
-	}
+    // Get from old function all arguments type
+    for (auto i = m_pFunction->arg_begin(); i != m_pFunction->arg_end(); ++i)
+    {
+        args.push_back(i->getType());
+    }
 
-	// Append new list arguments for new function
-	for (auto it = m_pNewArguments.begin(); it != m_pNewArguments.end(); ++it)
-	{
-		args.push_back(it->first->getType());
-	}
+    // Append new list arguments for new function
+    for (auto it = m_pNewArguments.begin(); it != m_pNewArguments.end(); ++it)
+    {
+        args.push_back(it->first->getType());
+    }
 
-	return FunctionType::get(m_pFunction->getReturnType(), args, m_pFunction->isVarArg());
+    return FunctionType::get(m_pFunction->getReturnType(), args, m_pFunction->isVarArg());
 }
 
 Function* FunctionUpgrader::UpgradeFunctionWithNewArgs()
 {
-	auto fType = UpgradeFunctionTypeWithNewArgs();
-	auto fModule = m_pFunction->getParent();
-	auto fName = m_pFunction->getName();
-	auto fLinkage = m_pFunction->getLinkage();
+    auto fType = UpgradeFunctionTypeWithNewArgs();
+    auto fModule = m_pFunction->getParent();
+    auto fName = m_pFunction->getName();
+    auto fLinkage = m_pFunction->getLinkage();
 
-	// Create a new function 
-	Function* pNewFunc =
-		Function::Create(
-			fType,
-			fLinkage,
-			fName);
+    // Create a new function 
+    Function* pNewFunc =
+        Function::Create(
+            fType,
+            fLinkage,
+            fName);
 
-	fModule->getFunctionList().insert(m_pFunction->getIterator(), pNewFunc);
+    fModule->getFunctionList().insert(m_pFunction->getIterator(), pNewFunc);
 
-	// rename all args
-	auto i_arg_old = m_pFunction->arg_begin();
-	auto i_arg_new = pNewFunc->arg_begin();
+    // rename all args
+    auto i_arg_old = m_pFunction->arg_begin();
+    auto i_arg_new = pNewFunc->arg_begin();
 
-	// Map old -> new args
-	// and setname for new func args from old func args
-	for (; i_arg_old != m_pFunction->arg_end(); ++i_arg_old, ++i_arg_new)
-	{
+    // Map old -> new args
+    // and setname for new func args from old func args
+    for (; i_arg_old != m_pFunction->arg_end(); ++i_arg_old, ++i_arg_new)
+    {
 #if LLVM_VERSION_MAJOR == 4
-		auto arg_it = &*i_arg_old;
+        auto arg_it = &*i_arg_old;
 #elif LLVM_VERSION_MAJOR >= 7
-		auto arg_it = i_arg_old;
+        auto arg_it = i_arg_old;
 #endif
-		i_arg_new->takeName(arg_it);
-	}
-	// setname for new func args which was added as new one
-	for (auto it = m_pNewArguments.begin(); it != m_pNewArguments.end(); ++it)
-	{
+        i_arg_new->takeName(arg_it);
+    }
+    // setname for new func args which was added as new one
+    for (auto it = m_pNewArguments.begin(); it != m_pNewArguments.end(); ++it)
+    {
 #if LLVM_VERSION_MAJOR == 4
-		auto arg_it = &*i_arg_new;
+        auto arg_it = &*i_arg_new;
 #elif LLVM_VERSION_MAJOR >= 7
-		auto arg_it = i_arg_new;
+        auto arg_it = i_arg_new;
 #endif
-		//add to map pointer of the new argument
-		m_pNewArguments[it->first] = arg_it;
-		
-		m_pNewArguments[it->first]->takeName(it->first);
+        //add to map pointer of the new argument
+        m_pNewArguments[it->first] = arg_it;
+        
+        m_pNewArguments[it->first]->takeName(it->first);
 
-		++i_arg_new;
-	}
+        ++i_arg_new;
+    }
 
-	pNewFunc->getBasicBlockList().splice(pNewFunc->begin(), m_pFunction->getBasicBlockList());
+    pNewFunc->getBasicBlockList().splice(pNewFunc->begin(), m_pFunction->getBasicBlockList());
 
-	return pNewFunc;
+    return pNewFunc;
 }
 
 void FunctionUpgrader::CleanPlaceHoldersArgs()
 {
-	for (auto it = m_pNewArguments.begin(); it != m_pNewArguments.end(); ++it)
-	{
-		// Remove all place holder stuff from new func
-		LoadInst* pPlaceHolderArg = it->first;
-		AllocaInst* pPlaceHolderArgAlloc = cast<AllocaInst>(pPlaceHolderArg->getPointerOperand());
-		
-		pPlaceHolderArg->eraseFromParent();
-		pPlaceHolderArgAlloc->eraseFromParent();
-	}
+    for (auto it = m_pNewArguments.begin(); it != m_pNewArguments.end(); ++it)
+    {
+        // Remove all place holder stuff from new func
+        LoadInst* pPlaceHolderArg = it->first;
+        AllocaInst* pPlaceHolderArgAlloc = cast<AllocaInst>(pPlaceHolderArg->getPointerOperand());
+        
+        pPlaceHolderArg->eraseFromParent();
+        pPlaceHolderArgAlloc->eraseFromParent();
+    }
 }
 
 int FunctionUpgrader::SizeArgFromRebuild()
 {
-	return m_pNewArguments.size();
+    return m_pNewArguments.size();
 }
 
 bool FunctionUpgrader::NeedToRebuild()
 {
-	return m_pNewArguments.size() > 0;
+    return m_pNewArguments.size() > 0;
 }

@@ -57,14 +57,14 @@ void readNode(T &t, MDNode* node, StringRef name);
 namespace IGC 
 {
     bool operator < (const ConstantAddress &a, const ConstantAddress &b)
-	{
-		if (a.bufId < b.bufId)
-			return true;
-		else if (a.bufId == b.bufId)
-			return (a.eltId < b.eltId);
+    {
+        if (a.bufId < b.bufId)
+            return true;
+        else if (a.bufId == b.bufId)
+            return (a.eltId < b.eltId);
 
-		return false;
-	}
+        return false;
+    }
 }
 
 // non-autogen functions implementations below
@@ -103,13 +103,13 @@ MDNode* CreateNode(unsigned i, Module* module, StringRef name)
 
 MDNode* CreateNode(uint64_t i, Module* module, StringRef name)
 {
-	Metadata* v[] =
-	{
-		MDString::get(module->getContext(), name),
-		ValueAsMetadata::get(ConstantInt::get(Type::getInt64Ty(module->getContext()), i)),
-	};
-	MDNode* node = MDNode::get(module->getContext(), v);
-	return node;
+    Metadata* v[] =
+    {
+        MDString::get(module->getContext(), name),
+        ValueAsMetadata::get(ConstantInt::get(Type::getInt64Ty(module->getContext()), i)),
+    };
+    MDNode* node = MDNode::get(module->getContext(), v);
+    return node;
 }
 
 MDNode* CreateNode(const std::string &s, Module* module, StringRef name)
@@ -209,9 +209,9 @@ void readNode(unsigned char &b, MDNode* node)
 
 void readNode(char &b, MDNode* node)
 {
-	ValueAsMetadata* pVal = cast<ValueAsMetadata>(node->getOperand(1));
-	b = (char)cast<ConstantInt>(pVal->getValue())->getZExtValue();
-	return;
+    ValueAsMetadata* pVal = cast<ValueAsMetadata>(node->getOperand(1));
+    b = (char)cast<ConstantInt>(pVal->getValue())->getZExtValue();
+    return;
 }
 
 
@@ -252,9 +252,9 @@ void readNode(unsigned &x, MDNode* node)
 
 void readNode(uint64_t &x, MDNode* node)
 {
-	ValueAsMetadata* pVal = cast<ValueAsMetadata>(node->getOperand(1));
-	x = (uint64_t)cast<ConstantInt>(pVal->getValue())->getZExtValue();
-	return;
+    ValueAsMetadata* pVal = cast<ValueAsMetadata>(node->getOperand(1));
+    x = (uint64_t)cast<ConstantInt>(pVal->getValue())->getZExtValue();
+    return;
 }
 
 void readNode(Value* &val, MDNode* node)
@@ -329,8 +329,8 @@ void readNode(T &t, MDNode* node, StringRef name)
 
 void IGC::deserialize(IGC::ModuleMetaData &deserializeMD, const Module* module)
 {
-	IGC::ModuleMetaData temp;
-	deserializeMD = temp;
+    IGC::ModuleMetaData temp;
+    deserializeMD = temp;
     NamedMDNode* root = module->getNamedMetadata("IGCMetadata");
     if (!root) { return; } //module has not been serialized with IGCMetadata yet
     MDNode* moduleRoot = root->getOperand(0);

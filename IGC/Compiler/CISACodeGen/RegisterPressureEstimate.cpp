@@ -433,20 +433,20 @@ namespace IGC
             if (LI->isLoopHeader(BB))
             {
                 Loop *L = LI->getLoopFor(BB);
-				if (L != nullptr)
-				{
-					if (BasicBlock *Latch = L->getLoopLatch())
-					{
-						for (auto I = Live.begin(), E = Live.end(); I != E; ++I)
-						{
-							unsigned End = m_pNumbers[&Latch->back()] + 1;
-							if (auto LR = getLiveRangeOrNull(*I))
-							{
-								LR->addSegment(BlockNum, End);
-							}
-						}
-					}
-				}
+                if (L != nullptr)
+                {
+                    if (BasicBlock *Latch = L->getLoopLatch())
+                    {
+                        for (auto I = Live.begin(), E = Live.end(); I != E; ++I)
+                        {
+                            unsigned End = m_pNumbers[&Latch->back()] + 1;
+                            if (auto LR = getLiveRangeOrNull(*I))
+                            {
+                                LR->addSegment(BlockNum, End);
+                            }
+                        }
+                    }
+                }
                 else
                 {
                     // Just set unavailable of live range info for now.

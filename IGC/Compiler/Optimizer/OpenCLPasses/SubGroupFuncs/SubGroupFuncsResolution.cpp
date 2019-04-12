@@ -53,7 +53,7 @@ const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_BARRIER            = "_
 const llvm::StringRef SubGroupFuncsResolution::GET_MAX_SUB_GROUP_SIZE       = "__builtin_IB_get_simd_size";
 const llvm::StringRef SubGroupFuncsResolution::GET_SUB_GROUP_LOCAL_ID       = "__builtin_IB_get_simd_id";
 const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE            = "__builtin_IB_simd_shuffle";
-const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_US			= "__builtin_IB_simd_shuffle_us";
+const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_US            = "__builtin_IB_simd_shuffle_us";
 const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_F          = "__builtin_IB_simd_shuffle_f";
 const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_H          = "__builtin_IB_simd_shuffle_h";
 const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_B          = "__builtin_IB_simd_shuffle_b";
@@ -174,7 +174,7 @@ SubGroupFuncsResolution::SubGroupFuncsResolution(void) : FunctionPass( ID )
 
 bool SubGroupFuncsResolution::runOnFunction( Function &F )
 {
-	m_pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    m_pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
     m_argIndexMap.clear();
     m_instsToDelete.clear();
@@ -294,16 +294,16 @@ void SubGroupFuncsResolution::simdBlockRead(llvm::CallInst &CI)
 {
     // Creates intrinsics that will be lowered in the CodeGen and will handle the simd_block_read
     LLVMContext& C = CI.getCalledFunction()->getContext();
-	Value* Ptr = CI.getArgOperand(0);
-	PointerType* PtrTy = dyn_cast<PointerType>(Ptr->getType());
-	assert(PtrTy && "simdBlockRead has non-pointer type!");
+    Value* Ptr = CI.getArgOperand(0);
+    PointerType* PtrTy = dyn_cast<PointerType>(Ptr->getType());
+    assert(PtrTy && "simdBlockRead has non-pointer type!");
     SmallVector<Value*, 1> args;
     args.push_back(Ptr);
     SmallVector<Type*, 2>  types; 
     types.push_back(nullptr); types.push_back(nullptr);
     GenISAIntrinsic::ID  genIntrinID = GenISAIntrinsic::GenISA_simdBlockRead;
-	ADDRESS_SPACE AS = (ADDRESS_SPACE)PtrTy->getAddressSpace();
-	bool supportLocal = false;
+    ADDRESS_SPACE AS = (ADDRESS_SPACE)PtrTy->getAddressSpace();
+    bool supportLocal = false;
     if (AS == ADDRESS_SPACE_LOCAL && !supportLocal)
     {
         m_pCtx->EmitError("BlockReadLocal not supported!");
@@ -367,11 +367,11 @@ void SubGroupFuncsResolution::simdBlockRead(llvm::CallInst &CI)
 void SubGroupFuncsResolution::simdBlockWrite(llvm::CallInst &CI)
 {
     LLVMContext& C = CI.getCalledFunction()->getContext();
-	Value* Ptr = CI.getArgOperand(0);
-	PointerType* PtrTy = dyn_cast<PointerType>(Ptr->getType());
-	assert(PtrTy && "simdBlockWrite has non-pointer type!");
-	ADDRESS_SPACE AS = (ADDRESS_SPACE)PtrTy->getAddressSpace();
-	bool supportLocal = false;
+    Value* Ptr = CI.getArgOperand(0);
+    PointerType* PtrTy = dyn_cast<PointerType>(Ptr->getType());
+    assert(PtrTy && "simdBlockWrite has non-pointer type!");
+    ADDRESS_SPACE AS = (ADDRESS_SPACE)PtrTy->getAddressSpace();
+    bool supportLocal = false;
     if (AS == ADDRESS_SPACE_LOCAL && !supportLocal)
     {
         m_pCtx->EmitError("BlockWriteLocal not supported!");
@@ -510,7 +510,7 @@ void SubGroupFuncsResolution::visitCallInst( CallInst &CI )
         CI.eraseFromParent();
     }
     else if ( funcName.equals( SubGroupFuncsResolution::SUB_GROUP_SHUFFLE )    ||
-			  funcName.equals( SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_US ) ||
+              funcName.equals( SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_US ) ||
               funcName.equals( SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_F ) ||
               funcName.equals( SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_H ) ||
               funcName.equals( SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_B ) || 
@@ -569,13 +569,13 @@ void SubGroupFuncsResolution::visitCallInst( CallInst &CI )
               funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_READ_2_GBL_L ) ||
               funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_READ_4_GBL_L ) ||
               funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_READ_8_GBL_L ) )
-	{
-		simdBlockRead(CI);
-	}
-	else if ( funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_WRITE_1_GBL ) ||
-		      funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_WRITE_2_GBL ) ||
-		      funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_WRITE_4_GBL ) ||
-		      funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_WRITE_8_GBL ) ||
+    {
+        simdBlockRead(CI);
+    }
+    else if ( funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_WRITE_1_GBL ) ||
+              funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_WRITE_2_GBL ) ||
+              funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_WRITE_4_GBL ) ||
+              funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_WRITE_8_GBL ) ||
               funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_WRITE_1_GBL_B ) ||
               funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_WRITE_2_GBL_B ) ||
               funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_WRITE_4_GBL_B ) ||
@@ -590,9 +590,9 @@ void SubGroupFuncsResolution::visitCallInst( CallInst &CI )
               funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_WRITE_2_GBL_L ) ||
               funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_WRITE_4_GBL_L ) ||
               funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_WRITE_8_GBL_L ) )
-	{
-		simdBlockWrite(CI);
-	}
+    {
+        simdBlockWrite(CI);
+    }
     else if ( funcName.equals( SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_1 ) ||
               funcName.equals( SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_2 ) ||
               funcName.equals( SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_4 ) ||
@@ -666,7 +666,7 @@ void SubGroupFuncsResolution::visitCallInst( CallInst &CI )
             CI.getCalledFunction()->getReturnType());
 
         auto* MediaBlockRead = cast<GenIntrinsicInst>(
-			CallInst::Create(MediaBlockReadFunc, args, "", &CI));
+            CallInst::Create(MediaBlockReadFunc, args, "", &CI));
         MediaBlockRead->setDebugLoc(CI.getDebugLoc());
 
         CheckMediaBlockInstError(MediaBlockRead, true);
@@ -709,7 +709,7 @@ void SubGroupFuncsResolution::visitCallInst( CallInst &CI )
             CI.getArgOperand(4)->getType());
 
         auto* MediaBlockWrite = cast<GenIntrinsicInst>(
-			CallInst::Create(MediaBlockWriteFunc, args, "", &CI));
+            CallInst::Create(MediaBlockWriteFunc, args, "", &CI));
         MediaBlockWrite->setDebugLoc(CI.getDebugLoc());
 
         CheckMediaBlockInstError(MediaBlockWrite, false);
@@ -899,21 +899,21 @@ void SubGroupFuncsResolution::CheckMediaBlockInstError(llvm::GenIntrinsicInst* i
             return;
         }
 
-		if (subGrpSize != 0)
-		{
-			uint maxIOSize = subGrpSize * ((uint)DL->getTypeSizeInBits(pDataType) / 8);
+        if (subGrpSize != 0)
+        {
+            uint maxIOSize = subGrpSize * ((uint)DL->getTypeSizeInBits(pDataType) / 8);
 
-			if (IOSize > maxIOSize)
-			{
-				std::string output;
-				raw_string_ostream S(output);
-				S << builtinPrefix << "*() attempt of " << IOSize <<
-					" bytes.  Must be <= " << maxIOSize << " bytes.";
-				S.flush();
-				m_pCtx->EmitError(output.c_str());
-				return;
-			}
-		}
+            if (IOSize > maxIOSize)
+            {
+                std::string output;
+                raw_string_ostream S(output);
+                S << builtinPrefix << "*() attempt of " << IOSize <<
+                    " bytes.  Must be <= " << maxIOSize << " bytes.";
+                S.flush();
+                m_pCtx->EmitError(output.c_str());
+                return;
+            }
+        }
 
         if (widthInBytes % 4 != 0)
         {

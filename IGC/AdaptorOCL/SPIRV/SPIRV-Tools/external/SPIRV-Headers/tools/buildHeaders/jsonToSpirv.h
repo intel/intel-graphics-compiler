@@ -77,7 +77,7 @@ enum OperandClass {
     OperandMemorySemantics,
     OperandMemoryAccess,
     OperandScope,
-	OperandGroupOperation,
+    OperandGroupOperation,
     OperandKernelEnqueueFlags,
     OperandKernelProfilingInfo,
     OperandCapability,

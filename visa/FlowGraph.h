@@ -73,18 +73,18 @@ private:
     G4_BB*   exitBB;    // the exit node
     unsigned callCount; // the number of call sites
 
-	std::vector<G4_BB*>  BBList;      // the list of BBs
-	std::list<FuncInfo *>  callees; // the list of callees
-	unsigned scopeID;               // the function scope ID
+    std::vector<G4_BB*>  BBList;      // the list of BBs
+    std::list<FuncInfo *>  callees; // the list of callees
+    unsigned scopeID;               // the function scope ID
 
-	bool visited;
-	unsigned preID;
-	unsigned postID;
+    bool visited;
+    unsigned preID;
+    unsigned postID;
 
 public:
 
     FuncInfo(unsigned p_id, G4_BB* p_initBB, G4_BB* p_exitBB)
-		: id(p_id), initBB(p_initBB), exitBB(p_exitBB), callCount(1), scopeID(0), visited(false), preID(0), postID(0)
+        : id(p_id), initBB(p_initBB), exitBB(p_exitBB), callCount(1), scopeID(0), visited(false), preID(0), postID(0)
     {
     }
 
@@ -131,65 +131,65 @@ public:
         exitBB = p_exitBB;
     }
 
-	void addCallee(FuncInfo *fn)
-	{
-		callees.push_back(fn);
-	}
+    void addCallee(FuncInfo *fn)
+    {
+        callees.push_back(fn);
+    }
 
-	std::list<FuncInfo *>&  getCallees()
-	{
-		return callees;
-	}
+    std::list<FuncInfo *>&  getCallees()
+    {
+        return callees;
+    }
 
-	void addBB(G4_BB* bb)
-	{
-		BBList.push_back(bb);
-	}
+    void addBB(G4_BB* bb)
+    {
+        BBList.push_back(bb);
+    }
 
-	std::vector<G4_BB*>&  getBBList()
-	{
-		return BBList;
-	}
+    std::vector<G4_BB*>&  getBBList()
+    {
+        return BBList;
+    }
 
-	unsigned getScopeID()
-	{
-		return scopeID;
-	}
+    unsigned getScopeID()
+    {
+        return scopeID;
+    }
 
-	void setScopeID(unsigned id)
-	{
-		scopeID = id;
-	}
+    void setScopeID(unsigned id)
+    {
+        scopeID = id;
+    }
 
-	bool getVisited()
-	{
-		return visited;
-	}
+    bool getVisited()
+    {
+        return visited;
+    }
 
-	void setVisited()
-	{
-		visited = true;
-	}
+    void setVisited()
+    {
+        visited = true;
+    }
 
-	unsigned getPreID()
-	{
-		return preID;
-	}
+    unsigned getPreID()
+    {
+        return preID;
+    }
 
-	void setPreID(unsigned id)
-	{
-		preID = id;
-	}
+    void setPreID(unsigned id)
+    {
+        preID = id;
+    }
 
-	unsigned getPostID()
-	{
-		return postID;
-	}
+    unsigned getPostID()
+    {
+        return postID;
+    }
 
-	void setPostID(unsigned id)
-	{
-		postID = id;
-	}
+    void setPostID(unsigned id)
+    {
+        postID = id;
+    }
 
     void dump() const;
 };
@@ -1006,7 +1006,7 @@ public:
 
     void markRPOTraversal();
 
-	void DFSTraverse(G4_BB* bb, unsigned &preId, unsigned &postId, FuncInfo* fn);
+    void DFSTraverse(G4_BB* bb, unsigned &preId, unsigned &postId, FuncInfo* fn);
 
     void findBackEdges();
 

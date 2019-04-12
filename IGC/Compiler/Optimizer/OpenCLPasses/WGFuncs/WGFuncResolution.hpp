@@ -48,7 +48,7 @@ namespace IGC
         ~WGFuncResolution() {}
 
         /// @brief  Provides name of pass
-		virtual llvm::StringRef getPassName() const override
+        virtual llvm::StringRef getPassName() const override
         {
             return "WGFuncResolution";
         }

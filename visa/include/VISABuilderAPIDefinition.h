@@ -132,8 +132,8 @@ public:
     /// GetPredefinedSurface - return a handle to a predefined surface (e.g., SLM surface)
     CM_BUILDER_API virtual int GetPredefinedSurface(VISA_SurfaceVar *&surfDcl, PreDefined_Surface surfaceName) = 0;
 
-	/// GetBindlessSampler - return the pre-defined bindless sampler index
-	CM_BUILDER_API virtual int GetBindlessSampler(VISA_SamplerVar *&samplerDcl) = 0;
+    /// GetBindlessSampler - return the pre-defined bindless sampler index
+    CM_BUILDER_API virtual int GetBindlessSampler(VISA_SamplerVar *&samplerDcl) = 0;
     /********** CREATE VARIALBE APIS END ******************/
 
     /********** CREATE OPERAND APIS START ******************/

@@ -154,45 +154,45 @@ void PeepholeTypeLegalizer::legalizePhiInstruction(Instruction &I)
     unsigned quotient, promoteToInt;
     promoteInt(srcWidth, quotient, promoteToInt, DL->getLargestLegalIntTypeSizeInBits());
 
-	PHINode* oldPhi = dyn_cast<PHINode>(&I);
-	Value* result;
+    PHINode* oldPhi = dyn_cast<PHINode>(&I);
+    Value* result;
 
-	if (quotient > 1)
-	{
-		unsigned numElements = I.getType()->isVectorTy() ? I.getType()->getVectorNumElements() : 1;
-		Type* newType = VectorType::get(Type::getIntNTy(I.getContext(), promoteToInt), quotient * numElements);
+    if (quotient > 1)
+    {
+        unsigned numElements = I.getType()->isVectorTy() ? I.getType()->getVectorNumElements() : 1;
+        Type* newType = VectorType::get(Type::getIntNTy(I.getContext(), promoteToInt), quotient * numElements);
 
-		PHINode* newPhi = m_builder->CreatePHI(newType, oldPhi->getNumIncomingValues());
-		for (unsigned i = 0; i < oldPhi->getNumIncomingValues(); i++)
-		{
-			Value* incomingValue = oldPhi->getIncomingValue(i);
+        PHINode* newPhi = m_builder->CreatePHI(newType, oldPhi->getNumIncomingValues());
+        for (unsigned i = 0; i < oldPhi->getNumIncomingValues(); i++)
+        {
+            Value* incomingValue = oldPhi->getIncomingValue(i);
 
-			// bitcast each incoming value to the legal type
-			Value* newValue = BitCastInst::Create(Instruction::BitCast, incomingValue, newType, "", oldPhi->getIncomingBlock(i)->getTerminator());
-			newPhi->addIncoming(newValue, oldPhi->getIncomingBlock(i));
-		}
-		// Cast back to original type
-		m_builder->SetInsertPoint(newPhi->getParent()->getFirstNonPHI());
-		result = m_builder->CreateBitCast(newPhi, oldPhi->getType());
-	}
-	else
-	{
-		// quotient == 1 (integer promotion)
-		Type* newType = Type::getIntNTy(I.getContext(), promoteToInt);
-		PHINode* newPhi = m_builder->CreatePHI(newType, oldPhi->getNumIncomingValues());
-		for (unsigned i = 0; i < oldPhi->getNumIncomingValues(); i++)
-		{
-			Value* incomingValue = oldPhi->getIncomingValue(i);
-			m_builder->SetInsertPoint(oldPhi->getIncomingBlock(i)->getTerminator());
-			Value* newValue = m_builder->CreateZExt(incomingValue, newType);
-			newPhi->addIncoming(newValue, oldPhi->getIncomingBlock(i));
-		}
-		// Cast back to original type
-		m_builder->SetInsertPoint(newPhi->getParent()->getFirstNonPHI());
-		result = m_builder->CreateTrunc(newPhi, oldPhi->getType());
-	}
-	oldPhi->replaceAllUsesWith(result);
-	oldPhi->eraseFromParent();
+            // bitcast each incoming value to the legal type
+            Value* newValue = BitCastInst::Create(Instruction::BitCast, incomingValue, newType, "", oldPhi->getIncomingBlock(i)->getTerminator());
+            newPhi->addIncoming(newValue, oldPhi->getIncomingBlock(i));
+        }
+        // Cast back to original type
+        m_builder->SetInsertPoint(newPhi->getParent()->getFirstNonPHI());
+        result = m_builder->CreateBitCast(newPhi, oldPhi->getType());
+    }
+    else
+    {
+        // quotient == 1 (integer promotion)
+        Type* newType = Type::getIntNTy(I.getContext(), promoteToInt);
+        PHINode* newPhi = m_builder->CreatePHI(newType, oldPhi->getNumIncomingValues());
+        for (unsigned i = 0; i < oldPhi->getNumIncomingValues(); i++)
+        {
+            Value* incomingValue = oldPhi->getIncomingValue(i);
+            m_builder->SetInsertPoint(oldPhi->getIncomingBlock(i)->getTerminator());
+            Value* newValue = m_builder->CreateZExt(incomingValue, newType);
+            newPhi->addIncoming(newValue, oldPhi->getIncomingBlock(i));
+        }
+        // Cast back to original type
+        m_builder->SetInsertPoint(newPhi->getParent()->getFirstNonPHI());
+        result = m_builder->CreateTrunc(newPhi, oldPhi->getType());
+    }
+    oldPhi->replaceAllUsesWith(result);
+    oldPhi->eraseFromParent();
 }
 
 void PeepholeTypeLegalizer::legalizeExtractElement(Instruction &I)
@@ -421,22 +421,22 @@ void PeepholeTypeLegalizer::legalizeBinaryOperator(Instruction &I) {
         case Instruction::ICmp:
         {
             CmpInst* cmpInst = cast<ICmpInst>(&I);
-			if (cmpInst->isSigned())
-			{
-				// Must use sext [note that NewLargeSrc1/2 are zext]
-				int shiftAmt = promoteToInt - Src1width;
-				assert(shiftAmt > 0 && "Should not happen, something wrong!");
-				Value *V1 = m_builder->CreateShl(NewLargeSrc1, shiftAmt);
-				Value *PromotedSrc1 = m_builder->CreateAShr(V1, shiftAmt);
-				Value *V2 = m_builder->CreateShl(NewLargeSrc2, shiftAmt);
-				Value *PromotedSrc2 = m_builder->CreateAShr(V2, shiftAmt);
-				NewLargeRes = m_builder->CreateICmp(cmpInst->getPredicate(), PromotedSrc1, PromotedSrc2);
-			}
-			else
-			{
-				NewLargeRes = m_builder->CreateICmp(cmpInst->getPredicate(), NewLargeSrc1, NewLargeSrc2);
-			}
-			NewIllegal = NewLargeRes;
+            if (cmpInst->isSigned())
+            {
+                // Must use sext [note that NewLargeSrc1/2 are zext]
+                int shiftAmt = promoteToInt - Src1width;
+                assert(shiftAmt > 0 && "Should not happen, something wrong!");
+                Value *V1 = m_builder->CreateShl(NewLargeSrc1, shiftAmt);
+                Value *PromotedSrc1 = m_builder->CreateAShr(V1, shiftAmt);
+                Value *V2 = m_builder->CreateShl(NewLargeSrc2, shiftAmt);
+                Value *PromotedSrc2 = m_builder->CreateAShr(V2, shiftAmt);
+                NewLargeRes = m_builder->CreateICmp(cmpInst->getPredicate(), PromotedSrc1, PromotedSrc2);
+            }
+            else
+            {
+                NewLargeRes = m_builder->CreateICmp(cmpInst->getPredicate(), NewLargeSrc1, NewLargeSrc2);
+            }
+            NewIllegal = NewLargeRes;
             break;
         }
         case Instruction::Select:

@@ -36,17 +36,17 @@ define <2 x float> @foo(<2 x i1> %cond, <2 x float> %trueVal, <2 x float> %false
 }
 
 ; CHECK-LABEL: foo
-; CHECK: 		%[[cond0:[a-zA-Z0-9_.]+]]	= extractelement <2 x i1> %cond, i32 0
-; CHECK-NEXT: 	%[[true0:[a-zA-Z0-9_.]+]]	= extractelement <2 x float> %trueVal, i32 0
-; CHECK-NEXT: 	%[[false0:[a-zA-Z0-9_.]+]] 	= extractelement <2 x float> %falseVal, i32 0
-; CHECK-NEXT: 	%[[sel0:[a-zA-Z0-9_.]+]]		= select i1 %[[cond0]], float %[[true0]], float %[[false0]]
-; CHECK-NEXT: 	%[[res0:[a-zA-Z0-9_.]+]]		= insertelement <2 x float> undef, float %[[sel0]], i32 0
-; CHECK-NEXT: 	%[[cond1:[a-zA-Z0-9_.]+]]	= extractelement <2 x i1> %cond, i32 1
-; CHECK-NEXT: 	%[[true1:[a-zA-Z0-9_.]+]]	= extractelement <2 x float> %trueVal, i32 1
-; CHECK-NEXT: 	%[[false1:[a-zA-Z0-9_.]+]] 	= extractelement <2 x float> %falseVal, i32 1
-; CHECK-NEXT: 	%[[sel1:[a-zA-Z0-9_.]+]] 	= select i1 %[[cond1]], float %[[true1]], float %[[false1]]
-; CHECK-NEXT: 	%[[res:[a-zA-Z0-9_.]+]] 		= insertelement <2 x float> %[[res0]], float %[[sel1]], i32 1
-; CHECK-NEXT: 	ret <2 x float> %[[res]]
+; CHECK:         %[[cond0:[a-zA-Z0-9_.]+]]    = extractelement <2 x i1> %cond, i32 0
+; CHECK-NEXT:     %[[true0:[a-zA-Z0-9_.]+]]    = extractelement <2 x float> %trueVal, i32 0
+; CHECK-NEXT:     %[[false0:[a-zA-Z0-9_.]+]]     = extractelement <2 x float> %falseVal, i32 0
+; CHECK-NEXT:     %[[sel0:[a-zA-Z0-9_.]+]]        = select i1 %[[cond0]], float %[[true0]], float %[[false0]]
+; CHECK-NEXT:     %[[res0:[a-zA-Z0-9_.]+]]        = insertelement <2 x float> undef, float %[[sel0]], i32 0
+; CHECK-NEXT:     %[[cond1:[a-zA-Z0-9_.]+]]    = extractelement <2 x i1> %cond, i32 1
+; CHECK-NEXT:     %[[true1:[a-zA-Z0-9_.]+]]    = extractelement <2 x float> %trueVal, i32 1
+; CHECK-NEXT:     %[[false1:[a-zA-Z0-9_.]+]]     = extractelement <2 x float> %falseVal, i32 1
+; CHECK-NEXT:     %[[sel1:[a-zA-Z0-9_.]+]]     = select i1 %[[cond1]], float %[[true1]], float %[[false1]]
+; CHECK-NEXT:     %[[res:[a-zA-Z0-9_.]+]]         = insertelement <2 x float> %[[res0]], float %[[sel1]], i32 1
+; CHECK-NEXT:     ret <2 x float> %[[res]]
 
 
 ; Check if scalar condition and values scalarized appropriately
@@ -55,15 +55,15 @@ define <2 x float> @bar(i1 %cond, <2 x float> %trueVal, <2 x float> %falseVal) {
   ret <2 x float> %res
 }
 ; CHECK-LABEL: bar
-; CHECK: 		%[[true0:[a-zA-Z0-9_.]+]]	= extractelement <2 x float> %trueVal, i32 0
-; CHECK-NEXT: 	%[[false0:[a-zA-Z0-9_.]+]] 	= extractelement <2 x float> %falseVal, i32 0
-; CHECK-NEXT: 	%[[sel0:[a-zA-Z0-9_.]+]]		= select i1 %cond, float %[[true0]], float %[[false0]]
-; CHECK-NEXT: 	%[[res0:[a-zA-Z0-9_.]+]]		= insertelement <2 x float> undef, float %[[sel0]], i32 0
-; CHECK-NEXT: 	%[[true1:[a-zA-Z0-9_.]+]] 	= extractelement <2 x float> %trueVal, i32 1
-; CHECK-NEXT: 	%[[false1:[a-zA-Z0-9_.]+]] 	= extractelement <2 x float> %falseVal, i32 1
-; CHECK-NEXT: 	%[[sel1:[a-zA-Z0-9_.]+]] 	= select i1 %cond, float %[[true1]], float %[[false1]]
-; CHECK-NEXT: 	%[[res:[a-zA-Z0-9_.]+]] 		= insertelement <2 x float> %[[res0]], float %[[sel1]], i32 1
-; CHECK-NEXT: 	ret <2 x float> %[[res]]
+; CHECK:         %[[true0:[a-zA-Z0-9_.]+]]    = extractelement <2 x float> %trueVal, i32 0
+; CHECK-NEXT:     %[[false0:[a-zA-Z0-9_.]+]]     = extractelement <2 x float> %falseVal, i32 0
+; CHECK-NEXT:     %[[sel0:[a-zA-Z0-9_.]+]]        = select i1 %cond, float %[[true0]], float %[[false0]]
+; CHECK-NEXT:     %[[res0:[a-zA-Z0-9_.]+]]        = insertelement <2 x float> undef, float %[[sel0]], i32 0
+; CHECK-NEXT:     %[[true1:[a-zA-Z0-9_.]+]]     = extractelement <2 x float> %trueVal, i32 1
+; CHECK-NEXT:     %[[false1:[a-zA-Z0-9_.]+]]     = extractelement <2 x float> %falseVal, i32 1
+; CHECK-NEXT:     %[[sel1:[a-zA-Z0-9_.]+]]     = select i1 %cond, float %[[true1]], float %[[false1]]
+; CHECK-NEXT:     %[[res:[a-zA-Z0-9_.]+]]         = insertelement <2 x float> %[[res0]], float %[[sel1]], i32 1
+; CHECK-NEXT:     ret <2 x float> %[[res]]
 
 !igc.functions = !{!0, !4}
 !0 = metadata !{<2 x float> (<2 x i1>, <2 x float>, <2 x float>)* @foo, metadata !1}

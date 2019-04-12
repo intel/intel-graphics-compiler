@@ -37,18 +37,18 @@ function(igc_resource_embed_file symbolFilesVarName symbolName embeddedFilePath)
   endif()
 
   if(CMAKE_SYSTEM_NAME MATCHES "Windows")
-	set(IGC_PYTHON "${BS_DIR_MIGRATION_BINARIES}/build-tools/python2-win32/python.exe")
+    set(IGC_PYTHON "${BS_DIR_MIGRATION_BINARIES}/build-tools/python2-win32/python.exe")
   else()
-	find_program(IGC_PYTHON NAMES "python2" "python")
+    find_program(IGC_PYTHON NAMES "python2" "python")
   endif()
 
   add_custom_command(OUTPUT "${_symbolFilePath}"
-							COMMAND "${CMAKE_COMMAND}" -E make_directory "${IGC_BUILD__BIF_EMBEDDER_DIR}"
-							COMMAND "${IGC_PYTHON}"
-							ARGS "${IGC_TOOLS_RESOURCE_LINKER}" "${embeddedFilePath}" "${_symbolFilePath}" "${symbolName}"
-							DEPENDS ${IGC_TOOLS_RESOURCE_LINKER} ${_dependency} ${ARGN}
-							COMMENT "Linking Builtins"
-					)
+                            COMMAND "${CMAKE_COMMAND}" -E make_directory "${IGC_BUILD__BIF_EMBEDDER_DIR}"
+                            COMMAND "${IGC_PYTHON}"
+                            ARGS "${IGC_TOOLS_RESOURCE_LINKER}" "${embeddedFilePath}" "${_symbolFilePath}" "${symbolName}"
+                            DEPENDS ${IGC_TOOLS_RESOURCE_LINKER} ${_dependency} ${ARGN}
+                            COMMENT "Linking Builtins"
+                    )
 
   set("${symbolFilesVarName}" "${${symbolFilesVarName}}" "${_symbolFilePath}" PARENT_SCOPE)
 endfunction()

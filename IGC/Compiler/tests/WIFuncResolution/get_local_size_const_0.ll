@@ -42,6 +42,6 @@ define i32 @foo(i32 %dim, <8 x i32> %r0, <8 x i32> %payloadHeader, <3 x i32> %lo
 !5 = !{i32 1}
 !6 = !{i32 5}
 
-; CHECK: 		[[local_size:%[a-zA-Z0-9]+]] = extractelement <3 x i32> %localSize, i32 0
+; CHECK:         [[local_size:%[a-zA-Z0-9]+]] = extractelement <3 x i32> %localSize, i32 0
 
-; CHECK-NOT: 	call i32 @__builtin_IB_get_local_size(i32 0)
+; CHECK-NOT:     call i32 @__builtin_IB_get_local_size(i32 0)

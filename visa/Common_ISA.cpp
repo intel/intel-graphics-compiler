@@ -191,7 +191,7 @@ const char* SAMPLE_OP_3D_NAME[VISA_3D_TOTAL_NUM_OPS] =
     "resinfo",     // 0xA
     "sampleinfo",  // 0xB
     "sample+killpix", // 0xC
-	"", "", "",
+    "", "", "",
     "sample4_c",   // 0x10
     "sample4_po",  // 0x11
     "sample4_po_c",// 0x12

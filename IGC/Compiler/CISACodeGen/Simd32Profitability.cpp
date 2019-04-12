@@ -440,7 +440,7 @@ unsigned Simd32ProfitabilityAnalysis::estimateLoopCount_CASE2(Loop *L) {
             // TODO: Handle more predicates.
             continue;
         case ICmpInst::ICMP_SLT:
-		case ICmpInst::ICMP_ULT:
+        case ICmpInst::ICMP_ULT:
             break;
         }
         Value *Op0 = Cmp->getOperand(0);
@@ -452,8 +452,8 @@ unsigned Simd32ProfitabilityAnalysis::estimateLoopCount_CASE2(Loop *L) {
             continue;
         ConstantInt *N = dyn_cast<ConstantInt>(
                 Pred == ICmpInst::ICMP_SLT
-			      ? ConstantExpr::getSDiv(ConstantExpr::getSub(E0, I0) , S0)
-			      : ConstantExpr::getUDiv(ConstantExpr::getSub(E0, I0), S0));
+                  ? ConstantExpr::getSDiv(ConstantExpr::getSub(E0, I0) , S0)
+                  : ConstantExpr::getUDiv(ConstantExpr::getSub(E0, I0), S0));
         if (!N)
             continue;
         if (N->getValue().slt(0))

@@ -440,28 +440,28 @@ void WIAnalysis::updateArgsDependency(llvm::Function *pF)
     for (unsigned i = 0; i < implicitArgs.size(); ++i, ++ai)
     {
         assert(ai != ae);
-		const ImplicitArg& iArg = implicitArgs[ai->getArgNo() - implicitArgStart];
-		WIAnalysis::WIDependancy dependency = iArg.getDependency();
-		if ((localX_uniform && iArg.getArgType() == ImplicitArg::ArgType::LOCAL_ID_X) ||
+        const ImplicitArg& iArg = implicitArgs[ai->getArgNo() - implicitArgStart];
+        WIAnalysis::WIDependancy dependency = iArg.getDependency();
+        if ((localX_uniform && iArg.getArgType() == ImplicitArg::ArgType::LOCAL_ID_X) ||
             (localY_uniform && iArg.getArgType() == ImplicitArg::ArgType::LOCAL_ID_Y) ||
-			(localZ_uniform && iArg.getArgType() == ImplicitArg::ArgType::LOCAL_ID_Z)) {
-			dependency = UNIFORM;
-		}
+            (localZ_uniform && iArg.getArgType() == ImplicitArg::ArgType::LOCAL_ID_Z)) {
+            dependency = UNIFORM;
+        }
 
         incUpdateDepend(&(*ai), dependency);
     }
 
     // 3. add push analysis args
-	if (!IsSubroutine)
-	{
-		for (unsigned i = 0; i < modMD->pushInfo.pushAnalysisWIInfos.size(); ++i, ++ai)
-		{
-			assert(ai != ae);
-			WIAnalysis::WIDependancy dependency =
-				static_cast<WIDependancy>(modMD->pushInfo.pushAnalysisWIInfos[i].argDependency);
-			incUpdateDepend(&(*ai), dependency);
-		}
-	}
+    if (!IsSubroutine)
+    {
+        for (unsigned i = 0; i < modMD->pushInfo.pushAnalysisWIInfos.size(); ++i, ++ai)
+        {
+            assert(ai != ae);
+            WIAnalysis::WIDependancy dependency =
+                static_cast<WIDependancy>(modMD->pushInfo.pushAnalysisWIInfos[i].argDependency);
+            incUpdateDepend(&(*ai), dependency);
+        }
+    }
 }
 
 WIAnalysis::WIDependancy WIAnalysis::whichDepend(const Value* val)

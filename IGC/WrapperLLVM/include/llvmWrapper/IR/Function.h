@@ -31,32 +31,32 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace IGCLLVM
 {
-	inline size_t GetFuncArgSize(llvm::Function* F)
-	{
+    inline size_t GetFuncArgSize(llvm::Function* F)
+    {
 #if LLVM_VERSION_MAJOR == 4
-		return F->getArgumentList().size();
+        return F->getArgumentList().size();
 #elif LLVM_VERSION_MAJOR >= 7
-		return F->arg_size();
+        return F->arg_size();
 #endif
-	}	
+    }    
 
-	inline size_t GetFuncArgSize(const llvm::Function* F)
-	{
+    inline size_t GetFuncArgSize(const llvm::Function* F)
+    {
 #if LLVM_VERSION_MAJOR == 4
-		return F->getArgumentList().size();
+        return F->getArgumentList().size();
 #elif LLVM_VERSION_MAJOR >= 7
-		return F->arg_size();
+        return F->arg_size();
 #endif
-	}
+    }
 
-	inline size_t GetFuncArgSize(const llvm::Function& F)
-	{
+    inline size_t GetFuncArgSize(const llvm::Function& F)
+    {
 #if LLVM_VERSION_MAJOR == 4
-		return F.getArgumentList().size();
+        return F.getArgumentList().size();
 #elif LLVM_VERSION_MAJOR >= 7
-		return F.arg_size();
+        return F.arg_size();
 #endif
-	}
+    }
 }
 
 #endif

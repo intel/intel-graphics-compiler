@@ -433,8 +433,8 @@ void AlignmentAnalysis::SetInstAlignment(MemSetInst &I)
     unsigned alignment = iSTD::Max(I.getAlignment(), getAlignValue(I.getRawDest()));
     I.setAlignment(ConstantInt::get(Type::getInt32Ty(I.getContext()), alignment));
 #elif LLVM_VERSION_MAJOR >= 7
-	unsigned alignment = iSTD::Max(I.getDestAlignment(), getAlignValue(I.getRawDest()));
-	I.setDestAlignment(alignment);
+    unsigned alignment = iSTD::Max(I.getDestAlignment(), getAlignValue(I.getRawDest()));
+    I.setDestAlignment(alignment);
 #endif
 }
 
@@ -446,8 +446,8 @@ void AlignmentAnalysis::SetInstAlignment(MemCpyInst &I)
     alignment = iSTD::Max(I.getAlignment(), alignment);
     I.setAlignment(ConstantInt::get(Type::getInt32Ty(I.getContext()), alignment));
 #elif LLVM_VERSION_MAJOR >= 7
-	alignment = iSTD::Max(I.getDestAlignment(), alignment);
-	I.setDestAlignment(alignment);
+    alignment = iSTD::Max(I.getDestAlignment(), alignment);
+    I.setDestAlignment(alignment);
 #endif
 }
 
@@ -459,8 +459,8 @@ void AlignmentAnalysis::SetInstAlignment(MemMoveInst &I)
     alignment = iSTD::Max(I.getAlignment(), alignment);
     I.setAlignment(ConstantInt::get(Type::getInt32Ty(I.getContext()), alignment));
 #elif LLVM_VERSION_MAJOR >= 7
-	alignment = iSTD::Max(I.getDestAlignment(), alignment);
-	I.setDestAlignment(alignment);
+    alignment = iSTD::Max(I.getDestAlignment(), alignment);
+    I.setDestAlignment(alignment);
 #endif
 }
 

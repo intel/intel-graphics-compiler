@@ -759,7 +759,7 @@ public:
     {
         inlineSamplerMD.m_Value = samplerValue;
         Module* M = m_pCallInst->getParent()->getModule();
-		if (llvm::StringRef(M->getTargetTriple()).startswith("igil") || llvm::StringRef(M->getTargetTriple()).startswith("gpu_64"))
+        if (llvm::StringRef(M->getTargetTriple()).startswith("igil") || llvm::StringRef(M->getTargetTriple()).startswith("gpu_64"))
         {
             inlineSamplerMD.addressMode = samplerValue & LEGACY_SAMPLER_ADDRESS_MASK;
             switch (samplerValue & LEGACY_SAMPLER_ADDRESS_MASK)
@@ -825,7 +825,7 @@ public:
             inlineSamplerMD.BorderColorB = (0.0f);
             inlineSamplerMD.BorderColorA = (0.0f);
         }
-		else if (llvm::StringRef(M->getTargetTriple()).startswith("spir"))
+        else if (llvm::StringRef(M->getTargetTriple()).startswith("spir"))
         {
             switch (samplerValue & SPIR_SAMPLER_ADDRESS_MASK)
             {

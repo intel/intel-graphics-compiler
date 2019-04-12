@@ -104,7 +104,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     }                                                                           \
                                                                                 \
     TYPE result = INTRINSIC( (Pointer), (Comp), (Value) );                      \
-																				\
+                                                                                \
     if( ( (Semantics) & ( SEMANTICS_POST_OP_NEEDS_FENCE ) ) > 0 )               \
     {                                                                           \
         __builtin_spirv_OpMemoryBarrier_i32_i32( (Scope), (Semantics) );        \
@@ -121,7 +121,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     }                                                                           \
                                                                                 \
     TYPE result = as_float(INTRINSIC( (Pointer), (Comp), (Value) ));                      \
-																				\
+                                                                                \
     if( ( (Semantics) & ( SEMANTICS_POST_OP_NEEDS_FENCE ) ) > 0 )               \
     {                                                                           \
         __builtin_spirv_OpMemoryBarrier_i32_i32( (Scope), (Semantics) );        \

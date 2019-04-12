@@ -79,22 +79,22 @@ bool InstPromoter::visitTerminatorInst(IGCLLVM::TerminatorInst &I) {
 
 bool InstPromoter::visitSelectInst (SelectInst &I) {
 
-	ValueSeq *Ops0, *Ops1;
-	std::tie(Ops0, std::ignore) = TL->getLegalizedValues(I.getOperand(1), true);
-	assert(Ops0->size() == 1);
-	// we should get value from Ops0 here, as next getLegalizedValues call may grow ValueMap object 
-	// when inserting new pair with ValueMap.insert(e.g.when ValueMap.NumBuckets grows from 64 to 128) 
-	// and previously received ValueSeq objects will become invalid.
-	Value *LHS = Ops0->front();
+    ValueSeq *Ops0, *Ops1;
+    std::tie(Ops0, std::ignore) = TL->getLegalizedValues(I.getOperand(1), true);
+    assert(Ops0->size() == 1);
+    // we should get value from Ops0 here, as next getLegalizedValues call may grow ValueMap object 
+    // when inserting new pair with ValueMap.insert(e.g.when ValueMap.NumBuckets grows from 64 to 128) 
+    // and previously received ValueSeq objects will become invalid.
+    Value *LHS = Ops0->front();
 
-	std::tie(Ops1, std::ignore) = TL->getLegalizedValues(I.getOperand(2), true);
-	assert(Ops1->size() == 1);
-	Value *RHS = Ops1->front();
+    std::tie(Ops1, std::ignore) = TL->getLegalizedValues(I.getOperand(2), true);
+    assert(Ops1->size() == 1);
+    Value *RHS = Ops1->front();
 
-	Promoted = IRB->CreateSelect(I.getOperand(0), LHS, RHS,
-		Twine(I.getName(), getSuffix()));
+    Promoted = IRB->CreateSelect(I.getOperand(0), LHS, RHS,
+        Twine(I.getName(), getSuffix()));
 
-	return true;
+    return true;
 }
 
 bool InstPromoter::visitICmpInst(ICmpInst &I)

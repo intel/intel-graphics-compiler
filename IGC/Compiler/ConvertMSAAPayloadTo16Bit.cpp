@@ -93,12 +93,12 @@ void ConvertMSAAPayloadTo16Bit::visitCallInst(CallInst &I)
                     GenISAIntrinsic::GenISA_ldmcsptr,
                     llvm::ArrayRef<Type*>(types_ldmcs, 3));
 
-			   m_builder->SetInsertPoint(ldmcs);
+               m_builder->SetInsertPoint(ldmcs);
                Value * packed_tex_params_ldmcs[] = {
                     m_builder->CreateTrunc(ldmcs->getOperand(0), coordType),
-					m_builder->CreateTrunc(ldmcs->getOperand(1), coordType),
-					m_builder->CreateTrunc(ldmcs->getOperand(2), coordType),
-					m_builder->CreateTrunc(ldmcs->getOperand(3), coordType),
+                    m_builder->CreateTrunc(ldmcs->getOperand(1), coordType),
+                    m_builder->CreateTrunc(ldmcs->getOperand(2), coordType),
+                    m_builder->CreateTrunc(ldmcs->getOperand(3), coordType),
                     ldmcs->getOperand(4),
                     ldmcs->getOperand(5),
                     ldmcs->getOperand(6),

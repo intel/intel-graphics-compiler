@@ -326,9 +326,9 @@ void CShader::CreateImplicitArgs()
     ImplicitArgs implicitArgs(*entry, m_pMdUtils);
     unsigned numImplicitArgs = implicitArgs.size();
 
-	// Push Args are only for entry function
-	unsigned numPushArgsEntry = m_ModuleMetadata->pushInfo.pushAnalysisWIInfos.size();
-	unsigned numPushArgs = (isEntryFunc(m_pMdUtils, entry) ? numPushArgsEntry : 0);
+    // Push Args are only for entry function
+    unsigned numPushArgsEntry = m_ModuleMetadata->pushInfo.pushAnalysisWIInfos.size();
+    unsigned numPushArgs = (isEntryFunc(m_pMdUtils, entry) ? numPushArgsEntry : 0);
     unsigned numFuncArgs = IGCLLVM::GetFuncArgSize(entry) - numImplicitArgs - numPushArgs;
 
     llvm::Function::arg_iterator arg = entry->arg_begin();
@@ -462,9 +462,9 @@ void CShader::CreateGatherMap()
     gatherMap.reserve(pushInfo.constants.size());
     for(auto I = pushInfo.constants.begin(), E = pushInfo.constants.end();I!=E;I++)
     {
-		unsigned int address = (I->first.bufId * 256 * 4) + (I->first.eltId);
-		unsigned int cstOffset = address / 4;
-		unsigned int cstChannel = address % 4;
+        unsigned int address = (I->first.bufId * 256 * 4) + (I->first.eltId);
+        unsigned int cstOffset = address / 4;
+        unsigned int cstChannel = address % 4;
         if(cstOffset!=index)
         {
             USC::SConstantGatherEntry entry;
@@ -541,9 +541,9 @@ void CShader::CreateFuncSymbolToRegisterMap(llvm::Function* pFunc)
 
 void CShader::CacheArgumentsList()
 {
-	m_argListCache.clear();
-	for (auto arg = entry->arg_begin(); arg != entry->arg_end(); ++arg)
-		m_argListCache.push_back(&(*arg));
+    m_argListCache.clear();
+    for (auto arg = entry->arg_begin(); arg != entry->arg_end(); ++arg)
+        m_argListCache.push_back(&(*arg));
 }
 
 void CShader::MapPushedInputs()
@@ -1882,8 +1882,8 @@ CVariable* CShader::getOrCreateArgumentSymbol(llvm::Argument *Arg, bool useStack
     Function *F = Arg->getParent();
     ImplicitArgs implicitArgs(*F, m_pMdUtils);
     unsigned numImplicitArgs = implicitArgs.size();
-	unsigned numPushArgsEntry = m_ModuleMetadata->pushInfo.pushAnalysisWIInfos.size();
-	unsigned numPushArgs = (isEntryFunc(m_pMdUtils, F) ? numPushArgsEntry : 0);
+    unsigned numPushArgsEntry = m_ModuleMetadata->pushInfo.pushAnalysisWIInfos.size();
+    unsigned numPushArgs = (isEntryFunc(m_pMdUtils, F) ? numPushArgsEntry : 0);
     unsigned numFuncArgs = IGCLLVM::GetFuncArgSize(F) - numImplicitArgs - numPushArgs;
 
     CVariable* var = nullptr;
@@ -1914,18 +1914,18 @@ CVariable* CShader::getOrCreateArgumentSymbol(llvm::Argument *Arg, bool useStack
                    ArgType == ImplicitArg::ArgType::PRINTF_BUFFER ) )
             {
                 Function &K = *m_FGA->getSubGroupMap(F);
-				ImplicitArgs IAs(K, m_pMdUtils);
-				uint32_t nIAs = (uint32_t)IAs.size();
+                ImplicitArgs IAs(K, m_pMdUtils);
+                uint32_t nIAs = (uint32_t)IAs.size();
                 uint32_t iArgIx = IAs.getArgIndex(ArgType);
-				uint32_t argIx = (uint32_t)IGCLLVM::GetFuncArgSize(K) - nIAs + iArgIx;
-				if (isEntryFunc(m_pMdUtils, &K)) {
-					argIx = argIx - numPushArgsEntry;
-				}
-				Function::arg_iterator arg = K.arg_begin();
-				for (uint32_t j = 0; j < argIx; ++j, ++arg);
-				Argument* kerArg = &(*arg);
+                uint32_t argIx = (uint32_t)IGCLLVM::GetFuncArgSize(K) - nIAs + iArgIx;
+                if (isEntryFunc(m_pMdUtils, &K)) {
+                    argIx = argIx - numPushArgsEntry;
+                }
+                Function::arg_iterator arg = K.arg_begin();
+                for (uint32_t j = 0; j < argIx; ++j, ++arg);
+                Argument* kerArg = &(*arg);
 
-				// Pre-condition: all kernel arguments have been created already.
+                // Pre-condition: all kernel arguments have been created already.
                 assert(pSymMap->count(kerArg));
                 return (*pSymMap)[kerArg];
             }

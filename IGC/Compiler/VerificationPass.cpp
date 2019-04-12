@@ -144,7 +144,7 @@ bool VerificationPass::verifyFunction(Function &F)
       if (!verifyInstruction(*inst))
       {
          success = false;
-		 break;
+         break;
       }
    }
 

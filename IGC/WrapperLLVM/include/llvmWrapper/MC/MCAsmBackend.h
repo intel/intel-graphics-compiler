@@ -37,8 +37,8 @@ using llvm::MCAsmBackend;
 class MCAsmBackend : public llvm::MCAsmBackend
 {
 public:
-	MCAsmBackend() :
-		llvm::MCAsmBackend(llvm::support::endianness::little) {}
+    MCAsmBackend() :
+        llvm::MCAsmBackend(llvm::support::endianness::little) {}
 };
 #endif
 }

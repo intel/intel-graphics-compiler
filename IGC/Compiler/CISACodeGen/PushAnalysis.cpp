@@ -119,19 +119,19 @@ template < typename T > std::string to_string(const T& n)
 
 Value* PushAnalysis::addArgumentAndMetadata(llvm::Type *pType, std::string argName, IGC::WIAnalysis::WIDependancy dependency)
 {
-	auto pArgInfo = m_pFuncUpgrade.AddArgument(argName, pType);
-	ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-	IGC::ArgDependencyInfoMD argDepInfoMD;
-	argDepInfoMD.argDependency = dependency;
-	modMD->pushInfo.pushAnalysisWIInfos.push_back(argDepInfoMD);
+    auto pArgInfo = m_pFuncUpgrade.AddArgument(argName, pType);
+    ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+    IGC::ArgDependencyInfoMD argDepInfoMD;
+    argDepInfoMD.argDependency = dependency;
+    modMD->pushInfo.pushAnalysisWIInfos.push_back(argDepInfoMD);
 
-	//Add it to arglist and increment Argument Index
-	m_argList.push_back(pArgInfo);
-	m_argIndex++;
+    //Add it to arglist and increment Argument Index
+    m_argList.push_back(pArgInfo);
+    m_argIndex++;
 
-	m_funcTypeChanged = true;
+    m_funcTypeChanged = true;
 
-	return pArgInfo;
+    return pArgInfo;
 }
 
 bool PushAnalysis::IsStatelessCBLoad(
@@ -604,19 +604,19 @@ unsigned int PushAnalysis::AllocatePushedConstant(
 {
     unsigned int size = load->getType()->getPrimitiveSizeInBits() / 8;
     assert(isa<LoadInst>(load) && "Expected a load instruction");
-	PushInfo &pushInfo = m_context->getModuleMetaData()->pushInfo;
+    PushInfo &pushInfo = m_context->getModuleMetaData()->pushInfo;
     
     bool canPromote = false;
     unsigned int sizeGrown = 0;
     // greedy allocation for now
     // first check if we are already pushing from the buffer
-	unsigned int piIndex;
-	bool cbIdxFound = false;
+    unsigned int piIndex;
+    bool cbIdxFound = false;
 
     //For stateless buffers, we store the GRFOffset into the simplePushInfoArr[piIndex].cbIdx
     //For stateful buffers, we store the bufferId into the simplePushInfoArr[piIndex].cbIdx
     //We traverse the array and identify which CB we're in based on either GFXOffset or bufferId
-	for (piIndex = 0; piIndex < pushInfo.simplePushBufferUsed; piIndex++)
+    for (piIndex = 0; piIndex < pushInfo.simplePushBufferUsed; piIndex++)
     {
         if (pushInfo.simplePushInfoArr[piIndex].cbIdx == cbIdxOrGRFOffset)
         {
@@ -624,23 +624,23 @@ unsigned int PushAnalysis::AllocatePushedConstant(
             break;
         }
     }
-	if(cbIdxFound)
+    if(cbIdxFound)
     {
-		unsigned int newStartOffset = iSTD::RoundDown(std::min(offset, pushInfo.simplePushInfoArr[piIndex].offset), getGRFSize());
-		unsigned int newEndOffset = iSTD::Round(std::max(offset + size, pushInfo.simplePushInfoArr[piIndex].offset + pushInfo.simplePushInfoArr[piIndex].size), getGRFSize());
+        unsigned int newStartOffset = iSTD::RoundDown(std::min(offset, pushInfo.simplePushInfoArr[piIndex].offset), getGRFSize());
+        unsigned int newEndOffset = iSTD::Round(std::max(offset + size, pushInfo.simplePushInfoArr[piIndex].offset + pushInfo.simplePushInfoArr[piIndex].size), getGRFSize());
         unsigned int newSize = newEndOffset - newStartOffset;
         
-		if (newSize - pushInfo.simplePushInfoArr[piIndex].size <= maxSizeAllowed)
+        if (newSize - pushInfo.simplePushInfoArr[piIndex].size <= maxSizeAllowed)
         {
             sizeGrown = newSize - pushInfo.simplePushInfoArr[piIndex].size;
             canPromote = true;
-			pushInfo.simplePushInfoArr[piIndex].offset = newStartOffset;
-			pushInfo.simplePushInfoArr[piIndex].size = newSize;
+            pushInfo.simplePushInfoArr[piIndex].offset = newStartOffset;
+            pushInfo.simplePushInfoArr[piIndex].size = newSize;
             pushInfo.simplePushInfoArr[piIndex].isStateless = isStateless;
         }
     }
 
-	const unsigned int maxNumberOfPushedBuffers = pushInfo.MaxNumberOfPushedBuffers;
+    const unsigned int maxNumberOfPushedBuffers = pushInfo.MaxNumberOfPushedBuffers;
 
     // we couldn't add it to an existing buffer try to add a new one if there is a slot available
     if(canPromote == false && 
@@ -656,10 +656,10 @@ unsigned int PushAnalysis::AllocatePushedConstant(
             canPromote = true;
             sizeGrown = newSize;
 
-			piIndex = pushInfo.simplePushBufferUsed;
-			pushInfo.simplePushInfoArr[piIndex].cbIdx = cbIdxOrGRFOffset;
-			pushInfo.simplePushInfoArr[piIndex].offset = newStartOffset;
-			pushInfo.simplePushInfoArr[piIndex].size = newSize;
+            piIndex = pushInfo.simplePushBufferUsed;
+            pushInfo.simplePushInfoArr[piIndex].cbIdx = cbIdxOrGRFOffset;
+            pushInfo.simplePushInfoArr[piIndex].offset = newStartOffset;
+            pushInfo.simplePushInfoArr[piIndex].size = newSize;
             pushInfo.simplePushInfoArr[piIndex].isStateless = isStateless;
             pushInfo.simplePushBufferUsed++;
         }
@@ -700,7 +700,7 @@ void PushAnalysis::PromoteLoadToSimplePush(Instruction* load, SimplePushInfo& in
         if(it != info.simplePushLoads.end())
         {
             // Value is already getting pushed
-			assert((it->second <= m_argIndex) && "Function arguments list and metadata are out of sync!");
+            assert((it->second <= m_argIndex) && "Function arguments list and metadata are out of sync!");
             value = m_argList[it->second];
             if(pTypeToPush != value->getType())
                 value = CastInst::CreateZExtOrBitCast(value, pTypeToPush, "", load);
@@ -1131,7 +1131,7 @@ void PushAnalysis::ProcessFunction()
     uint32_t vsUrbReadIndexForInstanceIdSGV = 0;
     bool vsHasConstantBufferIndexedWithInstanceId = false;
 
-	m_funcTypeChanged = false;	// Reset flag at the beginning of processing every function
+    m_funcTypeChanged = false;    // Reset flag at the beginning of processing every function
     if(m_context->type == ShaderType::VERTEX_SHADER)
     {
         llvm::NamedMDNode *pMetaData = m_pFunction->getParent()->getNamedMetadata("ConstantBufferIndexedWithInstanceId");
@@ -1153,8 +1153,8 @@ void PushAnalysis::ProcessFunction()
     if(m_context->type == ShaderType::DOMAIN_SHADER)
     {
         auto valueU = addArgumentAndMetadata(Type::getFloatTy(m_pFunction->getContext()), VALUE_NAME("DS_U"), WIAnalysis::RANDOM);
-		auto valueV = addArgumentAndMetadata(Type::getFloatTy(m_pFunction->getContext()), VALUE_NAME("DS_V"), WIAnalysis::RANDOM);
-		auto valueW = addArgumentAndMetadata(Type::getFloatTy(m_pFunction->getContext()), VALUE_NAME("DS_W"), WIAnalysis::RANDOM);
+        auto valueV = addArgumentAndMetadata(Type::getFloatTy(m_pFunction->getContext()), VALUE_NAME("DS_V"), WIAnalysis::RANDOM);
+        auto valueW = addArgumentAndMetadata(Type::getFloatTy(m_pFunction->getContext()), VALUE_NAME("DS_W"), WIAnalysis::RANDOM);
         m_dsProps->SetDomainPointUArgu(valueU);
         m_dsProps->SetDomainPointVArgu(valueV);
         m_dsProps->SetDomainPointWArgu(valueW);
@@ -1235,89 +1235,89 @@ void PushAnalysis::ProcessFunction()
         }
     }
 
-	if (m_funcTypeChanged)
-	{
-		m_isFuncTypeChanged[m_pFunction] = true;
-	}
-	else
-	{
-		m_isFuncTypeChanged[m_pFunction] = false;
-	}
+    if (m_funcTypeChanged)
+    {
+        m_isFuncTypeChanged[m_pFunction] = true;
+    }
+    else
+    {
+        m_isFuncTypeChanged[m_pFunction] = false;
+    }
 
     m_pMdUtils->save(m_pFunction->getContext());
 }
 
 bool PushAnalysis::runOnModule(llvm::Module& M)
 {
-	m_DL = &M.getDataLayout();
-	m_pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-	m_pullConstantHeuristics = &getAnalysis<PullConstantHeuristics>();
-	m_hsProps = getAnalysisIfAvailable<CollectHullShaderProperties>();
-	m_dsProps = getAnalysisIfAvailable<CollectDomainShaderProperties>();
-	m_gsProps = getAnalysisIfAvailable<CollectGeometryShaderProperties>();
-	m_vsProps = getAnalysisIfAvailable<CollectVertexShaderProperties>();
-	m_context = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    m_DL = &M.getDataLayout();
+    m_pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    m_pullConstantHeuristics = &getAnalysis<PullConstantHeuristics>();
+    m_hsProps = getAnalysisIfAvailable<CollectHullShaderProperties>();
+    m_dsProps = getAnalysisIfAvailable<CollectDomainShaderProperties>();
+    m_gsProps = getAnalysisIfAvailable<CollectGeometryShaderProperties>();
+    m_vsProps = getAnalysisIfAvailable<CollectVertexShaderProperties>();
+    m_context = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
-	MapList<Function*, Function*> funcsMapping;
-	bool retValue = false;
+    MapList<Function*, Function*> funcsMapping;
+    bool retValue = false;
 
-	m_pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-	m_context = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    m_pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    m_context = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
-	for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I)
-	{	
-		Function* pFunc = &(*I);
-		
-		// Only handle functions defined in this module
-		if (pFunc->isDeclaration() || !isEntryFunc(m_pMdUtils, pFunc))
-			continue;
+    for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I)
+    {    
+        Function* pFunc = &(*I);
+        
+        // Only handle functions defined in this module
+        if (pFunc->isDeclaration() || !isEntryFunc(m_pMdUtils, pFunc))
+            continue;
 
-		m_pFuncUpgrade.SetFunctionToUpgrade(pFunc);
+        m_pFuncUpgrade.SetFunctionToUpgrade(pFunc);
 
-		AnalyzeFunction(pFunc);
+        AnalyzeFunction(pFunc);
 
-		// Find out if function pFunc's type/signature changed
-		if (m_isFuncTypeChanged[pFunc])
-		{
-			retValue = true;
+        // Find out if function pFunc's type/signature changed
+        if (m_isFuncTypeChanged[pFunc])
+        {
+            retValue = true;
 
-			// Create the new function body and insert it into the module
-			Function* pNewFunc = m_pFuncUpgrade.RebuildFunction();
+            // Create the new function body and insert it into the module
+            Function* pNewFunc = m_pFuncUpgrade.RebuildFunction();
 
-			// Reassign the arguments for domain shader to real arguments
-			if (m_context->type == ShaderType::DOMAIN_SHADER)
-				// function right into the new function, leaving the old body of the function empty.
-			{
-				// Loop over the argument list, transferring uses of the old arguments over to
-				// the new arguments
-				m_dsProps->SetDomainPointUArgu(
-					m_pFuncUpgrade.GetArgumentFromRebuild((LoadInst*)m_dsProps->GetDomainPointUArgu()));
-				m_dsProps->SetDomainPointVArgu(
-					m_pFuncUpgrade.GetArgumentFromRebuild((LoadInst*)m_dsProps->GetDomainPointVArgu()));
-				m_dsProps->SetDomainPointWArgu(
-					m_pFuncUpgrade.GetArgumentFromRebuild((LoadInst*)m_dsProps->GetDomainPointWArgu()));
-			}
+            // Reassign the arguments for domain shader to real arguments
+            if (m_context->type == ShaderType::DOMAIN_SHADER)
+                // function right into the new function, leaving the old body of the function empty.
+            {
+                // Loop over the argument list, transferring uses of the old arguments over to
+                // the new arguments
+                m_dsProps->SetDomainPointUArgu(
+                    m_pFuncUpgrade.GetArgumentFromRebuild((LoadInst*)m_dsProps->GetDomainPointUArgu()));
+                m_dsProps->SetDomainPointVArgu(
+                    m_pFuncUpgrade.GetArgumentFromRebuild((LoadInst*)m_dsProps->GetDomainPointVArgu()));
+                m_dsProps->SetDomainPointWArgu(
+                    m_pFuncUpgrade.GetArgumentFromRebuild((LoadInst*)m_dsProps->GetDomainPointWArgu()));
+            }
 
-			// Map old func to new func
-			funcsMapping[pFunc] = pNewFunc;
+            // Map old func to new func
+            funcsMapping[pFunc] = pNewFunc;
 
-			// This is a kernel function, so there should not be any call site
-			assert(pFunc->use_empty());
-		}
-		m_pFuncUpgrade.Clean();
-	}
+            // This is a kernel function, so there should not be any call site
+            assert(pFunc->use_empty());
+        }
+        m_pFuncUpgrade.Clean();
+    }
 
-	// Update IGC Metadata and shaders map
-	// Function declarations are changing, this needs to be reflected in the metadata.
-	MetadataBuilder mbuilder(&M);
+    // Update IGC Metadata and shaders map
+    // Function declarations are changing, this needs to be reflected in the metadata.
+    MetadataBuilder mbuilder(&M);
     auto &FuncMD = m_context->getModuleMetaData()->FuncMD;
-	for (auto i : funcsMapping)
-	{
-		auto oldFuncIter = m_pMdUtils->findFunctionsInfoItem(i.first);
-		m_pMdUtils->setFunctionsInfoItem(i.second, oldFuncIter->second);
-		m_pMdUtils->eraseFunctionsInfoItem(oldFuncIter);
+    for (auto i : funcsMapping)
+    {
+        auto oldFuncIter = m_pMdUtils->findFunctionsInfoItem(i.first);
+        m_pMdUtils->setFunctionsInfoItem(i.second, oldFuncIter->second);
+        m_pMdUtils->eraseFunctionsInfoItem(oldFuncIter);
 
-		mbuilder.UpdateShadingRate(i.first, i.second);
+        mbuilder.UpdateShadingRate(i.first, i.second);
         auto loc = FuncMD.find(i.first);
         if(loc != FuncMD.end())
         {
@@ -1325,29 +1325,29 @@ bool PushAnalysis::runOnModule(llvm::Module& M)
             FuncMD.erase(i.first);
             FuncMD[i.second] = funcInfo;
         }
-	}
-	m_pMdUtils->save(M.getContext());
+    }
+    m_pMdUtils->save(M.getContext());
 
-	GenXFunctionGroupAnalysis* FGA = getAnalysisIfAvailable<GenXFunctionGroupAnalysis>();
+    GenXFunctionGroupAnalysis* FGA = getAnalysisIfAvailable<GenXFunctionGroupAnalysis>();
 
-	// Go over all changed functions
-	for (MapList<Function*, Function*>::const_iterator I = funcsMapping.begin(), E = funcsMapping.end(); I != E; ++I)
-	{
-		Function* pFunc = I->first;
+    // Go over all changed functions
+    for (MapList<Function*, Function*>::const_iterator I = funcsMapping.begin(), E = funcsMapping.end(); I != E; ++I)
+    {
+        Function* pFunc = I->first;
 
-		assert(pFunc->use_empty() && "Assume all user function are inlined at this point");
+        assert(pFunc->use_empty() && "Assume all user function are inlined at this point");
 
-		if (FGA) {
-			FGA->replaceEntryFunc(pFunc, I->second);
-		}
-		// Now, after changing funciton signature,
-		// and validate there are no calls to the old function we can erase it.
-		pFunc->eraseFromParent();
-	}
+        if (FGA) {
+            FGA->replaceEntryFunc(pFunc, I->second);
+        }
+        // Now, after changing funciton signature,
+        // and validate there are no calls to the old function we can erase it.
+        pFunc->eraseFromParent();
+    }
 
-	DumpLLVMIR(m_context, "push_analysis");
+    DumpLLVMIR(m_context, "push_analysis");
 
-	return retValue;
+    return retValue;
 
 }
 char PushAnalysis::ID=0;

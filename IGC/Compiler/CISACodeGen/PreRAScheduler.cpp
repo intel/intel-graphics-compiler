@@ -491,7 +491,7 @@ void PreRAScheduler::handleMemoryReadWriteInstructions(
     std::list<Node*>& lastLoadNodes,
     Node* &lastStoreNode)
 {
-	// Edge information only added for instructions associated with each other due to alias-ing. 
+    // Edge information only added for instructions associated with each other due to alias-ing. 
     // No edge information added for other instructions connected by use-def chain
     if (currInstNode->instruction->mayReadOrWriteMemory())
     {
@@ -641,7 +641,7 @@ void PreRAScheduler::buildBasicBlockDDG(
                 // ignore users from other BB's as we are doing local list scheduling
                 if (useInst->getParent() == BB)
                 {
-                   	// Edge information only added for instructions associated with each other due to alias-ing. 
+                       // Edge information only added for instructions associated with each other due to alias-ing. 
                     // No edge information added for other instructions connected by use-def chain
                     // first create a node for the user instruction if it does not already exist
                     struct Node* useInstNode = nullptr;
@@ -751,7 +751,7 @@ bool PreRAScheduler::ScheduleReadyNodes(
             }
         }
 
-		// Edge information only added for instructions associated with each other due to alias-ing. 
+        // Edge information only added for instructions associated with each other due to alias-ing. 
         // No edge information added for other instructions connected by use-def chain
         for ( auto schNodeUserBegin = scheduleNode->instruction->user_begin(), schNodeUserEnd = scheduleNode->instruction->user_end(); 
               schNodeUserBegin != schNodeUserEnd;
@@ -924,15 +924,15 @@ bool PreRAScheduler::runOnFunction(Function &F) {
 
     bool Changed = false;
     
-	if (!IGC_IS_FLAG_ENABLED(SetMaxPreRASchedulerRegPressureThreshold))
-	{
-		if (ctx->m_instrTypes.hasDiscard ||
-			(ctx->m_instrTypes.numBB == 1 && ctx->m_instrTypes.numSample && ctx->m_instrTypes.numInsts/ctx->m_instrTypes.numSample<30) ||
-			(ctx->m_instrTypes.numBB != 1 && ctx->m_instrTypes.numBB && ctx->m_instrTypes.numInsts/ctx->m_instrTypes.numBB>100))
-		{
-			maxPerBBRegisterPressureThreshold = 110;
-		}
-	}
+    if (!IGC_IS_FLAG_ENABLED(SetMaxPreRASchedulerRegPressureThreshold))
+    {
+        if (ctx->m_instrTypes.hasDiscard ||
+            (ctx->m_instrTypes.numBB == 1 && ctx->m_instrTypes.numSample && ctx->m_instrTypes.numInsts/ctx->m_instrTypes.numSample<30) ||
+            (ctx->m_instrTypes.numBB != 1 && ctx->m_instrTypes.numBB && ctx->m_instrTypes.numInsts/ctx->m_instrTypes.numBB>100))
+        {
+            maxPerBBRegisterPressureThreshold = 110;
+        }
+    }
 
     // Run one pass through all the instructions in the BB
     for (df_iterator<DomTreeNode*> DI = df_begin(m_pDT->getRootNode()),

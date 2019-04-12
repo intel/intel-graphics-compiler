@@ -34,12 +34,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 vISAPreDefinedSurface vISAPreDefSurf[COMMON_ISA_NUM_PREDEFINED_SURF_VER_3_1] =
 {
-	{ 0, PREDEF_SURF_0, "T0" },
-	{ 1, PREDEF_SURF_1, "T1" },
-	{ 2, PREDEF_SURF_2, "T2" },
-	{ 3, PREDEF_SURF_3, "TSS" },
-	{ 4, PREDEF_SURF_252, "T252" },
-	{ 5, PREDEF_SURF_255, "T255" },
+    { 0, PREDEF_SURF_0, "T0" },
+    { 1, PREDEF_SURF_1, "T1" },
+    { 2, PREDEF_SURF_2, "T2" },
+    { 3, PREDEF_SURF_3, "TSS" },
+    { 4, PREDEF_SURF_252, "T252" },
+    { 5, PREDEF_SURF_255, "T255" },
 };
 
 
@@ -473,9 +473,9 @@ bool hasExecSize(ISA_Opcode op, uint8_t subOp)
         case ISA_Inst_Sampler:
         case ISA_Inst_Misc:
             if( op == ISA_RAW_SEND || op == ISA_RAW_SENDS || op == ISA_3D_SAMPLE ||
-				op == ISA_3D_LOAD || op == ISA_3D_GATHER4 || op == ISA_3D_URB_WRITE ||
-				op == ISA_3D_INFO)
-			{
+                op == ISA_3D_LOAD || op == ISA_3D_GATHER4 || op == ISA_3D_URB_WRITE ||
+                op == ISA_3D_INFO)
+            {
                 return true;
             }
             else
@@ -1537,23 +1537,23 @@ int64_t typecastVals(const void *value, VISA_Type isaType)
 // convert binary vISA surface id to GEN surface index
 int Get_PreDefined_Surf_Index(int index)
 {
-	if (getGenxPlatform() < GENX_SKL)
-	{
-		switch (index)
-		{
-		case 1:
-			return PREDEF_SURF_1_OLD;
-		case 2:
-			return PREDEF_SURF_2_OLD;
-		case 3:
-			return PREDEF_SURF_3_OLD;
-		default:
-			;
-			// fallthrough
-		}
-	}
+    if (getGenxPlatform() < GENX_SKL)
+    {
+        switch (index)
+        {
+        case 1:
+            return PREDEF_SURF_1_OLD;
+        case 2:
+            return PREDEF_SURF_2_OLD;
+        case 3:
+            return PREDEF_SURF_3_OLD;
+        default:
+            ;
+            // fallthrough
+        }
+    }
 
-	return vISAPreDefSurf[index].genId;
+    return vISAPreDefSurf[index].genId;
 
 }
 

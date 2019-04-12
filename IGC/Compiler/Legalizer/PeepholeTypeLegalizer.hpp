@@ -50,44 +50,44 @@ namespace Legalizer {
   using namespace llvm;
 
   class PeepholeTypeLegalizer : public FunctionPass, public InstVisitor<PeepholeTypeLegalizer> {
-	  llvm::IRBuilder<>* m_builder;
-	  Module *TheModule;
-	  Function *TheFunction;
+      llvm::IRBuilder<>* m_builder;
+      Module *TheModule;
+      Function *TheFunction;
 
   public:
-	  static char ID;
+      static char ID;
 
-	  PeepholeTypeLegalizer();
+      PeepholeTypeLegalizer();
 
-	  bool runOnFunction(Function &F) override;
+      bool runOnFunction(Function &F) override;
 
-	  void visitInstruction(Instruction &I);
+      void visitInstruction(Instruction &I);
       void legalizePhiInstruction(Instruction &I);
-	  void legalizeUnaryInstruction(Instruction &I);
-	  void legalizeBinaryOperator(Instruction &I);
+      void legalizeUnaryInstruction(Instruction &I);
+      void legalizeBinaryOperator(Instruction &I);
       void legalizeExtractElement(Instruction &I);
-	  void cleanupZExtInst(Instruction &I);
-	  void cleanupBitCastInst(Instruction &I);
+      void cleanupZExtInst(Instruction &I);
+      void cleanupBitCastInst(Instruction &I);
 
   private:
-	  bool NonBitcastInstructionsLegalized;
-	  bool CastInst_ZExtWithIntermediateIllegalsEliminated;
-	  bool Bitcast_BitcastWithIntermediateIllegalsEliminated;
-	  bool Changed;
+      bool NonBitcastInstructionsLegalized;
+      bool CastInst_ZExtWithIntermediateIllegalsEliminated;
+      bool Bitcast_BitcastWithIntermediateIllegalsEliminated;
+      bool Changed;
 
-	  const DataLayout *DL;
+      const DataLayout *DL;
 
-	  void getAnalysisUsage(AnalysisUsage &AU) const override;
+      void getAnalysisUsage(AnalysisUsage &AU) const override;
 
-	  LLVMContext &getContext() const { return TheModule->getContext(); }
-	  Module *getModule() const { return TheModule; }
-	  Function *getFunction() const { return TheFunction; }
-	  bool isLegalInteger(unsigned int bitWidth) {
-		  if (bitWidth == 64)
-			  return true;
-		  else
-			  return DL->isLegalInteger(bitWidth);
-	  }
+      LLVMContext &getContext() const { return TheModule->getContext(); }
+      Module *getModule() const { return TheModule; }
+      Function *getFunction() const { return TheFunction; }
+      bool isLegalInteger(unsigned int bitWidth) {
+          if (bitWidth == 64)
+              return true;
+          else
+              return DL->isLegalInteger(bitWidth);
+      }
 
   };
 } // End Legalizer namespace

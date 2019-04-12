@@ -41,9 +41,9 @@ define i32 @foo(i32 %dim, <8 x i32> %r0, <8 x i32> %payloadHeader) nounwind {
 !4 = !{i32 0}
 !5 = !{i32 1}
 
-; CHECK: 		%cmpDim = icmp eq i32 %dim, 0
+; CHECK:         %cmpDim = icmp eq i32 %dim, 0
 ; CHECK-NEXT:   %tmpOffsetR0 = select i1 %cmpDim, i32 1, i32 5
 ; CHECK-NEXT:   %offsetR0 = add i32 %dim, %tmpOffsetR0
 ; CHECK-NEXT:   %groupId = extractelement <8 x i32> %r0, i32 %offsetR0
 
-; CHECK-NOT: 	call i32 @__builtin_IB_get_group_id(i32 2)
+; CHECK-NOT:     call i32 @__builtin_IB_get_group_id(i32 2)

@@ -107,11 +107,11 @@ HullShaderLowering::HullShaderLowering() : FunctionPass(ID)
 
 bool HullShaderLowering::runOnFunction(llvm::Function &F)
 {
-	MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-	if (!isEntryFunc(pMdUtils, &F))
-	{
-		return false;
-	}
+    MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    if (!isEntryFunc(pMdUtils, &F))
+    {
+        return false;
+    }
     m_headerSize = QuadEltUnit(2);
     m_hullShaderInfo = &getAnalysis<CollectHullShaderProperties>();
     // Collect Hull shader information
@@ -163,17 +163,17 @@ void HullShaderLowering::LowerIntrinsicInputOutput(Function& F)
                         index = inst->getOperand(0);
                     }
 
-					unsigned int vertexHeaderOffset = ctx->getModuleMetaData()->URBInfo.hasVertexHeader ?
-						(m_hullShaderInfo->GetProperties().m_HasClipCullAsInput ? 4 : 2)
-						: 0;
+                    unsigned int vertexHeaderOffset = ctx->getModuleMetaData()->URBInfo.hasVertexHeader ?
+                        (m_hullShaderInfo->GetProperties().m_HasClipCullAsInput ? 4 : 2)
+                        : 0;
 
-					builder.SetInsertPoint(inst);
+                    builder.SetInsertPoint(inst);
 
-					AddURBRead(
-						index,
-						builder.CreateAdd(inst->getOperand(1), builder.getInt32(vertexHeaderOffset)),
-						inst);
-					instructionToRemove.push_back(inst);
+                    AddURBRead(
+                        index,
+                        builder.CreateAdd(inst->getOperand(1), builder.getInt32(vertexHeaderOffset)),
+                        inst);
+                    instructionToRemove.push_back(inst);
                 }
 
                 if(IID == GenISAIntrinsic::GenISA_PatchConstantOutput)
@@ -278,16 +278,16 @@ void HullShaderLowering::LowerIntrinsicInputOutput(Function& F)
                     //----------------------------------------------------------------------------------
                     //| OUTER_TRI_U_EQ_0  | OUTER_TRI_V_EQ_0   | OUTER_TRI_W_EQ_0  | INNER_TRI_INSIDE   |
                     //----------------------------------------------------------------------------------
-                    //| OUTER_LINE_DETAIL | OUTER_LINE_DENSITY | 	               |                    |
+                    //| OUTER_LINE_DETAIL | OUTER_LINE_DENSITY |                    |                    |
                     //----------------------------------------------------------------------------------
                     //------------------------------------------------------------------------------------
                     //| URB Offset 0.3      | URB Offset 0.2            | URB Offset 0.1 | URB Offset 0.0 |
                     //------------------------------------------------------------------------------------
                     //| INNER_QUAD_U_INSIDE | INNER_OUTER_QUAD_V_INSIDE |                |                |
                     //------------------------------------------------------------------------------------
-                    //|  			        |    			            |                |                |
+                    //|                      |                            |                |                |
                     //------------------------------------------------------------------------------------
-                    //| 			        |  					        | 	             |                |
+                    //|                     |                              |                  |                |
                     //------------------------------------------------------------------------------------
 
                     // offset into URB is 1 for outerScalarTessFactors and

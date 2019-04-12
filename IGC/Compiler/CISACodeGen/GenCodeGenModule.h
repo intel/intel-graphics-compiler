@@ -98,10 +98,10 @@ public:
   }
 
   void replaceGroupHead(llvm::Function *OH, llvm::Function *NH) {
-	auto headSG = Functions[0];
-	llvm::AssertingVH<llvm::Function>& HVH = (*headSG)[0];
-	assert(&(*HVH) == OH && "Group's head isn't set up correctly!");
-	HVH = NH;
+    auto headSG = Functions[0];
+    llvm::AssertingVH<llvm::Function>& HVH = (*headSG)[0];
+    assert(&(*HVH) == OH && "Group's head isn't set up correctly!");
+    HVH = NH;
   }
 };
 

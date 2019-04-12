@@ -59,7 +59,7 @@ namespace IGC
     };
 
 
-	llvm::FunctionPass* createIGCInstructionCombiningPass();
+    llvm::FunctionPass* createIGCInstructionCombiningPass();
 #elif LLVM_VERSION_MAJOR >= 8
     inline llvm::FunctionPass* createIGCInstructionCombiningPass()
     {

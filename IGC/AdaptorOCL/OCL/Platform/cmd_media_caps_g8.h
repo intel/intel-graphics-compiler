@@ -188,7 +188,7 @@ struct SMediaHardwareCapabilities
 
     DWORD           L2CacheLineSize;
 
-    DWORD			InstructionCachePrefetchSize;
+    DWORD            InstructionCachePrefetchSize;
 
     DWORD           SurfaceStatePointerAlignSize;
     DWORD           BindingTableStatePointerAlignSize;

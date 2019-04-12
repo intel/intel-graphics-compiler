@@ -148,42 +148,42 @@ static float convertSItoFP32(long value, char roundingMode);
 
 uchar  __builtin_spirv_OpConvertFToU_i8_f16(half FloatValue)
 {
-	return FloatValue;
+    return FloatValue;
 }
 
 ushort __builtin_spirv_OpConvertFToU_i16_f16(half FloatValue)
 {
-	return FloatValue;
+    return FloatValue;
 }
 
 uint   __builtin_spirv_OpConvertFToU_i32_f16(half FloatValue)
 {
-	return FloatValue;
+    return FloatValue;
 }
 
 ulong  __builtin_spirv_OpConvertFToU_i64_f16(half FloatValue)
 {
-	return FloatValue;
+    return FloatValue;
 }
 
 uchar  __builtin_spirv_OpConvertFToU_i8_f32(float FloatValue)
 {
-	return (uchar)FloatValue;
+    return (uchar)FloatValue;
 }
 
 ushort __builtin_spirv_OpConvertFToU_i16_f32(float FloatValue)
 {
-	return (ushort)FloatValue;
+    return (ushort)FloatValue;
 }
 
 uint   __builtin_spirv_OpConvertFToU_i32_f32(float FloatValue)
 {
-	return (uint)FloatValue;
+    return (uint)FloatValue;
 }
 
 ulong  __builtin_spirv_OpConvertFToU_i64_f32(float FloatValue)
 {
-	float FC0 = __builtin_spirv_OpenCL_ldexp_f32_i32(1.0f, -32);
+    float FC0 = __builtin_spirv_OpenCL_ldexp_f32_i32(1.0f, -32);
     float FC1 = __builtin_spirv_OpenCL_ldexp_f32_i32(-1.0f, 32);
     float HiF = __builtin_spirv_OpenCL_trunc_f32(FloatValue * FC0);
     float LoF = __builtin_spirv_OpenCL_fma_f32_f32_f32(HiF, FC1, FloatValue);
@@ -196,59 +196,59 @@ ulong  __builtin_spirv_OpConvertFToU_i64_f32(float FloatValue)
 
 uchar  __builtin_spirv_OpConvertFToU_i8_f64(double FloatValue)
 {
-	return FloatValue;
+    return FloatValue;
 }
 
 ushort __builtin_spirv_OpConvertFToU_i16_f64(double FloatValue)
 {
-	return FloatValue;
+    return FloatValue;
 }
 
 uint   __builtin_spirv_OpConvertFToU_i32_f64(double FloatValue)
 {
-	return FloatValue;
+    return FloatValue;
 }
 
 ulong  __builtin_spirv_OpConvertFToU_i64_f64(double FloatValue)
 {
-	return FloatValue;
+    return FloatValue;
 }
 
 #endif //defined(cl_khr_fp64)
 
 char  __builtin_spirv_OpConvertFToS_i8_f16(half FloatValue)
 {
-	return FloatValue;
+    return FloatValue;
 }
 
 short __builtin_spirv_OpConvertFToS_i16_f16(half FloatValue)
 {
-	return FloatValue;
+    return FloatValue;
 }
 
 int   __builtin_spirv_OpConvertFToS_i32_f16(half FloatValue)
 {
-	return FloatValue;
+    return FloatValue;
 }
 
 long  __builtin_spirv_OpConvertFToS_i64_f16(half FloatValue)
 {
-	return FloatValue;
+    return FloatValue;
 }
 
 char  __builtin_spirv_OpConvertFToS_i8_f32(float FloatValue)
 {
-	return (char)FloatValue;
+    return (char)FloatValue;
 }
 
 short __builtin_spirv_OpConvertFToS_i16_f32(float FloatValue)
 {
-	return (short)FloatValue;
+    return (short)FloatValue;
 }
 
 int   __builtin_spirv_OpConvertFToS_i32_f32(float FloatValue)
 {
-	return (int)FloatValue;
+    return (int)FloatValue;
 }
 
 long  __builtin_spirv_OpConvertFToS_i64_f32(float FloatValue)
@@ -277,150 +277,150 @@ long  __builtin_spirv_OpConvertFToS_i64_f32(float FloatValue)
 
 char  __builtin_spirv_OpConvertFToS_i8_f64(double FloatValue)
 {
-	return FloatValue;
+    return FloatValue;
 }
 
 short __builtin_spirv_OpConvertFToS_i16_f64(double FloatValue)
 {
-	return FloatValue;
+    return FloatValue;
 }
 
 int   __builtin_spirv_OpConvertFToS_i32_f64(double FloatValue)
 {
-	return FloatValue;
+    return FloatValue;
 }
 
 long  __builtin_spirv_OpConvertFToS_i64_f64(double FloatValue)
 {
-	return FloatValue;
+    return FloatValue;
 }
 
 #endif //defined(cl_khr_fp64)
 
 half   __builtin_spirv_OpConvertSToF_f16_i8(char SignedValue)
 {
-	return SignedValue;
+    return SignedValue;
 }
 
 float  __builtin_spirv_OpConvertSToF_f32_i8(char SignedValue)
 {
-	return (float)SignedValue;
+    return (float)SignedValue;
 }
 
 half   __builtin_spirv_OpConvertSToF_f16_i16(short SignedValue)
 {
-	return SignedValue;
+    return SignedValue;
 }
 
 float  __builtin_spirv_OpConvertSToF_f32_i16(short SignedValue)
 {
-	return (float)SignedValue;
+    return (float)SignedValue;
 }
 
 half   __builtin_spirv_OpConvertSToF_f16_i32(int SignedValue)
 {
-	return SignedValue;
+    return SignedValue;
 }
 
 float  __builtin_spirv_OpConvertSToF_f32_i32(int SignedValue)
 {
-	return (float)SignedValue;
+    return (float)SignedValue;
 }
 
 half   __builtin_spirv_OpConvertSToF_f16_i64(long SignedValue)
 {
-	return SignedValue;
+    return SignedValue;
 }
 
 float  __builtin_spirv_OpConvertSToF_f32_i64(long SignedValue)
 {
-	return convertSItoFP32(SignedValue, 0);
+    return convertSItoFP32(SignedValue, 0);
 }
 
 half   __builtin_spirv_OpConvertUToF_f16_i8(uchar UnsignedValue)
 {
-	return UnsignedValue;
+    return UnsignedValue;
 }
 float  __builtin_spirv_OpConvertUToF_f32_i1(bool BoolValue)
 {
-	return BoolValue ? 1.0 : 0.0;
+    return BoolValue ? 1.0 : 0.0;
 }
 
 float  __builtin_spirv_OpConvertUToF_f32_i8(uchar UnsignedValue)
 {
-	return (float)UnsignedValue;
+    return (float)UnsignedValue;
 }
 
 half   __builtin_spirv_OpConvertUToF_f16_i16(ushort UnsignedValue)
 {
-	return UnsignedValue;
+    return UnsignedValue;
 }
 
 float  __builtin_spirv_OpConvertUToF_f32_i16(ushort UnsignedValue)
 {
-	return (float)UnsignedValue;
+    return (float)UnsignedValue;
 }
 
 half   __builtin_spirv_OpConvertUToF_f16_i32(uint UnsignedValue)
 {
-	return UnsignedValue;
+    return UnsignedValue;
 }
 
 float  __builtin_spirv_OpConvertUToF_f32_i32(uint UnsignedValue)
 {
-	return (float)UnsignedValue;
+    return (float)UnsignedValue;
 }
 
 half   __builtin_spirv_OpConvertUToF_f16_i64(ulong UnsignedValue)
 {
-	return UnsignedValue;
+    return UnsignedValue;
 }
 
 float  __builtin_spirv_OpConvertUToF_f32_i64(ulong UnsignedValue)
 {
-	return convertUItoFP32(UnsignedValue, 0, false);
+    return convertUItoFP32(UnsignedValue, 0, false);
 }
 
 #if defined(cl_khr_fp64)
 
 double __builtin_spirv_OpConvertSToF_f64_i8(char SignedValue)
 {
-	return SignedValue;
+    return SignedValue;
 }
 
 double __builtin_spirv_OpConvertSToF_f64_i16(short SignedValue)
 {
-	return SignedValue;
+    return SignedValue;
 }
 
 double __builtin_spirv_OpConvertSToF_f64_i32(int SignedValue)
 {
-	return SignedValue;
+    return SignedValue;
 }
 
 double __builtin_spirv_OpConvertSToF_f64_i64(long SignedValue)
 {
-	return SignedValue;
+    return SignedValue;
 }
 
 double __builtin_spirv_OpConvertUToF_f64_i8(uchar UnsignedValue)
 {
-	return UnsignedValue;
+    return UnsignedValue;
 }
 
 double __builtin_spirv_OpConvertUToF_f64_i16(ushort UnsignedValue)
 {
-	return UnsignedValue;
+    return UnsignedValue;
 }
 
 double __builtin_spirv_OpConvertUToF_f64_i32(uint UnsignedValue)
 {
-	return UnsignedValue;
+    return UnsignedValue;
 }
 
 double __builtin_spirv_OpConvertUToF_f64_i64(ulong UnsignedValue)
 {
-	return UnsignedValue;
+    return UnsignedValue;
 }
 
 #endif // defined(cl_khr_fp64)
@@ -428,194 +428,194 @@ double __builtin_spirv_OpConvertUToF_f64_i64(ulong UnsignedValue)
 
 uchar  __builtin_spirv_OpUConvert_i8_i8(uchar UnsignedValue)
 {
-	return UnsignedValue;
+    return UnsignedValue;
 }
 
 ushort __builtin_spirv_OpUConvert_i16_i8(uchar UnsignedValue)
 {
-	return (ushort)UnsignedValue;
+    return (ushort)UnsignedValue;
 }
 
 uint   __builtin_spirv_OpUConvert_i32_i8(uchar UnsignedValue)
 {
-	return (uint)UnsignedValue;
+    return (uint)UnsignedValue;
 }
 
 ulong  __builtin_spirv_OpUConvert_i64_i8(uchar UnsignedValue)
 {
-	return (ulong)UnsignedValue;
+    return (ulong)UnsignedValue;
 }
 
 uchar  __builtin_spirv_OpUConvert_i8_i16(ushort UnsignedValue)
 {
-	return (uchar)UnsignedValue;
+    return (uchar)UnsignedValue;
 }
 
 ushort __builtin_spirv_OpUConvert_i16_i16(ushort UnsignedValue)
 {
-	return UnsignedValue;
+    return UnsignedValue;
 }
 
 uint   __builtin_spirv_OpUConvert_i32_i16(ushort UnsignedValue)
 {
-	return (uint)UnsignedValue;
+    return (uint)UnsignedValue;
 }
 
 ulong  __builtin_spirv_OpUConvert_i64_i16(ushort UnsignedValue)
 {
-	return (ulong)UnsignedValue;
+    return (ulong)UnsignedValue;
 }
 
 uchar  __builtin_spirv_OpUConvert_i8_i32(uint UnsignedValue)
 {
-	return (uchar)UnsignedValue;
+    return (uchar)UnsignedValue;
 }
 
 ushort __builtin_spirv_OpUConvert_i16_i32(uint UnsignedValue)
 {
-	return (ushort)UnsignedValue;
+    return (ushort)UnsignedValue;
 }
 
 uint   __builtin_spirv_OpUConvert_i32_i32(uint UnsignedValue)
 {
-	return UnsignedValue;
+    return UnsignedValue;
 }
 
 ulong  __builtin_spirv_OpUConvert_i64_i32(uint UnsignedValue)
 {
-	return (ulong)UnsignedValue;
+    return (ulong)UnsignedValue;
 }
 
 uchar  __builtin_spirv_OpUConvert_i8_i64(ulong UnsignedValue)
 {
-	return (uchar)UnsignedValue;
+    return (uchar)UnsignedValue;
 }
 
 ushort __builtin_spirv_OpUConvert_i16_i64(ulong UnsignedValue)
 {
-	return (ushort)UnsignedValue;
+    return (ushort)UnsignedValue;
 }
 
 uint   __builtin_spirv_OpUConvert_i32_i64(ulong UnsignedValue)
 {
-	return (uint)UnsignedValue;
+    return (uint)UnsignedValue;
 }
 
 ulong  __builtin_spirv_OpUConvert_i64_i64(ulong UnsignedValue)
 {
-	return UnsignedValue;
+    return UnsignedValue;
 }
 
 char  __builtin_spirv_OpSConvert_i8_i8(char SignedValue)
 {
-	return SignedValue;
+    return SignedValue;
 }
 
 short __builtin_spirv_OpSConvert_i16_i8(char SignedValue)
 {
-	return (short)SignedValue;
+    return (short)SignedValue;
 }
 
 int   __builtin_spirv_OpSConvert_i32_i8(char SignedValue)
 {
-	return (int)SignedValue;
+    return (int)SignedValue;
 }
 
 long  __builtin_spirv_OpSConvert_i64_i8(char SignedValue)
 {
-	return (long)SignedValue;
+    return (long)SignedValue;
 }
 
 char  __builtin_spirv_OpSConvert_i8_i16(short SignedValue)
 {
-	return (char)SignedValue;
+    return (char)SignedValue;
 }
 
 short __builtin_spirv_OpSConvert_i16_i16(short SignedValue)
 {
-	return SignedValue;
+    return SignedValue;
 }
 
 int   __builtin_spirv_OpSConvert_i32_i16(short SignedValue)
 {
-	return (int)SignedValue;
+    return (int)SignedValue;
 }
 
 long  __builtin_spirv_OpSConvert_i64_i16(short SignedValue)
 {
-	return (long)SignedValue;
+    return (long)SignedValue;
 }
 
 char  __builtin_spirv_OpSConvert_i8_i32(int SignedValue)
 {
-	return (char)SignedValue;
+    return (char)SignedValue;
 }
 
 short __builtin_spirv_OpSConvert_i16_i32(int SignedValue)
 {
-	return (short)SignedValue;
+    return (short)SignedValue;
 }
 
 int   __builtin_spirv_OpSConvert_i32_i32(int SignedValue)
 {
-	return SignedValue;
+    return SignedValue;
 }
 
 long  __builtin_spirv_OpSConvert_i64_i32(int SignedValue)
 {
-	return (long)SignedValue;
+    return (long)SignedValue;
 }
 
 char  __builtin_spirv_OpSConvert_i8_i64(long SignedValue)
 {
-	return (char)SignedValue;
+    return (char)SignedValue;
 }
 
 short __builtin_spirv_OpSConvert_i16_i64(long SignedValue)
 {
-	return (short)SignedValue;
+    return (short)SignedValue;
 }
 
 int   __builtin_spirv_OpSConvert_i32_i64(long SignedValue)
 {
-	return (int)SignedValue;
+    return (int)SignedValue;
 }
 
 long  __builtin_spirv_OpSConvert_i64_i64(long SignedValue)
 {
-	return SignedValue;
+    return SignedValue;
 }
 
 half   __builtin_spirv_OpFConvert_f16_f16(half FloatValue)
 {
-	return FloatValue;
+    return FloatValue;
 }
 
 float  __builtin_spirv_OpFConvert_f32_f16(half FloatValue)
 {
-	return FloatValue;
+    return FloatValue;
 }
 
 half   __builtin_spirv_OpFConvert_f16_f32(float FloatValue)
 {
-	return FloatValue;
+    return FloatValue;
 }
 
 float  __builtin_spirv_OpFConvert_f32_f32(float FloatValue)
 {
-	return FloatValue;
+    return FloatValue;
 }
 
 #if defined(cl_khr_fp64)
 
 double __builtin_spirv_OpFConvert_f64_f16(half FloatValue)
 {
-	return FloatValue;
+    return FloatValue;
 }
 
 double __builtin_spirv_OpFConvert_f64_f32(float FloatValue)
 {
-	return FloatValue;
+    return FloatValue;
 }
 
 half   __builtin_spirv_OpFConvert_f16_f64(double FloatValue)
@@ -666,12 +666,12 @@ half   __builtin_spirv_OpFConvert_f16_f64(double FloatValue)
 
 float  __builtin_spirv_OpFConvert_f32_f64(double FloatValue)
 {
-	return FloatValue;
+    return FloatValue;
 }
 
 double __builtin_spirv_OpFConvert_f64_f64(double FloatValue)
 {
-	return FloatValue;
+    return FloatValue;
 }
 
 #endif // defined(cl_khr_fp64)
@@ -680,33 +680,33 @@ double __builtin_spirv_OpFConvert_f64_f64(double FloatValue)
 
 uchar  __builtin_spirv_OpSatConvertSToU_i8_i8(char SignedValue)
 {
-	  //return __builtin_IB_ctouc_sat((char)SignedValue);
-	  if (SignedValue <= 0)
-	  {
-	    return (uchar)0;
-	  }
-	  return (uchar)SignedValue;
+      //return __builtin_IB_ctouc_sat((char)SignedValue);
+      if (SignedValue <= 0)
+      {
+        return (uchar)0;
+      }
+      return (uchar)SignedValue;
 }
 
 ushort __builtin_spirv_OpSatConvertSToU_i16_i8(char SignedValue)
 {
-	  //return __builtin_IB_ctous_sat((char)SignedValue);
-	  if( SignedValue <= 0)
-	  {
-	    return 0;
-	  }
-	  return (ushort)SignedValue;
+      //return __builtin_IB_ctous_sat((char)SignedValue);
+      if( SignedValue <= 0)
+      {
+        return 0;
+      }
+      return (ushort)SignedValue;
 }
 
 uint  __builtin_spirv_OpSatConvertSToU_i32_i8(char SignedValue)
 {
-	  //return __builtin_IB_ctoui_sat((char)SignedValue);
-	  return (SignedValue <= 0) ? 0 : (uint)SignedValue;
+      //return __builtin_IB_ctoui_sat((char)SignedValue);
+      return (SignedValue <= 0) ? 0 : (uint)SignedValue;
 }
 
 ulong  __builtin_spirv_OpSatConvertSToU_i64_i8(char SignedValue)
 {
-	return (SignedValue <= 0) ? 0 : (ulong)SignedValue;
+    return (SignedValue <= 0) ? 0 : (ulong)SignedValue;
 }
 
 uchar  __builtin_spirv_OpSatConvertSToU_i8_i16(short SignedValue)
@@ -716,23 +716,23 @@ uchar  __builtin_spirv_OpSatConvertSToU_i8_i16(short SignedValue)
 
 ushort __builtin_spirv_OpSatConvertSToU_i16_i16(short SignedValue)
 {
-	  //return __builtin_IB_stous_sat((short)SignedValue);
-	  if( SignedValue <= 0)
-	  {
-	    return 0;
-	  }
-	  return (ushort)SignedValue;
+      //return __builtin_IB_stous_sat((short)SignedValue);
+      if( SignedValue <= 0)
+      {
+        return 0;
+      }
+      return (ushort)SignedValue;
 }
 
 uint   __builtin_spirv_OpSatConvertSToU_i32_i16(short SignedValue)
 {
-	  //return __builtin_IB_stoui_sat((short)SignedValue);
-	  return (SignedValue <= 0) ? 0 : (uint)SignedValue;
+      //return __builtin_IB_stoui_sat((short)SignedValue);
+      return (SignedValue <= 0) ? 0 : (uint)SignedValue;
 }
 
 ulong  __builtin_spirv_OpSatConvertSToU_i64_i16(short SignedValue)
 {
-	return (SignedValue <= 0) ? 0 : (ulong)SignedValue;
+    return (SignedValue <= 0) ? 0 : (ulong)SignedValue;
 }
 
 uchar  __builtin_spirv_OpSatConvertSToU_i8_i32(int SignedValue)
@@ -742,77 +742,77 @@ uchar  __builtin_spirv_OpSatConvertSToU_i8_i32(int SignedValue)
 
 ushort __builtin_spirv_OpSatConvertSToU_i16_i32(int SignedValue)
 {
-	  //return __builtin_IB_itous_sat((int)SignedValue);
-	  int res = __builtin_spirv_OpenCL_s_clamp_i32_i32_i32(SignedValue, 0, (int)USHRT_MAX);
-	  return (ushort)res;
+      //return __builtin_IB_itous_sat((int)SignedValue);
+      int res = __builtin_spirv_OpenCL_s_clamp_i32_i32_i32(SignedValue, 0, (int)USHRT_MAX);
+      return (ushort)res;
 }
 
 uint   __builtin_spirv_OpSatConvertSToU_i32_i32(int SignedValue)
 {
-	  //return __builtin_IB_itoui_sat((int)SignedValue);
-	  return (SignedValue <= 0) ? 0 : (uint)SignedValue;
+      //return __builtin_IB_itoui_sat((int)SignedValue);
+      return (SignedValue <= 0) ? 0 : (uint)SignedValue;
 }
 
 ulong  __builtin_spirv_OpSatConvertSToU_i64_i32(int SignedValue)
 {
-	return (SignedValue <= 0) ? 0 : (ulong)SignedValue;
+    return (SignedValue <= 0) ? 0 : (ulong)SignedValue;
 }
 
 uchar  __builtin_spirv_OpSatConvertSToU_i8_i64(long SignedValue)
 {
-	if (SignedValue <= 0)
-	  {
-	    return 0;
-	  }
-	else if (SignedValue >= UCHAR_MAX)
-	  {
-	    return UCHAR_MAX;
-	  }
-	  return (uchar)SignedValue;
+    if (SignedValue <= 0)
+      {
+        return 0;
+      }
+    else if (SignedValue >= UCHAR_MAX)
+      {
+        return UCHAR_MAX;
+      }
+      return (uchar)SignedValue;
 }
 
 ushort __builtin_spirv_OpSatConvertSToU_i16_i64(long SignedValue)
 {
-	if (SignedValue <= 0) {
-	    return 0;
-	  }
-	else if (SignedValue >= USHRT_MAX) {
-	    return USHRT_MAX;
-	  }
-	  return (ushort)SignedValue;
+    if (SignedValue <= 0) {
+        return 0;
+      }
+    else if (SignedValue >= USHRT_MAX) {
+        return USHRT_MAX;
+      }
+      return (ushort)SignedValue;
 }
 
 uint   __builtin_spirv_OpSatConvertSToU_i32_i64(long SignedValue)
 {
-	if (SignedValue <= 0) {
-	    return 0;
-	  }
-	else if (SignedValue >= UINT_MAX) {
-	    return UINT_MAX;
-	  }
-	  return (uint)SignedValue;
+    if (SignedValue <= 0) {
+        return 0;
+      }
+    else if (SignedValue >= UINT_MAX) {
+        return UINT_MAX;
+      }
+      return (uint)SignedValue;
 }
 
 ulong  __builtin_spirv_OpSatConvertSToU_i64_i64(long SignedValue)
 {
-	return (SignedValue <= 0) ? 0 : (ulong)SignedValue;
+    return (SignedValue <= 0) ? 0 : (ulong)SignedValue;
 }
 
 
 char  __builtin_spirv_OpSatConvertUToS_i8_i8(uchar UnsignedValue)
 {
-	  //return __builtin_IB_uctoc_sat((uchar)UnsignedValue);
-	  return (UnsignedValue > CHAR_MAX) ? CHAR_MAX : (char)UnsignedValue;
+      //return __builtin_IB_uctoc_sat((uchar)UnsignedValue);
+      return (UnsignedValue > CHAR_MAX) ? CHAR_MAX : (char)UnsignedValue;
 }
 
 short __builtin_spirv_OpSatConvertUToS_i16_i8(uchar UnsignedValue)
 {
-	return (short)UnsignedValue;
+    return (short)UnsignedValue;
 }
 
 int   __builtin_spirv_OpSatConvertUToS_i32_i8(uchar UnsignedValue)
 {
-	return (int)UnsignedValue;
+    return (int)UnsignedValue;
 }
 
 long  __builtin_spirv_OpSatConvertUToS_i64_i8(uchar UnsignedValue)
@@ -822,67 +822,67 @@ long  __builtin_spirv_OpSatConvertUToS_i64_i8(uchar UnsignedValue)
 
 char  __builtin_spirv_OpSatConvertUToS_i8_i16(ushort UnsignedValue)
 {
-	  //return __builtin_IB_ustoc_sat((ushort)UnsignedValue);
-	  return (UnsignedValue > CHAR_MAX) ? CHAR_MAX : (char)UnsignedValue;
+      //return __builtin_IB_ustoc_sat((ushort)UnsignedValue);
+      return (UnsignedValue > CHAR_MAX) ? CHAR_MAX : (char)UnsignedValue;
 }
 
 short __builtin_spirv_OpSatConvertUToS_i16_i16(ushort UnsignedValue)
 {
-	  //return __builtin_IB_ustos_sat((ushort)UnsignedValue);
-	  return (UnsignedValue >= SHRT_MAX) ? SHRT_MAX : (ushort)UnsignedValue;
+      //return __builtin_IB_ustos_sat((ushort)UnsignedValue);
+      return (UnsignedValue >= SHRT_MAX) ? SHRT_MAX : (ushort)UnsignedValue;
 }
 
 int   __builtin_spirv_OpSatConvertUToS_i32_i16(ushort UnsignedValue)
 {
-	return (int)UnsignedValue;
+    return (int)UnsignedValue;
 }
 
 long  __builtin_spirv_OpSatConvertUToS_i64_i16(ushort UnsignedValue)
 {
-	return (long)UnsignedValue;
+    return (long)UnsignedValue;
 }
 
 char  __builtin_spirv_OpSatConvertUToS_i8_i32(uint UnsignedValue)
 {
-	  //return __builtin_IB_uitoc_sat((uint)UnsignedValue);
-	  return (UnsignedValue > CHAR_MAX) ? CHAR_MAX : (char)UnsignedValue;
+      //return __builtin_IB_uitoc_sat((uint)UnsignedValue);
+      return (UnsignedValue > CHAR_MAX) ? CHAR_MAX : (char)UnsignedValue;
 }
 
 short __builtin_spirv_OpSatConvertUToS_i16_i32(uint UnsignedValue)
 {
-	  //return __builtin_IB_uitos_sat((uint)UnsignedValue);
-	  return (UnsignedValue >= SHRT_MAX) ? SHRT_MAX : (short)UnsignedValue;
+      //return __builtin_IB_uitos_sat((uint)UnsignedValue);
+      return (UnsignedValue >= SHRT_MAX) ? SHRT_MAX : (short)UnsignedValue;
 }
 
 int __builtin_spirv_OpSatConvertUToS_i32_i32(uint UnsignedValue)
 {
-	  //return __builtin_IB_uitoi_sat((uint)UnsignedValue);
-	  return (UnsignedValue >= INT_MAX) ? INT_MAX : (int)UnsignedValue;
+      //return __builtin_IB_uitoi_sat((uint)UnsignedValue);
+      return (UnsignedValue >= INT_MAX) ? INT_MAX : (int)UnsignedValue;
 }
 
 long  __builtin_spirv_OpSatConvertUToS_i64_i32(uint UnsignedValue)
 {
-	return (long)UnsignedValue;
+    return (long)UnsignedValue;
 }
 
 char  __builtin_spirv_OpSatConvertUToS_i8_i64(ulong UnsignedValue)
 {
-	return (UnsignedValue >= CHAR_MAX) ? CHAR_MAX : (char)UnsignedValue;
+    return (UnsignedValue >= CHAR_MAX) ? CHAR_MAX : (char)UnsignedValue;
 }
 
 short __builtin_spirv_OpSatConvertUToS_i16_i64(ulong UnsignedValue)
 {
-	return (UnsignedValue >= SHRT_MAX) ? SHRT_MAX : (short)UnsignedValue;
+    return (UnsignedValue >= SHRT_MAX) ? SHRT_MAX : (short)UnsignedValue;
 }
 
 int   __builtin_spirv_OpSatConvertUToS_i32_i64(ulong UnsignedValue)
 {
-	return (UnsignedValue >= INT_MAX) ? INT_MAX : (int)UnsignedValue;
+    return (UnsignedValue >= INT_MAX) ? INT_MAX : (int)UnsignedValue;
 }
 
 long  __builtin_spirv_OpSatConvertUToS_i64_i64(ulong UnsignedValue)
 {
-	return (UnsignedValue >= LONG_MAX) ? LONG_MAX : __builtin_spirv_OpSConvert_i64_i64(UnsignedValue);
+    return (UnsignedValue >= LONG_MAX) ? LONG_MAX : __builtin_spirv_OpSConvert_i64_i64(UnsignedValue);
 }
 
 
@@ -2755,12 +2755,12 @@ ulong  __builtin_spirv_OpUConvert_Sat_i64_i8(uchar UnsignedValue)
 
 uchar  __builtin_spirv_OpUConvert_Sat_i8_i16(ushort UnsignedValue)
 {
-	  //return __builtin_IB_ustouc_sat((ushort)UnsignedValue);
-	  if (UnsignedValue > (uchar)0xff)
-	  {
-	    return (uchar)0xff;
-	  }
-	  return (uchar)UnsignedValue;
+      //return __builtin_IB_ustouc_sat((ushort)UnsignedValue);
+      if (UnsignedValue > (uchar)0xff)
+      {
+        return (uchar)0xff;
+      }
+      return (uchar)UnsignedValue;
 }
 
 ushort __builtin_spirv_OpUConvert_Sat_i16_i16(ushort UnsignedValue)
@@ -2780,20 +2780,20 @@ ulong  __builtin_spirv_OpUConvert_Sat_i64_i16(ushort UnsignedValue)
 
 uchar  __builtin_spirv_OpUConvert_Sat_i8_i32(uint UnsignedValue)
 {
-	  //return __builtin_IB_uitouc_sat((uint)UnsignedValue);
-	  if (UnsignedValue > UCHAR_MAX)
-	  {
-	    return UCHAR_MAX;
-	  }
-	  return (uchar)UnsignedValue;
+      //return __builtin_IB_uitouc_sat((uint)UnsignedValue);
+      if (UnsignedValue > UCHAR_MAX)
+      {
+        return UCHAR_MAX;
+      }
+      return (uchar)UnsignedValue;
 }
 
 ushort __builtin_spirv_OpUConvert_Sat_i16_i32(uint UnsignedValue)
 {
-	  if (UnsignedValue > (ushort)0xffff) {
-	    return (ushort)0xffff;
-	  }
-	  return (ushort)UnsignedValue;
+      if (UnsignedValue > (ushort)0xffff) {
+        return (ushort)0xffff;
+      }
+      return (ushort)UnsignedValue;
 }
 
 uint   __builtin_spirv_OpUConvert_Sat_i32_i32(uint UnsignedValue)
@@ -3300,11 +3300,11 @@ INLINE float __intel_convert_float_rtp_rtn(double a, uint direction)
 
 float convertUItoFP32(ulong value, char roundingMode, bool s)
 {
-	uint Hi = (uint)(value >> 32);
-	uint Lo = (uint)(value & 0x00000000FFFFFFFF);
+    uint Hi = (uint)(value >> 32);
+    uint Lo = (uint)(value & 0x00000000FFFFFFFF);
     float Res_Rounded;
-	float NewValue;
-	uint ShiftAmount = __builtin_spirv_OpenCL_clz_i32(Hi);
+    float NewValue;
+    uint ShiftAmount = __builtin_spirv_OpenCL_clz_i32(Hi);
 
     //For rtn and rtp we need to switch the rounding mode if
     //the sign bit is negative in order get the correct magnitude
@@ -3318,19 +3318,19 @@ float convertUItoFP32(ulong value, char roundingMode, bool s)
         roundingMode = 1;
     }
         
-	if (Hi != 0)
-	{
-		uint InnerResHi = Hi;
+    if (Hi != 0)
+    {
+        uint InnerResHi = Hi;
         uint InnerResLo = Lo;
-		if(ShiftAmount != 0)
-		{
+        if(ShiftAmount != 0)
+        {
             uint L, H;
-			L = Lo << ShiftAmount;
+            L = Lo << ShiftAmount;
             H = (Hi << ShiftAmount) | (Lo >> -ShiftAmount);
-			InnerResHi = H;
-			InnerResLo = L;
-		}
-		
+            InnerResHi = H;
+            InnerResLo = L;
+        }
+        
         switch(roundingMode)
         { 
             case 0: //rte (same as default)
@@ -3349,27 +3349,27 @@ float convertUItoFP32(ulong value, char roundingMode, bool s)
             default:
                 Res_Rounded = InnerResLo ? (float)(InnerResHi | 1) : (float)InnerResHi;
         }
-	}
-	else
-	{
+    }
+    else
+    {
         if (roundingMode == 1) //rtp
             Res_Rounded = __builtin_spirv_OpConvertUToF_RTP_f32_i32(Lo);
         else if (roundingMode > 1)  //rtn and rtz 
-		    Res_Rounded = __builtin_spirv_OpConvertUToF_RTZ_f32_i32(Lo);
+            Res_Rounded = __builtin_spirv_OpConvertUToF_RTZ_f32_i32(Lo);
         else
             Res_Rounded = (float)Lo;
-	}
+    }
 
-	float exp = as_float((159 - ShiftAmount) << 23);
-	NewValue = Res_Rounded * exp;
+    float exp = as_float((159 - ShiftAmount) << 23);
+    NewValue = Res_Rounded * exp;
     return NewValue;
 }
 
 
 float convertSItoFP32(long value, char roundingMode)
 {
-	uint Hi = (uint)(value >> 32);
-	uint Lo = (uint)(value & 0x00000000FFFFFFFF);
+    uint Hi = (uint)(value >> 32);
+    uint Lo = (uint)(value & 0x00000000FFFFFFFF);
     uint sign_bit = as_uint(as_int(Hi) >> 31);
     float NewValue;
     Lo = Lo ^ sign_bit; 

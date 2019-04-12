@@ -41,6 +41,6 @@ define i32 @foo(i32 %dim, <8 x i32> %r0, <8 x i32> %payloadHeader) nounwind {
 !4 = !{i32 0}
 !5 = !{i32 1}
 
-; CHECK: 		%groupId = extractelement <8 x i32> %r0, i32 7
+; CHECK:         %groupId = extractelement <8 x i32> %r0, i32 7
 
-; CHECK-NOT: 	call i32 @__builtin_IB_get_group_id(i32 2)
+; CHECK-NOT:     call i32 @__builtin_IB_get_group_id(i32 2)

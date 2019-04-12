@@ -48,9 +48,9 @@ using namespace vISA;
 
 #define FAIL_SAFE_RA_LIMIT 3
 
-#define MIN(x,y)	(((x)<(y))? (x):(y))
-#define MAX(x,y)	(((x)<(y))? (y):(x))
-#define ROUND(x,y)	((x) + ((y - x % y) % y))
+#define MIN(x,y)    (((x)<(y))? (x):(y))
+#define MAX(x,y)    (((x)<(y))? (y):(x))
+#define ROUND(x,y)    ((x) + ((y - x % y) % y))
 
 unsigned int BitMask[BITS_DWORD] =
 {
@@ -1042,7 +1042,7 @@ bool BankConflictPass::setupBankConflictsForKernel(G4_Kernel& kernel, bool doLoc
         unsigned int loopNestLevel = 0;
 
         setupBankConflictsForBB(bb, threeSourceInstNum, sendInstNum,
-        	                                    numRegLRA, conflicts);
+                                                numRegLRA, conflicts);
         loopNestLevel = bb->getNestLevel() + 1;
 
         if (threeSourceInstNum)
@@ -4720,7 +4720,7 @@ void Interference::buildInterferenceWithLocalRA(G4_BB* bb)
 
 #ifdef DEBUG_VERBOSE_ON
         inst->emit(COUT_ERROR);
-        DEBUG_VERBOSE("	//" << inst->getLineNo() << ":$" << inst->getCISAOff());
+        DEBUG_VERBOSE("    //" << inst->getLineNo() << ":$" << inst->getCISAOff());
         DEBUG_VERBOSE(std::endl);
 #endif
 
@@ -6390,14 +6390,14 @@ unsigned GlobalRA::sendBlockSizeCode(unsigned owordSize)
     return code;
 }
 
-#define STATELESS_SURFACE_INDEX			0xFF
-#define HEADER_PRESENT					0x80000
-#define SEND_OWORD_READ_TYPE			0
-#define SEND_OWORD_WRITE_TYPE			8
-#define SEND_MSG_TYPE_BIT_OFFSET		14
-#define	SEND_RSP_LENGTH_BIT_OFFSET		20
-#define	SEND_MSG_LENGTH_BIT_OFFSET		25
-#define SEND_DESC_DATA_SIZE_BIT_OFFSET	8
+#define STATELESS_SURFACE_INDEX            0xFF
+#define HEADER_PRESENT                    0x80000
+#define SEND_OWORD_READ_TYPE            0
+#define SEND_OWORD_WRITE_TYPE            8
+#define SEND_MSG_TYPE_BIT_OFFSET        14
+#define    SEND_RSP_LENGTH_BIT_OFFSET        20
+#define    SEND_MSG_LENGTH_BIT_OFFSET        25
+#define SEND_DESC_DATA_SIZE_BIT_OFFSET    8
 
 G4_Imm* GlobalRA::createMsgDesc(unsigned owordSize, bool writeType, bool isSplitSend)
 {
@@ -8985,7 +8985,7 @@ void GlobalRA::assignRegForAliasDcl()
                 else if (CurrentRegVar->getDeclare()->getRegFile() == G4_ADDRESS)
                 {
                     MUST_BE_TRUE(tempoffset < getNumAddrRegisters() * 2,
-                        ERROR_REGALLOC);	// Must hold tempoffset in one A0 reg
+                        ERROR_REGALLOC);    // Must hold tempoffset in one A0 reg
                     CurrentRegVar->setPhyReg(AliasRegVar->getPhyReg(), tempoffset / CurrentRegVar->getDeclare()->getElemSize());
                 }
                 else

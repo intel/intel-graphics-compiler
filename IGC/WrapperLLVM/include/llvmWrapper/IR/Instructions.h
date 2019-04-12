@@ -31,51 +31,51 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace IGCLLVM
 {
-	template<typename T>
-	inline void CopySyncScopeID(T* LHS, T* RHS)
-	{
+    template<typename T>
+    inline void CopySyncScopeID(T* LHS, T* RHS)
+    {
 #if LLVM_VERSION_MAJOR == 4
-		LHS->setSynchScope(RHS->getSynchScope());
+        LHS->setSynchScope(RHS->getSynchScope());
 #elif LLVM_VERSION_MAJOR >= 7
-		LHS->setSyncScopeID(RHS->getSyncScopeID());
+        LHS->setSyncScopeID(RHS->getSyncScopeID());
 #endif
-	}
+    }
 
-	template<class T = llvm::Instruction>
-	inline 
+    template<class T = llvm::Instruction>
+    inline 
 #if LLVM_VERSION_MAJOR == 4
-		llvm::SynchronizationScope
+        llvm::SynchronizationScope
 #elif LLVM_VERSION_MAJOR >= 7
-		llvm::SyncScope::ID
+        llvm::SyncScope::ID
 #endif
-		getSyncScopeID(T* I)
-	{
+        getSyncScopeID(T* I)
+    {
 #if LLVM_VERSION_MAJOR == 4
-		return I->getSynchScope();
+        return I->getSynchScope();
 #elif LLVM_VERSION_MAJOR >= 7
-		return I->getSyncScopeID();
+        return I->getSyncScopeID();
 #endif
-	}
+    }
 
-	template<class T = llvm::Instruction>
-	inline void DeleteInstruction(T*& I)
-	{
+    template<class T = llvm::Instruction>
+    inline void DeleteInstruction(T*& I)
+    {
 #if LLVM_VERSION_MAJOR == 4
-		delete I;
+        delete I;
 #elif LLVM_VERSION_MAJOR >= 7
-		I->deleteValue();
+        I->deleteValue();
 #endif
-	}
+    }
 
-	template<class T = llvm::Instruction>
-	inline unsigned getDestAlignment(T* I)
-	{
+    template<class T = llvm::Instruction>
+    inline unsigned getDestAlignment(T* I)
+    {
 #if LLVM_VERSION_MAJOR == 4
-		return I->getAlignment();
+        return I->getAlignment();
 #elif LLVM_VERSION_MAJOR >= 7
-		return I->getDestAlignment();
+        return I->getDestAlignment();
 #endif
-	}
+    }
 }
 
 #endif

@@ -259,27 +259,27 @@ DIE *DwarfDebug::updateSubprogramScopeDIE(CompileUnit *SPCU, DISubprogram* SP)
 
                 // Add arguments.
                 DISubroutineType* SPTy = SP->getType();
-				if (SPTy)
-				{
-					DITypeRefArray Args = SPTy->getTypeArray();
-					uint16_t SPTag = (uint16_t)SPTy->getTag();
-					if (SPTag == dwarf::DW_TAG_subroutine_type)
-					{
-						for (unsigned i = 1, N = Args.size(); i < N; ++i)
-						{
-							DIE *Arg = SPCU->createAndAddDIE(dwarf::DW_TAG_formal_parameter, *SPDie);
-							DIType* ATy = cast<DIType>(Args[i]);
-							SPCU->addType(Arg, ATy);
-							if (ATy->isArtificial())
-								SPCU->addFlag(Arg, dwarf::DW_AT_artificial);
-							if (ATy->isObjectPointer())
-								SPCU->addDIEEntry(SPDie, dwarf::DW_AT_object_pointer, Arg);
-						}
-					}
-					DIE *SPDeclDie = SPDie;
-					SPDie = SPCU->createAndAddDIE(dwarf::DW_TAG_subprogram, *SPCU->getCUDie());
-					SPCU->addDIEEntry(SPDie, dwarf::DW_AT_specification, SPDeclDie);
-				}
+                if (SPTy)
+                {
+                    DITypeRefArray Args = SPTy->getTypeArray();
+                    uint16_t SPTag = (uint16_t)SPTy->getTag();
+                    if (SPTag == dwarf::DW_TAG_subroutine_type)
+                    {
+                        for (unsigned i = 1, N = Args.size(); i < N; ++i)
+                        {
+                            DIE *Arg = SPCU->createAndAddDIE(dwarf::DW_TAG_formal_parameter, *SPDie);
+                            DIType* ATy = cast<DIType>(Args[i]);
+                            SPCU->addType(Arg, ATy);
+                            if (ATy->isArtificial())
+                                SPCU->addFlag(Arg, dwarf::DW_AT_artificial);
+                            if (ATy->isObjectPointer())
+                                SPCU->addDIEEntry(SPDie, dwarf::DW_AT_object_pointer, Arg);
+                        }
+                    }
+                    DIE *SPDeclDie = SPDie;
+                    SPDie = SPCU->createAndAddDIE(dwarf::DW_TAG_subprogram, *SPCU->getCUDie());
+                    SPCU->addDIEEntry(SPDie, dwarf::DW_AT_specification, SPDeclDie);
+                }
             }
         }
     }
@@ -523,7 +523,7 @@ DIE *DwarfDebug::constructInlinedScopeDIE(CompileUnit *TheCU, LexicalScope *Scop
             GenISADebugRangeSymbols.push_back(0);
         }
 
-	    return ScopeDIE;
+        return ScopeDIE;
     }
 }
 
@@ -857,7 +857,7 @@ void DwarfDebug::beginModule()
             constructSubprogramDIE(CU, DISP);
         }
 
-		auto EnumTypes = CUNode->getEnumTypes();
+        auto EnumTypes = CUNode->getEnumTypes();
         for (unsigned i = 0, e = EnumTypes.size(); i != e; ++i)
         {
             CU->getOrCreateTypeDIE(EnumTypes[i]);
@@ -921,7 +921,7 @@ void DwarfDebug::collectDeadVariables()
 #if LLVM_VERSION_MAJOR == 4 
             DILocalVariableArray Variables = SP->getVariables();
 #elif LLVM_VERSION_MAJOR >= 7
-			auto Variables = SP->getRetainedNodes();
+            auto Variables = SP->getRetainedNodes();
 #endif
             if (Variables.size() == 0)
                 continue;
@@ -1477,9 +1477,9 @@ void DwarfDebug::collectVariableInfo(const Function *MF, SmallPtrSet<const MDNod
     // Collect info for variables that were optimized out.
     LexicalScope *FnScope = LScopes.getCurrentFunctionScope();
 #if LLVM_VERSION_MAJOR == 4 
-	DILocalVariableArray Variables = cast<DISubprogram>(FnScope->getScopeNode())->getVariables();
+    DILocalVariableArray Variables = cast<DISubprogram>(FnScope->getScopeNode())->getVariables();
 #elif LLVM_VERSION_MAJOR >= 7
-	auto Variables = cast<DISubprogram>(FnScope->getScopeNode())->getRetainedNodes();
+    auto Variables = cast<DISubprogram>(FnScope->getScopeNode())->getRetainedNodes();
 #endif
     
     for (unsigned i = 0, e = Variables.size(); i != e; ++i)
@@ -1892,9 +1892,9 @@ void DwarfDebug::endFunction(const Function *MF)
         {
             // Collect info for variables that were optimized out.
 #if LLVM_VERSION_MAJOR == 4 
-			DILocalVariableArray Variables = SP->getVariables();
+            DILocalVariableArray Variables = SP->getVariables();
 #elif LLVM_VERSION_MAJOR >= 7
-			auto Variables = SP->getRetainedNodes();
+            auto Variables = SP->getRetainedNodes();
 #endif
             
             for (unsigned i = 0, e = Variables.size(); i != e; ++i)

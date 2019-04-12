@@ -42,11 +42,11 @@ namespace IGC
         llvm::LoopInfo *LI;
 
     public:
-		static char ID;
-		CheckInstrTypes() : FunctionPass(ID), g_InstrTypes(nullptr) 
-		{
-		};
-		CheckInstrTypes(IGC::SInstrTypes* instrList);
+        static char ID;
+        CheckInstrTypes() : FunctionPass(ID), g_InstrTypes(nullptr) 
+        {
+        };
+        CheckInstrTypes(IGC::SInstrTypes* instrList);
 
         virtual bool runOnFunction(llvm::Function &F) override;
 

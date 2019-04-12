@@ -331,11 +331,11 @@ void ThreadCombining::FindRegistersAliveAcrossBarriers(llvm::Function* m_kernel,
 
 bool ThreadCombining::canDoOptimization(Function* m_kernel, llvm::Module& M)
 {
-	PostDominatorTree* PDT = &getAnalysis<PostDominatorTreeWrapperPass>(*m_kernel).getPostDomTree();
+    PostDominatorTree* PDT = &getAnalysis<PostDominatorTreeWrapperPass>(*m_kernel).getPostDomTree();
 
     FindRegistersAliveAcrossBarriers(m_kernel, M);
 
-	// Check if any of the barriers are within control flow
+    // Check if any of the barriers are within control flow
     bool anyBarrierWithinControlFlow = false;
     for (auto& barrier : m_barriers)
     {
@@ -348,17 +348,17 @@ bool ThreadCombining::canDoOptimization(Function* m_kernel, llvm::Module& M)
     //No optimization if no SLM used - number of dispatchable thread groups is limited by SLM space, only then we have perf issue
     //No optimization if thread group size Z is not equal to 1 - keep for simpler cases
     //No optimization if barrier is within control flow - to keep it simple for now else gets complex
-	unsigned int threadGroupSize_X = GetthreadGroupSize(M, ThreadGroupSize_X);
-	unsigned int threadGroupSize_Y = GetthreadGroupSize(M, ThreadGroupSize_Y);
-	unsigned int threadGroupSize_Z = GetthreadGroupSize(M, ThreadGroupSize_Z);
+    unsigned int threadGroupSize_X = GetthreadGroupSize(M, ThreadGroupSize_X);
+    unsigned int threadGroupSize_Y = GetthreadGroupSize(M, ThreadGroupSize_Y);
+    unsigned int threadGroupSize_Z = GetthreadGroupSize(M, ThreadGroupSize_Z);
 
     if (threadGroupSize_X == 1 ||
-		threadGroupSize_Y == 1 ||
-		threadGroupSize_Z != 1 ||
+        threadGroupSize_Y == 1 ||
+        threadGroupSize_Z != 1 ||
         (!m_SLMUsed && IGC_IS_FLAG_DISABLED(EnableThreadCombiningWithNoSLM))|| 
         anyBarrierWithinControlFlow)
     {
-		return false;
+        return false;
     }
 
     return true;
@@ -637,17 +637,17 @@ bool ThreadCombining::runOnModule(llvm::Module& M)
 
     unsigned int newSizeX = threadGroupSize_X;
     unsigned int newSizeY = threadGroupSize_Y;
-	// Heuristic for Threadcombining based on EU Occupancy, if EU occupancy increases with the new 
-	// size then combine threads, otherwise skip it
-	if (IGC_IS_FLAG_ENABLED(EnableForceGroupSize))
-	{
-		newSizeX = IGC_GET_FLAG_VALUE(ForceGroupSizeX);
-		newSizeY = IGC_GET_FLAG_VALUE(ForceGroupSizeY);
-	}
+    // Heuristic for Threadcombining based on EU Occupancy, if EU occupancy increases with the new 
+    // size then combine threads, otherwise skip it
+    if (IGC_IS_FLAG_ENABLED(EnableForceGroupSize))
+    {
+        newSizeX = IGC_GET_FLAG_VALUE(ForceGroupSizeX);
+        newSizeY = IGC_GET_FLAG_VALUE(ForceGroupSizeY);
+    }
     else if (x*y >= minTGSizeHeuristic && newThreadOccupancy > currentThreadOccupancy)
     {
-		newSizeX = x;
-		newSizeY = y;
+        newSizeX = x;
+        newSizeY = y;
         currentThreadOccupancy = newThreadOccupancy;
         x = (x % 2 == 0) ? x / 2 : x;
         y = (y % 2 == 0) ? y / 2 : y;

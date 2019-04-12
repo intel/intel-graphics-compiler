@@ -160,22 +160,22 @@ namespace IGC
         bool hasDiscard;
         bool mayHaveIndirectOperands;  //<! true if code may have indirect operands like r5[a0].
         bool hasUniformAssumptions;
-		unsigned int numSample;
-		unsigned int numBB;
-		unsigned int numLoopInsts;
+        unsigned int numSample;
+        unsigned int numBB;
+        unsigned int numLoopInsts;
         unsigned int numOfLoop;
         unsigned int numInsts;    //<! measured after optimization, used as a compiler heuristic
-		bool sampleCmpToDiscardOptimizationPossible;
-		unsigned int sampleCmpToDiscardOptimizationSlot;
+        bool sampleCmpToDiscardOptimizationPossible;
+        unsigned int sampleCmpToDiscardOptimizationSlot;
     };
 
-	struct SSimplePushInfo
-	{
+    struct SSimplePushInfo
+    {
         uint m_cbIdx = 0;
-		uint m_offset = 0;
-		uint m_size = 0;
+        uint m_offset = 0;
+        uint m_size = 0;
         bool isStateless = false;
-	};
+    };
 
     struct SKernelProgram
     {
@@ -203,7 +203,7 @@ namespace IGC
         uint        m_ConstantBufferUsageMask;
         uint        m_ConstantBufferReplaceSize;
 
-		SSimplePushInfo simplePushInfoArr[g_c_maxNumberOfBufferPushed];
+        SSimplePushInfo simplePushInfoArr[g_c_maxNumberOfBufferPushed];
 
         // Interesting constants for dynamic constant folding
         std::vector<USC::ConstantAddrValue> m_pInterestingConstants;
@@ -251,20 +251,20 @@ namespace IGC
         bool forceEarlyZ;
         bool hasEvalSampler;
 
-		bool sampleCmpToDiscardOptimizationPossible;
+        bool sampleCmpToDiscardOptimizationPossible;
 
         bool needPSSync;
     };
 
-	/// Gen10+, corresponds to 3DSTATE_VF_SGVS_2 as described below
-	struct SVertexFetchSGVExtendedParameters
-	{
-		struct
-		{
-			bool enabled = false;      //<! XPn Enable = XPn Source Select = (*)
-			unsigned int location = 0; //<! Linear offset of the 32bit component in VUE
-		} extendedParameters[3] = {};  //<! Order of elements: VF_XP0, VF_XP1, VF_XP2
-	};
+    /// Gen10+, corresponds to 3DSTATE_VF_SGVS_2 as described below
+    struct SVertexFetchSGVExtendedParameters
+    {
+        struct
+        {
+            bool enabled = false;      //<! XPn Enable = XPn Source Select = (*)
+            unsigned int location = 0; //<! Linear offset of the 32bit component in VUE
+        } extendedParameters[3] = {};  //<! Order of elements: VF_XP0, VF_XP1, VF_XP2
+    };
 
     struct SVertexShaderKernelProgram : SKernelProgram
     {
@@ -288,10 +288,10 @@ namespace IGC
         /// instance ID information
         bool         hasInstanceID;
         unsigned int instanceIdLocation;
-		bool         singleInstanceVertexShader;
-		/// corresponds to 3DSTATE_VF_SGVS_2
-		SVertexFetchSGVExtendedParameters vertexFetchSGVExtendedParameters;
-		//RTAI and VPAI
+        bool         singleInstanceVertexShader;
+        /// corresponds to 3DSTATE_VF_SGVS_2
+        SVertexFetchSGVExtendedParameters vertexFetchSGVExtendedParameters;
+        //RTAI and VPAI
         bool         DeclaresRTAIndex;
         bool         DeclaresVPAIndex;
 
@@ -948,10 +948,10 @@ namespace IGC
                 {
                     IntelEnablePreRAScheduling = false;
                 }
-				if (strstr(options, "-cl-intel-use-bindless-buffers"))
-				{
-					PromoteStatelessToBindless = true;
-				}
+                if (strstr(options, "-cl-intel-use-bindless-buffers"))
+                {
+                    PromoteStatelessToBindless = true;
+                }
             }
 
 
@@ -965,7 +965,7 @@ namespace IGC
             bool IntelHasBufferOffsetArg;
             bool replaceGlobalOffsetsByZero = false;
             bool IntelEnablePreRAScheduling = true;
-			bool PromoteStatelessToBindless = false;
+            bool PromoteStatelessToBindless = false;
 
         };
 
@@ -1008,10 +1008,10 @@ namespace IGC
         float m_ProfilingTimerResolution;
         bool m_ShouldUseNonCoherentStatelessBTI;
 
-		OpenCLProgramContext(
-			const COCLBTILayout& btiLayout,
-			const CPlatform& platform,
-			const TC::STB_TranslateInputArgs* pInputArgs,
+        OpenCLProgramContext(
+            const COCLBTILayout& btiLayout,
+            const CPlatform& platform,
+            const TC::STB_TranslateInputArgs* pInputArgs,
             const CDriverInfo& driverInfo,
             LLVMContextWrapper* llvmContext = nullptr,
             bool shouldUseNonCoherentStatelessBTI = false,
@@ -1021,7 +1021,7 @@ namespace IGC
             m_InternalOptions(pInputArgs),
             m_Options(pInputArgs),
             isSpirV(false),
-			m_ShouldUseNonCoherentStatelessBTI(shouldUseNonCoherentStatelessBTI)
+            m_ShouldUseNonCoherentStatelessBTI(shouldUseNonCoherentStatelessBTI)
         {
         }
         bool isSPIRV() const;

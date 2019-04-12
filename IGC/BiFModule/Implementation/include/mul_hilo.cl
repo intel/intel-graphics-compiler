@@ -47,8 +47,8 @@ Output:
 
 \*****************************************************************************/
 ulong __builtin_spirv___intc_umul_hilo_i64_i64_p0i64(ulong sourceA,
-                       		       ulong sourceB,
-		                       __private ulong *destLow)
+                                      ulong sourceB,
+                               __private ulong *destLow)
 {
     ulong lowA, lowB;
     ulong highA, highB;
@@ -151,8 +151,8 @@ Output:
 
 \*****************************************************************************/
 long __builtin_spirv___intc_mul_hilo_i64_i64_p0i64(long sourceA,
-                     		     	    	   long sourceB,
-		                     		   __private ulong *destLow)
+                                                 long sourceB,
+                                        __private ulong *destLow)
 {
     // Find sign of result
     long aSign = sourceA >> 63;
@@ -165,8 +165,8 @@ long __builtin_spirv___intc_mul_hilo_i64_i64_p0i64(long sourceA,
 
     ulong hi;
     hi = __builtin_spirv___intc_umul_hilo_i64_i64_p0i64( (ulong) sourceA,
-                           				 (ulong) sourceB,
-                           				 destLow );
+                                            (ulong) sourceB,
+                                            destLow );
 
     // Fix the sign
     if( resultSign )

@@ -4211,7 +4211,7 @@ void __builtin_spirv_OpGroupCommitWritePipe_i32_i64_i64_i32(uint Execution, Pipe
 
 //
 //  Common
-//		-degrees,fclamp,fmax_common,fmin_common,mix,radians,sign,smoothstep,step
+//        -degrees,fclamp,fmax_common,fmin_common,mix,radians,sign,smoothstep,step
 //
 
 float __builtin_spirv_OpenCL_degrees_f32(float r );
@@ -4406,7 +4406,7 @@ half16 __builtin_spirv_OpenCL_step_v16f16_v16f16(half16 x, half16 y);
 
 //
 //  Geometric
-//		-cross,distance,fast_distance,fast_length,fast_normalize,length,normalize
+//        -cross,distance,fast_distance,fast_length,fast_normalize,length,normalize
 //
 
 float3 __builtin_spirv_OpenCL_cross_v3f32_v3f32(float3 p0, float3 p1 );
@@ -4483,8 +4483,8 @@ half4 __builtin_spirv_OpenCL_normalize_v4f16(half4 p );
 
 //
 //  Half
-//		-half_cos,half_divide,half_exp,half_exp2,half_exp10,half_log,half_log2,half_log10
-//		 half_powr,half_recip,half_rsqrt,half_sin,half_sqrt,half_tan
+//        -half_cos,half_divide,half_exp,half_exp2,half_exp10,half_log,half_log2,half_log10
+//         half_powr,half_recip,half_rsqrt,half_sin,half_sqrt,half_tan
 //
 
 float __builtin_spirv_OpenCL_half_cos_f32(float x );
@@ -4588,8 +4588,8 @@ float16 __builtin_spirv_OpenCL_half_tan_v16f32(float16 x );
 
 //
 //  Integer (signed and unsigned )
-//		-abs,abs_diff,add_sat,clamp,clz,ctz,hadd,mad_hi,mad_sat,mad24,max,min,mul_hi
-//		 mul24,popcnt,rhadd,rotate,sub_sat,upsample
+//        -abs,abs_diff,add_sat,clamp,clz,ctz,hadd,mad_hi,mad_sat,mad24,max,min,mul_hi
+//         mul24,popcnt,rhadd,rotate,sub_sat,upsample
 //
 
 uchar __builtin_spirv_OpenCL_s_abs_i8( char x );
@@ -5297,10 +5297,10 @@ ulong16 __builtin_spirv_OpenCL_u_upsample_v16i32_v16i32( uint16 hi, uint16 lo );
 
 //
 //  Math_ext
-//		-acos,acosh,acospi,asin,asinh,asinpi,atan,atan2,atan2pi,atanh,atanpi,cbrt,ceil,copysign,
+//        -acos,acosh,acospi,asin,asinh,asinpi,atan,atan2,atan2pi,atanh,atanpi,cbrt,ceil,copysign,
 //       cos,cosh,cospi,divide_cr,erf,erfc,exp,exp2,exp10,expm1,fabs,fdim,floor,fma,fmax,fmin,
 //       fmod,fract,frexp,hypot,ilogb,ldexp,lgamma,lgamma_r,log,log1p,log2,log10,logb,mad,maxmag,minmag,
-//		 modf,nan,nextafter,pow,pown,powr,remainder,remquo,rint,rootn,round,rsqrt,sin,sincos,
+//         modf,nan,nextafter,pow,pown,powr,remainder,remquo,rint,rootn,round,rsqrt,sin,sincos,
 //       sinh,sinpi,sqrt,sqrt_cr,tan,tanh,tanpi,tgamma,trunc
 //
 
@@ -7077,8 +7077,8 @@ half16 __builtin_spirv_OpenCL_trunc_v16f16(half16 x);
 
 //
 //  Native
-//		-native_cos,native_divide,native_exp,native_exp2,native_exp10,native_log,native_log2,
-//		 native_log10,native_powr,native_recip,native_rsqrt,native_sin,native_sqrt,native_tan
+//        -native_cos,native_divide,native_exp,native_exp2,native_exp10,native_log,native_log2,
+//         native_log10,native_powr,native_recip,native_rsqrt,native_sin,native_sqrt,native_tan
 //
 
 float __builtin_spirv_OpenCL_native_cos_f32(float x );
@@ -7377,7 +7377,7 @@ half16 __builtin_spirv_OpenCL_native_tan_v16f16(half16 x);
 
 //
 //  Relational
-//		-bitselect,select
+//        -bitselect,select
 //
 
 uchar __builtin_spirv_OpenCL_bitselect_i8_i8_i8( uchar a, uchar b, uchar c );

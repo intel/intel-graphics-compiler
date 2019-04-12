@@ -824,19 +824,19 @@ typedef enum
     PREDEF_SURF_1 = 1,
     PREDEF_SURF_2 = 2,
     PREDEF_SURF_3 = 3,
-	PREDEF_SURF_1_OLD = 243,
-	PREDEF_SURF_2_OLD = 244,
-	PREDEF_SURF_3_OLD = 245,
-	PREDEF_SURF_252 = 252, // bindless surfaces
+    PREDEF_SURF_1_OLD = 243,
+    PREDEF_SURF_2_OLD = 244,
+    PREDEF_SURF_3_OLD = 245,
+    PREDEF_SURF_252 = 252, // bindless surfaces
     PREDEF_SURF_253 = 253,  // this is only used internally and should not be set by the user
     PREDEF_SURF_255 = 255
 } PREDEFINED_SURF;
 
 typedef struct
 {
-	int vISAId;  // their id in vISA binary (0-5)
-	PREDEFINED_SURF genId;
-	const char* name;  // name in vISA asm
+    int vISAId;  // their id in vISA binary (0-5)
+    PREDEFINED_SURF genId;
+    const char* name;  // name in vISA asm
 } vISAPreDefinedSurface;
 
 extern vISAPreDefinedSurface vISAPreDefSurf[COMMON_ISA_NUM_PREDEFINED_SURF_VER_3_1];

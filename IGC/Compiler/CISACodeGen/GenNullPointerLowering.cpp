@@ -74,7 +74,7 @@ public:
   virtual void getAnalysisUsage(AnalysisUsage &AU) const {
     AU.setPreservesAll();
     AU.addRequired<MetaDataUtilsWrapper>();
-	AU.addRequired<CodeGenContextWrapper>();
+    AU.addRequired<CodeGenContextWrapper>();
   }
 };
 } // End of anonymous namespace
@@ -146,10 +146,10 @@ Constant *GetNullPointerValue(const DataLayout *DL, Constant *C) {
 }
 
 bool GenNullPointerLowering::runOnFunction(Function &F) {
-	CodeGenContext *pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    CodeGenContext *pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-	// Only handle GEP for OCL so far.
-	if (pCtx->type != ShaderType::OPENCL_SHADER || !isEntryFunc(pMdUtils, &F))
+    // Only handle GEP for OCL so far.
+    if (pCtx->type != ShaderType::OPENCL_SHADER || !isEntryFunc(pMdUtils, &F))
     {
         return false;
     }

@@ -20,7 +20,7 @@ endif()
       "${CMAKE_CURRENT_SOURCE_DIR}/UnifyIROCL.cpp"
       "${CMAKE_CURRENT_SOURCE_DIR}/MoveStaticAllocas.cpp"
     )
-	
+    
 if(IGC_BUILD__SPIRV_ENABLED)
   list(APPEND IGC_BUILD__SRC__AdaptorOCL
       SPIRV/libSPIRV/OpenCL.std.h

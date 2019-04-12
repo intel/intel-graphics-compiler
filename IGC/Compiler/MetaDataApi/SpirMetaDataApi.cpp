@@ -151,13 +151,13 @@ llvm::Metadata* VectorTypeHintMetaData::getVecTypeNode( const llvm::MDNode* pPar
     
 llvm::Metadata* VectorTypeHintMetaData::getSignNode(const llvm::MDNode* pParentNode) const
 {
-	if (!pParentNode)
-	{
-		return NULL;
-	}
+    if (!pParentNode)
+    {
+        return NULL;
+    }
 
-	unsigned int offset = _Mybase::getStartIndex();
-	return pParentNode->getOperand(1 + offset).get();
+    unsigned int offset = _Mybase::getStartIndex();
+    return pParentNode->getOperand(1 + offset).get();
 }
 
 ///
@@ -550,153 +550,153 @@ llvm::Metadata* SubGroupDimensionsMetaData::getSIMD_SizeNode( const llvm::MDNode
 // Ctor - loads the WorkgroupWalkOrderMetaData from the given metadata node
 //
 WorkgroupWalkOrderMetaData::WorkgroupWalkOrderMetaData(const llvm::MDNode* pNode, bool hasId) :
-	_Mybase(pNode, hasId),
-	m_Dim0(getDim0Node(pNode)),
-	m_Dim1(getDim1Node(pNode)),
-	m_Dim2(getDim2Node(pNode)),
-	m_pNode(pNode)
+    _Mybase(pNode, hasId),
+    m_Dim0(getDim0Node(pNode)),
+    m_Dim1(getDim1Node(pNode)),
+    m_Dim2(getDim2Node(pNode)),
+    m_pNode(pNode)
 {}
 
 ///
 // Default Ctor - creates the empty, not named SubGroupSizeMetaData object
 //
 WorkgroupWalkOrderMetaData::WorkgroupWalkOrderMetaData() :
-	m_pNode(NULL)
+    m_pNode(NULL)
 {}
 
 ///
 // Ctor - creates the empty, named SubGroupSizeMetaData object
 //
 WorkgroupWalkOrderMetaData::WorkgroupWalkOrderMetaData(const char* name) :
-	_Mybase(name),
-	m_pNode(NULL)
+    _Mybase(name),
+    m_pNode(NULL)
 {}
 
 bool WorkgroupWalkOrderMetaData::hasValue() const
 {
-	if (m_Dim0.hasValue())
-	{
-		return true;
-	}
+    if (m_Dim0.hasValue())
+    {
+        return true;
+    }
 
-	if (m_Dim1.hasValue())
-	{
-		return true;
-	}
+    if (m_Dim1.hasValue())
+    {
+        return true;
+    }
 
-	if (m_Dim2.hasValue())
-	{
-		return true;
-	}
+    if (m_Dim2.hasValue())
+    {
+        return true;
+    }
 
-	return NULL != m_pNode || dirty();
+    return NULL != m_pNode || dirty();
 }
 
 ///
 // Returns true if any of the SubGroupSizeMetaData`s members has changed
 bool WorkgroupWalkOrderMetaData::dirty() const
 {
-	if (m_Dim0.dirty())
-	{
-		return true;
-	}
+    if (m_Dim0.dirty())
+    {
+        return true;
+    }
 
-	if (m_Dim1.dirty())
-	{
-		return true;
-	}
+    if (m_Dim1.dirty())
+    {
+        return true;
+    }
 
-	if (m_Dim2.dirty())
-	{
-		return true;
-	}
-	return false;
+    if (m_Dim2.dirty())
+    {
+        return true;
+    }
+    return false;
 }
 
 ///
 // Discards the changes done to the SubGroupSizeMetaData instance
 void WorkgroupWalkOrderMetaData::discardChanges()
 {
-	m_Dim0.discardChanges();
-	m_Dim1.discardChanges();
-	m_Dim2.discardChanges();
+    m_Dim0.discardChanges();
+    m_Dim1.discardChanges();
+    m_Dim2.discardChanges();
 }
 
 ///
 // Generates the new MDNode hierarchy for the given structure
 llvm::Metadata* WorkgroupWalkOrderMetaData::generateNode(llvm::LLVMContext& context) const
 {
-	llvm::SmallVector<llvm::Metadata*, 5> args;
+    llvm::SmallVector<llvm::Metadata*, 5> args;
 
-	llvm::Metadata* pIDNode = _Mybase::generateNode(context);
-	if (NULL != pIDNode)
-	{
-		args.push_back(pIDNode);
-	}
+    llvm::Metadata* pIDNode = _Mybase::generateNode(context);
+    if (NULL != pIDNode)
+    {
+        args.push_back(pIDNode);
+    }
 
-	args.push_back(m_Dim0.generateNode(context));
-	args.push_back(m_Dim1.generateNode(context));
-	args.push_back(m_Dim2.generateNode(context));
+    args.push_back(m_Dim0.generateNode(context));
+    args.push_back(m_Dim1.generateNode(context));
+    args.push_back(m_Dim2.generateNode(context));
 
-	return llvm::MDNode::get(context, args);
+    return llvm::MDNode::get(context, args);
 }
 
 ///
 // Saves the structure changes to the given MDNode
 void WorkgroupWalkOrderMetaData::save(llvm::LLVMContext& context, llvm::MDNode* pNode) const
 {
-	assert(pNode && "The target node should be valid pointer");
+    assert(pNode && "The target node should be valid pointer");
 
-	// we assume that underlying metadata node has not changed under our foot
-	if (pNode == m_pNode && !dirty())
-	{
-		return;
-	}
+    // we assume that underlying metadata node has not changed under our foot
+    if (pNode == m_pNode && !dirty())
+    {
+        return;
+    }
 #if 0
-	// check that we could save the new information to the given node without regenerating it
-	if (!compatibleWith(pNode))
-	{
-		pNode->replaceAllUsesWith(generateNode(context));
-		return;
-	}
+    // check that we could save the new information to the given node without regenerating it
+    if (!compatibleWith(pNode))
+    {
+        pNode->replaceAllUsesWith(generateNode(context));
+        return;
+    }
 #endif
 
-	m_Dim0.save(context, llvm::cast<llvm::MDNode>(getDim0Node(pNode)));
-	m_Dim1.save(context, llvm::cast<llvm::MDNode>(getDim1Node(pNode)));
-	m_Dim2.save(context, llvm::cast<llvm::MDNode>(getDim2Node(pNode)));
+    m_Dim0.save(context, llvm::cast<llvm::MDNode>(getDim0Node(pNode)));
+    m_Dim1.save(context, llvm::cast<llvm::MDNode>(getDim1Node(pNode)));
+    m_Dim2.save(context, llvm::cast<llvm::MDNode>(getDim2Node(pNode)));
 }
 
 llvm::Metadata* WorkgroupWalkOrderMetaData::getDim0Node(const llvm::MDNode* pParentNode) const
 {
-	if (!pParentNode)
-	{
-		return NULL;
-	}
+    if (!pParentNode)
+    {
+        return NULL;
+    }
 
-	unsigned int offset = _Mybase::getStartIndex();
-	return pParentNode->getOperand(0 + offset).get();
+    unsigned int offset = _Mybase::getStartIndex();
+    return pParentNode->getOperand(0 + offset).get();
 }
 
 llvm::Metadata* WorkgroupWalkOrderMetaData::getDim1Node(const llvm::MDNode* pParentNode) const
 {
-	if (!pParentNode)
-	{
-		return NULL;
-	}
+    if (!pParentNode)
+    {
+        return NULL;
+    }
 
-	unsigned int offset = _Mybase::getStartIndex();
-	return pParentNode->getOperand(1 + offset).get();
+    unsigned int offset = _Mybase::getStartIndex();
+    return pParentNode->getOperand(1 + offset).get();
 }
 
 llvm::Metadata* WorkgroupWalkOrderMetaData::getDim2Node(const llvm::MDNode* pParentNode) const
 {
-	if (!pParentNode)
-	{
-		return NULL;
-	}
+    if (!pParentNode)
+    {
+        return NULL;
+    }
 
-	unsigned int offset = _Mybase::getStartIndex();
-	return pParentNode->getOperand(2 + offset).get();
+    unsigned int offset = _Mybase::getStartIndex();
+    return pParentNode->getOperand(2 + offset).get();
 }
             
 
@@ -709,7 +709,7 @@ KernelMetaData::KernelMetaData(const llvm::MDNode* pNode, bool hasId):
     m_WorkGroupSizeHint(WorkGroupDimensionsMetaData::get(getWorkGroupSizeHintNode(pNode), true)),        
     m_RequiredWorkGroupSize(WorkGroupDimensionsMetaData::get(getRequiredWorkGroupSizeNode(pNode), true)),        
     m_RequiredSubGroupSize(SubGroupDimensionsMetaData::get(getRequiredSubGroupSizeNode(pNode), true)),        
-	m_WorkgroupWalkOrder(WorkgroupWalkOrderMetaData::get(getWorkgroupWalkOrderNode(pNode), true)),
+    m_WorkgroupWalkOrder(WorkgroupWalkOrderMetaData::get(getWorkgroupWalkOrderNode(pNode), true)),
     m_VectorTypeHint(VectorTypeHintMetaData::get(getVectorTypeHintNode(pNode), true)),        
     m_ArgAddressSpaces(getArgAddressSpacesNode(pNode), true),        
     m_ArgAccessQualifiers(getArgAccessQualifiersNode(pNode), true),        
@@ -726,7 +726,7 @@ KernelMetaData::KernelMetaData(const llvm::MDNode* pNode, bool hasId):
 KernelMetaData::KernelMetaData():    m_WorkGroupSizeHint(WorkGroupDimensionsMetaDataHandle::ObjectType::get("work_group_size_hint")),        
     m_RequiredWorkGroupSize(WorkGroupDimensionsMetaDataHandle::ObjectType::get("reqd_work_group_size")),        
     m_RequiredSubGroupSize(SubGroupDimensionsMetaDataHandle::ObjectType::get("intel_reqd_sub_group_size")),        
-	m_WorkgroupWalkOrder(WorkgroupWalkOrderMetaDataHandle::ObjectType::get("intel_reqd_workgroup_walk_order")),
+    m_WorkgroupWalkOrder(WorkgroupWalkOrderMetaDataHandle::ObjectType::get("intel_reqd_workgroup_walk_order")),
     m_VectorTypeHint(VectorTypeHintMetaDataHandle::ObjectType::get("vec_type_hint")),        
     m_ArgAddressSpaces("kernel_arg_addr_space"),        
     m_ArgAccessQualifiers("kernel_arg_access_qual"),        
@@ -744,7 +744,7 @@ KernelMetaData::KernelMetaData(const char* name):
     _Mybase(name),    m_WorkGroupSizeHint(WorkGroupDimensionsMetaDataHandle::ObjectType::get("work_group_size_hint")),        
     m_RequiredWorkGroupSize(WorkGroupDimensionsMetaDataHandle::ObjectType::get("reqd_work_group_size")),        
     m_RequiredSubGroupSize(SubGroupDimensionsMetaDataHandle::ObjectType::get("intel_reqd_sub_group_size")),   
-	m_WorkgroupWalkOrder(WorkgroupWalkOrderMetaDataHandle::ObjectType::get("intel_reqd_workgroup_walk_order")),
+    m_WorkgroupWalkOrder(WorkgroupWalkOrderMetaDataHandle::ObjectType::get("intel_reqd_workgroup_walk_order")),
     m_VectorTypeHint(VectorTypeHintMetaDataHandle::ObjectType::get("vec_type_hint")),        
     m_ArgAddressSpaces("kernel_arg_addr_space"),        
     m_ArgAccessQualifiers("kernel_arg_access_qual"),        
@@ -780,10 +780,10 @@ bool KernelMetaData::hasValue() const
         return true;
     }
 
-	if (m_WorkgroupWalkOrder->hasValue())
-	{
-		return true;
-	}
+    if (m_WorkgroupWalkOrder->hasValue())
+    {
+        return true;
+    }
         
     
     if (m_VectorTypeHint->hasValue())
@@ -849,10 +849,10 @@ bool KernelMetaData::dirty() const
     {
         return true;
     }        
-	if (m_WorkgroupWalkOrder.dirty())
-	{
-		return true;
-	}
+    if (m_WorkgroupWalkOrder.dirty())
+    {
+        return true;
+    }
     if( m_VectorTypeHint.dirty() )
     {
         return true;
@@ -892,7 +892,7 @@ void KernelMetaData::discardChanges()
     m_WorkGroupSizeHint.discardChanges();        
     m_RequiredWorkGroupSize.discardChanges();        
     m_RequiredSubGroupSize.discardChanges();        
-	m_WorkgroupWalkOrder.discardChanges();
+    m_WorkgroupWalkOrder.discardChanges();
     m_VectorTypeHint.discardChanges();        
     m_ArgAddressSpaces.discardChanges();        
     m_ArgAccessQualifiers.discardChanges();        
@@ -930,10 +930,10 @@ llvm::Metadata* KernelMetaData::generateNode(llvm::LLVMContext& context) const
         args.push_back( m_RequiredSubGroupSize.generateNode(context));
     }
 
-	if (m_WorkgroupWalkOrder->hasValue())
-	{
-		args.push_back(m_WorkgroupWalkOrder.generateNode(context));
-	}
+    if (m_WorkgroupWalkOrder->hasValue())
+    {
+        args.push_back(m_WorkgroupWalkOrder.generateNode(context));
+    }
         
     if (m_VectorTypeHint->hasValue())
     {
@@ -977,7 +977,7 @@ void KernelMetaData::save(llvm::LLVMContext& context, llvm::MDNode* pNode) const
     m_WorkGroupSizeHint.save(context, llvm::cast<llvm::MDNode>(getWorkGroupSizeHintNode(pNode)));        
     m_RequiredWorkGroupSize.save(context, llvm::cast<llvm::MDNode>(getRequiredWorkGroupSizeNode(pNode)));        
     m_RequiredSubGroupSize.save(context, llvm::cast<llvm::MDNode>(getRequiredSubGroupSizeNode(pNode)));        
-	m_WorkgroupWalkOrder.save(context, llvm::cast<llvm::MDNode>(getWorkgroupWalkOrderNode(pNode)));
+    m_WorkgroupWalkOrder.save(context, llvm::cast<llvm::MDNode>(getWorkgroupWalkOrderNode(pNode)));
     m_VectorTypeHint.save(context, llvm::cast<llvm::MDNode>(getVectorTypeHintNode(pNode)));        
     m_ArgAddressSpaces.save(context, llvm::cast<llvm::MDNode>(getArgAddressSpacesNode(pNode)));        
     m_ArgAccessQualifiers.save(context, llvm::cast<llvm::MDNode>(getArgAccessQualifiersNode(pNode)));        
@@ -1054,20 +1054,20 @@ llvm::MDNode* KernelMetaData::getRequiredSubGroupSizeNode( const llvm::MDNode* p
 
 llvm::MDNode* KernelMetaData::getWorkgroupWalkOrderNode(const llvm::MDNode* pParentNode) const
 {
-	if (!pParentNode)
-	{
-		return NULL;
-	}
+    if (!pParentNode)
+    {
+        return NULL;
+    }
 
-	unsigned int offset = _Mybase::getStartIndex();
-	for (NodeIterator i = NodeIterator(pParentNode, 1 + offset), e = NodeIterator(pParentNode); i != e; ++i)
-	{
-		if (isNamedNode(i.get(), "intel_reqd_workgroup_walk_order"))
-		{
-			return llvm::dyn_cast<llvm::MDNode>(i.get());
-		}
-	}
-	return NULL;
+    unsigned int offset = _Mybase::getStartIndex();
+    for (NodeIterator i = NodeIterator(pParentNode, 1 + offset), e = NodeIterator(pParentNode); i != e; ++i)
+    {
+        if (isNamedNode(i.get(), "intel_reqd_workgroup_walk_order"))
+        {
+            return llvm::dyn_cast<llvm::MDNode>(i.get());
+        }
+    }
+    return NULL;
 }
     
 llvm::MDNode* KernelMetaData::getVectorTypeHintNode( const llvm::MDNode* pParentNode) const

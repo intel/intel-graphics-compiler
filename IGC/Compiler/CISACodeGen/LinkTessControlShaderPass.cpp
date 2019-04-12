@@ -110,8 +110,8 @@ namespace IGC
         **         If the HS kernel uses a barrier function, software must restrict the Instance Count 
         **         to the number of threads that can be simultaneously active within a subslice.Factors 
         **         which must be considered includes scratch memory availability.
-        **         Value	     	Description
-        **         [0, 15]	 	    representing[1, 16] instances */
+        **         Value             Description
+        **         [0, 15]             representing[1, 16] instances */
 
         llvm::GlobalVariable* pGlobal = mod->getGlobalVariable("TessInputControlPointCount");
         unsigned int inputControlPointCount = int_cast<unsigned int>(llvm::cast<llvm::ConstantInt>(pGlobal->getInitializer())->getZExtValue());
@@ -286,7 +286,7 @@ namespace IGC
 
             if (m_useMultipleHardwareThread)
             {
- 				// CPID = patchInstanceID * 8 + SimdLaneId;
+                 // CPID = patchInstanceID * 8 + SimdLaneId;
                 pFuncPatchInstanceIdOrSIMDLaneId = llvm::GenISAIntrinsic::getDeclaration(
                     pNewLoopFunc->getParent(), llvm::GenISAIntrinsic::GenISA_patchInstanceId);
                 pCPId = builder.CreateAdd(

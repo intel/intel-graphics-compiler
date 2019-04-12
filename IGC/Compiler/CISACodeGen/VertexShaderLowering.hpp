@@ -41,7 +41,7 @@ public:
     unsigned int m_VID;
     bool m_HasInstanceID;
     unsigned int m_IID;
-	SVertexFetchSGVExtendedParameters m_VertexFetchSGVExtendedParameters;
+    SVertexFetchSGVExtendedParameters m_VertexFetchSGVExtendedParameters;
     bool m_hasRTAI;
     bool m_hasVPAI;
     bool m_hasClipDistance;
@@ -55,7 +55,7 @@ public:
     static char ID;
     void SetVertexIdSlot(unsigned int VIDslot);
     void SetInstanceIdSlot(unsigned int IIDslot);
-	void SetShaderDrawParameter(size_t paramIndex, unsigned int slot);
+    void SetShaderDrawParameter(size_t paramIndex, unsigned int slot);
     void DeclareRTAI();
     void DeclareVPAI();
     void DeclareClipDistance();

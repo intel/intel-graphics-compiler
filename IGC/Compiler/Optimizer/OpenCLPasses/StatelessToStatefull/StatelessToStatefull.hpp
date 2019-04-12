@@ -41,7 +41,7 @@ namespace IGC
     class StatelessToStatefull : public llvm::FunctionPass, public llvm::InstVisitor<StatelessToStatefull>
     {
     public:
-		typedef llvm::DenseMap<const KernelArg*, int> ArgInfoMap;
+        typedef llvm::DenseMap<const KernelArg*, int> ArgInfoMap;
 
         static char ID;
 
@@ -53,7 +53,7 @@ namespace IGC
         {
             AU.setPreservesCFG();
             AU.addRequired<MetaDataUtilsWrapper>();
-			AU.addRequired<llvm::AssumptionCacheTracker>();
+            AU.addRequired<llvm::AssumptionCacheTracker>();
         }
 
         virtual llvm::StringRef getPassName() const override
@@ -65,7 +65,7 @@ namespace IGC
 
         void visitLoadInst(llvm::LoadInst &I);
         void visitStoreInst(llvm::StoreInst &I);
-		void visitCallInst(llvm::CallInst &I);
+        void visitCallInst(llvm::CallInst &I);
 
     private:
         llvm::CallInst* createBufferPtr(
@@ -78,49 +78,49 @@ namespace IGC
         llvm::Argument* getBufferOffsetArg(llvm::Function* F, uint32_t ArgNumber);
         void setPointerSizeTo32bit(int32_t AddrSpace, llvm::Module* M);
 
-		void updateArgInfo(const KernelArg *KA, bool IsPositive);
-		void finalizeArgInitialValue(llvm::Function *F);
+        void updateArgInfo(const KernelArg *KA, bool IsPositive);
+        void finalizeArgInitialValue(llvm::Function *F);
 
-		const KernelArg* getKernelArg(llvm::Value *Arg)
-		{
-			assert(m_pKernelArgs && "Should initialize it before use!");
-			for (const KernelArg& arg : *m_pKernelArgs) {
-				if (arg.getArg() == Arg) {
-					return &arg;
-				}
-			}
-			return nullptr;
-		}
+        const KernelArg* getKernelArg(llvm::Value *Arg)
+        {
+            assert(m_pKernelArgs && "Should initialize it before use!");
+            for (const KernelArg& arg : *m_pKernelArgs) {
+                if (arg.getArg() == Arg) {
+                    return &arg;
+                }
+            }
+            return nullptr;
+        }
 
-		const KernelArg* getBufferOffsetKernelArg(const KernelArg *KA)
-		{
-			assert(m_pKernelArgs && "KernelArgs: should initialize it before use!");
-			int argno = KA->getAssociatedArgNo();
-			for (const KernelArg& arg : *m_pKernelArgs) {
-				if (arg.getArgType() == KernelArg::ArgType::IMPLICIT_BUFFER_OFFSET &&
-					arg.getAssociatedArgNo() == argno) {
-					return &arg;
-				}
-			}
-			return nullptr;
-		}
+        const KernelArg* getBufferOffsetKernelArg(const KernelArg *KA)
+        {
+            assert(m_pKernelArgs && "KernelArgs: should initialize it before use!");
+            int argno = KA->getAssociatedArgNo();
+            for (const KernelArg& arg : *m_pKernelArgs) {
+                if (arg.getArgType() == KernelArg::ArgType::IMPLICIT_BUFFER_OFFSET &&
+                    arg.getAssociatedArgNo() == argno) {
+                    return &arg;
+                }
+            }
+            return nullptr;
+        }
 
         const bool m_hasBufferOffsetArg;
 
-		// When m_hasBufferOffsetArg is true, optional buffer offset
-		// can be on or off, which is indicated by this boolean flag.
-		bool       m_hasOptionalBufferOffsetArg;
+        // When m_hasBufferOffsetArg is true, optional buffer offset
+        // can be on or off, which is indicated by this boolean flag.
+        bool       m_hasOptionalBufferOffsetArg;
 
-		llvm::AssumptionCacheTracker *m_ACT;
-		llvm::AssumptionCache *getAC(llvm::Function *F)
-		{
-			return (m_ACT != nullptr ? &m_ACT->getAssumptionCache(*F)
-				                     : nullptr) ;
-		}
+        llvm::AssumptionCacheTracker *m_ACT;
+        llvm::AssumptionCache *getAC(llvm::Function *F)
+        {
+            return (m_ACT != nullptr ? &m_ACT->getAssumptionCache(*F)
+                                     : nullptr) ;
+        }
 
         ImplicitArgs *m_pImplicitArgs;
-		KernelArgs   *m_pKernelArgs;
-		ArgInfoMap   m_argsInfo;
+        KernelArgs   *m_pKernelArgs;
+        ArgInfoMap   m_argsInfo;
         bool m_changed;
     };
 

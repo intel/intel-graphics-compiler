@@ -571,105 +571,105 @@ private:
 class WorkgroupWalkOrderMetaData :public IMetaDataObject
 {
 public:
-	typedef WorkgroupWalkOrderMetaData _Myt;
-	typedef IMetaDataObject _Mybase;
-	// typedefs for data member types
-	typedef MetaDataValue<int32_t>::value_type WalkOrderDimType;
+    typedef WorkgroupWalkOrderMetaData _Myt;
+    typedef IMetaDataObject _Mybase;
+    // typedefs for data member types
+    typedef MetaDataValue<int32_t>::value_type WalkOrderDimType;
 
 public:
-	///
-	// Factory method - creates the SubGroupSizeMetaData from the given metadata node
-	//
-	static _Myt* get(const llvm::MDNode* pNode, bool hasId = false)
-	{
-		return new _Myt(pNode, hasId);
-	}
+    ///
+    // Factory method - creates the SubGroupSizeMetaData from the given metadata node
+    //
+    static _Myt* get(const llvm::MDNode* pNode, bool hasId = false)
+    {
+        return new _Myt(pNode, hasId);
+    }
 
-	///
-	// Factory method - create the default empty SubGroupSizeMetaData object
-	static _Myt* get()
-	{
-		return new _Myt();
-	}
+    ///
+    // Factory method - create the default empty SubGroupSizeMetaData object
+    static _Myt* get()
+    {
+        return new _Myt();
+    }
 
-	///
-	// Factory method - create the default empty named SubGroupSizeMetaData object
-	static _Myt* get(const char* name)
-	{
-		return new _Myt(name);
-	}
+    ///
+    // Factory method - create the default empty named SubGroupSizeMetaData object
+    static _Myt* get(const char* name)
+    {
+        return new _Myt(name);
+    }
 
-	///
-	// Ctor - loads the SubGroupSizeMetaData from the given metadata node
-	//
-	WorkgroupWalkOrderMetaData(const llvm::MDNode* pNode, bool hasId);
+    ///
+    // Ctor - loads the SubGroupSizeMetaData from the given metadata node
+    //
+    WorkgroupWalkOrderMetaData(const llvm::MDNode* pNode, bool hasId);
 
-	///
-	// Default Ctor - creates the empty, not named SubGroupSizeMetaData object
-	//
-	WorkgroupWalkOrderMetaData();
+    ///
+    // Default Ctor - creates the empty, not named SubGroupSizeMetaData object
+    //
+    WorkgroupWalkOrderMetaData();
 
-	///
-	// Ctor - creates the empty, named SubGroupSizeMetaData object
-	//
-	WorkgroupWalkOrderMetaData(const char* name);
+    ///
+    // Ctor - creates the empty, named SubGroupSizeMetaData object
+    //
+    WorkgroupWalkOrderMetaData(const char* name);
 
-	/// workgroup walk order related methods
-	WalkOrderDimType getDim0() const
-	{
-		return m_Dim0.get();
-	}
-	WalkOrderDimType getDim1() const
-	{
-		return m_Dim1.get();
-	}
-	WalkOrderDimType getDim2() const
-	{
-		return m_Dim2.get();
-	}
+    /// workgroup walk order related methods
+    WalkOrderDimType getDim0() const
+    {
+        return m_Dim0.get();
+    }
+    WalkOrderDimType getDim1() const
+    {
+        return m_Dim1.get();
+    }
+    WalkOrderDimType getDim2() const
+    {
+        return m_Dim2.get();
+    }
 
-	///
-	// Returns true if any of the SubGroupSizeMetaData`s members has changed
-	bool dirty() const;
+    ///
+    // Returns true if any of the SubGroupSizeMetaData`s members has changed
+    bool dirty() const;
 
-	///
-	// Returns true if the structure was loaded from the metadata or was changed
-	bool hasValue() const;
+    ///
+    // Returns true if the structure was loaded from the metadata or was changed
+    bool hasValue() const;
 
-	///
-	// Discards the changes done to the SubGroupSizeMetaData instance
-	void discardChanges();
+    ///
+    // Discards the changes done to the SubGroupSizeMetaData instance
+    void discardChanges();
 
-	///
-	// Generates the new MDNode hierarchy for the given structure
-	llvm::Metadata* generateNode(llvm::LLVMContext& context) const;
+    ///
+    // Generates the new MDNode hierarchy for the given structure
+    llvm::Metadata* generateNode(llvm::LLVMContext& context) const;
 
-	///
-	// Saves the structure changes to the given MDNode
-	void save(llvm::LLVMContext& context, llvm::MDNode* pNode) const;
-
-private:
-	///
-	// Returns true if the given MDNode could be saved to without replacement
-	bool compatibleWith(const llvm::MDNode* pNode) const
-	{
-		return false;
-	}
+    ///
+    // Saves the structure changes to the given MDNode
+    void save(llvm::LLVMContext& context, llvm::MDNode* pNode) const;
 
 private:
-	typedef MetaDataIterator<llvm::MDNode> NodeIterator;
-
-	llvm::Metadata* getDim0Node(const llvm::MDNode* pParentNode) const;
-	llvm::Metadata* getDim1Node(const llvm::MDNode* pParentNode) const;
-	llvm::Metadata* getDim2Node(const llvm::MDNode* pParentNode) const;
+    ///
+    // Returns true if the given MDNode could be saved to without replacement
+    bool compatibleWith(const llvm::MDNode* pNode) const
+    {
+        return false;
+    }
 
 private:
-	// data members
-	MetaDataValue<int32_t> m_Dim0;
-	MetaDataValue<int32_t> m_Dim1;
-	MetaDataValue<int32_t> m_Dim2;
-	// parent node
-	const llvm::MDNode* m_pNode;
+    typedef MetaDataIterator<llvm::MDNode> NodeIterator;
+
+    llvm::Metadata* getDim0Node(const llvm::MDNode* pParentNode) const;
+    llvm::Metadata* getDim1Node(const llvm::MDNode* pParentNode) const;
+    llvm::Metadata* getDim2Node(const llvm::MDNode* pParentNode) const;
+
+private:
+    // data members
+    MetaDataValue<int32_t> m_Dim0;
+    MetaDataValue<int32_t> m_Dim1;
+    MetaDataValue<int32_t> m_Dim2;
+    // parent node
+    const llvm::MDNode* m_pNode;
 };
             
 ///
@@ -766,12 +766,12 @@ public:
         return m_RequiredSubGroupSize;
     }
 
-	/// WorkgroupWalkOrder related methods
+    /// WorkgroupWalkOrder related methods
 
-	const WorkgroupWalkOrderMetaDataHandle getWorkgroupWalkOrder()
-	{
-		return m_WorkgroupWalkOrder;
-	}
+    const WorkgroupWalkOrderMetaDataHandle getWorkgroupWalkOrder()
+    {
+        return m_WorkgroupWalkOrder;
+    }
         
     
     /// VectorTypeHint related methods
@@ -1019,7 +1019,7 @@ private:
     llvm::MDNode* getWorkGroupSizeHintNode( const llvm::MDNode* pParentNode) const;    
     llvm::MDNode* getRequiredWorkGroupSizeNode( const llvm::MDNode* pParentNode) const;    
     llvm::MDNode* getRequiredSubGroupSizeNode( const llvm::MDNode* pParentNode) const;  
-	llvm::MDNode* getWorkgroupWalkOrderNode(const llvm::MDNode* pParentNode) const;
+    llvm::MDNode* getWorkgroupWalkOrderNode(const llvm::MDNode* pParentNode) const;
     llvm::MDNode* getVectorTypeHintNode( const llvm::MDNode* pParentNode) const;    
     llvm::MDNode* getArgAddressSpacesNode( const llvm::MDNode* pParentNode) const;    
     llvm::MDNode* getArgAccessQualifiersNode( const llvm::MDNode* pParentNode) const;    
@@ -1034,7 +1034,7 @@ private:
     WorkGroupDimensionsMetaDataHandle m_WorkGroupSizeHint;        
     WorkGroupDimensionsMetaDataHandle m_RequiredWorkGroupSize;        
     SubGroupDimensionsMetaDataHandle m_RequiredSubGroupSize;        
-	WorkgroupWalkOrderMetaDataHandle m_WorkgroupWalkOrder;
+    WorkgroupWalkOrderMetaDataHandle m_WorkgroupWalkOrder;
     VectorTypeHintMetaDataHandle m_VectorTypeHint;        
     MetaDataList<int32_t> m_ArgAddressSpaces;        
     MetaDataList<std::string> m_ArgAccessQualifiers;        

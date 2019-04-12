@@ -163,11 +163,11 @@ namespace //Anonymous
         /// Return function metadata if function is kernel
         IGC::FunctionMetaData* getKernelMetadata(const llvm::Function* func)
         {
-			if (isEntryFunc(_pMdUtils, func))
-			{
+            if (isEntryFunc(_pMdUtils, func))
+            {
                 if (modMD->FuncMD.find(const_cast<llvm::Function*>(func)) != modMD->FuncMD.end())
                     return &modMD->FuncMD[const_cast<llvm::Function*>(func)];
-			}
+            }
             return nullptr;
         }
 
@@ -2308,7 +2308,7 @@ namespace //Anonymous
                 // note: byValArgs is filled in sorted manner
                 if ((byValI != byValE) && (argNum == *byValI))
                 {
-					IGCLLVM::ArgumentAddAttr(arg, IGCLLVM::AttributeSet::FunctionIndex, llvm::Attribute::ByVal);                    
+                    IGCLLVM::ArgumentAddAttr(arg, IGCLLVM::AttributeSet::FunctionIndex, llvm::Attribute::ByVal);                    
                     ++byValI;
                 }
             }

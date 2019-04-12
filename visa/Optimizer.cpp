@@ -4565,7 +4565,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
 
     bool change_flag = false;
     if (second_inst->getCondMod() &&
-    	(second_def_base != curr_base || second_def_subreg != curr_subreg))
+        (second_def_base != curr_base || second_def_subreg != curr_subreg))
     {
         change_flag = true;
         G4_CondMod *new_condMod = builder.createCondMod(
@@ -6202,80 +6202,80 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         }
     }
 
-	//
-	// This inserts two dummy moves to clear flag dependencies before EOT:
-	// mov(1) null:ud f0.0<0;1,0>:ud{ Align1, Q1, NoMask }
-	// mov(1) null:ud f1.0<0;1,0>:ud{ Align1, Q1, NoMask }
-	// This is done if f0/f1 is ever defined in a BB but not used in it, as we conservatively assume
-	// that the flag may be undefined when the EOT is reached.
-	// Note that USC only does this if EOT is inside control flow, i.e., EOT is an early exit
-	//
-	void Optimizer::clearARFDependencies()
-	{
-		auto flagToInt = [](G4_Areg* areg)
-		{
-			MUST_BE_TRUE(areg->isFlag(), "expect F0 or F1");
-			return areg->getArchRegType() == AREG_F0 ? 0 : 1;
-		};
-		// see if F0 and F1 are ever defined but not used in the same BB
-		bool unusedFlag[2]; // f0 and f1
-		unusedFlag[0] = unusedFlag[1] = false;
-		for (auto bb : fg.BBs)
-		{
-		    bool unusedFlagLocal[2]; // f0 and f1
-		    unusedFlagLocal[0] = unusedFlagLocal[1] = false;
+    //
+    // This inserts two dummy moves to clear flag dependencies before EOT:
+    // mov(1) null:ud f0.0<0;1,0>:ud{ Align1, Q1, NoMask }
+    // mov(1) null:ud f1.0<0;1,0>:ud{ Align1, Q1, NoMask }
+    // This is done if f0/f1 is ever defined in a BB but not used in it, as we conservatively assume
+    // that the flag may be undefined when the EOT is reached.
+    // Note that USC only does this if EOT is inside control flow, i.e., EOT is an early exit
+    //
+    void Optimizer::clearARFDependencies()
+    {
+        auto flagToInt = [](G4_Areg* areg)
+        {
+            MUST_BE_TRUE(areg->isFlag(), "expect F0 or F1");
+            return areg->getArchRegType() == AREG_F0 ? 0 : 1;
+        };
+        // see if F0 and F1 are ever defined but not used in the same BB
+        bool unusedFlag[2]; // f0 and f1
+        unusedFlag[0] = unusedFlag[1] = false;
+        for (auto bb : fg.BBs)
+        {
+            bool unusedFlagLocal[2]; // f0 and f1
+            unusedFlagLocal[0] = unusedFlagLocal[1] = false;
 
-			for (auto inst : *bb)
-			{
-				// check predicate source
-				if (inst->getPredicate())
-				{
+            for (auto inst : *bb)
+            {
+                // check predicate source
+                if (inst->getPredicate())
+                {
                     G4_VarBase* flag = inst->getPredicate()->getBase();
-					if (flag->isRegVar())
-					{
-						G4_Areg* areg = flag->asRegVar()->getPhyReg()->asAreg();
-						unusedFlagLocal[flagToInt(areg)] = false;
-					}
-				}
-				else
-				{
-					// check explicit source
-					for (int i = 0; i < inst->getNumSrc(); ++i)
-					{
-						if (inst->getSrc(i) && inst->getSrc(i)->isSrcRegRegion() && inst->getSrc(i)->isFlag())
-						{
-							G4_SrcRegRegion* src = inst->getSrc(i)->asSrcRegRegion();
-							if (src->getBase()->isRegVar())
-							{
-								G4_Areg* flag = src->getBase()->asRegVar()->getPhyReg()->asAreg();
-								unusedFlagLocal[flagToInt(flag)] = false;
-							}
-						}
-					}
-				}
+                    if (flag->isRegVar())
+                    {
+                        G4_Areg* areg = flag->asRegVar()->getPhyReg()->asAreg();
+                        unusedFlagLocal[flagToInt(areg)] = false;
+                    }
+                }
+                else
+                {
+                    // check explicit source
+                    for (int i = 0; i < inst->getNumSrc(); ++i)
+                    {
+                        if (inst->getSrc(i) && inst->getSrc(i)->isSrcRegRegion() && inst->getSrc(i)->isFlag())
+                        {
+                            G4_SrcRegRegion* src = inst->getSrc(i)->asSrcRegRegion();
+                            if (src->getBase()->isRegVar())
+                            {
+                                G4_Areg* flag = src->getBase()->asRegVar()->getPhyReg()->asAreg();
+                                unusedFlagLocal[flagToInt(flag)] = false;
+                            }
+                        }
+                    }
+                }
 
-				// check explicit dst
-				if (inst->getDst() && inst->getDst()->isFlag())
-				{
-					// flag is an explicit dst
-					G4_DstRegRegion* dst = inst->getDst();
-					if (dst->getBase()->isRegVar())
-					{
-						G4_Areg* flag = dst->getBase()->asRegVar()->getPhyReg()->asAreg();
-						unusedFlagLocal[flagToInt(flag)] = true;
-					}
-				}
-				// check cond mod
-				else if (inst->getCondMod() && inst->getCondMod()->getBase())
-				{
+                // check explicit dst
+                if (inst->getDst() && inst->getDst()->isFlag())
+                {
+                    // flag is an explicit dst
+                    G4_DstRegRegion* dst = inst->getDst();
+                    if (dst->getBase()->isRegVar())
+                    {
+                        G4_Areg* flag = dst->getBase()->asRegVar()->getPhyReg()->asAreg();
+                        unusedFlagLocal[flagToInt(flag)] = true;
+                    }
+                }
+                // check cond mod
+                else if (inst->getCondMod() && inst->getCondMod()->getBase())
+                {
                     G4_VarBase* flag = inst->getCondMod()->getBase();
-					if (flag->isRegVar())
-					{
-						G4_Areg* areg = flag->asRegVar()->getPhyReg()->asAreg();
-						unusedFlagLocal[flagToInt(areg)] = true;
-					}
-				}
-			}
+                    if (flag->isRegVar())
+                    {
+                        G4_Areg* areg = flag->asRegVar()->getPhyReg()->asAreg();
+                        unusedFlagLocal[flagToInt(areg)] = true;
+                    }
+                }
+            }
 
             if (unusedFlagLocal[0] &&
                 unusedFlag[0] == false)
@@ -6289,11 +6289,11 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 unusedFlag[1] = true;
             }
 
-			if (unusedFlag[0] && unusedFlag[1])
-			{
-				break;
-			}
-		}
+            if (unusedFlag[0] && unusedFlag[1])
+            {
+                break;
+            }
+        }
 
         if (unusedFlag[0] || unusedFlag[1])
         {

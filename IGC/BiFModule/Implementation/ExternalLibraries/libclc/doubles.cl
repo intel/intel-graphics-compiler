@@ -380,7 +380,7 @@ INLINE double libclc_acos_f64(double x) {
 /*################################# libclc_acosh_f64 ##############################################*/
 
 INLINE double libclc_acosh_f64(double x) {
-    const double recrteps = 0x1.6a09e667f3bcdp+26;	// 1/__builtin_spirv_OpenCL_sqrt_f64(eps) = 9.49062656242515593767e+07
+    const double recrteps = 0x1.6a09e667f3bcdp+26;    // 1/__builtin_spirv_OpenCL_sqrt_f64(eps) = 9.49062656242515593767e+07
     //log2_lead and log2_tail sum to an extra-precise version of log(2)
     const double log2_lead = 0x1.62e42ep-1;
     const double log2_tail = 0x1.efa39ef35793cp-25;
@@ -766,8 +766,8 @@ INLINE double libclc_asinpi_f64(double x) {
     // reconstruct the terms carefully.
 
     const double pi = 0x1.921fb54442d18p+1;
-    const double piby2_tail = 6.1232339957367660e-17;	/* 0x3c91a62633145c07 */
-    const double hpiby2_head = 7.8539816339744831e-01;	/* 0x3fe921fb54442d18 */
+    const double piby2_tail = 6.1232339957367660e-17;    /* 0x3c91a62633145c07 */
+    const double hpiby2_head = 7.8539816339744831e-01;    /* 0x3fe921fb54442d18 */
 
     double y = __builtin_spirv_OpenCL_fabs_f64(x);
     int xneg = as_int2(x).hi < 0;
@@ -885,10 +885,10 @@ INLINE double libclc_atan_f64(double x)
                     0.268297920532545909e0);
 
     double qd = __builtin_spirv_OpenCL_fma_f64_f64_f64(s,
-	            __builtin_spirv_OpenCL_fma_f64_f64_f64(s,
-			__builtin_spirv_OpenCL_fma_f64_f64_f64(s,
-			    __builtin_spirv_OpenCL_fma_f64_f64_f64(s, 0.389525873944742195e-1,
-				   0.424602594203847109e0),
+                __builtin_spirv_OpenCL_fma_f64_f64_f64(s,
+            __builtin_spirv_OpenCL_fma_f64_f64_f64(s,
+                __builtin_spirv_OpenCL_fma_f64_f64_f64(s, 0.389525873944742195e-1,
+                   0.424602594203847109e0),
                             0.141254259931958921e1),
                         0.182596787737507063e1),
                     0.804893761597637733e0);
@@ -959,18 +959,18 @@ INLINE double libclc_atan2_f64_f64(double y, double x)
     {
         double val = vbyu > 0.0625 ? vbyu : 0.063;
         int index = (int)(__builtin_spirv_OpenCL_fma_f64_f64_f64(256.0, val, 0.5));
-	double2 tv = USE_TABLE(atan_jby256_tbl, index - 16);
-	q1 = tv.s0;
-	q2 = tv.s1;
+    double2 tv = USE_TABLE(atan_jby256_tbl, index - 16);
+    q1 = tv.s0;
+    q2 = tv.s1;
         double c = (double)index * 0x1.0p-8;
 
         // We're going to scale u and v by 2^(-u_exponent) to bring them close to 1
         // u_exponent could be EMAX so we have to do it in 2 steps
         int m = -((int)(as_ulong(u) >> EXPSHIFTBITS_DP64) - EXPBIAS_DP64);
-	//double um = __amdil_ldexp_f64(u, m);
-	//double vm = __amdil_ldexp_f64(v, m);
-	double um = __builtin_spirv_OpenCL_ldexp_f64_i32(u, m);
-	double vm = __builtin_spirv_OpenCL_ldexp_f64_i32(v, m);
+    //double um = __amdil_ldexp_f64(u, m);
+    //double vm = __amdil_ldexp_f64(v, m);
+    double um = __builtin_spirv_OpenCL_ldexp_f64_i32(u, m);
+    double vm = __builtin_spirv_OpenCL_ldexp_f64_i32(v, m);
 
         // 26 leading bits of u
         double u1 = as_double(as_ulong(um) & 0xfffffffff8000000UL);
@@ -1008,7 +1008,7 @@ INLINE double libclc_atan2_f64_f64(double y, double x)
                                     0.14285713561807169030),
                                 0.19999999999393223405),
                             0.33333333333333170500),
-			 MATH_DIVIDE(__builtin_spirv_OpenCL_fma_f64_f64_f64(-u, vu2, __builtin_spirv_OpenCL_fma_f64_f64_f64(-u2, vu1, __builtin_spirv_OpenCL_fma_f64_f64_f64(-u1, vu1, v))), u));
+             MATH_DIVIDE(__builtin_spirv_OpenCL_fma_f64_f64_f64(-u, vu2, __builtin_spirv_OpenCL_fma_f64_f64_f64(-u2, vu1, __builtin_spirv_OpenCL_fma_f64_f64_f64(-u1, vu1, v))), u));
     }
 
 
@@ -1164,10 +1164,10 @@ INLINE double libclc_atanpi_f64(double x) {
                     0.268297920532545909e0);
 
     double qd = __builtin_spirv_OpenCL_fma_f64_f64_f64(s,
-	            __builtin_spirv_OpenCL_fma_f64_f64_f64(s,
-			__builtin_spirv_OpenCL_fma_f64_f64_f64(s,
-			    __builtin_spirv_OpenCL_fma_f64_f64_f64(s, 0.389525873944742195e-1,
-				   0.424602594203847109e0),
+                __builtin_spirv_OpenCL_fma_f64_f64_f64(s,
+            __builtin_spirv_OpenCL_fma_f64_f64_f64(s,
+                __builtin_spirv_OpenCL_fma_f64_f64_f64(s, 0.389525873944742195e-1,
+                   0.424602594203847109e0),
                             0.141254259931958921e1),
                         0.182596787737507063e1),
                     0.804893761597637733e0);

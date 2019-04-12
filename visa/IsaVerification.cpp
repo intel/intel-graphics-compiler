@@ -1922,7 +1922,7 @@ static void verifyInstructionSampler(const common_isa_header& isaHeader, const k
             }
 
             Common_ISA_Operand_Class operand_class_iefbypass = getVectorOperand(inst, i++).getOperandClass();
-			REPORT_INSTRUCTION(options,operand_class_iefbypass == OPERAND_GENERAL ||
+            REPORT_INSTRUCTION(options,operand_class_iefbypass == OPERAND_GENERAL ||
                                operand_class_iefbypass == OPERAND_INDIRECT ||
                                operand_class_iefbypass == OPERAND_IMMEDIATE,
                                "iefbypass operand of CISA SAMPLER AVS instruction should "

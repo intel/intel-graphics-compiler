@@ -36,10 +36,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace IGCLLVM
 {
 #if LLVM_VERSION_MAJOR == 4
-	inline static llvm::FunctionPass* createInstSimplifyLegacyPass()
-	{
-		return llvm::createInstructionSimplifierPass();
-	}
+    inline static llvm::FunctionPass* createInstSimplifyLegacyPass()
+    {
+        return llvm::createInstructionSimplifierPass();
+    }
 #elif LLVM_VERSION_MAJOR >= 7
 using llvm::createInstSimplifyLegacyPass;
 #endif

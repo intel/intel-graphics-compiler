@@ -1653,364 +1653,364 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
 
 static const ISA_SubInst_Desc VASubOpcodeDesc[] =
 {
-	{}, /// AVS subOpcode
-	{ Convolve_FOPCODE, ISA_Inst_Sampler, "va_convolve_2d", 6,
-		{
-			{ OPND_SAMPLE, ISA_TYPE_UB, 0 }, /// Sampler
-			{ OPND_SURFACE, ISA_TYPE_UB, 0 }, /// Surface
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //uOffset
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //vOffset
-			{ OPND_OTHER, ISA_TYPE_UB, 0 },                           //properties
-			{ OPND_RAW, ISA_TYPE_F, GRF_ALIGNED },                   //dst
-		}
-	},
-	{ MINMAX_FOPCODE, ISA_Inst_Sampler, "va_minmax", 5,
-		{
-			{ OPND_SURFACE, ISA_TYPE_UB, 0 }, /// Surface
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //uOffset
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //vOffset
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UB, 0 },                           //mmfMode
-			{ OPND_RAW, ISA_TYPE_F, GRF_ALIGNED },                   //dst
-		}
-	},
-	{ MINMAXFILTER_FOPCODE, ISA_Inst_Sampler, "va_minmaxfilter", 8,
-		{
-			{ OPND_SAMPLE, ISA_TYPE_UB, 0 }, /// Sampler
-			{ OPND_SURFACE, ISA_TYPE_UB, 0 }, /// Surface
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //uOffset
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //vOffset
-			{ OPND_OTHER, ISA_TYPE_UB, 0 },                           //cntrl
-			{ OPND_OTHER, ISA_TYPE_UB, 0 },                           //execMode
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UB, 0 },                           //mmfMode
-			{ OPND_RAW, ISA_TYPE_F, GRF_ALIGNED },                   //dst
-		}
-	},
-	{ ERODE_FOPCODE, ISA_Inst_Sampler, "va_erode", 6,
-		{
-			{ OPND_SAMPLE, ISA_TYPE_UB, 0 }, /// Sampler
-			{ OPND_SURFACE, ISA_TYPE_UB, 0 }, /// Surface
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //uOffset
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //vOffset
-			{ OPND_OTHER, ISA_TYPE_UB, 0 },                           //execMode
-			{ OPND_RAW, ISA_TYPE_F, GRF_ALIGNED },                   //dst
-		}
-	},
-	{ Dilate_FOPCODE, ISA_Inst_Sampler, "va_dilate", 6,
-		{
-			{ OPND_SAMPLE, ISA_TYPE_UB, 0 }, /// Sampler
-			{ OPND_SURFACE, ISA_TYPE_UB, 0 }, /// Surface
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //uOffset
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //vOffset
-			{ OPND_OTHER, ISA_TYPE_UB, 0 },                           //execMode
-			{ OPND_RAW, ISA_TYPE_F, GRF_ALIGNED },                   //dst
-		}
-	},
-	{ BoolCentroid_FOPCODE, ISA_Inst_Sampler, "va_boolcentroid", 6,
-		{
-			{ OPND_SURFACE, ISA_TYPE_UB, 0 }, /// Surface
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //uOffset
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //vOffset
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UB, SCALAR_REGION },  //vSize
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UB, SCALAR_REGION },  //hSize
-			{ OPND_RAW, ISA_TYPE_F, GRF_ALIGNED },                   //dst
-		}
-	},
-	{ Centroid_FOPCODE, ISA_Inst_Sampler, "va_centroid", 5,
-		{
-			{ OPND_SURFACE, ISA_TYPE_UB, 0 }, /// Surface
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //uOffset
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //vOffset
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UB, SCALAR_REGION },  //vSize
-			{ OPND_RAW, ISA_TYPE_F, GRF_ALIGNED },                   //dst
-		}
-	},
+    {}, /// AVS subOpcode
+    { Convolve_FOPCODE, ISA_Inst_Sampler, "va_convolve_2d", 6,
+        {
+            { OPND_SAMPLE, ISA_TYPE_UB, 0 }, /// Sampler
+            { OPND_SURFACE, ISA_TYPE_UB, 0 }, /// Surface
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //uOffset
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //vOffset
+            { OPND_OTHER, ISA_TYPE_UB, 0 },                           //properties
+            { OPND_RAW, ISA_TYPE_F, GRF_ALIGNED },                   //dst
+        }
+    },
+    { MINMAX_FOPCODE, ISA_Inst_Sampler, "va_minmax", 5,
+        {
+            { OPND_SURFACE, ISA_TYPE_UB, 0 }, /// Surface
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //uOffset
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //vOffset
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UB, 0 },                           //mmfMode
+            { OPND_RAW, ISA_TYPE_F, GRF_ALIGNED },                   //dst
+        }
+    },
+    { MINMAXFILTER_FOPCODE, ISA_Inst_Sampler, "va_minmaxfilter", 8,
+        {
+            { OPND_SAMPLE, ISA_TYPE_UB, 0 }, /// Sampler
+            { OPND_SURFACE, ISA_TYPE_UB, 0 }, /// Surface
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //uOffset
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //vOffset
+            { OPND_OTHER, ISA_TYPE_UB, 0 },                           //cntrl
+            { OPND_OTHER, ISA_TYPE_UB, 0 },                           //execMode
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UB, 0 },                           //mmfMode
+            { OPND_RAW, ISA_TYPE_F, GRF_ALIGNED },                   //dst
+        }
+    },
+    { ERODE_FOPCODE, ISA_Inst_Sampler, "va_erode", 6,
+        {
+            { OPND_SAMPLE, ISA_TYPE_UB, 0 }, /// Sampler
+            { OPND_SURFACE, ISA_TYPE_UB, 0 }, /// Surface
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //uOffset
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //vOffset
+            { OPND_OTHER, ISA_TYPE_UB, 0 },                           //execMode
+            { OPND_RAW, ISA_TYPE_F, GRF_ALIGNED },                   //dst
+        }
+    },
+    { Dilate_FOPCODE, ISA_Inst_Sampler, "va_dilate", 6,
+        {
+            { OPND_SAMPLE, ISA_TYPE_UB, 0 }, /// Sampler
+            { OPND_SURFACE, ISA_TYPE_UB, 0 }, /// Surface
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //uOffset
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //vOffset
+            { OPND_OTHER, ISA_TYPE_UB, 0 },                           //execMode
+            { OPND_RAW, ISA_TYPE_F, GRF_ALIGNED },                   //dst
+        }
+    },
+    { BoolCentroid_FOPCODE, ISA_Inst_Sampler, "va_boolcentroid", 6,
+        {
+            { OPND_SURFACE, ISA_TYPE_UB, 0 }, /// Surface
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //uOffset
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //vOffset
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UB, SCALAR_REGION },  //vSize
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UB, SCALAR_REGION },  //hSize
+            { OPND_RAW, ISA_TYPE_F, GRF_ALIGNED },                   //dst
+        }
+    },
+    { Centroid_FOPCODE, ISA_Inst_Sampler, "va_centroid", 5,
+        {
+            { OPND_SURFACE, ISA_TYPE_UB, 0 }, /// Surface
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //uOffset
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //vOffset
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UB, SCALAR_REGION },  //vSize
+            { OPND_RAW, ISA_TYPE_F, GRF_ALIGNED },                   //dst
+        }
+    },
 };
 
 static const ISA_SubInst_Desc VAPlusSubOpcodeDesc[] =
 {
 
-	{}, /// AVS subOpcode
-	{}, //convolve
-	{}, //minmax
-	{}, //minmaxfilter
-	{}, //erode
-	{}, //dilate
-	{}, //boolCentroid
-	{}, //centroid
-	{ VA_OP_CODE_1D_CONVOLVE_VERTICAL, ISA_Inst_Sampler, "va_convolve_1d_v", 6,
-		{
-			{ OPND_SAMPLE, ISA_TYPE_UB, 0 }, /// Sampler
-			{ OPND_SURFACE, ISA_TYPE_UB, 0 }, /// Surface
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //uOffset
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //vOffset
-			{ OPND_OTHER, ISA_TYPE_UB, 0 },                           //mode
-			{ OPND_RAW_DST, ISA_TYPE_W, GRF_ALIGNED },                   //dst
-		}
-	},
-	{ VA_OP_CODE_1D_CONVOLVE_HORIZONTAL, ISA_Inst_Sampler, "va_convolve_1d_h", 6,
-		{
-			{ OPND_SAMPLE, ISA_TYPE_UB, 0 }, /// Sampler
-			{ OPND_SURFACE, ISA_TYPE_UB, 0 }, /// Surface
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //uOffset
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //vOffset
-			{ OPND_OTHER, ISA_TYPE_UB, 0 },                           //mode
-			{ OPND_RAW_DST, ISA_TYPE_W, GRF_ALIGNED },                   //dst
-		}
-	},
-	{ VA_OP_CODE_1PIXEL_CONVOLVE, ISA_Inst_Sampler, "va_convolve_1pixel", 7,
-		{
-			{ OPND_SAMPLE, ISA_TYPE_UB, 0 }, /// Sampler
-			{ OPND_SURFACE, ISA_TYPE_UB, 0 }, /// Surface
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //uOffset
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //vOffset
-			{ OPND_OTHER, ISA_TYPE_UB, 0 },                           //mode
-			{ OPND_RAW_SRC, ISA_TYPE_W, GRF_ALIGNED },                   //offset
-			{ OPND_RAW_DST, ISA_TYPE_W, GRF_ALIGNED },                   //dst
-		}
-	},
-	{ VA_OP_CODE_FLOOD_FILL, ISA_Inst_Sampler, "va_floodfill", 6,
-		{
-			{ OPND_OTHER, ISA_TYPE_UB, 0 },                           //is8Connect
-			{ OPND_RAW_SRC, ISA_TYPE_W, GRF_ALIGNED },               //PixelMaskHDirection
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //PixelMaskVDirectionLeft
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //PixelMaskVDirectionRight
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //LoopCount
-			{ OPND_RAW_DST, ISA_TYPE_W, GRF_ALIGNED },                   //dst
-		}
-	},
-	{ VA_OP_CODE_LBP_CREATION, ISA_Inst_Sampler, "va_lbpcreation", 5,
-		{
-			{ OPND_SURFACE, ISA_TYPE_UB, 0 }, /// Surface
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //uOffset
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //vOffset
-			{ OPND_OTHER, ISA_TYPE_UB, 0 },                           //mode
-			{ OPND_RAW_DST, ISA_TYPE_UB, GRF_ALIGNED },                   //dst
-		}
-	},
-	{ VA_OP_CODE_LBP_CORRELATION, ISA_Inst_Sampler, "va_lbpcorrelation", 5,
-		{
-			{ OPND_SURFACE, ISA_TYPE_UB, 0 }, /// Surface
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //uOffset
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //vOffset
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_W, SCALAR_REGION },  //disparity
-			{ OPND_RAW_DST, ISA_TYPE_W, GRF_ALIGNED },                   //dst
-		}
-	},
-	{}, //none
-	{ VA_OP_CODE_CORRELATION_SEARCH, ISA_Inst_Sampler, "va_correlationsearch", 10,
-		{
-			{ OPND_SURFACE, ISA_TYPE_UB, 0 }, /// Surface
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //uOffset
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //vOffset
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //verticalOrigin
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //horizontalOrigin
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UB, SCALAR_REGION }, //xDirectionSize
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UB, SCALAR_REGION }, //yDirectionSize
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UB, SCALAR_REGION }, //xDirectionSearchSize
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UB, SCALAR_REGION }, //yDirectionSearchSize
-			{ OPND_RAW_DST, ISA_TYPE_UD, GRF_ALIGNED },                   //dst
-		}
-	},
-	{ ISA_HDC_CONV, ISA_Inst_Sampler, "va_hdc_convolve_2d", 8,
-		{
-			{ OPND_SAMPLE, ISA_TYPE_UB, 0 }, /// Sampler
-			{ OPND_SURFACE, ISA_TYPE_UB, 0 }, /// Surface
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //uOffset
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //vOffset
-			{ OPND_OTHER, ISA_TYPE_UB, 0 }, /// Properties
-			{ OPND_SURFACE, ISA_TYPE_UB, 0 }, /// dstSurface
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UW, SCALAR_REGION },  //dstXOffset
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UW, SCALAR_REGION },  //dstYOffset
-		}
-	},
-	{ ISA_HDC_MMF, ISA_Inst_Sampler, "va_hdc_minmaxfilter", 9,
-		{
-			{ OPND_SAMPLE, ISA_TYPE_UB, 0 }, /// Sampler
-			{ OPND_SURFACE, ISA_TYPE_UB, 0 }, /// Surface
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //uOffset
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //vOffset
-			{ OPND_OTHER, ISA_TYPE_UB, 0 }, /// pixelSize
-			{ OPND_OTHER, ISA_TYPE_UB, 0 }, /// mmfMode
-			{ OPND_SURFACE, ISA_TYPE_UB, 0 }, /// dstSurface
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UW, SCALAR_REGION },  //dstXOffset
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UW, SCALAR_REGION },  //dstYOffset
-		}
-	},
-	{ ISA_HDC_ERODE, ISA_Inst_Sampler, "va_hdc_erode", 7,
-		{
-			{ OPND_SAMPLE, ISA_TYPE_UB, 0 }, /// Sampler
-			{ OPND_SURFACE, ISA_TYPE_UB, 0 }, /// Surface
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //uOffset
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //vOffset
-			{ OPND_SURFACE, ISA_TYPE_UB, 0 }, /// dstSurface
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UW, SCALAR_REGION },  //dstXOffset
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UW, SCALAR_REGION },  //dstYOffset
-		}
-	},
-	{ ISA_HDC_DILATE, ISA_Inst_Sampler, "va_hdc_dilate", 7,
-		{
-			{ OPND_SAMPLE, ISA_TYPE_UB, 0 }, /// Sampler
-			{ OPND_SURFACE, ISA_TYPE_UB, 0 }, /// Surface
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //uOffset
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //vOffset
-			{ OPND_SURFACE, ISA_TYPE_UB, 0 }, /// dstSurface
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UW, SCALAR_REGION },  //dstXOffset
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UW, SCALAR_REGION },  //dstYOffset
-		}
-	},
-	{ ISA_HDC_LBPCORRELATION, ISA_Inst_Sampler, "va_hdc_lbpcorrelation", 7,
-		{
-			{ OPND_SURFACE, ISA_TYPE_UB, 0 }, /// Surface
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //uOffset
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //vOffset
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_W, SCALAR_REGION },  //disparity
-			{ OPND_SURFACE, ISA_TYPE_UB, 0 }, /// dstSurface
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UW, SCALAR_REGION },  //dstXOffset
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UW, SCALAR_REGION },  //dstYOffset
-		}
-	},
-	{ ISA_HDC_LBPCREATION, ISA_Inst_Sampler, "va_hdc_lbpcreation", 7,
-		{
-			{ OPND_SURFACE, ISA_TYPE_UB, 0 }, /// Surface
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //uOffset
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //vOffset
-			{ OPND_OTHER, ISA_TYPE_UB, 0 }, /// mode
-			{ OPND_SURFACE, ISA_TYPE_UB, 0 }, /// dstSurface
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UW, SCALAR_REGION },  //dstXOffset
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UW, SCALAR_REGION },  //dstYOffset
-		}
-	},
-	{ ISA_HDC_1DCONV_H, ISA_Inst_Sampler, "va_hdc_convolve_1d_h", 8,
-		{
-			{ OPND_SAMPLE, ISA_TYPE_UB, 0 },                         /// Sampler
-			{ OPND_SURFACE, ISA_TYPE_UB, 0 },                         /// Surface
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //  uOffset
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //  vOffset
-			{ OPND_OTHER, ISA_TYPE_UB, 0 },                         /// pixelSize
-			{ OPND_SURFACE, ISA_TYPE_UB, 0 },                         /// dstSurface
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UW, SCALAR_REGION }, //  dstXOffset
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UW, SCALAR_REGION }, //  dstYOffset
-		}
-	},
-	{ ISA_HDC_1DCONV_V, ISA_Inst_Sampler, "va_hdc_convolve_1d_v", 8,
-		{
-			{ OPND_SAMPLE, ISA_TYPE_UB, 0 },                         /// Sampler
-			{ OPND_SURFACE, ISA_TYPE_UB, 0 },                         /// Surface
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //  uOffset
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //  vOffset
-			{ OPND_OTHER, ISA_TYPE_UB, 0 },                         /// pixelSize
-			{ OPND_SURFACE, ISA_TYPE_UB, 0 },                         /// dstSurface
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UW, SCALAR_REGION }, //  dstXOffset
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UW, SCALAR_REGION }, //  dstYOffset
-		}
-	},
-	{ ISA_HDC_1PIXELCONV, ISA_Inst_Sampler, "va_hdc_convolve_1pixel", 9,
-		{
-			{ OPND_SAMPLE, ISA_TYPE_UB, 0 },                         /// Sampler
-			{ OPND_SURFACE, ISA_TYPE_UB, 0 },                         /// Surface
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //  uOffset
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //  vOffset
-			{ OPND_OTHER, ISA_TYPE_UB, 0 },                         /// pixelSize
-			{ OPND_RAW_SRC, ISA_TYPE_W, GRF_ALIGNED },                   //  offsets
-			{ OPND_SURFACE, ISA_TYPE_UB, 0 },                         /// dstSurface
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UW, SCALAR_REGION }, //  dstXOffset
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UW, SCALAR_REGION }, //  dstYOffset
-		}
-	},
+    {}, /// AVS subOpcode
+    {}, //convolve
+    {}, //minmax
+    {}, //minmaxfilter
+    {}, //erode
+    {}, //dilate
+    {}, //boolCentroid
+    {}, //centroid
+    { VA_OP_CODE_1D_CONVOLVE_VERTICAL, ISA_Inst_Sampler, "va_convolve_1d_v", 6,
+        {
+            { OPND_SAMPLE, ISA_TYPE_UB, 0 }, /// Sampler
+            { OPND_SURFACE, ISA_TYPE_UB, 0 }, /// Surface
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //uOffset
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //vOffset
+            { OPND_OTHER, ISA_TYPE_UB, 0 },                           //mode
+            { OPND_RAW_DST, ISA_TYPE_W, GRF_ALIGNED },                   //dst
+        }
+    },
+    { VA_OP_CODE_1D_CONVOLVE_HORIZONTAL, ISA_Inst_Sampler, "va_convolve_1d_h", 6,
+        {
+            { OPND_SAMPLE, ISA_TYPE_UB, 0 }, /// Sampler
+            { OPND_SURFACE, ISA_TYPE_UB, 0 }, /// Surface
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //uOffset
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //vOffset
+            { OPND_OTHER, ISA_TYPE_UB, 0 },                           //mode
+            { OPND_RAW_DST, ISA_TYPE_W, GRF_ALIGNED },                   //dst
+        }
+    },
+    { VA_OP_CODE_1PIXEL_CONVOLVE, ISA_Inst_Sampler, "va_convolve_1pixel", 7,
+        {
+            { OPND_SAMPLE, ISA_TYPE_UB, 0 }, /// Sampler
+            { OPND_SURFACE, ISA_TYPE_UB, 0 }, /// Surface
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //uOffset
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //vOffset
+            { OPND_OTHER, ISA_TYPE_UB, 0 },                           //mode
+            { OPND_RAW_SRC, ISA_TYPE_W, GRF_ALIGNED },                   //offset
+            { OPND_RAW_DST, ISA_TYPE_W, GRF_ALIGNED },                   //dst
+        }
+    },
+    { VA_OP_CODE_FLOOD_FILL, ISA_Inst_Sampler, "va_floodfill", 6,
+        {
+            { OPND_OTHER, ISA_TYPE_UB, 0 },                           //is8Connect
+            { OPND_RAW_SRC, ISA_TYPE_W, GRF_ALIGNED },               //PixelMaskHDirection
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //PixelMaskVDirectionLeft
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //PixelMaskVDirectionRight
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //LoopCount
+            { OPND_RAW_DST, ISA_TYPE_W, GRF_ALIGNED },                   //dst
+        }
+    },
+    { VA_OP_CODE_LBP_CREATION, ISA_Inst_Sampler, "va_lbpcreation", 5,
+        {
+            { OPND_SURFACE, ISA_TYPE_UB, 0 }, /// Surface
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //uOffset
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //vOffset
+            { OPND_OTHER, ISA_TYPE_UB, 0 },                           //mode
+            { OPND_RAW_DST, ISA_TYPE_UB, GRF_ALIGNED },                   //dst
+        }
+    },
+    { VA_OP_CODE_LBP_CORRELATION, ISA_Inst_Sampler, "va_lbpcorrelation", 5,
+        {
+            { OPND_SURFACE, ISA_TYPE_UB, 0 }, /// Surface
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //uOffset
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //vOffset
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_W, SCALAR_REGION },  //disparity
+            { OPND_RAW_DST, ISA_TYPE_W, GRF_ALIGNED },                   //dst
+        }
+    },
+    {}, //none
+    { VA_OP_CODE_CORRELATION_SEARCH, ISA_Inst_Sampler, "va_correlationsearch", 10,
+        {
+            { OPND_SURFACE, ISA_TYPE_UB, 0 }, /// Surface
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //uOffset
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //vOffset
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //verticalOrigin
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //horizontalOrigin
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UB, SCALAR_REGION }, //xDirectionSize
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UB, SCALAR_REGION }, //yDirectionSize
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UB, SCALAR_REGION }, //xDirectionSearchSize
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UB, SCALAR_REGION }, //yDirectionSearchSize
+            { OPND_RAW_DST, ISA_TYPE_UD, GRF_ALIGNED },                   //dst
+        }
+    },
+    { ISA_HDC_CONV, ISA_Inst_Sampler, "va_hdc_convolve_2d", 8,
+        {
+            { OPND_SAMPLE, ISA_TYPE_UB, 0 }, /// Sampler
+            { OPND_SURFACE, ISA_TYPE_UB, 0 }, /// Surface
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //uOffset
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //vOffset
+            { OPND_OTHER, ISA_TYPE_UB, 0 }, /// Properties
+            { OPND_SURFACE, ISA_TYPE_UB, 0 }, /// dstSurface
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UW, SCALAR_REGION },  //dstXOffset
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UW, SCALAR_REGION },  //dstYOffset
+        }
+    },
+    { ISA_HDC_MMF, ISA_Inst_Sampler, "va_hdc_minmaxfilter", 9,
+        {
+            { OPND_SAMPLE, ISA_TYPE_UB, 0 }, /// Sampler
+            { OPND_SURFACE, ISA_TYPE_UB, 0 }, /// Surface
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //uOffset
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //vOffset
+            { OPND_OTHER, ISA_TYPE_UB, 0 }, /// pixelSize
+            { OPND_OTHER, ISA_TYPE_UB, 0 }, /// mmfMode
+            { OPND_SURFACE, ISA_TYPE_UB, 0 }, /// dstSurface
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UW, SCALAR_REGION },  //dstXOffset
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UW, SCALAR_REGION },  //dstYOffset
+        }
+    },
+    { ISA_HDC_ERODE, ISA_Inst_Sampler, "va_hdc_erode", 7,
+        {
+            { OPND_SAMPLE, ISA_TYPE_UB, 0 }, /// Sampler
+            { OPND_SURFACE, ISA_TYPE_UB, 0 }, /// Surface
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //uOffset
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //vOffset
+            { OPND_SURFACE, ISA_TYPE_UB, 0 }, /// dstSurface
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UW, SCALAR_REGION },  //dstXOffset
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UW, SCALAR_REGION },  //dstYOffset
+        }
+    },
+    { ISA_HDC_DILATE, ISA_Inst_Sampler, "va_hdc_dilate", 7,
+        {
+            { OPND_SAMPLE, ISA_TYPE_UB, 0 }, /// Sampler
+            { OPND_SURFACE, ISA_TYPE_UB, 0 }, /// Surface
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //uOffset
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //vOffset
+            { OPND_SURFACE, ISA_TYPE_UB, 0 }, /// dstSurface
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UW, SCALAR_REGION },  //dstXOffset
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UW, SCALAR_REGION },  //dstYOffset
+        }
+    },
+    { ISA_HDC_LBPCORRELATION, ISA_Inst_Sampler, "va_hdc_lbpcorrelation", 7,
+        {
+            { OPND_SURFACE, ISA_TYPE_UB, 0 }, /// Surface
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //uOffset
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //vOffset
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_W, SCALAR_REGION },  //disparity
+            { OPND_SURFACE, ISA_TYPE_UB, 0 }, /// dstSurface
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UW, SCALAR_REGION },  //dstXOffset
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UW, SCALAR_REGION },  //dstYOffset
+        }
+    },
+    { ISA_HDC_LBPCREATION, ISA_Inst_Sampler, "va_hdc_lbpcreation", 7,
+        {
+            { OPND_SURFACE, ISA_TYPE_UB, 0 }, /// Surface
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //uOffset
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //vOffset
+            { OPND_OTHER, ISA_TYPE_UB, 0 }, /// mode
+            { OPND_SURFACE, ISA_TYPE_UB, 0 }, /// dstSurface
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UW, SCALAR_REGION },  //dstXOffset
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UW, SCALAR_REGION },  //dstYOffset
+        }
+    },
+    { ISA_HDC_1DCONV_H, ISA_Inst_Sampler, "va_hdc_convolve_1d_h", 8,
+        {
+            { OPND_SAMPLE, ISA_TYPE_UB, 0 },                         /// Sampler
+            { OPND_SURFACE, ISA_TYPE_UB, 0 },                         /// Surface
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //  uOffset
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //  vOffset
+            { OPND_OTHER, ISA_TYPE_UB, 0 },                         /// pixelSize
+            { OPND_SURFACE, ISA_TYPE_UB, 0 },                         /// dstSurface
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UW, SCALAR_REGION }, //  dstXOffset
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UW, SCALAR_REGION }, //  dstYOffset
+        }
+    },
+    { ISA_HDC_1DCONV_V, ISA_Inst_Sampler, "va_hdc_convolve_1d_v", 8,
+        {
+            { OPND_SAMPLE, ISA_TYPE_UB, 0 },                         /// Sampler
+            { OPND_SURFACE, ISA_TYPE_UB, 0 },                         /// Surface
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //  uOffset
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //  vOffset
+            { OPND_OTHER, ISA_TYPE_UB, 0 },                         /// pixelSize
+            { OPND_SURFACE, ISA_TYPE_UB, 0 },                         /// dstSurface
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UW, SCALAR_REGION }, //  dstXOffset
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UW, SCALAR_REGION }, //  dstYOffset
+        }
+    },
+    { ISA_HDC_1PIXELCONV, ISA_Inst_Sampler, "va_hdc_convolve_1pixel", 9,
+        {
+            { OPND_SAMPLE, ISA_TYPE_UB, 0 },                         /// Sampler
+            { OPND_SURFACE, ISA_TYPE_UB, 0 },                         /// Surface
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //  uOffset
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_F, SCALAR_REGION },  //  vOffset
+            { OPND_OTHER, ISA_TYPE_UB, 0 },                         /// pixelSize
+            { OPND_RAW_SRC, ISA_TYPE_W, GRF_ALIGNED },                   //  offsets
+            { OPND_SURFACE, ISA_TYPE_UB, 0 },                         /// dstSurface
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UW, SCALAR_REGION }, //  dstXOffset
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UW, SCALAR_REGION }, //  dstYOffset
+        }
+    },
 };
 
 static const ISA_SubInst_Desc SVMSubOpcodeDesc[] =
 {
-	{}, /// 0th entry
-	{ SVM_BLOCK_LD, ISA_Inst_SVM, "svm_block_ld", 3,
-	{ { OPND_OTHER, ISA_TYPE_UB, 0 },           /// Properties
-	{ OPND_VECTOR_SRC, ISA_TYPE_UQ, GRF_ALIGNED }, /// Address
-	{ OPND_RAW, ISA_TYPE_UQ, 0 }            /// src
-	}
-	},
+    {}, /// 0th entry
+    { SVM_BLOCK_LD, ISA_Inst_SVM, "svm_block_ld", 3,
+    { { OPND_OTHER, ISA_TYPE_UB, 0 },           /// Properties
+    { OPND_VECTOR_SRC, ISA_TYPE_UQ, GRF_ALIGNED }, /// Address
+    { OPND_RAW, ISA_TYPE_UQ, 0 }            /// src
+    }
+    },
 
-	{ SVM_BLOCK_ST, ISA_Inst_SVM, "svm_block_st", 3,
-	{ { OPND_OTHER, ISA_TYPE_UB, 0 },           /// Properties
-	{ OPND_VECTOR_SRC, ISA_TYPE_UQ, GRF_ALIGNED }, /// Address
-	{ OPND_RAW, ISA_TYPE_UQ, 0 }            /// src
-	}
-	},
+    { SVM_BLOCK_ST, ISA_Inst_SVM, "svm_block_st", 3,
+    { { OPND_OTHER, ISA_TYPE_UB, 0 },           /// Properties
+    { OPND_VECTOR_SRC, ISA_TYPE_UQ, GRF_ALIGNED }, /// Address
+    { OPND_RAW, ISA_TYPE_UQ, 0 }            /// src
+    }
+    },
 
-	{ SVM_GATHER, ISA_Inst_SVM, "svm_gather", 6,
-	{ { OPND_EXECSIZE, ISA_TYPE_UB, 0 },             /// exec_size
-	{ OPND_PRED, ISA_TYPE_UW, 0 },             /// predicate
-	{ OPND_OTHER, ISA_TYPE_UB, 0 },             /// Block size
-	{ OPND_OTHER, ISA_TYPE_UB, 0 },             /// Num blocks
-	{ OPND_RAW, ISA_TYPE_UQ, 0 },             /// Addresses
-	{ OPND_RAW, ISA_TYPE_UQ, 0 }              /// dst
-	}
-	},
+    { SVM_GATHER, ISA_Inst_SVM, "svm_gather", 6,
+    { { OPND_EXECSIZE, ISA_TYPE_UB, 0 },             /// exec_size
+    { OPND_PRED, ISA_TYPE_UW, 0 },             /// predicate
+    { OPND_OTHER, ISA_TYPE_UB, 0 },             /// Block size
+    { OPND_OTHER, ISA_TYPE_UB, 0 },             /// Num blocks
+    { OPND_RAW, ISA_TYPE_UQ, 0 },             /// Addresses
+    { OPND_RAW, ISA_TYPE_UQ, 0 }              /// dst
+    }
+    },
 
-	{ SVM_SCATTER, ISA_Inst_SVM, "svm_scatter", 6,
-	{ { OPND_EXECSIZE, ISA_TYPE_UB, 0 },             /// exec_size
-	{ OPND_PRED, ISA_TYPE_UW, 0 },             /// predicate
-	{ OPND_OTHER, ISA_TYPE_UB, 0 },             /// Block size
-	{ OPND_OTHER, ISA_TYPE_UB, 0 },             /// Num blocks
-	{ OPND_RAW, ISA_TYPE_UQ, 0 },             /// Addresses
-	{ OPND_RAW, ISA_TYPE_UQ, 0 }              /// dst
-	}
-	},
+    { SVM_SCATTER, ISA_Inst_SVM, "svm_scatter", 6,
+    { { OPND_EXECSIZE, ISA_TYPE_UB, 0 },             /// exec_size
+    { OPND_PRED, ISA_TYPE_UW, 0 },             /// predicate
+    { OPND_OTHER, ISA_TYPE_UB, 0 },             /// Block size
+    { OPND_OTHER, ISA_TYPE_UB, 0 },             /// Num blocks
+    { OPND_RAW, ISA_TYPE_UQ, 0 },             /// Addresses
+    { OPND_RAW, ISA_TYPE_UQ, 0 }              /// dst
+    }
+    },
 
-	{ SVM_ATOMIC, ISA_Inst_SVM, "svm_atomic", 7,
-	{ { OPND_EXECSIZE, ISA_TYPE_UB, 0 },             /// exec_size
-	{ OPND_PRED, ISA_TYPE_UW, 0 },             /// predicate
-	{ OPND_OTHER, ISA_TYPE_UB, 0 },             /// Op
-	{ OPND_RAW, ISA_TYPE_UQ, 0 },             /// Addresses
-	{ OPND_RAW, ISA_TYPE_UQ, 0 },             /// src0
-	{ OPND_RAW, ISA_TYPE_UQ, 0 },             /// src1
-	{ OPND_RAW, ISA_TYPE_UQ, 0 }              /// dst
-	}
-	},
+    { SVM_ATOMIC, ISA_Inst_SVM, "svm_atomic", 7,
+    { { OPND_EXECSIZE, ISA_TYPE_UB, 0 },             /// exec_size
+    { OPND_PRED, ISA_TYPE_UW, 0 },             /// predicate
+    { OPND_OTHER, ISA_TYPE_UB, 0 },             /// Op
+    { OPND_RAW, ISA_TYPE_UQ, 0 },             /// Addresses
+    { OPND_RAW, ISA_TYPE_UQ, 0 },             /// src0
+    { OPND_RAW, ISA_TYPE_UQ, 0 },             /// src1
+    { OPND_RAW, ISA_TYPE_UQ, 0 }              /// dst
+    }
+    },
 
-	{
-		SVM_GATHER4SCALED, ISA_Inst_SVM, "svm_gather4scaled", 7,
-		{
-			{ OPND_EXECSIZE, ISA_TYPE_UB, 0 },                /// exec_size
-			{ OPND_PRED, ISA_TYPE_UW, 0 },                /// predicate
-			{ OPND_OTHER, ISA_TYPE_UB, 0 },                /// channel mask
-			{ OPND_OTHER, ISA_TYPE_UW, 0 },                /// scale
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UQ, SCALAR_REGION },    /// global offset
-			{ OPND_RAW, ISA_TYPE_UQ, GRF_ALIGNED },      /// offsets
-			{ OPND_RAW, ISA_TYPE_F |
-			ISA_TYPE_D |
-			ISA_TYPE_UD, GRF_ALIGNED }       /// dst
-		}
-	},
+    {
+        SVM_GATHER4SCALED, ISA_Inst_SVM, "svm_gather4scaled", 7,
+        {
+            { OPND_EXECSIZE, ISA_TYPE_UB, 0 },                /// exec_size
+            { OPND_PRED, ISA_TYPE_UW, 0 },                /// predicate
+            { OPND_OTHER, ISA_TYPE_UB, 0 },                /// channel mask
+            { OPND_OTHER, ISA_TYPE_UW, 0 },                /// scale
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UQ, SCALAR_REGION },    /// global offset
+            { OPND_RAW, ISA_TYPE_UQ, GRF_ALIGNED },      /// offsets
+            { OPND_RAW, ISA_TYPE_F |
+            ISA_TYPE_D |
+            ISA_TYPE_UD, GRF_ALIGNED }       /// dst
+        }
+    },
 
-	{
-		SVM_SCATTER4SCALED, ISA_Inst_SVM, "svm_scatter4scaled", 7,
-		{
-			{ OPND_EXECSIZE, ISA_TYPE_UB, 0 },                /// exec_size
-			{ OPND_PRED, ISA_TYPE_UW, 0 },                /// predicate
-			{ OPND_OTHER, ISA_TYPE_UB, 0 },                /// channel mask
-			{ OPND_OTHER, ISA_TYPE_UW, 0 },                /// scale
-			{ OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UQ, SCALAR_REGION },    /// global offset
-			{ OPND_RAW, ISA_TYPE_UQ, GRF_ALIGNED },      /// offsets
-			{ OPND_RAW, ISA_TYPE_F |
-			ISA_TYPE_D |
-			ISA_TYPE_UD, GRF_ALIGNED }       /// src
-		}
-	}
+    {
+        SVM_SCATTER4SCALED, ISA_Inst_SVM, "svm_scatter4scaled", 7,
+        {
+            { OPND_EXECSIZE, ISA_TYPE_UB, 0 },                /// exec_size
+            { OPND_PRED, ISA_TYPE_UW, 0 },                /// predicate
+            { OPND_OTHER, ISA_TYPE_UB, 0 },                /// channel mask
+            { OPND_OTHER, ISA_TYPE_UW, 0 },                /// scale
+            { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UQ, SCALAR_REGION },    /// global offset
+            { OPND_RAW, ISA_TYPE_UQ, GRF_ALIGNED },      /// offsets
+            { OPND_RAW, ISA_TYPE_F |
+            ISA_TYPE_D |
+            ISA_TYPE_UD, GRF_ALIGNED }       /// src
+        }
+    }
 };
 
 const ISA_SubInst_Desc& VISA_INST_Desc::getSubInstDesc(uint8_t subOpcode)
 {
-	switch (ISA_Opcode(this->opcode))
-	{
-	case ISA_VA:
-		return VASubOpcodeDesc[subOpcode];
-	case ISA_VA_SKL_PLUS:
-		return VAPlusSubOpcodeDesc[subOpcode];
-	case ISA_SVM:
-		return SVMSubOpcodeDesc[subOpcode];
-	default:
-		MUST_BE_TRUE(false, "instruction does not have sub opcode");
-		return SVMSubOpcodeDesc[0];  // return some garbage value
-	}
+    switch (ISA_Opcode(this->opcode))
+    {
+    case ISA_VA:
+        return VASubOpcodeDesc[subOpcode];
+    case ISA_VA_SKL_PLUS:
+        return VAPlusSubOpcodeDesc[subOpcode];
+    case ISA_SVM:
+        return SVMSubOpcodeDesc[subOpcode];
+    default:
+        MUST_BE_TRUE(false, "instruction does not have sub opcode");
+        return SVMSubOpcodeDesc[0];  // return some garbage value
+    }
 }
 

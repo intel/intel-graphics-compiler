@@ -44,6 +44,6 @@ define i32 @foo(i32 %dim, <8 x i32> %r0, <8 x i32> %payloadHeader, i16 %localIdX
 !7 = !{i32 8}
 !8 = !{i32 9}
 
-; CHECK: 		ret i32 %localIdY
+; CHECK:         ret i32 %localIdY
 
-; CHECK-NOT: 	call i32 @__builtin_IB_get_local_id_y()
+; CHECK-NOT:     call i32 @__builtin_IB_get_local_id_y()

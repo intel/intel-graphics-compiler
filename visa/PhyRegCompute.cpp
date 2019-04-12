@@ -30,58 +30,58 @@ using namespace vISA;
 
 void G4_SrcRegRegion::computePReg()
 {
-	int thisOpSize(G4_Type_Table[type].byteSize);
-	unsigned int regNum = 0, subRegNum = 0;
-	if (base->isRegVar() && base->asRegVar()->isPhyRegAssigned() )
-	{
+    int thisOpSize(G4_Type_Table[type].byteSize);
+    unsigned int regNum = 0, subRegNum = 0;
+    if (base->isRegVar() && base->asRegVar()->isPhyRegAssigned() )
+    {
         G4_RegVar* baseVar = base->asRegVar();
-		if(baseVar->getPhyReg()->isGreg())
-		{
-            G4_Declare* dcl = baseVar->getDeclare();
-
-		    regNum = (static_cast<G4_Greg*>(baseVar->getPhyReg()))->getRegNum();
-
-			subRegNum = baseVar->getPhyRegOff();
-
-			int declOpSize(G4_Type_Table[dcl->getElemType()].byteSize);
-
-			if (thisOpSize != declOpSize)
-			{
-				subRegNum = (subRegNum * declOpSize) / thisOpSize;
-			}
-
-	        unsigned int linearizedStart = (regNum * G4_GRF_REG_NBYTES) + (subRegNum * thisOpSize);
-
-            dcl->setGRFBaseOffset( linearizedStart );
-		}
-	}
-}
-
-void G4_DstRegRegion::computePReg()
-{
-	unsigned int regNum = 0, subRegNum = 0;
-	if (base->isRegVar() && base->asRegVar()->isPhyRegAssigned() )
-	{
-		G4_RegVar* baseVar = base->asRegVar();
-		if(baseVar->getPhyReg()->isGreg())
-		{
+        if(baseVar->getPhyReg()->isGreg())
+        {
             G4_Declare* dcl = baseVar->getDeclare();
 
             regNum = (static_cast<G4_Greg*>(baseVar->getPhyReg()))->getRegNum();
 
-			subRegNum = baseVar->getPhyRegOff();
+            subRegNum = baseVar->getPhyRegOff();
 
-			int declOpSize(G4_Type_Table[dcl->getElemType()].byteSize);
-			int thisOpSize(G4_Type_Table[type].byteSize);
+            int declOpSize(G4_Type_Table[dcl->getElemType()].byteSize);
 
-			if (thisOpSize != declOpSize)
-			{
-				subRegNum = (subRegNum * declOpSize) / thisOpSize;
-			}
+            if (thisOpSize != declOpSize)
+            {
+                subRegNum = (subRegNum * declOpSize) / thisOpSize;
+            }
 
-		    unsigned int linearizedStart = (regNum * G4_GRF_REG_NBYTES) + (subRegNum *  thisOpSize);
+            unsigned int linearizedStart = (regNum * G4_GRF_REG_NBYTES) + (subRegNum * thisOpSize);
 
             dcl->setGRFBaseOffset( linearizedStart );
-		}
-	}
+        }
+    }
+}
+
+void G4_DstRegRegion::computePReg()
+{
+    unsigned int regNum = 0, subRegNum = 0;
+    if (base->isRegVar() && base->asRegVar()->isPhyRegAssigned() )
+    {
+        G4_RegVar* baseVar = base->asRegVar();
+        if(baseVar->getPhyReg()->isGreg())
+        {
+            G4_Declare* dcl = baseVar->getDeclare();
+
+            regNum = (static_cast<G4_Greg*>(baseVar->getPhyReg()))->getRegNum();
+
+            subRegNum = baseVar->getPhyRegOff();
+
+            int declOpSize(G4_Type_Table[dcl->getElemType()].byteSize);
+            int thisOpSize(G4_Type_Table[type].byteSize);
+
+            if (thisOpSize != declOpSize)
+            {
+                subRegNum = (subRegNum * declOpSize) / thisOpSize;
+            }
+
+            unsigned int linearizedStart = (regNum * G4_GRF_REG_NBYTES) + (subRegNum *  thisOpSize);
+
+            dcl->setGRFBaseOffset( linearizedStart );
+        }
+    }
 }

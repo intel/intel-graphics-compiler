@@ -46,7 +46,7 @@ define i32 @foo(i32 %img, i32 %imageNumMipLevels) nounwind {
 !4 = !{i32 23, !5}
 !5 = !{!"explicit_arg_num", i32 0}
 
-; CHECK: 		ret i32 %imageNumMipLevels
-	
-; CHECK-NOT: 	call i32 @__builtin_IB_get_image_num_mip_levels(i32 %img)
+; CHECK:         ret i32 %imageNumMipLevels
+    
+; CHECK-NOT:     call i32 @__builtin_IB_get_image_num_mip_levels(i32 %img)
 

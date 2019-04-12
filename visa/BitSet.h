@@ -93,30 +93,30 @@ public:
         return true;
     }
 
-	bool isAllset() const
-	{
-		unsigned index;
-		unsigned bound = m_Size / NUM_BITS_PER_ELT;
+    bool isAllset() const
+    {
+        unsigned index;
+        unsigned bound = m_Size / NUM_BITS_PER_ELT;
 
-		for (index = 0; index < bound; index++)
-		{
-			if (~m_BitSetArray[index] != 0)
-			{
-				return false;
-			}
-		}
+        for (index = 0; index < bound; index++)
+        {
+            if (~m_BitSetArray[index] != 0)
+            {
+                return false;
+            }
+        }
 
-		unsigned numBitsLeft = m_Size % NUM_BITS_PER_ELT;
-		for (unsigned bitIndex = 0; bitIndex < numBitsLeft; bitIndex++)
-		{
-			if ((m_BitSetArray[index] & BIT(bitIndex)) == 0)
-			{
-				return false;
-			}
-		}
+        unsigned numBitsLeft = m_Size % NUM_BITS_PER_ELT;
+        for (unsigned bitIndex = 0; bitIndex < numBitsLeft; bitIndex++)
+        {
+            if ((m_BitSetArray[index] & BIT(bitIndex)) == 0)
+            {
+                return false;
+            }
+        }
 
-		return true;
-	}
+        return true;
+    }
 
 
     bool isSet(unsigned index) const
@@ -136,11 +136,11 @@ public:
         MUST_BE_TRUE(startIndex < m_Size, "Invalid bitSet Index");
         MUST_BE_TRUE(endIndex < m_Size, "Invalid bitSet Index");
         
-		unsigned start = startIndex / NUM_BITS_PER_ELT;
-		unsigned end = endIndex / NUM_BITS_PER_ELT;
+        unsigned start = startIndex / NUM_BITS_PER_ELT;
+        unsigned end = endIndex / NUM_BITS_PER_ELT;
 
-		if (start == end)
-		{
+        if (start == end)
+        {
             for (unsigned i = startIndex; i <= endIndex; i++)
             {
                 if (!isSet(i))
@@ -149,38 +149,38 @@ public:
                 }
             }
             return true;
-		}
-		
-		unsigned index;
-		unsigned numBitsBefore = startIndex % NUM_BITS_PER_ELT;
-		if (numBitsBefore)
-		{
-			for (unsigned bitIndex = numBitsBefore; bitIndex < NUM_BITS_PER_ELT; bitIndex++)
-			{
-				if ((m_BitSetArray[start] & BIT(bitIndex)) == 0)
-				{
-					return false;
-				}
-			}
-			start++;
-		}
+        }
+        
+        unsigned index;
+        unsigned numBitsBefore = startIndex % NUM_BITS_PER_ELT;
+        if (numBitsBefore)
+        {
+            for (unsigned bitIndex = numBitsBefore; bitIndex < NUM_BITS_PER_ELT; bitIndex++)
+            {
+                if ((m_BitSetArray[start] & BIT(bitIndex)) == 0)
+                {
+                    return false;
+                }
+            }
+            start++;
+        }
 
-		for (index = start; index < end; index++)
-		{
-			if (~m_BitSetArray[index] != 0)
-			{
-				return false;
-			}
-		}
+        for (index = start; index < end; index++)
+        {
+            if (~m_BitSetArray[index] != 0)
+            {
+                return false;
+            }
+        }
 
-    	unsigned numBitsLeft = endIndex % NUM_BITS_PER_ELT;
-		for (unsigned bitIndex = 0; bitIndex <= numBitsLeft; bitIndex++)
-		{
-			if ((m_BitSetArray[index] & BIT(bitIndex)) == 0)
-			{
-				return false;
-			}
-		}
+        unsigned numBitsLeft = endIndex % NUM_BITS_PER_ELT;
+        for (unsigned bitIndex = 0; bitIndex <= numBitsLeft; bitIndex++)
+        {
+            if ((m_BitSetArray[index] & BIT(bitIndex)) == 0)
+            {
+                return false;
+            }
+        }
 
         return true;
     }
@@ -191,11 +191,11 @@ public:
         MUST_BE_TRUE(startIndex < m_Size, "Invalid bitSet Index");
         MUST_BE_TRUE(endIndex < m_Size, "Invalid bitSet Index");
         
-		unsigned start = startIndex / NUM_BITS_PER_ELT;
-		unsigned end = endIndex / NUM_BITS_PER_ELT;
+        unsigned start = startIndex / NUM_BITS_PER_ELT;
+        unsigned end = endIndex / NUM_BITS_PER_ELT;
 
-		if (start == end)
-		{
+        if (start == end)
+        {
             for (unsigned i = startIndex; i <= endIndex; i++)
             {
                 if (isSet(i))
@@ -204,38 +204,38 @@ public:
                 }
             }
             return true;
-		}
+        }
 
-    	unsigned index;
-		unsigned numBitsBefore = startIndex % NUM_BITS_PER_ELT;
-		if (numBitsBefore)
-		{
-			for (unsigned bitIndex = numBitsBefore; bitIndex < NUM_BITS_PER_ELT; bitIndex++)
-			{
-				if ((m_BitSetArray[start] & BIT(bitIndex)) != 0)
-				{
-					return false;
-				}
-			}
-			start++;
-		}
+        unsigned index;
+        unsigned numBitsBefore = startIndex % NUM_BITS_PER_ELT;
+        if (numBitsBefore)
+        {
+            for (unsigned bitIndex = numBitsBefore; bitIndex < NUM_BITS_PER_ELT; bitIndex++)
+            {
+                if ((m_BitSetArray[start] & BIT(bitIndex)) != 0)
+                {
+                    return false;
+                }
+            }
+            start++;
+        }
 
-		for (index = start; index < end; index++)
-		{
-			if (m_BitSetArray[index] != 0)
-			{
-				return false;
-			}
-		}
+        for (index = start; index < end; index++)
+        {
+            if (m_BitSetArray[index] != 0)
+            {
+                return false;
+            }
+        }
 
-    	unsigned numBitsLeft = endIndex % NUM_BITS_PER_ELT;
-		for (unsigned bitIndex = 0; bitIndex <= numBitsLeft; bitIndex++)
-		{
-			if ((m_BitSetArray[index] & BIT(bitIndex)) != 0)
-			{
-				return false;
-			}
-		}
+        unsigned numBitsLeft = endIndex % NUM_BITS_PER_ELT;
+        for (unsigned bitIndex = 0; bitIndex <= numBitsLeft; bitIndex++)
+        {
+            if ((m_BitSetArray[index] & BIT(bitIndex)) != 0)
+            {
+                return false;
+            }
+        }
 
         return true;
     }
@@ -246,25 +246,25 @@ public:
         return m_BitSetArray[eltIndex];
     }
 
-	void setElt(unsigned eltIndex, BITSET_ARRAY_TYPE value) 
-	{
+    void setElt(unsigned eltIndex, BITSET_ARRAY_TYPE value) 
+    {
         unsigned bound = (eltIndex + 1) * NUM_BITS_PER_ELT;
         if (bound > m_Size)
         {
             create(bound);
         }
-		m_BitSetArray[eltIndex] |= value;
-	}
+        m_BitSetArray[eltIndex] |= value;
+    }
 
-	void resetElt(unsigned eltIndex, BITSET_ARRAY_TYPE value)
-	{
+    void resetElt(unsigned eltIndex, BITSET_ARRAY_TYPE value)
+    {
         unsigned bound = (eltIndex + 1) * NUM_BITS_PER_ELT;
         if (bound > m_Size)
         {
             create(bound);
         }
-		m_BitSetArray[eltIndex] &= ~value;
-	}
+        m_BitSetArray[eltIndex] &= ~value;
+    }
 
     void set(unsigned index, bool value)
     {

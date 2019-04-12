@@ -60,7 +60,7 @@ public:
     CVariable*  GetWDelta();
     CVariable*  GetPositionZ();
     CVariable*  GetPositionW();
-	CVariable*  GetPositionXYOffset();
+    CVariable*  GetPositionXYOffset();
     CVariable*  GetSampleOffsetX();
     CVariable*  GetSampleOffsetY();
     CVariable*  GetInputCoverageMask();
@@ -142,7 +142,7 @@ protected:
     CVariable* m_KillPixelMask;
     CVariable* m_pPositionZPixel;
     CVariable* m_pPositionWPixel;
-	CVariable* m_pPositionXYOffset;
+    CVariable* m_pPositionXYOffset;
     CVariable* m_ZDelta;
     CVariable* m_WDelta;
     CVariable* m_pInputCoverageMask;

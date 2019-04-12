@@ -164,7 +164,7 @@ public:
     virtual CVariable* GetGlobalMapping(llvm::Value* c);
     CVariable*  BitCast(CVariable* var, VISA_Type newType);
     void        ResolveAlias(CVariable* var);
-	void        CacheArgumentsList();
+    void        CacheArgumentsList();
     void        MapPushedInputs();
     void        CreateGatherMap();
     void        CreateConstantBufferOutput(SKernelProgram *pKernelProgram);
@@ -178,7 +178,7 @@ public:
     void        SetDeSSAHelper(DeSSA* deSSA) { m_deSSA = deSSA; }
     void        SetCoalescingEngineHelper(CoalescingEngine* ce) { m_coalescingEngine = ce; }
     void        SetCodeGenHelper(CodeGenPatternMatch* CG) { m_CG = CG; }
-	void        SetPushInfoHelper(PushInfo* PI) { pushInfo = *PI; }
+    void        SetPushInfoHelper(PushInfo* PI) { pushInfo = *PI; }
     void        SetDominatorTreeHelper(llvm::DominatorTree* DT) { m_DT = DT; }
     void        SetDataLayout(const llvm::DataLayout* DL) { m_DL = DL; }
     void        SetFunctionGroupAnalysis(GenXFunctionGroupAnalysis *FGA) { m_FGA = FGA; }
@@ -244,7 +244,7 @@ public:
     ShaderDispatchMode m_ShaderDispatchMode;
     SIMDMode m_SIMDSize;
     uint8_t m_numberInstance;
-	PushInfo pushInfo;
+    PushInfo pushInfo;
     bool isInputsPulled; //true if any input is pulled, false otherwise
     bool isMessageTargetDataCacheDataPort;
     uint m_sendStallCycle;
@@ -252,7 +252,7 @@ public:
     unsigned m_spillSize = 0;
     float m_spillCost = 0;          // num weighted spill inst / total inst
 
-	std::vector<llvm::Value*> m_argListCache;
+    std::vector<llvm::Value*> m_argListCache;
 
     /// The size in byte used by igc (non-spill space). And this
     /// is the value passed to VISA so that VISA's spill, if any,

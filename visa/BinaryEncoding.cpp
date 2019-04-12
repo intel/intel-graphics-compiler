@@ -133,8 +133,8 @@ inline void BinaryEncoding::EncodeFlagRegPredicate(G4_INST* inst)
         else
         {
             auto predCtrl = pred->getControl();
-			if (predCtrl != PRED_DEFAULT)
-				flagSwizzle = (uint32_t) GetAlign1PredCtrl(predCtrl);
+            if (predCtrl != PRED_DEFAULT)
+                flagSwizzle = (uint32_t) GetAlign1PredCtrl(predCtrl);
         }
 
         mybin->SetBits(bitsPredicate_0, bitsPredicate_1, flagState | flagSwizzle);
@@ -666,23 +666,23 @@ inline void SetDstHorzStride(BinInst *mybin, uint32_t value)
 
 inline void EncodeDstHorzStride(G4_INST *inst, BinInst *mybin, G4_DstRegRegion *dst)
 {
-	switch(dst->getHorzStride())
-	{
-		case 1:
-			if ( inst->isAligned16Inst())
-			{
-				SetDstHorzStride(mybin, HORZ_STRIDE_0);
-			}
-			else
-			{
-				SetDstHorzStride(mybin, HORZ_STRIDE_1);
-			}
-			break;
-		case 2: SetDstHorzStride(mybin, HORZ_STRIDE_2); break;
-		case 4: SetDstHorzStride(mybin, HORZ_STRIDE_4); break;
-		case UNDEFINED_SHORT: SetDstHorzStride(mybin, HORZ_STRIDE_1); break;
-		default:  MUST_BE_TRUE(false, "wrong dst horizontal stride " << dst->getHorzStride()); break;
-	}
+    switch(dst->getHorzStride())
+    {
+        case 1:
+            if ( inst->isAligned16Inst())
+            {
+                SetDstHorzStride(mybin, HORZ_STRIDE_0);
+            }
+            else
+            {
+                SetDstHorzStride(mybin, HORZ_STRIDE_1);
+            }
+            break;
+        case 2: SetDstHorzStride(mybin, HORZ_STRIDE_2); break;
+        case 4: SetDstHorzStride(mybin, HORZ_STRIDE_4); break;
+        case UNDEFINED_SHORT: SetDstHorzStride(mybin, HORZ_STRIDE_1); break;
+        default:  MUST_BE_TRUE(false, "wrong dst horizontal stride " << dst->getHorzStride()); break;
+    }
 }
 
 
@@ -1177,20 +1177,20 @@ inline bool EncodeSrc0Width(G4_INST *inst, BinInst *mybin, RegionDesc *rd, G4_Op
 
     if(rd)
     {
-		if (rd->width != UNDEFINED_SHORT)
-		{
-			WidthValid = true;
-		}
-		switch(rd->width)
-		{
-			case 1:  SetSrc0Width(mybin, WIDTH_1); break;
-			case 2:  SetSrc0Width(mybin, WIDTH_2); break;
-			case 4:  SetSrc0Width(mybin, WIDTH_4); break;
-			case 8:  SetSrc0Width(mybin, WIDTH_8); break;
-			case 16: SetSrc0Width(mybin, WIDTH_16); break;
-			case UNDEFINED_SHORT: break;
-			default: MUST_BE_TRUE(false, "wrong width for src0!"); break;
-		}
+        if (rd->width != UNDEFINED_SHORT)
+        {
+            WidthValid = true;
+        }
+        switch(rd->width)
+        {
+            case 1:  SetSrc0Width(mybin, WIDTH_1); break;
+            case 2:  SetSrc0Width(mybin, WIDTH_2); break;
+            case 4:  SetSrc0Width(mybin, WIDTH_4); break;
+            case 8:  SetSrc0Width(mybin, WIDTH_8); break;
+            case 16: SetSrc0Width(mybin, WIDTH_16); break;
+            case UNDEFINED_SHORT: break;
+            default: MUST_BE_TRUE(false, "wrong width for src0!"); break;
+        }
 
     }
 
@@ -1231,19 +1231,19 @@ inline bool EncodeSrc0HorzStride(G4_INST *inst, BinInst *mybin, RegionDesc *rd, 
     if (inst->isAligned16Inst()) return false;
 
     if(rd)  {
-		if ( rd->horzStride != UNDEFINED_SHORT)
-		{
-			HorzStrideValid = true;
-		}
-		switch(rd->horzStride)
-		{
-			case 0: SetSrc0HorzStride(mybin, HORZ_STRIDE_0); break;
-			case 1: SetSrc0HorzStride(mybin, HORZ_STRIDE_1); break;
-			case 2: SetSrc0HorzStride(mybin, HORZ_STRIDE_2); break;
-			case 4: SetSrc0HorzStride(mybin, HORZ_STRIDE_4); break;
-			case UNDEFINED_SHORT: break;
-			default: MUST_BE_TRUE(false, "wrong horizontal stride for src0!"); break;
-		}
+        if ( rd->horzStride != UNDEFINED_SHORT)
+        {
+            HorzStrideValid = true;
+        }
+        switch(rd->horzStride)
+        {
+            case 0: SetSrc0HorzStride(mybin, HORZ_STRIDE_0); break;
+            case 1: SetSrc0HorzStride(mybin, HORZ_STRIDE_1); break;
+            case 2: SetSrc0HorzStride(mybin, HORZ_STRIDE_2); break;
+            case 4: SetSrc0HorzStride(mybin, HORZ_STRIDE_4); break;
+            case UNDEFINED_SHORT: break;
+            default: MUST_BE_TRUE(false, "wrong horizontal stride for src0!"); break;
+        }
     }
     // apply default horizontal stride
     if ( !HorzStrideValid )
@@ -1272,7 +1272,7 @@ static const unsigned VERTICAL_STRIDE[6] =
 
 inline void EncodeSrc0VertStride( G4_INST *inst,
                                   BinInst *mybin,
-								  RegionDesc *rd,
+                                  RegionDesc *rd,
                                   G4_Operand *src0,
                                   bool WidthValid,
                                   bool HorzStrideValid)
@@ -1281,25 +1281,25 @@ inline void EncodeSrc0VertStride( G4_INST *inst,
     unsigned short VertStrideValue = UNDEFINED_SHORT, HorzStrideValue = 0;
 
     if(rd)
-	{
+    {
         VertStrideValue = rd->vertStride;
         HorzStrideValue = rd->horzStride;
-		if( VertStrideValue != UNDEFINED_SHORT)
-		{
-			VertStrideValid = true;
-		}
-		switch( VertStrideValue)
-		{
-			case 0:   SetSrc0VertStride(mybin, VERT_STRIDE_0); break;
-			case 1:   SetSrc0VertStride(mybin, VERT_STRIDE_1); break;
-			case 2:   SetSrc0VertStride(mybin, VERT_STRIDE_2); break;
-			case 4:   SetSrc0VertStride(mybin, VERT_STRIDE_4); break;
-			case 8:   SetSrc0VertStride(mybin, VERT_STRIDE_8); break;
-			case 16:  SetSrc0VertStride(mybin, VERT_STRIDE_16); break;
-			case 32:  SetSrc0VertStride(mybin, VERT_STRIDE_32); break;
-			case UNDEFINED_SHORT: break;
-			default: MUST_BE_TRUE(false, "wrong vertical stride for src0!"); break;
-		}
+        if( VertStrideValue != UNDEFINED_SHORT)
+        {
+            VertStrideValid = true;
+        }
+        switch( VertStrideValue)
+        {
+            case 0:   SetSrc0VertStride(mybin, VERT_STRIDE_0); break;
+            case 1:   SetSrc0VertStride(mybin, VERT_STRIDE_1); break;
+            case 2:   SetSrc0VertStride(mybin, VERT_STRIDE_2); break;
+            case 4:   SetSrc0VertStride(mybin, VERT_STRIDE_4); break;
+            case 8:   SetSrc0VertStride(mybin, VERT_STRIDE_8); break;
+            case 16:  SetSrc0VertStride(mybin, VERT_STRIDE_16); break;
+            case 32:  SetSrc0VertStride(mybin, VERT_STRIDE_32); break;
+            case UNDEFINED_SHORT: break;
+            default: MUST_BE_TRUE(false, "wrong vertical stride for src0!"); break;
+        }
 
     }
 
@@ -1333,16 +1333,16 @@ inline void EncodeSrc0VertStride( G4_INST *inst,
     if ( VertStrideValid ) {}
     else if ( inst->isAligned16Inst() )
     {
-		if (HorzStrideValid  && HorzStrideValue == 0)
-		{
-			SetSrc0HorzStride(mybin, HORZ_STRIDE_1);
-			SetSrc0VertStride(mybin, VERT_STRIDE_0);
-		}
-		else if (HorzStrideValid  && HorzStrideValue == 4)
-		{
-			SetSrc0HorzStride(mybin, HORZ_STRIDE_1);
-			SetSrc0VertStride(mybin, VERT_STRIDE_4);
-		}
+        if (HorzStrideValid  && HorzStrideValue == 0)
+        {
+            SetSrc0HorzStride(mybin, HORZ_STRIDE_1);
+            SetSrc0VertStride(mybin, VERT_STRIDE_0);
+        }
+        else if (HorzStrideValid  && HorzStrideValue == 4)
+        {
+            SetSrc0HorzStride(mybin, HORZ_STRIDE_1);
+            SetSrc0VertStride(mybin, VERT_STRIDE_4);
+        }
     }
     else if (src0 != NULL && EncodingHelper::GetSrcAddrMode(src0) == ADDR_MODE_INDIR) { //indirect
         SetSrc0VertStride(mybin, VERT_STRIDE_ONE_DIMEN);
@@ -1611,10 +1611,10 @@ inline BinaryEncoding::Status BinaryEncoding::EncodeOperandSrc0(G4_INST* inst)
         EncodeSrc0RepCtrl(mybin, src0Region);
         EncodeSrc0Modifier(mybin, src0, src0Region);
 
-		RegionDesc *rd = src0Region->getRegion();
-		bool WidthValid = EncodeSrc0Width(inst, mybin, rd, src0);
-		bool HorzStrideValid = EncodeSrc0HorzStride(inst, mybin, rd, src0);
-		EncodeSrc0VertStride(inst, mybin, rd, src0, WidthValid, HorzStrideValid);
+        RegionDesc *rd = src0Region->getRegion();
+        bool WidthValid = EncodeSrc0Width(inst, mybin, rd, src0);
+        bool HorzStrideValid = EncodeSrc0HorzStride(inst, mybin, rd, src0);
+        EncodeSrc0VertStride(inst, mybin, rd, src0, WidthValid, HorzStrideValid);
 
         EncodeSrc0ArchRegNum(inst, mybin, src0Region);
         EncodeSrc0RegNum(inst, mybin, src0);
@@ -1921,20 +1921,20 @@ inline bool EncodeSrc1Width(G4_INST *inst, BinInst *mybin, RegionDesc *rd, G4_Op
 
     if(rd)
     {
-		if (rd->width != UNDEFINED_SHORT)
-		{
-			WidthValid = true;
-		}
+        if (rd->width != UNDEFINED_SHORT)
+        {
+            WidthValid = true;
+        }
         switch(rd->width)
-		{
-			case 1:  SetSrc1Width(mybin, WIDTH_1); break;
-			case 2:  SetSrc1Width(mybin, WIDTH_2); break;
-			case 4:  SetSrc1Width(mybin, WIDTH_4); break;
-			case 8:  SetSrc1Width(mybin, WIDTH_8); break;
-			case 16: SetSrc1Width(mybin, WIDTH_16); break;
-			case UNDEFINED_SHORT:break;
-			default: MUST_BE_TRUE(false, "wrong width for src1!"); break;
-		}
+        {
+            case 1:  SetSrc1Width(mybin, WIDTH_1); break;
+            case 2:  SetSrc1Width(mybin, WIDTH_2); break;
+            case 4:  SetSrc1Width(mybin, WIDTH_4); break;
+            case 8:  SetSrc1Width(mybin, WIDTH_8); break;
+            case 16: SetSrc1Width(mybin, WIDTH_16); break;
+            case UNDEFINED_SHORT:break;
+            default: MUST_BE_TRUE(false, "wrong width for src1!"); break;
+        }
     }
 
     // apply default width
@@ -1964,21 +1964,21 @@ inline bool EncodeSrc1HorzStride(G4_INST *inst, BinInst *mybin, RegionDesc *rd, 
     bool HorzStrideValid = false;
     if ( inst->isAligned16Inst() ) return false;
 
-	if(rd)
+    if(rd)
     {
-		if (rd->horzStride != UNDEFINED_SHORT)
-		{
-			HorzStrideValid = true;
-		}
-		switch(rd->horzStride)
-		{
-			case 0: SetSrc1HorzStride(mybin, HORZ_STRIDE_0); break;
-			case 1: SetSrc1HorzStride(mybin, HORZ_STRIDE_1); break;
-			case 2: SetSrc1HorzStride(mybin, HORZ_STRIDE_2); break;
-			case 4: SetSrc1HorzStride(mybin, HORZ_STRIDE_4); break;
-			case UNDEFINED_SHORT: break;
-			default: MUST_BE_TRUE(false, "wrong horizontal stride for src1!"); break;
-		}
+        if (rd->horzStride != UNDEFINED_SHORT)
+        {
+            HorzStrideValid = true;
+        }
+        switch(rd->horzStride)
+        {
+            case 0: SetSrc1HorzStride(mybin, HORZ_STRIDE_0); break;
+            case 1: SetSrc1HorzStride(mybin, HORZ_STRIDE_1); break;
+            case 2: SetSrc1HorzStride(mybin, HORZ_STRIDE_2); break;
+            case 4: SetSrc1HorzStride(mybin, HORZ_STRIDE_4); break;
+            case UNDEFINED_SHORT: break;
+            default: MUST_BE_TRUE(false, "wrong horizontal stride for src1!"); break;
+        }
 
     }
     // apply default horizontal stride
@@ -2002,7 +2002,7 @@ inline bool EncodeSrc1HorzStride(G4_INST *inst, BinInst *mybin, RegionDesc *rd, 
 
 inline void EncodeSrc1VertStride( G4_INST *inst,
                                   BinInst *mybin,
-								  RegionDesc *rd,
+                                  RegionDesc *rd,
                                   G4_Operand *src1,
                                   bool WidthValid,
                                   bool HorzStrideValid)
@@ -2014,22 +2014,22 @@ inline void EncodeSrc1VertStride( G4_INST *inst,
     if(rd)  {
         VertStrideValue = rd->vertStride;
         HorzStrideValue = rd->horzStride;
-		if ( VertStrideValue != UNDEFINED_SHORT )
-		{
-			VertStrideValid = true;
-		}
-		switch(VertStrideValue)
-		{
-			case 0:   SetSrc1VertStride(mybin, VERT_STRIDE_0); break;
-			case 1:   SetSrc1VertStride(mybin, VERT_STRIDE_1); break;
-			case 2:   SetSrc1VertStride(mybin, VERT_STRIDE_2); break;
-			case 4:   SetSrc1VertStride(mybin, VERT_STRIDE_4); break;
-			case 8:   SetSrc1VertStride(mybin, VERT_STRIDE_8); break;
-			case 16:  SetSrc1VertStride(mybin, VERT_STRIDE_16); break;
-			case 32:  SetSrc1VertStride(mybin, VERT_STRIDE_32); break;
-			case UNDEFINED_SHORT: break;
-			default: MUST_BE_TRUE(false, "wrong verical stride for src1!"); break;
-		}
+        if ( VertStrideValue != UNDEFINED_SHORT )
+        {
+            VertStrideValid = true;
+        }
+        switch(VertStrideValue)
+        {
+            case 0:   SetSrc1VertStride(mybin, VERT_STRIDE_0); break;
+            case 1:   SetSrc1VertStride(mybin, VERT_STRIDE_1); break;
+            case 2:   SetSrc1VertStride(mybin, VERT_STRIDE_2); break;
+            case 4:   SetSrc1VertStride(mybin, VERT_STRIDE_4); break;
+            case 8:   SetSrc1VertStride(mybin, VERT_STRIDE_8); break;
+            case 16:  SetSrc1VertStride(mybin, VERT_STRIDE_16); break;
+            case 32:  SetSrc1VertStride(mybin, VERT_STRIDE_32); break;
+            case UNDEFINED_SHORT: break;
+            default: MUST_BE_TRUE(false, "wrong verical stride for src1!"); break;
+        }
 
     }
 
@@ -2378,7 +2378,7 @@ BinaryEncoding::Status BinaryEncoding::EncodeOperandSrc1(G4_INST* inst)
         EncodeSrc1RepCtrl(mybin, srcRegion);
         EncodeSrc1Modifier(mybin, srcRegion);
         EncodeSrc1ChanSelect(inst, mybin, srcRegion);
-		RegionDesc *rd = srcRegion->getRegion();
+        RegionDesc *rd = srcRegion->getRegion();
         bool WidthValid = EncodeSrc1Width(inst, mybin, rd, src1);
         bool HorzStrideValid = EncodeSrc1HorzStride(inst, mybin, rd, src1);
         EncodeSrc1VertStride(inst, mybin, rd, src1, WidthValid, HorzStrideValid);
@@ -2750,7 +2750,7 @@ BinaryEncoding::Status BinaryEncoding::DoAllEncoding(G4_INST* inst)
     if(inst->opcode() == G4_illegal)
          return FAILURE;
 
-	EncodingHelper::mark3Src(inst);
+    EncodingHelper::mark3Src(inst);
 
     insertWaitDst(inst);
 

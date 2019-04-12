@@ -663,7 +663,7 @@ static void dbgPrintBlendOptMode(uint64_t hash,
         "BLEND_OPTIMIZATION_SRC_BOTH_ZERO",
         "BLEND_OPTIMIZATION_SRC_BOTH_ONE",
         "BLEND_OPTIMIZATION_SRC_ALPHA_OR_COLOR_ZERO",
-		"BLEND_OPTIMIZATION_SRC_COLOR_ZERO_ALPHA_ONE",
+        "BLEND_OPTIMIZATION_SRC_COLOR_ZERO_ALPHA_ONE",
         "BLEND_OPTIMIZATION_SRC_COLOR_ZERO_ALPHA_IGNORE"
     };
     bool doprint = false;
@@ -1154,24 +1154,24 @@ bool PixelShaderLowering::optBlendState(
         return hasDiscard;
     }
 
-	case USC::BLEND_OPTIMIZATION_SRC_COLOR_ZERO_ALPHA_ONE:
-	{
-		// discard: src.rgb == 0 && src.a == 1
-		// equivalently mask = (r|g|b != 0) || (a != 1)
-		if (enableBlendToDiscard)
-		{
+    case USC::BLEND_OPTIMIZATION_SRC_COLOR_ZERO_ALPHA_ONE:
+    {
+        // discard: src.rgb == 0 && src.a == 1
+        // equivalently mask = (r|g|b != 0) || (a != 1)
+        if (enableBlendToDiscard)
+        {
             Value* cne0 = irb.CreateAnyValuesNotZero(colorOut.color, 3);
 
             Value* a = colorOut.color[3];
-			Constant* f1 = ConstantFP::get(a->getType(), 1.0);
-			Value* ane1 = irb.CreateFCmpUNE(a, f1);
+            Constant* f1 = ConstantFP::get(a->getType(), 1.0);
+            Value* ane1 = irb.CreateFCmpUNE(a, f1);
 
-			colorOut.mask = irb.CreateOr(cne0, ane1);
-			hasDiscard = true;
-		}
+            colorOut.mask = irb.CreateOr(cne0, ane1);
+            hasDiscard = true;
+        }
 
-		return hasDiscard;
-	}
+        return hasDiscard;
+    }
 
     case USC::BLEND_OPTIMIZATION_SRC_COLOR_ZERO_ALPHA_IGNORE:
     {

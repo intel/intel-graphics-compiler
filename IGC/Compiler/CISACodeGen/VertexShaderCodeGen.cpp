@@ -166,7 +166,7 @@ void CVertexShader::FillProgram(SVertexShaderKernelProgram* pKernelProgram)
     pKernelProgram->vertexIdLocation                 = m_properties.m_VID;
     pKernelProgram->hasInstanceID                    = m_properties.m_HasInstanceID;
     pKernelProgram->instanceIdLocation               = m_properties.m_IID;
-	pKernelProgram->vertexFetchSGVExtendedParameters = m_properties.m_VertexFetchSGVExtendedParameters;
+    pKernelProgram->vertexFetchSGVExtendedParameters = m_properties.m_VertexFetchSGVExtendedParameters;
     pKernelProgram->NOSBufferSize                    = m_NOSBufferSize / getGRFSize(); // in 256 bits
     pKernelProgram->DeclaresVPAIndex                 = m_properties.m_hasVPAI;
     pKernelProgram->DeclaresRTAIndex                 = m_properties.m_hasRTAI;
@@ -190,7 +190,7 @@ void CVertexShader::FillProgram(SVertexShaderKernelProgram* pKernelProgram)
     
     // Implement workaround code. We cannot have all component enable masks equal to zero
     // so we need to enable one dummy component.
-	//WaVFComponentPackingRequiresEnabledComponent is made default behavior
+    //WaVFComponentPackingRequiresEnabledComponent is made default behavior
     //3DSTATE_VF_COMPONENT_PACKING: At least one component of a "valid"
     //Vertex Element must be enabled.
     bool anyComponentEnabled = false;

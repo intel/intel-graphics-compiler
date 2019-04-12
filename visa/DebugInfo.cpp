@@ -1708,7 +1708,7 @@ void emitDebugInfo(VISAKernelImpl* kernel, std::list<VISAKernelImpl*>& functions
         }
     }
 #ifdef DEBUG_VERBOSE_ON
-	addCallFrameInfo(kernel);
+    addCallFrameInfo(kernel);
 
     for (auto& funcIt : functions)
     {
@@ -2550,7 +2550,7 @@ void addCallFrameInfo(VISAKernelImpl* kernel)
     }
     std::cerr << "\n";
 
-	emitSubRoutineInfo(kernel);
+    emitSubRoutineInfo(kernel);
 
     emitBEFP(kernel);
 

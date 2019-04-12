@@ -1004,7 +1004,7 @@ void CodeGenPatternMatch::visitBinaryOperator(llvm::BinaryOperator &I)
         break;
     case Instruction::And:
         match = 
-				MatchBoolOp(I) ||
+                MatchBoolOp(I) ||
                 MatchLogicAlu(I);
         break;
     case Instruction::Or:
@@ -1013,9 +1013,9 @@ void CodeGenPatternMatch::visitBinaryOperator(llvm::BinaryOperator &I)
                 MatchLogicAlu(I);
         break;
     case Instruction::Xor:
-		match =
-				MatchLogicAlu(I);
-		break;
+        match =
+                MatchLogicAlu(I);
+        break;
     default:
         assert(0 && "unknown binary instruction");
         break;
@@ -1039,7 +1039,7 @@ void CodeGenPatternMatch::visitCallInst(CallInst &I)
 {
     bool match = false;
     using namespace GenISAIntrinsic;
-	if (GenIntrinsicInst *CI = llvm::dyn_cast<GenIntrinsicInst>(&I))
+    if (GenIntrinsicInst *CI = llvm::dyn_cast<GenIntrinsicInst>(&I))
     {
         switch(CI->getIntrinsicID())
         {
@@ -1635,10 +1635,10 @@ bool CodeGenPatternMatch::MatchMad( llvm::BinaryOperator& I )
         }
     };
     
-	if (m_ctx->getModuleMetaData()->isPrecise)
-	{
-		return false;
-	}
+    if (m_ctx->getModuleMetaData()->isPrecise)
+    {
+        return false;
+    }
 
     if (m_ctx->type == ShaderType::VERTEX_SHADER &&
         m_ctx->m_DriverInfo.DisabeMatchMad())
@@ -1843,10 +1843,10 @@ bool CodeGenPatternMatch::MatchLrp(llvm::BinaryOperator& I)
     if(!m_Platform.supportLRPInstruction())
         return false;
 
-	if (m_ctx->getModuleMetaData()->isPrecise)
-	{
-		return false;
-	}
+    if (m_ctx->getModuleMetaData()->isPrecise)
+    {
+        return false;
+    }
 
     bool found = false;
     llvm::Value* sources[3];

@@ -69,9 +69,9 @@ bool BuiltinsConverter::fillIndexMap(Function &F)
             continue;
         }
             m_argIndexMap[&(*arg)] = CImagesBI::ParamInfo(
-	            argAlloc->indexType,
-	            (ResourceTypeEnum)argAlloc->type,
-	            (ResourceExtensionTypeEnum)argAlloc->extensionType);
+                argAlloc->indexType,
+                (ResourceTypeEnum)argAlloc->type,
+                (ResourceExtensionTypeEnum)argAlloc->extensionType);
     }
 
     // The sampler arguments have already been allocated indices by the ResourceAllocator.

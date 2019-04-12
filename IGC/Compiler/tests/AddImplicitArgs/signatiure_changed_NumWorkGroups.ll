@@ -38,5 +38,5 @@ define i32 @foo(i32 %x) nounwind {
 !4 =  !{ !"implicit_arg_desc",  !6}
 !6 =  !{i32 3}
 
-; CHECK: 		define i32 @foo(i32 %x, <3 x i32> %numWorkGroups)
-; CHECK-NOT:	define i32 @foo(i32 %x)
+; CHECK:         define i32 @foo(i32 %x, <3 x i32> %numWorkGroups)
+; CHECK-NOT:    define i32 @foo(i32 %x)

@@ -725,14 +725,14 @@ static void readInstructionCommonNG(unsigned& bytePos, const char* buf, ISA_Opco
                     kernelBuilder->AppendVISADataMovementInst(opcode, pred, saturate, emask, esize, dst, src0, src1);
                 break;
             case ISA_Inst_Arith:
-				if (opcode == ISA_ADDC || opcode == ISA_SUBB)
-				{
-					kernelBuilder->AppendVISAArithmeticInst(opcode, pred, emask, esize, dst, src0, src1, src2);
-				}
-				else
-				{
-					kernelBuilder->AppendVISAArithmeticInst(opcode, pred, saturate, emask, esize, dst, src0, src1, src2);
-				}
+                if (opcode == ISA_ADDC || opcode == ISA_SUBB)
+                {
+                    kernelBuilder->AppendVISAArithmeticInst(opcode, pred, emask, esize, dst, src0, src1, src2);
+                }
+                else
+                {
+                    kernelBuilder->AppendVISAArithmeticInst(opcode, pred, saturate, emask, esize, dst, src0, src1, src2);
+                }
                 break;
             case ISA_Inst_Logic:
                     kernelBuilder->AppendVISALogicOrShiftInst(opcode, pred, saturate, emask, esize, dst, src0, src1, src2, src3);
@@ -1432,22 +1432,22 @@ static void readInstructionMisc(unsigned& bytePos, const char* buf, ISA_Opcode o
             VISA_AddrVar* decl;
             decl = container.addressVarDecls[varId];
 
-			if(lifetime == LIFETIME_START)
-			{
-				kernelBuilder->CreateVISAAddressDstOperand(opnd, decl, 0);
-			}
-			else
-			{
-				kernelBuilder->CreateVISAAddressSrcOperand(opnd, decl, 0, 1);
-			}
+            if(lifetime == LIFETIME_START)
+            {
+                kernelBuilder->CreateVISAAddressDstOperand(opnd, decl, 0);
+            }
+            else
+            {
+                kernelBuilder->CreateVISAAddressSrcOperand(opnd, decl, 0, 1);
+            }
         }
         else if(opndClass == OPERAND_PREDICATE)
         {
             VISA_PredVar* decl;
 
             decl = container.predicateVarDecls[varId];
-			VISA_PredOpnd* predOpnd;
-			kernelBuilder->CreateVISAPredicateOperand(predOpnd, decl, PredState_NO_INVERSE, PRED_CTRL_NON);
+            VISA_PredOpnd* predOpnd;
+            kernelBuilder->CreateVISAPredicateOperand(predOpnd, decl, PredState_NO_INVERSE, PRED_CTRL_NON);
             opnd = (VISA_VectorOpnd*)predOpnd;
         }
 
@@ -1791,7 +1791,7 @@ static void readInstructionSampler(unsigned& bytePos, const char* buf, ISA_Opcod
             Common_ISA_Exec_Size  esize = EXEC_SIZE_ILLEGAL;
             readExecSizeNG(bytePos, buf, esize, emask, container);
             uint8_t channelMask = 0xF;
-			channelMask = readPrimitiveOperandNG<uint8_t>(bytePos, buf);
+            channelMask = readPrimitiveOperandNG<uint8_t>(bytePos, buf);
             uint8_t surface = readPrimitiveOperandNG<uint8_t> (bytePos, buf);
 
             VISA_RawOpnd* lod = subOpcode == VISA_3D_RESINFO ? readRawOperandNG(bytePos, buf, container) : NULL;
@@ -2443,7 +2443,7 @@ static void readRoutineNG(unsigned& bytePos, const char* buf, vISA::Mem_Manager&
         container.samplerVarDecls[i] = decl;
     }
 
-	kernelBuilderImpl->GetBindlessSampler(container.samplerVarDecls[BINDLESS_SAMPLER_ID]);
+    kernelBuilderImpl->GetBindlessSampler(container.samplerVarDecls[BINDLESS_SAMPLER_ID]);
 
     // read surface variables
     READ_CISA_FIELD(header.surface_count, uint8_t, bytePos, buf);
@@ -2634,10 +2634,10 @@ extern bool readIsaBinaryNG(const char* buf, CISA_IR_Builder* builder, vector<VI
 
 
 
-	// we have to set the CISA builder version to the binary version,
-	// or some instructions that behave differently based on vISA version (e.g., unaligned oword read)
-	// would not work correctly
-	builder->CISA_IR_setVersion(isaHeader.major_version, isaHeader.minor_version);
+    // we have to set the CISA builder version to the binary version,
+    // or some instructions that behave differently based on vISA version (e.g., unaligned oword read)
+    // would not work correctly
+    builder->CISA_IR_setVersion(isaHeader.major_version, isaHeader.minor_version);
 
     unsigned fileVarsCount = 0;
     VISA_FileVar** fileVarDecls = NULL;

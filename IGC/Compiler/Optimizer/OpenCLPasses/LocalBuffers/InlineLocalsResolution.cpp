@@ -173,8 +173,8 @@ bool InlineLocalsResolution::runOnModule(Module &M)
             if (IsFirstSLMArgument) {
                 auto BufType = ArrayType::get(Type::getInt8Ty(M.getContext()), 0);
                 auto ExtSLM = new GlobalVariable(M, BufType, false, GlobalVariable::ExternalLinkage, nullptr,
-					pFunc->getName() + "-ExtSLM", nullptr, GlobalVariable::ThreadLocalMode::NotThreadLocal,
-					ADDRESS_SPACE_LOCAL);
+                    pFunc->getName() + "-ExtSLM", nullptr, GlobalVariable::ThreadLocalMode::NotThreadLocal,
+                    ADDRESS_SPACE_LOCAL);
                 auto NewPtr = ConstantExpr::getBitCast(ExtSLM, arg->getType());
                 arg->replaceAllUsesWith(NewPtr);
                 // Update MD.
@@ -291,7 +291,7 @@ void InlineLocalsResolution::collectInfoOnSharedLocalMem(Module& M)
             m_pGV = new GlobalVariable(M, bufType, false,
                 GlobalVariable::ExternalLinkage, ConstantAggregateZero::get(bufType),
                 "GenSLM.LocalMemPoolOnGetMemPoolPtr",
-				nullptr,
+                nullptr,
                 GlobalVariable::ThreadLocalMode::NotThreadLocal,
                 ADDRESS_SPACE_LOCAL);
 
@@ -337,9 +337,9 @@ void InlineLocalsResolution::collectInfoOnSharedLocalMem(Module& M)
             continue;
         }
 
-		// For each SLM buffer, make it external to avoid alignment
-		// changing by llvm.
-		globalVar->setLinkage(GlobalValue::ExternalLinkage);
+        // For each SLM buffer, make it external to avoid alignment
+        // changing by llvm.
+        globalVar->setLinkage(GlobalValue::ExternalLinkage);
 
         // Find the functions which this globalVar belongs to.... 
         for (Value::user_iterator U = globalVar->user_begin(), UE = globalVar->user_end(); U != UE; ++U)

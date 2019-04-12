@@ -75,19 +75,19 @@ class PhyRegUsage
 {
     GlobalRA& gra;
     LiveRange** lrs;
-	unsigned maxGRFCanBeUsed;
-	bool *availableGregs;         	// true if the reg is available for allocation
-	uint32_t *availableSubRegs;     // each entry is a 16-bit value of the words that are free in a GRF
-	bool *availableAddrs;		                // true if the reg is available for allocation
+    unsigned maxGRFCanBeUsed;
+    bool *availableGregs;             // true if the reg is available for allocation
+    uint32_t *availableSubRegs;     // each entry is a 16-bit value of the words that are free in a GRF
+    bool *availableAddrs;                        // true if the reg is available for allocation
     bool *availableFlags;
     uint8_t* weakEdgeUsage;
 
-	ColorHeuristic colorHeuristic;   // perform register assignment in first-fit/round-robin for GRFs
+    ColorHeuristic colorHeuristic;   // perform register assignment in first-fit/round-robin for GRFs
     G4_RegFileKind regFile;
 
-	unsigned& startARFReg;						// round-robin reg  start bias
+    unsigned& startARFReg;                        // round-robin reg  start bias
     unsigned& startFLAGReg;
-	unsigned& startGRFReg;						// round-robin reg  start bias
+    unsigned& startGRFReg;                        // round-robin reg  start bias
 
 
     unsigned &bank1_start;
@@ -113,33 +113,33 @@ class PhyRegUsage
         G4_SubReg_Align subAlign,
         unsigned nwords);
     
-	void findGRFSubRegFromRegs(int startReg,
-	    int endReg,
-	    int step,
-	    PhyReg *phyReg,
-	    G4_SubReg_Align subAlign,
-	    unsigned nwords,
-	    const bool forbidden[],
-	    bool fromPartialOccupiedReg);
+    void findGRFSubRegFromRegs(int startReg,
+        int endReg,
+        int step,
+        PhyReg *phyReg,
+        G4_SubReg_Align subAlign,
+        unsigned nwords,
+        const bool forbidden[],
+        bool fromPartialOccupiedReg);
     
-	PhyReg findGRFSubRegFromBanks(G4_Declare *dcl,
+    PhyReg findGRFSubRegFromBanks(G4_Declare *dcl,
         const bool forbidden[],
         bool oneGRFBankDivision);
-	
-	void freeGRFSubReg(unsigned regNum, unsigned regOff, unsigned nwords, G4_Type ty);
-	void freeContiguous(bool availRegs[], unsigned start, unsigned numReg, unsigned maxRegs);
-	bool canGRFSubRegAlloc(G4_Declare* decl);
+    
+    void freeGRFSubReg(unsigned regNum, unsigned regOff, unsigned nwords, G4_Type ty);
+    void freeContiguous(bool availRegs[], unsigned start, unsigned numReg, unsigned maxRegs);
+    bool canGRFSubRegAlloc(G4_Declare* decl);
     bool findContiguousNoWrapGRF(bool availRegs[], const bool forbidden[], unsigned short occupiedBundles, G4_Align align, unsigned numRegNeeded, unsigned startPos, unsigned endPos, unsigned & idx);
 
     bool findContiguousNoWrapAddrFlag(bool availRegs[],
-		  					     const bool forbidden[],
-								 G4_SubReg_Align subAlign,
-								 unsigned numRegNeeded,
-								 unsigned startPos,
-								 unsigned endPos,
-								 unsigned& idx);
+                                   const bool forbidden[],
+                                 G4_SubReg_Align subAlign,
+                                 unsigned numRegNeeded,
+                                 unsigned startPos,
+                                 unsigned endPos,
+                                 unsigned& idx);
     
-	bool allFree(bool availRegs[], unsigned maxRegs);
+    bool allFree(bool availRegs[], unsigned maxRegs);
 
     bool findFreeRegs(bool availRegs[],
         const bool forbidden[],
@@ -154,7 +154,7 @@ class PhyRegUsage
 public:
     IR_Builder& builder;
 
-	PhyRegPool& regPool; // all Physical Reg Operands
+    PhyRegPool& regPool; // all Physical Reg Operands
 
     PhyRegUsage(PhyRegUsageParms&);
 
@@ -192,19 +192,19 @@ public:
 
     }
 
-	bool assignRegs(bool  isSIMD16, 
+    bool assignRegs(bool  isSIMD16, 
                     LiveRange* var,
-					const bool* forbidden,
-					G4_Align  align,
-					G4_SubReg_Align subAlign,
-					ColorHeuristic colorHeuristic,
-					float			 spillCost);
+                    const bool* forbidden,
+                    G4_Align  align,
+                    G4_SubReg_Align subAlign,
+                    ColorHeuristic colorHeuristic,
+                    float             spillCost);
 
-    bool assignGRFRegsFromBanks(LiveRange*	 varBasis,
-         		             G4_Align  align,
-							 const bool*     forbidden,
-							 ColorHeuristic  heuristic,
-							 bool oneGRFBankDivision);
+    bool assignGRFRegsFromBanks(LiveRange*     varBasis,
+                              G4_Align  align,
+                             const bool*     forbidden,
+                             ColorHeuristic  heuristic,
+                             bool oneGRFBankDivision);
 
     void markBusyForDclSplit(G4_RegFileKind kind,
         unsigned regNum,
@@ -212,9 +212,9 @@ public:
         unsigned nunits,
         unsigned numRows);
 
-	void markBusyGRF(unsigned regNum,
-				  unsigned regOff,
-				  unsigned nunits,
+    void markBusyGRF(unsigned regNum,
+                  unsigned regOff,
+                  unsigned nunits,
         unsigned numRows)
     {
         MUST_BE_TRUE(numRows > 0 && nunits > 0, ERROR_INTERNAL_ARGUMENT);
@@ -241,44 +241,44 @@ public:
         }
     }
 
-	void markBusyAddress(unsigned regNum,
-				  unsigned regOff,
-				  unsigned nunits,
-		unsigned numRows)
-	{
-		MUST_BE_TRUE(regNum == 0 && regOff + nunits <= getNumAddrRegisters(),
-			ERROR_UNKNOWN);
-		for (unsigned i = regOff; i < regOff + nunits; i++)
-			availableAddrs[i] = false;
-	}
+    void markBusyAddress(unsigned regNum,
+                  unsigned regOff,
+                  unsigned nunits,
+        unsigned numRows)
+    {
+        MUST_BE_TRUE(regNum == 0 && regOff + nunits <= getNumAddrRegisters(),
+            ERROR_UNKNOWN);
+        for (unsigned i = regOff; i < regOff + nunits; i++)
+            availableAddrs[i] = false;
+    }
 
-	void markBusyFlag(unsigned regNum,
-		unsigned regOff,
-		unsigned nunits,
-		unsigned numRows)
-	{
-		for (unsigned i = regOff; i < regOff + nunits; i++)
-			availableFlags[i] = false;
-	}
+    void markBusyFlag(unsigned regNum,
+        unsigned regOff,
+        unsigned nunits,
+        unsigned numRows)
+    {
+        for (unsigned i = regOff; i < regOff + nunits; i++)
+            availableFlags[i] = false;
+    }
 
-	static unsigned numAllocUnit(unsigned nelems, G4_Type ty)
-	{
-		//
-		// we allocate sub reg in 2-byte granularity
-		//
-		unsigned nbytes = nelems* G4_Type_Table[ty].byteSize;
-		return nbytes/G4_WSIZE + nbytes%G4_WSIZE;
-	}
+    static unsigned numAllocUnit(unsigned nelems, G4_Type ty)
+    {
+        //
+        // we allocate sub reg in 2-byte granularity
+        //
+        unsigned nbytes = nelems* G4_Type_Table[ty].byteSize;
+        return nbytes/G4_WSIZE + nbytes%G4_WSIZE;
+    }
 
-	// translate offset to allocUnit
-	static unsigned offsetAllocUnit(unsigned nelems, G4_Type ty)
-	{
+    // translate offset to allocUnit
+    static unsigned offsetAllocUnit(unsigned nelems, G4_Type ty)
+    {
 
-		unsigned nbytes = nelems* G4_Type_Table[ty].byteSize;
-		//RA allocate register in unit of G4_WSIZE bytes
-		//pre-assigned register may start from nbytes%G4_WSIZE != 0, i.e, within an allocUnit
-		return nbytes/G4_WSIZE;
-	}
+        unsigned nbytes = nelems* G4_Type_Table[ty].byteSize;
+        //RA allocate register in unit of G4_WSIZE bytes
+        //pre-assigned register may start from nbytes%G4_WSIZE != 0, i.e, within an allocUnit
+        return nbytes/G4_WSIZE;
+    }
 
     void updateRegUsage(LiveRange* lr);
 
@@ -307,23 +307,23 @@ public:
 
 private:
 
-	void freeRegs(LiveRange* var);
+    void freeRegs(LiveRange* var);
 
-	bool findContiguousAddrFlag(bool availRegs[],
-	 					   const bool forbidden[],
+    bool findContiguousAddrFlag(bool availRegs[],
+                            const bool forbidden[],
                            G4_SubReg_Align subAlign,
-						   unsigned numRegNeeded,
-						   unsigned maxRegs,
-						   unsigned& startReg, // inout
-						   unsigned& idx,      // output
+                           unsigned numRegNeeded,
+                           unsigned maxRegs,
+                           unsigned& startReg, // inout
+                           unsigned& idx,      // output
                            bool isCalleeSaveBias = false,
                            bool isEOTSrc = false);
 
     bool findContiguousGRFFromBanks(G4_Declare *dcl, bool availRegs[],
-								 const bool forbidden[],
-								 G4_Align align,
-								 unsigned& idx,
-								 bool oneGRFBankDivision);
+                                 const bool forbidden[],
+                                 G4_Align align,
+                                 unsigned& idx,
+                                 bool oneGRFBankDivision);
 
     // find contiguous free words in a registers
     int findContiguousWords(uint32_t words, G4_SubReg_Align alignment, int numWord) const;

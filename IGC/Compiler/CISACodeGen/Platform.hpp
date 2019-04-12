@@ -188,10 +188,10 @@ public:
     }
 
     bool supportsDrawParametersSGVs() const
-	{
-		// Gen10+, 3DSTATE_VF_SGVS_2
-		return m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE;
-	}
+    {
+        // Gen10+, 3DSTATE_VF_SGVS_2
+        return m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE;
+    }
 
     bool hasPSDBottleneck() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN11_CORE; }
 
@@ -397,7 +397,7 @@ public:
     bool WaConservativeRasterization() const
     {
         return (m_WaTable.WaConservativeRasterization != 0 &&
-			IGC_IS_FLAG_ENABLED(ApplyConservativeRastWAHeader));
+            IGC_IS_FLAG_ENABLED(ApplyConservativeRastWAHeader));
     }
 
     bool WaReturnZeroforRTReadOutsidePrimitive() const

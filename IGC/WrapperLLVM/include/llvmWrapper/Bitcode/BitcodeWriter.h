@@ -32,16 +32,16 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace IGCLLVM
 {
 #if LLVM_VERSION_MAJOR == 4
-	using llvm::WriteBitcodeToFile;
+    using llvm::WriteBitcodeToFile;
 #elif LLVM_VERSION_MAJOR >= 7
-	inline void WriteBitcodeToFile(const llvm::Module *M, llvm::raw_ostream &Out,
-		bool ShouldPreserveUseListOrder = false,
-		const llvm::ModuleSummaryIndex *Index = nullptr,
-		bool GenerateHash = false,
-		llvm::ModuleHash *ModHash = nullptr)
-	{
-		llvm::WriteBitcodeToFile(*M, Out, ShouldPreserveUseListOrder, Index, GenerateHash);
-	}
+    inline void WriteBitcodeToFile(const llvm::Module *M, llvm::raw_ostream &Out,
+        bool ShouldPreserveUseListOrder = false,
+        const llvm::ModuleSummaryIndex *Index = nullptr,
+        bool GenerateHash = false,
+        llvm::ModuleHash *ModHash = nullptr)
+    {
+        llvm::WriteBitcodeToFile(*M, Out, ShouldPreserveUseListOrder, Index, GenerateHash);
+    }
 #endif
 }
 

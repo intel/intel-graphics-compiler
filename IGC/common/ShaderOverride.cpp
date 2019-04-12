@@ -187,7 +187,7 @@ void overrideShaderIGA(const IGC::CodeGenContext* context, void *& genxbin, int 
 #else
     char igaName32[] = "iga32.dll";
     igaName = (TCHAR*)igaName32;
-#endif	//_WIN64
+#endif    //_WIN64
 
     hModule = LoadDependency(igaName);
 
@@ -202,12 +202,12 @@ void overrideShaderIGA(const IGC::CodeGenContext* context, void *& genxbin, int 
     hModule = dlopen(igaName, RTLD_LAZY);
 #endif
 
-	if (hModule == nullptr)
-	{
-		binOverride = false;
-		appendToShaderOverrideLogFile(binFileName, "OVERRIDE FAILED DUE TO MISSING IGA LIBRARY: ");
-		return;
-	}
+    if (hModule == nullptr)
+    {
+        binOverride = false;
+        appendToShaderOverrideLogFile(binFileName, "OVERRIDE FAILED DUE TO MISSING IGA LIBRARY: ");
+        return;
+    }
 
     fCreateContext = (pIGACreateContext)GetProcAddress(hModule, IGA_CREATE_CONTEXT_STR);
     fIGAGetErrors = (pIGAGetErrors)GetProcAddress(hModule, IGA_GET_ERRORS_STR);
@@ -225,7 +225,7 @@ void overrideShaderIGA(const IGC::CodeGenContext* context, void *& genxbin, int 
         fIGAReleaseContext == nullptr)
     {
         binOverride = false;
-		appendToShaderOverrideLogFile(binFileName, "OVERRIDE FAILED DUE TO IGA LOAD ERRORS: ");
+        appendToShaderOverrideLogFile(binFileName, "OVERRIDE FAILED DUE TO IGA LOAD ERRORS: ");
         return;
     }
 
@@ -234,7 +234,7 @@ void overrideShaderIGA(const IGC::CodeGenContext* context, void *& genxbin, int 
     iga_context_options_t ctxOpts = IGA_CONTEXT_OPTIONS_INIT(GetIGAPlatform(&(context->platform)));
     if(fCreateContext(&ctxOpts, &ctx) != IGA_SUCCESS) {
         binOverride = false;
-		appendToShaderOverrideLogFile(binFileName, "OVERRIDE FAILED DUE TO IGA CONTEXT CREATION FAILURE: ");
+        appendToShaderOverrideLogFile(binFileName, "OVERRIDE FAILED DUE TO IGA CONTEXT CREATION FAILURE: ");
         return;
     }
 

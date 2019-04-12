@@ -328,7 +328,7 @@ public:
     typedef InstList::const_iterator const_iterator;
     typedef std::vector<unsigned char> DataVector;
 public:
-	/// @brief Constructor.
+    /// @brief Constructor.
     /// @param m_pShader holds the processed entry point function and generated VISA code.
     explicit VISAModule(CShader* m_pShader);
 
@@ -413,8 +413,8 @@ public:
     /// @return target triple string.
     const std::string& GetTargetTriple() const;
 
-	/// @brief Return SIMD size of kernel
-	uint16_t GetSIMDSize() const;
+    /// @brief Return SIMD size of kernel
+    uint16_t GetSIMDSize() const;
 
     void SetEntryFunction(llvm::Function* F, bool c)
     { 

@@ -70,9 +70,9 @@ include_directories (
 )
 
 add_custom_command(TARGET ${IGC_BUILD__PROJ__ElfPackager}
-				   POST_BUILD
-				   COMMAND $<TARGET_FILE:${IGC_BUILD__PROJ__ElfPackager}> -includeSizet -funcList ${CMAKE_CURRENT_SOURCE_DIR}/function_bin.txt ${IGC_BUILD__BIF_DIR}/OCLBiFImpl.bc ${IGC_BUILD__BIF_DIR}/igdclbif.bin
-				  )
+                   POST_BUILD
+                   COMMAND $<TARGET_FILE:${IGC_BUILD__PROJ__ElfPackager}> -includeSizet -funcList ${CMAKE_CURRENT_SOURCE_DIR}/function_bin.txt ${IGC_BUILD__BIF_DIR}/OCLBiFImpl.bc ${IGC_BUILD__BIF_DIR}/igdclbif.bin
+                  )
 
 
 add_dependencies("${IGC_BUILD__PROJ__ElfPackager}" "${IGC_BUILD__PROJ__BiFModule_OCL}")

@@ -137,8 +137,8 @@ using namespace llvm;
 /// error, this *does not* move Buffer.
 ErrorOr<Module *>
 getLazyBitcodeModule(std::unique_ptr<MemoryBuffer> &&Buffer,
-	       LLVMContext &Context,
-	       DiagnosticHandlerFunction DiagnosticHandler = nullptr);
+           LLVMContext &Context,
+           DiagnosticHandlerFunction DiagnosticHandler = nullptr);
 
 /// Read the header of the specified stream and prepare for lazy
 /// deserialization and streaming of function bodies.
@@ -151,12 +151,12 @@ DiagnosticHandlerFunction DiagnosticHandler = nullptr);
 /// returns "".
 std::string
 getBitcodeTargetTriple(MemoryBufferRef Buffer, LLVMContext &Context,
-		 DiagnosticHandlerFunction DiagnosticHandler = nullptr);
+         DiagnosticHandlerFunction DiagnosticHandler = nullptr);
 
 /// Read the specified bitcode file, returning the module.
 ErrorOr<Module *>
 parseBitcodeFile(MemoryBufferRef Buffer, LLVMContext &Context,
-	   DiagnosticHandlerFunction DiagnosticHandler = nullptr);
+       DiagnosticHandlerFunction DiagnosticHandler = nullptr);
 #endif
 } // End upgrader namespace
 

@@ -66,13 +66,13 @@ VertexShaderLowering::VertexShaderLowering() : FunctionPass(ID)
 
 bool VertexShaderLowering::runOnFunction(llvm::Function &F)
 {
-	// VS lowering only applies to entry function. Non-entry funtions
-	// are emulation functions that do not need to be lowered!
-	MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-	if (!isEntryFunc(pMdUtils, &F))
-	{
-		return false;
-	}
+    // VS lowering only applies to entry function. Non-entry funtions
+    // are emulation functions that do not need to be lowered!
+    MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    if (!isEntryFunc(pMdUtils, &F))
+    {
+        return false;
+    }
 
     m_context = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     memset(m_inputUsed, 0, sizeof(m_inputUsed));
@@ -188,7 +188,7 @@ void VertexShaderLowering::LowerIntrinsicInputOutput(Function& F)
     CalculateVertexHeaderSize(F);
     Instruction* vertexId = nullptr;
     Instruction* InstanceId = nullptr;
-	std::array<Instruction*, 3> vertexFetchSGVExtendedParameters = {};
+    std::array<Instruction*, 3> vertexFetchSGVExtendedParameters = {};
     SmallVector<Instruction*, 10> instructionToRemove;
     Value* zero = ConstantInt::get(Type::getInt32Ty(F.getContext()), 0);
     std::vector<llvm::Instruction*> offsetInst(MaxNumOfOutput + m_headerSize.Count(), nullptr);
@@ -279,58 +279,58 @@ void VertexShaderLowering::LowerIntrinsicInputOutput(Function& F)
                 {
                     uint usage = 
                         (uint) llvm::cast<llvm::ConstantInt>(inst->getOperand(0))->getZExtValue();
-					switch (usage)
-					{
-					case VERTEX_ID:
-						vertexId = inst;
-						break;
+                    switch (usage)
+                    {
+                    case VERTEX_ID:
+                        vertexId = inst;
+                        break;
 
-					case GS_INSTANCEID:
-						InstanceId = inst;
-						if (m_context->platform.supportSingleInstanceVertexShader() &&
-							(IGC_IS_FLAG_ENABLED(EnableSingleVertexDispatch) ||
-							(m_context->m_DriverInfo.SupportsSingleInstanceVertexDispatch())))
-						{
-							auto useIterBegin = inst->user_begin(), useIterEnd = inst->user_end();
+                    case GS_INSTANCEID:
+                        InstanceId = inst;
+                        if (m_context->platform.supportSingleInstanceVertexShader() &&
+                            (IGC_IS_FLAG_ENABLED(EnableSingleVertexDispatch) ||
+                            (m_context->m_DriverInfo.SupportsSingleInstanceVertexDispatch())))
+                        {
+                            auto useIterBegin = inst->user_begin(), useIterEnd = inst->user_end();
 
-							// if one use of instance_id with constant buffer is found we dont need to look for more
-							bool foundConstantBufferAccessedWithInstanceID = false;
-							while ((useIterBegin != useIterEnd) &&
-								!foundConstantBufferAccessedWithInstanceID)
-							{
-								Value* user = *useIterBegin;
+                            // if one use of instance_id with constant buffer is found we dont need to look for more
+                            bool foundConstantBufferAccessedWithInstanceID = false;
+                            while ((useIterBegin != useIterEnd) &&
+                                !foundConstantBufferAccessedWithInstanceID)
+                            {
+                                Value* user = *useIterBegin;
 
-								if (llvm::isa<llvm::BitCastInst>(user))
-								{
-									// if instance_id is being used in a bitcast look for all the bitcast instructions uses
-									// to make sure none of the bitcast instructions users use this to index into constanct buffers
-									auto bitCastUserIterBegin = user->user_begin(), bitCastUserIterEnd = user->user_end();
-									while ((bitCastUserIterBegin != bitCastUserIterEnd) &&
-										!foundConstantBufferAccessedWithInstanceID)
-									{
-										foundConstantBufferAccessedWithInstanceID = determineIfInstructionUsingInstanceIDisConstantBuffer(*bitCastUserIterBegin);
-										++bitCastUserIterBegin;
-									}
-								}
-								else
-								{
-									foundConstantBufferAccessedWithInstanceID = determineIfInstructionUsingInstanceIDisConstantBuffer(user);
-								}
-								++useIterBegin;
-							}
-						}
-						break;
+                                if (llvm::isa<llvm::BitCastInst>(user))
+                                {
+                                    // if instance_id is being used in a bitcast look for all the bitcast instructions uses
+                                    // to make sure none of the bitcast instructions users use this to index into constanct buffers
+                                    auto bitCastUserIterBegin = user->user_begin(), bitCastUserIterEnd = user->user_end();
+                                    while ((bitCastUserIterBegin != bitCastUserIterEnd) &&
+                                        !foundConstantBufferAccessedWithInstanceID)
+                                    {
+                                        foundConstantBufferAccessedWithInstanceID = determineIfInstructionUsingInstanceIDisConstantBuffer(*bitCastUserIterBegin);
+                                        ++bitCastUserIterBegin;
+                                    }
+                                }
+                                else
+                                {
+                                    foundConstantBufferAccessedWithInstanceID = determineIfInstructionUsingInstanceIDisConstantBuffer(user);
+                                }
+                                ++useIterBegin;
+                            }
+                        }
+                        break;
 
-					case VF_XP0:
-					case VF_XP1:
-					case VF_XP2:
-						assert(m_context->platform.supportsDrawParametersSGVs());
-						vertexFetchSGVExtendedParameters.at(usage - VF_XP0) = inst;
-						break;
+                    case VF_XP0:
+                    case VF_XP1:
+                    case VF_XP2:
+                        assert(m_context->platform.supportsDrawParametersSGVs());
+                        vertexFetchSGVExtendedParameters.at(usage - VF_XP0) = inst;
+                        break;
 
-					default:
-						break;
-					}
+                    default:
+                        break;
+                    }
                 }
             }
         }
@@ -344,14 +344,14 @@ void VertexShaderLowering::LowerIntrinsicInputOutput(Function& F)
         unsigned int slot = InsertInEmptySlot(vertexId);
         m_vsPropsPass->SetVertexIdSlot(slot);
     }
-	for (size_t paramIndex = 0; paramIndex < vertexFetchSGVExtendedParameters.size(); ++paramIndex)
-	{
-		if (vertexFetchSGVExtendedParameters[paramIndex])
-		{
-			unsigned int slot = InsertInEmptySlot(vertexFetchSGVExtendedParameters[paramIndex]);
-			m_vsPropsPass->SetShaderDrawParameter(paramIndex, slot);
-		}
-	}
+    for (size_t paramIndex = 0; paramIndex < vertexFetchSGVExtendedParameters.size(); ++paramIndex)
+    {
+        if (vertexFetchSGVExtendedParameters[paramIndex])
+        {
+            unsigned int slot = InsertInEmptySlot(vertexFetchSGVExtendedParameters[paramIndex]);
+            m_vsPropsPass->SetShaderDrawParameter(paramIndex, slot);
+        }
+    }
     if (InstanceId)
     {
         unsigned int slot = InsertInEmptySlot(InstanceId, (!IGC_IS_FLAG_ENABLED(DisableMovingInstanceIDIndexOfVS)));
@@ -670,10 +670,10 @@ void CollectVertexShaderProperties::SetVertexIdSlot(unsigned int VIDSlot)
 
 void CollectVertexShaderProperties::SetShaderDrawParameter(size_t paramIndex, unsigned int slot)
 {
-	assert(paramIndex < ARRAY_COUNT(m_vsProps.m_VertexFetchSGVExtendedParameters.extendedParameters));
-	auto& parameter = m_vsProps.m_VertexFetchSGVExtendedParameters.extendedParameters[paramIndex];
-	parameter.enabled = true;
-	parameter.location = slot;
+    assert(paramIndex < ARRAY_COUNT(m_vsProps.m_VertexFetchSGVExtendedParameters.extendedParameters));
+    auto& parameter = m_vsProps.m_VertexFetchSGVExtendedParameters.extendedParameters[paramIndex];
+    parameter.enabled = true;
+    parameter.location = slot;
 }
 
 

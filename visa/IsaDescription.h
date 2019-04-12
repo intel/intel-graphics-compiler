@@ -235,7 +235,7 @@ struct VISA_INST_Desc
     char             attr;
     OpndDesc         opnd_desc[MAX_OPNDS_PER_INST];
 
-	const ISA_SubInst_Desc& getSubInstDesc(uint8_t subOpcode);
+    const ISA_SubInst_Desc& getSubInstDesc(uint8_t subOpcode);
 };
 
 enum SVMSubOpcode

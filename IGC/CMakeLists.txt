@@ -2680,8 +2680,8 @@ foreach(_compilerFlagName IN ITEMS "CMAKE_CXX_FLAGS" "CMAKE_C_FLAGS")
         OptimizeSpeed
         ControlFlowGuard
     )
-	
-	
+    
+    
   # Adding needed settings specific to MSVC.
   if(MSVC)
   # Adding needed settings specific to GCC.
@@ -2741,22 +2741,22 @@ foreach(_compilerFlagName IN ITEMS "CMAKE_CXX_FLAGS" "CMAKE_C_FLAGS")
     )
     if(_igc_compiler_is_gnu)
       igc_config_flag_apply_settings(
-	  CompilerOptions
-	  "${_compilerFlagName}"
-	  ALL_PATTERN ""
-	  SET_RAW
-	    -funswitch-loops
-	    -Wno-maybe-uninitialized
-	)
+      CompilerOptions
+      "${_compilerFlagName}"
+      ALL_PATTERN ""
+      SET_RAW
+        -funswitch-loops
+        -Wno-maybe-uninitialized
+    )
     endif()
     if(_igc_compiler_is_gnu OR (_igc_compiler_is_clang AND NOT CMAKE_C_COMPILER_VERSION LESS "4.0"))
       igc_config_flag_apply_settings(
-	  CompilerOptions
-	  "${_compilerFlagName}"
-	  ALL_PATTERN ""
-	  SET_RAW
+      CompilerOptions
+      "${_compilerFlagName}"
+      ALL_PATTERN ""
+      SET_RAW
             -finline-functions
-	)
+    )
     endif()
 
   elseif(_igc_compiler_is_gnu_or_clang)
@@ -2806,24 +2806,24 @@ foreach(_compilerFlagName IN ITEMS "CMAKE_CXX_FLAGS" "CMAKE_C_FLAGS")
           -fstack-protector
       )
       if(_igc_compiler_is_gnu OR (_igc_compiler_is_clang AND NOT CMAKE_C_COMPILER_VERSION LESS "4.0"))
-	igc_config_flag_apply_settings(
-	    CompilerOptions
-	    "${_compilerFlagName}"
-	    ALL_PATTERN ""
-	    SET_RAW
-	      -finline-functions
-	  )
+    igc_config_flag_apply_settings(
+        CompilerOptions
+        "${_compilerFlagName}"
+        ALL_PATTERN ""
+        SET_RAW
+          -finline-functions
+      )
       endif()
       if(NOT _igc_compiler_is_clang)
-	igc_config_flag_apply_settings(
-	    CompilerOptions
-	    "${_compilerFlagName}"
-	    ALL_PATTERN ""
-	    SET_RAW
-	      -funswitch-loops
-	      -Wno-maybe-uninitialized
-	      -lrt
-	  )
+    igc_config_flag_apply_settings(
+        CompilerOptions
+        "${_compilerFlagName}"
+        ALL_PATTERN ""
+        SET_RAW
+          -funswitch-loops
+          -Wno-maybe-uninitialized
+          -lrt
+      )
       endif()
   elseif(_igc_compiler_is_clang)
     igc_config_flag_apply_settings(
@@ -2842,13 +2842,13 @@ foreach(_compilerFlagName IN ITEMS "CMAKE_CXX_FLAGS" "CMAKE_C_FLAGS")
         -msse4.2
       )
       if(NOT CMAKE_C_COMPILER_VERSION LESS "4.0")
-	igc_config_flag_apply_settings(
-	    CompilerOptions
-	    "${_compilerFlagName}"
-	    ALL_PATTERN ""
-	    SET_RAW
-	      -finline-functions
-	  )
+    igc_config_flag_apply_settings(
+        CompilerOptions
+        "${_compilerFlagName}"
+        ALL_PATTERN ""
+        SET_RAW
+          -finline-functions
+      )
       endif()
   endif()
 endforeach()
@@ -2859,7 +2859,7 @@ if( ANDROID OR _igc_compiler_is_gnu_or_clang)
       CMAKE_SHARED_LINKER_FLAGS
       ALL_PATTERN ""
       SET_RAW
-	-Wl,--no-undefined
+    -Wl,--no-undefined
     )
 endif()
 
@@ -3496,7 +3496,7 @@ set(IGC_BUILD__HDR__IGC__igc_common
 set(IGC_BUILD__HDR__IGC__igc_dll
     ${IGC_BUILD__HDR__IGC__igc_common}
     ${IGC_BUILD__HDR__IGC_DriverInterface__igc_dll}
-	${IGC_WrapperLLVM_HDR}
+    ${IGC_WrapperLLVM_HDR}
   )
   
 #FCL
@@ -3794,7 +3794,7 @@ endforeach()
 
 list(REMOVE_ITEM _targetLinkLine
     IGC_BUILD__LLVM_LIBS_TO_LINK
-	)
+    )
 
 if(_targetIsStatic)
     # Link line for projects that use IGC as static library (allows to resolve multi-circular dependencies between libraries).

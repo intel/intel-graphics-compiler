@@ -1143,13 +1143,13 @@ Value* DeSSA::getRootValue(Value* Val, e_alignment *pAlign) const
 }
 
 void DeSSA::getAllValuesInCongruentClass(
-	Value* V,
-	SmallVector<Value*, 8>& ValsInCC)
+    Value* V,
+    SmallVector<Value*, 8>& ValsInCC)
 {
-	// Handle InsertElement specially. Note that only rootValue from
-	// a sequence of insertElement is in congruent class. The RootValue
-	// has its liveness modified to cover all InsertElements that are
-	// grouped together.
+    // Handle InsertElement specially. Note that only rootValue from
+    // a sequence of insertElement is in congruent class. The RootValue
+    // has its liveness modified to cover all InsertElements that are
+    // grouped together.
     Value* RootV = V;
     if (IGC_IS_FLAG_ENABLED(EnableDeSSAAlias))
     {
@@ -1159,15 +1159,15 @@ void DeSSA::getAllValuesInCongruentClass(
         RootV = getInsEltRoot(RootV);
     }
     ValsInCC.push_back(RootV);
-	auto RI = RegNodeMap.find(RootV);
-	if (RI != RegNodeMap.end()) {
-		Node* First = RI->second;
-		for (Node* N = First->next; N != First; N = N->next)
+    auto RI = RegNodeMap.find(RootV);
+    if (RI != RegNodeMap.end()) {
+        Node* First = RI->second;
+        for (Node* N = First->next; N != First; N = N->next)
         {
             ValsInCC.push_back(N->value);
-		}
-	}
-	return;
+        }
+    }
+    return;
 }
 
 void DeSSA::CoalesceAliasInstForBasicBlock(BasicBlock *Blk)

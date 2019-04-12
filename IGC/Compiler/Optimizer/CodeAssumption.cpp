@@ -42,9 +42,9 @@ using namespace IGC;
 using namespace IGC::IGCMD;
 
 namespace {
-	const StringRef OCLBIF_GET_GLOBAL_ID = "_Z13get_global_idj";
-	const StringRef OCLBIF_GET_LOCAL_ID = "_Z12get_local_idj";
-	const StringRef OCLBIF_GET_GROUP_ID = "_Z12get_group_idj";
+    const StringRef OCLBIF_GET_GLOBAL_ID = "_Z13get_global_idj";
+    const StringRef OCLBIF_GET_LOCAL_ID = "_Z12get_local_idj";
+    const StringRef OCLBIF_GET_GROUP_ID = "_Z12get_group_idj";
     const StringRef OCLBIF_GET_GLOBAL_ID_SPIRV = "__builtin_spirv_BuiltInGlobalInvocationID";
     const StringRef OCLBIF_GET_LOCAL_ID_SPIRV = "__builtin_spirv_BuiltInLocalInvocationId";
     const StringRef OCLBIF_GET_GROUP_ID_SPIRV = "__builtin_spirv_BuiltInWorkgroupId";
@@ -144,59 +144,59 @@ void CodeAssumption::uniformHelper(Module *M)
 
 void CodeAssumption::addAssumption(Module *M)
 {
-	// Do it for 64-bit pointer only
-	if (M->getDataLayout().getPointerSize() != 8) {
-		return;
-	}
+    // Do it for 64-bit pointer only
+    if (M->getDataLayout().getPointerSize() != 8) {
+        return;
+    }
 
-	for (Module::iterator I = M->begin(), E = M->end(); I != E; ++I)
-	{
-		Function* F = &(*I);
-		StringRef FN = F->getName();
-		if (FN == OCLBIF_GET_GLOBAL_ID ||
-			FN == OCLBIF_GET_LOCAL_ID ||
-			FN == OCLBIF_GET_GROUP_ID)
-		{
-			for (auto U = F->user_begin(), UE = F->user_end(); U != UE; ++U)
-			{
-				CallInst *CI = dyn_cast<CallInst>(*U);
-				if (!CI || !CI->getType()->isIntegerTy())
-				{
-					// sanity check
-					continue;
-				}
+    for (Module::iterator I = M->begin(), E = M->end(); I != E; ++I)
+    {
+        Function* F = &(*I);
+        StringRef FN = F->getName();
+        if (FN == OCLBIF_GET_GLOBAL_ID ||
+            FN == OCLBIF_GET_LOCAL_ID ||
+            FN == OCLBIF_GET_GROUP_ID)
+        {
+            for (auto U = F->user_begin(), UE = F->user_end(); U != UE; ++U)
+            {
+                CallInst *CI = dyn_cast<CallInst>(*U);
+                if (!CI || !CI->getType()->isIntegerTy())
+                {
+                    // sanity check
+                    continue;
+                }
 
-				BasicBlock::iterator InsertBefore(CI);
-				++InsertBefore;
-				IRBuilder<> IRB(CI->getParent(), InsertBefore);
+                BasicBlock::iterator InsertBefore(CI);
+                ++InsertBefore;
+                IRBuilder<> IRB(CI->getParent(), InsertBefore);
 
-				Constant *Zero = ConstantInt::get(CI->getType(), 0);
-				Value *icmp = IRB.CreateICmpSGE(CI, Zero, "assumeCond");
-				(void) IRB.CreateAssumption(icmp);
+                Constant *Zero = ConstantInt::get(CI->getType(), 0);
+                Value *icmp = IRB.CreateICmpSGE(CI, Zero, "assumeCond");
+                (void) IRB.CreateAssumption(icmp);
 
-				if (CI->getType()->isIntegerTy(64))
-				{
-					// y = trunc i64 x to i32
-					// Assume y is positive as well.
-					for (auto UI = CI->user_begin(), UE = CI->user_end(); UI != UE; ++UI)
-					{
-						Instruction *userInst = dyn_cast<Instruction>(*UI);
-						if (userInst && userInst->getOpcode() == Instruction::Trunc &&
-							userInst->getType()->isIntegerTy(32))
-						{
-							BasicBlock::iterator pos(userInst);
-							++pos;
-							IRBuilder<> builder(userInst->getParent(), pos);
-							Value *tmp = builder.CreateICmpSGE(userInst, Zero, "assumeCond");
-							(void)IRB.CreateAssumption(tmp);
-						}
-					}
-				}
+                if (CI->getType()->isIntegerTy(64))
+                {
+                    // y = trunc i64 x to i32
+                    // Assume y is positive as well.
+                    for (auto UI = CI->user_begin(), UE = CI->user_end(); UI != UE; ++UI)
+                    {
+                        Instruction *userInst = dyn_cast<Instruction>(*UI);
+                        if (userInst && userInst->getOpcode() == Instruction::Trunc &&
+                            userInst->getType()->isIntegerTy(32))
+                        {
+                            BasicBlock::iterator pos(userInst);
+                            ++pos;
+                            IRBuilder<> builder(userInst->getParent(), pos);
+                            Value *tmp = builder.CreateICmpSGE(userInst, Zero, "assumeCond");
+                            (void)IRB.CreateAssumption(tmp);
+                        }
+                    }
+                }
 
-				m_changed = true;
-			}
-		}
-	}
+                m_changed = true;
+            }
+        }
+    }
 }
 
 
@@ -221,102 +221,102 @@ void CodeAssumption::addAssumption(Module *M)
 // undefined behavior, and thus, do not bother overflow)!
 //
 bool CodeAssumption::isPositiveIndVar(
-	PHINode *PN, const DataLayout* DL, AssumptionCache* AC)
+    PHINode *PN, const DataLayout* DL, AssumptionCache* AC)
 {
-	auto getCxtInst = [](Value *I) -> Instruction * {
-		if (PHINode *phinode = dyn_cast<PHINode>(I)) {
-			// llvm.assume for a PHI is inserted right after all
-			// PHI instructions in the same BB. This assumption is
-			// always true no matter where the PHI is used. To make
-			// this work with llvm value tracking, set Cxt instruction
-			// to be the last of this BB.
-			return phinode->getParent()->getTerminator();
-		}
-		else if (Instruction *Inst = dyn_cast<Instruction>(I)) {
-			return Inst;
-		}
-		return nullptr;
-	};
+    auto getCxtInst = [](Value *I) -> Instruction * {
+        if (PHINode *phinode = dyn_cast<PHINode>(I)) {
+            // llvm.assume for a PHI is inserted right after all
+            // PHI instructions in the same BB. This assumption is
+            // always true no matter where the PHI is used. To make
+            // this work with llvm value tracking, set Cxt instruction
+            // to be the last of this BB.
+            return phinode->getParent()->getTerminator();
+        }
+        else if (Instruction *Inst = dyn_cast<Instruction>(I)) {
+            return Inst;
+        }
+        return nullptr;
+    };
 
-	int nOpnds = PN->getNumOperands();
-	if (nOpnds != 2 || !PN->getType()->isIntegerTy(32)) {
-		return false;
-	}
-	Value *NonConstVal = nullptr;
-	for (int i = 0; i < nOpnds; ++i)
-	{
-		Value *aVal = PN->getOperand(i);
-		ConstantInt *IConst = dyn_cast<ConstantInt>(aVal);
-		if ((IConst && IConst->getSExtValue() >= 0) ||
-			(!IConst &&
-				valueIsPositive(aVal, DL, AC, getCxtInst(aVal)))) {
-			continue;
-		}
-		if (NonConstVal) {
-			return false;
-		}
-		NonConstVal = aVal;
-	}
-	if (!NonConstVal) {
-		return true;
-	}
-	Instruction *Inst = dyn_cast<Instruction>(NonConstVal);
-	if (!Inst || Inst->getOpcode() != Instruction::Add) {
-		return false;
-	}
-	ConstantInt *IC = nullptr;
-	if (Inst->getOperand(0) == PN) {
-		IC = dyn_cast<ConstantInt>(Inst->getOperand(1));
-	}
-	else if (Inst->getOperand(1) == PN) {
-		IC = dyn_cast<ConstantInt>(Inst->getOperand(0));
-	}
-	if (IC && IC->getSExtValue() >= 0) {
-		return true;
-	}
-	return false;
+    int nOpnds = PN->getNumOperands();
+    if (nOpnds != 2 || !PN->getType()->isIntegerTy(32)) {
+        return false;
+    }
+    Value *NonConstVal = nullptr;
+    for (int i = 0; i < nOpnds; ++i)
+    {
+        Value *aVal = PN->getOperand(i);
+        ConstantInt *IConst = dyn_cast<ConstantInt>(aVal);
+        if ((IConst && IConst->getSExtValue() >= 0) ||
+            (!IConst &&
+                valueIsPositive(aVal, DL, AC, getCxtInst(aVal)))) {
+            continue;
+        }
+        if (NonConstVal) {
+            return false;
+        }
+        NonConstVal = aVal;
+    }
+    if (!NonConstVal) {
+        return true;
+    }
+    Instruction *Inst = dyn_cast<Instruction>(NonConstVal);
+    if (!Inst || Inst->getOpcode() != Instruction::Add) {
+        return false;
+    }
+    ConstantInt *IC = nullptr;
+    if (Inst->getOperand(0) == PN) {
+        IC = dyn_cast<ConstantInt>(Inst->getOperand(1));
+    }
+    else if (Inst->getOperand(1) == PN) {
+        IC = dyn_cast<ConstantInt>(Inst->getOperand(0));
+    }
+    if (IC && IC->getSExtValue() >= 0) {
+        return true;
+    }
+    return false;
 }
 
 bool CodeAssumption::addAssumption(Function* F, AssumptionCache* AC)
 {
-	const DataLayout& DL = F->getParent()->getDataLayout();
-	DenseMap<Value*, int> assumptionAdded;
+    const DataLayout& DL = F->getParent()->getDataLayout();
+    DenseMap<Value*, int> assumptionAdded;
 
-	bool assumeAdded = false;
-	bool changed = true;
-	while (changed)
-	{
-		changed = false;
-		for (auto BI = F->begin(), BE = F->end(); BI != BE; ++BI)
-		{
-			BasicBlock *BB = &(*BI);
-			for (auto II = BB->begin(), IE = BB->end(); II != IE; ++II)
-			{
-				Instruction *Inst = &(*II);
-				PHINode *PN = dyn_cast<PHINode>(Inst);
-				if (!PN) break;
-				if (assumptionAdded.count(PN) == 0 &&
-					CodeAssumption::isPositiveIndVar(PN, &DL, AC))
-				{
-					IRBuilder<> IRB(BB->getFirstNonPHI());
-					Constant *Zero = ConstantInt::get(PN->getType(), 0);
-					Value *icmp = IRB.CreateICmpSGE(PN, Zero, "assumeCond");
-					CallInst* assumeInst = IRB.CreateAssumption(icmp);
+    bool assumeAdded = false;
+    bool changed = true;
+    while (changed)
+    {
+        changed = false;
+        for (auto BI = F->begin(), BE = F->end(); BI != BE; ++BI)
+        {
+            BasicBlock *BB = &(*BI);
+            for (auto II = BB->begin(), IE = BB->end(); II != IE; ++II)
+            {
+                Instruction *Inst = &(*II);
+                PHINode *PN = dyn_cast<PHINode>(Inst);
+                if (!PN) break;
+                if (assumptionAdded.count(PN) == 0 &&
+                    CodeAssumption::isPositiveIndVar(PN, &DL, AC))
+                {
+                    IRBuilder<> IRB(BB->getFirstNonPHI());
+                    Constant *Zero = ConstantInt::get(PN->getType(), 0);
+                    Value *icmp = IRB.CreateICmpSGE(PN, Zero, "assumeCond");
+                    CallInst* assumeInst = IRB.CreateAssumption(icmp);
 
-					// Register assumption
-					if (AC)
-					{
-						AC->registerAssumption(assumeInst);
-					}
+                    // Register assumption
+                    if (AC)
+                    {
+                        AC->registerAssumption(assumeInst);
+                    }
 
-					assumptionAdded[PN] = 1;
-					changed = true;
-					assumeAdded = true;
-				}
-			}
-		}
-	}
-	return assumeAdded;
+                    assumptionAdded[PN] = 1;
+                    changed = true;
+                    assumeAdded = true;
+                }
+            }
+        }
+    }
+    return assumeAdded;
 }
 
 // Return true if SubGroupID is uniform

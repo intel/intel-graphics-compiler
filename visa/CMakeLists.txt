@@ -150,7 +150,7 @@ if(ANDROID AND MEDIA_IGA)
   link_directories($ENV{ANDROID_NDK}/sources/cxx-stl/llvm-libc++/libs/$ENV{CMRT_ARCH})
   include_directories(${Extra_Android_Inc})
 elseif(ANDROID)
-	link_directories($ENV{ANDROID_PRODUCT_OUT}/system/lib)
+    link_directories($ENV{ANDROID_PRODUCT_OUT}/system/lib)
 endif(ANDROID AND MEDIA_IGA)
 
 include_directories(${Jitter_inc_dirs})

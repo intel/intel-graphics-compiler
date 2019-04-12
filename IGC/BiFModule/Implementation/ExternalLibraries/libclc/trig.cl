@@ -349,18 +349,18 @@ INLINE float libclc_asinh_f32(float x) {
     float t = x * x;
     float a = __builtin_spirv_OpenCL_mad_f32_f32_f32(t,
                   __builtin_spirv_OpenCL_mad_f32_f32_f32(t,
-		      __builtin_spirv_OpenCL_mad_f32_f32_f32(t,
-		          __builtin_spirv_OpenCL_mad_f32_f32_f32(t, -1.177198915954942694e-4f, -4.162727710583425360e-2f),
-		          -5.063201055468483248e-1f),
-		      -1.480204186473758321f),
-	          -1.152965835871758072f);
+              __builtin_spirv_OpenCL_mad_f32_f32_f32(t,
+                  __builtin_spirv_OpenCL_mad_f32_f32_f32(t, -1.177198915954942694e-4f, -4.162727710583425360e-2f),
+                  -5.063201055468483248e-1f),
+              -1.480204186473758321f),
+              -1.152965835871758072f);
     float b = __builtin_spirv_OpenCL_mad_f32_f32_f32(t,
-	          __builtin_spirv_OpenCL_mad_f32_f32_f32(t,
-		      __builtin_spirv_OpenCL_mad_f32_f32_f32(t,
-			  __builtin_spirv_OpenCL_mad_f32_f32_f32(t, 6.284381367285534560e-2f, 1.260024978680227945f),
-			  6.582362487198468066f),
-		      11.99423176003939087f),
-		  6.917795026025976739f);
+              __builtin_spirv_OpenCL_mad_f32_f32_f32(t,
+              __builtin_spirv_OpenCL_mad_f32_f32_f32(t,
+              __builtin_spirv_OpenCL_mad_f32_f32_f32(t, 6.284381367285534560e-2f, 1.260024978680227945f),
+              6.582362487198468066f),
+              11.99423176003939087f),
+          6.917795026025976739f);
 
     float q = a / b;
     float z1 = __builtin_spirv_OpenCL_mad_f32_f32_f32(x*t, q, x);

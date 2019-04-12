@@ -18,8 +18,8 @@ set(IGC_BUILD__SRC__common
 
     "${CMAKE_CURRENT_SOURCE_DIR}/SystemThread.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/MDFrameWork.cpp"
-	
-	"${CMAKE_CURRENT_SOURCE_DIR}/FunctionUpgrader.cpp"
+    
+    "${CMAKE_CURRENT_SOURCE_DIR}/FunctionUpgrader.cpp"
   )
 
 # Add generated source files
@@ -60,8 +60,8 @@ set(IGC_BUILD__HDR__common
     "${CMAKE_CURRENT_SOURCE_DIR}/debug/DebugMacros.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/debug/Dump.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/debug/TeeOutputStream.hpp"
-	
-	"${CMAKE_CURRENT_SOURCE_DIR}/FunctionUpgrader.h"
+    
+    "${CMAKE_CURRENT_SOURCE_DIR}/FunctionUpgrader.h"
   )
 if(LLVM_ON_WIN32)
   set(IGC_BUILD__HDR_Win__common

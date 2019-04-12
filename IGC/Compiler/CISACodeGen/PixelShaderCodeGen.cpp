@@ -747,10 +747,10 @@ namespace IGC
         pKernelProgram->outputDepth = m_HasoDepth;
         pKernelProgram->oMask = m_HasoMask;
         pKernelProgram->outputStencil = m_HasoStencil;
-		pKernelProgram->sampleCmpToDiscardOptimizationPossible = GetContext()->m_instrTypes.sampleCmpToDiscardOptimizationPossible;
-		pKernelProgram->sampleCmpToDiscardOptimizationSlot = GetContext()->m_instrTypes.sampleCmpToDiscardOptimizationSlot;
+        pKernelProgram->sampleCmpToDiscardOptimizationPossible = GetContext()->m_instrTypes.sampleCmpToDiscardOptimizationPossible;
+        pKernelProgram->sampleCmpToDiscardOptimizationSlot = GetContext()->m_instrTypes.sampleCmpToDiscardOptimizationSlot;
         pKernelProgram->needPSSync = m_NeedPSSync;
-		pKernelProgram->hasInputCoverageMask = m_HasInputCoverageMask;
+        pKernelProgram->hasInputCoverageMask = m_HasInputCoverageMask;
         pKernelProgram->hasPullBary = m_HasPullBary;
         pKernelProgram->isPerSample = IsPerSample();
         if (NamedMDNode* primIdNod = entry->getParent()->getNamedMetadata("PrimIdLocation"))
@@ -1310,7 +1310,7 @@ namespace IGC
             // Single PS
             CodeGen(ctx, shaders);
             // Assuming single shader information in metadata
-			Function *pFunc = getUniqueEntryFunc(pMdUtils);
+            Function *pFunc = getUniqueEntryFunc(pMdUtils);
             // gather data to send back to the driver
             shaders[pFunc]->FillProgram(&ctx->programOutput);
             COMPILER_SHADER_STATS_PRINT(shaders[pFunc]->m_shaderStats, ShaderType::PIXEL_SHADER, ctx->hash, "");

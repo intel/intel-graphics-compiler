@@ -43,10 +43,10 @@ class SpillManager
     // for creating insts
     //
     IR_Builder& builder;
-	//
-	// the current block
-	//
-	unsigned bbId;
+    //
+    // the current block
+    //
+    unsigned bbId;
     //
     // spilled live ranges
     //
@@ -76,14 +76,14 @@ class SpillManager
     void replaceSpilledDst(G4_BB* bb,
                            INST_LIST_ITER it, // where new insts will be inserted
                            G4_INST*       inst,
-						   PointsToAnalysis& pointsToAnalysis,
+                           PointsToAnalysis& pointsToAnalysis,
                            G4_Operand ** operands_analyzed,
                            G4_Declare ** declares_created);
     void replaceSpilledSrc(G4_BB* bb,
                            INST_LIST_ITER it, // where new insts will be inserted
                            G4_INST*       inst,
                            unsigned       i,
-						   PointsToAnalysis& pointsToAnalysis,
+                           PointsToAnalysis& pointsToAnalysis,
                            G4_Operand ** operands_analyzed,
                            G4_Declare ** declares_created);
     void replaceSpilledPredicate(G4_BB* bb,
@@ -99,7 +99,7 @@ public:
 
 
     SpillManager(GlobalRA& g, const LIVERANGE_LIST & splrs, uint32_t startTempDclId) :
-		builder(*g.kernel.fg.builder), bbId(UINT_MAX), spilledLRs(splrs), origTempDclId(startTempDclId),
+        builder(*g.kernel.fg.builder), bbId(UINT_MAX), spilledLRs(splrs), origTempDclId(startTempDclId),
         gra(g), kernel(g.kernel), pointsToAnalysis(g.pointsToAnalysis)
     {
         tempDclId = startTempDclId;

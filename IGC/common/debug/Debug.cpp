@@ -283,9 +283,9 @@ void RegisterErrHandlers()
 void RegisterComputeErrHandlers(LLVMContext &C)
 {
 #if LLVM_VERSION_MAJOR == 4
-	C.setDiagnosticHandler(ComputeFatalErrorHandler);
+    C.setDiagnosticHandler(ComputeFatalErrorHandler);
 #elif LLVM_VERSION_MAJOR >= 7
-	C.setDiagnosticHandlerCallBack(ComputeFatalErrorHandler);
+    C.setDiagnosticHandlerCallBack(ComputeFatalErrorHandler);
 #endif    
 }
 

@@ -32,18 +32,18 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace IGCLLVM
 {
-	inline void ArgumentAddAttr(llvm::Argument& Arg, unsigned Index, llvm::Attribute::AttrKind Attr)
-	{
-		IGCLLVM::AttributeSet attrSet = IGCLLVM::AttributeSet::get(
-			Arg.getParent()->getContext(),
-			Index,
-			Attr);
+    inline void ArgumentAddAttr(llvm::Argument& Arg, unsigned Index, llvm::Attribute::AttrKind Attr)
+    {
+        IGCLLVM::AttributeSet attrSet = IGCLLVM::AttributeSet::get(
+            Arg.getParent()->getContext(),
+            Index,
+            Attr);
 #if LLVM_VERSION_MAJOR == 4
-		Arg.addAttr(attrSet);
+        Arg.addAttr(attrSet);
 #elif LLVM_VERSION_MAJOR >= 7
-		Arg.addAttr(attrSet.getAttribute(Index, Attr));
+        Arg.addAttr(attrSet.getAttribute(Index, Attr));
 #endif
-	}
+    }
 }
 
 #endif

@@ -3932,11 +3932,11 @@ bool HWConformity::generateFPMad(G4_BB* bb, INST_LIST_ITER iter)
             if (isGoodMadType(type))
             {
                 G4_Operand* src = inst->getSrc(k);
-				bool isReplicated = (type == Type_DF) &&
-					src->isSrcRegRegion() &&
-					(src->asSrcRegRegion()->getRegion()->width == 2) &&
-					(src->asSrcRegRegion()->getRegion()->horzStride == 0) &&
-					(src->asSrcRegRegion()->getRegion()->vertStride == 2);
+                bool isReplicated = (type == Type_DF) &&
+                    src->isSrcRegRegion() &&
+                    (src->asSrcRegRegion()->getRegion()->width == 2) &&
+                    (src->asSrcRegRegion()->getRegion()->horzStride == 0) &&
+                    (src->asSrcRegRegion()->getRegion()->vertStride == 2);
                 if ((type == Type_DF ||
                      (type == Type_HF && getGenxPlatform() == GENX_BDW)) &&
                     execSize > 1 &&
@@ -3948,8 +3948,8 @@ bool HWConformity::generateFPMad(G4_BB* bb, INST_LIST_ITER iter)
                     auto align = type == Type_HF ? SUB_ALIGNMENT_GRFALIGN : Eight_Word;
                     broadcast(bb, iter, k, align);
                 }
-				// No need to insert mov for replicated DF src with <2;2,0> region,
-				// which can be encoded as "xyxy" or "zwzw" swizzle based on offfset
+                // No need to insert mov for replicated DF src with <2;2,0> region,
+                // which can be encoded as "xyxy" or "zwzw" swizzle based on offfset
                 else if (!isReplicated)
                 {
                     inst->setSrc(insertMovBefore(iter, k, type, bb), k);
@@ -4543,7 +4543,7 @@ static bool replaceDstWithAcc(G4_INST* inst, int accNum, IR_Builder& builder)
         }
     }
 
-	return true;
+    return true;
 }
 
 static uint32_t getNumACC(IR_Builder& builder)

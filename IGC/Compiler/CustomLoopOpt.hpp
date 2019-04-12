@@ -128,7 +128,7 @@ public:
     bool runOnFunction(llvm::Function& F);
     bool processLoop(llvm::Loop* loop);
 
-	llvm::StringRef getPassName() const
+    llvm::StringRef getPassName() const
     {
         return "Custom Loop Versioning";
     }

@@ -33,35 +33,35 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace IGCLLVM
 {
 #if LLVM_VERSION_MAJOR == 4
-	using llvm::DIBuilder;
+    using llvm::DIBuilder;
 #elif LLVM_VERSION_MAJOR >= 7
-	class DIBuilder : public llvm::DIBuilder
-	{
-	public:
+    class DIBuilder : public llvm::DIBuilder
+    {
+    public:
 
-		DIBuilder(llvm::Module &M, bool AllowUnresolved = true,
-			llvm::DICompileUnit *CU = nullptr) : llvm::DIBuilder(M, AllowUnresolved, CU)
-		{}
+        DIBuilder(llvm::Module &M, bool AllowUnresolved = true,
+            llvm::DICompileUnit *CU = nullptr) : llvm::DIBuilder(M, AllowUnresolved, CU)
+        {}
 
-		inline llvm::DIDerivedType* createInheritance(llvm::DIType *Ty, llvm::DIType *BaseTy,
-			uint64_t BaseOffset,
-			llvm::DINode::DIFlags Flags) {
-			return llvm::DIBuilder::createInheritance(Ty, BaseTy, BaseOffset, 0, Flags);
-		}
-		inline llvm::Instruction *insertDbgValueIntrinsic(llvm::Value *V, uint64_t Offset,
-			llvm::DILocalVariable *VarInfo,
-			llvm::DIExpression *Expr,
-			const llvm::DILocation *DL,
-			llvm::BasicBlock *InsertAtEnd) {
-			return llvm::DIBuilder::insertDbgValueIntrinsic(V, VarInfo, Expr, DL, InsertAtEnd);
-		}
-		inline llvm::Instruction *insertDbgValueIntrinsic(llvm::Value *V, uint64_t Offset,
-			llvm::DILocalVariable *VarInfo,
-			llvm::DIExpression *Expr,
-			const llvm::DILocation *DL,
-			llvm::Instruction *InsertBefore) {
-			return llvm::DIBuilder::insertDbgValueIntrinsic(V, VarInfo, Expr, DL, InsertBefore);
-		}
+        inline llvm::DIDerivedType* createInheritance(llvm::DIType *Ty, llvm::DIType *BaseTy,
+            uint64_t BaseOffset,
+            llvm::DINode::DIFlags Flags) {
+            return llvm::DIBuilder::createInheritance(Ty, BaseTy, BaseOffset, 0, Flags);
+        }
+        inline llvm::Instruction *insertDbgValueIntrinsic(llvm::Value *V, uint64_t Offset,
+            llvm::DILocalVariable *VarInfo,
+            llvm::DIExpression *Expr,
+            const llvm::DILocation *DL,
+            llvm::BasicBlock *InsertAtEnd) {
+            return llvm::DIBuilder::insertDbgValueIntrinsic(V, VarInfo, Expr, DL, InsertAtEnd);
+        }
+        inline llvm::Instruction *insertDbgValueIntrinsic(llvm::Value *V, uint64_t Offset,
+            llvm::DILocalVariable *VarInfo,
+            llvm::DIExpression *Expr,
+            const llvm::DILocation *DL,
+            llvm::Instruction *InsertBefore) {
+            return llvm::DIBuilder::insertDbgValueIntrinsic(V, VarInfo, Expr, DL, InsertBefore);
+        }
         inline llvm::DINamespace* createNameSpace(llvm::DIScope *Scope, llvm::StringRef Name, llvm::DIFile *File,
             unsigned LineNo, bool ExportSymbols)
         {
@@ -123,7 +123,7 @@ namespace IGCLLVM
                 Flags, llvm::DISubprogram::SPFlagDefinition, TParams, Decl, ThrownTypes);
 #endif
         }
-	};
+    };
 #endif
 }
 

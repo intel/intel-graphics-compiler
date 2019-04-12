@@ -34,13 +34,13 @@ namespace IGCLLVM
 #if LLVM_VERSION_MAJOR == 4
 using llvm::parseAssemblyInto;
 #elif LLVM_VERSION_MAJOR >= 7
-	inline bool parseAssemblyInto(llvm::MemoryBufferRef F, llvm::Module &M, llvm::SMDiagnostic &Err,
+    inline bool parseAssemblyInto(llvm::MemoryBufferRef F, llvm::Module &M, llvm::SMDiagnostic &Err,
                        llvm::SlotMapping *Slots = nullptr)
-	{
-		return llvm::parseAssemblyInto(F, &(M), nullptr, Err, Slots);
-	}
+    {
+        return llvm::parseAssemblyInto(F, &(M), nullptr, Err, Slots);
+    }
 #endif
 
-}			   
+}               
 
 #endif

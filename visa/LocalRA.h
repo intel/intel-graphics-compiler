@@ -123,65 +123,65 @@ namespace vISA
 class LocalLiveRange
 {
 private:
-	G4_Declare* topdcl;
-	G4_INST* firstRef;
-	G4_INST* lastRef;
-	unsigned int lrStartIdx, lrEndIdx;
-	bool isIndirectAccess;
-	G4_VarBase* preg;
-	// pregoff is stored in word here
-	// But subreg offset stored in regvar should be in units of dcl's element size
-	int pregoff;
+    G4_Declare* topdcl;
+    G4_INST* firstRef;
+    G4_INST* lastRef;
+    unsigned int lrStartIdx, lrEndIdx;
+    bool isIndirectAccess;
+    G4_VarBase* preg;
+    // pregoff is stored in word here
+    // But subreg offset stored in regvar should be in units of dcl's element size
+    int pregoff;
 
-	unsigned int numRefsInFG;
-	G4_BB* prevBBRef;
-	bool eot;
+    unsigned int numRefsInFG;
+    G4_BB* prevBBRef;
+    bool eot;
 
-	bool assigned;
+    bool assigned;
     bool isSplit;
 
     IR_Builder& builder;
 
 public:
-	LocalLiveRange(IR_Builder& b) : builder(b)
-	{
-		topdcl = NULL;
-		firstRef = lastRef = NULL;
-		lrStartIdx = lrEndIdx = 0;
-		isIndirectAccess = false;
-		numRefsInFG = 0;
-		prevBBRef = NULL;
-		preg = NULL;
-		pregoff = 0;
-		assigned = false;
-		eot = false;
+    LocalLiveRange(IR_Builder& b) : builder(b)
+    {
+        topdcl = NULL;
+        firstRef = lastRef = NULL;
+        lrStartIdx = lrEndIdx = 0;
+        isIndirectAccess = false;
+        numRefsInFG = 0;
+        prevBBRef = NULL;
+        preg = NULL;
+        pregoff = 0;
+        assigned = false;
+        eot = false;
         isSplit = false;
-	}
+    }
 
-	// A reference to this live range exists in bb basic block, record it
-	void recordRef( G4_BB* );
+    // A reference to this live range exists in bb basic block, record it
+    void recordRef( G4_BB* );
 
-	void markIndirectRef() { isIndirectAccess = true; }
+    void markIndirectRef() { isIndirectAccess = true; }
 
-	// A live range is local if it is never accessed indirectly (via address taken register) and
-	// only a single basic block references the range
-	bool isLiveRangeLocal();
+    // A live range is local if it is never accessed indirectly (via address taken register) and
+    // only a single basic block references the range
+    bool isLiveRangeLocal();
 
     bool isLiveRangeGlobal();
 
-	bool isGRFRegAssigned();
+    bool isGRFRegAssigned();
 
-	void setTopDcl( G4_Declare* dcl )
-	{
-		MUST_BE_TRUE( topdcl == NULL, "Redefining top dcl");
-		topdcl = dcl;
-	}
+    void setTopDcl( G4_Declare* dcl )
+    {
+        MUST_BE_TRUE( topdcl == NULL, "Redefining top dcl");
+        topdcl = dcl;
+    }
 
-	G4_Declare* getTopDcl() { return topdcl; }
+    G4_Declare* getTopDcl() { return topdcl; }
 
-	void* operator new(size_t sz, Mem_Manager& m) {return m.alloc(sz);}
+    void* operator new(size_t sz, Mem_Manager& m) {return m.alloc(sz);}
 
-	bool hasIndirectAccess() { return isIndirectAccess; }
+    bool hasIndirectAccess() { return isIndirectAccess; }
 
     void setFirstRef(G4_INST* inst, unsigned int idx)
     {
@@ -207,15 +207,15 @@ public:
         return lastRef;
     }
 
-	void setPhyReg( G4_VarBase* pr, int subreg ) { preg = pr; pregoff = subreg; }
-	G4_VarBase* getPhyReg(int& subreg) { subreg = pregoff; return preg; }
+    void setPhyReg( G4_VarBase* pr, int subreg ) { preg = pr; pregoff = subreg; }
+    G4_VarBase* getPhyReg(int& subreg) { subreg = pregoff; return preg; }
 
-	unsigned int getSizeInWords();
+    unsigned int getSizeInWords();
 
-	void setAssigned(bool a) { assigned = a; }
-	bool getAssigned() { return assigned; }
+    void setAssigned(bool a) { assigned = a; }
+    bool getAssigned() { return assigned; }
 
-	void markEOT() { eot = true; }
+    void markEOT() { eot = true; }
     bool isEOT() { return eot; }
 
     void markSplit() { isSplit = true; }
@@ -229,10 +229,10 @@ private:
     unsigned int lrEndIdx;
 
 public:
-	InputLiveRange(unsigned int regId, unsigned int endId) : regWordIdx(regId), lrEndIdx(endId)
-	{
+    InputLiveRange(unsigned int regId, unsigned int endId) : regWordIdx(regId), lrEndIdx(endId)
+    {
 
-	}
+    }
 
     void* operator new(size_t sz, Mem_Manager& m) {return m.alloc(sz);}
 
@@ -244,8 +244,8 @@ public:
 #define RR_HEURISTIC  0.66
 enum
 {
-	WORD_FREE = 0,
-	WORD_BUSY = 1,
+    WORD_FREE = 0,
+    WORD_BUSY = 1,
 };
 
 namespace vISA
@@ -253,12 +253,12 @@ namespace vISA
 class PhyRegsLocalRA
 {
 private:
-	unsigned int numRegs;
-	// nth bit represents whether the register's nth word is free/busy
-	// 1 - busy, 0 - free
-	// It is possible to use bit-vector in place of this array
-	// bitvector does not provide coarse grained access to mark
-	// entire grf busy/available
+    unsigned int numRegs;
+    // nth bit represents whether the register's nth word is free/busy
+    // 1 - busy, 0 - free
+    // It is possible to use bit-vector in place of this array
+    // bitvector does not provide coarse grained access to mark
+    // entire grf busy/available
     std::vector<uint32_t> regBusyVector;
     std::vector<int32_t> regLastUse;
     std::vector<bool> grfAvialable;
@@ -288,29 +288,29 @@ public:
             grfAvialable[i] = true;
         }
 
-		lastUseSum1 = 0;
-		lastUseSum2 = 0;
-		bank1AvailableRegNum = 0;
-		bank2AvailableRegNum = 0;
+        lastUseSum1 = 0;
+        lastUseSum2 = 0;
+        bank1AvailableRegNum = 0;
+        bank2AvailableRegNum = 0;
 
-		twoBanksRA = false;
-		simpleGRFAvailable = false;
-		r0Forbidden = false;
-		r1Forbidden = false;
-	}
+        twoBanksRA = false;
+        simpleGRFAvailable = false;
+        r0Forbidden = false;
+        r1Forbidden = false;
+    }
 
-	void* operator new(size_t sz, Mem_Manager& m) {return m.alloc(sz);}
+    void* operator new(size_t sz, Mem_Manager& m) {return m.alloc(sz);}
 
-	void setGRFBusy( int which );
-	void setGRFBusy( int which, int howmany );
-	void setGRFNotBusy( int which, int instID );
-	void setH1GRFBusy( int which );
-	void setH2GRFBusy( int which );
-	void setWordBusy( int whichgrf, int word );
-	void setWordBusy( int whichgrf, int word, int howmany );
-	void setWordNotBusy( int whichgrf, int word, int instID );
+    void setGRFBusy( int which );
+    void setGRFBusy( int which, int howmany );
+    void setGRFNotBusy( int which, int instID );
+    void setH1GRFBusy( int which );
+    void setH2GRFBusy( int which );
+    void setWordBusy( int whichgrf, int word );
+    void setWordBusy( int whichgrf, int word, int howmany );
+    void setWordNotBusy( int whichgrf, int word, int instID );
 
-	inline bool isGRFBusy( int which ) const
+    inline bool isGRFBusy( int which ) const
     {
         MUST_BE_TRUE(isGRFAvailable(which), "Invalid register");
         return (regBusyVector[which] != 0);
@@ -328,18 +328,18 @@ public:
         return retval;
     }
 
-	bool isH1GRFBusy( int which );
-	bool isH2GRFBusy( int which );
-	inline bool isWordBusy( int whichgrf, int word );
-	inline bool isWordBusy( int whichgrf, int word, int howmany );
+    bool isH1GRFBusy( int which );
+    bool isH2GRFBusy( int which );
+    inline bool isWordBusy( int whichgrf, int word );
+    inline bool isWordBusy( int whichgrf, int word, int howmany );
 
     bool findFreeMultipleRegsForward(int regIdx, G4_Align align, int & regnum, int nrows, int lastRowSize, int endReg, unsigned short occupiedBundles, int instID, bool isHybridAlloc);
 
-	void markPhyRegs( G4_Declare* topdcl );
+    void markPhyRegs( G4_Declare* topdcl );
 
-	// Available/unavailable is different from busy/free
-	// Unavailable GRFs are not available for allocation
-	void setGRFUnavailable( int which ) { grfAvialable[which] = false; }
+    // Available/unavailable is different from busy/free
+    // Unavailable GRFs are not available for allocation
+    void setGRFUnavailable( int which ) { grfAvialable[which] = false; }
     bool isGRFAvailable(int which) const
     {
        
@@ -353,7 +353,7 @@ public:
             {
                 if (r0Forbidden && which == 0)
                 {
-                	return false;
+                    return false;
                 }
 
                 if (r1Forbidden && which <= 1)
@@ -370,7 +370,7 @@ public:
         }
     }
     
-	bool isGRFAvailable( int which, int howmany) const
+    bool isGRFAvailable( int which, int howmany) const
     {
         if (simpleGRFAvailable)
         {
@@ -382,7 +382,7 @@ public:
             {
                 if (r0Forbidden && which == 0)
                 {
-                	return false;
+                    return false;
                 }
 
                 if (r1Forbidden && which <= 1)
@@ -394,20 +394,20 @@ public:
         }
         else
         {
-	        for (int i = 0; i < howmany; i++)
-	        {
-	            if (!isGRFAvailable(which + i))
-	            {
-	                return false;
-	            }
-	        }
+            for (int i = 0; i < howmany; i++)
+            {
+                if (!isGRFAvailable(which + i))
+                {
+                    return false;
+                }
+            }
         }
         
         return true;
     }
 
-	void printBusyRegs();
-	int getRegLastUse(int reg) {return regLastUse[reg];}
+    void printBusyRegs();
+    int getRegLastUse(int reg) {return regLastUse[reg];}
 
     int getLastUseSum1() {return lastUseSum1;}
     int getLastUseSum2() {return lastUseSum2;}
@@ -430,14 +430,14 @@ public:
 class PhyRegsManager
 {
 private:
-	PhyRegsLocalRA availableRegs;
+    PhyRegsLocalRA availableRegs;
     bool twoBanksRA;
 
 public:
     PhyRegsManager(PhyRegsLocalRA pregs, bool _twoBanksRA) : availableRegs(pregs), twoBanksRA(_twoBanksRA)
-	{
-	    availableRegs.setTwoBanksRA(_twoBanksRA);
-	}
+    {
+        availableRegs.setTwoBanksRA(_twoBanksRA);
+    }
 
     int findFreeRegs(int size, G4_Align align, G4_SubReg_Align subalign, int & regnum, int & subregnum, int startRegNum, int endRegNum, unsigned short occupiedBundles, unsigned int instID, bool isHybridAlloc);
 
@@ -502,20 +502,20 @@ private:
     std::vector<bool> GRFUsage;
 
 public:
-	PhyRegSummary(uint32_t numGRF) : totalNumGRF(numGRF)
-	{
+    PhyRegSummary(uint32_t numGRF) : totalNumGRF(numGRF)
+    {
         GRFUsage.resize(totalNumGRF, false);
-	}
+    }
 
     uint32_t getNumGRF() const { return totalNumGRF; }
 
-	void* operator new(size_t sz, Mem_Manager& m) {return m.alloc(sz);}
+    void* operator new(size_t sz, Mem_Manager& m) {return m.alloc(sz);}
 
-	void markPhyRegs( G4_VarBase* pr, unsigned int words );
+    void markPhyRegs( G4_VarBase* pr, unsigned int words );
 
-	bool isGRFBusy( int regnum ) const { return GRFUsage[regnum]; }
+    bool isGRFBusy( int regnum ) const { return GRFUsage[regnum]; }
 
-	void printBusyRegs();
+    void printBusyRegs();
 
     uint32_t getNumFreeGRF() const
     {

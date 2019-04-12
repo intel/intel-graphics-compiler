@@ -220,8 +220,8 @@ void ResolveOCLAtomics::processOCLAtomic(CallInst &callInst, AtomicOp op, Buffer
 
     // Prepare the arguments and create a call.
     args.push_back(dstBuffer);
-	args.push_back(dst);
-	args.push_back(src0);
+    args.push_back(dst);
+    args.push_back(src0);
     args.push_back(src1);
 
     SmallVector<Type*, 4> intrinArgTypes

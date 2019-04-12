@@ -486,7 +486,7 @@ bool AdvCodeMotion::hoistMost2(bool InvPred, BasicBlock *IfBB,
   // Further simplify a specific pattern in JBB2.
   for (auto BI = JBB2->begin(), BE = JBB2->end(); BI != BE; /*EMPTY*/) {
     Instruction *Inst = &*BI++;
-	Value *LHS = nullptr, *RHS = nullptr;
+    Value *LHS = nullptr, *RHS = nullptr;
     if (!match(Inst, m_Or(m_Value(LHS), m_Value(RHS))))
       continue;
     PHINode *PN = dyn_cast<PHINode>(RHS);

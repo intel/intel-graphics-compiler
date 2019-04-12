@@ -326,7 +326,7 @@ void PromoteResourceToDirectAS::PromoteSamplerTextureToDirectAS(GenIntrinsicInst
                         bufID = (unsigned)argInfo->indexType;
                         bufTy = BufferType::SAMPLER;
                         canPromote = true;
-	                }
+                    }
                 }
             }
         }

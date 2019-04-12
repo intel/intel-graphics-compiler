@@ -144,7 +144,7 @@ namespace IGC
         virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
         {
             AU.addRequired<llvm::TargetLibraryInfoWrapperPass>();
-			AU.addRequired<CodeGenContextWrapper>();
+            AU.addRequired<CodeGenContextWrapper>();
             AU.setPreservesCFG();
         }
 
@@ -170,11 +170,11 @@ namespace IGC
         const llvm::DataLayout *m_TD;
         llvm::TargetLibraryInfo *m_TLI;
     };
-	
+    
     llvm::FunctionPass *createGenStrengthReductionPass();
     llvm::FunctionPass *createNanHandlingPass();
     llvm::FunctionPass *createFlattenSmallSwitchPass();
-	llvm::FunctionPass *createIGCIndirectICBPropagaionPass();
+    llvm::FunctionPass *createIGCIndirectICBPropagaionPass();
     llvm::FunctionPass *createBlendToDiscardPass();
     llvm::FunctionPass *createMarkReadOnlyLoadPass();
     llvm::FunctionPass *createLogicalAndToBranchPass();

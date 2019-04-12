@@ -1416,8 +1416,8 @@ void CustomUnsafeOptPass::visitBinaryOperator(BinaryOperator &I)
 
     if (allowUnsafeMathOpt(m_ctx, I))
     {
-        Value*	op0 = I.getOperand(0);
-        Value*	op1 = I.getOperand(1);
+        Value*    op0 = I.getOperand(0);
+        Value*    op1 = I.getOperand(1);
         if (op0->getType()->isFPOrFPVectorTy() && op1->getType()->isFPOrFPVectorTy() )
         {
             ConstantFP *fp0 = dyn_cast<ConstantFP>( op0 );
@@ -3516,7 +3516,7 @@ HoistFMulInLoopPass::MulNode* HoistFMulInLoopPass::visitFMul(
 
 // 
 // There is a special case:
-//	 %82 = fmul %81, %inv
+//     %82 = fmul %81, %inv
 //   %83 = fmul %82, %inv
 //   %85 = fmul %83, %84
 //
@@ -3544,7 +3544,7 @@ HoistFMulInLoopPass::MulNode* HoistFMulInLoopPass::visitFMul(
 // And we will try to recursively propogate %81 to %83 & %85, and remove
 // %83 from the tree:
 //   ==>      %85              ==>      %85->%81
-//		      / \                     [%inv, %inv]
+//              / \                     [%inv, %inv]
 //           /   \
 //      %83->%81  \
 //      [%inv]     \

@@ -519,7 +519,7 @@ void LowerGEPForPrivMem::handleAllocaInst(llvm::AllocaInst* pAlloca)
     // Extract the Alloca size and the base Type
     Type* pType = pAlloca->getType()->getPointerElementType();
     Type* pBaseType = GetBaseType(pType)->getScalarType();
-	assert(pBaseType);
+    assert(pBaseType);
     llvm::AllocaInst* pVecAlloca = createVectorForAlloca(pAlloca, pBaseType);
     if (!pVecAlloca)
     {

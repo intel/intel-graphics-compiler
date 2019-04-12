@@ -149,8 +149,8 @@ void CSystemThread::DeleteSystemThreadKernel(
 //populate the SIPKernelInfo map with starting address and size of every SIP kernels
 void populateSIPKernelInfo(std::map< unsigned char, std::pair<void*, unsigned int> > &SIPKernelInfo)
 {
-	//LLVM_UPGRADE_TODO
-	// check if (int)sizeof(T) is ok or change the pair def for SIPKernelInfo
+    //LLVM_UPGRADE_TODO
+    // check if (int)sizeof(T) is ok or change the pair def for SIPKernelInfo
     SIPKernelInfo[GEN9_SIP_DEBUG] = std::make_pair((void*)&Gen9SIPDebug, (int)sizeof(Gen9SIPDebug));
 
     SIPKernelInfo[GEN9_SIP_CSR] = std::make_pair((void*)&Gen9SIPCSR, (int)sizeof(Gen9SIPCSR));
@@ -302,12 +302,12 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
         {
             pBuffer = LoadFile(sipFile);
         }
-		assert(pBuffer);
-		if (pBuffer)
-		{
-			m_LinearAddress = (void *)pBuffer->getBuffer().data();
-			m_ProgramSize = pBuffer->getBufferSize();
-		}
+        assert(pBuffer);
+        if (pBuffer)
+        {
+            m_LinearAddress = (void *)pBuffer->getBuffer().data();
+            m_ProgramSize = pBuffer->getBufferSize();
+        }
     }
     else
     {

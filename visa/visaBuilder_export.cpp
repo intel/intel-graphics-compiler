@@ -43,7 +43,7 @@ CM_BUILDER_API int CreateVISABuilder(VISABuilder* &builder, vISABuilderMode mode
         return CM_FAILURE;
     }
     CISA_IR_Builder *cisa_builder = NULL;
-	int status = CISA_IR_Builder::CreateBuilder(cisa_builder, mode, builderOption, platform, numArgs, flags, pWaTable);
+    int status = CISA_IR_Builder::CreateBuilder(cisa_builder, mode, builderOption, platform, numArgs, flags, pWaTable);
     builder = static_cast< VISABuilder* >(cisa_builder);
 
     return status;

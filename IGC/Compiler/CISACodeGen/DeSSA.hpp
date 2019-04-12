@@ -118,9 +118,9 @@ class DeSSA : public llvm::FunctionPass {
       return (WIA->whichDepend(v) == WIAnalysis::UNIFORM);
     }
 
-	void getAllValuesInCongruentClass(
-		llvm::Value* V,
-		llvm::SmallVector<llvm::Value*, 8>& ValsInCC);
+    void getAllValuesInCongruentClass(
+        llvm::Value* V,
+        llvm::SmallVector<llvm::Value*, 8>& ValsInCC);
 
     /// print - print partitions in human readable form
     virtual void print(llvm::raw_ostream &OS, const llvm::Module* = 0) const override;
@@ -150,8 +150,8 @@ class DeSSA : public llvm::FunctionPass {
       Node *getLeader();
 
       Node* parent;
-	  // double-linked circular list. All values are in the same congruent class
-	  // except those that have been isolated.
+      // double-linked circular list. All values are in the same congruent class
+      // except those that have been isolated.
       Node *next;
       Node *prev;
       llvm::Value *value;
@@ -279,9 +279,9 @@ public:
     ///   a shorter tree to a taller tree. If they have the same height,
     ///   attaching Val2 to Val1. Note that unionRegs() expects that
     ///   nodes for Val1 and Val2 have been created already.
-	void unionRegs(llvm::Value* Val1, llvm::Value* Val2) {
+    void unionRegs(llvm::Value* Val1, llvm::Value* Val2) {
         unionRegs(RegNodeMap[Val1], RegNodeMap[Val2]);
-	}
+    }
 
     llvm::Value* getInsEltRoot(llvm::Value* Val) const;
     llvm::Value* getAliasee(llvm::Value* V) const;
