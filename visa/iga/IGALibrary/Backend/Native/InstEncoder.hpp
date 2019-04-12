@@ -486,17 +486,6 @@ namespace iga
             }
             val >>= 3; // unscale
         }
-        switch (reg) {
-        case RegName::GRF_R:
-        case RegName::ARF_ACC:
-        case RegName::ARF_A:
-            if (val > 64) {
-                encodingError(f, "subregister out of bounds");
-            }
-            break;
-            // TODO: should look up from models and regsets and use that data
-        default: break;
-        }
         encodeFieldBits(f, val);
     }
 
