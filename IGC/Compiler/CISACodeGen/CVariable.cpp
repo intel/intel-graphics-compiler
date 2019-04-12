@@ -86,29 +86,10 @@ getAlignment(e_alignment align)
 }
 
 static e_alignment
-getAlignment(unsigned off)
-{
-    switch (off)
-    {
-    case 1: return EALIGN_BYTE;
-    case 2: return EALIGN_WORD;
-    case 4: return EALIGN_DWORD;
-    case 8: return EALIGN_QWORD;
-    case 16: return EALIGN_OWORD;
-    case 32: return EALIGN_GRF;
-    case 64: return EALIGN_2GRF;
-    default:
-        break;
-    }
-
-    return EALIGN_BYTE;
-}
-
-static e_alignment
 updateAlign(e_alignment align, unsigned offset)
 {
     assert(align != EALIGN_AUTO);
-    return getAlignment(int_cast<unsigned int>(llvm::MinAlign(getAlignment(align), offset)));
+    return CVariable::getAlignment(int_cast<unsigned int>(llvm::MinAlign(getAlignment(align), offset)));
 }
 
 /// CVariable constructor, for alias

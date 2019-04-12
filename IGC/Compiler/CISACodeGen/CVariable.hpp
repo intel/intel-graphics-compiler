@@ -121,6 +121,24 @@ public:
         VISA_SamplerVar* visaSamplerVariable;
     };
 
+    static inline e_alignment getAlignment(unsigned off)
+    {
+        switch (off)
+        {
+        case 1: return EALIGN_BYTE;
+        case 2: return EALIGN_WORD;
+        case 4: return EALIGN_DWORD;
+        case 8: return EALIGN_QWORD;
+        case 16: return EALIGN_OWORD;
+        case 32: return EALIGN_GRF;
+        case 64: return EALIGN_2GRF;
+        default:
+            break;
+        }
+
+        return EALIGN_BYTE;
+    }
+
 private:
     // packing of structure fields so they better fit the alignment
 

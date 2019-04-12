@@ -9715,8 +9715,8 @@ int IR_Builder::translateVISASVMScatterReadInst(
     unsigned exSize = Get_Common_ISA_Exec_Size(execSize);
     unsigned instExSize = Get_Common_ISA_Exec_Size(instExecSize);
     unsigned int instOpt = Get_Gen4_Emask(eMask, instExSize);
-    uint32_t messageLength = 2 * (exSize / 8);
-    uint32_t responseLength = 0;
+    uint32_t messageLength = (8 * exSize) / getGRFSize();
+    uint32_t numDWperLane = 0;
 
     // ToDo: remove this as it should be done in HWConformity
     if (instExSize < 8 && VISA_WA_CHECK(getPWaTable(), WaDisableSendSrcDstOverlap))
@@ -9738,18 +9738,18 @@ int IR_Builder::translateVISASVMScatterReadInst(
     switch (blockSize)
     {
     case SVM_BLOCK_TYPE_BYTE:
-        responseLength = (numBlocks == SVM_BLOCK_NUM_8) ? 2 : 1;
+        numDWperLane = (numBlocks == SVM_BLOCK_NUM_8) ? 2 : 1;
         break;
     case SVM_BLOCK_TYPE_DWORD:
-        responseLength = Get_Common_ISA_SVM_Block_Num(numBlocks);
+        numDWperLane = Get_Common_ISA_SVM_Block_Num(numBlocks);
         break;
     case SVM_BLOCK_TYPE_QWORD:
-        responseLength = Get_Common_ISA_SVM_Block_Num(numBlocks) * 2;
+        numDWperLane = Get_Common_ISA_SVM_Block_Num(numBlocks) * 2;
         break;
     default:
         MUST_BE_TRUE(false, "Illegal SVM block type");
     }
-    responseLength *= (exSize / 8);
+    uint32_t responseLength = (numDWperLane * 4 * exSize) / getGRFSize();
 
     unsigned desc = 0;
     desc |= getA64BTI();

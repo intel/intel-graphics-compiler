@@ -28,6 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/compiler_caps.h"
 #include "Compiler/igc_workaround.h"
 #include "common/igc_regkeys.hpp"
+#include "common/Types.hpp"
 
 namespace IGC
 {

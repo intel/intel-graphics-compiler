@@ -202,6 +202,42 @@ visaBlockNum(unsigned numElems) {
     return static_cast<Common_ISA_SVM_Block_Num>(~0U);
 }
 
+// split a SIMD16 variable into two SIMD8 while satisfying vISA's raw operand alignment
+// return a tuple representing the vISA raw operand (var + offset) after split
+std::tuple<CVariable*, uint32_t> CEncoder::splitRawOperand(CVariable* var, bool isFirstHalf, 
+    Common_VISA_EMask_Ctrl execMask)
+{
+
+    if (!var || var->IsUniform() || isFirstHalf)
+    {
+        // simply return the original variable
+        return std::make_tuple(var, 0);
+    }
+
+    uint32_t offset = 8 * var->GetElemSize();
+    if ((offset % getGRFSize()) == 0)
+    {
+        return std::make_tuple(var, offset);
+    }
+    else
+    {
+        // create a copy to make the CVariable aligned
+        auto tmpVar = m_program->GetNewVariable(8, var->GetType(), CVariable::getAlignment(getGRFSize()));
+        SModifier mod;
+        mod.init();
+        auto dstOpnd = GetDestinationOperand(tmpVar, mod);
+        mod.subReg = 8;
+        auto srcOpnd = GetSourceOperand(var, mod);
+
+        V(vKernel->AppendVISADataMovementInst(
+            ISA_MOV, nullptr, false,
+            SplitEMask(EXEC_SIZE_16, EXEC_SIZE_8, 1, execMask),
+            EXEC_SIZE_8, dstOpnd, srcOpnd));
+
+        return std::make_tuple(tmpVar, 0);
+    }
+}
+
 unsigned
 CEncoder::GetRawOpndSplitOffset(Common_ISA_Exec_Size fromExecSize,
     Common_ISA_Exec_Size toExecSize,
@@ -218,7 +254,8 @@ CEncoder::GetRawOpndSplitOffset(Common_ISA_Exec_Size fromExecSize,
 
     unsigned elemSize = var->GetElemSize();
 
-    switch (elemSize) {
+    switch (elemSize) 
+    {
     case 4:
         return thePart * getGRFSize() * 1;
     case 8:
@@ -5114,22 +5151,60 @@ void CEncoder::AtomicRawA64(AtomicOp atomic_op,
 
     VISAAtomicOps atomicOpcode = convertAtomicOpEnumToVisa(atomic_op);
 
-    if (m_encoderState.m_simdSize == SIMDMode::SIMD16) {
+    if (m_encoderState.m_simdSize == SIMDMode::SIMD16) 
+    {
         // Split SIMD16 atomic ops into two SIMD8 ones.
         Common_VISA_EMask_Ctrl execMask = ConvertMaskToVisaType(m_encoderState.m_mask, m_encoderState.m_noMask);
         Common_ISA_Exec_Size fromExecSize = visaExecSize(m_encoderState.m_simdSize);
         Common_ISA_Exec_Size toExecSize = SplitExecSize(fromExecSize, 2);
 
-        for (unsigned thePart = 0; thePart != 2; ++thePart) {
-            VISA_RawOpnd *dstOpnd  = GetRawDestination(dst, GetRawOpndSplitOffset(fromExecSize, toExecSize, thePart, dst));
-            VISA_RawOpnd *addressOpnd = GetRawSource(offset, GetRawOpndSplitOffset(fromExecSize, toExecSize, thePart, offset));
-            VISA_RawOpnd *src0Opnd = GetRawSource(src0, GetRawOpndSplitOffset(fromExecSize, toExecSize, thePart, src0));
-            VISA_RawOpnd *src1Opnd = GetRawSource(src1, GetRawOpndSplitOffset(fromExecSize, toExecSize, thePart, src1));
+        for (unsigned thePart = 0; thePart != 2; ++thePart) 
+        {
+            CVariable* rawOpndVar = nullptr;
+            uint32_t rawOpndOffset = 0;
+            bool isFirstHalf = thePart == 0;
+
+            std::tie(rawOpndVar, rawOpndOffset) = splitRawOperand(offset, isFirstHalf, execMask);
+            VISA_RawOpnd *addressOpnd = GetRawSource(rawOpndVar, rawOpndOffset);
+            std::tie(rawOpndVar, rawOpndOffset) = splitRawOperand(src0, isFirstHalf, execMask);
+            VISA_RawOpnd *src0Opnd = GetRawSource(rawOpndVar, rawOpndOffset);
+            std::tie(rawOpndVar, rawOpndOffset) = splitRawOperand(src1, isFirstHalf, execMask);
+            VISA_RawOpnd *src1Opnd = GetRawSource(rawOpndVar, rawOpndOffset);
+
+            // dst needs special handling since its move has to come after the send
+            VISA_RawOpnd *dstOpnd = nullptr;
+            bool needsTmpDst = !isFirstHalf && dst && (dst->GetElemSize() * 8) % getGRFSize() != 0;
+            if (!needsTmpDst)
+            {
+                std::tie(rawOpndVar, rawOpndOffset) = splitRawOperand(dst, isFirstHalf, execMask);
+                dstOpnd = GetRawDestination(rawOpndVar, rawOpndOffset);
+            }
+            else
+            {
+                rawOpndVar = m_program->GetNewVariable(8, dst->GetType(), CVariable::getAlignment(getGRFSize()));
+                dstOpnd = GetRawDestination(rawOpndVar, 0);
+            }
 
             V(vKernel->AppendVISASvmAtomicInst(GetFlagOperand(m_encoderState.m_flag),
                                                SplitEMask(fromExecSize, toExecSize, thePart, execMask),
                                                toExecSize, atomicOpcode, bitwidth,
                                                addressOpnd, src0Opnd, src1Opnd, dstOpnd));
+            
+            if (needsTmpDst)
+            { 
+                SModifier mod;
+                mod.init();
+                mod.subReg = 8;
+                auto dstOpnd = GetDestinationOperand(dst, mod);
+
+                mod.init();
+                auto srcOpnd = GetSourceOperand(rawOpndVar, mod);
+
+                V(vKernel->AppendVISADataMovementInst(
+                    ISA_MOV, nullptr, false,
+                    SplitEMask(EXEC_SIZE_16, EXEC_SIZE_8, 1, execMask),
+                    EXEC_SIZE_8, dstOpnd, srcOpnd));
+            }
         }
 
         return;

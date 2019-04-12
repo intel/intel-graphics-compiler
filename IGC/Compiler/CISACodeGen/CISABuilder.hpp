@@ -496,6 +496,8 @@ private:
     unsigned GetRawOpndSplitOffset(Common_ISA_Exec_Size fromExecSize,
             Common_ISA_Exec_Size toExecSize,
             unsigned thePart, CVariable *var) const;
+    
+    std::tuple<CVariable*, uint32_t> splitRawOperand(CVariable* var, bool isFirstHalf, Common_VISA_EMask_Ctrl execMask);
 
     uint32_t getNumChannels(CVariable* var) const;
 

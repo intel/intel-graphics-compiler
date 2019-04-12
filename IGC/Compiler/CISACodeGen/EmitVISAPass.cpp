@@ -355,6 +355,8 @@ bool EmitPass::runOnFunction(llvm::Function &F)
         return false;
     }
 
+
+
     bool isCloned = false;
     if (DebugInfoData::hasDebugInfo(m_currShader))
     {
