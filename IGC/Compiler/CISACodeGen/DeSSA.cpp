@@ -1182,7 +1182,8 @@ void DeSSA::CoalesceAliasInstForBasicBlock(BasicBlock *Blk)
                 isNoOpInst(CastI, CTX))
             {
                 AddAlias(S);
-                AliasMap[D] = AliasMap[S];
+                Value* aliasee = AliasMap[S];
+                AliasMap[D] = aliasee;
 
                 // union liveness info
                 LV->mergeUseFrom(S, D);
