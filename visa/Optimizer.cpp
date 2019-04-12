@@ -5095,7 +5095,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
 
     G4_Operand* Optimizer::updateSendsHeaderReuse(
         std::vector<std::vector<G4_INST*>> &instLookUpTable,
-        std::vector<G4_INST*> &iVector)
+        std::vector<G4_INST*> &iVector, INST_LIST_ITER endIter)
     {
         int bSize = (int)iVector.size();
         for (auto & Cache : instLookUpTable)
@@ -5139,8 +5139,9 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                         continue;
                     }
 
-                    // all source should be isomorphic (same type/shape)
+                    // all source should be isomorphic (same type/shape) and unaltered between declaration and reuse
                     bool srcMatch = true;
+
                     for (int iSrc = 0, numSrc = cInst->getNumSrc(); iSrc < numSrc; ++iSrc)
                     {
                         G4_Operand* cOpnd = cInst->getSrc(iSrc);
@@ -5151,6 +5152,10 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                             break;
                         }
                     }
+
+                    if (chkBwdWARdep(cInst, endIter))
+                        srcMatch = false;
+
                     match[index] = srcMatch;
                     anyMatch |= srcMatch;
                 }
@@ -5225,7 +5230,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                         if (instVector.size() != 0)
                         {
                             // check if we can reuse cached values
-                            G4_Operand *value = updateSendsHeaderReuse(instLookUpTable, instVector);
+                            G4_Operand *value = updateSendsHeaderReuse(instLookUpTable, instVector, iter);
                             if (value == nullptr)
                             {
                                 // no found, cache the header
@@ -8230,6 +8235,20 @@ public:
         {
             return false;
         }
+    }
+
+    bool Optimizer::chkBwdWARdep(G4_INST* startInst, INST_LIST_ITER endIter)
+    {
+        while (*endIter != startInst)
+        {
+            G4_INST* inst = *endIter;
+            if (inst->isWARdep(startInst))
+            {
+                return true;
+            }
+            --endIter;
+        }
+        return false;
     }
 
     // This function performs the following renaming to enable further optimization opportunities:

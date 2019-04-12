@@ -219,7 +219,7 @@ private:
     void hoistBarrierHeaderToTop(G4_SrcRegRegion*);
     /* end of member functions for message header opt */
     void cleanupBindless();
-    G4_Operand* updateSendsHeaderReuse(std::vector<std::vector<G4_INST*>> &, std::vector<G4_INST*> &);
+    G4_Operand* updateSendsHeaderReuse(std::vector<std::vector<G4_INST*>> &, std::vector<G4_INST*> &, INST_LIST_ITER);
     void countGRFUsage();
     void splitVariables();
     void changeMoveType();
@@ -233,7 +233,7 @@ private:
     bool chkBwdOutputHazard(INST_LIST_ITER &, INST_LIST_ITER&);
     bool chkBwdOutputHazard(G4_INST *, INST_LIST_ITER&);
     bool chkBwdOutputHazard(G4_INST *, INST_LIST_ITER&, G4_INST *);
-
+    bool chkBwdWARdep(G4_INST*, INST_LIST_ITER);
 
     // various HW WA
     void addSwitchOptionToBB(G4_BB*, bool isSubroutine = false);
