@@ -7989,8 +7989,15 @@ int VISAKernelImpl::GetGenRelocEntryBuffer(void *&buffer, unsigned int &byteSize
     GenRelocEntry* buffer_p = (GenRelocEntry*)buffer;
     for (auto reloc : reloc_table)
     {
+        auto inst = reloc.getInst();
+        assert(inst->isMov());
+        assert(inst->isCompactedInst() == false);
+        auto src0 = inst->getSrc(0);
+        assert(src0->isRelocImm() && ((src0->getType() == Type_UD) || (src0->getType() == Type_UQ)));
         buffer_p->r_type = reloc.getType();
-        buffer_p->r_offset = (uint32_t)reloc.getInst()->getGenOffset();
+        buffer_p->r_offset = ((G4_Reloc_Imm*)src0)->getNativeOffset();
+        assert((buffer_p->r_offset > inst->getGenOffset()) && (buffer_p->r_offset < inst->getGenOffset() + BYTES_PER_INST));
+
         assert(reloc.getSymbolName().size() <= MAX_SYMBOL_NAME_LENGTH);
         strcpy_s(buffer_p->r_symbol, MAX_SYMBOL_NAME_LENGTH, reloc.getSymbolName().c_str());
         ++buffer_p;
