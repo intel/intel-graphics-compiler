@@ -87,6 +87,7 @@ DECLARE_IGC_REGKEY(bool, DisableURBWriteMerge,          false, "Setting this to 
 DECLARE_IGC_REGKEY(bool, DisableEmptyBlockRemoval,      false, "Setting this to 1/true adds a compiler switch to disable empty block optimization")
 DECLARE_IGC_REGKEY(bool, DisableSIMD32Slicing,          false, "Setting this to 1/true adds a compiler switch to disable emitting SIMD32 VISA code in slices")
 DECLARE_IGC_REGKEY(bool, DisableMatchMad,               false, "Setting this to 1/true adds a compiler switch to disable mul+add = mad optimization")
+DECLARE_IGC_REGKEY(bool, DisableMatchPredAdd,            false, "Setting this to 1/true adds a compiler switch to disable pred+add = predAdd optimization")
 DECLARE_IGC_REGKEY(bool, DisableMatchPow,               false, "Setting this to 1/true adds a compiler switch to disable log2/mul/exp2 = pow optimization")
 DECLARE_IGC_REGKEY(bool, DisableIRVerification,         false, "Setting this to 1/true adds a compiler switch to disable IGC IR verification.")
 DECLARE_IGC_REGKEY(bool, DisableLoopUnroll,             false, "Setting this to 1/true adds a compiler switch to disable loop unrolling.")
