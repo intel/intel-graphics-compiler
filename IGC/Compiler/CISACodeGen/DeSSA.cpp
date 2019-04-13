@@ -266,10 +266,18 @@ bool DeSSA::runOnFunction(Function &MF)
       //   1. Follow Dominance tree to set up alias map. While setting up alias map,
       //      update liveness for aliasee so that alasee's liveness is the sum of
       //      all its aliasers.
+      //      By aliaser/aliasee, it means the following:
+      //             aliaser = bitcast aliasee
+      //      (Most aliasing is from bitcast, some can be from other cast instructions
+      //       such as inttoptr/ptrtoint. It could be also from insElt/extElt.)
       //
       //      By traversing dominance tree depth-first (DF), it is guaranteed that
-      //      the aliasee will be handled before its aliasers. For example, let
-      //      alias(v0, v1) denote that v0 is an alias to v1. DF dominance-tree
+      //      a def will be visited before its use except PHI node. Since PHI inst
+      //      is not a candidate for aliasing, this means that the def of aliasee has
+      //      been visited before the aliaser instruction. For example,
+      //            x = bitcast y
+      //         The def of y should be visited before visiting this bitcast inst.
+      //      Let alias(v0, v1) denote that v0 is an alias to v1. DF dominance-tree
       //      traversal may not handle aliasing in the following order:
       //              alias(v0, v1)
       //              alias(v1, v2)
@@ -277,12 +285,15 @@ bool DeSSA::runOnFunction(Function &MF)
       //              alias(v1, v2)
       //              alias(v0, v1)
       //      By doing DF dominance-tree traversal, this kind of aliasing chain will
-      //      be handled nicely.
+      //      be handled directly.
+      //
       //   2. Set up PrefCCMap, which coalesces vector values used
       //      in the InsertElement instruction. Previously it is called InsEltMap,
       //      in which those values were treated as alias (root value's liveness is
-      //      the sum of of all other values), now, they are not treated as alias.
-      //      In another word, each value has its own dessa Node.
+      //      the sum of of all other values), now, they are not treated as alias,
+      //      rather each value has its own dessa Node. (We could treat them as
+      //      alias too. If so, we need special handling when emitting code as insElt
+      //      needs emitting code, where cast aliasing does not.)
       //   3. Make sure DeSSA node only use the root value of aliases (that is,
       //      only aliasee may have DeSSA node).
       //
@@ -1181,12 +1192,20 @@ void DeSSA::CoalesceAliasInstForBasicBlock(BasicBlock *Blk)
                 WIA->whichDepend(D) == WIA->whichDepend(S) &&
                 isNoOpInst(CastI, CTX))
             {
-                AddAlias(S);
-                Value* aliasee = AliasMap[S];
-                AliasMap[D] = aliasee;
+                if (AliasMap.count(D) == 0) {
+                    AddAlias(S);
+                    Value* aliasee = AliasMap[S];
+                    AliasMap[D] = aliasee;
 
-                // union liveness info
-                LV->mergeUseFrom(S, D);
+                    // union liveness info
+                    LV->mergeUseFrom(S, D);
+                }
+                else {
+                    // Only src operands of a phi can be visited before
+                    // operands' definition. For other instructions such
+                    // as castInst, this shall never happen
+                    assert(false && "ICE: Use visited before definition!");
+                }
             }
         } 
     }
