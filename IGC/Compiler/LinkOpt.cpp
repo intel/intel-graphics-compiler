@@ -25,7 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 
 ///===========================================================================
-/// This file contains types, enumerations, classes and other declarations 
+/// This file contains types, enumerations, classes and other declarations
 /// used by IGC link optimization.
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/CISACodeGen/helper.h"
@@ -588,7 +588,7 @@ static void compactPsInputs(
             {
                 // check and handle constant interpolate attrs
                 bool isConstInterpInput = false;
-                
+
                 for (auto inst : iv)
                 {
                     if (isConstInterpolationInput(inst))
@@ -607,7 +607,7 @@ static void compactPsInputs(
                     isConstInterpInput = true;
                     updateInterpMode = true;
                 }
-                
+
                 if (isConstInterpInput)
                 {
                     psIdxMap[i] = nPsIn++;
@@ -676,7 +676,7 @@ static bool compactVsDsOutput(
 
     // init all output attrs to undef
     // move output intrinsics to close to each other, for f64, we may see
-    // non-contiguous output index 
+    // non-contiguous output index
     Value* undef = UndefValue::get(Type::getFloatTy(*vsdsCtx->getLLVMContext()));
     for (unsigned i = 0; i < outInsts.size(); i++)
     {
@@ -706,7 +706,7 @@ static bool compactVsDsOutput(
             maxIndex = std::max(newIdx, maxIndex);
             if (newIdx / 4 >= nNewOut)
             {
-                // output attr is promoted to const interpolation, this may 
+                // output attr is promoted to const interpolation, this may
                 // case the increasing of PS input attrs, so we need to create
                 // new output intrinsics in GS
                 newOut.resize(newIdx / 4 + 1);
@@ -726,7 +726,7 @@ static bool compactVsDsOutput(
                 }
                 nNewOut = newIdx / 4 + 1;
             }
-            
+
             for (unsigned j = 0; j < newOut[newIdx / 4].size(); j++)
             {
                 newOut[newIdx / 4][j]->setOperand(newIdx % 4, outVals[i][j]);
@@ -735,7 +735,7 @@ static bool compactVsDsOutput(
         }
     }
 
-    // If the size of attribute is aligned on a cache line we force the beginning of the 
+    // If the size of attribute is aligned on a cache line we force the beginning of the
     // attributes to be aligned on 64B to reduce the number of cachelines accessed by SBE
     if(iSTD::Align(maxIndex + 1, 8) % 16 == 0)
     {
@@ -1093,7 +1093,7 @@ static void linkOptVovToVov(LinkOptContext* linkCtx,
 }
 
 bool runPasses( CodeGenContext* ctx, ...)
-{   
+{
     llvm::legacy::PassManager mpm;
     va_list ap;
     Pass* p;

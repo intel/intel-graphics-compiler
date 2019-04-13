@@ -1053,6 +1053,7 @@ bool CEncoder::NeedSplitting(CVariable *var, const SModifier &mod,
         return true;
     }
 
+
     // For 32-bit data types, without special region, they won't cross 2+ GRFs.
     if (!mod.specialRegion)
         return false;

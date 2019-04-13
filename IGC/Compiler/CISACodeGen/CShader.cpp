@@ -129,6 +129,7 @@ void CShader::PreAnalysisPass()
                 // Round up to GENX_GRF_REG_SIZ-byte aligned.
                 m_ScratchSpaceSize =
                     ((GENX_GRF_REG_SIZ + m_ScratchSpaceSize - 1) / GENX_GRF_REG_SIZ) * GENX_GRF_REG_SIZ;
+
             }
         }
     }

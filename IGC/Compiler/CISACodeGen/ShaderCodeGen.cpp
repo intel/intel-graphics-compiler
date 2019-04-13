@@ -223,19 +223,6 @@ inline void AddAnalysisPasses(CodeGenContext &ctx, IGCPassManager& mpm)
     mpm.add(new PushAnalysis());
     mpm.add(CreateSampleCmpToDiscardPass());
 
-    bool needDPEmu = (IGC_IS_FLAG_ENABLED(ForceDPEmulation) ||
-        (ctx.m_DriverInfo.NeedFP64() && !ctx.platform.supportFP64()));
-    // When needDPEmu is true, enable Emu64Ops as well for now until
-    // DPEmu is able to get rid of all 64bit integer ops fully.
-    if((needDPEmu && IGC_IS_FLAG_ENABLED(DPEmuNeedI64Emu)) ||
-        (ctx.m_DriverInfo.Enable64BitEmu() &&
-        (IGC_GET_FLAG_VALUE(Enable64BitEmulation) ||
-            (IGC_GET_FLAG_VALUE(Enable64BitEmulationOnSelectedPlatform) &&
-                ctx.platform.need64BitEmulation())))) {
-        mpm.add(new BreakConstantExpr());
-        mpm.add(createEmu64OpsPass());
-    }
-
     if (!isOptDisabled)
     {
         mpm.add(llvm::createDeadCodeEliminationPass());
@@ -257,7 +244,7 @@ inline void AddAnalysisPasses(CodeGenContext &ctx, IGCPassManager& mpm)
     if (IGC_IS_FLAG_DISABLED(DisablePreRAScheduler) &&
         ctx.type == ShaderType::PIXEL_SHADER &&
         ctx.m_retryManager.AllowPreRAScheduler() &&
-		!ctx.m_enableSubroutine)
+        !ctx.m_enableSubroutine)
     {
         mpm.add(createPreRASchedulerPass());
     }
@@ -288,6 +275,11 @@ inline void AddAnalysisPasses(CodeGenContext &ctx, IGCPassManager& mpm)
     // need this before WIAnalysis:
     // insert phi to prevent changing of WIAnalysis result by later code-motion
     mpm.add(llvm::createLCSSAPass());
+    // coalesce scalar loads into loads of larger quantity
+    if (IGC_IS_FLAG_DISABLED(DisableConstantCoalescing))
+    {
+        mpm.add(new ConstantCoalescing());
+    }
     if( !isOptDisabled )
     {
         // If you want to clean up the dead-code after push optimization
@@ -373,7 +365,7 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager& mpm)
         mpm.add(llvm::createLoopRotatePass(LOOP_ROTATION_HEADER_INST_THRESHOLD));
         mpm.add(llvm::createLowerSwitchPass());
 
-		int LoopUnrollThreshold = ctx.m_DriverInfo.GetLoopUnrollThreshold();
+        int LoopUnrollThreshold = ctx.m_DriverInfo.GetLoopUnrollThreshold();
 
         if (LoopUnrollThreshold > 0 && ctx.m_retryManager.AllowUnroll() &&
             (ctx.m_tempCount < 64))
@@ -399,14 +391,14 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager& mpm)
         mpm.add(new ProgramScopeConstantResolution());
     }
 
-	bool needDPEmu = (IGC_IS_FLAG_ENABLED(ForceDPEmulation) ||
-		(ctx.m_DriverInfo.NeedFP64() && !ctx.platform.supportFP64()));
-	uint32_t theEmuKind = (needDPEmu ? EmuKind::EMU_DP : 0);
-	theEmuKind |= (ctx.m_DriverInfo.NeedPreCompiledLibFuncs() ? EmuKind::EMU_I64DIVREM : 0);
-	theEmuKind |=
-		((IGC_IS_FLAG_ENABLED(ForceSPDivEmulation) ||
-		  (ctx.m_DriverInfo.NeedIEEESPDiv() && !ctx.platform.hasCorrectlyRoundedMacros()))
-	    ? EmuKind::EMU_SP_DIV : 0);
+    bool needDPEmu = (IGC_IS_FLAG_ENABLED(ForceDPEmulation) ||
+        (ctx.m_DriverInfo.NeedFP64() && !ctx.platform.supportFP64()));
+    uint32_t theEmuKind = (needDPEmu ? EmuKind::EMU_DP : 0);
+    theEmuKind |= (ctx.m_DriverInfo.NeedPreCompiledLibFuncs() ? EmuKind::EMU_I64DIVREM : 0);
+    theEmuKind |=
+        ((IGC_IS_FLAG_ENABLED(ForceSPDivEmulation) ||
+          (ctx.m_DriverInfo.NeedIEEESPDiv() && !ctx.platform.hasCorrectlyRoundedMacros()))
+        ? EmuKind::EMU_SP_DIV : 0);
 
     if (theEmuKind > 0 || IGC_IS_FLAG_ENABLED(EnableTestIGCBuiltin))
     {
@@ -589,13 +581,15 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager& mpm)
     // Scalarizer in codegen to handle the vector instructions
     mpm.add(new ScalarizerCodeGen());
 
-    // coalesce scalar loads into loads of larger quantity
-    // This require and preserves uniform analysis we should keep
-    // other passes using uniformness together to avoid re-running it several times
-    if(IGC_IS_FLAG_DISABLED(DisableConstantCoalescing))
-    {
-        mpm.add(createBreakCriticalEdgesPass());
-        mpm.add(new ConstantCoalescing());
+    // When needDPEmu is true, enable Emu64Ops as well for now until
+    // DPEmu is able to get rid of all 64bit integer ops fully.
+    if ((needDPEmu && IGC_IS_FLAG_ENABLED(DPEmuNeedI64Emu)) ||
+        (ctx.m_DriverInfo.Enable64BitEmu() &&
+         (IGC_GET_FLAG_VALUE(Enable64BitEmulation) ||
+          (IGC_GET_FLAG_VALUE(Enable64BitEmulationOnSelectedPlatform) &&
+           ctx.platform.need64BitEmulation())))) {
+        mpm.add(new BreakConstantExpr());
+        mpm.add(createEmu64OpsPass());
     }
 
     mpm.add(IGCLLVM::createInstSimplifyLegacyPass());

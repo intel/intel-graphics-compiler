@@ -487,7 +487,7 @@ bool HWConformity::fixMathInst(INST_LIST_ITER it, G4_BB *bb)
 
     if (inst->asMathInst()->getMathCtrl() == MATH_INVM || inst->asMathInst()->getMathCtrl() == MATH_RSQRTM)
     {
-        if (IS_DFTYPE(inst->getDst()->getType()) && (inst->getExecSize() * 2) > builder.getNativeExecSize())
+        if (IS_DFTYPE(inst->getDst()->getType()) && ((uint32_t) (inst->getExecSize() * 2)) > builder.getNativeExecSize())
         {
             // need to scale exec size by two since it's 64b type
             evenlySplitInst(it, bb);
