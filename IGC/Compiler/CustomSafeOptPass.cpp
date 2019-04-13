@@ -2514,6 +2514,8 @@ void NanHandling::loopNanCases(Function &F)
     llvm::LoopInfo *LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
     if (LI && !LI->empty())
     {
+        FastMathFlags FMF;
+        FMF.clear();
         for (LoopInfo::iterator I = LI->begin(), E = LI->end(); I != E; ++I)
         {
             Loop *loop = *I;
@@ -2525,7 +2527,7 @@ void NanHandling::loopNanCases(Function &F)
                 if (FCmpInst *brCmpInst = dyn_cast<FCmpInst>(br->getCondition()))
                 {
                     FPMathOperator *FPO = dyn_cast<FPMathOperator>(brCmpInst);
-                    if (!FPO || !FPO->isFast() || !brCmpInst->isOrdered(brCmpInst->getPredicate()))
+                    if (!FPO || !FPO->isFast())
                     {
                         continue;
                     }
@@ -2541,23 +2543,16 @@ void NanHandling::loopNanCases(Function &F)
                     {
                         continue;
                     }
-
                     FCmpInst *brCmpInst0 = dyn_cast<FCmpInst>(andOrInst->getOperand(0));
                     FCmpInst *brCmpInst1 = dyn_cast<FCmpInst>(andOrInst->getOperand(1));
-                    if (!brCmpInst0 || !brCmpInst0->isOrdered(brCmpInst0->getPredicate()) ||
-                        !brCmpInst1 || !brCmpInst1->isOrdered(brCmpInst1->getPredicate()))
-                    {
-                        continue;
-                    }
-                    FPMathOperator *FPO0 = dyn_cast<FPMathOperator>(brCmpInst0);
-                    FPMathOperator *FPO1 = dyn_cast<FPMathOperator>(brCmpInst1);
-                    if (!FPO0 || !FPO0->isFast() || !FPO1 || !FPO1->isFast())
+                    if (!brCmpInst0 || !brCmpInst1)
                     {
                         continue;
                     }
                     if (br->getSuccessor(1) == header)
                     {
-                        swapBranch(andOrInst, *br);
+                        brCmpInst0->copyFastMathFlags(FMF);
+                        brCmpInst1->copyFastMathFlags(FMF);
                     }
                 }
             }
@@ -2581,73 +2576,15 @@ int NanHandling::longestPathInstCount(llvm::BasicBlock *BB, int &depth)
     return (int)(BB->getInstList().size()) + sumSuccInstCount;
 }
 
-CmpInst::Predicate orderedInvert(CmpInst::Predicate pred)
-{
-    switch (pred)
-    {
-    case CmpInst::FCMP_OEQ: return CmpInst::FCMP_ONE;
-    case CmpInst::FCMP_ONE: return CmpInst::FCMP_OEQ;
-    case CmpInst::FCMP_OGT: return CmpInst::FCMP_OLE;
-    case CmpInst::FCMP_OLT: return CmpInst::FCMP_OGE;
-    case CmpInst::FCMP_OGE: return CmpInst::FCMP_OLT;
-    case CmpInst::FCMP_OLE: return CmpInst::FCMP_OGT;
-    default:
-        assert(0 && "wrong predicate");
-        break;
-    }
-    return pred;
-}
-
 void NanHandling::swapBranch(llvm::Instruction *inst, llvm::BranchInst &BI)
 {
-
     if (FCmpInst *brCondition = dyn_cast<FCmpInst>(inst))
     {
         if (inst->hasOneUse())
         {
-            brCondition->setPredicate(orderedInvert(brCondition->getPredicate()));
+            brCondition->setPredicate(FCmpInst::getInversePredicate(brCondition->getPredicate()));
             BI.swapSuccessors();
         }
-    }
-    else if (BinaryOperator *brCondition = dyn_cast<BinaryOperator>(inst))
-    {
-        FCmpInst *src0 = dyn_cast<FCmpInst>(inst->getOperand(0));
-        FCmpInst *src1 = dyn_cast<FCmpInst>(inst->getOperand(1));
-
-        if (!src0 || !src1 ||
-            src0->isUnordered(src0->getPredicate()) ||
-            src1->isUnordered(src1->getPredicate()))
-        {
-            // shouldn't come into this function at all
-            assert(0);
-        }
-
-        if (!src0->hasOneUse() || !src1->hasOneUse())
-        {
-            return;
-        }
-
-        IRBuilder<> builder(inst);
-        if (inst->getOpcode() == BinaryOperator::And)
-        {
-            Value *newInst = builder.CreateOr(src0, src1);
-            inst->replaceAllUsesWith(newInst);
-        }
-        else if (inst->getOpcode() == BinaryOperator::Or)
-        {
-            Value *newInst = builder.CreateAnd(src0, src1);
-            inst->replaceAllUsesWith(newInst);
-        }
-        else
-        {
-            // opcode not expected
-            assert(0);
-            return;
-        }
-        src0->setPredicate(orderedInvert(src0->getPredicate()));
-        src1->setPredicate(orderedInvert(src1->getPredicate()));
-        inst->eraseFromParent();
-        BI.swapSuccessors();
     }
     else
     {
@@ -2668,40 +2605,36 @@ void NanHandling::visitBranchInst(llvm::BranchInst &I)
             return;
     }
 
-    Instruction * cmpCondition = nullptr;
+    FCmpInst *brCmpInst = dyn_cast<FCmpInst>(I.getCondition());
+    FCmpInst *src0 = nullptr;
+    FCmpInst *src1 = nullptr;
 
     // if the branching is based on a cmp instruction
-    if (FCmpInst *brCmpInst = dyn_cast<FCmpInst>(I.getCondition()))
+    if (brCmpInst)
     {
         FPMathOperator *FPO = dyn_cast<FPMathOperator>(brCmpInst);
-        if (!FPO || !FPO->isFast() || !brCmpInst->isOrdered(brCmpInst->getPredicate()))
+        if (!FPO || !FPO->isFast())
             return;
 
-        cmpCondition = brCmpInst;
+        if (!brCmpInst->hasOneUse())
+            return;
     }
     // if the branching is based on a and/or from multiple conditions.
     else if (BinaryOperator *andOrInst = dyn_cast<BinaryOperator>(I.getCondition()))
     {
         if (andOrInst->getOpcode() != BinaryOperator::And && andOrInst->getOpcode() != BinaryOperator::Or)
             return;
-        
-        FCmpInst *src0 = dyn_cast<FCmpInst>(andOrInst->getOperand(0));
-        FCmpInst *src1 = dyn_cast<FCmpInst>(andOrInst->getOperand(1));
 
-        if (!src0 || !src1 ||
-            src0->isUnordered(src0->getPredicate()) ||
-            src1->isUnordered(src1->getPredicate()))
+        src0 = dyn_cast<FCmpInst>(andOrInst->getOperand(0));
+        src1 = dyn_cast<FCmpInst>(andOrInst->getOperand(1));
+
+        if (!src0 || !src1)
             return;
-
-        cmpCondition = andOrInst;
     }
     else
     {
         return;
     }
-
-    if (!cmpCondition->hasOneUse())
-        return;
 
     // Calculate the maximum instruction count when going down one branch.
     // Make the false case (including NaN) goes to the shorter path.
@@ -2712,8 +2645,18 @@ void NanHandling::visitBranchInst(llvm::BranchInst &I)
 
     if (falseBranchSize - trueBranchSize > (int)(IGC_GET_FLAG_VALUE(SetBranchSwapThreshold)))
     {
-        // swap the condition and the successor blocks
-        swapBranch(cmpCondition, I);
+        if (brCmpInst)
+        {
+            // swap the condition and the successor blocks
+            swapBranch(brCmpInst, I);
+        }
+        else
+        {
+            FastMathFlags FMF;
+            FMF.clear();
+            src0->copyFastMathFlags(FMF);
+            src1->copyFastMathFlags(FMF);
+        }
         return;
     }
 }

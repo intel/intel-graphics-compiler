@@ -565,6 +565,12 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager& mpm)
         mpm.add(new UniformAssumptions());
     }
 
+    // NanHandlingPass need to be before Legalization since it might make some changes and require Legalization to "legalize"
+    if (IGC_IS_FLAG_DISABLED(DisableBranchSwaping) && ctx.m_DriverInfo.BranchSwapping())
+    {
+        mpm.add(createNanHandlingPass());
+    }
+
     // TODO: move to use instruction flags
     // to figure out if we need to preserve Nan
     bool preserveNan = !ctx.m_DriverInfo.IgnoreNan();
@@ -572,11 +578,6 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager& mpm)
     // Legalizer does not handle constant expressions
     mpm.add(new BreakConstantExpr());
     mpm.add(new Legalization(preserveNan));
-
-    if (IGC_IS_FLAG_DISABLED(DisableBranchSwaping) && ctx.m_DriverInfo.BranchSwapping())
-    {
-        mpm.add(createNanHandlingPass());
-    }
 
     // Scalarizer in codegen to handle the vector instructions
     mpm.add(new ScalarizerCodeGen());
