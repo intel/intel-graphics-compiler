@@ -487,8 +487,9 @@ bool HWConformity::fixMathInst(INST_LIST_ITER it, G4_BB *bb)
 
     if (inst->asMathInst()->getMathCtrl() == MATH_INVM || inst->asMathInst()->getMathCtrl() == MATH_RSQRTM)
     {
-        if (IS_DFTYPE(inst->getDst()->getType()) && inst->getExecSize() == 8)
+        if (IS_DFTYPE(inst->getDst()->getType()) && (inst->getExecSize() * 2) > builder.getNativeExecSize())
         {
+            // need to scale exec size by two since it's 64b type
             evenlySplitInst(it, bb);
             return true;
         }
@@ -1265,9 +1266,6 @@ void HWConformity::fix3SrcInst(INST_LIST_ITER iter, G4_BB* bb)
 
     if (inst->getExecSize() == 16)
     {
-        /*
-            According to Krishna, Narsim WA only applies if intruction is not contained in one GRF
-        */
         bool wa3rc = (VISA_WA_CHECK(builder.getPWaTable(), WaDisableSIMD16On3SrcInstr)  &&
                         !(inst->getExecType() == Type_HF                                &&
                           inst->getOperand(Opnd_src1)->isSrcRegRegion()                 &&
@@ -2312,7 +2310,7 @@ bool HWConformity::fixMULInst( INST_LIST_ITER &i, G4_BB *bb )
 
             next_inst->setOptionOn(InstOpt_AccWrCtrl);
 
-            if (exec_size == 16)
+            if (exec_size > builder.getNativeExecSize())
             {
                 splitDWMULInst(i, last_iter, bb);
             }
@@ -2516,7 +2514,7 @@ bool HWConformity::fixMULInst( INST_LIST_ITER &i, G4_BB *bb )
         iter++;
     }
 
-    if (exec_size == 16)
+    if (exec_size > builder.getNativeExecSize())
     {
         splitDWMULInst(i, last_iter, bb);
     }
@@ -2548,7 +2546,7 @@ void HWConformity::fixMULHInst( INST_LIST_ITER &i, G4_BB *bb )
     }
 
     bool useMulQDD = false;
-    if (exec_size <= 8 && !builder.no64bitRegioning())
+    if (exec_size <= builder.getNativeExecSize() && !builder.no64bitRegioning())
     {
         useMulQDD = true;
         if (!IS_DTYPE(src0->getType()) || !IS_DTYPE(src1->getType()))
@@ -2705,10 +2703,9 @@ void HWConformity::fixMULHInst( INST_LIST_ITER &i, G4_BB *bb )
 
     inst->setOptionOn(InstOpt_AccWrCtrl);
 
-    if (exec_size == 16)
+    if (exec_size > builder.getNativeExecSize())
     {
-        INST_LIST_ITER start_iter = i;
-        start_iter--;
+        auto start_iter = std::prev(i);
         splitDWMULInst( start_iter, end_iter, bb );
         i = end_iter;
     }
@@ -5802,7 +5799,7 @@ void HWConformity::conformBB( BB_LIST_ITER it)
 
         fixSelCsel(i, bb);
 
-        if (inst->getExecSize() == 16)
+        if (inst->getExecSize() > builder.getNativeExecSize())
         {
             if (inst->opcode() == G4_math               &&
                 inst->getDst()->getType() == Type_HF    &&
@@ -6023,7 +6020,7 @@ bool HWConformity::fixAddcSubb(G4_BB* bb)
                 continue;
             }
 
-            if (inst->getExecSize() == 16)
+            if (inst->getExecSize() > builder.getNativeExecSize())
             {
                 evenlySplitInst(iter, bb);
                 evenlySplitInst(movIter, bb);
@@ -7360,7 +7357,7 @@ void HWConformity::fixMixedHFInst( BB_LIST_ITER it )
 
         // The execution size must be no more than 8 when half-floats are used in source or destination operand.
         // ToDO: move this to fixmathinst
-        if (inst->getExecSize() == 16)
+        if (inst->getExecSize() > builder.getNativeExecSize())
         {
             if (inst->opcode() == G4_math &&
                 inst->getDst()->getType() == Type_HF &&

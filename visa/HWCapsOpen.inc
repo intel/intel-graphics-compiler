@@ -483,4 +483,9 @@
         return SFID::SPAWNER;
     }
 
+    uint32_t getNativeExecSize() const
+    {
+        return 8;
+    }
+
     // end HW capabilities
