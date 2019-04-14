@@ -1827,11 +1827,17 @@ void CShader::BeginFunction(llvm::Function *F)
 
             if (llvm::Value *Node = m_deSSA->getRootValue(&Arg))
             {
-                rootMapping[Node] = Var;
+                if (IGC_IS_FLAG_ENABLED(EnableDeSSAMemberRootValue))
+                {
+                    symbolMapping[Node] = Var;
+                }
+                else
+                {
+                    rootMapping[Node] = Var;
+                }
             }
         }
     }
-
 }
 
 /// This method is used to create the vISA variable for function F's formal return value
@@ -2469,21 +2475,42 @@ CVariable* CShader::GetSymbol(llvm::Value *value, bool fromConstantPool)
     // belong to a congruent class
     if (rootValue)
     {
-        it = rootMapping.find(rootValue);
-        // mapping exists, return
-        if (it != rootMapping.end())
+        if (IGC_IS_FLAG_ENABLED(EnableDeSSAMemberRootValue))
         {
-            var = it->second;
-            symbolMapping.insert(std::pair<llvm::Value*, CVariable*>(value, var));
-            /*
+            it = symbolMapping.find(rootValue);
+            if (it != symbolMapping.end())
+            {
+                var = it->second;
+                symbolMapping.insert(std::pair<llvm::Value*, CVariable*>(value, var));
+                /*
                 *  When we don't scalarize vectors, vector may come from phi/insert-element
                 *  We cannot adjust extract-mask
                 */
-            if (value->getType()->isVectorTy())
-            {
-                extractMasks.erase(value);
+                if (value->getType()->isVectorTy())
+                {
+                    extractMasks.erase(value);
+                }
+                return var;
             }
-            return var;
+        }
+        else
+        {
+            it = rootMapping.find(rootValue);
+            // mapping exists, return
+            if (it != rootMapping.end())
+            {
+                var = it->second;
+                symbolMapping.insert(std::pair<llvm::Value*, CVariable*>(value, var));
+                /*
+                 *  When we don't scalarize vectors, vector may come from phi/insert-element
+                 *  We cannot adjust extract-mask
+                 */
+                if (value->getType()->isVectorTy())
+                {
+                    extractMasks.erase(value);
+                }
+                return var;
+            }
         }
     }
 
@@ -2508,7 +2535,14 @@ CVariable* CShader::GetSymbol(llvm::Value *value, bool fromConstantPool)
     symbolMapping.insert(std::pair<llvm::Value*,CVariable*>(value, var));
     if (rootValue)
     {
-        rootMapping.insert(std::pair<llvm::Value*, CVariable*>(rootValue, var));
+        if (IGC_IS_FLAG_ENABLED(EnableDeSSAMemberRootValue))
+        {
+            symbolMapping.insert(std::pair<llvm::Value*, CVariable*>(rootValue, var));
+        }
+        else
+        {
+            rootMapping.insert(std::pair<llvm::Value*, CVariable*>(rootValue, var));
+        }
     }
     return var;
 }
