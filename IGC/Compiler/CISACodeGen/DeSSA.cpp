@@ -295,7 +295,9 @@ bool DeSSA::runOnFunction(Function &MF)
       //      alias too. If so, we need special handling when emitting code as insElt
       //      needs emitting code, where cast aliasing does not.)
       //   3. Make sure DeSSA node only use the root value of aliases (that is,
-      //      only aliasee may have DeSSA node).
+      //      only aliasee may have DeSSA node). Since the type of aliasess may be
+      //      different from aliaser, the values in the same CC will have different
+      //      types.  Keep this in mind when creating CVariable in GetSymbol().
       //
       //  Note that the algorithem forces coalescing of aliasing inst and
       //  InsertElement inst before PHI-coalescing, which means it favors
