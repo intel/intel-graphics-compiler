@@ -120,6 +120,12 @@ public:
     CVariable*  GetNewVector(llvm::Value* val, e_alignment preferredAlign = EALIGN_AUTO);
     CVariable*  GetNewAlias(CVariable* var, VISA_Type type, uint16_t offset, uint16_t numElements);
     CVariable*  GetNewAlias(CVariable* var, VISA_Type type, uint16_t offset, uint16_t numElements, bool uniform);
+
+    // If BaseVar's type matches V's, return BaseVar; otherwise, create an new
+    // alias CVariable to BaseVar. The newly-created alias CVariable's size
+    // should be the same as BaseVar's size (used for creating alias for values
+    // in the same DeSSA's congruent class).
+    CVariable*  createAliasIfNeeded(llvm::Value* V, CVariable* BaseVar);
     // Allow to create an alias of a variable handpicking a slice to be able to do cross lane in SIMD32
     CVariable*  GetVarHalf(CVariable* var, unsigned int half);
     

@@ -1827,8 +1827,14 @@ void CShader::BeginFunction(llvm::Function *F)
 
             if (llvm::Value *Node = m_deSSA->getRootValue(&Arg))
             {
-                if (IGC_IS_FLAG_ENABLED(EnableDeSSAMemberRootValue))
+                if (IGC_IS_FLAG_ENABLED(EnableDeSSAMemberRootValue) &&
+                    Node != (Value*)&Arg)
                 {
+                    CVariable* aV = Var;
+                    if (IGC_GET_FLAG_VALUE(EnableDeSSAAlias) >= 2)
+                    {
+                        aV = createAliasIfNeeded(Node, Var);
+                    }
                     symbolMapping[Node] = Var;
                 }
                 else
@@ -2298,11 +2304,7 @@ CVariable* CShader::GetSymbol(llvm::Value *value, bool fromConstantPool)
 
         // An aliaser
         CVariable *Base = GetSymbol(Aliasee);
-        Type *Ty = value->getType();
-        VectorType* VTy = dyn_cast<VectorType>(Ty);
-        Type *BTy = VTy ? VTy->getElementType() : Ty;
-        VISA_Type visaTy = GetType(BTy);
-        CVariable* AliasVar = GetNewAlias(Base, visaTy, 0, Base->GetNumberElement());
+        CVariable *AliasVar = createAliasIfNeeded(value, Base);
         symbolMapping.insert(std::pair<llvm::Value*, CVariable*>(value, AliasVar));
         return AliasVar;
     }
@@ -2481,7 +2483,12 @@ CVariable* CShader::GetSymbol(llvm::Value *value, bool fromConstantPool)
             if (it != symbolMapping.end())
             {
                 var = it->second;
-                symbolMapping.insert(std::pair<llvm::Value*, CVariable*>(value, var));
+                CVariable* aV = var;
+                if (IGC_GET_FLAG_VALUE(EnableDeSSAAlias) >= 2)
+                {
+                    aV = createAliasIfNeeded(value, var);
+                }
+                symbolMapping.insert(std::pair<llvm::Value*, CVariable*>(value, aV));
                 /*
                 *  When we don't scalarize vectors, vector may come from phi/insert-element
                 *  We cannot adjust extract-mask
@@ -2537,7 +2544,12 @@ CVariable* CShader::GetSymbol(llvm::Value *value, bool fromConstantPool)
     {
         if (IGC_IS_FLAG_ENABLED(EnableDeSSAMemberRootValue))
         {
-            symbolMapping.insert(std::pair<llvm::Value*, CVariable*>(rootValue, var));
+            CVariable* aV = var;
+            if (IGC_GET_FLAG_VALUE(EnableDeSSAAlias) >= 2)
+            {
+                aV = createAliasIfNeeded(rootValue, var);
+            }
+            symbolMapping.insert(std::pair<llvm::Value*, CVariable*>(rootValue, aV));
         }
         else
         {
@@ -2876,6 +2888,33 @@ CVariable* CShader::GetNewAlias(CVariable* var, VISA_Type type, uint16_t offset,
     CVariable* alias = new (Allocator)CVariable(var, type, offset, numElements, var->IsUniform());
     encoder.CreateVISAVar(alias);
     return alias;
+}
+
+// createAliasIfNeeded() returns the Var that is either BaseVar or
+// its alias of the same size.
+//
+// If BaseVar's type matches V's, return BaseVar; otherwise, create an
+// new alias CVariable to BaseVar. The new CVariable has V's size, which
+// should not be larger than BaseVar's.
+//
+// Note that V's type is either vector or scalar.
+CVariable*  CShader::createAliasIfNeeded(Value* V, CVariable* BaseVar)
+{
+    Type *Ty = V->getType();
+    VectorType* VTy = dyn_cast<VectorType>(Ty);
+    Type *BTy = VTy ? VTy->getElementType() : Ty;
+    VISA_Type visaTy = GetType(BTy);
+    if (visaTy == BaseVar->GetType())
+    {
+        return BaseVar;
+    }
+
+    uint16_t visaTy_sz = CEncoder::GetCISADataTypeSize(visaTy);
+    uint16_t nbe = BaseVar->GetSize() / visaTy_sz;
+    assert((BaseVar->GetSize() % visaTy_sz) == 0 &&
+           "V's Var should be the same size as BaseVar!");
+    CVariable* NewAliasVar = GetNewAlias(BaseVar, visaTy, 0, nbe);
+    return NewAliasVar;
 }
 
 /// GetNewAlias
