@@ -1835,7 +1835,7 @@ void CShader::BeginFunction(llvm::Function *F)
                     {
                         aV = createAliasIfNeeded(Node, Var);
                     }
-                    symbolMapping[Node] = Var;
+                    symbolMapping[Node] = aV;
                 }
                 else
                 {
@@ -2497,7 +2497,7 @@ CVariable* CShader::GetSymbol(llvm::Value *value, bool fromConstantPool)
                 {
                     extractMasks.erase(value);
                 }
-                return var;
+                return aV;
             }
         }
         else
@@ -2548,6 +2548,7 @@ CVariable* CShader::GetSymbol(llvm::Value *value, bool fromConstantPool)
             if (IGC_GET_FLAG_VALUE(EnableDeSSAAlias) >= 2)
             {
                 aV = createAliasIfNeeded(rootValue, var);
+                var = aV;
             }
             symbolMapping.insert(std::pair<llvm::Value*, CVariable*>(rootValue, aV));
         }
