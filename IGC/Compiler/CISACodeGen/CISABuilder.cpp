@@ -3863,7 +3863,10 @@ void CEncoder::InitEncoder( bool canAbortOnSpill, bool hasStackCall )
     }
 
     // Enable SendFusion for SIMD8
+    // TODO: Re-enable SendFusion when VMask is enabled. The hardware should support this, but 
+    //  more investigation needs to be done on whether simply replacing sr0.2 with sr0.3 is enough.
     if (IGC_IS_FLAG_ENABLED(EnableSendFusion) &&
+        !(context->type == ShaderType::PIXEL_SHADER && static_cast<CPixelShader*>(m_program)->NeedVMask()) &&
         m_program->GetContext()->platform.supportSplitSend() &&
         m_program->m_dispatchSize == SIMDMode::SIMD8 &&
         (IGC_GET_FLAG_VALUE(EnableSendFusion) == FLAG_LEVEL_2 ||   // 2: force send fusion

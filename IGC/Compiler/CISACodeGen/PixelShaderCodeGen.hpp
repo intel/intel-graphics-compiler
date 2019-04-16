@@ -106,6 +106,7 @@ public:
     bool        IsPerSample() { return m_isPerSample || m_PerspectiveSample || m_NoPerspectiveSample; }
 
     bool        HasDiscard() { return m_HasDiscard; }
+    bool        NeedVMask() { return m_VectorMask; }
     void        MarkConstantInterpolation(unsigned int index);
 
     // check whether it's the last render target write
