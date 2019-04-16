@@ -1825,17 +1825,19 @@ void CShader::BeginFunction(llvm::Function *F)
             CVariable *Var = getOrCreateArgumentSymbol(&Arg, useStackCall);
             symbolMapping[&Arg] = Var;
 
-            if (llvm::Value *Node = m_deSSA->getRootValue(&Arg))
+            if (Value *Node = m_deSSA->getRootValue(&Arg))
             {
-                if (IGC_IS_FLAG_ENABLED(EnableDeSSAMemberRootValue) &&
-                    Node != (Value*)&Arg)
+                if (IGC_IS_FLAG_ENABLED(EnableDeSSAMemberRootValue))
                 {
-                    CVariable* aV = Var;
-                    if (IGC_GET_FLAG_VALUE(EnableDeSSAAlias) >= 2)
+                    if (Node != (Value*)&Arg)
                     {
-                        aV = createAliasIfNeeded(Node, Var);
+                        CVariable* aV = Var;
+                        if (IGC_GET_FLAG_VALUE(EnableDeSSAAlias) >= 2)
+                        {
+                            aV = createAliasIfNeeded(Node, Var);
+                        }
+                        symbolMapping[Node] = aV;
                     }
-                    symbolMapping[Node] = aV;
                 }
                 else
                 {
@@ -2548,7 +2550,6 @@ CVariable* CShader::GetSymbol(llvm::Value *value, bool fromConstantPool)
             if (IGC_GET_FLAG_VALUE(EnableDeSSAAlias) >= 2)
             {
                 aV = createAliasIfNeeded(rootValue, var);
-                var = aV;
             }
             symbolMapping.insert(std::pair<llvm::Value*, CVariable*>(rootValue, aV));
         }
