@@ -247,5 +247,20 @@ namespace iga
         ANY32H,
         ALL32H
     };
+
+    // instruction options
+    enum class InstOpt {
+        ACCWREN,
+        ATOMIC,
+        BREAKPOINT,
+        COMPACTED,
+        EOT,
+        NOCOMPACT,
+        NODDCHK,
+        NODDCLR,
+        NOPREEMPT,
+        NOSRCDEPSET,
+        SWITCH
+    };
 }
 #endif

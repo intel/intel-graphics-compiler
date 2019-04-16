@@ -117,6 +117,10 @@ IGA_API void kv_delete(kv_t *);
 */
 IGA_API int32_t kv_get_inst_size(const kv_t *kv, int32_t pc);
 
+/*
+* Returns true if the instruction has the opt
+*/
+IGA_API bool kv_has_inst_opt(const kv_t *kv, int32_t pc, uint32_t opt);
 
 /*
 * This function returns the absolute PC targets of this instruction.

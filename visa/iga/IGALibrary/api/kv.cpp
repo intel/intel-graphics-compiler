@@ -209,6 +209,13 @@ int32_t kv_get_inst_size(const kv_t *kv, int32_t pc)
 }
 
 
+bool kv_has_inst_opt(const kv_t *kv, int32_t pc, uint32_t opt)
+{
+    KernelViewImpl *kvImpl = (KernelViewImpl *)kv;
+    const Instruction *inst = kvImpl->getInstruction(pc);
+    return inst->hasInstOpt((iga::InstOpt)opt);
+}
+
 uint32_t kv_get_inst_targets(
     const kv_t *kv,
     int32_t pc,

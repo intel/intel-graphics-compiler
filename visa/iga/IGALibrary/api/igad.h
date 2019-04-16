@@ -246,6 +246,9 @@ typedef void(CDECLATTRIBUTE *pIGAKVDelete)(kv_t *);
 
 /************************* KV Analysis APIS **********************************/
 
+#define IGA_KV_HAS_INST_OPT_STR "kv_has_inst_opt"
+typedef bool(CDECLATTRIBUTE *pIGAKVHasInstOpt)(const kv_t *kv, int32_t pc, uint32_t opt);
+
 #define IGA_KV_GET_EXECUTION_SIZE "kv_get_execution_size"
 typedef uint32_t(CDECLATTRIBUTE *pIGAKVGetExecutionSize)(const kv_t *kv, int32_t pc);
 
@@ -399,4 +402,5 @@ typedef struct
     pIGAKVGetFlagSubReg        kv_get_flag_subreg;
     pIGAKVGetPredicate         kv_get_predicate;
     pIGAKVGetIsInversePred     kv_get_inverse_predicate;
+    pIGAKVHasInstOpt           kv_has_inst_opt;
 } kv_functions_t;

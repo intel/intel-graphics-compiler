@@ -275,22 +275,6 @@ struct Region {
     static const Region SRCXX1;  // <1>   (ternary align1 src2)
 };
 
-
-// instruction options
-enum class InstOpt {
-    ACCWREN,
-    ATOMIC,
-    BREAKPOINT,
-    COMPACTED,
-    EOT,
-    NOCOMPACT,
-    NODDCHK,
-    NODDCLR,
-    NOPREEMPT,
-    NOSRCDEPSET,
-    SWITCH
-};
-
 // A set of instruction options
 typedef EnumBitset<InstOpt> InstOptSet;
 
