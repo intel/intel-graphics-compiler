@@ -1836,7 +1836,8 @@ private:
         // ensure the subregister is not out of bounds
         if (dty != Type::INVALID) {
             int typeSize = TypeSizeInBits(dty)/8;
-            if (!ri.isSubRegByteOffsetValid(regNum, subregNum * typeSize, m_model.getGRFByteSize())) {
+            if (!ri.isSubRegByteOffsetValid(regNum, subregNum * typeSize, m_model.getGRFByteSize()) &&
+                ri.regName == RegName::GRF_R) {
                 Warning(subregLoc, "subregister out of bounds for data type");
             } else if (typeSize < ri.accGran) {
                 Warning(regnameLoc, "access granularity too small for data type");
@@ -2172,7 +2173,8 @@ private:
             // ensure the subregister is not out of bounds
             int typeSize = TypeSizeInBits(sty)/8;
             if (ri.isRegNumberValid(regNum) &&
-                !ri.isSubRegByteOffsetValid(regNum, subregNum * typeSize, m_model.getGRFByteSize()))
+                !ri.isSubRegByteOffsetValid(regNum, subregNum * typeSize, m_model.getGRFByteSize()) &&
+                ri.regName == RegName::GRF_R)
             {
                 // don't add an extra error if the parent register is
                 // already out of bounds
