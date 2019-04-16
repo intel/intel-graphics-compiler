@@ -7376,7 +7376,7 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
             m_currShader->m_Platform->GetPlatformFamily() == IGFX_GEN9_CORE)
             emitStateRegID(0x0000C000, 0x0000000E);
         else
-            emitStateRegID(0x00001C00, 0x0000000A);
+            emitStateRegID(0x00007000, 0x0000000C);
         break;
     }
     case GenISAIntrinsic::GenISA_subslice_id: {
@@ -7384,7 +7384,7 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
             m_currShader->m_Platform->GetPlatformFamily() == IGFX_GEN9_CORE)
             emitStateRegID(0x00003000, 0x0000000C);
         else
-            emitStateRegID(0x00000300, 0x00000008);
+            emitStateRegID(0x00000100, 0x00000008);
         break;
     }
     case GenISAIntrinsic::GenISA_eu_id: {
