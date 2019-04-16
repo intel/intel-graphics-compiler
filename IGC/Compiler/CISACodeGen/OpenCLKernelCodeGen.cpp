@@ -1480,7 +1480,8 @@ void COpenCLKernel::AllocatePayload()
             if (arg.needsAllocation())
             {
                 // Align on the desired alignment for this argument
-                offset = iSTD::Align(offset, arg.getAlignment());
+                auto alignment = arg.getAlignment();
+                offset = iSTD::Align(offset, alignment);
 
                 // Arguments larger than a GRF must be at least GRF-aligned.
                 // Arguments smaller than a GRF may not cross GRF boundaries.
