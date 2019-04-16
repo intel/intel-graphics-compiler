@@ -1167,7 +1167,10 @@ public:
     // return igc_info_t format buffer. caller casts it to igc_info_t.
     void* getGTPinInfoBuffer(unsigned int &bufferSize);
 
-    void setScratchNextFree(unsigned int next) { nextScratchFree = next; }
+    void setScratchNextFree(unsigned int next)
+    { 
+        nextScratchFree = ((next + G4_GRF_REG_NBYTES - 1) / G4_GRF_REG_NBYTES) * G4_GRF_REG_NBYTES;
+    }
     uint8_t getNumBytesScratchUse()
     {
         if (gtpin_init)
