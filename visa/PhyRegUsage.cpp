@@ -60,7 +60,7 @@ PhyRegUsage::PhyRegUsage(PhyRegUsageParms& p) :
     if (regFile == G4_GRF)
     {
         memset(availableGregs, true, sizeof(bool)* totalGRFNum);
-        memset(availableSubRegs, 0xff, sizeof(uint32_t)*totalGRFNum);
+        memset(availableSubRegs, 0xffffffff, sizeof(uint32_t)*totalGRFNum);
         if (weakEdgeUsage)
         {
             memset(weakEdgeUsage, 0, sizeof(uint8_t)* totalGRFNum);
@@ -98,7 +98,7 @@ void PhyRegUsage::markBusyForDclSplit(G4_RegFileKind kind,
     for (unsigned i = start_GRF; i < end_GRF; i++)
     {
         availableGregs[i] = false;
-        availableSubRegs[i] = 0; //Is this right?
+        availableSubRegs[i] = 0xffff0000;
     }
 
     if (end_sub_GRF)
@@ -163,7 +163,7 @@ void PhyRegUsage::freeGRFSubReg(unsigned regNum,
     //
     // if all sub regs of regNum are free, then unlink the reg
     //
-    if (availableSubRegs[regNum] == 0xFFFF)
+    if (availableSubRegs[regNum] == 0xFFFFFFFF)
     {
         MUST_BE_TRUE(!availableGregs[regNum],
             ERROR_UNKNOWN);
@@ -231,7 +231,7 @@ int PhyRegUsage::findContiguousWords(
     int step = getSubAlignInWords(subAlign);
     int startWord = 0;
 
-    for (int i = startWord; i + numWords <= 16; i += step)
+    for (int i = startWord; i + numWords <= (int)G4_GRF_REG_SIZE; i += step)
     {
         uint32_t bitMask = getSubregBitMask(i, numWords);
         if ((bitMask & words) == bitMask)
@@ -897,7 +897,7 @@ PhyRegUsage::PhyReg PhyRegUsage::findGRFSubReg(const bool forbidden[],
             continue;
         }
 
-        if (availableSubRegs[idx] == 0xFFFF)
+        if (availableSubRegs[idx] == 0xFFFFFFFF)
         {
             // favor partially allocated GRF first
             continue;
