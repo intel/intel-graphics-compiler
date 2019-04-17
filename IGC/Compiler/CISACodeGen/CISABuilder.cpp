@@ -3411,7 +3411,6 @@ void CEncoder::InitEncoder( bool canAbortOnSpill, bool hasStackCall )
     vbuilder = nullptr;
     TARGET_PLATFORM VISAPlatform = GetVISAPlatform(&(context->platform));
 
-
     bool KernelDebugEnable = false;
     bool ForceNonCoherentStatelessBti = false;
     auto gtpin_init = context->gtpin_init;

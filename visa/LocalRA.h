@@ -248,6 +248,8 @@ enum
     WORD_BUSY = 1,
 };
 
+#define REG_UNAVAILABLE 0xffff0000
+
 namespace vISA
 {
 class PhyRegsLocalRA

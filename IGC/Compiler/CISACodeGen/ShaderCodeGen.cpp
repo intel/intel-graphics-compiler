@@ -926,10 +926,12 @@ void CodeGen(OpenCLProgramContext *ctx, CShaderProgram::KernelShaderMap &kernels
     }
     else
     {
-        // The order in which we call AddCodeGenPasses matters, please to not change order
-        AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD32, (ctx->getModuleMetaData()->csInfo.forcedSIMDSize != 32));
-        AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD16, (ctx->getModuleMetaData()->csInfo.forcedSIMDSize != 16));
-        AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD8, false);
+        {
+            // The order in which we call AddCodeGenPasses matters, please to not change order
+            AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD32, (ctx->getModuleMetaData()->csInfo.forcedSIMDSize != 32));
+            AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD16, (ctx->getModuleMetaData()->csInfo.forcedSIMDSize != 16));
+            AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD8, false);
+        }
     }
     Passes.add(new DebugInfoPass(kernels));
     Passes.run(*(ctx->getModule()));

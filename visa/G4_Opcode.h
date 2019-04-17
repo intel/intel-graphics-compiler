@@ -421,5 +421,4 @@ inline bool isLowPrecisionFloatTy(G4_Type ty)
 }
 
 #define SUB_ALIGNMENT_GRFALIGN (Sixteen_Word)
-#define SUB_ALIGNMENT_HALFGRFALIGN (Eight_Word)
 #endif  // _G4_OPCODE_H_

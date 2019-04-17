@@ -2030,6 +2030,9 @@ bool COpenCLKernel::hasReadWriteImage(llvm::Function &F)
 
 bool COpenCLKernel::CompileSIMDSize(SIMDMode simdMode, EmitPass &EP, llvm::Function &F)
 {
+
+
+
     //If forced SIMD Mode (by driver or regkey), then:
     // 1. Compile only that SIMD mode and nothing else
     // 2. Compile that SIMD mode even if it is not profitable, i.e. even if compileThisSIMD() returns false for it.
