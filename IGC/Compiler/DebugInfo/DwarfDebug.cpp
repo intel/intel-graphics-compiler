@@ -68,6 +68,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Support/FormattedStream.h"
 #include "llvm/Support/LEB128.h"
 #include "llvm/IR/IntrinsicInst.h"
+#include "llvm/MC/MCDwarf.h"
+
 #include "common/LLVMWarningsPop.hpp"
 
 

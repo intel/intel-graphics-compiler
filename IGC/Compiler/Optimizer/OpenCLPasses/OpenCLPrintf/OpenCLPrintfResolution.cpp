@@ -167,7 +167,7 @@ OpenCLPrintfResolution::OpenCLPrintfResolution() : FunctionPass(ID), m_atomicAdd
 
 bool IGC::OpenCLPrintfResolution::doInitialization(Module &M)
 {
-    m_module = &M;
+    m_module = (IGCLLVM::Module*)&M;
     m_context = &M.getContext();
     m_CGContext = nullptr;
     m_stringIndex = 0;

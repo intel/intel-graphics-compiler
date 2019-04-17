@@ -42,6 +42,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "common/LLVMWarningsPush.hpp"
 
+#include "llvmWrapper/IR/Module.h"
 #include "llvmWrapper/IR/Argument.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/Attributes.h"
@@ -731,7 +732,7 @@ namespace //Anonymous
 
         /// Return parent function for a call
         llvm::Function* getCallerFunc() const { return _callerFunc; }
-        llvm::Module* getModule() const { return getCallerFunc()->getParent(); }
+        IGCLLVM::Module* getModule() const { return (IGCLLVM::Module*)getCallerFunc()->getParent(); }
         llvm::LLVMContext& getContext() const { return _call.getContext(); }
 
         // Device exec arguments

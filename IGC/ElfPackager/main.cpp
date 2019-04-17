@@ -46,6 +46,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Bitcode/BitcodeReader.h"
 #include "llvm/Bitcode/BitcodeWriterPass.h"
 #include "llvm/Support/SourceMgr.h"
+
+#include "llvmWrapper//IR/Module.h"
+
 #include "common/LLVMWarningsPop.hpp"
 #include "../GenISAIntrinsics/GenIntrinsics.h"
 
@@ -102,13 +105,13 @@ void CreateElfSection(CLElfLib::CElfWriter* pWriter, CLElfLib::SSectionNode sect
 }
 
 
-std::unique_ptr<Module> LocalCloneModule(
+std::unique_ptr<IGCLLVM::Module> LocalCloneModule(
     const Module *M, ValueToValueMapTy &VMap,
     std::vector<GlobalValue*> &ExtractValues,
     std::map<const llvm::Function*, std::set<StringRef>> &FuncMap) {
     // First off, we need to create the new module.
-    std::unique_ptr<Module> New =
-        llvm::make_unique<Module>(M->getModuleIdentifier(), M->getContext());
+    std::unique_ptr<IGCLLVM::Module> New =
+        llvm::make_unique<IGCLLVM::Module>(M->getModuleIdentifier(), M->getContext());
     New->setDataLayout("");
     New->setTargetTriple("");
     New->setModuleInlineAsm(M->getModuleInlineAsm());
@@ -352,7 +355,7 @@ int main(int argc, char *argv[])
     {
         std::vector<GlobalValue*> ExtractValue = map_iterator.second;
         llvm::ValueToValueMapTy Val;
-        std::unique_ptr<Module> M1 = LocalCloneModule(M.get().get(),
+        std::unique_ptr<IGCLLVM::Module> M1 = LocalCloneModule(M.get().get(),
             Val, ExtractValue, FuncToGlobalsMap);
         legacy::PassManager Passes;
         SmallVector<char, 0> Buffer;

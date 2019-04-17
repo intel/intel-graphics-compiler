@@ -45,7 +45,11 @@ public:
   AddressSpaceAAResult(AddressSpaceAAResult &&Arg)
       : AAResultBase(std::move(Arg)), TLI(Arg.TLI), CGC(Arg.CGC) {}
 
-  AliasResult alias(const MemoryLocation &LocA, const MemoryLocation &LocB) {
+  AliasResult alias(const MemoryLocation &LocA, const MemoryLocation &LocB
+#if LLVM_VERSION_MAJOR >= 9
+      , AAQueryInfo &AAQI
+#endif
+  ) {
     // DO NOT strip any casting as the address space is encoded in pointer
     // type. For `addrspacecast`, the current implementation in LLVM is too
     // aggressive to strip them. With address space resolution, we should not
@@ -125,10 +129,18 @@ public:
     }
     
 
-    return AAResultBase::alias(LocA, LocB);
+    return AAResultBase::alias(LocA, LocB
+#if LLVM_VERSION_MAJOR >= 9
+        , AAQI
+#endif
+    );
   }
 
-  bool pointsToConstantMemory(const llvm::MemoryLocation &Loc, bool OrLocal) {
+  bool pointsToConstantMemory(const llvm::MemoryLocation &Loc,
+#if LLVM_VERSION_MAJOR >= 9
+      AAQueryInfo &AAQI,
+#endif
+      bool OrLocal) {
     // Pointers to constant address space memory, well, point to constant memory
     PointerType* ptrType = dyn_cast<PointerType>(Loc.Ptr->getType());
     if (ptrType && ptrType->getAddressSpace() == ADDRESS_SPACE_CONSTANT)
@@ -141,7 +153,11 @@ public:
     if (BufTy == CONSTANT_BUFFER)
       return true;
 
-    return AAResultBase::pointsToConstantMemory(Loc, OrLocal);
+    return AAResultBase::pointsToConstantMemory(Loc,
+#if LLVM_VERSION_MAJOR >= 9
+        AAQI,
+#endif
+        OrLocal);
   }
 };
 

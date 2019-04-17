@@ -66,6 +66,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "llvmWrapper/IR/IRBuilder.h"
 #include "llvmWrapper/IR/DIBuilder.h"
+#include "llvmWrapper/IR/Module.h"
 
 #include <llvm/Support/ScaledNumber.h>
 #include <llvm/IR/LegacyPassManager.h>
@@ -1033,7 +1034,7 @@ private:
 class SPIRVToLLVM {
 public:
   SPIRVToLLVM(Module *LLVMModule, SPIRVModule *TheSPIRVModule)
-    :M(LLVMModule), BM(TheSPIRVModule), DbgTran(BM, M, this){
+    :M((IGCLLVM::Module*)LLVMModule), BM(TheSPIRVModule), DbgTran(BM, M, this){
       if (M)
           Context = &M->getContext();
       else
@@ -1111,7 +1112,7 @@ public:
   Value *getTranslatedValue(SPIRVValue *BV);
 
 private:
-  Module *M;
+  IGCLLVM::Module *M;
   BuiltinVarMap BuiltinGVMap;
   LLVMContext *Context;
   SPIRVModule *BM;

@@ -34,7 +34,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "common/LLVMWarningsPush.hpp"
 
+#include "WrapperLLVM/Utils.h"
 #include "llvmWrapper/Support/Debug.h"
+#include "llvmWrapper/IR/Constant.h"
 
 #include <llvm/ADT/DenseSet.h>
 #include <llvm/ADT/PostOrderIterator.h>
@@ -45,6 +47,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/LLVMWarningsPop.hpp"
 
 #include "GenISAIntrinsics/GenIntrinsics.h"
+
+
 
 using namespace llvm;
 using namespace IGC;
@@ -570,7 +574,7 @@ bool GASPropagator::visitCallInst(CallInst &I) {
     Tys[3] = I.getArgOperand(3)->getType();
     FunctionType *FTy = FunctionType::get(I.getType(), Tys, false);
     Module *M = I.getParent()->getParent()->getParent();
-    Constant *NewF = nullptr;
+    IGCLLVM::Constant NewF = nullptr;
     switch (SrcPtrTy->getAddressSpace()) {
     case ADDRESS_SPACE_PRIVATE:
       NewF =

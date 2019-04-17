@@ -24,12 +24,19 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-#if LLVM_VERSION_MAJOR == 4
-#include "llvm4/Upgrader.h"
-#elif LLVM_VERSION_MAJOR == 7
-#include "llvm7/Upgrader.h"
-#elif LLVM_VERSION_MAJOR == 8
-#include "llvm8/Upgrader.h"
-#elif LLVM_VERSION_MAJOR == 9
-#include "llvm9/Upgrader.h"
+#ifndef IGCLLVM_IR_CONSTANT_H
+#define IGCLLVM_IR_CONSTANT_H
+
+#include <llvm/IR/Constant.h>
+#include <llvm/IR/DerivedTypes.h>
+
+namespace IGCLLVM
+{
+#if LLVM_VERSION_MAJOR <= 8
+    using Constant = llvm::Constant*;
+#else
+    using Constant = llvm::FunctionCallee;
+#endif
+}
+
 #endif

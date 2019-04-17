@@ -853,8 +853,10 @@ bool StreamEmitter::EmitDwarfFileDirective(unsigned fileNo, StringRef directory,
 {
 #if LLVM_VERSION_MAJOR == 4
     return (m_pMCStreamer->EmitDwarfFileDirective(fileNo, directory, filename, cuID) != 0);
-#elif LLVM_VERSION_MAJOR >= 7
+#elif LLVM_VERSION_MAJOR == 7 || LLVM_VERSION_MAJOR == 8
     return (m_pMCStreamer->EmitDwarfFileDirective(fileNo, directory, filename, nullptr, llvm::None, cuID) != 0);
+#elif LLVM_VERSION_MAJOR >= 9
+    return (m_pMCStreamer->EmitDwarfFileDirective(fileNo, directory, filename, llvm::None, llvm::None, cuID) != 0);
 #endif
 }
 

@@ -509,9 +509,11 @@ IGCLLVM::AttributeSet GenISAIntrinsic::getGenIntrinsicAttributes(LLVMContext& C,
     return getAttributes(C, (GenISAIntrinsic::ID)(id - 1));
 }
 
-Function *GenISAIntrinsic::getDeclaration(Module *M, GenISAIntrinsic::ID id, ArrayRef<Type*> Tys) {
+Function *GenISAIntrinsic::getDeclaration(Module *Module, GenISAIntrinsic::ID id, ArrayRef<Type*> Tys) {
     // There can never be multiple globals with the same name of different types,
     // because intrinsics must be a specific type.
+    IGCLLVM::Module* M = (IGCLLVM::Module*)Module;
+
     Function *F = 
         cast<Function>(M->getOrInsertFunction(getName((GenISAIntrinsic::ID)(id-Intrinsic::num_intrinsics), Tys),
                        getType(M->getContext(), 

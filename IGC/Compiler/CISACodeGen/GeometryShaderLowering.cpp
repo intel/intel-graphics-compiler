@@ -31,6 +31,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/LLVMUtils.h"
 
 #include "common/LLVMWarningsPush.hpp"
+
+#include <llvmWrapper/IR/Module.h>
+
 #include <llvm/IR/PassManager.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Verifier.h>
@@ -138,7 +141,7 @@ private:
 
     static char         ID;
     /// Pointer to the module the processed function is a part of.
-    llvm::Module*       m_pModule;
+    IGCLLVM::Module*       m_pModule;
     /// Convenience shorthand for floating point zero value.
     llvm::Value*        m_fpzero;
     /// Keeps instructions that should be removed from the list at the end of runOnFunction().
@@ -209,7 +212,7 @@ bool GeometryShaderLowering::runOnFunction(llvm::Function &function)
     {
         return false;
     }
-    m_pModule = function.getParent();
+    m_pModule = (IGCLLVM::Module*)function.getParent();
     auto pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     // get the GS properties from the analysis pass
     m_gsProps = &getAnalysis<CollectGeometryShaderProperties>();

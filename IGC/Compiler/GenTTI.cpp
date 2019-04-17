@@ -394,7 +394,11 @@ bool GenIntrinsicsTTIImpl::isProfitableToHoist(Instruction *I)
     return BaseT::isProfitableToHoist(I);
 }
 
-unsigned GenIntrinsicsTTIImpl::getCallCost(const Function *F, ArrayRef<const Value *> Arguments) {
+unsigned GenIntrinsicsTTIImpl::getCallCost(const Function *F, ArrayRef<const Value *> Arguments
+#if LLVM_VERSION_MAJOR >= 9
+    , const User *U
+#endif
+) {
     IGC::CodeGenContext *CGC = this->ctx;
     if (!CGC->enableFunctionCall() && !GenISAIntrinsic::isIntrinsic(F) &&
         !F->isIntrinsic()) {
@@ -411,7 +415,11 @@ unsigned GenIntrinsicsTTIImpl::getCallCost(const Function *F, ArrayRef<const Val
         unsigned FuncSize = countTotalInstructions(F, false);
         return TargetTransformInfo::TCC_Basic * FuncSize;
     }
-    return BaseT::getCallCost(F, Arguments);
+    return BaseT::getCallCost(F, Arguments
+#if LLVM_VERSION_MAJOR >= 9
+        , U
+#endif
+    );
 }
 
 } // namespace llvm

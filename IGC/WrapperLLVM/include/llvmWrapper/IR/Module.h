@@ -24,12 +24,34 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-#if LLVM_VERSION_MAJOR == 4
-#include "llvm4/Upgrader.h"
-#elif LLVM_VERSION_MAJOR == 7
-#include "llvm7/Upgrader.h"
-#elif LLVM_VERSION_MAJOR == 8
-#include "llvm8/Upgrader.h"
-#elif LLVM_VERSION_MAJOR == 9
-#include "llvm9/Upgrader.h"
+#ifndef IGCLLVM_IR_MODULE_H
+#define IGCLLVM_IR_MODULE_H
+
+#include <llvm/IR/Module.h>
+#include "Attributes.h"
+
+namespace IGCLLVM
+{
+#if LLVM_VERSION_MAJOR <= 8
+	using llvm::Module;
+#else
+	class Module : public llvm::Module
+	{
+    public:
+        Module(llvm::StringRef ModuleID, llvm::LLVMContext& C)
+            : llvm::Module(ModuleID, C)
+        { }
+
+		inline llvm::Value* getOrInsertFunction(llvm::StringRef Name, llvm::FunctionType *Ty) 
+		{
+            return llvm::Module::getOrInsertFunction(Name, Ty).getCallee();
+		}
+        inline llvm::Value* getOrInsertFunction(llvm::StringRef Name, llvm::FunctionType *Ty, IGCLLVM::AttributeSet AttributeList)
+        {
+            return llvm::Module::getOrInsertFunction(Name, Ty, AttributeList).getCallee();
+        }
+    };
+#endif
+}
+
 #endif

@@ -29,6 +29,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/MetaDataUtilsWrapper.h"
 
 #include "common/LLVMWarningsPush.hpp"
+
+#include <llvmWrapper/IR/Module.h>
+
 #include <llvm/Pass.h>
 #include <llvm/IR/InstVisitor.h>
 #include "common/LLVMWarningsPop.hpp"
@@ -139,7 +142,7 @@ namespace IGC
                                              llvm::Value *writeOffset, llvm::BasicBlock *bblock);
 
     private:
-        llvm::Module        *m_module;
+        IGCLLVM::Module        *m_module;
         llvm::LLVMContext   *m_context;
         llvm::Function      *m_atomicAddFunc;
         unsigned int         m_stringIndex;
