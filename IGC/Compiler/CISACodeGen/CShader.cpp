@@ -227,10 +227,10 @@ void CShader::AddEpilogue(llvm::ReturnInst* ret)
 CVariable* CShader::CreateSP(bool ptr64bits)
 {
     // create argument-value register, limited to 12 GRF
-    m_ARGV = GetNewVariable(getGRFSize() * 3, ISA_TYPE_D, EALIGN_GRF, false, 1);
+    m_ARGV = GetNewVariable(getGRFSize() * 3, ISA_TYPE_D, getGRFAlignment(), false, 1);
     encoder.GetVISAPredefinedVar(m_ARGV, PREDEFINED_ARG);
     // create return-value register, limited to 4 GRF
-    m_RETV = GetNewVariable(getGRFSize(), ISA_TYPE_D, EALIGN_GRF, false, 1);
+    m_RETV = GetNewVariable(getGRFSize(), ISA_TYPE_D, getGRFAlignment(), false, 1);
     encoder.GetVISAPredefinedVar(m_RETV, PREDEFINED_RET);
     // create stack-pointer register
     if (ptr64bits) {
@@ -572,7 +572,7 @@ CVariable* CShader::GetNULL()
 {
     if (!m_NULL)
     {
-        m_NULL = new (Allocator)CVariable(2, true, ISA_TYPE_D, EVARTYPE_GENERAL, EALIGN_GRF, false, 1);
+        m_NULL = new (Allocator)CVariable(2, true, ISA_TYPE_D, EVARTYPE_GENERAL, EALIGN_DWORD, false, 1);
         encoder.GetVISAPredefinedVar(m_NULL, PREDEFINED_NULL);
     }
     return m_NULL;
@@ -582,7 +582,7 @@ CVariable* CShader::GetTSC()
 {
     if(!m_TSC)
     {
-        m_TSC = new (Allocator) CVariable(2, true, ISA_TYPE_D, EVARTYPE_GENERAL, EALIGN_GRF, false, 1);
+        m_TSC = new (Allocator) CVariable(2, true, ISA_TYPE_D, EVARTYPE_GENERAL, EALIGN_DWORD, false, 1);
         encoder.GetVISAPredefinedVar(m_TSC, PREDEFINED_TSC);
     }
     return m_TSC;
@@ -592,7 +592,7 @@ CVariable* CShader::GetSR0()
 {
     if(!m_SR0)
     {
-        m_SR0 = GetNewVariable(4, ISA_TYPE_UD, EALIGN_GRF, true);
+        m_SR0 = GetNewVariable(4, ISA_TYPE_UD, EALIGN_DWORD, true);
         encoder.GetVISAPredefinedVar(m_SR0, PREDEFINED_SR0);
     }
     return m_SR0;
@@ -602,7 +602,7 @@ CVariable* CShader::GetCR0()
 {
     if (!m_CR0)
     {
-        m_CR0 = GetNewVariable(3, ISA_TYPE_UD, EALIGN_GRF, true);
+        m_CR0 = GetNewVariable(3, ISA_TYPE_UD, EALIGN_DWORD, true);
         encoder.GetVISAPredefinedVar(m_CR0, PREDEFINED_CR0);
     }
     return m_CR0;
@@ -612,7 +612,7 @@ CVariable* CShader::GetCE0()
 {
     if(!m_CE0)
     {
-        m_CE0 = GetNewVariable(1, ISA_TYPE_UD, EALIGN_GRF, true);
+        m_CE0 = GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true);
         encoder.GetVISAPredefinedVar(m_CE0, PREDEFINED_CE0);
     }
     return m_CE0;
@@ -622,7 +622,7 @@ CVariable* CShader::GetDBG()
 {
     if (!m_DBG)
     {
-        m_DBG = GetNewVariable(2, ISA_TYPE_D, EALIGN_GRF, true);
+        m_DBG = GetNewVariable(2, ISA_TYPE_D, EALIGN_DWORD, true);
         encoder.GetVISAPredefinedVar(m_DBG, PREDEFINED_DBG);
     }
     return m_DBG;
@@ -742,7 +742,7 @@ CVariable*  CShader::GetNewVariable(const CVariable* from)
 
 CVariable* CShader::GetNewAddressVariable(uint16_t nbElement, VISA_Type type, bool isUniform, bool isVectorUniform)
 {
-    CVariable* var = new (Allocator) CVariable(nbElement, isUniform, type, EVARTYPE_ADDRESS, EALIGN_GRF, isVectorUniform, 1);
+    CVariable* var = new (Allocator) CVariable(nbElement, isUniform, type, EVARTYPE_ADDRESS, EALIGN_DWORD, isVectorUniform, 1);
     encoder.CreateVISAVar(var);
     return var;
 }
@@ -1869,7 +1869,7 @@ CVariable *CShader::getOrCreateReturnSymbol(llvm::Function *F)
     {
         nElts *= (uint16_t)retType->getVectorNumElements();
     }
-    e_alignment align = EALIGN_GRF;
+    e_alignment align = getGRFAlignment();
     CVariable *var = GetNewVariable(nElts, type, align, /*uniform*/false, m_numberInstance);
     globalSymbolMapping.insert(std::make_pair(F, var));
     return var;
@@ -1964,7 +1964,7 @@ CVariable* CShader::getOrCreateArgumentSymbol(llvm::Argument *Arg, bool useStack
         // GetPreferredAlignment treats all arguments as kernel ones, which have
         // predefined alignments; but this is not true for subroutines.
         // Conservatively use GRF aligned.
-        e_alignment align = EALIGN_GRF;
+        e_alignment align = getGRFAlignment();
         var = GetNewVariable(nElts, type, align, /*isUniform*/ false, m_numberInstance);
     }
     pSymMap->insert(std::make_pair(Arg, var));
@@ -2003,7 +2003,7 @@ CVariable* CShader::getOrCreateArgSymbolForIndirectCall(llvm::CallInst* cInst, u
         // GetPreferredAlignment treats all arguments as kernel ones, which have
         // predefined alignments; but this is not true for subroutines.
         // Conservatively use GRF aligned.
-        e_alignment align = EALIGN_GRF;
+        e_alignment align = getGRFAlignment();
         var = GetNewVariable(nElts, type, align, /*isUniform*/ false, m_numberInstance);
     }
     else

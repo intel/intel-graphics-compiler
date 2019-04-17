@@ -1850,7 +1850,7 @@ void EmitPass::EmitFPToIntWithSat(bool isUnsigned, bool needBitCast, VISA_Type t
 
     CVariable *dst = m_destination;
     if (type != m_destination->GetType()) {
-        dst = m_currShader->GetNewVariable(dst->GetNumberElement(), type, EALIGN_GRF, dst->IsUniform());
+        dst = m_currShader->GetNewVariable(dst->GetNumberElement(), type, m_currShader->getGRFAlignment(), dst->IsUniform());
     }
     else if (needBitCast) {
         dst = m_currShader->BitCast(dst, GetUnsignedIntegerType(dst->GetType()));
@@ -4765,7 +4765,7 @@ void EmitPass::emitSimdBlockWrite(llvm::Instruction* inst, llvm::Value* ptrVal)
         SIMDMode simdmode = useQW ? SIMDMode::SIMD1 : SIMDMode::SIMD2;
 
         CVariable* eOffset = src;
-        eOffset = ReAlignUniformVariable(src, EALIGN_GRF);
+        eOffset = ReAlignUniformVariable(src, m_currShader->getGRFAlignment());
         CVariable* ScatterOff = eOffset;
         if (activelanes > 1)
         {
@@ -4947,7 +4947,7 @@ void EmitPass::emitSimdBlockRead(llvm::Instruction* inst, llvm::Value* ptrVal)
         SIMDMode simdmode = useQW ? SIMDMode::SIMD1 : SIMDMode::SIMD2;
 
         CVariable* eOffset = src;
-        eOffset = ReAlignUniformVariable(src, EALIGN_GRF);
+        eOffset = ReAlignUniformVariable(src, m_currShader->getGRFAlignment());
         CVariable* gatherOff = eOffset;
         if (activelanes > 1)
         {
@@ -5301,7 +5301,7 @@ void EmitPass::emitSimdMediaBlockRead(llvm::Instruction* inst)
     CVariable* pTempDest = m_currShader->GetNewVariable(
         blockRegSize,
         m_destination->GetType(),
-        EALIGN_GRF);
+        m_currShader->getGRFAlignment());
 
     CVariable* xVar = GetSymbol(xOffset);
     CVariable* yVar = GetSymbol(yOffset);
@@ -5475,7 +5475,7 @@ void EmitPass::emitSimdMediaBlockWrite(llvm::Instruction* inst)
         CVariable* tempdst = m_currShader->GetNewVariable(
             (nbElements * numLanes(SIMDMode::SIMD8)),
             data->GetType(),
-            EALIGN_GRF);
+            m_currShader->getGRFAlignment());
 
         // Split the data.
         // mov (8) r22.0<1>:d r14.0<8;8,1>:d {Align1, Q1, Compacted}
@@ -6430,7 +6430,8 @@ void EmitPass::emitGather4Instruction(SamplerGatherIntrinsic* inst)
         CVariable* src = GetSymbol(inst->getOperand(i));
         if (src->IsUniform())
         {
-            CVariable* srcReg = m_currShader->GetNewVariable(numLanes(m_currShader->m_SIMDSize), ISA_TYPE_F, EALIGN_GRF);
+            CVariable* srcReg = m_currShader->GetNewVariable(numLanes(m_currShader->m_SIMDSize), ISA_TYPE_F, 
+                m_currShader->getGRFAlignment());
             m_encoder->Copy(srcReg, src);
             m_encoder->Push();
             src = srcReg;
@@ -7594,7 +7595,7 @@ void EmitPass::emitGEP(llvm::Instruction* I)
     CVariable* vTmp = m_currShader->GetNewVariable(
         numLanes(m_currShader->m_SIMDSize),
         PtrTy,
-        EALIGN_GRF,
+        m_currShader->getGRFAlignment(),
         m_destination->IsUniform());
 
     gep_type_iterator GTI = gep_type_begin(GEP);
@@ -7793,7 +7794,7 @@ void EmitPass::emitExtract(llvm::Instruction* inst)
         CVariable* pOffset2 = m_currShader->GetNewVariable(
             pIndexVar->IsUniform() ? 1 : numLanes(m_currShader->m_SIMDSize),
             ISA_TYPE_UW,
-            pIndexVar->IsUniform() ? EALIGN_WORD : EALIGN_GRF,
+            pIndexVar->IsUniform() ? EALIGN_WORD : EALIGN_HWORD,
             pIndexVar->IsUniform());
 
         // We bitcast the address as uw so it is an "unpacked" uw
@@ -7814,7 +7815,7 @@ void EmitPass::emitExtract(llvm::Instruction* inst)
             pOffset3 = m_currShader->GetNewVariable(
                 numLanes(m_currShader->m_SIMDSize),
                 ISA_TYPE_UW,
-                EALIGN_GRF,
+                EALIGN_HWORD,
                 false);
             CVariable *OffsetVar = getOrCreatePerLaneOffsetVariable(vecTypeSize);
             m_encoder->Add(pOffset3, pOffset2, OffsetVar);
@@ -7893,7 +7894,7 @@ void EmitPass::emitLoad3DInner(LdRawIntrinsic* inst, ResourceDescriptor& resourc
             uint numLane = (numElement == 3) ? 4 : numElement;
             // there is no oword-block read for SLM, also we expect loading only up to 4-dwords
             CVariable* imm = m_currShader->ImmToVariable(0x0C840, ISA_TYPE_UV);
-            CVariable* srcTmp = m_currShader->GetNewVariable((uint16_t)numLane, ISA_TYPE_UD, EALIGN_GRF, true);
+            CVariable* srcTmp = m_currShader->GetNewVariable((uint16_t)numLane, ISA_TYPE_UD, m_currShader->getGRFAlignment(), true);
             m_encoder->SetNoMask();
             m_encoder->SetUniformSIMDSize(lanesToSIMDMode(numLane));
             m_encoder->Add(srcTmp, src_offset, imm);
@@ -7901,7 +7902,7 @@ void EmitPass::emitLoad3DInner(LdRawIntrinsic* inst, ResourceDescriptor& resourc
             CVariable* dstTmp = m_destination;
             if (numElement != numLane)
             {
-                dstTmp = m_currShader->GetNewVariable((uint16_t)numLane, ISA_TYPE_D, EALIGN_GRF, true);
+                dstTmp = m_currShader->GetNewVariable((uint16_t)numLane, ISA_TYPE_D, m_currShader->getGRFAlignment(), true);
             }
             m_encoder->SetNoMask();
             m_encoder->SetUniformSIMDSize(lanesToSIMDMode(numLane));
@@ -8407,7 +8408,7 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
             CVariable *ReplaceArg = m_currShader->GetNewVariable(
                 numLanes(m_currShader->m_dispatchSize),
                 ISA_TYPE_W,
-                EALIGN_GRF, false, 1);
+                EALIGN_HWORD, false, 1);
             CVariable* one = m_currShader->ImmToVariable(1, ISA_TYPE_W);
             CVariable* zero = m_currShader->ImmToVariable(0, ISA_TYPE_W);
             m_encoder->Select(Src, ReplaceArg, one, zero);
@@ -8562,7 +8563,7 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
     else if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer))
     {
         CVariable* funcAddr = GetSymbol(inst->getCalledValue());
-        CVariable* truncAddr = m_currShader->GetNewVariable(1, ISA_TYPE_UD, EALIGN_GRF, true);
+        CVariable* truncAddr = m_currShader->GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true);
         m_encoder->Cast(truncAddr, funcAddr);
         m_encoder->Push();
         m_encoder->IndirectStackCall(nullptr, truncAddr, argSizeInGRF, retSizeInGRF);
@@ -8647,7 +8648,7 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
                             CVariable* pTempDst = m_currShader->GetNewVariable(
                                 SIZE_OWORD / elemSize,
                                 Dst->GetType(),
-                                EALIGN_GRF, true, 1);
+                                m_currShader->getGRFAlignment(), true, 1);
                             m_encoder->OWLoadA64(pTempDst, pTempVar, SIZE_OWORD);
                             m_encoder->Push();
                             emitVectorCopy(Dst, pTempDst, RdSize / elemSize, RdBytes, 0);
@@ -8682,7 +8683,7 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
                             CVariable* pTempDst = m_currShader->GetNewVariable(
                                 SIZE_OWORD / dstElemSize,
                                 Dst->GetType(),
-                                EALIGN_GRF, true, 1);
+                                m_currShader->getGRFAlignment(), true, 1);
                             m_encoder->OWLoad(pTempDst, resource, pTempVar, false, RdSize);
                             m_encoder->Push();
                             emitVectorCopy(Dst, pTempDst, RdSize / dstElemSize, RdBytes, 0);
@@ -8826,7 +8827,7 @@ void EmitPass::emitStackFuncEntry(Function *F, bool ptr64bits)
                     LdDst = m_currShader->GetNewVariable(
                         numLanes(m_currShader->m_dispatchSize),
                         ISA_TYPE_W,
-                        EALIGN_GRF, false, 1);
+                        EALIGN_HWORD, false, 1);
                 }
                 if (RdSize >= SIZE_OWORD)
                 {
@@ -8843,7 +8844,7 @@ void EmitPass::emitStackFuncEntry(Function *F, bool ptr64bits)
                         CVariable* pTempDst = m_currShader->GetNewVariable(
                             SIZE_OWORD / ldDstElemSize,
                             LdDst->GetType(),
-                            EALIGN_GRF, true, 1);
+                            m_currShader->getGRFAlignment(), true, 1);
                         m_encoder->OWLoadA64(pTempDst, pTempVar, SIZE_OWORD);
                         m_encoder->Push();
                         emitVectorCopy(LdDst, pTempDst, RdSize / ldDstElemSize, DstOffset, 0);
@@ -8881,7 +8882,7 @@ void EmitPass::emitStackFuncEntry(Function *F, bool ptr64bits)
                     LdDst = m_currShader->GetNewVariable(
                         numLanes(m_currShader->m_dispatchSize),
                         ISA_TYPE_W,
-                        EALIGN_GRF, false, 1);
+                        EALIGN_HWORD, false, 1);
                 }
                 if (RdSize >= SIZE_OWORD)
                 {
@@ -8898,7 +8899,7 @@ void EmitPass::emitStackFuncEntry(Function *F, bool ptr64bits)
                         CVariable* pTempDst = m_currShader->GetNewVariable(
                             SIZE_OWORD / ldDstElemSize,
                             LdDst->GetType(),
-                            EALIGN_GRF, true, 1);
+                            m_currShader->getGRFAlignment(), true, 1);
                         m_encoder->OWLoad(pTempDst, resource, pTempVar, false, RdSize);
                         m_encoder->Push();
                         emitVectorCopy(Dst, pTempDst, RdSize / ldDstElemSize, DstOffset, 0);
@@ -9787,7 +9788,7 @@ CVariable* EmitPass::BroadcastAndTruncPointer(CVariable* pVar)
         CVariable* pTrunc = m_currShader->GetNewVariable(
             numLanes(m_currShader->m_SIMDSize),
             ISA_TYPE_UD,
-            EALIGN_GRF);
+            m_currShader->getGRFAlignment());
 
         m_encoder->Cast(pTrunc, pVar);
         m_encoder->Push();

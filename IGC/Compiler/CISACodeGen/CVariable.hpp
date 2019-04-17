@@ -130,8 +130,8 @@ public:
         case 4: return EALIGN_DWORD;
         case 8: return EALIGN_QWORD;
         case 16: return EALIGN_OWORD;
-        case 32: return EALIGN_GRF;
-        case 64: return EALIGN_2GRF;
+        case 32: return EALIGN_HWORD;
+        case 64: return EALIGN_32WORD;
         default:
             break;
         }

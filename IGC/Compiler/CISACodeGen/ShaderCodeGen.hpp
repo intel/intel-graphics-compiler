@@ -375,6 +375,8 @@ public:
 
     uint32_t getGRFSize() const { return m_Platform->getGRFSize(); }
 
+    e_alignment getGRFAlignment() const { return CVariable::getAlignment(getGRFSize()); }
+
 private:
     // Return DefInst's CVariable if it could be reused for UseInst, and return
     // nullptr otherwise.

@@ -66,8 +66,10 @@ enum e_alignment : unsigned char
     EALIGN_DWORD,
     EALIGN_QWORD,
     EALIGN_OWORD,
-    EALIGN_GRF,
-    EALIGN_2GRF,
+    EALIGN_HWORD,
+    EALIGN_GRF = EALIGN_HWORD,
+    EALIGN_32WORD,
+    EALIGN_2GRF = EALIGN_32WORD,
     EALIGN_AUTO
 };
 
