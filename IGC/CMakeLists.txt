@@ -3326,8 +3326,10 @@ else()
         "LLVMSupport"
         "LLVMDemangle"
         )
-
-    if(LLVM_VERSION_MAJOR EQUAL 8)
+    
+    # Temporary: we have instruction combining copy for each LLVM version.
+    # This will be removed after we upstream fixes (e.g. removal of ode sinking in inst combining).
+    if(LLVM_VERSION_MAJOR EQUAL 9)
         list(APPEND IGC_BUILD__LLVM_LIBS_TO_LINK
           "LLVMInstCombine"
           )

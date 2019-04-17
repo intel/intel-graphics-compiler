@@ -31,17 +31,17 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/PassManager.h"
 #include "Compiler/InitializePasses.h"
 
-#if LLVM_VERSION_MAJOR <= 7
+#if LLVM_VERSION_MAJOR <= 8
 namespace llvm {
     class FunctionPass;
 }
-#elif LLVM_VERSION_MAJOR >= 8
+#elif LLVM_VERSION_MAJOR >= 9
 #include "llvm/Transforms/InstCombine/InstCombine.h"
 #endif
 
 namespace IGC
 {
-#if LLVM_VERSION_MAJOR <= 7
+#if LLVM_VERSION_MAJOR <= 8
     class IGCInstructionCombiningPass : public llvm::FunctionPass {
         llvm::InstCombineWorklist Worklist;
         const bool ExpensiveCombines;
@@ -60,7 +60,7 @@ namespace IGC
 
 
     llvm::FunctionPass* createIGCInstructionCombiningPass();
-#elif LLVM_VERSION_MAJOR >= 8
+#elif LLVM_VERSION_MAJOR >= 9
     inline llvm::FunctionPass* createIGCInstructionCombiningPass()
     {
         return llvm::createInstructionCombiningPass(false);
