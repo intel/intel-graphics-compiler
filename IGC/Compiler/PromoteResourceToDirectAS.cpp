@@ -117,7 +117,7 @@ Value* GetBufferOperand(Instruction* inst)
             case GenISAIntrinsic::GenISA_floatatomicraw:
             case GenISAIntrinsic::GenISA_icmpxchgatomicraw:
             case GenISAIntrinsic::GenISA_fcmpxchgatomicraw:
-            case GenISAIntrinsic::GenISA_simdBlockRead:
+            case GenISAIntrinsic::GenISA_simdBlockRead: 
                 pBuffer = intr->getOperand(0);
                 break;
             case GenISAIntrinsic::GenISA_intatomicrawA64:
@@ -267,10 +267,10 @@ void PromoteResourceToDirectAS::PromoteSamplerTextureToDirectAS(GenIntrinsicInst
     BufferAccessType accTy;
     bool canPromote = false;
     Value* arrayIndex = nullptr;
-
+    
     std::vector<Value*> instList;
     Value* srcPtr = IGC::TracePointerSource(resourcePtr, false, true, instList);
-
+    
     if (srcPtr)
     {
         if (auto alloca = llvm::dyn_cast<AllocaInst>(srcPtr))
@@ -278,8 +278,8 @@ void PromoteResourceToDirectAS::PromoteSamplerTextureToDirectAS(GenIntrinsicInst
             arrayIndex = FindArrayIndex(instList, builder);
             if (arrayIndex != nullptr)
             {
-                // TODO: We could read igc.read_only_array metadata attached to alloca.
-                // If not -1, it should contain base index of this array. In this case,
+                // TODO: We could read igc.read_only_array metadata attached to alloca. 
+                // If not -1, it should contain base index of this array. In this case, 
                 // FindArrayBaseArg would not be needed.
 
                 // Find input argument for the first element in this array.
@@ -289,7 +289,7 @@ void PromoteResourceToDirectAS::PromoteSamplerTextureToDirectAS(GenIntrinsicInst
     }
 
     if (srcPtr)
-    {
+    {   
         // Trace the resource pointer.
         // If we can find it, we can promote the indirect access to direct access
         // by encoding the BTI as a direct addrspace
@@ -308,7 +308,7 @@ void PromoteResourceToDirectAS::PromoteSamplerTextureToDirectAS(GenIntrinsicInst
             {
                 assert(m_pCodeGenContext->type == ShaderType::OPENCL_SHADER);
                 ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-                if (modMD->FuncMD.find(function) != modMD->FuncMD.end())
+                if (modMD->FuncMD.find(function) != modMD->FuncMD.end()) 
                 {
                     FunctionMetaData *funcMD = &modMD->FuncMD[function];
                     ResourceAllocMD *resAllocMD = &funcMD->resAllocMD;
@@ -347,7 +347,7 @@ void PromoteResourceToDirectAS::PromoteSamplerTextureToDirectAS(GenIntrinsicInst
 
         addrSpace = IGC::EncodeAS4GFXResource(*bufferId, bufTy, 0);
         PointerType* newptrType = PointerType::get(resourcePtr->getType()->getPointerElementType(), addrSpace);
-
+        
         Value* mutePtr = nullptr;
         if (llvm::isa<llvm::ConstantInt>(bufferId))
         {
@@ -645,7 +645,7 @@ void PromoteResourceToDirectAS::PromoteBufferToDirectAS(Instruction* inst, Value
                 PointerType *ptrType = PointerType::get(pBufferType, directAS);
                 pBuffer = builder.CreateIntToPtr(offsetVal, ptrType);
 
-                unsigned alignment = (unsigned)llvm::cast<llvm::ConstantInt>(pIntr->getOperand(3))->getZExtValue();
+                unsigned alignment = pBufferType->getScalarSizeInBits() / 8;
 
                 // Promote storeraw back to store
                 Value* storeVal = pIntr->getOperand(2);
@@ -761,7 +761,7 @@ void PromoteResourceToDirectAS::GetAccessInstToSrcPointerMap(Instruction* inst, 
         }
         else
             return;
-    }
+    }       
 
     Value* srcPtr = IGC::TracePointerSource(resourcePtr);
 

@@ -304,8 +304,7 @@ Value* CreateStoreRawIntrinsic(StoreInst *inst, Instruction* bufPtr, Value* offs
     {
         bufPtr,
         offsetVal,
-        storeVal,
-        builder.getInt32(storeVal->getType()->getScalarSizeInBits() / 8)
+        storeVal
     };
     Value* st = builder.CreateCall(func, attr);
     return st;

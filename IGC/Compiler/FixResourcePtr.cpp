@@ -357,8 +357,7 @@ Value* FixResourcePtr::CreateStoreIntrinsic(StoreInst *inst, Instruction* bufPtr
     {
         bufPtr,
         offsetVal,
-        storeVal,
-        builder->getInt32(storeVal->getType()->getScalarSizeInBits() / 8)
+        storeVal
     };
     Value* st = builder->CreateCall(l, attr);
     return st;
