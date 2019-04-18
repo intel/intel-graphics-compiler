@@ -75,6 +75,7 @@ namespace IGC
         void visitFPToUIInst(llvm::FPToUIInst& FPUII);
         void visitFPTruncInst(llvm::FPTruncInst &I);
         void visitExtractElementInst(llvm::ExtractElementInst& I);
+        void visitLdptr(llvm::CallInst* inst);
         //
         // IEEE Floating point arithmetic is not associative.  Any pattern
         // match that changes the order or paramters is unsafe.

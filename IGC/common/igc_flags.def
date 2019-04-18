@@ -81,6 +81,7 @@ DECLARE_IGC_REGKEY(DWORD, DisableAttributePush,          0, "Bit mask to disable
 DECLARE_IGC_REGKEY(bool, DisableSimplePushWithDynamicUniformBuffers, false,"Disable Simple Push Constants Optimization for dynamic uniform buffers.")
 DECLARE_IGC_REGKEY(int, forcePushConstantMode,  0, "set the push constant mode, 0 is default, 1 is simple push, 2 is gather constant")
 DECLARE_IGC_REGKEY(bool, DisableConstantCoalescing,     false, "Setting this to 1/true adds a compiler switch to disable constant coalesing")
+DECLARE_IGC_REGKEY(bool, UseHDCTypedRead,                0, "Setting this changes the ld to type read when index comes from thread id")
 DECLARE_IGC_REGKEY(bool, DisableURBWriteMerge,          false, "Setting this to 1/true adds a compiler switch to disable URB write merge")
 DECLARE_IGC_REGKEY(bool, DisableEmptyBlockRemoval,      false, "Setting this to 1/true adds a compiler switch to disable empty block optimization")
 DECLARE_IGC_REGKEY(bool, DisableSIMD32Slicing,          false, "Setting this to 1/true adds a compiler switch to disable emitting SIMD32 VISA code in slices")

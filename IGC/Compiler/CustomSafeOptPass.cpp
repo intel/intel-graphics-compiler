@@ -346,6 +346,15 @@ void CustomSafeOptPass::visitCallInst(CallInst &C)
             break;
         }
 
+        case GenISAIntrinsic::GenISA_ldptr:
+        {
+            if (IGC_IS_FLAG_ENABLED(UseHDCTypedRead))
+            {
+                visitLdptr(inst);
+            }
+            break;
+        }
+
         default:
             break;
         }
@@ -732,6 +741,86 @@ void CustomSafeOptPass::visitBinaryOperator(BinaryOperator &I)
             }
         }
     }
+}
+
+void IGC::CustomSafeOptPass::visitLdptr(llvm::CallInst* inst)
+{
+    // change
+    // % 10 = call fast <4 x float> @llvm.genx.GenISA.ldptr.v4f32.p196608v4f32(i32 %_s1.i, i32 %_s14.i, i32 0, i32 0, <4 x float> addrspace(196608)* null, i32 0, i32 0, i32 0), !dbg !123
+    // to
+    // % 10 = call fast <4 x float> @llvm.genx.GenISA.typedread.p196608v4f32(<4 x float> addrspace(196608)* null, i32 %_s1.i, i32 %_s14.i, i32 0, i32 0), !dbg !123
+    // when the index comes directly from threadid
+
+    bool isSrc2Src3Zero = 0;
+    if (Constant *src2 = dyn_cast<Constant>(inst->getOperand(2)))
+    {
+        if (Constant *src3 = dyn_cast<Constant>(inst->getOperand(3)))
+        {
+            if (src2->isZeroValue() && src3->isZeroValue())
+            {
+                isSrc2Src3Zero = true;
+            }
+        }
+    }
+
+    if (!isSrc2Src3Zero)
+    {
+        return;
+    }
+
+    Instruction* AddInst0 = dyn_cast<Instruction>(inst->getOperand(0));
+    Instruction* AddInst1 = dyn_cast<Instruction>(inst->getOperand(1));
+    if (!AddInst0 || !AddInst1 || 
+        AddInst0->getOpcode() != Instruction::Add || 
+        AddInst1->getOpcode() != Instruction::Add)
+    {
+        return;
+    }
+
+    Instruction* ShlInst0 = dyn_cast<Instruction>(AddInst0->getOperand(0));
+    Instruction* ShlInst1 = dyn_cast<Instruction>(AddInst1->getOperand(0));
+    if (!ShlInst0 || !ShlInst1 ||
+        ShlInst0->getOpcode() != Instruction::Shl || 
+        ShlInst1->getOpcode() != Instruction::Shl)
+    {
+        return;
+    }
+
+    BitCastInst* bitcastInst0 = dyn_cast<BitCastInst>(ShlInst0->getOperand(0));
+    BitCastInst* bitcastInst1 = dyn_cast<BitCastInst>(ShlInst1->getOperand(0));
+    if (!bitcastInst0 || !bitcastInst1)
+    {
+        return;
+    }
+
+    GenIntrinsicInst *CI0 = dyn_cast<GenIntrinsicInst>(bitcastInst0->getOperand(0));
+    GenIntrinsicInst *CI1 = dyn_cast<GenIntrinsicInst>(bitcastInst1->getOperand(0));
+    if (!CI0 || !CI1 ||
+        CI0->getIntrinsicID() != GenISAIntrinsic::GenISA_DCL_SystemValue ||
+        CI1->getIntrinsicID() != GenISAIntrinsic::GenISA_DCL_SystemValue)
+    {
+        return;
+    }
+
+    llvm::IRBuilder<> builder(inst);
+    Module *M = inst->getParent()->getParent()->getParent();
+
+    Function* pLdIntrinsic = llvm::GenISAIntrinsic::getDeclaration(
+            M,
+            GenISAIntrinsic::GenISA_typedread,
+        inst->getOperand(4)->getType());
+
+    SmallVector<Value*, 5> ld_FunctionArgList(5);
+    ld_FunctionArgList[0] = inst->getOperand(4);
+    ld_FunctionArgList[1] = inst->getOperand(0);
+    ld_FunctionArgList[2] = inst->getOperand(1);
+    ld_FunctionArgList[3] = inst->getOperand(2);
+    ld_FunctionArgList[4] = inst->getOperand(3);
+
+    llvm::CallInst* pNewCallInst = builder.CreateCall(
+        pLdIntrinsic, ld_FunctionArgList);
+
+    inst->replaceAllUsesWith(pNewCallInst);
 }
 
 void IGC::CustomSafeOptPass::visitSampleBptr(llvm::SampleIntrinsic* sampleInst)
