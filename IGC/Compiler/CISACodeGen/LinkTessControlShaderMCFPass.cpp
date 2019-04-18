@@ -346,22 +346,31 @@ namespace IGC
         /* Instance Count
         **         This field determines the number of threads(minus one) spawned per input patch.
 
-        **         If the HS kernel uses a barrier function, software must restrict the Instance Count 
-        **         to the number of threads that can be simultaneously active within a subslice.Factors 
-        **         which must be considered includes scratch memory availability.
+        **         If the HS kernel uses a barrier function, software must restrict the Instance Count
+        **         to the number of threads that can be simultaneously active within a subslice.
+        **         Factors which must be considered includes scratch memory availability.
         **         Value             Description
         **         [0, 15]             representing[1, 16] instances */
 
-        llvm::GlobalVariable* pGlobal = GetModule()->getGlobalVariable("TessInputControlPointCount");
-        unsigned int inputControlPointCount = int_cast<unsigned int>(llvm::cast<llvm::ConstantInt>(pGlobal->getInitializer())->getZExtValue());
+        // Use HS single patch if WA exists and input control points >= 29 as there are not enough registers for push constants
+        bool useSinglePatch = false;
+        if (pCodeGenContext->platform.WaDispatchGRFHWIssueInGSAndHSUnit())
+        {
+            llvm::GlobalVariable* pGlobal = GetModule()->getGlobalVariable("TessInputControlPointCount");
+            if (pGlobal && pGlobal->hasInitializer())
+            {
+                unsigned int inputControlPointCount = int_cast<unsigned int>(llvm::cast<llvm::ConstantInt>(pGlobal->getInitializer())->getZExtValue());
+                if (inputControlPointCount >= 29)
+                {
+                    useSinglePatch = true;
+                }
+            }
+        }
 
-        // Use HS single patch if WA exists and input control points >= 29 as not enough registers for push constants
-        bool useSinglePatch = !(pCodeGenContext->platform.WaDispatchGRFHWIssueInGSAndHSUnit() && inputControlPointCount >= 29);
-                
         if (pCodeGenContext->platform.useOnlyEightPatchDispatchHS() ||
             (pCodeGenContext->platform.supportHSEightPatchDispatch() &&
             !(m_useMultipleHardwareThread && mOutputControlPointCount >= 16) &&
-            useSinglePatch &&
+            !useSinglePatch &&
             IGC_IS_FLAG_DISABLED(EnableHSSinglePatchDispatch)))
         {
             Constant* cval = llvm::ConstantInt::get(
