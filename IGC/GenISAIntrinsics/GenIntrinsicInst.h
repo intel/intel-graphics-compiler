@@ -513,6 +513,9 @@ public:
     static inline bool classof(const Value *V) {
         return isa<GenIntrinsicInst>(V) && classof(cast<GenIntrinsicInst>(V));
     }
+    inline Value* AlignmentValue() const {
+        return getOperand(3);
+    }
     inline Value* getOffsetValue() const
     {
         return getOperand(1);
@@ -523,6 +526,11 @@ public:
 
     inline void setOffsetValue(Value* V) {
         setOperand(1, V);
+    }
+    inline void setAlignment(unsigned int alignment)
+    {
+        Value* newAlignment = ConstantInt::get(getOperand(3)->getType(), alignment);
+        setOperand(3, newAlignment);
     }
 };
 
