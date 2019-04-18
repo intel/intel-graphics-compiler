@@ -211,30 +211,6 @@ void refNumBasedSort(unsigned int *refNum, unsigned int *index)
     return;
 }
 
-bool BankConflictPass::hasInternalConflict2Srcs(BankConflict *srcBC)
-{
-    if (((srcBC[1] == BANK_CONFLICT_SECOND_HALF_EVEN ||
-        srcBC[1] == BANK_CONFLICT_FIRST_HALF_EVEN) &&
-        (srcBC[2] == BANK_CONFLICT_SECOND_HALF_EVEN ||
-            srcBC[2] == BANK_CONFLICT_FIRST_HALF_EVEN)) ||
-            ((srcBC[1] == BANK_CONFLICT_SECOND_HALF_ODD ||
-                srcBC[1] == BANK_CONFLICT_FIRST_HALF_ODD) &&
-                (srcBC[2] == BANK_CONFLICT_SECOND_HALF_ODD ||
-                    srcBC[2] == BANK_CONFLICT_FIRST_HALF_ODD)))
-    {
-        return true;
-    }
-    if ((srcBC[1] < BANK_CONFLICT_SECOND_HALF_EVEN &&
-        srcBC[2] < BANK_CONFLICT_SECOND_HALF_EVEN) ||
-        (srcBC[1] >= BANK_CONFLICT_SECOND_HALF_EVEN &&
-            srcBC[2] >= BANK_CONFLICT_SECOND_HALF_EVEN))
-    {
-        return true;
-    }
-
-    return false;
-}
-
 bool BankConflictPass::hasInternalConflict3Srcs(BankConflict *srcBC)
 {
     if (((srcBC[0] == BANK_CONFLICT_SECOND_HALF_EVEN ||
@@ -263,106 +239,6 @@ bool BankConflictPass::hasInternalConflict3Srcs(BankConflict *srcBC)
     }
 
     return false;
-}
-
-
-void BankConflictPass::setupBankConflictsForDecls(G4_Declare * dcl_1, G4_Declare * dcl_2,
-    unsigned int offset1, unsigned int offset2,
-    BankConflict &srcBC1, BankConflict &srcBC2,
-    int &bank1RegNum, int &bank2RegNum,
-    float GRFRatio, bool oneGRFBank)
-{
-    ASSERT_USER(srcBC1 == BANK_CONFLICT_NONE, "Wrong Bank initial value");
-    ASSERT_USER(srcBC2 == BANK_CONFLICT_NONE, "Wrong Bank initial value");
-
-    unsigned int regNum1 = dcl_1->getNumRows();
-    unsigned int regNum2 = dcl_2->getNumRows();
-    unsigned int refNum1 = gra.getNumRefs(dcl_1);
-    unsigned int refNum2 = gra.getNumRefs(dcl_2);
-
-    BankConflict bank1 = BANK_CONFLICT_NONE;
-    BankConflict bank2 = BANK_CONFLICT_NONE;
-    bool bank1First = false;
-
-    if (GRFRatio == 1.0)
-    {
-        //For global RA: Try to reduce the size of bank 2
-        if ((float)refNum1 / regNum1 >= (float)refNum2 / regNum2)
-        {
-            bank1 = BANK_CONFLICT_SECOND_HALF_EVEN;
-            bank2 = BANK_CONFLICT_FIRST_HALF_ODD;
-            bank1First = true;
-        }
-        else
-        {
-            bank2 = BANK_CONFLICT_SECOND_HALF_EVEN;
-            bank1 = BANK_CONFLICT_FIRST_HALF_ODD;
-        }
-    }
-    else
-    {
-        //For local RA: Try to balance two banks
-        if (refNum1 >= refNum2)
-        {
-            bank1 = ((bank1RegNum * GRFRatio) > bank2RegNum) ? BANK_CONFLICT_SECOND_HALF_EVEN : BANK_CONFLICT_FIRST_HALF_EVEN;
-            bank2 = (bank1 == BANK_CONFLICT_SECOND_HALF_EVEN) ? BANK_CONFLICT_FIRST_HALF_ODD : BANK_CONFLICT_SECOND_HALF_ODD;
-            bank1First = true;
-        }
-        else
-        {
-            bank2 = (bank1RegNum * GRFRatio) > bank2RegNum ? BANK_CONFLICT_SECOND_HALF_EVEN : BANK_CONFLICT_FIRST_HALF_EVEN;
-            bank1 = (bank2 == BANK_CONFLICT_SECOND_HALF_EVEN) ? BANK_CONFLICT_FIRST_HALF_ODD : BANK_CONFLICT_SECOND_HALF_ODD;
-        }
-    }
-
-    srcBC1 = bank1;
-    srcBC2 = bank2;
-
-    //Adjust only for the single bank allocation
-    if (oneGRFBank)
-    {
-        if ((offset1 + offset2) % 2)
-        {
-            if (bank1First)
-            {
-                bank2 = (bank2 == BANK_CONFLICT_FIRST_HALF_ODD) ? BANK_CONFLICT_FIRST_HALF_EVEN : BANK_CONFLICT_SECOND_HALF_EVEN;
-            }
-            else
-            {
-                bank1 = (bank1 == BANK_CONFLICT_SECOND_HALF_ODD) ? BANK_CONFLICT_SECOND_HALF_EVEN : BANK_CONFLICT_FIRST_HALF_EVEN;
-            }
-        }
-    }
-    else
-    {
-        if ((offset1 / 2 + offset2 / 2) % 2)
-        {
-            if (bank1First)
-            {
-                bank2 = (bank2 == BANK_CONFLICT_FIRST_HALF_ODD) ? BANK_CONFLICT_FIRST_HALF_EVEN : BANK_CONFLICT_SECOND_HALF_EVEN;
-            }
-            else
-            {
-                bank1 = (bank1 == BANK_CONFLICT_SECOND_HALF_ODD) ? BANK_CONFLICT_SECOND_HALF_EVEN : BANK_CONFLICT_FIRST_HALF_EVEN;
-            }
-        }
-    }
-
-    if (bank1 >= BANK_CONFLICT_SECOND_HALF_EVEN)
-    {
-        bank2RegNum += regNum1;
-        bank1RegNum += regNum2;
-    }
-    else
-    {
-        bank1RegNum += regNum1;
-        bank2RegNum += regNum2;
-    }
-
-    gra.setBankConflict(dcl_1, bank1);
-    gra.setBankConflict(dcl_2, bank2);
-
-    return;
 }
 
 void BankConflictPass::setupEvenOddBankConflictsForDecls(G4_Declare * dcl_1, G4_Declare * dcl_2,
@@ -951,7 +827,7 @@ void BankConflictPass::setupBankConflictsForBB(G4_BB* bb,
         GRFRatio = ((float)(numRegLRA - SECOND_HALF_BANK_START_GRF)) / SECOND_HALF_BANK_START_GRF;
     }
 
-    for (std::list<G4_INST*>::reverse_iterator i = bb->rbegin(), rend = bb->rend();
+    for (auto i = bb->rbegin(), rend = bb->rend();
         i != rend;
         i++)
     {
@@ -1018,7 +894,7 @@ bool compareBBLoopLevel(G4_BB* bb1, G4_BB* bb2)
  *        threeSourceCandidate, if there are enough three source instructions
  *        return value, if do bank confliction reduction to RR RA.
  */
-bool BankConflictPass::setupBankConflictsForKernel(G4_Kernel& kernel, bool doLocalRR, bool &threeSourceCandidate, unsigned int numRegLRA, bool &highInternalConflict)
+bool BankConflictPass::setupBankConflictsForKernel(bool doLocalRR, bool &threeSourceCandidate, unsigned int numRegLRA, bool &highInternalConflict)
 {
     BB_LIST orderedBBs;
     unsigned int threeSourceInstNumInKernel = 0;
@@ -1026,7 +902,7 @@ bool BankConflictPass::setupBankConflictsForKernel(G4_Kernel& kernel, bool doLoc
     unsigned int instNumInKernel = 0;
     unsigned int sendInstNumInKernel = 0;
 
-    for (auto curBB : kernel.fg.BBs)
+    for (auto curBB : gra.kernel.fg.BBs)
     {
         orderedBBs.push_back(curBB);
     }
@@ -1041,8 +917,7 @@ bool BankConflictPass::setupBankConflictsForKernel(G4_Kernel& kernel, bool doLoc
 
         unsigned int loopNestLevel = 0;
 
-        setupBankConflictsForBB(bb, threeSourceInstNum, sendInstNum,
-                                                numRegLRA, conflicts);
+        setupBankConflictsForBB(bb, threeSourceInstNum, sendInstNum, numRegLRA, conflicts);
         loopNestLevel = bb->getNestLevel() + 1;
 
         if (threeSourceInstNum)
@@ -1051,7 +926,6 @@ bool BankConflictPass::setupBankConflictsForKernel(G4_Kernel& kernel, bool doLoc
             threeSourceInstNum = threeSourceInstNum * loopNestLevel * BANK_CONFLICT_HEURISTIC_LOOP_ITERATION;
             sendInstNum = sendInstNum * loopNestLevel * BANK_CONFLICT_HEURISTIC_LOOP_ITERATION;
             conflicts = conflicts * loopNestLevel * BANK_CONFLICT_HEURISTIC_LOOP_ITERATION;
-
             internalConflict += conflicts;
             threeSourceInstNumInKernel += threeSourceInstNum;
             instNumInKernel += instNum;
@@ -1064,15 +938,6 @@ bool BankConflictPass::setupBankConflictsForKernel(G4_Kernel& kernel, bool doLoc
     {
         return false;
     }
-
-#ifdef DEBUG_VERBOSE_ON
-    for (DECLARE_LIST_ITER dcl_it = kernel.Declares.begin();
-        dcl_it != kernel.Declares.end();
-        dcl_it++)
-    {
-        printf("dcl: %s : bank: %d\n", (*dcl_it)->getName(), gra.getBankConflict((*dcl_it)));
-    }
-#endif
 
     highInternalConflict = ((float)internalConflict / threeSourceInstNumInKernel) > INTERNAL_CONFLICT_RATIO_HEURISTIC;
 
@@ -9148,21 +9013,17 @@ int GlobalRA::coloringRegAlloc()
         }
     }
 
-    BankConflictPass bc(*this);
-    bool doBankConflictReduction = false;
-    bool highInternalConflict = false;
-
     if (builder.getOption(vISA_LocalRA) && !isReRAPass() && canDoLRA(kernel))
     {
         startTimer(TIMER_LOCAL_RA);
-        bool doLocalRR = builder.getOption(vISA_LocalRARoundRobin);
-        LocalRA lra(kernel, highInternalConflict, bc, *this);
-        bool success = lra.localRA(doLocalRR, doBankConflictReduction);
+        BankConflictPass bc(*this);
+        LocalRA lra(bc, *this);
+        bool success = lra.localRA();
         stopTimer(TIMER_LOCAL_RA);
         if (!success)
         {
             startTimer(TIMER_HYBRID_RA);
-            success = hybridRA(doBankConflictReduction, highInternalConflict, lra);
+            success = hybridRA(lra.doHybridBCR(), lra.hasHighInternalBC(), lra);
             stopTimer(TIMER_HYBRID_RA);
         }
         if (success)
@@ -9231,13 +9092,17 @@ int GlobalRA::coloringRegAlloc()
             }
         }
 
+        bool doBankConflictReduction = false;
+        bool highInternalConflict = false;  // this is set by setupBankConflictsForKernel
+
         if (builder.getOption(vISA_LocalBankConflictReduction) &&
             builder.hasBankCollision())
         {
             bool reduceBCInRR = false;
             bool reduceBCInTAandFF = false;
+            BankConflictPass bc(*this);
 
-            reduceBCInRR = bc.setupBankConflictsForKernel(kernel, true, reduceBCInTAandFF, SECOND_HALF_BANK_START_GRF * 2, highInternalConflict);
+            reduceBCInRR = bc.setupBankConflictsForKernel(true, reduceBCInTAandFF, SECOND_HALF_BANK_START_GRF * 2, highInternalConflict);
             doBankConflictReduction = reduceBCInRR && reduceBCInTAandFF;
         }
 

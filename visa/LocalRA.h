@@ -66,21 +66,21 @@ namespace vISA
         IR_Builder& builder;
         PhyRegsLocalRA* pregs = nullptr;
         LLR_USE_MAP LLRUseMap;
-        unsigned int numRegLRA = 0;
-        bool& highInternalConflict;
+        unsigned int numRegLRA = 0;   
         unsigned int globalLRSize = 0;
         bool doSplitLLR = false;
         Mem_Manager& mem;
         std::list<InputLiveRange*, std_arena_based_allocator<InputLiveRange*>> inputIntervals;
         BankConflictPass& bc;
         GlobalRA& gra;
+        bool doBCR = false;
+        bool highInternalConflict = false;
 
-        G4_Align getBankAlignForUniqueAssign(G4_Declare *dcl);
         bool hasBackEdge();
         void evenAlign();
         void preLocalRAAnalysis();
         void trivialAssignRA(bool& needGlobalRA, bool threeSourceCandidate);
-        bool localRAPass(bool doRoundRobin, bool doBankConflictReduction, bool doSplitLLR);
+        bool localRAPass(bool doRoundRobin, bool doSplitLLR);
         void resetMasks();
         void blockOutputPhyRegs();
         void removeUnrequiredLifetimeOps();
@@ -115,9 +115,11 @@ namespace vISA
             unsigned int numHalfGRF, unsigned int numOneGRF, unsigned int numTwoOrMoreGRF,
             unsigned int numTotal);
 
-        LocalRA(G4_Kernel&, bool&, BankConflictPass&, GlobalRA&);
-        bool localRA(bool& doRoundRobin, bool& doBankConflict);
+        LocalRA(BankConflictPass&, GlobalRA&);
+        bool localRA();
         void undoLocalRAAssignments(bool clearInterval);
+        bool doHybridBCR() const { return doBCR; }
+        bool hasHighInternalBC() const { return highInternalConflict; }
     };
 
 class LocalLiveRange

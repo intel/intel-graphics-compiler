@@ -3107,7 +3107,7 @@ void GlobalRA::markBlockLocalVar(G4_RegVar* var, unsigned bbId)
     }
 }
 
-void GlobalRA::markBlockLocalVars(Mem_Manager& mem, bool doLocalRA)
+void GlobalRA::markBlockLocalVars(bool doLocalRA)
 {
     for (auto bb : kernel.fg.BBs)
     {
@@ -3135,7 +3135,7 @@ void GlobalRA::markBlockLocalVars(Mem_Manager& mem, bool doLocalRA)
                         }
                         if (!doLocalRA || dst->isFlag() || dst->isAddress())
                         {
-                            LocalLiveRange* lr = GetOrCreateLocalLiveRange(topdcl, mem);
+                            LocalLiveRange* lr = GetOrCreateLocalLiveRange(topdcl);
                             unsigned int startIdx;
                             if (lr->getFirstRef(startIdx) == NULL)
                             {
@@ -3160,7 +3160,7 @@ void GlobalRA::markBlockLocalVars(Mem_Manager& mem, bool doLocalRA)
                     G4_Declare* topdcl = condMod->getBase()->asRegVar()->getDeclare();
                     if (topdcl)
                     {
-                        LocalLiveRange* lr = GetOrCreateLocalLiveRange(topdcl, mem);
+                        LocalLiveRange* lr = GetOrCreateLocalLiveRange(topdcl);
                         unsigned int startIdx;
                         if (lr->getFirstRef(startIdx) == NULL)
                         {
@@ -3198,7 +3198,7 @@ void GlobalRA::markBlockLocalVars(Mem_Manager& mem, bool doLocalRA)
 
                             if (!doLocalRA || src->isFlag() || src->isAddress())
                             {
-                                LocalLiveRange* lr = GetOrCreateLocalLiveRange(topdcl, mem);
+                                LocalLiveRange* lr = GetOrCreateLocalLiveRange(topdcl);
 
                                 lr->recordRef(bb);
                                 recordRef(topdcl);
@@ -3222,7 +3222,7 @@ void GlobalRA::markBlockLocalVars(Mem_Manager& mem, bool doLocalRA)
                             topdcl = topdcl->getAliasDeclare();
                         MUST_BE_TRUE(topdcl != NULL, "Top dcl was null for addr exp opnd");
 
-                        LocalLiveRange* lr = GetOrCreateLocalLiveRange(topdcl, mem);
+                        LocalLiveRange* lr = GetOrCreateLocalLiveRange(topdcl);
                         lr->recordRef(bb);
                         lr->markIndirectRef();
                         recordRef(topdcl);
@@ -3240,7 +3240,7 @@ void GlobalRA::markBlockLocalVars(Mem_Manager& mem, bool doLocalRA)
                     G4_Declare* topdcl = pred->getBase()->asRegVar()->getDeclare();
                     if (topdcl)
                     {
-                        LocalLiveRange* lr = GetOrCreateLocalLiveRange(topdcl, mem);
+                        LocalLiveRange* lr = GetOrCreateLocalLiveRange(topdcl);
                         lr->recordRef(bb);
                         recordRef(topdcl);
                     }
@@ -3305,7 +3305,7 @@ void GlobalRA::resetGlobalRAStates()
 void GlobalRA::markGraphBlockLocalVars(bool doLocalRA)
 {
     //Create live ranges and record the reference info
-    markBlockLocalVars(kernel.fg.builder->mem, doLocalRA);
+    markBlockLocalVars(doLocalRA);
 
     //Remove the un-referenced declares
     if (!doLocalRA)

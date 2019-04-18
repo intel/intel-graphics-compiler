@@ -52,9 +52,6 @@ namespace vISA
         GlobalRA& gra;
 
         BankConflict setupBankAccordingToSiblingOperand(BankConflict assignedBank, unsigned int offset, bool oneGRFBank);
-        bool hasInternalConflict2Srcs(BankConflict*srcBC);
-        void setupBankConflictsForDecls(G4_Declare* dcl_1, G4_Declare* dcl_2, unsigned int offset1, unsigned int offset2,
-            BankConflict &srcBC1, BankConflict &srcBC2, int &bank1RegNum, int &bank2RegNum, float GRFRatio, bool oneGRFBank);
         void setupEvenOddBankConflictsForDecls(G4_Declare * dcl_1, G4_Declare * dcl_2, unsigned int offset1, unsigned int offset2,
             BankConflict &srcBC1, BankConflict &srcBC2);
         void setupBankConflictsOneGRFOld(G4_INST* inst, int &bank1RegNum, int &bank2RegNum, float GRFRatio, unsigned int &internalConflict);
@@ -64,14 +61,11 @@ namespace vISA
         unsigned int numRegLRA, unsigned int & internalConflict);
         bool hasInternalConflict3Srcs(BankConflict *srcBC);
         void setupBankForSrc0(G4_INST* inst, G4_INST* prevInst);
-        void setupToEvenBank(G4_INST* inst);
         void getBanks(G4_INST* inst, BankConflict *srcBC, G4_Declare **dcls, G4_Declare **opndDcls, unsigned int *offset);
         void getPrevBanks(G4_INST* inst, BankConflict *srcBC, G4_Declare **dcls, G4_Declare **opndDcls, unsigned int *offset);
 
-
-
     public:
-        bool setupBankConflictsForKernel(G4_Kernel& kernel, bool doLocalRR, bool &threeSourceCandidate, unsigned int numRegLRA, bool &highInternalConflict);
+        bool setupBankConflictsForKernel(bool doLocalRR, bool &threeSourceCandidate, unsigned int numRegLRA, bool &highInternalConflict);
 
         BankConflictPass(GlobalRA& g) : gra(g)
         {
@@ -853,7 +847,7 @@ namespace vISA
         void updateDefSet(std::set<G4_Declare*>& defs, G4_Declare* referencedDcl);
         void detectUndefinedUses(LivenessAnalysis& liveAnalysis, G4_Kernel& kernel);
         void markBlockLocalVar(G4_RegVar* var, unsigned bbId);
-        void markBlockLocalVars(Mem_Manager& mem, bool doLocalRA);
+        void markBlockLocalVars(bool doLocalRA);
         void computePhyReg();
         void fixAlignment();
 
@@ -1016,6 +1010,7 @@ namespace vISA
             resize(dclid);
             MUST_BE_TRUE(vars[dclid].localLR == NULL, "Local live range already allocated for declaration");
             vars[dclid].localLR = lr;
+            lr->setTopDcl(dcl);
         }
 
         void resetLocalLR(G4_Declare* dcl)
@@ -1227,7 +1222,7 @@ namespace vISA
         G4_Align getBankAlign(G4_Declare*);
         bool areAllDefsNoMask(G4_Declare*);
         void removeUnreferencedDcls();
-        LocalLiveRange* GetOrCreateLocalLiveRange(G4_Declare* topdcl, Mem_Manager& mem);
+        LocalLiveRange* GetOrCreateLocalLiveRange(G4_Declare* topdcl);
 
         GlobalRA(G4_Kernel& k, PhyRegPool& r, PointsToAnalysis& p2a) : kernel(k), builder(*k.fg.builder), regPool(r),
             pointsToAnalysis(p2a)
