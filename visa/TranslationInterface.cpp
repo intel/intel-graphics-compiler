@@ -3212,7 +3212,7 @@ int IR_Builder::translateVISAMediaStoreInst(
     if (useSends())
     {
         // use split send
-        G4_Declare *headerDcl = Create_MRF_Dcl(8, Type_UD);
+        G4_Declare *headerDcl = Create_MRF_Dcl(GENX_DATAPORT_IO_SZ, Type_UD);
         Create_MOVR0_Inst( headerDcl, 0, 0, true );
         /* mov (1)      VX(0,2)<1>,    CONST[R,C]  */
         uint32_t temp = (blockHeight - 1) << 16 | (blockWidth - 1);
@@ -6439,14 +6439,14 @@ int IR_Builder::translateVISAAvsInst(
         cmask += cntrl<<18;
         Create_MOV_Inst( dcl, 0, 2, 1, NULL, NULL, createImm( cmask, Type_UD ), true );
 
-        G4_Declare *dcl1 = Create_MRF_Dcl( 8, Type_F );
+        G4_Declare *dcl1 = Create_MRF_Dcl( GENX_DATAPORT_IO_SZ, Type_F );
         dcl1->setAliasDeclare(dcl, GENX_MRF_REG_SIZ);
 
         /*
         Keeping destination type as UD, otherwise w-->f conversion happens,
         which affects the results.
         */
-        G4_Declare *dcl1_ud = Create_MRF_Dcl( 8, Type_UD );
+        G4_Declare *dcl1_ud = Create_MRF_Dcl( GENX_DATAPORT_IO_SZ, Type_UD );
         dcl1_ud->setAliasDeclare(dcl, GENX_MRF_REG_SIZ);
 
         // mov  (1)     VA(0,0)<1>,  v2d
@@ -6913,9 +6913,9 @@ int IR_Builder::translateVISAVaSklPlusGeneralInst(
     else
         dcl = Create_MRF_Dcl( 2 * GENX_SAMPLER_IO_SZ , Type_UD );
 
-    G4_Declare *dcl_payload_UD = Create_MRF_Dcl( 8                      , Type_UD );
-    G4_Declare *dcl_payload_F = Create_MRF_Dcl( 8                      , Type_F  );
-    G4_Declare *dcl_payload_UW = Create_MRF_Dcl( 16                      , Type_UW  );
+    G4_Declare *dcl_payload_UD = Create_MRF_Dcl(  GENX_DATAPORT_IO_SZ                      , Type_UD );
+    G4_Declare *dcl_payload_F = Create_MRF_Dcl(  GENX_DATAPORT_IO_SZ                      , Type_F  );
+    G4_Declare *dcl_payload_UW = Create_MRF_Dcl(  GENX_DATAPORT_IO_SZ * 2                      , Type_UW  );
 
     dcl_payload_UD->setAliasDeclare ( dcl,  GENX_MRF_REG_SIZ );
     dcl_payload_F->setAliasDeclare ( dcl, GENX_MRF_REG_SIZ );
@@ -7327,7 +7327,7 @@ int IR_Builder::translateVISASamplerNormInst(
     unsigned cmask = channel.getHWEncoding() << 12;
     Create_MOV_Inst( dcl, 0, 2, 1, NULL, NULL, createImm( cmask, Type_UD ) );
 
-    G4_Declare *dcl1 = Create_MRF_Dcl( 8, Type_F );
+    G4_Declare *dcl1 = Create_MRF_Dcl(  GENX_DATAPORT_IO_SZ, Type_F );
     dcl1->setAliasDeclare(dcl, GENX_MRF_REG_SIZ);
 
     // mov  (1)     VX(1,4)<1>,  deltaU
@@ -9048,7 +9048,7 @@ G4_Declare* IR_Builder::getSamplerHeader(bool isBindlessSampler)
     }
     else
     {
-        dcl = Create_MRF_Dcl(8, Type_UD);
+        dcl = Create_MRF_Dcl(GENX_DATAPORT_IO_SZ, Type_UD);
         dcl->setCapableOfReuse();
         Create_MOVR0_Inst(dcl, 0, 0, true);
         if (hasBindlessSampler() && !isBindlessSampler)
