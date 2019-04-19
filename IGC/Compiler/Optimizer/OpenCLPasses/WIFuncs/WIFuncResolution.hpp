@@ -143,9 +143,18 @@ namespace IGC
         /// @return A value representing the stage in grid size
         llvm::Value* getStageInGridSize(llvm::CallInst &CI);
 
+        /// @brief  get vector of work group size if reqd_work_group_size is set.
+        /// @param  F the function to check
+        /// @return A vector with work group size (e.g., <i32 16, i32 1, i32 1>)
+        ///         or nullptr if not known.
+        llvm::Constant* getKnownWorkGroupSize(
+            IGCMD::MetaDataUtils *MDUtils,
+            llvm::Function &F) const;
+
         /// @brief  The implicit arguments of the current function
         ImplicitArgs m_implicitArgs;
 
+    private:
         /// @brief  Indicates if the pass changed the processed function
         bool m_changed;
     };

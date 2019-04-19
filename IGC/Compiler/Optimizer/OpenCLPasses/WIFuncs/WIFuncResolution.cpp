@@ -52,11 +52,44 @@ WIFuncResolution::WIFuncResolution() : FunctionPass(ID), m_implicitArgs()
     initializeWIFuncResolutionPass(*PassRegistry::getPassRegistry());
 }
 
+Constant* WIFuncResolution::getKnownWorkGroupSize(
+    IGCMD::MetaDataUtils *MDUtils, llvm::Function &F) const
+{
+    auto finfo = MDUtils->findFunctionsInfoItem(&F);
+    if (finfo == MDUtils->end_FunctionsInfo())
+        return nullptr;
+
+    auto &FI = finfo->second;
+    if (FI->getThreadGroupSize()->hasValue())
+    {
+        uint32_t Dims[] =
+        {
+            (uint32_t)FI->getThreadGroupSize()->getXDim(),
+            (uint32_t)FI->getThreadGroupSize()->getYDim(),
+            (uint32_t)FI->getThreadGroupSize()->getZDim(),
+        };
+        return ConstantDataVector::get(F.getContext(), Dims);
+    }
+
+    return nullptr;
+}
+
 bool WIFuncResolution::runOnFunction(Function &F)
 {
     m_changed = false;
-    m_implicitArgs = ImplicitArgs(F, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils());
+    auto *MDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    m_implicitArgs = ImplicitArgs(F, MDUtils);
+
     visit(F);
+
+    /// If the work group size is known at compile time, emit it as a
+    /// literal rather than reading from the payload.
+    if (Constant *KnownWorkGroupSize = getKnownWorkGroupSize(MDUtils, F))
+    {
+        if (auto *Arg = m_implicitArgs.getImplicitArg(F, ImplicitArg::ENQUEUED_LOCAL_WORK_SIZE))
+            Arg->replaceAllUsesWith(KnownWorkGroupSize);
+    }
+
     return m_changed;
 }
 
@@ -240,7 +273,7 @@ Value* WIFuncResolution::getLocalSize(CallInst &CI)
     // %localSize = extractelement <3 x i32> %localSize, i32 %dim
 
     Argument* arg = getImplicitArg(CI, ImplicitArg::LOCAL_SIZE);
-    
+
     Value* dim = CI.getArgOperand(0);
     Instruction* localSize = ExtractElementInst::Create(arg, dim, "localSize", &CI);
     updateDebugLoc(&CI, localSize);

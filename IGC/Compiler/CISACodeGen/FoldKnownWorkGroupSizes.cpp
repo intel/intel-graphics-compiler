@@ -72,7 +72,6 @@ bool FoldKnownWorkGroupSizes::runOnFunction(Function &F)
 void FoldKnownWorkGroupSizes::visitCallInst(llvm::CallInst &I)
 {
     Function* function = I.getParent()->getParent();
-    //Value* callingInst = ;
     Module* module = function->getParent();
     Function* calledFunction = I.getCalledFunction();
     if (calledFunction == nullptr)
@@ -91,12 +90,10 @@ void FoldKnownWorkGroupSizes::visitCallInst(llvm::CallInst &I)
             I.replaceAllUsesWith(IntZero);
             m_changed = true;
         }
-        return;
     }
     else if (funcName.equals("__builtin_IB_get_enqueued_local_size"))
     {
-        
-        auto itr = ctx->getMetaDataUtils()->findFunctionsInfoItem(I.getParent()->getParent());
+        auto itr = ctx->getMetaDataUtils()->findFunctionsInfoItem(I.getFunction());
 
         //Check function exists in the metadata
         if (itr == ctx->getMetaDataUtils()->end_FunctionsInfo())
@@ -107,43 +104,22 @@ void FoldKnownWorkGroupSizes::visitCallInst(llvm::CallInst &I)
         //Check threadGroup has value
         if (!tgMD->hasValue())
             return;        
-        
-        unsigned int dimension = (unsigned int)static_cast<ConstantInt*>(I.getArgOperand(0))->getZExtValue();
-        ConstantInt *valueToReplaceWith = nullptr;
-        if (dimension == 0)
-        {
-            if (tgMD->isXDimHasValue())
-            {
-                valueToReplaceWith = ConstantInt::get(Type::getInt32Ty(module->getContext()), tgMD->getXDim());
-                I.replaceAllUsesWith(valueToReplaceWith);
-                m_changed = true;
 
-            }
-        }
-        else if (dimension == 1)
-        {
-            if (tgMD->isYDimHasValue())
-            {
-                valueToReplaceWith = ConstantInt::get(Type::getInt32Ty(module->getContext()), tgMD->getYDim());
-                I.replaceAllUsesWith(valueToReplaceWith);
-                m_changed = true;
+        IRBuilder<> IRB(&I);
 
-            }
-        } 
-        else if (dimension == 2)
+        uint32_t Dims[] =
         {
-            if (tgMD->isZDimHasValue())
-            {
-                valueToReplaceWith = ConstantInt::get(Type::getInt32Ty(module->getContext()), tgMD->getZDim());
-                I.replaceAllUsesWith(valueToReplaceWith);
-                m_changed = true;
-            }
-        }
-        else
-        {
-            assert("Invalid thread group dimension");
-        }
-        return;
+            (uint32_t)tgMD->getXDim(),
+            (uint32_t)tgMD->getYDim(),
+            (uint32_t)tgMD->getZDim(),
+        };
+        auto *CV = ConstantDataVector::get(I.getContext(), Dims);
+
+        auto *Dim = I.getArgOperand(0);
+        auto *EE = IRB.CreateExtractElement(CV, Dim, "enqueuedLocalSize");
+
+        I.replaceAllUsesWith(EE);
+        m_changed = true;
     }
 }
 

@@ -100,7 +100,7 @@ bool WIFuncsAnalysis::runOnFunction(Function &F)
     // All OpenCL kernels receive R0 and Payload Header implicitly
     implicitArgs.push_back(ImplicitArg::R0);
     implicitArgs.push_back(ImplicitArg::PAYLOAD_HEADER);
-    
+
     // Check if additional implicit information is needed based on the function analysis
     if( m_hasWorkDim )
     {
