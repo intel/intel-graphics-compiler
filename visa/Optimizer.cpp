@@ -1931,6 +1931,10 @@ static bool canHoist(FlowGraph &fg, G4_BB *bb, INST_LIST_RITER revIter)
         // Check if this def-touched region is covered by the source region.
         mergeBitVec(bitVec, I->first->getDst(), srcLB, srcRB);
 
+        bitVec[0] &= 0x00000000FFFFFFFF;
+        bitVec[1] &= 0x00000000FFFFFFFF;
+        src->setBitVecL(src->getBitVecL() & 0x00000000FFFFFFFF);
+        src->setBitVecH(src->getBitVecH() & 0x00000000FFFFFFFF);
         if ((bitVec[0] & (~src->getBitVecL())) ||
             (bitVec[1] & (~src->getBitVecH())))
         {

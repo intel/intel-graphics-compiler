@@ -2401,6 +2401,7 @@ public:
             inst->computeRightBound(this);
         }
         
+        return bitVec[0] & 0x00000000FFFFFFFF;
 
         return bitVec[0];
     }
@@ -2412,6 +2413,7 @@ public:
             inst->computeRightBound(this);
         }
 
+        return bitVec[1] & 0x00000000FFFFFFFF;
 
         return bitVec[1];
     }
@@ -2423,6 +2425,7 @@ public:
             inst->computeRightBound(this);
         }
 
+        return bitVec[2] & 0x00000000FFFFFFFF;
 
         return bitVec[2];
     }
