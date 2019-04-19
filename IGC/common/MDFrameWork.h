@@ -325,6 +325,7 @@ namespace IGC
         VertexShaderInfo vsInfo;
         PixelShaderInfo psInfo;
         ComputeShaderInfo csInfo;
+        bool useStatelessPvtMem = false;
         std::map<ConstantAddress, uint32_t>   inlineDynConstants;
         std::map<uint32_t, uint32_t>          inlineDynTextures;
         ImmConstantInfo immConstant;

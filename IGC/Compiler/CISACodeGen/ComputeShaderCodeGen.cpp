@@ -455,7 +455,6 @@ void CShaderProgram::FillProgram(SComputeShaderKernelProgram* pKernelProgram)
 
 void CComputeShader::FillProgram(SComputeShaderKernelProgram* pKernelProgram)
 {
-    ProgramOutput()->m_scratchSpaceUsedByShader = m_ScratchSpaceSize;
     CreateGatherMap();
     CreateConstantBufferOutput(pKernelProgram);
     

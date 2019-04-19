@@ -349,7 +349,6 @@ void CShaderProgram::FillProgram(SGeometryShaderKernelProgram* pKernelProgram)
 
 void CGeometryShader::FillProgram(SGeometryShaderKernelProgram* pKernelProgram)
 {
-    ProgramOutput()->m_scratchSpaceUsedByShader = m_ScratchSpaceSize;
     pKernelProgram->simd8 = *ProgramOutput();
 
     CreateGatherMap();

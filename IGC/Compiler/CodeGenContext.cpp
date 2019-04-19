@@ -584,7 +584,8 @@ unsigned int CodeGenContext::getRegisterPointerSizeInBits(unsigned int AS) const
     case ADDRESS_SPACE_PRIVATE:
         if(getModuleMetaData()->compOpt.UseScratchSpacePrivateMemory)
         {
-            pointerSizeInRegister = 32;
+            pointerSizeInRegister = 
+                (getModuleMetaData()->useStatelessPvtMem ? 64 : 32);
         }
         else
         {

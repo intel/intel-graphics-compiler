@@ -157,7 +157,6 @@ void CVertexShader::FillProgram(SVertexShaderKernelProgram* pKernelProgram)
     assert(entry && entry->getParent());
     const bool isPositionOnlyShader = (entry->getParent()->getModuleFlag("IGC::PositionOnlyVertexShader") != nullptr);
 
-    ProgramOutput()->m_scratchSpaceUsedByShader = m_ScratchSpaceSize;
     pKernelProgram->simd8 = *ProgramOutput();
     pKernelProgram->MaxNumInputRegister              = GetMaxNumInputRegister();
     pKernelProgram->VertexURBEntryReadLength         = GetVertexURBEntryReadLength();

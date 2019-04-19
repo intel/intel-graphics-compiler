@@ -271,7 +271,6 @@ void CShaderProgram::FillProgram(SHullShaderKernelProgram* pKernelProgram)
 
 void CHullShader::FillProgram(SHullShaderKernelProgram* pKernelProgram)
 {
-    ProgramOutput()->m_scratchSpaceUsedByShader = m_ScratchSpaceSize;
     pKernelProgram->simd8 = *ProgramOutput();
 
     CreateGatherMap();

@@ -83,6 +83,7 @@ public:
     bool safeToUseScratchSpace(llvm::Module &M) const;
 
 private:
+
     struct arrayIndex
     {
         llvm::GetElementPtrInst* gep;
@@ -680,6 +681,7 @@ public:
     }
 };
 
+
 bool PrivateMemoryResolution::resolveAllocaInstuctions(bool stackCall)
 {
     // It is possible that there is no alloca instruction in the caller but there
@@ -732,6 +734,7 @@ bool PrivateMemoryResolution::resolveAllocaInstuctions(bool stackCall)
 
     LLVMContext& C = m_currFunction->getContext();
     CodeGenContext &Ctx = *getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+
     IntegerType *typeInt32 = Type::getInt32Ty(C);
     // Creates intrinsics that will be lowered in the CodeGen and will handle the simd lane id
     Function *simdLaneIdFunc = GenISAIntrinsic::getDeclaration(m_currFunction->getParent(), GenISAIntrinsic::GenISA_simdLaneId);
@@ -789,10 +792,13 @@ bool PrivateMemoryResolution::resolveAllocaInstuctions(bool stackCall)
         Value *simdLaneId = ZExtInst::CreateIntegerCast(simdLaneId16, typeInt32, false, VALUE_NAME("simdLaneId"), pEntryPoint);
         Instruction *simdSize = CallInst::Create(simdSizeFunc, VALUE_NAME("simdSize"), pEntryPoint);
 
-        Argument* r0Arg = implicitArgs.getArgInFunc(*m_currFunction, ImplicitArg::R0);
-        ExtractElementInst* r0_5 = ExtractElementInst::Create(r0Arg, ConstantInt::get(typeInt32, 5), VALUE_NAME("r0.5"), pEntryPoint);
-        Value* privateBase = BinaryOperator::CreateAnd(r0_5, ConstantInt::get(typeInt32, 0xFFFFFC00), VALUE_NAME("privateBase"), pEntryPoint);
-
+        Value* privateBase = nullptr;
+        if (!modMD->useStatelessPvtMem)
+        {
+            Argument* r0Arg = implicitArgs.getArgInFunc(*m_currFunction, ImplicitArg::R0);
+            ExtractElementInst* r0_5 = ExtractElementInst::Create(r0Arg, ConstantInt::get(typeInt32, 5), VALUE_NAME("r0.5"), pEntryPoint);
+            privateBase = BinaryOperator::CreateAnd(r0_5, ConstantInt::get(typeInt32, 0xFFFFFC00), VALUE_NAME("privateBase"), pEntryPoint);
+        }
 
         for (auto pAI : allocaInsts)
         {

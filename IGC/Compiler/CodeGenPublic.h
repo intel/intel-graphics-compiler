@@ -93,7 +93,8 @@ namespace IGC
         unsigned int    m_unpaddedProgramSize;      //<! program size without padding used for binary linking
         unsigned int    m_startReg;                 //<! Which GRF to start with
         unsigned int    m_scratchSpaceUsedBySpills; //<! amount of scratch space needed for shader spilling
-        unsigned int    m_scratchSpaceUsedByShader; //<! amount of scratch space needed by shader
+        unsigned int    m_scratchSpaceUsedByShader; //<! amount of scratch space needed by shader if allocated in scratchspace
+        unsigned int    m_scratchSpaceUsedByStateless; //<! amount of scratch space needed by shader if allocated in stateless surface
         unsigned int    m_scratchSpaceUsedByGtpin; //<! amount of scratch space used by gtpin
         void*           m_debugDataVISA;            //<! VISA debug data (source -> VISA)
         unsigned int    m_debugDataVISASize;        //<! Number of bytes of VISA debug data
@@ -109,7 +110,10 @@ namespace IGC
         unsigned int    m_funcRelocationTableSize;
         unsigned int    m_funcRelocationTableEntries;
         unsigned int    m_offsetToSkipPerThreadDataLoad = 0;
-
+        //true means we separate pvtmem and spillfill. pvtmem could go into stateless.
+        //false means all of them are together
+        bool            m_separatePvtSpill = false;
+    
         void Destroy()
         {
             if (m_programBin)
@@ -126,9 +130,36 @@ namespace IGC
             }
         }
         
+        void setSeparatePvtSpill(bool setSeparatePvtSpillT)
+        {
+            m_separatePvtSpill = setSeparatePvtSpillT;
+        }
+
         unsigned int getScratchSpaceUsage() const
         {
-            return m_scratchSpaceUsedBySpills + m_scratchSpaceUsedByShader + m_scratchSpaceUsedByGtpin;
+            return m_scratchSpaceUsedBySpills + m_scratchSpaceUsedByGtpin + (m_separatePvtSpill ? 0 : m_scratchSpaceUsedByShader);
+        }
+
+        unsigned int getScratchPrivateUsage() const
+        {
+            return (m_separatePvtSpill ? m_scratchSpaceUsedByShader : 0);
+        }
+
+        void setScratchPrivateUsage(unsigned int scratchPrivateUsage, unsigned int scratchSpaceSizeLimit)
+        {
+            if (m_separatePvtSpill && scratchPrivateUsage > scratchSpaceSizeLimit)
+            {
+                m_scratchSpaceUsedByStateless = scratchPrivateUsage;
+            }
+            else
+            {
+                m_scratchSpaceUsedByShader = scratchPrivateUsage;
+            }
+        }
+
+        unsigned int getStatelessPrivateUsage() const
+        {
+            return (m_separatePvtSpill ? m_scratchSpaceUsedByStateless : 0);
         }
     };
     

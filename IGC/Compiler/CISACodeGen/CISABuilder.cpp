@@ -3675,10 +3675,9 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
         SaveOption(vISA_enablePreemption, true);
     }
 
-    if (m_program->m_ScratchSpaceSize > 0)
-    {
-        SaveOption(vISA_SpillMemOffset, m_program->m_ScratchSpaceSize);
-    }
+    uint scratchSpaceSizeTemp = m_program->m_ScratchSpaceSize;
+
+    SaveOption(vISA_SpillMemOffset, scratchSpaceSizeTemp);
 
     if (IGC_IS_FLAG_ENABLED(forceGlobalRA))
     {
@@ -4671,7 +4670,7 @@ void CEncoder::Compile()
         pOutput->m_scratchSpaceUsedBySpills = jitInfo->spillMemUsed;
     }
 
-    pOutput->m_scratchSpaceUsedByShader = m_program->m_ScratchSpaceSize;
+    pOutput->setScratchPrivateUsage(m_program->m_ScratchSpaceSize, m_program->m_Platform->maxPerThreadScratchSpace());
 
     pOutput->m_scratchSpaceUsedByGtpin = jitInfo->numBytesScratchGtpin;
 

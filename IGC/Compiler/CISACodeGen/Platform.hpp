@@ -334,6 +334,11 @@ public:
         return 32;
     }
 
+    uint32_t maxPerThreadScratchSpace() const
+    {
+        return 0x200000;
+    }
+
     // ***** Below go accessor methods for testing WA data from WA_TABLE *****
 
     bool WaDoNotPushConstantsForAllPulledGSTopologies() const

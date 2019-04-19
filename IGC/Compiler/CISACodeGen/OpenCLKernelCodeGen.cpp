@@ -2089,6 +2089,7 @@ SIMDStatus COpenCLKernel::checkSIMDCompileConds(SIMDMode simdMode, EmitPass &EP,
             return SIMDStatus::SIMD_FUNC_FAIL;
     }
 
+    //ToDo: change?
     // Scratch space allocated per-thread needs to be less than 2 MB.
     if (m_ScratchSpaceSize > pCtx->m_DriverInfo.maxPerThreadScratchSpace())
     {
