@@ -27,6 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Support/DynamicLibrary.h>
 #include <llvm/Support/ScaledNumber.h>
+#include <llvm/Support/CommandLine.h>
 #include "common/LLVMWarningsPop.hpp"
 
 #include <assert.h>
@@ -748,6 +749,20 @@ bool TranslateBuild(
                                     inputDataFormatTemp,
                                     IGCPlatform,
                                     profilingTimerResolution);
+    }
+
+    // Disable code sinking in instruction combining.
+    // This is a workaround for a performance issue caused by code sinking
+    // that is being done in LLVM's instcombine pass.
+    // This code will be removed once sinking is removed from instcombine.
+    auto optionsMap = llvm::cl::getRegisteredOptions();
+    llvm::StringRef instCombineFlag = "-instcombine-code-sinking=0";
+    auto instCombineSinkingSwitch = optionsMap.find(instCombineFlag.trim("-=0"));
+    if (instCombineSinkingSwitch != optionsMap.end()) {
+      if ((*instCombineSinkingSwitch).getValue()->getNumOccurrences() == 0) {
+        const char* args[] = { "igc", instCombineFlag.data() };
+        llvm::cl::ParseCommandLineOptions(sizeof(args) / sizeof(args[0]), args);
+      }
     }
 
     if (IGC_IS_FLAG_ENABLED(QualityMetricsEnable))
