@@ -89,7 +89,7 @@ public:
     virtual void ParseShaderSpecificOpcode(llvm::Instruction* inst) {}
     virtual void AllocatePayload() {}
     virtual void AddPrologue() {}
-    void PreAnalysisPass();
+    virtual void PreAnalysisPass();
     virtual void ExtractGlobalVariables() {}
     void         EmitEOTURBWrite();
     void         EOTRenderTarget();

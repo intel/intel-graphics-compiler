@@ -819,7 +819,7 @@ namespace IGC
         {
             m_HasDiscard = true;
         }
-        m_VectorMask = m_CG->NeedVMask();
+
         setup.resize(4 * g_c_Max_PS_attributes, nullptr);
         if(LowerPSInput())
         {
@@ -1009,6 +1009,12 @@ namespace IGC
         {
             emitPSInputLowering();
         }
+    }
+
+    void CPixelShader::PreAnalysisPass()
+    {
+        m_VectorMask = m_CG->NeedVMask();
+        CShader::PreAnalysisPass();
     }
 
     void CPixelShader::AddEpilogue(llvm::ReturnInst* ret)

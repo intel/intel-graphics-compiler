@@ -73,13 +73,14 @@ public:
     CVariable*  GetDiscardPixelMask() { return m_KillPixelMask; }
     void SetDiscardPixelMask(CVariable* mask) { m_KillPixelMask = mask; }
 
-    virtual void InitEncoder(SIMDMode simdMode, bool canAbortOnSpill, ShaderDispatchMode shaderMode = ShaderDispatchMode::NOT_APPLICABLE);
-    virtual void PreCompile();
-    virtual void AllocatePayload();
-    virtual void AddPrologue();
-    virtual void AddEpilogue(llvm::ReturnInst* ret);
-    virtual bool CompileSIMDSize(SIMDMode simdMode, EmitPass &EP, llvm::Function &F);
-    virtual void ExtractGlobalVariables();
+    void InitEncoder(SIMDMode simdMode, bool canAbortOnSpill, ShaderDispatchMode shaderMode = ShaderDispatchMode::NOT_APPLICABLE) override;
+    void PreCompile() override;
+    void AllocatePayload() override;
+    void AddPrologue() override;
+    void PreAnalysisPass() override;
+    void AddEpilogue(llvm::ReturnInst* ret) override;
+    bool CompileSIMDSize(SIMDMode simdMode, EmitPass &EP, llvm::Function &F) override;
+    void ExtractGlobalVariables() override;
 
     void        AllocatePSPayload();
     void        AllocatePixelPhasePayload();
@@ -87,7 +88,7 @@ public:
     void        FillProgram(SPixelShaderKernelProgram* pKernelProgram);
     void        AddRenderTarget(uint index);
     void        DeclareSGV(uint usage);
-    void        ParseShaderSpecificOpcode(llvm::Instruction* inst);
+    void        ParseShaderSpecificOpcode(llvm::Instruction* inst) override;
     void        PullPixelPhasePayload();
 
     void        AddCoarseOutput(CVariable* var, unsigned int index);
