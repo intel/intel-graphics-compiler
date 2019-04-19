@@ -84,6 +84,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/debug/Dump.hpp"
 #include "Compiler/IGCPassSupport.h"
 
+#include "common/LLVMWarningsPush.hpp"
+#include <llvm/IR/InstIterator.h>
+#include "common/LLVMWarningsPop.hpp"
+
+#include <algorithm>
+
 using namespace llvm;
 using namespace IGC;
 using namespace IGC::Debug;
@@ -111,9 +117,35 @@ DeSSA::DeSSA() : FunctionPass( ID )
 
 void DeSSA::print(raw_ostream &OS, const Module* ) const
 {
+    // Assign each inst/arg a unique integer so that the output
+    // would be in order. It is useful when doing comparison.
+    DenseMap<const Value*, int> Val2IntMap;
+    int id = 0;
+    if (m_F) {
+        // All arguments
+        for (auto AI = m_F->arg_begin(), AE = m_F->arg_end(); AI != AE; ++AI) {
+            Value* aVal = &*AI;
+            Val2IntMap[aVal] = (++id);
+        }
+        // All instructions
+        for (auto II = inst_begin(m_F), IE = inst_end(m_F); II != IE; ++II) {
+            Instruction* Inst = &*II;
+            Val2IntMap[(Value*)Inst] = (++id);
+        }
+    }
+
+    bool doSort = (!Val2IntMap.empty());
+
+    auto valCmp = [&](const Value* V0, const Value* V1) -> bool {
+        int n0 = Val2IntMap[V0];
+        int n1 = Val2IntMap[V1];
+        return n0 < n1;
+    };
+
+    SmallVector<Value*, 64> ValKeyVec;
+    DenseMap<Value*, SmallVector<Value*, 8> > output;
     if (IGC_IS_FLAG_ENABLED(EnableDeSSAAlias))
     {
-        DenseMap<Value*, SmallVector<Value*, 8> > output;
         OS << "----Alias Var---\n\n";
         for (auto& I : AliasMap) {
             Value* aliaser = I.first;
@@ -123,9 +155,22 @@ void DeSSA::print(raw_ostream &OS, const Module* ) const
                 allAliasers.push_back(aliaser);
             }
         }
+
         for (auto& I : output) {
-            Value* aliasee = I.first;
-            SmallVector<Value*, 8>& allAliasers = I.second;
+            Value* key = I.first;
+            ValKeyVec.push_back(key);
+        }
+        if (doSort) {
+            std::sort(ValKeyVec.begin(), ValKeyVec.end(), valCmp);
+        }
+        for (auto& I : ValKeyVec) {
+            Value* aliasee = I;
+            SmallVector<Value*, 8>& allAliasers = output[aliasee];
+
+            if (doSort) {
+                std::sort(allAliasers.begin(), allAliasers.end(), valCmp);
+            }
+
             OS << "  Aliasee: ";
             aliasee->print(OS);
             OS << "\n";
@@ -140,6 +185,7 @@ void DeSSA::print(raw_ostream &OS, const Module* ) const
 
         OS << "----Prefered Congruent Class----\n\n";
         output.clear();
+        ValKeyVec.clear();
         for (auto& I : PrefCCMap) {
             Value* val = I.first;
             Value* rootV = I.second;
@@ -148,9 +194,22 @@ void DeSSA::print(raw_ostream &OS, const Module* ) const
                 allVals.push_back(val);
             }
         }
+
         for (auto& I : output) {
-            Value* rootV = I.first;
-            SmallVector<Value*, 8>& allVals = I.second;
+            Value* key = I.first;
+            ValKeyVec.push_back(key);
+        }
+        if (doSort) {
+            std::sort(ValKeyVec.begin(), ValKeyVec.end(), valCmp);
+        }
+        for (auto& I : ValKeyVec) {
+            Value* rootV = I;
+            SmallVector<Value*, 8>& allVals = output[rootV];
+
+            if (doSort) {
+                std::sort(allVals.begin(), allVals.end(), valCmp);
+            }
+
             OS << "  Root Value : ";
             rootV->print(OS);
             OS << "\n";
@@ -165,7 +224,8 @@ void DeSSA::print(raw_ostream &OS, const Module* ) const
     }
     else {
         OS << "----InsertElement coalescing----\n\n";
-        DenseMap<Value*, SmallVector<Value*, 8> > output;
+        output.clear();
+        ValKeyVec.clear();
         for (auto& I : InsEltMap) {
             Value* val = I.first;
             Value* rootV = I.second;
@@ -174,9 +234,22 @@ void DeSSA::print(raw_ostream &OS, const Module* ) const
                 allVals.push_back(val);
             }
         }
+
         for (auto& I : output) {
-            Value* rootV = I.first;
-            SmallVector<Value*, 8>& allVals = I.second;
+            Value* key = I.first;
+            ValKeyVec.push_back(key);
+        }
+        if (doSort) {
+            std::sort(ValKeyVec.begin(), ValKeyVec.end(), valCmp);
+        }
+        for (auto& I : ValKeyVec) {
+            Value* rootV = I;
+            SmallVector<Value*, 8>& allVals = output[rootV];
+
+            if (doSort) {
+                std::sort(allVals.begin(), allVals.end(), valCmp);
+            }
+
             OS << "  Root Value : ";
             rootV->print(OS);
             OS << "\n";
@@ -196,7 +269,10 @@ void DeSSA::print(raw_ostream &OS, const Module* ) const
     else {
         OS << "----Phi-Var Isolations----\n";
     }
-    DenseMap<Node*, int> LeaderVisited;
+
+    SmallVector<Node*, 64> NodeKeyVec;
+    std::map<Node*, SmallVector<Node*, 8> > nodeOutput;
+    //std::map<Node*, int> LeaderVisited;
     for (auto I = RegNodeMap.begin(),
         E = RegNodeMap.end(); I != E; ++I) {
         Node* N = I->second;
@@ -207,13 +283,38 @@ void DeSSA::print(raw_ostream &OS, const Module* ) const
         while (Leader != Leader->parent) {
             Leader = Leader->parent;
         }
-        if (LeaderVisited.count(Leader)) {
-            continue;
+
+        SmallVector<Node*, 8>&  allNodes = nodeOutput[Leader];
+        if (N != Leader) {
+            allNodes.push_back(N);
         }
-        LeaderVisited[Leader] = 1;
+    }
+
+    auto nodeCmp = [&](const Node* N0, const Node* N1) -> bool {
+        const Value* V0 = N0->value;
+        const Value* V1 = N1->value;
+        return valCmp(V0, V1);
+    };
+
+    for (auto& I : nodeOutput) {
+        Node* key = I.first;
+        NodeKeyVec.push_back(key);
+    }
+    if (doSort) {
+        std::sort(NodeKeyVec.begin(), NodeKeyVec.end(), nodeCmp);
+    }
+    for (auto& I : NodeKeyVec) {
+        Node* Leader = I;
+        SmallVector<Node*, 8>& allNodes = nodeOutput[Leader];
+        if (doSort) {
+            std::sort(allNodes.begin(), allNodes.end(), nodeCmp);
+        }
+
         Value *VL;
-        if (isIsolated(N)) {
-            VL = N->value;
+        if (isIsolated(Leader)) {
+            assert(allNodes.size() == 0 &&
+                   "ICE: isolated node still in multi-value CC!");
+            VL = Leader->value;
             OS << "Var isolated : ";
             VL->print(OS);
             OS << "\n";
@@ -221,8 +322,8 @@ void DeSSA::print(raw_ostream &OS, const Module* ) const
             OS << "Leader : ";
             Leader->value->print(OS);
             OS << "\n";
-            N = Leader->next;
-            while (N != Leader) {
+            for (auto& II : allNodes) {
+                Node* N = II;
                 VL = N->value;
                 OS << "    ";
                 VL->print(OS);
@@ -239,6 +340,7 @@ void DeSSA::dump() const {
 
 bool DeSSA::runOnFunction(Function &MF)
 {
+  m_F = &MF;
   CurrColor = 0;
   MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
   if (pMdUtils->findFunctionsInfoItem(&MF) == pMdUtils->end_FunctionsInfo())
@@ -519,6 +621,7 @@ bool DeSSA::runOnFunction(Function &MF)
       print(dessaDump.stream());
       DumpUnlock();
   }
+  m_F = nullptr;
   return false;
 }
 

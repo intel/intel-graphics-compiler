@@ -211,6 +211,7 @@ class DeSSA : public llvm::FunctionPass {
     CodeGenPatternMatch *CG;
     const llvm::DataLayout *DL;
     CodeGenContext* CTX;
+    llvm::Function* m_F;  // Current Function
 
     llvm::BumpPtrAllocator Allocator;
     // Color (label) assigned to each congruent class
