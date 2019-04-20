@@ -2040,7 +2040,6 @@ bool G4_INST::canPropagateTo(G4_INST *useInst, Gen4_Operand_Number opndNum, MovT
     // such as add, cmp, and mul, when types of all source operands could be
     // consistent.
     if (!(useInst->isRawMov() && dstType == useType) &&
-        !(MT == Copy && propType == useType) &&
         ((IS_FTYPE(dstType) && (IS_TYPE_INT(propType) || IS_VINTTYPE(propType))) ||
          (IS_TYPE_INT(dstType) && (IS_FTYPE(propType) || IS_VFTYPE(propType)))))
     {
