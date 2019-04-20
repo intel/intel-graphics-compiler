@@ -39,16 +39,18 @@ static const uint32_t MAX_SYMBOL_NAME_LENGTH = 256;
 
 /// GenSymType - Specify the symbol's type
 enum GenSymType {
-    S_NOTYPE = 0,                  // The symbol's type is not specified
-    S_UNDEF  = 1,                  // The symbol is undefined in this module
-    S_FUNC   = 2                   // The symbol is associated with a function
+    S_NOTYPE           = 0,    // The symbol's type is not specified
+    S_UNDEF            = 1,    // The symbol is undefined in this module
+    S_FUNC             = 2,    // The symbol is associated with a function
+    S_GLOBAL_VAR       = 3,    // The symbol is associated with a global variable in global address space
+    S_GLOBAL_VAR_CONST = 4     // The symbol is associated with a global variable in constant address space
 };
 
 /// GenSymEntry - An symbol table entry
 typedef struct {
     uint32_t   s_type;            // The symbol's type
-    uint32_t   s_offset;          // The binary offset of this symbol. This field
-                                  // is ignored if s_type is S_UNDEF
+    uint32_t   s_offset;          // The binary offset of this symbol. This field is ignored if s_type is S_UNDEF
+    uint32_t   s_size;
     char       s_name[MAX_SYMBOL_NAME_LENGTH]; // The symbol's name
 } GenSymEntry;
 

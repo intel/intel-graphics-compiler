@@ -695,7 +695,10 @@ public:
     CM_BUILDER_API int getDeclarationID(VISA_FileVar *decl);
 
     ///Gets gen binary offset
-    CM_BUILDER_API int64_t getGenOffset();
+    CM_BUILDER_API int64_t getGenOffset() const;
+
+    ///Gets gen binary size within instruction heap
+    CM_BUILDER_API int64_t getGenSize() const;
 
     //Gets the VISA string format for the variable
     CM_BUILDER_API std::string getVarName(VISA_GenVar* decl);

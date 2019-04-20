@@ -138,6 +138,12 @@ bool ProgramScopeConstantResolution::runOnModule(Module &M)
             continue;
         }
 
+        // If global variables are relocated it doesnt require implicit args
+        if (IGC_IS_FLAG_ENABLED(EnableGlobalRelocation))
+        {
+            continue;
+        }
+
         // Get the offset of this constant from the base.
         int offset = -1;
 

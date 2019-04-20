@@ -413,21 +413,6 @@ bool EmitPass::runOnFunction(llvm::Function &F)
         if (hasStackCall || hasIndirectCall)
         {
             m_currShader->InitKernelStack(ptr64bits);
-
-            if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer))
-            {
-                Module* pModule = F.getParent();
-                for (auto &F : pModule->getFunctionList())
-                {
-                    // Creates a mapping of the function symbol to a register.
-                    // Any user function used by the kernel, including function declarations,
-                    // should have a register allocated to store it's physical address
-                    if (F.hasFnAttribute("AsFunctionPointer") && F.getNumUses() > 0)
-                    {
-                        m_currShader->CreateFuncSymbolToRegisterMap(&F);
-                    }
-                }
-            }
         }
         m_currShader->AddPrologue();
     }
@@ -441,6 +426,56 @@ bool EmitPass::runOnFunction(llvm::Function &F)
         if (m_FGA && m_FGA->useStackCall(&F))
         {
             emitStackFuncEntry(&F, ptr64bits);
+        }
+    }
+
+    if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer))
+    {
+        Module* pModule = F.getParent();
+        for (auto &FI : pModule->getFunctionList())
+        {
+            // Creates a mapping of the function symbol to a register.
+            // Any function called/used by this function, including function declarations,
+            // should have a register allocated to store it's physical address
+            if (FI.hasFnAttribute("AsFunctionPointer") && FI.getNumUses() > 0)
+            {
+                for (auto it = FI.user_begin(), ie = FI.user_end(); it != ie; it++)
+                {
+                    if (Instruction* inst = dyn_cast<Instruction>(*it))
+                    {
+                        if (inst->getParent()->getParent() == &F)
+                        {
+                            m_currShader->CreateFunctionSymbol(&FI);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if (IGC_IS_FLAG_ENABLED(EnableGlobalRelocation))
+    {
+        Module* pModule = F.getParent();
+        for (auto gi = pModule->global_begin(), ge = pModule->global_end(); gi != ge; gi++)
+        {
+            // Do the same relocation for global variables
+            GlobalVariable* pGlobal = dyn_cast<GlobalVariable>(gi);
+            if (pGlobal && pGlobal->getNumUses() > 0)
+            {
+                ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+                if (modMD->inlineProgramScopeOffsets.count(pGlobal) > 0)
+                {
+                    for (auto it = pGlobal->user_begin(), ie = pGlobal->user_end(); it != ie; it++)
+                    {
+                        if (Instruction* inst = dyn_cast<Instruction>(*it))
+                        {
+                            if (inst->getParent()->getParent() == &F)
+                            {
+                                m_currShader->CreateGlobalSymbol(pGlobal);
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 

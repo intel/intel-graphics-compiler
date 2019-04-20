@@ -472,8 +472,9 @@ bool ProcessBuiltinMetaData::runOnModule(Module& M)
         Function *F = &(*I);
         if (!F || F->isDeclaration()) continue;
 
-        // add AlwaysInline for all functions. It will be handle in optimization phase
-        F->addFnAttr(llvm::Attribute::AlwaysInline);
+        // add AlwaysInline for functions. It will be handle in optimization phase
+        if (!F->hasFnAttribute(llvm::Attribute::NoInline))
+            F->addFnAttr(llvm::Attribute::AlwaysInline);
 
         // disable JumpThread optimization on the block that contains this function
         F->setConvergent();

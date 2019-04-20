@@ -175,7 +175,8 @@ public:
     void        MapPushedInputs();
     void        CreateGatherMap();
     void        CreateConstantBufferOutput(SKernelProgram *pKernelProgram);
-    void        CreateFuncSymbolToRegisterMap(llvm::Function* pFunc);
+    void        CreateFunctionSymbol(llvm::Function* pFunc);
+    void        CreateGlobalSymbol(llvm::GlobalVariable* pGlobal);
 
     void        CreateImplicitArgs();
     uint        GetBlockId(llvm::BasicBlock* block);

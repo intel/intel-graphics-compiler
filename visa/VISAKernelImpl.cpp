@@ -8533,7 +8533,7 @@ int VISAKernelImpl::getDeclarationID(VISA_FileVar *decl)
     return decl->index;
 }
 
-int64_t VISAKernelImpl::getGenOffset()
+int64_t VISAKernelImpl::getGenOffset() const
 {
     assert(false == m_kernel->fg.empty());
     auto &entryBB = *(*m_kernel->fg.begin());
@@ -8549,6 +8549,22 @@ int64_t VISAKernelImpl::getGenOffset()
 
     auto entryPointOffset = (*inst)->getGenOffset();
     return entryPointOffset;
+}
+
+int64_t VISAKernelImpl::getGenSize() const
+{
+    assert(false == m_kernel->fg.empty());
+    auto &lastBB = *(*m_kernel->fg.rbegin());
+
+    // the offset of the last gen inst in this kernel/function
+    assert(false == lastBB.empty());
+    auto inst = lastBB.rbegin();
+    assert(UNDEFINED_GEN_OFFSET != (*inst)->getGenOffset()); // expecting terminator
+
+    auto size = (*inst)->getGenOffset();
+    size += (*inst)->isCompactedInst() ? (BYTES_PER_INST / 2) : BYTES_PER_INST;
+    size -= this->getGenOffset();
+    return size;
 }
 
 void VISAKernelImpl::computeAndEmitDebugInfo(std::list<VISAKernelImpl*>& functions)

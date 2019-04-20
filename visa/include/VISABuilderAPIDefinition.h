@@ -811,7 +811,10 @@ public:
     CM_BUILDER_API virtual int GetFunctionId(unsigned int& id) = 0;
 
     /// getGenOffset -- Get gen binary offset of this function
-    CM_BUILDER_API virtual int64_t getGenOffset() = 0;
+    CM_BUILDER_API virtual int64_t getGenOffset() const = 0;
+
+    /// getGenOffset -- Get gen binary size of this function
+    CM_BUILDER_API virtual int64_t getGenSize() const = 0;
 };
 
 typedef enum

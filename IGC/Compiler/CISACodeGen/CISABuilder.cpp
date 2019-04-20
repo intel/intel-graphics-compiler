@@ -3392,12 +3392,12 @@ void CEncoder::BeginStackFunction(llvm::Function *F)
     V(vKernel->AppendVISACFLabelInst(visaLabel));
 }
 
-void CEncoder::AddFunctionSymbol(llvm::Function* F, CVariable* fvar)
+void CEncoder::AddVISASymbol(std::string& symName, CVariable* cvar)
 {
     SModifier mod;
     mod.init();
-    VISA_VectorOpnd* visaFuncAddr = GetDestinationOperand(fvar, mod);
-    V(vKernel->AppendVISACFSymbolInst(F->getName(), visaFuncAddr));
+    VISA_VectorOpnd* visaSymAddr = GetDestinationOperand(cvar, mod);
+    V(vKernel->AppendVISACFSymbolInst(symName, visaSymAddr));
 }
 
 void CEncoder::SaveOption(vISAOptions option, bool val)
@@ -4290,16 +4290,17 @@ bool CEncoder::AvoidRetryOnSmallSpill() const
         context->m_retryManager.IsFirstTry();
 }
 
-void CEncoder::CreateFunctionSymbolTable(void*& buffer, unsigned& bufferSize, unsigned& tableEntries)
+void CEncoder::CreateSymbolTable(void*& buffer, unsigned& bufferSize, unsigned& tableEntries)
 {
     buffer = nullptr;
     bufferSize = 0;
     tableEntries = 0;
+    Module* pModule = m_program->GetContext()->getModule();
+    ModuleMetaData* modMD = m_program->GetContext()->getModuleMetaData();
+    std::vector<Function*> funcsToExport;
 
     if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer))
     {
-        Module* pModule = m_program->GetContext()->getModule();
-        std::vector<Function*> funcsToExport;
         for (auto &F : pModule->getFunctionList())
         {
             // Find all functions in the module we need to export as symbols
@@ -4309,49 +4310,78 @@ void CEncoder::CreateFunctionSymbolTable(void*& buffer, unsigned& bufferSize, un
                     funcsToExport.push_back(&F);
             }
         }
+        tableEntries += funcsToExport.size();
+    }
 
-        if (funcsToExport.empty())
-            return;
+    if (IGC_IS_FLAG_ENABLED(EnableGlobalRelocation))
+    {
+        tableEntries += modMD->inlineProgramScopeOffsets.size();
+    }
 
+    if (tableEntries > 0)
+    {
         // Allocate buffer to store symbol table entries
-        tableEntries = funcsToExport.size();
         bufferSize = sizeof(vISA::GenSymEntry) * tableEntries;
         buffer = (void*) malloc(bufferSize);
-        assert(buffer && "Function Symbol Table not allocated");
+        assert(buffer && "Symbol Table not allocated");
         vISA::GenSymEntry* entry_ptr = (vISA::GenSymEntry*) buffer;
 
-        for (auto pFunc : funcsToExport)
+        if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer))
         {
-            assert(pFunc->getName().size() <= vISA::MAX_SYMBOL_NAME_LENGTH);
-            strcpy_s(entry_ptr->s_name, vISA::MAX_SYMBOL_NAME_LENGTH, pFunc->getName().str().c_str());
-
-            if (pFunc->isDeclaration())
+            // Export function symbols
+            for (auto pFunc : funcsToExport)
             {
-                // If the function is only declared, set as undefined type
-                entry_ptr->s_type = vISA::GenSymType::S_UNDEF;
-                entry_ptr->s_offset = 0;
-            }
-            else
-            {
-                auto Iter = stackFuncMap.find(pFunc);
-                assert(Iter != stackFuncMap.end() && "vISA function not found");
+                assert(pFunc->getName().size() <= vISA::MAX_SYMBOL_NAME_LENGTH);
+                strcpy_s(entry_ptr->s_name, vISA::MAX_SYMBOL_NAME_LENGTH, pFunc->getName().str().c_str());
 
-                // Query vISA for the function's byte offset within the compiled module
-                VISAFunction* visaFunc = Iter->second;
-                entry_ptr->s_type = vISA::GenSymType::S_FUNC;
-                entry_ptr->s_offset = (uint32_t) visaFunc->getGenOffset();
+                if (pFunc->isDeclaration())
+                {
+                    // If the function is only declared, set as undefined type
+                    entry_ptr->s_type = vISA::GenSymType::S_UNDEF;
+                    entry_ptr->s_offset = 0;
+                }
+                else
+                {
+                    auto Iter = stackFuncMap.find(pFunc);
+                    assert(Iter != stackFuncMap.end() && "vISA function not found");
+
+                    // Query vISA for the function's byte offset within the compiled module
+                    VISAFunction* visaFunc = Iter->second;
+                    entry_ptr->s_type = vISA::GenSymType::S_FUNC;
+                    entry_ptr->s_offset = (uint32_t)visaFunc->getGenOffset();
+                    entry_ptr->s_size = (uint32_t)visaFunc->getGenSize();
+                }
+                entry_ptr++;
             }
-            entry_ptr++;
+        }
+
+        if (IGC_IS_FLAG_ENABLED(EnableGlobalRelocation))
+        {
+            // Export global symbols
+            for (auto global : modMD->inlineProgramScopeOffsets)
+            {
+                StringRef name = global.first->getName();
+                unsigned addrSpace = global.first->getType()->getAddressSpace();
+
+                assert(name.size() <= vISA::MAX_SYMBOL_NAME_LENGTH);
+                assert(addrSpace == ADDRESS_SPACE_GLOBAL || addrSpace == ADDRESS_SPACE_CONSTANT);
+
+                strcpy_s(entry_ptr->s_name, vISA::MAX_SYMBOL_NAME_LENGTH, name.str().c_str());
+                entry_ptr->s_type = (addrSpace == ADDRESS_SPACE_GLOBAL) ? vISA::GenSymType::S_GLOBAL_VAR : vISA::GenSymType::S_GLOBAL_VAR_CONST;
+                entry_ptr->s_offset = static_cast<uint32_t>(global.second);
+                entry_ptr->s_size = int_cast<uint32_t>(pModule->getDataLayout().getTypeAllocSize(global.first->getType()->getPointerElementType()));
+                entry_ptr++;
+            }
         }
     }
 }
-void CEncoder::CreateFunctionRelocationTable(void*& buffer, unsigned& bufferSize, unsigned& tableEntries)
+void CEncoder::CreateRelocationTable(void*& buffer, unsigned& bufferSize, unsigned& tableEntries)
 {
     buffer = nullptr;
     bufferSize = 0;
     tableEntries = 0;
 
-    if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer))
+    if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer) || IGC_IS_FLAG_ENABLED(EnableGlobalRelocation))
     {
         // vISA will directly return the buffer with GenRelocEntry layout
         V(vMainKernel->GetGenRelocEntryBuffer(buffer, bufferSize, tableEntries));
@@ -4606,12 +4636,12 @@ void CEncoder::Compile()
 
     pMainKernel->GetGTPinBuffer(pOutput->m_gtpinBuffer, pOutput->m_gtpinBufferSize);
 
-    CreateFunctionSymbolTable(pOutput->m_funcSymbolTable,
-                              pOutput->m_funcSymbolTableSize,
-                              pOutput->m_funcSymbolTableEntries);
-    CreateFunctionRelocationTable(pOutput->m_funcRelocationTable,
-                                  pOutput->m_funcRelocationTableSize,
-                                  pOutput->m_funcRelocationTableEntries);
+    CreateSymbolTable(pOutput->m_funcSymbolTable,
+                      pOutput->m_funcSymbolTableSize,
+                      pOutput->m_funcSymbolTableEntries);
+    CreateRelocationTable(pOutput->m_funcRelocationTable,
+                          pOutput->m_funcRelocationTableSize,
+                          pOutput->m_funcRelocationTableEntries);
 
     if (jitInfo->isSpill == true)
     {

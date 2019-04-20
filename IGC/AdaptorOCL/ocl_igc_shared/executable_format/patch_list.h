@@ -148,8 +148,8 @@ enum PATCH_TOKEN
     PATCH_TOKEN_INLINE_VME_SAMPLER_INFO,                           // 50  - (Unused)
     PATCH_TOKEN_GTPIN_FREE_GRF_INFO,                               // 51  @SPatchGtpinFreeGRFInfo@
     PATCH_TOKEN_GTPIN_INFO,                                        // 52  @SPatchItemHeader@
-    PATCH_TOKEN_FUNCTION_SYMBOL_TABLE,                             // 53  @SPatchFunctionTableInfo@
-    PATCH_TOKEN_FUNCTION_RELOCATION_TABLE,                         // 54  @SPatchFunctionTableInfo@
+    PATCH_TOKEN_PROGRAM_SYMBOL_TABLE,                             // 53  @SPatchFunctionTableInfo@
+    PATCH_TOKEN_PROGRAM_RELOCATION_TABLE,                         // 54  @SPatchFunctionTableInfo@
 
     NUM_PATCH_TOKENS
 };

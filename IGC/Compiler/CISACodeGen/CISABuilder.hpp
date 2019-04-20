@@ -396,7 +396,7 @@ public:
 
     void DestroyVISABuilder();
 
-    void AddFunctionSymbol(llvm::Function* F, CVariable* fvar);
+    void AddVISASymbol(std::string& symName, CVariable* cvar);
 
     std::string GetVariableName(CVariable* var);
     std::string GetDumpFileName(std::string extension);
@@ -488,8 +488,8 @@ private:
     // save compile time by avoiding retry if the amount of spill is (very) small
     bool AvoidRetryOnSmallSpill() const;
 
-    void CreateFunctionSymbolTable(void*& buffer, unsigned& bufferSize, unsigned& tableEntries);
-    void CreateFunctionRelocationTable(void*& buffer, unsigned& bufferSize, unsigned& tableEntries);
+    void CreateSymbolTable(void*& buffer, unsigned& bufferSize, unsigned& tableEntries);
+    void CreateRelocationTable(void*& buffer, unsigned& bufferSize, unsigned& tableEntries);
 
     uint32_t getGRFSize() const;
 

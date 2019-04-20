@@ -545,11 +545,20 @@ void  CShader::CreateConstantBufferOutput(SKernelProgram *pKernelProgram)
     }
 }
 
-void CShader::CreateFuncSymbolToRegisterMap(llvm::Function* pFunc)
+void CShader::CreateFunctionSymbol(llvm::Function* pFunc)
 {
     // Functions with uses in this module requires relocation
     CVariable* funcAddr = GetSymbol(pFunc);
-    encoder.AddFunctionSymbol(pFunc, funcAddr);
+    std::string funcName = pFunc->getName().str();
+    encoder.AddVISASymbol(funcName, funcAddr);
+    encoder.Push();
+}
+
+void CShader::CreateGlobalSymbol(llvm::GlobalVariable* pGlobal)
+{
+    CVariable* globalAddr = GetSymbol(pGlobal);
+    std::string globalName = pGlobal->getName().str();
+    encoder.AddVISASymbol(globalName, globalAddr);
     encoder.Push();
 }
 
@@ -2293,20 +2302,27 @@ CVariable* CShader::GetSymbol(llvm::Value *value, bool fromConstantPool)
 
     if (Constant *C = llvm::dyn_cast<llvm::Constant>(value))
     {
-        // Function Pointer
-        if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer) &&
-            isa<GlobalValue>(value) &&
-            value->getType()->isPointerTy() &&
-            value->getType()->getPointerElementType()->isFunctionTy())
+        if (isa<GlobalValue>(value))
         {
-            auto it = symbolMapping.find(value);
-            if( it != symbolMapping.end() )
+            // Function Pointer
+            bool isFunction = IGC_IS_FLAG_ENABLED(EnableFunctionPointer) &&
+                value->getType()->isPointerTy() &&
+                value->getType()->getPointerElementType()->isFunctionTy();
+            // Global Relocation
+            bool isGlobalVar = IGC_IS_FLAG_ENABLED(EnableGlobalRelocation) &&
+                isa<GlobalVariable>(value);
+
+            if (isFunction || isGlobalVar)
             {
-                return it->second;
+                auto it = symbolMapping.find(value);
+                if (it != symbolMapping.end())
+                {
+                    return it->second;
+                }
+                var = GetNewVariable(1, ISA_TYPE_UQ, EALIGN_QWORD, true, 1);
+                symbolMapping.insert(std::pair<llvm::Value*, CVariable*>(value, var));
+                return var;
             }
-            var = GetNewVariable(1, ISA_TYPE_UQ, EALIGN_QWORD, true, 1);
-            symbolMapping.insert(std::pair<llvm::Value*, CVariable*>(value, var));
-            return var;
         }
 
         if (fromConstantPool) {

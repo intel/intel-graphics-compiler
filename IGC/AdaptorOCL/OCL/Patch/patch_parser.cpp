@@ -1438,13 +1438,13 @@ void DebugPatchList(
                              pPatchItem->Size);
             }
             break;
-        case iOpenCL::PATCH_TOKEN_FUNCTION_SYMBOL_TABLE:
+        case iOpenCL::PATCH_TOKEN_PROGRAM_SYMBOL_TABLE:
             {
                 const iOpenCL::SPatchFunctionTableInfo* pPatchItem =
                     (const iOpenCL::SPatchFunctionTableInfo*)pHeader;
 
                 ICBE_DPF_STR(output, GFXDBG_HARDWARE,
-                             "PATCH_TOKEN_FUNCTION_SYMBOL_TABLE (%08X) (size = %d)\n",
+                             "PATCH_TOKEN_PROGRAM_SYMBOL_TABLE (%08X) (size = %d)\n",
                              pPatchItem->Token,
                              pPatchItem->Size);
 
@@ -1454,13 +1454,13 @@ void DebugPatchList(
 
             }
             break;
-        case iOpenCL::PATCH_TOKEN_FUNCTION_RELOCATION_TABLE:
+        case iOpenCL::PATCH_TOKEN_PROGRAM_RELOCATION_TABLE:
             {
                 const iOpenCL::SPatchFunctionTableInfo* pPatchItem =
                     (const iOpenCL::SPatchFunctionTableInfo*)pHeader;
 
                 ICBE_DPF_STR(output, GFXDBG_HARDWARE,
-                             "PATCH_TOKEN_FUNCTION_RELOCATION_TABLE (%08X) (size = %d)\n",
+                             "PATCH_TOKEN_PROGRAM_RELOCATION_TABLE (%08X) (size = %d)\n",
                              pPatchItem->Token,
                              pPatchItem->Size);
 

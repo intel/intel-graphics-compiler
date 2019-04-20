@@ -2104,13 +2104,13 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
         }
     }
 
-    // Patch for function symbol table
+    // Patch for symbol table
     if (retValue.Success)
     {
         iOpenCL::SPatchFunctionTableInfo patch;
         memset(&patch, 0, sizeof(patch));
 
-        patch.Token = PATCH_TOKEN_FUNCTION_SYMBOL_TABLE;
+        patch.Token = PATCH_TOKEN_PROGRAM_SYMBOL_TABLE;
         uint32_t size = 0;
         uint32_t entries = 0;
         void* buffer = nullptr;
@@ -2150,13 +2150,13 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
         }
     }
 
-    // Patch for function relocation table
+    // Patch for relocation table
     if (retValue.Success)
     {
         iOpenCL::SPatchFunctionTableInfo patch;
         memset(&patch, 0, sizeof(patch));
 
-        patch.Token = PATCH_TOKEN_FUNCTION_RELOCATION_TABLE;
+        patch.Token = PATCH_TOKEN_PROGRAM_RELOCATION_TABLE;
         uint32_t size = 0;
         uint32_t entries = 0;
         void* buffer = nullptr;
