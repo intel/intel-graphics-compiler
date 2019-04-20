@@ -681,7 +681,8 @@ const std::string& VISAModule::GetTargetTriple() const
 
 void VISAModule::UpdateVisaId()
 {
-    m_currentVisaId = m_pShader->GetEncoder().GetVISAKernel()->getvIsaInstCount();
+    auto *Kernel = m_pShader->GetEncoder().GetVISAKernel();
+    m_currentVisaId = Kernel->getvIsaInstCount();
 }
 
 void VISAModule::ValidateVisaId()
