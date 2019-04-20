@@ -96,7 +96,7 @@ void CodeGenPatternMatch::CodeGenNode( llvm::DomTreeNode* node )
     }
     llvm::BasicBlock* bb = node->getBlock();
     CodeGenBlock(bb);
-} 
+}
 
 
 bool CodeGenPatternMatch::runOnFunction(llvm::Function &F)
@@ -108,7 +108,7 @@ bool CodeGenPatternMatch::runOnFunction(llvm::Function &F)
 
     delete[] m_blocks;
     m_blocks = nullptr;
-    
+
     m_ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
     MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
@@ -121,7 +121,7 @@ bool CodeGenPatternMatch::runOnFunction(llvm::Function &F)
     m_AllowContractions = true;
     if(m_ctx->m_DriverInfo.NeedCheckContractionAllowed())
     {
-        m_AllowContractions = 
+        m_AllowContractions =
             modMD->compOpt.FastRelaxedMath ||
             modMD->compOpt.MadEnable;
     }
@@ -152,7 +152,7 @@ inline bool HasSideEffect(llvm::Instruction& inst)
 
 inline bool HasPhiUse(llvm::Value& inst)
 {
-    for (auto UI = inst.user_begin(), E = inst.user_end(); UI != E; ++UI) 
+    for (auto UI = inst.user_begin(), E = inst.user_end(); UI != E; ++UI)
     {
         llvm::User *U = *UI;
         if( llvm::isa<llvm::PHINode>(U))
@@ -725,7 +725,7 @@ CodeGenPatternMatch::isIntegerSatTrunc(llvm::SelectInst *SI) {
         // since src is a source of a trunc instruction, and dst
         // have the same width as its destination.
         return std::make_tuple(nullptr, false, false);
-    }  
+    }
 
     if (CI->getValue() != UMax && CI->getValue() != SMax)
         return std::make_tuple(nullptr, false, false);
@@ -836,7 +836,7 @@ void CodeGenPatternMatch::visitCastInst(llvm::CastInst &I)
     }
     else if (I.getOpcode() == Instruction::Trunc)
     {
-        match = 
+        match =
             MatchModifier(I);
     }
     else
@@ -1004,12 +1004,12 @@ void CodeGenPatternMatch::visitBinaryOperator(llvm::BinaryOperator &I)
                 MatchModifier(I);
         break;
     case Instruction::And:
-        match = 
+        match =
                 MatchBoolOp(I) ||
                 MatchLogicAlu(I);
         break;
     case Instruction::Or:
-        match = 
+        match =
                 MatchBoolOp(I) ||
                 MatchLogicAlu(I);
         break;
@@ -1026,7 +1026,7 @@ void CodeGenPatternMatch::visitBinaryOperator(llvm::BinaryOperator &I)
 
 void CodeGenPatternMatch::visitCmpInst(llvm::CmpInst &I)
 {
-    bool match = MatchCondModifier(I) || 
+    bool match = MatchCondModifier(I) ||
         MatchModifier(I);
     assert(match);
 }
@@ -1109,7 +1109,7 @@ void CodeGenPatternMatch::visitCallInst(CallInst &I)
             break;
         case GenISAIntrinsic::GenISA_simdBlockRead:
         case GenISAIntrinsic::GenISA_simdBlockWrite:
-            match = MatchBlockReadWritePointer(*CI) || 
+            match = MatchBlockReadWritePointer(*CI) ||
                 MatchSingleInstruction(*CI);
             break;
         default:
@@ -1203,7 +1203,7 @@ void CodeGenPatternMatch::visitIntrinsicInst(llvm::IntrinsicInst &I)
         break;
     }
     assert(match && "no pattern found");
-}  
+}
 
 void CodeGenPatternMatch::visitStoreInst(StoreInst &I)
 {
@@ -1556,7 +1556,7 @@ bool CodeGenPatternMatch::MatchFrc(llvm::BinaryOperator& I)
     return found;
 }
 
-SSource CodeGenPatternMatch::GetSource(llvm::Value* value, bool modifier, bool regioning) 
+SSource CodeGenPatternMatch::GetSource(llvm::Value* value, bool modifier, bool regioning)
 {
     llvm::Value* sourceValue = value;
     e_modifier mod = EMOD_NONE;
@@ -1645,7 +1645,7 @@ bool CodeGenPatternMatch::MatchMad( llvm::BinaryOperator& I )
             pass->Mad(sources, modifier);
         }
     };
-    
+
     if (m_ctx->getModuleMetaData()->isPrecise)
     {
         return false;
@@ -1724,9 +1724,9 @@ bool CodeGenPatternMatch::MatchMad( llvm::BinaryOperator& I )
     {
         MadPattern *pattern = new (m_allocator) MadPattern();
         for(int i=0; i<3; i++)
-        {           
+        {
             pattern->sources[i] = GetSource(sources[i], src_mod[i], false);
-            if (isa<Constant>(sources[i]) && 
+            if (isa<Constant>(sources[i]) &&
                 (!m_Platform.support16BitImmSrcForMad() ||
                 (sources[i]->getType()->getTypeID() != llvm::Type::HalfTyID) || i == 1))
             {
@@ -1740,7 +1740,7 @@ bool CodeGenPatternMatch::MatchMad( llvm::BinaryOperator& I )
     return found;
 }
 
-// match simdblockRead/Write with preceding inttoptr if possible 
+// match simdblockRead/Write with preceding inttoptr if possible
 // to save a copy move
 bool CodeGenPatternMatch::MatchBlockReadWritePointer(llvm::GenIntrinsicInst& I)
 {
@@ -1818,6 +1818,14 @@ bool CodeGenPatternMatch::MatchLoadStorePointer(llvm::Instruction& I, llvm::Valu
     {
         return false;
     }
+
+    // Store3d supports only types equal or less than 128 bits.
+    StoreInst* storeInst = dyn_cast<StoreInst>(&I);
+    if (storeInst && storeInst->getValueOperand()->getType()->getPrimitiveSizeInBits() > 128)
+    {
+        return false;
+    }
+
     if (i2p || (ptr && ptr->getIntrinsicID() == GenISAIntrinsic::GenISA_OWordPtr))
     {
         LoadStorePointerPattern *pattern = new (m_allocator) LoadStorePointerPattern();
@@ -1996,9 +2004,9 @@ bool CodeGenPatternMatch::MatchLrp(llvm::BinaryOperator& I)
 
     if (!found)
     {
-        // match the case: dst = src2 - (src0 * src2) + (src0 * src1); 
-        // match the case: dst = (src0 * src1) + src2 - (src0 * src2); 
-        // match the case: dst = src2 + (src0 * src1) - (src0 * src2); 
+        // match the case: dst = src2 - (src0 * src2) + (src0 * src1);
+        // match the case: dst = (src0 * src1) + src2 - (src0 * src2);
+        // match the case: dst = src2 + (src0 * src1) - (src0 * src2);
         if (I.getOpcode() == Instruction::FAdd || I.getOpcode() == Instruction::FSub)
         {
             // dst = op[0] +/- op[1] +/- op[2]
@@ -2068,7 +2076,7 @@ bool CodeGenPatternMatch::MatchLrp(llvm::BinaryOperator& I)
                                                 // abort the cases marked as "skip" in the comment above
                                                 break;
                                             }
-                                            
+
                                             sources[0] = op[i]->getOperand(srci);
                                             sources[1] = op[k] == op[i]->getOperand(1 - srci) ? op[j]->getOperand(1 - srcj) : op[i]->getOperand(1 - srci);
                                             sources[2] = op[k];
@@ -2141,7 +2149,7 @@ bool CodeGenPatternMatch::MatchCmpSext(llvm::Instruction& I)
             pass->Cmp( inst->getPredicate(), sources, modifier );
         }
     };
-    bool match = false; 
+    bool match = false;
 
     if( CmpInst* cmpInst = dyn_cast<CmpInst>(I.getOperand(0)) )
     {
@@ -2149,12 +2157,12 @@ bool CodeGenPatternMatch::MatchCmpSext(llvm::Instruction& I)
         {
             CmpSextPattern *pattern = new (m_allocator) CmpSextPattern();
             bool supportModifer = SupportsModifier(cmpInst);
-            
+
             pattern->inst = cmpInst;
             pattern->sources[0] = GetSource(cmpInst->getOperand(0), supportModifer, false);
             pattern->sources[1] = GetSource(cmpInst->getOperand(1), supportModifer, false);
             AddPattern(pattern);
-            match = true; 
+            match = true;
         }
     }
 
@@ -2420,16 +2428,16 @@ bool CodeGenPatternMatch::BitcastSearch(SSource& source, llvm::Value*& value, bo
         if (auto bTInst = dyn_cast<BitCastInst>(elemInst->getOperand(0)))
         {
             // Pattern Matching (Instruction) + ExtractElem + (Vector)Bitcast
-            // 
+            //
             // In order to set the regioning for the ALU operand
             // I require three things:
             //      -The first is the source number of elements
             //      -The second is the destination number of elements
             //      -The third is the index from the extract element
-            //      
+            //
             // For example if I have <4 x i32> to <16 x i8> all I need is
-            // the 4 (vstride) and the i8 (b) in this case the operand would look 
-            // like this -> r22.x <4;1,0>:b 
+            // the 4 (vstride) and the i8 (b) in this case the operand would look
+            // like this -> r22.x <4;1,0>:b
             // x is calculated below and later on using the simdsize
 
             uint32_t index, srcNElts, dstNElts, nEltsRatio;
@@ -2466,7 +2474,7 @@ bool CodeGenPatternMatch::BitcastSearch(SSource& source, llvm::Value*& value, bo
     }
     return false;
 }
-    
+
 
 bool CodeGenPatternMatch::MatchModifier(llvm::Instruction& I, bool SupportSrc0Mod)
 {
@@ -2539,7 +2547,7 @@ bool CodeGenPatternMatch::MatchSingleInstruction(llvm::Instruction& I)
         }
     }
     AddPattern(pattern);
-    return true;   
+    return true;
 }
 
 bool CodeGenPatternMatch::MatchBranch(llvm::BranchInst& I)
@@ -2596,18 +2604,18 @@ bool CodeGenPatternMatch::MatchSatModifier(llvm::Instruction& I)
             else
             {
                 pass->Mov(source, mod);
-            }            
+            }
         }
     };
-    bool match = false;    
+    bool match = false;
     llvm::Value* source = nullptr;
     if(isSat(&I, source))
     {
         SatPattern *satPattern = new (m_allocator) SatPattern();
         if(llvm::Instruction* inst = llvm::dyn_cast<Instruction>(source))
         {
-            // As an heuristic we only match saturate if the instruction has one use 
-            // to avoid duplicating expensive instructions and increasing reg pressure 
+            // As an heuristic we only match saturate if the instruction has one use
+            // to avoid duplicating expensive instructions and increasing reg pressure
             // without improve code quality this may be refined in the future
             if(inst->hasOneUse() &&  SupportsSaturate(inst))
             {
@@ -2772,7 +2780,7 @@ bool CodeGenPatternMatch::MatchPow(llvm::IntrinsicInst& I)
             pass->Pow(sources, modifier);
         }
     };
-    bool found = false;   
+    bool found = false;
     llvm::Value* source0 = NULL;
     llvm::Value* source1 = NULL;
     if(I.getIntrinsicID() == Intrinsic::exp2)
@@ -2794,7 +2802,7 @@ bool CodeGenPatternMatch::MatchPow(llvm::IntrinsicInst& I)
                     }
                 }
             }
-        }    
+        }
     }
     if(found)
     {
@@ -2889,7 +2897,7 @@ bool CodeGenPatternMatch::MatchBoolOp(llvm::BinaryOperator& I)
     return found;
 }
 
-//  
+//
 //  Assume that V is of type T (integer) with N bits;
 //  and amt is of integer type too.
 //
@@ -2917,7 +2925,7 @@ bool CodeGenPatternMatch::MatchBoolOp(llvm::BinaryOperator& I)
 //  ror can be handled similarly. Note that
 //    ror (x, amt) = ((unsigned)x >> amt) | ( x << (N - amt))
 //                 = rol (x, N - amt);
-//    
+//
 bool CodeGenPatternMatch::MatchRotate(llvm::Instruction& I)
 {
     using namespace llvm::PatternMatch;
@@ -2967,7 +2975,7 @@ bool CodeGenPatternMatch::MatchRotate(llvm::Instruction& I)
     {
         assert(false && "Should be invoked with Or/Trunc instruction");
     }
- 
+
     // Do rotate only if
     //   1) type is W/DW (HW only supports W/DW); and
     //   2) both operands are instructions.
@@ -3088,7 +3096,7 @@ bool CodeGenPatternMatch::MatchRotate(llvm::Instruction& I)
                  match(X1, m_And(m_Value(X2), m_SpecificInt(typeMask))) &&
                  (match(X2, m_Sub(m_SpecificInt(typeWidth), m_Value(X0))) ||
                   match(X2, m_Sub(m_Zero(), m_Value(X0)))));
-            
+
             if (isReverse)
             {
                 Amt = X0;
@@ -3101,7 +3109,7 @@ bool CodeGenPatternMatch::MatchRotate(llvm::Instruction& I)
     {
         return false;
     }
-  
+
     // Found the pattern.
     RotatePattern *pattern = new (m_allocator) RotatePattern();
     pattern->instruction = &I;
@@ -3246,7 +3254,7 @@ bool CodeGenPatternMatch::MatchDbgInstruction(llvm::DbgInfoIntrinsic& I)
         assert(false && "Unhandled Dbg intrinsic");
     }
     AddPattern(pattern);
-    return true;   
+    return true;
 }
 
 bool CodeGenPatternMatch::MatchAvg(llvm::Instruction& I)
@@ -3417,7 +3425,7 @@ bool CodeGenPatternMatch::MatchRegisterRegion(llvm::GenIntrinsicInst& I)
             {
                 uint shiftFactor = int_cast<uint>(simDOffSetInst->getZExtValue());
                 //Check to make sure we dont end up with an invalid Vertical Stride.
-                //Only 1, 2, 4, 8, 16 are supported. 
+                //Only 1, 2, 4, 8, 16 are supported.
                 if (shiftFactor <= 4)
                 {
                     verticalStride = (int)pow(2, shiftFactor);
@@ -3635,7 +3643,7 @@ bool isAbs(llvm::Value* abs, e_modifier& mod, llvm::Value*& source)
             return true;
         }
     }
-    
+
     llvm::SelectInst* select = llvm::dyn_cast<llvm::SelectInst>(abs);
     if (!select)
         return false;
@@ -3656,7 +3664,7 @@ bool isAbs(llvm::Value* abs, e_modifier& mod, llvm::Value*& source)
                     {
                         if(cmpSource == select->getOperand(1+sourceIndex))
                         {
-                            llvm::BinaryOperator* negate = 
+                            llvm::BinaryOperator* negate =
                                 llvm::dyn_cast<llvm::BinaryOperator>(select->getOperand(1+(1-sourceIndex)));
                             llvm::Value* negateSource = NULL;
                             if(negate && IsNegate(*negate, negateSource) && negateSource == cmpSource)
@@ -3669,7 +3677,7 @@ bool isAbs(llvm::Value* abs, e_modifier& mod, llvm::Value*& source)
                             }
                             break;
                         }
-                    }                          
+                    }
                     break;
                 }
             }
@@ -3904,7 +3912,7 @@ bool isSat(llvm::Instruction* sat, llvm::Value*& source)
                             found = true;
                             source = maxSources[1-j];
                             break;
-                        }                       
+                        }
                     }
                 }
                 break;
@@ -3927,7 +3935,7 @@ bool isSat(llvm::Instruction* sat, llvm::Value*& source)
                             found = true;
                             source = maxSources[1-j];
                             break;
-                        }                       
+                        }
                     }
                 }
                 break;
@@ -3941,7 +3949,7 @@ uint CodeGenPatternMatch::GetBlockId(llvm::BasicBlock* block)
 {
     auto it = m_blockMap.find(block);
     assert(it!=m_blockMap.end());
-    
+
     uint blockID = it->second->id;
     return blockID;
 }
