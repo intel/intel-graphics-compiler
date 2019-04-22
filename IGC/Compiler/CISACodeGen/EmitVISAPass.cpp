@@ -896,7 +896,13 @@ bool EmitPass::isCandidateIfStmt(
 void EmitPass::MovPhiSources(llvm::BasicBlock* aBB)
 {
     // collect all the src-side phi-moves, then find a good order for emission
-    std::vector<std::pair<CVariable*, CVariable*>> phiSrcDstList;
+    struct PhiSrcMoveInfo {
+        CVariable* dstCVar;
+        CVariable* srcCVar;
+        Value* dstRootV; // root value of dst (dessa)
+        Value* srcRootV; // root value of src (dessa)
+    };
+    std::list<PhiSrcMoveInfo> phiSrcDstList;
     std::vector<std::pair<CVariable*, CVariable*>> emitList;
     std::map<CVariable*, unsigned int> dstVTyMap;
     llvm::BasicBlock *bb = aBB;
@@ -986,17 +992,30 @@ void EmitPass::MovPhiSources(llvm::BasicBlock* aBB)
             {
                 if (PN->getIncomingBlock(i) == bb)
                 {
-                    CVariable* dst = m_currShader->GetSymbol(PN);
-                    CVariable* src = m_currShader->GetSymbol(PN->getOperand(i));
-                    if (dst != src)
+                    Value* Src = PN->getOperand(i);
+
+                    Value* dstRootV = m_deSSA ? m_deSSA->getRootValue(PN) : PN;
+                    Value* srcRootV = m_deSSA ? m_deSSA->getRootValue(Src) : Src;
+                    dstRootV = dstRootV ? dstRootV : PN;
+                    srcRootV = srcRootV ? srcRootV : Src;
+                    // To check if src-side phi mov is needed, we must use dessa
+                    // rootValue instead of CVariable, as value alias in dessa
+                    // might have the same variable with two different CVariable.
+                    if (dstRootV != srcRootV)
                     {
+                        phiSrcDstList.push_back(PhiSrcMoveInfo());
+                        PhiSrcMoveInfo& phiInfo = phiSrcDstList.back();
+                        phiInfo.dstCVar = m_currShader->GetSymbol(PN);
+                        phiInfo.srcCVar = m_currShader->GetSymbol(Src);
+                        phiInfo.dstRootV = dstRootV;
+                        phiInfo.srcRootV = srcRootV;
+
                         int numElt = 0;
                         if (VectorType *vTy = dyn_cast<VectorType>(PN->getType()))
                         {
                             numElt = int_cast<int>(vTy->getNumElements());
                         }
-                        dstVTyMap.insert(std::pair<CVariable*, unsigned int>(dst, numElt));
-                        phiSrcDstList.push_back(std::pair<CVariable*, CVariable*>(src, dst));
+                        dstVTyMap.insert(std::pair<CVariable*, unsigned int>(phiInfo.dstCVar, numElt));
                     }
                 }
             }
@@ -1020,9 +1039,9 @@ void EmitPass::MovPhiSources(llvm::BasicBlock* aBB)
         auto Et = phiSrcDstList.end();
         for (; It != Et; ++It)
         {
-            auto Cmp = [=](const std::pair<CVariable *, CVariable *> &val)
+            auto Cmp = [=](const PhiSrcMoveInfo& Val)
             {
-                return val.first == It->second;
+                return Val.srcRootV == It->dstRootV;
             };
 
             if (0 == std::count_if(phiSrcDstList.begin(), phiSrcDstList.end(), Cmp))
@@ -1041,31 +1060,39 @@ void EmitPass::MovPhiSources(llvm::BasicBlock* aBB)
             //    t = phi_1
             //    phi_1 = phi_2
             //    phi_2 = t
-            CVariable* D1 = phiSrcDstList[0].second;
-            CVariable* T = m_currShader->GetNewVariable(D1);
-            dstVTyMap[T] = dstVTyMap[D1];
-            emitList.push_back(std::pair<CVariable*, CVariable*>(D1, T));
-
-            // Replace with T all src that is equal to D1 (start from i=1)
-            for (int i=1, sz = (int)phiSrcDstList.size(); i < sz; ++i)
-            {
-                std::pair<CVariable*, CVariable*>& SrcDstPair = phiSrcDstList[i];
-                if (SrcDstPair.first == D1) {
-                    CVariable* dst = SrcDstPair.second;
-                    phiSrcDstList[i] = std::pair<CVariable*, CVariable*>(T, dst);
-                }
-            }
 
             // After the temp copy of the 1st entry's dst is inserted,
             // the entry becomes the one to be added into emitList.
             It = phiSrcDstList.begin();
+
+            Value* dRootV = It->dstRootV;
+            CVariable* D1 = It->dstCVar;
+            CVariable* T = m_currShader->GetNewVariable(D1);
+            dstVTyMap[T] = dstVTyMap[D1];
+            emitList.push_back(std::pair<CVariable*, CVariable*>(D1, T));
+
+            // Replace with T all src that is equal to D1 (start from It+1)
+            auto LI = It, LE = phiSrcDstList.end();
+            for (++LI; LI != LE; ++LI)
+            {
+                PhiSrcMoveInfo& phiinfo = *LI;
+                if (phiinfo.srcRootV == dRootV) {
+                    CVariable* sVar = phiinfo.srcCVar;
+                    CVariable* nVar;
+                    if (sVar->GetType() != T->GetType()) {
+                        nVar = m_currShader->GetNewAlias(
+                            T, sVar->GetType(), 0, sVar->GetNumberElement());
+                    }
+                    else {
+                        nVar = T;
+                    }
+                    phiinfo.srcCVar = nVar;
+                }
+            }
         }
-        else
-        {
-            assert(It != Et);
-            emitList.push_back(std::pair<CVariable*, CVariable*>(It->first, It->second));
-            phiSrcDstList.erase(It);
-        }
+        assert(It != Et);
+        emitList.push_back(std::pair<CVariable*, CVariable*>(It->srcCVar, It->dstCVar));
+        phiSrcDstList.erase(It);
     }
     // emit the src-side phi-moves
     for (unsigned i = 0, e = int_cast<unsigned>(emitList.size()); i != e; ++i)
