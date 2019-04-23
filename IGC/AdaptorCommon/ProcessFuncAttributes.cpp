@@ -194,6 +194,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
     MetaDataUtils *pMdUtils = mduw.getMetaDataUtils();
     ModuleMetaData *modMD = mduw.getModuleMetaData();
     auto MemPoolFuncs = collectMemPoolUsage(M);
+    CodeGenContext* pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
     std::set<llvm::Function *> fastMathFunct;
     GlobalVariable *gv_fastMath = M.getGlobalVariable("__FastRelaxedMath", true);
@@ -232,6 +233,17 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
             // It is not a defined function
             continue;
         }
+        
+        // If EnableOCLNoInlineAttr is on and F does have
+        // NoInline, do not reset it.
+        if (IGC_IS_FLAG_ENABLED(EnableOCLNoInlineAttr) &&
+            pCtx->type == ShaderType::OPENCL_SHADER &&
+            F->hasFnAttribute(llvm::Attribute::NoInline) &&
+            !F->hasFnAttribute(llvm::Attribute::Builtin))
+        {
+            continue;
+        }
+
         // Remove noinline attr if present.
         F->removeFnAttr(llvm::Attribute::NoInline);
 
@@ -375,10 +387,9 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                     }
                 }
                 if (isIndirect)
-                {
-                    IGC::CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-                    ctx->m_enableFunctionPointer = true;
-                    ctx->m_enableSubroutine = false;
+                {                    
+                    pCtx->m_enableFunctionPointer = true;
+                    pCtx->m_enableSubroutine = false;
                     F->addFnAttr("AsFunctionPointer");
                     F->addFnAttr("visaStackCall");
                 }

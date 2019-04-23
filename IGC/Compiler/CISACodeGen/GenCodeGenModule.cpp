@@ -766,6 +766,7 @@ InlineCost SubroutineInliner::getInlineCost(CallSite CS)
 {
     Function *Callee = CS.getCalledFunction();
     Function *Caller = CS.getCaller();
+    CodeGenContext* pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
     // Inline direct calls to functions with always inline attribute or a function
     // whose estimated size is under certain predefined limit.
@@ -780,8 +781,13 @@ InlineCost SubroutineInliner::getInlineCost(CallSite CS)
             return IGCLLVM::InlineCost::getAlways();
 
         // If m_enableSubroutine is disabled by EstimateFunctionCost pass, always inline
-        if (getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->m_enableSubroutine == false)
+        if (pCtx->m_enableSubroutine == false)
             return IGCLLVM::InlineCost::getAlways();
+
+        if (pCtx->type == ShaderType::OPENCL_SHADER &&
+            IGC_IS_FLAG_ENABLED(EnableOCLNoInlineAttr) &&
+            Callee->hasFnAttribute(llvm::Attribute::NoInline))
+            return IGCLLVM::InlineCost::getNever();
 
         if (Callee->hasFnAttribute("UserSubroutine") &&
             Callee->hasFnAttribute(llvm::Attribute::NoInline))
