@@ -1345,7 +1345,7 @@ bool CISA_IR_Builder::CISA_attr_directive(char* input_name, char* input_var, int
     return true;
 }
 
-bool CISA_IR_Builder::CISA_attr_directiveNum(char* input_name, unsigned char input_var, int line_no)
+bool CISA_IR_Builder::CISA_attr_directiveNum(char* input_name, uint32_t input_var, int line_no)
 {
     /*
     attribute_info_t* attr = (attribute_info_t*)m_mem.alloc(sizeof(attribute_info_t));
@@ -1357,7 +1357,7 @@ bool CISA_IR_Builder::CISA_attr_directiveNum(char* input_name, unsigned char inp
     m_kernel->addAttribute(input_name, attr);
     */
 
-    m_kernel->AddKernelAttribute(input_name, sizeof(unsigned char), &input_var);
+    m_kernel->AddKernelAttribute(input_name, sizeof(uint32_t), &input_var);
     return true;
 }
 

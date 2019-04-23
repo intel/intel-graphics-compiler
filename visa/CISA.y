@@ -737,7 +737,7 @@ DirectiveAttr: DIRECTIVE_KERNEL_ATTR VAR '=' ASM_FILE_NAME
                };
                | DIRECTIVE_KERNEL_ATTR VAR '=' NUMBER
                {
-                   pCisaBuilder->CISA_attr_directiveNum($2, (unsigned char)$4, CISAlineno);
+                   pCisaBuilder->CISA_attr_directiveNum($2, (uint32_t)$4, CISAlineno);
                };
                | DIRECTIVE_KERNEL_ATTR VAR '=' ATTR_CM
                {

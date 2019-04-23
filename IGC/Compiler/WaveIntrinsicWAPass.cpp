@@ -114,9 +114,9 @@ namespace IGC
                     {
                         changed = true;
                         llvm::FunctionType* voidFuncType = llvm::FunctionType::get(llvm::Type::getVoidTy(ctx), false);
-                        std::string asmText = "; " + std::to_string(counter++);
+                        std::string asmText = "/// nohoist" + std::to_string(counter++) + "\n";
                         llvm::CallInst::Create(llvm::InlineAsm::get(voidFuncType, asmText, "", true), "", &I);
-                        asmText = "; " + std::to_string(counter++);
+                        asmText = "/// nohoist" + std::to_string(counter++) + "\n";
                         auto asmAfterIntrinsic = llvm::CallInst::Create(llvm::InlineAsm::get(voidFuncType, asmText, "", true));
                         asmAfterIntrinsic->insertAfter(&I);
                     }
