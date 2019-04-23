@@ -7704,8 +7704,7 @@ void GlobalRA::detectUndefinedUses(LivenessAnalysis& liveAnalysis, G4_Kernel& ke
             }
 
             // Dst/cond modifier opnds are defs
-            if (inst->getCondMod() &&
-                inst->getCondMod()->getBase() &&
+            if (inst->getCondModBase() &&
                 inst->getCondMod()->getBase()->isRegVar() &&
                 inst->getCondMod()->getBase()->isRegAllocPartaker())
             {
@@ -7770,8 +7769,7 @@ void GlobalRA::detectNeverDefinedUses()
                 }
             }
 
-            if (inst->getCondMod() &&
-                inst->getCondMod()->getBase() &&
+            if (inst->getCondModBase() &&
                 inst->getCondMod()->getBase()->isRegVar())
             {
                 referencedDcl = inst->getCondMod()->asCondMod()->getBase()->asRegVar()->getDeclare();

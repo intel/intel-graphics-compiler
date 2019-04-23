@@ -1435,8 +1435,7 @@ void HWConformity::evenlySplitInst( INST_LIST_ITER iter, G4_BB* bb, bool checkOv
             G4_InstOption newMask = G4_INST::offsetToMask(currExSize, newMaskOffset, nibOk);
             if (newMask == InstOpt_NoOpt)
             {
-                bool useMask = inst->getPredicate() ||
-                    (inst->getCondMod() && inst->getCondMod()->getBase()) ||
+                bool useMask = inst->getPredicate() || inst->getCondModBase() ||
                     (bb->isInSimdFlow() && !inst->isWriteEnableInst());
                 MUST_BE_TRUE(!useMask, "no legal emask found for the split instruction");
             }

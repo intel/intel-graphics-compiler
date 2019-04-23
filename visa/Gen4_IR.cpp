@@ -3062,6 +3062,14 @@ bool G4_INST::isValidSymbolOperand(bool &dst_valid, bool *srcs_valid)
     return obeyRule;
 }
 
+G4_VarBase* G4_INST::getCondModBase()
+{
+    if (!getCondMod())
+        return nullptr;
+
+    return getCondMod()->getBase();
+}
+
 bool G4_INST::isOptBarrier()
 {
     if (op == G4_join)

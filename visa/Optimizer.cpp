@@ -6275,9 +6275,8 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     }
                 }
                 // check cond mod
-                else if (inst->getCondMod() && inst->getCondMod()->getBase())
+                else if (G4_VarBase* flag = inst->getCondModBase())
                 {
-                    G4_VarBase* flag = inst->getCondMod()->getBase();
                     if (flag->isRegVar())
                     {
                         G4_Areg* areg = flag->asRegVar()->getPhyReg()->asAreg();

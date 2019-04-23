@@ -171,6 +171,7 @@ class IR_Builder;
 
 class LocalLiveRange;
 class G4_Kernel;
+class G4_VarBase;
 }
 void associateOpndWithInst(vISA::G4_Operand*, vISA::G4_INST*);
 
@@ -945,6 +946,7 @@ public:
 
     unsigned char  getExecSize() const {return execSize;}
     G4_CondMod*    getCondMod()  {return mod;}
+    G4_VarBase*    getCondModBase();
     void setCondMod( G4_CondMod* m );
 
     bool isDead()          {return dead;}
