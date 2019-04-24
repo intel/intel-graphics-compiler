@@ -95,7 +95,7 @@ bool AddImplicitArgs::runOnModule(Module &M)
             ImplicitArgs::addBufferOffsetArgs(*pFunc, m_pMdUtils, ctx->getModuleMetaData());
         }
 
-        ImplicitArgs implicitArgs(*pFunc, m_pMdUtils);
+        ImplicitArgs implicitArgs(*pFunc, m_pMdUtils, ctx->platform.getGRFSize());
 
         // If enabling indirect call, only R0, PayloadHeader and PrivateBase are allowed!
         if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer))
@@ -522,7 +522,8 @@ void AddImplicitArgs::FixIndirectCalls(Module& M)
                     }
 
                     Function* pFunc = call->getParent()->getParent();
-                    ImplicitArgs implicitArgs(*pFunc, m_pMdUtils);
+                    CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+                    ImplicitArgs implicitArgs(*pFunc, m_pMdUtils, ctx->platform.getGRFSize());
                     args.push_back(implicitArgs.getImplicitArg(*pFunc, ImplicitArg::ArgType::R0));
                     args.push_back(implicitArgs.getImplicitArg(*pFunc, ImplicitArg::ArgType::PAYLOAD_HEADER));
                     args.push_back(implicitArgs.getImplicitArg(*pFunc, ImplicitArg::ArgType::PRIVATE_BASE));

@@ -45,6 +45,7 @@ using namespace IGC::IGCMD;
 #define PASS_ANALYSIS false
 IGC_INITIALIZE_PASS_BEGIN(ImageFuncResolution, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
+IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_END(ImageFuncResolution, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 char ImageFuncResolution::ID = 0;
@@ -56,7 +57,7 @@ ImageFuncResolution::ImageFuncResolution() : FunctionPass(ID), m_implicitArgs()
 
 bool ImageFuncResolution::runOnFunction(Function &F) {
     const MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-    m_implicitArgs = ImplicitArgs(F, pMdUtils);
+    m_implicitArgs = ImplicitArgs(F, pMdUtils, getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->platform.getGRFSize());
     m_changed = false;
     visit(F);
     return m_changed;

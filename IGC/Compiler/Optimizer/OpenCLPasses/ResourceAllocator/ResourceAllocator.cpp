@@ -82,14 +82,15 @@ bool ResourceAllocator::runOnFunction(llvm::Function &F)
     // * Allocate a UAV/SRV/Sampler number to each argument, to be compatible with DX.
     // This is then written to the metadata.
 
+    CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    assert(ctx);
     KernelArgs kernelArgs(
         F, 
         &(F.getParent()->getDataLayout()), 
         getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(), 
-        getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
+        getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData(),
+        ctx->platform.getGRFSize());
     ExtensionArgAnalysis& EAA = getAnalysis<ExtensionArgAnalysis>(F);
-    CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    assert(ctx);
 
     ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
     if (modMD->FuncMD.find(&F) == modMD->FuncMD.end())

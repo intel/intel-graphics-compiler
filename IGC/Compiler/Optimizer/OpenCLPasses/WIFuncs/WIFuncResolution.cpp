@@ -43,6 +43,7 @@ using namespace IGC;
 #define PASS_ANALYSIS false
 IGC_INITIALIZE_PASS_BEGIN(WIFuncResolution, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
+IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_END(WIFuncResolution, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 char WIFuncResolution::ID = 0;
@@ -78,8 +79,8 @@ bool WIFuncResolution::runOnFunction(Function &F)
 {
     m_changed = false;
     auto *MDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-    m_implicitArgs = ImplicitArgs(F, MDUtils);
-
+    CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    m_implicitArgs = ImplicitArgs(F, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(), ctx->platform.getGRFSize());
     visit(F);
 
     /// If the work group size is known at compile time, emit it as a

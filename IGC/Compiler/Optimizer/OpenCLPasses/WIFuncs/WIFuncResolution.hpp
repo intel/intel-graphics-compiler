@@ -61,6 +61,7 @@ namespace IGC
         void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
         {
             AU.addRequired<MetaDataUtilsWrapper>();
+            AU.addRequired<CodeGenContextWrapper>();
         }
 
         /// @brief  Main entry point.

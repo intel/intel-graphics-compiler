@@ -49,6 +49,7 @@ using namespace IGC::IGCMD;
 #define PASS_ANALYSIS false
 IGC_INITIALIZE_PASS_BEGIN(ProgramScopeConstantResolution, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
+IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_END(ProgramScopeConstantResolution, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 char ProgramScopeConstantResolution::ID = 0;
@@ -177,7 +178,7 @@ bool ProgramScopeConstantResolution::runOnModule(Module &M)
                 continue;
             }
 
-            ImplicitArgs implicitArgs(*userFunc, mdUtils);
+            ImplicitArgs implicitArgs(*userFunc, mdUtils, getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->platform.getGRFSize());
 
             // Find the implicit argument representing this constant.
             unsigned int ImplicitArgsBaseIndex = IGCLLVM::GetFuncArgSize(userFunc) - implicitArgs.size();

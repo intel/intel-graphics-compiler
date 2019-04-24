@@ -408,7 +408,7 @@ void WIAnalysis::updateArgsDependency(llvm::Function *pF)
     bool IsSubroutine = !isEntryFunc(m_pMdUtils, pF);
 
     ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-    ImplicitArgs implicitArgs(*pF, m_pMdUtils);
+    ImplicitArgs implicitArgs(*pF, m_pMdUtils, getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->platform.getGRFSize());
     unsigned implicitArgStart = (unsigned)(IGCLLVM::GetFuncArgSize(pF)
         - implicitArgs.size()
         - (IsSubroutine ? 0 : modMD->pushInfo.pushAnalysisWIInfos.size()));

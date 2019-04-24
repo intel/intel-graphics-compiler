@@ -42,6 +42,7 @@ using namespace IGC::IGCMD;
 #define PASS_ANALYSIS1 false
 IGC_INITIALIZE_PASS_BEGIN(AggregateArgumentsAnalysis, PASS_FLAG1, PASS_DESCRIPTION1, PASS_CFG_ONLY1, PASS_ANALYSIS1)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
+IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_END(AggregateArgumentsAnalysis, PASS_FLAG1, PASS_DESCRIPTION1, PASS_CFG_ONLY1, PASS_ANALYSIS1)
 
 // Register pass to igc-opt
@@ -51,6 +52,7 @@ IGC_INITIALIZE_PASS_END(AggregateArgumentsAnalysis, PASS_FLAG1, PASS_DESCRIPTION
 #define PASS_ANALYSIS2 false
 IGC_INITIALIZE_PASS_BEGIN(ResolveAggregateArguments, PASS_FLAG2, PASS_DESCRIPTION2, PASS_CFG_ONLY2, PASS_ANALYSIS2)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
+IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_END(ResolveAggregateArguments, PASS_FLAG2, PASS_DESCRIPTION2, PASS_CFG_ONLY2, PASS_ANALYSIS2)
 
 char AggregateArgumentsAnalysis::ID = 0;
@@ -218,7 +220,7 @@ bool ResolveAggregateArguments::runOnFunction(Function &F)
         return false;
     }
 
-    m_implicitArgs = ImplicitArgs(F, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils());
+    m_implicitArgs = ImplicitArgs(F, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(), getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->platform.getGRFSize());
 
     m_pFunction = &F;
 

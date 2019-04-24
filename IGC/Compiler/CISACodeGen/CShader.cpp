@@ -250,7 +250,7 @@ CVariable* CShader::CreateSP(bool ptr64bits)
 void CShader::InitKernelStack(bool ptr64bits)
 {
     CreateSP(ptr64bits);
-    ImplicitArgs implicitArgs(*entry, m_pMdUtils);
+    ImplicitArgs implicitArgs(*entry, m_pMdUtils, getGRFSize());
     unsigned numPushArgs = m_ModuleMetadata->pushInfo.pushAnalysisWIInfos.size();
     unsigned numImplicitArgs = implicitArgs.size();
     unsigned numFuncArgs = IGCLLVM::GetFuncArgSize(entry) - numImplicitArgs - numPushArgs;
@@ -323,7 +323,7 @@ void CShader::CreateImplicitArgs()
     encoder.GetVISAPredefinedVar(m_R0, PREDEFINED_R0);
 
     // create variables for implicit args
-    ImplicitArgs implicitArgs(*entry, m_pMdUtils);
+    ImplicitArgs implicitArgs(*entry, m_pMdUtils, getGRFSize());
     unsigned numImplicitArgs = implicitArgs.size();
 
     // Push Args are only for entry function
@@ -1888,7 +1888,7 @@ CVariable* CShader::getOrCreateArgumentSymbol(llvm::Argument *Arg, bool useStack
     // An explicit argument is not uniform, and for an implicit argument, it
     // is predefined. Note that it is not necessarily uniform.
     Function *F = Arg->getParent();
-    ImplicitArgs implicitArgs(*F, m_pMdUtils);
+    ImplicitArgs implicitArgs(*F, m_pMdUtils, getGRFSize());
     unsigned numImplicitArgs = implicitArgs.size();
     unsigned numPushArgsEntry = m_ModuleMetadata->pushInfo.pushAnalysisWIInfos.size();
     unsigned numPushArgs = (isEntryFunc(m_pMdUtils, F) ? numPushArgsEntry : 0);
@@ -2010,7 +2010,7 @@ CVariable* CShader::getOrCreateArgSymbolForIndirectCall(llvm::CallInst* cInst, u
     {
         // Can be mapped to the parent's implicit arg
         Function* parentFunc = cInst->getParent()->getParent();
-        ImplicitArgs implicitArgs(*parentFunc, m_pMdUtils);
+        ImplicitArgs implicitArgs(*parentFunc, m_pMdUtils, getGRFSize());
         for (unsigned i = 0; i < implicitArgs.size(); i++)
         {
             ImplicitArg implictArg = implicitArgs[i];

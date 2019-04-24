@@ -43,6 +43,7 @@ using namespace IGC;
 #define PASS_ANALYSIS false
 IGC_INITIALIZE_PASS_BEGIN(ExtensionFuncsResolution, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
+IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_END(ExtensionFuncsResolution, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 char ExtensionFuncsResolution::ID = 0;
@@ -55,7 +56,7 @@ ExtensionFuncsResolution::ExtensionFuncsResolution() : FunctionPass(ID), m_impli
 bool ExtensionFuncsResolution::runOnFunction(Function &F)
 {
     m_changed = false;
-    m_implicitArgs = ImplicitArgs(F, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils());
+    m_implicitArgs = ImplicitArgs(F, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(), getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->platform.getGRFSize());
     visit(F);
     return m_changed;
 }

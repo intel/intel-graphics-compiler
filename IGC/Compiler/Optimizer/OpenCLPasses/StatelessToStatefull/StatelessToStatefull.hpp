@@ -54,6 +54,7 @@ namespace IGC
             AU.setPreservesCFG();
             AU.addRequired<MetaDataUtilsWrapper>();
             AU.addRequired<llvm::AssumptionCacheTracker>();
+            AU.addRequired<CodeGenContextWrapper>();
         }
 
         virtual llvm::StringRef getPassName() const override

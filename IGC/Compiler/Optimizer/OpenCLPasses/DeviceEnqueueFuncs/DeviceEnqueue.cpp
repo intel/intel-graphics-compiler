@@ -40,6 +40,7 @@ using namespace IGC;
 #define PASS_ANALYSIS false
 IGC_INITIALIZE_PASS_BEGIN(DeviceEnqueueFuncsAnalysis, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
+IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_END(DeviceEnqueueFuncsAnalysis, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 
@@ -50,6 +51,7 @@ IGC_INITIALIZE_PASS_END(DeviceEnqueueFuncsAnalysis, PASS_FLAG, PASS_DESCRIPTION,
 #define PASS_ANALYSIS2 false
 IGC_INITIALIZE_PASS_BEGIN(DeviceEnqueueFuncsResolution, PASS_FLAG2, PASS_DESCRIPTION2, PASS_CFG_ONLY2, PASS_ANALYSIS2)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
+IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_END(DeviceEnqueueFuncsResolution, PASS_FLAG2, PASS_DESCRIPTION2, PASS_CFG_ONLY2, PASS_ANALYSIS2)
 
 
@@ -188,7 +190,7 @@ bool DeviceEnqueueFuncsResolution::runOnFunction(Function &F)
 {
     m_Changed = false;
     
-    m_implicitArgs = ImplicitArgs(F, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils());
+    m_implicitArgs = ImplicitArgs(F, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(), getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->platform.getGRFSize());
     
     visit(F);
 
