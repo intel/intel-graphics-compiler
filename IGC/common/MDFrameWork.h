@@ -198,6 +198,7 @@ namespace IGC
         bool replaceGlobalOffsetsByZero                 = false;
         unsigned forcePixelShaderSIMDMode               = 0;
         bool pixelShaderDoNotAbortOnSpill               = false;
+        bool UniformWGS                                 = false;
     };
 
     struct ComputeShaderInfo

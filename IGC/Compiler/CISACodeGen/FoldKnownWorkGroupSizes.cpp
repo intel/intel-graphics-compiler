@@ -24,6 +24,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
+#include "Compiler/Optimizer/OpenCLPasses/WIFuncs/WIFuncsAnalysis.hpp"
 #include "FoldKnownWorkGroupSizes.h"
 #include "../IGCPassSupport.h"
 #include "../CodeGenPublic.h"
@@ -82,16 +83,19 @@ void FoldKnownWorkGroupSizes::visitCallInst(llvm::CallInst &I)
     CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
 
-    if (funcName.equals("__builtin_IB_get_global_offset") && ctx->getModuleMetaData()->compOpt.replaceGlobalOffsetsByZero)
+    if (funcName.equals(WIFuncsAnalysis::GET_GLOBAL_OFFSET) &&
+        ctx->getModuleMetaData()->compOpt.replaceGlobalOffsetsByZero)
     {
         if (calledFunction->getReturnType() == Type::getInt32Ty(module->getContext()))
         {
             ConstantInt* IntZero = ConstantInt::get(Type::getInt32Ty(module->getContext()), 0);
             I.replaceAllUsesWith(IntZero);
+            // TODO: erase when patch token is not required
+            //I.eraseFromParent();
             m_changed = true;
         }
     }
-    else if (funcName.equals("__builtin_IB_get_enqueued_local_size"))
+    else if (funcName.equals(WIFuncsAnalysis::GET_ENQUEUED_LOCAL_SIZE))
     {
         auto itr = ctx->getMetaDataUtils()->findFunctionsInfoItem(I.getFunction());
 
@@ -119,6 +123,8 @@ void FoldKnownWorkGroupSizes::visitCallInst(llvm::CallInst &I)
         auto *EE = IRB.CreateExtractElement(CV, Dim, "enqueuedLocalSize");
 
         I.replaceAllUsesWith(EE);
+        // TODO: erase when patch token is not required
+        //I.eraseFromParent();
         m_changed = true;
     }
 }

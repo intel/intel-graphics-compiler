@@ -975,7 +975,8 @@ namespace IGC
         public:
             Options(const TC::STB_TranslateInputArgs* pInputArgs) :
                 CorrectlyRoundedSqrt(false),
-                NoSubgroupIFP(false)
+                NoSubgroupIFP(false),
+                UniformWGS(false)
             {
                 if (pInputArgs == nullptr)
                     return;
@@ -994,10 +995,18 @@ namespace IGC
                     NoSubgroupIFP = true;
                 }
 
+                if (strstr(options, "-cl-uniform-work-group-size"))
+                {
+                    // Note that this is only available for -cl-std >= 2.0.
+                    // This will be checked before we place this into the
+                    // the module metadata.
+                    UniformWGS = true;
+                }
             }
 
             bool CorrectlyRoundedSqrt;
             bool NoSubgroupIFP;
+            bool UniformWGS;
         };
 
         // output: shader information
