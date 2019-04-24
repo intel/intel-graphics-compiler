@@ -561,7 +561,6 @@ void CisaBinary::isaDumpVerify(
     for( iter = m_kernels.begin(); iter != end; iter++ )
     {
         VISAKernelImpl * kTemp = *iter;
-        const kernel_format_t* header = kTemp->getKernelFormat();
         std::list<CisaFramework::CisaInst *>::iterator inst_iter = kTemp->getInstructionListBegin();
         std::list<CisaFramework::CisaInst *>::iterator inst_iter_end = kTemp->getInstructionListEnd();
 
@@ -587,13 +586,13 @@ void CisaBinary::isaDumpVerify(
             if (ILFile.isaasmListFile && m_options->getOption(vISA_GenIsaAsmList))
                 fputs(string(asmName.str() + "\n").c_str(), ILFile.isaasmListFile);
 
-            kernel_format_provider fh(header);
-            sstr << printKernelHeader(m_header, &fh, kTemp->getIsKernel(), funcId, options);
+            VISAKernel_format_provider fmt(kTemp);
+            sstr << printKernelHeader(m_header, &fmt, kTemp->getIsKernel(), funcId, options);
             for(; inst_iter != inst_iter_end; inst_iter++)
             {
                 CisaFramework::CisaInst * cisa_inst = *inst_iter;
                 CISA_INST * inst = cisa_inst->getCISAInst();
-                sstr << printInstruction(&fh, inst, kTemp->getOptions()) << endl;
+                sstr << printInstruction(&fmt, inst, kTemp->getOptions()) << endl;
             }
 
             writeIsaAsmFile(asmName.str(), sstr.str());
@@ -603,16 +602,16 @@ void CisaBinary::isaDumpVerify(
         {
             std::list<std::string> kerror_list;
             std::list<std::string> error_list;
-            kernel_format_provider kf(header);
+            VISAKernel_format_provider fmt(kTemp);
 
-            verifyKernelHeader(m_header, &kf, kerrors, m_options);
+            verifyKernelHeader(m_header, &fmt, kerrors, m_options);
 
             inst_iter = kTemp->getInstructionListBegin();
             for(; inst_iter != inst_iter_end; inst_iter++)
             {
                 CisaFramework::CisaInst * cisa_inst = *inst_iter;
                 CISA_INST * inst = cisa_inst->getCISAInst();
-                verifyInstruction(m_header, &kf, inst, errors, options);
+                verifyInstruction(m_header, &fmt, inst, errors, options);
             }
 
             if ( (errors.size() + kerrors.size() /* total errors*/) > 0)

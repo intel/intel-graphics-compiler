@@ -361,10 +361,9 @@ bool CISA_IR_Builder::CISA_IR_initialization(char *kernel_name,
     return true;
 }
 
-VISAKernel* CISA_IR_Builder::GetKernel()
+VISAKernel* CISA_IR_Builder::GetVISAKernel()
 {
-    VISAKernel* kernel = static_cast<VISAKernel *>(m_kernel);
-    return kernel;
+    return static_cast<VISAKernel*>(m_kernel);
 }
 
 int CISA_IR_Builder::AddKernel(VISAKernel *& kernel, const char* kernelName)

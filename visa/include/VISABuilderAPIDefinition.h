@@ -843,6 +843,6 @@ public:
     CM_BUILDER_API virtual int WriteVISAHeader() = 0;
     CM_BUILDER_API virtual std::stringstream& GetAsmTextStream() = 0;
     CM_BUILDER_API virtual std::stringstream& GetAsmTextHeaderStream() = 0;
-    CM_BUILDER_API virtual VISAKernel* GetKernel() = 0;
+    CM_BUILDER_API virtual VISAKernel* GetVISAKernel() = 0;
 };
 #endif

@@ -4406,7 +4406,7 @@ void CEncoder::Compile()
         std::string parseTextFile = m_enableVISAdump ? GetDumpFileName("inlineasm") : "";
         V(vAsmTextBuilder->ParseVISAText(vbuilder->GetAsmTextHeaderStream().str(), vbuilder->GetAsmTextStream().str(), parseTextFile));
 
-        pMainKernel = vAsmTextBuilder->GetKernel();
+        pMainKernel = vAsmTextBuilder->GetVISAKernel();
         vIsaCompile = vAsmTextBuilder->Compile(m_enableVISAdump ? GetDumpFileName("isa").c_str() : "");
     }
     //Compile to generate the V-ISA binary
