@@ -309,7 +309,8 @@ void EstimateFunctionSize::checkSubroutine() {
   {
       for (Function& F : *M)
       {
-          if (F.hasFnAttribute(llvm::Attribute::NoInline)) {
+          if (F.hasFnAttribute(llvm::Attribute::NoInline) &&
+              !F.hasFnAttribute(llvm::Attribute::Builtin)) {
               EnableSubroutine = true;
               break;
           }
