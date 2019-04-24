@@ -560,10 +560,22 @@ VISAVariableLocation VISAModule::GetVariableLocation(const llvm::Instruction* pI
     }
 
     // At this point we expect only a register
-    if (!m_pShader->IsValueUsed(pValue)) {
+    bool isSubGlobalVal = false;
+    auto globalSubCVar = m_pShader->GetGlobalCVar(pValue);
+    if (globalSubCVar)
+    {
+        // Subroutine
+        isSubGlobalVal = true;
+    }
+    else if (!m_pShader->IsValueUsed(pValue)) {
         return VISAVariableLocation();
     }
-    CVariable *pVar = m_pShader->GetSymbol(pValue);
+    
+    CVariable *pVar = nullptr;
+    if (globalSubCVar)
+        pVar = globalSubCVar;
+    else
+        pVar = m_pShader->GetSymbol(pValue);
     assert(!pVar->IsImmediate() && "Do not expect an immediate value at this level");
 
     std::string varName = cast<DIVariable>(pNode)->getName();

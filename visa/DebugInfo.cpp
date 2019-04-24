@@ -1074,8 +1074,12 @@ void emitDataSubroutines(VISAKernelImpl* visaKernel, T& t)
             // This is required for kernels because callees are
             // stitched together in its flowgraph and BBs of
             // callees shouldnt be analyzed here.
-            stopAt = bb;
-            break;
+            // TODO: This is not correct and should be fixed for
+            // stack call. Callee sub-routines have to be
+            // recursively traversed. Code layout doesnt guarantee
+            // if a sub-routine is part of current compilation unit.
+            //stopAt = bb;
+            //break;
         }
 
         if (bb->isEndWithCall() &&

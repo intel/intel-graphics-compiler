@@ -41,6 +41,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/HullShaderCodeGen.hpp"
 #include "Compiler/CISACodeGen/DomainShaderCodeGen.hpp"
 #include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
+#include "DebugInfo.hpp"
 #include "Compiler/MetaDataApi/MetaDataApi.h"
 #include "common/secure_mem.h"
 
@@ -689,6 +690,14 @@ bool CShader::IsValueUsed(llvm::Value* value)
         return true;
     }
     return false;
+}
+
+CVariable* CShader::GetGlobalCVar(llvm::Value* value)
+{
+    auto it = globalSymbolMapping.find(value);
+    if (it != globalSymbolMapping.end())
+        return it->second;
+    return nullptr;
 }
 
 CVariable* CShader::BitCast( CVariable* var, VISA_Type newType )
@@ -1813,7 +1822,12 @@ CVariable* CShader::LazyCreateCCTupleBackingVariable(
 void CShader::BeginFunction(llvm::Function *F)
 {
     // TODO: merge InitEncoder with this function.
-    symbolMapping.clear();
+
+    // Dont clear symolMapping when debug info is enabled
+    // since this map is used to query location information
+    // after VISA compilation.
+    if (!DebugInfoData::hasDebugInfo(this))
+        symbolMapping.clear();
     rootMapping.clear();
     ccTupleMapping.clear();
     ConstantPool.clear();

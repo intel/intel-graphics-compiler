@@ -456,6 +456,8 @@ public:
     std::map<std::string, DbgDecoder::VarInfo, comparer> VirToPhyMap;
     
     bool getVarInfo(std::string prefix, unsigned int vreg, DbgDecoder::VarInfo& var);
+    std::vector<DbgDecoder::SubroutineInfo>* getSubroutines() const;
+    DbgDecoder::DbgInfoFormat* getCompileUnit() const;
 
     void buildDirectElfMaps();
 

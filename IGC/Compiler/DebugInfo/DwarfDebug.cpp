@@ -164,6 +164,7 @@ DwarfDebug::DwarfDebug(StreamEmitter *A, VISAModule *M) :
     DwarfDebugRangeSectionSym = nullptr;
     DwarfDebugLocSectionSym = nullptr;
     TextSectionSym = nullptr;
+    DwarfFrameSectionSym = nullptr;
 
     FunctionBeginSym = FunctionEndSym = nullptr;;
     ModuleBeginSym = ModuleEndSym = nullptr;;
@@ -1074,6 +1075,9 @@ void DwarfDebug::endModule()
 
     // Emit info into a debug macinfo section.
     emitDebugMacInfo();
+
+    // Emit frame information for subroutines
+    emitDebugFrame();
 
     // clean up.
     SPMap.clear();
@@ -2084,6 +2088,8 @@ void DwarfDebug::emitSectionLabels()
     DwarfInfoSectionSym = emitSectionSym(Asm, Asm->GetDwarfInfoSection(), "section_info");
     DwarfAbbrevSectionSym = emitSectionSym(Asm, Asm->GetDwarfAbbrevSection(), "section_abbrev");
 
+    DwarfFrameSectionSym = emitSectionSym(Asm, Asm->GetDwarfFrameSection(), "dwarf_frame");
+
     if (const MCSection *MacroInfo = Asm->GetDwarfMacroInfoSection())
     {
         emitSectionSym(Asm, MacroInfo);
@@ -2099,6 +2105,7 @@ void DwarfDebug::emitSectionLabels()
     DwarfDebugLocSectionSym = emitSectionSym(Asm, Asm->GetDwarfLocSection(), "section_debug_loc");
 
     TextSectionSym = emitSectionSym(Asm, Asm->GetTextSection(), "text_begin");
+
     emitSectionSym(Asm, Asm->GetDataSection());
 }
 
@@ -2440,6 +2447,169 @@ void DwarfDebug::emitDebugMacInfo()
     }
 }
 
+void DwarfDebug::writeCIE()
+{
+    std::vector<uint8_t> data;
+
+    // Emit CIE
+    auto ptrSize = Asm->GetPointerSize();
+    uint8_t lenSize = ptrSize;
+    if (ptrSize == 8)
+        lenSize = 12;
+
+    // Write CIE_id
+    // Only 1 CIE is emitted
+    if (ptrSize == 8)
+    {
+        uint64_t id = 0xffffffff;
+        write(data, id);
+    }
+    else
+    {
+        uint32_t id = 0xffffffff;
+        write(data, id);
+    }
+
+    // version - ubyte
+    write(data, (uint8_t)4);
+
+    // augmentation - UTF8 string
+    write(data, (uint8_t)0);
+
+    // address size - ubyte
+    write(data, (uint8_t)ptrSize);
+
+    // segment size - ubyte
+    write(data, (uint8_t)0);
+
+    // code alignment factor - uleb128
+    write(data, (uint8_t)1);
+
+    // data alignment factor - sleb128
+    write(data, (uint8_t)1);
+
+    // return address register - uleb128
+    // set machine return register to 128 which is physically
+    // absent. later CFA instructions map this to a valid GRF.
+    auto uleblen = getULEB128Size(returnReg);
+    uint8_t* buf = (uint8_t*)malloc(uleblen * sizeof(uint8_t));
+    encodeULEB128(returnReg, buf);
+    write(data, buf, uleblen);
+    free(buf);
+
+    // initial instructions (array of ubyte)
+    while ((lenSize + data.size()) % ptrSize != 0)
+        // Insert DW_CFA_nop
+        write(data, (uint8_t)llvm::dwarf::DW_CFA_nop);
+
+    // Emit length with marker 0xffffffff for 8-byte ptr
+    if (ptrSize == 8)
+        Asm->EmitInt32(0xffffffff);
+    Asm->EmitIntValue(data.size(), ptrSize);
+
+    for (auto& byte : data)
+        Asm->EmitInt8(byte);
+}
+
+void DwarfDebug::writeFDE(DbgDecoder::SubroutineInfo& sub)
+{
+    std::vector<uint8_t> data;
+
+    // Emit CIE
+    auto ptrSize = Asm->GetPointerSize();
+    uint8_t lenSize = 4;
+    if (ptrSize == 8)
+        lenSize = 12;
+
+    // CIE_ptr (4/8 bytes)
+    write(data, ptrSize == 4 ? (uint32_t)0 : (uint64_t)0);
+
+    // initial location
+    auto co = m_pModule->getCompileUnit();    
+    auto getGenISAOffset = [co](unsigned int VISAIndex)
+    {
+        uint64_t genOffset = 0;
+
+        for (auto& item : co->CISAIndexMap)
+        {
+            if (item.first >= VISAIndex)
+            {
+                genOffset = item.second;
+                break;
+            }
+        }
+
+        return genOffset;
+    };
+    auto genOffStart = getGenISAOffset(sub.startVISAIndex);
+    auto genOffEnd = getGenISAOffset(sub.endVISAIndex);
+    auto& retvarLR = sub.retval;
+    assert(retvarLR.size() > 0 && retvarLR[0].var.physicalType == DbgDecoder::VarAlloc::PhysicalVarType::PhyTypeGRF &&
+        "expecting GRF for return");
+
+    // assume ret var is live throughout sub-routine and it is contained
+    // in same GRF.
+    uint32_t linearAddr = (retvarLR.front().var.mapping.r.regNum*m_pModule->m_pShader->getGRFSize()) +
+        retvarLR.front().var.mapping.r.subRegNum;
+
+    // initial location
+    write(data, ptrSize==4 ? (uint32_t)genOffStart : genOffStart);
+
+    // address range
+    write(data, ptrSize == 4 ? (uint32_t)(genOffEnd -genOffStart) : 
+        (genOffEnd - genOffStart));
+
+    // instruction - ubyte
+    write(data, (uint8_t)llvm::dwarf::DW_CFA_register);
+
+    // return reg operand
+    auto uleblen = getULEB128Size(returnReg);
+    uint8_t* buf = (uint8_t*)malloc(uleblen * sizeof(uint8_t));
+    encodeULEB128(returnReg, buf);
+    write(data, buf, uleblen);
+    free(buf);
+
+    // actual reg holding retval
+    uleblen = getULEB128Size(linearAddr);
+    buf = (uint8_t*)malloc(uleblen * sizeof(uint8_t));
+    encodeULEB128(linearAddr, buf);
+    write(data, buf, uleblen);
+    free(buf);
+
+    // initial instructions (array of ubyte)
+    while ((lenSize + data.size()) % ptrSize != 0)
+        // Insert DW_CFA_nop
+        write(data, (uint8_t)llvm::dwarf::DW_CFA_nop);
+
+    // Emit length with marker 0xffffffff for 8-byte ptr
+    if (ptrSize == 8)
+        Asm->EmitInt32(0xffffffff);
+    Asm->EmitIntValue(data.size(), ptrSize);
+
+    for (auto& byte : data)
+        Asm->EmitInt8(byte);
+}
+
+// Emit debug_frame section to allow stack traversal
+void DwarfDebug::emitDebugFrame()
+{
+    auto subs = m_pModule->getSubroutines();
+    if (subs->size() == 0)
+        return;
+
+    Asm->SwitchSection(Asm->GetDwarfFrameSection());
+
+    // All subs share CIE.
+    // Each sub has its unique FDE.
+    writeCIE();
+
+    for (auto& sub : *subs)
+    {
+        // write unique FDE
+        writeFDE(sub);
+    }
+}
+
 void DwarfDebug::gatherDISubprogramNodes()
 {
     // Discover all DISubprogram nodes in program and store them
@@ -2494,15 +2664,12 @@ bool VISAModule::getVarInfo(std::string prefix, unsigned int vreg, DbgDecoder::V
     if (VirToPhyMap.size() == 0)
     {
         // populate map one time
-        for (auto& co : dd->getDecodedDbg()->compiledObjs)
+        auto co = getCompileUnit();
+        if (co)
         {
-            if (co.kernelName.compare(m_pEntryFunc->getName().str()) == 0)
+            for (auto& v : co->Vars)
             {
-                for (auto& v : co.Vars)
-                {
-                    VirToPhyMap.insert(std::make_pair(v.name, v));
-                }
-                break;
+                VirToPhyMap.insert(std::make_pair(v.name, v));
             }
         }
     }
@@ -2513,4 +2680,28 @@ bool VISAModule::getVarInfo(std::string prefix, unsigned int vreg, DbgDecoder::V
 
     var = (*it).second;
     return true;
+}
+
+std::vector<DbgDecoder::SubroutineInfo>* VISAModule::getSubroutines() const
+{
+    std::vector<DbgDecoder::SubroutineInfo> subs;
+    auto co = getCompileUnit();
+    if(co)
+        return &co->subs;
+    return nullptr;
+}
+
+DbgDecoder::DbgInfoFormat* VISAModule::getCompileUnit() const
+{
+    for (auto& co : dd->getDecodedDbg()->compiledObjs)
+    {
+        // TODO: Fix this for stack call use
+        if (dd->getDecodedDbg()->compiledObjs.size() == 1 ||
+            co.kernelName.compare(m_pEntryFunc->getName().str()) == 0)
+        {
+            return &co;
+        }
+    }
+
+    return nullptr;
 }

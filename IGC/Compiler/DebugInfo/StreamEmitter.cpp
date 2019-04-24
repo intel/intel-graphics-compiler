@@ -627,6 +627,11 @@ const MCSection *StreamEmitter::GetDwarfStrSection() const
     return GetObjFileLowering().getDwarfStrSection();
 }
 
+const MCSection *StreamEmitter::GetDwarfFrameSection() const
+{
+    return GetObjFileLowering().getDwarfFrameSection();
+}
+
 void StreamEmitter::SwitchSection(const MCSection *pSection, const MCExpr *pSubsection) const
 {
     m_pMCStreamer->SwitchSection(const_cast<MCSection*>(pSection), pSubsection);

@@ -89,6 +89,7 @@ public:
     const llvm::MCSection *GetDwarfMacroInfoSection() const;
     const llvm::MCSection *GetDwarfRangesSection() const;
     const llvm::MCSection *GetDwarfStrSection() const;
+    const llvm::MCSection *GetDwarfFrameSection() const;
 
     /// @brief Set the current section where code is being emitted to.
     /// @param pSection section to switch to

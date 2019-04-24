@@ -343,6 +343,7 @@ namespace IGC
         llvm::MCSymbol *DwarfDebugLocSectionSym, *DwarfLineSectionSym;
         llvm::MCSymbol *FunctionBeginSym, *FunctionEndSym;
         llvm::MCSymbol *ModuleBeginSym, *ModuleEndSym;
+        llvm::MCSymbol *DwarfFrameSectionSym;
 
         // As an optimization, there is no need to emit an entry in the directory
         // table for the same directory as DW_AT_comp_dir.
@@ -441,6 +442,9 @@ namespace IGC
 
         /// \brief Emit visible names into a debug macinfo section.
         void emitDebugMacInfo();
+
+        /// \brief Emit debug frame section to allow stack traversal.
+        void emitDebugFrame();
 
         /// \brief Recursively Emits a debug information entry.
         void emitDIE(DIE *Die);
@@ -645,6 +649,9 @@ namespace IGC
 
     private:
         void encodeRange(CompileUnit* TheCU, DIE* ScopeDIE, const llvm::SmallVectorImpl<InsnRange>* Ranges);
+        void writeCIE();
+        void writeFDE(DbgDecoder::SubroutineInfo& sub);
+        const uint8_t returnReg = 128;
     };
 } // namespace IGC
 

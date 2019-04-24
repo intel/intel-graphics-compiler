@@ -190,6 +190,14 @@ public:
             return lrs.front().var.mapping.m;
         }
     };
+    class SubroutineInfo
+    {
+    public:
+        std::string name;
+        uint32_t startVISAIndex;
+        uint32_t endVISAIndex;
+        std::vector<LiveIntervalsVISA> retval;
+    };
     class DbgInfoFormat
     {
     public:
@@ -198,6 +206,9 @@ public:
         std::vector<std::pair<unsigned int, unsigned int>> CISAOffsetMap;
         std::vector<std::pair<unsigned int, unsigned int>> CISAIndexMap;
         std::vector<VarInfo> Vars;
+
+        uint16_t numSubRoutines = 0;
+        std::vector<SubroutineInfo> subs;
     };
 
     std::vector<DbgInfoFormat> compiledObjs;
@@ -291,6 +302,29 @@ private:
                 }
 
                 f.Vars.push_back(v);
+            }
+
+            count = read<uint16_t>();
+            for (unsigned int j = 0; j != count; j++)
+            {
+                SubroutineInfo sub;
+                nameLen = read<uint8_t>();
+                for (unsigned int k = 0; k != nameLen; k++)
+                    sub.name += read<char>();
+
+                sub.startVISAIndex = read<uint32_t>();
+                sub.endVISAIndex = read<uint32_t>();
+                auto countLRs = read<uint16_t>();
+                for (unsigned int k = 0; k != countLRs; k++)
+                {
+                    LiveIntervalsVISA lv;
+                    lv.start = read<uint16_t>();
+                    lv.end = read<uint16_t>();
+                    lv.var = readVarAlloc();
+
+                    sub.retval.push_back(lv);
+                }
+                f.subs.push_back(sub);
             }
 
             compiledObjs.push_back(f);
