@@ -239,6 +239,16 @@ inline void AddAnalysisPasses(CodeGenContext &ctx, IGCPassManager& mpm)
     // to avoid URBRead/URBWrite interference
     AddURBWriteRelatedPass(ctx, mpm);
 
+    // moving the scheduling and sample clustering passes right before code-sinking.
+    // Need to merge the scheduling, code-sinking and clustering passes better to avoid redundancy and better optimization
+    if (IGC_IS_FLAG_DISABLED(DisablePreRAScheduler) &&
+        ctx.type == ShaderType::PIXEL_SHADER &&
+        ctx.m_retryManager.AllowPreRAScheduler() &&
+        !ctx.m_enableSubroutine)
+    {
+        mpm.add(createPreRASchedulerPass());
+    }
+
     if (IGC_IS_FLAG_DISABLED(DisableMemOpt2) &&
        (ctx.type == ShaderType::COMPUTE_SHADER || (ctx.m_DriverInfo.WAEnableMemOpt2ForOCL())) &&
         !isOptDisabled)
@@ -265,7 +275,6 @@ inline void AddAnalysisPasses(CodeGenContext &ctx, IGCPassManager& mpm)
     // need this before WIAnalysis:
     // insert phi to prevent changing of WIAnalysis result by later code-motion
     mpm.add(llvm::createLCSSAPass());
-
     if( !isOptDisabled )
     {
         // If you want to clean up the dead-code after push optimization
@@ -568,17 +577,7 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager& mpm)
     // Scalarizer in codegen to handle the vector instructions
     mpm.add(new ScalarizerCodeGen());
 
-    // moving the scheduling and sample clustering passes right before code-sinking.
-    // Need to merge the scheduling, code-sinking and clustering passes better to avoid redundancy and better optimization
-    if (IGC_IS_FLAG_DISABLED(DisablePreRAScheduler) &&
-        ctx.type == ShaderType::PIXEL_SHADER &&
-        ctx.m_retryManager.AllowPreRAScheduler() &&
-        !ctx.m_enableSubroutine)
-    {
-        mpm.add(createPreRASchedulerPass());
-    }
-
-    // coalesce scalar loads into loads of larger quantity
+    // coalesce scalar loads into loads of larger quantity.
     // This require and preserves uniform analysis we should keep
     // other passes using uniformness together to avoid re-running it several times
     if (IGC_IS_FLAG_DISABLED(DisableConstantCoalescing))
