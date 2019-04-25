@@ -3413,6 +3413,7 @@ void G4_INST::emit_inst(std::ostream& output, bool symbol_dst, bool *symbol_srcs
             output << ' ';
         }
         this->emit_options(output);
+        output << "//" << srcCISAoff;
         //
         // emit src2 of pln as comments
         //

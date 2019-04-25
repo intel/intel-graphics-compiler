@@ -3052,7 +3052,7 @@ void Optimizer::newLocalCopyPropagation()
                         // src0 region is guaranteed to be scalar/contiguous due to canPropagate() check earlier
                         RegionDesc* region = src0->isScalar() ?
                             builder.getRegionScalar() :
-                            builder.createRegionDesc((uint16_t)inst->getExecSize()
+                            builder.createRegionDesc(useInst->getExecSize(), (uint16_t)inst->getExecSize()
                             * typeSizeRatio, inst->getExecSize(),
                             (uint16_t)typeSizeRatio);
                         if (src0->isIndirect())
