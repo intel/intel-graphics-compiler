@@ -725,39 +725,14 @@ int CISA_IR_Builder::WriteVISAHeader()
     return CM_FAILURE;
 }
 
+typedef struct yy_buffer_state * YY_BUFFER_STATE;
 extern int CISAparse();
+extern YY_BUFFER_STATE CISA_scan_string(const char* yy_str);
+extern void CISA_delete_buffer(YY_BUFFER_STATE buf);
+
 int CISA_IR_Builder::ParseVISAText(const std::string& visaHeader, const std::string& visaText, const std::string& visaTextFile)
 {
 #if defined(__linux__) || defined(_WIN64) || defined(_WIN32)
-    if (m_options.getOption(vISA_GenerateISAASM) && !visaTextFile.empty())
-    {
-        CISAin = fopen(visaTextFile.c_str(), "wb+");
-    }
-    else
-    {
-        // Create a temp file in memory for parsing
-        CISAin = std::tmpfile();
-    }
-
-    if (CISAin == NULL)
-    {
-        assert(0 && "Cannot open file for visa parsing");
-        return CM_FAILURE;
-    }
-    // Write the header
-    if (std::fputs(visaHeader.c_str(), CISAin) == EOF)
-    {
-        assert(0 && "Failed to write visa text to file");
-        return CM_FAILURE;
-    }
-    // Write the declarations and instructions
-    if (std::fputs(visaText.c_str(), CISAin) == EOF)
-    {
-        assert(0 && "Failed to write visa text to file");
-        return CM_FAILURE;
-    }
-    std::rewind(CISAin);
-
     // Direct output of parser to null
 #if defined(_WIN64) || defined(_WIN32)
     CISAout = fopen("nul", "w");
@@ -765,17 +740,49 @@ int CISA_IR_Builder::ParseVISAText(const std::string& visaHeader, const std::str
     CISAout = fopen("/dev/null", "w");
 #endif
 
-    int fail = CISAparse();
+    // Dump the visa text
+    if (m_options.getOption(vISA_GenerateISAASM) && !visaTextFile.empty())
+    {
+        FILE* dumpFile = fopen(visaTextFile.c_str(), "wb+");
+        if (dumpFile)
+        {
+            // Write the header
+            if (std::fputs(visaHeader.c_str(), dumpFile) == EOF)
+            {
+                assert(0 && "Failed to write visa text to file");
+                return CM_FAILURE;
+            }
+            // Write the declarations and instructions
+            if (std::fputs(visaText.c_str(), dumpFile) == EOF)
+            {
+                assert(0 && "Failed to write visa text to file");
+                return CM_FAILURE;
+            }
+            fclose(dumpFile);
+        }
+    }
+
+    // Parse the header string
+    YY_BUFFER_STATE headerBuf = CISA_scan_string(visaHeader.c_str());
+    if (CISAparse() != 0)
+    {
+        assert(0 && "Parsing header message failed");
+        return CM_FAILURE;
+    }
+    CISA_delete_buffer(headerBuf);
+
+    // Parse the visa body
+    YY_BUFFER_STATE visaBuf = CISA_scan_string(visaText.c_str());
+    if (CISAparse() != 0)
+    {
+        assert(0 && "Parsing visa text failed");
+        return CM_FAILURE;
+    }
+    CISA_delete_buffer(visaBuf);
 
     if (CISAout)
     {
         fclose(CISAout);
-    }
-    fclose(CISAin);
-    if (fail)
-    {
-        assert(0 && "Parsing generated visa text failed");
-        return CM_FAILURE;
     }
 
     return CM_SUCCESS;
