@@ -84,9 +84,7 @@ PreCompiledFuncImport::PreCompiledFuncImport(
 {
     initializePreCompiledFuncImportPass(*PassRegistry::getPassRegistry());
 
-    if (isDPEmu() &&
-        (IGC_IS_FLAG_ENABLED(EnableSubroutineForEmulation) ||
-         IGC_IS_FLAG_ENABLED(ForceSubroutineForEmulation)))
+    if (IGC_IS_FLAG_ENABLED(EnableSubroutineForEmulation))
     {
         checkAndSetEnableSubroutine();
     }
@@ -467,19 +465,10 @@ bool PreCompiledFuncImport::runOnModule(Module &M)
             // only those that have less than 4 uses. If ForceSubroutine
             // is set, do not inline any of them.
             if (m_enableSubroutineCallForEmulation &&
-                (IGC_IS_FLAG_ENABLED(ForceSubroutineForEmulation) ||
-                 (Func->hasNUsesOrMore(4) && !isDPConvFunc(Func) && !isPrecompiledEmulationFunction(Func))))
+                (IGC_IS_FLAG_ENABLED(ForceSubroutineForEmulation) || shouldWeSubroutine(Func)))
             {
                 Func->addFnAttr(llvm::Attribute::NoInline);
-            }
-            else
-            {
-                // Add AlwaysInline attribute to force inlining all calls.
-                Func->addFnAttr(llvm::Attribute::AlwaysInline);
-            }
 
-            if (m_enableSubroutineCallForEmulation)
-            {
                 // Create an entry in metadata for this function and add
                 // implicit args for private base if needed (note that the
                 // entry func should have private base as implicit arg
@@ -490,6 +479,11 @@ bool PreCompiledFuncImport::runOnModule(Module &M)
                 // accordingly.
                 addMDFuncEntryForEmulationFunc(Func);
                 hasNewMDEntry = true;
+            }
+            else
+            {
+                // Add AlwaysInline attribute to force inlining all calls.
+                Func->addFnAttr(llvm::Attribute::AlwaysInline);
             }
         }
     }
@@ -1552,6 +1546,31 @@ ImplicitArgs* PreCompiledFuncImport::getImplicitArgs(Function *F)
     return FuncsImpArgs[F];
 }
 
+// Use subroutines if total number of instructions added when inlined
+// exceed the SubroutineInlinerThreshold
+bool PreCompiledFuncImport::shouldWeSubroutine(Function* F)
+{
+    // If there is only one use we should just inline
+    if (F->getNumUses() == 1)
+        return false;
+
+    unsigned NumInstrs = 0;
+    for (BasicBlock &BB : F->getBasicBlockList())
+        NumInstrs += (unsigned)std::distance(BB.begin(), BB.end());
+
+    // Don't want to use subroutines for small functions
+    if (NumInstrs <= 5)
+        return false;
+
+    unsigned totalNumberOfInst = NumInstrs * F->getNumUses();
+
+    if (totalNumberOfInst > IGC_GET_FLAG_VALUE(SubroutineInlinerThreshold))
+    {
+        return true;
+    }
+
+    return false;
+}
 
 void PreCompiledFuncImport::checkAndSetEnableSubroutine()
 {
@@ -1577,6 +1596,10 @@ void PreCompiledFuncImport::checkAndSetEnableSubroutine()
             return;
     }
 
+    bool I64DivRem = isI64DivRem();
+    bool SPDiv = isSPDiv();
+    bool DPEmu = isDPEmu();
+
     Module* M = m_pCtx->getModule();
     for (auto FI = M->begin(), FE = M->end(); FI != FE; ++FI)
     {
@@ -1592,17 +1615,29 @@ void PreCompiledFuncImport::checkAndSetEnableSubroutine()
             case Instruction::FAdd:
             case Instruction::FSub:
             case Instruction::FCmp:
-              {
-                if (I->getOperand(0)->getType()->isDoubleTy())
+                if (DPEmu && I->getOperand(0)->getType()->isDoubleTy())
                 {
                     m_enableSubroutineCallForEmulation = true;
                 }
                 break;
-              }
+            case Instruction::UDiv:
+            case Instruction::URem:
+            case Instruction::SDiv:
+            case Instruction::SRem:
+                if (I->getOperand(0)->getType()->isIntOrIntVectorTy())
+                {
+                    unsigned int integerBitWidth = I->getOperand(0)->getType()->getScalarType()->getIntegerBitWidth();
+
+                    if ((I64DivRem && integerBitWidth == 64)                    )
+                    {
+                        m_enableSubroutineCallForEmulation = true;
+                    }
+                }
+                break;
             case Instruction::FPToSI:
             case Instruction::FPToUI:
             case Instruction::FPTrunc:
-                if (I->getOperand(0)->getType()->isDoubleTy())
+                if (DPEmu && I->getOperand(0)->getType()->isDoubleTy())
                 {
                     m_enableSubroutineCallForEmulation = true;
                 }
@@ -1610,28 +1645,32 @@ void PreCompiledFuncImport::checkAndSetEnableSubroutine()
             case Instruction::SIToFP:
             case Instruction::UIToFP:
             case Instruction::FPExt:
-                if (I->getType()->isDoubleTy())
+                if (DPEmu && I->getType()->isDoubleTy())
                 {
                     m_enableSubroutineCallForEmulation = true;
                 }
                 break;
             }
 
+            GenIntrinsicInst *GII = dyn_cast<GenIntrinsicInst>(I);
             IntrinsicInst *IInst = dyn_cast<IntrinsicInst>(I);
             // Handle intrinsic calls
-            if (IInst && IInst->getIntrinsicID() == Intrinsic::sqrt)
+            if (DPEmu && I->getType()->isDoubleTy() &&
+                IInst && IInst->getIntrinsicID() == Intrinsic::sqrt)
             {
-                if (I->getType()->isDoubleTy())
-                {
-                    m_enableSubroutineCallForEmulation = true;
-                }
+                m_enableSubroutineCallForEmulation = true;
             }
-            else if (IInst && IInst->getIntrinsicID() == Intrinsic::fma)
+            else
+            if (DPEmu && I->getType()->isDoubleTy() &&
+                IInst && IInst->getIntrinsicID() == Intrinsic::fma)
             {
-                if (I->getType()->isDoubleTy())
-                {
-                    m_enableSubroutineCallForEmulation = true;
-                }
+                m_enableSubroutineCallForEmulation = true;
+            }
+            else
+            if (SPDiv &&  I->getType()->isFloatTy() &&
+                GII && GII->getIntrinsicID() == GenISAIntrinsic::GenISA_IEEE_Divide)
+            {
+                m_enableSubroutineCallForEmulation = true;
             }
 
             if (m_enableSubroutineCallForEmulation) {
