@@ -75,30 +75,6 @@ void parseWrapper(const char *fileName, int argc, const char *argv[], Options &o
 _THREAD CISA_IR_Builder * pCisaBuilder = NULL;
 
 #ifndef DLL_MODE
-void parseNativeRelocs(CISA_IR_Builder* cisaBuilder)
-{
-    if (cisaBuilder->m_options.getOptionCstr(vISA_RelocFilename))
-    {
-        const char* fname;
-        cisaBuilder->m_options.getOption(vISA_RelocFilename, fname);
-        FILE* fp = fopen(fname, "rb");
-        if (fp == NULL)
-        {
-            COUT_ERROR << "Unable to open input reloc file.\n" << std::endl;
-            exit(-1);
-        }
-
-        while (!feof(fp))
-        {
-            BasicRelocEntry reloc;
-            fread(&reloc, 1, sizeof(BasicRelocEntry), fp);
-
-            cisaBuilder->getNativeRelocs()->addEntry(reloc.relocOffset, reloc.info, reloc.addend, 0);
-        }
-        fclose(fp);
-    }
-}
-
 void parse(const char *fileName, std::string testName, int argc, const char *argv[], Options &opt)
 {
     vISA::Mem_Manager phyRegMem(PHY_REG_MEM_SIZE);
@@ -163,7 +139,6 @@ void parse(const char *fileName, std::string testName, int argc, const char *arg
     VISA_WA_TABLE visaWaTable;
 
     CISA_IR_Builder::CreateBuilder(cisa_builder, vISA_MEDIA, builderOption, platform, argc, argv, &visaWaTable, true);
-    parseNativeRelocs(cisa_builder);
     MUST_BE_TRUE(cisa_builder, "cisa_builder is NULL.");
 
     vector<VISAKernel*> kernels;
@@ -202,10 +177,6 @@ int JITCompileAllOptions(const char* kernelName,
     const char* args[],
     char* errorMsg,
     FINALIZER_INFO* jitInfo,
-    const unsigned int numInputRelocEntries,
-    const BasicRelocEntry* inputRelocs,
-    unsigned int& numOutputRelocs,
-    BasicRelocEntry*& outputRelocs,
     void* gtpin_init)
 {
     // This function becomes the new entry point even for JITCompile clients.
@@ -231,7 +202,6 @@ int JITCompileAllOptions(const char* kernelName,
     VISA_WA_TABLE visaWaTable;
 
     CISA_IR_Builder::CreateBuilder(cisa_builder, vISA_MEDIA, builderOption, getGenxPlatform(), numArgs, args, &visaWaTable, true);
-    cisa_builder->setupNativeRelocs(numInputRelocEntries, inputRelocs);
     cisa_builder->setGtpinInit(gtpin_init);
 
     if (!cisa_builder)
@@ -257,10 +227,6 @@ int JITCompileAllOptions(const char* kernelName,
     void* buf;
     unsigned int bufSize;
     kernel->GetGenxDebugInfo(tempJitInfo->genDebugInfo, tempJitInfo->genDebugInfoSize, buf, bufSize);
-    if (numInputRelocEntries > 0)
-    {
-        kernel->GetGenReloc(outputRelocs, numOutputRelocs);
-    }
 
     if (gtpin_init)
     {
@@ -282,31 +248,8 @@ int JITCompileAllOptions(const char* kernelName,
     return JIT_SUCCESS;
 }
 
-DLL_EXPORT int JITCompileWithRelocation(const char* kernelName,
-    const void* kernelIsa,
-    unsigned int kernelIsaSize,
-    void* &genBinary,
-    unsigned int& genBinarySize,
-    const char* platform,
-    int majorVersion,
-    int minorVersion,
-    int numArgs,
-    const char* args[],
-    char* errorMsg,
-    FINALIZER_INFO* jitInfo,
-    const unsigned int numInputRelocEntries,
-    const BasicRelocEntry* inputRelocs,
-    unsigned int& numOutputRelocs,
-    BasicRelocEntry*& outputRelocs)
-{
-    return JITCompileAllOptions(kernelName, kernelIsa, kernelIsaSize, genBinary, genBinarySize,
-        platform, majorVersion, minorVersion, numArgs, args, errorMsg, jitInfo,
-        numInputRelocEntries, inputRelocs, numOutputRelocs, outputRelocs, nullptr);
-}
-
 /**
-  * This is the mode entry point for HW mode.
-  * It goes GEN path only. No vISA IRs generated.
+  * This is the main entry point for CM.
   */
 DLL_EXPORT int JITCompile(const char* kernelName,
                           const void* kernelIsa,
@@ -324,11 +267,9 @@ DLL_EXPORT int JITCompile(const char* kernelName,
     // JITCompile will invoke the other JITCompile API that supports relocation.
     // Via this path, relocs will be NULL. This way we can share a single
     // implementation of JITCompile.
-    BasicRelocEntry* unusedPtr = NULL;
-    unsigned int unusedNumOutputRelocs = 0;
+    
     return JITCompileAllOptions(kernelName, kernelIsa, kernelIsaSize, genBinary, genBinarySize,
-        platform, majorVersion, minorVersion, numArgs, args, errorMsg, jitInfo,
-        0, NULL, unusedNumOutputRelocs, unusedPtr, nullptr);
+        platform, majorVersion, minorVersion, numArgs, args, errorMsg, jitInfo, nullptr);
 }
 
 DLL_EXPORT int JITCompile_v2(const char* kernelName,
@@ -348,11 +289,8 @@ DLL_EXPORT int JITCompile_v2(const char* kernelName,
     // JITCompile will invoke the other JITCompile API that supports relocation.
     // Via this path, relocs will be NULL. This way we can share a single
     // implementation of JITCompile.
-    BasicRelocEntry* unusedPtr = NULL;
-    unsigned int unusedNumOutputRelocs = 0;
     return JITCompileAllOptions(kernelName, kernelIsa, kernelIsaSize, genBinary, genBinarySize,
-        platform, majorVersion, minorVersion, numArgs, args, errorMsg, jitInfo,
-        0, NULL, unusedNumOutputRelocs, unusedPtr, gtpin_init);
+        platform, majorVersion, minorVersion, numArgs, args, errorMsg, jitInfo, gtpin_init);
 }
 
 DLL_EXPORT void getJITVersion(unsigned int& majorV, unsigned int& minorV )

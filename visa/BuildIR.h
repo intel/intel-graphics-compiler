@@ -408,8 +408,6 @@ public:
 
     bool isKernel;
     int cunit;
-    reloc_symtab* varRelocTable;
-    reloc_symtab* funcRelocTable;
     const std::vector <char*>* resolvedCalleeNames;
 
     // pre-defined declare that binds to R0 (the entire GRF)
@@ -627,10 +625,6 @@ public:
     int getCUnitId() { return cunit; }
     void setIsKernel( bool value ) { isKernel = value; }
     bool getIsKernel() { return isKernel; }
-    void setVarRelocTable( reloc_symtab* tab ) { varRelocTable = tab; }
-    reloc_symtab* getVarRelocTable() { return varRelocTable; }
-    void setFuncRelocTable( reloc_symtab* tab ) { funcRelocTable = tab; }
-    reloc_symtab* getFuncRelocTable() { return funcRelocTable; }
     void setResolvedCalleeNames(std::vector<char*>* nameList) { resolvedCalleeNames = nameList; }
     const std::vector<char*>* getResolvedCalleeNames() { return resolvedCalleeNames; }
     void predefinedVarRegAssignment(uint8_t inputSize);
@@ -861,7 +855,7 @@ public:
         Mem_Manager &m, Options *options, bool isFESP64Bits,
         FINALIZER_INFO *jitInfo = NULL, PVISA_WA_TABLE pWaTable = NULL)
         : curFile(NULL), curLine(0), curCISAOffset(-1), func_id(-1), metaData(jitInfo),
-        isKernel(false), cunit(0), varRelocTable(NULL), funcRelocTable(NULL), resolvedCalleeNames(NULL),
+        isKernel(false), cunit(0), resolvedCalleeNames(NULL),
         usesSampler(false), m_pWaTable(pWaTable), m_options(options), CanonicalRegionStride0(0, 1, 0),
         CanonicalRegionStride1(1, 1, 0), CanonicalRegionStride2(2, 1, 0), CanonicalRegionStride4(4, 1, 0),
         use64BitFEStackVars(isFESP64Bits), mem(m), phyregpool(pregs), hashtable(m), rgnpool(m), dclpool(m),
@@ -1396,10 +1390,10 @@ public:
     // Create immediate operand without looking up hash table. This operand
     // is a relocatable immediate type.
     //
-    G4_Reloc_Imm* createRelocImm(SuperRelocEntry& reloc, G4_Type ty)
+    G4_Reloc_Imm* createRelocImm(G4_Type ty)
     {
         G4_Reloc_Imm* newImm;
-        newImm = new (mem)G4_Reloc_Imm(reloc, ty);
+        newImm = new (mem)G4_Reloc_Imm(ty);
         return newImm;
     }
 

@@ -423,55 +423,15 @@ int processCommonISAHeader(
         READ_FIELD_FROM_BUF(
             cisaHdr.kernels[i].variable_reloc_symtab.num_syms,
             uint16_t);
-
-        if (cisaHdr.kernels[i].variable_reloc_symtab.num_syms) {
-            cisaHdr.kernels[i].variable_reloc_symtab.reloc_syms =
-                (reloc_sym *)mem->alloc(
-                sizeof(reloc_sym)*
-                cisaHdr.kernels[i].variable_reloc_symtab.num_syms);
-            ALLOC_ASSERT(cisaHdr.kernels[i].variable_reloc_symtab.reloc_syms);
-        }
-        else {
-            cisaHdr.kernels[i].variable_reloc_symtab.reloc_syms = NULL;
-        }
-
-        for (int j = 0;
-            j < cisaHdr.kernels[i].variable_reloc_symtab.num_syms;
-            j++) {
-            READ_FIELD_FROM_BUF(
-                cisaHdr.kernels[i].variable_reloc_symtab.
-                reloc_syms[j].symbolic_index, uint16_t);
-            READ_FIELD_FROM_BUF(
-                cisaHdr.kernels[i].variable_reloc_symtab.
-                reloc_syms[j].resolved_index, uint16_t);
-        }
+        assert(cisaHdr.kernels[i].variable_reloc_symtab.num_syms == 0 && "relocation symbols not allowed");
+        cisaHdr.kernels[i].variable_reloc_symtab.reloc_syms = nullptr;
 
         READ_FIELD_FROM_BUF(
             cisaHdr.kernels[i].function_reloc_symtab.num_syms,
             uint16_t);
 
-        if (cisaHdr.kernels[i].function_reloc_symtab.num_syms) {
-            cisaHdr.kernels[i].function_reloc_symtab.reloc_syms =
-                (reloc_sym *)mem->alloc(
-                sizeof(reloc_sym)* cisaHdr.kernels[i].
-                function_reloc_symtab.num_syms);
-            ALLOC_ASSERT(cisaHdr.kernels[i].function_reloc_symtab.reloc_syms);
-        }
-        else {
-            cisaHdr.kernels[i].function_reloc_symtab.reloc_syms = NULL;
-        }
-
-        for (int j = 0;
-            j < cisaHdr.kernels[i].function_reloc_symtab.num_syms;
-            j++) {
-            READ_FIELD_FROM_BUF(
-                cisaHdr.kernels[i].function_reloc_symtab.
-                reloc_syms[j].symbolic_index, uint16_t);
-            READ_FIELD_FROM_BUF(
-                cisaHdr.kernels[i].function_reloc_symtab.
-                reloc_syms[j].resolved_index, uint16_t);
-        }
-
+        assert(cisaHdr.kernels[i].function_reloc_symtab.num_syms == 0 && "relocation symbols not allowed");
+        cisaHdr.kernels[i].function_reloc_symtab.reloc_syms = nullptr;
         READ_FIELD_FROM_BUF(cisaHdr.kernels[i].num_gen_binaries, uint8_t);
         cisaHdr.kernels[i].gen_binaries =
             (gen_binary_info*)mem->alloc(cisaHdr.kernels[i].num_gen_binaries * sizeof(gen_binary_info));
@@ -608,57 +568,15 @@ int processCommonISAHeader(
 
             READ_FIELD_FROM_BUF(
                 cisaHdr.functions[i].variable_reloc_symtab.num_syms,
-                uint16_t);
-
-            if (cisaHdr.functions[i].variable_reloc_symtab.num_syms) {
-                cisaHdr.functions[i].variable_reloc_symtab.reloc_syms =
-                    (reloc_sym *)mem->alloc(
-                    sizeof(reloc_sym)*
-                    cisaHdr.functions[i].variable_reloc_symtab.num_syms);
-                ALLOC_ASSERT(
-                    cisaHdr.functions[i].variable_reloc_symtab.reloc_syms);
-            }
-            else {
-                cisaHdr.functions[i].variable_reloc_symtab.reloc_syms = NULL;
-            }
-
-            for (int j = 0;
-                j < cisaHdr.functions[i].variable_reloc_symtab.num_syms;
-                j++) {
-                READ_FIELD_FROM_BUF(
-                    cisaHdr.functions[i].variable_reloc_symtab.
-                    reloc_syms[j].symbolic_index, uint16_t);
-                READ_FIELD_FROM_BUF(
-                    cisaHdr.functions[i].variable_reloc_symtab.
-                    reloc_syms[j].resolved_index, uint16_t);
-            }
+                uint16_t);           
+            assert(cisaHdr.functions[i].variable_reloc_symtab.num_syms == 0 && "variable relocation not supported");
+            cisaHdr.functions[i].variable_reloc_symtab.reloc_syms = nullptr;
 
             READ_FIELD_FROM_BUF(
                 cisaHdr.functions[i].function_reloc_symtab.num_syms,
                 uint16_t);
-
-            if (cisaHdr.functions[i].function_reloc_symtab.num_syms) {
-                cisaHdr.functions[i].function_reloc_symtab.reloc_syms =
-                    (reloc_sym *)mem->alloc(
-                    sizeof(reloc_sym)* cisaHdr.functions[i].
-                    function_reloc_symtab.num_syms);
-                ALLOC_ASSERT(
-                    cisaHdr.functions[i].function_reloc_symtab.reloc_syms);
-            }
-            else {
-                cisaHdr.functions[i].function_reloc_symtab.reloc_syms = NULL;
-            }
-
-            for (int j = 0;
-                j < cisaHdr.functions[i].function_reloc_symtab.num_syms;
-                j++) {
-                READ_FIELD_FROM_BUF(
-                    cisaHdr.functions[i].function_reloc_symtab.
-                    reloc_syms[j].symbolic_index, uint16_t);
-                READ_FIELD_FROM_BUF(
-                    cisaHdr.functions[i].function_reloc_symtab.
-                    reloc_syms[j].resolved_index, uint16_t);
-            }
+            assert(cisaHdr.functions[i].function_reloc_symtab.num_syms == 0 && "function relocation not supported");
+            cisaHdr.functions[i].function_reloc_symtab.reloc_syms = nullptr;
 
             cisaHdr.functions[i].scratch = NULL;
             cisaHdr.functions[i].cisa_binary_buffer = NULL;

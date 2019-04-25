@@ -258,7 +258,6 @@ public:
     void initKernel( int kernelIndex, VISAKernelImpl * kernel );
     int finalizeCisaBinary();
     int finalizeCisaFileScopeVars();
-    void finalizeRelocationTables();
     int dumpToFile(std::string binFileName);
     int setFileScopeVar(VISA_FileVar * info);
 

@@ -2749,30 +2749,12 @@ public:
 
 class G4_Reloc_Imm : public G4_Imm
 {
-private:
-    SuperRelocEntry relocInfo;
 
 public:
     void *operator new(size_t sz, Mem_Manager& m){ return m.alloc(sz); }
     bool isRelocImm() { return true; }
-    void setupRelocInfo(SuperRelocEntry& reloc)
-    {
-        relocInfo = reloc;
-    }
 
-    void setNativeOffset(unsigned int nativeOffset)
-    {
-        relocInfo.nativeOffset = nativeOffset;
-    }
-
-    unsigned int getNativeOffset()
-    {
-        return relocInfo.nativeOffset;
-    }
-
-    SuperRelocEntry& getRelocInfo() { return relocInfo; }
-
-    G4_Reloc_Imm(SuperRelocEntry& reloc, G4_Type ty) : G4_Imm((int64_t)0x6e10ca2e, ty), relocInfo(reloc)
+    G4_Reloc_Imm(G4_Type ty) : G4_Imm((int64_t)0x6e10ca2e, ty)
     {
     }
 };

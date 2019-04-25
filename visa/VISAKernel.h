@@ -120,7 +120,6 @@ public:
         surfaceNameCount = COMMON_ISA_NUM_PREDEFINED_SURF_VER_3_1;
         samplerNameCount = 0;
         vmeNameCount = 0;
-        isRelocTablePresent = false;
         mTargetAttributeSet = false;
 
         m_functionId = 0;
@@ -296,8 +295,6 @@ public:
     CM_BUILDER_API int CreateVISADstOperand(VISA_VectorOpnd *&opnd, VISA_GenVar *decl, unsigned short hStride, unsigned char rowOffset, unsigned char colOffset);
 
     CM_BUILDER_API int CreateVISAImmediate(VISA_VectorOpnd *&opnd, const void *val, VISA_Type type);
-
-    CM_BUILDER_API int CreateRelocVISAImmediate(VISA_VectorOpnd *&opnd, const void *val, VISA_Type type, SuperRelocEntry& reloc);
 
     CM_BUILDER_API int CreateVISAStateOperand(VISA_VectorOpnd *&opnd, VISA_SurfaceVar *decl, unsigned char offset, bool useAsDst);
 
@@ -661,7 +658,6 @@ public:
     CM_BUILDER_API int GetCompilerStats(CompilerStats &compilerStats);
     CM_BUILDER_API int GetErrorMessage(const char *&errorMsg);
     CM_BUILDER_API virtual int GetGenxDebugInfo(void *&buffer, unsigned int &size, void*&, unsigned int&);
-    CM_BUILDER_API int GetGenReloc(BasicRelocEntry*& relocs, unsigned int& numRelocs);
     /// GetGenRelocEntryBuffer -- allocate and return a buffer of all GenRelocEntry that are created by vISA
     CM_BUILDER_API int GetGenRelocEntryBuffer(void *&buffer, unsigned int &byteSize, unsigned int &numEntries);
     CM_BUILDER_API int GetGTPinBuffer(void*& buffer, unsigned int& size);
@@ -764,19 +760,6 @@ public:
     PVISA_WA_TABLE m_pWaTable;
 
     void* compilePostOptimize(unsigned int& binarySize);
-
-    void addVarRelocEntry(unsigned int symIdx, unsigned int resIdx) { isRelocTablePresent = true; varRelocTable.push_back(std::make_pair(symIdx, resIdx)); }
-    void addFuncRelocEntry(unsigned int symIdx, unsigned int resIdx) { isRelocTablePresent = true; funcRelocTable.push_back(std::make_pair(symIdx, resIdx)); }
-
-    unsigned int getVarRelocSize() { return (uint32_t)varRelocTable.size(); }
-    unsigned int getFuncRelocSize() { return (uint32_t)funcRelocTable.size(); }
-
-    void getVarRelocEntry(unsigned int idx, unsigned int& symIdx, unsigned int& resIdx) { symIdx = varRelocTable[idx].first; resIdx = varRelocTable[idx].second; }
-    void getFuncRelocEntry(unsigned int idx, unsigned int& symIdx, unsigned int& resIdx) { symIdx = funcRelocTable[idx].first; resIdx = funcRelocTable[idx].second; }
-
-    bool getRelocTablePresent() { return isRelocTablePresent; }
-
-    void setupRelocTable();
 
     void setInputSize(uint8_t size);
     void setReturnSize(unsigned int size);
@@ -882,9 +865,6 @@ public:
     bool IsAsmWriterMode() { return m_options->getOption(vISA_IsaAssembly); }
 
     void computeAndEmitDebugInfo(std::list<VISAKernelImpl*>& functions);
-    void computeAndEmitGenRelocs();
-    void computeAllRelocs(unsigned int& numRelocs, BasicRelocEntry*& output);
-    void emitAllRelocs(unsigned int numRelocs, BasicRelocEntry* relocs);
 
 private:
     void setDefaultVariableName(Common_ISA_Var_Class Ty, const char *&varName);
@@ -1051,9 +1031,6 @@ private:
     unsigned int surfaceNameCount;
     unsigned int samplerNameCount;
     unsigned int vmeNameCount;
-    bool isRelocTablePresent;
-    std::vector< std::pair<unsigned int, unsigned int> > varRelocTable;
-    std::vector< std::pair<unsigned int, unsigned int> > funcRelocTable;
 
     int m_vISAInstCount;
     print_decl_index_t m_printDeclIndex;

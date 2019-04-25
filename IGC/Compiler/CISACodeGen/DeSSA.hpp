@@ -100,7 +100,6 @@ class DeSSA : public llvm::FunctionPass {
       PHISrcArgs.clear();
       RegNodeMap.clear();
       InsEltMap.clear();
-      PrefCCMap.clear();
       AliasMap.clear();
     }
 
@@ -214,6 +213,7 @@ class DeSSA : public llvm::FunctionPass {
     llvm::Function* m_F;  // Current Function
 
     llvm::BumpPtrAllocator Allocator;
+
     // Color (label) assigned to each congruent class
     // start from 1. Make sure each Node has a different
     // color number.
@@ -241,18 +241,6 @@ public:
     //           with a single-node in phi-union. When being isolated, they are isolated together
     llvm::MapVector<llvm::Value*, llvm::Value*> InsEltMap;
 
-    // Preferred Congruent Class Map
-    //     Assume value v0, v1, v2 are preferred to be in the same congurent class, and
-    //     assume v0 is the root (anyone could be the root), this map will be something like:
-    //         PrefCCMap[v0] = v0  // map-key == map-value: map-value is the root
-    //         PrefCCMap[v1] = v0
-    //         PrefCCMap[v2] = v0
-    // The purpose of this map is that during value isolation (main algo), if one of the preferred
-    // value is isolated, all values in the preferred CC shall be isolated as well. In another word,
-    // the preferred values will be guaranteed to stay in the same congurent class after dessa
-    // on phi's.
-    llvm::DenseMap<llvm::Value*, llvm::Value*> PrefCCMap;
-
     // Value Alias map
     //   This is used for maitaining aliases among values. It maps a value, called 'aliaser',
     //   to its 'aliasee' (denoted as alias(aliaer, aliasee). This map has the following
@@ -272,6 +260,10 @@ public:
     //   3. Make sure DeSSA node only use aliasee.
     llvm::DenseMap<llvm::Value*, llvm::Value*> AliasMap;
 
+    // If an inst is an aliaser and no need to generate code
+    // due to aliasing, it will be added in this map.
+    llvm::DenseMap<llvm::Value*, int> NoopAliasMap;
+
     /// If there is no node for Val, create a new one.
     void addReg(llvm::Value* Val, e_alignment Align);
 
@@ -284,10 +276,18 @@ public:
         unionRegs(RegNodeMap[Val1], RegNodeMap[Val2]);
     }
 
+    // For a value, return its representative value that is used
+    // to create dessa node, which is its aliasee's InsElt root.
+    llvm::Value* getNodeValue(llvm::Value* V) const {
+        llvm::Value* aliasee = getAliasee(V);
+        return getInsEltRoot(aliasee);
+    }
+
     llvm::Value* getInsEltRoot(llvm::Value* Val) const;
     llvm::Value* getAliasee(llvm::Value* V) const;
     bool isAliasee(llvm::Value* V) const;
     bool isAliaser(llvm::Value* V) const;
+    bool isNoopAliaser(llvm::Value* V) const;
     bool interfere(llvm::Value* V0, llvm::Value* V1);
     bool alignInterfere(e_alignment a1, e_alignment a2);
 
@@ -306,33 +306,25 @@ private:
 
     void unionRegs(Node* N1, Node* N2);
     void CoalesceAliasInstForBasicBlock(llvm::BasicBlock *Blk);
+    int checkInsertElementAlias(
+        llvm::InsertElementInst* IEI,
+        llvm::SmallVector<llvm::Value*, 16>& AllIEIs);
+
+    // Add Val into aliasMap if it is not in the map yet.
+    // Return Val's aliasee.
     void AddAlias(llvm::Value *Val) {
-        if (AliasMap.find(Val) == AliasMap.end()) {
+        if (AliasMap.find(Val) == AliasMap.end())
             AliasMap[Val] = Val;
-        }
-    }
-    void PrefCCMapAddValue(llvm::Value *Val) {
-        if (PrefCCMap.find(Val) == PrefCCMap.end()) {
-            PrefCCMap[Val] = Val;
-        }
     }
 
-    // Return its root if V is in a preferred CC; nullptr otherwise.
-    llvm::Value* getPrefCCRoot(llvm::Value* V) {
-        if (PrefCCMap.find(V) != PrefCCMap.end()) {
-            return PrefCCMap[V];
-        }
-        return nullptr;
-    }
-
-    // If V is an inst and it is not needed (by patternmatch),
-    // return false; otherwise, return true;
-    bool isNeededIfInst(llvm::Value *V) {
+    // If V is an arg or a needed inst (by patternmatch),
+    // return true; otherwise, return false;
+    bool isArgOrNeededInst(llvm::Value *V) {
         if (llvm::Instruction* I = llvm::dyn_cast<llvm::Instruction>(V))
         {
             return CG->NeedInstruction(*I);
         }
-        return true;
+        return llvm::isa<llvm::Argument>(V);
     }
   };
 

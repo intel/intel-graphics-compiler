@@ -1569,15 +1569,6 @@ namespace vISA
         else
         {
             BinInst *bin = inst->getBinInst();
-            for (auto i = 0; i < inst->getNumSrc(); i++)
-            {
-                if (inst->getSrc(i) &&
-                    inst->getSrc(i)->isRelocImm())
-                {
-                    unsigned int opndOff = ((G4_Reloc_Imm*)inst->getSrc(i))->getNativeOffset();
-                    ((G4_Reloc_Imm*)inst->getSrc(i))->setNativeOffset((globalHalfInstNum * 8) + opndOff);
-                }
-            }
 
             localInstNum++;
             globalInstNum++;
@@ -1593,7 +1584,6 @@ namespace vISA
             }
         }
     }
-
 
     /**
      * labels will be skipped in encoding stage and calculated in computeOffset()

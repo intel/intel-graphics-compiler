@@ -180,7 +180,6 @@ DEF_VISA_OPTION(vISA_OutputvISABinaryName, ET_BOOL, NULLSTR,               UNUSE
 DEF_VISA_OPTION(vISA_LabelStr,          ET_CSTR,  "-uniqueLabels",         "Label String is not provided for the -uniqueLabels option.", NULL)
 DEF_VISA_OPTION(VISA_AsmFileName,       ET_CSTR, "-asmNameUser",           "USAGE: -asmNameUser <FILE>\n",          NULL)
 DEF_VISA_OPTION(vISA_DecodeDbg,         ET_CSTR, "-decodedbg",             "USAGE: -decodedbg <dbg filename>\n",    NULL)
-DEF_VISA_OPTION(vISA_RelocFilename,     ET_CSTR, "-inputreloc",            "USAGE: -inputreloc <reloc file>\n",     NULL)
 DEF_VISA_OPTION(vISA_encoderFile,       ET_CSTR, "-encoderStatisticsFile", "USAGE: -encoderStatisticsFile <reloc file>\n", "encoderStatistics.csv")
 DEF_VISA_OPTION(vISA_CISAbinary,        ET_CSTR, "-CISAbinary",            "USAGE: File Name with isaasm paths. ",  NULL)
 

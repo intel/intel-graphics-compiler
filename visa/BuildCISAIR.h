@@ -43,26 +43,7 @@ extern int CISAdebug;
 #include "VISABuilderAPIDefinition.h"
 #include "visa_wa.h"
 
-//#define TIME_vISA_LOADING
-//#define TIME_IR_CONSTRUCTION
 class Options;
-
-class NativeRelocs
-{
-public:
-    void *operator new(size_t sz, vISA::Mem_Manager& m){ return m.alloc(sz); }
-    void addEntry(uint64_t offset, uint64_t info, int64_t addend, unsigned int nativeOffset);
-    unsigned int getNativeOffset(unsigned int cisaOffset);
-    bool isOffsetReloc(uint64_t offset, SuperRelocEntry& info);
-
-    unsigned getNumEntries() { return (uint32_t) entries.size(); }
-    SuperRelocEntry getEntry(unsigned int idx)
-    {
-        return entries[idx];
-    }
-private:
-    std::vector<SuperRelocEntry> entries;
-};
 
 class CISA_IR_Builder : public VISABuilder
 {
@@ -84,7 +65,6 @@ public:
         m_cisaBinary = new (m_mem) CisaFramework::CisaBinary(&m_options);
         m_currentKernel = NULL;
         m_pWaTable = pWaTable;
-        nativeRelocs = NULL;
     }
 
     virtual ~CISA_IR_Builder();
@@ -769,17 +749,6 @@ public:
     std::stringstream m_ssIsaAsm;
     std::stringstream m_ssIsaAsmHeader;
 
-    void setupNativeRelocs(unsigned int, const BasicRelocEntry*);
-    NativeRelocs* getNativeRelocs(bool createIfNULL = true)
-    {
-        if (!nativeRelocs &&
-            createIfNULL)
-        {
-            nativeRelocs = new (m_mem)NativeRelocs();
-        }
-        return nativeRelocs;
-    }
-
     void setGtpinInit(void* buf) { gtpin_init = buf; }
     void* getGtpinInit() { return gtpin_init; }
 
@@ -809,8 +778,6 @@ private:
     std::string testName;
 
     PVISA_WA_TABLE m_pWaTable;
-
-    NativeRelocs* nativeRelocs;
 
     void* gtpin_init = nullptr;
 };

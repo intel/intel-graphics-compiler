@@ -42,17 +42,6 @@ typedef struct _CM_BB_INFO {
     unsigned char loopNestLevel;
 } CM_BB_INFO;
 
-typedef struct BasicRelocEntry {
-    uint64_t relocOffset;
-    uint64_t info;
-    int64_t addend;
-} BasicRelocEntry;
-
-typedef struct SuperRelocEntry {
-    BasicRelocEntry input;
-    unsigned int nativeOffset;
-} SuperRelocEntry;
-
 typedef struct _CM_JIT_INFO {
     // Common part
     bool isSpill;

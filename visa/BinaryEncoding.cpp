@@ -980,11 +980,6 @@ inline void SetSrc0Imm32(BinInst *mybin, uint32_t value, G4_Operand* src)
         return;
     else
         mybin->SetBits(bitsSrcImm32_0,bitsSrcImm32_1,value);
-
-    if (src->isRelocImm())
-    {
-        ((G4_Reloc_Imm*)src)->setNativeOffset((unsigned int)(bitsSrcImm32_1 / 8));
-    }
 }
 
 inline void SetSrc0Imm64(BinInst *mybin, uint64_t value, G4_Operand* src)
@@ -993,11 +988,6 @@ inline void SetSrc0Imm64(BinInst *mybin, uint64_t value, G4_Operand* src)
     uint32_t high = value >> 32;
     mybin->SetBits( bitsSrcImm64_2, bitsSrcImm64_3, low );
     mybin->SetBits( bitsSrcImm64_0, bitsSrcImm64_1, high );
-
-    if (src->isRelocImm())
-    {
-        ((G4_Reloc_Imm*)src)->setNativeOffset((unsigned int)(bitsSrcImm64_3 / 8));
-    }
 }
 
 inline void EncodeSrc0RegFile(BinInst *mybin, G4_Operand *src0)
@@ -1040,11 +1030,6 @@ inline void SetSrc1Imm32(BinInst *mybin, uint32_t value, G4_Operand* src)
         return;
     else
         mybin->SetBits(bitsSrcImm32_2,bitsSrcImm32_3,value);
-
-    if (src->isRelocImm())
-    {
-        ((G4_Reloc_Imm*)src)->setNativeOffset((unsigned int)(bitsSrcImm32_3 / 8));
-    }
 }
 
 inline void EncodeSrcImmData(BinInst *mybin, G4_Operand *src)

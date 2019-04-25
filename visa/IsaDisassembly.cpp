@@ -100,33 +100,12 @@ const char* getGenVarName(int id, const print_format_provider_t& header)
     }
 }
 
-unsigned int getRelocatedGlobalVarIndex(const common_isa_header& isaHeader, unsigned declID, bool isKernel, unsigned int funcId)
-{
-    // declID is a symbolic index in to file scope variable table. Refer to relocation
-    // table and return resolved index.
-    reloc_symtab& var_sym_tab = (isKernel == true) ?
-        isaHeader.kernels[0].variable_reloc_symtab :
-    isaHeader.functions[funcId].variable_reloc_symtab;
-
-    for( unsigned int i = 0; i < var_sym_tab.num_syms; i++ )
-    {
-        reloc_sym& sym = var_sym_tab.reloc_syms[i];
-
-        if( sym.symbolic_index == declID )
-        {
-            return sym.resolved_index;
-        }
-    }
-
-    return 0;
-}
-
 string printGlobalDeclName(const common_isa_header& isaHeader,
     const print_format_provider_t* header, unsigned declID, bool isKernel, unsigned int funcId, Options *options)
 {
     MUST_BE_TRUE(header, "Argument Exception: argument header is NULL.");
     stringstream sstr;
-    unsigned int resolvedDclID = getRelocatedGlobalVarIndex(isaHeader, declID, isKernel, funcId);
+    unsigned int resolvedDclID = declID;
     if (options->getOption(vISA_DumpIsaVarNames) && resolvedDclID < isaHeader.num_filescope_variables &&
         isaHeader.filescope_variables && isaHeader.filescope_variables[resolvedDclID].name)
     {

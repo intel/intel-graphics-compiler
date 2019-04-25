@@ -489,14 +489,6 @@ static VISA_VectorOpnd* readVectorOperandNG(unsigned& bytePos, const char* buf, 
 
             VISA_VectorOpnd* opnd = NULL;
 
-            bool isRelocType = false;
-            SuperRelocEntry reloc;
-            if (container.builder->getNativeRelocs(false) &&
-                container.builder->getNativeRelocs(false)->isOffsetReloc((uint64_t)bytePos, reloc))
-            {
-                isRelocType = true;
-            }
-
             if (immedType == ISA_TYPE_DF)
             {
                 double val = 0;
@@ -507,29 +499,14 @@ static VISA_VectorOpnd* readVectorOperandNG(unsigned& bytePos, const char* buf, 
             {
                 uint64_t val = 0;
                 READ_CISA_FIELD(val, uint64_t, bytePos, buf);
-
-                if (!isRelocType)
-                {
-                    kernelBuilderImpl->CreateVISAImmediate(opnd, &val, immedType);
-                }
-                else
-                {
-                    kernelBuilderImpl->CreateRelocVISAImmediate(opnd, &val, immedType, reloc);
-                }
+                kernelBuilderImpl->CreateVISAImmediate(opnd, &val, immedType);
             }
             else /// Immediate operands are at least 4 bytes.
             {
                 unsigned val = 0;
                 READ_CISA_FIELD(val, unsigned, bytePos, buf);
+                kernelBuilderImpl->CreateVISAImmediate(opnd, &val, immedType);
 
-                if (!isRelocType)
-                {
-                    kernelBuilderImpl->CreateVISAImmediate(opnd, &val, immedType);
-                }
-                else
-                {
-                    kernelBuilderImpl->CreateRelocVISAImmediate(opnd, &val, immedType, reloc);
-                }
             }
 
             return opnd;
@@ -2276,22 +2253,7 @@ static void readRoutineNG(unsigned& bytePos, const char* buf, vISA::Mem_Manager&
             uint32_t aliasIndex  = header.variables[declID].alias_index;
             uint16_t aliasOffset = header.variables[declID].alias_offset;
 
-            // Resolve access to global var based on symbol table
-            if( ((VISAKernelImpl*)container.kernelBuilder)->getRelocTablePresent() )
-            {
-                for( unsigned int i = 0; i < ((VISAKernelImpl*)container.kernelBuilder)->getVarRelocSize(); i++ )
-                {
-                    unsigned int symIdx, resIdx;
-                    ((VISAKernelImpl*)container.kernelBuilder)->getVarRelocEntry(i, symIdx, resIdx);
-
-                    if( symIdx == aliasIndex )
-                    {
-                        aliasIndex = (uint16_t)resIdx;
-                        break;
-                    }
-                }
-            }
-            // else assume resolved index = sumbolic index
+            // else assume resolved index = symbolic index
             // This happens when builder API is used instead of reading from CISA file.
             // The assumption here is that when builder API is used, variable and function
             // resolution is done by caller of builder API already.
@@ -2655,7 +2617,7 @@ extern bool readIsaBinaryNG(const char* buf, CISA_IR_Builder* builder, vector<VI
         fileVarDecls[i] = fileVar;
     }
 
-    if (kernelName != NULL)
+    if (kernelName)
     {
         int kernelIndex = -1;
         for (unsigned i = 0; i < isaHeader.num_kernels; i++)
@@ -2684,20 +2646,6 @@ extern bool readIsaBinaryNG(const char* buf, CISA_IR_Builder* builder, vector<VI
 
         builder->AddKernel(container.kernelBuilder, isaHeader.kernels[kernelIndex].name);
 
-        for (int i = 0; i < isaHeader.kernels[kernelIndex].variable_reloc_symtab.num_syms; i++)
-        {
-            reloc_sym& varRelocSym = isaHeader.kernels[kernelIndex].variable_reloc_symtab.reloc_syms[i];
-            ((VISAKernelImpl*)container.kernelBuilder)->addVarRelocEntry(varRelocSym.symbolic_index, varRelocSym.resolved_index);
-        }
-
-        for (int i = 0; i < isaHeader.kernels[kernelIndex].function_reloc_symtab.num_syms; i++)
-        {
-            reloc_sym& funcRelocSym = isaHeader.kernels[kernelIndex].function_reloc_symtab.reloc_syms[i];
-            ((VISAKernelImpl*)container.kernelBuilder)->addFuncRelocEntry(funcRelocSym.symbolic_index, funcRelocSym.resolved_index);
-        }
-
-        ((VISAKernelImpl*)container.kernelBuilder)->setupRelocTable();
-
         VISAKernelImpl* kernelImpl = (VISAKernelImpl*)container.kernelBuilder;
         kernelImpl->setIsKernel(true);
         kernels.push_back(container.kernelBuilder);
@@ -2712,21 +2660,6 @@ extern bool readIsaBinaryNG(const char* buf, CISA_IR_Builder* builder, vector<VI
             builder->AddFunction(funcPtr, isaHeader.functions[i].name);
 
             container.kernelBuilder = (VISAKernel*)funcPtr;
-
-            for (int m = 0; m < isaHeader.functions[i].variable_reloc_symtab.num_syms; m++)
-            {
-                reloc_sym& varRelocSym = isaHeader.functions[i].variable_reloc_symtab.reloc_syms[m];
-                ((VISAKernelImpl*)container.kernelBuilder)->addVarRelocEntry(varRelocSym.symbolic_index, varRelocSym.resolved_index);
-            }
-
-            for (int m = 0; m < isaHeader.functions[i].function_reloc_symtab.num_syms; m++)
-            {
-                reloc_sym& funcRelocSym = isaHeader.functions[i].function_reloc_symtab.reloc_syms[m];
-                ((VISAKernelImpl*)container.kernelBuilder)->addFuncRelocEntry(funcRelocSym.symbolic_index, funcRelocSym.resolved_index);
-            }
-
-            // Setup relocation table in IR_Builder if one exists
-            ((VISAKernelImpl*)container.kernelBuilder)->setupRelocTable();
 
             ((VISAKernelImpl*)container.kernelBuilder)->setIsKernel(false);
             kernels.push_back(container.kernelBuilder);
@@ -2750,21 +2683,6 @@ extern bool readIsaBinaryNG(const char* buf, CISA_IR_Builder* builder, vector<VI
 
             builder->AddKernel(container.kernelBuilder, isaHeader.kernels[k].name);
 
-            for (int i = 0; i < isaHeader.kernels[k].variable_reloc_symtab.num_syms; i++)
-            {
-                reloc_sym& varRelocSym = isaHeader.kernels[k].variable_reloc_symtab.reloc_syms[i];
-                ((VISAKernelImpl*)container.kernelBuilder)->addVarRelocEntry(varRelocSym.symbolic_index, varRelocSym.resolved_index);
-            }
-
-            for (int i = 0; i < isaHeader.kernels[k].function_reloc_symtab.num_syms; i++)
-            {
-                reloc_sym& funcRelocSym = isaHeader.kernels[k].function_reloc_symtab.reloc_syms[i];
-                ((VISAKernelImpl*)container.kernelBuilder)->addFuncRelocEntry(funcRelocSym.symbolic_index, funcRelocSym.resolved_index);
-            }
-
-            // Setup relocation table in IR_Builder if one exists
-            ((VISAKernelImpl*)container.kernelBuilder)->setupRelocTable();
-
             ((VISAKernelImpl*)container.kernelBuilder)->setIsKernel(true);
             kernels.push_back(container.kernelBuilder);
 
@@ -2787,21 +2705,6 @@ extern bool readIsaBinaryNG(const char* buf, CISA_IR_Builder* builder, vector<VI
                 builder->AddFunction(funcPtr, isaHeader.functions[i].name);
 
                 container.kernelBuilder = (VISAKernel*)funcPtr;
-
-                for( int m = 0; m < isaHeader.functions[i].variable_reloc_symtab.num_syms; m++ )
-                {
-                    reloc_sym& varRelocSym = isaHeader.functions[i].variable_reloc_symtab.reloc_syms[m];
-                    ((VISAKernelImpl*)container.kernelBuilder)->addVarRelocEntry( varRelocSym.symbolic_index, varRelocSym.resolved_index );
-                }
-
-                for( int m = 0; m < isaHeader.functions[i].function_reloc_symtab.num_syms; m++ )
-                {
-                    reloc_sym& funcRelocSym = isaHeader.functions[i].function_reloc_symtab.reloc_syms[m];
-                    ((VISAKernelImpl*)container.kernelBuilder)->addFuncRelocEntry( funcRelocSym.symbolic_index, funcRelocSym.resolved_index );
-                }
-
-                // Setup relocation table in IR_Builder if one exists
-                ((VISAKernelImpl*) container.kernelBuilder)->setupRelocTable();
 
                 ((VISAKernelImpl*)container.kernelBuilder)->setIsKernel(false);
                 kernels.push_back(container.kernelBuilder);

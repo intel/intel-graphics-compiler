@@ -154,8 +154,7 @@ void CisaBinary::initKernel( int kernelIndex, VISAKernelImpl * kernel )
         m_header.kernels[kernelIndex].size = kernel->getCisaBinarySize();
         m_header.kernels[kernelIndex].cisa_binary_buffer = kernel->getCisaBinaryBuffer(); //buffer containing entire kernel
         m_header.kernels[kernelIndex].input_offset = kernel->getInputOffset(); //for now relative to the beginning of the kernel object
-        //variable_reloc_symtab and function_reloc_symtab for visa 1.0 gets initialized in other function.
-     
+   
         //Workaround for patching in FE. This way space for data structures is allocated
         unsigned int numGenBinariesWillBePatched = kernel->getOptions()->getuInt32Option(vISA_NumGenBinariesWillBePatched);
         m_header.kernels[kernelIndex].num_gen_binaries = static_cast<unsigned char>(numGenBinariesWillBePatched);
@@ -208,7 +207,7 @@ int CisaBinary::finalizeCisaBinary()
     {
         return status;
     }
-    finalizeRelocationTables();
+
     m_total_size = m_header_size = get_Size_Isa_Header( &m_header, getMajorVersion(), this->getMinorVersion() );
 
     m_header_buffer  = ( char * )this->m_mem.alloc(m_header_size);
@@ -253,19 +252,11 @@ int CisaBinary::finalizeCisaBinary()
         m_total_size += m_header.kernels[i].size;
         m_total_size += m_header.kernels[i].binary_size;
 
+        assert(m_header.kernels[i].variable_reloc_symtab.num_syms == 0 && "variable relocation not supported");
         writeInToCisaHeaderBuffer(&m_header.kernels[i].variable_reloc_symtab.num_syms, sizeof(m_header.kernels[i].variable_reloc_symtab.num_syms));
-        for (int j = 0; j < m_header.kernels[i].variable_reloc_symtab.num_syms; j++)
-        {
-            writeInToCisaHeaderBuffer(&m_header.kernels[i].variable_reloc_symtab.reloc_syms[j].symbolic_index, sizeof(m_header.kernels[i].variable_reloc_symtab.reloc_syms[j].symbolic_index));
-            writeInToCisaHeaderBuffer(&m_header.kernels[i].variable_reloc_symtab.reloc_syms[j].resolved_index, sizeof(m_header.kernels[i].variable_reloc_symtab.reloc_syms[j].resolved_index));
-        }
 
+        assert(m_header.kernels[i].function_reloc_symtab.num_syms == 0 && "function relocation not supported");
         writeInToCisaHeaderBuffer(&m_header.kernels[i].function_reloc_symtab.num_syms, sizeof(m_header.kernels[i].function_reloc_symtab.num_syms));
-        for (int j = 0; j < m_header.kernels[i].function_reloc_symtab.num_syms; j++)
-        {
-            writeInToCisaHeaderBuffer(&m_header.kernels[i].function_reloc_symtab.reloc_syms[j].symbolic_index, sizeof(m_header.kernels[i].function_reloc_symtab.reloc_syms[j].symbolic_index));
-            writeInToCisaHeaderBuffer(&m_header.kernels[i].function_reloc_symtab.reloc_syms[j].resolved_index, sizeof(m_header.kernels[i].function_reloc_symtab.reloc_syms[j].resolved_index));
-        }
 
         //for now gen binaries
         this->m_krenelBinaryInfoLocationsArray[i] = m_bytes_written_cisa_buffer;
@@ -346,20 +337,11 @@ int CisaBinary::finalizeCisaBinary()
 
         writeInToCisaHeaderBuffer(&m_header.functions[i].size, sizeof(m_header.functions[i].size));
 
-
+        assert(m_header.functions[i].variable_reloc_symtab.num_syms == 0 && "variable relocation not supported");
         writeInToCisaHeaderBuffer(&m_header.functions[i].variable_reloc_symtab.num_syms, sizeof(m_header.functions[i].variable_reloc_symtab.num_syms));
-        for (int j = 0; j < m_header.functions[i].variable_reloc_symtab.num_syms; j++)
-        {
-            writeInToCisaHeaderBuffer(&m_header.functions[i].variable_reloc_symtab.reloc_syms[j].symbolic_index, sizeof(m_header.functions[i].variable_reloc_symtab.reloc_syms[j].symbolic_index));
-            writeInToCisaHeaderBuffer(&m_header.functions[i].variable_reloc_symtab.reloc_syms[j].resolved_index, sizeof(m_header.functions[i].variable_reloc_symtab.reloc_syms[j].resolved_index));
-        }
 
+        assert(m_header.functions[i].function_reloc_symtab.num_syms == 0 && "function relocation not supported");
         writeInToCisaHeaderBuffer(&m_header.functions[i].function_reloc_symtab.num_syms, sizeof(m_header.functions[i].function_reloc_symtab.num_syms));
-        for (int j = 0; j < m_header.functions[i].function_reloc_symtab.num_syms; j++)
-        {
-            writeInToCisaHeaderBuffer(&m_header.functions[i].function_reloc_symtab.reloc_syms[j].symbolic_index, sizeof(m_header.functions[i].function_reloc_symtab.reloc_syms[j].symbolic_index));
-            writeInToCisaHeaderBuffer(&m_header.functions[i].function_reloc_symtab.reloc_syms[j].resolved_index, sizeof(m_header.functions[i].function_reloc_symtab.reloc_syms[j].resolved_index));
-        }
 
         m_total_size += m_header.functions[i].size;
     }
@@ -435,60 +417,6 @@ int CisaBinary::finalizeCisaFileScopeVars()
         i++;
     }
     return CM_SUCCESS;
-}
-
-void CisaBinary::finalizeRelocationTables()
-{
-    //reloc_symtab * global_var_reloc_table = (reloc_symtab *) m_mem.alloc(sizeof(reloc_symtab * ));
-    //global_var_reloc_table->num_syms = m_header.num_global_variables;
-    reloc_sym * reloc_syms_var = (reloc_sym *) m_mem.alloc(sizeof(reloc_sym) * m_header.num_global_variables);
-
-    for(int i = 0; i < m_header.num_global_variables; i++)
-    {
-        reloc_syms_var[i].resolved_index = static_cast<unsigned short>(i);
-        reloc_syms_var[i].symbolic_index = static_cast<unsigned short>(i);
-    }
-
-    //reloc_symtab * global_func_reloc_table = (reloc_symtab *) m_mem.alloc(sizeof(reloc_symtab * ));
-    //global_func_reloc_table->num_syms = m_header.num_global_functions;
-    reloc_sym * reloc_syms_func = (reloc_sym *) m_mem.alloc(sizeof(reloc_sym) * m_header.num_functions);
-
-    for(int i = 0; i < m_header.num_functions; i++)
-    {
-        reloc_syms_func[i].resolved_index = static_cast<unsigned short>(i);
-        reloc_syms_func[i].symbolic_index = static_cast<unsigned short>(i);
-    }
-
-    for(int i = 0; i < m_header.num_kernels; i++)
-    {
-        m_header.kernels[i].variable_reloc_symtab.num_syms = m_header.num_global_variables;
-        m_header.kernels[i].variable_reloc_symtab.reloc_syms = reloc_syms_var;
-
-        m_header.kernels[i].function_reloc_symtab.num_syms = m_header.num_functions;
-        m_header.kernels[i].function_reloc_symtab.reloc_syms = reloc_syms_func;
-    }
-
-    for(int i = 0; i < m_header.num_functions; i++)
-    {
-        m_header.functions[i].variable_reloc_symtab.num_syms = m_header.num_global_variables;
-        m_header.functions[i].variable_reloc_symtab.reloc_syms = reloc_syms_var;
-
-        m_header.functions[i].function_reloc_symtab.num_syms = m_header.num_functions;
-        m_header.functions[i].function_reloc_symtab.reloc_syms = reloc_syms_func;
-    }
-
-    /*
-        typedef struct {
-            unsigned short symbolic_index;
-            unsigned short resolved_index;
-        } reloc_sym;
-
-        typedef struct {
-            unsigned short num_syms;
-            reloc_sym* reloc_syms;
-        } reloc_symtab;
-    */
-
 }
 
 void CisaBinary::writeIsaAsmFile(string filename, string isaasmStr) const

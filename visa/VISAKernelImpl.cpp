@@ -614,12 +614,7 @@ int VISAKernelImpl::InitializeFastPath()
     m_builder->num_general_dcl = this->m_num_pred_vars;
     m_builder->getcompilerStats().Link(m_compilerStats);
     initCompilerStats();
-    /*
-    I don't think this is necessary. Through loader metadata will be maintained on it's side
-    through regular vISA builder pass the links will be created explicitly
-    m_builder.setVarRelocTable(&commonISAHeader.kernels[kernelId].variable_reloc_symtab);
-    m_builder.setFuncRelocTable(&commonISAHeader.kernels[kernelId].function_reloc_symtab);
-    */
+
     return CM_SUCCESS;
 }
 
@@ -2205,59 +2200,6 @@ int VISAKernelImpl::CreateVISADstOperand(VISA_VectorOpnd *&cisa_opnd, VISA_GenVa
         cisa_opnd->_opnd.v_opnd.opnd_val.gen_opnd.col_offset = colOffset;
         cisa_opnd->_opnd.v_opnd.opnd_val.gen_opnd.region = Get_CISA_Region_Val(hStride) <<8;
 
-        cisa_opnd->size = (uint16_t)Get_Size_Vector_Operand(&cisa_opnd->_opnd.v_opnd);
-    }
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
-    stopTimer(TIMER_VISA_BUILDER_CREATE_OPND);
-#endif
-    return CM_SUCCESS;
-}
-
-int VISAKernelImpl::CreateRelocVISAImmediate(VISA_VectorOpnd *&cisa_opnd, const void *value, VISA_Type isaType, SuperRelocEntry& reloc)
-{
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
-    startTimer(TIMER_VISA_BUILDER_CREATE_OPND);
-#endif
-    cisa_opnd = (VISA_VectorOpnd *)getOpndFromPool();
-    if (IS_GEN_BOTH_PATH)
-    {
-        if (isaType == ISA_TYPE_Q || isaType == ISA_TYPE_UQ) {
-            cisa_opnd->g4opnd = m_builder->createRelocImm(reloc, Type_UQ);
-        }
-        else if (isaType == ISA_TYPE_D || isaType == ISA_TYPE_UD)
-        {
-            cisa_opnd->g4opnd = m_builder->createRelocImm(reloc, Type_UD);
-        }
-        else
-        {
-            MUST_BE_TRUE(false, "Unable to create relocatable immediate operand with type.");
-        }
-    }
-    if (IS_VISA_BOTH_PATH)
-    {
-        //memset(cisa_opnd, 0, sizeof(VISA_opnd));
-
-        cisa_opnd->opnd_type = CISA_OPND_VECTOR;
-        cisa_opnd->tag = OPERAND_IMMEDIATE;
-        cisa_opnd->_opnd.v_opnd.tag = OPERAND_IMMEDIATE;
-        cisa_opnd->_opnd.v_opnd.opnd_val.const_opnd.type = isaType;
-
-        int size = CISATypeTable[isaType].typeSize;
-
-        if (size == 0)
-        {
-            CmAssert(0);
-            return CM_FAILURE;
-        }
-        if (isaType == ISA_TYPE_Q || isaType == ISA_TYPE_UQ)
-        {
-            cisa_opnd->_opnd.v_opnd.opnd_val.const_opnd._val.lval = *((uint64_t*)value);
-        }
-        else
-        {
-            int64_t tmpValue = typecastVals(value, isaType);
-            cisa_opnd->_opnd.v_opnd.opnd_val.const_opnd._val.lval = tmpValue;
-        }
         cisa_opnd->size = (uint16_t)Get_Size_Vector_Operand(&cisa_opnd->_opnd.v_opnd);
     }
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
@@ -8059,12 +8001,6 @@ int VISAKernelImpl::GetGenxBinary(void *&buffer, int &size)
     return CM_SUCCESS;
 }
 
-int VISAKernelImpl::GetGenReloc(BasicRelocEntry*& relocs, unsigned int& numRelocs)
-{
-    computeAllRelocs(numRelocs, relocs);
-    return CM_SUCCESS;
-}
-
 int VISAKernelImpl::GetGenRelocEntryBuffer(void *&buffer, unsigned int &byteSize, unsigned int &numEntries)
 {
     G4_Kernel::RelocationTableTy& reloc_table = m_kernel->getRelocationTable();
@@ -8088,8 +8024,11 @@ int VISAKernelImpl::GetGenRelocEntryBuffer(void *&buffer, unsigned int &byteSize
         assert(inst->isCompactedInst() == false);
         auto src0 = inst->getSrc(0);
         assert(src0->isRelocImm() && ((src0->getType() == Type_UD) || (src0->getType() == Type_UQ)));
+
         buffer_p->r_type = reloc.getType();
-        buffer_p->r_offset = ((G4_Reloc_Imm*)src0)->getNativeOffset();
+        // hard-coded for now
+        uint32_t immOffset = getTypeSize(src0->getType()) == 8 ? 8 : 12;
+        buffer_p->r_offset = static_cast<uint32_t>(inst->getGenOffset()) + immOffset;
         assert((buffer_p->r_offset > inst->getGenOffset()) && (buffer_p->r_offset < inst->getGenOffset() + BYTES_PER_INST));
 
         assert(reloc.getSymbolName().size() <= MAX_SYMBOL_NAME_LENGTH);
@@ -8329,45 +8268,6 @@ void VISAKernelImpl::setName(const char* n)
     if(m_kernel != NULL)
     {
         this->m_kernel->setName(m_name.c_str());
-    }
-}
-
-void VISAKernelImpl::setupRelocTable()
-{
-    IR_Builder* builder = getIRBuilder();
-
-    if( getRelocTablePresent() &&
-        builder != NULL)
-    {
-        unsigned int numVarRelocs = getVarRelocSize();
-        reloc_symtab* varSymTab = (reloc_symtab*)alloc( sizeof(reloc_symtab) );
-        varSymTab->num_syms = (uint16_t)numVarRelocs;
-        varSymTab->reloc_syms = (reloc_sym*)alloc(numVarRelocs * sizeof(reloc_sym) );
-
-        for( unsigned int i = 0; i < numVarRelocs; i++ )
-        {
-            unsigned int symIdx, resIdx;
-            getVarRelocEntry(i, symIdx, resIdx);
-            varSymTab->reloc_syms[i].symbolic_index = (uint16_t)symIdx;
-            varSymTab->reloc_syms[i].resolved_index = (uint16_t)resIdx;
-        }
-
-        builder->setVarRelocTable(varSymTab);
-
-        unsigned int numFuncRelocs = getFuncRelocSize();
-        reloc_symtab* funcSymTab = (reloc_symtab*)alloc( sizeof(reloc_symtab) );
-        funcSymTab->num_syms = (uint16_t)numFuncRelocs;
-        funcSymTab->reloc_syms = (reloc_sym*)alloc(numFuncRelocs * sizeof(reloc_sym) );
-
-        for( unsigned int i = 0; i < numFuncRelocs; i++ )
-        {
-            unsigned int symIdx, resIdx;
-            getFuncRelocEntry(i, symIdx, resIdx);
-            funcSymTab->reloc_syms[i].symbolic_index = (uint16_t)symIdx;
-            funcSymTab->reloc_syms[i].resolved_index = (uint16_t)resIdx;
-        }
-
-        builder->setFuncRelocTable(funcSymTab);
     }
 }
 
@@ -8679,86 +8579,7 @@ void VISAKernelImpl::computeAndEmitDebugInfo(std::list<VISAKernelImpl*>& functio
 #endif
 }
 
-void VISAKernelImpl::computeAllRelocs(unsigned int& numRelocs, BasicRelocEntry*& output)
-{
-    vector<BasicRelocEntry> relocs;
-
-    for (auto bbs : getKernel()->fg.BBs)
-    {
-        for (auto insts : *bbs)
-        {
-            for (auto i = 0; i < insts->getNumSrc(); i++)
-            {
-                auto opnd = insts->getSrc(i);
-
-                if (opnd &&
-                    opnd->isRelocImm())
-                {
-                    BasicRelocEntry newReloc;
-                    G4_Reloc_Imm* relocImmOpnd = (G4_Reloc_Imm*)opnd;
-                    newReloc.relocOffset = (uint64_t)relocImmOpnd->getRelocInfo().nativeOffset;
-                    newReloc.info = relocImmOpnd->getRelocInfo().input.info;
-                    newReloc.addend = relocImmOpnd->getRelocInfo().input.addend;
-                    relocs.push_back(newReloc);
-                }
-            }
-        }
-    }
-
-    numRelocs = (uint32_t) relocs.size();
-    if (numRelocs > 0)
-    {
-        output = (BasicRelocEntry*)allocCodeBlock(sizeof(BasicRelocEntry) * numRelocs);
-        if (!output)
-        {
-            numRelocs = 0;
-            return;
-        }
-        for (unsigned int idx = 0; idx < numRelocs; idx++)
-        {
-            output[idx].relocOffset = relocs[idx].relocOffset;
-            output[idx].info = relocs[idx].info;
-            output[idx].addend = relocs[idx].addend;
-            idx++;
-        }
-    }
-}
-
-void VISAKernelImpl::emitAllRelocs(unsigned int numRelocs, BasicRelocEntry* relocs)
-{
-    if (numRelocs == 0 || relocs == nullptr)
-        return;
-
-    FILE* fp;
-    const char* buf = nullptr;
-    getOptions()->getOption(vISA_RelocFilename, buf);
-
-    std::string fname;
-    if (buf != nullptr)
-    {
-        fname = std::string(buf);
-    }
-
-    fname += getName();
-    fname += "_out";
-
-    fp = fopen(fname.c_str(), "wb");
-    fwrite(relocs, sizeof(BasicRelocEntry), numRelocs, fp);
-    fclose(fp);
-}
-
 extern "C" void freeBlock(void* ptr);
-
-void VISAKernelImpl::computeAndEmitGenRelocs()
-{
-    unsigned int numRelocs;
-    BasicRelocEntry* relocs = nullptr;
-
-    computeAllRelocs(numRelocs, relocs);
-    emitAllRelocs(numRelocs, relocs);
-
-    freeBlock(relocs);
-}
 
 bool VISAKernelImpl::getIntKernelAttributeValue(const char* attrName, int& value)
 {

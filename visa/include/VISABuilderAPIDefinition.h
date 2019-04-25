@@ -36,8 +36,6 @@ typedef enum
     LIFETIME_END = 1
 } VISAVarLifetime;
 
-struct BasicRelocEntry;
-
 class VISAKernel
 {
 public:
@@ -745,10 +743,6 @@ public:
     /// VISAMap contains VISA->GenISA mapping which also needs to be freed using
     /// freeBlock API. numEntries determines entries populated in VISAMap.
     CM_BUILDER_API virtual int GetGenxDebugInfo(void *&buffer, unsigned int &size, void*& VISAMap, unsigned int& numEntries) = 0;
-
-    /// GetGenRelocInfo -- returns relocation information entries so caller
-    /// can patch required immediate offsets at indicated offsets.
-    CM_BUILDER_API virtual int GetGenReloc(BasicRelocEntry *&buffer, unsigned int &size) = 0;
 
     /// GetGenRelocEntryBuffer -- allocate and return a buffer of all GenRelocEntry that are created by vISA
     CM_BUILDER_API virtual int GetGenRelocEntryBuffer(void *&buffer, unsigned int &byteSize, unsigned int &numEntries) = 0;

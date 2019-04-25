@@ -8385,10 +8385,18 @@ void VarSplit::globalSplit(IR_Builder& builder, G4_Kernel &kernel)
 void VarSplit::localSplit(IR_Builder& builder,
     G4_BB* bb)
 {
-    std::map<G4_RegVar*, std::vector<std::pair<G4_Operand*, INST_LIST_ITER>>> localRanges;
-    std::map<G4_RegVar*, std::vector<std::pair<G4_Operand*, INST_LIST_ITER>>>::iterator localRangesIt;
-    std::map<G4_RegVar*, VarRangeListPackage> varRanges;
-    std::map<G4_RegVar*, VarRangeListPackage>::iterator varRangesIt;
+    class CmpRegVarId
+    {
+    public:
+        bool operator()(G4_RegVar* first, G4_RegVar* second) const
+        {
+            return first->getDeclare()->getDeclId() < second->getDeclare()->getDeclId();
+        }
+    };
+    std::map<G4_RegVar*, std::vector<std::pair<G4_Operand*, INST_LIST_ITER>>, CmpRegVarId> localRanges;
+    std::map<G4_RegVar*, std::vector<std::pair<G4_Operand*, INST_LIST_ITER>>, CmpRegVarId>::iterator localRangesIt;
+    std::map<G4_RegVar*, VarRangeListPackage, CmpRegVarId> varRanges;
+    std::map<G4_RegVar*, VarRangeListPackage, CmpRegVarId>::iterator varRangesIt;
     std::stack<VarRange*> toDelete;
 
     //

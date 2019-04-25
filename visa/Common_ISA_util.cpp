@@ -1201,8 +1201,8 @@ function_info {
     ub name[name_len];
     ud offset;
     ud size;
-reloc_symtab variable_reloc_symtab;
-reloc_symtab function_reloc_symtab;
+    uw num_syms_variable; // MBZ
+    uw num_syms_function; // MBZ
 }
 */
 //for cisa 3.0
@@ -1212,21 +1212,7 @@ unsigned long getSizeFunctionInfo(kernel_info_t * kernel_info)
         kernel_info->name_len + sizeof(kernel_info->offset) + sizeof(kernel_info->size);
 
     size += sizeof(kernel_info->variable_reloc_symtab.num_syms);
-
-    for(int i = 0; i < kernel_info->variable_reloc_symtab.num_syms; i++)
-    {
-        size += sizeof(kernel_info->variable_reloc_symtab.reloc_syms[i].resolved_index);
-        size += sizeof(kernel_info->variable_reloc_symtab.reloc_syms[i].symbolic_index);
-    }
-
     size += sizeof(kernel_info->function_reloc_symtab.num_syms);
-
-    for(int i = 0; i < kernel_info->function_reloc_symtab.num_syms; i++)
-    {
-        size += sizeof(kernel_info->function_reloc_symtab.reloc_syms[i].resolved_index);
-        size += sizeof(kernel_info->function_reloc_symtab.reloc_syms[i].symbolic_index);
-    }
-
 
     return size;
 }
@@ -1237,8 +1223,8 @@ unsigned long getSizeFunctionInfo(kernel_info_t * kernel_info)
     ud offset;
     ud size;
     ud input_offset;
-reloc_symtab variable_reloc_symtab;
-reloc_symtab function_reloc_symtab;
+    uw num_syms_variable; // MBZ
+    uw num_syms_function; // MBZ
     ub num_gen_binaries;
     gen_binary_info gen_binaries[num_gen_binaries];
 }
@@ -1250,20 +1236,7 @@ unsigned long get_Size_Kernel_Info(kernel_info_t * kernel_info, int major_versio
         + sizeof(kernel_info->input_offset);
 
     size += sizeof(kernel_info->variable_reloc_symtab.num_syms);
-
-    for (int i = 0; i < kernel_info->variable_reloc_symtab.num_syms; i++)
-    {
-        size += sizeof(kernel_info->variable_reloc_symtab.reloc_syms[i].resolved_index);
-        size += sizeof(kernel_info->variable_reloc_symtab.reloc_syms[i].symbolic_index);
-    }
-
     size += sizeof(kernel_info->function_reloc_symtab.num_syms);
-
-    for (int i = 0; i < kernel_info->function_reloc_symtab.num_syms; i++)
-    {
-        size += sizeof(kernel_info->function_reloc_symtab.reloc_syms[i].resolved_index);
-        size += sizeof(kernel_info->function_reloc_symtab.reloc_syms[i].symbolic_index);
-    }
 
     size += sizeof(kernel_info->num_gen_binaries);
 
@@ -1300,17 +1273,17 @@ unsigned long get_Size_Isa_Header( common_isa_header * m_header, int major_versi
         size += get_Size_Kernel_Info(&m_header->kernels[i], major_version, minor_version);
     }
     /*
-       common_isa_header {
+    common_isa_header {
     ud magic_number;
     ub major_version;
     ub minor_version;
     uw num_kernels;
     kernel_info kernels[num_kernels];
     uw num_variables;
-file_scope_var_info variables[num_variables];
-    uw num_ functions;
+    file_scope_var_info variables[num_variables];
+    uw num_functions;
     function_info functions[num_functions];
-}
+    }
 
     */
 

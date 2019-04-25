@@ -577,6 +577,7 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
 {
     MUST_BE_TRUE(!instlist.empty(), ERROR_SYNTAX("empty instruction list"));
 
+
     pKernel->renameAliasDeclares();
     //
     // The funcInfoHashTable maintains a map between the id of the function's INIT block
@@ -863,7 +864,6 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
     {
         mergeFReturns();
     }
-
 
     if (builder->getOption(vISA_DumpDotAll))
     {

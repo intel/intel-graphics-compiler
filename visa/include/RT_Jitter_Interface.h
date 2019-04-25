@@ -31,7 +31,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /**
     API between CMRT and Jitter:
     JITCompile
-    JITCompileWithRelocation
     freeBlock
     getJITVersion
 */
@@ -72,38 +71,6 @@ DLL_EXPORT int JITCompile(const char* kernelName,
                           const char* args[],
                           char* errorMsg,
                           FINALIZER_INFO* jitInfo);
-
-/**
-  * In addition to JITCompile, following API adds support for relocation of immediate operands.
-  *
-  * numInputRelocEntries:  Number of relocation present in VISA input
-  * inputRelocs:           Actual relocation data in VISA
-  * numOutputRelocs:       Post compilation, this variable holds number of relocs
-  *                        that are still present in native binary. This number
-  *                        could be less/more than input relocs, theoretically,
-  *                        due to optimizations - loop unrolling (which JIT doesnt do today),
-  *                        DCE. For most purposes though, number of input and output relocs
-  *                        have a 1:1 correspondence.
-  * outputRelocs:          Actual relocation data computed post compilation of VISA to Gen
-  *                        binary.
-  */
-
-DLL_EXPORT int JITCompileWithRelocation(const char* kernelName,
-                                        const void* kernelIsa,
-                                        unsigned int kernelIsaSize,
-                                        void* &genBinary,
-                                        unsigned int& genBinarySize,
-                                        const char* platform,
-                                        int majorVersion,
-                                        int minorVersion,
-                                        int numArgs,
-                                        const char* args[],
-                                        char* errorMsg,
-                                        FINALIZER_INFO* jitInfo,
-                                        const unsigned int numInputRelocEntries,
-                                        const BasicRelocEntry* inputRelocs,
-                                        unsigned int& numOutputRelocs,
-                                        BasicRelocEntry*& outputRelocs);
 
 /**
  *

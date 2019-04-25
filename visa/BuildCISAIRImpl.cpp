@@ -74,11 +74,6 @@ CISA_IR_Builder::~CISA_IR_Builder()
         // don't call delete since vISAKernelImpl is allocated in memory pool
         kernel->~VISAKernelImpl();
     }
-
-    if (nativeRelocs)
-    {
-        nativeRelocs->~NativeRelocs();
-    }
 }
 
 void CISA_IR_Builder::InitVisaWaTable(TARGET_PLATFORM platform, Stepping step)
@@ -888,7 +883,6 @@ int CISA_IR_Builder::Compile( const char* nameInput)
 
             compilationUnits.push_back(kernel->getKernel());
 
-            kernel->setupRelocTable();
             kernel->getIRBuilder()->setIsKernel(kernel->getIsKernel());
             kernel->getIRBuilder()->setCUnitId(i);
             if( kernel->getIsKernel() == false )
@@ -974,16 +968,6 @@ int CISA_IR_Builder::Compile( const char* nameInput)
             {
                 kernel->computeAndEmitDebugInfo(functions);
             }
-
-#ifndef DLL_MODE
-            if (m_options.getOptionCstr(vISA_RelocFilename))
-            {
-                // Emit gen reloc information to a file only in offline invocation.
-                // In DLL mode return reloc information of the kernel being
-                // compiled.
-                kernel->computeAndEmitGenRelocs();
-            }
-#endif
 
             restoreFCallState( kernel->getKernel(), savedFCallState );
 
@@ -1153,53 +1137,6 @@ bool CISA_IR_Builder::CISA_file_variable_decl(char * var_name,
     this->CreateVISAFileVar(decl, var_name, var_num_elements, data_type, var_align);
     this->setFileVarNameDeclMap(std::string(var_name), (CISA_GEN_VAR*) decl);
     return true;
-}
-
-void CISA_IR_Builder::setupNativeRelocs(unsigned int numRelocs, const BasicRelocEntry* relocs)
-{
-    for (unsigned int i = 0; i < numRelocs; i++)
-    {
-        getNativeRelocs()->addEntry(relocs[i].relocOffset, relocs[i].info, relocs[i].addend, 0);
-    }
-}
-
-void NativeRelocs::addEntry(uint64_t offset, uint64_t info, int64_t addend, unsigned int nativeOffset)
-{
-    SuperRelocEntry entry;
-    entry.input.relocOffset = offset;
-    entry.input.info = info;
-    entry.input.addend = addend;
-    entry.nativeOffset = nativeOffset;
-    entries.push_back(entry);
-}
-
-bool NativeRelocs::isOffsetReloc(uint64_t offset, SuperRelocEntry& info)
-{
-    for (auto it : entries)
-    {
-        if (it.input.relocOffset == offset)
-        {
-            info = it;
-            return true;
-        }
-    }
-
-    return false;
-}
-
-unsigned int NativeRelocs::getNativeOffset(unsigned int cisaOffset)
-{
-    for (auto it : entries)
-    {
-        if (it.input.relocOffset == cisaOffset)
-        {
-            return it.nativeOffset;
-        }
-    }
-
-#define INVALID_GEN_OFFSET (0xffffffff)
-
-    return INVALID_GEN_OFFSET;
 }
 
 bool CISA_IR_Builder::CISA_addr_variable_decl(char *var_name, unsigned int var_elements, VISA_Type data_type, attr_gen_struct scope, int line_no)

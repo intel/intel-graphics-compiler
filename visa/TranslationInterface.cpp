@@ -2308,23 +2308,7 @@ int IR_Builder::translateVISACFFCallInst(Common_ISA_Exec_Size execsize, Common_V
 
     uint32_t calleeIndex = 0xFF;
 
-    // When reading a CISA file, relocation table is present. But when
-    // invoked via builder API, assume relocation is already done by
-    // caller. So resolved index = symbolic index.
-    if( getFuncRelocTable() != NULL )
-    {
-        // Resolve calleeIndex
-        for(int i = 0; i < getFuncRelocTable()->num_syms; i++) {
-            if(getFuncRelocTable()->reloc_syms[i].symbolic_index == functionID) {
-                calleeIndex = getFuncRelocTable()->reloc_syms[i].resolved_index;
-                break;
-            }
-        }
-    }
-    else
-    {
-        calleeIndex = functionID;
-    }
+    calleeIndex = functionID;
 
     m_fcallInfo[fcall] = new (mem) G4_FCALL(argSize, returnSize);
 
@@ -2399,8 +2383,7 @@ int IR_Builder::translateVISACFSymbolInst(const std::string& symbolName, G4_DstR
 #endif
 
     // symbolic imm representing function's address
-    SuperRelocEntry reloc;
-    auto funcAddr = createRelocImm(reloc, Type_UQ);
+    auto funcAddr = createRelocImm(Type_UD);
     auto movInst = createInst(nullptr, G4_mov, nullptr, false, 1, dst, funcAddr, nullptr, InstOpt_WriteEnable);
 
     RelocationEntry relocEntry = RelocationEntry::createSymbolAddrReloc(movInst, 0, symbolName);
