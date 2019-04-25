@@ -38,20 +38,16 @@ namespace iOpenCL
 /*****************************************************************************\
 Function: DebugMessage
 \*****************************************************************************/
-void DebugMessage( DWORD ulDebugLevel, const char* str, ... );
+void DebugMessage( unsigned int ulDebugLevel, const char* str, ... );
 
-void DebugMessageStr(std::string& output, DWORD ulDebugLevel, const char* str, ...);
+void DebugMessageStr(std::string& output, unsigned int ulDebugLevel, const char* fmt, ...);
 
 /*****************************************************************************\
 MACRO: ICBE_DPF_STR
 \*****************************************************************************/
 #ifndef ICBE_DPF_STR
     #if defined(_DEBUG) || defined(_INTERNAL) || defined(_RELEASE_INTERNAL)
-        #if defined(ICBE_LHDM) || defined(_WIN32)
-            #define ICBE_DPF_STR iOpenCL::DebugMessageStr
-        #else
-            #define ICBE_DPF_STR(output, lvl, fmt, args...) fprintf(stderr, fmt, ## args)
-        #endif
+        #define ICBE_DPF_STR iOpenCL::DebugMessageStr
     #else   
         #if defined(ICBE_LHDM) || defined(_WIN32)
             #define ICBE_DPF_STR(output, format, args, ...)

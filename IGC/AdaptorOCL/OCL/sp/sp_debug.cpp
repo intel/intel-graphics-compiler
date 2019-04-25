@@ -26,8 +26,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <cstdarg>
 #include <cstdio>
+#include <cstdlib>
+#if defined(_WIN32)
 #include <Windows.h>
+#endif
 #include <string>
+
+#include "IGC/common/igc_regkeys.hpp"
 
 namespace iOpenCL
 {
@@ -35,49 +40,62 @@ namespace iOpenCL
 /*****************************************************************************\
 Function: DebugMessage
 \*****************************************************************************/
-void __cdecl DebugMessage( DWORD ulDebugLevel, const char* str, ... )
+void __cdecl DebugMessage( unsigned int ulDebugLevel, const char* str, ... )
 {
     //if( str && ( ( g_DebugControl.MsgLevel & ulDebugLevel ) != GFXDBG_OFF ) )
     {
         va_list args;
         va_start( args, str );
 
-        const size_t length = _vscprintf( str, args );
-        char* temp = new char[length + 1];
-
-        if( temp )
+#if defined(ICBE_LHDM) || defined(_WIN32)
+        if (IGC_IS_FLAG_ENABLED(DebugSurfaceStateOutput))
         {
-            vsprintf_s( temp, length+1, str, args );
+          const size_t length = _vscprintf(str, args);
+          char* temp = new char[length + 1];
+
+          if (temp)
+          {
+            vsprintf_s(temp, length + 1, str, args);
             OutputDebugStringA("INTC CBE: ");
             OutputDebugStringA(temp);
             delete[] temp;
+          }
         }
+#endif
 
         va_end( args );
     }
 }
 
-void __cdecl DebugMessageStr(std::string& output, DWORD ulDebugLevel, const char* str, ...)
+void __cdecl DebugMessageStr(std::string& output, unsigned int ulDebugLevel, const char* fmt, ...)
 {
     //if( str && ( ( g_DebugControl.MsgLevel & ulDebugLevel ) != GFXDBG_OFF ) )
     {
         va_list args;
-        va_start(args, str);
+        va_start(args, fmt);
 
-        const size_t length = _vscprintf(str, args);
-        char* temp = new char[length + 1];
-
-        if (temp)
+#if defined(ICBE_LHDM) || defined(_WIN32)
+        if (IGC_IS_FLAG_ENABLED(DebugSurfaceStateOutput))
         {
-            vsprintf_s(temp, length + 1, str, args);
-#ifdef _DEBUG
+          const size_t length = _vscprintf(fmt, args);
+          char* temp = new char[length + 1];
+
+          if (temp)
+          {
+            vsprintf_s(temp, length + 1, fmt, args);
             //This prints the output string to the console. We don't want that in release internal mode
             OutputDebugStringA("INTC CBE: ");
             OutputDebugStringA(temp);
-#endif
             output += temp;
             delete[] temp;
+          }
         }
+#else
+        if (IGC_IS_FLAG_ENABLED(DebugSurfaceStateOutput))
+        {
+          fprintf(stderr, fmt, args);
+        }
+#endif
 
         va_end(args);
     }
