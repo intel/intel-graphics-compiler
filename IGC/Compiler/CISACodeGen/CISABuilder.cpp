@@ -4623,6 +4623,8 @@ void CEncoder::Compile()
 
     pOutput->m_scratchSpaceUsedByGtpin = jitInfo->numBytesScratchGtpin;
 
+    pOutput->m_offsetToSkipPerThreadDataLoad = jitInfo->offsetToSkipPerThreadDataLoad;
+
     COMPILER_TIME_END(m_program->GetContext(), TIME_CG_vISAEmitPass);
 }
 

@@ -108,6 +108,7 @@ namespace IGC
         void*           m_funcRelocationTable;
         unsigned int    m_funcRelocationTableSize;
         unsigned int    m_funcRelocationTableEntries;
+        unsigned int    m_offsetToSkipPerThreadDataLoad = 0;
 
         void Destroy()
         {
