@@ -150,7 +150,7 @@ typedef enum {
 } OpndContraint;
 
 //Common_ISA_Opnd_Desc_Type
-enum  {
+enum {
      OPND_EXECSIZE = 1,
      OPND_STRING,
      OPND_LABEL,
@@ -191,8 +191,8 @@ typedef enum
     ISA_Inst_Sampler   = 0x7,
     ISA_Inst_Misc      = 0x8, // VME, etc.
     ISA_Inst_SIMD_Flow = 0x9,
-    ISA_Inst_Sync      = 0xa,
-    ISA_Inst_SVM       = 0xb,
+    ISA_Inst_Sync      = 0xA,
+    ISA_Inst_SVM       = 0xB,
     ISA_Inst_Reserved
 } ISA_Inst_Type;
 
@@ -214,28 +214,30 @@ typedef struct OpndDesc
     unsigned opnd_constraint;
 } OpndDesc;
 
-#define MAX_SUBOPCODES_PER_OPCODE 25
+
+typedef uint8_t ISA_SubOpcode;
 
 struct ISA_SubInst_Desc
 {
-    uint8_t       subOpcode;
-    ISA_Inst_Type type;
-    const char*   name;
-    uint16_t      opnd_num;
-    OpndDesc      opnd_desc[MAX_OPNDS_PER_INST];
+    ISA_SubOpcode  subOpcode;
+    ISA_Inst_Type  type;
+    const char*    name;
+    uint16_t       opnd_num;
+    OpndDesc       opnd_desc[MAX_OPNDS_PER_INST];
 };
 
 struct VISA_INST_Desc
 {
     TARGET_PLATFORM  platf;
-    uint8_t          opcode;
+    ISA_SubOpcode    opcode;
     ISA_Inst_Type    type;
     const char*      name;
     uint16_t         opnd_num;
     char             attr;
     OpndDesc         opnd_desc[MAX_OPNDS_PER_INST];
 
-    const ISA_SubInst_Desc& getSubInstDesc(uint8_t subOpcode);
+    const ISA_SubInst_Desc& getSubInstDesc(uint8_t subOpcode) const;
+    const ISA_SubInst_Desc& getSubInstDescByName(const char *symbol) const;
 };
 
 enum SVMSubOpcode
@@ -250,7 +252,6 @@ enum SVMSubOpcode
     SVM_LASTOP
 };
 
-typedef unsigned char ISA_SubOpcode;
 
 extern struct ISA_Inst_Info ISA_Inst_Table[ISA_OPCODE_ENUM_SIZE];
 

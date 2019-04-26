@@ -48,15 +48,22 @@ using namespace std;
 namespace CisaFramework
 {
 
-int CisaInst::createCisaInstruction(ISA_Opcode opcode, unsigned char exec_size, unsigned char modifier, unsigned short pred, VISA_opnd** opnd, int numOpnds, VISA_INST_Desc* inst_desc)
+int CisaInst::createCisaInstruction(
+    ISA_Opcode opcode,
+    unsigned char exec_size,
+    unsigned char modifier,
+    unsigned short pred,
+    VISA_opnd** opnd,
+    int numOpnds,
+    const VISA_INST_Desc* inst_desc)
 {
     uint8_t subOpcode = 0;
     bool hasSubOpcode = false;
     int descOpndCount = inst_desc->opnd_num;
 
-    for(int i = 0; i < descOpndCount;  i++)
+    for (int i = 0; i < descOpndCount;  i++)
     {
-        if(inst_desc->opnd_desc[i].opnd_type == OPND_SUBOPCODE)
+        if (inst_desc->opnd_desc[i].opnd_type == OPND_SUBOPCODE)
         {
             descOpndCount += inst_desc->getSubInstDesc((uint8_t) opnd[i]->_opnd.other_opnd).opnd_num;
             hasSubOpcode = true;
@@ -154,7 +161,7 @@ void CisaBinary::initKernel( int kernelIndex, VISAKernelImpl * kernel )
         m_header.kernels[kernelIndex].size = kernel->getCisaBinarySize();
         m_header.kernels[kernelIndex].cisa_binary_buffer = kernel->getCisaBinaryBuffer(); //buffer containing entire kernel
         m_header.kernels[kernelIndex].input_offset = kernel->getInputOffset(); //for now relative to the beginning of the kernel object
-   
+
         //Workaround for patching in FE. This way space for data structures is allocated
         unsigned int numGenBinariesWillBePatched = kernel->getOptions()->getuInt32Option(vISA_NumGenBinariesWillBePatched);
         m_header.kernels[kernelIndex].num_gen_binaries = static_cast<unsigned char>(numGenBinariesWillBePatched);

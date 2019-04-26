@@ -255,7 +255,7 @@ public:
                                              VISA_opnd *src1,
                                              int line_no);
 
-       bool CISA_create_cmp_instruction(Common_ISA_Cond_Mod sub_op,
+    bool CISA_create_cmp_instruction(Common_ISA_Cond_Mod sub_op,
                                              ISA_Opcode opcode,
                                              Common_VISA_EMask_Ctrl emask,
                                              unsigned exec_size,

@@ -173,14 +173,14 @@ struct ISA_Inst_Info ISA_Inst_Table[ISA_OPCODE_ENUM_SIZE] =
 
 VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
 {
-    /// 0x0
+    /// 0
     { ALL, ISA_RESERVED_0, ISA_Inst_Reserved, "RESERVED_0", 0, 0,
     {
     },
 
     },
 
-    /// 0x1
+    /// 1
     { ALL, ISA_ADD, ISA_Inst_Arith, "add", 5, SAME_DATA_TYPE,
     {
         {OPND_EXECSIZE, ISA_TYPE_UB, 0},
@@ -192,7 +192,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
 
     },
 
-    /// 0x2
+    /// 2
     { ALL, ISA_AVG, ISA_Inst_Arith, "avg", 5, SAME_DATA_TYPE,
     {
         {OPND_EXECSIZE, ISA_TYPE_UB, 0},
@@ -204,7 +204,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
 
     },
 
-    /// 0x3
+    ///  3
     { ALL, ISA_DIV, ISA_Inst_Arith, "div", 5, SAME_DATA_TYPE,
     {
         {OPND_EXECSIZE, ISA_TYPE_UB, 0},
@@ -1728,7 +1728,6 @@ static const ISA_SubInst_Desc VASubOpcodeDesc[] =
 
 static const ISA_SubInst_Desc VAPlusSubOpcodeDesc[] =
 {
-
     {}, /// AVS subOpcode
     {}, //convolve
     {}, //minmax
@@ -1998,19 +1997,50 @@ static const ISA_SubInst_Desc SVMSubOpcodeDesc[] =
     }
 };
 
-const ISA_SubInst_Desc& VISA_INST_Desc::getSubInstDesc(uint8_t subOpcode)
+
+static const ISA_SubInst_Desc *getSubInstTable(
+    uint8_t opcode, int &size)
 {
-    switch (ISA_Opcode(this->opcode))
+    const ISA_SubInst_Desc *table = nullptr;
+    switch (opcode)
     {
     case ISA_VA:
-        return VASubOpcodeDesc[subOpcode];
+        table = VASubOpcodeDesc;
+        size = sizeof(VASubOpcodeDesc)/sizeof(VASubOpcodeDesc[0]);
+        break;
     case ISA_VA_SKL_PLUS:
-        return VAPlusSubOpcodeDesc[subOpcode];
+        table = VAPlusSubOpcodeDesc;
+        size = sizeof(VAPlusSubOpcodeDesc)/sizeof(VAPlusSubOpcodeDesc[0]);
+        break;
     case ISA_SVM:
-        return SVMSubOpcodeDesc[subOpcode];
+        table = SVMSubOpcodeDesc;
+        size = sizeof(SVMSubOpcodeDesc)/sizeof(SVMSubOpcodeDesc[0]);
+        break;
     default:
         MUST_BE_TRUE(false, "instruction does not have sub opcode");
-        return SVMSubOpcodeDesc[0];  // return some garbage value
     }
+    return table;
 }
 
+
+const ISA_SubInst_Desc& VISA_INST_Desc::getSubInstDesc(uint8_t subOpcode) const
+{
+    int len;
+    const ISA_SubInst_Desc *table = getSubInstTable(opcode, len);
+    MUST_BE_TRUE((int)subOpcode < len, "subop out of bounds");
+    return table[subOpcode];
+}
+
+const ISA_SubInst_Desc& VISA_INST_Desc::getSubInstDescByName(
+    const char *symbol) const
+{
+    int len = 0;
+    const ISA_SubInst_Desc *table = getSubInstTable(opcode, len);
+    for (int i = 0; i < len; i++) {
+        if (table->name && strcmp(table->name,symbol) == 0) {
+            return table[i];
+        }
+    }
+    MUST_BE_TRUE(false,"invalid subop");
+    return table[0];
+}

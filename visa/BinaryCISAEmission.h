@@ -63,7 +63,7 @@ namespace vISA
         void emitLabelInfo(VISAKernelImpl * cisa_kernel, label_info_t * lbl);
         void emitInputInfo(VISAKernelImpl * cisa_kernel, input_info_t * in);
         void emitAttributeInfo(VISAKernelImpl * cisa_kernel, attribute_info_t * attr);
-        int emitCisaInst(VISAKernelImpl * cisa_kernel, CISA_INST * inst, VISA_INST_Desc * desc);
+        int emitCisaInst(VISAKernelImpl * cisa_kernel, CISA_INST * inst, const VISA_INST_Desc * desc);
         void emitVectorOpnd(VISAKernelImpl * cisa_kernel, vector_opnd * v_opnd);
         void emitRawOpnd(VISAKernelImpl * cisa_kernel, raw_opnd * v_opnd);
     };

@@ -1087,7 +1087,7 @@ public:
     /* numberOfFlags MEANS NUMBER OF WORDS (e.g., 1 means 16-bit), not number of bits or number of data elements in operands. */
     G4_Declare* createTempFlag(unsigned short numberOfFlags, const char* prefix = "TEMP_FLAG_" )
     {
-        char* name = getNameString(mem, 20, "%s%d", prefix, num_temp_dcl++);
+        const char* name = getNameString(mem, 20, "%s%d", prefix, num_temp_dcl++);
 
         G4_Declare* dcl = createDeclareNoLookup(name, G4_FLAG, numberOfFlags, 1, Type_UW);
 
@@ -2423,7 +2423,7 @@ public:
         //gets next power of 2 size
         return Round_Up_Pow2(ioWidth / dcl->getElemSize()) * dcl->getElemSize();
     }
-    void fixSendDstType(G4_DstRegRegion* dst, uint8_t execSize );
+    void fixSendDstType(G4_DstRegRegion* dst, uint8_t execSize);
 
     struct payloadSource {
         G4_SrcRegRegion *opnd;

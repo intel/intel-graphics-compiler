@@ -224,34 +224,34 @@ typedef enum {
     VME_OP_MODE_INTRA = 0x1,
     VME_OP_MODE_ALL = 0x2,
     VME_OP_MODE_NUM = 0x3
-}COMMON_ISA_VME_OP_MODE;
+} COMMON_ISA_VME_OP_MODE;
 
 typedef enum {
     VME_STREAM_DISABLE = 0,
     VME_STREAM_OUT     = 1,
     VME_STREAM_IN      = 2,
     VME_STREAM_IN_OUT  = 3
-}COMMON_ISA_VME_STREAM_MODE;
+} COMMON_ISA_VME_STREAM_MODE;
 
 typedef enum {
     VME_SEARCH_SINGLE_REF_SINGLE_REC_SINGLE_START = 0,
     VME_SEARCH_SINGLE_REF_SINGLE_REC_DUAL_START   = 1,
     VME_SEARCH_SINGLE_REF_DUAL_REC                = 3,
     VME_SEARCH_DUAL_REF_DUAL_REC                  = 7
-}COMMON_ISA_VME_SEARCH_CTRL;
+} COMMON_ISA_VME_SEARCH_CTRL;
 
 typedef enum
 {
     CISA_DM_FMIN = 0,
     CISA_DM_FMAX = 1
-}CISA_MIN_MAX_SUB_OPCODE;
+} CISA_MIN_MAX_SUB_OPCODE;
 
 typedef enum
 {
     CISA_PLANE_Y = 0,
     CISA_PLANE_UV = 1,
     CISA_PLANE_V = 2
-}CISA_PLANE_ID;
+} CISA_PLANE_ID;
 
 typedef enum {
     /* 0x0 reserved -- used for illegal/nop op? */
@@ -386,8 +386,8 @@ typedef enum {
     ISA_ROL                = 0x80,
     ISA_ROR                = 0x81,
     ISA_DP4A               = 0x82,
-    ISA_NUM_OPCODE = 0x83,
-    ISA_OPCODE_ENUM_SIZE   = 0xff
+    ISA_NUM_OPCODE,
+    ISA_OPCODE_ENUM_SIZE   = 0xFF
 } ISA_Opcode;
 
 typedef enum
@@ -409,13 +409,12 @@ typedef enum
     VISA_3D_GATHER4_PO      = 17,
     VISA_3D_GATHER4_PO_C    = 18,
     VISA_3D_SAMPLE_D_C      = 20,
-    VISA_3D_SAMPLE_LZ       = 24, 
-    VISA_3D_SAMPLE_C_LZ     = 25, 
-    VISA_3D_LD_LZ           = 26, 
+    VISA_3D_SAMPLE_LZ       = 24,
+    VISA_3D_SAMPLE_C_LZ     = 25,
+    VISA_3D_LD_LZ           = 26,
     VISA_3D_LD2DMS_W        = 28,
     VISA_3D_LD_MSC          = 29,
     VISA_3D_TOTAL_NUM_OPS   = 30
-
 } VISASampler3DSubOpCode;
 
 typedef enum {
@@ -436,7 +435,7 @@ typedef enum {
     CHANNEL_MASK_GBA = 0xe,
     CHANNEL_MASK_RGBA = 0xf,
     CHANNEL_MASK_NUM
-}VISAChannelMask;
+} VISAChannelMask;
 
 typedef VISAChannelMask COMMON_ISA_CHANNEL_MASK;
 
@@ -454,7 +453,7 @@ typedef enum
     VISA_3D_GATHER4_CHANNEL_G = 1,
     VISA_3D_GATHER4_CHANNEL_B = 2,
     VISA_3D_GATHER4_CHANNEL_A = 3
-}VISASourceSingleChannel;
+} VISASourceSingleChannel;
 
 typedef enum {
     GENX_NONE = -1,
@@ -468,6 +467,7 @@ typedef enum {
     ALL
 } TARGET_PLATFORM;
 
+
 typedef enum {
     Step_A      = 0,
     Step_B      = 1,
@@ -476,7 +476,7 @@ typedef enum {
     Step_E      = 4,
     Step_F      = 5,
     Step_none   = 6  // make this the last one so comparison would work
-}Stepping;
+} Stepping;
 
 // gather/scatter element size
 typedef enum {
@@ -499,12 +499,12 @@ typedef enum VA_fopcode
     Centroid_FOPCODE                  = 0x07,
     VA_OP_CODE_1D_CONVOLVE_VERTICAL   = 0x08,
     VA_OP_CODE_1D_CONVOLVE_HORIZONTAL = 0x09,
-    VA_OP_CODE_1PIXEL_CONVOLVE        = 0xA,
-    VA_OP_CODE_FLOOD_FILL             = 0xB,
-    VA_OP_CODE_LBP_CREATION           = 0xC,
-    VA_OP_CODE_LBP_CORRELATION        = 0xD,
-    VA_OP_CODE_NONE                   = 0xE,
-    VA_OP_CODE_CORRELATION_SEARCH     = 0xF,
+    VA_OP_CODE_1PIXEL_CONVOLVE        = 0x0A,
+    VA_OP_CODE_FLOOD_FILL             = 0x0B,
+    VA_OP_CODE_LBP_CREATION           = 0x0C,
+    VA_OP_CODE_LBP_CORRELATION        = 0x0D,
+    VA_OP_CODE_NONE                   = 0x0E,
+    VA_OP_CODE_CORRELATION_SEARCH     = 0x0F,
     ISA_HDC_CONV                      = 0x10,
     ISA_HDC_MMF                       = 0x11,
     ISA_HDC_ERODE                     = 0x12,
@@ -583,13 +583,13 @@ typedef enum _HDCReturnFormat_
 {
     CM_HDC_CONVOVLE_Y16 = 0,
     CM_HDC_CONVOLVE_Y8  = 1
-}HDCReturnFormat;
+} HDCReturnFormat;
 
 typedef enum _CONVHDCRegionSize_
 {
     CM_HDC_CONVOLVE_15x15 = 0,
     CM_HDC_CONVOLVE_31x31 = 1
-}CONVHDCRegionSize;
+} CONVHDCRegionSize;
 
 typedef enum
 {
@@ -597,14 +597,14 @@ typedef enum
     SVM_BLOCK_NUM_2 = 0x1,
     SVM_BLOCK_NUM_4 = 0x2,
     SVM_BLOCK_NUM_8 = 0x3
-}Common_ISA_SVM_Block_Num;
+} Common_ISA_SVM_Block_Num;
 
 typedef enum
 {
     SVM_BLOCK_TYPE_BYTE  = 0x0,
     SVM_BLOCK_TYPE_DWORD = 0x1,
     SVM_BLOCK_TYPE_QWORD = 0x2
-}Common_ISA_SVM_Block_Type;
+} Common_ISA_SVM_Block_Type;
 
 
 typedef struct _vISA_RT_CONTROLS
