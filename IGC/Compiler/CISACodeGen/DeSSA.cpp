@@ -1193,14 +1193,15 @@ void DeSSA::getAllValuesInCongruentClass(
     // a sequence of insertElement is in congruent class. The RootValue
     // has its liveness modified to cover all InsertElements that are
     // grouped together.
-    Value* RootV = V;
+    Value* RootV = nullptr;
     if (IGC_IS_FLAG_ENABLED(EnableDeSSAAlias))
     {
-        RootV = getRootValue(RootV);
+        RootV = getNodeValue(V);
     }
     else {
-        RootV = getInsEltRoot(RootV);
+        RootV = getInsEltRoot(V);
     }
+    assert(RootV && "ICE: Node value should not be nullptr!");
     ValsInCC.push_back(RootV);
     auto RI = RegNodeMap.find(RootV);
     if (RI != RegNodeMap.end()) {
