@@ -27,8 +27,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/VectorProcess.hpp"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/CISACodeGen/EmitVISAPass.hpp"
-#include "Compiler/CodeGenContextWrapper.hpp"
-#include "Compiler/CodeGenPublic.h"
 #include "Compiler/IGCPassSupport.h"
 #include "common/IGCIRBuilder.h"
 
@@ -679,8 +677,8 @@ void VectorMessage::getInfo(Type *Ty, uint32_t Align, bool useA32,
         MB = useA32
             ? A32_BYTE_SCATTERED_MAX_BYTES
             : ((has_8B_A64_BS && eltSize == 8)
-                  ? A64_BYTE_SCATTERED_MAX_BYTES_8B
-                  : A64_BYTE_SCATTERED_MAX_BYTES);
+              ? A64_BYTE_SCATTERED_MAX_BYTES_8B
+              : A64_BYTE_SCATTERED_MAX_BYTES);
         defaultDataType = ISA_TYPE_UB;
 
         // To make sure that vector and message match.
@@ -702,11 +700,10 @@ void VectorMessage::getInfo(Type *Ty, uint32_t Align, bool useA32,
         bool allowQWMessage = !useA32 && eltSize == 8 && Align >= 8U;
 
         defaultDataType = (eltSize == 8) ? ISA_TYPE_UQ : ISA_TYPE_UD;
-
         //To make sure that send returns the correct layout for vector.
         assert((eltSize == 4 ||                              // common
-                allowQWMessage) && // A64, QW
-               "Internal Error: mismatch layout for vector");
+            allowQWMessage) && // A64, QW
+            "Internal Error: mismatch layout for vector");
     }
 
     MESSAGE_KIND kind = defaultKind;
@@ -762,3 +759,5 @@ void VectorMessage::getInfo(Type *Ty, uint32_t Align, bool useA32,
     assert(numInsts <= VECMESSAGEINFO_MAX_LEN &&
         "Vector's size is too big, increase MAX_VECMESSAGEINFO_LEN to fix it!");
 }
+
+

@@ -1477,7 +1477,7 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(ISA_Opcode opcode, Common_
     }
     else
     {
-        ASSERT_USER(instExecSize == 8, "simd2 and simd16 support will be added later");
+
         element_size = 8;
         if (hasSIMD8DFMadm())
         {

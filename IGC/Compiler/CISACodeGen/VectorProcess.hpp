@@ -26,6 +26,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 #include "Compiler/CISACodeGen/CISACodeGen.h"
+#include "Compiler/CodeGenContextWrapper.hpp"
+#include "Compiler/CodeGenPublic.h"
 
 namespace llvm
 {
@@ -71,7 +73,7 @@ namespace IGC
             A64_SCATTERED_MAX_BYTES_8DW_SIMD8 = 32,
             A64_SCATTERED_MAX_BYTES_4DW = 16,
             A64_BYTE_SCATTERED_MAX_BYTES_8B = 8,
-            A64_BYTE_SCATTERED_MAX_BYTES = 4
+            A64_BYTE_SCATTERED_MAX_BYTES = 4,
         };
 
         // Calculated by getInfo().
@@ -88,6 +90,7 @@ namespace IGC
         VectorMessage(EmitPass *emitter) : m_emitter(emitter) {}
         void getInfo(llvm::Type *Ty, uint32_t Align, bool useA32,
             bool forceByteScatteredRW = false);
+
 
     private:
         const EmitPass *m_emitter;

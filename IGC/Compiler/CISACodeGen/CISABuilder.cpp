@@ -1100,8 +1100,9 @@ SModifier CEncoder::SplitVariable(Common_ISA_Exec_Size fromExecSize,
          mod.region[1] == 1 && mod.region[0] == 0 && mod.region[2] == 0))
         return mod;
 
-    assert(fromExecSize == EXEC_SIZE_16 && toExecSize == EXEC_SIZE_8 &&
-           "Only support splitting from exec-size 16 to exec-size 8!");
+    assert(((fromExecSize == EXEC_SIZE_16 && toExecSize == EXEC_SIZE_8) ||
+        (fromExecSize == EXEC_SIZE_32 && toExecSize == EXEC_SIZE_16)) &&
+           "Only support splitting from exec-size 16 to exec-size 8, or 32 to 16!");
     assert((thePart == 0 || thePart == 1) &&
            "Splitting from exec-size-16 to exec-size-8 only breaks into 2 "
            "parts!");
@@ -1171,12 +1172,13 @@ SModifier CEncoder::SplitVariable(Common_ISA_Exec_Size fromExecSize,
 
 Common_ISA_Exec_Size
 CEncoder::SplitExecSize(Common_ISA_Exec_Size fromExecSize, unsigned numParts) const {
-    assert(fromExecSize == EXEC_SIZE_16 && "Only know how to split SIMD16!");
     assert(numParts == 2 && "Only know splitting SIMD16 into SIMD8!");
 
     switch (fromExecSize) {
     default:
         break;
+    case EXEC_SIZE_32:
+        return EXEC_SIZE_16;
     case EXEC_SIZE_16:
         return EXEC_SIZE_8;
     }
@@ -1188,8 +1190,8 @@ Common_VISA_EMask_Ctrl
 CEncoder::SplitEMask(Common_ISA_Exec_Size fromExecSize,
                      Common_ISA_Exec_Size toExecSize,
                      unsigned thePart, Common_VISA_EMask_Ctrl execMask) const {
-    assert(fromExecSize == EXEC_SIZE_16 && toExecSize == EXEC_SIZE_8 &&
-           "Only support splitting from exec-size 16 to exec-size 8!");
+    assert(((fromExecSize == EXEC_SIZE_16 && toExecSize == EXEC_SIZE_8) || (fromExecSize == EXEC_SIZE_32 && toExecSize == EXEC_SIZE_16)) &&
+           "Only support splitting from exec-size 16 to exec-size 8, or from 32 to 16!");
     assert((thePart == 0 || thePart == 1) &&
            "Splitting from exec-size-16 to exec-size-8 only breaks into 2 "
            "parts!");
@@ -1199,6 +1201,27 @@ CEncoder::SplitEMask(Common_ISA_Exec_Size fromExecSize,
     switch (fromExecSize) {
     default:
         break;
+    case EXEC_SIZE_32:
+        switch (toExecSize) {
+        default:
+            break;
+        case EXEC_SIZE_16:
+            switch (execMask) {
+            default:
+                break;
+            case vISA_EMASK_M1:     return thePart ? vISA_EMASK_M5 : vISA_EMASK_M1;
+            case vISA_EMASK_M1_NM:  return thePart ? vISA_EMASK_M5_NM : vISA_EMASK_M1_NM;
+            case vISA_EMASK_M3:     return thePart ? vISA_EMASK_M7 : vISA_EMASK_M3;
+            case vISA_EMASK_M3_NM:  return thePart ? vISA_EMASK_M7_NM : vISA_EMASK_M3_NM;
+            case vISA_EMASK_M5:     return thePart ? vISA_EMASK_M1 : vISA_EMASK_M5;
+            case vISA_EMASK_M5_NM:  return thePart ? vISA_EMASK_M1_NM : vISA_EMASK_M5_NM;
+            case vISA_EMASK_M7:     return thePart ? vISA_EMASK_M3 : vISA_EMASK_M7;
+            case vISA_EMASK_M7_NM:  return thePart ? vISA_EMASK_M3_NM : vISA_EMASK_M7_NM;
+            }
+            break;
+        }
+        break;
+
     case EXEC_SIZE_16:
         switch (toExecSize) {
         default:
@@ -5038,6 +5061,9 @@ uint32_t CEncoder::getNumChannels(CVariable* var) const
             return nd / (8 * SIZE_DWORD);
         case SIMDMode::SIMD16:
             return nd / (16 * SIZE_DWORD);
+        case SIMDMode::SIMD32:
+            return nd / (32 * SIZE_DWORD);
+
         }
     }
     return 1;
@@ -5045,7 +5071,7 @@ uint32_t CEncoder::getNumChannels(CVariable* var) const
 
 void CEncoder::Gather4Scaled(CVariable *dst,
                        const ResourceDescriptor& resource,
-                       CVariable *offset) 
+                       CVariable *offset)
 {
     unsigned nd = getNumChannels(dst);
     Gather4ScaledNd(dst, resource, offset, nd);
@@ -5089,6 +5115,9 @@ void CEncoder::Gather4A64(CVariable *dst, CVariable *offset) {
         break;
     case SIMDMode::SIMD16:
         nd = nd / (16 * SIZE_DWORD);
+        break;
+    case SIMDMode::SIMD32:
+        nd = nd / (32 * SIZE_DWORD);
         break;
     }
 
@@ -5179,6 +5208,9 @@ void CEncoder::Scatter4A64(CVariable *src, CVariable *offset) {
         break;
     case SIMDMode::SIMD16:
         nd = nd / (16 * SIZE_DWORD);
+        break;
+    case SIMDMode::SIMD32:
+        nd = nd / (32 * SIZE_DWORD);
         break;
     }
 
@@ -5271,7 +5303,7 @@ void CEncoder::AtomicRawA64(AtomicOp atomic_op,
 
     VISAAtomicOps atomicOpcode = convertAtomicOpEnumToVisa(atomic_op);
 
-    if (m_encoderState.m_simdSize == SIMDMode::SIMD16) 
+    if (m_encoderState.m_simdSize == SIMDMode::SIMD16)
     {
         // Split SIMD16 atomic ops into two SIMD8 ones.
         Common_VISA_EMask_Ctrl execMask = ConvertMaskToVisaType(m_encoderState.m_mask, m_encoderState.m_noMask);
@@ -5633,5 +5665,6 @@ std::string CEncoder::GetDumpFileName(std::string extension)
     }
     return filename;
 }
+
 
 }

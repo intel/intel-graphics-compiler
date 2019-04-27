@@ -116,7 +116,9 @@ uint EmitPass::DecideInstanceAndSlice(llvm::BasicBlock &blk, SDAG &sdag, bool &s
 {
     m_encoder->SetSubSpanDestination(false);
     uint numInstance = m_currShader->m_numberInstance;
+
     slicing = (m_SimdMode == SIMDMode::SIMD32);  // set to false if we don't want slicing
+
     if (sdag.m_root->getType()->getTypeID() != llvm::Type::VoidTyID)
     {
         m_destination = GetSymbol(sdag.m_root);
@@ -12667,7 +12669,7 @@ void EmitPass::emitVectorBitCast(llvm::BitCastInst* BCI)
         // and region hstride == 1, Src will not need splitting!
         // Only dst might need spliting.
         bool splitDst = (!dstUniform && (dstEltBytes * width > m_currShader->getGRFSize() * 2));
-        assert((!splitDst || (width == 16)) &&
+        assert((!splitDst || (width == 16) || (width == 32)) &&
             "Internal Error: Dst needs splitting only under SIMD16!");
         if (N > 4)
         {
@@ -12833,7 +12835,7 @@ void EmitPass::emitVectorBitCast(llvm::BitCastInst* BCI)
         // Similar to dstEltBytes > srcEltBytes, dstEltBytes can be 32bit
         // at most and dst's stride == 1, so it will not need spliting.
         bool splitSrc = (!srcUniform && (srcEltBytes * width > m_currShader->getGRFSize() * 2));
-        assert((!splitSrc || (width == 16)) &&
+        assert((!splitSrc || (width == 16) || (width == 32)) &&
             "Internal Error: Src needs splitting only under SIMD16!");
         assert((srcEltBytes % dstEltBytes) == 0 && "Basic types should be power of 2");
         // avoid coalescing the dst variable if all of its uses are EEI with constant index
@@ -13600,6 +13602,7 @@ void EmitPass::emitVectorStore(StoreInst* inst)
         storedVar = BroadcastIfUniform(storedVar);
 
         VectorMessage VecMessInfo(this);
+
         VecMessInfo.getInfo(Ty, align, useA32);
 
         for (uint32_t i = 0; i < VecMessInfo.numInsts; ++i)

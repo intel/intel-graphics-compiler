@@ -878,6 +878,32 @@ unsigned int Get_Gen4_Emask( Common_VISA_EMask_Ctrl cisa_emask, int exec_size )
     switch( exec_size )
     {
     case 32:
+        if (getGRFSize() == 64)
+        {
+            switch (cisa_emask)
+            {
+            case vISA_EMASK_M1:
+                return InstOpt_M0;
+            case vISA_EMASK_M3:
+                return InstOpt_M8;
+            case vISA_EMASK_M5:
+                return InstOpt_M16;
+            case vISA_EMASK_M7:
+                return InstOpt_M24;
+            case vISA_EMASK_M1_NM:
+                return InstOpt_M0 | InstOpt_WriteEnable;
+            case vISA_EMASK_M3_NM:
+                return InstOpt_M8 | InstOpt_WriteEnable;
+            case vISA_EMASK_M5_NM:
+                return InstOpt_M16 | InstOpt_WriteEnable;
+            case vISA_EMASK_M7_NM:
+                return InstOpt_M24 | InstOpt_WriteEnable;
+            default:
+                MUST_BE_TRUE(false, "Invalid emask for SIMD32 inst");
+                return InstOpt_NoOpt;
+            }
+        }
+
         switch (cisa_emask)
         {
         case vISA_EMASK_M1:

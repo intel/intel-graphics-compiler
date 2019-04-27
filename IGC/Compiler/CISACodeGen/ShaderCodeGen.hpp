@@ -377,6 +377,7 @@ public:
 
     uint32_t getGRFSize() const { return m_Platform->getGRFSize(); }
 
+
     e_alignment getGRFAlignment() const { return CVariable::getAlignment(getGRFSize()); }
 
 private:

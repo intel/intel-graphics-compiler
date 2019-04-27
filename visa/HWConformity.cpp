@@ -5833,7 +5833,7 @@ void HWConformity::conformBB(G4_BB* bb)
 
         if( inst->opcode() == G4_mul )
         {
-            if( fixMULInst( i, bb ) )
+            if(fixMULInst( i, bb ) )
             {
                 // inserted mach and mov
                 // check the newly added insts later ( MUL, MACH, MOV )
