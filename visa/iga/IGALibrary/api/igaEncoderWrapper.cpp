@@ -8,16 +8,18 @@ iga_status_t KernelEncoder::encode()
 {
 
     ErrorHandler errHandler;
-    Encoder enc(kernel->getModel(), errHandler,
-                EncoderOpts(autoCompact,
-                            true,
-                            nocompactFirstEightInst
-                ));
+    EncoderOpts enc_opt(
+        m_autoCompact,
+        true
+    );
+    enc_opt.setFisrtBB64ByteSize(m_fisrtBB64ByteSize);
+
+    Encoder enc(m_kernel->getModel(), errHandler, enc_opt);
     enc.encodeKernel(
-        *kernel,
-        kernel->getMemManager(),
-        buf,
-        binarySize);
+        *m_kernel,
+        m_kernel->getMemManager(),
+        m_buf,
+        m_binarySize);
 #ifdef _DEBUG
     if (errHandler.hasErrors()) {
         // failed encode

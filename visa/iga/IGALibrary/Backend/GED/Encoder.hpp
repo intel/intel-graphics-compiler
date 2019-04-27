@@ -54,7 +54,7 @@ namespace iga
             const EncoderOpts& eos = EncoderOpts());
 
         void encodeKernel(
-            const Kernel& k,
+            Kernel& k,
             MemManager &m,
             void*& bits,
             uint32_t& bitsLen);
@@ -72,8 +72,8 @@ namespace iga
     protected:
 
         // TODO: phase these out
-                void encodeKernelPreProcess(const Kernel &k);
-        virtual void doEncodeKernelPreProcess(const Kernel &k);
+                void encodeKernelPreProcess(Kernel &k);
+        virtual void doEncodeKernelPreProcess(Kernel &k);
         virtual void encodeFC(const OpSpec &os);
         virtual void encodeTernaryInstruction(const Instruction& inst, GED_ACCESS_MODE accessMode);
                 void encodeTernaryAlign1Instruction(const Instruction& inst);
@@ -145,7 +145,7 @@ namespace iga
         void operator delete(void*foo, MemManager* m) { };
         void *operator new(size_t sz, MemManager* m) { return m->alloc(sz); };
 
-        void encodeBlock(Block *blk);
+        void encodeBlock(Block* blk);
         void encodeInstruction(Instruction& inst);
         void patchJumpOffsets();
 

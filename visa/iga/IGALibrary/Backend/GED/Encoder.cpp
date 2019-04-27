@@ -78,28 +78,29 @@ EncoderBase::EncoderBase(
 {
 }
 
-void EncoderBase::encodeKernelPreProcess(const Kernel &k)
+void EncoderBase::encodeKernelPreProcess(Kernel &k)
 {
-    if (m_opts.noCompactFirstEightInst) {
-        // set the first 8 instructions to NOCOMPACT
-        // The first 8 instructions must be in the same block when this option is enabled
-        if (!k.getBlockList().empty()) {
-            Block* first_blk = *k.getBlockList().begin();
-            size_t counter = 0;
-            for (auto inst : first_blk->getInstList()) {
-                inst->addInstOpt(InstOpt::NOCOMPACT);
-                counter++;
-                if (counter > 7)
-                    break;
-            }
-            IGA_ASSERT(counter == 8, "noCompactFirstEightInst: Less than 8 instructions in the first block");
+    if (m_opts.fisrtBB64ByteSize && !k.getBlockList().empty()) {
+        int32_t inst_size = 16;
+        Block& blk = **k.getBlockList().begin();
+        // To simplify the size calculation, we do not compact the instructions
+        // Add NOP until the block size is multiple of 64
+        size_t padding_size = 64 - (blk.getInstList().size() * inst_size % 64);
+        assert(padding_size % inst_size == 0);
+        if (padding_size != 0) {
+            size_t num_nop = padding_size / inst_size;
+            // create inst
+            for (size_t i = 0; i < num_nop; ++i)
+                blk.getInstList().push_back(k.createNopInstruction());
         }
+        for (auto inst : blk.getInstList())
+            inst->addInstOpt(InstOpt::NOCOMPACT);
     }
 
     doEncodeKernelPreProcess(k);
 }
 
-void EncoderBase::doEncodeKernelPreProcess(const Kernel &k)
+void EncoderBase::doEncodeKernelPreProcess(Kernel &k)
 {
 }
 
@@ -124,7 +125,7 @@ size_t EncoderBase::getNumInstructionsEncoded() const
 }
 
 void EncoderBase::encodeKernel(
-    const Kernel &k,
+    Kernel &k,
     MemManager &mem,
     void *&bits,
     uint32_t &bitsLen)
@@ -149,6 +150,7 @@ void EncoderBase::encodeKernel(
             fatalAt(0, "failed to allocate memory for kernel binary");
             return;
         }
+
         for (auto blk : k.getBlockList()) {
             START_ENCODER_TIMER()
             encodeBlock(blk);
@@ -725,6 +727,8 @@ void EncoderBase::encodeBranchingInstructionSimplified(const Instruction& inst)
     if (src0IsLabel) {
         GED_ENCODE(Src0RegFile, GED_REG_FILE_IMM);
     } else {
+        if (inst.getSource(0).getKind() == Operand::Kind::INDIRECT)
+            error("Branch instructions do not support indirect register mode");
         encodeBranchSource(inst, inst.getSource(0));
     }
 

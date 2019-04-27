@@ -191,6 +191,11 @@ namespace iga
     static uint8_t WordsOffsetToSubReg(
         uint32_t offset, RegName regName, Type type)
     {
+        // for the non-scaled registers (e.g. fc), the sub-register in binary
+        // and in asm is the same value
+        if (!IsRegisterScaled(regName) || type == Type::INVALID) {
+            return offset;
+        }
         return BytesOffsetToSubReg(offset * 2, regName, type);
     }
 
@@ -199,6 +204,11 @@ namespace iga
     static std::pair<bool, uint32_t> SubRegToWordsOffset(
         int subRegNum, RegName regName, Type type)
     {
+        // for the non-scaled registers (e.g. fc), the sub-register in binary
+        // and in asm is the same value
+        if (!IsRegisterScaled(regName) || type == Type::INVALID) {
+            return std::make_pair(true, subRegNum);;
+        }
         uint32_t byteoff = SubRegToBytesOffset(subRegNum, regName, type);
         return std::make_pair((byteoff % 2 == 0), byteoff / 2);
     }

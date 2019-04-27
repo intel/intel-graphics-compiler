@@ -797,10 +797,9 @@ void BinaryEncodingIGA::DoAll()
         autoCompact = false;
     }
 
-
-    bool dontCompactProlog = kernel.fg.builder->needsToLoadLocalID();
-
-    KernelEncoder encoder(IGAKernel, autoCompact, dontCompactProlog);
+    KernelEncoder encoder(IGAKernel, autoCompact);
+    // Make sure the second BB is 64-byte aligned if having thread prolog
+    encoder.setFisrtBB64ByteSize(kernel.fg.builder->getHasPerThreadProlog());
     encoder.encode();
 
     stopTimer(TIMER_IGA_ENCODER);
@@ -816,15 +815,11 @@ void BinaryEncodingIGA::DoAll()
     if (kernel.fg.builder->getHasPerThreadProlog())
     {
         // per thread data load is in the first BB
-#if 0
         assert(kernel.fg.getNumBB() > 1 && "expect at least one prolog BB");
         auto secondBB = *(std::next(kernel.fg.BBs.begin()));
         assert(secondBB->size() > 0 && "expect at least one inst in second BB");
         auto startInst = *(secondBB->begin());
         kernel.fg.builder->getJitInfo()->offsetToSkipPerThreadDataLoad = (uint32_t)startInst->getGenOffset();
-#else
-        kernel.fg.builder->getJitInfo()->offsetToSkipPerThreadDataLoad = 8 * 16;
-#endif
     }
 }
 
