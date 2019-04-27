@@ -2805,6 +2805,7 @@ void HWConformity::copyDwordsIndirect(G4_Declare* dst,
     G4_SrcRegRegion* newSrc = builder.duplicateOperand(src);
     MUST_BE_TRUE(G4_Type_Table[newSrc->getType()].byteSize == 8, "only support 64-bit type source so far");
     newSrc->setType(Type_UD);
+    newSrc->setModifier(Mod_src_undef);
     if (newSrc->getRegion()->isRegionWH())
     {
         MUST_BE_TRUE(newSrc->getRegion()->width == 1, "only handle <1,0> region for now");

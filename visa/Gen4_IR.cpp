@@ -1930,12 +1930,9 @@ bool G4_INST::canPropagateTo(G4_INST *useInst, Gen4_Operand_Number opndNum, MovT
         return false;
     }
 
-    auto isFloatPseudoMAD = [](G4_INST *inst) {
-        if (inst->opcode() != G4_pseudo_mad)
-            return false;
-        if (IS_TYPE_FLOAT_ALL(inst->getDst()->getType()))
-            return true;
-        return false;
+    auto isFloatPseudoMAD = [](G4_INST *inst) 
+    {
+        return inst->opcode() == G4_pseudo_mad && IS_TYPE_FLOAT_ALL(inst->getDst()->getType());
     };
 
     //     mov (16|M0) r47.0 1:w
@@ -1956,13 +1953,12 @@ bool G4_INST::canPropagateTo(G4_INST *useInst, Gen4_Operand_Number opndNum, MovT
         {
             return false;
         }
-    } else if (src->isSrcRegRegion() &&
-               src->asSrcRegRegion()->getRegAccess() != Direct &&
+    } else if (indirectSrc &&
                (isFloatPseudoMAD(useInst) || useInst->opcode() == G4_math))
     {
         return false;
     }
-
+    
     // FIXME: to add specific checks for other instructions.
     G4_opcode useInst_op = useInst->opcode();
 
@@ -1972,11 +1968,8 @@ bool G4_INST::canPropagateTo(G4_INST *useInst, Gen4_Operand_Number opndNum, MovT
         return false;
     }
     if ((useInst_op == G4_line && opndNum == Opnd_src0) ||
-        ((useInst_op == G4_if || useInst_op == G4_while) && !src->isImm() && IS_BTYPE(srcType)) ||
-        (hasModifier && G4_Inst_Table[useInst_op].instType == InstTypeLogic) ||
-        (indirectSrc && (useInst->opcode() == G4_math || useInst->isComprInst())))
+        (hasModifier && G4_Inst_Table[useInst_op].instType == InstTypeLogic))
     {
-        // TODO: Revisit to simplify checking or remove invalid checking.
         return false;
     }
 
