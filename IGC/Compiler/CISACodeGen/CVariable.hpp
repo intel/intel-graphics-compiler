@@ -75,6 +75,7 @@ public:
         assert(!m_isImmediate && "Calling GetAlign() on an immediate returns undefined result");
         return m_align;
     }
+    void SetAlign(e_alignment thisAlign) { m_align = thisAlign; }
 
     uint16_t GetNumberElement() const { return m_nbElement; }
     bool IsUniform() const { return m_uniform; }

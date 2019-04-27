@@ -339,20 +339,33 @@ void CShader::CreateImplicitArgs()
         ImplicitArg implictArg = implicitArgs[i];
         assert((implictArg.getNumberElements() < (UINT16_MAX)) && "getNumberElements > higher than 64k");
 
-        bool isUniform = implictArg.getDependency() == WIAnalysis::UNIFORM;
-        CVariable* var = GetNewVariable((uint16_t)implictArg.getNumberElements(),
-            implictArg.getVISAType(*m_DL),
-            implictArg.getAlignType(*m_DL),
-            isUniform,
-            isUniform ? 1 : m_numberInstance);
+        // DeSSA info should be considerred when creating CVariable.
+        // Invoking GetSymbol() guarantees DeSSA info is used. Using
+        // a key temporarily for testing purpose. Once done testing,
+        // the key should go away.
+        CVariable* var;
+        if (IGC_IS_FLAG_ENABLED(EnableDeSSANonRootFuncArg))
+        {
+            var = GetSymbol(&*arg);
+        }
+        else {
+            bool isUniform = implictArg.getDependency() == WIAnalysis::UNIFORM;
+            var = GetNewVariable((uint16_t)implictArg.getNumberElements(),
+                implictArg.getVISAType(*m_DL),
+                implictArg.getAlignType(*m_DL),
+                isUniform,
+                isUniform ? 1 : m_numberInstance);
+        }
 
         if (implictArg.getArgType() == ImplicitArg::R0) {
             encoder.GetVISAPredefinedVar(var, PREDEFINED_R0);
         }
 
-        // This is a per function symbol mapping, that is, only available for a
-        // llvm function which will be cleared for each run of EmitVISAPass.
-        symbolMapping.insert(std::make_pair(&(*arg), var));
+        if (IGC_IS_FLAG_DISABLED(EnableDeSSANonRootFuncArg)) {
+            // This is a per function symbol mapping, that is, only available for a
+            // llvm function which will be cleared for each run of EmitVISAPass.
+            symbolMapping.insert(std::make_pair(&(*arg), var));
+        }
 
         // Kernel's implicit arguments's symbols will be available for the
         // whole kernel CodeGen. With this, there is no need to pass implicit
@@ -1829,7 +1842,8 @@ void CShader::BeginFunction(llvm::Function *F)
             {
                 if (IGC_IS_FLAG_ENABLED(EnableDeSSAMemberRootValue))
                 {
-                    if (Node != (Value*)&Arg)
+                    if (Node != (Value*)&Arg &&
+                        symbolMapping.count(Node) == 0)
                     {
                         CVariable* aV = Var;
                         if (IGC_GET_FLAG_VALUE(EnableDeSSAAlias) >= 2)
@@ -1939,11 +1953,17 @@ CVariable* CShader::getOrCreateArgumentSymbol(llvm::Argument *Arg, bool useStack
             }
             else
             {
-                bool isUniform = implictArg.getDependency() == WIAnalysis::UNIFORM;
-                var = GetNewVariable((uint16_t)implictArg.getNumberElements(),
-                                     implictArg.getVISAType(*m_DL),
-                                     implictArg.getAlignType(*m_DL), isUniform,
-                                     isUniform ? 1 : m_numberInstance);
+                if (IGC_IS_FLAG_ENABLED(EnableDeSSANonRootFuncArg))
+                {
+                    var = GetSymbol(argVal);
+                }
+                else {
+                    bool isUniform = implictArg.getDependency() == WIAnalysis::UNIFORM;
+                    var = GetNewVariable((uint16_t)implictArg.getNumberElements(),
+                        implictArg.getVISAType(*m_DL),
+                        implictArg.getAlignType(*m_DL), isUniform,
+                        isUniform ? 1 : m_numberInstance);
+                }
             }
             break;
         }
@@ -1952,20 +1972,26 @@ CVariable* CShader::getOrCreateArgumentSymbol(llvm::Argument *Arg, bool useStack
     // This is not implicit.
     if (var == nullptr)
     {
-        VISA_Type type = GetType(Arg->getType());
-        uint16_t nElts = numLanes(m_SIMDSize);
-        if (Arg->getType()->isVectorTy())
-        {
-            assert(Arg->getType()->getVectorElementType()->isIntegerTy() ||
-                   Arg->getType()->getVectorElementType()->isFloatingPointTy());
-            nElts *= (uint16_t)Arg->getType()->getVectorNumElements();
-        }
-
         // GetPreferredAlignment treats all arguments as kernel ones, which have
         // predefined alignments; but this is not true for subroutines.
         // Conservatively use GRF aligned.
         e_alignment align = getGRFAlignment();
-        var = GetNewVariable(nElts, type, align, /*isUniform*/ false, m_numberInstance);
+
+        if (IGC_IS_FLAG_ENABLED(EnableDeSSANonRootFuncArg)) {
+            var = GetSymbol(&*Arg);
+            var->SetAlign(align);
+        }
+        else {
+            VISA_Type type = GetType(Arg->getType());
+            uint16_t nElts = numLanes(m_SIMDSize);
+            if (Arg->getType()->isVectorTy())
+            {
+                assert(Arg->getType()->getVectorElementType()->isIntegerTy() ||
+                    Arg->getType()->getVectorElementType()->isFloatingPointTy());
+                nElts *= (uint16_t)Arg->getType()->getVectorNumElements();
+            }
+            var = GetNewVariable(nElts, type, align, /*isUniform*/ false, m_numberInstance);
+        }
     }
     pSymMap->insert(std::make_pair(Arg, var));
     return var;
@@ -1991,20 +2017,26 @@ CVariable* CShader::getOrCreateArgSymbolForIndirectCall(llvm::CallInst* cInst, u
     unsigned numExplicitArgs = cInst->getNumArgOperands() - numImplicitArgs;
     if (argIdx < numExplicitArgs)
     {
-        VISA_Type type = GetType(Arg->getType());
-        uint16_t nElts = numLanes(m_SIMDSize);
-        if (Arg->getType()->isVectorTy())
-        {
-            assert(Arg->getType()->getVectorElementType()->isIntegerTy() ||
-                   Arg->getType()->getVectorElementType()->isFloatingPointTy());
-            nElts *= (uint16_t)Arg->getType()->getVectorNumElements();
-        }
-
         // GetPreferredAlignment treats all arguments as kernel ones, which have
         // predefined alignments; but this is not true for subroutines.
         // Conservatively use GRF aligned.
         e_alignment align = getGRFAlignment();
-        var = GetNewVariable(nElts, type, align, /*isUniform*/ false, m_numberInstance);
+
+        if (IGC_IS_FLAG_ENABLED(EnableDeSSANonRootFuncArg)) {
+            var = GetSymbol(&*Arg);
+            var->SetAlign(align);
+        }
+        else {
+            VISA_Type type = GetType(Arg->getType());
+            uint16_t nElts = numLanes(m_SIMDSize);
+            if (Arg->getType()->isVectorTy())
+            {
+                assert(Arg->getType()->getVectorElementType()->isIntegerTy() ||
+                    Arg->getType()->getVectorElementType()->isFloatingPointTy());
+                nElts *= (uint16_t)Arg->getType()->getVectorNumElements();
+            }
+            var = GetNewVariable(nElts, type, align, /*isUniform*/ false, m_numberInstance);
+        }
     }
     else
     {
@@ -2022,11 +2054,16 @@ CVariable* CShader::getOrCreateArgSymbolForIndirectCall(llvm::CallInst* cInst, u
                 Argument* implicitArgInFunc = implicitArgs.getImplicitArg(*parentFunc, argType);
                 if (Arg == implicitArgInFunc)
                 {
-                    bool isUniform = implictArg.getDependency() == WIAnalysis::UNIFORM;
-                    var = GetNewVariable((uint16_t)implictArg.getNumberElements(),
-                                         implictArg.getVISAType(*m_DL),
-                                         implictArg.getAlignType(*m_DL), isUniform,
-                                         isUniform ? 1 : m_numberInstance);
+                    if (IGC_IS_FLAG_ENABLED(EnableDeSSANonRootFuncArg)) {
+                        var = GetSymbol(Arg);
+                    }
+                    else {
+                        bool isUniform = implictArg.getDependency() == WIAnalysis::UNIFORM;
+                        var = GetNewVariable((uint16_t)implictArg.getNumberElements(),
+                            implictArg.getVISAType(*m_DL),
+                            implictArg.getAlignType(*m_DL), isUniform,
+                            isUniform ? 1 : m_numberInstance);
+                    }
                     break;
                 }
             }
