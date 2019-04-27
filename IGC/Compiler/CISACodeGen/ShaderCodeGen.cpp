@@ -901,7 +901,7 @@ void CodeGen(OpenCLProgramContext *ctx, CShaderProgram::KernelShaderMap &kernels
     AddLegalizationPasses(*ctx, Passes);
 
     AddAnalysisPasses(*ctx, Passes);
-    
+
     if (ctx->m_DriverInfo.sendMultipleSIMDModes())
     {
         unsigned int leastSIMD = 8;

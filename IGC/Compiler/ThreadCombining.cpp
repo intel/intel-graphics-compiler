@@ -138,7 +138,7 @@ void ThreadCombining::SetthreadGroupSize(llvm::Module &M, llvm::Constant* size, 
     pGlobal->setInitializer(size);
 }
 
-/// \brief Create a kernel that will loop over the modified kernel 
+/// \brief Create a kernel that will loop over the modified kernel
 /// LoopCount = (threadGroupSize_X / newGroupSizeX) * (threadGroupSize_Y / newGroupSizeY) *(numBarriers + 1)
 
 void ThreadCombining::CreateLoopKernel(
@@ -164,13 +164,13 @@ void ThreadCombining::CreateLoopKernel(
     BasicBlock* exitBarrierLoop = BasicBlock::Create(M.getContext(), "", m_kernel);
 
     auto barrierIterator = m_LiveRegistersPerBarrier.begin();
-    
+
     // mainEntry
     builder.SetInsertPoint(mainEntry);
     Value* iterBarriers = builder.CreateAlloca(builder.getInt32Ty(), nullptr, "iterBarriers");
     Value* iterX = builder.CreateAlloca(builder.getInt32Ty(), nullptr, "iterX");
     Value* iterY = builder.CreateAlloca(builder.getInt32Ty(), nullptr, "iterY");
-    
+
     // This is a map of the live register and the register to store it
     std::map<llvm::Instruction*, Value*> regToAllocaMap;
     unsigned int totalSize = numLoopsX * numLoopsY;
@@ -192,10 +192,10 @@ void ThreadCombining::CreateLoopKernel(
     threadIDX = builder.CreateBitCast(threadIDX, builder.getInt32Ty());
     threadIDY = builder.CreateBitCast(threadIDY, builder.getInt32Ty());
     builder.CreateBr(BarrierLoopEntry);
-    
+
     // BarrierLoopEntry:
     builder.SetInsertPoint(BarrierLoopEntry);
-    builder.CreateStore(builder.getInt32(0), iterBarriers);    
+    builder.CreateStore(builder.getInt32(0), iterBarriers);
     builder.CreateBr(XLoopEntry);
 
     // XLoopEntry:
@@ -234,7 +234,7 @@ void ThreadCombining::CreateLoopKernel(
         Value* index = builder.CreateAdd(rowMul, Y);
         Value* indexes[] = { builder.getInt32(0), index };
         Value* gepPtr = builder.CreateGEP(regToAllocaMap[aliveInst], indexes);
-        callArgs.push_back(gepPtr);        
+        callArgs.push_back(gepPtr);
     }
 
     builder.CreateCall(newFunc, callArgs);
@@ -260,7 +260,7 @@ void ThreadCombining::CreateLoopKernel(
     builder.CreateStore(barriernum, iterBarriers);
     Value* conditionBarrier = builder.CreateICmp(CmpInst::ICMP_ULE, barriernum, builder.getInt32(numBarriers));
     builder.CreateCondBr(conditionBarrier, XLoopEntry, exitBarrierLoop);
-    
+
     // exitBarrierLoop:
     builder.SetInsertPoint(exitBarrierLoop);
     builder.CreateRetVoid();
@@ -315,12 +315,12 @@ void ThreadCombining::FindRegistersAliveAcrossBarriers(llvm::Function* m_kernel,
                                 {
                                     m_instructionsToMove.insert(I);
                                 }
-                            }                          
+                            }
                             if (!canMoveInstructionToEntryBlock)
                             {
                                 m_LiveRegistersPerBarrier[*barrierInst].insert(I); // Insert the instruction as one that has to be stored and then restored
                                 m_aliveAcrossBarrier.insert(I);
-                            }                            
+                            }
                         }
                     }
                 }
@@ -355,7 +355,7 @@ bool ThreadCombining::canDoOptimization(Function* m_kernel, llvm::Module& M)
     if (threadGroupSize_X == 1 ||
         threadGroupSize_Y == 1 ||
         threadGroupSize_Z != 1 ||
-        (!m_SLMUsed && IGC_IS_FLAG_DISABLED(EnableThreadCombiningWithNoSLM))|| 
+        (!m_SLMUsed && IGC_IS_FLAG_DISABLED(EnableThreadCombiningWithNoSLM))||
         anyBarrierWithinControlFlow)
     {
         return false;
@@ -367,12 +367,12 @@ bool ThreadCombining::canDoOptimization(Function* m_kernel, llvm::Module& M)
 /// Create a New Kernel and do the following
 /// -> Copy all instructions from the old kernel to the new Kernel
 /// -> Do the following for each barrier
-///    -> Add stores to all the registers that are alive across the barrier right 
+///    -> Add stores to all the registers that are alive across the barrier right
 ///       before the barrier
 ///    -> Add loads to all the live registers right after the barrier
 ///    -> Replace the barrier with a return instruction
-/// -> Add a new entry block with a jump table to jump to the basic block to start execution based on the function argument 
-///    provided by the loop kernel  
+/// -> Add a new entry block with a jump table to jump to the basic block to start execution based on the function argument
+///    provided by the loop kernel
 
 void ThreadCombining::CreateNewKernel(llvm::Module& M,
                                       llvm::IRBuilder<> builder,
@@ -409,7 +409,7 @@ void ThreadCombining::CreateNewKernel(llvm::Module& M,
             }
             argIter++;
         }
-        
+
         auto lastBarrier = --(m_barriers.end());
 
         // Enter this loop when there are two or more barriers
@@ -439,7 +439,7 @@ void ThreadCombining::CreateNewKernel(llvm::Module& M,
             }
 
             // Add loads of all the live registers right after the currentBarrier instruction
-            // change the uses of that register to the new value 
+            // change the uses of that register to the new value
             llvm::Instruction* pointToInsert = currentBarrier->getNextNode();
             builder.SetInsertPoint(pointToInsert);
             argIter = newFunc->arg_begin();
@@ -477,7 +477,7 @@ void ThreadCombining::CreateNewKernel(llvm::Module& M,
             }
         }
 
-        // add loads after the last barrier instruction in the kernel 
+        // add loads after the last barrier instruction in the kernel
         builder.SetInsertPoint((*lastBarrier)->getNextNode());
         argIter = newFunc->arg_begin();
         argIter++; argIter++; argIter++;
@@ -572,13 +572,13 @@ void ThreadCombining::CreateNewKernel(llvm::Module& M,
                     if (cast<ConstantInt>(b->getOperand(0))->getZExtValue() == THREAD_ID_IN_GROUP_X)
                     {
                         builder.SetInsertPoint(&(*newFunc->getEntryBlock().begin()));
-                        Value* IDxF = builder.CreateBitCast(IDx, builder.getFloatTy());
+                        Value* IDxF = builder.CreateBitCast(IDx, b->getType());
                         b->replaceAllUsesWith(IDxF);
                     }
                     if (cast<ConstantInt>(b->getOperand(0))->getZExtValue() == THREAD_ID_IN_GROUP_Y)
                     {
                         builder.SetInsertPoint(&(*newFunc->getEntryBlock().begin()));
-                        Value* IDyF = builder.CreateBitCast(IDy, builder.getFloatTy());
+                        Value* IDyF = builder.CreateBitCast(IDy, b->getType());
                         b->replaceAllUsesWith(IDyF);
                     }
                 }
@@ -637,7 +637,7 @@ bool ThreadCombining::runOnModule(llvm::Module& M)
 
     unsigned int newSizeX = threadGroupSize_X;
     unsigned int newSizeY = threadGroupSize_Y;
-    // Heuristic for Threadcombining based on EU Occupancy, if EU occupancy increases with the new 
+    // Heuristic for Threadcombining based on EU Occupancy, if EU occupancy increases with the new
     // size then combine threads, otherwise skip it
     if (IGC_IS_FLAG_ENABLED(EnableForceGroupSize))
     {
@@ -669,8 +669,8 @@ bool ThreadCombining::runOnModule(llvm::Module& M)
     SetthreadGroupSize(M, builder.getInt32(newSizeX), ThreadGroupSize_X);
     SetthreadGroupSize(M, builder.getInt32(newSizeY), ThreadGroupSize_Y);
 
-    // Create a new function with function arguments, New threadIDX, threadIDY, 
-    // a bool variable to indicate if it is kernel section before last barrier or after 
+    // Create a new function with function arguments, New threadIDX, threadIDY,
+    // a bool variable to indicate if it is kernel section before last barrier or after
     // last barrier and all the live variables
 
     std::vector<llvm::Type*> callArgTypes;
@@ -693,8 +693,8 @@ bool ThreadCombining::runOnModule(llvm::Module& M)
             "newKernel",
             &M);
     newFunc->addFnAttr(llvm::Attribute::AlwaysInline);
-    // Fills in the instructions 
-    CreateNewKernel(M, builder, newFunc);  
+    // Fills in the instructions
+    CreateNewKernel(M, builder, newFunc);
 
     // Instead of running the origkernel by one logical thread 1 time, hence threadgroupSizeX * threadGroupSizeY logical threads each run sepearetly
     // optimization is to run in one logical thread (threadGroupSize_X / newSizeX)  * (threadGroupSize_Y / newSizeY) times
