@@ -813,19 +813,6 @@ void BinaryEncodingIGA::DoAll()
     {
         inst.second->setGenOffset(inst.first->getPC());
     }
-    if (kernel.fg.builder->getHasPerThreadProlog())
-    {
-        // per thread data load is in the first BB
-#if 0
-        assert(kernel.fg.getNumBB() > 1 && "expect at least one prolog BB");
-        auto secondBB = *(std::next(kernel.fg.BBs.begin()));
-        assert(secondBB->size() > 0 && "expect at least one inst in second BB");
-        auto startInst = *(secondBB->begin());
-        kernel.fg.builder->getJitInfo()->offsetToSkipPerThreadDataLoad = (uint32_t)startInst->getGenOffset();
-#else
-        kernel.fg.builder->getJitInfo()->offsetToSkipPerThreadDataLoad = 8 * 16;
-#endif
-    }
 }
 
 SendDescArg BinaryEncodingIGA::getIGASendDescArg(G4_INST* sendInst) const

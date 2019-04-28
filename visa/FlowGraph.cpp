@@ -595,9 +595,9 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
     // create the entry block of the flow graph
     //
     G4_BB* fstartBB = NULL;
-    G4_BB* curr_BB = fstartBB = beginBB(labelMap, instlist.front());
+    G4_BB* curr_BB = entryBB = fstartBB = beginBB(labelMap, instlist.front());
 
-    kernelInfo = new (mem)FuncInfo(UINT_MAX, curr_BB, NULL);
+    kernelInfo = new (mem)FuncInfo(UINT_MAX, entryBB, NULL);
 
     std::vector<G4_BB*> subroutineStartBB; // needed by handleExit()
 
@@ -837,7 +837,7 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
     // Ensure each block other than entry starts with a label.
     for (auto bb : BBs)
     {
-        if (bb != getEntryBB() && !bb->empty())
+        if (bb != entryBB && !bb->empty())
         {
             G4_INST *inst = bb->front();
             if (inst->isLabel())
@@ -1833,7 +1833,7 @@ void FlowGraph::removeUnreachableBlocks()
     //
     // assign DFS based pre/rpost ids to all blocks in the main program
     //
-    doDFS(getEntryBB(), preId);
+    doDFS(entryBB, preId);
 
     for (BB_LIST_ITER it = BBs.begin(), itEnd = BBs.end(); it != itEnd; ++it)
     {
@@ -1972,7 +1972,7 @@ void FlowGraph::removeRedundantLabels()
     for (BB_LIST_ITER it = BBs.begin(); it != BBs.end();)
     {
         G4_BB* bb = *it;
-        if (bb == getEntryBB())
+        if (bb == entryBB)
         {
             it++;
             continue;
@@ -4818,7 +4818,7 @@ void FlowGraph::findBackEdges()
     unsigned postID = 0;
     backEdges.clear();
 
-    DFSTraverse(getEntryBB(), preId, postID, kernelInfo);
+    DFSTraverse(entryBB, preId, postID, kernelInfo);
 
     for (auto fn : funcInfoTable)
     {
@@ -4860,9 +4860,7 @@ void FlowGraph::findNaturalLoops()
                     loopBody.insert(loopBlock->BBBeforeCall());
                 }
             }
-            else 
-            {
-                auto entryBB = getEntryBB();
+            else {
                 for (auto predBB : loopBlock->Preds)
                 {
                     if (!predBB->isInNaturalLoop())

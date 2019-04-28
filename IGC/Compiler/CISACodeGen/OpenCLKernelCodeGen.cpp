@@ -1667,7 +1667,6 @@ void COpenCLKernel::FillKernel()
     }
 
     m_kernelInfo.m_executionEnivronment.HasGlobalAtomics = GetHasGlobalAtomics();
-    m_kernelInfo.m_threadPayload.OffsetToSkipPerThreadDataLoad = ProgramOutput()->m_offsetToSkipPerThreadDataLoad;
 
 }
 
