@@ -657,7 +657,6 @@ class FlowGraph
 
 private:
 
-    G4_BB* entryBB;                             // entry block
     unsigned traversalNum;                      // used for flow graph traversals
     unsigned numBBId;                            // number of basic blocks
     bool     reducible;                            // reducibility of the graph
@@ -859,7 +858,8 @@ public:
 
     void preprocess(INST_LIST& instlist);
 
-    FlowGraph(INST_LIST_NODE_ALLOCATOR& alloc, G4_Kernel* kernel, Mem_Manager& m) : entryBB(NULL), traversalNum(0), numBBId(0), reducible(true),
+    FlowGraph(INST_LIST_NODE_ALLOCATOR& alloc, G4_Kernel* kernel, Mem_Manager& m) : 
+      traversalNum(0), numBBId(0), reducible(true),
       doIPA(false), hasStackCalls(false), isStackCallFunc(false), autoLabelId(0),
       pKernel(kernel), mem(m), instListAlloc(alloc),
       builder(NULL), kernelInfo(NULL), globalOpndHT(m), framePtrDcl(NULL), stackPtrDcl(NULL),
@@ -961,8 +961,7 @@ public:
     void resetLocalDataFlowData();
 
     unsigned getNumBB() const      {return numBBId;}
-    G4_BB* getEntryBB()        {return entryBB;}
-    void setEntryBB(G4_BB *entry) {entryBB = entry;}
+    G4_BB* getEntryBB()        {return BBs.front();}
 
     void doFilescopeVarLayout(IR_Builder& builder, DECLARE_LIST& declares, unsigned& fileScopeFrameOffset);
     void addFrameSetupDeclares(IR_Builder& builder, PhyRegPool& regPool);

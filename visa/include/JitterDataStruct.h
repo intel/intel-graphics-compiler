@@ -74,6 +74,8 @@ typedef struct _CM_JIT_INFO {
     void* freeGRFInfo;
     unsigned int freeGRFInfoSize;
     unsigned char numBytesScratchGtpin;
+
+    uint32_t offsetToSkipPerThreadDataLoad = 0; 
 } FINALIZER_INFO;
 
 #endif // _CM_JITTERDATASTRUCT_

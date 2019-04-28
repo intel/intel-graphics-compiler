@@ -507,6 +507,7 @@ public:
     bool hasNullReturnSampler = false;
 
     int perThreadInputSize = 0;
+    bool hasPerThreadProlog = false;
 
 public:
     PreDefinedVars preDefVars;
@@ -607,6 +608,8 @@ public:
 
     uint32_t getPerThreadInputSize() const { return perThreadInputSize; }
     void setPerThreadInputSize(uint32_t val) { perThreadInputSize = val; }
+    bool getHasPerThreadProlog() const { return hasPerThreadProlog; }
+    void setHasPerThreadProlog() { hasPerThreadProlog = true; }
 
     bool isOpndAligned( G4_Operand *opnd, unsigned short &offset, int align_byte );
 
