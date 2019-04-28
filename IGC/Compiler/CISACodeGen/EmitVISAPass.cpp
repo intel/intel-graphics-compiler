@@ -373,6 +373,9 @@ bool EmitPass::runOnFunction(llvm::Function &F)
     m_pattern = &getAnalysis<CodeGenPatternMatch>();
     m_deSSA = &getAnalysis<DeSSA>();
     m_blockCoalescing = &getAnalysis<BlockCoalescing>();
+    m_CE = &getAnalysis<CoalescingEngine>();
+    m_VRA = &getAnalysis<VariableReuseAnalysis>();
+
     m_currShader->SetUniformHelper(&getAnalysis<WIAnalysis>());
     m_currShader->SetCodeGenHelper(m_pattern);
     m_currShader->SetDominatorTreeHelper(&getAnalysis<DominatorTreeWrapperPass>().getDomTree());
@@ -381,9 +384,14 @@ bool EmitPass::runOnFunction(llvm::Function &F)
     m_currShader->SetDataLayout(m_DL);
     m_currShader->SetFunctionGroupAnalysis(m_FGA);
     m_currShader->SetPushInfoHelper(&(m_moduleMD->pushInfo));
+    m_currShader->SetVariableReuseAnalysis(m_VRA);
     if (IGC_IS_FLAG_DISABLED(DisableDeSSA))
     {
         m_currShader->SetDeSSAHelper(m_deSSA);
+    }
+    //Add CCtuple root variables.
+    if (IGC_IS_FLAG_DISABLED(DisablePayloadCoalescing)) {
+        m_currShader->SetCoalescingEngineHelper(m_CE);
     }
 
     bool ptr64bits = (m_DL->getPointerSizeInBits(ADDRESS_SPACE_PRIVATE) == 64);
@@ -436,16 +444,7 @@ bool EmitPass::runOnFunction(llvm::Function &F)
         }
     }
 
-    //Add CCtuple root variables.
-    m_CE = &getAnalysis<CoalescingEngine>();
-    if (IGC_IS_FLAG_DISABLED(DisablePayloadCoalescing)) {
-        m_currShader->SetCoalescingEngineHelper(m_CE);
-    }
-
-    m_VRA = &getAnalysis<VariableReuseAnalysis>();
-    m_currShader->SetVariableReuseAnalysis(m_VRA);
     m_VRA->BeginFunction(&F, numLanes(m_SimdMode));
-
     if (!m_FGA || m_FGA->isGroupHead(&F))
     {
         IF_DEBUG_INFO(m_pDebugEmitter = IDebugEmitter::Create();)
