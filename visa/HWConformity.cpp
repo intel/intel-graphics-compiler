@@ -7472,9 +7472,13 @@ void HWConformity::fixSrc2(INST_LIST_ITER it, G4_BB* bb, bool swapSrc0and2)
         unsigned short dstEltSz = inst->getDst()->getExecTypeSize();
         if (dstEltSz >= 4)
         {
-            if (IS_TYPE_INT(srcTy))
+            if (IS_SIGNED_INT(srcTy))
             {
                 srcTy = Type_D;
+            }
+            else if (IS_UNSIGNED_INT(srcTy))
+            {
+                srcTy = Type_UD;
             }
             else if (builder.hasMixMode() && builder.getMixModeType() == srcTy)
             {
