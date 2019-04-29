@@ -32,10 +32,10 @@ namespace vISA
 
 class MDLocation {
     int lineNo;
-    char* srcFilename;
+    const char* srcFilename;
 
     MDLocation() : lineNo(-1), srcFilename(nullptr) {}
-    MDLocation(int lineNo, char *srcFilename) :
+    MDLocation(int lineNo, const char *srcFilename) :
         lineNo(lineNo), srcFilename(srcFilename) {}
 
     friend class IR_Builder;
@@ -45,8 +45,8 @@ public:
     void* operator new(size_t sz, Mem_Manager& m) { return m.alloc(sz); }
     int getLineNo() { return lineNo; }
     void setLineNo(int line) { lineNo = line; }
-    char* getSrcFilename() const { return srcFilename; }
-    void setSrcFilename(char* filename) { srcFilename = filename; }
+    const char* getSrcFilename() const { return srcFilename; }
+    void setSrcFilename(const char* filename) { srcFilename = filename; }
 };
 
 }

@@ -4174,8 +4174,7 @@ void Optimizer::optimizeLogicOperation()
 
     if (!doLogicOpt)
     {
-
-        // we still need to expand the pseudo logic ops 
+        // we still need to expand the pseudo logic ops
         for (auto bb : fg)
         {
             for (auto I = bb->begin(), E = bb->end(); I != E; ++I)
@@ -8590,7 +8589,7 @@ static G4_Declare* getInputDeclare(IR_Builder& builder,
     uint32_t eltBytes = G4_Type_Table[eltType].byteSize;
     MUST_BE_TRUE((offset % eltBytes) == 0, "Offset shoule be mutiple of element size");
     offset = offset / eltBytes;
-    char *name = builder.getNameString(builder.mem, 16, "InputR%d.%d", input->getRegVar()->getPhyReg()->asGreg()->getRegNum(), offset);
+    const char *name = builder.getNameString(builder.mem, 16, "InputR%d.%d", input->getRegVar()->getPhyReg()->asGreg()->getRegNum(), offset);
     G4_Declare* newInputDcl = builder.createDeclareNoLookup(name, G4_INPUT, (uint16_t) bundleSize, 1,
         eltType);
     newInputDcl->getRegVar()->setPhyReg(input->getRegVar()->getPhyReg(), offset);

@@ -4869,8 +4869,9 @@ int VISAKernelImpl::AppendVISAMiscFileInst(const char *fileName)
     if(IS_GEN_BOTH_PATH)
     {
         size_t fileLen = strlen(fileName) + 1;
-        m_builder->curFile = (char*)m_mem.alloc(fileLen);
-        strcpy_s(m_builder->curFile, fileLen, fileName);
+        char *newFile = (char*)m_mem.alloc(fileLen);
+        m_builder->curFile = newFile;
+        strcpy_s(newFile, fileLen, fileName);
     }
     if(IS_VISA_BOTH_PATH)
     {

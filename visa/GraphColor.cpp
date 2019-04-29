@@ -3628,7 +3628,7 @@ void Augmentation::buildLiveIntervals()
 
             if (inst->isCall() == true)
             {
-                char* name = kernel.fg.builder->getNameString(kernel.fg.builder->mem, 32, "SCALL_%d", funcCnt++);
+                const char* name = kernel.fg.builder->getNameString(kernel.fg.builder->mem, 32, "SCALL_%d", funcCnt++);
                 G4_Declare* scallDcl = kernel.fg.builder->createDeclareNoLookup(name, G4_GRF, 1, 1, Type_UD);
 
                 updateStartInterval(scallDcl, inst);
@@ -7281,7 +7281,7 @@ void GraphColor::addA0SaveRestoreCode()
             if (!assocPseudoA0->getPhyReg())
             {
                 // Insert save/restore code because the pseudo node did not get an allocation
-                char* name = builder.getNameString(builder.mem, 20, builder.getIsKernel() ? "SA0_k%d_%d" : "SA0_f%d_%d", builder.getCUnitId(), count++);
+                const char* name = builder.getNameString(builder.mem, 20, builder.getIsKernel() ? "SA0_k%d_%d" : "SA0_f%d_%d", builder.getCUnitId(), count++);
                 G4_Declare* savedDcl = builder.createDeclareNoLookup(name, G4_GRF, numA0Elements, 1, Type_UW);
 
                 {
@@ -7346,7 +7346,7 @@ void GraphColor::addFlagSaveRestoreCode()
             if (!assocPseudoFlag->getPhyReg())
             {
                 // Insert save/restore code because the pseudo node did not get an allocation
-                char* name = builder.getNameString(builder.mem, 32, builder.getIsKernel() ? "SFLAG_k%d_%d" : "SFLAG_f%d_%d", builder.getCUnitId(), count++);
+                const char* name = builder.getNameString(builder.mem, 32, builder.getIsKernel() ? "SFLAG_k%d_%d" : "SFLAG_f%d_%d", builder.getCUnitId(), count++);
                 G4_Declare* savedDcl1 = builder.createDeclareNoLookup(name, G4_GRF, num32BitFlags, 1, Type_UD);
                 {
                     //
@@ -7468,7 +7468,7 @@ void GlobalRA::addCallerSavePseudoCode()
             uint16_t retSize = fcall->getRetSize();
             if (retSize > 0)
             {
-                char* name = builder.getNameString(builder.mem, 32, "FCALL_RETVAL_%d", retID++);
+                const char* name = builder.getNameString(builder.mem, 32, "FCALL_RETVAL_%d", retID++);
                 G4_Declare* retDcl = builder.createDeclareNoLookup(name, G4_GRF, 8, retSize, Type_UD);
                 retDcl->getRegVar()->setPhyReg(builder.phyregpool.getGreg(16), 0);
                 fcallRetMap.insert(std::pair<G4_Declare*, G4_Declare*>(pseudoVCADcl, retDcl));
@@ -8048,7 +8048,7 @@ void VarSplit::createSubDcls(G4_Kernel& kernel, G4_Declare* oldDcl, std::vector<
         int dclTotalSize = 0;
 
         getHeightWidth(oldDcl->getElemType(), (rightBound - leftBound + 1) / oldDcl->getElemSize(), dclWidth, dclHeight, dclTotalSize);
-        char* splitDclName = kernel.fg.builder->getNameString(kernel.fg.builder->mem, 16, "split_%d_%s", i, oldDcl->getName());
+        const char* splitDclName = kernel.fg.builder->getNameString(kernel.fg.builder->mem, 16, "split_%d_%s", i, oldDcl->getName());
         splitDcl = kernel.fg.builder->createDeclareNoLookup(splitDclName, G4_GRF, dclWidth, dclHeight, oldDcl->getElemType());
         gra.setSubOffset(splitDcl, leftBound);
         splitDcl->setAlign(oldDcl->getAlign());
@@ -8107,7 +8107,7 @@ void VarSplit::insertMovesFromTemp(G4_Kernel& kernel, G4_Declare* oldDcl, int in
         int dclTotalSize = 0;
         G4_SrcRegRegion* oldSrc = srcOpnd->asSrcRegRegion();
         getHeightWidth(oldSrc->getType(), (srcOpnd->getRightBound() - srcOpnd->getLeftBound() + 1) / oldSrc->getElemSize(), dclWidth, dclHeight, dclTotalSize);
-        char* newDclName = kernel.fg.builder->getNameString(kernel.fg.builder->mem, 16, "copy_%d_%s", index, oldDcl->getName());
+        const char* newDclName = kernel.fg.builder->getNameString(kernel.fg.builder->mem, 16, "copy_%d_%s", index, oldDcl->getName());
         G4_Declare * newDcl = kernel.fg.builder->createDeclareNoLookup(newDclName, G4_GRF, dclWidth, dclHeight, oldSrc->getType());
         newDcl->setAlign(oldDcl->getAlign());
         newDcl->setSubRegAlign(oldDcl->getSubRegAlign());
@@ -8586,7 +8586,7 @@ void VarSplit::localSplit(IR_Builder& builder,
             }
             pre_rightBound = rightBound;
 
-            char* name = builder.getNameString(builder.mem, strlen(dclName) + 16, "%s_%d_%d_%d", dclName, splitid, leftBound, rightBound);
+            const char* name = builder.getNameString(builder.mem, strlen(dclName) + 16, "%s_%d_%d_%d", dclName, splitid, leftBound, rightBound);
             unsigned short dclWidth = 0;
             unsigned short dclHeight = 0;
             int dclTotalSize = 0;
@@ -9165,7 +9165,7 @@ int GlobalRA::coloringRegAlloc()
                     return CM_SPILL;
                 }
 
-                bool runRemat = kernel.getOptions()->getTarget() == VISA_CM ? true : 
+                bool runRemat = kernel.getOptions()->getTarget() == VISA_CM ? true :
                     kernel.getSimdSize() < G4_GRF_REG_NBYTES;
                 // -noremat takes precedence over -forceremat
                 bool rematOff = !kernel.getOption(vISA_Debug) &&
@@ -10708,7 +10708,7 @@ void GlobalRA::insertPhyRegDecls()
     {
         if (grfUsed[i] == true)
         {
-            char* dclName = builder.getNameString(builder.mem, 10, "r%d", i);
+            const char* dclName = builder.getNameString(builder.mem, 10, "r%d", i);
             G4_Declare* phyRegDcl = builder.createDeclareNoLookup(dclName, G4_GRF, 8, 1, Type_D, Regular, NULL, NULL, 0);
             G4_Greg* phyReg = builder.phyregpool.getGreg(i);
             phyRegDcl->getRegVar()->setPhyReg(phyReg, 0);

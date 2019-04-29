@@ -979,7 +979,7 @@ public:
         T *myBin,
         G4_SrcRegRegion *srcRegion )
     {
-        char *swizzle = srcRegion->getSwizzle();
+        const char *swizzle = srcRegion->getSwizzle();
         if (swizzle[0] == 'r')
             SrcOperandEncoder<T, SrcNum>::SrcReplicateControl(myBin, G9HDL::REPCTRL_REPLICATE_ACROSS_ALL_CHANNELS );
         else
@@ -1010,7 +1010,7 @@ public:
             ASSERT_USER(false, "acc2~acc7 were set on wrong instruction");
         }
 
-        char *swizzle = srcRegion->getSwizzle();
+        const char *swizzle = srcRegion->getSwizzle();
         if (swizzle[0] != '\0' && swizzle[0] != 'r') {
             ChanSelectValid = true;
             ChanSel ch0 = EncodingHelper::GetSrcChannelSelectValue(srcRegion, 0);

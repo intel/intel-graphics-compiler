@@ -76,7 +76,7 @@ G4_Declare* SpillManager::createNewSpillLocDeclare(G4_Declare* dcl)
 //
 G4_Declare* SpillManager::createNewTempAddrDeclare(G4_Declare* dcl)
 {
-    char* name = builder.getNameString(builder.mem, 16, "Temp_ADDR_%d", tempDclId++);
+    const char* name = builder.getNameString(builder.mem, 16, "Temp_ADDR_%d", tempDclId++);
 
     MUST_BE_TRUE(dcl->getElemType() == Type_UW || dcl->getElemType() == Type_W, "addr reg's type should be UW");
     MUST_BE_TRUE(dcl->getNumRows() == 1, "Temp_ADDR should be only 1 row");
@@ -97,7 +97,7 @@ G4_Declare* SpillManager::createNewTempAddrDeclare(G4_Declare* dcl)
 
 G4_Declare* SpillManager::createNewTempFlagDeclare(G4_Declare* dcl)
 {
-    char* name = builder.getNameString(builder.mem, 32, "Temp_FSPILL_%d", tempDclId++);
+    const char* name = builder.getNameString(builder.mem, 32, "Temp_FSPILL_%d", tempDclId++);
 
     assert(dcl->getRegFile() == G4_FLAG && "dcl should be a flag");
     G4_Declare* sp = builder.createFlag(dcl->getNumberFlagElements(), name);
@@ -114,7 +114,7 @@ G4_Declare* SpillManager::createNewTempFlagDeclare(G4_Declare* dcl)
 //
 G4_Declare* SpillManager::createNewTempAddrDeclare(G4_Declare* dcl, uint16_t num_reg)
 {
-    char* name = builder.getNameString(builder.mem, 16, "Temp_ADDR_%d", tempDclId++);
+    const char* name = builder.getNameString(builder.mem, 16, "Temp_ADDR_%d", tempDclId++);
 
     G4_Type type = dcl->getElemType();
     MUST_BE_TRUE(type == Type_UW ||

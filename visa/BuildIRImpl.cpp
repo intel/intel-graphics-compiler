@@ -295,7 +295,7 @@ G4_INST* IR_Builder::createInternalInst(G4_Predicate* prd,
                                         G4_Operand* src1,
                                         unsigned int option,
                                         int lineno, int CISAoff,
-                                        char* srcFilename)
+                                        const char* srcFilename)
 {
     MUST_BE_TRUE(op != G4_math, "IR_Builder::createInternalInst should not be used to create math instructions");
 
@@ -341,7 +341,7 @@ G4_INST* IR_Builder::createInternalCFInst(
     unsigned int option,
     int lineno,
     int CISAoff,
-    char* srcFilename)
+    const char* srcFilename)
 {
     MUST_BE_TRUE(G4_Inst_Table[op].instType == InstTypeFlow,
                  "IR_Builder::createInternalCFInst must be used with InstTypeFlow instruction class");
@@ -437,7 +437,7 @@ G4_INST* IR_Builder::createInternalInst(G4_Predicate* prd,
                                         G4_Operand* src2,
                                         unsigned int option,
                                         int lineno, int CISAoff,
-                                        char* srcFilename)
+                                        const char* srcFilename)
 {
     auto ii = createInst(prd, op, mod, sat, size, dst, src0, src1, src2, option,
         lineno, false);
@@ -494,7 +494,7 @@ G4_InstSend* IR_Builder::createInternalSendInst(G4_Predicate* prd,
     G4_SendMsgDescriptor *msgDesc,
     int lineno,
     int CISAoff,
-    char* srcFilename)
+    const char* srcFilename)
 {
     auto ii = createSendInst(prd, op, size, postDst, currSrc,
         msg, option, msgDesc, lineno, false);
@@ -568,7 +568,7 @@ G4_InstSend* IR_Builder::createInternalSplitSendInst(G4_Predicate* prd,
     G4_Operand* src3,      // ext msg desciptor: imm or vec
     int lineno,
     int CISAoff,
-    char* srcFilename)
+    const char* srcFilename)
 {
     auto ii = createSplitSendInst(prd, op, size, dst, src0, src1, msg, option,
         msgDesc, src3, lineno, false);
@@ -628,7 +628,7 @@ G4_INST* IR_Builder::createInternalMathInst(G4_Predicate* prd,
     unsigned int option,
     int lineno,
     int CISAoff,
-    char* srcFilename)
+    const char* srcFilename)
 {
     auto ii = createMathInst(prd, sat, size, dst, src0, src1, mathOp, option, lineno, false);
 
@@ -669,7 +669,7 @@ G4_INST* IR_Builder::createIntrinsicInst(G4_Predicate* prd, Intrinsic intrinId,
 G4_INST* IR_Builder::createInternalIntrinsicInst(G4_Predicate* prd, Intrinsic intrinId,
     uint8_t size, G4_DstRegRegion* dst,
     G4_Operand* src0, G4_Operand* src1, G4_Operand* src2,
-    unsigned int option, int lineno, int CISAoff, char* srcFilename)
+    unsigned int option, int lineno, int CISAoff, const char* srcFilename)
 {
     auto ii = createIntrinsicInst(prd, intrinId, size, dst, src0, src1, src2, option,
         lineno, false);
@@ -763,7 +763,7 @@ G4_SrcRegRegion* IR_Builder::createBindlessExDesc(uint32_t exdesc)
 {
     // virtual var for each exdesc
     G4_SrcRegRegion* T252 = Create_Src_Opnd_From_Dcl(builtinT252, getRegionScalar());
-    char* buf = getNameString(mem, 20, "ExDesc%d", num_temp_dcl++);
+    const char* buf = getNameString(mem, 20, "ExDesc%d", num_temp_dcl++);
     G4_Declare* exDescDecl = createDeclareNoLookup(buf, G4_ADDRESS, 1, 1, Type_UD);
     exDescDecl->setSubRegAlign(Four_Word);
     G4_DstRegRegion* dst = Create_Dst_Opnd_From_Dcl(exDescDecl, 1);
@@ -1092,7 +1092,7 @@ G4_InstSend *IR_Builder::Create_SplitSend_Inst_For_RTWrite(G4_Predicate *pred,
 // create a dcl for MRF, size in UD is given
 G4_Declare* IR_Builder::Create_MRF_Dcl( unsigned num_elt, G4_Type type )
 {
-    char* name = getNameString(mem, 16, "M%u", ++num_general_dcl);
+    const char* name = getNameString(mem, 16, "M%u", ++num_general_dcl);
     unsigned short numRow = ( num_elt * G4_Type_Table[type].byteSize - 1 ) / GENX_MRF_REG_SIZ + 1;
     unsigned short numElt = ( numRow == 1 ) ? num_elt : (GENX_MRF_REG_SIZ/G4_Type_Table[type].byteSize);
     G4_Declare *dcl = createDeclareNoLookup(

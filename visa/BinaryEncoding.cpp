@@ -1087,7 +1087,7 @@ inline void EncodeSrc0ChanSelect( G4_INST *inst,
         ASSERT_USER(false, "acc2~acc7 were set on wrong instruction");
     }
 
-    char *swizzle = srcRegion->getSwizzle();
+    const char *swizzle = srcRegion->getSwizzle();
     if (swizzle[0] != '\0' && swizzle[0] != 'r') {
         ChanSel ch0 = EncodingHelper::GetSrcChannelSelectValue(srcRegion, 0);
         ChanSel ch1 = EncodingHelper::GetSrcChannelSelectValue(srcRegion, 1);
@@ -1130,7 +1130,7 @@ inline void EncodeSrc0ChanSelect( G4_INST *inst,
 
 inline void EncodeSrc0RepCtrl(BinInst *mybin, G4_SrcRegRegion *srcRegion)
 {
-    char *swizzle = srcRegion->getSwizzle();
+    const char *swizzle = srcRegion->getSwizzle();
     if (swizzle[0] == 'r')
         SetSrc0RepCtrl(mybin, 0x1);
     else
@@ -1844,7 +1844,7 @@ inline void EncodeSrc1ChanSelect(G4_INST *inst, BinInst *mybin, G4_SrcRegRegion 
         ASSERT_USER(false, "acc2~acc7 were set on wrong instruction");
     }
 
-    char *swizzle = srcRegion->getSwizzle();
+    const char *swizzle = srcRegion->getSwizzle();
     if (swizzle[0] != '\0' && swizzle[0] != 'r') {
         ChanSel ch0 = EncodingHelper::GetSrcChannelSelectValue(srcRegion, 0);
         ChanSel ch1 = EncodingHelper::GetSrcChannelSelectValue(srcRegion, 1);
@@ -1887,7 +1887,7 @@ inline void EncodeSrc1ChanSelect(G4_INST *inst, BinInst *mybin, G4_SrcRegRegion 
 
 inline void EncodeSrc1RepCtrl(BinInst *mybin, G4_SrcRegRegion *srcRegion)
 {
-    char *swizzle = srcRegion->getSwizzle();
+    const char *swizzle = srcRegion->getSwizzle();
     if (swizzle[0] == 'r')
         SetSrc1RepCtrl(mybin, 0x1);
     else
@@ -2476,7 +2476,7 @@ inline void EncodeSrc2ChanSelect( G4_INST *inst,
         ASSERT_USER(false, "acc2~acc7 were set on wrong instruction");
     }
 
-    char *swizzle = srcRegion->getSwizzle();
+    const char *swizzle = srcRegion->getSwizzle();
     {
         if (swizzle[0] != '\0' && swizzle[0] != 'r')
         {
@@ -2510,7 +2510,7 @@ inline void EncodeSrc2ChanSelect( G4_INST *inst,
 
 inline void EncodeSrc2RepCtrl(BinInst *mybin, G4_SrcRegRegion *srcRegion)
 {
-    char *swizzle = srcRegion->getSwizzle();
+    const char *swizzle = srcRegion->getSwizzle();
     if (swizzle[0] == 'r')
         SetSrc2RepCtrl(mybin, 0x1);
     else

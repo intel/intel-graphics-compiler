@@ -323,7 +323,6 @@ G4_SendMsgDescriptor::G4_SendMsgDescriptor(
     eotAfterMessage = false;
 }
 
-
 uint32_t G4_SendMsgDescriptor::getHdcMessageType() const
 {
     MUST_BE_TRUE(isHDC(),"not an HDC message");
@@ -337,7 +336,7 @@ void G4_SendMsgDescriptor::setEOT() {
     extDesc.layout.eot = true;
 }
 
-static bool isIntAtomicMessage(SFID funcID, uint16_t msgType)
+static bool isHdcIntAtomicMessage(SFID funcID, uint16_t msgType)
 {
     if (funcID != SFID::DP_DC1)
         return false;
@@ -354,7 +353,7 @@ static bool isIntAtomicMessage(SFID funcID, uint16_t msgType)
     return false;
 }
 
-static bool isFloatAtomicMessage(SFID funcID, uint16_t msgType)
+static bool isHdcFloatAtomicMessage(SFID funcID, uint16_t msgType)
 {
     if (funcID != SFID::DP_DC1)
         return false;
@@ -375,8 +374,8 @@ bool G4_SendMsgDescriptor::isAtomicMessage() const
     if (!isHDC())
         return false; // guard getMessageType() on SFID without a message type
     uint16_t msgType = getHdcMessageType();
-    return isIntAtomicMessage(funcID,msgType) ||
-        isFloatAtomicMessage(funcID,msgType);
+    return isHdcIntAtomicMessage(funcID,msgType) ||
+        isHdcFloatAtomicMessage(funcID,msgType);
 }
 
 uint16_t G4_SendMsgDescriptor::getHdcAtomicOp() const
@@ -384,7 +383,7 @@ uint16_t G4_SendMsgDescriptor::getHdcAtomicOp() const
     MUST_BE_TRUE(isHDC(),"must be HDC message");
     MUST_BE_TRUE(isAtomicMessage(), "getting atomicOp from non-atomic message!");
     uint32_t funcCtrl = getFuncCtrl();
-    if (isIntAtomicMessage(getFuncId(), getHdcMessageType()))
+    if (isHdcIntAtomicMessage(getFuncId(), getHdcMessageType()))
     {
         // bits: 11:8
         return (uint16_t)((funcCtrl >> 8) & 0xF);
@@ -1054,7 +1053,7 @@ G4_Type G4_INST::getExecType2() const
     return execType;
 }
 
-uint16_t G4_INST::getMaskOffset()
+uint16_t G4_INST::getMaskOffset() const
 {
     unsigned maskOption = (this->getOption() & InstOpt_QuarterMasks);
 
@@ -1131,6 +1130,26 @@ void G4_INST::removeDefUse( Gen4_Operand_Number opndNum )
         }
     }
 }
+
+const G4_Operand* G4_INST::getOperand(Gen4_Operand_Number opnd_num) const
+{
+    switch(opnd_num){
+    case Opnd_dst: return (G4_Operand*) dst;
+    case Opnd_src0: return srcs[0];
+    case Opnd_src1: return srcs[1];
+    case Opnd_src2: return srcs[2];
+    case Opnd_src3: return srcs[3];
+    case Opnd_pred: return (G4_Operand*)predicate;
+    case Opnd_condMod: return (G4_Operand*)mod;
+    case Opnd_implAccSrc: return implAccSrc;
+    case Opnd_implAccDst: return (G4_Operand*) implAccDst;
+    default:
+        MUST_BE_TRUE( 0, "Operand number is out of range." );
+        break;
+    }
+    return NULL;
+}
+
 
 USE_EDGE_LIST_ITER G4_INST::eraseUse(USE_EDGE_LIST_ITER iter)
 {
@@ -1579,14 +1598,14 @@ void G4_INST::fixMACSrc2DefUse()
 // -- no saturation or src modifiers
 // -- same dst and src type
 // -- no conditional modifier (predicate is ok)
-bool G4_INST::isRawMov()
+bool G4_INST::isRawMov() const
 {
     return op == G4_mov && !sat && dst->getType() == srcs[0]->getType() &&
         getCondMod() == NULL &&
         (srcs[0]->isImm() ||
         (srcs[0]->isSrcRegRegion() && srcs[0]->asSrcRegRegion()->getModifier() == Mod_src_undef));
 }
-bool G4_INST::hasACCSrc()
+bool G4_INST::hasACCSrc() const
 {
     if( implAccSrc ||
         ( srcs[0] && srcs[0]->isSrcRegRegion() && srcs[0]->asSrcRegRegion()->isAccReg() ) )
@@ -1597,7 +1616,7 @@ bool G4_INST::hasACCSrc()
 }
 
 // check if acc is possibly used by this instruction
-bool G4_INST::hasACCOpnd()
+bool G4_INST::hasACCOpnd() const
 {
     return ( isAccWrCtrlInst() ||
         implAccSrc ||
@@ -1637,8 +1656,8 @@ G4_Type G4_INST::getOpExecType( int& extypesize )
     return extype;
 }
 
-static G4_INST::MovType getMovType(G4_INST* Inst, G4_Type dstTy, G4_Type srcTy,
-                                   G4_SrcModifier srcMod)
+static G4_INST::MovType getMovType(
+    const G4_INST* Inst, G4_Type dstTy, G4_Type srcTy, G4_SrcModifier srcMod)
 {
     // COPY when dst & src types are the same.
     if (dstTy == srcTy)
@@ -1737,7 +1756,7 @@ static G4_INST::MovType getMovType(G4_INST* Inst, G4_Type dstTy, G4_Type srcTy,
 }
 
 // check if this instruction can be propagated
-G4_INST::MovType G4_INST::canPropagate()
+G4_INST::MovType G4_INST::canPropagate() const
 {
     G4_Declare* topDcl = NULL;
 
@@ -1937,7 +1956,7 @@ bool G4_INST::isFloatOnly() const
 /// specified source operand.
 bool G4_INST::isSignSensitive(Gen4_Operand_Number opndNum) const
 {
-    G4_Operand *use = getOperand(opndNum);
+    const G4_Operand *use = getOperand(opndNum);
     G4_Type useType = use->getType();
     G4_Type dstType = dst->getType();
 
@@ -1968,9 +1987,10 @@ bool G4_INST::isSignSensitive(Gen4_Operand_Number opndNum) const
     return false;
 }
 
-G4_Type G4_INST::getPropType(Gen4_Operand_Number opndNum, MovType MT, G4_INST *mov)
+G4_Type G4_INST::getPropType(
+    Gen4_Operand_Number opndNum, MovType MT, const G4_INST *mov) const
 {
-    G4_Operand *use = getOperand(opndNum);
+    const G4_Operand *use = getOperand(opndNum);
     G4_Type useType = use->getType();
     G4_Type srcType = mov->getSrc(0)->getType();
 
@@ -2415,7 +2435,7 @@ bool G4_INST::canPropagateTo(G4_INST *useInst, Gen4_Operand_Number opndNum, MovT
 
 // check if this inst can be hoisted
 // assume only MOV inst is checked
-bool G4_INST::canHoist(bool simdBB, const Options *opt)
+bool G4_INST::canHoist(bool simdBB, const Options *opt) const
 {
     if (dst == NULL)
     {
@@ -2477,7 +2497,7 @@ bool G4_INST::canHoist(bool simdBB, const Options *opt)
 }
 
 // check if this instruction can be hoisted to defInst
-bool G4_INST::canHoistTo( G4_INST *defInst, bool simdBB)
+bool G4_INST::canHoistTo(const G4_INST *defInst, bool simdBB) const
 {
 
     bool indirect_dst = (dst->getRegAccess() != Direct);
@@ -2884,7 +2904,7 @@ bool G4_INST::canUseACCOpt( bool handleComprInst, bool checkRegion, uint16_t &hs
     return true;
 }
 
-bool G4_INST::hasNULLDst()
+bool G4_INST::hasNULLDst() const
 {
     if( dst && dst->isNullReg() )
     {
@@ -3237,7 +3257,7 @@ bool G4_INST::isAccDstInst() const
     return false;
 }
 
-bool G4_INST::isArithAddr()
+bool G4_INST::isArithAddr() const
 {
     if (srcs[1] != NULL)
         return isArithmetic() && srcs[1]->isAddrExp();
@@ -3245,7 +3265,7 @@ bool G4_INST::isArithAddr()
         return false;
 }
 
-bool G4_INST::isMovAddr()
+bool G4_INST::isMovAddr() const
 {
     if (srcs[0] != NULL)
         return isMov() && srcs[0]->isAddrExp();
@@ -3256,7 +3276,7 @@ bool G4_INST::isMovAddr()
 // Check if the operands of send instruction obey the symbolic register rule
 // ToDo: this is obsolete and should be removed
 //
-bool G4_INST::isValidSymbolOperand(bool &dst_valid, bool *srcs_valid)
+bool G4_INST::isValidSymbolOperand(bool &dst_valid, bool *srcs_valid) const
 {
     MUST_BE_TRUE(srcs_valid, ERROR_INTERNAL_ARGUMENT);
 
@@ -3285,7 +3305,7 @@ bool G4_INST::isValidSymbolOperand(bool &dst_valid, bool *srcs_valid)
     return obeyRule;
 }
 
-G4_VarBase* G4_INST::getCondModBase()
+const G4_VarBase* G4_INST::getCondModBase() const
 {
     if (!getCondMod())
         return nullptr;
@@ -3293,7 +3313,7 @@ G4_VarBase* G4_INST::getCondModBase()
     return getCondMod()->getBase();
 }
 
-bool G4_INST::isOptBarrier()
+bool G4_INST::isOptBarrier() const
 {
     if (op == G4_join)
     {
@@ -3415,7 +3435,7 @@ bool G4_InstSend::isDirectSplittableSend()
 //
 void G4_InstSend::emit_send(std::ostream& output, bool symbol_dst, bool *symbol_srcs)
 {
-    G4_InstSend* sendInst = this;
+    const G4_InstSend* sendInst = this;
 
     if (sendInst->predicate)
     {
@@ -3484,32 +3504,6 @@ void G4_InstSend::emit_send(std::ostream& output, bool symbol_dst, bool *symbol_
     sendInst->emit_options(output);
 }
 
-void G4_InstSend::emit_send_desc(std::ostream& output)
-{
-    G4_INST* sendInst = this;
-
-    // Emit a text description of the descriptor if it is available
-     G4_SendMsgDescriptor* msgDesc = sendInst->getMsgDesc();
-     output << " // ";
-
-     if (msgDesc->getDescType() != NULL)
-     {
-         output << msgDesc->getDescType();
-     }
-
-     output << ", resLen=" << msgDesc->ResponseLength();
-     output << ", msgLen=" << msgDesc->MessageLength();
-     if (isSplitSend())
-     {
-         output << ", extMsgLen=" << msgDesc->extMessageLength();
-     }
-
-     if (msgDesc->isBarrierMsg())
-     {
-         output << ", barrier";
-     }
-}
-
 void G4_InstSend::emit_send(std::ostream& output, bool dotStyle)
 {
 
@@ -3538,13 +3532,39 @@ void G4_InstSend::emit_send(std::ostream& output, bool dotStyle)
         emit_send(output, false, NULL);
 }
 
+void G4_InstSend::emit_send_desc(std::ostream& output)
+{
+    const G4_INST* sendInst = this;
+
+    // Emit a text description of the descriptor if it is available
+     G4_SendMsgDescriptor* msgDesc = sendInst->getMsgDesc();
+     output << " // ";
+
+     if (msgDesc->getDescType() != NULL)
+     {
+         output << msgDesc->getDescType();
+     }
+
+     output << ", resLen=" << msgDesc->ResponseLength();
+     output << ", msgLen=" << msgDesc->MessageLength();
+     if (isSplitSend())
+     {
+         output << ", extMsgLen=" << msgDesc->extMessageLength();
+     }
+
+     if (msgDesc->isBarrierMsg())
+     {
+         output << ", barrier";
+     }
+}
+
 //
 // Add symbolic register support, emit instruction based on the situation of operands
 //
 void G4_INST::emit_inst(std::ostream& output, bool symbol_dst, bool *symbol_srcs)
 {
 
-    if ( op==G4_nop )
+    if (op==G4_nop)
     {
         output << G4_Inst_Table[op].str;
         return;
@@ -3694,7 +3714,7 @@ std::ostream& operator<<(std::ostream& os, G4_INST& inst)
 }
 
 void
-G4_INST::emit_options(std::ostream& output)
+G4_INST::emit_options(std::ostream& output) const
 {
     unsigned int tmpOption = this->option;
 
@@ -4502,7 +4522,7 @@ void G4_SrcRegRegion::emit(std::ostream& output, bool symbolreg)
 
 //
 
-bool G4_SrcRegRegion::isScalar()
+bool G4_SrcRegRegion::isScalar() const
 
 {
 
@@ -4522,7 +4542,7 @@ bool G4_SrcRegRegion::isScalar()
 //
 // This function is used to check if the src operand obey the rule of symbolic register. We need this function to check the operand before we emit an instruction
 //
-bool G4_SrcRegRegion::obeySymbolRegRule()
+bool G4_SrcRegRegion::obeySymbolRegRule() const
 {
     if (!base->isRegVar())          // only for reg var
         return false;
@@ -4990,12 +5010,12 @@ static G4_CmpRelation compareRegRegionToOperand(G4_Operand* regRegion, G4_Operan
     }
 }
 
-G4_CmpRelation G4_DstRegRegion::compareOperand( G4_Operand *opnd)
+G4_CmpRelation G4_DstRegRegion::compareOperand(G4_Operand *opnd)
 {
     return compareRegRegionToOperand(this, opnd);
 }
 
-bool G4_DstRegRegion::isNativeType()
+bool G4_DstRegRegion::isNativeType() const
 {
     G4_Type type = getType();
 
@@ -5007,7 +5027,7 @@ bool G4_DstRegRegion::isNativeType()
     }
 }
 
-bool G4_DstRegRegion::isNativePackedRowRegion()
+bool G4_DstRegRegion::isNativePackedRowRegion() const
 {
     if (isNativeType()) {
         return horzStride  == 1;
@@ -5017,7 +5037,7 @@ bool G4_DstRegRegion::isNativePackedRowRegion()
     }
 }
 
-bool G4_DstRegRegion::isNativePackedRegion()
+bool G4_DstRegRegion::isNativePackedRegion() const
 {
     return isNativePackedRowRegion();
 }
@@ -5107,7 +5127,7 @@ bool G4_DstRegRegion::evenlySplitCrossGRF( uint8_t execSize )
  * if the first level dcl is not aligned to GRF or sub register offset of this opnd is not multiple GRFs, including 0,
  * return true.
  */
-bool G4_DstRegRegion::checkGRFAlign()
+bool G4_DstRegRegion::checkGRFAlign() const
 {
 
     bool GRF_aligned = false;
@@ -5377,7 +5397,7 @@ void G4_DstRegRegion::emit(std::ostream& output, bool symbolreg)
 //
 // This function is used to check if the src operand obey the rule of symbolic register. We need this function to check the operand before we emit an instruction
 //
-bool G4_DstRegRegion::obeySymbolRegRule()
+bool G4_DstRegRegion::obeySymbolRegRule() const
 {
     if (!base->isRegVar())          // only for reg var
         return false;
@@ -5427,7 +5447,7 @@ void G4_DstRegRegion::emitRegVarOff(std::ostream& output, bool symbolreg)
 //
 // return true if prd and this are the same inst predicate
 //
-bool G4_Predicate::samePredicate(G4_Predicate& prd)
+bool G4_Predicate::samePredicate(const G4_Predicate& prd) const
 {
     return getBase() == prd.getBase() &&
            state == prd.state &&
@@ -5437,7 +5457,7 @@ bool G4_Predicate::samePredicate(G4_Predicate& prd)
 //
 // return true if mod and this are the same condition modifier
 //
-bool G4_CondMod::sameCondMod(G4_CondMod& m)
+bool G4_CondMod::sameCondMod(const G4_CondMod& m) const
 {
     return getBase() == m.getBase() &&
            mod == m.mod &&
@@ -6098,7 +6118,7 @@ G4_CmpRelation G4_Imm::compareOperand(G4_Operand *opnd)
 }
 
 void
-G4_Imm::emit(std::ostream& output, bool symbolreg )
+G4_Imm::emit(std::ostream& output, bool symbolreg)
 {
 
     //
@@ -6502,7 +6522,7 @@ G4_CmpRelation G4_SrcRegRegion::compareOperand( G4_Operand *opnd)
     return compareRegRegionToOperand(this, opnd);
 }
 
-bool G4_SrcRegRegion::isNativeType()
+bool G4_SrcRegRegion::isNativeType() const
 {
     G4_Type type = getType();
 
@@ -6514,7 +6534,7 @@ bool G4_SrcRegRegion::isNativeType()
     }
 }
 
-bool G4_SrcRegRegion::isNativePackedRowRegion()
+bool G4_SrcRegRegion::isNativePackedRowRegion() const
 {
     if (isNativeType())
     {
@@ -6526,7 +6546,7 @@ bool G4_SrcRegRegion::isNativePackedRowRegion()
     return false;
 }
 
-bool G4_SrcRegRegion::isNativePackedRegion()
+bool G4_SrcRegRegion::isNativePackedRegion() const
 {
     return isNativePackedRowRegion() && desc->vertStride == desc->width;
 }
@@ -6738,7 +6758,7 @@ bool G4_SrcRegRegion::isNativePackedSrcRegion()
             ( desc->vertStride == desc->width );
 }
 
-void RegionDesc::emit(std::ostream& output)
+void RegionDesc::emit(std::ostream& output) const
 {
     if (isRegionV())
     {
@@ -6772,7 +6792,7 @@ void G4_Label::emit(std::ostream& output, bool symbolreg)
     }
 }
 
-unsigned G4_RegVar::getByteAddr()
+unsigned G4_RegVar::getByteAddr() const
 {
     MUST_BE_TRUE(reg.phyReg != NULL, ERROR_UNKNOWN);
     if (reg.phyReg->isGreg())
@@ -8017,6 +8037,102 @@ G4_INST* G4_InstIntrinsic::cloneInst()
 
     return nonConstBuilder->createInternalIntrinsicInst(prd, getIntrinsicId(), getExecSize(), dst,
         src0, src1, src2, option, getLineNo(), getCISAOff(), getSrcFilename());
+}
+
+bool RegionDesc::isLegal(unsigned vs, unsigned w, unsigned hs)
+{
+    auto isPositiveAndLegal = [](unsigned val, unsigned high) {
+        if (val == UNDEFINED_SHORT)
+            return true;
+        if (val > high || val == 0)
+            return false;
+        return ((val - 1) & val) == 0;
+    };
+    return isPositiveAndLegal(w, 16) &&
+            (vs == 0 || isPositiveAndLegal(vs, 32)) &&
+            (hs == 0 || isPositiveAndLegal(hs, 16));
+}
+
+RegionDesc::RegionDescKind RegionDesc::getRegionDescKind(
+    uint16_t size, uint16_t vstride,
+    uint16_t width, uint16_t hstride)
+{
+    // Skip special cases.
+    if (vstride == UNDEFINED_SHORT || width == UNDEFINED_SHORT ||
+        hstride == UNDEFINED_SHORT)
+        return RK_Other;
+
+    // <0;1,0>
+    if (size == 1 || (vstride == 0 && hstride == 0) ||
+        (vstride == 0 && width == 1))
+        return RK_Stride0;
+
+    // <1;1,0>
+    if ((vstride == 1 && width == 1) || (size <= width && hstride == 1) ||
+        (vstride == width && hstride == 1))
+        return RK_Stride1;
+
+    // <N;1,0>
+    uint16_t stride = 0;
+    if (vstride == width * hstride || width == size)
+    {
+        stride = hstride;
+    }
+    else if (width == 1 && hstride == 0 )
+    {
+        stride = vstride;
+    }
+
+    return (stride == 2) ? RK_Stride2 : (stride == 4) ? RK_Stride4
+                                                      : RK_Other;
+}
+
+bool RegionDesc::isContiguous(unsigned ExSize) const
+{
+    if (vertStride == 1 && width == 1)
+        return true;
+    if (vertStride == width && horzStride == 1)
+        return true;
+
+    return (ExSize == 1) ||
+            (ExSize <= (unsigned)width && horzStride == 1);
+}
+bool RegionDesc::isSingleNonUnitStride(uint32_t execSize, uint16_t& stride) const
+{
+    if (isScalar() || isContiguous(execSize))
+    {
+        return false;
+    }
+
+    if (vertStride == width * horzStride || width == execSize)
+    {
+        stride = horzStride;
+        return true;
+    }
+
+    if (horzStride == 0 && width == 1)
+    {
+        stride = vertStride;
+        return true;
+    }
+
+    return false;
+}
+
+bool RegionDesc::isSingleStride(uint32_t execSize, uint16_t &stride) const
+{
+    if (isScalar())
+    {
+        stride = 0;
+        return true;
+    }
+    if (isContiguous(execSize))
+    {
+        stride = 1;
+        return true;
+    }
+
+    return isSingleNonUnitStride(execSize, stride);
 }
 
 G4_INST* G4_InstMath::cloneInst()

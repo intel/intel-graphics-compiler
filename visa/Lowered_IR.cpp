@@ -29,7 +29,7 @@ using namespace vISA;
 
 /* G4_SrcRegRegion */
 
-unsigned short G4_SrcRegRegion::ExRegNum(bool &valid){
+unsigned short G4_SrcRegRegion::ExRegNum(bool &valid) const {
     short normRegNum = 0;
     short registerOffset = (regOff == (short)UNDEFINED_SHORT)? 0: regOff;
     short subRegisterOffset = (subRegOff == (short)UNDEFINED_SHORT)? 0: subRegOff;

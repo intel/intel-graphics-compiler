@@ -338,7 +338,7 @@ class IR_Builder {
 
 public:
 
-    char* curFile;
+    const char* curFile;
     unsigned int curLine;
     int curCISAOffset;
 
@@ -654,7 +654,7 @@ public:
 
     PVISA_WA_TABLE getPWaTable() { return m_pWaTable; }
 
-    char* getNameString(Mem_Manager& mem, size_t size, const char* format, ...)
+    const char* getNameString(Mem_Manager& mem, size_t size, const char* format, ...)
     {
 #ifdef _DEBUG
         char* name = (char*) mem.alloc(size);
@@ -997,7 +997,8 @@ public:
     // create a new temp GRF with the specified type/size and undefined regions
     G4_Declare* createTempVar(unsigned int numElements, G4_Type type, G4_Align align, G4_SubReg_Align subAlign, const char* prefix = "TV", bool appendIdToName = true )
     {
-        char* name = appendIdToName ? getNameString(mem, 20, "%s%d", prefix, num_temp_dcl++) :
+        const char* name = appendIdToName ?
+            getNameString(mem, 20, "%s%d", prefix, num_temp_dcl++) :
             getNameString(mem, 20, "%s", prefix);
 
         unsigned short dcl_width = 0, dcl_height = 1;
@@ -1027,7 +1028,7 @@ public:
     // create a new temp GRF as the home location of a spilled addr/flag dcl
     G4_Declare* createAddrFlagSpillLoc(G4_Declare* dcl)
     {
-        char* name = getNameString(mem, 16, "SP_LOC_%d", numAddrFlagSpillLoc++);
+        const char* name = getNameString(mem, 16, "SP_LOC_%d", numAddrFlagSpillLoc++);
         G4_Declare* spillLoc = createDeclareNoLookup(name,
             G4_GRF,
             dcl->getNumElems(),
@@ -1517,7 +1518,7 @@ public:
         unsigned char size, G4_DstRegRegion* dst,
         G4_Operand* src0, G4_Operand* src1,
         unsigned int option, int lineno, int CISAoff,
-        char* srcFilename);
+        const char* srcFilename);
 
     G4_INST* createInst(G4_Predicate* prd, G4_opcode op,
         G4_CondMod* mod, bool sat,
@@ -1565,12 +1566,12 @@ public:
         unsigned char size, G4_DstRegRegion* dst,
         G4_Operand* src0, G4_Operand* src1, G4_Operand* src2,
         unsigned int option, int lineno, int CISAoff,
-        char* srcFilename);
+        const char* srcFilename);
 
     G4_INST* createInternalCFInst(G4_Predicate* prd, G4_opcode op,
         unsigned char size, G4_Label* jip, G4_Label* uip,
         unsigned int option, int lineno = 0, int CISAoff = -1,
-        char* srcFilename = NULL);
+        const char* srcFilename = NULL);
 
 
     G4_InstSend* createSendInst(G4_Predicate* prd, G4_opcode op,
@@ -1587,7 +1588,7 @@ public:
         G4_SendMsgDescriptor *msgDesc,
         int lineno = 0,
         int CISAoff = -1,
-        char* srcFilename = NULL);
+        const char* srcFilename = NULL);
 
     G4_InstSend* createSplitSendInst(G4_Predicate* prd, G4_opcode op,
         unsigned char size, G4_DstRegRegion* dst,
@@ -1606,7 +1607,7 @@ public:
         G4_Operand* src3,
         int lineno = 0,
         int CISAoff = -1,
-        char* srcFilename = NULL);
+        const char* srcFilename = NULL);
 
     G4_INST* createMathInst(G4_Predicate* prd, bool sat,
                             unsigned char size, G4_DstRegRegion* dst,
@@ -1617,7 +1618,7 @@ public:
         unsigned char size, G4_DstRegRegion* dst,
         G4_Operand* src0, G4_Operand* src1, G4_MathOp mathOp,
         unsigned int option, int lineno = 0, int CISAoff = -1,
-        char* srcFilename = NULL);
+        const char* srcFilename = NULL);
 
     G4_INST* createIntrinsicInst(G4_Predicate* prd, Intrinsic intrinId,
         unsigned char size, G4_DstRegRegion* dst,
@@ -1628,7 +1629,7 @@ public:
         unsigned char size, G4_DstRegRegion* dst,
         G4_Operand* src0, G4_Operand* src1, G4_Operand* src2,
         unsigned int option, int lineno = 0, int CISAoff = -1,
-        char* srcFilename = NULL);
+        const char* srcFilename = NULL);
 
     G4_MathOp Get_MathFuncCtrl(ISA_Opcode op, G4_Type type);
     void resizePredefinedStackVars();
@@ -2466,8 +2467,6 @@ public:
                         payloadSource sources[], unsigned len);
 
 #define FIX_OWORD_SEND_EXEC_SIZE(BLOCK_SIZE)(((BLOCK_SIZE) > 2)? 16: (BLOCK_SIZE*4))
-
-    char * createNameSpace(uint8_t size){ return (char*)mem.alloc(size); }
 
     // return either 253 or 255 for A64 messages, depending on whether we want I/A coherency or not
     uint8_t getA64BTI() const { return m_options->getOption(vISA_noncoherentStateless) ? 0xFD : 0xFF; }

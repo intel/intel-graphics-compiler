@@ -65,7 +65,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 using namespace vISA;
 
-static _THREAD char* prevFilename;
+static _THREAD const char* prevFilename;
 static _THREAD int prevSrcLineNo;
 
 bool G4_BB::isSuccBB(G4_BB* succ)
@@ -503,7 +503,7 @@ void FlowGraph::preprocess(INST_LIST& instlist)
     // ToDo: remove this once we stop generating if-else-endif for the IEEE macros
     //
     {
-        int sn = 0;        
+        int sn = 0;
         for (INST_LIST_ITER it = instlist.begin(), instlistEnd = instlist.end(); it != instlistEnd; ++it)
         {
             G4_INST *inst = *it;
@@ -632,7 +632,7 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
         if (i->isLabel() && i->getLabel()->isFuncLabel())
         {
             std::vector<G4_BB*> bbvec;
-            subroutines[i->getLabel()] = bbvec; 
+            subroutines[i->getLabel()] = bbvec;
             currSubroutine = i->getLabel();
             subroutineStartBB.push_back(curr_BB);
         }
@@ -1266,13 +1266,13 @@ void FlowGraph::handleReturn(std::map<std::string, G4_BB*>& labelMap, FuncInfoHa
                 // set callee info for CALL
                 FuncInfoHashTable::iterator calleeInfoLoc = funcInfoHashTable.find(subBB->getId());
 
-                if (calleeInfoLoc != funcInfoHashTable.end()) 
+                if (calleeInfoLoc != funcInfoHashTable.end())
                 {
                     (*calleeInfoLoc).second->incrementCallCount();
                     bb->setCalleeInfo((*calleeInfoLoc).second);
                     doIPA = true;
                 }
-                else 
+                else
                 {
                     unsigned funcId = (unsigned int)funcInfoHashTable.size();
                     FuncInfo *funcInfo = new (mem)FuncInfo(
@@ -1361,7 +1361,7 @@ void FlowGraph::mergeReturn(Label_BB_Map& map, FuncInfoHashTable& funcInfoHashTa
         // update callee exit block info
         FuncInfoHashTable::iterator calleeInfoLoc = funcInfoHashTable.find(subBB->getId());
         // it's possible for the subroutine to never be called (e.g., kernel function)
-        if (calleeInfoLoc != funcInfoHashTable.end() && mergedExitBB) 
+        if (calleeInfoLoc != funcInfoHashTable.end() && mergedExitBB)
         {
             (*calleeInfoLoc).second->getExitBB()->unsetBBType(G4_BB_EXIT_TYPE);
             mergedExitBB->setBBType(G4_BB_EXIT_TYPE);
@@ -2517,7 +2517,7 @@ G4_BB *FlowGraph::findLabelBB(char *label, int &label_offset)
         G4_BB* bb = *it;
         G4_INST *first = bb->empty() ? NULL : bb->front();
 
-        char *label_t = NULL;
+        const char *label_t = NULL;
 
         if (first && first->isLabel())
         {
@@ -3241,7 +3241,7 @@ void FlowGraph::addSaveRestorePseudoDeclares(IR_Builder& builder)
             const char* nameBase = "VCA_SAVE";
             const int maxIdLen = 3;
             MUST_BE_TRUE(id < 1000, ERROR_FLOWGRAPH);
-            char *name = builder.getNameString(mem, strlen(nameBase) + maxIdLen + 1, "%s_%d", nameBase, id);
+            const char *name = builder.getNameString(mem, strlen(nameBase) + maxIdLen + 1, "%s_%d", nameBase, id);
             pseudoVCADclList.push_back(builder.createDeclareNoLookup(name, G4_GRF, 8, 59, Type_UD));
             (*it)->asCFInst()->setAssocPseudoVCA(pseudoVCADclList.back()->getRegVar());
         }
@@ -3265,7 +3265,7 @@ void FlowGraph::addSaveRestorePseudoDeclares(IR_Builder& builder)
     unsigned int i = 0;
     for (auto callSite : callSites)
     {
-        char* name = builder.getNameString(mem, 50, builder.getIsKernel() ? "k%d_SA0_%d" : "f%d_SA0_%d", builder.getCUnitId(), i);
+        const char* name = builder.getNameString(mem, 50, builder.getIsKernel() ? "k%d_SA0_%d" : "f%d_SA0_%d", builder.getCUnitId(), i);
         G4_Declare* saveA0 = builder.createDeclareNoLookup(name, G4_ADDRESS, (unsigned short)getNumAddrRegisters(), 1, Type_UW);
         pseudoA0DclList.push_back(saveA0);
         callSite->asCFInst()->setAssocPseudoA0Save(saveA0->getRegVar());
@@ -3278,7 +3278,7 @@ void FlowGraph::addSaveRestorePseudoDeclares(IR_Builder& builder)
     unsigned int j = 0;
     for (auto callSite : callSites)
     {
-        char *name = builder.getNameString(mem, 64, builder.getIsKernel() ? "k%d_SFLAG_%d" : "f%d_SFLAG_%d", builder.getCUnitId(), j);
+        const char *name = builder.getNameString(mem, 64, builder.getIsKernel() ? "k%d_SFLAG_%d" : "f%d_SFLAG_%d", builder.getCUnitId(), j);
         G4_Declare* saveFLAG = builder.createDeclareNoLookup(name, G4_FLAG, (uint16_t)builder.getNumFlagRegisters(), 1, Type_UW);
         pseudoFlagDclList.push_back(saveFLAG);
         callSite->asCFInst()->setAssocPseudoFlagSave(saveFLAG->getRegVar());
@@ -3978,7 +3978,7 @@ void G4_BB::addEOTSend(G4_INST* lastInst)
 void G4_BB::emitInstructionInfo(std::ostream& output, INST_LIST_ITER &it)
 {
     bool emitFile = false, emitLineNo = false;
-    char* curFilename = (*it)->getSrcFilename();
+    const char* curFilename = (*it)->getSrcFilename();
     int curSrcLineNo = (*it)->getLineNo();
 
     if ((*it)->isLabel())
@@ -4753,7 +4753,7 @@ void FlowGraph::findNaturalLoops()
                     loopBody.insert(loopBlock->BBBeforeCall());
                 }
             }
-            else 
+            else
             {
                 auto entryBB = getEntryBB();
                 for (auto predBB : loopBlock->Preds)
@@ -5762,7 +5762,7 @@ std::unordered_set<G4_BB*>& PostDom::getPostDom(G4_BB* bb)
 
 void PostDom::dumpImmDom()
 {
-    for (auto I = kernel.fg.cbegin(), E = kernel.fg.cend(); I != E; ++I) 
+    for (auto I = kernel.fg.cbegin(), E = kernel.fg.cend(); I != E; ++I)
     {
         auto bb = *I;
         printf("BB%d - ", bb->getId());

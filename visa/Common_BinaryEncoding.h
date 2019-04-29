@@ -63,7 +63,7 @@ typedef enum _RegFile_
     REG_FILE_I
 } RegFile;
 
-typedef enum _ArchRegFile_           
+typedef enum _ArchRegFile_
 {                                          // (ARF Registers -- Overview):
     ARCH_REG_FILE_NULL        = 0x00,  // 0000 null    Null register
     ARCH_REG_FILE_A           = 0x01,  // 0001 a0.#    Address register
@@ -79,7 +79,7 @@ typedef enum _ArchRegFile_
     ARCH_REG_FILE_TDR_REG     = 0x0B,  // 1011 tdr     Thread dependency register
     ARCH_REG_FILE_TM_REG      = 0x0C,  // 1100 tm0     TimeStamp register
     ARCH_REG_FILE_FC_REG      = 0x0D,  // 1101 fc#.#   Flow Control register
-    ARCH_REG_FILE_DBG_REG     = 0x0F   // 1111 dbg0    Debug only 
+    ARCH_REG_FILE_DBG_REG     = 0x0F   // 1111 dbg0    Debug only
 } ArchRegFile;
 
 enum class Align1PredCtrl
@@ -190,7 +190,7 @@ namespace vISA
         {
             ChanSel ChanSelectValue = CHAN_SEL_UNDEF;
 
-            char *swizzle = srcRegion->getSwizzle();
+            const char *swizzle = srcRegion->getSwizzle();
 
             if (i < NUM_REGISTER_CHANNELS) {
                 switch (swizzle[i])        {
@@ -215,7 +215,7 @@ namespace vISA
         {
             if (src->isSrcRegRegion())
             {
-                char *swizzle = src->asSrcRegRegion()->getSwizzle();
+                const char *swizzle = src->asSrcRegRegion()->getSwizzle();
                 if (swizzle[0] != '\0')
                 {
                     if (swizzle[0] == 'r')
@@ -603,7 +603,7 @@ static uint32_t ICLCompactDataTypeTable[COMPACT_TABLE_SIZE] =
     0x40041, // 001000000000001000001
     0x400C1, // 001000000000011000001
     0x40165, // 001000000000101100101
-    0x40BE5, // 001000000101111100101    
+    0x40BE5, // 001000000101111100101
     0x40941, // 001000000100101000001
     0x40945, // 001000000100101000101
     0x40965, // 001000000100101100101
@@ -618,7 +618,7 @@ static uint32_t ICLCompactDataTypeTable[COMPACT_TABLE_SIZE] =
     0x65964, // 001100101100101100100
     0x65965, // 001100101100101100101
     0x67964, // 001100111100101100100
-    0x0040C, // 000000000010000001100 
+    0x0040C, // 000000000010000001100
     0x40065, // 001000000000001100101
     0x40145, // 001000000000101000101
     0x41040, // 001000001000001000000
@@ -1432,7 +1432,7 @@ namespace vISA
         _CompactSourceTable3Src_ CompactSourceTable3Src;
         _CompactSourceTable3SrcCHV_ CompactSourceTable3SrcCHV;
 
-    BinaryEncodingBase(Mem_Manager &m, G4_Kernel& k, std::string fname) 
+    BinaryEncodingBase(Mem_Manager &m, G4_Kernel& k, std::string fname)
         : BDWCompactControlTable(m),
         BDWCompactSourceTable(m),
         BDWCompactSubRegTable(m),

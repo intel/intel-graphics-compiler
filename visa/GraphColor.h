@@ -89,7 +89,7 @@ class LiveRange
     AssignedReg reg;
     float spillCost;
     BankConflict bc = BankConflict::BANK_CONFLICT_NONE;
-    
+
     union {
         uint16_t bunch = 0;
         struct {
@@ -872,7 +872,7 @@ namespace vISA
         // created in addStoreRestoreForFP
         G4_Declare* oldFPDcl = nullptr;
 
-        // new temps for each reference of spilled address/flag decls 
+        // new temps for each reference of spilled address/flag decls
         std::unordered_set<G4_Declare*> addrFlagSpillDcls;
 
     public:
@@ -907,7 +907,7 @@ namespace vISA
                 return result->second;
             }
 
-            char* name = builder.getNameString(kernel.fg.mem, 24, "RET__loc%d", retLoc);
+            const char* name = builder.getNameString(kernel.fg.mem, 24, "RET__loc%d", retLoc);
             G4_Declare* dcl = builder.createDeclareNoLookup(name, G4_GRF, 2, 1, Type_UD);
 
             if (VISA_WA_CHECK(builder.getPWaTable(), WaSIMD16SIMD32CallDstAlign))
@@ -1272,7 +1272,7 @@ namespace vISA
         void insertPhyRegDecls();
     };
 
-    inline G4_Declare* Interference::getGRFDclForHRA(int GRFNum) const 
+    inline G4_Declare* Interference::getGRFDclForHRA(int GRFNum) const
     {
         return gra.getGRFDclForHRA(GRFNum);
     }

@@ -421,7 +421,7 @@ SpillManagerGMRF::shouldSpillRegister (
         return false;
 #endif
 
-    else if (builder_->kernel.fg.isPseudoVCADcl(actualRegVar->getDeclare()) || 
+    else if (builder_->kernel.fg.isPseudoVCADcl(actualRegVar->getDeclare()) ||
         builder_->kernel.fg.isPseudoVCEDcl(actualRegVar->getDeclare()))
         return false;
     else
@@ -1273,8 +1273,8 @@ SpillManagerGMRF::createTransientGRFRangeDeclare (
         spillRegOffset_ += height;
     }
 
-    // FIXME: We should take the original declare's alignment too, but I'm worried 
-    // we may get perf regression if FE is over-aligning or the alignment is not necessary for this inst. 
+    // FIXME: We should take the original declare's alignment too, but I'm worried
+    // we may get perf regression if FE is over-aligning or the alignment is not necessary for this inst.
     // So Either is used for now and we can change it later if there are bugs
     setNewDclAlignment(transientRangeDeclare, Either);
     return transientRangeDeclare;
@@ -1321,7 +1321,7 @@ SpillManagerGMRF::createPostDstSpillRangeDeclare (
 
     G4_Declare * transientRangeDeclare =
         createRangeDeclare (
-            name, G4_GRF, REG_DWORD_SIZE, nRows, Type_UD, 
+            name, G4_GRF, REG_DWORD_SIZE, nRows, Type_UD,
             DeclareType::Spill, spilledRegVar, normalizedPostDst, REG_DWORD_SIZE);
 
     if( failSafeSpill_ )
@@ -2299,7 +2299,7 @@ SpillManagerGMRF::createSpillSendMsgDesc (
         message |= (blocksize_encoding << SCRATCH_MSG_DESC_BLOCK_SIZE);
         int offset = getRegionDisp(spilledRangeRegion);
         getSpillOffset(offset);
-        message |= offset >> SCRATCH_SPACE_ADDRESS_UNIT; 
+        message |= offset >> SCRATCH_SPACE_ADDRESS_UNIT;
         if (numGRFs > 1)
         {
             execSize = 16;
@@ -2569,7 +2569,7 @@ SpillManagerGMRF::sendInSpilledRegVarPortions (
     }
     else
     {
-        // Initialize the message header with the spill disp for portion. 
+        // Initialize the message header with the spill disp for portion.
         int offset = getDisp(fillRangeDcl->getRegVar()) + regOff * REG_BYTE_SIZE;
         getSpillOffset(offset);
 
@@ -2899,7 +2899,7 @@ void SpillManagerGMRF::createSpill(
         }
         else
         {
-            // esize is dependent on number of GRFs we spill. This should match the oldExecSize 
+            // esize is dependent on number of GRFs we spill. This should match the oldExecSize
             // if pre-fill is not required
             esize = size == 1 ? 8 : 16;
             funcID = SFID::DP_DC1;
@@ -3204,11 +3204,11 @@ SpillManagerGMRF::createFillSendInstr (
 /// compute the 8/16 addresses for SLM spill/fill if untyped message is used
 G4_Declare* SpillManagerGMRF::createSLMSpillAddr(int numReg, uint32_t spillOffset)
 {
-    // 
+    //
     // r1 <-- builtinSLMSpillAddr([0, 4, 8, ... 60] + perThreadSLMStart), created in prolog
     // r3 <-- builtinImmVector4([0, 4, 8, ... 60]), created in prolog
     // if numReg > 2:
-    //      mad (16) r2:ud r1:uw r3:uw (numReg / 2 - 1) 
+    //      mad (16) r2:ud r1:uw r3:uw (numReg / 2 - 1)
     // add (16) r2:ud r1:uw offset
     G4_Declare* SLMSpillBase = builder_->getBuiltinSLMSpillAddr();
     int numAddr = numReg == 1 ? 8 : 16;
@@ -3282,9 +3282,9 @@ void SpillManagerGMRF::createFill(
     {
         sendSrc = builder_->getBuiltinR0();
     }
-  
+
     assert(sendSrc != nullptr);
-    // 
+    //
     // add pseudo-kill to limit fill dst's life range (why is this necessary?)
     G4_DstRegRegion* dstOpnd = builder_->createDstRegRegion(Direct, fillDcl->getRegVar(), 0, 0, 1, Type_UD);
     builder_->createInst(NULL, G4_pseudo_kill, NULL, false, 1, dstOpnd, NULL, NULL, 0);
@@ -3293,7 +3293,7 @@ void SpillManagerGMRF::createFill(
         Direct, fillDcl->getRegVar(), (short)fillRegOff, 0, 1, Type_UW);
     G4_SrcRegRegion* payload = builder_->Create_Src_Opnd_From_Dcl(sendSrc, builder_->getRegionStride1());
     createSendInst((unsigned char)esize, postDst, payload, messageDescImm, funcID, false, InstOpt_WriteEnable);
- 
+
     numGRFFill++;
 }
 
@@ -3377,7 +3377,7 @@ SpillManagerGMRF::sendOutSpilledRegVarPortions (
     }
     else
     {
-        // Initialize the message header with the spill disp for portion. 
+        // Initialize the message header with the spill disp for portion.
         int offset = getDisp(spillRangeDcl->getRegVar()) + regOff * REG_BYTE_SIZE;
         getSpillOffset(offset);
         unsigned segmentDisp = offset / OWORD_BYTE_SIZE;
@@ -3472,7 +3472,7 @@ SpillManagerGMRF::insertSpillRangeCode (
 
         G4_Declare * spillRangeDcl =
             createSpillRangeDeclare (
-                spilledRegion, execSize, 
+                spilledRegion, execSize,
                 *spilledInstIter);
 
         // Create and initialize the message header
@@ -3596,8 +3596,8 @@ SpillManagerGMRF::insertSpillRangeCode (
 
     if (optimizeSplitLLR && spillSendInst && spillSendInst->isSplitSend())
     {
-        // delete the move and spill the source instead. Note that we can't do this if split send 
-        // is not enabled, as payload contains header 
+        // delete the move and spill the source instead. Note that we can't do this if split send
+        // is not enabled, as payload contains header
         bb->erase(spilledInstIter);
         unsigned int pos = 1;
         spillSendInst->setSrc(inst->getSrc(0), pos);
@@ -3650,7 +3650,7 @@ SpillManagerGMRF::insertFillGRFRangeCode (
     {
         fillRangeDcl =
             createGRFFillRangeDeclare(
-                filledRegion, execSize,  
+                filledRegion, execSize,
                 *filledInstIter);
         G4_Declare * mRangeDcl =
             createAndInitMHeader(filledRegion, execSize);
@@ -3751,7 +3751,7 @@ G4_Declare* getOrCreateSpillFillDcl(G4_Declare* spilledAddrTakenDcl, G4_Kernel* 
     if (temp == NULL)
     {
 #define ADDR_SPILL_FILL_NAME_SIZE 32
-        char* dclName = kernel->fg.builder->getNameString(kernel->fg.mem, ADDR_SPILL_FILL_NAME_SIZE,
+        const char* dclName = kernel->fg.builder->getNameString(kernel->fg.mem, ADDR_SPILL_FILL_NAME_SIZE,
             "ADDR_SP_FL_V%d", spilledAddrTakenDcl->getDeclId());
 
         // temp is created of sub-class G4_RegVarTmp so that is
@@ -3814,7 +3814,7 @@ bool SpillManagerGMRF::handleAddrTakenSpills( G4_Kernel * kernel, PointsToAnalys
 }
 
 // Insert spill and fill code for indirect GRF accesses
-void SpillManagerGMRF::insertAddrTakenSpillAndFillCode( G4_Kernel* kernel, G4_BB* bb, 
+void SpillManagerGMRF::insertAddrTakenSpillAndFillCode( G4_Kernel* kernel, G4_BB* bb,
     INST_LIST::iterator inst_it, G4_Operand* opnd, PointsToAnalysis& pointsToAnalysis, bool spill, unsigned int bbid)
 {
     curInst = (*inst_it);
@@ -3842,7 +3842,7 @@ void SpillManagerGMRF::insertAddrTakenSpillAndFillCode( G4_Kernel* kernel, G4_BB
             unsigned int numrows = lr->getDcl()->getNumRows();
             G4_Declare* temp = getOrCreateSpillFillDcl(lr->getDcl(), kernel);
 
-            if (failSafeSpill_ && 
+            if (failSafeSpill_ &&
                 temp->getRegVar()->getPhyReg() == NULL)
             {
                 temp->getRegVar()->setPhyReg(builder_->phyregpool.getGreg(spillRegOffset_), 0);
@@ -4287,7 +4287,7 @@ SpillManagerGMRF::insertSpillFillCode (
     {
         unsigned disp = spill->getVar ()->getDisp ();
 
-        if (spill->getVar ()->isSpilled ()) 
+        if (spill->getVar ()->isSpilled ())
         {
             if (disp != UINT_MAX)
             {

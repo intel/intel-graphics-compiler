@@ -45,7 +45,7 @@ PointsToAnalysis::PointsToAnalysis( DECLARE_LIST &declares, unsigned int numBB )
 numBBs(numBB), numAddrs(0), indirectUses(NULL), pointsToSets(NULL), addrPointsToSetIndex(NULL)
 {
     for (auto decl : declares)
-    {        
+    {
         //add alias check, For Alias Dcl
         if( ( decl->getRegFile() == G4_ADDRESS ) &&
             decl->getAliasDeclare() == NULL )  // It is a base declaration, not alias
@@ -3333,7 +3333,7 @@ void GlobalRA::setABIForStackCallFunctionCalls()
         G4_BB* bb = (*it);
         if( bb->isEndWithFCall() )
         {
-            char* n = kernel.fg.builder->getNameString(kernel.fg.mem, 25,
+            const char* n = kernel.fg.builder->getNameString(kernel.fg.mem, 25,
                 kernel.fg.builder->getIsKernel() ? "FCALL_RET_LOC_k_%d" : "FCALL_RET_LOC_f%d_%d",
                 kernel.fg.builder->getCUnitId(), call_id++);
 
@@ -3350,7 +3350,7 @@ void GlobalRA::setABIForStackCallFunctionCalls()
 
         if( bb->isEndWithFRet() )
         {
-            char* n = kernel.fg.builder->getNameString(kernel.fg.mem, 25,
+            const char* n = kernel.fg.builder->getNameString(kernel.fg.mem, 25,
                 kernel.fg.builder->getIsKernel() ? "FRET_RET_LOC_k_%d" : "FRET_RET_LOC_f%d_%d",
                 kernel.fg.builder->getCUnitId(), ret_id++);
             G4_INST* fret = bb->back();

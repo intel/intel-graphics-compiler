@@ -389,10 +389,8 @@ public:
     // isHDC() must be true
     uint32_t getHdcMessageType() const;
 
-    bool isThreadMessage() const
-    {
-        auto funcID = getFuncId();
-        return funcID == SFID::GATEWAY || funcID == SFID::SPAWNER;
+    bool isThreadMessage() const {
+        return getFuncId() == SFID::GATEWAY || getFuncId() == SFID::SPAWNER;
     }
 
     bool isAtomicMessage() const;
@@ -417,7 +415,6 @@ public:
 
     // introduced to replace direct access to desc bits
     bool isHdcTypedSurfaceWrite() const;
-
 
     // TODO: this should be eliminated; it only supports a subset of messages
     // and can produce a false negative on newer messages; it also doesn't
@@ -465,15 +462,16 @@ public:
         return ((getFuncCtrl ()& 0x20000u) != 0);
     }
 
-
     bool isHeaderPresent() const;
     void setHeaderPresent(bool val);
 
     bool is16BitInput() const;
     bool is16BitReturn() const;
 
-    G4_Operand *getBti() {return m_bti;}
-    G4_Operand *getSti() {return m_sti;}
+    const G4_Operand *getBti() const {return m_bti;}
+          G4_Operand *getBti()       {return m_bti;}
+    const G4_Operand *getSti() const {return m_sti;}
+          G4_Operand *getSti()       {return m_sti;}
 
     uint32_t getDesc() const { return desc.value; }
     uint32_t getExtendedDesc() const { return extDesc.value; }
@@ -497,8 +495,8 @@ public:
 
     void *operator new(size_t sz, Mem_Manager& m) {return m.alloc(sz);}
 
-    uint16_t getArgSize() { return argSize; }
-    uint16_t getRetSize() { return retSize; }
+    uint16_t getArgSize() const { return argSize; }
+    uint16_t getRetSize() const { return retSize; }
 };
 
 //forward references.
@@ -540,7 +538,7 @@ protected:
 #define UNDEFINED_GEN_OFFSET -1
     int64_t genOffset = UNDEFINED_GEN_OFFSET;
 
-    void emit_options(std::ostream& output);
+    void emit_options(std::ostream& output) const;
 
     //WARNING: if adding new options, please make sure that bitfield does not
     //overflow.
@@ -590,8 +588,8 @@ public:
     // should also implement this method to populate members
     // unique to them.
     virtual G4_INST* cloneInst();
-    virtual bool isBaseInst() { return true; }
-    virtual bool isCFInst() { return false; }
+    virtual bool isBaseInst() const { return true; }
+    virtual bool isCFInst() const { return false; }
 
     uint32_t getLexicalId() const { return global_id; }
     void setLexicalId(uint32_t id) { global_id = id; }
@@ -603,7 +601,7 @@ public:
 
     void setOpcode(G4_opcode opcd);
 
-    G4_DstRegRegion* getDst() const   { return dst; }
+    G4_DstRegRegion* getDst() const { return dst; }
     bool supportsNullDst() const;
 
     bool isPseudoKill() const { return op == G4_pseudo_kill; }
@@ -659,8 +657,8 @@ public:
         return op == G4_pseudo_and || op == G4_pseudo_or || op == G4_pseudo_xor || op == G4_pseudo_not;
     }
 
-    bool isMovAddr();
-    bool isArithAddr();
+    bool isArithAddr() const;
+    bool isMovAddr() const;
     bool isAccSrcInst() const;
     bool isAccDstInst() const;
 
@@ -723,16 +721,16 @@ public:
         if (location != nullptr)
             location->setLineNo(i);
     }
-    int getLineNo() {
+    int getLineNo() const {
         if (location == nullptr)
             return 0;
         return location->getLineNo();
     }
-    void setSrcFilename(char* filename) {
+    void setSrcFilename(const char* filename) {
         if (location != nullptr)
             location->setSrcFilename(filename);
     }
-    char* getSrcFilename() {
+    const char* getSrcFilename() const {
         if (location == nullptr)
             return nullptr;
         return location->getSrcFilename();
@@ -783,8 +781,8 @@ public:
             computeARFRightBound();
         }
     }
-    unsigned int getOption()   {return option;}
-    unsigned int getMaskOption()   {return option & InstOpt_Masks;}
+    unsigned int getOption() const {return option;}
+    unsigned int getMaskOption() const {return option & InstOpt_Masks;}
     void setMaskOption(G4_InstOption opt)
     {
         // mask options are mutually exclusive, so we have to clear any previous setting
@@ -793,33 +791,37 @@ public:
         setOptions((option & ~InstOpt_QuarterMasks) | opt);
     }
 
-    bool is1QInst() { return execSize == 8 && getMaskOffset() == 0; }
-    bool isWriteEnableInst()    { return (option & InstOpt_WriteEnable) ? true : false; }
-    bool isYieldInst()    { return (option & InstOpt_Switch) ? true : false; }
-    bool isNoPreemptInst() { return (option & InstOpt_NoPreempt) ? true : false; }
+    bool is1QInst() const { return execSize == 8 && getMaskOffset() == 0; }
+    bool isWriteEnableInst() const { return (option & InstOpt_WriteEnable) ? true : false; }
+    bool isYieldInst() const { return (option & InstOpt_Switch) ? true : false; }
+    bool isNoPreemptInst() const { return (option & InstOpt_NoPreempt) ? true : false; }
 
     void emit_inst(std::ostream& output, bool symbol_dst, bool *symbol_srcs);
     void emit(std::ostream& output, bool symbolreg = false, bool dotStyle = false);
     void emitDefUse(std::ostream& output);
     void dump() const;
-    bool isValidSymbolOperand(bool &dst_valid, bool *srcs_valid);
-    char *getLabelStr();
+    bool isValidSymbolOperand(bool &dst_valid, bool *srcs_valid) const;
+    const char *getLabelStr() const;
 
     unsigned char  getExecSize() const {return execSize;}
-    G4_CondMod*    getCondMod()  {return mod;}
-    G4_VarBase*    getCondModBase();
-    void setCondMod( G4_CondMod* m );
+    const G4_CondMod*    getCondMod() const {return mod;}
+          G4_CondMod*    getCondMod()       {return mod;}
+    const G4_VarBase*    getCondModBase() const;
+          G4_VarBase*    getCondModBase() {
+              return const_cast<G4_VarBase*>(((const G4_INST*)this)->getCondModBase());
+          }
+    void setCondMod(G4_CondMod* m);
 
-    bool isDead()          {return dead;}
+    bool isDead() const {return dead;}
     void markDead()        {dead = true;}
 
     bool isAligned1Inst() const { return !isAligned16Inst(); }
     bool isAligned16Inst() const { return (option & InstOpt_Align16)    ? true : false; }
-    bool isAccWrCtrlInst() { return (option & InstOpt_AccWrCtrl) != 0; }
+    bool isAccWrCtrlInst() const { return (option & InstOpt_AccWrCtrl) ? true : false; }
     bool isAtomicInst()    const { return (option & InstOpt_Atomic)     ? true : false; }
     bool isNoDDChkInst()   const { return (option & InstOpt_NoDDChk)    ? true : false; }
     bool isNoDDClrInst()   const { return (option & InstOpt_NoDDClr)    ? true : false; }
-    bool isBreakPointInst()const { return (option & InstOpt_BreakPoint) ? true : false; }
+    bool isBreakPointInst() const { return (option & InstOpt_BreakPoint) ? true : false; }
 
     // true if inst reads/writes acc either implicitly or explicitly
     bool useAcc() const
@@ -833,8 +835,8 @@ public:
 
     void setCompacted()      { option = option | InstOpt_Compacted; }
     void setNoCompacted()    { option = option | InstOpt_NoCompact; }
-    bool isCompactedInst()   { return (option & InstOpt_Compacted) ? true : false; }
-    bool isNoCompactedInst() { return (option & InstOpt_NoCompact) ? true : false; }
+    bool isCompactedInst()  const { return (option & InstOpt_Compacted) ? true : false; }
+    bool isNoCompactedInst() const { return (option & InstOpt_NoCompact) ? true : false; }
 
     void setLocalId(int32_t lid)  { local_id = lid; }
     int32_t getLocalId() const { return local_id; }
@@ -843,10 +845,10 @@ public:
     bool getEvenlySplitInst() { return evenlySplitInst; }
 
     void setCISAOff(int offset) { srcCISAoff = offset; }
-    int getCISAOff() { return srcCISAoff; }
+    int getCISAOff() const { return srcCISAoff; }
 
-    bool isOptBarrier();
-    bool hasImplicitAccSrc()
+    bool isOptBarrier() const;
+    bool hasImplicitAccSrc() const
     {
        return op == G4_mac || op == G4_mach || op == G4_sada2;
     }
@@ -880,29 +882,16 @@ public:
         return opndNum == Opnd_src0 || opndNum == Opnd_src1 ||
                opndNum == Opnd_src2 || opndNum == Opnd_src3;
     }
-    G4_Operand* getOperand( Gen4_Operand_Number opnd_num ) const
+    const G4_Operand* getOperand(Gen4_Operand_Number opnd_num) const;
+          G4_Operand* getOperand(Gen4_Operand_Number opnd_num)
     {
-        switch(opnd_num){
-        case Opnd_dst: return (G4_Operand*) dst;
-        case Opnd_src0: return srcs[0];
-        case Opnd_src1: return srcs[1];
-        case Opnd_src2: return srcs[2];
-        case Opnd_src3: return srcs[3];
-        case Opnd_pred: return (G4_Operand*)predicate;
-        case Opnd_condMod: return (G4_Operand*)mod;
-        case Opnd_implAccSrc: return implAccSrc;
-        case Opnd_implAccDst: return (G4_Operand*) implAccDst;
-        default:
-            MUST_BE_TRUE( 0, "Operand number is out of range." );
-            break;
-        }
-        return NULL;
+        return const_cast<G4_Operand*>(((const G4_INST *)this)->getOperand(opnd_num));
     }
 
     /// Remove all definitons that contribute to this[opndNum] and remove all
     /// uses from their corresponding definitions. To maintain def-use's, this
     /// is required while resetting a source operand.
-    void removeDefUse( Gen4_Operand_Number opndNum );
+    void removeDefUse(Gen4_Operand_Number opndNum);
     /// Remove a use from this instruction and update its correponding def.
     /// Returns the next use iterator of this instruction.
     USE_EDGE_LIST_ITER eraseUse(USE_EDGE_LIST_ITER iter);
@@ -940,14 +929,18 @@ public:
     /// Returns its definition if this's operand has a single definition. Returns
     /// 0 otherwise.
     G4_INST *getSingleDef(Gen4_Operand_Number opndNum, bool MakeUnique = false);
-    USE_EDGE_LIST::iterator use_begin() { return useInstList.begin(); }
-    USE_EDGE_LIST::iterator use_end() { return useInstList.end(); }
-    USE_EDGE_LIST::reference use_front() { return useInstList.front(); }
-    USE_EDGE_LIST::reference use_back() { return useInstList.back(); }
-    DEF_EDGE_LIST::iterator def_begin() { return defInstList.begin(); }
-    DEF_EDGE_LIST::iterator def_end() { return defInstList.end(); }
-    DEF_EDGE_LIST::reference def_front() { return defInstList.front(); }
-    DEF_EDGE_LIST::reference def_back() { return defInstList.back(); }
+    USE_EDGE_LIST::const_iterator use_begin() const { return useInstList.begin(); }
+    USE_EDGE_LIST::iterator       use_begin()       { return useInstList.begin(); }
+    USE_EDGE_LIST::const_iterator use_end() const { return useInstList.end(); }
+    USE_EDGE_LIST::iterator       use_end()       { return useInstList.end(); }
+    USE_EDGE_LIST::reference      use_front() { return useInstList.front(); }
+    USE_EDGE_LIST::reference      use_back() { return useInstList.back(); }
+    DEF_EDGE_LIST::const_iterator def_begin() const { return defInstList.begin(); }
+    DEF_EDGE_LIST::iterator       def_begin()       { return defInstList.begin(); }
+    DEF_EDGE_LIST::const_iterator def_end() const { return defInstList.end(); }
+    DEF_EDGE_LIST::iterator       def_end()       { return defInstList.end(); }
+    DEF_EDGE_LIST::reference      def_front() { return defInstList.front(); }
+    DEF_EDGE_LIST::reference      def_back() { return defInstList.back(); }
     size_t use_size() const { return useInstList.size(); }
     size_t def_size() const { return defInstList.size(); }
     void dumpDefUse();
@@ -960,18 +953,20 @@ public:
     void setImplAccSrc( G4_Operand* opnd );
     void setImplAccDst( G4_DstRegRegion* opnd );
 
-    bool isWAWdep( G4_INST *inst );
-    bool isWARdep( G4_INST *inst );
-    bool isRAWdep( G4_INST *inst );
-    G4_Operand* getImplAccSrc() { return implAccSrc; }
-    G4_DstRegRegion* getImplAccDst() { return implAccDst; }
-    uint16_t getMaskOffset();
+    bool isWAWdep( G4_INST *inst ); /* not const: may compute bound */
+    bool isWARdep( G4_INST *inst ); /* not const: may compute bound */
+    bool isRAWdep( G4_INST *inst ); /* not const: may compute bound */
+    const G4_Operand* getImplAccSrc() const { return implAccSrc; }
+          G4_Operand* getImplAccSrc()       { return implAccSrc; }
+    const G4_DstRegRegion* getImplAccDst() const { return implAccDst; }
+          G4_DstRegRegion* getImplAccDst()       { return implAccDst; }
+    uint16_t getMaskOffset() const;
     static G4_InstOption offsetToMask(int execSize, int offset, bool nibOk);
-    bool isRawMov();
-    bool hasACCSrc();
-    bool hasACCOpnd();
+    bool isRawMov() const;
+    bool hasACCSrc() const;
+    bool hasACCOpnd() const;
     G4_Type getOpExecType( int& extypesize );
-    bool canHoistTo( G4_INST *defInst, bool simdBB);
+    bool canHoistTo(const G4_INST *defInst, bool simdBB) const;
     enum MovType {
         Copy        = 0,        // MOV is a copy.
         ZExt        = 1,        // MOV is a zero extension.
@@ -986,21 +981,22 @@ public:
         FPDownConvSafe  = 8,        // Float down conversion for DX shaders.
         SuperMov        = 9,        // MOV is a mov with other effects.
     };
-    MovType canPropagate();
-    bool canPropagateTo(G4_INST *useInst, Gen4_Operand_Number opndNum, MovType MT, bool inSimdFlow);
-    G4_Type getPropType(Gen4_Operand_Number opndNum, MovType MT, G4_INST *mov);
+    MovType canPropagate() const;
+    bool canPropagateTo(G4_INST *useInst, Gen4_Operand_Number opndNum, MovType MT, bool inSimdFlow); /* not const */
+    G4_Type getPropType(Gen4_Operand_Number opndNum, MovType MT, const G4_INST *mov) const;
     bool isSignSensitive(Gen4_Operand_Number opndNum) const;
-    bool canHoist(bool simdBB, const Options *opt);
+    bool canHoist(bool simdBB, const Options *opt) const;
     bool isCommutative() const;
-    bool canUseACCOpt( bool handleComprInst, bool checkRegion,
-        uint16_t &hs, bool allow3Src, bool allowTypeDemotion, bool insertMov = false );
+    bool canUseACCOpt(bool handleComprInst, bool checkRegion,
+        uint16_t &hs, bool allow3Src, bool allowTypeDemotion, bool insertMov = false);
 
-    bool hasNULLDst();
-    bool goodTwoGRFDst( bool& );
-    BinInst *   getBinInst() { return bin; };
+    bool hasNULLDst() const;
+    bool goodTwoGRFDst(bool& evenSplitDst);
+    const BinInst *getBinInst() const { return bin; };
+          BinInst *getBinInst()       { return bin; };
     void        setBinInst(BinInst *_bin) { bin = _bin; };
     void setGenOffset(int64_t off) { genOffset = off; }
-    int64_t getGenOffset() { return genOffset; }
+    int64_t getGenOffset() const { return genOffset; }
 
     void computeLeftBoundForImplAcc(G4_Operand* opnd);
 
@@ -1100,7 +1096,7 @@ public:
             mathOp == MATH_RSQRTM;
     }
 
-    G4_MathOp getMathCtrl() { return mathOp; }
+    G4_MathOp getMathCtrl() const { return mathOp; }
 };
 
 class G4_InstCF : public G4_INST
@@ -1163,29 +1159,16 @@ public:
     {
     }
 
-    bool isCFInst() override { return true; }
+    bool isCFInst() const override { return true; }
 
-    void setJip(G4_Label* opnd)
-
-    {
-        jip = opnd;
-    }
-    G4_Label* getJip()
-    {
-        return jip;
-    }
-
-    void setUip(G4_Label* opnd)
-    {
-        uip = opnd;
-    }
-    G4_Label* getUip()
-    {
-        return uip;
-    }
-
+    void setJip(G4_Label* opnd) {jip = opnd;}
+    const G4_Label* getJip() const {return jip;}
+          G4_Label* getJip()       {return jip;}
     const char* getJipLabelStr() const;
 
+    void setUip(G4_Label* opnd) {uip = opnd;}
+    const G4_Label* getUip() const {return uip;}
+          G4_Label* getUip()       {return uip;}
     const char* getUipLabelStr() const;
 
     void addIndirectJmpLabel(G4_Label* label)
@@ -1199,17 +1182,12 @@ public:
         return indirectJmpTarget;
     }
 
-    void setBackward(bool val)
-    {
-        isBackwardBr = val;
-    }
+    void setBackward(bool val) {isBackwardBr = val;}
 
-    bool isBackward() const
-    {
-        return isBackwardBr;
-    }
+    bool isBackward() const {return isBackwardBr;}
 
     bool isIndirectJmp() const;
+
     bool isUniformGoto(unsigned KernelSimdSize) const;
 
     void setCalleeIndex(uint32_t index)
@@ -1356,9 +1334,7 @@ public:
 
     bool isFence() const {return getMsgDesc()->isFence();}
 
-    bool isEOT() const override {
-        return msgDesc->isEOTInst();
-    }
+    bool isEOT() const override {return msgDesc->isEOTInst();}
 
     bool isDirectSplittableSend();
 
@@ -1457,9 +1433,9 @@ public:
     int getNumDst() const { return G4_Intrinsics[(int) intrinsicId].numDst; }
     int getNumSrc() const { return G4_Intrinsics[(int) intrinsicId].numSrc; }
 
-    Intrinsic getIntrinsicId() const { return intrinsicId; }
-    const char* getName() const { return G4_Intrinsics[(int) intrinsicId].name; }
-    Phase getLoweredByPhase() const { return G4_Intrinsics[(int)intrinsicId].loweredBy; }
+    Intrinsic   getIntrinsicId()    const { return intrinsicId; }
+    const char* getName()           const { return G4_Intrinsics[(int) intrinsicId].name; }
+    Phase       getLoweredByPhase() const { return G4_Intrinsics[(int)intrinsicId].loweredBy; }
 
     int getTmpGRFStart() const { return tmpGRFStart; }
     void setTmpGRFStart(int startGRF) { tmpGRFStart = startGRF; }
@@ -1486,24 +1462,9 @@ struct RegionDesc
     // The legal values for Width are {1, 2, 4, 8, 16}.
     // The legal values for VertStride are {0, 1, 2, 4, 8, 16, 32}.
     // The legal values for HorzStride are {0, 1, 2, 4}.
-    bool isLegal() const
-    {
-        return isLegal(vertStride, width, horzStride);
-    }
+    bool isLegal() const {return isLegal(vertStride, width, horzStride);}
 
-    static bool isLegal(unsigned vs, unsigned w, unsigned hs)
-    {
-        auto isPositiveAndLegal = [](unsigned val, unsigned high) {
-            if (val == UNDEFINED_SHORT)
-                return true;
-            if (val > high || val == 0)
-                return false;
-            return ((val - 1) & val) == 0;
-        };
-        return isPositiveAndLegal(w, 16) &&
-               (vs == 0 || isPositiveAndLegal(vs, 32)) &&
-               (hs == 0 || isPositiveAndLegal(hs, 16));
-    }
+    static bool isLegal(unsigned vs, unsigned w, unsigned hs);
 
     enum RegionDescKind {
         RK_Other,   // all others like <4; 2, 1> etc.
@@ -1515,47 +1476,18 @@ struct RegionDesc
 
     // Determine the region description kind. Strided case only.
     static RegionDescKind getRegionDescKind(uint16_t size, uint16_t vstride,
-                                            uint16_t width, uint16_t hstride)
-    {
-        // Skip special cases.
-        if (vstride == UNDEFINED_SHORT || width == UNDEFINED_SHORT ||
-            hstride == UNDEFINED_SHORT)
-            return RK_Other;
+                                            uint16_t width, uint16_t hstride);
 
-        // <0;1,0>
-        if (size == 1 || (vstride == 0 && hstride == 0) ||
-            (vstride == 0 && width == 1))
-            return RK_Stride0;
 
-        // <1;1,0>
-        if ((vstride == 1 && width == 1) || (size <= width && hstride == 1) ||
-            (vstride == width && hstride == 1))
-            return RK_Stride1;
-
-        // <N;1,0>
-        uint16_t stride = 0;
-        if (vstride == width * hstride || width == size)
-        {
-            stride = hstride;
-        }
-        else if (width == 1 && hstride == 0 )
-        {
-            stride = vstride;
-        }
-
-        return (stride == 2) ? RK_Stride2 : (stride == 4) ? RK_Stride4
-                                                          : RK_Other;
-    }
-
-    bool isRegionWH() {return vertStride == UNDEFINED_SHORT && width != UNDEFINED_SHORT;}
-    bool isRegionV()  {return vertStride == UNDEFINED_SHORT && width == UNDEFINED_SHORT;}
+    bool isRegionWH() const {return vertStride == UNDEFINED_SHORT && width != UNDEFINED_SHORT;}
+    bool isRegionV() const {return vertStride == UNDEFINED_SHORT && width == UNDEFINED_SHORT;}
     bool isScalar() const { return ( vertStride == 0 && horzStride == 0 ) || ( width == 1 && vertStride == 0 ); }        // to support decompression
-    bool isRegionSW() {return vertStride != UNDEFINED_SHORT && width == UNDEFINED_SHORT && horzStride == UNDEFINED_SHORT;}
+    bool isRegionSW() const {return vertStride != UNDEFINED_SHORT && width == UNDEFINED_SHORT && horzStride == UNDEFINED_SHORT;}
     bool isEqual(RegionDesc *r) { return vertStride == r->vertStride && width == r->width && horzStride == r->horzStride; }        // to support re-compression
-    void emit(std::ostream& output);
-    bool isPackedRegion() { return ( ( horzStride == 0 && vertStride <= 1 ) || ( horzStride == 1 && vertStride <= width ) ); }
-    bool isFlatRegion() { return ( isScalar() || vertStride == horzStride * width ); }
-    bool isRepeatRegion( unsigned short execSize ) { return ( !isScalar() && ( execSize > width && vertStride < horzStride * width ) ); }
+    void emit(std::ostream& output) const;
+    bool isPackedRegion() const { return ( ( horzStride == 0 && vertStride <= 1 ) || ( horzStride == 1 && vertStride <= width ) ); }
+    bool isFlatRegion() const { return ( isScalar() || vertStride == horzStride * width ); }
+    bool isRepeatRegion(unsigned short execSize) const { return ( !isScalar() && ( execSize > width && vertStride < horzStride * width ) ); }
 
     // Contiguous regions are:
     // (1) ExSize is 1, or
@@ -1570,55 +1502,9 @@ struct RegionDesc
     // f(i, j) = i x vstride + j x hstride
     //
     // for 0 <= i < ExSize / width and 0 <= j < width
-    bool isContiguous(unsigned ExSize) const
-    {
-        if (vertStride == 1 && width == 1)
-            return true;
-        if (vertStride == width && horzStride == 1)
-            return true;
-
-        return (ExSize == 1) ||
-               (ExSize <= (unsigned)width && horzStride == 1);
-    }
-
-    bool isSingleNonUnitStride(uint32_t execSize, uint16_t& stride) const
-    {
-        if (isScalar() || isContiguous(execSize))
-        {
-            return false;
-        }
-
-        if (vertStride == width * horzStride || width == execSize)
-        {
-            stride = horzStride;
-            return true;
-        }
-
-        if (horzStride == 0 && width == 1)
-        {
-            stride = vertStride;
-            return true;
-        }
-
-        return false;
-    }
-
-    bool isSingleStride(uint32_t execSize, uint16_t &stride) const
-    {
-        if (isScalar())
-        {
-            stride = 0;
-            return true;
-        }
-        if (isContiguous(execSize))
-        {
-            stride = 1;
-            return true;
-        }
-
-        return isSingleNonUnitStride(execSize, stride);
-    }
-
+    bool isContiguous(unsigned ExSize) const;
+    bool isSingleNonUnitStride(uint32_t execSize, uint16_t& stride) const;
+    bool isSingleStride(uint32_t execSize, uint16_t &stride) const;
     bool isSingleStride(uint32_t execSize) const
     {
         uint16_t stride = 0;
@@ -1799,16 +1685,16 @@ public:
     void *operator new(size_t sz, Mem_Manager& m) {return m.alloc(sz);}
 
     void setGRFBaseOffset( unsigned int offset ) { GRFBaseOffset = offset; }
-    unsigned int getGRFBaseOffset() { return GRFBaseOffset; }
+    unsigned int getGRFBaseOffset() const { return GRFBaseOffset; }
 
     void setLiveIn() { liveIn = true; }
-    bool isLiveIn() { return liveIn; }
+    bool isLiveIn() const { return liveIn; }
     void setLiveOut() { liveOut = true; }
 
     void setDoNotWiden() { noWidening = true; }
     bool doNotWiden() const { return noWidening; }
 
-    unsigned getScopeID() { return scopeID;  }
+    unsigned getScopeID() const { return scopeID;  }
     void updateScopeID(unsigned id) { if (!isInput() && (scopeID < id)) scopeID = id; }
 
     //
@@ -1828,10 +1714,7 @@ public:
 
     unsigned int getByteSize() const { return numElements * getElemSize(); }
 
-    unsigned int getWordSize()
-    {
-        return (getByteSize() + 1)/2;
-    }
+    unsigned int getWordSize() const {return (getByteSize() + 1)/2;}
 
     void resizeNumRows( unsigned int numrows )
     {
@@ -1844,7 +1727,8 @@ public:
         addrTakenSpillFillDcl = dcl;
     }
 
-    G4_Declare* getAddrTakenSpillFill() { return addrTakenSpillFillDcl; }
+    const G4_Declare* getAddrTakenSpillFill() const { return addrTakenSpillFillDcl; }
+          G4_Declare* getAddrTakenSpillFill()       { return addrTakenSpillFillDcl; }
 
     // declare this to be aliased to dcl+offset
     // This is an error if dcl+offset is not aligned to the type of this dcl
@@ -1862,7 +1746,7 @@ public:
             getAliasDeclare()->resetSpillFlag();
         spillFlag = false;
     }
-    void        setSpillFlag()
+    void setSpillFlag()
     {
         if(getAliasDeclare() != NULL)
         {
@@ -1871,9 +1755,9 @@ public:
         }
         spillFlag = true;
     }
-    bool        isSpilled()
+    bool isSpilled() const
     {
-        if(getAliasDeclare() != NULL)
+        if (getAliasDeclare() != NULL)
         {
             return getAliasDeclare()->isSpilled();
         }
@@ -1894,33 +1778,37 @@ public:
             G4_Type_Table[elemType].byteSize : byteAlign;
     }
 
-    void setRegFile( G4_RegFileKind rfile)  { regFile = rfile; }
-    void setHasFileScope()                  {hasFileScope = true;}
+    void setRegFile(G4_RegFileKind rfile) { regFile = rfile; }
+    void setHasFileScope() {hasFileScope = true;}
 
-    bool useGRF()   { return (regFile & (G4_GRF | G4_INPUT)) != 0; }
-    bool isInput()  { return liveIn || ((regFile & G4_INPUT) != 0); }
-    bool isOutput() { return liveOut; }
-    bool getHasFileScope()      {return hasFileScope || (getAliasDeclare() && getAliasDeclare()->getHasFileScope());}
+    bool useGRF() const { return (regFile & (G4_GRF | G4_INPUT)) != 0; }
+    bool isInput() const { return liveIn || ((regFile & G4_INPUT) != 0); }
+    bool isOutput() const { return liveOut; }
+    bool getHasFileScope() const {return hasFileScope || (getAliasDeclare() && getAliasDeclare()->getHasFileScope());}
 
     //
     // retrieving functions
     //
-    unsigned       getAliasOffset()   {return AliasOffset;}
-    G4_Declare *   getAliasDeclare()  {return AliasDCL;}
-    G4_Declare*    getRootDeclare()
+    unsigned          getAliasOffset() const {return AliasOffset;}
+    const G4_Declare *getAliasDeclare() const {return AliasDCL;}
+          G4_Declare *getAliasDeclare()       {return AliasDCL;}
+    const G4_Declare *getRootDeclare() const
     {
-        G4_Declare* rootDcl = this;
+        const G4_Declare* rootDcl = this;
         while (rootDcl->getAliasDeclare() != NULL)
         {
             rootDcl = rootDcl->getAliasDeclare();
         }
         return rootDcl;
     }
+    G4_Declare       *getRootDeclare() {
+        return const_cast<G4_Declare*>(((const G4_Declare *)this)->getRootDeclare());
+    }
 
     // like above, but also return the alias offset in bytes
-    G4_Declare*    getRootDeclare(uint32_t& offset)
+    const G4_Declare*    getRootDeclare(uint32_t& offset) const
     {
-        G4_Declare* rootDcl = this;
+        const G4_Declare* rootDcl = this;
         offset = 0;
         while (rootDcl->getAliasDeclare() != NULL)
         {
@@ -1929,16 +1817,19 @@ public:
         }
         return rootDcl;
     }
+    G4_Declare* getRootDeclare(uint32_t& offset) {
+        return const_cast<G4_Declare*>(((const G4_Declare *)this)->getRootDeclare(offset));
+    }
 
-    const char*       getName()        {return name;}
-    G4_RegFileKind getRegFile()        {return regFile;}
+    const char*       getName() const {return name;}
+    G4_RegFileKind getRegFile() const {return regFile;}
 
     // returns number of elements per row
-    unsigned short getNumElems()
+    unsigned short getNumElems() const
     {
         return getNumRows() > 1 ? G4_GRF_REG_NBYTES / getElemSize() : numElements;
     }
-    unsigned short getNumRows()
+    unsigned short getNumRows() const
     {
         return (getByteSize() + (G4_GRF_REG_NBYTES - 1))/G4_GRF_REG_NBYTES;
     }
@@ -1948,15 +1839,16 @@ public:
     }
 
     void setTotalElems(uint32_t numElems) { numElements = numElems; }
-    unsigned short getNumberFlagElements()
+    unsigned short getNumberFlagElements() const
     {
         assert(regFile == G4_FLAG && "should only be called for flag vars");
         return numFlagElements;
     }
 
-    G4_Type           getElemType() const {return elemType;}
-    uint16_t getElemSize() const { return static_cast<uint16_t>(G4_Type_Table[elemType].byteSize); }
-    G4_RegVar*       getRegVar()        {return regVar;}
+    G4_Type          getElemType() const {return elemType;}
+    uint16_t         getElemSize() const { return static_cast<uint16_t>(G4_Type_Table[elemType].byteSize); }
+    const G4_RegVar *getRegVar() const {return regVar;}
+          G4_RegVar *getRegVar()       {return regVar;}
 
     int getOffsetFromBase()
     {
@@ -1972,32 +1864,33 @@ public:
     }
 
     void        setSpilledDeclare(G4_Declare* sd) {spillDCL = sd;}
-    G4_Declare* getSpilledDeclare()  {return spillDCL;}
+    const G4_Declare* getSpilledDeclare() const {return spillDCL;}
+          G4_Declare* getSpilledDeclare()  {return spillDCL;}
 
-    unsigned getDeclId() { return decl_id; }
+    unsigned getDeclId() const { return decl_id; }
 
     void setIsSplittedDcl(bool b) { isSplittedDcl = b; }
-    bool getIsSplittedDcl() { return isSplittedDcl; }
+    bool getIsSplittedDcl() const { return isSplittedDcl; }
 
     void setIsPartialDcl(bool b) { isPartialDcl = b; }
-    bool getIsPartialDcl() { return isPartialDcl; }
+    bool getIsPartialDcl() const { return isPartialDcl; }
 
     void setIsRefInSendDcl(bool b) { refInSend |= b;}
-    bool getIsRefInSendDcl() { return refInSend; }
+    bool getIsRefInSendDcl() const { return refInSend; }
 
     void        setSplitVarStartID(unsigned id) { startID = id; };
     unsigned    getSplitVarStartID() { return startID; };
 
-    void setDoNotSpill()        { doNotSpill = true; }
-    bool isDoNotSpill() const   { return doNotSpill; }
+    void setDoNotSpill()      { doNotSpill = true; }
+    bool isDoNotSpill() const { return doNotSpill; }
 
     bool isMsgDesc() const { return regFile == G4_ADDRESS && elemType == Type_UD; }
 
-    void setCapableOfReuse()          { capableOfReuse = true; }
-    bool getCapableOfReuse() const       { return capableOfReuse; }
+    void setCapableOfReuse()       { capableOfReuse = true; }
+    bool getCapableOfReuse() const { return capableOfReuse; }
 
     void    setAddressed() { addressed = true; }
-    bool    getAddressed() {
+    bool    getAddressed() const {
         if (addressed)
         {
             return true;
@@ -2103,15 +1996,15 @@ public:
     bool isLabel() const { return kind == label; }
     bool isAddrExp() const { return kind == addrExp; }
 
-    G4_Declare* getTopDcl() { return top_dcl; }
     const G4_Declare *getTopDcl() const { return top_dcl; }
+          G4_Declare* getTopDcl() { return top_dcl; }
 
-    G4_VarBase *getBase() { return base; }
     const G4_VarBase *getBase() const { return base; }
+          G4_VarBase *getBase() { return base; }
     void setBase(G4_VarBase *b) { base = b; }
-    G4_RegAccess getRegAccess();
+    G4_RegAccess getRegAccess() const;
 
-    virtual bool isRelocImm() { return false; }
+    virtual bool isRelocImm() const { return false; }
     virtual void emit(std::ostream &output, bool symbolreg = false) = 0;
     void dump() const;
 
@@ -2132,7 +2025,7 @@ public:
     bool isA0() const;
     bool isAddress() const;
 
-    G4_AddrExp* asAddrExp()
+    const G4_AddrExp* asAddrExp() const
     {
 #ifdef _DEBUG
         if (!isAddrExp())
@@ -2140,10 +2033,13 @@ public:
             return nullptr;
         }
 #endif
-        return reinterpret_cast<G4_AddrExp*>(this);
+        return reinterpret_cast<const G4_AddrExp*>(this);
+    }
+    G4_AddrExp* asAddrExp() {
+        return const_cast<G4_AddrExp*>(((const G4_Operand *)this)->asAddrExp());
     }
 
-    G4_DstRegRegion* asDstRegRegion()
+    const G4_DstRegRegion* asDstRegRegion() const
     {
 #ifdef _DEBUG
         if (!isDstRegRegion())
@@ -2151,10 +2047,13 @@ public:
             return nullptr;
         }
 #endif
-        return reinterpret_cast<G4_DstRegRegion*>(this);
+        return reinterpret_cast<const G4_DstRegRegion*>(this);
+    }
+    G4_DstRegRegion* asDstRegRegion() {
+        return const_cast<G4_DstRegRegion*>(((const G4_Operand *)this)->asDstRegRegion());
     }
 
-    G4_SrcRegRegion* asSrcRegRegion()
+    const G4_SrcRegRegion* asSrcRegRegion() const
     {
 #ifdef _DEBUG
         if (!isSrcRegRegion())
@@ -2162,9 +2061,13 @@ public:
             return nullptr;
         }
 #endif
-        return reinterpret_cast<G4_SrcRegRegion*>(this);
+        return reinterpret_cast<const G4_SrcRegRegion*>(this);
     }
-    G4_Imm* asImm()
+    G4_SrcRegRegion* asSrcRegRegion() {
+        return const_cast<G4_SrcRegRegion*>(((const G4_Operand *)this)->asSrcRegRegion());
+    }
+
+    const G4_Imm* asImm() const
     {
 #ifdef _DEBUG
         if (!isImm())
@@ -2172,10 +2075,13 @@ public:
             return nullptr;
         }
 #endif
-        return reinterpret_cast<G4_Imm*>(this);
+        return reinterpret_cast<const G4_Imm*>(this);
+    }
+    G4_Imm* asImm() {
+        return const_cast<G4_Imm*>(((const G4_Operand *)this)->asImm());
     }
 
-    G4_Predicate* asPredicate()
+    const G4_Predicate* asPredicate() const
     {
 #ifdef _DEBUG
         if (!isPredicate())
@@ -2183,19 +2089,27 @@ public:
             return nullptr;
         }
 #endif
-        return reinterpret_cast<G4_Predicate*>(this);
+        return reinterpret_cast<const G4_Predicate*>(this);
     }
-    G4_CondMod*    asCondMod()
-    {
+    G4_Predicate* asPredicate() {
+        return const_cast<G4_Predicate*>(((const G4_Operand *)this)->asPredicate());
+    }
+
+    const G4_CondMod*    asCondMod() const {
 #ifdef _DEBUG
         if (!isCondMod())
         {
             return nullptr;
         }
 #endif
-        return reinterpret_cast<G4_CondMod*>(this);
+        return reinterpret_cast<const G4_CondMod*>(this);
     }
-    G4_Label *asLabel()
+    G4_CondMod* asCondMod()
+    {
+        return const_cast<G4_CondMod*>(((const G4_Operand *)this)->asCondMod());
+    }
+
+    const G4_Label *asLabel() const
     {
 #ifdef _DEBUG
         if (!isLabel())
@@ -2203,7 +2117,11 @@ public:
             return nullptr;
         }
 #endif
-        return reinterpret_cast<G4_Label*>(this);
+        return reinterpret_cast<const G4_Label*>(this);
+    }
+    G4_Label* asLabel()
+    {
+        return const_cast<G4_Label*>(((const G4_Operand *)this)->asLabel());
     }
 
     bool crossGRF()
@@ -2259,14 +2177,8 @@ public:
         For operands that do use it, it is computed during left bound compuation.
     */
     unsigned getByteOffset() const { return byteOffset; }
-    void setBitVecL(uint64_t bvl )
-    {
-        bitVec[0] = bvl;
-    }
-    void setBitVecH(uint64_t bvh )
-    {
-        bitVec[1] = bvh;
-    }
+    void setBitVecL(uint64_t bvl) {bitVec[0] = bvl;}
+    void setBitVecH(uint64_t bvh) {bitVec[1] = bvh;}
 
     virtual unsigned computeRightBound( uint8_t exec_size ) { return left_bound; }
     void setRightBound(unsigned val)
@@ -2276,17 +2188,18 @@ public:
     }
     void unsetRightBound() { rightBoundSet = false; }
     void setLeftBound(unsigned val) { left_bound = val; }
-    G4_INST* getInst(){ return inst; }
-    void setInst( G4_INST* op ){ inst = op; }
+    const G4_INST* getInst() const { return inst; }
+          G4_INST* getInst()       { return inst; }
+    void setInst(G4_INST* op) { inst = op; }
     void setAccRegSel( G4_AccRegSel value ) { accRegSel = value; }
-    G4_AccRegSel getAccRegSel() { return accRegSel; }
-    bool isAccRegValid() { return accRegSel != ACC_UNDEFINED;}
+    G4_AccRegSel getAccRegSel() const { return accRegSel; }
+    bool isAccRegValid() const { return accRegSel != ACC_UNDEFINED;}
 
     unsigned getLinearizedStart();
     unsigned getLinearizedEnd();
 
     // compare if this operand is the same as the input w.r.t physical register in the end
-    virtual G4_CmpRelation compareOperand( G4_Operand *opnd)
+    virtual G4_CmpRelation compareOperand(G4_Operand *opnd)
     {
         return Rel_disjoint;
     }
@@ -2380,15 +2293,17 @@ class G4_Greg final : public G4_VarBase
 public:
     explicit G4_Greg(unsigned num) : G4_VarBase(VK_phyGReg), RegNum(num) {}
     void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
-    void emit(std::ostream &output, bool symbolreg = false);
-    G4_RegFileKind getRegFile() { return G4_GRF; }
+    G4_RegFileKind getRegFile() const { return G4_GRF; }
 
     unsigned getRegNum() const { return RegNum; }
-    unsigned short ExRegNum(bool &valid)
+
+    unsigned short ExRegNum(bool &valid) override
     {
         valid = true;
         return (unsigned short)getRegNum();
     }
+
+    void emit(std::ostream &output, bool symbolreg = false) override;
 };
 
 //
@@ -2400,11 +2315,11 @@ class G4_Areg final : public G4_VarBase
 public:
     explicit G4_Areg(G4_ArchRegKind k)
         : G4_VarBase(VK_phyAReg), ArchRegType(k) {}
+    void *operator new(size_t sz, Mem_Manager& m) {return m.alloc(sz);}
 
     G4_ArchRegKind getArchRegType() const { return ArchRegType; }
 
-    void *operator new(size_t sz, Mem_Manager& m) {return m.alloc(sz);}
-    void emit(std::ostream& output, bool symbolreg=false);
+    void emit(std::ostream& output, bool symbolreg=false) override;
 
     bool isNullReg() const { return getArchRegType() == AREG_NULL; }
     bool isFlag() const
@@ -2418,23 +2333,23 @@ public:
                 return false;
         }
     }
-    bool isIpReg() const   { return getArchRegType() == AREG_IP;      }
-    bool isA0() const      { return getArchRegType() == AREG_A0;      }
-    bool isNReg() const    { return getArchRegType() == AREG_N0      ||
+    bool isIpReg()  const { return getArchRegType() == AREG_IP;      }
+    bool isA0()     const { return getArchRegType() == AREG_A0;      }
+    bool isNReg()   const { return getArchRegType() == AREG_N0      ||
                                getArchRegType() == AREG_N1;      }
     bool isAcc0Reg() const { return getArchRegType() == AREG_ACC0;    }
-    bool isAccReg() const  { return getArchRegType() == AREG_ACC0    ||
+    bool isAccReg()  const { return getArchRegType() == AREG_ACC0    ||
                                getArchRegType() == AREG_ACC1;    }
     bool isMaskReg() const { return getArchRegType() == AREG_MASK0;   }
-    bool isMsReg() const   { return getArchRegType() == AREG_MS0;     }
-    bool isDbgReg() const  { return getArchRegType() == AREG_DBG;     }
-    bool isSrReg() const   { return getArchRegType() == AREG_SR0;     }
-    bool isCrReg() const   { return getArchRegType() == AREG_CR0;     }
-    bool isTmReg() const   { return getArchRegType() == AREG_TM0;     }
-    bool isTDRReg() const  { return getArchRegType() == AREG_TDR0;    }
-    bool isSpReg() const   { return getArchRegType() == AREG_SP;      }
+    bool isMsReg()   const { return getArchRegType() == AREG_MS0;     }
+    bool isDbgReg()  const { return getArchRegType() == AREG_DBG;     }
+    bool isSrReg()   const { return getArchRegType() == AREG_SR0;     }
+    bool isCrReg()   const { return getArchRegType() == AREG_CR0;     }
+    bool isTmReg()   const { return getArchRegType() == AREG_TM0;     }
+    bool isTDRReg()  const { return getArchRegType() == AREG_TDR0;    }
+    bool isSpReg()   const { return getArchRegType() == AREG_SP;      }
 
-    unsigned short ExRegNum(bool &valid)
+    unsigned short ExRegNum(bool &valid) override
     {
         unsigned short rNum = UNDEFINED_SHORT;
         valid = true;
@@ -2470,7 +2385,7 @@ public:
         return rNum;
     }
 
-    unsigned short ExIndRegNum(bool &valid)
+    unsigned short ExIndRegNum(bool &valid) override
     {
         unsigned short rIndNum = UNDEFINED_SHORT;
         valid = false;
@@ -2554,14 +2469,14 @@ public:
     bool isZero() const;
     // True if this is a signed integer and its sign bit(s) are 0.
     bool isSignBitZero() const;
-    void emit(std::ostream& output, bool symbolreg=false);
+    void emit(std::ostream& output, bool symbolreg=false) override;
     void emitAutoFmt(std::ostream& output);
 
     bool isEqualTo(G4_Imm& imm1) const;
     bool isEqualTo(G4_Imm* imm1) const { return isEqualTo(*imm1); }
 
-    G4_CmpRelation compareOperand( G4_Operand *opnd);
-    G4_RegFileKind getRegFile(){ return G4_UndefinedRF; }
+    G4_CmpRelation compareOperand(G4_Operand *opnd) override;
+    G4_RegFileKind getRegFile() const { return G4_UndefinedRF; }
 
     static bool isInTypeRange(int64_t imm, G4_Type ty);
 
@@ -2572,7 +2487,7 @@ class G4_Reloc_Imm : public G4_Imm
 
 public:
     void *operator new(size_t sz, Mem_Manager& m){ return m.alloc(sz); }
-    bool isRelocImm() { return true; }
+    bool isRelocImm() const override { return true; }
 
     G4_Reloc_Imm(G4_Type ty) : G4_Imm((int64_t)0x6e10ca2e, ty)
     {
@@ -2586,12 +2501,12 @@ class G4_Label: public G4_Operand
 {
     friend class OperandHashTable; // labels are hashed, and only OperandHashTable may create a label
 
-    char* label;
+    const char* label;
     bool funcLabel;
     bool start_loop_label;
     bool isFC;
 
-    G4_Label(char* l) : G4_Operand(G4_Operand::label), label(l)
+    G4_Label(const char* l) : G4_Operand(G4_Operand::label), label(l)
     {
         funcLabel = false;
         start_loop_label = false;
@@ -2600,14 +2515,14 @@ class G4_Label: public G4_Operand
 
 public:
 
-    char* getLabel() {return label;}
+    const char* getLabel() const {return label;}
     void *operator new(size_t sz, Mem_Manager& m) {return m.alloc(sz);}
-    void emit(std::ostream& output, bool symbolreg=false);
-    void setFuncLabel( bool val )    { funcLabel = val; }
-    bool isFuncLabel( )    { return funcLabel; }
-    void setStartLoopLabel(){ start_loop_label = true; }
-    bool isStartLoopLabel(){ return start_loop_label; }
-    bool isFCLabel() { return isFC; }
+    void emit(std::ostream& output, bool symbolreg=false) override;
+    void setFuncLabel( bool val ) { funcLabel = val; }
+    bool isFuncLabel( ) const { return funcLabel; }
+    void setStartLoopLabel() { start_loop_label = true; }
+    bool isStartLoopLabel() const { return start_loop_label; }
+    bool isFCLabel() const { return isFC; }
     void setFCLabel(bool fcLabel) { isFC = fcLabel; }
 };
 }
@@ -2658,51 +2573,53 @@ namespace vISA
         {
         }
         void *operator new(size_t sz, Mem_Manager& m) {return m.alloc(sz);}
-        unsigned    getId()                { return id; }
-        void        setId(unsigned i)    { id = i; }
-        const char*        getName()            { return decl->getName(); }
-        G4_Declare* getDeclare()        { return decl; }
-        bool        isPhyRegAssigned()    { return reg.phyReg != NULL; }
-        bool        isFlag()            { return decl->getRegFile() == G4_FLAG; }
-        bool        isAreg()            { return (reg.phyReg != NULL) && (reg.phyReg->isAreg()); }
-        bool        isA0()              { return (reg.phyReg != NULL) && (reg.phyReg->isA0()); }
-        bool        isCrReg()           { return (reg.phyReg != NULL) && (reg.phyReg->isCrReg()); }
-        bool        isDbgReg()           { return (reg.phyReg != NULL) && (reg.phyReg->isDbgReg()); }
-        bool        isGreg()            { return (reg.phyReg != NULL) && (reg.phyReg->isGreg()); }
-        bool        isNReg()            { return (reg.phyReg != NULL) && (reg.phyReg->isNReg()); }
-        bool        isNullReg()         { return (reg.phyReg != NULL) && (reg.phyReg->isNullReg()); }
-        bool        isSrReg()           { return (reg.phyReg != NULL) && (reg.phyReg->isSrReg()); }
-        bool        isTDRReg()          { return (reg.phyReg != NULL) && (reg.phyReg->isTDRReg()); }
-        bool        isTmReg()           { return (reg.phyReg != NULL) && (reg.phyReg->isTmReg()); }
-        bool        isAccReg()          { return (reg.phyReg != NULL) && (reg.phyReg->isAccReg()); }
-        bool        isIpReg()           { return (reg.phyReg != NULL) && (reg.phyReg->isIpReg()); }
-        bool        isMaskReg()         { return (reg.phyReg != NULL) && (reg.phyReg->isMaskReg()); }
-        bool        isMsReg()           { return (reg.phyReg != NULL) && (reg.phyReg->isMsReg()); }
-        bool        isSpReg()           { return (reg.phyReg != NULL) && (reg.phyReg->isSpReg()); }
+        unsigned    getId() const { return id; }
+        void        setId(unsigned i) { id = i; }
+        const char*        getName() const { return decl->getName(); }
+        const G4_Declare* getDeclare() const { return decl; }
+              G4_Declare* getDeclare()       { return decl; }
+        bool        isPhyRegAssigned() const { return reg.phyReg != NULL; }
+        bool        isFlag()    const { return decl->getRegFile() == G4_FLAG; }
+        bool        isAreg()    const { return (reg.phyReg != NULL) && (reg.phyReg->isAreg()); }
+        bool        isA0()      const { return (reg.phyReg != NULL) && (reg.phyReg->isA0()); }
+        bool        isCrReg()   const { return (reg.phyReg != NULL) && (reg.phyReg->isCrReg()); }
+        bool        isDbgReg()  const { return (reg.phyReg != NULL) && (reg.phyReg->isDbgReg()); }
+        bool        isGreg()    const { return (reg.phyReg != NULL) && (reg.phyReg->isGreg()); }
+        bool        isNReg()    const { return (reg.phyReg != NULL) && (reg.phyReg->isNReg()); }
+        bool        isNullReg() const { return (reg.phyReg != NULL) && (reg.phyReg->isNullReg()); }
+        bool        isSrReg()   const { return (reg.phyReg != NULL) && (reg.phyReg->isSrReg()); }
+        bool        isTDRReg()  const { return (reg.phyReg != NULL) && (reg.phyReg->isTDRReg()); }
+        bool        isTmReg()   const { return (reg.phyReg != NULL) && (reg.phyReg->isTmReg()); }
+        bool        isAccReg()  const { return (reg.phyReg != NULL) && (reg.phyReg->isAccReg()); }
+        bool        isIpReg()   const { return (reg.phyReg != NULL) && (reg.phyReg->isIpReg()); }
+        bool        isMaskReg() const { return (reg.phyReg != NULL) && (reg.phyReg->isMaskReg()); }
+        bool        isMsReg()   const { return (reg.phyReg != NULL) && (reg.phyReg->isMsReg()); }
+        bool        isSpReg()   const { return (reg.phyReg != NULL) && (reg.phyReg->isSpReg()); }
 
-        bool        isRegAllocPartaker(){ return id != UNDEFINED_VAL; }
-        bool        isAddress()            { return decl->getRegFile() == G4_ADDRESS; }
-        G4_VarBase* getPhyReg()            { return reg.phyReg; }
-        unsigned    getByteAddr();
-        unsigned    getPhyRegOff()      { return reg.subRegOff; }
+        bool        isRegAllocPartaker() const { return id != UNDEFINED_VAL; }
+        bool        isAddress()  const { return decl->getRegFile() == G4_ADDRESS; }
+        const G4_VarBase* getPhyReg() const { return reg.phyReg; }
+              G4_VarBase* getPhyReg()       { return reg.phyReg; }
+        unsigned    getByteAddr() const;
+        unsigned    getPhyRegOff() const { return reg.subRegOff; }
         void        setPhyReg(G4_VarBase* pr, unsigned off)
         {
             MUST_BE_TRUE(pr == NULL || pr->isPhyReg(), ERROR_UNKNOWN);
             reg.phyReg = pr;
             reg.subRegOff = off;
         }
-        void        resetPhyReg()        { reg.phyReg = NULL; reg.subRegOff = 0; }
-        bool        isSpilled()         { return decl->isSpilled(); }
-        void        setDisp(unsigned offset)           { disp = offset; }
-        unsigned    getDisp()           { return disp; }
-        bool        isAliased() { return decl->getAliasDeclare() != NULL; }
+        void        resetPhyReg() { reg.phyReg = NULL; reg.subRegOff = 0; }
+        bool        isSpilled() const { return decl->isSpilled(); }
+        void        setDisp(unsigned offset) { disp = offset; }
+        unsigned    getDisp() const { return disp; }
+        bool        isAliased() const { return decl->getAliasDeclare() != NULL; }
         unsigned getLocId() const;
 
-        bool isRegVarTransient() const  { return type == RegVarType::Transient; }
+        bool isRegVarTransient() const { return type == RegVarType::Transient; }
         bool isRegVarSpill() const;
-        bool isRegVarFill() const;
+        bool isRegVarFill()  const;
 
-        bool isRegVarTmp() const          { return type == RegVarType::GRFSpillTmp; }
+        bool isRegVarTmp()          const { return type == RegVarType::GRFSpillTmp; }
         bool isRegVarAddrSpillLoc() const { return type == RegVarType::AddrSpillLoc; }
 
         bool isRegVarCoalesced() const { return type == RegVarType::Coalesced; }
@@ -2712,7 +2629,7 @@ namespace vISA
 
         G4_RegVar * getNonTransientBaseRegVar();
 
-        G4_Align getAlignment() { return align; }
+        G4_Align getAlignment() const { return align; }
         void setAlignment(G4_Align a)
         {
             if (!isPhyRegAssigned())
@@ -2730,11 +2647,11 @@ namespace vISA
         G4_SubReg_Align getSubRegAlignment() { return subAlign; }
 
         void setSubRegAlignment(G4_SubReg_Align subAlg);
-        void emit(std::ostream& output, bool symbolreg = false);
+        void emit(std::ostream& output, bool symbolreg = false) override;
 
-        unsigned short ExRegNum(bool &valid)               { return reg.phyReg->ExRegNum(valid); }
-        unsigned short ExSubRegNum(bool &valid)               { valid = true; return (unsigned short)reg.subRegOff; }
-        unsigned short ExIndRegNum(bool &valid)               { return reg.phyReg->ExIndRegNum(valid); }
+        unsigned short ExRegNum(bool &valid) override { return reg.phyReg->ExRegNum(valid); }
+        unsigned short ExSubRegNum(bool &valid) override { valid = true; return (unsigned short)reg.subRegOff; }
+        unsigned short ExIndRegNum(bool &valid) override { return reg.phyReg->ExIndRegNum(valid); }
     };
 
     class G4_RegVarTransient : public G4_RegVar
@@ -2767,10 +2684,10 @@ namespace vISA
         G4_Operand * getRepRegion() const { return repRegion; }
         G4_RegVar * getAbsBaseRegVar();
         G4_RegVar * getNonTransientBaseRegVar();
-        unsigned getExecSize() { return execSize; }
+        unsigned getExecSize() const { return execSize; }
 
-        bool isRegVarSpill() { return type == TransientType::Spill; }
-        bool isRegVarFill() { return type == TransientType::Fill; }
+        bool isRegVarSpill() const { return type == TransientType::Spill; }
+        bool isRegVarFill() const { return type == TransientType::Fill; }
         G4_DstRegRegion* getDstRepRegion() const { return repRegion->asDstRegRegion(); }
         G4_SrcRegRegion* getSrcRepRegion() const { return repRegion->asSrcRegRegion(); }
 
@@ -2812,7 +2729,7 @@ namespace vISA
             }
         }
         void *operator new(size_t sz, Mem_Manager& m) {return m.alloc(sz);}
-        unsigned getLocId() const       { return loc_id; }
+        unsigned getLocId() const { return loc_id; }
     };
 
     class G4_RegVarCoalesced : public G4_RegVar
@@ -2826,8 +2743,8 @@ namespace vISA
         }
 
         void *operator new(size_t sz, Mem_Manager& m){ return m.alloc(sz); }
-        bool isSpill() { return !f; }
-        bool isFill() { return f; }
+        bool isSpill() const { return !f; }
+        bool isFill() const { return f; }
     };
 
     class G4_SrcRegRegion final : public G4_Operand
@@ -2882,8 +2799,8 @@ namespace vISA
 
         void computeLeftBound();
         void setSrcBitVec(uint8_t exec_size);
-        short getRegOff()                   { return regOff; }
-        short getSubRegOff()               { return subRegOff; }
+        short getRegOff() const { return regOff; }
+        short getSubRegOff() const { return subRegOff; }
         void  setSubRegOff(short off)
         {
             if (subRegOff != off)
@@ -2904,55 +2821,56 @@ namespace vISA
             }
         }
 
-        char*          getSwizzle()                { return swizzle; }
-        G4_SrcModifier getModifier()               { return mod; }
-        bool hasModifier() const                   { return mod != Mod_src_undef; }
-        RegionDesc*    getRegion()                 { return desc; }
-        G4_RegAccess   getRegAccess()              { return acc; }
-        short          getAddrImm()                { return immAddrOff; }
-        unsigned short getElemSize() const         { return (unsigned short)G4_Type_Table[type].byteSize; }
+        const char*       getSwizzle() const { return swizzle; }
+        G4_SrcModifier    getModifier() const  { return mod; }
+        bool              hasModifier() const  { return mod != Mod_src_undef; }
+        const RegionDesc* getRegion() const  { return desc; }
+              RegionDesc* getRegion()        { return desc; }
+        G4_RegAccess      getRegAccess() const { return acc; }
+        short             getAddrImm()  const { return immAddrOff; }
+        unsigned short    getElemSize() const { return (unsigned short)G4_Type_Table[type].byteSize; }
 
-        void setImmAddrOff(short off)           { immAddrOff = off; }
+        void setImmAddrOff(short off) { immAddrOff = off; }
         void setModifier(G4_SrcModifier m) { mod = m; }
         void setSwizzle(const char* sw);
 
         bool sameSrcRegRegion(G4_SrcRegRegion& rgn);
-        bool obeySymbolRegRule();
-        void emit(std::ostream& output, bool symbolreg = false);
+        bool obeySymbolRegRule() const;
+        void emit(std::ostream& output, bool symbolreg = false) override;
         void emitRegVarOff(std::ostream& output, bool symbolreg = false);
 
-        bool isAreg() { return base->isAreg(); }
-        bool isNullReg() { return base->isNullReg(); }
-        bool isIpReg()   { return base->isIpReg();}
-        bool isFlag()     {return base->isFlag();}
-        bool isNReg()   {return base->isNReg();}
-        bool isAccReg()    {return base->isAccReg();}
-        bool isMaskReg()      {return base->isMaskReg();}
-        bool isMsReg()          {return base->isMsReg();}
-        bool isSrReg()          {return base->isSrReg();}
-        bool isCrReg()          {return base->isCrReg();}
-        bool isDbgReg()         { return base->isDbgReg(); }
-        bool isTmReg()          { return base->isTmReg(); }
-        bool isTDRReg()         {return base->isTDRReg();}
-        bool isA0()              {return base->isA0();}
-        bool isGreg() { return base->isGreg(); }
-        bool isWithSwizzle()    {return (swizzle[0] != '\0');}
-        bool isScalar();
-        bool isAddress()        {return base->isAddress();}
+        bool isAreg()    const { return base->isAreg(); }
+        bool isNullReg() const { return base->isNullReg(); }
+        bool isIpReg()   const { return base->isIpReg();}
+        bool isFlag()    const {return base->isFlag();}
+        bool isNReg()    const {return base->isNReg();}
+        bool isAccReg()  const {return base->isAccReg();}
+        bool isMaskReg() const {return base->isMaskReg();}
+        bool isMsReg()   const {return base->isMsReg();}
+        bool isSrReg()   const {return base->isSrReg();}
+        bool isCrReg()   const {return base->isCrReg();}
+        bool isDbgReg()  const { return base->isDbgReg(); }
+        bool isTmReg()   const { return base->isTmReg(); }
+        bool isTDRReg()  const {return base->isTDRReg();}
+        bool isA0()      const {return base->isA0();}
+        bool isGreg()    const { return base->isGreg(); }
+        bool isWithSwizzle() const {return (swizzle[0] != '\0');}
+        bool isScalar() const;
+        bool isAddress() const {return base->isAddress();}
 
-        unsigned short             ExRegNum(bool&);
+        unsigned short             ExRegNum(bool&) const;
         unsigned short             ExSubRegNum(bool&);
         unsigned short             ExIndRegNum(bool&);
         unsigned short             ExIndSubRegNum(bool&);
         short                      ExIndImmVal(void);
         bool                       ExNegMod(bool&);
 
-        void                        computePReg();
+        void                       computePReg();
 
         bool isIndirect() const { return acc != Direct; }
 
-        unsigned computeRightBound(uint8_t exec_size);
-        G4_CmpRelation compareOperand(G4_Operand *opnd);
+        unsigned computeRightBound(uint8_t exec_size) override;
+        G4_CmpRelation compareOperand(G4_Operand *opnd) override;
 
         void setType(G4_Type ty)
         {
@@ -2992,9 +2910,9 @@ namespace vISA
             }
         }
 
-        bool isNativeType();
-        bool isNativePackedRowRegion();
-        bool isNativePackedRegion();
+        bool isNativeType() const;
+        bool isNativePackedRowRegion() const;
+        bool isNativePackedRegion() const;
         bool evenlySplitCrossGRF(uint8_t execSize, bool &sameSubRegOff, bool &vertCrossGRF, bool &contRegion, uint8_t &eleInFirstGRF);
         bool evenlySplitCrossGRF(uint8_t execSize);
         bool coverTwoGRF();
@@ -3003,7 +2921,7 @@ namespace vISA
         bool isNativePackedSrcRegion();
         uint8_t getMaxExecSize(int pos, uint8_t maxExSize, bool allowCrossGRF, uint16_t &vs, uint16_t &wd, bool &twoGRFsrc);
 
-        bool isSpilled()
+        bool isSpilled() const
         {
             if (getBase() && getBase()->isRegVar())
             {
@@ -3082,9 +3000,10 @@ public:
     G4_DstRegRegion(G4_DstRegRegion& rgn, G4_VarBase* new_base);
 
     void computeLeftBound();
-    G4_RegAccess   getRegAccess()              { return acc; }
-    short getRegOff()                   { return regOff; }
-    short getSubRegOff()               { return subRegOff; }
+
+    G4_RegAccess   getRegAccess() const { return acc; }
+    short          getRegOff() const { return regOff; }
+    short          getSubRegOff() const { return subRegOff; }
     void  setSubRegOff(short off)
     {
         if (subRegOff != off)
@@ -3110,34 +3029,34 @@ public:
 
         return (left_bound / GENX_GRF_REG_SIZ) != right_bound / GENX_GRF_REG_SIZ;
     }
-    unsigned short getHorzStride()             { return horzStride; }
-    ChannelEnable          getWriteMask()               { return writeMask; }
+    unsigned short getHorzStride() const { return horzStride; }
+    ChannelEnable  getWriteMask() const { return writeMask; }
     void           setWriteMask(ChannelEnable channels);
-    short          getAddrImm()                { return immAddrOff; }
-    unsigned short getElemSize() const         { return (unsigned short)(G4_Type_Table[type].byteSize); }
-    unsigned short getExecTypeSize() const     { return horzStride * getElemSize(); }
+    short          getAddrImm() const { return immAddrOff; }
+    unsigned short getElemSize() const { return (unsigned short)(G4_Type_Table[type].byteSize); }
+    unsigned short getExecTypeSize() const { return horzStride * getElemSize(); }
 
-    void setImmAddrOff(short off)               { immAddrOff = off; }
-    bool obeySymbolRegRule();
-    void emit(std::ostream& output, bool symbolreg = false);
+    void setImmAddrOff(short off) { immAddrOff = off; }
+    bool obeySymbolRegRule() const;
+    void emit(std::ostream& output, bool symbolreg = false) override;
     void emitRegVarOff(std::ostream& output, bool symbolreg = false);
 
-    bool isAreg() { return base->isAreg(); }
-    bool isNullReg() { return base->isNullReg(); }
-    bool isIpReg()   { return base->isIpReg(); }
-    bool isFlag()     { return base->isFlag(); }
-    bool isNReg()   { return base->isNReg(); }
-    bool isAccReg()    { return base->isAccReg(); }
-    bool isMaskReg()      { return base->isMaskReg(); }
-    bool isMsReg()          { return base->isMsReg(); }
-    bool isSrReg()          { return base->isSrReg(); }
-    bool isCrReg()          { return base->isCrReg(); }
-    bool isDbgReg()          { return base->isDbgReg(); }
-    bool isTmReg()          { return base->isTmReg(); }
-    bool isTDRReg()          { return base->isTDRReg(); }
-    bool isA0()              { return base->isA0(); }
-    bool isGreg() { return base->isGreg(); }
-    bool isAddress()        { return base->isAddress(); }
+    bool isAreg()    const { return base->isAreg(); }
+    bool isNullReg() const { return base->isNullReg(); }
+    bool isIpReg()   const { return base->isIpReg(); }
+    bool isFlag()    const { return base->isFlag(); }
+    bool isNReg()    const { return base->isNReg(); }
+    bool isAccReg()  const { return base->isAccReg(); }
+    bool isMaskReg() const { return base->isMaskReg(); }
+    bool isMsReg()   const { return base->isMsReg(); }
+    bool isSrReg()   const { return base->isSrReg(); }
+    bool isCrReg()   const { return base->isCrReg(); }
+    bool isDbgReg()  const { return base->isDbgReg(); }
+    bool isTmReg()   const { return base->isTmReg(); }
+    bool isTDRReg()  const { return base->isTDRReg(); }
+    bool isA0()      const { return base->isA0(); }
+    bool isGreg()    const { return base->isGreg(); }
+    bool isAddress() const { return base->isAddress(); }
 
     unsigned short             ExRegNum(bool&);
     unsigned short             ExSubRegNum(bool&);
@@ -3182,19 +3101,19 @@ public:
         horzStride = hs;
     }
     void setDstBitVec(uint8_t exec_size);
-    unsigned computeRightBound(uint8_t exec_size);
-    G4_CmpRelation compareOperand(G4_Operand *opnd);
-    bool isNativeType();
-    bool isNativePackedRowRegion();
-    bool isNativePackedRegion();
+    unsigned computeRightBound(uint8_t exec_size) override;
+    G4_CmpRelation compareOperand(G4_Operand *opnd) override;
+    bool isNativeType() const;
+    bool isNativePackedRowRegion() const;
+    bool isNativePackedRegion() const;
     bool coverGRF(uint16_t numGRF, uint8_t execSize);
     bool goodOneGRFDst(uint8_t execSize);
     bool goodtwoGRFDst(uint8_t execSize);
     bool evenlySplitCrossGRF(uint8_t execSize);
-    bool checkGRFAlign();
+    bool checkGRFAlign() const;
     bool hasFixedSubregOffset(uint32_t& offset);
     uint8_t getMaxExecSize(int pos, uint8_t maxExSize, bool twoGRFsrc);
-    bool isSpilled()
+    bool isSpilled() const
     {
         if (getBase() && getBase()->isRegVar())
         {
@@ -3283,24 +3202,24 @@ public:
     G4_Predicate(G4_Predicate& prd);
 
     void *operator new(size_t sz, Mem_Manager& m) {return m.alloc(sz);}
-    unsigned short getSubRegOff() { return subRegOff; }
-    unsigned short getRegOff()
+    unsigned short getSubRegOff() const { return subRegOff; }
+    unsigned short getRegOff() const
     {
         MUST_BE_TRUE(getBase()->isAreg(), ERROR_INTERNAL_ARGUMENT);
         return getBase()->asRegVar()->getPhyReg()->asAreg()->getFlagNum();
     }
 
-    G4_PredState   getState()     { return state; }
-    void   setState(G4_PredState s)     { state = s; }
-    G4_Predicate_Control    getControl()   { return control; }
-    bool samePredicate(G4_Predicate& prd);
-    void emit(std::ostream& output, bool symbolreg = false);
+    G4_PredState   getState() const { return state; }
+    void   setState(G4_PredState s) { state = s; }
+    G4_Predicate_Control    getControl() const { return control; }
+    bool samePredicate(const G4_Predicate& prd) const;
+    void emit(std::ostream& output, bool symbolreg = false) override;
 
     void setAlign16PredicateControl(G4_Align16_Predicate_Control control) { align16Control = control; }
-    G4_Align16_Predicate_Control getAlign16PredicateControl() { return align16Control; }
+    G4_Align16_Predicate_Control getAlign16PredicateControl() const { return align16Control; }
 
-    unsigned computeRightBound(uint8_t exec_size);
-    G4_CmpRelation compareOperand(G4_Operand *opnd);
+    unsigned computeRightBound(uint8_t exec_size) override;
+    G4_CmpRelation compareOperand(G4_Operand *opnd) override;
     void splitPred();
     unsigned getPredCtrlGroupSize() const
     {
@@ -3394,16 +3313,16 @@ public:
 
     G4_CondMod(G4_CondMod &cMod);
     void *operator new(size_t sz, Mem_Manager& m) {return m.alloc(sz);}
-    G4_CondModifier getMod() { return mod; }
+    G4_CondModifier getMod() const { return mod; }
     unsigned short getRegOff() const
     {
         MUST_BE_TRUE(getBase()->isAreg(), ERROR_INTERNAL_ARGUMENT);
         MUST_BE_TRUE(getBase()->asRegVar()->getPhyReg(), "getRegOff is called for non-PhyReg");
         return getBase()->asRegVar()->getPhyReg()->asAreg()->getFlagNum();
     }
-    unsigned short getSubRegOff() { return subRegOff; }
-    bool sameCondMod(G4_CondMod& prd);
-    void emit(std::ostream& output, bool symbolreg = false);
+    unsigned short getSubRegOff() const { return subRegOff; }
+    bool sameCondMod(const G4_CondMod& prd) const;
+    void emit(std::ostream& output, bool symbolreg = false) override;
 
     // Get condition modifier when operands are reversed.
     static G4_CondModifier getReverseCondMod(G4_CondModifier mod)
@@ -3425,8 +3344,8 @@ public:
         return mod;
     }
 
-    unsigned computeRightBound(uint8_t exec_size);
-    G4_CmpRelation compareOperand(G4_Operand *opnd);
+    unsigned computeRightBound(uint8_t exec_size) override;
+    G4_CmpRelation compareOperand(G4_Operand *opnd) override;
     void splitCondMod();
 };
 
@@ -3442,17 +3361,18 @@ public:
 
     void *operator new(size_t sz, Mem_Manager& m) {return m.alloc(sz);}
 
-    G4_RegVar* getRegVar() { return m_addressedReg; }
-    int getOffset() { return m_offset; }
+    const G4_RegVar* getRegVar() const { return m_addressedReg; }
+          G4_RegVar* getRegVar()       { return m_addressedReg; }
+    int getOffset() const { return m_offset; }
     void setOffset(int tOffset) { m_offset = tOffset; }
 
     int eval();
-    bool isRegAllocPartaker() { return m_addressedReg->isRegAllocPartaker(); }
+    bool isRegAllocPartaker() const { return m_addressedReg->isRegAllocPartaker(); }
 
     void emit(std::ostream& output, bool symbolreg = false);
 };
 
-inline G4_RegAccess G4_Operand::getRegAccess()
+inline G4_RegAccess G4_Operand::getRegAccess() const
 {
     if (isSrcRegRegion())
         return asSrcRegRegion()->getRegAccess();
@@ -3815,7 +3735,7 @@ inline bool G4_INST::isPseudoUse() const
     return isIntrinsic() && asIntrinsicInst()->getIntrinsicId() == Intrinsic::Use;
 }
 
-inline char* G4_INST::getLabelStr()
+inline const char* G4_INST::getLabelStr() const
 {
     MUST_BE_TRUE(srcs[0] != NULL && srcs[0]->isLabel(), ERROR_UNKNOWN);
     return srcs[0]->asLabel()->getLabel();
