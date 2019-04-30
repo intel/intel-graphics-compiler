@@ -1706,18 +1706,34 @@ void GenSpecificPattern::visitIntToPtr(llvm::IntToPtrInst& I)
     }
 }
 
-void GenSpecificPattern::visitTruncInst(llvm::TruncInst &I) 
+void GenSpecificPattern::visitTruncInst(llvm::TruncInst &I)
 {
+    /*
+    from
+    %22 = lshr i64 %a, 52
+    %23 = trunc i64  %22 to i32
+    to
+    %22 = extractelement <2 x i32> %a, 1
+    %23 = lshr i32 %22, 20 //52-32
+    */
+
     using namespace llvm::PatternMatch;
     Value *LHS = nullptr;
-    if (match(&I, m_Trunc(m_LShr(m_Value(LHS), m_SpecificInt(32)))) &&
+    ConstantInt *CI;
+    if (match(&I, m_Trunc(m_LShr(m_Value(LHS), m_ConstantInt(CI)))) &&
         I.getType()->isIntegerTy(32) &&
-        LHS->getType()->isIntegerTy(64))
+        LHS->getType()->isIntegerTy(64) &&
+        CI->getZExtValue() >= 32)
     {
+        auto new_shift_size = (unsigned)CI->getZExtValue() - 32;
         llvm::IRBuilder<> builder(&I);
         VectorType* vec2 = VectorType::get(builder.getInt32Ty(), 2);
         Value* new_Val = builder.CreateBitCast(LHS, vec2);
         new_Val = builder.CreateExtractElement(new_Val, builder.getInt32(1));
+        if (new_shift_size > 0)
+        {
+            new_Val = builder.CreateLShr(new_Val, builder.getInt32(new_shift_size));
+        }
         I.replaceAllUsesWith(new_Val);
         I.eraseFromParent();
     }
