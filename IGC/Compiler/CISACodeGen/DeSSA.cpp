@@ -490,12 +490,8 @@ bool DeSSA::runOnFunction(Function &MF)
       }
 
       e_alignment DefAlign = GetPreferredAlignment(PHI, WIA, CTX);
-      if (IGC_IS_FLAG_ENABLED(EnableDeSSAAlias)) {
-          assert(PHI == getNodeValue(PHI));
-      }
-      else {
-          assert(PHI == getInsEltRoot(PHI));
-      }
+      assert(PHI == getNodeValue(PHI));
+
       addReg(PHI, DefAlign);
       PHISrcDefs[&(*I)].push_back(PHI);
 
@@ -513,12 +509,7 @@ bool DeSSA::runOnFunction(Function &MF)
             PHILoopPreHeaderSrcs[OrigSrcVal] >= PHI_SRC_USE_THRESHOLD);
         // add src to the union
         Value *SrcVal;
-        if (IGC_IS_FLAG_ENABLED(EnableDeSSAAlias)) {
-            SrcVal = getNodeValue(OrigSrcVal);
-        }
-        else {
-            SrcVal = getInsEltRoot(OrigSrcVal);
-        }
+        SrcVal = getNodeValue(OrigSrcVal);
         e_alignment SrcAlign = GetPreferredAlignment(OrigSrcVal, WIA, CTX);
         Instruction *DefMI = dyn_cast<Instruction>(SrcVal);
         if (DefMI) {
@@ -731,10 +722,10 @@ void DeSSA::splitNode(Node* ND)
         Leader = P;
     }
 
-    // If ND is a leaf node, no need to set parent. As we don't
-    // know if it has any children. A path compression is done
-    // always to set "Leader' as the new leader, so that all nodes
-    // within a same congruent class remains in the same rooted tree.
+    // If ND has children, those children need to set their parent.
+    // Since we don't know if ND has children, we conservatively set
+    // parent for all remaining nodes using "a path compression", so
+    // that all nodes remains in the same rooted tree.
     N = Leader->next;
     Leader->parent = Leader;
     Leader->rank = (Leader == N) ? 0 : 1;
@@ -880,12 +871,7 @@ DeSSA::SplitInterferencesForBasicBlock(
               for (unsigned i = 0; !RootC && i < PHI->getNumOperands(); i++) {
                   Value* SrcVal = PHI->getOperand(i);
                   if (!isa<Constant>(SrcVal)) {
-                      if (IGC_IS_FLAG_ENABLED(EnableDeSSAAlias)) {
-                          SrcVal = getNodeValue(SrcVal);
-                      }
-                      else {
-                          SrcVal = getInsEltRoot(SrcVal);
-                      }
+                      SrcVal = getNodeValue(SrcVal);
                       RootC = getRootColor(SrcVal);
                   }
               }
@@ -902,12 +888,7 @@ DeSSA::SplitInterferencesForBasicBlock(
       }
       assert(PredIndex < PHI->getNumOperands());
       Value* PredValue = PHI->getOperand(PredIndex);
-      if (IGC_IS_FLAG_ENABLED(EnableDeSSAAlias)) {
-          PredValue = getNodeValue(PredValue);
-      }
-      else {
-          PredValue = getInsEltRoot(PredValue);
-      }
+      PredValue = getNodeValue(PredValue);
       std::pair<Instruction*, Value*> &CurrentPHI = CurrentPHIForColor[RootC];
       // If two PHIs have the same operand from every shared predecessor, then
       // they don't actually interfere. Otherwise, isolate the current PHI. This
@@ -1194,13 +1175,8 @@ void DeSSA::getAllValuesInCongruentClass(
     // has its liveness modified to cover all InsertElements that are
     // grouped together.
     Value* RootV = nullptr;
-    if (IGC_IS_FLAG_ENABLED(EnableDeSSAAlias))
-    {
-        RootV = getNodeValue(V);
-    }
-    else {
-        RootV = getInsEltRoot(V);
-    }
+    RootV = getNodeValue(V);
+
     assert(RootV && "ICE: Node value should not be nullptr!");
     ValsInCC.push_back(RootV);
     auto RI = RegNodeMap.find(RootV);
