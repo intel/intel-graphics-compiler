@@ -667,7 +667,7 @@ bool MemOpt::mergeLoad(LoadInst *LeadingLoad,
       MaxElts = profitVec[k++];
     }
 
-    if (NumElts == 3 && LeadingLoadScalarType->isIntegerTy(16)) {
+    if (NumElts == 3 && (LeadingLoadScalarType->isIntegerTy(16) || LeadingLoadScalarType->isHalfTy())) {
       return false;
     }
 
