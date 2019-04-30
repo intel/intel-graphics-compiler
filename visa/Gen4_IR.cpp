@@ -1962,9 +1962,9 @@ bool G4_INST::canPropagateTo(G4_INST *useInst, Gen4_Operand_Number opndNum, MovT
     // FIXME: to add specific checks for other instructions.
     G4_opcode useInst_op = useInst->opcode();
 
-    if (useInst_op == G4_madm ||
-        (useInst->isMath() && (useInst->asMathInst()->getMathCtrl() == MATH_INVM || useInst->asMathInst()->getMathCtrl() == MATH_RSQRTM)))
+    if (useInst_op == G4_madm || (useInst->isMath() && useInst->asMathInst()->isIEEEMath()))
     {
+        // do not propagate if useInst uses mme registers
         return false;
     }
     if ((useInst_op == G4_line && opndNum == Opnd_src0) ||
@@ -1974,9 +1974,9 @@ bool G4_INST::canPropagateTo(G4_INST *useInst, Gen4_Operand_Number opndNum, MovT
     }
 
     bool isVxHSrc = indirectSrc && src->asSrcRegRegion()->getRegion()->isRegionWH();
-
-    if (isVxHSrc && useInst->getExecSize() != execSize)
+    if (isVxHSrc && (useInst->getExecSize() != execSize || execSize >= 8))
     {
+        // copy propagating VxH region may result in address spills later so it's usually a net loss
         return false;
     }
 
