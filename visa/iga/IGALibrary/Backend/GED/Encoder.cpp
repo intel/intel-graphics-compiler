@@ -85,9 +85,10 @@ void EncoderBase::encodeKernelPreProcess(Kernel &k)
         Block& blk = **k.getBlockList().begin();
         // To simplify the size calculation, we do not compact the instructions
         // Add NOP until the block size is multiple of 64
-        size_t padding_size = 64 - (blk.getInstList().size() * inst_size % 64);
-        assert(padding_size % inst_size == 0);
+        size_t padding_size = blk.getInstList().size() * inst_size % 64;
         if (padding_size != 0) {
+            padding_size = 64 - padding_size;
+            assert(padding_size % inst_size == 0);
             size_t num_nop = padding_size / inst_size;
             // create inst
             for (size_t i = 0; i < num_nop; ++i)
