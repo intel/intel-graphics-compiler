@@ -68,6 +68,7 @@ public:
     void visitFCmpInst(llvm::FCmpInst &FC);
     void visitSelectInst(llvm::SelectInst &I);
     void visitCallInst(llvm::CallInst &I);
+    void visitFPToSIInst(llvm::FPToSIInst &I);
 
     bool visitBinaryOperatorPropNegate(llvm::BinaryOperator &I);
     bool visitBinaryOperatorNegateMultiply(llvm::BinaryOperator &I);

@@ -174,6 +174,90 @@ void CustomUnsafeOptPass::visitInstruction(Instruction &I)
     // nothing
 }
 
+void CustomUnsafeOptPass::visitFPToSIInst(llvm::FPToSIInst &I)
+{
+    /* 
+    For cases like this, %141 doesn't need rounding because the only possible values are 0.0, 1.0, 2.0, 3.0, and 4.0. 
+    We can skip %142 and %143
+
+    % 132 = select i1 % 131, float 1.000000e+00, float 0.000000e+00, !dbg !328
+    % 134 = select i1 % 133, float 1.000000e+00, float 0.000000e+00, !dbg !328
+    % 135 = fadd fast float %134, % 132, !dbg !328
+    % 137 = select i1 % 136, float 1.000000e+00, float 0.000000e+00, !dbg !328
+    % 138 = fadd fast float %137, % 135, !dbg !328
+    % 140 = select i1 % 139, float 1.000000e+00, float 0.000000e+00, !dbg !328
+    % 141 = fadd fast float %140, % 138, !dbg !328
+
+    % 142 = fadd fast float %141, 5.000000e-01, !dbg !329
+    % 143 = call fast float @llvm.floor.f32(float %142), !dbg !330
+    % 144 = fptosi float %143 to i32, !dbg !331
+    */
+    if (CallInst *floorInst = dyn_cast<CallInst>((&I)->getOperand(0)))
+    {
+        if (GetOpCode(floorInst) == llvm_floor)
+        {
+            if (BinaryOperator *faddInst = dyn_cast<BinaryOperator>(floorInst->getOperand(0)))
+            {
+                if (faddInst->getOpcode() == Instruction::FAdd)
+                {
+                    ConstantFP *C0_5 = dyn_cast<ConstantFP>(faddInst->getOperand(1));
+                    if (C0_5 && C0_5->isExactlyValue(0.5))
+                    {
+                        // check all the sources are from 1.0 and 0.0
+                        bool allowOpt = true;
+                        SmallVector<Instruction*, 8> InstList;
+                        InstList.clear();
+                        InstList.push_back(cast<Instruction>(faddInst->getOperand(0)));
+                        while (!InstList.empty() && allowOpt)
+                        {
+                            Instruction* inst = InstList.back();
+                            InstList.pop_back();
+                            if (inst->getOpcode() == Instruction::FAdd)
+                            {
+                                Instruction* addSrc0 = dyn_cast<Instruction>(inst->getOperand(0));
+                                Instruction* addSrc1 = dyn_cast<Instruction>(inst->getOperand(1));
+                                if (addSrc0 && addSrc1)
+                                {
+                                    InstList.push_back(addSrc0);
+                                    InstList.push_back(addSrc1);
+                                }
+                                else
+                                {
+                                    allowOpt = false;
+                                }
+                            }
+                            else if(dyn_cast<SelectInst>(inst))
+                            {
+                                ConstantFP *c1 = dyn_cast<ConstantFP>(inst->getOperand(1));
+                                ConstantFP *c2 = dyn_cast<ConstantFP>(inst->getOperand(2));
+                                if (!c1 || !c2 ||
+                                    (!c1->isZeroValue() && !c1->isExactlyValue(1.0f)) ||
+                                    (!c2->isZeroValue() && !c2->isExactlyValue(1.0f)))
+                                {
+                                    allowOpt = false;
+                                }
+                            }
+                            else
+                            {
+                                allowOpt = false;
+                            }
+                            if(InstList.size() >8)
+                            {
+                                allowOpt = false;
+                            }
+                        }
+                        if (allowOpt)
+                        {
+                            floorInst->replaceAllUsesWith(faddInst->getOperand(0));
+                        }
+                        InstList.clear();
+                    }
+                }
+            }
+        }
+    }
+}
+
 bool CustomUnsafeOptPass::possibleForFmadOpt( llvm::Instruction *inst )
 {
     if( inst->getOpcode() == Instruction::FAdd )
