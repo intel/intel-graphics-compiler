@@ -817,9 +817,9 @@ void BinaryEncodingIGA::DoAll()
         // per thread data load is in the first BB
         assert(kernel.fg.getNumBB() > 1 && "expect at least one prolog BB");
         auto secondBB = *(std::next(kernel.fg.BBs.begin()));
-        assert(secondBB->size() > 0 && "expect at least one inst in second BB");
-        auto startInst = *(secondBB->begin());
-        kernel.fg.builder->getJitInfo()->offsetToSkipPerThreadDataLoad = (uint32_t)startInst->getGenOffset();
+        auto iter = std::find_if(secondBB->begin(), secondBB->end(), [](G4_INST* inst) { return !inst->isLabel();});
+        assert(iter != secondBB->end() && "execpt at least one non-label inst in second BB");
+        kernel.fg.builder->getJitInfo()->offsetToSkipPerThreadDataLoad = (uint32_t)(*iter)->getGenOffset();
     }
 }
 

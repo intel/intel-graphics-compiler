@@ -225,7 +225,7 @@ G4_BB* FlowGraph::beginBB(Label_BB_Map& map, G4_INST* first)
     return bb;
 }
 
-G4_INST* FlowGraph::createNewLabelInst(G4_Label* label, int lineNo = 0, int CISAOff = UNMAPPABLE_VISA_INDEX)
+G4_INST* FlowGraph::createNewLabelInst(G4_Label* label, int lineNo, int CISAOff)
 {
     //srcFileName is NULL
     return builder->createInternalInst(NULL, G4_label,

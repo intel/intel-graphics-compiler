@@ -913,7 +913,7 @@ public:
         }
     }
 
-    G4_INST* createNewLabelInst(G4_Label* label, int lineNo, int CISAOff);
+    G4_INST* createNewLabelInst(G4_Label* label, int lineNo = 0, int CISAOff = -1);
 
     G4_BB* createNewBB(bool insertInFG = true);
     int64_t insertDummyUUIDMov();
