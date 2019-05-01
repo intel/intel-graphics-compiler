@@ -98,6 +98,7 @@ GenISA_storeraw_indexed,,
 ,anyptr,dst buffer
 ,int,byte offset in buffer 
 ,anyfloat,value to be stored
+,int,required alignment
 GenISA_GetPixelMask,,get live pixel mask from dmask
 ,bool,
 ,bool,
@@ -1264,6 +1265,7 @@ GenISA_storerawvector_indexed,,
 ,anyptr,dst buffer
 ,int,byte offset in buffer
 ,anyvector,vector value to be stored
+,int,required alignment of data
 GenISA_intatomicrawA64,,
 ,anyint,
 ,anyptr,Dst Buffer

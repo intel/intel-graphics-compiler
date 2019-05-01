@@ -3495,7 +3495,8 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::create_indirectSt
         module,
         llvm::GenISAIntrinsic::GenISA_storerawvector_indexed,
         types);
-    return this->CreateCall3(pFunc, srcBuffer, offset, data);
+    llvm::Value* alignment = this->getInt32(data->getType()->getScalarSizeInBits() / 8);
+    return this->CreateCall4(pFunc, srcBuffer, offset, data, alignment);
 }
 
 template<bool preserveNames, typename T, typename Inserter>
