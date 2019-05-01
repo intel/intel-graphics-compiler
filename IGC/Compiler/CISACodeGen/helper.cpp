@@ -823,6 +823,48 @@ void getTextureAndSamplerOperands(llvm::GenIntrinsicInst *pIntr, llvm::Value*& p
     }
 }
 
+// Get the buffer pointer operand for supported buffer access instructions
+Value* GetBufferOperand(Instruction* inst)
+{
+    Value* pBuffer = nullptr;
+    if (LoadInst* load = dyn_cast<LoadInst>(inst))
+    {
+        pBuffer = load->getPointerOperand();
+    }
+    else if (StoreInst* store = dyn_cast<StoreInst>(inst))
+    {
+        pBuffer = store->getPointerOperand();
+    }
+    else if (GenIntrinsicInst* intr = dyn_cast<GenIntrinsicInst>(inst))
+    {
+        switch (intr->getIntrinsicID())
+        {
+        case GenISAIntrinsic::GenISA_storerawvector_indexed:
+        case GenISAIntrinsic::GenISA_ldrawvector_indexed:
+        case GenISAIntrinsic::GenISA_storeraw_indexed:
+        case GenISAIntrinsic::GenISA_ldraw_indexed:
+        case GenISAIntrinsic::GenISA_intatomicraw:
+        case GenISAIntrinsic::GenISA_intatomictyped:
+        case GenISAIntrinsic::GenISA_icmpxchgatomictyped:
+        case GenISAIntrinsic::GenISA_floatatomicraw:
+        case GenISAIntrinsic::GenISA_icmpxchgatomicraw:
+        case GenISAIntrinsic::GenISA_fcmpxchgatomicraw:
+        case GenISAIntrinsic::GenISA_simdBlockRead:
+            pBuffer = intr->getOperand(0);
+            break;
+        case GenISAIntrinsic::GenISA_intatomicrawA64:
+        case GenISAIntrinsic::GenISA_floatatomicrawA64:
+        case GenISAIntrinsic::GenISA_icmpxchgatomicrawA64:
+        case GenISAIntrinsic::GenISA_fcmpxchgatomicrawA64:
+            pBuffer = intr->getOperand(1);
+            break;
+        default:
+            break;
+        }
+    }
+    return pBuffer;
+}
+
 EOPCODE GetOpCode(const llvm::Instruction* inst)
 {
     if(const GenIntrinsicInst *CI = dyn_cast<GenIntrinsicInst>( inst ))

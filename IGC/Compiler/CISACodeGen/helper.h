@@ -130,6 +130,7 @@ bool IsReadOnlyLoadDirectCB(llvm::Instruction *pLLVMInst, uint& cbId, llvm::Valu
 
 int findSampleInstructionTextureIdx(llvm::Instruction* inst);
 llvm::Value* getTextureIndexArgBasedOnOpcode(llvm::Instruction* inst);
+llvm::Value* GetBufferOperand(llvm::Instruction* inst);
 
 llvm::LoadInst* cloneLoad(llvm::LoadInst *Orig, llvm::Value *Ptr);
 llvm::StoreInst* cloneStore(llvm::StoreInst *Orig, llvm::Value *Val, llvm::Value *Ptr);

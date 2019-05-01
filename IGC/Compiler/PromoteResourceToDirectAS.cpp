@@ -33,7 +33,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/IR/Function.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "common/IGCIRBuilder.h"
-#include "common/igc_regkeys.hpp"
 
 #include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/CodeGenPublicEnums.h"
@@ -60,18 +59,6 @@ PromoteResourceToDirectAS::PromoteResourceToDirectAS()
     initializePromoteResourceToDirectASPass(*PassRegistry::getPassRegistry());
 }
 
-inline bool isStatelessToBindlessPromotion(CodeGenContext* ctx)
-{
-    if (ctx->type == ShaderType::OPENCL_SHADER)
-    {
-        if (static_cast<OpenCLProgramContext*>(ctx)->m_InternalOptions.PromoteStatelessToBindless)
-        {
-            return true;
-        }
-    }
-    return false;
-}
-
 bool PromoteResourceToDirectAS::runOnFunction(Function &F)
 {
     if(IGC_IS_FLAG_ENABLED(DisablePromoteToDirectAS))
@@ -83,54 +70,7 @@ bool PromoteResourceToDirectAS::runOnFunction(Function &F)
     m_pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     visit(F);
 
-    if (isStatelessToBindlessPromotion(m_pCodeGenContext))
-    {
-        PromoteStatelessToBindlessBuffers(F);
-    }
-
     return true;
-}
-
-// Get the buffer pointer operand for supported buffer access instructions
-Value* GetBufferOperand(Instruction* inst)
-{
-    Value* pBuffer = nullptr;
-    if (LoadInst* load = dyn_cast<LoadInst>(inst))
-    {
-        pBuffer = load->getPointerOperand();
-    }
-    else if (StoreInst* store = dyn_cast<StoreInst>(inst))
-    {
-        pBuffer = store->getPointerOperand();
-    }
-    else if (GenIntrinsicInst* intr = dyn_cast<GenIntrinsicInst>(inst))
-    {
-        switch (intr->getIntrinsicID())
-        {
-            case GenISAIntrinsic::GenISA_storerawvector_indexed:
-            case GenISAIntrinsic::GenISA_ldrawvector_indexed:
-            case GenISAIntrinsic::GenISA_storeraw_indexed:
-            case GenISAIntrinsic::GenISA_ldraw_indexed:
-            case GenISAIntrinsic::GenISA_intatomicraw:
-            case GenISAIntrinsic::GenISA_intatomictyped:
-            case GenISAIntrinsic::GenISA_icmpxchgatomictyped:
-            case GenISAIntrinsic::GenISA_floatatomicraw:
-            case GenISAIntrinsic::GenISA_icmpxchgatomicraw:
-            case GenISAIntrinsic::GenISA_fcmpxchgatomicraw:
-            case GenISAIntrinsic::GenISA_simdBlockRead:
-                pBuffer = intr->getOperand(0);
-                break;
-            case GenISAIntrinsic::GenISA_intatomicrawA64:
-            case GenISAIntrinsic::GenISA_floatatomicrawA64:
-            case GenISAIntrinsic::GenISA_icmpxchgatomicrawA64:
-            case GenISAIntrinsic::GenISA_fcmpxchgatomicrawA64:
-                pBuffer = intr->getOperand(1);
-                break;
-            default:
-                break;
-        }
-    }
-    return pBuffer;
 }
 
 // Determine the new buffer type
@@ -741,107 +681,6 @@ void PromoteResourceToDirectAS::PromoteBufferToDirectAS(Instruction* inst, Value
     }
 }
 
-void PromoteResourceToDirectAS::GetAccessInstToSrcPointerMap(Instruction* inst, Value* resourcePtr)
-{
-    unsigned addrSpace = resourcePtr->getType()->getPointerAddressSpace();
-
-    if (addrSpace != 1 && addrSpace != 2)
-    {
-        // Only try to promote stateless buffer pointers ( as(1) or as(2) )
-        return;
-    }
-
-    //We only support loadInst, StoreInst and GenISA_simdBlockRead intrinsic
-    if (!isa<LoadInst>(inst) && !isa<StoreInst>(inst))
-    {
-        if (GenIntrinsicInst* GInst = dyn_cast<GenIntrinsicInst>(inst))
-        {
-            if (GInst->getIntrinsicID() != GenISAIntrinsic::GenISA_simdBlockRead)
-                return;
-        }
-        else
-            return;
-    }
-
-    Value* srcPtr = IGC::TracePointerSource(resourcePtr);
-
-    if (!srcPtr ||
-        !srcPtr->getType()->isPointerTy() ||
-        !isa<Argument>(srcPtr))
-    {
-        // Cannot trace the resource pointer back to it's source, cannot promote
-        assert(0 && "Stateless buffer pointer not tracable, cannot promote stateless to bindless");
-        return;
-    }
-
-    m_AccessToSrcPtrMap[inst] = srcPtr;
-    return;
-}
-
-void PromoteResourceToDirectAS::PromoteStatelessToBindlessBuffers(Function& F)
-{
-    for (auto inst : m_AccessToSrcPtrMap)
-    {
-        Argument* srcPtr = cast<Argument>(inst.second);
-        if (srcPtr->getNumUses() > 0)
-        {
-            Value* nullSrcPtr = ConstantPointerNull::get(cast<PointerType>(srcPtr->getType()));
-            srcPtr->replaceAllUsesWith(nullSrcPtr);
-            ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-            if (modMD->FuncMD.find(&F) != modMD->FuncMD.end())
-            {
-                FunctionMetaData *funcMD = &modMD->FuncMD[&F];
-                ResourceAllocMD *resourceAlloc = &funcMD->resAllocMD;
-                ArgAllocMD *argInfo = &resourceAlloc->argAllocMDList[srcPtr->getArgNo()];
-                assert((size_t) srcPtr->getArgNo() < resourceAlloc->argAllocMDList.size() && "ArgAllocMD List Out of Bounds");
-                if (argInfo->type == ResourceTypeEnum::UAVResourceType)
-                {
-                    // Update metadata to show bindless resource type
-                    argInfo->type = ResourceTypeEnum::BindlessUAVResourceType;
-                }
-            }
-        }
-    }
-
-    for (auto inst : m_AccessToSrcPtrMap)
-    {
-        Instruction* accessInst = cast<Instruction>(inst.first);
-        Argument* srcPtr = cast<Argument>(inst.second);
-
-        // Get the base bindless pointer
-        IGCIRBuilder<> builder(accessInst);
-        Value* resourcePtr = GetBufferOperand(accessInst);
-        unsigned bindlessAS = IGC::EncodeAS4GFXResource(*UndefValue::get(builder.getInt32Ty()), IGC::BINDLESS, 0);
-        PointerType* basePointerType = PointerType::get(resourcePtr->getType()->getPointerElementType(), bindlessAS);
-        Value* basePointer = builder.CreatePointerCast(srcPtr, basePointerType);
-        Value* bufferOffset = builder.CreatePtrToInt(resourcePtr, builder.getInt32Ty());
-
-        if (LoadInst* load = dyn_cast<LoadInst>(accessInst))
-        {
-            Value* ldraw = IGC::CreateLoadRawIntrinsic(load, cast<Instruction>(basePointer), bufferOffset);
-            load->replaceAllUsesWith(ldraw);
-            load->eraseFromParent();
-        }
-        else if (StoreInst* store = dyn_cast<StoreInst>(accessInst))
-        {
-            IGC::CreateStoreRawIntrinsic(store, cast<Instruction>(basePointer), bufferOffset);
-            store->eraseFromParent();
-        }
-        else if (GenIntrinsicInst* pIntr = dyn_cast<GenIntrinsicInst>(accessInst))
-        {
-            if (pIntr->getIntrinsicID() == GenISAIntrinsic::GenISA_simdBlockRead)
-            {
-                Function* newBlockReadFunc = GenISAIntrinsic::getDeclaration(F.getParent(),
-                    GenISAIntrinsic::GenISA_simdBlockReadBindless,
-                    { accessInst->getType(),basePointer->getType(),Type::getInt32Ty(accessInst->getContext()) });
-                Instruction* newBlockRead = CallInst::Create(newBlockReadFunc, { basePointer, bufferOffset }, "", accessInst);
-                accessInst->replaceAllUsesWith(newBlockRead);
-                accessInst->eraseFromParent();
-            }
-        }
-    }
-}
-
 void PromoteResourceToDirectAS::visitInstruction(Instruction &I)
 {
     bool resourceAccessed = false;
@@ -870,14 +709,7 @@ void PromoteResourceToDirectAS::visitInstruction(Instruction &I)
 
         if (bufptr && bufptr->getType()->isPointerTy())
         {
-            if (isStatelessToBindlessPromotion(m_pCodeGenContext))
-            {
-                GetAccessInstToSrcPointerMap(&I, bufptr);
-            }
-            else
-            {
-                PromoteBufferToDirectAS(&I, bufptr);
-            }
+            PromoteBufferToDirectAS(&I, bufptr);
             resourceAccessed = true;
         }
     }

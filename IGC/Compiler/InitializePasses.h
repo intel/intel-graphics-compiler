@@ -93,6 +93,7 @@ void initializeProcessBuiltinMetaDataPass(llvm::PassRegistry&);
 void initializeProgramScopeConstantAnalysisPass(llvm::PassRegistry&);
 void initializeProgramScopeConstantResolutionPass(llvm::PassRegistry&);
 void initializePromoteResourceToDirectASPass(llvm::PassRegistry&);
+void initializePromoteStatelessToBindless(llvm::PassRegistry&);
 void initializePullConstantHeuristicsPass(llvm::PassRegistry&);
 void initializeScalarizerCodeGenPass(llvm::PassRegistry&);
 void initializeReduceLocalPointersPass(llvm::PassRegistry&);

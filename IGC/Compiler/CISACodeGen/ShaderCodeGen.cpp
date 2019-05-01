@@ -96,6 +96,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CustomLoopOpt.hpp"
 #include "Compiler/GenUpdateCB.h"
 #include "Compiler/PromoteResourceToDirectAS.h"
+#include "Compiler/PromoteStatelessToBindless.h"
 #if defined( _DEBUG )
 #include "Compiler/VerificationPass.hpp"
 #endif
@@ -473,6 +474,13 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager& mpm)
           mpm.add(createAdvMemOptPass());
         mpm.add(createMemOptPass());
         mpm.add(createIGCInstructionCombiningPass());
+    }
+
+    if (ctx.type == ShaderType::OPENCL_SHADER &&
+        static_cast<OpenCLProgramContext&>(ctx).
+            m_InternalOptions.PromoteStatelessToBindless)
+    {
+        mpm.add(new PromoteStatelessToBindless());
     }
 
     if (!isOptDisabled &&

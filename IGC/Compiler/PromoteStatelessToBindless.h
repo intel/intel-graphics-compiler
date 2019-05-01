@@ -29,42 +29,40 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/Pass.h>
 #include <llvm/IR/InstVisitor.h>
 #include "common/LLVMWarningsPop.hpp"
-#include "Compiler/CISACodeGen/CISACodeGen.h"
 
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
+
 #include <unordered_map>
 
 namespace IGC
 {
-    class PromoteResourceToDirectAS : public llvm::FunctionPass, public llvm::InstVisitor<PromoteResourceToDirectAS>
+    class PromoteStatelessToBindless : public llvm::FunctionPass, public llvm::InstVisitor<PromoteStatelessToBindless>
     {
     public:
         static char ID;
 
-        PromoteResourceToDirectAS();
+        PromoteStatelessToBindless();
 
         virtual llvm::StringRef getPassName() const override
         {
-            return "PromoteResourceToDirectAS";
+            return "PromoteStatelessToBindless";
         }
 
         virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
         {
             AU.addRequired<IGC::MetaDataUtilsWrapper>();
-            AU.addRequired<IGC::CodeGenContextWrapper>();
             AU.setPreservesCFG();
         }
 
-        bool            runOnFunction(llvm::Function &F) override;
-        void            visitInstruction(llvm::Instruction &I);
+        bool runOnFunction(llvm::Function &F) override;
+        void visitInstruction(llvm::Instruction &I);
 
     private:
-        void PromoteSamplerTextureToDirectAS(llvm::GenIntrinsicInst *&pIntr, llvm::Value* resourcePtr);
-        void PromoteBufferToDirectAS(llvm::Instruction* inst, llvm::Value* resourcePtr);
+        void GetAccessInstToSrcPointerMap(llvm::Instruction* inst, llvm::Value* resourcePtr);
+        void PromoteStatelessToBindlessBuffers(llvm::Function& F) const;
 
-        CodeGenContext* m_pCodeGenContext;
-        IGCMD::MetaDataUtils*  m_pMdUtils;
+        std::unordered_map<llvm::Value*, llvm::Value*> m_AccessToSrcPtrMap;
     };
 
 } // namespace IGC
