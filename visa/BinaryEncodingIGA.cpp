@@ -469,6 +469,29 @@ void BinaryEncodingIGA::DoAll()
         return false;
     };
 
+    // Make the size of the first BB is multiple of 4 instructions, and do not compact
+    // any instructions in it, so that the size of the first BB is multiple of 64 bytes
+    if (kernel.fg.builder->getHasPerThreadProlog()) {
+        G4_BB* first_bb = *kernel.fg.BBs.begin();
+        size_t num_inst = first_bb->getInstList().size();
+        assert(num_inst != 0 && "ThreadProlog must not be empty");
+        // label instructions don't count. Only the first instruction could be a label
+        if (first_bb->getInstList().front()->isLabel())
+            --num_inst;
+
+        if (num_inst % 4 != 0) {
+            size_t num_nop = 4 - (num_inst % 4);
+            for (size_t i = 0; i < num_nop; ++i)
+                first_bb->getInstList().push_back(
+                    kernel.fg.builder->createInternalInst(
+                        nullptr, G4_nop, nullptr, false, 1, nullptr, nullptr, nullptr, InstOpt_NoCompact));
+        }
+        // set all instruction to be NoCompact
+        for (auto inst : *first_bb) {
+            inst->setOptions(inst->getOption() | InstOpt_NoCompact);
+        }
+    }
+
     if (!isFirstInstLabel(kernel.fg.BBs))
     {
         // create a new BB if kernel does not start with label
@@ -798,8 +821,6 @@ void BinaryEncodingIGA::DoAll()
     }
 
     KernelEncoder encoder(IGAKernel, autoCompact);
-    // Make sure the second BB is 64-byte aligned if having thread prolog
-    encoder.setFisrtBB64ByteSize(kernel.fg.builder->getHasPerThreadProlog());
     encoder.encode();
 
     stopTimer(TIMER_IGA_ENCODER);
