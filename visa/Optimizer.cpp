@@ -168,7 +168,7 @@ void Optimizer::insertFallThroughJump()
             if (!(*next)->empty() && (*next)->front()->isLabel() &&
                 !bb->empty() && bb->back()->opcode() == G4_jmpi &&
                 bb->back()->getPredicate() == NULL &&
-                !fg.isIndirectJmpTarget(bb->back())) 
+                !fg.isIndirectJmpTarget(bb->back()))
                 {
                     if ((*next)->front()->getSrc(0) == bb->back()->getSrc(0))
                     {
@@ -522,7 +522,7 @@ void Optimizer::removeLifetimeOps()
         bbs != fg.BBs.end();
         bbs++ )
     {
-        G4_BB* bb = *bbs;        
+        G4_BB* bb = *bbs;
         bb->erase(
             std::remove_if(bb->begin(), bb->end(),
             [](G4_INST* inst) { return inst->isPseudoKill() || inst->isLifeTimeEnd() || inst->isPseudoUse(); }),
@@ -842,13 +842,13 @@ bool Optimizer::isCopyPropProfitable(G4_INST* movInst) const
     hasStrideSource &= movInst->getExecSize() == 16 || (!builder.hasAlign1Ternary() && movInst->getExecSize() == 8);
 
     auto hasNSIMD16or8MadUse = [](G4_INST* movInst, int N, bool checkSIMD8)
-    {   
+    {
         int numMadUses = 0;
         for (auto iter = movInst->use_begin(), iterEnd = movInst->use_end(); iter != iterEnd; ++iter)
         {
             auto use = *iter;
             auto inst = use.first;
-            if (inst->opcode() == G4_pseudo_mad && 
+            if (inst->opcode() == G4_pseudo_mad &&
                 (inst->getExecSize() == 16 || (checkSIMD8 && inst->getExecSize() == 8)))
             {
                 ++numMadUses;
@@ -1126,7 +1126,7 @@ int Optimizer::optimization()
     runPass(PI_countBankConflicts);
 
     // some passes still rely on G4_Declares and their def-use even after RA,
-    // and removeRedundantMove will break them since it deletes moves solely based on GRF assignment 
+    // and removeRedundantMove will break them since it deletes moves solely based on GRF assignment
     // without maintaining def-use of G4_Declares.
     // so when these passes are active we have to defer removeRedundMov until after the passes
     // ToDo: study the perf impact of moving this post scheduling
@@ -1170,7 +1170,7 @@ int Optimizer::optimization()
 
     runPass(PI_reRAPostSchedule);
 
-    if (preserveVirtualDefUse 
+    if (preserveVirtualDefUse
         )
     {
         runPass(PI_removeRedundMov);
@@ -2547,8 +2547,8 @@ void Optimizer::reassociateConst()
 }
 
 // helper function to fold BinOp with two immediate operands
-// supported opcodes are add/mul/shl/shr/asr with int type
-// returns nullptr if one of the source is not imm
+// supported opcodes are given below in doConsFolding
+// returns nullptr if the two constants may not be folded
 G4_Imm* Optimizer::foldConstVal(G4_Imm* const1, G4_Imm* const2, G4_opcode op)
 {
     bool isNonQInt = IS_TYPE_INT(const1->getType()) && IS_TYPE_INT(const2->getType()) &&
@@ -2561,7 +2561,7 @@ G4_Imm* Optimizer::foldConstVal(G4_Imm* const1, G4_Imm* const2, G4_opcode op)
 
     G4_Type src0T = const1->getType(), src1T = const2->getType(), resultType = src0T;
 
-    if (op == G4_add || op == G4_mul || op == G4_and)
+    if (op == G4_mul || op == G4_add || op == G4_and || op == G4_xor || op == G4_or)
     {
         resultType = findConstFoldCommonType(src0T, src1T);
         if (resultType == Type_UNDEF)
@@ -2572,16 +2572,24 @@ G4_Imm* Optimizer::foldConstVal(G4_Imm* const1, G4_Imm* const2, G4_opcode op)
         int64_t res;
         switch (op)
         {
+        case G4_and:
+            res = (int64_t)(const1->getInt()) & (int64_t)(const2->getInt());
+            break;
+
+        case G4_xor:
+            res = (int64_t)(const1->getInt()) ^ (int64_t)(const2->getInt());
+            break;
+
+        case G4_or:
+            res = (int64_t)(const1->getInt()) | (int64_t)(const2->getInt());
+            break;
+
         case G4_add:
             res = (int64_t)(const1->getInt()) + (int64_t)(const2->getInt());
             break;
 
         case G4_mul:
             res = (int64_t)(const1->getInt()) * (int64_t)(const2->getInt());
-            break;
-
-        case G4_and:
-            res = (int64_t)(const1->getInt()) & (int64_t)(const2->getInt());
             break;
 
         default:
@@ -2598,7 +2606,7 @@ G4_Imm* Optimizer::foldConstVal(G4_Imm* const1, G4_Imm* const2, G4_opcode op)
     }
     else
     {
-        uint32_t shift = const2->getInt() & 0x1f;
+        uint32_t shift = const2->getInt() % 32;
 
         if (op == G4_shl || op == G4_shr)
         {
@@ -2616,8 +2624,7 @@ G4_Imm* Optimizer::foldConstVal(G4_Imm* const1, G4_Imm* const2, G4_opcode op)
 
             return builder.createImmWithLowerType(res, resultType);
         }
-
-        if (op == G4_asr)
+        else if (op == G4_asr)
         {
             if (IS_SIGNED_INT(resultType))
             {
@@ -2639,11 +2646,9 @@ G4_Imm* Optimizer::foldConstVal(G4_Imm* const1, G4_Imm* const2, G4_opcode op)
 
 
 // Currently constant folding is done for the following code patterns:
-// - add v, imm, imm
-// - mul v, imm, imm
-// - shl v, imm, imm
-// - shr v, imm, imm
-// - asr v, imm, imm
+//
+// - op v, imm, imm
+//    where op is shl, shr, asr, or, xor, and, add, mul
 // Restrictions:
 // - operand type cannot be float or Q/UQ
 // - saturation is not allowed
@@ -3682,7 +3687,7 @@ bool Optimizer::createSmov(G4_BB *bb, G4_INST* flagMove, G4_INST* next_inst)
 
 // Returns true if *iter has an use that is a cmp and we can fold that cmp
 // into *iter as a conditional modifier. The cmp instruction is deleted as part of folding.
-// Note that iter may be modified to point to the next inst if we decide to sync *iter to 
+// Note that iter may be modified to point to the next inst if we decide to sync *iter to
 // where the cmp was to work around dependencies
 bool Optimizer::foldCmpToCondMod(G4_BB* bb, INST_LIST_ITER& iter)
 {
@@ -3702,10 +3707,10 @@ bool Optimizer::foldCmpToCondMod(G4_BB* bb, INST_LIST_ITER& iter)
 
         // cmp instruction must be of the form
         // cmp [<op> P0] null src 0
-        // where src is singly defined by inst 
+        // where src is singly defined by inst
         if (cmpInst->opcode() == G4_cmp && cmpInst->getExecSize() == inst->getExecSize() &&
-            cmpInst->hasNULLDst() && 
-            cmpInst->getSrc(0)->isSrcRegRegion() && 
+            cmpInst->hasNULLDst() &&
+            cmpInst->getSrc(0)->isSrcRegRegion() &&
             cmpInst->getSrc(0)->asSrcRegRegion()->getModifier() == Mod_src_undef &&
             cmpInst->def_size() == 1 && !cmpInst->getPredicate() &&
             cmpInst->getSrc(1)->isImm() && cmpInst->getSrc(1)->asImm()->isZero())
@@ -3734,9 +3739,9 @@ bool Optimizer::foldCmpToCondMod(G4_BB* bb, INST_LIST_ITER& iter)
 
     auto cmpIter = std::find(iter, bb->end(), cmpInst);
 
-    auto isSupportedCondMod = [](G4_CondModifier mod) 
+    auto isSupportedCondMod = [](G4_CondModifier mod)
     {
-        return mod == Mod_g || mod == Mod_ge || mod == Mod_l || mod == Mod_le || 
+        return mod == Mod_g || mod == Mod_ge || mod == Mod_l || mod == Mod_le ||
             mod == Mod_e || mod == Mod_ne;
     };
     G4_CondModifier mod = cmpInst->getCondMod()->getMod();
@@ -4185,7 +4190,7 @@ void Optimizer::optimizeLogicOperation()
 
     if (!doLogicOpt)
     {
-        // we still need to expand the pseudo logic ops 
+        // we still need to expand the pseudo logic ops
         for (auto bb : fg.BBs)
         {
             for (auto I = bb->begin(), E = bb->end(); I != E; ++I)
@@ -5264,7 +5269,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             for (auto iter = bb->begin(), iterEnd = bb->end(); iter != iterEnd;)
             {
                 G4_INST* inst = *iter;
-                
+
                 auto isDstExtDesc = [](G4_INST* inst)
                 {
                     G4_DstRegRegion* dst = inst->getDst();
@@ -5537,7 +5542,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         {
             return false;
         }
-        
+
         for(USE_EDGE_LIST_ITER iter = inst->use_begin(), iend = inst->use_end(); iter != iend; ++iter )
         {
             if ((*iter).first->isSend())
@@ -6376,7 +6381,7 @@ G4_SrcRegRegion* IR_Builder::createSubSrcOperand( G4_SrcRegRegion* src, uint16_t
         {
             newWd = size;
         }
-        rd = size == 1 ? getRegionScalar() : 
+        rd = size == 1 ? getRegionScalar() :
             createRegionDesc(size == newWd ? newWd * hs : newVs, newWd, hs);
     }
 
@@ -6429,7 +6434,7 @@ G4_SrcRegRegion* IR_Builder::createSubSrcOperand( G4_SrcRegRegion* src, uint16_t
         uint16_t newEleOff;
         uint16_t vs = src->getRegion()->vertStride, hs = src->getRegion()->horzStride, wd = src->getRegion()->width;
 
-        if (src->isAccReg()) 
+        if (src->isAccReg())
         {
             switch (srcType)
             {
@@ -6467,7 +6472,7 @@ G4_SrcRegRegion* IR_Builder::createSubSrcOperand( G4_SrcRegRegion* src, uint16_t
         }
 
         // create a new one
-        return createSrcRegRegion(src->getModifier(), Direct, src->getBase(), regOff, subRegOff, rd, 
+        return createSrcRegRegion(src->getModifier(), Direct, src->getBase(), regOff, subRegOff, rd,
             srcType, src->getAccRegSel());
     }
     else
@@ -7098,7 +7103,7 @@ private:
                 assert(ID->instr->isSend());
                 // Only sends with the same SFID can be covered
                 if (sfid == SFID::NULL_SFID
-                    || ID->instr->getMsgDesc()->getFuncId() == sfid) 
+                    || ID->instr->getMsgDesc()->getFuncId() == sfid)
                 {
                     ID->coverR(this);
                 }
@@ -7366,7 +7371,7 @@ public:
 
     // Cover the instructions that read the values read by instrBuckets
     void coverInstrReadingBucketsReadBy(const BucketDescrBox &instrBuckets,
-                                        SFID sfid) 
+                                        SFID sfid)
     {
         for (const auto &BD : instrBuckets.BDVec) {
             if (BD.type == READ) {
@@ -7973,14 +7978,14 @@ public:
     {
     }
 
-    // some platform/shaders require a memory fence before the end of thread 
+    // some platform/shaders require a memory fence before the end of thread
     void Optimizer::insertFenceBeforeEOT()
     {
         if (!builder.needFenceBeforeEOT() || !builder.getOption(vISA_clearHDCWritesBeforeEOT))
         {
             return;
         }
-        
+
         bool hasUAVWrites = false;
         for (auto bb : kernel.fg.BBs)
         {
@@ -8019,13 +8024,13 @@ public:
         }
     }
 
-    // some platforms require extra instruction before an EOT to 
+    // some platforms require extra instruction before an EOT to
     // ensure that all outstanding scratch writes are globally observed
     void Optimizer::insertScratchReadBeforeEOT()
     {
 
         int globalScratchOffset = builder.getOptions()->getuInt32Option(vISA_SpillMemOffset);
-        if (builder.needFenceBeforeEOT() || 
+        if (builder.needFenceBeforeEOT() ||
             (globalScratchOffset == 0 && builder.getJitInfo()->spillMemUsed == 0))
         {
             return;
@@ -9807,7 +9812,7 @@ bool MadSequenceInfo::checkMadSequence()
             // Only when src2 is of Byte/Word/DWord types.
             return false;
         }
-           
+
         // If there is a modifier for src2, or src2 is accessed somewhere
         // indirectly then we will not generate a MAC.
         if (!src2->isSrcRegRegion())
@@ -10498,7 +10503,7 @@ void Optimizer::splitVariables()
 
 //
 // replacement of the above that can handle global variables
-// basically we split any 4GRF variables (they typically result from 
+// basically we split any 4GRF variables (they typically result from
 // simd16 64-bit vars) into two half if
 // -- they are not address taken or used in send
 // -- none of the operands cross from the 2nd to the 3rd GRF
@@ -10540,7 +10545,7 @@ void Optimizer::split4GRFVars()
                 {
                     varToSplitOrdering.push_back(dcl);
                 }
-                   
+
                 varToSplit.emplace(dcl);
             }
         }
@@ -10548,7 +10553,7 @@ void Optimizer::split4GRFVars()
         {
             // strictly speaking this condition is not necesary, but having
             // no aliases that could point into a middle of the split candidate
-            // makes replacing the split var much easier. By construction the root 
+            // makes replacing the split var much easier. By construction the root
             // must appear before its alias decls
             uint32_t offset = 0;
             G4_Declare* rootDcl = dcl->getRootDeclare(offset);
@@ -10632,7 +10637,7 @@ void Optimizer::split4GRFVars()
         G4_Type Ty = splitDcl->getElemType();
         unsigned NElts = splitDcl->getTotalElems();
         std::string varName(splitDcl->getName());
-        auto DclLow = builder.createTempVar(NElts / 2, Ty, Either, SUB_ALIGNMENT_GRFALIGN, 
+        auto DclLow = builder.createTempVar(NElts / 2, Ty, Either, SUB_ALIGNMENT_GRFALIGN,
             (varName + "Lo").c_str(), false);
         auto DclHi = builder.createTempVar(NElts / 2, Ty, Either, SUB_ALIGNMENT_GRFALIGN,
             (varName + "Hi").c_str(), false);
@@ -10655,8 +10660,8 @@ void Optimizer::split4GRFVars()
                 {
                     bool isLow = dst->getLeftBound() < 2u * GENX_GRF_REG_SIZ;
                     auto NewDcl = DclMap[dstRootDcl]->getDcl(builder, dst->getType(), isLow);
-                    auto NewDst = builder.createDstRegRegion(Direct, NewDcl->getRegVar(), 
-                        dst->getRegOff() - (isLow ? 0 : 2), dst->getSubRegOff(), 
+                    auto NewDst = builder.createDstRegRegion(Direct, NewDcl->getRegVar(),
+                        dst->getRegOff() - (isLow ? 0 : 2), dst->getSubRegOff(),
                         dst->getHorzStride(), dst->getType(), dst->getAccRegSel());
                     inst->setDest(NewDst);
                     changed = true;
@@ -10664,7 +10669,7 @@ void Optimizer::split4GRFVars()
             }
 
             for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i)
-            { 
+            {
                 G4_Operand* src = inst->getSrc(i);
                 if (src && src->getTopDcl())
                 {
@@ -10676,7 +10681,7 @@ void Optimizer::split4GRFVars()
                         auto NewSrcDcl = DclMap[srcRootDcl]->getDcl(builder, src->getType(), isLow);
                         auto NewSrc = builder.createSrcRegRegion(
                             srcRegion->getModifier(), src->getRegAccess(),
-                            NewSrcDcl->getRegVar(), srcRegion->getRegOff() - (isLow ? 0 : 2), 
+                            NewSrcDcl->getRegVar(), srcRegion->getRegOff() - (isLow ? 0 : 2),
                             srcRegion->getSubRegOff(), srcRegion->getRegion(), src->getType(), src->getAccRegSel());
                         inst->setSrc(NewSrc, i);
                         changed = true;
