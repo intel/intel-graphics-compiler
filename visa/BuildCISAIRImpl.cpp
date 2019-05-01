@@ -447,7 +447,7 @@ void saveFCallState(G4_Kernel* kernel, savedFCallStates& savedFCallState)
     // the IR can be reused for another kernel rather than
     // recompiling.
     // kernel points to a stackcall function.
-    for (auto curBB : kernel->fg.BBs)
+    for (auto curBB : kernel->fg)
     {
         if( curBB->size() > 0 && curBB->isEndWithFCall() )
         {
@@ -478,8 +478,8 @@ void restoreFCallState(G4_Kernel* kernel, savedFCallStates& savedFCallState)
     // functions are not interspersed.
     savedFCallStatesIter start = savedFCallState.begin(), end = savedFCallState.end();
 
-    for( BB_LIST_ITER bb_it = kernel->fg.BBs.begin();
-        bb_it != kernel->fg.BBs.end();
+    for( BB_LIST_ITER bb_it = kernel->fg.begin();
+        bb_it != kernel->fg.end();
         bb_it++ )
     {
         G4_BB* curBB = (*bb_it);
@@ -633,7 +633,7 @@ void Stitch_Compiled_Units( common_isa_header header, std::list<G4_Kernel*>& com
         propagateCalleeInfo(kernel, callee);
         kernel->addCallee(calleeId, callee);
 
-        for (auto bb : callee->fg.BBs)
+        for (auto bb : callee->fg)
         {
             kernel->fg.BBs.push_back(bb);
             kernel->fg.incrementNumBBs();
@@ -643,7 +643,7 @@ void Stitch_Compiled_Units( common_isa_header header, std::list<G4_Kernel*>& com
     kernel->fg.reassignBlockIDs();
 
     // Change fcall/fret to call/ret and setup caller/callee edges
-    for (G4_BB* cur : kernel->fg.BBs)
+    for (G4_BB* cur : kernel->fg)
     {
         if( cur->size() > 0 && cur->isEndWithFCall() )
         {
@@ -684,7 +684,7 @@ void Stitch_Compiled_Units( common_isa_header header, std::list<G4_Kernel*>& com
     }
 
     // Change fret to ret
-    for (G4_BB* cur : kernel->fg.BBs)
+    for (G4_BB* cur : kernel->fg)
     {
         if( cur->size() > 0 && cur->isEndWithFRet() )
         {

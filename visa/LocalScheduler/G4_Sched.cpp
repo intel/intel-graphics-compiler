@@ -525,7 +525,7 @@ bool preRA_Scheduler::run()
     RegisterPressure rp(kernel, mem, rpe);
     bool Changed = false;
 
-    for (auto bb : kernel.fg.BBs) {
+    for (auto bb : kernel.fg) {
         if (bb->size() < SMALL_BLOCK_SIZE || bb->size() > LARGE_BLOCK_SIZE) {
             SCHED_DUMP(std::cerr << "Skip block with instructions "
                 << bb->size() << "\n");

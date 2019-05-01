@@ -276,7 +276,7 @@ void BinaryEncodingBase::FixMathInst(G4_INST* inst)
 void BinaryEncodingBase::FixInst()
 {
     bool align1Ternary = kernel.fg.builder->hasAlign1Ternary();
-    for (auto bb : kernel.fg.BBs)
+    for (auto bb : kernel.fg)
     {
         for (auto iter = bb->begin(); iter != bb->end();)
         {

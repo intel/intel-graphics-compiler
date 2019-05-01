@@ -44,7 +44,7 @@ namespace vISA
         startTimer(TIMER_RPE);
         if (!vars.empty())
         {
-            for (auto& bb : gra.kernel.fg.BBs)
+            for (auto& bb : gra.kernel.fg)
             {
                 runBB(bb);
             }
@@ -228,7 +228,7 @@ namespace vISA
     void RPE::dump() const
     {
         std::cerr << "Max pressure = " << maxRP << "\n";
-        for (auto& bb : gra.kernel.fg.BBs)
+        for (auto& bb : gra.kernel.fg)
         {
             for (auto inst : *bb)
             {

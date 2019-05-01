@@ -129,7 +129,7 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph & fg)
 
     // keep a list of address taken variables
     std::vector<G4_RegVar*> addrTakenVariables;
-    for (BB_LIST_ITER it = fg.BBs.begin(), itend = fg.BBs.end(); it != itend; ++it)
+    for (BB_LIST_ITER it = fg.begin(), itend = fg.end(); it != itend; ++it)
     {
         G4_BB* bb = (*it);
         for (INST_LIST_ITER iter = bb->begin(), iterEnd = bb->end(); iter != iterEnd; ++iter)
@@ -147,7 +147,7 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph & fg)
     }
 
     // first compute the points-to set for each address variable
-    for (BB_LIST_ITER it = fg.BBs.begin(), itend = fg.BBs.end(); it != itend; ++it)
+    for (BB_LIST_ITER it = fg.begin(), itend = fg.end(); it != itend; ++it)
     {
         G4_BB* bb = (*it);
         for (INST_LIST_ITER iter = bb->begin(), iterEnd = bb->end(); iter != iterEnd; ++iter)
@@ -309,7 +309,7 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph & fg)
 
     // mark GRF that may be used indirect access as live in the block
     // This includes all GRFs in the address's points-to set
-    for (auto bb : fg.BBs)
+    for (auto bb : fg)
     {
         for (INST_LIST_ITER iter = bb->begin(), end = bb->end(); iter != end; ++iter)
         {
@@ -496,7 +496,7 @@ LivenessAnalysis::LivenessAnalysis(
 
     addr_taken = BitSet(numVarId, false);
 
-    numBBId = (unsigned) fg.BBs.size();
+    numBBId = (unsigned) fg.size();
 
     def_in.resize(numBBId);
     def_out.resize(numBBId);
@@ -666,7 +666,7 @@ void LivenessAnalysis::detectNeverDefinedVarRows()
         return;
 
     // Update row usage of each dcl in largeDefs
-    for (auto bb : gra.kernel.fg.BBs)
+    for (auto bb : gra.kernel.fg)
     {
         for (auto inst : *bb)
         {
@@ -815,7 +815,7 @@ void LivenessAnalysis::computeLiveness(bool computePseudoKill)
     //
     // compute def_out and use_in vectors for each BB
     //
-    for (BB_LIST_ITER it = fg.BBs.begin(); it != fg.BBs.end(); ++it)
+    for (BB_LIST_ITER it = fg.begin(); it != fg.end(); ++it)
     {
         G4_BB * bb = *it;
         unsigned id = bb->getId();
@@ -849,7 +849,7 @@ void LivenessAnalysis::computeLiveness(bool computePseudoKill)
         // BBs belonging to that sub-routine. This assumes that BBs of
         // a sub-routine are laid out back to back in bb list.
         //
-        for (auto bb : fg.BBs)
+        for (auto bb : fg)
         {
             unsigned id = bb->getId();
 
@@ -875,7 +875,7 @@ void LivenessAnalysis::computeLiveness(bool computePseudoKill)
     if( selectedRF & G4_GRF )
     {
         // only GRF variables can have their address taken
-        for (auto bb : fg.BBs)
+        for (auto bb : fg)
         {
             const REGVAR_VECTOR* grfVecPtr = pointsToAnalysis.getIndrUseVectorPtrForBB( bb->getId() );
             for( unsigned i = 0; i < grfVecPtr->size(); i++ )
@@ -942,9 +942,9 @@ void LivenessAnalysis::computeLiveness(bool computePseudoKill)
         // Initialize set used for calculating function summaries for functions with multiple
         // callers.
         //
-        std::list<G4_BB*>::iterator it = fg.BBs.begin();
+        std::list<G4_BB*>::iterator it = fg.begin();
 
-        for ( ; it != fg.BBs.end(); ++it) {
+        for ( ; it != fg.end(); ++it) {
             FuncInfo* funcInfoBB = (*it)->getCalleeInfo();
 
             if ((*it)->getBBType() & G4_BB_CALL_TYPE)
@@ -1013,7 +1013,7 @@ void LivenessAnalysis::computeLiveness(bool computePseudoKill)
         while (change)
         {
             change = false;
-            BB_LIST::iterator rit = fg.BBs.end();
+            BB_LIST::iterator rit = fg.end();
             do
             {
                 //
@@ -1034,7 +1034,7 @@ void LivenessAnalysis::computeLiveness(bool computePseudoKill)
                     change = true;
                 }
             }
-            while(rit != fg.BBs.begin());
+            while(rit != fg.begin());
         }
 
         change = true;
@@ -1048,7 +1048,7 @@ void LivenessAnalysis::computeLiveness(bool computePseudoKill)
         while (change)
         {
             change = false;
-            BB_LIST::iterator rit = fg.BBs.end();
+            BB_LIST::iterator rit = fg.end();
             do
             {
                 //
@@ -1070,19 +1070,8 @@ void LivenessAnalysis::computeLiveness(bool computePseudoKill)
                 }
 
             }
-            while(rit != fg.BBs.begin());
+            while(rit != fg.begin());
         }
-    //
-    // dump vectors for debugging
-    //
-#ifdef DEBUG_VERBOSE_ON
-    dump_bb_vector("BYPASS IN", fg.BBs, bypass_in);
-    dump_bb_vector("BYPASS OUT", fg.BBs, bypass_out);
-    dump_fn_vector("BYPASS", fns, bypass);
-    dump_bb_vector("MAYUSE IN", fg.BBs, mayuse_in);
-    dump_bb_vector("MAYUSE OUT", fg.BBs, mayuse_out);
-    dump_fn_vector("MAYUSE", fns, mayuse);
-#endif
 
         if (fg.builder->getOptions()->getTarget() == VISA_CM)
         {
@@ -1117,7 +1106,7 @@ void LivenessAnalysis::computeLiveness(bool computePseudoKill)
         while (change)
         {
             change = false;
-            BB_LIST::iterator rit = fg.BBs.end();
+            BB_LIST::iterator rit = fg.end();
             do
             {
                 //
@@ -1138,7 +1127,7 @@ void LivenessAnalysis::computeLiveness(bool computePseudoKill)
                 }
 
             }
-            while(rit != fg.BBs.begin());
+            while(rit != fg.begin());
         }
 
         //
@@ -1163,7 +1152,7 @@ void LivenessAnalysis::computeLiveness(bool computePseudoKill)
         while (change)
         {
             change = false;
-            for (BB_LIST::iterator it = fg.BBs.begin(); it != fg.BBs.end(); it++)
+            for (BB_LIST::iterator it = fg.begin(); it != fg.end(); it++)
             {
                 //
                 // maydef_in[n] =
@@ -1188,8 +1177,8 @@ void LivenessAnalysis::computeLiveness(bool computePseudoKill)
     // dump vectors for debugging
     //
 #ifdef DEBUG_VERBOSE_ON
-    dump_bb_vector("MAYDEF IN", fg.BBs, maydef_in);
-    dump_bb_vector("MAYDEF OUT", fg.BBs, maydef_out);
+    dump_bb_vector("MAYDEF IN", maydef_in);
+    dump_bb_vector("MAYDEF OUT", maydef_out);
     dump_fn_vector("MAYDEF", fns, maydef);
 #endif
 
@@ -1221,7 +1210,7 @@ void LivenessAnalysis::computeLiveness(bool computePseudoKill)
         while (change)
         {
             change = false;
-            for (BB_LIST::iterator it = fg.BBs.begin(); it != fg.BBs.end(); it++)
+            for (BB_LIST::iterator it = fg.begin(); it != fg.end(); it++)
             {
                 //
                 // def_in[n] =
@@ -1257,8 +1246,8 @@ void LivenessAnalysis::computeLiveness(bool computePseudoKill)
             // dump vectors for debugging
             //
 #ifdef DEBUG_VERBOSE_ON
-            dump_bb_vector("MAYDEF IN", fg.BBs, maydef_in);
-            dump_bb_vector("MAYDEF OUT", fg.BBs, maydef_out);
+            dump_bb_vector("MAYDEF IN", maydef_in);
+            dump_bb_vector("MAYDEF OUT", maydef_out);
             dump_fn_vector("MAYDEF", fns, maydef);
 #endif
         }
@@ -1272,7 +1261,7 @@ void LivenessAnalysis::computeLiveness(bool computePseudoKill)
         while (change)
         {
             change = false;
-            BB_LIST::iterator rit = fg.BBs.end();
+            BB_LIST::iterator rit = fg.end();
             do
             {
                 //
@@ -1287,7 +1276,7 @@ void LivenessAnalysis::computeLiveness(bool computePseudoKill)
                 }
 
             }
-            while (rit != fg.BBs.begin());
+            while (rit != fg.begin());
         }
 
         //
@@ -1302,7 +1291,7 @@ void LivenessAnalysis::computeLiveness(bool computePseudoKill)
         while (change)
         {
             change = false;
-            for (auto bb : fg.BBs)
+            for (auto bb : fg)
             {
                 //
                 // def_in   = def_out(p1) + def_out(p2) + ... where p1 p2 ... are the predecessors of bb
@@ -1394,10 +1383,10 @@ void LivenessAnalysis::computeLiveness(bool computePseudoKill)
     //
 #if 0
     {
-        dump_bb_vector("DEF IN", fg.BBs, def_in);
-        dump_bb_vector("DEF OUT", fg.BBs, def_out);
-        dump_bb_vector("USE IN", fg.BBs, use_in);
-        dump_bb_vector("USE OUT", fg.BBs, use_out);
+        dump_bb_vector("DEF IN", def_in);
+        dump_bb_vector("DEF OUT", def_out);
+        dump_bb_vector("USE IN", use_in);
+        dump_bb_vector("USE OUT", use_out);
     }
 #endif
 
@@ -2968,10 +2957,10 @@ bool LivenessAnalysis::contextFreeDefAnalyze(G4_BB* bb)
      return changed;
 }
 
-void LivenessAnalysis::dump_bb_vector(char* vname, std::list<G4_BB*>& bbs, std::vector<BitSet>& vec)
+void LivenessAnalysis::dump_bb_vector(char* vname, std::vector<BitSet>& vec)
 {
     std::cerr << vname << "\n";
-    for (BB_LIST_ITER it = bbs.begin(); it != bbs.end(); it++)
+    for (BB_LIST_ITER it = fg.begin(); it != fg.end(); it++)
     {
         G4_BB* bb = (*it);
         std::cerr << "    BB" << bb->getId() << "\n";
@@ -3022,7 +3011,7 @@ void LivenessAnalysis::dump_fn_vector(char* vname, std::vector<FuncInfo*>& fns, 
 //
 void LivenessAnalysis::dump() const
 {
-    for (auto bb : fg.BBs)
+    for (auto bb : fg)
     {
         std::cerr << "BB" << bb->getId() << "'s live in: ";
         unsigned total_size = 0;
@@ -3109,7 +3098,7 @@ void GlobalRA::markBlockLocalVar(G4_RegVar* var, unsigned bbId)
 
 void GlobalRA::markBlockLocalVars(bool doLocalRA)
 {
-    for (auto bb : kernel.fg.BBs)
+    for (auto bb : kernel.fg)
     {
         for (std::list<G4_INST*>::iterator it = bb->begin(); it != bb->end(); it++)
         {
@@ -3340,8 +3329,8 @@ void GlobalRA::setABIForStackCallFunctionCalls()
     // Each will use 2 dwords of r1.0.
     int call_id = 0, ret_id = 0;
 
-    for( BB_LIST_ITER it = kernel.fg.BBs.begin();
-        it != kernel.fg.BBs.end();
+    for( BB_LIST_ITER it = kernel.fg.begin();
+        it != kernel.fg.end();
         it++ )
     {
         G4_BB* bb = (*it);
@@ -3389,7 +3378,7 @@ void GlobalRA::setABIForStackCallFunctionCalls()
 // Function to verify RA results
 void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
 {
-    for (auto bb : kernel.fg.BBs)
+    for (auto bb : kernel.fg)
     {
         // Verify PREG assignment
         for (auto inst : *bb)

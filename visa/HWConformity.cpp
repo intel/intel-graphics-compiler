@@ -6062,7 +6062,7 @@ void HWConformity::chkHWConformity()
 {
     fixDataLayout();
 
-    for (BB_LIST_ITER it = kernel.fg.BBs.begin(), end = kernel.fg.BBs.end(); it != end; it++)
+    for (BB_LIST_ITER it = kernel.fg.begin(), end = kernel.fg.end(); it != end; it++)
     {
 #ifdef _DEBUG
         verifyG4Kernel(kernel, Optimizer::PI_HWConformityChk, false);
@@ -6765,7 +6765,7 @@ void HWConformity::fixDataLayout( )
 {
     bool changeDataLayout = false;
 
-    for (auto &bb : kernel.fg.BBs)
+    for (auto &bb : kernel.fg)
     {
         for (auto &inst : *bb)
         {
@@ -6814,7 +6814,7 @@ void HWConformity::fixDataLayout( )
             }
         }
 
-        for (auto &bb : kernel.fg.BBs)
+        for (auto &bb : kernel.fg)
         {
             for (auto &inst : *bb)
             {

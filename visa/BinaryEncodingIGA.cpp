@@ -124,7 +124,7 @@ iga::InstOptSet BinaryEncodingIGA::getIGAInstOptSet(G4_INST* inst) const
 
 void BinaryEncodingIGA::FixInst()
 {
-    for (auto bb : kernel.fg.BBs)
+    for (auto bb : kernel.fg)
     {
         for (auto iter = bb->begin(); iter != bb->end();)
         {
@@ -457,9 +457,9 @@ void BinaryEncodingIGA::DoAll()
     FixInst();
     Block* currBB = nullptr;
 
-    auto isFirstInstLabel = [](BB_LIST& bbList)
+    auto isFirstInstLabel = [this]()
     {
-        for (auto bb : bbList)
+        for (auto bb : kernel.fg)
         {
             for (auto inst : *bb)
             {
@@ -492,7 +492,7 @@ void BinaryEncodingIGA::DoAll()
         }
     }
 
-    if (!isFirstInstLabel(kernel.fg.BBs))
+    if (!isFirstInstLabel())
     {
         // create a new BB if kernel does not start with label
         currBB = IGAKernel->createBlock();
@@ -501,7 +501,7 @@ void BinaryEncodingIGA::DoAll()
 
     std::list<std::pair<Instruction*, G4_INST*>> encodedInsts;
     iga::Block *bbNew = nullptr;
-    for (auto bb : this->kernel.fg.BBs)
+    for (auto bb : this->kernel.fg)
     {
         for (auto inst : *bb)
         {
@@ -837,7 +837,7 @@ void BinaryEncodingIGA::DoAll()
     {
         // per thread data load is in the first BB
         assert(kernel.fg.getNumBB() > 1 && "expect at least one prolog BB");
-        auto secondBB = *(std::next(kernel.fg.BBs.begin()));
+        auto secondBB = *(std::next(kernel.fg.begin()));
         auto iter = std::find_if(secondBB->begin(), secondBB->end(), [](G4_INST* inst) { return !inst->isLabel();});
         assert(iter != secondBB->end() && "execpt at least one non-label inst in second BB");
         kernel.fg.builder->getJitInfo()->offsetToSkipPerThreadDataLoad = (uint32_t)(*iter)->getGenOffset();

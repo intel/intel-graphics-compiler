@@ -486,7 +486,7 @@ namespace {
 } // End anonymous namespace
 
 void IfConverter::analyze(std::vector<IfConvertible> &list) {
-    for (auto *BB : fg.BBs) {
+    for (auto *BB : fg) {
         G4_INST *ifInst;
         G4_BB *s0, *s1, *t;
         std::tie(ifInst, s0, s1, t) = getInnermostIfBlock(BB);
@@ -663,7 +663,7 @@ void runIfCvt(FlowGraph &fg) {
 
     // Run additional transforms from 'sel' to 'mov' if one of the source
     // operands is equal to the destination.
-    for (G4_BB *BB: fg.BBs) {
+    for (G4_BB *BB: fg) {
         for (auto BI = BB->begin(), BE = BB->end(); BI != BE; ++BI) {
             G4_INST *I = *BI;
             if (I->opcode() != G4_sel || !I->getPredicate() || I->getCondMod())

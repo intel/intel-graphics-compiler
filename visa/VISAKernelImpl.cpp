@@ -148,9 +148,9 @@ int VISAKernelImpl::compileFastPath()
 
 void replaceFCOpcodes(IR_Builder& builder)
 {
-    BB_LIST_ITER bbEnd = builder.kernel.fg.BBs.end();
+    BB_LIST_ITER bbEnd = builder.kernel.fg.end();
 
-    for(BB_LIST_ITER bb_it = builder.kernel.fg.BBs.begin();
+    for(BB_LIST_ITER bb_it = builder.kernel.fg.begin();
         bb_it != bbEnd;
         bb_it++)
     {
@@ -333,8 +333,8 @@ void VISAKernelImpl::createInstForJmpiSequence(InstListType& insts, G4_INST* fca
 void VISAKernelImpl::expandIndirectCallWithRegTarget()
 {
     // check every fcall
-    for (BB_LIST_ITER it = m_kernel->fg.BBs.begin();
-        it != m_kernel->fg.BBs.end();
+    for (BB_LIST_ITER it = m_kernel->fg.begin();
+        it != m_kernel->fg.end();
         it++)
     {
         G4_BB* bb = (*it);
@@ -415,7 +415,7 @@ void* VISAKernelImpl::compilePostOptimize(unsigned int& binarySize)
 
     // remove SW fences at this point
     // ToDo: remove all intrinsics?
-    for (auto bb : m_kernel->fg.BBs)
+    for (auto bb : m_kernel->fg)
     {
         bb->removeIntrinsics(Intrinsic::MemFence);
     }
@@ -427,7 +427,7 @@ void* VISAKernelImpl::compilePostOptimize(unsigned int& binarySize)
     {
         auto getFirstNonLabelInst = [this]()
         {
-            for (auto bb : m_kernel->fg.BBs)
+            for (auto bb : m_kernel->fg)
             {
                 for (auto inst : *bb)
                 {
@@ -509,7 +509,7 @@ void* VISAKernelImpl::compilePostOptimize(unsigned int& binarySize)
 
         pBinaryEncoding->computeBinaryOffsets();
 
-        for (auto bb : m_kernel->fg.BBs)
+        for (auto bb : m_kernel->fg)
         {
             for (auto inst : *bb)
             {
@@ -8355,8 +8355,8 @@ void VISAKernelImpl::computeFCInfo(BinaryEncodingBase* binEncodingInstance)
 
     // First populate FCInstMap map that holds all pseudo_fc_call/ret
     // instructions in the kernel.
-    BB_LIST_ITER bb_end = kernel->fg.BBs.end();
-    for(BB_LIST_ITER bb_it = kernel->fg.BBs.begin();
+    BB_LIST_ITER bb_end = kernel->fg.end();
+    for(BB_LIST_ITER bb_it = kernel->fg.begin();
         bb_it != bb_end;
         bb_it++)
     {
@@ -8429,8 +8429,8 @@ void VISAKernelImpl::computeFCInfo() {
 
     // First populate FCInstMap map that holds all pseudo_fc_call/ret
     // instructions in the kernel.
-    BB_LIST_ITER bb_end = kernel->fg.BBs.end();
-    for (BB_LIST_ITER bb_it = kernel->fg.BBs.begin();
+    BB_LIST_ITER bb_end = kernel->fg.end();
+    for (BB_LIST_ITER bb_it = kernel->fg.begin();
         bb_it != bb_end;
         bb_it++) {
         G4_BB* bb = (*bb_it);
@@ -8515,8 +8515,8 @@ int VISAKernelImpl::getDeclarationID(VISA_FileVar *decl)
 
 int64_t VISAKernelImpl::getGenOffset()
 {
-    assert(false == m_kernel->fg.BBs.empty());
-    auto &entryBB = *(*m_kernel->fg.BBs.begin());
+    assert(false == m_kernel->fg.empty());
+    auto &entryBB = *(*m_kernel->fg.begin());
 
     // the offset of the first gen inst in this kernel/function
     assert(false == entryBB.empty());

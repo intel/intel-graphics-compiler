@@ -93,7 +93,7 @@ G4_Align LocalRA::getBankAlignForUniqueAssign(G4_Declare *dcl)
 // call/return edge may also be considered as a back edge depending on layout.
 bool LocalRA::hasBackEdge()
 {
-    for (auto curBB : kernel.fg.BBs)
+    for (auto curBB : kernel.fg)
     {
 
         MUST_BE_TRUE(curBB->size() > 0 || curBB->Succs.size() > 1,
@@ -144,7 +144,7 @@ void LocalRA::getRowInfo(int size, int& nrows, int& lastRowSize)
 
 void LocalRA::evenAlign()
 {
-    if (kernel.getOptions()->getTarget() == VISA_3D && kernel.fg.BBs.size() > 2)
+    if (kernel.getOptions()->getTarget() == VISA_3D && kernel.fg.size() > 2)
     {
         if (kernel.getSimdSize() >= 16)
         {
@@ -236,7 +236,7 @@ void LocalRA::preLocalRAAnalysis()
             // and it is unable to assign registers even with spilling.
 #define USABLE_GRFS_WITH_DEBUG_INFO 80
             int maxSendReg = 0;
-            for (auto bb : kernel.fg.BBs)
+            for (auto bb : kernel.fg)
             {
                 for (auto inst : *bb)
                 {
@@ -361,7 +361,7 @@ bool LocalRA::localRAPass(bool doRoundRobin, bool doSplitLLR)
 #endif
 
     int totalGRFNum = kernel.getNumRegTotal();
-    for (BB_LIST_ITER bb_it = kernel.fg.BBs.begin(); bb_it != kernel.fg.BBs.end(); ++bb_it)
+    for (BB_LIST_ITER bb_it = kernel.fg.begin(); bb_it != kernel.fg.end(); ++bb_it)
     {
         PhyRegsManager pregManager(localPregs, doBCR);
         std::vector<LocalLiveRange*> liveIntervals;
@@ -460,7 +460,7 @@ bool LocalRA::localRA()
     bool needGlobalRA = true;
 
     doSplitLLR = (builder.getOption(vISA_SpiltLLR) &&
-        kernel.fg.BBs.size() == 1 &&
+        kernel.fg.size() == 1 &&
         kernel.getOptions()->getTarget() == VISA_3D);
 
     preLocalRAAnalysis();
@@ -608,8 +608,8 @@ void LocalRA::removeUnrequiredLifetimeOps()
     // pseudo_kills/lifetime.end instructions. Remove
     // instructions that have no other useful instruction.
 
-    for (BB_LIST_ITER bb_it = kernel.fg.BBs.begin();
-        bb_it != kernel.fg.BBs.end();
+    for (BB_LIST_ITER bb_it = kernel.fg.begin();
+        bb_it != kernel.fg.end();
         bb_it++)
     {
         G4_BB* bb = (*bb_it);
@@ -713,8 +713,8 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign)
                 if (kernel.getOption(vISA_GenerateDebugInfo))
                 {
                     uint32_t start = 0, end = 0;
-                    for (auto rit = kernel.fg.BBs.rbegin();
-                        rit != kernel.fg.BBs.rend();
+                    for (auto rit = kernel.fg.rbegin();
+                        rit != kernel.fg.rend();
                         rit++)
                     {
                         G4_BB* bb = (*rit);
@@ -742,7 +742,7 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign)
         // in all basic blocks.
         PhyRegsManager phyRegMgr(*pregs, twoBanksRA);
 
-        for (auto bb : kernel.fg.BBs)
+        for (auto bb : kernel.fg)
         {
             PhyRegSummary* summary = kernel.fg.getBBLRASummary(bb);
             if (summary != NULL)
@@ -853,8 +853,8 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign)
             if (kernel.getOption(vISA_GenerateDebugInfo))
             {
                 uint32_t start = 0, end = 0;
-                for (auto rit = kernel.fg.BBs.rbegin();
-                    rit != kernel.fg.BBs.rend();
+                for (auto rit = kernel.fg.rbegin();
+                    rit != kernel.fg.rend();
                     rit++)
                 {
                     G4_BB* bb = (*rit);
@@ -1204,7 +1204,7 @@ void LocalRA::markReferencesInInst(INST_LIST_ITER inst_it)
 void LocalRA::setLexicalID()
 {
     unsigned int id = 0;
-    for (auto bb : kernel.fg.BBs)
+    for (auto bb : kernel.fg)
     {
         for (INST_LIST_ITER inst_it = bb->begin(), iend = bb->end();
             inst_it != iend;
@@ -1221,7 +1221,7 @@ void LocalRA::markReferences(unsigned int& numRowsEOT,
 {
     unsigned int id = 0;
     // Iterate over all BBs
-    for (BB_LIST_ITER bb_it = kernel.fg.BBs.begin(), bb_end = kernel.fg.BBs.end(); bb_it != bb_end; ++bb_it)
+    for (BB_LIST_ITER bb_it = kernel.fg.begin(), bb_end = kernel.fg.end(); bb_it != bb_end; ++bb_it)
     {
         curBB = (*bb_it);
 
@@ -1267,8 +1267,8 @@ void LocalRA::calculateInputIntervals()
     std::vector<uint32_t> inputRegLastRef;
     inputRegLastRef.resize(numGRF * G4_GRF_REG_SIZE, UINT_MAX);
 
-    for (BB_LIST_RITER bb_it = kernel.fg.BBs.rbegin();
-        bb_it != kernel.fg.BBs.rend();
+    for (BB_LIST_RITER bb_it = kernel.fg.rbegin();
+        bb_it != kernel.fg.rend();
         bb_it++)
     {
         G4_BB* bb = (*bb_it);

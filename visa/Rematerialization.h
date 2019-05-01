@@ -251,7 +251,7 @@ namespace vISA
                 }
             }
 
-            for (auto& bb : kernel.fg.BBs)
+            for (auto& bb : kernel.fg)
             {
                 bool bbInLoop = (bbsInLoop.find(bb) != bbsInLoop.end());
                 if (bbInLoop)

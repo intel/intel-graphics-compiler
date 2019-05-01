@@ -31,7 +31,7 @@ namespace vISA
     void Rematerialization::populateRefs()
     {
         unsigned int id = 0;
-        for (auto bb : kernel.fg.BBs)
+        for (auto bb : kernel.fg)
         {
             for (auto inst : *bb)
             {
@@ -113,7 +113,7 @@ namespace vISA
         if (!samplerHeader)
             return;
 
-        for (auto bb : kernel.fg.BBs)
+        for (auto bb : kernel.fg)
         {
             G4_INST* samplerHeaderMov = nullptr;
             for (auto inst : *bb)
@@ -309,7 +309,7 @@ namespace vISA
         if (!samplerHeader)
             return;
 
-        for (auto bb : kernel.fg.BBs)
+        for (auto bb : kernel.fg)
         {
             std::list<G4_INST*> lastMov;
 
@@ -956,7 +956,7 @@ namespace vISA
     {
         unsigned int numSampler = 0;
 
-        for (auto bb : kernel.fg.BBs)
+        for (auto bb : kernel.fg)
         {
             for (auto inst : *bb)
             {
@@ -982,9 +982,9 @@ namespace vISA
 
         populateRefs();
 
-        auto firstProgInst = kernel.fg.BBs.front()->getFirstInst();
+        auto firstProgInst = kernel.fg.getEntryBB()->getFirstInst();
 
-        for (auto bb : kernel.fg.BBs)
+        for (auto bb : kernel.fg)
         {
             if (kernel.getOptions()->getTarget() == VISATarget::VISA_3D)
             {
@@ -1117,7 +1117,7 @@ namespace vISA
     {
         // Compute all doms for given bb.
         // Flowgraph already has idoms for each bb.
-        for (auto&& bb : fg.BBs)
+        for (auto&& bb : fg)
         {
             std::pair<G4_BB*, std::set<G4_BB*>> domBB;
             domBB.first = bb;

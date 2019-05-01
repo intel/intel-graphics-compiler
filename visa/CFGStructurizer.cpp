@@ -914,7 +914,7 @@ ANode *ANode::getChildANode(ANode *parent)
 void CFGStructurizer::preProcess()
 {
     bool CFGChanged = false;
-    for (BB_LIST_ITER BI = CFG->BBs.begin(), BE = CFG->BBs.end();
+    for (BB_LIST_ITER BI = CFG->begin(), BE = CFG->end();
         BI != BE; ++BI)
     {
         G4_BB *B = *BI;
@@ -1041,7 +1041,7 @@ void CFGStructurizer::init()
     // callee and callee's return to call's succ). For structurizing purpose, those
     // edges should not be considered. Here ANodeBB will have those edges ignored.
     uint32_t i = 0;
-    for (BB_LIST_ITER II = CFG->BBs.begin(), IE = CFG->BBs.end(); II != IE; ++II, ++i)
+    for (BB_LIST_ITER II = CFG->begin(), IE = CFG->end(); II != IE; ++II, ++i)
     {
         G4_BB *bb = *II;
         uint32_t id = bb->getId();

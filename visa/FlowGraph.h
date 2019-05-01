@@ -749,6 +749,19 @@ public:
 
 public:
 
+    // forwarding functions to the BBs list
+    BB_LIST_ITER begin() { return BBs.begin(); }
+    BB_LIST_ITER end() { return BBs.end(); }
+    BB_LIST::reverse_iterator rbegin() { return BBs.rbegin(); }
+    BB_LIST::reverse_iterator rend() { return BBs.rend(); }
+    BB_LIST::const_iterator cbegin() const { return BBs.cbegin(); }
+    BB_LIST::const_iterator cend() const { return BBs.cend(); }
+    BB_LIST::const_reverse_iterator crbegin() { return BBs.crbegin(); }
+    BB_LIST::const_reverse_iterator crend() { return BBs.crend(); }
+    size_t size() { return BBs.size(); }
+    bool empty() const { return BBs.empty(); }
+    G4_BB* back() const {return BBs.back(); }
+
     G4_BB* getLabelBB(Label_BB_Map& map, const char* label);
     G4_BB* beginBB(Label_BB_Map& map, G4_INST* first);
 
@@ -1630,7 +1643,7 @@ public:
     G4_BB* getCommonImmDom(std::unordered_set<G4_BB*>&);
 
 private:
-    const G4_Kernel& kernel;
+    G4_Kernel& kernel;
     G4_BB* exitBB = nullptr;
     std::vector<std::unordered_set<G4_BB*>> postDoms;
     std::vector<std::vector<G4_BB*>> immPostDoms;

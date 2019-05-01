@@ -439,7 +439,7 @@ class LivenessAnalysis
 
     bool livenessCandidate(G4_Declare* decl, bool verifyRA);
 
-    void dump_bb_vector(char* vname, std::list<G4_BB*>& bbs, std::vector<BitSet>& vec);
+    void dump_bb_vector(char* vname, std::vector<BitSet>& vec);
     void dump_fn_vector(char* vname, std::vector<FuncInfo*>& fns, std::vector<BitSet>& vec);
 
     void updateKillSetForDcl(G4_Declare* dcl, BitSet* curBBGen, BitSet* curBBKill, G4_BB* curBB, BitSet* entryBBGen, BitSet* entryBBKill,

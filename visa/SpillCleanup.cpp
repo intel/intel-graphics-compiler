@@ -1043,7 +1043,7 @@ void CoalesceSpillFills::fills()
 {
     // Iterate over all BBs, find fills that are closeby and coalesce
     // a bunch of them. Insert movs as required.
-    for (auto bb : kernel.fg.BBs)
+    for (auto bb : kernel.fg)
     {
         auto endIter = bb->end();
         std::list<INST_LIST_ITER> fillsToCoalesce;
@@ -1149,7 +1149,7 @@ void CoalesceSpillFills::populateSendDstDcl()
     // scratch writes for such spills. We cannot mix coalescing
     // for G4_Declares from one and and other instructions.
     // Otherwise register pressure increases significantly.
-    for (auto bb : kernel.fg.BBs)
+    for (auto bb : kernel.fg)
     {
         for (auto inst : *bb)
         {
@@ -1184,7 +1184,7 @@ void CoalesceSpillFills::spills()
 
     // Iterate over all BBs, find fills that are closeby and coalesce
     // a bunch of them. Insert movs as required.
-    for (auto bb : kernel.fg.BBs)
+    for (auto bb : kernel.fg)
     {
         auto endIter = bb->end();
         std::list<INST_LIST_ITER> spillsToCoalesce;
@@ -1347,7 +1347,7 @@ void CoalesceSpillFills::fixSendsSrcOverlap()
     //
     // where V441 and V449 are both scalars of type :uq and :ud respectively
     //
-    for (auto bb : kernel.fg.BBs)
+    for (auto bb : kernel.fg)
     {
         for (auto instIt = bb->begin();
             instIt != bb->end();
@@ -1436,7 +1436,7 @@ void CoalesceSpillFills::removeRedundantSplitMovs()
     typedef unsigned int NumRefs;
     std::map<G4_Declare*, std::pair<NumRefs, std::list<MovLoc>>> movs;
 
-    for (auto bb : kernel.fg.BBs)
+    for (auto bb : kernel.fg)
     {
         // Store all dcls defined by non scratch sends
         // as only they are candidates for this pass.
@@ -1622,7 +1622,7 @@ void CoalesceSpillFills::removeRedundantSplitMovs()
     }
 
     // Update number of uses of each dcl
-    for (auto bb : kernel.fg.BBs)
+    for (auto bb : kernel.fg)
     {
         for (auto instIt = bb->begin(), endIt = bb->end();
             instIt != endIt; instIt++)
@@ -1695,7 +1695,7 @@ void CoalesceSpillFills::spillFillCleanup()
 
     std::map<unsigned int, G4_INST*> writesPerOffset;
     std::set<G4_Declare*> defs;
-    for (auto bb : kernel.fg.BBs)
+    for (auto bb : kernel.fg)
     {
         auto startIt = bb->begin();
         auto endIt = bb->end();
@@ -1845,7 +1845,7 @@ void CoalesceSpillFills::removeRedundantWrites()
     // Redundant writes include:
     // 1. Successive writes to same offset without a fill in between,
     // 2. Writes in program without any fill from that slot throughout
-    for (auto bb : kernel.fg.BBs)
+    for (auto bb : kernel.fg)
     {
         auto endIt = bb->end();
         endIt--;
@@ -1916,7 +1916,7 @@ void CoalesceSpillFills::removeRedundantWrites()
         }
     }
 
-    for (auto bb : kernel.fg.BBs)
+    for (auto bb : kernel.fg)
     {
         auto endIt = bb->end();
         for (auto instIt = bb->begin();
@@ -2059,7 +2059,7 @@ void CoalesceSpillFills::run()
 
 void CoalesceSpillFills::dumpKernel()
 {
-    for (auto bb : kernel.fg.BBs)
+    for (auto bb : kernel.fg)
     {
         for (auto inst : *bb)
         {
@@ -2072,7 +2072,7 @@ void CoalesceSpillFills::dumpKernel()
 void CoalesceSpillFills::dumpKernel(unsigned int v1, unsigned int v2)
 {
     bool start = false, end = false, canEnd = false;
-    for (auto bb : kernel.fg.BBs)
+    for (auto bb : kernel.fg)
     {
         if (end)
             break;

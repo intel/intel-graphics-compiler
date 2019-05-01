@@ -4014,7 +4014,7 @@ void SpillManagerGMRF::insertAddrTakenSpillAndFillCode( G4_Kernel* kernel, G4_BB
 // Insert any spill/fills for address taken
 void SpillManagerGMRF::insertAddrTakenSpillFill( G4_Kernel* kernel, PointsToAnalysis& pointsToAnalysis )
 {
-    for( auto bb : kernel->fg.BBs)
+    for( auto bb : kernel->fg)
     {
         for( INST_LIST_ITER inst_it = bb->begin();
             inst_it != bb->end();
@@ -4052,7 +4052,7 @@ void SpillManagerGMRF::insertAddrTakenSpillFill( G4_Kernel* kernel, PointsToAnal
 // the original regvar that is spilled.
 void SpillManagerGMRF::prunePointsTo( G4_Kernel* kernel, PointsToAnalysis& pointsToAnalysis )
 {
-    for( auto bb : kernel->fg.BBs)
+    for( auto bb : kernel->fg)
     {
         for( INST_LIST_ITER inst_it = bb->begin();
             inst_it != bb->end();
@@ -4184,7 +4184,7 @@ SpillManagerGMRF::insertSpillFillCode (
 
     FlowGraph& fg = kernel->fg;
 
-    for (BB_LIST_ITER it = fg.BBs.begin(); it != fg.BBs.end(); it++)
+    for (BB_LIST_ITER it = fg.begin(); it != fg.end(); it++)
     {
         inSIMDCFContext_ = (*it)->isInSimdFlow();
         bbId_ = (*it)->getId();
@@ -4393,7 +4393,7 @@ SpillManagerGMRF::fixSpillFillCode (
 
     unsigned statelessSurfaceIndex = 0xFF;
 
-    for( BB_LIST_ITER it = fg.BBs.begin(), bbend = fg.BBs.end(); it != bbend; it++ )
+    for( BB_LIST_ITER it = fg.begin(), bbend = fg.end(); it != bbend; it++ )
     {
         INST_LIST::iterator jt = (*it)->begin ();
 

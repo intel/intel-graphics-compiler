@@ -586,7 +586,7 @@ void SpillManager::insertSpillCode()
     createSpillLocations(kernel);
 
     FlowGraph& fg = kernel.fg;
-    for (BB_LIST_ITER bb_it = fg.BBs.begin(); bb_it != fg.BBs.end(); bb_it++)
+    for (BB_LIST_ITER bb_it = fg.begin(); bb_it != fg.end(); bb_it++)
     {
         G4_BB* bb = *bb_it;
         bbId = bb->getId();

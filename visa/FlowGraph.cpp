@@ -3155,7 +3155,7 @@ void FlowGraph::processGoto(bool HasSIMDCF)
 //
 void G4_Kernel::evalAddrExp()
 {
-    for (std::list<G4_BB*>::iterator it = fg.BBs.begin(), itEnd = fg.BBs.end(); it != itEnd; ++it)
+    for (std::list<G4_BB*>::iterator it = fg.begin(), itEnd = fg.end(); it != itEnd; ++it)
     {
         G4_BB* bb = (*it);
 
@@ -3319,7 +3319,7 @@ void FlowGraph::addSaveRestorePseudoDeclares(IR_Builder& builder)
     // but will be reused across cuts.
     //
     INST_LIST callSites;
-    for (auto bb : builder.kernel.fg.BBs)
+    for (auto bb : builder.kernel.fg)
     {
         if (bb->isEndWithFCall())
         {
@@ -3482,8 +3482,8 @@ void G4_Kernel::dumpPassInternal(const char* appendix)
     else
         ofile << asmFileName << std::endl << std::endl;
 
-    for (std::list<G4_BB*>::iterator it = fg.BBs.begin();
-        it != fg.BBs.end(); ++it)
+    for (std::list<G4_BB*>::iterator it = fg.begin();
+        it != fg.end(); ++it)
     {
         // Emit BB number
         G4_BB* bb = (*it);
@@ -3557,9 +3557,9 @@ void G4_Kernel::dumpDotFileInternal(const char* appendix)
     //
     const unsigned itemPerPage = 64;                                        // 60 instructions per Letter page
     unsigned totalItem = (unsigned)Declares.size();
-    for (std::list<G4_BB*>::iterator it = fg.BBs.begin(); it != fg.BBs.end(); ++it)
+    for (std::list<G4_BB*>::iterator it = fg.begin(); it != fg.end(); ++it)
         totalItem += ((unsigned int)(*it)->size());
-    totalItem += (unsigned)fg.BBs.size();
+    totalItem += (unsigned)fg.size();
     float graphHeight = (float)totalItem / itemPerPage;
     graphHeight = graphHeight < 100.0f ? 100.0f : graphHeight;    // minimal size: Letter
     ofile << endl << "\t// Setup" << endl;
@@ -3584,7 +3584,7 @@ void G4_Kernel::dumpDotFileInternal(const char* appendix)
     //
     // dump out flow graph
     //
-    for (std::list<G4_BB*>::iterator it = fg.BBs.begin(); it != fg.BBs.end(); ++it)
+    for (std::list<G4_BB*>::iterator it = fg.begin(); it != fg.end(); ++it)
     {
         G4_BB* bb = (*it);
         //
@@ -3931,7 +3931,7 @@ void G4_Kernel::emit_asm(std::ostream& output, bool beforeRegAlloc, void * binar
         suppressRegs[3] = -1;
 
         uint32_t lastLabelPC = 0;
-        for (BB_LIST_ITER itBB = fg.BBs.begin(); itBB != fg.BBs.end(); ++itBB)
+        for (BB_LIST_ITER itBB = fg.begin(); itBB != fg.end(); ++itBB)
         {
             for (INST_LIST_ITER itInst = (*itBB)->begin(); itInst != (*itBB)->end(); ++itInst)
             {
@@ -4007,7 +4007,7 @@ void G4_Kernel::emit_asm(std::ostream& output, bool beforeRegAlloc, void * binar
     }
     else
     {
-        for (BB_LIST_ITER it = fg.BBs.begin(); it != fg.BBs.end(); ++it)
+        for (BB_LIST_ITER it = fg.begin(); it != fg.end(); ++it)
         {
             output << std::endl;
             (*it)->emit(output);
@@ -4634,7 +4634,7 @@ void G4_Kernel::calculateSimdSize()
 
     simdSize = 8;
 
-    for (auto bb : fg.BBs)
+    for (auto bb : fg)
     {
         for (auto inst : *bb)
         {
@@ -4660,8 +4660,11 @@ void G4_Kernel::calculateSimdSize()
 void G4_Kernel::dump() const
 {
     std::cerr << "G4_Kernel: " << this->name << "\n";
-    for (auto& B : this->fg.BBs)
+    for (auto I = fg.cbegin(), E = fg.cend(); I != E; ++I)
+    {
+        auto& B = *I;
         B->dump();
+    }
 }
 
 //
@@ -5560,7 +5563,7 @@ void* gtPinData::getGTPinInfoBuffer(unsigned int &bufferSize)
 void gtPinData::markInsts()
 {
     // Take a snapshot of instructions in kernel.
-    for (auto bb : kernel.fg.BBs)
+    for (auto bb : kernel.fg)
     {
         for (auto inst : *bb)
         {
@@ -5590,7 +5593,7 @@ void gtPinData::removeUnmarkedInsts()
 
     MUST_BE_TRUE(whichRAPass == ReRAPass, "Unexpectedly removing unmarked instructions in first RA pass");
     // Instructions not seen in "marked" snapshot will be removed by this function.
-    for (auto bb : kernel.fg.BBs)
+    for (auto bb : kernel.fg)
     {
         for (auto it = bb->begin(), itEnd = bb->end();
             it != itEnd;)
@@ -5660,8 +5663,9 @@ void G4_Kernel::doRelocation(void* binary, uint32_t binarySize)
 
 G4_INST* G4_Kernel::getFirstNonLabelInst() const
 {
-    for (auto bb : fg.BBs)
+    for (auto I = fg.cbegin(), E = fg.cend(); I != E; ++I)
     {
+        auto bb = *I;
         G4_INST* firstInst = bb->getFirstInst();
         if (firstInst)
         {
@@ -5672,13 +5676,12 @@ G4_INST* G4_Kernel::getFirstNonLabelInst() const
     return nullptr;
 }
 
-
-
 void SCCAnalysis::run()
 {
     SCCNodes.resize(cfg.getNumBB());
-    for (auto BB : cfg.BBs)
+    for (auto I = cfg.cbegin(), E = cfg.cend(); I != E; ++I)
     {
+        auto BB = *I;
         if (!SCCNodes[BB->getId()])
         {
             findSCC(createSCCNode(BB));
@@ -5759,7 +5762,7 @@ void FuncInfo::dump() const
 
 PostDom::PostDom(G4_Kernel& k) : kernel(k)
 {
-    auto numBBs = k.fg.BBs.size();
+    auto numBBs = k.fg.size();
     postDoms.resize(numBBs);
     immPostDoms.resize(numBBs);
 }
@@ -5767,7 +5770,7 @@ PostDom::PostDom(G4_Kernel& k) : kernel(k)
 void PostDom::run()
 {
     exitBB = nullptr;
-    for (auto bb_rit = kernel.fg.BBs.rbegin(); bb_rit != kernel.fg.BBs.rend(); bb_rit++)
+    for (auto bb_rit = kernel.fg.rbegin(); bb_rit != kernel.fg.rend(); bb_rit++)
     {
         auto bb = *bb_rit;
         if (bb->size() > 0)
@@ -5785,13 +5788,15 @@ void PostDom::run()
 
     postDoms[exitBB->getId()] = { exitBB };
     std::unordered_set<G4_BB*> allBBs;
-    for (auto bb : kernel.fg.BBs)
+    for (auto I = kernel.fg.cbegin(), E = kernel.fg.cend(); I != E; ++I)
     {
+        auto bb = *I;
         allBBs.insert(bb);
     }
 
-    for (auto bb : kernel.fg.BBs)
+    for (auto I = kernel.fg.cbegin(), E = kernel.fg.cend(); I != E; ++I)
     {
+        auto bb = *I;
         if (bb != exitBB)
         {
             postDoms[bb->getId()] = allBBs;
@@ -5803,8 +5808,9 @@ void PostDom::run()
     while (change)
     {
         change = false;
-        for (auto bb : kernel.fg.BBs)
+        for (auto I = kernel.fg.cbegin(), E = kernel.fg.cend(); I != E; ++I)
         {
+            auto bb = *I;
             if (bb == exitBB)
                 continue;
 
@@ -5866,8 +5872,9 @@ std::unordered_set<G4_BB*>& PostDom::getPostDom(G4_BB* bb)
 
 void PostDom::dumpImmDom()
 {
-    for (auto bb : kernel.fg.BBs)
+    for (auto I = kernel.fg.cbegin(), E = kernel.fg.cend(); I != E; ++I) 
     {
+        auto bb = *I;
         printf("BB%d - ", bb->getId());
         auto& pdomBBs = immPostDoms[bb->getId()];
         for (auto pdomBB : pdomBBs)
@@ -5891,8 +5898,9 @@ std::vector<G4_BB*>& PostDom::getImmPostDom(G4_BB* bb)
 void PostDom::updateImmPostDom()
 {
     // Update immPostDom vector with correct ordering
-    for (auto bb : kernel.fg.BBs)
+    for (auto I = kernel.fg.cbegin(), E = kernel.fg.cend(); I != E; ++I)
     {
+        auto bb = *I;
         {
             auto& postDomBBs = postDoms[bb->getId()];
             auto& immPostDomBB = immPostDoms[bb->getId()];

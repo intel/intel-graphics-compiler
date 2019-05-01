@@ -67,8 +67,9 @@ G4Verifier::G4Verifier(G4_Kernel &k, VerifyControl ctrl, Optimizer::PassIndex in
 void G4Verifier::verify()
 {
     // For each instruction do verification.
-    for (auto bb : kernel.fg.BBs)
+    for (auto BBI = kernel.fg.cbegin(), BBE = kernel.fg.cend(); BBI != BBE; ++BBI)
     {
+       auto bb = *BBI;
        for (auto I = bb->begin(), E = bb->end(); I != E; ++I)
        {
            G4_INST *inst = *I;

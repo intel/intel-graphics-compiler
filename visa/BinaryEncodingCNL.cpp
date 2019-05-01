@@ -2497,8 +2497,8 @@ void BinaryEncodingCNL::DoAll()
     int numCompactedInst = 0;
     int numCompacted3SrcInst = 0;
 
-    BB_LIST_ITER ib, bend(kernel.fg.BBs.end());
-    for(ib = kernel.fg.BBs.begin(); ib != bend; ++ib)
+    BB_LIST_ITER ib, bend(kernel.fg.end());
+    for(ib = kernel.fg.begin(); ib != bend; ++ib)
     {
         G4_BB *bb = *ib;
         int localInstNum = 0;

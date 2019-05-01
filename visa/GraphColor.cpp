@@ -902,7 +902,7 @@ bool BankConflictPass::setupBankConflictsForKernel(bool doLocalRR, bool &threeSo
     unsigned int instNumInKernel = 0;
     unsigned int sendInstNumInKernel = 0;
 
-    for (auto curBB : gra.kernel.fg.BBs)
+    for (auto curBB : gra.kernel.fg)
     {
         orderedBBs.push_back(curBB);
     }
@@ -958,8 +958,8 @@ bool BankConflictPass::setupBankConflictsForKernel(bool doLocalRR, bool &threeSo
 
 void GlobalRA::emitFGWithLiveness(LivenessAnalysis& liveAnalysis)
 {
-    for (BB_LIST_ITER it = kernel.fg.BBs.begin();
-        it != kernel.fg.BBs.end();
+    for (BB_LIST_ITER it = kernel.fg.begin();
+        it != kernel.fg.end();
         it++)
     {
 
@@ -2209,7 +2209,7 @@ void Interference::computeInterference()
     //
     BitSet live(maxId, false);
 
-    for (BB_LIST_ITER it = kernel.fg.BBs.begin(); it != kernel.fg.BBs.end(); it++)
+    for (BB_LIST_ITER it = kernel.fg.begin(); it != kernel.fg.end(); it++)
     {
         //
         // mark all live ranges dead
@@ -2270,7 +2270,7 @@ void Interference::computeInterference()
     //
     if (kernel.getOption(vISA_LocalRA))
     {
-        for (auto curBB : kernel.fg.BBs)
+        for (auto curBB : kernel.fg)
         {
             buildInterferenceWithLocalRA(curBB);
         }
@@ -3211,7 +3211,7 @@ bool Augmentation::markNonDefaultMaskDef()
 
     bool isFlagRA = liveAnalysis.livenessClass(G4_FLAG);
 
-    for (auto bb : kernel.fg.BBs)
+    for (auto bb : kernel.fg)
     {
         for (auto inst : *bb)
         {
@@ -3558,7 +3558,7 @@ static int calculateBankConflicts(G4_Kernel& kernel)
     bool SIMD16 = (kernel.getSimdSize() >= 16);
     bool twoSrcsConflict = kernel.fg.builder->twoSourcesCollision();
 
-    for (BB_LIST_ITER it = kernel.fg.BBs.begin(); it != kernel.fg.BBs.end(); it++)
+    for (BB_LIST_ITER it = kernel.fg.begin(); it != kernel.fg.end(); it++)
     {
         int conflict_num = 0;
         int even_odd_num = 0;
@@ -3608,8 +3608,8 @@ void Augmentation::buildLiveIntervals()
 
     unsigned int funcCnt = 0;
 
-    for (BB_LIST_ITER bb_it = kernel.fg.BBs.begin();
-        bb_it != kernel.fg.BBs.end();
+    for (BB_LIST_ITER bb_it = kernel.fg.begin();
+        bb_it != kernel.fg.end();
         bb_it++)
     {
         G4_BB* curBB = (*bb_it);
@@ -4482,7 +4482,7 @@ void Augmentation::augmentIntfGraph()
     {
         if (!(kernel.getOptions()->getTarget() == VISA_3D &&
             !liveAnalysis.livenessClass(G4_ADDRESS) &&
-            kernel.fg.BBs.size() > 2))
+            kernel.fg.size() > 2))
         {
             return;
         }
@@ -5709,7 +5709,7 @@ bool GlobalRA::shouldPreloadDst(
 void GlobalRA::determineSpillRegSize(unsigned& spillRegSize, unsigned& indrSpillRegSize)
 {
     // Iterate over all BBs
-    for (auto curBB : kernel.fg.BBs)
+    for (auto curBB : kernel.fg)
     {
         // Iterate over all insts
         for (INST_LIST_ITER inst_it = curBB->begin(), iend = curBB->end(); inst_it != iend; ++inst_it)
@@ -6085,7 +6085,7 @@ void GraphColor::resetTemporaryRegisterAssignments()
 
 void GraphColor::cleanupRedundantARFFillCode()
 {
-    for (BB_LIST_ITER it = builder.kernel.fg.BBs.begin(); it != builder.kernel.fg.BBs.end(); it++)
+    for (BB_LIST_ITER it = builder.kernel.fg.begin(); it != builder.kernel.fg.end(); it++)
     {
         clearSpillAddrLocSignature();
 
@@ -6714,7 +6714,7 @@ void GraphColor::addCallerSaveRestoreCode()
     unsigned int maxCallerSaveSize = builder.kernel.fg.callerSaveAreaOffset;
     unsigned int callerSaveNumGRF = builder.kernel.getCallerSaveLastGRF() + 1;
 
-    for (BB_LIST_ITER it = builder.kernel.fg.BBs.begin(); it != builder.kernel.fg.BBs.end(); ++it)
+    for (BB_LIST_ITER it = builder.kernel.fg.begin(); it != builder.kernel.fg.end(); ++it)
     {
         if ((*it)->isEndWithFCall())
         {
@@ -7000,7 +7000,7 @@ void GraphColor::addFileScopeSaveRestoreCode()
     //
     // Save/restore at each call site
     //
-    for (BB_LIST_ITER it = builder.kernel.fg.BBs.begin(); it != builder.kernel.fg.BBs.end(); ++it)
+    for (BB_LIST_ITER it = builder.kernel.fg.begin(); it != builder.kernel.fg.end(); ++it)
     {
         if ((*it)->isEndWithFCall())
         {
@@ -7272,7 +7272,7 @@ void GraphColor::addA0SaveRestoreCode()
     uint8_t numA0Elements = (uint8_t)getNumAddrRegisters();
 
     int count = 0;
-    for (auto bb : builder.kernel.fg.BBs)
+    for (auto bb : builder.kernel.fg)
     {
         if (bb->isEndWithFCall())
         {
@@ -7337,7 +7337,7 @@ void GraphColor::addFlagSaveRestoreCode()
         tmpFlags.push_back(tmpFlag);
     }
 
-    for (auto bb : builder.kernel.fg.BBs)
+    for (auto bb : builder.kernel.fg)
     {
         if (bb->isEndWithFCall())
         {
@@ -7448,7 +7448,7 @@ void GlobalRA::addCallerSavePseudoCode()
     std::vector<G4_Declare*>::iterator pseudoVCADclIt = builder.kernel.fg.pseudoVCADclList.begin();
     unsigned int retID = 0;
 
-    for (BB_LIST_ITER it = builder.kernel.fg.BBs.begin(); it != builder.kernel.fg.BBs.end(); it++)
+    for (BB_LIST_ITER it = builder.kernel.fg.begin(); it != builder.kernel.fg.end(); it++)
     {
         G4_BB* bb = *it;
 
@@ -7663,7 +7663,7 @@ void GlobalRA::detectUndefinedUses(LivenessAnalysis& liveAnalysis, G4_Kernel& ke
         optreport << "(Use -nolocalra switch for accurate results of uses without reaching defs)" << std::endl;
     }
 
-    for (BB_LIST_ITER bb_it = kernel.fg.BBs.begin(), end = kernel.fg.BBs.end();
+    for (BB_LIST_ITER bb_it = kernel.fg.begin(), end = kernel.fg.end();
         bb_it != end;
         bb_it++)
     {
@@ -7738,7 +7738,7 @@ void GlobalRA::detectNeverDefinedUses()
     std::map<G4_Declare*, bool> vars;
     std::map<G4_Declare*, bool>::iterator map_it;
 
-    for (auto bb : kernel.fg.BBs)
+    for (auto bb : kernel.fg)
     {
         for (INST_LIST_ITER inst_it = bb->begin(), iend = bb->end();
             inst_it != iend;
@@ -8207,7 +8207,7 @@ void VarSplit::globalSplit(IR_Builder& builder, G4_Kernel &kernel)
     SPLIT_DECL_OPERANDS splitDcls;
     unsigned int instIndex = 0;
     int splitSize = kernel.getSimdSize() == 8 ? 1 : 2;
-    for (auto bb : kernel.fg.BBs)
+    for (auto bb : kernel.fg)
     {
         for (INST_LIST_ITER it = bb->begin(), iend = bb->end(); it != iend; ++it, ++instIndex)
         {
@@ -8245,7 +8245,7 @@ void VarSplit::globalSplit(IR_Builder& builder, G4_Kernel &kernel)
     }
 
     instIndex = 0;
-    for (auto bb : kernel.fg.BBs)
+    for (auto bb : kernel.fg)
     {
         for (INST_LIST_ITER it = bb->begin(), end = bb->end(); it != end; ++it, ++instIndex)
         {
@@ -9089,7 +9089,7 @@ int GlobalRA::coloringRegAlloc()
             {
                 std::cout << "\t--split local send--\n";
             }
-            for (auto bb : kernel.fg.BBs)
+            for (auto bb : kernel.fg)
             {
                 if (bb->isSendInBB())
                 {
@@ -9205,7 +9205,7 @@ int GlobalRA::coloringRegAlloc()
                 }
 
                 int instNum = 0;
-                for (auto bb : kernel.fg.BBs)
+                for (auto bb : kernel.fg)
                 {
                     instNum += (int)bb->size();
                 }
@@ -10629,7 +10629,7 @@ void FlagSpillCleanup::spillFillCodeCleanFlag(IR_Builder&        builder,
 //#ifdef _DEBUG
     int candidate_size = 0;
 //#endif
-    for (auto bb : fg.BBs)
+    for (auto bb : fg)
     {
         INST_LIST_ITER inst_it = bb->begin();
 
@@ -10689,7 +10689,7 @@ void GlobalRA::insertPhyRegDecls()
     grfUsed.resize(numGRF, false);
     GRFDclsForHRA.resize(numGRF);
 
-    for (auto curBB : kernel.fg.BBs)
+    for (auto curBB : kernel.fg)
     {
         if (auto summary = kernel.fg.getBBLRASummary(curBB))
         {
@@ -10732,7 +10732,7 @@ void GlobalRA::insertPhyRegDecls()
 void GlobalRA::computePhyReg()
 {
     auto& fg = kernel.fg;
-    for (auto bb : fg.BBs)
+    for (auto bb : fg)
     {
         for (auto inst : *bb)
         {
@@ -10782,7 +10782,7 @@ void GraphColor::dumpRegisterPressure()
     vector<G4_INST*> maxInst;
     rpe.run();
 
-    for (auto bb : builder.kernel.fg.BBs)
+    for (auto bb : builder.kernel.fg)
     {
         std::cerr << "BB " << bb->getId() << ": (Pred: ";
         for (auto pred : bb->Preds)
@@ -10824,7 +10824,7 @@ void GraphColor::dumpRegisterPressure()
 // that new variables created by lvn/spill/remat may not honor alignment requirements?
 void GlobalRA::fixAlignment()
 {
-    for (auto BB : kernel.fg.BBs)
+    for (auto BB : kernel.fg)
     {
         for (auto inst : *BB)
         {
@@ -10947,7 +10947,7 @@ void VerifyAugmentation::labelBBs()
 {
     std::string prev = "X:";
     unsigned int id = 0;
-    for (auto bb : kernel->fg.BBs)
+    for (auto bb : kernel->fg)
     {
         if (bbLabels.find(bb) == bbLabels.end())
             bbLabels[bb] = prev;
@@ -11005,7 +11005,7 @@ void VerifyAugmentation::labelBBs()
     }
 
 #if 1
-    for (auto bb : kernel->fg.BBs)
+    for (auto bb : kernel->fg)
     {
         printf("BB%d -> %s\n", bb->getId(), bbLabels[bb].data());
     }
@@ -11240,7 +11240,7 @@ void VerifyAugmentation::verify()
 
 void VerifyAugmentation::populateBBLexId()
 {
-    for (auto bb : kernel->fg.BBs)
+    for (auto bb : kernel->fg)
     {
         if (bb->size() > 0)
             BBLexId.push_back(std::make_tuple(bb, bb->front()->getLexicalId(), bb->back()->getLexicalId()));
@@ -11260,7 +11260,7 @@ bool VerifyAugmentation::isClobbered(LiveRange* lr, std::string& msg)
     std::vector<std::tuple<INST_LIST_ITER, G4_BB*>> defs;
     std::vector<std::tuple<INST_LIST_ITER, G4_BB*>> uses;
 
-    for (auto bb : kernel->fg.BBs)
+    for (auto bb : kernel->fg)
     {
         if (bb->size() == 0)
             continue;
@@ -11616,7 +11616,7 @@ void GlobalRA::assignLocForReturnAddr()
     // a data structure for doing a quick map[id] ---> block
     //
     G4_BB**  BBs = (G4_BB**)builder.mem.alloc(fg.getNumBB() * sizeof(G4_BB*));
-    for (BB_LIST_ITER it = fg.BBs.begin(); it != fg.BBs.end(); it++)
+    for (BB_LIST_ITER it = fg.begin(); it != fg.end(); it++)
     {
         unsigned i = (*it)->getId();
         retLoc[i] = UNDEFINED_VAL;
@@ -11860,8 +11860,7 @@ void GlobalRA::assignLocForReturnAddr()
 
 void  GlobalRA::insertCallReturnVar()
 {
-    auto& BBs = kernel.fg.BBs;
-    for (auto bb : BBs)
+    for (auto bb : kernel.fg)
     {
         G4_INST *last = bb->empty() ? NULL : bb->back();
         if (last)

@@ -57,7 +57,7 @@ void Optimizer::LVN()
     Mem_Manager mem(1024);
     PointsToAnalysis p(kernel.Declares, kernel.fg.getNumBB());
     p.doPointsToAnalysis(kernel.fg);
-    for (auto bb : kernel.fg.BBs)
+    for (auto bb : kernel.fg)
     {
         ::LVN lvn(fg, bb, mem, *fg.builder, p);
 
@@ -146,7 +146,7 @@ static void mergeBitVec( uint64_t bitVec[2], G4_Operand* opnd,
 void Optimizer::insertFallThroughJump()
 {
 
-    for (BB_LIST_ITER it = fg.BBs.begin(); it != fg.BBs.end();)
+    for (BB_LIST_ITER it = fg.begin(); it != fg.end();)
     {
         G4_BB* bb = *it;
         BB_LIST_ITER next = ++it;
@@ -155,13 +155,13 @@ void Optimizer::insertFallThroughJump()
         // check if the fall-through bb follows the current bb
         //
         G4_BB* fb = bb->fallThroughBB();
-        if (fb && (next == fg.BBs.end() || // bb is the last bb
+        if (fb && (next == fg.end() || // bb is the last bb
             fb != (*next)))
         {
             // This is bogus in SIMD CF, as bad things happen when you randomly insert jumps
             // in the middle of SIMD CF
         }
-        else if (next != fg.BBs.end())
+        else if (next != fg.end())
         {
             // do not remove a jmpi if it's the target of an indirect jmp
             // this makes the code more readable
@@ -187,7 +187,7 @@ void Optimizer::insertFallThroughJump()
 //
 void Optimizer::chkRegBoundary()
 {
-    for (auto bb : fg.BBs)
+    for (auto bb : fg)
     {
         for (INST_LIST_ITER i = bb->begin(), end = bb->end(); i != end; i++)
         {
@@ -255,7 +255,7 @@ void Optimizer::countBankConflicts()
     unsigned int numLocals = 0, numGlobals = 0;
     bool isSKLPlus = ( getGenxPlatform() >= GENX_SKL ? true : false );
 
-    for (auto curBB : kernel.fg.BBs)
+    for (auto curBB : kernel.fg)
     {
         for(INST_LIST_ITER inst_it = curBB->begin();
             inst_it != curBB->end();
@@ -439,8 +439,8 @@ void Optimizer::insertHashMovs()
     // mov (16) null<1>:d        lo32 {NoMask}
     // mov (16) null<1>:d        hi32 {NoMask}
     //
-    for(BB_LIST_ITER bb_it = kernel.fg.BBs.begin();
-        bb_it != kernel.fg.BBs.end();
+    for(BB_LIST_ITER bb_it = kernel.fg.begin();
+        bb_it != kernel.fg.end();
         bb_it++)
     {
         G4_BB* bb = (*bb_it);
@@ -518,8 +518,8 @@ void Optimizer::removeLifetimeOps()
     // Remove all pseudo_kill and lifetime.end
     // instructions.
     // Also remove pseudo_use instructions.
-    for( BB_LIST_ITER bbs = kernel.fg.BBs.begin();
-        bbs != fg.BBs.end();
+    for( BB_LIST_ITER bbs = kernel.fg.begin();
+        bbs != fg.end();
         bbs++ )
     {
         G4_BB* bb = *bbs;
@@ -640,7 +640,7 @@ void replaceAllSpilledRegions(G4_Kernel& kernel, G4_Declare* oldDcl, G4_Declare*
     // Iterate fg and replace all references to oldDcl with newDcl.
     // This requires creating new operands since changing dcl in
     // existing operands is disallowed.
-    for (auto bb : kernel.fg.BBs)
+    for (auto bb : kernel.fg)
     {
         for (auto inst : *bb)
         {
@@ -731,7 +731,7 @@ void computeGlobalFreeGRFs(G4_Kernel& kernel)
         freeGRFs[i] = false;
     }
 
-    for (auto bb : kernel.fg.BBs)
+    for (auto bb : kernel.fg)
     {
         for (auto inst : *bb)
         {
@@ -899,7 +899,7 @@ void Optimizer::reRAPostSchedule()
     // not be participate in re-allocation because that could potentially
     // alter bank conflict profile which might affect kernel performance.
     std::set<G4_Declare*> threeSrcDcl;
-    for (auto bb : kernel.fg.BBs)
+    for (auto bb : kernel.fg)
     {
         for (auto inst : *bb)
         {
@@ -979,7 +979,7 @@ void Optimizer::accSubPostSchedule()
     kernel.fg.localDataFlowAnalysis();
 
     HWConformity hwConf(builder, kernel, mem);
-    for (auto bb : kernel.fg.BBs)
+    for (auto bb : kernel.fg)
     {
         hwConf.accSubstitution(bb);
     }
@@ -1264,7 +1264,7 @@ int Optimizer::optimization()
 //
 void Optimizer::insertInstLabels()
 {
-    for( BB_LIST_CITER iter = fg.BBs.cbegin(), bend = fg.BBs.cend(); iter != bend; ++iter )
+    for( BB_LIST_CITER iter = fg.cbegin(), bend = fg.cend(); iter != bend; ++iter )
     {
         G4_BB* bb = *iter;
         INST_LIST_ITER iter2 = bb->begin();
@@ -1285,7 +1285,7 @@ void Optimizer::insertInstLabels()
     }
 
     // Patch labels if necessary.
-    for(auto iter = fg.BBs.begin(), iend = fg.BBs.end(); iter != iend; ++iter)
+    for(auto iter = fg.begin(), iend = fg.end(); iter != iend; ++iter)
     {
         G4_BB *bb = *iter;
         if (bb->empty())
@@ -1457,13 +1457,13 @@ void Optimizer::reverseOffsetProp(
 void Optimizer::FoldAddrImmediate()
 {
     AddrSubReg_Node* addrRegInfo = new AddrSubReg_Node[getNumAddrRegisters()];
-    BB_LIST_ITER ib, bend(fg.BBs.end());
+    BB_LIST_ITER ib, bend(fg.end());
     int dst_subReg = 0, src0_subReg = 0;
     G4_DstRegRegion *dst;
     G4_Operand *src0, *src1;
     unsigned num_srcs;
 
-    for(ib = fg.BBs.begin(); ib != bend; ++ib)
+    for(ib = fg.begin(); ib != bend; ++ib)
     {
         G4_BB* bb = (*ib);
         INST_LIST_ITER ii, iend(bb->end());
@@ -2198,7 +2198,7 @@ static void doHoisting(FlowGraph &fg, G4_BB *bb, INST_LIST_RITER revIter)
 void Optimizer::newLocalDefHoisting()
 {
     unsigned numDefHoisted = 0;
-    for (auto bb : fg.BBs)
+    for (auto bb : fg)
     {
         for (auto I = bb->rbegin(); I != bb->rend(); /* empty */)
         {
@@ -2435,7 +2435,7 @@ void Optimizer::doSimplification(G4_INST *inst)
 //
 void Optimizer::reassociateConst()
 {
-    for (auto BB : fg.BBs)
+    for (auto BB : fg)
     {
         for (auto iter = BB->begin(), iterEnd = BB->end(); iter != iterEnd; ++iter)
         {
@@ -2814,9 +2814,9 @@ static bool propagateType(IR_Builder &Builder, G4_BB *BB, G4_INST *Mov, G4_INST:
 
 void Optimizer::newLocalCopyPropagation()
 {
-    BB_LIST_ITER ib, bend(fg.BBs.end());
+    BB_LIST_ITER ib, bend(fg.end());
 
-    for (ib = fg.BBs.begin(); ib != bend; ++ib)
+    for (ib = fg.begin(); ib != bend; ++ib)
     {
         G4_BB* bb = *ib;
 
@@ -3173,10 +3173,10 @@ void Optimizer::cselPeepHoleOpt()
     {
         return;
     }
-    BB_LIST_ITER ib, bend(fg.BBs.end());
+    BB_LIST_ITER ib, bend(fg.end());
     G4_SrcRegRegion *cmpSrc0 = NULL;
     G4_Operand *cmpSrc1 = NULL;
-    for(ib = fg.BBs.begin(); ib != bend; ++ib)
+    for(ib = fg.begin(); ib != bend; ++ib)
     {
         G4_BB* bb = (*ib);
         INST_LIST_ITER ii;
@@ -4183,15 +4183,16 @@ and (1) P4 P3 ~P1
 
 void Optimizer::optimizeLogicOperation()
 {
-    BB_LIST_ITER ib, bend(fg.BBs.end());
+    BB_LIST_ITER ib, bend(fg.end());
     G4_Operand *dst = NULL;
     bool resetLocalIds =  false;
     bool doLogicOpt = builder.getOption(vISA_LocalFlagOpt);
 
     if (!doLogicOpt)
     {
-        // we still need to expand the pseudo logic ops
-        for (auto bb : fg.BBs)
+
+        // we still need to expand the pseudo logic ops 
+        for (auto bb : fg)
         {
             for (auto I = bb->begin(), E = bb->end(); I != E; ++I)
             {
@@ -4205,7 +4206,7 @@ void Optimizer::optimizeLogicOperation()
         return;
     }
 
-    for(ib = fg.BBs.begin(); ib != bend; ++ib)
+    for(ib = fg.begin(); ib != bend; ++ib)
     {
         G4_BB* bb = (*ib);
         INST_LIST_ITER ii;
@@ -5206,7 +5207,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
     void Optimizer::cleanupBindless()
     {
         // Perform send header cleanup for bindless sampler/surface
-        for (auto bb : fg.BBs)
+        for (auto bb : fg)
         {
             std::vector<std::vector<G4_INST*>> instLookUpTable;
             std::vector<G4_INST*> instVector;
@@ -5263,7 +5264,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 bb->end());
         }
 
-        for (auto bb : fg.BBs)
+        for (auto bb : fg)
         {
             InstValues values(4);
             for (auto iter = bb->begin(), iterEnd = bb->end(); iter != iterEnd;)
@@ -5729,12 +5730,12 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 0 );
 
         // add "and" to the instruction list
-        BB_LIST_ITER ib = fg.BBs.begin();
+        BB_LIST_ITER ib = fg.begin();
         G4_INST *inst = NULL;
-        BB_LIST_ITER bend(fg.BBs.end());
+        BB_LIST_ITER bend(fg.end());
         INST_LIST_ITER ii;
         // skip all the labels, find 1st inst and insert the barrier header
-        for(ib = fg.BBs.begin(); ib != bend; ++ib)
+        for(ib = fg.begin(); ib != bend; ++ib)
         {
             G4_BB* bb = (*ib);
             ii = bb->begin();
@@ -6031,7 +6032,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
     void Optimizer::cleanMessageHeader()
     {
         MSGTableList msgList;
-        BB_LIST_ITER ib, bend(fg.BBs.end());
+        BB_LIST_ITER ib, bend(fg.end());
         size_t ic_before = 0;
         size_t ic_after = 0;
 
@@ -6040,7 +6041,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         bool isRedundantBarrier = false;
         G4_SrcRegRegion *barrierSendSrc0 = NULL;
 
-        for(ib = fg.BBs.begin(); ib != bend; ++ib)
+        for(ib = fg.begin(); ib != bend; ++ib)
         {
 
             msgList.clear();
@@ -6234,7 +6235,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         // see if F0 and F1 are ever defined but not used in the same BB
         bool unusedFlag[2]; // f0 and f1
         unusedFlag[0] = unusedFlag[1] = false;
-        for (auto bb : fg.BBs)
+        for (auto bb : fg)
         {
             bool unusedFlagLocal[2]; // f0 and f1
             unusedFlagLocal[0] = unusedFlagLocal[1] = false;
@@ -6310,7 +6311,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
 
         if (unusedFlag[0] || unusedFlag[1])
         {
-            for (auto bb : fg.BBs)
+            for (auto bb : fg)
             {
                 if (bb->size() == 0)
                 {
@@ -6759,8 +6760,8 @@ void Optimizer::evenlySplitInst(INST_LIST_ITER iter, G4_BB* bb)
 
         // set physical pred/succ as it's needed for the call WA
         fg.setPhysicalPredSucc();
-        BB_LIST_ITER ib, bend(fg.BBs.end());
-        for(ib = fg.BBs.begin(); ib != bend; ++ib)
+        BB_LIST_ITER ib, bend(fg.end());
+        for(ib = fg.begin(); ib != bend; ++ib)
         {
             G4_BB* bb = (*ib);
             INST_LIST_ITER ii = bb->begin();
@@ -7539,7 +7540,7 @@ public:
         #if (defined(_DEBUG) || defined(_INTERNAL))
         int dbgCnt = 0;
         #endif
-        for (auto bb : fg.BBs) {
+        for (auto bb : fg) {
             NSDS nsds(builder.getOptions(), bb);
             for (auto instr : *bb) {
                 if (instr->isLabel()) {
@@ -7621,7 +7622,7 @@ public:
     //
     void Optimizer::normalizeRegion()
     {
-        for (auto bb : fg.BBs)
+        for (auto bb : fg)
         {
             for (auto inst : *bb)
             {
@@ -7786,7 +7787,7 @@ public:
     void Optimizer::checkBarrierUsage()
     {
         builder.getJitInfo()->usesBarrier = false;
-        for (auto bb : fg.BBs)
+        for (auto bb : fg)
         {
             for (auto inst : *bb)
             {
@@ -7851,12 +7852,12 @@ public:
             NULL,
             options);
 
-        BB_LIST_ITER ib = kernel.fg.BBs.begin();
+        BB_LIST_ITER ib = kernel.fg.begin();
         G4_INST *inst = NULL;
-        BB_LIST_ITER bend(kernel.fg.BBs.end());
+        BB_LIST_ITER bend(kernel.fg.end());
         INST_LIST_ITER ii;
 
-        for (ib = kernel.fg.BBs.begin(); ib != bend; ++ib)
+        for (ib = kernel.fg.begin(); ib != bend; ++ib)
         {
             G4_BB* bb = (*ib);
             ii = bb->begin();
@@ -7987,7 +7988,7 @@ public:
         }
 
         bool hasUAVWrites = false;
-        for (auto bb : kernel.fg.BBs)
+        for (auto bb : kernel.fg)
         {
             for (auto inst : *bb)
             {
@@ -8012,7 +8013,7 @@ public:
             return;
         }
 
-        for (auto bb : kernel.fg.BBs)
+        for (auto bb : kernel.fg)
         {
             if (bb->isLastInstEOT())
             {
@@ -8062,7 +8063,7 @@ public:
 
         uint32_t extDesc = G4_SendMsgDescriptor::createExtDesc(SFID::DP_DC);
 
-        for (auto bb : kernel.fg.BBs)
+        for (auto bb : kernel.fg)
         {
             if (bb->isLastInstEOT())
             {
@@ -8271,9 +8272,9 @@ public:
         const int MAX_REG_RENAME_DIST = 250;
         const int MAX_REG_RENAME_SIZE = 2;
 
-        BB_LIST_ITER ib, bend(fg.BBs.end());
+        BB_LIST_ITER ib, bend(fg.end());
 
-        for(ib = fg.BBs.begin(); ib != bend; ++ib)
+        for(ib = fg.begin(); ib != bend; ++ib)
         {
             G4_BB* bb = (*ib);
 
@@ -9366,7 +9367,7 @@ static void findInstructionToMerge(BUNDLE_INFO* bundle, INST_LIST_ITER& iter, co
 void Optimizer::recomputeBound(std::unordered_set<G4_Declare*>& declares)
 {
 
-    for (auto bb : fg.BBs)
+    for (auto bb : fg)
     {
         for (auto ii = bb->begin(), iiEnd = bb->end(); ii != iiEnd; ++ii)
         {
@@ -9437,7 +9438,7 @@ void Optimizer::mergeScalarInst()
     int numBundles = 0;
     int numDeletedInst = 0;
 
-    for (G4_BB* bb : fg.BBs)
+    for (G4_BB* bb : fg)
     {
         std::vector<BUNDLE_INFO*> bundles;
         INST_LIST_ITER ii = bb->begin(), iiEnd = bb->end();
@@ -10227,7 +10228,7 @@ void Optimizer::lowerMadSequence()
     if (builder.getOptions()->getTarget() != VISA_CM)
         return;
 
-    for (G4_BB *bb : fg.BBs)
+    for (G4_BB *bb : fg)
     {
         // Preprocess this basic block. If no mad sequence found then skip to
         // the next basic block right away.
@@ -10374,7 +10375,7 @@ void Optimizer::splitVariables()
     // instruction defines low part or ont.
     std::vector<std::pair<G4_INST *, bool>> InstsToUpdate;
 
-    for (G4_BB *bb : fg.BBs)
+    for (G4_BB *bb : fg)
     {
         for (G4_INST *inst : *bb)
         {
@@ -10571,7 +10572,7 @@ void Optimizer::split4GRFVars()
     }
 
     // first pass is to make sure the validity of all split candidates
-    for (auto bb : kernel.fg.BBs)
+    for (auto bb : kernel.fg)
     {
         for (auto inst : *bb)
         {
@@ -10647,7 +10648,7 @@ void Optimizer::split4GRFVars()
     }
 
     // second pass actually does the replacement
-    for (auto bb : kernel.fg.BBs)
+    for (auto bb : kernel.fg)
     {
         for (auto inst : *bb)
         {
@@ -10725,7 +10726,7 @@ void Optimizer::changeMoveType()
     };
 
 
-    for (auto bb : fg.BBs)
+    for (auto bb : fg)
     {
         for (auto inst : *bb)
         {
@@ -11188,7 +11189,7 @@ void Optimizer::NoDD(void) {
     }
     const int MAX_LOOK_BACK = options->getuInt32Option(vISA_NoDDLookBack);
 
-    for (auto bb : fg.BBs) {
+    for (auto bb : fg) {
         // Keep the last few instructions
         std::vector<G4_INST *> prevInstrs;
         std::vector<BucketDescrWrapper> prevBDWs;
@@ -11269,7 +11270,7 @@ static bool isDeadInst(FlowGraph& fg, G4_INST* Inst)
 
 void Optimizer::dce()
 {
-    for (auto bb : fg.BBs) {
+    for (auto bb : fg) {
         for (auto I = bb->rbegin(), E = bb->rend(); I != E; ++I) {
             G4_INST* Inst = *I;
             if (isDeadInst(fg, Inst)) {
@@ -11383,7 +11384,7 @@ static void retireSends(std::vector<G4_INST*>& LiveSends, G4_INST* Inst)
 // Limit the number of live sends and clear all sends at the end of a block.
 void Optimizer::clearSendDependencies()
 {
-    for (auto BB : fg.BBs) {
+    for (auto BB : fg) {
         // Live send instructions. This vector will only have MAX_SENDS
         // or less instructions.
         const unsigned MAX_SENDS = 3;

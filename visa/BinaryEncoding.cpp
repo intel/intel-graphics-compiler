@@ -2819,7 +2819,7 @@ BinaryEncoding::Status BinaryEncoding::DoAllEncoding(G4_INST* inst)
 inline BinaryEncoding::Status BinaryEncoding::ProduceBinaryInstructions()
 {
     Status myStatus = FAILURE;
-    BB_LIST_ITER ib, bend(kernel.fg.BBs.end());
+    BB_LIST_ITER ib, bend(kernel.fg.end());
 
     int globalInstNum = 0;
     int globalHalfInstNum = 0;
@@ -2844,7 +2844,7 @@ inline BinaryEncoding::Status BinaryEncoding::ProduceBinaryInstructions()
      /**
      * Traverse the flow graph basic block
      */
-    for(ib = kernel.fg.BBs.begin(); ib != bend; ++ib)
+    for(ib = kernel.fg.begin(); ib != bend; ++ib)
     {
         G4_BB *bb = *ib;
         int localInstNum = 0;
