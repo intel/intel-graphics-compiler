@@ -5919,18 +5919,19 @@ void EmitPass::emitURBWrite(llvm::GenIntrinsicInst* inst)
     }
 
     CVariable* URBHandle = m_currShader->GetURBOutputHandle();
-    int payloadElementOffset = 0;
 
-    CVariable* payload = m_CE->PrepareExplicitPayload(
-        m_currShader,
-        m_encoder,
-        m_SimdMode,
-        m_DL,
-        inst,
-        payloadElementOffset);
-
-    m_encoder->URBWrite(payload, payloadElementOffset, offset, URBHandle, channelMask);
-    m_encoder->Push();
+    {
+        int payloadElementOffset = 0;
+        CVariable* payload = m_CE->PrepareExplicitPayload(
+            m_currShader,
+            m_encoder,
+            m_SimdMode,
+            m_DL,
+            inst,
+            payloadElementOffset);
+        m_encoder->URBWrite(payload, payloadElementOffset, offset, URBHandle, channelMask);
+        m_encoder->Push();
+    }
 }
 
 void EmitPass::interceptSamplePayloadCoalescing(
