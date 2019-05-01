@@ -510,6 +510,7 @@ namespace IGC
         unsigned int GetImmediateConstantBufferOffset() const;
         unsigned int GetDrawIndirectBufferIndex() const;
         const USC::SShaderStageBTLayout* GetBtLayout() const { return m_pLayout; };
+        const std::vector<unsigned char>& GetColorBufferMappingTable() const { return m_ColorBufferMappings; }
 
         CBTILayout(const USC::SShaderStageBTLayout* pLayout) : m_pLayout(pLayout)
         {}
