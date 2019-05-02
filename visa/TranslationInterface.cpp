@@ -9047,6 +9047,13 @@ G4_Declare* IR_Builder::getSamplerHeader(bool isBindlessSampler)
     return dcl;
 }
 
+// get the number of GRFs occupied by a sampler message's operand
+static uint32_t getNumGRF(bool isFP16, int execSize)
+{
+    int numBytes = (isFP16 ? 2 : 4) * execSize;
+    return (numBytes + getGRFSize() - 1) / getGRFSize();
+}
+
 uint32_t IR_Builder::getSamplerResponseLength(int numChannels, bool isFP16, int execSize,
     bool pixelNullMask, bool nullDst)
 {
@@ -9055,7 +9062,7 @@ uint32_t IR_Builder::getSamplerResponseLength(int numChannels, bool isFP16, int 
         hasNullReturnSampler = true;
         return 0;
     }
-    uint32_t responseLength = (isFP16 || execSize == 8) ? numChannels : numChannels * 2;
+    uint32_t responseLength = numChannels * getNumGRF(isFP16, execSize);
 
     if (pixelNullMask)
     {
@@ -9109,16 +9116,8 @@ int IR_Builder::translateVISASampler3DInst(
     const bool FP16Input = params[0]->getType() == Type_HF;
 
     bool useHeader = false;
-    unsigned int numRows = 0;
 
-    if (FP16Input)
-    {
-        numRows = numParms;
-    }
-    else
-    {
-        numRows = numParms * (execSize == 8 ? 1 : 2);
-    }
+    unsigned int numRows = numParms * getNumGRF(FP16Input, execSize);
 
     VISAChannelMask channels = chMask.getAPI();
     // For SKL+ channel mask R, RG, RGB, and RGBA may be derived from response length
@@ -9253,7 +9252,7 @@ int IR_Builder::translateVISALoad3DInst(
     const bool halfReturn = G4_Type_Table[dst->getType()].byteSize == 2;
     const bool halfInput = G4_Type_Table[opndArray[0]->getType()].byteSize == 2;
 
-    unsigned int numRows = numParms * ((halfInput || execSize == 8) ? 1 : 2);
+    unsigned int numRows = numParms * getNumGRF(halfInput, execSize);
 
     VISAChannelMask channels = channelMask.getAPI();
     // For SKL+ channel mask R, RG, RGB, and RGBA may be derived from response length
@@ -9374,16 +9373,7 @@ int IR_Builder::translateVISAGather3dInst(
     const bool FP16Return = G4_Type_Table[dst->getType()].byteSize == 2;
     const bool FP16Input = opndArray[0]->getType() == Type_HF;
 
-    unsigned int numRows = 0;
-
-    if (FP16Input)
-    {
-        numRows = numOpnds;
-    }
-    else
-    {
-        numRows = numOpnds * (execSize == 8 ? 1 : 2);
-    }
+    unsigned int numRows = numOpnds * getNumGRF(FP16Input, execSize);
 
     bool nonZeroAoffImmi = !(aoffimmi->isImm() && aoffimmi->asImm()->getInt() == 0);
     bool needHeaderForChannels = channelMask.getSingleChannel() != VISA_3D_GATHER4_CHANNEL_R;
