@@ -153,7 +153,7 @@ void LocalRA::evenAlign()
 #ifdef DEBUG_VERBOSE_ON
             DEBUG_VERBOSE("Updating alignment to Even for GRF candidates" << std::endl);
 #endif
-            gra.updateAlignment(G4_GRF, Even);
+            gra.updateAlignment(G4_GRF, Even, true);
         }
         gra.updateSubRegAlignment(G4_GRF, SUB_ALIGNMENT_GRFALIGN);
         // Since we are piggy backing on mask field of G4_Declare,
