@@ -2469,13 +2469,13 @@ void DwarfDebug::gatherDISubprogramNodes()
                 {
                     auto scope = debugLoc.getScope();
                     if (scope &&
-                        dyn_cast_or_null<llvm::DISubprogram>(scope))
+                        dyn_cast_or_null<llvm::DILocalScope>(scope))
                     {
-                        auto DISP = dyn_cast_or_null<llvm::DISubprogram>(scope);
+                        auto DISP = cast<llvm::DILocalScope>(scope)->getSubprogram();
                         addUniqueDISP(DISP);
                         DISPToFunction.insert(std::make_pair(DISP, &F));
                     }
-
+                    
                     if (debugLoc.getInlinedAt())
                         debugLoc = debugLoc.getInlinedAt();
                     else

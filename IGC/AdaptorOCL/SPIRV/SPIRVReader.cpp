@@ -725,6 +725,18 @@ public:
       return addMDNode(inst, Builder.createSubroutineType(Builder.getOrCreateTypeArray(Args)));
   }
 
+  bool isDebugInfoNone(SPIRVId id)
+  {
+      auto entry = BM->get<SPIRVExtInst>(id);
+      if (entry)
+      {
+          if (entry->getExtOp() == OCLExtOpDbgKind::DebugInfoNone)
+              return true;
+      }
+
+      return false;
+  }
+
   DISubprogram* createFunction(SPIRVExtInst* inst)
   {
       if (auto n = getExistingNode<DISubprogram*>(inst))
