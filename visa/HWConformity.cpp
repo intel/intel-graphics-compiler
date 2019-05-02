@@ -1380,7 +1380,7 @@ static bool canReplaceMovSrcType(IR_Builder& builder, G4_INST* inst, uint32_t ex
     G4_Declare* newDcl = builder.createTempVar(numElt, dst->getType(), Either, Any);
     newDcl->setAliasDeclare(src0->getBase()->asRegVar()->getDeclare(), 0);
     RegionDesc* region = src0->isScalar() ? builder.getRegionScalar() :
-        builder.createRegionDesc((uint16_t)inst->getExecSize() * typeSizeRatio,
+        builder.createRegionDesc((uint16_t)inst->getExecSize(), (uint16_t)inst->getExecSize() * typeSizeRatio,
         inst->getExecSize(),
         (uint16_t)typeSizeRatio);
     G4_SrcRegRegion* newSrc = builder.createSrcRegRegion(
