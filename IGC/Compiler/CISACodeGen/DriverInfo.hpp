@@ -235,6 +235,8 @@ public:
     /// WA to make sure scratch writes are globally observed before EOT
     virtual bool clearScratchWriteBeforeEOT() const { return false; }
 
+    /// Should unaligned vectors be split before processing in EmitVISA
+    virtual bool splitUnalignedVectors() const { return true; }
 };
 
 }//namespace IGC
