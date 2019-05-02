@@ -76,6 +76,7 @@ namespace vISA
         bool doBCR = false;
         bool highInternalConflict = false;
 
+        G4_Align getBankAlignForUniqueAssign(G4_Declare *dcl);
         bool hasBackEdge();
         void evenAlign();
         void preLocalRAAnalysis();

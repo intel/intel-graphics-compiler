@@ -56,6 +56,39 @@ LocalRA::LocalRA(BankConflictPass& b, GlobalRA& g) :
 {
 }
 
+G4_Align LocalRA::getBankAlignForUniqueAssign(G4_Declare *dcl)
+{
+    switch (gra.getBankConflict(dcl))
+    {
+    case BANK_CONFLICT_FIRST_HALF_EVEN:
+    case BANK_CONFLICT_FIRST_HALF_ODD:
+        if (builder.oneGRFBankDivision())
+        {
+            return Even;
+        }
+        else
+        {
+            return Even2GRF;
+        }
+        break;
+    case BANK_CONFLICT_SECOND_HALF_EVEN:
+    case BANK_CONFLICT_SECOND_HALF_ODD:
+        if (builder.oneGRFBankDivision())
+        {
+            return Odd;
+        }
+        else
+        {
+            return Odd2GRF;
+        }
+        break;
+    default: break;
+    }
+
+    return Either;
+}
+
+
 // returns true if kernel contains a back edge
 // call/return edge may also be considered as a back edge depending on layout.
 bool LocalRA::hasBackEdge()
@@ -742,7 +775,7 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign)
             if (twoBanksRA &&
                 gra.getBankConflict(dcl) != BANK_CONFLICT_NONE)
             {
-                bankAlign = gra.getBankAlign(dcl);
+                bankAlign = getBankAlignForUniqueAssign(dcl);
 
                 if (bankAlign == Even || bankAlign == Even2GRF)
                 {
