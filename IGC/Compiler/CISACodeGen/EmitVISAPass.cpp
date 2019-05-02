@@ -3284,7 +3284,7 @@ void EmitPass::emitPSInputMAD(llvm::Instruction* inst)
 {
     //create the payload and do interpolation
     CPixelShader* psProgram = static_cast<CPixelShader*>(m_currShader);
-    uint setupIndex;
+    uint setupIndex = 0;
     e_interpolation mode;
 
     setupIndex = (uint)llvm::cast<llvm::ConstantInt>(inst->getOperand(0))->getZExtValue();
@@ -10841,8 +10841,8 @@ void EmitPass::emitAtomicStructured(llvm::Instruction* pInsn)
     pSrc0 = BroadcastIfUniform(pSrc0);
 
     uint as = cast<PointerType>(pllbuffer->getType())->getAddressSpace();
-    uint bufferIndex;
-    bool directIdx;
+    uint bufferIndex = 0;
+    bool directIdx = false;
     BufferType bufType = DecodeAS4GFXResource(as, directIdx, bufferIndex);
     assert(bufType == UAV && "Only UAV's are allowed for Alloc Consume instruction");
 
@@ -11136,8 +11136,8 @@ void EmitPass::emitLdStructured(llvm::Instruction* pInsn)
 
     llvm::Value* pllbuffer = pInsn->getOperand(0);
     uint as = cast<PointerType>(pllbuffer->getType())->getAddressSpace();
-    uint bufferIndex;
-    bool directIdx;
+    uint bufferIndex = 0;
+    bool directIdx = false;
     BufferType bufType = DecodeAS4GFXResource(as, directIdx, bufferIndex);
 
     CVariable* pArrIdx = GetSymbol(pllArrIdx);
@@ -11231,8 +11231,8 @@ void EmitPass::emitStoreStructured(llvm::Instruction* pInsn)
 
     llvm::Value* pllbuffer = pInsn->getOperand(0);
     uint as = cast<PointerType>(pllbuffer->getType())->getAddressSpace();
-    uint bufferIndex;
-    bool directIdx;
+    uint bufferIndex = 0;
+    bool directIdx = false;
     BufferType bufType = DecodeAS4GFXResource(as, directIdx, bufferIndex);
 
     CVariable* pArrIdx = GetSymbol(pllArrIdx);
@@ -12856,8 +12856,8 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset)
     unsigned align = inst->getAlignment();
     VISA_Type destType = m_destination->GetType();
     uint32_t width = numLanes(m_currShader->m_SIMDSize);
-    uint bufferIndex;
-    bool directIndexing;
+    uint bufferIndex = 0;
+    bool directIndexing = false;
     BufferType bufType = DecodeAS4GFXResource(ptrType->getAddressSpace(), directIndexing, bufferIndex);
 
     // First, special handling for less than 4 bytes of loaded value
@@ -14060,8 +14060,8 @@ ResourceDescriptor EmitPass::GetResourceVariable(Value* resourcePtr)
     else
     {
         uint as = resourcePtr->getType()->getPointerAddressSpace();
-        uint bufferIndex;
-        bool directIndexing;
+        uint bufferIndex = 0;
+        bool directIndexing = false;
 
         bufType = DecodeAS4GFXResource(as, directIndexing, bufferIndex);
 
@@ -14148,7 +14148,7 @@ ResourceDescriptor EmitPass::GetResourceVariable(Value* resourcePtr)
 SamplerDescriptor EmitPass::GetSamplerVariable(Value* sampleOp)
 {
     SamplerDescriptor sampler;
-    unsigned int samplerIdx;
+    unsigned int samplerIdx = 0;
     BufferType sampType = BUFFER_TYPE_UNKNOWN;
 
     if (isa<GenIntrinsicInst>(sampleOp)) // from GetBufferPtr
@@ -14162,8 +14162,8 @@ SamplerDescriptor EmitPass::GetSamplerVariable(Value* sampleOp)
     }
     else
     {
-        bool isBindless;
-        bool directIdx;
+        bool isBindless = false;
+        bool directIdx = false;
 
         sampType = DecodeAS4GFXResource(
             sampleOp->getType()->getPointerAddressSpace(),
