@@ -3821,7 +3821,8 @@ void EmitPass::emitLdInstruction(llvm::Instruction* inst)
     m_encoder->Push();
     if (m_currShader->hasReadWriteImage(*(inst->getParent()->getParent())))
     {
-        m_encoder->Copy(m_currShader->GetNULL(), m_destination);
+        CVariable* tempdest = m_currShader->BitCast(m_destination, GetUnsignedIntegerType(m_destination->GetType()));
+        m_encoder->Cast(m_currShader->GetNULL(), tempdest);
         m_encoder->Push();
         m_encoder->Copy(m_currShader->GetNULL(), m_currShader->GetTSC());
         m_encoder->Push();
@@ -6187,7 +6188,8 @@ void EmitPass::emitSampleInstruction(SampleIntrinsic* inst)
 
     if (m_currShader->hasReadWriteImage(*(inst->getParent()->getParent())))
     {
-        m_encoder->Copy(m_currShader->GetNULL(), m_destination);
+        CVariable* tempdest = m_currShader->BitCast(m_destination, GetUnsignedIntegerType(m_destination->GetType()));
+        m_encoder->Cast(m_currShader->GetNULL(), tempdest);
         m_encoder->Push();
         m_encoder->Copy(m_currShader->GetNULL(), m_currShader->GetTSC());
         m_encoder->Push();
@@ -6502,7 +6504,8 @@ void EmitPass::emitGather4Instruction(SamplerGatherIntrinsic* inst)
     m_encoder->Push();
     if (m_currShader->hasReadWriteImage(*(inst->getParent()->getParent())))
     {
-        m_encoder->Copy(m_currShader->GetNULL(), m_destination);
+        CVariable* tempdest = m_currShader->BitCast(m_destination, GetUnsignedIntegerType(m_destination->GetType()));
+        m_encoder->Cast(m_currShader->GetNULL(), tempdest);
         m_encoder->Push();
         m_encoder->Copy(m_currShader->GetNULL(), m_currShader->GetTSC());
         m_encoder->Push();
@@ -6592,7 +6595,8 @@ void EmitPass::emitLdmsInstruction(llvm::Instruction* inst)
     m_encoder->Push();
     if (m_currShader->hasReadWriteImage(*(inst->getParent()->getParent())))
     {
-        m_encoder->Copy(m_currShader->GetNULL(), m_destination);
+        CVariable* tempdest = m_currShader->BitCast(m_destination, GetUnsignedIntegerType(m_destination->GetType()));
+        m_encoder->Cast(m_currShader->GetNULL(), tempdest);
         m_encoder->Push();
         m_encoder->Copy(m_currShader->GetNULL(), m_currShader->GetTSC());
         m_encoder->Push();
