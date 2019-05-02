@@ -7501,24 +7501,75 @@ void EmitPass::EmitIntrinsicMessage(llvm::IntrinsicInst* inst)
     }
 }
 
+bool EmitPass::validateInlineAsmConstraints(llvm::CallInst* inst)
+{
+    assert(inst->isInlineAsm());
+    InlineAsm* IA = cast<InlineAsm>(inst->getCalledValue());
+    string constraintStr = IA->getConstraintString();
+    smallvector<string, 8> constraints;
+
+    // Get a list of constraint tokens
+    for (string::size_type pos = 0;;)
+    {
+        string::size_type tpos = constraintStr.find(',', pos);
+        size_t len = (tpos == string::npos) ? string::npos : tpos - pos;
+        constraints.push_back(constraintStr.substr(pos, len));
+        if (tpos == string::npos) break;
+        pos = tpos + 1;
+    }
+
+    bool hasDstTy = false;
+    if (!inst->getType()->isVoidTy())
+    {
+        // Make sure there's a dst constraint
+        if (constraints[0].front() != '=') return false;
+        hasDstTy = true;
+    }
+    for (unsigned i = 0; i < inst->getNumArgOperands(); i++)
+    {
+        unsigned tokId = hasDstTy ? i + 1 : i;
+        StringRef tstr(constraints[tokId]);
+        CVariable* cv = GetSymbol(inst->getArgOperand(i));
+
+        if (tstr.endswith(".u"))
+        {
+            // Check if var is uniform
+            if (!cv->IsUniform()) return false;
+        }
+        if (tstr.equals("i"))
+        {
+            // Check if var is immediate
+            if (!cv->IsImmediate()) return false;
+        }
+        // TODO: How strict do we want the constraint check to be?
+        // TODO: Implement additional checks when needed
+    }
+
+    return true;
+}
+
 // Parse the inlined asm string to generate VISA operands
 // Example: "mul (M1, 16) $0(0, 0)<1> $1(0, 0)<1;1,0> $2(0, 0)<1;1,0>", "=r,r,r"(float %6, float %7)
 void EmitPass::EmitInlineAsm(llvm::CallInst* inst)
 {
     std::stringstream &str = m_encoder->GetVISABuilder()->GetAsmTextStream();
-    str << "    ";
-
     InlineAsm* IA = cast<InlineAsm>(inst->getCalledValue());
     const char* asmStr = IA->getAsmString().c_str();
     const char* lastEmitted = asmStr;
     smallvector<CVariable*, 8> opnds;
-    opnds.push_back(m_destination);
+    assert(validateInlineAsmConstraints(inst) && "asm constraints does not match!");
+
+    if (m_destination)
+    {
+        opnds.push_back(m_destination);
+    }
     for (unsigned i = 0; i < inst->getNumArgOperands(); i++)
     {
         CVariable* cv = GetSymbol(inst->getArgOperand(i));
         opnds.push_back(cv);
     }
 
+    str << endl <<  "/// Inlined ASM" << endl;
     while (*lastEmitted)
     {
         switch (*lastEmitted)
@@ -7568,7 +7619,8 @@ void EmitPass::EmitInlineAsm(llvm::CallInst* inst)
         }
         }
     }
-    str << "    /// inlined ASM" << endl;
+    if (str.str().back() != '\n') str << endl;
+    str << "/// End Inlined ASM" << endl << endl;
 }
 
 CVariable *EmitPass::Mul(CVariable *Src0, CVariable *Src1, const CVariable *DstPrototype)

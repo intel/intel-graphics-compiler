@@ -5558,6 +5558,12 @@ void CEncoder::Lifetime(VISAVarLifetime StartOrEnd, CVariable* dst)
 
 std::string CEncoder::GetVariableName(CVariable* var)
 {
+    if (var->IsImmediate())
+    {
+        std::stringstream temp;
+        temp << "0x" << std::hex << var->GetImmediateValue() << ":" << CISATypeTable[var->GetType()].typeName;
+        return temp.str();
+    }
     switch (var->GetVarType())
     {
     case EVARTYPE_GENERAL:
