@@ -471,8 +471,9 @@ void BinaryEncodingIGA::DoAll()
 
     // Make the size of the first BB is multiple of 4 instructions, and do not compact
     // any instructions in it, so that the size of the first BB is multiple of 64 bytes
-    if (kernel.fg.builder->getHasPerThreadProlog()) {
-        G4_BB* first_bb = *kernel.fg.BBs.begin();
+    if (kernel.fg.builder->getHasPerThreadProlog()) 
+    {
+        G4_BB* first_bb = *kernel.fg.begin();
         size_t num_inst = first_bb->getInstList().size();
         assert(num_inst != 0 && "ThreadProlog must not be empty");
         // label instructions don't count. Only the first instruction could be a label

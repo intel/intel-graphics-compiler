@@ -632,12 +632,7 @@ void Stitch_Compiled_Units( common_isa_header header, std::list<G4_Kernel*>& com
         G4_Kernel* callee = Get_Resolved_Compilation_Unit(header, compilation_units, calleeId);
         propagateCalleeInfo(kernel, callee);
         kernel->addCallee(calleeId, callee);
-
-        for (auto bb : callee->fg)
-        {
-            kernel->fg.BBs.push_back(bb);
-            kernel->fg.incrementNumBBs();
-        }
+        kernel->fg.append(callee->fg);
     }
 
     kernel->fg.reassignBlockIDs();

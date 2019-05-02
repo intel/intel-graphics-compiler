@@ -657,6 +657,18 @@ class FlowGraph
 
 private:
 
+    // This list maintains the ordering of the basic blocks (i.e., asm and binary emission will output
+    // the blocks in list oder.
+    // Important: Due to the nature of SIMD CF, it is unsafe to change the order of basic blocks
+    // Once the list is populated in constructFlowGraph(), the only changes allowed are
+    // 1. insertion of new exit BBs due to handleExit/handleReturn/handleFRet.  The exit BB
+    //    must be the last BB for the kernel/subroutine/function it belongs to
+    // 2. deletion of unreachable blocks
+    // 3. merging of blocks that only contain one label with its (single) successor
+    // If you need to change the block ordering for any reason, create another data structure instead of
+    // modifying this one
+    BB_LIST BBs;
+
     unsigned traversalNum;                      // used for flow graph traversals
     unsigned numBBId;                            // number of basic blocks
     bool     reducible;                            // reducibility of the graph
@@ -688,18 +700,6 @@ public:
 
     Mem_Manager& mem;                            // mem mananger for creating BBs & starting IP table
     INST_LIST_NODE_ALLOCATOR& instListAlloc;     // a reference to dedicated mem allocator for holding instruction list nodes
-
-    // This list maintains the ordering of the basic blocks (i.e., asm and binary emission will output
-    // the blocks in list oder.
-    // Important: Due to the nature of SIMD CF, it is unsafe to change the order of basic blocks
-    // Once the list is populated in constructFlowGraph(), the only changes allowed are
-    // 1. insertion of new exit BBs due to handleExit/handleReturn/handleFRet.  The exit BB
-    //    must be the last BB for the kernel/subroutine/function it belongs to
-    // 2. deletion of unreachable blocks
-    // 3. merging of blocks that only contain one label with its (single) successor
-    // If you need to change the block ordering for any reason, create another data structure instead of
-    // modifying this one
-    BB_LIST BBs;
 
     std::list<Edge> backEdges;                  // list of all backedges (tail->head)
     Loop naturalLoops;
@@ -758,9 +758,34 @@ public:
     BB_LIST::const_iterator cend() const { return BBs.cend(); }
     BB_LIST::const_reverse_iterator crbegin() { return BBs.crbegin(); }
     BB_LIST::const_reverse_iterator crend() { return BBs.crend(); }
+    
     size_t size() { return BBs.size(); }
     bool empty() const { return BBs.empty(); }
     G4_BB* back() const {return BBs.back(); }
+    // ToDo: remove these and instead operata on BBs within CFG class only
+    BB_LIST_ITER insert(BB_LIST_ITER iter, G4_BB* bb) { return BBs.insert(iter, bb); }
+    BB_LIST& getBBList() { return BBs; }
+
+    // add BB to be the first BB 
+    void addPrologBB(G4_BB* BB)
+    {
+        G4_BB* oldEntry = getEntryBB();
+        BBs.push_front(BB);
+        addPredSuccEdges(BB, oldEntry);
+    }
+
+    // append another CFG's BBs to this CFG.
+    // note that we don't add additional CFG edges as its purpose is just to 
+    // stitch the two binaries togather
+    void append(const FlowGraph& otherFG)
+    {
+        for (auto I = otherFG.cbegin(), E = otherFG.cend(); I != E; ++I)
+        {
+            auto bb = *I;
+            BBs.push_back(bb);
+            incrementNumBBs();
+        }
+    }
 
     G4_BB* getLabelBB(Label_BB_Map& map, const char* label);
     G4_BB* beginBB(Label_BB_Map& map, G4_INST* first);

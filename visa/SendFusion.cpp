@@ -1039,7 +1039,7 @@ void SendFusion::unpackPayload(
 
 void SendFusion::initDMaskModInfo()
 {
-    for (BB_LIST_ITER BI = CFG->BBs.begin(), BE = CFG->BBs.end(); BI != BE; ++BI)
+    for (BB_LIST_ITER BI = CFG->begin(), BE = CFG->end(); BI != BE; ++BI)
     {
         G4_BB* BB = *BI;
         for (INST_LIST_ITER II = BB->begin(), IE = BB->end(); II != IE; ++II)
@@ -1607,7 +1607,7 @@ bool vISA::doSendFusion(FlowGraph* aCFG, Mem_Manager* aMMgr)
     SendFusion sendFusion(aCFG, aMMgr);
 
     bool change = false;
-    for (BB_LIST_ITER BI = aCFG->BBs.begin(), BE = aCFG->BBs.end(); BI != BE; ++BI)
+    for (BB_LIST_ITER BI = aCFG->begin(), BE = aCFG->end(); BI != BE; ++BI)
     {
         G4_BB* BB = *BI;
         if (sendFusion.run(BB)) {
