@@ -40,8 +40,8 @@ public:
     /// Fills in the kernel program structure with data determined during compilation.
     void        FillProgram(SHullShaderKernelProgram* pKernelProgram);
     void        PreCompile();
-    void        EmitPatchConstantInput(llvm::Instruction* pInst, CVariable* pDest);
-    void        EmitOutputControlPointInput(llvm::Instruction* pInst, CVariable* pDest);
+    void        EmitPatchConstantInput(llvm::Instruction* pInst, QuadEltUnit& attributeOffset, CVariable*& pPerSlotOffsetVar);
+    void        EmitOutputControlPointInput(llvm::Instruction* pInst, QuadEltUnit& attributeOffset, CVariable*& pPerSlotOffsetVar);
     void        ParseShaderSpecificOpcode(llvm::Instruction* inst);
     void        AddPrologue();
 
@@ -51,18 +51,13 @@ public:
     void        AllocateEightPatchPayload();
 
     void        SetShaderSpecificHelper(EmitPass* emitPass);
-    
+
     CVariable* GetURBReadHandlesReg();
     CVariable* GetR1();
     CVariable* GetR2();
     virtual CVariable* GetURBInputHandle(CVariable* pVertexIndex);
     virtual QuadEltUnit GetFinalGlobalOffet(QuadEltUnit globalOffset);
     virtual uint32_t GetMaxNumOfPushedInputs() const;
-    void URBReadPatchConstOrOutputCntrlPtInput(
-        CVariable* pPerSlotOffset,
-        QuadEltUnit globalOffset,
-        bool EOT,
-        CVariable* pDest);
 
     void EmitPatchConstantHeader(
         CVariable* var[],
@@ -78,7 +73,7 @@ public:
     OctEltUnit GetVertexURBEntryReadLength() const;
 
     /// Returns a variable that stores URB write handle register
-    virtual CVariable* GetURBOutputHandle(); 
+    virtual CVariable* GetURBOutputHandle();
 
     CVariable* GetPrimitiveID();
 
@@ -108,7 +103,7 @@ private:
     CVariable*             m_pURBWriteHandleReg;
     CVariable*             m_pURBReadHandlesReg; // used for vertex data pulled from URB
 
-    static const uint32_t  m_pMaxNumOfPushedInputs; // holds max number of inputs that can be pushed for this shader unit 
+    static const uint32_t  m_pMaxNumOfPushedInputs; // holds max number of inputs that can be pushed for this shader unit
     CVariable*             m_IncludeVertexHandles;
     bool                   m_HasPrimitiveIDInstruction;
     uint32_t               m_pNumURBReadHandleGRF;

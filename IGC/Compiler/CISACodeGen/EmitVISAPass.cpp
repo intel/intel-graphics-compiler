@@ -5873,6 +5873,46 @@ void EmitPass::emitURBRead(llvm::GenIntrinsicInst* inst)
     m_currShader->isInputsPulled = true;
 }
 
+void EmitPass::emitURBReadOutput(QuadEltUnit globalOffset, CVariable* pPerSlotOffsetVar, CVariable* pDest)
+{
+    const bool hasPerSlotOffsets = pPerSlotOffsetVar != nullptr;
+    // Payload size is just URB handles (1 GRF) or URB handles and per-slot offsets (2 GRFs).
+    const Unit<Element> payloadSize(hasPerSlotOffsets ? 2 : 1);
+
+    CVariable* pPayload =
+        m_currShader->GetNewVariable(payloadSize.Count() * numLanes(m_SimdMode), ISA_TYPE_UD, EALIGN_GRF);
+
+    // get the register with URBHandles
+    m_encoder->Copy(pPayload, m_currShader->GetURBOutputHandle());
+    m_encoder->Push();
+
+    // If we have runtime value in per-slot offsets, we need to copy per-slot offsets to payload
+    if (hasPerSlotOffsets)
+    {
+        m_encoder->SetDstSubVar(1);
+        m_encoder->Copy(pPayload, pPerSlotOffsetVar);
+        m_encoder->Push();
+    }
+
+    constexpr bool eot = false;
+    const Unit<Element> messageLength = payloadSize;
+    const Unit<Element> responseLength(pDest->GetNumberElement() / numLanes(m_SimdMode));
+    const uint desc = UrbMessage(
+        messageLength.Count(),
+        responseLength.Count(),
+        eot,
+        hasPerSlotOffsets,
+        false,
+        globalOffset.Count(),
+        EU_GEN8_URB_OPCODE_SIMD8_READ);
+
+    const uint exDesc = EU_MESSAGE_TARGET_URB | (eot ? 1 << 5 : 0);
+    CVariable* pMessDesc = m_currShader->ImmToVariable(desc, ISA_TYPE_UD);
+
+    m_encoder->Send(pDest, pPayload, exDesc, pMessDesc);
+    m_encoder->Push();
+}
+
 void EmitPass::emitURBWrite(llvm::GenIntrinsicInst* inst)
 {
     // input: GenISA_URBWrite(%offset, %mask, %data0, ..., %data7)
@@ -7141,6 +7181,9 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
         break;
     case GenISAIntrinsic::GenISA_URBRead:
         emitURBRead(inst);
+        break;
+    case GenISAIntrinsic::GenISA_URBReadOutput:
+        emitURBReadOutput(QuadEltUnit(0), GetSymbol(inst->getOperand(0)), m_destination);
         break;
     case GenISAIntrinsic::GenISA_cycleCounter:
         emitcycleCounter(inst);
@@ -12162,14 +12205,20 @@ void EmitPass::emitHSPatchConstantInput(llvm::Instruction* pInst)
 {
     assert(m_currShader->GetShaderType() == ShaderType::HULL_SHADER);
     CHullShader* hsProgram = static_cast<CHullShader*>(m_currShader);
-    hsProgram->EmitPatchConstantInput(pInst, m_destination);
+    QuadEltUnit attributeOffset(0);
+    CVariable* pPerSlotOffsetVar = nullptr;
+    hsProgram->EmitPatchConstantInput(pInst, attributeOffset, pPerSlotOffsetVar);
+    emitURBReadOutput(attributeOffset, pPerSlotOffsetVar, m_destination);
 }
 
 void EmitPass::emitHSOutputControlPtInput(llvm::Instruction* pInst)
 {
     assert(m_currShader->GetShaderType() == ShaderType::HULL_SHADER);
     CHullShader* hsProgram = static_cast<CHullShader*>(m_currShader);
-    hsProgram->EmitOutputControlPointInput(pInst, m_destination);
+    QuadEltUnit attributeOffset(0);
+    CVariable* pPerSlotOffsetVar = nullptr;
+    hsProgram->EmitOutputControlPointInput(pInst, attributeOffset, pPerSlotOffsetVar);
+    emitURBReadOutput(attributeOffset, pPerSlotOffsetVar, m_destination);
 }
 
 void EmitPass::emitHSTessFactors(llvm::Instruction* pInst)

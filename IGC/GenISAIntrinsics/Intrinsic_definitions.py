@@ -257,8 +257,12 @@ Imported_Intrinsics = \
                                  "int","bool","bool","bool","bool","int"],"None"],
     "GenISA_RTWrite": ["void",["anyfloat","float","bool",0,0,0,0,"float","float","int","int","bool",
                        "bool","bool","bool","int"],"None"],
+    # (owordOffset, mask, x1, y1, z1, w1, x2, y2, z2, w2)
     "GenISA_URBWrite": ["void",["int","int","float","float","float","float","float","float","float","float"],"None"],
+    # (index, owordOffset)->float8
     "GenISA_URBRead": ["float8",["int","int"],"NoMem"],
+    # In-place data read using URB Write Handle. (owordOffset)->float8
+    "GenISA_URBReadOutput": ["float8",["int"],"NoMem"],
     "GenISA_SetDebugReg": ["int",["int"],"None"],
     "GenISA_add_pair": [["int","int"],["int","int","int","int"],"NoMem"],
     "GenISA_sub_pair": [["int","int"],["int","int","int","int"],"NoMem"],

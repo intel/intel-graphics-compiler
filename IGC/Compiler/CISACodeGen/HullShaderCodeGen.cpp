@@ -192,7 +192,7 @@ void CHullShader::AllocateEightPatchPayload()
 
     assert(offset % getGRFSize() == 0);
     ProgramOutput()->m_startReg = offset / getGRFSize();
-    
+
     // allocate space for NOS constants and pushed constants
     AllocateConstants3DShader(offset);;
 
@@ -214,7 +214,7 @@ void CHullShader::AllocateSinglePatchPayload()
     uint offset = 0;
 
     //R0 is always allocated as a predefined variable. Increase offset for R0
-    assert(m_R0); 
+    assert(m_R0);
     offset += getGRFSize();
 
     // if m_pURBReadHandlesReg != nullptr, then we need to allocate ( (m_pOutputControlPointCount - 1)/8 + 1 ) registers for input handles
@@ -303,7 +303,7 @@ CVariable* CHullShader::GetURBReadHandlesReg()
     {
         m_pURBReadHandlesReg = GetNewVariable(
             numLanes(m_SIMDSize) * ( m_pNumURBReadHandleGRF ),
-            ISA_TYPE_UD, 
+            ISA_TYPE_UD,
             EALIGN_GRF);
     }
     return m_pURBReadHandlesReg;
@@ -362,18 +362,18 @@ CVariable* CHullShader::GetURBInputHandle(CVariable* pVertexIndex)
     }
 }
 
-QuadEltUnit CHullShader::GetFinalGlobalOffet(QuadEltUnit globalOffset) 
-{ 
+QuadEltUnit CHullShader::GetFinalGlobalOffet(QuadEltUnit globalOffset)
+{
     return globalOffset;
 }
 
 uint32_t CHullShader::GetMaxNumOfPushedInputs() const
-{ 
+{
     uint numberOfPatches = (m_properties.m_pShaderDispatchMode == EIGHT_PATCH_DISPATCH_MODE) ? 8 : 1;
 
-    // Determine how many of input attributes per InputControlPoint (Vertex) can be POTENTIALLY pushed 
+    // Determine how many of input attributes per InputControlPoint (Vertex) can be POTENTIALLY pushed
     // in current dispatch mode for current topology ( InputPatch size ).
-    uint32_t maxNumOfPushedInputAttributesPerICP = 
+    uint32_t maxNumOfPushedInputAttributesPerICP =
         m_pMaxNumOfPushedInputs / (m_properties.m_pInputControlPointCount*numberOfPatches);
 
     // Input attributes can be pushed only in pairs, so we need to round down the limit.
@@ -383,28 +383,28 @@ uint32_t CHullShader::GetMaxNumOfPushedInputs() const
     // They can be pushed only in pairs.
     uint32_t reqNumOfInputAttributesPerICP = iSTD::Align(m_properties.m_pMaxInputSignatureCount, 2);
 
-    // TODO: reqNumOfInputAttributesPerICP will have to be incremented by size of Vertex Header 
+    // TODO: reqNumOfInputAttributesPerICP will have to be incremented by size of Vertex Header
     // in case of SGV inputs have to be taken into consideration (will be done in next step).
     // reqNumOfInputAttributes += HeaderSize().Count();
 
     // Determine ACTUAL number of attributes that can be pushed.
     // If the required number of input attributes is less that maximum potential number,
     // than all of the will be pushed.
-    uint32_t actualNumOfPushedInputAttributesPerICP = 
+    uint32_t actualNumOfPushedInputAttributesPerICP =
         iSTD::Min(reqNumOfInputAttributesPerICP, maxNumOfPushedInputAttributesPerICP);
 
     return actualNumOfPushedInputAttributesPerICP;
 }
 
-void CHullShader::EmitPatchConstantInput(llvm::Instruction* pInst, CVariable* pDest)
+void CHullShader::EmitPatchConstantInput(llvm::Instruction* pInst, QuadEltUnit& attributeOffset, CVariable*& pPerSlotOffsetVar)
 {
     bool readHeader = ((dyn_cast<GenIntrinsicInst>(pInst))->getIntrinsicID() == GenISAIntrinsic::GenISA_HSURBPatchHeaderRead);
 
     // patch constant input read
     llvm::Value* pIndirectVertexIdx = pInst->getOperand(0);
 
-    CVariable* pPerSlotOffsetVar = nullptr;
-    QuadEltUnit attributeOffset(0);
+    pPerSlotOffsetVar = nullptr;
+    attributeOffset = QuadEltUnit(0);
 
     // {BDW - WA, HS} Do not set pPerSlotOffset or change globalOffset to read TessFactors from URB.
     if (!readHeader)
@@ -422,25 +422,23 @@ void CHullShader::EmitPatchConstantInput(llvm::Instruction* pInst, CVariable* pD
 
         attributeOffset = attributeOffset + GetURBHeaderSize();
     }
-
-    URBReadPatchConstOrOutputCntrlPtInput(pPerSlotOffsetVar, attributeOffset, false, pDest);
 }
 
-void CHullShader::EmitOutputControlPointInput(llvm::Instruction* pInst, CVariable* pDest)
+void CHullShader::EmitOutputControlPointInput(llvm::Instruction* pInst, QuadEltUnit& attributeOffset, CVariable*& pPerSlotOffsetVar)
 {
     // patch constant input read
     llvm::Value* pIndirectVertexIdx = pInst->getOperand(0);
     llvm::Value* pAttribIdx = pInst->getOperand(1);
 
-    CVariable* pPerSlotOffsetVar = nullptr;
-    QuadEltUnit attributeOffset(GetPatchConstantOutputSize());
+    pPerSlotOffsetVar = nullptr;
+    attributeOffset = GetPatchConstantOutputSize();
 
     // Compute offset from vertex index
     if (llvm::ConstantInt* pConstVertexIdx = llvm::dyn_cast<llvm::ConstantInt>(pIndirectVertexIdx))
     {
         // attribute index is a constant, we can compute the URB read offset directly
-        attributeOffset = 
-            attributeOffset + 
+        attributeOffset =
+            attributeOffset +
             QuadEltUnit(int_cast<unsigned int>(pConstVertexIdx->getZExtValue())) * m_properties.m_pMaxOutputSignatureCount;
     }
     else
@@ -459,7 +457,7 @@ void CHullShader::EmitOutputControlPointInput(llvm::Instruction* pInst, CVariabl
         }
     }
 
-    // Compute additionall offset coming from atribute index
+    // Compute additional offset coming from attribute index
     if (llvm::ConstantInt* pConstAttribIdx = llvm::dyn_cast<llvm::ConstantInt>(pAttribIdx))
     {
         // attribute offset is a constant, we can compute the URB read offset directly
@@ -482,53 +480,10 @@ void CHullShader::EmitOutputControlPointInput(llvm::Instruction* pInst, CVariabl
             pPerSlotOffsetVar = GetSymbol(pAttribIdx);
         }
     }
-
-    URBReadPatchConstOrOutputCntrlPtInput(pPerSlotOffsetVar, attributeOffset, false, pDest);
-}
-
-void CHullShader::URBReadPatchConstOrOutputCntrlPtInput(
-    CVariable* pPerSlotOffsetVar,
-    QuadEltUnit globalOffset,
-    bool EOT,
-    CVariable* pDest )
-{
-    CEncoder& encoder = GetEncoder();
-
-    const bool hasPerSlotOffsets = pPerSlotOffsetVar != nullptr;
-    // Payload size is just URB handles (1 GRF) or URB handles and per-slot offsets (2 GRFs).
-    const Unit<Element> payloadSize(hasPerSlotOffsets ? 2 : 1);
-    CVariable* pPayload = 
-        GetNewVariable(payloadSize.Count() * numLanes(m_SIMDSize), ISA_TYPE_UD, EALIGN_GRF);
-        
-    // get the register with URBHandles
-    CopyVariable(pPayload, m_pURBWriteHandleReg);
-
-    // If we have runtime value in per-slot offsets, we need to copy per-slot offsets to payload
-    if (hasPerSlotOffsets)
-    {
-        CopyVariable(pPayload, pPerSlotOffsetVar, 1);
-    }
-
-    const Unit<Element> messageLength = payloadSize;
-    const Unit<Element> responseLength(pDest->GetNumberElement()/numLanes(m_SIMDSize));
-    const uint desc = UrbMessage(
-        messageLength.Count(),
-        responseLength.Count(),
-        EOT,
-        hasPerSlotOffsets,
-        false,
-        globalOffset.Count(),
-        EU_GEN8_URB_OPCODE_SIMD8_READ);
-
-    const uint exDesc = EU_MESSAGE_TARGET_URB | (EOT ? 1 << 5 : 0);
-    CVariable* pMessDesc = ImmToVariable(desc, ISA_TYPE_UD);
-
-    encoder.Send(pDest, pPayload, exDesc, pMessDesc);
-    encoder.Push();
 }
 
 /// Returns the size of the output vertex.
-/// Unit: 16B = 4 DWORDs 
+/// Unit: 16B = 4 DWORDs
 /// Note: The PatchConstantOutput size must be 32B-aligned when rendering is enabled
 /// Therefore, the PatchConstantOutput size is also rounded up to a multiple of 2.
 QuadEltUnit CHullShader::GetPatchConstantOutputSize() const
