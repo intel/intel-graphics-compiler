@@ -2037,7 +2037,7 @@ const ISA_SubInst_Desc& VISA_INST_Desc::getSubInstDescByName(
     int len = 0;
     const ISA_SubInst_Desc *table = getSubInstTable(opcode, len);
     for (int i = 0; i < len; i++) {
-        if (table->name && strcmp(table->name,symbol) == 0) {
+        if (table[i].name && strcmp(table[i].name,symbol) == 0) {
             return table[i];
         }
     }
