@@ -7549,7 +7549,7 @@ void EmitPass::EmitInlineAsm(llvm::CallInst* inst)
             while (*idEnd >= '0' && *idEnd <= '9')
                 ++idEnd;
 
-            unsigned val;
+            unsigned val = 0;
             if (StringRef(idStart, idEnd - idStart).getAsInteger(10, val))
             {
                 assert(0 && "Invalid operand format");
