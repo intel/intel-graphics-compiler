@@ -471,7 +471,7 @@ void BinaryEncodingIGA::DoAll()
 
     // Make the size of the first BB is multiple of 4 instructions, and do not compact
     // any instructions in it, so that the size of the first BB is multiple of 64 bytes
-    if (kernel.fg.builder->getHasPerThreadProlog()) 
+    if (kernel.fg.builder->getHasPerThreadProlog())
     {
         G4_BB* first_bb = *kernel.fg.begin();
         size_t num_inst = first_bb->getInstList().size();

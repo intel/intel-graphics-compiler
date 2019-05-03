@@ -8,7 +8,6 @@ class KernelEncoder
     uint32_t m_binarySize = 0;
     iga::Kernel* m_kernel = nullptr;
     bool m_autoCompact = false;
-    bool m_fisrtBB64ByteSize = false;
 
 public:
     // @param compact: auto compact instructions if applicable
@@ -32,7 +31,5 @@ public:
     // This function is used by visa to patch the add or mov instructions' imm field for the indirect call
     // FIXME: Move this api to somewhere else that's more apporopriate
     static bool patchImmValue(const iga::Model& model, unsigned char* binary, iga::Type type, const iga::ImmVal &val);
-
-    void setFisrtBB64ByteSize(bool enable = true) { m_fisrtBB64ByteSize = enable; }
 
 };

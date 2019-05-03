@@ -724,7 +724,7 @@ void DecoderBase::decodeTernaryDestinationAlign16(Instruction *inst)
 
         GED_DECODE_RAW(uint32_t, subRegNumBytes, DstSubRegNum);
         uint8_t subRegNumber = type == Type::INVALID ?
-            0 : binNumToSubRegNum((uint8_t)subRegNumBytes, regName, type, true);
+            0 : binNumToSubRegNum((uint8_t)subRegNumBytes, regName, type);
         regRef.subRegNum = (uint8_t)(subRegNumber + subregOffAlign16Elems);
         inst->setDirectDestination(
             dstMod,
@@ -780,7 +780,7 @@ void DecoderBase::decodeTernarySourceAlign16(Instruction *inst)
             type);
     } else {
         int subReg = type == Type::INVALID ?
-            0 : binNumToSubRegNum(decodeSrcSubRegNum<S>(), RegName::GRF_R, type, true);
+            0 : binNumToSubRegNum(decodeSrcSubRegNum<S>(), RegName::GRF_R, type);
         RegRef reg = {
             (uint8_t)regNum,
             (uint8_t)subReg
@@ -1494,8 +1494,7 @@ void DecoderBase::decodeDstDirSubRegNum(DirRegOpInfo& dri)
 
         GED_DECODE_RAW(uint32_t, subRegNum, DstSubRegNum);
         dri.regRef.subRegNum =
-            binNumToSubRegNum((uint8_t)subRegNum, dri.regName, scalingType,
-                m_opSpec->isBranching() || m_opSpec->isTernary());
+            binNumToSubRegNum((uint8_t)subRegNum, dri.regName, scalingType);
     }
 }
 
@@ -1820,8 +1819,9 @@ DecoderBase::decodeTernarySrcImmVal(Type t)
 }
 
 uint32_t DecoderBase::binNumToSubRegNum(
-    uint32_t binNum, RegName regName, Type type, bool isTernaryOrBranch)
+    uint32_t binNum, RegName regName, Type type)
 {
+
     return BytesOffsetToSubReg(binNum, regName, type);
 }
 

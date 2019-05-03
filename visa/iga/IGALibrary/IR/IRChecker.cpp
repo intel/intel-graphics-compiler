@@ -283,7 +283,7 @@ struct SemanticChecker : LOCChecker {
         if (execSize * srcTypeSz > restric_size) {
             warning(
                 "register regioning restriction warning: "
-                "ExecSize * sizeof(Type) exceeds 64 bytes\n"
+                "ExecSize * sizeof(Type) exceeds 2 GRF\n"
                 "see Programmer's Reference Manual (Restriction 1.1)");
         }
         // Restriction 1.2:
