@@ -3955,7 +3955,6 @@ void CEncoder::InitEncoder( bool canAbortOnSpill, bool hasStackCall )
     vAsmTextBuilder = nullptr;
     TARGET_PLATFORM VISAPlatform = GetVISAPlatform(&(context->platform));
 
-
     SetVISAWaTable(m_program->m_Platform->getWATable());
 
     llvm::SmallVector<const char*, 10> params;
