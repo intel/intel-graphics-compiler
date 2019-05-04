@@ -46,6 +46,7 @@ namespace IGC {
 class CEncoder;
 class CVariable;
 class CodeGenContextWrapper;
+class DeSSA;
 
 
 class CoalescingEngine : public llvm::FunctionPass, public llvm::InstVisitor<CoalescingEngine>
@@ -57,15 +58,7 @@ public:
     static char ID; // Pass identification, replacement for typeid
     CoalescingEngine();
 
-    virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override {
-        AU.setPreservesAll();
-        AU.addRequired<llvm::DominatorTreeWrapperPass>();
-        AU.addRequired<WIAnalysis>();
-        AU.addRequired<LiveVarsAnalysis>();
-        AU.addRequired<CodeGenPatternMatch>();
-        AU.addRequired<MetaDataUtilsWrapper>();
-        AU.addRequired<CodeGenContextWrapper>();
-    }
+    virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override;
 
     virtual void releaseMemory() override {
         Allocator.Reset();
@@ -358,6 +351,9 @@ public:
     //FIXME: this might not be the most effective way if called multiple times
     bool IsolationFilter(llvm::Value* val ) const
     {
+        if (isCoalescedByDeSSA(val)) {
+            return true;
+        }
         if (llvm::dyn_cast<llvm::PHINode>(val)){
             return true;
         }
@@ -961,6 +957,7 @@ private:
     llvm::DominatorTree *DT;
     LiveVars *LV;
     WIAnalysis *WIA;
+    DeSSA *m_DeSSA;
     CodeGenPatternMatch *CG;
     llvm::DenseMap<llvm::Value*, ElementNode*> ValueNodeMap;
     llvm::DenseMap<ElementNode*, CCTuple*> NodeCCTupleMap;
@@ -1016,6 +1013,8 @@ private:
 
         LiveVars *LV;
     };
+
+    bool isCoalescedByDeSSA(llvm::Value *V) const;
 };
 
 } //namespace IGC

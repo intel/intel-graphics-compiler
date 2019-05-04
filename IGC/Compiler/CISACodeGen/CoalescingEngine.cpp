@@ -35,6 +35,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //===----------------------------------------------------------------------===//
 
 #include "Compiler/CISACodeGen/CoalescingEngine.hpp"
+#include "Compiler/CISACodeGen/DeSSA.hpp"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/CISACodeGen/PatternMatchPass.hpp"
 #include "Compiler/MetaDataApi/MetaDataApi.h"
@@ -66,6 +67,7 @@ IGC_INITIALIZE_PASS_DEPENDENCY( WIAnalysis )
 IGC_INITIALIZE_PASS_DEPENDENCY( LiveVarsAnalysis )
 IGC_INITIALIZE_PASS_DEPENDENCY( CodeGenPatternMatch )
 IGC_INITIALIZE_PASS_DEPENDENCY( DominatorTreeWrapperPass )
+IGC_INITIALIZE_PASS_DEPENDENCY( DeSSA )
 IGC_INITIALIZE_PASS_DEPENDENCY( MetaDataUtilsWrapper )
 IGC_INITIALIZE_PASS_END( CoalescingEngine, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS )
 
@@ -75,6 +77,18 @@ namespace IGC
 CoalescingEngine::CoalescingEngine() : FunctionPass( ID )
 {
     initializeCoalescingEnginePass( *PassRegistry::getPassRegistry() );
+}
+
+void CoalescingEngine::getAnalysisUsage(llvm::AnalysisUsage& AU) const
+{
+    AU.setPreservesAll();
+    AU.addRequired<llvm::DominatorTreeWrapperPass>();
+    AU.addRequired<WIAnalysis>();
+    AU.addRequired<LiveVarsAnalysis>();
+    AU.addRequired<CodeGenPatternMatch>();
+    AU.addRequired<DeSSA>();
+    AU.addRequired<MetaDataUtilsWrapper>();
+    AU.addRequired<CodeGenContextWrapper>();
 }
 
 void CoalescingEngine::CCTuple::print(raw_ostream &OS, const Module*) const
@@ -138,6 +152,12 @@ bool CoalescingEngine::runOnFunction(Function &MF) {
     WIA = &getAnalysis<WIAnalysis>();
     CG = &getAnalysis<CodeGenPatternMatch>();
     LV = &getAnalysis<LiveVarsAnalysis>().getLiveVars();
+    if (IGC_IS_FLAG_DISABLED(DisableDeSSA)) {
+        m_DeSSA = &getAnalysis<DeSSA>();
+    }
+    else {
+        m_DeSSA = nullptr;
+    }
 
     for (Function::iterator I = MF.begin(), E = MF.end();
         I != E; ++I) {
@@ -1259,6 +1279,14 @@ void CoalescingEngine::unionRegs(Value* Val1, Value* Val2) {
         Node2->parent.setPointer(Node1->getLeader());
         Node1->rank++;
     }
+}
+
+// For now, return true if V is dessa-aliased/InsEltMap-ed/phi-coalesced.
+bool CoalescingEngine::isCoalescedByDeSSA(Value* V) const
+{
+    if (m_DeSSA && m_DeSSA->getRootValue(V))
+        return true;
+    return false;
 }
 
 void CoalescingEngine::ProcessBlock(llvm::BasicBlock* bb)

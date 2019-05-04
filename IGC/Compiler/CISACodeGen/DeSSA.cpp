@@ -1361,6 +1361,18 @@ bool DeSSA::isAliasee(Value* V) const
     return AI->first == AI->second;
 }
 
+// If V is either in InsElt or in an DeSSA CC, return true;
+// otherwise return false;
+bool DeSSA::isCoalesced(llvm::Value* V) const
+{
+    Value* aliasee = getAliasee(V);
+    Value* insEltRootV = getInsEltRoot(aliasee);
+    if (InsEltMap.count(aliasee) || !isIsolated(insEltRootV)) {
+        return true;
+    }
+    return false;
+}
+
 // The following paper explains an approach to check if two
 // congruent classes interfere using a linear approach.
 //

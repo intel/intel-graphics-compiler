@@ -288,6 +288,7 @@ public:
     bool isAliasee(llvm::Value* V) const;
     bool isAliaser(llvm::Value* V) const;
     bool isNoopAliaser(llvm::Value* V) const;
+    bool isCoalesced(llvm::Value* V) const;
     bool interfere(llvm::Value* V0, llvm::Value* V1);
     bool alignInterfere(e_alignment a1, e_alignment a2);
 
