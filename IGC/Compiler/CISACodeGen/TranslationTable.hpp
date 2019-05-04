@@ -40,7 +40,6 @@ class FastValueMapBase;
 
 class TranslationTable : public llvm::FunctionPass
 {
-
 public:
     static char ID;
 
@@ -51,13 +50,14 @@ public:
         m_ValueMaps.push_back(fvmb);
     }
 
-    virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override {
+    void getAnalysisUsage(llvm::AnalysisUsage& AU) const override {
         AU.setPreservesAll();
     }
 
     bool runOnFunction(llvm::Function& F) override;
+    bool run(llvm::Function& F);
 
-    virtual  llvm::StringRef getPassName() const override {
+    llvm::StringRef getPassName() const override {
         return "TranslationTable";
     }
 
@@ -106,7 +106,6 @@ public:
 
 public:
     TranslationTable* m_pTT;
-
 };
 
 //===----------------------------------------------------------------------===//
@@ -116,82 +115,8 @@ class FastValueMapImpl : public FastValueMapBase
     //No default implementation.
 };
 
-#if 0
 //===----------------------------------------------------------------------===//
-//Let us use std::vector as a type selctor for this specialization.
-template<typename T, typename AttributeInfoT>
-class FastValueMapImpl<std::vector<T>, T, AttributeInfoT> : public FastValueMapBase
-{
-public:
-    FastValueMapImpl(TranslationTable* table) : FastValueMapBase(table)
-    {
-        Initialize(table);
-    }
-
-    FastValueMapImpl()
-    {
-    }
-
-    virtual void Update()
-    {
-        m_containerVector.push_back(AttributeInfoT::getEmptyAttribute());
-    }
-
-    void Initialize(TranslationTable* table)
-    {
-        m_pTT = table;
-        const unsigned int numIDS = table->GetNumIDs();
-        m_containerVector.reserve(numIDS + (unsigned int)(numIDS * 0.3));
-        m_containerVector.resize(numIDS, AttributeInfoT::getEmptyAttribute());
-        assert(m_containerVector.size() == numIDS);
-    }
-
-    //Semantics:
-    //Even if we assume that all values have been registered the attribute
-    //for a given value may not have been initialized yet. It is perfectly
-    //fine to query a map for such an attribute. Thus, we must detect this case
-    //and return a non-initialized value.
-    T GetAttributeWithoutCreating(const llvm::Value* val) const
-    {
-
-        unsigned int ID = val->GetID();
-        if (ID < m_containerVector.size())
-        {
-            return m_containerVector[ID];
-        }
-        else
-        {
-            return AttributeInfoT::getEmptyAttribute();
-        }
-    }
-
-    //We should always assume that we are setting an attribute for a value
-    //that has already been 'registered', thus, having a place in the vector.
-    void SetAttribute(const llvm::Value* val, T attr)
-    {
-        assert(val->GetID() < m_containerVector.size());
-        m_containerVector[val->GetID()] = attr;
-    }
-
-    T end() const
-    {
-        return AttributeInfoT::getEmptyAttribute();
-    }
-
-    void clear()
-    {
-        //TODO: so far, do nothing
-        //need to think more about this scenario
-        m_containerVector.clear();
-    }
-
-private:
-    std::vector<T> m_containerVector;
-};
-#endif
-
-//===----------------------------------------------------------------------===//
-//Let us use llvm::DenseMap as a type selctor for this specialization.
+//Let us use llvm::DenseMap as a type selector for this specialization.
 template<typename T, typename AttributeInfoT>
 class FastValueMapImpl<llvm::DenseMap<const llvm::Value*, T>, T, AttributeInfoT> : public FastValueMapBase
 {
@@ -206,7 +131,7 @@ public:
     {
     }
 
-    void Initialize(TranslationTable* table)
+    void Initialize(const TranslationTable* table)
     {
         //DenseMap should be kept at less than 75% of its capacity.
         unsigned int preferredSize = (unsigned int) (table->GetNumIDs() * 1.4); //be little bit conservative
@@ -235,10 +160,9 @@ public:
     }
 
 
-    virtual void Update()
+    void Update() override
     {
         //TODO: what do we do? Should we re-size?
-        //m_containerVector.push_back(AttributeInfoT::getEmptyAttribute());
     }
 
     T end() const
@@ -252,31 +176,13 @@ public:
         m_attributeMap.clear();
     }
 private:
-
     llvm::DenseMap<const llvm::Value*, T> m_attributeMap;
-
-
 };
 
-
-#define MapBased
-//#define IDBased
-
-#ifdef IDBased
-template<typename T, typename AttributeInfoT>
-class FastValueMap : public FastValueMapImpl<std::vector<T>, T, AttributeInfoT>
-{
-
-};
-#endif
-
-#ifdef MapBased
 template<typename T, typename AttributeInfoT>
 class FastValueMap : public FastValueMapImpl<llvm::DenseMap<const llvm::Value*, T>, T, AttributeInfoT>
 {
 
 };
-#endif
-
 
 } //namespace IGC

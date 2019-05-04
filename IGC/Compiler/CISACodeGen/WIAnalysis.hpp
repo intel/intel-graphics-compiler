@@ -57,23 +57,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace IGC
 {
-
-/// @Brief, given a conditional branch and its immediate post dominator,
-/// find its influence-region and partial joins within the influence region
-class BranchInfo
-{
-public:
-    BranchInfo(const IGCLLVM::TerminatorInst *inst, const llvm::BasicBlock *ipd);
-
-    void print(llvm::raw_ostream &OS) const;
-
-    const IGCLLVM::TerminatorInst *cbr;
-    const llvm::BasicBlock *full_join;
-    llvm::DenseSet<llvm::BasicBlock*> influence_region;
-    llvm::SmallPtrSet<llvm::BasicBlock*, 4> partial_joins;
-    llvm::BasicBlock *fork_blk;
-};
-
+class BranchInfo;
+class WIAnalysis;
 
 //This is a trick, since we cannot forward-declare enums embedded in class definitions.
 // The better solution is to completely hoist-out the WIDependency enum into a separate enum class
@@ -101,63 +86,46 @@ template<> struct FastValueMapAttributeInfo<WIBaseClass::WIDependancy> {
     static inline WIBaseClass::WIDependancy getEmptyAttribute() { return WIBaseClass::INVALID; }
 };
 
-/// @brief Work Item Analysis class used to provide information on
-///  individual instructions. The analysis class detects values which
-///  depend in work-item and describe their dependency.
-///  The algorithm used is recursive and new instructions are updated
-///  according to their operands (which are already calculated).
-///  original code for OCL vectorizer
-///
-///   adopt it for IGC,
-///   - extend it to handle the divergent SIMD control-flow
-///  - support GFX-specific intrinsic
-class WIAnalysis : public llvm::FunctionPass, public WIBaseClass
+class WIAnalysisRunner
 {
 public:
-    static char ID; // Pass identification, replacement for typeid
+    void init(
+        llvm::Function          *F,
+        llvm::PostDominatorTree *PDT,
+        IGCMD::MetaDataUtils    *MDUtils,
+        CodeGenContext          *CGCtx,
+        ModuleMetaData          *ModMD,
+        TranslationTable        *TransTable);
 
-    WIAnalysis();
-
-
-    ~WIAnalysis() {}
-
-    /// @brief Provides name of pass
-    virtual llvm::StringRef getPassName() const override
+    WIAnalysisRunner(
+        llvm::Function           *F,
+        llvm::PostDominatorTree  *PDT,
+        IGCMD::MetaDataUtils     *MDUtils,
+        CodeGenContext           *CGCtx,
+        ModuleMetaData           *ModMD,
+        TranslationTable         *TransTable)
     {
-      return "WIAnalysis";
+        init(F, PDT, MDUtils, CGCtx, ModMD, TransTable);
     }
 
-    /// @brief LLVM llvm::Function pass entry
-    /// @param F llvm::Function to transform
-    /// @return True if changed
-    virtual bool runOnFunction(llvm::Function &F) override;
+    WIAnalysisRunner() {}
+    ~WIAnalysisRunner() {}
 
-    /// @brief Update dependency relations between all values
-    void updateDeps();
-
-    /// @brief backward update dependency based upon use
-    void genSpecificBackwardUpdate();
-
-    /// @brief mark the arguments dependency based on the metadata set
-    void updateArgsDependency(llvm::Function *pF);
-
-    /// The WIAnalysis follows pointer arithmetic
-    ///  and Index arithmetic when calculating dependency
-    ///  properties. If a part of the index is lost due to 
-    ///  a transformation, it is acceptable.
-    ///  This constant decides how many bits need to be 
-    ///  preserved before we give up on the analysis.
-    static const unsigned int MinIndexBitwidthToPreserve;
+    bool run();
 
     /// @brief Returns the type of dependency the instruction has on
     /// the work-item
     /// @param val llvm::Value to test
     /// @return Dependency kind
-    WIDependancy whichDepend(const llvm::Value* val);
+    WIBaseClass::WIDependancy whichDepend(const llvm::Value* val);
+
+    /// @brief Returns True if 'val' is uniform
+    /// @param val llvm::Value to test
+    bool isUniform(const llvm::Value* val);
 
     /// incremental update of the dep-map on individual value
     /// without propagation. Exposed for later pass.
-    void incUpdateDepend(const llvm::Value* val, WIDependancy dep)
+    void incUpdateDepend(const llvm::Value* val, WIBaseClass::WIDependancy dep)
     {
       m_depMap.SetAttribute(val, dep);
     }
@@ -169,17 +137,19 @@ public:
             m_ctrlBranches.find(llvm::cast<llvm::Instruction>(val)->getParent()) != m_ctrlBranches.end());
     }
 
-    virtual void releaseMemory() override
+    void releaseMemory()
     {
-      m_depMap.clear();
+      m_ctrlBranches.clear();
       m_changed1.clear();
       m_changed2.clear();
-      m_ctrlBranches.clear();
       m_backwardList.clear();
+      m_allocaDepMap.clear();
+      m_storeDepMap.clear();
+      m_depMap.clear();
     }
 
     /// print - print m_deps in human readable form
-    virtual void print(llvm::raw_ostream &OS, const llvm::Module* = 0) const override;
+    void print(llvm::raw_ostream &OS, const llvm::Module* = 0) const;
 
     /// dump - Dump the m_deps to dbgs().
     void dump() const;
@@ -189,30 +159,40 @@ private:
     {
         std::vector<const llvm::StoreInst*> stores;
     };
+
+    /// @brief Update dependency relations between all values
+    void updateDeps();
+
+    /// @brief backward update dependency based upon use
+    void genSpecificBackwardUpdate();
+
+    /// @brief mark the arguments dependency based on the metadata set
+    void updateArgsDependency(llvm::Function *pF);
+
     /*! \name Dependency Calculation Functions
      *  \{ */
     /// @brief Calculate the dependency type for the instruction
     /// @param inst Instruction to inspect
     /// @return Type of dependency.
     void calculate_dep(const llvm::Value* val);
-    WIDependancy calculate_dep(const llvm::BinaryOperator* inst);
-    WIDependancy calculate_dep(const llvm::CallInst* inst);
-    WIDependancy calculate_dep(const llvm::GetElementPtrInst* inst);
-    WIDependancy calculate_dep(const llvm::PHINode* inst);
-    WIDependancy calculate_dep(const llvm::SelectInst* inst);
-    WIDependancy calculate_dep(const llvm::AllocaInst* inst);
-    WIDependancy calculate_dep(const llvm::CastInst* inst);
-    WIDependancy calculate_dep(const llvm::VAArgInst* inst);
-    WIDependancy calculate_dep(const llvm::LoadInst* inst);
+    WIBaseClass::WIDependancy calculate_dep(const llvm::BinaryOperator* inst);
+    WIBaseClass::WIDependancy calculate_dep(const llvm::CallInst* inst);
+    WIBaseClass::WIDependancy calculate_dep(const llvm::GetElementPtrInst* inst);
+    WIBaseClass::WIDependancy calculate_dep(const llvm::PHINode* inst);
+    WIBaseClass::WIDependancy calculate_dep(const llvm::SelectInst* inst);
+    WIBaseClass::WIDependancy calculate_dep(const llvm::AllocaInst* inst);
+    WIBaseClass::WIDependancy calculate_dep(const llvm::CastInst* inst);
+    WIBaseClass::WIDependancy calculate_dep(const llvm::VAArgInst* inst);
+    WIBaseClass::WIDependancy calculate_dep(const llvm::LoadInst* inst);
 
-    WIDependancy calculate_dep_terminator(const IGCLLVM::TerminatorInst* inst);
+    WIBaseClass::WIDependancy calculate_dep_terminator(const IGCLLVM::TerminatorInst* inst);
     /*! \} */
 
     /// @brief do the trivial checking WI-dep
     /// @param I instruction to check
     /// @return Dependency type. Returns Uniform if all operands are 
     ///         Uniform, Random otherwise
-    WIDependancy calculate_dep_simple(const llvm::Instruction *I);
+    WIBaseClass::WIDependancy calculate_dep_simple(const llvm::Instruction *I);
 
     /// @brief update the WI-dep from a divergent branch,
     ///        affected instructions are added to m_pChangedNew
@@ -227,12 +207,12 @@ private:
     /// @check phi divergence at a join-blk due to a divergent branch
     void updatePHIDepAtJoin(llvm::BasicBlock *blk, BranchInfo *brInfo);
 
-    void updateDepMap(const llvm::Instruction *inst, WIAnalysis::WIDependancy dep);
+    void updateDepMap(const llvm::Instruction *inst, WIBaseClass::WIDependancy dep);
 
     /// @brief Provide known dependency type for requested value
     /// @param val llvm::Value to examine
     /// @return Dependency type. Returns Uniform for unknown type
-    WIDependancy getDependency(const llvm::Value *val);
+    WIBaseClass::WIDependancy getDependency(const llvm::Value *val);
 
     /// @brief return true if there is calculated dependency type for requested value
     /// @param val llvm::Value to examine
@@ -253,24 +233,6 @@ private:
 
     /// @brief update dependency structure for Alloca
     bool TrackAllocaDep(const llvm::Value* I, AllocaDep& dep);
-    /// @brief  LLVM Interface
-    /// @param AU Analysis
-    /// WIAnalysis requires dominator and post dominator analysis
-    /// WIAnalysis also requires BreakCriticalEdge because it assumes that 
-    /// potential phi-moves will be placed at those blocks
-    virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
-    {
-      // Analysis pass preserve all
-      AU.setPreservesAll();
-#ifdef OCL_SPECIFIC
-      AU.addRequired<SoaAllocaAnalysis>();
-#endif
-      AU.addRequired<llvm::DominatorTreeWrapperPass>();
-      AU.addRequired<llvm::PostDominatorTreeWrapperPass>();
-      AU.addRequired<MetaDataUtilsWrapper>();
-      AU.addRequired<CodeGenContextWrapper>();
-      AU.addRequired<TranslationTable>();
-    }
 
     void checkLocalIdUniform(
         llvm::Function* F,
@@ -285,6 +247,15 @@ private:
     /// Runtime services pointer
     RuntimeServices * m_rtServices;
 #endif
+
+    /// The WIAnalysis follows pointer arithmetic
+    ///  and Index arithmetic when calculating dependency
+    ///  properties. If a part of the index is lost due to 
+    ///  a transformation, it is acceptable.
+    ///  This constant decides how many bits need to be 
+    ///  preserved before we give up on the analysis.
+    static const unsigned int MinIndexBitwidthToPreserve;
+
     /// Stores an updated list of all dependencies
     /// for each block, store the list of diverging branches that affect it
     llvm::DenseMap<const llvm::BasicBlock*, llvm::SmallPtrSet<const llvm::Instruction*, 4>> m_ctrlBranches;
@@ -302,14 +273,88 @@ private:
     llvm::Function *m_func;
     llvm::PostDominatorTree *PDT;
     IGC::IGCMD::MetaDataUtils *m_pMdUtils;
+    IGC::CodeGenContext       *m_CGCtx;
+    IGC::ModuleMetaData       *m_ModMD;
+    IGC::TranslationTable     *m_TT;
 
     // Allow access to all the store into an alloca if we were able to track it
     llvm::DenseMap<const llvm::AllocaInst*, AllocaDep> m_allocaDepMap;
     // reverse map to allow to know what alloca to update when store changes
     llvm::DenseMap<const llvm::StoreInst*, const llvm::AllocaInst*> m_storeDepMap;
 
-    IGC::TranslationTable *m_pTT;
-    IGC::FastValueMap<WIAnalysis::WIDependancy, FastValueMapAttributeInfo<WIBaseClass::WIDependancy>> m_depMap;
-  };
+    IGC::FastValueMap<WIBaseClass::WIDependancy, FastValueMapAttributeInfo<WIBaseClass::WIDependancy>> m_depMap;
+};
+
+/// @brief Work Item Analysis class used to provide information on
+///  individual instructions. The analysis class detects values which
+///  depend in work-item and describe their dependency.
+///  The algorithm used is recursive and new instructions are updated
+///  according to their operands (which are already calculated).
+///  original code for OCL vectorizer
+///
+class WIAnalysis : public llvm::FunctionPass, public WIBaseClass
+{
+public:
+    static char ID; // Pass identification, replacement for typeid
+
+    WIAnalysis();
+
+    ~WIAnalysis() {}
+
+    /// @brief Provides name of pass
+    llvm::StringRef getPassName() const override
+    {
+      return "WIAnalysis";
+    }
+
+    void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+    {
+      // Analysis pass preserve all
+      AU.setPreservesAll();
+#ifdef OCL_SPECIFIC
+      AU.addRequired<SoaAllocaAnalysis>();
+#endif
+      AU.addRequired<llvm::DominatorTreeWrapperPass>();
+      AU.addRequired<llvm::PostDominatorTreeWrapperPass>();
+      AU.addRequired<MetaDataUtilsWrapper>();
+      AU.addRequired<CodeGenContextWrapper>();
+      AU.addRequired<TranslationTable>();
+    }
+
+    /// @brief LLVM llvm::Function pass entry
+    /// @param F llvm::Function to transform
+    /// @return True if changed
+    bool runOnFunction(llvm::Function &F) override;
+
+    /// print - print m_deps in human readable form
+    void print(llvm::raw_ostream &OS, const llvm::Module* = 0) const override;
+
+    /// dump - Dump the m_deps to dbgs().
+    void dump() const;
+public:
+    /// @brief Returns the type of dependency the instruction has on
+    /// the work-item
+    /// @param val llvm::Value to test
+    /// @return Dependency kind
+    WIDependancy whichDepend(const llvm::Value* val);
+
+    /// @brief Returns True if 'val' is uniform
+    /// @param val llvm::Value to test
+    bool isUniform(const llvm::Value* val);
+
+    /// incremental update of the dep-map on individual value
+    /// without propagation. Exposed for later pass.
+    void incUpdateDepend(const llvm::Value* val, WIDependancy dep);
+
+    /// check if a value is defined inside divergent control-flow
+    bool insideDivergentCF(const llvm::Value* val);
+
+    void releaseMemory() override
+    {
+        Runner.releaseMemory();
+    }
+private:
+    WIAnalysisRunner Runner;
+};
 
 } // namespace IGC

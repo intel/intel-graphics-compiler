@@ -43,7 +43,6 @@ char TranslationTable::ID = 0;
 #define PASS_ANALYSIS true
 
 IGC_INITIALIZE_PASS_BEGIN(TranslationTable, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_END(TranslationTable, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 namespace IGC
@@ -55,6 +54,11 @@ namespace IGC
     }
 
     bool TranslationTable::runOnFunction(Function& F)
+    {
+        return run(F);
+    }
+
+    bool TranslationTable::run(Function& F)
     {
          unsigned int counter = 0;
 

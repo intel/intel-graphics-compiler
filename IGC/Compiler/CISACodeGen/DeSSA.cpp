@@ -1297,7 +1297,7 @@ int DeSSA::checkInsertElementAlias(
     int nelts = (int)VTy->getNumElements();
     AllIEIs.resize(nelts, nullptr);
     InsertElementInst* Inst = IEI;
-    WIBaseClass::WIDependancy Dep = WIA->whichDepend(Inst);
+    WIAnalysis::WIDependancy Dep = WIA->whichDepend(Inst);
     while (Inst)
     {
         // Check if Inst has constant index, stop if not.

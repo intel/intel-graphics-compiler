@@ -71,12 +71,12 @@ IGC_INITIALIZE_PASS_END(WIAnalysis, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, 
 
 char WIAnalysis::ID = 0;
 
-WIAnalysis::WIAnalysis() : FunctionPass(ID), m_pTT(nullptr)
+WIAnalysis::WIAnalysis() : FunctionPass(ID)
 {
     initializeWIAnalysisPass(*PassRegistry::getPassRegistry());
 }
 
-const unsigned int WIAnalysis::MinIndexBitwidthToPreserve = 16;
+const unsigned int WIAnalysisRunner::MinIndexBitwidthToPreserve = 16;
 
 /// Define shorter names for dependencies, for clarity of the conversion maps
 #define UNI WIAnalysis::UNIFORM
@@ -146,7 +146,25 @@ gep_conversion[WIAnalysis::NumDeps][WIAnalysis::NumDeps] = {
   /* RND */  {RND, RND, RND, RND, RND}
 };
 
-void WIAnalysis::print(raw_ostream & OS, const Module*) const
+namespace IGC {
+/// @Brief, given a conditional branch and its immediate post dominator,
+/// find its influence-region and partial joins within the influence region
+class BranchInfo
+{
+public:
+    BranchInfo(const IGCLLVM::TerminatorInst *inst, const llvm::BasicBlock *ipd);
+
+    void print(llvm::raw_ostream &OS) const;
+
+    const IGCLLVM::TerminatorInst *cbr;
+    const llvm::BasicBlock *full_join;
+    llvm::DenseSet<llvm::BasicBlock*> influence_region;
+    llvm::SmallPtrSet<llvm::BasicBlock*, 4> partial_joins;
+    llvm::BasicBlock *fork_blk;
+};
+} // namespace IGC
+
+void WIAnalysisRunner::print(raw_ostream & OS, const Module*) const
 {
   DenseMap<BasicBlock *, int> BBIDs;
   int id = 0;
@@ -212,34 +230,41 @@ void WIAnalysis::print(raw_ostream & OS, const Module*) const
   }
 }
 
-void WIAnalysis::dump() const
+void WIAnalysisRunner::dump() const
 {
-    CodeGenContextWrapper* pCtxWrapper = &getAnalysis<CodeGenContextWrapper>();
-    CodeGenContext* ctx = pCtxWrapper->getCodeGenContext();
-
     auto name =
         DumpName(IGC::Debug::GetShaderOutputName())
-        .Hash(ctx->hash)
-        .Type(ctx->type)
+        .Hash(m_CGCtx->hash)
+        .Type(m_CGCtx->type)
         .Pass("WIAnalysis")
         .Extension("txt");
     print(Dump(name, DumpType::DBG_MSG_TEXT).stream());
 }
 
-bool WIAnalysis::runOnFunction(Function &F) {
-  MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-  if (pMdUtils->findFunctionsInfoItem(&F) == pMdUtils->end_FunctionsInfo())
-  {
-    return false;
-  }
-  m_func = &F;
-  //m_func->viewCFG();
-  PDT = &getAnalysis<PostDominatorTreeWrapperPass>().getPostDomTree();
-  m_pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+void WIAnalysisRunner::init(
+    llvm::Function            *F,
+    llvm::PostDominatorTree   *PDT,
+    IGC::IGCMD::MetaDataUtils *MDUtils,
+    IGC::CodeGenContext       *CGCtx,
+    IGC::ModuleMetaData       *ModMD,
+    IGC::TranslationTable     *TransTable)
+{
+    m_func     = F;
+    this->PDT  = PDT;
+    m_pMdUtils = MDUtils;
+    m_CGCtx    = CGCtx;
+    m_ModMD    = ModMD;
+    m_TT       = TransTable;
+}
 
-  m_pTT = &getAnalysis<TranslationTable>();
-  m_depMap.Initialize(m_pTT);
-  m_pTT->RegisterListener(&m_depMap);
+bool WIAnalysisRunner::run()
+{
+  auto &F = *m_func;
+  if (m_pMdUtils->findFunctionsInfoItem(&F) == m_pMdUtils->end_FunctionsInfo())
+    return false;
+
+  m_depMap.Initialize(m_TT);
+  m_TT->RegisterListener(&m_depMap);
 
   m_changed1.clear();
   m_changed2.clear();
@@ -280,9 +305,20 @@ bool WIAnalysis::runOnFunction(Function &F) {
   return false;
 }
 
-void WIAnalysis::updateDeps()
+bool WIAnalysis::runOnFunction(Function &F)
 {
+    auto *MDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    auto *PDT = &getAnalysis<PostDominatorTreeWrapperPass>().getPostDomTree();
+    auto *CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    auto *ModMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+    auto *pTT = &getAnalysis<TranslationTable>();
 
+    Runner.init(&F, PDT, MDUtils, CGCtx, ModMD, pTT);
+    return Runner.run();
+}
+
+void WIAnalysisRunner::updateDeps()
+{
   // As lonst as we have values to update
   while(!m_pChangedNew->empty())
   {
@@ -304,7 +340,7 @@ void WIAnalysis::updateDeps()
   }
 }
 
-bool WIAnalysis::isInstructionSimple(const Instruction* inst)
+bool WIAnalysisRunner::isInstructionSimple(const Instruction* inst)
 {
     // avoid changing cb load to sampler load, since sampler load
     // has longer latency.
@@ -328,7 +364,7 @@ bool WIAnalysis::isInstructionSimple(const Instruction* inst)
     return false;
 }
 
-bool WIAnalysis::needToBeUniform(const Value* val)
+bool WIAnalysisRunner::needToBeUniform(const Value* val)
 {
     for (auto UI = val->user_begin(), E = val->user_end(); UI != E; ++UI)
     {
@@ -344,12 +380,12 @@ bool WIAnalysis::needToBeUniform(const Value* val)
     return false;
 }
 
-bool WIAnalysis::allUsesRandom(const Value *val)
+bool WIAnalysisRunner::allUsesRandom(const Value *val)
 {
   for (auto UI = val->user_begin(), E = val->user_end(); UI != E; ++UI)
   {
     const Value *use = (*UI);
-    if( getDependency(use) != RANDOM )
+    if( getDependency(use) != WIAnalysis::RANDOM )
     {
       return false;
     }
@@ -357,7 +393,7 @@ bool WIAnalysis::allUsesRandom(const Value *val)
   return true;
 }
 
-void WIAnalysis::genSpecificBackwardUpdate()
+void WIAnalysisRunner::genSpecificBackwardUpdate()
 {
   while (!m_backwardList.empty())
   {
@@ -366,20 +402,20 @@ void WIAnalysis::genSpecificBackwardUpdate()
     for (unsigned i = 0; i < inst->getNumOperands(); ++i)
     {
       Instruction *def = dyn_cast<Instruction>(inst->getOperand(i));
-      if (def && getDependency(def) == UNIFORM && allUsesRandom(def) && !needToBeUniform(def))
+      if (def && getDependency(def) == WIAnalysis::UNIFORM && allUsesRandom(def) && !needToBeUniform(def))
       {
         
         // if it is cheap and easy to mark it as RANDOM
         if ( isInstructionSimple(def) )
         {
-          m_depMap.SetAttribute(def, RANDOM);
+          m_depMap.SetAttribute(def, WIAnalysis::RANDOM);
         }
       }
     }
   }
 }
 
-void WIAnalysis::updateArgsDependency(llvm::Function *pF)
+void WIAnalysisRunner::updateArgsDependency(llvm::Function *pF)
 {
     /*
     Function Signature: define void @kernel(
@@ -407,11 +443,10 @@ void WIAnalysis::updateArgsDependency(llvm::Function *pF)
     // To enable subroutine for other FEs, we need to update this check.
     bool IsSubroutine = !isEntryFunc(m_pMdUtils, pF);
 
-    ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-    ImplicitArgs implicitArgs(*pF, m_pMdUtils, getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->platform.getGRFSize());
+    ImplicitArgs implicitArgs(*pF, m_pMdUtils, m_CGCtx->platform.getGRFSize());
     unsigned implicitArgStart = (unsigned)(IGCLLVM::GetFuncArgSize(pF)
         - implicitArgs.size()
-        - (IsSubroutine ? 0 : modMD->pushInfo.pushAnalysisWIInfos.size()));
+        - (IsSubroutine ? 0 : m_ModMD->pushInfo.pushAnalysisWIInfos.size()));
 
     llvm::Function::arg_iterator ai, ae;
     ai = pF->arg_begin();
@@ -445,7 +480,7 @@ void WIAnalysis::updateArgsDependency(llvm::Function *pF)
         if ((localX_uniform && iArg.getArgType() == ImplicitArg::ArgType::LOCAL_ID_X) ||
             (localY_uniform && iArg.getArgType() == ImplicitArg::ArgType::LOCAL_ID_Y) ||
             (localZ_uniform && iArg.getArgType() == ImplicitArg::ArgType::LOCAL_ID_Z)) {
-            dependency = UNIFORM;
+            dependency = WIAnalysis::UNIFORM;
         }
 
         incUpdateDepend(&(*ai), dependency);
@@ -454,17 +489,48 @@ void WIAnalysis::updateArgsDependency(llvm::Function *pF)
     // 3. add push analysis args
     if (!IsSubroutine)
     {
-        for (unsigned i = 0; i < modMD->pushInfo.pushAnalysisWIInfos.size(); ++i, ++ai)
+        for (unsigned i = 0; i < m_ModMD->pushInfo.pushAnalysisWIInfos.size(); ++i, ++ai)
         {
             assert(ai != ae);
             WIAnalysis::WIDependancy dependency =
-                static_cast<WIDependancy>(modMD->pushInfo.pushAnalysisWIInfos[i].argDependency);
+                static_cast<WIAnalysis::WIDependancy>(m_ModMD->pushInfo.pushAnalysisWIInfos[i].argDependency);
             incUpdateDepend(&(*ai), dependency);
         }
     }
 }
 
-WIAnalysis::WIDependancy WIAnalysis::whichDepend(const Value* val)
+void WIAnalysis::print(
+    llvm::raw_ostream &OS, const llvm::Module* M) const
+{
+    Runner.print(OS, M);
+}
+
+void WIAnalysis::dump() const
+{
+    Runner.dump();
+}
+
+void WIAnalysis::incUpdateDepend(const llvm::Value* val, WIDependancy dep)
+{
+    Runner.incUpdateDepend(val, dep);
+}
+
+WIAnalysis::WIDependancy WIAnalysis::whichDepend(const llvm::Value* val)
+{
+    return Runner.whichDepend(val);
+}
+
+bool WIAnalysis::isUniform(const llvm::Value* val)
+{
+    return Runner.isUniform(val);
+}
+
+bool WIAnalysis::insideDivergentCF(const llvm::Value* val)
+{
+    return Runner.insideDivergentCF(val);
+}
+
+WIAnalysis::WIDependancy WIAnalysisRunner::whichDepend(const Value* val)
 {
   assert(m_pChangedNew->empty() && "set should be empty before query");
   assert(val && "Bad value");
@@ -484,7 +550,15 @@ WIAnalysis::WIDependancy WIAnalysis::whichDepend(const Value* val)
   return EL;
 }
 
-WIAnalysis::WIDependancy WIAnalysis::getDependency(const Value *val)
+bool WIAnalysisRunner::isUniform(const llvm::Value* val)
+{
+    if (!hasDependency(val))
+        return false;
+
+    return whichDepend(val) == WIAnalysis::UNIFORM;
+}
+
+WIAnalysis::WIDependancy WIAnalysisRunner::getDependency(const Value *val)
 {
   if (m_depMap.GetAttributeWithoutCreating(val) == m_depMap.end())
   {
@@ -500,7 +574,7 @@ WIAnalysis::WIDependancy WIAnalysis::getDependency(const Value *val)
   return m_depMap.GetAttributeWithoutCreating(val);
 }
 
-bool WIAnalysis::hasDependency(const Value *val)
+bool WIAnalysisRunner::hasDependency(const Value *val)
 {
 
   if (!isa<Instruction>(val) && !isa<Argument>(val))
@@ -522,7 +596,7 @@ static bool HasPhiUse(const llvm::Value* inst)
     return false;
 }
 
-void WIAnalysis::calculate_dep(const Value* val)
+void WIAnalysisRunner::calculate_dep(const Value* val)
 {
   assert(val && "Bad value");
 
@@ -535,7 +609,7 @@ void WIAnalysis::calculate_dep(const Value* val)
   assert(inst && "This Value is not an Instruction");
 
   bool hasOriginal = hasDependency(inst);
-  WIDependancy orig;
+  WIAnalysis::WIDependancy orig;
   // We only calculate dependency on unset instructions if all their operands
   // were already given dependency. This is good for compile time since these
   // instructions will be visited again after the operands dependency is set.
@@ -577,7 +651,7 @@ void WIAnalysis::calculate_dep(const Value* val)
     }
   }
 
-  WIDependancy dep = orig;
+  WIAnalysis::WIDependancy dep = orig;
 
   // LLVM does not have compile time polymorphisms
   // TODO: to make things faster we may want to sort the list below according
@@ -618,7 +692,7 @@ void WIAnalysis::calculate_dep(const Value* val)
   }
 }
 
-bool WIAnalysis::isRegionInvariant(const llvm::Instruction *defi, BranchInfo *brInfo, unsigned level)
+bool WIAnalysisRunner::isRegionInvariant(const llvm::Instruction *defi, BranchInfo *brInfo, unsigned level)
 {
     if (level >= 4)
     {
@@ -648,7 +722,7 @@ bool WIAnalysis::isRegionInvariant(const llvm::Instruction *defi, BranchInfo *br
     return true;
 }
 
-void WIAnalysis::update_cf_dep(const IGCLLVM::TerminatorInst *inst)
+void WIAnalysisRunner::update_cf_dep(const IGCLLVM::TerminatorInst *inst)
 {
   BasicBlock *blk = (BasicBlock *)(inst->getParent());
   BasicBlock *ipd = PDT->getNode(blk)->getIDom()->getBlock();
@@ -731,7 +805,7 @@ void WIAnalysis::update_cf_dep(const IGCLLVM::TerminatorInst *inst)
   } // end of influence-region block loop
 }
 
-void WIAnalysis::updatePHIDepAtJoin(BasicBlock *blk, BranchInfo *brInfo)
+void WIAnalysisRunner::updatePHIDepAtJoin(BasicBlock *blk, BranchInfo *brInfo)
 {
   for (BasicBlock::iterator I = blk->begin(), E = blk->end(); I != E; ++I)
   {
@@ -779,7 +853,7 @@ void WIAnalysis::updatePHIDepAtJoin(BasicBlock *blk, BranchInfo *brInfo)
   }
 }
 
-void WIAnalysis::updateDepMap(const Instruction *inst, WIAnalysis::WIDependancy dep)
+void WIAnalysisRunner::updateDepMap(const Instruction *inst, WIAnalysis::WIDependancy dep)
 {
   // Save the new value of this instruction
   m_depMap.SetAttribute(inst, dep);
@@ -800,7 +874,7 @@ void WIAnalysis::updateDepMap(const Instruction *inst, WIAnalysis::WIDependancy 
       }
   }
   // accumulate work-list for backward adjustment
-  if (dep == RANDOM)
+  if (dep == WIAnalysis::RANDOM)
   {
     EOPCODE eopcode = GetOpCode((Instruction*)inst);
     if (eopcode == llvm_insert)
@@ -815,7 +889,7 @@ void WIAnalysis::updateDepMap(const Instruction *inst, WIAnalysis::WIDependancy 
 }
 
 /// if one of insert-element is random, turn all the insert-elements into random
-void WIAnalysis::updateInsertElements(const InsertElementInst *inst)
+void WIAnalysisRunner::updateInsertElements(const InsertElementInst *inst)
 {
     /// find the first one in the sequence
     InsertElementInst *curInst = (InsertElementInst *)inst;
@@ -839,7 +913,7 @@ void WIAnalysis::updateInsertElements(const InsertElementInst *inst)
     }
 }
 
-WIAnalysis::WIDependancy WIAnalysis::calculate_dep_simple(const Instruction *I)
+WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep_simple(const Instruction *I)
 {
   // simply check that all operands are uniform, if so return uniform, else random
   const unsigned nOps = I->getNumOperands();
@@ -855,12 +929,13 @@ WIAnalysis::WIDependancy WIAnalysis::calculate_dep_simple(const Instruction *I)
   return WIAnalysis::UNIFORM;
 }
 
-WIAnalysis::WIDependancy WIAnalysis::calculate_dep(const LoadInst *inst)
+WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const LoadInst *inst)
 {
     return calculate_dep_simple(inst);
 }
 
-WIAnalysis::WIDependancy WIAnalysis::calculate_dep(const BinaryOperator* inst)
+WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(
+    const BinaryOperator* inst)
 {
   // Calculate the dependency type for each of the operands
   Value *op0 = inst->getOperand(0);
@@ -974,7 +1049,7 @@ WIAnalysis::WIDependancy WIAnalysis::calculate_dep(const BinaryOperator* inst)
   return WIAnalysis::RANDOM;
 }
 
-WIAnalysis::WIDependancy WIAnalysis::calculate_dep(const CallInst* inst)
+WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
 {
   // handle 3D specific intrinsics
   EOPCODE intrinsic_name = GetOpCode((Instruction*)(inst));
@@ -1070,7 +1145,7 @@ WIAnalysis::WIDependancy WIAnalysis::calculate_dep(const CallInst* inst)
     for (unsigned i = 0; i < numParams; ++i)
     {
       Value* op = inst->getArgOperand(i);
-      WIDependancy dep = getDependency(op);
+      WIAnalysis::WIDependancy dep = getDependency(op);
       if (WIAnalysis::UNIFORM != dep)
       {
         isAllUniform = false;
@@ -1085,9 +1160,10 @@ WIAnalysis::WIDependancy WIAnalysis::calculate_dep(const CallInst* inst)
   return WIAnalysis::RANDOM;
 }
 
-WIAnalysis::WIDependancy WIAnalysis::calculate_dep(const GetElementPtrInst* inst)
+WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(
+    const GetElementPtrInst* inst)
 {
-  // running over the all indices argumets except for the last 
+  // running over the all indices arguments except for the last 
   // here we assume the pointer is the first operand
   unsigned num = inst->getNumIndices();
   for (unsigned i=1; i < num; ++i)
@@ -1108,11 +1184,11 @@ WIAnalysis::WIDependancy WIAnalysis::calculate_dep(const GetElementPtrInst* inst
   return gep_conversion[depPtr][lastIndDep];
 }
 
-WIAnalysis::WIDependancy WIAnalysis::calculate_dep(const PHINode* inst)
+WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const PHINode* inst)
 {
   unsigned num = inst->getNumIncomingValues();
   bool foundFirst = 0;
-  WIDependancy totalDep;
+  WIAnalysis::WIDependancy totalDep;
 
   for (unsigned i=0; i < num; ++i) 
   {
@@ -1136,7 +1212,8 @@ WIAnalysis::WIDependancy WIAnalysis::calculate_dep(const PHINode* inst)
   return totalDep;
 }
 
-WIAnalysis::WIDependancy WIAnalysis::calculate_dep_terminator(const IGCLLVM::TerminatorInst* inst)
+WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep_terminator(
+    const IGCLLVM::TerminatorInst* inst)
 {
   // Instruction has no return value
   // Just need to know if this inst is uniform or not
@@ -1177,7 +1254,7 @@ WIAnalysis::WIDependancy WIAnalysis::calculate_dep_terminator(const IGCLLVM::Ter
   }
 }
 
-WIAnalysis::WIDependancy WIAnalysis::calculate_dep(const SelectInst* inst)
+WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const SelectInst* inst)
 {
   Value* op0 = inst->getOperand(0); // mask
   WIAnalysis::WIDependancy dep0 = getDependency(op0);
@@ -1204,7 +1281,7 @@ WIAnalysis::WIDependancy WIAnalysis::calculate_dep(const SelectInst* inst)
   return WIAnalysis::RANDOM;
 }
 
-bool WIAnalysis::TrackAllocaDep(const Value* I, AllocaDep& dep)
+bool WIAnalysisRunner::TrackAllocaDep(const Value* I, AllocaDep& dep)
 {
     for(Value::const_user_iterator use_it = I->user_begin(), use_e = I->user_end(); use_it != use_e; ++use_it)
     {
@@ -1259,9 +1336,9 @@ bool WIAnalysis::TrackAllocaDep(const Value* I, AllocaDep& dep)
 }
 
 
-WIAnalysis::WIDependancy WIAnalysis::calculate_dep(const AllocaInst* inst)
+WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const AllocaInst* inst)
 {
-    if(getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->platform.getWATable().WaNoA32ByteScatteredStatelessMessages)
+    if(m_CGCtx->platform.getWATable().WaNoA32ByteScatteredStatelessMessages)
     {
         // avoid generating A32 byte scatter on platforms not supporting it
         return WIAnalysis::RANDOM;
@@ -1285,7 +1362,7 @@ WIAnalysis::WIDependancy WIAnalysis::calculate_dep(const AllocaInst* inst)
         return WIAnalysis::RANDOM;
     }
     // otherwise assume the alloca is uniform by default
-    WIDependancy dep = WIAnalysis::UNIFORM;
+    WIAnalysis::WIDependancy dep = WIAnalysis::UNIFORM;
     for(auto it : depIt->second.stores)
     {
         if(hasDependency(&(*it)))
@@ -1304,7 +1381,7 @@ WIAnalysis::WIDependancy WIAnalysis::calculate_dep(const AllocaInst* inst)
     return dep;
 }
 
-WIAnalysis::WIDependancy WIAnalysis::calculate_dep(const CastInst* inst)
+WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CastInst* inst)
 {
   Value* op0 = inst->getOperand(0);
   WIAnalysis::WIDependancy dep0 = getDependency(op0);
@@ -1345,7 +1422,7 @@ WIAnalysis::WIDependancy WIAnalysis::calculate_dep(const CastInst* inst)
   }
 }
 
-WIAnalysis::WIDependancy WIAnalysis::calculate_dep(const VAArgInst* inst)
+WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const VAArgInst* inst)
 {
   assert(false && "Are we supporting this ??");
   return WIAnalysis::RANDOM;
@@ -1353,21 +1430,19 @@ WIAnalysis::WIDependancy WIAnalysis::calculate_dep(const VAArgInst* inst)
 
 // Set IsLxUniform/IsLyUniform/IsLxUniform to true if they are uniform;
 // do nothing otherwise.
-void WIAnalysis::checkLocalIdUniform(
+void WIAnalysisRunner::checkLocalIdUniform(
     Function* F,
     bool& IsLxUniform,
     bool& IsLyUniform,
     bool& IsLzUniform)
 {
-    CodeGenContext* pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    if (pCtx->type != ShaderType::OPENCL_SHADER)
+    if (m_CGCtx->type != ShaderType::OPENCL_SHADER)
     {
         return;
     }
 
-    MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-    FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(F);
-    ModuleMetaData *modMD = pCtx->getModuleMetaData();
+    FunctionInfoMetaDataHandle funcInfoMD = m_pMdUtils->getFunctionsInfoItem(F);
+    ModuleMetaData *modMD = m_CGCtx->getModuleMetaData();
     auto funcMD = modMD->FuncMD.find(F);
     
     int32_t WO_0 = -1, WO_1 = -1, WO_2 = -1;
