@@ -65,6 +65,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/MDFrameWork.h"
 
 #include "CompilerStats.h"
+#include <unordered_set>
 
 /************************************************************************
 This file contains the interface structure and functions to communicate
@@ -707,6 +708,8 @@ private:
         /// output: driver instrumentation
         TimeStats       *m_compilerTimeStats = nullptr;
         ShaderStats     *m_sumShaderStats = nullptr;
+        /// output: list of buffer IDs which are promoted to direct AS
+        std::unordered_set<unsigned> m_buffersPromotedToDirectAS;
         // float 16, float32 and float64 denorm mode
         Float_DenormMode    m_floatDenormMode16 = FLOAT_DENORM_FLUSH_TO_ZERO;
         Float_DenormMode    m_floatDenormMode32 = FLOAT_DENORM_FLUSH_TO_ZERO;
@@ -1098,6 +1101,7 @@ private:
         bool isSpirV;
         float m_ProfilingTimerResolution;
         bool m_ShouldUseNonCoherentStatelessBTI;
+        uint32_t m_numUAVs = 0;
 
         OpenCLProgramContext(
             const COCLBTILayout& btiLayout,

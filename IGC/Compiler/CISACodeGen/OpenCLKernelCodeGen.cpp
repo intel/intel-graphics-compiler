@@ -1682,6 +1682,8 @@ void COpenCLKernel::RecomputeBTLayout()
     // Get the number of UAVs and Resources from MD.
     int numUAVs = resAllocMD->uavsNumType;
     int numResources = resAllocMD->srvsNumType;
+    if (!numUAVs && m_Context->m_numUAVs)
+        numUAVs = m_Context->m_numUAVs;
 
     // Now, update the layout information
     USC::SShaderStageBTLayout* layout = ((COCLBTILayout *)m_pBtiLayout)->getModifiableLayout();

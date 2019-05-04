@@ -543,12 +543,14 @@ void PromoteResourceToDirectAS::PromoteBufferToDirectAS(Instruction* inst, Value
         LoadInst* newload = IGC::cloneLoad(load, pBuffer);
         load->replaceAllUsesWith(newload);
         load->eraseFromParent();
+        m_pCodeGenContext->m_buffersPromotedToDirectAS.insert(bufferID);
     }
     else if (StoreInst* store = dyn_cast<StoreInst>(inst))
     {
         StoreInst* newstore = IGC::cloneStore(store, store->getOperand(0), pBuffer);
         store->replaceAllUsesWith(newstore);
         store->eraseFromParent();
+        m_pCodeGenContext->m_buffersPromotedToDirectAS.insert(bufferID);
     }
     else if (GenIntrinsicInst* pIntr = dyn_cast<GenIntrinsicInst>(inst))
     {
@@ -677,6 +679,7 @@ void PromoteResourceToDirectAS::PromoteBufferToDirectAS(Instruction* inst, Value
             }
             oldInst->replaceAllUsesWith(newInst);
             oldInst->eraseFromParent();
+            m_pCodeGenContext->m_buffersPromotedToDirectAS.insert(bufferID);
         }
     }
 }
