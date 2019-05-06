@@ -108,11 +108,11 @@ CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(IgcOclTranslationCtx, 3, 2) {
                                                              CIF::Builtins::BufferSimple *tracingOptions,
                                                              uint32_t tracingOptionsCount,
                                                              void *gtPinInput) {
-      auto p = TranslateImpl(OclTranslationOutputInterface::GetVersion(), src, options, internalOptions, tracingOptions, tracingOptionsCount, gtPinInput, specConstantsIds, specConstantsValues);
+      auto p = TranslateImpl(OclTranslationOutputInterface::GetVersion(), src, specConstantsIds, specConstantsValues, options, internalOptions, tracingOptions, tracingOptionsCount, gtPinInput);
       return CIF::RAII::Pack<OclTranslationOutputInterface>(p);
   }
 
-  bool GetSpecConstantsInfoImpl(CIF::Builtins::BufferSimple *src,
+  virtual bool GetSpecConstantsInfoImpl(CIF::Builtins::BufferSimple *src,
                                 CIF::Builtins::BufferSimple *outSpecConstantsIds,
                                 CIF::Builtins::BufferSimple *outSpecConstantsSizes);
 
@@ -130,7 +130,7 @@ protected:
 
 CIF_GENERATE_VERSIONS_LIST_AND_DECLARE_INTERFACE_DEPENDENCIES(IgcOclTranslationCtx, IGC::OclTranslationOutput, CIF::Builtins::Buffer);
 CIF_MARK_LATEST_VERSION(IgcOclTranslationCtxLatest, IgcOclTranslationCtx);
-using IgcOclTranslationCtxTagOCL = IgcOclTranslationCtx<2>;    // Note : can tag with different version for
+using IgcOclTranslationCtxTagOCL = IgcOclTranslationCtxLatest; // Note : can tag with different version for
                                                                //        transition periods
 
 }
