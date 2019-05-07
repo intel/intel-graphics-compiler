@@ -254,7 +254,7 @@ namespace IGC
     {
         unsigned int bufId = 0;
         unsigned int eltId = 0;
-        int size = 0;
+        unsigned int size = 0;
     };
 
     bool operator < (const ConstantAddress &a, const ConstantAddress &b);

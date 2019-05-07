@@ -180,6 +180,13 @@ namespace IGC
         bool isStateless = false;
     };
 
+    struct SConstantAddrValue
+    {
+        ConstantAddress ca;
+        bool anyValue;
+        uint32_t value;
+    };
+
     struct SKernelProgram
     {
         SProgramOutput simd8;
@@ -209,7 +216,7 @@ namespace IGC
         SSimplePushInfo simplePushInfoArr[g_c_maxNumberOfBufferPushed];
 
         // Interesting constants for dynamic constant folding
-        std::vector<USC::ConstantAddrValue> m_pInterestingConstants;
+        std::vector<SConstantAddrValue> m_pInterestingConstants;
     };
 
     struct SPixelShaderKernelProgram : SKernelProgram

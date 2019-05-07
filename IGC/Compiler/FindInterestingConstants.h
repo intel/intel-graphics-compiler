@@ -71,7 +71,7 @@ namespace IGC
         unsigned int m_foldsToConst;
         unsigned int m_foldsToSource;
         bool m_constFoldBranch;
-        std::vector<USC::ConstantAddrValue> m_InterestingConstants;
+        std::vector<SConstantAddrValue> m_InterestingConstants;
 
         // Helper functions
         bool getConstantAddress(llvm::LoadInst &I, unsigned &bufId, unsigned &eltId, int &size_in_bytes);
