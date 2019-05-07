@@ -199,6 +199,7 @@ namespace IGC
         unsigned forcePixelShaderSIMDMode               = 0;
         bool pixelShaderDoNotAbortOnSpill               = false;
         bool UniformWGS                                 = false;
+        bool disableVertexComponentPacking              = false;
     };
 
     struct ComputeShaderInfo

@@ -81,8 +81,14 @@ void CVertexShader::AllocatePayload()
     AllocateConstants3DShader(offset);
 
     assert(offset % getGRFSize() == 0);
+
     // TODO: handle packed vertex attribute even if we pull
-    bool packedInput = m_Platform->hasPackedVertexAttr() && !isInputsPulled;
+    bool packedInput = m_Platform->hasPackedVertexAttr() &&
+                       !isInputsPulled
+        ;
+
+    m_ElementComponentPackingEnabled = packedInput;
+
     if(!packedInput)
     {
         for(uint i = 0; i < MAX_VSHADER_INPUT_REGISTERS_PACKAGEABLE; i++)
@@ -127,7 +133,8 @@ void CVertexShader::PackVFInput(unsigned int index, unsigned int& offset)
 
 CVertexShader::CVertexShader(llvm::Function *pFunc, CShaderProgram* pProgram) :
     CShader(pFunc, pProgram),
-    m_R1(nullptr)
+    m_R1(nullptr),
+    m_ElementComponentPackingEnabled(false)
 {
     for (int i = 0; i < MAX_VSHADER_INPUT_REGISTERS_PACKAGEABLE ; ++i )
     {
@@ -182,6 +189,8 @@ void CVertexShader::FillProgram(SVertexShaderKernelProgram* pKernelProgram)
 
     pKernelProgram->bindingTableEntryCount  = this->GetMaxUsedBindingTableEntryCount();
     pKernelProgram->BindingTableEntryBitmap = this->GetBindingTableEntryBitmap();
+
+    pKernelProgram->enableElementComponentPacking = m_ElementComponentPackingEnabled;
 
     for (int i = 0; i < MAX_VSHADER_INPUT_REGISTERS_PACKAGEABLE ; ++i )
     {

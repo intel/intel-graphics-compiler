@@ -88,6 +88,9 @@ private:
     /// Pointer to a variable representing physical GRF register R1 containing.
     CVariable*      m_R1;
  
+    // Indicates if Vertex Elements Components packing was applied.
+    bool m_ElementComponentPackingEnabled;
+
     /// Bitmask of input registers that are used
     unsigned char     m_ElementComponentEnableMask[MAX_VSHADER_INPUT_REGISTERS_PACKAGEABLE];
 

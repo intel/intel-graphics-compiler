@@ -283,6 +283,8 @@ namespace IGC
         OctEltUnit SBEURBReadOffset;
         OctEltUnit URBAllocationSize;
         QuadEltUnit MaxNumInputRegister;
+        
+        bool enableElementComponentPacking;
         /// corresponds to 3DSTATE_VF_COMPONENT_PACKING
         unsigned char ElementComponentDeliverMask[32];
         /// vertex ID information
