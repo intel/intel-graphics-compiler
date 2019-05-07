@@ -284,14 +284,6 @@ class G4_BB
     // if the block is under simd flow control
     bool inSimdFlow;
 
-    //list of all the basic blocks in the function
-    //of which this is the first basic block.
-    //the list may contain blocks that are disconnected
-    //from CFG
-    std::map<int, G4_BB*> BBlist;
-    G4_BB * start_block;
-
-
     // the physical pred/succ for this block (i.e., the pred/succ for this block in the BB list)
     // Note that some transformations may rearrange BB layout, so for safety it's best to recompute
     // this
@@ -377,7 +369,7 @@ public:
         traversal(0), idom(NULL), beforeCall(NULL),
         afterCall(NULL), calleeInfo(NULL), BBType(G4_BB_NONE_TYPE),
         inNaturalLoop(false), loopNestLevel(0), scopeID(0), inSimdFlow(false),
-        start_block(NULL), physicalPred(NULL), physicalSucc(NULL), parent(fg),
+        physicalPred(NULL), physicalSucc(NULL), parent(fg),
         instList(alloc), hasSendInBB(false)
     {
     }
@@ -389,14 +381,6 @@ public:
 
     FlowGraph& getParent() const { return *parent; }
     G4_Kernel& getKernel() const;
-    void    addToBBList(int key, G4_BB* b){BBlist[key] = b;}
-    void    clearBBList(){BBlist.clear();}
-    bool    existsInBBList(int key){ return BBlist.find(key) != BBlist.end();}
-    std::map<int, G4_BB*>::iterator getBBListStart(){return BBlist.begin();}
-    std::map<int, G4_BB*>::iterator getBBListEnd(){return BBlist.end();}
-    void removeBlockFromBBList(int key) { BBlist.erase(key); }
-    void setStartBlock(G4_BB * b) {start_block = b;}
-    G4_BB * getStartBlock() {return start_block;}
 
     bool     isLastInstEOT();    // to check if the last instruction in list is EOT
     G4_opcode    getLastOpcode() const;
@@ -650,6 +634,7 @@ typedef std::pair<BB_LIST_ITER, BB_LIST_ITER> GRAPH_CUT_BOUNDS;
 
 namespace vISA
 {
+
 class G4_Kernel; // forward declaration
 class FlowGraph
 {
@@ -692,6 +677,10 @@ private:
 
     // stores all endift inst that have labels associated with it
     std::unordered_map<G4_INST*, G4_Label*> endifWithLabels;
+
+    // label to subroutine BB's map. This is used to add edges between subroutine caller/callee
+    // ToDo: We should use FuncInfo instead, but at the time it was needed FuncInfo was not constructed yet..
+    std::unordered_map<G4_Label*, std::vector<G4_BB*>> subroutines;
 
 public:
     typedef std::pair<G4_BB*, G4_BB*> Edge;
@@ -852,8 +841,7 @@ public:
     // Merge multiple returns into one, prepare for spill code insertion
     //
     void mergeReturn(Label_BB_Map& map, FuncInfoHashTable& funcInfoTable);
-    void searchReturn(G4_BB* bb, G4_BB* returnAddr, BB_LIST & retBBList);
-    G4_BB* mergeSubRoutineReturn(G4_BB* bb, G4_BB* returnAddr, BB_LIST & retBBList);
+    G4_BB* mergeSubRoutineReturn(G4_Label* subroutine);
     void decoupleReturnBlock(G4_BB*);
     void decoupleInitBlock(G4_BB*, FuncInfoHashTable& funcInfoTable);
     void decoupleExitBlock(G4_BB*);
@@ -889,7 +877,7 @@ public:
     }
 
     void handleReturn(std::map<std::string, G4_BB*>& map, FuncInfoHashTable& funcInfoTable);
-    void linkReturnAddr(std::map<std::string, G4_BB*>& map, G4_BB* bb, G4_BB* returnAddr);
+    void linkReturnAddr(G4_BB* bb, G4_BB* returnAddr);
 
     void handleExit(G4_BB* lastKernelBB);
     void handleWait();

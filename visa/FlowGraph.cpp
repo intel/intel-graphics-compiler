@@ -594,14 +594,23 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
     //
     // create the entry block of the flow graph
     //
-    G4_BB* fstartBB = NULL;
-    G4_BB* curr_BB = fstartBB = beginBB(labelMap, instlist.front());
+    G4_BB* curr_BB = beginBB(labelMap, instlist.front());
 
     kernelInfo = new (mem)FuncInfo(UINT_MAX, curr_BB, NULL);
 
     std::vector<G4_BB*> subroutineStartBB; // needed by handleExit()
 
     bool hasSIMDCF = false, hasNoUniformGoto = false;
+    G4_Label* currSubroutine = nullptr;
+
+    auto addToSubroutine = [this](G4_BB* bb, G4_Label* currSubroutine)
+    {
+        if (currSubroutine)
+        {
+            subroutines[currSubroutine].push_back(bb);
+        }
+    };
+
     while (!instlist.empty())
     {
         INST_LIST_ITER iter = instlist.begin();
@@ -613,18 +622,7 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
         // remove inst i from instlist and relink it to curr_BB's instList
         //
         curr_BB->splice(curr_BB->end(), instlist, iter);
-        G4_INST* next_i = (instlist.empty()) ? NULL : instlist.front();
-
-        // If this block is a start of the function
-        if (i->isLabel() && ((G4_Label*)i->getSrc(0))->isFuncLabel() && fstartBB->getId() != curr_BB->getId())
-        {
-            fstartBB = curr_BB;
-        }
-        else if (fstartBB->getId() != curr_BB->getId() && !fstartBB->existsInBBList(curr_BB->getId()))
-        {
-            fstartBB->addToBBList(curr_BB->getId(), curr_BB);
-            curr_BB->setStartBlock(fstartBB);
-        }
+        G4_INST* next_i = (instlist.empty()) ? nullptr : instlist.front();
 
         if (i->isSend())
         {
@@ -633,6 +631,9 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
 
         if (i->isLabel() && i->getLabel()->isFuncLabel())
         {
+            std::vector<G4_BB*> bbvec;
+            subroutines[i->getLabel()] = bbvec; 
+            currSubroutine = i->getLabel();
             subroutineStartBB.push_back(curr_BB);
         }
 
@@ -642,8 +643,10 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
         //
         if (i->isFlowControl() && i->opcode() != G4_endif)
         {
+            addToSubroutine(curr_BB, currSubroutine);
             G4_BB* next_BB = beginBB(labelMap, next_i);
-            // next_BB may be null if the kernel ends on an CF inst (e.g., backwward goto/jmpi)
+
+            // next_BB may be null if the kernel ends on an CF inst (e.g., backward goto/jmpi)
             // This should be ok because we should not fall-through to next_BB in such case
             // (i.e., goto/jmpi must not be predicated)
             {
@@ -792,24 +795,23 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
         }  // flow control
         else if (curr_BB->isLastInstEOT())
         {
+            addToSubroutine(curr_BB, currSubroutine);
             //this is a send instruction that marks end of thread.
             //the basic block will end here with no outgoing links
             curr_BB = beginBB(labelMap, next_i);
         }
-        else
+        else if (next_i && next_i->isLabel())
         {
-            //
-            // examine next inst to see if it is a label inst (beginning of a BB)
-            //
-            if (next_i != NULL &&  // not the last inst
-                next_i->isLabel())
-            {
-                G4_BB* next_BB = beginBB(labelMap, next_i);
-                addPredSuccEdges(curr_BB, next_BB);
-                curr_BB = next_BB;
-            }
+            addToSubroutine(curr_BB, currSubroutine);
+            G4_BB* next_BB = beginBB(labelMap, next_i);
+            addPredSuccEdges(curr_BB, next_BB);
+            curr_BB = next_BB;
         }
-    }       // while
+    }
+    if (curr_BB)
+    {
+        addToSubroutine(curr_BB, currSubroutine);
+    }
 
     // we can do this only after fg is constructed
     pKernel->calculateSimdSize();
@@ -1259,18 +1261,19 @@ void FlowGraph::handleReturn(std::map<std::string, G4_BB*>& labelMap, FuncInfoHa
                 // the fall through BB must be the front
                 //
                 G4_BB* retAddr = bb->Succs.front();
-                prepareTraversal();
-                linkReturnAddr(labelMap, subBB, retAddr);
+                linkReturnAddr(subBB, retAddr);
 
                 // set callee info for CALL
                 FuncInfoHashTable::iterator calleeInfoLoc = funcInfoHashTable.find(subBB->getId());
 
-                if (calleeInfoLoc != funcInfoHashTable.end()) {
+                if (calleeInfoLoc != funcInfoHashTable.end()) 
+                {
                     (*calleeInfoLoc).second->incrementCallCount();
                     bb->setCalleeInfo((*calleeInfoLoc).second);
                     doIPA = true;
                 }
-                else {
+                else 
+                {
                     unsigned funcId = (unsigned int)funcInfoHashTable.size();
                     FuncInfo *funcInfo = new (mem)FuncInfo(
                         funcId, subBB, retAddr->Preds.front());
@@ -1312,42 +1315,28 @@ void FlowGraph::handleReturn(std::map<std::string, G4_BB*>& labelMap, FuncInfoHa
 }
 
 
-void FlowGraph::linkReturnAddr(std::map<std::string, G4_BB*>& map, G4_BB* bb, G4_BB* returnAddr)
+void FlowGraph::linkReturnAddr(G4_BB* entryBB, G4_BB* returnAddr)
 {
-    if (bb->isAlreadyTraversed(traversalNum))
-        return;
-    bb->markTraversed(traversalNum);
 
-    //
-    // check if bb contain RETURN (last inst)
-    //
+    assert(entryBB->size() > 0 && entryBB->front()->isLabel() && "BB should start with a label");
+    auto label = entryBB->front()->getLabel();
+    assert(subroutines.count(label) && "can't find subroutine label");
+    auto subroutineBBs = subroutines[label];
 
-    if (!bb->empty() && bb->back()->isReturn())
+    for (auto bb : subroutineBBs)
     {
-        G4_INST* last = bb->back();
-        //
-        // check the direct recursive call here!
-        //
-        if (bb == returnAddr && hasStackCalls == false)
+        if (!bb->empty() && bb->back()->isReturn())
         {
-            MUST_BE_TRUE(false,
-                "ERROR: Do not support recursive subroutine call!");
+            //
+            // check the direct recursive call here!
+            //
+            if (bb == returnAddr && hasStackCalls == false)
+            {
+                MUST_BE_TRUE(false,
+                    "ERROR: Do not support recursive subroutine call!");
+            }
+            addPredSuccEdges(bb, returnAddr, false); // IMPORTANT: add to the back to allow fall through edge is in the front, which is used by fallThroughBB()
         }
-        addPredSuccEdges(bb, returnAddr, false); // IMPORTANT: add to the back to allow fall through edge is in the front, which is used by fallThroughBB()
-
-        if (last->getPredicate() != NULL)
-        {
-            MUST_BE_TRUE(bb->Succs.size() > 1, ERROR_FLOWGRAPH);
-            linkReturnAddr(map, bb->Succs.front(), returnAddr);     // checked, the fall through BB must be the front
-        }
-
-        return;
-    }
-    else
-    {
-        // handle returns in BB that are not part of CFG.
-        for (std::map<int, G4_BB*>::iterator it = bb->getBBListStart(), itEnd = bb->getBBListEnd(); it != itEnd; ++it)
-            linkReturnAddr(map, it->second, returnAddr);
     }
 }
 
@@ -1362,89 +1351,40 @@ void FlowGraph::linkReturnAddr(std::map<std::string, G4_BB*>& map, G4_BB* bb, G4
 //
 void FlowGraph::mergeReturn(Label_BB_Map& map, FuncInfoHashTable& funcInfoHashTable)
 {
-    BB_LIST returnBBList;
-    for (BB_LIST_ITER it = BBs.begin(), itEnd = BBs.end(); it != itEnd; ++it)
+
+    for (auto I = subroutines.begin(), E = subroutines.end(); I != E; ++I)
     {
-        G4_BB* bb = (*it);
+        auto label = I->first;
+        G4_BB* subBB = I->second.front();
+        G4_BB* mergedExitBB = mergeSubRoutineReturn(label);
 
-        if (bb->isEndWithCall())
+        // update callee exit block info
+        FuncInfoHashTable::iterator calleeInfoLoc = funcInfoHashTable.find(subBB->getId());
+        // it's possible for the subroutine to never be called (e.g., kernel function)
+        if (calleeInfoLoc != funcInfoHashTable.end() && mergedExitBB) 
         {
-            G4_INST* last = bb->back();
-            if (last->getSrc(0)->isLabel())
-            {
-                // find the  subroutine BB and return Addr BB
-                std::string subName = last->getLabelStr();
-                G4_BB* subBB = map[subName];
-                G4_BB* retAddr = bb->BBAfterCall();
-                prepareTraversal();
-                returnBBList.clear();
-                searchReturn(subBB, retAddr, returnBBList);
-                G4_BB* mergedExitBB = mergeSubRoutineReturn(bb, retAddr, returnBBList);
-
-                // update callee exit block info
-                FuncInfoHashTable::iterator calleeInfoLoc = funcInfoHashTable.find(subBB->getId());
-                MUST_BE_TRUE(calleeInfoLoc != funcInfoHashTable.end(), ERROR_FLOWGRAPH);
-                if (mergedExitBB) {
-                    (*calleeInfoLoc).second->getExitBB()->unsetBBType(G4_BB_EXIT_TYPE);
-                    mergedExitBB->setBBType(G4_BB_EXIT_TYPE);
-                    (*calleeInfoLoc).second->updateExitBB(mergedExitBB);
-                }
-            }
-        }
-    }
-
-}
-
-void FlowGraph::searchReturn(G4_BB* bb, G4_BB* returnAddr, BB_LIST & retBBList)
-{
-    if (bb->isAlreadyTraversed(traversalNum))
-        return;
-    bb->markTraversed(traversalNum);
-
-    //
-    // check if bb contain RETURN (last inst)
-    //
-    G4_INST* last = (bb->empty()) ? NULL : bb->back();
-    if (last && bb->isSuccBB(returnAddr) && last->isReturn())
-    {
-        if (bb == returnAddr && hasStackCalls == false)
-        {
-            MUST_BE_TRUE(false,
-                "ERROR: Do not support recursive subroutine call!");
-        }
-        retBBList.push_back(bb);            // if bb contained return, check in to retBBList
-
-        if (last->getPredicate() != NULL)
-        {
-            MUST_BE_TRUE(bb->Succs.size() > 1, ERROR_FLOWGRAPH);
-            searchReturn(bb->Succs.front(), returnAddr, retBBList);
-        }
-        return;
-    }
-    else
-    {
-        if (bb->isEndWithCall())
-        {
-            searchReturn(bb->BBAfterCall(), returnAddr, retBBList);
-        }
-        else if (bb->getBBType() == G4_BB_EXIT_TYPE)
-        {
-            // Do nothing.
-        }
-        else
-        {
-            for (std::map<int, G4_BB*>::iterator it = bb->getBBListStart(), itEnd = bb->getBBListEnd(); it != itEnd; ++it)
-            {
-                searchReturn(it->second, returnAddr, retBBList);
-            }
+            (*calleeInfoLoc).second->getExitBB()->unsetBBType(G4_BB_EXIT_TYPE);
+            mergedExitBB->setBBType(G4_BB_EXIT_TYPE);
+            (*calleeInfoLoc).second->updateExitBB(mergedExitBB);
         }
     }
 }
 
-G4_BB* FlowGraph::mergeSubRoutineReturn(G4_BB* bb, G4_BB* returnAddr, BB_LIST & retBBList)
+G4_BB* FlowGraph::mergeSubRoutineReturn(G4_Label* subroutineLabel)
 {
 
-    G4_BB* newBB = NULL;
+    G4_BB* newBB = nullptr;
+
+    auto subroutineBB = subroutines[subroutineLabel];
+
+    std::vector<G4_BB*> retBBList;
+    for (auto bb : subroutineBB)
+    {
+        if (!bb->empty() && bb->back()->isReturn())
+        {
+            retBBList.push_back(bb);
+        }
+    }
 
     if (retBBList.size() > 1)     // For return number >1, need to merge returns
     {
@@ -1457,12 +1397,12 @@ G4_BB* FlowGraph::mergeSubRoutineReturn(G4_BB* bb, G4_BB* returnAddr, BB_LIST & 
         BBs.insert(BBs.end(), newBB);
         // choose the last BB in retBBList as a candidate
         G4_BB* candidateBB = *(retBBList.rbegin());
-        newBB->setStartBlock(candidateBB->getStartBlock());
         // Add <newBB, succBB> edges
         G4_INST* last = candidateBB->back();
         BB_LIST_ITER succIt = (last->getPredicate() == NULL) ? candidateBB->Succs.begin() : (++candidateBB->Succs.begin());
         BB_LIST_ITER succItEnd = candidateBB->Succs.end();
-
+ 
+        // link new ret BB with each call site
         for (; succIt != succItEnd; ++succIt) {
             addPredSuccEdges(newBB, (*succIt), false);
         }
@@ -1481,7 +1421,7 @@ G4_BB* FlowGraph::mergeSubRoutineReturn(G4_BB* bb, G4_BB* returnAddr, BB_LIST & 
         //
         // Deal with all return BBs
         //
-        for (BB_LIST_ITER it = retBBList.begin(); it != retBBList.end(); ++it)
+        for (auto it = retBBList.begin(); it != retBBList.end(); ++it)
         {
             G4_BB * retBB = (*it);
             if (retBB->getId() == newBB->getId())
@@ -1765,17 +1705,6 @@ void FlowGraph::normalizeSubRoutineBB(FuncInfoHashTable& funcInfoTable)
             }
         }
     }
-
-    /*
-    Clearing BB list, just a pre-caution incase
-    later phases add/remove BBs and this list is
-    not kept consistent.
-    */
-    for (BB_LIST_ITER it = BBs.begin(), itEnd = BBs.end(); it != itEnd; ++it)
-    {
-        G4_BB* bb = (*it);
-        bb->clearBBList();
-    }
 }
 
 //
@@ -1837,7 +1766,7 @@ void FlowGraph::removeUnreachableBlocks()
 
     for (BB_LIST_ITER it = BBs.begin(), itEnd = BBs.end(); it != itEnd; ++it)
     {
-        if ((*it)->getPreId() == UINT_MAX && (*it)->getStartBlock() == NULL)
+        if ((*it)->getPreId() == UINT_MAX)
         {
             // Entire function is unreachable. So it should be ok
             // to delete the return as well.
@@ -1859,8 +1788,7 @@ void FlowGraph::removeUnreachableBlocks()
             //leaving dangling BBs with return/EOT in for now.
             //workaround to handle unreachable return
             //for example return after infinite loop.
-            if (((bb->isEndWithFRet() || (bb->size() > 0 && (G4_INST*)bb->back()->isReturn())) &&
-                (bb->getStartBlock() && canRemove[bb->getStartBlock()->getId()] == false)) ||
+            if (((bb->isEndWithFRet() || (bb->size() > 0 && (G4_INST*)bb->back()->isReturn()))) ||
                 (bb->size() > 0 && bb->back()->isEOT()))
             {
                 it++;
@@ -1872,10 +1800,6 @@ void FlowGraph::removeUnreachableBlocks()
                 removePredSuccEdges(bb, bb->Succs.front());
             }
 
-            if (bb->getStartBlock() != NULL)
-            {
-                bb->getStartBlock()->removeBlockFromBBList(bb->getId());
-            }
             BB_LIST_ITER prev = it;
             prev++;
             BBs.erase(it);
@@ -1987,10 +1911,6 @@ void FlowGraph::removeRedundantLabels()
                 continue;
             }
 
-            if (bb->getStartBlock() != NULL)
-            {
-                bb->getStartBlock()->removeBlockFromBBList(bb->getId());
-            }
             bb->clear();
             BB_LIST_ITER rt = it++;
             BBs.erase(rt);
@@ -2245,13 +2165,7 @@ void FlowGraph::removeRedundantLabels()
             {
                 MUST_BE_TRUE(false, ERROR_FLOWGRAPH);
             }
-            //
-            // Remove the block to be removed.
-            //
-            if (bb->getStartBlock() != NULL)
-            {
-                bb->getStartBlock()->removeBlockFromBBList(bb->getId());
-            }
+
             bb->Succs.clear();
             bb->Preds.clear();
             bb->clear();
@@ -2584,32 +2498,8 @@ void FlowGraph::reassignBlockIDs()
     {
         G4_BB* bb = *it;
         bb->setId(i);
-        if (bb->getBBListStart() != bb->getBBListEnd())
-            function_start_list.push_back(bb);
         i++;
         MUST_BE_TRUE(i <= getNumBB(), ERROR_FLOWGRAPH);
-    }
-
-    /*
-    re-does a mapping of ids to basic blocks, to keep them consistent.
-    This function is called when basic blocks are removed.
-    Later on map is accessed by block id.
-    So need to re-map with correct ids.
-    */
-    for (BB_LIST_ITER it = function_start_list.begin(); it != function_start_list.end(); ++it)
-    {
-        G4_BB* bb = *it;
-        std::list<G4_BB*> temp_list;
-        for (std::map<int, G4_BB*>::iterator it2 = bb->getBBListStart(); it2 != bb->getBBListEnd(); it2++)
-        {
-            temp_list.push_back(it2->second);
-        }
-        bb->clearBBList();
-        for (std::list<G4_BB*>::iterator it2 = temp_list.begin(); it2 != temp_list.end(); it2++)
-        {
-            G4_BB* bb_temp = *it2;
-            bb->addToBBList(bb_temp->getId(), bb_temp);
-        }
     }
 
     numBBId = i;
