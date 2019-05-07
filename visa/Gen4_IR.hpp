@@ -208,6 +208,7 @@ typedef enum
     MATH_RSQRTM = 0xF
 } G4_MathOp;
 
+
 typedef vISA::std_arena_based_allocator<vISA::G4_INST*> INST_LIST_NODE_ALLOCATOR;
 
 typedef std::list<vISA::G4_INST*, INST_LIST_NODE_ALLOCATOR>           INST_LIST;
@@ -279,10 +280,14 @@ private:
     G4_Operand *m_sti;
     G4_Operand *m_bti;
 
+    SFID        sfid;
+    int         src1Len;
+    bool        eotAfterMessage = false;
+
 public:
     static const int SLMIndex = 0xFE;
 
-    G4_SendMsgDescriptor( uint32_t fCtrl, uint32_t regs2rcv, uint32_t regs2snd,
+    G4_SendMsgDescriptor(uint32_t fCtrl, uint32_t regs2rcv, uint32_t regs2snd,
         uint32_t fID, bool isEot, uint16_t extMsgLength, uint32_t extFCtrl,
         bool isRead, bool isWrite, G4_Operand *bti, G4_Operand *sti, IR_Builder& builder);
 
@@ -294,10 +299,19 @@ public:
                         G4_Operand *bti,
                         G4_Operand *sti);
 
+    /// Preferred constructor takes an explicit SFID and src1 length
+    G4_SendMsgDescriptor(
+        SFID sfid,
+        uint32_t desc,
+        uint32_t extDesc,
+        int src1Len,
+        bool isRead,
+        bool isWrite,
+        G4_Operand *bti);
+
     void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
 
-    static uint32_t createExtDesc(SFID funcID,
-                                    bool isEot = false)
+    static uint32_t createExtDesc(SFID funcID, bool isEot = false)
     {
         return createExtDesc(funcID, isEot, 0, 0);
     }
@@ -339,59 +353,33 @@ public:
         return data.value;
     }
 
-    static SFID getFuncId(uint32_t extDesc)
-    {
-        ExtDescData data;
-        data.value = extDesc;
-        return intToSFID(data.layout.funcID);
-    }
-    SFID getFuncId() const
-    {
-        return intToSFID(extDesc.layout.funcID);
+    SFID      getFuncId() const {return sfid;}
+
+    uint32_t getFuncCtrl() const {
+        return desc.layout.funcCtrl;
     }
 
-    static uint32_t getFuncCtrl(uint32_t msgDesc)
-    {
-        DescData data;
-        data.value = msgDesc;
-        return data.layout.funcCtrl;
-    }
-    uint32_t getFuncCtrl() const { return desc.layout.funcCtrl; }
+    // bits [18:14] of the message descriptor for certain messages
+    uint32_t getMessageType() const;
 
-    // bit 14-18 of the message descriptor
-    static uint32_t getMessageType(uint32_t msgDesc)
-    {
-        return (getFuncCtrl(msgDesc) >> 14) & 0x1F;
-    }
-    uint32_t getMessageType() const
-    {
-        return G4_SendMsgDescriptor::getMessageType(desc.value);
-    }
 
-    bool isEOTInst() const { return extDesc.layout.eot; }
-    void setEOT() { extDesc.layout.eot = true; }
-    uint16_t getExtFuncCtrl() const { return extDesc.layout.extFuncCtrl; }
+    bool isEOTInst() const { return eotAfterMessage; }
+    void setEOT();
+
+    uint16_t getExtFuncCtrl() const {
+        MUST_BE_TRUE(isHDC(), "getExtFuncCtrl on non-HDC message");
+        return extDesc.layout.extFuncCtrl;
+    }
 
     /* Info methods */
     uint16_t ResponseLength() const { return desc.layout.rspLength; }
     uint16_t MessageLength() const { return desc.layout.msgLength; }
-    uint16_t extMessageLength() const { return extDesc.layout.extMsgLength; }
-    static uint16_t MaxResponseLength() { return MAX_SEND_RESP_LEN; }
-    static uint16_t MaxMessageLength() { return MAX_SEND_MESG_LEN; }
-    bool isCPSEnabled() const { return extDesc.layout.cps != 0; }
+    uint16_t extMessageLength() const { return (uint16_t)src1Len; }
 
-    bool isScratchRW() const
-    {
-        // scratch msg: DC0, bit 18 = 1
-        return getFuncId() == SFID::DP_DC && ((getFuncCtrl() & 0x40000u) != 0);
-    }
-
+    bool isCPSEnabled() const {return extDesc.layout.cps != 0;}
     bool isDataPortRead() const { return readMsg; }
     bool isDataPortWrite() const { return writeMsg; }
-    bool isSampler() const
-    {
-        return getFuncId() == SFID::SAMPLER;
-    }
+    bool isSampler() const {return getFuncId() == SFID::SAMPLER;}
     bool isHDC() const
     {
         auto funcID = getFuncId();
@@ -404,60 +392,10 @@ public:
         return funcID == SFID::GATEWAY || funcID == SFID::SPAWNER;
     }
 
-    bool isIntAtomicMessage() const
-    {
-        auto funcID = getFuncId();
-        if (funcID != SFID::DP_DC1)
-            return false;
+    bool isAtomicMessage() const;
+    uint16_t getAtomicOp() const;
 
-        uint16_t msgType = getMessageType();
-        if (msgType == DC1_UNTYPED_ATOMIC || msgType == DC1_A64_ATOMIC)
-        {
-            return true;
-        }
-        if (getGenxPlatform() >= GENX_SKL)
-        {
-            if (msgType == DC1_TYPED_ATOMIC)
-                return true;
-        }
-        return false;
-    }
-
-    bool isFloatAtomicMessage() const
-    {
-        auto funcID = getFuncId();
-        if (funcID != SFID::DP_DC1)
-            return false;
-
-        uint16_t msgType = getMessageType();
-        if (getGenxPlatform() >= GENX_SKL)
-        {
-            if (msgType == DC1_UNTYPED_FLOAT_ATOMIC ||
-                msgType == DC1_A64_UNTYPED_FLOAT_ATOMIC)
-                return true;
-        }
-        return false;
-    }
-
-    bool isAtomicMessage() const
-    {
-        return isIntAtomicMessage() || isFloatAtomicMessage();
-    }
-
-    uint16_t getAtomicOp() const
-    {
-        assert(isAtomicMessage() && "ICE: getting atomicOp from non-atomic message!");
-        uint32_t funcCtrl = getFuncCtrl();
-        if (isIntAtomicMessage())
-        {
-            // bits: 11:8
-            return (uint16_t)((funcCtrl >> 8) & 0xF);
-        }
-
-        // must be float Atomic
-        // bits: 10:8
-        return (int16_t)((funcCtrl >> 8) & 0x7);
-    }
+    bool isSLMMessage() const;
 
     bool isBarrierMsg() const
     {
@@ -465,161 +403,77 @@ public:
         uint32_t funcCtrl = getFuncCtrl();
         return funcID == SFID::GATEWAY && (funcCtrl & 0xFF) == 0x4;
     }
-
-    bool isSLMMessage() const;
-
-    bool isSendBarrier() const
-    {
-        if (isAtomicMessage())
-        {
-            // atomic write
-            return true;
-        }
-        if (isBarrierMsg())
-        {
-            return true;
-        }
-
-        return false;
+    bool isSendBarrier() const {
+        return isAtomicMessage() || isBarrierMsg();  // atomic write or explicit barrier
     }
 
-    unsigned int getEnabledChannelNum()
-    {
-        uint32_t funcCtrl = getFuncCtrl();
-
-        funcCtrl =  ( funcCtrl >> MSG_BLOCK_SIZE_OFFSET ) & 0xf;
-        switch(funcCtrl)
-        {
-            case 0x7:
-            case 0xB:
-            case 0xD:
-            case 0xE: return 1;
-            case 0x3:
-            case 0x5:
-            case 0x6:
-            case 0x9:
-            case 0xA:
-            case 0xC: return 2;
-            case 0x1:
-            case 0x2:
-            case 0x4:
-            case 0x8: return 3;
-            case 0x0: return 4;
-            case 0xF: return 0;
-            default: MUST_BE_TRUE(false, "Illegal Channel Mask Number");
-        }
-
-        return 0;
-    }
-
-    unsigned int getBlockNum()
-    {
-        uint32_t funcCtrl = getFuncCtrl();
-
-        funcCtrl =  ( funcCtrl >> MSG_BLOCK_NUMBER_OFFSET ) & 0x3;
-        switch(funcCtrl)
-        {
-            case SVM_BLOCK_NUM_1: return 1;
-            case SVM_BLOCK_NUM_2: return 2;
-            case SVM_BLOCK_NUM_4: return 4;
-            case SVM_BLOCK_NUM_8: return 8;
-            default: MUST_BE_TRUE(false, "Illegal SVM block number (should be 1, 2, 4, or 8).");
-        }
-
-        return 0;
-    }
-
-    unsigned int getBlockSize()
-    {
-        uint32_t funcCtrl = getFuncCtrl();
-
-        funcCtrl =  ( funcCtrl >> MSG_BLOCK_SIZE_OFFSET ) & 0x3;
-        switch (funcCtrl)
-        {
-            case SVM_BLOCK_TYPE_BYTE: return 1;
-            case SVM_BLOCK_TYPE_DWORD: return 4;
-            case SVM_BLOCK_TYPE_QWORD: return 8;
-            default: MUST_BE_TRUE(false, "Illegal SVM block size (should be 1, 4, or 8).");
-        }
-        return 0;
-    }
-
+    /////////////////////////////////////////////////////////
+    // the following may only be called on HDC messages
+    unsigned int getEnabledChannelNum() const;
+    unsigned int getBlockNum() const;
+    unsigned int getBlockSize() const;
     // true if the message is either oword read or unaligned oword read
-    bool isOwordLoad() const
-    {
-        uint32_t funcCtrl = getFuncCtrl();
-        auto funcID = getFuncId();
-        uint16_t msgType = ( funcCtrl >> IVB_MSG_TYPE_OFFSET ) & 0xF;
-        //SFID = data cache, bit 14-17= 0 or 1
-        return funcID == SFID::DP_DC && ( msgType == 0 || msgType == 1);
-    }
+    bool isOwordLoad() const;
 
+    // TODO: this should be eliminated
+    // read-only implies that it doesn't write (e.g. an atomic)
     static bool isReadOnlyMessage(uint32_t msgDesc, uint32_t exDesc);
+
 
     // return offset in unit of GRF
     uint16_t getScratchRWOffset() const
     {
         MUST_BE_TRUE(isScratchRW(), "Message is not scratch space R/W.");
-        return ( getFuncCtrl() & 0xFFFu );
+        return (getFuncCtrl() & 0xFFFu);
     }
-    // number of GRFs to read/write
 
-    //Block Size indicates the number of simd-8 registers to be read|written.
-    //11: 8 registers
-    //10: 4 registers
-    //01: 2 registers
-    //00: 1 register
+    // number of GRFs to read/write
+    //
+    // Block Size indicates the number of simd-8 registers to be read|written.
+    //  11: 8 registers
+    //  10: 4 registers
+    //  01: 2 registers
+    //  00: 1 register
     uint16_t getScratchRWSize() const
     {
+        MUST_BE_TRUE(isScratchRW(), "Message is not scratch space R/W.");
         uint16_t bitV = ((getFuncCtrl() & 0x3000u) >> 12);
         return  0x1 << bitV;
+    }
+    bool isScratchRW() const
+    {
+        // scratch msg: DC0, bit 18 = 1
+        return getFuncId() == SFID::DP_DC && ((getFuncCtrl() & 0x40000u) != 0);
     }
     bool isScratchRead() const
     {
         if( !isScratchRW() )
             return false;
-        return ( (getFuncCtrl() & 0x20000u) == 0 );
+        return ((getFuncCtrl() & 0x20000u) == 0);
     }
-
     bool isScratchWrite() const
     {
         if( !isScratchRW() )
             return false;
-        return ( (getFuncCtrl ()& 0x20000u) != 0 );
+        return ((getFuncCtrl ()& 0x20000u) != 0);
     }
 
-    bool isHeaderPresent() const { return desc.layout.headerPresent == 1; }
 
-    void setHeaderPresent(bool val)
-    {
-        desc.layout.headerPresent = val;
-    }
-    void setBindingTableIdx(unsigned idx)
-    {
-        desc.value += idx;
-    }
-    void setSamplerTableIdx(unsigned idx)
-    {
-        desc.value += (idx << 8);
-    }
+    bool isHeaderPresent() const;
+    void setHeaderPresent(bool val);
 
-    bool is16BitInput() const
-    {
-        return desc.layout.simdMode2 == 1;
-    }
+    bool is16BitInput() const;
+    bool is16BitReturn() const;
 
-    bool is16BitReturn() const
-    {
-        return desc.layout.returnFormat == 1;
-    }
-
-    G4_Operand *getBti(){ return m_bti; }
-    G4_Operand *getSti(){ return m_sti; }
+    G4_Operand *getBti() {return m_bti;}
+    G4_Operand *getSti() {return m_sti;}
 
     uint32_t getDesc() const { return desc.value; }
     uint32_t getExtendedDesc() const { return extDesc.value; }
 
-    const char* getDescType();
+    const char* getDescType() const;
+private:
+    void setBindingTableIdx(unsigned idx);
 };
 
 //forward declaration for the binary of an instruction
@@ -2402,7 +2256,7 @@ public:
             // computeRightBound also computes bitVec
             inst->computeRightBound(this);
         }
-        
+
         return bitVec[0] & 0x00000000FFFFFFFF;
 
         return bitVec[0];
@@ -2436,7 +2290,7 @@ public:
     */
     unsigned getByteOffset() const { return byteOffset; }
     void setBitVecL(uint64_t bvl )
-    { 
+    {
         bitVec[0] = bvl;
     }
     void setBitVecH(uint64_t bvh )
@@ -2587,8 +2441,8 @@ public:
     void emit(std::ostream& output, bool symbolreg=false);
 
     bool isNullReg() const { return getArchRegType() == AREG_NULL; }
-    bool isFlag() const    
-    { 
+    bool isFlag() const
+    {
         switch (getArchRegType())
         {
             case AREG_F0:
@@ -3562,7 +3416,7 @@ class G4_CondMod final : public G4_Operand
                 left_bound += flagNum * 32;
                 byteOffset += flagNum * 4;
             }
-            else 
+            else
             {
                 left_bound = 0;
                 byteOffset = 0;
@@ -3973,7 +3827,7 @@ public:
     {
         switch (flagNum)
         {
-            case 0: 
+            case 0:
                 return getF0Reg();
             case 1:
                 return getF1Reg();

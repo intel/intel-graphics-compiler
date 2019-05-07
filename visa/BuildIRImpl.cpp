@@ -128,6 +128,18 @@ G4_SendMsgDescriptor* IR_Builder::createSendMsgDesc(uint32_t desc, uint32_t extD
 }
 
 G4_SendMsgDescriptor* IR_Builder::createSendMsgDesc(
+    SFID sfid,
+    uint32_t desc,
+    uint32_t extDesc,
+    int src1Len,
+    bool isRead,
+    bool isWrite,
+    G4_Operand *bti)
+{
+    return new (mem) G4_SendMsgDescriptor(sfid, desc, extDesc, src1Len, isRead, isWrite, bti);
+}
+
+G4_SendMsgDescriptor* IR_Builder::createSendMsgDesc(
     unsigned funcCtrl,
     unsigned regs2rcv,
     unsigned regs2snd,
@@ -146,7 +158,7 @@ G4_SendMsgDescriptor* IR_Builder::createSendMsgDesc(
     return msgDesc;
 }
 
-G4_Operand* IR_Builder::emitSampleIndexGE16(    
+G4_Operand* IR_Builder::emitSampleIndexGE16(
     G4_Operand* sampler,
     G4_Declare* headerDecl)
 {
@@ -250,7 +262,7 @@ G4_INST* IR_Builder::createInst(G4_Predicate* prd,
         {
             i->setLocation(new (mem) MDLocation(lineno == 0 ? curLine : lineno, curFile));
         }
-        
+
         instList.push_back(i);
     }
 
@@ -706,7 +718,7 @@ G4_MathOp IR_Builder::Get_MathFuncCtrl(ISA_Opcode op, G4_Type type)
 // for arg and retvar become known, so resize the pre-defined
 // vars here to the max required in current compilation unit.
 void IR_Builder::resizePredefinedStackVars()
-{      
+{
     getStackCallArg()->resizeNumRows(this->getArgSize());
     getStackCallRet()->resizeNumRows(this->getRetVarSize());
 }
@@ -971,7 +983,7 @@ G4_InstSend *IR_Builder::Create_SplitSend_Inst(G4_Predicate *pred,
     if (needsSamplerMove)
     {
         G4_Declare *dcl1 = createTempVar(1, Type_UD, Either, Any);
-       
+
         if (doAlignBindlessSampler)
         {
             // check if address is 32-byte aligned
@@ -979,11 +991,11 @@ G4_InstSend *IR_Builder::Create_SplitSend_Inst(G4_Predicate *pred,
             // (W) and (1) (nz)f0.0 null S31 0x10:uw
             G4_Declare* tmpFlag = createTempFlag(1);
             G4_CondMod* condMod = createCondMod(Mod_nz, tmpFlag->getRegVar(), 0);
-            createInst(nullptr, G4_and, condMod, false, 1, createNullDst(Type_UD), 
+            createInst(nullptr, G4_and, condMod, false, 1, createNullDst(Type_UD),
                 createSrcRegRegion(*(sti->asSrcRegRegion())), createImm(0x10, Type_UW), InstOpt_WriteEnable);
-            // (W) (f0.0) sel (1) tmp:ud 0x100 0x0 
+            // (W) (f0.0) sel (1) tmp:ud 0x100 0x0
             G4_Predicate* pred = createPredicate(PredState_Plus, tmpFlag->getRegVar(), 0);
-            createInst(pred, G4_sel, nullptr, false, 1, Create_Dst_Opnd_From_Dcl(dcl1, 1), 
+            createInst(pred, G4_sel, nullptr, false, 1, Create_Dst_Opnd_From_Dcl(dcl1, 1),
                 createImm(0x100, Type_UW), createImm(0x0, Type_UW), InstOpt_WriteEnable);
         }
         else
@@ -1036,6 +1048,8 @@ G4_InstSend *IR_Builder::Create_SplitSend_Inst(G4_Predicate *pred,
         descOpnd,
         option, msgDesc, extDescOpnd, 0);
 }
+
+
 
 // for RTWrite,
 // desc has a constant BTI value (i.e., no bindless) and no STI
@@ -1658,7 +1672,7 @@ bool IR_Builder::isOpndAligned( G4_Operand *opnd, unsigned short &offset, int al
 // TR code
 void IR_Builder::initBuiltinSLMSpillAddr(int perThreadSLMSize)
 {
-    
+
     assert(builtinSLMSpillAddr == nullptr && builtinImmVector4 == nullptr);
     builtinSLMSpillAddr = createDeclareNoLookup("slm_spill_addr", G4_GRF, 16, 1, Type_UD);
     builtinImmVector4 = createDeclareNoLookup("imm_vec4", G4_GRF, 16, 1, Type_UW);
@@ -1705,7 +1719,7 @@ void IR_Builder::initBuiltinSLMSpillAddr(int perThreadSLMSize)
     auto genMulAdd = [this, &instBuffer](G4_DstRegRegion* dst, G4_Operand* src0 ,G4_Operand* src1, G4_Operand* src2)
     {
         // Gen10+:  mad (1) dst src0 src1 src2
-        // pre-Gen10: 
+        // pre-Gen10:
         //          mul (1) dst src1 src2
         //          add (1) dst dst src0
         if (hasAlign1Ternary())

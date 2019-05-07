@@ -233,9 +233,11 @@ short Operand_Type_Rank( G4_Type type )
     return type_rank;
 }
 
-G4_SendMsgDescriptor::G4_SendMsgDescriptor( uint32_t fCtrl, uint32_t regs2rcv,
+G4_SendMsgDescriptor::G4_SendMsgDescriptor(
+    uint32_t fCtrl, uint32_t regs2rcv,
     uint32_t regs2snd, uint32_t fID, bool isEot, uint16_t extMsgLen,
-    uint32_t extFCtrl, bool isRead, bool isWrite, G4_Operand *bti, G4_Operand *sti,
+    uint32_t extFCtrl, bool isRead, bool isWrite,
+    G4_Operand *bti, G4_Operand *sti,
     IR_Builder& builder)
 {
     // All unnamed bits should be passed with those control bits.
@@ -252,6 +254,10 @@ G4_SendMsgDescriptor::G4_SendMsgDescriptor( uint32_t fCtrl, uint32_t regs2rcv,
     extDesc.layout.extMsgLength = extMsgLen;
     extDesc.layout.extFuncCtrl = extFCtrl;
 
+    src1Len = extMsgLen; // [10:6]
+    eotAfterMessage = isEot; // [5]
+    sfid = intToSFID(fID);
+
     readMsg = isRead;
     writeMsg = isWrite;
 
@@ -264,7 +270,7 @@ G4_SendMsgDescriptor::G4_SendMsgDescriptor( uint32_t fCtrl, uint32_t regs2rcv,
     }
     if (m_sti && m_sti->isImm())
     {
-        setSamplerTableIdx((unsigned)m_sti->asImm()->getInt());
+        desc.value |= (((unsigned)m_sti->asImm()->getInt()) << 8); // [11:8]
     }
 
     uint32_t totalMaxLength = builder.getMaxSendMessageLength();
@@ -277,15 +283,19 @@ G4_SendMsgDescriptor::G4_SendMsgDescriptor( uint32_t fCtrl, uint32_t regs2rcv,
     }
 }
 
-G4_SendMsgDescriptor::G4_SendMsgDescriptor(uint32_t desc, uint32_t extDesc,
-                                           bool isRead,
-                                           bool isWrite,
-                                           G4_Operand *bti,
-                                           G4_Operand *sti)
-                                           : readMsg(isRead), writeMsg(isWrite), m_sti(sti), m_bti(bti)
+G4_SendMsgDescriptor::G4_SendMsgDescriptor(
+    uint32_t desc, uint32_t extDesc,
+    bool isRead,
+    bool isWrite,
+    G4_Operand *bti,
+    G4_Operand *sti)
+    : readMsg(isRead), writeMsg(isWrite), m_sti(sti), m_bti(bti)
 {
     this->desc.value = desc;
     this->extDesc.value = extDesc;
+    src1Len = (extDesc >> 6) & 0x1F; // [10:6]
+    eotAfterMessage = this->extDesc.layout.eot; // [5]
+    sfid = intToSFID(extDesc & 0xF); // [3:0]
 
     if (bti && bti->isImm())
     {
@@ -293,133 +303,91 @@ G4_SendMsgDescriptor::G4_SendMsgDescriptor(uint32_t desc, uint32_t extDesc,
     }
     if (sti && sti->isImm())
     {
-        setSamplerTableIdx((unsigned)sti->asImm()->getInt());
+        this->desc.value |= (((unsigned)m_sti->asImm()->getInt()) << 8); // [11:8]
     }
 }
 
-const char* G4_SendMsgDescriptor::getDescType()
+G4_SendMsgDescriptor::G4_SendMsgDescriptor(
+    SFID _sfid,
+    uint32_t _desc,
+    uint32_t _extDesc,
+    int _src1Len,
+    bool isRead,
+    bool isWrite,
+    G4_Operand *bti)
+    : readMsg(isRead), writeMsg(isWrite), m_sti(nullptr), m_bti(bti), sfid(_sfid)
 {
-    // Return plain text string of type of msg, ie "oword read", "oword write",
-    // "media rd", etc.
-    G4_SendMsgDescriptor* msgDesc = this;
-    unsigned int bits, category;
+    desc.value = _desc;
+    extDesc.value = _extDesc;
+    src1Len = _src1Len;
+    eotAfterMessage = false;
+}
 
-    bits = getMessageType();
+uint32_t G4_SendMsgDescriptor::getMessageType() const {
+    return (desc.value >> 14) & 0x1F;
+}
 
-    switch (msgDesc->getFuncId())
+void G4_SendMsgDescriptor::setEOT() {
+    eotAfterMessage = true;
+
+
+    extDesc.layout.eot = true;
+}
+
+static bool isIntAtomicMessage(SFID funcID, uint16_t msgType)
+{
+    if (funcID != SFID::DP_DC1)
+        return false;
+
+    if (msgType == DC1_UNTYPED_ATOMIC || msgType == DC1_A64_ATOMIC)
     {
-    case SFID::SAMPLER: return "sampler"; break;
-    case SFID::GATEWAY: return "gateway"; break;
-    case SFID::DP_DC2:
-        switch (bits)
-        {
-        case DC2_UNTYPED_SURFACE_READ:
-            return "scaled untyped surface read";
-        case DC2_A64_SCATTERED_READ:
-            return "scaled A64 scatter read";
-        case DC2_A64_UNTYPED_SURFACE_READ:
-            return "scaled A64 untyped surface read";
-        case DC2_BYTE_SCATTERED_READ:
-            return "scaled byte scattered read";
-        case DC2_UNTYPED_SURFACE_WRITE:
-            return "scaled untyped surface write";
-        case DC2_A64_UNTYPED_SURFACE_WRITE:
-            return "scaled A64 untyped surface write";
-        case DC2_A64_SCATTERED_WRITE:
-            return "scaled A64 scattered write";
-        case DC2_BYTE_SCATTERED_WRITE:
-            return "scaled byte scattede write";
-        default:
-            return "unrecognized message";
-        }
-    case SFID::DP_WRITE:
-        switch (bits)
-        {
-        case 0xc: return "render target write"; break;
-        case 0xd: return "render target read"; break;
-        default: return "reserved encoding used!";
-        }
-        break;
-    case SFID::URB: return "urb"; break;
-    case SFID::SPAWNER: return "thread spawner"; break;
-    case SFID::VME: return "vme"; break;
-    case SFID::DP_CC:
-        switch (bits)
-        {
-        case 0x0: return "oword block read"; break;
-        case 0x1: return "unaligned oword block read"; break;
-        case 0x2: return "oword dual block read"; break;
-        case 0x3: return "dword scattered read"; break;
-        default: return "reserved encoding used!";
-            break;
-        }
-    case SFID::DP_DC:
-        category = (msgDesc->getFuncCtrl() >> 18) & 0x1;
-        if (category == 0)
-        {
-            // legacy data port
-            bool hword = (msgDesc->getFuncCtrl() >> 13) & 0x1;
-            switch (bits)
-            {
-            case 0x0: return hword ? "hword block read" : "oword block read";
-            case 0x1: return hword ? "hword aligned block read" : "unaligned oword block read";
-            case 0x2: return "oword dual block read";
-            case 0x3: return "dword scattered read";
-            case 0x4: return "byte scattered read";
-            case 0x7: return "memory fence";
-            case 0x8: return hword ? "hword block write" : "oword block write";
-            case 0x9: return "hword aligned block write";
-            case 0xa: return "oword dual block write";
-            case 0xb: return "dword scattered write";
-            case 0xc: return "byte scattered write";
-            default: return "reserved encoding used!";
-            }
-        }
-        else
-        {
-            // scratch
-            bits = (msgDesc->getFuncCtrl() >> 17) & 0x1;
-
-            if (bits == 0)
-                return "scratch read";
-            else
-                return "scratch write";
-        }
-        break;
-    case SFID::DP_PI: return "dp_pi"; break;
-    case SFID::DP_DC1:
-        switch (bits)
-        {
-        case 0x0: return "transpose read"; break;
-        case 0x1: return "untyped surface read"; break;
-        case 0x2: return "untyped atomic operation"; break;
-        case 0x3: return "untyped atomic operation simd4x2"; break;
-        case 0x4: return "media block read"; break;
-        case 0x5: return "typed surface read"; break;
-        case 0x6: return "typed atomic operation"; break;
-        case 0x7: return "typed atomic operation simd4x2"; break;
-        case 0x8: return "untyped atomic float add"; break;
-        case 0x9: return "untyped surface write"; break;
-        case 0xa: return "media block write (non-iecp)"; break;
-        case 0xb: return "atomic counter operation"; break;
-        case 0xc: return "atomic counter operation simd4x2"; break;
-        case 0xd: return "typed surface write"; break;
-        case 0x10: return "a64 scattered read"; break;
-        case 0x11: return "a64 untyped surface read"; break;
-        case 0x12: return "a64 untyped atomic operation"; break;
-        case 0x13: return "a64 untyped atomic operation simd4x2"; break;
-        case 0x14: return "a64 block read"; break;
-        case 0x15: return "a64 block write"; break;
-        case 0x18: return "a64 untyped atomic float add"; break;
-        case 0x19: return "a64 untyped surface write"; break;
-        case 0x1a: return "a64 scattered write"; break;
-        default: return "reserved encoding used!";
-        }
-        break;
-    case SFID::CRE: return "cre"; break;
-    default: return "--";
+        return true;
     }
-    return NULL;
+    if (getGenxPlatform() >= GENX_SKL)
+    {
+        if (msgType == DC1_TYPED_ATOMIC)
+            return true;
+    }
+    return false;
+}
+
+static bool isFloatAtomicMessage(SFID funcID, uint16_t msgType)
+{
+    if (funcID != SFID::DP_DC1)
+        return false;
+
+    if (getGenxPlatform() >= GENX_SKL)
+    {
+        if (msgType == DC1_UNTYPED_FLOAT_ATOMIC ||
+            msgType == DC1_A64_UNTYPED_FLOAT_ATOMIC)
+            return true;
+    }
+    return false;
+}
+
+bool G4_SendMsgDescriptor::isAtomicMessage() const
+{
+    auto funcID = getFuncId();
+    if (!isHDC())
+        return false; // guard getMessageType() on SFID without a message type
+    uint16_t msgType = getMessageType();
+    return isIntAtomicMessage(funcID,msgType) ||
+      isFloatAtomicMessage(funcID,msgType);
+}
+
+uint16_t G4_SendMsgDescriptor::getAtomicOp() const
+{
+    MUST_BE_TRUE(isAtomicMessage(), "getting atomicOp from non-atomic message!");
+    uint32_t funcCtrl = getFuncCtrl();
+    if (isIntAtomicMessage(getFuncId(), getMessageType()))
+    {
+        // bits: 11:8
+        return (uint16_t)((funcCtrl >> 8) & 0xF);
+    }
+
+    // must be float Atomic
+    // bits: 10:8
+    return (int16_t)((funcCtrl >> 8) & 0x7);
 }
 
 bool G4_SendMsgDescriptor::isSLMMessage() const
@@ -438,7 +406,7 @@ bool G4_SendMsgDescriptor::isSLMMessage() const
         getFuncId() == SFID::DP_DC1 ||
         getFuncId() == SFID::DP_DC)
     {
-        if ((getDesc() & 0xFF) == 0xFE)
+        if ((getDesc() & 0xFF) == SLMIndex)
         {
             return true;
         }
@@ -452,11 +420,118 @@ bool G4_SendMsgDescriptor::isSLMMessage() const
     return false;
 }
 
+
+bool G4_SendMsgDescriptor::isHeaderPresent() const {
+
+    return desc.layout.headerPresent == 1;
+}
+
+void G4_SendMsgDescriptor::setHeaderPresent(bool val)
+{
+    desc.layout.headerPresent = val;
+}
+
+void G4_SendMsgDescriptor::setBindingTableIdx(unsigned idx)
+{
+    desc.value |= idx;
+}
+
+bool G4_SendMsgDescriptor::is16BitInput() const
+{
+    return desc.layout.simdMode2 == 1;
+}
+
+bool G4_SendMsgDescriptor::is16BitReturn() const
+{
+    return desc.layout.returnFormat == 1;
+}
+
+
+unsigned int G4_SendMsgDescriptor::getEnabledChannelNum() const
+{
+    // TODO: should further scope this to typed/untyped
+    MUST_BE_TRUE(isHDC(), "message does not have field ChannelEnable");
+    uint32_t funcCtrl = getFuncCtrl();
+
+    funcCtrl =  (funcCtrl >> MSG_BLOCK_SIZE_OFFSET) & 0xF;
+    switch(funcCtrl)
+    {
+        case 0x7:
+        case 0xB:
+        case 0xD:
+        case 0xE: return 1;
+        case 0x3:
+        case 0x5:
+        case 0x6:
+        case 0x9:
+        case 0xA:
+        case 0xC: return 2;
+        case 0x1:
+        case 0x2:
+        case 0x4:
+        case 0x8: return 3;
+        case 0x0: return 4;
+        case 0xF: return 0;
+        default: MUST_BE_TRUE(false, "Illegal Channel Mask Number");
+    }
+
+    return 0;
+}
+
+unsigned int G4_SendMsgDescriptor::getBlockNum() const
+{
+    MUST_BE_TRUE(isHDC(), "not an HDC message");
+
+    uint32_t funcCtrl = getFuncCtrl();
+
+    funcCtrl =  ( funcCtrl >> MSG_BLOCK_NUMBER_OFFSET ) & 0x3;
+    switch(funcCtrl)
+    {
+        case SVM_BLOCK_NUM_1: return 1;
+        case SVM_BLOCK_NUM_2: return 2;
+        case SVM_BLOCK_NUM_4: return 4;
+        case SVM_BLOCK_NUM_8: return 8;
+        default: MUST_BE_TRUE(false, "Illegal SVM block number (should be 1, 2, 4, or 8).");
+    }
+
+    return 0;
+}
+
+unsigned int G4_SendMsgDescriptor::getBlockSize() const
+{
+    MUST_BE_TRUE(isHDC(), "not an HDC message");
+
+    uint32_t funcCtrl = getFuncCtrl();
+
+    funcCtrl =  ( funcCtrl >> MSG_BLOCK_SIZE_OFFSET ) & 0x3;
+    switch (funcCtrl)
+    {
+        case SVM_BLOCK_TYPE_BYTE: return 1;
+        case SVM_BLOCK_TYPE_DWORD: return 4;
+        case SVM_BLOCK_TYPE_QWORD: return 8;
+        default: MUST_BE_TRUE(false, "Illegal SVM block size (should be 1, 4, or 8).");
+    }
+    return 0;
+}
+
+bool G4_SendMsgDescriptor::isOwordLoad() const
+{
+    if (!isHDC()) {
+        return false;
+    }
+    uint32_t funcCtrl = getFuncCtrl();
+    auto funcID = getFuncId();
+    uint16_t msgType = (funcCtrl >> IVB_MSG_TYPE_OFFSET) & 0xF;
+    //SFID = data cache, bit 14-17= 0 or 1
+    return funcID == SFID::DP_DC && ( msgType == 0 || msgType == 1);
+}
+
+
 bool G4_SendMsgDescriptor::isReadOnlyMessage(uint32_t msgDesc,
                                              uint32_t extDesc)
 {
-    SFID funcID = G4_SendMsgDescriptor::getFuncId(extDesc);
-    unsigned subFuncID = G4_SendMsgDescriptor::getMessageType(msgDesc);
+    SFID funcID = intToSFID(extDesc & 0xF);
+    unsigned subFuncID = (msgDesc >> 14) & 0x1F;
 
     switch (funcID) {
     default:
@@ -499,6 +574,119 @@ bool G4_SendMsgDescriptor::isReadOnlyMessage(uint32_t msgDesc,
 
     // Unknown.
     return false;
+}
+
+const char* G4_SendMsgDescriptor::getDescType() const
+{
+    // Return plain text string of type of msg, ie "oword read", "oword write",
+    // "media rd", etc.
+    const G4_SendMsgDescriptor* msgDesc = this;
+    unsigned int category;
+
+    switch (msgDesc->getFuncId())
+    {
+    case SFID::SAMPLER: return "sampler";
+    case SFID::GATEWAY: return "gateway";
+    case SFID::DP_DC2:
+        switch (getMessageType())
+        {
+        case DC2_UNTYPED_SURFACE_READ: return "scaled untyped surface read";
+        case DC2_A64_SCATTERED_READ: return "scaled A64 scatter read";
+        case DC2_A64_UNTYPED_SURFACE_READ: return "scaled A64 untyped surface read";
+        case DC2_BYTE_SCATTERED_READ: return "scaled byte scattered read";
+        case DC2_UNTYPED_SURFACE_WRITE: return "scaled untyped surface write";
+        case DC2_A64_UNTYPED_SURFACE_WRITE: return "scaled A64 untyped surface write";
+        case DC2_A64_SCATTERED_WRITE: return "scaled A64 scattered write";
+        case DC2_BYTE_SCATTERED_WRITE: return "scaled byte scattede write";
+        default: return "unrecognized message";
+        }
+    case SFID::DP_WRITE:
+        switch (getMessageType())
+        {
+        case 0xc: return "render target write";
+        case 0xd: return "render target read";
+        default: return "reserved encoding used!";
+        }
+        break;
+    case SFID::URB: return "urb";
+    case SFID::SPAWNER: return "thread spawner";
+    case SFID::VME: return "vme";
+    case SFID::DP_CC:
+        switch (getMessageType())
+        {
+        case 0x0: return "oword block read";
+        case 0x1: return "unaligned oword block read";
+        case 0x2: return "oword dual block read";
+        case 0x3: return "dword scattered read";
+        default: return "reserved encoding used!";
+        }
+    case SFID::DP_DC:
+        category = (msgDesc->getFuncCtrl() >> 18) & 0x1;
+        if (category == 0)
+        {
+            // legacy data port
+            bool hword = (msgDesc->getFuncCtrl() >> 13) & 0x1;
+            switch (getMessageType())
+            {
+            case 0x0: return hword ? "hword block read" : "oword block read";
+            case 0x1: return hword ? "hword aligned block read" : "unaligned oword block read";
+            case 0x2: return "oword dual block read";
+            case 0x3: return "dword scattered read";
+            case 0x4: return "byte scattered read";
+            case 0x7: return "memory fence";
+            case 0x8: return hword ? "hword block write" : "oword block write";
+            case 0x9: return "hword aligned block write";
+            case 0xa: return "oword dual block write";
+            case 0xb: return "dword scattered write";
+            case 0xc: return "byte scattered write";
+            default: return "reserved encoding used!";
+            }
+        }
+        else
+        {
+            // scratch
+            int bits = (msgDesc->getFuncCtrl() >> 17) & 0x1;
+
+            if (bits == 0)
+                return "scratch read";
+            else
+                return "scratch write";
+        }
+        break;
+    case SFID::DP_PI: return "dp_pi"; break;
+    case SFID::DP_DC1:
+        switch (getMessageType())
+        {
+        case 0x0: return "transpose read";
+        case 0x1: return "untyped surface read";
+        case 0x2: return "untyped atomic operation";
+        case 0x3: return "untyped atomic operation simd4x2";
+        case 0x4: return "media block read";
+        case 0x5: return "typed surface read";
+        case 0x6: return "typed atomic operation";
+        case 0x7: return "typed atomic operation simd4x2";
+        case 0x8: return "untyped atomic float add";
+        case 0x9: return "untyped surface write";
+        case 0xa: return "media block write (non-iecp)";
+        case 0xb: return "atomic counter operation";
+        case 0xc: return "atomic counter operation simd4x2";
+        case 0xd: return "typed surface write";
+        case 0x10: return "a64 scattered read";
+        case 0x11: return "a64 untyped surface read";
+        case 0x12: return "a64 untyped atomic operation";
+        case 0x13: return "a64 untyped atomic operation simd4x2";
+        case 0x14: return "a64 block read";
+        case 0x15: return "a64 block write";
+        case 0x18: return "a64 untyped atomic float add";
+        case 0x19: return "a64 untyped surface write";
+        case 0x1a: return "a64 scattered write";
+        default: return "reserved encoding used!";
+        }
+        break;
+    case SFID::CRE: return "cre";
+    default: return "--";
+    }
+    return NULL;
 }
 
 G4_INST::G4_INST(const IR_Builder& irb,
@@ -1930,7 +2118,7 @@ bool G4_INST::canPropagateTo(G4_INST *useInst, Gen4_Operand_Number opndNum, MovT
         return false;
     }
 
-    auto isFloatPseudoMAD = [](G4_INST *inst) 
+    auto isFloatPseudoMAD = [](G4_INST *inst)
     {
         return inst->opcode() == G4_pseudo_mad && IS_TYPE_FLOAT_ALL(inst->getDst()->getType());
     };
@@ -1958,7 +2146,7 @@ bool G4_INST::canPropagateTo(G4_INST *useInst, Gen4_Operand_Number opndNum, MovT
     {
         return false;
     }
-    
+
     // FIXME: to add specific checks for other instructions.
     G4_opcode useInst_op = useInst->opcode();
 

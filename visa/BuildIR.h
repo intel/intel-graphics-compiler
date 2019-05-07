@@ -1194,7 +1194,14 @@ public:
         bool isWrite,
         G4_Operand *bti = nullptr,
         G4_Operand *sti = nullptr);
-
+    G4_SendMsgDescriptor* createSendMsgDesc(
+        SFID sfid,
+        uint32_t desc,
+        uint32_t extDesc,
+        int src1Len,
+        bool isRead,
+        bool isWrite,
+        G4_Operand *bti);
     G4_SendMsgDescriptor* createSendMsgDesc(
         unsigned funcCtrl,
         unsigned regs2rcv,
@@ -1653,6 +1660,7 @@ public:
         G4_SendMsgDescriptor *msgDesc,
         unsigned option,
         bool is_sendc);
+
 
     G4_InstSend *Create_SplitSend_Inst_For_RTWrite(G4_Predicate *pred,
         G4_DstRegRegion *dst,

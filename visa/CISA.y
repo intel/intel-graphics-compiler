@@ -37,6 +37,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "VISAKernel.h"
 #include "BuildCISAIR.h"
 
+
 //VISA_Type variable_declaration_and_type_check(char *var, Common_ISA_Var_Class type);
 void yyerror(char const* msg);
 int  yylex();
@@ -1940,7 +1941,10 @@ ElemNum : '.' NUMBER
            };
 
 ExecSize :   /* empty */
-           {$$.exec_size = UNDEFINED_EXEC_SIZE;}
+           {
+                $$.exec_size = UNDEFINED_EXEC_SIZE;
+                $$.emask = vISA_EMASK_M1;
+           }
          | LPAREN NUMBER RPAREN
            {
                TRACE("\n** Execution Size ");
@@ -2129,3 +2133,4 @@ void yyerror (char const *s)
 
     return;
 }
+

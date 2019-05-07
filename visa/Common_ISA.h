@@ -836,8 +836,8 @@ typedef struct
 } CISA_PreDefined_Var_Info;
 
 namespace vISA
-{ 
-    enum class SFID 
+{
+    enum class SFID
     {
         NULL_SFID  =  0,
         SAMPLER    =  2,
@@ -1106,7 +1106,7 @@ struct VISA3DSamplerOp
     // Bit 0-4: subOpcode
     // Bit 5  : pixelNullMask
     // Bit 6  : cpsEnable
-    // Bit 7  : non-uniform sampler 
+    // Bit 7  : non-uniform sampler
     static VISA3DSamplerOp extractSamplerOp(uint8_t val)
     {
         VISA3DSamplerOp op;
