@@ -702,8 +702,8 @@ int VISAKernelImpl::CISABuildPreDefinedDecls()
                 decl->genVar.name_index = addStringPool(varName);
                 if (m_options->getOption(vISA_isParseMode))
                 {
-                    setNameIndexMap(std::string(name), decl);
-                    setNameIndexMap(varName, decl);
+                    setNameIndexMap(std::string(name), decl, true);
+                    setNameIndexMap(varName, decl, true);
                 }
             }
         }
@@ -725,7 +725,7 @@ int VISAKernelImpl::CISABuildPreDefinedDecls()
         {
             const char* name = vISAPreDefSurf[i].name;
             decl->stateVar.name_index = addStringPool(std::string(name));
-            setNameIndexMap(std::string(name), decl);
+            setNameIndexMap(std::string(name), decl, true);
         }
         if (IS_GEN_BOTH_PATH)
         {
@@ -763,7 +763,7 @@ void VISAKernelImpl::createBindlessSampler()
     {
         const char* name = BINDLESS_SAMPLER_NAME;
         m_bindlessSampler->stateVar.name_index = addStringPool(std::string(name));
-        setNameIndexMap(std::string(name), m_bindlessSampler);
+        setNameIndexMap(std::string(name), m_bindlessSampler, true);
     }
     if (IS_GEN_BOTH_PATH)
     {
@@ -7827,43 +7827,63 @@ unsigned int VISAKernelImpl::getLabelIdFromFunctionName(std::string name)
     }
 }
 
-unsigned int VISAKernelImpl::getIndexFromName(const std::string &name)
-{
-    std::map<std::string, CISA_GEN_VAR *>::iterator it;
-    it = m_var_name_to_index_map.find(name);
-    if(m_var_name_to_index_map.end() == it)
-    {
-        return CISA_INVALID_VAR_ID;
-    }else
-    {
-        return it->second->index;
-    }
-}
-
 CISA_GEN_VAR * VISAKernelImpl::getDeclFromName(const std::string &name)
 {
-    std::map<std::string, CISA_GEN_VAR *>::iterator it;
-    it = m_var_name_to_index_map.find(name);
-    if(m_var_name_to_index_map.end() == it)
-    {
-        return NULL;
-    }else
+    // First search in the unique var map
+    auto it = m_UniqueNamedVarMap.find(name);
+    if (it != m_UniqueNamedVarMap.end())
     {
         return it->second;
     }
+
+    // Search each scope level until var is found, starting from the back
+    for (auto scope_it = m_GenNamedVarMap.rbegin(); scope_it != m_GenNamedVarMap.rend(); scope_it++)
+    {
+        auto it = scope_it->find(name);
+        if (it != scope_it->end())
+        {
+            return it->second;
+        }
+    }
+    return NULL;
 }
 
 bool VISAKernelImpl::setNameIndexMap(const std::string &name, CISA_GEN_VAR * genDecl, bool unique)
 {
-    bool succeeded = true;
-
-    //make sure mapping doesn't already exist
-    if (unique && getIndexFromName(name) != CISA_INVALID_VAR_ID )
+    MUST_BE_TRUE(!m_GenNamedVarMap.empty(), "decl map is empty!");
+    if (!unique)
     {
-        return false;
+        // make sure mapping doesn't already exist in the current scope
+        if (m_GenNamedVarMap.back().find(name) != m_GenNamedVarMap.back().end())
+            return false;
+
+        // also cannot be redefinition of a unique var
+        if (m_UniqueNamedVarMap.find(name) != m_UniqueNamedVarMap.end())
+            return false;
+
+        // Add var to the current scope
+        m_GenNamedVarMap.back()[name] = genDecl;
     }
-    m_var_name_to_index_map[name] = genDecl;
-    return succeeded;
+    else
+    {
+        // we cannot create a unique var that redefines any previously created var in any scope
+        if (getDeclFromName(name) != NULL)
+            return false;
+
+        // unique vars are stored in a separate map
+        m_UniqueNamedVarMap[name] = genDecl;
+    }
+    return true;
+}
+
+void VISAKernelImpl::pushIndexMapScopeLevel()
+{
+    m_GenNamedVarMap.push_back(GenDeclNameToVarMap());
+}
+void VISAKernelImpl::popIndexMapScopeLevel()
+{
+    MUST_BE_TRUE(m_GenNamedVarMap.size() > 1, "Cannot pop base scope level!");
+    m_GenNamedVarMap.pop_back();
 }
 
 unsigned int VISAKernelImpl::getIndexFromLabelName(const std::string &name)

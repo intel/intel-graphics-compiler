@@ -730,6 +730,9 @@ public:
     VISA_opnd * CISA_create_RAW_NULL_operand(int line_no);
     VISA_opnd * CISA_create_RAW_operand(char * var_name, unsigned short offset, int line_no);
 
+    void CISA_push_decl_scope();
+    void CISA_pop_decl_scope();
+
     unsigned short get_hash_key(const char* str);
     string_pool_entry** new_string_pool();
     string_pool_entry * string_pool_lookup(string_pool_entry **spool, const char *str);

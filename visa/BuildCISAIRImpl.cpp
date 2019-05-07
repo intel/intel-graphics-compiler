@@ -2929,6 +2929,15 @@ VISA_opnd * CISA_IR_Builder::CISA_create_RAW_operand(char * var_name, unsigned s
     return (VISA_opnd *)cisa_opnd; //delay the decision of src or dst until translate stage
 }
 
+void CISA_IR_Builder::CISA_push_decl_scope()
+{
+    m_kernel->pushIndexMapScopeLevel();
+}
+void CISA_IR_Builder::CISA_pop_decl_scope()
+{
+    m_kernel->popIndexMapScopeLevel();
+}
+
 unsigned short CISA_IR_Builder::get_hash_key(const char* str)
 {
     const char *str_pt = str;

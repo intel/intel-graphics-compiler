@@ -105,6 +105,8 @@ static int pendingBracket;
 "-" {TRACE("\n** MINUS ");  return MINUS;}
 "(" {TRACE("\n** LPAREN "); return LPAREN;}
 ")" {TRACE("\n** RPAREN "); return RPAREN;}
+"{" {TRACE("\n** LBRACE "); return LBRACE;}
+"}" {TRACE("\n** RBRACE "); return RBRACE;}
 
 ".version"          {TRACE("\n** VERSION "); return DIRECTIVE_VERSION;}
 ".entry"            {TRACE("\n** ENTRY "); return DIRECTIVE_ENTRY;}

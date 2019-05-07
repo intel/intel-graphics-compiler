@@ -303,6 +303,8 @@ VISA_RawOpnd* rawOperandArray[16];
 %token <string> RIGHT_BRACKET    /* ] */
 %token <string> LPAREN           /* ( */
 %token <string> RPAREN           /* ) */
+%token <string> LBRACE           /* { */
+%token <string> RBRACE           /* } */
 %token <string> IND_LEFT_BRACKET /* r[ */
 %token <string> PLUS             /* + */
 %token <string> MINUS            /* - */
@@ -524,6 +526,7 @@ CISAStmt : /* empty */
        | CISAStmt STMT_DELIM
        | CISAStmt EndOfFile
        | CISAStmt CommentLine                             STMT_DELIM
+       | CISAStmt ScopeOp                 TrailingComment STMT_DELIM
        | CISAStmt DirectiveKernel         TrailingComment STMT_DELIM
        | CISAStmt DirectiveGlobalFunction TrailingComment STMT_DELIM
        | CISAStmt DirectiveResolvedIndex  TrailingComment STMT_DELIM
@@ -1419,6 +1422,16 @@ TargetLabel: VAR
 SymbolName: VAR
             { $$ = $1; };
 
+/* ------------- Scope ------------- */
+
+ScopeOp: LBRACE
+    {
+        pCisaBuilder->CISA_push_decl_scope();
+    }
+    |  RBRACE
+    {
+        pCisaBuilder->CISA_pop_decl_scope();
+    };
 
 /* ------ predicate and Modifiers ------ */
 

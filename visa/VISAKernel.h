@@ -128,6 +128,9 @@ public:
         mIsFCCallableKernel = false;
         mIsFCCallerKernel = false;
         mIsFCComposableKernel = false;
+
+        // Initialize first level scope of the map
+        m_GenNamedVarMap.push_back(GenDeclNameToVarMap());
     }
 
     void* alloc(size_t sz) { return m_mem.alloc(sz); }
@@ -220,9 +223,10 @@ public:
     VISA_Type getReturnType(){ return m_return_type; }
     unsigned long getCodeOffset(){ return m_cisa_kernel.entry; }
 
-    unsigned int getIndexFromName(const std::string &name);
     CISA_GEN_VAR * getDeclFromName(const std::string &name);
-    bool setNameIndexMap(const std::string &name, CISA_GEN_VAR *, bool unique = true);
+    bool setNameIndexMap(const std::string &name, CISA_GEN_VAR *, bool unique = false);
+    void pushIndexMapScopeLevel();
+    void popIndexMapScopeLevel();
 
     unsigned int getIndexFromLabelName(const std::string &label_name);
     VISA_LabelOpnd * getLabelOpndFromLabelName(const std::string &label_name);
@@ -998,8 +1002,12 @@ private:
     std::list<VISA_opnd *> m_pending_labels;
     std::list<std::string> m_pending_label_names;
 
-    //maps name, must be unique, to various declaraion tables, genera, surface, sampler, etc.
-    std::map<std::string, CISA_GEN_VAR *> m_var_name_to_index_map;
+    // maps a variable name to the var pointer
+    // unique vars are unique to the entire program
+    // general vars must be unique within the same scope, but can be redefined across scopes
+    typedef std::map<std::string, CISA_GEN_VAR *> GenDeclNameToVarMap;
+    std::vector<GenDeclNameToVarMap> m_GenNamedVarMap;
+    GenDeclNameToVarMap m_UniqueNamedVarMap;
 
     std::map<std::string, VISA_LabelOpnd *> m_label_name_to_index_map;
     std::map<std::string, VISA_LabelOpnd *> m_funcName_to_labelID_map;
