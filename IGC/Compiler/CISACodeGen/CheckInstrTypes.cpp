@@ -65,6 +65,7 @@ CheckInstrTypes::CheckInstrTypes(IGC::SInstrTypes* instrList) : FunctionPass(ID)
     instrList->hasCall = false;
     instrList->hasIndirectCall = false;
     instrList->hasInlineAsm = false;
+    instrList->hasInlineAsmPointerAccess = false;
     instrList->hasIndirectBranch = false;
     instrList->hasFunctionAddressTaken = false;
     instrList->hasSel = false;
@@ -150,6 +151,19 @@ void CheckInstrTypes::visitCallInst(CallInst &C)
         if (C.isInlineAsm())
         {
             g_InstrTypes->hasInlineAsm = true;
+            for (unsigned i = 0; i < C.getNumArgOperands(); i++)
+            {
+                Type* opndTy = C.getArgOperand(i)->getType();
+                if (opndTy->isPointerTy() &&
+                    (cast<PointerType>(opndTy)->getAddressSpace() == ADDRESS_SPACE_GLOBAL ||
+                     cast<PointerType>(opndTy)->getAddressSpace() == ADDRESS_SPACE_CONSTANT))
+                {
+                    // If an inline asm call directly accesses a pointer, we need to enable
+                    // bindless/stateless support since user does not know the BTI the
+                    // resource is bound to.
+                    g_InstrTypes->hasInlineAsmPointerAccess = true;
+                }
+            }
             return;
         }
         // calls to 'blocks' have a null Function object

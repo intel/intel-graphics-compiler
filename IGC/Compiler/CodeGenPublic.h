@@ -144,6 +144,7 @@ namespace IGC
         bool hasCall;
         bool hasIndirectCall;
         bool hasInlineAsm;
+        bool hasInlineAsmPointerAccess;
         bool hasIndirectBranch;
         bool hasFunctionAddressTaken;
         bool hasSel;

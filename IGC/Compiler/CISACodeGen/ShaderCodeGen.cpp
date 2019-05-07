@@ -487,7 +487,8 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager& mpm)
         ctx.m_instrTypes.hasLoadStore &&
         ctx.m_DriverInfo.SupportsStatelessToStatefullBufferTransformation() &&
         !ctx.getModuleMetaData()->compOpt.GreaterThan4GBBufferRequired &&
-        IGC_IS_FLAG_ENABLED(EnableStatelessToStatefull))
+        IGC_IS_FLAG_ENABLED(EnableStatelessToStatefull) &&
+        !ctx.m_instrTypes.hasInlineAsmPointerAccess)
     {
         bool hasBufOff = (IGC_IS_FLAG_ENABLED(EnableSupportBufferOffset) ||
                           ctx.getModuleMetaData()->compOpt.HasBufferOffsetArg);
