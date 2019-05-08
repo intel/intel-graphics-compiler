@@ -176,7 +176,10 @@ public:
     /// gradient correctly for sampler or we need to force early out discarded pixels
     virtual bool KeepDiscardHelperPixels() const { return false; }
     virtual bool SupportElfFormat() const { return false; }
-    
+
+    /// support predicate add pattern match
+    virtual bool SupportMatchPredAdd() const { return false; }
+
     /// Adjust adapter to adjust the loop unrolling threshold
     virtual unsigned int GetLoopUnrollThreshold() const
     {
