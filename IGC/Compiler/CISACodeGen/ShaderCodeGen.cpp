@@ -834,7 +834,7 @@ void CodeGen(ComputeShaderContext* ctx, CShaderProgram::KernelShaderMap &shaders
             }
             else
             {
-                bool earlyExit = allowSpill ? false : true;
+                bool earlyExit = (!allowSpill || ctx->instrStat[SROA_PROMOTED][EXCEED_THRESHOLD]);
 
                 // allow simd16 spill if having SLM
                 if (cgSimd16)
@@ -1312,9 +1312,15 @@ void OptimizeIR(CodeGenContext* pContext)
                     mpm.add(IGCLLVM::createLoopUnrollPass());
                 }
 
-                if(!extensiveShader(pContext))
+                if(!extensiveShader(pContext) && pContext->m_instrTypes.hasNonPrimitiveAlloca)
                 {
-                    if(pContext->m_instrTypes.hasNonPrimitiveAlloca)
+                    if(pContext->m_DriverInfo.NeedCountSROA())
+                    {
+                        mpm.add(new InstrStatitic(pContext, SROA_PROMOTED, InstrStatStage::BEGIN, 300));
+                        mpm.add(createSROAPass());
+                        mpm.add(new InstrStatitic(pContext, SROA_PROMOTED, InstrStatStage::END, 300));
+                    }
+                    else
                     {
                         mpm.add(createSROAPass());
                     }

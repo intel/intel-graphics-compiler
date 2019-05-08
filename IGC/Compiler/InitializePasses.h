@@ -135,6 +135,7 @@ void initializeTranslationTablePass(llvm::PassRegistry&);
 void initializeSLMConstPropPass(llvm::PassRegistry&);
 void initializeBlendToDiscardPass(llvm::PassRegistry&);
 void initializeCheckInstrTypesPass(llvm::PassRegistry&);
+void initializeInstrStatiticPass(llvm::PassRegistry&);
 void initializeHalfPromotionPass(llvm::PassRegistry&);
 void initializeFixFastMathFlagsPass(llvm::PassRegistry&);
 void initializeCodeAssumptionPass(llvm::PassRegistry&);

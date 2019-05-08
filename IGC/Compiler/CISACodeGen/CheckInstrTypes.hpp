@@ -31,6 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/Analysis/LoopInfo.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/IGCPassSupport.h"
+#include "Compiler/CodeGenPublic.h"
 
 namespace IGC
 {
@@ -80,6 +81,33 @@ namespace IGC
     private:
         IGC::SInstrTypes* g_InstrTypes;
 
+    };
+
+    class InstrStatitic : public llvm::FunctionPass, public llvm::InstVisitor<InstrStatitic>
+    {
+    public:
+        static char ID;
+        InstrStatitic() : FunctionPass(ID), m_ctx(nullptr), m_type(InstrStatTypes(0)), m_stage(InstrStatStage::BEGIN), m_threshold(0)
+        {
+        };
+        InstrStatitic(CodeGenContext* ctx, InstrStatTypes type, InstrStatStage stage, int threshold);
+
+        virtual bool runOnFunction(llvm::Function &F) override;
+
+        virtual llvm::StringRef getPassName() const override
+        {
+            return "InstrStatitic";
+        }
+
+        void visitInstruction(llvm::Instruction &I);
+        void visitLoadInst(llvm::LoadInst &I);
+        void visitStoreInst(llvm::StoreInst &I);
+
+    private:
+        CodeGenContext *m_ctx;
+        IGC::InstrStatTypes m_type;
+        InstrStatStage m_stage;
+        int m_threshold;
     };
 
 } // namespace IGC

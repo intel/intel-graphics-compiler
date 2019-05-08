@@ -105,6 +105,8 @@ public:
     /// Supports precise math
     virtual bool SupportsPreciseMath() const { return false; }
 
+    virtual bool NeedCountSROA() const { return false; }
+    
     /// Can we always contract mul and add
     virtual bool NeedCheckContractionAllowed() const { return false; }
 

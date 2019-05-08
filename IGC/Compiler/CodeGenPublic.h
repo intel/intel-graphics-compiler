@@ -131,6 +131,19 @@ namespace IGC
             return m_scratchSpaceUsedBySpills + m_scratchSpaceUsedByShader + m_scratchSpaceUsedByGtpin;
         }
     };
+    
+    enum InstrStatTypes
+    {
+        SROA_PROMOTED,
+        TOTAL_TYPES
+    };
+    enum InstrStatStage
+    {
+        BEGIN,
+        END,
+        EXCEED_THRESHOLD,
+        TOTAL_STAGE
+    };
 
     struct SInstrTypes
     {
@@ -656,6 +669,10 @@ namespace IGC
         Float_DenormMode    m_floatDenormMode64 = FLOAT_DENORM_FLUSH_TO_ZERO;
 
         SInstrTypes m_instrTypes;
+
+        /////  used for instruction statistic before/after pass
+        int instrStat[TOTAL_TYPES][TOTAL_STAGE];
+
         /// Module level flag. This flag is false either there is an indirect call
         /// in the module or the kernel sizes are small even with complete inlining.
         bool m_enableSubroutine = false;
@@ -719,6 +736,14 @@ namespace IGC
             }
 
             m_indexableTempSize.resize(64);
+
+            for (uint i = 0; i < TOTAL_TYPES; i++)
+            {
+                for (uint j = 0; j < TOTAL_STAGE; j++)
+                {
+                    instrStat[i][j] = 0;
+                }
+            }
         }
 
         CodeGenContext(CodeGenContext&) = delete;

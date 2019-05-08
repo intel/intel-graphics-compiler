@@ -340,3 +340,62 @@ void CheckInstrTypes::visitGetElementPtrInst(llvm::GetElementPtrInst &I)
         g_InstrTypes->hasGenericAddressSpacePointers = true;
     }
 }
+
+#undef PASS_FLAG
+#undef PASS_DESCRIPTION
+#undef PASS_CFG_ONLY
+#undef PASS_ANALYSIS
+
+#define PASS_FLAG "InstrStatitic"
+#define PASS_DESCRIPTION "Check individual type of instructions"
+#define PASS_CFG_ONLY false
+#define PASS_ANALYSIS false
+IGC_INITIALIZE_PASS_BEGIN(InstrStatitic, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(InstrStatitic, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+
+char InstrStatitic::ID = 0;
+
+InstrStatitic::InstrStatitic(CodeGenContext* ctx, InstrStatTypes type, InstrStatStage stage, int threshold) :
+    FunctionPass(ID), m_type(type), m_stage(stage), m_ctx(ctx), m_threshold(threshold)
+{
+    initializeInstrStatiticPass(*PassRegistry::getPassRegistry());
+
+    if (stage == InstrStatStage::BEGIN)
+    {
+        m_ctx->instrStat[type][InstrStatStage::BEGIN] = 0;
+        m_ctx->instrStat[type][InstrStatStage::END] = 0;
+        m_ctx->instrStat[type][InstrStatStage::EXCEED_THRESHOLD] = 0;
+    }
+}
+
+bool InstrStatitic::runOnFunction(Function &F)
+{
+    // run the pass
+    visit(F);
+ 
+    // if this is a call for ending statistic, find out if the difference exceeds the threshold.
+    if (m_stage == InstrStatStage::END)
+    {
+        if (m_ctx->instrStat[m_type][InstrStatStage::BEGIN] - m_ctx->instrStat[m_type][InstrStatStage::END] > m_threshold)
+        {
+            m_ctx->instrStat[m_type][InstrStatStage::EXCEED_THRESHOLD] = 1;
+            m_ctx->m_retryManager.Disable();
+        }
+    }
+    return false;
+}
+
+void InstrStatitic::visitInstruction(llvm::Instruction &I)
+{
+}
+
+void InstrStatitic::visitLoadInst(LoadInst &I)
+{
+    m_ctx->instrStat[m_type][m_stage]++;
+}
+
+void InstrStatitic::visitStoreInst(StoreInst &I)
+{
+    m_ctx->instrStat[m_type][m_stage]++;
+}
+
