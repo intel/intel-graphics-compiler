@@ -1510,7 +1510,14 @@ SPIRVToLLVM::transType(SPIRVType *T) {
     return mapType(T, StructType::create(*Context, T->getName()));
   case OpTypeFunction: {
     auto FT = static_cast<SPIRVTypeFunction *>(T);
-    auto RT = transType(FT->getReturnType());
+    // promote vector bool type to vector i8 to be consistent with
+    // built-ins translation - function can contain some builtin inside,
+    // which return type is also promoted to vector i8
+    Type* RT = nullptr;
+    if (FT->getReturnType()->isTypeVectorBool())
+      RT = VectorType::get(Type::getInt8Ty(*Context), FT->getReturnType()->getVectorComponentCount());
+    else
+      RT = transType(FT->getReturnType());
     std::vector<Type *> PT;
     for (size_t I = 0, E = FT->getNumParameters(); I != E; ++I)
       PT.push_back(transType(FT->getParameterType(I)));
