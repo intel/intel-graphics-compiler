@@ -725,7 +725,7 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign)
                             break;
                         }
                     }
-                    updateDebugInfo(kernel, dcl, start, end, kernel.fg.mem);
+                    updateDebugInfo(kernel, dcl, start, end);
                 }
             }
             else
@@ -868,7 +868,16 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign)
 
                 for (auto dcl : unallocatedRanges)
                 {
-                    updateDebugInfo(kernel, dcl, start, end, kernel.fg.mem);
+                    updateDebugInfo(kernel, dcl, start);
+                }
+
+                // unallocatedRanges doesnt contain input dcls
+                for (auto dcl : kernel.Declares)
+                {
+                    if (dcl->isInput())
+                    {
+                        updateDebugInfo(kernel, dcl, start);
+                    }
                 }
             }
         }
@@ -1323,6 +1332,10 @@ void LocalRA::calculateInputIntervals()
                                 {
                                     inputRegLastRef[idx] = curInstId;
                                     inputIntervals.push_front(new (mem)InputLiveRange(idx, curInstId));
+                                    if (kernel.getOptions()->getOption(vISA_GenerateDebugInfo))
+                                    {
+                                        updateDebugInfo(kernel, topdcl, 0, curInst->getCISAOff());
+                                    }
                                 }
                             }
                         }
@@ -1373,6 +1386,10 @@ void LocalRA::calculateInputIntervals()
                                     {
                                         inputRegLastRef[idx] = curInstId;
                                         inputIntervals.push_front(new (mem)InputLiveRange(idx, curInstId));
+                                        if (kernel.getOptions()->getOption(vISA_GenerateDebugInfo))
+                                        {
+                                            updateDebugInfo(kernel, topdcl, 0, curInst->getCISAOff());
+                                        }
                                     }
                                 }
                             }

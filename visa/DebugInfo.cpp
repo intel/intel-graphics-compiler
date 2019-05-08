@@ -1913,7 +1913,7 @@ void updateDebugInfo(G4_Kernel& kernel, std::vector<std::tuple<G4_Declare*, G4_I
     }
 }
 
-void updateDebugInfo(G4_Kernel& kernel, G4_Declare* dcl, uint32_t start, uint32_t end, Mem_Manager& mem)
+void updateDebugInfo(G4_Kernel& kernel, G4_Declare* dcl, uint32_t start, uint32_t end)
 {
     auto lrInfo = kernel.getKernelDebugInfo()->getLiveIntervalInfo(dcl);
     if (start != UNMAPPABLE_VISA_INDEX &&

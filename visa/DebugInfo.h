@@ -88,7 +88,7 @@ void updateDebugInfo(vISA::G4_Kernel& kernel,
     std::vector<std::tuple<vISA::G4_Declare*, vISA::G4_INST*, vISA::G4_INST*>> augmentationLiveIntervals);
 // For ranges assigned using unique assignments in local RA
 void updateDebugInfo(vISA::G4_Kernel& kernel, vISA::G4_Declare* dcl,
-    uint32_t start, uint32_t end, vISA::Mem_Manager& mem);
+    uint32_t start, uint32_t end);
 void updateDebugInfo(vISA::G4_Kernel& kernel, vISA::G4_Declare* dcl, uint32_t offset);
 
 void updateCallStackLiveIntervals(vISA::G4_Kernel& kernel);
