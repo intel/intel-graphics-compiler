@@ -129,6 +129,8 @@ BISON_TARGET(CISAParser CISA.y ${CMAKE_CURRENT_BINARY_DIR}/CISA.tab.c COMPILE_FL
 FLEX_TARGET(CISAScanner CISA.l ${CMAKE_CURRENT_BINARY_DIR}/lex.CISA.c COMPILE_FLAGS "-PCISA ${WIN_FLEX_FLAG}")
 ADD_FLEX_BISON_DEPENDENCY(CISAScanner CISAParser)
 
+add_custom_target(CISAScanner_target DEPENDS ${FLEX_CISAScanner_OUTPUTS})
+
 # Set up include paths used by all the libraries in this file
 # There is a windows specific include path for GNUTools support that is inside the repository. The
 # equivalent support is already included for Linux and Android so is not required for those platforms
@@ -351,6 +353,7 @@ if (UNIX OR WIN32)
   set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "")
   set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "")
   add_dependencies(GenX_IR_Exe check_headers)
+  add_dependencies(GenX_IR_Exe CISAScanner_target)
 
   source_group("Utility Files" FILES ${GenX_IR_EXE_UTILITY} )
   source_group("Header Files" FILES ${GenX_IR_EXE_HEADERS} )
@@ -465,6 +468,7 @@ if (IGC_BUILD)
        ${FLEX_CISAScanner_OUTPUTS}
        ${GenX_IR_EXE_lex_yacc}
     )
+    add_dependencies(GenX_IR CISAScanner_target)
   set_target_properties( GenX_IR PROPERTIES OUTPUT_NAME "igfxcmjit${TARGET_MODIFIER}")
   if(WIN32)
     target_link_libraries(GenX_IR ${GCC_SECURE_LINK_FLAGS} IGA_ENC_LIB IGA_SLIB)
