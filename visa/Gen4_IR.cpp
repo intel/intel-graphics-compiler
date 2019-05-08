@@ -7689,11 +7689,11 @@ bool G4_INST::canSrcBeAcc(int srcId) const
 
     // check that src0 and dst have the same type/alignment
     auto dstEltSize = getDst()->getHorzStride() * G4_Type_Table[getDst()->getType()].byteSize;
-    if (dstEltSize > G4_Type_Table[src->getType()].byteSize)
+    if (dstEltSize > getTypeSize(src->getType()))
     {
         return false;
     }
-    else if (getDst()->getType() == Type_HF && src->getType() == Type_F &&
+    else if (isLowPrecisionFloatTy(getDst()->getType()) && src->getType() == Type_F &&
         dstEltSize == 2)
     {
         // no acc for mix mode inst with packed HF dst
