@@ -315,10 +315,8 @@ bool HWConformity::checkSrcCrossGRF( INST_LIST_ITER& iter, G4_BB* bb )
     return false;
 }
 
-void HWConformity::fixInstExecSize( BB_LIST_ITER it )
+void HWConformity::fixInstExecSize( G4_BB* bb )
 {
-    G4_BB *bb = *it;
-
 #ifdef _DEBUG
         verifyG4Kernel(kernel, Optimizer::PI_HWConformityChk, false);
 #endif

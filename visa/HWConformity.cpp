@@ -3981,9 +3981,8 @@ bool HWConformity::generateFPMad(G4_BB* bb, INST_LIST_ITER iter)
 // ASSUMPTION:
 //    This phase must be called at the end of all other optimizations
 //    phases and just prior to testing for ACC spilling.
-void HWConformity::fixMADInst( BB_LIST_ITER it )
+void HWConformity::fixMADInst( G4_BB* bb )
 {
-    G4_BB* bb = *it;
     INST_LIST expand_list;
     // trace the MAD instrcutions that may be converted into MAC later
     std::vector<G4_INST*> madList;
@@ -5288,9 +5287,8 @@ void HWConformity::convertMAD2MulAdd( INST_LIST_ITER iter, G4_BB *bb )
 // def-use chains for def, src0 and src1), so that more opportunites may be
 // exposed for later sada2 instructions
 
-void HWConformity::fixSADA2Inst( BB_LIST_ITER it )
+void HWConformity::fixSADA2Inst(G4_BB* bb)
 {
-    G4_BB* bb = *it;
 
     INST_LIST_ITER i = bb->begin();
     while (i != bb->end())
@@ -5551,9 +5549,8 @@ void HWConformity::fixSADA2Inst( BB_LIST_ITER it )
     }
 }
 
-void HWConformity::fixSendInst(BB_LIST_ITER it)
+void HWConformity::fixSendInst(G4_BB* bb)
 {
-    G4_BB* bb = *it;
 
     for (INST_LIST_ITER i = bb->begin(), end = bb->end(); i != end; i++)
     {
@@ -5767,9 +5764,8 @@ void HWConformity::fixSelCsel(INST_LIST_ITER it, G4_BB* bb)
     }
 }
 
-void HWConformity::conformBB( BB_LIST_ITER it)
+void HWConformity::conformBB(G4_BB* bb)
 {
-    G4_BB *bb = *it;
     INST_LIST_ITER i = bb->begin(), iEnd = bb->end();
     INST_LIST_ITER next_iter = i;
     for ( ; i != iEnd; i = next_iter )
@@ -6062,17 +6058,18 @@ void HWConformity::chkHWConformity()
 {
     fixDataLayout();
 
-    for (BB_LIST_ITER it = kernel.fg.begin(), end = kernel.fg.end(); it != end; it++)
+    for (auto bb : kernel.fg)
     {
+        fixIntToHFMove(bb);
 #ifdef _DEBUG
         verifyG4Kernel(kernel, Optimizer::PI_HWConformityChk, false);
 #endif
-        fixAddcSubb(*it);
+        fixAddcSubb(bb);
 #ifdef _DEBUG
         verifyG4Kernel(kernel, Optimizer::PI_HWConformityChk, false);
 #endif
 
-        fixMADInst( it );
+        fixMADInst( bb );
 
 #ifdef _DEBUG
         verifyG4Kernel(kernel, Optimizer::PI_HWConformityChk, false);
@@ -6080,7 +6077,7 @@ void HWConformity::chkHWConformity()
         // fix source operand first to avoid redundant MOVs if this fix is done after
         // reducing execution size.
         // used by 3d. Mainly to fix sel with two imm sources
-        fixOpndTypeAlign( *it );
+        fixOpndTypeAlign( bb );
 
 #ifdef _DEBUG
         verifyG4Kernel(kernel, Optimizer::PI_HWConformityChk, false);
@@ -6089,37 +6086,37 @@ void HWConformity::chkHWConformity()
         if (builder.getOption(vISA_accSubstitution) && 
             !builder.getOption(vISA_doAccSubAfterSchedule))
         {
-            accSubstitution(*it);
+            accSubstitution(bb);
         }
 
 #ifdef _DEBUG
         verifyG4Kernel(kernel, Optimizer::PI_HWConformityChk, false);
 #endif
 
-        fixInstExecSize( it );
+        fixInstExecSize( bb );
 
 #ifdef _DEBUG
         verifyG4Kernel(kernel, Optimizer::PI_HWConformityChk, false);
 #endif
 
-        fixMixedHFInst( it );
+        fixMixedHFInst( bb );
 
 #ifdef _DEBUG
         verifyG4Kernel(kernel, Optimizer::PI_HWConformityChk, false);
 #endif
-        fixSADA2Inst( it );
-
-#ifdef _DEBUG
-        verifyG4Kernel(kernel, Optimizer::PI_HWConformityChk, false);
-#endif
-
-        fixSendInst( it );
+        fixSADA2Inst( bb );
 
 #ifdef _DEBUG
         verifyG4Kernel(kernel, Optimizer::PI_HWConformityChk, false);
 #endif
 
-        conformBB(it);
+        fixSendInst( bb );
+
+#ifdef _DEBUG
+        verifyG4Kernel(kernel, Optimizer::PI_HWConformityChk, false);
+#endif
+
+        conformBB(bb);
 
 #ifdef _DEBUG
         verifyG4Kernel(kernel, Optimizer::PI_HWConformityChk, false);
@@ -7312,9 +7309,8 @@ void HWConformity::helperGenerateTempDst(
         [DevCHV, DevSKL, DevBXT]: No simd16 in mixed mode when destination is f32. Instruction Execution size must be no more than 8.
 
 */
-void HWConformity::fixMixedHFInst( BB_LIST_ITER it )
+void HWConformity::fixMixedHFInst(G4_BB* bb)
 {
-    G4_BB* bb = *it;
     for (auto instIter = bb->begin(); instIter != bb->end(); ++instIter)
     {
         G4_INST *inst = *instIter;
@@ -7541,5 +7537,27 @@ void HWConformity::fixVxHFloat64b(INST_LIST_ITER it, G4_BB* bb)
             inst->setSrc(tmpSrcOpnd, 0);
         }
     }
+}
+
+bool HWConformity::fixIntToHFMove(G4_BB* bb)
+{
+    // int to HF move requires dst to have stride 2, which would result in 
+    // an illegal SIMD32 inst. So we split in this case
+    // we put it in a separate pass so that the split instructions may be legalized later
+    bool changed = false;
+    for (auto I = bb->begin(), E = bb->end(); I != E; ++I)
+    { 
+        auto inst = *I;
+        if (inst->opcode() == G4_mov && inst->getDst()->getType() == Type_HF &&
+            IS_INT(inst->getSrc(0)->getType()))
+        {
+            if (inst->getExecSize() * 2 * 2 > getGRFSize() * 2)
+            {
+                evenlySplitInst(I, bb);
+                changed = true;
+            }
+        }
+    }
+    return changed;
 }
 

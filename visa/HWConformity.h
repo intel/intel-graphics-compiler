@@ -108,16 +108,16 @@ namespace vISA
         bool fixDstAlignmentWithVectorImm(INST_LIST_ITER i, G4_BB *bb);
         bool fixAcc(INST_LIST_ITER i, G4_BB* bb);
         void fixDstHstride(INST_LIST_ITER i, int extypesize);
-        void fixMADInst(BB_LIST_ITER it);
+        void fixMADInst(G4_BB* bb);
         void fixSrcRegion(G4_INST *inst);
-        void conformBB(BB_LIST_ITER it);
-        void fixSADA2Inst(BB_LIST_ITER it);
-        void fixMixedHFInst(BB_LIST_ITER it);
-        void fixSendInst(BB_LIST_ITER it);
+        void conformBB(G4_BB* bb);
+        void fixSADA2Inst(G4_BB* bb);
+        void fixMixedHFInst(G4_BB* bb);
+        void fixSendInst(G4_BB* bb);
         bool canSplitByteDst(G4_opcode op);
         bool fixInstOpndTypeAlign(INST_LIST_ITER i, G4_BB* bb);
         void fixOpndTypeAlign(G4_BB* bb);
-        void fixInstExecSize(BB_LIST_ITER it);
+        void fixInstExecSize(G4_BB* bb);
         bool reduceExecSize(INST_LIST_ITER iter, G4_BB* bb);
         bool reduceExecSizeForMath(INST_LIST_ITER iter, G4_BB* bb);
         void checkSrcDstOverlap(INST_LIST_ITER iter, G4_BB* bb, bool compOpt);
@@ -147,6 +147,7 @@ namespace vISA
         void fixDataLayout();
         bool fixMov(INST_LIST_ITER i, G4_BB* bb);
         bool fixRotate(INST_LIST_ITER i, G4_BB* bb);
+        bool fixIntToHFMove(G4_BB* bb);
 
 
         void helperGenerateTempDst(
