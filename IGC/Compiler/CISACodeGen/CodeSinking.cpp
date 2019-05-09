@@ -40,9 +40,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * - move input instructions close to its uses
  * - move flag-register definition close to its uses (yet to be done)
  *
- * The 2nd application of code-sinking is to move high-cost operation, 
- * like texture sample, into the control-flow branch that is really used. 
- * However, I think this 2nd goal should only be allowed only if it does 
+ * The 2nd application of code-sinking is to move high-cost operation,
+ * like texture sample, into the control-flow branch that is really used.
+ * However, I think this 2nd goal should only be allowed only if it does
  * not increase register pressure.
  *
  * step 1. efficient code-sinking limited to inputs and cmps
@@ -51,7 +51,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
  * Two tuning paramters for code-sinking:
  * - General code-sinking, enable code-sinking of step 2
- * - Register-pressure threshold, undo code-sinking when live-out pressure is high 
+ * - Register-pressure threshold, undo code-sinking when live-out pressure is high
  */
 #include "common/debug/Debug.hpp"
 #include "common/debug/Dump.hpp"
@@ -98,25 +98,25 @@ CodeSinking::CodeSinking(bool generalSinking) : FunctionPass(ID) {
 /// occur in blocks dominated by the specified block.
 bool CodeSinking::AllUsesDominatedByBlock(Instruction *inst,
                                           BasicBlock *blk,
-                                          SmallPtrSetImpl<Instruction*> &usesInBlk) const 
+                                          SmallPtrSetImpl<Instruction*> &usesInBlk) const
 {
     usesInBlk.clear();
     // Ignoring debug uses is necessary so debug info doesn't affect the code.
     // This may leave a referencing dbg_value in the original block, before
     // the definition of the vreg.  Dwarf generator handles this although the
     // user might not get the right info at runtime.
-    for (Value::user_iterator I = inst->user_begin(), E = inst->user_end(); I != E; ++I) 
+    for (Value::user_iterator I = inst->user_begin(), E = inst->user_end(); I != E; ++I)
     {
         // Determine the block of the use.
         Instruction *useInst = cast<Instruction>(*I);
         BasicBlock *useBlock = useInst->getParent();
-        if (useBlock == blk) 
+        if (useBlock == blk)
         {
             usesInBlk.insert(useInst);
         }
         if (PHINode *PN = dyn_cast<PHINode>(useInst))
         {
-            // PHI nodes use the operand in the predecessor block, 
+            // PHI nodes use the operand in the predecessor block,
             // not the block with the PHI.
             Use &U = I.getUse();
             unsigned num = PHINode::getIncomingValueNumForOperand(U.getOperandNo());
@@ -139,14 +139,14 @@ bool CodeSinking::FindLowestSinkTarget( Instruction *inst,
     usesInBlk.clear();
     tgtBlk = 0x0;
     outerLoop = false;
-    for (Value::user_iterator I = inst->user_begin(), E = inst->user_end(); I != E; ++I) 
+    for (Value::user_iterator I = inst->user_begin(), E = inst->user_end(); I != E; ++I)
     {
         // Determine the block of the use.
         Instruction *useInst = cast<Instruction>(*I);
         BasicBlock *useBlock = useInst->getParent();
         if (PHINode *PN = dyn_cast<PHINode>(useInst))
         {
-            // PHI nodes use the operand in the predecessor block, 
+            // PHI nodes use the operand in the predecessor block,
             // not the block with the PHI.
             Use &U = I.getUse();
             unsigned num = PHINode::getIncomingValueNumForOperand(U.getOperandNo());
@@ -182,12 +182,12 @@ bool CodeSinking::FindLowestSinkTarget( Instruction *inst,
             (!tgtLoop || tgtLoop->contains(curLoop)) ||
             (doLoopSink && tgtLoop && (!curLoop || curLoop->contains(tgtLoop))))
         {
-            for (Value::user_iterator I = inst->user_begin(), E = inst->user_end(); I != E; ++I) 
+            for (Value::user_iterator I = inst->user_begin(), E = inst->user_end(); I != E; ++I)
             {
                 // Determine the block of the use.
                 Instruction *useInst = cast<Instruction>(*I);
                 BasicBlock *useBlock = useInst->getParent();
-                if (useBlock == tgtBlk) 
+                if (useBlock == tgtBlk)
                 {
                     usesInBlk.insert(useInst);
                 }
@@ -221,7 +221,7 @@ bool CodeSinking::runOnFunction(Function &F)
 {
     CTX = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     // only limited code-sinking to several shader-type
-    // vs input has the URB-reuse issue to be resolved. 
+    // vs input has the URB-reuse issue to be resolved.
     // Also need to understand the performance benefit better.
     if(CTX->type != ShaderType::PIXEL_SHADER &&
        CTX->type != ShaderType::DOMAIN_SHADER &&
@@ -237,7 +237,7 @@ bool CodeSinking::runOnFunction(Function &F)
     }
 
     // Keep track of fat BB. Might need to reverse LICM if
-    // the fat BB is inside loop and there are a lot of 
+    // the fat BB is inside loop and there are a lot of
     // loop-invariant insts that have been moved out of the loop.
     m_fatBBPressure = 0;
     m_fatBB = nullptr;
@@ -255,7 +255,7 @@ bool CodeSinking::runOnFunction(Function &F)
     // diagnosis code: if (sinkCounter >= 94 && sinkCounter < 95) {
     // even if we limit code-sinking to ps-input instructions, we still need to iterate through
     // all the blocks because llvm-InstCombine may have sinked some ps-input instructions out of entry-block
-    do 
+    do
     {
         madeChange = false;
         // Process all basic blocks in dominator-tree post-order
@@ -279,7 +279,7 @@ bool CodeSinking::runOnFunction(Function &F)
 
     // diagnosis code: printf("%d:%d:%x\n", sinkCounter, sinkLimit, CTX->hash.getAsmHash());
     //F.viewCFG();
-    // } end of diagnosis if 
+    // } end of diagnosis if
     // diagnosis code: sinkCounter++;
     return everMadeChange || changed;
 }
@@ -306,17 +306,17 @@ static uint EstimateLiveOutPressure(BasicBlock *blk, const DataLayout *DL)
             continue;
 
         bool useOutside = false;
-        for (Value::user_iterator useI = inst->user_begin(), useE = inst->user_end(); 
-             !useOutside && useI != useE; ++useI) 
+        for (Value::user_iterator useI = inst->user_begin(), useE = inst->user_end();
+             !useOutside && useI != useE; ++useI)
         {
             // Determine the block of the use.
             Instruction *useInst = cast<Instruction>(*useI);
             BasicBlock *useBlock = useInst->getParent();
-            if (useBlock != blk) 
+            if (useBlock != blk)
             {
                 if (PHINode *PN = dyn_cast<PHINode>(useInst))
                 {
-                    // PHI nodes use the operand in the predecessor block, 
+                    // PHI nodes use the operand in the predecessor block,
                     // not the block with the PHI.
                     Use &U = useI.getUse();
                     unsigned num = PHINode::getIncomingValueNumForOperand(U.getOperandNo());
@@ -331,7 +331,7 @@ static uint EstimateLiveOutPressure(BasicBlock *blk, const DataLayout *DL)
                 }
             }
         }
-        
+
         // estimate register usage by value
         if (useOutside)
         {
@@ -342,7 +342,7 @@ static uint EstimateLiveOutPressure(BasicBlock *blk, const DataLayout *DL)
     return pressure;
 }
 
-bool CodeSinking::ProcessBlock(BasicBlock &blk) 
+bool CodeSinking::ProcessBlock(BasicBlock &blk)
 {
     if (blk.empty())
         return false;
@@ -387,7 +387,7 @@ bool CodeSinking::ProcessBlock(BasicBlock &blk)
             prevLoca = inst;
         }
         // intrinsic like discard has no explict use, gets skipped here
-        else if (isa<DbgInfoIntrinsic>(inst) || inst->isTerminator() || 
+        else if (isa<DbgInfoIntrinsic>(inst) || inst->isTerminator() ||
                  isa<PHINode>(inst) || inst->use_empty() )
         {
             prevLoca = inst;
@@ -518,6 +518,8 @@ bool CodeSinking::isSafeToMove(Instruction *inst
         reducePressure = true;
         return true;
     }
+
+
     if (generalCodeSinking)
     {
         if (IsMathIntrinsic(intrinsic_name) || IsGradientIntrinsic(intrinsic_name))
@@ -618,7 +620,7 @@ bool CodeSinking::SinkInstruction(
         if (FindLowestSinkTarget(inst, tgtBlk, usesInBlk, outerLoop, ForceToReducePressure))
         {
             // heuristic, avoid code-motion that does not reduce execution frequency but may increase register usage
-            if (reducePressure || 
+            if (reducePressure ||
                 (tgtBlk && (outerLoop || !PDT->dominates(tgtBlk, inst->getParent()))))
             {
                 succToSinkTo = tgtBlk;
@@ -635,7 +637,7 @@ bool CodeSinking::SinkInstruction(
             return false;
         }
     }
-    else 
+    else
     {
         // when aliasing is a concern, only look at all the immed successors and
         // decide which one we should sink to, if any.
@@ -708,7 +710,7 @@ bool CodeSinking::LocalSink(BasicBlock *blk)
             Instruction *def = dyn_cast<Instruction>(use->getOperand(i));
             if (def && def->getParent() == blk && localInstSet.count(def))
             {
-                // "use" can be a phi-node for a single-block loop, 
+                // "use" can be a phi-node for a single-block loop,
                 // which is not really a local-code-motion
                 if (def->getNextNode() != use && !isa<PHINode>(use))
                 {
@@ -1050,7 +1052,7 @@ bool CodeSinking::loopSink(BasicBlock* BBWithPressure, bool SinkMultipleLevel)
     //   ParentLoop
     //     y = ...
     //     Loop:
-    //          = x 
+    //          = x
     //          = y
     // Normally, only y can be sinked. When multiLevel is true,
     // x can be sinked into Loop (inner) as well.
@@ -1172,13 +1174,13 @@ bool CodeSinking::LoopSinkInstructions(
     //            x = add y, z
     //   loop:
     //         ...
-    //      BB: 
+    //      BB:
     //           = x
     //
     // Afer sinking, x changes from global to local, and thus reduce pressure.
     // But y and z could change to global to local (if y and z are local).
     // Thus, we reduce pressure by 1 (x), but increase by the number of its
-    // operands (y and z). If there are more candidates share the same operands, 
+    // operands (y and z). If there are more candidates share the same operands,
     // we will reduce the pressure.  For example:
     //   preheader:
     //        x0 = add y, 10

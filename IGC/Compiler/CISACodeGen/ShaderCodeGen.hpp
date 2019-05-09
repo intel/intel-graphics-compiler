@@ -95,15 +95,15 @@ public:
     void         EOTRenderTarget();
     virtual void AddEpilogue(llvm::ReturnInst* ret);
 
-    virtual CVariable* GetURBOutputHandle() 
-    { 
-        assert(!"Should be overridden in a derived class!"); 
+    virtual CVariable* GetURBOutputHandle()
+    {
+        assert(!"Should be overridden in a derived class!");
         return nullptr;
     }
-    virtual CVariable* GetURBInputHandle(CVariable* pVertexIndex) 
-    { 
-        assert(!"Should be overridden in a derived class!"); 
-        return nullptr; 
+    virtual CVariable* GetURBInputHandle(CVariable* pVertexIndex)
+    {
+        assert(!"Should be overridden in a derived class!");
+        return nullptr;
     }
     virtual QuadEltUnit GetFinalGlobalOffet(QuadEltUnit globalOffset) { return QuadEltUnit(0); }
     virtual bool hasReadWriteImage(llvm::Function &F) { return false; }
@@ -128,7 +128,7 @@ public:
     CVariable*  createAliasIfNeeded(llvm::Value* V, CVariable* BaseVar);
     // Allow to create an alias of a variable handpicking a slice to be able to do cross lane in SIMD32
     CVariable*  GetVarHalf(CVariable* var, unsigned int half);
-    
+
     void        CopyVariable(CVariable* dst, CVariable* src, uint dstSubVar = 0, uint srcSubVar = 0);
     void        PackAndCopyVariable(CVariable* dst, CVariable* src, uint subVar = 0);
     bool        IsValueUsed(llvm::Value* value);
@@ -207,7 +207,7 @@ public:
 
     void        SampleHeader(CVariable* payload, uint offset, uint writeMask, uint rti);
 
-    bool        GetHasBarrier() const { return m_HasBarrier; } 
+    bool        GetHasBarrier() const { return m_HasBarrier; }
     void        SetHasBarrier() { m_HasBarrier = true; }
 
     void        GetSimdOffsetBase(CVariable*& pVar);
@@ -243,7 +243,7 @@ public:
     const CBTILayout* m_pBtiLayout;
     const CPlatform*  m_Platform;
     const CDriverInfo* m_DriverInfo;
-    
+
     ModuleMetaData* m_ModuleMetadata;
 
     /// Dispatch size is the number of logical threads running in one hardware thread
@@ -273,7 +273,7 @@ public:
     static const DWORD cBTEntriesPerCacheLine = 32;
     // Max BTI value that can increase binding table count.
     // SampleEngine:    Binding Table Index is set to 252 specifies the bindless surface offset.
-    // DataPort:        The special entry 255 is used to reference Stateless A32 or A64 address model, 
+    // DataPort:        The special entry 255 is used to reference Stateless A32 or A64 address model,
     //                  and the special entry 254 is used to reference the SLM address model.
     //                  The special entry 252 is used to reference bindless resource operation.
     static const DWORD MAX_BINDING_TABLE_INDEX = 251;
@@ -295,12 +295,12 @@ public:
 
     /// Initialize per function status.
     void BeginFunction(llvm::Function *F);
-    /// This method is used to create the vISA variable for function F's formal return value 
+    /// This method is used to create the vISA variable for function F's formal return value
     CVariable* getOrCreateReturnSymbol(llvm::Function *F);
-    /// This method is used to create the vISA variable for function F's formal argument 
+    /// This method is used to create the vISA variable for function F's formal argument
     CVariable* getOrCreateArgumentSymbol(llvm::Argument *Arg, bool useStackCall = false);
     CVariable* getOrCreateArgSymbolForIndirectCall(llvm::CallInst* cInst, unsigned argIdx);
-    VISA_Type GetType(llvm::Type* type);       
+    VISA_Type GetType(llvm::Type* type);
 
     /// Evaluate constant expression and return the result immediate value.
     uint64_t GetConstantExpr(llvm::ConstantExpr *C);
@@ -350,7 +350,7 @@ public:
     std::vector<std::pair<unsigned int, unsigned int>> m_VISAIndexToGenISAOff;
     void addCVarsForVectorBC(llvm::BitCastInst* BCI, llvm::SmallVector<CVariable*, 8> CVars)
     {
-        assert (m_VectorBCItoCVars.find(BCI) == std::end(m_VectorBCItoCVars) && 
+        assert (m_VectorBCItoCVars.find(BCI) == std::end(m_VectorBCItoCVars) &&
             "a variable already exists for this vector bitcast");
         m_VectorBCItoCVars.try_emplace(BCI, CVars);
     }
@@ -457,7 +457,7 @@ protected:
     uint m_statelessCBPushedSize;
     uint m_NOSBufferSize;
 
-    /// holds max number of inputs that can be pushed for this shader unit 
+    /// holds max number of inputs that can be pushed for this shader unit
     static const uint32_t m_pMaxNumOfPushedInputs;
 
     bool m_HasBarrier;
@@ -469,7 +469,7 @@ protected:
     // Holds binding table entries bitmap.
     uint32_t m_BindingTableUsedEntriesBitmap;
 
-    // for each vector BCI whose uses are all extractElt with imm offset, 
+    // for each vector BCI whose uses are all extractElt with imm offset,
     // we store the CVariables for each index
     llvm::DenseMap<llvm::Instruction*, llvm::SmallVector<CVariable*, 8>> m_VectorBCItoCVars;
 
@@ -541,7 +541,7 @@ struct SInstContext
     }
 };
 
-static const SInstContext g_InitContext = 
+static const SInstContext g_InitContext =
 {
     NULL,
     EMOD_NONE,
@@ -550,7 +550,7 @@ static const SInstContext g_InitContext =
 
 void unify_opt_PreProcess( CodeGenContext* pContext );
 // Forward declaration
-struct PSSignature; 
+struct PSSignature;
 void CodeGen(PixelShaderContext* ctx, CShaderProgram::KernelShaderMap &shaders, PSSignature* pSignature = nullptr);
 void CodeGen(OpenCLProgramContext* ctx, CShaderProgram::KernelShaderMap &shaders);
 }

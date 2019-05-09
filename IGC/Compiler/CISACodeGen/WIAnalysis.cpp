@@ -290,9 +290,9 @@ bool WIAnalysisRunner::run()
       calculate_dep(&*it);
     }
 
-    // Recursively check if WI-dep changes and if so reclaculates 
+    // Recursively check if WI-dep changes and if so reclaculates
     // the WI-dep and marks the users for re-checking.
-    // This procedure is guranteed to converge since WI-dep can only 
+    // This procedure is guranteed to converge since WI-dep can only
     // become less unifrom (uniform->consecutive->ptr->stride->random).
     updateDeps();
   }
@@ -322,9 +322,9 @@ void WIAnalysisRunner::updateDeps()
   // As lonst as we have values to update
   while(!m_pChangedNew->empty())
   {
-    // swap between changedSet pointers - recheck the newChanged(now old) 
+    // swap between changedSet pointers - recheck the newChanged(now old)
     std::swap(m_pChangedNew, m_pChangedOld);
-    // clear the newChanged set so it will be filled with the users of 
+    // clear the newChanged set so it will be filled with the users of
     // instruction which their WI-dep canged during the current iteration
     m_pChangedNew->clear();
 
@@ -349,9 +349,9 @@ bool WIAnalysisRunner::isInstructionSimple(const Instruction* inst)
         return false;
     }
 
-    if ( isa<UnaryInstruction>(inst) || 
-         isa<BinaryOperator>(inst)    || 
-         isa<CmpInst>(inst)           || 
+    if ( isa<UnaryInstruction>(inst) ||
+         isa<BinaryOperator>(inst)    ||
+         isa<CmpInst>(inst)           ||
          isa<SelectInst>(inst))
     {
          return true;
@@ -404,7 +404,7 @@ void WIAnalysisRunner::genSpecificBackwardUpdate()
       Instruction *def = dyn_cast<Instruction>(inst->getOperand(i));
       if (def && getDependency(def) == WIAnalysis::UNIFORM && allUsesRandom(def) && !needToBeUniform(def))
       {
-        
+
         // if it is cheap and easy to mark it as RANDOM
         if ( isInstructionSimple(def) )
         {
@@ -614,7 +614,7 @@ void WIAnalysisRunner::calculate_dep(const Value* val)
   // were already given dependency. This is good for compile time since these
   // instructions will be visited again after the operands dependency is set.
   // An exception are phi nodes since they can be the ancestor of themselves in
-  // the def-use chain. Note that in this case we force the phi to have the 
+  // the def-use chain. Note that in this case we force the phi to have the
   // pre-header value already calculated.
   if (!hasOriginal)
   {
@@ -662,9 +662,9 @@ void WIAnalysisRunner::calculate_dep(const Value* val)
   else if (isa<ExtractElementInst>(inst))                                     dep = calculate_dep_simple(inst);
   else if (const GetElementPtrInst *GEP = dyn_cast<GetElementPtrInst>(inst))  dep = calculate_dep(GEP);
   else if (isa<InsertElementInst>(inst))                                      dep = calculate_dep_simple(inst);
-  else if (isa<InsertValueInst>(inst))                                        dep = calculate_dep_simple(inst); 
-  else if (const PHINode *Phi = dyn_cast<PHINode>(inst))                      dep = calculate_dep(Phi); 
-  else if (isa<ShuffleVectorInst>(inst))                                      dep = calculate_dep_simple(inst); 
+  else if (isa<InsertValueInst>(inst))                                        dep = calculate_dep_simple(inst);
+  else if (const PHINode *Phi = dyn_cast<PHINode>(inst))                      dep = calculate_dep(Phi);
+  else if (isa<ShuffleVectorInst>(inst))                                      dep = calculate_dep_simple(inst);
   else if (isa<StoreInst>(inst))                                              dep = calculate_dep_simple(inst);
   else if (inst->isTerminator())                                              dep = calculate_dep_terminator(dyn_cast<IGCLLVM::TerminatorInst>(inst));
   else if (const SelectInst *SI = dyn_cast<SelectInst>(inst))                 dep = calculate_dep(SI);
@@ -783,7 +783,7 @@ void WIAnalysisRunner::update_cf_dep(const IGCLLVM::TerminatorInst *inst)
         if (phi)
         {
             // another place we assume all critical edges have been split and
-            // phi-move will be placed on the blocks created on those 
+            // phi-move will be placed on the blocks created on those
             user_blk = phi->getIncomingBlock(*use_it);
         }
         if (user_blk == def_blk)
@@ -791,7 +791,7 @@ void WIAnalysisRunner::update_cf_dep(const IGCLLVM::TerminatorInst *inst)
           // local def-use, not related to control-dependence
           continue; // skip
         }
-        if (user_blk == br_info.full_join || 
+        if (user_blk == br_info.full_join ||
             br_info.partial_joins.count(user_blk) ||
             !br_info.influence_region.count(user_blk))
         {
@@ -800,8 +800,8 @@ void WIAnalysisRunner::update_cf_dep(const IGCLLVM::TerminatorInst *inst)
           // since def is changed to RANDOM, all uses will be changed later
           break;
         }
-      } // end of usei loop 
-    } // end of defi loop within a block 
+      } // end of usei loop
+    } // end of defi loop within a block
   } // end of influence-region block loop
 }
 
@@ -950,7 +950,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(
   {
     return WIAnalysis::UNIFORM;
   }
-  
+
   // FIXME:: assumes that the X value does not cross the +/- border - risky !!!
   // The pattern (and (X, C)), where C preserves the lower k bits of the value,
   // is often used for truncating of numbers in 64bit. We assume that the index
@@ -960,7 +960,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(
     ConstantInt *C0 = dyn_cast<ConstantInt>(inst->getOperand(0));
     ConstantInt *C1 = dyn_cast<ConstantInt>(inst->getOperand(1));
     // Use any of the constants. Instcombine places constants on Op1
-    // so try Op1 first. 
+    // so try Op1 first.
     if (C1 || C0)
     {
       ConstantInt *C = C1 ? C1 : C0;
@@ -980,12 +980,12 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(
       }
     }
   }
-  
+
   // FIXME:: assumes that the X value does not cross the +/- border - risky !!!
   // The pattern (ashr (shl X, C)C) is used for truncating of numbers in 64bit
   // The constant C must leave at least 32bits of the original number
   if (inst->getOpcode() == Instruction::AShr)
-  { 
+  {
     BinaryOperator* SHL = dyn_cast<BinaryOperator>(inst->getOperand(0));
     // We also allow add of uniform value between the ashr and shl instructions
     // since instcombine creates this pattern when adding a constant.
@@ -1059,7 +1059,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
       GII_id = GII->getIntrinsicID();
   }
   if(IsMathIntrinsic(intrinsic_name) ||
-      intrinsic_name == llvm_input || 
+      intrinsic_name == llvm_input ||
       intrinsic_name == llvm_sgv ||
       intrinsic_name == llvm_shaderinputvec ||
       intrinsic_name == llvm_getbufferptr ||
@@ -1093,17 +1093,18 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
         intrinsic_name == llvm_shaderinputvec)
     {
       e_interpolation mode = (e_interpolation) cast<ConstantInt>(inst->getOperand(1))->getZExtValue();
-      if (mode != EINTERPOLATION_CONSTANT 
+      if (mode != EINTERPOLATION_CONSTANT
           )
       {
         return WIAnalysis::RANDOM;
       }
     }
 
+
     if (intrinsic_name == llvm_sgv)
     {
       SGVUsage usage = (SGVUsage) cast<ConstantInt>(inst->getOperand(0))->getZExtValue();
-      if((usage != VFACE 
+      if((usage != VFACE
           )&&
           usage != ACTUAL_COARSE_SIZE_X &&
           usage != ACTUAL_COARSE_SIZE_Y &&
@@ -1163,7 +1164,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
 WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(
     const GetElementPtrInst* inst)
 {
-  // running over the all indices arguments except for the last 
+  // running over the all indices arguments except for the last
   // here we assume the pointer is the first operand
   unsigned num = inst->getNumIndices();
   for (unsigned i=1; i < num; ++i)
@@ -1190,10 +1191,10 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const PHINode* inst)
   bool foundFirst = 0;
   WIAnalysis::WIDependancy totalDep;
 
-  for (unsigned i=0; i < num; ++i) 
+  for (unsigned i=0; i < num; ++i)
   {
       Value* op = inst->getIncomingValue(i);
-      if (hasDependency(op)) 
+      if (hasDependency(op))
       {
           if( !foundFirst )
           {
@@ -1222,7 +1223,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep_terminator(
   switch (inst->getOpcode())
   {
   case Instruction::Br:
-    { 
+    {
       const BranchInst * brInst = cast<BranchInst>(inst);
       if (brInst->isConditional())
       {
@@ -1390,7 +1391,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CastInst* inst)
   if (WIAnalysis::UNIFORM == dep0) return dep0;
 
   switch (inst->getOpcode())
-  {  
+  {
   case Instruction::SExt:
   case Instruction::FPTrunc:
   case Instruction::FPExt:
@@ -1444,7 +1445,7 @@ void WIAnalysisRunner::checkLocalIdUniform(
     FunctionInfoMetaDataHandle funcInfoMD = m_pMdUtils->getFunctionsInfoItem(F);
     ModuleMetaData *modMD = m_CGCtx->getModuleMetaData();
     auto funcMD = modMD->FuncMD.find(F);
-    
+
     int32_t WO_0 = -1, WO_1 = -1, WO_2 = -1;
     if (funcMD != modMD->FuncMD.end())
     {
@@ -1455,7 +1456,7 @@ void WIAnalysisRunner::checkLocalIdUniform(
             WO_1 = workGroupWalkOrder.dim1;
             WO_2 = workGroupWalkOrder.dim2;
         }
-    }    
+    }
 
     uint32_t simdSize = 0;
     SubGroupSizeMetaDataHandle subGroupSize = funcInfoMD->getSubGroupSize();
@@ -1526,7 +1527,7 @@ void WIAnalysisRunner::checkLocalIdUniform(
     }
 }
 
-BranchInfo::BranchInfo(const IGCLLVM::TerminatorInst *inst, const BasicBlock *ipd) 
+BranchInfo::BranchInfo(const IGCLLVM::TerminatorInst *inst, const BasicBlock *ipd)
   : cbr(inst),
     full_join(ipd)
 {

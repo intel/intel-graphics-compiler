@@ -3400,6 +3400,7 @@ void EmitPass::emitPSInputCst(llvm::Instruction* inst)
     m_encoder->Push();
 }
 
+
 void EmitPass::emitPSInput(llvm::Instruction* inst)
 {
     e_interpolation mode = (e_interpolation)llvm::cast<llvm::ConstantInt>(inst->getOperand(1))->getZExtValue();
@@ -6514,7 +6515,7 @@ void EmitPass::emitGather4Instruction(SamplerGatherIntrinsic* inst)
         CVariable* src = GetSymbol(inst->getOperand(i));
         if (src->IsUniform())
         {
-            CVariable* srcReg = m_currShader->GetNewVariable(numLanes(m_currShader->m_SIMDSize), ISA_TYPE_F, 
+            CVariable* srcReg = m_currShader->GetNewVariable(numLanes(m_currShader->m_SIMDSize), ISA_TYPE_F,
                 m_currShader->getGRFAlignment());
             m_encoder->Copy(srcReg, src);
             m_encoder->Push();

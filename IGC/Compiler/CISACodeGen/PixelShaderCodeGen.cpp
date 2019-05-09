@@ -253,6 +253,7 @@ namespace IGC
         // allocate space for NOS constants and pushed constants
         AllocateConstants3DShader(offset);
 
+
         assert(offset%getGRFSize() == 0);
         unsigned int payloadEnd = offset;
         //Allocate size for values coming from VS
@@ -278,7 +279,7 @@ namespace IGC
                 offset += 4 * SIZE_DWORD;
             }
         }
-        
+
         offset = payloadEnd;
         // create output registers for coarse phase
         calignmentSize as;
@@ -428,7 +429,8 @@ namespace IGC
         }
         return baryReg;
     }
-    
+
+
     CVariable* CPixelShader::GetInputDelta(uint index, bool loweredInput)
     {
         CVariable* inputVar = setup[index];
@@ -691,7 +693,7 @@ namespace IGC
         if (simd32Shader)
         {
             unsigned kernelSize = simd32Shader->m_simdProgram.m_programSize;
-            bool forceSIMD32 = 
+            bool forceSIMD32 =
                 (this->GetContext()->getCompilerOption().forcePixelShaderSIMDMode &
                     FLAG_PS_SIMD_MODE_FORCE_SIMD32) != 0;
 
@@ -724,7 +726,7 @@ namespace IGC
     void CPixelShader::FillProgram(SPixelShaderKernelProgram* pKernelProgram)
     {
         const PixelShaderInfo &psInfo = GetContext()->getModuleMetaData()->psInfo;
-        
+
         pKernelProgram->blendToFillEnabled = psInfo.blendToFillEnabled;
         pKernelProgram->forceEarlyZ = psInfo.forceEarlyZ;
 
@@ -1100,7 +1102,7 @@ namespace IGC
     bool CPixelShader::CompileSIMDSize(SIMDMode simdMode, EmitPass &EP, llvm::Function &F)
     {
         CodeGenContext* ctx = GetContext();
-        bool forceSIMD32 = 
+        bool forceSIMD32 =
             (ctx->getCompilerOption().forcePixelShaderSIMDMode &
                 FLAG_PS_SIMD_MODE_FORCE_SIMD32) != 0;
         bool forceSIMD16 =
@@ -1145,7 +1147,7 @@ namespace IGC
             }
 
             CShader* simd16Program = m_parent->GetShader(SIMDMode::SIMD16);
-            if ((simd16Program == nullptr || 
+            if ((simd16Program == nullptr ||
                 simd16Program->ProgramOutput()->m_programBin == 0 ||
                 simd16Program->ProgramOutput()->m_scratchSpaceUsedBySpills > 0))
             {
@@ -1163,7 +1165,7 @@ namespace IGC
             {
                 return false;
             }
-            
+
             if(iSTD::BitCount(m_RenderTargetMask) > 1)
             {
                 // don't compile SIMD32 for MRT as we may trash the render cache
@@ -1409,7 +1411,7 @@ namespace IGC
 
     bool CPixelShader::LowerPSInput()
     {
-        return (m_SIMDSize == SIMDMode::SIMD16 || !m_Platform->supportMixMode());        
+        return (m_SIMDSize == SIMDMode::SIMD16 || !m_Platform->supportMixMode());
     }
 
     void CPixelShader::emitPSInputLowering()

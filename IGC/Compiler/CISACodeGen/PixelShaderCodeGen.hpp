@@ -169,7 +169,7 @@ protected:
 
     bool       m_HasDiscard;
 
-    // Multi phase shader properties 
+    // Multi phase shader properties
     PixelShaderPhaseType m_phase;
     bool       m_IsLastPhase;
     uint       m_pixelPhaseLabel;

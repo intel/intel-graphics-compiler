@@ -53,11 +53,11 @@ struct PSSignature;
 
 class EmitPass : public llvm::FunctionPass
 {
-public: 
+public:
     EmitPass(CShaderProgram::KernelShaderMap &shaders, SIMDMode mode, bool canAbortOnSpill, ShaderDispatchMode shaderMode, PSSignature* pSignature = nullptr);
 
     virtual ~EmitPass();
-    
+
     virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
     {
         AU.addRequired<llvm::DominatorTreeWrapperPass>();
@@ -102,11 +102,11 @@ public:
 
     template<int N>
     void Alu(e_opcode opCode, const SSource sources[N], const DstModifier& modifier);
-    
+
     void BinaryUnary(llvm::Instruction* inst, const  SSource source[2], const DstModifier& modifier);
-    void CmpBoolOp(llvm::BinaryOperator* inst, 
-        llvm::CmpInst::Predicate predicate, 
-        const  SSource source[2], 
+    void CmpBoolOp(llvm::BinaryOperator* inst,
+        llvm::CmpInst::Predicate predicate,
+        const  SSource source[2],
         const SSource& bitSource,
         const DstModifier&  modifier);
     void emitAluConditionMod(Pattern* aluPattern, llvm::Instruction* alu, llvm::CmpInst* cmp);
@@ -145,13 +145,13 @@ public:
     void emitOutput(llvm::GenIntrinsicInst* inst);
     void emitGS_SGV(llvm::SGVIntrinsic* inst);
     void emitSampleOffset(llvm::GenIntrinsicInst* inst);
-    
+
     // TODO: unify the functions below and clean up
-    void emitStore(llvm::StoreInst* inst); 
+    void emitStore(llvm::StoreInst* inst);
     void emitStore3D(llvm::StoreInst* inst, llvm::Value *elemIdxV = nullptr);
     void emitStore3DInner(llvm::Value *pllValToStore, llvm::Value *pllDstPtr, llvm::Value *pllElmIdx);
 
-    void emitLoad(llvm::LoadInst* inst);        // single load, no pattern 
+    void emitLoad(llvm::LoadInst* inst);        // single load, no pattern
     void emitLoad3DInner(llvm::LdRawIntrinsic *inst, ResourceDescriptor& resource, llvm::Value *elemIdxV);
 
     // when resource is dynamically indexed, load/store must use special intrinsics
@@ -165,7 +165,7 @@ public:
     // Emit lifetime start right before inst V. If ForAllInstance is true, emit lifestart
     // for both instances; otherwise, just the current instance set in the calling context.
     void emitLifetimeStart(CVariable* Var, llvm::BasicBlock* BB, llvm::Instruction* I, bool ForAllInstance);
- 
+
     // set the predicate with current active channels
     void emitPredicateFromChannelIP(CVariable* dst, CVariable* alias = NULL);
 
@@ -301,7 +301,7 @@ public:
     void emitBranch(llvm::BranchInst* br, const SSource& cond, e_predMode predMode);
     void emitDiscardBranch(llvm::BranchInst* br, const SSource& cond);
     void emitAluNoModifier(llvm::GenIntrinsicInst* inst);
-    
+
     void emitSGV(llvm::SGVIntrinsic* inst);
     void emitPSSGV(llvm::GenIntrinsicInst* inst);
     void emitCSSGV(llvm::GenIntrinsicInst* inst);
@@ -374,7 +374,7 @@ public:
     // Those three "vector" version shall be combined with
     // non-vector version.
     bool isUniformStoreOCL(llvm::StoreInst *SI);
-    void emitVectorBitCast(llvm::BitCastInst *BCI); 
+    void emitVectorBitCast(llvm::BitCastInst *BCI);
     void emitVectorLoad(llvm::LoadInst *LI, llvm::Value* offset);
     void emitVectorStore(llvm::StoreInst *SI);
     void emitGenISACopy(llvm::GenIntrinsicInst *GenCopyInst);
@@ -442,7 +442,7 @@ public:
         CVariable*& flag,
         uint& label);
     void ResourceLoop(bool needLoop, CVariable* flag, uint label);
-    
+
     void ForceDMask(bool createJmpForDiscard = true);
     void ResetVMask(bool createJmpForDiscard = true);
     void setPredicateForDiscard();
@@ -482,7 +482,7 @@ public:
     ModuleMetaData* m_moduleMD;
 
     bool m_canAbortOnSpill;
-    
+
     CEncoder::RoundingMode m_roundingMode;
     PSSignature* m_pSignature;
 
