@@ -2810,8 +2810,8 @@ int IR_Builder::translateVISAOwordStoreInst(
 
     // Set bit 12-8 for the message descriptor
     funcCtrl = setOwordForDesc(funcCtrl, num_oword, IsSLMSurface(surface));
-
-    if (useSends())
+    bool forceSplitSend = ForceSplitSend(*this, surface);
+    if (forceSplitSend || useSends())
     {
         G4_Declare *headerDcl = Create_MRF_Dcl(GENX_DATAPORT_IO_SZ, Type_UD);
 
@@ -2822,7 +2822,7 @@ int IR_Builder::translateVISAOwordStoreInst(
         }
 
         /* mov (1)     VX(0,2)<1>,   P  */
-        Create_MOV_Inst( headerDcl, 0, 2, 1, NULL, NULL, offOpnd, true );
+        Create_MOV_Inst( headerDcl, 0, 2, 1, nullptr, nullptr, offOpnd, true );
 
         unsigned msgDesc = funcCtrl;
         unsigned extMsgLength = (num_oword - 1) / 2 + 1;
@@ -2838,30 +2838,8 @@ int IR_Builder::translateVISAOwordStoreInst(
 
         G4_SrcRegRegion* src0 = Create_Src_Opnd_From_Dcl(headerDcl, getRegionStride1());
         G4_DstRegRegion* dst = createNullDst( sendSize > 8 ? Type_UW: Type_UD );
-        G4_Operand* msgOpnd = NULL;
-        if (surface->isImm())
-        {
-            msgDesc += (unsigned) surface->asImm()->getInt();
-            msgOpnd = createImm(msgDesc, Type_UD);
-        }
-        else
-        {
-            G4_DstRegRegion *addrDst = Create_Dst_Opnd_From_Dcl( builtinA0, 1 );
-            //add (1) a0.0:ud bti:ud desc:ud {NoMask}
-            createInst(
-                NULL,
-                G4_add,
-                NULL,
-                false,
-                1,
-                addrDst,
-                surface,
-                createImm( msgDesc, Type_UD ),
-                InstOpt_WriteEnable,
-                0 );
-            msgOpnd = Create_Src_Opnd_From_Dcl( builtinA0, getRegionScalar());
-        }
-        createSplitSendInst( NULL, G4_sends, sendSize, dst, src0, srcOpnd, msgOpnd, InstOpt_WriteEnable, desc, NULL, 0);
+
+        Create_SplitSend_Inst(nullptr, dst, src0, srcOpnd, sendSize, desc, InstOpt_WriteEnable, false);
     }
     else
     {
@@ -3191,8 +3169,8 @@ int IR_Builder::translateVISAMediaStoreInst(
         return desc;
     };
 
-    //TODO: Use higher level API for split send
-    if (useSends())
+    bool forceSplitSend = ForceSplitSend(*this, surface);
+    if (forceSplitSend || useSends())
     {
         // use split send
         G4_Declare *headerDcl = Create_MRF_Dcl(GENX_DATAPORT_IO_SZ, Type_UD);
@@ -3222,33 +3200,8 @@ int IR_Builder::translateVISAMediaStoreInst(
 
         G4_SendMsgDescriptor* desc = createSendMsgDesc( msgDesc, 0, 1, SFID::DP_DC1,
             false, extMsgLength, extFuncCtrl, false, true, surface);
-
-        G4_Operand* msgOpnd = NULL;
-        if (surface->isImm())
-        {
-            msgDesc += (unsigned) surface->asImm()->getInt();
-            msgOpnd = createImm(msgDesc, Type_UD);
-        }
-        else
-        {
-            G4_DstRegRegion *addrDst = Create_Dst_Opnd_From_Dcl( builtinA0, 1 );
-            //add (1) a0.0:ud bti:ud desc:ud
-            // create source for bti
-            createInst(
-                NULL,
-                G4_add,
-                NULL,
-                false,
-                1,
-                addrDst,
-                surface,
-                createImm( msgDesc, Type_UD ),
-                InstOpt_WriteEnable,
-                0 );
-            msgOpnd = Create_Src_Opnd_From_Dcl( builtinA0, getRegionScalar());
-        }
-
-        createSplitSendInst( NULL, G4_sends, 8, dstOpnd, headerOpnd, srcOpnd, msgOpnd, InstOpt_WriteEnable, desc, NULL, 0);
+        
+        Create_SplitSend_Inst(nullptr, dstOpnd, headerOpnd, srcOpnd, 8, desc, InstOpt_WriteEnable, false);
     }
     else
     {
