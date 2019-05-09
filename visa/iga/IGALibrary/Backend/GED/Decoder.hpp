@@ -287,8 +287,7 @@ namespace iga
 
             dri.regRef.subRegNum = binNumToSubRegNum(
                 dri.regRef.subRegNum, dri.regName,
-                scalingType);
-
+                scalingType, m_opSpec->isBranching() || m_opSpec->isTernary());
 
             return dri;
         }
@@ -314,7 +313,7 @@ namespace iga
 
         // Translate Sub register from binary encoding number to asm number
         uint32_t binNumToSubRegNum(
-            uint32_t binNum, RegName regName, Type type);
+            uint32_t binNum, RegName regName, Type type, bool isTernaryOrBranch);
 
     protected:
         GED_MODEL                     m_gedModel;

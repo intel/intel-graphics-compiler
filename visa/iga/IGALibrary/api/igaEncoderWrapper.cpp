@@ -12,6 +12,7 @@ iga_status_t KernelEncoder::encode()
         m_autoCompact,
         true
     );
+    enc_opt.setFisrtBB64ByteSize(m_fisrtBB64ByteSize);
 
     Encoder enc(m_kernel->getModel(), errHandler, enc_opt);
     enc.encodeKernel(

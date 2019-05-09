@@ -80,6 +80,24 @@ EncoderBase::EncoderBase(
 
 void EncoderBase::encodeKernelPreProcess(Kernel &k)
 {
+    if (m_opts.fisrtBB64ByteSize && !k.getBlockList().empty()) {
+        int32_t inst_size = 16;
+        Block& blk = **k.getBlockList().begin();
+        // To simplify the size calculation, we do not compact the instructions
+        // Add NOP until the block size is multiple of 64
+        size_t padding_size = blk.getInstList().size() * inst_size % 64;
+        if (padding_size != 0) {
+            padding_size = 64 - padding_size;
+            assert(padding_size % inst_size == 0);
+            size_t num_nop = padding_size / inst_size;
+            // create inst
+            for (size_t i = 0; i < num_nop; ++i)
+                blk.getInstList().push_back(k.createNopInstruction());
+        }
+        for (auto inst : blk.getInstList())
+            inst->addInstOpt(InstOpt::NOCOMPACT);
+    }
+
     doEncodeKernelPreProcess(k);
 }
 

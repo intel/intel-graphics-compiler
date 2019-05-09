@@ -503,7 +503,7 @@ void FlowGraph::preprocess(INST_LIST& instlist)
     // ToDo: remove this once we stop generating if-else-endif for the IEEE macros
     //
     {
-        int sn = 0;
+        int sn = 0;        
         for (INST_LIST_ITER it = instlist.begin(), instlistEnd = instlist.end(); it != instlistEnd; ++it)
         {
             G4_INST *inst = *it;
@@ -1401,7 +1401,6 @@ G4_BB* FlowGraph::mergeSubRoutineReturn(G4_Label* subroutineLabel)
         G4_INST* last = candidateBB->back();
         BB_LIST_ITER succIt = (last->getPredicate() == NULL) ? candidateBB->Succs.begin() : (++candidateBB->Succs.begin());
         BB_LIST_ITER succItEnd = candidateBB->Succs.end();
- 
         // link new ret BB with each call site
         for (; succIt != succItEnd; ++succIt) {
             addPredSuccEdges(newBB, (*succIt), false);
@@ -4753,7 +4752,7 @@ void FlowGraph::findNaturalLoops()
                     loopBody.insert(loopBlock->BBBeforeCall());
                 }
             }
-            else
+            else 
             {
                 auto entryBB = getEntryBB();
                 for (auto predBB : loopBlock->Preds)
@@ -5762,7 +5761,7 @@ std::unordered_set<G4_BB*>& PostDom::getPostDom(G4_BB* bb)
 
 void PostDom::dumpImmDom()
 {
-    for (auto I = kernel.fg.cbegin(), E = kernel.fg.cend(); I != E; ++I)
+    for (auto I = kernel.fg.cbegin(), E = kernel.fg.cend(); I != E; ++I) 
     {
         auto bb = *I;
         printf("BB%d - ", bb->getId());

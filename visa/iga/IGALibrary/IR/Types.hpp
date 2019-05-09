@@ -47,16 +47,16 @@ enum class Platform
 #define IGA_GEN_VER_ORDINAL(MAJ,MIN) (((MAJ)<<16)|(MIN))
     INVALID     = 0,
 
-    GEN6        = IGA_GEN_VER_ORDINAL( 6, 0 ),
-    GEN7        = IGA_GEN_VER_ORDINAL( 7, 0 ),
-    GEN7P5      = IGA_GEN_VER_ORDINAL( 7, 5 ),
-    GEN8        = IGA_GEN_VER_ORDINAL( 8, 0 ),
-    GEN8LP      = IGA_GEN_VER_ORDINAL( 8, 1 ),
-    GEN9        = IGA_GEN_VER_ORDINAL( 9, 0 ),
-    GEN9LP      = IGA_GEN_VER_ORDINAL( 9, 1 ),
-    GEN9P5      = IGA_GEN_VER_ORDINAL( 9, 5 ),
-    GEN10       = IGA_GEN_VER_ORDINAL(10, 0 ),
-    GEN11       = IGA_GEN_VER_ORDINAL(11, 0 ),
+    GEN6        = IGA_GEN_VER_ORDINAL( 6, 0),
+    GEN7        = IGA_GEN_VER_ORDINAL( 7, 0),
+    GEN7P5      = IGA_GEN_VER_ORDINAL( 7, 5),
+    GEN8        = IGA_GEN_VER_ORDINAL( 8, 0),
+    GEN8LP      = IGA_GEN_VER_ORDINAL( 8, 1),
+    GEN9        = IGA_GEN_VER_ORDINAL( 9, 0),
+    GEN9LP      = IGA_GEN_VER_ORDINAL( 9, 1),
+    GEN9P5      = IGA_GEN_VER_ORDINAL( 9, 5),
+    GEN10       = IGA_GEN_VER_ORDINAL(10, 0),
+    GEN11       = IGA_GEN_VER_ORDINAL(11, 0),
     GENNEXT     = IGA_GEN_VER_ORDINAL(12, 0)
 
 #undef IGA_GEN_VER_ORDINAL
