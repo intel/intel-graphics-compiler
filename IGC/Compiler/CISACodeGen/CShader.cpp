@@ -2348,15 +2348,16 @@ CVariable* CShader::GetSymbol(llvm::Value *value, bool fromConstantPool)
     }
 
     if (IGC_IS_FLAG_ENABLED(EnableDeSSAAlias) &&
-        m_deSSA && m_deSSA->isAliaser(value))
+        m_deSSA && value != m_deSSA->getNodeValue(value))
     {
         // Generate CVariable alias.
         // Value and its aliasee must be of the same size.
-        Value* Aliasee = m_deSSA->getAliasee(value);
-        assert(Aliasee != value && "ICE: value must be aliaser!");
+        Value* nodeVal = m_deSSA->getNodeValue(value);
+        assert(nodeVal != value && "ICE: value must be aliaser!");
 
-        // An aliaser
-        CVariable *Base = GetSymbol(Aliasee);
+        // For non node value, get symbol for node value first.
+        // Then, get an alias to that node value.
+        CVariable *Base = GetSymbol(nodeVal);
         CVariable *AliasVar = createAliasIfNeeded(value, Base);
         symbolMapping.insert(std::pair<llvm::Value*, CVariable*>(value, AliasVar));
         return AliasVar;
