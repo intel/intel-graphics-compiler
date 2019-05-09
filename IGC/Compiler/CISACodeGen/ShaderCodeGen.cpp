@@ -603,6 +603,11 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager& mpm)
           (IGC_GET_FLAG_VALUE(Enable64BitEmulationOnSelectedPlatform) &&
            ctx.platform.need64BitEmulation())))) {
         mpm.add(new BreakConstantExpr());
+
+        // Emu64OpsPass requires that we are working on legal types, specifically
+        // that i128 uses are expanded to i64. This is why we need to run PeepholeTypeLegalizer
+        // beforehand.
+        mpm.add(new Legalizer::PeepholeTypeLegalizer());
         mpm.add(createEmu64OpsPass());
     }
 
