@@ -2588,7 +2588,7 @@ bool Augmentation::updateDstMaskForScatter(G4_INST* inst, unsigned char* mask)
                     if (curEMBit != NOMASK_BYTE)
                     {
                         curEMBit++;
-                        ASSERT_USER(curEMBit < 32, "Illegal mask channel");
+                        ASSERT_USER(curEMBit <= 32, "Illegal mask channel");
                     }
                 }
                 curEMBit = (unsigned char)inst->getMaskOffset();
@@ -4544,12 +4544,12 @@ void Augmentation::augmentIntfGraph()
 
         if (liveAnalysis.livenessClass(G4_GRF))
         {
-            if (kernel.getSimdSize() >= 16)
+            if (kernel.getSimdSize() > NUM_DWORDS_PER_GRF)
             {
                 // Set alignment of all GRF candidates
                 // to 2GRF except for NoMask variables
 #ifdef DEBUG_VERBOSE_ON
-                DEBUG_VERBOSE("Kernel size is SIMD16 so updating all GRFs to be 2GRF aligned" << std::endl);
+                DEBUG_VERBOSE("Kernel size is SIMD" << kernel.getSimdSize() << " so updating all GRFs to be 2GRF aligned" << std::endl);
 #endif
                 gra.updateAlignment(G4_GRF, Even, false);
             }
@@ -9171,8 +9171,8 @@ int GlobalRA::coloringRegAlloc()
                     return CM_SPILL;
                 }
 
-                bool runRemat = kernel.getOptions()->getTarget() == VISA_CM ? true :
-                    kernel.getSimdSize() < 32;
+                bool runRemat = kernel.getOptions()->getTarget() == VISA_CM ? true : 
+                    kernel.getSimdSize() < G4_GRF_REG_NBYTES;
                 // -noremat takes precedence over -forceremat
                 bool rematOff = !kernel.getOption(vISA_Debug) &&
                     (!kernel.getOption(vISA_NoRemat) || kernel.getOption(vISA_FastSpill)) &&
