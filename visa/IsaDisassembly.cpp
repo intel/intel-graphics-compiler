@@ -2505,6 +2505,31 @@ extern string printKernelHeader(const common_isa_header& isaHeader,
     // In asm text mode, declarations are printed at variable creation time, we dont need to print them here
     if (!options->getOption(vISA_IsaAssembly))
     {
+        // For debug purposes only
+        // Print the predefined variables as comments
+        sstr << endl << "/// VISA Predefined Variables";
+        for (unsigned i = 0; i < Get_CISA_PreDefined_Var_Count(); i++)
+        {
+            const var_info_t* predefVar = header->getPredefVar(i);
+            if (predefVar->name_index != -1)
+            {
+                sstr << endl << "// .decl V" << i
+                    << " v_type=G"
+                    << " v_name=" << header->getString(predefVar->name_index);
+            }
+        }
+        for (unsigned i = 0; i < Get_CISA_PreDefined_Surf_Count(); i++)
+        {
+            const state_info_t* predefSurface = header->getPredefSurface(i);
+            if (predefSurface->name_index != -1)
+            {
+                sstr << endl << "// .decl T" << i
+                    << " v_type=T"
+                    << " v_name=" << header->getString(predefSurface->name_index);
+            }
+        }
+        sstr << endl;
+
         // emit var decls
         //.decl  V<#> name=<name> type=<type> num_elts=<num_elements> [align=<align>] [alias=(<alias_index>,<alias_offset>)]
         for (unsigned i = 0; i < header->getVarCount(); i++)

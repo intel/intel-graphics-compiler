@@ -538,6 +538,7 @@ public:
     virtual const label_info_t* getLabel(uint16_t label_id) const = 0;
     virtual unsigned short getLabelCount() const = 0;
 
+    virtual const var_info_t* getPredefVar(unsigned var_id) const = 0;
     virtual const var_info_t* getVar(unsigned var_id) const = 0;
     virtual uint32_t getVarCount() const = 0;
 
@@ -550,6 +551,7 @@ public:
     virtual const pred_info_t* getPred(unsigned id) const = 0;
     virtual unsigned short getPredCount() const = 0;
 
+    virtual const state_info_t* getPredefSurface(unsigned id) const = 0;
     virtual const state_info_t* getSurface(unsigned id) const = 0;
     virtual unsigned char getSurfaceCount() const = 0;
 
