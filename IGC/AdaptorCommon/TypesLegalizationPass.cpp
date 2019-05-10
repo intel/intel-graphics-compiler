@@ -253,17 +253,31 @@ TypesLegalizationPass::ResolveValue( Instruction *ip,Value *val,SmallVector<unsi
     IRBuilder<> builder(ip);
     return builder.CreateExtractValue(val, indices);
   }
-    else if (PHINode* phi = dyn_cast<PHINode>(val))
-    {
-        IRBuilder<> builder(&(*ip->getParent()->getFirstInsertionPt()));
-        PHINode* newPhi = builder.CreatePHI(ip->getType(), phi->getNumIncomingValues());
-        for (unsigned i = 0; i < phi->getNumIncomingValues(); i++)
-        {
-            Value* v = ResolveValue(ip, phi->getIncomingValue(i), indices);
-            newPhi->addIncoming(v, phi->getIncomingBlock(i));
-        }
-        return newPhi;
-    }
+  else if (PHINode* phi = dyn_cast<PHINode>(val))
+  {
+      IRBuilder<> builder(&(*ip->getParent()->getFirstInsertionPt()));
+      PHINode* newPhi = builder.CreatePHI(ip->getType(), phi->getNumIncomingValues());
+      for (unsigned i = 0; i < phi->getNumIncomingValues(); i++)
+      {
+          Value* v = ResolveValue(ip, phi->getIncomingValue(i), indices);
+          newPhi->addIncoming(v, phi->getIncomingBlock(i));
+      }
+      return newPhi;
+  }
+  else if (SelectInst* select = dyn_cast<SelectInst>(val))
+  {
+    assert(3 == select->getNumOperands());
+
+    Value* condition = select->getOperand(0);
+    Value* whenTrue = select->getOperand(1);
+    Value* whenFalse = select->getOperand(2);
+
+    whenTrue = ResolveValue(select, whenTrue, indices);
+    whenFalse = ResolveValue(select, whenFalse, indices);
+
+    IRBuilder<> builder(select);
+    return builder.CreateSelect(condition, whenTrue, whenFalse);
+  }
 
   // What other kind of instruction can we have here?
   assert( !"Unresolved instruction!" );
