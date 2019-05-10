@@ -8439,7 +8439,7 @@ void EmitPass::emitCall(llvm::CallInst* inst)
             continue;
         }
 
-        CVariable *Dst = m_currShader->getOrCreateArgumentSymbol(&Arg);
+        CVariable *Dst = m_currShader->getOrCreateArgumentSymbol(&Arg, true);
         CVariable *Src = GetSymbol(inst->getArgOperand(i++));
 
         // When both symbols are the same, then this argument passing has been
@@ -8584,7 +8584,7 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
                     continue;
                 }
             }
-            ArgCV = m_currShader->getOrCreateArgumentSymbol(&*Arg, true);
+            ArgCV = m_currShader->getOrCreateArgumentSymbol(&*Arg, true, true);
             Src = GetSymbol(inst->getArgOperand(i));
             argType = Arg->getType();
         }
@@ -8926,7 +8926,7 @@ void EmitPass::emitStackFuncEntry(Function *F, bool ptr64bits)
             }
         }
 
-        CVariable *Dst = m_currShader->getOrCreateArgumentSymbol(&Arg, true);
+        CVariable *Dst = m_currShader->getOrCreateArgumentSymbol(&Arg, false, true);
         // adjust offset for alignment
         uint align = stackCallArgumentAlignment(Dst);
         offsetA = int_cast<unsigned>(llvm::alignTo(offsetA, align));

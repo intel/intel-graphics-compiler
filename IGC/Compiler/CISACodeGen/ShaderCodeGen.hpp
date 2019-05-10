@@ -298,7 +298,10 @@ public:
     /// This method is used to create the vISA variable for function F's formal return value
     CVariable* getOrCreateReturnSymbol(llvm::Function *F);
     /// This method is used to create the vISA variable for function F's formal argument
-    CVariable* getOrCreateArgumentSymbol(llvm::Argument *Arg, bool useStackCall = false);
+    CVariable* getOrCreateArgumentSymbol(
+        llvm::Argument *Arg,
+        bool ArgInCallee, // true if Arg isn't in current func
+        bool useStackCall = false);
     CVariable* getOrCreateArgSymbolForIndirectCall(llvm::CallInst* cInst, unsigned argIdx);
     VISA_Type GetType(llvm::Type* type);
 
