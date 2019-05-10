@@ -225,6 +225,32 @@ Argument* CImagesBI::CImagesUtils::findImageFromBufferPtr(const MetaDataUtils &M
 
 Value* CImagesBI::CImagesUtils::traceImageOrSamplerArgument(CallInst* pCallInst, unsigned int paramIndex, const MetaDataUtils *pMdUtils, const IGC::ModuleMetaData* modMD)
 {
+    std::function<Value*(Value*)> track = [&track](Value *pVal) -> Value*
+    {
+        for (auto U : pVal->users())
+        {
+            if (auto *GEP = dyn_cast<GetElementPtrInst>(U))
+            {
+                if (!GEP->hasAllZeroIndices())
+                    continue;
+
+                if (auto *leaf = track(GEP))
+                    return leaf;
+            }
+            else if (CastInst* inst = dyn_cast<CastInst>(U))
+            {
+                if (auto *leaf = track(inst))
+                    return leaf;
+            }
+            else if (auto *ST = dyn_cast<StoreInst>(U))
+            {
+                 return ST->getValueOperand();
+            }
+        }
+
+        return nullptr;
+    };
+
     Value* baseValue = pCallInst->getOperand(paramIndex);
     while (true)
     {
@@ -366,32 +392,6 @@ Value* CImagesBI::CImagesUtils::traceImageOrSamplerArgument(CallInst* pCallInst,
                     pSamplerVal->getAggregateElement(0U) : pSamplerVal;
             }
 
-            std::function<Value*(Value*)> track = [&track](Value *pVal) -> Value*
-            {
-                for (auto U : pVal->users())
-                {
-                    if (auto *GEP = dyn_cast<GetElementPtrInst>(U))
-                    {
-                        if (!GEP->hasAllZeroIndices())
-                            continue;
-
-                        if (auto *leaf = track(GEP))
-                            return leaf;
-                    }
-                    else if (CastInst* inst = dyn_cast<CastInst>(U))
-                    {
-                        if (auto *leaf = track(inst))
-                            return leaf;
-                    }
-                    else if (auto *ST = dyn_cast<StoreInst>(U))
-                    {
-                        return ST->getValueOperand();
-                    }
-                }
-
-                return nullptr;
-            };
-
             {
                 Value *pVal = addr->stripPointerCasts();
                 // If, after stripping casts and zero GEPs, we make it to an
@@ -418,22 +418,19 @@ Value* CImagesBI::CImagesUtils::traceImageOrSamplerArgument(CallInst* pCallInst,
                // want to redirect search to 
                // store %opencl.image1d_t addrspace(1)* %0, %opencl.image1d_t addrspace(1)** %5, align 8
                // and continue existing search path
-
-               if (CastInst* blockDescr = dyn_cast<CastInst>(getElementPtr->getOperand(0)))
-               {
-                   // %10 = bitcast <...>* %sbd0 to i8*
-                   if (CastInst* bcast = dyn_cast<CastInst>(blockDescr->getOperand(0)))
-                   {
-                       // %sbd0 = alloca <...>, align 8
-                       if (AllocaInst* sblockDescr = dyn_cast<AllocaInst>(bcast->getOperand(0)))
-                       {
-                           // use new addr to continue existing search path
-                           addr = sblockDescr;
-                       }
-                   }
-               }
-
+               CastInst* blockDescr = nullptr;
+               for (CastInst* ptr = dyn_cast<CastInst>(getElementPtr->getOperand(0)); ptr; ptr = dyn_cast<CastInst>(ptr->getOperand(0)))
+                  blockDescr = ptr;
+               if (blockDescr && isa<AllocaInst>(blockDescr->getOperand(0)))
+                  addr = dyn_cast<AllocaInst>(blockDescr->getOperand(0));
                index = dyn_cast<ConstantInt>(getElementPtr->getOperand(2));
+            }
+            else if (getElementPtr && getElementPtr->getNumIndices() > 1)
+            {
+                Value *pVal = addr->stripPointerCasts();
+                if (pVal && isa<AllocaInst>(pVal))
+                    addr = pVal;
+                index = dyn_cast<ConstantInt>(getElementPtr->getOperand(2));
             }
 
             StoreInst* store = NULL;
@@ -474,12 +471,59 @@ Value* CImagesBI::CImagesUtils::traceImageOrSamplerArgument(CallInst* pCallInst,
                {
                   // dispatch kernel search 
                   // first usege of proper getElementPtr is the store of input argument image
-                  user = *(user->user_begin());
+                  std::function<Value*(Value*)> trackStore = [&trackStore](Value *pVal) -> Value*
+                  {
+                     for (auto U : pVal->users())
+                     {
+                        if (isa<StoreInst>(U)) return U;
+                        if (Value *leaf = trackStore(U)) return leaf;
+                     }
+                     return nullptr;
+                  };
+
+                  user = trackStore(user);
                }
                assert(isa<StoreInst>(user) && !store && "expected only one store instruction");
                store = cast<StoreInst>(user);
             }
-           
+
+            if (!store)
+            {
+                std::function<Value*(Value*)> track2 = [&track2](Value *pVal) -> Value*
+                {
+                    for (auto U : pVal->users())
+                    {
+                        if (CallInst *callInst = dyn_cast<CallInst>(U))
+                        {
+                            if (callInst->getCalledFunction()->getIntrinsicID() == Intrinsic::ID::memcpy)
+                                return callInst->getOperand(1);
+                        } else if (Value *leaf = track2(U))
+                            return leaf;
+                    }
+                    return nullptr;
+                };
+
+                Value *tmpptr = nullptr;
+                for (auto i = addr->user_begin(), e = addr->user_end(); !tmpptr && i != e; ++i)
+                {
+                    Value* user = *i;
+                    tmpptr = track2(user);
+                }
+
+                if (tmpptr && isa<CastInst>(tmpptr))
+                {
+                    Value *pVal = tmpptr->stripPointerCasts();
+                    if (pVal && isa<AllocaInst>(pVal))
+                    {
+                        auto *pArg = track(pVal);
+                        if (pArg && (isa<Argument>(pArg) || isa<ConstantInt>(pArg)))
+                            return pArg;
+                    }
+                    baseValue = tmpptr;
+                    continue;
+                }
+            }
+
             assert(store && "expected one store instruction");
             // Update the baseValue and repeat the check.
             baseValue = store->getValueOperand();
