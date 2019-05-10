@@ -312,7 +312,25 @@ namespace FCL
             IGCBaseFolder = pathBuf;
         }
 #elif defined __linux__
-        IGCBaseFolder = "/tmp/IntelIGC/";
+        if (!FCL_IGC_IS_FLAG_ENABLED(DumpToCustomDir))
+        {
+            IGCBaseFolder = "/tmp/IntelIGC/";
+        }
+        else
+        {
+            std::string dumpPath = "/tmp/IntelIGC/";        // default if something goes wrong
+            char custom_dir[256];
+            FCLReadIGCRegistry("DumpToCustomDir", custom_dir, sizeof(custom_dir));
+            if (custom_dir != nullptr && strlen(custom_dir) > 0)
+            {
+                dumpPath = custom_dir;
+            }
+
+            char pathBuf[256];
+            iSTD::CreateAppOutputDir(pathBuf, 256, dumpPath.c_str(), false, false, false);
+
+            IGCBaseFolder = pathBuf;
+        }
 #endif
         return IGCBaseFolder.c_str();
 #else
@@ -370,7 +388,7 @@ namespace FCL
             g_shaderOutputFolder = pathBuf;
         }
 #elif defined __linux__
-        if (!FCL_IGC_IS_FLAG_ENABLED(DumpToCurrentDir) && g_shaderOutputFolder == "")
+        if (!FCL_IGC_IS_FLAG_ENABLED(DumpToCurrentDir) && g_shaderOutputFolder == "" && !FCL_IGC_IS_FLAG_ENABLED(DumpToCustomDir))
         {
             bool needMkdir = true;
 
@@ -389,6 +407,12 @@ namespace FCL
             }
 
             g_shaderOutputFolder = path;
+        }
+        else if (FCL_IGC_IS_FLAG_ENABLED(DumpToCustomDir))
+        {
+            char pathBuf[256];
+            iSTD::CreateAppOutputDir(pathBuf, 256, GetBaseIGCOutputFolder(), false, false, false);
+            g_shaderOutputFolder = pathBuf;
         }
 
 #endif

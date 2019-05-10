@@ -457,7 +457,24 @@ namespace IGC
             IGCBaseFolder = "/sdcard/intel/igc/";
 
 #elif defined __linux__
+        if (!IGC_IS_FLAG_ENABLED(DumpToCustomDir))
+        {
             IGCBaseFolder = "/tmp/IntelIGC/";
+        }
+        else
+        {
+            std::string dumpPath = "/tmp/IntelIGC/";        // default if something goes wrong
+            const char* custom_dir = IGC_GET_REGKEYSTRING(DumpToCustomDir);
+            if (custom_dir != nullptr && strlen(custom_dir) > 0)
+            {
+                dumpPath = custom_dir;
+            }
+
+            char pathBuf[256];
+            iSTD::CreateAppOutputDir(pathBuf, 256, dumpPath.c_str(), false, false, false);
+
+            IGCBaseFolder = pathBuf;
+        }
 #endif
             return IGCBaseFolder.c_str();
 #else
@@ -543,7 +560,7 @@ namespace IGC
                 g_shaderOutputFolder = "";
 
 #elif defined __linux__
-            if (!IGC_IS_FLAG_ENABLED(DumpToCurrentDir) && g_shaderOutputFolder == "")
+            if (!IGC_IS_FLAG_ENABLED(DumpToCurrentDir) && g_shaderOutputFolder == "" && !IGC_IS_FLAG_ENABLED(DumpToCustomDir))
             {
                 bool needMkdir = false;
 
@@ -577,6 +594,12 @@ namespace IGC
                     
 
                 g_shaderOutputFolder = path;
+            }
+            else if (IGC_IS_FLAG_ENABLED(DumpToCustomDir))
+            {
+                char pathBuf[256];
+                iSTD::CreateAppOutputDir(pathBuf, 256, GetBaseIGCOutputFolder(), false, false, false);
+                g_shaderOutputFolder = pathBuf;
             }
 
 #endif
