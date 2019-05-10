@@ -181,9 +181,10 @@ DECLARE_OPCODE(GenISA_RTDualBlendSource,            GenISAIntrinsic,      llvm_d
 DECLARE_OPCODE(GenISA_simdLaneId,                   GenISAIntrinsic,      llvm_simdLaneId,            false,  false,  false,  false, false,  false, false  )
 DECLARE_OPCODE(GenISA_simdSize,                     GenISAIntrinsic,      llvm_simdSize,              false,  false,  false,  false, false,  false, false  )
 DECLARE_OPCODE(GenISA_simdShuffleDown,              GenISAIntrinsic,      llvm_simdShuffleDown,       false,  false,  false,  false, false,  false, false  )
-DECLARE_OPCODE(GenISA_simdBlockRead,                GenISAIntrinsic,      llvm_simdBlockRead,         false, false,  false,  false, false,  false, false  )
-DECLARE_OPCODE(GenISA_simdBlockReadBindless,        GenISAIntrinsic,      llvm_simdBlockReadBindless, false, false,  false,  false, false,  false, false  )
+DECLARE_OPCODE(GenISA_simdBlockRead,                GenISAIntrinsic,      llvm_simdBlockRead,         false,  false,  false,  false, false,  false, false  )
+DECLARE_OPCODE(GenISA_simdBlockReadBindless,        GenISAIntrinsic,      llvm_simdBlockReadBindless, false,  false,  false,  false, false,  false, false  )
 DECLARE_OPCODE(GenISA_simdBlockWrite,               GenISAIntrinsic,      llvm_simdBlockWrite,        false,  false,  false,  false, false,  false, false  )
+DECLARE_OPCODE(GenISA_simdBlockWriteBindless,       GenISAIntrinsic,      llvm_simdBlockWriteBindless,false,  false,  false,  false, false,  false, false  )
 DECLARE_OPCODE(GenISA_simdMediaBlockRead,           GenISAIntrinsic,      llvm_simdMediaBlockRead,    false,  false,  false,  false, false,  false, false  )
 DECLARE_OPCODE(GenISA_simdMediaBlockWrite,          GenISAIntrinsic,      llvm_simdMediaBlockWrite,   false,  false,  false,  false, false,  false, false  )
 

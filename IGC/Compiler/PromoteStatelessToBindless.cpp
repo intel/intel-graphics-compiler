@@ -77,19 +77,26 @@ void PromoteStatelessToBindless::GetAccessInstToSrcPointerMap(Instruction* inst,
 {
     unsigned addrSpace = resourcePtr->getType()->getPointerAddressSpace();
 
-    if (addrSpace != 1 && addrSpace != 2)
+    if (addrSpace != ADDRESS_SPACE_GLOBAL && addrSpace != ADDRESS_SPACE_CONSTANT)
     {
         // Only try to promote stateless buffer pointers ( as(1) or as(2) )
         return;
     }
 
-    //We only support loadInst, StoreInst and GenISA_simdBlockRead intrinsic
+    //We only support LoadInst, StoreInst, GenISA_simdBlockRead, and GenISA_simdBlockWrite intrinsic
     if (!isa<LoadInst>(inst) && !isa<StoreInst>(inst))
     {
         if (GenIntrinsicInst* GInst = dyn_cast<GenIntrinsicInst>(inst))
         {
-            if (GInst->getIntrinsicID() != GenISAIntrinsic::GenISA_simdBlockRead)
+            switch (GInst->getIntrinsicID())
+            {
+            case GenISAIntrinsic::GenISA_simdBlockRead:
+            case GenISAIntrinsic::GenISA_simdBlockWrite:
+                break;
+            default:
+                assert(0 && "Unsupported Instruction");
                 return;
+            }
         }
         else
             return;
@@ -164,9 +171,18 @@ void PromoteStatelessToBindless::PromoteStatelessToBindlessBuffers(Function& F) 
             {
                 Function* newBlockReadFunc = GenISAIntrinsic::getDeclaration(F.getParent(),
                     GenISAIntrinsic::GenISA_simdBlockReadBindless,
-                    { accessInst->getType(),basePointer->getType(),Type::getInt32Ty(accessInst->getContext()) });
+                    { accessInst->getType(), basePointer->getType(),Type::getInt32Ty(accessInst->getContext()) });
                 Instruction* newBlockRead = CallInst::Create(newBlockReadFunc, { basePointer, bufferOffset }, "", accessInst);
                 accessInst->replaceAllUsesWith(newBlockRead);
+                accessInst->eraseFromParent();
+            }
+            else if (pIntr->getIntrinsicID() == GenISAIntrinsic::GenISA_simdBlockWrite)
+            {
+                Function* newBlockWriteFunc = GenISAIntrinsic::getDeclaration(F.getParent(),
+                    GenISAIntrinsic::GenISA_simdBlockWriteBindless,
+                    { basePointer->getType(), pIntr->getOperand(1)->getType(), Type::getInt32Ty(accessInst->getContext()) });
+                Instruction* newBlockWrite = CallInst::Create(newBlockWriteFunc, { basePointer, pIntr->getOperand(1), bufferOffset }, "", accessInst);
+                accessInst->replaceAllUsesWith(newBlockWrite);
                 accessInst->eraseFromParent();
             }
         }

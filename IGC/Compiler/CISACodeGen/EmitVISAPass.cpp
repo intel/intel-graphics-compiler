@@ -7114,6 +7114,9 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_simdBlockWrite:
         emitSimdBlockWrite(inst);
         break;
+    case GenISAIntrinsic::GenISA_simdBlockWriteBindless:
+        emitSimdBlockWrite(inst, inst->getOperand(2));
+        break;
     case GenISAIntrinsic::GenISA_MediaBlockRead:
         emitMediaBlockIO(inst, true);
         break;

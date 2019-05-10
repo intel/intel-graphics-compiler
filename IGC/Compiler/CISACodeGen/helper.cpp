@@ -850,6 +850,7 @@ Value* GetBufferOperand(Instruction* inst)
         case GenISAIntrinsic::GenISA_icmpxchgatomicraw:
         case GenISAIntrinsic::GenISA_fcmpxchgatomicraw:
         case GenISAIntrinsic::GenISA_simdBlockRead:
+        case GenISAIntrinsic::GenISA_simdBlockWrite:
             pBuffer = intr->getOperand(0);
             break;
         case GenISAIntrinsic::GenISA_intatomicrawA64:
