@@ -339,6 +339,7 @@ public:
     static const int INPUT_ATTR_ARG = 0;
     static const int INPUT_INTERPMODE_ARG = 1;
     static const int HSGSINPUT_ATTR_ARG = 1;
+    static const int HSOUTPUTCTRLPTINPUT_ATTR_ARG = 1;
     static const int OUTPUTTESSCTRLPT_ATTR_ARG = 4;
     static const int PATCHCONSTOUTPUT_ATTR_ARG = 4;
     static const int HSPATCHCONSTINPUT_ATTR_ARG = 0;

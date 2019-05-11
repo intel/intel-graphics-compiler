@@ -161,7 +161,8 @@ void ShaderIOAnalysis::addInputDecl(llvm::GenIntrinsicInst* inst)
 void ShaderIOAnalysis::addDSCtrlPtInputDecl(llvm::GenIntrinsicInst* inst)
 {
     assert(m_shaderType == ShaderType::DOMAIN_SHADER);
-    if (isa<ConstantInt>(inst->getOperand(DSCTRLPTINPUT_CPID_ARG)))
+    if (isa<ConstantInt>(inst->getOperand(DSCTRLPTINPUT_CPID_ARG)) &&
+        isa<ConstantInt>(inst->getOperand(DSCTRLPTINPUT_ATTR_ARG)))
     {
         uint ctrlIdx = getImmValueU32(inst->getOperand(DSCTRLPTINPUT_CPID_ARG));
         uint elemIdx = getImmValueU32(inst->getOperand(DSCTRLPTINPUT_ATTR_ARG));
@@ -325,18 +326,31 @@ void ShaderIOAnalysis::addGSInputDecl(GenIntrinsicInst* inst)
 void ShaderIOAnalysis::addHSCtrlPtOutputDecl(GenIntrinsicInst* inst)
 {
     assert(m_shaderType == ShaderType::HULL_SHADER);
-
-    uint attrIdx = getImmValueU32(inst->getOperand(OUTPUTTESSCTRLPT_ATTR_ARG));
-    uint cpIdx = 0;
-    getContext()->addHSCtrlPtOutput(inst, attrIdx, cpIdx);
+    if (isa<ConstantInt>(inst->getOperand(OUTPUTTESSCTRLPT_ATTR_ARG)))
+    {
+        uint attrIdx = getImmValueU32(inst->getOperand(OUTPUTTESSCTRLPT_ATTR_ARG));
+        uint cpIdx = 0;
+        getContext()->addHSCtrlPtOutput(inst, attrIdx, cpIdx);
+    }
+    else
+    {
+        getContext()->m_abortLTO = true;
+    }
 }
 
 // <4 x float> = HSOutputCntrlPtInputVec(i32 vertex, i32 attr)
 void ShaderIOAnalysis::addHSOutputInputDecl(GenIntrinsicInst* inst)
 {
     assert(m_shaderType == ShaderType::HULL_SHADER);
-    uint attrIdx = getImmValueU32(inst->getOperand(1));
-    getContext()->addHSOutputInput(inst, attrIdx);
+    if (isa<ConstantInt>(inst->getOperand(HSOUTPUTCTRLPTINPUT_ATTR_ARG)))
+    {
+        uint attrIdx = getImmValueU32(inst->getOperand(HSOUTPUTCTRLPTINPUT_ATTR_ARG));
+        getContext()->addHSOutputInput(inst, attrIdx);
+    }
+    else
+    {
+        getContext()->m_abortLTO = true;
+    }
 }
 
 void ShaderIOAnalysis::onGenIntrinsic(GenIntrinsicInst* inst)
