@@ -44,6 +44,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #endif
 
+
 namespace {
 
 #ifndef CL_NUMBER
