@@ -102,7 +102,6 @@ bool RetryManager::IsLastTry(CodeGenContext* cgCtx) {
     return (!enabled ||
         IGC_IS_FLAG_ENABLED(DisableRecompilation) ||
         (cgCtx->getModuleMetaData()->csInfo.forcedSIMDSize != 0) ||
-        lastSpillSize < IGC_GET_FLAG_VALUE(AllowedSpillRegCount) ||
         (stateId < getStateCnt() && RetryTable[stateId].nextState >= getStateCnt()));
 }
 unsigned RetryManager::GetRetryId() const { return stateId; }

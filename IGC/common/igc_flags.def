@@ -231,7 +231,6 @@ DECLARE_IGC_REGKEY(bool, EnableTypeDemotion,            true,  "Enable Type Demo
 DECLARE_IGC_REGKEY(bool, EnablePreRARematFlag,          true,  "Enable PreRA Rematerialization of Flag")
 DECLARE_IGC_REGKEY(bool, EnableGASResolver,             true,  "Enable GAS Resolver")
 DECLARE_IGC_REGKEY(bool, DisableRecompilation,          false, "Disable recompilation")
-DECLARE_IGC_REGKEY(DWORD, AllowedSpillRegCount,         10,    "Max allowed spill size without recompile")
 DECLARE_IGC_REGKEY(bool, DisableEarlyOutPatterns,       false, "Disable optimization trying to create an early out after sampleC messages")
 DECLARE_IGC_REGKEY(DWORD, EarlyOutPatternSelectPS,      0xf,   "Each bit selects a pattern match to enable/disable.")
 DECLARE_IGC_REGKEY(DWORD, EarlyOutPatternSelectCS,      0x8,   "Each bit selects a pattern match to enable/disable.")
