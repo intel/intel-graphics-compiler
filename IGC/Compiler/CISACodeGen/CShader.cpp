@@ -332,41 +332,78 @@ void CShader::CreateImplicitArgs()
     unsigned numPushArgs = (isEntryFunc(m_pMdUtils, entry) ? numPushArgsEntry : 0);
     unsigned numFuncArgs = IGCLLVM::GetFuncArgSize(entry) - numImplicitArgs - numPushArgs;
 
+    // Create symbol for every arguments [5/2019]
+    //   (Previously, symbols are created only for implicit args.)
+    //   Since vISA requires input var (argument) to be root symbol (CVariable)
+    //   and GetSymbol() does not guarantee this due to coalescing of argument
+    //   values and others. Here, we handle arguments specially by creating
+    //   a CVariable symbol for each argument, and use this newly-created symbol
+    //   as the root symbol for its congruent class if any. This should always
+    //   work as it does not matter which value in a coalesced set is going to
+    //   be a root symbol.
+    //
+    //   Once a root symbol is created, the root value of its conguent class
+    //   needs to have as its symbol an alias to this root symbol.
+
+    // Update SymbolMapping for argument value.
+    auto updateArgSymbolMapping = [&](Value* Arg, CVariable* CVarArg) {
+        symbolMapping.insert(std::make_pair(Arg, CVarArg));
+        Value *Node = m_deSSA ? m_deSSA->getRootValue(Arg) : nullptr;
+        if (Node)
+        {
+            // This key is temperary. It will be deleted once the
+            // change has been fully tested (probbaly in a month or so).
+            if (IGC_IS_FLAG_ENABLED(EnableDeSSAMemberRootValue))
+            {
+                // If Arg isn't root, must setup symbolMapping for root.
+                if (Node != Arg) {
+                    // 'Node' should not have a symbol entry at this moment.
+                    assert(symbolMapping.count(Node) == 0 &&
+                        "Root symbol of arg should not be set at this point!");
+                    CVariable* aV = CVarArg;
+                    if (IGC_GET_FLAG_VALUE(EnableDeSSAAlias) >= 2)
+                    {
+                        aV = createAliasIfNeeded(Node, CVarArg);
+                    }
+                    symbolMapping[Node] = aV;
+                }
+            }
+            else
+            {
+                rootMapping[Node] = CVarArg;
+            }
+        }
+    };
+
     llvm::Function::arg_iterator arg = entry->arg_begin();
     for (unsigned i = 0; i < numFuncArgs; ++i, ++arg)
-        ;
+    {
+        Value* ArgVal = arg;
+        if (ArgVal->use_empty())
+            continue;
+        e_alignment algn = GetPreferredAlignment(ArgVal, m_WI, m_ctx);
+        CVariable* ArgCVar = GetNewVector(ArgVal, algn);
+        updateArgSymbolMapping(ArgVal, ArgCVar);
+    }
 
     for (unsigned i = 0; i < numImplicitArgs; ++i, ++arg) {
         ImplicitArg implictArg = implicitArgs[i];
         assert((implictArg.getNumberElements() < (UINT16_MAX)) && "getNumberElements > higher than 64k");
 
-        // DeSSA info should be considerred when creating CVariable.
-        // Invoking GetSymbol() guarantees DeSSA info is used. Using
-        // a key temporarily for testing purpose. Once done testing,
-        // the key should go away.
-        CVariable* var;
-        if (IGC_IS_FLAG_ENABLED(EnableDeSSANonRootFuncArg))
-        {
-            var = GetSymbol(&*arg);
-        }
-        else {
-            bool isUniform = implictArg.getDependency() == WIAnalysis::UNIFORM;
-            var = GetNewVariable((uint16_t)implictArg.getNumberElements(),
-                implictArg.getVISAType(*m_DL),
-                implictArg.getAlignType(*m_DL),
-                isUniform,
-                isUniform ? 1 : m_numberInstance);
-        }
-
+        bool isUniform = implictArg.getDependency() == WIAnalysis::UNIFORM;
+        CVariable* var = GetNewVariable((uint16_t)implictArg.getNumberElements(),
+            implictArg.getVISAType(*m_DL),
+            implictArg.getAlignType(*m_DL),
+            isUniform,
+            isUniform ? 1 : m_numberInstance);
+   
         if (implictArg.getArgType() == ImplicitArg::R0) {
             encoder.GetVISAPredefinedVar(var, PREDEFINED_R0);
         }
 
-        if (IGC_IS_FLAG_DISABLED(EnableDeSSANonRootFuncArg)) {
-            // This is a per function symbol mapping, that is, only available for a
-            // llvm function which will be cleared for each run of EmitVISAPass.
-            symbolMapping.insert(std::make_pair(&(*arg), var));
-        }
+        // This is a per function symbol mapping, that is, only available for a
+        // llvm function which will be cleared for each run of EmitVISAPass.
+        updateArgSymbolMapping(arg, var);
 
         // Kernel's implicit arguments's symbols will be available for the
         // whole kernel CodeGen. With this, there is no need to pass implicit
@@ -374,6 +411,16 @@ void CShader::CreateImplicitArgs()
         // presence of subroutines.
         assert(!globalSymbolMapping.count(&(*arg)) && "should not exist already");
         globalSymbolMapping.insert(std::make_pair(&(*arg), var));
+    }
+
+    for (unsigned i = 0; i < numPushArgs; ++i, ++arg)
+    {
+        Value* ArgVal = arg;
+        if (ArgVal->use_empty())
+            continue;
+        e_alignment algn = GetPreferredAlignment(ArgVal, m_WI, m_ctx);
+        CVariable* ArgCVar = GetNewVector(ArgVal, algn);
+        updateArgSymbolMapping(ArgVal, ArgCVar);
     }
 }
 
