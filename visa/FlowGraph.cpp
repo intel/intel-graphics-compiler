@@ -3810,7 +3810,7 @@ void G4_Kernel::emit_asm(std::ostream& output, bool beforeRegAlloc, void * binar
             return retString;
         };
 
-        int suppressRegs[4];
+        int suppressRegs[5];
         int lastRegs[3];
         for (int i = 0; i < 3; i++)
         {
@@ -3818,6 +3818,7 @@ void G4_Kernel::emit_asm(std::ostream& output, bool beforeRegAlloc, void * binar
             lastRegs[i] = -1;
         }
         suppressRegs[3] = -1;
+        suppressRegs[4] = 0;
 
         uint32_t lastLabelPC = 0;
         for (BB_LIST_ITER itBB = fg.begin(); itBB != fg.end(); ++itBB)

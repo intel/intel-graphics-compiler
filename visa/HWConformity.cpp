@@ -1416,10 +1416,14 @@ bool HWConformity::fixMov(INST_LIST_ITER i, G4_BB* bb)
 
     G4_Type dstType = inst->getDst()->getType();
     G4_Type srcType = inst->getSrc(0)->getType();
+    auto src = inst->getSrc(0);
 
-    if (IS_BTYPE(dstType) && (IS_DFTYPE(srcType) || IS_QTYPE(srcType)))
+    bool scalarByteToFloat = builder.noScalarByteToFloat() && IS_BTYPE(srcType) &&
+        IS_FTYPE(dstType) && src->isSrcRegRegion() && src->asSrcRegRegion()->isScalar();
+    bool dstByteSrc64b = IS_BTYPE(dstType) && (IS_DFTYPE(srcType) || IS_QTYPE(srcType));
+
+    if (scalarByteToFloat || dstByteSrc64b)
     {
-        // mov B Q/DF
         inst->setDest(insertMovAfter(i, inst->getDst(), Type_W, bb));
         return true;
     }

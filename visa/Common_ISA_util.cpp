@@ -1574,7 +1574,7 @@ const char* createStringCopy(const char* name, vISA::Mem_Manager &m_mem)
 
 std::string sanitizeString(std::string& str)
 {
-    auto isReservedChar = [](char c) 
+    auto isReservedChar = [](char c)
     {
 #ifdef _WIN32
         return c == '<' || c == '>' || c == '\"' || c == '/' ||

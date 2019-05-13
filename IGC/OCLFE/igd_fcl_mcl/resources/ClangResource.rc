@@ -45,7 +45,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endif
 #define VER_FILEDESCRIPTION         "OpenCL User Mode Driver for Intel(R) Graphics Technology\0"
 
-#ifdef AMD64
+#ifdef _AMD64_
 #define VER_INTERNALNAME            "igdfcl64.dll"
 #define VER_ORIGINALNAME            "igdfcl64.dll"
 #if _DEBUG

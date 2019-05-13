@@ -3067,7 +3067,6 @@ endif()
 # +  i386=1                   if bits:32
 # +  _X86_=1                  if bits:32
 # +  _AMD64_                  if bits:64
-# +  AMD64                    if bits:64
 # + ENABLE_REGISTRY_READ      if cfg:Debug or cfg:ReleaseInternal
 
 set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS
@@ -3113,7 +3112,6 @@ set(IGC_BUID__VISA_COMPILE_DEFINITIONS
   if(CMAKE_SIZEOF_VOID_P EQUAL 8)
     set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS
         _AMD64_
-        AMD64
       )
   elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
     set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS

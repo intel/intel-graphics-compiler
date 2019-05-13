@@ -369,10 +369,10 @@ static string printOperand(const print_format_provider_t* header,
     stringstream sstr;
     switch (getOperandType(inst, i))
     {
-        case CISA_OPND_OTHER  : sstr << (getPrimitiveOperand<unsigned>             (inst, i)); break;
-        case CISA_OPND_VECTOR : sstr << printVectorOperand(header, getVectorOperand(inst, i), opt, true); break;
-        case CISA_OPND_RAW    : sstr << printRawOperand   (header, getRawOperand   (inst, i), opt); break;
-        default               : MUST_BE_TRUE(false, "Invalid operand type.");
+        case CISA_OPND_OTHER:  sstr << (getPrimitiveOperand<unsigned>             (inst, i)); break;
+        case CISA_OPND_VECTOR: sstr << printVectorOperand(header, getVectorOperand(inst, i), opt, true); break;
+        case CISA_OPND_RAW:    sstr << printRawOperand   (header, getRawOperand   (inst, i), opt); break;
+        default:               MUST_BE_TRUE(false, "Invalid operand type.");
     }
     return sstr.str();
 }
@@ -549,7 +549,7 @@ extern string printVariableDecl(const common_isa_header& isaHeader,
         sstr << " alias=<";
         if (options->getOption(vISA_DumpIsaVarNames))
         {
-            sstr << (var->alias_scope_specifier ? printGlobalDeclName(isaHeader, header, var->alias_index, isKernel, funcId, options) : 
+            sstr << (var->alias_scope_specifier ? printGlobalDeclName(isaHeader, header, var->alias_index, isKernel, funcId, options) :
                 printVariableDeclName(header, var->alias_index, options));
         }
         else
@@ -605,7 +605,7 @@ string printExecutionSize(uint8_t opcode, uint8_t execSize, uint8_t subOp = 0)
 {
     stringstream sstr;
 
-    if(hasExecSize((ISA_Opcode)opcode, subOp))
+    if (hasExecSize((ISA_Opcode)opcode, subOp))
     {
         sstr << "(";
         uint8_t emsk = ((execSize >> 0x4) & 0xF);
@@ -2440,6 +2440,7 @@ static string printInstructionDataport(const print_format_provider_t* header,
 
     return sstr.str();
 }
+
 
 extern string printKernelHeader(const common_isa_header& isaHeader,
     const print_format_provider_t* header, bool isKernel, int funcionId, Options *options)

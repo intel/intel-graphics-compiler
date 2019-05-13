@@ -468,17 +468,12 @@ int IR_Builder::translateVISAArithmeticDoubleInst(ISA_Opcode opcode, Common_ISA_
     }
     else
     {
-        ASSERT_USER(instExecSize == 8, "simd2 and simd16 support will be added later");
         element_size = 8;
         if (hasSIMD8DFMadm())
         {
             exsize = 8;
-            loopCount = 1;
         }
-        else
-        {
-            loopCount = 2;
-        }
+        loopCount = instExecSize / exsize;
     }
 
     bool noDstMove = exsize == 8 && !saturate && !predOpnd && isOpndAligned(dstOpnd, 32) &&
@@ -8370,23 +8365,29 @@ int IR_Builder::translateVISARTWrite3DInst(
         {
             if (!isRTIdxNonzero && !cntrls.s0aPresent)
             {
-                // direct imm is a-ok
+                // direct imm is a-ok for ext desc
                 msgDesc = createSendMsgDesc(fc, 0, numRows, SFID::DP_WRITE, false, 0,
                         0, false, true, surface);
             }
             else
             {
-                // we must use a0 for extended msg desc in this case as bit[11:15] is forced to 0 when it's imm
+                
                 assert(rtIndex->isImm() && "RTIndex must be imm at this point");
                 uint8_t RTIndex = (uint8_t)rtIndex->asImm()->getImm() & 0x7;
                 uint32_t desc = G4_SendMsgDescriptor::createDesc(fc, false, numRows, 0);
                 uint32_t extDesc = G4_SendMsgDescriptor::createMRTExtDesc(cntrls.s0aPresent, RTIndex,
                     false, 0);
-                // mov (1) a0.2:ud extDesc
-                G4_DstRegRegion* dst = Create_Dst_Opnd_From_Dcl(getBuiltinA0Dot2(), 1);
-                createInst(nullptr, G4_mov, nullptr, false, 1, dst, createImm(extDesc, Type_UD), nullptr, InstOpt_WriteEnable);
                 msgDesc = createSendMsgDesc(desc, extDesc, false, true, surface);
-                indirectExDesc = true;
+                
+                if (!canEncodeFullExtDesc())
+                { 
+                    // we must use a0 for extended msg desc in this case as there aren't enough bits to encode 
+                    // the full ext desc
+                    // mov (1) a0.2:ud extDesc
+                    G4_DstRegRegion* dst = Create_Dst_Opnd_From_Dcl(getBuiltinA0Dot2(), 1);
+                    createInst(nullptr, G4_mov, nullptr, false, 1, dst, createImm(extDesc, Type_UD), nullptr, InstOpt_WriteEnable);
+                    indirectExDesc = true;
+                }
             }
         }
 

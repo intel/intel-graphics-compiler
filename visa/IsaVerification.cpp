@@ -656,7 +656,7 @@ static VISA_Type getRawOperandType(const common_isa_header& isaHeader,
         const var_info_t* currVar = header->getVar(opnd_index - numPreDefinedVars);
         return currVar->getType();
     }
-    
+
     return ISA_TYPE_NUM;
 }
 
@@ -1009,8 +1009,8 @@ static void verifyInstructionControlFlow(const common_isa_header& isaHeader,
         case ISA_CALL:
         case ISA_FRET:
         case ISA_LABEL:
-        case ISA_IFCALL:    
-        case ISA_FADDR:     // no checks for now 
+        case ISA_IFCALL:
+        case ISA_FADDR:     // no checks for now
              break;
         case ISA_GOTO:
         case ISA_FCALL:
@@ -1406,7 +1406,7 @@ static void verifyInstructionArith(const common_isa_header& isaHeader,
         case ISA_DP4A:
             /// U or UD only
             REPORT_INSTRUCTION(options, dstType == ISA_TYPE_D || dstType == ISA_TYPE_UD,
-                "%s only support D/UD dst type", ISA_Inst_Table[opcode].str); 
+                "%s only support D/UD dst type", ISA_Inst_Table[opcode].str);
             break;
         case ISA_SAD2:
         case ISA_SAD2ADD:
@@ -1508,7 +1508,7 @@ static void verifyInstructionArith(const common_isa_header& isaHeader,
             case ISA_ADDC:
             case ISA_SUBB:
             {
-                REPORT_INSTRUCTION(options,srcType == ISA_TYPE_UD || srcType == ISA_TYPE_UV, 
+                REPORT_INSTRUCTION(options,srcType == ISA_TYPE_UD || srcType == ISA_TYPE_UV,
                     "%s src0 and src1 only supports single UD type", ISA_Inst_Table[opcode].str);
                 break;
             }
@@ -2749,13 +2749,13 @@ static void verifyInstructionDataport(const common_isa_header& isaHeader,
             // - for IMIN and IMAX it must have type D;
             // - for all other operations, it must have type UD.
             const raw_opnd& src0 = getRawOperand(inst, i++);
-            if (subOpKind == ATOMIC_INC || subOpKind == ATOMIC_DEC || subOpKind == ATOMIC_PREDEC) 
+            if (subOpKind == ATOMIC_INC || subOpKind == ATOMIC_DEC || subOpKind == ATOMIC_PREDEC)
             {
                 REPORT_INSTRUCTION(options, src0.index == 0,
                                    "src0 in ISA_DWORD_ATOMIC inst must be "
                                    "V0 for INC/DEC/PREDEC.");
-            } 
-            else 
+            }
+            else
             {
                 verifyRawOperandType(isaHeader, header, inst, src0, typeFn, error_list, options);
             }
@@ -2765,11 +2765,11 @@ static void verifyInstructionDataport(const common_isa_header& isaHeader,
             // - for all other operations, it must be V0 (the null variable).
             //
             const raw_opnd& src1 = getRawOperand(inst, i++);
-            if (subOpKind == ATOMIC_CMPXCHG || subOpKind == ATOMIC_FCMPWR) 
+            if (subOpKind == ATOMIC_CMPXCHG || subOpKind == ATOMIC_FCMPWR)
             {
                 verifyRawOperandType(isaHeader, header, inst, src1, typeFn, error_list, options);
-            } 
-            else 
+            }
+            else
             {
                 REPORT_INSTRUCTION(options, src1.index == 0,
                                    "src1 in ISA_DWORD_ATOMIC inst must be "
@@ -2784,7 +2784,7 @@ static void verifyInstructionDataport(const common_isa_header& isaHeader,
             verifyRawOperandType(isaHeader, header, inst, dst, typeFn, error_list, options);
             break;
         }
-        case ISA_3D_TYPED_ATOMIC:    
+        case ISA_3D_TYPED_ATOMIC:
         case ISA_3D_RT_WRITE:
         {
             // no verification for now

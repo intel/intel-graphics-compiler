@@ -248,7 +248,7 @@ static void readExecSizeNG(unsigned& bytePos, const char* buf, Common_ISA_Exec_S
 
     mask = transformMask(container, maskVal);
 
-    size = (Common_ISA_Exec_Size )((execSize       ) & 0xF);
+    size = (Common_ISA_Exec_Size )((execSize) & 0xF);
 }
 
 template <typename T> T readPrimitiveOperandNG(unsigned& bytePos, const char* buf)
@@ -407,7 +407,8 @@ static VISA_VectorOpnd* readVectorOperandNG(unsigned& bytePos, const char* buf, 
                 G4_Type gType = Get_G4_Type_From_Common_ISA_Type(vType);
                 unsigned int offset  = colOffset * G4_Type_Table[gType].byteSize + rowOffset * G4_GRF_REG_NBYTES;
                 kernelBuilderImpl->CreateVISAAddressOfOperand(opnd, decl, offset);
-            }else
+            }
+            else
             {
                 kernelBuilderImpl->CreateVISASrcOperand(opnd, decl, mod, v_stride, width, h_stride, rowOffset, colOffset);
             }
@@ -1937,20 +1938,20 @@ static void readInstructionSampler(unsigned& bytePos, const char* buf, ISA_Opcod
                 {
                     uint8_t sampler = readPrimitiveOperandNG<uint8_t> (bytePos, buf);
                     kernelBuilderImpl->CreateVISAStateOperandHandle(stateOpnds[numStateOpnds++], container.samplerVarDecls[sampler]);
-                }else if(opndDesc->opnd_type == OPND_SURFACE)
-                {
+                } else if(opndDesc->opnd_type == OPND_SURFACE) {
                     uint8_t surface = readPrimitiveOperandNG<uint8_t> (bytePos, buf);
                     kernelBuilderImpl->CreateVISAStateOperandHandle(stateOpnds[numStateOpnds++], container.surfaceVarDecls[surface]);
-                }else if((opndDesc->opnd_type & OPND_SRC_GEN) == OPND_SRC_GEN)
+                } else if((opndDesc->opnd_type & OPND_SRC_GEN) == OPND_SRC_GEN)
                 {
                     vOpnds[numVSrcs++] = readVectorOperandNG(bytePos, buf, container, false);
-                }else if(opndDesc->opnd_type == OPND_RAW_SRC)
+                } else if(opndDesc->opnd_type == OPND_RAW_SRC)
                 {
                     rawSrcs[numRawSrcs++] = readRawOperandNG(bytePos, buf, container);
-                }else if(opndDesc->opnd_type == OPND_RAW_DST)
+                } else if(opndDesc->opnd_type == OPND_RAW_DST)
                 {
                     dst = readRawOperandNG(bytePos, buf, container);
-                }else if(opndDesc->opnd_type == OPND_OTHER)
+                }
+                else if(opndDesc->opnd_type == OPND_OTHER)
                 {
                     //in theory this is not necessary since all of them will be UB
                     //but to demonstrate usage model
@@ -1968,8 +1969,7 @@ static void readInstructionSampler(unsigned& bytePos, const char* buf, ISA_Opcod
                         ASSERT_USER(false, "Invalid misc opnd data type");
                     return;
                     }
-                }else
-                {
+                } else {
                     ASSERT_USER(false, "Invalid opnd type");
                     return;
                 }
@@ -2067,6 +2067,7 @@ static void readInstructionSampler(unsigned& bytePos, const char* buf, ISA_Opcod
     }
 }
 
+
 extern void readInstructionNG(unsigned& bytePos, const char* buf, RoutineContainer& container, unsigned instID)
 {
     ISA_Opcode opcode = (ISA_Opcode)readPrimitiveOperandNG<uint8_t>(bytePos, buf);
@@ -2076,18 +2077,18 @@ extern void readInstructionNG(unsigned& bytePos, const char* buf, RoutineContain
 
     switch(ISA_Inst_Table[opcode].type)
     {
-    case ISA_Inst_Mov       :
-    case ISA_Inst_Sync      :
-    case ISA_Inst_Arith     :
-    case ISA_Inst_Logic     :
-    case ISA_Inst_Address   :
-    case ISA_Inst_Compare   :
-    case ISA_Inst_SIMD_Flow : readInstructionCommonNG    (bytePos, buf, (ISA_Opcode)opcode, container); break;
-    case ISA_Inst_Data_Port : readInstructionDataportNG  (bytePos, buf, (ISA_Opcode)opcode, container); break;
-    case ISA_Inst_Flow      : readInstructionControlFlow (bytePos, buf, (ISA_Opcode)opcode, container); break;
-    case ISA_Inst_Misc      : readInstructionMisc        (bytePos, buf, (ISA_Opcode)opcode, container); break;
-    case ISA_Inst_SVM       : readInstructionSVM         (bytePos, buf, (ISA_Opcode)opcode, container); break;
-    case ISA_Inst_Sampler   : readInstructionSampler     (bytePos, buf, (ISA_Opcode)opcode, container); break;
+    case ISA_Inst_Mov:
+    case ISA_Inst_Sync:
+    case ISA_Inst_Arith:
+    case ISA_Inst_Logic:
+    case ISA_Inst_Address:
+    case ISA_Inst_Compare:
+    case ISA_Inst_SIMD_Flow: readInstructionCommonNG   (bytePos, buf, (ISA_Opcode)opcode, container); break;
+    case ISA_Inst_Data_Port: readInstructionDataportNG (bytePos, buf, (ISA_Opcode)opcode, container); break;
+    case ISA_Inst_Flow:      readInstructionControlFlow(bytePos, buf, (ISA_Opcode)opcode, container); break;
+    case ISA_Inst_Misc:      readInstructionMisc       (bytePos, buf, (ISA_Opcode)opcode, container); break;
+    case ISA_Inst_SVM:       readInstructionSVM        (bytePos, buf, (ISA_Opcode)opcode, container); break;
+    case ISA_Inst_Sampler:   readInstructionSampler    (bytePos, buf, (ISA_Opcode)opcode, container); break;
     default:
         {
             stringstream sstr;

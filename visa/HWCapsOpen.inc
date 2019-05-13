@@ -488,4 +488,15 @@
         return 8;
     }
 
+    bool noScalarByteToFloat() const
+    {
+        return false;
+    }
+
+    bool canEncodeFullExtDesc() const
+    {
+        return false;
+    }
+
+
     // end HW capabilities
