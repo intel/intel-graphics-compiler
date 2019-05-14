@@ -1017,8 +1017,7 @@ static bool canAvoidDepCycles(Node *firstNode, Node *secondNode, bool isFirstLev
 static bool isTypedWritePart(G4_INST* inst, int partN) {
     return inst->isSend()
         && inst->getExecSize() == 8
-        && inst->getMsgDesc()->isHDC()
-        && inst->getMsgDesc()->getMessageType() == DC1_TYPED_SURFACE_WRITE
+        && inst->getMsgDesc()->isHdcTypedSurfaceWrite()
         && inst->getMaskOffset() == partN * 8;
 };
 

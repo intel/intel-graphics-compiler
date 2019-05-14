@@ -323,7 +323,10 @@ G4_SendMsgDescriptor::G4_SendMsgDescriptor(
     eotAfterMessage = false;
 }
 
-uint32_t G4_SendMsgDescriptor::getMessageType() const {
+
+uint32_t G4_SendMsgDescriptor::getHdcMessageType() const
+{
+    MUST_BE_TRUE(isHDC(),"not an HDC message");
     return (desc.value >> 14) & 0x1F;
 }
 
@@ -370,7 +373,7 @@ bool G4_SendMsgDescriptor::isAtomicMessage() const
     auto funcID = getFuncId();
     if (!isHDC())
         return false; // guard getMessageType() on SFID without a message type
-    uint16_t msgType = getMessageType();
+    uint16_t msgType = getHdcMessageType();
     return isIntAtomicMessage(funcID,msgType) ||
       isFloatAtomicMessage(funcID,msgType);
 }
@@ -379,7 +382,7 @@ uint16_t G4_SendMsgDescriptor::getAtomicOp() const
 {
     MUST_BE_TRUE(isAtomicMessage(), "getting atomicOp from non-atomic message!");
     uint32_t funcCtrl = getFuncCtrl();
-    if (isIntAtomicMessage(getFuncId(), getMessageType()))
+    if (isIntAtomicMessage(getFuncId(), getHdcMessageType()))
     {
         // bits: 11:8
         return (uint16_t)((funcCtrl >> 8) & 0xF);
@@ -394,7 +397,7 @@ bool G4_SendMsgDescriptor::isSLMMessage() const
 {
     if (getFuncId() == SFID::DP_DC2)
     {
-        uint32_t msgType = getMessageType();
+        uint32_t msgType = getHdcMessageType();
         if ((msgType == DC2_UNTYPED_SURFACE_WRITE || msgType == DC2_BYTE_SCATTERED_WRITE) &&
             (getFuncCtrl() & 0x80))
         {
@@ -446,36 +449,37 @@ bool G4_SendMsgDescriptor::is16BitReturn() const
     return desc.layout.returnFormat == 1;
 }
 
+static int getNumEnabledChannels(uint32_t chDisableBits)
+{
+    switch(chDisableBits)
+    {
+    case 0x7:
+    case 0xB:
+    case 0xD:
+    case 0xE: return 1;
+    case 0x3:
+    case 0x5:
+    case 0x6:
+    case 0x9:
+    case 0xA:
+    case 0xC: return 2;
+    case 0x1:
+    case 0x2:
+    case 0x4:
+    case 0x8: return 3;
+    case 0x0: return 4;
+    case 0xF: return 0;
+    default: MUST_BE_TRUE(false, "Illegal Channel Mask Number");
+    }
+    return 0;
+}
 
 unsigned int G4_SendMsgDescriptor::getEnabledChannelNum() const
 {
     // TODO: should further scope this to typed/untyped
     MUST_BE_TRUE(isHDC(), "message does not have field ChannelEnable");
     uint32_t funcCtrl = getFuncCtrl();
-
-    funcCtrl =  (funcCtrl >> MSG_BLOCK_SIZE_OFFSET) & 0xF;
-    switch(funcCtrl)
-    {
-        case 0x7:
-        case 0xB:
-        case 0xD:
-        case 0xE: return 1;
-        case 0x3:
-        case 0x5:
-        case 0x6:
-        case 0x9:
-        case 0xA:
-        case 0xC: return 2;
-        case 0x1:
-        case 0x2:
-        case 0x4:
-        case 0x8: return 3;
-        case 0x0: return 4;
-        case 0xF: return 0;
-        default: MUST_BE_TRUE(false, "Illegal Channel Mask Number");
-    }
-
-    return 0;
+    return getNumEnabledChannels((funcCtrl >> MSG_BLOCK_SIZE_OFFSET) & 0xF);
 }
 
 unsigned int G4_SendMsgDescriptor::getBlockNum() const
@@ -526,6 +530,11 @@ bool G4_SendMsgDescriptor::isOwordLoad() const
     return funcID == SFID::DP_DC && ( msgType == 0 || msgType == 1);
 }
 
+bool G4_SendMsgDescriptor::isHdcTypedSurfaceWrite() const
+{
+    return isHDC() &&
+        getHdcMessageType() == DC1_TYPED_SURFACE_WRITE;
+}
 
 bool G4_SendMsgDescriptor::isReadOnlyMessage(uint32_t msgDesc,
                                              uint32_t extDesc)
@@ -588,7 +597,7 @@ const char* G4_SendMsgDescriptor::getDescType() const
     case SFID::SAMPLER: return "sampler";
     case SFID::GATEWAY: return "gateway";
     case SFID::DP_DC2:
-        switch (getMessageType())
+        switch (getHdcMessageType())
         {
         case DC2_UNTYPED_SURFACE_READ: return "scaled untyped surface read";
         case DC2_A64_SCATTERED_READ: return "scaled A64 scatter read";
@@ -598,27 +607,27 @@ const char* G4_SendMsgDescriptor::getDescType() const
         case DC2_A64_UNTYPED_SURFACE_WRITE: return "scaled A64 untyped surface write";
         case DC2_A64_SCATTERED_WRITE: return "scaled A64 scattered write";
         case DC2_BYTE_SCATTERED_WRITE: return "scaled byte scattede write";
-        default: return "unrecognized message";
+        default: return "unrecognized DC2 message";
         }
     case SFID::DP_WRITE:
-        switch (getMessageType())
+        switch ((getFuncCtrl() >> 14) & 0x1F)
         {
         case 0xc: return "render target write";
         case 0xd: return "render target read";
-        default: return "reserved encoding used!";
+        default: return "unrecognized RT message";
         }
         break;
     case SFID::URB: return "urb";
     case SFID::SPAWNER: return "thread spawner";
     case SFID::VME: return "vme";
     case SFID::DP_CC:
-        switch (getMessageType())
+        switch (getHdcMessageType())
         {
         case 0x0: return "oword block read";
         case 0x1: return "unaligned oword block read";
         case 0x2: return "oword dual block read";
         case 0x3: return "dword scattered read";
-        default: return "reserved encoding used!";
+        default: return "unrecognized DCC message";
         }
     case SFID::DP_DC:
         category = (msgDesc->getFuncCtrl() >> 18) & 0x1;
@@ -626,7 +635,7 @@ const char* G4_SendMsgDescriptor::getDescType() const
         {
             // legacy data port
             bool hword = (msgDesc->getFuncCtrl() >> 13) & 0x1;
-            switch (getMessageType())
+            switch (getHdcMessageType())
             {
             case 0x0: return hword ? "hword block read" : "oword block read";
             case 0x1: return hword ? "hword aligned block read" : "unaligned oword block read";
@@ -639,7 +648,7 @@ const char* G4_SendMsgDescriptor::getDescType() const
             case 0xa: return "oword dual block write";
             case 0xb: return "dword scattered write";
             case 0xc: return "byte scattered write";
-            default: return "reserved encoding used!";
+            default: return "unrecognized DC0 message";
             }
         }
         else
@@ -653,9 +662,9 @@ const char* G4_SendMsgDescriptor::getDescType() const
                 return "scratch write";
         }
         break;
-    case SFID::DP_PI: return "dp_pi"; break;
+    case SFID::DP_PI: return "dp_pi";
     case SFID::DP_DC1:
-        switch (getMessageType())
+        switch (getHdcMessageType())
         {
         case 0x0: return "transpose read";
         case 0x1: return "untyped surface read";
@@ -671,7 +680,7 @@ const char* G4_SendMsgDescriptor::getDescType() const
         case 0xb: return "atomic counter operation";
         case 0xc: return "atomic counter operation simd4x2";
         case 0xd: return "typed surface write";
-        case 0x10: return "a64 scattered read";
+        case 0x10: return "a64 gathering read";
         case 0x11: return "a64 untyped surface read";
         case 0x12: return "a64 untyped atomic operation";
         case 0x13: return "a64 untyped atomic operation simd4x2";
@@ -680,7 +689,7 @@ const char* G4_SendMsgDescriptor::getDescType() const
         case 0x18: return "a64 untyped atomic float add";
         case 0x19: return "a64 untyped surface write";
         case 0x1a: return "a64 scattered write";
-        default: return "reserved encoding used!";
+        default: return "unrecognized DC1 message";
         }
         break;
     case SFID::CRE: return "cre";
@@ -688,6 +697,9 @@ const char* G4_SendMsgDescriptor::getDescType() const
     }
     return NULL;
 }
+
+
+
 
 G4_INST::G4_INST(const IR_Builder& irb,
     G4_Predicate* prd,
@@ -3306,12 +3318,11 @@ bool G4_InstSend::isDirectSplittableSend()
 
     unsigned short elemSize = dst->getElemSize();
     SFID funcID = msgDesc->getFuncId();
-    unsigned subFuncID = msgDesc->getMessageType();
 
     switch (funcID)
     {
     case SFID::DP_DC1:
-        switch (subFuncID)
+        switch (msgDesc->getHdcMessageType())
         {
         case DC1_A64_SCATTERED_READ:   //emask need be vertically cut.
            return false;
@@ -3332,7 +3343,7 @@ bool G4_InstSend::isDirectSplittableSend()
         default: return false;
         }
     case SFID::DP_DC2:
-        switch (subFuncID)
+        switch (msgDesc->getHdcMessageType())
         {
         case DC2_UNTYPED_SURFACE_READ:   //gather 4 scaled :  emask can be reused if the per-channel data is larger than 1 GRF
         case DC2_A64_UNTYPED_SURFACE_READ: //SVM gather 4 scaled
@@ -3352,7 +3363,7 @@ bool G4_InstSend::isDirectSplittableSend()
         default: return false;
         }
     case SFID::DP_DC:
-        switch (subFuncID)
+        switch (msgDesc->getHdcMessageType())
         {
         case DC_DWORD_SCATTERED_READ:   //dword scattered read: emask need be vertically cut according to splitting
         case DC_BYTE_SCATTERED_READ:       //byte scattered read

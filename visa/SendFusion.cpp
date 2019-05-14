@@ -79,13 +79,13 @@ namespace vISA
         // For Both doSink() and doHoist(), all instructions to be moved
         // are within range (StartIT, EndIT), not including StartIT and EndIT.
         // All iterators (StartIT, EndIT, InsertBeforePos) remain valid.
-        // 
+        //
         // Note that those iterators are for instructions in CurrBB.
         void doSink(INST_LIST_ITER StartIT, INST_LIST_ITER EndIT,
                     INST_LIST_ITER InsertBeforePos);
         void doHoist(INST_LIST_ITER StartIT, INST_LIST_ITER EndIT,
                      INST_LIST_ITER InsertBeforePos);
-        
+
 
         // If this optimization does any change to the code, set it to true.
         bool changed;
@@ -160,7 +160,7 @@ uint32_t SendFusion::getFuncCtrlWithSimd16(G4_SendMsgDescriptor* Desc)
 
     uint32_t FC = Desc->getFuncCtrl();
     auto funcID = Desc->getFuncId();
-    uint32_t msgType = Desc->getMessageType();
+    uint32_t msgType = Desc->getHdcMessageType();
     bool unsupported = false;
     if (funcID == SFID::DP_DC)
     {
@@ -234,7 +234,7 @@ bool SendFusion::isAtomicCandidate(G4_SendMsgDescriptor* msgDesc)
     }
 
     // Right now, the following atomic messages are DW per simd-lane.
-    uint16_t msgType = msgDesc->getMessageType();
+    uint16_t msgType = msgDesc->getHdcMessageType();
     bool intAtomic = true; // true: int; false : float
     switch (msgType) {
     default:
@@ -422,7 +422,7 @@ bool SendFusion::simplifyAndCheckCandidate(INST_LIST_ITER Iter)
     G4_DstRegRegion* dst = I->getDst();
     G4_SrcRegRegion* src0 = I->getSrc(0)->asSrcRegRegion();
     G4_SrcRegRegion* src1 = I->isSplitSend() ? I->getSrc(1)->asSrcRegRegion() : nullptr;
-    if ((dst && dst->isIndirect()) || 
+    if ((dst && dst->isIndirect()) ||
         (src0 && src0->isIndirect()) ||
         (src1 && src1->isIndirect()))
     {
@@ -445,11 +445,11 @@ bool SendFusion::simplifyAndCheckCandidate(INST_LIST_ITER Iter)
         return true;
     }
 
+    // only enable this on a subset of the HDC messages
     auto funcID = msgDesc->getFuncId();
-    uint32_t msgType = msgDesc->getMessageType();
-    if (funcID == SFID::DP_DC)
-    {
-        switch(msgType)
+    switch (funcID) {
+    case SFID::DP_DC:
+        switch(msgDesc->getHdcMessageType())
         {
         case DC_DWORD_SCATTERED_READ:
         case DC_DWORD_SCATTERED_WRITE:
@@ -457,19 +457,17 @@ bool SendFusion::simplifyAndCheckCandidate(INST_LIST_ITER Iter)
         case DC_BYTE_SCATTERED_WRITE:
             return true;
         }
-    }
-    else if (funcID == SFID::DP_DC1)
-    {
-        switch (msgType)
+        break;
+    case SFID::DP_DC1:
+        switch(msgDesc->getHdcMessageType())
         {
         case DC1_UNTYPED_SURFACE_READ:
         case DC1_UNTYPED_SURFACE_WRITE:
             return true;
         }
-    }
-    else if (funcID == SFID::DP_DC2)
-    {
-        switch (msgType)
+        break;
+    case SFID::DP_DC2:
+        switch(msgDesc->getHdcMessageType())
         {
         case DC2_BYTE_SCATTERED_READ:
         case DC2_BYTE_SCATTERED_WRITE:
@@ -477,8 +475,11 @@ bool SendFusion::simplifyAndCheckCandidate(INST_LIST_ITER Iter)
         case DC2_UNTYPED_SURFACE_WRITE:
             return true;
         }
+        break;
+    default:
+        break;
     }
-    
+
     return false;
 }
 
@@ -607,7 +608,7 @@ void SendFusion::simplifyMsg(INST_LIST_ITER SendIter)
         }
         else
         {
-            CurrBB->remove(movI); 
+            CurrBB->remove(movI);
         }
     }
 
@@ -631,14 +632,14 @@ bool SendFusion::canFusion(INST_LIST_ITER IT0, INST_LIST_ITER IT1)
         G4_SrcRegRegion* s0 = I0->getSrc(0)->asSrcRegRegion();
         G4_SrcRegRegion* s1 = I1->getSrc(0)->asSrcRegRegion();
         if (s0->compareOperand(s1) != Rel_disjoint)
-        { 
+        {
             return false;
         }
     }
 
     // Here two descriptors should be constant, and we fuse
     // the two sends only if their descriptors are identical.
-    // 
+    //
     // To be able to fuse two sends, the following conditions
     // must be met :
     //
@@ -901,9 +902,9 @@ void SendFusion::packPayload(
         assert((origDesc->isDataPortRead() || (msgLen + extMsgLen == 2)) &&
             "Internal Error (SendFusion): unexpected write message!");
     }
-    
+
     // Using a loop of count == 2 for handing both Msg & extMsg payload.
-    // 
+    //
     // Note that the following works for exec_size=1|2|4|8. It is designed
     // to handle exec_size=8. It also works for exec_size=1|2|4 with minor
     // changes.
@@ -1020,7 +1021,7 @@ void SendFusion::unpackPayload(
 
     // Copy to Dst1
     for (int i = 0; i < nMov; ++i)
-    { 
+    {
         S = Builder->createSrcRegRegion(
             Mod_src_undef, Direct, Payload,
             (ExecSize == 8 ? 2*i + 1 : 2*i),
@@ -1225,7 +1226,7 @@ void SendFusion::doFusion(
     //    It generates the following:
     //      (1) Setting flag register
     //            (Need to do Sr0.2 & ce0.0 to get real channel mask)
-    //         (1.1) Dispatch mask 
+    //         (1.1) Dispatch mask
     //              (W) mov (1|M0) r10.0<1>:ud sr0.2.0<0;1,0>:ud
     //         (1.2)
     //              (W) and (1|M0) r11.0<1>:ud ce0.0<0;1,0>:ud r10.0<0;1,0>:ud
@@ -1321,7 +1322,7 @@ void SendFusion::doFusion(
         Dst = Builder->createNullDst(Type_UD);
     }
 
-    
+
     // No need to set bti here as we handle the case in which bti is imm only.
     // For that imm bti, the descriptor has already contained bti. Thus, we can
     // safely set bti to nullptr here.
@@ -1330,7 +1331,7 @@ void SendFusion::doFusion(
     uint32_t newFC = (ExecSize < 8 ? desc->getFuncCtrl()
                                    : getFuncCtrlWithSimd16(desc));
 
-    // In general, we have the following 
+    // In general, we have the following
     //       send0       <-- IT0
     //        <O0>       <-- other instruction (no dep with send0/send1)
     //       <DepInst>   <-- ToBeSinked/ToBeHoisted
@@ -1358,7 +1359,7 @@ void SendFusion::doFusion(
     if (!isSplitSend && ExecSize == 8 && rspLen > 0 && (msgLen == 1))
     {
         G4_SendMsgDescriptor* newDesc = Builder->createSendMsgDesc(
-            newFC, newRspLen, msgLen, 
+            newFC, newRspLen, msgLen,
             desc->getFuncId(),
             false,
             msgLen,
@@ -1555,7 +1556,7 @@ bool SendFusion::run(G4_BB* BB)
             II0 = II1;
             continue;
         }
-  
+
         // At this point, inst0 and inst1 are the pair that can be fused.
         // Now, check if they can be moved to the same position.
         bool sinkable = canSink(II0, II1);

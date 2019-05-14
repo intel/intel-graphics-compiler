@@ -359,9 +359,6 @@ public:
         return desc.layout.funcCtrl;
     }
 
-    // bits [18:14] of the message descriptor for certain messages
-    uint32_t getMessageType() const;
-
 
     bool isEOTInst() const { return eotAfterMessage; }
     void setEOT();
@@ -383,8 +380,14 @@ public:
     bool isHDC() const
     {
         auto funcID = getFuncId();
-        return funcID == SFID::DP_DC || funcID == SFID::DP_DC1 || funcID == SFID::DP_DC2;
+        return
+            funcID == SFID::DP_DC ||
+            funcID == SFID::DP_DC1 ||
+            funcID == SFID::DP_DC2 ||
+            funcID == SFID::DP_CC;
     }
+    // isHDC() must be true
+    uint32_t getHdcMessageType() const;
 
     bool isThreadMessage() const
     {
@@ -415,7 +418,14 @@ public:
     // true if the message is either oword read or unaligned oword read
     bool isOwordLoad() const;
 
-    // TODO: this should be eliminated
+    // introduced to replace direct access to desc bits
+    bool isHdcTypedSurfaceWrite() const;
+
+
+    // TODO: this should be eliminated; it only supports a subset of messages
+    // and can produce a false negative on newer messages; it also doesn't
+    // support the SFID separate from the descriptor
+    //
     // read-only implies that it doesn't write (e.g. an atomic)
     static bool isReadOnlyMessage(uint32_t msgDesc, uint32_t exDesc);
 

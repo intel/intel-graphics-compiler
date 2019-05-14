@@ -843,7 +843,7 @@ void BankConflictPass::setupBankConflictsForBB(G4_BB* bb,
             {
                     setupBankConflictsforTwoGRFs(inst);
             }
-            
+
         }
         if (inst->isSend() && !inst->isEOT())
         {
@@ -2494,12 +2494,11 @@ bool Augmentation::updateDstMaskForScatter(G4_INST* inst, unsigned char* mask)
     }
 
     SFID funcID = msgDesc->getFuncId();
-    unsigned subFuncID = msgDesc->getMessageType();
 
     switch (funcID)
     {
     case SFID::DP_DC1:
-        switch (subFuncID)
+        switch (msgDesc->getHdcMessageType())
         {
         case DC1_A64_SCATTERED_READ:   //a64 scattered read: svm_gather
         {
@@ -2563,7 +2562,7 @@ bool Augmentation::updateDstMaskForScatter(G4_INST* inst, unsigned char* mask)
         }
         break;
     case SFID::DP_DC2:
-        switch (subFuncID)
+        switch (msgDesc->getHdcMessageType())
         {
         case DC2_UNTYPED_SURFACE_READ:   //gather 4 scaled
         case DC2_A64_UNTYPED_SURFACE_READ: //SVM gather 4 scaled
@@ -2602,7 +2601,7 @@ bool Augmentation::updateDstMaskForScatter(G4_INST* inst, unsigned char* mask)
         }
         break;
     case SFID::DP_DC:
-        switch (subFuncID)
+        switch (msgDesc->getHdcMessageType())
         {
         case DC_DWORD_SCATTERED_READ:   //dword scattered read: gather(dword), handled as block read write
         case DC_BYTE_SCATTERED_READ:       //byte scattered read:   gather(byte), handled as block read write
@@ -4797,7 +4796,7 @@ void Interference::buildInterferenceWithLocalRA(G4_BB* bb)
 
         // If a range is Address taken AND (live-in or live-out or killed)
         // mark it to interfere with all physical registers used by local RA
-        // FIXME: need to check if this is actually needed 
+        // FIXME: need to check if this is actually needed
         if (!assigned && (isAddrSensitive && (isLiveIn || isLiveOut || isKilled)))
         {
             // Make it to interfere with all physical registers used in the BB
@@ -4862,7 +4861,7 @@ void Interference::dumpInterference() const
 GraphColor::GraphColor(LivenessAnalysis& live, unsigned totalGRF, bool hybrid, bool forceSpill_) :
     gra(live.gra), isHybrid(hybrid), totalGRFRegCount(totalGRF), numVar(live.getNumSelectedVar()), numSplitStartID(live.getNumSplitStartID()), numSplitVar(live.getNumSplitVar()),
     intf(&live, lrs, live.getNumSelectedVar(), live.getNumSplitStartID(), live.getNumSplitVar(), gra), regPool(gra.regPool),
-    builder(gra.builder), lrs(NULL), 
+    builder(gra.builder), lrs(NULL),
     forceSpill(forceSpill_), mem(GRAPH_COLOR_MEM_SIZE),
     liveAnalysis(live), kernel(gra.kernel)
 {
@@ -5587,7 +5586,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
                 {
                     return false;
                 }
-                else if (kernel.fg.isPseudoVCADcl(dcl) || kernel.fg.isPseudoVCEDcl(dcl) || 
+                else if (kernel.fg.isPseudoVCADcl(dcl) || kernel.fg.isPseudoVCEDcl(dcl) ||
                     kernel.fg.isPseudoA0Dcl(dcl) || kernel.fg.isPseudoFlagDcl(dcl))
                 {
                     // these pseudo dcls are not (and cannot be) spilled, but instead save/restore code will
@@ -5872,7 +5871,7 @@ bool GraphColor::regAlloc(bool doBankConflictReduction,
     bool reserveSpillReg, unsigned& spillRegSize, unsigned& indrSpillRegSize,
     RPE* rpe)
 {
-    
+
     bool useSplitLLRHeuristic = false;
 
     if (builder.getOption(vISA_RATrace))
@@ -6128,7 +6127,7 @@ void GraphColor::cleanupRedundantARFFillCode()
                 {
                     G4_RegVar* addrReg = dst->getBase()->asRegVar();
 
-                    if (gra.isAddrFlagSpillDcl(addrReg->getDeclare())) 
+                    if (gra.isAddrFlagSpillDcl(addrReg->getDeclare()))
                     {
                         G4_SrcRegRegion* srcRgn = inst->getSrc(0)->asSrcRegRegion();
 
@@ -6308,7 +6307,7 @@ void GraphColor::stackCallProlog()
     auto dstRgn = builder.Create_Dst_Opnd_From_Dcl(builder.kernel.fg.scratchRegDcl, 1);
     auto srcRgn = builder.Create_Src_Opnd_From_Dcl(builder.getRealR0(), builder.getRegionStride1());
 
-    G4_INST* mov = builder.createInternalInst(nullptr, G4_mov, nullptr, false, 8, dstRgn, srcRgn, nullptr, 
+    G4_INST* mov = builder.createInternalInst(nullptr, G4_mov, nullptr, false, 8, dstRgn, srcRgn, nullptr,
         InstOpt_WriteEnable);
 
    G4_BB* entryBB = builder.kernel.fg.getEntryBB();
@@ -6364,9 +6363,9 @@ void GraphColor::saveRegs(
             builder.rgnpool.createRegion(8, 8, 1), Type_UD);
         G4_Imm* descImm = gra.createMsgDesc(owordSize, true, true);
         uint32_t extDesc = G4_SendMsgDescriptor::createExtDesc(SFID::DP_DC, false, messageLength);
-        auto msgDesc = builder.createSendMsgDesc((uint32_t)descImm->getInt(), extDesc, false, true, 
+        auto msgDesc = builder.createSendMsgDesc((uint32_t)descImm->getInt(), extDesc, false, true,
             getScratchSurface());
-        auto sendInst = builder.Create_SplitSend_Inst(nullptr, postDst, sendSrc1, sendSrc2, execSize, msgDesc, 
+        auto sendInst = builder.Create_SplitSend_Inst(nullptr, postDst, sendSrc1, sendSrc2, execSize, msgDesc,
             InstOpt_WriteEnable, false);
         auto exDescOpnd = sendInst->getMsgExtDescOperand();
         if (exDescOpnd->isSrcRegRegion())
@@ -6489,9 +6488,9 @@ void GraphColor::restoreRegs(
             G4_SrcRegRegion* payload = builder.Create_Src_Opnd_From_Dcl(scratchRegDcl, builder.getRegionStride1());
             G4_Imm* exDesc = builder.createImm(0xa, Type_UD);
             G4_Imm* desc = gra.createMsgDesc(owordSize, false, false);
-            auto msgDesc = builder.createSendMsgDesc((uint32_t)desc->getInt(), (uint32_t)exDesc->getInt(), true, false, 
+            auto msgDesc = builder.createSendMsgDesc((uint32_t)desc->getInt(), (uint32_t)exDesc->getInt(), true, false,
                 getScratchSurface());
-            auto sendInst = builder.Create_SplitSend_Inst(nullptr, postDst, payload, builder.createNullSrc(Type_UD), execSize, 
+            auto sendInst = builder.Create_SplitSend_Inst(nullptr, postDst, payload, builder.createNullSrc(Type_UD), execSize,
                 msgDesc, InstOpt_WriteEnable, false);
             auto exDescOpnd = sendInst->getMsgExtDescOperand();
             if (exDescOpnd->isSrcRegRegion())
@@ -7358,7 +7357,7 @@ void GraphColor::addFlagSaveRestoreCode()
                 {
                     //
                     // (W) mov (1) TMP_GRF.0<1>:ud f0.0:ud
-                    // (W) mov (1) TMP_GRF.1<1>:ud f1.0:ud 
+                    // (W) mov (1) TMP_GRF.1<1>:ud f1.0:ud
                     //
                     auto createFlagSaveInst = [&](int index)
                     {
@@ -8894,7 +8893,7 @@ void GlobalRA::removeSplitDecl()
         }
     }
 
-    kernel.Declares.erase(std::remove_if(kernel.Declares.begin(), kernel.Declares.end(), 
+    kernel.Declares.erase(std::remove_if(kernel.Declares.begin(), kernel.Declares.end(),
         [](G4_Declare* dcl) { return dcl->getIsPartialDcl(); }), kernel.Declares.end());
 }
 
@@ -8907,7 +8906,7 @@ bool GlobalRA::hybridRA(bool doBankConflictReduction, bool highInternalConflict,
         std::cout << "--hybrid RA--\n";
     }
     uint32_t numOrigDcl = (uint32_t) kernel.Declares.size();
-    insertPhyRegDecls(); 
+    insertPhyRegDecls();
 
     LivenessAnalysis liveAnalysis(*this, G4_GRF | G4_INPUT);
     liveAnalysis.computeLiveness(true);
@@ -8939,7 +8938,7 @@ bool GlobalRA::hybridRA(bool doBankConflictReduction, bool highInternalConflict,
         {
             if (!kernel.getOption(vISA_Debug))
             {
-                // Why?? Keep LRA results when -debug is passed 
+                // Why?? Keep LRA results when -debug is passed
                 kernel.Declares.resize(numOrigDcl);
                 lra.undoLocalRAAssignments(false);
             }
@@ -9009,7 +9008,7 @@ int GlobalRA::coloringRegAlloc()
 
     //
     // If the graph has stack calls, then add the caller-save/callee-save pseudo declares and code.
-    // This currently must be done after flag/addr RA due to the assumption about the location 
+    // This currently must be done after flag/addr RA due to the assumption about the location
     // of the pseudo save/restore instructions
     //
     if (hasStackCall)
@@ -9078,7 +9077,7 @@ int GlobalRA::coloringRegAlloc()
 
         resetGlobalRAStates();
 
-        if (builder.getOption(vISA_clearScratchWritesBeforeEOT) && 
+        if (builder.getOption(vISA_clearScratchWritesBeforeEOT) &&
             (globalScratchOffset + nextSpillOffset) > 0)
         {
             // we need to set r0 be live out for this WA
@@ -9087,7 +9086,7 @@ int GlobalRA::coloringRegAlloc()
 
         //Identify the local variables to speedup following analysis
         markGraphBlockLocalVars(false);
-        
+
         //Do variable splitting in each iteration
         if (builder.getOption(vISA_LocalDeclareSplitInGlobalRA))
         {
@@ -9172,7 +9171,7 @@ int GlobalRA::coloringRegAlloc()
                     return CM_SPILL;
                 }
 
-                bool runRemat = kernel.getOptions()->getTarget() == VISA_CM ? true : 
+                bool runRemat = kernel.getOptions()->getTarget() == VISA_CM ? true :
                     kernel.getSimdSize() < 32;
                 // -noremat takes precedence over -forceremat
                 bool rematOff = !kernel.getOption(vISA_Debug) &&

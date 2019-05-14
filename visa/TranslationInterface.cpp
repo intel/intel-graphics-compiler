@@ -3190,7 +3190,7 @@ int IR_Builder::translateVISAMediaStoreInst(
 
         G4_SendMsgDescriptor* desc = createSendMsgDesc( msgDesc, 0, 1, SFID::DP_DC1,
             false, extMsgLength, extFuncCtrl, false, true, surface);
-        
+
         Create_SplitSend_Inst(nullptr, dstOpnd, headerOpnd, srcOpnd, 8, desc, InstOpt_WriteEnable, false);
     }
     else
