@@ -27,7 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Transforms/Utils/Cloning.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
-#include <llvm/Transforms/Utils/LoopUtils.h>
+#include <llvmWrapper/Transforms/Utils/LoopUtils.h>
 #include "common/LLVMWarningsPop.hpp"
 
 #include "common/LLVMUtils.h"
@@ -893,7 +893,7 @@ bool LoopCanonicalization::processOneLoop(Loop* L, DominatorTree *DT, LoopInfo *
     // Does the loop already have a preheader?  If so, don't insert one.
     BasicBlock *Preheader = L->getLoopPreheader();
     if(!Preheader) {
-        Preheader = InsertPreheaderForLoop(L, DT, LI, PreserveLCSSA);
+        Preheader = IGCLLVM::InsertPreheaderForLoop(L, DT, LI, PreserveLCSSA);
         if(Preheader) {
             changed = true;
         }

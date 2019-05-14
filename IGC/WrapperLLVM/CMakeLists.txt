@@ -52,6 +52,7 @@ set(IGC_WrapperLLVM_HDR
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Support/Debug.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Support/KnownBits.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/Utils/Cloning.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/Utils/LoopUtils.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/Utils.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/Scalar/InstSimplifyPass.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/BinaryFormat/Dwarf.h"
