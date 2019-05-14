@@ -425,7 +425,7 @@
         return true;
     }
 
-    bool supportFloatRegioning() const
+    bool supportFloatOr64bRegioning() const
     {
         return true;
     }

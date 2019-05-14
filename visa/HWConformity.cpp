@@ -2550,7 +2550,8 @@ void HWConformity::fixMULHInst( INST_LIST_ITER &i, G4_BB *bb )
     }
 
     bool useMulQDD = false;
-    if (exec_size <= builder.getNativeExecSize() && !builder.no64bitRegioning())
+    if (exec_size <= builder.getNativeExecSize() && !builder.no64bitRegioning() &&
+        builder.supportFloatOr64bRegioning())
     {
         useMulQDD = true;
         if (!IS_DTYPE(src0->getType()) || !IS_DTYPE(src1->getType()))
