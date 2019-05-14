@@ -12917,6 +12917,7 @@ unsigned int EmitPass::GetScalarTypeSizeInRegister(Type *Ty) const
     return sizeInBites / 8;
 }
 
+
 void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset)
 {
     Value* Ptr = inst->getPointerOperand();
@@ -12999,6 +13000,7 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset)
         }
         return;
     }
+
 
     // generate oword-load if possible
     if (VTy && srcUniform)
