@@ -958,7 +958,6 @@ void CodeGenPatternMatch::visitBinaryOperator(llvm::BinaryOperator &I)
     case Instruction::FSub:
         match = MatchFrc(I) ||
                 MatchLrp(I) ||
-                MatchPredAdd(I) ||
                 MatchMad(I) ||
                 MatchAbsNeg(I) ||
                 MatchModifier(I);
@@ -1001,7 +1000,6 @@ void CodeGenPatternMatch::visitBinaryOperator(llvm::BinaryOperator &I)
         break;
     case Instruction::FAdd:
         match = MatchLrp(I) ||
-                MatchPredAdd(I) ||
                 MatchMad(I) ||
                 MatchModifier(I);
         break;
@@ -1635,136 +1633,6 @@ bool CodeGenPatternMatch::MatchFMA( llvm::IntrinsicInst& I )
     AddPattern(pattern);
 
     return true;
-}
-
-bool CodeGenPatternMatch::MatchPredAdd(llvm::BinaryOperator& I)
-{
-    struct PredAddPattern : Pattern
-    {
-        SSource sources[2];
-        SSource pred;
-        e_predMode predMode;
-        bool invertPred;
-        virtual void Emit(EmitPass* pass, const DstModifier& modifier)
-        {
-            DstModifier modf = modifier;
-            modf.predMode = predMode;
-            pass->PredAdd(pred, invertPred, sources, modf);
-        }
-    };
-
-    if (m_ctx->getModuleMetaData()->isPrecise)
-    {
-        return false;
-    }
-
-    if (m_ctx->type == ShaderType::VERTEX_SHADER &&
-        !m_ctx->m_DriverInfo.SupportMatchPredAdd())
-    {
-        return false;
-    }
-
-    bool found = false;
-
-    llvm::Value *sources[2], *pred;
-    e_modifier src_mod[2], pred_mod;
-    bool invertPred = false;
-    if (m_AllowContractions == false || IGC_IS_FLAG_ENABLED(DisableMatchPredAdd))
-    {
-        return false;
-    }
-
-    assert(I.getOpcode() == Instruction::FAdd || I.getOpcode() == Instruction::FSub);
-    for (uint i = 0; i < 2; i++)
-    {
-        Value* src = I.getOperand(i);
-        llvm::BinaryOperator* mul = llvm::dyn_cast<llvm::BinaryOperator>(src);
-        if (mul && mul->getOpcode() == Instruction::FMul)
-        {
-            if (llvm::SelectInst* selInst = dyn_cast<SelectInst>(mul->getOperand(i)))
-            {
-                ConstantFP *C1 = dyn_cast<ConstantFP>(selInst->getOperand(1));
-                ConstantFP *C2 = dyn_cast<ConstantFP>(selInst->getOperand(2));
-                if (C1 && C2 && selInst->hasOneUse())
-                {
-                    // select i1 %res_s48, float 1.000000e+00, float 0.000000e+00
-                    if ((C2->isZero() && C1->isExactlyValue(1.f)))
-                    {
-                        invertPred = false;
-                    }
-                    // select i1 %res_s48, float 0.000000e+00, float 1.000000e+00
-                    else if (C1->isZero() && C2->isExactlyValue(1.f))
-                    {
-                        invertPred = true;
-                    }
-                    else
-                    {
-                        return false;
-                    }
-
-                    // sources[0]: add src0
-                    // sources[1]: add src1
-
-                    // % 97  = select i1 %res_s48, float 1.000000e+00, float 0.000000e+00
-                    // % 102 = fmul fast float %97, %res_s63
-                    //                              ^^^^^^^^
-                    if (mul->getOperand(0) == selInst)
-                    {
-                        sources[i] = mul->getOperand(1);
-
-                    }
-                    // % 97  = select i1 %res_s48, float 1.000000e+00, float 0.000000e+00
-                    // % 102 = fmul fast float %res_s63, %97
-                    //                         ^^^^^^^^
-                    else if (mul->getOperand(1) == selInst)
-                    {
-                        sources[i] = mul->getOperand(0);
-                    }
-                    sources[1^i] = I.getOperand(1^i);
-                    pred = selInst->getOperand(0);
-
-                    GetModifier(*sources[0], src_mod[0], sources[0]);
-                    GetModifier(*sources[1], src_mod[1], sources[1]);
-                    GetModifier(*pred, pred_mod, pred);
-
-                    if (I.getOpcode() == Instruction::FSub)
-                    {
-                        if (ConstantFP *fp0 = dyn_cast<llvm::ConstantFP>(sources[1]))
-                        {
-                            APFloat newConstantFloat = fp0->getValueAPF();
-                            newConstantFloat.changeSign();
-
-                            Constant* newConstant = ConstantFP::get(I.getContext(), newConstantFloat);
-                            sources[1] = newConstant;
-                        }
-                        else
-                        {
-                            src_mod[1] = CombineModifier(EMOD_NEG, src_mod[1]);
-                        }
-                    } //  if (I.getOpcode() == Instruction::FSub)
-
-                    found = true;
-                    break;
-                } // if (C1 && C2 && selInst->hasOneUse())
-            } //  if (llvm::SelectInst* selInst = dyn_cast<SelectInst>(mul->getOperand(0)))
-        } // if (mul && mul->getOpcode() == Instruction::FMul)
-    } // for (uint i = 0; i < 2; i++)
-
-    if (found)
-    {
-        PredAddPattern *pattern = new (m_allocator) PredAddPattern();
-        pattern->predMode = EPRED_NORMAL;
-
-        for (int i = 0; i < 2; i++)
-        {
-            pattern->sources[i] = GetSource(sources[i], src_mod[i], false);
-        }
-        pattern->pred = GetSource(pred, pred_mod, false);
-        pattern->invertPred = invertPred;
-
-        AddPattern(pattern);
-    }
-    return found;
 }
 
 bool CodeGenPatternMatch::MatchMad( llvm::BinaryOperator& I )
