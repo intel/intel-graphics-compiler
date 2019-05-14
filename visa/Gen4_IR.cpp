@@ -3847,7 +3847,6 @@ G4_SrcRegRegion::G4_SrcRegRegion(G4_SrcRegRegion &rgn)
 
     bitVec[0] = rgn.bitVec[0];
     bitVec[1] = rgn.bitVec[1];
-    bitVec[2] = rgn.bitVec[2];
 
     top_dcl = rgn.top_dcl;
     left_bound = rgn.left_bound;
@@ -4561,7 +4560,6 @@ G4_DstRegRegion::G4_DstRegRegion(G4_DstRegRegion &rgn)
     right_bound = rgn.right_bound;
     bitVec[0] = rgn.bitVec[0];
     bitVec[1] = rgn.bitVec[1];
-    bitVec[2] = rgn.bitVec[2];
     byteOffset = rgn.byteOffset;
     rightBoundSet = rgn.rightBoundSet;
 }
@@ -4881,45 +4879,25 @@ static G4_CmpRelation compareRegRegionToOperand(G4_Operand* regRegion, G4_Operan
         }
         else
         {
-            // First consider if any operand is from a send.
-            uint64_t myBitVecS = regRegion->getBitVecS();
-            uint64_t opndBitVecS = opnd->getBitVecS();
-            if (opndBitVecS > 0 || myBitVecS > 0)
+            // First consider if any operand is > two GRFs. If so we just compare the bound
+            // as such operands are assumed to touch every element within the bound.
+            bool meExceedTwoGRF = (myRightBound - myLeftBound) > 2u * getGRFSize();
+            bool opndExceedTwoGRF = (right_bound2 - left_bound2) > 2u * getGRFSize();
+            if (meExceedTwoGRF || opndExceedTwoGRF)
             {
-                if (myBitVecS > 0 && opndBitVecS == 0)
+                if (left_bound2 >= myLeftBound && right_bound2 <= myRightBound)
                 {
-                    // The first convers >= 3 grfs, and the second is within 2 grfs.
-                    if (left_bound2 >= myLeftBound && right_bound2 <= myRightBound)
-                    {
-                         return Rel_gt;
-                    }
-                    return Rel_interfere;
+                    return Rel_gt;
                 }
-                else if (myBitVecS == 0 && opndBitVecS > 0)
+                else if (myLeftBound >= left_bound2 && myRightBound <= right_bound2)
                 {
-                    // The first is within 2 grfs, and the second convers >= 3 grfs.
-                    if (myLeftBound >= left_bound2 && myRightBound <= right_bound2)
-                    {
-                        return Rel_lt;
-                    }
-                    return Rel_interfere;
+                    return Rel_lt;
                 }
-                else
-                {
-                    // myBitVecS > 0 and opndBitVecS > 0
-                    if (left_bound2 >= myLeftBound && right_bound2 <= myRightBound)
-                    {
-                         return Rel_gt;
-                    }
-                    if (myLeftBound >= left_bound2 && myRightBound <= right_bound2)
-                    {
-                        return Rel_lt;
-                    }
-                    return Rel_interfere;
-                }
+                return Rel_interfere;
             }
 
-            // Now both operands are within two GRFs, comparing their L/H vectors.
+            // Now both operands are within two GRFs, comparing their L/H vectors
+            // to get more precise relations
             int dist = left_bound2 - myLeftBound;
             uint64_t new_bitVecL = myBitVecL, new_bitVecH = myBitVecH;
             if (dist > 0 && dist < (2 * GENX_GRF_REG_SIZ))
@@ -6961,11 +6939,6 @@ void G4_InstSend::computeRightBound(G4_Operand* opnd)
                 // NBytes > 64
                 opnd->setBitVecL(0xFFFFFFFF);
                 opnd->setBitVecH(0xFFFFFFFF);
-
-                // GRF level tracking, up to 32 + 2 GRFs.
-                unsigned NGrfs = (NBytes - 64 + 31) / 32;
-                uint32_t Mask = uint32_t(-1) >> (32 - NGrfs);
-                opnd->setBitVecS(Mask);
             }
             opnd->setRightBound(RB);
         };

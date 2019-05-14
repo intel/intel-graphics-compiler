@@ -2071,9 +2071,9 @@ protected:
     // fields used to compare operands
     G4_Declare *top_dcl;
     G4_VarBase *base;
-    uint64_t bitVec[3];  // 0 -- bit mask for the first GRF at byte granularity (for flags, at bit granularity)
+
+    uint64_t bitVec[2];  // 0 -- bit mask for the first GRF at byte granularity (for flags, at bit granularity)
                          // 1 -- bit mask for the second GRF at byte granularity (for flags, at bit granularity)
-                         // 2 -- bit mask for the rest at GRF granularity - used for send operands.
 
     bool rightBoundSet;
     unsigned byteOffset;
@@ -2099,7 +2099,7 @@ protected:
           rightBoundSet(false), byteOffset(0), accRegSel(ACC_UNDEFINED),
           left_bound(0), right_bound(0)
     {
-        bitVec[0] = bitVec[1] = bitVec[2] = 0;
+        bitVec[0] = bitVec[1] = 0;
     }
 
     G4_Operand(Kind k, G4_VarBase *base)
@@ -2107,7 +2107,7 @@ protected:
           rightBoundSet(false), byteOffset(0), accRegSel(ACC_UNDEFINED),
           left_bound(0), right_bound(0)
     {
-        bitVec[0] = bitVec[1] = bitVec[2] = 0;
+        bitVec[0] = bitVec[1] = 0;
     }
 
 public:
@@ -2278,18 +2278,6 @@ public:
 
         return bitVec[1];
     }
-    uint64_t getBitVecS()
-    {
-        if (isRightBoundSet() == false && !isNullReg())
-        {
-            // computeRightBound also computes bitVec
-            inst->computeRightBound(this);
-        }
-
-        return bitVec[2] & 0x00000000FFFFFFFF;
-
-        return bitVec[2];
-    }
     /*
         For operands that do use it, it is computed during left bound compuation.
     */
@@ -2301,10 +2289,6 @@ public:
     void setBitVecH(uint64_t bvh )
     {
         bitVec[1] = bvh;
-    }
-    void setBitVecS(uint64_t bvs )
-    {
-        bitVec[2] = bvs;
     }
 
     virtual unsigned computeRightBound( uint8_t exec_size ) { return left_bound; }

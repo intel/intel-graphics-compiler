@@ -1624,7 +1624,6 @@ void HWConformity::saveDst( INST_LIST_ITER& it, uint8_t stride, G4_BB *bb )
         dst->getSubRegOff(), region, dstType );
     srcRegion->setBitVecH( dst->getBitVecH() );
     srcRegion->setBitVecL( dst->getBitVecL() );
-    srcRegion->setBitVecS( dst->getBitVecS() );
 
     G4_DstRegRegion *tmpDstOpnd = builder.Create_Dst_Opnd_From_Dcl( dcl, stride );
 
@@ -1653,7 +1652,6 @@ void HWConformity::restoreDst( INST_LIST_ITER& it, G4_DstRegRegion *origDst, G4_
         dst->getSubRegOff(), region, dst->getType() );
     srcRegion->setBitVecH( dst->getBitVecH() );
     srcRegion->setBitVecL( dst->getBitVecL() );
-    srcRegion->setBitVecS( dst->getBitVecS() );
 
     unsigned int new_option = inst->getOption();
 
