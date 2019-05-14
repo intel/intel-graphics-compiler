@@ -2061,14 +2061,9 @@ protected:
     // fields used to compare operands
     G4_Declare *top_dcl;
     G4_VarBase *base;
-    uint64_t bitVec[3];  // Bit 0 - 31: 32-bit mask for the first GRF at byte granularity (for flags, at bit granularity)
-                             // Bit 64 - 95: 32-bit mask for the second GRF at byte granularity (for flags, at bit granularity)
-                             // Bit 128 - 159: 32-bit mask for the rest at GRF granularity - used for send operands.  bit64 represents the 3rd GRF
-
-                             // For 64 bytes GRF
-                             // Bit 0 - 63: 64-bit mask for the first GRF at  word granularity
-                             // Bit 64 - 127: 64-bit mask for the second GRF at word granularity (for flags, at bit granularity)
-                             // Bit 128 - 195: 64-bit mask for the rest at GRF granularity - used for send operands.  bit64 represents the 3rd GRF
+    uint64_t bitVec[3];  // 0 -- bit mask for the first GRF at byte granularity (for flags, at bit granularity)
+                         // 1 -- bit mask for the second GRF at byte granularity (for flags, at bit granularity)
+                         // 2 -- bit mask for the rest at GRF granularity - used for send operands.
 
     bool rightBoundSet;
     unsigned byteOffset;

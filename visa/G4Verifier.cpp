@@ -295,13 +295,6 @@ void G4Verifier::verifyOpnd(G4_Operand* opnd, G4_INST* inst)
         return;
     }
 
-#if 0
-    if (kernel.fg.builder->no64bitType())
-    {
-        MUST_BE_TRUE(G4_Type_Table[opnd->getType()].byteSize != 8, "platform does not support 64-bit type");
-    }
-#endif
-
     // FIXME: If isImm() condition is removed then some assertions are hit.
     // This means somewhere in Jitter operand sharing is happening for
     // immediate type operands. This should be fixed.

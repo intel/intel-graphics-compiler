@@ -1811,7 +1811,10 @@ unsigned int LocalLiveRange::getSizeInWords()
 void PhyRegsLocalRA::setGRFBusy(int which)
 {
     MUST_BE_TRUE(isGRFAvailable(which), "Invalid register");
-    regBusyVector[which] = 0xffff;
+
+    // all 1 word mask based on register size
+    uint64_t wordMask = (1 << (getGRFSize() / 2)) - 1;
+    regBusyVector[which] = (uint32_t) wordMask;
 
     if (twoBanksRA)
     {

@@ -2793,9 +2793,6 @@ void HWConformity::copyDwordsIndirect(G4_Declare* dst,
     MUST_BE_TRUE(G4_Type_Table[dst->getElemType()].byteSize >= 4 &&
         G4_Type_Table[src->getType()].byteSize >= 4, "dst and src must have dword or qword type");
 
-    MUST_BE_TRUE(numDwords == 1 || numDwords == 2 || numDwords == 4 ||
-        numDwords == 8 || numDwords == 16, "invalid number of dwords to copy");
-
     MUST_BE_TRUE(src->getRegAccess() == IndirGRF, "source must be indirect GRF");
 
     G4_Declare* newDst = dst;

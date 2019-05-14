@@ -1472,17 +1472,12 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(ISA_Opcode opcode, Common_
     }
     else
     {
-
         element_size = 8;
         if (hasSIMD8DFMadm())
         {
             exsize = 8;
-            loopCount = 1;
         }
-        else
-        {
-            loopCount = 2;
-        }
+        loopCount = instExecSize / exsize;
     }
 
     bool noDstMove = exsize == 8 && !saturate && !predOpnd && isOpndAligned(dstOpnd, 32) &&

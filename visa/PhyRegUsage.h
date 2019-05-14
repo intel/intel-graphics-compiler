@@ -287,8 +287,6 @@ public:
         MUST_BE_TRUE(num > 0 && start+num <= G4_GRF_REG_SIZE, "illegal number of words");
         uint32_t mask = ((1 << num) - 1) << start;
 
-        MUST_BE_TRUE(mask <= 0xFFFF, "illegal subreg mask");
-
         return (uint32_t) mask;
     }
 
