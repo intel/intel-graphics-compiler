@@ -269,7 +269,6 @@ DECLARE_IGC_REGKEY(bool, ForceDisableSrc0Alpha,        false, "Force the compile
 DECLARE_IGC_REGKEY(bool, EnableLTO,                     true,  "Enable link time optimization")
 DECLARE_IGC_REGKEY(bool, EnableLTODebug,                false, "Enable debug information for LTO")
 DECLARE_IGC_REGKEY(DWORD, FunctionControl,              0,     "Control function inlining/subroutine/stackcall. See value defs in igc_flags.hpp.")
-DECLARE_IGC_REGKEY(bool, EnableOCLNoInlineAttr,         false, "If set, OCL kernel with noinline attribute is honored (only for user function). Thus, subroutine call is enabled.")
 DECLARE_IGC_REGKEY(DWORD, OCLInlineThreshold,           512,   "Setting OCL inline thershold")
 DECLARE_IGC_REGKEY(bool, EnableForceGroupSize,          false, "Enable forcing thread Group Size ForceGroupSizeX and ForceGroupSizeY")
 DECLARE_IGC_REGKEY(DWORD, ForceGroupSizeX,              8, "force group size along X")

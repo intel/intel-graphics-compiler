@@ -784,13 +784,7 @@ InlineCost SubroutineInliner::getInlineCost(CallSite CS)
         if (pCtx->m_enableSubroutine == false)
             return IGCLLVM::InlineCost::getAlways();
 
-        if (pCtx->type == ShaderType::OPENCL_SHADER &&
-            IGC_IS_FLAG_ENABLED(EnableOCLNoInlineAttr) &&
-            Callee->hasFnAttribute(llvm::Attribute::NoInline))
-            return IGCLLVM::InlineCost::getNever();
-
-        if (Callee->hasFnAttribute("UserSubroutine") &&
-            Callee->hasFnAttribute(llvm::Attribute::NoInline))
+        if (Callee->hasFnAttribute(llvm::Attribute::NoInline))
             return IGCLLVM::InlineCost::getNever();
 
         if (FCtrl != FLAG_FCALL_FORCE_SUBROUTINE &&
