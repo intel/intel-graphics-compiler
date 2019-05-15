@@ -114,7 +114,7 @@ public:
     virtual bool HasDoubleLoadStore() const { return false; }
 
     /// Needs emulation of 64bits instructions
-    virtual bool NeedPreCompiledLibFuncs() const { return false; }
+    virtual bool NeedI64BitDivRem() const { return false; }
 
     /// Must support FP64
     virtual bool NeedFP64() const { return false; }

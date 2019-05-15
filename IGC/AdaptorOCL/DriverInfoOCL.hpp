@@ -42,7 +42,7 @@ namespace TC
 
         bool NeedCheckContractionAllowed() const override { return true; }
 
-        bool NeedPreCompiledLibFuncs() const override { return true; }
+        bool NeedI64BitDivRem() const override { return true; }
 
         bool HasMemoryIntrinsics() const override { return true; }
 
