@@ -8366,17 +8366,17 @@ int IR_Builder::translateVISARTWrite3DInst(
             }
             else
             {
-                
+
                 assert(rtIndex->isImm() && "RTIndex must be imm at this point");
                 uint8_t RTIndex = (uint8_t)rtIndex->asImm()->getImm() & 0x7;
                 uint32_t desc = G4_SendMsgDescriptor::createDesc(fc, false, numRows, 0);
                 uint32_t extDesc = G4_SendMsgDescriptor::createMRTExtDesc(cntrls.s0aPresent, RTIndex,
                     false, 0);
                 msgDesc = createSendMsgDesc(desc, extDesc, false, true, surface);
-                
+
                 if (!canEncodeFullExtDesc())
-                { 
-                    // we must use a0 for extended msg desc in this case as there aren't enough bits to encode 
+                {
+                    // we must use a0 for extended msg desc in this case as there aren't enough bits to encode
                     // the full ext desc
                     // mov (1) a0.2:ud extDesc
                     G4_DstRegRegion* dst = Create_Dst_Opnd_From_Dcl(getBuiltinA0Dot2(), 1);
