@@ -184,7 +184,7 @@ bool ProgramScopeConstantResolution::runOnModule(Module &M)
                 continue;
             }
 
-            ImplicitArgs implicitArgs(*userFunc, mdUtils, getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->platform.getGRFSize());
+            ImplicitArgs implicitArgs(*userFunc, mdUtils);
 
             // Find the implicit argument representing this constant.
             unsigned int ImplicitArgsBaseIndex = IGCLLVM::GetFuncArgSize(userFunc) - implicitArgs.size();

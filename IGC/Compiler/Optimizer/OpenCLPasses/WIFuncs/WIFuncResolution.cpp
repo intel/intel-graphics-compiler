@@ -79,8 +79,7 @@ bool WIFuncResolution::runOnFunction(Function &F)
 {
     m_changed = false;
     auto *MDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-    CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    m_implicitArgs = ImplicitArgs(F, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(), ctx->platform.getGRFSize());
+    m_implicitArgs = ImplicitArgs(F, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils());
     visit(F);
 
     /// If the work group size is known at compile time, emit it as a

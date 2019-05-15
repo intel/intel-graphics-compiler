@@ -220,7 +220,7 @@ bool ResolveAggregateArguments::runOnFunction(Function &F)
         return false;
     }
 
-    m_implicitArgs = ImplicitArgs(F, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(), getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->platform.getGRFSize());
+    m_implicitArgs = ImplicitArgs(F, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils());
 
     m_pFunction = &F;
 

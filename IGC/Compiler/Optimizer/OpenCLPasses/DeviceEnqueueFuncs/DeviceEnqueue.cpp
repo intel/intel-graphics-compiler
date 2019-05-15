@@ -190,7 +190,7 @@ bool DeviceEnqueueFuncsResolution::runOnFunction(Function &F)
 {
     m_Changed = false;
     
-    m_implicitArgs = ImplicitArgs(F, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(), getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->platform.getGRFSize());
+    m_implicitArgs = ImplicitArgs(F, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils());
     
     visit(F);
 

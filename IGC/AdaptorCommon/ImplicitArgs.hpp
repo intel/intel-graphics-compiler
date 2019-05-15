@@ -200,7 +200,7 @@ namespace IGC
         ///         It actually constructs a mapping to a subset of IMPLICIT_ARGS
         /// @param  func the function to get impilcit args for.
         /// @param  the metadata utils object
-        ImplicitArgs(const llvm::Function& func, const IGCMD::MetaDataUtils* pMdUtils, unsigned int GRFSize = 32);
+        ImplicitArgs(const llvm::Function& func, const IGCMD::MetaDataUtils* pMdUtils);
 
         /// @brief  Returns the number of implicit arguments that are passed from the runtime
         /// @return The number of implicit arguments

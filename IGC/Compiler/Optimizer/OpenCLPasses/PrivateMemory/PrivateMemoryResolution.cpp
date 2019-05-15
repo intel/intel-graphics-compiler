@@ -409,7 +409,7 @@ bool PrivateMemoryResolution::safeToUseScratchSpace(llvm::Module &M) const
      // TODO: fixed those types (they should be in global address space)
      if (Ctx.type == ShaderType::OPENCL_SHADER) {
        if (!F.arg_empty()) {
-         KernelArgs kernelArgs(F, DL, m_pMdUtils, &modMD, Ctx.platform.getGRFSize());
+         KernelArgs kernelArgs(F, DL, m_pMdUtils, &modMD);
          for (auto arg : kernelArgs) {
            const KernelArg::ArgType argTy = arg.getArgType();
            if (argTy == KernelArg::ArgType::PTR_DEVICE_QUEUE)

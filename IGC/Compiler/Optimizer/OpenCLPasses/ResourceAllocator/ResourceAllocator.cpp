@@ -88,8 +88,7 @@ bool ResourceAllocator::runOnFunction(llvm::Function &F)
         F, 
         &(F.getParent()->getDataLayout()), 
         getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(), 
-        getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData(),
-        ctx->platform.getGRFSize());
+        getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
     ExtensionArgAnalysis& EAA = getAnalysis<ExtensionArgAnalysis>(F);
 
     ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();

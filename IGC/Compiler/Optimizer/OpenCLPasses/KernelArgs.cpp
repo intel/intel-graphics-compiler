@@ -1000,11 +1000,11 @@ bool KernelArgs::const_iterator::operator!=(const const_iterator& iterator)
     return (m_major != iterator.m_major) || (m_minor != iterator.m_minor); 
 }
 
-KernelArgs::KernelArgs(const Function& F, const DataLayout* DL, MetaDataUtils* pMdUtils, ModuleMetaData* moduleMD, unsigned int GRFSize, KernelArgsOrder::InputType layout)
+KernelArgs::KernelArgs(const Function& F, const DataLayout* DL, MetaDataUtils* pMdUtils, ModuleMetaData* moduleMD, KernelArgsOrder::InputType layout)
     : m_KernelArgsOrder( layout ), 
       m_args( m_KernelArgsOrder )
 {
-    ImplicitArgs implicitArgs(F, pMdUtils, GRFSize);
+    ImplicitArgs implicitArgs(F, pMdUtils);
     const unsigned int numImplicitArgs = implicitArgs.size();
     const unsigned int numRuntimeValue = moduleMD ? moduleMD->pushInfo.constantReg.size() : 0;
     const unsigned int numExplicitArgs = IGCLLVM::GetFuncArgSize(F) - numImplicitArgs - numRuntimeValue;

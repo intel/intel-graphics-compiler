@@ -1440,7 +1440,7 @@ void COpenCLKernel::AllocatePayload()
             KernelArgsOrder::InputType::INDIRECT :
             KernelArgsOrder::InputType::CURBE;
 
-    KernelArgs kernelArgs(*entry, m_DL, m_pMdUtils, m_ModuleMetadata, getGRFSize(), layout);
+    KernelArgs kernelArgs(*entry, m_DL, m_pMdUtils, m_ModuleMetadata, layout);
 
     if (layout == KernelArgsOrder::InputType::INDIRECT && !loadThreadPayload)
     {
@@ -1475,12 +1475,15 @@ void COpenCLKernel::AllocatePayload()
         // Local IDs are non-uniform and may have two instances in SIMD32 mode
         int numAllocInstances = arg.getArgType() == KernelArg::ArgType::IMPLICIT_LOCAL_IDS ? m_numberInstance : 1;
 
+        auto allocSize = arg.getAllocateSize();
+
         if (!IsUnusedArg && !isRuntimeValue)
         {
             if (arg.needsAllocation())
             {
                 // Align on the desired alignment for this argument
                 auto alignment = arg.getAlignment();
+
                 offset = iSTD::Align(offset, alignment);
 
                 // Arguments larger than a GRF must be at least GRF-aligned.
@@ -1491,7 +1494,7 @@ void COpenCLKernel::AllocatePayload()
                 // because of edge cases where aligning on the base alignment
                 // is what causes the "overflow".
                 unsigned int startGRF = offset / getGRFSize();
-                unsigned int endGRF = (offset + arg.getAllocateSize() - 1) / getGRFSize();
+                unsigned int endGRF = (offset + allocSize - 1) / getGRFSize();
                 if (startGRF != endGRF)
                 {
                     offset = iSTD::Align(offset, getGRFSize());
@@ -1505,7 +1508,7 @@ void COpenCLKernel::AllocatePayload()
                     CVariable* var = GetSymbol(const_cast<Argument*>(A));
                     for (int i = 0; i < numAllocInstances; ++i)
                     {
-                        AllocateInput(var, offset + (arg.getAllocateSize() * i), i);
+                        AllocateInput(var, offset + (allocSize * i), i);
                     }
                 }
                 // or else we would just need to increase an offset
@@ -1519,7 +1522,7 @@ void COpenCLKernel::AllocatePayload()
             {
                 for (int i = 0; i < numAllocInstances; ++i)
                 {
-                    offset += arg.getAllocateSize();
+                    offset += allocSize;
                 }
             }
         }
@@ -1537,7 +1540,7 @@ void COpenCLKernel::AllocatePayload()
     {    
         if (loadThreadPayload)
         {
-            uint perThreadInputSize = (SIZE_WORD * 16) * 3 * m_numberInstance;
+            uint perThreadInputSize = SIZE_WORD * 3 * (m_dispatchSize == SIMDMode::SIMD32 ? 32 : 16);
             encoder.GetVISAKernel()->AddKernelAttribute("perThreadInputSize", sizeof(uint16_t), &perThreadInputSize);
         }
     }
@@ -2013,7 +2016,7 @@ bool COpenCLKernel::hasReadWriteImage(llvm::Function &F)
         return false;
     }
 
-    KernelArgs kernelArgs(F, m_DL, m_pMdUtils, m_ModuleMetadata, getGRFSize(), KernelArgsOrder::InputType::INDEPENDENT);
+    KernelArgs kernelArgs(F, m_DL, m_pMdUtils, m_ModuleMetadata, KernelArgsOrder::InputType::INDEPENDENT);
     for (auto KA : kernelArgs)
     {
         // RenderScript annotation sets "read_write" qualifier 

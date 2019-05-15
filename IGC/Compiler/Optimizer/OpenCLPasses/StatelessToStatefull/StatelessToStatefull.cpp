@@ -191,9 +191,8 @@ bool StatelessToStatefull::runOnFunction(llvm::Function &F)
     m_hasOptionalBufferOffsetArg =
         (m_hasBufferOffsetArg && IGC_IS_FLAG_ENABLED(EnableOptionalBufferOffset));
 
-    CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    m_pImplicitArgs = new ImplicitArgs(F, pMdUtils, ctx->platform.getGRFSize());
-    m_pKernelArgs = new KernelArgs(F, &(F.getParent()->getDataLayout()), pMdUtils, modMD, ctx->platform.getGRFSize());
+    m_pImplicitArgs = new ImplicitArgs(F, pMdUtils);
+    m_pKernelArgs = new KernelArgs(F, &(F.getParent()->getDataLayout()), pMdUtils, modMD);
 
     visit(F);
 

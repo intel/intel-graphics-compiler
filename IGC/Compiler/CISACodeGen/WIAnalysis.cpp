@@ -443,7 +443,7 @@ void WIAnalysisRunner::updateArgsDependency(llvm::Function *pF)
     // To enable subroutine for other FEs, we need to update this check.
     bool IsSubroutine = !isEntryFunc(m_pMdUtils, pF);
 
-    ImplicitArgs implicitArgs(*pF, m_pMdUtils, m_CGCtx->platform.getGRFSize());
+    ImplicitArgs implicitArgs(*pF, m_pMdUtils);
     unsigned implicitArgStart = (unsigned)(IGCLLVM::GetFuncArgSize(pF)
         - implicitArgs.size()
         - (IsSubroutine ? 0 : m_ModMD->pushInfo.pushAnalysisWIInfos.size()));
