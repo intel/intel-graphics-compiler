@@ -909,7 +909,7 @@ void GlobalRA::removeUnreferencedDcls()
         }
     }
 
-    auto isUnrefDcl = [this](G4_Declare* dcl) 
+    auto isUnrefDcl = [this](G4_Declare* dcl)
     {
         return (dcl->getRegFile() == G4_GRF || dcl->getRegFile() == G4_INPUT) &&
             getNumRefs(dcl) == 0 &&
@@ -1813,7 +1813,7 @@ void PhyRegsLocalRA::setGRFBusy(int which)
     MUST_BE_TRUE(isGRFAvailable(which), "Invalid register");
 
     // all 1 word mask based on register size
-    uint64_t wordMask = (1 << (getGRFSize() / 2)) - 1;
+    uint64_t wordMask = (1ULL << (getGRFSize() / 2)) - 1;
     regBusyVector[which] = (uint32_t) wordMask;
 
     if (twoBanksRA)
@@ -2253,7 +2253,7 @@ bool PhyRegsLocalRA::findFreeSingleReg(int regIdx, G4_SubReg_Align subalign, int
             found = true;
         }
     }
-    else if (subalign == Eight_Word || 
+    else if (subalign == Eight_Word ||
                 subalign == Four_Word)
     {
         for (int j = 0; j < (NUM_WORDS_PER_GRF - size + 1) && found == false; j += 4)
