@@ -199,6 +199,7 @@ struct SPatchExecutionEnvironment :
     uint32_t    MayAccessUndeclaredResource;
     uint32_t    UsesFencesForReadWriteImages;
     uint32_t    UsesStatelessSpillFill;
+    uint32_t    UsesMultiScratchSpaces;
     uint32_t    IsCoherent;
     uint32_t    IsInitializer;
     uint32_t    IsFinalizer;
@@ -211,7 +212,7 @@ struct SPatchExecutionEnvironment :
 };
 
 // Update CURRENT_ICBE_VERSION when modifying the patch list
-static_assert(sizeof(SPatchExecutionEnvironment) == (92 + sizeof(SPatchItemHeader)), "The size of SPatchExecutionEnvironment is not what is expected");
+static_assert(sizeof(SPatchExecutionEnvironment) == (96 + sizeof(SPatchItemHeader)), "The size of SPatchExecutionEnvironment is not what is expected");
 
 /*****************************************************************************\
 STRUCT: SPatchString

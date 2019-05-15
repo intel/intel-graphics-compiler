@@ -1181,8 +1181,7 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
     // Patch for MEDIA_VFE_STATE
     if( retValue.Success )
     {
-      const DWORD perThreadScratchSpaceSizeInBytes = annotations.m_executionEnivronment.PerThreadSpillFillSize
-        + annotations.m_executionEnivronment.PerThreadScratchSpace + annotations.m_executionEnivronment.PerThreadScratchUseGtpin;
+      const DWORD perThreadScratchSpaceSizeInBytes = annotations.m_executionEnivronment.PerThreadScratchSpace;
       if (perThreadScratchSpaceSizeInBytes > 0)
         {
             iOpenCL::SPatchMediaVFEState    patch;
@@ -1201,6 +1200,31 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
             retValue = AddPatchItem(
                 patch,
                 membuf );
+        }
+    }
+
+    // Patch for MEDIA_VFE_STATE slot1
+    if (retValue.Success)
+    {
+        const DWORD perThreadScratchSpaceSizeInBytes = annotations.m_executionEnivronment.PerThreadScratchSpaceSlot1;
+        if (perThreadScratchSpaceSizeInBytes > 0)
+        {
+            iOpenCL::SPatchMediaVFEState    patch;
+
+            memset(&patch, 0, sizeof(patch));
+
+            patch.Token = iOpenCL::PATCH_TOKEN_MEDIA_VFE_STATE_SLOT1;
+            patch.Size = sizeof(patch);
+            patch.ScratchSpaceOffset = 0;
+
+            patch.PerThreadScratchSpace =
+                iSTD::RoundPower2(
+                    iSTD::Max(perThreadScratchSpaceSizeInBytes,
+                        static_cast<DWORD>(sizeof(KILOBYTE))));
+
+            retValue = AddPatchItem(
+                patch,
+                membuf);
         }
     }
 
@@ -1954,9 +1978,8 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
         patch.HasBarriers                       = annotations.m_executionEnivronment.HasBarriers;
         patch.DisableMidThreadPreemption        = annotations.m_executionEnivronment.DisableMidThreadPreemption;
 
-
-        patch.UsesStatelessSpillFill = (annotations.m_executionEnivronment.PerThreadSpillFillSize > 0)
-          || (annotations.m_executionEnivronment.PerThreadScratchSpace > 0) || (annotations.m_executionEnivronment.PerThreadScratchUseGtpin > 0);
+        patch.UsesStatelessSpillFill = (annotations.m_executionEnivronment.PerThreadScratchSpace > 0);
+        patch.UsesMultiScratchSpaces = false;
 
         patch.HasDeviceEnqueue = (bool)hasDeviceEnqueue;
 

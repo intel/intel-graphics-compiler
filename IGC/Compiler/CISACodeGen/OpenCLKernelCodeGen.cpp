@@ -1598,9 +1598,8 @@ unsigned int COpenCLKernel::getSumFixedTGSMSizes(Function* F)
 
 void COpenCLKernel::FillKernel()
 {
-    m_kernelInfo.m_executionEnivronment.PerThreadSpillFillSize = ProgramOutput()->m_scratchSpaceUsedBySpills;
-    m_kernelInfo.m_executionEnivronment.PerThreadScratchSpace = ProgramOutput()->m_scratchSpaceUsedByShader;
-    m_kernelInfo.m_executionEnivronment.PerThreadScratchUseGtpin = ProgramOutput()->m_scratchSpaceUsedByGtpin;
+    m_kernelInfo.m_executionEnivronment.PerThreadScratchSpace = ProgramOutput()->getScratchSpaceUsageInSlot0();
+    m_kernelInfo.m_executionEnivronment.PerThreadScratchSpaceSlot1 = ProgramOutput()->getScratchSpaceUsageInSlot1();
     m_kernelInfo.m_kernelProgram.NOSBufferSize = m_NOSBufferSize / getGRFSize(); // in 256 bits
     m_kernelInfo.m_kernelProgram.ConstantBufferLength = m_ConstantBufferLength / getGRFSize(); // in 256 bits
     m_kernelInfo.m_kernelProgram.MaxNumberOfThreads = m_Platform->getMaxGPGPUShaderThreads();
@@ -1904,8 +1903,10 @@ static bool SetKernelProgram(COpenCLKernel* shader, DWORD simdMode)
     {
         if (simdMode == 32)
         {
-            shader->m_kernelInfo.m_executionEnivronment.PerThreadSpillFillSize =
-                shader->ProgramOutput()->m_scratchSpaceUsedBySpills;
+            //why do we need this? we will get all output in GatherDataForDriver(...)
+            //remove it to avoid messy logics
+            //shader->m_kernelInfo.m_executionEnivronment.PerThreadSpillFillSize =
+            //    shader->ProgramOutput()->m_scratchSpaceUsedBySpills;
             shader->m_kernelInfo.m_kernelProgram.simd32 = *shader->ProgramOutput();
         }
         else if (simdMode == 16)

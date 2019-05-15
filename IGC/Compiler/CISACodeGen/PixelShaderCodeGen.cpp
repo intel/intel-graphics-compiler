@@ -1190,8 +1190,6 @@ namespace IGC
             cps.m_scratchSpaceUsedBySpills + ps.m_scratchSpaceUsedBySpills;
         linked.m_scratchSpaceUsedByGtpin =
             cps.m_scratchSpaceUsedByGtpin + ps.m_scratchSpaceUsedByGtpin;
-        linked.m_scratchSpaceUsedByStateless =
-            cps.m_scratchSpaceUsedByStateless + ps.m_scratchSpaceUsedByStateless;
         linked.m_programSize = iSTD::Align(linked.m_unpaddedProgramSize, 64);
         linked.m_programBin = IGC::aligned_malloc(linked.m_programSize, 16);
         // Copy coarse phase

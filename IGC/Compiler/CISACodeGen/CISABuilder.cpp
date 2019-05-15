@@ -4670,7 +4670,7 @@ void CEncoder::Compile()
         pOutput->m_scratchSpaceUsedBySpills = jitInfo->spillMemUsed;
     }
 
-    pOutput->setScratchPrivateUsage(m_program->m_ScratchSpaceSize, m_program->m_Platform->maxPerThreadScratchSpace());
+    pOutput->setScratchSpaceUsedByShader(m_program->m_ScratchSpaceSize);
 
     pOutput->m_scratchSpaceUsedByGtpin = jitInfo->numBytesScratchGtpin;
 

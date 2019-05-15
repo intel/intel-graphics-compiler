@@ -34,7 +34,7 @@ Abstract:   Contains common patch structure definitions
 namespace iOpenCL
 {
 
-const uint32_t CURRENT_ICBE_VERSION = 1058;
+const uint32_t CURRENT_ICBE_VERSION = 1059;
 
 const uint32_t MAGIC_CL = 0x494E5443;      // 'I', 'N', 'T', 'C'
 const uint32_t INVALID_INDEX = 0xFFFFFFFF;
@@ -150,12 +150,13 @@ enum PATCH_TOKEN
     PATCH_TOKEN_GTPIN_INFO,                                        // 52  @SPatchItemHeader@
     PATCH_TOKEN_PROGRAM_SYMBOL_TABLE,                             // 53  @SPatchFunctionTableInfo@
     PATCH_TOKEN_PROGRAM_RELOCATION_TABLE,                         // 54  @SPatchFunctionTableInfo@
+    PATCH_TOKEN_MEDIA_VFE_STATE_SLOT1,                            // 55  @SPatchMediaVFEState of slot1@
 
     NUM_PATCH_TOKENS
 };
 
 // Update CURRENT_ICBE_VERSION when modifying the patch list
-static_assert( NUM_PATCH_TOKENS == 55, "NUM_PATCH_TOKENS has invalid value");
+static_assert( NUM_PATCH_TOKENS == 56, "NUM_PATCH_TOKENS has invalid value");
 
 /*****************************************************************************\
 ENUM: IMAGE_MEMORY_OBJECT_TYPE

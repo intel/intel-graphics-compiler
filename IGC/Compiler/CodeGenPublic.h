@@ -93,8 +93,7 @@ namespace IGC
         unsigned int    m_unpaddedProgramSize;      //<! program size without padding used for binary linking
         unsigned int    m_startReg;                 //<! Which GRF to start with
         unsigned int    m_scratchSpaceUsedBySpills; //<! amount of scratch space needed for shader spilling
-        unsigned int    m_scratchSpaceUsedByShader; //<! amount of scratch space needed by shader if allocated in scratchspace
-        unsigned int    m_scratchSpaceUsedByStateless; //<! amount of scratch space needed by shader if allocated in stateless surface
+        unsigned int    m_scratchSpaceUsedByShader; //<! amount of scratch space needed by shader
         unsigned int    m_scratchSpaceUsedByGtpin; //<! amount of scratch space used by gtpin
         void*           m_debugDataVISA;            //<! VISA debug data (source -> VISA)
         unsigned int    m_debugDataVISASize;        //<! Number of bytes of VISA debug data
@@ -114,7 +113,8 @@ namespace IGC
         //false means all of them are together
         bool            m_separatePvtSpill = false;
         bool            m_roundPower2KBytes = false;
-
+        unsigned int m_scratchSpaceSizeLimit = 0;
+    
         void Destroy()
         {
             if (m_programBin)
@@ -131,48 +131,48 @@ namespace IGC
             }
         }
         
-        void setSeparatePvtSpill(bool setSeparatePvtSpillT, bool roundPower2KBytes)
+        void init(bool setSeparatePvtSpillT, bool roundPower2KBytes, unsigned int scratchSpaceSizeLimitT)
         {
             m_separatePvtSpill = setSeparatePvtSpillT;
             m_roundPower2KBytes = roundPower2KBytes;
+            m_scratchSpaceSizeLimit = scratchSpaceSizeLimitT;
         }
 
-        unsigned int getScratchSpaceUsage() const
+        //InSlot0
+        //Todo: rename later
+        unsigned int getScratchSpaceUsageInSlot0() const
         {
-            unsigned int size = m_scratchSpaceUsedBySpills + m_scratchSpaceUsedByGtpin + (m_separatePvtSpill ? 0 : m_scratchSpaceUsedByShader);
-            if (m_roundPower2KBytes)
-            {
-                size = roundPower2KBbyte(size);
-            } 
-            return size;
+            return roundSize(m_scratchSpaceUsedBySpills + m_scratchSpaceUsedByGtpin + (m_separatePvtSpill ? 0 : m_scratchSpaceUsedByShader));
         }
 
-        unsigned int getScratchPrivateUsage() const
+        unsigned int getScratchSpaceUsageInSlot1() const
         {
-            return (m_separatePvtSpill ? m_scratchSpaceUsedByShader : 0);
+            return roundSize((m_separatePvtSpill && m_scratchSpaceUsedByShader <= m_scratchSpaceSizeLimit) ? m_scratchSpaceUsedByShader : 0);
         }
 
-        void setScratchPrivateUsage(unsigned int scratchPrivateUsage, unsigned int scratchSpaceSizeLimit)
+        unsigned int getScratchSpaceUsageInStateless() const
         {
-            if (m_separatePvtSpill && scratchPrivateUsage > scratchSpaceSizeLimit)
-            {
-                m_scratchSpaceUsedByStateless = scratchPrivateUsage;
-            }
-            else
-            {
-                m_scratchSpaceUsedByShader = scratchPrivateUsage;
-            }
+            return ((m_separatePvtSpill && m_scratchSpaceUsedByShader > m_scratchSpaceSizeLimit) ? m_scratchSpaceUsedByShader : 0);
         }
 
-        unsigned int getStatelessPrivateUsage() const
+        void setScratchSpaceUsedByShader(unsigned int scratchSpaceUsedByShader)
         {
-            return (m_separatePvtSpill ? m_scratchSpaceUsedByStateless : 0);
+            m_scratchSpaceUsedByShader = scratchSpaceUsedByShader;
         }
-    private:
-        unsigned int roundPower2KBbyte(unsigned int size) const
+private:
+    unsigned int roundSize(unsigned int size) const
+    {
+        if (m_roundPower2KBytes)
         {
-            return (size ? iSTD::RoundPower2(iSTD::Max(int_cast<DWORD>(size), static_cast<DWORD>(sizeof(KILOBYTE)))) : 0);
+            size = roundPower2KBbyte(size);
         }
+        return size;
+    }
+
+    unsigned int roundPower2KBbyte(unsigned int size) const
+    {
+        return (size ? iSTD::RoundPower2(iSTD::Max(int_cast<DWORD>(size), static_cast<DWORD>(sizeof(KILOBYTE)))) : 0);
+    }
 
     };
 

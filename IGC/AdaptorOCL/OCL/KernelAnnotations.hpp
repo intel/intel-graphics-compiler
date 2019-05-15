@@ -278,9 +278,16 @@ struct ExecutionEnivronment
 {
     DWORD  CompiledSIMDSize                           = 0;
     DWORD  CompiledSubGroupsNumber                    = 0;
-    DWORD  PerThreadSpillFillSize                     = 0;
+    //legacy design:hold all ScratchSpaceUsage
+    //new design:   hold spillfill+callstack+GTPin
+    //Todo: rename it to m_PerThreadScratchSpaceSlot0
     DWORD  PerThreadScratchSpace                      = 0;
-    DWORD  PerThreadScratchUseGtpin                   = 0;
+    //DWORD  PerThreadScratchUseGtpin                   = 0;
+    //legacy design:not used
+    //new design:   hold private memory used by shader if non-ZERO
+    DWORD  PerThreadScratchSpaceSlot1                 = 0;
+    //legacy design:not used
+    //new design:   hold private memory used by shader if non-ZERO
     DWORD  SumFixedTGSMSizes                          = 0;
     bool   HasDeviceEnqueue                           = false;
     bool   HasBarriers                                = false;

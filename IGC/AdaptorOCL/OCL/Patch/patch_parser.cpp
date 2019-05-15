@@ -707,6 +707,24 @@ void DebugPatchList(
             }
             break;
 
+        case iOpenCL::PATCH_TOKEN_MEDIA_VFE_STATE_SLOT1:
+        {
+            const iOpenCL::SPatchMediaVFEState* pPatchItem =
+                (const iOpenCL::SPatchMediaVFEState*)pHeader;
+
+            ICBE_DPF_STR(output, GFXDBG_HARDWARE,
+                "PATCH_TOKEN_MEDIA_VFE_STATE_SLOT1 (%08X) (size = %d)\n",
+                pPatchItem->Token,
+                pPatchItem->Size);
+            ICBE_DPF_STR(output, GFXDBG_HARDWARE,
+                "\tScratchSpaceOffset = %d\n",
+                pPatchItem->ScratchSpaceOffset);
+            ICBE_DPF_STR(output, GFXDBG_HARDWARE,
+                "\tPerThreadScratchSpaceSlot1 = %d\n",
+                pPatchItem->PerThreadScratchSpace);
+        }
+        break;
+
         case iOpenCL::PATCH_TOKEN_MEDIA_INTERFACE_DESCRIPTOR_LOAD:
             {
                 const iOpenCL::SPatchMediaInterfaceDescriptorLoad* pPatchItem =
@@ -849,6 +867,9 @@ void DebugPatchList(
                 ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "\tUsesStatelessSpillFill = %s\n",
                     pPatchItem->UsesStatelessSpillFill ? "true" : "false" );
+                ICBE_DPF_STR(output, GFXDBG_HARDWARE,
+                    "\tUsesMultiScratchSpaces = %s\n",
+                    pPatchItem->UsesMultiScratchSpaces ? "true" : "false");
                 ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "\tIsCoherent = %s\n",
                     pPatchItem->IsCoherent ? "true" : "false" );
