@@ -2404,7 +2404,7 @@ void GlobalRA::updateSubRegAlignment(unsigned char regFile, G4_SubReg_Align subA
 // be Even aligned. Others will be Either aligned. There is no need
 // to store old value of align because HW has no restriction on
 // even/odd alignment that HW conformity computes.
-void GlobalRA::updateAlignment(unsigned char regFile, G4_Align align, bool fromLRA)
+void GlobalRA::updateAlignment(unsigned char regFile, G4_Align align)
 {
     // Update alignment of all GRF declares to align
     for (auto dcl : kernel.Declares)
@@ -2418,13 +2418,7 @@ void GlobalRA::updateAlignment(unsigned char regFile, G4_Align align, bool fromL
                 topdclAugMask != AugmentationMasks::NonDefault &&
                 topdclAugMask != AugmentationMasks::Default64Bit)
             {
-                if ( // Even align dcl >= GRF size if:
-                    //  a. dcl is 4-byte type with hstride = 1 or
-                    //  b. 2-byte type with hstride = 2 or
-                    //  c. entering from LRA as masks are not computed in LRA for simplicity
-                    (topdcl->getElemSize() >= 4 || 
-                        topdclAugMask == AugmentationMasks::Default32Bit ||
-                        fromLRA) &&
+                if (topdcl->getElemSize() >= 4 &&
                     topdcl->getByteSize() >= GENX_GRF_REG_SIZ &&
                     !(kernel.fg.builder->getOption(vISA_enablePreemption) &&
                         dcl == kernel.fg.builder->getBuiltinR0()))
@@ -4551,7 +4545,7 @@ void Augmentation::augmentIntfGraph()
 #ifdef DEBUG_VERBOSE_ON
                 DEBUG_VERBOSE("Kernel size is SIMD" << kernel.getSimdSize() << " so updating all GRFs to be 2GRF aligned" << std::endl);
 #endif
-                gra.updateAlignment(G4_GRF, Even, false);
+                gra.updateAlignment(G4_GRF, Even);
             }
             gra.updateSubRegAlignment(G4_GRF, SUB_ALIGNMENT_GRFALIGN);
         }
@@ -11181,26 +11175,6 @@ void VerifyAugmentation::verify()
         auto& tup = masks[dcl];
         unsigned int startIdx = std::get<2>(tup)->getLexicalId();
         auto dclMask = std::get<1>(tup);
-
-        auto getMaskStr = [](AugmentationMasks m)
-        {
-            std::string str = "Undetermined";
-            if (m == AugmentationMasks::Default16Bit)
-                str = "Default16Bit";
-            else if (m == AugmentationMasks::Default32Bit)
-                str = "Default32Bit";
-            else if (m == AugmentationMasks::Default64Bit)
-                str = "Default64Bit";
-            else if (m == AugmentationMasks::NonDefault)
-                str = "NonDefault";
-            else if (m == AugmentationMasks::DefaultPredicateMask)
-                str = "DefaultPredicateMask";
-            str.append("\n");
-
-            return str;
-        };
-
-        std::cerr << dcl->getName() << " - " << getMaskStr(dclMask);
 
         for (auto it = active.begin(); it != active.end();)
         {

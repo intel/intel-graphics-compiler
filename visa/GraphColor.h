@@ -1246,7 +1246,7 @@ namespace vISA
         static uint32_t getRefCount(int loopNestLevel);
         bool isReRAPass();
         void updateSubRegAlignment(unsigned char regFile, G4_SubReg_Align subAlign);
-        void updateAlignment(unsigned char regFile, G4_Align align, bool fromLRA);
+        void updateAlignment(unsigned char regFile, G4_Align align);
         void getBankAlignment(LiveRange* lr, G4_Align &align);
         void printLiveIntervals();
         void reportUndefinedUses(LivenessAnalysis& liveAnalysis, G4_BB* bb, G4_INST* inst, G4_Declare* referencedDcl, std::set<G4_Declare*>& defs, std::ofstream& optreport, Gen4_Operand_Number opndNum);
