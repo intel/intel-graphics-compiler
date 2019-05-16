@@ -1466,6 +1466,7 @@ bool HWConformity::fixRotate(INST_LIST_ITER i, G4_BB* bb)
 
     MUST_BE_TRUE(IS_WTYPE(dst->getType()) || IS_DTYPE(dst->getType()), "dst type must be *W or *D");
     MUST_BE_TRUE(IS_WTYPE(src->getType()) || IS_DTYPE(src->getType()), "src type must be *W or *D");
+
     if (G4_Type_Table[dst->getType()].byteSize != G4_Type_Table[src->getType()].byteSize)
     {
         // keep exec type same and change dst to be same type as src

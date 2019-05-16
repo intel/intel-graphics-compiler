@@ -2981,10 +2981,12 @@ bool CodeGenPatternMatch::MatchRotate(llvm::Instruction& I)
     //   2) both operands are instructions.
     Instruction *LHS = dyn_cast<Instruction>(OrInst->getOperand(0));
     Instruction *RHS = dyn_cast<Instruction>(OrInst->getOperand(1));
-    if (!LHS || !RHS ||
+    if (!LHS || !RHS || 
         (typeWidth != 16 && typeWidth != 32))
     {
-        return false;
+        {
+            return false;
+        }
     }
 
     // Make adjustment so that LHS is shl.
