@@ -238,7 +238,6 @@ DECLARE_IGC_REGKEY(bool, EnableReasso,                  false,  "Enable reassoci
 DECLARE_IGC_REGKEY(bool, EnableOCLScratchPrivateMemory, true,  "Enable the use of scratch space for private memory [OCL only]")
 DECLARE_IGC_REGKEY(bool, Enable64BitEmulation,          false, "Enable 64-bit emulation")
 DECLARE_IGC_REGKEY(bool, Enable64BitEmulationOnSelectedPlatform, true, "Enable 64-bit emulation on selected platforms")
-DECLARE_IGC_REGKEY(bool, EnableOptimPhiMov,             false, "Enable generating Phi mov not in phi's immediate predecessors for perf reason.")
 DECLARE_IGC_REGKEY(bool, EnableRecursionOpenCL,         false, "Enable recursion with OpenCL user functions")
 DECLARE_IGC_REGKEY(bool, DisableBufferToResPromotionAir,true, "Disable promoting beffers to resources")
 DECLARE_IGC_REGKEY(bool, ForceDPEmulation,              false, "Force double emulation for testing purpose")
