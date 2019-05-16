@@ -1874,18 +1874,18 @@ static bool canHoist(FlowGraph &fg, G4_BB *bb, INST_LIST_RITER revIter)
         }
     }
 
-    G4_Operand *src = inst->getSrc(0);
-
-    unsigned srcLB = src->getLeftBound();
-    unsigned srcRB = src->getRightBound();
-    uint64_t bitVec[2] = {0, 0};
-
     // Now check each definition of src(0)
     for (auto I = inst->def_begin(), E = inst->def_end(); I != E; ++I)
     {
         ASSERT_USER(I->second == Opnd_src0, "invalid use-def chain");
         if (!inst->canHoistTo(I->first, bb->isInSimdFlow()))
             return false;
+
+        auto defInst = I->first;
+        if (fg.globalOpndHT.isOpndGlobal(defInst->getDst()))
+        {
+            return false;
+        }
 
         // Further check data-dependency, that is, no other instruction
         // should have no WAR or WAW dependency.
@@ -1915,7 +1915,7 @@ static bool canHoist(FlowGraph &fg, G4_BB *bb, INST_LIST_RITER revIter)
         }
 
         // Check the distance first, if this is too far then the following
-        // sinking optimization is every expensive.
+        // sinking optimization is very expensive.
         #define MAX_DEF_HOIST_DIST 160
         if (distance > MAX_DEF_HOIST_DIST)
             return false;
@@ -1927,24 +1927,8 @@ static bool canHoist(FlowGraph &fg, G4_BB *bb, INST_LIST_RITER revIter)
             if (!canSink(bb, revIter, other))
                 return false;
         }
-
-        // Check if this def-touched region is covered by the source region.
-        mergeBitVec(bitVec, I->first->getDst(), srcLB, srcRB);
-
-        bitVec[0] &= 0x00000000FFFFFFFF;
-        bitVec[1] &= 0x00000000FFFFFFFF;
-        src->setBitVecL(src->getBitVecL() & 0x00000000FFFFFFFF);
-        src->setBitVecH(src->getBitVecH() & 0x00000000FFFFFFFF);
-        if ((bitVec[0] & (~src->getBitVecL())) ||
-            (bitVec[1] & (~src->getBitVecH())))
-        {
-            return false;
-        }
     }
-
-    // Check if the combined region touched by all defintions is exactly
-    // the same as the source region.
-    return (bitVec[0] == src->getBitVecL()) && (bitVec[1] == src->getBitVecH());
+    return true;
 }
 
 static G4_DstRegRegion *buildNewDstOperand(FlowGraph &fg, G4_INST *inst, G4_INST *defInst)
