@@ -1564,7 +1564,7 @@ bool PreCompiledFuncImport::shouldWeSubroutine(Function* F)
 
     unsigned totalNumberOfInst = NumInstrs * F->getNumUses();
 
-    if (totalNumberOfInst > IGC_GET_FLAG_VALUE(SubroutineInlinerThreshold))
+    if (totalNumberOfInst > 150000)
     {
         return true;
     }
