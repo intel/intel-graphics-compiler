@@ -2648,6 +2648,7 @@ foreach(_compilerFlagName IN ITEMS "CMAKE_CXX_FLAGS" "CMAKE_C_FLAGS")
       "${_compilerFlagName}"
       ALL_PATTERN_NOINHERIT ""
       SET
+        DebugInfoProgramDatabase
         OptimizeSize
         RtMultiThreadedStatic
     )
@@ -2656,7 +2657,6 @@ foreach(_compilerFlagName IN ITEMS "CMAKE_CXX_FLAGS" "CMAKE_C_FLAGS")
       "${_compilerFlagName}"
       PATTERN "${IGC_BUILD__DEBUG_PATTERN}"
       SET
-        DebugInfoProgramDatabase
         OptimizeDisabled
         RtMultiThreadedStaticDebug
         UnreferencedVariable
@@ -2676,11 +2676,10 @@ foreach(_compilerFlagName IN ITEMS "CMAKE_CXX_FLAGS" "CMAKE_C_FLAGS")
       "${_compilerFlagName}"
       PATTERN "${IGC_BUILD__RELINT_PATTERN}"
       SET
-        DebugInfoProgramDatabase
         OptimizeSpeed
         ControlFlowGuard
     )
-    
+
     
   # Adding needed settings specific to MSVC.
   if(MSVC)
