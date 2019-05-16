@@ -1288,7 +1288,8 @@ void DwarfDebug::collectVariableInfo(const Function *MF, SmallPtrSet<const MDNod
             else
             {
                 // Emit location to debug_loc
-                RegVar->setDotDebugLocOffset(offset);
+                if(RegVar->getDotDebugLocOffset() == ~0U)
+                    RegVar->setDotDebugLocOffset(offset);
             }
 
             for (auto range : GenISARange)
@@ -1424,9 +1425,9 @@ void DwarfDebug::collectVariableInfo(const Function *MF, SmallPtrSet<const MDNod
                 offset += dotLoc.loc.size();
                 TempDotDebugLocEntries.push_back(dotLoc);
             }
-            TempDotDebugLocEntries.push_back(DotDebugLocEntry());
-            offset += pointerSize * 2;
         }
+        TempDotDebugLocEntries.push_back(DotDebugLocEntry());
+        offset += pointerSize * 2;
         
 #if 0
             // Simplify ranges that are fully coalesced.

@@ -134,9 +134,9 @@ public:
                 );
 
                 if (isIndirect)
-                    return Builder.insertDeclare(pNewVal, llvm::cast<llvm::DILocalVariable>(Var), nullptr, locToUse, pEntryPoint);
+                    return Builder.insertDeclare(pNewVal, llvm::cast<llvm::DILocalVariable>(Var), Builder.createExpression(), locToUse, pEntryPoint);
 
-                return Builder.insertDbgValueIntrinsic(pNewVal, 0, llvm::cast<llvm::DILocalVariable>(Var), nullptr, locToUse, pEntryPoint);
+                return Builder.insertDbgValueIntrinsic(pNewVal, 0, llvm::cast<llvm::DILocalVariable>(Var), Builder.createExpression(), locToUse, pEntryPoint);
         }
         return nullptr;
    }

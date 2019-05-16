@@ -912,7 +912,7 @@ bool VISAVariableLocation::IsSLM() const
             return false;
 
     auto surface = GetSurface();
-    if (surface == VISAModule::LOCAL_SURFACE_BTI)
+    if (surface == VISAModule::LOCAL_SURFACE_BTI + VISAModule::TEXTURE_REGISTER_BEGIN)
         return true;
     return false;
 }
