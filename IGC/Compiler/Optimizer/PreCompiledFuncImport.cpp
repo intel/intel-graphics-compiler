@@ -1596,7 +1596,6 @@ void PreCompiledFuncImport::checkAndSetEnableSubroutine()
             return;
     }
 
-    bool I64DivRem = isI64DivRem();
     bool SPDiv = isSPDiv();
     bool DPEmu = isDPEmu();
 
@@ -1618,20 +1617,6 @@ void PreCompiledFuncImport::checkAndSetEnableSubroutine()
                 if (DPEmu && I->getOperand(0)->getType()->isDoubleTy())
                 {
                     m_enableSubroutineCallForEmulation = true;
-                }
-                break;
-            case Instruction::UDiv:
-            case Instruction::URem:
-            case Instruction::SDiv:
-            case Instruction::SRem:
-                if (I->getOperand(0)->getType()->isIntOrIntVectorTy())
-                {
-                    unsigned int integerBitWidth = I->getOperand(0)->getType()->getScalarType()->getIntegerBitWidth();
-
-                    if ((I64DivRem && integerBitWidth == 64)                    )
-                    {
-                        m_enableSubroutineCallForEmulation = true;
-                    }
                 }
                 break;
             case Instruction::FPToSI:
