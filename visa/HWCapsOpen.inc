@@ -430,9 +430,9 @@
         return true;
     }
 
-    bool hasSIMD8DFMadm() const
+    int getFP64MadmExecSize() const
     {
-        return false;
+        return 4;
     }
 
     bool balanceIntFloatMoves() const

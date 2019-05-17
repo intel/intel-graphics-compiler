@@ -468,11 +468,8 @@ int IR_Builder::translateVISAArithmeticDoubleInst(ISA_Opcode opcode, Common_ISA_
     }
     else
     {
-        element_size = 8;
-        if (hasSIMD8DFMadm())
-        {
-            exsize = 8;
-        }
+        element_size = instExecSize;
+        exsize = std::min((int) instExecSize, getFP64MadmExecSize());
         loopCount = instExecSize / exsize;
     }
 
@@ -869,16 +866,16 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(ISA_Opcode opcode, C
     G4_Imm *flt_constant_0 = createImm(float(0.0));
     G4_Imm *flt_constant_1 = createImm(float(1.0));
     G4_Align reg_align = Either;
-    if ( instExecSize == 1 || instExecSize == 8 )
+    if ( instExecSize <= 8 )
     {
         element_size = 8;
         loopCount = 1;
     }
-    else if ( instExecSize == 16 )
+    else 
     {
-        element_size = 16;
-        instOpt = Get_Gen4_Emask(emask, 16);
-        loopCount = 2;
+        element_size = instExecSize;
+        instOpt = Get_Gen4_Emask(emask, instExecSize);
+        loopCount = instExecSize / 8;
     }
 
     // pred and conModifier
@@ -1169,16 +1166,16 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(ISA_Opcode opcode, Com
     G4_Imm *flt_constant_0 = createImm(float(0.0));
     G4_Imm *flt_constant_05 = createImm(float(0.5));
     G4_Align reg_align = Either;
-    if ( instExecSize == 1 || instExecSize == 8 )
+    if (instExecSize <= 8)
     {
         element_size = 8;
         loopCount = 1;
     }
-    else if ( instExecSize == 16 )
+    else 
     {
-        element_size = 16;
-        instOpt = Get_Gen4_Emask(emask, 16);
-        loopCount = 2;
+        element_size = instExecSize;
+        instOpt = Get_Gen4_Emask(emask, instExecSize);
+        loopCount = instExecSize / 8;
     }
 
     // pred and conModifier
@@ -1472,11 +1469,8 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(ISA_Opcode opcode, Common_
     }
     else
     {
-        element_size = 8;
-        if (hasSIMD8DFMadm())
-        {
-            exsize = 8;
-        }
+        element_size = instExecSize;
+        exsize = std::min((int)instExecSize, getFP64MadmExecSize());
         loopCount = instExecSize / exsize;
     }
 
