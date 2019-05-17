@@ -334,6 +334,13 @@ public:
         return 32;
     }
 
+    // If true then screen space coordinates for upper-left vertex of a triangle
+    // being rasterized are delivered together with source depth or W deltas.
+    bool hasStartCoordinatesDeliveredWithDeltas() const
+    {
+        return false;
+    }
+
     uint32_t maxPerThreadScratchSpace() const
     {
         return 0x200000;

@@ -304,6 +304,7 @@ public:
     void emitSGV(llvm::SGVIntrinsic* inst);
     void emitPSSGV(llvm::GenIntrinsicInst* inst);
     void emitCSSGV(llvm::GenIntrinsicInst* inst);
+    void getPixelPosition(CVariable* destination, const uint component);
     void emitPixelPosition(llvm::GenIntrinsicInst* inst);
     void emitPhaseOutput(llvm::GenIntrinsicInst* inst);
     void emitPhaseInput(llvm::GenIntrinsicInst* inst);

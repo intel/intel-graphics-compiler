@@ -56,8 +56,7 @@ public:
     CVariable*  GetBaryRegLowered(e_interpolation mode);
     CVariable*  GetInputDelta(uint index, bool loweredInput = false);
     CVariable*  GetInputDeltaLowered(uint index);
-    CVariable*  GetZDelta();
-    CVariable*  GetWDelta();
+    CVariable*  GetZWDelta();
     CVariable*  GetPositionZ();
     CVariable*  GetPositionW();
     CVariable*  GetPositionXYOffset();
@@ -145,8 +144,7 @@ protected:
     CVariable* m_pPositionZPixel;
     CVariable* m_pPositionWPixel;
     CVariable* m_pPositionXYOffset;
-    CVariable* m_ZDelta;
-    CVariable* m_WDelta;
+    CVariable* m_ZWDelta;
     CVariable* m_pInputCoverageMask;
     CVariable* m_pCPSRequestedSizeX;
     CVariable* m_pCPSRequestedSizeY;

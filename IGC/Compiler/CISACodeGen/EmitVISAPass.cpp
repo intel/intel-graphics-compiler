@@ -6664,13 +6664,76 @@ void EmitPass::emitPSSGV(GenIntrinsicInst* inst)
     {
         if (psProgram->GetPhase() == PSPHASE_PIXEL || psProgram->GetPhase() == PSPHASE_COARSE)
         {
-            e_interpolation mode = EINTERPOLATION_LINEAR;
-            CVariable* bary = psProgram->GetBaryReg(mode);
-            CVariable* delta =
-                (usage == POSITION_Z) ? psProgram->GetZDelta() : psProgram->GetWDelta();
-            m_encoder->SetSrcRegion(0, 0, 4, 1);
-            m_encoder->Pln(m_destination, delta, bary);
+            // source depth:
+            //      src_z = (x - xstart)*z_cx + (y - ystart)*z_cy + z_c0
+            // source w:
+            //      src_w = 1/((x - xstart)*1w_cx + (y - ystart)*1w_cy + 1w_c0)
+            CVariable* delta = psProgram->GetZWDelta();
+
+            CVariable* floatR1 = psProgram->BitCast(psProgram->GetR1(), ISA_TYPE_F);
+
+            // Returns (x - xstart) or (y - ystart) in float.
+            auto getPixelPositionDelta = [this, psProgram, delta, floatR1](const uint component)->CVariable*
+            {
+                assert(component < 2);
+                CVariable* uintPixelPosition =
+                    m_currShader->GetNewVariable(numLanes(m_currShader->m_SIMDSize), ISA_TYPE_UW, EALIGN_GRF);
+                getPixelPosition(uintPixelPosition, component);
+
+                CVariable* floatPixelPosition =
+                    m_currShader->GetNewVariable(numLanes(m_currShader->m_SIMDSize), ISA_TYPE_F, EALIGN_GRF);
+                m_encoder->Cast(floatPixelPosition, uintPixelPosition);
+                m_encoder->Push();
+
+                CVariable* floatPixelPositionDelta = floatPixelPosition; //reuse the same variable for the final delta
+
+                m_encoder->SetSrcRegion(1, 0, 1, 0);
+                CVariable* startCoordinate = floatR1;
+                uint topLeftVertexStartSubReg = (component == 0 ? 1 : 6); // R1.1 for XStart and R1.6 for YStart
+                if (psProgram->m_Platform->hasStartCoordinatesDeliveredWithDeltas())
+                {
+                    startCoordinate = delta;
+                    topLeftVertexStartSubReg = (component == 0 ? 2 : 6);
+                }
+
+                m_encoder->SetSrcSubReg(1, topLeftVertexStartSubReg);
+                m_encoder->SetSrcModifier(1, EMOD_NEG);
+                m_encoder->Add(floatPixelPositionDelta, floatPixelPosition, startCoordinate);
+                m_encoder->Push();
+
+                return floatPixelPositionDelta;
+            };
+            const uint componentX = 0;
+            const uint componentY = 1;
+            // (x - xstart)
+            CVariable* floatPixelPositionDeltaX = getPixelPositionDelta(componentX);
+            // (y - ystart)
+            CVariable* floatPixelPositionDeltaY = getPixelPositionDelta(componentY);
+
+            // (y - ystart)*z_cy + z_c0
+            {
+                m_encoder->SetSrcRegion(1, 0, 1, 0);
+                m_encoder->SetSrcRegion(2, 0, 1, 0);
+            }
+            m_encoder->SetSrcSubReg(1, usage == POSITION_Z ? 0 : 4);
+            m_encoder->SetSrcSubReg(2, usage == POSITION_Z ? 3 : 7);
+            m_encoder->Mad(floatPixelPositionDeltaY, floatPixelPositionDeltaY, delta, delta);
             m_encoder->Push();
+
+            // (x - xstart)*z_cx + (y - ystart)*z_cy + z_c0
+            {
+                m_encoder->SetSrcRegion(1, 0, 1, 0);
+            }
+            m_encoder->SetSrcSubReg(1, usage == POSITION_Z ? 1 : 5);
+            m_encoder->Mad(m_destination, floatPixelPositionDeltaX, delta, floatPixelPositionDeltaY);
+            m_encoder->Push();
+
+            if (usage == POSITION_W)
+            {
+                // 1/w -> w
+                m_encoder->Inv(m_destination, m_destination);
+                m_encoder->Push();
+            }
         }
         else
         {
@@ -6897,12 +6960,19 @@ void EmitPass::emitHSSGV(llvm::GenIntrinsicInst* pInst)
     }
 }
 
-void EmitPass::emitPixelPosition(llvm::GenIntrinsicInst* inst)
+
+// Store integer pixel position in the destination variable.
+// Only X and Y components are handled here!
+void EmitPass::getPixelPosition(CVariable* destination, const uint component)
 {
+    assert(component < 2);
+    assert(destination && m_encoder->IsIntegerType(destination->GetType()));
+
+    const bool getX = (component == 0);
+
     CPixelShader* psProgram = static_cast<CPixelShader*>(m_currShader);
-    GenISAIntrinsic::ID IID = inst->getIntrinsicID();
     CVariable* imm = m_currShader->ImmToVariable(
-        IID == GenISAIntrinsic::GenISA_PixelPositionX ? 0x10101010 : 0x11001100, ISA_TYPE_V);
+        getX ? 0x10101010 : 0x11001100, ISA_TYPE_V);
     CVariable* pixelSize = nullptr;
     if (psProgram->GetPhase() == PSPHASE_COARSE)
     {
@@ -6910,7 +6980,7 @@ void EmitPass::emitPixelPosition(llvm::GenIntrinsicInst* inst)
         pixelSize =
             m_currShader->GetNewVariable(numLanes(m_currShader->m_SIMDSize), ISA_TYPE_UW, EALIGN_GRF);
         m_encoder->SetSrcRegion(0, 0, 1, 0);
-        m_encoder->SetSrcSubReg(0, IID == GenISAIntrinsic::GenISA_PixelPositionX ? 0 : 1);
+        m_encoder->SetSrcSubReg(0, getX ? 0 : 1);
         m_encoder->Mul(pixelSize, CPSize, imm);
         m_encoder->Push();
     }
@@ -6921,9 +6991,17 @@ void EmitPass::emitPixelPosition(llvm::GenIntrinsicInst* inst)
     CVariable* position = m_currShader->BitCast(psProgram->GetR1(), ISA_TYPE_UW);
     m_encoder->SetSrcRegion(0, 2, 4, 0);
     // subreg 4 as position_x and subreg 5 as position_y
-    m_encoder->SetSrcSubReg(0, IID == GenISAIntrinsic::GenISA_PixelPositionX ? 4 : 5);
-    m_encoder->Add(m_destination, position, pixelSize);
+    m_encoder->SetSrcSubReg(0, getX ? 4 : 5);
+    m_encoder->Add(destination, position, pixelSize);
     m_encoder->Push();
+}
+
+
+void EmitPass::emitPixelPosition(llvm::GenIntrinsicInst* inst)
+{
+    const GenISAIntrinsic::ID IID = inst->getIntrinsicID();
+    const uint component = IID == GenISAIntrinsic::GenISA_PixelPositionX ? 0 : 1;
+    getPixelPosition(m_destination, component);
 }
 
 void EmitPass::emitSGV(SGVIntrinsic* inst)

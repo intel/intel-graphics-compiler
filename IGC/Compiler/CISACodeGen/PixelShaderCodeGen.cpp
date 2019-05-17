@@ -88,18 +88,11 @@ namespace IGC
                 AllocateInput(setup[i], offset + subRegOffset);
             }
         }
-        if (m_ZDelta || m_WDelta)
+        if (m_ZWDelta)
         {
             unsigned int offset = GetDispatchSignature().ZWDelta;
-            if (m_ZDelta)
-            {
-                AllocateInput(m_ZDelta, offset);
-            }
-            if (m_WDelta)
-            {
-                AllocateInput(m_WDelta, offset + SIZE_OWORD);
-            }
-        }
+            AllocateInput(m_ZWDelta, offset);
+         }
         if (m_SampleOffsetX || m_SampleOffsetY)
         {
             unsigned int offset = GetDispatchSignature().pixelOffset;
@@ -212,16 +205,9 @@ namespace IGC
                 }
                 offset += getGRFSize();
             }
-            if (m_ZDelta || m_WDelta)
+            if (m_ZWDelta)
             {
-                if (m_ZDelta)
-                {
-                    AllocateInput(m_ZDelta, offset, i);
-                }
-                if (m_WDelta)
-                {
-                    AllocateInput(m_WDelta, offset + SIZE_OWORD, i);
-                }
+                AllocateInput(m_ZWDelta, offset, i);
                 if (m_Signature)
                 {
                     GetDispatchSignature().ZWDelta = offset;
@@ -484,25 +470,18 @@ namespace IGC
         return inputVar;
     }
 
-    CVariable* CPixelShader::GetZDelta()
+    CVariable* CPixelShader::GetZWDelta()
     {
-        if (!m_ZDelta)
+        if (!m_ZWDelta)
         {
-            m_ZDelta =
-                GetNewVariable(4, ISA_TYPE_F, EALIGN_OWORD, false, m_numberInstance);
+            uint numLanes = 8; // single GRF
+
+            m_ZWDelta =
+                GetNewVariable(numLanes, ISA_TYPE_F, EALIGN_GRF, false, m_numberInstance);
         }
-        return m_ZDelta;
+        return m_ZWDelta;
     }
 
-    CVariable* CPixelShader::GetWDelta()
-    {
-        if (!m_WDelta)
-        {
-            m_WDelta =
-                GetNewVariable(4, ISA_TYPE_F, EALIGN_OWORD, false, m_numberInstance);
-        }
-        return m_WDelta;
-    }
 
     CVariable* CPixelShader::GetPositionZ()
     {
@@ -666,8 +645,7 @@ namespace IGC
         m_PixelPhaseCounter = nullptr;
         m_SampleOffsetX = nullptr;
         m_SampleOffsetY = nullptr;
-        m_ZDelta = nullptr;
-        m_WDelta = nullptr;
+        m_ZWDelta = nullptr;
         m_hasEOT = false;
         m_NeedPSSync = false;
         m_CoarseoMask = nullptr;
@@ -733,7 +711,7 @@ namespace IGC
         pKernelProgram->isCoarsePS = m_phase == PSPHASE_COARSE;
         pKernelProgram->hasCoarsePixelSize = m_HasCoarseSize;
         pKernelProgram->hasSampleOffset = m_SampleOffsetX || m_SampleOffsetY;
-        pKernelProgram->hasZWDelta = m_ZDelta || m_WDelta;
+        pKernelProgram->hasZWDelta = m_ZWDelta;
         pKernelProgram->ConstantBufferLoaded = m_constantBufferLoaded;
         pKernelProgram->hasControlFlow = m_numBlocks > 1 ? true : false;
         pKernelProgram->MaxNumberOfThreads = m_Platform->getMaxPixelShaderThreads();
@@ -1370,15 +1348,10 @@ namespace IGC
                     else if (IID == GenISAIntrinsic::GenISA_DCL_SystemValue)
                     {
                         SGVUsage usage = (SGVUsage)llvm::cast<llvm::ConstantInt>(intr->getOperand(0))->getZExtValue();
-                        if (usage == POSITION_Z)
+                        if (usage == POSITION_Z || usage == POSITION_W)
                         {
-                            CVariable* offset = GetZDelta();
-                            encoder.MarkAsOutput(offset);
-                        }
-                        if (usage == POSITION_W)
-                        {
-                            CVariable* offset = GetWDelta();
-                            encoder.MarkAsOutput(offset);
+                            CVariable* deltas = GetZWDelta();
+                            encoder.MarkAsOutput(deltas);
                         }
                     }
                 }
