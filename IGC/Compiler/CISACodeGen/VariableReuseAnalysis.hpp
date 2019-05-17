@@ -54,8 +54,9 @@ struct SSubVector
     // It is used as an aliasee in the pair <Value, SSubVector>, thus the
     // size of the sub-vector is the size of Value (aliaser) of this pair.
     // (If needed, add the number of elements in SSubVector.)
+    llvm::Value* Val;           // Either scalar or sub-vector
     llvm::Value* BaseVector;
-    short  StartElementOffset;
+    short  StartElementOffset;  // in the unit of BaseVector's element type
 };
 
 //  Represent a Vector's element at index = EltIx.

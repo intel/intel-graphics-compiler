@@ -91,20 +91,20 @@ bool VariableReuseAnalysis::runOnFunction(Function &F)
   if (IGC_IS_FLAG_ENABLED(EnableVariableAlias) &&
       m_pCtx->platform.GetPlatformFamily() >= IGFX_GEN9_CORE)
   {
-      // 0. Special handling.
-      //    Here, try to merge two different variables into a single one.
+      // 0. Merge Variables
+      //    Merge two different variables into a single one.
       //    The two vars that will be merged should have the same
-      //    size and normally are defined with different values.
-      //    Nonetheless, their live ranges do not interfere with each
-      //    other. They are added into the same congruent class (as they
-      //    are actually different variables).
+      //    size/type and normally are defined with different values.
+      //    Once merged, they are put in the same DeSSA congruent class
       mergeVariables(&F);
 
-      // 1. Do variable aliasing, such as sub-vector to vector, some cast
-      //    instructions (bitcast, ptrtoint, etc.). The aliasing relation
-      //    does not involve more than one value. Thus, we add aliasing
-      //    variables into a different map, they don't fit well into congruent
-      //    class (doing so will be over-conservative).
+      // 1. SubVector aliasing
+      //    Two variables alias each other if they have the same values.
+      //    Although they have different names, the two variables share
+      //    the same values over their live ranges. The cases such as
+      //    extractElement/insertElement, etc. Once aliasing is identified,
+      //    the liveness of the alias root is updated to be the sum of both
+      //    This is the same as DeSSA alias.
       visitLiveInstructions(&F);
 
       postProcessing();
