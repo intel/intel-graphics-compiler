@@ -841,7 +841,9 @@ uint CShader::GetNbVectorElementAndMask(llvm::Value* val, uint32_t& mask)
     mask = 0;
     // we don't process vector bigger than 31 elements as the mask has only 32bits
     // If we want to support longer vectors we need to extend the mask size
-    if(nbElement > 31)
+    // 
+    // If val has been coalesced, don't prune it.
+    if(IsCoalesced(val) || nbElement > 31)
     {
         return nbElement;
     }
@@ -2240,7 +2242,7 @@ CVariable *CShader::GetSymbolFromSource(Instruction *UseInst,
             if (!DefInst || GetIsUniform(DefInst))
                 continue;
 
-            if (!IsSimpleVariable(DefInst))
+            if (IsCoalesced(DefInst))
             {
                 continue;
             }
@@ -2261,7 +2263,7 @@ CVariable *CShader::GetSymbolFromSource(Instruction *UseInst,
         if (!DefInst)
             return nullptr;
 
-        if (!IsSimpleVariable(DefInst))
+        if (!IsCoalesced(DefInst))
         {
             return nullptr;
         }
@@ -2678,18 +2680,9 @@ bool CShader::CanTreatAsAlias(llvm::ExtractElementInst *inst)
         return false;
     }
 
-    if (m_deSSA)
+    if (IsCoalesced(inst) || IsCoalesced(vecSrc))
     {
-        if (m_deSSA->getRootValue(inst))
-        {
-            return false;
-        }
-
-        if (m_deSSA->getRootValue(vecSrc))
-        {
-            return false;
-        }
-
+        return false;
     }
 
     for (auto I = vecSrc->user_begin(), E = vecSrc->user_end(); I != E; ++I)
@@ -2796,14 +2789,14 @@ bool CShader::HasBecomeNoop(Instruction *inst) {
     return m_VRA->m_HasBecomeNoopInsts.count(inst);
 }
 
-bool CShader::IsSimpleVariable(Value* V) {
+bool CShader::IsCoalesced(Value* V) {
     if ((m_VRA && m_VRA->isAliasedValue(V)) ||
         (m_deSSA && m_deSSA->getRootValue(V)) ||
         (m_coalescingEngine && m_coalescingEngine->GetValueCCTupleMapping(V)))
     {
-        return false;
+        return true;
     }
-    return true;
+    return false;
 }
 
 #define SET_INTRINSICS()                              \
@@ -2830,14 +2823,14 @@ bool CShader::VMECoalescePattern(GenIntrinsicInst *genInst)
     if (!IsSetMessageIntrinsic(genInst))
         return false;
 
-    if (m_deSSA && m_deSSA->getRootValue(genInst))
+    if (IsCoalesced(genInst))
     {
         return false;
     }
 
     if (GenIntrinsicInst *argInst = dyn_cast<GenIntrinsicInst>(genInst->getOperand(0)))
     {
-        if (m_deSSA && m_deSSA->getRootValue(argInst))
+        if (IsCoalesced(argInst))
         {
             return false;
         }

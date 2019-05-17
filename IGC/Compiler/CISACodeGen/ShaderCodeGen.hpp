@@ -228,9 +228,9 @@ public:
     bool HasBecomeNoop(llvm::Instruction *inst);
 
     // If V is not in any congruent class, not aliased to any other
-    // variables,  not payload-coalesced, it is a simple variable
-    // and this function returns true.
-    bool IsSimpleVariable(llvm::Value* V);
+    // variables, not payload-coalesced, then this function returns
+    // true.
+    bool IsCoalesced(llvm::Value* V);
 
     bool VMECoalescePattern(llvm::GenIntrinsicInst*);
 
