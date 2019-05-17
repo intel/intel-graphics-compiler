@@ -1408,6 +1408,40 @@ bool DeSSA::interfere(llvm::Value* V0, llvm::Value* V1)
     return false;
 }
 
+// Alias interference checking.
+//    The caller is trying to check if V0 can alias to V1. For example,
+//      V0 = bitcast V1, or
+//      V0 = extractElement V1, ...
+//    As V0 and V1 hold the same value, the interference between these two
+//    does not matter. Thus, this function is a variant of interfere()
+//    with V0 and V1 interference ignored.
+bool DeSSA::aliasInterfere(llvm::Value* V0, llvm::Value* V1)
+{
+    SmallVector<Value*, 8> allCC0;
+    SmallVector<Value*, 8> allCC1;
+    getAllValuesInCongruentClass(V0, allCC0);
+    getAllValuesInCongruentClass(V1, allCC1);
+
+    Value* V0_aliasee = getAliasee(V0);
+    Value* V1_aliasee = getAliasee(V1);
+
+    for (int i0 = 0, sz0 = (int)allCC0.size(); i0 < sz0; ++i0)
+    {
+        Value* val0 = allCC0[i0];
+        for (int i1 = 0, sz1 = (int)allCC1.size(); i1 < sz1; ++i1)
+        {
+            Value* val1 = allCC1[i1];
+            if (val0 == V0_aliasee && val1 == V1_aliasee) {
+                continue;
+            }
+            if (LV->hasInterference(val0, val1)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 // The existing code does align interference checking. Just
 // keep it for now. Likely to improve it later.
 bool DeSSA::alignInterfere(e_alignment a1, e_alignment a2)
