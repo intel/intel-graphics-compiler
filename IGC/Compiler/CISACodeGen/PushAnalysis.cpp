@@ -166,26 +166,86 @@ bool PushAnalysis::IsStatelessCBLoad(
         pAddress = cast<Instruction>(pAddress)->getOperand(0);
     }
 
-    offset = 0;
-    // % 13 = add i64 % 12, 16
-    // This add might or might not be present necessarily.
-    if(BinaryOperator* pAdd = dyn_cast<BinaryOperator>(pAddress))
+    if (GenIntrinsicInst* genIntr = dyn_cast<GenIntrinsicInst>(pAddress))
     {
-        if(pAdd->getOpcode() == llvm::Instruction::Add)
+        /*
+        find 64 bit case
+        %33 = call { i32, i32 } @llvm.genx.GenISA.ptr.to.pair.p2v4f32(<4 x float> addrspace(2)* %runtime_value_4)
+        %34 = extractvalue { i32, i32 } %33, 0
+        %35 = extractvalue { i32, i32 } %33, 1
+        %36 = call { i32, i32 } @llvm.genx.GenISA.add.pair(i32 %34, i32 %35, i32 368, i32 0)
+        %37 = extractvalue { i32, i32 } %36, 0
+        %38 = extractvalue { i32, i32 } %36, 1
+        %39 = call <2 x i32> addrspace(2)* @llvm.genx.GenISA.pair.to.ptr.p2v2i32(i32 %37, i32 %38)
+        */
+        if (genIntr->getIntrinsicID() == GenISAIntrinsic::GenISA_pair_to_ptr)
         {
-            ConstantInt* pConst = dyn_cast<llvm::ConstantInt>(pAdd->getOperand(1));
-            if(!pConst)
-                return false;
-
-            pAddress = pAdd->getOperand(0);
-            offset = (uint)pConst->getZExtValue();
+            ExtractValueInst *Lo = dyn_cast<ExtractValueInst>(genIntr->getOperand(0));
+            ExtractValueInst *Hi = dyn_cast<ExtractValueInst>(genIntr->getOperand(1));
+            if (Lo && Hi && Lo->getOperand(0) == Hi->getOperand(0))
+            {
+                if (GenIntrinsicInst* AddPair = dyn_cast<GenIntrinsicInst>(Lo->getOperand(0)))
+                {
+                    if (AddPair->getIntrinsicID() == GenISAIntrinsic::GenISA_add_pair)
+                    {
+                        ExtractValueInst *Lo2 = dyn_cast<ExtractValueInst>(AddPair->getOperand(0));
+                        ExtractValueInst *Hi2 = dyn_cast<ExtractValueInst>(AddPair->getOperand(1));
+                        if (Lo2 && Hi2 && Lo2->getOperand(0) == Hi2->getOperand(0))
+                        {
+                            if (GenIntrinsicInst* ptrToPair = dyn_cast<GenIntrinsicInst>(Lo2->getOperand(0)))
+                            {
+                                if (ptrToPair->getIntrinsicID() == GenISAIntrinsic::GenISA_ptr_to_pair)
+                                {
+                                    ConstantInt* pConst = dyn_cast<llvm::ConstantInt>(AddPair->getOperand(2));
+                                    if (!pConst)
+                                        return false;
+                                    offset = (uint)pConst->getZExtValue();
+                                    pAddress = ptrToPair->getOperand(0);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
-
-    // skip casts
-    if(isa<IntToPtrInst>(pAddress) || isa<PtrToIntInst>(pAddress) || isa<BitCastInst>(pAddress))
+    else
     {
-        pAddress = cast<Instruction>(pAddress)->getOperand(0);
+        /*
+        find 32 bit case
+        % 33 = ptrtoint <4 x float> addrspace(2)* %runtime_value_4 to i64
+        % 34 = add i64 % 33, 368
+        % chunkPtr = inttoptr i64 % 34 to <2 x i32> addrspace(2)*
+        */
+
+        offset = 0;
+        // % 13 = add i64 % 12, 16
+        // This add might or might not be present necessarily.
+        if (BinaryOperator* pAdd = dyn_cast<BinaryOperator>(pAddress))
+        {
+            if (pAdd->getOpcode() == llvm::Instruction::Add)
+            {
+                ConstantInt* pConst = dyn_cast<llvm::ConstantInt>(pAdd->getOperand(1));
+                if (!pConst)
+                    return false;
+
+                pAddress = pAdd->getOperand(0);
+                offset = (uint)pConst->getZExtValue();
+            }
+        }
+
+    }
+    // skip casts
+    while (1)
+    {
+        if (isa<IntToPtrInst>(pAddress) || isa<PtrToIntInst>(pAddress) || isa<BitCastInst>(pAddress))
+        {
+            pAddress = cast<Instruction>(pAddress)->getOperand(0);
+        }
+        else
+        {
+            break;
+        }
     }
 
     llvm::GenIntrinsicInst *pRuntimeVal = llvm::dyn_cast<llvm::GenIntrinsicInst>(pAddress);
