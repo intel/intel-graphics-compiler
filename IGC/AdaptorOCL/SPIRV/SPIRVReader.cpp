@@ -1070,14 +1070,14 @@ public:
   };
 
   Value *transValue(SPIRVValue *, Function *F, BasicBlock *,
-      bool CreatePlaceHolder = true, BoolAction Action = BoolAction::Noop);
+      bool CreatePlaceHolder = true, BoolAction Action = BoolAction::Promote);
   Value *transValueWithoutDecoration(SPIRVValue *, Function *F, BasicBlock *,
       bool CreatePlaceHolder);
   bool transDecoration(SPIRVValue *, Value *);
   bool transAlign(SPIRVValue *, Value *);
   Instruction *transOCLBuiltinFromExtInst(SPIRVExtInst *BC, BasicBlock *BB);
   std::vector<Value *> transValue(const std::vector<SPIRVValue *>&, Function *F,
-      BasicBlock *, BoolAction Action = BoolAction::Noop);
+      BasicBlock *, BoolAction Action = BoolAction::Promote);
   Function *transFunction(SPIRVFunction *F);
   bool transFPContractMetadata();
   bool transKernelMetadata();
@@ -1492,7 +1492,7 @@ SPIRVToLLVM::transType(SPIRVType *T) {
   case OpTypeVoid:
     return mapType(T, Type::getVoidTy(*Context));
   case OpTypeBool:
-    return mapType(T, Type::getInt1Ty(*Context));
+    return mapType(T, Type::getInt8Ty(*Context));
   case OpTypeInt:
     return mapType(T, Type::getIntNTy(*Context, T->getIntegerBitWidth()));
   case OpTypeFloat:
@@ -1510,14 +1510,7 @@ SPIRVToLLVM::transType(SPIRVType *T) {
     return mapType(T, StructType::create(*Context, T->getName()));
   case OpTypeFunction: {
     auto FT = static_cast<SPIRVTypeFunction *>(T);
-    // promote vector bool type to vector i8 to be consistent with
-    // built-ins translation - function can contain some builtin inside,
-    // which return type is also promoted to vector i8
-    Type* RT = nullptr;
-    if (FT->getReturnType()->isTypeVectorBool())
-      RT = VectorType::get(Type::getInt8Ty(*Context), FT->getReturnType()->getVectorComponentCount());
-    else
-      RT = transType(FT->getReturnType());
+    auto RT = transType(FT->getReturnType());
     std::vector<Type *> PT;
     for (size_t I = 0, E = FT->getNumParameters(); I != E; ++I)
       PT.push_back(transType(FT->getParameterType(I)));
@@ -3235,18 +3228,11 @@ SPIRVToLLVM::transSPIRVBuiltinFromInst(SPIRVInstruction *BI, BasicBlock *BB) {
   Type *RetTy = Type::getVoidTy(*Context);
   if (BI->hasType())
   {
-    if (BI->getType()->isTypeVectorBool()) {
-      // builtins use bool for scalar and ucharx for vector bools.
-      // Promote the return type in this case.
-      RetTy = VectorType::get(Type::getInt8Ty(*Context),
-        BI->getType()->getVectorComponentCount());
-    }
-    else {
       auto *pTrans = transType(BI->getType());
       RetTy = BI->getType()->isTypeBool() ?
-        truncBoolType(BI->getType(), pTrans) :
-        pTrans;
-    }
+          truncBoolType(BI->getType(), pTrans) :
+          pTrans;
+    
   }
 
   if (hasReturnTypeInTypeList)
