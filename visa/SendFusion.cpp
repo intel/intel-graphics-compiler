@@ -247,7 +247,7 @@ bool SendFusion::isAtomicCandidate(G4_SendMsgDescriptor* msgDesc)
     }
 
     // Had right atomic type, now check AtomicOp
-    uint16_t atomicOp = msgDesc->getAtomicOp();
+    uint16_t atomicOp = msgDesc->getHdcAtomicOp();
     if (intAtomic)
     {
         switch (atomicOp)

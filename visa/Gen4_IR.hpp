@@ -396,16 +396,13 @@ public:
     }
 
     bool isAtomicMessage() const;
-    uint16_t getAtomicOp() const;
+    uint16_t getHdcAtomicOp() const;
 
     bool isSLMMessage() const;
 
-    bool isBarrierMsg() const
-    {
-        auto funcID = getFuncId();
-        uint32_t funcCtrl = getFuncCtrl();
-        return funcID == SFID::GATEWAY && (funcCtrl & 0xFF) == 0x4;
-    }
+    bool isBarrierMsg() const;
+    bool isFence() const;
+
     bool isSendBarrier() const {
         return isAtomicMessage() || isBarrierMsg();  // atomic write or explicit barrier
     }
@@ -1357,29 +1354,9 @@ public:
         return canEOT;
     }
 
-    bool isFence() const
-    {
-        G4_SendMsgDescriptor *MD = getMsgDesc();
-        SFID sfid = MD->getFuncId();
-        unsigned FC = MD->getFuncCtrl();
+    bool isFence() const {return getMsgDesc()->isFence();}
 
-        // Memory Fence
-        if (sfid == SFID::DP_DC && ((FC >> 14) & 0x1F) == DC_MEMORY_FENCE)
-        {
-            return true;
-        }
-
-        // Sampler cache flush
-        if (sfid == SFID::SAMPLER && ((FC >> 12) & 0x1F) == 0x1F)
-        {
-            return true;
-        }
-
-        return false;
-    }
-
-    bool isEOT() const override
-    {
+    bool isEOT() const override {
         return msgDesc->isEOTInst();
     }
 

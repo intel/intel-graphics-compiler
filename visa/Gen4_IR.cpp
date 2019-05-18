@@ -370,16 +370,18 @@ static bool isFloatAtomicMessage(SFID funcID, uint16_t msgType)
 
 bool G4_SendMsgDescriptor::isAtomicMessage() const
 {
+
     auto funcID = getFuncId();
     if (!isHDC())
         return false; // guard getMessageType() on SFID without a message type
     uint16_t msgType = getHdcMessageType();
     return isIntAtomicMessage(funcID,msgType) ||
-      isFloatAtomicMessage(funcID,msgType);
+        isFloatAtomicMessage(funcID,msgType);
 }
 
-uint16_t G4_SendMsgDescriptor::getAtomicOp() const
+uint16_t G4_SendMsgDescriptor::getHdcAtomicOp() const
 {
+    MUST_BE_TRUE(isHDC(),"must be HDC message");
     MUST_BE_TRUE(isAtomicMessage(), "getting atomicOp from non-atomic message!");
     uint32_t funcCtrl = getFuncCtrl();
     if (isIntAtomicMessage(getFuncId(), getHdcMessageType()))
@@ -423,6 +425,33 @@ bool G4_SendMsgDescriptor::isSLMMessage() const
     return false;
 }
 
+bool G4_SendMsgDescriptor::isBarrierMsg() const
+{
+    auto funcID = getFuncId();
+    uint32_t funcCtrl = getFuncCtrl();
+    return funcID == SFID::GATEWAY && (funcCtrl & 0xFF) == 0x4;
+}
+
+bool G4_SendMsgDescriptor::isFence() const
+{
+
+    SFID sfid = getFuncId();
+    unsigned FC = getFuncCtrl();
+
+    // Memory Fence
+    if (sfid == SFID::DP_DC && ((FC >> 14) & 0x1F) == DC_MEMORY_FENCE)
+    {
+        return true;
+    }
+
+    // Sampler cache flush
+    if (sfid == SFID::SAMPLER && ((FC >> 12) & 0x1F) == 0x1F)
+    {
+        return true;
+    }
+
+    return false;
+}
 
 bool G4_SendMsgDescriptor::isHeaderPresent() const {
 
