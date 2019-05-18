@@ -3,8 +3,7 @@
 # Target name                |     CMake project name             |   Supported Platforms
 #----------------------------+------------------------------------+---------------------------
 # GenX_IR.exe (GenX_IR)      |     GenX_IR_Exe                    |   Windows, Linux
-# CISA_ld.exe (CISA_ld)      |     CISA_ld_Exe                    |   Windows, Linux
-# If IGC_BUILD is set, vISA libs will be linked directly into igc.dll
+# vISA libs will be linked directly into igc.dll
 
 include(Functions.cmake)
 
@@ -12,26 +11,20 @@ include(Functions.cmake)
 #none of the values about 32/64 are being propogated down
 #and BuildSetup.cmake is not part of IGC enviroment
 #so setting it manually
-if(IGC_BUILD)
-    # Distinguish between 32 and 64 bits
-    # The string that is set is used to modify the target names of some of the libraries generated
-    if(CMAKE_SIZEOF_VOID_P EQUAL 4)
-      set(TARGET_MODIFIER "32")
-      set(PB_PATH_MODIFIER "x86")
-    elseif(CMAKE_SIZEOF_VOID_P EQUAL 8)
-      set(TARGET_MODIFIER "64")
-      set(PB_PATH_MODIFIER "x64")
-    else()
-      message(FATAL_ERROR "unexpected platform")
-    endif()
-endif(IGC_BUILD)
 
-if (NOT IGC_BUILD)
-set(MEDIA_IGA 1)
-endif(NOT IGC_BUILD)
-if(IGC_BUILD)
+# Distinguish between 32 and 64 bits
+# The string that is set is used to modify the target names of some of the libraries generated
+if(CMAKE_SIZEOF_VOID_P EQUAL 4)
+    set(TARGET_MODIFIER "32")
+    set(PB_PATH_MODIFIER "x86")
+elseif(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    set(TARGET_MODIFIER "64")
+    set(PB_PATH_MODIFIER "x64")
+else()
+    message(FATAL_ERROR "unexpected platform")
+endif()
+
 set(LINK_DLL_IGA 1)
-endif(IGC_BUILD)
 
 
 # Set up build flags to use dynamic multi-threaded runtime (/MD) or
@@ -45,9 +38,6 @@ option(LINK_AS_STATIC_LIB "link with /MT or /MD" ON)
 #   Controls whether internal or external GED is used and whether IP sensitive
 #   code is used or not (with appropriate changes in IGA).
 #
-
-if(NOT IGC_BUILD)
-endif(NOT IGC_BUILD)
 
   set(GED_BRANCH GED_external)
 
@@ -68,14 +58,11 @@ else()
 endif(WIN32)
 
 # In the case where this is the IGC build we need to add a dummy custom target check_headers
-if (IGC_BUILD)
-  add_custom_target(check_headers)
+add_custom_target(check_headers)
 
-  if(MSVC)
-    bs_set_wdk(check_headers)
-  endif(MSVC)
-
-endif (IGC_BUILD)
+if(MSVC)
+  bs_set_wdk(check_headers)
+endif(MSVC)
 
 if(BS_USE_OSDM_BUILD_SYSTEM)
   include(${BUILD_SYS_INC}/utils.cmake)
@@ -109,13 +96,6 @@ else()
     set (ENV{M4} "${GNUTOOLS_DIR}/bin/m4.exe")
   endif (WIN32)
 
-  # The Android definition has some issues locating an appropriate bison and flex so here we
-  # explicitly set the executable variables directly to prevent find_package from failing
-  if (ANDROID)
-    set (BISON_EXECUTABLE /usr/bin/bison)
-    set (FLEX_EXECUTABLE /usr/bin/flex)
-  endif(ANDROID)
-
   # Here the default package support for bison and flex is invoked. This does something for Windows
   # and Linux but is effectively by-passed for Android as we've already explicitly set the bison and
   # flex executable variables for that platform
@@ -133,7 +113,7 @@ add_custom_target(CISAScanner_target DEPENDS ${FLEX_CISAScanner_OUTPUTS})
 
 # Set up include paths used by all the libraries in this file
 # There is a windows specific include path for GNUTools support that is inside the repository. The
-# equivalent support is already included for Linux and Android so is not required for those platforms
+# equivalent support is already included for Linux so is not required for those platforms
 set(Jitter_inc_dirs ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/include)
 if (WIN32)
   set(Jitter_inc_dirs ${Jitter_inc_dirs} ${GNUTOOLS_DIR}/include)
@@ -144,16 +124,6 @@ if (LINK_AS_STATIC_LIB)
 else (LINK_AS_STATIC_LIB)
   win_dynamic_runtime()
 endif (LINK_AS_STATIC_LIB)
-
-# Some Android specific paths primarily to enable support for STL
-if(ANDROID AND MEDIA_IGA)
-  set(NDK_Libstdcxx $ENV{ANDROID_NDK}/sources/cxx-stl/llvm-libc++/libcxx)
-  set(Extra_Android_Inc ${NDK_Libstdcxx}/include ${ANDROID_NDK}/sources/android/support/include ${NDK_Libstdcxx}/include/backward)
-  link_directories($ENV{ANDROID_NDK}/sources/cxx-stl/llvm-libc++/libs/$ENV{CMRT_ARCH})
-  include_directories(${Extra_Android_Inc})
-elseif(ANDROID)
-    link_directories($ENV{ANDROID_PRODUCT_OUT}/system/lib)
-endif(ANDROID AND MEDIA_IGA)
 
 include_directories(${Jitter_inc_dirs})
 
@@ -359,13 +329,10 @@ if (UNIX OR WIN32)
   source_group("Header Files" FILES ${GenX_IR_EXE_HEADERS} )
   source_group("Lex Yacc Files" FILES ${GenX_IR_EXE_lex_yacc} )
   target_link_libraries(GenX_IR_Exe IGA_SLIB IGA_ENC_LIB)
-  if (ANDROID AND MEDIA_IGA)
-     target_link_libraries(GenX_IR_Exe c++_static)
-  endif(ANDROID AND MEDIA_IGA)
 
-  if (UNIX AND NOT ANDROID)
+  if (UNIX)
     target_link_libraries(GenX_IR_Exe rt dl)
-  endif(UNIX AND NOT ANDROID)
+  endif(UNIX)
 
      set(GenX_IR_Exe_DEFINITIONS STANDALONE_MODE)
 
@@ -373,7 +340,7 @@ if (UNIX OR WIN32)
           COMPILE_DEFINITIONS "${GenX_IR_Exe_DEFINITIONS}"
           FOLDER CM_JITTER_EXE)
       
-  if(IGC_BUILD AND MSVC)
+  if (MSVC)
   #set up standard defines from the common WDK path.
   bs_set_wdk(GenX_IR_Exe)
   endif()
@@ -382,43 +349,7 @@ if (UNIX OR WIN32)
     install(TARGETS GenX_IR_Exe RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR} COMPONENT igc-media)
   endif(UNIX)
 
-  # Copy executable
-  if (NOT IGC_BUILD)
-      copy_exe(GenX_IR_Exe)
-  endif (NOT IGC_BUILD)
-
 endif(UNIX OR WIN32)
-# ###############################################################
-# CISA_ld_Exe
-# ###############################################################
-if (NOT IGC_BUILD)
-  if (UNIX OR WIN32)
-    set(CISA_ld_EXE_SOURCES
-      ${CISA_ld_Common_Sources}
-      ${Jitter_Common_Sources}
-      )
-    set(CISA_ld_EXE_UTILITY
-      ${Jitter_Utility_Files}
-      )
-    set(CISA_ld_EXE_HEADERS
-      ${CISA_ld_Common_Headers}
-      ${Jitter_Common_Headers}
-      ${GenX_Common_Headers}
-      )
-    setup_executable(CISA_ld_Exe "${CISA_ld_EXE_SOURCES};${CISA_ld_EXE_UTILITY};${CISA_ld_EXE_HEADERS}" FALSE "CISA_ld")
-    if (ANDROID AND MEDIA_IGA)
-       target_link_libraries(CISA_ld_Exe c++_static)
-    endif(ANDROID AND MEDIA_IGA)
-    add_dependencies(CISA_ld_Exe check_headers)
-    source_group("Header Files" FILES ${CISA_ld_EXE_HEADERS} )
-    source_group("Utility Files" FILES ${CISA_ld_EXE_UTILITY} )
-    set_target_properties(CISA_ld_Exe PROPERTIES COMPILE_DEFINITIONS STANDALONE_MODE FOLDER CM_JITTER_EXE
-      RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin )
-
-    # Post build steps
-    copy_exe( CISA_ld_Exe )
-  endif(UNIX OR WIN32)
-endif (NOT IGC_BUILD)
 
 # ###############################################################
 # GenX_IR (dll)
@@ -455,11 +386,6 @@ if(WIN32)
   add_definitions(-D_HAS_EXCEPTIONS=0)
 endif()
 
-if (WIN32 AND NOT IGC_BUILD)
-  add_compile_options(/WX)
-endif(WIN32 AND NOT IGC_BUILD)
-
-if (IGC_BUILD)
   add_library(GenX_IR STATIC 
        ${GenX_IR_DLL_SOURCES} 
        ${GenX_IR_DLL_UTILITY} 
@@ -477,11 +403,6 @@ if (IGC_BUILD)
     target_link_libraries(GenX_IR ${GCC_SECURE_LINK_FLAGS} IGA_ENC_LIB IGA_SLIB)
     add_dependencies(GenX_IR IGA_DLL)
   endif(WIN32)
-endif (IGC_BUILD)
-
-if (ANDROID  AND MEDIA_IGA)
-   target_link_libraries(GenX_IR c++_static)
-endif(ANDROID AND MEDIA_IGA)
 
 source_group("Header Files" FILES ${GenX_IR_DLL_HEADERS} )
 source_group("Utility Files" FILES ${GenX_IR_DLL_UTILITY} )
@@ -497,11 +418,6 @@ endif()
 
 if(NOT WIN32)
   set_target_properties( GenX_IR PROPERTIES PREFIX "")
-endif()
-
-if(IGC_BUILD AND MSVC)
-#set up standard defines from the common WDK path.
-bs_set_wdk(GenX_IR)
 endif()
 
 # Copy any required headers
