@@ -2701,16 +2701,20 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
     //
     for (auto&& pseudoKill : pseudoKills)
     {
-        if (pseudoKill.second != bb->rbegin())
+        INST_LIST_ITER iterToInsert = pseudoKill.second.base();
+        if (iterToInsert == bb->end())
         {
-            INST_LIST_ITER iterToInsert = pseudoKill.second.base();
+            std::advance(iterToInsert, -1);
+        }
+        else
+        {
             do
             {
                 iterToInsert--;
             } while ((*iterToInsert)->isPseudoKill());
-            G4_INST* killInst = fg.builder->createPseudoKill(pseudoKill.first);
-            bb->insert(iterToInsert, killInst);
         }
+        G4_INST* killInst = fg.builder->createPseudoKill(pseudoKill.first);
+        bb->insert(iterToInsert, killInst);
     }
 
     //
