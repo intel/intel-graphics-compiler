@@ -882,8 +882,12 @@ unsigned int Get_Gen4_Emask( Common_VISA_EMask_Ctrl cisa_emask, int exec_size )
         {
         case vISA_EMASK_M1:
             return InstOpt_NoOpt;
+        case vISA_EMASK_M5:
+            return InstOpt_M16;
         case vISA_EMASK_M1_NM:
             return InstOpt_WriteEnable;
+        case vISA_EMASK_M5_NM:
+            return InstOpt_M16 | InstOpt_WriteEnable;
         default:
             ASSERT_USER(false, "Invalid emask for SIMD32 inst");
             return InstOpt_NoOpt;

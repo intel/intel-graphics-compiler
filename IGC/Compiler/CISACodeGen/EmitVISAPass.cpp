@@ -7958,20 +7958,21 @@ void EmitPass::emitExtract(llvm::Instruction* inst)
             pOffset3 = pOffset2;
         }
 
-        // address variable represents register a0
-        CVariable* pDstArrElm = m_currShader->GetNewAddressVariable(
-            pIndexVar->IsUniform() ? 1 : numLanes(m_currShader->m_SIMDSize),
-            m_destination->GetType(),
-            pIndexVar->IsUniform(),
-            vector->IsUniform());
 
-        // we add offsets to the base that is the beginning of the vector variable
-        m_encoder->AddrAdd(pDstArrElm, vector, pOffset3);
-        m_encoder->Push();
+            // address variable represents register a0
+            CVariable* pDstArrElm = m_currShader->GetNewAddressVariable(
+                pIndexVar->IsUniform() ? 1 : numLanes(m_currShader->m_SIMDSize),
+                m_destination->GetType(),
+                pIndexVar->IsUniform(),
+                vector->IsUniform());
 
-        // finally, we move the indirectly addressed values to the destination register
-        m_encoder->Copy(m_destination, pDstArrElm);
-        m_encoder->Push();
+            // we add offsets to the base that is the beginning of the vector variable
+            m_encoder->AddrAdd(pDstArrElm, vector, pOffset3);
+            m_encoder->Push();
+
+            // finally, we move the indirectly addressed values to the destination register
+            m_encoder->Copy(m_destination, pDstArrElm);
+            m_encoder->Push();
     }
 }
 
