@@ -1702,14 +1702,9 @@ void CompileUnit::buildGeneral(DbgVariable& var, DIE* die, VISAVariableLocation*
 
         if (varInfo.getGRF().subRegNum != 0)
         {
-            enum
-            {
-                REG_SIZE_BITS = 256
-            };
-
             unsigned int subReg = varInfo.getGRF().subRegNum;
             auto offsetInBits = subReg * 8;
-            auto sizeInBits = REG_SIZE_BITS - offsetInBits;
+            auto sizeInBits = (m_pModule->m_pShader->getGRFSize()*8) - offsetInBits;
 
             addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_bit_piece);
             addUInt(Block, dwarf::DW_FORM_data1, sizeInBits);

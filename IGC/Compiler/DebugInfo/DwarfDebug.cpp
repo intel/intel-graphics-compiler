@@ -1402,10 +1402,10 @@ void DwarfDebug::collectVariableInfo(const Function *MF, SmallPtrSet<const MDNod
                                 auto sizeInBits = (m_pModule->m_pShader->getGRFSize()*8) - offsetInBits;
 
                                 write(dotLoc.loc, (uint8_t)llvm::dwarf::DW_OP_bit_piece);
-                                encodeULEB128(offsetInBits, bufLEB128);
-                                write(dotLoc.loc, (unsigned char*)bufLEB128, offsetLEB128Size);
-                                encodeULEB128(sizeInBits, bufLEB128);
+                                sizeLEB128Size = encodeULEB128(sizeInBits, bufLEB128);
                                 write(dotLoc.loc, (unsigned char*)bufLEB128, sizeLEB128Size);
+                                offsetLEB128Size = encodeULEB128(offsetInBits, bufLEB128);
+                                write(dotLoc.loc, (unsigned char*)bufLEB128, offsetLEB128Size);
                             }
                         }
                         else if (varInfo.isSpill())
