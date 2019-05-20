@@ -199,7 +199,12 @@ void overrideShaderIGA(const IGC::CodeGenContext* context, void *& genxbin, int 
     char igaName[] = "libiga32.so";
 #endif
 
+#ifdef SANITIZER_BUILD
     hModule = dlopen(igaName, RTLD_LAZY);
+#else
+    hModule = dlopen(igaName, RTLD_LAZY | RTLD_DEEPBIND);
+#endif
+
 #endif
 
     if (hModule == nullptr)

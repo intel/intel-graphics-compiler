@@ -31,10 +31,16 @@ namespace CIF {
 
 std::unique_ptr<LibraryHandle> OpenLibrary(const std::string &path, bool addOsSpecificExtensionToPath) {
   void *mod = nullptr;
+#ifdef SANITIZER_BUILD
+    constexpr auto dlopenFlag = RTLD_LAZY;
+#else
+    constexpr auto dlopenFlag = RTLD_LAZY | RTLD_DEEPBIND;
+#endif
+
   if(addOsSpecificExtensionToPath){
-      mod = dlopen((path + ".so").c_str(), RTLD_NOW);
+      mod = dlopen((path + ".so").c_str(), dlopenFlag);
   }else{
-      mod = dlopen(path.c_str(), RTLD_NOW);
+      mod = dlopen(path.c_str(), dlopenFlag);
   }
   return OpenLibrary(UniquePtrLibrary(mod));
 }
