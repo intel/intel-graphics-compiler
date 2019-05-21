@@ -369,6 +369,36 @@ uint32_t kv_get_send_descs(
     return n;
 }
 
+void kv_get_send_indirect_descs(
+    const kv_t *kv, int32_t pc, uint8_t *ex_desc_reg, uint8_t *ex_desc_subreg,
+    uint8_t *desc_reg, uint8_t *desc_subreg)
+{
+    if (!kv || !ex_desc_reg || !ex_desc_subreg || !desc_reg || !desc_subreg)
+        return;
+
+    const Instruction *inst = ((KernelViewImpl *)kv)->getInstruction(pc);
+    if (!inst || !inst->getOpSpec().isSendOrSendsFamily()) {
+        *ex_desc_reg = *ex_desc_subreg = *desc_reg = *desc_subreg = KV_INVALID_REG;
+        return;
+    }
+
+    if (inst->getExtMsgDescriptor().type == SendDescArg::REG32A) {
+        *ex_desc_reg = inst->getExtMsgDescriptor().reg.regNum;
+        *ex_desc_subreg = inst->getExtMsgDescriptor().reg.subRegNum;
+    }
+    else {
+        *ex_desc_reg = *ex_desc_subreg = KV_INVALID_REG;
+    }
+
+    if (inst->getMsgDescriptor().type == SendDescArg::REG32A) {
+        *desc_reg = inst->getMsgDescriptor().reg.regNum;
+        *desc_subreg = inst->getMsgDescriptor().reg.subRegNum;
+    }
+    else {
+        *desc_reg = *desc_subreg = KV_INVALID_REG;
+    }
+}
+
 /******************** KernelView analysis APIs *******************************/
 const Instruction *getInstruction(const kv_t *kv, int32_t pc)
 {
@@ -397,7 +427,7 @@ kv_status_t kv_get_message_type(
     auto desc = inst->getMsgDescriptor();
 
     // NOTE: we could probably get the message just from desc
-    if (exDesc.type != SendDescArg::IMM || desc.type != SendDescArg::IMM)
+    if (desc.type != SendDescArg::IMM)
         return kv_status_t::KV_DESCRIPTOR_INDIRECT;
 
     Platform p = ((KernelViewImpl *)kv)->m_model.platform;

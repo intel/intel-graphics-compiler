@@ -213,7 +213,14 @@ IGA_API uint32_t kv_get_send_descs(
     int32_t pc,
     uint32_t *ex_desc,
     uint32_t *desc);
-
+        
+IGA_API void kv_get_send_indirect_descs(
+    const kv_t *kv,
+    int32_t pc,
+    uint8_t *ex_desc_reg,
+    uint8_t *ex_desc_subreg,
+    uint8_t *desc_reg,
+    uint8_t *desc_subreg);
 
 /*
  * A symbol to indicate an invalid send descriptor value.
@@ -225,6 +232,10 @@ IGA_API uint32_t kv_get_send_descs(
  */
 #define KV_INVALID_LEN ((uint32_t)0xFFFFFFFFF)
 
+/*
+ * Indicates invalid register
+ */
+#define KV_INVALID_REG 0xff
 
 /*
  * Determines the message type for the given send instruction.
