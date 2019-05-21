@@ -1179,7 +1179,7 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(ISA_Opcode opcode, Com
     }
 
     // pred and conModifier
-    G4_Declare *tmpFlag = createTempFlag(1);
+    G4_Declare *tmpFlag = createTempFlag(instExecSize == 32 ? 2 : 1);
     G4_Predicate_Control predCtrlValue = PRED_DEFAULT;
 
     // temp registers
@@ -1480,7 +1480,7 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(ISA_Opcode opcode, Common_
     unsigned int instOpt = Get_Gen4_Emask(emask, exsize);
 
     // pred and conModifier
-    G4_Declare *flagReg = createTempFlag(1);
+    G4_Declare *flagReg = createTempFlag(instExecSize == 32 ? 2 : 1);
     G4_Predicate_Control predCtrlValue = PRED_DEFAULT;
 
     // temp registers
