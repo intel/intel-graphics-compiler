@@ -871,7 +871,7 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(ISA_Opcode opcode, C
         element_size = 8;
         loopCount = 1;
     }
-    else 
+    else
     {
         element_size = instExecSize;
         instOpt = Get_Gen4_Emask(emask, instExecSize);
@@ -1171,7 +1171,7 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(ISA_Opcode opcode, Com
         element_size = 8;
         loopCount = 1;
     }
-    else 
+    else
     {
         element_size = instExecSize;
         instOpt = Get_Gen4_Emask(emask, instExecSize);
