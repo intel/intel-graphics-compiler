@@ -2480,6 +2480,7 @@ public:
 
     static bool isInTypeRange(int64_t imm, G4_Type ty);
 
+    static int64_t typecastVals(int64_t value, G4_Type type);
 };
 
 class G4_Reloc_Imm : public G4_Imm

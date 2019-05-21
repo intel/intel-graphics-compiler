@@ -2950,7 +2950,9 @@ void Optimizer::newLocalCopyPropagation()
                 // replace use with def
                 if (src->isImm())
                 {
-                    G4_Imm* newImm = builder.createImm(src->asImm()->getImm(),
+                    auto newImmVal = G4_Imm::typecastVals(src->asImm()->getImm(), 
+                        propType);
+                    G4_Imm* newImm = builder.createImm(newImmVal,
                         propType);
                     G4_SrcModifier modifier = use->asSrcRegRegion()->getModifier();
                     if (modifier != Mod_src_undef)
