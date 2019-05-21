@@ -10,80 +10,9 @@ using namespace std;
 
 namespace {
 
-// Given an operand, turn its bitvec representation into bitmask one.
-//
 void getOpndFootprint(G4_Operand* opnd, BitSet& footprint)
 {
-    unsigned N = NUM_BITS_PER_ELT;
-    unsigned lb = opnd->getLeftBound();
-    unsigned rb = opnd->getRightBound();
-    unsigned folder = getGRFSize() / NUM_BITS_PER_ELT;
-    if (lb % N == 0 && rb - lb + 1 <= (unsigned)getGRFSize() * 2) {
-        unsigned idx = lb / N;
-        uint64_t vecL = opnd->getBitVecL();
-        for (unsigned i = 0; i < folder; i++)
-        {
-            footprint.setElt(idx, (unsigned)vecL);
-            idx++;
-            vecL = vecL >> NUM_BITS_PER_ELT;
-        }
-
-        if (rb - lb + 1 > getGRFSize())
-        {
-            uint64_t vecH = opnd->getBitVecH();
-            for (unsigned i = 0; i < folder; i++)
-            {
-                footprint.setElt(idx, (unsigned)vecH);
-                idx++;
-                vecH = vecH >> NUM_BITS_PER_ELT;
-            }
-        }
-    } else if (lb % N == 0 && (rb + 1) % N == 0) {
-        unsigned idx = lb / N;
-        unsigned endIdx = rb / N;
-        uint64_t bitvec = opnd->getBitVecL();
-        for (unsigned i = 0; i < folder; i++)
-        {
-            footprint.setElt(idx, (unsigned)bitvec);
-            idx++;
-            bitvec = bitvec >> NUM_BITS_PER_ELT;
-        }
-
-        if (idx <= endIdx) {
-            bitvec = opnd->getBitVecH();
-            for (unsigned i = 0; i < folder; i++)
-            {
-                footprint.setElt(idx, (unsigned)bitvec);
-                idx++;
-                bitvec = bitvec >> NUM_BITS_PER_ELT;
-            }
-        }
-
-        while (idx <= endIdx) {
-            footprint.setElt(idx, 0xFFFFFFFF);
-            idx++;
-        }
-    } else {
-            uint64_t mask0 = opnd->getBitVecL();
-            uint64_t mask1 = opnd->getBitVecH();
-            unsigned j = lb;
-            for (unsigned i = 0; i <= std::min(rb, getGRFSize() - 1u); ++i) {
-                if (mask0 & ((uint64_t)1 << i))
-                    footprint.set(j, true);
-                j++;
-            }
-            if (rb >= getGRFSize())
-            {
-                for (unsigned i = 0; i <= std::min(rb - getGRFSize(), getGRFSize() - 1u); ++i) {
-                    if (mask1 & ((uint64_t)1 << i))
-                        footprint.set(j, true);
-                    j++;
-                }
-            }
-
-            while (j++ <= rb)
-                footprint.set(j, true);
-    }
+    opnd->updateFootPrint(footprint, true);
 }
 
 // Combine footprint.
@@ -92,76 +21,7 @@ void getOpndFootprint(G4_Operand* opnd, BitSet& footprint)
 //
 void combineFootprint(G4_Operand* DefOpnd, BitSet& footprint)
 {
-    unsigned N = NUM_BITS_PER_ELT;
-    unsigned lb = DefOpnd->getLeftBound();
-    unsigned rb = DefOpnd->getRightBound();
-    unsigned folder = getGRFSize() / NUM_BITS_PER_ELT;
-
-    if (lb % N == 0 && ((rb - lb + 1) <= (unsigned)getGRFSize() * 2)) {
-        unsigned idx = lb / N;
-        uint64_t vecL = DefOpnd->getBitVecL();
-        for (unsigned i = 0; i < folder; i++)
-        {
-            footprint.resetElt(idx, (unsigned)vecL);
-            idx++;
-            vecL = vecL >> NUM_BITS_PER_ELT;
-        }
-
-        if (rb - lb + 1 > getGRFSize())
-        {
-            uint64_t vecH = DefOpnd->getBitVecH();
-            for (unsigned i = 0; i < folder; i++)
-            {
-                footprint.resetElt(idx, (unsigned)vecH);
-                idx++;
-                vecH = vecH >> NUM_BITS_PER_ELT;
-            }
-        }
-    } else if (lb % N == 0 && (rb + 1) % N == 0) {
-        unsigned idx = lb / N;
-        unsigned endIdx = rb / N;
-        uint64_t bitvec = DefOpnd->getBitVecL();
-        for (unsigned i = 0; i < folder; i++)
-        {
-            footprint.resetElt(idx, (unsigned)bitvec);
-            idx++;
-            bitvec = bitvec >> NUM_BITS_PER_ELT;
-        }
-
-        if (idx <= endIdx) {
-            bitvec = DefOpnd->getBitVecH();
-            for (unsigned i = 0; i < folder; i++)
-            {
-                footprint.resetElt(idx, (unsigned)bitvec);
-                idx++;
-                bitvec = bitvec >> NUM_BITS_PER_ELT;
-            }
-        }
-        while (idx <= endIdx) {
-            footprint.resetElt(idx, 0xFFFFFFFF);
-            idx++;
-        }
-    } else {
-        uint64_t mask0 = DefOpnd->getBitVecL();
-        uint64_t mask1 = DefOpnd->getBitVecH();
-        unsigned j = lb;
-        for (unsigned i = 0; i <= std::min(rb, getGRFSize() - 1u); ++i) {
-            if (mask0 & ((uint64_t)1 << i))
-                footprint.set(j, false);
-            j++;
-        }
-        if (rb >= getGRFSize())
-        {
-            for (unsigned i = 0; i <= std::min(rb - getGRFSize(), getGRFSize() - 1u); ++i) {
-                if (mask1 & ((uint64_t)1 << i))
-                    footprint.set(j, false);
-                j++;
-            }
-        }
-
-        while (j++ <= rb)
-            footprint.set(j, false);
-    }
+    DefOpnd->updateFootPrint(footprint, false);
 }
 
 struct LocalLivenessInfo;

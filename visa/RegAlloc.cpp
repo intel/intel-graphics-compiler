@@ -1884,7 +1884,7 @@ void LivenessAnalysis::footprintDst(G4_BB* bb,
     BitSet* dstfootprint,
     bool isLocal)
 {
-    if (dstfootprint != NULL &&
+    if (dstfootprint &&
         !(i->isPartialWrite()) &&
         ((isLocal ||
             bb->isInSimdFlow() == false ||
@@ -1893,122 +1893,17 @@ void LivenessAnalysis::footprintDst(G4_BB* bb,
     {
         // Bitwise OR left-bound/right-bound with dst footprint to indicate
         // bytes that are written in to
-        unsigned int lb, rb;
-        uint64_t bitvec;
-        unsigned folder = getGRFSize() / NUM_BITS_PER_ELT;
-
-        lb = opnd->getLeftBound();
-        rb = opnd->getRightBound();
-        if (lb % G4_GRF_REG_NBYTES == 0 &&
-            (rb + 1) % G4_GRF_REG_NBYTES == 0)
-        {
-            unsigned idx = lb / G4_GRF_REG_NBYTES;
-            unsigned endIdx = rb / G4_GRF_REG_NBYTES;
-
-            bitvec = opnd->getBitVecL();
-            for (unsigned i = 0; i < folder; i++)
-            {
-                dstfootprint->setElt(idx, (unsigned)bitvec);
-                idx++;
-                bitvec = bitvec >> NUM_BITS_PER_ELT;
-            }
-            if (idx <= endIdx)
-            {
-                bitvec = opnd->getBitVecH();
-                for (unsigned i = 0; i < folder; i++)
-                {
-                    dstfootprint->setElt(idx, (unsigned)bitvec);
-                    idx++;
-                    bitvec = bitvec >> NUM_BITS_PER_ELT;
-                }
-            }
-
-            while (idx <= endIdx)
-            {
-                dstfootprint->setElt(idx, 0xFFFFFFFF);
-                idx++;
-            }
-        }
-        else
-        {
-            bitvec = opnd->getBitVecL();
-            for (unsigned int j = lb,
-                bit = 0; j <= rb; j++, bit++)
-            {
-                if (bit == getGRFSize())
-                {
-                    bitvec = opnd->getBitVecH();
-                    bit = 0;
-                }
-
-                if (i->isSend() || (bitvec & ((uint64_t)1 << bit)))
-                {
-                    dstfootprint->set(j, true);
-                }
-            }
-        }
+        opnd->updateFootPrint(*dstfootprint, true);
     }
 }
 
 // Reset bits in srcfootprint based on src region's left/right bound
-void LivenessAnalysis::footprintSrc( G4_INST* i,
-                  G4_Operand *opnd,
+void LivenessAnalysis::footprintSrc(G4_INST* i,
+    G4_Operand *opnd,
     BitSet* srcfootprint)
 {
     // Reset bits in kill map footprint
-    unsigned int lb, rb;
-    uint64_t bitvec;
-    lb = opnd->getLeftBound();
-    rb = opnd->getRightBound();
-    unsigned folder = getGRFSize() / NUM_BITS_PER_ELT;
-
-    if (lb % G4_GRF_REG_NBYTES == 0 &&
-        (rb + 1) % G4_GRF_REG_NBYTES == 0)
-    {
-        unsigned idx = lb / G4_GRF_REG_NBYTES;
-        unsigned endIdx = rb / G4_GRF_REG_NBYTES;
-
-        bitvec = opnd->getBitVecL();
-        for (unsigned i = 0; i < folder; i++)
-        {
-            srcfootprint->resetElt(idx, (unsigned)bitvec);
-            idx++;
-            bitvec = bitvec >> NUM_BITS_PER_ELT;
-        }
-        if (idx <= endIdx)
-        {
-            bitvec = opnd->getBitVecH();
-            for (unsigned i = 0; i < folder; i++)
-            {
-                srcfootprint->resetElt(idx, (unsigned)bitvec);
-                idx++;
-                bitvec = bitvec >> NUM_BITS_PER_ELT;
-            }
-        }
-        while (idx <= endIdx)
-        {
-            srcfootprint->resetElt(idx, 0xFFFFFFFF);
-            idx++;
-        }
-    }
-    else
-    {
-        bitvec = opnd->getBitVecL();
-        for (unsigned int j = lb,
-            bit = 0; j <= rb; j++, bit++)
-        {
-            if (bit == getGRFSize())
-            {
-                bitvec = opnd->getBitVecH();
-                bit = 0;
-            }
-
-            if (i->isSend() || (bitvec & ((uint64_t)1 << bit)))
-            {
-                srcfootprint->set(j, false);
-            }
-        }
-    }
+    opnd->updateFootPrint(*srcfootprint, false);
 }
 
 void LivenessAnalysis::computeGenKill(G4_BB* bb,

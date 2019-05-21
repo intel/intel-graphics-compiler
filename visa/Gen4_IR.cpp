@@ -4723,22 +4723,18 @@ void G4_DstRegRegion::setDstBitVec( uint8_t exec_size )
     unsigned short s_size = horzStride * type_size;
 
     // General cases.
-    unsigned short bit_seq = G4_Type_Table[type].footprint;
+    uint64_t bit_seq = G4_Type_Table[type].footprint;
     for (uint8_t i = 0; i < exec_size; ++i)
     {
         int eltOffset = i * s_size;
-        if (eltOffset >= getGRFSize())
+        // no element can cross 64-byte boundary
+        if (eltOffset >= 64)
         {
-            footprint1 |= ((uint64_t)bit_seq) << (eltOffset - getGRFSize());
+            footprint1 |= bit_seq << (eltOffset - 64);
         }
-        else if (eltOffset + G4_Type_Table[type].byteSize < getGRFSize())
+        else 
         {
-            footprint0 |= ((uint64_t)bit_seq) << eltOffset;
-        }
-        else
-        {
-            footprint0 |= ((uint64_t)bit_seq) << eltOffset;  // 4 + 31  -->   1 BIT MASKED
-            footprint1 |= ((uint64_t)bit_seq) >> (getGRFSize() - eltOffset);   // 32 - 31 = 1, keep 3
+            footprint0 |= bit_seq << eltOffset;
         }
     }
 
@@ -4945,67 +4941,33 @@ static G4_CmpRelation compareRegRegionToOperand(G4_Operand* regRegion, G4_Operan
                 return Rel_interfere;
             }
 
-            // Now both operands are within two GRFs, comparing their L/H vectors
-            // to get more precise relations
-            int dist = left_bound2 - myLeftBound;
-            uint64_t new_bitVecL = myBitVecL, new_bitVecH = myBitVecH;
-            if (dist > 0 && dist < (2 * GENX_GRF_REG_SIZ))
+            // Now both operands are within two GRFs, compare their footprint to get precise relations
+            int maskSize = 2 * getGRFSize();
+            if (myDcl)
             {
-                if (dist >= GENX_GRF_REG_SIZ)
-                {
-                    uint64_t lbit = new_bitVecH >> (dist - GENX_GRF_REG_SIZ);
-                    new_bitVecL = lbit;
-                    new_bitVecH = 0;
-                }
-                else
-                {
-                    new_bitVecL >>= dist;
-                    uint64_t lbit = new_bitVecH << (GENX_GRF_REG_SIZ - dist);
-                    new_bitVecL |= lbit;
-                    new_bitVecH >>= dist;
-                }
+                maskSize = myDcl->getRegVar()->isFlag() ? myDcl->getNumberFlagElements()
+                    : myDcl->getByteSize();
             }
-            else if (dist < 0 && dist > (-2 * GENX_GRF_REG_SIZ))
-            {
-                dist = abs(dist);
-                if (dist >= GENX_GRF_REG_SIZ)
-                {
-                    uint64_t lbit = opndBitVecH >> (dist - GENX_GRF_REG_SIZ);
-                    opndBitVecL = lbit;
-                    opndBitVecH = 0;
-                }
-                else
-                {
-                    opndBitVecL >>= dist;
-                    uint64_t lbit = opndBitVecH << (GENX_GRF_REG_SIZ - dist);
-                    opndBitVecL |= lbit;
-                    opndBitVecH >>= dist;
-                }
-            }
-            uint64_t commonL = new_bitVecL & opndBitVecL, commonH = new_bitVecH & opndBitVecH;
+            BitSet myBitSet(maskSize, false);
+            BitSet otherBitSet(maskSize, false);
+            regRegion->updateFootPrint(myBitSet, true);
+            opnd->updateFootPrint(otherBitSet, true);
 
-            if (myLeftBound <= left_bound2 &&
-                myRightBound >= right_bound2 &&
-                commonL == opndBitVecL &&
-                commonH == opndBitVecH)
-            {
-                return Rel_gt;
-            }
-            else if (myLeftBound >= left_bound2 &&
-                myRightBound <= right_bound2 &&
-                commonL == new_bitVecL &&
-                commonH == new_bitVecH)
-            {
-                return Rel_lt;
-            }
-            else if (dist < (2*GENX_GRF_REG_SIZ) && dist > (-2 * GENX_GRF_REG_SIZ) && commonL == 0 && commonH == 0)
+            BitSet tmp = myBitSet;
+            myBitSet &= otherBitSet;
+            if (myBitSet.isEmpty())
             {
                 return Rel_disjoint;
             }
-            else
+
+            myBitSet = tmp;
+            myBitSet -= otherBitSet;
+            if (myBitSet.isEmpty())
             {
-                return Rel_interfere;
+                return Rel_lt;
             }
+            otherBitSet -= tmp;
+            return otherBitSet.isEmpty() ? Rel_gt : Rel_interfere;
         }
     }
 }
@@ -5974,8 +5936,8 @@ void G4_Predicate::splitPred( )
 
     bitVec[0] = ((uint32_t)getBitVecL()) >> shiftLen;
 }
-void
-G4_CondMod::emit(std::ostream& output, bool symbolreg)
+
+void G4_CondMod::emit(std::ostream& output, bool symbolreg)
 {
     output << '.' << CondModStr[mod];
     output << '.';
@@ -6191,53 +6153,6 @@ G4_Imm::emitAutoFmt(std::ostream& output)
     }
 }
 
-int64_t G4_Imm::typecastVals(int64_t value, G4_Type type)
-{
-    int64_t retVal = 0;
-    switch (type)
-    {
-    case Type_UD:
-    case Type_UV:
-    case Type_VF:
-    {
-        retVal = (int64_t)((unsigned int)value);
-        break;
-    }
-    case Type_D:
-    case Type_V:
-    {
-        retVal = (int64_t)((int)value);
-        break;
-    }
-    case Type_UW:
-    {
-        retVal = (int64_t)((uint16_t)value);
-        break;
-    }
-    case Type_W:
-    {
-        retVal = (int64_t)((int16_t)value);
-        break;
-    }
-    case Type_UB:
-    {
-        retVal = (int64_t)((uint8_t)value);
-        break;
-    }
-    case Type_B:
-    {
-        retVal = (int64_t)((int8_t)value);
-        break;
-    }
-    default:
-    {
-        // Dont do float conversions
-        retVal = value;
-    }
-    }
-    return retVal;
-}
-
 G4_RegVar *
 G4_RegVarTransient::getNonTransientBaseRegVar ()
 {
@@ -6411,7 +6326,7 @@ void G4_SrcRegRegion::computeLeftBound()
 
 void G4_SrcRegRegion::setSrcBitVec(uint8_t exec_size)
 {
-    unsigned short bit_seq = G4_Type_Table[type].footprint;
+    uint64_t bit_seq = G4_Type_Table[type].footprint;
     unsigned short typeSize = (unsigned short)G4_Type_Table[type].byteSize;
 
     uint64_t footPrint0 = 0;
@@ -6424,24 +6339,14 @@ void G4_SrcRegRegion::setSrcBitVec(uint8_t exec_size)
     }
     else if (desc->isContiguous(exec_size))
     {
+        // fast path
         int totalBytes = exec_size * typeSize;
-        MUST_BE_TRUE(totalBytes <= 2 * getGRFSize(), "total bits exceeds 2 GRFs");
-        if (totalBytes == getGRFSize() * 2)
-        {
-            footPrint0 = ULLONG_MAX;
-            footPrint1 = ULLONG_MAX;
-        }
-        else
-        {
-            if (totalBytes <= getGRFSize())
-            {
-                footPrint0 = (1ULL << totalBytes) - 1;
-            }
-            else
-            {
-                footPrint0 = ULLONG_MAX;
-                footPrint1 = (1ULL << (totalBytes - getGRFSize())) - 1;
-            }
+        MUST_BE_TRUE(totalBytes <= 2 * getGRFSize(), "total bytes exceed 2 GRFs");
+
+        footPrint0 = totalBytes < 64 ? (1ULL << totalBytes) - 1 : ULLONG_MAX;
+        if (totalBytes > 64)
+        {       
+            footPrint1 = totalBytes == 128 ? ULLONG_MAX : (1ULL << (totalBytes - 64)) - 1;
         }
     }
     else
@@ -6451,19 +6356,14 @@ void G4_SrcRegRegion::setSrcBitVec(uint8_t exec_size)
             for (int j = 0; j < desc->width; ++j)
             {
                 int eltOffset = i * desc->vertStride * typeSize + j * desc->horzStride * typeSize;
-
-                if (eltOffset >= getGRFSize())
+                // no element can cross 64-byte boundary
+                if (eltOffset >= 64)
                 {
-                    footPrint1 |= ((uint64_t)bit_seq) << (eltOffset - getGRFSize());
-                }
-                else if (eltOffset + G4_Type_Table[type].byteSize < getGRFSize())
-                {
-                    footPrint0 |= ((uint64_t)bit_seq) << eltOffset;
+                    footPrint1 |= bit_seq << (eltOffset - 64);
                 }
                 else
                 {
-                    footPrint0 |= ((uint64_t)bit_seq) << eltOffset;
-                    footPrint1 |= ((uint64_t)bit_seq) >> (getGRFSize() - eltOffset);
+                    footPrint0 |= bit_seq << eltOffset;
                 }
             }
         }
@@ -6471,8 +6371,6 @@ void G4_SrcRegRegion::setSrcBitVec(uint8_t exec_size)
 
     bitVec[0] = footPrint0;
     bitVec[1] = footPrint1;
-
-    return;
 }
 
 unsigned G4_SrcRegRegion::computeRightBound( uint8_t exec_size )
@@ -6905,6 +6803,76 @@ void G4_INST::computeLeftBoundForImplAcc(G4_Operand* opnd)
     }
 }
 
+//
+// Normalize an operand's bitvec footprint based on its left bound
+// and update the given bitset.
+// If isSet is true, we set all bits that are covered by this operand.
+// If isSet os false, we clear all bits that are covered by this operand.
+//
+void G4_Operand::updateFootPrint(BitSet& footprint, bool isSet)
+{
+    unsigned N = NUM_BITS_PER_ELT;
+    unsigned lb = getLeftBound();
+    unsigned rb = getRightBound();
+    const bool doFastPath = true; // for debugging
+        
+    if (doFastPath && lb % N == 0 && (rb + 1) % N == 0)
+    {
+        // lb is 32-byte aligned, set one dword at a time
+        unsigned idx = lb / N;
+        unsigned endIdx = rb / N;
+        // get the precise footprint for the first two GRF
+        for (int i = 0; i < 2 && idx <= endIdx; ++i, ++idx)
+        {
+            uint64_t bits = getBitVecL();
+            uint32_t bitVal = (uint32_t)(i % 2 ? bits >> N : bits);
+            if (isSet)
+            {
+                footprint.setElt(idx, bitVal);
+            }
+            else
+            {
+                footprint.resetElt(idx, bitVal);
+            }
+        }
+
+        // beyond the first two GRF we assume every byte is touched
+        while (idx <= endIdx)
+        {
+            if (isSet)
+            {
+                footprint.setElt(idx, 0xFFFFFFFF);
+            }
+            else
+            {
+                footprint.resetElt(idx, 0xFFFFFFFF);
+            }
+            idx++;
+        }
+    }
+    else
+    {
+        // handle unaligned case
+        uint64_t mask0 = getBitVecL();
+        unsigned j = lb;
+        for (unsigned i = 0; i < 64 && j <= rb; ++i, ++j)
+        {
+            if (mask0 & (1ULL << i))
+                footprint.set(j, isSet);
+        }
+        while (j++ <= rb)
+            footprint.set(j, isSet);
+    }
+}
+
+// update bit vector for this operand based on it size
+// We assume all bytes are touched
+void G4_Operand::setBitVecFromSize(uint32_t NBytes)
+{
+    bitVec[0] = NBytes < 64 ? (1ULL << NBytes) - 1 : ULLONG_MAX;
+    bitVec[1] = 0;
+}
+
 // Left and right bound for every operand is based off
 // top most dcl.
 // For flag register as dst/src/pred/cond mod, each bit of
@@ -7019,23 +6987,7 @@ void G4_InstSend::computeRightBound(G4_Operand* opnd)
                 LB + numReg * G4_GRF_REG_NBYTES) - 1;
 
             unsigned NBytes = RB - LB + 1;
-            if (NBytes <= 32)
-            {
-                uint32_t Mask = uint32_t(-1) >> (32 - NBytes);
-                opnd->setBitVecL(Mask);
-            }
-            else if (NBytes <= 64)
-            {
-                opnd->setBitVecL(0xFFFFFFFF);
-                uint32_t Mask = uint32_t(-1) >> (64 - NBytes);
-                opnd->setBitVecH(Mask);
-            }
-            else
-            {
-                // NBytes > 64
-                opnd->setBitVecL(0xFFFFFFFF);
-                opnd->setBitVecH(0xFFFFFFFF);
-            }
+            opnd->setBitVecFromSize(NBytes);
             opnd->setRightBound(RB);
         };
 

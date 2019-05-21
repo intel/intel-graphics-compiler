@@ -1622,8 +1622,6 @@ void HWConformity::saveDst( INST_LIST_ITER& it, uint8_t stride, G4_BB *bb )
     RegionDesc *region = builder.createRegionDesc( hs * execSize, execSize, hs );
     G4_SrcRegRegion *srcRegion = builder.createSrcRegRegion(Mod_src_undef, Direct, dst->getBase(), dst->getRegOff(),
         dst->getSubRegOff(), region, dstType );
-    srcRegion->setBitVecH( dst->getBitVecH() );
-    srcRegion->setBitVecL( dst->getBitVecL() );
 
     G4_DstRegRegion *tmpDstOpnd = builder.Create_Dst_Opnd_From_Dcl( dcl, stride );
 
@@ -1650,8 +1648,6 @@ void HWConformity::restoreDst( INST_LIST_ITER& it, G4_DstRegRegion *origDst, G4_
     RegionDesc *region = builder.createRegionDesc( hs * execSize, execSize, hs );
     G4_SrcRegRegion *srcRegion = builder.createSrcRegRegion(Mod_src_undef, Direct, dst->getBase(), dst->getRegOff(),
         dst->getSubRegOff(), region, dst->getType() );
-    srcRegion->setBitVecH( dst->getBitVecH() );
-    srcRegion->setBitVecL( dst->getBitVecL() );
 
     unsigned int new_option = inst->getOption();
 

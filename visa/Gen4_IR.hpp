@@ -50,6 +50,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Common_GEN.h"
 #include "JitterDataStruct.h"
 #include "Metadata.h"
+#include "BitSet.h"
 
 #include <memory>
 
@@ -1942,8 +1943,7 @@ protected:
     G4_Declare *top_dcl;
     G4_VarBase *base;
 
-    uint64_t bitVec[2];  // 0 -- bit mask for the first GRF at byte granularity (for flags, at bit granularity)
-                         // 1 -- bit mask for the second GRF at byte granularity (for flags, at bit granularity)
+    uint64_t bitVec[2];  // bit masks at byte granularity (for flags, at bit granularity)
 
     bool rightBoundSet;
     unsigned byteOffset;
@@ -2156,9 +2156,6 @@ public:
             // computeRightBound also computes bitVec
             inst->computeRightBound(this);
         }
-
-        return bitVec[0] & 0x00000000FFFFFFFF;
-
         return bitVec[0];
     }
     uint64_t getBitVecH()
@@ -2168,17 +2165,26 @@ public:
             // computeRightBound also computes bitVec
             inst->computeRightBound(this);
         }
-
-        return bitVec[1] & 0x00000000FFFFFFFF;
-
+        if (getGRFSize() == 32)
+        {
+            assert(bitVec[1] == 0 && "upper bits should be 0");
+        }
         return bitVec[1];
     }
     /*
         For operands that do use it, it is computed during left bound compuation.
     */
     unsigned getByteOffset() const { return byteOffset; }
-    void setBitVecL(uint64_t bvl) {bitVec[0] = bvl;}
-    void setBitVecH(uint64_t bvh) {bitVec[1] = bvh;}
+
+    // ToDo: get rid of this setter
+    void setBitVecL(uint64_t bvl )
+    {
+        bitVec[0] = bvl;
+    }
+
+    void setBitVecFromSize(uint32_t NBytes);
+
+    void updateFootPrint(BitSet& footprint, bool isSet);
 
     virtual unsigned computeRightBound( uint8_t exec_size ) { return left_bound; }
     void setRightBound(unsigned val)
@@ -2480,7 +2486,6 @@ public:
 
     static bool isInTypeRange(int64_t imm, G4_Type ty);
 
-    static int64_t typecastVals(int64_t value, G4_Type type);
 };
 
 class G4_Reloc_Imm : public G4_Imm

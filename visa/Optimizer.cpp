@@ -110,32 +110,6 @@ static int getSrcSubReg( G4_Operand *src )
     return srcSubReg;
 }
 
-static void mergeBitVec( uint64_t bitVec[2], G4_Operand* opnd,
-                        unsigned left_bound, unsigned right_bound )
-{
-    uint64_t opndBitVecL = opnd->getBitVecL(), opndBitVecH = opnd->getBitVecH();
-    unsigned left_bound2 = opnd->getLeftBound(), right_bound2 = opnd->getRightBound();
-    if( right_bound < left_bound2 || right_bound2 < left_bound ){
-        return;
-    }
-    short dist = left_bound2 - left_bound;
-    if( dist > 0 ){
-        if( dist >= (short)getGRFSize() ){
-            uint64_t lbit = opndBitVecL << (dist - getGRFSize());
-            opndBitVecH |= lbit;
-            opndBitVecL = 0;
-        }
-        else{
-            uint64_t lbit = opndBitVecL >> (getGRFSize() - dist);
-            opndBitVecH <<= dist;
-            opndBitVecH |= lbit;
-            opndBitVecL <<= dist;
-        }
-    }
-    bitVec[0] |= opndBitVecL;
-    bitVec[1] |= opndBitVecH;
-}
-
 //
 // determine if fall-through jump is needed
 //
@@ -2950,9 +2924,7 @@ void Optimizer::newLocalCopyPropagation()
                 // replace use with def
                 if (src->isImm())
                 {
-                    auto newImmVal = G4_Imm::typecastVals(src->asImm()->getImm(), 
-                        propType);
-                    G4_Imm* newImm = builder.createImm(newImmVal,
+                    G4_Imm* newImm = builder.createImm(src->asImm()->getImm(),
                         propType);
                     G4_SrcModifier modifier = use->asSrcRegRegion()->getModifier();
                     if (modifier != Mod_src_undef)
