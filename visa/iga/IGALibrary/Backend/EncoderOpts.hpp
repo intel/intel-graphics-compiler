@@ -33,9 +33,6 @@ namespace iga
         bool explicitCompactMissIsWarning;
         bool ignoreNoCompactFormFound;
 
-        // fisrtBB64ByteSize - add padding to the first BB to make sure its size is multiple of 64 byte
-        bool fisrtBB64ByteSize = false;
-
 
         EncoderOpts(
             bool _autoCompact = false,
@@ -44,9 +41,6 @@ namespace iga
         : autoCompact(_autoCompact)
         , explicitCompactMissIsWarning(_explicitCompactMissIsWarning)
         { }
-
-        void setFisrtBB64ByteSize(bool enable = true)
-        { fisrtBB64ByteSize = enable; };
     };
 }
 
