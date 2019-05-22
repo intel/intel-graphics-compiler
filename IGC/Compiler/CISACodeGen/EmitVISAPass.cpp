@@ -13030,13 +13030,15 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset)
             "Internal Error: do not expect <2 x i8> or <3 x i8>");
 
         uint16_t nbelts = srcUniform ? 1 : width;
-        eOffset = ReAlignUniformVariable(eOffset, EALIGN_GRF);
+        e_alignment align = EALIGN_GRF;
+
+        eOffset = ReAlignUniformVariable(eOffset, align);
 
         bool needTemporary = (totalBytes < 4) || !m_destination->IsGRFAligned();
         CVariable *gatherDst = m_destination;
         if (needTemporary)
         {
-            gatherDst = m_currShader->GetNewVariable(nbelts, ISA_TYPE_UD, EALIGN_GRF, srcUniform);
+            gatherDst = m_currShader->GetNewVariable(nbelts, ISA_TYPE_UD, align, srcUniform);
         }
 
         if (srcUniform)
