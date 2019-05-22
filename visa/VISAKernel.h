@@ -660,7 +660,7 @@ public:
     CM_BUILDER_API int GetGenxBinary(void *&buffer, int &size);
     CM_BUILDER_API int GetJitInfo(FINALIZER_INFO *&jitInfo);
     CM_BUILDER_API int GetCompilerStats(CompilerStats &compilerStats);
-    CM_BUILDER_API int GetErrorMessage(const char *&errorMsg);
+    CM_BUILDER_API int GetErrorMessage(const char *&errorMsg) const;
     CM_BUILDER_API virtual int GetGenxDebugInfo(void *&buffer, unsigned int &size, void*&, unsigned int&);
     /// GetGenRelocEntryBuffer -- allocate and return a buffer of all GenRelocEntry that are created by vISA
     CM_BUILDER_API int GetGenRelocEntryBuffer(void *&buffer, unsigned int &byteSize, unsigned int &numEntries);
@@ -668,31 +668,31 @@ public:
     CM_BUILDER_API int SetGTPinInit(void* buffer);
     CM_BUILDER_API int GetFreeGRFInfo(void*& buffer, unsigned int& size);
 
-    CM_BUILDER_API int GetFunctionId(unsigned int& id);
+    CM_BUILDER_API int GetFunctionId(unsigned int& id) const;
 
     ///Gets declaration id GenVar
-    CM_BUILDER_API int getDeclarationID(VISA_GenVar *decl);
+    CM_BUILDER_API int getDeclarationID(VISA_GenVar *decl) const;
 
     ///Gets declaration id VISA_AddrVar
-    CM_BUILDER_API int getDeclarationID(VISA_AddrVar *decl);
+    CM_BUILDER_API int getDeclarationID(VISA_AddrVar *decl) const;
 
     ///Gets declaration id VISA_PredVar
-    CM_BUILDER_API int getDeclarationID(VISA_PredVar *decl);
+    CM_BUILDER_API int getDeclarationID(VISA_PredVar *decl) const;
 
     ///Gets declaration id VISA_SamplerVar
-    CM_BUILDER_API int getDeclarationID(VISA_SamplerVar *decl);
+    CM_BUILDER_API int getDeclarationID(VISA_SamplerVar *decl) const;
 
     ///Gets declaration id VISA_SurfaceVar
-    CM_BUILDER_API int getDeclarationID(VISA_SurfaceVar *decl);
+    CM_BUILDER_API int getDeclarationID(VISA_SurfaceVar *decl) const;
 
     ///Gets declaration id VISA_VMEVar
-    CM_BUILDER_API int getDeclarationID(VISA_VMEVar *decl);
+    CM_BUILDER_API int getDeclarationID(VISA_VMEVar *decl) const;
 
     ///Gets declaration id VISA_LabelVar
-    CM_BUILDER_API int getDeclarationID(VISA_LabelVar *decl);
+    CM_BUILDER_API int getDeclarationID(VISA_LabelVar *decl) const;
 
     ///Gets declaration id VISA_FileVar
-    CM_BUILDER_API int getDeclarationID(VISA_FileVar *decl);
+    CM_BUILDER_API int getDeclarationID(VISA_FileVar *decl) const;
 
     ///Gets gen binary offset
     CM_BUILDER_API int64_t getGenOffset() const;
@@ -701,11 +701,11 @@ public:
     CM_BUILDER_API int64_t getGenSize() const;
 
     //Gets the VISA string format for the variable
-    CM_BUILDER_API std::string getVarName(VISA_GenVar* decl);
-    CM_BUILDER_API std::string getVarName(VISA_PredVar* decl);
-    CM_BUILDER_API std::string getVarName(VISA_AddrVar* decl);
-    CM_BUILDER_API std::string getVarName(VISA_SurfaceVar* decl);
-    CM_BUILDER_API std::string getVarName(VISA_SamplerVar* decl);
+    CM_BUILDER_API std::string getVarName(VISA_GenVar* decl) const;
+    CM_BUILDER_API std::string getVarName(VISA_PredVar* decl) const;
+    CM_BUILDER_API std::string getVarName(VISA_AddrVar* decl) const;
+    CM_BUILDER_API std::string getVarName(VISA_SurfaceVar* decl) const;
+    CM_BUILDER_API std::string getVarName(VISA_SamplerVar* decl) const;
 
     /********** MISC APIs END *************************/
     int CreateVISAPredicateSrcOperand(VISA_VectorOpnd *& opnd, VISA_PredVar *decl, unsigned int size);
@@ -754,9 +754,9 @@ public:
 
     void setGenxBinaryBuffer(void *buffer, int size){ m_genx_binary_buffer = (char *)buffer; m_genx_binary_size = size; }
     void setJitInfo(FINALIZER_INFO* jitInfo){ m_jitInfo = jitInfo; }
-    char * getErrorMsgPtr(){ return errorMessage; }
+    // char * getErrorMsgPtr(){ return errorMessage; }
 
-    std::string getAsmName() { return m_asmName; }
+    std::string getAsmName() const { return m_asmName; }
 
     int compileFastPath();
 
@@ -783,19 +783,19 @@ public:
     // stack call function. For a kernel instance, this is not useful.
     unsigned int m_functionId;
 
-    unsigned getvIsaInstCount() { return m_vISAInstCount; };
+    unsigned getvIsaInstCount() const { return m_vISAInstCount; };
 
 
-    bool isFCCallableKernel() { return mIsFCCallableKernel; }
+    bool isFCCallableKernel() const { return mIsFCCallableKernel; }
     void setFCCallableKernel(bool value) { mIsFCCallableKernel = value; }
 
-    bool isFCCallerKernel() { return mIsFCCallerKernel; }
+    bool isFCCallerKernel() const { return mIsFCCallerKernel; }
     void setFCCallerKernel(bool value) { mIsFCCallerKernel = value; }
 
-    bool isFCComposableKernel() { return mIsFCComposableKernel; }
+    bool isFCComposableKernel() const { return mIsFCComposableKernel; }
     void setFCComposableKernel(bool value) { mIsFCComposableKernel = value; }
 
-    unsigned int getGenVarCount()
+    unsigned int getGenVarCount() const
     {
         return (uint32_t)m_var_info_list.size();
     }
@@ -805,7 +805,7 @@ public:
         return m_var_info_list[index];
     }
 
-    unsigned int getAddrVarCount()
+    unsigned int getAddrVarCount() const
     {
         return (uint32_t)m_addr_info_list.size();
     }
@@ -815,7 +815,7 @@ public:
         return m_addr_info_list[index];
     }
 
-    unsigned int getPredVarCount()
+    unsigned int getPredVarCount() const
     {
         return (uint32_t)m_pred_info_list.size();
     }
@@ -828,7 +828,7 @@ public:
         return (*it);
     }
 
-    unsigned int getSamplerVarCount()
+    unsigned int getSamplerVarCount() const
     {
         return (uint32_t)m_sampler_info_list.size();
     }
@@ -841,7 +841,7 @@ public:
         return (*it);
     }
 
-    unsigned int getSurfaceVarCount()
+    unsigned int getSurfaceVarCount() const
     {
         return (uint32_t)m_surface_info_list.size();
     }
@@ -854,7 +854,7 @@ public:
         return (*it);
     }
 
-    unsigned int getVmeVarCount()
+    unsigned int getVmeVarCount() const
     {
         return (uint32_t)m_vme_info_list.size();
     }
@@ -869,7 +869,7 @@ public:
 
     Options * getOptions() { return m_options; }
 
-    bool IsAsmWriterMode() { return m_options->getOption(vISA_IsaAssembly); }
+    bool IsAsmWriterMode() const { return m_options->getOption(vISA_IsaAssembly); }
 
     void computeAndEmitDebugInfo(std::list<VISAKernelImpl*>& functions);
 

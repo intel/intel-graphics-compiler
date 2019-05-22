@@ -205,7 +205,7 @@ struct ISA_Inst_Info
     uint8_t       n_dsts;
 };
 
-#define MAX_OPNDS_PER_INST 20
+#define MAX_OPNDS_PER_INST 24
 
 typedef struct OpndDesc
 {

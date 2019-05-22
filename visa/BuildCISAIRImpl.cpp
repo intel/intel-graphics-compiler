@@ -2924,7 +2924,9 @@ VISA_opnd * CISA_IR_Builder::CISA_create_RAW_NULL_operand(int line_no)
 VISA_opnd * CISA_IR_Builder::CISA_create_RAW_operand(char * var_name, unsigned short offset, int line_no)
 {
     VISA_RawOpnd *cisa_opnd = NULL;
-    int status = m_kernel->CreateVISARawOperand(cisa_opnd, (VISA_GenVar *)m_kernel->getDeclFromName(var_name), offset);
+    auto *decl = (VISA_GenVar *)m_kernel->getDeclFromName(var_name);
+    MUST_BE_TRUE(decl,"undeclared virtual register");
+    int status = m_kernel->CreateVISARawOperand(cisa_opnd, decl, offset);
     MUST_BE_TRUE1(status == CM_SUCCESS, line_no, "Was not able to create RAW operand.");
     return (VISA_opnd *)cisa_opnd; //delay the decision of src or dst until translate stage
 }

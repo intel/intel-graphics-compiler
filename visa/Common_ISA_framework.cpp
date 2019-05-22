@@ -72,8 +72,23 @@ int CisaInst::createCisaInstruction(
         }
     }
 
+    // TODO: move the FIXME below above this if statment, and
+    //      int implicitOperands = 0;
+    //      for (...) // parent op descriptors
+    //          if (type == EXEC_SIZE || type == PRED)
+    //             implicitOperands++;
+    //      for (...) // subop op descriptors
+    //          if (type == EXEC_SIZE || type == PRED)
+    //              implicitOperands++;
+    // TODO: rename numOpnds to explicitOpnds to be clear
+    // TODO: rename descOpndCount to descOpndsToEncodeCount
+    //
+    // compare (descOpndCount != explicitOpnds + implicitOperands)
     if (opcode != ISA_FCALL)
     {
+        // != doens't work here because predication and exec size are treated
+        // differently; it might be descOpndCount == numOpnds (+ HAS_EXEC) (+ HAS_PRED)
+        // if (descOpndCount != numOpnds)
         if (descOpndCount < numOpnds)
         {
             string msg = "Number of operands mismatch between CISA instruction description and value passed in.";
@@ -92,13 +107,17 @@ int CisaInst::createCisaInstruction(
     memcpy_s(m_cisa_instruction.opnd_array, sizeof(VISA_opnd*)* numOpnds, opnd, sizeof(VISA_opnd*)* numOpnds);
     m_cisa_instruction.isa_type = inst_desc->type;
 
-
     // FIXME: this is a mess and needs to be cleaned up
+    //   I think this comment refers to merging the subopcode and opcode case
+    //   that is we're hunting for EXEC_SIZE and PRED operands in both the
+    //   suboperand and parent
     for (int i = 0; i < descOpndCount; i++)
     {
         if (inst_desc->opnd_desc[i].opnd_type == OPND_EXECSIZE ||
             inst_desc->opnd_desc[i].opnd_type == OPND_PRED)
+        {
             m_size += static_cast<short>(Get_Common_ISA_Type_Size((VISA_Type)inst_desc->opnd_desc[i].data_type));
+        }
     }
     if (hasSubOpcode)
     {

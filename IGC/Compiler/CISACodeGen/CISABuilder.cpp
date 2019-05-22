@@ -206,7 +206,7 @@ visaBlockNum(unsigned numElems) {
 
 // split a SIMD16 variable into two SIMD8 while satisfying vISA's raw operand alignment
 // return a tuple representing the vISA raw operand (var + offset) after split
-std::tuple<CVariable*, uint32_t> CEncoder::splitRawOperand(CVariable* var, bool isFirstHalf, 
+std::tuple<CVariable*, uint32_t> CEncoder::splitRawOperand(CVariable* var, bool isFirstHalf,
     Common_VISA_EMask_Ctrl execMask)
 {
 
@@ -256,7 +256,7 @@ CEncoder::GetRawOpndSplitOffset(Common_ISA_Exec_Size fromExecSize,
 
     unsigned elemSize = var->GetElemSize();
 
-    switch (elemSize) 
+    switch (elemSize)
     {
     case 4:
         return thePart * getGRFSize() * 1;
@@ -1038,7 +1038,7 @@ bool CEncoder::NeedSplitting(CVariable *var, const SModifier &mod,
         return false;
     // If the data type has more than 4 bytes, i.e. 32 bits, it already crosses
     // 2+ GRFs by itself. There's no need to check further.
-    if (elemSize > 4) 
+    if (elemSize > 4)
     {
         assert(elemSize == 8 && "Only QWORD is supported so far!");
         assert((isSource || !mod.specialRegion) &&
@@ -3916,7 +3916,7 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
     }
 
     // Enable SendFusion for SIMD8
-    // TODO: Re-enable SendFusion when VMask is enabled. The hardware should support this, but 
+    // TODO: Re-enable SendFusion when VMask is enabled. The hardware should support this, but
     //  more investigation needs to be done on whether simply replacing sr0.2 with sr0.3 is enough.
     if (IGC_IS_FLAG_ENABLED(EnableSendFusion) &&
         !(context->type == ShaderType::PIXEL_SHADER && static_cast<CPixelShader*>(m_program)->NeedVMask()) &&
@@ -5302,7 +5302,7 @@ void CEncoder::AtomicRawA64(AtomicOp atomic_op,
         Common_ISA_Exec_Size fromExecSize = visaExecSize(m_encoderState.m_simdSize);
         Common_ISA_Exec_Size toExecSize = SplitExecSize(fromExecSize, 2);
 
-        for (unsigned thePart = 0; thePart != 2; ++thePart) 
+        for (unsigned thePart = 0; thePart != 2; ++thePart)
         {
             CVariable* rawOpndVar = nullptr;
             uint32_t rawOpndOffset = 0;
@@ -5333,9 +5333,9 @@ void CEncoder::AtomicRawA64(AtomicOp atomic_op,
                                                SplitEMask(fromExecSize, toExecSize, thePart, execMask),
                                                toExecSize, atomicOpcode, bitwidth,
                                                addressOpnd, src0Opnd, src1Opnd, dstOpnd));
-            
+
             if (needsTmpDst)
-            { 
+            {
                 SModifier mod;
                 mod.init();
                 mod.subReg = 8;

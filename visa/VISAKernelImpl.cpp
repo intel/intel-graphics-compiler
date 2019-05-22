@@ -811,35 +811,35 @@ void VISAKernelImpl::setDefaultVariableName(Common_ISA_Var_Class Ty, const char 
     }
 }
 
-std::string VISAKernelImpl::getVarName(VISA_GenVar* decl)
+std::string VISAKernelImpl::getVarName(VISA_GenVar* decl) const
 {
     int index = getDeclarationID(decl);
     stringstream ss;
     ss << "V" << index;
     return ss.str();
 }
-std::string VISAKernelImpl::getVarName(VISA_PredVar* decl)
+std::string VISAKernelImpl::getVarName(VISA_PredVar* decl) const
 {
     int index = getDeclarationID(decl) + COMMON_ISA_NUM_PREDEFINED_PRED;
     stringstream ss;
     ss << "P" << index;
     return ss.str();
 }
-std::string VISAKernelImpl::getVarName(VISA_AddrVar* decl)
+std::string VISAKernelImpl::getVarName(VISA_AddrVar* decl) const
 {
     int index = getDeclarationID(decl);
     stringstream ss;
     ss << "A" << index;
     return ss.str();
 }
-std::string VISAKernelImpl::getVarName(VISA_SurfaceVar* decl)
+std::string VISAKernelImpl::getVarName(VISA_SurfaceVar* decl) const
 {
     int index = getDeclarationID(decl);
     stringstream ss;
     ss << "T" << index;
     return ss.str();
 }
-std::string VISAKernelImpl::getVarName(VISA_SamplerVar* decl)
+std::string VISAKernelImpl::getVarName(VISA_SamplerVar* decl) const
 {
     int index = getDeclarationID(decl);
     stringstream ss;
@@ -7450,6 +7450,7 @@ int VISAKernelImpl::AppendVISALifetime(VISAVarLifetime startOrEnd, VISA_VectorOp
 }
 
 
+
 int VISAKernelImpl::patchLastInst(VISA_LabelOpnd *label)
 {
     if(label->_opnd.other_opnd == CISA_INVALID_VAR_ID)
@@ -8091,13 +8092,13 @@ int VISAKernelImpl::GetCompilerStats(CompilerStats &compilerStats)
     return CM_SUCCESS;
 }
 
-int VISAKernelImpl::GetErrorMessage(const char *&errorMsg)
+int VISAKernelImpl::GetErrorMessage(const char *&errorMsg) const
 {
     errorMsg = this->errorMessage;
     return CM_SUCCESS;
 }
 
-int VISAKernelImpl::GetFunctionId(unsigned int& id)
+int VISAKernelImpl::GetFunctionId(unsigned int& id) const
 {
     id = m_functionId;
     return CM_SUCCESS;
@@ -8487,49 +8488,49 @@ void VISAKernelImpl::computeFCInfo() {
 
 
 ///Gets declaration id GenVar
-int VISAKernelImpl::getDeclarationID(VISA_GenVar *decl)
+int VISAKernelImpl::getDeclarationID(VISA_GenVar *decl) const
 {
     return decl->index;
 }
 
 ///Gets declaration id VISA_AddrVar
-int VISAKernelImpl::getDeclarationID(VISA_AddrVar *decl)
+int VISAKernelImpl::getDeclarationID(VISA_AddrVar *decl) const
 {
     return decl->index;
 }
 
 ///Gets declaration id VISA_PredVar
-int VISAKernelImpl::getDeclarationID(VISA_PredVar *decl)
+int VISAKernelImpl::getDeclarationID(VISA_PredVar *decl) const
 {
     return decl->index;
 }
 
 ///Gets declaration id VISA_SamplerVar
-int VISAKernelImpl::getDeclarationID(VISA_SamplerVar *decl)
+int VISAKernelImpl::getDeclarationID(VISA_SamplerVar *decl) const
 {
     return decl->index;
 }
 
 ///Gets declaration id VISA_SurfaceVar
-int VISAKernelImpl::getDeclarationID(VISA_SurfaceVar *decl)
+int VISAKernelImpl::getDeclarationID(VISA_SurfaceVar *decl) const
 {
     return decl->index;
 }
 
 ///Gets declaration id VISA_VMEVar
-int VISAKernelImpl::getDeclarationID(VISA_VMEVar *decl)
+int VISAKernelImpl::getDeclarationID(VISA_VMEVar *decl) const
 {
     return decl->index;
 }
 
 ///Gets declaration id VISA_LabelVar
-int VISAKernelImpl::getDeclarationID(VISA_LabelVar *decl)
+int VISAKernelImpl::getDeclarationID(VISA_LabelVar *decl) const
 {
     return decl->index;
 }
 
 ///Gets declaration id VISA_FileVar
-int VISAKernelImpl::getDeclarationID(VISA_FileVar *decl)
+int VISAKernelImpl::getDeclarationID(VISA_FileVar *decl) const
 {
     return decl->index;
 }

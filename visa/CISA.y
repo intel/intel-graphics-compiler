@@ -1092,7 +1092,8 @@ ScatterScaledInstruction : Predicate SCATTER_SCALED_OP '.' NUMBER ExecSize VAR V
             pCisaBuilder->CISA_create_scatter_scaled_instruction($2, $1.cisa_gen_opnd, $5.emask, $5.exec_size, (uint32_t) $4, $6, $7.cisa_gen_opnd, $8.cisa_gen_opnd, $9.cisa_gen_opnd, CISAlineno);
         };
 
-SynchronizationInstruction: BARRIER_OP
+SynchronizationInstruction:
+              BARRIER_OP
             {
                 pCisaBuilder->CISA_create_sync_instruction($1);
             };

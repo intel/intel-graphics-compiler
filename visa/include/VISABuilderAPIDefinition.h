@@ -733,7 +733,7 @@ public:
     CM_BUILDER_API virtual int GetCompilerStats(CompilerStats &compilerStats) = 0;
 
     /// GetErrorMessage -- returns the error message during finalization
-    CM_BUILDER_API virtual int GetErrorMessage(const char *&errorMsg) = 0;
+    CM_BUILDER_API virtual int GetErrorMessage(const char *&errorMsg) const = 0;
 
     /// GetGenxDebugInfo -- returns the GEN debug info binary in <buffer>
     /// and its size in <size>.
@@ -760,38 +760,38 @@ public:
     CM_BUILDER_API virtual int GetFreeGRFInfo(void *& buffer, unsigned int& size) = 0;
 
     ///Gets declaration id GenVar
-    CM_BUILDER_API virtual int getDeclarationID(VISA_GenVar *decl) = 0;
+    CM_BUILDER_API virtual int getDeclarationID(VISA_GenVar *decl) const = 0;
 
     ///Gets declaration id VISA_AddrVar
-    CM_BUILDER_API virtual int getDeclarationID(VISA_AddrVar *decl) = 0;
+    CM_BUILDER_API virtual int getDeclarationID(VISA_AddrVar *decl) const = 0;
 
     ///Gets declaration id VISA_PredVar
-    CM_BUILDER_API virtual int getDeclarationID(VISA_PredVar *decl) = 0;
+    CM_BUILDER_API virtual int getDeclarationID(VISA_PredVar *decl) const = 0;
 
     ///Gets declaration id VISA_SamplerVar
-    CM_BUILDER_API virtual int getDeclarationID(VISA_SamplerVar *decl) = 0;
+    CM_BUILDER_API virtual int getDeclarationID(VISA_SamplerVar *decl) const = 0;
 
     ///Gets declaration id VISA_SurfaceVar
-    CM_BUILDER_API virtual int getDeclarationID(VISA_SurfaceVar *decl) = 0;
+    CM_BUILDER_API virtual int getDeclarationID(VISA_SurfaceVar *decl) const = 0;
 
     ///Gets declaration id VISA_VMEVar
-    CM_BUILDER_API virtual int getDeclarationID(VISA_VMEVar *decl) = 0;
+    CM_BUILDER_API virtual int getDeclarationID(VISA_VMEVar *decl) const = 0;
 
     ///Gets declaration id VISA_LabelVar
-    CM_BUILDER_API virtual int getDeclarationID(VISA_LabelVar *decl) = 0;
+    CM_BUILDER_API virtual int getDeclarationID(VISA_LabelVar *decl) const = 0;
 
     ///Gets declaration id VISA_FileVar
-    CM_BUILDER_API virtual int getDeclarationID(VISA_FileVar *decl) = 0;
+    CM_BUILDER_API virtual int getDeclarationID(VISA_FileVar *decl) const = 0;
 
     ///Gets visa instruction counter value
-    CM_BUILDER_API virtual unsigned getvIsaInstCount() = 0;
+    CM_BUILDER_API virtual unsigned getvIsaInstCount() const = 0;
 
     //Gets the VISA string format for the variable
-    CM_BUILDER_API virtual std::string getVarName(VISA_GenVar* decl) = 0;
-    CM_BUILDER_API virtual std::string getVarName(VISA_PredVar* decl) = 0;
-    CM_BUILDER_API virtual std::string getVarName(VISA_AddrVar* decl) = 0;
-    CM_BUILDER_API virtual std::string getVarName(VISA_SurfaceVar* decl) = 0;
-    CM_BUILDER_API virtual std::string getVarName(VISA_SamplerVar* decl) = 0;
+    CM_BUILDER_API virtual std::string getVarName(VISA_GenVar* decl) const = 0;
+    CM_BUILDER_API virtual std::string getVarName(VISA_PredVar* decl) const = 0;
+    CM_BUILDER_API virtual std::string getVarName(VISA_AddrVar* decl) const = 0;
+    CM_BUILDER_API virtual std::string getVarName(VISA_SurfaceVar* decl) const = 0;
+    CM_BUILDER_API virtual std::string getVarName(VISA_SamplerVar* decl) const = 0;
 
 };
 
@@ -808,7 +808,7 @@ public:
 
     /// GetFunctionId -- Get function id for a stack call function VISAFunction instance.
     /// This id is used by API client for invoking correct stack function using fcall.
-    CM_BUILDER_API virtual int GetFunctionId(unsigned int& id) = 0;
+    CM_BUILDER_API virtual int GetFunctionId(unsigned int& id) const = 0;
 
     /// getGenOffset -- Get gen binary offset of this function
     CM_BUILDER_API virtual int64_t getGenOffset() const = 0;
