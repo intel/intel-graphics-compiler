@@ -12873,24 +12873,26 @@ void EmitPass::emitVectorBitCast(llvm::BitCastInst* BCI)
                     {
                         if (splitDst)
                         {
-                            // width must be 16 & !dstUniform
-                            // first simd8
+                            // !dstUniform
+                            // first half
+                            SIMDMode mode = m_currShader->m_SIMDSize == SIMDMode::SIMD32 ? SIMDMode::SIMD16 : SIMDMode::SIMD8;
+                            int exSize = mode == SIMDMode::SIMD16 ? 16 : 8;
                             m_encoder->SetSrcRegion(0, srcUniform ? 0 : 1, 1, 0);
                             m_encoder->SetSrcSubReg(0, srcUniform ? (i*N + j) : (width*(i*N + j)));
                             m_encoder->SetDstRegion(N);
                             m_encoder->SetDstSubReg(offset*N*width + j);
-                            m_encoder->SetSimdSize(SIMDMode::SIMD8);
-                            m_encoder->SetMask(EMASK_Q1);
+                            m_encoder->SetSimdSize(mode);
+                            m_encoder->SetMask(mode == SIMDMode::SIMD16 ? EMASK_H1 : EMASK_Q1);
                             m_encoder->Copy(aliasDst, src);
                             m_encoder->Push();
 
-                            // second simd8
+                            // second half
                             m_encoder->SetSrcRegion(0, srcUniform ? 0 : 1, 1, 0);
-                            m_encoder->SetSrcSubReg(0, srcUniform ? (i*N + j) : (width*(i*N + j) + 8));
+                            m_encoder->SetSrcSubReg(0, srcUniform ? (i*N + j) : (width*(i*N + j) + exSize));
                             m_encoder->SetDstRegion(N);
-                            m_encoder->SetDstSubReg(offset*N*width + N * 8 + j);
-                            m_encoder->SetSimdSize(SIMDMode::SIMD8);
-                            m_encoder->SetMask(EMASK_Q2);
+                            m_encoder->SetDstSubReg(offset*N*width + N * exSize + j);
+                            m_encoder->SetSimdSize(mode);
+                            m_encoder->SetMask(mode == SIMDMode::SIMD16 ? EMASK_H2 : EMASK_Q2);
                             m_encoder->Copy(aliasDst, src);
                             m_encoder->Push();
                         }
@@ -12958,24 +12960,26 @@ void EmitPass::emitVectorBitCast(llvm::BitCastInst* BCI)
                     }
                     if (splitSrc)
                     {
-                        // SIMD16 && !srcUniform
-                        // first simd8
+                        // !srcUniform
+                        // first half
+                        SIMDMode mode = m_currShader->m_SIMDSize == SIMDMode::SIMD32 ? SIMDMode::SIMD16 : SIMDMode::SIMD8;
+                        int exSize = mode == SIMDMode::SIMD16 ? 16 : 8;
                         m_encoder->SetSrcRegion(0, N, 1, 0); // = (0, width*N, width, N)
                         m_encoder->SetSrcSubReg(0, i * N * width + j);
                         m_encoder->SetDstSubReg(dstUniform ? offset : (width * offset));
                         m_encoder->SetDstRegion(1);
-                        m_encoder->SetSimdSize(SIMDMode::SIMD8);
-                        m_encoder->SetMask(EMASK_Q1);
+                        m_encoder->SetSimdSize(mode);
+                        m_encoder->SetMask(mode == SIMDMode::SIMD16 ? EMASK_H1 : EMASK_Q1);
                         m_encoder->Copy(m_destination, aliasSrc);
                         m_encoder->Push();
 
-                        // second simd8
+                        // second half
                         m_encoder->SetSrcRegion(0, N, 1, 0); // = (0, width*N, width, N)
-                        m_encoder->SetSrcSubReg(0, i * N * width + N * 8 + j);
-                        m_encoder->SetDstSubReg(dstUniform ? offset : (width * offset + 8));
+                        m_encoder->SetSrcSubReg(0, i * N * width + N * exSize + j);
+                        m_encoder->SetDstSubReg(dstUniform ? offset : (width * offset + exSize));
                         m_encoder->SetDstRegion(1);
-                        m_encoder->SetSimdSize(SIMDMode::SIMD8);
-                        m_encoder->SetMask(EMASK_Q2);
+                        m_encoder->SetSimdSize(mode);
+                        m_encoder->SetMask(mode == SIMDMode::SIMD16 ? EMASK_H2 : EMASK_Q2);
                         m_encoder->Copy(m_destination, aliasSrc);
                         m_encoder->Push();
                     }
