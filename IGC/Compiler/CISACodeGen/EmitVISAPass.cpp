@@ -4625,6 +4625,37 @@ void EmitPass::emitSimdShuffleDown(llvm::Instruction* inst)
     m_encoder->Copy(pCombinedData, pNextData);
     m_encoder->Push();
 
+    // Emit mov with direct addressing when delta is a compile-time constant.
+    if (pDelta->IsImmediate() && m_SimdMode == SIMDMode::SIMD8)
+    {
+        const uint dataIndex = pDelta->GetImmediateValue() % nbElements;
+
+        m_encoder->SetSrcRegion(0, 1, 1, 0);
+        m_encoder->SetSrcSubReg(0, dataIndex);
+        m_encoder->Copy(m_destination, pCombinedData);
+        m_encoder->Push();
+        return;
+    }
+    if (pDelta->IsImmediate() && m_SimdMode == SIMDMode::SIMD16)
+    {
+        const uint dataIndex = pDelta->GetImmediateValue() % nbElements;
+
+        m_encoder->SetSimdSize(SIMDMode::SIMD8);
+        m_encoder->SetSrcRegion(0, 1, 1, 0);
+        m_encoder->SetSrcSubReg(0, dataIndex);
+        m_encoder->Copy(m_destination, pCombinedData);
+        m_encoder->Push();
+
+        m_encoder->SetSimdSize(SIMDMode::SIMD8);
+        m_encoder->SetSrcRegion(0, 1, 1, 0);
+        m_encoder->SetSrcSubReg(0, dataIndex + 8);
+        m_encoder->SetDstSubReg(8);
+        m_encoder->Copy(m_destination, pCombinedData);
+        m_encoder->Push();
+
+        return;
+    }
+
     // Emits below instructions:
     // mov (8) r12.0<1>:w 0x76543210:v {Align1, Q1, NoMask}
     // mov (8) r38.0<1>:ud r12.0<8;8,1>:w {Align1, Q1, NoMask}
