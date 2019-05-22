@@ -1791,13 +1791,6 @@ G4_INST* IR_Builder::createFenceInstruction( uint8_t flushParam, bool commitEnab
 {
 #define L1_FLUSH_MASK 0x40
 
-    const int SWFenceMask = 0x80;
-    bool SWFenceOnly = (flushParam & SWFenceMask) != 0;
-    if (SWFenceOnly)
-    {
-        return createIntrinsicInst(nullptr, Intrinsic::MemFence, 1, nullptr, nullptr, nullptr, nullptr,
-            InstOpt_NoOpt);
-    }
 
     int flushBits = (flushParam >> 1) & 0xF;
     bool L1Flush = (flushParam & L1_FLUSH_MASK) != 0 &&
@@ -1981,8 +1974,22 @@ int IR_Builder::translateVISASyncInst(ISA_Opcode opcode, unsigned int mask)
     case ISA_FENCE:
         {
 #define GLOBAL_MASK 0x20
+            union fenceParam
+            {
+                VISAFenceMask mask;
+                uint8_t data;
+            };
+
+            fenceParam fenceMask;
+            fenceMask.data = mask & 0xFF;
             bool globalFence = (mask & GLOBAL_MASK) == 0;
-            if (VISA_WA_CHECK(m_pWaTable, WADisableWriteCommitForPageFault))
+
+            if (fenceMask.mask.SWFence)
+            {
+                createIntrinsicInst(nullptr, Intrinsic::MemFence, 1, nullptr, nullptr, nullptr, nullptr,
+                    InstOpt_NoOpt);
+            }
+            else if (VISA_WA_CHECK(m_pWaTable, WADisableWriteCommitForPageFault))
             {
                 // write commit does not work under page fault
                 // so we generate a fence without commit, followed by a read surface info to BTI 0

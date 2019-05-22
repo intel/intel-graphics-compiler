@@ -1098,6 +1098,18 @@ public:
   }
 };
 
+struct VISAFenceMask
+{
+    uint8_t commitEnable : 1;
+    uint8_t flushICache : 1;
+    uint8_t flushSCache : 1;
+    uint8_t flushCCache : 1;
+    uint8_t flushRWCache : 1;
+    uint8_t isGlobal : 1;
+    uint8_t flushL1Cache : 1;
+    uint8_t SWFence: 1;
+};
+
 struct VISA3DSamplerOp
 {
     VISASampler3DSubOpCode opcode;
