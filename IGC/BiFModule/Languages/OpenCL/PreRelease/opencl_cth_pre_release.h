@@ -54,6 +54,7 @@ float __attribute__((overloadable)) atomic_cmpxchg(volatile __local float *p, fl
 #define CLK_YVYU_INTEL 0x4078
 #define CLK_VYUY_INTEL 0x4079
 
+#if defined(cl_intel_device_side_avc_motion_estimation)
 // Device side VME not defined in Clang.
 #define CLK_AVC_ME_SEARCH_WINDOW_16x12_RADIUS_INTEL        0x9
 #define CLK_AVC_ME_SEARCH_WINDOW_4x4_RADIUS_INTEL          0x2
@@ -1142,6 +1143,8 @@ intel_sub_group_avc_sic_get_packed_skc_luma_sum_threshold(
 ushort __attribute__((overloadable))
 intel_sub_group_avc_sic_get_inter_raw_sads(
       intel_sub_group_avc_sic_result_t result);
+
+#endif // cl_intel_device_side_avc_motion_estimation
 
 #ifdef cl_intel_device_side_va_enable
 // VA

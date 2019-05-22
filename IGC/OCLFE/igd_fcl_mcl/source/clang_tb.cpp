@@ -1394,13 +1394,14 @@ namespace TC
         if (extensionsFromInternalOptions.size() != 0)
         {
             extensions = extensionsFromInternalOptions;
-            optionsEx += " " + extensionsFromInternalOptions;
         }
         else
         {
             extensions = FormatExtensionsString(m_Extensions);
-            optionsEx += " " + extensions;
         }
+
+        optionsEx += " " + extensions;
+
 
         // get additional -D flags from internal options
         optionsEx += " " + GetCDefinesFromInternalOptions(pInternalOptions);
@@ -1415,7 +1416,12 @@ namespace TC
         }
         if (extensions.find("cl_intel_device_side_avc_motion_estimation") != std::string::npos)
         {
-            optionsEx += " -Dcl_intel_device_side_avc_motion_estimation";
+            // If the user provided -cl-std option we need to add the define only if it's 1.2 and above.
+            // This is because clang will not allow declarations of extension's functions which use avc types otherwise.
+            unsigned int oclStd = GetOclCVersionFromOptions(pInputArgs->options.data(), nullptr, pInputArgs->oclVersion, exceptString);
+            if (oclStd >= 120 || oclStd == 0) {
+              optionsEx += " -Dcl_intel_device_side_avc_motion_estimation";
+            }
         }
         if (extensions.find("cl_intel_64bit_global_atomics_placeholder") != std::string::npos)
         {
