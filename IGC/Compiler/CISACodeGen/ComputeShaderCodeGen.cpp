@@ -365,6 +365,7 @@ void CComputeShader::AllocatePayload()
 
     // Cross-thread constant data.
     AllocateNOSConstants(offset);
+
 }
 
 uint CComputeShader::GetNumberOfId()
