@@ -5904,9 +5904,20 @@ void EmitPass::emitURBRead(llvm::GenIntrinsicInst* inst)
     m_currShader->isInputsPulled = true;
 }
 
-void EmitPass::emitURBReadOutput(QuadEltUnit globalOffset, CVariable* pPerSlotOffsetVar, CVariable* pDest)
+void EmitPass::emitURBReadOutput(llvm::GenIntrinsicInst* inst)
 {
-    const bool hasPerSlotOffsets = pPerSlotOffsetVar != nullptr;
+    CVariable* pPerSlotOffset = nullptr;
+    QuadEltUnit globalOffset(0);
+    if (ConstantInt* offset = dyn_cast<ConstantInt>(inst->getOperand(0)))
+    {
+        globalOffset = QuadEltUnit(int_cast<unsigned>(offset->getZExtValue()));
+    }
+    else
+    {
+        pPerSlotOffset = m_currShader->GetSymbol(inst->getOperand(0));
+    }
+
+    const bool hasPerSlotOffsets = pPerSlotOffset != nullptr;
     // Payload size is just URB handles (1 GRF) or URB handles and per-slot offsets (2 GRFs).
     const Unit<Element> payloadSize(hasPerSlotOffsets ? 2 : 1);
 
@@ -5921,13 +5932,13 @@ void EmitPass::emitURBReadOutput(QuadEltUnit globalOffset, CVariable* pPerSlotOf
     if (hasPerSlotOffsets)
     {
         m_encoder->SetDstSubVar(1);
-        m_encoder->Copy(pPayload, pPerSlotOffsetVar);
+        m_encoder->Copy(pPayload, pPerSlotOffset);
         m_encoder->Push();
     }
 
     constexpr bool eot = false;
     const Unit<Element> messageLength = payloadSize;
-    const Unit<Element> responseLength(pDest->GetNumberElement() / numLanes(m_SimdMode));
+    const Unit<Element> responseLength(m_destination->GetNumberElement() / numLanes(m_SimdMode));
     const uint desc = UrbMessage(
         messageLength.Count(),
         responseLength.Count(),
@@ -5940,7 +5951,7 @@ void EmitPass::emitURBReadOutput(QuadEltUnit globalOffset, CVariable* pPerSlotOf
     const uint exDesc = EU_MESSAGE_TARGET_URB | (eot ? 1 << 5 : 0);
     CVariable* pMessDesc = m_currShader->ImmToVariable(desc, ISA_TYPE_UD);
 
-    m_encoder->Send(pDest, pPayload, exDesc, pMessDesc);
+    m_encoder->Send(m_destination, pPayload, exDesc, pMessDesc);
     m_encoder->Push();
 }
 
@@ -7217,7 +7228,7 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
         emitURBRead(inst);
         break;
     case GenISAIntrinsic::GenISA_URBReadOutput:
-        emitURBReadOutput(QuadEltUnit(0), GetSymbol(inst->getOperand(0)), m_destination);
+        emitURBReadOutput(inst);
         break;
     case GenISAIntrinsic::GenISA_cycleCounter:
         emitcycleCounter(inst);
@@ -7434,13 +7445,6 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
         break;
     case GenISAIntrinsic::GenISA_OutputTessFactors:
         emitHSTessFactors(inst);
-        break;
-    case GenISAIntrinsic::GenISA_DCL_HSPatchConstInputVec:
-    case GenISAIntrinsic::GenISA_HSURBPatchHeaderRead:
-        emitHSPatchConstantInput(inst);
-        break;
-    case GenISAIntrinsic::GenISA_DCL_HSOutputCntrlPtInputVec:
-        emitHSOutputControlPtInput(inst);
         break;
     case GenISAIntrinsic::GenISA_f32tof16_rtz:
         emitf32tof16_rtz(inst);
@@ -12234,26 +12238,6 @@ void EmitPass::emitAluConditionMod(Pattern* aluPattern, llvm::Instruction* alu, 
     m_encoder->Cmp(predicate, dst, temp, m_currShader->ImmToVariable(0, temp->GetType()));
     m_encoder->Push();
     m_destination = dst;
-}
-
-void EmitPass::emitHSPatchConstantInput(llvm::Instruction* pInst)
-{
-    assert(m_currShader->GetShaderType() == ShaderType::HULL_SHADER);
-    CHullShader* hsProgram = static_cast<CHullShader*>(m_currShader);
-    QuadEltUnit attributeOffset(0);
-    CVariable* pPerSlotOffsetVar = nullptr;
-    hsProgram->EmitPatchConstantInput(pInst, attributeOffset, pPerSlotOffsetVar);
-    emitURBReadOutput(attributeOffset, pPerSlotOffsetVar, m_destination);
-}
-
-void EmitPass::emitHSOutputControlPtInput(llvm::Instruction* pInst)
-{
-    assert(m_currShader->GetShaderType() == ShaderType::HULL_SHADER);
-    CHullShader* hsProgram = static_cast<CHullShader*>(m_currShader);
-    QuadEltUnit attributeOffset(0);
-    CVariable* pPerSlotOffsetVar = nullptr;
-    hsProgram->EmitOutputControlPointInput(pInst, attributeOffset, pPerSlotOffsetVar);
-    emitURBReadOutput(attributeOffset, pPerSlotOffsetVar, m_destination);
 }
 
 void EmitPass::emitHSTessFactors(llvm::Instruction* pInst)

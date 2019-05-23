@@ -177,6 +177,7 @@ Imported_Intrinsics = \
     "GenISA_DCL_HSControlPointID": ["int",[],"None"],
     "GenISA_OutputTessControlPoint": ["void",["float","float","float","float","int","int","int"],"None"],
     "GenISA_OutputTessFactors": ["void",["float","float","float","float","float","float"],"None"],
+    # (owordAttributeIndex)->float4
     "GenISA_DCL_HSPatchConstInputVec": ["float4",["int"],"ReadMem"],
     "GenISA_OuterScalarTessFactors": ["void",["int","float"],"None"],
     "GenISA_InnerScalarTessFactors": ["void",["int","float"],"None"],
@@ -184,6 +185,7 @@ Imported_Intrinsics = \
     "GenISA_DCL_DSInputTessFactor": ["float",["int"],"NoMem"],
     "GenISA_DCL_DSCntrlPtInputVec": ["float4",["int","int"],"NoMem"],
     "GenISA_DCL_HSinputVec": ["float4",["int","int"],"NoMem"],
+    # (owordVertexIndex, owordAttributeIndex)->float4
     "GenISA_DCL_HSOutputCntrlPtInputVec": ["float4",["int","int"],"ReadMem"],
     "GenISA_HSURBPatchHeaderRead": ["float8",[],"NoMem"],
     "GenISA_RenderTargetRead": ["float4",["int"],"ReadMem"],

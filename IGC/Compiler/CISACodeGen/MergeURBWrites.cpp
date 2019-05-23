@@ -37,7 +37,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 
-namespace 
+namespace
 {
 
 using namespace llvm;
@@ -48,19 +48,19 @@ class InstWithIndex
 {
 public:
     // Initialize pointer to null and place to -1 to recognize "empty" entries
-    InstWithIndex() : m_inst(nullptr), m_place(-1) 
+    InstWithIndex() : m_inst(nullptr), m_place(-1)
     {
     }
 
     InstWithIndex(CallInst * inst, int place) :
         m_inst(inst),
         m_place(place)
-    {        
+    {
     }
 
     int GetPlace() const { return m_place;}
     CallInst * GetInst() const { return m_inst;}
-    
+
 private:
     CallInst * m_inst;
     int m_place;
@@ -85,17 +85,17 @@ public:
     virtual llvm::StringRef getPassName() const { return "MergeURBWrites"; }
 
 private:
-    /// Stores all URB write instructions in a vector. 
+    /// Stores all URB write instructions in a vector.
     /// Also merges partial (channel granularity) writes to the same offset.
     void FillWriteList(BasicBlock &BB);
 
     // Tries to merge two writes to adjacent offsets into a single instruction.
-    // Does this by going through write list containing stored write instructions 
+    // Does this by going through write list containing stored write instructions
     // in order of offsets and merging adjacent writes.
     void MergeInstructions();
 
     // represents the map (urb index) --> (instruction, instruction index in BB)
-    std::vector<InstWithIndex> m_writeList; 
+    std::vector<InstWithIndex> m_writeList;
     bool m_bbModified;
     static char ID;
 };
@@ -103,7 +103,7 @@ private:
 char MergeURBWrites::ID = 0;
 
 
-/// Returns true if the data is in consecutive dwords and the write can be done 
+/// Returns true if the data is in consecutive dwords and the write can be done
 /// without channel mask.
 bool RequiresChannelMask(unsigned int mask)
 {
@@ -127,12 +127,12 @@ bool MergeURBWrites::doInitialization(Function & F)
     return false;
 }
 
-/// This optimization merges shorter writes to URB to get a smaller number of longer writes 
+/// This optimization merges shorter writes to URB to get a smaller number of longer writes
 /// which is more efficient.
 /// Current implementation can:
 /// 1) merge consecutive writes of length 4 to a single write of length 8
 /// 2) merge writes at the same offset with channel masks
-/// 
+///
 /// The implementation works as follows: we maintain a map (urb offset) --> instruction
 /// (kept as a vector) that gets filled with information taken from URBWrite instructions.
 /// If we encounter two instructions writing at the same offset, we merge channel mask and
@@ -164,9 +164,7 @@ void MergeURBWrites::FillWriteList(BasicBlock &BB)
         if (intrinsic == nullptr) continue;
 
         GenISAIntrinsic::ID IID = intrinsic->getIntrinsicID();
-        if ((IID == GenISAIntrinsic::GenISA_HSURBPatchHeaderRead) ||
-            (IID == GenISAIntrinsic::GenISA_DCL_HSOutputCntrlPtInputVec) ||
-            (IID == GenISAIntrinsic::GenISA_DCL_HSPatchConstInputVec) ||
+        if ((IID == GenISAIntrinsic::GenISA_URBReadOutput) ||
             (IID == GenISAIntrinsic::GenISA_threadgroupbarrier))
         {
             MergeInstructions();
@@ -177,7 +175,6 @@ void MergeURBWrites::FillWriteList(BasicBlock &BB)
         {
             continue;
         }
-
 
         // intrinsic has the format: URB_write (%offset, %mask, %data0, ... , %data7)
         ConstantInt * pOffset = dyn_cast<ConstantInt>(iit->getOperand(0));
@@ -261,12 +258,12 @@ void MergeURBWrites::MergeInstructions()
     for(auto ii = m_writeList.begin(); ii != m_writeList.end() && ii != last; ++ii)
     {
         auto next = std::next(ii);
-        if (ii->GetInst() == nullptr || next->GetInst() == nullptr) 
-        {            
+        if (ii->GetInst() == nullptr || next->GetInst() == nullptr)
+        {
             //nothing to do, no write at current or next offset
             continue;
         }
-        // We have two instructions, merge them by moving operands from the one appearing 
+        // We have two instructions, merge them by moving operands from the one appearing
         // earlier in the BB to the one appearing later and increasing write length.
         //
         // From this (instructions "in order"):
@@ -283,9 +280,9 @@ void MergeURBWrites::MergeInstructions()
         // we need to get this:
         // laterInst   : URBWrite(offset, mask2 | mask1<<4, g0, g1, g2, g3, d0, d1, d2, d3)
         //
-        // Note that earlier, later refers to the placement of the instruction 
-        // in the basic block while ii, next iterators refer to the placement 
-        // in the vector indexed by urb offsets, so 'ii' corresponds to 'offset' 
+        // Note that earlier, later refers to the placement of the instruction
+        // in the basic block while ii, next iterators refer to the placement
+        // in the vector indexed by urb offsets, so 'ii' corresponds to 'offset'
         // and 'next' corresponds to 'offset+1'.
         //
         // determine which instruction is appearing earlier in the BB
@@ -308,23 +305,23 @@ void MergeURBWrites::MergeInstructions()
         for(unsigned int k = 2; k < 6; ++k)
         {
             // move existing operand if necessary
-            laterInst->setOperand(k+displacement, laterInst->getOperand(k)); 
+            laterInst->setOperand(k+displacement, laterInst->getOperand(k));
             // get the new one from the other instruction
             laterInst->setOperand(k+displacement2, earlierInst->getOperand(k));
         }
 
-        // now take the smaller of the two offsets from the instruction in the current slot 
+        // now take the smaller of the two offsets from the instruction in the current slot
         laterInst->setOperand(0, ii->GetInst()->getOperand(0));
         // and update the mask operand
         auto mergedMaskVal = llvm::ConstantInt::get(
-            llvm::Type::getInt32Ty(laterInst->getParent()->getContext()), 
+            llvm::Type::getInt32Ty(laterInst->getParent()->getContext()),
             mergedMask);
         laterInst->setOperand(1, mergedMaskVal);
 
         // earlier instruction is no longer needed
-        earlierInst->eraseFromParent(); 
+        earlierInst->eraseFromParent();
         m_bbModified = true;
-        ++ii; // skip the next slot since we just considered it as 'next' 
+        ++ii; // skip the next slot since we just considered it as 'next'
         URBWrite8.push_back(laterInst == ii->GetInst() ? *ii : *next);
     } // for
 

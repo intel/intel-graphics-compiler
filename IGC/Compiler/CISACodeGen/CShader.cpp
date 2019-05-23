@@ -395,7 +395,7 @@ void CShader::CreateImplicitArgs()
             implictArg.getAlignType(*m_DL),
             isUniform,
             isUniform ? 1 : m_numberInstance);
-   
+
         if (implictArg.getArgType() == ImplicitArg::R0) {
             encoder.GetVISAPredefinedVar(var, PREDEFINED_R0);
         }
@@ -841,7 +841,7 @@ uint CShader::GetNbVectorElementAndMask(llvm::Value* val, uint32_t& mask)
     mask = 0;
     // we don't process vector bigger than 31 elements as the mask has only 32bits
     // If we want to support longer vectors we need to extend the mask size
-    // 
+    //
     // If val has been coalesced, don't prune it.
     if(IsCoalesced(val) || nbElement > 31)
     {
@@ -982,9 +982,8 @@ uint CShader::GetNbVectorElementAndMask(llvm::Value* val, uint32_t& mask)
             GenISAIntrinsic::ID IID = inst->getIntrinsicID();
             if (isLdInstruction(inst) ||
                 IID == GenISAIntrinsic::GenISA_URBRead ||
+                IID == GenISAIntrinsic::GenISA_URBReadOutput ||
                 IID == GenISAIntrinsic::GenISA_DCL_ShaderInputVec ||
-                IID == GenISAIntrinsic::GenISA_DCL_HSPatchConstInputVec ||
-                IID == GenISAIntrinsic::GenISA_DCL_HSOutputCntrlPtInputVec ||
                 IID == GenISAIntrinsic::GenISA_DCL_HSinputVec)
             {
                 // prune without write-mask
@@ -1482,7 +1481,7 @@ CVariable* CShader::GetConstant(llvm::Constant* C, CVariable* dstVar)
             {
                 GetEncoder().SetDstSubReg(k);
             }
-            else 
+            else
             {
                 auto input_size = eTy->getScalarSizeInBits() / 8;
                 Var = GetNewAlias(Var, Var->GetType(), k * input_size * numLanes(m_SIMDSize),0);

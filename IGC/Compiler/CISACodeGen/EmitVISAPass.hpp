@@ -216,7 +216,7 @@ public:
     void emitMediaBlockRectangleRead(llvm::Instruction* inst);
     void emitURBWrite(llvm::GenIntrinsicInst* inst);
     void emitURBRead(llvm::GenIntrinsicInst* inst);
-    void emitURBReadOutput(QuadEltUnit globalOffset, CVariable* pPerSlotOffsetVar, CVariable* pDest);
+    void emitURBReadOutput(llvm::GenIntrinsicInst* inst);
     void emitSampleInstruction(llvm::SampleIntrinsic* inst);
     void emitLdInstruction(llvm::Instruction* inst);
     void emitInfoInstruction(llvm::InfoIntrinsic* inst);
@@ -322,8 +322,6 @@ public:
     void emitGradientXFine(const SSource& source, const DstModifier& modifier);
     void emitGradientYFine(const SSource& source, const DstModifier& modifier);
 
-    void emitHSPatchConstantInput(llvm::Instruction* pInst);
-    void emitHSOutputControlPtInput(llvm::Instruction* pInst);
     void emitHSTessFactors(llvm::Instruction* pInst);
     void emitHSSGV(llvm::GenIntrinsicInst* inst);
     void emitf32tof16_rtz(llvm::GenIntrinsicInst* inst);

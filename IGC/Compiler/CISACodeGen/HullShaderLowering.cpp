@@ -68,6 +68,9 @@ private:
 
 
     void AddURBRead(Value* index, Value* offset, Instruction* prev);
+
+    void AddURBReadOutput(llvm::Value* offset, llvm::Instruction* prev);
+
     llvm::Module* m_module;
 
     std::map<Value*, std::vector<GenIntrinsicInst *>>  m_pControlPointOutputs;
@@ -142,18 +145,21 @@ void HullShaderLowering::LowerIntrinsicInputOutput(Function& F)
         {
             if(GenIntrinsicInst* inst = dyn_cast<GenIntrinsicInst>(II))
             {
-                GenISAIntrinsic::ID IID = inst->getIntrinsicID();
+                const GenISAIntrinsic::ID IID = inst->getIntrinsicID();
+                // In oword units
+                const unsigned int vertexHeaderSize = ctx->getModuleMetaData()->URBInfo.hasVertexHeader ?
+                    (m_hullShaderInfo->GetProperties().m_HasClipCullAsInput ? 4 : 2) : 0;
                 if(IID == GenISAIntrinsic::GenISA_DCL_HSinputVec)
                 {
                     Value* index = nullptr;
                     if (llvm::isa<ConstantInt>(inst->getOperand(0)))
                     {
-                        // In case of direct access of HSInputVec we need to be sure to not use vertex index 
+                        // In case of direct access of HSInputVec we need to be sure to not use vertex index
                         // bigger than number of declared ICP.
                         // This might happen in OGL, when number of Input Control Points might not be known
                         // during first compilation.
                         uint32_t usedIndex = int_cast<unsigned int>(llvm::cast<ConstantInt>(inst->getOperand(0))->getZExtValue());
-                        uint32_t validIndex = 
+                        uint32_t validIndex =
                             iSTD::Min(usedIndex, m_hullShaderInfo->GetProperties().m_pInputControlPointCount - 1);
 
                         index = builder.getInt32(validIndex);
@@ -163,15 +169,11 @@ void HullShaderLowering::LowerIntrinsicInputOutput(Function& F)
                         index = inst->getOperand(0);
                     }
 
-                    unsigned int vertexHeaderOffset = ctx->getModuleMetaData()->URBInfo.hasVertexHeader ?
-                        (m_hullShaderInfo->GetProperties().m_HasClipCullAsInput ? 4 : 2)
-                        : 0;
-
                     builder.SetInsertPoint(inst);
 
                     AddURBRead(
                         index,
-                        builder.CreateAdd(inst->getOperand(1), builder.getInt32(vertexHeaderOffset)),
+                        builder.CreateAdd(inst->getOperand(1), builder.getInt32(vertexHeaderSize)),
                         inst);
                     instructionToRemove.push_back(inst);
                 }
@@ -204,7 +206,7 @@ void HullShaderLowering::LowerIntrinsicInputOutput(Function& F)
                     }
 
                     Value* undef = llvm::UndefValue::get(Type::getFloatTy(F.getContext()));
-                    Value* data[8] = 
+                    Value* data[8] =
                     {
                         inst->getOperand(0),
                         inst->getOperand(1),
@@ -366,6 +368,98 @@ void HullShaderLowering::LowerIntrinsicInputOutput(Function& F)
                     }
                     instructionToRemove.push_back(inst);
                 }
+
+                if (IID == GenISAIntrinsic::GenISA_HSURBPatchHeaderRead ||
+                    IID == GenISAIntrinsic::GenISA_DCL_HSPatchConstInputVec)
+                {
+                    const bool readHeader = IID == GenISAIntrinsic::GenISA_HSURBPatchHeaderRead;
+
+                    llvm::Value* urbOffset = nullptr;
+                    if (!readHeader)
+                    {
+                        // Patch constant output read
+                        llvm::Value* attributeIndex = inst->getOperand(0);
+
+                        if (llvm::ConstantInt* constAttributeIndex = llvm::dyn_cast<llvm::ConstantInt>(attributeIndex))
+                        {
+                            // Constant, so global offset is sufficient in urb read message
+                            urbOffset = builder.getInt32(
+                                int_cast<unsigned int>(constAttributeIndex->getZExtValue()) + vertexHeaderSize);
+                        }
+                        else
+                        {
+                            // Runtime value, so per-slot offset is required in urb read message
+                            urbOffset = builder.CreateAdd(attributeIndex, builder.getInt32(vertexHeaderSize));
+                        }
+                    }
+                    else
+                    {
+                        // Patch header read
+                        urbOffset = builder.getInt32(0);
+                    }
+
+                    AddURBReadOutput(urbOffset, inst);
+                    instructionToRemove.push_back(inst);
+                }
+
+                if (IID == GenISAIntrinsic::GenISA_DCL_HSOutputCntrlPtInputVec)
+                {
+                    /// Returns the size of the output patch constant block in owords
+                    /// Note: The PatchConstantOutput size must be 32B-aligned when rendering is enabled
+                    /// Therefore, the PatchConstantOutput size is also rounded up to a multiple of 2.
+                    auto GetPatchConstantOutputSize = [&]()->QuadEltUnit
+                    {
+                        constexpr unsigned int paychConstantHeaderSize = 2; // in owords
+                        const unsigned int numPatchConstantsPadded = iSTD::Align(
+                            m_hullShaderInfo->GetProperties().m_pMaxPatchConstantSignatureDeclarations, 2);
+                        return QuadEltUnit(paychConstantHeaderSize + numPatchConstantsPadded);
+                    };
+
+                    const unsigned int maxOutputSignatureCount = m_hullShaderInfo->GetProperties().m_pMaxOutputSignatureCount;
+
+                    llvm::Value* const vertexIndex = inst->getOperand(0);
+                    llvm::Value* const attributeIndex = inst->getOperand(1);
+
+                    const unsigned int patchConstantOutputSize = GetPatchConstantOutputSize().Count();
+                    llvm::Value* urbOffset = nullptr;
+
+                    // Compute offset from vertex index
+                    if (llvm::ConstantInt* constVertexIndex = llvm::dyn_cast<llvm::ConstantInt>(vertexIndex))
+                    {
+                        // Constant, so global offset is sufficient in urb read message
+                        urbOffset = builder.getInt32(patchConstantOutputSize +
+                            int_cast<unsigned int>(constVertexIndex->getZExtValue() * maxOutputSignatureCount));
+                    }
+                    else
+                    {
+                        // Runtime value, so per-slot offset is required in urb read message
+                        if (QuadEltUnit(maxOutputSignatureCount).Count() != 1)
+                        {
+                            urbOffset = builder.CreateAdd(builder.getInt32(patchConstantOutputSize),
+                                builder.CreateMul(builder.getInt32(maxOutputSignatureCount), vertexIndex));
+                        }
+                        else
+                        {
+                            urbOffset = builder.CreateAdd(builder.getInt32(patchConstantOutputSize), vertexIndex);
+                        }
+                    }
+
+                    // Compute additional offset coming from attribute index
+                    assert(urbOffset);
+                    if (llvm::isa<llvm::ConstantInt>(urbOffset) && llvm::isa<llvm::ConstantInt>(attributeIndex))
+                    {
+                        urbOffset = builder.getInt32(int_cast<unsigned int>(
+                            llvm::cast<llvm::ConstantInt>(urbOffset)->getZExtValue() +
+                            llvm::cast<llvm::ConstantInt>(attributeIndex)->getZExtValue()));
+                    }
+                    else
+                    {
+                        urbOffset = builder.CreateAdd(urbOffset, attributeIndex);
+                    }
+
+                    AddURBReadOutput(urbOffset, inst);
+                    instructionToRemove.push_back(inst);
+                }
             }
         }
     }
@@ -450,7 +544,7 @@ llvm::GenIntrinsicInst* HullShaderLowering::AddURBWriteControlPointOutputs(Value
     // CPID * maxAttrIndex + maxPatchConstantOutputs + patchHeaderSize + attributeOffset
     // Step1: mulRes = CPID * maxAttrIndex
     llvm::GlobalVariable* pGlobal = m_module->getGlobalVariable("MaxNumOfOutputSignatureEntries");
-    uint32_t m_pMaxOutputSignatureCount = int_cast<uint32_t>(llvm::cast<llvm::ConstantInt>(pGlobal->getInitializer())->getZExtValue());
+    uint32_t maxOutputSignatureCount = int_cast<uint32_t>(llvm::cast<llvm::ConstantInt>(pGlobal->getInitializer())->getZExtValue());
     llvm::Value* controlPtId = prev->getOperand(5);
     llvm::Value* m_pMulRes = nullptr;
     llvm::Value* m_pFinalOffset = nullptr;
@@ -462,15 +556,15 @@ llvm::GenIntrinsicInst* HullShaderLowering::AddURBWriteControlPointOutputs(Value
         outputControlPointid = int_cast<uint32_t>(llvm::cast<llvm::ConstantInt>(controlPtId)->getZExtValue());
     }
 
-    if(QuadEltUnit(m_pMaxOutputSignatureCount).Count() != 1)
+    if(QuadEltUnit(maxOutputSignatureCount).Count() != 1)
     {
         if( isOutputControlPointIdImmed )
         {
-            m_pMulRes = builder.getInt32(outputControlPointid * QuadEltUnit(m_pMaxOutputSignatureCount).Count());
+            m_pMulRes = builder.getInt32(outputControlPointid * QuadEltUnit(maxOutputSignatureCount).Count());
         }
         else
         {
-            m_pMulRes = builder.CreateMul(controlPtId, builder.getInt32(QuadEltUnit(m_pMaxOutputSignatureCount).Count()));
+            m_pMulRes = builder.CreateMul(controlPtId, builder.getInt32(QuadEltUnit(maxOutputSignatureCount).Count()));
         }
     }
 
@@ -493,9 +587,9 @@ llvm::GenIntrinsicInst* HullShaderLowering::AddURBWriteControlPointOutputs(Value
         m_pAddedPatchConstantOutput = builder.CreateAdd(m_pAddedPatchConstantOutput, attributeOffset);
     }
 
-    // Step3: 
+    // Step3:
     // finalOffset = ( mulRes + m_addedPatchConstantOutput )
-    if(m_pMulRes != nullptr) 
+    if(m_pMulRes != nullptr)
     {
         if(isOutputControlPointIdImmed && isAttributeOffsetImmed)
         {
@@ -526,25 +620,25 @@ llvm::GenIntrinsicInst* HullShaderLowering::AddURBWriteControlPointOutputs(Value
     return (llvm::GenIntrinsicInst*)write;
 }
 
-/// Inserts new URBWrite instruction with given mask and arguments before 
-/// instuction 'prev'. 
+/// Inserts new URBWrite instruction with given mask and arguments before
+/// instuction 'prev'.
 /// TODO: This should be a common function for all Lowering passes.
 llvm::GenIntrinsicInst* HullShaderLowering::AddURBWrite(
-    llvm::Value* offset, 
+    llvm::Value* offset,
     llvm::Value* mask,
-    llvm::Value* data[8], 
+    llvm::Value* data[8],
     llvm::Instruction* prev)
 {
-    Value* arguments[] = 
+    Value* arguments[] =
     {
         offset,
-        mask, 
+        mask,
         data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7]
     };
 
     CallInst* write = GenIntrinsicInst::Create(
-        GenISAIntrinsic::getDeclaration(m_module, GenISAIntrinsic::GenISA_URBWrite), 
-        arguments, 
+        GenISAIntrinsic::getDeclaration(m_module, GenISAIntrinsic::GenISA_URBWrite),
+        arguments,
         "",
         prev);
 
@@ -554,15 +648,15 @@ llvm::GenIntrinsicInst* HullShaderLowering::AddURBWrite(
 
 void HullShaderLowering::AddURBRead(Value* index, Value* offset, Instruction* prev)
 {
-    Value* arguments[] = 
-    { 
-        index, 
+    Value* arguments[] =
+    {
+        index,
         offset
     };
 
     Instruction* urbRead = GenIntrinsicInst::Create(
-        GenISAIntrinsic::getDeclaration(m_module, GenISAIntrinsic::GenISA_URBRead), 
-        arguments, 
+        GenISAIntrinsic::getDeclaration(m_module, GenISAIntrinsic::GenISA_URBRead),
+        arguments,
         "",
         prev);
 
@@ -589,6 +683,49 @@ void HullShaderLowering::AddURBRead(Value* index, Value* offset, Instruction* pr
                 Type *int32Ty = Type::getInt32Ty(m_module->getContext());
 
                 VectorToElement(urbRead, data, int32Ty, prev, 4);
+                vec4 = ElementToVector(data, int32Ty, prev, 4);
+            }
+
+            (*I)->replaceUsesOfWith(prev, vec4);
+        }
+    }
+}
+
+void HullShaderLowering::AddURBReadOutput(llvm::Value* offset, llvm::Instruction* prev)
+{
+    llvm::Value* arguments[] =
+    {
+        offset
+    };
+
+    llvm::Instruction* urbReadOutput = llvm::GenIntrinsicInst::Create(
+        llvm::GenISAIntrinsic::getDeclaration(m_module, llvm::GenISAIntrinsic::GenISA_URBReadOutput),
+        arguments,
+        "",
+        prev);
+    urbReadOutput->setDebugLoc(prev->getDebugLoc());
+
+    llvm::Value* vec4 = nullptr;
+    while (!prev->use_empty())
+    {
+        auto I = prev->user_begin();
+        if (ExtractElementInst* elem = dyn_cast<ExtractElementInst>(*I))
+        {
+            Instruction* newExt = ExtractElementInst::Create(urbReadOutput, elem->getIndexOperand(), "", elem);
+            newExt->setDebugLoc(prev->getDebugLoc());
+
+            elem->replaceAllUsesWith(newExt);
+            elem->eraseFromParent();
+        }
+        else
+        {
+            // the vector is used directly, extract the first 4 elements and recreate a vec4
+            if (vec4 == nullptr)
+            {
+                Value *data[4] = { nullptr, nullptr, nullptr, nullptr };
+                Type *int32Ty = Type::getInt32Ty(m_module->getContext());
+
+                VectorToElement(urbReadOutput, data, int32Ty, prev, 4);
                 vec4 = ElementToVector(data, int32Ty, prev, 4);
             }
 
@@ -631,9 +768,9 @@ void CollectHullShaderProperties::gatherInformation(llvm::Function* kernel)
     IGC::CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     if (ctx->getModuleMetaData()->URBInfo.has64BVertexHeaderInput){
         // In case we have no linking information we need the URB header to have a fixed size
-        clipCullAsInput = true; 
+        clipCullAsInput = true;
     }
-    
+
     m_hsProps.m_HasClipCullAsInput = clipCullAsInput;
 }
 
@@ -687,9 +824,9 @@ unsigned int HullShaderProperties::GetMaxInputPushed() const
     const unsigned int maxNumOfHSPushedInputs = 96;
     uint numberOfPatches = (m_pShaderDispatchMode == EIGHT_PATCH_DISPATCH_MODE) ? 8 : 1;
 
-    // Determine how many of input attributes per InputControlPoint (Vertex) can be POTENTIALLY pushed 
+    // Determine how many of input attributes per InputControlPoint (Vertex) can be POTENTIALLY pushed
     // in current dispatch mode for current topology ( InputPatch size ).
-    uint32_t maxNumOfPushedInputAttributesPerICP = 
+    uint32_t maxNumOfPushedInputAttributesPerICP =
         (m_pInputControlPointCount * numberOfPatches > 0)
         ? maxNumOfHSPushedInputs / (m_pInputControlPointCount * numberOfPatches)
         : maxNumOfHSPushedInputs;
@@ -701,7 +838,7 @@ unsigned int HullShaderProperties::GetMaxInputPushed() const
     // They can be pushed only in pairs.
     uint32_t reqNumOfInputAttributesPerICP = iSTD::Align(m_pMaxInputSignatureCount, 2);
 
-    // TODO: reqNumOfInputAttributesPerICP will have to be incremented by size of Vertex Header 
+    // TODO: reqNumOfInputAttributesPerICP will have to be incremented by size of Vertex Header
     // in case of SGV inputs have to be taken into consideration (will be done in next step).
     // reqNumOfInputAttributes += HeaderSize().Count();
 
