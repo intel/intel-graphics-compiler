@@ -299,11 +299,6 @@ void CoalesceSpillFills::coalesceFills(std::list<INST_LIST_ITER>& coalesceableFi
     coalesceableFills.clear();
     auto copyIt = bb->insert(f, coalescedFillDst->getInst());
 
-    // Insert pseudo kill for coalesced range
-    auto pseudoKill = kernel.fg.builder->createInternalInst(nullptr, G4_pseudo_kill, nullptr,
-        false, 1, kernel.fg.builder->createDstRegRegion(*coalescedFillDst), nullptr, nullptr, 0);
-    bb->insert(copyIt, pseudoKill);
-
     //    copyToOldFills(coalescedFillDst, indFills, f, bb, srcCISAOff);
 }
 
@@ -986,35 +981,6 @@ void CoalesceSpillFills::replaceCoalescedOperands(G4_INST* inst)
     }
 }
 
-void CoalesceSpillFills::insertKill(G4_BB* bb, INST_LIST_ITER instIt, std::set<G4_Declare*>& coalescedRangeKills)
-{
-    // Check whether current instruction is first reference of coalesced
-    // spill range. If it is then insert pseudo_kill for coalesced var
-    // before instIt.
-    auto inst = (*instIt);
-    auto dst = inst->getDst();
-    if (dst)
-    {
-        auto topdcl = dst->getTopDcl();
-        if (topdcl)
-        {
-            auto entry = replaceMap.find(topdcl);
-            if (entry != replaceMap.end() &&
-                coalescedRangeKills.find(entry->second.first) == coalescedRangeKills.end())
-            {
-                // This means topdcl is first reference of to-be-replaced
-                // dcl. Insert pseudokill for coalesced dcl here.
-                auto killDst = kernel.fg.builder->createDstRegRegion(Direct,
-                    entry->second.first->getRegVar(), 0, 0, 1, Type_UD);
-                auto kill = kernel.fg.builder->createInternalInst(nullptr,
-                    G4_pseudo_kill, nullptr, false, 1, killDst, nullptr, nullptr, 0);
-                bb->insert(instIt, kill);
-                coalescedRangeKills.insert(entry->second.first);
-            }
-        }
-    }
-}
-
 bool CoalesceSpillFills::allSpillsSameVar(std::list<INST_LIST_ITER>& spills)
 {
     // Return true if all vars in spills list have same dcl
@@ -1310,7 +1276,6 @@ void CoalesceSpillFills::spills()
             instIter++;
         }
 
-        std::set<G4_Declare*> coalescedRangeKills;
         // One pass to replace old fills with coalesced dcl
         for (auto instIt = bb->begin();
             instIt != bb->end();
@@ -1324,8 +1289,6 @@ void CoalesceSpillFills::spills()
                 instIt = bb->erase(instIt);
                 continue;
             }
-
-            insertKill(bb, instIt, coalescedRangeKills);
 
             replaceCoalescedOperands(inst);
             instIt++;

@@ -859,16 +859,12 @@ namespace vISA
             auto samplerDstRgn = kernel.fg.builder->createDstRegRegion(Direct, samplerDst->getRegVar(), 0,
                 0, 1, samplerDst->getElemType());
 
-            auto dupOp = kernel.fg.builder->createInternalInst(nullptr, G4_pseudo_kill, nullptr, false, 1,
-                kernel.fg.builder->duplicateOperand(samplerDstRgn), nullptr, nullptr, 0);
-            newInst.push_back(dupOp);
-
             auto dstMsgDesc = dstInst->getMsgDesc();
             G4_SendMsgDescriptor* newMsgDesc = kernel.fg.builder->createSendMsgDesc(dstMsgDesc->getDesc(), dstMsgDesc->getExtendedDesc(),
                 dstMsgDesc->isDataPortRead(), dstMsgDesc->isDataPortWrite(), kernel.fg.builder->duplicateOperand(dstMsgDesc->getBti()),
                 kernel.fg.builder->duplicateOperand(dstMsgDesc->getSti()));
 
-            dupOp = kernel.fg.builder->createSplitSendInst(nullptr, dstInst->opcode(), dstInst->getExecSize(), samplerDstRgn,
+            auto dupOp = kernel.fg.builder->createSplitSendInst(nullptr, dstInst->opcode(), dstInst->getExecSize(), samplerDstRgn,
                 kernel.fg.builder->duplicateOperand(dstInst->getSrc(0))->asSrcRegRegion(),
                 kernel.fg.builder->duplicateOperand(dstInst->getSrc(1))->asSrcRegRegion(),
                 kernel.fg.builder->duplicateOperand(dstInst->asSendInst()->getMsgDescOperand()), dstInst->getOption(),

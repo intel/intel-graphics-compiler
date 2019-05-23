@@ -515,7 +515,7 @@ int IR_Builder::translateVISAArithmeticDoubleInst(ISA_Opcode opcode, Common_ISA_
     G4_Declare *t0  = getImmDcl(dbl_constant_0, element_size);
     G4_Declare *t1  = getImmDcl(dbl_constant_1, element_size);
 
-    inst = createPseudoKills({ t6, t7, t8, t9, t10, t11, t12, t13, tmpFlag });
+    inst = createPseudoKills({ t6, t7, t8, t9, t10, t11, t12, t13, tmpFlag }, PseudoKillType::Src);
 
     G4_SrcRegRegion tsrc0(Mod_src_undef, Direct, t0->getRegVar(), 0, 0, srcRegionDesc, Type_DF );
     G4_SrcRegRegion tsrc1(Mod_src_undef, Direct, t1->getRegVar(), 0, 0, srcRegionDesc, Type_DF );
@@ -904,7 +904,7 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(ISA_Opcode opcode, C
     G4_Declare *t2 = getImmDcl(flt_constant_0, 8);
     G4_Declare *t5 = getImmDcl(flt_constant_1, 8);
 
-    inst = createPseudoKills({ t1, t4, t6, t8, t9, t10, t11, tmpFlag });
+    inst = createPseudoKills({ t1, t4, t6, t8, t9, t10, t11, tmpFlag }, PseudoKillType::Src);
 
     // those are for drcp
     G4_SrcRegRegion valueOneScalarReg(Mod_src_undef, Direct, t2->getRegVar(), 0, 0, getRegionScalar(), Type_F );
@@ -1202,7 +1202,7 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(ISA_Opcode opcode, Com
     G4_Declare* t0 = getImmDcl(flt_constant_0, 8);
     G4_Declare *t8 = getImmDcl(flt_constant_05, 8);
 
-    inst = createPseudoKills ({ t6, t7, t9, t10, t11, tmpFlag });
+    inst = createPseudoKills ({ t6, t7, t9, t10, t11, tmpFlag }, PseudoKillType::Src);
 
     G4_SrcRegRegion* src0RR = operandToDirectSrcRegRegion(*this, src0Opnd, element_size);
 
@@ -1500,7 +1500,7 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(ISA_Opcode opcode, Common_
     G4_Declare *t10 = createTempVarWithNoSpill(element_size, Type_DF, reg_align, Any);
     G4_Declare *t11 = createTempVarWithNoSpill(element_size, Type_DF, reg_align, Any);
 
-    inst = createPseudoKills({t6, t7, t8, t9, t10, t11, flagReg });
+    inst = createPseudoKills({t6, t7, t8, t9, t10, t11, flagReg }, PseudoKillType::Src);
 
     G4_SrcRegRegion* src0RR = operandToDirectSrcRegRegion(*this, src0Opnd, element_size);
 
@@ -10169,8 +10169,8 @@ int IR_Builder::translateVISALifetimeInst(uint8_t properties, G4_Operand* var)
     if((properties & 0x1) == LIFETIME_START)
     {
         G4_DstRegRegion* varDstRgn = createDstRegRegion(Direct, var->getBase(), 0, 0, 1, Type_UD);
-
-        createInst(NULL, G4_pseudo_kill, NULL, false, 1, varDstRgn, NULL, NULL, 0, 0);
+        createIntrinsicInst(nullptr, Intrinsic::PseudoKill, 1, varDstRgn, createImm((unsigned int)PseudoKillType::Src), 
+            nullptr, nullptr, InstOpt_WriteEnable);
     }
     else
     {

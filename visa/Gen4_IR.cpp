@@ -4332,7 +4332,7 @@ void printRegVarOff(std::ostream&  output,
                         //transform ArfSubRegNum to unit of thisOpSize
                         if (thisOpSize != declOpSize)
                         {
-                            if (opnd->getInst()->opcode() != G4_pseudo_kill)
+                            if (!opnd->getInst()->isPseudoKill())
                             {
                                 MUST_BE_TRUE((ArfSubRegNum * declOpSize) % thisOpSize == 0,
                                     ERROR_DATA_RANGE("ARF sub-register number"));
@@ -6957,7 +6957,7 @@ void G4_INST::computeRightBound(G4_Operand* opnd)
 
             done = true;
         }
-        else if( done == false && (op == G4_pseudo_kill || isPseudoUse()) )
+        else if( done == false && (isPseudoKill() || isPseudoUse()) )
         {
             // pseudo kills/use write/read entire variable
             G4_Declare* topdcl = opnd->getBase()->asRegVar()->getDeclare()->getRootDeclare();

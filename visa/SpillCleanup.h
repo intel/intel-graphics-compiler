@@ -63,7 +63,6 @@ namespace vISA
         std::map<G4_Declare*, std::pair<G4_Declare*, unsigned int>> replaceMap;
 
         void replaceCoalescedOperands(G4_INST*);
-        void insertKill(G4_BB*, INST_LIST_ITER, std::set<G4_Declare*>&);
 
         void dumpKernel();
         void dumpKernel(unsigned int v1, unsigned int v2);

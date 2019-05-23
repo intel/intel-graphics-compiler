@@ -101,6 +101,7 @@ namespace vISA
         void printLocalLiveIntervals(G4_BB* bb, std::vector<LocalLiveRange*>& liveIntervals);
         void printInputLiveIntervals();
         bool countLiveIntervals();
+        void clearStaleLiveRanges();
         
         // scratch fields used for parameter passing
         G4_BB* curBB = nullptr;

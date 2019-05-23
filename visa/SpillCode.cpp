@@ -203,9 +203,6 @@ void SpillManager::genRegMov(G4_BB* bb,
                                 1,
                                 type);
 
-            G4_DstRegRegion* dstOpnd = builder.createDstRegRegion(Direct, dst, 0, dSubRegOff, 1, type);
-            builder.createInst(NULL, G4_pseudo_kill, NULL, false, 1, dstOpnd, NULL, NULL, 0);
-
             if (execSize != kernel.getSimdSize())
             {
                 // NoMask must be used in this case

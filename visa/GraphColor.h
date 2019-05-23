@@ -848,7 +848,7 @@ namespace vISA
         void updateDefSet(std::set<G4_Declare*>& defs, G4_Declare* referencedDcl);
         void detectUndefinedUses(LivenessAnalysis& liveAnalysis, G4_Kernel& kernel);
         void markBlockLocalVar(G4_RegVar* var, unsigned bbId);
-        void markBlockLocalVars(bool doLocalRA);
+        void markBlockLocalVars();
         void computePhyReg();
         void fixAlignment();
 
@@ -1023,6 +1023,15 @@ namespace vISA
             auto dclid = dcl->getDeclId();
             resize(dclid);
             vars[dclid].localLR = nullptr;
+        }
+
+        void clearStaleLiveRanges()
+        {
+            for (auto dcl : kernel.Declares)
+            {
+                setBBId(dcl, UINT_MAX);
+                resetLocalLR(dcl);
+            }
         }
 
         void recordRef(G4_Declare* dcl)
@@ -1270,7 +1279,7 @@ namespace vISA
         void addCalleeSavePseudoCode();
         void addStoreRestoreForFP();
         void setABIForStackCallFunctionCalls();
-        void markGraphBlockLocalVars(bool doLocalRA);
+        void markGraphBlockLocalVars();
         void verifyRA(LivenessAnalysis & liveAnalysis);
         void resetGlobalRAStates();
         void restoreStatePostLRA();

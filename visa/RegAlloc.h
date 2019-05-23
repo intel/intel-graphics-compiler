@@ -406,12 +406,6 @@ class LivenessAnalysis
 
     vISA::Mem_Manager m;
 
-    void computeGenKill(G4_BB* bb,
-        BitSet& def_out,
-        BitSet& use_in,
-        BitSet& use_gen,
-        BitSet& use_kill);
-
     void computeGenKillandPseudoKill(G4_BB* bb,
         BitSet& def_out,
         BitSet& use_in,
@@ -470,7 +464,7 @@ public:
     LivenessAnalysis(GlobalRA& gra, uint8_t kind);
     LivenessAnalysis(GlobalRA& gra, unsigned char kind, bool verifyRA, bool forceRun = false);
     ~LivenessAnalysis();
-    void computeLiveness(bool computePseudoKill);
+    void computeLiveness();
     bool isLiveAtEntry(G4_BB* bb, unsigned var_id) const;
     bool isLiveAtExit(G4_BB* bb, unsigned var_id) const;
     bool isAddressSensitive (unsigned num) const  // returns true if the variable is address taken and also has indirect access

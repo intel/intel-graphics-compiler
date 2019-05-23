@@ -605,7 +605,7 @@ public:
     G4_DstRegRegion* getDst() const { return dst; }
     bool supportsNullDst() const;
 
-    bool isPseudoKill() const { return op == G4_pseudo_kill; }
+    bool isPseudoKill() const;
     bool isLifeTimeEnd() const { return op == G4_pseudo_lifetime_end; }
     bool isMov() const { return G4_Inst_Table[op].instType == InstTypeMov; }
     bool isLogic() const { return G4_Inst_Table[op].instType == InstTypeLogic; }
@@ -1350,6 +1350,14 @@ public:
 
 
 }
+
+enum PseudoKillType
+{
+    FromLiveness = 1,
+    Src = 2,
+    Other = 3
+};
+
 // a special intrinsic instruction for any pseudo operations. An intrinsic inst has the following characteristics
 // -- it is modeled as a call to some unknown function
 // -- 1 dst and up to 3 srcs are allowed for the intrinsic
@@ -1363,6 +1371,7 @@ enum class Intrinsic
     Wait,
     Use,
     MemFence,
+    PseudoKill,
     NumIntrinsics
 };
 
@@ -1397,7 +1406,8 @@ static const IntrinsicInfo G4_Intrinsics[(int)Intrinsic::NumIntrinsics] =
     //  id                  name            numDst  numSrc  loweredBy               temp
     {Intrinsic::Wait,       "wait",         0,      0,      Phase::Optimizer,       { 0, 0, 0, false, false } },
     {Intrinsic::Use,        "use",          0,      1,      Phase::Scheduler,       { 0, 0, 0, false, false } },
-    {Intrinsic::MemFence,   "mem_fence",    0,      0,      Phase::BinaryEncoding,  { 0, 0, 0, false, false } }
+    {Intrinsic::MemFence,   "mem_fence",    0,      0,      Phase::BinaryEncoding,  { 0, 0, 0, false, false } },
+    {Intrinsic::PseudoKill, "pseudo_kill",  1,      1,      Phase::RA,              { 0, 0, 0, false, false} }
 };
 
 namespace vISA
@@ -3740,6 +3750,11 @@ inline int G4_INST::getNumSrc() const
 inline bool G4_INST::isPseudoUse() const
 {
     return isIntrinsic() && asIntrinsicInst()->getIntrinsicId() == Intrinsic::Use;
+}
+
+inline bool G4_INST::isPseudoKill() const
+{
+    return isIntrinsic() && asIntrinsicInst()->getIntrinsicId() == Intrinsic::PseudoKill;
 }
 
 inline const char* G4_INST::getLabelStr() const

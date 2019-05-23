@@ -1917,10 +1917,6 @@ SpillManagerGMRF::initMHeader (
         }
     }
 
-    G4_DstRegRegion* dstOpnd = builder_->createDstRegRegion(Direct, mRangeDcl->getRegVar(), 0, 0, 1, Type_UD);
-    auto newInst = builder_->createInst ( NULL, G4_pseudo_kill, NULL, false, 1, dstOpnd, NULL, NULL, 0 );
-    newInst->setCISAOff(curInst->getCISAOff());
-
     G4_DstRegRegion * mHeaderInputDstRegion =
         createMHeaderInputDstRegion (mRangeDcl->getRegVar ());
     G4_SrcRegRegion * inputPayload = createInputPayloadSrcRegion ();
@@ -2012,10 +2008,6 @@ SpillManagerGMRF::initMHeader (
             return mRangeDcl;
         }
     }
-
-    G4_DstRegRegion* dstOpnd = builder_->createDstRegRegion(Direct, mRangeDcl->getRegVar(), 0, 0, 1, Type_UD);
-    auto newInst = builder_->createInst ( NULL, G4_pseudo_kill, NULL, false, 1, dstOpnd, NULL, NULL, 0 );
-    newInst->setCISAOff(curInst->getCISAOff());
 
     G4_DstRegRegion * mHeaderInputDstRegion =
         createMHeaderInputDstRegion (mRangeDcl->getRegVar ());
@@ -2888,9 +2880,6 @@ void SpillManagerGMRF::createSpill(
             // mov (1) H0.2<1>:ud offset:uw {NoMask}
             // also add a psuedo kill to make sure the header's life range is properly terminated
             sendSrc0 = builder_->createDeclareNoLookup("Spill_Header", G4_GRF, 8, 1, Type_UD);
-            G4_DstRegRegion* psuedoKill = builder_->Create_Dst_Opnd_From_Dcl(sendSrc0, 1);
-            auto newInst = builder_->createInst(nullptr, G4_pseudo_kill, nullptr, false, 1, psuedoKill, nullptr, nullptr, InstOpt_NoOpt);
-            newInst->setCISAOff(curInst->getCISAOff());
 
             G4_DstRegRegion* dst = builder_->createDstRegRegion(Direct, sendSrc0->getRegVar(), 0, 2,
                 1, Type_UD);
@@ -3153,9 +3142,6 @@ SpillManagerGMRF::createFillSendInstr (
     G4_SrcRegRegion * payload = builder_->createSrcRegRegion(Mod_src_undef, Direct,
         mRangeDcl->getRegVar(), 0, 0, builder_->getRegionStride1(), Type_UD);
 
-    G4_DstRegRegion* dstOpnd = builder_->createDstRegRegion(Direct, fillRangeDcl->getRegVar(), 0, 0, 1, Type_UD);
-    builder_->createInst(NULL, G4_pseudo_kill, NULL, false, 1, dstOpnd, NULL, NULL, 0);
-
     return createSendInst ((unsigned char) execSize, postDst, payload, messageDescImm, SFID::DP_DC, false, InstOpt_WriteEnable);
 }
 
@@ -3194,9 +3180,6 @@ SpillManagerGMRF::createFillSendInstr (
 
     G4_SrcRegRegion * payload = builder_->createSrcRegRegion(Mod_src_undef, Direct,
         mRangeDcl->getRegVar(), 0, 0, builder_->getRegionStride1(), Type_UD);
-
-    G4_DstRegRegion* dstOpnd = builder_->createDstRegRegion(Direct, fillRangeDcl->getRegVar(), 0, 0, 1, Type_UD);
-    builder_->createInst(NULL, G4_pseudo_kill, NULL, false, 1, dstOpnd, NULL, NULL, 0);
 
     return createSendInst ((unsigned char) execSize, postDst, payload, messageDescImm, SFID::DP_DC, false, InstOpt_WriteEnable);
 }
@@ -3262,9 +3245,6 @@ void SpillManagerGMRF::createFill(
         // mov (1) H0.2<1>:ud offset:uw {NoMask}
         // also create a pseudo kill so that the header's life range is properly terminated
         sendSrc = builder_->createDeclareNoLookup("Fill_Header", G4_GRF, 8, 1, Type_UD);
-        G4_DstRegRegion* psuedoKill = builder_->Create_Dst_Opnd_From_Dcl(sendSrc, 1);
-        auto newInst = builder_->createInst(nullptr, G4_pseudo_kill, nullptr, false, 1, psuedoKill, nullptr, nullptr, InstOpt_NoOpt);
-        newInst->setCISAOff(curInst->getCISAOff());
         G4_DstRegRegion* dst = builder_->createDstRegRegion(Direct, sendSrc->getRegVar(), 0, 2,
             1, Type_UD);
         G4_Imm* imm = builder_->createImm(varOffset, Type_UW);
@@ -3284,10 +3264,6 @@ void SpillManagerGMRF::createFill(
     }
 
     assert(sendSrc != nullptr);
-    //
-    // add pseudo-kill to limit fill dst's life range (why is this necessary?)
-    G4_DstRegRegion* dstOpnd = builder_->createDstRegRegion(Direct, fillDcl->getRegVar(), 0, 0, 1, Type_UD);
-    builder_->createInst(NULL, G4_pseudo_kill, NULL, false, 1, dstOpnd, NULL, NULL, 0);
 
     G4_DstRegRegion * postDst = builder_->createDstRegRegion(
         Direct, fillDcl->getRegVar(), (short)fillRegOff, 0, 1, Type_UW);
@@ -3604,11 +3580,7 @@ SpillManagerGMRF::insertSpillRangeCode (
     }
     else
     {
-        INST_LIST::iterator pseudoKillPos = spilledInstIter;
-        G4_DstRegRegion* dstOpnd = builder_->createDstRegRegion(Direct, replacementRangeDcl->getRegVar(), 0, 0, 1, Type_UD);
-        auto newInst = builder_->createInst(NULL, G4_pseudo_kill, NULL, false, 1, dstOpnd, NULL, NULL, 0);
-        newInst->setCISAOff(curInst->getCISAOff());
-        bb->splice(pseudoKillPos, builder_->instList);
+        bb->splice(spilledInstIter, builder_->instList);
     }
 
     return nextIter;
@@ -3691,7 +3663,7 @@ SpillManagerGMRF::insertFillGRFRangeCode (
         bb->erase(filledInstIter);
         fillSendInst->setDest(dstRegion);
         G4_INST* prevInst = (*prevIter);
-        if (prevInst->opcode() == G4_pseudo_kill &&
+        if (prevInst->isPseudoKill() &&
             GetTopDclFromRegRegion(prevInst->getDst()) == fillRangeDcl)
         {
             prevInst->setDest(builder_->createDstRegRegion(Direct, GetTopDclFromRegRegion(dstRegion)->getRegVar(), 0, 0, 1, Type_UD));
@@ -3848,10 +3820,6 @@ void SpillManagerGMRF::insertAddrTakenSpillAndFillCode( G4_Kernel* kernel, G4_BB
                 temp->getRegVar()->setPhyReg(builder_->phyregpool.getGreg(spillRegOffset_), 0);
                 spillRegOffset_ += numrows;
             }
-
-            G4_DstRegRegion* dstOpnd = builder_->createDstRegRegion(Direct, temp->getRegVar(), 0, 0, 1, Type_UD);
-            auto newInst = builder_->createInternalInst(NULL, G4_pseudo_kill, NULL, false, 1, dstOpnd, NULL, NULL, 0);
-            bb->insert(inst_it, newInst);
 
             if( numrows > 1 || (lr->getDcl()->getNumElems() * lr->getDcl()->getElemSize() == 32) )
             {

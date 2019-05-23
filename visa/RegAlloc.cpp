@@ -535,6 +535,29 @@ LivenessAnalysis::~LivenessAnalysis()
     {
         it.second->~BitSet();
     }
+
+    // Remove liveness inserted pseudo kills
+    for (auto bbIt = fg.begin(); bbIt != fg.end(); ++bbIt)
+    {
+        auto bb = (*bbIt);
+        for (auto instIt = bb->begin(); instIt != bb->end();)
+        {
+            auto inst = (*instIt);
+            if (!inst->isPseudoKill())
+            {
+                ++instIt;
+                continue;
+            }
+            auto src0 = inst->getSrc(0);
+            MUST_BE_TRUE(src0 && src0->isImm(), "expecting src0 immediate for pseudo kill");
+            if (src0->asImm()->getImm() == PseudoKillType::FromLiveness)
+            {
+                instIt = bb->erase(instIt);
+                continue;
+            }
+            ++instIt;
+        }
+    }
 }
 
 bool LivenessAnalysis::livenessCandidate(G4_Declare* decl, bool verifyRA)
@@ -741,7 +764,7 @@ void LivenessAnalysis::detectNeverDefinedVarRows()
 // uses of reg vars are anticipated, which tell use the uses of reg vars.Def and Use vectors encapsulate the liveness
 // of reg vars.
 //
-void LivenessAnalysis::computeLiveness(bool computePseudoKill)
+void LivenessAnalysis::computeLiveness()
 {
     //
     // no reg var is selected, then no need to compute liveness
@@ -819,15 +842,9 @@ void LivenessAnalysis::computeLiveness(bool computePseudoKill)
     {
         G4_BB * bb = *it;
         unsigned id = bb->getId();
-        if (computePseudoKill)
-        {
-            computeGenKillandPseudoKill((*it), def_out[id], use_in[id], use_gen[id], use_kill[id]);
-        }
-        else
-        {
-            computeGenKill((*it), def_out[id], use_in[id], use_gen[id], use_kill[id]);
-        }
-
+        
+        computeGenKillandPseudoKill((*it), def_out[id], use_in[id], use_gen[id], use_kill[id]);
+        
         //
         // exit block: mark output parameters live
         //
@@ -1906,207 +1923,6 @@ void LivenessAnalysis::footprintSrc(G4_INST* i,
     opnd->updateFootPrint(*srcfootprint, false);
 }
 
-void LivenessAnalysis::computeGenKill(G4_BB* bb,
-    BitSet& def_out,
-    BitSet& use_in,
-    BitSet& use_gen,
-    BitSet& use_kill)
-{
-    //
-    // Mark each fcall as using all globals and arg pre-defined var
-    //
-    if (bb->isEndWithFCall() && (selectedRF & G4_GRF))
-    {
-        for (auto globals = fileScopeVars.begin(), end = fileScopeVars.end();
-             globals != end;
-             globals++)
-        {
-            use_gen.set((*globals)->getId(), true);
-            use_kill.set((*globals)->getId(), true);
-            def_out.set((*globals)->getId(), true);
-        }
-
-        G4_Declare* arg = fg.builder->getStackCallArg();
-        G4_Declare* ret = fg.builder->getStackCallRet();
-
-        G4_FCALL* fcall = fg.builder->getFcallInfo(bb->back());
-        MUST_BE_TRUE(fcall != NULL, "fcall info not found");
-
-        // arg var is a use and a kill at each fcall
-        if (fcall->getArgSize() != 0)
-        {
-            use_gen.set(arg->getRegVar()->getId(), true);
-        }
-        use_kill.set(arg->getRegVar()->getId(), true);
-
-        // ret var is a kill at each fcall
-        use_kill.set(ret->getRegVar()->getId(), true);
-        if (fcall->getRetSize() != 0)
-        {
-            def_out.set(ret->getRegVar()->getId(), true);
-        }
-    }
-
-    for (INST_LIST::reverse_iterator rit = bb->rbegin(), rend = bb->rend(); rit != rend; ++rit)
-    {
-        G4_INST* i = (*rit);
-        G4_DstRegRegion* dst = i->getDst();
-
-        if (i->opcode() == G4_pseudo_lifetime_end)
-        {
-            continue;
-        }
-
-        if (dst != NULL)
-        {
-            G4_DstRegRegion* dstrgn = dst;
-
-            if (dstrgn->getBase()->isRegAllocPartaker())
-            {
-                G4_Declare* topdcl = GetTopDclFromRegRegion(dstrgn);
-                unsigned id = topdcl->getRegVar()->getId();
-
-                if (i->opcode() == G4_pseudo_kill)
-                {
-                    // Mark kill, reset gen
-                    use_kill.set(id, true);
-                    use_gen.set(id, false);
-
-                    continue;
-                }
-
-                if (dstrgn->getRegAccess() == Direct)
-                {
-                    def_out.set(id, true);
-                    //
-                    // if the inst writes the whole region the var declared, we set use_kill
-                    // so that use of var will not pass through (i.e., var's interval starts
-                    // at this instruction.
-                    //
-                    if (writeWholeRegion(bb, i, dstrgn, fg.builder->getOptions()))
-                    {
-                        use_kill.set(id, true);
-                        use_gen.set(id, false);
-                    }
-                    else
-                    {
-                        use_gen.set(id, true);
-                    }
-                }
-                else
-                {
-                    use_gen.set(id, true);
-                }
-            }
-        }
-
-        //
-        // process each source operand
-        //
-        for (unsigned j = 0; j < G4_MAX_SRCS; j++)
-        {
-            G4_Operand* src = i->getSrc(j);
-
-            if (src == NULL)
-            {
-                continue;
-            }
-            if (src->isSrcRegRegion())
-            {
-                G4_Declare* topdcl = GetTopDclFromRegRegion(src);
-                G4_VarBase* base = (topdcl != NULL ? topdcl->getRegVar() :
-                    src->asSrcRegRegion()->getBase());
-
-                if (base->isRegAllocPartaker())
-                {
-                    use_gen.set(((G4_RegVar*)base)->getId(), true);
-                }
-
-                if ((selectedRF & G4_GRF) && src->getRegAccess() == IndirGRF)
-                {
-                    int idx = 0;
-                    G4_RegVar* grf;
-                    G4_Declare* topdcl = GetTopDclFromRegRegion(src);
-
-                    while ((grf = pointsToAnalysis.getPointsTo(topdcl->getRegVar(), idx++)) != NULL)
-                    {
-                        // grf is a variable that src potentially points to
-                        unsigned int id = grf->getId();
-                        use_gen.set(id, true);
-                    }
-                }
-            }
-            //
-            // treat the addr expr as both a use and a partial def
-            //
-            else if (src->isAddrExp() && // (&BLK)
-                ((G4_AddrExp*)src)->getRegVar()->isRegAllocPartaker() &&
-                ((G4_AddrExp*)src)->getRegVar()->isSpilled() == false)
-            {
-                unsigned srcId = ((G4_AddrExp*)src)->getRegVar()->getId();
-                use_gen.set(srcId, true);
-                def_out.set(srcId, true);
-            }
-        }
-
-        //
-        // Process condMod
-        //
-        G4_CondMod* mod = i->getCondMod();
-        if (mod != NULL) {
-            G4_VarBase *flagReg = mod->getBase();
-            if (flagReg != NULL)
-            {
-                if (flagReg->asRegVar()->isRegAllocPartaker())
-                {
-                    G4_Declare* topdcl = flagReg->asRegVar()->getDeclare();
-                    MUST_BE_TRUE(topdcl->getAliasDeclare() == NULL, "Invalid alias flag decl.");
-                    unsigned id = topdcl->getRegVar()->getId();
-
-                    def_out.set(id, true);
-
-                    if (writeWholeRegion(bb, i, flagReg, fg.builder->getOptions()))
-                    {
-                        use_kill.set(id, true);
-                        use_gen.set(id, false);
-                    }
-                    else
-                    {
-                        use_gen.set(id, true);
-                    }
-                }
-            }
-            else
-            {
-                MUST_BE_TRUE((i->opcode() == G4_sel ||
-                    i->opcode() == G4_csel) &&
-                    i->getCondMod() != NULL,
-                    "Invalid CondMod");
-            }
-        }
-
-        //
-        // Process predicate
-        //
-        G4_Predicate* predicate = i->getPredicate();
-        if (predicate != NULL) {
-            G4_VarBase *flagReg = predicate->getBase();
-            MUST_BE_TRUE(flagReg->asRegVar()->getDeclare()->getAliasDeclare() == NULL, "Invalid alias flag decl.");
-            if (flagReg->asRegVar()->isRegAllocPartaker())
-            {
-                use_gen.set(((G4_RegVar*)flagReg)->getId(), true);
-            }
-        }
-    }
-
-    //
-    // initialize use_in
-    //
-    use_in = use_gen;
-
-    return;
-}
-
 void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
                                                    BitSet& def_out,
                                                    BitSet& use_in,
@@ -2179,7 +1995,7 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
                 G4_Declare* topdcl = GetTopDclFromRegRegion(dstrgn);
                 unsigned id = topdcl->getRegVar()->getId();
 
-                if (i->opcode() == G4_pseudo_kill)
+                if (i->isPseudoKill())
                 {
                     // Mark kill, reset gen
                     use_kill.set(id, true);
@@ -2510,7 +2326,7 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
                     if (nextIt != bb->rend())
                     {
                         G4_INST* nextInst = (*nextIt);
-                        if (nextInst->opcode() == G4_pseudo_kill)
+                        if (nextInst->isPseudoKill())
                         {
                             G4_DstRegRegion* nextDst = nextInst->getDst();
 
@@ -2601,7 +2417,7 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
         {
             --iterToInsert;
         } while ((*iterToInsert)->isPseudoKill());
-        G4_INST* killInst = fg.builder->createPseudoKill(pseudoKill.first);
+        G4_INST* killInst = fg.builder->createPseudoKill(pseudoKill.first, PseudoKillType::FromLiveness);
         bb->insert(iterToInsert, killInst);
     }
 
@@ -2988,7 +2804,7 @@ void GlobalRA::markBlockLocalVar(G4_RegVar* var, unsigned bbId)
     }
 }
 
-void GlobalRA::markBlockLocalVars(bool doLocalRA)
+void GlobalRA::markBlockLocalVars()
 {
     for (auto bb : kernel.fg)
     {
@@ -3014,17 +2830,15 @@ void GlobalRA::markBlockLocalVars(bool doLocalRA)
                         {
                             topdcl->setIsRefInSendDcl(true);
                         }
-                        if (!doLocalRA || dst->isFlag() || dst->isAddress())
+
+                        LocalLiveRange* lr = GetOrCreateLocalLiveRange(topdcl);
+                        unsigned int startIdx;
+                        if (lr->getFirstRef(startIdx) == NULL)
                         {
-                            LocalLiveRange* lr = GetOrCreateLocalLiveRange(topdcl);
-                            unsigned int startIdx;
-                            if (lr->getFirstRef(startIdx) == NULL)
-                            {
-                                lr->setFirstRef(inst, 0);
-                            }
-                            lr->recordRef(bb);
-                            recordRef(topdcl);
+                            lr->setFirstRef(inst, 0);
                         }
+                        lr->recordRef(bb);
+                        recordRef(topdcl);
                     }
                 }
             }
@@ -3077,16 +2891,13 @@ void GlobalRA::markBlockLocalVars(bool doLocalRA)
                                 topdcl->setIsRefInSendDcl(true);
                             }
 
-                            if (!doLocalRA || src->isFlag() || src->isAddress())
-                            {
-                                LocalLiveRange* lr = GetOrCreateLocalLiveRange(topdcl);
+                            LocalLiveRange* lr = GetOrCreateLocalLiveRange(topdcl);
 
-                                lr->recordRef(bb);
-                                recordRef(topdcl);
-                                if (inst->isEOT())
-                                {
-                                    lr->markEOT();
-                                }
+                            lr->recordRef(bb);
+                            recordRef(topdcl);
+                            if (inst->isEOT())
+                            {
+                                lr->markEOT();
                             }
                         }
                     }
@@ -3096,18 +2907,15 @@ void GlobalRA::markBlockLocalVars(bool doLocalRA)
                     G4_RegVar* addExpVar = src->asAddrExp()->getRegVar();
                     markBlockLocalVar(addExpVar, bb->getId());
 
-                    if (!doLocalRA)
-                    {
-                        G4_Declare* topdcl = addExpVar->getDeclare();
-                        while (topdcl->getAliasDeclare() != NULL)
-                            topdcl = topdcl->getAliasDeclare();
-                        MUST_BE_TRUE(topdcl != NULL, "Top dcl was null for addr exp opnd");
+                    G4_Declare* topdcl = addExpVar->getDeclare();
+                    while (topdcl->getAliasDeclare() != NULL)
+                        topdcl = topdcl->getAliasDeclare();
+                    MUST_BE_TRUE(topdcl != NULL, "Top dcl was null for addr exp opnd");
 
-                        LocalLiveRange* lr = GetOrCreateLocalLiveRange(topdcl);
-                        lr->recordRef(bb);
-                        lr->markIndirectRef();
-                        recordRef(topdcl);
-                    }
+                    LocalLiveRange* lr = GetOrCreateLocalLiveRange(topdcl);
+                    lr->recordRef(bb);
+                    lr->markIndirectRef();
+                    recordRef(topdcl);
                 }
             }
 
@@ -3183,16 +2991,14 @@ void GlobalRA::resetGlobalRAStates()
 //
 // Mark block local (temporary) variables.
 //
-void GlobalRA::markGraphBlockLocalVars(bool doLocalRA)
+void GlobalRA::markGraphBlockLocalVars()
 {
-    //Create live ranges and record the reference info
-    markBlockLocalVars(doLocalRA);
+    // Clear stale LocalLiveRange* first to avoid double ref counting
+    clearStaleLiveRanges();
 
-    //Remove the un-referenced declares
-    if (!doLocalRA)
-    {
-        removeUnreferencedDcls();
-    }
+    //Create live ranges and record the reference info
+    markBlockLocalVars();
+
 #ifdef DEBUG_VERBOSE_ON
     std::cout << "\t--LOCAL VARIABLES--\n";
     for (auto dcl : kernel.Declares)
@@ -3649,7 +3455,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                                         idMismatch = true;
                                     }
                                     if (succ == bb->rend() ||
-                                        (*succ)->opcode() != G4_pseudo_kill ||
+                                        !(*succ)->isPseudoKill()  ||
                                         (*succ)->getDst() == NULL ||
                                         idMismatch)
                                     {
@@ -3727,7 +3533,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                                             idMismatch = true;
                                         }
                                         if (succ == bb->rbegin() ||
-                                            (*succ)->opcode() != G4_pseudo_kill ||
+                                            !(*succ)->isPseudoKill() ||
                                             (*succ)->getDst() == NULL ||
                                             idMismatch)
                                         {
@@ -3966,7 +3772,10 @@ int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
     // 1. Is required for flag/address register allocation
     // 2. We must make sure the reference number, reference BB(which will be identified in local RA as well) happens only one time.
        // Otherwise, there will be correctness issue
-    gra.markGraphBlockLocalVars( kernel.fg.builder->getOption(vISA_LocalRA));
+    gra.markGraphBlockLocalVars();
+
+    //Remove the un-referenced declares
+    gra.removeUnreferencedDcls();
 
     if (kernel.fg.builder->getOptions()->getTarget() == VISA_CM)
     {
@@ -3994,7 +3803,7 @@ int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
     {
         LivenessAnalysis liveAnalysis(gra,
             G4_GRF | G4_INPUT, true);
-        liveAnalysis.computeLiveness(false);
+        liveAnalysis.computeLiveness();
 
         gra.verifyRA(liveAnalysis);
     }

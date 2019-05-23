@@ -422,9 +422,6 @@ iga::Op BinaryEncodingIGA::getIGAOp(G4_opcode op, G4_INST *inst) const
     case G4_pseudo_sada2:
         igaOp = iga::Op::SADA2;
         break;
-    case G4_pseudo_kill:
-        ASSERT_USER(false, "G4_pseudo_kill not GEN ISA OPCODE.");
-        break;
     case G4_pseudo_exit:
         ASSERT_USER(false, "G4_pseudo_exit not GEN ISA OPCODE.");
         break;

@@ -175,6 +175,9 @@ void LocalRA::preLocalRAAnalysis()
 
     int numGRF = kernel.getNumRegTotal();
 
+    // Clear LocalLiveRange* computed preRA
+    gra.clearStaleLiveRanges();
+
     // Mark references made to decls to sieve local from global ranges
     markReferences(numRowsEOT, lifetimeOpFound);
 
@@ -575,12 +578,12 @@ public:
 
     bool operator()(G4_INST* inst)
     {
-        if (inst->opcode() == G4_pseudo_kill ||
+        if (inst->isPseudoKill() ||
             inst->opcode() == G4_pseudo_lifetime_end)
         {
             G4_Declare* topdcl;
 
-            if (inst->opcode() == G4_pseudo_kill)
+            if (inst->isPseudoKill())
             {
                 topdcl = GetTopDclFromRegRegion(inst->getDst());
             }
@@ -1251,7 +1254,7 @@ void LocalRA::markReferences(unsigned int& numRowsEOT,
             // set lexical ID
             curInst->setLexicalId(id++);
 
-            if (curInst->opcode() == G4_pseudo_kill ||
+            if (curInst->isPseudoKill() ||
                 curInst->opcode() == G4_pseudo_lifetime_end)
             {
                 lifetimeOpFound = true;

@@ -5766,7 +5766,7 @@ void GlobalRA::determineSpillRegSize(unsigned& spillRegSize, unsigned& indrSpill
             G4_INST* curInst = (*inst_it);
             uint8_t execSize = curInst->getExecSize();
 
-            if (curInst->opcode() == G4_pseudo_kill ||
+            if (curInst->isPseudoKill() ||
                 curInst->opcode() == G4_pseudo_lifetime_end ||
                 curInst->opcode() == G4_pseudo_fcall ||
                 curInst->opcode() == G4_pseudo_fret)
@@ -8261,7 +8261,7 @@ void VarSplit::globalSplit(IR_Builder& builder, G4_Kernel &kernel)
             G4_INST* inst = (*it);
             G4_DstRegRegion* dst = inst->getDst();
 
-            if (inst->opcode() == G4_pseudo_lifetime_end || inst->opcode() == G4_pseudo_kill)
+            if (inst->opcode() == G4_pseudo_lifetime_end || inst->isPseudoKill())
             {
                 continue;
             }
@@ -8299,7 +8299,7 @@ void VarSplit::globalSplit(IR_Builder& builder, G4_Kernel &kernel)
 
             G4_INST* inst = (*it);
 
-            if (inst->opcode() == G4_pseudo_lifetime_end || inst->opcode() == G4_pseudo_kill)
+            if (inst->opcode() == G4_pseudo_lifetime_end || inst->isPseudoKill())
             {
                 continue;
             }
@@ -8454,7 +8454,7 @@ void VarSplit::localSplit(IR_Builder& builder,
         G4_INST* i = (*rit);
         G4_DstRegRegion* dst = i->getDst();
 
-        if (i->opcode() == G4_pseudo_lifetime_end || i->opcode() == G4_pseudo_kill)
+        if (i->opcode() == G4_pseudo_lifetime_end || i->isPseudoKill())
         {
             continue;
         }
@@ -8688,7 +8688,7 @@ void GlobalRA::addrRegAlloc()
         // choose reg vars whose reg file kind is ARF
         //
         LivenessAnalysis liveAnalysis(*this, G4_ADDRESS);
-        liveAnalysis.computeLiveness(iterationNo == 0);
+        liveAnalysis.computeLiveness();
 
         //
         // if no reg var needs to reg allocated, then skip reg allocation
@@ -8768,7 +8768,7 @@ void GlobalRA::flagRegAlloc()
         // choose reg vars whose reg file kind is FLAG
         //
         LivenessAnalysis liveAnalysis(*this, G4_FLAG);
-        liveAnalysis.computeLiveness(iterationNo == 0);
+        liveAnalysis.computeLiveness();
 
         //
         // if no reg var needs to reg allocated, then skip reg allocation
@@ -8966,7 +8966,7 @@ bool GlobalRA::hybridRA(bool doBankConflictReduction, bool highInternalConflict,
     insertPhyRegDecls();
 
     LivenessAnalysis liveAnalysis(*this, G4_GRF | G4_INPUT);
-    liveAnalysis.computeLiveness(true);
+    liveAnalysis.computeLiveness();
 
     if (liveAnalysis.getNumSelectedVar() > 0)
     {
@@ -9144,7 +9144,7 @@ int GlobalRA::coloringRegAlloc()
         }
 
         //Identify the local variables to speedup following analysis
-        markGraphBlockLocalVars(false);
+        markGraphBlockLocalVars();
 
         //Do variable splitting in each iteration
         if (builder.getOption(vISA_LocalDeclareSplitInGlobalRA))
@@ -9193,7 +9193,7 @@ int GlobalRA::coloringRegAlloc()
         }
 
         LivenessAnalysis liveAnalysis(*this, G4_GRF | G4_INPUT);
-        liveAnalysis.computeLiveness(iterationNo == 0);
+        liveAnalysis.computeLiveness();
         if (builder.getOption(vISA_dumpLiveness))
         {
             liveAnalysis.dump();
@@ -10495,7 +10495,7 @@ void FlagSpillCleanup::flagSpillFillClean(G4_BB* bb,
     CLEAN_NUM_PROFILE* clean_num_profile)
 {
     G4_INST* inst = (*inst_it);
-    if (inst->opcode() == G4_pseudo_kill)
+    if (inst->isPseudoKill())
     {
         return;
     }

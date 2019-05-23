@@ -1075,22 +1075,22 @@ public:
         return dcl;
     }
 
-    G4_INST* createPseudoKills(std::initializer_list<G4_Declare*> dcls)
+    G4_INST* createPseudoKills(std::initializer_list<G4_Declare*> dcls, PseudoKillType ty)
     {
         G4_INST* inst = nullptr;
         for (auto dcl : dcls)
         {
-            inst = createPseudoKill(dcl);
+            inst = createPseudoKill(dcl, ty);
         }
 
         return inst;
     }
 
-    G4_INST* createPseudoKill(G4_Declare* dcl)
+    G4_INST* createPseudoKill(G4_Declare* dcl, PseudoKillType ty)
     {
         auto dstRgn = createDstRegRegion(Direct, dcl->getRegVar(), 0, 0, 1, Type_UD);
-        G4_INST* inst = createInst(nullptr, G4_pseudo_kill, nullptr, false, 1,
-            dstRgn, nullptr, nullptr, InstOpt_WriteEnable);
+        G4_INST* inst = createIntrinsicInst(nullptr, Intrinsic::PseudoKill, 1,
+            dstRgn, createImm((unsigned int)ty, Type_UD), nullptr, nullptr, InstOpt_WriteEnable);
 
         return inst;
     }
