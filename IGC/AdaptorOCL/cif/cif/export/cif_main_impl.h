@@ -36,6 +36,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace CIF {
 
 namespace Helpers {
+  struct IsInterfaceIdFwdToOne {
+    template<template <Version_t> class Interface>
+    static bool Call(){
+      return true;
+    }
+  };
+
   struct ForwardCreateInterfaceImpl {
     template <template <Version_t> class Interface, typename ... ArgsT>
     static Interface<CIF::BaseVersion> *Call(Version_t version, ArgsT && ... args) {
