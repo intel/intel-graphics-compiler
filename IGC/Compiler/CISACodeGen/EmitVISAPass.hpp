@@ -238,7 +238,7 @@ public:
 
     void emitScalarAtomics(
         llvm::Instruction* pInst,
-        const ResourceDescriptor& resource,
+        ResourceDescriptor& resource,
         AtomicOp atomic_op,
         CVariable* pDstAddr,
         CVariable* pSrc,

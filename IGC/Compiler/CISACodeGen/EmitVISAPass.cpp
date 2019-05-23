@@ -10611,7 +10611,7 @@ say for SIMD8 there are 8 lanes trying to write to the same address. H/W will se
 */
 void EmitPass::emitScalarAtomics(
     llvm::Instruction* pInst,
-    const ResourceDescriptor& resource,
+    ResourceDescriptor& resource,
     AtomicOp atomic_op,
     CVariable* pDstAddr,
     CVariable* pSrc,
@@ -10728,14 +10728,14 @@ void EmitPass::emitScalarAtomics(
         pFinalAtomicSrcVal = pCastAtomicSrcVal;
     }
 
-    if (isA64)
-    {
-        m_encoder->AtomicRawA64(uniformAtomicOp, pReturnVal, pDstAddr, pFinalAtomicSrcVal, nullptr, is16Bit ? 16 : 32);
-    }
-    else
-    {
-        m_encoder->DwordAtomicRaw(uniformAtomicOp, resource, pReturnVal, pDstAddr, pFinalAtomicSrcVal, nullptr, is16Bit);
-    }
+        if (isA64)
+        {
+            m_encoder->AtomicRawA64(uniformAtomicOp, pReturnVal, pDstAddr, pFinalAtomicSrcVal, nullptr, is16Bit ? 16 : 32);
+        }
+        else
+        {
+            m_encoder->DwordAtomicRaw(uniformAtomicOp, resource, pReturnVal, pDstAddr, pFinalAtomicSrcVal, nullptr, is16Bit);
+        }
     m_encoder->Push();
 
     if (returnsImmValue)
@@ -11897,14 +11897,15 @@ void EmitPass::emitMemoryFence(llvm::Instruction* inst)
         }
     }
 
-    m_encoder->Fence(CommitEnable,
-        L3_Flush_RW_Data,
-        L3_Flush_Constant_Data,
-        L3_Flush_Texture_Data,
-        L3_Flush_Instructions,
-        Global_Mem_Fence,
-        L1_Invalidate,
-        !EmitFence);
+        m_encoder->Fence(CommitEnable,
+            L3_Flush_RW_Data,
+            L3_Flush_Constant_Data,
+            L3_Flush_Texture_Data,
+            L3_Flush_Instructions,
+            Global_Mem_Fence,
+            L1_Invalidate,
+            !EmitFence);
+
     m_encoder->Push();
 }
 
