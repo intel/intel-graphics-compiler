@@ -36,177 +36,122 @@ if(NOT DEFINED VME_TYPES_DEFINED)
   set(VME_TYPES_DEFINED TRUE)
 endif()
 
-set(CCLANG_BUILD_INTREE_LLVM FALSE)
-if(EXISTS ${LLVM_SOURCE_DIR}/projects/opencl-clang)
-  set(CCLANG_BUILD_INTREE_LLVM TRUE)
-  set(CLANG_SOURCE_DIR ${LLVM_SOURCE_DIR}/tools/clang)
+# Order of chosing way how to take opencl-clang
+#1. CCLANG_FROM_SYSTEM - use installed on system opencl-clang toolchain
+#2. CCLANG_BUILD_PREBUILDS - use prebuilded opencl-clang toolchain
+#3. CCLANG_BUILD_INTREE_LLVM - use sources of opencl-clang toolchain
+
+find_library(CCLANG_FROM_SYSTEM ${COMMON_CLANG_LIBRARY_NAME})
+
+### Check if user manual setup some of flag
+if(NOT DEFINED CCLANG_BUILD_PREBUILDS)
+  set(CCLANG_BUILD_PREBUILDS FALSE)
+else()
+  set(CCLANG_FROM_SYSTEM FALSE)
+  set(CCLANG_BUILD_INTREE_LLVM FALSE)
 endif()
 
-# Decompress Clang
-  # Add bogus targets to identify the .7z file and the decompressed .exe file
-  add_library(CLANG_7Z        UNKNOWN IMPORTED)
-  add_library(CLANG_7Z_OUTPUT UNKNOWN IMPORTED)
-  add_executable(IGC_TARGET__TOOLS_CLANG    IMPORTED)
+if(NOT DEFINED CCLANG_BUILD_INTREE_LLVM)
+  set(CCLANG_BUILD_INTREE_LLVM FALSE)
+else()
+  set(CCLANG_BUILD_PREBUILDS FALSE)
+  set(CCLANG_FROM_SYSTEM FALSE)
+endif()
+###
 
-  # Detect CPU architecture
-  igc_arch_get_cpu(_cpuSuffix)
-  if(NOT _cpuSuffix MATCHES "^32$|^64$")
-    message(STATUS "Unknown host CPU architecture ('" ${_cpuSuffix} "'), defaulting to using 64-bit Clang")
-    set(_cpuSuffix "64")
-  endif()
+### Check by order first available way to link with opencl-clang
+if(${CCLANG_FROM_SYSTEM})
+  message(STATUS "[IGC\\BiFModule] : opencl-clang will be taken from system")
+else()
+  if(NOT DEFINED CCLANG_BUILD_PREBUILDS_DIR)
+    # Detect CPU architecture
+    igc_arch_get_cpu(cpuSuffix)
+    set(CCLANG_BUILD_PREBUILDS_DIR "${IGC_BUILD__GFX_DEV_SRC_DIR}/../../prebuild-opencl-clang/Release/${cpuSuffix}/")
 
-  # Silly detect linux distribution
-  if(DEFINED "LINUX_DISTRO" AND (NOT (LINUX_DISTRO MATCHES "^$")))
-    set(_osDirSuffix "${LINUX_DISTRO}")
-  else()
-    set(_osDirSuffix "ubuntu")
-  endif()
-
-  igc_arch_get_os(_archOs "${IGC_OPTION__ARCHITECTURE_TARGET}")
-  if(_archOs MATCHES "^Windows$")
-    # Use the same name
-    set(_OS_folder "Windows")
-  elseif(_archOs MATCHES "^Linux$")
-    # Process TBD
-    set(_OS_folder "")
-    foreach(_clang_prebuilt_name "${_osDirSuffix}" "common" "ubuntu")
-      set(dir_test "${IGC_BUILD__GFX_DEV_SRC_DIR}/Clang/Prebuilt/linux-${_clang_prebuilt_name}/Release/${_cpuSuffix}/clang.7z")
-      if(EXISTS "${dir_test}")
-        set(_OS_folder "linux-${_clang_prebuilt_name}")
-        break()
-      endif()
-    endforeach()
-    if("${_OS_folder}" STREQUAL "")
-      # Prebuilt files not found.  Continue in case can be built below.
-      set(_OS_folder "linux-${_osDirSuffix}")
+    if(NOT EXISTS ${CCLANG_BUILD_PREBUILDS_DIR})
+      set(CCLANG_BUILD_PREBUILDS_DIR "${IGC_BUILD__GFX_DEV_SRC_DIR}/../prebuild-opencl-clang/Release/${cpuSuffix}/")
     endif()
-  elseif(_archOs MATCHES "^Android$")
-    # Use Ubuntu package
-    set(_OS_folder "linux-ubuntu")
+  endif()
+  set(CCLANG_BUILD_INTREE_LLVM_DIR ${LLVM_SOURCE_DIR}/projects/opencl-clang)
+
+  ### Check if user by choosing some way of linking with opencl-clang provided required folders
+  if(${CCLANG_BUILD_PREBUILDS})
+    if(NOT EXISTS ${CCLANG_BUILD_PREBUILDS_DIR})
+      message(FATAL_ERROR "[IGC\\BiFModule] : User setup to use prebuilded opencl-clang but not found folder : ${CCLANG_BUILD_PREBUILDS_DIR}")
+      set(CCLANG_BUILD_PREBUILDS FALSE)
+    endif()
+  elseif(${CCLANG_BUILD_INTREE_LLVM})
+    if(NOT EXISTS ${CCLANG_BUILD_INTREE_LLVM_DIR})
+      message(FATAL_ERROR "[IGC\\BiFModule] : User setup to use sources of opencl-clang but not found folder : ${CCLANG_BUILD_INTREE_LLVM_DIR}")
+      set(CCLANG_BUILD_INTREE_LLVM FALSE)
+    endif()
+  ###
+
+  ### User didn't define nothing, then pick the method 2 or 3.
+  elseif(EXISTS ${CCLANG_BUILD_PREBUILDS_DIR})
+    message(STATUS "[IGC\\BiFModule] : opencl-clang will be taken from prebuilds")
+    set(CCLANG_BUILD_PREBUILDS TRUE)
+  elseif(EXISTS ${CCLANG_BUILD_INTREE_LLVM_DIR})
+    message(STATUS "[IGC\\BiFModule] : opencl-clang will be taken from sources")
+    set(CCLANG_BUILD_INTREE_LLVM TRUE)
   else()
-    message(FATAL_ERROR "Unsupported host OS detected: " ${_archOs})
+    message(FATAL_ERROR "[IGC\\BiFModule] : Cannot find opencl-clang tool-chain, please provide sources or install it on system.")
   endif()
-  unset(_archOs)
+  ###
 
-  if(NOT EXISTS ${CCLANG_DIR_BINARIES})
-    set(CCLANG_DIR_BINARIES "${CMAKE_CURRENT_SOURCE_DIR}/../../../../cclang-prebuilt/${_OS_folder}")
-  endif()  
-  if(NOT EXISTS ${CCLANG_DIR_BINARIES})
-    set(CCLANG_DIR_BINARIES "${IGC_BUILD__GFX_DEV_SRC_DIR}/Clang/Prebuilt/${_OS_folder}")
-  endif()
+endif()
+###
 
-  set(IGC_TARGET__TOOLS_CLANG_DIR "${IGC_OPTION__OUTPUT_DIR}/clang/${_OS_folder}${_cpuSuffix}")
-  foreach(configName ${CMAKE_CONFIGURATION_TYPES} ${CMAKE_BUILD_TYPE} "Release")
-    string(TOUPPER "${configName}" upperConfigName)
-    set(locPropName "IMPORTED_LOCATION_${upperConfigName}")
-    set_property(TARGET CLANG_7Z
-        PROPERTY "${locPropName}" "${CCLANG_DIR_BINARIES}/Release/${_cpuSuffix}/clang.7z"
-    )
-    set_property(TARGET CLANG_7Z_OUTPUT
-        PROPERTY "${locPropName}" "${IGC_TARGET__TOOLS_CLANG_DIR}"
-    )
-    set_property(TARGET IGC_TARGET__TOOLS_CLANG
-        PROPERTY "${locPropName}" "${IGC_TARGET__TOOLS_CLANG_DIR}/clang${CMAKE_EXECUTABLE_SUFFIX}"
-    )
-    unset(locPropName)
-  endforeach()
-
-  # Get command line for extracting the clang executable
-  igc_tool_get_activity_commandline(
-    _extractCmd
-    "IGC_TARGET__TOOLS_7Z"
-    Extract
-    "$<TARGET_FILE:CLANG_7Z>"
-    "$<TARGET_FILE:CLANG_7Z_OUTPUT>"
-  )
-
-  get_property(_clang7zLocation TARGET CLANG_7Z PROPERTY IMPORTED_LOCATION_RELEASE)  
+#1. CCLANG_FROM_SYSTEM - use installed on system opencl-clang toolchain
+if(${CCLANG_FROM_SYSTEM})
+  find_library(SYSTEM_COMMON_CLANG ${COMMON_CLANG_LIBRARY_NAME})
   
-if(NOT ${CCLANG_BUILD_INTREE_LLVM})
-  # Add step to preform the extraction
-  add_custom_command(
-    OUTPUT ${IGC_TARGET__TOOLS_CLANG_DIR}/clang${CMAKE_EXECUTABLE_SUFFIX}
-    OUTPUT ${IGC_TARGET__TOOLS_CLANG_DIR}/${COMMON_CLANG_LIB_FULL_NAME}
-    COMMAND "${CMAKE_COMMAND}" -E make_directory "${IGC_TARGET__TOOLS_CLANG_DIR}"
-    COMMAND ${_extractCmd}
-    COMMAND "${CMAKE_COMMAND}" -E touch_nocreate "${IGC_TARGET__TOOLS_CLANG_DIR}/clang${CMAKE_EXECUTABLE_SUFFIX}"
-    COMMAND "${CMAKE_COMMAND}" -E touch_nocreate "${IGC_TARGET__TOOLS_CLANG_DIR}/${COMMON_CLANG_LIB_FULL_NAME}"
-    DEPENDS CLANG_7Z
-    COMMENT "Extracting Clang packages using: ${_extractCmd}"
-  )
+  add_library(opencl-clang-lib SHARED IMPORTED GLOBAL)
+  set_property(TARGET opencl-clang-lib PROPERTY "IMPORTED_LOCATION" "${SYSTEM_COMMON_CLANG}")
+  find_program(CLANG_GE7 clang-${LLVM_VERSION_MAJOR})
+  if(CLANG_GE7)
+    message(STATUS "[IGC\\BiFModule] Found clang-${LLVM_VERSION_MAJOR} executable: ${CLANG_GE7}")
+
+    add_executable(clang-tool IMPORTED GLOBAL)
+    set_property(TARGET clang-tool PROPERTY "IMPORTED_LOCATION" "${CLANG_GE7}")
+    set(CL_OPTIONS "-finclude-default-header")
+    if(LLVM_VERSION_MAJOR VERSION_EQUAL 7)
+      message(WARNING "[IGC\\BiFModule] : clang-7 should be patched with VME patch (https://reviews.llvm.org/D51484). Assuming that it is. If not, please add -DVME_TYPES_DEFINED=FALSE.")
+    endif()
+  else(CLANG_GE7)
+    message(FATAL_ERROR "[IGC\\BiFModule] : Couldn't find clang-${LLVM_VERSION_MAJOR} executable, please install it.")
+  endif(CLANG_GE7)
+###
+#2. CCLANG_BUILD_PREBUILDS - use prebuilded opencl-clang toolchain
+elseif(${CCLANG_BUILD_PREBUILDS})
+  add_library(opencl-clang-lib SHARED IMPORTED GLOBAL)
+  set_property(TARGET opencl-clang-lib PROPERTY "IMPORTED_LOCATION" "${CCLANG_BUILD_PREBUILDS_DIR}/${COMMON_CLANG_LIB_FULL_NAME}")
+  set_property(TARGET opencl-clang-lib PROPERTY "IMPORTED_SONAME" "${COMMON_CLANG_LIB_FULL_NAME}.${LLVM_VERSION_MAJOR}")
+
+  add_executable(clang-tool IMPORTED GLOBAL)
+  set_property(TARGET clang-tool PROPERTY "IMPORTED_LOCATION" "${CCLANG_BUILD_PREBUILDS_DIR}/clang${CMAKE_EXECUTABLE_SUFFIX}")
+
+  set(opencl-header "${CCLANG_BUILD_PREBUILDS_DIR}/opencl-c.h")
+###
+#3. CCLANG_BUILD_INTREE_LLVM - use sources of opencl-clang toolchain
+elseif(${CCLANG_BUILD_INTREE_LLVM})
+  add_library(opencl-clang-lib ALIAS ${COMMON_CLANG_LIBRARY_NAME})
+  add_executable(clang-tool ALIAS clang)
+  set(opencl-header "${LLVM_SOURCE_DIR}/tools/clang/lib/Headers/opencl-c.h")
+endif()
+###
+
+if(UNIX AND NOT ${CCLANG_FROM_SYSTEM})
+  install(FILES $<TARGET_FILE:opencl-clang-lib> DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR} COMPONENT igc-opencl)
+  install(FILES $<TARGET_SONAME_FILE:opencl-clang-lib> DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR} COMPONENT igc-opencl)
+  
+  install(FILES $<TARGET_FILE:clang-tool> DESTINATION ${CMAKE_INSTALL_FULL_BINDIR} COMPONENT igc-opencl-devel)
+  install(FILES $<TARGET_FILE:clang-tool>-${LLVM_VERSION_MAJOR} DESTINATION ${CMAKE_INSTALL_FULL_BINDIR} COMPONENT igc-opencl-devel)
+  install(FILES ${opencl-header} DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR} COMPONENT igc-opencl-devel)
 endif()
 
-  add_custom_target(UnzipClang
-    DEPENDS ${IGC_TARGET__TOOLS_CLANG_DIR}/clang${CMAKE_EXECUTABLE_SUFFIX}
-  )
-
-  set_property(TARGET UnzipClang PROPERTY PROJECT_LABEL UnzipClang)
-  set(CL_OPTIONS "")
-
-  add_custom_target(GetClang)
-
-  if(EXISTS ${_clang7zLocation} AND NOT ${CCLANG_BUILD_INTREE_LLVM})
-    # Use precompiled common clang bundle.
-    message(STATUS "Use precompiled common clang from ${_clang7zLocation}")
-    set(SYSTEM_COMMON_CLANG OFF)
-
-    add_library(common_clang_dll SHARED IMPORTED GLOBAL)
-    set_property(TARGET common_clang_dll PROPERTY "IMPORTED_LOCATION" "${IGC_TARGET__TOOLS_CLANG_DIR}/${COMMON_CLANG_LIB_FULL_NAME}")
-    add_dependencies(common_clang_dll GetClang)
-    add_dependencies(GetClang UnzipClang)
-  else()
-    # Do not use precompiled common clang.
-    message(STATUS "Precompiled common clang bundle ${_clang7zLocation} does not exist. Try to compile from sources or use system common clang.")
-
-    # Set build directory
-    set(IGC_CCLANG_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/clang_build)
-    if(${CCLANG_BUILD_INTREE_LLVM})
-      message("Common clang build-in-tree")
-      set(SYSTEM_COMMON_CLANG OFF)
-
-      add_library(common_clang_dll ALIAS ${COMMON_CLANG_LIBRARY_NAME})
-
-      add_custom_target(copy_cclang_files ALL
-         COMMAND ${CMAKE_COMMAND} -E make_directory "${IGC_TARGET__TOOLS_CLANG_DIR}"
-         COMMAND ${CMAKE_COMMAND} -E copy "${CLANG_SOURCE_DIR}/lib/Headers/opencl-c.h" "${IGC_TARGET__TOOLS_CLANG_DIR}/"
-         COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:clang>" "${IGC_TARGET__TOOLS_CLANG_DIR}/clang${CMAKE_EXECUTABLE_SUFFIX}"
-         DEPENDS clang cl_headers ${COMMON_CLANG_LIBRARY_NAME}
-       )
-
-      add_dependencies(GetClang copy_cclang_files)
-    else()
-      find_library(SYSTEM_COMMON_CLANG ${COMMON_CLANG_LIBRARY_NAME})
-      if(SYSTEM_COMMON_CLANG)
-        message(STATUS "[IGC] Using system common_clang: ${SYSTEM_COMMON_CLANG}")
-        add_library(common_clang_dll SHARED IMPORTED GLOBAL)
-        set_property(TARGET common_clang_dll PROPERTY "IMPORTED_LOCATION" "${SYSTEM_COMMON_CLANG}")
-        find_program(CLANG_GE7 clang-${LLVM_VERSION_MAJOR})
-        if(CLANG_GE7)
-          message(STATUS "[IGC] Found clang-${LLVM_VERSION_MAJOR} executable: ${CLANG_GE7}")
-          foreach(configName ${CMAKE_CONFIGURATION_TYPES} ${CMAKE_BUILD_TYPE} "Release")
-            string(TOUPPER "${configName}" upperConfigName)
-            set(locPropName "IMPORTED_LOCATION_${upperConfigName}")
-            set_property(TARGET IGC_TARGET__TOOLS_CLANG PROPERTY "${locPropName}" "${CLANG_GE7}")
-            unset(locPropName)
-          endforeach()
-          set(CL_OPTIONS "-finclude-default-header")
-          if(LLVM_VERSION_MAJOR VERSION_EQUAL 7)
-            message(WARNING "[IGC] clang-7 should be patched with VME patch (https://reviews.llvm.org/D51484). Assuming that it is. If not, please add -DVME_TYPES_DEFINED=FALSE.")
-          endif()
-        else(CLANG_GE7)
-          message(FATAL_ERROR "[IGC] Couldn't find clang-${LLVM_VERSION_MAJOR} executable, please install it.")
-        endif(CLANG_GE7)
-      else(SYSTEM_COMMON_CLANG)
-        message(FATAL_ERROR "Can not compile common clang. IGC is being built with system LLVM and expects common clang to be installed in the system. See https://github.com/intel/opencl-clang for instructions.")
-      endif(SYSTEM_COMMON_CLANG)
-    endif()
-  endif()
-
-  if(UNIX AND NOT SYSTEM_COMMON_CLANG)
-    install(FILES $<TARGET_FILE:common_clang_dll> DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR} COMPONENT igc-opencl)
-    install(FILES $<TARGET_LINKER_FILE:common_clang_dll> DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR} COMPONENT igc-opencl)
-    install(FILES $<TARGET_SONAME_FILE:common_clang_dll> DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR} COMPONENT igc-opencl)
-  endif()
+#NEO needs to change the target name
+add_library(common_clang_dll ALIAS opencl-clang-lib)
 
 # End Clang section
 
@@ -328,8 +273,8 @@ function(igc_bif_build_pch)
   add_custom_command(
       OUTPUT "${_pchTempFilePath}"
       COMMAND "${CMAKE_COMMAND}" -E make_directory "${_outPchFileDir}"
-      COMMAND IGC_TARGET__TOOLS_CLANG -cc1 -x cl -fblocks -fpreserve-vec3-type -Os -opencl-builtins "-triple=${_archTriple}" -cl-std=CL2.0 -emit-pch -o "${_pchTempFilePath}" ${_chainedPchFlags} ${_defineFlags} ${_options} ${_srcHeaderFilePaths}
-      DEPENDS GetClang ${_chainedPchFilePath} ${_srcHeaderFilePaths}
+      COMMAND clang-tool -cc1 -x cl -fblocks -fpreserve-vec3-type -Os -opencl-builtins "-triple=${_archTriple}" -cl-std=CL2.0 -emit-pch -o "${_pchTempFilePath}" ${_chainedPchFlags} ${_defineFlags} ${_options} ${_srcHeaderFilePaths}
+      DEPENDS clang-tool ${_chainedPchFilePath} ${_srcHeaderFilePaths}
       COMMENT "BiF: Building OpenCL precompiled header: \"${_outPchFileName}\""
     )
   add_custom_command(
@@ -687,8 +632,8 @@ function(igc_bif_build_bc)
     add_custom_command(
         OUTPUT "${_bcTempFilePath}"
         COMMAND "${CMAKE_COMMAND}" -E make_directory "${_outBcFileDir}"
-        COMMAND IGC_TARGET__TOOLS_CLANG -cc1 -x cl -fblocks -fpreserve-vec3-type -opencl-builtins "-triple=${_archTriple}" -w -emit-llvm-bc -o "${_bcTempFilePath}" ${_pchFlags} ${_incFileFlags} ${_includeDirsFlags} ${_defineFlags} ${_options_DEFAULT} ${_options_CL} "${_srcFilePath}"
-        DEPENDS GetClang ${_pchFilePath} ${_incFilePaths} "${_srcFilePath}" ${_dependencies}
+        COMMAND clang-tool -cc1 -x cl -fblocks -fpreserve-vec3-type -opencl-builtins "-triple=${_archTriple}" -w -emit-llvm-bc -o "${_bcTempFilePath}" ${_pchFlags} ${_incFileFlags} ${_includeDirsFlags} ${_defineFlags} ${_options_DEFAULT} ${_options_CL} "${_srcFilePath}"
+        DEPENDS clang-tool ${_pchFilePath} ${_incFilePaths} "${_srcFilePath}" ${_dependencies}
         COMMENT "BiF: \"${_outBcFileName}\": Compiling OpenCL source: \"${_srcFileName}\""
       )
     add_custom_command(
@@ -823,17 +768,9 @@ endfunction()
 # ======================================================================================================
 
 # ======================================== Precompiled headers =========================================
-if(NOT IGC_BUILD__BIF_OCL_PCH_SRC AND NOT SYSTEM_COMMON_CLANG)
-  set(IGC_BUILD__BIF_OCL_PCH_SRC "${IGC_TARGET__TOOLS_CLANG_DIR}/opencl-c.h")
-
-  if(NOT ${CCLANG_BUILD_INTREE_LLVM})
-    add_custom_command(
-      OUTPUT ${IGC_BUILD__BIF_OCL_PCH_SRC}
-      DEPENDS GetClang
-    )
-  endif()
-  set(IGC_BUILD__BIF_OCL_INCLUDES ${IGC_BUILD__BIF_OCL_PCH_SRC})
-  set(PCH_OPTIONS "-include ${IGC_BUILD__BIF_OCL_PCH_SRC}")
+if(NOT ${CCLANG_FROM_SYSTEM})
+  set(IGC_BUILD__BIF_OCL_INCLUDES ${opencl-header})
+  set(PCH_OPTIONS "-include ${opencl-header}")
 else()
   set(PCH_OPTIONS ${CL_OPTIONS})
 endif()
@@ -1064,7 +1001,7 @@ set(IGC_BUILD__PROJ__BiFModule_OCL       "${IGC_BUILD__PROJ__BiFModule_OCL}" PAR
 set(IGC_BUILD__PROJ_LABEL__BiFModule_OCL "BiFModule-OCL")
 
 add_custom_target("${IGC_BUILD__PROJ__BiFModule_OCL}"
-    DEPENDS GetClang "${IGC_BUILD__BIF_DIR}/OCLBiFImpl.bc" "${IGC_BUILD__BIF_DIR}/IGCsize_t_32.bc" "${IGC_BUILD__BIF_DIR}/IGCsize_t_64.bc" "${IGC_BUILD__BIF_DIR}/IBiF_Impl_int_spirv.bc"
+    DEPENDS clang-tool "${IGC_BUILD__BIF_DIR}/OCLBiFImpl.bc" "${IGC_BUILD__BIF_DIR}/IGCsize_t_32.bc" "${IGC_BUILD__BIF_DIR}/IGCsize_t_64.bc" "${IGC_BUILD__BIF_DIR}/IBiF_Impl_int_spirv.bc"
     SOURCES ${IGC_BUILD__BIF_OCL_COMMON_DEPENDS}
   )
 set_property(TARGET "${IGC_BUILD__PROJ__BiFModule_OCL}" PROPERTY PROJECT_LABEL "${IGC_BUILD__PROJ_LABEL__BiFModule_OCL}")
