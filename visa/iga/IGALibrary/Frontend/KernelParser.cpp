@@ -1877,12 +1877,17 @@ private:
             addrOff = 0;
         }
         const int ADDROFF_BITS = 10; // one is a sign bit
-        if (addrOff < -(1 << (ADDROFF_BITS - 1)) ||
-            addrOff > (1 << (ADDROFF_BITS - 1)) - 1)
+
+        // check if the imm offset out of bound
+        int addroff_up_bound = 511;
+        int addroff_low_bound = -512;
+        if (addrOff < addroff_low_bound || addrOff > addroff_up_bound)
         {
-            Fail(addrOffLoc, "immediate offset is out of range; "
-                "must be in [-512,512]");
+            std::string err_str = "immediate offset is out of range; must be in [" +
+                std::to_string(addroff_low_bound) + "," + std::to_string(addroff_up_bound) + "]";
+            Fail(addrOffLoc, err_str);
         }
+
         ConsumeOrFail(RBRACK, "expected ]");
     }
 

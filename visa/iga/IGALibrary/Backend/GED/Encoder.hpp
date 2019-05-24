@@ -51,7 +51,7 @@ namespace iga
         EncoderBase(
             const Model& model,
             ErrorHandler& errHandler,
-            const EncoderOpts& eos = EncoderOpts());
+            const EncoderOpts& eos);
 
         void encodeKernel(
             Kernel& k,

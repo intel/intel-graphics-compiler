@@ -141,8 +141,7 @@ void Instruction::validate() const
 }
 
 
-std::string Instruction::str(Platform pltfm
-) const
+std::string Instruction::str(Platform pltfm) const
 {
     ErrorHandler eh;
     std::stringstream ss;

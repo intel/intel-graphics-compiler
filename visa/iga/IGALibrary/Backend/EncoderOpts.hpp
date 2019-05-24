@@ -26,12 +26,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef IGA_BACKEND_ENCODEROPTS
 #define IGA_BACKEND_ENCODEROPTS
 
+
 namespace iga
 {
     struct EncoderOpts {
-        bool autoCompact;
-        bool explicitCompactMissIsWarning;
-        bool ignoreNoCompactFormFound;
+        bool autoCompact = false;
+        bool explicitCompactMissIsWarning = false;
+        bool ignoreNoCompactFormFound = false;
 
 
         EncoderOpts(

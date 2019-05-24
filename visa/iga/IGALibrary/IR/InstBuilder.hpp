@@ -264,7 +264,6 @@ class InstBuilder {
         } // else: targets end of program exactly
     }
 
-
 public:
     InstBuilder(Kernel *kernel, ErrorHandler &e)
         : m_model(kernel->getModel())

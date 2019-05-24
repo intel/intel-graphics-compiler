@@ -49,7 +49,9 @@ namespace iga {
         // before we give up on the parse
         size_t maxSyntaxErrors = 3;
 
-        ParseOpts() { }
+        ParseOpts(const Model &model)
+        {
+        }
     };
 
     // The primary API for parsing GEN kernels
@@ -57,7 +59,7 @@ namespace iga {
         const Model &model,
         const char *inp,
         ErrorHandler &e,
-        const ParseOpts &popts = ParseOpts());
+        const ParseOpts &popts);
 
     // typedef std::function<bool(const std::string &, ImmVal &)> SymbolTableFunc;
 

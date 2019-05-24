@@ -314,7 +314,7 @@ public:
     // Returns opcode of the instruction
     //
     // N.B.: the opcode is not the same as the 7-bit value encoded in the
-    // actual encoding, but maps to the enumeration value of the underlying
+    // actual encoding, but maps to the enumeration value of the underlyings
     // iga::Op.
     iga::Op getOpcode(int32_t pc) const {
         return static_cast<iga::Op>(kv_get_opcode(m_kv, pc));

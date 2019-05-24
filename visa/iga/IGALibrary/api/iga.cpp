@@ -286,7 +286,7 @@ public:
         }
 
         // 1. Parse the kernel text
-        ParseOpts popts;
+        ParseOpts popts(m_model);
         popts.supportLegacyDirectives =
             (aopts.syntax_opts & IGA_SYNTAX_OPT_LEGACY_SYNTAX) != 0;
         Kernel *kernel = iga::ParseGenKernel(m_model, inp, errHandler, popts);
@@ -324,9 +324,9 @@ public:
         }
         size_t bitsLen = 0;
         EncoderOpts eopts(
-              (aopts.encoder_opts & IGA_ENCODER_OPT_AUTO_COMPACT) != 0
-            , (aopts.encoder_opts & IGA_ENCODER_OPT_ERROR_ON_COMPACT_FAIL) == 0
-          );
+              (aopts.encoder_opts & IGA_ENCODER_OPT_AUTO_COMPACT) != 0,
+              (aopts.encoder_opts & IGA_ENCODER_OPT_ERROR_ON_COMPACT_FAIL) == 0);
+
         if ((aopts.encoder_opts & IGA_ENCODER_OPT_USE_NATIVE) == 0) {
             if (!iga::ged::IsEncodeSupported(m_model, eopts)) {
                 delete kernel;
