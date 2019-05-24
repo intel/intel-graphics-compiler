@@ -39,7 +39,7 @@ namespace Builtins {
 using AllBuiltinsListT =  InterfacesList<CIF::Builtins::Buffer>;
 
 bool IsBuiltin(InterfaceId_t intId){
-    return AllBuiltinsListT::ContainsInterface(intId);
+    return AllBuiltinsListT::template forwardToOne<Helpers::IsInterfaceIdFwdToOne, bool>(intId, false);
 }
 
 ICIF *Create(InterfaceId_t entryPointInterface, Version_t version, ICIF *parentInterface){

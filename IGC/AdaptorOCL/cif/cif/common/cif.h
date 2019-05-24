@@ -289,14 +289,6 @@ template <> struct InterfacePack<> {
 };
 
 
-struct IsInterfaceIdFwdToOne
-{
-    template<template <Version_t> class Interface>
-    static bool Call(){
-        return true;
-    }
-};
-
 /// Storage for versioned CIF interfaces
 /// Useful in operations on sets of interfaces
 template <template <Version_t> class... SupportedInterfaces>
@@ -325,10 +317,6 @@ struct InterfacesList {
 #else
     return GetNumInterfacesImpl<SupportedInterfaces...>();
 #endif
-  }
-
-  static bool ContainsInterface(InterfaceId_t id){
-      return forwardToOne<IsInterfaceIdFwdToOne, bool, bool>(id, false);
   }
 
 protected:
