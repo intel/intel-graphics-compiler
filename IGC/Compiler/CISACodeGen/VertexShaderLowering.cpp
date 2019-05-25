@@ -107,14 +107,14 @@ unsigned int VertexShaderLowering::InsertInEmptySlot(Instruction* sgv, bool bIns
         }
     }
     Value* zero = ConstantInt::get(Type::getInt32Ty(sgv->getContext()), 0);
-    Value* arguments[] = 
-    { 
+    Value* arguments[] =
+    {
         zero,
-        ConstantInt::get(Type::getInt32Ty(sgv->getContext()), index/4), 
+        ConstantInt::get(Type::getInt32Ty(sgv->getContext()), index/4),
     };
     Instruction* urbRead = GenIntrinsicInst::Create(
-        GenISAIntrinsic::getDeclaration(m_module, GenISAIntrinsic::GenISA_URBRead), 
-        arguments, 
+        GenISAIntrinsic::getDeclaration(m_module, GenISAIntrinsic::GenISA_URBRead),
+        arguments,
         "",
         sgv);
     urbRead->setDebugLoc(sgv->getDebugLoc());
@@ -126,7 +126,7 @@ unsigned int VertexShaderLowering::InsertInEmptySlot(Instruction* sgv, bool bIns
 
 
 unsigned int VertexShaderLowering::GetUnusedInputSlot()
-{    
+{
     for(unsigned int i = 0; i<ARRAY_COUNT(m_inputUsed); i++)
     {
         if(m_inputUsed[i] == false)
@@ -193,7 +193,7 @@ void VertexShaderLowering::LowerIntrinsicInputOutput(Function& F)
     Value* zero = ConstantInt::get(Type::getInt32Ty(F.getContext()), 0);
     std::vector<llvm::Instruction*> offsetInst(MaxNumOfOutput + m_headerSize.Count(), nullptr);
     Value* undef = llvm::UndefValue::get(Type::getFloatTy(F.getContext()));
-    
+
     Value* headerInitValue = undef;
     if (m_context->m_DriverInfo.NeedClearVertexHeader())
     {
@@ -228,7 +228,7 @@ void VertexShaderLowering::LowerIntrinsicInputOutput(Function& F)
                     const ShaderOutputType usage = static_cast<ShaderOutputType>(
                         llvm::cast<llvm::ConstantInt>(inst->getOperand(4))->getZExtValue());
                     Value* attribut = inst->getOperand(5);
-                  
+
                     unsigned int attribOffset = GetURBOffset(usage, attribut, inst);
                     Value* offset = ConstantInt::get(Type::getInt32Ty(m_module->getContext()), attribOffset);
                     offsetInst[attribOffset] = inst;
@@ -251,7 +251,7 @@ void VertexShaderLowering::LowerIntrinsicInputOutput(Function& F)
                         headerData[3] = inst->getOperand(0);
                         hasHeaderData = true;
                         prevInst = inst;
-                        headerOffset = offset;   
+                        headerOffset = offset;
                     }
                     else
                     {
@@ -277,7 +277,7 @@ void VertexShaderLowering::LowerIntrinsicInputOutput(Function& F)
                 }
                 else if(IID == GenISAIntrinsic::GenISA_DCL_SystemValue)
                 {
-                    uint usage = 
+                    uint usage =
                         (uint) llvm::cast<llvm::ConstantInt>(inst->getOperand(0))->getZExtValue();
                     switch (usage)
                     {
@@ -321,11 +321,11 @@ void VertexShaderLowering::LowerIntrinsicInputOutput(Function& F)
                         }
                         break;
 
-                    case VF_XP0:
-                    case VF_XP1:
-                    case VF_XP2:
+                    case XP0:
+                    case XP1:
+                    case XP2:
                         assert(m_context->platform.supportsDrawParametersSGVs());
-                        vertexFetchSGVExtendedParameters.at(usage - VF_XP0) = inst;
+                        vertexFetchSGVExtendedParameters.at(usage - XP0) = inst;
                         break;
 
                     default:
@@ -381,7 +381,7 @@ void VertexShaderLowering::LowerIntrinsicInputOutput(Function& F)
                 {
                     Value* undef = llvm::UndefValue::get(Type::getFloatTy(F.getContext()));
 
-                    Value* data[8] = 
+                    Value* data[8] =
                     {
                         undef,
                         undef,
@@ -489,17 +489,17 @@ void VertexShaderLowering::CalculateVertexHeaderSize(Function& F)
 
 void VertexShaderLowering::AddURBRead(Value* index, Value* offset, Instruction* prev)
 {
-    Value* arguments[] = 
-    { 
-        index, 
+    Value* arguments[] =
+    {
+        index,
         offset
     };
     unsigned int inIndex = int_cast<unsigned int>(cast<ConstantInt>(offset)->getZExtValue());
     assert(inIndex < MaxNumOfUserInputs);
 
     Instruction* urbRead = GenIntrinsicInst::Create(
-        GenISAIntrinsic::getDeclaration(m_module, GenISAIntrinsic::GenISA_URBRead), 
-        arguments, 
+        GenISAIntrinsic::getDeclaration(m_module, GenISAIntrinsic::GenISA_URBRead),
+        arguments,
         "",
         prev);
     urbRead->setDebugLoc(prev->getDebugLoc());
@@ -544,7 +544,7 @@ void VertexShaderLowering::AddURBRead(Value* index, Value* offset, Instruction* 
                     m_inputUsed[inIndex * 4 + 2] =
                     m_inputUsed[inIndex * 4 + 3] = true;
             }
-            
+
             (*I)->replaceUsesOfWith(prev, vec4);
         }
     }
@@ -552,17 +552,17 @@ void VertexShaderLowering::AddURBRead(Value* index, Value* offset, Instruction* 
 
 void VertexShaderLowering::AddURBWrite(Value* offset, uint mask, Value* data[8], Instruction* prev)
 {
-    if(!m_isHeaderPresent && 
+    if(!m_isHeaderPresent &&
         m_context->m_DriverInfo.NeedClearVertexHeader())
     {
         m_isHeaderPresent = true;
         AddInitializedHeader(prev);
     }
     assert(mask < 256 && "mask is an 8-bit bitmask and has to be in range 0..255");
-    Value* arguments[] = 
+    Value* arguments[] =
     {
         offset,
-        ConstantInt::get(Type::getInt32Ty(m_module->getContext()), mask), 
+        ConstantInt::get(Type::getInt32Ty(m_module->getContext()), mask),
         data[0],
         data[1],
         data[2],
@@ -574,7 +574,7 @@ void VertexShaderLowering::AddURBWrite(Value* offset, uint mask, Value* data[8],
     };
 
     CallInst* urbWrite = GenIntrinsicInst::Create(GenISAIntrinsic::getDeclaration(m_module, GenISAIntrinsic::GenISA_URBWrite),
-        arguments, 
+        arguments,
         "",
         prev);
     urbWrite->setDebugLoc(prev->getDebugLoc());
@@ -588,7 +588,7 @@ void VertexShaderLowering::AddURBWrite(Value* offset, uint mask, Value* data[8],
     {
         m_vsPropsPass->DeclareOutput(QuadEltUnit(32));
     }
-    
+
 }
 
 void VertexShaderLowering::AddInitializedHeader(Instruction* prev)
@@ -596,7 +596,7 @@ void VertexShaderLowering::AddInitializedHeader(Instruction* prev)
     Value* undef = llvm::UndefValue::get(Type::getFloatTy(m_module->getContext()));
     Value* zero = ConstantInt::get(Type::getInt32Ty(m_module->getContext()), 0);
     Value* zeroFloat = ConstantFP::get(Type::getFloatTy(m_module->getContext()), 0);
-    Value* data[8] = 
+    Value* data[8] =
     {
         zeroFloat,
         zeroFloat,
@@ -616,15 +616,15 @@ m_VID(0),
 m_HasInstanceID(false),
 m_IID(0),
 m_VertexFetchSGVExtendedParameters(),
-m_hasRTAI(false), 
-m_hasVPAI(false), 
-m_hasClipDistance(false), 
+m_hasRTAI(false),
+m_hasVPAI(false),
+m_hasClipDistance(false),
 m_URBOutputLength(0)
 {
 
 }
 
-CollectVertexShaderProperties::CollectVertexShaderProperties() : ImmutablePass(ID) 
+CollectVertexShaderProperties::CollectVertexShaderProperties() : ImmutablePass(ID)
 {
     initializeCollectVertexShaderPropertiesPass(*PassRegistry::getPassRegistry());
 }

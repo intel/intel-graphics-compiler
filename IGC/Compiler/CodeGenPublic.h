@@ -129,7 +129,7 @@ namespace IGC
                 IGC::aligned_free(m_debugDataGenISA);
             }
         }
-        
+
         void setSeparatePvtSpill(bool setSeparatePvtSpillT)
         {
             m_separatePvtSpill = setSeparatePvtSpillT;
@@ -162,7 +162,7 @@ namespace IGC
             return (m_separatePvtSpill ? m_scratchSpaceUsedByStateless : 0);
         }
     };
-    
+
     enum InstrStatTypes
     {
         SROA_PROMOTED,
@@ -317,7 +317,7 @@ namespace IGC
         {
             bool enabled = false;      //<! XPn Enable = XPn Source Select = (*)
             unsigned int location = 0; //<! Linear offset of the 32bit component in VUE
-        } extendedParameters[3] = {};  //<! Order of elements: VF_XP0, VF_XP1, VF_XP2
+        } extendedParameters[3] = {};  //<! Order of elements: XP0, XP1, XP2
     };
 
     struct SVertexShaderKernelProgram : SKernelProgram
@@ -334,7 +334,7 @@ namespace IGC
         OctEltUnit SBEURBReadOffset;
         OctEltUnit URBAllocationSize;
         QuadEltUnit MaxNumInputRegister;
-        
+
         bool enableElementComponentPacking;
         /// corresponds to 3DSTATE_VF_COMPONENT_PACKING
         unsigned char ElementComponentDeliverMask[32];
@@ -802,7 +802,7 @@ namespace IGC
         virtual void resetOnRetry();
         virtual uint32_t getNumGRFPerThread() const;
         bool isPOSH() const;
-        
+
         CompilerStats& Stats()
         {
             return m_Stats;
