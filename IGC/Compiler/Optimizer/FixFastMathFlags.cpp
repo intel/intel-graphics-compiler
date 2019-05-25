@@ -37,11 +37,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 #include "FixFastMathFlags.hpp"
-#include "Compiler/IGCPassSupport.h"
 #include "IGCIRBuilder.h"
+#include <llvm/IR/Function.h>
+
+#include "Compiler/IGCPassSupport.h"
+#include "Compiler/CISACodeGen/helper.h"
 
 #include "common/LLVMWarningsPush.hpp"
-#include <llvm/IR/Function.h>
 #include "common/LLVMWarningsPop.hpp"
 
 
@@ -81,5 +83,15 @@ bool FixFastMathFlags::runOnFunction(Function &F)
             }
         }
     }
+    visit(F);
     return m_changed;
+}
+
+void FixFastMathFlags::visitFCmpInst(FCmpInst &FC)
+{
+    if (isNaNCheck(FC)) {
+        FastMathFlags FMF;
+        FMF.clear();
+        FC.copyFastMathFlags(FMF);
+    }
 }

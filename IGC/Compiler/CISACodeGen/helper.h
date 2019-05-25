@@ -171,6 +171,7 @@ BufferType DecodeAS4GFXResource(unsigned addrSpace, bool& directIdx, unsigned& b
 int getConstantBufferLoadOffset(llvm::LoadInst *ld);
 
 bool IsDirectIdx(unsigned addrSpace);
+bool isNaNCheck(llvm::FCmpInst &FC);
 
 inline bool IsBindless(BufferType t) 
 {

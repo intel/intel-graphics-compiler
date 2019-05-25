@@ -206,6 +206,22 @@ bool IsDirectIdx(unsigned addrSpace)
     return (temp.bits.indirect == 0);
 }
 
+bool isNaNCheck(llvm::FCmpInst &FC)
+{
+    Value *Op1 = FC.getOperand(1);
+    if (FC.getPredicate() == CmpInst::FCMP_UNO)
+    {
+        auto CFP = dyn_cast<ConstantFP>(Op1);
+        return CFP && CFP->isZero();
+    }
+    else if (FC.getPredicate() == CmpInst::FCMP_UNE)
+    {
+        Value *Op0 = FC.getOperand(0);
+        return Op0 == Op1;
+    }
+    return false;
+}
+
 llvm::LoadInst* cloneLoad(llvm::LoadInst *Orig, llvm::Value *Ptr)
 {
     llvm::LoadInst *LI = new llvm::LoadInst(Ptr, "", Orig);

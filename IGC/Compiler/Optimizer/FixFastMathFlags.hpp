@@ -32,7 +32,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace IGC
 {
-    class FixFastMathFlags : public llvm::FunctionPass
+    class FixFastMathFlags : public llvm::FunctionPass, public llvm::InstVisitor<FixFastMathFlags>
     {
     public:
         static char ID;
@@ -45,6 +45,7 @@ namespace IGC
         }
 
         virtual bool runOnFunction(llvm::Function &F) override;
+        void visitFCmpInst(llvm::FCmpInst &FC);
 
     private:
         bool m_changed = false;

@@ -1041,24 +1041,6 @@ void Legalization::visitFCmpInstUndorderedPredicate(FCmpInst &FC)
     }
 }
 
-// See comments for m_preserveNanCheck.
-static bool isNanCheck(FCmpInst &FC)
-{
-    Value *Op1 = FC.getOperand(1);
-    if (FC.getPredicate() == CmpInst::FCMP_UNO)
-    {
-        auto CFP = dyn_cast<ConstantFP>(Op1);
-        return CFP && CFP->isZero();
-    }
-    else if (FC.getPredicate() == CmpInst::FCMP_UNE)
-    {
-        Value *Op0 = FC.getOperand(0);
-        return Op0 == Op1;
-    }
-
-    return false;
-}
-
 void Legalization::visitFCmpInst(FCmpInst &FC)
 {
     m_ctx->m_instrTypes.numInsts++;
@@ -1071,7 +1053,7 @@ void Legalization::visitFCmpInst(FCmpInst &FC)
         {
             visitFCmpInstUndorderedPredicate(FC);
         }
-        else if (m_preserveNanCheck && isNanCheck(FC))
+        else if (m_preserveNanCheck && isNaNCheck(FC))
         {
             visitFCmpInstUndorderedPredicate(FC);
         }
