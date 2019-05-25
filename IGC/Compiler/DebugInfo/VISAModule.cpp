@@ -435,7 +435,10 @@ VISAVariableLocation VISAModule::GetVariableLocation(const llvm::Instruction* pI
     {
         if (!isa<GlobalVariable>(pVal) && !isa<ConstantExpr>(pVal))
         {
-            assert(!isDbgDclInst && "address cannot be immediate!");
+            if (isDbgDclInst) 
+            {
+                return VISAVariableLocation();
+            }
             return VISAVariableLocation(pConstVal);
         }
     }
@@ -518,9 +521,14 @@ VISAVariableLocation VISAModule::GetVariableLocation(const llvm::Instruction* pI
     Type *pType = pValue->getType();
     if (isDbgDclInst)
     {
-        assert(pType->isPointerTy() && "DBG declare intrinsic must point to an address");
-        pType = pType->getPointerElementType();
-
+        if (pType->isPointerTy()) 
+        {
+            pType = pType->getPointerElementType();
+        }
+        else
+        {
+            return VISAVariableLocation();
+        }
     }
 
     bool isInSurface = false;

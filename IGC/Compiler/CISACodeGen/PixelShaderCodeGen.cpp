@@ -1379,8 +1379,15 @@ namespace IGC
     bool CPixelShader::IsLastRTWrite(llvm::GenIntrinsicInst* inst)
     {
         bool isLastRT;
-        isLastRT = llvm::isa<llvm::ReturnInst>(inst->getNextNode());
+        llvm::Instruction* iterinst = inst->getNextNode();
 
+        while (llvm::isa<llvm::DbgDeclareInst>(iterinst) ||
+               llvm::isa<llvm::DbgValueInst>(iterinst)) 
+        {
+            iterinst = iterinst->getNextNode(); // Skip over debug info
+        }
+
+        isLastRT = llvm::isa<llvm::ReturnInst>(iterinst);
         return isLastRT && IsLastPhase() && GetPhase() != PSPHASE_PIXEL;
     }
 
