@@ -372,6 +372,8 @@ void HullShaderLowering::LowerIntrinsicInputOutput(Function& F)
                 if (IID == GenISAIntrinsic::GenISA_HSURBPatchHeaderRead ||
                     IID == GenISAIntrinsic::GenISA_DCL_HSPatchConstInputVec)
                 {
+                    builder.SetInsertPoint(inst);
+
                     const bool readHeader = IID == GenISAIntrinsic::GenISA_HSURBPatchHeaderRead;
 
                     llvm::Value* urbOffset = nullptr;
@@ -414,6 +416,8 @@ void HullShaderLowering::LowerIntrinsicInputOutput(Function& F)
                             m_hullShaderInfo->GetProperties().m_pMaxPatchConstantSignatureDeclarations, 2);
                         return QuadEltUnit(paychConstantHeaderSize + numPatchConstantsPadded);
                     };
+
+                    builder.SetInsertPoint(inst);
 
                     const unsigned int maxOutputSignatureCount = m_hullShaderInfo->GetProperties().m_pMaxOutputSignatureCount;
 

@@ -67,7 +67,7 @@ void VerificationPass::initVerificationPass()
 /// Fill the m_IGC_IR_spec structure with the values
 /// provided in the "IR" section of IGC_IR_spec.hpp.
 ///
-#define SPECIFIC_INSTRUCTION_VERIFIER(insType, verifierFunc)  
+#define SPECIFIC_INSTRUCTION_VERIFIER(insType, verifierFunc)
 
 #define IGC_IR_FP_TYPE(name, size) \
     m_IGC_IR_spec.FPTypeSizes.insert(size);\
@@ -164,14 +164,14 @@ bool VerificationPass::verifyInstruction(Instruction &inst)
     }
 
     // verifyInstCommon() is executed for all instruction.
-    // If a specific verification function is provided in the 
+    // If a specific verification function is provided in the
     // IGC_IR_spec.hpp, it will be called before the common verification.
 
-#define IGC_IR_FP_TYPE(name, size)  
-#define IGC_IR_VECTOR_TYPE(name, size)  
+#define IGC_IR_FP_TYPE(name, size)
+#define IGC_IR_VECTOR_TYPE(name, size)
 #define IGC_IR_LLVM_INTRINSIC(name)
 #define IGC_IR_LLVM_INSTRUCTION(name)
-#define DECLARE_OPCODE(llvm_name, inst_class, name, modifiers, sat, pred, condMod, mathIntrinsic, atomicIntrinsic, regioning)  
+#define DECLARE_OPCODE(llvm_name, inst_class, name, modifiers, sat, pred, condMod, mathIntrinsic, atomicIntrinsic, regioning)
 
 #define SPECIFIC_INSTRUCTION_VERIFIER(instClass, verifier) \
     if (opcode == Instruction::instClass) { verified = true; success &= verifier(inst); } \
@@ -184,7 +184,7 @@ bool VerificationPass::verifyInstruction(Instruction &inst)
 #undef  IGC_IR_LLVM_INSTRUCTION
 #undef  SPECIFIC_INSTRUCTION_VERIFIER
 #undef  DECLARE_OPCODE
-    
+
     if (!verified && !verifyInstCommon(inst))
     {
        success = false;
@@ -331,7 +331,7 @@ bool VerificationPass::verifyType(Type *type, Value *val)
         //    printValue(val);
         //    success = false;
         //}
-        
+
         // All pointers are valid - a pointer that points to an unsupported
         // type is still valid unless it gets dereferenced, which will get
         // checked later.
