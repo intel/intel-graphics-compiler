@@ -128,6 +128,7 @@ namespace IGC
         void visitIntToPtr(llvm::IntToPtrInst& I);
         void visitSDiv(llvm::BinaryOperator& I);
         void visitTruncInst(llvm::TruncInst &I);
+        void visitBitCastInst(llvm::BitCastInst &I);
 
         template <typename MaskType> void matchReverse(llvm::BinaryOperator &I);
     };

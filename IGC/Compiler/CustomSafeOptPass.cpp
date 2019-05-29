@@ -1692,6 +1692,55 @@ void GenSpecificPattern::visitCastInst(CastInst &I)
     }
 }
 
+/*
+from:
+    %HighBits.Vec = insertelement <2 x i32> <i32 0, i32 undef>, i32 %HighBits.32, i32 1
+    %HighBits.64 = bitcast <2 x i32> %HighBits.Vec to i64
+    %LowBits.64 = zext i32 %LowBits.32 to i64
+    %LowPlusHighBits = or i64 %HighBits.64, %LowBits.64
+    %19 = bitcast i64 %LowPlusHighBits to double
+to:
+    %17 = insertelement <2 x i32> undef, i32 %LowBits.32, i32 0
+    %18 = insertelement <2 x i32> %17, i32 %HighBits.32, i32 1
+    %19 = bitcast <2 x i32> %18 to double
+*/
+
+void GenSpecificPattern::visitBitCastInst(BitCastInst &I)
+{
+    if(I.getType()->isDoubleTy() && I.getOperand(0)->getType()->isIntegerTy(64))
+    {
+        BinaryOperator* binOperator = nullptr;
+        if ((binOperator = dyn_cast<BinaryOperator>(I.getOperand(0))) && binOperator->getOpcode() == Instruction::Or)
+        {
+            if (isa<BitCastInst>(binOperator->getOperand(0)) && isa<ZExtInst>(binOperator->getOperand(1)))
+            {
+                BitCastInst* bitCastInst = cast<BitCastInst>(binOperator->getOperand(0));
+                ZExtInst* zExtInst = cast<ZExtInst>(binOperator->getOperand(1));
+
+                if (zExtInst->getOperand(0)->getType()->isIntegerTy(32) &&
+                    isa<InsertElementInst>(bitCastInst->getOperand(0)) &&
+                    bitCastInst->getOperand(0)->getType()->isVectorTy() &&
+                    bitCastInst->getOperand(0)->getType()->getVectorElementType()->isIntegerTy(32) &&
+                    bitCastInst->getOperand(0)->getType()->getVectorNumElements() == 2)
+                {
+                    InsertElementInst* insertElementInst = cast<InsertElementInst>(bitCastInst->getOperand(0));
+
+                    if (isa<Constant>(insertElementInst->getOperand(0)) && cast<ConstantInt>(insertElementInst->getOperand(2))->getZExtValue() == 1)
+                    {
+                        IRBuilder<> builder(&I);
+                        Value *vectorValue = UndefValue::get(bitCastInst->getOperand(0)->getType());
+                        vectorValue = builder.CreateInsertElement(vectorValue, zExtInst->getOperand(0), builder.getInt32(0));
+                        vectorValue = builder.CreateInsertElement(vectorValue, insertElementInst->getOperand(1), builder.getInt32(1));
+                        Value* newBitCast = builder.CreateBitCast(vectorValue, builder.getDoubleTy());
+                        I.replaceAllUsesWith(newBitCast);
+                        I.eraseFromParent();
+                    }
+                }
+            }
+        }
+    }
+}
+
 void GenSpecificPattern::visitZExtInst(ZExtInst &ZEI)
 {
     CmpInst *Cmp = dyn_cast<CmpInst>(ZEI.getOperand(0));
