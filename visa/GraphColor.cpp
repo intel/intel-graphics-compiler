@@ -2404,7 +2404,7 @@ void GlobalRA::updateSubRegAlignment(unsigned char regFile, G4_SubReg_Align subA
 // be Even aligned. Others will be Either aligned. There is no need
 // to store old value of align because HW has no restriction on
 // even/odd alignment that HW conformity computes.
-void GlobalRA::updateAlignment(unsigned char regFile, G4_Align align, bool fromLRA)
+void GlobalRA::updateAlignment(unsigned char regFile, G4_Align align)
 {
     // Update alignment of all GRF declares to align
     for (auto dcl : kernel.Declares)
@@ -2418,27 +2418,11 @@ void GlobalRA::updateAlignment(unsigned char regFile, G4_Align align, bool fromL
                 topdclAugMask != AugmentationMasks::NonDefault &&
                 topdclAugMask != AugmentationMasks::Default64Bit)
             {
-                if (// Even align dcl >= GRF size if:
-                    //  a. dcl is 4-byte type with hstride = 1 or
-                    //  b. 2-byte type with hstride = 2 or
-                    //  c. entering from LRA as masks are not computed in LRA for simplicity
-                    (topdcl->getElemSize() >= 4 ||
-                        topdclAugMask == AugmentationMasks::Default32Bit ||
-                        fromLRA) &&
+                if (topdcl->getElemSize() >= 4 &&
                     topdcl->getByteSize() >= GENX_GRF_REG_SIZ &&
                     !(kernel.fg.builder->getOption(vISA_enablePreemption) &&
                         dcl == kernel.fg.builder->getBuiltinR0()))
                 {
-                    if (fromLRA)
-                    {
-                        // Store old alignment as we may need to restore it
-                        // if hybrid RA fails. Augmentation masks arent
-                        // computed pre-LRA so in LRA we conseratively
-                        // make all >= 1GRF vars to be Even aligned. This is
-                        // too conservative for GRA as Even alignment is
-                        // required only for Default32Bit mask vars.
-                        preLRAAlignment.insert(std::make_pair(dcl, dcl->getRegVar()->getAlignment()));
-                    }
                     dcl->getRegVar()->setAlignment(align);
                 }
             }
@@ -4561,7 +4545,7 @@ void Augmentation::augmentIntfGraph()
 #ifdef DEBUG_VERBOSE_ON
                 DEBUG_VERBOSE("Kernel size is SIMD" << kernel.getSimdSize() << " so updating all GRFs to be 2GRF aligned" << std::endl);
 #endif
-                gra.updateAlignment(G4_GRF, Even, false);
+                gra.updateAlignment(G4_GRF, Even);
             }
             gra.updateSubRegAlignment(G4_GRF, SUB_ALIGNMENT_GRFALIGN);
         }
@@ -6070,7 +6054,6 @@ bool GraphColor::regAlloc(bool doBankConflictReduction,
     }
 
     stopTimer(TIMER_COLORING);
-
     return (requireSpillCode() == false);
 }
 
@@ -8908,21 +8891,6 @@ void GlobalRA::removeSplitDecl()
         [](G4_Declare* dcl) { return dcl->getIsPartialDcl(); }), kernel.Declares.end());
 }
 
-void GlobalRA::restoreStatePostLRA()
-{
-    // This function is invoked when hybrid RA fails and
-    // GRA is necessary.
-
-    // Restore alignments
-    for (auto item : preLRAAlignment)
-    {
-        auto dcl = item.first;
-        auto oldAlign = item.second;
-
-        dcl->getRegVar()->setAlignment(oldAlign);
-    }
-}
-
 // FIXME: doBankConflictReduction and highInternalConflict are computed by local RA
 //        they should be moved to some common code
 bool GlobalRA::hybridRA(bool doBankConflictReduction, bool highInternalConflict, LocalRA& lra)
@@ -8952,7 +8920,6 @@ bool GlobalRA::hybridRA(bool doBankConflictReduction, bool highInternalConflict,
             }
             kernel.Declares.resize(numOrigDcl);
             lra.undoLocalRAAssignments(false);
-            restoreStatePostLRA();
             return false;
         }
 
@@ -8969,7 +8936,6 @@ bool GlobalRA::hybridRA(bool doBankConflictReduction, bool highInternalConflict,
                 kernel.Declares.resize(numOrigDcl);
                 lra.undoLocalRAAssignments(false);
             }
-            restoreStatePostLRA();
             return false;
         }
         coloring.confirmRegisterAssignments();
@@ -10963,30 +10929,6 @@ void GlobalRA::fixAlignment()
     }
 }
 
-void VerifyAugmentation::verifyAlign(G4_Declare* dcl)
-{
-    // Verify that dcl with Default32Bit align mask are 2GRF aligned
-    auto it = masks.find(dcl);
-    if (it == masks.end())
-        return;
-
-    auto augData = (*it);
-    auto dclMask = std::get<1>((*it).second);
-
-    if (dclMask == AugmentationMasks::Default32Bit)
-    {
-        auto assignment = dcl->getRegVar()->getPhyReg();
-        if (assignment && assignment->isGreg())
-        {
-            auto phyRegNum = assignment->asGreg()->getRegNum();
-            if (phyRegNum % 2 != 0)
-            {
-                printf("Dcl %s is Default32Bit but assignment is not Even aligned\n", dcl->getName());
-            }
-        }
-    }
-}
-
 void VerifyAugmentation::dump(const char* dclName)
 {
     std::string dclStr = dclName;
@@ -11233,28 +11175,6 @@ void VerifyAugmentation::verify()
         auto& tup = masks[dcl];
         unsigned int startIdx = std::get<2>(tup)->getLexicalId();
         auto dclMask = std::get<1>(tup);
-
-        auto getMaskStr = [](AugmentationMasks m)
-        {
-            std::string str = "Undetermined";
-            if (m == AugmentationMasks::Default16Bit)
-                str = "Default16Bit";
-            else if (m == AugmentationMasks::Default32Bit)
-                str = "Default32Bit";
-            else if (m == AugmentationMasks::Default64Bit)
-                str = "Default64Bit";
-            else if (m == AugmentationMasks::NonDefault)
-                str = "NonDefault";
-            else if (m == AugmentationMasks::DefaultPredicateMask)
-                str = "DefaultPredicateMask";
-            str.append("\n");
-
-            return str;
-        };
-
-        std::cerr << dcl->getName() << " - " << getMaskStr(dclMask);
-
-        verifyAlign(dcl);
 
         for (auto it = active.begin(); it != active.end();)
         {
