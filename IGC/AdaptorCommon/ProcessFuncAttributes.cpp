@@ -233,6 +233,22 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
             // It is not a defined function
             continue;
         }
+        
+        // If EnableOCLNoInlineAttr is on and F does have
+        // NoInline, do not reset it.
+        if (IGC_IS_FLAG_ENABLED(EnableOCLNoInlineAttr) &&
+            pCtx->type == ShaderType::OPENCL_SHADER &&
+            F->hasFnAttribute(llvm::Attribute::NoInline) &&
+            !F->hasFnAttribute(llvm::Attribute::Builtin))
+        {
+            continue;
+        }
+
+        // Remove noinline attr if present.
+        F->removeFnAttr(llvm::Attribute::NoInline);
+
+        // Add AlwaysInline attribute to force inlining all calls.
+        F->addFnAttr(llvm::Attribute::AlwaysInline);
 
         // Go through call sites and remove NoInline atrributes.
         for (auto I : F->users()) {
@@ -271,67 +287,86 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
             Changed = true;
         }
 
-        // Always try inline unless we find reasons not to
-        F->addFnAttr(llvm::Attribute::AlwaysInline);
-
         // inline all OCL math functions if __FastRelaxedMath is set
-        // Always inline builtins by default for now
-        if ((IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_FORCE_INLINE) ||
-            (fastMathFunct.find(F) != fastMathFunct.end()) ||
-            (F->hasFnAttribute(llvm::Attribute::Builtin)))
+        if (fastMathFunct.find(F) != fastMathFunct.end()) continue;
+
+        // The following subroutine check is added to disable two-phase-inlining
+        // when we do not enable subroutines.
+        bool keepAlwaysInline = (MemPoolFuncs.count(F) != 0);
+        if (IGC_GET_FLAG_VALUE(FunctionControl) != FLAG_FCALL_FORCE_INLINE)
         {
-            F->removeFnAttr(llvm::Attribute::NoInline);
-            continue;
-        }
-
-        bool keepAlwaysInline = true;
-
-        // Honor noinline attribute
-        if (F->hasFnAttribute(llvm::Attribute::NoInline))
-            keepAlwaysInline = false;
-
-        // Force inline mempool funcs
-        if (!keepAlwaysInline && MemPoolFuncs.count(F) != 0)
-            keepAlwaysInline = true;
-
-        if (!keepAlwaysInline)
-        {
-            for (auto &arg : F->args())
+            // keep inline if function pointers not enabled and there are uses
+            // for function pointers other than call instructions
+            if (IGC_IS_FLAG_DISABLED(EnableFunctionPointer) && !keepAlwaysInline)
             {
-                // If argument contains an opaque type e.g. image, then always inline it.
-                // If argument is a pointer to GAS, always inline it for perf reason.
-                //
-                // Note that this workaround should be removed.
-                if (containsOpaque(arg.getType()) || isSupportedAggregateArgument(&arg) ||
-                    isGASPointer(&arg))
+                for (auto U : F->users())
                 {
-                    keepAlwaysInline = true;
-                    break;
+                    if (!isa<CallInst>(U))
+                    {
+                        keepAlwaysInline = true;
+                        break;
+                    }
                 }
             }
 
-            // SPIR-V image functions don't contain opaque types for images, 
-            // they use i64 values instead.
-            // We need to detect them based on function name.
-            if (F->getName().startswith(spv::kLLVMName::builtinPrefix) &&
-                F->getName().contains("Image")) {
-                keepAlwaysInline = true;
+            if (!keepAlwaysInline)
+            {
+                for (auto &arg : F->args())
+                {
+                    // If argument contains an opaque type e.g. image, then always inline it.
+                    // If argument is a pointer to GAS, always inline it for perf reason.
+                    //
+                    // Note that this workaround should be removed.
+                    if (containsOpaque(arg.getType()) || isSupportedAggregateArgument(&arg) ||
+                        isGASPointer(&arg))
+                    {
+                        keepAlwaysInline = true;
+                        break;
+                    }
+                }
+
+                // SPIR-V image functions don't contain opaque types for images, 
+                // they use i64 values instead.
+                // We need to detect them based on function name.
+                if (F->getName().startswith(spv::kLLVMName::builtinPrefix) &&
+                    F->getName().contains("Image")) {
+                  keepAlwaysInline = true;
+                }
+            }
+
+            if (!keepAlwaysInline)
+            {
+                F->removeFnAttr(llvm::Attribute::AlwaysInline);
+            }
+        }
+
+        // Add Optnone to user functions but not on builtins. This allows to run
+        // optimizations on builtins.
+        if (getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData()->compOpt.OptDisable)
+        {
+            if (!F->hasFnAttribute(llvm::Attribute::Builtin))
+            {
+                F->addFnAttr(llvm::Attribute::OptimizeNone);
             }
         }
 
         if (notKernel)
         {
-            bool forceSubroutine = IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_FORCE_SUBROUTINE;
-            bool forceStackCall = IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_FORCE_STACKCALL;
-            if (forceSubroutine || forceStackCall)
+            if (!keepAlwaysInline)
             {
-                // add the following line in order to stress-test 
-                // subroutine call or stack call
-                F->addFnAttr(llvm::Attribute::NoInline);
-                keepAlwaysInline = false;
-                if (forceStackCall)
+                bool forceSubroutine = IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_FORCE_SUBROUTINE;
+                bool forceStackCall = IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_FORCE_STACKCALL;
+
+                if (forceSubroutine || forceStackCall)
                 {
-                    F->addFnAttr("visaStackCall");
+                    // add the following line in order to stress-test 
+                    // subroutine call or stack call
+                    F->removeFnAttr(llvm::Attribute::AlwaysInline);
+                    F->addFnAttr(llvm::Attribute::NoInline);
+                    if (forceStackCall)
+                    {
+                        F->addFnAttr("visaStackCall");
+                    }
                 }
             }
 
@@ -352,28 +387,13 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                     }
                 }
                 if (isIndirect)
-                {
+                {                    
                     pCtx->m_enableFunctionPointer = true;
+                    pCtx->m_enableSubroutine = false;
                     F->addFnAttr("AsFunctionPointer");
                     F->addFnAttr("visaStackCall");
                 }
             }
-        }
-
-        if (keepAlwaysInline)
-        {
-            F->removeFnAttr(llvm::Attribute::NoInline);
-        }
-        else
-        {
-            F->removeFnAttr(llvm::Attribute::AlwaysInline);
-        }
-
-        // Add Optnone to user functions but not on builtins. This allows to run
-        // optimizations on builtins.
-        if (getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData()->compOpt.OptDisable)
-        {
-            F->addFnAttr(llvm::Attribute::OptimizeNone);
         }
         Changed = true;
     }
@@ -451,6 +471,10 @@ bool ProcessBuiltinMetaData::runOnModule(Module& M)
     {
         Function *F = &(*I);
         if (!F || F->isDeclaration()) continue;
+
+        // add AlwaysInline for functions. It will be handle in optimization phase
+        if (!F->hasFnAttribute(llvm::Attribute::NoInline))
+            F->addFnAttr(llvm::Attribute::AlwaysInline);
 
         // disable JumpThread optimization on the block that contains this function
         F->setConvergent();

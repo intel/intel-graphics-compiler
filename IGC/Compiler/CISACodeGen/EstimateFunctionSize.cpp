@@ -272,38 +272,49 @@ void EstimateFunctionSize::checkSubroutine() {
   if (!CGW || AL != AL_Module)
     return;
 
-  bool hasNoInlineAttrib = false;
+  bool neverInline = false;
 
   CodeGenContext *pContext = CGW->getCodeGenContext();
   bool EnableSubroutine = true;
+  if (pContext->type != ShaderType::OPENCL_SHADER &&
+      pContext->type != ShaderType::COMPUTE_SHADER)
+    EnableSubroutine = false;
+  else if (pContext->m_instrTypes.hasIndirectCall)
+    EnableSubroutine = false;
 
-  if (IGC_GET_FLAG_VALUE(FunctionControl) != FLAG_FCALL_FORCE_SUBROUTINE)
-  {
-    if (pContext->type != ShaderType::OPENCL_SHADER &&
-        pContext->type != ShaderType::COMPUTE_SHADER)
-        EnableSubroutine = false;
-    else if (pContext->m_instrTypes.hasIndirectCall)
-        EnableSubroutine = false;
-
-      // Enable subroutine if function has the "UserSubroutine" attribute, or has noinline
+  // Enable subroutine if function has the "UserSubroutine" attribute
+  if (!EnableSubroutine) {
     for (Function& F : *M) {
         if (F.hasFnAttribute("UserSubroutine")) {
             EnableSubroutine = true;
-        }
-        // Honor the noinline attribute
-        if (F.hasFnAttribute(llvm::Attribute::NoInline)) {
-            hasNoInlineAttrib = true;
-            EnableSubroutine = true;
+            if (F.hasFnAttribute(llvm::Attribute::NoInline)) {
+                neverInline = true;
+            }
         }
     }
+  }
 
-    // We can still turn off subroutine if not beneficial
-    if (!hasNoInlineAttrib && EnableSubroutine) {
-        std::size_t Threshold = IGC_GET_FLAG_VALUE(SubroutineThreshold);
-        std::size_t MaxSize = getMaxExpandedSize();
-        if (MaxSize <= Threshold && !HasRecursion)
-            EnableSubroutine = false;
-    }
+  if (neverInline) {
+    EnableSubroutine = true;
+  }
+  else if (EnableSubroutine) {
+    std::size_t Threshold = IGC_GET_FLAG_VALUE(SubroutineThreshold);
+    std::size_t MaxSize = getMaxExpandedSize();
+    if (MaxSize <= Threshold && !HasRecursion)
+      EnableSubroutine = false;
+  }
+
+  if (IGC_IS_FLAG_ENABLED(EnableOCLNoInlineAttr) &&
+      pContext->type == ShaderType::OPENCL_SHADER)
+  {
+      for (Function& F : *M)
+      {
+          if (F.hasFnAttribute(llvm::Attribute::NoInline) &&
+              !F.hasFnAttribute(llvm::Attribute::Builtin)) {
+              EnableSubroutine = true;
+              break;
+          }
+      }
   }
 
   if (EnableSubroutine) {
