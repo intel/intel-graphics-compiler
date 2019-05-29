@@ -24,7 +24,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-
 #pragma once
 
 #include <algorithm>
@@ -39,7 +38,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace CIF {
 
-constexpr Version_t CifFrameworkVersion = 1;
+constexpr Version_t CifFrameworkVersion = 2;
 
 namespace RAII {
 template <typename T> 
@@ -289,6 +288,14 @@ template <> struct InterfacePack<> {
 };
 
 
+struct IsInterfaceIdFwdToOne
+{
+    template<template <Version_t> class Interface>
+    static bool Call(){
+        return true;
+    }
+};
+
 /// Storage for versioned CIF interfaces
 /// Useful in operations on sets of interfaces
 template <template <Version_t> class... SupportedInterfaces>
@@ -313,10 +320,14 @@ struct InterfacesList {
   /// Could do sizeof...(SupportedInterfaces) instead, but GCC 4.8 has a bug
   static constexpr uint32_t GetNumInterfaces() {
 #if defined _WIN32
-    return sizeof...(SupportedInterfaces);
+      return sizeof...(SupportedInterfaces);
 #else
     return GetNumInterfacesImpl<SupportedInterfaces...>();
 #endif
+  }
+
+  static bool ContainsInterface(InterfaceId_t id){
+      return forwardToOne<IsInterfaceIdFwdToOne, bool, bool>(id, false);
   }
 
 protected:

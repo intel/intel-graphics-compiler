@@ -24,7 +24,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-
 #pragma once
 
 #include <cinttypes>
@@ -43,6 +42,7 @@ using VersionCoder = Coder<Version_t>;
 constexpr Version_t InvalidVersion = std::numeric_limits<Version_t>::max();
 constexpr Version_t UnknownVersion = InvalidVersion - 1;
 constexpr Version_t TraitsSpecialVersion = UnknownVersion - 1;
+constexpr Version_t AnyVersion = UnknownVersion;
 
 constexpr Version_t BaseVersion = 0;
 constexpr Version_t MinVersion = BaseVersion + 1;

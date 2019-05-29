@@ -24,7 +24,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-
 #include "cif/builtins/memory/buffer/buffer.h"
 #include "cif/builtins/memory/buffer/impl/buffer_impl.h"
 

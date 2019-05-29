@@ -24,7 +24,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-
 #define CIF_FORWARD_DECLARE(TYPE, STRUCT_NAME)                                \
   template <CIF::Version_t ver> TYPE STRUCT_NAME
 

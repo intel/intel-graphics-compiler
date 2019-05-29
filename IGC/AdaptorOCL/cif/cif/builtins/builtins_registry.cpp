@@ -24,7 +24,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-
 #include "cif/builtins/builtins_registry.h"
 
 #include "cif/export/cif_main_impl.h"
@@ -39,7 +38,7 @@ namespace Builtins {
 using AllBuiltinsListT =  InterfacesList<CIF::Builtins::Buffer>;
 
 bool IsBuiltin(InterfaceId_t intId){
-    return AllBuiltinsListT::template forwardToOne<Helpers::IsInterfaceIdFwdToOne, bool>(intId, false);
+    return AllBuiltinsListT::ContainsInterface(intId);
 }
 
 ICIF *Create(InterfaceId_t entryPointInterface, Version_t version, ICIF *parentInterface){

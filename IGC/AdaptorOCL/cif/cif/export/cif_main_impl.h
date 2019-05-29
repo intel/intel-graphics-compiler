@@ -24,7 +24,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-
 #pragma once
 
 #include "cif/builtins/builtins_registry.h"
@@ -36,27 +35,18 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace CIF {
 
 namespace Helpers {
-  struct IsInterfaceIdFwdToOne {
-    template<template <Version_t> class Interface>
-    static bool Call() {
-      return true;
-    }
-  };
-
   struct ForwardCreateInterfaceImpl {
     template <template <Version_t> class Interface, typename ... ArgsT>
     static Interface<CIF::BaseVersion> *Call(Version_t version, ArgsT && ... args) {
       return CIF::InterfaceCreator<Interface>::template CreateInterfaceVer<ArgsT...>(version, std::forward<ArgsT>(args)...);
     }
   };
-  
-  struct ForwardGetSupportedVersions {
-    template <template <Version_t> class Interface>
-    static bool Call(Version_t &verMin, Version_t &verMax) {
-      verMax = Interface<CIF::TraitsSpecialVersion>::GetLatestSupportedVersion();
-      verMin = Interface<CIF::TraitsSpecialVersion>::GetOldestSupportedVersion();
-      return true;
-    }
+
+  struct ForwardFindSupportedVersions {
+      template <template <Version_t> class Interface>
+      static bool Call(InterfaceId_t interfaceToFind, Version_t &verMin, Version_t &verMax) {
+          return Interface<CIF::TraitsSpecialVersion>::AllUsedInterfaces::template forwardToOne<ForwardGetSupportedVersions, bool>(interfaceToFind, false, verMin, verMax);
+      }
   };
 
   struct ForwardGetFirstIncompatible {
@@ -99,6 +89,14 @@ struct CIFMainImplStatic : ICIFImpl<CIF::CIFMain> {
     }
     return EntryPointInterfacesList::template forwardToOne<Helpers::ForwardGetSupportedVersions, bool>(entryPointInterface, false, verMin, verMax);
   }
+
+  bool FindSupportedVersionsImpl(InterfaceId_t entryPointInterface, InterfaceId_t interfaceToFind, Version_t &verMin, Version_t &verMax) const override {
+    if(CIF::Builtins::IsBuiltin(entryPointInterface)){
+        assert(entryPointInterface == interfaceToFind); // builtins don't have subinterfaces
+        return CIF::Builtins::GetSupportedVersions(entryPointInterface, verMin, verMax);
+    }
+    return EntryPointInterfacesList::template forwardToOne<Helpers::ForwardFindSupportedVersions, bool>(entryPointInterface, false, interfaceToFind, verMin, verMax);
+  }
   
   InterfaceId_t FindIncompatibleImpl(InterfaceId_t entryPointInterface, CIF::CompatibilityDataHandle handle) const override {
     if(CIF::Builtins::IsBuiltin(entryPointInterface)){
@@ -124,7 +122,7 @@ struct CIFMainImplRegistry : ICIFImpl<CIF::CIFMain> {
     }
     auto entryPointInfo = CIF::EntryPointRegistry::Get().GetEntryPointInterface(entryPointInterface);
     if(entryPointInfo == nullptr){
-        // interace info not availabe in the registry
+        // interface info not availabe in the registry
         return nullptr;
     }
     return entryPointInfo->Create(version, this);
@@ -142,6 +140,21 @@ struct CIFMainImplRegistry : ICIFImpl<CIF::CIFMain> {
     entryPointInfo->GetSupportedVersions(verMin, verMax);
     return true;
   }
+
+  bool FindSupportedVersionsImpl(InterfaceId_t entryPointInterface, InterfaceId_t interfaceToFind, Version_t &verMin, Version_t &verMax) const override {
+    if(CIF::Builtins::IsBuiltin(entryPointInterface)){
+        assert(entryPointInterface == interfaceToFind); // builtins don't have subinterfaces
+        GetSupportedVersions(entryPointInterface, verMin, verMax);
+        return false;
+    }
+    auto entryPointInfo = CIF::EntryPointRegistry::Get().GetEntryPointInterface(entryPointInterface);
+    if(entryPointInfo == nullptr){
+        // interface info not availabe in the registry
+        return false;
+    }
+
+    return entryPointInfo->FindSupportedVersions(interfaceToFind, verMin, verMax);
+  }
   
   InterfaceId_t FindIncompatibleImpl(InterfaceId_t entryPointInterface, CIF::CompatibilityDataHandle handle) const override {
     if(CIF::Builtins::IsBuiltin(entryPointInterface)){
@@ -149,7 +162,7 @@ struct CIFMainImplRegistry : ICIFImpl<CIF::CIFMain> {
     }
     auto entryPointInfo = CIF::EntryPointRegistry::Get().GetEntryPointInterface(entryPointInterface);
     if(entryPointInfo == nullptr){
-        // interace info not availabe in the registry
+        // interface info not availabe in the registry
         return entryPointInterface;
     }
 

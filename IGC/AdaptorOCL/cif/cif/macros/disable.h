@@ -24,7 +24,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-
 #undef CIF_FORWARD_DECLARE
 #undef CIF_FORWARD_DECLARE_S
 #undef CIF_FORWARD_DECLARE_C

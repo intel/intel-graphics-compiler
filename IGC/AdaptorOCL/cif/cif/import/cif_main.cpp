@@ -24,7 +24,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-
 #include "cif/common/cif.h"
 #include "cif/import/library_api.h"
 #include "cif/import/cif_main.h"

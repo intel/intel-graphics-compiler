@@ -24,7 +24,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-
 #pragma once
 
 #include "cif/common/id.h"
@@ -38,8 +37,7 @@ Version_t GetUltVersion();
 #endif
 
 inline Version_t GetBinaryVersion() {
-#if defined P4
-#elif defined GIT
+#if defined GIT
 #elif defined CIF_ULT
   return GetUltVersion();
 #else

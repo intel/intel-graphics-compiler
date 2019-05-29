@@ -24,7 +24,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-
 #pragma once
 
 #include <cinttypes>
@@ -213,7 +212,7 @@ protected:
             }
 
             auto minVer = Interface<CIF::TraitsSpecialVersion>::GetOldestSupportedVersion();
-            auto maxVer = Interface<CIF::TraitsSpecialVersion>::GetOldestSupportedVersion();
+            auto maxVer = Interface<CIF::TraitsSpecialVersion>::GetLatestSupportedVersion();
             matchingNd->MinSupportedVersion = minVer;
             matchingNd->MaxSupportedVersion = maxVer;
 
@@ -270,7 +269,7 @@ struct CompatibilityEncoder {
     }
 
     template <template <Version_t> class EntryPointInterface>
-    CompatibilityDataHandle Encode(){
+    CompatibilityDataHandle Encode(const std::vector<InterfaceId_t> *interfacesToIgnore = nullptr){
         const size_t sizeToReserve = Helpers::EncHeader<EncodingBaseType>::GetHeaderSizeInEncodingBaseType()
                                      +
                                      (Helpers::EncInterface<EncodingBaseType>::GetDescriptorSizeInEncodingBaseType()
@@ -285,8 +284,7 @@ struct CompatibilityEncoder {
         }
 
         // encode compatibility descriptors
-        EncodeFwd::Call<EntryPointInterface>(encodedData);
-        //EncodeAll<CIF::InterfacesList<Interfaces...>>(encodedData);
+        EncodeFwd::Call<EntryPointInterface>(encodedData, interfacesToIgnore);
 
         // encode header
         const size_t encodedInterfacesNum = (encodedData.size() - Helpers::EncHeader<EncodingBaseType>::GetHeaderSizeInEncodingBaseType()) 
@@ -360,18 +358,26 @@ protected:
     struct EncodeFwd
     {
         template<template <Version_t> class Interface>
-        static void Call(BackingStorage & storage){
+        static void Call(BackingStorage & storage, const std::vector<InterfaceId_t> *interfacesToIgnore = nullptr){
             auto offset = storage.size();
             for(EncodingBaseType i = 0; i < Helpers::EncInterface<EncodingBaseType>::GetDescriptorSizeInEncodingBaseType(); ++i){
                 storage.push_back(0);
             }
 
+            auto requestedInterface = Interface<CIF::BaseVersion>::GetInterfaceId();
+            auto requestedVersion = Interface<CIF::TraitsSpecialVersion>::GetLatestSupportedVersion();
+            if(nullptr != interfacesToIgnore){
+                if(std::find(interfacesToIgnore->begin(), interfacesToIgnore->end(), requestedInterface) != interfacesToIgnore->end()){
+                    requestedVersion = AnyVersion; 
+                }
+            }
+
             Helpers::EncInterface<EncodingBaseType>::Encode(storage.data() + offset,
-                                                            Interface<CIF::BaseVersion>::GetInterfaceId(),
-                                                            Interface<CIF::TraitsSpecialVersion>::GetLatestSupportedVersion(),
+                                                            requestedInterface,
+                                                            requestedVersion,
                                                             Interface<CIF::TraitsSpecialVersion>::AllUsedInterfaces::GetNumInterfaces());
 
-            Interface<CIF::TraitsSpecialVersion>::AllUsedInterfaces::template forwardToAll<EncodeFwd>(storage);
+            Interface<CIF::TraitsSpecialVersion>::AllUsedInterfaces::template forwardToAll<EncodeFwd>(storage, interfacesToIgnore);
         }
     };
 
@@ -383,6 +389,7 @@ protected:
         std::vector<IncompatibilityData> ret;
         for(auto & nd : allNodes){
             bool supported = (nd.RequestedVersion >= nd.MinSupportedVersion) & (nd.RequestedVersion <= nd.MaxSupportedVersion);
+            supported |= (nd.RequestedVersion == AnyVersion);
             if(supported){
                 continue;
             }
