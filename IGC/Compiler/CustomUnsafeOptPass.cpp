@@ -2424,7 +2424,7 @@ public:
     static char ID;
 
     EarlyOutPatterns() : FunctionPass(ID),
-        m_ctx(nullptr)
+        m_ctx(nullptr), m_ShaderLength(0)
     {
     }
     virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const
@@ -2443,6 +2443,7 @@ private:
     static bool canOptimizeSampleInst(SmallVector<Instruction*, 4> &Channels, GenIntrinsicInst *GII);
     static bool canOptimizeDotProduct(SmallVector<Instruction*, 4> &Values, Instruction *I);
     static bool canOptimizeNdotL(SmallVector<Instruction*, 4> &Values, FCmpInst *FC);
+    static bool canOptimizeDirectOutput(SmallVector<Instruction*, 4> &Values, GenIntrinsicInst *GII, Value *&SI, unsigned int ShaderLength);
     static bool DotProductMatch(const Instruction *I);
     static bool DotProductSourceMatch(const Instruction *I);
     static BasicBlock* tryFoldAndSplit(
@@ -2475,7 +2476,10 @@ private:
         Instruction *Root,
         ArrayRef<Instruction*> Values,
         const DenseSet<const Value*> &FoldedVals);
+    static unsigned int shortPathToOutput(Value *inst, unsigned int limit);
+
     CodeGenContext *m_ctx;
+    unsigned int m_ShaderLength;
 };
 
 char EarlyOutPatterns::ID = 0;
@@ -2493,6 +2497,15 @@ bool EarlyOutPatterns::runOnFunction(Function &F)
     {
         return false;
     }
+
+    m_ShaderLength = 0;
+    for (auto BI = F.begin(), BE = F.end(); BI != BE;)
+    {
+        BasicBlock* currentBB = &(*BI);
+        ++BI;
+        m_ShaderLength += currentBB->size();
+    }
+
     bool changed = false;
     for(auto BI = F.begin(), BE = F.end(); BI != BE;)
     {
@@ -3021,6 +3034,7 @@ bool EarlyOutPatterns::processBlock(BasicBlock* BB)
     bool DPMaxPatternEnable = 0;
     bool DPFSatPatternEnable = 0;
     bool NdotLPatternEnable = 0;
+    bool DirectOutputPatternEnable = 0;
 
     // Each pattern below is given a bit to toggle on/off
     // to isolate the performance for each individual pattern.
@@ -3037,6 +3051,7 @@ bool EarlyOutPatterns::processBlock(BasicBlock* BB)
         DPMaxPatternEnable = (IGC_GET_FLAG_VALUE(EarlyOutPatternSelectPS) & 0x2) != 0;
         DPFSatPatternEnable = (IGC_GET_FLAG_VALUE(EarlyOutPatternSelectPS) & 0x4) != 0;
         NdotLPatternEnable = (IGC_GET_FLAG_VALUE(EarlyOutPatternSelectPS) & 0x8) != 0;
+        DirectOutputPatternEnable = (IGC_GET_FLAG_VALUE(EarlyOutPatternSelectPS) & 0x10) != 0;
     }
 
     while (BBSplit)
@@ -3073,17 +3088,43 @@ bool EarlyOutPatterns::processBlock(BasicBlock* BB)
             }
             else if (auto *GII = dyn_cast<GenIntrinsicInst>(&II))
             {
+                Value* SI = nullptr;
+                int outputCount = 0;
                 switch (GII->getIntrinsicID())
                 {
                 case GenISAIntrinsic::GenISA_fsat:
                     OptCandidate = DPFSatPatternEnable &&
                         DotProductSourceMatch(GII) && canOptimizeDotProduct(Values, &II);
                     break;
+                case GenISAIntrinsic::GenISA_OUTPUT:
+                    for (auto iter = GII->getParent()->begin(); iter != GII->getParent()->end(); iter++)
+                    {
+                        GenIntrinsicInst * outI = dyn_cast<GenIntrinsicInst>(iter);
+                        if (outI && outI->getIntrinsicID() == GenISAIntrinsic::GenISA_OUTPUT)
+                        {
+                                outputCount++;
+                        }
+                    }
+                    // only handle cases with one output
+                    if (outputCount != 1)
+                        continue;
+
+                    OptCandidate = DirectOutputPatternEnable && 
+                        canOptimizeDirectOutput(Values, GII, SI, m_ShaderLength);
+
+                    if (!OptCandidate)
+                        continue;
+
+                    Root = moveToDef(cast<Instruction>(SI), Values);
+
+                    FoldThreshold = 1;
+                    FoldThresholdMultiChannel = 1;
+                    RatioNeeded = 1;
+                    break;
                 default:
                     break;
                 }
             }
-            
             else if (auto *FC = dyn_cast<FCmpInst>(&II))
             {
                 OptCandidate = NdotLPatternEnable &&
@@ -3105,6 +3146,96 @@ bool EarlyOutPatterns::processBlock(BasicBlock* BB)
     }
 
     return Changed;
+}
+
+
+unsigned int EarlyOutPatterns::shortPathToOutput(Value *Val, unsigned int limit)
+{
+    if (limit == 0)
+    {
+        return 0;
+    }
+    limit--;
+
+    if (Instruction *inst = dyn_cast<Instruction>(Val))
+    {
+        unsigned int maxDepth = 0;
+        for (unsigned int i = 0; i < inst->getNumOperands(); i++)
+        {
+            maxDepth = MAX(maxDepth, shortPathToOutput(inst->getOperand(i), limit));
+        }
+        return 1 + maxDepth;
+    }
+    else
+    {
+        return 0;
+    }
+}
+
+bool EarlyOutPatterns::canOptimizeDirectOutput(SmallVector<Instruction*, 4> &Values, GenIntrinsicInst *GII, Value *&SI, unsigned int ShaderLength)
+{
+#define MAX_FMUL_VEC_SIZE 8
+#define PATH_TO_OUTPUT_LIMIT 5
+
+    //Find the case where most calculation goes to .w channel, and very few instructions are used to calculate .xyz.
+    if (Instruction *inst = dyn_cast<Instruction>(GII->getOperand(3)))
+    {
+        unsigned int findex = 0;
+        smallvector<llvm::Value*, MAX_FMUL_VEC_SIZE> fmulVec;
+        fmulVec.push_back(GII->getOperand(3));
+
+        // look for cases with output comes from sample and up to 3 levels of fmul
+        // Also the sample srcs are either constant or inputVec.
+        // We can then add an earlyOut condition to check the sample output. 
+        // If the sample result = 0, skip all the instructions contribute to the other src of mul.
+        while (findex < fmulVec.size() && findex < MAX_FMUL_VEC_SIZE)
+        {
+            if (ExtractElementInst* eeInst = dyn_cast<ExtractElementInst>(fmulVec[findex]))
+            {
+                if (SampleIntrinsic* genIntr = dyn_cast<SampleIntrinsic>(eeInst->getOperand(0)))
+                {
+                    for (unsigned int i = 0; i < genIntr->getNumOperands(); i++)
+                    {
+                        if (dyn_cast<Constant>(genIntr->getOperand(i)))
+                            continue;
+                        else if (GenIntrinsicInst *intrinsic = dyn_cast<GenIntrinsicInst>(genIntr->getOperand(i)))
+                        {
+                            if (intrinsic->getIntrinsicID() == GenISAIntrinsic::GenISA_DCL_inputVec)
+                            {
+                                continue;
+                            }
+                        }
+                        return false;
+                    }
+                    Values.push_back(eeInst);
+                    SI = genIntr;
+                    break;
+                }
+            }
+            else if (BinaryOperator* fmulInst = dyn_cast<BinaryOperator>(fmulVec[findex]))
+            {
+                if (fmulInst->getOpcode() == Instruction::FMul)
+                {
+                    fmulVec.push_back(fmulInst->getOperand(0));
+                    fmulVec.push_back(fmulInst->getOperand(1));
+                }
+            }
+            findex++;
+        } 
+    }
+
+    if (SI == nullptr)
+        return false;
+
+    // if the .xyz path are all short, and the shader is not too short (10+ times the xyz path)
+    if (shortPathToOutput(GII->getOperand(0), PATH_TO_OUTPUT_LIMIT) < PATH_TO_OUTPUT_LIMIT &&
+        shortPathToOutput(GII->getOperand(1), PATH_TO_OUTPUT_LIMIT) < PATH_TO_OUTPUT_LIMIT &&
+        shortPathToOutput(GII->getOperand(2), PATH_TO_OUTPUT_LIMIT) < PATH_TO_OUTPUT_LIMIT &&
+        ShaderLength > PATH_TO_OUTPUT_LIMIT * 10)
+    {
+        return true;
+    }
+    return false;
 }
 
 bool EarlyOutPatterns::trackAddSources(BinaryOperator* addInst)
@@ -3246,7 +3377,6 @@ BasicBlock* EarlyOutPatterns::SplitBasicBlock(Instruction* inst, const DenseSet<
         }
         else
         {
-
             VMap[it]->replaceAllUsesWith(ConstantFP::get(it->getType(), 0.0));
         }
     }
