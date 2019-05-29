@@ -113,7 +113,8 @@ namespace IGC
         //true means we separate pvtmem and spillfill. pvtmem could go into stateless.
         //false means all of them are together
         bool            m_separatePvtSpill = false;
-    
+        bool            m_roundPower2KBytes = false;
+
         void Destroy()
         {
             if (m_programBin)
@@ -129,15 +130,21 @@ namespace IGC
                 IGC::aligned_free(m_debugDataGenISA);
             }
         }
-
-        void setSeparatePvtSpill(bool setSeparatePvtSpillT)
+        
+        void setSeparatePvtSpill(bool setSeparatePvtSpillT, bool roundPower2KBytes)
         {
             m_separatePvtSpill = setSeparatePvtSpillT;
+            m_roundPower2KBytes = roundPower2KBytes;
         }
 
         unsigned int getScratchSpaceUsage() const
         {
-            return m_scratchSpaceUsedBySpills + m_scratchSpaceUsedByGtpin + (m_separatePvtSpill ? 0 : m_scratchSpaceUsedByShader);
+            unsigned int size = m_scratchSpaceUsedBySpills + m_scratchSpaceUsedByGtpin + (m_separatePvtSpill ? 0 : m_scratchSpaceUsedByShader);
+            if (m_roundPower2KBytes)
+            {
+                size = roundPower2KBbyte(size);
+            } 
+            return size;
         }
 
         unsigned int getScratchPrivateUsage() const
@@ -161,6 +168,12 @@ namespace IGC
         {
             return (m_separatePvtSpill ? m_scratchSpaceUsedByStateless : 0);
         }
+    private:
+        unsigned int roundPower2KBbyte(unsigned int size) const
+        {
+            return (size ? iSTD::RoundPower2(iSTD::Max(int_cast<DWORD>(size), static_cast<DWORD>(sizeof(KILOBYTE)))) : 0);
+        }
+
     };
 
     enum InstrStatTypes
