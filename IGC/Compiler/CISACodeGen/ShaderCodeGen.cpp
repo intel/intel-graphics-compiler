@@ -640,6 +640,7 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager& mpm)
 
     case ShaderType::HULL_SHADER:
         mpm.add(createHullShaderLoweringPass());
+        mpm.add(new GenSpecificPattern());
         break;
 
     case ShaderType::DOMAIN_SHADER:
