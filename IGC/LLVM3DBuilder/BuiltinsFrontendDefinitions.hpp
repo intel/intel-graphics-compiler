@@ -847,6 +847,13 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SyncThreadGroup()
 }
 
 template<bool preserveNames, typename T, typename Inserter>
+llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::Create_FlushSampler()
+{
+    llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
+    return this->CreateCall(llvm::GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_flushsampler));
+}
+
+template<bool preserveNames, typename T, typename Inserter>
 llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::Create_MemoryFence(
     bool commit,
     bool flushRWDataCache,

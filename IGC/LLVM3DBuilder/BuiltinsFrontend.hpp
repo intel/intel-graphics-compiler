@@ -368,6 +368,7 @@ public:
         llvm::Value* int32_samplerIdx);
 
     llvm::Value* Create_SyncThreadGroup();
+    llvm::Value* Create_FlushSampler();
     llvm::Value* Create_MemoryFence(
         bool commit,
         bool flushRWDataCache,
