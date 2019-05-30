@@ -8583,6 +8583,22 @@ static void setUniformSampler(G4_InstSend* sendInst, bool uniformSampler)
 Need to split sample_d and sample_dc in to two simd8 sends since HW doesn't support it.
 Also need to split any sample instruciton that has more then 5 parameters. Since there is a limit on msg length.
 */
+static unsigned TmpSmplDstID = 0;
+const char* getNameString(Mem_Manager& mem, size_t size, const char* format, ...)
+    {
+#ifdef _DEBUG
+        char* name = (char*) mem.alloc(size);
+        va_list args;
+        va_start(args, format);
+        std::vsnprintf(name, size, format, args);
+        va_end(args);
+        return name;
+#else
+        const char* name = "";
+        return const_cast<char*>(name);
+#endif
+}
+
 static int splitSampleInst(VISASampler3DSubOpCode actualop,
                            bool pixelNullMask,
                            bool cpsEnable,
@@ -8599,6 +8615,7 @@ static int splitSampleInst(VISASampler3DSubOpCode actualop,
                            IR_Builder *builder,
                            unsigned int numParms,
                            G4_SrcRegRegion ** params,
+                           Mem_Manager&        mem,
                            bool uniformSampler = true)
 {
     int status = CM_SUCCESS;
@@ -8640,7 +8657,9 @@ static int splitSampleInst(VISASampler3DSubOpCode actualop,
             ++tmpDstRows;
         }
 
-        tempDstDcl = builder->createDeclareNoLookup("TmpSmplDst",
+        const char *name = getNameString(mem, 20, "%s%d", "TmpSmplDst_", TmpSmplDstID++);
+
+        tempDstDcl = builder->createDeclareNoLookup(name,
             originalDstDcl->getRegFile(),
             originalDstDcl->getNumElems(),
             (uint16_t)tmpDstRows,
@@ -8734,7 +8753,9 @@ static int splitSampleInst(VISASampler3DSubOpCode actualop,
     G4_Declare* tempDstDcl2 = nullptr;
     if(!dst->isNullReg())
     {
-        tempDstDcl2 = builder->createDeclareNoLookup("TmpSmplDst2",
+        const char *name = getNameString(mem, 20, "%s%d", "TmpSmplDst2_", TmpSmplDstID++);
+
+        tempDstDcl2 = builder->createDeclareNoLookup(name,
             originalDstDcl->getRegFile(),
             originalDstDcl->getNumElems(),
             (uint16_t)tmpDstRows,
@@ -9097,7 +9118,7 @@ int IR_Builder::translateVISASampler3DInst(
 
         return splitSampleInst(actualop, pixelNullMask, cpsEnable, pred, chMask,
                                numChannels, aoffimmi, sampler, surface, dst,
-                               emask, useHeader, numRows, this, numParms, params, uniformSampler);
+                               emask, useHeader, numRows, this, numParms, params, mem, uniformSampler);
     }
 
     bool useSplitSend = useSends();
@@ -9230,7 +9251,7 @@ int IR_Builder::translateVISALoad3DInst(
         return splitSampleInst(actualop, pixelNullMask, /*cpsEnable*/false,
                                pred_opnd, channelMask, numChannels, aoffimmi,
                                NULL, surface, dst, em, useHeader, numRows,
-                               this, numParms, opndArray);
+                               this, numParms, opndArray, mem);
     }
 
     bool useSplitSend = useSends();
@@ -9348,7 +9369,7 @@ int IR_Builder::translateVISAGather3dInst(
         return splitSampleInst(actualop, pixelNullMask, /*cpsEnable*/false,
                                pred, channelMask, 4, aoffimmi, sampler,
                                surface, dst, em, useHeader, numRows, this,
-                               numOpnds, opndArray);
+                               numOpnds, opndArray, mem);
     }
 
     bool useSplitSend = useSends();
