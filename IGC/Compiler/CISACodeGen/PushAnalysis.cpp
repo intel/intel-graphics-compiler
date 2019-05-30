@@ -170,6 +170,11 @@ bool PushAnalysis::IsStatelessCBLoad(
     {
         /*
         find 64 bit case
+        %29 = call { i32, i32 } @llvm.genx.GenISA.ptr.to.pair.p2v3f32(<3 x float> addrspace(2)* %runtime_value_6)
+        %30 = extractvalue { i32, i32 } %29, 1
+        %31 = extractvalue { i32, i32 } %29, 0
+        %32 = call <4 x float> addrspace(2)* @llvm.genx.GenISA.pair.to.ptr.p2v4f32(i32 %31, i32 %30)
+                  or
         %33 = call { i32, i32 } @llvm.genx.GenISA.ptr.to.pair.p2v4f32(<4 x float> addrspace(2)* %runtime_value_4)
         %34 = extractvalue { i32, i32 } %33, 0
         %35 = extractvalue { i32, i32 } %33, 1
@@ -184,19 +189,25 @@ bool PushAnalysis::IsStatelessCBLoad(
             ExtractValueInst *Hi = dyn_cast<ExtractValueInst>(genIntr->getOperand(1));
             if (Lo && Hi && Lo->getOperand(0) == Hi->getOperand(0))
             {
-                if (GenIntrinsicInst* AddPair = dyn_cast<GenIntrinsicInst>(Lo->getOperand(0)))
+                if (GenIntrinsicInst* genIntr2 = dyn_cast<GenIntrinsicInst>(Lo->getOperand(0)))
                 {
-                    if (AddPair->getIntrinsicID() == GenISAIntrinsic::GenISA_add_pair)
+                    if (genIntr2->getIntrinsicID() == GenISAIntrinsic::GenISA_ptr_to_pair)
                     {
-                        ExtractValueInst *Lo2 = dyn_cast<ExtractValueInst>(AddPair->getOperand(0));
-                        ExtractValueInst *Hi2 = dyn_cast<ExtractValueInst>(AddPair->getOperand(1));
+                        offset = 0;
+                        pAddress = genIntr2->getOperand(0);
+                    }
+
+                    if (genIntr2->getIntrinsicID() == GenISAIntrinsic::GenISA_add_pair)
+                    {
+                        ExtractValueInst *Lo2 = dyn_cast<ExtractValueInst>(genIntr2->getOperand(0));
+                        ExtractValueInst *Hi2 = dyn_cast<ExtractValueInst>(genIntr2->getOperand(1));
                         if (Lo2 && Hi2 && Lo2->getOperand(0) == Hi2->getOperand(0))
                         {
                             if (GenIntrinsicInst* ptrToPair = dyn_cast<GenIntrinsicInst>(Lo2->getOperand(0)))
                             {
                                 if (ptrToPair->getIntrinsicID() == GenISAIntrinsic::GenISA_ptr_to_pair)
                                 {
-                                    ConstantInt* pConst = dyn_cast<llvm::ConstantInt>(AddPair->getOperand(2));
+                                    ConstantInt* pConst = dyn_cast<llvm::ConstantInt>(genIntr2->getOperand(2));
                                     if (!pConst)
                                         return false;
                                     offset = (uint)pConst->getZExtValue();
