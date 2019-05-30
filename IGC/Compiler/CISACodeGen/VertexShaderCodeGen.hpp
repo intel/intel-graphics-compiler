@@ -42,11 +42,10 @@ public:
 
     virtual CVariable* GetURBOutputHandle();
     virtual CVariable* GetURBInputHandle(CVariable* pVertexIndex);
-    virtual QuadEltUnit GetFinalGlobalOffet(QuadEltUnit globalOffset);
 
     /// Set helper pass for this shader type
     virtual  void SetShaderSpecificHelper(EmitPass* emitPass);
-    
+
     /// Allocates registers corresponding to input data sent in the payload.
     virtual void        AllocatePayload();
 
@@ -63,8 +62,8 @@ private:
     /// This value is used to set the corresponding field in 3DSTATE_VS.
     OctEltUnit        GetVertexURBEntryOutputReadLength() const;
 
-    /// Returns the offset that SBE or GS should apply when reading the URB entries 
-    /// output by Vertex Shader. 
+    /// Returns the offset that SBE or GS should apply when reading the URB entries
+    /// output by Vertex Shader.
     /// This value is used to set the corresponding field in 3DSTATE_GS.
     OctEltUnit        GetVertexURBEntryOutputReadOffset() const;
 
@@ -87,14 +86,14 @@ private:
 
     /// Pointer to a variable representing physical GRF register R1 containing.
     CVariable*      m_R1;
- 
+
     // Indicates if Vertex Elements Components packing was applied.
     bool m_ElementComponentPackingEnabled;
 
     /// Bitmask of input registers that are used
     unsigned char     m_ElementComponentEnableMask[MAX_VSHADER_INPUT_REGISTERS_PACKAGEABLE];
 
-   /// holds max number of inputs that can be pushed for this shader unit 
+   /// holds max number of inputs that can be pushed for this shader unit
    static const uint32_t m_pMaxNumOfPushedInputs;
 
    /// Keeps information about all the properties of the VS program, its inputs and outputs.

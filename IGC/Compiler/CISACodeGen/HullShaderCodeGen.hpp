@@ -54,7 +54,6 @@ public:
     CVariable* GetR1();
     CVariable* GetR2();
     virtual CVariable* GetURBInputHandle(CVariable* pVertexIndex);
-    virtual QuadEltUnit GetFinalGlobalOffet(QuadEltUnit globalOffset);
     virtual uint32_t GetMaxNumOfPushedInputs() const;
 
     void EmitPatchConstantHeader(

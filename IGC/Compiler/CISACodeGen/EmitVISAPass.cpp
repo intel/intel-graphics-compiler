@@ -5891,7 +5891,7 @@ void EmitPass::emitURBRead(llvm::GenIntrinsicInst* inst)
         false,
         pPerSlotOffset != nullptr,
         false,
-        m_currShader->GetFinalGlobalOffet(globalOffset).Count(),
+        globalOffset.Count(),
         EU_GEN8_URB_OPCODE_SIMD8_READ);
 
     uint exDesc = EU_MESSAGE_TARGET_URB;

@@ -362,11 +362,6 @@ CVariable* CHullShader::GetURBInputHandle(CVariable* pVertexIndex)
     }
 }
 
-QuadEltUnit CHullShader::GetFinalGlobalOffet(QuadEltUnit globalOffset)
-{
-    return globalOffset;
-}
-
 uint32_t CHullShader::GetMaxNumOfPushedInputs() const
 {
     uint numberOfPatches = (m_properties.m_pShaderDispatchMode == EIGHT_PATCH_DISPATCH_MODE) ? 8 : 1;

@@ -105,7 +105,6 @@ public:
         assert(!"Should be overridden in a derived class!");
         return nullptr;
     }
-    virtual QuadEltUnit GetFinalGlobalOffet(QuadEltUnit globalOffset) { return QuadEltUnit(0); }
     virtual bool hasReadWriteImage(llvm::Function &F) { return false; }
     virtual bool CompileSIMDSize(SIMDMode simdMode, EmitPass &EP, llvm::Function &F) { return true; }
     CVariable*  LazyCreateCCTupleBackingVariable(

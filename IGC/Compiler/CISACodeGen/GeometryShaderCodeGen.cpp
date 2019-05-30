@@ -147,7 +147,7 @@ uint CGeometryShader::GetInputPrimitiveVertexCount(USC::GSHADER_INPUT_PRIMITIVE_
     case USC::GSHADER_INPUT_PATCHLIST_30 : return 30;
     case USC::GSHADER_INPUT_PATCHLIST_31 : return 31;
     case USC::GSHADER_INPUT_PATCHLIST_32 : return 32;
-    
+
     default:
         assert(0 && "Input primitive type not implemented");
         return 0;
@@ -233,7 +233,7 @@ CVariable* CGeometryShader::GetURBInputHandle(CVariable* pVertexIndex)
         {
             encoder.SetSrcSubVar(0, vertexIndex);
         }
-        
+
         encoder.Copy(pSelectedHandles, GetURBReadHandlesReg());
         encoder.Push();
     }
@@ -245,7 +245,7 @@ CVariable* CGeometryShader::GetURBInputHandle(CVariable* pVertexIndex)
         {
             encoder.SetSrcRegion(0, 16, 8, 2);
         }
-        
+
         if(!m_properties.Input().HasInstancing())
         {
             // offset = vertexIndex * 32 since offset needs to be in bytes, not grf numbers
@@ -269,18 +269,13 @@ CVariable* CGeometryShader::GetURBInputHandle(CVariable* pVertexIndex)
         CVariable* URBHandles = GetURBReadHandlesReg();
         pSelectedHandles = GetNewAddressVariable(
             pOffset->IsUniform() ? 1 : numLanes(m_SIMDSize),
-            ISA_TYPE_UD, 
-            pOffset->IsUniform(), 
+            ISA_TYPE_UD,
+            pOffset->IsUniform(),
             URBHandles->IsUniform());
         encoder.AddrAdd(pSelectedHandles, URBHandles, pOffset);
         encoder.Push();
     }
     return pSelectedHandles;
-}
-
-QuadEltUnit CGeometryShader::GetFinalGlobalOffet(QuadEltUnit globalOffset)
-{
-    return globalOffset;
 }
 
 void CGeometryShader::AllocatePayload()
@@ -289,7 +284,7 @@ void CGeometryShader::AllocatePayload()
 
     // Allocate 8 DWORDS for the global URB Header which stores the cut bits.
     // The global header is 16 DWORDS which is a max of 512 bits.
-    // So a GS can max output 1024 DWORDS/ 3 channels = 341 vertices 
+    // So a GS can max output 1024 DWORDS/ 3 channels = 341 vertices
     // (1024 max dwords so assuming no attributes).
 
     // R0 & R1 are always allocated.
@@ -327,7 +322,7 @@ void CGeometryShader::AllocatePayload()
 
     assert(offset % getGRFSize() == 0);
 
-    // when instancing mode is on, there is only one set of inputs and it's 
+    // when instancing mode is on, there is only one set of inputs and it's
     // laid out like in constant buffers, i.e. one attribute takes four subregisters
     // of one GRF register.
     const uint varSize = m_properties.Input().HasInstancing() ? SIZE_DWORD : getGRFSize();
@@ -363,38 +358,38 @@ void CGeometryShader::FillProgram(SGeometryShaderKernelProgram* pKernelProgram)
     // Gen 7 specific Compiler Output
     pKernelProgram->OutputTopology = m_properties.Output().TopologyType();
     pKernelProgram->SamplerCount   = m_properties.SamplerCount();
-    
+
     pKernelProgram->OutputVertexSize         = GetOutputVertexSize();
     pKernelProgram->VertexEntryReadLength    = GetVertexEntryReadLength();
 
     TODO("Fix compiler output structures for uninitialized fields");
-    pKernelProgram->IncludeVertexHandles     = (m_pURBReadHandlesReg!=nullptr); // Used for PULL model. 
+    pKernelProgram->IncludeVertexHandles     = (m_pURBReadHandlesReg!=nullptr); // Used for PULL model.
     pKernelProgram->VertexEntryReadOffset    = OctEltUnit(0);  // Include also vertex header, so start from the beginning.
 
     pKernelProgram->ControlDataHeaderFormat  = m_properties.Output().ControlDataFormat();
     pKernelProgram->GSEnable = true;
 
-    // Default StreamID is also dependent on the GSEnable but since we set it to true here we are 
+    // Default StreamID is also dependent on the GSEnable but since we set it to true here we are
     // not considering it right now.
     auto defStreamID = m_properties.Output().DefaultStreamID();
     pKernelProgram->DefaultStreamID = (defStreamID != -1 ? defStreamID : 0);
 
     pKernelProgram->ControlDataHeaderSize = m_properties.Output().ControlDataHeaderSize();
-    
+
     // Since we support only channel serial, the only mode for GS is SIMD8.
     pKernelProgram->DispatchMode = USC::GFX3DSTATE_GEOMETRY_SHADER_DISPATCH_MODE_SIMD8;
-    
+
     pKernelProgram->IncludePrimitiveIDEnable    = (m_pPrimitiveID != nullptr);
     auto instanceCount = m_properties.Input().InstanceCount();
     pKernelProgram->InstanceCount               = (instanceCount == 0) ? 1 : instanceCount;
     pKernelProgram->ReorderEnable               = true;
     pKernelProgram->DiscardAdjacencyEnable      = CGeometryShader::DiscardAdjacency(m_properties.Input().InputPrimitiveType());
     pKernelProgram->SBEVertexURBEntryReadOffset = pKernelProgram->VertexEntryReadOffset;
- 
+
     pKernelProgram->URBAllocationSize = GetURBAllocationSize();
 
     pKernelProgram->UserClipDistancesMask = m_properties.Output().PerVertex().ClipDistanceMask();
-    pKernelProgram->UserCullDistancesMask = m_properties.Output().PerVertex().CullDistanceMask(); 
+    pKernelProgram->UserCullDistancesMask = m_properties.Output().PerVertex().CullDistanceMask();
 
     pKernelProgram->MaxOutputVertexCount = m_properties.Output().MaxVertexCount();
 
@@ -407,9 +402,9 @@ void CGeometryShader::FillProgram(SGeometryShaderKernelProgram* pKernelProgram)
     TODO("Max threads should be calculated based on the registers spilled. -> This needs to change")
     pKernelProgram->ExpectedVertexCount   = m_properties.Input().VertexCount();
     pKernelProgram->StaticOutput          = !m_properties.Output().HasNonstaticVertexCount();
-    
-    pKernelProgram->StaticOutputVertexCount = 
-        (m_properties.Output().HasNonstaticVertexCount()) ? 
+
+    pKernelProgram->StaticOutputVertexCount =
+        (m_properties.Output().HasNonstaticVertexCount()) ?
             0 : m_properties.Output().ActualStaticVertexCount();
 
     pKernelProgram->GSVertexURBEntryOutputReadOffset = GetVertexURBEntryOutputReadOffset();
@@ -481,7 +476,7 @@ Unit<Element> CGeometryShader::GetLocalOffset(SGVUsage usage)
 URBAllocationUnit CGeometryShader::GetURBAllocationSize() const
 {
     // Calculate the size of all vertices to be emitted, rounded up to 32B.
-    auto vertexCount = m_properties.Output().HasNonstaticVertexCount()? 
+    auto vertexCount = m_properties.Output().HasNonstaticVertexCount()?
         m_properties.Output().MaxVertexCount() : m_properties.Output().ActualStaticVertexCount();
 
     const OctEltUnit vertexSpace = round_up<OctElement>(
@@ -498,7 +493,7 @@ URBAllocationUnit CGeometryShader::GetURBAllocationSize() const
 }
 
 /// Returns the size of the output vertex.
-/// Unit: 16B = 4 DWORDs 
+/// Unit: 16B = 4 DWORDs
 /// Note: Each output vertex must be 32B-aligned when rendering is enabled (Ref. GS URB Entry).
 /// Therefore, the output vertex size is also rounded up to a multiple of 2.
 QuadEltUnit CGeometryShader::GetOutputVertexSize() const
@@ -514,7 +509,7 @@ OctEltUnit CGeometryShader::GetInputVertexHeaderSize() const
 
 OctEltUnit CGeometryShader::GetVertexEntryReadLength() const
 {
-    // if we use pull model, we don't use payload data and use URB read handles 
+    // if we use pull model, we don't use payload data and use URB read handles
     // in that case Vertex Entry Read Length should be zero.
     // If we don't use URB read handles, we cannot have read length zero (even if we don't read
     // anything from inputs) because of hardware restriction.

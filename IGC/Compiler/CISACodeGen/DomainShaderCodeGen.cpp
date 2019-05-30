@@ -174,16 +174,11 @@ CVariable* CDomainShader::GetURBInputHandle(CVariable* pVertexIndex)
         encoder.SetSimdSize(SIMDMode::SIMD8);
         encoder.SetSrcRegion(0, 1, 4, 0);
         encoder.SetSrcSubReg(0, 0);
-            
+
         encoder.Copy(m_pURBReadHandleReg, GetR0());
         encoder.Push();
     }
     return m_pURBReadHandleReg;
-}
-
-QuadEltUnit CDomainShader::GetFinalGlobalOffet(QuadEltUnit globalOffset) 
-{ 
-    return globalOffset;
 }
 
 uint32_t CDomainShader::GetMaxInputSignatureCount()
@@ -198,7 +193,7 @@ void CDomainShader::AllocatePayload()
     //R0 is always allocated as a predefined variable. Increase offset for R0
     assert(m_R0);
     offset += getGRFSize();
-        
+
     if(m_ShaderDispatchMode == ShaderDispatchMode::DUAL_PATCH)
     {
         if (!m_Platform->DSPrimitiveIDPayloadPhaseCanBeSkipped() || m_hasPrimitiveIdInput)
@@ -212,7 +207,7 @@ void CDomainShader::AllocatePayload()
     offset += getGRFSize();
 
     AllocateInput(GetSymbol(m_properties.m_VArg), offset);
-    offset += getGRFSize();        
+    offset += getGRFSize();
 
     AllocateInput(GetSymbol(m_properties.m_WArg), offset);
     offset += getGRFSize();
@@ -279,7 +274,7 @@ void CDomainShader::FillProgram(SDomainShaderKernelProgram* pKernelProgram)
     pKernelProgram->VertexURBEntryOutputLength       = GetURBAllocationSize() - GetURBHeaderSize();
     pKernelProgram->VertexURBEntryReadLength         = GetVertexURBEntryReadLength();
     pKernelProgram->VertexURBEntryReadOffset         = OctEltUnit(0);
-    pKernelProgram->VertexURBEntryOutputReadOffset   = GetURBHeaderSize(); 
+    pKernelProgram->VertexURBEntryOutputReadOffset   = GetURBHeaderSize();
     pKernelProgram->ConstantBufferLoaded             = m_constantBufferLoaded;
     pKernelProgram->DeclaresRTAIndex                 = m_properties.m_isRTAIndexDeclared;
     pKernelProgram->DeclaresVPAIndex                 = m_properties.m_isVPAIndexDeclared;
@@ -292,7 +287,7 @@ void CDomainShader::FillProgram(SDomainShaderKernelProgram* pKernelProgram)
 
 void CDomainShader::AddEpilogue(llvm::ReturnInst* pRet)
 {
-    if(this->GetContext()->platform.WaForceDSToWriteURB() && 
+    if(this->GetContext()->platform.WaForceDSToWriteURB() &&
         m_ShaderDispatchMode != ShaderDispatchMode::DUAL_PATCH)
     {
         CVariable* channelMask = ImmToVariable(0xFF, ISA_TYPE_D);

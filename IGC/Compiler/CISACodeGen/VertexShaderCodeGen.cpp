@@ -121,7 +121,7 @@ void CVertexShader::PackVFInput(unsigned int index, unsigned int& offset)
         if(m_ElementComponentEnableMask[index / 4] == 0)
         {
             // enable the full element and push the offset to consider the elements skipped
-            m_ElementComponentEnableMask[index / 4] = 0xF; 
+            m_ElementComponentEnableMask[index / 4] = 0xF;
             offset += (index % 4)* getGRFSize();
         }
     }
@@ -164,7 +164,7 @@ void CVertexShader::FillProgram(SVertexShaderKernelProgram* pKernelProgram)
     pKernelProgram->VertexURBEntryOutputReadLength   = GetVertexURBEntryOutputReadLength();
     pKernelProgram->VertexURBEntryOutputReadOffset   = GetVertexURBEntryOutputReadOffset();
     pKernelProgram->SBEURBReadOffset                 = GetVertexURBEntryOutputReadOffset();
-    pKernelProgram->URBAllocationSize                = GetURBAllocationSize(); 
+    pKernelProgram->URBAllocationSize                = GetURBAllocationSize();
     pKernelProgram->hasControlFlow                   = m_numBlocks > 1 ? true : false;
     pKernelProgram->MaxNumberOfThreads = m_Platform->getMaxVertexShaderThreads(isPositionOnlyShader);
     pKernelProgram->ConstantBufferLoaded             = m_constantBufferLoaded;
@@ -178,9 +178,9 @@ void CVertexShader::FillProgram(SVertexShaderKernelProgram* pKernelProgram)
     pKernelProgram->DeclaresRTAIndex                 = m_properties.m_hasRTAI;
     pKernelProgram->HasClipCullAsOutput              = m_properties.m_hasClipDistance;
     pKernelProgram->isMessageTargetDataCacheDataPort = isMessageTargetDataCacheDataPort;
-    pKernelProgram->singleInstanceVertexShader = 
+    pKernelProgram->singleInstanceVertexShader =
         ((entry->getParent())->getNamedMetadata("ConstantBufferIndexedWithInstanceId") != nullptr) ? true : false;
-    pKernelProgram->EnableVertexReordering = 
+    pKernelProgram->EnableVertexReordering =
         (GetContext()->getModuleMetaData()->vsInfo.DrawIndirectBufferIndex != -1);
 
     CreateGatherMap();
@@ -195,7 +195,7 @@ void CVertexShader::FillProgram(SVertexShaderKernelProgram* pKernelProgram)
     {
         pKernelProgram->ElementComponentDeliverMask[i]   = m_ElementComponentEnableMask[i];
     }
-    
+
     // Implement workaround code. We cannot have all component enable masks equal to zero
     // so we need to enable one dummy component.
     //WaVFComponentPackingRequiresEnabledComponent is made default behavior
@@ -232,10 +232,6 @@ CVariable* CVertexShader::GetURBInputHandle(CVariable* pVertexIndex)
     return m_R1;
 }
 
-QuadEltUnit CVertexShader::GetFinalGlobalOffet(QuadEltUnit globalOffset) 
-{ 
-    return globalOffset; 
-}
 
 /// Returns VS URB allocation size.
 /// This is the size of VS URB entry consisting of the header data and attribute data.
@@ -251,7 +247,7 @@ OctEltUnit CVertexShader::GetURBAllocationSize() const
 OctEltUnit CVertexShader::GetVertexURBEntryReadLength() const
 {
     // max index of the variables in the payload
-    const EltUnit maxSetupVarNum(setup.size()); 
+    const EltUnit maxSetupVarNum(setup.size());
 
     // rounded up to 8-element size
     return round_up<OctElement>(maxSetupVarNum);
@@ -259,14 +255,14 @@ OctEltUnit CVertexShader::GetVertexURBEntryReadLength() const
 
 OctEltUnit CVertexShader::GetVertexURBEntryReadOffset() const
 {
-    return OctEltUnit(0);  // since we always read in vertex header 
+    return OctEltUnit(0);  // since we always read in vertex header
 }
 
 OctEltUnit CVertexShader::GetVertexURBEntryOutputReadLength() const
 {
-    // Since we skip vertex header, the output write length is the 
+    // Since we skip vertex header, the output write length is the
     // total size of VUE minus the size of VUE header.
-    // Note: for shaders outputing only position, the output write length calculated may be 
+    // Note: for shaders outputing only position, the output write length calculated may be
     // less than the VUE header size because the header size can be fixed to always
     // include clip&cull distance.
     if (round_up<OctElement>(m_properties.m_URBOutputLength) > GetURBHeaderSize())

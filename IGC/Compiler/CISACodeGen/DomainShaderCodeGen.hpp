@@ -47,7 +47,7 @@ public:
     void        AllocatePayload();
     void        ExtractGlobalVariables();
     void        SetShaderSpecificHelper(EmitPass* emitPass);
-    
+
     // Return the domain point variables
     llvm::Argument* GetDomainPointUArgu();
     llvm::Argument* GetDomainPointVArgu();
@@ -63,9 +63,8 @@ public:
 
     virtual CVariable* GetURBInputHandle(CVariable* pVertexIndex);
     virtual CVariable* GetURBOutputHandle();
-    virtual QuadEltUnit GetFinalGlobalOffet(QuadEltUnit globalOffset);
     uint32_t   GetMaxInputSignatureCount();
-        
+
     virtual void AddEpilogue(llvm::ReturnInst* ret);
     CVariable* GetPrimitiveID();
 

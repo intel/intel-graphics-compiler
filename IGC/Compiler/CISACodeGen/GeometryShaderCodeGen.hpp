@@ -55,7 +55,7 @@ public:
 
     /// Fills in the kernel program structure with data determined during compilation.
     void FillProgram(SGeometryShaderKernelProgram* pKernelProgram);
-   
+
     /// Returns a V-ISA variable that gets initialized to input PrimitiveID payload values.
     CVariable* GetPrimitiveID();
 
@@ -76,9 +76,6 @@ public:
     /// Add an epilogue which could check if we are terminating with a URB write or not.
     void AddEpilogue(llvm::ReturnInst* ret) override;
 
-    /// Adjusts the urb read offset by the size of the vertex header. Identity function in GS since
-    /// we already set offsets adjusted by header size.
-    virtual QuadEltUnit GetFinalGlobalOffet(QuadEltUnit globalOffset) override;
 private:
     /// False if we expect to see also vertices adjacent to the input as part of the input.
     /// field 3DSTATE_GS::DiscardAdjacency.
@@ -86,7 +83,7 @@ private:
 
     /// Returns the index of a channel where the data with given SGV usage is placed.
     static Unit<Element> GetLocalOffset(SGVUsage usage);
- 
+
     /// Returns the GS URB allocation size.
     /// This is the size of GS URB entry consisting of the header data and all vertex URB entries.
     /// Unit: 64B = 16 DWORDs
@@ -113,18 +110,18 @@ private:
     /// This value is used to set the corresponding field in 3DSTATE_GS.
     OctEltUnit  GetVertexURBEntryOutputReadLength() const;
 
-    /// Returns the offset that SBE should use when reading the URB entries 
-    /// output by Geometry shader. 
+    /// Returns the offset that SBE should use when reading the URB entries
+    /// output by Geometry shader.
     /// This value is used to set the corresponding field in 3DSTATE_GS.
     /// Unit: 32B = 8DWORDS.
     OctEltUnit  GetVertexURBEntryOutputReadOffset() const;
 
-    /// Returns  a(newly allocated if not already present) variable that keeps input vertex 
+    /// Returns  a(newly allocated if not already present) variable that keeps input vertex
     /// URB handles used for pull model data reads.
     CVariable* GetURBReadHandlesReg();
 
     //********** Input State data
-    
+
     /// Stores an array of vertex URB Read handles that are used for pull model data reads.
     CVariable*             m_pURBReadHandlesReg;
 
@@ -135,7 +132,7 @@ private:
 
     /// This variable holds the URB handle for the output vertices.
     CVariable*             m_pURBWriteHandleReg;
-    
+
     /// Holds v-isa variable that keeps PrimitiveID value for each primitive.
     CVariable*             m_pPrimitiveID;
 
