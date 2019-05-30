@@ -1637,7 +1637,7 @@ bool HWConformity::fixDstAlignment( INST_LIST_ITER i, G4_BB* bb, G4_Type extype,
              {
                  intHFConversion = true;
              }
-             // we allow pact destination for F to HF.
+             // we allow packed destination for F to HF.
              if (getGenxPlatform() >= GENX_CHV && !intHFConversion && inst->isMixedMode())
              {
                  return insertMOV;
