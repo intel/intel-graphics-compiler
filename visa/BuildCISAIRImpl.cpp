@@ -578,12 +578,11 @@ static void propagateCalleeInfo(G4_Kernel* kernel, G4_Kernel* callee)
 
 // After compiling each compilation unit this function is invoked which stitches together callers
 // with their callees. It modifies pseudo_fcall/fret in to call/ret opcodes.
-void Stitch_Compiled_Units( common_isa_header header, std::list<G4_Kernel*>& compilation_units )
+void Stitch_Compiled_Units( common_isa_header header, std::list<G4_Kernel*>& compilation_units)
 {
     list <int> callee_index;
     G4_Kernel* kernel = NULL;
 
-    bool hasIndirectCall = false;
     for (auto cur : compilation_units)
     {
         if (cur->fg.builder->getIsKernel())
@@ -591,30 +590,14 @@ void Stitch_Compiled_Units( common_isa_header header, std::list<G4_Kernel*>& com
             ASSERT_USER( kernel == NULL, "Multiple kernel objects found when stitching together");
             kernel = cur;
         }
-
-        if (cur->hasIndirectCall())
+        else if (cur->getIsExternFunc())
         {
-            hasIndirectCall = true;
+            callee_index.push_back(cur->fg.builder->getFuncId());
         }
     }
 
-    ASSERT_USER( kernel != NULL, "Valid kernel not found when stitching compiled units");
-
-    if (hasIndirectCall)
-    {
-        // we have to include every function
-        for (auto&& cu : compilation_units)
-        {
-            if (!cu->fg.builder->getIsKernel())
-            {
-                callee_index.push_back(cu->fg.builder->getFuncId());
-            }
-        }
-    }
-    else
-    {
-        Enumerate_Callees(header, kernel, compilation_units, callee_index);
-    }
+    ASSERT_USER(kernel != NULL, "Valid kernel not found when stitching compiled units");
+    Enumerate_Callees(header, kernel, compilation_units, callee_index);
 
     callee_index.sort();
     callee_index.unique();
@@ -895,6 +878,10 @@ int CISA_IR_Builder::Compile( const char* nameInput)
                 if (kernel->getIRBuilder()->getRetVarSize() < kernel->getKernelFormat()->return_value_size)
                 {
                     kernel->getIRBuilder()->setRetVarSize(kernel->getKernelFormat()->return_value_size);
+                }
+                if (kernel->getIRBuilder()->getIsExtern())
+                {
+                    kernel->getKernel()->setIsExternFunc();
                 }
                 kernel->getIRBuilder()->setFuncId(k);
 

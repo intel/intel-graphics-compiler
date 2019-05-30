@@ -2124,7 +2124,6 @@ CVariable* CShader::getOrCreateArgumentSymbol(
 
 CVariable* CShader::getOrCreateArgSymbolForIndirectCall(llvm::CallInst* cInst, unsigned argIdx)
 {
-    assert(cInst->getCalledFunction() == nullptr);
     assert(argIdx < cInst->getNumArgOperands());
 
     CVariable* var = nullptr;

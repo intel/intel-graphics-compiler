@@ -76,6 +76,9 @@ public:
   /// Element [0][0] is the group head. Element[i][0] is the sub-group head.
   llvm::SmallVector<llvm::SmallVector<llvm::AssertingVH<llvm::Function>, 8>*, 4> Functions;
 
+  /// Flag to indicate if any function in this group calls an externally linked function
+  bool hasExternFCall;
+
   ~FunctionGroup() {
       for (auto I = Functions.begin(), E = Functions.end(); I != E; I++) {
           delete (*I);
@@ -117,6 +120,9 @@ class GenXFunctionGroupAnalysis : public llvm::ImmutablePass {
 
   /// \brief Each function also belongs to a uniquely defined sub-group of a stack-call entry
   llvm::DenseMap<llvm::Function *, llvm::Function *> SubGroupMap;
+
+  /// \brief the main kernel in this module
+  llvm::Function* DefaultKernel = nullptr;
 
 public:
   static char ID;
@@ -165,6 +171,9 @@ public:
       return nullptr;
     return I->second;
   }
+
+  llvm::Function* getDefaultKernel() { return DefaultKernel; }
+  void setDefaultkernel(llvm::Function* F) { DefaultKernel = F; }
   
   void setSubGroupMap(llvm::Function *F, llvm::Function *SubGroupHead) {
     SubGroupMap[F] = SubGroupHead;

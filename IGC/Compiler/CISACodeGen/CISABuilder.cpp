@@ -4099,6 +4099,13 @@ void CEncoder::SetStackFunctionRetSize(uint size)
     V(vKernel->AddKernelAttribute("RetValSize", sizeof(size), &size));
 }
 
+void CEncoder::SetExternFunctionFlag()
+{
+    assert(vKernel);
+    int flag = 1;
+    V(vKernel->AddKernelAttribute("Extern", sizeof(flag), &flag));
+}
+
 SEncoderState CEncoder::CopyEncoderState()
 {
     return m_encoderState;
@@ -4325,7 +4332,7 @@ void CEncoder::CreateSymbolTable(void*& buffer, unsigned& bufferSize, unsigned& 
         for (auto &F : pModule->getFunctionList())
         {
             // Find all functions in the module we need to export as symbols
-            if (F.hasFnAttribute("AsFunctionPointer"))
+            if (F.hasFnAttribute("ExternalLinkedFn"))
             {
                 if (!F.isDeclaration() || F.getNumUses() > 0)
                     funcsToExport.push_back(&F);
@@ -4360,6 +4367,7 @@ void CEncoder::CreateSymbolTable(void*& buffer, unsigned& bufferSize, unsigned& 
                     // If the function is only declared, set as undefined type
                     entry_ptr->s_type = vISA::GenSymType::S_UNDEF;
                     entry_ptr->s_offset = 0;
+                    entry_ptr->s_size = 0;
                 }
                 else
                 {
@@ -4410,7 +4418,7 @@ void CEncoder::CreateRelocationTable(void*& buffer, unsigned& bufferSize, unsign
     }
 }
 
-void CEncoder::Compile()
+void CEncoder::Compile(bool hasSymbolTable)
 {
     COMPILER_TIME_START(m_program->GetContext(), TIME_CG_vISAEmitPass);
 
@@ -4657,9 +4665,12 @@ void CEncoder::Compile()
 
     pMainKernel->GetGTPinBuffer(pOutput->m_gtpinBuffer, pOutput->m_gtpinBufferSize);
 
-    CreateSymbolTable(pOutput->m_funcSymbolTable,
-                      pOutput->m_funcSymbolTableSize,
-                      pOutput->m_funcSymbolTableEntries);
+    if (hasSymbolTable)
+    {
+        CreateSymbolTable(pOutput->m_funcSymbolTable,
+            pOutput->m_funcSymbolTableSize,
+            pOutput->m_funcSymbolTableEntries);
+    }
     CreateRelocationTable(pOutput->m_funcRelocationTable,
                           pOutput->m_funcRelocationTableSize,
                           pOutput->m_funcRelocationTableEntries);
