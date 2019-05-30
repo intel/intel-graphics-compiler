@@ -1323,6 +1323,7 @@ void DwarfDebug::collectVariableInfo(const Function *MF, SmallPtrSet<const MDNod
                             write(dotLoc.loc, (unsigned char*)&constValue, lebSize);
                         }
                     }
+                    RegVar->getDecorations().append("u ");
                 }
                 else if (Loc.IsRegister())
                 {
@@ -1420,6 +1421,10 @@ void DwarfDebug::collectVariableInfo(const Function *MF, SmallPtrSet<const MDNod
                             op = llvm::dwarf::DW_OP_deref;
                             write(dotLoc.loc, (uint8_t)op);
                         }
+                        if (Loc.IsVectorized())
+                            RegVar->getDecorations().append("v ");
+                        else
+                            RegVar->getDecorations().append("u ");
                     }
                 }
                 offset += dotLoc.loc.size();

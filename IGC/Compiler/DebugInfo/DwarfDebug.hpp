@@ -147,6 +147,7 @@ namespace IGC
         unsigned DotDebugLocOffset;        // Offset in DotDebugLocEntries.
         DbgVariable *AbsVar = nullptr;     // Corresponding Abstract variable, if any.
         const llvm::Instruction *m_pDbgInst; // DBG_VALUE instruction of the variable.
+        std::string decorations;
 
     public:
         // AbsVar may be NULL.
@@ -212,6 +213,11 @@ namespace IGC
         }
 #endif
         llvm::DIType* getType() const;
+
+        std::string& getDecorations()
+        {
+            return decorations;
+        }
 
     private:
         /// resolve - Look in the DwarfDebug map for the MDNode that

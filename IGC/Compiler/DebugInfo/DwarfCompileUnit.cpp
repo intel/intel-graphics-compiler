@@ -1422,6 +1422,10 @@ DIE *CompileUnit::constructVariableDIE(DbgVariable &DV, bool isScopeAbstract)
             // Copy over references ranges to DotLocDebugEntries
             Offset = DD->CopyDebugLoc(Offset);
             addUInt(VariableDie, dwarf::DW_AT_location, dwarf::DW_FORM_sec_offset, Offset);
+            if (DV.getDecorations().size() > 0)
+            {
+                addString(VariableDie, dwarf::DW_AT_description, DV.getDecorations());
+            }
         }
         else
         {
