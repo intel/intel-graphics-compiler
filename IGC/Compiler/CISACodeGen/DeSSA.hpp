@@ -288,7 +288,7 @@ public:
     bool isAliasee(llvm::Value* V) const;
     bool isAliaser(llvm::Value* V) const;
     bool isNoopAliaser(llvm::Value* V) const;
-    bool isCoalesced(llvm::Value* V) const;
+    bool isSingleValued(llvm::Value* V) const;
     bool interfere(llvm::Value* V0, llvm::Value* V1);
     bool aliasInterfere(llvm::Value* V0, llvm::Value* V1);
     bool alignInterfere(e_alignment a1, e_alignment a2);
@@ -312,7 +312,7 @@ private:
         llvm::InsertElementInst* IEI,
         llvm::SmallVector<llvm::Value*, 16>& AllIEIs);
 
-    // Add Val into aliasMap if it is not in the map yet.
+    // Add Val->Val into aliasMap if it is not in the map yet.
     // Return Val's aliasee.
     void AddAlias(llvm::Value *Val) {
         if (AliasMap.find(Val) == AliasMap.end())

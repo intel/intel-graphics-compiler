@@ -45,26 +45,120 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Compiler/CISACodeGen/RegisterEstimator.hpp"
 
+#include <list>
+#include <algorithm>    // std::find
+
 namespace IGC {
 
-struct SSubVector
+struct SSubVecDesc
 {
-    // Denote a sub-vector of BaseVector starting at StartElementOffset.
+    // Denote a subvector of BaseVector starting at StartElementOffset.
+    // StartElementOffset is in the unit of BaseVector's element type.
     //
-    // It is used as an aliasee in the pair <Value, SSubVector>, thus the
-    // size of the sub-vector is the size of Value (aliaser) of this pair.
-    // (If needed, add the number of elements in SSubVector.)
-    llvm::Value* Val;           // Either scalar or sub-vector
+    // This can potentially denote subvector and basevector relationship
+    // among vector values of different element sizes. For now, subvector
+    // and basevector have the same element size (could be differnt types,
+    // such as int32_t and float, etc). Here is the example showing the
+    // relationship among them:
+    //   Given the aliasing relation:
+    //     Aliaser[0:n] -->  BaseVector[0:m]
+    //   where (StartElementOffset + n) <= m. Then,
+    //     Aliaser = BaseVector[StartElementOffset, StartElementOffset+n]
+
+    // Aliaser
+    //   It is a dessa node value; either scalar or subvector
+    llvm::Value* Aliaser;
+
+    // Aliasee:
     llvm::Value* BaseVector;
+
+    // Valid only if this entry is for BaseVector, ie, Aliaser == BaseVector
+    llvm::SmallVector<SSubVecDesc*, 16> Aliasers;
+
+    // In the unit of BaseVector's element size
     short  StartElementOffset;  // in the unit of BaseVector's element type
+    short  NumElts;             // the number of element of Aliaser
+
+    SSubVecDesc(llvm::Value *V)
+        : Aliaser(V), BaseVector(V), StartElementOffset(0)
+    {
+        llvm::VectorType* VTy = llvm::dyn_cast<llvm::VectorType>(V->getType());
+        NumElts = VTy ? (short)VTy->getNumElements() : 1;
+    }
+
+    // Temporary : tobedeleted
+    SSubVecDesc()
+        : Aliaser(nullptr), BaseVector(nullptr),
+        StartElementOffset(0), NumElts(0)
+    {}
 };
 
 //  Represent a Vector's element at index = EltIx.
 struct SVecElement {
     llvm::Value* Vec;
+    llvm::Value* Elem;
     int          EltIx;
 
-    SVecElement() : Vec(nullptr), EltIx(-1) {}
+    SVecElement() : Vec(nullptr), Elem(nullptr), EltIx(-1) {}
+};
+
+// A temporary struct for capturing vector/sub-vector relation.
+// For example:
+//   extElt:
+//     s0 = extElt From, 4
+//     s1 = extElt From, 5
+//     ...
+//
+//   cast:
+//     s0 = castinst s0
+//     s1 = castinst s1
+//     ...
+//
+//   insELt:
+//     V0 = insElt Undef,  s0, 0
+//     V1 = insElt V0,     s1, 1
+//     ......
+//     Vn = insElt Vn-1,   sn, n
+//
+// where s0-s1 are typically from extElt, but not necessary.
+// And they can from different vectors. Sometimes, castInst
+// are present between ins and ext. Here, two cases are
+// considered:
+//
+//   case 1: Insert to (x0 and x1 are inserted to y)
+//     case 1.1
+//        int4 x0, x1;
+//        int8 y = (x0, x1)
+//
+//     case 1.2
+//        int4 y = (s0, s1, s2, s3)
+//
+//   case 2: Extract from (y is extracted from x)
+//       int8 x
+//       int4 y = x.s0123 (use half of x)
+//
+//
+// A vector is used to keep this info. Each element of the
+// vector corresponds to a single IEI. So, for vector size
+// of N, there are N elements. The vector is defined as the
+// following inside the class:
+//    SmallVector<SVecInsExtInfo, 16> VecInsEltInfoTy
+//
+struct SVecInsEltInfo {
+    llvm::InsertElementInst*  IEI;
+    llvm::Value*              Elt;
+
+    // If Elt is null, EEI must not be null, which
+    // indicates that (FromVec, FromVec_eltIx) is
+    // used as scalar operands in this IEI.
+    llvm::ExtractElementInst* EEI;
+    llvm::Value* FromVec;
+    int          FromVec_eltIx;
+
+    SVecInsEltInfo()
+        : IEI(nullptr), Elt(nullptr),
+          EEI(nullptr), FromVec(nullptr), FromVec_eltIx(0)
+    {}
 };
 
 /// RPE based analysis for querying variable reuse status.
@@ -96,10 +190,14 @@ public:
   VariableReuseAnalysis();
   ~VariableReuseAnalysis() {}
 
-  typedef llvm::DenseMap<llvm::Value*, SSubVector> ValueAliasMapTy;
+  typedef llvm::SmallVector<SVecInsEltInfo, 32> VecInsEltInfoTy;
+  typedef llvm::DenseMap<llvm::Value*, SSubVecDesc*> AliasMapTy;
+  typedef llvm::SmallVector<llvm::Value*, 32> ValueVectorTy;
+
+  // following to be deleted
+  typedef llvm::DenseMap<llvm::Value*, SSubVecDesc> ValueAliasMapTy;
   typedef llvm::DenseMap<llvm::Value*, llvm::TinyPtrVector<llvm::Value*> > AliasRootMapTy;
   typedef llvm::SmallVector<SVecElement, 32> VecEltTy;
-  typedef llvm::SmallVector<llvm::Value*, 32> ValueVectorTy;
 
   virtual bool runOnFunction(llvm::Function &F) override;
 
@@ -168,11 +266,16 @@ public:
 
   // Visitor
   void visitCallInst(llvm::CallInst& I);
-  void visitCastInst(llvm::CastInst& I);
+  void visitCastInst(llvm::CastInst& I);  // to be deleted
   void visitInsertElementInst(llvm::InsertElementInst& I);
+  void visitInsertElementInst_toBeDeleted(llvm::InsertElementInst& I);
   void visitExtractElementInst(llvm::ExtractElementInst& I);
+  void visitExtractElementInst_toBeDeleted(llvm::ExtractElementInst& I);
 
   bool isAliasedValue(llvm::Value *V) {
+      if (IGC_GET_FLAG_VALUE(VATemp) > 0) {
+          return isVecAliased(V);
+      }
       return (isAliaser(V) || isAliasee(V));
   }
   bool isAliaser(llvm::Value* V);
@@ -180,13 +283,16 @@ public:
   int getCongruentClassSize(llvm::Value* V);
   bool isSameSizeValue(llvm::Value* V0, llvm::Value* V1);
 
+  bool isVecAliased(llvm::Value* V) const { return m_aliasMap.count(V) > 0; }
+  bool isVecAliaser(llvm::Value* V) const;
+
   // getRootValue():
   //   return dessa root value; if dessa root value
   //   is null, return itself.
   llvm::Value* getRootValue(llvm::Value* V);
   // getAliasRootValue()
   //   return alias root value if it exists, itself otherwise.   
-  llvm::Value *getAliasRootValue(llvm::Value* V);
+  llvm::Value *getAliasRootValue(llvm::Value* V);  // to be deleted
 
   /// printAlias - print value aliasing info in human readable form
   void printAlias(llvm::raw_ostream &OS, const llvm::Function* F = nullptr) const;
@@ -194,9 +300,85 @@ public:
   void dumpAlias() const;
 
   // Collect aliases from subVector to base vector.
-  ValueAliasMapTy m_ValueAliasMap; // aliaser -> aliasee
+  ValueAliasMapTy m_ValueAliasMap; // aliaser -> aliasee  [tobedeleted]
+
+  //
+  // m_aliasMap:
+  //      For mapping aliaser to aliasee:
+  //         aliaser -> aliasee
+  // where aliasee is a vector value and aliaser could be a scalar or
+  // a vector values.
+  //
+  // Properties of the map:
+  //   1. No chain aliases
+  //       No following:
+  //           Vec0 -> Vec1
+  //           v0 -> Vec0
+  //       Instead, they are represented as follows:
+  //           Vec0 -> Vec1
+  //           v0   -> Vec1
+  //   2. Aliasee is an aliaser to itself (for convenience)
+  //           Vec0 -> Vec0
+  //       When this entry is seen, we know Vec0 is an aliasee,
+  //       also called a alias root value.
+  //   3. Liveness of aliaser and aliasee are not combined
+  //      Unlike dessa alias, in which aliser's liveness is merged
+  //      into aliasee's. Here, aliaser's liveness is nerver merged
+  //      into aliasee's.
+  //
+  //  Note:
+  //     notation:
+  //         aliasCC(v) : all values that share the same alias root as v.
+  //         dessaCC(v) : all values in the same dessa congruent class as v.
+  //         subAlias(v, startIx, nelts) :
+  //                      all v in aliasCC(v) whose elements overlap
+  //                      v's baseVector[startIx : startIx+nelts-1].
+  //  For example,  V is of int4, s0, s1, s2, s3 are scalars that are aliased
+  //  to V's element at 0, 1, 2, and 2, respectively.
+  //                         s0 --> v[0]
+  //                         s1 --> v[1]
+  //                         s2 --> v[2]
+  //                         s3 --> v[3]
+  //   aliasCC(s0) = aliasCC(s1) = aliasCC(s2) = aliasCC(s3) = aliasCC(v)
+  //               = {v, s0, s1, s2, s3, s4}
+  //   subAlias(v, 2, 2) = {s2, s3, v}  // only s2&s3 overlaps V[2:3]
+  //   dessaCC(s0) = { values in the same dessa CC }
+  //
+  //   [todo] add Algo here.
+  //
+  AliasMapTy  m_aliasMap;
+
+  // Function argument cannot be made a sub-part of another bigger
+  // value as it has been assigned a fixed physical GRF. The following
+  // map is used for checking if a value is an arg or coalesced with
+  // an argument by dessa.
+  std::list<llvm::Value*> m_ArgDeSSARoot;
+  bool isOrCoalescedWithArg(llvm::Value* V)
+  {
+      if (llvm::isa<llvm::Argument>(V))
+          return true;
+      if (m_DeSSA) {
+          if (llvm::Value* R = m_DeSSA->getRootValue(V)) {
+              auto IE = m_ArgDeSSARoot.end();
+              auto it = std::find(m_ArgDeSSARoot.begin(), IE, R);
+              return it != IE;
+          }
+      }
+      return false;
+  }
+
+  // Add an entry V->itself if not existing yet.
+  void addVecAlias(llvm::Value* Aliaser, llvm::Value* Aliasee, int Idx);
+  SSubVecDesc* getOrCreateSubVecDesc(llvm::Value* V);
+  void getAllAliasVals(
+      ValueVectorTy& AliasVals,
+      llvm::Value* Aliaser,
+      llvm::Value* VecAliasee,
+      int    Idx);
+
+
   // Reverse of m_ValueAliasMap.
-  AliasRootMapTy    m_AliasRootMap;    // aliasee -> all its aliasers.
+  AliasRootMapTy    m_AliasRootMap;    // aliasee -> all its aliasers. [toBeDeleted]
 
   // No need to emit code for instructions in this map due to aliasing
   llvm::DenseMap <llvm::Instruction*, int> m_HasBecomeNoopInsts;
@@ -250,14 +432,28 @@ private:
   }
 
   void mergeVariables(llvm::Function *F);
+  void InsertElementAliasing(llvm::Function *F);
+
+  llvm::Value* traceAliasValue(llvm::Value* V);
+  bool getElementValue(
+      llvm::InsertElementInst* IEI, int& IEI_ix,
+      llvm::Value*& S,
+      llvm::Value*& V, int& V_ix);
+  bool getAllInsEltsIfAvailable(
+      llvm::InsertElementInst* FirstIEI,
+      VecInsEltInfoTy& AllIEIs);
+
+  bool processExtractFrom(VecInsEltInfoTy& AllIEIs);
+  bool processInsertTo(VecInsEltInfoTy& AllIEIs);
+
+  // Check if sub can be aliased to Base[Base_ix:size(sub)-1]
+  bool aliasInterfere(llvm::Value* Sub, llvm::Value* Base, int Base_ix);
+
 
   // Add entry to alias map.
-  bool addAlias(
-      llvm::Value* Aliaser,
-      SSubVector& SVD);
-
+  bool addAlias(llvm::Value* Aliaser, SSubVecDesc& SVD);
   // Insert entry in maps and update maps. Invoked by addAlias().
-  void insertAliasPair(llvm::Value* Aliaser, SSubVector& SV);
+  void insertAliasPair(llvm::Value* Aliaser, SSubVecDesc& SV);
 
   // Returns true for the following pattern:
   //   a = extractElement <vectorType> EEI_Vec, <constant EEI_ix>
@@ -278,13 +474,13 @@ private:
       VecEltTy& AllElts,
       llvm::InsertElementInst* FirstIEI,
       llvm::InsertElementInst* LastIEI,
-      SSubVector& SV);
+      SSubVecDesc& SV);
 
   bool IsInsertTo(
       VecEltTy& AllElts,
       llvm::InsertElementInst* FirstIEI,
       llvm::InsertElementInst* LastIEI,
-      llvm::SmallVector<SSubVector, 4>& SVs);
+      llvm::SmallVector<SSubVecDesc, 4>& SVs);
 
   void getAllValues(
       llvm::SmallVector<llvm::Value*, 8>& AllValues,
@@ -299,6 +495,7 @@ private:
   llvm::DominatorTree *m_DT;
   const llvm::DataLayout* m_DL;
 
+  llvm::BumpPtrAllocator Allocator;
 
   /// Current Function; set on entry to runOnFunction
   /// and unset on exit to runOnFunction

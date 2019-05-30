@@ -1361,16 +1361,17 @@ bool DeSSA::isAliasee(Value* V) const
     return AI->first == AI->second;
 }
 
-// If V is either in InsElt or in an DeSSA CC, return true;
-// otherwise return false;
-bool DeSSA::isCoalesced(llvm::Value* V) const
+// If V is neither InsElt'ed, nor phi-coalesced, it is said to be
+// single valued. In another word, if it is at most aliased only,
+// it will have a single value during V's lifetime.
+bool DeSSA::isSingleValued(llvm::Value* V) const
 {
     Value* aliasee = getAliasee(V);
     Value* insEltRootV = getInsEltRoot(aliasee);
     if (InsEltMap.count(aliasee) || !isIsolated(insEltRootV)) {
-        return true;
+        return false;
     }
-    return false;
+    return true;
 }
 
 // The following paper explains an approach to check if two
@@ -1425,13 +1426,37 @@ bool DeSSA::aliasInterfere(llvm::Value* V0, llvm::Value* V1)
     Value* V0_aliasee = getAliasee(V0);
     Value* V1_aliasee = getAliasee(V1);
 
+    //
+    // If aliasee is in InsEltMap, it is not single valued
+    // and cannot be excluded from interfere checking.
+    //
+    // For example:
+    //     x = bitcast y
+    //     z = InsElt y, ...
+    //       =  x
+    //       =  y
+    //
+    //     {y, z} are coalesced via InsElt, interfere(x, y)
+    //     must be checked.
+    // However, if y (and x too) is not in InsEltMap, no need
+    // to check interfere(x, y) as they have the same value
+    // as the following:
+    //     x = bitcast y
+    //       = x
+    //       = y
+    //
+    bool V0_oneValue = (InsEltMap.count(V0_aliasee) == 0);
+    bool V1_oneValue = (InsEltMap.count(V1_aliasee) == 0);
+    bool both_singleValue = (V0_oneValue && V1_oneValue);
+
     for (int i0 = 0, sz0 = (int)allCC0.size(); i0 < sz0; ++i0)
     {
         Value* val0 = allCC0[i0];
         for (int i1 = 0, sz1 = (int)allCC1.size(); i1 < sz1; ++i1)
         {
             Value* val1 = allCC1[i1];
-            if (val0 == V0_aliasee && val1 == V1_aliasee) {
+            if (both_singleValue &&
+                val0 == V0_aliasee && val1 == V1_aliasee) {
                 continue;
             }
             if (LV->hasInterference(val0, val1)) {

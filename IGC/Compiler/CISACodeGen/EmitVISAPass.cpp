@@ -600,10 +600,10 @@ bool EmitPass::runOnFunction(llvm::Function &F)
                     m_encoder->SetSecondHalf(false);
                     // insert constant initializations.
                     InitConstant(block.bb);
-                    // insert the de-ssa movs.
-                    MovPhiSources(block.bb);
                     // Insert lifetime start if there are any
                     emitLifetimeStartAtEndOfBB(block.bb);
+                    // insert the de-ssa movs.
+                    MovPhiSources(block.bb);
                 }
 
                 // If slicing happens, then recalculate the number of instances.
@@ -1113,7 +1113,8 @@ void EmitPass::InitConstant(llvm::BasicBlock *BB)
 
 void EmitPass::emitLifetimeStartAtEndOfBB(BasicBlock* BB)
 {
-    if (IGC_IS_FLAG_DISABLED(EnableVATemp)) {
+    if (IGC_IS_FLAG_DISABLED(EnableVATemp) &&
+        IGC_GET_FLAG_VALUE(VATemp) == 0) {
         return;
     }
 
@@ -7831,7 +7832,9 @@ CVariable *EmitPass::Add(CVariable *Src0, CVariable *Src1, const CVariable *DstP
 // Insert lifetime start right before instruction I if it is a candidate.
 void EmitPass::emitLifetimeStart(CVariable* Var, BasicBlock* BB, Instruction* I, bool ForAllInstance)
 {
-    if (IGC_IS_FLAG_DISABLED(EnableVATemp) || Var == nullptr) {
+    if ((IGC_IS_FLAG_DISABLED(EnableVATemp) &&
+         IGC_GET_FLAG_VALUE(VATemp) == 0) ||
+        Var == nullptr) {
         return;
     }
 

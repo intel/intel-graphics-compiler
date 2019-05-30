@@ -421,6 +421,64 @@ void CShader::CreateImplicitArgs()
         CVariable* ArgCVar = GetNewVector(ArgVal, algn);
         updateArgSymbolMapping(ArgVal, ArgCVar);
     }
+
+    // Create CVariables for vector aliasing (This is more
+    // efficient than doing it on-fly inside getSymbol()).
+    if (IGC_IS_FLAG_ENABLED(VATemp) &&
+        !m_VRA->m_aliasMap.empty())
+    {
+        // For each vector alias root, generate cvariable
+        // for it and all its component sub-vector
+        for (auto& II : m_VRA->m_aliasMap)
+        {
+            SSubVecDesc* SV = II.second;
+            Value* rootVal = SV->BaseVector;
+            if (SV->Aliaser != rootVal)
+                continue;
+            CVariable* rootCVar = GetSymbol(rootVal);
+
+            // Generate all vector aliasers and their
+            // dessa root if any.
+            for (int i = 0, sz = (int)SV->Aliasers.size(); i < sz; ++i)
+            {
+                SSubVecDesc* aSV = SV->Aliasers[i];
+                Value* V = aSV->Aliaser;
+                // Create alias cvariable for Aliaser and its dessa root if any
+                Value* Vals[2] = { V, nullptr };
+                if (m_deSSA) {
+                    Value* dessaRootVal = m_deSSA->getRootValue(V);
+                    if (dessaRootVal && dessaRootVal != V)
+                        Vals[1] = dessaRootVal;
+                }
+                int startIx = aSV->StartElementOffset;
+
+                for (int i = 0; i < 2; ++i)
+                {
+                    V = Vals[i];
+                    if (!V)
+                        continue;
+
+                    Type *Ty = V->getType();
+                    VectorType* VTy = dyn_cast<VectorType>(Ty);
+                    Type *BTy = VTy ? VTy->getElementType() : Ty;
+                    int nelts = (VTy ? (int)VTy->getNumElements() : 1);
+
+                    VISA_Type visaTy = GetType(BTy);
+                    int typeBytes = (int)CEncoder::GetCISADataTypeSize(visaTy);
+                    int offsetInBytes = typeBytes * startIx;
+                    int nbelts = nelts;
+                    if (!rootCVar->IsUniform())
+                    {
+                        int width = (int)numLanes(m_SIMDSize);
+                        offsetInBytes *= width;
+                        nbelts *= width;
+                    }
+                    CVariable* Var = GetNewAlias(rootCVar, visaTy, offsetInBytes, nbelts);
+                    symbolMapping.insert(std::pair<llvm::Value*, CVariable*>(V, Var));
+                }
+            }
+        }
+    }
 }
 
 void CShader::AddSetup(uint index, CVariable* var)
@@ -2412,12 +2470,13 @@ CVariable* CShader::GetSymbol(llvm::Value *value, bool fromConstantPool)
         return AliasVar;
     }
 
-    if (IGC_IS_FLAG_ENABLED(EnableVariableAlias))
+    if (IGC_IS_FLAG_ENABLED(EnableVariableAlias) &&
+        IGC_GET_FLAG_VALUE(VATemp) == 0)
     {
         if (m_VRA->m_ValueAliasMap.count(value))
         {
             // Generate alias
-            SSubVector& SV = m_VRA->m_ValueAliasMap[value];
+            SSubVecDesc& SV = m_VRA->m_ValueAliasMap[value];
             Value* BaseVec = SV.BaseVector;
             int startIx = SV.StartElementOffset;
 

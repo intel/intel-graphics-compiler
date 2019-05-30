@@ -36,6 +36,16 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace llvm;
 using namespace IGC;
 
+namespace
+{
+    // If V is scalar, return 1.
+    // if V is vector, return the number of elements.
+    inline int getNumElts(Value *V) {
+        VectorType* VTy = dyn_cast<VectorType>(V->getType());
+        return VTy ? (int)VTy->getNumElements() : 1;
+    }
+}
+
 char VariableReuseAnalysis::ID = 0;
 
 IGC_INITIALIZE_PASS_BEGIN(VariableReuseAnalysis, "VariableReuseAnalysis",
@@ -89,8 +99,18 @@ bool VariableReuseAnalysis::runOnFunction(Function &F)
   reset();
 
   if (IGC_IS_FLAG_ENABLED(EnableVariableAlias) &&
+      m_DeSSA &&
       m_pCtx->platform.GetPlatformFamily() >= IGFX_GEN9_CORE)
   {
+      // Setup ArgDeSSARoot
+      for (auto II = F.arg_begin(), IE = F.arg_end(); II != IE; ++II)
+      {
+          Value* A = II;
+          if (Value* R = m_DeSSA->getRootValue(A)) {
+              m_ArgDeSSARoot.push_back(R);
+          }
+      }
+
       // 0. Merge Variables
       //    Merge two different variables into a single one.
       //    The two vars that will be merged should have the same
@@ -103,8 +123,13 @@ bool VariableReuseAnalysis::runOnFunction(Function &F)
       //    Although they have different names, the two variables share
       //    the same values over their live ranges. The cases such as
       //    extractElement/insertElement, etc. Once aliasing is identified,
-      //    the liveness of the alias root is updated to be the sum of both
+      //    the liveness of the alias root is updated to be the sum of both.
       //    This is the same as DeSSA alias.
+      InsertElementAliasing(&F);
+
+      // 2. Handle extractElement, etc that handles a single instruction or
+      //    a few instruction, not invovled in a complicated patterns like
+      //    InsertElement.
       visitLiveInstructions(&F);
 
       postProcessing();
@@ -236,7 +261,7 @@ bool VariableReuseAnalysis::isAliasee(Value*V)
 //    NewAliaser : must not in alias map; maybe in root map.
 //    SVRoot     : must not in alias map. maybe in root map.
 //
-void VariableReuseAnalysis::insertAliasPair(Value* NewAliaser, SSubVector& RootSV)
+void VariableReuseAnalysis::insertAliasPair(Value* NewAliaser, SSubVecDesc& RootSV)
 {
     Value* Aliasee = RootSV.BaseVector;
     assert(m_ValueAliasMap.count(NewAliaser) == 0 &&
@@ -345,57 +370,159 @@ void VariableReuseAnalysis::visitLiveInstructions(Function* F)
 
 void VariableReuseAnalysis::postProcessing()
 {
-    //return;
     // BlockCoalescing : check if a BB is a to-be-skipped empty BB.
     // It is used for selecting BB to add lifetime start
     BlockCoalescing* theBBCLR = &getAnalysis<BlockCoalescing>();
 
-    auto IS = m_AliasRootMap.begin();
-    auto IE = m_AliasRootMap.end();
+    // to be deleted
+    if (IGC_GET_FLAG_VALUE(VATemp) == 0) {
+        auto IS = m_AliasRootMap.begin();
+        auto IE = m_AliasRootMap.end();
+        for (auto II = IS; II != IE; ++II)
+        {
+            Value* aliasee = II->first;
+
+            //  m_ValueAliasMap's entry is a pair <aliaser, aliasee>, where
+            //  aliaser is the key and aliasee is the value of the entry.
+            //
+            //  During creating aliases, it is guaranteed that the alias chain
+            //  relation will not happen.
+            //      alias chain relation
+            //          a0 alias_to b0
+            //          b0 alias_to b1
+            assert(m_ValueAliasMap.count(aliasee) == 0 &&
+                "ICE: alias chain relation exists!");
+
+            // For each alias set, record its lifetime start, which is the
+            // nearest dominator that dominates all value defs in an alias set.
+            // This BB is either one that has no defintion of values in the set;
+            // or one that has a defintion to a value in the set. For the former,
+            // m_LifetimeAtEndOfBB is used to keep track of it; for the latter,
+            // m_LifetimeAt1stDefOfBB is used.
+            SmallVector<Value*, 8> allVals;
+            getAllValues(allVals, aliasee);
+            SmallSet<BasicBlock*, 8> defBBSet;
+            SmallSet<BasicBlock*, 4> phiDefBBSet;
+
+            for (int i = 0, sz = (int)allVals.size(); i < sz; ++i)
+            {
+                Value* V = allVals[i];
+                if (Instruction* I = dyn_cast<Instruction>(V))
+                {
+
+                    BasicBlock* BB = I->getParent();
+                    defBBSet.insert(BB);
+                    if (PHINode *PI = dyn_cast<PHINode>(I)) {
+                        phiDefBBSet.insert(BB);
+                    }
+                }
+                else
+                {
+                    // For arg, global etc., its start is on entry.
+                    // Thus, no need to insert lifetime start.
+                    defBBSet.clear();
+                    break;
+                }
+            }
+
+            if (defBBSet.size() == 0) {
+                continue;
+            }
+
+            auto BSI = defBBSet.begin();
+            auto BSE = defBBSet.end();
+            BasicBlock *NearestDomBB = *BSI;
+            for (++BSI; BSI != BSE; ++BSI)
+            {
+                BasicBlock *aB = *BSI;
+                NearestDomBB = m_DT->findNearestCommonDominator(NearestDomBB, aB);
+            }
+
+            // Skip emptry BBs that are going to be skipped in codegen emit.
+            while (theBBCLR->IsEmptyBlock(NearestDomBB))
+            {
+                auto Node = m_DT->getNode(NearestDomBB);
+                NearestDomBB = Node->getIDom()->getBlock();
+            }
+
+            if (phiDefBBSet.count(NearestDomBB)) {
+                // PHI's source mov are in its predecessor and could
+                // be moved somewhere else. So, don't insert lifetime start.
+                continue;
+            }
+            if (defBBSet.count(NearestDomBB))
+            {
+                m_LifetimeAt1stDefOfBB[aliasee] = NearestDomBB;
+            }
+            else
+            {
+                m_LifetimeAtEndOfBB[NearestDomBB].push_back(aliasee);
+            }
+        }
+        return;
+    }
+
+    auto IS = m_aliasMap.begin();
+    auto IE = m_aliasMap.end();
     for (auto II = IS; II != IE; ++II)
     {
-        Value* aliasee = II->first;
+        SSubVecDesc* SV = II->second;
+        Value* aliasee = SV->BaseVector;
+        if (aliasee != SV->Aliaser)
+            continue;
 
-        //  m_ValueAliasMap's entry is a pair <aliaser, aliasee>, where
-        //  aliaser is the key and aliasee is the value of the entry.
+        // An alias set of an aliasee (base) :
+        //     All values that alias to the aliasee and their values
+        //     in their dessa CC.
         //
-        //  During creating aliases, it is guaranteed that the alias chain
-        //  relation will not happen. 
-        //      alias chain relation
-        //          a0 alias_to b0
-        //          b0 alias_to b1
-        assert(m_ValueAliasMap.count(aliasee) == 0 &&
-            "ICE: alias chain relation exists!");
-
-        // For each alias set, record its lifetime start, which is the
+        // For each Aliasee, record its lifetime start, which is the
         // nearest dominator that dominates all value defs in an alias set.
         // This BB is either one that has no defintion of values in the set;
         // or one that has a defintion to a value in the set. For the former,
         // m_LifetimeAtEndOfBB is used to keep track of it; for the latter,
         // m_LifetimeAt1stDefOfBB is used.
-        SmallVector<Value*, 8> allVals;
-        getAllValues(allVals, aliasee);
-        SmallSet<BasicBlock*, 8> defBBSet;
-        SmallSet<BasicBlock*, 4> phiDefBBSet;
-
-        for (int i = 0, sz = (int)allVals.size(); i < sz; ++i)
+        ValueVectorTy AllVals;
+        SmallVector<Value*, 8> valInCC;
+        m_DeSSA->getAllValuesInCongruentClass(aliasee, valInCC);
+        AllVals.insert(AllVals.end(), valInCC.begin(), valInCC.end());
+        for (int i = 0, sz = (int)SV->Aliasers.size(); i < sz; ++i)
         {
-            Value* V = allVals[i];
-            if (Instruction* I = dyn_cast<Instruction>(V))
-            {
+            SSubVecDesc* aSV = SV->Aliasers[i];
+            Value* aliaser = aSV->Aliaser;
+            valInCC.clear();
+            m_DeSSA->getAllValuesInCongruentClass(aliaser, valInCC);
+            AllVals.insert(AllVals.end(), valInCC.begin(), valInCC.end());
+        }
 
-                BasicBlock* BB = I->getParent();
-                defBBSet.insert(BB);
-                if (PHINode *PI = dyn_cast<PHINode>(I)) {
-                    phiDefBBSet.insert(BB);
-                }
-            }
-            else
-            {
+        SmallSet<BasicBlock*, 8> defBBSet;
+        for (int i = 0, sz = (int)AllVals.size(); i < sz; ++i)
+        {
+            Value* V = AllVals[i];
+            Instruction* I = dyn_cast<Instruction>(V);
+            if (!I) {
                 // For arg, global etc., its start is on entry.
                 // Thus, no need to insert lifetime start.
                 defBBSet.clear();
                 break;
+            }
+
+            if (PHINode *PHI = dyn_cast<PHINode>(I)) {
+                Value* PHI_root = m_DeSSA->getRootValue(PHI);
+                int sz1 = (int)PHI->getNumIncomingValues();
+                for (int i1 = 0; i1 < sz1; ++i1)
+                {
+                    Value* Src = PHI->getIncomingValue(i);
+                    Value* Src_root = m_DeSSA->getRootValue(Src);
+                    if (!Src_root || PHI_root != Src_root) {
+                        // Need Src-side phi mov
+                        BasicBlock* BB = PHI->getIncomingBlock(i);
+                        defBBSet.insert(BB);
+                    }
+                }
+            }
+            else {
+                BasicBlock* BB = I->getParent();
+                defBBSet.insert(BB);
             }
         }
 
@@ -419,11 +546,6 @@ void VariableReuseAnalysis::postProcessing()
             NearestDomBB = Node->getIDom()->getBlock();
         }
 
-        if (phiDefBBSet.count(NearestDomBB)) {
-            // PHI's source mov are in its predecessor and could
-            // be moved somewhere else. So, don't insert lifetime start.
-            continue;
-        }
         if (defBBSet.count(NearestDomBB))
         {
             m_LifetimeAt1stDefOfBB[aliasee] = NearestDomBB;
@@ -432,7 +554,7 @@ void VariableReuseAnalysis::postProcessing()
         {
             m_LifetimeAtEndOfBB[NearestDomBB].push_back(aliasee);
         }
-    }    
+    }
 }
 
 Value* VariableReuseAnalysis::getRootValue(Value *V)
@@ -446,25 +568,34 @@ Value* VariableReuseAnalysis::getRootValue(Value *V)
 
 Value* VariableReuseAnalysis::getAliasRootValue(Value* V)
 {
-    Value* ARV = getRootValue(V);
-    auto AliaseeII = m_ValueAliasMap.find(ARV);
-    if (AliaseeII != m_ValueAliasMap.end())
+    if (IGC_GET_FLAG_VALUE(VATemp) == 0)
     {
-        SSubVector& svd = AliaseeII->second;
-        ARV = svd.BaseVector;
+        Value* ARV = getRootValue(V);
+        auto AliaseeII = m_ValueAliasMap.find(ARV);
+        if (AliaseeII != m_ValueAliasMap.end())
+        {
+            SSubVecDesc& svd = AliaseeII->second;
+            ARV = svd.BaseVector;
+        }
+        return ARV;
     }
-    return ARV;
+
+    Value* V_nv = m_DeSSA ? m_DeSSA->getNodeValue(V) : V;
+    auto II = m_aliasMap.find(V_nv);
+    if (II == m_aliasMap.end()) {
+        return V_nv;
+    }
+    return II->second->BaseVector;
 }
 
-// [Todo] rename SSubVector to SSubVecDesc (sub-vector descriptor)
-bool VariableReuseAnalysis::addAlias(Value* Aliaser, SSubVector& SVD)
+bool VariableReuseAnalysis::addAlias(Value* Aliaser, SSubVecDesc& SVD)
 {
     // In case, aliasee is an "aliaser" to the other a root value,
     // the other value shall be the new aliasee.
-    SSubVector tSVD = SVD;
+    SSubVecDesc tSVD = SVD;
     auto AliaseeII = m_ValueAliasMap.find(tSVD.BaseVector);
     if (AliaseeII != m_ValueAliasMap.end()) {
-        SSubVector& svd0 = AliaseeII->second;
+        SSubVecDesc& svd0 = AliaseeII->second;
         tSVD.BaseVector = svd0.BaseVector;
         tSVD.StartElementOffset += svd0.StartElementOffset;
     }
@@ -482,7 +613,7 @@ bool VariableReuseAnalysis::addAlias(Value* Aliaser, SSubVector& SVD)
         insertAliasPair(Aliaser, tSVD);
     }
     else {
-        SSubVector& existingRSV = II->second;
+        SSubVecDesc& existingRSV = II->second;
         Value *existingRV = existingRSV.BaseVector;
         if (isSameSizeValue(Aliaser, Aliasee) &&
             tSVD.StartElementOffset == 0) {
@@ -622,7 +753,7 @@ void VariableReuseAnalysis::visitCallInst(CallInst& I)
                 return;
             }
 
-            SSubVector SV;
+            SSubVecDesc SV;
             SV.BaseVector = Src;
             SV.StartElementOffset = 0;
             if (addAlias(GII, SV)) {
@@ -643,7 +774,7 @@ void VariableReuseAnalysis::visitCallInst(CallInst& I)
             if (ConstantInt* CST = dyn_cast<ConstantInt>(Index))
             {
                 int ix = (int)CST->getZExtValue();
-                SSubVector SV;
+                SSubVecDesc SV;
                 SV.BaseVector = Src;
                 SV.StartElementOffset = ix;
                 if (addAlias(GII, SV)) {
@@ -670,7 +801,7 @@ void VariableReuseAnalysis::visitCastInst(CastInst& I)
     Value* D = &I;
     Value* S = I.getOperand(0);
 
-    SSubVector SV;
+    SSubVecDesc SV;
     SV.BaseVector = S;
     SV.StartElementOffset = 0;
     if (addAlias(D, SV)) {
@@ -690,7 +821,17 @@ void VariableReuseAnalysis::visitCastInst(CastInst& I)
     // m_LV->mergeUseFrom(S, D);
 }
 
-void VariableReuseAnalysis::visitInsertElementInst(llvm::InsertElementInst& I)
+// to be deleted
+void VariableReuseAnalysis::visitInsertElementInst(InsertElementInst& I)
+{
+    if (IGC_GET_FLAG_VALUE(VATemp) == 0) {
+        // old code
+        visitInsertElementInst_toBeDeleted(I);
+        return;
+    }
+}
+
+void VariableReuseAnalysis::visitInsertElementInst_toBeDeleted(InsertElementInst& I)
 {
     if (IGC_GET_FLAG_VALUE(EnableVATemp) < 2)
         return;
@@ -727,8 +868,8 @@ void VariableReuseAnalysis::visitInsertElementInst(llvm::InsertElementInst& I)
     assert(AllIEIs.size() == nelts && "ICE: wrong the number of IEIs!");
 
     InsertElementInst *LastIEI = cast<InsertElementInst>(AllIEIs.back());
-    SSubVector SV;
-    SmallVector<SSubVector, 4> SVs;
+    SSubVecDesc SV;
+    SmallVector<SSubVecDesc, 4> SVs;
     if (IsExtractFrom(AllElts, &I, LastIEI, SV))
     {
         if (addAlias(LastIEI, SV))
@@ -747,7 +888,7 @@ void VariableReuseAnalysis::visitInsertElementInst(llvm::InsertElementInst& I)
     {
         for (int i = 0, sz = (int)SVs.size(); i < sz; ++i)
         {
-            SSubVector& subvec = SVs[i];
+            SSubVecDesc& subvec = SVs[i];
             Value* aliaser = subvec.BaseVector;
             subvec.BaseVector = LastIEI;
             if (addAlias(aliaser, subvec)) {
@@ -764,7 +905,56 @@ void VariableReuseAnalysis::visitInsertElementInst(llvm::InsertElementInst& I)
     }
 }
 
-void VariableReuseAnalysis::visitExtractElementInst(llvm::ExtractElementInst& I)
+void VariableReuseAnalysis::visitExtractElementInst(ExtractElementInst& I)
+{
+#if 1
+    if (IGC_GET_FLAG_VALUE(VATemp) == 0) {
+        visitExtractElementInst_toBeDeleted(I);
+        return;
+    }
+
+    ExtractElementInst* EEI = &I;
+    Value* vecVal = EEI->getVectorOperand();
+    // If inst is dead or vecVal is an argument, skip it.
+    // (argument is fixed to a physical GRF and thus it cannot
+    //  be merged into part of other value.)
+    if (m_HasBecomeNoopInsts.count(EEI) ||
+        m_DeSSA->isNoopAliaser(EEI) ||
+        isOrCoalescedWithArg(EEI) ||
+        isOrCoalescedWithArg(vecVal) ||
+        (m_WIA && m_WIA->whichDepend(EEI) != m_WIA->whichDepend(vecVal))) {
+        return;
+    }
+
+    Value* EEI_nv = m_DeSSA->getNodeValue(EEI);
+    Value* vec_nv = m_DeSSA->getNodeValue(vecVal);
+
+    // If EEI has been payload-coalesced or has been vec-aliased,
+    // skip it for now (implementation choice).
+    // Note that payload-coalescing does not use node value yet.
+    if (hasBeenPayloadCoalesced(EEI) ||
+        isVecAliaser(EEI_nv)) {
+        return;
+    }
+
+    // Can only do alias if idx is a known constant.
+    Value* IdxVal = EEI->getIndexOperand();
+    ConstantInt* Idx = dyn_cast<ConstantInt>(IdxVal);
+    if (!Idx) {
+        return;
+    }
+
+    int iIdx = (int)Idx->getZExtValue();
+    if (aliasInterfere(EEI_nv, vec_nv, iIdx)) {
+        return;
+    }
+
+    // Valid vec alias and add it into alias map
+    addVecAlias(EEI_nv, vec_nv, iIdx);
+#endif
+}
+
+void VariableReuseAnalysis::visitExtractElementInst_toBeDeleted(ExtractElementInst& I)
 {
     // Only handles ExtractElements whose indexes are all known constants.
     if (IGC_GET_FLAG_VALUE(EnableVATemp) < 2)
@@ -822,7 +1012,7 @@ void VariableReuseAnalysis::visitExtractElementInst(llvm::ExtractElementInst& I)
             continue;
         }
 
-        SSubVector SV;
+        SSubVecDesc SV;
         SV.BaseVector = Vec;
         SV.StartElementOffset = i;
         if (addAlias(EEI, SV)) {
@@ -984,9 +1174,11 @@ bool VariableReuseAnalysis::canBeAlias(CastInst* I)
     return true;
 }
 
+// Check if the vector value of InsertElement is
+// a sub-vector of another one, return true if so.
 bool VariableReuseAnalysis::IsExtractFrom(
     VecEltTy& AllElts, InsertElementInst* FirstIEI,
-    InsertElementInst* LastIEI, SSubVector& SV)
+    InsertElementInst* LastIEI, SSubVecDesc& SV)
 {
     int nelts = (int)AllElts.size();
     Value* BaseVec = AllElts[0].Vec;
@@ -1030,7 +1222,7 @@ bool VariableReuseAnalysis::IsExtractFrom(
 
 bool VariableReuseAnalysis::IsInsertTo(
     VecEltTy& AllElts, InsertElementInst* FirstIEI,
-    InsertElementInst* LastIEI, SmallVector<SSubVector, 4>& SVs)
+    InsertElementInst* LastIEI, SmallVector<SSubVecDesc, 4>& SVs)
 {
     int nelts = (int)AllElts.size();
     Value* SubVec = AllElts[0].Vec;
@@ -1041,7 +1233,7 @@ bool VariableReuseAnalysis::IsInsertTo(
         // 1. AllElts[i].Vec must be SubVec.
         // 2. Check the next SubVec, if it change, the current
         //    element is the last one of the crrent SubVec;
-        //    and SSubVector will be created if the SubVec meets
+        //    and SSubVecDesc will be created if the SubVec meets
         //    the condition.
         if ((i - SubStartIx) != AllElts[i].EltIx) {
             return false;
@@ -1067,7 +1259,7 @@ bool VariableReuseAnalysis::IsInsertTo(
                 return false;
             }
 
-            SSubVector sv;
+            SSubVecDesc sv;
             sv.BaseVector = SubVec;  // note that this is sub, not base!
             sv.StartElementOffset = SubStartIx;
             SVs.push_back(sv);
@@ -1121,7 +1313,7 @@ void VariableReuseAnalysis::printAlias(raw_ostream & OS, const Function* F) cons
                 assert(false && "ICE VariableAlias: wrong Value alias map!");
             }
             else {
-                const SSubVector& SV = II->second;
+                const SSubVecDesc& SV = II->second;
                 OS << "    " << *aliaser << "  [" << SV.StartElementOffset << "]\n";
             }
         }
@@ -1133,4 +1325,516 @@ void VariableReuseAnalysis::printAlias(raw_ostream & OS, const Function* F) cons
 void VariableReuseAnalysis::dumpAlias() const
 {
     printAlias(dbgs(), m_F);
+}
+
+// Add alias Aliaser ->Aliasee[Idx]
+void VariableReuseAnalysis::addVecAlias(
+    Value* Aliaser, Value* Aliasee, int Idx)
+{
+    SSubVecDesc* aliaserSV = getOrCreateSubVecDesc(Aliaser);
+    SSubVecDesc* aliaseeSV = getOrCreateSubVecDesc(Aliasee);
+    Value* aliaseeRoot = aliaseeSV->BaseVector;
+    aliaserSV->BaseVector = aliaseeRoot;
+    aliaserSV->StartElementOffset = Idx + aliaseeSV->StartElementOffset;
+
+    // If Aliaser exists as a root, re-alias all its aliasers
+    // to the new root 'aliaseeRoot'.
+    SSubVecDesc* rootSV = getOrCreateSubVecDesc(aliaseeRoot);
+    if (aliaserSV->Aliasers.size() > 0)
+    {
+        for (int i = 0, sz = (int)aliaserSV->Aliasers.size(); i < sz; ++i)
+        {
+            SSubVecDesc* SV = aliaserSV->Aliasers[i];
+            SV->BaseVector = aliaseeRoot;
+            SV->StartElementOffset += Idx;
+
+            rootSV->Aliasers.push_back(SV);
+        }
+
+        // Clear aliaser's Aliasers as it is no longer a root
+        aliaserSV->Aliasers.clear();
+    }
+
+    // Finally, add aliaserSV into root's Aliaser vector
+    rootSV->Aliasers.push_back(aliaserSV);
+}
+
+SSubVecDesc* VariableReuseAnalysis::getOrCreateSubVecDesc(Value* V)
+{
+    if (m_aliasMap.count(V) == 0) {
+        SSubVecDesc* SV = new(Allocator) SSubVecDesc(V);
+        m_aliasMap.insert(std::make_pair(V, SV));
+    }
+    return m_aliasMap[V];
+}
+
+bool VariableReuseAnalysis::isVecAliaser(llvm::Value* V) const
+{
+    auto II = m_aliasMap.find(V);
+    if (II == m_aliasMap.end())
+        return false;
+    SSubVecDesc* SV = II->second;
+    return SV->Aliaser != SV->BaseVector;
+}
+
+// A chain of IEIs is used to define a vector. If all elements of this vector
+// are inserted via this chain IEI that has a constant index, populate AllIEIs.
+//   input:  FirstIEI (first IEI, usually with index = 0)
+//   output: AllIEIs (collect all values used to initialize the vector)
+// Return value:
+//   true :  if all elements are inserted with IEI of constant index
+//   false:  otherwise.
+bool VariableReuseAnalysis::getAllInsEltsIfAvailable(
+    InsertElementInst* FirstIEI, VecInsEltInfoTy& AllIEIs)
+{
+    int nelts = getNumElts(FirstIEI);
+
+    // Sanity
+    if (nelts < 2)
+        return false;
+
+    // AllIEIs are fixed to the number of elements of the vector.
+    AllIEIs.resize(nelts);
+
+    InsertElementInst* LastIEI = FirstIEI;
+    InsertElementInst* I = FirstIEI;
+    Value* dessaRoot = m_DeSSA->getRootValue(FirstIEI);
+    while (I)
+    {
+        LastIEI = I;
+
+        // For insertElement, it should be in the same dessa CC
+        // already, as dessa special-handles it. Make sure they
+        // are indeed in the same CC, otherwise, skip.
+        if (hasBeenPayloadCoalesced(I) ||
+            m_DeSSA->getRootValue(I) != dessaRoot)
+            return false;
+
+        Value* V;
+        Value* E;
+        int IEI_ix, V_ix;
+        if (!getElementValue(I, IEI_ix, E, V, V_ix)) {
+            return false;
+        }
+
+        assert(IEI_ix < nelts && "ICE: IEI's index out of bound!");
+        SVecInsEltInfo& InsEltInfo = AllIEIs[IEI_ix];
+        if (InsEltInfo.IEI) {
+            // One element is inserted more than once, skip.
+            return false;
+        }
+        InsEltInfo.IEI = I;
+        InsEltInfo.Elt = E;
+        InsEltInfo.FromVec = V;
+        InsEltInfo.FromVec_eltIx = V_ix;
+        if (E) {
+            InsEltInfo.EEI = dyn_cast<ExtractElementInst>(E);
+        }
+
+        if (!I->hasOneUse()) {
+            break;
+        }
+
+        I = dyn_cast<InsertElementInst>(I->user_back());
+    }
+
+    // Special cases.
+    if (AllIEIs.empty() || LastIEI->use_empty()) {
+        return false;
+    }
+
+    // Make sure all elements are present
+    for (int i = 0; i < nelts; ++i) {
+        if (AllIEIs[i].IEI == nullptr)
+            return false;
+    }
+    return true;
+}
+
+Value* VariableReuseAnalysis::traceAliasValue(Value* V)
+{
+    if (CastInst* CastI = dyn_cast_or_null<CastInst>(V))
+    {
+        Value* Src = CastI->getOperand(0);
+        if (isa<Constant>(Src))
+            return CastI;
+
+        Value* NV0 = m_DeSSA->getNodeValue(CastI);
+        Value* NV1 = m_DeSSA->getNodeValue(Src);
+        if (NV0 == NV1)
+        {
+            // Meaning they are aliased already by dessa
+            return traceAliasValue(Src);
+        }
+    }
+    return V;
+}
+
+//
+// Returns true if the following is true
+//     IEI = insertElement  <vectorType> Vec,  A,  <constant IEI_ix>
+// Return false, otherwise.
+//
+// When the above condition is true, S, V, V_ix are ysed for the
+// following cases:
+//     1. sub-vector (V, V_ix),  S = A
+//        A = extractElement <vectorType> V, <constant V_ix>
+//        A is the element denoted by (V, V_ix)
+//     2. non-sub-vector: V=nullptr, V_ix=0,  S = A
+//        A is a valid value inserted and can be alias to Vec
+//     3. S = nullptr, V = nullptr, V_ix=0
+//        A  is NOT a valid value that can be aliased to Vec
+//        For example, A is an argument, constant, or in a non-trivial
+//        dessa CC, etc.
+//
+//  Input: IEI
+//  Output: IEI_ix, S, V, V_ix
+bool VariableReuseAnalysis::getElementValue(
+    InsertElementInst* IEI, int& IEI_ix, Value*& S, Value*& V, int& V_ix)
+{
+    // Return value: S or (V, V_ix)
+    S = nullptr;
+    V = nullptr;
+    V_ix = 0;
+    IEI_ix = 0;
+
+    // Check if I has constant index, skip if not.
+    ConstantInt* CI = dyn_cast<ConstantInt>(IEI->getOperand(2));
+    if (!CI) {
+        return false;
+    }
+
+    // From now on, this func must return true.
+    IEI_ix = (int)CI->getZExtValue();
+
+    // Check that the elements inserted are from extractElement.
+    // Also, if no ExtractELement, get IEI's element value as S.
+    Value *elem0 = IEI->getOperand(1);
+    if (hasBeenPayloadCoalesced(elem0) ||
+        isa<Constant>(elem0) ||
+        isOrCoalescedWithArg(elem0))
+    {
+        // case 3: elem0 cannot be aliased
+        return true;
+    }
+
+    Value *elem = traceAliasValue(elem0);
+    ExtractElementInst *EEI = dyn_cast<ExtractElementInst>(elem);
+
+    // No vector alias can be used if any of the following
+    // is true:
+    //   1.  EEI not found
+    //   2.  EEI found, but EEI's index is not constant.
+    //   3.  EEI found and EEI's index is constant, but
+    //       elem is not single-valued
+    S = elem;
+    if (!EEI) {
+        // case 2
+        return true;
+    }
+    ConstantInt* CI1 = dyn_cast<ConstantInt>(EEI->getIndexOperand());
+    if (!CI1 ||
+        !m_DeSSA->isSingleValued(elem))
+    {
+        // case 2
+        //   1. No extractElementInst, or
+        //   2. Has extractElementInst, but it is not single-valued
+        //      (implementation)
+        return true;
+    }
+
+    V = EEI->getVectorOperand();
+    if (isa<Constant>(V) ||
+        hasBeenPayloadCoalesced(V) ||
+        isOrCoalescedWithArg(V))
+    {
+        // case 2 again
+        V = nullptr;
+        return true;
+    }
+    V_ix = (int)CI1->getZExtValue();
+    return true;
+}
+
+void VariableReuseAnalysis::InsertElementAliasing(Function* F)
+{
+    // Do it if VATemp >= 2 and for ocl only for now
+    if (IGC_GET_FLAG_VALUE(VATemp) < 2 ||
+        m_pCtx->type != ShaderType::OPENCL_SHADER) {
+        return;
+    }
+
+    for (auto II = inst_begin(F), IE = inst_end(F); II != IE; ++II)
+    {
+        Instruction* I = &*II;
+        if (!m_PatternMatch->NeedInstruction(*I))
+            continue;
+
+        InsertElementInst* IEI = dyn_cast<InsertElementInst>(I);
+        if (!IEI)
+            continue;
+
+        // Two cases for sub-vector aliasing:
+        //   1. extractFrom: sub-vector is created from a base vector.
+        //      For example:
+        //         given base: int8 b;  a sub-vector s (int4) can be:
+        //         s = (int4)(b.s4, b.s5, b.s6, b.s7)
+        //      In this case, 's' becomes a part of 'b'. In LLVM IR,
+        //      there are a chain of extElt and insElt instructions for
+        //      doing so.
+        //   2. insertTo: sub-vector is used to create a base vector.
+        //      For example:
+        //         given sub-vector int4 s0, s1;  int8 vector b is created like:
+        //           b = (int8) (s0, s1)
+        //      In this case,  both s0 and s1 become part of b.
+
+        // Start insertElement pattern from the first InsertElement (one
+        // with UndefValue. Note that that this's also the dessa insElt root.
+        if (!isa<UndefValue>(IEI->getOperand(0)))
+            continue;
+
+        // First, collect all insertElementInst and extractElementInst.
+        VecInsEltInfoTy AllIEIs;
+        if (!getAllInsEltsIfAvailable(IEI, AllIEIs)) {
+            continue;
+        }
+
+        // Check if this is an extractFrom pattern.
+        // If so, add alias and return true.
+        if (processExtractFrom(AllIEIs)) {
+            continue;
+        }
+
+        // Check if this is an insertTo pattern.
+        // If so, add alias and return true.
+        if (processInsertTo(AllIEIs)) {
+            continue;
+        }
+    }
+}
+
+// Check if the vector value of InsertElement is
+// a sub-vector of another one, return true if so.
+bool VariableReuseAnalysis::processExtractFrom(VecInsEltInfoTy& AllIEIs)
+{
+    int nelts = (int)AllIEIs.size();
+    Value* BaseVec = AllIEIs[0].FromVec;
+    int BaseStartIx = AllIEIs[0].FromVec_eltIx;
+    if (!BaseVec) {
+        // Base is not a vector, so IEI cannot be
+        // a subvector of another vector!
+        return false;
+    }
+    int base_nelts = getNumElts(BaseVec);
+
+    // If Base's size is smaller than IEI's, IEI cannot be sub-vector
+    if (base_nelts < nelts) {
+        return false;
+    }
+
+    for (int i = 1; i < nelts; ++i)
+    {
+        if (AllIEIs[i].FromVec != BaseVec ||
+            AllIEIs[i].FromVec_eltIx != (BaseStartIx + i))
+            return false;
+    }
+
+    // Interference checking
+    Value* Sub_nv = m_DeSSA->getNodeValue(AllIEIs[0].IEI);
+    Value* Base_nv = m_DeSSA->getNodeValue(BaseVec);
+    if (aliasInterfere(Sub_nv, Base_nv, BaseStartIx)) {
+        return false;
+    }
+
+    // add alias
+    addVecAlias(Sub_nv, Base_nv, BaseStartIx);
+
+    // Make sure noop insts are in the map.
+    for (int i = 0, sz = (int)AllIEIs.size(); i < sz; ++i)
+    {
+        InsertElementInst* IEI = AllIEIs[i].IEI;
+        if (m_DeSSA->isNoopAliaser(IEI))
+            continue;
+        m_HasBecomeNoopInsts[IEI] = 1;
+
+        ExtractElementInst* EEI = AllIEIs[i].EEI;
+        if (EEI)
+        {
+            if (m_DeSSA->isNoopAliaser(EEI))
+                continue;
+            m_HasBecomeNoopInsts[EEI] = 1;
+        }
+    }
+    return true;
+}
+
+// Check if IEI is a base vector created by other sub-vectors
+// or scalars. If it is, create alias and return true.
+bool VariableReuseAnalysis::processInsertTo(VecInsEltInfoTy& AllIEIs)
+{
+    int nelts = (int)AllIEIs.size();
+    Value* Sub = AllIEIs[0].FromVec;
+    int SubStartIx = 0;
+    SmallVector<std::pair<Value*, int>, 8> SubVecs;
+
+    auto IsInSubVecs = [&](Value* Val) -> bool {
+        for (int j = 0, sz = (int)SubVecs.size(); j < sz; ++j) {
+            if (SubVecs[j].first == Val)
+                return true;
+        }
+        return false;
+    };
+
+    bool isSubCandidate = true;
+    for (int i = 0; i < nelts; ++i)
+    {
+        // On entry to the iteration, AllIEIs[i].FromVec must be the
+        // same as Sub.  If the next Sub is different from the current
+        // one, the current element (AllIEIs[i]) is the last one element
+        // for the Sub.
+        //
+        // Note
+        //   case 1:  if Elt == nullptr, no aliasing
+        //   case 2:  if Elt != nullptr && Fromvec == nullptr, Elt aliasing
+        //   case 3:  if Elt != nullptr && FromVec != nullptr,
+        //            (FromVec, FromVec_eltIx) sub-vector aliasing
+        //
+        Value* Elt = AllIEIs[i].Elt;
+        if (!Elt ||
+            (Sub && (i - SubStartIx) != AllIEIs[i].FromVec_eltIx)) {
+            isSubCandidate = false;
+            continue;
+        }
+
+        // If Sub == nullptr or NextSub != Sub, this is the last element
+        // of the current Sub (it is a scalar in case of sub == nullpr).
+        Value *NextSub = (i < (nelts - 1)) ? AllIEIs[i + 1].FromVec : nullptr;
+        if (!Sub ||
+            Sub != NextSub)
+        {
+            // End of the current Sub
+            if (isSubCandidate)
+            {
+                Value* aliaser = Sub ? Sub : Elt;
+                int sub_nelts = getNumElts(aliaser);
+                // If Sub's size is not smaller than IEI's, or not all sub's
+                // elements are used, skip.
+                if (sub_nelts < nelts && (i - SubStartIx) == (sub_nelts - 1))
+                {
+                    SubVecs.push_back(std::make_pair(aliaser, SubStartIx));
+                }
+            }
+
+            // NextSub should be the new sub-vector.
+            // Make sure it is not used yet.
+            // Note this works for special case in which NextSub = nullptr.
+            isSubCandidate = true;
+            Value* NextElt = (i < (nelts - 1)) ? AllIEIs[i + 1].Elt : nullptr;
+            if (!NextElt ||
+                (NextSub && IsInSubVecs(NextSub)) ||
+                (!NextSub && IsInSubVecs(NextElt))) {
+                isSubCandidate = false;
+            }
+            Sub = NextSub;
+            SubStartIx = i + 1;
+        }
+    }
+
+    // Check alias interference
+    InsertElementInst* FirstIEI = AllIEIs[0].IEI;
+    bool hasAlias = false;
+    Value* IEI_nv = m_DeSSA->getNodeValue(FirstIEI);
+    for (int i = 0, sz = (int)SubVecs.size(); i < sz; ++i)
+    {
+        std::pair<Value*, int>& aPair = SubVecs[i];
+        Value* V = aPair.first;
+        int V_ix = aPair.second;
+        Value* V_nv = m_DeSSA->getNodeValue(V);
+        if (aliasInterfere(V_nv, IEI_nv, V_ix)) {
+            continue;
+        }
+        addVecAlias(V_nv, IEI_nv, V_ix);
+
+        // set up Noop inst
+        // Make sure noop insts are in the map.
+        int V_sz = getNumElts(V);
+        for (int j = V_ix, sz = V_ix + V_sz; j < sz; ++j)
+        {
+            InsertElementInst* IEI = AllIEIs[j].IEI;
+            if (m_DeSSA->isNoopAliaser(IEI))
+                continue;
+            m_HasBecomeNoopInsts[IEI] = 1;
+
+            ExtractElementInst* EEI = AllIEIs[j].EEI;
+            if (EEI)
+            {
+                // Sub-vector
+                if (m_DeSSA->isNoopAliaser(EEI))
+                    continue;
+                m_HasBecomeNoopInsts[EEI] = 1;
+
+                Value* EEI_nv = m_DeSSA->getNodeValue(EEI);
+                addVecAlias(EEI_nv, IEI_nv, j);
+            }
+        }
+        hasAlias = true;
+    }
+    return hasAlias;
+}
+
+// Return all aliased values of VecAliasee, given the alias:
+//           Aliaser->(VecAliasee, Idx)
+void VariableReuseAnalysis::getAllAliasVals(
+    ValueVectorTy& AliasVals,
+    Value* Aliaser,
+    Value* VecAliasee,
+    int    Idx)
+{
+    AliasVals.clear();
+    auto II = m_aliasMap.find(VecAliasee);
+    AliasVals.push_back(VecAliasee);
+    if (II != m_aliasMap.end())
+    {
+        SSubVecDesc* aliaseeSV = II->second;
+        int nelts = getNumElts(Aliaser);
+        int Idx_end = Idx + nelts - 1;
+        for (int i = 0, sz = (int)(aliaseeSV->Aliasers.size()); i < sz; ++i)
+        {
+            SSubVecDesc* SV = aliaseeSV->Aliasers[i];
+            int start = SV->StartElementOffset;
+            int end = start + SV->NumElts - 1;
+            if ((start > Idx_end) || (end < Idx))
+                continue;
+            AliasVals.push_back(SV->Aliaser);
+        }
+    }
+}
+
+
+// Check if two potentially-aliased values (must be dessa node
+// values) interfere each other.
+bool VariableReuseAnalysis::aliasInterfere(Value* Sub, Value* Base, int BaseIdx)
+{
+    ValueVectorTy Vec0, Vec1;
+    Vec0.push_back(Sub);
+    getAllAliasVals(Vec1, Sub, Base, BaseIdx);
+    auto II0 = m_aliasMap.find(Sub);
+    if (II0 != m_aliasMap.end()) {
+        SSubVecDesc* SV0 = II0->second;
+        for (int i=0, sz = (int)SV0->Aliasers.size(); i < sz; ++i) {
+            SSubVecDesc* tSV = SV0->Aliasers[i];
+            Vec0.push_back(tSV->Aliaser);
+        }
+    }
+
+    for (int i0=0, sz0 = (int)Vec0.size(); i0 < sz0; ++i0)
+    {
+        Value* V0 = Vec0[i0];
+        for (int i1 = 0, sz1 = (int)Vec1.size(); i1 < sz1; ++i1) {
+            Value* V1 = Vec1[i1];
+            if (m_DeSSA->aliasInterfere(V0, V1))
+                return false;
+        }
+    }
+    return true;
 }
