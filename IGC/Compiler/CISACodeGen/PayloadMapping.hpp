@@ -54,11 +54,7 @@ class PayloadMapping
 {
     friend class CoalescingEngine;
 public:
-
-    //This is one (rare) method left as a static.
-    //The place where it could be used might not have an instance of 
-    //coalescing-engine/payload mapping available.
-    static void ValidateNumberofSources(EOPCODE opCode, uint &numberofSrcs);
+    void ValidateNumberofSources(EOPCODE opCode, uint &numberofSrcs);
 
     typedef llvm::DenseMap<std::pair<const llvm::Instruction*, uint>, llvm::Value*> PayloadMappingCache;
 
