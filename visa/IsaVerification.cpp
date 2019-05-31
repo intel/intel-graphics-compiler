@@ -2642,40 +2642,11 @@ static void verifyInstructionDataport(const common_isa_header& isaHeader,
                 ch_mask = ch_mask & 0xF;
                 REPORT_INSTRUCTION(options,ch_mask != 0x0, "At least one channel must be enabled for TYPED GATEHR4/SCATTER4");
 
-                auto execSize = (Common_ISA_Exec_Size)(inst->execsize & 0xF);
-                REPORT_INSTRUCTION(options,
-                                   execSize == EXEC_SIZE_8,
-                                   "Only support SIMD8 mode for TYPED GATEHR4/SCATTER4");
-
                 surface = getPrimitiveOperand<uint8_t>(inst, i++);
                 REPORT_INSTRUCTION(options, (0 != surface && 5 != surface), "Surface T0/T5 (the SLM surface) is not allowed for TYPED SCATTTER4/GATHER4");
                 REPORT_INSTRUCTION(options,surface < numPreDefinedSurfs + header->getSurfaceCount(),
                     "CISA dataport TYPED SCATTTER4/GATHER4 instruction uses an undeclared surface.");
             }
-            else
-            {
-                 uint8_t ch_mask  = 0;
-                 uint8_t num_elts = 0;
-
-                 ch_mask = getPrimitiveOperand<uint8_t>(inst, i++);
-                 ch_mask = ch_mask & 0xF;
-                 REPORT_INSTRUCTION(options,ch_mask != 0xF, "At least one channel must be enabled");
-
-                 num_elts = getPrimitiveOperand<uint8_t>(inst, i++);
-                 num_elts = num_elts & 0x3;
-
-                 if      (num_elts == 0) num_elts =  8;
-                 else if (num_elts == 1) num_elts = 16;
-                 else REPORT_INSTRUCTION(options,false, "Illegal number of elements used in GATHER4/SCATTER4 instruction.");
-
-                 REPORT_INSTRUCTION(options,num_elts == 8, "Only support SIMD8 mode for typed gather4/scatter4.");
-
-                 surface = getPrimitiveOperand<uint8_t>(inst, i++);
-                 REPORT_INSTRUCTION(options,0 != surface, "Surface T0 (the SLM surface) is not allowed for TYPED SCATTTER4/GATHER4");
-                 REPORT_INSTRUCTION(options,surface < numPreDefinedSurfs + header->getSurfaceCount(),
-                     "CISA dataport TYPED SCATTTER4/GATHER4 instruction uses an undeclared surface.");
-            }
-
              break;
         }
         case ISA_GATHER4_SCALED:
