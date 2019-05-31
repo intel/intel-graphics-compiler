@@ -3513,13 +3513,12 @@ void CEncoder::InitBuildParams(llvm::SmallVector<const char*, 10> &params)
     if (IGC_IS_FLAG_ENABLED(ShaderDebugHashCodeInKernel))
     {
         QWORD AssemblyHash = { 0 };
-        char Low[20], High[20];
         AssemblyHash = context->hash.getAsmHash();
         params.push_back("-hashmovs");
-        sprintf_s(Low, sizeof(Low), "%d", (DWORD)AssemblyHash);
-        params.push_back(Low);
-        sprintf_s(High, sizeof(High), "%d", (DWORD)(AssemblyHash >> 32));
-        params.push_back(High);
+        std::string Low = std::to_string((DWORD)AssemblyHash);
+        std::string High = std::to_string((DWORD)(AssemblyHash >> 32));
+        params.push_back(_strdup(Low.c_str()));
+        params.push_back(_strdup(High.c_str()));
     }
 }
 void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbortOnSpill, bool hasStackCall)
