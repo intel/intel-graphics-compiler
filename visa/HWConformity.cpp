@@ -1288,16 +1288,15 @@ void HWConformity::fixCompareInst(
     G4_INST *inst = *i;
     G4_Operand *dst = inst->getDst();
 
-    if( dst && dst->isNullReg() )
+    if (dst && dst->isNullReg())
     {
         // change dst hstride if necessary
-        if( G4_Type_Table[exType].byteSize > G4_Type_Table[dst->getType()].byteSize )
+        if (G4_Type_Table[exType].byteSize != G4_Type_Table[dst->getType()].byteSize)
         {
             // create a new dst with new stride
             G4_DstRegRegion *new_null = builder.createNullDst( exType );
             inst->setDest( new_null );
         }
-        return;
     }
 }
 
