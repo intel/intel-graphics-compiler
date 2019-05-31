@@ -53,6 +53,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Instructions.h"
+#include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Module.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/CodeGenPublicEnums.h"
