@@ -829,6 +829,7 @@ namespace vISA
         void loadAugData(std::vector<G4_Declare*>& s, LiveRange** l, unsigned int n, Interference* i, GlobalRA& g);
         void dump(const char* dclName);
         bool isClobbered(LiveRange* lr, std::string& msg);
+        void verifyAlign(G4_Declare*);
     };
 
     class GlobalRA
@@ -875,6 +876,10 @@ namespace vISA
         // new temps for each reference of spilled address/flag decls
         std::unordered_set<G4_Declare*> addrFlagSpillDcls;
 
+        std::unordered_map<G4_Declare*, G4_Align> preLRAAlignment;
+        // Insert dcls in this set that definitely dont need
+        // 2GRF alignment in LRA.
+        std::unordered_set<G4_Declare*> LRANo2GRFAlign;
     public:
         G4_Kernel& kernel;
         IR_Builder& builder;
@@ -1246,7 +1251,7 @@ namespace vISA
         static uint32_t getRefCount(int loopNestLevel);
         bool isReRAPass();
         void updateSubRegAlignment(unsigned char regFile, G4_SubReg_Align subAlign);
-        void updateAlignment(unsigned char regFile, G4_Align align);
+        void updateAlignment(unsigned char regFile, G4_Align align, bool fromLRA);
         void getBankAlignment(LiveRange* lr, G4_Align &align);
         void printLiveIntervals();
         void reportUndefinedUses(LivenessAnalysis& liveAnalysis, G4_BB* bb, G4_INST* inst, G4_Declare* referencedDcl, std::set<G4_Declare*>& defs, std::ofstream& optreport, Gen4_Operand_Number opndNum);
@@ -1268,8 +1273,11 @@ namespace vISA
         void markGraphBlockLocalVars(bool doLocalRA);
         void verifyRA(LivenessAnalysis & liveAnalysis);
         void resetGlobalRAStates();
+        void restoreStatePostLRA();
 
         void insertPhyRegDecls();
+
+        std::unordered_set<G4_Declare*>& getLRANo2GRFAlign() { return LRANo2GRFAlign; }
     };
 
     inline G4_Declare* Interference::getGRFDclForHRA(int GRFNum) const
