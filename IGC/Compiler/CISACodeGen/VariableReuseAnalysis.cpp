@@ -511,11 +511,11 @@ void VariableReuseAnalysis::postProcessing()
                 int sz1 = (int)PHI->getNumIncomingValues();
                 for (int i1 = 0; i1 < sz1; ++i1)
                 {
-                    Value* Src = PHI->getIncomingValue(i);
+                    Value* Src = PHI->getIncomingValue(i1);
                     Value* Src_root = m_DeSSA->getRootValue(Src);
                     if (!Src_root || PHI_root != Src_root) {
                         // Need Src-side phi mov
-                        BasicBlock* BB = PHI->getIncomingBlock(i);
+                        BasicBlock* BB = PHI->getIncomingBlock(i1);
                         defBBSet.insert(BB);
                     }
                 }
@@ -1299,23 +1299,49 @@ void VariableReuseAnalysis::printAlias(raw_ostream & OS, const Function* F) cons
        << (F ? F->getName().str() : "Function")
        << "\n";
 
-    for (auto& MI : m_AliasRootMap)
-    {
-        Value *aliasee = MI.first; // root value
-        TinyPtrVector<llvm::Value*> aliasers = MI.second;
-        OS << "Aliasee : " << *aliasee << "\n";
-        for (auto VI : aliasers)
+    if (IGC_GET_FLAG_VALUE(VATemp) == 0)
+    {   // tobedeleted
+        for (auto& MI : m_AliasRootMap)
         {
-            Value *aliaser = VI;
-            auto II = m_ValueAliasMap.find(aliaser);
-            if (II == m_ValueAliasMap.end()) {
-                OS << "    " << *aliaser << "  [Wrong Value Alias]\n";
-                assert(false && "ICE VariableAlias: wrong Value alias map!");
+            Value *aliasee = MI.first; // root value
+            TinyPtrVector<llvm::Value*> aliasers = MI.second;
+            OS << "Aliasee : " << *aliasee << "\n";
+            for (auto VI : aliasers)
+            {
+                Value *aliaser = VI;
+                auto II = m_ValueAliasMap.find(aliaser);
+                if (II == m_ValueAliasMap.end()) {
+                    OS << "    " << *aliaser << "  [Wrong Value Alias]\n";
+                    assert(false && "ICE VariableAlias: wrong Value alias map!");
+                }
+                else {
+                    const SSubVecDesc& SV = II->second;
+                    OS << "    " << *aliaser << "  [" << SV.StartElementOffset << "]\n";
+                }
             }
-            else {
-                const SSubVecDesc& SV = II->second;
-                OS << "    " << *aliaser << "  [" << SV.StartElementOffset << "]\n";
-            }
+            OS << "\n";
+        }
+        OS << "\n";
+        return;
+    }
+    for (auto& MI : m_aliasMap)
+    {
+        SSubVecDesc* SV = MI.second;
+        Value *aliasee = SV->BaseVector;
+        if (SV->Aliaser != aliasee) {
+            // Not alias root
+            continue;
+        }
+        OS << "Aliasee : " << *aliasee << "\n";
+        for (auto VI : SV->Aliasers)
+        {
+            SSubVecDesc* aSV = VI;
+            Value *aliaser = aSV->Aliaser;
+            Value* dessaRoot = m_DeSSA ? m_DeSSA->getRootValue(aliaser) : nullptr;
+            const char* inCC = dessaRoot ? ".inDessaCC" : "";
+            OS << "    " << *aliaser
+               << "  [" << SV->StartElementOffset << "]"
+               << inCC << "\n";
         }
         OS << "\n";
     }
@@ -1640,7 +1666,8 @@ bool VariableReuseAnalysis::processExtractFrom(VecInsEltInfoTy& AllIEIs)
     }
 
     // Interference checking
-    Value* Sub_nv = m_DeSSA->getNodeValue(AllIEIs[0].IEI);
+    Value* Sub = AllIEIs[0].IEI;
+    Value* Sub_nv = m_DeSSA->getNodeValue(Sub);
     Value* Base_nv = m_DeSSA->getNodeValue(BaseVec);
     if (aliasInterfere(Sub_nv, Base_nv, BaseStartIx)) {
         return false;
@@ -1833,8 +1860,8 @@ bool VariableReuseAnalysis::aliasInterfere(Value* Sub, Value* Base, int BaseIdx)
         for (int i1 = 0, sz1 = (int)Vec1.size(); i1 < sz1; ++i1) {
             Value* V1 = Vec1[i1];
             if (m_DeSSA->aliasInterfere(V0, V1))
-                return false;
+                return true;
         }
     }
-    return true;
+    return false;
 }
