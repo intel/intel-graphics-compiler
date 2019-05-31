@@ -120,7 +120,8 @@ FunctionPass *createAddCopyIntrinsicPass()
 bool AddCopyIntrinsic::runOnFunction(Function& F)
 {
 //#define HANDLE_ALLOCA 1
-    if (IGC_GET_FLAG_VALUE(EnableVATemp) < 2)
+    if (IGC_GET_FLAG_VALUE(EnableVATemp) < 2 &&
+        IGC_GET_FLAG_VALUE(VATemp) == 0)
     {
         return false;
     }
