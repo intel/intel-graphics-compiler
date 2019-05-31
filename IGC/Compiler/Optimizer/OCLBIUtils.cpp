@@ -1356,6 +1356,42 @@ public:
     }
 };
 
+class CWaveBallotIntrinsic : public CCommand
+{
+private:
+    // id - ID of the intrinsic to be replaced by the call
+    const GenISAIntrinsic::ID isaId;
+    const Intrinsic::ID id;
+
+public:
+    CWaveBallotIntrinsic(GenISAIntrinsic::ID intrinsicId)
+        : isaId(intrinsicId), id(Intrinsic::ID::num_intrinsics) {}
+
+    CWaveBallotIntrinsic(Intrinsic::ID intrinsicId, bool isOverloadable)
+        : isaId(GenISAIntrinsic::ID::num_genisa_intrinsics), id(intrinsicId){}
+
+    static std::unique_ptr<CWaveBallotIntrinsic> create(GenISAIntrinsic::ID intrinsicId)
+    {
+        return std::unique_ptr<CWaveBallotIntrinsic>(new CWaveBallotIntrinsic(intrinsicId));
+    }
+
+    void createIntrinsic()
+    {
+        IGCLLVM::IRBuilder<> IRB(m_pCallInst);
+
+        Value* pSrc = m_pCallInst->getArgOperand(0);
+        Value* truncInst = IRB.CreateTrunc(pSrc, IRB.getInt1Ty());
+
+        if (llvm::Instruction* inst = dyn_cast<llvm::Instruction>(truncInst))
+        {
+            inst->setDebugLoc(m_DL);
+        }
+
+        m_args.push_back(truncInst);
+        replaceGenISACallInst(isaId);
+    }
+};
+
 class CVMESend: public CCommand
 {
     // id - ID of the intrinsic to be replaced by the call
@@ -1869,7 +1905,7 @@ CBuiltinsResolver::CBuiltinsResolver(CImagesBI::ParamMap* paramMap, CImagesBI::I
     m_CommandMap[ "__builtin_IB_va_boolsum" ]                = CVASend::create( GenISAIntrinsic::GenISA_vaBoolSum, paramMap );
 
     // Ballot builtins
-    m_CommandMap["__builtin_IB_WaveBallot"]                  = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_WaveBallot, false);
+    m_CommandMap["__builtin_IB_WaveBallot"]                  = CWaveBallotIntrinsic::create(GenISAIntrinsic::GenISA_WaveBallot);
 
     m_CommandMap[StringRef( "__builtin_IB_samplepos")] = CSamplePos::create();
 
