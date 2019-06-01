@@ -50,15 +50,6 @@ else()
     igc_opt
     )
 
-  # LIT will be using binaires from `LLVM_TOOLS_DIR`. The target below will
-  # populate this directory.
-  add_custom_target(
-    copy_igc_lit_tools ALL
-    ${CMAKE_COMMAND} -E copy_directory
-        $<TARGET_FILE_DIR:igc_opt> $<TARGET_FILE_DIR:FileCheck> ${LLVM_TOOLS_DIR}
-    DEPENDS ${IGC_LIT_TEST_DEPENDS}
-  )
-
   # This will create a target called `check-igc`, which will run all tests from
   # IGC/Compiler/tests directory. The tests will be run on files in the source
   # directory, since they are not modified, there doesn't seem to be any reason
@@ -66,14 +57,22 @@ else()
   add_lit_testsuite(check-igc "Running the IGC LIT tests"
     ${CMAKE_CURRENT_SOURCE_DIR}
     PARAMS llvm_site_config=${IGC_LIT_CONFIG_FILE}
-    DEPENDS copy_igc_lit_tools
+    DEPENDS ${IGC_LIT_TEST_DEPENDS}
     )
+
+  # LIT will be using binaires from `LLVM_TOOLS_DIR`. The target below will
+  # populate this directory.
+  add_custom_command(
+    TARGET check-igc
+    PRE_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        $<TARGET_FILE_DIR:igc_opt> $<TARGET_FILE_DIR:FileCheck> ${LLVM_TOOLS_DIR}
+  )
 
   # Tests should not be excluded from "Build Solution" in VS.
   set_target_properties(check-igc PROPERTIES EXCLUDE_FROM_DEFAULT_BUILD OFF)
 
   # Two lines below are just used to group LIT reated targets in single directory
   # in IDE. They are completely optional.
-  set_target_properties(copy_igc_lit_tools PROPERTIES FOLDER "LIT Tests")
   set_target_properties(check-igc PROPERTIES FOLDER "LIT Tests")
 endif()
