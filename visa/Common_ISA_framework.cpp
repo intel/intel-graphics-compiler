@@ -72,7 +72,7 @@ int CisaInst::createCisaInstruction(
         }
     }
 
-    // TODO: move the FIXME below above this if statment, and
+    // TODO: move the FIXME below above this if statment and
     //      int implicitOperands = 0;
     //      for (...) // parent op descriptors
     //          if (type == EXEC_SIZE || type == PRED)
@@ -84,6 +84,7 @@ int CisaInst::createCisaInstruction(
     // TODO: rename descOpndCount to descOpndsToEncodeCount
     //
     // compare (descOpndCount != explicitOpnds + implicitOperands)
+    //    mismatch assert
     if (opcode != ISA_FCALL)
     {
         // != doens't work here because predication and exec size are treated

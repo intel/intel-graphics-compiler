@@ -2473,6 +2473,44 @@ public:
                         unsigned batchExSize, bool splitSendEnabled,
                         payloadSource sources[], unsigned len);
 
+    // Coalesce multiple payloads into a single region.  Pads each region with
+    // an optional alignment argument (e.g. a GRF size).  The source region
+    // sizes are determined by source dimension, so use an alias if you are
+    // using a subregion.  All copies are made under no mask semantics using
+    // the maximal SIMD width for the current device.
+    //
+    // A second alignment option allows a caller to align the full payload
+    // to some total.
+    //
+    // If all parameters are nullptr or the null register, we return the null
+    // register.
+    //
+    // Some examples:
+    //
+    // 1. coalescePayloads(GRF_SIZE,GRF_SIZE,...);
+    //    Coalesces each source into a single region.  Each source is padded
+    //    out to a full GRF, and the sum total result is also padded out to
+    //    a full GRF.
+    //
+    // 2. coalescePayloads(1,GRF_SIZE,...);
+    //    Coalesces each source into a single region packing each source
+    //    together, but padding the result.  E.g. one could copy a QW and then
+    //    a DW and pad the result out to a GRF.
+    //
+    G4_SrcRegRegion *coalescePayload(
+        unsigned alignSourcesTo,
+        unsigned alignPayloadTo,
+        std::initializer_list<G4_SrcRegRegion *> srcs);
+
+    // struct PayloadElem {
+    //     enum PayloadKind {REG,IMM};
+    //     union {
+    //       G4_SrcRegRegion *reg;
+    //       G4_Imm *imm;
+    //     }
+    //     size_t alignTo;
+    // };
+
 #define FIX_OWORD_SEND_EXEC_SIZE(BLOCK_SIZE)(((BLOCK_SIZE) > 2)? 16: (BLOCK_SIZE*4))
 
     // return either 253 or 255 for A64 messages, depending on whether we want I/A coherency or not

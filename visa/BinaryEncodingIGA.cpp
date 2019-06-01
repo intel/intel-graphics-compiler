@@ -870,24 +870,25 @@ SendDescArg BinaryEncodingIGA::getIGASendDescArg(G4_INST* sendInst) const
 
 iga::SendDescArg BinaryEncodingIGA::getIGASendExDescArg(G4_INST* sendInst) const
 {
-    iga::SendDescArg desc;
-    desc.init();
+    iga::SendDescArg exDescArg{ };
+
     assert(sendInst->isSend() && "expect send inst");
     if (sendInst->isSplitSend())
     {
         G4_Operand* exDesc = sendInst->getSrc(3);
         if (exDesc->isImm())
         {
-            desc.type = SendDescArg::IMM;
+            exDescArg.type = SendDescArg::IMM;
             uint32_t tVal = (uint32_t)exDesc->asImm()->getImm();
-            desc.imm = tVal;
+            exDescArg.imm = tVal;
         }
         else
         {
-            desc.type = SendDescArg::REG32A;
-            desc.reg.regNum = 0; // must be a0
+            exDescArg.type = SendDescArg::REG32A;
+            exDescArg.reg.regNum = 0; // must be a0
             bool valid = false;
-            desc.reg.subRegNum = (uint8_t) exDesc->asSrcRegRegion()->ExSubRegNum(valid);
+            exDescArg.reg.subRegNum =
+                (uint8_t)exDesc->asSrcRegRegion()->ExSubRegNum(valid);
             assert(valid && "invalid subreg");
         }
     }
@@ -896,13 +897,13 @@ iga::SendDescArg BinaryEncodingIGA::getIGASendExDescArg(G4_INST* sendInst) const
         // exDesc is stored in SendMsgDesc and must be IMM
         G4_SendMsgDescriptor* sendDesc = sendInst->getMsgDesc();
         assert(sendDesc != nullptr && "null msg desc");
-        desc.type = SendDescArg::IMM;
+        exDescArg.type = SendDescArg::IMM;
         uint32_t tVal = sendDesc->getExtendedDesc();
 
-        desc.imm = tVal;
+        exDescArg.imm = tVal;
     }
 
-    return desc;
+    return exDescArg;
 }
 
 void *BinaryEncodingIGA::EmitBinary(uint32_t& binarySize)

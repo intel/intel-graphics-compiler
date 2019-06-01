@@ -1847,7 +1847,7 @@ public:
     }
 
     G4_Type          getElemType() const {return elemType;}
-    uint16_t         getElemSize() const { return static_cast<uint16_t>(G4_Type_Table[elemType].byteSize); }
+    uint16_t         getElemSize() const {return static_cast<uint16_t>(G4_Type_Table[elemType].byteSize);}
     const G4_RegVar *getRegVar() const {return regVar;}
           G4_RegVar *getRegVar()       {return regVar;}
 
@@ -1906,7 +1906,7 @@ public:
         }
     }
 
-    void emit(std::ostream& output, bool isDumpDot, bool isSymbolReg);
+    void emit(std::ostream& output, bool isDumpDot, bool isSymbolReg) const;
 
     void prepareForRealloc(G4_Kernel*);
 };

@@ -306,6 +306,7 @@ VISA_RawOpnd* rawOperandArray[16];
 %token <string> RPAREN           /* ) */
 %token <string> LBRACE           /* { */
 %token <string> RBRACE           /* } */
+%token <string> COMMA            /* , */
 %token <string> IND_LEFT_BRACKET /* r[ */
 %token <string> PLUS             /* + */
 %token <string> MINUS            /* - */
@@ -815,7 +816,7 @@ AliasInfo : /* empty */
                    $$.aliasname = NULL;
                    $$.offset = 0;
                }
-              | ALIAS '<'VAR','Exp'>'
+              | ALIAS '<' VAR COMMA Exp '>'
                {
                    $$.aliasname = $3;
                    $$.offset = (int)$5;
@@ -1278,7 +1279,7 @@ SwitchLabels: /* empty */
                {
                 $$ = 0;
                }
-               | ',' SwitchLabels
+               | COMMA SwitchLabels
                {
                 $$ = $2;
                }
@@ -1580,14 +1581,14 @@ VecSrcOpndSimple :   VAR TwoDimOffset
                      $$.cisa_gen_opnd = pCisaBuilder->CISA_create_gen_src_operand($1, 1, 1, 0, $2.row, $2.elem, MODIFIER_NONE, CISAlineno);
                    };
 
-         //   1     2    3     4    5
-VMEOpndIME : LPAREN NUMBER ',' NUMBER RPAREN
+         //   1     2        3     4    5
+VMEOpndIME : LPAREN NUMBER COMMA NUMBER RPAREN
             {
                 $$.streamMode = (unsigned char)$2;
                 $$.searchCtrl = (unsigned char)$4;
             };
-         //   1            2            3             4           5           6             7
-VMEOpndFBR : LPAREN VecSrcOperand_G_I_IMM ',' VecSrcOperand_G_I_IMM ',' VecSrcOperand_G_I_IMM RPAREN
+         //   1            2                3             4             5           6             7
+VMEOpndFBR : LPAREN VecSrcOperand_G_I_IMM COMMA VecSrcOperand_G_I_IMM COMMA VecSrcOperand_G_I_IMM RPAREN
             {
                 //$$.fbrMbMode = $2.opnd;
                 //$$.fbrSubMbShape = $4.opnd;
@@ -1764,7 +1765,7 @@ SrcRegion : /* empty */
                 $$.h_stride = 0;
                 //$$.rgn = NULL;
             }
-          | '<' Exp ';' Exp ',' Exp '>'   /* <VertStride;Width,HorzStride> */
+          | '<' Exp ';' Exp COMMA Exp '>'   /* <VertStride;Width,HorzStride> */
            {
                MUST_HOLD(($2 == 0 || $2 == 1 || $2 == 2 || $2 == 4 || $2 == 8 || $2 == 16 || $2 == 32),
                          "VertStride must be 0, 1, 2, 4, 8, 16, or 32");
@@ -1789,7 +1790,7 @@ Region :   /* empty */
                 $$.h_stride = -1;
                 //$$.rgn = NULL;
             }
-       | '<' Exp ';' Exp ',' Exp '>'   /* <VertStride;Width,HorzStride> */
+       | '<' Exp ';' Exp COMMA Exp '>'   /* <VertStride;Width,HorzStride> */
            {
                MUST_HOLD(($2 == 0 || $2 == 1 || $2 == 2 || $2 == 4 || $2 == 8 || $2 == 16 || $2 == 32),
                          "VertStride must be 0, 1, 2, 4, 8, 16, or 32");
@@ -1803,7 +1804,7 @@ Region :   /* empty */
                //$$.rgn = pBuilder->rgnpool.createRegion($2, $4, $6);
            };
 
-RegionWH : '<' Exp ',' Exp '>'   /* <Width,HorzStride> */
+RegionWH : '<' Exp COMMA Exp '>'   /* <Width,HorzStride> */
            {
                MUST_HOLD(($2 == 0 || $2 == 1 || $2 == 2 || $2 == 4 || $2 == 8 || $2 == 16),
                          "Width must be 0, 1, 2, 4, 8 or 16");
@@ -1846,13 +1847,13 @@ AddrParam : AddrVar ImmAddrOffset
 
 ImmAddrOffset :   /* empty */
                 {$$ = 0;}   /* default to 0 */
-              | ',' Exp     /* need to chech whether the number is between -512 ... 511 */
+              | COMMA Exp     /* need to chech whether the number is between -512 ... 511 */
                 {
                     MUST_HOLD(($2 <= 511 && $2 >= -512),"imm addr offset must be -512 .. 511");
                     $$ = $2;
                 };
 
-TwoDimOffset : LPAREN Exp ',' Exp RPAREN
+TwoDimOffset : LPAREN Exp COMMA Exp RPAREN
           {
               $$.row = (int)$2;
               $$.elem = (int)$4;
@@ -1888,7 +1889,7 @@ AddrVar :  VAR
               $$.row = (int)$6;
               $$.elem = (int)$3;
           }
-         |  VAR LPAREN Exp ',' Exp RPAREN
+         |  VAR LPAREN Exp COMMA Exp RPAREN
           {
               TRACE("\n** Address operand");
               $$.cisa_decl = pCisaBuilder->CISA_find_decl($1);
@@ -1954,7 +1955,7 @@ ExecSize :   /* empty */
                $$.emask = vISA_EMASK_M1;
                $$.exec_size = (int)$2;
            };
-         | LPAREN EMASK ',' NUMBER RPAREN
+         | LPAREN EMASK COMMA NUMBER RPAREN
            {
                TRACE("\n** Execution Size ");
                MUST_HOLD(($4 == 0 || $4 == 1 || $4 == 2 || $4 == 4 || $4 == 8 || $4 == 16 || $4 == 32),
@@ -2121,7 +2122,7 @@ VISA_Type variable_declaration_and_type_check(char *var, Common_ISA_Var_Class ty
 }
 */
 
-void yyerror (char const *s)
+void yyerror(char const *s)
 {
 
     int yytype = YYTRANSLATE (yychar);

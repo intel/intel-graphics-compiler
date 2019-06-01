@@ -39,6 +39,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Timer.h"
 
 #include <cmath>  // std::ceil
+#include <utility>
 
 using namespace vISA;
 #define MESSAGE_SPECIFIC_CONTROL 8
@@ -97,6 +98,18 @@ static uint32_t createSamplerMsgDesc(
     }
 
     return fc;
+}
+
+static const G4_Declare *getDeclare(const G4_Operand *opnd) {
+    const G4_Declare *dcl = opnd->getBase()->asRegVar()->getDeclare();
+
+    while (const G4_Declare *parentDcl = dcl->getAliasDeclare())
+        dcl = parentDcl;
+
+    return dcl;
+}
+static G4_Declare *getDeclare(G4_Operand *opnd) {
+    return const_cast<G4_Declare *>(getDeclare((const G4_Operand *)opnd));
 }
 
 // IsSLMSurface - Check whether the given surface is SLM surface.
@@ -10201,14 +10214,6 @@ int IR_Builder::translateVISALifetimeInst(uint8_t properties, G4_Operand* var)
     return CM_SUCCESS;
 }
 
-static G4_Declare *getDeclare(G4_SrcRegRegion *src) {
-    G4_Declare *dcl = src->getBase()->asRegVar()->getDeclare();
-
-    while (G4_Declare *parentDcl = dcl->getAliasDeclare())
-        dcl = parentDcl;
-
-    return dcl;
-}
 
 /// getSplitEMask() calculates the new mask after splitting from the current
 /// execution mask at the given execution size.
@@ -10345,7 +10350,7 @@ void IR_Builder::preparePayload(G4_SrcRegRegion *msgs[2],
                                 unsigned batchExSize,
                                 bool splitSendEnabled,
                                 payloadSource srcs[], unsigned len) {
-    G4_Declare *dcls[2] = {0, 0};
+    const G4_Declare *dcls[2] = {0, 0};
     unsigned msgSizes[2] = {0, 0};
     unsigned current = 0;
     unsigned offset = 0;
@@ -10362,7 +10367,7 @@ void IR_Builder::preparePayload(G4_SrcRegRegion *msgs[2],
             break;
         }
 
-        G4_Declare *srcDcl = getDeclare(srcReg);
+        const G4_Declare *srcDcl = getDeclare(srcReg);
         ASSERT_USER(srcDcl, "Declaration is missing!");
 
         unsigned regionSize = srcs[i].execSize *
@@ -10475,24 +10480,188 @@ void IR_Builder::preparePayload(G4_SrcRegRegion *msgs[2],
     sizes[i] = msgSizes[current] / GENX_MRF_REG_SIZ;
 }
 
+G4_SrcRegRegion *IR_Builder::coalescePayload(
+    unsigned sourceAlignment,
+    unsigned payloadAlignment,
+    std::initializer_list<G4_SrcRegRegion *> srcs)
+{
+    MUST_BE_TRUE(sourceAlignment != 0 && payloadAlignment != 0,
+        "alignment mustn't be 0");
+    MUST_BE_TRUE(payloadAlignment % 4 == 0, // we could relax this with smarter code below
+        "result alignment must be multiple of 4");
+    MUST_BE_TRUE(srcs.size() > 0,"empty initializer list");
+
+    // First check for trivial cases.  If all are null, then we can
+    // return null.  This is the case for operations like load's src1 and
+    // atomics with no argument (e.g. atomic increment).
+    //
+    // If the first src is the only non-null register and it's alignment fits
+    // then we can just return that register and call it a day.  This is the
+    // common case for things like stores or atomics with a single
+    // data parameter (e.g. atomic add).
+    bool allNull = true;
+    bool onlySrc0NonNull = true;
+    int ix = 0;
+    for (G4_SrcRegRegion *src : srcs) {
+        allNull &= src->isNullReg();
+        onlySrc0NonNull &= ix++ == 0 || src->isNullReg();
+    }
+    G4_SrcRegRegion *src0 = *srcs.begin();
+    if (allNull) {
+        return src0;
+    } else if (onlySrc0NonNull) {
+        const G4_Declare *src0Dcl = getDeclare(src0);
+        MUST_BE_TRUE(src0Dcl, "declaration missing");
+        unsigned src0Size = src0Dcl->getTotalElems()*src0Dcl->getElemSize();
+        if (src0Size % sourceAlignment == 0 &&
+            src0Size % payloadAlignment == 0)
+        {
+            return src0;
+        }
+    }
+
+    // Otherwise, we have to do some copying
+    auto alignTo = [] (size_t a, size_t n) {
+        return (n + a - 1) - ((n + a -1)%a);
+    };
+
+    // precompute the necessary region size
+    // bool allConsecutive = true;
+    // G4_SrcRegRegion *lastNonNullSrc = nullptr;
+    size_t totalRegionSize = 0;
+    for (G4_SrcRegRegion *src : srcs) {
+        if (src && !src->isNullReg()) {
+            const G4_Declare *srcDcl = getDeclare(src);
+            MUST_BE_TRUE(srcDcl, "declaration missing");
+            // if (lastNonNullSrc) {
+            //     allConsecutive &=
+            //         checkIfRegionsAreConsecutive(
+            //             lastNonNullSrc, src, srcDcl->getTotalElems());
+            // }
+            size_t regionSize = srcDcl->getTotalElems()*srcDcl->getElemSize();
+            size_t alignedRegionSize = alignTo(sourceAlignment, regionSize);
+            totalRegionSize += alignedRegionSize;
+            // allConsecutive &= regionSize == alignedRegionSize; // no padding
+            // lastNonNullSrc = srcs[i];
+        }
+    }
+    // allConsecutive &= totalRegionSize % payloadAlignment == 0; // no padding
+    // if (allConsecutive) {
+    //    return ???;
+    // }
+    totalRegionSize = alignTo(payloadAlignment, totalRegionSize);
+
+    G4_Declare *payloadDeclUB = Create_MRF_Dcl(totalRegionSize, Type_UB);
+    G4_Declare *payloadDeclUD = Create_MRF_Dcl(totalRegionSize/4, Type_UD);
+    payloadDeclUD->setAliasDeclare(payloadDeclUB,0);
+
+    RegionDesc *rd110 = createRegionDesc(1, 1, 0);
+    unsigned row = 0, offset = 0;
+    for (G4_SrcRegRegion *src : srcs) {
+        if (src && !src->isNullReg()) {
+            G4_Declare *srcDcl = getDeclare(src);
+            size_t regionSize = srcDcl->getTotalElems()*srcDcl->getElemSize();
+            size_t regionSizeAligned = alignTo(sourceAlignment, regionSize);
+            auto copyRegion =
+              [&] (G4_Type type, unsigned typeSize) {
+                  unsigned totalElemsToCopy = regionSize/typeSize;
+                  unsigned MAX_SIMD = 32;
+                  for (unsigned i = 0; i < totalElemsToCopy/MAX_SIMD; i++) {
+                      // full registers to copy
+                      unsigned int instOpt =
+                          Get_Gen4_Emask(vISA_EMASK_M1_NM, MAX_SIMD);
+                      G4_DstRegRegion *dstRegion =
+                          createDstRegRegion(
+                              Direct,
+                              payloadDeclUD->getRegVar(),
+                              row, offset/typeSize,
+                              1, type);
+                      G4_SrcRegRegion *srcRegion =
+                          createSrcRegRegion(
+                              Mod_src_undef, Direct,
+                              srcDcl->getRegVar(), 0, 0,
+                              rd110,
+                              type);
+                      createInst(
+                          nullptr, G4_mov, nullptr, false, MAX_SIMD,
+                          dstRegion, srcRegion, nullptr, nullptr, instOpt, 0);
+                  }
+
+                  // copy the tail (not a multiple of MAX_SIMD)
+                  unsigned tailElements = totalElemsToCopy % MAX_SIMD;
+                  while (tailElements > 0) {
+                      unsigned execSize = 16;
+                      G4_Type copyType = type;
+                      if (tailElements % 16 == 0) {
+                          execSize = 16;
+                      } else if (tailElements % 8 == 0) {
+                          execSize = 8;
+                      } else if (tailElements % 4 == 0 && typeSize == 1) {
+                          copyType = Type_UD;
+                          execSize = 1;
+                      } else if (tailElements % 2 == 0) {
+                          copyType = typeSize == 4 ? Type_UQ : Type_UW;
+                          execSize = 1;
+                      } else if (tailElements % 1 == 0) {
+                          execSize = 1;
+                      }
+
+                      unsigned int instOpt =
+                          Get_Gen4_Emask(vISA_EMASK_M1_NM, execSize);
+                      G4_DstRegRegion *dstRegion =
+                          createDstRegRegion(
+                              Direct,
+                              payloadDeclUD->getRegVar(),
+                              row, offset/typeSize,
+                              1, copyType);
+                      G4_SrcRegRegion *srcRegion =
+                          createSrcRegRegion(
+                              Mod_src_undef, Direct,
+                              srcDcl->getRegVar(), 0, 0,
+                              rd110,
+                              copyType);
+                      createInst(
+                          nullptr, G4_mov, nullptr, false, MAX_SIMD,
+                          dstRegion, srcRegion, nullptr, nullptr, instOpt, 0);
+
+                      tailElements -= execSize;
+                  }
+            };
+
+            if (offset == 0 && regionSize % 4 == 0) {
+                // do a more efficient UD copy
+              copyRegion(Type_UD, 4);
+            } else {
+                // do a less efficient UB copy
+              copyRegion(Type_UB, 1);
+            }
+
+            // advance the payload offset
+            offset += regionSizeAligned;
+            if (offset / COMMON_ISA_GRF_REG_SIZE > 0) {
+                row += offset / COMMON_ISA_GRF_REG_SIZE;
+                offset %= COMMON_ISA_GRF_REG_SIZE;
+            }
+        }
+    }
+
+    return Create_Src_Opnd_From_Dcl(payloadDeclUB,getRegionStride1());
+}
+
+
 G4_Operand* IR_Builder::duplicateOpndImpl( G4_Operand* opnd )
 {
-    if( !opnd || opnd->isImm() )
+    if( !opnd || opnd->isImm())
         return opnd;
-    if( opnd->isSrcRegRegion() )
-    {
-        return createSrcRegRegion( *(opnd->asSrcRegRegion()) );
-    }else if( opnd->isDstRegRegion() )
-    {
-        return createDstRegRegion( *(opnd->asDstRegRegion()) );
-    }else if( opnd->isPredicate() )
-    {
-        return createPredicate( *(opnd->asPredicate()) );
-    }else if( opnd->isCondMod() )
-    {
-        return createCondMod( *(opnd->asCondMod()) );
-    }else
-    {
+    if(opnd->isSrcRegRegion()) {
+        return createSrcRegRegion(*(opnd->asSrcRegRegion()));
+    } else if(opnd->isDstRegRegion()) {
+        return createDstRegRegion(*(opnd->asDstRegRegion()));
+    } else if(opnd->isPredicate()) {
+        return createPredicate(*(opnd->asPredicate()));
+    } else if(opnd->isCondMod()) {
+        return createCondMod(*(opnd->asCondMod()));
+    } else {
         return opnd;
     }
 }

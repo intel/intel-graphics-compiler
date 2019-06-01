@@ -4738,7 +4738,7 @@ void G4_DstRegRegion::setDstBitVec( uint8_t exec_size )
         {
             footprint1 |= bit_seq << (eltOffset - 64);
         }
-        else 
+        else
         {
             footprint0 |= bit_seq << eltOffset;
         }
@@ -5550,8 +5550,8 @@ G4_SubReg_Align G4_Declare::getSubRegAlign() const
     return regVar->getSubRegAlignment();
 }
 
-void
-G4_Declare::emit(std::ostream &output, bool isDumpDot,  bool isSymbolReg)
+void G4_Declare::emit(
+    std::ostream &output, bool isDumpDot,  bool isSymbolReg) const
 {
 
     //
@@ -6398,7 +6398,7 @@ void G4_SrcRegRegion::setSrcBitVec(uint8_t exec_size)
 
         footPrint0 = totalBytes < 64 ? (1ULL << totalBytes) - 1 : ULLONG_MAX;
         if (totalBytes > 64)
-        {       
+        {
             footPrint1 = totalBytes == 128 ? ULLONG_MAX : (1ULL << (totalBytes - 64)) - 1;
         }
     }
@@ -6868,7 +6868,7 @@ void G4_Operand::updateFootPrint(BitSet& footprint, bool isSet)
     unsigned lb = getLeftBound();
     unsigned rb = getRightBound();
     const bool doFastPath = true; // for debugging
-        
+
     if (doFastPath && lb % N == 0 && (rb + 1) % N == 0)
     {
         // lb is 32-byte aligned, set one dword at a time
