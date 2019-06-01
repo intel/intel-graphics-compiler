@@ -368,11 +368,97 @@ void VariableReuseAnalysis::visitLiveInstructions(Function* F)
     }
 }
 
+// Given a root Value RootVal, all its values that are coalesced
+// with it are in AllVals. This function finds the place to insert
+// the lifeTimeStart for RootVal, which is either at the end of a
+// BB or right before the first definition. If any value is argument,
+// no lifeTimeStart is needed.
+// (For assisting visa for liveness analysis.)
+void VariableReuseAnalysis::setLifeTimeStartPos(
+    Value* RootVal,
+    ValueVectorTy& AllVals,
+    BlockCoalescing* theBC)
+{
+    SmallSet<BasicBlock*, 8> defBBSet;
+    SmallSet<BasicBlock*, 8> phiSrcMovBBSet;
+    for (int i = 0, sz = (int)AllVals.size(); i < sz; ++i)
+    {
+        Value* V = AllVals[i];
+        Instruction* I = dyn_cast<Instruction>(V);
+        if (!I) {
+            // For arg, global etc., its start is on entry.
+            // Thus, no need to insert lifetime start.
+            defBBSet.clear();
+            phiSrcMovBBSet.clear();
+            break;
+        }
+
+        if (PHINode *PHI = dyn_cast<PHINode>(I)) {
+            Value* PHI_root = m_DeSSA->getRootValue(PHI);
+            int sz1 = (int)PHI->getNumIncomingValues();
+            for (int i1 = 0; i1 < sz1; ++i1)
+            {
+                Value* Src = PHI->getIncomingValue(i1);
+                Value* Src_root = m_DeSSA->getRootValue(Src);
+                if (!Src_root || PHI_root != Src_root) {
+                    // Need Src-side phi mov
+                    BasicBlock* BB = PHI->getIncomingBlock(i1);
+                    phiSrcMovBBSet.insert(BB);
+                }
+            }
+        }
+        else {
+            BasicBlock* BB = I->getParent();
+            defBBSet.insert(BB);
+        }
+    }
+
+    if (defBBSet.size() == 0 && phiSrcMovBBSet.size() == 0) {
+        return;
+    }
+
+    auto BSI = defBBSet.begin();
+    auto BSE = defBBSet.end();
+    BasicBlock *NearestDomBB = *BSI;
+    for (++BSI; BSI != BSE; ++BSI)
+    {
+        BasicBlock *aB = *BSI;
+        NearestDomBB = m_DT->findNearestCommonDominator(NearestDomBB, aB);
+    }
+
+    // phiSrcMovBBSet
+    for (auto II = phiSrcMovBBSet.begin(), IE = phiSrcMovBBSet.end();
+         II != IE; ++II)
+    {
+        BasicBlock *aB = *II;
+        NearestDomBB = m_DT->findNearestCommonDominator(NearestDomBB, aB);
+    }
+
+    // Skip emptry BBs that are going to be skipped in codegen emit.
+    while (theBC->IsEmptyBlock(NearestDomBB))
+    {
+        auto Node = m_DT->getNode(NearestDomBB);
+        NearestDomBB = Node->getIDom()->getBlock();
+    }
+
+    if (defBBSet.count(NearestDomBB))
+    {
+        // lifeTimeStart insert pos is in a BB where a def exists
+        m_LifetimeAt1stDefOfBB[RootVal] = NearestDomBB;
+    }
+    else
+    {
+        // No def in the bb, it must be at the end of BB
+        // (must be before phiSrcMov too).
+        m_LifetimeAtEndOfBB[NearestDomBB].push_back(RootVal);
+    }
+}
+
 void VariableReuseAnalysis::postProcessing()
 {
     // BlockCoalescing : check if a BB is a to-be-skipped empty BB.
     // It is used for selecting BB to add lifetime start
-    BlockCoalescing* theBBCLR = &getAnalysis<BlockCoalescing>();
+    BlockCoalescing* theBC = &getAnalysis<BlockCoalescing>();
 
     // to be deleted
     if (IGC_GET_FLAG_VALUE(VATemp) == 0) {
@@ -439,7 +525,7 @@ void VariableReuseAnalysis::postProcessing()
             }
 
             // Skip emptry BBs that are going to be skipped in codegen emit.
-            while (theBBCLR->IsEmptyBlock(NearestDomBB))
+            while (theBC->IsEmptyBlock(NearestDomBB))
             {
                 auto Node = m_DT->getNode(NearestDomBB);
                 NearestDomBB = Node->getIDom()->getBlock();
@@ -462,6 +548,10 @@ void VariableReuseAnalysis::postProcessing()
         return;
     }
 
+    if (!m_DeSSA || IGC_GET_FLAG_VALUE(VATemp) < 3)
+        return;
+
+    DenseMap<Value*, int> dessaRootVisited;
     auto IS = m_aliasMap.begin();
     auto IE = m_aliasMap.end();
     for (auto II = IS; II != IE; ++II)
@@ -485,6 +575,11 @@ void VariableReuseAnalysis::postProcessing()
         SmallVector<Value*, 8> valInCC;
         m_DeSSA->getAllValuesInCongruentClass(aliasee, valInCC);
         AllVals.insert(AllVals.end(), valInCC.begin(), valInCC.end());
+
+        // update visited for aliasee
+        Value* aliaseeRoot = m_DeSSA->getRootValue(aliasee);
+        aliaseeRoot = aliaseeRoot ? aliaseeRoot : aliasee;
+        dessaRootVisited[aliaseeRoot] = 1;
         for (int i = 0, sz = (int)SV->Aliasers.size(); i < sz; ++i)
         {
             SSubVecDesc* aSV = SV->Aliasers[i];
@@ -492,68 +587,40 @@ void VariableReuseAnalysis::postProcessing()
             valInCC.clear();
             m_DeSSA->getAllValuesInCongruentClass(aliaser, valInCC);
             AllVals.insert(AllVals.end(), valInCC.begin(), valInCC.end());
+
+            // update visited for aliaser
+            Value* aRoot = m_DeSSA->getRootValue(aliaser);
+            aRoot = aRoot ? aRoot : aliaser;
+            dessaRootVisited[aRoot] = 1;
         }
 
-        SmallSet<BasicBlock*, 8> defBBSet;
-        for (int i = 0, sz = (int)AllVals.size(); i < sz; ++i)
-        {
-            Value* V = AllVals[i];
-            Instruction* I = dyn_cast<Instruction>(V);
-            if (!I) {
-                // For arg, global etc., its start is on entry.
-                // Thus, no need to insert lifetime start.
-                defBBSet.clear();
-                break;
-            }
+        setLifeTimeStartPos(aliaseeRoot, AllVals, theBC);
+    }
 
-            if (PHINode *PHI = dyn_cast<PHINode>(I)) {
-                Value* PHI_root = m_DeSSA->getRootValue(PHI);
-                int sz1 = (int)PHI->getNumIncomingValues();
-                for (int i1 = 0; i1 < sz1; ++i1)
-                {
-                    Value* Src = PHI->getIncomingValue(i1);
-                    Value* Src_root = m_DeSSA->getRootValue(Src);
-                    if (!Src_root || PHI_root != Src_root) {
-                        // Need Src-side phi mov
-                        BasicBlock* BB = PHI->getIncomingBlock(i1);
-                        defBBSet.insert(BB);
-                    }
-                }
-            }
-            else {
-                BasicBlock* BB = I->getParent();
-                defBBSet.insert(BB);
-            }
-        }
+    // For other vector values
+    if (IGC_GET_FLAG_VALUE(VATemp) < 4)
+        return;
 
-        if (defBBSet.size() == 0) {
+    for (auto II = inst_begin(*m_F), IE = inst_end(*m_F); II != IE; ++II)
+    {
+        Instruction* I = &*II;
+        if (!m_PatternMatch->NeedInstruction(*I))
+            continue;
+        if (!I->getType()->isVectorTy())
+            continue;
+        Value* rootV = m_DeSSA->getRootValue(I);
+        rootV = rootV ? rootV : I;
+        if (dessaRootVisited.find(rootV) != dessaRootVisited.end()) {
+            // Already handled by sub-vector aliasing, skip
             continue;
         }
 
-        auto BSI = defBBSet.begin();
-        auto BSE = defBBSet.end();
-        BasicBlock *NearestDomBB = *BSI;
-        for (++BSI; BSI != BSE; ++BSI)
-        {
-            BasicBlock *aB = *BSI;
-            NearestDomBB = m_DT->findNearestCommonDominator(NearestDomBB, aB);
-        }
+        ValueVectorTy AllVals;
+        SmallVector<Value*, 8> valInCC;
+        m_DeSSA->getAllValuesInCongruentClass(rootV, valInCC);
+        AllVals.insert(AllVals.end(), valInCC.begin(), valInCC.end());
 
-        // Skip emptry BBs that are going to be skipped in codegen emit.
-        while (theBBCLR->IsEmptyBlock(NearestDomBB))
-        {
-            auto Node = m_DT->getNode(NearestDomBB);
-            NearestDomBB = Node->getIDom()->getBlock();
-        }
-
-        if (defBBSet.count(NearestDomBB))
-        {
-            m_LifetimeAt1stDefOfBB[aliasee] = NearestDomBB;
-        }
-        else
-        {
-            m_LifetimeAtEndOfBB[NearestDomBB].push_back(aliasee);
-        }
+        setLifeTimeStartPos(rootV, AllVals, theBC);
     }
 }
 

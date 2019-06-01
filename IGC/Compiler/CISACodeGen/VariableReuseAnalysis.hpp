@@ -421,6 +421,10 @@ private:
 
   void visitLiveInstructions(llvm::Function* F);
 
+  void setLifeTimeStartPos(
+      llvm::Value* RootVal,
+      ValueVectorTy& AllVals,
+      BlockCoalescing* theBC);
   void postProcessing();
 
   // Return true if this instruction can be converted to an alias
