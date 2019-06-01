@@ -232,7 +232,7 @@ DECLARE_IGC_REGKEY(bool, EnablePreRARematFlag,          true,  "Enable PreRA Rem
 DECLARE_IGC_REGKEY(bool, EnableGASResolver,             true,  "Enable GAS Resolver")
 DECLARE_IGC_REGKEY(bool, DisableRecompilation,          false, "Disable recompilation")
 DECLARE_IGC_REGKEY(bool, DisableEarlyOutPatterns,       false, "Disable optimization trying to create an early out after sampleC messages")
-DECLARE_IGC_REGKEY(DWORD, EarlyOutPatternSelectPS,      0xff,   "Each bit selects a pattern match to enable/disable.")
+DECLARE_IGC_REGKEY(DWORD, EarlyOutPatternSelectPS,      0xf,   "Each bit selects a pattern match to enable/disable.")
 DECLARE_IGC_REGKEY(DWORD, EarlyOutPatternSelectCS,      0x8,   "Each bit selects a pattern match to enable/disable.")
 DECLARE_IGC_REGKEY(bool, EnableReasso,                  false,  "Enable reassociation")
 DECLARE_IGC_REGKEY(bool, EnableOCLScratchPrivateMemory, true,  "Enable the use of scratch space for private memory [OCL only]")
