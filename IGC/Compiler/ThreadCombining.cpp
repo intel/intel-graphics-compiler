@@ -612,7 +612,7 @@ bool ThreadCombining::runOnModule(llvm::Module& M)
     // This value tells us what is the minimum acceptable threadgroup size
     // to make sure that we are not too aggressive with thread combining.
     // Current Heurstic is to have no less than 8 H/W threads per WG.
-    unsigned int minTGSizeHeuristic = 128;
+    unsigned int minTGSizeHeuristic;
 
     SIMDMode simdMode = csCtx->GetLeastSIMDModeAllowed();
     // If SIMD8 is legal then, heuristics are SIMD8 selection if spill is
@@ -627,6 +627,7 @@ bool ThreadCombining::runOnModule(llvm::Module& M)
         else
         {
             simdMode = SIMDMode::SIMD16;
+            minTGSizeHeuristic = 128; // => 8 h/w threads per WG
         }
     }
 
