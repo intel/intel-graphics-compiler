@@ -758,6 +758,8 @@ void EncoderBase::encodeSendInstruction(const Instruction& inst)
         if (m_model.supportsUnifiedSend()) {
             extMsgDesc.imm = extMsgDesc.imm & ~(1 << 5); // strip out EOT
         }
+
+
         GED_ENCODE(ExMsgDesc, extMsgDesc.imm);
     } else {  // ExDesc.IsReg == true
         if (!supportsExDescReg) {
