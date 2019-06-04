@@ -156,9 +156,6 @@ if(UNIX)
   endif()
 endif()
 
-#NEO needs to change the target name
-add_library(common_clang_dll ALIAS opencl-clang-lib)
-
 # End Clang section
 
 
