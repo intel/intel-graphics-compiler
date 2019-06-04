@@ -2448,18 +2448,18 @@ bool G4_INST::canHoist(bool simdBB, const Options *opt) const
 
     G4_Operand *src = srcs[0];
     // check attributes of src and number of defs
-    bool archRegSrc = ( src->isFlag() || src->isAreg() || src->isAddress() );
-    bool indirectSrc = ( src->getTopDcl() && src->getTopDcl()->getAddressed() ) || src->getRegAccess() != Direct;
-    bool noMultiDefOpt = ( ( defInstList.size() > 1 ) &&
-        ( predicate || ( dst->getRegAccess() != Direct ) || simdBB ) );
-    if( src->isImm() ||
+    bool archRegSrc = (src->isFlag() || src->isAreg() || src->isAddress());
+    bool indirectSrc = (src->getTopDcl() && src->getTopDcl()->getAddressed()) || src->getRegAccess() != Direct;
+    bool noMultiDefOpt = ((defInstList.size() > 1) &&
+        (predicate || (dst->getRegAccess() != Direct) || simdBB));
+    if (src->isImm() ||
         archRegSrc ||
         indirectSrc ||
-        ( src->asSrcRegRegion()->getModifier() != Mod_src_undef ) ||
-        ( defInstList.size() == 0 ) ||
-        noMultiDefOpt )
+        (src->asSrcRegRegion()->getModifier() != Mod_src_undef) ||
+        (defInstList.size() == 0) ||
+        noMultiDefOpt)
     {
-            return false;
+        return false;
     }
 
     // check type
@@ -2552,6 +2552,12 @@ bool G4_INST::canHoistTo(const G4_INST *defInst, bool simdBB) const
                 return false;
             }
         }
+    }
+
+    if (dst->isAddress() && defInst->getNumSrc() == 3)
+    {
+        // no A0 dst for ternary instructions
+        return false;
     }
 
     // compare boudaries and bitset
