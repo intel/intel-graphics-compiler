@@ -60,7 +60,7 @@ endif()
 ###
 
 ### Check by order first available way to link with opencl-clang
-if(${CCLANG_FROM_SYSTEM})
+if(CCLANG_FROM_SYSTEM)
   message(STATUS "[IGC\\BiFModule] : opencl-clang will be taken from system")
 else()
   if(NOT DEFINED CCLANG_BUILD_PREBUILDS_DIR)
@@ -103,7 +103,7 @@ endif()
 ###
 
 #1. CCLANG_FROM_SYSTEM - use installed on system opencl-clang toolchain
-if(${CCLANG_FROM_SYSTEM})
+if(CCLANG_FROM_SYSTEM)
   find_library(SYSTEM_COMMON_CLANG ${COMMON_CLANG_LIBRARY_NAME})
   
   add_library(opencl-clang-lib SHARED IMPORTED GLOBAL)
@@ -140,19 +140,20 @@ elseif(${CCLANG_BUILD_INTREE_LLVM})
 endif()
 ###
 
-if(UNIX AND NOT ${CCLANG_FROM_SYSTEM})
+if(UNIX)
   if(${LLVM_VERSION_MINOR} EQUAL 0 AND ${LLVM_VERSION_PATCH} EQUAL 0)
     set_property(TARGET opencl-clang-lib PROPERTY "IMPORTED_SONAME" "${COMMON_CLANG_LIB_FULL_NAME}.${LLVM_VERSION_MAJOR}")
   else()
     set_property(TARGET opencl-clang-lib PROPERTY "IMPORTED_SONAME" "${COMMON_CLANG_LIB_FULL_NAME}.${LLVM_VERSION_MAJOR}.${LLVM_VERSION_MINOR}.${LLVM_VERSION_PATCH}")
   endif()
-
-  install(FILES $<TARGET_FILE:opencl-clang-lib> DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR} COMPONENT igc-opencl)
-  install(FILES $<TARGET_SONAME_FILE:opencl-clang-lib> DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR} COMPONENT igc-opencl)
-  
-  install(FILES $<TARGET_FILE:clang-tool> DESTINATION ${CMAKE_INSTALL_FULL_BINDIR} COMPONENT igc-opencl-devel)
-  install(FILES $<TARGET_FILE:clang-tool>-${LLVM_VERSION_MAJOR} DESTINATION ${CMAKE_INSTALL_FULL_BINDIR} COMPONENT igc-opencl-devel)
-  install(FILES ${opencl-header} DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR} COMPONENT igc-opencl-devel)
+  if (NOT CCLANG_FROM_SYSTEM)
+    install(FILES $<TARGET_FILE:opencl-clang-lib> DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR} COMPONENT igc-opencl)
+    install(FILES $<TARGET_SONAME_FILE:opencl-clang-lib> DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR} COMPONENT igc-opencl)
+    
+    install(FILES $<TARGET_FILE:clang-tool> DESTINATION ${CMAKE_INSTALL_FULL_BINDIR} COMPONENT igc-opencl-devel)
+    install(FILES $<TARGET_FILE:clang-tool>-${LLVM_VERSION_MAJOR} DESTINATION ${CMAKE_INSTALL_FULL_BINDIR} COMPONENT igc-opencl-devel)
+    install(FILES ${opencl-header} DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR} COMPONENT igc-opencl-devel)
+  endif()
 endif()
 
 #NEO needs to change the target name
