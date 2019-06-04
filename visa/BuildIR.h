@@ -437,7 +437,10 @@ public:
     G4_Declare* builtinSLMSpillAddr;
 
 
-    bool usesSampler;
+    // Indicates that sampler header cache (builtinSamplerHeader) is correctly
+    // initialized with r0 contents.
+    // Used only when vISA_cacheSamplerHeader option is set.
+    bool builtinSamplerHeaderInitialized;
 
     // function call related declares
     G4_Declare* be_sp;
@@ -859,7 +862,7 @@ public:
         FINALIZER_INFO *jitInfo = NULL, PVISA_WA_TABLE pWaTable = NULL)
         : curFile(NULL), curLine(0), curCISAOffset(-1), func_id(-1), metaData(jitInfo),
         isKernel(false), cunit(0), resolvedCalleeNames(NULL),
-        usesSampler(false), m_pWaTable(pWaTable), m_options(options), CanonicalRegionStride0(0, 1, 0),
+        builtinSamplerHeaderInitialized(false), m_pWaTable(pWaTable), m_options(options), CanonicalRegionStride0(0, 1, 0),
         CanonicalRegionStride1(1, 1, 0), CanonicalRegionStride2(2, 1, 0), CanonicalRegionStride4(4, 1, 0),
         use64BitFEStackVars(isFESP64Bits), mem(m), phyregpool(pregs), hashtable(m), rgnpool(m), dclpool(m),
         instList(alloc), kernel(k), immPool(*this)
@@ -2524,7 +2527,7 @@ private:
 
     void applySideBandOffset(G4_Operand* sideBand, G4_SendMsgDescriptor* sendMsgDesc);
 
-    G4_Declare* getSamplerHeader(bool isBindlessSampler);
+    G4_Declare* getSamplerHeader(bool isBindlessSampler, bool samplerIndexGE16);
 
     void buildTypedSurfaceAddressPayload(G4_SrcRegRegion* u, G4_SrcRegRegion* v, G4_SrcRegRegion* r, G4_SrcRegRegion* lod,
         uint32_t exSize, uint32_t instOpt, payloadSource sources[], uint32_t& len);

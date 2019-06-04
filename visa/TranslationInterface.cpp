@@ -7359,7 +7359,7 @@ int IR_Builder::translateVISASampleInfoInst(
 
     if (!useFakeHeader || forceSplitSend || preEmption)
     {
-        msg = getSamplerHeader(false);
+        msg = getSamplerHeader(false /*isBindlessSampler*/, false /*samperIndexGE16*/);
 
         unsigned int secondDword = chMask.getHWEncoding() << 12;
 
@@ -7462,7 +7462,7 @@ int IR_Builder::translateVISAResInfoInst(
             --numRows;
         }
         unsigned int numElts = numRows * GENX_GRF_REG_SIZ/G4_Type_Table[Type_F].byteSize;
-        msg = getSamplerHeader(false);
+        msg = getSamplerHeader(false /*isBindlessSampler*/, false /*samperIndexGE16*/);
         payloadUD = Create_MRF_Dcl(numElts, Type_UD);
     }
     else
@@ -8433,6 +8433,20 @@ int IR_Builder::translateVISARTWrite3DInst(
 
 }
 
+
+// Bit 15 of aoffimmi is set in messages with sampler index >= 16.
+static bool IsSamplerIndexGE16(G4_Operand* aoffimmi)
+{
+    bool ret = false;
+    if (aoffimmi && aoffimmi->isImm())
+    {
+        const uint16_t aoffimmiVal = (uint16_t)aoffimmi->asImm()->getInt();
+        ret = (aoffimmiVal & 0x8000) != 0;
+    }
+    return ret;
+}
+
+
 // return the contents of M0.2 for sampler messages.  It must be an immediate value
 static uint32_t createSampleHeader0Dot2(VISASampler3DSubOpCode op,
                                         bool pixelNullMask,
@@ -8530,7 +8544,7 @@ static G4_Operand* createSampleHeader(IR_Builder* builder, G4_Declare* header, V
         // Use bit 15 of aoffimmi to tell VISA the sample index could be greater
         // than 15.  In this case, we need to use msg header, and setup M0.3
         // to point to next 16 sampler state.
-        if (aoffimmiVal & 0x8000)
+        if (IsSamplerIndexGE16(aoffimmi))
         {
             retSampler = builder->emitSampleIndexGE16(sampler, header);
         }
@@ -8974,15 +8988,16 @@ void IR_Builder::doSamplerHeaderMove(G4_Declare* headerDcl, G4_Operand* sampler)
 // generate the r0 move for the sampler message header, and return the dcl
 // for CNL+, also set SSP to dynamic if message is not bindless
 //
-G4_Declare* IR_Builder::getSamplerHeader(bool isBindlessSampler)
+G4_Declare* IR_Builder::getSamplerHeader(bool isBindlessSampler, bool samplerIndexGE16)
 {
     G4_Declare* dcl = nullptr;
+
     if (m_options->getOption(vISA_cacheSamplerHeader) && !isBindlessSampler)
     {
         dcl = builtinSamplerHeader;
-        if (!usesSampler)
+        if (!builtinSamplerHeaderInitialized)
         {
-            usesSampler = true;
+            builtinSamplerHeaderInitialized = true;
             if (hasBindlessSampler())
             {
                 // make sure we set bit 0 of M0.3:ud to be 0
@@ -8998,6 +9013,17 @@ G4_Declare* IR_Builder::getSamplerHeader(bool isBindlessSampler)
                 Create_Src_Opnd_From_Dcl(builtinR0, getRegionStride1()),
                 nullptr, InstOpt_WriteEnable);
             instList.push_front(r0Move);
+        }
+        if (samplerIndexGE16)
+        {
+            // When sampler index is greater or equal 16 then the
+            // createSamplerHeader() message overwrites the sampler states
+            // pointer in the header -> cannot use the cached value in this
+            // case.
+            dcl = Create_MRF_Dcl(GENX_DATAPORT_IO_SZ, Type_UD);
+            dcl->setCapableOfReuse();
+            G4_SrcRegRegion* src = createSrcRegRegion(Mod_src_undef, Direct, builtinSamplerHeader->getRegVar(), 0, 0, getRegionStride1(), Type_UD);
+            Create_MOV_Inst(dcl, 0, 0, 8, NULL, NULL, src);
         }
     }
     else
@@ -9128,7 +9154,8 @@ int IR_Builder::translateVISASampler3DInst(
 
     if( useHeader )
     {
-        G4_Declare *dcl = getSamplerHeader(isBindlessSampler(sampler));
+        const bool samplerIndexGE16 = IsSamplerIndexGE16(aoffimmi);
+        G4_Declare *dcl = getSamplerHeader(isBindlessSampler(sampler), samplerIndexGE16);
         samplerIdx = createSampleHeader(this, dcl, actualop, pixelNullMask, aoffimmi, chMask, sampler);
         header = Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
     }
@@ -9259,7 +9286,7 @@ int IR_Builder::translateVISALoad3DInst(
     G4_SrcRegRegion *header = 0;
     if (useHeader)
     {
-        G4_Declare *dcl = getSamplerHeader(false);
+        G4_Declare *dcl = getSamplerHeader(false /*isBindlessSampler*/, false /*samperIndexGE16*/);
         (void) createSampleHeader(this, dcl, actualop, pixelNullMask, aoffimmi, channelMask, nullptr);
         header = Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
     }
@@ -9379,7 +9406,8 @@ int IR_Builder::translateVISAGather3dInst(
 
     if (useHeader)
     {
-        G4_Declare *dcl = getSamplerHeader(isBindlessSampler(sampler));
+        const bool samplerIndexGE16 = IsSamplerIndexGE16(aoffimmi);
+        G4_Declare *dcl = getSamplerHeader(isBindlessSampler(sampler), samplerIndexGE16);
         samplerIdx = createSampleHeader(this, dcl, actualop, pixelNullMask, aoffimmi, channelMask, sampler);
         header = Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
     }
