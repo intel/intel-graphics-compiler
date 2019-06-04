@@ -37,7 +37,7 @@ namespace IGC
 {
 
 class CDriverInfo
-{ 
+{
 public:
     /// The driver implements the WA using constant buffer 2 for NOS constants instead of 0
     virtual bool implementPushConstantWA() const { return false; }
@@ -74,16 +74,16 @@ public:
 
     /// The driver doesn't clear the vertex header so it needs to be done in the compiler
     virtual bool NeedClearVertexHeader() const { return false; }
- 
+
     /// do code sinking before CFGSimplification, helps some workloads
     virtual bool CodeSinkingBeforeCFGSimplification() const { return false; }
 
     /// allow executing constant buffer on the CPU
     virtual bool AllowGenUpdateCB(ShaderType shaderType) const { return false; }
-    
+
     /// The driver implements single instance vertex dispatch feature
     virtual bool SupportsSingleInstanceVertexDispatch() const { return false; }
-    
+
     /// We can safely ignore Nan
     virtual bool IgnoreNan() const { return false; }
 
@@ -106,7 +106,7 @@ public:
     virtual bool SupportsPreciseMath() const { return false; }
 
     virtual bool NeedCountSROA() const { return false; }
-    
+
     /// Can we always contract mul and add
     virtual bool NeedCheckContractionAllowed() const { return false; }
 
@@ -176,7 +176,7 @@ public:
     /// gradient correctly for sampler or we need to force early out discarded pixels
     virtual bool KeepDiscardHelperPixels() const { return false; }
     virtual bool SupportElfFormat() const { return false; }
-    
+
     /// Adjust adapter to adjust the loop unrolling threshold
     virtual unsigned int GetLoopUnrollThreshold() const
     {
@@ -234,6 +234,7 @@ public:
 
     /// Should unaligned vectors be split before processing in EmitVISA
     virtual bool splitUnalignedVectors() const { return true; }
+
 };
 
 }//namespace IGC

@@ -6153,6 +6153,53 @@ G4_Imm::emitAutoFmt(std::ostream& output)
     }
 }
 
+int64_t G4_Imm::typecastVals(int64_t value, G4_Type type)
+{
+    int64_t retVal = 0;
+    switch (type)
+    {
+    case Type_UD:
+    case Type_UV:
+    case Type_VF:
+    {
+        retVal = (int64_t)((unsigned int)value);
+        break;
+    }
+    case Type_D:
+    case Type_V:
+    {
+        retVal = (int64_t)((int)value);
+        break;
+    }
+    case Type_UW:
+    {
+        retVal = (int64_t)((uint16_t)value);
+        break;
+    }
+    case Type_W:
+    {
+        retVal = (int64_t)((int16_t)value);
+        break;
+    }
+    case Type_UB:
+    {
+        retVal = (int64_t)((uint8_t)value);
+        break;
+    }
+    case Type_B:
+    {
+        retVal = (int64_t)((int8_t)value);
+        break;
+    }
+    default:
+    {
+        // Dont do float conversions
+        retVal = value;
+    }
+    }
+    return retVal;
+}
+
 G4_RegVar *
 G4_RegVarTransient::getNonTransientBaseRegVar ()
 {

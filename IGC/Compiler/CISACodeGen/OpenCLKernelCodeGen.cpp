@@ -61,7 +61,7 @@ using namespace IGC::IGCMD;
 namespace IGC
 {
 
-COpenCLKernel::COpenCLKernel(const OpenCLProgramContext* ctx, Function* pFunc, CShaderProgram* pProgram) : 
+COpenCLKernel::COpenCLKernel(const OpenCLProgramContext* ctx, Function* pFunc, CShaderProgram* pProgram) :
 CShader(pFunc, pProgram)
 {
     m_HasTID                = false;
@@ -84,7 +84,7 @@ COpenCLKernel::~COpenCLKernel()
     m_simdProgram.Destroy();
 }
 
-void COpenCLKernel::ClearKernelInfo() 
+void COpenCLKernel::ClearKernelInfo()
 {
     // Global pointer arguments
     for(auto iter = m_kernelInfo.m_pointerArgument.begin();
@@ -229,7 +229,7 @@ void COpenCLKernel::PreCompile()
 
     ModuleMetaData* modMD = m_Context->getModuleMetaData();
     auto funcIter = modMD->FuncMD.find(entry);
-    
+
     // Initialize the table of offsets for GlobalVariables representing locals
     if (funcIter != modMD->FuncMD.end())
     {
@@ -304,7 +304,7 @@ void COpenCLKernel::CreateInlineSamplerAnnotations()
             samplerInput->TCYAddressMode = iOpenCL::SAMPLER_TEXTURE_ADDRESS_MODE(inlineSamplerMD.TCYAddressMode);
             samplerInput->TCZAddressMode = iOpenCL::SAMPLER_TEXTURE_ADDRESS_MODE(inlineSamplerMD.TCZAddressMode);
             samplerInput->NormalizedCoords = inlineSamplerMD.NormalizedCoords != 0 ? true : false;
-            
+
             samplerInput->MagFilterType = iOpenCL::SAMPLER_MAPFILTER_TYPE(inlineSamplerMD.MagFilterType);
             samplerInput->MinFilterType = iOpenCL::SAMPLER_MAPFILTER_TYPE(inlineSamplerMD.MinFilterType);
             samplerInput->MipFilterType = iOpenCL::SAMPLER_MIPFILTER_TYPE(inlineSamplerMD.MipFilterType);
@@ -332,15 +332,15 @@ void COpenCLKernel::CreateKernelArgInfo()
         FunctionMetaData* funcMD = &m_Context->getModuleMetaData()->FuncMD[entry];
         count = funcMD->m_OpenCLArgAccessQualifiers.size();
     }
-    
+
     for (uint i = 0; i < count; ++i)
     {
         iOpenCL::KernelArgumentInfoAnnotation* kernelArgInfo = new iOpenCL::KernelArgumentInfoAnnotation();
         FunctionMetaData* funcMD = &m_Context->getModuleMetaData()->FuncMD[entry];
 
         // Format the strings the way the OpenCL runtime expects them
-        
-        // The access qualifier is expected to have a "__" prefix, 
+
+        // The access qualifier is expected to have a "__" prefix,
         // or an upper-case "NONE" if there is no qualifier
         kernelArgInfo->AccessQualifier = funcMD->m_OpenCLArgAccessQualifiers[i];
         if (kernelArgInfo->AccessQualifier == "none" || kernelArgInfo->AccessQualifier == "")
@@ -457,7 +457,7 @@ void COpenCLKernel::CreateKernelAttributeInfo()
             m_kernelInfo.m_kernelAttributeInfo += " " + getWorkgroupWalkOrderString(workgroupWalkOrder);
         }
     }
-    
+
     ThreadGroupSizeMetaDataHandle threadGroupSize = funcInfoMD->getThreadGroupSize();
     if (threadGroupSize->hasValue())
     {
@@ -585,11 +585,11 @@ void COpenCLKernel::CreatePrintfStringAnnotations()
 
         llvm::MDNode      *argMDNode    = printfMDNode->getOperand(i);
 
-        llvm::ConstantInt *indexOpndVal = 
+        llvm::ConstantInt *indexOpndVal =
             mdconst::dyn_extract<llvm::ConstantInt>(argMDNode->getOperand(0));
         llvm::Metadata    *stringOpnd    = argMDNode->getOperand(1);
         llvm::MDString    *stringOpndVal = dyn_cast<llvm::MDString>(stringOpnd);
-        
+
         llvm::StringRef stringData(stringOpndVal->getString());
 
         printfAnnotation->AnnotationSize          = sizeof(printfAnnotation);
@@ -607,7 +607,7 @@ void COpenCLKernel::CreatePrintfStringAnnotations()
 void COpenCLKernel::CreateAnnotations(KernelArg* kernelArg, uint payloadPosition)
 {
     KernelArg::ArgType type = kernelArg->getArgType();
-    
+
     DWORD constantType                          = iOpenCL::DATA_PARAMETER_TOKEN_UNKNOWN;
     iOpenCL::IMAGE_MEMORY_OBJECT_TYPE imageType = iOpenCL::IMAGE_MEMORY_OBJECT_INVALID;
     iOpenCL::POINTER_ADDRESS_SPACE addressSpace = iOpenCL::KERNEL_ARGUMENT_ADDRESS_SPACE_INVALID;
@@ -617,7 +617,7 @@ void COpenCLKernel::CreateAnnotations(KernelArg* kernelArg, uint payloadPosition
     const llvm::Argument* arg = kernelArg->getArg();
 
     switch (type) {
-    
+
     case KernelArg::ArgType::IMPLICIT_R0:
         for (Value::const_user_iterator U = arg->user_begin(), UE = arg->user_end(); U != UE; ++U)
         {
@@ -656,8 +656,8 @@ void COpenCLKernel::CreateAnnotations(KernelArg* kernelArg, uint payloadPosition
             DWORD sizeInBytes = iOpenCL::DATA_PARAMETER_DATA_SIZE;
 
             constInput->AnnotationSize      = sizeof(constInput);
-            constInput->ConstantType        = (i < 3 ? 
-                                                iOpenCL::DATA_PARAMETER_GLOBAL_WORK_OFFSET : 
+            constInput->ConstantType        = (i < 3 ?
+                                                iOpenCL::DATA_PARAMETER_GLOBAL_WORK_OFFSET :
                                                 iOpenCL::DATA_PARAMETER_LOCAL_WORK_SIZE);
             constInput->Offset              = (i % 3) * sizeInBytes;
             constInput->PayloadPosition     = payloadPosition;
@@ -669,7 +669,7 @@ void COpenCLKernel::CreateAnnotations(KernelArg* kernelArg, uint payloadPosition
         }
 
         for (Value::const_user_iterator U = arg->user_begin(), UE = arg->user_end(); U != UE; ++U)
-        { 
+        {
             const ExtractElementInst* EEI = dyn_cast<ExtractElementInst>(*U);
 
             if (EEI)
@@ -694,7 +694,7 @@ void COpenCLKernel::CreateAnnotations(KernelArg* kernelArg, uint payloadPosition
             }
         }
         break;
-    
+
     case KernelArg::ArgType::PTR_GLOBAL:
         if (addressSpace == iOpenCL::KERNEL_ARGUMENT_ADDRESS_SPACE_INVALID) {
             addressSpace = iOpenCL::KERNEL_ARGUMENT_ADDRESS_SPACE_GLOBAL;
@@ -717,7 +717,7 @@ void COpenCLKernel::CreateAnnotations(KernelArg* kernelArg, uint payloadPosition
             ResourceAllocMD *resAllocMD = &funcMD->resAllocMD;
             assert(resAllocMD->argAllocMDList.size() > 0 && "ArgAllocMDList is empty.");
             ArgAllocMD *argAlloc = &resAllocMD->argAllocMDList[argNo];
-    
+
             iOpenCL::PointerArgumentAnnotation *ptrAnnotation = new iOpenCL::PointerArgumentAnnotation();
 
             if (argAlloc->type == ResourceTypeEnum::BindlessUAVResourceType)
@@ -789,7 +789,7 @@ void COpenCLKernel::CreateAnnotations(KernelArg* kernelArg, uint payloadPosition
             iOpenCL::ConstantArgumentAnnotation* constInput = new iOpenCL::ConstantArgumentAnnotation();
 
             DWORD sizeInBytes = kernelArg->getAllocateSize();
-                
+
             constInput->AnnotationSize      = sizeof(constInput);
             constInput->Offset              = sourceOffsetBase;
             constInput->PayloadPosition     = payloadPosition;
@@ -837,13 +837,13 @@ void COpenCLKernel::CreateAnnotations(KernelArg* kernelArg, uint payloadPosition
             m_kernelInfo.m_pointerInput.push_back(ptrAnnotation);
         }
         break;
-    
+
     case KernelArg::ArgType::IMPLICIT_PRIVATE_BASE:
         {
             int argNo = kernelArg->getAssociatedArgNo();
             SOpenCLKernelInfo::SResourceInfo resInfo = getResourceInfo(argNo);
             m_kernelInfo.m_argIndexMap[argNo] = getBTI(resInfo);
-    
+
             iOpenCL::PrivateInputAnnotation *ptrAnnotation = new iOpenCL::PrivateInputAnnotation();
 
             ptrAnnotation->AddressSpace                 = iOpenCL::KERNEL_ARGUMENT_ADDRESS_SPACE_PRIVATE;
@@ -868,13 +868,13 @@ void COpenCLKernel::CreateAnnotations(KernelArg* kernelArg, uint payloadPosition
 
         constantType = kernelArg->getDataParamToken();
         assert(constantType != iOpenCL::DATA_PARAMETER_TOKEN_UNKNOWN);
-        
+
         for (int i = 0; i < 3; ++i)
         {
             iOpenCL::ConstantInputAnnotation* constInput = new iOpenCL::ConstantInputAnnotation();
-            
+
             DWORD sizeInBytes = iOpenCL::DATA_PARAMETER_DATA_SIZE;
-            
+
             constInput->AnnotationSize      = sizeof(constInput);
             constInput->ConstantType        = constantType;
             constInput->Offset              = i * sizeInBytes;
@@ -1161,7 +1161,7 @@ void COpenCLKernel::CreateAnnotations(KernelArg* kernelArg, uint payloadPosition
             printfBuffer->PayloadPosition = payloadPosition;
             printfBuffer->DataSize        = kernelArg->getAllocateSize();
             printfBuffer->Index           = 0; // This value is not used by Runtime.
-    
+
             m_kernelInfo.m_printfBufferAnnotation = printfBuffer;
         }
         break;
@@ -1214,9 +1214,9 @@ void COpenCLKernel::CreateAnnotations(KernelArg* kernelArg, uint payloadPosition
         constantType = kernelArg->getDataParamToken();
         {
             iOpenCL::ConstantInputAnnotation* constInput = new iOpenCL::ConstantInputAnnotation();
-            
+
             DWORD sizeInBytes = iOpenCL::DATA_PARAMETER_DATA_SIZE;
-            
+
             constInput->AnnotationSize      = sizeof(constInput);
             constInput->ConstantType        = constantType;
             constInput->Offset              = 0;
@@ -1239,7 +1239,7 @@ void COpenCLKernel::CreateAnnotations(KernelArg* kernelArg, uint payloadPosition
     case KernelArg::ArgType::IMPLICIT_LOCAL_MEMORY_STATELESS_WINDOW_SIZE:
         {
         iOpenCL::WindowSizeGASAnnotation* winSizeGAS = new iOpenCL::WindowSizeGASAnnotation();
-   
+
         winSizeGAS->Offset = payloadPosition;
         m_kernelInfo.m_WindowSizeGAS = winSizeGAS;
         }
@@ -1391,7 +1391,7 @@ void COpenCLKernel::AllocatePayload()
     // BDW needs CURBE payload. Spec says:
     // "CURBE should be used for the payload when using indirect dispatch rather than indirect payload".
     m_kernelInfo.m_threadPayload.CompiledForIndirectPayloadStorage = true;
-    if(IGC_IS_FLAG_ENABLED(DisableGPGPUIndirectPayload) || 
+    if(IGC_IS_FLAG_ENABLED(DisableGPGPUIndirectPayload) ||
        m_Context->platform.getWATable().WaDisableIndirectDataForIndirectDispatch)
     {
         m_kernelInfo.m_threadPayload.CompiledForIndirectPayloadStorage = false;
@@ -1422,20 +1422,20 @@ void COpenCLKernel::AllocatePayload()
     {
         m_perWIPrivateMemSize = funcMD->second.privateMemoryPerWI;
     }
-    
+
 
     m_ConstantBufferLength  = 0;
     m_NOSBufferSize         = 0;
 
     uint offset                 = 0;
-    
+
     uint constantBufferStart    = 0;
     bool constantBufferStartSet = false;
 
     uint prevOffset = 0;
     bool nosBufferAllocated = false;
-    
-    KernelArgsOrder::InputType layout = 
+
+    KernelArgsOrder::InputType layout =
             m_kernelInfo.m_threadPayload.CompiledForIndirectPayloadStorage ?
             KernelArgsOrder::InputType::INDIRECT :
             KernelArgsOrder::InputType::CURBE;
@@ -1447,7 +1447,7 @@ void COpenCLKernel::AllocatePayload()
         kernelArgs.checkForZeroPerThreadData();
     }
 
-    for (KernelArgs::const_iterator i = kernelArgs.begin(), e = kernelArgs.end(); i != e; ++i) 
+    for (KernelArgs::const_iterator i = kernelArgs.begin(), e = kernelArgs.end(); i != e; ++i)
     {
         KernelArg arg = *i;
         prevOffset = offset;
@@ -1503,7 +1503,7 @@ void COpenCLKernel::AllocatePayload()
                 // And now actually tell vISA we need this space.
                 // (Except for r0, which is a predefined variable, and should never be allocated as input!)
                 const llvm::Argument * A = arg.getArg();
-                if(A != nullptr && arg.getArgType() != KernelArg::ArgType::IMPLICIT_R0) 
+                if(A != nullptr && arg.getArgType() != KernelArg::ArgType::IMPLICIT_R0)
                 {
                     CVariable* var = GetSymbol(const_cast<Argument*>(A));
                     for (int i = 0; i < numAllocInstances; ++i)
@@ -1534,10 +1534,10 @@ void COpenCLKernel::AllocatePayload()
     }
 
     // ToDo: we should avoid passing all three dimensions of local id
-    if (m_kernelInfo.m_threadPayload.HasLocalIDx || 
+    if (m_kernelInfo.m_threadPayload.HasLocalIDx ||
         m_kernelInfo.m_threadPayload.HasLocalIDy ||
         m_kernelInfo.m_threadPayload.HasLocalIDz)
-    {    
+    {
         if (loadThreadPayload)
         {
             uint perThreadInputSize = SIZE_WORD * 3 * (m_dispatchSize == SIMDMode::SIMD32 ? 32 : 16);
@@ -1547,7 +1547,7 @@ void COpenCLKernel::AllocatePayload()
 
     m_kernelInfo.m_threadPayload.OffsetToSkipPerThreadDataLoad = 0;
     m_kernelInfo.m_threadPayload.PassInlineData = false;
-    
+
     m_ConstantBufferLength = iSTD::Align(m_ConstantBufferLength, getGRFSize());
 
     CreateInlineSamplerAnnotations();
@@ -1578,9 +1578,9 @@ unsigned int COpenCLKernel::GetGlobalMappingValue(llvm::Value* c)
 CVariable* COpenCLKernel::GetGlobalMapping(llvm::Value* c)
 {
     unsigned int val = GetGlobalMappingValue(c);
-    
+
     VISA_Type type = GetType(c->getType());
-    return ImmToVariable(val, type); 
+    return ImmToVariable(val, type);
 }
 
 unsigned int COpenCLKernel::getSumFixedTGSMSizes(Function* F)
@@ -1607,9 +1607,9 @@ void COpenCLKernel::FillKernel()
     m_kernelInfo.m_executionEnivronment.SumFixedTGSMSizes = getSumFixedTGSMSizes(entry);
     m_kernelInfo.m_executionEnivronment.HasBarriers = this->GetHasBarrier();
     m_kernelInfo.m_executionEnivronment.DisableMidThreadPreemption = GetDisableMidThreadPreemption();
-    m_kernelInfo.m_executionEnivronment.SubgroupIndependentForwardProgressRequired = 
+    m_kernelInfo.m_executionEnivronment.SubgroupIndependentForwardProgressRequired =
         m_Context->getModuleMetaData()->compOpt.SubgroupIndependentForwardProgressRequired;
-    m_kernelInfo.m_executionEnivronment.CompiledForGreaterThan4GBBuffers = 
+    m_kernelInfo.m_executionEnivronment.CompiledForGreaterThan4GBBuffers =
         m_Context->getModuleMetaData()->compOpt.GreaterThan4GBBufferRequired;
 
     assert(gatherMap.size() == 0);
@@ -1629,7 +1629,7 @@ void COpenCLKernel::FillKernel()
 
     ModuleMetaData *modMD = m_Context->getModuleMetaData();
     auto funcMD = modMD->FuncMD.find(entry);
-  
+
     if(threadGroupSize->hasValue())
     {
         m_kernelInfo.m_executionEnivronment.HasFixedWorkGroupSize = true;
@@ -1689,7 +1689,7 @@ void COpenCLKernel::RecomputeBTLayout()
     // The BT layout contains the minimum and the maximum number BTI for each kind
     // of resource. E.g. UAVs may be mapped to BTIs 0..3, SRVs to 4..5, and the scratch
     // surface to 6.
-    // Note that the names are somewhat misleading. They are used for the sake of consistency 
+    // Note that the names are somewhat misleading. They are used for the sake of consistency
     // with the ICBE sources.
 
     // Some fields are always 0 for OCL.
@@ -1741,7 +1741,7 @@ void COpenCLKernel::RecomputeBTLayout()
 
     // And finally, the scratch surface
     layout->surfaceScratchIdx = index++;
-    
+
     // Overall number of used BT entries, not including TGSM.
     layout->maxBTsize = index;
 }
@@ -1773,7 +1773,7 @@ unsigned int COpenCLKernel::getBTI(SOpenCLKernelInfo::SResourceInfo& resInfo)
 }
 
 void CollectProgramInfo(OpenCLProgramContext* ctx)
-{    
+{
     MetaDataUtils mdUtils(ctx->getModule());
     ModuleMetaData *modMD = ctx->getModuleMetaData();
 
@@ -1818,7 +1818,7 @@ void CollectProgramInfo(OpenCLProgramContext* ctx)
             initConstant->KernelName = i.first->getName();
             if (i.second.IsFinalizer)
             {
-                
+
                 initConstant->Type = iOpenCL::PROGRAM_SCOPE_KERNEL_DESTRUCTOR;
                 ctx->m_programInfo.m_initKernelTypeAnnotation.push_back(std::move(initConstant));
             }
@@ -1828,7 +1828,7 @@ void CollectProgramInfo(OpenCLProgramContext* ctx)
                 ctx->m_programInfo.m_initKernelTypeAnnotation.push_back(std::move(initConstant));
             }
 
-        } 
+        }
     }
 
     for (auto iter = modMD->GlobalPointerProgramBinaryInfos.begin();
@@ -1838,7 +1838,7 @@ void CollectProgramInfo(OpenCLProgramContext* ctx)
         std::unique_ptr<iOpenCL::GlobalPointerAnnotation> initGlobalPointer(new iOpenCL::GlobalPointerAnnotation());
         initGlobalPointer->PointeeAddressSpace = iter->PointeeAddressSpace;
         initGlobalPointer->PointeeBufferIndex  = iter->PointeeBufferIndex;
-        initGlobalPointer->PointerBufferIndex  = iter->PointerBufferIndex; 
+        initGlobalPointer->PointerBufferIndex  = iter->PointerBufferIndex;
         initGlobalPointer->PointerOffset       = iter->PointerOffset;
         ctx->m_programInfo.m_initGlobalPointerAnnotation.push_back(std::move(initGlobalPointer));
     }
@@ -1916,7 +1916,7 @@ static bool SetKernelProgram(COpenCLKernel* shader, DWORD simdMode)
         else if (simdMode == 8)
         {
             shader->m_kernelInfo.m_kernelProgram.simd8 = *shader->ProgramOutput();
-        }   
+        }
         shader->m_kernelInfo.m_executionEnivronment.CompiledSIMDSize = simdMode;
         return true;
     }
@@ -2020,8 +2020,8 @@ bool COpenCLKernel::hasReadWriteImage(llvm::Function &F)
     KernelArgs kernelArgs(F, m_DL, m_pMdUtils, m_ModuleMetadata, KernelArgsOrder::InputType::INDEPENDENT);
     for (auto KA : kernelArgs)
     {
-        // RenderScript annotation sets "read_write" qualifier 
-        // for any applicable kernel argument, not only for kernel arguments 
+        // RenderScript annotation sets "read_write" qualifier
+        // for any applicable kernel argument, not only for kernel arguments
         // that are images, so we should check if kernel argument is an image.
         if(KA.getAccessQual() == KernelArg::AccessQual::READ_WRITE &&
            KA.getArgType() >= KernelArg::ArgType::IMAGE_1D &&
@@ -2055,18 +2055,18 @@ bool COpenCLKernel::CompileSIMDSize(SIMDMode simdMode, EmitPass &EP, llvm::Funct
     }
 
     SIMDStatus simdStatus = checkSIMDCompileConds(simdMode, EP, F);
-    
+
     // Func and Perf checks pass, compile this SIMD
     if (simdStatus == SIMDStatus::SIMD_PASS)
         return true;
 
-    // Functional failure, skip compiling this SIMD 
+    // Functional failure, skip compiling this SIMD
     if (simdStatus == SIMDStatus::SIMD_FUNC_FAIL)
         return false;
 
     assert(simdStatus == SIMDStatus::SIMD_PERF_FAIL);
     //not profitable
-    if (m_Context->m_DriverInfo.sendMultipleSIMDModes()) 
+    if (m_Context->m_DriverInfo.sendMultipleSIMDModes())
     {
         if (EP.m_canAbortOnSpill)
             return false; //not the first functionally correct SIMD, exit
@@ -2085,9 +2085,9 @@ SIMDStatus COpenCLKernel::checkSIMDCompileConds(SIMDMode simdMode, EmitPass &EP,
 
     // Here we see if we have compiled a size for this shader already
     if((simd8Program && simd8Program->ProgramOutput()->m_programSize > 0) ||
-        (simd16Program && simd16Program->ProgramOutput()->m_programSize > 0) || 
+        (simd16Program && simd16Program->ProgramOutput()->m_programSize > 0) ||
          (simd32Program && simd32Program->ProgramOutput()->m_programSize > 0))
-        
+
     {
         if(!(pCtx->m_DriverInfo.sendMultipleSIMDModes() && (pCtx->getModuleMetaData()->csInfo.forcedSIMDSize == 0)))
             return SIMDStatus::SIMD_FUNC_FAIL;
@@ -2114,7 +2114,7 @@ SIMDStatus COpenCLKernel::checkSIMDCompileConds(SIMDMode simdMode, EmitPass &EP,
     {
         groupSize = IGCMetaDataHelper::getThreadGroupSize(*pMdUtils, &F);
     }
-     
+
     if (groupSize == 0)
     {
         groupSize = IGCMetaDataHelper::getThreadGroupSizeHint(*pMdUtils, &F);
