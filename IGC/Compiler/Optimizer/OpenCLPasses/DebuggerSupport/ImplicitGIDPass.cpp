@@ -97,7 +97,8 @@ bool ImplicitGlobalId::runOnFunction(Function& F)
     return true;
 }
 
-void ImplicitGlobalId::runOnBasicBlock(unsigned i, Instruction *pAlloca, Instruction *insertBefore, GlobalOrLocal wi)
+void ImplicitGlobalId::runOnBasicBlock(llvm::AllocaInst* alloca0, llvm::AllocaInst* alloca1, llvm::AllocaInst* alloca2,
+    llvm::Instruction *insertBefore, GlobalOrLocal wi)
 {
     IRBuilder<> B(insertBefore);
     // **********************************************************************
@@ -106,29 +107,26 @@ void ImplicitGlobalId::runOnBasicBlock(unsigned i, Instruction *pAlloca, Instruc
     B.SetCurrentDebugLocation(DebugLoc());
     // **********************************************************************
 
-    Value *id_at_dim = CreateGetId(i, B, wi);
+    Value *id_at_dim = CreateGetId(B, wi);
 
-    // get_global/local_id returns size_t, but we want to always pass a 64-bit
-    // number. So we may need to extend the result to 64 bits.
-    //
-    const IntegerType *id_type = dyn_cast<IntegerType>(id_at_dim->getType());
-    if (id_type && id_type->getBitWidth() != 64)
+    std::string name = "gid";
+    if (wi == GlobalOrLocal::Local)
     {
-        Type *int64Type = IntegerType::getInt64Ty(*m_pContext);
-        std::string name = "gid";
-        if (wi == GlobalOrLocal::Local)
-        {
-            name = "lid";
-        }
-        else if (wi == GlobalOrLocal::WorkItem)
-        {
-            name = "grid";
-        }
-        Value *zext_gid = B.CreateZExt(id_at_dim, int64Type, Twine(name) + Twine(i) + Twine("_i64"));
-
-        id_at_dim = zext_gid;
+        name = "lid";
     }
-    B.CreateStore(id_at_dim, pAlloca);
+    else if (wi == GlobalOrLocal::WorkItem)
+    {
+        name = "grid";
+    }
+    
+    const uint64_t dims[] = { 0, 1, 2 };
+    auto val0 = B.CreateExtractElement(id_at_dim, dims[0], Twine(name) + Twine(dims[0]));
+    auto val1 = B.CreateExtractElement(id_at_dim, dims[1], Twine(name) + Twine(dims[1]));
+    auto val2 = B.CreateExtractElement(id_at_dim, dims[2], Twine(name) + Twine(dims[2]));
+
+    B.CreateStore(val0, alloca0);
+    B.CreateStore(val1, alloca1);
+    B.CreateStore(val2, alloca2);
 }
 
 void ImplicitGlobalId::insertComputeIds(Function* pFunc)
@@ -148,7 +146,7 @@ void ImplicitGlobalId::insertComputeIds(Function* pFunc)
     if (!gotScope)
         return;
 
-    llvm::DIType* gid_di_type = getOrCreateUlongDIType();
+    llvm::DIType* gid_di_type = getOrCreateIntDIType();
     AllocaInst *gid_alloca[3];
     SmallVector<uint64_t, 1> NewDIExpr;
     for (unsigned i = 0; i < 3; ++i)
@@ -156,47 +154,47 @@ void ImplicitGlobalId::insertComputeIds(Function* pFunc)
         // Create implicit local variables to hold the gids
         //
         gid_alloca[i] = new AllocaInst(
-            IntegerType::getInt64Ty(*m_pContext), 0, Twine("__ocl_dbg_gid") + Twine(i), insert_before);
+            IntegerType::getIntNTy(*m_pContext, m_uiSizeT), 0, Twine("__ocl_dbg_gid") + Twine(i), insert_before);
 
         llvm::DILocalVariable* var = m_pDIB->createAutoVariable(scope, gid_alloca[i]->getName(), nullptr,
             1, gid_di_type);
 
         m_pDIB->insertDeclare(gid_alloca[i], var, m_pDIB->createExpression(NewDIExpr), loc.get(), insert_before);
-        runOnBasicBlock(i, gid_alloca[i], insert_before, GlobalOrLocal::Global);
     }
+    runOnBasicBlock(gid_alloca[0], gid_alloca[1], gid_alloca[2], insert_before, GlobalOrLocal::Global);
 
     // Similar code for local id
-    llvm::DIType* lid_di_type = getOrCreateUlongDIType();
+    llvm::DIType* lid_di_type = getOrCreateIntDIType();
     AllocaInst *lid_alloca[3];
     for (unsigned i = 0; i < 3; ++i)
     {
         // Create implicit local variables to hold the gids
         //
         lid_alloca[i] = new AllocaInst(
-            IntegerType::getInt64Ty(*m_pContext), 0, Twine("__ocl_dbg_lid") + Twine(i), insert_before);
+            IntegerType::getIntNTy(*m_pContext, m_uiSizeT), 0, Twine("__ocl_dbg_lid") + Twine(i), insert_before);
 
         llvm::DILocalVariable* var = m_pDIB->createAutoVariable(scope, lid_alloca[i]->getName(), nullptr,
             1, lid_di_type);
 
         m_pDIB->insertDeclare(lid_alloca[i], var, m_pDIB->createExpression(NewDIExpr), loc.get() , insert_before);
-        runOnBasicBlock(i, lid_alloca[i], insert_before, GlobalOrLocal::Local);
     }
+    runOnBasicBlock(lid_alloca[0], lid_alloca[1], lid_alloca[2], insert_before, GlobalOrLocal::Local);
 
     // Similar code for work item id
-    llvm::DIType* grid_di_type = getOrCreateUlongDIType();
+    llvm::DIType* grid_di_type = getOrCreateIntDIType();
     AllocaInst *grid_alloca[3];
     for (unsigned i = 0; i < 3; ++i)
     {
         // Create implicit local variables to hold the work item ids
         //
         grid_alloca[i] = new AllocaInst(
-            IntegerType::getInt64Ty(*m_pContext), 0, Twine("__ocl_dbg_grid") + Twine(i), insert_before);
+            IntegerType::getIntNTy(*m_pContext, m_uiSizeT), 0, Twine("__ocl_dbg_grid") + Twine(i), insert_before);
 
         llvm::DILocalVariable* var = m_pDIB->createAutoVariable(scope, grid_alloca[i]->getName(), nullptr, 1, grid_di_type);
 
         m_pDIB->insertDeclare(grid_alloca[i], var, m_pDIB->createExpression(NewDIExpr), loc.get(), insert_before);
-        runOnBasicBlock(i, grid_alloca[i], insert_before, GlobalOrLocal::WorkItem);
     }
+    runOnBasicBlock(grid_alloca[0], grid_alloca[1], grid_alloca[2], insert_before, GlobalOrLocal::WorkItem);
 }
 
 bool ImplicitGlobalId::getBBScope(const BasicBlock& BB, llvm::DIScope*& scope_out, DebugLoc& loc_out)
@@ -218,41 +216,41 @@ bool ImplicitGlobalId::getBBScope(const BasicBlock& BB, llvm::DIScope*& scope_ou
     return false;
 }
 
-llvm::DIType* ImplicitGlobalId::getOrCreateUlongDIType()
+llvm::DIType* ImplicitGlobalId::getOrCreateIntDIType()
 {
+    std::string typeName = m_uiSizeT == 32 ? "int" : "long long";
     auto it = m_DbgInfoFinder.types();
     for (auto t_i = it.begin();
         t_i != it.end(); ++t_i)
     {
         auto type = (*t_i);
         if (type &&
-            type->getName() == "long unsigned int")
+            type->getName() == typeName)
         {
             return type;
         }
     }
     // If the type wasn't found, create it now
-    return m_pDIB->createBasicType("long unsigned int", 64, dwarf::DW_ATE_unsigned);
+    return m_pDIB->createBasicType(typeName, m_uiSizeT, dwarf::DW_ATE_signed);
 }
 
-Value* ImplicitGlobalId::CreateGetId(unsigned dim, IRBuilder<> &B, GlobalOrLocal wi)
+Value* ImplicitGlobalId::CreateGetId(IRBuilder<> &B, GlobalOrLocal wi)
 {
-    const char dimChr = '0' + dim;
-    const std::string nameCall = std::string("globalId") + dimChr;
+    const char dimChr = '0';
+    const std::string nameCall = std::string("globalId");
     std::string nameFunc;
     if (wi == GlobalOrLocal::Global)
     {
-        nameFunc = "_Z13get_global_idj";
+        nameFunc = "__builtin_spirv_BuiltInGlobalInvocationId";
     }
     else if (wi == GlobalOrLocal::Local)
     {
-        nameFunc = "_Z12get_local_idj";
+        nameFunc = "__builtin_spirv_BuiltInLocalInvocationId";
     }
     else if (wi == GlobalOrLocal::WorkItem)
     {
-        nameFunc = "_Z12get_group_idj";
+        nameFunc = "__builtin_spirv_BuiltInWorkgroupId";
     }
-    Type* uint32_type = IntegerType::get(m_pModule->getContext(), 32);
 
     Function* getFunc = m_pModule->getFunction(nameFunc);
 
@@ -260,9 +258,8 @@ Value* ImplicitGlobalId::CreateGetId(unsigned dim, IRBuilder<> &B, GlobalOrLocal
     {
         //Create one
         // Create parameters and return values
-        Type *pResult = IntegerType::get(m_pModule->getContext(), m_uiSizeT);
+        Type *pResult = VectorType::get(IntegerType::get(m_pModule->getContext(), m_uiSizeT), 3);
         std::vector<Type*> funcTyArgs;
-        funcTyArgs.push_back(uint32_type);
 
         // Create function declaration
         FunctionType *pFuncTy = FunctionType::get(pResult, funcTyArgs, false);
@@ -279,7 +276,7 @@ Value* ImplicitGlobalId::CreateGetId(unsigned dim, IRBuilder<> &B, GlobalOrLocal
 
         getFunc = pNewFunc;
     }
-    // Create arguments and call instruction
-    Value* const_dim = ConstantInt::get(uint32_type, dim, false);
-    return B.CreateCall(getFunc, const_dim, nameCall);
+    // Create call instruction
+    std::vector<Value*> args;
+    return B.CreateCall(getFunc, args, nameCall);
 }

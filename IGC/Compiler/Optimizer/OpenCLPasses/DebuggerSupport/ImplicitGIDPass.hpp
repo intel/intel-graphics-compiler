@@ -90,19 +90,18 @@ private:
     virtual bool runOnFunction(llvm::Function &F);
 
     /// @brief execute pass on given basic block
-    /// @param i global ID dimension
-    /// @param pGIDAlloca pointer to allocation of GID variable
+    /// @param alloca0/1/2 are allocas for each dimension
     /// @param insertBefore Instruction to insert other instructions before
-    void runOnBasicBlock(unsigned i, llvm::Instruction *pGIDAlloca, llvm::Instruction* insertBefore, GlobalOrLocal wi);
+    void runOnBasicBlock(llvm::AllocaInst* alloca0, llvm::AllocaInst* alloca1, llvm::AllocaInst* alloca2, llvm::Instruction *insertBefore, GlobalOrLocal wi);
 
     /// @brief Adds instructions to the beginning of the given function to compute the
     ///  global/local IDs for 3 dimensions. Fills in the FunctionContext.
     /// @param pFunc Function to modify
     void insertComputeIds(llvm::Function* pFunc);
 
-    /// @brief Gets or create unsigned long debug info tyoe
-    /// returns DIType unsigned long DIType
-    llvm::DIType* getOrCreateUlongDIType();
+    /// @brief Gets or create int/long long debug info tyoe
+    /// returns DIType int/long long DIType
+    llvm::DIType* getOrCreateIntDIType();
 
     /// @brief Iterates instructions in a basic block and tries to find the first
     ///  instruction with scope and loc information and return these.
@@ -112,7 +111,7 @@ private:
     /// @returns bool True if a scope and loc were found
     bool getBBScope(const llvm::BasicBlock& BB, llvm::DIScope*& scope, llvm::DebugLoc& loc);
 
-    llvm::Value* CreateGetId(unsigned dim, llvm::IRBuilder<> &B, GlobalOrLocal wi);
+    llvm::Value* CreateGetId(llvm::IRBuilder<> &B, GlobalOrLocal wi);
 
 private:
     /// This holds the processed module

@@ -1493,17 +1493,17 @@ int VISAKernelImpl::AddAttributeToVarGeneric(CISA_GEN_VAR *decl, const char* var
                 if (strcmp(varName, "Input") == 0 ||
                     strcmp(varName, "Input_Output") == 0)
                 {
-                    decl->genVar.dcl->setLiveIn();
+                    decl->genVar.dcl->getRootDeclare()->setLiveIn();
 
                 }
                 if (strcmp(varName, "Output") == 0 ||
                     strcmp(varName, "Input_Output") == 0)
                 {
-                    decl->genVar.dcl->setLiveOut();
+                    decl->genVar.dcl->getRootDeclare()->setLiveOut();
                 }
                 if (strcmp(varName, "NoWidening") == 0)
                 {
-                    decl->genVar.dcl->setDoNotWiden();
+                    decl->genVar.dcl->getRootDeclare()->setDoNotWiden();
                 }
             }
             break;
