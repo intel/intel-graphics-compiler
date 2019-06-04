@@ -364,11 +364,11 @@ bool LocalRA::localRAPass(bool doRoundRobin, bool doSplitLLR)
 #endif
 
     int totalGRFNum = kernel.getNumRegTotal();
-    for (BB_LIST_ITER bb_it = kernel.fg.begin(); bb_it != kernel.fg.end(); ++bb_it)
+    for (auto curBB : kernel.fg)
     {
         PhyRegsManager pregManager(localPregs, doBCR);
         std::vector<LocalLiveRange*> liveIntervals;
-        G4_BB* curBB = (*bb_it);
+
         PhyRegSummary* summary = new (mem)PhyRegSummary(totalGRFNum);
 
         calculateLiveIntervals(curBB, liveIntervals);
@@ -540,14 +540,8 @@ bool LocalRA::localRA()
 void LocalRA::resetMasks()
 {
     auto& dcls = kernel.Declares;
-
-    auto end_it = dcls.end();
-    for (auto it = dcls.begin();
-        it != end_it;
-        it++)
+    for(auto dcl : dcls)
     {
-        auto dcl = (*it);
-
         gra.setMask(dcl, nullptr);
     }
 }
@@ -796,7 +790,7 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign)
             if (assignFromFront)
             {
                 unsigned short occupiedBundles = 0;
-                for (size_t i = 0; i < gra.getBundleConflictDclSize(dcl); i++)
+                for (size_t i = 0, dclConflictSize = gra.getBundleConflictDclSize(dcl); i < dclConflictSize; i++)
                 {
                     int offset = 0;
                     G4_Declare *bDcl = gra.getBundleConflictDcl(dcl, i, offset);
@@ -946,7 +940,7 @@ bool LocalRA::unassignedRangeFound()
 // Update numRegsUsed to max physical register used based on summary
 void LocalRA::updateRegUsage(PhyRegSummary* summary, unsigned int& numRegsUsed)
 {
-    for (uint32_t i = 0; i < summary->getNumGRF(); i++)
+    for (uint32_t i = 0, numGRF = summary->getNumGRF(); i < numGRF; i++)
     {
         if (numRegsUsed < i && summary->isGRFBusy(i) == true)
         {
@@ -1211,7 +1205,7 @@ void LocalRA::markReferencesInInst(INST_LIST_ITER inst_it)
     }
 
     // Scan srcs
-    for (int i = 0; i < G4_Inst_Table[inst->opcode()].n_srcs; i++)
+    for (int i = 0, nSrcs = G4_Inst_Table[inst->opcode()].n_srcs; i < nSrcs; i++)
     {
         G4_Operand* src = inst->getSrc(i);
 
@@ -1227,11 +1221,8 @@ void LocalRA::setLexicalID()
     unsigned int id = 0;
     for (auto bb : kernel.fg)
     {
-        for (INST_LIST_ITER inst_it = bb->begin(), iend = bb->end();
-            inst_it != iend;
-            inst_it++)
+        for (auto curInst : bb->getInstList())
         {
-            G4_INST* curInst = (*inst_it);
             curInst->setLexicalId(id++);
         }
     }
@@ -1242,10 +1233,8 @@ void LocalRA::markReferences(unsigned int& numRowsEOT,
 {
     unsigned int id = 0;
     // Iterate over all BBs
-    for (BB_LIST_ITER bb_it = kernel.fg.begin(), bb_end = kernel.fg.end(); bb_it != bb_end; ++bb_it)
+    for (auto curBB : kernel.fg)
     {
-        curBB = (*bb_it);
-
         // Iterate over all insts
         for (INST_LIST_ITER inst_it = curBB->begin(), inst_end = curBB->end(); inst_it != inst_end; ++inst_it)
         {
@@ -1288,14 +1277,14 @@ void LocalRA::calculateInputIntervals()
     std::vector<uint32_t> inputRegLastRef;
     inputRegLastRef.resize(numGRF * G4_GRF_REG_SIZE, UINT_MAX);
 
-    for (BB_LIST_RITER bb_it = kernel.fg.rbegin();
-        bb_it != kernel.fg.rend();
+    for (BB_LIST_RITER bb_it = kernel.fg.rbegin(), bb_rend = kernel.fg.rend();
+        bb_it != bb_rend;
         bb_it++)
     {
         G4_BB* bb = (*bb_it);
 
-        for (INST_LIST_RITER inst_it = bb->rbegin();
-            inst_it != bb->rend();
+        for (INST_LIST_RITER inst_it = bb->rbegin(), inst_rend = bb->rend();
+            inst_it != inst_rend;
             inst_it++)
         {
             G4_INST* curInst = (*inst_it);
@@ -1356,7 +1345,7 @@ void LocalRA::calculateInputIntervals()
             }
 
             // Scan src operands
-            for (int i = 0; i < G4_Inst_Table[curInst->opcode()].n_srcs; i++)
+            for (int i = 0, nSrcs = G4_Inst_Table[curInst->opcode()].n_srcs; i < nSrcs; i++)
             {
                 G4_Operand* src = curInst->getSrc(i);
 
@@ -1467,8 +1456,8 @@ void LocalRA::calculateLiveIntervals(G4_BB* bb, std::vector<LocalLiveRange*>& li
     int idx = 0;
     bool brk = false;
 
-    for (INST_LIST_ITER inst_it = bb->begin();
-        inst_it != bb->end() && !brk;
+    for (INST_LIST_ITER inst_it = bb->begin(), bbend = bb->end();
+        inst_it != bbend && !brk;
         inst_it++, idx += 2)
     {
         G4_INST* curInst = (*inst_it);
@@ -1482,7 +1471,7 @@ void LocalRA::calculateLiveIntervals(G4_BB* bb, std::vector<LocalLiveRange*>& li
         }
 
         // Scan srcs
-        for (int i = 0; i < G4_Inst_Table[curInst->opcode()].n_srcs; i++)
+        for (int i = 0, nSrcs = G4_Inst_Table[curInst->opcode()].n_srcs; i < nSrcs; i++)
         {
             G4_Operand* src = curInst->getSrc(i);
 
@@ -2666,7 +2655,7 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder
     G4_Align bankAlign = Either;
     unsigned short occupiedBundles = 0;
 
-    for (size_t i = 0; i < gra.getBundleConflictDclSize(dcl); i++)
+    for (size_t i = 0, dclConflictSize = gra.getBundleConflictDclSize(dcl); i < dclConflictSize; i++)
     {
         int offset = 0;
         G4_Declare *bDcl = gra.getBundleConflictDcl(dcl, i, offset);
