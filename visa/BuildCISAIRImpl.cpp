@@ -299,10 +299,10 @@ int CISA_IR_Builder::CreateBuilder(
         return CM_FAILURE;
     }
 
-    auto targetMode = (mode == vISA_3D || mode == vISA_3DWRITER) ? VISA_3D : VISA_CM;
+    auto targetMode = (mode == vISA_3D || mode == vISA_ASM_WRITER || mode == vISA_ASM_READER) ? VISA_3D : VISA_CM;
     builder->m_options.setTarget(targetMode);
-    builder->m_options.setOptionInternally(vISA_isParseMode, (mode == vISA_PARSER));
-    builder->m_options.setOptionInternally(vISA_IsaAssembly, (mode == vISA_3DWRITER));
+    builder->m_options.setOptionInternally(vISA_isParseMode, (mode == vISA_PARSER || mode == vISA_ASM_READER));
+    builder->m_options.setOptionInternally(vISA_IsaAssembly, (mode == vISA_ASM_WRITER));
 
     if (mode == vISA_PARSER)
     {
