@@ -153,7 +153,7 @@ namespace IGC
 
         unsigned int getScratchSpaceUsageInStateless() const
         {
-            return ((m_separatePvtSpill && m_scratchSpaceUsedByShader > m_scratchSpaceSizeLimit) ? m_scratchSpaceUsedByShader : 0);
+            return roundSize(((m_separatePvtSpill && m_scratchSpaceUsedByShader > m_scratchSpaceSizeLimit) ? m_scratchSpaceUsedByShader : 0));
         }
 
         void setScratchSpaceUsedByShader(unsigned int scratchSpaceUsedByShader)
