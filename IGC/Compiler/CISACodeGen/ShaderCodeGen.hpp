@@ -178,6 +178,7 @@ public:
     void        CreateGlobalSymbol(llvm::GlobalVariable* pGlobal);
 
     void        CreateImplicitArgs();
+    void        CreateAliasVars();
     uint        GetBlockId(llvm::BasicBlock* block);
     uint        GetNumSBlocks() { return m_numBlocks; }
 

@@ -422,6 +422,14 @@ void CShader::CreateImplicitArgs()
         updateArgSymbolMapping(ArgVal, ArgCVar);
     }
 
+    CreateAliasVars();
+}
+
+// For sub-vector aliasing, pre-allocating cvariables for those
+// valeus that have sub-vector aliasing before emit instructions.
+// (The sub-vector aliasing is done in VariableReuseAnalysis.)
+void CShader::CreateAliasVars()
+{
     // Create CVariables for vector aliasing (This is more
     // efficient than doing it on-fly inside getSymbol()).
     if (IGC_IS_FLAG_ENABLED(VATemp) &&
@@ -1988,6 +1996,8 @@ void CShader::BeginFunction(llvm::Function *F)
             }
         }
     }
+
+    CreateAliasVars();
 }
 
 /// This method is used to create the vISA variable for function F's formal return value
