@@ -100,7 +100,7 @@ bool AddImplicitArgs::runOnModule(Module &M)
         // If enabling indirect call, only R0, PayloadHeader and PrivateBase are allowed!
         if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer))
         {
-            if (pFunc->hasFnAttribute("ExternalLinkedFn"))
+            if (pFunc->hasFnAttribute("AsFunctionPointer"))
             {
                 if (implicitArgs.size() != 3 ||
                 !implicitArgs.isImplicitArgExist(ImplicitArg::ArgType::R0) ||
@@ -509,7 +509,7 @@ void AddImplicitArgs::FixIndirectCalls(Module& M)
                     bool externalCall = calledFunc &&
                     calledFunc->isDeclaration() &&
                     (calledFunc->getLinkage() == GlobalValue::ExternalLinkage) &&
-                    calledFunc->hasFnAttribute("ExternalLinkedFn");
+                    calledFunc->hasFnAttribute("AsFunctionPointer");
 
                     // Only handled indirect calls and external function calls
                     if (calledFunc && !externalCall) continue;

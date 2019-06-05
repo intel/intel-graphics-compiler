@@ -138,13 +138,12 @@ public:
     void SetKernelStackPointer64();
     void SetStackFunctionArgSize(uint size);  // size in GRFs
     void SetStackFunctionRetSize(uint size);  // size in GRFs
-    void SetExternFunctionFlag();
 
     void GetVISAPredefinedVar(CVariable* pVar, PreDefined_Vars var);
     void CreateVISAVar(CVariable* var);
     void DeclareInput(CVariable* var, uint offset, uint instance);
     void MarkAsOutput(CVariable* var);
-    void Compile(bool hasSymbolTable = false);
+    void Compile();
     CEncoder();
     ~CEncoder();
     void SetProgram(CShader* program);

@@ -1356,8 +1356,7 @@ int VISAKernelImpl::AddKernelAttribute(const char* attrName, int size, const voi
         !strcmp(attrName, "ArgSize") ||
         !strcmp(attrName, "RetValSize") ||
         !strcmp(attrName, "FESPSize") ||
-        !strcmp(attrName, "perThreadInputSize") ||
-        !strcmp(attrName, "Extern"));
+        !strcmp(attrName, "perThreadInputSize"));
 
     if (attr->isInt)
     {
@@ -1426,10 +1425,6 @@ int VISAKernelImpl::AddKernelAttribute(const char* attrName, int size, const voi
     {
         m_builder->getFCPatchInfo()->setIsEntryKernel(true);
         m_options->setOption(vISA_loadThreadPayload, true);
-    }
-    else if (strcmp(attrName, "Extern") == 0)
-    {
-        m_builder->setIsExtern((bool)(attr->value.intVal != 0));
     }
     else if (strcmp(attrName, "RetValSize") == 0)
     {

@@ -374,7 +374,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
             {
                 // Check if the function can be indirectly called either from
                 // externally or as a function pointer
-                bool isIndirect = (F->hasFnAttribute("referenced-indirectly"));
+                bool isIndirect = (F->getLinkage() == GlobalValue::ExternalLinkage);
                 if (!isIndirect)
                 {
                     for (auto u = F->user_begin(), e = F->user_end(); u != e; u++)
@@ -389,9 +389,9 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                 if (isIndirect)
                 {                    
                     pCtx->m_enableFunctionPointer = true;
-                    F->addFnAttr("ExternalLinkedFn");
+                    pCtx->m_enableSubroutine = false;
+                    F->addFnAttr("AsFunctionPointer");
                     F->addFnAttr("visaStackCall");
-                    F->setLinkage(GlobalValue::ExternalLinkage);
                 }
             }
         }

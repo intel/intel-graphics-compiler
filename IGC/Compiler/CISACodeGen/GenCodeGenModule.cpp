@@ -178,7 +178,18 @@ inline Function* getCallerFunc(Value* user)
     {
         caller = CI->getParent()->getParent();
     }
-    assert(caller && "cannot be indirect call");
+    else if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer))
+    {
+        if (Instruction* II = dyn_cast<Instruction>(user))
+        {
+            caller = II->getParent()->getParent();
+        }
+        else if (ConstantExpr* CE = dyn_cast<ConstantExpr>(user))
+        {
+            return getCallerFunc(CE->user_back());
+        }
+    }
+    assert(caller && "Function Pointer use not supported");
     return caller;
 }
 
@@ -373,7 +384,6 @@ bool GenXCodeGenModule::runOnModule(Module &M)
 
     pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     CallGraph &CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();
-    FGA->setDefaultkernel(nullptr);
 
     std::vector<std::vector<CallGraphNode *>*> SCCVec;
     for (auto I = scc_begin(&CG), IE = scc_end(&CG); I != IE; ++I)
@@ -396,28 +406,6 @@ bool GenXCodeGenModule::runOnModule(Module &M)
                     assert(F->use_empty() && "kernel being called");
                     FGA->setSubGroupMap(F, F);
                     FGA->createFunctionGroup(F);
-                    // There may be multiple kernels, set one as the default
-                    if (FGA->getDefaultKernel() == nullptr)
-                        FGA->setDefaultkernel(F);
-                }
-                else if (F->hasFnAttribute("ExternalLinkedFn"))
-                {
-                    // Add all externally linked functions into the default kernel group
-                    Function* defaultKernel = FGA->getDefaultKernel();
-                    assert(defaultKernel && "kernel does not exist in this group");
-                    FunctionGroup* defaultFG = FGA->getGroupForHead(defaultKernel);
-                    assert(defaultFG && "default kernel group does not exist");
-                    FGA->addToFunctionGroup(F, defaultFG, F);
-
-                    // Mark caller group if it calls or uses this function
-                    for (auto U : F->users())
-                    {
-                        if (CallInst* CI = dyn_cast<CallInst>(U))
-                        {
-                            Function* Caller = CI->getParent()->getParent();
-                            FGA->getGroup(Caller)->hasExternFCall = true;
-                        }
-                    }
                 }
                 else if (SCCNodes->size() == 1)
                 {
@@ -513,15 +501,6 @@ bool GenXFunctionGroupAnalysis::verify()
             for (auto FI = (*SubGI)->begin(), FE = (*SubGI)->end(); FI != FE; ++FI) 
             {
                 Function *F = *FI;
-                if (F->hasFnAttribute("ExternalLinkedFn"))
-                {
-                    // Check if all extern functions are added to the main kernel group
-                    FunctionGroup* FG = getGroup(F);
-                    FunctionGroup* defaultFG = getGroupForHead(getDefaultKernel());
-                    if (FG != defaultFG)
-                        return false;
-                    continue;
-                }
                 // If F is an unused non-kernel function, although it should have been
                 // deleted, that is fine.
                 for (auto U : F->users()) 

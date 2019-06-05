@@ -1309,7 +1309,6 @@ class G4_Kernel
     unsigned int callerSaveLastGRF;
 
     bool m_hasIndirectCall = false;
-    bool m_isExternFunction = false;
 
 public:
     typedef std::vector<RelocationEntry> RelocationTableTy;
@@ -1503,14 +1502,6 @@ public:
     void setHasIndirectCall()
     {
         m_hasIndirectCall = true;
-    }
-    bool getIsExternFunc() const
-    {
-        return m_isExternFunction;
-    }
-    void setIsExternFunc()
-    {
-        m_isExternFunction = true;
     }
 
     void addRelocation(RelocationEntry& entry)

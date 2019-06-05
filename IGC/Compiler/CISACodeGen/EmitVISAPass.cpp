@@ -342,6 +342,15 @@ bool EmitPass::runOnFunction(llvm::Function &F)
 
     CreateKernelShaderMap(ctx, pMdUtils, F);
 
+    bool hasIndirectCall = IGC_IS_FLAG_ENABLED(EnableFunctionPointer) && ctx->m_instrTypes.hasIndirectCall;
+
+    // Only try SIMD8 for now if there are indirect calls
+    if (hasIndirectCall && m_SimdMode != SIMDMode::SIMD8)
+    {
+        return false;
+    }
+
+    // If the current kernel is deleted from the shader map, skip this function.
     m_FGA = getAnalysisIfAvailable<GenXFunctionGroupAnalysis>();
     if (!setCurrentShader(&F))
     {
@@ -390,15 +399,6 @@ bool EmitPass::runOnFunction(llvm::Function &F)
     bool ptr64bits = (m_DL->getPointerSizeInBits(ADDRESS_SPACE_PRIVATE) == 64);
     if (!m_FGA || m_FGA->isGroupHead(&F))
     {
-        bool hasStackCall = m_FGA && m_FGA->getGroup(&F)->hasStackCall();
-        bool hasFunctionPointer = ctx->m_instrTypes.hasIndirectCall || (m_FGA && m_FGA->getGroup(&F)->hasExternFCall);
-
-        // "extern" functions are only compiled with SIMD8, so we want to make sure the
-        // the function calling it matches the SIMD width.
-        if (hasFunctionPointer && m_SimdMode != SIMDMode::SIMD8)
-        {
-            return false;
-        }
         m_currShader->InitEncoder(m_SimdMode, m_canAbortOnSpill, m_ShaderMode);
         // Pre-analysis pass to be executed before call to visa builder so we can pass scratch space offset
         m_currShader->PreAnalysisPass();
@@ -406,12 +406,13 @@ bool EmitPass::runOnFunction(llvm::Function &F)
         {
             return false;
         }
+        bool hasStackCall = m_FGA && m_FGA->getGroup(&F)->hasStackCall();
         // call builder after pre-analysis pass where scratchspace offset to VISA is calculated
         m_encoder->InitEncoder(m_canAbortOnSpill, hasStackCall);
         m_roundingMode = m_encoder->getEncoderRoundingMode(
             static_cast<Float_RoundingMode>(ctx->getModuleMetaData()->compOpt.FloatRoundingMode));
         m_currShader->PreCompile();
-        if (hasStackCall || hasFunctionPointer)
+        if (hasStackCall || hasIndirectCall)
         {
             m_currShader->InitKernelStack(ptr64bits);
         }
@@ -420,11 +421,6 @@ bool EmitPass::runOnFunction(llvm::Function &F)
     else
     {
         if (!m_currShader->CompileSIMDSize(m_SimdMode, *this, F))
-        {
-            return false;
-        }
-        // Only use SIMD8 for external functions for now
-        if (F.hasFnAttribute("ExternalLinkedFn") && m_SimdMode != SIMDMode::SIMD8)
         {
             return false;
         }
@@ -443,7 +439,7 @@ bool EmitPass::runOnFunction(llvm::Function &F)
             // Creates a mapping of the function symbol to a register.
             // Any function called/used by this function, including function declarations,
             // should have a register allocated to store it's physical address
-            if (FI.hasFnAttribute("ExternalLinkedFn") && FI.getNumUses() > 0)
+            if (FI.hasFnAttribute("AsFunctionPointer") && FI.getNumUses() > 0)
             {
                 for (auto it = FI.user_begin(), ie = FI.user_end(); it != ie; it++)
                 {
@@ -689,25 +685,22 @@ bool EmitPass::runOnFunction(llvm::Function &F)
 
     COMPILER_TIME_END(m_currShader->GetContext(), TIME_vISAEmitPayloadInputs);
 
+    bool finalize = (!m_FGA || m_FGA->isGroupTail(&F));
+
     COMPILER_TIME_END(m_currShader->GetContext(), TIME_CG_vISAEmitPass);
 
     IF_DEBUG_INFO_IF(m_currShader->diData, m_currShader->diData->markOutput(F, m_currShader);)
         IF_DEBUG_INFO_IF(m_currShader->diData, m_currShader->diData->addVISAModule(&F, m_pDebugEmitter->GetVISAModule());)
 
-    // Compile only when this is the last function for this kernel.
-    bool finalize = (!m_FGA || m_FGA->isGroupTail(&F));
-    bool destroyVISABuilder = false;
+        // Compile only when this is the last function for this kernel.
+        bool destroyVISABuilder = false;
     if (finalize)
     {
         destroyVISABuilder = true;
-        // We only need one symbol table per module. If there are multiple kernels, only create a symbol
-        // table for the default one set by FGA
-        bool compileWithSymbolTable = !m_FGA || (m_FGA->getGroup(&F)->getHead() == m_FGA->getDefaultKernel());
-        m_encoder->Compile(compileWithSymbolTable);
+        m_encoder->Compile();
         // if we are doing stack-call, do the following:
         // - Hard-code a large scratch-space for visa
-        if (ctx->m_instrTypes.hasIndirectCall ||
-            (m_FGA && (m_FGA->getGroup(&F)->hasStackCall() || m_FGA->getGroup(&F)->hasExternFCall)))
+        if ((m_FGA && m_FGA->getGroup(&F)->hasStackCall()) || hasIndirectCall)
         {
             if (m_currShader->ProgramOutput()->m_scratchSpaceUsedBySpills == 0)
             {
@@ -8683,7 +8676,6 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
     llvm::Function* F = inst->getCalledFunction();
     if (F) assert(!F->empty() && "unexpanded builtin?");
 
-    bool isIndirectFCall = !F || F->hasFnAttribute("ExternalLinkedFn");
     CVariable *ArgBlkVar = m_currShader->GetARGV();
     uint32_t offsetA = 0;  // visa argument offset
     uint32_t offsetS = 0;  // visa stack offset
@@ -8694,16 +8686,20 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
         CVariable *Src = nullptr;
         Type* argType = nullptr;
 
-        if (!isIndirectFCall)
+        if (F)
         {
             assert(inst->getNumArgOperands() == F->arg_size());
             auto Arg = F->arg_begin();
             std::advance(Arg, i);
 
-            // Skip unused arguments if any.
-            if (Arg->use_empty())
+            // For indirect calls we can't skip args since we won't know at compile time if it will be used
+            if (!F->hasFnAttribute("AsFunctionPointer"))
             {
-                continue;
+                // Skip unused arguments if any.
+                if (Arg->use_empty())
+                {
+                    continue;
+                }
             }
             ArgCV = m_currShader->getOrCreateArgumentSymbol(&*Arg, true, true);
             Src = GetSymbol(inst->getArgOperand(i));
@@ -8875,7 +8871,7 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
     unsigned char argSizeInGRF = (offsetA + getGRFSize() - 1)/getGRFSize();
     unsigned char retSizeInGRF = retOnStack ? 0 : (retSize + getGRFSize() - 1) / getGRFSize();
 
-    if (!isIndirectFCall)
+    if (F)
     {
         m_encoder->StackCall(nullptr, F, argSizeInGRF, retSizeInGRF);
         m_encoder->Push();
@@ -8888,10 +8884,6 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
         m_encoder->Push();
         m_encoder->IndirectStackCall(nullptr, truncAddr, argSizeInGRF, retSizeInGRF);
         m_encoder->Push();
-    }
-    else
-    {
-        assert(0 && "Indirect call not supported");
     }
 
     // Emit the return value if used.
@@ -9033,11 +9025,6 @@ void EmitPass::emitStackFuncEntry(Function *F, bool ptr64bits)
 {
     m_currShader->CreateSP(ptr64bits);
 
-    if (F->hasFnAttribute("ExternalLinkedFn"))
-    {
-        m_encoder->SetExternFunctionFlag();
-    }
-
     CVariable *ArgBlkVar = m_currShader->GetARGV();
     uint32_t i = 0;
     uint32_t offsetA = 0;  // visa argument offset
@@ -9046,7 +9033,7 @@ void EmitPass::emitStackFuncEntry(Function *F, bool ptr64bits)
     for (auto &Arg : F->args())
     {
         // For indirect calls we can't skip args since we won't know at compile time if it will be used
-        if (!F->hasFnAttribute("ExternalLinkedFn"))
+        if (!F->hasFnAttribute("AsFunctionPointer"))
         {
             // Skip unused arguments if any.
             if (Arg.use_empty())
