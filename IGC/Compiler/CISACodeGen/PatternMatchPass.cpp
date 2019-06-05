@@ -2576,15 +2576,20 @@ bool CodeGenPatternMatch::MatchModifier(llvm::Instruction& I, bool SupportSrc0Mo
         pattern->sources[1] = GetSource(I.getOperand(1), supportModifer, supportRegioning);
     }
 
-    if (nbSources > 1 && I.getType()->isDoubleTy())
+    if (nbSources > 1 && (I.getType()->isDoubleTy() || I.getType()->isIntegerTy(64)))
     {
         // add df imm to constant pool for binary/ternary inst
-        // we don't do 64-bit int imm for now since it may fit in D/W
+        // we do 64-bit int imm biggerthan 32 bits, since smaller may fit in D/W
         for (int i = 0, numSrc = (int)nbSources; i < numSrc; ++i)
         {
-            if (isa<Constant>(I.getOperand(i)))
+            Value * op = I.getOperand(i);
+            bool isDF = isa<ConstantFP>(op);
+            auto ci = dyn_cast<ConstantInt>(op);
+            bool isBigQW  = ci && !ci->getValue().isNullValue() && !ci->getValue().isSignedIntN(32);
+
+            if (isDF || isBigQW)
             {
-                AddToConstantPool(I.getParent(), I.getOperand(i));
+                AddToConstantPool(I.getParent(), op);
                 pattern->sources[i].fromConstantPool = true;
             }
         }
@@ -3235,6 +3240,20 @@ bool CodeGenPatternMatch::MatchLogicAlu(llvm::BinaryOperator& I)
             }
         }
         pattern->sources[i] = GetSource(src, mod, false);
+
+        if (src->getType()->isIntegerTy(64))
+        {
+            auto ci = dyn_cast<ConstantInt>(src);
+            bool isBigQW = ci && !ci->getValue().isNullValue() && !ci->getValue().isSignedIntN(32);
+
+            if (isBigQW)
+            {
+                AddToConstantPool(I.getParent(), src);
+                pattern->sources[i].fromConstantPool = true;
+            }
+        }
+
+
     }
     AddPattern(pattern);
     return true;
