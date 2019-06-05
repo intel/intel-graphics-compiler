@@ -112,6 +112,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "Compiler/FindInterestingConstants.h"
 #include "Compiler/DynamicTextureFolding.h"
+#include "Compiler/SampleMultiversioning.hpp"
 #include "Compiler/ThreadCombining.hpp"
 #include "Compiler/InitializePasses.h"
 #include "Compiler/Optimizer/Scalarizer.h"
@@ -1495,6 +1496,11 @@ void OptimizeIR(CodeGenContext* pContext)
         if (pContext->m_instrTypes.hasLoop)
         {
             mpm.add(createDeadPHINodeEliminationPass());
+        }
+
+        if (IGC_IS_FLAG_ENABLED(SampleMultiversioning))
+        {
+            mpm.add(new SampleMultiversioning(pContext));
         }
         mpm.run(*pContext->getModule());
     }

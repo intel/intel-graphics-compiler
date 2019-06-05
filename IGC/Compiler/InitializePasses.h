@@ -120,6 +120,7 @@ void initializeWorkaroundAnalysisPass(llvm::PassRegistry&);
 void initializeWAFMinFMaxPass(llvm::PassRegistry&);
 void initializePingPongTexturesAnalysisPass(llvm::PassRegistry&);
 void initializePingPongTexturesOptPass(llvm::PassRegistry&);
+void initializeSampleMultiversioningPass(llvm::PassRegistry&);
 void initializeLinkTessControlShaderPass(llvm::PassRegistry&);
 void initializeLinkTessControlShaderMCFPass(llvm::PassRegistry&);
 void initializeMemOptPass(llvm::PassRegistry&);
