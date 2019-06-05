@@ -11685,6 +11685,15 @@ void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
     m_currShader->isMessageTargetDataCacheDataPort = true;
 }
 
+void setSIMDSizeMask(CEncoder* m_encoder, CShader* m_currShader, int i)
+{
+    m_encoder->SetSimdSize(SIMDMode::SIMD8);
+    m_encoder->SetMask((i == 0) ? EMASK_Q1 : EMASK_Q2);
+
+
+    return;
+}
+
 void EmitPass::emitTypedWrite(llvm::Instruction* pInsn)
 {
     ForceDMask();
@@ -11728,6 +11737,8 @@ void EmitPass::emitTypedWrite(llvm::Instruction* pInsn)
 
         bool needsSplit = m_currShader->m_SIMDSize == SIMDMode::SIMD16
             && !m_currShader->m_Platform->supportsSIMD16TypedRW();
+
+
         if (!needsSplit)
         {
             CVariable* pPayload = m_currShader->GetNewVariable(
@@ -11741,18 +11752,20 @@ void EmitPass::emitTypedWrite(llvm::Instruction* pInsn)
             m_currShader->CopyVariable(pPayload, pSrc_W, 3);
             m_encoder->SetPredicate(flag);
             m_encoder->TypedWrite4(resource, pU, pV, pR, pLOD, pPayload);
+
             m_encoder->Push();
         }
         else
         {
             for (uint i = 0; i < 2; ++i)
             {
-                CVariable* pPayload = m_currShader->GetNewVariable(
+                CVariable* pPayload = nullptr;
+
+                pPayload = m_currShader->GetNewVariable(
                     parameterLength * numLanes(SIMDMode::SIMD8),
                     ISA_TYPE_F,
                     IGC::EALIGN_GRF);
-                m_encoder->SetSimdSize(SIMDMode::SIMD8);
-                m_encoder->SetMask((i == 0) ? EMASK_Q1 : EMASK_Q2);
+                setSIMDSizeMask(m_encoder, m_currShader, i);
                 if (!pSrc_X->IsUniform())
                 {
                     m_encoder->SetSrcSubVar(0, i);
@@ -11761,8 +11774,7 @@ void EmitPass::emitTypedWrite(llvm::Instruction* pInsn)
                 m_encoder->Copy(pPayload, pSrc_X);
                 m_encoder->Push();
 
-                m_encoder->SetSimdSize(SIMDMode::SIMD8);
-                m_encoder->SetMask((i == 0) ? EMASK_Q1 : EMASK_Q2);
+                setSIMDSizeMask(m_encoder, m_currShader, i);
                 if (!pSrc_Y->IsUniform())
                 {
                     m_encoder->SetSrcSubVar(0, i);
@@ -11771,8 +11783,7 @@ void EmitPass::emitTypedWrite(llvm::Instruction* pInsn)
                 m_encoder->Copy(pPayload, pSrc_Y);
                 m_encoder->Push();
 
-                m_encoder->SetSimdSize(SIMDMode::SIMD8);
-                m_encoder->SetMask((i == 0) ? EMASK_Q1 : EMASK_Q2);
+                setSIMDSizeMask(m_encoder, m_currShader, i);
                 if (!pSrc_Z->IsUniform())
                 {
                     m_encoder->SetSrcSubVar(0, i);
@@ -11781,8 +11792,7 @@ void EmitPass::emitTypedWrite(llvm::Instruction* pInsn)
                 m_encoder->Copy(pPayload, pSrc_Z);
                 m_encoder->Push();
 
-                m_encoder->SetSimdSize(SIMDMode::SIMD8);
-                m_encoder->SetMask((i == 0) ? EMASK_Q1 : EMASK_Q2);
+                setSIMDSizeMask(m_encoder, m_currShader, i);
                 if (!pSrc_W->IsUniform())
                 {
                     m_encoder->SetSrcSubVar(0, i);
@@ -11791,8 +11801,7 @@ void EmitPass::emitTypedWrite(llvm::Instruction* pInsn)
                 m_encoder->Copy(pPayload, pSrc_W);
                 m_encoder->Push();
 
-                m_encoder->SetSimdSize(SIMDMode::SIMD8);
-                m_encoder->SetMask((i == 0) ? EMASK_Q1 : EMASK_Q2);
+                setSIMDSizeMask(m_encoder, m_currShader, i);
                 m_encoder->SetSrcSubVar(0, i);
                 m_encoder->SetSrcSubVar(1, i);
                 m_encoder->SetSrcSubVar(2, i);
