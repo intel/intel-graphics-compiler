@@ -88,13 +88,19 @@ const char* endSymbol = ".end";
 bool DbgVariable::isBlockByrefVariable() const {
     assert(Var && "Invalid complex DbgVariable!");
     return Var->getType()
+#if LLVM_VERSION_MAJOR <= 8
         .resolve()
+#endif
         ->isBlockByrefStruct();
 }
 
 DIType* DbgVariable::getType() const
 {
-    DIType *Ty = Var->getType().resolve();
+    DIType *Ty = Var->getType()
+#if LLVM_VERSION_MAJOR <= 8
+        .resolve()
+#endif
+      ;
     // FIXME: isBlockByrefVariable should be reformulated in terms of complex
     // addresses instead.
     if (Ty->isBlockByrefStruct()) {

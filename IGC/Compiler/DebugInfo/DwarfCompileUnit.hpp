@@ -357,10 +357,17 @@ private:
 
     /// resolve - Look in the DwarfDebug map for the llvm::MDNode that
     /// corresponds to the reference.
-    template <typename T> T* resolve(llvm::TypedDINodeRef<T> Ref) const
+#if LLVM_VERSION_MAJOR <= 8
+    template <typename T> T *resolve(llvm::TypedDINodeRef<T> Ref) const
     {
         return DD->resolve(Ref);
     }
+#else
+    template <typename T> inline T *resolve(T* Ref) const
+    {
+        return DD->resolve(Ref);
+    }
+#endif
 
     // Added for 1-step elf
     void buildLocation(const llvm::Instruction*, IGC::DbgVariable&, IGC::DIE*);
