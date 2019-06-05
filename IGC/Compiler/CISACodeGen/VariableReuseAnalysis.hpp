@@ -399,6 +399,7 @@ private:
     m_IsBlockPressureLow = Status::Undef;
     m_ValueAliasMap.clear();
     m_AliasRootMap.clear();
+    m_aliasMap.clear();
     m_HasBecomeNoopInsts.clear();
   }
 
