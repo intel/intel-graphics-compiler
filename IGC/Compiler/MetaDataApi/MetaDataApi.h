@@ -42,9 +42,6 @@ typedef MetaObjectHandle<SubGroupSizeMetaData> SubGroupSizeMetaDataHandle;
             
 class VectorTypeHintMetaData;
 typedef MetaObjectHandle<VectorTypeHintMetaData> VectorTypeHintMetaDataHandle; 
-                    
-class PointerProgramBinaryInfoMetaData;
-typedef MetaObjectHandle<PointerProgramBinaryInfoMetaData> PointerProgramBinaryInfoMetaDataHandle; 
             
 class ThreadGroupSizeMetaData;
 typedef MetaObjectHandle<ThreadGroupSizeMetaData> ThreadGroupSizeMetaDataHandle; 
@@ -54,12 +51,6 @@ typedef MetaObjectHandle<FunctionInfoMetaData> FunctionInfoMetaDataHandle;
                                 
 typedef MetaDataList<ArgInfoMetaDataHandle> ArgInfoListMetaDataList;
 typedef MetaObjectHandle<ArgInfoListMetaDataList> ArgInfoListMetaDataListHandle; 
-                                
-typedef MetaDataList<PointerProgramBinaryInfoMetaDataHandle> PointerProgramBinaryInfosMetaDataList;
-typedef MetaObjectHandle<PointerProgramBinaryInfosMetaDataList> PointerProgramBinaryInfosMetaDataListHandle; 
-                                
-typedef MetaDataList<int8_t> InlineBufferMetaDataList;
-typedef MetaObjectHandle<InlineBufferMetaDataList> InlineBufferMetaDataListHandle; 
 
 ///
 // Read/Write the ArgInfo structure from/to LLVM metadata
@@ -577,163 +568,6 @@ private:
     // data members
     MetaDataValue<llvm::UndefValue> m_VecType;        
     MetaDataValue<bool> m_Sign;
-    // parent node
-    const llvm::MDNode* m_pNode;
-};
-                    
-///
-// Read/Write the PointerProgramBinaryInfo structure from/to LLVM metadata
-//
-class PointerProgramBinaryInfoMetaData:public IMetaDataObject
-{
-public:
-    typedef PointerProgramBinaryInfoMetaData _Myt;
-    typedef IMetaDataObject _Mybase;
-    // typedefs for data member types
-    typedef MetaDataValue<int32_t>::value_type PointerBufferIndexType;        
-    typedef MetaDataValue<int32_t>::value_type PointerOffsetType;        
-    typedef MetaDataValue<int32_t>::value_type PointeeAddressSpaceType;        
-    typedef MetaDataValue<int32_t>::value_type PointeeBufferIndexType;
-
-public:
-    ///
-    // Factory method - creates the PointerProgramBinaryInfoMetaData from the given metadata node
-    //
-    static _Myt* get(const llvm::MDNode* pNode, bool hasId = false)
-    {
-        return new _Myt(pNode, hasId);
-    }
-
-    ///
-    // Factory method - create the default empty PointerProgramBinaryInfoMetaData object
-    static _Myt* get()
-    {
-        return new _Myt();
-    }
-
-    ///
-    // Factory method - create the default empty named PointerProgramBinaryInfoMetaData object
-    static _Myt* get(const char* name)
-    {
-        return new _Myt(name);
-    }
-
-    ///
-    // Ctor - loads the PointerProgramBinaryInfoMetaData from the given metadata node
-    //
-    PointerProgramBinaryInfoMetaData(const llvm::MDNode* pNode, bool hasId);
-
-    ///
-    // Default Ctor - creates the empty, not named PointerProgramBinaryInfoMetaData object
-    //
-    PointerProgramBinaryInfoMetaData();
-
-    ///
-    // Ctor - creates the empty, named PointerProgramBinaryInfoMetaData object
-    //
-    PointerProgramBinaryInfoMetaData(const char* name);
-
-    /// PointerBufferIndex related methods
-    PointerBufferIndexType getPointerBufferIndex() const
-    {
-        return m_PointerBufferIndex.get();
-    }
-    void setPointerBufferIndex( const PointerBufferIndexType& val)
-    {
-        m_PointerBufferIndex.set(val);
-    }
-    bool isPointerBufferIndexHasValue() const
-    {
-        return m_PointerBufferIndex.hasValue();
-    }
-        
-    
-    /// PointerOffset related methods
-    PointerOffsetType getPointerOffset() const
-    {
-        return m_PointerOffset.get();
-    }
-    void setPointerOffset( const PointerOffsetType& val)
-    {
-        m_PointerOffset.set(val);
-    }
-    bool isPointerOffsetHasValue() const
-    {
-        return m_PointerOffset.hasValue();
-    }
-        
-    
-    /// PointeeAddressSpace related methods
-    PointeeAddressSpaceType getPointeeAddressSpace() const
-    {
-        return m_PointeeAddressSpace.get();
-    }
-    void setPointeeAddressSpace( const PointeeAddressSpaceType& val)
-    {
-        m_PointeeAddressSpace.set(val);
-    }
-    bool isPointeeAddressSpaceHasValue() const
-    {
-        return m_PointeeAddressSpace.hasValue();
-    }
-        
-    
-    /// PointeeBufferIndex related methods
-    PointeeBufferIndexType getPointeeBufferIndex() const
-    {
-        return m_PointeeBufferIndex.get();
-    }
-    void setPointeeBufferIndex( const PointeeBufferIndexType& val)
-    {
-        m_PointeeBufferIndex.set(val);
-    }
-    bool isPointeeBufferIndexHasValue() const
-    {
-        return m_PointeeBufferIndex.hasValue();
-    }
-
-    ///
-    // Returns true if any of the PointerProgramBinaryInfoMetaData`s members has changed
-    bool dirty() const;
-
-    ///
-    // Returns true if the structure was loaded from the metadata or was changed
-    bool hasValue() const;
-
-    ///
-    // Discards the changes done to the PointerProgramBinaryInfoMetaData instance
-    void discardChanges();
-
-    ///
-    // Generates the new MDNode hierarchy for the given structure
-    llvm::Metadata* generateNode(llvm::LLVMContext& context) const;
-
-    ///
-    // Saves the structure changes to the given MDNode
-    void save(llvm::LLVMContext& context, llvm::MDNode* pNode) const;
-
-private:
-    ///
-    // Returns true if the given MDNode could be saved to without replacement
-    bool compatibleWith( const llvm::MDNode* pNode) const
-    {
-        return false;
-    }
-
-private:
-    typedef MetaDataIterator<llvm::MDNode> NodeIterator;
-
-    llvm::Metadata* getPointerBufferIndexNode( const llvm::MDNode* pParentNode) const;    
-    llvm::Metadata* getPointerOffsetNode( const llvm::MDNode* pParentNode) const;    
-    llvm::Metadata* getPointeeAddressSpaceNode( const llvm::MDNode* pParentNode) const;    
-    llvm::Metadata* getPointeeBufferIndexNode( const llvm::MDNode* pParentNode) const;
-
-private:
-    // data members
-    MetaDataValue<int32_t> m_PointerBufferIndex;        
-    MetaDataValue<int32_t> m_PointerOffset;        
-    MetaDataValue<int32_t> m_PointeeAddressSpace;        
-    MetaDataValue<int32_t> m_PointeeBufferIndex;
     // parent node
     const llvm::MDNode* m_pNode;
 };
