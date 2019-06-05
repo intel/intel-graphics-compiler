@@ -3886,15 +3886,6 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
         {
             SaveOption(vISA_numGeneralAcc, numAcc);
         }
-
-        if (IGC_IS_FLAG_ENABLED(EnableAccSubDF))
-        {
-            SaveOption(vISA_accSubDF, true);
-        }
-        if (IGC_IS_FLAG_ENABLED(EnableAccSubMadm))
-        {
-            SaveOption(vISA_accSubMadm, true);
-        }
     }
     else
     {

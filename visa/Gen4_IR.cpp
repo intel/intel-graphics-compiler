@@ -7810,7 +7810,7 @@ bool G4_INST::canDstBeAcc() const
         }
         break;
     case Type_DF:
-         if (!builder.getOption(vISA_accSubDF))
+         if (!builder.useAccForDF())
          {
              return false;
          }
@@ -7873,7 +7873,7 @@ bool G4_INST::canDstBeAcc() const
         // we can't use acc if plane will be expanded
         return builder.doPlane();
     case G4_madm:
-        return builder.getOption(vISA_accSubMadm);
+        return builder.useAccForMadm();
     case G4_mad:
     case G4_csel:
         return builder.canMadHaveAcc();
@@ -7929,7 +7929,7 @@ bool G4_INST::canSrcBeAcc(int srcId) const
         }
         break;
     case Type_DF:
-         if (!builder.getOption(vISA_accSubDF))
+         if (!builder.useAccForDF())
          {
              return false;
          }
@@ -8011,7 +8011,7 @@ bool G4_INST::canSrcBeAcc(int srcId) const
     case G4_mov:
         return builder.relaxedACCRestrictions() || !getDst()->isAccReg();
     case G4_madm:
-        return builder.getOption(vISA_accSubMadm);
+        return builder.useAccForMadm();
     case G4_mad:
         // no int acc if it's used as mul operand
         return builder.canMadHaveAcc() &&

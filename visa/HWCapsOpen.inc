@@ -498,5 +498,15 @@
         return false;
     }
 
+    bool useAccForDF() const
+    {
+        return false;
+    }
+
+    bool useAccForMadm() const
+    {
+        return false;
+    }
+
 
     // end HW capabilities
