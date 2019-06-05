@@ -215,13 +215,16 @@ public:
   virtual SPIRVValue *addConstant(SPIRVValue *);
   virtual SPIRVValue *addConstant(SPIRVType *, uint64_t);
 
-  virtual SPIRVInstruction *addLoopMergeInst(SPIRVId MergeBlock, SPIRVId ContinueTarget,
-     SPIRVWord LoopControl,
-     SPIRVBasicBlock *BB);
+  virtual SPIRVInstruction *addLoopMergeInst(
+      SPIRVId MergeBlock, SPIRVId ContinueTarget,
+      SPIRVWord LoopControl,
+      std::vector<SPIRVWord> LoopControlParameters,
+      SPIRVBasicBlock *BB) override;
 
   // Instruction creation functions
-  virtual SPIRVInstruction *addInstruction(SPIRVInstruction *Inst,
-      SPIRVBasicBlock *BB);
+  virtual SPIRVInstruction *
+  addInstruction(SPIRVInstruction *Inst, SPIRVBasicBlock *BB,
+                 SPIRVInstruction *InsertBefore = nullptr);
 
   virtual SPIRVExtInst* getCompilationUnit() const
   {
@@ -676,20 +679,22 @@ SPIRVModuleImpl::addConstant(SPIRVType *Ty, uint64_t V) {
 // Instruction creation functions
 
 SPIRVInstruction *
-SPIRVModuleImpl::addInstruction(SPIRVInstruction *Inst, SPIRVBasicBlock *BB) {
+SPIRVModuleImpl::addInstruction(SPIRVInstruction *Inst, SPIRVBasicBlock *BB,
+                                SPIRVInstruction *InsertBefore) {
   if (BB)
-    return BB->addInstruction(Inst);
+    return BB->addInstruction(Inst, InsertBefore);
   if (Inst->getOpCode() != OpSpecConstantOp)
     Inst = createSpecConstantOpInst(Inst);
   return static_cast<SPIRVInstruction *>(addConstant(Inst));
 }
 
-SPIRVInstruction *SPIRVModuleImpl::addLoopMergeInst(SPIRVId MergeBlock,
-   SPIRVId ContinueTarget,
-   SPIRVWord LoopControl,
-   SPIRVBasicBlock *BB) {
+SPIRVInstruction *SPIRVModuleImpl::addLoopMergeInst(
+  SPIRVId MergeBlock, SPIRVId ContinueTarget, SPIRVWord LoopControl,
+  std::vector<SPIRVWord> LoopControlParameters, SPIRVBasicBlock *BB) {
    return addInstruction(
-      new SPIRVLoopMerge(MergeBlock, ContinueTarget, LoopControl, BB), BB);
+     new SPIRVLoopMerge(MergeBlock, ContinueTarget, LoopControl,
+       LoopControlParameters, BB),
+     BB, const_cast<SPIRVInstruction *>(BB->getTerminateInstr()));
 }
 
 template<class T>

@@ -425,12 +425,23 @@ enum SelectionControlMask {
 enum LoopControlShift {
     LoopControlUnrollShift = 0,
     LoopControlDontUnrollShift = 1,
+    LoopControlDependencyInfiniteShift = 2,
+    LoopControlDependencyLengthShift = 3,
+    LoopControlMax = 0x7fffffff,
 };
 
 enum LoopControlMask {
     LoopControlMaskNone = 0,
     LoopControlUnrollMask = 0x00000001,
     LoopControlDontUnrollMask = 0x00000002,
+    LoopControlDependencyInfiniteMask = 0x00000004,
+    LoopControlDependencyLengthMask = 0x00000008,
+    LoopControlMinIterationsMask = 0x00000010,
+    LoopControlMaxIterationsMask = 0x00000020,
+    LoopControlIterationMultipleMask = 0x00000040,
+    LoopControlPeelCountMask = 0x00000080,
+    LoopControlPartialCountMask = 0x00000100,
+    LoopControlExtendedControlsMask = 0x80000000,
 };
 
 enum FunctionControlShift {

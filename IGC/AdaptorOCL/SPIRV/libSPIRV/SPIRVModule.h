@@ -212,10 +212,9 @@ public:
   virtual SPIRVValue *addConstant(SPIRVValue *) = 0;
   virtual SPIRVValue *addConstant(SPIRVType *, uint64_t) = 0;
 
-  virtual SPIRVInstruction *addLoopMergeInst(SPIRVId MergeBlock,
-     SPIRVId ContinueTarget,
-     SPIRVWord LoopControl,
-     SPIRVBasicBlock *BB) = 0;
+  virtual SPIRVInstruction *addLoopMergeInst(
+    SPIRVId MergeBlock, SPIRVId ContinueTarget, SPIRVWord LoopControl,
+    std::vector<SPIRVWord> LoopControlParameters, SPIRVBasicBlock *BB) = 0;
 
   virtual void addCapability(SPIRVCapabilityKind) = 0;
   
