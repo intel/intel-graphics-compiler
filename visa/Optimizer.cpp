@@ -1135,6 +1135,8 @@ int Optimizer::optimization()
     //
     runPass(PI_chkRegBoundary);
 
+    runPass(PI_changeMoveType);
+
     runPass(PI_localSchedule);
 
     runPass(PI_accSubPostSchedule);
@@ -1164,8 +1166,6 @@ int Optimizer::optimization()
     runPass(PI_HWWorkaround);
 
     runPass(PI_normalizeRegion);
-
-    runPass(PI_changeMoveType);
 
     runPass(PI_countGRFUsage);
 
