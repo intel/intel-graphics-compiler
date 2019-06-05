@@ -3522,6 +3522,8 @@ add_library("${IGC_BUILD__PROJ__igc_dll}" SHARED
     ${IGC_BUILD__RES__IGC__fcl_dll}
   )
 
+add_dependencies("${IGC_BUILD__PROJ__fcl_dll}" opencl-clang-lib)
+
 add_dependencies("${IGC_BUILD__PROJ__igc_dll}" "${IGC_BUILD__PROJ_NAME_PREFIX}ElfPackager")
   
 target_include_directories(${IGC_BUILD__PROJ__igc_dll} INTERFACE
