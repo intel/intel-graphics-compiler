@@ -35,7 +35,9 @@ class AdvMemOpt : public FunctionPass {
 public:
   static char ID;
 
-  AdvMemOpt() : FunctionPass(ID) {}
+  AdvMemOpt() : FunctionPass(ID) {
+    initializeAdvMemOptPass(*PassRegistry::getPassRegistry());
+  }
 
   bool runOnFunction(Function &F) override;
 
