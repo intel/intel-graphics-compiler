@@ -434,8 +434,11 @@ bool PreCompiledFuncImport::runOnModule(Module &M)
     NewFuncWithIA.clear();
 
 
+    unsigned totalNumberOfInlinedInst = 0;
+
     // Post processing, set those imported functions as internal linkage
-    // and alwaysinline.
+    // and alwaysinline. Also count how many instructions would be added
+    // to the shader if inlining occurred.
     for (auto II = M.begin(), IE = M.end(); II != IE; )
     {
         Function* Func = &(*II);
@@ -461,11 +464,51 @@ bool PreCompiledFuncImport::runOnModule(Module &M)
             Func->removeFnAttr(llvm::Attribute::NoInline);
             Func->removeFnAttr(llvm::Attribute::AlwaysInline);
 
-            // Inline all conv functions. And for others, inline
-            // only those that have less than 4 uses. If ForceSubroutine
-            // is set, do not inline any of them.
+            // Don't want to subroutine functions that are called only once
+            if (Func->getNumUses() == 1)
+            {
+                // Add AlwaysInline attribute to force inlining all calls.
+                Func->addFnAttr(llvm::Attribute::AlwaysInline);
+
+                continue;
+            }
+
+            // Count number of instructions in the function
+            unsigned NumInst = 0;
+            for (BasicBlock &BB : Func->getBasicBlockList()) {
+                NumInst += BB.getInstList().size();
+            }
+
+            // Don't want to subroutine small functions
+            if (NumInst <= 5)
+            {
+                // Add AlwaysInline attribute to force inlining all calls.
+                Func->addFnAttr(llvm::Attribute::AlwaysInline);
+
+                continue;
+            }
+
+            totalNumberOfInlinedInst += NumInst * Func->getNumUses();
+        }
+    }
+
+    for (auto II = M.begin(), IE = M.end(); II != IE; )
+    {
+        Function* Func = &(*II);
+        ++II;
+        if (!Func || Func->isDeclaration())
+        {
+            continue;
+        }
+
+        if (!origFunctions.count(Func) && !Func->hasFnAttribute(llvm::Attribute::AlwaysInline))
+        {
+            // Use subroutine if ForceSubroutineForEmulation is set or
+            // use subroutines if total number of instructions added when
+            // all emulated functions are inlined exceed InlinedEmulationThreshold.
             if (m_enableSubroutineCallForEmulation &&
-                (IGC_IS_FLAG_ENABLED(ForceSubroutineForEmulation) || shouldWeSubroutine(Func)))
+                (IGC_IS_FLAG_ENABLED(ForceSubroutineForEmulation) ||
+                 totalNumberOfInlinedInst > (unsigned) IGC_IS_FLAG_ENABLED(InlinedEmulationThreshold)))
             {
                 Func->addFnAttr(llvm::Attribute::NoInline);
 
@@ -1544,32 +1587,6 @@ ImplicitArgs* PreCompiledFuncImport::getImplicitArgs(Function *F)
         FuncsImpArgs[F] = IA;
     }
     return FuncsImpArgs[F];
-}
-
-// Use subroutines if total number of instructions added when inlined
-// exceed the SubroutineInlinerThreshold
-bool PreCompiledFuncImport::shouldWeSubroutine(Function* F)
-{
-    // If there is only one use we should just inline
-    if (F->getNumUses() == 1)
-        return false;
-
-    unsigned NumInstrs = 0;
-    for (BasicBlock &BB : F->getBasicBlockList())
-        NumInstrs += (unsigned)std::distance(BB.begin(), BB.end());
-
-    // Don't want to use subroutines for small functions
-    if (NumInstrs <= 5)
-        return false;
-
-    unsigned totalNumberOfInst = NumInstrs * F->getNumUses();
-
-    if (totalNumberOfInst > 150000)
-    {
-        return true;
-    }
-
-    return false;
 }
 
 void PreCompiledFuncImport::checkAndSetEnableSubroutine()
