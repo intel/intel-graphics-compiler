@@ -9,12 +9,6 @@
             getPlatformGeneration(getGenxPlatform()) != PlatformGen::GEN11 && !getOption(vISA_DisableMixMode));
     }
 
-    bool canDoSLMSpill() const
-    {
-        return getOption(vISA_SLMSpill) &&
-            !(kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc());
-    }
-
     bool forceSamplerHeader() const
     {
         return m_options->getOption(vISA_forceSamplerHeader) ||

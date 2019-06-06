@@ -105,7 +105,6 @@ DEF_VISA_OPTION(vISA_SpillSpaceCompression, ET_BOOL, NULLSTR,            UNUSED,
 DEF_VISA_OPTION(vISA_ConsiderLoopInfoInRA,  ET_BOOL, "-noloopra",        UNUSED, true)
 DEF_VISA_OPTION(vISA_ReserveR0,             ET_BOOL, "-reserveR0",       UNUSED, false)
 DEF_VISA_OPTION(vISA_SpiltLLR,              ET_BOOL, "-nosplitllr",      UNUSED, true)
-DEF_VISA_OPTION(vISA_SLMSpill,              ET_BOOL, "-slmspill",        UNUSED, false)
 DEF_VISA_OPTION(vISA_EnableGlobalScopeAnalysis,   ET_BOOL,  "-enableGlobalScopeAnalysis", UNUSED, false)
 DEF_VISA_OPTION(vISA_LocalDeclareSplitInGlobalRA, ET_BOOL, "-noLocalSplit",        UNUSED, true)
 DEF_VISA_OPTION(vISA_DisableSpillCoalescing, ET_BOOL, "-nospillcleanup", UNUSED, false)

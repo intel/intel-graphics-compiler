@@ -108,8 +108,8 @@ public:
     unsigned getNumGRFSpill() const { return numGRFSpill; }
     unsigned getNumGRFFill() const { return numGRFFill; }
     unsigned getNumGRFMove() const { return numGRFMove; }
-    // return the next cumulative logical offset. This includes
-    // both SLM and scrath spills, but not non-spilled stuff like spill_mem_offset
+    // return the next cumulative logical offset. This does not non-spilled stuff like 
+    // private variables placed by IGC (marked by spill_mem_offset)
     // this should only be called after insertSpillFillCode()
     uint32_t getNextOffset() const { return nextSpillOffset_; }
     // return the cumulative scratch space offset for the next spilled variable. 
@@ -117,38 +117,14 @@ public:
     uint32_t getNextScratchOffset() const 
     {
         int offset = nextSpillOffset_;
-        if (getSpillOffset(offset))
-        {
-            return globalScratchOffset;
-        }
-        else
-        {
-            return offset;
-        }
+        getSpillOffset(offset);
+        return offset;
     }
 
-    static const int maxSLMScratchSize = 1024; //1KB for now. Note this value must be in multiples of GRF size
-
-    // convert zero-based logical offset into either SLM offset (if SLM spill/fill is enabled),
-    // or scratch space offset. For the latter adjust the offset if necessary
-    // returns true if SLM offset
-    bool getSpillOffset(int& logicalOffset) const
+    // convert zero-based logical offset into the scratch space offset. 
+    void getSpillOffset(int& logicalOffset) const
     {
-        if (canDoSLMSpill())
-        {
-            //first 1KB goes to SLM
-            if (logicalOffset < maxSLMScratchSize)
-            {
-                return true;
-            }
-            else
-            {
-                logicalOffset -= maxSLMScratchSize;
-            }
-        }
-
         logicalOffset += globalScratchOffset;
-        return false;
     }
 
 private:
@@ -626,7 +602,6 @@ private:
 
     G4_Imm *
         createSpillSendMsgDesc(
-        bool doSLMSpill,
         int size,
         int offset
         );
@@ -725,7 +700,6 @@ private:
 
     G4_Imm*
         createFillSendMsgDesc(
-        bool doSLMFill,
         int size,
         int memOffset);
 
@@ -833,15 +807,6 @@ private:
             assert(false && "illegal spill size");
             return ChannelMask::createFromAPI(CHANNEL_MASK_R);
         }
-    }
-
-    uint32_t getUntypedSLMMsgDesc(int numReg, bool isRead) const;
-
-    G4_Declare* createSLMSpillAddr(int numReg, uint32_t offset);
-
-    bool canDoSLMSpill() const
-    {
-        return !failSafeSpill_ && builder_->canDoSLMSpill();
     }
 
     // Data

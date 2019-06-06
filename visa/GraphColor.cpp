@@ -9300,7 +9300,6 @@ int GlobalRA::coloringRegAlloc()
                 if (iterationNo == 0 &&
                     enableSpillSpaceCompression &&
                     kernel.getOptions()->getTarget() == VISA_3D &&
-                    !builder.canDoSLMSpill() &&
                     !hasStackCall)
                 {
                     unsigned int spillSize = 0;
