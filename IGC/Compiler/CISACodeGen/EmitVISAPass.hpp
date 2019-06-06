@@ -215,8 +215,8 @@ public:
     void emitMediaBlockIO(const llvm::GenIntrinsicInst* inst, bool isRead);
     void emitMediaBlockRectangleRead(llvm::Instruction* inst);
     void emitURBWrite(llvm::GenIntrinsicInst* inst);
+    void emitURBReadCommon(llvm::GenIntrinsicInst* inst, const QuadEltUnit globalOffset, llvm::Value* const perSlotOffset);
     void emitURBRead(llvm::GenIntrinsicInst* inst);
-    void emitURBReadOutput(llvm::GenIntrinsicInst* inst);
     void emitSampleInstruction(llvm::SampleIntrinsic* inst);
     void emitLdInstruction(llvm::Instruction* inst);
     void emitInfoInstruction(llvm::InfoIntrinsic* inst);

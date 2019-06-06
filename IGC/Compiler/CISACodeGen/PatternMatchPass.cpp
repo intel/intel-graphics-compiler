@@ -1112,6 +1112,10 @@ void CodeGenPatternMatch::visitCallInst(CallInst &I)
             match = MatchBlockReadWritePointer(*CI) ||
                 MatchSingleInstruction(*CI);
             break;
+        case GenISAIntrinsic::GenISA_URBRead:
+        case GenISAIntrinsic::GenISA_URBReadOutput:
+            match = MatchURBRead(*CI);
+            break;
         default:
             match = MatchSingleInstruction(I);
             // no pattern for the rest of the intrinsics
@@ -1790,6 +1794,78 @@ bool CodeGenPatternMatch::MatchBlockReadWritePointer(llvm::GenIntrinsicInst& I)
         AddPattern(pattern);
         return true;
     }
+    return false;
+}
+
+// 1. Detect and handle immediate URB read offsets - these can be put in message descriptor.
+// 2. Detect offsets of the form "add dst, var, imm" - here we can remove the add, putting imm in message descriptor,
+// and var in message payload.
+bool CodeGenPatternMatch::MatchURBRead(llvm::GenIntrinsicInst& I)
+{
+    struct URBReadPattern : public Pattern
+    {
+        explicit URBReadPattern(GenIntrinsicInst* I, QuadEltUnit globalOffset, llvm::Value* const perSlotOffset) :
+            m_inst(I), m_globalOffset(globalOffset), m_perSlotOffset(perSlotOffset)
+        {}
+
+        virtual void Emit(EmitPass* pass, const DstModifier& modifier)
+        {
+            assert(m_inst->getIntrinsicID() == GenISAIntrinsic::GenISA_URBRead ||
+                m_inst->getIntrinsicID() == GenISAIntrinsic::GenISA_URBReadOutput);
+            pass->emitURBReadCommon(m_inst, m_globalOffset, m_perSlotOffset);
+        }
+
+    private:
+        GenIntrinsicInst* const m_inst;
+        const QuadEltUnit m_globalOffset;
+        llvm::Value* const m_perSlotOffset;
+    };
+
+    if (I.getIntrinsicID() != GenISAIntrinsic::GenISA_URBRead &&
+        I.getIntrinsicID() != GenISAIntrinsic::GenISA_URBReadOutput)
+    {
+        return false;
+    }
+
+    const bool hasVertexIndexAsArg0 = I.getIntrinsicID() == GenISAIntrinsic::GenISA_URBRead;
+    llvm::Value* const offset = I.getOperand(hasVertexIndexAsArg0 ? 1 : 0);
+    if (const ConstantInt* const constOffset = dyn_cast<ConstantInt>(offset))
+    {
+        const QuadEltUnit globalOffset = QuadEltUnit(int_cast<unsigned>(constOffset->getZExtValue()));
+        if (hasVertexIndexAsArg0)
+        {
+            MarkAsSource(I.getOperand(0));
+        }
+        URBReadPattern* pattern = new (m_allocator) URBReadPattern(&I, globalOffset, nullptr);
+        AddPattern(pattern);
+        return true;
+    }
+    else if (llvm::Instruction* const inst = llvm::dyn_cast<llvm::Instruction>(offset))
+    {
+        if (inst->getOpcode() == llvm::Instruction::Add)
+        {
+            const bool isConstant0 = llvm::isa<llvm::ConstantInt>(inst->getOperand(0));
+            const bool isConstant1 = llvm::isa<llvm::ConstantInt>(inst->getOperand(1));
+            if (isConstant0 || isConstant1)
+            {
+                assert(!(isConstant0 && isConstant1) &&
+                    "Both operands are immediate - constants should be folded elsewhere.");
+
+                if (hasVertexIndexAsArg0)
+                {
+                    MarkAsSource(I.getOperand(0));
+                }
+                const QuadEltUnit globalOffset = QuadEltUnit(int_cast<unsigned>(cast<ConstantInt>(
+                    isConstant0 ? inst->getOperand(0) : inst->getOperand(1))->getZExtValue()));
+                llvm::Value* const perSlotOffset = isConstant0 ? inst->getOperand(1) : inst->getOperand(0);
+                MarkAsSource(perSlotOffset);
+                URBReadPattern* pattern = new (m_allocator) URBReadPattern(&I, globalOffset, perSlotOffset);
+                AddPattern(pattern);
+                return true;
+            }
+        }
+    }
+
     return false;
 }
 
@@ -2981,7 +3057,7 @@ bool CodeGenPatternMatch::MatchRotate(llvm::Instruction& I)
     //   2) both operands are instructions.
     Instruction *LHS = dyn_cast<Instruction>(OrInst->getOperand(0));
     Instruction *RHS = dyn_cast<Instruction>(OrInst->getOperand(1));
-    if (!LHS || !RHS || 
+    if (!LHS || !RHS ||
         (typeWidth != 16 && typeWidth != 32))
     {
         {
