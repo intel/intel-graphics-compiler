@@ -91,6 +91,9 @@ bool PruneUnusedArguments::runOnModule(Module &M) {
       // Conservatively declarations use all arguments.
       if (F->isDeclaration())
         continue;
+      // Ignore externally linked functions
+      if (F->hasFnAttribute("ExternalLinkedFn"))
+        continue;
 
       // Collect unused arguments and their indices.
       SmallVector<std::pair<Argument *, unsigned>, 8> UnusedArgs;

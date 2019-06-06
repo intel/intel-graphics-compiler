@@ -80,6 +80,13 @@ bool PurgeMetaDataUtils::runOnModule(Module &M)
             return true;
         }
 
+        // Do not delete externally linked functions, even if there are no uses
+        // in the current module.
+        if (F->hasFnAttribute("ExternalLinkedFn"))
+        {
+            return false;
+        }
+
         if (F->use_empty() && !isEntryFunc(pMdUtils, F))
         {
             F->eraseFromParent();

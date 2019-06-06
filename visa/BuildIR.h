@@ -410,6 +410,8 @@ public:
     int cunit;
     const std::vector <char*>* resolvedCalleeNames;
 
+    bool isExternFunc = false;
+
     // pre-defined declare that binds to R0 (the entire GRF)
     // when pre-emption is enabled, builtinR0 is replaced by a temp,
     // and a move is inserted at kernel entry
@@ -639,6 +641,8 @@ public:
     unsigned short getArgSize() { return arg_size; }
     void setRetVarSize( unsigned short size ) { return_var_size = size; }
     unsigned short getRetVarSize() { return return_var_size; }
+    bool getIsExtern() { return isExternFunc; }
+    void setIsExtern(bool val) { isExternFunc = val; }
     FCPatchingInfo* getFCPatchInfo()
     {
         // Create new instance of FC patching class if one is not

@@ -71,6 +71,7 @@ private:
 /// \brief A collection of functions that are reachable from a kernel.
 class FunctionGroup {
 public:
+  friend class GenXCodeGenModule;
   /// \brief use 2-d vector of Functions to represent FunctionGroup. 
   /// Each sub-vector is a subgroup led by a kernel or a stack-call function.
   /// Element [0][0] is the group head. Element[i][0] is the sub-group head.
@@ -96,6 +97,8 @@ public:
   bool hasStackCall() {
     return (Functions.size() > 1);
   }
+  /// \brief Indicate if any function in this group directly calls an externally linked function
+  bool hasExternFCall() { return m_hasExternFCall; }
 
   void replaceGroupHead(llvm::Function *OH, llvm::Function *NH) {
     auto headSG = Functions[0];
@@ -103,6 +106,9 @@ public:
     assert(&(*HVH) == OH && "Group's head isn't set up correctly!");
     HVH = NH;
   }
+
+private:
+    bool m_hasExternFCall = false;
 };
 
 class GenXFunctionGroupAnalysis : public llvm::ImmutablePass {
@@ -117,6 +123,9 @@ class GenXFunctionGroupAnalysis : public llvm::ImmutablePass {
 
   /// \brief Each function also belongs to a uniquely defined sub-group of a stack-call entry
   llvm::DenseMap<llvm::Function *, llvm::Function *> SubGroupMap;
+
+  /// \brief the main kernel in this module
+  llvm::Function* DefaultKernel = nullptr;
 
 public:
   static char ID;
@@ -165,6 +174,9 @@ public:
       return nullptr;
     return I->second;
   }
+
+  llvm::Function* getDefaultKernel() { return DefaultKernel; }
+  void setDefaultkernel(llvm::Function* F) { DefaultKernel = F; }
   
   void setSubGroupMap(llvm::Function *F, llvm::Function *SubGroupHead) {
     SubGroupMap[F] = SubGroupHead;
