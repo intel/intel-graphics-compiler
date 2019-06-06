@@ -193,6 +193,7 @@ public:
   typedef llvm::SmallVector<SVecInsEltInfo, 32> VecInsEltInfoTy;
   typedef llvm::DenseMap<llvm::Value*, SSubVecDesc*> AliasMapTy;
   typedef llvm::SmallVector<llvm::Value*, 32> ValueVectorTy;
+  typedef llvm::DenseMap<llvm::Value*, llvm::Value*> Val2ValMapTy;
 
   // following to be deleted
   typedef llvm::DenseMap<llvm::Value*, SSubVecDesc> ValueAliasMapTy;
@@ -283,8 +284,9 @@ public:
   int getCongruentClassSize(llvm::Value* V);
   bool isSameSizeValue(llvm::Value* V0, llvm::Value* V1);
 
-  bool isVecAliased(llvm::Value* V) const { return m_aliasMap.count(V) > 0; }
-  bool isVecAliaser(llvm::Value* V) const;
+  bool isVecAliased(llvm::Value* V) const;
+  bool isSingleVecAliaser(llvm::Value* V) const;
+  bool isSingleVecAliasee(llvm::Value* V) const;
 
   // getRootValue():
   //   return dessa root value; if dessa root value
@@ -400,6 +402,7 @@ private:
     m_ValueAliasMap.clear();
     m_AliasRootMap.clear();
     m_aliasMap.clear();
+    m_root2AliasMap.clear();
     m_HasBecomeNoopInsts.clear();
   }
 
@@ -533,6 +536,13 @@ private:
   //SmallPtrSet<llvm::Instruction*, 16> m_Visited;
   ValueAliasMapTy m_ExtractFrom;
   ValueAliasMapTy m_insertTo;
+
+  // Temporaries under VATemp
+  // if a value V is in a dessa CC and V is aliased,
+  // add <V's root, V> into the map.  This is a quick
+  // way to check if any of values in a dessa CC has
+  // been aliased (either aliaser or aliasee)
+  Val2ValMapTy m_root2AliasMap;
 };
 
 llvm::FunctionPass *createVariableReuseAnalysisPass();

@@ -989,8 +989,7 @@ void VariableReuseAnalysis::visitExtractElementInst(ExtractElementInst& I)
     //  be merged into part of other value.)
     if (m_HasBecomeNoopInsts.count(EEI) ||
         m_DeSSA->isNoopAliaser(EEI) ||
-        isOrCoalescedWithArg(EEI) ||
-        isOrCoalescedWithArg(vecVal) ||
+        !isSingleVecAliasee(vecVal) ||
         (m_WIA && m_WIA->whichDepend(EEI) != m_WIA->whichDepend(vecVal))) {
         return;
     }
@@ -1002,7 +1001,7 @@ void VariableReuseAnalysis::visitExtractElementInst(ExtractElementInst& I)
     // skip it for now (implementation choice).
     // Note that payload-coalescing does not use node value yet.
     if (hasBeenPayloadCoalesced(EEI) ||
-        isVecAliaser(EEI_nv)) {
+        !isSingleVecAliaser(EEI_nv)) {
         return;
     }
 
@@ -1450,8 +1449,19 @@ void VariableReuseAnalysis::addVecAlias(
         aliaserSV->Aliasers.clear();
     }
 
-    // Finally, add aliaserSV into root's Aliaser vector
+    // Finally, add aliaserSV into root's Aliaser vector and
+    // update aliaser to its root map if aliaser's not isolated.
     rootSV->Aliasers.push_back(aliaserSV);
+    // aliaser
+    Value* rv0 = m_DeSSA ? m_DeSSA->getRootValue(Aliaser) : nullptr;
+    if (rv0) {
+        m_root2AliasMap[rv0] = Aliaser;
+    }
+    // aliasee
+    Value* rv1 = m_DeSSA ? m_DeSSA->getRootValue(Aliasee) : nullptr;
+    if (rv1) {
+        m_root2AliasMap[rv1] = Aliasee;
+    }
 }
 
 SSubVecDesc* VariableReuseAnalysis::getOrCreateSubVecDesc(Value* V)
@@ -1463,14 +1473,42 @@ SSubVecDesc* VariableReuseAnalysis::getOrCreateSubVecDesc(Value* V)
     return m_aliasMap[V];
 }
 
-bool VariableReuseAnalysis::isVecAliaser(llvm::Value* V) const
+bool VariableReuseAnalysis::isVecAliased(Value* V) const
+{
+    if (m_aliasMap.count(V) > 0) {
+        return true;
+    }
+
+    Value* rv = m_DeSSA ? m_DeSSA->getRootValue(V) : nullptr;
+    return (rv && m_root2AliasMap.count(rv) > 0);
+}
+
+bool VariableReuseAnalysis::isSingleVecAliaser(llvm::Value* V) const
 {
     auto II = m_aliasMap.find(V);
-    if (II == m_aliasMap.end())
-        return false;
-    SSubVecDesc* SV = II->second;
-    return SV->Aliaser != SV->BaseVector;
+    if (II != m_aliasMap.end()) {
+        SSubVecDesc* SV = II->second;
+        if (SV->Aliaser != SV->BaseVector)
+            return false;
+    }
+
+    return isSingleVecAliasee(V);
 }
+
+bool VariableReuseAnalysis::isSingleVecAliasee(llvm::Value* V) const
+{
+    // Check if any value of its dessa CC has been aliased already.
+    Value* rv = m_DeSSA ? m_DeSSA->getRootValue(V) : nullptr;
+    if (rv) {
+        auto II = m_root2AliasMap.find(rv);
+        if (II != m_root2AliasMap.end()) {
+            Value* aV = II->second;
+            return  V == aV;
+        }
+    }
+    return true;
+}
+
 
 // A chain of IEIs is used to define a vector. If all elements of this vector
 // are inserted via this chain IEI that has a constant index, populate AllIEIs.
