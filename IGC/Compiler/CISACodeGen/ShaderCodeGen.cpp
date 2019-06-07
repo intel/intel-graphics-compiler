@@ -85,6 +85,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/Optimizer/OpenCLPasses/AddressSpaceAliasAnalysis/AddressSpaceAliasAnalysis.h"
 #include "Compiler/Optimizer/OpenCLPasses/UndefinedReferences/UndefinedReferencesPass.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/StatelessToStatefull/StatelessToStatefull.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/DisableLoopUnrollOnRetry/DisableLoopUnrollOnRetry.hpp"
 #include "Compiler/Optimizer/MCSOptimization.hpp"
 #include "Compiler/Optimizer/RectListOptimizationPass.hpp"
 #include "Compiler/Optimizer/GatingSimilarSamples.hpp"
@@ -363,8 +364,7 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager& mpm)
 
         int LoopUnrollThreshold = ctx.m_DriverInfo.GetLoopUnrollThreshold();
 
-        if (LoopUnrollThreshold > 0 && ctx.m_retryManager.AllowUnroll() &&
-            (ctx.m_tempCount < 64))
+        if (LoopUnrollThreshold > 0 && (ctx.m_tempCount < 64))
         {
             mpm.add(IGCLLVM::createLoopUnrollPass(2, LoopUnrollThreshold, -1, 1));
         }
@@ -1274,9 +1274,13 @@ void OptimizeIR(CodeGenContext* pContext)
 
                 mpm.add(CreateHoistFMulInLoopPass());
 
+                if (!pContext->m_retryManager.IsFirstTry()) 
+                {
+                    mpm.add(new DisableLoopUnrollOnRetry());
+                }
+
                 if(IGC_IS_FLAG_ENABLED(EnableCustomLoopVersioning) &&
-                    pContext->type == ShaderType::PIXEL_SHADER &&
-                    pContext->m_retryManager.AllowUnroll())
+                    pContext->type == ShaderType::PIXEL_SHADER)
                 {
                     // custom loop versioning relies on LCSSA form
                     mpm.add(new CustomLoopVersioning());
@@ -1296,7 +1300,7 @@ void OptimizeIR(CodeGenContext* pContext)
                     LoopUnrollThreshold = IGC_GET_FLAG_VALUE(SetLoopUnrollThreshold);
                 }
 
-                if(LoopUnrollThreshold > 0 && pContext->m_retryManager.AllowUnroll() && !IGC_IS_FLAG_ENABLED(DisableLoopUnroll))
+                if(LoopUnrollThreshold > 0 && !IGC_IS_FLAG_ENABLED(DisableLoopUnroll))
                 {
                     mpm.add(IGCLLVM::createLoopUnrollPass());
                 }
@@ -1311,9 +1315,7 @@ void OptimizeIR(CodeGenContext* pContext)
                 }
 
                 // Second unrolling with the same threshold.
-                if(LoopUnrollThreshold > 0 &&
-                    pContext->m_retryManager.AllowUnroll() &&
-                    !IGC_IS_FLAG_ENABLED(DisableLoopUnroll))
+                if(LoopUnrollThreshold > 0 && !IGC_IS_FLAG_ENABLED(DisableLoopUnroll))
                 {
                     mpm.add(IGCLLVM::createLoopUnrollPass());
                 }

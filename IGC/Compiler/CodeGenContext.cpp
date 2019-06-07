@@ -35,7 +35,6 @@ namespace IGC
 {
 
 typedef struct RetryState {
-    bool allowUnroll;
     bool allowLICM;
     bool allowCodeSinking;
     bool allowSimd32Slicing;
@@ -46,8 +45,8 @@ typedef struct RetryState {
 } RetryState;
 
 static const RetryState RetryTable[] = {
-    { true, true, true, false, true, true, true, 1 },
-    { false, false, true, true, false, false, false, 500 }
+    { true, true, false, true, true, true, 1 },
+    { false, true, true, false, false, false, 500 }
 };
 
 RetryManager::RetryManager() : enabled(false)
@@ -66,10 +65,6 @@ bool RetryManager::AdvanceState() {
     assert(stateId < getStateCnt());
     stateId = RetryTable[stateId].nextState;
     return (stateId < getStateCnt());
-}
-bool RetryManager::AllowUnroll() {
-    assert(stateId < getStateCnt());
-    return RetryTable[stateId].allowUnroll;
 }
 bool RetryManager::AllowLICM() {
     assert(stateId < getStateCnt());

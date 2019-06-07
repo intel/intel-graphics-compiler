@@ -9,6 +9,7 @@ add_subdirectory(BreakConstantExpr)
 add_subdirectory(CorrectlyRoundedDivSqrt)
 add_subdirectory(DebuggerSupport)
 add_subdirectory(DeviceEnqueueFuncs)
+add_subdirectory(DisableLoopUnrollOnRetry)
 add_subdirectory(ExtenstionFuncs)
 add_subdirectory(GenericAddressResolution)
 add_subdirectory(ImageFuncs)
@@ -28,6 +29,7 @@ add_subdirectory(WIFuncs)
 add_subdirectory(ClampLoopUnroll)
 add_subdirectory(Image3dToImage2darray)
 add_subdirectory(RewriteLocalSize)
+
 
 
 #
@@ -50,6 +52,7 @@ set(IGC_BUILD__SRC__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__SRC__OpenCLPasses_CorrectlyRoundedDivSqrt}
     ${IGC_BUILD__SRC__OpenCLPasses_DebuggerSupport}
     ${IGC_BUILD__SRC__OpenCLPasses_DeviceEnqueueFuncs}
+    ${IGC_BUILD__SRC__OpenCLPasses_DisableLoopUnrollOnRetry}
     ${IGC_BUILD__SRC__OpenCLPasses_ExtenstionFuncs}
     ${IGC_BUILD__SRC__OpenCLPasses_GenericAddressResolution}
     ${IGC_BUILD__SRC__OpenCLPasses_ImageFuncs}
@@ -95,6 +98,7 @@ set(IGC_BUILD__HDR__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__HDR__OpenCLPasses_CorrectlyRoundedDivSqrt}
     ${IGC_BUILD__HDR__OpenCLPasses_DebuggerSupport}
     ${IGC_BUILD__HDR__OpenCLPasses_DeviceEnqueueFuncs}
+    ${IGC_BUILD__HDR__OpenCLPasses_DisableLoopUnrollOnRetry}
     ${IGC_BUILD__HDR__OpenCLPasses_ExtenstionFuncs}
     ${IGC_BUILD__HDR__OpenCLPasses_GenericAddressResolution}
     ${IGC_BUILD__HDR__OpenCLPasses_ImageFuncs}
@@ -134,6 +138,7 @@ set(IGC_BUILD_Compiler_OpenCLPasses_Groups
     Compiler__OpenCLPasses_CorrectlyRoundedDivSqrt
     Compiler__OpenCLPasses_DebuggerSupport
     Compiler__OpenCLPasses_DeviceEnqueueFuncs
+    Compiler__OpenCLPasses_DisableLoopUnrollOnRetry
     Compiler__OpenCLPasses_ExtenstionFuncs
     Compiler__OpenCLPasses_GenericAddressResolution
     Compiler__OpenCLPasses_GenericAddressSpaceStaticResolution

@@ -619,7 +619,6 @@ private:
         ~RetryManager();
 
         bool AdvanceState();
-        bool AllowUnroll();
         bool AllowLICM();
         bool AllowPromotePrivateMemory();
         bool AllowPreRAScheduler();
