@@ -215,7 +215,8 @@ public:
     void emitMediaBlockIO(const llvm::GenIntrinsicInst* inst, bool isRead);
     void emitMediaBlockRectangleRead(llvm::Instruction* inst);
     void emitURBWrite(llvm::GenIntrinsicInst* inst);
-    void emitURBReadCommon(llvm::GenIntrinsicInst* inst, const QuadEltUnit globalOffset, llvm::Value* const perSlotOffset);
+    void emitURBReadCommon(llvm::GenIntrinsicInst* inst, const QuadEltUnit globalOffset,
+        llvm::Value* const perSlotOffset);
     void emitURBRead(llvm::GenIntrinsicInst* inst);
     void emitSampleInstruction(llvm::SampleIntrinsic* inst);
     void emitLdInstruction(llvm::Instruction* inst);
@@ -401,7 +402,8 @@ public:
 
     //helper function
     void SplitSIMD(llvm::Instruction* inst, uint numSources, uint headerSize, CVariable* payload, SIMDMode mode, uint half);
-    void JoinSIMD(CVariable* tempdst[], uint responseLength);
+    template<size_t N>
+    void JoinSIMD(CVariable* (&tempdst)[N], uint responseLength);
     CVariable* BroadcastIfUniform(CVariable* pVar);
     uint DecideInstanceAndSlice(llvm::BasicBlock &blk, SDAG& sdag, bool &slicing);
     inline bool isUndefOrConstInt0(llvm::Value* val)

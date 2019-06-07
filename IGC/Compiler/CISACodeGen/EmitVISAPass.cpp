@@ -5861,59 +5861,67 @@ void EmitPass::emitDualBlendRT(llvm::RTDualBlendSourceIntrinsic* inst, bool from
 
 // Common emitter for URBRead and URBReadOutput, used also in associated pattern match pass.
 // The offsets are calculated in the caller.
-void EmitPass::emitURBReadCommon(llvm::GenIntrinsicInst* inst, const QuadEltUnit globalOffset, llvm::Value* const perSlotOffset)
+void EmitPass::emitURBReadCommon(llvm::GenIntrinsicInst* inst, const QuadEltUnit globalOffset,
+    llvm::Value* const perSlotOffset)
 {
     TODO("Have VISA define the URBRead interface instead of using a raw send");
 
     const EltUnit payloadSize(perSlotOffset ? 2 : 1);
-    CVariable* const payload = m_currShader->GetNewVariable(
-        payloadSize.Count() * numLanes(m_SimdMode), ISA_TYPE_UD, EALIGN_GRF);
     const Unit<Element> messageLength = payloadSize;
-    const Unit<Element> responseLength(m_destination->GetNumberElement() / numLanes(m_SimdMode));
+    CVariable* const payload = m_currShader->GetNewVariable(payloadSize.Count() * numLanes(SIMDMode::SIMD8),
+        ISA_TYPE_UD, EALIGN_GRF);
+    Unit<Element> responseLength(m_destination->GetNumberElement() / numLanes(SIMDMode::SIMD8));
 
-    // Get the register with URBHandles and update certain per-opcode data.
-    switch (inst->getIntrinsicID())
     {
-    case GenISAIntrinsic::GenISA_URBRead:
-    {
-        CVariable* const pVertexIndex = GetSymbol(inst->getOperand(0));
-        m_encoder->Copy(payload, m_currShader->GetURBInputHandle(pVertexIndex));
+        // Get the register with URBHandles and update certain per-opcode data.
+        CVariable* urbInputHandle = nullptr;
+        switch (inst->getIntrinsicID())
+        {
+        case GenISAIntrinsic::GenISA_URBRead:
+        {
+            CVariable* const pVertexIndex = GetSymbol(inst->getOperand(0));
+            urbInputHandle = m_currShader->GetURBInputHandle(pVertexIndex);
+            // Mark input to be pulled.
+            m_currShader->isInputsPulled = true;
+            break;
+        }
+        case GenISAIntrinsic::GenISA_URBReadOutput:
+        {
+            urbInputHandle = m_currShader->GetURBOutputHandle();
+            break;
+        }
+        default:
+            assert(0);
+        }
+        assert(urbInputHandle);
+        m_encoder->Copy(payload, urbInputHandle);
         m_encoder->Push();
-        // Mark input to be pulled.
-        m_currShader->isInputsPulled = true;
-        break;
-    }
-    case GenISAIntrinsic::GenISA_URBReadOutput:
-        m_encoder->Copy(payload, m_currShader->GetURBOutputHandle());
+
+        if (perSlotOffset)
+        {
+            m_encoder->SetDstSubVar(1);
+            CVariable* offset = m_currShader->GetSymbol(perSlotOffset);
+            m_encoder->Copy(payload, offset);
+            m_encoder->Push();
+        }
+
+        constexpr bool eot = false;
+        constexpr bool channelMaskPresent = false;
+        const uint desc = UrbMessage(
+            messageLength.Count(),
+            responseLength.Count(),
+            eot,
+            perSlotOffset != nullptr,
+            channelMaskPresent,
+            globalOffset.Count(),
+            EU_GEN8_URB_OPCODE_SIMD8_READ);
+
+        constexpr uint exDesc = EU_MESSAGE_TARGET_URB;
+        CVariable* const pMessDesc = m_currShader->ImmToVariable(desc, ISA_TYPE_UD);
+        m_encoder->Send(m_destination, payload, exDesc, pMessDesc);
         m_encoder->Push();
-        break;
-    default:
-        assert(0);
     }
 
-    if (perSlotOffset)
-    {
-        m_encoder->SetDstSubVar(1);
-        m_encoder->Copy(payload, m_currShader->GetSymbol(perSlotOffset));
-        m_encoder->Push();
-    }
-
-    constexpr bool eot = false;
-    constexpr bool channelMaskPresent = false;
-    const uint desc = UrbMessage(
-        messageLength.Count(),
-        responseLength.Count(),
-        eot,
-        perSlotOffset != nullptr,
-        channelMaskPresent,
-        globalOffset.Count(),
-        EU_GEN8_URB_OPCODE_SIMD8_READ);
-
-    constexpr uint exDesc = EU_MESSAGE_TARGET_URB;
-    CVariable* const pMessDesc = m_currShader->ImmToVariable(desc, ISA_TYPE_UD);
-
-    m_encoder->Send(m_destination, payload, exDesc, pMessDesc);
-    m_encoder->Push();
 }
 
 // Emitter for URBRead and URBReadOutput.
@@ -9746,7 +9754,8 @@ void EmitPass::SplitSIMD(llvm::Instruction* inst, uint numSources, uint headerSi
     }
 }
 
-void EmitPass::JoinSIMD(CVariable* tempdst[], uint responseLength)
+template<size_t N>
+void EmitPass::JoinSIMD(CVariable* (&tempdst)[N], uint responseLength)
 {
     uint iterationCount = numLanes(m_currShader->m_SIMDSize) / numLanes(SIMDMode::SIMD8);
     for (uint half = 0; half < iterationCount; half++)
@@ -9758,6 +9767,7 @@ void EmitPass::JoinSIMD(CVariable* tempdst[], uint responseLength)
             m_encoder->SetSrcSubVar(0, i);
             m_encoder->SetDstSubVar(subVarIdx + half);
             m_encoder->SetMask(half == 0 ? EMASK_Q1 : EMASK_Q2);
+            assert(half < ARRAY_COUNT(tempdst));
             m_encoder->Copy(m_destination, tempdst[half]);
             m_encoder->Push();
         }
