@@ -275,18 +275,14 @@ public:
 
   bool isAliasedValue(llvm::Value *V) {
       if (IGC_GET_FLAG_VALUE(VATemp) > 0) {
-          return isVecAliased(V);
+          return isAliased(V);
       }
-      return (isAliaser(V) || isAliasee(V));
+      return (isAliaser_tbd(V) || isAliasee_tbd(V));
   }
-  bool isAliaser(llvm::Value* V);
-  bool isAliasee(llvm::Value* V);
+  bool isAliaser_tbd(llvm::Value* V);
+  bool isAliasee_tbd(llvm::Value* V);
   int getCongruentClassSize(llvm::Value* V);
   bool isSameSizeValue(llvm::Value* V0, llvm::Value* V1);
-
-  bool isVecAliased(llvm::Value* V) const;
-  bool isSingleVecAliaser(llvm::Value* V) const;
-  bool isSingleVecAliasee(llvm::Value* V) const;
 
   // getRootValue():
   //   return dessa root value; if dessa root value
@@ -456,6 +452,12 @@ private:
 
   // Check if sub can be aliased to Base[Base_ix:size(sub)-1]
   bool aliasInterfere(llvm::Value* Sub, llvm::Value* Base, int Base_ix);
+
+  // DCC: DeSSA congruent class
+  // If any of V's DCC is an aliaser, return true.
+  bool hasAnyOfDCCAsAliaser(llvm::Value* V) const;
+  bool hasAnotherInDCCAsAliasee(llvm::Value* V) const;
+  bool isAliased(llvm::Value* V) const;
 
 
   // Add entry to alias map.

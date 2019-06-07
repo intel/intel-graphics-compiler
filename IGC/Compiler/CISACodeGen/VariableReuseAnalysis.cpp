@@ -240,11 +240,11 @@ bool VariableReuseAnalysis::checkDefInst(Instruction *DefInst,
   return UseLoc <= DefLoc + FarDefDistance;
 }
 
-bool VariableReuseAnalysis::isAliaser(Value* V)
+bool VariableReuseAnalysis::isAliaser_tbd(Value* V)
 {
     return m_ValueAliasMap.count(V) > 0;
 }
-bool VariableReuseAnalysis::isAliasee(Value*V)
+bool VariableReuseAnalysis::isAliasee_tbd(Value*V)
 {
     return m_AliasRootMap.count(V) > 0;
 }
@@ -976,7 +976,6 @@ void VariableReuseAnalysis::visitInsertElementInst_toBeDeleted(InsertElementInst
 
 void VariableReuseAnalysis::visitExtractElementInst(ExtractElementInst& I)
 {
-#if 1
     if (IGC_GET_FLAG_VALUE(VATemp) == 0) {
         visitExtractElementInst_toBeDeleted(I);
         return;
@@ -989,7 +988,6 @@ void VariableReuseAnalysis::visitExtractElementInst(ExtractElementInst& I)
     //  be merged into part of other value.)
     if (m_HasBecomeNoopInsts.count(EEI) ||
         m_DeSSA->isNoopAliaser(EEI) ||
-        !isSingleVecAliasee(vecVal) ||
         (m_WIA && m_WIA->whichDepend(EEI) != m_WIA->whichDepend(vecVal))) {
         return;
     }
@@ -1001,7 +999,8 @@ void VariableReuseAnalysis::visitExtractElementInst(ExtractElementInst& I)
     // skip it for now (implementation choice).
     // Note that payload-coalescing does not use node value yet.
     if (hasBeenPayloadCoalesced(EEI) ||
-        !isSingleVecAliaser(EEI_nv)) {
+        hasAnotherInDCCAsAliasee(vec_nv) ||
+        hasAnyOfDCCAsAliaser(EEI_nv)) {
         return;
     }
 
@@ -1019,7 +1018,6 @@ void VariableReuseAnalysis::visitExtractElementInst(ExtractElementInst& I)
 
     // Valid vec alias and add it into alias map
     addVecAlias(EEI_nv, vec_nv, iIdx);
-#endif
 }
 
 void VariableReuseAnalysis::visitExtractElementInst_toBeDeleted(ExtractElementInst& I)
@@ -1431,8 +1429,8 @@ void VariableReuseAnalysis::addVecAlias(
     aliaserSV->BaseVector = aliaseeRoot;
     aliaserSV->StartElementOffset = Idx + aliaseeSV->StartElementOffset;
 
-    // If Aliaser exists as a root, re-alias all its aliasers
-    // to the new root 'aliaseeRoot'.
+    // If Aliaser exists as a root (aliasee), re-alias all its
+    // aliasers to the new root 'aliaseeRoot'.
     SSubVecDesc* rootSV = getOrCreateSubVecDesc(aliaseeRoot);
     if (aliaserSV->Aliasers.size() > 0)
     {
@@ -1441,7 +1439,6 @@ void VariableReuseAnalysis::addVecAlias(
             SSubVecDesc* SV = aliaserSV->Aliasers[i];
             SV->BaseVector = aliaseeRoot;
             SV->StartElementOffset += Idx;
-
             rootSV->Aliasers.push_back(SV);
         }
 
@@ -1452,12 +1449,13 @@ void VariableReuseAnalysis::addVecAlias(
     // Finally, add aliaserSV into root's Aliaser vector and
     // update aliaser to its root map if aliaser's not isolated.
     rootSV->Aliasers.push_back(aliaserSV);
+
     // aliaser
     Value* rv0 = m_DeSSA ? m_DeSSA->getRootValue(Aliaser) : nullptr;
     if (rv0) {
         m_root2AliasMap[rv0] = Aliaser;
     }
-    // aliasee
+    // aliasee, note that re-defining it does not matter.
     Value* rv1 = m_DeSSA ? m_DeSSA->getRootValue(Aliasee) : nullptr;
     if (rv1) {
         m_root2AliasMap[rv1] = Aliasee;
@@ -1473,29 +1471,46 @@ SSubVecDesc* VariableReuseAnalysis::getOrCreateSubVecDesc(Value* V)
     return m_aliasMap[V];
 }
 
-bool VariableReuseAnalysis::isVecAliased(Value* V) const
+// Return true if V itself is sub-vector aliased.
+// Note that other values in V's DeSSA CC are not checked.
+bool VariableReuseAnalysis::isAliased(Value* V) const
 {
-    if (m_aliasMap.count(V) > 0) {
-        return true;
-    }
-
-    Value* rv = m_DeSSA ? m_DeSSA->getRootValue(V) : nullptr;
-    return (rv && m_root2AliasMap.count(rv) > 0);
+    Value* V_nv = m_DeSSA ? m_DeSSA->getNodeValue(V) : V;
+    return m_aliasMap.count(V_nv) > 0;
 }
 
-bool VariableReuseAnalysis::isSingleVecAliaser(llvm::Value* V) const
+// DCC: DeSSA Congruent Class
+// If any value in V's DCC is aliaer, return true.
+bool VariableReuseAnalysis::hasAnyOfDCCAsAliaser(Value* V) const
 {
     auto II = m_aliasMap.find(V);
     if (II != m_aliasMap.end()) {
+        // If it is in the map, all of its DCC should
+        // be either aliaser or aliasee, never have the
+        // mix of aliaser and aliasee (implementation
+        // must guarantee this).
         SSubVecDesc* SV = II->second;
-        if (SV->Aliaser != SV->BaseVector)
-            return false;
+        return SV->Aliaser != SV->BaseVector;
     }
 
-    return isSingleVecAliasee(V);
+    // If V is not in the map, check others in its DCC
+    Value* rv = m_DeSSA ? m_DeSSA->getRootValue(V) : nullptr;
+    if (rv) {
+        auto II = m_root2AliasMap.find(rv);
+        if (II != m_root2AliasMap.end()) {
+            Value* aV = II->second;
+            auto MI = m_aliasMap.find(aV);
+            assert(MI != m_aliasMap.end());
+            SSubVecDesc* SV = MI->second;
+            return (SV->Aliaser != SV->BaseVector);
+        }
+    }
+    return false;
 }
 
-bool VariableReuseAnalysis::isSingleVecAliasee(llvm::Value* V) const
+// DCC: DeSSA Congruent Class
+// If there is another value in V's DCC that is aliasee, return true.
+bool VariableReuseAnalysis::hasAnotherInDCCAsAliasee(Value* V) const
 {
     // Check if any value of its dessa CC has been aliased already.
     Value* rv = m_DeSSA ? m_DeSSA->getRootValue(V) : nullptr;
@@ -1503,12 +1518,15 @@ bool VariableReuseAnalysis::isSingleVecAliasee(llvm::Value* V) const
         auto II = m_root2AliasMap.find(rv);
         if (II != m_root2AliasMap.end()) {
             Value* aV = II->second;
-            return  V == aV;
+            auto MI = m_aliasMap.find(aV);
+            assert(MI != m_aliasMap.end());
+            SSubVecDesc* SV = MI->second;
+            const Value* tV = SV->Aliaser;
+            return (tV == SV->BaseVector && tV != V);
         }
     }
-    return true;
+    return false;
 }
-
 
 // A chain of IEIs is used to define a vector. If all elements of this vector
 // are inserted via this chain IEI that has a constant index, populate AllIEIs.
@@ -1776,6 +1794,13 @@ bool VariableReuseAnalysis::processExtractFrom(VecInsEltInfoTy& AllIEIs)
     Value* Sub = AllIEIs[0].IEI;
     Value* Sub_nv = m_DeSSA->getNodeValue(Sub);
     Value* Base_nv = m_DeSSA->getNodeValue(BaseVec);
+
+    // Implementation restriction
+    if (hasAnyOfDCCAsAliaser(Sub_nv) ||
+        hasAnotherInDCCAsAliasee(Base_nv)) {
+        return false;
+    }
+
     if (aliasInterfere(Sub_nv, Base_nv, BaseStartIx)) {
         return false;
     }
@@ -1819,6 +1844,14 @@ bool VariableReuseAnalysis::processInsertTo(VecInsEltInfoTy& AllIEIs)
         return false;
     };
 
+    // Check alias interference
+    InsertElementInst* FirstIEI = AllIEIs[0].IEI;
+    Value* Base_nv = m_DeSSA->getNodeValue(FirstIEI);
+    // Early check to see if Base_nv could be used as Base.
+    if (hasAnotherInDCCAsAliasee(Base_nv)) {
+        return false;
+    }
+
     bool isSubCandidate = true;
     for (int i = 0; i < nelts; ++i)
     {
@@ -1843,8 +1876,7 @@ bool VariableReuseAnalysis::processInsertTo(VecInsEltInfoTy& AllIEIs)
         // If Sub == nullptr or NextSub != Sub, this is the last element
         // of the current Sub (it is a scalar in case of sub == nullpr).
         Value *NextSub = (i < (nelts - 1)) ? AllIEIs[i + 1].FromVec : nullptr;
-        if (!Sub ||
-            Sub != NextSub)
+        if (!Sub || Sub != NextSub)
         {
             // End of the current Sub
             if (isSubCandidate)
@@ -1875,19 +1907,20 @@ bool VariableReuseAnalysis::processInsertTo(VecInsEltInfoTy& AllIEIs)
     }
 
     // Check alias interference
-    InsertElementInst* FirstIEI = AllIEIs[0].IEI;
     bool hasAlias = false;
-    Value* IEI_nv = m_DeSSA->getNodeValue(FirstIEI);
     for (int i = 0, sz = (int)SubVecs.size(); i < sz; ++i)
     {
         std::pair<Value*, int>& aPair = SubVecs[i];
         Value* V = aPair.first;
         int V_ix = aPair.second;
         Value* V_nv = m_DeSSA->getNodeValue(V);
-        if (aliasInterfere(V_nv, IEI_nv, V_ix)) {
+        if (hasAnyOfDCCAsAliaser(V_nv)) {
             continue;
         }
-        addVecAlias(V_nv, IEI_nv, V_ix);
+        if (aliasInterfere(V_nv, Base_nv, V_ix)) {
+            continue;
+        }
+        addVecAlias(V_nv, Base_nv, V_ix);
 
         // set up Noop inst
         // Make sure noop insts are in the map.
@@ -1908,7 +1941,7 @@ bool VariableReuseAnalysis::processInsertTo(VecInsEltInfoTy& AllIEIs)
                 m_HasBecomeNoopInsts[EEI] = 1;
 
                 Value* EEI_nv = m_DeSSA->getNodeValue(EEI);
-                addVecAlias(EEI_nv, IEI_nv, j);
+                addVecAlias(EEI_nv, Base_nv, j);
             }
         }
         hasAlias = true;
