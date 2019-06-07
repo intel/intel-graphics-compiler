@@ -1605,6 +1605,7 @@ bool G4_INST::isRawMov() const
         (srcs[0]->isImm() ||
         (srcs[0]->isSrcRegRegion() && srcs[0]->asSrcRegRegion()->getModifier() == Mod_src_undef));
 }
+
 bool G4_INST::hasACCSrc() const
 {
     if( implAccSrc ||
