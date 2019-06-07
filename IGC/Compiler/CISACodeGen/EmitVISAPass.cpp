@@ -2937,8 +2937,16 @@ void EmitPass::Sub(const SSource sources[2], const DstModifier &modifier)
 
 }
 
-void EmitPass::Mul64(CVariable* dst, CVariable* src[2]) const
+void EmitPass::Mul64(CVariable* dst, CVariable* src[2], SIMDMode simdMode, bool noMask) const
 {
+    auto EncoderInit = [this, simdMode, noMask]()->void
+    {
+        m_encoder->SetSimdSize(simdMode);
+        if (noMask)
+        {
+            m_encoder->SetNoMask();
+        }
+    };
 
     // Mul64 does not write to m_destination!
 
@@ -2979,11 +2987,12 @@ void EmitPass::Mul64(CVariable* dst, CVariable* src[2]) const
                 ISA_TYPE_UD, EALIGN_GRF, false);
             srcHi[i] = m_currShader->GetNewVariable(src[i]->GetNumberElement(),
                 hiType, EALIGN_GRF, false);
-
+            EncoderInit();
             m_encoder->SetSrcRegion(0, 2, 1, 0);
             m_encoder->Copy(srcLo[i], srcAsUD);
             m_encoder->Push();
 
+            EncoderInit();
             m_encoder->SetSrcSubReg(0, 1);
             m_encoder->SetSrcRegion(0, 2, 1, 0);
             m_encoder->Copy(srcHi[i], srcAsUD);
@@ -2998,11 +3007,11 @@ void EmitPass::Mul64(CVariable* dst, CVariable* src[2]) const
 
     CVariable *dstLo, *dstHi, *dstTemp;
     dstLo = m_currShader->GetNewVariable(dst->GetNumberElement(),
-        ISA_TYPE_UD, m_destination->GetAlign(), m_destination->IsUniform());
+        ISA_TYPE_UD, m_destination->GetAlign(), dst->IsUniform());
     dstHi = m_currShader->GetNewVariable(dst->GetNumberElement(),
-        hiType, m_destination->GetAlign(), m_destination->IsUniform());
+        hiType, m_destination->GetAlign(), dst->IsUniform());
     dstTemp = m_currShader->GetNewVariable(dst->GetNumberElement(),
-        hiType, m_destination->GetAlign(), m_destination->IsUniform());
+        hiType, m_destination->GetAlign(), dst->IsUniform());
 
 
     //
@@ -3010,8 +3019,8 @@ void EmitPass::Mul64(CVariable* dst, CVariable* src[2]) const
     //   - Break the 64 bit sources into 32bit low/high halves.
     //   - Perform multiplication "by hand"
     //
-    //    AB   - src1
-    //    CD   - src0
+    //    AB   - srcLo[0], srcLo[1]
+    //    CD   - srcHi[0], srcHi[1]
     //   ----
     //     E
     //    F
@@ -3022,35 +3031,43 @@ void EmitPass::Mul64(CVariable* dst, CVariable* src[2]) const
     // dstHigh = F + G + carry
 
     // E = A * B
+    EncoderInit();
     m_encoder->Mul(dstLo, srcLo[0], srcLo[1]);
     m_encoder->Push();
 
     // Cr = carry(A * B)
+    EncoderInit();
     m_encoder->MulH(dstHi, srcLo[0], srcLo[1]);
     m_encoder->Push();
 
     // F = A * D
+    EncoderInit();
     m_encoder->Mul(dstTemp, srcLo[0], srcHi[1]);
     m_encoder->Push();
 
     // dstHigh = Cr + F
+    EncoderInit();
     m_encoder->Add(dstHi, dstHi, dstTemp);
     m_encoder->Push();
 
-    // G = B * C
+    // G = C * B
+    EncoderInit();
     m_encoder->Mul(dstTemp, srcHi[0], srcLo[1]);
     m_encoder->Push();
 
     // dstHigh = (Cr + F) + G
+    EncoderInit();
     m_encoder->Add(dstHi, dstHi, dstTemp);
     m_encoder->Push();
 
     //And now, pack the result
     CVariable* dstAsUD = m_currShader->BitCast(dst, ISA_TYPE_UD);
+    EncoderInit();
     m_encoder->SetDstRegion(2);
     m_encoder->Copy(dstAsUD, dstLo);
     m_encoder->Push();
 
+    EncoderInit();
     m_encoder->SetDstRegion(2);
     m_encoder->SetDstSubReg(1);
     m_encoder->Copy(dstAsUD, dstHi);
@@ -3073,7 +3090,7 @@ void EmitPass::Mul(const SSource sources[2], const DstModifier &modifier)
     }
     else
     {
-        Mul64(m_destination, src);
+        Mul64(m_destination, src, m_currShader->m_SIMDSize);
     }
 }
 
@@ -7801,7 +7818,7 @@ CVariable *EmitPass::Mul(CVariable *Src0, CVariable *Src1, const CVariable *DstP
     }
     else {
         CVariable *src[] = { Src0, Src1 };
-        Mul64(Dst, src);
+        Mul64(Dst, src, m_currShader->m_SIMDSize);
     }
     return Dst;
 }
@@ -10084,8 +10101,11 @@ CVariable* EmitPass::BroadcastAndExtend(CVariable* pVar)
 }
 
 CVariable* EmitPass::TruncatePointer(CVariable* pVar) {
-    assert((pVar->GetElemSize() == 4 || pVar->GetElemSize() == 8) &&
-        "It's expected that pointer is either 32-bit or 64-bit integer!");
+    // Truncate pointer is used to prepare pointers for A32 and A64
+    // messages and in stateful loads and stores to prepare the
+    // offset value.
+    // For stateless messages pointer data type can only be 32 or 64 bits wide.
+    // For stateful messages offset data type can be 8, 16, 32 or 64 bits wide.
 
     // 32-bit integer
     if (pVar->GetElemSize() == 4) {
@@ -10214,6 +10234,7 @@ void EmitPass::emitSampleOffset(GenIntrinsicInst* inst)
 
 CVariable* EmitPass::ReduceHelper(e_opcode op, VISA_Type type, SIMDMode simd, CVariable* var)
 {
+    const bool isInt64Mul = (op == EOPCODE_MUL && CEncoder::IsIntegerType(type) && CEncoder::GetCISADataTypeSize(type) == 8);
     CVariable* previousTemp = var;
     auto alignment = type == ISA_TYPE_Q || type == ISA_TYPE_UQ || type == ISA_TYPE_DF ?
         IGC::EALIGN_QWORD : IGC::EALIGN_DWORD;
@@ -10222,11 +10243,26 @@ CVariable* EmitPass::ReduceHelper(e_opcode op, VISA_Type type, SIMDMode simd, CV
         type,
         alignment,
         false);
-    m_encoder->SetNoMask();
-    m_encoder->SetSimdSize(simd);
-    m_encoder->SetSrcSubReg(1, numLanes(simd));
-    m_encoder->GenericAlu(op, temp, previousTemp, previousTemp);
-    m_encoder->Push();
+
+    if (isInt64Mul)
+    {
+        m_encoder->SetSimdSize(simd);
+        m_encoder->SetNoMask();
+        m_encoder->SetSrcSubReg(0, numLanes(simd));
+        m_encoder->Copy(temp, previousTemp);
+        m_encoder->Push();
+        CVariable* pMulSrc[2] = { previousTemp, temp };
+        Mul64(temp, pMulSrc, simd, true /*noMask*/);
+    }
+    else
+    {
+
+        m_encoder->SetNoMask();
+        m_encoder->SetSimdSize(simd);
+        m_encoder->SetSrcSubReg(1, numLanes(simd));
+        m_encoder->GenericAlu(op, temp, previousTemp, previousTemp);
+        m_encoder->Push();
+    }
     return temp;
 }
 
@@ -10234,6 +10270,8 @@ CVariable* EmitPass::ReduceHelper(e_opcode op, VISA_Type type, SIMDMode simd, CV
 void EmitPass::emitReductionAll(
     e_opcode op, uint64_t identityValue, VISA_Type type, bool negate, CVariable* pSrc, CVariable* dst)
 {
+    const bool isInt64Mul = (op == EOPCODE_MUL && CEncoder::IsIntegerType(type) && CEncoder::GetCISADataTypeSize(type) == 8);
+
     CVariable* srcH1 = m_currShader->GetNewVariable(
         numLanes(m_currShader->m_SIMDSize),
         type,
@@ -10276,10 +10314,18 @@ void EmitPass::emitReductionAll(
             type,
             IGC::EALIGN_GRF,
             false);
-        m_encoder->SetNoMask();
-        m_encoder->SetSimdSize(SIMDMode::SIMD16);
-        m_encoder->GenericAlu(op, temp, srcH1, srcH2);
-        m_encoder->Push();
+        if (isInt64Mul)
+        {
+            CVariable* tmpMulSrc[2] = { srcH1, srcH2 };
+            Mul64(temp, tmpMulSrc, SIMDMode::SIMD16, true /*noMask*/);
+        }
+        else
+        {
+            m_encoder->SetNoMask();
+            m_encoder->SetSimdSize(SIMDMode::SIMD16);
+            m_encoder->GenericAlu(op, temp, srcH1, srcH2);
+            m_encoder->Push();
+        }
     }
     if (m_currShader->m_dispatchSize >= SIMDMode::SIMD16)
     {
@@ -10288,11 +10334,22 @@ void EmitPass::emitReductionAll(
     temp = ReduceHelper(op, type, SIMDMode::SIMD4, temp);
     temp = ReduceHelper(op, type, SIMDMode::SIMD2, temp);
 
-    m_encoder->SetSrcSubReg(1, 1);
-    m_encoder->SetSrcRegion(0, 0, 1, 0);
-    m_encoder->SetSrcRegion(1, 0, 1, 0);
-    m_encoder->GenericAlu(op, dst, temp, temp);
-    m_encoder->Push();
+    if (isInt64Mul)
+    {
+        CVariable* tmpMulSrc[2] = {};
+        tmpMulSrc[0] = m_currShader->GetNewAlias(temp, type, 0, 1, true);
+        tmpMulSrc[1] = m_currShader->GetNewAlias(temp, type, sizeof(QWORD), 1, true);
+        Mul64(dst, tmpMulSrc, m_currShader->m_SIMDSize, false /*noMask*/);
+    }
+    else
+    {
+        m_encoder->SetSrcSubReg(1, 1);
+        m_encoder->SetSrcRegion(0, 0, 1, 0);
+        m_encoder->SetSrcRegion(1, 0, 1, 0);
+        m_encoder->GenericAlu(op, dst, temp, temp);
+        m_encoder->Push();
+    }
+
 }
 
 void EmitPass::emitPreOrPostFixOp(
@@ -10300,6 +10357,8 @@ void EmitPass::emitPreOrPostFixOp(
     CVariable* pSrc, CVariable* pSrcsArr[2], CVariable *Flag,
     bool isPrefix, bool isQuad)
 {
+    const bool isInt64Mul = (op == EOPCODE_MUL && CEncoder::IsIntegerType(type) && CEncoder::GetCISADataTypeSize(type) == 8);
+
     if (m_currShader->m_Platform->doScalar64bScan() && CEncoder::GetCISADataTypeSize(type) == 8 && !isQuad)
     {
         emitPreOrPostFixOpScalar(
@@ -10380,6 +10439,97 @@ void EmitPass::emitPreOrPostFixOp(
         }
         pSrcsArr[i] = pSrcCopy;
     }
+
+    auto CreateAlu = [this, op, type, isInt64Mul](
+        const SIMDMode simdSize,
+        const uint numInst,
+        CVariable* pDst,
+        CVariable* pSrc0,
+        CVariable* pSrc1,
+        const uint src0SubReg,
+        const uint src0Region[3],
+        const uint src1SubReg,
+        const uint src1Region[3],
+        const uint dstSubReg,
+        const uint dstRegion)->void
+    {
+        if (isInt64Mul)
+        {
+            // 64 bit integer multiply case is done in 3 steps:
+            // - copy source data to temporary registers to apply
+            //   sources regioning and subregister values
+            // - call Mul64() emulation usig temporary sources and
+            //   a temporary destination
+            // - copy the result from the temporary destination
+            //   and apply destination regioning and subregister
+            //   values
+            // Note: Consider passing regioning information
+            // directly to the Mul64() emulation function instead
+            // of using the temporary registers.
+            CVariable* pMulSrc[2] = {};
+            const uint16_t maxNumLanes = numLanes(simdSize);
+            pMulSrc[0] = m_currShader->GetNewVariable(
+                maxNumLanes,
+                type,
+                IGC::EALIGN_GRF,
+                false);
+            pMulSrc[1] = m_currShader->GetNewVariable(
+                maxNumLanes,
+                type,
+                IGC::EALIGN_GRF,
+                false);
+            CVariable* pMulDst = m_currShader->GetNewVariable(
+                maxNumLanes,
+                type,
+                IGC::EALIGN_GRF,
+                false);
+
+            for (uint instNum = 0; instNum < numInst; ++instNum)
+            {
+                // copy sources with regioning
+                m_encoder->SetSimdSize(simdSize);
+                m_encoder->SetNoMask();
+                m_encoder->SetSrcSubVar(0, instNum * 2);
+                m_encoder->SetSrcRegion(0, src0Region[0], src0Region[1], src0Region[2]);
+                m_encoder->SetSrcSubReg(0, src0SubReg);
+                m_encoder->Copy(pMulSrc[0], pSrc0);
+                m_encoder->SetSrcRegion(0, src1Region[0], src1Region[1], src1Region[2]);
+                m_encoder->SetSrcSubReg(0, src1SubReg);
+                m_encoder->Copy(pMulSrc[1], pSrc1);
+                m_encoder->Push();
+                // create emulation code
+                Mul64(pMulDst, pMulSrc, simdSize, true /*noMask*/);
+                // copy destination with regioning
+                m_encoder->SetSimdSize(simdSize);
+                m_encoder->SetNoMask();
+                m_encoder->SetDstSubVar(instNum * 2);
+                m_encoder->SetDstRegion(dstRegion);
+                m_encoder->SetDstSubReg(dstSubReg);
+                m_encoder->Copy(pDst, pMulDst);
+                m_encoder->Push();
+            }
+        }
+        else
+        {
+            for (uint instNum = 0; instNum < numInst; ++instNum)
+            {
+                m_encoder->SetSimdSize(simdSize);
+                m_encoder->SetNoMask();
+                m_encoder->SetSrcSubVar(0, instNum * 2);
+                m_encoder->SetSrcRegion(0, src0Region[0], src0Region[1], src0Region[2]);
+                m_encoder->SetSrcSubReg(0, src0SubReg);
+                m_encoder->SetSrcSubVar(1, instNum * 2);
+                m_encoder->SetSrcRegion(1, src1Region[0], src1Region[1], src1Region[2]);
+                m_encoder->SetSrcSubReg(1, src1SubReg);
+                m_encoder->SetDstSubVar(instNum * 2);
+                m_encoder->SetDstRegion(dstRegion);
+                m_encoder->SetDstSubReg(dstSubReg);
+                m_encoder->GenericAlu(op, pDst, pSrc0, pSrc1);
+                m_encoder->Push();
+            }
+        }
+    };
+
     for (int i = 0; i < counter; ++i)
     {
         /*
@@ -10394,26 +10544,16 @@ void EmitPass::emitPreOrPostFixOp(
 
         {
             // So then start adding from r10.0 & r10.1
-            int numInst = m_encoder->GetCISADataTypeSize(type) == 8 &&
+            uint numInst = m_encoder->GetCISADataTypeSize(type) == 8 &&
                 m_currShader->m_SIMDSize != SIMDMode::SIMD8 ? 2 : 1;
             auto simdSize = m_encoder->GetCISADataTypeSize(type) == 8 ||
                 m_currShader->m_SIMDSize == SIMDMode::SIMD8 ? SIMDMode::SIMD4 : SIMDMode::SIMD8;
-
-            for (int instNum = 0; instNum < numInst; ++instNum)
-            {
-                m_encoder->SetSimdSize(simdSize);
-                m_encoder->SetNoMask();
-                m_encoder->SetSrcSubVar(0, instNum * 2);
-                m_encoder->SetSrcRegion(0, 2, 1, 0);
-                m_encoder->SetSrcSubVar(1, instNum * 2);
-                m_encoder->SetSrcRegion(1, 2, 1, 0);
-                m_encoder->SetSrcSubReg(1, 1);
-                m_encoder->SetDstSubVar(instNum * 2);
-                m_encoder->SetDstRegion(2);
-                m_encoder->SetDstSubReg(1);
-                m_encoder->GenericAlu(op, pSrcsArr[i], pSrcsArr[i], pSrcsArr[i]);
-                m_encoder->Push();
-            }
+            const uint srcRegion[3] = { 2, 1, 0 };
+            CreateAlu(
+                simdSize, numInst, pSrcsArr[i], pSrcsArr[i], pSrcsArr[i],
+                0 /*src0 subreg*/, srcRegion /*src0 region*/,
+                1 /*src1 subreg*/, srcRegion /*src1 region*/,
+                1 /*dst subreg*/, 2 /*dst region*/);
         }
 
         /*
@@ -10425,27 +10565,16 @@ void EmitPass::emitPreOrPostFixOp(
         // Now we have a weird copy happening. This will be done by SIMD 2 instructions.
 
         {
-            int numInst = m_encoder->GetCISADataTypeSize(type) == 8 &&
+            uint numInst = m_encoder->GetCISADataTypeSize(type) == 8 &&
                 m_currShader->m_SIMDSize != SIMDMode::SIMD8 ? 2 : 1;
             auto simdSize = m_encoder->GetCISADataTypeSize(type) == 8 ||
                 m_currShader->m_SIMDSize == SIMDMode::SIMD8 ? SIMDMode::SIMD2 : SIMDMode::SIMD4;
-
-            for (int instNum = 0; instNum < numInst; ++instNum)
-            {
-                m_encoder->SetSimdSize(simdSize);
-                m_encoder->SetNoMask();
-                m_encoder->SetSrcSubVar(0, instNum * 2);
-                m_encoder->SetSrcSubReg(0, 2);
-                m_encoder->SetSrcSubVar(1, instNum * 2);
-                m_encoder->SetSrcSubReg(1, 1);
-                m_encoder->SetDstSubVar(instNum * 2);
-                m_encoder->SetDstSubReg(2);
-                m_encoder->SetSrcRegion(0, 4, 1, 0);
-                m_encoder->SetSrcRegion(1, 4, 1, 0);
-                m_encoder->SetDstRegion(4);
-                m_encoder->GenericAlu(op, pSrcsArr[i], pSrcsArr[i], pSrcsArr[i]);
-                m_encoder->Push();
-            }
+            const uint srcRegion[3] = { 4, 1, 0 };
+            CreateAlu(
+                simdSize, numInst, pSrcsArr[i], pSrcsArr[i], pSrcsArr[i],
+                2 /*src0 subreg*/, srcRegion /*src0 region*/,
+                1 /*src1 subreg*/, srcRegion /*src1 region*/,
+                2 /*dst subreg*/,  4 /*dst region*/);
         }
 
         /*
@@ -10456,27 +10585,16 @@ void EmitPass::emitPreOrPostFixOp(
         */
 
         {
-            int numInst = m_encoder->GetCISADataTypeSize(type) == 8 &&
+            uint numInst = m_encoder->GetCISADataTypeSize(type) == 8 &&
                 m_currShader->m_SIMDSize != SIMDMode::SIMD8 ? 2 : 1;
             auto simdSize = m_encoder->GetCISADataTypeSize(type) == 8 ||
                 m_currShader->m_SIMDSize == SIMDMode::SIMD8 ? SIMDMode::SIMD2 : SIMDMode::SIMD4;
-
-            for (int instNum = 0; instNum < numInst; ++instNum)
-            {
-                m_encoder->SetSimdSize(simdSize);
-                m_encoder->SetNoMask();
-                m_encoder->SetSrcSubVar(0, instNum * 2);
-                m_encoder->SetSrcSubReg(0, 3);
-                m_encoder->SetSrcSubVar(1, instNum * 2);
-                m_encoder->SetSrcSubReg(1, 1);
-                m_encoder->SetDstSubVar(instNum * 2);
-                m_encoder->SetDstSubReg(3);
-                m_encoder->SetSrcRegion(0, 4, 1, 0);
-                m_encoder->SetSrcRegion(1, 4, 1, 0);
-                m_encoder->SetDstRegion(4);
-                m_encoder->GenericAlu(op, pSrcsArr[i], pSrcsArr[i], pSrcsArr[i]);
-                m_encoder->Push();
-            }
+            const uint srcRegion[3] = { 4, 1, 0 };
+            CreateAlu(
+                simdSize, numInst, pSrcsArr[i], pSrcsArr[i], pSrcsArr[i],
+                3 /*src0 subreg*/, srcRegion /*src0 region*/,
+                1 /*src1 subreg*/, srcRegion /*src1 region*/,
+                3 /*dst subreg*/,  4 /*dst region*/);
         }
 
         if (isQuad)
@@ -10512,42 +10630,38 @@ void EmitPass::emitPreOrPostFixOp(
 
         for (uint loop_counter = 0; loop_counter < numTimesToLoop; ++loop_counter)
         {
-            m_encoder->SetSimdSize(SIMDMode::SIMD4);
-            m_encoder->SetSrcSubReg(0, loop_counter * 8 + 3);
-            m_encoder->SetSrcRegion(0, 0, 1, 0);
-            m_encoder->SetSrcSubReg(1, loop_counter * 8 + 4);
-            m_encoder->SetSrcRegion(1, 4, 4, 1);
-            m_encoder->SetDstSubReg(loop_counter * 8 + 4);
-            m_encoder->SetNoMask();
-
-            m_encoder->GenericAlu(op, pSrcsArr[i], pSrcsArr[i], pSrcsArr[i]);
-            m_encoder->Push();
+            const uint src0Region[3] = { 0, 1, 0 };
+            const uint src1Region[3] = { 4, 4, 1 };
+            CreateAlu(
+                SIMDMode::SIMD4, 1, pSrcsArr[i], pSrcsArr[i], pSrcsArr[i],
+                (loop_counter * 8 + 3) /*src0 subreg*/, src0Region /*src0 region*/,
+                (loop_counter * 8 + 4) /*src1 subreg*/, src1Region /*src1 region*/,
+                (loop_counter * 8 + 4) /*dst subreg*/,  1 /*dst region*/);
         }
 
         if (m_currShader->m_SIMDSize == SIMDMode::SIMD16 || isSimd32)
         {
             // Add the last element of the 1st GRF to all the elements of the 2nd GRF
-            m_encoder->SetSimdSize(SIMDMode::SIMD8);
-            m_encoder->SetNoMask();
-            m_encoder->SetSrcSubReg(0, 7);
-            m_encoder->SetSrcRegion(0, 0, 1, 0);
-            m_encoder->SetSrcSubReg(1, 8);
-            m_encoder->SetSrcRegion(1, 1, 1, 0);
-            m_encoder->SetDstSubReg(8);
-            m_encoder->GenericAlu(op, pSrcsArr[i], pSrcsArr[i], pSrcsArr[i]);
-            m_encoder->Push();
+            const uint src0Region[3] = { 0, 1, 0 };
+            const uint src1Region[3] = { 1, 1, 0 };
+            CreateAlu(
+                SIMDMode::SIMD8, 1, pSrcsArr[i], pSrcsArr[i], pSrcsArr[i],
+                7 /*src0 subreg*/, src0Region /*src0 region*/,
+                8 /*src1 subreg*/, src1Region /*src1 region*/,
+                8 /*dst subreg*/, 1 /*dst region*/);
         }
     }
 
     if (isSimd32 && !isQuad)
     {
         // For SIMD32 we need to write the last element of the prev element to the next 16 elements
-        m_encoder->SetSimdSize(SIMDMode::SIMD16);
-        m_encoder->SetNoMask();
-        m_encoder->SetSrcRegion(0, 0, 1, 0);
-        m_encoder->SetSrcSubReg(0, numLanes(m_currShader->m_SIMDSize) - 1);
-        m_encoder->GenericAlu(op, pSrcsArr[1], pSrcsArr[0], pSrcsArr[1]);
-        m_encoder->Push();
+        const uint src0Region[3] = { 0, 1, 0 };
+        const uint src1Region[3] = { 1, 1, 0 };
+        CreateAlu(
+            SIMDMode::SIMD16, 1, pSrcsArr[1], pSrcsArr[0], pSrcsArr[1],
+            (numLanes(m_currShader->m_SIMDSize) - 1) /*src0 subreg*/, src0Region /*src0 region*/,
+            0 /*src1 subreg*/, src1Region /*src1 region*/,
+            0 /*dst subreg*/, 1 /*dst region*/);
     }
     // reset second half state
     m_encoder->SetSecondHalf(false);
@@ -14759,13 +14873,14 @@ static void GetReductionOp(WaveOps op, Type* opndTy, uint64_t& identity, e_opcod
         }
         assert(ty->isIntegerTy() && "expect integer type");
         auto width = dyn_cast<IntegerType>(ty)->getBitWidth();
+        assert(width == 8 || width == 16 || width == 32 || width == 64);
         if (isSigned)
         {
-            return width == 64 ? ISA_TYPE_Q : (width == 16 ? ISA_TYPE_W : ISA_TYPE_D);
+            return width == 64 ? ISA_TYPE_Q : (width == 16 ? ISA_TYPE_W : (width == 8 ? ISA_TYPE_B: ISA_TYPE_D));
         }
         else
         {
-            return width == 64 ? ISA_TYPE_UQ : (width == 16 ? ISA_TYPE_UW : ISA_TYPE_UD);
+            return width == 64 ? ISA_TYPE_UQ : (width == 16 ? ISA_TYPE_UW : (width == 8 ? ISA_TYPE_UB : ISA_TYPE_UD));
         }
     };
     auto getMaxVal = [](VISA_Type ty) -> uint64_t
@@ -14776,6 +14891,10 @@ static void GetReductionOp(WaveOps op, Type* opndTy, uint64_t& identity, e_opcod
             return std::numeric_limits<int>::max();
         case ISA_TYPE_UD:
             return std::numeric_limits<uint32_t>::max();
+        case ISA_TYPE_B:
+            return std::numeric_limits<int8_t>::max();
+        case ISA_TYPE_UB:
+            return std::numeric_limits<uint8_t>::max();
         case ISA_TYPE_W:
             return std::numeric_limits<int16_t>::max();
         case ISA_TYPE_UW:
@@ -14797,6 +14916,10 @@ static void GetReductionOp(WaveOps op, Type* opndTy, uint64_t& identity, e_opcod
             return std::numeric_limits<int>::min();
         case ISA_TYPE_UD:
             return std::numeric_limits<uint32_t>::min();
+        case ISA_TYPE_B:
+            return std::numeric_limits<int8_t>::min();
+        case ISA_TYPE_UB:
+            return std::numeric_limits<uint8_t>::min();
         case ISA_TYPE_W:
             return std::numeric_limits<int16_t>::min();
         case ISA_TYPE_UW:

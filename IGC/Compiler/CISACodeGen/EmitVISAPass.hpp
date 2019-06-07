@@ -97,7 +97,7 @@ public:
     void Binary(e_opcode opCode, const SSource sources[2], const DstModifier& modifier);
     void Tenary(e_opcode opCode, const SSource sources[3], const DstModifier& modifier);
 
-    void Mul64(CVariable* dst, CVariable* src[2]) const;
+    void Mul64(CVariable* dst, CVariable* src[2], SIMDMode simdMode, bool noMask = false) const;
 
     template<int N>
     void Alu(e_opcode opCode, const SSource sources[N], const DstModifier& modifier);
