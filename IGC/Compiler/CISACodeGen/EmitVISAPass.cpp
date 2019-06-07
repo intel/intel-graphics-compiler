@@ -7618,48 +7618,55 @@ void EmitPass::EmitIntrinsicMessage(llvm::IntrinsicInst* inst)
 
 bool EmitPass::validateInlineAsmConstraints(llvm::CallInst* inst)
 {
+ #if defined ( _DEBUG )
     assert(inst->isInlineAsm());
     InlineAsm* IA = cast<InlineAsm>(inst->getCalledValue());
-    string constraintStr = IA->getConstraintString();
-    smallvector<string, 8> constraints;
+    StringRef constraintStr(IA->getConstraintString());
+    SmallVector<StringRef, 8> constraints;
+
+    //lambda for checking constraint types
+    auto CheckConstraintTypes = [this](StringRef str)->bool
+    {
+        // TODO: Only "r" constraint allowed for now. Add more checks as needed
+        if (!str.equals("r"))
+        {
+            assert(0 && "Constraint type not supported");
+            return false;
+        }
+        return true;
+    };
 
     // Get a list of constraint tokens
-    for (string::size_type pos = 0;;)
+    constraintStr.split(constraints, ',');
+
+    // Check the output constraint tokens
+    unsigned index = 0;
+    while (index < constraints.size() &&
+        (constraints[index].startswith("=") || constraints[index].startswith("+")))
     {
-        string::size_type tpos = constraintStr.find(',', pos);
-        size_t len = (tpos == string::npos) ? string::npos : tpos - pos;
-        constraints.push_back(constraintStr.substr(pos, len));
-        if (tpos == string::npos) break;
-        pos = tpos + 1;
+        CheckConstraintTypes(constraints[index].substr(1));
+        index++;
     }
 
-    bool hasDstTy = false;
-    if (!inst->getType()->isVoidTy())
-    {
-        // Make sure there's a dst constraint
-        if (constraints[0].front() != '=') return false;
-        hasDstTy = true;
-    }
+    // Check the input constraint tokens
     for (unsigned i = 0; i < inst->getNumArgOperands(); i++)
     {
-        unsigned tokId = hasDstTy ? i + 1 : i;
-        StringRef tstr(constraints[tokId]);
+        StringRef tstr = constraints[index++];
         CVariable* cv = GetSymbol(inst->getArgOperand(i));
 
         if (tstr.endswith(".u"))
         {
             // Check if var is uniform
-            if (!cv->IsUniform()) return false;
+            if (!cv->IsUniform())
+            {
+                assert(0 && "Compiler cannot prove variable is uniform");
+                return false;
+            }
+            tstr = tstr.substr(0, tstr.size() - 2);
         }
-        if (tstr.equals("i"))
-        {
-            // Check if var is immediate
-            if (!cv->IsImmediate()) return false;
-        }
-        // TODO: How strict do we want the constraint check to be?
-        // TODO: Implement additional checks when needed
+        CheckConstraintTypes(tstr);
     }
-
+#endif
     return true;
 }
 
@@ -7672,7 +7679,7 @@ void EmitPass::EmitInlineAsm(llvm::CallInst* inst)
     const char* asmStr = IA->getAsmString().c_str();
     const char* lastEmitted = asmStr;
     smallvector<CVariable*, 8> opnds;
-    assert(validateInlineAsmConstraints(inst) && "asm constraints does not match!");
+    validateInlineAsmConstraints(inst);
 
     if (m_destination)
     {
