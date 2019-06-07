@@ -55,7 +55,17 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #   pragma warning( push )
 #endif
 
+#if defined(__linux__)
+#   pragma GCC diagnostic push
+#endif
+
 #include <llvm/Config/llvm-config.h>
+
+#if defined(__linux__)
+#    if __GNUC__ > 8
+#        pragma GCC diagnostic ignored "-Winit-list-lifetime"
+#    endif
+#endif
 
 #if defined( _WIN32 ) || defined( _WIN64 )
 

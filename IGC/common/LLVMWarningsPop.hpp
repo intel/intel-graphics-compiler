@@ -57,3 +57,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifdef _MSC_VER
 #   pragma  warning( pop )
 #endif
+
+#if defined(__linux__)
+#   pragma GCC diagnostic pop
+#endif
