@@ -11576,6 +11576,15 @@ void EmitPass::emitStoreStructured(llvm::Instruction* pInsn)
     m_currShader->isMessageTargetDataCacheDataPort = true;
 }
 
+void setSIMDSizeMask(CEncoder* m_encoder, CShader* m_currShader, int i)
+{
+    m_encoder->SetSimdSize(SIMDMode::SIMD8);
+    m_encoder->SetMask((i == 0) ? EMASK_Q1 : EMASK_Q2);
+
+
+    return;
+}
+
 void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
 {
     uint writeMask = m_currShader->GetExtractMask(pInsn);
@@ -11617,19 +11626,20 @@ void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
         {
             m_encoder->SetPredicate(flag);
             m_encoder->TypedRead4(resource, pU, pV, pR, pLOD, m_destination, writeMask);
+            
             m_encoder->Push();
         }
         else
         {
-            uint splitInstCount = numLanes(m_currShader->m_SIMDSize) / numLanes(SIMDMode::SIMD8);
+            uint splitInstCount = 0;
+            splitInstCount = numLanes(m_currShader->m_SIMDSize) / numLanes(SIMDMode::SIMD8);
             for (uint i = 0; i < splitInstCount; ++i)
             {
                 tempdst[i] = m_currShader->GetNewVariable(numChannels * numLanes(SIMDMode::SIMD8),
                     ISA_TYPE_F,
                     EALIGN_GRF);
 
-                m_encoder->SetSimdSize(SIMDMode::SIMD8);
-                m_encoder->SetMask((i == 0) ? EMASK_Q1 : EMASK_Q2);
+                setSIMDSizeMask(m_encoder, m_currShader, i);
                 m_encoder->SetSrcSubVar(0, i);
                 m_encoder->SetSrcSubVar(1, i);
                 m_encoder->SetSrcSubVar(2, i);
@@ -11645,15 +11655,6 @@ void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
         }
     }
     m_currShader->isMessageTargetDataCacheDataPort = true;
-}
-
-void setSIMDSizeMask(CEncoder* m_encoder, CShader* m_currShader, int i)
-{
-    m_encoder->SetSimdSize(SIMDMode::SIMD8);
-    m_encoder->SetMask((i == 0) ? EMASK_Q1 : EMASK_Q2);
-
-
-    return;
 }
 
 void EmitPass::emitTypedWrite(llvm::Instruction* pInsn)
