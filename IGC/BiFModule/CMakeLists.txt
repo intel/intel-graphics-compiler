@@ -124,13 +124,29 @@ if(CCLANG_FROM_SYSTEM)
 ###
 #2. CCLANG_BUILD_PREBUILDS - use prebuilded opencl-clang toolchain
 elseif(${CCLANG_BUILD_PREBUILDS})
-  add_library(opencl-clang-lib SHARED IMPORTED GLOBAL)
-  set_property(TARGET opencl-clang-lib PROPERTY "IMPORTED_LOCATION" "${CCLANG_BUILD_PREBUILDS_DIR}/${COMMON_CLANG_LIB_FULL_NAME}")
+  set(CLANG_TOOL_PATH "${CCLANG_BUILD_PREBUILDS_DIR}/clang${CMAKE_EXECUTABLE_SUFFIX}")
+  set(LLVM_PACKAGE_VERSION "${LLVM_VERSION_MAJOR}.${LLVM_VERSION_MINOR}.${LLVM_VERSION_PATCH}${LLVM_VERSION_SUFFIX}")
 
-  add_executable(clang-tool IMPORTED GLOBAL)
-  set_property(TARGET clang-tool PROPERTY "IMPORTED_LOCATION" "${CCLANG_BUILD_PREBUILDS_DIR}/clang${CMAKE_EXECUTABLE_SUFFIX}")
+  # Get clang-tool version
+  execute_process(
+    COMMAND ${CLANG_TOOL_PATH} -v
+    ERROR_VARIABLE CLANG_TOOL_V_CALL)
+  string(REGEX MATCH "clang version ([0-9]*\\.[0-9]*\\.[0-9]*[a-zA-Z0-9]*) " CLANG_TOOL_VERSION "${CLANG_TOOL_V_CALL}")
+  set(CLANG_TOOL_VERSION "${CMAKE_MATCH_1}")
 
-  set(opencl-header "${CCLANG_BUILD_PREBUILDS_DIR}/opencl-c.h")
+  # Check if llvm version for IGC is newer or equal with the clang-tool version
+  if(${LLVM_PACKAGE_VERSION} VERSION_GREATER ${CLANG_TOOL_VERSION} OR
+     ${LLVM_PACKAGE_VERSION} EQUAL ${CLANG_TOOL_VERSION})
+    add_library(opencl-clang-lib SHARED IMPORTED GLOBAL)
+    set_property(TARGET opencl-clang-lib PROPERTY "IMPORTED_LOCATION" "${CCLANG_BUILD_PREBUILDS_DIR}/${COMMON_CLANG_LIB_FULL_NAME}")
+
+    add_executable(clang-tool IMPORTED GLOBAL)
+    set_property(TARGET clang-tool PROPERTY "IMPORTED_LOCATION" "${CLANG_TOOL_PATH}")
+
+    set(opencl-header "${CCLANG_BUILD_PREBUILDS_DIR}/opencl-c.h")
+  else()
+    message(FATAL_ERROR "[IGC\\BiFModule] : The clang-tool(${CLANG_TOOL_VERSION}) from prebuilts is newer than llvm(${LLVM_PACKAGE_VERSION}) version for IGC.")
+  endif()
 ###
 #3. CCLANG_BUILD_INTREE_LLVM - use sources of opencl-clang toolchain
 elseif(${CCLANG_BUILD_INTREE_LLVM})
