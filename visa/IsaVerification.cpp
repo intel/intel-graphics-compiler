@@ -276,7 +276,7 @@ static void verifyVariableDecl(const common_isa_header& isaHeader, const print_f
             break; // Prevent gcc warning
     }
 
-    REPORT_HEADER(options, var->num_elements != 0 && var->num_elements <= 4096,
+    REPORT_HEADER(options, var->num_elements != 0 && var->num_elements <= COMMON_ISA_MAX_VARIABLE_SIZE,
                   "V%d's number of elements(%d) is out of range: %s",
                   declID + numPreDefinedVars, var->num_elements,
                   declError.c_str());
