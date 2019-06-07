@@ -421,6 +421,11 @@ if(NOT CMAKE_SIZEOF_VOID_P EQUAL 4)
     set(GenX_IR_definitions ${GenX_IR_definitions} WIN64)
 endif()
 
+ if (MSVC)
+   #set up standard defines from the common WDK path.
+   bs_set_wdk(GenX_IR)
+ endif()
+
 if(NOT WIN32)
   set_target_properties( GenX_IR PROPERTIES PREFIX "")
 endif()
