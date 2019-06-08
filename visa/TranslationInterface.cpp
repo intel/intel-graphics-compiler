@@ -2359,8 +2359,8 @@ int IR_Builder::translateVISACFSymbolInst(const std::string& symbolName, G4_DstR
     startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
 
-    // symbolic imm representing function's address
-    auto funcAddr = createRelocImm(Type_UD);
+    // symbolic imm representing symbol's address
+    auto funcAddr = createRelocImm(Type_UQ);
     auto movInst = createInst(nullptr, G4_mov, nullptr, false, 1, dst, funcAddr, nullptr, InstOpt_WriteEnable);
 
     RelocationEntry relocEntry = RelocationEntry::createSymbolAddrReloc(movInst, 0, symbolName);
@@ -10169,7 +10169,7 @@ int IR_Builder::translateVISALifetimeInst(uint8_t properties, G4_Operand* var)
     if((properties & 0x1) == LIFETIME_START)
     {
         G4_DstRegRegion* varDstRgn = createDstRegRegion(Direct, var->getBase(), 0, 0, 1, Type_UD);
-        createIntrinsicInst(nullptr, Intrinsic::PseudoKill, 1, varDstRgn, createImm((unsigned int)PseudoKillType::Src), 
+        createIntrinsicInst(nullptr, Intrinsic::PseudoKill, 1, varDstRgn, createImm((unsigned int)PseudoKillType::Src),
             nullptr, nullptr, InstOpt_WriteEnable);
     }
     else
