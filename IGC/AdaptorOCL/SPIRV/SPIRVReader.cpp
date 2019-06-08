@@ -2253,9 +2253,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
 
   case OpConstantNull: {
     auto LT = transType(BV->getType());
-    if (auto PT = dyn_cast<PointerType>(LT))
-      return mapValue(BV, ConstantPointerNull::get(PT));
-    return mapValue(BV, ConstantAggregateZero::get(LT));
+    return mapValue(BV, Constant::getNullValue(LT));
   }
 
   case OpSpecConstantComposite:

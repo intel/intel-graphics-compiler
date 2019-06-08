@@ -270,20 +270,21 @@ typedef SPIRVConstantBool<OpSpecConstantFalse> SPIRVSpecConstantFalse;
 class SPIRVConstantNull : public SPIRVConstantEmpty<OpConstantNull>
 {
 public:
+    // Complete constructor
+    SPIRVConstantNull(SPIRVModule *M, SPIRVType *TheType, SPIRVId TheId)
+        : SPIRVConstantEmpty(M, TheType, TheId) {
+        validate();
+    }
     // Incomplete constructor
     SPIRVConstantNull() {}
 protected:
-    void validate() const
-    {
+    void validate() const override {
         SPIRVConstantEmpty::validate();
-        assert((Type->isTypeComposite() ||
-            Type->isTypeOpaque() ||
-            Type->isTypeEvent() ||
-            Type->isTypePointer() ||
-            Type->isTypeReserveId() ||
-            Type->isTypeDeviceEvent() || 
-            Type->isTypeSubgroupAvcINTEL() ||
-            Type->isTypeQueue()) &&
+        assert((Type->isTypeInt() || Type->isTypeBool() || Type->isTypeFloat() ||
+            Type->isTypeComposite() || Type->isTypeOpaque() ||
+            Type->isTypeEvent() || Type->isTypePointer() ||
+            Type->isTypeReserveId() || Type->isTypeDeviceEvent() ||
+            (Type->isTypeSubgroupAvcINTEL())) &&
             "Invalid type");
     }
 };
