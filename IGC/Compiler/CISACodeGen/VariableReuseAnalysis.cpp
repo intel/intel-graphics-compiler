@@ -983,11 +983,12 @@ void VariableReuseAnalysis::visitExtractElementInst(ExtractElementInst& I)
 
     ExtractElementInst* EEI = &I;
     Value* vecVal = EEI->getVectorOperand();
-    // If inst is dead or vecVal is an argument, skip it.
-    // (argument is fixed to a physical GRF and thus it cannot
-    //  be merged into part of other value.)
+    // If inst is dead, EEI is an argument, or EEI & vecVal have
+    // different uniformness, skip it. (Current igc & visa interface
+    // requires any argument value to be a root value, not alias.)
     if (m_HasBecomeNoopInsts.count(EEI) ||
         m_DeSSA->isNoopAliaser(EEI) ||
+        isOrCoalescedWithArg(EEI) ||
         (m_WIA && m_WIA->whichDepend(EEI) != m_WIA->whichDepend(vecVal))) {
         return;
     }
