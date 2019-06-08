@@ -39,8 +39,49 @@ using namespace IGC;
 using namespace IGC::Debug;
 using namespace llvm;
 
+bool getPassToggles(std::bitset<1024>& toggles)
+{
+    const char* passToggles = IGC_GET_REGKEYSTRING(DisablePassToggles);
+    if (passToggles != nullptr && strlen(passToggles) > 0)
+    {
+        std::string szBin;
+        std::string szHexLL;
+        unsigned int len = 0;
+        unsigned long long x = 0;
+        std::string szHex = passToggles;
+        for (size_t i = 0; i < szHex.size(); i += 16)
+        {
+            szHexLL = szHex.substr(i, 16);
+            len = szHexLL.size() * 4;
+            x = std::stoull(szHexLL, nullptr, 16);
+            szBin += std::bitset<64>(x).to_string().substr(64 - len, len);
+        }
+
+        toggles = std::bitset<1024>(szBin);
+        return true;
+    }
+
+    return false;
+}
+
 void IGCPassManager::add(Pass *P)
 {
+    //check only once
+    static bool checkedToggles = false;
+    static bool hasToggles = false;
+    static std::bitset<1024> toggles;
+    if (!checkedToggles)
+    {
+        checkedToggles = true;
+        hasToggles = getPassToggles(toggles);
+    }
+    if (hasToggles && m_pContext->m_numPasses < 1024 && toggles[m_pContext->m_numPasses])
+    {
+        errs() << "Skipping pass: '" << P->getPassName() << "\n";
+        m_pContext->m_numPasses++;
+        return;
+    }
+
     if (IGC_IS_FLAG_ENABLED(ShaderDisableOptPassesAfter)
             && m_pContext->m_numPasses > IGC_GET_FLAG_VALUE(ShaderDisableOptPassesAfter)
             && m_name == "OPT") {
