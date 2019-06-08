@@ -61,6 +61,10 @@ extern "C" TRANSLATION_BLOCK_API void TRANSLATION_BLOCK_CALLING_CONV Register(ST
 extern "C" TRANSLATION_BLOCK_API CTranslationBlock* TRANSLATION_BLOCK_CALLING_CONV Create(STB_CreateArgs* pCreateArgs);
 extern "C" TRANSLATION_BLOCK_API void TRANSLATION_BLOCK_CALLING_CONV Delete(CTranslationBlock* pBlock);
 
+typedef void (TRANSLATION_BLOCK_CALLING_CONV *PFNREGISTER)(STB_RegisterArgs* pRegisterArgs);
+typedef CTranslationBlock* (TRANSLATION_BLOCK_CALLING_CONV *PFNCREATE)(STB_CreateArgs* pCreateArgs);
+typedef void (TRANSLATION_BLOCK_CALLING_CONV *PFNDELETE)(CTranslationBlock* pBlock);
+
 #undef TRANSLATION_BLOCK_CALLING_CONV
 
 /******************************************************************************\
