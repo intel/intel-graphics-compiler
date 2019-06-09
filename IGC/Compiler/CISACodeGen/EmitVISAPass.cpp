@@ -11643,7 +11643,7 @@ void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
         {
             m_encoder->SetPredicate(flag);
             m_encoder->TypedRead4(resource, pU, pV, pR, pLOD, m_destination, writeMask);
-            
+
             m_encoder->Push();
         }
         else

@@ -2029,7 +2029,7 @@ void CEncoder::URBWrite(
             V(vKernel->CreateVISAImmediate(immSrc, &immChannelMask, ISA_TYPE_UW));
 
             V(vKernel->AppendVISADataMovementInst(
-                ISA_MOV, nullptr, false, vISA_EMASK_M1,
+                ISA_MOV, nullptr, false, emask,
                 EXEC_SIZE_8, movDst, immSrc));
             V(vKernel->CreateVISARawOperand(channelMask, GetVISAVariable(tmpDst), 0));
         }
