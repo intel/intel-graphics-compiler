@@ -1627,7 +1627,7 @@ Value* VariableReuseAnalysis::traceAliasValue(Value* V)
 //     IEI = insertElement  <vectorType> Vec,  A,  <constant IEI_ix>
 // Return false, otherwise.
 //
-// When the above condition is true, S, V, V_ix are ysed for the
+// When the above condition is true, S, V, V_ix are used for the
 // following cases:
 //     1. sub-vector (V, V_ix),  S = A
 //        A = extractElement <vectorType> V, <constant V_ix>
@@ -1697,8 +1697,7 @@ bool VariableReuseAnalysis::getElementValue(
 
     V = EEI->getVectorOperand();
     if (isa<Constant>(V) ||
-        hasBeenPayloadCoalesced(V) ||
-        isOrCoalescedWithArg(V))
+        hasBeenPayloadCoalesced(V))
     {
         // case 2 again
         V = nullptr;
@@ -1795,6 +1794,11 @@ bool VariableReuseAnalysis::processExtractFrom(VecInsEltInfoTy& AllIEIs)
     Value* Sub = AllIEIs[0].IEI;
     Value* Sub_nv = m_DeSSA->getNodeValue(Sub);
     Value* Base_nv = m_DeSSA->getNodeValue(BaseVec);
+
+    // If Sub is an arg of function, skip (Base is okay to be an arg)
+    if (isOrCoalescedWithArg(Sub)) {
+        return false;
+    }
 
     // Implementation restriction
     if (hasAnyOfDCCAsAliaser(Sub_nv) ||
@@ -1913,6 +1917,12 @@ bool VariableReuseAnalysis::processInsertTo(VecInsEltInfoTy& AllIEIs)
     {
         std::pair<Value*, int>& aPair = SubVecs[i];
         Value* V = aPair.first;
+
+        // If V is an arg, skip it
+        if (isOrCoalescedWithArg(V)) {
+            continue;
+        }
+
         int V_ix = aPair.second;
         Value* V_nv = m_DeSSA->getNodeValue(V);
         if (hasAnyOfDCCAsAliaser(V_nv)) {
