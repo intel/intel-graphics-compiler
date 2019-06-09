@@ -45,6 +45,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
  */
 
+#ifndef IS_RELEASE_DLL
+
 #include <stdint.h>
 #include <list>
 #include <string>
@@ -2699,3 +2701,5 @@ extern string printFunction(const common_isa_header& isaHeader, const print_form
 {
     return printRoutine(isaHeader, header, instructions, false, funcionId, opt);
 }
+#endif // IS_RELEASE_DLL
+

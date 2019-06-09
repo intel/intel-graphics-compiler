@@ -59,7 +59,11 @@ using namespace vISA;
 #define IS_GEN_PATH  (mBuildOption == CM_CISA_BUILDER_GEN)
 #define IS_BOTH_PATH (mBuildOption == CM_CISA_BUILDER_BOTH)
 #define IS_GEN_BOTH_PATH  (mBuildOption == CM_CISA_BUILDER_GEN || mBuildOption ==  CM_CISA_BUILDER_BOTH)
+#ifdef IS_RELEASE_DLL
+#define IS_VISA_BOTH_PATH 0
+#else
 #define IS_VISA_BOTH_PATH (mBuildOption == CM_CISA_BUILDER_CISA || mBuildOption ==  CM_CISA_BUILDER_BOTH)
+#endif
 
 
 static CM_INLINE void PACK_EXEC_SIZE( unsigned int &size, Common_VISA_EMask_Ctrl eMask )
@@ -776,7 +780,7 @@ void VISAKernelImpl::setDefaultVariableName(Common_ISA_Var_Class Ty, const char 
 #ifndef _DEBUG
     // In a debug build, always set a default name. Otherwise, only set default
     // if emitting visaasm files.
-    if (!m_options->getOption(vISA_GenerateISAASM) && !m_options->getOption(vISA_IsaAssembly))
+    if (!m_options->getOption(vISA_GenerateISAASM))
         return;
 #endif
     char* buf = (char*)m_mem.alloc(256);
