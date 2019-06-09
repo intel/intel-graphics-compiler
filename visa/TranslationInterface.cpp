@@ -2212,6 +2212,8 @@ int IR_Builder::translateVISACFCallInst(Common_ISA_Exec_Size execsize, Common_VI
         execSize = 2;
     }
 
+    unsigned int instOpt = 0;
+    instOpt |= Get_Gen4_Emask(emask, execSize);
     createInst(
         predOpnd,
         callOpToUse,
@@ -2221,7 +2223,7 @@ int IR_Builder::translateVISACFCallInst(Common_ISA_Exec_Size execsize, Common_VI
         dstOpndToUse,
         srcLabel,
         NULL,
-        0,
+        instOpt,
         0);
 
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)

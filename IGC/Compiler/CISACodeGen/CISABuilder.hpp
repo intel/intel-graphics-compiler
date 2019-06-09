@@ -224,7 +224,7 @@ public:
     void BoolToInt(CVariable* dst, CVariable* src) ;
     void Copy(CVariable* dst, CVariable* src);
     void SubroutineCall(CVariable *flag, llvm::Function *F);
-    void SubroutineRet(CVariable *flag);
+    void SubroutineRet(CVariable *flag, llvm::Function *F);
     void StackCall(CVariable *flag, llvm::Function *F, unsigned char argSize, unsigned char retSize);
     void IndirectStackCall(CVariable* flag, CVariable* funcPtr, unsigned char argSize, unsigned char retSize);
     void StackRet(CVariable *flag);

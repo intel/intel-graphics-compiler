@@ -561,6 +561,12 @@ bool BIImport::runOnModule(Module &M)
                     Explore(pFunc);
                 }
             }
+
+            if (pFunc->getName().startswith("__builtin_IB_kmp_"))
+            {
+                pFunc->addFnAttr(llvm::Attribute::NoInline);
+                pFunc->addFnAttr("KMPLOCK");
+            }
         }
     };
 

@@ -244,6 +244,21 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
             continue;
         }
 
+        // Special handling for KMP critical section functions
+        if (F->getName().startswith("__kmp_acquire_lock") ||
+            F->getName().startswith("__kmp_release_lock"))
+        {
+            F->addFnAttr(llvm::Attribute::NoInline);
+            F->addFnAttr("KMPLOCK");
+            continue;
+        }
+
+        // Do not reset it for critical section builtins
+        if (F->hasFnAttribute("KMPLOCK"))
+        {
+            continue;
+        }
+
         // Remove noinline attr if present.
         F->removeFnAttr(llvm::Attribute::NoInline);
 

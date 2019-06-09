@@ -317,6 +317,15 @@ void EstimateFunctionSize::checkSubroutine() {
       }
   }
 
+  for (Function& F : *M)
+  {
+    if (F.hasFnAttribute("KMPLOCK"))
+    {
+      EnableSubroutine = true;
+      break;
+    }
+  }
+
   if (EnableSubroutine) {
     // Disable retry manager when subroutine is enabled.
     pContext->m_retryManager.Disable();

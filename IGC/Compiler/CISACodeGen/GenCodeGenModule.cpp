@@ -810,6 +810,9 @@ InlineCost SubroutineInliner::getInlineCost(CallSite CS)
             Callee->hasFnAttribute(llvm::Attribute::NoInline))
             return IGCLLVM::InlineCost::getNever();
 
+        if (Callee->hasFnAttribute("KMPLOCK"))
+          return IGCLLVM::InlineCost::getNever();
+
         if (Callee->hasFnAttribute("UserSubroutine") &&
             Callee->hasFnAttribute(llvm::Attribute::NoInline))
             return IGCLLVM::InlineCost::getNever();

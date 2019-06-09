@@ -328,6 +328,11 @@ void CEncoder::SubroutineCall(CVariable* flag, llvm::Function *F)
     // control flow instructions cannot be broken down into lower SIMD
     Common_VISA_EMask_Ctrl emask = m_encoderState.m_noMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1;
     Common_ISA_Exec_Size execSize = visaExecSize(m_program->m_dispatchSize);
+    if (F->hasFnAttribute("KMPLOCK"))
+    {
+        emask = vISA_EMASK_M1_NM;
+        execSize = EXEC_SIZE_1;
+    }
     V(vKernel->AppendVISACFCallInst(predOpnd, emask, execSize, visaLabel));
 }
 
@@ -355,13 +360,18 @@ void CEncoder::IndirectStackCall(CVariable* flag, CVariable* funcPtr, unsigned c
     V(vKernel->AppendVISACFIndirectFuncCallInst(predOpnd, emask, execSize, funcAddrOpnd, argSize, retSize));
 }
 
-void CEncoder::SubroutineRet(CVariable* flag)
+void CEncoder::SubroutineRet(CVariable* flag, llvm::Function *F)
 {
     m_encoderState.m_flag.var = flag;
     VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
     // control flow instructions cannot be broken down into lower SIMD
     Common_VISA_EMask_Ctrl emask = m_encoderState.m_noMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1;
     Common_ISA_Exec_Size execSize = visaExecSize(m_program->m_dispatchSize);
+    if (F->hasFnAttribute("KMPLOCK"))
+    {
+        emask = vISA_EMASK_M1_NM;
+        execSize = EXEC_SIZE_1;
+    }
     V(vKernel->AppendVISACFRetInst(predOpnd, emask, execSize));
 }
 

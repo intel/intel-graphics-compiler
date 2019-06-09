@@ -924,6 +924,7 @@ void __builtin_spirv_OpAtomicFlagClear_p4i32_i32_i32( volatile __generic uint *P
 #undef ATOMIC_FLAG_FALSE
 #undef ATOMIC_FLAG_TRUE
 
+
 #undef SEMANTICS_NEED_FENCE
 
 #undef atomic_operation_1op

@@ -674,6 +674,11 @@ void WIAnalysisRunner::calculate_dep(const Value* val)
   else if (const LoadInst *LI = dyn_cast<LoadInst>(inst))                     dep = calculate_dep(LI);
   else if (const VAArgInst *VAI = dyn_cast<VAArgInst>(inst))                  dep = calculate_dep(VAI);
 
+  if (m_func->hasFnAttribute("KMPLOCK"))
+  {
+      dep = WIAnalysis::UNIFORM;
+  }
+
   // If the value was changed in this calculation
   if (!hasOriginal || dep!=orig)
   {

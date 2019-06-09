@@ -8571,7 +8571,7 @@ void EmitPass::emitReturn(llvm::ReturnInst* inst)
             emitCopyAll(Dst, Src, RetTy);
         }
 
-        m_encoder->SubroutineRet(nullptr);
+        m_encoder->SubroutineRet(nullptr, F);
         m_encoder->Push();
         return;
     }
@@ -10774,7 +10774,10 @@ bool EmitPass::IsUniformAtomic(llvm::Instruction* pInst)
         if (id == GenISAIntrinsic::GenISA_intatomicraw ||
             id == GenISAIntrinsic::GenISA_intatomicrawA64)
         {
-            if (IGC_IS_FLAG_ENABLED(DisableScalarAtomics) || m_currShader->m_DriverInfo->WASLMPointersDwordUnit())
+            Function* F = pInst->getParent()->getParent();
+            if (IGC_IS_FLAG_ENABLED(DisableScalarAtomics) ||
+                F->hasFnAttribute("KMPLOCK") ||
+                m_currShader->m_DriverInfo->WASLMPointersDwordUnit())
                 return false;
             llvm::Value* pllDstAddr = pInst->getOperand(1);
             CVariable* pDstAddr = GetSymbol(pllDstAddr);
@@ -10850,6 +10853,14 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst* pInsn)
     {
         llvm::Value* pllSrc1 = pInsn->getOperand(3);
         pSrc1 = GetSymbol(pllSrc1);
+
+        Function* F = pInsn->getParent()->getParent();
+        if (F->hasFnAttribute("KMPLOCK") && m_currShader->GetIsUniform(pInsn))
+        {
+            m_encoder->SetSimdSize(SIMDMode::SIMD1);
+            m_encoder->SetNoMask();
+        }
+
         pSrc1 = UnpackOrBroadcastIfUniform(pSrc1);
         if (IID == GenISAIntrinsic::GenISA_fcmpxchgatomicraw ||
             IID == GenISAIntrinsic::GenISA_fcmpxchgatomicrawA64)
@@ -10892,17 +10903,30 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst* pInsn)
         return;
     }
 
+    Function* F = pInsn->getParent()->getParent();
+    if (F->hasFnAttribute("KMPLOCK") && m_currShader->GetIsUniform(pInsn))
+    {
+        m_encoder->SetSimdSize(SIMDMode::SIMD1);
+        m_encoder->SetNoMask();
+    }
     pDstAddr = BroadcastIfUniform(pDstAddr);
+
+    if (F->hasFnAttribute("KMPLOCK") && m_currShader->GetIsUniform(pInsn))
+    {
+        m_encoder->SetSimdSize(SIMDMode::SIMD1);
+        m_encoder->SetNoMask();
+    }
     if (pSrc0)
     {
         pSrc0 = UnpackOrBroadcastIfUniform(pSrc0);
     }
 
-    if (m_currShader->GetIsUniform(pInsn))
+    if (F->hasFnAttribute("KMPLOCK") && m_currShader->GetIsUniform(pInsn))
     {
-        assert(0 && "Uniform for Atomic Raw is not implemented");
+        m_encoder->SetSimdSize(SIMDMode::SIMD1);
+        m_encoder->SetNoMask();
     }
-    else
+
     {
         CVariable* pDst = returnsImmValue ?
             m_currShader->GetNewVariable(numLanes(m_currShader->m_SIMDSize), bitwidth != 64 ? ISA_TYPE_UD : ISA_TYPE_UQ, EALIGN_GRF) :
