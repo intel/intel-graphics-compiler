@@ -193,6 +193,7 @@ DECLARE_IGC_REGKEY(bool, InterleaveSourceShader,        true, "Interleave the so
 DECLARE_IGC_REGKEY(bool, ShaderDumpEnableAll,           false, "dump all LLVM IR passes, visaasm, and GenISA")
 DECLARE_IGC_REGKEY(bool, ShaderDumpPidDisable,          false, "disabled adding PID to the name of shader dump directory" )
 DECLARE_IGC_REGKEY(bool, DumpToCurrentDir,              false, "dump shaders to the current directory")
+DECLARE_IGC_REGKEY(debugString, DumpToCustomDir,        0,     "Dump shaders to custom directory. Parent directory must exist.")
 DECLARE_IGC_REGKEY(bool, PrintToConsole,                false, "dump to console")
 DECLARE_IGC_REGKEY(bool, DumpCompilerStats,             false, "dump compiler statistics")
 DECLARE_IGC_REGKEY(bool, EnableCapsDump,                false, "Enable hardware caps dump")
