@@ -1376,7 +1376,6 @@ void OptimizeIR(CodeGenContext* pContext)
             }
             mpm.add(llvm::createCFGSimplificationPass());
             mpm.add(llvm::createEarlyCSEPass());
-
             if(pContext->m_instrTypes.hasNonPrimitiveAlloca)
             {
                 mpm.add(createSROAPass());
@@ -1462,9 +1461,6 @@ void OptimizeIR(CodeGenContext* pContext)
                 mpm.add(createSROAPass());
             }
         }
-#if LLVM_VERSION_MAJOR >= 7
-        mpm.add(new TrivialLocalMemoryOpsElimination());
-#endif
         mpm.add(createGenSimplificationPass());
 
         if (pContext->m_instrTypes.hasLoadStore)
