@@ -3956,7 +3956,7 @@ void CEncoder::InitEncoder( bool canAbortOnSpill, bool hasStackCall )
     labelMap.clear();
     labelMap.resize(m_program->entry->size(), nullptr);
     labelCounter = 0;
-    m_hasInlineAsm = IGC_IS_FLAG_ENABLED(EnableInlineAsmSupport) && context->m_instrTypes.hasInlineAsm;
+    m_hasInlineAsm = context->m_DriverInfo.SupportInlineAssembly() && context->m_instrTypes.hasInlineAsm;
 
     vbuilder = nullptr;
     vAsmTextBuilder = nullptr;
@@ -3972,7 +3972,7 @@ void CEncoder::InitEncoder( bool canAbortOnSpill, bool hasStackCall )
     }
 
     bool enableVISADump = IGC_IS_FLAG_ENABLED(EnableVISASlowpath) || IGC_IS_FLAG_ENABLED(ShaderDumpEnable);
-    auto builderMode = m_hasInlineAsm ? vISA_3DWRITER : vISA_3D;
+    auto builderMode = m_hasInlineAsm ? vISA_ASM_WRITER : vISA_3D;
     auto builderOpt = (enableVISADump || m_hasInlineAsm) ? CM_CISA_BUILDER_BOTH : CM_CISA_BUILDER_GEN;
     V(CreateVISABuilder(vbuilder, builderMode, builderOpt, VISAPlatform, params.size(), params.data(), &m_WaTable));
 
@@ -3983,7 +3983,7 @@ void CEncoder::InitEncoder( bool canAbortOnSpill, bool hasStackCall )
 
     vKernel = nullptr;
 
-    const char* kernelName = m_program->entry->getName().data();
+    std::string kernelName = m_program->entry->getName();
     if (context->m_instrTypes.hasDebugInfo)
     {
         // This metadata node is added by TransformBlocks pass for device side
@@ -4012,38 +4012,34 @@ void CEncoder::InitEncoder( bool canAbortOnSpill, bool hasStackCall )
                     auto second = dyn_cast_or_null<MDString>(mdOpnd->getOperand(0));
                     if (second)
                     {
-                        kernelName = second->getString().data();
+                        kernelName = second->getString();
                     }
                 }
             }
         }
     }
 
+    std::string asmName;
     if (m_enableVISAdump || context->m_instrTypes.hasDebugInfo)
     {
         // vISA does not support string of length >= 255. Truncate if this exceeds
         // the limit. Note that vISA may append an extension, so relax it to a
         // random number 240 here.
         const int MAX_VISA_STRING_LENGTH = 240;
-        if (m_program->entry->getName().size() >= MAX_VISA_STRING_LENGTH)
+        if (kernelName.size() >= MAX_VISA_STRING_LENGTH)
         {
-            std::string shortName = m_program->entry->getName();
-            shortName.resize(MAX_VISA_STRING_LENGTH);
-            V(vbuilder->AddKernel(vKernel, shortName.c_str()));
+            kernelName.resize(MAX_VISA_STRING_LENGTH);
         }
-        else
-        {
-            V(vbuilder->AddKernel(vKernel, kernelName));
-        }
-
-        std::string asmName = GetDumpFileName("asm");
-        V(vKernel->AddKernelAttribute("OutputAsmPath", asmName.length(), asmName.c_str()));
+        asmName = GetDumpFileName("asm");
     }
     else
     {
-        V(vbuilder->AddKernel(vKernel, "kernel"));
-        V(vKernel->AddKernelAttribute("OutputAsmPath", std::strlen("0.asm") , "0.asm"));
+        kernelName = "kernel";
+        asmName = "kernel.asm";
     }
+
+    V(vbuilder->AddKernel(vKernel, kernelName.c_str()));
+    V(vKernel->AddKernelAttribute("OutputAsmPath", asmName.length(), asmName.c_str()));
 
     vMainKernel = vKernel;
 
@@ -4449,13 +4445,12 @@ void CEncoder::Compile(bool hasSymbolTable)
 
         // Create a new builder for parsing the visaasm
         TARGET_PLATFORM VISAPlatform = GetVISAPlatform(&(context->platform));
-        auto builderMode = m_enableVISAdump ? CM_CISA_BUILDER_BOTH : CM_CISA_BUILDER_GEN;
-        V(CreateVISABuilder(vAsmTextBuilder, vISA_PARSER, builderMode, VISAPlatform, params.size(), params.data(), &m_WaTable));
+        V(CreateVISABuilder(vAsmTextBuilder, vISA_ASM_READER, CM_CISA_BUILDER_BOTH, VISAPlatform, params.size(), params.data(), &m_WaTable));
         // Use the same build options as before
         SetBuilderOptions(vAsmTextBuilder);
 
         // Parse the generated VISA text
-        std::string parseTextFile = m_enableVISAdump ? GetDumpFileName("inlineasm") : "";
+        std::string parseTextFile = m_enableVISAdump ? GetDumpFileName("inline.visaasm") : "";
         V(vAsmTextBuilder->ParseVISAText(vbuilder->GetAsmTextHeaderStream().str(), vbuilder->GetAsmTextStream().str(), parseTextFile));
 
         pMainKernel = vAsmTextBuilder->GetVISAKernel();

@@ -4755,6 +4755,7 @@ static uint32_t getBlockMsgSize(uint32_t bytesRemaining, bool do256Byte)
     }
 }
 
+
 void EmitPass::emitSimdBlockWrite(llvm::Instruction* inst, llvm::Value* ptrVal)
 {
     Value* llPtr = inst->getOperand(0);
@@ -4786,6 +4787,7 @@ void EmitPass::emitSimdBlockWrite(llvm::Instruction* inst, llvm::Value* ptrVal)
 
     // Special case for uniform data. data is expected to be non-uniform.
     data = BroadcastIfUniform(data);
+
 
     // Special case for simd8 char block write, in which the total bytes = 8.
     // (All the other cases, the total bytes is multiple of 16 (OW).
@@ -4831,6 +4833,7 @@ void EmitPass::emitSimdBlockWrite(llvm::Instruction* inst, llvm::Value* ptrVal)
         if (useA64)
         {
             m_encoder->ScatterA64(data, ScatterOff, blkBits, nBlks);
+
         }
         else {
             m_encoder->ByteScatter(data, resource, ScatterOff, blkBits, nBlks);
@@ -4870,6 +4873,7 @@ void EmitPass::emitSimdBlockWrite(llvm::Instruction* inst, llvm::Value* ptrVal)
             bytesRemaining -= bytesToRead;
 
             m_encoder->OWStoreA64(data, pTempVar, bytesToRead, srcOffset);
+
             srcOffset = srcOffset + bytesToRead;
             m_encoder->Push();
 
@@ -4923,7 +4927,9 @@ void EmitPass::emitSimdBlockWrite(llvm::Instruction* inst, llvm::Value* ptrVal)
 
             bytesToRead = getBlockMsgSize(bytesRemaining, canDo256Byte);
             bytesRemaining -= bytesToRead;
+
             m_encoder->OWStore(data, resource.m_surfaceType, resource.m_resource, src0shifted, bytesToRead, srcOffset);
+
             srcOffset = srcOffset + bytesToRead;
             m_encoder->Push();
 
@@ -4967,6 +4973,7 @@ void EmitPass::emitSimdBlockRead(llvm::Instruction* inst, llvm::Value* ptrVal)
 
     uint32_t typeSizeInBytes = Ty->getScalarSizeInBits() / 8;
     uint32_t totalBytes = nbElements * typeSizeInBytes * numLanes(m_SimdMode);
+
 
     // Special case for simd8 char block read, in which the total bytes = 8.
     // (All the other cases, the total bytes is multiple of 16 (OW).
@@ -5051,6 +5058,7 @@ void EmitPass::emitSimdBlockRead(llvm::Instruction* inst, llvm::Value* ptrVal)
             bytesRemaining -= bytesToRead;
 
             m_encoder->OWLoadA64(m_destination, pTempVar, bytesToRead, dstOffset);
+
             m_encoder->Push();
             dstOffset += bytesToRead;
 
@@ -5108,7 +5116,7 @@ void EmitPass::emitSimdBlockRead(llvm::Instruction* inst, llvm::Value* ptrVal)
 
             bool useSrc = isFirstIter && !isToSLM;
             m_encoder->OWLoad(m_destination, resource, useSrc ? src : pTempVar, isToSLM, bytesToRead, dstOffset);
-            m_encoder->Push();
+                m_encoder->Push();
             dstOffset += bytesToRead;
 
             if (bytesRemaining)

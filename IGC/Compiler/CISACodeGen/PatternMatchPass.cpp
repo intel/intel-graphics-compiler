@@ -1136,7 +1136,7 @@ void CodeGenPatternMatch::visitCallInst(CallInst &I)
         // Match inline asm or indirect call
         if (I.isInlineAsm())
         {
-            if (IGC_IS_FLAG_ENABLED(EnableInlineAsmSupport))
+            if(getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->m_DriverInfo.SupportInlineAssembly())
             {
                 match = MatchSingleInstruction(I);
             }

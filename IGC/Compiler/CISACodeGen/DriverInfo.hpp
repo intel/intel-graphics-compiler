@@ -177,6 +177,9 @@ public:
     virtual bool KeepDiscardHelperPixels() const { return false; }
     virtual bool SupportElfFormat() const { return false; }
 
+    // Choose to support parsing inlined asm instructions on specific platforms
+    virtual bool SupportInlineAssembly() const { return false; }
+
     /// Adjust adapter to adjust the loop unrolling threshold
     virtual unsigned int GetLoopUnrollThreshold() const
     {
