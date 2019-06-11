@@ -791,7 +791,7 @@ endfunction()
 # ======================================================================================================
 
 # ======================================== Precompiled headers =========================================
-if(NOT ${CCLANG_FROM_SYSTEM})
+if(NOT CCLANG_FROM_SYSTEM)
   set(IGC_BUILD__BIF_OCL_INCLUDES ${opencl-header})
   set(PCH_OPTIONS "-include ${opencl-header}")
 else()
