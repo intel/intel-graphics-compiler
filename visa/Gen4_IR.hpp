@@ -2656,10 +2656,6 @@ namespace vISA
                 align = a;
             }
         }
-        void forceAlign(G4_Align a)
-        {
-            align = a;
-        }
         // To support sub register alignment
         G4_SubReg_Align getSubRegAlignment() { return subAlign; }
 

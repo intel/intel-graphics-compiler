@@ -914,7 +914,6 @@ void Optimizer::reRAPostSchedule()
         {
             dcl->prepareForRealloc(&kernel);
         }
-        dcl->getRegVar()->forceAlign(G4_Align::Either);
     }
 
     kernel.fg.clearBBLRASummaries();
