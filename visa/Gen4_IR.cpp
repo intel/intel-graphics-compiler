@@ -285,18 +285,19 @@ G4_SendMsgDescriptor::G4_SendMsgDescriptor(
 }
 
 G4_SendMsgDescriptor::G4_SendMsgDescriptor(
-    uint32_t desc, uint32_t extDesc,
+    uint32_t descBits, uint32_t extDescBits,
     bool isRead,
     bool isWrite,
     G4_Operand *bti,
     G4_Operand *sti)
     : readMsg(isRead), writeMsg(isWrite), m_sti(sti), m_bti(bti)
 {
-    this->desc.value = desc;
-    this->extDesc.value = extDesc;
-    src1Len = (extDesc >> 6) & 0x1F; // [10:6]
-    eotAfterMessage = this->extDesc.layout.eot; // [5]
-    sfid = intToSFID(extDesc & 0xF); // [3:0]
+    desc.value = descBits;
+    extDesc.value = extDescBits;
+// SEE the note above about clearing ExDesc[10:6]
+    src1Len = (extDescBits >> 6) & 0x1F; // [10:6]
+    eotAfterMessage = extDesc.layout.eot; // [5]
+    sfid = intToSFID(extDescBits & 0xF); // [3:0]
 
     if (bti && bti->isImm())
     {
@@ -304,7 +305,7 @@ G4_SendMsgDescriptor::G4_SendMsgDescriptor(
     }
     if (sti && sti->isImm())
     {
-        this->desc.value |= (((unsigned)m_sti->asImm()->getInt()) << 8); // [11:8]
+        desc.value |= (((unsigned)m_sti->asImm()->getInt()) << 8); // [11:8]
     }
 }
 
