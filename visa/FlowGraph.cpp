@@ -3885,8 +3885,7 @@ void G4_Kernel::emit_asm(std::ostream& output, bool beforeRegAlloc, void * binar
                     output << "// Text representation might not be correct" << std::endl;
                 }
 
-                kView.getInstSyntax(pc, stringBuffer, 512,
-                    labelerLambda, (void*)&lambdaArg);
+                kView.getInstSyntax(pc, stringBuffer, 512, labelerLambda, (void*)&lambdaArg);
                 pc += kView.getInstSize(pc);
 
                 (*itBB)->emitBasicInstructionIga(stringBuffer, output, itInst, suppressRegs, lastRegs);

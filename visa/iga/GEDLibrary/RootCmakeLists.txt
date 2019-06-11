@@ -47,9 +47,7 @@ set(GED_definitions _CONSOLE _LIB ${GED_TARGET} GED_DISASSEMBLY ${GED_validation
 
 #Needs to be before add_library otherwise it doesn't get set.
 if(MSVC)
-        #/GS- is a subset of sdl-
-        #"$<$<CONFIG:Release>:/GL>" - causes IGS windows release build failure. Need to look in to why later.
-        add_compile_options(/sdl- $<$<CONFIG:Release>:/Ox> /Gy)
+        add_compile_options($<$<CONFIG:Release>:/Ox> /Gy)
 endif(MSVC)
 
 if (MSVC)

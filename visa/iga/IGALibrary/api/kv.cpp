@@ -263,8 +263,7 @@ size_t kv_get_inst_syntax(
     char *sbuf,
     size_t sbuf_cap,
     const char *(*labeler)(int32_t, void *),
-    void *labeler_env
-)
+    void *labeler_env)
 {
     if (!kv) {
         if (sbuf && sbuf_cap > 0)

@@ -60,9 +60,7 @@ if(IGC_BUILD)
 endif(IGC_BUILD)
 
 if (MSVC)
-  # /GS- is a subset of sdl-
-  # "$<$<CONFIG:Release>:/GL>" - causes IGS windows release build failure. Need to look in to why later.
-  add_compile_options(/sdl- $<$<CONFIG:Release>:/Ox> /Gy)
+  add_compile_options($<$<CONFIG:Release>:/Ox> /Gy)
 endif (MSVC)
 
 ##############################################################################
@@ -344,7 +342,7 @@ endif(ANDROID AND MEDIA_IGA)
     INSTALL(TARGETS IGA_DLL
         LIBRARY DESTINATION ${IGA_LIB_PATH} COMPONENT igc-core)
     unset(IGA_LIB_PATH)
-  elseif(WIN32)
+  elseif(MSVC)
     install(TARGETS IGA_DLL RUNTIME
             DESTINATION Release/lh64              CONFIGURATIONS Release)
     install(TARGETS IGA_DLL RUNTIME

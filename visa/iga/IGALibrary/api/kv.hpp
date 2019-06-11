@@ -56,6 +56,9 @@ class KernelView
 
     // The status from kv_create
     iga_status_t    m_disasm_status;
+
+    // The platform this kernel view platform corresponds to
+    iga_gen_t       m_gen;
 public:
     // Constructs a kernel view.
     //
@@ -69,6 +72,7 @@ public:
         size_t decodeLogLen = 0)
         : m_kv(nullptr)
         , m_disasm_status(IGA_SUCCESS)
+        , m_gen(platf)
     {
         m_kv = kv_create(
             platf,
@@ -241,7 +245,6 @@ public:
             env
         );
     }
-
 
     // This function returns the default label name if custom labeler is not used.
     size_t getDefaultLabelName(
