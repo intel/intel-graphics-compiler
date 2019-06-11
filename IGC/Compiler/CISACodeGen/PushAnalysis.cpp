@@ -581,7 +581,7 @@ bool PushAnalysis::DispatchGRFHardwareWAForHSAndGSDisabled()
 bool PushAnalysis::CanPushConstants()
 {
     if(IGC_GET_FLAG_VALUE(DisablePushConstant) & 0x1 ||
-        IGC_GET_FLAG_VALUE(DisablePushConstant) & static_cast<unsigned int>(m_context->type))
+        IGC_GET_FLAG_VALUE(DisablePushConstant) & (1 << static_cast<unsigned int>(m_context->type)))
     {
         return false;
     }
