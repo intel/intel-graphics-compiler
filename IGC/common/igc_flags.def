@@ -258,7 +258,7 @@ DECLARE_IGC_REGKEY(bool, EnableAdvRuntimeUnroll,        true,  "Enable advanced 
 DECLARE_IGC_REGKEY(bool, AdvRuntimeUnrollCount,         0,     "Advanced runtime unroll count")
 DECLARE_IGC_REGKEY(bool, EnableAdvMemOpt,               true,  "Enable advanced memory optimization")
 DECLARE_IGC_REGKEY(bool, UniformMemOptLimit,            0,     "Limit of uniform memory optimization in bits")
-DECLARE_IGC_REGKEY(bool, EnableFunctionPointer,         false,  "Enables support for function pointers and indirect calls")
+DECLARE_IGC_REGKEY(bool, EnableFunctionPointer,         true,  "Enables support for function pointers and indirect calls")
 DECLARE_IGC_REGKEY(bool, EnableGlobalRelocation,        false,  "Enables relocation service for global constants instead of passing through payload")
 DECLARE_IGC_REGKEY(bool, EnableInlineAsmSupport,        false,  "Enables support for inlineAsm calls")
 

@@ -321,6 +321,7 @@ static void CommonOCLBasedPasses(
         {
             mpm.add(createProcessBuiltinMetaDataPass());
         }
+        mpm.add(new PurgeMetaDataUtils());
     }
 
     // OpenCL WI + image function resolution

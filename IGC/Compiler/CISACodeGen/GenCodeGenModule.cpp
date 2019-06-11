@@ -400,7 +400,7 @@ bool GenXCodeGenModule::runOnModule(Module &M)
                     if (FGA->getDefaultKernel() == nullptr)
                         FGA->setDefaultkernel(F);
                 }
-                else if (F->hasFnAttribute("ExternalLinkedFn"))
+                else if (F->hasFnAttribute("IndirectlyCalled"))
                 {
                     // Add all externally linked functions into the default kernel group
                     Function* defaultKernel = FGA->getDefaultKernel();
@@ -513,7 +513,7 @@ bool GenXFunctionGroupAnalysis::verify()
             for (auto FI = (*SubGI)->begin(), FE = (*SubGI)->end(); FI != FE; ++FI) 
             {
                 Function *F = *FI;
-                if (F->hasFnAttribute("ExternalLinkedFn"))
+                if (F->hasFnAttribute("IndirectlyCalled"))
                 {
                     // Check if all extern functions are added to the main kernel group
                     FunctionGroup* FG = getGroup(F);

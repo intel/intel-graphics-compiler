@@ -80,15 +80,15 @@ bool PurgeMetaDataUtils::runOnModule(Module &M)
             return true;
         }
 
-        // Do not delete externally linked functions, even if there are no uses
-        // in the current module.
-        if (F->hasFnAttribute("ExternalLinkedFn"))
-        {
-            return false;
-        }
-
         if (F->use_empty() && !isEntryFunc(pMdUtils, F))
         {
+            if (F->hasFnAttribute("IndirectlyCalled") &&
+                GlobalValue::isExternalLinkage(F->getLinkage()))
+            {
+                // Do not delete externally linked functions, even if there are no uses in the current module.
+                // However if it's only used internally, and we somehow resolve the indirect call, we can remove it.
+                return false;
+            }
             F->eraseFromParent();
             return true;
         }
@@ -120,7 +120,7 @@ bool PurgeMetaDataUtils::runOnModule(Module &M)
         {
             pContext->getModuleMetaData()->FuncMD.erase(F);
         }
-    }  
+    }
 
     // Update when there is any change.
     if (!ToBeDeleted.empty())

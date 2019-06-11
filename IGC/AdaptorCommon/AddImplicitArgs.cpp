@@ -100,7 +100,7 @@ bool AddImplicitArgs::runOnModule(Module &M)
         // If enabling indirect call, only R0, PayloadHeader and PrivateBase are allowed!
         if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer))
         {
-            if (pFunc->hasFnAttribute("ExternalLinkedFn"))
+            if (pFunc->hasFnAttribute("IndirectlyCalled"))
             {
                 if (implicitArgs.size() != 3 ||
                 !implicitArgs.isImplicitArgExist(ImplicitArg::ArgType::R0) ||
@@ -506,13 +506,16 @@ void AddImplicitArgs::FixIndirectCalls(Module& M)
                 {
                     Function* calledFunc = call->getCalledFunction();
 
+                    // Calls a function not defined in current module
                     bool externalCall = calledFunc &&
-                    calledFunc->isDeclaration() &&
-                    (calledFunc->getLinkage() == GlobalValue::ExternalLinkage) &&
-                    calledFunc->hasFnAttribute("ExternalLinkedFn");
+                        calledFunc->isDeclaration() &&
+                        GlobalValue::isExternalLinkage(calledFunc->getLinkage()) &&
+                        calledFunc->hasFnAttribute("IndirectlyCalled");
 
-                    // Only handled indirect calls and external function calls
-                    if (calledFunc && !externalCall) continue;
+                    if (call->isInlineAsm() || (calledFunc && !externalCall))
+                    {
+                        continue;
+                    }
 
                     SmallVector<Value*, 8> args;
                     SmallVector<Type*, 8> argTys;

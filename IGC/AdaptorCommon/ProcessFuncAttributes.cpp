@@ -301,20 +301,6 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         bool keepAlwaysInline = (MemPoolFuncs.count(F) != 0);
         if (IGC_GET_FLAG_VALUE(FunctionControl) != FLAG_FCALL_FORCE_INLINE)
         {
-            // keep inline if function pointers not enabled and there are uses
-            // for function pointers other than call instructions
-            if (IGC_IS_FLAG_DISABLED(EnableFunctionPointer) && !keepAlwaysInline)
-            {
-                for (auto U : F->users())
-                {
-                    if (!isa<CallInst>(U))
-                    {
-                        keepAlwaysInline = true;
-                        break;
-                    }
-                }
-            }
-
             if (!keepAlwaysInline)
             {
                 for (auto &arg : F->args())
@@ -378,26 +364,29 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
 
             if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer))
             {
-                // Check if the function can be indirectly called either from
+                // Check if the function can be called either from
                 // externally or as a function pointer
-                bool isIndirect = (F->hasFnAttribute("referenced-indirectly"));
-                if (!isIndirect)
+                bool isExtern = (F->hasFnAttribute("referenced-indirectly"));
+                bool isIndirect = false;
+
+                for (auto u = F->user_begin(), e = F->user_end(); u != e; u++)
                 {
-                    for (auto u = F->user_begin(), e = F->user_end(); u != e; u++)
+                    CallInst* call = dyn_cast<CallInst>(*u);
+                    if (!call || call->getCalledValue() != F)
                     {
-                        CallInst* call = dyn_cast<CallInst>(*u);
-                        if (!call || call->getCalledValue() != F)
-                        {
-                            isIndirect = true;
-                        }
+                        isIndirect = true;
                     }
                 }
-                if (isIndirect)
+
+                if (isExtern || isIndirect)
                 {                    
                     pCtx->m_enableFunctionPointer = true;
-                    F->addFnAttr("ExternalLinkedFn");
+                    F->addFnAttr("IndirectlyCalled");
                     F->addFnAttr("visaStackCall");
-                    F->setLinkage(GlobalValue::ExternalLinkage);
+                    if (isExtern)
+                    {
+                        F->setLinkage(GlobalValue::ExternalLinkage);
+                    }
                 }
             }
         }

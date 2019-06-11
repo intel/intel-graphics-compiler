@@ -423,7 +423,7 @@ bool EmitPass::runOnFunction(llvm::Function &F)
             return false;
         }
         // Only use SIMD8 for external functions for now
-        if (F.hasFnAttribute("ExternalLinkedFn") && m_SimdMode != SIMDMode::SIMD8)
+        if (F.hasFnAttribute("IndirectlyCalled") && m_SimdMode != SIMDMode::SIMD8)
         {
             return false;
         }
@@ -442,7 +442,7 @@ bool EmitPass::runOnFunction(llvm::Function &F)
             // Creates a mapping of the function symbol to a register.
             // Any function called/used by this function, including function declarations,
             // should have a register allocated to store it's physical address
-            if (FI.hasFnAttribute("ExternalLinkedFn") && FI.getNumUses() > 0)
+            if (FI.hasFnAttribute("IndirectlyCalled") && FI.getNumUses() > 0)
             {
                 for (auto it = FI.user_begin(), ie = FI.user_end(); it != ie; it++)
                 {
@@ -8650,7 +8650,7 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
     llvm::Function* F = inst->getCalledFunction();
     if (F) assert(!F->empty() && "unexpanded builtin?");
 
-    bool isIndirectFCall = !F || F->hasFnAttribute("ExternalLinkedFn");
+    bool isIndirectFCall = !F || F->hasFnAttribute("IndirectlyCalled");
     CVariable *ArgBlkVar = m_currShader->GetARGV();
     uint32_t offsetA = 0;  // visa argument offset
     uint32_t offsetS = 0;  // visa stack offset
@@ -9000,7 +9000,7 @@ void EmitPass::emitStackFuncEntry(Function *F, bool ptr64bits)
 {
     m_currShader->CreateSP(ptr64bits);
 
-    if (F->hasFnAttribute("ExternalLinkedFn"))
+    if (F->hasFnAttribute("IndirectlyCalled"))
     {
         m_encoder->SetExternFunctionFlag();
     }
@@ -9013,7 +9013,7 @@ void EmitPass::emitStackFuncEntry(Function *F, bool ptr64bits)
     for (auto &Arg : F->args())
     {
         // For indirect calls we can't skip args since we won't know at compile time if it will be used
-        if (!F->hasFnAttribute("ExternalLinkedFn"))
+        if (!F->hasFnAttribute("IndirectlyCalled"))
         {
             // Skip unused arguments if any.
             if (Arg.use_empty())

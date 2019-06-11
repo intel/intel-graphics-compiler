@@ -4325,7 +4325,7 @@ void CEncoder::CreateSymbolTable(void*& buffer, unsigned& bufferSize, unsigned& 
         for (auto &F : pModule->getFunctionList())
         {
             // Find all functions in the module we need to export as symbols
-            if (F.hasFnAttribute("ExternalLinkedFn"))
+            if (F.hasFnAttribute("IndirectlyCalled"))
             {
                 if (!F.isDeclaration() || F.getNumUses() > 0)
                     funcsToExport.push_back(&F);

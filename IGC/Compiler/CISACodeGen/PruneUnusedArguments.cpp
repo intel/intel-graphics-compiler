@@ -92,7 +92,7 @@ bool PruneUnusedArguments::runOnModule(Module &M) {
       if (F->isDeclaration())
         continue;
       // Ignore externally linked functions
-      if (F->hasFnAttribute("ExternalLinkedFn"))
+      if (F->hasFnAttribute("IndirectlyCalled"))
         continue;
 
       // Collect unused arguments and their indices.
