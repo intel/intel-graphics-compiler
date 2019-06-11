@@ -1556,9 +1556,9 @@ std::string sanitizeString(std::string& str)
     {
 #ifdef _WIN32
         return c == '<' || c == '>' || c == '\"' || c == '/' ||
-            c == '|' || c == '?' || c == '*';
+            c == '|' || c == '?' || c == '*' || (!isprint(c) && !isspace(c));
 #else
-        return c == ':';
+        return c == ':' || (!isprint(c) && !isspace(c));
 #endif
     };
     std::replace_if(str.begin(), str.end(), isReservedChar, '_');
