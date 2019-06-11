@@ -5694,27 +5694,15 @@ bool GlobalRA::isUnalignedRegion(
     unsigned regionDisp = getRegionDisp(region);
     unsigned regionByteSize = getRegionByteSize(region, execSize);
 
-    if (kernel.getOptions()->getOption(vISA_UseScratchMsgForSpills))
+    if (regionDisp%G4_GRF_REG_NBYTES == 0 && regionByteSize%G4_GRF_REG_NBYTES == 0)
     {
-        if (regionDisp%G4_GRF_REG_NBYTES == 0 && regionByteSize%G4_GRF_REG_NBYTES == 0)
-            return
+        return
             regionByteSize / G4_GRF_REG_NBYTES != 1 &&
             regionByteSize / G4_GRF_REG_NBYTES != 2 &&
             regionByteSize / G4_GRF_REG_NBYTES != 4;
-        else
-            return true;
     }
-    else
-    {
-        if (owordAligned(regionDisp) && owordAligned(regionByteSize))
-            return
-            regionByteSize / OWORD_BYTE_SIZE != 1 &&
-            regionByteSize / OWORD_BYTE_SIZE != 2 &&
-            regionByteSize / OWORD_BYTE_SIZE != 4;
-        else
-            return true;
+    return true;
 
-    }
 }
 
 bool GlobalRA::shouldPreloadDst(
@@ -9079,9 +9067,7 @@ int GlobalRA::coloringRegAlloc()
     std::vector<SpillManagerGMRF::EDGE> prevIntfEdges;
 
     int globalScratchOffset = builder.getOptions()->getuInt32Option(vISA_SpillMemOffset);
-    bool useScratchMsgForSpill = builder.getOption(vISA_UseScratchMsgForSpills) &&
-        globalScratchOffset < SCRATCH_MSG_LIMIT * 0.6 && !hasStackCall;
-
+    bool useScratchMsgForSpill = globalScratchOffset < SCRATCH_MSG_LIMIT * 0.6 && !hasStackCall;
     bool enableSpillSpaceCompression = builder.getOption(vISA_SpillSpaceCompression);
 
     uint32_t nextSpillOffset = 0;

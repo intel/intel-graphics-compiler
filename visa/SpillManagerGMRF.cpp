@@ -2144,9 +2144,10 @@ SpillManagerGMRF::scatterSendBlockSizeCode (
     return code << getSendDescDataSizeBitOffset ();
 }
 
-static uint32_t getScratchBlocksizeEncoding(int size)
+static uint32_t getScratchBlocksizeEncoding(int numGRF)
 {
 
+    int size = (numGRF * getGRFSize()) / 32; // in HWwords
     unsigned blocksize_encoding = 0;
     if (size == 1)
     {
@@ -2196,7 +2197,8 @@ SpillManagerGMRF::createSpillSendMsgDesc (
         message |= (blocksize_encoding << SCRATCH_MSG_DESC_BLOCK_SIZE);
         int offset = getDisp(base);
         getSpillOffset(offset);
-        message |= (offset >> SCRATCH_SPACE_ADDRESS_UNIT) + regOff;
+        // message expects offsets to be in HWord
+        message |= (offset + regOff * getGRFSize()) >> SCRATCH_SPACE_ADDRESS_UNIT;
         execSize = 16;
     }
     else
@@ -2440,8 +2442,10 @@ SpillManagerGMRF::createSendInst(
 
 static int getNextSize(int height, bool useHWordMsg)
 {
-
-    if (getGenxPlatform() >= GENX_SKL && height >= 8 && useHWordMsg)
+    
+    bool has8GRFMessage = useHWordMsg && getGenxPlatform() >= GENX_SKL &&
+        getGRFSize() == 32;
+    if (has8GRFMessage && height >= 8)
     {
         return 8;
     }
@@ -2819,7 +2823,8 @@ SpillManagerGMRF::createFillSendMsgDesc (
 
         int offset = getDisp(base);
         getSpillOffset(offset);
-        message |= ((offset >> SCRATCH_SPACE_ADDRESS_UNIT) + regOff);
+        // message expects offsets to be in HWord
+        message |= (offset + regOff * getGRFSize()) >> SCRATCH_SPACE_ADDRESS_UNIT;
 
         execSize = 16;
     }
@@ -3009,15 +3014,6 @@ SpillManagerGMRF::createFillSendInstr (
 {
     G4_Imm * messageDescImm =
         createFillSendMsgDesc (filledRangeRegion, execSize);
-
-#ifdef _DEBUG
-    if (useScratchMsg_)
-    {
-        int offset = (messageDescImm->getInt() & 0xFFF) * GENX_GRF_REG_SIZ;
-        MUST_BE_TRUE(offset >= globalScratchOffset, "incorrect offset");
-    }
-#endif
-
 
     if( useScratchMsg_)
     {

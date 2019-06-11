@@ -92,7 +92,6 @@ DEF_VISA_OPTION(vISA_PrintRegUsage,         ET_BOOL, "-printregusage",   UNUSED,
 DEF_VISA_OPTION(vISA_IPA,                   ET_BOOL, "-noipa",           UNUSED, true)
 DEF_VISA_OPTION(vISA_LocalRA,               ET_BOOL, "-nolocalra",       UNUSED, true)
 DEF_VISA_OPTION(vISA_LocalRARoundRobin,     ET_BOOL, "-nolocalraroundrobin", UNUSED, true)
-DEF_VISA_OPTION(vISA_UseScratchMsgForSpills, ET_BOOL, "-disableScratchSpillMsg", UNUSED, true)
 DEF_VISA_OPTION(vISA_ForceSpills,           ET_BOOL, "-forcespills",     UNUSED, false)
 DEF_VISA_OPTION(vISA_NoIndirectForceSpills, ET_BOOL, "-noindirectforcespills", UNUSED, false)
 DEF_VISA_OPTION(vISA_AbortOnSpill,          ET_BOOL, "-abortonspill",    UNUSED, false)

@@ -3660,14 +3660,6 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
         }
     }
 
-    if (context->m_retryManager.GetLastSpillSize() > 0)
-    {
-        if (context->m_retryManager.GetLastSpillSize() > g_cScratchSpaceMsglimit)
-        {
-            SaveOption(vISA_UseScratchMsgForSpills, false);
-        }
-    }
-
     if ((context->type == ShaderType::OPENCL_SHADER || context->type == ShaderType::COMPUTE_SHADER) &&
         VISAPlatform >= GENX_SKL && IGC_IS_FLAG_ENABLED(EnablePreemption) && !hasStackCall)
     {

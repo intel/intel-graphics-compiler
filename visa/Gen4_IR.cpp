@@ -261,6 +261,7 @@ G4_SendMsgDescriptor::G4_SendMsgDescriptor(
     readMsg = isRead;
     writeMsg = isWrite;
 
+
     m_bti = bti;
     m_sti = sti;
 
