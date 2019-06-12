@@ -1375,14 +1375,21 @@ SPIRVToLLVM::transOCLBuiltinFromVariable(GlobalVariable *GV,
       Func->addFnAttr(Attribute::ReadNone);
   }
 
-  SmallVector<LoadInst*, 4> Deletes;
-  SmallVector<LoadInst*, 4> Users;
+  SmallVector<Instruction*, 4> Deletes;
+  SmallVector<Instruction*, 4> Users;
   for (auto UI : GV->users())
   {
-      spirv_assert(isa<LoadInst>(UI) && "Unsupported use");
-      auto *LD = cast<LoadInst>(UI);
+      LoadInst *LD = nullptr;
+      AddrSpaceCastInst* ASCast = dyn_cast<AddrSpaceCastInst>(&*UI);
+      if (ASCast) {
+        LD = cast<LoadInst>(*ASCast->user_begin());
+      } else {
+        LD = cast<LoadInst>(&*UI);
+      }
       Users.push_back(LD);
       Deletes.push_back(LD);
+      if (ASCast)
+        Deletes.push_back(ASCast);
   }
   for (auto &I : Users)
   {
