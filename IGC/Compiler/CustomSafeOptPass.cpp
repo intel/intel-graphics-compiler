@@ -271,6 +271,97 @@ void CustomSafeOptPass::visitAllocaInst(AllocaInst &I)
     }
 }
 
+void CustomSafeOptPass::visitLoadInst(LoadInst &load)
+{
+    // Optimize indirect access to private arrays. Handle cases where
+    // array index is a select between two immediate constant values.
+    // After the optimization there is fair chance the alloca will be
+    // promoted to registers.
+    //
+    // E.g. change the following:
+    // %PrivareArray = alloca[4 x <3 x float>], align 16
+    // %IndirectIndex = select i1 %SomeCondition, i32 1, i32 2
+    // %IndirectAccessPtr= getelementptr[4 x <3 x float>], [4 x <3 x float>] * %PrivareArray, i32 0, i32 %IndirectIndex
+    // %LoadedValue = load <3 x float>, <3 x float>* %IndirectAccess, align 16
+
+    // %PrivareArray = alloca[4 x <3 x float>], align 16
+    // %DirectAccessPtr1 = getelementptr[4 x <3 x float>], [4 x <3 x float>] * %PrivareArray, i32 0, i32 1
+    // %DirectAccessPtr2 = getelementptr[4 x <3 x float>], [4 x <3 x float>] * %PrivareArray, i32 0, i32 2
+    // %LoadedValue1 = load <3 x float>, <3 x float>* %DirectAccessPtr1, align 16
+    // %LoadedValue2 = load <3 x float>, <3 x float>* %DirectAccessPtr2, align 16
+    // %LoadedValue = select i1 %SomeCondition, <3 x float> %LoadedValue1, <3 x float> %LoadedValue2
+
+    Value* ptr = load.getPointerOperand();
+    if (ptr->getType()->getPointerAddressSpace() != 0)
+    {
+        // only private arrays are handled
+        return;
+    }
+    if (GetElementPtrInst* gep = dyn_cast<GetElementPtrInst>(ptr))
+    {
+        bool found = false;
+        uint selIdx = 0;
+        // Check if this gep is a good candidate for optimization.
+        // The instruction has to have exactly one non-constant index value.
+        // The index value has to be a select instruction with immediate
+        // constant values.
+        for (uint i = 0; i < gep->getNumIndices(); ++i)
+        {
+            Value* gepIdx = gep->getOperand(i + 1);
+            if (!isa<ConstantInt>(gepIdx))
+            {
+                SelectInst* sel = dyn_cast<SelectInst>(gepIdx);
+                if (!found &&
+                    sel &&
+                    isa<ConstantInt>(sel->getOperand(1)) &&
+                    isa<ConstantInt>(sel->getOperand(2)))
+                {
+                    found = true;
+                    selIdx = i;
+                }
+                else
+                {
+                    found = false; // optimize cases with only a single non-constant index.
+                    break;
+                }
+            }
+
+        }
+        if (found)
+        {
+            SelectInst* sel = cast<SelectInst>(gep->getOperand(selIdx + 1));
+            SmallVector<Value *, 8> indices;
+            indices.append(gep->idx_begin(), gep->idx_end());
+            indices[selIdx] = sel->getOperand(1);
+            GetElementPtrInst* gep1 = GetElementPtrInst::Create(nullptr, gep->getPointerOperand(), indices, gep->getName(), gep);
+            gep1->setDebugLoc(gep->getDebugLoc());
+            indices[selIdx] = sel->getOperand(2);
+            GetElementPtrInst* gep2 = GetElementPtrInst::Create(nullptr, gep->getPointerOperand(), indices, gep->getName(), gep);
+            gep2->setDebugLoc(gep->getDebugLoc());
+            LoadInst* load1 = cast<LoadInst>(load.clone());
+            load1->insertBefore(&load);
+            load1->setOperand(0, gep1);
+            LoadInst* load2 = cast<LoadInst>(load.clone());
+            load2->insertBefore(&load);
+            load2->setOperand(0, gep2);
+            SelectInst* result = SelectInst::Create(sel->getCondition(), load1, load2, load.getName(), &load);
+            result->setDebugLoc(load.getDebugLoc());
+            load.replaceAllUsesWith(result);
+            load.eraseFromParent();
+            if (gep->getNumUses() == 0)
+            {
+                gep->eraseFromParent();
+            }
+            if (sel->getNumUses() == 0)
+            {
+                sel->eraseFromParent();
+            }
+        }
+
+    }
+
+}
+
 void CustomSafeOptPass::visitCallInst(CallInst &C)
 {
     // discard optimizations

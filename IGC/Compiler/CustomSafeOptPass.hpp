@@ -76,6 +76,7 @@ namespace IGC
         void visitFPTruncInst(llvm::FPTruncInst &I);
         void visitExtractElementInst(llvm::ExtractElementInst& I);
         void visitLdptr(llvm::CallInst* inst);
+        void visitLoadInst(llvm::LoadInst &I);
         //
         // IEEE Floating point arithmetic is not associative.  Any pattern
         // match that changes the order or paramters is unsafe.
@@ -180,5 +181,5 @@ namespace IGC
     llvm::FunctionPass *createBlendToDiscardPass();
     llvm::FunctionPass *createMarkReadOnlyLoadPass();
     llvm::FunctionPass *createLogicalAndToBranchPass();
-
+ 
 } // namespace IGC

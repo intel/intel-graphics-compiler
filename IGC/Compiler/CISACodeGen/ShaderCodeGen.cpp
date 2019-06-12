@@ -1381,6 +1381,9 @@ void OptimizeIR(CodeGenContext* pContext)
             mpm.add(llvm::createEarlyCSEPass());
             if(pContext->m_instrTypes.hasNonPrimitiveAlloca)
             {
+                // run custom safe opts to potentially get rid of indirect
+                // addressing of private arrays, see visitLoadInst
+                mpm.add(new CustomSafeOptPass());
                 mpm.add(createSROAPass());
             }
 
