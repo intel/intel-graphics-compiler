@@ -1019,6 +1019,9 @@ void VariableReuseAnalysis::visitExtractElementInst(ExtractElementInst& I)
 
     // Valid vec alias and add it into alias map
     addVecAlias(EEI_nv, vec_nv, iIdx);
+
+    // Mark this inst as noop inst
+    m_HasBecomeNoopInsts[EEI] = 1;
 }
 
 void VariableReuseAnalysis::visitExtractElementInst_toBeDeleted(ExtractElementInst& I)
