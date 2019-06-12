@@ -124,6 +124,7 @@ SPIRVFunctionCall::validate()const {
   SPIRVFunctionCallGeneric::validate();
 }
 
+
 //Each instruction should implement this function
 std::vector<SPIRVValue *>
 SPIRVInstruction::getOperands() {

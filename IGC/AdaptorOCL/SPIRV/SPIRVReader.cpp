@@ -1688,7 +1688,6 @@ SPIRVToLLVM::transTypeToOCLTypeName(SPIRVType *T, bool IsSigned) {
   case OpTypeOpaque:
       return T->getName();
   case OpTypeFunction:
-    llvm_unreachable("Unsupported");
     return "function";
   case OpTypeStruct: {
     auto Name = T->getName();
@@ -2831,6 +2830,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
     return mapValue(BV, Call);
     }
     break;
+
 
   case OpExtInst:
     return mapValue(BV, transOCLBuiltinFromExtInst(

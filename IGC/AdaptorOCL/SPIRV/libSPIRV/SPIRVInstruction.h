@@ -1099,6 +1099,30 @@ typedef SPIRVAccessChainGeneric<OpInBoundsPtrAccessChain, 5>
 template<Op OC, SPIRVWord FixedWordCount>
 class SPIRVFunctionCallGeneric: public SPIRVInstruction {
 public:
+  SPIRVFunctionCallGeneric(SPIRVType *TheType, SPIRVId TheId,
+    const std::vector<SPIRVWord> &TheArgs,
+    SPIRVBasicBlock *BB)
+    : SPIRVInstruction(TheArgs.size() + FixedWordCount, OC, TheType, TheId,
+      BB),
+    Args(TheArgs) {
+    SPIRVFunctionCallGeneric::validate();
+    assert(BB && "Invalid BB");
+  }
+  SPIRVFunctionCallGeneric(SPIRVType *TheType, SPIRVId TheId,
+    const std::vector<SPIRVValue *> &TheArgs,
+    SPIRVBasicBlock *BB)
+    : SPIRVInstruction(TheArgs.size() + FixedWordCount, OC, TheType, TheId,
+      BB) {
+    Args = getIds(TheArgs);
+    SPIRVFunctionCallGeneric::validate();
+    assert(BB && "Invalid BB");
+  }
+
+  SPIRVFunctionCallGeneric(SPIRVModule *BM, SPIRVWord ResId, SPIRVType *TheType,
+    const std::vector<SPIRVWord> &TheArgs)
+    : SPIRVInstruction(TheArgs.size() + FixedWordCount, OC, TheType, ResId,
+      BM),
+    Args(TheArgs) {}
   SPIRVFunctionCallGeneric():SPIRVInstruction(OC) {}
   const std::vector<SPIRVWord> &getArguments() {
     return Args;
@@ -1136,6 +1160,7 @@ public:
 protected:
   SPIRVId FunctionId;
 };
+
 
 class SPIRVExtInst: public SPIRVFunctionCallGeneric<OpExtInst, 5> {
 public:
