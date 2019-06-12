@@ -235,6 +235,9 @@ public:
     /// Should unaligned vectors be split before processing in EmitVISA
     virtual bool splitUnalignedVectors() const { return true; }
 
+    /// Does not emit an error if recursive functions calls are detected.
+    virtual bool AllowRecursion() const { return false; }
+
 };
 
 }//namespace IGC

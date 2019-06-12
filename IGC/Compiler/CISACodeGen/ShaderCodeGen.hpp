@@ -86,6 +86,7 @@ public:
     void        Destroy();
     virtual void InitEncoder(SIMDMode simdMode, bool canAbortOnSpill, ShaderDispatchMode shaderMode = ShaderDispatchMode::NOT_APPLICABLE);
     virtual void PreCompile() {}
+    virtual void PreCompileFunction(llvm::Function &F) {}
     virtual void ParseShaderSpecificOpcode(llvm::Instruction* inst) {}
     virtual void AllocatePayload() {}
     virtual void AddPrologue() {}

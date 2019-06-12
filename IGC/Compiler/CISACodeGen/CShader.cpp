@@ -1998,6 +1998,7 @@ void CShader::BeginFunction(llvm::Function *F)
     }
 
     CreateAliasVars();
+    PreCompileFunction(*F);
 }
 
 /// This method is used to create the vISA variable for function F's formal return value

@@ -295,7 +295,21 @@ ImplicitArgs::ImplicitArgs(const llvm::Function& func , const MetaDataUtils* pMd
         IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::STAGE_IN_GRID_ORIGIN, "stageInGridOrigin", ImplicitArg::INT, WIAnalysis::UNIFORM, 3, ImplicitArg::ALIGN_GRF, true));
         IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::STAGE_IN_GRID_SIZE, "stageInGridSize", ImplicitArg::INT, WIAnalysis::UNIFORM, 3, ImplicitArg::ALIGN_GRF, true));
 
+
         assert(IMPLICIT_ARGS.size() == ImplicitArg::NUM_IMPLICIT_ARGS && "Mismatch in NUM_IMPLICIT_ARGS and IMPLICIT_ARGS vector");
+
+#ifdef _DEBUG
+        // Note: the order that implicit args are added here must match the
+        // order of the ImplicitArg::Argtype enum.  Let's check that they match:
+        uint32_t CurArgId = ImplicitArg::START_ID;
+        for (auto &Arg : IMPLICIT_ARGS)
+        {
+            if (Arg.getArgType() != CurArgId++)
+            {
+                assert(0 && "enum and vector out of sync!");
+            }
+        }
+#endif // _DEBUG
     }
 
     m_funcInfoMD = pMdUtils->getFunctionsInfoItem(const_cast<llvm::Function*>(&func));

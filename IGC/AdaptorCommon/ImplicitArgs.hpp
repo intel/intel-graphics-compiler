@@ -52,6 +52,7 @@ namespace IGC
         /// @brief  Type of implicit information passed from the OpenCL runtime
         enum ArgType {
             R0,
+            START_ID = R0,
             PAYLOAD_HEADER,
 
             // WI information
@@ -120,6 +121,7 @@ namespace IGC
 
             STAGE_IN_GRID_ORIGIN,
             STAGE_IN_GRID_SIZE,
+
 
             NUM_IMPLICIT_ARGS
         };

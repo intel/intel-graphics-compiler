@@ -146,13 +146,7 @@ namespace IGC
         static char ID;
 
         BuiltinCallGraphAnalysis();
-        ~BuiltinCallGraphAnalysis()
-        {
-            for (auto &Item : argMap)
-            {
-                delete Item.second;
-            } 
-        }
+        ~BuiltinCallGraphAnalysis() {}
 
         virtual llvm::StringRef getPassName() const override
         {
@@ -175,6 +169,7 @@ namespace IGC
     private:
         IGC::IGCMD::MetaDataUtils *m_pMdUtils;
         llvm::SmallDenseMap<llvm::Function*, ImplicitArgmentDetail *> argMap;
+        llvm::SmallVector<std::unique_ptr<ImplicitArgmentDetail>, 4> argDetails;
     };
 
 } // namespace IGC
