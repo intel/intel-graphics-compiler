@@ -957,8 +957,8 @@ void Formatter::formatInstOpts(
     const auto &iopts = i.getInstOpts();
 
     bool hasDepInfo = false;
-    bool hasSendInfo = false;
-    if (iopts.empty() && !hasDepInfo && !hasSendInfo && extraInstOpts.empty()) {
+    bool hasSendCPS = false;
+    if (iopts.empty() && !hasDepInfo && !hasSendCPS && extraInstOpts.empty()) {
         return; // early out (no braces)
     }
 
