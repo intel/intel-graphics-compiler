@@ -2015,12 +2015,13 @@ int VISAKernelImpl::CreateVISAPredicateSrcOperand(VISA_VectorOpnd *& opnd, VISA_
 #endif
     int status = CM_SUCCESS;
 
+    assert(decl->type == PREDICATE_VAR && "expect a predicate variable");
+
     opnd = (VISA_VectorOpnd *)getOpndFromPool();
 
     if(IS_GEN_BOTH_PATH)
     {
         G4_Declare *dcl = decl->predVar.dcl;
-        //ASSERT_USER( (size <= dcl->getNumElems()), " Execsize is larger than predicate variable size." );
         RegionDesc *rd;
 
         G4_Type type = Type_UW;

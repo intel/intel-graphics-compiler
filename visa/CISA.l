@@ -568,6 +568,8 @@ CM_AVS_(4|8|16)x(4|8) {
         return OWORD_MODIFIER;
     }
 
+
+
 [0-9]+         {
         TRACE("\n** NUMBER ");
         CISAlval.number = atoi(yytext);

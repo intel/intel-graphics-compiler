@@ -472,7 +472,6 @@ VISA_RawOpnd* rawOperandArray[16];
 %type <genOperand> VecDstOperand_A
 %type <genOperand> VecDstOperand_G
 %type <genOperand> VecDstOperand_G_I
-%type <genOperand> VecDstOperand_G_I_A
 %type <genOperand> DstGeneralOperand
 %type <genOperand> DstAddrOperand
 %type <genOperand> DstIndirectOperand
@@ -1030,11 +1029,11 @@ MaxInstruction : Predicate MAX_OP InstModifier ExecSize VecDstOperand_G_I VecSrc
          };
 
                 //   1       2         3          4              5               6
-MovInstruction : Predicate MOV_OP InstModifier ExecSize VecDstOperand_G_I_A VecSrcOperand_G_I_IMM_A
+MovInstruction : Predicate MOV_OP InstModifier ExecSize VecDstOperand_G_I VecSrcOperand_G_I_IMM_A
          {
              pCisaBuilder->CISA_create_mov_instruction($1.cisa_gen_opnd, $2, $4.emask, $4.exec_size, $3, $5.cisa_gen_opnd, $6.cisa_gen_opnd, CISAlineno);
          };
-         | Predicate MOV_OP InstModifier ExecSize VecDstOperand_G_I_A VAR
+         | Predicate MOV_OP InstModifier ExecSize VecDstOperand_G_I VAR
          {
              pCisaBuilder->CISA_create_mov_instruction($5.cisa_gen_opnd, $6, CISAlineno);
          };
@@ -1059,7 +1058,7 @@ CmpInstruction :  CMP_OP ConditionalModifier ExecSize VAR VecSrcOperand_G_I_IMM 
              pCisaBuilder->CISA_create_cmp_instruction($2.cisa_mod, ISA_CMP, $3.emask, $3.exec_size, $4, $5.cisa_gen_opnd, $6.cisa_gen_opnd, CISAlineno);
          };
          //    1        2                    3        4                    5                        6
-         |  CMP_OP ConditionalModifier ExecSize VecDstOperand_G_I_A VecSrcOperand_G_I_IMM VecSrcOperand_G_I_IMM
+         |  CMP_OP ConditionalModifier ExecSize VecDstOperand_G_I VecSrcOperand_G_I_IMM VecSrcOperand_G_I_IMM
          {
              pCisaBuilder->CISA_create_cmp_instruction($2.cisa_mod, ISA_CMP, $3.emask, $3.exec_size, $4.cisa_gen_opnd, $5.cisa_gen_opnd, $6.cisa_gen_opnd, CISAlineno);
          };
@@ -1519,13 +1518,6 @@ VecDstOperand_G_I : DstGeneralOperand
                 { $$ = $1; $$.type = OPERAND_GENERAL; }
                 | DstIndirectOperand
                 { $$ = $1; $$.type = OPERAND_INDIRECT; };
-
-VecDstOperand_G_I_A : DstGeneralOperand
-                { $$ = $1; $$.type = OPERAND_GENERAL; }
-                | DstIndirectOperand
-                { $$ = $1; $$.type = OPERAND_INDIRECT; }
-                | DstAddrOperand
-                { $$ = $1; $$.type = OPERAND_ADDRESS; };
 
 /* ------ SRC -----------*/
 VecSrcOperand_G_I_IMM_A : SrcImmOperand
