@@ -810,6 +810,7 @@ namespace vISA
         void labelBBs();
         void populateBBLexId();
         bool interfereBetween(G4_Declare*, G4_Declare*);
+        void verifyAlign(G4_Declare* dcl);
 
     public:
         void verify();
@@ -875,9 +876,6 @@ namespace vISA
         // new temps for each reference of spilled address/flag decls
         std::unordered_set<G4_Declare*> addrFlagSpillDcls;
 
-        // Insert dcls in this set that definitely dont need
-        // 2GRF alignment in LRA.
-        std::unordered_set<G4_Declare*> LRANo2GRFAlign;
     public:
         G4_Kernel& kernel;
         IR_Builder& builder;
@@ -1282,8 +1280,6 @@ namespace vISA
         void resetGlobalRAStates();
 
         void insertPhyRegDecls();
-
-        std::unordered_set<G4_Declare*>& getLRANo2GRFAlign() { return LRANo2GRFAlign; }
     };
 
     inline G4_Declare* Interference::getGRFDclForHRA(int GRFNum) const

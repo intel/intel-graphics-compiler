@@ -1133,19 +1133,10 @@ void LocalRA::markReferencesInOpnd(G4_Operand* opnd, bool isEOT, INST_LIST_ITER 
             {
                 if (opnd->getInst()->isWriteEnableInst() == false)
                 {
-                    // The more filters we can set here to not mark
-                    // topdcl as Even aligned the better it is. Missing
-                    // entries is still correct, but it'll lead to
-                    // conservative behavior causing Even alignment for
-                    // missing topdcls.
-                    if (G4_Type_Table[opnd->getType()].byteSize != 4 ||
-                        opnd->asDstRegRegion()->getHorzStride() != 1)
-                        gra.getLRANo2GRFAlign().insert(topdcl);
                 }
                 else
                 {
                     gra.setAugmentationMask(topdcl, AugmentationMasks::NonDefault);
-                    gra.getLRANo2GRFAlign().insert(topdcl);
                 }
             }
         }

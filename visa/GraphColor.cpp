@@ -2418,7 +2418,7 @@ void GlobalRA::updateAlignment(unsigned char regFile, G4_Align align)
                 topdclAugMask != AugmentationMasks::NonDefault &&
                 topdclAugMask != AugmentationMasks::Default64Bit)
             {
-                if (topdcl->getElemSize() >= 4 &&
+                if ((topdcl->getElemSize() >= 4 || topdclAugMask == AugmentationMasks::Default32Bit) &&
                     topdcl->getByteSize() >= GENX_GRF_REG_SIZ &&
                     !(kernel.fg.builder->getOption(vISA_enablePreemption) &&
                         dcl == kernel.fg.builder->getBuiltinR0()))
@@ -3263,6 +3263,26 @@ bool Augmentation::markNonDefaultMaskDef()
             }
 
             prevAugMask = gra.getAugmentationMask(dcl);
+        }
+
+        if (liveAnalysis.livenessClass(G4_GRF) &&
+            gra.getAugmentationMask(dcl) == AugmentationMasks::Default32Bit &&
+            kernel.getSimdSize() > NUM_DWORDS_PER_GRF)
+        {
+            auto dclLR = gra.getLocalLR(dcl);
+            if (dclLR)
+            {
+                int s;
+                auto phyReg = dclLR->getPhyReg(s);
+                if (phyReg && phyReg->asGreg()->getRegNum() % 2 != 0)
+                {
+                    // If LRA assignment is not 2GRF aligned for SIMD16 then
+                    // mark it as non-default. GRA candidates cannot fully
+                    // overlap with such ranges. Partial overlap is illegal.
+                    gra.setAugmentationMask(dcl, AugmentationMasks::NonDefault);
+                    nonDefaultMaskDefFound = true;
+                }
+            }
         }
     }
 
@@ -4318,7 +4338,7 @@ void Augmentation::buildSIMDIntfDcl(G4_Declare* newDcl, bool isCall)
                 // only for 64-bit bit types since others can be
                 // handled using Even align.
                 gra.getAugmentationMask(defaultDcl) == AugmentationMasks::Default64Bit &&
-                gra.getAugmentationMask(newDcl) == AugmentationMasks::Default64Bit)
+                newDclAugMask == AugmentationMasks::Default64Bit)
             {
                 if (defaultDcl->getRegVar()->isPhyRegAssigned() &&
                     newDcl->getRegVar()->isPhyRegAssigned())
@@ -10925,6 +10945,30 @@ void GlobalRA::fixAlignment()
     }
 }
 
+void VerifyAugmentation::verifyAlign(G4_Declare* dcl)
+{
+    // Verify that dcl with Default32Bit align mask are 2GRF aligned
+    auto it = masks.find(dcl);
+    if (it == masks.end())
+        return;
+
+    auto augData = (*it);
+    auto dclMask = std::get<1>((*it).second);
+
+    if (dclMask == AugmentationMasks::Default32Bit)
+    {
+        auto assignment = dcl->getRegVar()->getPhyReg();
+        if (assignment && assignment->isGreg())
+        {
+            auto phyRegNum = assignment->asGreg()->getRegNum();
+            if (phyRegNum % 2 != 0)
+            {
+                printf("Dcl %s is Default32Bit but assignment is not Even aligned\n", dcl->getName());
+            }
+        }
+    }
+}
+
 void VerifyAugmentation::dump(const char* dclName)
 {
     std::string dclStr = dclName;
@@ -11171,6 +11215,28 @@ void VerifyAugmentation::verify()
         auto& tup = masks[dcl];
         unsigned int startIdx = std::get<2>(tup)->getLexicalId();
         auto dclMask = std::get<1>(tup);
+
+        auto getMaskStr = [](AugmentationMasks m)
+        {
+            std::string str = "Undetermined";
+            if (m == AugmentationMasks::Default16Bit)
+                str = "Default16Bit";
+            else if (m == AugmentationMasks::Default32Bit)
+                str = "Default32Bit";
+            else if (m == AugmentationMasks::Default64Bit)
+                str = "Default64Bit";
+            else if (m == AugmentationMasks::NonDefault)
+                str = "NonDefault";
+            else if (m == AugmentationMasks::DefaultPredicateMask)
+                str = "DefaultPredicateMask";
+            str.append("\n");
+
+            return str;
+        };
+        
+        std::cerr << dcl->getName() << " - " << getMaskStr(dclMask);
+        
+        verifyAlign(dcl);
 
         for (auto it = active.begin(); it != active.end();)
         {
