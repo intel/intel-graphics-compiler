@@ -6342,6 +6342,7 @@ G4_SrcRegRegion* IR_Builder::createSubSrcOperand( G4_SrcRegRegion* src, uint16_t
         }
         rd = size == 1 ? getRegionScalar() :
             createRegionDesc(size == newWd ? newWd * hs : newVs, newWd, hs);
+        rd = getNormalizedRegion(size, rd);
     }
 
     if( src->getRegAccess() != Direct )
