@@ -2578,6 +2578,23 @@ private:
 
     G4_Declare* getImmDcl(G4_Imm* val, int numElt);
 
+    int splitSampleInst(VISASampler3DSubOpCode actualop,
+        bool pixelNullMask,
+        bool cpsEnable,
+        G4_Predicate* pred,
+        ChannelMask srcChannel,
+        int numChannels,
+        G4_Operand *aoffimmi,
+        G4_Operand *sampler,
+        G4_Operand *surface,
+        G4_DstRegRegion* dst,
+        Common_VISA_EMask_Ctrl emask,
+        bool useHeader,
+        unsigned numRows, // msg length for each simd8
+        unsigned int numParms,
+        G4_SrcRegRegion ** params,
+        bool uniformSampler = true);
+
 };
 }
 

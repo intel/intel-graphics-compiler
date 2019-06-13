@@ -8603,24 +8603,22 @@ const char* getNameString(Mem_Manager& mem, size_t size, const char* format, ...
 #endif
 }
 
-static int splitSampleInst(VISASampler3DSubOpCode actualop,
-                           bool pixelNullMask,
-                           bool cpsEnable,
-                           G4_Predicate* pred,
-                           ChannelMask srcChannel,
-                           int numChannels,
-                           G4_Operand *aoffimmi,
-                           G4_Operand *sampler,
-                           G4_Operand *surface,
-                           G4_DstRegRegion* dst,
-                           Common_VISA_EMask_Ctrl emask,
-                           bool useHeader,
-                           unsigned numRows, // msg length for each simd8
-                           IR_Builder *builder,
-                           unsigned int numParms,
-                           G4_SrcRegRegion ** params,
-                           Mem_Manager&        mem,
-                           bool uniformSampler = true)
+int IR_Builder::splitSampleInst(VISASampler3DSubOpCode actualop,
+    bool pixelNullMask,
+    bool cpsEnable,
+    G4_Predicate* pred,
+    ChannelMask srcChannel,
+    int numChannels,
+    G4_Operand *aoffimmi,
+    G4_Operand *sampler,
+    G4_Operand *surface,
+    G4_DstRegRegion* dst,
+    Common_VISA_EMask_Ctrl emask,
+    bool useHeader,
+    unsigned numRows, // msg length for each simd8
+    unsigned int numParms,
+    G4_SrcRegRegion ** params,
+    bool uniformSampler)
 {
     int status = CM_SUCCESS;
     G4_SrcRegRegion *secondHalf[12];
@@ -8633,17 +8631,17 @@ static int splitSampleInst(VISASampler3DSubOpCode actualop,
     G4_SrcRegRegion* temp = NULL;
     uint8_t execSize = 8;
     uint16_t numElts = numRows * GENX_GRF_REG_SIZ/G4_Type_Table[Type_F].byteSize;
-    G4_Declare* payloadF = builder->Create_MRF_Dcl( numElts, Type_F );
-    G4_Declare* payloadUD = builder->createTempVar( numElts, Type_UD, Either, SUB_ALIGNMENT_GRFALIGN );
+    G4_Declare* payloadF = Create_MRF_Dcl( numElts, Type_F );
+    G4_Declare* payloadUD = createTempVar( numElts, Type_UD, Either, SUB_ALIGNMENT_GRFALIGN );
     payloadUD->setAliasDeclare( payloadF, 0 );
-    G4_SrcRegRegion* srcToUse = builder->createSrcRegRegion(Mod_src_undef, Direct, payloadUD->getRegVar(), 0, 0, builder->getRegionStride1(), Type_UD);
+    G4_SrcRegRegion* srcToUse = createSrcRegRegion(Mod_src_undef, Direct, payloadUD->getRegVar(), 0, 0, getRegionStride1(), Type_UD);
 
     // even though we only use lower half of the GRF, we have to allocate full GRF
-    G4_Declare* payloadHF = builder->createTempVar(numElts * 2, Type_HF, Either, Any);
+    G4_Declare* payloadHF = createTempVar(numElts * 2, Type_HF, Either, Any);
     payloadHF->setAliasDeclare( payloadF, 0 );
 
     /********* Creating temp destination, since results are interleaved **************/
-    G4_DstRegRegion *dst1 = builder->createNullDst(dst->getType());
+    G4_DstRegRegion *dst1 = createNullDst(dst->getType());
     G4_Declare * originalDstDcl = nullptr;
     G4_Declare* tempDstDcl = nullptr;
     bool pixelNullMaskEnable = false;
@@ -8655,7 +8653,7 @@ static int splitSampleInst(VISASampler3DSubOpCode actualop,
 
         // If Pixel Null Mask is enabled, then one extra GRF is needed for the
         // write back message.
-        pixelNullMaskEnable = builder->hasPixelNullMask() && pixelNullMask;
+        pixelNullMaskEnable = hasPixelNullMask() && pixelNullMask;
         if(pixelNullMaskEnable) {
             ASSERT_USER(useHeader, "pixel null mask requires a header");
             ++tmpDstRows;
@@ -8663,13 +8661,13 @@ static int splitSampleInst(VISASampler3DSubOpCode actualop,
 
         const char *name = getNameString(mem, 20, "%s%d", "TmpSmplDst_", TmpSmplDstID++);
 
-        tempDstDcl = builder->createDeclareNoLookup(name,
+        tempDstDcl = createDeclareNoLookup(name,
             originalDstDcl->getRegFile(),
             originalDstDcl->getNumElems(),
             (uint16_t)tmpDstRows,
             originalDstDcl->getElemType());
 
-        dst1 = builder->createDstRegRegion(dst->getRegAccess(),
+        dst1 = createDstRegRegion(dst->getRegAccess(),
             tempDstDcl->getRegVar(),
             0,
             0,
@@ -8677,10 +8675,15 @@ static int splitSampleInst(VISASampler3DSubOpCode actualop,
             dst->getType());
     }
     /********* End creating temp destination ***********************/
+
+    G4_Declare* header = nullptr;
+
     if (useHeader)
     {
-        builder->Create_MOVR0_Inst(payloadUD, 0, 0, true);
-        sampler = createSampleHeader(builder, payloadUD, actualop, pixelNullMask, aoffimmi, srcChannel, sampler);
+        const bool samplerIndexGE16 = IsSamplerIndexGE16(aoffimmi);
+        header = getSamplerHeader(isBindlessSampler(sampler), samplerIndexGE16);
+        sampler = createSampleHeader(this, header, actualop, pixelNullMask, aoffimmi, srcChannel, sampler);
+        Create_MOV_Inst(payloadUD, 0, 0, 8, nullptr, nullptr, Create_Src_Opnd_From_Dcl(header, getRegionStride1()), true);
     }
 
     uint32_t instOpt = Get_Gen4_Emask( emask, execSize );
@@ -8692,18 +8695,18 @@ static int splitSampleInst(VISASampler3DSubOpCode actualop,
         {
             // we should generate
             // mov (8) dst<1>:hf src.0<8;8,1>:hf
-            G4_DstRegRegion* dstHF = builder->createDstRegRegion(
+            G4_DstRegRegion* dstHF = createDstRegRegion(
                 Direct, payloadHF->getRegVar(), regOff++, 0, 1, temp->getType());
-            temp->setRegion(builder->getRegionStride1());
-            builder->createInst(NULL, G4_mov, NULL, false, 8, dstHF, temp, NULL, MovInstOpt);
+            temp->setRegion(getRegionStride1());
+            createInst(NULL, G4_mov, NULL, false, 8, dstHF, temp, NULL, MovInstOpt);
         }
         else
         {
-            builder->Copy_SrcRegRegion_To_Payload( payloadF, regOff, temp, execSize, MovInstOpt );
+            Copy_SrcRegRegion_To_Payload( payloadF, regOff, temp, execSize, MovInstOpt );
         }
     }
 
-    uint32_t responseLength = builder->getSamplerResponseLength(numChannels, isHalfReturn, 8,
+    uint32_t responseLength = getSamplerResponseLength(numChannels, isHalfReturn, 8,
         pixelNullMaskEnable, dst->isNullReg());
 
     uint32_t fc = createSamplerMsgDesc(actualop, execSize, isHalfReturn, halfInput);
@@ -8715,19 +8718,19 @@ static int splitSampleInst(VISASampler3DSubOpCode actualop,
         checkCPSEnable(actualop, responseLength, 8);
         extDesc |= (1 << CPS_LOD_COMPENSATION_ENABLE);
     }
-    G4_SendMsgDescriptor *msgDesc = builder->createSendMsgDesc(desc, extDesc, true, false, surface, sampler);
+    G4_SendMsgDescriptor *msgDesc = createSendMsgDesc(desc, extDesc, true, false, surface, sampler);
 
     G4_InstSend* sendInst = nullptr;
-    bool forceSplitSend = ForceSplitSend(*builder, surface);
+    bool forceSplitSend = ForceSplitSend(*this, surface);
 
     if (forceSplitSend)
     {
-        sendInst = builder->Create_SplitSend_Inst(
-            pred, dst1, srcToUse, builder->createNullSrc(Type_UD), execSize, msgDesc, instOpt, false);
+        sendInst = Create_SplitSend_Inst(
+            pred, dst1, srcToUse, createNullSrc(Type_UD), execSize, msgDesc, instOpt, false);
     }
     else
     {
-        sendInst = builder->Create_Send_Inst_For_CISA(
+        sendInst = Create_Send_Inst_For_CISA(
             pred, dst1, srcToUse, execSize, msgDesc, instOpt, false);
     }
     setUniformSampler(sendInst, uniformSampler);
@@ -8753,13 +8756,13 @@ static int splitSampleInst(VISASampler3DSubOpCode actualop,
     G4_Declare *origDstUD = 0;
 
     // temp dst for the second send
-    G4_DstRegRegion *dst2 = builder->createNullDst(dst->getType());
+    G4_DstRegRegion *dst2 = createNullDst(dst->getType());
     G4_Declare* tempDstDcl2 = nullptr;
     if(!dst->isNullReg())
     {
         const char *name = getNameString(mem, 20, "%s%d", "TmpSmplDst2_", TmpSmplDstID++);
 
-        tempDstDcl2 = builder->createDeclareNoLookup(name,
+        tempDstDcl2 = createDeclareNoLookup(name,
             originalDstDcl->getRegFile(),
             originalDstDcl->getNumElems(),
             (uint16_t)tmpDstRows,
@@ -8768,19 +8771,19 @@ static int splitSampleInst(VISASampler3DSubOpCode actualop,
         if(pixelNullMaskEnable)
         {
             unsigned int numElts = tempDstDcl->getNumElems() * tempDstDcl->getNumRows();
-            tempDstUD = builder->createTempVar(numElts, Type_UD, Either, SUB_ALIGNMENT_GRFALIGN);
+            tempDstUD = createTempVar(numElts, Type_UD, Either, SUB_ALIGNMENT_GRFALIGN);
             tempDstUD->setAliasDeclare(tempDstDcl, 0);
 
             numElts = tempDstDcl2->getNumElems() * tempDstDcl2->getNumRows();
-            tempDst2UD = builder->createTempVar(numElts, Type_UD, Either, SUB_ALIGNMENT_GRFALIGN);
+            tempDst2UD = createTempVar(numElts, Type_UD, Either, SUB_ALIGNMENT_GRFALIGN);
             tempDst2UD->setAliasDeclare(tempDstDcl2, 0);
 
             numElts = originalDstDcl->getNumElems() * originalDstDcl->getNumRows();
-            origDstUD = builder->createTempVar(numElts, Type_UD, Either, SUB_ALIGNMENT_GRFALIGN);
+            origDstUD = createTempVar(numElts, Type_UD, Either, SUB_ALIGNMENT_GRFALIGN);
             origDstUD->setAliasDeclare(originalDstDcl, 0);
         }
 
-        dst2 = builder->createDstRegRegion(dst->getRegAccess(),
+        dst2 = createDstRegRegion(dst->getRegAccess(),
             tempDstDcl2->getRegVar(),
             0,
             0,
@@ -8792,23 +8795,22 @@ static int splitSampleInst(VISASampler3DSubOpCode actualop,
     emask = Get_Next_EMask(emask, execSize);
     uint32_t instOpt2 = Get_Gen4_Emask(emask, execSize);
 
-    G4_SrcRegRegion* header = builder->Create_Src_Opnd_From_Dcl(payloadUD, builder->getRegionStride1());
     {
         /**************** SECOND HALF OF THE SEND *********************/
         // re-create payload declare so the two sends may be issued independently
-        G4_Declare* payloadF = builder->Create_MRF_Dcl(numElts, Type_F);
-        G4_Declare* payloadUD = builder->createTempVar(numElts, Type_UD, Either, SUB_ALIGNMENT_GRFALIGN);
+        G4_Declare* payloadF = Create_MRF_Dcl(numElts, Type_F);
+        G4_Declare* payloadUD = createTempVar(numElts, Type_UD, Either, SUB_ALIGNMENT_GRFALIGN);
         payloadUD->setAliasDeclare(payloadF, 0);
 
         // even though we only use lower half of the GRF, we have to allocate full GRF
-        G4_Declare* payloadHF = builder->createTempVar(numElts * 2, Type_HF, Either, Any);
+        G4_Declare* payloadHF = createTempVar(numElts * 2, Type_HF, Either, Any);
         payloadHF->setAliasDeclare(payloadF, 0);
 
-        G4_SrcRegRegion *srcToUse2 = builder->createSrcRegRegion(Mod_src_undef, Direct, payloadUD->getRegVar(), 0, 0, builder->getRegionStride1(), Type_UD);
+        G4_SrcRegRegion *srcToUse2 = createSrcRegRegion(Mod_src_undef, Direct, payloadUD->getRegVar(), 0, 0, getRegionStride1(), Type_UD);
 
         if (useHeader)
         {
-            builder->Create_MOV_Inst(payloadUD, 0, 0, 8, nullptr, nullptr, header, true);
+            Create_MOV_Inst(payloadUD, 0, 0, 8, nullptr, nullptr, Create_Src_Opnd_From_Dcl(header, getRegionStride1()), true);
         }
 
         for (unsigned int i = 0; i < numParms; i++)
@@ -8820,13 +8822,13 @@ static int splitSampleInst(VISASampler3DSubOpCode actualop,
             else if (G4_Type_Table[params[i]->getType()].byteSize == 2)
             {
                 // V1(0,8)<8;8,1>
-                secondHalf[i] = builder->createSrcRegRegion(*(params[i]));
+                secondHalf[i] = createSrcRegRegion(*(params[i]));
                 secondHalf[i]->setSubRegOff(8);
             }
             else
             {
                 // V1(1,0)<8;8,1>
-                secondHalf[i] = builder->createSrcRegRegion(Mod_src_undef,
+                secondHalf[i] = createSrcRegRegion(Mod_src_undef,
                     params[i]->getRegAccess(),
                     params[i]->getBase(),
                     params[i]->getRegOff() + 1,
@@ -8846,41 +8848,41 @@ static int splitSampleInst(VISASampler3DSubOpCode actualop,
             {
                 // we should generate
                 // mov (8) dst<1>:hf src.8<8;8,1>:hf
-                G4_DstRegRegion* dstHF = builder->createDstRegRegion(
+                G4_DstRegRegion* dstHF = createDstRegRegion(
                     Direct, payloadHF->getRegVar(), regOff++, 0, 1, temp->getType());
-                builder->createInst(NULL, G4_mov, NULL, false, execSize, dstHF, temp, NULL, MovInstOpt);
+                createInst(NULL, G4_mov, NULL, false, execSize, dstHF, temp, NULL, MovInstOpt);
             }
             else
             {
-                builder->Copy_SrcRegRegion_To_Payload(payloadF, regOff, temp, execSize, MovInstOpt);
+                Copy_SrcRegRegion_To_Payload(payloadF, regOff, temp, execSize, MovInstOpt);
             }
         }
 
-        G4_Operand *surface2 = builder->duplicateOperand(surface);
+        G4_Operand *surface2 = duplicateOperand(surface);
 
         // sampler may be null for 3d load (specifically ld2dms_w)
-        G4_Operand* sampler2 = sampler == nullptr ? nullptr : builder->duplicateOperand(sampler);
+        G4_Operand* sampler2 = sampler == nullptr ? nullptr : duplicateOperand(sampler);
 
-        G4_Predicate*   pred2 = NULL;
+        G4_Predicate* pred2 = NULL;
         if (pred != NULL)
         {
-            pred2 = builder->createPredicate(
+            pred2 = createPredicate(
                 pred->getState(),
                 pred->getBase(),
                 0);
         }
 
-        G4_SendMsgDescriptor *msgDesc2 = builder->createSendMsgDesc(desc, extDesc, true, false, surface2, sampler2);
+        G4_SendMsgDescriptor *msgDesc2 = createSendMsgDesc(desc, extDesc, true, false, surface2, sampler2);
         msgDesc2->setHeaderPresent(useHeader);
 
         if (forceSplitSend)
         {
-            sendInst = builder->Create_SplitSend_Inst(
-                pred, dst2, srcToUse2, builder->createNullSrc(Type_UD), execSize, msgDesc2, instOpt2, false);
+            sendInst = Create_SplitSend_Inst(
+                pred, dst2, srcToUse2, createNullSrc(Type_UD), execSize, msgDesc2, instOpt2, false);
         }
         else
         {
-            sendInst = builder->Create_Send_Inst_For_CISA(
+            sendInst = Create_Send_Inst_For_CISA(
                 pred2, dst2, srcToUse2, execSize, msgDesc2, instOpt2, false);
         }
         setUniformSampler(sendInst, uniformSampler);
@@ -8895,32 +8897,31 @@ static int splitSampleInst(VISASampler3DSubOpCode actualop,
             // If Pixel Null Mask is enabled, then only copy the last double word.
             if (pixelNullMaskEnable && i == tmpDstRows - 1)
             {
-                G4_DstRegRegion *origDstPtr = builder->createDstRegRegion(Direct, origDstUD->getRegVar(), short(regOff), 0, 1, Type_UD);
-                G4_SrcRegRegion *src0Ptr = builder->createSrcRegRegion(Mod_src_undef, Direct, tempDstUD->getRegVar(),
-                    short(i), 0, builder->getRegionScalar(),
-                    Type_UD);
+                G4_DstRegRegion *origDstPtr = createDstRegRegion(Direct, origDstUD->getRegVar(), short(regOff), 0, 1, Type_UD);
+                G4_SrcRegRegion *src0Ptr = createSrcRegRegion(Mod_src_undef, Direct, tempDstUD->getRegVar(),
+                    short(i), 0, getRegionScalar(), Type_UD);
 
                 // Copy the write mask message W4.0 into the dst. (No mask?)
-                builder->createInst(pred, G4_mov, NULL, false, 1, origDstPtr, src0Ptr,
+                createInst(pred, G4_mov, NULL, false, 1, origDstPtr, src0Ptr,
                     NULL, NULL, InstOpt_WriteEnable, 0, true);
                 // Skip the remaining part of the loop.
                 break;
             }
 
-            G4_SrcRegRegion *tmpSrcPnt = builder->createSrcRegRegion(
-                Mod_src_undef, Direct, tempDstDcl->getRegVar(), (short)i, 0, builder->getRegionStride1(), tempDstDcl->getElemType());
+            G4_SrcRegRegion *tmpSrcPnt = createSrcRegRegion(
+                Mod_src_undef, Direct, tempDstDcl->getRegVar(), (short)i, 0, getRegionStride1(), tempDstDcl->getElemType());
 
             uint32_t MovInstOpt = instOpt;
             if (isHalfReturn)
             {
                 // mov (8) dst(0,0)<1>:hf tmp(0,0)<8;8,1>:hf {Q1}
-                G4_DstRegRegion* dst = builder->createDstRegRegion(Direct,
+                G4_DstRegRegion* dst = createDstRegRegion(Direct,
                     originalDstDcl->getRegVar(), (short)regOff, 0, 1, originalDstDcl->getElemType());
-                builder->createInst(NULL, G4_mov, NULL, false, execSize, dst, tmpSrcPnt, NULL, MovInstOpt);
+                createInst(NULL, G4_mov, NULL, false, execSize, dst, tmpSrcPnt, NULL, MovInstOpt);
             }
             else
             {
-                builder->Copy_SrcRegRegion_To_Payload(originalDstDcl, regOff, tmpSrcPnt, execSize, MovInstOpt);
+                Copy_SrcRegRegion_To_Payload(originalDstDcl, regOff, tmpSrcPnt, execSize, MovInstOpt);
             }
         }
     }
@@ -8932,31 +8933,31 @@ static int splitSampleInst(VISASampler3DSubOpCode actualop,
         {
             // If Pixel Null Mask is enabled, write the 8 bits to bits 8-15 in the originai dst
             if (pixelNullMaskEnable && i == tmpDstRows - 1) {
-                G4_DstRegRegion *origDstPtr = builder->createDstRegRegion(Direct, origDstUD->getRegVar(), regOff - 1, 1, 1, Type_UB);
-                G4_SrcRegRegion *src0Ptr = builder->createSrcRegRegion(Mod_src_undef, Direct, tempDst2UD->getRegVar(),
-                    short(i), 0, builder->getRegionScalar(),
+                G4_DstRegRegion *origDstPtr = createDstRegRegion(Direct, origDstUD->getRegVar(), regOff - 1, 1, 1, Type_UB);
+                G4_SrcRegRegion *src0Ptr = createSrcRegRegion(Mod_src_undef, Direct, tempDst2UD->getRegVar(),
+                    short(i), 0, getRegionScalar(),
                     Type_UB);
                 // write to dst.0[8:15]
-                builder->createInst(pred, G4_mov, NULL, false, 1, origDstPtr, src0Ptr, NULL, InstOpt_WriteEnable);
+                createInst(pred, G4_mov, NULL, false, 1, origDstPtr, src0Ptr, NULL, InstOpt_WriteEnable);
 
                 // Skip the remaining part of the loop.
                 break;
             }
 
-            G4_SrcRegRegion *tmpSrcPnt = builder->createSrcRegRegion(
-                Mod_src_undef, Direct, tempDstDcl2->getRegVar(), (short)i, 0, builder->getRegionStride1(), tempDstDcl->getElemType());
+            G4_SrcRegRegion *tmpSrcPnt = createSrcRegRegion(
+                Mod_src_undef, Direct, tempDstDcl2->getRegVar(), (short)i, 0, getRegionStride1(), tempDstDcl->getElemType());
 
             uint32_t MovInstOpt = instOpt2;
             if (isHalfReturn)
             {
                 // mov (8) dst(0,8)<1>:hf tmp(0,0)<8;8,1>:hf {Q2}
-                G4_DstRegRegion* dst = builder->createDstRegRegion(Direct,
+                G4_DstRegRegion* dst = createDstRegRegion(Direct,
                     originalDstDcl->getRegVar(), (short)regOff, 8, 1, originalDstDcl->getElemType());
-                builder->createInst(NULL, G4_mov, NULL, false, execSize, dst, tmpSrcPnt, NULL, MovInstOpt);
+                createInst(NULL, G4_mov, NULL, false, execSize, dst, tmpSrcPnt, NULL, MovInstOpt);
             }
             else
             {
-                builder->Copy_SrcRegRegion_To_Payload(originalDstDcl, regOff, tmpSrcPnt, execSize, MovInstOpt);
+                Copy_SrcRegRegion_To_Payload(originalDstDcl, regOff, tmpSrcPnt, execSize, MovInstOpt);
             }
         }
     }
@@ -9134,7 +9135,7 @@ int IR_Builder::translateVISASampler3DInst(
 
         return splitSampleInst(actualop, pixelNullMask, cpsEnable, pred, chMask,
                                numChannels, aoffimmi, sampler, surface, dst,
-                               emask, useHeader, numRows, this, numParms, params, mem, uniformSampler);
+                               emask, useHeader, numRows, numParms, params, uniformSampler);
     }
 
     bool useSplitSend = useSends();
@@ -9268,7 +9269,7 @@ int IR_Builder::translateVISALoad3DInst(
         return splitSampleInst(actualop, pixelNullMask, /*cpsEnable*/false,
                                pred_opnd, channelMask, numChannels, aoffimmi,
                                NULL, surface, dst, em, useHeader, numRows,
-                               this, numParms, opndArray, mem);
+                               numParms, opndArray);
     }
 
     bool useSplitSend = useSends();
@@ -9385,8 +9386,8 @@ int IR_Builder::translateVISAGather3dInst(
 
         return splitSampleInst(actualop, pixelNullMask, /*cpsEnable*/false,
                                pred, channelMask, 4, aoffimmi, sampler,
-                               surface, dst, em, useHeader, numRows, this,
-                               numOpnds, opndArray, mem);
+                               surface, dst, em, useHeader, numRows,
+                               numOpnds, opndArray);
     }
 
     bool useSplitSend = useSends();
