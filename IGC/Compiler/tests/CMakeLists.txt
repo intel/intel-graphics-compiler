@@ -62,12 +62,23 @@ else()
 
   # LIT will be using binaires from `LLVM_TOOLS_DIR`. The target below will
   # populate this directory.
-  add_custom_command(
-    TARGET check-igc
-    PRE_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        $<TARGET_FILE_DIR:igc_opt> $<TARGET_FILE_DIR:FileCheck> ${LLVM_TOOLS_DIR}
-  )
+  if(WIN32)
+    set(_command xcopy)
+    set(_parameters /Y/I)
+    add_custom_command(
+      TARGET check-igc
+      PRE_BUILD
+      COMMAND ${_command} "\"$<TARGET_FILE_DIR:igc_opt>\"" "\"${LLVM_TOOLS_DIR}\"" ${_parameters}
+      COMMAND ${_command} "\"$<TARGET_FILE_DIR:FileCheck>\"" "\"${LLVM_TOOLS_DIR}\"" ${_parameters}
+    )
+  else()
+    add_custom_command(
+      TARGET check-igc
+      PRE_BUILD
+      COMMAND ${CMAKE_COMMAND} -E copy_directory $<TARGET_FILE_DIR:igc_opt> ${LLVM_TOOLS_DIR}
+      COMMAND ${CMAKE_COMMAND} -E copy_directory $<TARGET_FILE_DIR:FileCheck> ${LLVM_TOOLS_DIR}
+    )
+  endif()
 
   # Tests should not be excluded from "Build Solution" in VS.
   set_target_properties(check-igc PROPERTIES EXCLUDE_FROM_DEFAULT_BUILD OFF)
