@@ -168,7 +168,6 @@ string printVariableDeclName(const print_format_provider_t* header,
                         declID -= numPreDefinedVars;
                         const var_info_t *var = header->getVar(declID);
                         string name = header->getString(var->name_index);
-                        //sstr << "V" << declID << ":";
                         sstr << name;
                     }
                 }
@@ -548,9 +547,9 @@ extern string printFuncInput(const print_format_provider_t* header, unsigned dec
         sstr << input->getImplicitKindString() << " ";
     }
 
-    if (options->getOption(vISA_DumpIsaVarNames) && INPUT_GENERAL == input->getInputClass())
+    if (INPUT_GENERAL == input->getInputClass())
     {
-        sstr << getGenVarName(input->index, *header);
+        sstr << printVariableDeclName(header, input->index, options);
     }
     else
     {
