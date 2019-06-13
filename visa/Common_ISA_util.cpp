@@ -1558,7 +1558,7 @@ std::string sanitizeString(std::string& str)
         return c == '<' || c == '>' || c == '\"' || c == '/' ||
             c == '|' || c == '?' || c == '*' || (!isprint(c) && !isspace(c));
 #else
-        return c == ':' || (!isprint(c) && !isspace(c));
+        return c == ':' || c == '/' || (!isprint(c) && !isspace(c));
 #endif
     };
     std::replace_if(str.begin(), str.end(), isReservedChar, '_');

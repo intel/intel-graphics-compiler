@@ -564,7 +564,7 @@ void CisaBinary::isaDumpVerify(
         if (kTemp->getIsKernel())
         {
             //if asmName is test9_genx_0.asm, the testName is test9_genx.
-            std::string asmName = kTemp->getAsmName();
+            std::string asmName = kTemp->getOutputAsmPath();
             std::string::size_type asmNameEnd = asmName.find_last_of("_");
             if (asmNameEnd != std::string::npos)
             {
@@ -592,7 +592,7 @@ void CisaBinary::isaDumpVerify(
 
             if ( kTemp->getIsKernel() )
             {
-                asmName << kTemp->getAsmName();
+                asmName << kTemp->getOutputAsmPath();
             }
             else
             {
@@ -640,7 +640,7 @@ void CisaBinary::isaDumpVerify(
 
                 if (kTemp->getIsKernel())
                 {
-                    verifierName << kTemp->getAsmName();
+                    verifierName << kTemp->getOutputAsmPath();
                 }
                 else
                 {   // test9_genx_f0.errors.txt in above example, for func 0

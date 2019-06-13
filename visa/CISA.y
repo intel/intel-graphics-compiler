@@ -27,6 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 %{
 #include <stdio.h>
 #include <math.h>
+#include <string>
 #include <vector>
 
 #include "visa_igc_common_header.h"
@@ -88,9 +89,13 @@ VISA_RawOpnd* rawOperandArray[16];
     int64_t                number;
     double                 fp;
 
-    char*                  string;
-    char*                  asm_name;
-    char*                  var_name;
+    struct strlitbuf_struct {
+        char      decoded[4096];
+        size_t    len;
+    } strlit;
+    char *                 string;
+    char *                 asm_name;
+    char *                 var_name;
 
     VISA_Type              type;
     ISA_Opcode             opcode;
@@ -193,11 +198,6 @@ VISA_RawOpnd* rawOperandArray[16];
         int                offset;
     } alias;
 
-    struct{
-        unsigned char      major;
-        unsigned char      minor;
-    } version;
-
     struct {
         //G4_Declare *dcl;
         unsigned short offset;
@@ -263,7 +263,7 @@ VISA_RawOpnd* rawOperandArray[16];
 %token DIRECTIVE_DECL       /* .decl */
 %token FUNC_DIRECTIVE_DECL  /* .funcdecl */
 %token DIRECTIVE_ATTR       /* .attr */
-%token DIRECTIVE_KERNEL_ATTR       /* .kernel_attr */
+%token DIRECTIVE_KERNEL_ATTR /* .kernel_attr */
 %token DIRECTIVE_INPUT      /* .input */
 %token DIRECTIVE_PARAMETER  /* .parameter */
 %token DIRECTIVE_RETURN     /* .return */
@@ -300,52 +300,58 @@ VISA_RawOpnd* rawOperandArray[16];
 %token <mod> COND_MOD        /* .ne .ge ... */
 
 
-%token <string> LEFT_BRACKET     /* [ */
-%token <string> RIGHT_BRACKET    /* ] */
+%token <string> LANGLE          /* < */
+%token <string> RANGLE          /* > */
+%token <string> LBRACK          /* [ */
+%token <string> RBRACK          /* ] */
+%token <string> IND_LBRACK /* r[ */
 %token <string> LPAREN           /* ( */
 %token <string> RPAREN           /* ) */
 %token <string> LBRACE           /* { */
 %token <string> RBRACE           /* } */
+
+%token <string> DOT              /* . */
 %token <string> COMMA            /* , */
-%token <string> IND_LEFT_BRACKET /* r[ */
+%token <string> SEMI             /* ; */
+%token <string> COLON            /* : */
+%token <string> SLASH            /* / */
+
+%token <string> EQUALS           /* = */
 %token <string> PLUS             /* + */
 %token <string> MINUS            /* - */
 %token <string> TIMES            /* * */
+%token <string> AMP              /* & */
+%token <string> TILDE            /* ~ */
+%token <string> BANG             /* ! */
+
 %token <string> LABEL
 %token <string> IMPLICIT_INPUT
 %token <string> OFFSET
-%token <string> ASM_NAME
-%token <string> CPP_FILE_NAME
-%token <string> H_FILE_NAME
 %token <string> SLM_SIZE
-%token <string> PRED_CNTL    /* any2h, any4h, any8h, any16h, allv, all2h, all4h, all8h, all16h, allv */
-%token <string> CHAN4_MASK   /* RGBA */
-%token <string> VAR          /* variable */
-%token <string> NULL_VAR          /* variable */
-%token <string> COMMENT_LINE    /* comment line text */
-%token <string> STMT_DELIM      /* statement delimited - \n */
+%token <string> PRED_CNTL     /* any2h, any4h, any8h, any16h, allv, all2h, all4h, all8h, all16h, allv */
+%token <string> CHAN4_MASK    /* RGBA */
+%token <string> VAR           /* variable */
+%token <string> NULL_VAR      /* variable (V0) */
+%token <string> COMMENT_LINE  /* comment line text */
+%token <string> STMT_DELIM    /* statement delimited - \n */
 %token <string> INPUT_VAR
 %token <string> NUM_ELTS
 %token <string> V_NAME_TOKEN
 %token <string> SIZE
 %token <string> FLAG_REG_NAME
 %token <string> SURF_USE_NAME
-%token <string> F_NAME
-%token <string> FUNC_NAME
-%token <string> K_NAME
+%token <string> DOT_FUNCTION /* .function */
+%token <string> DOT_KERNEL  /* .kernel */
 %token <string> F_CLASS
 %token <string> G_CLASS
 %token <string> P_CLASS
 %token <string> A_CLASS
 %token <string> S_CLASS
 %token <string> T_CLASS
-%token <string> ATTR_CM
-%token <string> ATTR_3D
-%token <string> ATTR_CS
 %token <string> RTWRITE_OPTION
 
+%token <string>            STRING_LITERAL
 %token <CISA_align>        ALIGNTYPE
-%token <asm_name>          ASM_FILE_NAME
 %token <media_mode>        MEDIA_MODE
 %token <oword_mod>         OWORD_MODIFIER
 %token <s_channel>         SAMPLER_CHANNEL
@@ -356,7 +362,6 @@ VISA_RawOpnd* rawOperandArray[16];
 %token <emask>             EMASK
 %token <execMode>          EXECMODE
 %token <cntrl>             CNTRL
-%token ADDROP              '&'
 %token <fence_options>     FENCE_OPTIONS;
 
 //Instruction opcode tokens
@@ -439,6 +444,7 @@ VISA_RawOpnd* rawOperandArray[16];
 %type <string> PredCntrl
 %type <string> FUNCTION_NAME
 %type <string> SymbolName
+%type <string> StrLitOrVar
 
 %type <number> PlaneID
 %type <number> SIMDMode
@@ -500,7 +506,6 @@ VISA_RawOpnd* rawOperandArray[16];
 %type <sat>                 InstModifier
 %type <cisa_pred>           Predicate
 %type <alias>               AliasInfo
-%type <version>             VersionNumbers
 %type <oword_mod>           OwordModifier
 %type <RawVar>              RawOperand
 %type <StateVar>            DstStateOperand
@@ -518,7 +523,7 @@ VISA_RawOpnd* rawOperandArray[16];
 
 %type <string> V_NAME
 /* the declaration order implies operator precedence */
-%left MINUS PLUS TIMES '/'
+%left MINUS PLUS TIMES SLASH
 %left NEG
 
 %%
@@ -557,12 +562,15 @@ EndOfFile : FILE_EOF
              {
                  pCisaBuilder->CISA_post_file_parse();
              }
+
+StrLitOrVar : STRING_LITERAL | VAR
+
 /* --------------------------------------------------------------------- */
 /* ------------------------- directives -------------------------------- */
 /* --------------------------------------------------------------------- */
 
 /* ----- .kernel ------ */
-DirectiveKernel : K_NAME
+DirectiveKernel : DOT_KERNEL StrLitOrVar
               {
                   num_switch_labels = 0;
                   //TODO remove later
@@ -571,13 +579,14 @@ DirectiveKernel : K_NAME
 
                   //pCisaBuilder->setIsKernel();
                   VISAKernel *cisa_kernel = NULL;
-                  pCisaBuilder->AddKernel(cisa_kernel, $1);
+                  pCisaBuilder->AddKernel(cisa_kernel, $2);
 
                   //pCisaBuilder->CISA_IR_initialization($1, CISAlineno);
               };
 
+
 /* ----- .global_function ------ */
-DirectiveGlobalFunction : DIRECTIVE_GLOBAL_FUNC F_NAME
+DirectiveGlobalFunction : DIRECTIVE_GLOBAL_FUNC StrLitOrVar
               {
                   num_switch_labels = 0;
                   //pBuilder->setIsKernel(false);
@@ -595,25 +604,15 @@ DirectiveResolvedIndex : DIRECTIVE_RESOLVED_INDEX NUMBER
               };
 
  V_NAME :
-            { $$ = "";};
-        | V_NAME_TOKEN VAR{ $$ = $2;};
+                          {$$ = "";};
+        | V_NAME_TOKEN VAR{$$ = $2;};
 
-//KERNEL_NAME : K_NAME {$$ = $1;}
-//            |VAR {$$ = $1;}
-//          | F_NAME {$$ = $1;}
 
 /* ----- .version ------ */
-DirectiveVersion : DIRECTIVE_VERSION VersionNumbers
-               {
-                   //pBuilder->CISA_IR_setVersion($2.major, $2.minor);
-                   pCisaBuilder->CISA_IR_setVersion($2.major, $2.minor);
-               };
-
-VersionNumbers : NUMBER '.' NUMBER
-               {
-                   $$.major = (unsigned char)$1;
-                   $$.minor = (unsigned char)$3;
-               };
+DirectiveVersion : DIRECTIVE_VERSION NUMBER DOT NUMBER
+   {
+       pCisaBuilder->CISA_IR_setVersion((unsigned char)$2, (unsigned char)$4);
+   }
 
 /* ----- .decl ----- */
 DirectiveDecl : DeclFileScopeVariable
@@ -624,7 +623,7 @@ DirectiveDecl : DeclFileScopeVariable
                 | DeclSurface
                 | DeclFunctions
 
-DeclFunctions: FUNC_DIRECTIVE_DECL F_NAME NUMBER
+DeclFunctions: FUNC_DIRECTIVE_DECL STRING_LITERAL NUMBER
     {
         pCisaBuilder->CISA_create_func_decl($2, (int)$3, CISAlineno);
     }
@@ -743,29 +742,14 @@ DirectiveReturn: DIRECTIVE_RETURN RETURN_TYPE
                     //pBuilder->CISA_return_directive($2, CISAlineno);
                 }
 /* ----- .attribute ------ */
-               //     1           2       3         4
-DirectiveAttr: DIRECTIVE_KERNEL_ATTR VAR '=' ASM_FILE_NAME
-                {
+               //     1               2     3         4
+DirectiveAttr: DIRECTIVE_KERNEL_ATTR VAR EQUALS STRING_LITERAL {
                    pCisaBuilder->CISA_attr_directive($2, $4, CISAlineno);
-               };
-               | DIRECTIVE_KERNEL_ATTR VAR '=' NUMBER
-               {
+               } |
+               DIRECTIVE_KERNEL_ATTR VAR EQUALS NUMBER {
                    pCisaBuilder->CISA_attr_directiveNum($2, (uint32_t)$4, CISAlineno);
-               };
-               | DIRECTIVE_KERNEL_ATTR VAR '=' ATTR_CM
-               {
-                   pCisaBuilder->CISA_attr_directive($2, $4, CISAlineno);
-               };
-               | DIRECTIVE_KERNEL_ATTR VAR '=' ATTR_3D
-               {
-                   pCisaBuilder->CISA_attr_directive($2, $4, CISAlineno);
-               };
-               | DIRECTIVE_KERNEL_ATTR VAR '=' ATTR_CS
-               {
-                   pCisaBuilder->CISA_attr_directive($2, $4, CISAlineno);
-               };
-               | DIRECTIVE_KERNEL_ATTR VAR '='
-               {
+               } |
+               DIRECTIVE_KERNEL_ATTR VAR EQUALS {
                    pCisaBuilder->CISA_attr_directive($2, nullptr, CISAlineno);
                };
 
@@ -777,7 +761,7 @@ DirectiveFunc: DIRECTIVE_FUNC FUNCTION_NAME
                }
 
 FUNCTION_NAME : VAR {$$ = $1;}
-                | F_NAME {$$ = $1;};
+                | STRING_LITERAL {$$ = $1;};
 
 SIZE_NUM : /* empty */
                 {$$ = 1;}
@@ -815,18 +799,18 @@ AliasInfo : /* empty */
                    $$.aliasname = NULL;
                    $$.offset = 0;
                }
-              | ALIAS '<' VAR COMMA Exp '>'
+              | ALIAS LANGLE VAR COMMA Exp RANGLE
                {
                    $$.aliasname = $3;
                    $$.offset = (int)$5;
                }
-              | ALIAS'<'error
+              | ALIAS LANGLE error
                {
                    fprintf (stderr,"[Hint]: expecting VAR in 'ALIAS(VAR,Exp)'\n");
                    yyerrok;
                    yyclearin;
                }
-              | ALIAS'<'VAR error'>'
+              | ALIAS LANGLE VAR error RANGLE
                {
                    fprintf (stderr,"[Hint]: expecting numerical expression in 'ALIAS(VAR,Exp)' \n");
                    yyerrok;
@@ -845,26 +829,26 @@ GEN_ATTR : /* Empty */
                 $$.value = 0;
                 $$.attr_set = false;
             }
-            | DIRECTIVE_ATTR VAR '=' NUMBER
+            | DIRECTIVE_ATTR VAR EQUALS NUMBER
             {
               $$.name = $2;
               $$.isInt = true;
               $$.value = (int)$4;
               $$.attr_set = true;
             };
-            | DIRECTIVE_ATTR VAR '='
+            | DIRECTIVE_ATTR VAR EQUALS
             {
               $$.name = $2;
               $$.isInt = false;
               $$.string_val = "";
               $$.attr_set = true;
             };
-            //        1       2   3   4   5   6
-            | DIRECTIVE_ATTR VAR '=' '"' VAR '"'
+            //        1       2   3        4
+            | DIRECTIVE_ATTR VAR EQUALS STRING_LITERAL
             {
               $$.name = $2;
               $$.isInt = false;
-              $$.string_val = $5;
+              $$.string_val = $4;
               $$.attr_set = true;
             };
 
@@ -1087,7 +1071,7 @@ Scatter4ScaledInstruction : Predicate SCATTER4_SCALED_OP SAMPLER_CHANNEL  ExecSi
         };
 
 //                                 1                 2   3      4   5      6   7                        8        9
-ScatterScaledInstruction : Predicate SCATTER_SCALED_OP '.' NUMBER ExecSize VAR VecSrcOperand_G_I_IMM RawOperand RawOperand
+ScatterScaledInstruction : Predicate SCATTER_SCALED_OP DOT NUMBER ExecSize VAR VecSrcOperand_G_I_IMM RawOperand RawOperand
         {
             pCisaBuilder->CISA_create_scatter_scaled_instruction($2, $1.cisa_gen_opnd, $5.emask, $5.exec_size, (uint32_t) $4, $6, $7.cisa_gen_opnd, $8.cisa_gen_opnd, $9.cisa_gen_opnd, CISAlineno);
         };
@@ -1252,7 +1236,7 @@ SVM_OP ExecSize VecSrcOperand_G_I_IMM RawOperand
     pCisaBuilder->CISA_create_svm_block_instruction((SVMSubOpcode)$1, $2.exec_size, false/*unaligned*/, $3.cisa_gen_opnd, $4.cisa_gen_opnd, CISAlineno);
 }
 //          2              3   4      5   6      7        8          9
-| Predicate SVM_SCATTER_OP '.' NUMBER '.' NUMBER ExecSize RawOperand RawOperand
+| Predicate SVM_SCATTER_OP DOT NUMBER DOT NUMBER ExecSize RawOperand RawOperand
 {
     /// printf("Exec size: %d\n", $8.exec_size);
     pCisaBuilder->CISA_create_svm_scatter_instruction($1.cisa_gen_opnd, (SVMSubOpcode)$2, $7.emask, $7.exec_size, (unsigned int)$4, (unsigned int)$6, $8.cisa_gen_opnd, $9.cisa_gen_opnd, CISAlineno);
@@ -1328,15 +1312,11 @@ CondtionInstruction : Predicate SIMDCF_OP ExecSize
          {
              pCisaBuilder->CISA_create_SIMD_CF_instruction($1.cisa_gen_opnd, $2, $3.emask, $3.exec_size, CISAlineno);
          };
-       //1          //2
-FILE : FILE_OP CPP_FILE_NAME
+       // 1          2
+FILE : FILE_OP STRING_LITERAL
         {
             pCisaBuilder->CISA_create_FILE_instruction($1, $2);
-        };
-        | FILE_OP H_FILE_NAME
-        {
-            pCisaBuilder->CISA_create_FILE_instruction($1, $2);
-        };
+        }
 
 LOC : LOC_OP NUMBER
         {
@@ -1418,7 +1398,7 @@ OwordModifier:  {$$ = false;}
 
 TargetLabel: VAR
             { $$ = $1; };
-           | F_NAME
+           | STRING_LITERAL
             { $$ = $1; };
 
 SymbolName: VAR
@@ -1457,7 +1437,7 @@ PredState :   /* empty */
                 $$.cisa_state = PredState_NO_INVERSE;
                 //$$.state = PredState_Plus;
             }
-          | '!'
+          | BANG
             {
                 $$.cisa_state = PredState_INVERSE;
                 //$$.state = PredState_Minus;
@@ -1488,7 +1468,7 @@ SrcModifier : LPAREN MINUS RPAREN
            // $$.srcMod = Mod_Minus_Abs;
             $$.mod = MODIFIER_NEG_ABS;
           }
-          | LPAREN '~' RPAREN
+          | LPAREN TILDE RPAREN
           {
             $$.mod = MODIFIER_NOT;
           }
@@ -1626,7 +1606,7 @@ RawOperand : /* empty */ {
                             $$.offset = 0;
                             $$.cisa_gen_opnd = NULL;
                          }
-              | VAR '.' NUMBER
+              | VAR DOT NUMBER
                {
                   TRACE("\n** Raw operand");
                   /*
@@ -1647,7 +1627,7 @@ RawOperand : /* empty */ {
 
                   $$.cisa_gen_opnd = pCisaBuilder->CISA_create_RAW_operand($1, (unsigned short)$3, CISAlineno);
                };
-               | NULL_VAR '.' NUMBER
+               | NULL_VAR DOT NUMBER
                {
                     //$$.dcl = NULL;
                     $$.offset = 0;
@@ -1686,15 +1666,15 @@ DstIndirectOperand: IndirectVar IndirectRegion DataType
 
 /*  ------  Src Operands -------------- */
                //1         2
-AddrOfOperand : '&' AddressableVar
+AddrOfOperand : AMP AddressableVar
              {
                  $$.cisa_gen_opnd = pCisaBuilder->CISA_set_address_expression($2.cisa_decl, 0);
              }
-            | '&' AddressableVar MINUS Exp
+            | AMP AddressableVar MINUS Exp
              {
                  $$.cisa_gen_opnd = pCisaBuilder->CISA_set_address_expression($2.cisa_decl, (-1) * (short)$4);
              }
-            | '&' AddressableVar PLUS Exp
+            | AMP AddressableVar PLUS Exp
              {
                  $$.cisa_gen_opnd = pCisaBuilder->CISA_set_address_expression($2.cisa_decl, (short)$4);
              };
@@ -1743,7 +1723,7 @@ SrcIndirectOperand_1: SrcModifier IndirectVar IndirectRegion DataType
                   };
 
 /* -------- regions ----------- */
-DstRegion :  '<' NUMBER '>'    /* <HorzStride> */
+DstRegion :  LANGLE NUMBER RANGLE    /* <HorzStride> */
              {
                  MUST_HOLD(($2 == 0 || $2 == 1 || $2 == 2 || $2 == 4),
                          "HorzStride must be 0, 1, 2, or 4");
@@ -1757,7 +1737,7 @@ SrcRegion : /* empty */
                 $$.h_stride = 0;
                 //$$.rgn = NULL;
             }
-          | '<' Exp ';' Exp COMMA Exp '>'   /* <VertStride;Width,HorzStride> */
+          | LANGLE Exp SEMI Exp COMMA Exp RANGLE   /* <VertStride;Width,HorzStride> */
            {
                MUST_HOLD(($2 == 0 || $2 == 1 || $2 == 2 || $2 == 4 || $2 == 8 || $2 == 16 || $2 == 32),
                          "VertStride must be 0, 1, 2, 4, 8, 16, or 32");
@@ -1782,7 +1762,7 @@ Region :   /* empty */
                 $$.h_stride = -1;
                 //$$.rgn = NULL;
             }
-       | '<' Exp ';' Exp COMMA Exp '>'   /* <VertStride;Width,HorzStride> */
+       | LANGLE Exp SEMI Exp COMMA Exp RANGLE   /* <VertStride;Width,HorzStride> */
            {
                MUST_HOLD(($2 == 0 || $2 == 1 || $2 == 2 || $2 == 4 || $2 == 8 || $2 == 16 || $2 == 32),
                          "VertStride must be 0, 1, 2, 4, 8, 16, or 32");
@@ -1796,7 +1776,7 @@ Region :   /* empty */
                //$$.rgn = pBuilder->rgnpool.createRegion($2, $4, $6);
            };
 
-RegionWH : '<' Exp COMMA Exp '>'   /* <Width,HorzStride> */
+RegionWH : LANGLE Exp COMMA Exp RANGLE   /* <Width,HorzStride> */
            {
                MUST_HOLD(($2 == 0 || $2 == 1 || $2 == 2 || $2 == 4 || $2 == 8 || $2 == 16),
                          "Width must be 0, 1, 2, 4, 8 or 16");
@@ -1808,7 +1788,7 @@ RegionWH : '<' Exp COMMA Exp '>'   /* <Width,HorzStride> */
                //$$.rgn = pBuilder->rgnpool.createRegion(UNDEFINED_SHORT, $2, $4);
            };
 
-RegionV : '<' Exp '>'   /* <HorzStride> */
+RegionV : LANGLE Exp RANGLE   /* <HorzStride> */
          {
              MUST_HOLD(($2 == 0 || $2 == 1 || $2 == 2 || $2 == 4),
                          "HorzStride must be 0, 1, 2, or 4");
@@ -1821,7 +1801,7 @@ RegionV : '<' Exp '>'   /* <HorzStride> */
 
 
 
-IndirectVar : IND_LEFT_BRACKET AddrParam RIGHT_BRACKET
+IndirectVar : IND_LBRACK AddrParam RBRACK
              {
                  TRACE(" The variable of the indirect operand \n");
                  $$ = $2;
@@ -1871,7 +1851,7 @@ AddrVar :  VAR
               $$.elem = (int)$3;
           }
           // 1   2   3   4   5    6     7
-         |  VAR LPAREN Exp RPAREN '<' NUMBER '>'
+         |  VAR LPAREN Exp RPAREN LANGLE NUMBER RANGLE
           {
               TRACE("\n** Address operand");
 
@@ -1928,7 +1908,7 @@ RTWRITE_MODE : { $$ = 0; }
 
 /* ----------- Execution size -------------- */
 
-ElemNum : '.' NUMBER
+ElemNum : DOT NUMBER
            {
                TRACE("\n** Element Number");
                $$ = $2;
@@ -1974,7 +1954,7 @@ Exp : AbstractNum          { $$ = $1; }
     | Exp PLUS  Exp        { $$ = $1 + $3; }
     | Exp MINUS Exp        { $$ = $1 - $3; }
     | Exp TIMES Exp        { $$ = $1 * $3; }
-    | Exp '/' Exp          { $$ = $1 / $3; }
+    | Exp SLASH Exp          { $$ = $1 / $3; }
     | MINUS Exp %prec NEG  { $$ = -$2; }
     | LPAREN Exp RPAREN    { $$ = $2; };
 
@@ -2000,14 +1980,14 @@ DoubleFloat :   DOUBLEFLOAT
                     $$ = *fp;
                };
 
-FloatPoint :    NUMBER '.' NUMBER
+FloatPoint :    NUMBER DOT NUMBER
                 {   char floatstring[256];
                     sprintf(floatstring, "%" PRId64 ".%" PRId64, $1, $3);
                     $$ = atof(floatstring);
                 }
               | FLOATINGPOINT
                 {   $$ = $1; }
-               | NUMBER '.'
+               | NUMBER DOT
                 {
                     $$ = $1*1.0f;
                 }
@@ -2089,14 +2069,14 @@ NON_UNIFORM_SAMPLER_ENABLE: { $$ = false; }
          };
 
 IS_ATOMIC16: { $$ = false ; }
-         | '.' NUMBER /* .16 */
+         | DOT NUMBER /* .16 */
          {
              MUST_HOLD(($2 == 16), "Only supports 16.");
              $$ = true;
              TRACE("** atomic 16");
          };
 
-ATOMIC_BITWIDTH: { $$ = 32; } |'.' NUMBER
+ATOMIC_BITWIDTH: { $$ = 32; } |DOT NUMBER
         {
             MUST_HOLD(($2 == 16 || $2 == 64 ), "Only supports 16/64.");
             TRACE("\n** atomic NUMBER");

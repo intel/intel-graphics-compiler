@@ -1310,7 +1310,8 @@ int VISAKernelImpl::AddKernelAttribute(const char* attrName, int size, const voi
     if set through NG path it stores wrong name .isa file
     so in CMRT in simulation mode it fails to look up the name
     */
-    if( strcmp( attrName, "AsmName" ) == 0 )
+    if(strcmp(attrName, "AsmName") == 0 ||
+        strcmp(attrName, "OutputAsmPath") == 0)
     {
         if (m_options->getOption(VISA_AsmFileNameUser))
         {
@@ -1318,16 +1319,16 @@ int VISAKernelImpl::AddKernelAttribute(const char* attrName, int size, const voi
             m_options->getOption(VISA_AsmFileName, asmName);
             if (asmName != nullptr)
             {
-                m_asmName = std::string(asmName);
+                m_asmName = asmName;
             }
             else
             {
-                m_asmName = std::string("");
+                m_asmName = "";
             }
         }
         else
         {
-            std::string str((char *)valueBuffer);
+            std::string str((const char *)valueBuffer);
             if (m_options->getOption(vISA_dumpToCurrentDir))
             {
                 auto found = str.find_last_of(DIR_SEPARATOR);
@@ -8611,7 +8612,7 @@ void VISAKernelImpl::computeAndEmitDebugInfo(std::list<VISAKernelImpl*>& functio
 #ifndef DLL_MODE
     if (getOptions()->getOption(vISA_outputToFile))
     {
-        std::string asmNameStr = this->getAsmName();
+        std::string asmNameStr = this->getOutputAsmPath();
         std::string debugFileNameStr = asmNameStr + ".dbg";
         emitDebugInfo(this, functions, debugFileNameStr);
     }

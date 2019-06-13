@@ -756,7 +756,7 @@ public:
     void setJitInfo(FINALIZER_INFO* jitInfo){ m_jitInfo = jitInfo; }
     // char * getErrorMsgPtr(){ return errorMessage; }
 
-    std::string getAsmName() const { return m_asmName; }
+    std::string getOutputAsmPath() const { return m_asmName; }
 
     int compileFastPath();
 

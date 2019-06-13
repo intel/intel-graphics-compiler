@@ -4037,12 +4037,12 @@ void CEncoder::InitEncoder( bool canAbortOnSpill, bool hasStackCall )
         }
 
         std::string asmName = GetDumpFileName("asm");
-        V(vKernel->AddKernelAttribute("AsmName", asmName.length(), asmName.c_str()));
+        V(vKernel->AddKernelAttribute("OutputAsmPath", asmName.length(), asmName.c_str()));
     }
     else
     {
         V(vbuilder->AddKernel(vKernel, "kernel"));
-        V(vKernel->AddKernelAttribute("AsmName", std::strlen("0.asm") , "0.asm"));
+        V(vKernel->AddKernelAttribute("OutputAsmPath", std::strlen("0.asm") , "0.asm"));
     }
 
     vMainKernel = vKernel;

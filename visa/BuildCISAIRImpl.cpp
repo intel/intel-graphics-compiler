@@ -1226,11 +1226,15 @@ bool CISA_IR_Builder::CISA_input_directive(char* var_name, short offset, unsigne
     return true;
 }
 
-bool CISA_IR_Builder::CISA_attr_directive(char* input_name, char* input_var, int line_no)
+bool CISA_IR_Builder::CISA_attr_directive(
+    const char* input_name, const char* input_var, int line_no)
 {
 
-    if(strcmp(input_name, "AsmName" ) == 0)
+    if(strcmp(input_name, "AsmName") == 0 ||
+        strcmp(input_name, "OutputAsmPath") == 0)
     {
+        input_name = "OutputAsmPath"; // normalize to new name
+
         char asmFileName[MAX_OPTION_STR_LENGTH];
 
         strncpy_s(asmFileName, MAX_OPTION_STR_LENGTH, input_var, MAX_OPTION_STR_LENGTH-1);
@@ -1242,46 +1246,38 @@ bool CISA_IR_Builder::CISA_attr_directive(char* input_name, char* input_var, int
         m_options.setOptionInternally(VISA_AsmFileName, asmFileName);
     }
 
-    if(strcmp(input_name, "Target" ) == 0){
+    if(strcmp(input_name, "Target") == 0){
         unsigned char visa_target;
-        if(strcmp(input_var, "cm" ) == 0)
+        if(strcmp(input_var, "cm") == 0)
         {
             visa_target = VISA_CM;
         }
-        else if(strcmp(input_var, "3d" ) == 0)
+        else if(strcmp(input_var, "3d") == 0)
         {
             visa_target = VISA_3D;
         }
-        else if(strcmp(input_var, "cs" ) == 0)
+        else if(strcmp(input_var, "cs") == 0)
         {
             visa_target = VISA_CS;
         }
         else
         {
-            MUST_BE_TRUE1(false, line_no, "Invalid kernel target attribute.");
+            MUST_BE_TRUE1(false, line_no, "invalid kernel target attribute");
         }
         m_kernel->AddKernelAttribute(input_name, 1, &visa_target);
     }
     else
     {
-        m_kernel->AddKernelAttribute(input_name, input_var == nullptr ? 0 : (int)strlen(input_var), input_var);
+        m_kernel->AddKernelAttribute(input_name,
+          input_var == nullptr ? 0 : (int)strlen(input_var), input_var);
     }
 
     return true;
 }
 
-bool CISA_IR_Builder::CISA_attr_directiveNum(char* input_name, uint32_t input_var, int line_no)
+bool CISA_IR_Builder::CISA_attr_directiveNum(
+    const char* input_name, uint32_t input_var, int line_no)
 {
-    /*
-    attribute_info_t* attr = (attribute_info_t*)m_mem.alloc(sizeof(attribute_info_t));
-
-    attr->value.stringVal = (char *)m_mem.alloc(sizeof(char));
-    *attr->value.stringVal = input_var;
-    attr->size = sizeof(unsigned char);
-
-    m_kernel->addAttribute(input_name, attr);
-    */
-
     m_kernel->AddKernelAttribute(input_name, sizeof(uint32_t), &input_var);
     return true;
 }

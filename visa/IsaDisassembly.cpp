@@ -47,10 +47,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #ifndef IS_RELEASE_DLL
 
-#include <stdint.h>
+#include <cstdint>
+#include <cctype>
 #include <list>
-#include <string>
 #include <sstream>
+#include <string>
 
 #include "visa_igc_common_header.h"
 #include "common.h"
@@ -79,7 +80,7 @@ extern const char* printAsmName(const print_format_provider_t* header)
 {
     for (unsigned i = 0; i < header->getAttrCount(); i++)
     {
-        if (!strcmp(header->getString(header->getAttr(i)->nameIndex), "AsmName"))
+        if (!strcmp(header->getString(header->getAttr(i)->nameIndex), "OutputAsmPath"))
             return header->getAttr(i)->value.stringVal;
     }
 
@@ -377,22 +378,63 @@ static string printOperand(const print_format_provider_t* header,
     return sstr.str();
 }
 
-string printAttribute(const attribute_info_t* attr, const print_format_provider_t* kernel, bool isKernelAttr)
+static void encodeStringLiteral(std::stringstream &ss, const char *str) {
+  ss << '"';
+  for (size_t i = 0, slen = strlen(str); i < slen; i++) {
+      switch (str[i]) { // unsigned so >0x7F doesn't sign ext.
+      case '\a': ss << '\\'; ss << 'a'; break;
+      case '\b': ss << '\\'; ss << 'b'; break;
+      case 0x1B: ss << '\\'; ss << 'e'; break;
+      case '\f': ss << '\\'; ss << 'f'; break;
+      case '\n': ss << '\\'; ss << 'n'; break;
+      case '\r': ss << '\\'; ss << 'r'; break;
+      case '\t': ss << '\\'; ss << 't'; break;
+      case '\v': ss << '\\'; ss << 'v'; break;
+      //
+      case '\'': ss << '\\'; ss << '\''; break;
+      case '"':  ss << '\\'; ss << '"'; break;
+      //
+      case '\\': ss << '\\'; ss << '\\'; break;
+      default:
+          if (std::isprint((unsigned char)str[i])) {
+              ss << str[i];
+          } else {
+              ss << "\\x" << std::hex << (unsigned)((unsigned char)str[i]);
+          }
+      }
+  }
+  ss << '"';
+}
+
+string printAttribute(
+    const attribute_info_t* attr,
+    const print_format_provider_t* kernel,
+    bool isKernelAttr)
 {
     stringstream sstr;
-    sstr <<"";
-    if (attr->isInt  &&  attr->size == 1 && attr->value.intVal == 0 )
+
+    if (attr->isInt && attr->size == 1 && attr->value.intVal == 0)
     {
         return sstr.str();
     }
 
-    sstr << "." << (isKernelAttr ? "kernel_" : "") << "attr " << kernel->getString(attr->nameIndex) << "=";
+    string attrName = kernel->getString(attr->nameIndex);
+    sstr << "." << (isKernelAttr ? "kernel_" : "") << "attr " << attrName << "=";
 
-    if (attr->isInt)
-        sstr << attr->value.intVal;
-    else if (attr->size > 0)
-    {
-        sstr << attr->value.stringVal;
+    if (attr->isInt) {
+        if (isKernelAttr && attrName == "Target") {
+            switch (attr->value.intVal) {
+            case VISA_CM: sstr << "\"cm\""; break;
+            case VISA_3D: sstr << "\"3d\""; break;
+            case VISA_CS: sstr << "\"cs\""; break;
+            default:
+              sstr << attr->value.intVal;
+            }
+        } else {
+            sstr << attr->value.intVal;
+        }
+    } else if (attr->size > 0) {
+        encodeStringLiteral(sstr, attr->value.stringVal);
     }
 
     return sstr.str();
@@ -936,8 +978,9 @@ static string printInstructionControlFlow(const print_format_provider_t* header,
 
                  string labelName(header->getString(header->getLabel(label_id)->name_index));
 
-                 sstr << ".function " << labelName << uniqueSuffixStr
-                      << "\n\n"       << labelName << uniqueSuffixStr;
+                 sstr << ".function ";
+                 encodeStringLiteral(sstr, (labelName + uniqueSuffixStr).c_str());
+                 sstr << "\n\n" << labelName << uniqueSuffixStr;
                  break;
             }
             case ISA_LABEL:
@@ -1049,7 +1092,8 @@ static string printInstructionMisc(const print_format_provider_t* header,
         case ISA_FILE:
         {
             uint32_t filename_index = getPrimitiveOperand<uint32_t>(inst, i++);
-            sstr << "FILE " << header->getString(filename_index);
+            sstr << "FILE ";
+            encodeStringLiteral(sstr, header->getString(filename_index));
             break;
         }
         case ISA_LOC:
@@ -2455,7 +2499,9 @@ extern string printKernelHeader(const common_isa_header& isaHeader,
     std::string name = header->getString(header->getNameIndex());
     std::replace_if(name.begin(), name.end(), [] (char c) { return c == '.'; } , ' ');
 
-    sstr << (!isKernel ? ".global_function " : ".kernel ") << name << endl;
+    sstr << (!isKernel ? ".global_function " : ".kernel ");
+    encodeStringLiteral(sstr, name.c_str());
+    sstr << "\n";
 
     if (!isKernel)
     {
@@ -2466,7 +2512,9 @@ extern string printKernelHeader(const common_isa_header& isaHeader,
     if (isKernel)
         for (unsigned i = 0; i < isaHeader.num_functions; i++)
         {
-            sstr << endl << ".funcdecl " << isaHeader.functions[i].name << " " << i;
+            sstr << endl << ".funcdecl ";
+            encodeStringLiteral(sstr, isaHeader.functions[i].name);
+            sstr << " " << i;
         }
 
     // emit filescope var decls
@@ -2587,7 +2635,7 @@ extern string printKernelHeader(const common_isa_header& isaHeader,
             isTargetSet = true;
         }
     }
-    if(isTargetSet == false)
+    if (isTargetSet == false)
     {
         sstr << endl << ".kernel_attr Target=";
         if(options->getTarget() == VISA_CM)

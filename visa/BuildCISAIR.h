@@ -183,8 +183,8 @@ public:
     bool CISA_implicit_input_directive(char * argName, char * varName, short offset, unsigned short size, int line_no);
 
     //bool CISA_attr_directive(char* input_name, attribute_info_t* attr);
-    bool CISA_attr_directive(char* input_name, char* input_var, int line_no);
-    bool CISA_attr_directiveNum(char* input_name, uint32_t input_var, int line_no);
+    bool CISA_attr_directive(const char* input_name, const char* input_var, int line_no);
+    bool CISA_attr_directiveNum(const char* input_name, uint32_t input_var, int line_no);
 
     bool CISA_create_label(char * label_name, int line_no);
     bool CISA_function_directive(char* func_name);

@@ -64,8 +64,8 @@ AVSExecMode             avsExecMode(const char* str);
 unsigned char           FENCEOptions(const char *str);
 COMMON_ISA_VME_OP_MODE  VMEType(const char *str);
 Common_VISA_EMask_Ctrl  Get_CISA_Emask(const char* str);
-char                   *get_kernel_name(const char *str, int str_len);
 CHANNEL_OUTPUT_FORMAT   Get_Channel_Output(const char* str);
+static void             appendStringLiteralChar(char c, char *buf, size_t *len);
 
 static int pendingBracket;
 
@@ -78,6 +78,7 @@ static int pendingBracket;
 %option yylineno
 
 %x   eat_comment
+%x   string_literal
 
 %%
 
@@ -95,19 +96,91 @@ static int pendingBracket;
         return COMMENT_LINE;
     }
 
-"/*"           BEGIN(eat_comment);
+"/*"  BEGIN(eat_comment);
 <eat_comment>[^*]* /* eat anything that is not a * */
 <eat_comment>"*"+[^*/]*  /* eat up '*'s not followed by '/'s */
 <eat_comment>"*"+"/"  BEGIN(INITIAL);
 
+
+\" {CISAlval.strlit.len = 0; CISAlval.strlit.decoded[0] = 0; BEGIN(string_literal);}
+<string_literal>{
+    \n                        YY_FATAL_ERROR("lexical error: newline in string literal");
+    <<EOF>>                   YY_FATAL_ERROR("lexical error: unterminated string (reached EOF)");
+    \\a                       {appendStringLiteralChar('\a',CISAlval.strlit.decoded,&CISAlval.strlit.len);}
+    \\b                       {appendStringLiteralChar('\b',CISAlval.strlit.decoded,&CISAlval.strlit.len);}
+    \\e                       {appendStringLiteralChar(0x1B,CISAlval.strlit.decoded,&CISAlval.strlit.len);}
+    \\f                       {appendStringLiteralChar('\f',CISAlval.strlit.decoded,&CISAlval.strlit.len);}
+    \\n                       {appendStringLiteralChar('\n',CISAlval.strlit.decoded,&CISAlval.strlit.len);}
+    \\r                       {appendStringLiteralChar('\r',CISAlval.strlit.decoded,&CISAlval.strlit.len);}
+    \\t                       {appendStringLiteralChar('\t',CISAlval.strlit.decoded,&CISAlval.strlit.len);}
+    \\v                       {appendStringLiteralChar('\v',CISAlval.strlit.decoded,&CISAlval.strlit.len);}
+    \\"'"                     {appendStringLiteralChar('\'',CISAlval.strlit.decoded,&CISAlval.strlit.len);}
+    \\"\""                    {appendStringLiteralChar('\"',CISAlval.strlit.decoded,&CISAlval.strlit.len);}
+    \\"?"                     {appendStringLiteralChar('?',CISAlval.strlit.decoded,&CISAlval.strlit.len);}
+    \\\\                      {appendStringLiteralChar('\\',CISAlval.strlit.decoded,&CISAlval.strlit.len);}
+    \\[0-9]{1,3} {
+        int val = 0;
+        for (int i = 1; i < yyleng; i++)
+            val = 8*val + yytext[i] - '0';
+        appendStringLiteralChar(val,CISAlval.strlit.decoded,&CISAlval.strlit.len);
+    }
+    \\x[0-9A-Fa-f]{1,2} {
+        int val = 0;
+        for (int i = 2; i < yyleng; i++) {
+            int dig =
+                yytext[i] >= '0' && yytext[i] <= '9' ? yytext[i] - '0' :
+                yytext[i] >= 'a' && yytext[i] <= 'f' ? yytext[i] - 'a' + 10 :
+                                                       yytext[i] - 'A' + 10;
+            val = 16*val + dig;
+        }
+        appendStringLiteralChar(val,CISAlval.strlit.decoded,&CISAlval.strlit.len);
+    }
+    \\.                       YY_FATAL_ERROR("lexical error: illegal escape sequence");
+    \"                        {CISAlval.string = strdup(CISAlval.strlit.decoded); BEGIN(INITIAL); return STRING_LITERAL;}
+    .                         {
+    /* important: this must succeed the exit rule above (\"); lex prefers the first match */
+        appendStringLiteralChar(yytext[0],CISAlval.strlit.decoded,&CISAlval.strlit.len);
+    }
+}
+
+
 "*" {TRACE("\n** TIMES ");  return TIMES;}
 "+" {TRACE("\n** PLUS ");   return PLUS;}
 "-" {TRACE("\n** MINUS ");  return MINUS;}
+"=" {TRACE("\n** EQUALS ");  return EQUALS;}
+"&" {TRACE("\n** AMP ");  return AMP;}
+"~" {TRACE("\n** TILDE ");  return TILDE;}
+"!" {TRACE("\n** BANG "); return BANG;}
+
+"." {TRACE("\n** COLON "); return DOT;}
+"," {TRACE("\n** COMMA "); return COMMA;}
+";" {TRACE("\n** SEMI "); return SEMI;}
+":" {TRACE("\n** COLON "); return COLON;}
+"/" {TRACE("\n** SLASH"); return SLASH;}
+
 "(" {TRACE("\n** LPAREN "); return LPAREN;}
 ")" {TRACE("\n** RPAREN "); return RPAREN;}
 "{" {TRACE("\n** LBRACE "); return LBRACE;}
 "}" {TRACE("\n** RBRACE "); return RBRACE;}
-"," {TRACE("\n** COMMA "); return COMMA;}
+"<" {TRACE("\n** LANGLE "); return LANGLE;}
+">" {TRACE("\n** RANGLE "); return RANGLE;}
+"r[" {
+        TRACE("\n** Register Indirect LEFT bracket");
+        CISAlval.string = strdup(yytext);
+        return IND_LBRACK;
+    }
+"[" {
+        TRACE("\n** LEFT bracket");
+        CISAlval.string = strdup(yytext);
+        return LBRACK;
+    }
+
+"]"  {
+        TRACE("\n** RIGHT bracket");
+        CISAlval.string = strdup(yytext);
+        return RBRACK;
+    }
+
 
 ".version"          {TRACE("\n** VERSION "); return DIRECTIVE_VERSION;}
 ".entry"            {TRACE("\n** ENTRY "); return DIRECTIVE_ENTRY;}
@@ -122,6 +195,8 @@ static int pendingBracket;
 ".function"         {TRACE("\n** FUNCTION "); return DIRECTIVE_FUNC;}
 ".global_function"  {TRACE("\n** GLOBAL FUNCTION "); return DIRECTIVE_GLOBAL_FUNC;}
 ".resolvedIndex"    {TRACE("\n** RESOLVED INDEX "); return DIRECTIVE_RESOLVED_INDEX;}
+".kernel"           {TRACE("\n** KERNEL NAME DIRECTIVE "); return DOT_KERNEL;}
+".function"         {TRACE("\n** FUNCTION NAME DIRECTIVE ");return DOT_FUNCTION;}
 
 "."implicit[a-zA-Z0-9_\-$@?]* {
         TRACE("\n**  IMPLICIT_INPUT ");
@@ -600,7 +675,6 @@ CM_AVS_(4|8|16)x(4|8) {
         return DOUBLEFLOAT;
     }
 
-qAsmName[ ]*=[ ]* {TRACE("\n** File name of assembly "); CISAlval.string = "AsmName"; return ASM_NAME;}
 qSLMSize[ ]*=[ ]* {TRACE("\n** File name of assembly "); CISAlval.string = "SLMSize"; return SLM_SIZE;}
 
 qFlagRegNum[ ]*=[ ]* {TRACE("\n** Flag regisetr number "); CISAlval.string = "FlagRegNum"; return FLAG_REG_NAME;}
@@ -621,42 +695,6 @@ size[ ]*=[ ]* {TRACE("\n** Size "); return SIZE;}
 
 alias[ ]*=[ ]* {TRACE("\n** ALIAS "); return ALIAS;}
 
-
-[a-zA-Z_.][a-zA-Z0-9_\-$\\:/.]*"."cpp {
-        TRACE("\n** CPP File Name ");
-        CISAlval.string = strdup(yytext);
-        return CPP_FILE_NAME;
-    }
-
-[a-zA-Z_.][a-zA-Z0-9_\-$\\:/.]*"."h {
-        TRACE("\n** H File Name ");
-        CISAlval.string = strdup(yytext);
-        return H_FILE_NAME;
-    }
-
-[a-zA-Z_][a-zA-Z0-9_\-$\\:/.]*"."asm {
-         TRACE("\n** Assemble File Name ");
-               CISAlval.asm_name = strdup(yytext);
-               return ASM_FILE_NAME;
-       }
-
-"cm" {
-        TRACE("\n** cm attribute ");
-        CISAlval.asm_name = strdup(yytext);
-        return ATTR_CM;
-    }
-
-"3d" {
-        TRACE("\n** 3d attribute ");
-        CISAlval.asm_name = strdup(yytext);
-        return ATTR_3D;
-    }
-
-"cs" {
-        TRACE("\n** cs attribute ");
-        CISAlval.asm_name = strdup(yytext);
-        return ATTR_CS;
-    }
 
 v_type[ ]*=[ ]*F {
         TRACE("\n** General variable type");
@@ -792,22 +830,6 @@ M1|M2|M3|M4|M5|M6|M7|M8|M1_NM|M2_NM|M3_NM|M4_NM|M5_NM|M6_NM|M7_NM|M8_NM|NoMask {
     }
 
 
-"r[" {
-        TRACE("\n** Register Indirect LEFT bracket");
-        CISAlval.string = strdup(yytext);
-        return IND_LEFT_BRACKET;
-    }
-"[" {
-        TRACE("\n** LEFT bracket");
-        CISAlval.string = strdup(yytext);
-        return LEFT_BRACKET;
-    }
-
-"]"  {
-        TRACE("\n** RIGHT bracket");
-        CISAlval.string = strdup(yytext);
-        return RIGHT_BRACKET;
-    }
 
 
 "."((R|r)((G|g)?(B|b)?(A|a)?)|(G|g)((B|b)?(A|a)?)|(B|b)((A|a)?)|(A|a))  {
@@ -846,11 +868,6 @@ M1|M2|M3|M4|M5|M6|M7|M8|M1_NM|M2_NM|M3_NM|M4_NM|M5_NM|M6_NM|M7_NM|M8_NM|NoMask {
         return PRED_CNTL;
     }
 
-^"."kernel[ \t]+[a-zA-Z][a-zA-Z0-9_\,\- <>]*[ \t]* {
-        TRACE("\n** KERNEL NAME ");
-        CISAlval.string = get_kernel_name(yytext, yyleng);
-        return K_NAME;
-    }
 
 V0 {
         TRACE("\n** NULL VAR ");
@@ -858,18 +875,14 @@ V0 {
         return NULL_VAR;
     }
 
-[a-zA-Z][a-zA-Z0-9_\-]* {
+[a-zA-Z][a-zA-Z0-9_]* {
         TRACE("\n** VAR ");
         CISAlval.string = strdup(yytext);
         return VAR;
     }
 
 
-[a-zA-Z_$@\?][a-zA-Z0-9_\-$@\?]* {
-        TRACE("\n** FUNCTION NAME ");
-        CISAlval.string = strdup(yytext);
-        return F_NAME;
-    }
+
 
 
 [^ \t\n]       {TRACE("\n** SPACE END"); return *yytext;}
@@ -1149,4 +1162,13 @@ CHANNEL_OUTPUT_FORMAT Get_Channel_Output(const char* str)
     YY_FATAL_ERROR("Invalid channel output format ");
     YY_FATAL_ERROR(str);
     return CHANNEL_16_BIT_FULL;
+}
+
+static void appendStringLiteralChar(char c, char *buf, size_t *len)
+{
+    if (*len == sizeof(CISAlval.strlit)) {
+        YY_FATAL_ERROR("string literal too long");
+    }
+    buf[(*len)++] = c;
+    buf[*len] = 0;
 }
