@@ -747,7 +747,7 @@ public:
     BB_LIST::const_iterator cend() const { return BBs.cend(); }
     BB_LIST::const_reverse_iterator crbegin() { return BBs.crbegin(); }
     BB_LIST::const_reverse_iterator crend() { return BBs.crend(); }
-    
+
     size_t size() { return BBs.size(); }
     bool empty() const { return BBs.empty(); }
     G4_BB* back() const {return BBs.back(); }
@@ -755,7 +755,7 @@ public:
     BB_LIST_ITER insert(BB_LIST_ITER iter, G4_BB* bb) { return BBs.insert(iter, bb); }
     BB_LIST& getBBList() { return BBs; }
 
-    // add BB to be the first BB 
+    // add BB to be the first BB
     void addPrologBB(G4_BB* BB)
     {
         G4_BB* oldEntry = getEntryBB();
@@ -764,7 +764,7 @@ public:
     }
 
     // append another CFG's BBs to this CFG.
-    // note that we don't add additional CFG edges as its purpose is just to 
+    // note that we don't add additional CFG edges as its purpose is just to
     // stitch the two binaries togather
     void append(const FlowGraph& otherFG)
     {
@@ -884,7 +884,7 @@ public:
 
     void preprocess(INST_LIST& instlist);
 
-    FlowGraph(INST_LIST_NODE_ALLOCATOR& alloc, G4_Kernel* kernel, Mem_Manager& m) : 
+    FlowGraph(INST_LIST_NODE_ALLOCATOR& alloc, G4_Kernel* kernel, Mem_Manager& m) :
       traversalNum(0), numBBId(0), reducible(true),
       doIPA(false), hasStackCalls(false), isStackCallFunc(false), autoLabelId(0),
       pKernel(kernel), mem(m), instListAlloc(alloc),
@@ -1193,7 +1193,7 @@ public:
     void* getGTPinInfoBuffer(unsigned int &bufferSize);
 
     void setScratchNextFree(unsigned int next)
-    { 
+    {
         nextScratchFree = ((next + G4_GRF_REG_NBYTES - 1) / G4_GRF_REG_NBYTES) * G4_GRF_REG_NBYTES;
     }
     uint8_t getNumBytesScratchUse()

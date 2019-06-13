@@ -1,3 +1,28 @@
+/*===================== begin_copyright_notice ==================================
+
+Copyright (c) 2017 Intel Corporation
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+======================= end_copyright_notice ==================================*/
 #include "iga_main.hpp"
 
 #include "InstDiff.hpp"
@@ -13,7 +38,7 @@ static void errorInFile(const Opts &opts, const std::string &inpFile, const char
 
 static void parseBitsFromFile(
     const std::string &inpFile,
-    Opts &opts,
+    Opts opts, // copy
     igax::Bits &bits)
 {
     opts.mode = Opts::AUTO; // allow file inference
@@ -225,23 +250,20 @@ static igax::Bits parseBits(const std::string &inp, Opts &opts)
     return bits;
 }
 
-static void ensurePlatformIsSet(Opts &opts)
+static void checkPlatform(Opts &opts)
 {
-    if (opts.platform != IGA_GEN_INVALID) {
-        return; // fixed platform given. e.g. -p=12
-    }
-    if (!opts.inputFiles.empty()) {
-        // mode will be ignored, don't worry
-        inferPlatformAndMode(opts.inputFiles[0], opts);
-    }
     if (opts.platform == IGA_GEN_INVALID) {
-        const char *tool = opts.mode == Opts::Mode::XDCMP ? "dcmp" : "ifs";
-        fatalExitWithMessage("-X%s: unable to infer platform (use -p)", tool);
-    }
+        if (!opts.inputFiles.empty() && opts.mode != Opts::Mode::XDSD) {
+            // mode will be ignored, don't worry
+            inferPlatformAndMode(opts.inputFiles[0], opts);
+        }
+        ensurePlatformIsSet(opts);
+    } // else -p=... was given
 }
 
 static bool decodeFieldsSingle(Opts opts)
 {
+    inferPlatformAndMode(opts.inputFiles[0], opts);
     ensurePlatformIsSet(opts);
 
     igax::Bits bits = parseBits(opts.inputFiles[0], opts);
@@ -261,7 +283,7 @@ static bool decodeFieldsSingle(Opts opts)
         std::cerr << "decode error: " << iga_status_to_string(st) << "\n";
     }
     os.flush();
-    if (!opts.outputFile.empty()) {
+    if (outfile) {
         delete outfile;
     }
 

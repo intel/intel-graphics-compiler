@@ -966,8 +966,7 @@ Instruction *DecoderBase::decodeSendInstruction(Kernel& kernel)
 {
     // desc
     GED_DECODE_RAW(GED_REG_FILE, descRegFile, DescRegFile);
-    SendDescArg msgDesc;
-    msgDesc.init();
+    SendDescArg msgDesc {};
     if (descRegFile == GED_REG_FILE_IMM) {
         msgDesc.type = SendDescArg::IMM;
         GED_DECODE_RAW_TO(MsgDesc, msgDesc.imm);
@@ -985,8 +984,7 @@ Instruction *DecoderBase::decodeSendInstruction(Kernel& kernel)
         GED_DECODE_RAW_TO(ExDescRegFile, exDescRegFile);
     }
 
-    SendDescArg extMsgDesc;
-    extMsgDesc.init();
+    SendDescArg extMsgDesc {};
     if (exDescRegFile == GED_REG_FILE_IMM) {
         extMsgDesc.type = SendDescArg::IMM;
         GED_DECODE_RAW_TO(ExMsgDesc, extMsgDesc.imm);

@@ -1842,6 +1842,8 @@ int IR_Builder::translateVISAWaitInst(G4_Operand* mask)
 
 void IR_Builder::generateBarrierSend()
 {
+
+
     int exdesc = SFIDtoInt(SFID::GATEWAY);
     // 1 message length, 0 response length, no header, no ack
     int desc = (0x1 << 25) + 0x4;

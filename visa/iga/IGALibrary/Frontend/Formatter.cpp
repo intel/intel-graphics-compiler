@@ -846,7 +846,7 @@ void Formatter::formatSrcOp(
     startColumn(os.isSendOrSendsFamily() ? cols.sendSrcOp : cols.srcOp);
 
     switch (src.getKind()) {
-    case Operand::Kind::DIRECT:
+    case Operand::Kind::DIRECT: {
         formatSourceModifier(os, src.getSrcModifier());
         formatRegister(
             src.getDirRegName(),
@@ -854,6 +854,7 @@ void Formatter::formatSrcOp(
             os.hasSrcSubregister(srcIx, opts.platform));
         formatSourceRegion(srcIx, os, inst.getExecSize(), src);
         break;
+    }
     case Operand::Kind::MACRO: {
         formatSourceModifier(os, src.getSrcModifier());
         formatRegister(

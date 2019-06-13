@@ -7544,12 +7544,12 @@ void HWConformity::fixVxHFloat64b(INST_LIST_ITER it, G4_BB* bb)
 
 bool HWConformity::fixIntToHFMove(G4_BB* bb)
 {
-    // int to HF move requires dst to have stride 2, which would result in 
+    // int to HF move requires dst to have stride 2, which would result in
     // an illegal SIMD32 inst. So we split in this case
     // we put it in a separate pass so that the split instructions may be legalized later
     bool changed = false;
     for (auto I = bb->begin(), E = bb->end(); I != E; ++I)
-    { 
+    {
         auto inst = *I;
         if (inst->opcode() == G4_mov && inst->getDst()->getType() == Type_HF &&
             IS_INT(inst->getSrc(0)->getType()))

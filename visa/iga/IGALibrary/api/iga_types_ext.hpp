@@ -262,5 +262,5 @@ namespace iga
         NOSRCDEPSET,
         SWITCH
     };
-}
+} // namespace iga
 #endif

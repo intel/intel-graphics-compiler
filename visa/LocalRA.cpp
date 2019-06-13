@@ -56,36 +56,21 @@ LocalRA::LocalRA(BankConflictPass& b, GlobalRA& g) :
 {
 }
 
-G4_Align LocalRA::getBankAlignForUniqueAssign(G4_Declare *dcl)
+BankAlign LocalRA::getBankAlignForUniqueAssign(G4_Declare *dcl)
 {
+    // FIXME: this code is rather suspicious (we return even alignment 
+    // for first_half_odd???), should revisit
     switch (gra.getBankConflict(dcl))
     {
     case BANK_CONFLICT_FIRST_HALF_EVEN:
     case BANK_CONFLICT_FIRST_HALF_ODD:
-        if (builder.oneGRFBankDivision())
-        {
-            return Even;
-        }
-        else
-        {
-            return Even2GRF;
-        }
-        break;
+        return builder.oneGRFBankDivision() ? BankAlign::Even : BankAlign::Even2GRF;
     case BANK_CONFLICT_SECOND_HALF_EVEN:
     case BANK_CONFLICT_SECOND_HALF_ODD:
-        if (builder.oneGRFBankDivision())
-        {
-            return Odd;
-        }
-        else
-        {
-            return Odd2GRF;
-        }
-        break;
-    default: break;
+        return builder.oneGRFBankDivision() ? BankAlign::Odd : BankAlign::Odd2GRF;
+    default: 
+        return BankAlign::Either;
     }
-
-    return Either;
 }
 
 
@@ -621,52 +606,50 @@ void LocalRA::removeUnrequiredLifetimeOps()
     }
 }
 
-void LocalRA::findRegisterCandiateWithAlignForward(int &i, G4_Align align, bool evenAlign)
+void LocalRA::findRegisterCandiateWithAlignForward(int &i, BankAlign align, bool evenAlign)
 {
-    if ((align == Even) && (i % 2 != 0))
+    if ((align == BankAlign::Even) && (i % 2 != 0))
     {
         i++;
     }
-    else if ((align == Odd) && (i % 2 == 0))
+    else if ((align == BankAlign::Odd) && (i % 2 == 0))
     {
         i++;
     }
-    else if (align == Even2GRF)
+    else if (align == BankAlign::Even2GRF)
     {
         while ((i % 4 >= 2) || (evenAlign && (i % 2 != 0)))
         {
             i++;
         }
     }
-    else if (align == Odd2GRF)
+    else if (align == BankAlign::Odd2GRF)
     {
         while ((i % 4 < 2) || (evenAlign && (i % 2 != 0)))
         {
             i++;
         }
     }
-
-    return;
 }
 
-void LocalRA::findRegisterCandiateWithAlignBackward(int &i, G4_Align align, bool evenAlign)
+void LocalRA::findRegisterCandiateWithAlignBackward(int &i, BankAlign align, bool evenAlign)
 {
-    if ((align == Even) && (i % 2 != 0))
+    if ((align == BankAlign::Even) && (i % 2 != 0))
     {
         i--;
     }
-    else if ((align == Odd) && (i % 2 == 0))
+    else if ((align == BankAlign::Odd) && (i % 2 == 0))
     {
         i--;
     }
-    else if (align == Even2GRF)
+    else if (align == BankAlign::Even2GRF)
     {
         while (i >= 0 && ((i % 4 >= 2) || (evenAlign && (i % 2 != 0))))
         {
             i--;
         }
     }
-    else if (align == Odd2GRF)
+    else if (align == BankAlign::Odd2GRF)
     {
         while (i >= 0 && ((i % 4 < 2) || (evenAlign && (i % 2 != 0))))
         {
@@ -772,19 +755,19 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign)
             int subregNum = 0;
             int sizeInWords = dcl->getWordSize();
             int nrows = 0;
-            G4_Align align = dcl->getAlign();
-            G4_Align bankAlign = Either;
+            BankAlign align = dcl->getAlign() == Even ? BankAlign::Even : BankAlign::Either;
+            BankAlign bankAlign = BankAlign::Either;
 
             if (twoBanksRA &&
                 gra.getBankConflict(dcl) != BANK_CONFLICT_NONE)
             {
                 bankAlign = getBankAlignForUniqueAssign(dcl);
 
-                if (bankAlign == Even || bankAlign == Even2GRF)
+                if (bankAlign == BankAlign::Even || bankAlign == BankAlign::Even2GRF)
                 {
                     assignFromFront = true;
                 }
-                if (twoDirectionsAssign && (bankAlign == Odd || bankAlign == Odd2GRF))
+                if (twoDirectionsAssign && (bankAlign == BankAlign::Odd || bankAlign == BankAlign::Odd2GRF))
                 {
                     assignFromFront = false;
                 }
@@ -807,13 +790,13 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign)
                         occupiedBundles |= (unsigned short)1 << bundle;
                     }
                 }
-                nrows = phyRegMgr.findFreeRegs(sizeInWords, (bankAlign != Either) ? bankAlign : align, subAlign,
-                    regNum, subregNum, 0, numRegLRA - 1, occupiedBundles, 0, false);
+                nrows = phyRegMgr.findFreeRegs(sizeInWords, (bankAlign != BankAlign::Either) ? bankAlign : align, 
+                    subAlign, regNum, subregNum, 0, numRegLRA - 1, occupiedBundles, 0, false);
             }
             else
             {
-                nrows = phyRegMgr.findFreeRegs(sizeInWords, (bankAlign != Either) ? bankAlign : align, subAlign,
-                    regNum, subregNum, numRegLRA - 1, 0, 0, 0, false);
+                nrows = phyRegMgr.findFreeRegs(sizeInWords, (bankAlign != BankAlign::Either) ? bankAlign : align, 
+                    subAlign, regNum, subregNum, numRegLRA - 1, 0, 0, 0, false);
             }
 
             if (nrows)
@@ -1961,7 +1944,7 @@ inline bool PhyRegsLocalRA::isWordBusy(int whichgrf, int word, int howmany)
     return retval;
 }
 
-bool PhyRegsLocalRA::findFreeMultipleRegsForward(int regIdx, G4_Align align, int &regnum, int nrows, int lastRowSize, int endReg, unsigned short occupiedBundles, int instID, bool isHybridAlloc)
+bool PhyRegsLocalRA::findFreeMultipleRegsForward(int regIdx, BankAlign align, int &regnum, int nrows, int lastRowSize, int endReg, unsigned short occupiedBundles, int instID, bool isHybridAlloc)
 {
     int foundItem = 0;
     int startReg = 0;
@@ -2048,7 +2031,7 @@ bool PhyRegsLocalRA::findFreeMultipleRegsForward(int regIdx, G4_Align align, int
     return false;
 }
 
-bool PhyRegsLocalRA::findFreeMultipleRegsBackward(int regIdx, G4_Align align, int &regnum, int nrows, int lastRowSize, int endReg, int instID, bool isHybridAlloc)
+bool PhyRegsLocalRA::findFreeMultipleRegsBackward(int regIdx, BankAlign align, int &regnum, int nrows, int lastRowSize, int endReg, int instID, bool isHybridAlloc)
 {
     int foundItem = 0;
     int startReg = 0;
@@ -2122,7 +2105,7 @@ bool PhyRegsLocalRA::findFreeMultipleRegsBackward(int regIdx, G4_Align align, in
     return false;
 }
 
-bool PhyRegsLocalRA::findFreeSingleReg(int regIdx, int size, G4_Align align, G4_SubReg_Align subalign, int &regnum, int &subregnum, int endReg, int instID, bool isHybridAlloc, bool forward)
+bool PhyRegsLocalRA::findFreeSingleReg(int regIdx, int size, BankAlign align, G4_SubReg_Align subalign, int &regnum, int &subregnum, int endReg, int instID, bool isHybridAlloc, bool forward)
 {
     int i = regIdx;
     bool found = false;
@@ -2141,31 +2124,26 @@ bool PhyRegsLocalRA::findFreeSingleReg(int regIdx, int size, G4_Align align, G4_
         }
 
         // Align GRF
-        if ((align == Even) && (i % 2 != 0))
+        if ((align == BankAlign::Even) && (i % 2 != 0))
         {
-            if (forward) { i++; }
-            else { i--; }
+            i += forward ? 1 : -1;
             continue;
         }
-        else if ((align == Odd) && (i % 2 == 0))
+        else if ((align == BankAlign::Odd) && (i % 2 == 0))
         {
-            if (forward) { i++; }
-            else { i--; }
+            i += forward ? 1 : -1;
             continue;
         }
-        else if ((align == Even2GRF) && ((i % 4 >= 2)))
+        else if ((align == BankAlign::Even2GRF) && ((i % 4 >= 2)))
         {
-            if (forward) { i++; }
-            else { i--; }
+            i += forward ? 1 : -1;
             continue;
         }
-        else if ((align == Odd2GRF) && ((i % 4 < 2)))
+        else if ((align == BankAlign::Odd2GRF) && ((i % 4 < 2)))
         {
-            if (forward) { i++; }
-            else { i--; }
+            i += forward ? 1 : -1;
             continue;
         }
-
 
         if (isGRFAvailable(i, 1) &&
             (!isHybridAlloc || (((instID - regLastUse[i]) / 2 >= FF_LRA_WINDOW_SIZE) || (regLastUse[i] == 0))))
@@ -2176,9 +2154,7 @@ bool PhyRegsLocalRA::findFreeSingleReg(int regIdx, int size, G4_Align align, G4_
                 return true;
             }
         }
-
-        if (forward) { i++; }
-        else { i--; }
+        i += forward ? 1 : -1;
     }
 
     return false;
@@ -2311,7 +2287,7 @@ bool PhyRegsLocalRA::findFreeSingleReg(int regIdx, G4_SubReg_Align subalign, int
     return found;
 }
 
-int PhyRegsManager::findFreeRegs(int size, G4_Align align, G4_SubReg_Align subalign, int& regnum, int& subregnum,
+int PhyRegsManager::findFreeRegs(int size, BankAlign align, G4_SubReg_Align subalign, int& regnum, int& subregnum,
     int startRegNum, int endRegNum, unsigned short occupiedBundles, unsigned int instID, bool isHybridAlloc)
 {
     int nrows = 0;
@@ -2663,7 +2639,6 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder
     G4_Declare *dcl = lr->getTopDcl();
     G4_Align align = dcl->getRegVar()->getAlignment();
     G4_SubReg_Align subalign = dcl->getRegVar()->getSubRegAlignment();
-    G4_Align bankAlign = Either;
     unsigned short occupiedBundles = 0;
 
     for (size_t i = 0; i < gra.getBundleConflictDclSize(dcl); i++)
@@ -2680,16 +2655,22 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder
 
     localRABound = numRegLRA - globalLRSize - 1;  //-1, localRABound will be counted in findFreeRegs()
 
+    BankAlign bankAlign = BankAlign::Either;
     if (doBankConflict &&
         gra.getBankConflict(lr->getTopDcl()) != BANK_CONFLICT_NONE)
     {
         bankAlign = gra.getBankAlign(lr->getTopDcl());
     }
+    if (bankAlign == BankAlign::Either)
+    {
+        // FIXME: ISTM the existing code is wrong, we should always honor even alignment
+        bankAlign = align == Even ? BankAlign::Even : BankAlign::Either;
+    }
 
     if (useRoundRobin)
     {
         nrows = pregManager.findFreeRegs(size,
-            bankAlign != Either ? bankAlign : align,
+            bankAlign,
             subalign,
             regnum,
             subregnum,
@@ -2702,7 +2683,7 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder
     else
     {
         nrows = pregManager.findFreeRegs(size,
-            bankAlign != Either ? bankAlign : align,
+            bankAlign,
             subalign,
             regnum,
             subregnum,
@@ -2715,7 +2696,7 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder
         if (!nrows)
         {
             nrows = pregManager.findFreeRegs(size,
-                bankAlign != Either ? bankAlign : align,
+                bankAlign,
                 subalign,
                 regnum,
                 subregnum,
@@ -2739,7 +2720,7 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder
             endGRFReg = (endGRFReg > localRABound) ? localRABound : endGRFReg;
 
             nrows = pregManager.findFreeRegs(size,
-                bankAlign != Either ? bankAlign : align,
+                bankAlign,
                 subalign,
                 regnum,
                 subregnum,
@@ -3003,7 +2984,7 @@ bool LinearScan::allocateRegsFromBanks(LocalLiveRange* lr)
     int bank1AvailableRegNum = pregManager.getAvaialableRegs()->getBank1AvailableRegNum();
     int bank2AvailableRegNum = pregManager.getAvaialableRegs()->getBank2AvailableRegNum();
     int size = lr->getSizeInWords();
-    G4_Align align = lr->getTopDcl()->getRegVar()->getAlignment();
+    BankAlign align = lr->getTopDcl()->getRegVar()->getAlignment() == Even ? BankAlign::Even : BankAlign::Either;
     G4_SubReg_Align subalign = lr->getTopDcl()->getRegVar()->getSubRegAlignment();
     unsigned int instID;
     lr->getFirstRef(instID);
@@ -3017,7 +2998,7 @@ bool LinearScan::allocateRegsFromBanks(LocalLiveRange* lr)
         {
         case BANK_CONFLICT_FIRST_HALF_EVEN:
         case BANK_CONFLICT_FIRST_HALF_ODD:
-            align = Even;
+            align = BankAlign::Even;
             startGRFReg = &bank1StartGRFReg;
             tmpLocalRABound = bank1_end;
             break;
@@ -3025,7 +3006,7 @@ bool LinearScan::allocateRegsFromBanks(LocalLiveRange* lr)
         case BANK_CONFLICT_SECOND_HALF_ODD:
             if (useRoundRobin)
             {
-                align = Odd;
+                align = BankAlign::Odd;
             }
             startGRFReg = &bank2StartGRFReg;
             tmpLocalRABound = bank2_end;
@@ -3176,7 +3157,7 @@ bool LinearScan::allocateRegsFromBanks(LocalLiveRange* lr)
         if (!nrows)
         {   //Try without window, no even/odd alignment for bank, but still low and high(keep in same bank)
             nrows = pregManager.findFreeRegs(size,
-                lr->getTopDcl()->getRegVar()->getAlignment(),
+                lr->getTopDcl()->getRegVar()->getAlignment() == Even ? BankAlign::Even : BankAlign::Either,
                 subalign,
                 regnum,
                 subregnum,
@@ -3202,7 +3183,7 @@ bool LinearScan::allocateRegsFromBanks(LocalLiveRange* lr)
             }
 
             nrows = pregManager.findFreeRegs(size,
-                lr->getTopDcl()->getRegVar()->getAlignment(),
+                lr->getTopDcl()->getRegVar()->getAlignment() == Even ? BankAlign::Even : BankAlign::Either,
                 subalign,
                 regnum,
                 subregnum,

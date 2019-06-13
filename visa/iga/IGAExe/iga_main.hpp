@@ -53,7 +53,7 @@ struct Opts {
     // XIFS = -Xifs (decode fields)
     // XDCMP = -Xdcmp (debug compaction)
     // AUTO = operate based on input (see inferPlatformAndMode below)
-    enum Mode {ASM, DIS, XLST, XIFS, XDCMP, AUTO};
+    enum Mode {ASM, DIS, XLST, XIFS, XDCMP, XDSD, AUTO};
 
     std::vector<std::string> inputFiles;             // .empty() means stdin
     std::string outputFile;                          // "" means stdout
@@ -98,7 +98,8 @@ bool debugCompaction(
 bool listOps(
     const Opts &opts,
     const std::string &opmn); // -Xlist-ops: list_ops.cpp
-
+bool decodeSendDescriptor(
+    const Opts &opts); // -Xsds in decode_message.cpp
 
 static void setOptBit(uint32_t &opts, uint32_t bit, bool isSet) {
     if (isSet) {
@@ -107,6 +108,7 @@ static void setOptBit(uint32_t &opts, uint32_t bit, bool isSet) {
         opts &= ~bit;
     }
 }
+
 
 static void writeText(const Opts &opts, const std::string &outp) {
     if (opts.outputFile == "") {
@@ -228,5 +230,19 @@ static void inferPlatformAndMode(
         }
     }
 }
+
+static void ensurePlatformIsSet(const Opts &opts)
+{
+    if (opts.platform == IGA_GEN_INVALID) {
+        const char *tool =
+          opts.mode == Opts::Mode::XIFS ? "ifs" :
+          opts.mode == Opts::Mode::XDCMP ? "dcmp" :
+          opts.mode == Opts::Mode::XDSD ? "dsd" :
+            "???";
+
+        fatalExitWithMessage("-X%s: unable to infer platform (use -p)", tool);
+    }
+}
+
 
 #endif // _IGA_MAIN_HPP_

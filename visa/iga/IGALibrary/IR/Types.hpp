@@ -110,9 +110,9 @@ enum class MathMacroExt
 // to subregister offset
 //   I.e. subReg = (byteOff << left) >> right;
 // this allows us to scale a subregister byte offset up OR down
-static inline std::tuple<int,int> TypeSizeShiftsOffsetToSubreg(Type type)
+static inline std::tuple<uint32_t, uint32_t> TypeSizeShiftsOffsetToSubreg(Type type)
 {
-    int shl = 0, shr = 0; // by default no scaling
+    uint32_t shl = 0, shr = 0; // by default no scaling
 
     switch (type) {
     // 1-byte types
@@ -144,12 +144,12 @@ static inline std::tuple<int,int> TypeSizeShiftsOffsetToSubreg(Type type)
 }
 
 // e.g. Type::UD == 32
-static inline int TypeSizeInBits(Type t)
+static inline uint32_t TypeSizeInBits(Type t)
 {
     auto ti = TypeSizeShiftsOffsetToSubreg(t);
     return (8 << std::get<1>(ti)) >> std::get<0>(ti);
 }
-static inline int TypeSizeInBitsWithDefault(Type type, int dft = 0)
+static inline uint32_t TypeSizeInBitsWithDefault(Type type, int dft = 0)
 {
     return type == Type::INVALID ? dft : TypeSizeInBits(type);
 }

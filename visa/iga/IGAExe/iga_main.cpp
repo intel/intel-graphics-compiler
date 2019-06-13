@@ -291,10 +291,29 @@ extern "C" int iga_main(int argc, const char **argv)
             baseOpts.mode = Opts::Mode::XDCMP;
         });
     xGrp.defineFlag(
+        "dsd",
+        nullptr,
+        "decode send descriptor",
+        "This mode attempts to decode send descriptors to messages.\n"
+        " This is a best effort and not all messages or platforms are "
+            "supported.\n"
+        "\n"
+        "SFIDS are: DC0, DC1, DC2, DCRO, GTWY, RC, URB"
+        "\n"
+        "\n"
+        "EXAMPLES:\n"
+        "  % iga -p=11 -Xdsd DC1 0x0000010C  0x04025C01\n"
+        "    decodes message info for a GEN11 descriptor on SFID (DC1)\n",
+        opts::OptAttrs::ALLOW_UNSET,
+        [] (const char *, const opts::ErrorHandler &, Opts &baseOpts) {
+            baseOpts.mode = Opts::Mode::XDSD;
+        });
+    xGrp.defineFlag(
         "ifs",
         nullptr,
         "dump instruction fields",
         "This mode decodes instructions.\n"
+        "\n"
         "EXAMPLES:\n"
         "  % iga -Xifs foo.krn9\n"
         "    decodes kernel from foo.krn9 (-p=9 inferred)\n"
@@ -465,6 +484,8 @@ extern "C" int iga_main(int argc, const char **argv)
         hasError |= decodeInstructionFields(baseOpts);
     } else if (baseOpts.mode == Opts::XDCMP) {
         hasError |= debugCompaction(baseOpts);
+    } else if (baseOpts.mode == Opts::XDSD) {
+        hasError |= decodeSendDescriptor(baseOpts);
     } else {
         if (baseOpts.inputFiles.empty()) {
             fatalExitWithMessage("at least one file required");

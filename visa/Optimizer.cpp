@@ -2923,7 +2923,7 @@ void Optimizer::newLocalCopyPropagation()
                 // replace use with def
                 if (src->isImm())
                 {
-                    auto newImmVal = G4_Imm::typecastVals(src->asImm()->getImm(), 
+                    auto newImmVal = G4_Imm::typecastVals(src->asImm()->getImm(),
                         propType);
                     G4_Imm* newImm = builder.createImm(newImmVal,
                         propType);
@@ -10683,6 +10683,8 @@ void Optimizer::changeMoveType()
             movInst->getSrc(0)->asSrcRegRegion()->setType(newTy);
         }
     };
+
+
 
 
     for (auto bb : fg)

@@ -10877,6 +10877,7 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst* pInsn)
         atomic_op = static_cast<AtomicOp>(llvm::cast<llvm::ConstantInt>(pInsn->getOperand(3))->getZExtValue());
     }
 
+
     unsigned short bitwidth = pInsn->getType()->getScalarSizeInBits();
     const bool is16Bit = (pInsn->getType()->getScalarSizeInBits() == 16);
 
@@ -11007,6 +11008,8 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst* pInsn)
             }
             ResourceLoop(needLoop, flag, label);
         }
+
+
     }
     ResetVMask();
     m_currShader->isMessageTargetDataCacheDataPort = true;
@@ -11663,6 +11666,8 @@ void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
         CVariable* tempdst[4] = { nullptr, nullptr, nullptr, nullptr };
         bool needsSplit = m_currShader->m_SIMDSize == SIMDMode::SIMD16
             && !m_currShader->m_Platform->supportsSIMD16TypedRW();
+
+
         if (!needsSplit)
         {
             m_encoder->SetPredicate(flag);

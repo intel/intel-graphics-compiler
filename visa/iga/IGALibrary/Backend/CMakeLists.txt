@@ -1,10 +1,12 @@
 ##################################################################
 # common to both encoders
 set(IGA_Backend
-  ${CMAKE_CURRENT_SOURCE_DIR}/DecoderOpts.hpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/EncoderOpts.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/BitProcessor.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/BitProcessor.hpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/DecoderOpts.hpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/EncoderOpts.hpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/MessageInfo.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/MessageInfo.hpp
   PARENT_SCOPE
 )
 

@@ -249,7 +249,7 @@ int PhyRegUsage::findContiguousWords(
 bool PhyRegUsage::findContiguousGRF(bool availRegs[],
     const bool forbidden[],
     unsigned occupiedBundles,
-    G4_Align align,
+    BankAlign align,
     unsigned numRegNeeded,
     unsigned maxRegs,
     unsigned& startPos,
@@ -349,20 +349,18 @@ bool PhyRegUsage::findContiguousAddrFlag(bool availRegs[],
 bool PhyRegUsage::findContiguousGRFFromBanks(G4_Declare *dcl,
     bool availRegs[],
     const bool forbidden[],
-    G4_Align orgAlign,
+    BankAlign origAlign,
     unsigned& idx,
     bool oneGRFBankDivision)
 {   // EOT is not handled in this function
     bool found = false;
     unsigned numRegNeeded = dcl->getNumRows();
-    G4_Align align = orgAlign;
     auto dclBC = gra.getBankConflict(dcl);
     bool gotoSecondBank = (dclBC == BANK_CONFLICT_SECOND_HALF_EVEN ||
         dclBC == BANK_CONFLICT_SECOND_HALF_ODD) && (dcl->getNumRows() > 1);
 
-    if ((dclBC != BANK_CONFLICT_NONE) &&
-        (align == Either) &&
-        (dcl->getNumRows() <= 1))
+    BankAlign align = origAlign;
+    if (dclBC != BANK_CONFLICT_NONE && align == BankAlign::Either && dcl->getNumRows() <= 1)
     {
         align = gra.getBankAlign(dcl);
     }
@@ -411,7 +409,7 @@ bool PhyRegUsage::findContiguousGRFFromBanks(G4_Declare *dcl,
             if (bank1_end - bank1_start + 1 >= numRegNeeded)
             {
                 found = findFreeRegs(
-                    availRegs, forbidden, Even, numRegNeeded, bank1_start, bank1_end, idx, gotoSecondBank, oneGRFBankDivision);
+                    availRegs, forbidden, BankAlign::Even, numRegNeeded, bank1_start, bank1_end, idx, gotoSecondBank, oneGRFBankDivision);
             }
 
             if (!found)
@@ -419,7 +417,7 @@ bool PhyRegUsage::findContiguousGRFFromBanks(G4_Declare *dcl,
                 if (bank1_start >= numRegNeeded)
                 {
                     found = findFreeRegs(
-                        availRegs, forbidden, Even, numRegNeeded, 0, bank1_start - 2 + numRegNeeded, idx, gotoSecondBank, oneGRFBankDivision);
+                        availRegs, forbidden, BankAlign::Even, numRegNeeded, 0, bank1_start - 2 + numRegNeeded, idx, gotoSecondBank, oneGRFBankDivision);
                 }
             }
 
@@ -490,8 +488,8 @@ bool PhyRegUsage::isOverlapValid(unsigned int reg, unsigned int numRegs)
 //
 bool PhyRegUsage::findContiguousNoWrapGRF(bool availRegs[],
     const bool forbidden[],
-    unsigned short occupiedBundles, 
-    G4_Align align,
+    unsigned short occupiedBundles,
+    BankAlign align,
     unsigned numRegNeeded,
     unsigned startPos,
     unsigned endPos,
@@ -500,19 +498,21 @@ bool PhyRegUsage::findContiguousNoWrapGRF(bool availRegs[],
     unsigned i = startPos;
     while (i < endPos)
     {
-        if (((i & 0x1) && align == Even) || // i is odd but intv needs to be even aligned
-            ((i & 0x1) == 0 && align == Odd)) // i is even but intv needs to be odd aligned
+        if (((i & 0x1) && align == BankAlign::Even) || // i is odd but intv needs to be even aligned
+            ((i & 0x1) == 0 && align == BankAlign::Odd)) // i is even but intv needs to be odd aligned
         {
             i++;
-        } else {
-            if (align == Even2GRF)
+        } 
+        else 
+        {
+            if (align == BankAlign::Even2GRF)
             {
                 while ((i % 4 >= 2) || ((numRegNeeded >= 2) && (i % 2 != 0)))
                 {
                     i++;
                 }
             }
-            else if (align == Odd2GRF)
+            else if (align == BankAlign::Odd2GRF)
             {
                 while ((i % 4 < 2) || ((numRegNeeded >= 2) && (i % 2 != 0)))
                 {
@@ -607,7 +607,7 @@ bool PhyRegUsage::findContiguousNoWrapAddrFlag(bool availRegs[],
 
 bool PhyRegUsage::findFreeRegs(bool availRegs[],
     const bool forbidden[],
-    G4_Align align,
+    BankAlign align,
     unsigned numRegNeeded,
     unsigned startRegNum,  //inclusive
     unsigned endRegNum, //inclusive: less and equal when startRegNum <= endRegNum, larger and equal when startRegNum > endRegNum
@@ -633,23 +633,20 @@ bool PhyRegUsage::findFreeRegs(bool availRegs[],
                 break;
         }
 
-        if ((align == Even2GRF) && (i % 2 != 0 ||  i % 4 == 3))
+        if ((align == BankAlign::Even2GRF) && (i % 2 != 0 ||  i % 4 == 3))
         {
-            if (forward) { i++; }
-            else { i--; }
+            i += forward ? 1 : -1;
             continue;
         }
-        else if ((align == Odd2GRF) && (i % 2 != 0 || i % 4 == 1))
+        else if ((align == BankAlign::Odd2GRF) && (i % 2 != 0 || i % 4 == 1))
         {
-            if (forward) { i++; }
-            else { i--; }
+            i += forward ? 1 : -1;
             continue;
         }
-        else if ((((i & 0x1) && align == Even) || // i is odd but intv needs to be even aligned
-            (((i & 0x1) == 0) && (align == Odd)))) // i is even but intv needs to be odd aligned
+        else if ((((i & 0x1) && align == BankAlign::Even) || // i is odd but intv needs to be even aligned
+            (((i & 0x1) == 0) && (align == BankAlign::Odd)))) // i is even but intv needs to be odd aligned
         {
-            if (forward) { i++; }
-            else { i--; }
+            i += forward ? 1 : -1;
             continue;
         }
         else
@@ -664,10 +661,7 @@ bool PhyRegUsage::findFreeRegs(bool availRegs[],
                 overlapTest &&
                 !isOverlapValid(i, numRegNeeded))
             {
-                if (forward)
-                    i++;
-                else
-                    i--;
+                i += forward ? 1 : -1;
             }
             else
             {
@@ -872,7 +866,7 @@ PhyRegUsage::PhyReg PhyRegUsage::findGRFSubRegFromBanks(G4_Declare *dcl,
 PhyRegUsage::PhyReg PhyRegUsage::findGRFSubReg(const bool forbidden[],
     bool calleeSaveBias,
     bool callerSaveBias,
-    G4_Align align,
+    BankAlign align,
     G4_SubReg_Align subAlign,
     unsigned nwords)
 {
@@ -888,7 +882,7 @@ PhyRegUsage::PhyReg PhyRegUsage::findGRFSubReg(const bool forbidden[],
         endReg = builder.kernel.calleeSaveStart();
     }
 
-    int step = align == Even ? 2 : 1;
+    int step = align == BankAlign::Even ? 2 : 1;
 
     for (int idx = startReg; idx < endReg; idx += step)
     {
@@ -932,7 +926,7 @@ PhyRegUsage::PhyReg PhyRegUsage::findGRFSubReg(const bool forbidden[],
 }
 
 bool PhyRegUsage::assignGRFRegsFromBanks(LiveRange*     varBasis,
-    G4_Align  align,
+    BankAlign  align,
     const bool*     forbidden,
     ColorHeuristic  heuristic,
     bool oneGRFBankDivision)
@@ -998,7 +992,7 @@ bool PhyRegUsage::assignGRFRegsFromBanks(LiveRange*     varBasis,
 bool PhyRegUsage::assignRegs(bool  highInternalConflict,
     LiveRange*         varBasis,
     const bool*     forbidden,
-    G4_Align         align,
+    BankAlign        align,
     G4_SubReg_Align subAlign,
     ColorHeuristic  heuristic,
     float             spillCost)
@@ -1007,7 +1001,7 @@ bool PhyRegUsage::assignRegs(bool  highInternalConflict,
 
     G4_Declare* decl = varBasis->getDcl();
     G4_RegFileKind kind = decl->getRegFile();
-    G4_Align bankAlign = Either;
+    BankAlign bankAlign = align;
 
     //
     // if regs are allocated to intv, i is the reg number and off is the reg
@@ -1059,7 +1053,7 @@ bool PhyRegUsage::assignRegs(bool  highInternalConflict,
             }
 
             PhyRegUsage::PhyReg phyReg = findGRFSubReg(forbidden, varBasis->getCalleeSaveBias(),
-                varBasis->getCallerSaveBias(), bankAlign != Either ? bankAlign : align, subAlign,
+                varBasis->getCallerSaveBias(), bankAlign != BankAlign::Either ? bankAlign : align, subAlign,
                 numAllocUnit(decl->getNumElems(), decl->getElemType()));
             if (phyReg.reg != -1)
             {
@@ -1116,7 +1110,6 @@ bool PhyRegUsage::assignRegs(bool  highInternalConflict,
                 startGRFReg = builder.kernel.calleeSaveStart();
             }
 
-
             if (varBasis->getEOTSrc() && builder.hasEOTGRFBinding())
             {
                 startGRFReg = totalGRFNum - 16;
@@ -1135,7 +1128,8 @@ bool PhyRegUsage::assignRegs(bool  highInternalConflict,
                 }
             }
 
-            bool success = findContiguousGRF(availableGregs, forbidden, occupiedBundles, bankAlign != Either ? bankAlign : align, decl->getNumRows(), endGRFReg,
+            bool success = findContiguousGRF(availableGregs, forbidden, occupiedBundles, 
+                bankAlign != BankAlign::Either ? bankAlign : align, decl->getNumRows(), endGRFReg,
                 startGRFReg, i, varBasis->getCalleeSaveBias(), varBasis->getEOTSrc());
             if (success) {
                 varBasis->setPhyReg(regPool.getGreg(i), 0);

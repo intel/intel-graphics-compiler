@@ -146,13 +146,13 @@ const static RegSetInfo RS_ ## REGSYM = {RegName::REGSYM, REGSYN, REGS, BPR, STA
         void        str(std::ostream &os) const;
         std::string str() const;
 
-        const BitSet<RS_MAX_BITS>& getBitSet() const { return bits; }
-              BitSet<RS_MAX_BITS>& getBitSet()       { return bits; }
+        const BitSet<>& getBitSet() const { return bits; }
+              BitSet<>& getBitSet()       { return bits; }
 
         bool operator==(const RegSet &rs) const { return bits == rs.bits; }
         bool operator!=(const RegSet &rs) const { return bits != rs.bits; }
     private:
-        BitSet<RS_MAX_BITS> bits;
+        BitSet<> bits = BitSet<>(RS_MAX_BITS);
         void formatShortReg(
             std::ostream &os,
             bool &first,

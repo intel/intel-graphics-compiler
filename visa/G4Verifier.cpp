@@ -333,7 +333,7 @@ void G4Verifier::verifyOpnd(G4_Operand* opnd, G4_INST* inst)
 
     if (inst->isSend())
     {
-        // send dst/src may not be GRF-aligned before HW conformity, 
+        // send dst/src may not be GRF-aligned before HW conformity,
         // so we only check their bound in RA
         if (passIndex != Optimizer::PI_regAlloc)
         {

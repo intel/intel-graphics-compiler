@@ -2433,7 +2433,7 @@ void GlobalRA::updateAlignment(unsigned char regFile, G4_Align align)
     }
 }
 
-void GlobalRA::getBankAlignment(LiveRange* lr, G4_Align &align)
+void GlobalRA::getBankAlignment(LiveRange* lr, BankAlign &align)
 {
     G4_Declare *dcl = lr->getDcl();
     if (kernel.getSimdSize() < 16)
@@ -2456,13 +2456,11 @@ void GlobalRA::getBankAlignment(LiveRange* lr, G4_Align &align)
                 if (topdclBC == BANK_CONFLICT_SECOND_HALF_EVEN ||
                     topdclBC == BANK_CONFLICT_SECOND_HALF_ODD)
                 {
-                    align = Odd;
-                    return;
+                    align = BankAlign::Odd;
                 }
             }
         }
     }
-    return;
 }
 
 Augmentation::Augmentation(G4_Kernel& k, Interference& i, LivenessAnalysis& l, LiveRange* ranges[], GlobalRA& g) :
@@ -5562,21 +5560,21 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
 
             if (!failed_alloc)
             {
+                BankAlign align = lrVar->getAlignment() == Even ? BankAlign::Even : BankAlign::Either;
                 if (allocFromBanks)
                 {
-                    G4_Align align = lrVar->getAlignment();
+                    
                     if (!isHybrid && oneGRFBankDivision)
                     {
                         gra.getBankAlignment(lr, align);
                     }
-
                     failed_alloc |= !regUsage.assignGRFRegsFromBanks(lr, align, lr->getForbidden(),
                         heuristic, oneGRFBankDivision);
                 }
                 else
                 {
                     failed_alloc |= !regUsage.assignRegs(highInternalConflict, lr, lr->getForbidden(),
-                        lrVar->getAlignment(), lrVar->getSubRegAlignment(), heuristic, lr->getSpillCost());
+                        align, lrVar->getSubRegAlignment(), heuristic, lr->getSpillCost());
                 }
             }
 

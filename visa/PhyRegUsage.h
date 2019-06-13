@@ -109,10 +109,10 @@ class PhyRegUsage
     PhyReg findGRFSubReg(const bool forbidden[],
         bool callerSaveBias,
         bool callerSaverBias,
-        G4_Align align,
+        BankAlign align,
         G4_SubReg_Align subAlign,
         unsigned nwords);
-    
+
     void findGRFSubRegFromRegs(int startReg,
         int endReg,
         int step,
@@ -121,15 +121,15 @@ class PhyRegUsage
         unsigned nwords,
         const bool forbidden[],
         bool fromPartialOccupiedReg);
-    
+
     PhyReg findGRFSubRegFromBanks(G4_Declare *dcl,
         const bool forbidden[],
         bool oneGRFBankDivision);
-    
+
     void freeGRFSubReg(unsigned regNum, unsigned regOff, unsigned nwords, G4_Type ty);
     void freeContiguous(bool availRegs[], unsigned start, unsigned numReg, unsigned maxRegs);
     bool canGRFSubRegAlloc(G4_Declare* decl);
-    bool findContiguousNoWrapGRF(bool availRegs[], const bool forbidden[], unsigned short occupiedBundles, G4_Align align, unsigned numRegNeeded, unsigned startPos, unsigned endPos, unsigned & idx);
+    bool findContiguousNoWrapGRF(bool availRegs[], const bool forbidden[], unsigned short occupiedBundles, BankAlign align, unsigned numRegNeeded, unsigned startPos, unsigned endPos, unsigned & idx);
 
     bool findContiguousNoWrapAddrFlag(bool availRegs[],
                                    const bool forbidden[],
@@ -138,12 +138,12 @@ class PhyRegUsage
                                  unsigned startPos,
                                  unsigned endPos,
                                  unsigned& idx);
-    
+
     bool allFree(bool availRegs[], unsigned maxRegs);
 
     bool findFreeRegs(bool availRegs[],
         const bool forbidden[],
-        G4_Align align,
+        BankAlign align,
         unsigned numRegNeeded,
         unsigned startRegNum,
         unsigned endRegNum,
@@ -169,10 +169,10 @@ public:
         //  weakEdgeUsage[11] = 2;
         //  weakEdgeUsage[12] = 3;
         //  weakEdgeUsage[13] = 4;
-        // This means some other compatible range cannot start 
+        // This means some other compatible range cannot start
         // at r7, r8, r9, r11, r12, r13. Another compatible range
         // can either have no overlap at all with this range (strong
-        // edge), or it can start at r10 to have full 
+        // edge), or it can start at r10 to have full
         // overlap (weak edge).
         weakEdgeUsage[reg] = index;
     }
@@ -192,16 +192,16 @@ public:
 
     }
 
-    bool assignRegs(bool  isSIMD16, 
+    bool assignRegs(bool  isSIMD16,
                     LiveRange* var,
                     const bool* forbidden,
-                    G4_Align  align,
+                    BankAlign  align,
                     G4_SubReg_Align subAlign,
                     ColorHeuristic colorHeuristic,
                     float             spillCost);
 
     bool assignGRFRegsFromBanks(LiveRange*     varBasis,
-                              G4_Align  align,
+                             BankAlign  align,
                              const bool*     forbidden,
                              ColorHeuristic  heuristic,
                              bool oneGRFBankDivision);
@@ -319,13 +319,14 @@ private:
 
     bool findContiguousGRFFromBanks(G4_Declare *dcl, bool availRegs[],
                                  const bool forbidden[],
-                                 G4_Align align,
+                                 BankAlign align,
                                  unsigned& idx,
                                  bool oneGRFBankDivision);
 
     // find contiguous free words in a registers
     int findContiguousWords(uint32_t words, G4_SubReg_Align alignment, int numWord) const;
-    bool findContiguousGRF(bool availRegs[], const bool forbidden[], unsigned occupiedBundles, G4_Align align, unsigned numRegNeeded, unsigned maxRegs, unsigned & startPos, unsigned & idx, bool isCalleeSaveBias, bool isEOTSrc);
+    bool findContiguousGRF(bool availRegs[], const bool forbidden[], unsigned occupiedBundles, BankAlign align, 
+        unsigned numRegNeeded, unsigned maxRegs, unsigned & startPos, unsigned & idx, bool isCalleeSaveBias, bool isEOTSrc);
 };
 }
 #endif // __PHYREGUSAGE_H__

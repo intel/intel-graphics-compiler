@@ -24,9 +24,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-#ifndef _IGA_VERSION_HPP_
-#define _IGA_VERSION_HPP_
-#define IGA_VERSION_STRING "0.15.6"
+#pragma once
+#include "common/LLVMWarningsPush.hpp"
+#include <llvm/Pass.h>
+#include "common/LLVMWarningsPop.hpp"
 
-
-#endif // _IGA_VERSION_HPP_
+namespace IGC
+{
+llvm::Pass* createMeshShaderPrimitiveIndicesPacking();
+}

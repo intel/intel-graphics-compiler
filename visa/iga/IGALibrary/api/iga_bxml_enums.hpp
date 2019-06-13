@@ -36,6 +36,7 @@ namespace iga
         DC2    =   4,
         RC     =   5,
         URB    =   6,
+        TS     =   7,
         VME    =   8,
         DCRO   =   9,
         DC0    =  10,

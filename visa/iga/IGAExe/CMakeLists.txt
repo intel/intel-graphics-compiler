@@ -10,6 +10,7 @@ set(IGA_EXE_CPP
   ${CMAKE_CURRENT_SOURCE_DIR}/assemble.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/disassemble.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/decode_fields.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/decode_message.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/iga_main.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/list_ops.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp

@@ -1231,7 +1231,7 @@ namespace vISA
             vars[dclid].subOff = offset;
         }
 
-        G4_Align getBankAlign(G4_Declare*);
+        BankAlign getBankAlign(G4_Declare*);
         bool areAllDefsNoMask(G4_Declare*);
         void removeUnreferencedDcls();
         LocalLiveRange* GetOrCreateLocalLiveRange(G4_Declare* topdcl);
@@ -1259,7 +1259,7 @@ namespace vISA
         bool isReRAPass();
         void updateSubRegAlignment(unsigned char regFile, G4_SubReg_Align subAlign);
         void updateAlignment(unsigned char regFile, G4_Align align);
-        void getBankAlignment(LiveRange* lr, G4_Align &align);
+        void getBankAlignment(LiveRange* lr, BankAlign &align);
         void printLiveIntervals();
         void reportUndefinedUses(LivenessAnalysis& liveAnalysis, G4_BB* bb, G4_INST* inst, G4_Declare* referencedDcl, std::set<G4_Declare*>& defs, std::ofstream& optreport, Gen4_Operand_Number opndNum);
         void detectNeverDefinedUses();

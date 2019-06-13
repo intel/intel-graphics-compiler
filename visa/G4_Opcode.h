@@ -144,6 +144,12 @@ enum G4_Align
 {
     Either = 1,          // either
     Even = 2,            // even align
+};
+
+enum class BankAlign
+{
+    Either = 1,          // either
+    Even = 2,            // even align
     Odd = 3,             // old align
     Even2GRF = 4,        // 2GRF even align 1100
     Odd2GRF = 5,          // 2GRF old align, 0011
@@ -157,8 +163,8 @@ enum G4_SubReg_Align
     Even_Word = 2,
     Four_Word = 4,
     Eight_Word = 8,
-    Sixteen_Word = 16,        
-    ThirtyTwo_Word = 32,     
+    Sixteen_Word = 16,
+    ThirtyTwo_Word = 32,
 };
 
 

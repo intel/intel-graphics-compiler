@@ -76,7 +76,7 @@ namespace vISA
         bool doBCR = false;
         bool highInternalConflict = false;
 
-        G4_Align getBankAlignForUniqueAssign(G4_Declare *dcl);
+        BankAlign getBankAlignForUniqueAssign(G4_Declare *dcl);
         bool hasBackEdge();
         void evenAlign();
         void preLocalRAAnalysis();
@@ -108,8 +108,8 @@ namespace vISA
 
     public:
         static void getRowInfo(int size, int& nrows, int& lastRowSize);
-        static void findRegisterCandiateWithAlignForward(int &i, G4_Align align, bool evenAlign);
-        static void findRegisterCandiateWithAlignBackward(int &i, G4_Align align, bool evenAlign);
+        static void findRegisterCandiateWithAlignForward(int &i, BankAlign align, bool evenAlign);
+        static void findRegisterCandiateWithAlignBackward(int &i, BankAlign align, bool evenAlign);
         static unsigned int convertSubRegOffFromWords(G4_Declare* dcl, int subregnuminwords);
         static unsigned int convertSubRegOffToWords(G4_Declare* dcl, int subregnum);
         static void countLocalLiveIntervals(std::vector<LocalLiveRange*>& liveIntervals);
@@ -337,7 +337,7 @@ public:
     inline bool isWordBusy( int whichgrf, int word );
     inline bool isWordBusy( int whichgrf, int word, int howmany );
 
-    bool findFreeMultipleRegsForward(int regIdx, G4_Align align, int & regnum, int nrows, int lastRowSize, int endReg, unsigned short occupiedBundles, int instID, bool isHybridAlloc);
+    bool findFreeMultipleRegsForward(int regIdx, BankAlign align, int & regnum, int nrows, int lastRowSize, int endReg, unsigned short occupiedBundles, int instID, bool isHybridAlloc);
 
     void markPhyRegs( G4_Declare* topdcl );
 
@@ -425,9 +425,9 @@ public:
     void setSimpleGRFAvailable(bool simple) {simpleGRFAvailable = simple; }
     void setR0Forbidden() {r0Forbidden = true;}
     void setR1Forbidden() {r1Forbidden = true;}
-    bool findFreeMultipleRegsBackward(int regIdx, G4_Align align, int &regnum, int nrows, int lastRowSize, int endReg, int instID, bool isHybridAlloc);
+    bool findFreeMultipleRegsBackward(int regIdx, BankAlign align, int &regnum, int nrows, int lastRowSize, int endReg, int instID, bool isHybridAlloc);
     bool findFreeSingleReg( int regIdx, G4_SubReg_Align subalign, int &regnum, int &subregnum, int size);
-    bool findFreeSingleReg(int regIdx, int size, G4_Align align, G4_SubReg_Align subalign, int &regnum, int &subregnum, int endReg, int instID, bool isHybridAlloc, bool forward);
+    bool findFreeSingleReg(int regIdx, int size, BankAlign align, G4_SubReg_Align subalign, int &regnum, int &subregnum, int endReg, int instID, bool isHybridAlloc, bool forward);
     
 };
 
@@ -443,7 +443,7 @@ public:
         availableRegs.setTwoBanksRA(_twoBanksRA);
     }
 
-    int findFreeRegs(int size, G4_Align align, G4_SubReg_Align subalign, int & regnum, int & subregnum, int startRegNum, int endRegNum, unsigned short occupiedBundles, unsigned int instID, bool isHybridAlloc);
+    int findFreeRegs(int size, BankAlign align, G4_SubReg_Align subalign, int & regnum, int & subregnum, int startRegNum, int endRegNum, unsigned short occupiedBundles, unsigned int instID, bool isHybridAlloc);
 
     void freeRegs( int regnum, int subregnum, int numwords, int instID);
     PhyRegsLocalRA * getAvaialableRegs() { return &availableRegs; }

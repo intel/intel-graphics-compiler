@@ -5509,7 +5509,7 @@ G4_Align G4_Declare::getAlign() const
     return regVar->getAlignment();
 }
 
-G4_Align GlobalRA::getBankAlign(G4_Declare* dcl)
+BankAlign GlobalRA::getBankAlign(G4_Declare* dcl)
 {
     IR_Builder* builder = kernel.fg.builder;
     switch (getBankConflict(dcl))
@@ -5518,28 +5518,28 @@ G4_Align GlobalRA::getBankAlign(G4_Declare* dcl)
     case BANK_CONFLICT_SECOND_HALF_EVEN:
         if (builder->oneGRFBankDivision())
         {
-            return Even;
+            return BankAlign::Even;
         }
         else
         {
-            return Even2GRF;
+            return BankAlign::Even2GRF;
         }
         break;
     case BANK_CONFLICT_FIRST_HALF_ODD:
     case BANK_CONFLICT_SECOND_HALF_ODD:
         if (builder->oneGRFBankDivision())
         {
-            return Odd;
+            return BankAlign::Odd;
         }
         else
         {
-            return Odd2GRF;
+            return BankAlign::Odd2GRF;
         }
         break;
     default: break;
     }
 
-    return Either;
+    return BankAlign::Either;
 }
 
 
