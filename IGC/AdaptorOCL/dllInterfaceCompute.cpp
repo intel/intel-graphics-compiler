@@ -70,6 +70,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "AdaptorOCL/SPIRV/libSPIRV/SPIRVValue.h"
 #endif
 
+#ifdef IGC_BUILD_SPIRV_TOOLS
+#include "spirv-tools/libspirv.h"
+#endif
+
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/Bitcode/BitcodeWriter.h"
 #include "common/LLVMWarningsPop.hpp"
@@ -727,7 +731,6 @@ void DumpShaderFile(const char *pOutputFolder, const char * pBuffer, UINT buffer
     }
 }
 
-
 static bool TranslateBuildCM(const STB_TranslateInputArgs* pInputArgs,
     STB_TranslateOutputArgs* pOutputArgs,
     TB_DATA_FORMAT inputDataFormatTemp,
@@ -792,6 +795,35 @@ bool TranslateBuild(
         {
             DumpShaderFile(pOutputFolder, (char *)pInputArgs->pInput, pInputArgs->InputSize, hash, ".spv");
 
+            #ifdef IGC_BUILD_SPIRV_TOOLS
+
+            const spv_target_env target_env = SPV_ENV_UNIVERSAL_1_3;
+            spv_context context = spvContextCreate(target_env);
+            const uint32_t* const binary = reinterpret_cast<const uint32_t*> (pInputArgs->pInput);
+            const size_t word_count = (pInputArgs->InputSize / sizeof(uint32_t));
+            const uint32_t options = (SPV_BINARY_TO_TEXT_OPTION_FRIENDLY_NAMES | SPV_BINARY_TO_TEXT_OPTION_INDENT | SPV_BINARY_TO_TEXT_OPTION_SHOW_BYTE_OFFSET);
+            spv_text text = nullptr;
+            spv_diagnostic diagnostic = nullptr;
+
+            const spv_result_t result = spvBinaryToText(
+                context,
+                binary,
+                word_count,
+                options,
+                &text,
+                &diagnostic);
+
+            spvContextDestroy(context);
+
+            if (SPV_SUCCESS == result)
+            {
+                DumpShaderFile(pOutputFolder, text->str, text->length, hash, ".spvasm");
+            }
+
+            spvTextDestroy(text);
+            spvDiagnosticDestroy(diagnostic);
+
+            #endif
         }
 
         DumpShaderFile(pOutputFolder, (char *)pInputArgs->pInternalOptions, pInputArgs->InternalOptionsSize, hash, "_internal_options.txt");
