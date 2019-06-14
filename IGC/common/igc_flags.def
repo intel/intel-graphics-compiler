@@ -288,7 +288,7 @@ DECLARE_IGC_REGKEY(DWORD, ConstantPromotionCmpSelSize,  4, "Array size threshold
 DECLARE_IGC_REGKEY(bool, EnableVariableReuse,           true, "Enable local variable reuse")
 DECLARE_IGC_REGKEY(bool, EnableVariableAlias,           true, "Enable variable aliases (part of VariableReuse Pass, but separate functionality)")
 DECLARE_IGC_REGKEY(DWORD, EnableVATemp,                 0, "[temp]Enable variable aliases sub-optimization, once it is stable, remove this key")
-DECLARE_IGC_REGKEY(DWORD, VATemp,                       0, "[temp]New code to replace code under EnableVATemp. Once stable, remove this.")
+DECLARE_IGC_REGKEY(DWORD, VATemp,                       1, "[temp]New code to replace code under EnableVATemp. Once stable, remove this.")
 DECLARE_IGC_REGKEY(DWORD, VariableReuseByteSize,        64, "The byte size threshold for variable reuse")
 DECLARE_IGC_REGKEY(bool, EnableGather4cpoWA,            true, "Enable WA transforming gather4cpo/gather4po into gather4c/gather4")
 DECLARE_IGC_REGKEY(bool, EnableIntelFast,               false, "Enable intel fast, experimental flag.")
