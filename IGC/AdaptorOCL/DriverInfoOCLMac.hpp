@@ -34,7 +34,7 @@ namespace TC
     public:
         bool NeedsMetadataTranslation() const override { return true; }
         bool NeedsBreakdownMulAdd() const override { return true; }
-        bool usesScratchSpacePrivateMemory() const override { return false; }
+        bool supportsScratchSpacePrivateMemory() const override { return false; }
         bool DisableMatchFrcPatternMatch() const override { return true; }
         bool HasSmallStack() const override { return true; }
     };

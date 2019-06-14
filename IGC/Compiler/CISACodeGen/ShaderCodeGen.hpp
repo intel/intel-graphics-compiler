@@ -107,6 +107,7 @@ public:
         return nullptr;
     }
     virtual bool hasReadWriteImage(llvm::Function &F) { return false; }
+    bool CompileSIMDSizeInCommon();
     virtual bool CompileSIMDSize(SIMDMode simdMode, EmitPass &EP, llvm::Function &F) { return true; }
     CVariable*  LazyCreateCCTupleBackingVariable(
         CoalescingEngine::CCTuple* ccTuple,

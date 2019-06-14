@@ -356,25 +356,26 @@ bool PrivateMemoryResolution::safeToUseScratchSpace(llvm::Module &M) const
    // memory except OpenCL, which can also use non-scratch space. For debugging
    // purpose, a registry key is used for OCL to turn ocl-use-scratch on/off.
    //
-   if (modMD.compOpt.OptDisable
-       || !Ctx.m_DriverInfo.usesScratchSpacePrivateMemory()
-       || (Ctx.type == ShaderType::OPENCL_SHADER
-           && !Ctx.platform.useScratchSpaceForOCL()
-           ))
-   {
+   bool supportsScratchSpacePrivateMemory = Ctx.m_DriverInfo.supportsScratchSpacePrivateMemory();
+   bool supportsStatelessSpacePrivateMemory = Ctx.m_DriverInfo.supportsStatelessSpacePrivateMemory();
+   bool bOCLLegacyStatelessCheck = true;
+
+   if ((modMD.compOpt.OptDisable && bOCLLegacyStatelessCheck) || !supportsScratchSpacePrivateMemory){
      return false;
    }
 
    //
    // Do not use scratch space if module has any stack call.
    //
-   if (auto *FGA = getAnalysisIfAvailable<GenXFunctionGroupAnalysis>()) {
-     if (FGA->getModule() == &M) {
-       for (auto &I : *FGA) {
-         if (I->hasStackCall())
-           return false;
+   if (bOCLLegacyStatelessCheck){
+       if (auto *FGA = getAnalysisIfAvailable<GenXFunctionGroupAnalysis>()) {
+           if (FGA->getModule() == &M) {
+               for (auto &I : *FGA) {
+                   if (I->hasStackCall())
+                       return false;
+               }
+           }
        }
-     }
    }
 
    const llvm::DataLayout *DL = &M.getDataLayout();
@@ -430,17 +431,17 @@ bool PrivateMemoryResolution::safeToUseScratchSpace(llvm::Module &M) const
      // Start with simd16, which allows the medium size of space per WI
      // (simd8: largest, simd32, smallest). In doing so, there will be
      // some space left for spilling in simd8 if spilling happens.
-     int32_t simd_size = 16;
+     int32_t simd_size = numLanes(SIMDMode::SIMD16);
      const int32_t subGrpSize = funcInfoMD->getSubGroupSize()->getSIMD_size();
      if (subGrpSize > simd_size)
-       simd_size = std::min(subGrpSize, 32);
+       simd_size = std::min(subGrpSize, static_cast<int32_t>(numLanes(SIMDMode::SIMD32)));
      int32_t groupSize = IGCMD::IGCMetaDataHelper::getThreadGroupSize(*m_pMdUtils, &F);
      if (groupSize == 0)
        groupSize = IGCMD::IGCMetaDataHelper::getThreadGroupSizeHint(*m_pMdUtils, &F);
      if (groupSize > simd_size)
-       simd_size = std::min(groupSize, 32);
+       simd_size = std::min(groupSize, static_cast<int32_t>(numLanes(SIMDMode::SIMD32)));
 
-     unsigned maxScratchSpaceBytes = Ctx.m_DriverInfo.maxPerThreadScratchSpace();
+     unsigned maxScratchSpaceBytes = Ctx.platform.maxPerThreadScratchSpace();
      unsigned scratchSpaceLimitPerWI = maxScratchSpaceBytes / simd_size;
      //
      // If spill happens, since the offset of scratch block rw send message
@@ -448,9 +449,9 @@ bool PrivateMemoryResolution::safeToUseScratchSpace(llvm::Module &M) const
      // size >= 128 KB, here 128 KB = 2^12 * 256b.
      //
      const unsigned int totalPrivateMemPerWI = m_ModAllocaInfo->getTotalPrivateMemPerWI(&F);
-
+     
      if (totalPrivateMemPerWI > scratchSpaceLimitPerWI) {
-       return false;
+         return false;
      }
    }
 
@@ -475,7 +476,8 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module &M)
     // we do not use scratch-space if any kernel uses stack-call because,
     // in order to use scratch-space, we change data-layout for the module,
     // change pointer-size of AS-private to 32-bit.
-    modMD.compOpt.UseScratchSpacePrivateMemory = safeToUseScratchSpace(M);
+    bool bRet = safeToUseScratchSpace(M);
+    modMD.compOpt.UseScratchSpacePrivateMemory = bRet;
 
     for (Module::iterator I = M.begin(); I != M.end(); ++I)
     {
@@ -781,7 +783,8 @@ bool PrivateMemoryResolution::resolveAllocaInstuctions(bool stackCall)
 
     // What is the size limit of this scratch memory? If we use >= 128 KB for private data, then we have
     // no space left for later spilling.
-    if (modMD && modMD->compOpt.UseScratchSpacePrivateMemory) {
+    bool useStateless = false;
+    if (modMD && (modMD->compOpt.UseScratchSpacePrivateMemory || useStateless)) {
         // We want to use this pass to lower alloca instruction
         // to remove some redundant instruction caused by alloca. For original approach,
         // different threads use the same private base. While for this approach, each
@@ -794,7 +797,7 @@ bool PrivateMemoryResolution::resolveAllocaInstuctions(bool stackCall)
         Instruction *simdSize = CallInst::Create(simdSizeFunc, VALUE_NAME("simdSize"), pEntryPoint);
 
         Value* privateBase = nullptr;
-        if (!modMD->useStatelessPvtMem)
+        if (modMD->compOpt.UseScratchSpacePrivateMemory)
         {
             Argument* r0Arg = implicitArgs.getArgInFunc(*m_currFunction, ImplicitArg::R0);
             ExtractElementInst* r0_5 = ExtractElementInst::Create(r0Arg, ConstantInt::get(typeInt32, 5), VALUE_NAME("r0.5"), pEntryPoint);
@@ -891,7 +894,6 @@ bool PrivateMemoryResolution::resolveAllocaInstuctions(bool stackCall)
         return true;
     }
 
-
     // Find the implicit argument representing r0 and the private memory base.
     Argument* r0Arg = implicitArgs.getArgInFunc(*m_currFunction, ImplicitArg::R0);
     Argument* privateMemArg = implicitArgs.getArgInFunc(*m_currFunction, ImplicitArg::PRIVATE_BASE);
@@ -920,19 +922,23 @@ bool PrivateMemoryResolution::resolveAllocaInstuctions(bool stackCall)
     BinaryOperator* totalPrivateMemPerThread = BinaryOperator::CreateMul(simdSize, totalPrivateMemPerWIValue, VALUE_NAME("totalPrivateMemPerThread"), pEntryPoint);
     ExtractElementInst* r0_5 = ExtractElementInst::Create(r0Arg, ConstantInt::get(typeInt32, 5), VALUE_NAME("r0.5"), pEntryPoint);
     ConstantInt *FFTIDMask = ConstantInt::get(typeInt32, Ctx.platform.getFFTIDBitMask());
-    BinaryOperator* threadId = BinaryOperator::CreateAnd(r0_5, FFTIDMask, VALUE_NAME("threadId"), pEntryPoint);
-    if (Ctx.platform.supportTwoStackTSG() && IGC_IS_FLAG_ENABLED(EnableGen11TwoStackTSG))
+    Value* threadId = BinaryOperator::CreateAnd(r0_5, FFTIDMask, VALUE_NAME("threadId"), pEntryPoint);
     {
-        // Gen11 , 2 - stack configuration : (FFTID[9:0] << 1) | FFSID[0]) * scratch_size
-        BinaryOperator* shlThreadID = BinaryOperator::CreateShl(threadId, ConstantInt::get(typeInt32, 1), VALUE_NAME("shlThreadID"), pEntryPoint);
-        
-        // FFSID - r0.0 bit 16
-        ExtractElementInst* r0_0 = ExtractElementInst::Create(r0Arg, ConstantInt::get(typeInt32, 0), VALUE_NAME("r0.0"), pEntryPoint);
-        BinaryOperator* FFSIDbit = BinaryOperator::CreateLShr(r0_0, ConstantInt::get(typeInt32, 16), VALUE_NAME("FFSIDbit"), pEntryPoint);
-        BinaryOperator* FFSID = BinaryOperator::CreateAnd(FFSIDbit, ConstantInt::get(typeInt32, 1), VALUE_NAME("FFSID"), pEntryPoint);
+        if (Ctx.platform.supportTwoStackTSG() && IGC_IS_FLAG_ENABLED(EnableGen11TwoStackTSG))
+        {
+            // Gen11 , 2 - stack configuration : (FFTID[9:0] << 1) | FFSID[0]) * scratch_size
+            BinaryOperator* shlThreadID = BinaryOperator::CreateShl(threadId, ConstantInt::get(typeInt32, 1), VALUE_NAME("shlThreadID"), pEntryPoint);
 
-        threadId = BinaryOperator::CreateOr(FFSID, shlThreadID, VALUE_NAME("threadId"), pEntryPoint);
+            // FFSID - r0.0 bit 16
+            ExtractElementInst* r0_0 = ExtractElementInst::Create(r0Arg, ConstantInt::get(typeInt32, 0), VALUE_NAME("r0.0"), pEntryPoint);
+            BinaryOperator* FFSIDbit = BinaryOperator::CreateLShr(r0_0, ConstantInt::get(typeInt32, 16), VALUE_NAME("FFSIDbit"), pEntryPoint);
+            BinaryOperator* FFSID = BinaryOperator::CreateAnd(FFSIDbit, ConstantInt::get(typeInt32, 1), VALUE_NAME("FFSID"), pEntryPoint);
+
+            threadId = BinaryOperator::CreateOr(FFSID, shlThreadID, VALUE_NAME("threadId"), pEntryPoint);
+        }
     }
+
+
     Instruction *perThreadOffset = BinaryOperator::CreateMul(threadId, totalPrivateMemPerThread, VALUE_NAME("perThreadOffset"), pEntryPoint);
 
     for (auto pAI : allocaInsts)

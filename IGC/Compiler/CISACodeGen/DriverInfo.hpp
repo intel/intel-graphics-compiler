@@ -57,8 +57,13 @@ public:
     /// Do we need to break down the fmuladd
     virtual bool NeedsBreakdownMulAdd() const { return false; }
 
-    /// The driver can use scratch space to store the private memory
-    virtual bool usesScratchSpacePrivateMemory() const { return true; }
+    /// The driver supports using scratch space to store the private memory
+    virtual bool supportsScratchSpacePrivateMemory() const { return true; }
+
+    /// The driver supports using stateless space to store the private memory
+    /// Driver must be able to use at least one way to store the private memory: either "scratch space" or "stateless space"
+    /// and by default, driver only supports one of them.
+    virtual bool supportsStatelessSpacePrivateMemory() const { return !supportsScratchSpacePrivateMemory(); }
 
     /// The max size in bytes of the scratch space per thread.
     unsigned int maxPerThreadScratchSpace() const { return 2 * 1024 * 1024; }

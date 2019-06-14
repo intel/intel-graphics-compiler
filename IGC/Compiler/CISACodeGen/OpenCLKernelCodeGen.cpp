@@ -67,7 +67,7 @@ CShader(pFunc, pProgram)
     m_HasTID                = false;
     m_HasGlobalSize         = false;
     m_disableMidThreadPreemption = false;
-    m_perWIPrivateMemSize   = 0;
+    m_perWIStatelessPrivateMemSize = 0;
     m_Context               = const_cast<OpenCLProgramContext*>(ctx);
     m_localOffsetsMap.clear();
     m_pBtiLayout            = &(ctx->btiLayout);
@@ -850,7 +850,7 @@ void COpenCLKernel::CreateAnnotations(KernelArg* kernelArg, uint payloadPosition
             ptrAnnotation->AnnotationSize               = sizeof(ptrAnnotation);
             ptrAnnotation->ArgumentNumber               = argNo;
             // PerThreadPrivateMemorySize is defined as "Total private memory requirements for each OpenCL work-item."
-            ptrAnnotation->PerThreadPrivateMemorySize   = m_perWIPrivateMemSize;
+            ptrAnnotation->PerThreadPrivateMemorySize   = m_perWIStatelessPrivateMemSize;
             ptrAnnotation->BindingTableIndex            = getBTI(resInfo);
             ptrAnnotation->IsStateless                  = true;
             ptrAnnotation->PayloadPosition              = payloadPosition;
@@ -1420,7 +1420,7 @@ void COpenCLKernel::AllocatePayload()
     auto funcMD = m_Context->getModuleMetaData()->FuncMD.find(entry);
     if (noScratchSpacePrivMem && (funcMD != m_Context->getModuleMetaData()->FuncMD.end()) && funcMD->second.privateMemoryPerWI)
     {
-        m_perWIPrivateMemSize = funcMD->second.privateMemoryPerWI;
+        m_perWIStatelessPrivateMemSize = funcMD->second.privateMemoryPerWI;
     }
 
 
@@ -1618,7 +1618,7 @@ void COpenCLKernel::FillKernel()
 
     m_kernelInfo.m_executionEnivronment.HasDeviceEnqueue = false;
     m_kernelInfo.m_executionEnivronment.IsSingleProgramFlow = false;
-    m_kernelInfo.m_executionEnivronment.PerSIMDLanePrivateMemorySize = m_perWIPrivateMemSize;
+    //m_kernelInfo.m_executionEnivronment.PerSIMDLanePrivateMemorySize = m_perWIStatelessPrivateMemSize;
     m_kernelInfo.m_executionEnivronment.HasFixedWorkGroupSize = false;
     m_kernelInfo.m_kernelName = entry->getName();
     m_kernelInfo.m_ShaderHashCode = m_Context->hash.getAsmHash();
@@ -2037,6 +2037,8 @@ bool COpenCLKernel::hasReadWriteImage(llvm::Function &F)
 
 bool COpenCLKernel::CompileSIMDSize(SIMDMode simdMode, EmitPass &EP, llvm::Function &F)
 {
+    if (!CompileSIMDSizeInCommon())
+        return false;
 
 
 
@@ -2093,13 +2095,6 @@ SIMDStatus COpenCLKernel::checkSIMDCompileConds(SIMDMode simdMode, EmitPass &EP,
     {
         if(!(pCtx->m_DriverInfo.sendMultipleSIMDModes() && (pCtx->getModuleMetaData()->csInfo.forcedSIMDSize == 0)))
             return SIMDStatus::SIMD_FUNC_FAIL;
-    }
-
-    //ToDo: change?
-    // Scratch space allocated per-thread needs to be less than 2 MB.
-    if (m_ScratchSpaceSize > pCtx->m_DriverInfo.maxPerThreadScratchSpace())
-    {
-        return SIMDStatus::SIMD_FUNC_FAIL;
     }
 
     // Next we check if there is a required sub group size specified

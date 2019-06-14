@@ -67,6 +67,8 @@ namespace TC
 
         // Not needed as OCL doesn't go through emitStore3DInner
         bool splitUnalignedVectors() const override { return false; }
+
+        bool supportsStatelessSpacePrivateMemory() const override { return true; }
     };
 
     // In case some cpas are specific to NEO

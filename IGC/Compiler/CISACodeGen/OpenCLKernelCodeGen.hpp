@@ -75,7 +75,7 @@ public:
     SOpenCLProgramInfo* m_programInfo;
     SOpenCLKernelInfo m_kernelInfo;
 
-    unsigned int m_perWIPrivateMemSize;
+    unsigned int m_perWIStatelessPrivateMemSize;
 
     bool        GetDisableMidThreadPreemption() const { return m_disableMidThreadPreemption; }
     void        SetDisableMidthreadPreemption() { m_disableMidThreadPreemption = true; }

@@ -292,7 +292,7 @@ struct ExecutionEnivronment
     bool   HasDeviceEnqueue                           = false;
     bool   HasBarriers                                = false;
     bool   IsSingleProgramFlow                        = false;
-    DWORD  PerSIMDLanePrivateMemorySize               = 0;
+    //DWORD  PerSIMDLanePrivateMemorySize               = 0;
     bool   HasFixedWorkGroupSize                      = false;
     bool   HasReadWriteImages                         = false;
     bool   DisableMidThreadPreemption                 = false;

@@ -576,15 +576,14 @@ unsigned int CodeGenContext::getRegisterPointerSizeInBits(unsigned int AS) const
         pointerSizeInRegister = 32;
         break;
     case ADDRESS_SPACE_PRIVATE:
-        if(getModuleMetaData()->compOpt.UseScratchSpacePrivateMemory)
+        if (getModuleMetaData()->compOpt.UseScratchSpacePrivateMemory)
         {
-            pointerSizeInRegister = 
-                (getModuleMetaData()->useStatelessPvtMem ? 64 : 32);
+            pointerSizeInRegister = 32;
         }
         else
         {
-            pointerSizeInRegister =
-                getModule()->getDataLayout().getPointerSizeInBits(AS);
+            pointerSizeInRegister = ((type == ShaderType::OPENCL_SHADER) ? 
+                getModule()->getDataLayout().getPointerSizeInBits(AS) : 64);
         }
         break;
     default:

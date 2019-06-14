@@ -3227,6 +3227,11 @@ void CShader::PackAndCopyVariable(
     encoder.Push();
 }
 
+bool CShader::CompileSIMDSizeInCommon()
+{
+    return (m_ScratchSpaceSize <= m_ctx->platform.maxPerThreadScratchSpace());
+}
+
 CShader* CShaderProgram::GetShader(SIMDMode simd, ShaderDispatchMode mode)
 {
     return GetShaderPtr(simd, mode);

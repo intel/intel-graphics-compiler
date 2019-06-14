@@ -1079,6 +1079,9 @@ namespace IGC
 
     bool CPixelShader::CompileSIMDSize(SIMDMode simdMode, EmitPass &EP, llvm::Function &F)
     {
+        if (!CompileSIMDSizeInCommon())
+            return false;
+
         CodeGenContext* ctx = GetContext();
         bool forceSIMD32 =
             (ctx->getCompilerOption().forcePixelShaderSIMDMode &
