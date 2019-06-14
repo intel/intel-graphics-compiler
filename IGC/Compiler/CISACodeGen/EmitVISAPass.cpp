@@ -12969,6 +12969,12 @@ void EmitPass::emitVectorBitCast(llvm::BitCastInst* BCI)
             !dstUniform && srcNElts == 1 && N <= 8 &&
             allUsesAreEEwithImm(BCI);
 
+        // Once BCI has been coalesced, don't separate CVar for BCI
+        // [todo evaluate the performance impact and let alias handle it
+        //  if needed]
+        if (m_currShader->IsCoalesced(BCI))
+            useSeparateCVar = false;
+
         for (unsigned i = 0, offset = 0; i < srcNElts; ++i)
         {
             for (unsigned j = 0; j < N; ++j)
