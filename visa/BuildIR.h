@@ -1437,7 +1437,7 @@ public:
         {
             lab += std::string("_") + kernel.getName();
 #if _DEBUG
-            lab = sanitizeString(lab);
+            lab = sanitizeLabelString(lab);
 #endif
         }
         auto labStr = lab.c_str();

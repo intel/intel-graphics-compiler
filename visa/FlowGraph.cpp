@@ -3356,7 +3356,7 @@ void G4_Kernel::dumpPassInternal(const char* appendix)
     }
 
     std::string fname(fileName);
-    fname = sanitizeString(fname);
+    fname = sanitizePathString(fname);
 
     fstream ofile(fname, ios::out);
     if (!ofile)
@@ -3424,7 +3424,7 @@ void G4_Kernel::dumpDotFileInternal(const char* appendix)
     }
 
     std::string fname(fileName);
-    fname = sanitizeString(fname);
+    fname = sanitizePathString(fname);
 
     fstream ofile(fname, ios::out);
     if (!ofile)

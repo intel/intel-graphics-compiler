@@ -1550,18 +1550,60 @@ const char* createStringCopy(const char* name, vISA::Mem_Manager &m_mem)
     return str;
 }
 
-std::string sanitizeString(std::string& str)
+std::string sanitizeLabelString(std::string str)
 {
     auto isReservedChar = [](char c)
     {
-#ifdef _WIN32
-        return c == '<' || c == '>' || c == '\"' || c == '/' ||
-            c == '|' || c == '?' || c == '*' || (!isprint(c) && !isspace(c));
-#else
-        return c == ':' || c == '/' || (!isprint(c) && !isspace(c));
-#endif
+        return !isalnum(c) && c != '_' && c != '$';
     };
     std::replace_if(str.begin(), str.end(), isReservedChar, '_');
+    return str;
+}
+
+// This function scrubs out illegal file path characters
+//
+// NOTE: we must permit directory separators though since the string is a path
+std::string sanitizePathString(std::string str)
+{
+#ifdef _WIN32
+    // better cross platform behavior ./foo/bar.asm => to backslashes
+    auto isFwdSlash = [](char c) {return c == '/';};
+    std::replace_if(str.begin(), str.end(), isFwdSlash, '\\');
+#endif
+
+    auto isReservedChar = [](char c)
+    {
+#ifdef _WIN32
+        // c.f. https://docs.microsoft.com/en-us/windows/desktop/fileio/naming-a-file
+        switch (c)
+        {
+        // we need these because we have a full path
+        // case '\\': path separator
+        case ':': // can be a drive suffix, but we handle this manually
+        case '"':
+        case '*':
+        case '|':
+        case '?':
+            return true;
+          // '<' and '>' are technically okay
+        default: return !isprint(c) && !isspace(c);
+        }
+        return false;
+#else
+        return c == ':' || (!isprint(c) && !isspace(c));
+#endif
+    };
+
+#ifdef _WIN32
+    if (str.length() > 2 && isalnum(str[0]) && str[1] == ':') {
+        // drive prefix: D:... or D:
+        std::replace_if(str.begin()+2, str.end(), isReservedChar, '_');
+    } else {
+        std::replace_if(str.begin(), str.end(), isReservedChar, '_');
+    }
+#else
+    std::replace_if(str.begin(), str.end(), isReservedChar, '_');
+#endif
     return str;
 }
 

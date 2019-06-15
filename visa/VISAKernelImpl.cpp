@@ -1337,7 +1337,7 @@ int VISAKernelImpl::AddKernelAttribute(const char* attrName, int size, const voi
                     str = str.substr(found + 1);
                 }
             }
-            m_asmName = sanitizeString(str);
+            m_asmName = sanitizePathString(str);
 
             size_t found = m_asmName.find(".asm");
             if (found != std::string::npos)
