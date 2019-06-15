@@ -71,6 +71,10 @@ public:
     explicit DumpName(std::string const& dumpName);
     DumpName();
 
+    //Needs to be static so that all objects of the class share it and public so that all derived classes have access to it.
+    static std::mutex hashMapLock;
+    static unsigned int shaderNum;
+
     DumpName ShaderName(std::string const& name) const;
     DumpName Type(ShaderType type) const;
     DumpName Extension(std::string const& extension) const;

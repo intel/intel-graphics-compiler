@@ -170,6 +170,10 @@ DumpName DumpName::Pass(std::string const& name, llvm::Optional<unsigned int> in
     return copy;
 }
 
+std::unordered_map<QWORD, unsigned int> shaderHashMap;
+std::mutex DumpName::hashMapLock;
+unsigned int DumpName::shaderNum = 1;
+
 std::string DumpName::AbsolutePath(OutputFolderName folder) const
 {
     std::stringstream ss;
@@ -222,6 +226,18 @@ std::string DumpName::AbsolutePath(OutputFolderName folder) const
     }
     if(m_hash.hasValue())
     {
+
+        if (m_type.hasValue() && IGC_IS_FLAG_ENABLED(EnableShaderNumbering)) {
+            bool increment = shaderHashMap.insert({ m_hash->asmHash.value, shaderNum }).second;
+            //Need to serialize access to the shaderNum counter in case different threads need to dump the same shader at once.
+            hashMapLock.lock();
+            if (increment) shaderNum++;
+            hashMapLock.unlock();
+            ss << "_"
+               << shaderHashMap[m_hash->asmHash.value]
+               << "_";
+        }
+
         ss << (underscore ? "_" : "")
             << "asm"
             << std::hex
