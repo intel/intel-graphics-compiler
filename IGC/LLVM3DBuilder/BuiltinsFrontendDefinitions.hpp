@@ -25,7 +25,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 
 #include "common/debug/DebugMacros.hpp" // VALUE_NAME() definition.
-#include "Compiler/WaveIntrinsicWAPass.h"
 
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/AsmParser/Parser.h"
@@ -4423,6 +4422,36 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::create_wavePrefix
         src->getType());
     return this->CreateCall4(pFunc, src, type, this->getInt1(inclusive), Mask);
 }
+
+    // We currently use the combination of 'convergent' and 
+    // 'inaccessiblememonly' to prevent code motion of
+    // wave intrinsics.  Removing 'readnone' from a callsite
+    // is not sufficient to stop LICM from looking back up to the
+    // function definition for the attribute.  We can short circuit that
+    // by creating an operand bundle.  The name "nohoist" is not
+    // significant; anything will do.
+inline llvm::CallInst* setUnsafeToHoistAttr(llvm::CallInst *CI)
+    {
+        CI->setConvergent();
+#if LLVM_VERSION_MAJOR >= 7
+        CI->setOnlyAccessesInaccessibleMemory();
+        CI->removeAttribute(llvm::AttributeList::FunctionIndex, llvm::Attribute::ReadNone);
+#else
+        CI->addAttribute(
+            llvm::AttributeSet::FunctionIndex, llvm::Attribute::InaccessibleMemOnly);
+        CI->removeAttribute(llvm::AttributeSet::FunctionIndex, llvm::Attribute::ReadNone);
+#endif
+        llvm::OperandBundleDef OpDef("nohoist", llvm::None);
+
+        // An operand bundle cannot be appended onto a call after creation.
+        // clone the instruction but add our operandbundle on as well.
+        llvm::SmallVector<llvm::OperandBundleDef, 1> OpBundles;
+        CI->getOperandBundlesAsDefs(OpBundles);
+        OpBundles.push_back(OpDef);
+        llvm::CallInst *NewCall = llvm::CallInst::Create(CI, OpBundles, CI);
+        CI->replaceAllUsesWith(NewCall);
+        return NewCall;
+    }
 
 template<bool preserveNames, typename T, typename Inserter>
 inline llvm::Value*

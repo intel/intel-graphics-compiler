@@ -104,7 +104,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/LegalizationPass.hpp"
 #include "Compiler/LowPrecisionOptPass.hpp"
 #include "Compiler/WorkaroundAnalysisPass.h"
-#include "Compiler/WaveIntrinsicWAPass.h"
 
 #include "Compiler/MetaDataApi/MetaDataApi.h"
 #include "Compiler/MetaDataUtilsWrapper.h"
@@ -1049,7 +1048,6 @@ void unify_opt_PreProcess(CodeGenContext* pContext)
 
     IGCPassManager mpm(pContext, "OPTPre");
     mpm.add(new CheckInstrTypes(&(pContext->m_instrTypes)));
-    mpm.add(createWaveIntrinsicWAPass());
 
     if (pContext->isPOSH())
     {

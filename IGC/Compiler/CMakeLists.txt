@@ -51,7 +51,6 @@ set(IGC_BUILD__SRC__Compiler
     "${CMAKE_CURRENT_SOURCE_DIR}/FindInterestingConstants.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/DynamicTextureFolding.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/SampleMultiversioning.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/WaveIntrinsicWAPass.cpp"
     "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/ibdw_wa.c"
     "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/ichv_wa.c"
     "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/ibxt_wa.c"
@@ -113,7 +112,6 @@ set(IGC_BUILD__HDR__Compiler
     "${CMAKE_CURRENT_SOURCE_DIR}/FindInterestingConstants.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/DynamicTextureFolding.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/SampleMultiversioning.hpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/WaveIntrinsicWAPass.h"
     ${IGC_BUILD__HDR__Compiler_CISACodeGen}
     ${IGC_BUILD__HDR__Compiler_DebugInfo}
     ${IGC_BUILD__HDR__Compiler_Legalizer}

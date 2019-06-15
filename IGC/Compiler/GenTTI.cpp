@@ -29,7 +29,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/IGCPassSupport.h"
-#include "Compiler/WaveIntrinsicWAPass.h"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
@@ -383,13 +382,20 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L,
     }
 }
 
-
 bool GenIntrinsicsTTIImpl::isProfitableToHoist(Instruction *I)
 {
     if (auto *CI = dyn_cast<CallInst>(I))
     {
-        if (unsafeToHoist(CI))
+        if (CI->isConvergent() &&
+#if LLVM_VERSION_MAJOR >= 7
+            CI->onlyAccessesInaccessibleMemory()
+#else
+            CI->hasFnAttr(Attribute::InaccessibleMemOnly)
+#endif
+        )
+        {
             return false;
+        }
     }
     return BaseT::isProfitableToHoist(I);
 }
