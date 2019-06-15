@@ -1215,6 +1215,13 @@ namespace //Anonymous
             return _invocations.count(func) > 0;
         }
 
+        /// Remove the function from registered block_invoke functions
+        void removeInvocation(const llvm::Function* func)
+        {
+            assert(_invocations.find(func) != _invocations.end());
+            _invocations.erase(func);
+        }
+
         /// Return a list of all block_invoke functions used in registered "device execution" calls
         std::vector<const llvm::Function*> getInvokeFuncs()
         {
@@ -1252,15 +1259,24 @@ namespace //Anonymous
         /// for the block value passed to a "device execution" call
         DeviceEnqueueParamValue* getDeviceEnqueueParamValue(llvm::Value* value);
 
-        /// Return parent's kernel name for block_invoke function
+        /// Return parent's kernel for block_invoke function
         /// used for _dispatch_X kernel generation
-        llvm::StringRef getParentKernelName(const llvm::Function* invokeFunc, std::set<const llvm::Function*> &processedFuncs);
+        const llvm::Function* getParentKernel(const llvm::Function* invokeFunc)
+        {
+            std::set<const llvm::Function*> processedFuncs;
+            return getParentKernelImpl(invokeFunc, processedFuncs);
+        }
 
         /// track load/store instructions to get source value
         static llvm::Value* getSourceValueFor(llvm::Value* value, llvm::Instruction* destValue = nullptr);
 
         /// Lookup for the kernel/dispatcher argument connected to the value
         llvm::Argument* getArgForValue(llvm::Value* value);
+
+    private:
+
+        // Implements getParentKernel functionality
+        const llvm::Function* getParentKernelImpl(const llvm::Function* invokeFunc, std::set<const llvm::Function*> &processedFuncs);
     };
 
     //////////////////////////////////////////////////////////////////////////
@@ -1323,6 +1339,35 @@ namespace //Anonymous
             RegisterCallHandlers(M, dataContext);
 
             auto invokeFuncs = dataContext.getInvokeFuncs();
+
+            // Collect and remove invoke functions without parent kernel.
+            std::set<const llvm::Function*> toRemove;
+            for (auto invokeFunc : invokeFuncs)
+            {
+                const Function* parent = dataContext.getParentKernel(invokeFunc);
+                if (!parent)
+                    toRemove.insert(invokeFunc);
+            }
+            for (auto invokeFunc : toRemove)
+            {
+                dataContext.removeInvocation(invokeFunc);
+                llvm::Function* func = const_cast<llvm::Function*>(invokeFunc);
+                dataContext.getMetaDataBuilder().eraseKernelMetadata(func, modMD);
+
+                // Erase all function users before erasing the function.
+                SmallVector<User*, 4> Users(func->users());
+                for (auto user : Users)
+                {
+                    if (auto *instr = dyn_cast<Instruction>(user))
+                        instr->eraseFromParent();
+                }
+
+                func->eraseFromParent();
+                changed = true;
+            }
+
+            // Update invokeFuncs, because some of them can be removed.
+            invokeFuncs = dataContext.getInvokeFuncs();
 
             for (auto& invokeFunc : invokeFuncs)
             {
@@ -1880,9 +1925,11 @@ namespace //Anonymous
     {
         if (!_invocations[invokeFunc]._dispatcher)
         {
-            std::set<const llvm::Function*> processedFuncs;
-            StringRef parentKernelName = getParentKernelName(invokeFunc, processedFuncs);
-            _invocations[invokeFunc]._dispatcher.reset(new Dispatcher(invokeFunc, parentKernelName, _blocksNum++));
+            const Function* parentKernel = getParentKernel(invokeFunc);
+            if (!parentKernel)
+                report_fatal_error("Fail parent kernel lookup: possible closed self-enqueue");
+
+            _invocations[invokeFunc]._dispatcher.reset(new Dispatcher(invokeFunc, parentKernel->getName(), _blocksNum++));
         }
 
         return _invocations.at(invokeFunc)._dispatcher.get();
@@ -1912,7 +1959,7 @@ namespace //Anonymous
         return _deviceEnqueueParamValueMap[value].get();
     }
 
-    llvm::StringRef DataContext::getParentKernelName(const llvm::Function* invokeFunc, std::set<const llvm::Function*> &processedFuncs)
+    const llvm::Function* DataContext::getParentKernelImpl(const llvm::Function* invokeFunc, std::set<const llvm::Function*> &processedFuncs)
     {
         if (invokeFunc == nullptr) report_fatal_error("invoke function should not be null");
 
@@ -1950,7 +1997,7 @@ namespace //Anonymous
         {
             if (getKindQuery().isKernel(myFunc))
             {
-                return myFunc->getName();
+                return myFunc;
             }
             if (myFunc != invokeFunc)
             {
@@ -1958,8 +2005,10 @@ namespace //Anonymous
             }
         }
 
-        if (parentCandidate == nullptr) report_fatal_error("Fail parent kernel lookup: possible closed self-enqueue");
-        return getParentKernelName(parentCandidate, processedFuncs);
+        if (!parentCandidate)
+            return nullptr;
+
+        return getParentKernelImpl(parentCandidate, processedFuncs);
         
     }
 
