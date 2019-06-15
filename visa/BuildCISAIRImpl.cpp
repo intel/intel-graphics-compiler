@@ -1220,7 +1220,7 @@ bool CISA_IR_Builder::CISA_input_directive(char* var_name, short offset, unsigne
     status = m_kernel->CreateVISAInputVar((VISA_GenVar *)temp,offset,size);
     if(status != CM_SUCCESS)
     {
-        std::cerr<<"Failed to create input Var. Line: "<<line_no<<std::endl;
+        std::cerr << "Failed to create input Var. Line: " <<line_no << "\n";
         return false;
     }
     return true;
@@ -1230,9 +1230,13 @@ bool CISA_IR_Builder::CISA_attr_directive(
     const char* input_name, const char* input_var, int line_no)
 {
 
-    if(strcmp(input_name, "AsmName") == 0 ||
+    if (strcmp(input_name, "AsmName") == 0 ||
         strcmp(input_name, "OutputAsmPath") == 0)
     {
+        if (strcmp(input_name, "AsmName") == 0) {
+            std::cerr << "WARNING: AsmName deprecated "
+                "(replace with OutputAsmPath)\n";
+        }
         input_name = "OutputAsmPath"; // normalize to new name
 
         char asmFileName[MAX_OPTION_STR_LENGTH];
@@ -1246,17 +1250,18 @@ bool CISA_IR_Builder::CISA_attr_directive(
         m_options.setOptionInternally(VISA_AsmFileName, asmFileName);
     }
 
-    if(strcmp(input_name, "Target") == 0){
+    if (strcmp(input_name, "Target") == 0) {
         unsigned char visa_target;
-        if(strcmp(input_var, "cm") == 0)
-        {
+        MUST_BE_TRUE(input_var,
+            ".kernel_attr Target=.. must be \"cm\", \"3d\", or \"cs\"");
+        if (strcmp(input_var, "cm") == 0) {
             visa_target = VISA_CM;
         }
-        else if(strcmp(input_var, "3d") == 0)
+        else if (strcmp(input_var, "3d") == 0)
         {
             visa_target = VISA_3D;
         }
-        else if(strcmp(input_var, "cs") == 0)
+        else if (strcmp(input_var, "cs") == 0)
         {
             visa_target = VISA_CS;
         }
