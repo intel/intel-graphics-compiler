@@ -446,7 +446,7 @@ public:
 
     void ForceDMask(bool createJmpForDiscard = true);
     void ResetVMask(bool createJmpForDiscard = true);
-    void setPredicateForDiscard();
+    void setPredicateForDiscard(CVariable* pPredicate = nullptr);
 
     void PackSIMD8HFRet(CVariable* dst);
     unsigned int GetScalarTypeSizeInRegister(llvm::Type *Ty) const;
