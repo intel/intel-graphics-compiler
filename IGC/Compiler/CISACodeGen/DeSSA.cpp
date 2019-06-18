@@ -254,7 +254,8 @@ void DeSSA::print(raw_ostream &OS, const Module* ) const
             }
             OS << "\n";
         }
-    } 
+    }
+    OS << "\n\n";
 
     OS << "---- Phi-Var Isolations ----\n";
     SmallVector<Node*, 64> NodeKeyVec;
@@ -302,11 +303,11 @@ void DeSSA::print(raw_ostream &OS, const Module* ) const
             assert(allNodes.size() == 0 &&
                    "ICE: isolated node still in multi-value CC!");
             VL = Leader->value;
-            OS << "Var isolated : ";
+            OS << "\nVar isolated : ";
             VL->print(OS);
             OS << "\n";
         } else {
-            OS << "Leader : ";
+            OS << "\nLeader : ";
             Leader->value->print(OS);
             OS << "\n";
             for (auto& II : allNodes) {

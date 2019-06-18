@@ -1410,7 +1410,7 @@ void VariableReuseAnalysis::printAlias(raw_ostream & OS, const Function* F) cons
             Value* dessaRoot = m_DeSSA ? m_DeSSA->getRootValue(aliaser) : nullptr;
             const char* inCC = dessaRoot ? ".inDessaCC" : "";
             OS << "    " << *aliaser
-               << "  [" << SV->StartElementOffset << "]"
+               << "  [" << aSV->StartElementOffset << "]"
                << inCC << "\n";
         }
         OS << "\n";
