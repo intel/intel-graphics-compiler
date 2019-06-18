@@ -2637,21 +2637,13 @@ extern string printKernelHeader(const common_isa_header& isaHeader,
     if (isTargetSet == false)
     {
         sstr << endl << ".kernel_attr Target=";
-        if(options->getTarget() == VISA_CM)
-        {
-            sstr << "cm";
-        }
-        else if(options->getTarget() == VISA_3D)
-        {
-            sstr << "3d";
-        }
-        else if(options->getTarget() == VISA_CS)
-        {
-            sstr << "cs";
-        }
-        else
-        {
+        switch (options->getTarget()) {
+        case VISA_CM: sstr << "\"cm\""; break;
+        case VISA_3D: sstr << "\"3d\""; break;
+        case VISA_CS: sstr << "\"cs\""; break;
+        default:
             MUST_BE_TRUE(false, "Invalid kernel target attribute.");
+            break;
         }
     }
 
