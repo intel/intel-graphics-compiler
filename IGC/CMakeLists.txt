@@ -3940,6 +3940,8 @@ if(UNIX)
   install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/AdaptorOCL/cif DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR}/igc COMPONENT igc-opencl-devel)
   install(FILES ${IGC_BUILD__IGC_BIN_DIR}/AdaptorOCL/igc-opencl.pc DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}/pkgconfig COMPONENT igc-opencl-devel)
   install(FILES ${IGC_BUILD__IGC_BIN_DIR}/AdaptorOCL/igc.opencl.h DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR}/igc COMPONENT igc-opencl-devel)
+  install(FILES ${IGC_BUILD__VISA_DIR}/include/RelocationInfo.h DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR}/visa COMPONENT igc-opencl-devel)
+  install(DIRECTORY ${IGC_BUILD__VISA_DIR}/iga/IGALibrary/api/ DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR}/iga COMPONENT igc-opencl-devel FILES_MATCHING PATTERN "*.h")
 elseif (WIN32)
   install(TARGETS ${IGC_BUILD__PROJ__igc_dll}
           RUNTIME DESTINATION Release/lh64          CONFIGURATIONS Release)
