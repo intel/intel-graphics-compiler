@@ -675,7 +675,10 @@ namespace vISA
                     if (!areAllDefsInBB(extMsgOpnd->asSrcRegRegion()->getTopDcl(), uniqueDefBB, uniqueDefInst->getLexicalId()))
                         return false;
 
-                    if (!uniqueDefInst->getMsgDesc()->isHeaderPresent())
+                    bool samplerHeaderNotUsed = uniqueDefInst->getSrc(0)->asSrcRegRegion()->getTopDcl() != kernel.fg.builder->getBuiltinSamplerHeader();
+
+                    if (!uniqueDefInst->getMsgDesc()->isHeaderPresent() ||
+                        samplerHeaderNotUsed)
                     {
                         len += uniqueDefInst->getMsgDesc()->MessageLength();
 
@@ -686,6 +689,39 @@ namespace vISA
                         if (liveness.isLiveAtExit(bb, msgOpnd->getTopDcl()->getRegVar()->getId()) ||
                             getLastUseLexId(msgOpnd->getTopDcl()) >= srcLexId)
                             len -= uniqueDefInst->getMsgDesc()->MessageLength();
+                    }
+
+                    if (samplerHeaderNotUsed)
+                    {
+                        // Ensure header creation instructions are used only by sampler
+                        auto msgOpndTopDcl = uniqueDefInst->getSrc(0)->asSrcRegRegion()->getTopDcl();
+                        auto topDclOpsIt = operations.find(msgOpndTopDcl);
+                        if (topDclOpsIt == operations.end())
+                            return false;
+
+                        if ((*topDclOpsIt).second.numUses > 1)
+                            return false;
+
+                        for (auto& def : (*topDclOpsIt).second.def)
+                        {
+                            for (unsigned int i = 0; i != G4_MAX_SRCS; i++)
+                            {
+                                auto src = def.first->getSrc(i);
+                                if (!src)
+                                    continue;
+
+                                if (src->isImm())
+                                    continue;
+
+                                if (src->isSrcRegRegion() && 
+                                    (src->asSrcRegRegion()->getTopDcl() == kernel.fg.builder->getBuiltinSamplerHeader() ||
+                                        src->asSrcRegRegion()->getTopDcl() == kernel.fg.builder->getBuiltinR0()))
+                                    continue;
+
+                                // Using some other var in payload src requires extra checks to remat, so skip it
+                                return false;
+                            }
+                        }
                     }
 
                     if (liveness.isLiveAtExit(bb, extMsgOpnd->getTopDcl()->getRegVar()->getId()) ||
@@ -833,51 +869,88 @@ namespace vISA
             {
                 // Look up samplerHeader(0,2) definition
                 auto sampleHeaderTopDcl = uniqueDef->first->getSrc(0)->asSrcRegRegion()->getTopDcl();
-                samplerHeader = sampleHeaderTopDcl;
-                if (!samplerHeaderMapPopulated)
+                G4_Operand* src0 = nullptr;
+                if (sampleHeaderTopDcl == kernel.fg.builder->getBuiltinSamplerHeader())
                 {
-                    populateSamplerHeaderMap();
+                    samplerHeader = sampleHeaderTopDcl;
+                    if (!samplerHeaderMapPopulated)
+                    {
+                        populateSamplerHeaderMap();
+                    }
+
+                    if (deLVNedBBs.find(bb) == deLVNedBBs.end())
+                    {
+                        // DeLVN one bb at a time when required
+                        deLVNSamplers(bb);
+                        deLVNedBBs.insert(bb);
+                    }
+
+                    auto samplerDefIt = samplerHeaderMap.find(uniqueDef->first);
+                    auto prevHeaderMov = (*samplerDefIt).second;
+
+                    src0 = dstInst->getSrc(0);
+
+                    // Duplicate sampler header setup instruction
+                    auto dupOp = prevHeaderMov->cloneInst();
+                    newInst.push_back(dupOp);
+                }
+                else
+                {
+                    // Handle sampler when src0 is not builtin sampler header
+                    auto src0Rgn = uniqueDef->first->getSrc(0)->asSrcRegRegion();
+                    auto src0TopDcl = src0Rgn->getTopDcl();
+                    auto ops = operations.find(src0TopDcl);
+                    MUST_BE_TRUE(ops != operations.end(), "Didnt find record in map");
+                    MUST_BE_TRUE((*ops).second.numUses == 1, "Expecting src0 to be used only in sampler");
+
+                    auto newSrc0Dcl = kernel.fg.builder->createTempVar(src0TopDcl->getNumElems(),
+                        src0TopDcl->getElemType(), src0TopDcl->getSubRegAlign());
+
+                    // Clone all defining instructions for sampler's msg header
+                    for (unsigned int i = 0; i != (*ops).second.def.size(); i++)
+                    {
+                        auto& headerDefInst = (*ops).second.def[i].first;
+
+                        auto dupOp = headerDefInst->cloneInst();
+                        auto headerDefDst = headerDefInst->getDst();
+                        dupOp->setDest(kernel.fg.builder->createDstRegRegion(headerDefDst->getRegAccess(),
+                            newSrc0Dcl->getRegVar(), headerDefDst->getRegOff(), headerDefDst->getSubRegOff(),
+                            headerDefDst->getHorzStride(), headerDefDst->getType()));
+                        newInst.push_back(dupOp);
+                    }
+
+                    auto rd = kernel.fg.builder->createRegionDesc(src0Rgn->getRegion()->vertStride,
+                        src0Rgn->getRegion()->width, src0Rgn->getRegion()->horzStride);
+
+                    src0 = kernel.fg.builder->createSrcRegRegion(Mod_src_undef, Direct,
+                        newSrc0Dcl->getRegVar(), src0Rgn->getRegOff(), src0Rgn->getSubRegOff(),
+                        rd, src0Rgn->getType());
                 }
 
-                if (deLVNedBBs.find(bb) == deLVNedBBs.end())
-                {
-                    // DeLVN one bb at a time when required
-                    deLVNSamplers(bb);
-                    deLVNedBBs.insert(bb);
-                }
+                auto samplerDst = kernel.fg.builder->createTempVar(dst->getTopDcl()->getTotalElems(), dst->getTopDcl()->getElemType(),
+                    dst->getTopDcl()->getSubRegAlign(), "REMAT_SAMPLER_");
+                auto samplerDstRgn = kernel.fg.builder->createDstRegRegion(Direct, samplerDst->getRegVar(), 0,
+                    0, 1, samplerDst->getElemType());
 
-                auto samplerDefIt = samplerHeaderMap.find(uniqueDef->first);
-                auto prevHeaderMov = (*samplerDefIt).second;
+                auto dstMsgDesc = dstInst->getMsgDesc();
+                G4_SendMsgDescriptor* newMsgDesc = kernel.fg.builder->createSendMsgDesc(dstMsgDesc->getDesc(), dstMsgDesc->getExtendedDesc(),
+                    dstMsgDesc->isDataPortRead(), dstMsgDesc->isDataPortWrite(), kernel.fg.builder->duplicateOperand(dstMsgDesc->getBti()),
+                    kernel.fg.builder->duplicateOperand(dstMsgDesc->getSti()));
 
-                // Duplicate sampler header setup instruction
-                auto dupOp = prevHeaderMov->cloneInst();
+                auto dupOp = kernel.fg.builder->createSplitSendInst(nullptr, dstInst->opcode(), dstInst->getExecSize(), samplerDstRgn,
+                    kernel.fg.builder->duplicateOperand(src0)->asSrcRegRegion(),
+                    kernel.fg.builder->duplicateOperand(dstInst->getSrc(1))->asSrcRegRegion(),
+                    kernel.fg.builder->duplicateOperand(dstInst->asSendInst()->getMsgDescOperand()), dstInst->getOption(),
+                    newMsgDesc, kernel.fg.builder->duplicateOperand(dstInst->getSrc(3)), dstInst->getLineNo());
+                dupOp->setLineNo(dstInst->getLineNo());
+                dupOp->setCISAOff(dstInst->getCISAOff());
+
                 newInst.push_back(dupOp);
+
+                rematSrc = createSrcRgn(src, dst, samplerDst);
+
+                cacheInst = newInst.back();
             }
-
-            auto samplerDst = kernel.fg.builder->createTempVar(dst->getTopDcl()->getTotalElems(), dst->getTopDcl()->getElemType(),
-                Any, "REMAT_SAMPLER_");
-            samplerDst->copyAlign(dst->getTopDcl());
-            auto samplerDstRgn = kernel.fg.builder->createDstRegRegion(Direct, samplerDst->getRegVar(), 0,
-                0, 1, samplerDst->getElemType());
-
-            auto dstMsgDesc = dstInst->getMsgDesc();
-            G4_SendMsgDescriptor* newMsgDesc = kernel.fg.builder->createSendMsgDesc(dstMsgDesc->getDesc(), dstMsgDesc->getExtendedDesc(),
-                dstMsgDesc->isDataPortRead(), dstMsgDesc->isDataPortWrite(), kernel.fg.builder->duplicateOperand(dstMsgDesc->getBti()),
-                kernel.fg.builder->duplicateOperand(dstMsgDesc->getSti()));
-
-            auto dupOp = kernel.fg.builder->createSplitSendInst(nullptr, dstInst->opcode(), dstInst->getExecSize(), samplerDstRgn,
-                kernel.fg.builder->duplicateOperand(dstInst->getSrc(0))->asSrcRegRegion(),
-                kernel.fg.builder->duplicateOperand(dstInst->getSrc(1))->asSrcRegRegion(),
-                kernel.fg.builder->duplicateOperand(dstInst->asSendInst()->getMsgDescOperand()), dstInst->getOption(),
-                newMsgDesc, kernel.fg.builder->duplicateOperand(dstInst->getSrc(3)), dstInst->getLineNo());
-            dupOp->setLineNo(dstInst->getLineNo());
-            dupOp->setCISAOff(dstInst->getCISAOff());
-
-            newInst.push_back(dupOp);
-
-            rematSrc = createSrcRgn(src, dst, samplerDst);
-
-            cacheInst = newInst.back();
         }
 
         return rematSrc;

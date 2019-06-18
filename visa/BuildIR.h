@@ -983,6 +983,11 @@ public:
         return builtinBindlessSampler;
     }
 
+    G4_Declare* getBuiltinSamplerHeader() const
+    {
+        return builtinSamplerHeader;
+    }
+
     bool isBindlessSampler(G4_Operand* sampler) const
     {
         return sampler->isSrcRegRegion() && sampler->getTopDcl() == getBuiltinBindlessSampler();
