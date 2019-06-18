@@ -113,12 +113,12 @@ extern unsigned int getStackCallRegSize(bool reserveStackCallRegs);
 
 // spill/fill temps are always GRF-aligned, and are also even/odd aligned
 // following the original declare's alignment
-static void setNewDclAlignment(G4_Declare* newDcl, G4_Align origAlign)
+static void setNewDclAlignment(G4_Declare* newDcl, bool evenAlign)
 {
     newDcl->setSubRegAlign(SUB_ALIGNMENT_GRFALIGN);
-    if (origAlign != Either)
+    if (evenAlign)
     {
-        newDcl->setAlign(origAlign);
+        newDcl->setEvenAlign();
     }
 }
 
@@ -1260,7 +1260,7 @@ SpillManagerGMRF::createTransientGRFRangeDeclare (
     // FIXME: We should take the original declare's alignment too, but I'm worried
     // we may get perf regression if FE is over-aligning or the alignment is not necessary for this inst.
     // So Either is used for now and we can change it later if there are bugs
-    setNewDclAlignment(transientRangeDeclare, Either);
+    setNewDclAlignment(transientRangeDeclare, false);
     return transientRangeDeclare;
 }
 
@@ -1431,7 +1431,7 @@ SpillManagerGMRF::createMRFFillRangeDeclare (
         DeclareType::Fill, filledRegVar, normalizedMRFSrc,
         width);
 
-    setNewDclAlignment(transientRangeDeclare, filledRegVar->getAlignment());
+    setNewDclAlignment(transientRangeDeclare, filledRegVar->getAlignment() == G4_Align::Even);
 
     if( failSafeSpill_ )
     {
@@ -1501,7 +1501,7 @@ SpillManagerGMRF::createTemporaryRangeDeclare (
         spillRegOffset_ += height;
     }
 
-    setNewDclAlignment(temporaryRangeDeclare, Either);
+    setNewDclAlignment(temporaryRangeDeclare, false);
     return temporaryRangeDeclare;
 }
 

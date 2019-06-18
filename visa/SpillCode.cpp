@@ -102,8 +102,7 @@ G4_Declare* SpillManager::createNewTempFlagDeclare(G4_Declare* dcl)
     assert(dcl->getRegFile() == G4_FLAG && "dcl should be a flag");
     G4_Declare* sp = builder.createFlag(dcl->getNumberFlagElements(), name);
     gra.setBBId(sp, bbId);
-    sp->setSubRegAlign(dcl->getSubRegAlign());
-    sp->setAlign(dcl->getAlign());
+    sp->copyAlign(dcl);
     gra.addAddrFlagSpillDcl(sp);
 
     return sp;

@@ -494,7 +494,7 @@ G4_VarBase* SendFusion::getVarBase(G4_VarBase* Var, G4_Type Ty)
     }
     int16_t sz = G4_Type_Table[DclTy].byteSize * Dcl->getNumElems();
     int16_t elts = sz / G4_Type_Table[Ty].byteSize;
-    G4_Declare* newDcl = Builder->createTempVar(elts, Ty, Either, Any);
+    G4_Declare* newDcl = Builder->createTempVar(elts, Ty, Any);
     newDcl->setAliasDeclare(Dcl->getRootDeclare(), Dcl->getAliasOffset());
     return newDcl->getRegVar();
 }
@@ -1068,7 +1068,7 @@ void SendFusion::initDMaskModInfo()
 void SendFusion::createDMask(G4_BB* bb, INST_LIST_ITER InsertBeforePos)
 {
     // (W) mov (1|M0) r10.0<1>:ud sr0.2.0<0;1,0>:ud
-    G4_Declare* dmaskDecl = Builder->createTempVar(1, Type_UD, Either, Any, "DMask");
+    G4_Declare* dmaskDecl = Builder->createTempVar(1, Type_UD, Any, "DMask");
     G4_VarBase* sr0 = Builder->phyregpool.getSr0Reg();
     G4_SrcRegRegion* Src = Builder->createSrcRegRegion(
         Mod_src_undef, Direct, sr0, 0, 2, Builder->getRegionScalar(), Type_UD);
@@ -1121,7 +1121,7 @@ void SendFusion::createFlagPerBB(G4_BB* bb, INST_LIST_ITER InsertBeforePos)
     RegionDesc* scalar = Builder->getRegionScalar();
 
 
-    G4_Declare* tmpDecl = Builder->createTempVar(1, Type_UD, Either, Any, "Flag");
+    G4_Declare* tmpDecl = Builder->createTempVar(1, Type_UD, Any, "Flag");
     G4_INST* Inst0;
     if (WAce0Read)
     {
@@ -1185,7 +1185,7 @@ void SendFusion::createFlagPerBB(G4_BB* bb, INST_LIST_ITER InsertBeforePos)
 
     //  Duplicate 8-bit mask to the next 8 bits
     //  (W) mov (2|M0) tmp:ub tmp.0<0;1,0>:ub
-    G4_Declare* tmpUBDecl = Builder->createTempVar(4, Type_UB, Either, Any, "Flag");
+    G4_Declare* tmpUBDecl = Builder->createTempVar(4, Type_UB, Any, "Flag");
     tmpUBDecl->setAliasDeclare(tmpDecl, 0);
     G4_SrcRegRegion* S = Builder->createSrcRegRegion(
         Mod_src_undef, Direct, tmpUBDecl->getRegVar(), 0, 0, scalar, Type_UB);
@@ -1199,7 +1199,7 @@ void SendFusion::createFlagPerBB(G4_BB* bb, INST_LIST_ITER InsertBeforePos)
     Inst0->addDefUse(Inst1, Opnd_src0);
 
     // (W) mov (1|M0) flagPerBB.0<1>:UW tmp.0<1>:UW
-    G4_Declare* tmpUW = Builder->createTempVar(1, Type_UW, Either, Any);
+    G4_Declare* tmpUW = Builder->createTempVar(1, Type_UW, Any);
     tmpUW->setAliasDeclare(tmpDecl, 0);
     G4_SrcRegRegion* Src = Builder->createSrcRegRegion(
         Mod_src_undef, Direct, tmpUW->getRegVar(), 0, 0, scalar, Type_UW);
@@ -1314,7 +1314,7 @@ void SendFusion::doFusion(
         {
             DstTy = Type_UD;
         }
-        DstD = Builder->createTempVar(newRspLen * 8, DstTy, Either, Any, "dst");
+        DstD = Builder->createTempVar(newRspLen * 8, DstTy, Any, "dst");
         Dst = Builder->Create_Dst_Opnd_From_Dcl(DstD, 1);
     }
     else
@@ -1426,7 +1426,7 @@ void SendFusion::doFusion(
     {
         P0Ty = Type_UD;
     }
-    G4_Declare* P0 = Builder->createTempVar(newMsgLen * 8, P0Ty, Either, Any, "payload0");
+    G4_Declare* P0 = Builder->createTempVar(newMsgLen * 8, P0Ty, Any, "payload0");
     G4_SrcRegRegion* Src0 = Builder->Create_Src_Opnd_From_Dcl(P0, region);
 
     G4_Declare* P1 = nullptr;
@@ -1438,7 +1438,7 @@ void SendFusion::doFusion(
         {
             P1Ty = Type_UD;
         }
-        P1 = Builder->createTempVar(newExtMsgLen * 8, P1Ty, Either, Any, "payload1");
+        P1 = Builder->createTempVar(newExtMsgLen * 8, P1Ty, Any, "payload1");
         G4_SrcRegRegion* Src1 = Builder->Create_Src_Opnd_From_Dcl(P1, region);
         sendInst = Builder->createSplitSendInst(
             Pred, G4_sends, ExecSize*2, Dst, Src0, Src1,

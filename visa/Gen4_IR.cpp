@@ -5499,9 +5499,9 @@ bool GlobalRA::areAllDefsNoMask(G4_Declare* dcl)
     return retval;
 }
 
-void G4_Declare::setAlign(G4_Align al)
+void G4_Declare::setEvenAlign()
 {
-    regVar->setAlignment(al);
+    regVar->setAlignment(G4_Align::Even);
 }
 
 G4_Align G4_Declare::getAlign() const
@@ -5551,6 +5551,12 @@ void G4_Declare::setSubRegAlign(G4_SubReg_Align subAl)
 G4_SubReg_Align G4_Declare::getSubRegAlign() const
 {
     return regVar->getSubRegAlignment();
+}
+
+void G4_Declare::copyAlign(G4_Declare* dcl)
+{
+    regVar->setAlignment(dcl->getAlign());
+    regVar->setSubRegAlignment(dcl->getSubRegAlign());
 }
 
 void G4_Declare::emit(

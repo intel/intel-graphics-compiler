@@ -222,7 +222,7 @@ void IR_Builder::expandFdiv(uint8_t exsize, G4_Predicate *predOpnd, bool saturat
     {
         invType = Type_F;
     }
-    G4_Declare* invResult = createTempVar(exsize, invType, Either, Any);
+    G4_Declare* invResult = createTempVar(exsize, invType, Any);
     G4_DstRegRegion* invDst = Create_Dst_Opnd_From_Dcl(invResult, 1);
     createMathInst(predOpnd, false, exsize, invDst, src1Opnd, createNullSrc(invType), mathOp, instOpt);
     G4_SrcRegRegion* invSrc = Create_Src_Opnd_From_Dcl(invResult, getRegionStride1());
@@ -238,7 +238,7 @@ void IR_Builder::expandPow(uint8_t exsize, G4_Predicate *predOpnd, bool saturate
     // mul dst tmp tmp src1
     // math.exp dst tmp
     G4_Type mathType = src0Opnd->getType();
-    G4_Declare* tmpVar = createTempVar(exsize, mathType, Either, Any);
+    G4_Declare* tmpVar = createTempVar(exsize, mathType, Any);
     G4_DstRegRegion* logDst = Create_Dst_Opnd_From_Dcl(tmpVar, 1);
     G4_Operand* logSrc = src0Opnd;
     // make sure log source is positive
@@ -255,7 +255,7 @@ void IR_Builder::expandPow(uint8_t exsize, G4_Predicate *predOpnd, bool saturate
             break;
         default:
         {
-            G4_Declare* tmpLogSrc = createTempVar(exsize, src0Opnd->getType(), Either, Any);
+            G4_Declare* tmpLogSrc = createTempVar(exsize, src0Opnd->getType(), Any);
             Create_MOV_Inst(tmpLogSrc, 0, 0, exsize, nullptr, nullptr, src0Opnd);
             logSrc = Create_Src_Opnd_From_Dcl(tmpLogSrc, getRegionStride1());
             logSrc->asSrcRegRegion()->setModifier(Mod_Abs);
@@ -422,7 +422,7 @@ static G4_SrcRegRegion* operandToDirectSrcRegRegion(
         G4_SrcRegRegion* srcRegion = src->asSrcRegRegion();
         if (srcRegion->getRegAccess() == IndirGRF)
         {
-            G4_Declare* dcl = builder.createTempVarWithNoSpill(exsize, src->getType(), Either, Any);
+            G4_Declare* dcl = builder.createTempVarWithNoSpill(exsize, src->getType(), Any);
             builder.Create_MOV_Inst(dcl, 0, 0, exsize, nullptr, nullptr, src, true);
             return builder.Create_Src_Opnd_From_Dcl(dcl, builder.getRegionStride1());
         }
@@ -432,7 +432,7 @@ static G4_SrcRegRegion* operandToDirectSrcRegRegion(
     {
         //src is an immediate
         MUST_BE_TRUE(src->isImm(), "expect immediate operand");
-        G4_Declare *tmpSrc = builder.createTempVarWithNoSpill(exsize, src->getType(), Either, Any);
+        G4_Declare *tmpSrc = builder.createTempVarWithNoSpill(exsize, src->getType(), Any);
         builder.Create_MOV_Inst(tmpSrc, 0, 0, exsize, nullptr, nullptr, src, true);
         return builder.Create_Src_Opnd_From_Dcl(tmpSrc, builder.getRegionStride1());
     }
@@ -445,7 +445,7 @@ G4_Declare* IR_Builder::getImmDcl(G4_Imm* val, int numElt)
     {
         return dcl;
     }
-    dcl = createTempVarWithNoSpill(numElt, val->getType(), Either, Any);
+    dcl = createTempVarWithNoSpill(numElt, val->getType(), Any);
     createInst(nullptr, G4_mov, nullptr, false, numElt, Create_Dst_Opnd_From_Dcl(dcl, 1), val,
         nullptr, InstOpt_WriteEnable, 0);
     return dcl;
@@ -472,7 +472,6 @@ int IR_Builder::translateVISAArithmeticDoubleInst(ISA_Opcode opcode, Common_ISA_
     int line_no = lastInst ? lastInst->getLineNo() : 0;
     G4_Imm *dbl_constant_0 = createDFImm(0.0);
     G4_Imm *dbl_constant_1 = createDFImm(1.0);
-    G4_Align reg_align = Either;
 
     if (instExecSize == 1 || instExecSize == 4)
     {
@@ -496,18 +495,18 @@ int IR_Builder::translateVISAArithmeticDoubleInst(ISA_Opcode opcode, Common_ISA_
     G4_Predicate_Control predCtrlValue = PRED_DEFAULT;
 
     // temp registers
-    G4_Declare *t6  = createTempVarWithNoSpill( element_size, Type_DF, reg_align, Any );
-    G4_Declare *t7  = createTempVarWithNoSpill( element_size, Type_DF, reg_align, Any );
-    G4_Declare *t8  = createTempVarWithNoSpill( element_size, Type_DF, reg_align, Any );
-    G4_Declare *t9  = createTempVarWithNoSpill( element_size, Type_DF, reg_align, Any );
-    G4_Declare *t10 = createTempVarWithNoSpill( element_size, Type_DF, reg_align, Any );
-    G4_Declare *t11 = createTempVarWithNoSpill( element_size, Type_DF, reg_align, Any );
-    G4_Declare *t12 = createTempVarWithNoSpill( element_size, Type_DF, reg_align, Any );
-    G4_Declare *t13 = createTempVarWithNoSpill( element_size, Type_DF, reg_align, Any );
+    G4_Declare *t6  = createTempVarWithNoSpill( element_size, Type_DF, Any );
+    G4_Declare *t7  = createTempVarWithNoSpill( element_size, Type_DF, Any );
+    G4_Declare *t8  = createTempVarWithNoSpill( element_size, Type_DF, Any );
+    G4_Declare *t9  = createTempVarWithNoSpill( element_size, Type_DF, Any );
+    G4_Declare *t10 = createTempVarWithNoSpill( element_size, Type_DF, Any );
+    G4_Declare *t11 = createTempVarWithNoSpill( element_size, Type_DF, Any );
+    G4_Declare *t12 = createTempVarWithNoSpill( element_size, Type_DF, Any );
+    G4_Declare *t13 = createTempVarWithNoSpill( element_size, Type_DF, Any );
 
     bool hasDefaultRoundDenorm = getOption(vISA_hasRNEandDenorm);
     // cr0.0 register
-    G4_Declare *regCR0 = createTempVarWithNoSpill(1, Type_UD, reg_align, Any);
+    G4_Declare *regCR0 = createTempVarWithNoSpill(1, Type_UD, Any);
     G4_DstRegRegion regDstCR0(Direct, phyregpool.getCr0Reg(), 0, 0, 1, Type_UD );
     G4_SrcRegRegion regSrcCR0(Mod_src_undef, Direct, phyregpool.getCr0Reg() ,0, 0, getRegionScalar(), Type_UD );
 
@@ -871,7 +870,6 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(ISA_Opcode opcode, C
     int line_no = lastInst ? lastInst->getLineNo() : 0;
     G4_Imm *flt_constant_0 = createImm(float(0.0));
     G4_Imm *flt_constant_1 = createImm(float(1.0));
-    G4_Align reg_align = Either;
     if ( instExecSize <= 8 )
     {
         element_size = 8;
@@ -889,16 +887,16 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(ISA_Opcode opcode, C
     G4_Predicate_Control predCtrlValue = PRED_DEFAULT;
 
     // temp registers
-    G4_Declare *t1  = createTempVarWithNoSpill( element_size, Type_F, reg_align, Any );
-    G4_Declare *t4  = createTempVarWithNoSpill( element_size, Type_F, reg_align, Any );
-    G4_Declare *t6  = createTempVarWithNoSpill( element_size, Type_F, reg_align, Any );
-    G4_Declare *t8  = createTempVarWithNoSpill( element_size, Type_F, reg_align, Any );
-    G4_Declare *t9  = createTempVarWithNoSpill( element_size, Type_F, reg_align, Any );
-    G4_Declare *t10 = createTempVarWithNoSpill( element_size, Type_F, reg_align, Any );
-    G4_Declare *t11 = createTempVarWithNoSpill( element_size, Type_F, reg_align, Any );
+    G4_Declare *t1  = createTempVarWithNoSpill( element_size, Type_F, Any );
+    G4_Declare *t4  = createTempVarWithNoSpill( element_size, Type_F, Any );
+    G4_Declare *t6  = createTempVarWithNoSpill( element_size, Type_F, Any );
+    G4_Declare *t8  = createTempVarWithNoSpill( element_size, Type_F, Any );
+    G4_Declare *t9  = createTempVarWithNoSpill( element_size, Type_F, Any );
+    G4_Declare *t10 = createTempVarWithNoSpill( element_size, Type_F, Any );
+    G4_Declare *t11 = createTempVarWithNoSpill( element_size, Type_F, Any );
 
     // cr0.0 register
-    G4_Declare *regCR0  = createTempVarWithNoSpill( 1, Type_UD, reg_align, Any );
+    G4_Declare *regCR0  = createTempVarWithNoSpill( 1, Type_UD, Any );
 
     // 0.0:f and 1.0:f constants
     G4_Declare *t2 = getImmDcl(flt_constant_0, 8);
@@ -1171,7 +1169,6 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(ISA_Opcode opcode, Com
     int line_no = lastInst ? lastInst->getLineNo() : 0;
     G4_Imm *flt_constant_0 = createImm(float(0.0));
     G4_Imm *flt_constant_05 = createImm(float(0.5));
-    G4_Align reg_align = Either;
     if (instExecSize <= 8)
     {
         element_size = 8;
@@ -1189,14 +1186,14 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(ISA_Opcode opcode, Com
     G4_Predicate_Control predCtrlValue = PRED_DEFAULT;
 
     // temp registers
-    G4_Declare *t6  = createTempVarWithNoSpill( element_size, Type_F, reg_align, Any );
-    G4_Declare *t7  = createTempVarWithNoSpill( element_size, Type_F, reg_align, Any );
-    G4_Declare *t9  = createTempVarWithNoSpill( element_size, Type_F, reg_align, Any );
-    G4_Declare *t10 = createTempVarWithNoSpill( element_size, Type_F, reg_align, Any );
-    G4_Declare *t11 = createTempVarWithNoSpill( element_size, Type_F, reg_align, Any );
+    G4_Declare *t6  = createTempVarWithNoSpill( element_size, Type_F, Any );
+    G4_Declare *t7  = createTempVarWithNoSpill( element_size, Type_F, Any );
+    G4_Declare *t9  = createTempVarWithNoSpill( element_size, Type_F, Any );
+    G4_Declare *t10 = createTempVarWithNoSpill( element_size, Type_F, Any );
+    G4_Declare *t11 = createTempVarWithNoSpill( element_size, Type_F, Any );
 
     // cr0.0 register
-    G4_Declare *regCR0  = createTempVarWithNoSpill( 1, Type_UD, reg_align, Any );
+    G4_Declare *regCR0  = createTempVarWithNoSpill( 1, Type_UD, Any );
 
     // 0.0:f and 0.5:f constants
     G4_Declare* t0 = getImmDcl(flt_constant_0, 8);
@@ -1466,7 +1463,6 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(ISA_Opcode opcode, Common_
     G4_INST* lastInst = instList.empty() ? nullptr : instList.back();
 
     int line_no = lastInst ? lastInst->getLineNo() : 0;
-    G4_Align reg_align = Either;
 
     if (instExecSize == 1 || instExecSize == 4)
     {
@@ -1493,12 +1489,12 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(ISA_Opcode opcode, Common_
     G4_Declare *t0 = getImmDcl(createDFImm(0.0), element_size);
     G4_Declare *t1 = getImmDcl(createDFImm(1.0), element_size);
     G4_Declare *t2 = getImmDcl(createDFImm(0.5), element_size);
-    G4_Declare *t6  = createTempVarWithNoSpill(element_size, Type_DF, reg_align, Any);
-    G4_Declare *t7  = createTempVarWithNoSpill(element_size, Type_DF, reg_align, Any);
-    G4_Declare *t8  = createTempVarWithNoSpill(element_size, Type_DF, reg_align, Any);
-    G4_Declare *t9  = createTempVarWithNoSpill(element_size, Type_DF, reg_align, Any);
-    G4_Declare *t10 = createTempVarWithNoSpill(element_size, Type_DF, reg_align, Any);
-    G4_Declare *t11 = createTempVarWithNoSpill(element_size, Type_DF, reg_align, Any);
+    G4_Declare *t6  = createTempVarWithNoSpill(element_size, Type_DF, Any);
+    G4_Declare *t7  = createTempVarWithNoSpill(element_size, Type_DF, Any);
+    G4_Declare *t8  = createTempVarWithNoSpill(element_size, Type_DF, Any);
+    G4_Declare *t9  = createTempVarWithNoSpill(element_size, Type_DF, Any);
+    G4_Declare *t10 = createTempVarWithNoSpill(element_size, Type_DF, Any);
+    G4_Declare *t11 = createTempVarWithNoSpill(element_size, Type_DF, Any);
 
     inst = createPseudoKills({t6, t7, t8, t9, t10, t11, flagReg }, PseudoKillType::Src);
 
@@ -1519,7 +1515,7 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(ISA_Opcode opcode, Common_
     G4_SrcRegRegion regSrcCR0(Mod_src_undef, Direct, phyregpool.getCr0Reg(), 0, 0, getRegionScalar(), Type_UD);
 
     // temporary reg for saving/restoring cr0.0
-    G4_Declare *tmpRegCR0 = createTempVarWithNoSpill(1, Type_UD, reg_align, Any);
+    G4_Declare *tmpRegCR0 = createTempVarWithNoSpill(1, Type_UD, Any);
 
     // constants
 
@@ -1793,7 +1789,7 @@ G4_INST* IR_Builder::createFenceInstruction( uint8_t flushParam, bool commitEnab
     }
 
     G4_Declare *srcDcl = getBuiltinR0();
-    G4_Declare *dstDcl = createTempVar( 8, Type_UD, Either, Any );
+    G4_Declare *dstDcl = createTempVar( 8, Type_UD, Any );
     G4_DstRegRegion *sendDstOpnd = commitEnable ? Create_Dst_Opnd_From_Dcl(dstDcl, 1) : createNullDst(Type_UD);
     G4_SrcRegRegion *sendSrcOpnd = Create_Src_Opnd_From_Dcl(srcDcl, getRegionStride1());
     uint8_t BTI = 0x0;
@@ -1923,7 +1919,7 @@ int IR_Builder::translateVISASyncInst(ISA_Opcode opcode, unsigned int mask)
             int desc = (1 << 25) + (1 << 20) + (1 << 19) + (0x3 << 17) + (0x1F << 12);
 
             G4_Declare *dcl = getBuiltinR0();
-            G4_Declare *dstDcl = createTempVar( 8, Type_UD, Either, Any );
+            G4_Declare *dstDcl = createTempVar( 8, Type_UD, Any );
             G4_DstRegRegion* sendDstOpnd = Create_Dst_Opnd_From_Dcl( dstDcl, 1);
             G4_SrcRegRegion* sendMsgOpnd = Create_Src_Opnd_From_Dcl( dcl, getRegionStride1());
 
@@ -1983,7 +1979,7 @@ int IR_Builder::translateVISASyncInst(ISA_Opcode opcode, unsigned int mask)
                 // so we generate a fence without commit, followed by a read surface info to BTI 0
                 createFenceInstruction((uint8_t) mask & 0xFF, false, globalFence);
                 G4_Imm* surface = createImm(0, Type_UD);
-                G4_Declare* zeroLOD = createTempVar(8, Type_UD, Either, Any);
+                G4_Declare* zeroLOD = createTempVar(8, Type_UD, Any);
                 Create_MOV_Inst(zeroLOD, 0, 0, 8, NULL, NULL, createImm(0, Type_UD));
                 G4_SrcRegRegion* sendSrc = Create_Src_Opnd_From_Dcl(zeroLOD, getRegionStride1());
                 G4_DstRegRegion* sendDst = Create_Dst_Opnd_From_Dcl(zeroLOD, 1);
@@ -2154,7 +2150,7 @@ int IR_Builder::translateVISACFSwitchInst(G4_Operand *indexOpnd, uint8_t numLabe
     }
     else
     {
-        G4_Declare *tmpVar = createTempVar(1, Type_D, Either, Any );
+        G4_Declare *tmpVar = createTempVar(1, Type_D, Any );
         G4_DstRegRegion* dstOpnd = Create_Dst_Opnd_From_Dcl( tmpVar, 1);
         createInst( NULL, G4_shl, NULL, false, 1, dstOpnd, indexOpnd,
             createImm(4, Type_UW), 0, 0 );
@@ -2207,7 +2203,7 @@ int IR_Builder::translateVISACFCallInst(Common_ISA_Exec_Size execsize, Common_VI
         getFCPatchInfo()->setHasFCCalls(true);
 
         input_info_t *RetIP = getRetIPArg();
-        G4_Declare *FCRet = createTempVar(2, Type_UD, Either, Four_Word);
+        G4_Declare *FCRet = createTempVar(2, Type_UD, Four_Word);
         FCRet->setAliasDeclare(RetIP->dcl, 0);
         dstOpndToUse = Create_Dst_Opnd_From_Dcl(FCRet, 1);
 
@@ -2327,7 +2323,7 @@ int IR_Builder::translateVISACFIFCallInst(Common_ISA_Exec_Size execsize, Common_
     if (!src0->isSrcRegRegion() ||
         (src0->isSrcRegRegion() && (src0->asSrcRegRegion()->getModifier() != Mod_src_undef)))
     {
-        auto tmpSrc0 = createTempVar(1, Type_D, Either, Any);
+        auto tmpSrc0 = createTempVar(1, Type_D, Any);
         createInst(nullptr, G4_mov, nullptr, false, 1,
             Create_Dst_Opnd_From_Dcl(tmpSrc0, 1), src0, nullptr, InstOpt_WriteEnable);
         src0 = Create_Src_Opnd_From_Dcl(tmpSrc0, getRegionScalar());
@@ -2337,7 +2333,7 @@ int IR_Builder::translateVISACFIFCallInst(Common_ISA_Exec_Size execsize, Common_
     //        So may not create this "add" here
 /*
     // Call target is (function_address - PC)
-    G4_Declare* callOffset = createTempVar(1, Type_D, Either, Any);
+    G4_Declare* callOffset = createTempVar(1, Type_D, Any);
     createInst(nullptr, G4_add, nullptr, false, 1,
                Create_Dst_Opnd_From_Dcl(callOffset, 1), src0,
                createSrcRegRegion(Mod_Minus, Direct, phyregpool.getIpReg(), 0, 0,
@@ -2419,7 +2415,7 @@ int IR_Builder::translateVISACFRetInst(Common_ISA_Exec_Size executionSize, Commo
     {
         if (tmpFCRet == nullptr) {
             input_info_t *RetIP = getRetIPArg();
-            tmpFCRet = createTempVar(2, Type_UD, Either, Four_Word);
+            tmpFCRet = createTempVar(2, Type_UD, Four_Word);
             tmpFCRet->setAliasDeclare(RetIP->dcl, 0);
         }
         G4_SrcRegRegion* srcOpndToUse = createSrcRegRegion(Mod_src_undef,
@@ -2983,7 +2979,7 @@ int IR_Builder::translateVISAMediaLoadInst(
 
         original_dst = dstOpnd;
         new_dcl = createTempVar( GENX_GRF_REG_SIZ/G4_Type_Table[Type_UD].byteSize,
-            Type_UD, Either, SUB_ALIGNMENT_GRFALIGN );
+            Type_UD, SUB_ALIGNMENT_GRFALIGN );
         G4_DstRegRegion tmp_dst( Direct,
             new_dcl->getRegVar(),
             0,
@@ -3036,7 +3032,7 @@ int IR_Builder::translateVISAMediaLoadInst(
     {
         G4_Declare *new_dcl2 = createTempVar(
             GENX_GRF_REG_SIZ/G4_Type_Table[original_dst->getType()].byteSize,
-            original_dst->getType(), Either, SUB_ALIGNMENT_GRFALIGN );
+            original_dst->getType(), SUB_ALIGNMENT_GRFALIGN );
 
         new_dcl2->setAliasDeclare( new_dcl, 0 );
 
@@ -3802,7 +3798,7 @@ int IR_Builder::translateVISAGather4Inst(
     // shl (esize) offset<1>:ud elt_off<8;8,1>:ud 2:uw
     G4_DstRegRegion* dst1_opnd = createDstRegRegion(Direct, offset->getRegVar(), 0, 0, 1, offset->getElemType());
 
-    G4_Declare *tmp_dcl = createTempVar( numElt, Type_UD, Either, SUB_ALIGNMENT_GRFALIGN );
+    G4_Declare *tmp_dcl = createTempVar( numElt, Type_UD, SUB_ALIGNMENT_GRFALIGN );
     G4_DstRegRegion dst3( Direct, tmp_dcl->getRegVar(), 0, 0, 1, tmp_dcl->getElemType() );
     G4_DstRegRegion* dst3_opnd = createDstRegRegion( dst3 );
 
@@ -3829,7 +3825,7 @@ int IR_Builder::translateVISAGather4Inst(
     }
     else
     {
-        G4_Declare *tmp_dcl1 = createTempVar( 1, gOffOpnd->getType(), Either, Any );
+        G4_Declare *tmp_dcl1 = createTempVar( 1, gOffOpnd->getType(), Any );
         G4_DstRegRegion dst2( Direct, tmp_dcl1->getRegVar(), 0, 0, 1, tmp_dcl1->getElemType() );
         G4_DstRegRegion* dst2_opnd = createDstRegRegion( dst2 );
 
@@ -4023,7 +4019,7 @@ int IR_Builder::translateVISAScatter4Inst(
 
     G4_DstRegRegion* dst1_opnd = createDstRegRegion(Direct, offset->getRegVar(), 0, 0, 1, offset->getElemType());
 
-    G4_Declare *tmp_dcl = createTempVar( numElt, Type_UD, Either, SUB_ALIGNMENT_GRFALIGN );
+    G4_Declare *tmp_dcl = createTempVar( numElt, Type_UD, SUB_ALIGNMENT_GRFALIGN );
     G4_DstRegRegion dst3( Direct, tmp_dcl->getRegVar(), 0, 0, 1, tmp_dcl->getElemType() );
     G4_DstRegRegion* dst3_opnd = createDstRegRegion( dst3 );
 
@@ -4047,7 +4043,7 @@ int IR_Builder::translateVISAScatter4Inst(
     }
     else
     {
-        G4_Declare *tmp_dcl1 = createTempVar( 1, gOffOpnd->getType(), Either, Any );
+        G4_Declare *tmp_dcl1 = createTempVar( 1, gOffOpnd->getType(), Any );
         G4_DstRegRegion dst2( Direct, tmp_dcl1->getRegVar(), 0, 0, 1, tmp_dcl1->getElemType() );
         G4_DstRegRegion* dst2_opnd = createDstRegRegion( dst2 );
 
@@ -5484,7 +5480,7 @@ int IR_Builder::translateVISALogicInst(ISA_Opcode opcode, G4_Predicate *predOpnd
             ( g4Srcs[i]->asSrcRegRegion()->getModifier() == Mod_Minus || g4Srcs[i]->asSrcRegRegion()->getModifier() == Mod_Minus_Abs ))
         {
             G4_Type tmpType = g4Srcs[i]->asSrcRegRegion()->getType();
-            G4_Declare *tempDcl = createTempVar( exsize, tmpType, Either, Any );
+            G4_Declare *tempDcl = createTempVar( exsize, tmpType, Any );
             G4_DstRegRegion tmp_dst( Direct, tempDcl->getRegVar(), 0, 0, 1, tmpType );
 
             G4_DstRegRegion *tmp_dst_opnd = createDstRegRegion( tmp_dst );
@@ -5530,7 +5526,7 @@ int IR_Builder::translateVISALogicInst(ISA_Opcode opcode, G4_Predicate *predOpnd
         // split into
         // bfi1 tmp src0 src1
         // bfi2 dst tmp src2 src3
-        G4_Declare* tmpDcl = createTempVar( exsize, g4Srcs[0]->getType(), Either, SUB_ALIGNMENT_GRFALIGN);
+        G4_Declare* tmpDcl = createTempVar( exsize, g4Srcs[0]->getType(), SUB_ALIGNMENT_GRFALIGN);
         G4_DstRegRegion* tmpDst = Create_Dst_Opnd_From_Dcl( tmpDcl, 1);
         createInst(
             predOpnd,
@@ -7367,7 +7363,7 @@ int IR_Builder::translateVISASampleInfoInst(
     else
     {
         useHeader = false;
-        msg = createTempVar(8, Type_UD, Either, Any);
+        msg = createTempVar(8, Type_UD, Any);
         G4_DstRegRegion *dst = createDstRegRegion(Direct, msg->getRegVar(), 0, 0, 1, Type_UD);
         G4_Imm* src0Imm = createImm(0, Type_UD);
         auto temp = createInst(NULL, G4_mov, NULL, false, 8, dst, src0Imm, NULL, 0, 0);
@@ -7943,7 +7939,7 @@ int IR_Builder::translateVISARTWrite3DInst(
 #define SAMPLE_INDEX_OFFSET 6
         if (cntrls.isSampleIndex)
         {
-            G4_Declare *tmpDcl = createTempVar(2, Type_UD, Either, Any);
+            G4_Declare *tmpDcl = createTempVar(2, Type_UD, Any);
             G4_DstRegRegion *tmpDst = createDstRegRegion(Direct, tmpDcl->getRegVar(), 0, 0, 1, Type_UD);
 
             G4_INST* shiftInst = createInst(NULL, G4_shl, NULL, false, 1, tmpDst, sampleIndexOpnd, createImm(SAMPLE_INDEX_OFFSET, Type_UD), 0);
@@ -8028,7 +8024,7 @@ int IR_Builder::translateVISARTWrite3DInst(
                             Mod_src_undef, Direct,
                             pred->getBase()->asRegVar(), 0, 0,
                             getRegionScalar(), Type_UD);
-                    G4_Declare *tmpDcl = createTempVar(1, Type_UD, Either, Any);
+                    G4_Declare *tmpDcl = createTempVar(1, Type_UD, Any);
                     G4_DstRegRegion *tmpDst = createDstRegRegion(Direct, tmpDcl->getRegVar(), 0, 0, 1, Type_UD);
                     createInst(NULL, G4_mov, NULL, false, 1, tmpDst, pixelMaskTmp, NULL, InstOpt_WriteEnable);
 
@@ -8632,12 +8628,12 @@ int IR_Builder::splitSampleInst(VISASampler3DSubOpCode actualop,
     uint8_t execSize = 8;
     uint16_t numElts = numRows * GENX_GRF_REG_SIZ/G4_Type_Table[Type_F].byteSize;
     G4_Declare* payloadF = Create_MRF_Dcl( numElts, Type_F );
-    G4_Declare* payloadUD = createTempVar( numElts, Type_UD, Either, SUB_ALIGNMENT_GRFALIGN );
+    G4_Declare* payloadUD = createTempVar( numElts, Type_UD, SUB_ALIGNMENT_GRFALIGN );
     payloadUD->setAliasDeclare( payloadF, 0 );
     G4_SrcRegRegion* srcToUse = createSrcRegRegion(Mod_src_undef, Direct, payloadUD->getRegVar(), 0, 0, getRegionStride1(), Type_UD);
 
     // even though we only use lower half of the GRF, we have to allocate full GRF
-    G4_Declare* payloadHF = createTempVar(numElts * 2, Type_HF, Either, Any);
+    G4_Declare* payloadHF = createTempVar(numElts * 2, Type_HF, Any);
     payloadHF->setAliasDeclare( payloadF, 0 );
 
     /********* Creating temp destination, since results are interleaved **************/
@@ -8772,15 +8768,15 @@ int IR_Builder::splitSampleInst(VISASampler3DSubOpCode actualop,
         if(pixelNullMaskEnable)
         {
             unsigned int numElts = tempDstDcl->getNumElems() * tempDstDcl->getNumRows();
-            tempDstUD = createTempVar(numElts, Type_UD, Either, SUB_ALIGNMENT_GRFALIGN);
+            tempDstUD = createTempVar(numElts, Type_UD, SUB_ALIGNMENT_GRFALIGN);
             tempDstUD->setAliasDeclare(tempDstDcl, 0);
 
             numElts = tempDstDcl2->getNumElems() * tempDstDcl2->getNumRows();
-            tempDst2UD = createTempVar(numElts, Type_UD, Either, SUB_ALIGNMENT_GRFALIGN);
+            tempDst2UD = createTempVar(numElts, Type_UD, SUB_ALIGNMENT_GRFALIGN);
             tempDst2UD->setAliasDeclare(tempDstDcl2, 0);
 
             numElts = originalDstDcl->getNumElems() * originalDstDcl->getNumRows();
-            origDstUD = createTempVar(numElts, Type_UD, Either, SUB_ALIGNMENT_GRFALIGN);
+            origDstUD = createTempVar(numElts, Type_UD, SUB_ALIGNMENT_GRFALIGN);
             origDstUD->setAliasDeclare(originalDstDcl, 0);
         }
 
@@ -8800,11 +8796,11 @@ int IR_Builder::splitSampleInst(VISASampler3DSubOpCode actualop,
         /**************** SECOND HALF OF THE SEND *********************/
         // re-create payload declare so the two sends may be issued independently
         G4_Declare* payloadF = Create_MRF_Dcl(numElts, Type_F);
-        G4_Declare* payloadUD = createTempVar(numElts, Type_UD, Either, SUB_ALIGNMENT_GRFALIGN);
+        G4_Declare* payloadUD = createTempVar(numElts, Type_UD, SUB_ALIGNMENT_GRFALIGN);
         payloadUD->setAliasDeclare(payloadF, 0);
 
         // even though we only use lower half of the GRF, we have to allocate full GRF
-        G4_Declare* payloadHF = createTempVar(numElts * 2, Type_HF, Either, Any);
+        G4_Declare* payloadHF = createTempVar(numElts * 2, Type_HF, Any);
         payloadHF->setAliasDeclare(payloadF, 0);
 
         G4_SrcRegRegion *srcToUse2 = createSrcRegRegion(Mod_src_undef, Direct, payloadUD->getRegVar(), 0, 0, getRegionStride1(), Type_UD);
@@ -9690,12 +9686,12 @@ int IR_Builder::translateVISASVMScatterReadInst(
         G4_Declare* srcDcl = addresses->getTopDcl()->getRootDeclare();
         if (srcDcl->getByteSize() <= GENX_GRF_REG_SIZ)
         {
-            srcDcl->setAlign(Even);
+            srcDcl->setEvenAlign();
         }
         G4_Declare* dstDcl = dst->getTopDcl()->getRootDeclare();
         if (dstDcl->getByteSize() <= GENX_GRF_REG_SIZ)
         {
-            dstDcl->setAlign(Even);
+            dstDcl->setEvenAlign();
         }
     }
 

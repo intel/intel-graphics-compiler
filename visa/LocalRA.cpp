@@ -138,7 +138,7 @@ void LocalRA::evenAlign()
 #ifdef DEBUG_VERBOSE_ON
             DEBUG_VERBOSE("Updating alignment to Even for GRF candidates" << std::endl);
 #endif
-            gra.updateAlignment(G4_GRF, Even);
+            gra.evenAlign();
         }
         gra.updateSubRegAlignment(G4_GRF, SUB_ALIGNMENT_GRFALIGN);
         // Since we are piggy backing on mask field of G4_Declare,
@@ -750,7 +750,7 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign)
             int subregNum = 0;
             int sizeInWords = dcl->getWordSize();
             int nrows = 0;
-            BankAlign align = dcl->getAlign() == Even ? BankAlign::Even : BankAlign::Either;
+            BankAlign align = dcl->isEvenAlign() ? BankAlign::Even : BankAlign::Either;
             BankAlign bankAlign = BankAlign::Either;
 
             if (twoBanksRA &&
@@ -2619,7 +2619,6 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder
     int nrows = 0;
     int size = lr->getSizeInWords();
     G4_Declare *dcl = lr->getTopDcl();
-    G4_Align align = dcl->getRegVar()->getAlignment();
     G4_SubReg_Align subalign = dcl->getRegVar()->getSubRegAlignment();
     unsigned short occupiedBundles = 0;
 
@@ -2646,7 +2645,7 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder
     if (bankAlign == BankAlign::Either)
     {
         // FIXME: ISTM the existing code is wrong, we should always honor even alignment
-        bankAlign = align == Even ? BankAlign::Even : BankAlign::Either;
+        bankAlign = dcl->isEvenAlign() ? BankAlign::Even : BankAlign::Either;
     }
 
     if (useRoundRobin)
@@ -2790,8 +2789,7 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder
                                     G4_Declare* splitDcl = NULL;
                                     const char* splitDclName = builder.getNameString(builder.mem, 16, "split_%s", oldDcl->getName());
                                     splitDcl = builder.createDeclareNoLookup(splitDclName, G4_GRF, oldDcl->getNumElems(), oldDcl->getNumRows(), oldDcl->getElemType());
-                                    splitDcl->setAlign(oldDcl->getAlign());
-                                    splitDcl->setSubRegAlign(oldDcl->getSubRegAlign());
+                                    splitDcl->copyAlign(oldDcl);
 
                                     LocalLiveRange* splitLR = gra.GetOrCreateLocalLiveRange(splitDcl);
                                     splitLR->markSplit();
@@ -2827,8 +2825,7 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder
 
                                     const char* newDclName = builder.getNameString(builder.mem, 16, "copy_%s", oldDcl->getName());
                                     newDcl = builder.createDeclareNoLookup(newDclName, G4_GRF, oldDcl->getNumElems(), oldDcl->getNumRows(), oldDcl->getElemType());
-                                    newDcl->setAlign(oldDcl->getAlign());
-                                    newDcl->setSubRegAlign(oldDcl->getSubRegAlign());
+                                    newDcl->copyAlign(oldDcl);
 
                                     unsigned int oldRefs = gra.getNumRefs(oldDcl);
                                     LocalLiveRange* newLR = gra.GetOrCreateLocalLiveRange(newDcl);
@@ -2868,8 +2865,7 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder
                                     {
                                         const char* newSrcDclName = builder.getNameString(builder.mem, 16, "copy_%s", oldSrcDcl->getName());
                                         newSrcDcl = builder.createDeclareNoLookup(newSrcDclName, G4_GRF, oldSrcDcl->getNumElems(), oldSrcDcl->getNumRows(), oldSrcDcl->getElemType());
-                                        newSrcDcl->setAlign(oldSrcDcl->getAlign());
-                                        newSrcDcl->setSubRegAlign(oldSrcDcl->getSubRegAlign());
+                                        newSrcDcl->copyAlign(oldSrcDcl);
                                         newSrcDcl->setAliasDeclare(aliasOldSrcDcl, oldSrcDcl->getAliasOffset());
                                     }
                                     G4_SrcRegRegion* newSrc = builder.Create_Src_Opnd_From_Dcl(newSrcDcl, oldSrc->getRegion());
@@ -2883,8 +2879,7 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder
                                         oldSrcDcl = aliasOldSrcDcl;
                                         const char* newSrcDclName = builder.getNameString(builder.mem, 16, "copy_%s", oldSrcDcl->getName());
                                         newSrcDcl = builder.createDeclareNoLookup(newSrcDclName, G4_GRF, oldSrcDcl->getNumElems(), oldSrcDcl->getNumRows(), oldSrcDcl->getElemType());
-                                        newSrcDcl->setAlign(oldSrcDcl->getAlign());
-                                        newSrcDcl->setSubRegAlign(oldSrcDcl->getSubRegAlign());
+                                        newSrcDcl->copyAlign(oldSrcDcl);
                                         aliasOldSrcDcl = oldSrcDcl->getAliasDeclare();
                                         MUST_BE_TRUE(aliasOldSrcDcl != NULL, "Invalid alias decl");
                                         newSrcDcl->setAliasDeclare(aliasOldSrcDcl, oldSrcDcl->getAliasOffset());
@@ -2903,8 +2898,7 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder
                                     {
                                         const char* newSrcDclName = builder.getNameString(builder.mem, 16, "copy_%s", oldSrcDcl->getName());
                                         newSrcDcl = builder.createDeclareNoLookup(newSrcDclName, G4_GRF, oldSrcDcl->getNumElems(), oldSrcDcl->getNumRows(), oldSrcDcl->getElemType());
-                                        newSrcDcl->setAlign(oldSrcDcl->getAlign());
-                                        newSrcDcl->setSubRegAlign(oldSrcDcl->getSubRegAlign());
+                                        newSrcDcl->copyAlign(oldSrcDcl);
                                         newSrcDcl->setAliasDeclare(aliasOldSrcDcl, oldSrcDcl->getAliasOffset());
                                     }
                                     G4_SrcRegRegion* newSrc = builder.Create_Src_Opnd_From_Dcl(newSrcDcl, oldSrc->getRegion());
@@ -2918,8 +2912,7 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder
                                         oldSrcDcl = aliasOldSrcDcl;
                                         const char* newSrcDclName = builder.getNameString(builder.mem, 16, "copy_%s", oldSrcDcl->getName());
                                         newSrcDcl = builder.createDeclareNoLookup(newSrcDclName, G4_GRF, oldSrcDcl->getNumElems(), oldSrcDcl->getNumRows(), oldSrcDcl->getElemType());
-                                        newSrcDcl->setAlign(oldSrcDcl->getAlign());
-                                        newSrcDcl->setSubRegAlign(oldSrcDcl->getSubRegAlign());
+                                        newSrcDcl->copyAlign(oldSrcDcl);
                                         aliasOldSrcDcl = oldSrcDcl->getAliasDeclare();
                                         MUST_BE_TRUE(aliasOldSrcDcl != NULL, "Invalid alias decl");
                                         newSrcDcl->setAliasDeclare(aliasOldSrcDcl, oldSrcDcl->getAliasOffset());
@@ -2966,7 +2959,7 @@ bool LinearScan::allocateRegsFromBanks(LocalLiveRange* lr)
     int bank1AvailableRegNum = pregManager.getAvaialableRegs()->getBank1AvailableRegNum();
     int bank2AvailableRegNum = pregManager.getAvaialableRegs()->getBank2AvailableRegNum();
     int size = lr->getSizeInWords();
-    BankAlign align = lr->getTopDcl()->getRegVar()->getAlignment() == Even ? BankAlign::Even : BankAlign::Either;
+    BankAlign align = lr->getTopDcl()->isEvenAlign() ? BankAlign::Even : BankAlign::Either;
     G4_SubReg_Align subalign = lr->getTopDcl()->getRegVar()->getSubRegAlignment();
     unsigned int instID;
     lr->getFirstRef(instID);
@@ -3139,7 +3132,7 @@ bool LinearScan::allocateRegsFromBanks(LocalLiveRange* lr)
         if (!nrows)
         {   //Try without window, no even/odd alignment for bank, but still low and high(keep in same bank)
             nrows = pregManager.findFreeRegs(size,
-                lr->getTopDcl()->getRegVar()->getAlignment() == Even ? BankAlign::Even : BankAlign::Either,
+                lr->getTopDcl()->isEvenAlign() ? BankAlign::Even : BankAlign::Either,
                 subalign,
                 regnum,
                 subregnum,
@@ -3165,7 +3158,7 @@ bool LinearScan::allocateRegsFromBanks(LocalLiveRange* lr)
             }
 
             nrows = pregManager.findFreeRegs(size,
-                lr->getTopDcl()->getRegVar()->getAlignment() == Even ? BankAlign::Even : BankAlign::Either,
+                lr->getTopDcl()->isEvenAlign() ? BankAlign::Even : BankAlign::Either,
                 subalign,
                 regnum,
                 subregnum,

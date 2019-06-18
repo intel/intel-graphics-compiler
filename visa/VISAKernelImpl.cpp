@@ -180,12 +180,12 @@ static void setDeclAlignment(G4_Declare* dcl, VISA_Align align)
     switch (align)
     {
     case ALIGN_BYTE: //no alignment;
-    case ALIGN_WORD: dcl->setAlign(Either); dcl->setSubRegAlign(Any); break; //word aligned;
-    case ALIGN_DWORD: dcl->setAlign(Either); dcl->setSubRegAlign(Even_Word); break;//dword aligned;
-    case ALIGN_QWORD: dcl->setAlign(Either); dcl->setSubRegAlign(Four_Word); break;//8 byte aligned;
-    case ALIGN_OWORD: dcl->setAlign(Either); dcl->setSubRegAlign(Eight_Word); break;//oword aligned;
-    case ALIGN_GRF: dcl->setAlign(Either); dcl->setSubRegAlign(SUB_ALIGNMENT_GRFALIGN); break;//grf aligned;
-    case ALIGN_2_GRF: dcl->setAlign(Even); dcl->setSubRegAlign(SUB_ALIGNMENT_GRFALIGN); break; //2 grf aligned;
+    case ALIGN_WORD: dcl->setSubRegAlign(Any); break; //word aligned;
+    case ALIGN_DWORD: dcl->setSubRegAlign(Even_Word); break;//dword aligned;
+    case ALIGN_QWORD: dcl->setSubRegAlign(Four_Word); break;//8 byte aligned;
+    case ALIGN_OWORD: dcl->setSubRegAlign(Eight_Word); break;//oword aligned;
+    case ALIGN_GRF: dcl->setSubRegAlign(SUB_ALIGNMENT_GRFALIGN); break; //grf aligned;
+    case ALIGN_2_GRF: dcl->setEvenAlign(); dcl->setSubRegAlign(SUB_ALIGNMENT_GRFALIGN); break; //2 grf aligned;
     default: assert(false && "Incorrect vISA alignment"); break;
     }
 }

@@ -2300,8 +2300,8 @@ void Optimizer::doSimplification(G4_INST *inst)
                     if (SrcSizeInBytes <= G4_GRF_REG_NBYTES/2u)
                         SubAlign = (G4_SubReg_Align)(NUM_WORDS_PER_GRF/2);
                     inst->setOpcode(G4_movi);
-                    if (Dcl->getAlign() == Either &&
-                        Dcl->getSubRegAlign() != SUB_ALIGNMENT_GRFALIGN) {
+                    if (!Dcl->isEvenAlign() && Dcl->getSubRegAlign() != SUB_ALIGNMENT_GRFALIGN) 
+                    {
                         Dcl->setSubRegAlign(SubAlign);
                     }
                     RegionDesc *rd = builder.createRegionDesc(8, 8, 1);
@@ -2755,7 +2755,7 @@ static bool propagateType(IR_Builder &Builder, G4_BB *BB, G4_INST *Mov, G4_INST:
         return false;
     // Create a new destination of MOV of the propagation type.
     unsigned NumElt = Mov->getExecSize();
-    auto NewDcl = Builder.createTempVar(NumElt, PT, Either, Any);
+    auto NewDcl = Builder.createTempVar(NumElt, PT, Any);
     auto NewDst = Builder.Create_Dst_Opnd_From_Dcl(NewDcl, Dst->getHorzStride());
     Mov->setDest(NewDst);
     // Propagate type
@@ -3027,7 +3027,7 @@ void Optimizer::newLocalCopyPropagation()
                         }
                         else
                         {
-                            G4_Declare* newDcl = builder.createTempVar(numElt, inst->getDst()->getType(), Either, Any);
+                            G4_Declare* newDcl = builder.createTempVar(numElt, inst->getDst()->getType(), Any);
                             newDcl->setAliasDeclare(src0->getBase()->asRegVar()->getDeclare(), 0);
 
                             new_src_opnd =
@@ -3493,7 +3493,7 @@ static void expandPseudoLogic(IR_Builder& builder,
             if (Opnd)
             {
                 auto src = Opnd->asSrcRegRegion();
-                auto newDcl = builder.createTempVar(tmpSize, Type_UW, Either, Any);
+                auto newDcl = builder.createTempVar(tmpSize, Type_UW, Any);
                 auto newDst = builder.createDstRegRegion(Direct, newDcl->getRegVar(), 0, 0, 1, Type_UW);
                 auto newPred = builder.createPredicate(PredState_Plus, src->getBase(), src->getSubRegOff());
                 auto newSel = builder.createInternalInst(newPred, G4_sel, nullptr, false, tmpSize, newDst,
@@ -8698,7 +8698,7 @@ bool BUNDLE_INFO::doMerge(IR_Builder& builder,
         }
         else
         {
-            newDcl = builder.createTempVar(execSize, dstType, Either, Eight_Word, "Merged");
+            newDcl = builder.createTempVar(execSize, dstType, Eight_Word, "Merged");
         }
         for (int i = 0; i < size; ++i)
         {
@@ -8735,7 +8735,7 @@ bool BUNDLE_INFO::doMerge(IR_Builder& builder,
             }
             else
             {
-                newDcl = builder.createTempVar(execSize, srcType, Either, Eight_Word, "Merged");
+                newDcl = builder.createTempVar(execSize, srcType, Eight_Word, "Merged");
             }
             for (int j = 0; j < size; ++j)
             {
@@ -10286,7 +10286,7 @@ private:
 
         // Create such an alias if it does not exist yet.
         unsigned NElts = RootDcl->getByteSize() / G4_Type_Table[Ty].byteSize;
-        auto Alias = Builder.createTempVar(NElts, Ty, Either, Any,
+        auto Alias = Builder.createTempVar(NElts, Ty, Any,
             (std::string(RootDcl->getName()) + "_" + G4_Type_Table[Ty].str).c_str(), false);
         Alias->setAliasDeclare(RootDcl, 0);
         Aliases.push_back(Alias);
@@ -10416,8 +10416,8 @@ void Optimizer::splitVariables()
             if (Iter == DclMap.end())
             {
                 unsigned NElts = Dcl->getTotalElems();
-                auto DclLow = builder.createTempVar(NElts / 2, Ty, Either, SUB_ALIGNMENT_GRFALIGN, "Lo");
-                auto DclHi = builder.createTempVar(NElts / 2, Ty, Either, SUB_ALIGNMENT_GRFALIGN, "Hi");
+                auto DclLow = builder.createTempVar(NElts / 2, Ty, SUB_ALIGNMENT_GRFALIGN, "Lo");
+                auto DclHi = builder.createTempVar(NElts / 2, Ty, SUB_ALIGNMENT_GRFALIGN, "Hi");
                 DclMap[Dcl] = new DclMapInfo(DclLow, DclHi);
             }
             bool IsLow = LBound == LoLBound;
@@ -10597,9 +10597,9 @@ void Optimizer::split4GRFVars()
         G4_Type Ty = splitDcl->getElemType();
         unsigned NElts = splitDcl->getTotalElems();
         std::string varName(splitDcl->getName());
-        auto DclLow = builder.createTempVar(NElts / 2, Ty, Either, SUB_ALIGNMENT_GRFALIGN,
+        auto DclLow = builder.createTempVar(NElts / 2, Ty, SUB_ALIGNMENT_GRFALIGN,
             (varName + "Lo").c_str(), false);
-        auto DclHi = builder.createTempVar(NElts / 2, Ty, Either, SUB_ALIGNMENT_GRFALIGN,
+        auto DclHi = builder.createTempVar(NElts / 2, Ty, SUB_ALIGNMENT_GRFALIGN,
             (varName + "Hi").c_str(), false);
         DclMap[splitDcl] = new DclMapInfo(DclLow, DclHi);
         //std::cerr << "split " << splitDcl->getName() << " into (" <<
@@ -11284,7 +11284,7 @@ static G4_INST* emitRetiringMov(IR_Builder& builder, G4_BB* BB, G4_INST* SI,
     G4_Operand* Src0 = SI->getSrc(0);
 
     unsigned RegNum = Src0->getLinearizedStart() / GENX_GRF_REG_SIZ;
-    G4_Declare* Dcl = builder.createTempVar(16, Type_F, Either, Any);
+    G4_Declare* Dcl = builder.createTempVar(16, Type_F, Any);
     Dcl->setGRFBaseOffset(RegNum * G4_GRF_REG_NBYTES);
     Dcl->getRegVar()->setPhyReg(builder.phyregpool.getGreg(RegNum), 0);
 

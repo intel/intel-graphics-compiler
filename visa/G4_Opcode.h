@@ -140,7 +140,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define Opcode_can_use_cond_mod(opc)        \
                                  (opc == G4_sel)
 
-enum G4_Align
+enum class G4_Align
 {
     Either = 1,          // either
     Even = 2,            // even align

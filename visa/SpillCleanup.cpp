@@ -75,7 +75,7 @@ G4_SrcRegRegion* CoalesceSpillFills::generateCoalescedSpill(unsigned int scratch
 }
 
 G4_DstRegRegion* CoalesceSpillFills::generateCoalescedFill(unsigned int scratchOffset, unsigned int payloadSize,
-    unsigned int dclSize, G4_SendMsgDescriptor* sample, int srcCISAOff, G4_Align alignment)
+    unsigned int dclSize, G4_SendMsgDescriptor* sample, int srcCISAOff, bool evenAlignDst)
 {
     // Generate split send instruction with specified payload size and offset
     // Construct fillDst
@@ -84,7 +84,10 @@ G4_DstRegRegion* CoalesceSpillFills::generateCoalescedFill(unsigned int scratchO
     auto fillDcl = kernel.fg.builder->createDeclareNoLookup(dclName, G4_GRF,
         NUM_DWORDS_PER_GRF, (unsigned short)dclSize, Type_UD, DeclareType::CoalescedFill);
 
-    fillDcl->setAlign(alignment);
+    if (evenAlignDst)
+    {
+        fillDcl->setEvenAlign();
+    }
     fillDcl->setDoNotSpill();
 
     auto fillDst = kernel.fg.builder->createDstRegRegion(Direct, fillDcl->getRegVar(), 0,
@@ -272,7 +275,7 @@ void CoalesceSpillFills::coalesceFills(std::list<INST_LIST_ITER>& coalesceableFi
     auto leadInst = *coalesceableFills.front();
 
     auto coalescedFillDst = generateCoalescedFill(min, payloadSize, dclSize,
-        leadInst->getMsgDesc(), srcCISAOff, leadInst->getDst()->getTopDcl()->getAlign());
+        leadInst->getMsgDesc(), srcCISAOff, leadInst->getDst()->getTopDcl()->isEvenAlign());
 
     for (auto c : coalesceableFills)
     {
@@ -485,7 +488,7 @@ void CoalesceSpillFills::sendsInRange(std::list<INST_LIST_ITER>& instList,
 
             // don't coalesce if non-leading fill inst has alignment requirements,
             // as we may not be able to satisfy it
-            bool fillDstisAligned = inst->getDst()->getTopDcl()->getAlign() != Either;
+            bool fillDstisAligned = inst->getDst()->getTopDcl()->isEvenAlign();
 
             if (!maskMatch || fillDstisAligned)
             {

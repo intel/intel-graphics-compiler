@@ -69,10 +69,9 @@ static bool isCompressedInst( G4_INST *inst ){
         opnd->isSrcRegRegion() && opnd->asSrcRegRegion()->getRegion()->width == exec_size || \
         opnd->isSrcRegRegion() && opnd->asSrcRegRegion()->getRegion()->vertStride == 0 )
 
-G4_Align HWConformity::getDclAlignment( int opndBytes, G4_INST *inst, bool isScalar, G4_SubReg_Align &subAlign )
+G4_SubReg_Align HWConformity::getDclAlignment( int opndBytes, G4_INST *inst, bool isScalar)
 {
-    G4_Align align = Either;
-    subAlign = Get_G4_SubRegAlign_From_Size( (uint16_t) opndBytes );
+    auto subAlign = Get_G4_SubRegAlign_From_Size( (uint16_t) opndBytes );
     bool hasAccSrc = inst->hasACCSrc();
 
     if( hasAccSrc && subAlign < SUB_ALIGNMENT_GRFALIGN )
@@ -93,7 +92,7 @@ G4_Align HWConformity::getDclAlignment( int opndBytes, G4_INST *inst, bool isSca
         }
     }
 
-    return align;
+    return subAlign;
 }
 /*
  *  create a new mov instruction and insert it before iter
@@ -168,9 +167,8 @@ G4_DstRegRegion* HWConformity::insertMovAfter( INST_LIST_ITER& it, G4_DstRegRegi
         scale = 1;
     }
 
-    G4_SubReg_Align subAlign; // set by getDclAlignment
-    G4_Align align = getDclAlignment( opExecWidthBytes > dstWidthBytes ? opExecWidthBytes : dstWidthBytes,
-        inst, newExecSize == 1, subAlign );
+    G4_SubReg_Align subAlign = getDclAlignment(opExecWidthBytes > dstWidthBytes ? opExecWidthBytes : dstWidthBytes,
+        inst, newExecSize == 1);
 
     if (subAlign < dstAlign)
     {
@@ -179,7 +177,7 @@ G4_DstRegRegion* HWConformity::insertMovAfter( INST_LIST_ITER& it, G4_DstRegRegi
 
     RegionDesc* region = newExecSize > 1 ? builder.createRegionDesc(scale, 1, 0) : builder.getRegionScalar();
 
-    G4_Declare* dcl = builder.createTempVar( newExecSize == 1 ? 1 : newExecSize * scale, type, align, subAlign );
+    G4_Declare* dcl = builder.createTempVar( newExecSize == 1 ? 1 : newExecSize * scale, type, subAlign );
 
     G4_SrcRegRegion *srcRegion = builder.Create_Src_Opnd_From_Dcl( dcl, region );
     G4_Predicate *pred = NULL;
@@ -245,7 +243,7 @@ void HWConformity::broadcast(
      MUST_BE_TRUE(execSize * G4_Type_Table[type].byteSize <= 2u * GENX_GRF_REG_SIZ,
          "move can't exceed 2 GRFs");
 
-     G4_Declare* dcl = builder.createTempVar( execSize, type, Either, align );
+     G4_Declare* dcl = builder.createTempVar( execSize, type, align );
      G4_DstRegRegion* dst = builder.createDstRegRegion(
          Direct,
          dcl->getRegVar(),
@@ -287,7 +285,7 @@ G4_SrcRegRegion* HWConformity::insertCopyBefore(INST_LIST_ITER it, uint32_t srcN
     G4_SrcRegRegion* origSrc = src->asSrcRegRegion();
 
     uint8_t newExecSize = origSrc->isScalar() ? 1 : inst->getExecSize();
-    G4_Declare* dcl = builder.createTempVar(newExecSize, origSrc->getType(), Either, tmpAlign);
+    G4_Declare* dcl = builder.createTempVar(newExecSize, origSrc->getType(), tmpAlign);
     G4_SrcModifier modifier = origSrc->getModifier();
     origSrc->setModifier(Mod_src_undef);
     G4_DstRegRegion* dst = builder.Create_Dst_Opnd_From_Dcl(dcl, 1);
@@ -315,7 +313,6 @@ G4_Operand* HWConformity::insertMovBefore(
     G4_SubReg_Align tmpAlign )
 {
     G4_INST* inst = *it;
-    G4_Align align = Either;
     G4_SubReg_Align subAlign;
     RegionDesc* region = NULL;
     unsigned short vs = 0, hs = 0, wd = 1;
@@ -368,7 +365,7 @@ G4_Operand* HWConformity::insertMovBefore(
                             G4_GRF_REG_NBYTES/2 * ( exec_size > 4 ? exec_size/4 : 1 ) :
                             newExecSize * G4_Type_Table[type].byteSize * scale );
 
-    align = getDclAlignment( opExecWidthBytes, inst, newExecSize == 1, subAlign );
+    subAlign = getDclAlignment( opExecWidthBytes, inst, newExecSize == 1);
 
     if (subAlign < tmpAlign)
     {
@@ -386,7 +383,7 @@ G4_Operand* HWConformity::insertMovBefore(
         }
     }
 
-    G4_Declare* dcl = builder.createTempVar( newExecSize == 1 ? 1 : newExecSize * scale, type, align, subAlign );
+    G4_Declare* dcl = builder.createTempVar( newExecSize == 1 ? 1 : newExecSize * scale, type, subAlign );
     G4_DstRegRegion *dstRegion = builder.Create_Dst_Opnd_From_Dcl(dcl, scale);
     G4_INST* newInst = builder.createInternalInst(nullptr, G4_mov, nullptr, false,
         newExecSize, dstRegion, builder.duplicateOperand(src), nullptr, newInstEMask,
@@ -937,7 +934,7 @@ bool HWConformity::fixLine(INST_LIST_ITER it, G4_BB *bb)
             G4_SrcRegRegion *new_src0_opnd;
             unsigned char mov_size = 4;
 
-            src0_dcl = builder.createTempVar(mov_size, Type_F, Either, Eight_Word);
+            src0_dcl = builder.createTempVar(mov_size, Type_F, Eight_Word);
             /* Create temporary variable */
             // Actully we set region to be <0;4,1> directly here.
             RegionDesc *rd = builder.createRegionDesc(0, 4, 1);
@@ -1376,7 +1373,7 @@ static bool canReplaceMovSrcType(IR_Builder& builder, G4_INST* inst, uint32_t ex
     // This is safe since integer down conversion is based on truncation
     uint32_t typeSizeRatio = extypesize / G4_Type_Table[dst->getType()].byteSize;
     uint32_t numElt = src0->isScalar() ? 1 : inst->getExecSize() * typeSizeRatio;
-    G4_Declare* newDcl = builder.createTempVar(numElt, dst->getType(), Either, Any);
+    G4_Declare* newDcl = builder.createTempVar(numElt, dst->getType(), Any);
     newDcl->setAliasDeclare(src0->getBase()->asRegVar()->getDeclare(), 0);
     RegionDesc* region = src0->isScalar() ? builder.getRegionScalar() :
         builder.createRegionDesc((uint16_t)inst->getExecSize(), (uint16_t)inst->getExecSize() * typeSizeRatio,
@@ -2342,7 +2339,7 @@ bool HWConformity::fixMULInst( INST_LIST_ITER &i, G4_BB *bb )
     G4_Declare* high32BitDcl = NULL;
     if (IS_QTYPE(dst->getType()))
     {
-        high32BitDcl = builder.createTempVar(exec_size, Type_D, Either, Any);
+        high32BitDcl = builder.createTempVar(exec_size, Type_D, Any);
         machDst = builder.Create_Dst_Opnd_From_Dcl(high32BitDcl, 1);
     }
     else
@@ -2410,7 +2407,7 @@ bool HWConformity::fixMULInst( INST_LIST_ITER &i, G4_BB *bb )
         // Note that we don't try to combine the moves because of the HW restriction that
         // "If an accumulator is an explicit source operand, its register region must match that of the destination register"
 
-        G4_Declare* low32BitDcl = builder.createTempVar(exec_size, Type_D, Either, Any);
+        G4_Declare* low32BitDcl = builder.createTempVar(exec_size, Type_D, Any);
         G4_INST* movInst = builder.createInternalInst(NULL, G4_mov, NULL, false, exec_size,
             builder.Create_Dst_Opnd_From_Dcl(low32BitDcl, 1),
             builder.createSrcRegRegion(*acc_src_opnd), NULL, inst_opt,
@@ -2420,7 +2417,7 @@ bool HWConformity::fixMULInst( INST_LIST_ITER &i, G4_BB *bb )
         G4_DstRegRegion* origDst = dst;
         bool needsExtraMov = origDst->getHorzStride() > 1 || condmod != NULL || sat_mod;
 
-        G4_Declare* dstAlias = builder.createTempVar(exec_size * 2, Type_D, Either, Any);
+        G4_Declare* dstAlias = builder.createTempVar(exec_size * 2, Type_D, Any);
         if (!needsExtraMov)
         {
             uint32_t aliasOffset = origDst->getRegOff() * GENX_GRF_REG_SIZ + origDst->getSubRegOff() * 8;
@@ -2442,7 +2439,7 @@ bool HWConformity::fixMULInst( INST_LIST_ITER &i, G4_BB *bb )
         if (needsExtraMov)
         {
             // this will take care of non-packed dst/cond mod/saturate
-            G4_Declare* dstAliasAsQ = builder.createTempVar(exec_size, Type_Q, Either, Any);
+            G4_Declare* dstAliasAsQ = builder.createTempVar(exec_size, Type_Q, Any);
             dstAliasAsQ->setAliasDeclare(dstAlias, 0);
             G4_INST* moveInst = builder.createInternalInst(NULL, G4_mov, condmod, sat_mod, exec_size,
                 dst,
@@ -2487,7 +2484,6 @@ bool HWConformity::fixMULInst( INST_LIST_ITER &i, G4_BB *bb )
         G4_Declare *dcl = builder.createTempVar(
             exec_size,
             tmp_type,
-            Either,
             SUB_ALIGNMENT_GRFALIGN);
 
         G4_DstRegRegion *tmp_dst_opnd = builder.createDstRegRegion(
@@ -2587,9 +2583,9 @@ void HWConformity::fixMULHInst( INST_LIST_ITER &i, G4_BB *bb )
         G4_Declare *tmpDcl = builder.createTempVar(
                                         dstDcl->getNumElems(),
                                         dstType,
-                                        dstDcl->getAlign(),
-                                        dstDcl->getSubRegAlign(),
+                                        Any,
                                         "TV");
+        tmpDcl->copyAlign(dstDcl);
 
         G4_DstRegRegion* tmpDst = builder.Create_Dst_Opnd_From_Dcl(tmpDcl, 1);
         inst->setDest(tmpDst);
@@ -2742,7 +2738,7 @@ void HWConformity::copyDwords(G4_Declare* dst,
     if (dst->getElemType() != Type_UD)
     {
         // create an alias with type UD
-        newDst = builder.createTempVar(numDwords, Type_UD, Either, Any);
+        newDst = builder.createTempVar(numDwords, Type_UD, Any);
         newDst->setAliasDeclare(dst, 0);
     }
 
@@ -2750,7 +2746,7 @@ void HWConformity::copyDwords(G4_Declare* dst,
     if (src->getElemType() != Type_UD)
     {
         // create an alias with type UD
-        newSrc = builder.createTempVar(numDwords, Type_UD, Either, Any);
+        newSrc = builder.createTempVar(numDwords, Type_UD, Any);
         newSrc->setAliasDeclare(src, 0);
     }
 
@@ -2800,7 +2796,7 @@ void HWConformity::copyDwordsIndirect(G4_Declare* dst,
     if (dst->getElemType() != Type_UD)
     {
         // create an alias with type UD
-        newDst = builder.createTempVar(numDwords, Type_UD, Either, Any);
+        newDst = builder.createTempVar(numDwords, Type_UD, Any);
         newDst->setAliasDeclare(dst, 0);
     }
 
@@ -2941,7 +2937,7 @@ void HWConformity::fix64bInst( INST_LIST_ITER iter, G4_BB* bb )
 
                     int numDwords = rightBound / G4_Type_Table[Type_UD].byteSize;
                     numDwords = Round_Up_Pow2(numDwords);
-                    G4_Declare* tmpSrc = builder.createTempVar(numDwords / 2, src->getType(), Either, SUB_ALIGNMENT_GRFALIGN);
+                    G4_Declare* tmpSrc = builder.createTempVar(numDwords / 2, src->getType(), SUB_ALIGNMENT_GRFALIGN);
                     // new source's region varies depending on whether it's VxH or 1x1
                     RegionDesc* newRegion = region->isRegionWH() ? builder.getRegionStride1() : region;
                     copyDwordsIndirect(tmpSrc, srcAsRegion, numDwords, bb, iter);
@@ -2992,7 +2988,7 @@ void HWConformity::fix64bInst( INST_LIST_ITER iter, G4_BB* bb )
                     }
                     MUST_BE_TRUE(multFactor != 8, "does not support 64b operation with byte source");
                     G4_Declare* tmp = builder.createTempVar(exSize * multFactor,
-                        tmpType, Either, SUB_ALIGNMENT_GRFALIGN);
+                        tmpType, SUB_ALIGNMENT_GRFALIGN);
                     G4_DstRegRegion* tmpDst = builder.Create_Dst_Opnd_From_Dcl(tmp, multFactor);
                     G4_INST* movInst = builder.createInternalInst(NULL, G4_mov, NULL, false,
                         inst->getExecSize(), tmpDst, src, NULL, inst->getOption());
@@ -3032,7 +3028,7 @@ void HWConformity::fix64bInst( INST_LIST_ITER iter, G4_BB* bb )
                         // add (2) ... r10.0<4;2,2>:q
                         int numDwords = (src->getRightBound() - src->getLeftBound() + 1) / G4_Type_Table[Type_UD].byteSize;
                         numDwords = Round_Up_Pow2(numDwords);
-                        G4_Declare* tmpSrc = builder.createTempVar(numDwords / 2, src->getType(), Either, SUB_ALIGNMENT_GRFALIGN);
+                        G4_Declare* tmpSrc = builder.createTempVar(numDwords / 2, src->getType(), SUB_ALIGNMENT_GRFALIGN);
                         copyDwords(tmpSrc, 0, src->getTopDcl(), src->getLeftBound(), numDwords, bb, iter);
                         G4_SrcRegRegion* tmpSrcOpnd = builder.createSrcRegRegion(srcAsRegion->getModifier(),
                             Direct, tmpSrc->getRegVar(), 0, 0, srcAsRegion->getRegion(), tmpSrc->getElemType());
@@ -3127,7 +3123,7 @@ void HWConformity::fix64bInst( INST_LIST_ITER iter, G4_BB* bb )
                     // mov (8) r1.4<1>:ud r3.0<1;1,0>:ud {NoMask}
                     int numDwords = (dst->getRightBound() - dst->getLeftBound() + 1) / G4_Type_Table[Type_UD].byteSize;
                     numDwords = Round_Up_Pow2(numDwords);
-                    G4_Declare* tmpDst = builder.createTempVar(numDwords / 2, dst->getType(), Either, SUB_ALIGNMENT_GRFALIGN);
+                    G4_Declare* tmpDst = builder.createTempVar(numDwords / 2, dst->getType(), SUB_ALIGNMENT_GRFALIGN);
                     if (numDwords > execSize * 2)
                     {
                         // dst is not packed, need a move to pre-load the dst value into tmp
@@ -3161,7 +3157,7 @@ void HWConformity::fix64bInst( INST_LIST_ITER iter, G4_BB* bb )
                         MUST_BE_TRUE(dst->getHorzStride() == 1, "only stride 1 is supported for now");
                         dst->setType(Type_UD);
                         G4_SrcRegRegion* src = movInst->getSrc(0)->asSrcRegRegion();
-                        G4_Declare* tmpAsUD = builder.createTempVar(tmpDstDcl->getNumElems() * 2, Type_UD, Either, Any);
+                        G4_Declare* tmpAsUD = builder.createTempVar(tmpDstDcl->getNumElems() * 2, Type_UD, Any);
                         tmpAsUD->setAliasDeclare(tmpDstDcl, 0);
                         RegionDesc* newRegion = src->getRegion()->isScalar() ?
                             builder.createRegionDesc(0, 2, 1) : builder.getRegionStride1();
@@ -5232,8 +5228,7 @@ void HWConformity::convertMAD2MulAdd( INST_LIST_ITER iter, G4_BB *bb )
     inst->setOpcode(G4_mul);
     inst->setSrc(nullptr, 2);
 
-    G4_Declare* mulDefDcl = builder.createTempVar(inst->getExecSize(), mulOpDstType,
-        G4_Align::Either, subAlign);
+    G4_Declare* mulDefDcl = builder.createTempVar(inst->getExecSize(), mulOpDstType, subAlign);
 
     G4_DstRegRegion* mulOpDst = builder.Create_Dst_Opnd_From_Dcl(mulDefDcl, 1);
     inst->setDest(mulOpDst);
@@ -5483,7 +5478,6 @@ void HWConformity::fixSADA2Inst(G4_BB* bb)
             inst->setOpcode( G4_sad2 );
             inst->setSrc( NULL, 2 );
 
-            G4_Align sad2TmpAlign = Either;
             G4_SubReg_Align sad2TmpSubAlign = Get_G4_SubRegAlign_From_Type( dst->getType() );
 
             if( inst->getExecSize() * G4_Type_Table[dst->getType()].byteSize > GENX_GRF_REG_SIZ )
@@ -5492,8 +5486,7 @@ void HWConformity::fixSADA2Inst(G4_BB* bb)
                 sad2TmpSubAlign = SUB_ALIGNMENT_GRFALIGN;
             }
             // create a new temp variable as sad2's destination
-            G4_Declare* sad2Tmp = builder.createTempVar( inst->getExecSize(), dst->getType(),
-                sad2TmpAlign, sad2TmpSubAlign );
+            G4_Declare* sad2Tmp = builder.createTempVar( inst->getExecSize(), dst->getType(), sad2TmpSubAlign);
             G4_DstRegRegion* sad2Dst = builder.Create_Dst_Opnd_From_Dcl(sad2Tmp, 1);
             inst->setDest( sad2Dst );
 
@@ -5581,7 +5574,7 @@ void HWConformity::fixSendInst(G4_BB* bb)
                     // variables >= 2 GRF don't need even alignment since they can't possibly overlap
                     if (dcl->getByteSize() < 2u * GENX_GRF_REG_SIZ)
                     {
-                        dcl->setAlign(G4_Align::Even);
+                        dcl->setEvenAlign();
                     }
                 }
             };
@@ -5623,7 +5616,7 @@ void HWConformity::fixSendInst(G4_BB* bb)
         {
             uint16_t rows = inst->getMsgDesc()->MessageLength();
             G4_Type type = src0->getType();
-            G4_Declare* dcl = builder.createTempVar(rows * 8, type, Either, SUB_ALIGNMENT_GRFALIGN);
+            G4_Declare* dcl = builder.createTempVar(rows * 8, type, SUB_ALIGNMENT_GRFALIGN);
 
             MUST_BE_TRUE(G4_Type_Table[type].byteSize == 4, "Invalid src0 opnd type for send.");
 
@@ -5662,7 +5655,7 @@ void HWConformity::fixSendInst(G4_BB* bb)
             {
                 uint16_t rows = inst->getMsgDesc()->extMessageLength();
                 G4_Type type = src1->getType();
-                G4_Declare* dcl = builder.createTempVar(rows * 8, type, Either, SUB_ALIGNMENT_GRFALIGN);
+                G4_Declare* dcl = builder.createTempVar(rows * 8, type, SUB_ALIGNMENT_GRFALIGN);
 
                 MUST_BE_TRUE(G4_Type_Table[type].byteSize == 4, "Invalid src1 opnd type for send.");
 
@@ -5719,14 +5712,14 @@ void HWConformity::fixSendInst(G4_BB* bb)
                     //copy src0/src1
                     if (src0Overlap)
                     {
-                        G4_Declare* copyDst = builder.createTempVar(src0Size * 8, Type_UD, Either, Any);
+                        G4_Declare* copyDst = builder.createTempVar(src0Size * 8, Type_UD, Any);
                         copyRegs(copyDst, 0, inst->getSrc(0)->getBase()->asRegVar()->getDeclare(),
                             inst->getSrc(0)->asSrcRegRegion()->getRegOff() * 32, src0Size, bb, i);
                         inst->setSrc(builder.Create_Src_Opnd_From_Dcl(copyDst, builder.getRegionStride1()), 0);
                     }
                     if (src1Overlap)
                     {
-                        G4_Declare* copyDst = builder.createTempVar(src1Size * 8, Type_UD, Either, Any);
+                        G4_Declare* copyDst = builder.createTempVar(src1Size * 8, Type_UD, Any);
                         copyRegs(copyDst, 0, inst->getSrc(1)->getBase()->asRegVar()->getDeclare(),
                             inst->getSrc(1)->asSrcRegRegion()->getRegOff() * 32, src1Size, bb, i);
                         inst->setSrc(builder.Create_Src_Opnd_From_Dcl(copyDst, builder.getRegionStride1()), 1);
@@ -5737,7 +5730,7 @@ void HWConformity::fixSendInst(G4_BB* bb)
                     // copy dst
                     auto copyIter = i;
                     ++copyIter;
-                    G4_Declare* copySrc = builder.createTempVar(dstSize * 8, Type_UD, Either, Any);
+                    G4_Declare* copySrc = builder.createTempVar(dstSize * 8, Type_UD, Any);
                     copyRegs(inst->getDst()->getBase()->asRegVar()->getDeclare(), inst->getDst()->getRegOff() * 32,
                         copySrc, 0, dstSize, bb, copyIter);
                     inst->setDest(builder.Create_Dst_Opnd_From_Dcl(copySrc, 1));
@@ -6908,7 +6901,7 @@ static void expandPlaneMacro(IR_Builder& builder, INST_LIST_ITER it, G4_BB* bb, 
         }
     }
 
-    G4_Declare* tmpVal = builder.hasNFType() ? nullptr : builder.createTempVar(8, Type_F, Either, Any);
+    G4_Declare* tmpVal = builder.hasNFType() ? nullptr : builder.createTempVar(8, Type_F, Any);
     G4_DstRegRegion* accDst = builder.hasNFType() ?
         builder.createDstRegRegion(Direct, builder.phyregpool.getAcc0Reg(), 0, 0, 1, Type_NF) :
         builder.Create_Dst_Opnd_From_Dcl(tmpVal, 1);
@@ -7001,7 +6994,7 @@ bool HWConformity::fixPlaneInst(INST_LIST_ITER it, G4_BB* bb)
         {
             // src0 needs a temp
             G4_Declare* tmpDcl = builder.createTempVar(4, Type_F,
-                Either, SUB_ALIGNMENT_GRFALIGN);
+                SUB_ALIGNMENT_GRFALIGN);
 
             // Before:
             // pln (16) dst, (mod)src0, src1
@@ -7056,7 +7049,7 @@ bool HWConformity::fixPlaneInst(INST_LIST_ITER it, G4_BB* bb)
             unsigned short numGRFsToCopy = inst->getExecSize() == 8 ? 2 : 4;
 
             G4_Declare* tmpDcl = builder.createTempVar((unsigned short)(G4_GRF_REG_NBYTES / G4_Type_Table[Type_F].byteSize * numGRFsToCopy), Type_F,
-                Either, Any);
+                Any);
 
             // Before:
             // pln (16) dst, src0, (mod)src1
@@ -7154,8 +7147,8 @@ void HWConformity::fixImm64 ( INST_LIST_ITER i,
 
             G4_Declare *defDcl = NULL;
 
-            defDcl = builder.createTempVar(1, src->getType(), Either, Eight_Word);
-            G4_Declare* dcl = builder.createTempVar( 2, Type_UD, Either, Eight_Word );
+            defDcl = builder.createTempVar(1, src->getType(), Eight_Word);
+            G4_Declare* dcl = builder.createTempVar( 2, Type_UD, Eight_Word );
             dcl->setAliasDeclare(defDcl, 0);
 
             G4_DstRegRegion *dstRegion = builder.Create_Dst_Opnd_From_Dcl(dcl, 1);
@@ -7255,9 +7248,9 @@ void HWConformity::helperGenerateTempDst(
     uint32_t numElt = execSize == 1 ? 1 : execSize * hStride;
     if (numElt > 1 && isLowPrecisionFloatTy(tempDstType) && hStride == 1 && subAlign < Eight_Word)
         subAlign = Eight_Word;
-    G4_Align align = getDclAlignment( dstSize, inst, execSize == 1, subAlign );
+    subAlign = getDclAlignment( dstSize, inst, execSize == 1);
 
-    G4_Declare* dcl = builder.createTempVar( numElt, tempDstType, align , subAlign );
+    G4_Declare* dcl = builder.createTempVar( numElt, tempDstType, subAlign );
 
 
     G4_DstRegRegion *dstRegion = builder.Create_Dst_Opnd_From_Dcl(dcl, hStride);
@@ -7532,7 +7525,7 @@ void HWConformity::fixVxHFloat64b(INST_LIST_ITER it, G4_BB* bb)
         else if (getTypeSize(type) == 8)
         {
             int numDwords = inst->getExecSize() * 2;
-            G4_Declare* tmpSrc = builder.createTempVar(numDwords / 2, src0->getType(), Either, Any);
+            G4_Declare* tmpSrc = builder.createTempVar(numDwords / 2, src0->getType(), Any);
             RegionDesc* newRegion = builder.getRegionStride1();
             copyDwordsIndirect(tmpSrc, src0, numDwords, bb, it);
             G4_SrcRegRegion* tmpSrcOpnd = builder.createSrcRegRegion(src0->getModifier(),

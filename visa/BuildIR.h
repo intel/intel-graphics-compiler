@@ -284,7 +284,6 @@ public:
             regVar = NULL;
         }
         dcl->setRegVar(regVar);
-        dcl->setAlign( Either );
 
         if (regFile == G4_ADDRESS)
         {
@@ -380,7 +379,7 @@ public:
                 return nullptr;
             }
             immArray[curSize] = val;
-            dclArray[curSize] = builder.createTempVar(numElt, imm->getType(), Either, Any);
+            dclArray[curSize] = builder.createTempVar(numElt, imm->getType(), Any);
             return dclArray[curSize++];
         }
 
@@ -707,7 +706,7 @@ public:
             {
                 // work item id variables are handled uniformly
                 G4_Type ty = Get_G4_Type_From_Common_ISA_Type(getPredefinedVarType((PreDefinedVarsInternal)i));
-                dcl = createPreVar(getPredefinedVarID((PreDefinedVarsInternal)i), 1, ty, Either, Any);
+                dcl = createPreVar(getPredefinedVarID((PreDefinedVarsInternal)i), 1, ty);
             }
             else
             {
@@ -720,7 +719,7 @@ public:
                     break;
                 case PreDefinedVarsInternal::TSC:
                 {
-                    G4_Declare* tscDcl = createPreVar(i, 5, Type_UD, Either, Any);
+                    G4_Declare* tscDcl = createPreVar(i, 5, Type_UD);
                     tscDcl->getRegVar()->setPhyReg(phyregpool.getTm0Reg(), 0);
                     dcl = tscDcl;
                     break;
@@ -732,28 +731,28 @@ public:
                 }
                 case PreDefinedVarsInternal::SR0:
                 {
-                    G4_Declare* sr0Dcl = createPreVar(i, 4, Type_UD, Either, Any);
+                    G4_Declare* sr0Dcl = createPreVar(i, 4, Type_UD);
                     sr0Dcl->getRegVar()->setPhyReg(phyregpool.getSr0Reg(), 0);
                     dcl = sr0Dcl;
                     break;
                 }
                 case PreDefinedVarsInternal::CR0:
                 {
-                    G4_Declare* cr0Dcl = createPreVar(i, 3, Type_UD, Either, Any);
+                    G4_Declare* cr0Dcl = createPreVar(i, 3, Type_UD);
                     cr0Dcl->getRegVar()->setPhyReg(phyregpool.getCr0Reg(), 0);
                     dcl = cr0Dcl;
                     break;
                 }
                 case PreDefinedVarsInternal::CE0:
                 {
-                    G4_Declare* ce0Dcl = createPreVar(i, 1, Type_UD, Either, Any);
+                    G4_Declare* ce0Dcl = createPreVar(i, 1, Type_UD);
                     ce0Dcl->getRegVar()->setPhyReg(phyregpool.getMask0Reg(), 0);
                     dcl = ce0Dcl;
                     break;
                 }
                 case PreDefinedVarsInternal::DBG:
                 {
-                    G4_Declare* dbgDcl = createPreVar(i, 2, Type_UD, Either, Any);
+                    G4_Declare* dbgDcl = createPreVar(i, 2, Type_UD);
                     dbgDcl->getRegVar()->setPhyReg(phyregpool.getDbgReg(), 0);
                     dcl = dbgDcl;
                     break;
@@ -825,7 +824,7 @@ public:
 
         if (m_options->getOption(vISA_enablePreemption))
         {
-            G4_Declare *R0CopyDcl = createTempVar(8, Type_UD, Either, SUB_ALIGNMENT_GRFALIGN);
+            G4_Declare *R0CopyDcl = createTempVar(8, Type_UD, SUB_ALIGNMENT_GRFALIGN);
             builtinR0 = R0CopyDcl;
         }
 
@@ -1002,7 +1001,7 @@ public:
     CompilerStats &getcompilerStats() {return compilerStats;}
 
     // create a new temp GRF with the specified type/size and undefined regions
-    G4_Declare* createTempVar(unsigned int numElements, G4_Type type, G4_Align align, G4_SubReg_Align subAlign, const char* prefix = "TV", bool appendIdToName = true )
+    G4_Declare* createTempVar(unsigned int numElements, G4_Type type, G4_SubReg_Align subAlign, const char* prefix = "TV", bool appendIdToName = true )
     {
         const char* name = appendIdToName ?
             getNameString(mem, 20, "%s%d", prefix, num_temp_dcl++) :
@@ -1027,7 +1026,6 @@ public:
         }
 
         G4_Declare* dcl = createDeclareNoLookup(name, G4_GRF, dcl_width, dcl_height, type);
-        dcl->setAlign( align );
         dcl->setSubRegAlign( subAlign );
         return dcl;
     }
@@ -1050,9 +1048,9 @@ public:
     // like the above, but also mark the variable as don't spill
     // this is used for temp variables in macro sequences where spilling woul not help
     // FIXME: can we somehow merge this with G4_RegVarTmp/G4_RegVarTransient?
-    G4_Declare* createTempVarWithNoSpill(unsigned int numElements, G4_Type type, G4_Align align, G4_SubReg_Align subAlign, const char* prefix = "TV")
+    G4_Declare* createTempVarWithNoSpill(unsigned int numElements, G4_Type type, G4_SubReg_Align subAlign, const char* prefix = "TV")
     {
-        G4_Declare* dcl = createTempVar(numElements, type, align, subAlign, prefix);
+        G4_Declare* dcl = createTempVar(numElements, type, subAlign, prefix);
         dcl->setDoNotSpill();
         return dcl;
     }
@@ -1067,7 +1065,7 @@ public:
     //
     G4_Declare* createHardwiredDeclare(uint32_t numElements, G4_Type type, uint32_t regNum, uint32_t regOff)
     {
-        G4_Declare* dcl = createTempVar(numElements, type, Either, Any);
+        G4_Declare* dcl = createTempVar(numElements, type, Any);
         unsigned int linearizedStart = (regNum * G4_GRF_REG_NBYTES) + (regOff * getTypeSize(type));
         // since it's called post RA (specifically post computePReg) we have to manually set the GRF's byte offset
         dcl->setGRFBaseOffset(linearizedStart);
@@ -1115,7 +1113,7 @@ public:
         return dcl;
     }
 
-    G4_Declare* createPreVar(PreDefinedVarsInternal preDefVar_index, unsigned short numElements, G4_Type type, G4_Align align, G4_SubReg_Align subAlign)
+    G4_Declare* createPreVar(PreDefinedVarsInternal preDefVar_index, unsigned short numElements, G4_Type type)
     {
         MUST_BE_TRUE(preDefVar_index < PreDefinedVarsInternal::VAR_LAST, "illegal predefined var index");
         unsigned short dcl_width = 0, dcl_height = 1;
@@ -1134,17 +1132,11 @@ public:
             {
                 dcl_height++;
             }
-        }
-
-        if( subAlign == Any )
-        {
-            // subAlign has to be type size at the minimum
-            subAlign = Get_G4_SubRegAlign_From_Type( type );
-        }
+        }   
 
         G4_Declare* dcl = createPreVarDeclareNoLookup(preDefVar_index, dcl_width, dcl_height, type);
-        dcl->setAlign( align );
-        dcl->setSubRegAlign( subAlign );
+        // subAlign has to be type size at the minimum
+        dcl->setSubRegAlign(Get_G4_SubRegAlign_From_Type(type));
         return dcl;
     }
 

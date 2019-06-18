@@ -2271,12 +2271,12 @@ void GlobalRA::updateSubRegAlignment(unsigned char regFile, G4_SubReg_Align subA
 // be Even aligned. Others will be Either aligned. There is no need
 // to store old value of align because HW has no restriction on
 // even/odd alignment that HW conformity computes.
-void GlobalRA::updateAlignment(unsigned char regFile, G4_Align align)
+void GlobalRA::evenAlign()
 {
     // Update alignment of all GRF declares to align
     for (auto dcl : kernel.Declares)
     {
-        if (dcl->getRegFile() & regFile)
+        if (dcl->getRegFile() & G4_GRF)
         {
             G4_Declare* topdcl = dcl->getRootDeclare();
             auto topdclAugMask = getAugmentationMask(topdcl);
@@ -2290,11 +2290,8 @@ void GlobalRA::updateAlignment(unsigned char regFile, G4_Align align)
                     !(kernel.fg.builder->getOption(vISA_enablePreemption) &&
                         dcl == kernel.fg.builder->getBuiltinR0()))
                 {
-                    dcl->getRegVar()->setAlignment(align);
+                    dcl->setEvenAlign();
                 }
-            }
-            else
-            {
             }
         }
     }
@@ -4443,7 +4440,7 @@ void Augmentation::augmentIntfGraph()
 #ifdef DEBUG_VERBOSE_ON
                 DEBUG_VERBOSE("Kernel size is SIMD" << kernel.getSimdSize() << " so updating all GRFs to be 2GRF aligned" << std::endl);
 #endif
-                gra.updateAlignment(G4_GRF, Even);
+                gra.evenAlign();
             }
             gra.updateSubRegAlignment(G4_GRF, SUB_ALIGNMENT_GRFALIGN);
         }
@@ -5447,7 +5444,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
 
             if (!failed_alloc)
             {
-                BankAlign align = lrVar->getAlignment() == Even ? BankAlign::Even : BankAlign::Either;
+                BankAlign align = lrVar->getAlignment() == G4_Align::Even ? BankAlign::Even : BankAlign::Either;
                 if (allocFromBanks)
                 {
                     
@@ -6237,7 +6234,7 @@ void GraphColor::saveRegs(
             0, 0, builder.rgnpool.createRegion(8, 8, 1), Type_UD);
         unsigned messageLength = owordSize / 2;
         G4_Declare *msgDcl = builder.createTempVar(messageLength * GENX_DATAPORT_IO_SZ,
-            Type_UD, Either, SUB_ALIGNMENT_GRFALIGN, StackCallStr);
+            Type_UD, SUB_ALIGNMENT_GRFALIGN, StackCallStr);
         msgDcl->getRegVar()->setPhyReg(regPool.getGreg(startReg), 0);
         auto sendSrc2 = builder.createSrcRegRegion(Mod_src_undef, Direct, msgDcl->getRegVar(), 0, 0,
             builder.rgnpool.createRegion(8, 8, 1), Type_UD);
@@ -6362,7 +6359,7 @@ void GraphColor::restoreRegs(
 
             unsigned responseLength = ROUND(owordSize, 2) / 2;
             G4_Declare *dstDcl = builder.createTempVar(responseLength * GENX_DATAPORT_IO_SZ,
-                Type_UD, Either, SUB_ALIGNMENT_GRFALIGN, GraphColor::StackCallStr);
+                Type_UD, SUB_ALIGNMENT_GRFALIGN, GraphColor::StackCallStr);
             dstDcl->getRegVar()->setPhyReg(regPool.getGreg(startReg), 0);
             G4_DstRegRegion* postDst = builder.createDstRegRegion(Direct, dstDcl->getRegVar(), 0, 0, 1, (execSize > 8) ? Type_UW : Type_UD);
             G4_SrcRegRegion* payload = builder.Create_Src_Opnd_From_Dcl(scratchRegDcl, builder.getRegionStride1());
@@ -7418,7 +7415,7 @@ void GlobalRA::addCalleeSavePseudoCode()
 //
 void GlobalRA::addStoreRestoreForFP()
 {
-    G4_Declare* prevFP = builder.createTempVar(1, Type_UD, Either, Any);
+    G4_Declare* prevFP = builder.createTempVar(1, Type_UD, Any);
     oldFPDcl = prevFP;
     G4_DstRegRegion* oldFPDst = builder.createDstRegRegion(Direct, prevFP->getRegVar(), 0, 0, 1, Type_UD);
     RegionDesc* rd = builder.getRegionScalar();
@@ -7937,8 +7934,7 @@ void VarSplit::createSubDcls(G4_Kernel& kernel, G4_Declare* oldDcl, std::vector<
         const char* splitDclName = kernel.fg.builder->getNameString(kernel.fg.builder->mem, 16, "split_%d_%s", i, oldDcl->getName());
         splitDcl = kernel.fg.builder->createDeclareNoLookup(splitDclName, G4_GRF, dclWidth, dclHeight, oldDcl->getElemType());
         gra.setSubOffset(splitDcl, leftBound);
-        splitDcl->setAlign(oldDcl->getAlign());
-        splitDcl->setSubRegAlign(oldDcl->getSubRegAlign());
+        splitDcl->copyAlign(oldDcl);
         unsigned nElementSize = (rightBound - leftBound + 1) / oldDcl->getElemSize();
         if ((rightBound - leftBound + 1) % oldDcl->getElemSize())
         {
@@ -7995,8 +7991,7 @@ void VarSplit::insertMovesFromTemp(G4_Kernel& kernel, G4_Declare* oldDcl, int in
         getHeightWidth(oldSrc->getType(), (srcOpnd->getRightBound() - srcOpnd->getLeftBound() + 1) / oldSrc->getElemSize(), dclWidth, dclHeight, dclTotalSize);
         const char* newDclName = kernel.fg.builder->getNameString(kernel.fg.builder->mem, 16, "copy_%d_%s", index, oldDcl->getName());
         G4_Declare * newDcl = kernel.fg.builder->createDeclareNoLookup(newDclName, G4_GRF, dclWidth, dclHeight, oldSrc->getType());
-        newDcl->setAlign(oldDcl->getAlign());
-        newDcl->setSubRegAlign(oldDcl->getSubRegAlign());
+        newDcl->copyAlign(oldDcl);
         unsigned newLeftBound = 0;
 
         for (size_t i = 0, size = splitDclList.size(); i < size; i++)

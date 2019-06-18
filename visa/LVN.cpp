@@ -473,17 +473,10 @@ bool LVN::canReplaceUses(INST_LIST_ITER inst_it, UseList& uses, G4_INST* lvnInst
 // transfer alignment of fromDcl to toDcl if the former is more restrictive
 void LVN::transferAlign(G4_Declare* toDcl, G4_Declare* fromDcl)
 {
-    if (toDcl->getAlign() == Either)
+    if (!toDcl->isEvenAlign() && fromDcl->isEvenAlign())
     {
-        toDcl->setAlign(fromDcl->getAlign());
+        toDcl->setEvenAlign();
     }
-    else if (toDcl->getAlign() != fromDcl->getAlign() && fromDcl->getAlign() != Either)
-    {
-        // toDcl and fromDcl are not compatible
-        // ToDo: we should move this code as part of LVN legality check instead of assert
-        assert(false && "incompatible alignment");
-    }
-
     G4_SubReg_Align align1 = toDcl->getSubRegAlign();
     G4_SubReg_Align align2 = fromDcl->getSubRegAlign();
 

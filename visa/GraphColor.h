@@ -589,27 +589,22 @@ namespace vISA
             unsigned lr1_nreg = lr1->getNumRegNeeded();
             unsigned lr2_nreg = lr2->getNumRegNeeded();
 
-            MUST_BE_TRUE(lr1_align == Either ||
-                lr1_align == Even ||
-                lr2_align == Either ||
-                lr2_align == Even, "Found unsupported GRF alignment in register allocation!");
-
-            if (lr1_align == Either)
+            if (lr1_align == G4_Align::Either)
             {
                 return  lr1_nreg + lr2_nreg - 1;
             }
-            else if (lr2_align == Either)
+            else if (lr2_align == G4_Align::Either)
             {
                 unsigned sum = lr1_nreg + lr2_nreg;
                 return sum + 1 - ((sum) % 2);
             }
-            else if (lr2_align == Even)
+            else if (lr2_align == G4_Align::Even)
             {
                 return lr1_nreg + lr2_nreg - 1 + (lr1_nreg % 2) + (lr2_nreg % 2);
             }
             else
             {
-                MUST_BE_TRUE(false, "Found unsupported alignment in register allocation!");
+                assert(false && "should be unreachable");
                 return 0;
             }
         }
@@ -1256,7 +1251,7 @@ namespace vISA
         static uint32_t getRefCount(int loopNestLevel);
         bool isReRAPass();
         void updateSubRegAlignment(unsigned char regFile, G4_SubReg_Align subAlign);
-        void updateAlignment(unsigned char regFile, G4_Align align);
+        void evenAlign();
         void getBankAlignment(LiveRange* lr, BankAlign &align);
         void printLiveIntervals();
         void reportUndefinedUses(LivenessAnalysis& liveAnalysis, G4_BB* bb, G4_INST* inst, G4_Declare* referencedDcl, std::set<G4_Declare*>& defs, std::ofstream& optreport, Gen4_Operand_Number opndNum);

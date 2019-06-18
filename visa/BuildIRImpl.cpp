@@ -165,21 +165,21 @@ G4_Operand* IR_Builder::emitSampleIndexGE16(
     G4_Operand* samplerIdx;
 
     G4_Declare* t0
-        = createTempVar(1, Type_UD, Either, Any);
+        = createTempVar(1, Type_UD, Any);
     G4_DstRegRegion* t0Dst
         = Create_Dst_Opnd_From_Dcl(t0, 1);
     G4_SrcRegRegion* t0Src
         = Create_Src_Opnd_From_Dcl(t0, getRegionScalar());
 
     G4_Declare* baseAdj
-        = createTempVar(1, Type_UD, Either, Any);
+        = createTempVar(1, Type_UD, Any);
     G4_DstRegRegion* baseAdjDst
         = Create_Dst_Opnd_From_Dcl(baseAdj, 1);
     G4_SrcRegRegion* baseAdjSrc
         = Create_Src_Opnd_From_Dcl(baseAdj, getRegionScalar());
 
     G4_Declare* idxLow
-        = createTempVar(1, Type_UD, Either, Any);
+        = createTempVar(1, Type_UD, Any);
     G4_DstRegRegion* idxLowDst
         = Create_Dst_Opnd_From_Dcl(idxLow, 1);
     G4_SrcRegRegion* idxLowSrc
@@ -821,7 +821,7 @@ G4_InstSend *IR_Builder::Create_Send_Inst_For_CISA(G4_Predicate *pred,
 
         if (needSamplerMove)
         {
-            G4_Declare *dcl1 = createTempVar(1, Type_UD, Either, Any );
+            G4_Declare *dcl1 = createTempVar(1, Type_UD, Any );
             G4_DstRegRegion* tmp_dst_opnd = Create_Dst_Opnd_From_Dcl(dcl1, 1);
 
             createInst(
@@ -982,7 +982,7 @@ G4_InstSend *IR_Builder::Create_SplitSend_Inst(G4_Predicate *pred,
 
     if (needsSamplerMove)
     {
-        G4_Declare *dcl1 = createTempVar(1, Type_UD, Either, Any);
+        G4_Declare *dcl1 = createTempVar(1, Type_UD, Any);
 
         if (doAlignBindlessSampler)
         {
@@ -1692,9 +1692,9 @@ void IR_Builder::initBuiltinSLMSpillAddr(int perThreadSLMSize)
     //
     const int numThreadPerSS = 56;
     const int numThreadPerEU = 7;
-    G4_Declare* SSID = createTempVar(1, Type_UW, Either, Four_Word); // SSID may also be used as mad dst
-    G4_Declare* EUID = createTempVar(1, Type_UW, Either, Any);
-    G4_Declare* TID = createTempVar(1, Type_UW, Either, Any);
+    G4_Declare* SSID = createTempVar(1, Type_UW, Four_Word); // SSID may also be used as mad dst
+    G4_Declare* EUID = createTempVar(1, Type_UW, Any);
+    G4_Declare* TID = createTempVar(1, Type_UW, Any);
 
     auto getSr0Bits = [this, &instBuffer](G4_Declare* result, uint32_t width, uint32_t offset)
     {
@@ -1728,7 +1728,7 @@ void IR_Builder::initBuiltinSLMSpillAddr(int perThreadSLMSize)
         }
         else
         {
-            G4_Declare* tempDcl = createTempVar(1, Type_UW, Either, Any);
+            G4_Declare* tempDcl = createTempVar(1, Type_UW, Any);
             G4_DstRegRegion* tmpDst = Create_Dst_Opnd_From_Dcl(tempDcl, 1);
             G4_SrcRegRegion* tmpSrc = Create_Src_Opnd_From_Dcl(tempDcl, getRegionScalar());
             instBuffer.push_back(createInternalInst(nullptr, G4_mul, nullptr, false, 1, tmpDst, src1, src2, InstOpt_WriteEnable));
@@ -1784,7 +1784,7 @@ void IR_Builder::initBuiltinSLMSpillAddr(int perThreadSLMSize)
     }
 
     // perThreadSLMStart is a UD as it can exceed 64K
-    G4_Declare* perThreadSLMStart = createTempVar(1, Type_UD, Either, Any);
+    G4_Declare* perThreadSLMStart = createTempVar(1, Type_UD, Any);
     G4_SrcRegRegion* mulSrc0 = Create_Src_Opnd_From_Dcl(SSID, getRegionScalar());
     G4_Imm* mulSrc1 = createImm(perThreadSLMSize, Type_UW);
     G4_DstRegRegion* mulDst = Create_Dst_Opnd_From_Dcl(perThreadSLMStart, 1);

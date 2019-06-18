@@ -1776,10 +1776,14 @@ public:
         // Following executed only if G4_Declare doesnt have an alias
         return spillFlag;
     }
-    void        setAlign(G4_Align al);
+   
+    bool isEvenAlign() const { return getAlign() == G4_Align::Even; }
     G4_Align    getAlign() const;
-    void        setSubRegAlign(G4_SubReg_Align subAl);
     G4_SubReg_Align getSubRegAlign() const;
+    void        setEvenAlign();
+    void        setSubRegAlign(G4_SubReg_Align subAl);
+
+    void copyAlign(G4_Declare* dcl);
 
     unsigned getByteAlignment() const
     {
@@ -2585,7 +2589,7 @@ namespace vISA
 
         // To support sub register alignment
         G4_RegVar(G4_Declare* d, RegVarType t) :
-            G4_VarBase(VK_regVar), id(UNDEFINED_VAL), decl(d), disp(UINT_MAX), align(Either), subAlign(Any),
+            G4_VarBase(VK_regVar), id(UNDEFINED_VAL), decl(d), disp(UINT_MAX), align(G4_Align::Either), subAlign(Any),
             type(t)
         {
         }
@@ -2651,8 +2655,6 @@ namespace vISA
         {
             if (!isPhyRegAssigned())
             {
-                // stick to one alignment decision, either even or odd
-                //MUST_BE_TRUE(align == Either || align == a, ERROR_UNKNOWN);
                 align = a;
             }
         }

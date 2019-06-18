@@ -85,7 +85,7 @@ namespace vISA
         void broadcast(G4_BB* bb, INST_LIST_ITER it, int srcPos, G4_SubReg_Align subAlign);
 
         G4_INST *splitInstWithByteDst(G4_INST *expand_op);
-        G4_Align getDclAlignment(int opndBytes, G4_INST *inst, bool isScalar, G4_SubReg_Align &subAlign);
+        G4_SubReg_Align getDclAlignment(int opndBytes, G4_INST *inst, bool isScalar);
 
         // HW conformity check functions
         void fixPackedSource(INST_LIST_ITER it, G4_BB *bb, G4_Type extype);

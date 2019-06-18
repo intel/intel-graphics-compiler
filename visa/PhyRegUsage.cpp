@@ -1379,17 +1379,14 @@ void LiveRange::dump()
     //
     // print alignment
     //
-    if (var->getAlignment() == Even)
+    if (var->getAlignment() == G4_Align::Even)
     {
         DEBUG_MSG("even");
     }
 
 
     DEBUG_MSG("\t");
-    if (var->getSubRegAlignment() == Even_Word) {
-        DEBUG_MSG("Even_word SubReg_Align");
-    }
-    else if (var->getSubRegAlignment() == Any)
+    if (var->getSubRegAlignment() == Any)
     {
         DEBUG_MSG("\t");
     }

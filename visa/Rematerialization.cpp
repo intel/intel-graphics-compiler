@@ -808,8 +808,8 @@ namespace vISA
         {
             unsigned int diffBound = dst->getRightBound() - (dst->getRegOff() * G4_GRF_REG_NBYTES);
             unsigned numElems = (diffBound + 1) / G4_Type_Table[dst->getType()].byteSize;
-            auto newTemp = kernel.fg.builder->createTempVar(numElems, dst->getType(), dst->getTopDcl()->getAlign(),
-                dst->getTopDcl()->getSubRegAlign(), "REMAT_");
+            auto newTemp = kernel.fg.builder->createTempVar(numElems, dst->getType(), Any, "REMAT_");
+            newTemp->copyAlign(dst->getTopDcl());
             G4_DstRegRegion* newDst = kernel.fg.builder->createDstRegRegion(Direct, newTemp->getRegVar(), 0,
                 (dst->getLeftBound() % G4_GRF_REG_NBYTES) / G4_Type_Table[dst->getType()].byteSize,
                 dst->getHorzStride(), dst->getType());
@@ -855,7 +855,8 @@ namespace vISA
             }
 
             auto samplerDst = kernel.fg.builder->createTempVar(dst->getTopDcl()->getTotalElems(), dst->getTopDcl()->getElemType(),
-                dst->getTopDcl()->getAlign(), dst->getTopDcl()->getSubRegAlign(), "REMAT_SAMPLER_");
+                Any, "REMAT_SAMPLER_");
+            samplerDst->copyAlign(dst->getTopDcl());
             auto samplerDstRgn = kernel.fg.builder->createDstRegRegion(Direct, samplerDst->getRegVar(), 0,
                 0, 1, samplerDst->getElemType());
 
