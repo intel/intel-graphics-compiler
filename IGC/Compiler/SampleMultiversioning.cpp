@@ -36,7 +36,7 @@ using namespace IGC;
 
 // Register pass to igc-opt
 #define PASS_FLAG "igc-sample-multiversioning"
-#define PASS_DESCRIPTION "multiversioning for redundant samples"
+#define PASS_DESCRIPTION "sample multiversioning"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
 IGC_INITIALIZE_PASS_BEGIN(SampleMultiversioning, PASS_FLAG, PASS_DESCRIPTION,
@@ -267,6 +267,7 @@ bool SampleMultiversioning::runOnFunction(Function &F) {
             {
                 And = PrevCmp;
             }
+            AndBuilder.CreateCondBr(And, BB2, Sample->getParent());
 
             Phi->addIncoming(Sample, BB1);
             Phi->addIncoming(ConstantVector::get({

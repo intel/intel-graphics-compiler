@@ -724,6 +724,9 @@ private:
         bool m_enableSubroutine = false;
         bool m_enableFunctionPointer = false;
 
+        /// Adding multiversioning to partially redundant samples, if AIL is on.
+        bool m_enableSampleMultiversioning = false;
+
         llvm::AssemblyAnnotationWriter* annotater = nullptr;
 
         RetryManager m_retryManager;

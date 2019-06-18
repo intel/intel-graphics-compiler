@@ -54,7 +54,7 @@ public:
     ~SampleMultiversioning() {}
 
     virtual llvm::StringRef getPassName() const override {
-        return "Redundant Sample Detection";
+        return "Sample Multiversioning";
     }
 
     virtual bool runOnFunction(llvm::Function &F) override;

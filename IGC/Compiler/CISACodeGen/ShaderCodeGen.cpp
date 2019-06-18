@@ -1507,7 +1507,7 @@ void OptimizeIR(CodeGenContext* pContext)
             mpm.add(createDeadPHINodeEliminationPass());
         }
 
-        if (IGC_IS_FLAG_ENABLED(SampleMultiversioning))
+        if (IGC_IS_FLAG_ENABLED(SampleMultiversioning) || pContext->m_enableSampleMultiversioning)
         {
             mpm.add(new SampleMultiversioning(pContext));
         }
