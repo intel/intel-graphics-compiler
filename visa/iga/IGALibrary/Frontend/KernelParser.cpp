@@ -893,7 +893,29 @@ bool GenParser::tryParseInstOptToken(InstOptSet &instOpts) {
     return true;
 }
 
+/*
+// constructs
+class KernelBuilder {
+    // all the instructions in order
+    std::vector<Instruction*>                         instructions;
+    std::vector<std::tuple<Loc,Operand&>>             patches;
+    std::map<std::string,int32_t>                     labelOffsets;
+    std::set<int32_t>                                 blockStarts;
 
+    InstBuilder                                       instBuilder;
+    const Model                                      &model;
+    Kernel                                           *kernel;
+    ErrorHandler                                     &errorHandler;
+public:
+    KernelBuilder(const Model &m, ErrorHandler &e)
+        : InstBuilder(kernel, e), model(m), errorHandler(e)
+    {
+    }
+
+    Kernel *endListing() {
+    }
+};
+*/
 
 void GenParser::initSymbolMaps()
 {
@@ -1087,6 +1109,7 @@ private:
             Skip();
         }
     }
+
 
     void ParseBlock(const Loc &lblLoc, const std::string &label) {
         m_handler.BlockStart(lblLoc, label);
@@ -2642,7 +2665,7 @@ private:
         }
 
         if (m_opSpec->isBranching()) {
-            if (m_opSpec->op == Op::CALLA) {
+            if (m_opSpec->isJipAbsolute()) {
                 m_handler.InstSrcOpImmLabelAbsolute(
                     srcOpIx,
                     opStart,
@@ -3001,6 +3024,48 @@ Kernel *iga::ParseGenKernel(
         delete k;
         return nullptr;
     }
+
+    auto &insts = h.getInsts();
+    auto blockStarts = Block::inferBlocks(
+        e,
+        k->getMemManager(),
+        insts);
+    int id = 1;
+    for (auto bitr : blockStarts) {
+        bitr.second->setID(id++);
+        k->appendBlock(bitr.second);
+    }
+
+#if 0
+    std::stringstream ss;
+    ss << "PARSED BLOCKS\n\n";
+    for (auto b : k->getBlockList()) {
+        ss << "BLOCK[" << b->getID() << "] at pc " <<
+            b->getPC() << ":\n";
+        ss << "  targeted by {";
+        int totalTargets = 0;
+        for (auto b2 : k->getBlockList()) {
+            for (auto i2 : b2->getInstList()) {
+                for (unsigned srcIx = 0; srcIx < i2->getSourceCount(); srcIx++) {
+                    const iga::Operand &src = i2->getSource(srcIx);
+                    if (src.getTargetBlock() == b) {
+                        if (totalTargets++ > 0)
+                          ss << ", ";
+                        ss << "." << i2->getPC();
+                        break;
+                    }
+                }
+            }
+        }
+        ss << "}\n";
+        for (auto i : b->getInstList()) {
+            ss << "  ." << i->getPC() << " is " <<
+                i->getOpSpec().fullMnemonic << "\n";
+        }
+        ss << "\n";
+    }
+    std::cout << ss.str();
+#endif
 
     return k;
 }

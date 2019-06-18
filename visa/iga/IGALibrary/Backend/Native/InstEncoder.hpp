@@ -122,10 +122,10 @@ namespace iga
     };
     enum CompactionResult {
         CR_SUCCESS,
-        CR_NO_COMPACT, // {NoCompact} (or -Xnoautocompact and {}
-        CR_NO_FORMAT, // e.g. send or jump
-        CR_NO_AUTOCOMPACT, // not annotation and {Compacted} not set
-        CR_MISS // fragment misses
+        CR_NO_COMPACT,     // {NoCompact} (or -Xnoautocompact and {}
+        CR_NO_FORMAT,      // e.g. send or jump
+        CR_NO_AUTOCOMPACT, // no annotation and {Compacted} not set
+        CR_MISS            // fragment misses
     };
 
     //////////////////////////////////////////////////////////
@@ -182,7 +182,7 @@ namespace iga
 #endif
             memset(_bits, 0, sizeof(*_bits));
             bits = _bits;
-            encodeForPlatform<P>(i);
+            encodeForPlatform(P,i);
         }
         void resolveBackpatch(Backpatch &bp, MInst *_bits) {
             bits = _bits;
@@ -237,7 +237,9 @@ namespace iga
         void encodeFieldBits(const Field &f, uint64_t val) {
             checkFieldOverlaps(f);
 #ifndef _DEBUG
-            if (val == 0) { // short circuit since we start with zeros
+            // short circuit since we start with zeros
+            // debug build can do the additional mask sanity check below
+            if (val == 0) {
                 return;
             }
 #endif
@@ -250,7 +252,7 @@ namespace iga
                 // the subregister and can't represent small values.
                 //
                 // Generally, this indicates an internal IGA problem:
-                //  e.g. something we need to catch in the parser, IR checker or
+                //  e.g. something we need to catch during parse, IR check, or
                 //       some other higher level (i.e. we're looking at bad IR)
                 error("0x%x: value too large or too small for %s",
                     val, f.name);
@@ -309,11 +311,11 @@ namespace iga
         void checkFieldOverlaps(const Field &) { } // nop
 #endif
     private:
-        // instances get defined per platform
-        template <Platform P> void encodeForPlatform(const Instruction &i);
+        void encodeForPlatform(Platform p, const Instruction &i);
     }; // end class InstEncoder
 
-
+    ///////////////////////////////////////////////////////////////////////////
+    // longer method implementations
     inline void InstEncoder::encode(
         const Field &f, const Model &model, const OpSpec &os)
     {
@@ -502,7 +504,7 @@ namespace iga
         CompactionResult compactionResult = CompactionResult::CR_NO_COMPACT;
 
         // various platforms define this
-        template <Platform P> CompactionResult tryToCompactImpl();
+        CompactionResult tryToCompactImpl(Platform p);
     public:
         InstCompactor(BitProcessor &_parent)
             : BitProcessor(_parent)
@@ -520,7 +522,7 @@ namespace iga
             compactedBits.qw0 = compactedBits.qw1 = 0;
             compactionDebugInfo = cdbi;
 
-            auto cr = tryToCompactImpl<P>();
+            auto cr = tryToCompactImpl(P);
             if (cr == CompactionResult::CR_SUCCESS) { // only clobber their memory if we succeed
                 *compactedBitsOutput = compactedBits;
             }
@@ -601,7 +603,26 @@ namespace iga
             }
             compactionMissed = true;
         }
-    };
+    }; // InstCompactor
 
+    inline void InstEncoder::encodeForPlatform(
+        Platform p, const Instruction &i)
+    {
+        switch (p) {
+        case Platform::GENNEXT:
+        default:
+            encodingError("unsupported platform for native encoder");
+        }
+    }
+
+    inline CompactionResult InstCompactor::tryToCompactImpl(Platform p) {
+        switch (p) {
+        case Platform::GENNEXT:
+        default:
+            compactionMissed = true;
+            IGA_ASSERT_FALSE("compaction not supported on this platform");
+            return CompactionResult::CR_NO_COMPACT;
+        }
+    }
 } // end iga::*
 #endif /* IGA_BACKEND_NATIVE_INSTENCODER_HPP */

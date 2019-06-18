@@ -574,6 +574,11 @@ namespace iga
         bool supportsQtrCtrl() const {
             return op != Op::JMPI;
         }
+
+        bool isJipAbsolute() const {
+            return op == Op::CALLA;
+        }
+
         bool supportsAccWrEn(Platform pltf) const {
             return
                 !supportsBranchCtrl() &&

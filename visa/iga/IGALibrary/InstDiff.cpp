@@ -671,11 +671,11 @@ static bool listInstructionCompaction(
                         auto closeVal = iga::getBits(closeMapping, bitOff, mf->length);
                         if (missedVal != closeVal) {
                             os << Color::RED << Intensity::BRIGHT;
-                            fmtBinary(os, closeVal, mf->length);
+                            fmtBinaryDigits(os, closeVal, mf->length);
                             os << Reset::RESET;
                             missingFields.push_back(mf);
                         } else {
-                            fmtBinary(os, closeVal, mf->length);
+                            fmtBinaryDigits(os, closeVal, mf->length);
                         }
                     }
                     os << ": ";

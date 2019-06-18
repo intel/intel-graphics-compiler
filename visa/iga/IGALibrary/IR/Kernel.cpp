@@ -40,8 +40,7 @@ Kernel::~Kernel()
     // when the Kernel was freed, the memory pool was deleted and destructors
     // for Blocks are never called.  This means the InstList's memory pool
     // was never deleted and we need to do it here.
-    for (auto bb : m_blocks)
-    {
+    for (Block *bb : m_blocks) {
         bb->~Block();
     }
 }

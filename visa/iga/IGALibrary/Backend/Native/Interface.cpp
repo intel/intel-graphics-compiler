@@ -100,7 +100,7 @@ static size_t encodeInst(
         case CompactionResult::CR_NO_FORMAT:
         {
             std::stringstream ss;
-            ss << "unable to compact instruction with {Compact} option (";
+            ss << "unable to compact instruction with {Compact} option: ";
             if (cr == CompactionResult::CR_NO_FORMAT) {
                 ss << "not a compactable format";
             } else {
@@ -117,29 +117,33 @@ static size_t encodeInst(
                     } else {
                         ss << " ";
                     }
-                    ss << cIx->index.name;
                     uint64_t mappedValue = cbdi->fieldMapping[i];
-                    ss << " (0x" << std::hex << mappedValue << ": ";
+                    ss << "for index " << cIx->index.name << " required entry "
+                      "0x" << std::hex << mappedValue << ": ";
                     // convert the field mapping value to separated form
                     // e.g. 00`0110`...
                     int bIx = (int)cIx->countNumBitsMapped();
-                    for (int fIx = (int)cIx->numMappings; fIx >= 0; --fIx) {
+                    for (int fIx = (int)cIx->numMappings - 1;
+                        fIx >= 0;
+                        --fIx)
+                    {
                         const Field *f = cIx->mappings[fIx];
                         auto mVal = getBits(
                             mappedValue, bIx - f->length, f->length);
-                        fmtBinary(ss, mVal, f->length);
+                        fmtBinaryDigits(ss, mVal, f->length);
                         if (fIx > 0) {
                             ss << "`";
                         }
                     }
                     if (cIx->format) {
-                        ss << cIx->format(inst->getOp(), cbdi->fieldMapping[i]) << ")";
+                        ss << " " <<
+                            cIx->format(inst->getOp(), cbdi->fieldMapping[i]);
                     }
                 }
                 if (len > 3) {
                     ss << " all";
                 }
-                ss << " miss";
+                ss << (len == 1 ? " misses" : "miss");
                 // TODO: save the mappings and look for the closest entries
                 //   - save the uint64_t
                 //   - save a pointer to the table and table length
@@ -150,7 +154,6 @@ static size_t encodeInst(
                 //              and  0011010    "r<4;4,1>"
                 //                   ^     ^
             }
-            ss << ")";
             if (opts.explicitCompactMissIsWarning) {
                 enc.warningAt(inst->getLoc(), ss.str().c_str());
             } else {

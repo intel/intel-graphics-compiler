@@ -150,8 +150,8 @@ namespace iga
         const Field      **mappings;
         size_t             numMappings;
         const char       **meanings; // length is numValues
+        // this is used for "what would this compaction word mean"
         std::string      (*format)(Op,uint64_t);
-        bool               overlapsSrcImmField; // i.e. Src1Index2
 
         // sums up with width of all the fields mapped
         size_t countNumBitsMapped() const {
@@ -167,25 +167,19 @@ namespace iga
 //   std::string [namespace::]Format_##SYM (uint64_t val)
 // E.g. SYM=CMP_CTRLIX_2SRC references
 //   std::string iga::pstg12::Format_CMP_CTRLIX_2SRC(uint64_t val);
-#define MAKE_COMPACTED_FIELD_G(SYM,SRC1_OVERLAP)\
+#define MAKE_COMPACTED_FIELD(SYM)\
     extern std::string Format_##SYM (Op, uint64_t val);\
     \
     static_assert(sizeof(SYM ## _VALUES)/sizeof(SYM ## _VALUES[0]) == \
         sizeof(SYM ## _MEANINGS)/sizeof(SYM ## _MEANINGS[0]), \
         "mismatch in table sizes");\
-    static const CompactedField CIX_ ## SYM = {\
+    static const CompactedField CIX_ ## SYM {\
         SYM, \
         SYM ## _VALUES, sizeof(SYM ## _VALUES)/sizeof(SYM ## _VALUES[0]),\
         SYM ## _MAPPINGS, sizeof(SYM ## _MAPPINGS)/sizeof(SYM ## _MAPPINGS[0]),\
         SYM ## _MEANINGS,\
         &(Format_ ## SYM),\
-        (SRC1_OVERLAP)\
     }
-
-#define MAKE_COMPACTED_FIELD(SYM)\
-    MAKE_COMPACTED_FIELD_G(SYM,false)
-
-
 } // namespace
 
 #endif /* IGA_BACKEND_NATIVE_FIELD_HPP */

@@ -438,6 +438,23 @@ const RegInfo *Model::lookupRegInfoByRegName(RegName name) const
     return nullptr;
 }
 
+uint32_t Model::getNumGRF() const
+{
+    const RegInfo* ri = lookupRegInfoByRegName(RegName::GRF_R);
+    return ri->getNumReg();
+}
+
+uint32_t Model::getNumFlagReg() const
+{
+    const RegInfo* ri = lookupRegInfoByRegName(RegName::ARF_F);
+    return ri->getNumReg();
+}
+
+uint32_t Model::getGRFByteSize() const
+{
+    return 32;
+}
+
 const RegInfo *iga::GetRegisterSpecificationTable(int &len)
 {
     len = sizeof(REGISTER_SPECIFICATIONS)/sizeof(REGISTER_SPECIFICATIONS[0]);

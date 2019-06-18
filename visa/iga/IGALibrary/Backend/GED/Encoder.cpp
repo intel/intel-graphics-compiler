@@ -1670,7 +1670,7 @@ void EncoderBase::patchJumpOffsets()
         }
 
         uint32_t encodePC = // calla is an absolute offset
-            inst->getOp() == Op::CALLA ? 0 : getEncodedPC(inst);
+            inst->getOpSpec().isJipAbsolute() ? 0 : getEncodedPC(inst);
 
         uint32_t jumpPC = 0;
         const Block *jipBlk = inst->getJIP();

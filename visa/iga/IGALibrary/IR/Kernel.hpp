@@ -47,7 +47,7 @@ namespace iga {
     {
     public:
         Kernel(const Model &model);
-        virtual ~Kernel();
+        ~Kernel();
         // disabling copy constructor to prevent problems with
         // shallow copy and mem manager
         Kernel(const Kernel &) = delete;

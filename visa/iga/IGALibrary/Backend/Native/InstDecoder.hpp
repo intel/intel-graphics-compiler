@@ -57,6 +57,9 @@ namespace iga
         v++;
         return v;
     }
+    static PredCtrl decodePredCtrl(uint64_t bits) {
+        return static_cast<PredCtrl>(bits);
+    }
     static ExecSize decodeExecSizeBits(uint64_t val) {
         switch (val) {
         case 0: return ExecSize::SIMD1;
@@ -81,23 +84,39 @@ namespace iga
         case 4: fm = FlagModifier::GE; break;
         case 5: fm = FlagModifier::LT; break;
         case 6: fm = FlagModifier::LE; break;
-            // case 7: reserved
+        // case 7: reserved
         case 8: fm = FlagModifier::OV; break;
         case 9: fm = FlagModifier::UN; break;
         default: fm = static_cast<FlagModifier>(val); break;
         }
         return fm;
     }
-    static SrcModifier decodeSrcModifierBits(uint64_t sm)
+    static SrcModifier decodeSrcModifierBits(uint64_t bits)
     {
-        switch (sm) {
+        switch (bits) {
         case 0: return SrcModifier::NONE;
         case 1: return SrcModifier::ABS;
         case 2: return SrcModifier::NEG;
         case 3: return SrcModifier::NEG_ABS;
-        default: return static_cast<SrcModifier>(sm);
+        default: return static_cast<SrcModifier>(bits);
         }
     }
+    static FlagModifier decodeFlagModifier(uint64_t bits)
+    {
+        switch (bits) {
+        case 0: return FlagModifier::NONE;
+        case 1: return FlagModifier::EQ;
+        case 2: return FlagModifier::NE;
+        case 3: return FlagModifier::GT;
+        case 4: return FlagModifier::GE;
+        case 5: return FlagModifier::LT;
+        case 6: return FlagModifier::LE;
+        //
+        case 8: return FlagModifier::OV;
+        case 9: return FlagModifier::UN;
+        default: return static_cast<FlagModifier>(bits);
+        }
+     }
 
     //
     // This is a generic template for instruction decoders for various GEN
@@ -188,6 +207,9 @@ namespace iga
             if (fields)
                 fields->emplace_back(f, "");
             return bits.getField(f);
+        }
+        uint32_t decodeFragmentU32(const Field &f) {
+            return (uint32_t)decodeFragment(f);
         }
         uint64_t decodeFragment(const Field &f, FormatFunction fmt) {
             auto val = bits.getField(f);
@@ -345,7 +367,7 @@ namespace iga
             const Field& fPREDCTRL,
             const Field& fFLAGREG)
         {
-            PredCtrl predCtrl = static_cast<PredCtrl>(bits.getField(fPREDCTRL));
+            PredCtrl predCtrl = decodePredCtrl(bits.getField(fPREDCTRL));
             addDecodedField(fPREDCTRL, ToSyntax(predCtrl));
             bool predInv = decodeBoolField(fPREDINV, "", "~");
             if (predInv && predCtrl == PredCtrl::NONE) {
@@ -394,6 +416,7 @@ namespace iga
                 zeroValue = FlagModifier::EO;
                 zeroString = "(eo) (early out)";
             }
+            // TODO: use decodeFlagModifier() and ToSyntax
             FlagModifier flagMod = decodeField<FlagModifier>(
                 fFLAGMOD, invalidModifier, {
                  {zeroValue, zeroString},

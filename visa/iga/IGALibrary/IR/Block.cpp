@@ -25,22 +25,35 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 
 // #define DEBUG_TRACE_ENABLED
+
 #include "../Frontend/IRToString.hpp"
 #include "../asserts.hpp"
-
 #include "../ErrorHandler.hpp"
 #include "Block.hpp"
 #include "Instruction.hpp"
 
+#include <set>
 #include <sstream>
+#include <vector>
 
 using namespace iga;
 
 
 struct BlockInference
 {
-    std::map<int32_t, Block *> &blockStarts;
     MemManager *allocator;
+
+    std::map<int32_t, Block *> &blockStarts;
+    std::set<int32_t>           instStarts;
+
+    struct ResolvedTarget {
+        Loc     loc; // instruction location
+        int     srcIx; // source index
+        int32_t targetPc;
+        ResolvedTarget(Loc _loc, int _srcIx, int32_t _targetPc)
+            : loc(_loc), srcIx(_srcIx), targetPc(_targetPc) { }
+    };
+    std::vector<ResolvedTarget> resolved;
 
     BlockInference(std::map<int32_t, Block *> &bs, MemManager *a)
         : blockStarts(bs), allocator(a) { }
@@ -59,7 +72,6 @@ struct BlockInference
     void replaceNumericLabel(
         ErrorHandler &errHandler,
         size_t binaryLength,
-        Op op,
         int32_t pc,
         int32_t instLen,
         Instruction *inst,
@@ -68,36 +80,38 @@ struct BlockInference
         Operand &src = inst->getSource(srcIx);
         if (src.getKind() == Operand::Kind::LABEL)
         {
-            int32_t absolutePc = src.getImmediateValue().s32;
-            if (op != Op::CALLA)
-                absolutePc += pc;
-            if (absolutePc < 0 || absolutePc > (int32_t)binaryLength) {
+            int32_t targetPc = src.getImmediateValue().s32;
+            if (!inst->getOpSpec().isJipAbsolute())
+                targetPc += pc;
+            if (targetPc < 0 || targetPc > (int32_t)binaryLength) {
                 std::stringstream ss;
                 ss << "src" << srcIx << " targets";
-                if (absolutePc < 0) {
+                if (targetPc < 0) {
                     ss << " before kernel start";
                 } else {
                     ss << " after kernel end";
                 }
-                ss << ": PC " << absolutePc;
+                ss << ": PC " << targetPc;
 
                 Loc loc(0, 0, (uint32_t)pc, (uint32_t)instLen);
                 errHandler.reportError(loc, ss.str());
+            } else {
+                resolved.emplace_back(inst->getLoc(), srcIx, targetPc);
             }
-            src.setLabelSource(getBlock(absolutePc), src.getType());
+            src.setLabelSource(getBlock(targetPc), src.getType());
         }
     }
 
-    void run(ErrorHandler &errHandler, size_t binaryLength, InstList &insts)
+    void run(ErrorHandler &errHandler, int32_t binaryLength, InstList &insts)
     {
         // define start block to ensure at least one block exists
         (void)getBlock(0);
 
         int32_t pc = 0;
         for (Instruction *inst : insts) {
+            instStarts.insert(inst->getPC());
             int32_t instLen = inst->hasInstOpt(InstOpt::COMPACTED) ? 8 : 16;
-            const OpSpec &instSpec = inst->getOpSpec();
-            if (instSpec.isBranching()) {
+            if (inst->getOpSpec().isBranching()) {
                 // all branching instructions can redirect to next instruction
                 // start a new block after this one
                 (void)getBlock(pc + instLen);
@@ -105,7 +119,6 @@ struct BlockInference
                 replaceNumericLabel(
                     errHandler,
                     binaryLength,
-                    instSpec.op,
                     pc,
                     instLen,
                     inst,
@@ -115,7 +128,6 @@ struct BlockInference
                     replaceNumericLabel(
                         errHandler,
                         binaryLength,
-                        instSpec.op,
                         pc,
                         instLen,
                         inst,
@@ -144,6 +156,19 @@ struct BlockInference
             currBlock->appendInstruction(inst);
 
             pc += instLen;
+        }
+
+        for (const ResolvedTarget &rt : resolved) {
+            if (rt.targetPc != binaryLength && // EOF is also a valid target
+                instStarts.find(rt.targetPc) == instStarts.end())
+            {
+                std::stringstream ss;
+                ss << "src" << rt.srcIx <<
+                  // it must've been a numeric label because symbolic labels
+                  // couldn't cause this
+                    ": numeric label targets the middle of an instruction";
+                errHandler.reportError(rt.loc,  ss.str());
+            }
         }
     }
 }; // class BlockInference
@@ -187,12 +212,17 @@ static void traceOperand(const Operand &op) {
 
 std::map<int32_t, Block *> Block::inferBlocks(
     ErrorHandler &errHandler,
-    size_t binaryLength,
     MemManager &mem,
     InstList &insts)
 {
     std::map<int32_t, Block *> blockStarts;
     BlockInference bi(blockStarts, &mem);
+    int32_t binaryLength = 0;
+    if (!insts.empty()) {
+        Instruction *i = insts.back();
+        binaryLength = i->getPC();
+        binaryLength += i->hasInstOpt(InstOpt::COMPACTED) ? 8 : 16;
+    }
     bi.run(errHandler, binaryLength, insts);
 
 #ifdef DEBUG_TRACE_ENABLED

@@ -162,10 +162,11 @@ Kernel *DecoderBase::decodeKernel(
     } else {
         auto blockStarts = Block::inferBlocks(
             errorHandler(),
-            binarySize,
             kernel->getMemManager(),
             insts);
+        int id = 1;
         for (auto bitr : blockStarts) {
+            bitr.second->setID(id++);
             kernel->appendBlock(bitr.second);
         }
     }

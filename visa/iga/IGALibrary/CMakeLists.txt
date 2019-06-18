@@ -296,7 +296,7 @@ set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 ##############################################################################
 
 
-source_group("API" FILES ${IGA_API_Headers} ${IGA_API_EncoderInterface} ${IGA_API})
+source_group("API" FILES ${IGA_API_Headers} ${IGA_API_EncoderInterface} ${IGA_API} ${IGA_API_Source})
 source_group("Backend" FILES ${IGA_Backend})
 
 if(WIN32)
@@ -332,7 +332,7 @@ endif(ANDROID AND MEDIA_IGA)
                           VERSION "${IGC_API_MAJOR_VERSION}.${IGC_API_MINOR_VERSION}.${IGC_API_PATCH_VERSION}"
                           SOVERSION "${IGC_API_MAJOR_VERSION}")
   endif()
- 
+
   if(UNIX)
     if (CMAKE_INSTALL_FULL_LIBDIR)
         set(IGA_LIB_PATH ${CMAKE_INSTALL_FULL_LIBDIR})

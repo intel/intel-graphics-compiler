@@ -54,10 +54,11 @@ namespace iga
         {
         }
         ~Block() {
-            // Destruct Instructions. The memory allocated for Instrucsion will be de-allocated by
-            // Allocator, while we need to explicit call ~Instruction() to avoid memory leak on
-            // std members in Instruction
-            for (auto* inst : m_instructions) {
+            // Destruct instructions.  The memory allocated for them will be
+            // de-allocated by the top-level MemManager allocator, but we need
+            // to explicitly call ~Instruction() to cleanup Instruction members
+            // which don't use MemManager-allocated memory
+            for (auto inst : m_instructions) {
                 inst->~Instruction();
             }
         }
@@ -84,7 +85,6 @@ namespace iga
         // sets the Block* within these instructions
         static std::map<int32_t,Block*> inferBlocks(
             ErrorHandler &errHandler,
-            size_t binaryLength,
             MemManager& mem,
             InstList &insts);
 

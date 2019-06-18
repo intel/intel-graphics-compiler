@@ -29,18 +29,32 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ColoredIO.hpp"
 
 
-static void errorInFile(const Opts &opts, const std::string &inpFile, const char *msg) {
+static void errorInFile(
+    const Opts &opts, const std::string &inpFile, const char *msg)
+{
     std::stringstream ss;
     const char *tool = opts.mode == Opts::Mode::XDCMP ? "dcmp" : "ifs";
     ss << "-X" << tool << ": " << inpFile << ": " << msg;
     fatalExitWithMessage(ss.str().c_str());
 };
 
+static void ifXdcmpCheckForNonCompacted(Opts::Mode m, const std::string &str)
+{
+    if (m == Opts::Mode::XDCMP &&
+        str.find("Compacted") != std::string::npos)
+    {
+        std::cerr << iga::Color::YELLOW <<
+            "warning: -Xdcmp should take a non-compacted instruction "
+            "for analysis\n" << iga::Reset::RESET;
+    }
+}
+
 static void parseBitsFromFile(
     const std::string &inpFile,
-    Opts opts, // copy
+    Opts opts0, // copy
     igax::Bits &bits)
 {
+    Opts opts = opts0;
     opts.mode = Opts::AUTO; // allow file inference
     inferPlatformAndMode(inpFile, opts);
 
@@ -52,6 +66,7 @@ static void parseBitsFromFile(
         }
         igax::Context ctx(opts.platform);
         std::string inpText = readTextFile(inpFile.c_str());
+        ifXdcmpCheckForNonCompacted(opts0.mode, inpText);
         if (!assemble(opts, ctx, inpFile, inpText, bits)) {
             errorInFile(opts, inpFile, "failed to assemble file");
         }
@@ -69,6 +84,7 @@ static void parseBitsAsSyntax(
     //   mov (8|M0)    (ov)f0.1   r0.0<1>:f     r1.1<0;1,0>:f
     igax::Context ctx(opts.platform);
     Opts opts1 = opts;
+    ifXdcmpCheckForNonCompacted(opts.mode, inp);
     if (!assemble(opts, ctx, "<arg>", inp, bits)) {
         errorInFile(opts, "<arg>", "failed to assemble argument string");
     }
@@ -287,7 +303,7 @@ static bool decodeFieldsSingle(Opts opts)
         delete outfile;
     }
 
-    return st == IGA_SUCCESS;
+    return st != IGA_SUCCESS;
 }
 
 static bool decodeFieldsDiff(Opts opts)
@@ -351,7 +367,7 @@ static bool decodeFieldsDiff(Opts opts)
         delete outfile;
     }
 
-    return st == IGA_SUCCESS;
+    return st != IGA_SUCCESS;
 }
 
 bool decodeInstructionFields(const Opts &baseOpts)
@@ -362,7 +378,7 @@ bool decodeInstructionFields(const Opts &baseOpts)
         return decodeFieldsDiff(baseOpts);
     } else {
         fatalExitWithMessage("iga: -Xifs requires one or two arguments");
-        return false;
+        return true;
     }
 }
 
@@ -374,6 +390,8 @@ bool debugCompaction(Opts opts)
     // results we should determine a sane thing to do pre-compacted data
     // (should rethink this, maybe just -Xifs compacted values)
     opts.autoCompact = false;
+
+    inferPlatformAndMode(opts.inputFiles[0], opts);
     ensurePlatformIsSet(opts);
 
     igax::Bits bits = parseBits(opts.inputFiles[0], opts);

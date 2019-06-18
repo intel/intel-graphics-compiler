@@ -77,8 +77,7 @@ namespace iga
             // wonky because null and sp have "0" registers (meaning 1 implied)
             // so reg==0 is alway valid for everyone
             return reg == 0 ||
-                    // otherwise: one of several registers
-                    (reg >= 0 && reg < numRegs);
+                          (reg >= 0 && reg < numRegs); // otherwise: one of several registers
         }
         bool isSubRegByteOffsetValid(int regNum, int subregByte, int grfSize) const {
             int regBytes = regName == RegName::GRF_R ? grfSize :
@@ -108,6 +107,8 @@ namespace iga
                 return true;
             }
         }
+
+        int getNumReg() const { return numRegs; }
 
         bool encode(int reg, uint8_t &regNumBits) const;
         bool decode(uint8_t regNumBits, int &reg) const;
@@ -364,10 +365,9 @@ namespace iga
         bool supportsAlign16Ternary() const { return platform < Platform::GEN10; }
         bool supportsAlign16MacroInst() const { return platform <= Platform::GEN10; }
 
-        uint32_t getGRFByteSize() const
-        {
-            return 32;
-        }
+        uint32_t getNumGRF()      const;
+        uint32_t getNumFlagReg()  const;
+        uint32_t getGRFByteSize() const;
 
 
     }; // class model
