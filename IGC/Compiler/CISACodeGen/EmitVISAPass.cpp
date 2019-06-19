@@ -8850,11 +8850,51 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
     else if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer))
     {
         CVariable* funcAddr = GetSymbol(inst->getCalledValue());
-        CVariable* truncAddr = m_currShader->GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true);
-        m_encoder->Cast(truncAddr, funcAddr);
-        m_encoder->Push();
-        m_encoder->IndirectStackCall(nullptr, truncAddr, argSizeInGRF, retSizeInGRF);
-        m_encoder->Push();
+
+        if (funcAddr->IsUniform())
+        {
+            CVariable* truncAddr = TruncatePointer(funcAddr);
+            m_encoder->IndirectStackCall(nullptr, truncAddr, argSizeInGRF, retSizeInGRF);
+            m_encoder->Push();
+        }
+        else
+        {
+            // If the call is not uniform, we have to make a uniform call per lane
+            // First get the execution mask for active lanes
+            CVariable* eMask = GetExecutionMask();
+            // Create a label for the loop
+            uint label = m_encoder->GetNewLabelID();
+            m_encoder->Label(label);
+            m_encoder->Push();
+
+            // Get the first active lane's function address
+            CVariable* offset = nullptr;
+            CVariable* uniformAddr = UniformCopy(funcAddr, offset, eMask);
+            // Set the predicate to true for all lanes with the same address
+            CVariable* flag = m_currShader->ImmToVariable(0, ISA_TYPE_BOOL);
+            m_encoder->Cmp(EPREDICATE_EQ, flag, uniformAddr, funcAddr);
+            m_encoder->Push();
+
+            // Indirect call for all lanes set by the flag
+            CVariable* truncAddr = TruncatePointer(uniformAddr);
+            m_encoder->IndirectStackCall(flag, truncAddr, argSizeInGRF, retSizeInGRF);
+            m_encoder->Push();
+
+            // Unset the bits in execution mask for lanes that were called
+            CVariable* tempMask = m_currShader->GetNewVariable(1, eMask->GetType(), EALIGN_DWORD, true);
+            m_encoder->SetNoMask();
+            m_encoder->Cast(tempMask, flag);
+            m_encoder->Push();
+            m_encoder->Xor(eMask, eMask, tempMask);
+            m_encoder->Push();
+
+            // Loop back for remaining func addresses as long as there are bits in the eMask still set
+            CVariable* needLoop = m_currShader->GetNewVariable(1, ISA_TYPE_BOOL, EALIGN_BYTE, true);
+            m_encoder->Cmp(EPREDICATE_NE, needLoop, eMask, m_currShader->ImmToVariable(0, eMask->GetType()));
+            m_encoder->Push();
+            m_encoder->Jump(needLoop, label);
+            m_encoder->Push();
+        }
     }
     else
     {
@@ -9864,18 +9904,22 @@ CVariable* EmitPass::GetExecutionMask()
 CVariable* EmitPass::UniformCopy(CVariable *var)
 {
     CVariable* offset = nullptr;
-    return UniformCopy(var, offset);
+    CVariable* eMask = nullptr;
+    return UniformCopy(var, offset, eMask);
 }
 
 /// Uniform copy allowing to reuse the off calculated by a previous call
 /// This allow avoiding redundant code
-CVariable* EmitPass::UniformCopy(CVariable *var, CVariable*& off)
+CVariable* EmitPass::UniformCopy(CVariable *var, CVariable*& off, CVariable* eMask)
 {
     assert(!var->IsUniform() && "Expect non-uniform source!");
 
+    if (eMask == nullptr)
+    {
+        eMask = GetExecutionMask();
+    }
     if (off == nullptr)
     {
-        CVariable* eMask = GetExecutionMask();
         // Get offset to any 1s. For simplicity, use 'fbl' to find the lowest 1s.
         off = m_currShader->GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true);
         m_encoder->Fbl(off, eMask);

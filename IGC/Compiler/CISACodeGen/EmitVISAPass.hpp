@@ -431,7 +431,7 @@ public:
     CVariable* GetExecutionMask();
     CVariable* GetDispatchMask();
     CVariable* UniformCopy(CVariable *var);
-    CVariable* UniformCopy(CVariable *var, CVariable*& LaneOffset);
+    CVariable* UniformCopy(CVariable *var, CVariable*& LaneOffset, CVariable* eMask = nullptr);
     // generate loop header to process sample instruction with varying resource/sampler
     bool ResourceLoopHeader(
         ResourceDescriptor& resource,
