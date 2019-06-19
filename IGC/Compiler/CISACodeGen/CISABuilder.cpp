@@ -3671,7 +3671,7 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
     }
 
     if ((context->type == ShaderType::OPENCL_SHADER || context->type == ShaderType::COMPUTE_SHADER) &&
-        VISAPlatform >= GENX_SKL && IGC_IS_FLAG_ENABLED(EnablePreemption) && !hasStackCall)
+        m_program->m_Platform->supportGPGPUMidThreadPreemption() && !hasStackCall)
     {
         SaveOption(vISA_enablePreemption, true);
     }
