@@ -60,9 +60,7 @@ endif()
 ###
 
 ### Check by order first available way to link with opencl-clang
-if(CCLANG_FROM_SYSTEM)
-  message(STATUS "[IGC\\BiFModule] : opencl-clang will be taken from system")
-else()
+if(NOT CCLANG_FROM_SYSTEM)
   if(NOT DEFINED CCLANG_BUILD_PREBUILDS_DIR)
     # Detect CPU architecture
     igc_arch_get_cpu(cpuSuffix)
@@ -89,7 +87,6 @@ else()
 
   ### User didn't define nothing, then pick the method 2 or 3.
   elseif(EXISTS ${CCLANG_BUILD_PREBUILDS_DIR})
-    message(STATUS "[IGC\\BiFModule] : opencl-clang will be taken from prebuilds")
     set(CCLANG_BUILD_PREBUILDS TRUE)
   elseif(EXISTS ${CCLANG_BUILD_INTREE_LLVM_DIR})
     message(STATUS "[IGC\\BiFModule] : opencl-clang will be taken from sources")
@@ -104,6 +101,8 @@ endif()
 
 #1. CCLANG_FROM_SYSTEM - use installed on system opencl-clang toolchain
 if(CCLANG_FROM_SYSTEM)
+  message(STATUS "[IGC\\BiFModule] : opencl-clang will be taken from system")
+
   find_library(SYSTEM_COMMON_CLANG ${COMMON_CLANG_LIBRARY_NAME})
   
   add_library(opencl-clang-lib SHARED IMPORTED GLOBAL)
@@ -124,6 +123,8 @@ if(CCLANG_FROM_SYSTEM)
 ###
 #2. CCLANG_BUILD_PREBUILDS - use prebuilded opencl-clang toolchain
 elseif(${CCLANG_BUILD_PREBUILDS})
+  message(STATUS "[IGC\\BiFModule] : opencl-clang will be taken from prebuilds")
+
   set(CLANG_TOOL_PATH "${CCLANG_BUILD_PREBUILDS_DIR}/clang${CMAKE_EXECUTABLE_SUFFIX}")
   set(LLVM_PACKAGE_VERSION "${LLVM_VERSION_MAJOR}.${LLVM_VERSION_MINOR}.${LLVM_VERSION_PATCH}${LLVM_VERSION_SUFFIX}")
 
@@ -150,6 +151,8 @@ elseif(${CCLANG_BUILD_PREBUILDS})
 ###
 #3. CCLANG_BUILD_INTREE_LLVM - use sources of opencl-clang toolchain
 elseif(${CCLANG_BUILD_INTREE_LLVM})
+  message(STATUS "[IGC\\BiFModule] : opencl-clang will be taken from sources")
+
   add_library(opencl-clang-lib ALIAS ${COMMON_CLANG_LIBRARY_NAME})
   add_executable(clang-tool ALIAS clang)
   set(opencl-header "${LLVM_SOURCE_DIR}/tools/clang/lib/Headers/opencl-c.h")
@@ -158,10 +161,19 @@ endif()
 
 if(UNIX)
   if(NOT ${CCLANG_BUILD_INTREE_LLVM})
-    if(${LLVM_VERSION_MINOR} EQUAL 0 AND ${LLVM_VERSION_PATCH} EQUAL 0)
-      set_property(TARGET opencl-clang-lib PROPERTY "IMPORTED_SONAME" "${COMMON_CLANG_LIB_FULL_NAME}.${LLVM_VERSION_MAJOR}")
+    # Get common clang library soname
+    get_target_property(CCLANG_LIB_PATH opencl-clang-lib "IMPORTED_LOCATION")
+    execute_process(
+      COMMAND readelf -d ${CCLANG_LIB_PATH}
+      OUTPUT_VARIABLE CCLANG_READELF_CALL)
+    string(REGEX MATCH "\\[${COMMON_CLANG_LIB_FULL_NAME}\\.([0-9](\\.[0-9]*)*[a-zA-Z0-9]*)\\]" CCLANG_SONAME_VERSION "${CCLANG_READELF_CALL}")
+    set(CCLANG_SONAME_VERSION "${CMAKE_MATCH_1}")
+
+    # Check if common clang library is newer than 5.0.0 version on which we have SPIR-V support
+    if("${CCLANG_SONAME_VERSION}" VERSION_GREATER "5.0.0")
+      set_property(TARGET opencl-clang-lib PROPERTY "IMPORTED_SONAME" "${COMMON_CLANG_LIB_FULL_NAME}.${CCLANG_SONAME_VERSION}")
     else()
-      set_property(TARGET opencl-clang-lib PROPERTY "IMPORTED_SONAME" "${COMMON_CLANG_LIB_FULL_NAME}.${LLVM_VERSION_MAJOR}.${LLVM_VERSION_MINOR}.${LLVM_VERSION_PATCH}")
+      message(FATAL_ERROR "[IGC\\BiFModule] : Version ${CCLANG_SONAME_VERSION} of library ${COMMON_CLANG_LIB_FULL_NAME} is below version 5.0.0 (where it's starts support of SPIR-V), please upgrade this library at least to version 5.0.0")
     endif()
   endif()
   if (NOT CCLANG_FROM_SYSTEM)
