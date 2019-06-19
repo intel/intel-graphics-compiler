@@ -940,7 +940,7 @@ igc_bif_build_bc(
       SOURCES              ${IGC_OPTION__BIF_SRC_OCL_DIR}/Languages/OpenCL/PreRelease/IBIF_PreRelease_Impl.cl
       FORCE_INCLUDE        ${IGC_BUILD__BIF_OCL_INCLUDES}
       INCLUDE_DIRECTORIES  ${IGC_BUILD__BIF_OCL_COMMON_INC_DIRS}
-      DEFINES              "__EXECUTION_MODEL_DEBUG=1" "__OPENCL_C_VERSION__=200" "__IGC_BUILD__" ${KHR_DEFINES} "cl_intel_device_side_avc_vme_enable" ${FLAG}
+      DEFINES              "__EXECUTION_MODEL_DEBUG=1" "__OPENCL_C_VERSION__=200" "__IGC_BUILD__" ${KHR_DEFINES} "cl_intel_device_side_avc_vme_enable" "cl_intel_device_side_avc_motion_estimation" ${FLAG}
       DEPENDS              ${IGC_BUILD__BIF_OCL_COMMON_DEPENDS}
       OPTIONS CL           ${CL_OPTIONS} -cl-std=CL2.0
      )
