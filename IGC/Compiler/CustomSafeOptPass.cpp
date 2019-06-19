@@ -922,7 +922,20 @@ void IGC::CustomSafeOptPass::visitLdptr(llvm::CallInst* inst)
     llvm::CallInst* pNewCallInst = builder.CreateCall(
         pLdIntrinsic, ld_FunctionArgList);
 
-    inst->replaceAllUsesWith(pNewCallInst);
+    // as typedread returns float4 by default, bitcast it
+    // to int4 if necessary
+    // FIXME: is it better to make typedRead return ty a anyvector?
+    if (inst->getType() != pNewCallInst->getType())
+    {
+        assert(inst->getType()->isVectorTy() && inst->getType()->getVectorElementType()->isIntegerTy(32) && 
+            inst->getType()->getVectorNumElements() == 4 && "expect int4 here");
+        auto bitCastInst = builder.CreateBitCast(pNewCallInst, inst->getType());
+        inst->replaceAllUsesWith(bitCastInst);
+    }
+    else
+    {
+        inst->replaceAllUsesWith(pNewCallInst);
+    }
 }
 
 void IGC::CustomSafeOptPass::visitSampleBptr(llvm::SampleIntrinsic* sampleInst)
