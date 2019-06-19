@@ -79,12 +79,11 @@ KernelArg::KernelArg(const Argument* arg, const DataLayout* DL, const StringRef 
     m_align = calcAlignment(arg, DL);
 }
 
-KernelArg::KernelArg(const ImplicitArg& implicitArg, const DataLayout* DL, const Argument* arg, unsigned int ExplicitArgNo, unsigned int structArgOffset) :
+KernelArg::KernelArg(const ImplicitArg& implicitArg, const DataLayout* DL, const Argument* arg, unsigned int ExplicitArgNo, unsigned int structArgOffset, unsigned int GRFSize) :
     m_implicitArgument(true),
     m_argType(calcArgType(implicitArg)),
     m_accessQual(AccessQual::NONE),
     m_allocateSize(implicitArg.getAllocateSize(*DL)),
-    m_elemAllocateSize(m_allocateSize / implicitArg.getNumberElements()),
     m_align(implicitArg.getAlignment(*DL)),
     m_isConstantBuf(implicitArg.isConstantBuf()),
     m_arg(arg),
@@ -96,6 +95,11 @@ KernelArg::KernelArg(const ImplicitArg& implicitArg, const DataLayout* DL, const
     m_imageInfo({ false, false }),
     m_isEmulationArgument(false)
 {
+    m_elemAllocateSize = m_allocateSize / implicitArg.getNumberElements();
+    if (implicitArg.isLocalIDs() && GRFSize == 64)
+    {
+        m_elemAllocateSize = m_allocateSize / (GRFSize/2);
+    }
 }
 
 unsigned int KernelArg::calcAllocateSize(const Argument* arg, const DataLayout* DL) const
@@ -1000,7 +1004,7 @@ bool KernelArgs::const_iterator::operator!=(const const_iterator& iterator)
     return (m_major != iterator.m_major) || (m_minor != iterator.m_minor); 
 }
 
-KernelArgs::KernelArgs(const Function& F, const DataLayout* DL, MetaDataUtils* pMdUtils, ModuleMetaData* moduleMD, KernelArgsOrder::InputType layout)
+KernelArgs::KernelArgs(const Function& F, const DataLayout* DL, MetaDataUtils* pMdUtils, ModuleMetaData* moduleMD, unsigned int GRFSize, KernelArgsOrder::InputType layout)
     : m_KernelArgsOrder( layout ), 
       m_args( m_KernelArgsOrder )
 {
@@ -1088,7 +1092,7 @@ KernelArgs::KernelArgs(const Function& F, const DataLayout* DL, MetaDataUtils* p
     // Implicit function args
     for (unsigned int i = 0; i < numImplicitArgs; ++i, ++funcArg)
     {
-        KernelArg kernelArg = KernelArg(implicitArgs[i], DL, &(*funcArg), implicitArgs.getExplicitArgNum(i), implicitArgs.getStructArgOffset(i));
+        KernelArg kernelArg = KernelArg(implicitArgs[i], DL, &(*funcArg), implicitArgs.getExplicitArgNum(i), implicitArgs.getStructArgOffset(i), GRFSize);
         addAllocationArg(kernelArg); 
     }
     

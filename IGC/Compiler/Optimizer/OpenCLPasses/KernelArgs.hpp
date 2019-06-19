@@ -205,7 +205,7 @@ namespace IGC
         /// @param  structArgOffset  The argument offset in the associated struct argument
         ///                     This param has meaning only for implicit arguments associated
         ///                     with aggregation explicit argument
-        KernelArg(const ImplicitArg& implicitArg, const llvm::DataLayout* DL, const llvm::Argument* arg, unsigned int imageArgNo, unsigned int structArgOffset);
+        KernelArg(const ImplicitArg & implicitArg, const llvm::DataLayout * DL, const llvm::Argument * arg, unsigned int ExplicitArgNo, unsigned int structArgOffset, unsigned int GRFSize);
 
         /// @brief  Getter functions
         ArgType                         getArgType()            const;
@@ -452,7 +452,7 @@ namespace IGC
         /// @param  DL          The DataLayout
         /// @param  pMdUtils    The Metadata Utils instance for accessing metadata information
         /// @param  layout      One of the predefined payload layout types
-        KernelArgs(const llvm::Function& F, const llvm::DataLayout* DL, IGCMD::MetaDataUtils* pMdUtils, ModuleMetaData* moduleMD, KernelArgsOrder::InputType layout = KernelArgsOrder::InputType::INDEPENDENT);
+        KernelArgs(const llvm::Function& F, const llvm::DataLayout* DL, IGCMD::MetaDataUtils* pMdUtils, ModuleMetaData* moduleMD, unsigned int GRFSize, KernelArgsOrder::InputType layout = KernelArgsOrder::InputType::INDEPENDENT);
 
         /// @brief  Returns a constant iterator to the beginning of the kernel arguments
         /// @return A constant iterator to the beginning of the kernel arguments

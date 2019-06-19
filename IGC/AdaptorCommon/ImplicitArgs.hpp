@@ -178,6 +178,7 @@ namespace IGC
         size_t                          getAlignment(const llvm::DataLayout& DL) const;
         unsigned int                    getPointerSize(const llvm::DataLayout& DL) const;
         bool                            isConstantBuf() const;
+        bool                            isLocalIDs() const;
 
     private:
         ArgType                         m_argType;

@@ -390,7 +390,9 @@ void CShader::CreateImplicitArgs()
         assert((implictArg.getNumberElements() < (UINT16_MAX)) && "getNumberElements > higher than 64k");
 
         bool isUniform = implictArg.getDependency() == WIAnalysis::UNIFORM;
-        CVariable* var = GetNewVariable((uint16_t)implictArg.getNumberElements(),
+        uint16_t nbElements = (uint16_t)implictArg.getNumberElements();
+
+        CVariable* var = GetNewVariable(nbElements,
             implictArg.getVISAType(*m_DL),
             implictArg.getAlignType(*m_DL),
             isUniform,
@@ -2096,7 +2098,10 @@ CVariable* CShader::getOrCreateArgumentSymbol(
             else
             {
                 bool isUniform = implictArg.getDependency() == WIAnalysis::UNIFORM;
-                var = GetNewVariable((uint16_t)implictArg.getNumberElements(),
+                uint16_t nbElements = (uint16_t)implictArg.getNumberElements();
+
+
+                var = GetNewVariable(nbElements,
                     implictArg.getVISAType(*m_DL),
                     implictArg.getAlignType(*m_DL), isUniform,
                     isUniform ? 1 : m_numberInstance);

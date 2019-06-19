@@ -228,11 +228,16 @@ bool ImplicitArg::isConstantBuf() const {
     return m_isConstantBuf;
 }
 
+bool ImplicitArg::isLocalIDs() const {
+    return (m_argType == ImplicitArg::LOCAL_ID_X ||
+                 m_argType == ImplicitArg::LOCAL_ID_Y ||
+                 m_argType == ImplicitArg::LOCAL_ID_Z);
+}
+
 ImplicitArgs::ImplicitArgs(const llvm::Function& func , const MetaDataUtils* pMdUtils) 
 {
     if (IMPLICIT_ARGS.size() == 0)
     {
-        int numLocalIDElt = 16;
         IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::R0, "r0", ImplicitArg::INT, WIAnalysis::UNIFORM, 8, ImplicitArg::ALIGN_GRF, false));
 
         IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::PAYLOAD_HEADER, "payloadHeader", ImplicitArg::INT, WIAnalysis::UNIFORM, 8, ImplicitArg::ALIGN_GRF, true));
@@ -243,9 +248,9 @@ ImplicitArgs::ImplicitArgs(const llvm::Function& func , const MetaDataUtils* pMd
         IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::LOCAL_SIZE, "localSize", ImplicitArg::INT, WIAnalysis::UNIFORM, 3, ImplicitArg::ALIGN_DWORD, true));
         IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::ENQUEUED_LOCAL_WORK_SIZE, "enqueuedLocalSize", ImplicitArg::INT, WIAnalysis::UNIFORM, 3, ImplicitArg::ALIGN_DWORD, true));
 
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::LOCAL_ID_X, "localIdX", ImplicitArg::SHORT, WIAnalysis::RANDOM, numLocalIDElt, ImplicitArg::ALIGN_GRF, false));
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::LOCAL_ID_Y, "localIdY", ImplicitArg::SHORT, WIAnalysis::RANDOM, numLocalIDElt, ImplicitArg::ALIGN_GRF, false));
-        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::LOCAL_ID_Z, "localIdZ", ImplicitArg::SHORT, WIAnalysis::RANDOM, numLocalIDElt, ImplicitArg::ALIGN_GRF, false));
+        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::LOCAL_ID_X, "localIdX", ImplicitArg::SHORT, WIAnalysis::RANDOM, 16, ImplicitArg::ALIGN_GRF, false));
+        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::LOCAL_ID_Y, "localIdY", ImplicitArg::SHORT, WIAnalysis::RANDOM, 16, ImplicitArg::ALIGN_GRF, false));
+        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::LOCAL_ID_Z, "localIdZ", ImplicitArg::SHORT, WIAnalysis::RANDOM, 16, ImplicitArg::ALIGN_GRF, false));
 
         IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::CONSTANT_BASE, "constBase", ImplicitArg::CONSTPTR, WIAnalysis::UNIFORM, 1, ImplicitArg::ALIGN_PTR, true));
         IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::GLOBAL_BASE, "globalBase", ImplicitArg::GLOBALPTR, WIAnalysis::UNIFORM, 1, ImplicitArg::ALIGN_PTR, true));
