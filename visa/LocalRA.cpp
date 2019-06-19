@@ -140,7 +140,7 @@ void LocalRA::evenAlign()
 #endif
             gra.evenAlign();
         }
-        gra.updateSubRegAlignment(G4_GRF, SUB_ALIGNMENT_GRFALIGN);
+        gra.updateSubRegAlignment(G4_GRF, GRFALIGN);
         // Since we are piggy backing on mask field of G4_Declare,
         // we need to make sure we reset it before going further.
         resetMasks();
@@ -769,7 +769,7 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign)
             }
 
             // Why?
-            G4_SubReg_Align subAlign = builder.GRFAlign() ? SUB_ALIGNMENT_GRFALIGN : dcl->getSubRegAlign();
+            G4_SubReg_Align subAlign = builder.GRFAlign() ? GRFALIGN : dcl->getSubRegAlign();
 
             if (assignFromFront)
             {
@@ -2202,7 +2202,7 @@ void PhyRegsLocalRA::markPhyRegs(G4_Declare* topdcl)
 bool PhyRegsLocalRA::findFreeSingleReg(int regIdx, G4_SubReg_Align subalign, int &regnum, int &subregnum, int size)
 {
     bool found = false;
-    if (subalign == SUB_ALIGNMENT_GRFALIGN)
+    if (subalign == GRFALIGN)
     {
         if (isWordBusy(regIdx, 0, size) == false)
         {
@@ -2210,7 +2210,7 @@ bool PhyRegsLocalRA::findFreeSingleReg(int regIdx, G4_SubReg_Align subalign, int
             found = true;
         }
     }
-    else if (subalign == SUB_ALIGNMENT_HALFGRFALIGN)
+    else if (subalign == HALFGRFALIGN)
     {
         if (isWordBusy(regIdx, 0, size) == false)
         {
@@ -2223,8 +2223,7 @@ bool PhyRegsLocalRA::findFreeSingleReg(int regIdx, G4_SubReg_Align subalign, int
             found = true;
         }
     }
-    else if (subalign == Eight_Word ||
-                subalign == Four_Word)
+    else if (subalign == Eight_Word || subalign == Four_Word)
     {
         for (int j = 0; j < (NUM_WORDS_PER_GRF - size + 1) && found == false; j += 4)
         {
@@ -2257,7 +2256,8 @@ bool PhyRegsLocalRA::findFreeSingleReg(int regIdx, G4_SubReg_Align subalign, int
             }
         }
     }
-    else {
+    else 
+    {
         ASSERT_USER(false, "Dont know how to allocate this sub-alignment");
     }
 

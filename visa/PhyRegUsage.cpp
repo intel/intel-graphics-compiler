@@ -572,10 +572,10 @@ bool PhyRegUsage::findContiguousNoWrapAddrFlag(bool availRegs[],
         // some register assignments need special alignment, we check
         // whether the alignment criteria is met.
         //
-        if (subAlign == Sixteen_Word && i != 0)    {    // Sixteen_Word sub-align should have i=0
+        if (subAlign == Sixteen_Word && i != 0)    
+        {    // Sixteen_Word sub-align should have i=0
             return false;
-        } else if ((subAlign > Eight_Word && subAlign < Sixteen_Word && i != (unsigned)(Sixteen_Word - subAlign)) ||    // 9_Word~15_Word align
-            (subAlign == Eight_Word && i % 8 != 0) ||    // 8_Word align, i must be divided by 8
+        } else if ((subAlign == Eight_Word && i % 8 != 0) ||    // 8_Word align, i must be divided by 8
             (i & 0x1 && subAlign == Even_Word) || // i is odd but intv needs to be even aligned
             (subAlign == Four_Word && (i % 4 != 0))) // 4_word alignment
             i++;
@@ -1379,12 +1379,6 @@ void LiveRange::dump()
     //
     // print alignment
     //
-    if (var->getAlignment() == G4_Align::Even)
-    {
-        DEBUG_MSG("even");
-    }
-
-
     DEBUG_MSG("\t");
     if (var->getSubRegAlignment() == Any)
     {

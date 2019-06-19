@@ -4442,7 +4442,7 @@ void Augmentation::augmentIntfGraph()
 #endif
                 gra.evenAlign();
             }
-            gra.updateSubRegAlignment(G4_GRF, SUB_ALIGNMENT_GRFALIGN);
+            gra.updateSubRegAlignment(G4_GRF, GRFALIGN);
         }
 
         // Clear information calculated in this iteration of RA so
@@ -5444,7 +5444,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
 
             if (!failed_alloc)
             {
-                BankAlign align = lrVar->getAlignment() == G4_Align::Even ? BankAlign::Even : BankAlign::Either;
+                BankAlign align = lrVar->isEvenAlign() ? BankAlign::Even : BankAlign::Either;
                 if (allocFromBanks)
                 {
                     
@@ -5837,7 +5837,7 @@ bool GraphColor::regAlloc(bool doBankConflictReduction,
             //
             if (dcl->getNumRows() > 1)
             {
-                lrs[i]->getVar()->setSubRegAlignment(SUB_ALIGNMENT_GRFALIGN);
+                lrs[i]->getVar()->setSubRegAlignment(GRFALIGN);
             }
             //
             // single-row
@@ -6234,7 +6234,7 @@ void GraphColor::saveRegs(
             0, 0, builder.rgnpool.createRegion(8, 8, 1), Type_UD);
         unsigned messageLength = owordSize / 2;
         G4_Declare *msgDcl = builder.createTempVar(messageLength * GENX_DATAPORT_IO_SZ,
-            Type_UD, SUB_ALIGNMENT_GRFALIGN, StackCallStr);
+            Type_UD, GRFALIGN, StackCallStr);
         msgDcl->getRegVar()->setPhyReg(regPool.getGreg(startReg), 0);
         auto sendSrc2 = builder.createSrcRegRegion(Mod_src_undef, Direct, msgDcl->getRegVar(), 0, 0,
             builder.rgnpool.createRegion(8, 8, 1), Type_UD);
@@ -6359,7 +6359,7 @@ void GraphColor::restoreRegs(
 
             unsigned responseLength = ROUND(owordSize, 2) / 2;
             G4_Declare *dstDcl = builder.createTempVar(responseLength * GENX_DATAPORT_IO_SZ,
-                Type_UD, SUB_ALIGNMENT_GRFALIGN, GraphColor::StackCallStr);
+                Type_UD, GRFALIGN, GraphColor::StackCallStr);
             dstDcl->getRegVar()->setPhyReg(regPool.getGreg(startReg), 0);
             G4_DstRegRegion* postDst = builder.createDstRegRegion(Direct, dstDcl->getRegVar(), 0, 0, 1, (execSize > 8) ? Type_UW : Type_UD);
             G4_SrcRegRegion* payload = builder.Create_Src_Opnd_From_Dcl(scratchRegDcl, builder.getRegionStride1());
@@ -10715,9 +10715,9 @@ void GlobalRA::fixAlignment()
                     if (!var->isPhyRegAssigned() &&
                         (var->getDeclare()->getSubRegAlign() == Any ||
                          var->getDeclare()->getSubRegAlign() == Even_Word ||
-                         var->getDeclare()->getSubRegAlign() == SUB_ALIGNMENT_HALFGRFALIGN))
+                         var->getDeclare()->getSubRegAlign() == HALFGRFALIGN))
                     {
-                        var->setSubRegAlignment(SUB_ALIGNMENT_GRFALIGN);
+                        var->setSubRegAlignment(GRFALIGN);
                     }
                 }
 
@@ -10735,11 +10735,11 @@ void GlobalRA::fixAlignment()
                     if (inst->isAccSrcInst())
                     {
                         if (var->getDeclare()->getRegFile() != G4_ADDRESS)
-                            var->setSubRegAlignment(SUB_ALIGNMENT_GRFALIGN);
+                            var->setSubRegAlignment(GRFALIGN);
                         else
-                            var->setSubRegAlignment(SUB_ALIGNMENT_HALFGRFALIGN);
+                            var->setSubRegAlignment(HALFGRFALIGN);
                     }
-                    else if (var->getSubRegAlignment() != SUB_ALIGNMENT_GRFALIGN)
+                    else if (var->getSubRegAlignment() != GRFALIGN)
                     {
                         if (inst->opcode() == G4_movi)  //FIXME: restriction for movi, what about 64 bytes GRF
                         {

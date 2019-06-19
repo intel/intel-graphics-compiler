@@ -584,21 +584,21 @@ namespace vISA
         //
         unsigned edgeWeightGRF(LiveRange* lr1, LiveRange* lr2)
         {
-            G4_Align lr1_align = lr1->getVar()->getAlignment();
-            G4_Align lr2_align = lr2->getVar()->getAlignment();
+            bool lr1EvenAlign = lr1->getVar()->isEvenAlign();
+            bool lr2EvenAlign = lr2->getVar()->isEvenAlign();
             unsigned lr1_nreg = lr1->getNumRegNeeded();
             unsigned lr2_nreg = lr2->getNumRegNeeded();
 
-            if (lr1_align == G4_Align::Either)
+            if (!lr1EvenAlign)
             {
                 return  lr1_nreg + lr2_nreg - 1;
             }
-            else if (lr2_align == G4_Align::Either)
+            else if (!lr2EvenAlign)
             {
                 unsigned sum = lr1_nreg + lr2_nreg;
                 return sum + 1 - ((sum) % 2);
             }
-            else if (lr2_align == G4_Align::Even)
+            else if (lr2EvenAlign)
             {
                 return lr1_nreg + lr2_nreg - 1 + (lr1_nreg % 2) + (lr2_nreg % 2);
             }

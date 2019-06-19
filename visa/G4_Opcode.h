@@ -140,12 +140,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define Opcode_can_use_cond_mod(opc)        \
                                  (opc == G4_sel)
 
-enum class G4_Align
-{
-    Either = 1,          // either
-    Even = 2,            // even align
-};
-
 enum class BankAlign
 {
     Either = 1,          // either
@@ -164,7 +158,7 @@ enum G4_SubReg_Align
     Four_Word = 4,
     Eight_Word = 8,
     Sixteen_Word = 16,
-    ThirtyTwo_Word = 32,
+    ThirtyTwo_Word = 32
 };
 
 
@@ -426,6 +420,6 @@ inline bool isLowPrecisionFloatTy(G4_Type ty)
     return ty == Type_HF;
 }
 
-#define SUB_ALIGNMENT_GRFALIGN (Sixteen_Word)
-#define SUB_ALIGNMENT_HALFGRFALIGN (Eight_Word)
+#define GRFALIGN (Sixteen_Word)
+#define HALFGRFALIGN (Eight_Word)
 #endif  // _G4_OPCODE_H_

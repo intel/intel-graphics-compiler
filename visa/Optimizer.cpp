@@ -2296,11 +2296,11 @@ void Optimizer::doSimplification(G4_INST *inst)
                     Op1->isImm() && Op1->getType() == Type_UV) {
                     // Immeidates in 'uv' ensures each element is a
                     // byte-offset within half-GRF.
-                    G4_SubReg_Align SubAlign = SUB_ALIGNMENT_GRFALIGN;
+                    G4_SubReg_Align SubAlign = GRFALIGN;
                     if (SrcSizeInBytes <= G4_GRF_REG_NBYTES/2u)
                         SubAlign = (G4_SubReg_Align)(NUM_WORDS_PER_GRF/2);
                     inst->setOpcode(G4_movi);
-                    if (!Dcl->isEvenAlign() && Dcl->getSubRegAlign() != SUB_ALIGNMENT_GRFALIGN) 
+                    if (!Dcl->isEvenAlign() && Dcl->getSubRegAlign() != GRFALIGN) 
                     {
                         Dcl->setSubRegAlign(SubAlign);
                     }
@@ -10416,8 +10416,8 @@ void Optimizer::splitVariables()
             if (Iter == DclMap.end())
             {
                 unsigned NElts = Dcl->getTotalElems();
-                auto DclLow = builder.createTempVar(NElts / 2, Ty, SUB_ALIGNMENT_GRFALIGN, "Lo");
-                auto DclHi = builder.createTempVar(NElts / 2, Ty, SUB_ALIGNMENT_GRFALIGN, "Hi");
+                auto DclLow = builder.createTempVar(NElts / 2, Ty, GRFALIGN, "Lo");
+                auto DclHi = builder.createTempVar(NElts / 2, Ty, GRFALIGN, "Hi");
                 DclMap[Dcl] = new DclMapInfo(DclLow, DclHi);
             }
             bool IsLow = LBound == LoLBound;
@@ -10597,9 +10597,9 @@ void Optimizer::split4GRFVars()
         G4_Type Ty = splitDcl->getElemType();
         unsigned NElts = splitDcl->getTotalElems();
         std::string varName(splitDcl->getName());
-        auto DclLow = builder.createTempVar(NElts / 2, Ty, SUB_ALIGNMENT_GRFALIGN,
+        auto DclLow = builder.createTempVar(NElts / 2, Ty, GRFALIGN,
             (varName + "Lo").c_str(), false);
-        auto DclHi = builder.createTempVar(NElts / 2, Ty, SUB_ALIGNMENT_GRFALIGN,
+        auto DclHi = builder.createTempVar(NElts / 2, Ty, GRFALIGN,
             (varName + "Hi").c_str(), false);
         DclMap[splitDcl] = new DclMapInfo(DclLow, DclHi);
         //std::cerr << "split " << splitDcl->getName() << " into (" <<

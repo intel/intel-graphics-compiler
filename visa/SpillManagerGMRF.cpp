@@ -115,7 +115,7 @@ extern unsigned int getStackCallRegSize(bool reserveStackCallRegs);
 // following the original declare's alignment
 static void setNewDclAlignment(G4_Declare* newDcl, bool evenAlign)
 {
-    newDcl->setSubRegAlign(SUB_ALIGNMENT_GRFALIGN);
+    newDcl->setSubRegAlign(GRFALIGN);
     if (evenAlign)
     {
         newDcl->setEvenAlign();
@@ -1431,7 +1431,7 @@ SpillManagerGMRF::createMRFFillRangeDeclare (
         DeclareType::Fill, filledRegVar, normalizedMRFSrc,
         width);
 
-    setNewDclAlignment(transientRangeDeclare, filledRegVar->getAlignment() == G4_Align::Even);
+    setNewDclAlignment(transientRangeDeclare, filledRegVar->isEvenAlign());
 
     if( failSafeSpill_ )
     {
@@ -3298,7 +3298,7 @@ SpillManagerGMRF::insertSpillRangeCode (
                     regVar = getRegVar(srcRegion);
                 }
 
-                if (srcDcl->getSubRegAlign() == SUB_ALIGNMENT_GRFALIGN &&
+                if (srcDcl->getSubRegAlign() == GRFALIGN &&
                     lb %  REG_BYTE_SIZE == 0 &&
                     (rb + 1) % REG_BYTE_SIZE == 0 &&
                     (rb - lb + 1) == spillRangeDcl->getByteSize() &&
@@ -3395,7 +3395,7 @@ SpillManagerGMRF::insertFillGRFRangeCode (
             unsigned int lb = dstRegion->getLeftBound();
             unsigned int rb = dstRegion->getRightBound();
 
-            if (dstDcl->getSubRegAlign() == SUB_ALIGNMENT_GRFALIGN  &&
+            if (dstDcl->getSubRegAlign() == GRFALIGN  &&
                 lb %  REG_BYTE_SIZE == 0 &&
                 (rb + 1) % REG_BYTE_SIZE == 0 &&
                 (rb - lb + 1) == fillRangeDcl->getByteSize())

@@ -1777,8 +1777,7 @@ public:
         return spillFlag;
     }
    
-    bool isEvenAlign() const { return getAlign() == G4_Align::Even; }
-    G4_Align    getAlign() const;
+    bool isEvenAlign() const; 
     G4_SubReg_Align getSubRegAlign() const;
     void        setEvenAlign();
     void        setSubRegAlign(G4_SubReg_Align subAl);
@@ -2582,14 +2581,14 @@ namespace vISA
         G4_Declare* decl;    // corresponding declare
         AssignedReg reg;    // assigned physical register; set after reg alloc
         unsigned    disp;   // displacement offset in spill memory
-        G4_Align   align;
         G4_SubReg_Align subAlign;    // To support sub register alignment
+        bool evenAlignment = false; // Align this regVar to even GRFs regardless of its size
 
     public:
 
         // To support sub register alignment
         G4_RegVar(G4_Declare* d, RegVarType t) :
-            G4_VarBase(VK_regVar), id(UNDEFINED_VAL), decl(d), disp(UINT_MAX), align(G4_Align::Either), subAlign(Any),
+            G4_VarBase(VK_regVar), id(UNDEFINED_VAL), decl(d), disp(UINT_MAX), subAlign(Any),
             type(t)
         {
         }
@@ -2650,16 +2649,12 @@ namespace vISA
 
         G4_RegVar * getNonTransientBaseRegVar();
 
-        G4_Align getAlignment() const { return align; }
-        void setAlignment(G4_Align a)
+        bool isEvenAlign() const { return evenAlignment; }
+        void setEvenAlign() { evenAlignment = true;}
+        G4_SubReg_Align getSubRegAlignment() 
         {
-            if (!isPhyRegAssigned())
-            {
-                align = a;
-            }
+            return subAlign;
         }
-        // To support sub register alignment
-        G4_SubReg_Align getSubRegAlignment() { return subAlign; }
 
         void setSubRegAlignment(G4_SubReg_Align subAlg);
         void emit(std::ostream& output, bool symbolreg = false) override;

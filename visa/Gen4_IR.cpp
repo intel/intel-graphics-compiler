@@ -5131,7 +5131,7 @@ bool G4_DstRegRegion::checkGRFAlign() const
                     return false;
                 }
 
-                if( aliasdcl->getSubRegAlign() >= SUB_ALIGNMENT_GRFALIGN ||
+                if( aliasdcl->getSubRegAlign() >= GRFALIGN ||
                     aliasdcl->getNumRows() * aliasdcl->getElemSize() * aliasdcl->getElemSize() >= G4_GRF_REG_NBYTES ){
                         return true;
                 }
@@ -5194,7 +5194,7 @@ static bool regionHasFixedSubreg(G4_Operand* opnd, uint32_t& offset)
     G4_Declare *rootDcl = base->asRegVar()->getDeclare()->getRootDeclare(subregByte);
     subregByte += subRegOff * G4_Type_Table[opnd->getType()].byteSize;
 
-    if (rootDcl->getSubRegAlign() < SUB_ALIGNMENT_GRFALIGN)
+    if (rootDcl->getSubRegAlign() < GRFALIGN)
     {
         return false;
     }
@@ -5501,12 +5501,7 @@ bool GlobalRA::areAllDefsNoMask(G4_Declare* dcl)
 
 void G4_Declare::setEvenAlign()
 {
-    regVar->setAlignment(G4_Align::Even);
-}
-
-G4_Align G4_Declare::getAlign() const
-{
-    return regVar->getAlignment();
+    regVar->setEvenAlign();
 }
 
 BankAlign GlobalRA::getBankAlign(G4_Declare* dcl)
@@ -5548,6 +5543,11 @@ void G4_Declare::setSubRegAlign(G4_SubReg_Align subAl)
     regVar->setSubRegAlignment(subAl);
 }
 
+bool G4_Declare::isEvenAlign() const
+{
+    return regVar->isEvenAlign();
+}
+
 G4_SubReg_Align G4_Declare::getSubRegAlign() const
 {
     return regVar->getSubRegAlignment();
@@ -5555,7 +5555,10 @@ G4_SubReg_Align G4_Declare::getSubRegAlign() const
 
 void G4_Declare::copyAlign(G4_Declare* dcl)
 {
-    regVar->setAlignment(dcl->getAlign());
+    if (dcl->isEvenAlign())
+    {
+        setEvenAlign();
+    }
     regVar->setSubRegAlignment(dcl->getSubRegAlign());
 }
 
@@ -6728,7 +6731,7 @@ bool G4_SrcRegRegion::checkGRFAlign(){
                     return false;
                 }
 
-                if( aliasdcl->getSubRegAlign() >= SUB_ALIGNMENT_GRFALIGN ||
+                if( aliasdcl->getSubRegAlign() >= GRFALIGN ||
                     aliasdcl->getNumRows() * aliasdcl->getElemSize() * aliasdcl->getElemSize() >= G4_GRF_REG_NBYTES ){
                         return true;
                 }
