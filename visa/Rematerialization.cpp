@@ -865,92 +865,89 @@ namespace vISA
         }
         else
         {
-            if (dstInst->getMsgDesc()->isHeaderPresent())
+            G4_Operand* src0 = nullptr;
+            // Look up samplerHeader(0,2) definition
+            auto sampleHeaderTopDcl = uniqueDef->first->getSrc(0)->asSrcRegRegion()->getTopDcl();
+            if (sampleHeaderTopDcl == kernel.fg.builder->getBuiltinSamplerHeader())
             {
-                // Look up samplerHeader(0,2) definition
-                auto sampleHeaderTopDcl = uniqueDef->first->getSrc(0)->asSrcRegRegion()->getTopDcl();
-                G4_Operand* src0 = nullptr;
-                if (sampleHeaderTopDcl == kernel.fg.builder->getBuiltinSamplerHeader())
+                samplerHeader = sampleHeaderTopDcl;
+                if (!samplerHeaderMapPopulated)
                 {
-                    samplerHeader = sampleHeaderTopDcl;
-                    if (!samplerHeaderMapPopulated)
-                    {
-                        populateSamplerHeaderMap();
-                    }
+                    populateSamplerHeaderMap();
+                }
 
-                    if (deLVNedBBs.find(bb) == deLVNedBBs.end())
-                    {
-                        // DeLVN one bb at a time when required
-                        deLVNSamplers(bb);
-                        deLVNedBBs.insert(bb);
-                    }
+                if (deLVNedBBs.find(bb) == deLVNedBBs.end())
+                {
+                    // DeLVN one bb at a time when required
+                    deLVNSamplers(bb);
+                    deLVNedBBs.insert(bb);
+                }
 
-                    auto samplerDefIt = samplerHeaderMap.find(uniqueDef->first);
-                    auto prevHeaderMov = (*samplerDefIt).second;
+                auto samplerDefIt = samplerHeaderMap.find(uniqueDef->first);
+                auto prevHeaderMov = (*samplerDefIt).second;
 
-                    src0 = dstInst->getSrc(0);
+                src0 = dstInst->getSrc(0);
 
-                    // Duplicate sampler header setup instruction
-                    auto dupOp = prevHeaderMov->cloneInst();
+                // Duplicate sampler header setup instruction
+                auto dupOp = prevHeaderMov->cloneInst();
+                newInst.push_back(dupOp);
+            }
+            else
+            {
+                // Handle sampler when src0 is not builtin sampler header
+                auto src0Rgn = uniqueDef->first->getSrc(0)->asSrcRegRegion();
+                auto src0TopDcl = src0Rgn->getTopDcl();
+                auto ops = operations.find(src0TopDcl);
+                MUST_BE_TRUE(ops != operations.end(), "Didnt find record in map");
+                MUST_BE_TRUE((*ops).second.numUses == 1, "Expecting src0 to be used only in sampler");
+
+                auto newSrc0Dcl = kernel.fg.builder->createTempVar(src0TopDcl->getNumElems(),
+                    src0TopDcl->getElemType(), src0TopDcl->getSubRegAlign());
+
+                // Clone all defining instructions for sampler's msg header
+                for (unsigned int i = 0; i != (*ops).second.def.size(); i++)
+                {
+                    auto& headerDefInst = (*ops).second.def[i].first;
+
+                    auto dupOp = headerDefInst->cloneInst();
+                    auto headerDefDst = headerDefInst->getDst();
+                    dupOp->setDest(kernel.fg.builder->createDstRegRegion(headerDefDst->getRegAccess(),
+                        newSrc0Dcl->getRegVar(), headerDefDst->getRegOff(), headerDefDst->getSubRegOff(),
+                        headerDefDst->getHorzStride(), headerDefDst->getType()));
                     newInst.push_back(dupOp);
                 }
-                else
-                {
-                    // Handle sampler when src0 is not builtin sampler header
-                    auto src0Rgn = uniqueDef->first->getSrc(0)->asSrcRegRegion();
-                    auto src0TopDcl = src0Rgn->getTopDcl();
-                    auto ops = operations.find(src0TopDcl);
-                    MUST_BE_TRUE(ops != operations.end(), "Didnt find record in map");
-                    MUST_BE_TRUE((*ops).second.numUses == 1, "Expecting src0 to be used only in sampler");
 
-                    auto newSrc0Dcl = kernel.fg.builder->createTempVar(src0TopDcl->getNumElems(),
-                        src0TopDcl->getElemType(), src0TopDcl->getSubRegAlign());
+                auto rd = kernel.fg.builder->createRegionDesc(src0Rgn->getRegion()->vertStride,
+                    src0Rgn->getRegion()->width, src0Rgn->getRegion()->horzStride);
 
-                    // Clone all defining instructions for sampler's msg header
-                    for (unsigned int i = 0; i != (*ops).second.def.size(); i++)
-                    {
-                        auto& headerDefInst = (*ops).second.def[i].first;
-
-                        auto dupOp = headerDefInst->cloneInst();
-                        auto headerDefDst = headerDefInst->getDst();
-                        dupOp->setDest(kernel.fg.builder->createDstRegRegion(headerDefDst->getRegAccess(),
-                            newSrc0Dcl->getRegVar(), headerDefDst->getRegOff(), headerDefDst->getSubRegOff(),
-                            headerDefDst->getHorzStride(), headerDefDst->getType()));
-                        newInst.push_back(dupOp);
-                    }
-
-                    auto rd = kernel.fg.builder->createRegionDesc(src0Rgn->getRegion()->vertStride,
-                        src0Rgn->getRegion()->width, src0Rgn->getRegion()->horzStride);
-
-                    src0 = kernel.fg.builder->createSrcRegRegion(Mod_src_undef, Direct,
-                        newSrc0Dcl->getRegVar(), src0Rgn->getRegOff(), src0Rgn->getSubRegOff(),
-                        rd, src0Rgn->getType());
-                }
-
-                auto samplerDst = kernel.fg.builder->createTempVar(dst->getTopDcl()->getTotalElems(), dst->getTopDcl()->getElemType(),
-                    dst->getTopDcl()->getSubRegAlign(), "REMAT_SAMPLER_");
-                auto samplerDstRgn = kernel.fg.builder->createDstRegRegion(Direct, samplerDst->getRegVar(), 0,
-                    0, 1, samplerDst->getElemType());
-
-                auto dstMsgDesc = dstInst->getMsgDesc();
-                G4_SendMsgDescriptor* newMsgDesc = kernel.fg.builder->createSendMsgDesc(dstMsgDesc->getDesc(), dstMsgDesc->getExtendedDesc(),
-                    dstMsgDesc->isDataPortRead(), dstMsgDesc->isDataPortWrite(), kernel.fg.builder->duplicateOperand(dstMsgDesc->getBti()),
-                    kernel.fg.builder->duplicateOperand(dstMsgDesc->getSti()));
-
-                auto dupOp = kernel.fg.builder->createSplitSendInst(nullptr, dstInst->opcode(), dstInst->getExecSize(), samplerDstRgn,
-                    kernel.fg.builder->duplicateOperand(src0)->asSrcRegRegion(),
-                    kernel.fg.builder->duplicateOperand(dstInst->getSrc(1))->asSrcRegRegion(),
-                    kernel.fg.builder->duplicateOperand(dstInst->asSendInst()->getMsgDescOperand()), dstInst->getOption(),
-                    newMsgDesc, kernel.fg.builder->duplicateOperand(dstInst->getSrc(3)), dstInst->getLineNo());
-                dupOp->setLineNo(dstInst->getLineNo());
-                dupOp->setCISAOff(dstInst->getCISAOff());
-
-                newInst.push_back(dupOp);
-
-                rematSrc = createSrcRgn(src, dst, samplerDst);
-
-                cacheInst = newInst.back();
+                src0 = kernel.fg.builder->createSrcRegRegion(Mod_src_undef, Direct,
+                    newSrc0Dcl->getRegVar(), src0Rgn->getRegOff(), src0Rgn->getSubRegOff(),
+                    rd, src0Rgn->getType());
             }
+
+            auto samplerDst = kernel.fg.builder->createTempVar(dst->getTopDcl()->getTotalElems(), dst->getTopDcl()->getElemType(),
+                dst->getTopDcl()->getSubRegAlign(), "REMAT_SAMPLER_");
+            auto samplerDstRgn = kernel.fg.builder->createDstRegRegion(Direct, samplerDst->getRegVar(), 0,
+                0, 1, samplerDst->getElemType());
+
+            auto dstMsgDesc = dstInst->getMsgDesc();
+            G4_SendMsgDescriptor* newMsgDesc = kernel.fg.builder->createSendMsgDesc(dstMsgDesc->getDesc(), dstMsgDesc->getExtendedDesc(),
+                dstMsgDesc->isDataPortRead(), dstMsgDesc->isDataPortWrite(), kernel.fg.builder->duplicateOperand(dstMsgDesc->getBti()),
+                kernel.fg.builder->duplicateOperand(dstMsgDesc->getSti()));
+
+            auto dupOp = kernel.fg.builder->createSplitSendInst(nullptr, dstInst->opcode(), dstInst->getExecSize(), samplerDstRgn,
+                kernel.fg.builder->duplicateOperand(src0)->asSrcRegRegion(),
+                kernel.fg.builder->duplicateOperand(dstInst->getSrc(1))->asSrcRegRegion(),
+                kernel.fg.builder->duplicateOperand(dstInst->asSendInst()->getMsgDescOperand()), dstInst->getOption(),
+                newMsgDesc, kernel.fg.builder->duplicateOperand(dstInst->getSrc(3)), dstInst->getLineNo());
+            dupOp->setLineNo(dstInst->getLineNo());
+            dupOp->setCISAOff(dstInst->getCISAOff());
+
+            newInst.push_back(dupOp);
+
+            rematSrc = createSrcRgn(src, dst, samplerDst);
+
+            cacheInst = newInst.back();
         }
 
         return rematSrc;
