@@ -100,6 +100,7 @@ bool VariableReuseAnalysis::runOnFunction(Function &F)
 
   if (IGC_IS_FLAG_ENABLED(EnableVariableAlias) &&
       m_DeSSA &&
+      !m_pCtx->getModuleMetaData()->compOpt.OptDisable &&
       m_pCtx->platform.GetPlatformFamily() >= IGFX_GEN9_CORE)
   {
       // Setup ArgDeSSARoot (for subroutine, it might be conservative,
