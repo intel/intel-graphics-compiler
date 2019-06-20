@@ -184,8 +184,6 @@ namespace IGC
             delete F;
         }
 
-        bool shouldWeSubroutine(llvm::Function* F);
-
         // Check if subroutine call is needed and set it if so.
         void checkAndSetEnableSubroutine();
         CodeGenContext* m_pCtx;
