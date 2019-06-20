@@ -134,6 +134,25 @@ namespace IGC
         template <typename MaskType> void matchReverse(llvm::BinaryOperator &I);
     };
 
+    class FCmpPaternMatch : public llvm::FunctionPass, public llvm::InstVisitor<FCmpPaternMatch>
+    {
+    public:
+        static char ID;
+
+        FCmpPaternMatch();
+
+        ~FCmpPaternMatch() {}
+
+        virtual bool runOnFunction(llvm::Function &F) override;
+
+        virtual llvm::StringRef getPassName() const override
+        {
+            return "FCmpPaternMatch";
+        }
+
+        void visitSelectInst(llvm::SelectInst &I);
+    };
+
     class IGCConstProp : public llvm::FunctionPass
     {
     public:

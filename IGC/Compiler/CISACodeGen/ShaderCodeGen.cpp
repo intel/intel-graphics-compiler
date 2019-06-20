@@ -1249,6 +1249,7 @@ void OptimizeIR(CodeGenContext* pContext)
         }
 
         mpm.add(createIGCInstructionCombiningPass());
+        mpm.add(new FCmpPaternMatch());
         mpm.add(llvm::createDeadCodeEliminationPass());       // this should be done both before/after constant propagation
 
         if (pContext->m_instrTypes.hasGenericAddressSpacePointers &&
