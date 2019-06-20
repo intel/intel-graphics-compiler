@@ -92,7 +92,7 @@ namespace vISA
         void markReferencesInOpnd(G4_Operand* opnd, bool isEOT, INST_LIST_ITER inst_it,
             unsigned int pos);
         void markReferencesInInst(INST_LIST_ITER inst_it);
-        void setLexicalID();
+        void setLexicalID(bool includePseudo);
         void markReferences(unsigned int& numRowsEOT, bool& lifetimeOpFound);
         void calculateInputIntervals();
         void calculateLiveIntervals(G4_BB* bb, std::vector<LocalLiveRange*>& liveIntervals);

@@ -519,6 +519,8 @@ bool LocalRA::localRA()
         }
     }
 
+    setLexicalID(true);
+
     return !needGlobalRA;
 }
 
@@ -1191,14 +1193,22 @@ void LocalRA::markReferencesInInst(INST_LIST_ITER inst_it)
     }
 }
 
-void LocalRA::setLexicalID()
+void LocalRA::setLexicalID(bool includePseudo)
 {
     unsigned int id = 0;
     for (auto bb : kernel.fg)
     {
         for (auto curInst : *bb)
         {
-            curInst->setLexicalId(id++);
+            if ((!includePseudo) && (curInst->isPseudoKill() ||
+                curInst->opcode() == G4_pseudo_lifetime_end))
+            {
+                curInst->setLexicalId(id);
+            }
+            else
+            {
+                curInst->setLexicalId(id++);
+            }
         }
     }
 }
@@ -1216,15 +1226,16 @@ void LocalRA::markReferences(unsigned int& numRowsEOT,
         {
             G4_INST* curInst = (*inst_it);
 
-            // set lexical ID
-            curInst->setLexicalId(id++);
-
             if (curInst->isPseudoKill() ||
                 curInst->opcode() == G4_pseudo_lifetime_end)
             {
+                curInst->setLexicalId(id);
                 lifetimeOpFound = true;
                 continue;
             }
+
+            // set lexical ID
+            curInst->setLexicalId(id++);
 
             if (curInst->isEOT() && kernel.fg.builder->hasEOTGRFBinding())
             {
@@ -1247,7 +1258,7 @@ void LocalRA::markReferences(unsigned int& numRowsEOT,
 // there may be overlap between two different input variables.
 void LocalRA::calculateInputIntervals()
 {
-    setLexicalID();
+    setLexicalID(false);
 
     int numGRF = kernel.getNumRegTotal();
     std::vector<uint32_t> inputRegLastRef;
