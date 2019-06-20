@@ -195,8 +195,7 @@ static int pendingBracket;
 ".function"         {TRACE("\n** FUNCTION "); return DIRECTIVE_FUNC;}
 ".global_function"  {TRACE("\n** GLOBAL FUNCTION "); return DIRECTIVE_GLOBAL_FUNC;}
 ".resolvedIndex"    {TRACE("\n** RESOLVED INDEX "); return DIRECTIVE_RESOLVED_INDEX;}
-".kernel"           {TRACE("\n** KERNEL NAME DIRECTIVE "); return DOT_KERNEL;}
-".function"         {TRACE("\n** FUNCTION NAME DIRECTIVE ");return DOT_FUNCTION;}
+".kernel"           {TRACE("\n** KERNEL NAME DIRECTIVE "); return DIRECTIVE_KERNEL;}
 
 "."implicit[a-zA-Z0-9_\-$@?]* {
         TRACE("\n**  IMPLICIT_INPUT ");
@@ -1120,34 +1119,6 @@ Common_VISA_EMask_Ctrl Get_CISA_Emask(const char* str)
     YY_FATAL_ERROR(str);
     return vISA_EMASK_M1;
 }
-
-char *get_kernel_name(const char *str, int str_len)
-{
-    const char *ptr_1 = str + 7;
-    const char *ptr_2 = str + str_len - 1;
-    char *kernel_name;
-    int length;
-
-    while (*ptr_1 == ' ' ||
-           *ptr_1 == '\t')
-        ptr_1 ++;
-
-    while (*ptr_2 == ' ' ||
-           *ptr_2 == '\t')
-        ptr_2 --;
-
-    length = ptr_2 - ptr_1 + 1;
-    if (length > 0) {
-        kernel_name = (char *)malloc((length + 1) * sizeof(char));
-        strncpy(kernel_name, ptr_1, length);
-        kernel_name[length] = '\0';
-        return kernel_name;
-    }
-
-    YY_FATAL_ERROR("Wrong kernel name");
-
-    return NULL;
-};
 
 CHANNEL_OUTPUT_FORMAT Get_Channel_Output(const char* str)
 {

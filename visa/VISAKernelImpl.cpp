@@ -8181,7 +8181,7 @@ VISA_opnd* VISAKernelImpl::CreateOtherOpndHelper(int num_pred_desc_operands, int
     }
     else
     {
-        //Accounts for all the operands added so far to instruction, minus predefined ones: execSize, pred, subOpcode
+        //Accounts for all the operands added so far to instruction, minus predefined ones: execSize, pred, op
         dataType = (VISA_Type)inst_desc->getSubInstDesc(subOpcode).opnd_desc[num_operands - (inst_desc->opnd_num - num_pred_desc_operands) ].data_type;
     }
     temp->_opnd.other_opnd = value;

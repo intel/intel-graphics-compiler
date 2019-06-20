@@ -340,8 +340,7 @@ VISA_RawOpnd* rawOperandArray[16];
 %token <string> SIZE
 %token <string> FLAG_REG_NAME
 %token <string> SURF_USE_NAME
-%token <string> DOT_FUNCTION /* .function */
-%token <string> DOT_KERNEL  /* .kernel */
+%token <string> DIRECTIVE_KERNEL  /* .kernel */
 %token <string> F_CLASS
 %token <string> G_CLASS
 %token <string> P_CLASS
@@ -570,7 +569,7 @@ StrLitOrVar : STRING_LITERAL | VAR
 /* --------------------------------------------------------------------- */
 
 /* ----- .kernel ------ */
-DirectiveKernel : DOT_KERNEL StrLitOrVar
+DirectiveKernel : DIRECTIVE_KERNEL StrLitOrVar
               {
                   num_switch_labels = 0;
                   //TODO remove later
@@ -1922,16 +1921,16 @@ ExecSize :   /* empty */
          | LPAREN NUMBER RPAREN
            {
                TRACE("\n** Execution Size ");
-               MUST_HOLD(($2 == 0 || $2 == 1 || $2 == 2 || $2 == 4 || $2 == 8 || $2 == 16 || $2 == 32),
-                         "execution size must be 0, 1, 2, 4, 8, 16, or 32");
+               MUST_HOLD(($2 == 1 || $2 == 2 || $2 == 4 || $2 == 8 || $2 == 16 || $2 == 32),
+                         "execution size must be 1, 2, 4, 8, 16, or 32");
                $$.emask = vISA_EMASK_M1;
                $$.exec_size = (int)$2;
            };
          | LPAREN EMASK COMMA NUMBER RPAREN
            {
                TRACE("\n** Execution Size ");
-               MUST_HOLD(($4 == 0 || $4 == 1 || $4 == 2 || $4 == 4 || $4 == 8 || $4 == 16 || $4 == 32),
-                         "execution size must be 0, 1, 2, 4, 8, 16, or 32");
+               MUST_HOLD(($4 == 1 || $4 == 2 || $4 == 4 || $4 == 8 || $4 == 16 || $4 == 32),
+                         "execution size must be 1, 2, 4, 8, 16, or 32");
                $$.emask = $2;
                $$.exec_size = (int)$4;
            };

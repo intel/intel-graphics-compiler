@@ -25,7 +25,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 #pragma once
 
+#include "include/visa_igc_common_header.h"
+
 #include <stdint.h>
+
 
 ///
 /// ISA Description
