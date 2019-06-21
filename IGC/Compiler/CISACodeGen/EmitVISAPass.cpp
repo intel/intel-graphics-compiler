@@ -8231,7 +8231,6 @@ void EmitPass::emitLoad3DInner(LdRawIntrinsic* inst, ResourceDescriptor& resourc
                 m_encoder->And(visaOffset, m_currShader->BitCast(src_offset, ISA_TYPE_UD), masklast2bits);
                 m_encoder->Push();
             }
-            unsigned int alignment = inst->getAlignment();
             if (numElement >= 4)
             {
                 m_encoder->OWLoad(m_destination, resource, visaOffset, owordAligned, m_destination->GetSize());
@@ -8244,6 +8243,7 @@ void EmitPass::emitLoad3DInner(LdRawIntrinsic* inst, ResourceDescriptor& resourc
 
                 if (elemSize > 0)
                 {
+                    unsigned int alignment = inst->getAlignment();
                     if (alignment < SIZE_DWORD && !(src_offset->IsImmediate() && src_offset->GetImmediateValue() % SIZE_DWORD == 0))
                     {
                         assert(alignment == 1 || alignment == 2);
@@ -13181,7 +13181,6 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset)
         }
         return;
     }
-
 
     // generate oword-load if possible
     if (VTy && srcUniform)
