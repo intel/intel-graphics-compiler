@@ -982,6 +982,11 @@ void VariableReuseAnalysis::visitExtractElementInst(ExtractElementInst& I)
         return;
     }
 
+    // For OCL for now.
+    if (m_pCtx->type != ShaderType::OPENCL_SHADER) {
+        return;
+    }
+
     ExtractElementInst* EEI = &I;
     Value* vecVal = EEI->getVectorOperand();
     // If inst is dead, EEI is an argument, or EEI & vecVal have
