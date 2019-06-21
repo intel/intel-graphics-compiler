@@ -2279,7 +2279,8 @@ void Optimizer::doSimplification(G4_INST *inst)
         unsigned SrcSizeInBytes = inst->getExecSize() *
                 getTypeSize(inst->getSrc(0)->getType());
         if (SrcSizeInBytes == G4_GRF_REG_NBYTES/2 ||
-            SrcSizeInBytes == G4_GRF_REG_NBYTES) {
+            SrcSizeInBytes == G4_GRF_REG_NBYTES) 
+        {
             G4_INST *LEA = getSingleDefInst(inst, Opnd_src0);
             if (LEA && LEA->opcode() == G4_add &&
                 LEA->getExecSize() == inst->getExecSize()) {
@@ -2304,7 +2305,7 @@ void Optimizer::doSimplification(G4_INST *inst)
                     {
                         Dcl->setSubRegAlign(SubAlign);
                     }
-                    RegionDesc *rd = builder.createRegionDesc(8, 8, 1);
+                    RegionDesc *rd = builder.getRegionStride1();
                     inst->getSrc(0)->asSrcRegRegion()->setRegion(rd);
                     // Set subreg alignment for the address variable.
                     Dcl =
