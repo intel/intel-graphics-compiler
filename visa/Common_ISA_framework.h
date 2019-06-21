@@ -257,9 +257,7 @@ public:
 
     void initKernel( int kernelIndex, VISAKernelImpl * kernel );
     int finalizeCisaBinary();
-    int finalizeCisaFileScopeVars();
     int dumpToFile(std::string binFileName);
-    int setFileScopeVar(VISA_FileVar * info);
 
     unsigned       getInstId() const { return m_instId; }
     void     incrementInstId() const { m_instId++;      }
@@ -289,8 +287,6 @@ public:
     void patchKernel(int index, unsigned int genxBufferSize, void * buffer, int platform);
     void patchFunction(int index);
 
-    unsigned int getNumFileVars() { return (uint32_t) file_scope_name_to_info_map.size(); }
-    VISA_FileVar* getFileVar(unsigned int index) { return file_scope_name_to_info_map[index]; }
     Options *getOptions(){ return m_options; }
 
 private:
@@ -306,7 +302,6 @@ private:
 
     int *m_functionOffsetLocationsArray; //array to store offsets of where the offset of kernel is stored in isa header
     unsigned long writeInToCisaHeaderBuffer(const void * value, int size);
-    std::vector<VISA_FileVar *> file_scope_name_to_info_map;
 
     common_isa_header m_header;
     vISA::Mem_Manager m_mem;

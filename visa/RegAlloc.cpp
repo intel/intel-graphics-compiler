@@ -486,11 +486,6 @@ LivenessAnalysis::LivenessAnalysis(
         {
             G4_RegVar* var = dcl->getRegVar();
             vars[var->getId()] = var;
-
-            if (var->getDeclare()->getHasFileScope())
-            {
-                fileScopeVars.push_back(var);
-            }
         }
     }
 
@@ -797,7 +792,6 @@ void LivenessAnalysis::computeLiveness()
                (fg.builder->getIsKernel() ||
                 (fg.getIsStackCallFunc() &&
                  fg.builder->getArgSize() == 0)))) ||
-            ( decl->getHasFileScope() && fg.getIsStackCallFunc() ) ||
             (fg.builder->getOption(vISA_enablePreemption) &&
              decl == fg.builder->getBuiltinR0()) )
         {
@@ -811,8 +805,6 @@ void LivenessAnalysis::computeLiveness()
                (fg.builder->getIsKernel() ||
                 (fg.getIsStackCallFunc() &&
                  fg.builder->getRetVarSize() == 0)))) ||
-            (decl->getHasFileScope() &&
-            (fg.getIsStackCallFunc() || fg.getHasStackCalls())) ||
             (fg.builder->getOption(vISA_enablePreemption) &&
               decl == fg.builder->getBuiltinR0()))
         {
@@ -1939,15 +1931,6 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
     //
     if (bb->isEndWithFCall() && (selectedRF & G4_GRF))
     {
-        for (auto globals = fileScopeVars.begin(), end = fileScopeVars.end();
-            globals != end;
-            globals++)
-        {
-            use_gen.set((*globals)->getId(), true);
-            use_kill.set((*globals)->getId(), true);
-            def_out.set((*globals)->getId(), true);
-        }
-
         G4_Declare* arg = fg.builder->getStackCallArg();
         G4_Declare* ret = fg.builder->getStackCallRet();
 
@@ -2781,11 +2764,8 @@ void GlobalRA::markBlockLocalVar(G4_RegVar* var, unsigned bbId)
         dcl = dcl->getAliasDeclare();
     }
 
-    if( dcl->getHasFileScope() ||
-        dcl->isInput() ||
-         dcl->isOutput())
+    if (dcl->isInput() || dcl->isOutput())
     {
-        // Filescope variables are never block local
         setBBId(dcl, UINT_MAX - 1);
     }
     else
@@ -3725,7 +3705,7 @@ int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
     }
 
     kernel.fg.callerSaveAreaOffset = kernel.fg.calleeSaveAreaOffset = kernel.fg.paramOverflowAreaOffset =
-        kernel.fg.paramOverflowAreaSize = kernel.fg.fileScopeSaveAreaSize = 0;
+        kernel.fg.paramOverflowAreaSize = 0;
 
     //
     // Perform flow-insensitive points-to-analysis.
@@ -3742,20 +3722,9 @@ int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
 
     if (kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc())
     {
-        // REVIEW
-        // For now the following are disabled if the graph contains stack calls.
-        unsigned fileScopeAreaSize;
 
         gra.setABIForStackCallFunctionCalls();
-
-        //
-        // Localize each filescope variable reference to each cut, i.e. have one representative
-        // per cut, but each cut representative will be assigned the same frame offset in the
-        // GENX_MAIN frame.
-        //
         kernel.fg.addFrameSetupDeclares(builder, regPool);
-        kernel.fg.doFilescopeVarLayout(builder, kernel.Declares, fileScopeAreaSize);
-        kernel.fg.fileScopeSaveAreaSize = fileScopeAreaSize;
 
         kernel.fg.NormalizeFlowGraph();
     }

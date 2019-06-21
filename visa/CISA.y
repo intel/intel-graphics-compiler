@@ -613,8 +613,7 @@ DirectiveVersion : DIRECTIVE_VERSION NUMBER DOT NUMBER
    }
 
 /* ----- .decl ----- */
-DirectiveDecl : DeclFileScopeVariable
-                | DeclVariable
+DirectiveDecl : DeclVariable
                 | DeclAddress
                 | DeclPredicate
                 | DeclSampler
@@ -625,16 +624,6 @@ DeclFunctions: FUNC_DIRECTIVE_DECL STRING_LITERAL NUMBER
     {
         pCisaBuilder->CISA_create_func_decl($2, (int)$3, CISAlineno);
     }
-DeclFileScopeVariable: DIRECTIVE_DECL VAR F_CLASS DECL_DATA_TYPE NUM_ELTS NUMBER AlignType GEN_ATTR
-               {
-                   attr_gen_struct temp_struct;
-                   temp_struct.value = $8.value;
-                   temp_struct.name = $8.name;
-                   temp_struct.string_val = $8.string_val;
-                   temp_struct.isInt = $8.isInt;
-                   temp_struct.attr_set = $8.attr_set;
-                   pCisaBuilder->CISA_file_variable_decl($2, (unsigned int)$6, $4, $7, CISAlineno);
-               };
 
                //     1       2      3          4          5       6       7          8          9
 DeclVariable: DIRECTIVE_DECL VAR G_CLASS DECL_DATA_TYPE NUM_ELTS NUMBER AlignType AliasInfo GEN_ATTR

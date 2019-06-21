@@ -131,7 +131,6 @@ typedef enum {
     SURFACE_VAR,
     LABEL_VAR,
     ATTR_VAR,
-    FILESCOPE_VAR,
     NUM_VAR_CLASS
 } Common_ISA_Var_Class;
 
@@ -475,9 +474,6 @@ typedef struct {
     unsigned char         minor_version;
     unsigned short        num_kernels;
     kernel_info_t*        kernels;
-    unsigned short        num_extern_variables;
-    unsigned short        num_global_variables;
-    unsigned short        num_static_variables;
     unsigned short        num_filescope_variables;
     filescope_var_info_t* filescope_variables;
     unsigned short        num_extern_functions;
@@ -491,9 +487,6 @@ typedef struct {
     uint32_t        string_count;
     const char**          strings;
     uint32_t        name_index;
-    unsigned short        num_filescope_variables;
-    filescope_var_info_t* filescope_variables;
-    vISA::G4_Declare**          filescope_var_decls;
     uint32_t        variable_count;
     var_info_t*           variables;
     unsigned short        address_count;
@@ -697,7 +690,6 @@ typedef struct _CISA_GEN_VAR
         pred_info_t predVar;
         state_info_t stateVar;
         label_info_t labelVar;
-        filescope_var_info_t fileVar;
     };
 } CISA_GEN_VAR;
 
@@ -708,7 +700,6 @@ typedef struct _VISA_SamplerVar : CISA_GEN_VAR { } VISA_SamplerVar;
 typedef struct _VISA_SurfaceVar : CISA_GEN_VAR { } VISA_SurfaceVar;
 typedef struct _VISA_VMEVar     : CISA_GEN_VAR { } VISA_VMEVar;
 typedef struct _VISA_LabelVar   : CISA_GEN_VAR { } VISA_LabelVar;
-typedef struct _VISA_FileVar    : CISA_GEN_VAR { } VISA_FileVar;
 
 
 typedef struct _CISA_opnd

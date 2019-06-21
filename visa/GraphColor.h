@@ -729,7 +729,6 @@ namespace vISA
         void addSaveRestoreCode(unsigned);
         void addCallerSaveRestoreCode();
         void addCalleeSaveRestoreCode();
-        void addFileScopeSaveRestoreCode();
         void addGenxMainStackSetupCode();
         void addCalleeStackSetupCode();
         void saveRegs(
@@ -746,8 +745,6 @@ namespace vISA
             unsigned frameOffset, G4_BB* bb, INST_LIST_ITER insertIt);
         void OptimizeActiveRegsFootprint(std::vector<bool>& saveRegs);
         void OptimizeActiveRegsFootprint(std::vector<bool>& saveRegs, std::vector<bool>& retRegs);
-        void saveFileScopeVar(G4_RegVar* filescopeVar, G4_BB* bb, INST_LIST_ITER insertIt);
-        void restoreFileScopeVar(G4_RegVar* filescopeVar, G4_BB* bb, INST_LIST_ITER insertIt);
         void dumpRegisterPressure();
         GlobalRA & getGRA() { return gra; }
         G4_SrcRegRegion* getScratchSurface() const;

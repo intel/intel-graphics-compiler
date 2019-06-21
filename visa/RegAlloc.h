@@ -447,7 +447,6 @@ public:
     std::vector<G4_RegVar*>        vars;
     BitSet addr_taken;
     FlowGraph&                    fg;
-    std::vector<G4_RegVar*>       fileScopeVars;
 
     //
     // Bitsets used for data flow.

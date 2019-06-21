@@ -1254,19 +1254,6 @@ unsigned long get_Size_Kernel_Info(kernel_info_t * kernel_info, int major_versio
     return size;
 }
 
-unsigned long get_Size_File_Scope_Var_Info(filescope_var_info_t* filescope_variables)
-{
-    unsigned long size = sizeof(filescope_variables->linkage) + sizeof(filescope_variables->name_len) + filescope_variables->name_len
-        + sizeof(filescope_variables->bit_properties) + sizeof(filescope_variables->num_elements)
-        + sizeof(filescope_variables->attribute_count);
-
-    for(int i = 0; i < filescope_variables->attribute_count; i++)
-    {
-        size += Get_Size_Attribute_Info(&filescope_variables->attributes[i]);
-    }
-
-    return size;
-}
 unsigned long get_Size_Isa_Header( common_isa_header * m_header, int major_version, int minor_version )
 {
     unsigned long size = sizeof(m_header->magic_number) + sizeof(m_header->major_version)
@@ -1291,12 +1278,8 @@ unsigned long get_Size_Isa_Header( common_isa_header * m_header, int major_versi
 
     */
 
-    size += sizeof(m_header->num_global_variables);
-
-    for (int i = 0; i < m_header->num_global_variables; i++)
-    {
-        size += get_Size_File_Scope_Var_Info(&m_header->filescope_variables[i]);
-    }
+    // file-scope variables are no longer supported
+    size += sizeof(uint16_t);
 
     size += sizeof(m_header->num_functions);
 

@@ -714,7 +714,6 @@ public:
 
     unsigned                    callerSaveAreaOffset;
     unsigned                    calleeSaveAreaOffset;
-    unsigned                    fileScopeSaveAreaSize;
     unsigned                    paramOverflowAreaOffset;
     unsigned                    paramOverflowAreaSize;
 
@@ -989,7 +988,6 @@ public:
     unsigned getNumBB() const      {return numBBId;}
     G4_BB* getEntryBB()        {return BBs.front();}
 
-    void doFilescopeVarLayout(IR_Builder& builder, DECLARE_LIST& declares, unsigned& fileScopeFrameOffset);
     void addFrameSetupDeclares(IR_Builder& builder, PhyRegPool& regPool);
     void addSaveRestorePseudoDeclares(IR_Builder& builder);
     void markSimdBlocks(std::map<std::string, G4_BB*>& labelMap, FuncInfoHashTable &FuncInfoMap);
@@ -1099,7 +1097,6 @@ private:
     // Flow group traversal routines
     //
     void AssignDFSBasedIds(G4_BB* bb, unsigned &preId, unsigned &postId, std::list<G4_BB*>& rpoBBList);
-    void trackCutReferenceFilescopeVars(BB_LIST& graphCutBBs, DECLARE_LIST& refVars, unsigned numDcls);
     // Use normalized region descriptors for each source operand if possible.
     void normalizeRegionDescriptors();
     G4_BB *findLabelBB(char *label, int &label_offset);

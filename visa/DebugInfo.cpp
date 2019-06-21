@@ -749,8 +749,7 @@ void KernelDebugInfo::emitRegisterMapping()
                 }
                 spillOffset += dcl->getRegVar()->getDisp();
                 varMap->physicalType = VARMAP_PREG_FILE_MEMORY;
-                if (dcl->getHasFileScope() ||
-                    getKernel().fg.getHasStackCalls() == false)
+                if (getKernel().fg.getHasStackCalls() == false)
                 {
                     varMap->Mapping.Memory.isAbs = 1;
                 }
@@ -1033,8 +1032,7 @@ void emitDataVarLiveInterval(VISAKernelImpl* visaKernel, LiveIntervalInfo* lrInf
         if (physicalType == VARMAP_PREG_FILE_MEMORY)
         {
             unsigned int memOffset = (unsigned int)varsMap[i]->Mapping.Memory.memoryOffset;
-            if (varsMap[i]->dcl->getHasFileScope() ||
-                visaKernel->getKernel()->fg.getHasStackCalls() == false)
+            if (visaKernel->getKernel()->fg.getHasStackCalls() == false)
             {
                 memOffset |= 0x80000000;
             }

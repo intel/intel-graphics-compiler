@@ -54,12 +54,6 @@ public:
     CM_BUILDER_API virtual int CreateVISAGenVar(VISA_GenVar *& decl, const char *varName, int numberElements, VISA_Type dataType,
                                         VISA_Align varAlign, VISA_GenVar *parentDecl = NULL, int aliasOffset = 0) = 0;
 
-    /// CreateVISAGenVar - create an instance of vISA general variable and return it via decl.
-    /// This is the same as the previous function, except that it is used to declare an alias to a
-    /// file-scope variable
-    CM_BUILDER_API virtual int CreateVISAGenVar(VISA_GenVar *& decl, const char *varName, int numberElements, VISA_Type dataType,
-                                        VISA_Align varAlign, VISA_FileVar *parentDecl, int aliasOffset) = 0;
-
     /// CreateVISAAddrVar - create an instance of vISA address variable and return it via decl.
     /// an address variablbe must have type UW
     /// numberelements must be [1, 16]
@@ -780,9 +774,6 @@ public:
     ///Gets declaration id VISA_LabelVar
     CM_BUILDER_API virtual int getDeclarationID(VISA_LabelVar *decl) const = 0;
 
-    ///Gets declaration id VISA_FileVar
-    CM_BUILDER_API virtual int getDeclarationID(VISA_FileVar *decl) const = 0;
-
     ///Gets visa instruction counter value
     CM_BUILDER_API virtual unsigned getvIsaInstCount() const = 0;
 
@@ -830,12 +821,6 @@ public:
     CM_BUILDER_API virtual int AddKernel(VISAKernel *& kernel, const char* kernelName) = 0;
     CM_BUILDER_API virtual int AddFunction(VISAFunction *& function, const char* functionName) = 0;
     CM_BUILDER_API virtual int Compile(const char * isaFileNameint) = 0;
-    /// This function enables creation of internal low level IR bypassing creation of vISA IR.
-    /// It MUST be enabled before AddKernel or AddFunction.
-    /// Through this PATH no persistant vISA is created. All operands live ranges end at the Append*Inst API call.
-    /// When Compile function is invoked only valid option is: CM_CISA_BUILDER_GEN
-    CM_BUILDER_API virtual int CreateVISAFileVar(VISA_FileVar *& decl, char *name, unsigned int numElements, VISA_Type dataType,
-                                            VISA_Align varAlign) = 0;
 
     CM_BUILDER_API virtual void SetOption(vISAOptions option, bool val) = 0;
     CM_BUILDER_API virtual void SetOption(vISAOptions option, uint32_t val) = 0;

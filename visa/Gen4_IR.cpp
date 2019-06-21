@@ -1777,7 +1777,7 @@ G4_INST::MovType G4_INST::canPropagate() const
         || useInstList.size() == 0
         // Do not eliminate stack call return value passing instructions.
         // Do not eliminate vars marked with Output attribute
-        || (topDcl && (topDcl->getHasFileScope() || topDcl->isOutput())))
+        || (topDcl && topDcl->isOutput()))
     {
         return SuperMov;
     }
@@ -2443,10 +2443,6 @@ bool G4_INST::canHoist(bool simdBB, const Options *opt) const
     if (dst == NULL)
     {
         return false;
-    }
-    if ( getDst()->getTopDcl() && getDst()->getTopDcl()->getHasFileScope() )
-    {
-            return false;
     }
 
     G4_Operand *src = srcs[0];

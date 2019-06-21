@@ -388,19 +388,6 @@ int CISA_IR_Builder::AddKernel(VISAKernel *& kernel, const char* kernelName)
     m_kernel->SetGTPinInit(getGtpinInit());
     this->m_kernel_count++;
 
-    if(IS_GEN_BOTH_PATH)
-    {
-        // Append all globals in CISA_IR_Builder instance to new kernel
-        unsigned int numFileScopeVars = this->m_cisaBinary->getNumFileVars();
-
-        for( unsigned int i = 0; i < numFileScopeVars; i++ )
-        {
-            VISA_FileVar* fileScopeVar = this->m_cisaBinary->getFileVar(i);
-
-            kerneltemp->addFileScopeVar(fileScopeVar, i);
-        }
-    }
-
     return CM_SUCCESS;
 }
 
@@ -1012,33 +999,6 @@ int CISA_IR_Builder::Compile( const char* nameInput)
     return status;
 }
 
-CISA_GEN_VAR * CISA_IR_Builder::getFileVarDeclFromName(const std::string &name)
-{
-    std::map<std::string, CISA_GEN_VAR *>::iterator it;
-    it = m_file_var_name_to_decl_map.find(name);
-    if(m_file_var_name_to_decl_map.end() == it)
-    {
-        return NULL;
-    }else
-    {
-        return it->second;
-    }
-}
-
-bool CISA_IR_Builder::setFileVarNameDeclMap(const std::string &name, CISA_GEN_VAR * genDecl)
-{
-    bool succeeded = true;
-
-    //make sure mapping doesn't already exist
-    if( getFileVarDeclFromName(name) != NULL )
-    {
-        return false;
-    }
-    m_file_var_name_to_decl_map[name] = genDecl;
-    return succeeded;
-}
-
-
 bool CISA_IR_Builder::CISA_general_variable_decl(char * var_name,
                                                  unsigned int var_elemts_num,
                                                  VISA_Type data_type,
@@ -1052,14 +1012,9 @@ bool CISA_IR_Builder::CISA_general_variable_decl(char * var_name,
 
     VISA_GenVar *parentDecl = NULL;
 
-    if( var_alias_name != NULL && strcmp(var_alias_name, "") != 0 )
+    if (var_alias_name && strcmp(var_alias_name, "") != 0)
     {
         parentDecl = (VISA_GenVar *)m_kernel->getDeclFromName(var_alias_name);
-
-        if( parentDecl == NULL )
-        {
-            parentDecl = (VISA_GenVar *)this->getFileVarDeclFromName(var_alias_name);
-        }
     }
 
     m_kernel->CreateVISAGenVar(genVar, var_name, var_elemts_num, data_type, var_align, parentDecl, var_alias_offset);
@@ -1069,61 +1024,6 @@ bool CISA_IR_Builder::CISA_general_variable_decl(char * var_name,
         m_kernel->AddAttributeToVar(genVar, scope.name, 1, &scope.value);
     }
 
-    return true;
-}
-
-int CISA_IR_Builder::CreateVISAFileVar(VISA_FileVar *& decl, char *varName, unsigned int numberElements, VISA_Type dataType,
-                                       VISA_Align varAlign)
-{
-    decl = (VISA_FileVar*)m_mem.alloc(sizeof(VISA_FileVar));
-
-    decl->type = FILESCOPE_VAR;
-    filescope_var_info_t *file_info = &decl->fileVar;
-
-    size_t len = strlen(varName);
-    file_info->bit_properties = dataType;
-    file_info->linkage = 2;
-    file_info->bit_properties += varAlign << 4;
-    file_info->bit_properties += STORAGE_REG << 7;
-    file_info->num_elements = (unsigned short)numberElements;
-    file_info->attribute_count = 0;
-    file_info->attributes = NULL;
-    file_info->name = (unsigned char *)m_mem.alloc(len + 1);
-    file_info->name_len = (unsigned short) len;
-    memcpy_s(file_info->name, len + 1, varName, file_info->name_len+1);
-    file_info->scratch = NULL;
-
-    decl->index = this->m_cisaBinary->setFileScopeVar(decl);
-
-    if( IS_GEN_BOTH_PATH )
-    {
-        // Append file var to all kernel/function objects in CISA_IR_Builder
-        for( std::list<VISAKernelImpl*>::iterator it = m_kernels.begin(), kend = m_kernels.end();
-            it != kend;
-            it++ )
-        {
-            VISAKernelImpl* kernel = (*it);
-
-            kernel->addFileScopeVar(decl, decl->index - 1);
-        }
-    }
-
-    return CM_SUCCESS;
-}
-
-bool CISA_IR_Builder::CISA_file_variable_decl(char * var_name,
-                                              unsigned int var_num_elements,
-                                              VISA_Type data_type,
-                                              VISA_Align var_align,
-                                              int line_no)
-{
-    VISA_FileVar * decl;
-    if(getFileVarDeclFromName(var_name) != NULL)
-    {
-        return true;
-    }
-    this->CreateVISAFileVar(decl, var_name, var_num_elements, data_type, var_align);
-    this->setFileVarNameDeclMap(std::string(var_name), (CISA_GEN_VAR*) decl);
     return true;
 }
 

@@ -242,9 +242,6 @@ public:
     CM_BUILDER_API int CreateVISAGenVar(VISA_GenVar *& decl, const char *varName, int numberElements, VISA_Type dataType,
         VISA_Align varAlign, VISA_GenVar *parentDecl = NULL, int aliasOffset = 0);
 
-    CM_BUILDER_API int CreateVISAGenVar(VISA_GenVar *& decl, const char *varName, int numberElements, VISA_Type dataType,
-        VISA_Align varAlign, VISA_FileVar *parentDecl, int aliasOffset);
-
     CM_BUILDER_API int CreateVISAAddrVar(VISA_AddrVar *& decl, const char *varName, unsigned int numberElements);
 
     CM_BUILDER_API int AddKernelAttribute(const char* name, int size, const void *value);
@@ -691,9 +688,6 @@ public:
     ///Gets declaration id VISA_LabelVar
     CM_BUILDER_API int getDeclarationID(VISA_LabelVar *decl) const;
 
-    ///Gets declaration id VISA_FileVar
-    CM_BUILDER_API int getDeclarationID(VISA_FileVar *decl) const;
-
     ///Gets gen binary offset
     CM_BUILDER_API int64_t getGenOffset() const;
 
@@ -771,9 +765,7 @@ public:
     void setInputSize(uint8_t size);
     void setReturnSize(unsigned int size);
 
-    void addFileScopeVar(VISA_FileVar* filescopeVar, unsigned int index);
-
-    bool getIsGenBothPath() {
+   bool getIsGenBothPath() {
         return (mBuildOption == CM_CISA_BUILDER_GEN ||
             mBuildOption == CM_CISA_BUILDER_BOTH);
     }
@@ -1015,9 +1007,6 @@ private:
     std::map<std::string, VISA_LabelOpnd *> m_label_name_to_index_map;
     std::map<std::string, VISA_LabelOpnd *> m_funcName_to_labelID_map;
 
-    //used for fast path filescope vars
-    //used to make srue the decl is created only once.
-    std::map<unsigned int, vISA::G4_Declare *> fileScopeMap;
     char errorMessage[MAX_ERROR_MSG_LEN];
 
     CM_VISA_BUILDER_OPTION mBuildOption;

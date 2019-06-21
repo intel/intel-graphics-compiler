@@ -347,12 +347,6 @@ static void verifyVariableDecl(const common_isa_header& isaHeader, const print_f
                   header->getVarCount() + numPreDefinedVars - 1,
                   var->alias_index, declError.c_str());
 
-    if( var->alias_scope_specifier == 1 && var->alias_index >= isaHeader.num_filescope_variables )
-    {
-        REPORT_HEADER(options,false,
-            "V%d's alias index points to a non-existent filescope variable.", declID);
-    }
-
     /// INFO: Got rid of this verification check a long time ago.
     ///       Checking for unused variables is not that important
     ///       and it made it a lot simpler for refactoring to just
@@ -369,9 +363,9 @@ static unsigned int getStartByteOffset(const print_format_provider_t* header, co
     while (var->alias_index != 0)
     {
         offset += var->alias_offset;
-        if (var->alias_scope_specifier != 0 || var->alias_index <= numPredefinedVars)
+        if (var->alias_index <= numPredefinedVars)
         {
-            // global and predefined variables don't have aliases, so we can stop
+            // predefined variables don't have aliases, so we can stop
             break;
         }
         else

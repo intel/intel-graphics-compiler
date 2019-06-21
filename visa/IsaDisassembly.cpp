@@ -99,29 +99,6 @@ const char *getGenVarName(int id, const print_format_provider_t& header)
     }
 }
 
-std::string printGlobalDeclName(
-    const common_isa_header& isaHeader,
-    const print_format_provider_t* header,
-    unsigned declID,
-    bool isKernel,
-    unsigned int funcId,
-    const Options *options)
-{
-    MUST_BE_TRUE(header, "Argument Exception: argument header is NULL.");
-    std::stringstream sstr;
-    unsigned int resolvedDclID = declID;
-    if (options->getOption(vISA_DumpIsaVarNames) && resolvedDclID < isaHeader.num_filescope_variables &&
-        isaHeader.filescope_variables && isaHeader.filescope_variables[resolvedDclID].name)
-    {
-        sstr << isaHeader.filescope_variables[resolvedDclID].name;
-    }
-    else
-    {
-        sstr << 'F' << resolvedDclID;
-    }
-    return sstr.str();
-}
-
 static std::string printSurfaceName(uint32_t declID)
 {
     std::stringstream sstr;
@@ -618,13 +595,12 @@ std::string printVariableDecl(
     if(align != ALIGN_UNDEF)
         sstr << " align=" << Common_ISA_Get_Align_Name(align);
 
-    if (var->alias_index || var->alias_scope_specifier)
+    if (var->alias_index)
     {
         sstr << " alias=<";
         if (options->getOption(vISA_DumpIsaVarNames))
         {
-            sstr << (var->alias_scope_specifier ? printGlobalDeclName(isaHeader, header, var->alias_index, isKernel, funcId, options) :
-                printVariableDeclName(header, var->alias_index, options));
+            sstr << printVariableDeclName(header, var->alias_index, options);
         }
         else
         {
@@ -634,7 +610,7 @@ std::string printVariableDecl(
             }
             else
             {
-               sstr << (var->alias_scope_specifier ? 'F' : 'V') << var->alias_index;
+               sstr << 'V' << var->alias_index;
             }
         }
         sstr << ", " << var->alias_offset << ">";
@@ -2540,40 +2516,6 @@ std::string printKernelHeader(
             encodeStringLiteral(sstr, isaHeader.functions[i].name);
             sstr << " " << i;
         }
-
-    // emit filescope var decls
-    for (unsigned i = 0; i < isaHeader.num_global_variables; i++)
-    {
-        filescope_var_info_t curVar = isaHeader.filescope_variables[i];
-        VISA_Type type_bits;
-        VISA_Align align_bits;
-
-        type_bits = (VISA_Type)((curVar.bit_properties) & 0xF);
-        align_bits = (VISA_Align)((curVar.bit_properties >> 4) & 0x7);
-
-        std::stringstream sstr1;
-        if (options->getOption(vISA_DumpIsaVarNames) && curVar.name)
-        {
-            char varName[64 + 1];
-            memset(varName, 0, lengthOf(varName));
-            memcpy_s(varName, 65, curVar.name, (curVar.name_len <= lengthOf(varName) ? curVar.name_len : lengthOf(varName)));
-            sstr1 << varName;
-        }
-        else
-        {
-            sstr1 << " F" << i;
-        }
-
-        sstr << "\n"
-            << ".decl "
-            << sstr1.str()
-            << " v_type=F"
-            << " type=" << CISATypeTable[type_bits].typeName
-            << " num_elts=" << curVar.num_elements;
-
-        if (align_bits != ALIGN_UNDEF)
-            sstr << " align=" << Common_ISA_Get_Align_Name(align_bits);
-    }
 
     // In asm text mode, declarations are printed at variable creation time, we dont need to print them here
     if (!options->getOption(vISA_IsaAssembly))

@@ -1599,7 +1599,6 @@ class G4_Declare
     uint16_t spillFlag : 1;    // Indicate this declare gets spill reg
     uint16_t addressed : 1;     // whether this declare is address-taken
 
-    uint16_t hasFileScope : 1;     // has a file scope (relevant for CISA 3.0+)
     uint16_t doNotSpill : 1;    // indicates that this declare should never be spilled
 
     uint16_t liveIn : 1;   // indicate if this varaible has "Input" or "Input_Output" attribute
@@ -1651,7 +1650,7 @@ public:
                G4_Type        ty,
                std::vector<G4_Declare*>& dcllist) :
       name(n), regFile(k), numElements(numElems), elemType(ty), addressed(false),
-      hasFileScope(false), isSplittedDcl(false), isPartialDcl(false),
+      isSplittedDcl(false), isPartialDcl(false),
       offsetFromBase(-1), liveIn(false), liveOut(false), noWidening(false), refInSend(false)
     {
         //
@@ -1793,12 +1792,10 @@ public:
     }
 
     void setRegFile(G4_RegFileKind rfile) { regFile = rfile; }
-    void setHasFileScope() {hasFileScope = true;}
 
     bool useGRF() const { return (regFile & (G4_GRF | G4_INPUT)) != 0; }
     bool isInput() const { return liveIn || ((regFile & G4_INPUT) != 0); }
     bool isOutput() const { return liveOut; }
-    bool getHasFileScope() const {return hasFileScope || (getAliasDeclare() && getAliasDeclare()->getHasFileScope());}
 
     //
     // retrieving functions

@@ -3094,108 +3094,6 @@ void FlowGraph::addFrameSetupDeclares(IR_Builder& builder, PhyRegPool& regPool)
     }
 }
 
-static inline void trackVarReferenceFilescopeVars(G4_RegVar* var, DECLARE_LIST& refVars, BitSet& visited)
-{
-    G4_Declare* dcl = var->getDeclare();
-    if (visited.isSet(dcl->getDeclId()) == false)
-    {
-        visited.set(dcl->getDeclId(), true);
-        G4_Declare* aliasDcl = dcl->getAliasDeclare();
-        if (aliasDcl && aliasDcl->getAliasDeclare() == NULL && aliasDcl->getHasFileScope())
-        {
-            refVars.push_back(dcl);
-        }
-        else if (aliasDcl)
-        {
-            trackVarReferenceFilescopeVars(aliasDcl->getRegVar(), refVars, visited);
-        }
-    }
-}
-
-static void trackOpndReferenceFilescopeVars(G4_Operand* opnd, DECLARE_LIST& refVars, BitSet& visited)
-{
-    if (opnd != NULL)
-    {
-        if (opnd->isSrcRegRegion())
-        {
-            G4_VarBase* base = opnd->asSrcRegRegion()->getBase();
-            if (base->isRegVar() && base->asRegVar()->getDeclare())
-            {
-                trackVarReferenceFilescopeVars(base->asRegVar(), refVars, visited);
-            }
-        }
-        else if (opnd->isDstRegRegion())
-        {
-            G4_VarBase* base = opnd->asDstRegRegion()->getBase();
-            if (base->isRegVar() && base->asRegVar()->getDeclare())
-            {
-                trackVarReferenceFilescopeVars(base->asRegVar(), refVars, visited);
-            }
-        }
-        else if (opnd->isAddrExp())
-        {
-            trackVarReferenceFilescopeVars(((G4_AddrExp*)opnd)->getRegVar(), refVars, visited);
-        }
-    }
-}
-
-void FlowGraph::trackCutReferenceFilescopeVars(BB_LIST& graphCutBBs, DECLARE_LIST& refVars, unsigned numDcls)
-{
-    BitSet visited(numDcls, false);
-
-    for (BB_LIST_ITER bt = graphCutBBs.begin(), btEnd = graphCutBBs.end(); bt != btEnd; ++bt)
-    {
-        for (INST_LIST_ITER it = (*bt)->begin(), itEnd = (*bt)->end(); it != itEnd; ++it)
-        {
-            for (unsigned j = 0; j < G4_MAX_SRCS; j++)
-            {
-                trackOpndReferenceFilescopeVars((*it)->getSrc(j), refVars, visited);
-            }
-            trackOpndReferenceFilescopeVars((*it)->getDst(), refVars, visited);
-        }
-    }
-}
-
-//
-// Perform the layout for filescoped variables in the GENX_MAIN frame.
-// Also create unique versions of filescoped variabled per function.
-//
-void FlowGraph::doFilescopeVarLayout(IR_Builder& builder, DECLARE_LIST& declares,
-    unsigned& fileScopeAreaSize)
-{
-    // Assign OWORD aligned frame offsets for all file scope variables.
-
-    DECLARE_LIST fileScopeDclRoots;
-    DECLARE_LIST filescopeVars;
-    unsigned owordSize = 8 * sizeof(short);
-    // fileScopeAreaSize is in units of oword
-    fileScopeAreaSize = 0;
-
-#define ROUND(x,y)  ((x) + ((y - x % y) % y))
-
-    for (DECLARE_LIST_ITER di = declares.begin(), diEnd = declares.end(); di != diEnd; ++di)
-    {
-        if ((*di)->getHasFileScope())
-        {
-            if ((*di)->getAliasDeclare() == NULL)
-            {
-                unsigned int spillMemOffset = builder.getOptions()->getuInt32Option(vISA_SpillMemOffset);
-                (*di)->getRegVar()->setDisp(
-                    fileScopeAreaSize * owordSize + spillMemOffset);
-                unsigned size = (*di)->getElemSize() * (*di)->getNumElems() * (*di)->getNumRows();
-                size += (owordSize - size % owordSize) % owordSize;
-                fileScopeAreaSize += size / owordSize;
-                fileScopeDclRoots.push_back(*di);
-            }
-        }
-        //(*di)->setId(numDcls++);
-    }
-
-    // Round the filescope area size to GRF size so that the spill area
-    // starts on a GRF boundary.
-    fileScopeAreaSize = ROUND(fileScopeAreaSize, 2);
-}
-
 //
 // Insert pseudo dcls to represent the caller-save and callee-save registers.
 // This is only required when there is more than one graph cut due to the presence
@@ -4444,10 +4342,6 @@ bool GlobalOpndHashTable::isOpndGlobal(G4_Operand *opnd)
     {
         // Conservatively assume that all address taken
         // virtual registers are global
-        return true;
-    }
-    else if (dcl->getHasFileScope() == true)
-    {
         return true;
     }
     else

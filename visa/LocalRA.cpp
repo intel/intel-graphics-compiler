@@ -1732,7 +1732,7 @@ void LocalLiveRange::recordRef(G4_BB* bb)
 bool LocalLiveRange::isLiveRangeLocal()
 {
     if (isIndirectAccess == false && numRefsInFG == 1 &&
-        eot == false && topdcl->getHasFileScope() == false &&
+        eot == false &&
         !builder.isPreDefArg(topdcl) && !builder.isPreDefRet(topdcl) &&
         topdcl->isOutput() == false)
     {
@@ -1744,7 +1744,7 @@ bool LocalLiveRange::isLiveRangeLocal()
 
 bool LocalLiveRange::isLiveRangeGlobal()
 {
-    if (isIndirectAccess == true || (numRefsInFG > 1 && eot == false) || topdcl->getHasFileScope() == true ||
+    if (isIndirectAccess == true || (numRefsInFG > 1 && eot == false) ||
         topdcl->isOutput() == true)
     {
         return true;

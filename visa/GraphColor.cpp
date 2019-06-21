@@ -1576,7 +1576,7 @@ void Interference::addCalleeSaveBias(BitSet& live)
 {
     for (unsigned i = 0; i < maxId; i++)
     {
-        if (live.isSet(i) && !lrs[i]->getDcl()->getHasFileScope())
+        if (live.isSet(i))
         {
             lrs[i]->setCallerSaveBias(false);
             lrs[i]->setCalleeSaveBias(true);
@@ -2091,37 +2091,6 @@ void Interference::computeInterference()
         //
 
         buildInterferenceWithinBB((*it), live);
-    }
-
-    if (kernel.fg.getHasStackCalls() == true)
-    {
-        // Mark interference among all file scope variables.
-        // Consider a function having only uses of all file scope
-        // variables. When marking intf, we insert all uses in to
-        // live set and mark intf with every def. Since all file
-        // scope vars will be present in live-set and no def of
-        // any file scope variable is present in this function,
-        // intf among them will not get modeled thus making them
-        // non-interfering. This is incorrect.
-        for (auto var1_it = liveAnalysis->fileScopeVars.begin(), end = liveAnalysis->fileScopeVars.end();
-            var1_it != end;
-            var1_it++)
-        {
-            G4_RegVar* var1 = (*var1_it);
-            for (auto var2_it = var1_it, end2 = liveAnalysis->fileScopeVars.end();
-                var2_it != end2;
-                var2_it++)
-            {
-                G4_RegVar* var2 = (*var2_it);
-                if (var1 != var2)
-                {
-                    if (!varSplitCheckBeforeIntf(var1->getId(), var2->getId()))
-                    {
-                        checkAndSetIntf(var1->getId(), var2->getId());
-                    }
-                }
-            }
-        }
     }
 
     if (kernel.getOptions()->getTarget() != VISA_3D ||
@@ -6512,59 +6481,6 @@ void GraphColor::OptimizeActiveRegsFootprint(std::vector<bool>& saveRegs, std::v
 }
 
 //
-// Generate the save code for the i/p filescope var.
-//
-void GraphColor::saveFileScopeVar(G4_RegVar* filescopeVar, G4_BB* bb, INST_LIST_ITER insertIt)
-{
-    unsigned owordSize = 8 * sizeof(short);
-    G4_Declare* scratchRegDcl = builder.kernel.fg.scratchRegDcl;
-
-    unsigned startReg = filescopeVar->getPhyReg()->asGreg()->getRegNum();
-    unsigned frameOwordPos = filescopeVar->getDisp() / owordSize;
-    unsigned size =
-        filescopeVar->getDeclare()->getNumRows() * filescopeVar->getDeclare()->getNumElems() *
-        filescopeVar->getDeclare()->getElemSize();
-
-    if (size < G4_GRF_REG_NBYTES)
-    {
-        // always do full-GRF save
-        saveRegs(startReg, 2, scratchRegDcl, NULL, frameOwordPos, bb, insertIt);
-    }
-    else
-    {
-        MUST_BE_TRUE(size % owordSize == 0, ERROR_REGALLOC);
-        saveRegs(startReg, (size / owordSize), scratchRegDcl, NULL, frameOwordPos, bb, insertIt);
-    }
-}
-
-//
-// Generate the restore code for the i/p filescope var.
-//
-void GraphColor::restoreFileScopeVar(G4_RegVar* filescopeVar, G4_BB* bb, INST_LIST_ITER insertIt)
-{
-    unsigned owordSize = 8 * sizeof(short);
-    G4_Declare* scratchRegDcl = builder.kernel.fg.scratchRegDcl;
-
-    unsigned startReg = filescopeVar->getPhyReg()->asGreg()->getRegNum();
-    unsigned frameOwordPos = filescopeVar->getDisp() / owordSize;
-    unsigned size =
-        filescopeVar->getDeclare()->getNumRows() * filescopeVar->getDeclare()->getNumElems() *
-        filescopeVar->getDeclare()->getElemSize();
-
-    if (size < G4_GRF_REG_NBYTES)
-    {
-        // always restore full-GRF
-        restoreRegs(startReg, 2, scratchRegDcl, NULL, frameOwordPos, bb, insertIt);
-    }
-    else
-    {
-        MUST_BE_TRUE(size % owordSize == 0, ERROR_REGALLOC);
-        restoreRegs(startReg, (size / owordSize), scratchRegDcl, NULL, frameOwordPos, bb, insertIt);
-    }
-}
-
-
-//
 // Add caller save/restore code before/after each stack call.
 //
 void GraphColor::addCallerSaveRestoreCode()
@@ -6594,8 +6510,7 @@ void GraphColor::addCallerSaveRestoreCode()
                     kernel.fg.isPseudoVCEDcl(lrs[i]->getDcl()) != true &&
                     intf.interfereBetween(pseudoVCAId, i) == true)
                 {
-                    if (!lrs[i]->getDcl()->getHasFileScope() &&
-                        !builder.isPreDefArg(lrs[i]->getDcl()))
+                    if (!builder.isPreDefArg(lrs[i]->getDcl()))
                     {
                         // NOTE: Spilled live ranges should not be caller-save.
                         MUST_BE_TRUE(lrs[i]->getPhyReg()->isGreg(), ERROR_REGALLOC);
@@ -6848,128 +6763,6 @@ void GraphColor::addCalleeSaveRestoreCode()
 }
 
 //
-// Add filescope vars save/restore code before/after each stack call and also restore/save
-// code at stack call function entry/exit blocks.
-//
-// TODO: Skip inserting save/restore for a subset of global var not referenced by a function
-//
-void GraphColor::addFileScopeSaveRestoreCode()
-{
-    //
-    // Save/restore at each call site
-    //
-    for (BB_LIST_ITER it = builder.kernel.fg.begin(); it != builder.kernel.fg.end(); ++it)
-    {
-        if ((*it)->isEndWithFCall())
-        {
-            //
-            // Determine the filescope var registers per call site.
-            //
-            for (auto fileScopeVar : liveAnalysis.fileScopeVars)
-            {
-                if (fileScopeVar->getPhyReg() == NULL)
-                {
-                    continue;
-                }
-                MUST_BE_TRUE(fileScopeVar->getPhyReg()->isGreg(), ERROR_REGALLOC);
-
-                // Insert filescope save code just before caller_save op
-                INST_LIST_ITER insertSaveIt = (*it)->begin();
-                for (; (*insertSaveIt)->opcode() != G4_pseudo_caller_save; insertSaveIt++)
-                    ; // empty body
-                MUST_BE_TRUE((*insertSaveIt)->opcode() == G4_pseudo_caller_save, "caller_save opcode not found before fcall");
-                if ((*it)->size() == 2)
-                    insertSaveIt = (*it)->begin();
-
-                if (builder.kernel.getOption(vISA_GenerateDebugInfo))
-                {
-                    builder.kernel.getKernelDebugInfo()->clearOldInstList();
-                    builder.kernel.getKernelDebugInfo()->setOldInstList((*it));
-                }
-
-                saveFileScopeVar(fileScopeVar, (*it), insertSaveIt);
-
-                if (builder.kernel.getOption(vISA_GenerateDebugInfo))
-                {
-                    auto deltaInstList = builder.kernel.getKernelDebugInfo()->getDeltaInstructions((*it));
-                    auto fcallInst = (*it)->back();
-                    for (auto it : deltaInstList)
-                    {
-                        builder.kernel.getKernelDebugInfo()->addCallerSaveInst(fcallInst, it);
-                    }
-                }
-
-                ASSERT_USER((*it)->Succs.size() == 1, "fcall basic block cannot have more than 1 successor");
-                G4_BB* afterFCallBB = (*it)->Succs.front();
-                INST_LIST_ITER insertRestIt = afterFCallBB->begin();
-                for (; (*insertRestIt)->opcode() != G4_pseudo_caller_restore; ++insertRestIt)
-                    ; // empty body
-                MUST_BE_TRUE((*insertRestIt)->opcode() == G4_pseudo_caller_restore, "caller_restore opcode not found before fcall");
-                if (afterFCallBB->size() == 1)
-                    insertRestIt = afterFCallBB->end();
-                else
-                    ++insertRestIt;
-
-                if (builder.kernel.getOption(vISA_GenerateDebugInfo))
-                {
-                    builder.kernel.getKernelDebugInfo()->clearOldInstList();
-                    builder.kernel.getKernelDebugInfo()->setOldInstList
-                    (afterFCallBB);
-                }
-
-                restoreFileScopeVar(
-                    fileScopeVar, afterFCallBB, insertRestIt);
-
-                if (builder.kernel.getOption(vISA_GenerateDebugInfo))
-                {
-                    auto deltaInstList = builder.kernel.getKernelDebugInfo()->getDeltaInstructions
-                    (afterFCallBB);
-                    auto fcallInst = (*it)->back();
-                    for (auto it : deltaInstList)
-                    {
-                        builder.kernel.getKernelDebugInfo()->addCallerSaveInst(fcallInst, it);
-                    }
-                }
-            }
-        }
-    }
-    //
-    // Save/restore at each stack call function entry/exit.
-    //
-    if (builder.getIsKernel() == false)
-    {
-
-        for (auto fileScopeVar : liveAnalysis.fileScopeVars)
-        {
-            if (fileScopeVar->getPhyReg() == NULL)
-            {
-                continue;
-            }
-            MUST_BE_TRUE(fileScopeVar->getPhyReg()->isGreg(), ERROR_REGALLOC);
-
-            if (liveAnalysis.isLiveAtExit(builder.kernel.fg.getEntryBB(), fileScopeVar->getId()))
-            {
-                // Load globals at funcion entry only if atleast one path does not kill it
-                INST_LIST_ITER insertRestIt = builder.kernel.fg.getEntryBB()->end();
-                for (--insertRestIt; (*insertRestIt)->opcode() != G4_pseudo_callee_save;
-                    --insertRestIt);
-                if (builder.kernel.fg.getEntryBB()->back()->opcode() == G4_pseudo_callee_save)
-                    insertRestIt = builder.kernel.fg.getEntryBB()->end();
-                else
-                    ++insertRestIt;
-                restoreFileScopeVar(fileScopeVar, builder.kernel.fg.getEntryBB(), insertRestIt);
-            }
-            INST_LIST_ITER insertSaveIt = builder.kernel.fg.getUniqueReturnBlock()->end();
-            for (--insertSaveIt; (*insertSaveIt)->opcode() != G4_pseudo_callee_restore; --insertSaveIt);
-            if (builder.kernel.fg.getUniqueReturnBlock()->front()->opcode() == G4_pseudo_callee_restore)
-                insertSaveIt = builder.kernel.fg.getUniqueReturnBlock()->begin();
-            saveFileScopeVar(fileScopeVar, builder.kernel.fg.getUniqueReturnBlock(), insertSaveIt);
-        }
-    }
-    builder.instList.clear();
-}
-
-//
 // Add code to setup the stack frame in callee.
 //
 void GraphColor::addGenxMainStackSetupCode()
@@ -7015,8 +6808,6 @@ void GraphColor::addGenxMainStackSetupCode()
     {
         std::ofstream optreport;
         getOptReportStream(optreport, m_options);
-        optreport << std::endl << "Global variables size: " << builder.kernel.fg.fileScopeSaveAreaSize * 16
-            << " bytes" << std::endl;
         optreport << "Total frame size: " << frameSize * 16 << " bytes" << std::endl;
         closeOptReportStream(optreport);
     }
@@ -7260,7 +7051,7 @@ void GraphColor::addFlagSaveRestoreCode()
 }
 
 //
-// Add GRF caller/callee/filescope save/restore code for stack calls.
+// Add GRF caller/callee save/restore code for stack calls.
 //
 void GraphColor::addSaveRestoreCode(unsigned localSpillAreaOwordSize)
 {
@@ -7271,12 +7062,11 @@ void GraphColor::addSaveRestoreCode(unsigned localSpillAreaOwordSize)
         gtpin->markInsts();
     }
 
-    addFileScopeSaveRestoreCode();
     if (builder.getIsKernel() == true)
     {
         unsigned int spillMemOffset = builder.getOptions()->getuInt32Option(vISA_SpillMemOffset);
         builder.kernel.fg.callerSaveAreaOffset =
-            (spillMemOffset / 16) + builder.kernel.fg.fileScopeSaveAreaSize + localSpillAreaOwordSize;
+            (spillMemOffset / 16) + localSpillAreaOwordSize;
     }
     else
     {

@@ -187,10 +187,6 @@ SpillManagerGMRF::SpillManagerGMRF(
     curInst = NULL;
 
     globalScratchOffset = builder_->getOptions()->getuInt32Option(vISA_SpillMemOffset);
-    if (builder_->getIsKernel()) {
-        // reserve space for file scope variables
-        globalScratchOffset += (builder_->kernel.fg.fileScopeSaveAreaSize * 16);
-    }
 }
 
 // Compute the interference graph for intereference of the memory segments
@@ -1940,7 +1936,7 @@ SpillManagerGMRF::initMHeader (
             MUST_BE_TRUE (false, ERROR_GRAPHCOLOR);
         }
 
-        if (builder_->getIsKernel() == false && baseRegVar->getDeclare()->getHasFileScope() == false)
+        if (builder_->getIsKernel() == false)
         {
             createAddFPInst (
                 SCALAR_EXEC_SIZE, mHeaderOffsetDstRegion, segmentDispImm);
@@ -2488,8 +2484,7 @@ SpillManagerGMRF::sendInSpilledRegVarPortions (
         G4_DstRegRegion * mHeaderOffsetDstRegion =
             createMHeaderBlockOffsetDstRegion (mRangeDcl->getRegVar ());
 
-        if (builder_->getIsKernel() == false &&
-            getReprRegVar(fillRangeDcl->getRegVar())->getDeclare()->getHasFileScope() == false)
+        if (builder_->getIsKernel() == false)
         {
             createAddFPInst (
                 SCALAR_EXEC_SIZE, mHeaderOffsetDstRegion, segmentDispImm);
@@ -3140,8 +3135,7 @@ SpillManagerGMRF::sendOutSpilledRegVarPortions (
         G4_DstRegRegion * mHeaderOffsetDstRegion =
             createMHeaderBlockOffsetDstRegion (mRangeDcl->getRegVar ());
 
-        if (builder_->getIsKernel() == false &&
-            getReprRegVar(spillRangeDcl->getRegVar())->getDeclare()->getHasFileScope() == false)
+        if (builder_->getIsKernel() == false)
         {
             createAddFPInst (
                 SCALAR_EXEC_SIZE, mHeaderOffsetDstRegion, segmentDispImm);

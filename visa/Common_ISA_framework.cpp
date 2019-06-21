@@ -228,12 +228,6 @@ unsigned long CisaBinary::writeInToCisaHeaderBuffer(const void * value, int size
 int CisaBinary::finalizeCisaBinary()
 {
     m_bytes_written_cisa_buffer = 0;
-    int status = CM_SUCCESS;
-    status  = finalizeCisaFileScopeVars();
-    if( status != CM_SUCCESS )
-    {
-        return status;
-    }
 
     m_total_size = m_header_size = get_Size_Isa_Header( &m_header, getMajorVersion(), this->getMinorVersion() );
 
@@ -301,51 +295,9 @@ int CisaBinary::finalizeCisaBinary()
         }
     }
 
-    /*
-          uw num_extern_variables;
-          uw num_global_variables;
-          uw num_static_variables;
-          file_scope_var_info variables[num_variables];
-          */
-
-    writeInToCisaHeaderBuffer(&m_header.num_global_variables, sizeof(m_header.num_global_variables));
-
-    /*
-         Since this is constructed from isaasm all the eternal and static variables should already be resolved and only
-         global variables remain.
-         */
-
-    for (int i = 0; i < m_header.num_global_variables; i++)
-    {
-        /*
-        typedef struct {
-        unsigned char linkage;
-        unsigned short name_len;
-        unsigned char* name;
-        unsigned char bit_properties;
-        unsigned short num_elements;
-        unsigned char attribute_count;
-        attribute_info_t* attributes;
-        // Auxillary data
-        //   for cisa linker
-        void* scratch;
-        } filescope_var_info_t;
-
-        */
-        writeInToCisaHeaderBuffer(&m_header.filescope_variables[i].linkage, sizeof(m_header.filescope_variables[i].linkage));
-        writeInToCisaHeaderBuffer(&m_header.filescope_variables[i].name_len, sizeof(m_header.filescope_variables[i].name_len));
-        writeInToCisaHeaderBuffer(m_header.filescope_variables[i].name, m_header.filescope_variables[i].name_len);
-        writeInToCisaHeaderBuffer(&m_header.filescope_variables[i].bit_properties, sizeof(m_header.filescope_variables[i].bit_properties));
-        writeInToCisaHeaderBuffer(&m_header.filescope_variables[i].num_elements, sizeof(m_header.filescope_variables[i].num_elements));
-        writeInToCisaHeaderBuffer(&m_header.filescope_variables[i].attribute_count, sizeof(m_header.filescope_variables[i].attribute_count));
-    }
-
-    /*
-         uw num_extern_functions;
-         uw num_global_functions;
-         uw num_static_functions;
-         function_info functions[num_functions];
-         */
+    // file-scope variables are no longer supported
+    uint16_t numFileScopeVariables = 0;
+    writeInToCisaHeaderBuffer(&numFileScopeVariables, sizeof(numFileScopeVariables));
 
     writeInToCisaHeaderBuffer(&m_header.num_functions, sizeof(m_header.num_functions));
 
@@ -403,46 +355,6 @@ int CisaBinary::dumpToFile(std::string binFileName)
         os.write(m_header.functions[i].genx_binary_buffer, m_header.functions[i].binary_size);
     }
     os.close();
-    return CM_SUCCESS;
-}
-
-int CisaBinary::setFileScopeVar(VISA_FileVar * temp_info)
-{
-    this->file_scope_name_to_info_map.push_back(temp_info);
-
-    return m_header.num_global_variables++;
-}
-
-int CisaBinary::finalizeCisaFileScopeVars()
-{
-    m_header.filescope_variables = (filescope_var_info_t *)m_mem.alloc(sizeof(filescope_var_info_t) * m_header.num_global_variables);
-
-    std::vector<VISA_FileVar *>::iterator it =file_scope_name_to_info_map.begin();
-    std::vector<VISA_FileVar *>::iterator itEnd = file_scope_name_to_info_map.end();
-    VISA_FileVar * temp = NULL;
-    int index = 0;
-    /*
-        typedef struct {
-            unsigned short symbolic_index;
-            unsigned short resolved_index;
-        } reloc_sym;
-
-        typedef struct {
-            unsigned short num_syms;
-            reloc_sym* reloc_syms;
-        } reloc_symtab;
-    */
-    unsigned i = 0;
-    while( it != itEnd && i < m_header.num_global_variables )
-    {
-        temp = *it;
-        index = temp->index;
-        //shallow copy, since memory for others will not be deleted.
-        m_header.filescope_variables[index] = temp->fileVar;
-        it++;
-        m_header.num_filescope_variables++;
-        i++;
-    }
     return CM_SUCCESS;
 }
 

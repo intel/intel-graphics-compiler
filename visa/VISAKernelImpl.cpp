@@ -844,12 +844,6 @@ std::string VISAKernelImpl::getVarName(VISA_SamplerVar* decl) const
 }
 
 int VISAKernelImpl::CreateVISAGenVar(VISA_GenVar *& decl, const char *varName, int numberElements, VISA_Type dataType,
-                                     VISA_Align varAlign, VISA_FileVar *parentDecl, int aliasOffset)
-{
-    return this->CreateVISAGenVar(decl, varName, numberElements, dataType, varAlign, (VISA_GenVar *)parentDecl, aliasOffset);
-}
-
-int VISAKernelImpl::CreateVISAGenVar(VISA_GenVar *& decl, const char *varName, int numberElements, VISA_Type dataType,
                                      VISA_Align varAlign, VISA_GenVar *parentDecl, int aliasOffset)
 {
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
@@ -876,21 +870,10 @@ int VISAKernelImpl::CreateVISAGenVar(VISA_GenVar *& decl, const char *varName, i
     info->alias_index = 0;
     info->alias_scope_specifier = 0;
 
-    info->alias_scope_specifier = 0;
-
-    if(parentDecl != NULL)
+    if (parentDecl)
     {
-        if(parentDecl->type == FILESCOPE_VAR)
-        {
-            info->alias_offset = (uint16_t)aliasOffset;
-            info->alias_index = parentDecl->index;
-            info->alias_scope_specifier = 1;
-        }else
-        {
-            info->alias_offset = (uint16_t)aliasOffset;
-            info->alias_index = parentDecl->index;
-        }
-
+        info->alias_offset = (uint16_t)aliasOffset;
+        info->alias_index = parentDecl->index;
     }
 
     info->attribute_count = 0;
@@ -910,49 +893,15 @@ int VISAKernelImpl::CreateVISAGenVar(VISA_GenVar *& decl, const char *varName, i
             dclHeight,
             type);
 
-        if (parentDecl != NULL)
+        if (parentDecl)
         {
-            var_info_t *aliasDcl = NULL;
-            if(parentDecl->type == FILESCOPE_VAR)
+            var_info_t *aliasDcl = &parentDecl->genVar;
+            info->dcl->setAliasDeclare(aliasDcl->dcl, aliasOffset);
+
+            // check if parent declare is one of the predefined
+            if (parentDecl->index < Get_CISA_PreDefined_Var_Count())
             {
-                std::map<unsigned int, G4_Declare *>::iterator itFileScope = fileScopeMap.find(parentDecl->index);
-                G4_Declare *dcl = NULL;
-                if( itFileScope != fileScopeMap.end() )
-                {
-                    dcl = itFileScope->second;
-                }
-                else
-                {
-                    // create a declare for this filescope variable
-                    filescope_var_info_t curVar = parentDecl->fileVar;
-                    VISA_Type varType = (VISA_Type) (curVar.bit_properties & 0xf);
-                    G4_Type typeFS = Get_G4_Type_From_Common_ISA_Type(varType);
-
-                    unsigned short dclWidthFS = 1, dclHeightFS = 1;
-                    int totalByteSizeFS = 0;
-                    getHeightWidth(typeFS, curVar.num_elements, dclWidthFS, dclHeightFS, totalByteSizeFS);
-
-                    dcl = m_builder->createDeclareNoLookup((const char *)curVar.name, G4_GRF, dclWidthFS, dclHeightFS, typeFS);
-                    dcl->setHasFileScope();
-
-                    VISA_Align align_bits= (VISA_Align) ((curVar.bit_properties >> 4) & 0x7);
-                    setDeclAlignment(dcl, align_bits);
-
-                    fileScopeMap[parentDecl->index] = dcl;
-                }
-
-                info->dcl->setAliasDeclare(dcl, aliasOffset);
-            }
-            else
-            {
-                aliasDcl = &parentDecl->genVar;
-                info->dcl->setAliasDeclare(aliasDcl->dcl, aliasOffset);
-
-                // check if parent declare is one of the predefined
-                if (parentDecl->index < Get_CISA_PreDefined_Var_Count())
-                {
-                    m_builder->preDefVars.setHasPredefined(mapExternalToInternalPreDefVar(parentDecl->index), true);
-                }
+                m_builder->preDefVars.setHasPredefined(mapExternalToInternalPreDefVar(parentDecl->index), true);
             }
         }
 
@@ -1541,12 +1490,6 @@ int VISAKernelImpl::AddAttributeToVarGeneric(CISA_GEN_VAR *decl, const char* var
             decl->labelVar.attribute_count++;
             decl->labelVar.attributes = attr;
             this->m_label_info_size += Get_Size_Attribute_Info(attr);
-            break;
-        }
-    case FILESCOPE_VAR:
-        {
-            decl->fileVar.attribute_count++;
-            decl->fileVar.attributes = attr;
             break;
         }
     default:
@@ -8321,28 +8264,6 @@ int VISAKernelImpl::SetFunctionReturnSize(unsigned int size)
     return CM_SUCCESS;
 }
 
-void VISAKernelImpl::addFileScopeVar(VISA_FileVar* filescopeVar, unsigned int index)
-{
-    // To be invoked only via fast path
-
-    // Create G4_Declare in kernel
-    filescope_var_info_t curVar = filescopeVar->fileVar;
-    VISA_Type varType = (VISA_Type) (curVar.bit_properties & 0xf);
-    G4_Type typeFS = Get_G4_Type_From_Common_ISA_Type(varType);
-
-    unsigned short dclWidthFS = 1, dclHeightFS = 1;
-    int totalByteSizeFS = 0;
-    getHeightWidth(typeFS, curVar.num_elements, dclWidthFS, dclHeightFS, totalByteSizeFS);
-
-    G4_Declare* dcl = getIRBuilder()->createDeclareNoLookup((const char *)curVar.name, G4_GRF, dclWidthFS, dclHeightFS, typeFS);
-    dcl->setHasFileScope();
-
-    VISA_Align align_bits= (VISA_Align) ((curVar.bit_properties >> 4) & 0x7);
-    setDeclAlignment(dcl, align_bits);
-
-    fileScopeMap[index] = dcl;
-}
-
 // common tasks for AppendVISAInst* functions
 // currently we just increment the VISA offset to make sure it is set correctly for each GEN instruction
 void VISAKernelImpl::AppendVISAInstCommon()
@@ -8531,12 +8452,6 @@ int VISAKernelImpl::getDeclarationID(VISA_VMEVar *decl) const
 
 ///Gets declaration id VISA_LabelVar
 int VISAKernelImpl::getDeclarationID(VISA_LabelVar *decl) const
-{
-    return decl->index;
-}
-
-///Gets declaration id VISA_FileVar
-int VISAKernelImpl::getDeclarationID(VISA_FileVar *decl) const
 {
     return decl->index;
 }

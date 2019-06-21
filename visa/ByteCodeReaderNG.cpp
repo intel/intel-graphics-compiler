@@ -68,7 +68,6 @@ using namespace std;
 struct RoutineContainer
 {
     RoutineContainer():
-        fileVarDecls(NULL),
         generalVarDecls(NULL),   generalVarsCount(0),
         addressVarDecls(NULL),   addressVarsCount(0),
         predicateVarDecls(NULL), predicateVarsCount(0),
@@ -84,7 +83,6 @@ struct RoutineContainer
     {
         stringPool.clear();
     }
-    VISA_FileVar**         fileVarDecls; unsigned      fileVarsCount;
     VISA_GenVar**       generalVarDecls; unsigned   generalVarsCount;
     VISA_AddrVar**      addressVarDecls; unsigned   addressVarsCount;
     VISA_PredVar**    predicateVarDecls; unsigned predicateVarsCount;
@@ -2226,7 +2224,8 @@ static void readRoutineNG(unsigned& bytePos, const char* buf, vISA::Mem_Manager&
         uint8_t aliasScopeSpecifier = header.variables[declID].alias_scope_specifier;
         int status = CM_SUCCESS;
 
-        if (aliasScopeSpecifier == 0)
+        assert(aliasScopeSpecifier == 0 && "file scope variables are no longer supported");
+
         {
             VISA_GenVar* parentDecl = NULL;
             uint16_t aliasOffset = 0;
@@ -2245,23 +2244,6 @@ static void readRoutineNG(unsigned& bytePos, const char* buf, vISA::Mem_Manager&
                 aliasOffset = header.variables[declID].alias_offset;
             }
 
-            status = kernelBuilderImpl->CreateVISAGenVar(
-                decl, header.strings[var->name_index], var->num_elements, varType,
-                varAlign, parentDecl, aliasOffset);
-            ASSERT_USER(CM_SUCCESS == status,
-                "Failed to add VISA general variable.");
-        }
-        else
-        {
-            uint32_t aliasIndex  = header.variables[declID].alias_index;
-            uint16_t aliasOffset = header.variables[declID].alias_offset;
-
-            // else assume resolved index = symbolic index
-            // This happens when builder API is used instead of reading from CISA file.
-            // The assumption here is that when builder API is used, variable and function
-            // resolution is done by caller of builder API already.
-
-            VISA_FileVar* parentDecl = container.fileVarDecls[aliasIndex];
             status = kernelBuilderImpl->CreateVISAGenVar(
                 decl, header.strings[var->name_index], var->num_elements, varType,
                 varAlign, parentDecl, aliasOffset);
@@ -2604,22 +2586,6 @@ extern bool readIsaBinaryNG(const char* buf, CISA_IR_Builder* builder, vector<VI
     // would not work correctly
     builder->CISA_IR_setVersion(isaHeader.major_version, isaHeader.minor_version);
 
-    unsigned fileVarsCount = 0;
-    VISA_FileVar** fileVarDecls = NULL;
-
-    fileVarsCount = isaHeader.num_filescope_variables;
-    fileVarDecls = (VISA_FileVar**)mem.alloc(sizeof(VISA_FileVar*)* isaHeader.num_filescope_variables);
-    for (unsigned i = 0; i < isaHeader.num_filescope_variables; i++)
-    {
-        filescope_var_info_t* filescope_variable = &isaHeader.filescope_variables[i];
-        VISA_Type   type = (VISA_Type)((filescope_variable->bit_properties) & 0xF);
-        VISA_Align  align = (VISA_Align)((filescope_variable->bit_properties >> 4) & 0x7);
-
-        VISA_FileVar* fileVar = NULL;
-        builder->CreateVISAFileVar(fileVar, (char*)filescope_variable->name, filescope_variable->num_elements, type, align);
-        fileVarDecls[i] = fileVar;
-    }
-
     if (kernelName)
     {
         int kernelIndex = -1;
@@ -2641,8 +2607,6 @@ extern bool readIsaBinaryNG(const char* buf, CISA_IR_Builder* builder, vector<VI
 
         RoutineContainer container;
         container.builder = builder;
-        container.fileVarDecls = fileVarDecls;
-        container.fileVarsCount = fileVarsCount;
         container.kernelBuilder = NULL;
         container.majorVersion = isaHeader.major_version;
         container.minorVersion = isaHeader.minor_version;
@@ -2678,8 +2642,6 @@ extern bool readIsaBinaryNG(const char* buf, CISA_IR_Builder* builder, vector<VI
 
             RoutineContainer container;
             container.builder = builder;
-            container.fileVarDecls = fileVarDecls;
-            container.fileVarsCount = fileVarsCount;
             container.kernelBuilder = NULL;
             container.majorVersion = isaHeader.major_version;
             container.minorVersion = isaHeader.minor_version;
@@ -2697,8 +2659,6 @@ extern bool readIsaBinaryNG(const char* buf, CISA_IR_Builder* builder, vector<VI
                 RoutineContainer container;
 
                 container.builder = builder;
-                container.fileVarDecls = fileVarDecls;
-                container.fileVarsCount = fileVarsCount;
                 container.majorVersion = isaHeader.major_version;
                 container.minorVersion = isaHeader.minor_version;
 
