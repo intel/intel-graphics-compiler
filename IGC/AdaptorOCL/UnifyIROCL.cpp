@@ -124,6 +124,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Compiler/DebugInfo/VISADebugEmitter.hpp"
 
+#include <string>
 #include <algorithm>
 
 
@@ -188,23 +189,27 @@ static void CommonOCLBasedPasses(
 
     // override the data layout to match Gen HW
     int pointerSize = getPointerSize(*pContext->getModule());
-    StringRef dataLayout;
-    if(pointerSize == 4)
+    std::string layoutstr;
+    if (pointerSize == 4)
     {
-        dataLayout = "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16-i32:32:32"\
-            "-i64:64:64-f32:32:32-f64:64:64-v16:16:16-v24:32:32"\
-            "-v32:32:32-v48:64:64-v64:64:64-v96:128:128"\
-            "-v128:128:128-v192:256:256-v256:256:256"\
-            "-v512:512:512-v1024:1024:1024-n8:16:32";
+        layoutstr = "e-p:32:32:32";
     }
-    else
-    {
-        dataLayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32"\
-            "-i64:64:64-f32:32:32-f64:64:64-v16:16:16-v24:32:32"\
-            "-v32:32:32-v48:64:64-v64:64:64-v96:128:128"\
-            "-v128:128:128-v192:256:256-v256:256:256"\
-            "-v512:512:512-v1024:1024:1024-n8:16:32";
+    else {
+        layoutstr = "e-p:64:64:64";
     }
+    layoutstr += "-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64"\
+        "-f32:32:32-f64:64:64-v16:16:16-v24:32:32"\
+        "-v32:32:32-v48:64:64-v64:64:64-v96:128:128"\
+        "-v128:128:128-v192:256:256-v256:256:256"\
+        "-v512:512:512-v1024:1024:1024";
+    if (pContext->platform.supportByteALUOperation()) {
+        layoutstr += "-n8:16:32";
+    }
+    else {
+        layoutstr += "-n16:32";
+    }
+
+    StringRef dataLayout = layoutstr;
     pContext->getModule()->setDataLayout(dataLayout);
     BuiltinGenericModule->setDataLayout(dataLayout);
     if( BuiltinSizeModule )

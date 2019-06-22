@@ -350,6 +350,11 @@ public:
         return 0x200000;
     }
 
+    bool supportByteALUOperation() const
+    {
+        return true;
+    }
+
     // ***** Below go accessor methods for testing WA data from WA_TABLE *****
 
     bool WaDoNotPushConstantsForAllPulledGSTopologies() const
