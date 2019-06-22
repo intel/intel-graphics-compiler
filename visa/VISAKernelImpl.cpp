@@ -8194,14 +8194,17 @@ VISA_opnd* VISAKernelImpl::CreateOtherOpndHelper(int num_pred_desc_operands, int
 
 VISA_opnd* VISAKernelImpl::getOpndFromPool()
 {
+    VISA_opnd *newOp = nullptr;
     if (IS_VISA_BOTH_PATH)
     {
-        return (VISA_opnd *)m_mem.alloc(sizeof(VISA_opnd));
+        newOp = (VISA_opnd *)m_mem.alloc(sizeof(VISA_opnd));
     }
     else
     {
-        return &m_fastPathOpndPool[(m_opndCounter++) % vISA_NUMBER_OF_OPNDS_IN_POOL];
+        newOp = &m_fastPathOpndPool[(m_opndCounter++) % vISA_NUMBER_OF_OPNDS_IN_POOL];
     }
+    memset(newOp, 0, sizeof(*newOp));
+    return newOp;
 }
 
 G4_Operand* VISAKernelImpl::CommonISABuildPreDefinedSrc(int index, uint16_t vStride, uint16_t width,
