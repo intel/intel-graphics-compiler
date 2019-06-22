@@ -141,7 +141,10 @@ public:
 
     unsigned int getMaxPixelShaderThreads() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE ?
         m_caps.PixelShaderThreadsWindowerRange - 1 : m_caps.PixelShaderThreadsWindowerRange - 2; }
-    bool supportGPGPUMidThreadPreemption() const { return m_SkuTable.FtrGpGpuMidThreadLevelPreempt != 0; }
+    bool supportGPGPUMidThreadPreemption() const {
+        return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE &&
+            m_platformInfo.eRenderCoreFamily <= IGFX_GEN11LP_CORE;
+    }
     bool supportFtrWddm2Svm() const { return m_SkuTable.FtrWddm2Svm != 0; }
     bool supportStructuredAsRaw() const {
         return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE; }
