@@ -351,12 +351,14 @@ bool PrivateMemoryResolution::safeToUseScratchSpace(llvm::Module &M) const
      return false;
    }
 
+   bool bOCLLegacyValidation = true;
+
    //
    // For now, all APIs that use scratch space for private memory, must use scratch
    // memory except OpenCL, which can also use non-scratch space. For debugging
    // purpose, a registry key is used for OCL to turn ocl-use-scratch on/off.
    //
-   if (modMD.compOpt.OptDisable
+   if ((modMD.compOpt.OptDisable && bOCLLegacyValidation)
        || !Ctx.m_DriverInfo.usesScratchSpacePrivateMemory()
        || (Ctx.type == ShaderType::OPENCL_SHADER
            && !Ctx.platform.useScratchSpaceForOCL()
@@ -368,14 +370,15 @@ bool PrivateMemoryResolution::safeToUseScratchSpace(llvm::Module &M) const
    //
    // Do not use scratch space if module has any stack call.
    //
-   if (auto *FGA = getAnalysisIfAvailable<GenXFunctionGroupAnalysis>()) {
-     if (FGA->getModule() == &M) {
-       for (auto &I : *FGA) {
-         if (I->hasStackCall())
-           return false;
+   if (bOCLLegacyValidation)
+       if (auto *FGA = getAnalysisIfAvailable<GenXFunctionGroupAnalysis>()) {
+         if (FGA->getModule() == &M) {
+           for (auto &I : *FGA) {
+             if (I->hasStackCall())
+               return false;
+           }
+         }
        }
-     }
-   }
 
    const llvm::DataLayout *DL = &M.getDataLayout();
 
@@ -384,19 +387,19 @@ bool PrivateMemoryResolution::safeToUseScratchSpace(llvm::Module &M) const
        continue;
 
      // Check each instr of this function.
-     for (auto &BB : F) {
-       for (auto &I : BB) {
-         if (AddrSpaceCastInst *CI = dyn_cast<AddrSpaceCastInst>(&I)) {
-           // It is not safe to use scratch space as private memory if kernel does
-           // AS casting to ADDRESS_SPACE_GLOBAL_OR_PRIVATE or ADDRESS_SPACE_PRIVATE.
-           // See speical hack CI code generated at ProgramScopeConstantResolution 
-           const ADDRESS_SPACE targetAS = (ADDRESS_SPACE)(cast<PointerType>(CI->getType()))->getAddressSpace();
-           if (targetAS == ADDRESS_SPACE_GLOBAL_OR_PRIVATE || targetAS == ADDRESS_SPACE_PRIVATE) {
-             return false;
-           }
-         }
-       }
-     }
+   for (auto &BB : F) {
+        for (auto &I : BB) {
+            if (AddrSpaceCastInst *CI = dyn_cast<AddrSpaceCastInst>(&I)) {
+                // It is not safe to use scratch space as private memory if kernel does
+                // AS casting to ADDRESS_SPACE_GLOBAL_OR_PRIVATE or ADDRESS_SPACE_PRIVATE.
+                // See speical hack CI code generated at ProgramScopeConstantResolution 
+                const ADDRESS_SPACE targetAS = (ADDRESS_SPACE)(cast<PointerType>(CI->getType()))->getAddressSpace();
+                if (targetAS == ADDRESS_SPACE_GLOBAL_OR_PRIVATE || targetAS == ADDRESS_SPACE_PRIVATE) {
+                    return false;
+                }
+            }
+        }
+   }
 
      if (!isEntryFunc(m_pMdUtils, &F))
        continue;
@@ -448,6 +451,7 @@ bool PrivateMemoryResolution::safeToUseScratchSpace(llvm::Module &M) const
      // size >= 128 KB, here 128 KB = 2^12 * 256b.
      //
      const unsigned int totalPrivateMemPerWI = m_ModAllocaInfo->getTotalPrivateMemPerWI(&F);
+
 
      if (totalPrivateMemPerWI > scratchSpaceLimitPerWI) {
        return false;
