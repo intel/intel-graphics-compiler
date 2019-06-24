@@ -512,8 +512,7 @@ void CisaBinary::isaDumpVerify(
 #else
     bool dump =  m_options->getOption(vISA_GenerateISAASM);
     // disable verification in isaasm mode
-    bool verify = !m_options->getOption(vISA_NoVerifyvISA) &&
-                  !m_options->getOption(vISA_isParseMode);
+    bool verify = !m_options->getOption(vISA_NoVerifyvISA); // && !m_options->getOption(vISA_isParseMode);
     if (!(dump || verify))
         return;
 

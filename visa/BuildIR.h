@@ -1137,7 +1137,7 @@ public:
             {
                 dcl_height++;
             }
-        }   
+        }
 
         G4_Declare* dcl = createPreVarDeclareNoLookup(preDefVar_index, dcl_width, dcl_height, type);
         // subAlign has to be type size at the minimum

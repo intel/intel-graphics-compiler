@@ -340,7 +340,6 @@ VISA_RawOpnd* rawOperandArray[16];
 %token <string> SIZE
 %token <string> FLAG_REG_NAME
 %token <string> SURF_USE_NAME
-%token <string> DIRECTIVE_KERNEL  /* .kernel */
 %token <string> F_CLASS
 %token <string> G_CLASS
 %token <string> P_CLASS

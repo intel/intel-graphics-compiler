@@ -57,7 +57,7 @@ Common_ISA_Cond_Mod     str2cond(const char *str);
 VISAAtomicOps           str2atomic_opcode(const char *op_str);
 ISA_Opcode              str2opcode(const char* op_str);
 VISASampler3DSubOpCode  str2SampleOpcode(const char* str);
-int64_t                 hexToint(const char *hex_str, int str_len);
+int64_t                 hexToInt(const char *hex_str, int str_len);
 MEDIA_LD_mod            mediaMode(const char* str);
 OutputFormatControl     avs_control(const char* str);
 AVSExecMode             avsExecMode(const char* str);
@@ -614,7 +614,7 @@ lifetime"."end {
 
 0x[[:xdigit:]]+ {
         TRACE("\n** HEX NUMBER ");
-        CISAlval.number = hexToint(yytext+2, yyleng-2);
+        CISAlval.number = hexToInt(yytext+2, yyleng-2);
         return HEX_NUMBER;
     }
 
@@ -949,7 +949,7 @@ Common_ISA_Cond_Mod str2cond(const char *str)
     return ISA_CMP_UNDEF;
 }
 
-unsigned digit_num(char d)
+static unsigned hexCharToDigit(char d)
 {
     if (d >= '0' && d <= '9')
         return d - '0';
@@ -964,7 +964,7 @@ unsigned digit_num(char d)
 }
 
 // convert hex string to int
-int64_t hexToint(const char *hex_str, int str_len)
+int64_t hexToInt(const char *hex_str, int str_len)
 {
     if (str_len > 16) { // make sure is within 32 bits
         YY_FATAL_ERROR("Hex number larger than 8 digits");
@@ -974,9 +974,9 @@ int64_t hexToint(const char *hex_str, int str_len)
 
     // starting from the last digit
     for (int i = 0; i < str_len; i++)
-        result += (uint64_t)digit_num(*(hex_str+str_len-1-i)) << (i*4);
+        result += (uint64_t)hexCharToDigit(*(hex_str+str_len-1-i)) << (i*4);
 
-    return (int64_t) result;
+    return (int64_t)result;
 }
 
 // convert str to its corresponding opcode

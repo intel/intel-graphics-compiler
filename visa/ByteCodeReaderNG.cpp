@@ -172,7 +172,8 @@ inline void readVarBytes(uint8_t major, uint8_t minor, T& dst, uint32_t& bytePos
     }
 }
 
-CM_INLINE static Common_VISA_EMask_Ctrl transformMask( RoutineContainer& container, uint8_t maskVal)
+CM_INLINE static Common_VISA_EMask_Ctrl transformMask(
+    RoutineContainer& container, uint8_t maskVal)
 {
     Common_VISA_EMask_Ctrl mask = vISA_EMASK_M1;
     if (container.majorVersion == 3 && container.minorVersion == 0)
@@ -2068,7 +2069,8 @@ static void readInstructionSampler(unsigned& bytePos, const char* buf, ISA_Opcod
 }
 
 
-extern void readInstructionNG(unsigned& bytePos, const char* buf, RoutineContainer& container, unsigned instID)
+void readInstructionNG(
+    unsigned& bytePos, const char* buf, RoutineContainer& container, unsigned instID)
 {
     ISA_Opcode opcode = (ISA_Opcode)readPrimitiveOperandNG<uint8_t>(bytePos, buf);
     MUST_BE_TRUE(opcode < ISA_NUM_OPCODE, "Illegal or unimplemented CISA opcode.");

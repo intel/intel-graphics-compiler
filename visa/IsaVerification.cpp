@@ -2765,7 +2765,12 @@ static void verifyInstructionDataport(const common_isa_header& isaHeader,
     }
 }
 
-static void verifyKernelAttributes(const common_isa_header& isaHeader, const print_format_provider_t* header, ERROR_LIST, Options* options)
+
+static void verifyKernelAttributes(
+    const common_isa_header& isaHeader,
+    const print_format_provider_t* header,
+    ERROR_LIST,
+    Options* options)
 {
     /// Verify SLMSize, if present, shows up only once
     unsigned int numSLMSize = 0;
@@ -2779,7 +2784,8 @@ static void verifyKernelAttributes(const common_isa_header& isaHeader, const pri
         }
     }
 
-    REPORT_HEADER(options, numSLMSize <= 1, "More than 1 kernel attribute defined SLMSize");
+    REPORT_HEADER(options, numSLMSize <= 1,
+        "More than 1 kernel attribute defined SLMSize");
 }
 
 extern void verifyKernelHeader(const common_isa_header& isaHeader,
