@@ -2430,6 +2430,37 @@ bool Augmentation::updateDstMaskForScatter(G4_INST* inst, unsigned char* mask)
         }
         break;
 
+    case SFID::SAMPLER:
+    {
+        unsigned int respLength = msgDesc->ResponseLength();
+        unsigned char curEMBit = (unsigned char)inst->getMaskOffset();
+        elemSize = msgDesc->is16BitReturn() ? 2 : 4;
+        unsigned int warpNum = respLength * G4_GRF_REG_NBYTES / (execSize * elemSize);
+        if (inst->isWriteEnableInst())
+        {
+            curEMBit = NOMASK_BYTE;
+        }
+        for (unsigned int i = 0; i < warpNum; i++)
+        {
+            for (unsigned int j = 0; j < execSize; j++)
+            {
+                for (unsigned int k = 0; k < elemSize; k++)
+                {
+                    mask[(i * execSize + j)*elemSize + k] = curEMBit;
+                }
+                if (curEMBit != NOMASK_BYTE)
+                {
+                    curEMBit++;
+                    ASSERT_USER(curEMBit <= 32, "Illegal mask channel");
+                }
+            }
+            curEMBit = (unsigned char)inst->getMaskOffset();
+        }
+        return true;
+    }
+        
+    break;
+
     default: return false;
     }
 
@@ -2940,17 +2971,6 @@ void Augmentation::markNonDefaultDstRgn(G4_INST* inst, G4_Operand* opnd)
             {
                 if (gra.getAugmentationMask(dcl) == AugmentationMasks::NonDefault)
                 {
-                    return;
-                }
-
-                G4_SendMsgDescriptor *msgDesc = inst->getMsgDesc();
-                unsigned char execSize = inst->getExecSize();
-                SFID funcID = msgDesc->getFuncId();
-                if (funcID == SFID::SAMPLER &&
-                    !inst->isEOT() &&
-                    execSize != kernel.getSimdSize())
-                {
-                    gra.setAugmentationMask(dcl, AugmentationMasks::NonDefault);
                     return;
                 }
 
