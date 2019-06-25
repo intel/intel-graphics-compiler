@@ -504,18 +504,12 @@ void AddImplicitArgs::FixIndirectCalls(Module& M)
             {
                 if (CallInst* call = dyn_cast<CallInst>(&II))
                 {
+                    if (call->isInlineAsm()) continue;
+
                     Function* calledFunc = call->getCalledFunction();
 
-                    // Calls a function not defined in current module
-                    bool externalCall = calledFunc &&
-                        calledFunc->isDeclaration() &&
-                        GlobalValue::isExternalLinkage(calledFunc->getLinkage()) &&
-                        calledFunc->hasFnAttribute("IndirectlyCalled");
-
-                    if (call->isInlineAsm() || (calledFunc && !externalCall))
-                    {
-                        continue;
-                    }
+                    bool isIndirectCall = !calledFunc || calledFunc->hasFnAttribute("IndirectlyCalled");
+                    if (!isIndirectCall) continue;
 
                     SmallVector<Value*, 8> args;
                     SmallVector<Type*, 8> argTys;
