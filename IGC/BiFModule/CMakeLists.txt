@@ -172,7 +172,19 @@ if(UNIX)
     if(NOT ${CCLANG_BUILD_INTREE_LLVM})
       install(FILES $<TARGET_FILE:clang-tool>-${LLVM_VERSION_MAJOR} DESTINATION ${CMAKE_INSTALL_FULL_BINDIR} COMPONENT igc-opencl-devel)
     endif()
-    install(FILES ${opencl-header} DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR} COMPONENT igc-opencl-devel)
+    
+    # Get header opencl-c.h directory
+    get_filename_component(opencl-headers-dir ${opencl-header} DIRECTORY)
+
+    set(opencl-headers "${opencl-header}")
+    # Fix for the split of opencl-c.h into opencl-c.h and opencl-c-base.h
+    # https://github.com/llvm/llvm-project/commit/af1c230e70aeb72ec9d6363f8d91e3c7db3ef9f2
+    if(EXISTS "${opencl-headers-dir}/opencl-c-base.h")
+      set(opencl-headers
+       "${opencl-headers}"
+       "${opencl-headers-dir}/opencl-c-base.h")
+    endif()
+    install(FILES ${opencl-headers} DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR} COMPONENT igc-opencl-devel)
   endif()
 endif()
 
