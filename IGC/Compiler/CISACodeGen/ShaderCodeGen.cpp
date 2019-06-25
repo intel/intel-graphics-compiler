@@ -1473,6 +1473,9 @@ void OptimizeIR(CodeGenContext* pContext)
                 mpm.add(createSROAPass());
             }
         }
+#if LLVM_VERSION_MAJOR >= 7
+        mpm.add(new TrivialLocalMemoryOpsElimination());
+#endif
         mpm.add(createGenSimplificationPass());
 
         if (pContext->m_instrTypes.hasLoadStore)
