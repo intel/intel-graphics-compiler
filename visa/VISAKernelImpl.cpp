@@ -339,7 +339,7 @@ void VISAKernelImpl::expandIndirectCallWithRegTarget()
         if (bb->back()->isFCall() || bb->back()->isCall())
         {
             G4_INST* fcall = bb->back();
-            if (fcall->getSrc(0)->isGreg()) {
+            if (fcall->getSrc(0)->isGreg() || fcall->getSrc(0)->isA0()) {
                 // at this point the call function src0 has the target_address
                 // and the call dst is the reserved register for ret, we can use
                 // the subregister after 2 as add's dst
