@@ -951,6 +951,7 @@ void CoalesceSpillFills::replaceCoalescedOperands(G4_INST* inst)
             auto newDstRgn = kernel.fg.builder->createDstRegRegion(Direct, it->second.first->getRegVar(),
                 it->second.second + dstRgn->getRegOff(), dstRgn->getSubRegOff(), dstRgn->getHorzStride(), dstRgn->getType());
 
+            newDstRgn->setAccRegSel(dstRgn->getAccRegSel());
             inst->setDest(newDstRgn);
         }
     }
@@ -977,7 +978,7 @@ void CoalesceSpillFills::replaceCoalescedOperands(G4_INST* inst)
                     it->second.first->getRegVar(), it->second.second + srcRgn->getRegOff(),
                     srcRgn->getSubRegOff(), oldRgnDesc,
                     opnd->getType());
-
+                newSrcRgn->setAccRegSel(srcRgn->getAccRegSel());
                 inst->setSrc(newSrcRgn, i);
             }
         }
