@@ -241,6 +241,9 @@ public:
     /// Does not emit an error if recursive functions calls are detected.
     virtual bool AllowRecursion() const { return false; }
 
+    /// Allow aggressive vector value aliasing
+    virtual bool EnableVecAliasing() const { return false; }
+
 };
 
 }//namespace IGC

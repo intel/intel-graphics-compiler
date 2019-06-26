@@ -982,8 +982,9 @@ void VariableReuseAnalysis::visitExtractElementInst(ExtractElementInst& I)
         return;
     }
 
-    // For OCL for now.
-    if (m_pCtx->type != ShaderType::OPENCL_SHADER) {
+    // Do it for OCL only (todo enable it for other api)
+    if (!m_pCtx->m_DriverInfo.EnableVecAliasing())
+    {
         return;
     }
 
@@ -1720,7 +1721,7 @@ void VariableReuseAnalysis::InsertElementAliasing(Function* F)
 {
     // Do it if VATemp >= 2 and for ocl only for now
     if (IGC_GET_FLAG_VALUE(VATemp) < 2 ||
-        m_pCtx->type != ShaderType::OPENCL_SHADER) {
+        !m_pCtx->m_DriverInfo.EnableVecAliasing()) {
         return;
     }
 
