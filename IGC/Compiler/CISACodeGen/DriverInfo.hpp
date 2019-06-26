@@ -179,6 +179,9 @@ public:
 
     // Choose to support parsing inlined asm instructions on specific platforms
     virtual bool SupportInlineAssembly() const { return false; }
+    
+    /// support predicate add pattern match
+    virtual bool SupportMatchPredAdd() const { return false; }
 
     /// Adjust adapter to adjust the loop unrolling threshold
     virtual unsigned int GetLoopUnrollThreshold() const

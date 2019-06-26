@@ -186,6 +186,7 @@ public:
 
     bool MatchFMA(llvm::IntrinsicInst& I);
     bool MatchFrc(llvm::BinaryOperator& I);
+    bool MatchPredAdd(llvm::BinaryOperator& I);
     bool MatchMad(llvm::BinaryOperator& I);
     bool MatchLrp(llvm::BinaryOperator& I);
     bool MatchCmpSext(llvm::Instruction& I);
