@@ -140,7 +140,7 @@ void LocalRA::evenAlign()
 #endif
             gra.evenAlign();
         }
-        gra.updateSubRegAlignment(GRFALIGN);
+        gra.updateSubRegAlignment(G4_GRF, GRFALIGN);
         // Since we are piggy backing on mask field of G4_Declare,
         // we need to make sure we reset it before going further.
         resetMasks();
