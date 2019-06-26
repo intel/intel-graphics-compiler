@@ -2222,12 +2222,12 @@ void GlobalRA::updateSubRegAlignment(unsigned char regFile, G4_SubReg_Align subA
 
             if (regFile == G4_FLAG)
             {
-                dcl->setSubRegAlign(subAlign);
+                setSubRegAlign(dcl, subAlign);
             }
             else if (!areAllDefsNoMask(topdcl) &&
                 getAugmentationMask(topdcl) != AugmentationMasks::NonDefault)
             {
-                dcl->setSubRegAlign(subAlign);
+                setSubRegAlign(dcl, subAlign);
             }
         }
     }
@@ -2259,7 +2259,7 @@ void GlobalRA::evenAlign()
                     !(kernel.fg.builder->getOption(vISA_enablePreemption) &&
                         dcl == kernel.fg.builder->getBuiltinR0()))
                 {
-                    dcl->setEvenAlign();
+                    setEvenAligned(dcl, true);
                 }
             }
         }
@@ -5433,7 +5433,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
 
             if (!failed_alloc)
             {
-                BankAlign align = lrVar->isEvenAlign() ? BankAlign::Even : BankAlign::Either;
+                BankAlign align = gra.isEvenAligned(lrVar->getDeclare()) ? BankAlign::Even : BankAlign::Either;
                 if (allocFromBanks)
                 {
                     
@@ -5447,7 +5447,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
                 else
                 {
                     failed_alloc |= !regUsage.assignRegs(highInternalConflict, lr, lr->getForbidden(),
-                        align, lrVar->getSubRegAlignment(), heuristic, lr->getSpillCost());
+                        align, gra.getSubRegAlign(lrVar->getDeclare()), heuristic, lr->getSpillCost());
                 }
             }
 
@@ -5818,7 +5818,7 @@ bool GraphColor::regAlloc(bool doBankConflictReduction,
     {
         G4_Declare* dcl = lrs[i]->getDcl();
 
-        if (dcl->getSubRegAlign() == Any &&
+        if (gra.getSubRegAlign(dcl) == Any &&
             !dcl->getIsPartialDcl())
         {
             //
@@ -5826,14 +5826,14 @@ bool GraphColor::regAlloc(bool doBankConflictReduction,
             //
             if (dcl->getNumRows() > 1)
             {
-                lrs[i]->getVar()->setSubRegAlignment(GRFALIGN);
+                gra.setSubRegAlign(lrs[i]->getVar()->getDeclare(), GRFALIGN);
             }
             //
             // single-row
             //
             else
             {
-                if (lrs[i]->getVar()->getSubRegAlignment() == Any)
+                if (gra.getSubRegAlign(lrs[i]->getVar()->getDeclare()) == Any)
                 {
                     //
                     // set up Odd word or Even word sub reg alignment
@@ -5842,11 +5842,11 @@ bool GraphColor::regAlloc(bool doBankConflictReduction,
                     unsigned nwords = nbytes / G4_WSIZE + nbytes%G4_WSIZE;
                     if (nwords >= 2 && lrs[i]->getRegKind() == G4_GRF)
                     {
-                        lrs[i]->getVar()->setSubRegAlignment(Even_Word);
+                        gra.setSubRegAlign(lrs[i]->getVar()->getDeclare(), Even_Word);
                     }
                     else
                     {
-                        lrs[i]->getVar()->setSubRegAlignment(Any);
+                        gra.setSubRegAlign(lrs[i]->getVar()->getDeclare(), Any);
                     }
                 }
             }
@@ -7745,6 +7745,7 @@ void VarSplit::createSubDcls(G4_Kernel& kernel, G4_Declare* oldDcl, std::vector<
         splitDcl = kernel.fg.builder->createDeclareNoLookup(splitDclName, G4_GRF, dclWidth, dclHeight, oldDcl->getElemType());
         gra.setSubOffset(splitDcl, leftBound);
         splitDcl->copyAlign(oldDcl);
+        gra.copyAlignment(splitDcl, oldDcl);
         unsigned nElementSize = (rightBound - leftBound + 1) / oldDcl->getElemSize();
         if ((rightBound - leftBound + 1) % oldDcl->getElemSize())
         {
@@ -7802,6 +7803,8 @@ void VarSplit::insertMovesFromTemp(G4_Kernel& kernel, G4_Declare* oldDcl, int in
         const char* newDclName = kernel.fg.builder->getNameString(kernel.fg.builder->mem, 16, "copy_%d_%s", index, oldDcl->getName());
         G4_Declare * newDcl = kernel.fg.builder->createDeclareNoLookup(newDclName, G4_GRF, dclWidth, dclHeight, oldSrc->getType());
         newDcl->copyAlign(oldDcl);
+        gra.copyAlignment(newDcl, oldDcl);
+
         unsigned newLeftBound = 0;
 
         for (size_t i = 0, size = splitDclList.size(); i < size; i++)
@@ -8627,6 +8630,8 @@ bool GlobalRA::hybridRA(bool doBankConflictReduction, bool highInternalConflict,
                 kernel.Declares.resize(numOrigDcl);
                 lra.undoLocalRAAssignments(false);
             }
+            // Restore alignment in case LRA modified it
+            copyAlignment();
             return false;
         }
         coloring.confirmRegisterAssignments();
@@ -8870,7 +8875,7 @@ int GlobalRA::coloringRegAlloc()
                     {
                         std::cout << "\t--rematerialize\n";
                     }
-                    Rematerialization remat(kernel, liveAnalysis, coloring, rpe);
+                    Rematerialization remat(kernel, liveAnalysis, coloring, rpe, *this);
                     remat.run();
                     rematDone = true;
 
@@ -9017,7 +9022,7 @@ int GlobalRA::coloringRegAlloc()
                     builder.getOption(vISA_FastSpill) || builder.getOption(vISA_Debug);
                 if (!reserveSpillReg && !disableSpillCoalecse && builder.useSends())
                 {
-                    CoalesceSpillFills c(kernel, liveAnalysis, coloring, spillGMRF, iterationNo, rpe);
+                    CoalesceSpillFills c(kernel, liveAnalysis, coloring, spillGMRF, iterationNo, rpe, *this);
                     c.run();
                 }
 
@@ -10511,6 +10516,10 @@ void GraphColor::dumpRegisterPressure()
 // that new variables created by lvn/spill/remat may not honor alignment requirements?
 void GlobalRA::fixAlignment()
 {
+    // Copy over alignment from G4_RegVar to GlobalRA instance
+    // Rest of RA shouldnt have to read/modify alignment of G4_RegVar
+    copyAlignment();
+
     for (auto BB : kernel.fg)
     {
         for (auto inst : *BB)
@@ -10523,11 +10532,11 @@ void GlobalRA::fixAlignment()
                 // NOTE THAT: The assumption is that the previous pass will set only SUB_ALIGNMENT_HALFGRFALIGN or whole GRF align
                 if (inst->isSend() && dst->getRegAccess() == Direct) {
                     if (!var->isPhyRegAssigned() &&
-                        (var->getDeclare()->getSubRegAlign() == Any ||
-                         var->getDeclare()->getSubRegAlign() == Even_Word ||
-                         var->getDeclare()->getSubRegAlign() == HALFGRFALIGN))
+                        (getSubRegAlign(var->getDeclare()) == Any ||
+                            getSubRegAlign(var->getDeclare()) == Even_Word ||
+                            getSubRegAlign(var->getDeclare()) == HALFGRFALIGN))
                     {
-                        var->setSubRegAlignment(GRFALIGN);
+                        setSubRegAlign(var->getDeclare(), GRFALIGN);
                     }
                 }
 
@@ -10540,16 +10549,16 @@ void GlobalRA::fixAlignment()
                 // DWORD Type Dst ARF --> Even_Word
                 //
                 if (!var->isPhyRegAssigned() && var->getDeclare()->getNumRows() <= 1
-                    && dst->getRegAccess() == Direct && var->getDeclare()->getSubRegAlign() == Any)
+                    && dst->getRegAccess() == Direct && getSubRegAlign(var->getDeclare()) == Any)
                 {
                     if (inst->isAccSrcInst())
                     {
                         if (var->getDeclare()->getRegFile() != G4_ADDRESS)
-                            var->setSubRegAlignment(GRFALIGN);
+                            setSubRegAlign(var->getDeclare(), GRFALIGN);
                         else
-                            var->setSubRegAlignment(HALFGRFALIGN);
+                            setSubRegAlign(var->getDeclare(), HALFGRFALIGN);
                     }
-                    else if (var->getSubRegAlignment() != GRFALIGN)
+                    else if (getSubRegAlign(var->getDeclare()) != GRFALIGN)
                     {
                         if (inst->opcode() == G4_movi)  //FIXME: restriction for movi, what about 64 bytes GRF
                         {
@@ -10559,17 +10568,19 @@ void GlobalRA::fixAlignment()
                             case 2:
                                 MUST_BE_TRUE1(dst->getSubRegOff() <= 8, inst->getLineNo(),
                                     ERROR_DATA_RANGE("sub-register offset"));
-                                var->setSubRegAlignment((G4_SubReg_Align)(Eight_Word + dst->getSubRegOff()));
+                                setSubRegAlign(var->getDeclare(),
+                                    (G4_SubReg_Align)(Eight_Word + dst->getSubRegOff()));
                                 break;
                             case 4:
                                 MUST_BE_TRUE1(dst->getSubRegOff() <= 4, inst->getLineNo(),
                                     ERROR_DATA_RANGE("sub-register offset"));
-                                var->setSubRegAlignment((G4_SubReg_Align)(Eight_Word + dst->getSubRegOff() * 2));
+                                setSubRegAlign(var->getDeclare(),
+                                    (G4_SubReg_Align)(Eight_Word + dst->getSubRegOff() * 2));
                                 break;
                             case 1:
                                 MUST_BE_TRUE1(dst->getSubRegOff() == 0 || dst->getSubRegOff() == 16, inst->getLineNo(),
                                     ERROR_DATA_RANGE("sub-register offset"));
-                                var->setSubRegAlignment(Eight_Word);
+                                setSubRegAlign(var->getDeclare(), Eight_Word);
                                 break;
                             }
                         }
@@ -10585,19 +10596,21 @@ void GlobalRA::fixAlignment()
                                     G4_Type srcImmType = src->asImm()->getType();
                                     if (IS_VINTTYPE(srcImmType))
                                     {
-                                        var->setSubRegAlignment((G4_SubReg_Align)(Eight_Word + dst->getSubRegOff()));
+                                        setSubRegAlign(var->getDeclare(),
+                                            (G4_SubReg_Align)(Eight_Word + dst->getSubRegOff()));
                                         break;
                                     }
                                     else if (IS_VFTYPE(srcImmType))
                                     {
-                                        var->setSubRegAlignment((G4_SubReg_Align)(Eight_Word + dst->getSubRegOff() * 2));
+                                        setSubRegAlign(var->getDeclare(),
+                                            (G4_SubReg_Align)(Eight_Word + dst->getSubRegOff() * 2));
                                         break;
                                     }
                                 }
                             }
                         }
 
-                        G4_SubReg_Align dstSubAlign = var->getSubRegAlignment();
+                        G4_SubReg_Align dstSubAlign = getSubRegAlign(var->getDeclare());
                         if (dstSubAlign == Any)
                         {
                             for (unsigned j = 0; j < G4_MAX_SRCS; j++)
@@ -10605,7 +10618,7 @@ void GlobalRA::fixAlignment()
                                 G4_Operand* src = inst->getSrc(j);
                                 if (src && G4_Type_Table[src->getType()].byteSize == G4_DSIZE)
                                 {
-                                    var->setSubRegAlignment(Even_Word);
+                                    setSubRegAlign(var->getDeclare(), Even_Word);
                                     break;
                                 }
                             }
@@ -11661,4 +11674,146 @@ void  GlobalRA::insertRestoreAddr(G4_BB* bb)
 
         last->setExecSize(2);
     }
+}
+
+// This function returns the weight of interference edge lr1--lr2,
+// which is used for computing the degree of lr1.
+//
+// When there is no alignment restriction, we should use the normal weight,
+// which is lr1_nreg + lr2_nreg - 1.
+//
+// Otherewise, we need to take into account additional space that may be
+// required because of the alignment restriction. For example,
+// if lr1 has even alignment and lr2 has no alignment restriction,
+// we need to consider the following cases that would require the
+// maximal available GRF space for successful allocation:
+// 1) lr1's size is odd, lr2's size is odd and lr2's start position is even,
+//    the total space required would be (lr1_nreg + lr2_nreg + 1)
+// 2) lr1's size is odd, lr2's size is even and lr2's start position is even,
+//    the total space required would be (lr1_nreg + lr2_nreg)
+// 3) lr1's size is even, lr2's size is odd and lr2's start position is odd,
+//    the total space required would be (lr1_nreg + lr2_nreg)
+// 4) lr1's size is even, lr2's size is even and lr2's start position is odd,
+//    the total space required would be (lr1_nreg + lr2_nreg + 1)
+// The above logic can be simplified to the following formula:
+//    lr1_nreg + lr2_nreg + 1 - ((lr1_nreg + lr2_nreg) % 2)
+//
+// If both lr1 and lr2 have even alignment restriction,
+// we need to consider the following cases that would require the
+// maximal available GRF space for successful allocation:
+// 1) lr1's size is odd, lr2's size is odd and lr2's start position is even,
+//    the total space required would be (lr1_nreg + lr2_nreg + 1)
+// 2) lr1's size is odd, lr2's size is even and lr2's start position is even,
+//    the total space required would be (lr1_nreg + lr2_nreg)
+// 3) lr1's size is even, lr2's size is odd and lr2's start position is even,
+//    the total space required would be (lr1_nreg + lr2_nreg)
+// 4) lr1's size is even, lr2's size is even and lr2's start position is even,
+//    the total space required would be (lr1_nreg + lr2_nreg - 1)
+// The above logic can be simplified to the following formula:
+//    lr1_nreg + lr2_nreg - 1 + (lr1_nreg % 2) + (lr2_nreg % 2)
+//
+unsigned GraphColor::edgeWeightGRF(LiveRange* lr1, LiveRange* lr2)
+{
+    bool lr1EvenAlign = gra.isEvenAligned(lr1->getVar()->getDeclare());
+    bool lr2EvenAlign = gra.isEvenAligned(lr2->getVar()->getDeclare());
+    unsigned lr1_nreg = lr1->getNumRegNeeded();
+    unsigned lr2_nreg = lr2->getNumRegNeeded();
+
+    if (!lr1EvenAlign)
+    {
+        return  lr1_nreg + lr2_nreg - 1;
+    }
+    else if (!lr2EvenAlign)
+    {
+        unsigned sum = lr1_nreg + lr2_nreg;
+        return sum + 1 - ((sum) % 2);
+    }
+    else if (lr2EvenAlign)
+    {
+        return lr1_nreg + lr2_nreg - 1 + (lr1_nreg % 2) + (lr2_nreg % 2);
+    }
+    else
+    {
+        assert(false && "should be unreachable");
+        return 0;
+    }
+}
+
+unsigned GraphColor::edgeWeightARF(LiveRange* lr1, LiveRange* lr2)
+{
+    if (lr1->getRegKind() == G4_FLAG)
+    {
+        G4_SubReg_Align lr1_align = gra.getSubRegAlign(lr1->getVar()->getDeclare());
+        G4_SubReg_Align lr2_align = gra.getSubRegAlign(lr2->getVar()->getDeclare());
+        unsigned lr1_nreg = lr1->getNumRegNeeded();
+        unsigned lr2_nreg = lr2->getNumRegNeeded();
+
+        if (lr1_align == Any)
+        {
+            return  lr1_nreg + lr2_nreg - 1;
+        }
+        else if (lr1_align == Even_Word && lr2_align == Any)
+        {
+            return lr1_nreg + lr2_nreg + 1 - ((lr1_nreg + lr2_nreg) % 2);
+        }
+        else if (lr1_align == Even_Word && lr2_align == Even_Word)
+        {
+            if (lr1_nreg % 2 == 0 && lr2_nreg % 2 == 0)
+            {
+                return lr1_nreg + lr2_nreg - 2;
+            }
+            else
+            {
+                return lr1_nreg + lr2_nreg - 1 + (lr1_nreg % 2) + (lr2_nreg % 2);
+            }
+        }
+        else
+        {
+            MUST_BE_TRUE(false, "Found unsupported subRegAlignment in flag register allocation!");
+            return 0;
+        }
+    }
+    else if (lr1->getRegKind() == G4_ADDRESS)
+    {
+        G4_SubReg_Align lr1_align = gra.getSubRegAlign(lr1->getVar()->getDeclare());
+        G4_SubReg_Align lr2_align = gra.getSubRegAlign(lr2->getVar()->getDeclare());
+        unsigned lr1_nreg = lr1->getNumRegNeeded();
+        unsigned lr2_nreg = lr2->getNumRegNeeded();
+
+        if (lr1_align == Any)
+        {
+            return  lr1_nreg + lr2_nreg - 1;
+        }
+        else if (lr1_align == Four_Word && lr2_align == Any)
+        {
+            return lr1_nreg + lr2_nreg + 3 - (lr1_nreg + lr2_nreg) % 4;
+        }
+        else if (lr1_align == Four_Word && lr2_align == Four_Word)
+        {
+            return lr1_nreg + lr2_nreg - 1 + (4 - lr1_nreg % 4) % 4 + (4 - lr2_nreg % 4) % 4;
+        }
+        else if (lr1_align == Eight_Word && lr2_align == Any)
+        {
+            return lr1_nreg + lr2_nreg + 7 - (lr1_nreg + lr2_nreg) % 8;
+        }
+        else if (lr1_align == Eight_Word && lr2_align == Four_Word)
+        {
+            if (((8 - lr1_nreg % 8) % 8) >= 4)
+                return lr1_nreg + lr2_nreg - 1 + (8 - lr1_nreg % 8) % 8 - 4;
+            return lr1_nreg + lr2_nreg - 1 + (8 - lr1_nreg % 8) % 8 +
+                (4 - lr2_nreg % 4) % 4;
+        }
+        else if (lr1_align == Eight_Word && lr2_align == Eight_Word)
+        {
+            return lr1_nreg + lr2_nreg - 1 + (8 - lr1_nreg % 8) % 8 +
+                (8 - lr2_nreg % 8) % 8;
+        }
+        else
+        {
+            MUST_BE_TRUE(false, "Found unsupported subRegAlignment in address register allocation!");
+            return 0;
+        }
+    }
+    MUST_BE_TRUE(false, "Found unsupported ARF reg type in register allocation!");
+    return 0;
 }

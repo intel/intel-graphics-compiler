@@ -96,6 +96,7 @@ namespace vISA
         G4_Kernel& kernel;
         LivenessAnalysis& liveness;
         GraphColor& coloring;
+        GlobalRA& gra;
         Dominators doms;
         G4_Declare* samplerHeader = nullptr;
         unsigned int numRematsInLoop = 0;
@@ -208,8 +209,8 @@ namespace vISA
         bool inSameSubroutine(G4_BB*, G4_BB*);
 
     public:
-        Rematerialization(G4_Kernel& k, LivenessAnalysis& l, GraphColor& c, RPE& r) :
-            kernel(k), liveness(l), coloring(c), doms(k.fg), rpe(r)
+        Rematerialization(G4_Kernel& k, LivenessAnalysis& l, GraphColor& c, RPE& r, GlobalRA& g) :
+            kernel(k), liveness(l), coloring(c), doms(k.fg), rpe(r), gra(g)
         {
             unsigned numGRFs = k.getNumRegTotal();
             auto scale = [=](unsigned threshold) -> unsigned {

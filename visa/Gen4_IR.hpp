@@ -2559,6 +2559,8 @@ namespace vISA
 {
     class G4_RegVar : public G4_VarBase
     {
+        friend class G4_Declare;
+
     public:
         enum RegVarType
         {
@@ -2646,19 +2648,21 @@ namespace vISA
 
         G4_RegVar * getNonTransientBaseRegVar();
 
-        bool isEvenAlign() const { return evenAlignment; }
-        void setEvenAlign() { evenAlignment = true;}
-        G4_SubReg_Align getSubRegAlignment() 
-        {
-            return subAlign;
-        }
-
-        void setSubRegAlignment(G4_SubReg_Align subAlg);
         void emit(std::ostream& output, bool symbolreg = false) override;
 
         unsigned short ExRegNum(bool &valid) override { return reg.phyReg->ExRegNum(valid); }
         unsigned short ExSubRegNum(bool &valid) override { valid = true; return (unsigned short)reg.subRegOff; }
         unsigned short ExIndRegNum(bool &valid) override { return reg.phyReg->ExIndRegNum(valid); }
+
+    protected:
+        bool isEvenAlign() const { return evenAlignment; }
+        void setEvenAlign() { evenAlignment = true; }
+        G4_SubReg_Align getSubRegAlignment()
+        {
+            return subAlign;
+        }
+
+        void setSubRegAlignment(G4_SubReg_Align subAlg);
     };
 
     class G4_RegVarTransient : public G4_RegVar
