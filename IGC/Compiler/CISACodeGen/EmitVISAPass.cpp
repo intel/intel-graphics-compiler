@@ -11693,7 +11693,7 @@ void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
     llvm::Value* pllU = pInsn->getOperand(1);
     llvm::Value* pllV = pInsn->getOperand(2);
     llvm::Value* pllR = pInsn->getOperand(3);
-    llvm::Value* pllLOD = pInsn->getOperand(4);
+    llvm::Value* pllLOD = getOperandIfExist(pInsn, 4);
 
     CVariable* pLOD = isUndefOrConstInt0(pllLOD) ? nullptr : GetSymbol(pllLOD);
     CVariable* pR = (pLOD == nullptr && isUndefOrConstInt0(pllR)) ? nullptr : GetSymbol(pllR);

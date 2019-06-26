@@ -408,13 +408,25 @@ public:
     uint DecideInstanceAndSlice(llvm::BasicBlock &blk, SDAG& sdag, bool &slicing);
     inline bool isUndefOrConstInt0(llvm::Value* val)
     {
-        if (llvm::isa<llvm::UndefValue>(val) ||
+        if (val == nullptr ||
+            llvm::isa<llvm::UndefValue>(val) ||
             (llvm::isa<llvm::ConstantInt>(val) &&
             llvm::cast<llvm::ConstantInt>(val)->getZExtValue() == 0))
         {
             return true;
         }
         return false;
+    }
+    inline llvm::Value* getOperandIfExist(llvm::Instruction* pInst, unsigned op)
+    {
+        if (llvm::CallInst* pCall = llvm::dyn_cast<llvm::CallInst>(pInst))
+        {
+            if (op < pCall->getNumArgOperands())
+            {
+                return pInst->getOperand(op);
+            }
+        }
+        return nullptr;
     }
 
     CVariable* ExtendVariable(CVariable* pVar, e_alignment uniformAlign = EALIGN_GRF);
