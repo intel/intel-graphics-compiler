@@ -5343,24 +5343,29 @@ void EmitPass::emitSimdMediaBlockRead(llvm::Instruction* inst)
     m_currShader->SetBindingTableEntryCountAndBitmap(true, bindingTableIndex);
 
     CVariable* srcbti = m_currShader->ImmToVariable(bindingTableIndex, ISA_TYPE_UD);
+    uint32_t maxWidth = 32;
 
-    if (totalWidth < 32)
+
+    if (totalWidth < maxWidth)
     {
         numPasses = 1;
         blockWidth = totalWidth;
     }
     else
     {
-        assert(totalWidth % 32 == 0 && "Total width must be divisible by 32!");
-        numPasses = totalWidth / 32;
-        blockWidth = 32;
+        assert(totalWidth % maxWidth == 0 && "Total width must be divisible by 32!");
+        numPasses = totalWidth / maxWidth;
+        blockWidth = maxWidth;
     }
 
 
     CVariable* pTempVar0 = nullptr;
     CVariable* pTempVar = nullptr;
 
-    uint32_t blockRegSize = numPasses * blockHeight * numLanes(SIMDMode::SIMD8);
+    uint32_t blockRegSize = 0;
+
+    //Following variable declaration is SIMD8 based, UD is used, so blockRegSize is total required registers.
+    blockRegSize = numPasses * blockHeight * numLanes(SIMDMode::SIMD8);
 
     CVariable* pTempDest = m_currShader->GetNewVariable(
         blockRegSize,
@@ -5382,6 +5387,18 @@ void EmitPass::emitSimdMediaBlockRead(llvm::Instruction* inst)
     // add( 1 ) r36.0<1>:ud r15.0<0; 1, 0>:ud 0x20:uw{ Align1, NoMask }
     // mov( 1 ) r36.1<1>:d r13.1<0; 1, 0>:d{ Align1, NoMask }
     // send( 8 ) r32.0<1>:ud r36 0xc 0x2490000:ud{ Align1, NoMask } // media block read
+    //      -----------------
+    //      |       |       |
+    //      |       |       |
+    //      -----------------
+    //      ---------  r28 output
+    //      |       |
+    //      |       |
+    //      ---------  r32
+    //      |       |
+    //      |       |
+    //      ---------
+    //  32 or 64 bytes at most, that's the reason simd8 is used.
 
     int scale = (blockWidth == 64) ? 2 : 1;
 
@@ -5511,17 +5528,19 @@ void EmitPass::emitSimdMediaBlockWrite(llvm::Instruction* inst)
     m_currShader->SetBindingTableEntryCountAndBitmap(true, bindingTableIndex);
 
     CVariable* srcbti = m_currShader->ImmToVariable(bindingTableIndex, ISA_TYPE_UD);
+    uint32_t maxWidth = 32;
 
-    if (totalWidth < 32)
+
+    if (totalWidth < maxWidth)
     {
         numPasses = 1;
         blockWidth = totalWidth;
     }
     else
     {
-        assert(totalWidth % 32 == 0 && "Total width must be divisible by 32!");
-        numPasses = totalWidth / 32;
-        blockWidth = 32;
+        assert(totalWidth % maxWidth == 0 && "Total width must be divisible by 32!");
+        numPasses = totalWidth / maxWidth;
+        blockWidth = maxWidth;
     }
 
 
@@ -5536,7 +5555,8 @@ void EmitPass::emitSimdMediaBlockWrite(llvm::Instruction* inst)
         uint32_t srcSubVar = pass * scale;
         uint32_t dstSubVar = 0;
 
-        CVariable* tempdst = m_currShader->GetNewVariable(
+        CVariable* tempdst = nullptr;
+        tempdst = m_currShader->GetNewVariable(
             (nbElements * numLanes(SIMDMode::SIMD8)),
             data->GetType(),
             m_currShader->getGRFAlignment());
@@ -9837,6 +9857,26 @@ void EmitPass::JoinSIMD(CVariable* (&tempdst)[N], uint responseLength)
     }
 }
 
+template<size_t N>
+void EmitPass::JoinSIMD32(CVariable* (&tempdst)[N], uint responseLength)
+{
+    uint iterationCount = numLanes(m_currShader->m_SIMDSize) / numLanes(SIMDMode::SIMD16);
+    for (uint half = 0; half < iterationCount; half++)
+    {
+        for (uint i = 0; i < responseLength; ++i)
+        {
+            m_encoder->SetSimdSize(SIMDMode::SIMD16);
+            uint subVarIdx = numLanes(SIMDMode::SIMD32) / (getGRFSize() >> 2) * i;
+            m_encoder->SetSrcSubVar(0, i);
+            m_encoder->SetDstSubVar(subVarIdx + half);
+            m_encoder->SetMask(half == 0 ? EMASK_H1 : EMASK_H2);
+            assert(half < ARRAY_COUNT(tempdst));
+            m_encoder->Copy(m_destination, tempdst[half]);
+            m_encoder->Push();
+        }
+    }
+}
+
 CVariable* EmitPass::BroadcastIfUniform(CVariable* pVar)
 {
     assert(pVar && "pVar is null");
@@ -11859,9 +11899,11 @@ void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
             }
         }
         ResourceLoop(needLoop, flag, label);
-        if (m_currShader->m_SIMDSize != SIMDMode::SIMD8)
         {
-            JoinSIMD(tempdst, numChannels);
+            if (m_currShader->m_SIMDSize != SIMDMode::SIMD8)
+            {
+                JoinSIMD(tempdst, numChannels);
+            }
         }
     }
     m_currShader->isMessageTargetDataCacheDataPort = true;
