@@ -6755,14 +6755,11 @@ void EmitPass::emitPSSGV(GenIntrinsicInst* inst)
     switch (usage)
     {
     case POSITION_Z:
-    case POSITION_W:
     {
         if (psProgram->GetPhase() == PSPHASE_PIXEL || psProgram->GetPhase() == PSPHASE_COARSE)
         {
             // source depth:
             //      src_z = (x - xstart)*z_cx + (y - ystart)*z_cy + z_c0
-            // source w:
-            //      src_w = 1/((x - xstart)*1w_cx + (y - ystart)*1w_cy + 1w_c0)
             CVariable* delta = psProgram->GetZWDelta();
 
             CVariable* floatR1 = psProgram->BitCast(psProgram->GetR1(), ISA_TYPE_F);
@@ -6810,8 +6807,8 @@ void EmitPass::emitPSSGV(GenIntrinsicInst* inst)
                 m_encoder->SetSrcRegion(1, 0, 1, 0);
                 m_encoder->SetSrcRegion(2, 0, 1, 0);
             }
-            m_encoder->SetSrcSubReg(1, usage == POSITION_Z ? 0 : 4);
-            m_encoder->SetSrcSubReg(2, usage == POSITION_Z ? 3 : 7);
+            m_encoder->SetSrcSubReg(1, 0);
+            m_encoder->SetSrcSubReg(2, 3);
             m_encoder->Mad(floatPixelPositionDeltaY, floatPixelPositionDeltaY, delta, delta);
             m_encoder->Push();
 
@@ -6819,24 +6816,22 @@ void EmitPass::emitPSSGV(GenIntrinsicInst* inst)
             {
                 m_encoder->SetSrcRegion(1, 0, 1, 0);
             }
-            m_encoder->SetSrcSubReg(1, usage == POSITION_Z ? 1 : 5);
+            m_encoder->SetSrcSubReg(1, 1);
             m_encoder->Mad(m_destination, floatPixelPositionDeltaX, delta, floatPixelPositionDeltaY);
             m_encoder->Push();
 
-            if (usage == POSITION_W)
-            {
-                // 1/w -> w
-                m_encoder->Inv(m_destination, m_destination);
-                m_encoder->Push();
-            }
         }
         else
         {
-            CVariable* pPositionZW =
-                (usage == POSITION_Z) ? psProgram->GetPositionZ() : psProgram->GetPositionW();
-            m_encoder->Copy(dst, pPositionZW);
+            m_encoder->Copy(dst, psProgram->GetPositionZ());
             m_encoder->Push();
         }
+        break;
+    }
+    case POSITION_W:
+    {
+        m_encoder->Copy(dst, psProgram->GetPositionW());
+        m_encoder->Push();
         break;
     }
     case POSITION_X_OFFSET:
