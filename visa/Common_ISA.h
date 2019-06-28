@@ -174,7 +174,6 @@ typedef enum {
     PARAMETER_KIND_RAW      = 0x1,
     PARAMETER_KIND_SAMPLER  = 0x2,
     PARAMETER_KIND_SURFACE  = 0x3,
-    PARAMETER_KIND_VME      = 0x4,
     NUM_PARAMETER_KIND
 } Common_ISA_Function_Parameters_Kind;
 
@@ -233,11 +232,8 @@ typedef enum {
     S_OPND_ERROR = 0x0,
     S_OPND_SAMPLER = 0x1,
     S_OPND_SURFACE = 0x2,
-    S_OPND_VME = 0x3,
-    S_OPND_NUM = 0x4
+    S_OPND_NUM = 0x3
 } Common_ISA_State_Opnd;
-
-extern const char* special_opnd_type_str[S_OPND_NUM];
 
 extern const char* pred_ctrl_str[9];
 
@@ -247,7 +243,6 @@ typedef enum {
     NOT_A_STATE_OPND   = -1,
     STATE_OPND_SURFACE =  0,
     STATE_OPND_SAMPLER,
-    STATE_OPND_VME,
     STATE_OPND_NUM
 } Common_ISA_State_Opnd_Class;
 
@@ -499,8 +494,7 @@ typedef struct {
     state_info_t*         samplers;
     unsigned char         surface_count;
     state_info_t*         surfaces;
-    unsigned char         vme_count;
-    state_info_t*         vmes;
+    unsigned char         vme_count; // deprecated and MBZ
     uint32_t              input_count;
     input_info_t*         inputs;
     unsigned char         return_type;
@@ -510,12 +504,6 @@ typedef struct {
     unsigned char         return_value_size;
     unsigned short        attribute_count;
     attribute_info_t*     attributes;
-    unsigned char         input_sampler_count;
-    unsigned char         input_surface_count;
-    unsigned char         input_vme_count;
-    vISA::G4_Declare**          sampler_dcls;
-    vISA::G4_Declare**          surface_dcls;
-    vISA::G4_Declare**          vme_dcls;
     bool*                 surface_attrs;
 } kernel_format_t;
 typedef kernel_format_t function_format_t;
@@ -551,9 +539,6 @@ public:
     virtual const state_info_t* getSampler(unsigned id) const = 0;
     virtual unsigned char getSamplerCount() const = 0;
 
-    virtual const state_info_t* getVME(unsigned id) const = 0;
-    virtual unsigned char getVMECount() const = 0;
-
     virtual const input_info_t* getInput(unsigned id) const = 0;
     virtual uint32_t getInputCount() const = 0;
 
@@ -565,7 +550,6 @@ struct print_decl_index_t {
     unsigned pred_index = 0;
     unsigned sampler_index = 0;
     unsigned surface_index = 0;
-    unsigned vme_index = 0;
     unsigned input_index = 0;
 };
 
@@ -698,7 +682,6 @@ typedef struct _VISA_AddrVar    : CISA_GEN_VAR { } VISA_AddrVar;
 typedef struct _VISA_PredVar    : CISA_GEN_VAR { } VISA_PredVar;
 typedef struct _VISA_SamplerVar : CISA_GEN_VAR { } VISA_SamplerVar;
 typedef struct _VISA_SurfaceVar : CISA_GEN_VAR { } VISA_SurfaceVar;
-typedef struct _VISA_VMEVar     : CISA_GEN_VAR { } VISA_VMEVar;
 typedef struct _VISA_LabelVar   : CISA_GEN_VAR { } VISA_LabelVar;
 
 

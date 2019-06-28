@@ -106,11 +106,6 @@ int CBinaryCISAEmitter::Emit(VISAKernelImpl * cisa_kernel, unsigned int& binaryS
 
     cisa_kernel->writeInToCisaBinaryBuffer(&kernelInfo->vme_count, sizeof(kernelInfo->vme_count));
 
-    for(int i = 0; i <kernelInfo->vme_count; i++)
-    {
-        emitStateInfo(cisa_kernel, &kernelInfo->vmes[i]);
-    }
-
     DEBUG_PRINT_SIZE("size after VMEs: ", SIZE_VALUE);
 
     if (cisa_kernel->getIsKernel())

@@ -73,7 +73,6 @@ struct RoutineContainer
         predicateVarDecls(NULL), predicateVarsCount(0),
         samplerVarDecls(NULL),   samplerVarsCount(0),
         surfaceVarDecls(NULL),   surfaceVarsCount(0),
-        vmeVarDecls(NULL),       vmeVarsCount(0),
         labelVarDecls(NULL),     labelVarsCount(0),
         inputVarDecls(NULL),     inputVarsCount(0),
         majorVersion(0),
@@ -88,7 +87,6 @@ struct RoutineContainer
     VISA_PredVar**    predicateVarDecls; unsigned predicateVarsCount;
     VISA_SamplerVar**   samplerVarDecls; unsigned   samplerVarsCount;
     VISA_SurfaceVar**   surfaceVarDecls; unsigned   surfaceVarsCount;
-    VISA_VMEVar**           vmeVarDecls; unsigned       vmeVarsCount;
     VISA_LabelOpnd**      labelVarDecls; unsigned     labelVarsCount;
     CISA_GEN_VAR**        inputVarDecls; unsigned     inputVarsCount;
 
@@ -553,15 +551,9 @@ static VISA_VectorOpnd* readVectorOperandNG(unsigned& bytePos, const char* buf, 
                     }
                     break;
                 }
-            case STATE_OPND_VME:
-                {
-                    VISA_VMEVar* decl = container.vmeVarDecls[index];
-                    kernelBuilderImpl->CreateVISAStateOperand(opnd, decl, offset, isDst);
-                    break;
-                }
             default:
                 {
-                    MUST_BE_TRUE(false, "Invalid state operand class: only surface, vme, and sampler are supported.");
+                    MUST_BE_TRUE(false, "Invalid state operand class: only surface and sampler are supported.");
                     break;
                 }
             }
@@ -2445,12 +2437,10 @@ static void readRoutineNG(unsigned& bytePos, const char* buf, vISA::Mem_Manager&
         container.surfaceVarDecls[i] = decl;
     }
 
-    // read VME variables
-    READ_CISA_FIELD(header.vme_count, uint8_t, bytePos, buf);
-    header.vmes = (state_info_t*)mem.alloc( sizeof(state_info_t) * header.vme_count);
-    container.vmeVarDecls = (VISA_VMEVar**)mem.alloc(sizeof(VISA_VMEVar*) * (header.vme_count));
-    container.vmeVarsCount = header.vme_count;
-    assert(container.vmeVarsCount == 0 && "VME variable is no longer supported");
+    int vmeCount = 0;
+    READ_CISA_FIELD(vmeCount, uint8_t, bytePos, buf);
+    assert(vmeCount == 0 && "VME variable is no longer supported");
+    header.vme_count = 0;
 
     // read input variables
     if (isKernel)

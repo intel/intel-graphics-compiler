@@ -1533,12 +1533,6 @@ void VISAKernelImpl::addSampler(CISA_GEN_VAR * state)
     this->m_sampler_info_size += Get_Size_State_Info(&state->stateVar);
 }
 
-void VISAKernelImpl::addVme(CISA_GEN_VAR * state)
-{
-    m_vme_info_list.push_back(state);
-    this->m_vme_info_size += Get_Size_State_Info(&state->stateVar);
-}
-
 void VISAKernelImpl::addSurface(CISA_GEN_VAR * state)
 {
     m_surface_info_list.push_back(state);
@@ -1678,11 +1672,6 @@ int VISAKernelImpl::CreateVISAInputVar(VISA_SamplerVar *decl, unsigned short off
 }
 
 int VISAKernelImpl::CreateVISAInputVar(VISA_SurfaceVar *decl, unsigned short offset, unsigned short size)
-{
-    return this->CreateVISAInputVar((CISA_GEN_VAR *)decl, offset, size, INPUT_EXPLICIT);
-}
-
-int VISAKernelImpl::CreateVISAInputVar(VISA_VMEVar *decl, unsigned short offset, unsigned short size)
 {
     return this->CreateVISAInputVar((CISA_GEN_VAR *)decl, offset, size, INPUT_EXPLICIT);
 }
@@ -1829,10 +1818,6 @@ int VISAKernelImpl::CreateVISAAddressOfOperandGeneric(VISA_VectorOpnd *&cisa_opn
                 else if ( decl->type == SURFACE_VAR )
                 {
                     cisa_opnd->_opnd.v_opnd.opnd_val.state_opnd.opnd_class = STATE_OPND_SURFACE;
-                }
-                else
-                {
-                    cisa_opnd->_opnd.v_opnd.opnd_val.state_opnd.opnd_class = STATE_OPND_VME;
                 }
                 break;
             }
@@ -2330,11 +2315,6 @@ int VISAKernelImpl::CreateVISAStateOperand(VISA_VectorOpnd *&opnd, VISA_SamplerV
     return this->CreateVISAStateOperand(opnd, (CISA_GEN_VAR*)decl, STATE_OPND_SAMPLER, size, offset, useAsDst);
 }
 
-int VISAKernelImpl::CreateVISAStateOperand(VISA_VectorOpnd *&opnd, VISA_VMEVar *decl, unsigned char offset, bool useAsDst)
-{
-    return this->CreateVISAStateOperand(opnd, (CISA_GEN_VAR*)decl, STATE_OPND_VME, 1, offset, useAsDst);
-}
-
 //size should be 8 since it's a vISA spec.
 //size was added because VME doesn't adhere to our spec.
 int VISAKernelImpl::CreateVISARawOperand(VISA_RawOpnd *& cisa_opnd, VISA_GenVar *decl, unsigned short offset)
@@ -2531,21 +2511,6 @@ int VISAKernelImpl::CreateVISAStateOperandHandle(VISA_StateOpndHandle *&opnd, VI
     if(IS_VISA_BOTH_PATH && status == CM_SUCCESS)
     {
         status =  CreateStateInstUse(opnd, decl->index);
-    }
-    return status;
-}
-
-int VISAKernelImpl::CreateVISAStateOperandHandle(VISA_StateOpndHandle *&opnd, VISA_VMEVar *decl)
-{
-    int status = CM_SUCCESS;
-    opnd = (VISA_StateOpndHandle *)getOpndFromPool();
-    if(IS_GEN_BOTH_PATH)
-    {
-        status = CreateStateInstUseFastPath(opnd, (CISA_GEN_VAR *)decl);
-    }
-    if(IS_VISA_BOTH_PATH && status == CM_SUCCESS)
-    {
-        status = CreateStateInstUse(opnd, decl->index);
     }
     return status;
 }
@@ -7656,19 +7621,9 @@ void VISAKernelImpl::finalizeKernel()
     DEBUG_PRINT_SIZE("size after surfaces: ", SIZE_VALUE);
 
     /*****VMES********/
-    m_cisa_kernel.vme_count = (uint8_t)this->m_vme_count;
-    m_cisa_kernel.vmes = (state_info_t * ) m_mem.alloc(sizeof(state_info_t) * this->m_vme_count);
-
-    std::vector<CISA_GEN_VAR *>::iterator  it_vme_info = m_vme_info_list.begin();
-    for(unsigned int i = 0; i < m_vme_count; i++, it_vme_info++)
-    {
-        MUST_BE_TRUE( it_vme_info != m_vme_info_list.end(),  "Count of vme declarations does not correspond with number of items." );
-        state_info_t * temp = &(*it_vme_info)->stateVar;
-        m_cisa_kernel.vmes[i] = *temp;
-    }
-
+    // VME variables are removed
+    m_cisa_kernel.vme_count = 0;
     m_kernel_data_size += sizeof(m_cisa_kernel.vme_count);
-    m_kernel_data_size += m_vme_info_size;
 
     DEBUG_PRINT_SIZE("size after VMEs: ", SIZE_VALUE);
 
@@ -8440,12 +8395,6 @@ int VISAKernelImpl::getDeclarationID(VISA_SamplerVar *decl) const
 
 ///Gets declaration id VISA_SurfaceVar
 int VISAKernelImpl::getDeclarationID(VISA_SurfaceVar *decl) const
-{
-    return decl->index;
-}
-
-///Gets declaration id VISA_VMEVar
-int VISAKernelImpl::getDeclarationID(VISA_VMEVar *decl) const
 {
     return decl->index;
 }

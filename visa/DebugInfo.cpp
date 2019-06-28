@@ -911,11 +911,6 @@ unsigned int populateMapDclName(VISAKernelImpl* kernel, std::map<G4_Declare*, st
         dclList.push_back(kernel->getSamplerVar((unsigned int)ctr));
     }
 
-    for(uint32_t ctr = 0; ctr < kernel->getVmeVarCount(); ctr++)
-    {
-        dclList.push_back(kernel->getVmeVar((unsigned int)ctr));
-    }
-
     auto start = dclList.begin();
     auto end = dclList.end();
 

@@ -134,7 +134,6 @@ std::string printVariableDeclName(
         switch (operand_prefix_kind)
         {   case STATE_OPND_SURFACE : sstr << printSurfaceName(declID); break;
             case STATE_OPND_SAMPLER : sstr << "S"   << declID; break;
-            case STATE_OPND_VME     : sstr << "VME" << declID; break;
             default                 :
                 if(options->getOption(vISA_easyIsaasm) == false ||
                     options->getOption(vISA_PlatformIsSet) == false)
@@ -502,24 +501,6 @@ std::string printSurfaceDecl(
     const state_info_t* info = header->getSurface(declID);
 
     sstr << ".decl T" << declID + numPredefinedSurfaces << " v_type=T";
-    sstr << " num_elts=" << info->num_elements;
-    sstr << " v_name=" << header->getString(info->name_index);
-    for (unsigned j = 0; j < info->attribute_count; j++)
-    {
-        sstr << " " << printAttribute(&info->attributes[j], header);
-    }
-    return sstr.str();
-}
-
-std::string printVMEDecl(
-    const print_format_provider_t* header,
-    unsigned declID)
-{
-    MUST_BE_TRUE(header, "Argument Exception: argument header is NULL.");
-    std::stringstream sstr;
-
-    sstr << ".decl VME" << declID << " v_type=VME";
-    const state_info_t* info = header->getVME(declID);
     sstr << " num_elts=" << info->num_elements;
     sstr << " v_name=" << header->getString(info->name_index);
     for (unsigned j = 0; j < info->attribute_count; j++)
@@ -2572,11 +2553,6 @@ std::string printKernelHeader(
         for (unsigned i = 0; i < header->getSurfaceCount(); i++)
         {
             sstr << "\n" << printSurfaceDecl(header, i, numPreDefinedSurfs);
-        }
-        // VME
-        for (unsigned i = 0; i < header->getVMECount(); i++)
-        {
-            sstr << "\n" << printVMEDecl(header, i);
         }
         // inputs to kernel
         for (unsigned i = 0; i < header->getInputCount(); i++)

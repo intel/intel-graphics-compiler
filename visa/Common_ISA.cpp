@@ -134,14 +134,6 @@ const char* vme_search_ctrl_str[4] =
     "111"
 };
 
-const char* special_opnd_type_str[S_OPND_NUM] =
-{
-    "00",
-    "01",
-    "10",
-    "11"
-};
-
 const char* pred_ctrl_str[9] =
 {
     "",

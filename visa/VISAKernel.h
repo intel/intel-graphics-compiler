@@ -71,7 +71,6 @@ public:
         m_sampler_count = 0;
         m_surface_count = 0;
         m_input_count = 0;
-        m_vme_count = 0;
         m_attribute_count = 0;
         m_label_count = 0;
 
@@ -93,7 +92,6 @@ public:
         m_num_pred_vars = 0;
         m_surface_info_size = 0;
         m_sampler_info_size = 0;
-        m_vme_info_size = 0;
         m_isKernel = false;
 
         memset(&m_cisa_kernel, 0, sizeof(kernel_format_t));
@@ -119,7 +117,6 @@ public:
         predicateNameCount = COMMON_ISA_NUM_PREDEFINED_PRED;
         surfaceNameCount = COMMON_ISA_NUM_PREDEFINED_SURF_VER_3_1;
         samplerNameCount = 0;
-        vmeNameCount = 0;
         mTargetAttributeSet = false;
 
         m_functionId = 0;
@@ -175,8 +172,6 @@ public:
 
     void addSampler(CISA_GEN_VAR * state);
 
-    void addVme(CISA_GEN_VAR * state);
-
     void addSurface(CISA_GEN_VAR * state);
 
     void addAttribute(const char *input_name, attribute_info_t *attr_temp);
@@ -191,7 +186,6 @@ public:
     VISA_LabelOpnd * getLabelOperandFromFunctionName(std::string name);
     unsigned int getLabelIdFromFunctionName(std::string name);
 
-    void setGenxBinaryBuffer(char * buffer, unsigned long size);
     void setGenxDebugInfoBuffer(char * buffer, unsigned long size);
     VISA_opnd* CreateOtherOpndHelper(int num_pred_desc_operands, int num_operands, VISA_INST_Desc *inst_desc, unsigned int value, bool hasSubOpcode = false, uint8_t subOpcode = 0);
     VISA_opnd* CreateOtherOpnd(unsigned int value, VISA_Type opndType);
@@ -270,8 +264,6 @@ public:
 
     CM_BUILDER_API int CreateVISAInputVar(VISA_SurfaceVar *decl, unsigned short offset, unsigned short size);
 
-    CM_BUILDER_API int CreateVISAInputVar(VISA_VMEVar *decl, unsigned short offset, unsigned short size);
-
     CM_BUILDER_API int CreateVISAAddressSrcOperand(VISA_VectorOpnd *&opnd, VISA_AddrVar *decl, unsigned int offset, unsigned int width);
 
     CM_BUILDER_API int CreateVISAAddressDstOperand(VISA_VectorOpnd *&opnd, VISA_AddrVar *decl, unsigned int offset);
@@ -305,14 +297,9 @@ public:
 
     CM_BUILDER_API int CreateVISAStateOperand(VISA_VectorOpnd *&opnd, VISA_SamplerVar *decl, uint8_t size, unsigned char offset, bool useAsDst);
 
-    CM_BUILDER_API int CreateVISAStateOperand(VISA_VectorOpnd *&opnd, VISA_VMEVar *decl, unsigned char offset, bool useAsDst);
-
-
     CM_BUILDER_API int CreateVISAStateOperandHandle(VISA_StateOpndHandle *&opnd, VISA_SurfaceVar *decl);
 
     CM_BUILDER_API int CreateVISAStateOperandHandle(VISA_StateOpndHandle *&opnd, VISA_SamplerVar *decl);
-
-    CM_BUILDER_API int CreateVISAStateOperandHandle(VISA_StateOpndHandle *&opnd, VISA_VMEVar *decl);
 
     CM_BUILDER_API int CreateVISARawOperand(VISA_RawOpnd *& opnd, VISA_GenVar *decl, unsigned short offset);
 
@@ -682,9 +669,6 @@ public:
     ///Gets declaration id VISA_SurfaceVar
     CM_BUILDER_API int getDeclarationID(VISA_SurfaceVar *decl) const;
 
-    ///Gets declaration id VISA_VMEVar
-    CM_BUILDER_API int getDeclarationID(VISA_VMEVar *decl) const;
-
     ///Gets declaration id VISA_LabelVar
     CM_BUILDER_API int getDeclarationID(VISA_LabelVar *decl) const;
 
@@ -846,19 +830,6 @@ public:
         return (*it);
     }
 
-    unsigned int getVmeVarCount() const
-    {
-        return (uint32_t)m_vme_info_list.size();
-    }
-
-    CISA_GEN_VAR* getVmeVar(unsigned int index)
-    {
-        auto it = m_vme_info_list.begin();
-        std::advance(it, index);
-
-        return (*it);
-    }
-
     Options * getOptions() { return m_options; }
 
     bool IsAsmWriterMode() const { return m_options->getOption(vISA_IsaAssembly); }
@@ -926,7 +897,6 @@ private:
     unsigned int m_instruction_size; //done
     unsigned int m_surface_info_size;
     unsigned int m_sampler_info_size;
-    unsigned int m_vme_info_size;
 
     unsigned long m_genx_binary_size;
     char * m_genx_binary_buffer;
@@ -980,9 +950,6 @@ private:
 
     std::map<unsigned int, unsigned int> m_declID_to_PredefinedSurfaceID_map;
 
-    unsigned int m_vme_count;
-    std::vector<CISA_GEN_VAR*> m_vme_info_list;
-
     unsigned int m_input_count;
     std::vector<input_info_t *> m_input_info_list;
     //std::map<unsigned int, unsigned int> m_declID_to_inputID_map;
@@ -1030,7 +997,6 @@ private:
     unsigned int predicateNameCount;
     unsigned int surfaceNameCount;
     unsigned int samplerNameCount;
-    unsigned int vmeNameCount;
 
     int m_vISAInstCount;
     print_decl_index_t m_printDeclIndex;
@@ -1146,15 +1112,6 @@ public:
     unsigned char getSamplerCount() const
     {
         return m_kernel->m_sampler_count;
-    }
-    const state_info_t* getVME(unsigned id) const
-    {
-        assert(id < m_kernel->m_vme_info_list.size());
-        return &m_kernel->m_vme_info_list[id]->stateVar;
-    }
-    unsigned char getVMECount() const
-    {
-        return m_kernel->m_vme_count;
     }
     const input_info_t* getInput(unsigned id) const
     {

@@ -2831,13 +2831,6 @@ extern void verifyKernelHeader(const common_isa_header& isaHeader,
             "T%d's number of elements(%d) is not valid", i, header->getSurface(i)->num_elements);
     }
 
-    /// Verify vme.
-    for (unsigned i = 0; i < header->getVMECount(); i++)
-    {
-        REPORT_HEADER(options,header->getVME(i)->name_index < header->getStringCount(), "Vme's name index(%d) is not valid", header->getVME(i)->name_index);
-        REPORT_HEADER(options,header->getVME(i)->num_elements == 1, "Vme%d's number of elements must be one", i);
-    }
-
     // Verify inputs.
     // v3.3+, kernel may have explicit arguments followed by implicit ones.
     // This information is only used by the CM runtime, not by Finalizer.

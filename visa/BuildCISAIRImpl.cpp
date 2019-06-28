@@ -2028,7 +2028,7 @@ bool CISA_IR_Builder::CISA_create_avs_instruction(ChannelMask channel,
     VISA_StateOpndHandle * surface = NULL;
     m_kernel->CreateVISAStateOperandHandle(surface, surfaceVar);
 
-    VISA_VMEVar *samplerVar = (VISA_VMEVar *)m_kernel->getDeclFromName(sampler_name);
+    VISA_SamplerVar *samplerVar = (VISA_SamplerVar *) m_kernel->getDeclFromName(sampler_name);
     MUST_BE_TRUE1(samplerVar != NULL, line_no, "Sampler was not found");
 
     VISA_StateOpndHandle *sampler = NULL;
@@ -2323,8 +2323,9 @@ bool CISA_IR_Builder::CISA_create_sample_instruction (ISA_Opcode opcode,
 
     int status = CM_SUCCESS;
 
-    if (opcode == ISA_SAMPLE) {
-        VISA_VMEVar* samplerVar = (VISA_VMEVar*)m_kernel->getDeclFromName(sampler_name);
+    if (opcode == ISA_SAMPLE) 
+    {
+        VISA_SamplerVar* samplerVar = (VISA_SamplerVar*) m_kernel->getDeclFromName(sampler_name);
         MUST_BE_TRUE1(samplerVar != NULL, line_no, "Sampler was not found");
 
         VISA_StateOpndHandle* sampler = NULL;
@@ -2364,7 +2365,7 @@ bool CISA_IR_Builder::CISA_create_sampleunorm_instruction (ISA_Opcode opcode,
     VISA_StateOpndHandle * surface = NULL;
     m_kernel->CreateVISAStateOperandHandle(surface, surfaceVar);
 
-    VISA_VMEVar *samplerVar = (VISA_VMEVar *)m_kernel->getDeclFromName(sampler_name);
+    VISA_SamplerVar *samplerVar = (VISA_SamplerVar *)m_kernel->getDeclFromName(sampler_name);
     MUST_BE_TRUE1(samplerVar != NULL, line_no, "Sampler was not found");
 
     VISA_StateOpndHandle *sampler = NULL;

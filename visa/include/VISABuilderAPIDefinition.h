@@ -116,8 +116,6 @@ public:
     /// size is in number of bytes for this variable. It must match the size of the variable
     CM_BUILDER_API virtual int CreateVISAInputVar(VISA_SurfaceVar *decl, unsigned short offset, unsigned short size) = 0;
 
-    CM_BUILDER_API virtual int CreateVISAInputVar(VISA_VMEVar *decl, unsigned short offset, unsigned short size) = 0;
-
     /// GetPredefinedVar - return a handle to a predefined general variable (e.g., r0)
     CM_BUILDER_API virtual int GetPredefinedVar(VISA_GenVar *&predDcl, PreDefined_Vars varName) = 0;
 
@@ -205,13 +203,9 @@ public:
 
     CM_BUILDER_API virtual int CreateVISAStateOperand(VISA_VectorOpnd *&opnd, VISA_SamplerVar *decl, uint8_t size, unsigned char offset, bool useAsDst) = 0;
 
-    CM_BUILDER_API virtual int CreateVISAStateOperand(VISA_VectorOpnd *&opnd, VISA_VMEVar *decl, unsigned char offset, bool useAsDst) = 0;
-
     CM_BUILDER_API virtual int CreateVISAStateOperandHandle(VISA_StateOpndHandle *&opnd, VISA_SurfaceVar *decl) = 0;
 
     CM_BUILDER_API virtual int CreateVISAStateOperandHandle(VISA_StateOpndHandle *&opnd, VISA_SamplerVar *decl) = 0;
-
-    CM_BUILDER_API virtual int CreateVISAStateOperandHandle(VISA_StateOpndHandle *&opnd, VISA_VMEVar *decl) = 0;
 
     /// CreateVISARawOperand -- create a vISA raw operand (V_N + offset) from a general variable
     /// offset is in number of bytes
@@ -767,9 +761,6 @@ public:
 
     ///Gets declaration id VISA_SurfaceVar
     CM_BUILDER_API virtual int getDeclarationID(VISA_SurfaceVar *decl) const = 0;
-
-    ///Gets declaration id VISA_VMEVar
-    CM_BUILDER_API virtual int getDeclarationID(VISA_VMEVar *decl) const = 0;
 
     ///Gets declaration id VISA_LabelVar
     CM_BUILDER_API virtual int getDeclarationID(VISA_LabelVar *decl) const = 0;

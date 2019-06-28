@@ -98,9 +98,6 @@ std::string printSurfaceDecl(
     const print_format_provider_t* header,
     unsigned declID,
     unsigned numPredefinedSurfaces);
-std::string printVMEDecl(
-    const print_format_provider_t* header,
-    unsigned declID);
 std::string printFuncInput(
     const print_format_provider_t* header,
     unsigned declID,
