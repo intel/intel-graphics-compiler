@@ -351,6 +351,8 @@ static void CommonOCLBasedPasses(
     if (CompilerOpts.UniformWGS)
         mpm.add(new RewriteLocalSize());
 
+    mpm.add(createSROAPass());
+
     mpm.add(CreateFoldKnownWorkGroupSizes());
 
     // Run the AlignmentAnalysis pass before the passes which add implicit arguments, to ensure we do not lose load/store alignment information.
