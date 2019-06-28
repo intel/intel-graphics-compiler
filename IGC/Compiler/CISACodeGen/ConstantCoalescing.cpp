@@ -537,7 +537,8 @@ void ConstantCoalescing::ProcessBlock(
 #else
                             if (UsesTypedConstantBuffer(m_ctx) &&
                                 bufType == CONSTANT_BUFFER &&
-                                ((offsetInBytes % 4) == 0))
+                                ((offsetInBytes % 4) == 0) &&
+                                !inst->getType()->isVectorTy())
                             {
                                 uint eltid = offsetInBytes >> 2;
                                 ScatterToSampler(inst, nullptr, addrSpace, elt_idxv, eltid, indcb_gathers);
@@ -1779,20 +1780,14 @@ Value* ConstantCoalescing::GetSamplerAlignedAddress(Value* addr)
     return elementIndex;
 }
 
-
 /// replace non-uniform scatter load with sampler load messages
 void ConstantCoalescing::ScatterToSampler( Instruction *load,
                                       Value *bufIdxV, uint addrSpace,
                                       Value *eltIdxV, uint eltid,
                                       std::vector<BufChunk*> &chunk_vec )
 {
-    const uint maxSamplerLoadSizeInDwords = 4;
-    const uint loadSizeInDwords = load->getType()->isVectorTy() ? load->getType()->getVectorNumElements() : 1;
-
     Instruction* ishl = dyn_cast<Instruction>(eltIdxV);
-    if( ishl != nullptr &&
-        IsSamplerAlignedAddress(ishl) &&
-        (((eltid % 4) + loadSizeInDwords) <= maxSamplerLoadSizeInDwords)) // don't allow crossing 4-DWORD boundaries
+    if( ishl != nullptr && IsSamplerAlignedAddress(ishl))
     {
         irBuilder->SetInsertPoint( ishl );
 
@@ -1826,12 +1821,11 @@ void ConstantCoalescing::ScatterToSampler( Instruction *load,
                 cur_chunk->baseIdxV == elementIndex &&
                 cur_chunk->chunkIO->getType()->getScalarSizeInBits() == load->getType()->getScalarSizeInBits())
             {
-                if (eltid >= cur_chunk->chunkStart &&
-                    (eltid + loadSizeInDwords) <= (cur_chunk->chunkStart + cur_chunk->chunkSize))
-                {
-                    cov_chunk = cur_chunk;
-                    break;
-                }
+               if(eltid>= cur_chunk->chunkStart && eltid<cur_chunk->chunkStart + cur_chunk->chunkSize)
+               {
+                   cov_chunk = cur_chunk;
+                   break;
+               }
             }
         }
         irBuilder->SetInsertPoint( load );
@@ -1865,47 +1859,13 @@ void ConstantCoalescing::ScatterToSampler( Instruction *load,
             ld = cov_chunk->chunkIO;
         }
 
-        Value *splitter = nullptr;
-        if (load->getType()->isVectorTy())
+        Instruction *splitter =
+            cast<Instruction>(irBuilder->CreateExtractElement(ld, irBuilder->getInt32(eltid%4)));
+        wiAns->incUpdateDepend( splitter, WIAnalysis::RANDOM );
+        if(splitter->getType() != load->getType()->getScalarType())
         {
-            if (load->getType() == ld->getType())
-            {
-                splitter = ld;
-            }
-            else if (load->getType()->getPrimitiveSizeInBits() == ld->getType()->getPrimitiveSizeInBits())
-            {
-                splitter = irBuilder->CreateBitCast(ld, load->getType());
-                wiAns->incUpdateDepend(splitter, WIAnalysis::RANDOM);
-            }
-            else
-            {
-                splitter = UndefValue::get(load->getType());
-                for (uint i = 0; i < load->getType()->getVectorNumElements(); ++i)
-                {
-                    const uint extractElementIndex = (eltid % 4) + i;
-                    Value* element = (irBuilder->CreateExtractElement(ld, irBuilder->getInt32(extractElementIndex)));
-                    wiAns->incUpdateDepend(element, WIAnalysis::RANDOM);
-                    if (element->getType() != load->getType()->getScalarType())
-                    {
-                        element = (irBuilder->CreateBitCast(splitter, load->getType()->getScalarType()));
-                        wiAns->incUpdateDepend(element, WIAnalysis::RANDOM);
-                    }
-                    splitter = irBuilder->CreateInsertElement(splitter, element, irBuilder->getInt32(i));
-                    wiAns->incUpdateDepend(splitter, WIAnalysis::RANDOM);
-                }
-
-            }
-        }
-        else
-        {
-            splitter =
-                cast<Instruction>(irBuilder->CreateExtractElement(ld, irBuilder->getInt32(eltid % 4)));
-            wiAns->incUpdateDepend(splitter, WIAnalysis::RANDOM);
-            if (splitter->getType() != load->getType()->getScalarType())
-            {
-                splitter = cast<Instruction>(irBuilder->CreateBitCast(splitter, load->getType()->getScalarType()));
-                wiAns->incUpdateDepend(splitter, WIAnalysis::RANDOM);
-            }
+            splitter = cast<Instruction>(irBuilder->CreateBitCast(splitter, load->getType()->getScalarType()));
+            wiAns->incUpdateDepend( splitter, WIAnalysis::RANDOM );
         }
         load->replaceAllUsesWith( splitter );
     }
