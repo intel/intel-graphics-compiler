@@ -113,16 +113,13 @@ extern unsigned int getStackCallRegSize(bool reserveStackCallRegs);
 
 // spill/fill temps are always GRF-aligned, and are also even/odd aligned
 // following the original declare's alignment
-static void setNewDclAlignment(GlobalRA& gra, G4_Declare* newDcl, bool evenAlign)
+static void setNewDclAlignment(G4_Declare* newDcl, bool evenAlign)
 {
     newDcl->setSubRegAlign(GRFALIGN);
     if (evenAlign)
     {
         newDcl->setEvenAlign();
     }
-
-    gra.setSubRegAlign(newDcl, GRFALIGN);
-    gra.setEvenAligned(newDcl, evenAlign);
 }
 
 // Constructor
@@ -1259,7 +1256,7 @@ SpillManagerGMRF::createTransientGRFRangeDeclare (
     // FIXME: We should take the original declare's alignment too, but I'm worried
     // we may get perf regression if FE is over-aligning or the alignment is not necessary for this inst.
     // So Either is used for now and we can change it later if there are bugs
-    setNewDclAlignment(gra, transientRangeDeclare, false);
+    setNewDclAlignment(transientRangeDeclare, false);
     return transientRangeDeclare;
 }
 
@@ -1430,7 +1427,7 @@ SpillManagerGMRF::createMRFFillRangeDeclare (
         DeclareType::Fill, filledRegVar, normalizedMRFSrc,
         width);
 
-    setNewDclAlignment(gra, transientRangeDeclare, gra.isEvenAligned(filledRegVar->getDeclare()));
+    setNewDclAlignment(transientRangeDeclare, filledRegVar->isEvenAlign());
 
     if( failSafeSpill_ )
     {
@@ -1500,7 +1497,7 @@ SpillManagerGMRF::createTemporaryRangeDeclare (
         spillRegOffset_ += height;
     }
 
-    setNewDclAlignment(gra, temporaryRangeDeclare, false);
+    setNewDclAlignment(temporaryRangeDeclare, false);
     return temporaryRangeDeclare;
 }
 
@@ -3295,7 +3292,7 @@ SpillManagerGMRF::insertSpillRangeCode (
                     regVar = getRegVar(srcRegion);
                 }
 
-                if (gra.getSubRegAlign(srcDcl) == GRFALIGN &&
+                if (srcDcl->getSubRegAlign() == GRFALIGN &&
                     lb %  REG_BYTE_SIZE == 0 &&
                     (rb + 1) % REG_BYTE_SIZE == 0 &&
                     (rb - lb + 1) == spillRangeDcl->getByteSize() &&
@@ -3392,7 +3389,7 @@ SpillManagerGMRF::insertFillGRFRangeCode (
             unsigned int lb = dstRegion->getLeftBound();
             unsigned int rb = dstRegion->getRightBound();
 
-            if (gra.getSubRegAlign(dstDcl) == GRFALIGN  &&
+            if (dstDcl->getSubRegAlign() == GRFALIGN  &&
                 lb %  REG_BYTE_SIZE == 0 &&
                 (rb + 1) % REG_BYTE_SIZE == 0 &&
                 (rb - lb + 1) == fillRangeDcl->getByteSize())

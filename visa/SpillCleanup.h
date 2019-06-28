@@ -39,7 +39,6 @@ namespace vISA
         G4_Kernel& kernel;
         LivenessAnalysis& liveness;
         GraphColor& graphColor;
-        GlobalRA& gra;
         SpillManagerGMRF& spill;
         unsigned int iterNo;
         // Store declares spilled by sends like sampler
@@ -103,8 +102,8 @@ namespace vISA
 
     public:
         CoalesceSpillFills(G4_Kernel& k, LivenessAnalysis& l, GraphColor& g,
-            SpillManagerGMRF& s, unsigned int iterationNo, RPE& r, GlobalRA& gr) :
-            kernel(k), liveness(l), graphColor(g), spill(s), rpe(r), gra(gr)
+            SpillManagerGMRF& s, unsigned int iterationNo, RPE& r) :
+            kernel(k), liveness(l), graphColor(g), spill(s), rpe(r)
         {
             unsigned int numGRFs = k.getNumRegTotal();
             auto scale = [=](unsigned threshold) -> unsigned {

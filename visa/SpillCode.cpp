@@ -103,7 +103,6 @@ G4_Declare* SpillManager::createNewTempFlagDeclare(G4_Declare* dcl)
     G4_Declare* sp = builder.createFlag(dcl->getNumberFlagElements(), name);
     gra.setBBId(sp, bbId);
     sp->copyAlign(dcl);
-    gra.copyAlignment(sp, dcl);
     gra.addAddrFlagSpillDcl(sp);
 
     return sp;
@@ -352,7 +351,6 @@ void SpillManager::replaceSpilledSrc(G4_BB* bb,
             {
                 G4_Declare* tmpDcl = createNewTempAddrDeclare(spDcl, 1);
                 tmpDcl->setSubRegAlign(Four_Word);
-                gra.setSubRegAlign(tmpDcl, Four_Word);
                 // (W) mov (1) tmpDcl<1>:ud spDcl<0;1,0>:ud
                 auto movSrc = builder.Create_Src_Opnd_From_Dcl(spDcl, builder.getRegionScalar());
                 auto movDst = builder.Create_Dst_Opnd_From_Dcl(tmpDcl, 1);

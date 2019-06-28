@@ -752,7 +752,7 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign)
             int subregNum = 0;
             int sizeInWords = dcl->getWordSize();
             int nrows = 0;
-            BankAlign align = gra.isEvenAligned(dcl) ? BankAlign::Even : BankAlign::Either;
+            BankAlign align = dcl->isEvenAlign() ? BankAlign::Even : BankAlign::Either;
             BankAlign bankAlign = BankAlign::Either;
 
             if (twoBanksRA &&
@@ -771,7 +771,7 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign)
             }
 
             // Why?
-            G4_SubReg_Align subAlign = builder.GRFAlign() ? GRFALIGN : gra.getSubRegAlign(dcl);
+            G4_SubReg_Align subAlign = builder.GRFAlign() ? GRFALIGN : dcl->getSubRegAlign();
 
             if (assignFromFront)
             {
@@ -2630,7 +2630,7 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder
     int nrows = 0;
     int size = lr->getSizeInWords();
     G4_Declare *dcl = lr->getTopDcl();
-    G4_SubReg_Align subalign = gra.getSubRegAlign(dcl);
+    G4_SubReg_Align subalign = dcl->getRegVar()->getSubRegAlignment();
     unsigned short occupiedBundles = 0;
 
     for (size_t i = 0, dclConflictSize = gra.getBundleConflictDclSize(dcl); i < dclConflictSize; i++)
@@ -2656,7 +2656,7 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder
     if (bankAlign == BankAlign::Either)
     {
         // FIXME: ISTM the existing code is wrong, we should always honor even alignment
-        bankAlign = gra.isEvenAligned(dcl) ? BankAlign::Even : BankAlign::Either;
+        bankAlign = dcl->isEvenAlign() ? BankAlign::Even : BankAlign::Either;
     }
 
     if (useRoundRobin)
@@ -2970,8 +2970,8 @@ bool LinearScan::allocateRegsFromBanks(LocalLiveRange* lr)
     int bank1AvailableRegNum = pregManager.getAvaialableRegs()->getBank1AvailableRegNum();
     int bank2AvailableRegNum = pregManager.getAvaialableRegs()->getBank2AvailableRegNum();
     int size = lr->getSizeInWords();
-    BankAlign align = gra.isEvenAligned(lr->getTopDcl()) ? BankAlign::Even : BankAlign::Either;
-    G4_SubReg_Align subalign = gra.getSubRegAlign(lr->getTopDcl());
+    BankAlign align = lr->getTopDcl()->isEvenAlign() ? BankAlign::Even : BankAlign::Either;
+    G4_SubReg_Align subalign = lr->getTopDcl()->getRegVar()->getSubRegAlignment();
     unsigned int instID;
     lr->getFirstRef(instID);
     auto lrBC = gra.getBankConflict(lr->getTopDcl());
@@ -3143,7 +3143,7 @@ bool LinearScan::allocateRegsFromBanks(LocalLiveRange* lr)
         if (!nrows)
         {   //Try without window, no even/odd alignment for bank, but still low and high(keep in same bank)
             nrows = pregManager.findFreeRegs(size,
-                gra.isEvenAligned(lr->getTopDcl()) ? BankAlign::Even : BankAlign::Either,
+                lr->getTopDcl()->isEvenAlign() ? BankAlign::Even : BankAlign::Either,
                 subalign,
                 regnum,
                 subregnum,
@@ -3169,7 +3169,7 @@ bool LinearScan::allocateRegsFromBanks(LocalLiveRange* lr)
             }
 
             nrows = pregManager.findFreeRegs(size,
-                gra.isEvenAligned(lr->getTopDcl()) ? BankAlign::Even : BankAlign::Either,
+                lr->getTopDcl()->isEvenAlign() ? BankAlign::Even : BankAlign::Either,
                 subalign,
                 regnum,
                 subregnum,

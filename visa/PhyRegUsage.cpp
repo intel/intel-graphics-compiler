@@ -773,7 +773,7 @@ PhyRegUsage::PhyReg PhyRegUsage::findGRFSubRegFromBanks(G4_Declare *dcl,
 {
     int startReg = 0, endReg = totalGRFNum;
     int step = 0;
-    G4_SubReg_Align subAlign = gra.getSubRegAlign(dcl);
+    G4_SubReg_Align subAlign = dcl->getRegVar()->getSubRegAlignment();
     unsigned nwords = numAllocUnit(dcl->getNumElems(), dcl->getElemType());
     auto dclBC = gra.getBankConflict(dcl);
     bool gotoSecondBank = dclBC == BANK_CONFLICT_SECOND_HALF_EVEN ||
@@ -1380,12 +1380,12 @@ void LiveRange::dump()
     // print alignment
     //
     DEBUG_MSG("\t");
-    if (gra.getSubRegAlign(decl) == Any)
+    if (var->getSubRegAlignment() == Any)
     {
         DEBUG_MSG("\t");
     }
     else {
-        DEBUG_MSG(gra.getSubRegAlign(decl) << "_words SubReg_Align");
+        DEBUG_MSG(var->getSubRegAlignment() << "_words SubReg_Align");
     }
     //
     // dump number of registers that are needed

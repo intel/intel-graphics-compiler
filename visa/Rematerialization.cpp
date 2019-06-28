@@ -846,7 +846,6 @@ namespace vISA
             unsigned numElems = (diffBound + 1) / G4_Type_Table[dst->getType()].byteSize;
             auto newTemp = kernel.fg.builder->createTempVar(numElems, dst->getType(), Any, "REMAT_");
             newTemp->copyAlign(dst->getTopDcl());
-            gra.copyAlignment(newTemp, dst->getTopDcl());
             G4_DstRegRegion* newDst = kernel.fg.builder->createDstRegRegion(Direct, newTemp->getRegVar(), 0,
                 (dst->getLeftBound() % G4_GRF_REG_NBYTES) / G4_Type_Table[dst->getType()].byteSize,
                 dst->getHorzStride(), dst->getType());
@@ -903,7 +902,7 @@ namespace vISA
                 MUST_BE_TRUE((*ops).second.numUses == 1, "Expecting src0 to be used only in sampler");
 
                 auto newSrc0Dcl = kernel.fg.builder->createTempVar(src0TopDcl->getNumElems(),
-                    src0TopDcl->getElemType(), gra.getSubRegAlign(src0TopDcl));
+                    src0TopDcl->getElemType(), src0TopDcl->getSubRegAlign());
 
                 // Clone all defining instructions for sampler's msg header
                 for (unsigned int i = 0; i != (*ops).second.def.size(); i++)
@@ -927,7 +926,7 @@ namespace vISA
             }
 
             auto samplerDst = kernel.fg.builder->createTempVar(dst->getTopDcl()->getTotalElems(), dst->getTopDcl()->getElemType(),
-                gra.getSubRegAlign(dst->getTopDcl()), "REMAT_SAMPLER_");
+                dst->getTopDcl()->getSubRegAlign(), "REMAT_SAMPLER_");
             auto samplerDstRgn = kernel.fg.builder->createDstRegRegion(Direct, samplerDst->getRegVar(), 0,
                 0, 1, samplerDst->getElemType());
 

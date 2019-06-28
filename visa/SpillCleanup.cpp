@@ -87,7 +87,6 @@ G4_DstRegRegion* CoalesceSpillFills::generateCoalescedFill(unsigned int scratchO
     if (evenAlignDst)
     {
         fillDcl->setEvenAlign();
-        gra.setEvenAligned(fillDcl, true);
     }
     fillDcl->setDoNotSpill();
 
@@ -276,7 +275,7 @@ void CoalesceSpillFills::coalesceFills(std::list<INST_LIST_ITER>& coalesceableFi
     auto leadInst = *coalesceableFills.front();
 
     auto coalescedFillDst = generateCoalescedFill(min, payloadSize, dclSize,
-        leadInst->getMsgDesc(), srcCISAOff, gra.isEvenAligned(leadInst->getDst()->getTopDcl()));
+        leadInst->getMsgDesc(), srcCISAOff, leadInst->getDst()->getTopDcl()->isEvenAlign());
 
     for (auto c : coalesceableFills)
     {
@@ -489,7 +488,7 @@ void CoalesceSpillFills::sendsInRange(std::list<INST_LIST_ITER>& instList,
 
             // don't coalesce if non-leading fill inst has alignment requirements,
             // as we may not be able to satisfy it
-            bool fillDstisAligned = gra.isEvenAligned(inst->getDst()->getTopDcl());
+            bool fillDstisAligned = inst->getDst()->getTopDcl()->isEvenAlign();
 
             if (!maskMatch || fillDstisAligned)
             {
