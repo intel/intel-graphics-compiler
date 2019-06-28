@@ -1247,7 +1247,7 @@ namespace vISA
         void reportSpillInfo(LivenessAnalysis& liveness, GraphColor& coloring);
         static uint32_t getRefCount(int loopNestLevel);
         bool isReRAPass();
-        void updateSubRegAlignment(unsigned char regFile, G4_SubReg_Align subAlign);
+        void updateSubRegAlignment(G4_SubReg_Align subAlign);
         void evenAlign();
         void getBankAlignment(LiveRange* lr, BankAlign &align);
         void printLiveIntervals();

@@ -2211,20 +2211,16 @@ void Interference::generateSparseIntfGraph()
 // This function will update sub-reg data only for non-NoMask vars and
 // leave others unchanged, ie their value will be as per HW conformity
 // or earlier phase.
-void GlobalRA::updateSubRegAlignment(unsigned char regFile, G4_SubReg_Align subAlign)
+void GlobalRA::updateSubRegAlignment(G4_SubReg_Align subAlign)
 {
     // Update alignment of all GRF declares to sub-align
     for (auto dcl : kernel.Declares)
     {
-        if (dcl->getRegFile() & regFile && !dcl->getIsPartialDcl())
+        if (dcl->getRegFile() & G4_GRF && !dcl->getIsPartialDcl())
         {
             G4_Declare* topdcl = dcl->getRootDeclare();
 
-            if (regFile == G4_FLAG)
-            {
-                dcl->setSubRegAlign(subAlign);
-            }
-            else if (!areAllDefsNoMask(topdcl) &&
+            if (!areAllDefsNoMask(topdcl) &&
                 getAugmentationMask(topdcl) != AugmentationMasks::NonDefault)
             {
                 dcl->setSubRegAlign(subAlign);
@@ -4371,18 +4367,6 @@ void Augmentation::augmentIntfGraph()
         }
     }
 
-    if (liveAnalysis.livenessClass(G4_FLAG))
-    {
-        if (kernel.getSimdSize() == 32)
-        {
-
-#ifdef DEBUG_VERBOSE_ON
-            DEBUG_VERBOSE("Kernel size is SIMD32 so updating all Flags to be 32-bit aligned" << std::endl);
-#endif
-            gra.updateSubRegAlignment(G4_FLAG, Even_Word);
-        }
-    }
-
     // First check whether any definitions exist with incompatible mask
     bool nonDefaultMaskDef = markNonDefaultMaskDef();
 
@@ -4431,7 +4415,7 @@ void Augmentation::augmentIntfGraph()
 #endif
                 gra.evenAlign();
             }
-            gra.updateSubRegAlignment(G4_GRF, GRFALIGN);
+            gra.updateSubRegAlignment(GRFALIGN);
         }
 
         // Clear information calculated in this iteration of RA so
@@ -5818,8 +5802,7 @@ bool GraphColor::regAlloc(bool doBankConflictReduction,
     {
         G4_Declare* dcl = lrs[i]->getDcl();
 
-        if (dcl->getSubRegAlign() == Any &&
-            !dcl->getIsPartialDcl())
+        if (dcl->getSubRegAlign() == Any && !dcl->getIsPartialDcl())
         {
             //
             // multi-row, subreg alignment = 16 words
@@ -5831,23 +5814,16 @@ bool GraphColor::regAlloc(bool doBankConflictReduction,
             //
             // single-row
             //
-            else
+            else if (lrs[i]->getVar()->getSubRegAlignment() == Any)
             {
-                if (lrs[i]->getVar()->getSubRegAlignment() == Any)
+                //
+                // set up Odd word or Even word sub reg alignment
+                //
+                unsigned nbytes = dcl->getNumElems()* G4_Type_Table[dcl->getElemType()].byteSize;
+                unsigned nwords = nbytes / G4_WSIZE + nbytes % G4_WSIZE;
+                if (nwords >= 2 && lrs[i]->getRegKind() == G4_GRF)
                 {
-                    //
-                    // set up Odd word or Even word sub reg alignment
-                    //
-                    unsigned nbytes = dcl->getNumElems()* G4_Type_Table[dcl->getElemType()].byteSize;
-                    unsigned nwords = nbytes / G4_WSIZE + nbytes%G4_WSIZE;
-                    if (nwords >= 2 && lrs[i]->getRegKind() == G4_GRF)
-                    {
-                        lrs[i]->getVar()->setSubRegAlignment(Even_Word);
-                    }
-                    else
-                    {
-                        lrs[i]->getVar()->setSubRegAlignment(Any);
-                    }
+                    lrs[i]->getVar()->setSubRegAlignment(Even_Word);
                 }
             }
         }
@@ -10507,10 +10483,23 @@ void GraphColor::dumpRegisterPressure()
     }
 }
 
-// FIXME: is any of this necessary? If they are they should be moved to HWConformity, is the concern
-// that new variables created by lvn/spill/remat may not honor alignment requirements?
 void GlobalRA::fixAlignment()
 {
+    if (kernel.getSimdSize() == 32)
+    {
+        // we have to force all flags to be 32-bit aligned even if they are < 32-bit,
+        // due to potential emask usage.
+        // ToDo: may be better to simply allocate them as 32-bit?
+        for (auto dcl : kernel.Declares)
+        {
+            if (dcl->getRegFile() & G4_FLAG)
+            {
+                dcl->setSubRegAlign(G4_SubReg_Align::Even_Word);
+            }
+        }
+    }
+
+    // ToDo: remove these as it should be done by HWConformity
     for (auto BB : kernel.fg)
     {
         for (auto inst : *BB)
@@ -10519,97 +10508,20 @@ void GlobalRA::fixAlignment()
             if (dst && dst->getTopDcl())
             {
                 G4_RegVar* var = dst->getBase()->asRegVar();
-                // dst register on sendin must be whole register aligned.
-                // NOTE THAT: The assumption is that the previous pass will set only SUB_ALIGNMENT_HALFGRFALIGN or whole GRF align
-                if (inst->isSend() && dst->getRegAccess() == Direct) {
-                    if (!var->isPhyRegAssigned() &&
-                        (var->getDeclare()->getSubRegAlign() == Any ||
-                         var->getDeclare()->getSubRegAlign() == Even_Word ||
-                         var->getDeclare()->getSubRegAlign() == HALFGRFALIGN))
+                if (inst->isSend() && dst->getRegAccess() == Direct) 
+                {
+                    if (!var->isPhyRegAssigned())
                     {
                         var->setSubRegAlignment(GRFALIGN);
                     }
                 }
 
-                //
-                // dst register compr inst must be even aligned
-                // ARF should set subreg-alignment
-                //
-                // Check the subreg alignment requirement
-                // Imm Vector Instruction --> Eight_Word
-                // DWORD Type Dst ARF --> Even_Word
-                //
                 if (!var->isPhyRegAssigned() && var->getDeclare()->getNumRows() <= 1
                     && dst->getRegAccess() == Direct && var->getDeclare()->getSubRegAlign() == Any)
                 {
                     if (inst->isAccSrcInst())
                     {
-                        if (var->getDeclare()->getRegFile() != G4_ADDRESS)
-                            var->setSubRegAlignment(GRFALIGN);
-                        else
-                            var->setSubRegAlignment(HALFGRFALIGN);
-                    }
-                    else if (var->getSubRegAlignment() != GRFALIGN)
-                    {
-                        if (inst->opcode() == G4_movi)  //FIXME: restriction for movi, what about 64 bytes GRF
-                        {
-                            G4_Type dstType = dst->getType();
-                            switch (G4_Type_Table[dstType].byteSize)
-                            {
-                            case 2:
-                                MUST_BE_TRUE1(dst->getSubRegOff() <= 8, inst->getLineNo(),
-                                    ERROR_DATA_RANGE("sub-register offset"));
-                                var->setSubRegAlignment((G4_SubReg_Align)(Eight_Word + dst->getSubRegOff()));
-                                break;
-                            case 4:
-                                MUST_BE_TRUE1(dst->getSubRegOff() <= 4, inst->getLineNo(),
-                                    ERROR_DATA_RANGE("sub-register offset"));
-                                var->setSubRegAlignment((G4_SubReg_Align)(Eight_Word + dst->getSubRegOff() * 2));
-                                break;
-                            case 1:
-                                MUST_BE_TRUE1(dst->getSubRegOff() == 0 || dst->getSubRegOff() == 16, inst->getLineNo(),
-                                    ERROR_DATA_RANGE("sub-register offset"));
-                                var->setSubRegAlignment(Eight_Word);
-                                break;
-                            }
-                        }
-                        else
-                        {
-                            for (unsigned j = 0; j < G4_MAX_SRCS; j++)
-                            {
-                                G4_Operand* src = inst->getSrc(j);
-                                if (src == NULL) continue;
-
-                                if (src->isImm())
-                                {
-                                    G4_Type srcImmType = src->asImm()->getType();
-                                    if (IS_VINTTYPE(srcImmType))
-                                    {
-                                        var->setSubRegAlignment((G4_SubReg_Align)(Eight_Word + dst->getSubRegOff()));
-                                        break;
-                                    }
-                                    else if (IS_VFTYPE(srcImmType))
-                                    {
-                                        var->setSubRegAlignment((G4_SubReg_Align)(Eight_Word + dst->getSubRegOff() * 2));
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-
-                        G4_SubReg_Align dstSubAlign = var->getSubRegAlignment();
-                        if (dstSubAlign == Any)
-                        {
-                            for (unsigned j = 0; j < G4_MAX_SRCS; j++)
-                            {
-                                G4_Operand* src = inst->getSrc(j);
-                                if (src && G4_Type_Table[src->getType()].byteSize == G4_DSIZE)
-                                {
-                                    var->setSubRegAlignment(Even_Word);
-                                    break;
-                                }
-                            }
-                        }
+                        var->setSubRegAlignment(var->getDeclare()->getRegFile() != G4_ADDRESS ? GRFALIGN : Eight_Word);
                     }
                 }
             }

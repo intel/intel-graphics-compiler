@@ -1556,20 +1556,21 @@ bool IR_Builder::isOpndAligned( G4_Operand *opnd, unsigned short &offset, int al
         // Only alignment of the top dcl can be changed.
         if (dcl && dcl->getRegFile() == G4_GRF)
         {
-            if( dcl->getSubRegAlign() == Any ||
-                ( ( dcl->getSubRegAlign() * 2 ) < align_byte && align_byte % ( dcl->getSubRegAlign() * 2 ) == 0 ) )
+            if (dcl->getSubRegAlign() == Any ||
+                ((dcl->getSubRegAlign() * 2) < align_byte && align_byte % (dcl->getSubRegAlign() * 2) == 0))
             {
-                    dcl->setSubRegAlign( G4_SubReg_Align(align_byte/2) );
+                dcl->setSubRegAlign(G4_SubReg_Align(align_byte / 2));
             }
             else if( ( dcl->getSubRegAlign() * 2 ) < align_byte || ( dcl->getSubRegAlign() * 2 ) % align_byte != 0 )
             {
                     isAligned = false;
             }
-        } else if (opnd->getKind() == G4_Operand::dstRegRegion &&
-                   // Only care about GRF or half-GRF alignment.
-                   (align_byte == G4_GRF_REG_NBYTES ||
-                    align_byte == G4_GRF_REG_NBYTES/2) &&
-                   dcl && dcl->getRegFile() == G4_ADDRESS) {
+        }
+        else if (opnd->getKind() == G4_Operand::dstRegRegion &&
+            // Only care about GRF or half-GRF alignment.
+            (align_byte == G4_GRF_REG_NBYTES || align_byte == G4_GRF_REG_NBYTES / 2) &&
+            dcl && dcl->getRegFile() == G4_ADDRESS)
+        {
 
             // Get the single definition of the specified operand from the use
             // inst.
@@ -1659,6 +1660,15 @@ bool IR_Builder::isOpndAligned( G4_Operand *opnd, unsigned short &offset, int al
                             isAligned = false;
                     }
                 }
+            }
+        }
+        else if (dcl && dcl->getRegFile() == G4_FLAG)
+        {
+            // need to make flag even-word aligned if it's used in a setp with dword source
+            // ToDo: should we fix input to use 16-bit value instead
+            if (align_byte == 4)
+            {
+                dcl->setSubRegAlign(Even_Word);
             }
         }
         break;
