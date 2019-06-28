@@ -754,6 +754,7 @@ private:
         uint m_ConstantBufferReplaceSize = 0;
 
         void* gtpin_init = nullptr;
+        bool m_hasLegacyDebugInfo = false;
 
         CompilerStats m_Stats;
 

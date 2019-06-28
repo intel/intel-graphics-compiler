@@ -1133,7 +1133,8 @@ static void ltoPrepare(LinkOptContext* linkContext)
         if (pctx != nullptr)
         {
 #if defined(_DEBUG)
-            llvm::verifyModule(*pctx->getModule());
+            if (!pctx->m_hasLegacyDebugInfo)
+                llvm::verifyModule(*pctx->getModule());
 #endif
             linkContext->debugPrint(
                 "  %s %016llx\n",

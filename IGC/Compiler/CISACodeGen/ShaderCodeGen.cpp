@@ -1143,7 +1143,8 @@ void OptimizeIR(CodeGenContext* pContext)
     IGCPassManager mpm(pContext, "OPT");
 
 #if defined( _DEBUG )
-    llvm::verifyModule(*pContext->getModule());
+    if (!pContext->m_hasLegacyDebugInfo)
+        llvm::verifyModule(*pContext->getModule());
 #endif
 
     COMPILER_TIME_START( pContext, TIME_OptimizationPasses );
