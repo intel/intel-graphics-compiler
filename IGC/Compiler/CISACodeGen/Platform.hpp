@@ -252,7 +252,8 @@ public:
     unsigned int GetLogBindlessSamplerSize() const
     {
         // On Gen10+ bindless sampler are 16Bytes instead of 32bytes before
-        return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE) ? 4 : 5;
+        GFXCORE_FAMILY familyCheck = IGC_IS_FLAG_ENABLED(Use16ByteBindlessSampler) ? IGFX_GEN9_CORE : IGFX_GEN10_CORE;
+        return (m_platformInfo.eRenderCoreFamily >= familyCheck) ? 4 : 5;
     }
     bool SupportCPS() const
     {
