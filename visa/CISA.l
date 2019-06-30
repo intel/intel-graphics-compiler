@@ -52,20 +52,20 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #else
 #define TRACE(str)
 #endif
-VISA_Type               str2type(const char *str, int str_len);
-Common_ISA_Cond_Mod     str2cond(const char *str);
-VISAAtomicOps           str2atomic_opcode(const char *op_str);
-ISA_Opcode              str2opcode(const char* op_str);
-VISASampler3DSubOpCode  str2SampleOpcode(const char* str);
-int64_t                 hexToInt(const char *hex_str, int str_len);
-MEDIA_LD_mod            mediaMode(const char* str);
-OutputFormatControl     avs_control(const char* str);
-AVSExecMode             avsExecMode(const char* str);
-unsigned char           FENCEOptions(const char *str);
-COMMON_ISA_VME_OP_MODE  VMEType(const char *str);
-Common_VISA_EMask_Ctrl  Get_CISA_Emask(const char* str);
-CHANNEL_OUTPUT_FORMAT   Get_Channel_Output(const char* str);
-static void             appendStringLiteralChar(char c, char *buf, size_t *len);
+static VISA_Type               str2type(const char *str, int str_len);
+static Common_ISA_Cond_Mod     str2cond(const char *str);
+static VISAAtomicOps           str2atomic_opcode(const char *op_str);
+static ISA_Opcode              str2opcode(const char* op_str);
+static VISASampler3DSubOpCode  str2SampleOpcode(const char* str);
+static int64_t                 hexToInt(const char *hex_str, int str_len);
+static MEDIA_LD_mod            mediaMode(const char* str);
+static OutputFormatControl     avs_control(const char* str);
+static AVSExecMode             avsExecMode(const char* str);
+static unsigned char           FENCEOptions(const char *str);
+static COMMON_ISA_VME_OP_MODE  VMEType(const char *str);
+static Common_VISA_EMask_Ctrl  Get_CISA_Emask(const char* str);
+static CHANNEL_OUTPUT_FORMAT   Get_Channel_Output(const char* str);
+static void                    appendStringLiteralChar(char c, char *buf, size_t *len);
 
 static int pendingBracket;
 
@@ -905,7 +905,7 @@ V0 {
 int yywrap() { return 1;}
 
 // convert "ud", "w" to Type_UD Type_W
-VISA_Type str2type(const char *str, int str_len)
+static VISA_Type str2type(const char *str, int str_len)
 {
     // find the starting of the type string
     int i;
@@ -938,7 +938,7 @@ VISA_Type str2type(const char *str, int str_len)
 
 
 // convert "z" to Mod_z
-Common_ISA_Cond_Mod str2cond(const char *str)
+static Common_ISA_Cond_Mod str2cond(const char *str)
 {
     for (int i = 0; i < ISA_CMP_UNDEF; i++)
         if (strcmp(Rel_op_str[i], str) == 0)
@@ -964,7 +964,7 @@ static unsigned hexCharToDigit(char d)
 }
 
 // convert hex string to int
-int64_t hexToInt(const char *hex_str, int str_len)
+static int64_t hexToInt(const char *hex_str, int str_len)
 {
     if (str_len > 16) { // make sure is within 32 bits
         YY_FATAL_ERROR("Hex number larger than 8 digits");
@@ -980,7 +980,7 @@ int64_t hexToInt(const char *hex_str, int str_len)
 }
 
 // convert str to its corresponding opcode
-ISA_Opcode str2opcode(const char* op_str)
+static ISA_Opcode str2opcode(const char *op_str)
 {
     for (int i = 0; i < ISA_NUM_OPCODE; i++)
         if (strcmp(ISA_Inst_Table[i].str, op_str) == 0)
@@ -991,7 +991,7 @@ ISA_Opcode str2opcode(const char* op_str)
     return ISA_RESERVED_0;
 }
 
-VISASampler3DSubOpCode str2SampleOpcode(const char* str)
+static VISASampler3DSubOpCode str2SampleOpcode(const char *str)
 {
     for (int i = 0; i < ISA_NUM_OPCODE; i++)
         if (strcmp(SAMPLE_OP_3D_NAME[i], str) == 0)
@@ -1002,7 +1002,7 @@ VISASampler3DSubOpCode str2SampleOpcode(const char* str)
     return VISA_3D_TOTAL_NUM_OPS;
 }
 
-VISAAtomicOps str2atomic_opcode(const char *op_str)
+static VISAAtomicOps str2atomic_opcode(const char *op_str)
 {
     for (unsigned i = 0; i < ATOMIC_UNDEF; ++i)
         if (strcmp(CISAAtomicOpNames[i], op_str) == 0)
@@ -1014,7 +1014,7 @@ VISAAtomicOps str2atomic_opcode(const char *op_str)
 }
 
 // convert str to its corresponding media load mode
-MEDIA_LD_mod mediaMode(const char* str)
+static MEDIA_LD_mod mediaMode(const char *str)
 {
     for (int i = 0; i < MEDIA_LD_Mod_NUM; i++)
         if (!strcmp(media_ld_mod_str[i], str))
@@ -1026,7 +1026,7 @@ MEDIA_LD_mod mediaMode(const char* str)
 }
 
 // convert str to its corresponding avs output format control
-OutputFormatControl avs_control(const char* str)
+static OutputFormatControl avs_control(const char* str)
 {
     for (int i = 0; i < 4; i++)
         if (!strcmp(avs_control_str[i], str))
@@ -1037,7 +1037,7 @@ OutputFormatControl avs_control(const char* str)
     return CM_16_FULL;
 }
 
-AVSExecMode avsExecMode(const char* str)
+static AVSExecMode avsExecMode(const char* str)
 {
     for (int i = 0; i < 3; i++)
         if (!strcmp(avs_exec_mode[i], str))
@@ -1048,7 +1048,7 @@ AVSExecMode avsExecMode(const char* str)
     return CM_AVS_16x4;
 }
 
-unsigned char FENCEOptions(const char *str)
+static unsigned char FENCEOptions(const char *str)
 {
     int count = strlen(str);
     unsigned char result=0;
@@ -1092,7 +1092,7 @@ unsigned char FENCEOptions(const char *str)
     return result;
 }
 
-COMMON_ISA_VME_OP_MODE VMEType(const char* str)
+static COMMON_ISA_VME_OP_MODE VMEType(const char* str)
 {
     for (int i = 0; i < VME_OP_MODE_NUM; i++)
         if (!strcmp(vme_op_mode_str[i], str))
@@ -1103,7 +1103,7 @@ COMMON_ISA_VME_OP_MODE VMEType(const char* str)
     return VME_OP_MODE_NUM;
 }
 
-Common_VISA_EMask_Ctrl Get_CISA_Emask(const char* str)
+static Common_VISA_EMask_Ctrl Get_CISA_Emask(const char* str)
 {
     if(strcmp(str, "NoMask") == 0)
         return vISA_EMASK_M1_NM;
@@ -1120,7 +1120,7 @@ Common_VISA_EMask_Ctrl Get_CISA_Emask(const char* str)
     return vISA_EMASK_M1;
 }
 
-CHANNEL_OUTPUT_FORMAT Get_Channel_Output(const char* str)
+static CHANNEL_OUTPUT_FORMAT Get_Channel_Output(const char* str)
 {
     for (int i = 0; i < CHANNEL_OUTPUT_NUM; i++)
     {

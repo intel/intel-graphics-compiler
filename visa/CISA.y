@@ -450,6 +450,7 @@ VISA_RawOpnd* rawOperandArray[16];
 %type <number> ImmAddrOffset
 %type <number> AbstractNum
 %type <number> Exp
+// %type <number> Exp32
 %type <number> ElemNum
 %type <number> OFFSET_NUM
 %type <number> SIZE_NUM
@@ -1937,11 +1938,22 @@ Imm : Exp DataType
 #endif
       };
 
-Exp : AbstractNum          { $$ = $1; }
-    | Exp PLUS  Exp        { $$ = $1 + $3; }
-    | Exp MINUS Exp        { $$ = $1 - $3; }
-    | Exp TIMES Exp        { $$ = $1 * $3; }
-    | Exp SLASH Exp          { $$ = $1 / $3; }
+// Exp32: Exp {
+//        if ((int64_t)((int32_t)$1) != $1) {
+//            yyerror("immediate value overflows 32b");
+//        }
+//        $$ = $1;
+//     }
+
+Exp : AbstractNum   { $$ = $1; }
+    | Exp PLUS  Exp { $$ = $1 + $3; }
+    | Exp MINUS Exp { $$ = $1 - $3; }
+    | Exp TIMES Exp { $$ = $1 * $3; }
+    | Exp SLASH Exp {
+            if ($3 == 0)
+                yyerror("division by 0");
+            $$ = $1 / $3;
+        }
     | MINUS Exp %prec NEG  { $$ = -$2; }
     | LPAREN Exp RPAREN    { $$ = $2; };
 

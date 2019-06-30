@@ -2323,7 +2323,7 @@ bool CISA_IR_Builder::CISA_create_sample_instruction (ISA_Opcode opcode,
 
     int status = CM_SUCCESS;
 
-    if (opcode == ISA_SAMPLE) 
+    if (opcode == ISA_SAMPLE)
     {
         VISA_SamplerVar* samplerVar = (VISA_SamplerVar*) m_kernel->getDeclFromName(sampler_name);
         MUST_BE_TRUE1(samplerVar != NULL, line_no, "Sampler was not found");
@@ -2620,7 +2620,9 @@ VISA_opnd * CISA_IR_Builder::CISA_create_gen_src_operand(char* var_name, short v
 {
     VISA_VectorOpnd *cisa_opnd = NULL;
     int status = CM_SUCCESS;
-    status = m_kernel->CreateVISASrcOperand(cisa_opnd, (VISA_GenVar*)m_kernel->getDeclFromName(std::string(var_name)), mod, v_stride, width, h_stride, row_offset, col_offset);
+    auto *decl =  (VISA_GenVar*)m_kernel->getDeclFromName(var_name);
+    MUST_BE_TRUE(decl, "undeclared variable");
+    status = m_kernel->CreateVISASrcOperand(cisa_opnd, decl, mod, v_stride, width, h_stride, row_offset, col_offset);
     MUST_BE_TRUE1(status == CM_SUCCESS, line_no, "Failed to create cisa src operand." );
     return (VISA_opnd *)cisa_opnd;
 }
@@ -2630,13 +2632,15 @@ VISA_opnd * CISA_IR_Builder::CISA_dst_general_operand(char * var_name,
                                                       unsigned char sroff,
                                                       unsigned short hstride, int line_no)
 {
-
     VISA_VectorOpnd *cisa_opnd = NULL;
     int status = CM_SUCCESS;
-    status = m_kernel->CreateVISADstOperand(cisa_opnd, (VISA_GenVar *)m_kernel->getDeclFromName(std::string(var_name)), hstride, roff, sroff);
+    auto *decl = (VISA_GenVar *)m_kernel->getDeclFromName(var_name);
+    MUST_BE_TRUE(decl, "undeclared variable");
+    status = m_kernel->CreateVISADstOperand(cisa_opnd, decl, hstride, roff, sroff);
     MUST_BE_TRUE1(status == CM_SUCCESS, line_no, "Failed to create cisa dst operand.");
     return (VISA_opnd *)cisa_opnd;
 }
+
 VISA_opnd * CISA_IR_Builder::CISA_create_immed(uint64_t value, VISA_Type type, int line_no)
 {
     VISA_VectorOpnd *cisa_opnd = NULL;

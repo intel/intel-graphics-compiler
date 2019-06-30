@@ -310,11 +310,11 @@ void G4Verifier::verifyOpnd(G4_Operand* opnd, G4_INST* inst)
     {
         DEBUG_VERBOSE("Inst not set correctly for opnd ");
 
+        std::cerr << "operand: ";
         opnd->emit(std::cerr);
-
-        DEBUG_VERBOSE(std::endl);
+        std::cerr << " in instruction:\n  ";
         inst->emit(std::cerr);
-        DEBUG_VERBOSE(std::endl);
+        std::cerr << "\n";
 
         if (opnd->getInst() == NULL)
         {
@@ -326,7 +326,7 @@ void G4Verifier::verifyOpnd(G4_Operand* opnd, G4_INST* inst)
             opnd->getInst()->emit(std::cerr);
             std::cerr << "\n";
             DEBUG_VERBOSE("Inst ptr set to incorrect inst");
-            MUST_BE_TRUE(false, "Inst pointer incorrect set in opnd");
+            MUST_BE_TRUE(false, "Inst pointer incorrectly set in opnd");
         }
         DEBUG_VERBOSE(std::endl);
     }
