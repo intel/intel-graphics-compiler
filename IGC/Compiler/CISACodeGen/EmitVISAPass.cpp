@@ -8372,7 +8372,6 @@ void EmitPass::emitLoad3DInner(LdRawIntrinsic* inst, ResourceDescriptor& resourc
             m_encoder->Shr(shiftedPtr, visaOffset, m_currShader->ImmToVariable(2, ISA_TYPE_UD));
             m_encoder->Push();
             visaOffset = shiftedPtr;
-            m_encoder->SetPredicate(flag);
             m_encoder->Gather(m_destination, resource.m_resource, visaOffset, gOffset, resource.m_surfaceType, 4);
             m_encoder->Push();
         }
@@ -8381,7 +8380,6 @@ void EmitPass::emitLoad3DInner(LdRawIntrinsic* inst, ResourceDescriptor& resourc
             // uav and resource cannot be changed to this path due to alignment issue encountered in some tests
             uint elementSize = 8;
             uint numElems = 4;
-            m_encoder->SetPredicate(flag);
             m_encoder->ByteGather(m_destination, resource, visaOffset, elementSize, numElems);
             m_encoder->Push();
         }
@@ -8400,7 +8398,6 @@ void EmitPass::emitLoad3DInner(LdRawIntrinsic* inst, ResourceDescriptor& resourc
             uint hStride = 32 / sizeInBits;
             uint16_t vStride = numLanes(m_currShader->m_SIMDSize);
             CVariable *gatherDest = m_currShader->GetNewVariable(vStride, ISA_TYPE_UD, EALIGN_GRF);
-            m_encoder->SetPredicate(flag);
             m_encoder->ByteGather(gatherDest, resource, visaOffset, elementSize, numElems);
             m_encoder->Push();
 
@@ -9508,7 +9505,7 @@ void EmitPass::emitStore3DInner(Value *pllValToStore, Value *pllDstPtr, Value *p
             m_encoder->Shr(shiftedPtr, ptr, m_currShader->ImmToVariable(2, ISA_TYPE_UD));
             m_encoder->Push();
             ptr = shiftedPtr;
-            setPredicateForDiscard(flag);
+            setPredicateForDiscard();
             m_encoder->Scatter(
                 storedVal,
                 resource.m_resource,
@@ -9523,7 +9520,7 @@ void EmitPass::emitStore3DInner(Value *pllValToStore, Value *pllDstPtr, Value *p
                 // using byte scatter
                 uint elementSize = 8;
                 uint numElems = 4;
-                setPredicateForDiscard(flag);
+                setPredicateForDiscard();
                 m_encoder->ByteScatter(
                     storedVal,
                     resource,
@@ -9542,7 +9539,7 @@ void EmitPass::emitStore3DInner(Value *pllValToStore, Value *pllDstPtr, Value *p
         CVariable *val = m_currShader->GetNewVariable(numLanes(m_currShader->m_SIMDSize), ISA_TYPE_UD, EALIGN_GRF);
         storedVal = m_currShader->GetNewAlias(storedVal, elementType, 0, 0);
         m_encoder->Cast(val, storedVal);
-        setPredicateForDiscard(flag);
+        setPredicateForDiscard();
         m_encoder->ByteScatter(
             val,
             resource,
@@ -9553,7 +9550,7 @@ void EmitPass::emitStore3DInner(Value *pllValToStore, Value *pllDstPtr, Value *p
     }
     else  // (sizeInBits > 32)
     {
-        setPredicateForDiscard(flag);
+        setPredicateForDiscard();
         m_encoder->Scatter4Scaled(storedVal, resource, ptr);
         m_encoder->Push();
     }
@@ -14396,37 +14393,16 @@ void EmitPass::emitLLVMbswap(IntrinsicInst* inst)
     }
 }
 
-void EmitPass::setPredicateForDiscard(CVariable* pPredicate)
+void EmitPass::setPredicateForDiscard()
 {
-    // Input predicate parameter is used when resource variable is non-uniform
-    // and compiler needs to create the resource loop.
-    bool isInversePredicate = false;
     if (m_currShader->GetShaderType() == ShaderType::PIXEL_SHADER)
     {
         CPixelShader* psProgram = static_cast<CPixelShader*>(m_currShader);
         if (psProgram->HasDiscard() && psProgram->GetDiscardPixelMask())
         {
-            if (pPredicate != nullptr)
-            {
-                CVariable* pMask = m_currShader->GetNewVariable(1, ISA_TYPE_UW, EALIGN_WORD, true);
-                m_encoder->SetNoMask();
-                m_encoder->GenericAlu(EOPCODE_NOT, pMask, psProgram->GetDiscardPixelMask(), nullptr);
-                m_encoder->Push();
-                m_encoder->SetNoMask();
-                m_encoder->GenericAlu(EOPCODE_AND, pPredicate, pPredicate, pMask);
-                m_encoder->Push();
-            }
-            else
-            {
-                pPredicate = psProgram->GetDiscardPixelMask();
-                isInversePredicate = true;
-            }
+            m_encoder->SetPredicate(psProgram->GetDiscardPixelMask());
+            m_encoder->SetInversePredicate(true);
         }
-    }
-    if (pPredicate != nullptr)
-    {
-        m_encoder->SetPredicate(pPredicate);
-        m_encoder->SetInversePredicate(isInversePredicate);
     }
 }
 
