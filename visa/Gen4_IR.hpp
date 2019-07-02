@@ -468,6 +468,7 @@ public:
 
     bool is16BitInput() const;
     bool is16BitReturn() const;
+    bool isA64Message() const;
 
     const G4_Operand *getBti() const {return m_bti;}
           G4_Operand *getBti()       {return m_bti;}

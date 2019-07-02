@@ -479,6 +479,51 @@ bool G4_SendMsgDescriptor::is16BitReturn() const
     return desc.layout.returnFormat == 1;
 }
 
+bool G4_SendMsgDescriptor::isA64Message() const
+{
+    if (!isHDC()) {
+        return false;
+    }
+
+    uint32_t msgType = getHdcMessageType();
+    auto funcID = getFuncId();
+    switch (funcID) {
+    case SFID::DP_DC1:
+    {
+        switch(msgType) {
+        default:
+            break;
+        case DC1_A64_SCATTERED_READ:
+        case DC1_A64_UNTYPED_SURFACE_READ:
+        case DC1_A64_ATOMIC:
+        case DC1_A64_BLOCK_READ :
+        case DC1_A64_BLOCK_WRITE:
+        case DC1_A64_UNTYPED_SURFACE_WRITE:
+        case DC1_A64_SCATTERED_WRITE:
+        case DC1_A64_UNTYPED_FLOAT_ATOMIC:
+            return true;
+        }
+        break;
+    }
+    case SFID::DP_DC2 :
+    {
+        switch (msgType) {
+        default:
+            break;
+        case DC2_A64_SCATTERED_READ:
+        case DC2_A64_UNTYPED_SURFACE_READ:
+        case DC2_A64_UNTYPED_SURFACE_WRITE:
+        case DC2_A64_SCATTERED_WRITE:
+            return true;
+        }
+        break;
+    }
+    default:
+        break;
+    }
+    return false;
+}
+
 static int getNumEnabledChannels(uint32_t chDisableBits)
 {
     switch(chDisableBits)
