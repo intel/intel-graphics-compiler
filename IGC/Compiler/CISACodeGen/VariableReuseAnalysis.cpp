@@ -33,6 +33,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/Support/Debug.h>
 #include "common/LLVMWarningsPop.hpp"
 
+#include <algorithm>
+
 using namespace llvm;
 using namespace IGC;
 
@@ -1372,6 +1374,29 @@ bool VariableReuseAnalysis::IsInsertTo(
 
 void VariableReuseAnalysis::printAlias(raw_ostream & OS, const Function* F) const
 {
+    // Assign each inst/arg a unique integer so that the output
+    // would be in order. It is useful when doing comparison.
+    DenseMap<const Value*, int> Val2IntMap;
+    int id = 0;
+    if (F) {
+        // All arguments
+        for (auto AI = F->arg_begin(), AE = F->arg_end(); AI != AE; ++AI) {
+            const Value* aVal = AI;
+            Val2IntMap[aVal] = (++id);
+        }
+        // All instructions
+        for (auto II = inst_begin(F), IE = inst_end(F); II != IE; ++II) {
+            const Instruction* Inst = &*II;
+            Val2IntMap[(Value*)Inst] = (++id);
+        }
+    }
+
+    auto SubVecCmp = [&](const SSubVecDesc* SV0, const SSubVecDesc* SV1) -> bool {
+        int n0 = Val2IntMap[SV0->Aliaser];
+        int n1 = Val2IntMap[SV1->Aliaser];
+        return n0 < n1;
+    };
+
     OS << "\nSummary of Variable Alias Info: "
        << (F ? F->getName().str() : "Function")
        << "\n";
@@ -1401,15 +1426,24 @@ void VariableReuseAnalysis::printAlias(raw_ostream & OS, const Function* F) cons
         OS << "\n";
         return;
     }
-    for (auto& MI : m_aliasMap)
-    {
+
+    SmallVector<SSubVecDesc*, 64> sortedAlias;
+    for (auto& MI : m_aliasMap) {
         SSubVecDesc* SV = MI.second;
+        sortedAlias.push_back(SV);
+    }
+    std::sort(sortedAlias.begin(), sortedAlias.end(), SubVecCmp);
+
+    for (int i=0, sz = (int)sortedAlias.size(); i < sz; ++i)
+    {
+        SSubVecDesc* SV = sortedAlias[i];
         Value *aliasee = SV->BaseVector;
         if (SV->Aliaser != aliasee) {
             // Not alias root
             continue;
         }
         OS << "Aliasee : " << *aliasee << "\n";
+        std::sort(SV->Aliasers.begin(), SV->Aliasers.end(), SubVecCmp);
         for (auto VI : SV->Aliasers)
         {
             SSubVecDesc* aSV = VI;
@@ -1643,11 +1677,7 @@ Value* VariableReuseAnalysis::traceAliasValue(Value* V)
 //        A = extractElement <vectorType> V, <constant V_ix>
 //        A is the element denoted by (V, V_ix)
 //     2. non-sub-vector: V=nullptr, V_ix=0,  S = A
-//        A is a valid value inserted and can be alias to Vec
-//     3. S = nullptr, V = nullptr, V_ix=0
-//        A  is NOT a valid value that can be aliased to Vec
-//        For example, A is an argument, constant, or in a non-trivial
-//        dessa CC, etc.
+//        A is a candidate inserted and can be alias to Vec
 //
 //  Input: IEI
 //  Output: IEI_ix, S, V, V_ix
@@ -1676,22 +1706,18 @@ bool VariableReuseAnalysis::getElementValue(
         isa<Constant>(elem0) ||
         isOrCoalescedWithArg(elem0))
     {
-        // case 3: elem0 cannot be aliased
-        return true;
+        // If elem0 has been payload-coalesced, is constant,
+        // or it has been aliased to an argument, it cannot
+        // be aliased to IEI.
+        return false;
     }
 
     Value *elem = traceAliasValue(elem0);
     ExtractElementInst *EEI = dyn_cast<ExtractElementInst>(elem);
-
-    // No vector alias can be used if any of the following
-    // is true:
-    //   1.  EEI not found
-    //   2.  EEI found, but EEI's index is not constant.
-    //   3.  EEI found and EEI's index is constant, but
-    //       elem is not single-valued
     S = elem;
     if (!EEI) {
-        // case 2
+        // case 2. No sub-vector alias, but it is okay
+        //         to use non-sub-vector aliasing.
         return true;
     }
     ConstantInt* CI1 = dyn_cast<ConstantInt>(EEI->getIndexOperand());
@@ -1699,9 +1725,10 @@ bool VariableReuseAnalysis::getElementValue(
         !m_DeSSA->isSingleValued(elem))
     {
         // case 2
-        //   1. No extractElementInst, or
-        //   2. Has extractElementInst, but it is not single-valued
-        //      (implementation)
+        //   1. EEI's index isn't constant, or
+        //   2. EEI is not single-valued (implementation)
+        // No sub-vector aliasing, but non-sub-vector aliasing
+        // is okay.
         return true;
     }
 
@@ -1709,10 +1736,12 @@ bool VariableReuseAnalysis::getElementValue(
     if (isa<Constant>(V) ||
         hasBeenPayloadCoalesced(V))
     {
-        // case 2 again
+        // case 2 again, just non-sub-vector aliasing
         V = nullptr;
         return true;
     }
+
+    // case 1.
     V_ix = (int)CI1->getZExtValue();
     return true;
 }
@@ -1962,7 +1991,11 @@ bool VariableReuseAnalysis::processInsertTo(VecInsEltInfoTy& AllIEIs)
                 m_HasBecomeNoopInsts[EEI] = 1;
 
                 Value* EEI_nv = m_DeSSA->getNodeValue(EEI);
-                addVecAlias(EEI_nv, Base_nv, j);
+                if (EEI_nv != V_nv)
+                {
+                    // Make sure no dupliate entries
+                    addVecAlias(EEI_nv, Base_nv, j);
+                }
             }
         }
         hasAlias = true;
