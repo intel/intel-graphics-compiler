@@ -958,6 +958,7 @@ void CodeGen(OpenCLProgramContext *ctx, CShaderProgram::KernelShaderMap &kernels
         }
     }
     Passes.add(new DebugInfoPass(kernels));
+
     Passes.run(*(ctx->getModule()));
     COMPILER_TIME_END(ctx, TIME_CodeGen);
     DumpLLVMIR(ctx, "codegen");

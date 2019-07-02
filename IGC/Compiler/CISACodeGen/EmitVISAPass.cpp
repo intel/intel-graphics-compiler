@@ -4509,6 +4509,13 @@ void EmitPass::emitSimdShuffle(llvm::Instruction* inst)
         //shl (16) r8.0<1>:ud r6.0<0;1,0>:d 0x2:uw {Align1, H1, NoMask}
         //add (16) a0.0<1>:uw r8.0<16;8,2>:uw 0x80:uw {Align1, H1, NoMask}
         //mov (16) r10.0<1>:d r[a0.0, 0]<1,0>:d {Align1, H1}
+        // For SIMD32:
+        //    shl(M1, 32) V465(0, 0)<1> V464(0, 0)<16; 8, 2> 0x2:uw                           /// $592
+        //    mov(M1, 32) V466(0, 0)<1> V70(0, 0)<1; 1, 0>                                    /// $593
+        //    addr_add(M1, 16) A0(0)<1> &V466 + 0 V465(0, 0)<1; 1, 0>                          /// $594
+        //    mov(M1, 16) V463(0, 0)<1> r[A0(0), 0]<1, 0> : f                                  /// $595
+        //    addr_add(M5, 16) A0(0)<1> &V466 + 0 V465(0, 16)<1; 1, 0>                         /// $596
+        //    mov(M5, 16) V463(1, 0)<1> r[A0(0), 0]<1, 0> : f                                  /// $597
 
         bool channelUniform = simdChannel->IsUniform();
 
@@ -4542,82 +4549,84 @@ void EmitPass::emitSimdShuffle(llvm::Instruction* inst)
         m_encoder->Push();
 
         CVariable *src = data;
-
-        if (isSimd32)
         {
-            CVariable *contiguousData = nullptr;
-            CVariable *upperHalfOfContiguousData = nullptr;
-
-            const uint16_t numElements = data->GetNumberElement();
-            const VISA_Type dataType = data->GetType();
-
-            assert(numElements == 16);
-            assert(!m_encoder->IsSecondHalf() && "This emitter must be called only once for simd32!");
-
-            // Create a 32 element variable and copy both instances of data into it.
-            contiguousData = m_currShader->GetNewVariable(
-                numElements * 2,
-                dataType,
-                data->GetAlign(),
-                false, // isUniform
-                1); // numberInstance
-
-            upperHalfOfContiguousData = m_currShader->GetNewAlias(
-                contiguousData,
-                dataType,
-                numElements * m_encoder->GetCISADataTypeSize(dataType),
-                numElements);
-
-            assert(contiguousData && upperHalfOfContiguousData);
-
-            m_encoder->SetSecondHalf(false);
-            m_encoder->Copy(contiguousData, data);
-            m_encoder->Push();
-
-            m_encoder->SetSecondHalf(true);
-            m_encoder->Copy(upperHalfOfContiguousData, data);
-            m_encoder->Push();
-
-            if (!channelUniform)
+            if (isSimd32)
             {
-                // also calculate the second half of address
-                m_encoder->SetSrcRegion(0, 16, 8, 2);
-                m_encoder->Shl(pSrcElm, simdChannelUW,
-                    m_currShader->ImmToVariable(shtAmt, ISA_TYPE_UW));
+                CVariable *contiguousData = nullptr;
+                CVariable *upperHalfOfContiguousData = nullptr;
+
+                const uint16_t numElements = data->GetNumberElement();
+                const VISA_Type dataType = data->GetType();
+
+                assert(numElements == 16);
+                assert(!m_encoder->IsSecondHalf() && "This emitter must be called only once for simd32!");
+
+                // Create a 32 element variable and copy both instances of data into it.
+                contiguousData = m_currShader->GetNewVariable(
+                    numElements * 2,
+                    dataType,
+                    data->GetAlign(),
+                    false, // isUniform
+                    1); // numberInstance
+
+                upperHalfOfContiguousData = m_currShader->GetNewAlias(
+                    contiguousData,
+                    dataType,
+                    numElements * m_encoder->GetCISADataTypeSize(dataType),
+                    numElements);
+
+                assert(contiguousData && upperHalfOfContiguousData);
+
+                m_encoder->SetSecondHalf(false);
+                m_encoder->Copy(contiguousData, data);
                 m_encoder->Push();
+
+                m_encoder->SetSecondHalf(true);
+                m_encoder->Copy(upperHalfOfContiguousData, data);
+                m_encoder->Push();
+
+                if (!channelUniform)
+                {
+                    // also calculate the second half of address
+                    m_encoder->SetSrcRegion(0, 16, 8, 2);
+                    m_encoder->Shl(pSrcElm, simdChannelUW,
+                        m_currShader->ImmToVariable(shtAmt, ISA_TYPE_UW));
+                    m_encoder->Push();
+                }
+
+                m_encoder->SetSecondHalf(false);
+
+                src = contiguousData;
             }
 
-            m_encoder->SetSecondHalf(false);
+            uint16_t addrSize = channelUniform ? 1 :
+                (m_SimdMode == SIMDMode::SIMD32 ? numLanes(SIMDMode::SIMD16) : numLanes(m_SimdMode));
 
-            src = contiguousData;
-        }
+            // VectorUniform for shuffle is true as all simd lanes will
+            // take the same data as the lane 0 !
+            CVariable* pDstArrElm = m_currShader->GetNewAddressVariable(
+                addrSize,
+                m_destination->GetType(),
+                channelUniform,
+                true);
 
-        uint16_t addrSize = channelUniform ? 1 :
-            (m_SimdMode == SIMDMode::SIMD32 ? numLanes(SIMDMode::SIMD16) : numLanes(m_SimdMode));
-
-        // VectorUniform for shuffle is true as all simd lanes will
-        // take the same data as the lane 0 !
-        CVariable* pDstArrElm = m_currShader->GetNewAddressVariable(
-            addrSize,
-            m_destination->GetType(),
-            channelUniform,
-            true);
-
-        m_encoder->AddrAdd(pDstArrElm, src, pSrcElm);
-        m_encoder->Push();
-
-        m_encoder->Copy(m_destination, pDstArrElm);
-        m_encoder->Push();
-
-        if (isSimd32)
-        {
-            m_encoder->SetSecondHalf(true);
             m_encoder->AddrAdd(pDstArrElm, src, pSrcElm);
             m_encoder->Push();
+
             m_encoder->Copy(m_destination, pDstArrElm);
             m_encoder->Push();
-            m_encoder->SetSecondHalf(false);
+
+            if (isSimd32)
+            {
+                m_encoder->SetSecondHalf(true);
+                m_encoder->AddrAdd(pDstArrElm, src, pSrcElm);
+                m_encoder->Push();
+                m_encoder->Copy(m_destination, pDstArrElm);
+                m_encoder->Push();
+                m_encoder->SetSecondHalf(false);
+            }
         }
+
     }
 }
 
@@ -13875,6 +13884,8 @@ void EmitPass::emitVectorStore(StoreInst* inst)
             blkBits = useQW ? (align >= 8 ? 64 : 8)
                 : (!useA32 && align >= 4) ? 32 : 8;
             nBlks = useQW ? (64 / blkBits) : (32 / blkBits);
+#if 0
+#endif
         }
         else
         {
@@ -13904,6 +13915,8 @@ void EmitPass::emitVectorStore(StoreInst* inst)
             // Note that this is for elts = 1, so totalBytes is bytes per-lane.
             blkBits = useA32 ? 8 : ((eltBytes >= 4 && align >= eltBytes) ? eltBytes * 8 : 8);
             nBlks = (totalBytes * 8) / blkBits;
+#if 0
+#endif
         }
         setPredicateForDiscard();
         if (useA32)

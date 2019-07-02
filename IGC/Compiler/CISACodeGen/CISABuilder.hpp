@@ -337,6 +337,7 @@ public:
     inline void SetNoMask();
     inline void SetMask(e_mask mask);
     inline void SetSimdSize(SIMDMode size);
+    inline SIMDMode GetSimdSize();
     inline void SetUniformSIMDSize(SIMDMode size);
     inline void SetSubSpanDestination(bool subspan);
     inline bool IsSubSpanDestination();
@@ -843,6 +844,11 @@ inline void CEncoder::SetMask(e_mask mask)
 inline void CEncoder::SetSimdSize(SIMDMode size)
 {
     m_encoderState.m_simdSize = size;
+}
+
+inline SIMDMode CEncoder::GetSimdSize()
+{
+    return m_encoderState.m_simdSize;
 }
 
 inline void CEncoder::SetUniformSIMDSize(SIMDMode size)
