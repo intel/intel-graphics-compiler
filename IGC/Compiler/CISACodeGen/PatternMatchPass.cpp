@@ -1670,12 +1670,6 @@ bool CodeGenPatternMatch::MatchMad( llvm::BinaryOperator& I )
         return false;
     }
 
-    bool checkMulDependencyToPreventAddToMad = true;
-    if (m_ctx->type == ShaderType::OPENCL_SHADER)
-    {
-        checkMulDependencyToPreventAddToMad = false;
-    }
-
     assert(I.getOpcode() == Instruction::FAdd || I.getOpcode() == Instruction::FSub);
     if(I.getOperand(0) != I.getOperand(1))
     {
@@ -1698,18 +1692,6 @@ bool CodeGenPatternMatch::MatchMad( llvm::BinaryOperator& I )
 
             if(mul && mul->getOpcode() == Instruction::FMul)
             {
-                if (checkMulDependencyToPreventAddToMad && !std::all_of(mul->user_begin(), mul->user_end(),
-                    [](llvm::User* user)
-                    {
-                        if (auto binOp = dyn_cast<BinaryOperator>(user))
-                        {
-                            return binOp->getOpcode() == Instruction::FSub || binOp->getOpcode() == Instruction::FAdd;
-                        }
-                        return false;
-                    }))
-                {
-                    continue;
-                }
                 // in case we know we won't be able to remove the mul we don't merge it
                 if(!m_PosDep->PositionDependsOnInst(mul) && NeedInstruction(*mul))
                     continue;
