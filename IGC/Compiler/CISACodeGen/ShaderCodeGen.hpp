@@ -421,9 +421,6 @@ protected:
     llvm::DenseMap<llvm::Value *, CVariable*> globalSymbolMapping;
 
     llvm::DenseMap<llvm::Value*, CVariable*> symbolMapping;
-    // we also need another mapping from a congruent class to a temp
-    // because root-value may be isolated, so it may not belong to that class
-    llvm::DenseMap<llvm::Value*, CVariable*> rootMapping;
     // Yet another map: a mapping from ccTuple to its corresponding root variable.
     // Variables that participate in congruence class tuples will be defined as
     // aliases (with respective offset) to the root variable.

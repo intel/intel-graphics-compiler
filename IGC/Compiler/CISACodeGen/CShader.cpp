@@ -105,7 +105,6 @@ void CShader::InitEncoder(SIMDMode simdSize, bool canAbortOnSpill, ShaderDispatc
     m_dispatchSize = simdSize;
     globalSymbolMapping.clear();
     symbolMapping.clear();
-    rootMapping.clear();
     ccTupleMapping.clear();
     ConstantPool.clear();
     setup.clear();
@@ -350,26 +349,17 @@ void CShader::CreateImplicitArgs()
         Value *Node = m_deSSA ? m_deSSA->getRootValue(Arg) : nullptr;
         if (Node)
         {
-            // This key is temperary. It will be deleted once the
-            // change has been fully tested (probbaly in a month or so).
-            if (IGC_IS_FLAG_ENABLED(EnableDeSSAMemberRootValue))
-            {
-                // If Arg isn't root, must setup symbolMapping for root.
-                if (Node != Arg) {
-                    // 'Node' should not have a symbol entry at this moment.
-                    assert(symbolMapping.count(Node) == 0 &&
-                        "Root symbol of arg should not be set at this point!");
-                    CVariable* aV = CVarArg;
-                    if (IGC_GET_FLAG_VALUE(EnableDeSSAAlias) >= 2)
-                    {
-                        aV = createAliasIfNeeded(Node, CVarArg);
-                    }
-                    symbolMapping[Node] = aV;
+            // If Arg isn't root, must setup symbolMapping for root.
+            if (Node != Arg) {
+                // 'Node' should not have a symbol entry at this moment.
+                assert(symbolMapping.count(Node) == 0 &&
+                    "Root symbol of arg should not be set at this point!");
+                CVariable* aV = CVarArg;
+                if (IGC_GET_FLAG_VALUE(EnableDeSSAAlias) >= 2)
+                {
+                    aV = createAliasIfNeeded(Node, CVarArg);
                 }
-            }
-            else
-            {
-                rootMapping[Node] = CVarArg;
+                symbolMapping[Node] = aV;
             }
         }
     };
@@ -1935,8 +1925,7 @@ CVariable* CShader::LazyCreateCCTupleBackingVariable(
 /// EmitVISAPass to emit code in a uniform way.
 ///
 /// In some sense, all formal arguments are pre-allocated. Those symbols must be
-/// the root value in their congruent classes when formal arguments are input for
-/// phi nodes (implemented below).
+/// non-alias cvariable (ie root cvariable) as required by visa.
 ///
 /// Currently, all explicit arguments are non-uniform and most implicit
 /// arguments are uniform. Some implicit arguments may share the same symbol
@@ -1952,7 +1941,6 @@ void CShader::BeginFunction(llvm::Function *F)
     // after VISA compilation.
     if (!DebugInfoData::hasDebugInfo(this))
         symbolMapping.clear();
-    rootMapping.clear();
     ccTupleMapping.clear();
     ConstantPool.clear();
 
@@ -1978,22 +1966,15 @@ void CShader::BeginFunction(llvm::Function *F)
 
             if (Value *Node = m_deSSA->getRootValue(&Arg))
             {
-                if (IGC_IS_FLAG_ENABLED(EnableDeSSAMemberRootValue))
+                if (Node != (Value*)&Arg &&
+                    symbolMapping.count(Node) == 0)
                 {
-                    if (Node != (Value*)&Arg &&
-                        symbolMapping.count(Node) == 0)
+                    CVariable* aV = Var;
+                    if (IGC_GET_FLAG_VALUE(EnableDeSSAAlias) >= 2)
                     {
-                        CVariable* aV = Var;
-                        if (IGC_GET_FLAG_VALUE(EnableDeSSAAlias) >= 2)
-                        {
-                            aV = createAliasIfNeeded(Node, Var);
-                        }
-                        symbolMapping[Node] = aV;
+                        aV = createAliasIfNeeded(Node, Var);
                     }
-                }
-                else
-                {
-                    rootMapping[Node] = Var;
+                    symbolMapping[Node] = aV;
                 }
             }
         }
@@ -2654,47 +2635,25 @@ CVariable* CShader::GetSymbol(llvm::Value *value, bool fromConstantPool)
     // belong to a congruent class
     if (rootValue)
     {
-        if (IGC_IS_FLAG_ENABLED(EnableDeSSAMemberRootValue))
+        it = symbolMapping.find(rootValue);
+        if (it != symbolMapping.end())
         {
-            it = symbolMapping.find(rootValue);
-            if (it != symbolMapping.end())
+            var = it->second;
+            CVariable* aV = var;
+            if (IGC_GET_FLAG_VALUE(EnableDeSSAAlias) >= 2)
             {
-                var = it->second;
-                CVariable* aV = var;
-                if (IGC_GET_FLAG_VALUE(EnableDeSSAAlias) >= 2)
-                {
-                    aV = createAliasIfNeeded(value, var);
-                }
-                symbolMapping.insert(std::pair<llvm::Value*, CVariable*>(value, aV));
-                /*
-                *  When we don't scalarize vectors, vector may come from phi/insert-element
-                *  We cannot adjust extract-mask
-                */
-                if (value->getType()->isVectorTy())
-                {
-                    extractMasks.erase(value);
-                }
-                return aV;
+                aV = createAliasIfNeeded(value, var);
             }
-        }
-        else
-        {
-            it = rootMapping.find(rootValue);
-            // mapping exists, return
-            if (it != rootMapping.end())
+            symbolMapping.insert(std::pair<llvm::Value*, CVariable*>(value, aV));
+            /*
+            *  When we don't scalarize vectors, vector may come from phi/insert-element
+            *  We cannot adjust extract-mask
+            */
+            if (value->getType()->isVectorTy())
             {
-                var = it->second;
-                symbolMapping.insert(std::pair<llvm::Value*, CVariable*>(value, var));
-                /*
-                 *  When we don't scalarize vectors, vector may come from phi/insert-element
-                 *  We cannot adjust extract-mask
-                 */
-                if (value->getType()->isVectorTy())
-                {
-                    extractMasks.erase(value);
-                }
-                return var;
+                extractMasks.erase(value);
             }
+            return aV;
         }
     }
 
@@ -2719,19 +2678,12 @@ CVariable* CShader::GetSymbol(llvm::Value *value, bool fromConstantPool)
     symbolMapping.insert(std::pair<llvm::Value*,CVariable*>(value, var));
     if (rootValue)
     {
-        if (IGC_IS_FLAG_ENABLED(EnableDeSSAMemberRootValue))
+        CVariable* aV = var;
+        if (IGC_GET_FLAG_VALUE(EnableDeSSAAlias) >= 2)
         {
-            CVariable* aV = var;
-            if (IGC_GET_FLAG_VALUE(EnableDeSSAAlias) >= 2)
-            {
-                aV = createAliasIfNeeded(rootValue, var);
-            }
-            symbolMapping.insert(std::pair<llvm::Value*, CVariable*>(rootValue, aV));
+            aV = createAliasIfNeeded(rootValue, var);
         }
-        else
-        {
-            rootMapping.insert(std::pair<llvm::Value*, CVariable*>(rootValue, var));
-        }
+        symbolMapping.insert(std::pair<llvm::Value*, CVariable*>(rootValue, aV));
     }
     return var;
 }
