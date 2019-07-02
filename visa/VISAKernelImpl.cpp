@@ -248,40 +248,54 @@ void VISAKernelImpl::createInstForJmpiSequence(InstListType& insts, G4_INST* fca
     // r1.0 is the return IP (the instruction right after jmpi)
     // r1.1 it the return mask
 
-    // mov  f0.0   0
-    insts.push_back(m_builder->createInternalInst(
-        nullptr, G4_mov, nullptr, false, 1,
-        m_builder->createDstRegRegion(Direct, m_phyRegPool->getF0Reg(), 0, 0, 1, Type_UD),
-        m_builder->createImm(0, Type_UD), nullptr, InstOpt_WriteEnable));
-
     // calculate the reserved register's num from fcall's dst register (shoud be r1)
     assert(fcall->getDst()->isGreg());
     uint32_t reg_num = fcall->getDst()->getLinearizedStart() / GENX_GRF_REG_SIZ;
     G4_Declare* r1_1_decl =
         m_builder->createHardwiredDeclare(1, fcall->getDst()->getType(), reg_num, 1);
 
-    // mov  r1.1   0
-    insts.push_back(m_builder->createInternalInst(
-        nullptr, G4_mov, nullptr, false, 1,
-        m_builder->Create_Dst_Opnd_From_Dcl(r1_1_decl, 1),
-        m_builder->createImm(0, Type_UD),
-        nullptr, InstOpt_WriteEnable));
+    if (fcall->getPredicate() != nullptr) {
+        // skip the calculation of global mask if the given call has make already
+        // In case we overwrite the mask set by IGC for non-uniform call handling
 
-    // cmp  f0.0   r1.1  0
-    insts.push_back(m_builder->createInternalInst(
-        nullptr, G4_cmp, nullptr, false, m_kernel->getSimdSize(),
-        m_builder->createDstRegRegion(Direct, m_phyRegPool->getF0Reg(), 0, 0, 1, Type_UD),
-        m_builder->Create_Src_Opnd_From_Dcl(r1_1_decl, m_builder->getRegionScalar()),
-        m_builder->createImm(0, Type_UD), InstOpt_NoOpt));
+        // mov r1.1 fcall_pred
+        insts.push_back(m_builder->createInternalInst(
+            nullptr, G4_mov, nullptr, false, 1,
+            m_builder->Create_Dst_Opnd_From_Dcl(r1_1_decl, 1),
+            m_builder->Create_Src_Opnd_From_Dcl(
+                fcall->getPredicate()->getTopDcl(), m_builder->getRegionScalar()),
+            nullptr, InstOpt_WriteEnable));
 
-    // mov  r1.1   f0.0
-    insts.push_back(m_builder->createInternalInst(
-        nullptr, G4_mov, nullptr, false, 1,
-        m_builder->Create_Dst_Opnd_From_Dcl(r1_1_decl, 1),
-        m_builder->createSrcRegRegion(
-            Mod_src_undef, Direct, m_phyRegPool->getF0Reg(), 0, 0,
-            m_builder->getRegionScalar(), Type_UD),
-        nullptr, InstOpt_WriteEnable));
+    } else {
+        // mov  f0.0   0
+        insts.push_back(m_builder->createInternalInst(
+            nullptr, G4_mov, nullptr, false, 1,
+            m_builder->createDstRegRegion(Direct, m_phyRegPool->getF0Reg(), 0, 0, 1, Type_UD),
+            m_builder->createImm(0, Type_UD), nullptr, InstOpt_WriteEnable));
+
+        // mov  r1.1   0
+        insts.push_back(m_builder->createInternalInst(
+            nullptr, G4_mov, nullptr, false, 1,
+            m_builder->Create_Dst_Opnd_From_Dcl(r1_1_decl, 1),
+            m_builder->createImm(0, Type_UD),
+            nullptr, InstOpt_WriteEnable));
+
+        // cmp  f0.0   r1.1  0
+        insts.push_back(m_builder->createInternalInst(
+            nullptr, G4_cmp, nullptr, false, 1,
+            m_builder->createDstRegRegion(Direct, m_phyRegPool->getF0Reg(), 0, 0, 1, Type_UD),
+            m_builder->Create_Src_Opnd_From_Dcl(r1_1_decl, m_builder->getRegionScalar()),
+            m_builder->createImm(0, Type_UD), InstOpt_NoOpt));
+
+        // mov  r1.1   f0.0
+        insts.push_back(m_builder->createInternalInst(
+            nullptr, G4_mov, nullptr, false, 1,
+            m_builder->Create_Dst_Opnd_From_Dcl(r1_1_decl, 1),
+            m_builder->createSrcRegRegion(
+                Mod_src_undef, Direct, m_phyRegPool->getF0Reg(), 0, 0,
+                m_builder->getRegionScalar(), Type_UD),
+            nullptr, InstOpt_WriteEnable));
+    }
 
     // add  r1.0   IP   64
     G4_Declare* r1_0_decl =
