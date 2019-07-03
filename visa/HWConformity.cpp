@@ -1945,7 +1945,7 @@ void HWConformity::generateMacl(INST_LIST_ITER it, G4_BB* bb)
             iter = nextIter;
         }
     }
-    else if (mulInst->getExecSize() == 8) //FIXME: For SIMD32, we didn't handle. Do we need?
+    else
     {
         doGenerateMacl(it, bb);
     }
