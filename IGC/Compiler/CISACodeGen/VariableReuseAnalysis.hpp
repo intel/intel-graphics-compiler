@@ -46,6 +46,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/RegisterEstimator.hpp"
 
 #include <list>
+#include <map>
 #include <algorithm>    // std::find
 
 namespace IGC {
@@ -191,7 +192,7 @@ public:
   ~VariableReuseAnalysis() {}
 
   typedef llvm::SmallVector<SVecInsEltInfo, 32> VecInsEltInfoTy;
-  typedef llvm::DenseMap<llvm::Value*, SSubVecDesc*> AliasMapTy;
+  typedef std::map<llvm::Value*, SSubVecDesc*> AliasMapTy;  // ordered map
   typedef llvm::SmallVector<llvm::Value*, 32> ValueVectorTy;
   typedef llvm::DenseMap<llvm::Value*, llvm::Value*> Val2ValMapTy;
 

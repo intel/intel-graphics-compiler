@@ -1861,12 +1861,10 @@ bool VariableReuseAnalysis::processExtractFrom(VecInsEltInfoTy& AllIEIs)
         m_HasBecomeNoopInsts[IEI] = 1;
 
         ExtractElementInst* EEI = AllIEIs[i].EEI;
-        if (EEI)
-        {
-            if (m_DeSSA->isNoopAliaser(EEI))
-                continue;
-            m_HasBecomeNoopInsts[EEI] = 1;
-        }
+        assert(EEI);
+        if (m_DeSSA->isNoopAliaser(EEI))
+            continue;
+        m_HasBecomeNoopInsts[EEI] = 1;
     }
     return true;
 }
@@ -1972,30 +1970,27 @@ bool VariableReuseAnalysis::processInsertTo(VecInsEltInfoTy& AllIEIs)
         }
         addVecAlias(V_nv, Base_nv, V_ix);
 
-        // set up Noop inst
-        // Make sure noop insts are in the map.
         int V_sz = getNumElts(V);
-        for (int j = V_ix, sz = V_ix + V_sz; j < sz; ++j)
+        if (V_sz > 1)
         {
-            InsertElementInst* IEI = AllIEIs[j].IEI;
-            if (m_DeSSA->isNoopAliaser(IEI))
-                continue;
-            m_HasBecomeNoopInsts[IEI] = 1;
-
-            ExtractElementInst* EEI = AllIEIs[j].EEI;
-            if (EEI)
+            // set up Noop inst
+            // Make sure noop insts are in the map.
+            for (int j = V_ix, sz = V_ix + V_sz; j < sz; ++j)
             {
+                InsertElementInst* IEI = AllIEIs[j].IEI;
+                if (m_DeSSA->isNoopAliaser(IEI))
+                    continue;
+                m_HasBecomeNoopInsts[IEI] = 1;
+
+                ExtractElementInst* EEI = AllIEIs[j].EEI;
+                assert(EEI);
                 // Sub-vector
                 if (m_DeSSA->isNoopAliaser(EEI))
                     continue;
                 m_HasBecomeNoopInsts[EEI] = 1;
 
                 Value* EEI_nv = m_DeSSA->getNodeValue(EEI);
-                if (EEI_nv != V_nv)
-                {
-                    // Make sure no dupliate entries
-                    addVecAlias(EEI_nv, Base_nv, j);
-                }
+                addVecAlias(EEI_nv, Base_nv, j);
             }
         }
         hasAlias = true;
