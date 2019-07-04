@@ -1132,7 +1132,7 @@ static void readInstructionControlFlow(unsigned& bytePos, const char* buf, ISA_O
             {
                 uint8_t argSize = readPrimitiveOperandNG<uint8_t>(bytePos, buf);
                 uint8_t retSize = readPrimitiveOperandNG<uint8_t>(bytePos, buf);
-                kernelBuilder->AppendVISACFFunctionCallInst(pred, emask, esize, labelId, argSize, retSize);
+                kernelBuilder->AppendVISACFFunctionCallInst(pred, emask, esize, container.stringPool[labelId], argSize, retSize);
                 return;
             }
 

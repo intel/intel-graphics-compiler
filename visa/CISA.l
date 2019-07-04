@@ -486,6 +486,12 @@ jmp|call|ret|fret|fcall|goto {
         return BRANCH_OP;
     }
 
+fcall {
+  TRACE("\n** direct call INST ");
+        CISAlval.opcode = ISA_FCALL;
+        return FCALL;
+}
+
 ifcall {
         TRACE("\n** indirect call INST ");
         CISAlval.opcode = ISA_IFCALL;

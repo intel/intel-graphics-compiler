@@ -525,82 +525,17 @@ void restoreFCallState(G4_Kernel* kernel, savedFCallStates& savedFCallState)
     }
 }
 
-
-G4_Kernel* Get_Resolved_Compilation_Unit( common_isa_header header, std::list<G4_Kernel*> compilation_units, int idx )
+// Stitch the Gen binary for all functions in this vISA program with the given kernel
+// It modifies pseudo_fcall/fret in to call/ret opcodes.
+// ToDo: may consider stitching only functions that may be called by this kernel
+static void Stitch_Compiled_Units(G4_Kernel* kernel, std::map<std::string, G4_Kernel*>& compilation_units)
 {
-    for( std::list<G4_Kernel*>::iterator k = compilation_units.begin(), c_end = compilation_units.end();
-        k != c_end; k++ )
+
+    // Append flowgraph of all callees to kernel. For now just assume all functions in the modules 
+    // may be called
+    for (auto&& iter : compilation_units)
     {
-        if( (*k)->fg.builder->getCUnitId() == (header.num_kernels + idx) && (*k)->fg.builder->getIsKernel() == false )
-        {
-            return (*k);
-        }
-    }
-
-    return NULL;
-}
-
-void Enumerate_Callees( common_isa_header header, G4_Kernel* kernel, std::list<G4_Kernel*> compilation_units, std::list<int>& callees )
-{
-    for (int cur : kernel->fg.builder->callees)
-    {
-        if (std::find(callees.begin(), callees.end(), cur) == callees.end())
-        {
-            callees.push_back( cur );
-            G4_Kernel* k = Get_Resolved_Compilation_Unit( header, compilation_units, cur );
-            Enumerate_Callees( header, k, compilation_units, callees );
-        }
-    }
-}
-
-// propagate callee JIT info to the kernel
-// add more fields as necessary
-static void propagateCalleeInfo(G4_Kernel* kernel, G4_Kernel* callee)
-{
-    if (callee->fg.builder->getJitInfo()->usesBarrier)
-    {
-        kernel->fg.builder->getJitInfo()->usesBarrier = true;
-    }
-}
-
-// After compiling each compilation unit this function is invoked which stitches together callers
-// with their callees. It modifies pseudo_fcall/fret in to call/ret opcodes.
-void Stitch_Compiled_Units( common_isa_header header, std::list<G4_Kernel*>& compilation_units)
-{
-    list <int> callee_index;
-    G4_Kernel* kernel = NULL;
-
-    for (auto cur : compilation_units)
-    {
-        if (cur->fg.builder->getIsKernel())
-        {
-            ASSERT_USER( kernel == NULL, "Multiple kernel objects found when stitching together");
-            kernel = cur;
-        }
-        else if (cur->getIsExternFunc())
-        {
-            callee_index.push_back(cur->fg.builder->getFuncId());
-        }
-    }
-
-    ASSERT_USER(kernel != NULL, "Valid kernel not found when stitching compiled units");
-    Enumerate_Callees(header, kernel, compilation_units, callee_index);
-
-    callee_index.sort();
-    callee_index.unique();
-
-#ifdef _DEBUG
-    for( list<int>::iterator it = callee_index.begin(); it != callee_index.end(); ++it ) {
-        DEBUG_VERBOSE( *it << " (" << header.functions[*it].name << "), " );
-    }
-#endif
-
-    // Append flowgraph of all callees to kernel
-    for (auto calleeId : callee_index)
-    {
-        G4_Kernel* callee = Get_Resolved_Compilation_Unit(header, compilation_units, calleeId);
-        propagateCalleeInfo(kernel, callee);
-        kernel->addCallee(calleeId, callee);
+        G4_Kernel* callee = iter.second;
         kernel->fg.append(callee->fg);
     }
 
@@ -609,14 +544,17 @@ void Stitch_Compiled_Units( common_isa_header header, std::list<G4_Kernel*>& com
     // Change fcall/fret to call/ret and setup caller/callee edges
     for (G4_BB* cur : kernel->fg)
     {
-        if( cur->size() > 0 && cur->isEndWithFCall() )
+        if (cur->size() > 0 && cur->isEndWithFCall())
         {
             // Setup successor/predecessor
             G4_INST* fcall = cur->back();
             if (!fcall->asCFInst()->isIndirectCall())
             {
-                int calleeIndex = fcall->asCFInst()->getCalleeIndex();
-                G4_Kernel* callee = Get_Resolved_Compilation_Unit(header, compilation_units, calleeIndex);
+                std::string funcName = fcall->asCFInst()->getCallee();
+
+                auto iter = compilation_units.find(funcName);
+                assert(iter != compilation_units.end() && "can't find function with given name");
+                G4_Kernel* callee = iter->second;
                 G4_BB* retBlock = cur->Succs.front();
                 ASSERT_USER(cur->Succs.size() == 1, "fcall basic block cannot have more than 1 successor");
                 ASSERT_USER(retBlock->Preds.size() == 1, "block after fcall cannot have more than 1 predecessor");
@@ -660,13 +598,12 @@ void Stitch_Compiled_Units( common_isa_header header, std::list<G4_Kernel*>& com
     }
 
     // Append declarations and color attributes from all callees to kernel
-    for (auto it = callee_index.begin(), ciEnd = callee_index.end(); it != ciEnd; ++it)
+    for (auto iter : compilation_units)
     {
-        G4_Kernel* callee = Get_Resolved_Compilation_Unit( header, compilation_units, (*it) );
-
+        G4_Kernel* callee = iter.second;
         for (auto curDcl : callee->Declares)
         {
-            kernel->Declares.push_back( curDcl );
+            kernel->Declares.push_back(curDcl);
         }
     }
 }
@@ -845,15 +782,11 @@ int CISA_IR_Builder::Compile( const char* nameInput)
 
         int i;
         unsigned int k = 0;
-        std::list<G4_Kernel*> compilationUnits;
         std::list<VISAKernelImpl*> kernels;
         std::list<VISAKernelImpl*> functions;
         for( iter = m_kernels.begin(), i = 0; iter != end; iter++, i++ )
         {
             VISAKernelImpl* kernel = (*iter);
-
-            compilationUnits.push_back(kernel->getKernel());
-
             kernel->getIRBuilder()->setIsKernel(kernel->getIsKernel());
             kernel->getIRBuilder()->setCUnitId(i);
             if( kernel->getIsKernel() == false )
@@ -911,30 +844,27 @@ int CISA_IR_Builder::Compile( const char* nameInput)
             saveFCallState( function->getKernel(), savedFCallState );
         }
 
-        for( std::list<VISAKernelImpl*>::iterator kernel_it = kernels.begin();
-            kernel_it != kernels.end();
-            kernel_it++ )
+        std::map<std::string, G4_Kernel*> allFunctions;
+
+        for (auto func_it = functions.begin(); func_it != functions.end(); func_it++)
+        {
+            G4_Kernel* func = (*func_it)->getKernel();
+            allFunctions[std::string(func->getName())] = func;
+            if (m_options.getOption(vISA_GenerateDebugInfo))
+            {
+                func->getKernelDebugInfo()->resetRelocOffset();
+                resetGenOffsets(*func);
+            }
+        }
+
+        for (auto kernel_it = kernels.begin(); kernel_it != kernels.end(); kernel_it++ )
         {
             VISAKernelImpl* kernel = (*kernel_it);
-
             m_currentKernel = kernel;
-            compilationUnits.clear();
-            compilationUnits.push_back( kernel->getKernel() );
-            for( std::list<VISAKernelImpl*>::iterator func_it = functions.begin();
-                func_it != functions.end();
-                func_it++ )
-            {
-                compilationUnits.push_back( (*func_it)->getKernel() );
-                if(m_options.getOption(vISA_GenerateDebugInfo))
-                {
-                    (*func_it)->getKernel()->getKernelDebugInfo()->resetRelocOffset();
-                    resetGenOffsets(*(*func_it)->getKernel());
-                }
-            }
 
             unsigned int genxBufferSize = 0;
 
-            Stitch_Compiled_Units(pseudoHeader, compilationUnits);
+            Stitch_Compiled_Units(kernel->getKernel(), allFunctions);
 
             void* genxBuffer = kernel->compilePostOptimize(genxBufferSize);
             kernel->setGenxBinaryBuffer(genxBuffer, genxBufferSize);
@@ -2493,13 +2423,13 @@ bool CISA_IR_Builder::CISA_create_fcall_instruction(VISA_opnd *pred_opnd,
                                                     ISA_Opcode opcode,
                                                     Common_VISA_EMask_Ctrl emask,
                                                     unsigned exec_size,
-                                                    unsigned func_id,
+                                                    const char* funcName,
                                                     unsigned arg_size,
                                                     unsigned return_size,
                                                     int line_no) //last index
 {
     Common_ISA_Exec_Size executionSize = Get_Common_ISA_Exec_Size_From_Raw_Size(exec_size);
-    m_kernel->AppendVISACFFunctionCallInst((VISA_PredOpnd *)pred_opnd,emask, executionSize, (unsigned short)func_id, (unsigned char)arg_size, (unsigned char)return_size);
+    m_kernel->AppendVISACFFunctionCallInst((VISA_PredOpnd *)pred_opnd,emask, executionSize, std::string(funcName), (unsigned char)arg_size, (unsigned char)return_size);
     return true;
 }
 
@@ -2931,16 +2861,5 @@ void CISA_IR_Builder::CISA_post_file_parse()
     }
     */
     return;
-}
-
-bool CISA_IR_Builder::CISA_create_func_decl(char * name,
-                                            int resolved_index,
-                                            int line_no)
-{
-    /*
-    Need to create name to resolved index,and resolved index to name mapping for later use.
-    For example in fcall.
-    */
-    return true;
 }
 

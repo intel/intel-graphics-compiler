@@ -1120,7 +1120,7 @@ class G4_InstCF : public G4_INST
     bool isBackwardBr;
 
     // for FCALL only
-    uint32_t            calleeIndex;
+    std::string         calleeName = "";
     G4_RegVar*          assocPseudoVCA;
     G4_RegVar*          assocPseudoA0Save;
     G4_RegVar*          assocPseudoFlagSave;
@@ -1138,7 +1138,7 @@ public:
         G4_Label* uipLabel,
         uint32_t instOpt) :
         G4_INST(builder, prd, op, nullptr, false, size, nullptr, nullptr, nullptr, instOpt),
-        jip(jipLabel), uip(uipLabel), isBackwardBr(false), calleeIndex(unknownCallee),
+        jip(jipLabel), uip(uipLabel), isBackwardBr(false),
         assocPseudoVCA(nullptr), assocPseudoA0Save(nullptr), assocPseudoFlagSave(nullptr)
     {
 
@@ -1156,7 +1156,7 @@ public:
         G4_Operand* s0,
         unsigned int opt) :
         G4_INST(builder, prd, o, m, sat, size, d, s0, nullptr, opt),
-        jip(NULL), uip(NULL), isBackwardBr(false), calleeIndex(unknownCallee),
+        jip(NULL), uip(NULL), isBackwardBr(false),
         assocPseudoVCA(nullptr), assocPseudoA0Save(nullptr), assocPseudoFlagSave(nullptr)
     {
     }
@@ -1192,20 +1192,20 @@ public:
 
     bool isUniformGoto(unsigned KernelSimdSize) const;
 
-    void setCalleeIndex(uint32_t index)
+    void setCallee(const std::string& funcName)
     {
         MUST_BE_TRUE(op == G4_pseudo_fcall, "Must be a FCALL");
-        calleeIndex = index;
+        calleeName = funcName;
     }
-    uint32_t getCalleeIndex() const
+    std::string getCallee() const
     {
         MUST_BE_TRUE(op == G4_pseudo_fcall, "Must be a FCALL");
-        return calleeIndex;
+        return calleeName;
     }
 
     bool isIndirectCall() const
     {
-        return op == G4_pseudo_fcall && getCalleeIndex() == G4_InstCF::unknownCallee;
+        return op == G4_pseudo_fcall && calleeName == "";
     }
 
     // for direct call, this is null till after the compilation units are stitched together

@@ -3355,7 +3355,7 @@ int VISAKernelImpl::AppendVISACFLabelInst(VISA_LabelOpnd *label)
 }
 
 int VISAKernelImpl::AppendVISACFFunctionCallInst(VISA_PredOpnd *pred, Common_VISA_EMask_Ctrl emask,
-                                                 Common_ISA_Exec_Size executionSize, unsigned short functionID,
+                                                 Common_ISA_Exec_Size executionSize, std::string funcName,
                                                  unsigned char argSize, unsigned char returnSize)
 {
     AppendVISAInstCommon();
@@ -3366,7 +3366,7 @@ int VISAKernelImpl::AppendVISACFFunctionCallInst(VISA_PredOpnd *pred, Common_VIS
     if(IS_GEN_BOTH_PATH)
     {
         G4_Predicate * g4Pred = (pred != NULL)? pred->g4opnd->asPredicate() : NULL;
-        status = m_builder->translateVISACFFCallInst(executionSize, emask, g4Pred, functionID, argSize, returnSize);
+        status = m_builder->translateVISACFFCallInst(executionSize, emask, g4Pred, funcName, argSize, returnSize);
     }
     if(IS_VISA_BOTH_PATH)
     {
@@ -3376,9 +3376,12 @@ int VISAKernelImpl::AppendVISACFFunctionCallInst(VISA_PredOpnd *pred, Common_VIS
         ISA_Opcode opcode = ISA_FCALL;
         inst_desc = &CISA_INST_table[opcode];
         GET_NUM_PRED_DESC_OPNDS(num_pred_desc_operands, inst_desc );
+
+        // create an entry in string pool with the given function name
+        uint32_t funcId = addStringPool(funcName);
         int num_operands = 0;
 
-        ADD_OPND(num_operands, opnd, this->CreateOtherOpndHelper(num_pred_desc_operands, num_operands, inst_desc, functionID));
+        ADD_OPND(num_operands, opnd, this->CreateOtherOpndHelper(num_pred_desc_operands, num_operands, inst_desc, funcId));
 
         ADD_OPND(num_operands, opnd, this->CreateOtherOpndHelper(num_pred_desc_operands, num_operands, inst_desc, argSize));
 

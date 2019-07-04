@@ -1315,13 +1315,6 @@ private:
     // stores all relocations to be performed after binary encoding
     RelocationTableTy relocationTable;
 
-
-    // id -> function map for all functions (transitively) called by this kernel
-    // this differs from the "callees" in IR_Builder as the one in builder only contain
-    // functions directly called by this kernel
-    // this is populated for kernel only
-    std::unordered_map<uint32_t, G4_Kernel*> allCallees;
-
 public:
     FlowGraph fg;
     DECLARE_LIST           Declares;
@@ -1526,19 +1519,6 @@ public:
     }
 
     void doRelocation(void* binary, uint32_t binarySize);
-
-    void addCallee(uint32_t funcId, G4_Kernel* function) { allCallees.emplace(funcId, function); }
-
-    G4_Kernel* getCallee(uint32_t funcId) const
-    {
-        auto iter = allCallees.find(funcId);
-        if (iter != allCallees.end())
-        {
-            return iter->second;
-        }
-        return nullptr;
-    }
-
 
     G4_INST* getFirstNonLabelInst() const;
 

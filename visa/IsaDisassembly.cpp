@@ -984,7 +984,8 @@ static std::string printInstructionControlFlow(
 
                 if (opcode == ISA_FCALL)
                 {
-                    sstr << " " << (unsigned)label_id;
+                    /// function name in string
+                    sstr << " " << header->getString(label_id);
                 }
                 else
                 {
@@ -2484,19 +2485,15 @@ std::string printKernelHeader(
     encodeStringLiteral(sstr, name.c_str());
     sstr << "\n";
 
-    if (!isKernel)
-    {
-        sstr << ".resolvedIndex " << funcionId << "\n";
-    }
-
-    /// Print all the resolved function callee name decls before the kernel.
+    /// Print all functions in the same object
     if (isKernel)
+    { 
         for (unsigned i = 0; i < isaHeader.num_functions; i++)
         {
             sstr << "\n" << ".funcdecl ";
             encodeStringLiteral(sstr, isaHeader.functions[i].name);
-            sstr << " " << i;
         }
+    }
 
     // In asm text mode, declarations are printed at variable creation time, we dont need to print them here
     if (!options->getOption(vISA_IsaAssembly))

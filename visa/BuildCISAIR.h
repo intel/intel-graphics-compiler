@@ -148,9 +148,6 @@ public:
                                             unsigned int var_elements,
                                             attr_gen_struct reg,
                                             int line_no);
-    bool CISA_create_func_decl(char * name,
-                                int resolved_index,
-                                int line_no);
 
     bool CISA_sampler_variable_decl(char *var_name, int num_elts, char* name, int line_no);
 
@@ -622,13 +619,13 @@ public:
 
 
     bool CISA_create_fcall_instruction(VISA_opnd *pred_opnd,
-                                                ISA_Opcode opcode,
-                                                Common_VISA_EMask_Ctrl emask,
-                                                unsigned exec_size,
-                                                unsigned func_id,
-                                                unsigned arg_size,
-                                                unsigned return_size,
-                                                int line_no);
+        ISA_Opcode opcode,
+        Common_VISA_EMask_Ctrl emask,
+        unsigned exec_size,
+        const char* funcName,
+        unsigned arg_size,
+        unsigned return_size,
+        int line_no);
 
     bool CISA_create_ifcall_instruction(VISA_opnd *pred_opnd,
         Common_VISA_EMask_Ctrl emask,

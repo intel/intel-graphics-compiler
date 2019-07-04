@@ -541,7 +541,9 @@ public:
     unsigned int getInputCount();
     input_info_t *getRetIPArg();
 
-    std::list <int> callees;
+    // all vISA functions directly called by this kernel
+    // this will be resolved later in Stitch_Compiler_Unit
+    std::set<std::string> funcCallees;
 
     const USE_DEF_ALLOCATOR& getAllocator() const { return useDefAllocator; }
 
@@ -1905,7 +1907,7 @@ public:
     int translateVISACFFCallInst(Common_ISA_Exec_Size execsize,
                         Common_VISA_EMask_Ctrl emask,
                         G4_Predicate *predOpnd,
-                        uint16_t functionID,
+                        std::string funcName,
                         uint8_t argSize,
                         uint8_t returnSize);
 

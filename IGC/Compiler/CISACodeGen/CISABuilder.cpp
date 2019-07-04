@@ -338,15 +338,13 @@ void CEncoder::SubroutineCall(CVariable* flag, llvm::Function *F)
 
 void CEncoder::StackCall(CVariable* flag, llvm::Function *F, unsigned char argSize, unsigned char retSize)
 {
-    VISAFunction* visaFunc = GetStackFunction(F);
+
     m_encoderState.m_flag.var = flag;
     VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
     // control flow instructions cannot be broken down into lower SIMD
     Common_VISA_EMask_Ctrl emask = m_encoderState.m_noMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1;
     Common_ISA_Exec_Size execSize = visaExecSize(m_program->m_dispatchSize);
-    unsigned int funcId = 0;
-    V(visaFunc->GetFunctionId(funcId));
-    V(vKernel->AppendVISACFFunctionCallInst(predOpnd, emask, execSize, (unsigned short)funcId, argSize, retSize));
+    V(vKernel->AppendVISACFFunctionCallInst(predOpnd, emask, execSize, F->getName().data(), argSize, retSize));
 }
 
 void CEncoder::IndirectStackCall(CVariable* flag, CVariable* funcPtr, unsigned char argSize, unsigned char retSize)

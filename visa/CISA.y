@@ -59,7 +59,6 @@ extern int CISAlineno;
 char * switch_label_array[32];
 std::vector<VISA_opnd*> RTWriteOperands;
 VISA_opnd *opndRTWriteArray[32];
-int num_switch_labels;
 int num_parameters;
 
 VISA_RawOpnd* rawOperandArray[16];
@@ -409,6 +408,7 @@ VISA_RawOpnd* rawOperandArray[16];
 %token <opcode> VME_FBR_OP
 %token <opcode> BRANCH_OP
 %token <opcode> IFCALL
+%token <opcode> FCALL
 %token <opcode> FADDR
 %token <opcode> SWITCHJMP_OP
 %token <opcode> SIMDCF_OP
@@ -534,7 +534,6 @@ CISAStmt : /* empty */
        | CISAStmt ScopeOp                 TrailingComment STMT_DELIM
        | CISAStmt DirectiveKernel         TrailingComment STMT_DELIM
        | CISAStmt DirectiveGlobalFunction TrailingComment STMT_DELIM
-       | CISAStmt DirectiveResolvedIndex  TrailingComment STMT_DELIM
        | CISAStmt DirectiveVersion        TrailingComment STMT_DELIM
        | CISAStmt DirectiveDecl           TrailingComment STMT_DELIM
        | CISAStmt DirectiveInput          TrailingComment STMT_DELIM
@@ -571,35 +570,16 @@ StrLitOrVar : STRING_LITERAL | VAR
 /* ----- .kernel ------ */
 DirectiveKernel : DIRECTIVE_KERNEL StrLitOrVar
               {
-                  num_switch_labels = 0;
-                  //TODO remove later
-                  //pBuilder->setIsKernel(true);
-                  //pBuilder->CISA_IR_initialization($1, CISAlineno);
-
-                  //pCisaBuilder->setIsKernel();
                   VISAKernel *cisa_kernel = NULL;
                   pCisaBuilder->AddKernel(cisa_kernel, $2);
-
-                  //pCisaBuilder->CISA_IR_initialization($1, CISAlineno);
               };
 
 
 /* ----- .global_function ------ */
 DirectiveGlobalFunction : DIRECTIVE_GLOBAL_FUNC StrLitOrVar
               {
-                  num_switch_labels = 0;
-                  //pBuilder->setIsKernel(false);
-                  //pBuilder->CISA_IR_initialization($2, CISAlineno);
-                  //pCisaBuilder->CISA_IR_initialization($2, CISAlineno);
                   VISAFunction *cisa_kernel = NULL;
                   pCisaBuilder->AddFunction(cisa_kernel, $2);
-              };
-
-/* ----- .resolvedIndex ------ */
-DirectiveResolvedIndex : DIRECTIVE_RESOLVED_INDEX NUMBER
-              {
-                  //pCisaBuilder->CISA_IR_resolvedIndex((unsigned int)$2);
-                  printf("Is this still necessary?");
               };
 
  V_NAME :
@@ -621,9 +601,9 @@ DirectiveDecl : DeclVariable
                 | DeclSurface
                 | DeclFunctions
 
-DeclFunctions: FUNC_DIRECTIVE_DECL STRING_LITERAL NUMBER
+DeclFunctions: FUNC_DIRECTIVE_DECL STRING_LITERAL
     {
-        pCisaBuilder->CISA_create_func_decl($2, (int)$3, CISAlineno);
+        // do nothing as it's informational only
     }
 
                //     1       2      3          4          5       6       7          8          9
@@ -1267,21 +1247,16 @@ BranchInstruction : Predicate BRANCH_OP ExecSize TargetLabel
          };
          | Predicate BRANCH_OP ExecSize
          {
-                //as of visa 1.0 also for fret
              pCisaBuilder->CISA_Create_Ret($1.cisa_gen_opnd, $2, $3.emask, $3.exec_size, CISAlineno);
          };
          | SWITCHJMP_OP ExecSize VecSrcOperand_G_I_IMM LPAREN SwitchLabels RPAREN
          {
             pCisaBuilder->CISA_create_switch_instruction($1, $2.exec_size, $3.cisa_gen_opnd, (int)$5, switch_label_array, CISAlineno);
-            num_switch_labels = 0;
          }
-         //  1          2         3       4     5         6                     7
-         |Predicate BRANCH_OP ExecSize NUMBER NUMBER NUMBER
+         //  1          2         3       4        5         6    
+         | Predicate  FCALL   ExecSize SymbolName NUMBER NUMBER
          {
-            //Common_ISA_Function_Parameters_t temp;
-           // memcpy(&temp, &$7, sizeof(Common_ISA_Function_Parameters_t));
-            //int num_parameters = 1;
-            pCisaBuilder->CISA_create_fcall_instruction($1.cisa_gen_opnd, $2, $3.emask, $3.exec_size, (unsigned)$4, (unsigned)$5, (unsigned)$6, CISAlineno);
+            pCisaBuilder->CISA_create_fcall_instruction($1.cisa_gen_opnd, $2, $3.emask, $3.exec_size, $4, (unsigned)$5, (unsigned)$6, CISAlineno);
          }
          // 1           2       3       4                   5       6
          | Predicate IFCALL ExecSize VecSrcOperand_G_I_IMM NUMBER NUMBER

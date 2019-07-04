@@ -2252,7 +2252,7 @@ int IR_Builder::translateVISACFJumpInst(G4_Predicate *predOpnd, G4_Label* lab)
     return CM_SUCCESS;
 }
 
-int IR_Builder::translateVISACFFCallInst(Common_ISA_Exec_Size execsize, Common_VISA_EMask_Ctrl emask, G4_Predicate *predOpnd, uint16_t functionID, uint8_t argSize, uint8_t returnSize)
+int IR_Builder::translateVISACFFCallInst(Common_ISA_Exec_Size execsize, Common_VISA_EMask_Ctrl emask, G4_Predicate *predOpnd, std::string funcName, uint8_t argSize, uint8_t returnSize)
 {
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
@@ -2283,15 +2283,10 @@ int IR_Builder::translateVISACFFCallInst(Common_ISA_Exec_Size execsize, Common_V
         0,
         0);
 
-    uint32_t calleeIndex = 0xFF;
-
-    calleeIndex = functionID;
-
     m_fcallInfo[fcall] = new (mem) G4_FCALL(argSize, returnSize);
 
-    // Push resolved index to list of callees
-    callees.push_back(calleeIndex);
-    fcall->asCFInst()->setCalleeIndex(calleeIndex);
+    funcCallees.emplace(funcName);
+    fcall->asCFInst()->setCallee(funcName);
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
@@ -2365,9 +2360,6 @@ int IR_Builder::translateVISACFSymbolInst(const std::string& symbolName, G4_DstR
 
     RelocationEntry relocEntry = RelocationEntry::createSymbolAddrReloc(movInst, 0, symbolName);
     kernel.addRelocation(relocEntry);
-
-    // ToDo: use a separate list to distinguish calls v. faddr?
-    // callees.push_back(funcId);
 
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);

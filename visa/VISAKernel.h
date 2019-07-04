@@ -364,7 +364,8 @@ public:
 
     CM_BUILDER_API int AppendVISACFRetInst(VISA_PredOpnd *pred, Common_VISA_EMask_Ctrl emask, Common_ISA_Exec_Size executionSize);
 
-    CM_BUILDER_API int AppendVISACFFunctionCallInst(VISA_PredOpnd *pred, Common_VISA_EMask_Ctrl emask, Common_ISA_Exec_Size executionSize, unsigned short functionID, unsigned char argSize, unsigned char returnSize);
+    CM_BUILDER_API int AppendVISACFFunctionCallInst(VISA_PredOpnd *pred, Common_VISA_EMask_Ctrl emask, 
+        Common_ISA_Exec_Size executionSize, std::string funcName, unsigned char argSize, unsigned char returnSize);
 
     CM_BUILDER_API int AppendVISACFIndirectFuncCallInst(VISA_PredOpnd *pred,
         Common_VISA_EMask_Ctrl emask, Common_ISA_Exec_Size executionSize,
