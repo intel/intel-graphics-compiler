@@ -1002,6 +1002,7 @@ void CodeGenPatternMatch::visitBinaryOperator(llvm::BinaryOperator &I)
         break;
     case Instruction::FAdd:
         match = MatchLrp(I) ||
+                MatchPredAdd(I) ||
                 MatchMad(I) ||
                 MatchModifier(I);
         break;
@@ -1639,6 +1640,149 @@ bool CodeGenPatternMatch::MatchFMA( llvm::IntrinsicInst& I )
     AddPattern(pattern);
 
     return true;
+}
+
+bool CodeGenPatternMatch::MatchPredAdd(llvm::BinaryOperator& I)
+{
+    struct PredAddPattern : Pattern
+    {
+        SSource sources[2];
+        SSource pred;
+        e_predMode predMode;
+        bool invertPred;
+        virtual void Emit(EmitPass* pass, const DstModifier& modifier)
+        {
+            DstModifier modf = modifier;
+            modf.predMode = predMode;
+            pass->PredAdd(pred, invertPred, sources, modf);
+        }
+    };
+
+    if (m_ctx->getModuleMetaData()->isPrecise)
+    {
+        return false;
+    }
+
+    if (m_ctx->type == ShaderType::VERTEX_SHADER ||
+        !m_ctx->m_DriverInfo.SupportMatchPredAdd())
+    {
+        return false;
+    }
+
+    bool found = false;
+
+    llvm::Value *sources[2], *pred;
+    e_modifier src_mod[2], pred_mod;
+    bool invertPred = false;
+    if (m_AllowContractions == false || IGC_IS_FLAG_ENABLED(DisableMatchPredAdd))
+    {
+        return false;
+    }
+
+    // Skip the pattern match if FPTrunc/FPEXt is used right after fadd
+    if (I.hasOneUse())
+    {
+        FPTruncInst *FPTrunc = llvm::dyn_cast<llvm::FPTruncInst>(*I.user_begin());
+        FPExtInst   *FPExt   = llvm::dyn_cast<llvm::FPExtInst>  (*I.user_begin());
+
+        if (FPTrunc || FPExt)
+        {
+            return false;
+        }
+    }
+
+    // FSub is not supported due to addional instruction requirement to handle it.
+    assert(I.getOpcode() == Instruction::FAdd);
+    for (uint iAdd = 0; iAdd < 2 && !found; iAdd++)
+    {
+        Value* src = I.getOperand(iAdd);
+        llvm::BinaryOperator* mul = llvm::dyn_cast<llvm::BinaryOperator>(src);
+        if (mul && mul->getOpcode() == Instruction::FMul)
+        {
+            if (!mul->hasOneUse())
+            {
+                continue;
+            }
+
+            for (uint iMul = 0; iMul < 2; iMul++)
+            {
+                if (llvm::SelectInst* selInst = dyn_cast<SelectInst>(mul->getOperand(iMul)))
+                {
+                    ConstantFP *C1 = dyn_cast<ConstantFP>(selInst->getOperand(1));
+                    ConstantFP *C2 = dyn_cast<ConstantFP>(selInst->getOperand(2));
+                    if (C1 && C2 && selInst->hasOneUse())
+                    {
+                        // select i1 %res_s48, float 1.000000e+00, float 0.000000e+00
+                        if ((C2->isZero() && C1->isExactlyValue(1.f)))
+                        {
+                            invertPred = false;
+                        }
+                        // select i1 %res_s48, float 0.000000e+00, float 1.000000e+00
+                        else if (C1->isZero() && C2->isExactlyValue(1.f))
+                        {
+                            invertPred = true;
+                        }
+                        else
+                        {
+                            continue;
+                        }
+                    } // if (C1 && C2 && selInst->hasOneUse())
+                    else
+                    {
+                        continue;
+                    }
+
+                    // Before match
+                    // % 97 = select i1 %res_s48, float 1.000000e+00, float 0.000000e+00
+                    // %102 = fmul fast float %97 %98
+                    // %105 = fadd %102 %103
+
+                    // After match
+                    //            %105 = %103
+                    // (%res_s48) %105 = fadd %103 %98
+
+                    // sources[0]: add operand (i.e. %103 above)
+                    // sources[1]: mul operand (i.e. %98 above)
+
+                    sources[0] = I.getOperand(1 ^ iAdd);
+                    sources[1] = mul->getOperand(1 ^ iMul);
+                    pred = selInst->getOperand(0);
+
+                    GetModifier(*sources[0], src_mod[0], sources[0]);
+                    GetModifier(*sources[1], src_mod[1], sources[1]);
+                    GetModifier(*pred, pred_mod, pred);
+
+                    found = true;
+                    break;
+                } //  if (llvm::SelectInst* selInst = dyn_cast<SelectInst>(mul->getOperand(iMul)))
+            } // for (uint iMul = 0; iMul < 2; iMul++)
+        } // if (mul && mul->getOpcode() == Instruction::FMul)
+    } // for (uint iAdd = 0; iAdd < 2; iAdd++)
+
+    if (found)
+    {
+        PredAddPattern *pattern = new (m_allocator) PredAddPattern();
+        pattern->predMode = EPRED_NORMAL;
+
+        if (ConstantFP *fp0 = dyn_cast<llvm::ConstantFP>(sources[0]))
+        {
+            // swap operands if sources[0] is immediate, so
+            // EmitPass::PredAdd() can work properly when calling m_encoder->PredAdd()
+            pattern->sources[0] = GetSource(sources[1], src_mod[1], false);
+            pattern->sources[1] = GetSource(sources[0], src_mod[0], false);
+        }
+        else
+        {
+            pattern->sources[0] = GetSource(sources[0], src_mod[0], false);
+            pattern->sources[1] = GetSource(sources[1], src_mod[1], false);
+        }
+
+        pattern->pred = GetSource(pred, pred_mod, false);
+        pattern->invertPred = invertPred;
+
+        AddPattern(pattern);
+    }
+    return found;
 }
 
 bool CodeGenPatternMatch::MatchMad( llvm::BinaryOperator& I )
