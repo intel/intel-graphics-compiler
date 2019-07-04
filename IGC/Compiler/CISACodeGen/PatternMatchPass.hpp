@@ -30,7 +30,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/CISACodeGen/WIAnalysis.hpp"
 #include "Compiler/CISACodeGen/PositionDepAnalysis.hpp"
-#include "Compiler/CISACodeGen/MadRoundDepAnalysis.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/InstVisitor.h>
@@ -139,7 +138,6 @@ public:
         AU.addRequired<LiveVarsAnalysis>();
         AU.addRequired<MetaDataUtilsWrapper>();
         AU.addRequired<PositionDepAnalysis>();
-        AU.addRequired<MadRoundDepAnalysis>();
         AU.addRequired<CodeGenContextWrapper>();
         AU.setPreservesAll();
     }
@@ -303,7 +301,6 @@ private:
     WIAnalysis*           m_WI;
     LiveVars*             m_LivenessInfo;
     PositionDepAnalysis*  m_PosDep;
-    MadRoundDepAnalysis*  m_MadRoundDep;
     llvm::BumpPtrAllocator m_allocator;
     // The set of boolean values stored as predicates of a single element.
     // Otherwise, they are expanded to the SIMD size.
