@@ -307,6 +307,11 @@ static void CommonOCLBasedPasses(
     // Estimate maximal function size in the module and disable subroutine if not profitable.
     mpm.add(createEstimateFunctionSizePass());
 
+    if (IGC_GET_FLAG_VALUE(AllowMem2Reg))
+    {
+        mpm.add(createPromoteMemoryToRegisterPass());
+    }
+
     // OCL has built-ins so it always need to run inlining
     {
         mpm.add(createProcessFuncAttributesPass());
