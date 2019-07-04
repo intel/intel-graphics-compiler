@@ -81,6 +81,7 @@ void initializeLegalizeResourcePointerPass(llvm::PassRegistry&);
 void initializeLiveVarsAnalysisPass(llvm::PassRegistry&);
 void initializeLowerGEPForPrivMemPass(llvm::PassRegistry&);
 void initializeLowPrecisionOptPass(llvm::PassRegistry&);
+void initializeMadRoundDepAnalysisPass(llvm::PassRegistry&);
 void initializeMetaDataUtilsWrapperInitializerPass(llvm::PassRegistry&);
 void initializeMetaDataUtilsWrapperPass(llvm::PassRegistry&);
 void initializeOpenCLPrintfAnalysisPass(llvm::PassRegistry&);

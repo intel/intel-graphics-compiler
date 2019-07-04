@@ -57,6 +57,7 @@ IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
 IGC_INITIALIZE_PASS_DEPENDENCY( DominatorTreeWrapperPass )
 IGC_INITIALIZE_PASS_DEPENDENCY( MetaDataUtilsWrapper )
 IGC_INITIALIZE_PASS_DEPENDENCY(PositionDepAnalysis)
+IGC_INITIALIZE_PASS_DEPENDENCY(MadRoundDepAnalysis)
 IGC_INITIALIZE_PASS_END(CodeGenPatternMatch, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 namespace IGC
@@ -132,6 +133,7 @@ bool CodeGenPatternMatch::runOnFunction(llvm::Function &F)
     m_DL = &F.getParent()->getDataLayout();
     m_WI = &getAnalysis<WIAnalysis>();
     m_PosDep = &getAnalysis<PositionDepAnalysis>();
+    m_MadRoundDep = &getAnalysis<MadRoundDepAnalysis>();
     // pattern match will update liveness held by LiveVar, which needs
     // WIAnalysis result for uniform variable
     m_LivenessInfo = &getAnalysis<LiveVarsAnalysis>().getLiveVars();
@@ -1671,6 +1673,11 @@ bool CodeGenPatternMatch::MatchMad( llvm::BinaryOperator& I )
     }
 
     assert(I.getOpcode() == Instruction::FAdd || I.getOpcode() == Instruction::FSub);
+
+    if (!IGC_IS_FLAG_ENABLED(DisableMadRoundDepCheck) && m_MadRoundDep->RoundingDependsOnInst(&I))
+    {
+        return false;
+    }
     if(I.getOperand(0) != I.getOperand(1))
     {
         for(uint i=0; i<2; i++)
