@@ -712,16 +712,10 @@ int IR_Builder::translateVISAArithmeticDoubleInst(ISA_Opcode opcode, Common_ISA_
         G4_CondMod *condModOverflow = createCondMod(Mod_o, tmpFlag->getRegVar(), 0);
         inst->setCondMod(condModOverflow);
 
-        bool generateIf = true;
-
-        if (generateIf)
         {
             // if
             G4_Predicate *predicateFlagReg = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
             inst = createIf(predicateFlagReg, exsize, instOpt);
-        }
-        {
-
 
             // madm (4) r9.acc3 r0.noacc r6.noacc r8.acc2 {Align16, N1/N2}
             G4_SrcRegRegion *t0SrcOpnd = createSrcRegRegion(tsrc0);
@@ -814,24 +808,23 @@ int IR_Builder::translateVISAArithmeticDoubleInst(ISA_Opcode opcode, Common_ISA_
             t12SrcOpnd1->setAccRegSel(ACC2);
             inst = createInst(NULL, G4_madm, NULL, false, exsize, t8DstOpnd2, t9SrcOpnd1x1,
                 t11SrcOpnd1, t12SrcOpnd1, madmInstOpt, line_no);
-        }
 
-        if (generateIf && !hasDefaultRoundDenorm)
-        {
-            // else (8) {Q1/Q2}
-            inst = createElse(exsize, instOpt);
+            if (!hasDefaultRoundDenorm)
+            {
+                // else (8) {Q1/Q2}
+                inst = createElse(exsize, instOpt);
 
-            // restore cr0.0 {NoMask}
-            G4_DstRegRegion *cr0DstRegOpndForRestoreElseInst = createDstRegRegion(regDstCR0);
-            auto tmpSrcOpndForCR0OnElse = Create_Src_Opnd_From_Dcl(regCR0, getRegionScalar());
-            inst = createInst(NULL, G4_mov, NULL, false, 1, cr0DstRegOpndForRestoreElseInst, tmpSrcOpndForCR0OnElse,
-                NULL, InstOpt_WriteEnable, line_no);
-        }
+                // restore cr0.0 {NoMask}
+                G4_DstRegRegion *cr0DstRegOpndForRestoreElseInst = createDstRegRegion(regDstCR0);
+                auto tmpSrcOpndForCR0OnElse = Create_Src_Opnd_From_Dcl(regCR0, getRegionScalar());
+                inst = createInst(NULL, G4_mov, NULL, false, 1, cr0DstRegOpndForRestoreElseInst, tmpSrcOpndForCR0OnElse,
+                    NULL, InstOpt_WriteEnable, line_no);
+            }
 
-        if (generateIf)
-        {
-            // endif (8) {Q1/Q2}
-            inst = createEndif(exsize, instOpt);
+            {
+                // endif (8) {Q1/Q2}
+                inst = createEndif(exsize, instOpt);
+            }
         }
     }; //for loop
 
@@ -1609,23 +1602,17 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(ISA_Opcode opcode, Common_
         inst = createMathInst(NULL, false, exsize, dst0, src0, src1, MATH_RSQRTM, madmInstOpt, line_no);
         inst->setCondMod(condModOverflow);
 
-        bool generateIf = true;
-
-        if (generateIf)
         {
             // if
             G4_Predicate *predicateFlagReg = createPredicate(PredState_Minus, flagReg->getRegVar(), 0, predCtrlValue);
             inst = createIf(predicateFlagReg, exsize, instOpt);
-        }
 
-        {
             // madm (4) r9.acc3 r0.noacc r2(r8).noacc r7.acc2 {Align16, N1/N2}
             dst0 = createDstRegRegion(tdst9); dst0->setAccRegSel(ACC3);
             src0 = createSrcRegRegion(csrc0); src0->setAccRegSel(NOACC);
             src1 = createSrcRegRegion(csrc2); src1->setAccRegSel(NOACC);
             src2 = createSrcRegRegion(tsrc7); src2->setAccRegSel(ACC2);
             inst = createInst(NULL, G4_madm, NULL, false, exsize, dst0, src0, src1, src2, madmInstOpt, line_no);
-
 
             // madm (4) r11.acc4 r0.noacc r6.noacc r7.acc2 {Align16, N1/N2}
             dst0 = createDstRegRegion(tdst11); dst0->setAccRegSel(ACC4);
@@ -1641,7 +1628,6 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(ISA_Opcode opcode, Common_
             src1->setAccRegSel(NOACC);
             src2 = createSrcRegRegion(tsrc7); src2->setAccRegSel(ACC2);
             inst = createInst(NULL, G4_madm, NULL, false, exsize, dst0, src0, src1, src2, madmInstOpt, line_no);
-
 
             // madm (4) r10.acc5 r2(r8).noacc -r11.acc4 r9.acc3 {Align16, N1/N2}
             dst0 = createDstRegRegion(tdst10); dst0->setAccRegSel(ACC5);
@@ -1659,14 +1645,12 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(ISA_Opcode opcode, Common_
             neg_src1->setAccRegSel(src1->getAccRegSel());
             inst = createInst(NULL, G4_madm, NULL, false, exsize, dst0, src0, neg_src1, src2, madmInstOpt, line_no);
 
-
             // madm (4) r8.acc6 r1.noacc r2(r8).noacc r1.noacc {Align16, N1/N2}
             dst0 = createDstRegRegion(tdst8); dst0->setAccRegSel(ACC6);
             src0 = createSrcRegRegion(csrc1); src0->setAccRegSel(NOACC);
             src1 = createSrcRegRegion(csrc2); src1->setAccRegSel(NOACC);
             src2 = createSrcRegRegion(csrc1); src2->setAccRegSel(NOACC);
             inst = createInst(NULL, G4_madm, NULL, false, exsize, dst0, src0, src1, src2, madmInstOpt, line_no);
-
 
             // madm (4) r8.acc7 r1.noacc r8.acc6 r10.acc5 {Align16, N1/N2}
             dst0 = createDstRegRegion(tdst8); dst0->setAccRegSel(ACC7);
@@ -1675,14 +1659,12 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(ISA_Opcode opcode, Common_
             src2 = createSrcRegRegion(tsrc10); src2->setAccRegSel(ACC5);
             inst = createInst(NULL, G4_madm, NULL, false, exsize, dst0, src0, src1, src2, madmInstOpt, line_no);
 
-
             // madm (4) r7.acc8 r0.noacc r10.acc5 r11.acc4 {Align16, N1/N2}
             dst0 = createDstRegRegion(tdst7); dst0->setAccRegSel(ACC8);
             src0 = createSrcRegRegion(csrc0); src0->setAccRegSel(NOACC);
             src1 = createSrcRegRegion(tsrc10); src1->setAccRegSel(ACC5);
             src2 = createSrcRegRegion(tsrc11); src2->setAccRegSel(ACC4);
             inst = createInst(NULL, G4_madm, NULL, false, exsize, dst0, src0, src1, src2, madmInstOpt, line_no);
-
 
             // madm (4) r10.acc9 r0.noacc r10.acc5 r9.acc3 {Align16, N1/N2}
             dst0 = createDstRegRegion(tdst10); dst0->setAccRegSel(ACC9);
@@ -1691,7 +1673,6 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(ISA_Opcode opcode, Common_
             src2 = createSrcRegRegion(tsrc9); src2->setAccRegSel(ACC3);
             inst = createInst(NULL, G4_madm, NULL, false, exsize, dst0, src0, src1, src2, madmInstOpt, line_no);
 
-
             // madm (4) r7.acc8 r11.acc4 r8.acc7 r7.acc8 {Align16, N1/N2}
             dst0 = createDstRegRegion(tdst7); dst0->setAccRegSel(ACC8);
             src0 = createSrcRegRegion(tsrc11); src0->setAccRegSel(ACC4);
@@ -1699,14 +1680,12 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(ISA_Opcode opcode, Common_
             src2 = createSrcRegRegion(tsrc7); src2->setAccRegSel(ACC8);
             inst = createInst(NULL, G4_madm, NULL, false, exsize, dst0, src0, src1, src2, madmInstOpt, line_no);
 
-
             // madm (4) r8.acc7 r9.acc3 r8.acc7 r10.acc9 {Align16, N1/N2}
             dst0 = createDstRegRegion(tdst8); dst0->setAccRegSel(ACC7);
             src0 = createSrcRegRegion(tsrc9); src0->setAccRegSel(ACC3);
             src1 = createSrcRegRegion(tsrc8); src1->setAccRegSel(ACC7);
             src2 = createSrcRegRegion(tsrc10); src2->setAccRegSel(ACC9);
             inst = createInst(NULL, G4_madm, NULL, false, exsize, dst0, src0, src1, src2, madmInstOpt, line_no);
-
 
             // madm (4) r9.acc3 r6.noacc -r7.acc8 r7.acc8 {Align16, N1/N2}
             dst0 = createDstRegRegion(tdst9); dst0->setAccRegSel(ACC3);
@@ -1748,23 +1727,17 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(ISA_Opcode opcode, Common_
             src2 = createSrcRegRegion(tsrc8); src2->setAccRegSel(ACC7);
             inst = createInst(NULL, G4_madm, NULL, false, exsize, dst0, src0, src1, src2, madmInstOpt, line_no);
 
-        }
+            if (!hasDefaultRoundDenorm)
+            {
+                // else (8) {Q1/Q2}
+                inst = createElse(exsize, instOpt);
 
-
-        if (generateIf && !hasDefaultRoundDenorm)
-        {
-            // else (8) {Q1/Q2}
-            inst = createElse(exsize, instOpt);
-
-            // restore cr0.0 {NoMask}
-            dst0 = createDstRegRegion(regDstCR0);
-            src0 = Create_Src_Opnd_From_Dcl(tmpRegCR0, getRegionScalar());
-            // mov (1) cr0.0<0;1,0>:ud r108.0<1>:ud {NoMask}
-            inst = createInst(NULL, G4_mov, NULL, false, 1, dst0, src0, NULL, InstOpt_WriteEnable, line_no);
-        }
-
-        if (generateIf)
-        {
+                // restore cr0.0 {NoMask}
+                dst0 = createDstRegRegion(regDstCR0);
+                src0 = Create_Src_Opnd_From_Dcl(tmpRegCR0, getRegionScalar());
+                // mov (1) cr0.0<0;1,0>:ud r108.0<1>:ud {NoMask}
+                inst = createInst(NULL, G4_mov, NULL, false, 1, dst0, src0, NULL, InstOpt_WriteEnable, line_no);
+            }
             // endif (8) {Q1/Q2}
             inst = createEndif(exsize, instOpt);
         }
