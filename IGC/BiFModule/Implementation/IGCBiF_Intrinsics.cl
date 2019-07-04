@@ -266,8 +266,6 @@ double   __builtin_IB_atomic_cmpxchg_global_f64(__global double*, double, double
 #endif // defined(cl_intel_64bit_global_atomics_placeholder)
 
 
-void __builtin_IB_kmp_acquire_lock(__global int *);
-void __builtin_IB_kmp_release_lock(__global int *);
 
 int      __builtin_IB_image_atomic_add_i32(int, int4, int);
 int      __builtin_IB_image_atomic_sub_i32(int, int4, int);
