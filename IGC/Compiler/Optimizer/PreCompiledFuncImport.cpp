@@ -335,10 +335,8 @@ bool PreCompiledFuncImport::preProcessDouble()
 inline bool isPrecompiledEmulationFunction(Function* func)
 {
     return func->getName().contains("precompiled_s32divrem") ||
-        func->getName().contains("precompiled_u32divrem") ||
-        func->getName().contains("precompiled_s32divrem_sp") ||
-        func->getName().contains("precompiled_u32divrem_sp") ||
-        func->getName().contains("__igcbuiltin_sp_div");
+    func->getName().contains("precompiled_u32divrem") ||
+    func->getName().contains("__igcbuiltin_sp_div");
 }
 
 bool PreCompiledFuncImport::runOnModule(Module &M)
