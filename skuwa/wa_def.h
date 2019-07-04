@@ -236,11 +236,15 @@ void InitBxtWaTable(
         PWA_TABLE                       pWaTable,
         PSKU_FEATURE_TABLE              pSkuTable,
         PWA_INIT_PARAM                  pWaParam);
-void InitKblWaTable(
+void InitKblNonDisplayWaTable(
         PWA_TABLE                       pWaTable,
         PSKU_FEATURE_TABLE              pSkuTable,
         PWA_INIT_PARAM                  pWaParam);
-void InitCflWaTable(
+void InitKblDisplayWaTable(
+        PWA_TABLE                       pWaTable,
+        PSKU_FEATURE_TABLE              pSkuTable,
+        PWA_INIT_PARAM                  pWaParam);
+void InitCflNonDisplayWaTable(
         PWA_TABLE                       pWaTable,
         PSKU_FEATURE_TABLE              pSkuTable,
         PWA_INIT_PARAM                  pWaParam);

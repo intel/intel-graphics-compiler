@@ -61,10 +61,12 @@ void SetWorkaroundTable(SKU_FEATURE_TABLE* pSkuFeatureTable, CPlatform* platform
         InitCnlWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
         break;
     case IGFX_KABYLAKE:
-        InitKblWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
+        InitKblDisplayWaTable(&waTable, pSkuFeatureTable, &stWaInitParam); //Display WA only
+        InitKblNonDisplayWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);//Non Display WA
         break;
     case IGFX_COFFEELAKE:
-        InitCflWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
+        InitKblDisplayWaTable(&waTable, pSkuFeatureTable, &stWaInitParam); //Display WA only
+        InitCflNonDisplayWaTable(&waTable, pSkuFeatureTable, &stWaInitParam); //Non Display WA
         break;
     case IGFX_GEMINILAKE:
         InitGlkWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);

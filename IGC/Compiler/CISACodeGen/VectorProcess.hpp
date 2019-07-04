@@ -92,6 +92,7 @@ namespace IGC
             bool forceByteScatteredRW = false);
 
 
+
     private:
         const EmitPass *m_emitter;
 

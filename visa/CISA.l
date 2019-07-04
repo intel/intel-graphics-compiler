@@ -352,6 +352,7 @@ oword_ld|oword_st|oword_ld_unaligned {
         return OWORD_OP;
     }
 
+
 media_ld|media_st {
         TRACE("\n** media INST ");
         CISAlval.opcode = str2opcode(yytext);

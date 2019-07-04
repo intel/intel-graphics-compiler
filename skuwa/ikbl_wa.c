@@ -46,7 +46,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 
-void InitKblWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_PARAM pWaParam )
+void InitKblNonDisplayWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_PARAM pWaParam)
 {
     int iStepId_KBL = (int)pWaParam->usRevId;
     int iStepId_PCH = (int)pWaParam->usRevId_PCH;
@@ -882,136 +882,6 @@ void InitKblWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
     
     
     SI_WA_ENABLE(
-        WaDisableRCWithAsyncFlip,
-        "No Link Provided" ,
-        "No HWSightingLink provided",
-        PLATFORM_ALL,
-        SI_WA_FOR_EVER
-        );
-
-    SI_WA_ENABLE(
-        WaDisableIPC,
-        "No HWBugLink provided",
-        "No HWSightingLink provided",
-        PLATFORM_ALL,
-        SI_WA_FOR_EVER
-        );
-
-    SI_WA_ENABLE(
-        WaIncreaseLatencyIPCEnabled,
-        "No Link Provided" ,
-        "No Link Provided" ,
-        PLATFORM_ALL,
-        SI_WA_FOR_EVER
-        );
-
-    SI_WA_ENABLE(
-        WaDisableTWM,
-        "No Link Provided" ,
-        "No Link Provided" ,
-        PLATFORM_ALL,
-        SI_WA_FOR_EVER
-        );
-
-    SI_WA_ENABLE(
-        WaIgnoreDDIAStrap,
-        "No HWBugLink provided",
-        "No HWSightingLink provided",
-        PLATFORM_ALL,
-        SI_WA_FOR_EVER 
-        );
-
-    SI_WA_ENABLE(
-        WaWmMemoryReadLatency,
-        "No HWBugLink provided",
-        "No Link Provided" ,
-        PLATFORM_ALL,
-        SI_WA_FOR_EVER 
-        );
-
-    SI_WA_ENABLE(
-        WaControlPrimaryTLBUtilization,
-        "No HWBugLink provided",
-        "No HWSightingLink provided",
-        PLATFORM_ALL,
-        SI_WA_FOR_EVER);
-
-    
-    SI_WA_ENABLE(
-         WaEnableChickenDCPR,
-        "TBD",
-        "No Link Provided" ,
-        PLATFORM_ALL,
-        SI_WA_FOR_EVER);
-    
-    SI_WA_ENABLE(
-        WaPSR2MultipleRegionUpdateCorruption,
-        "Wa to set 0x42080[3] = 1 before PSR2 enable",
-        "No HWSightingLink provided",
-        PLATFORM_ALL,
-        SI_WA_FOR_EVER);
-
-    
-    SI_WA_ENABLE(
-        WaEnableBandWidthLimitation,
-        "TBD",
-        "No HWSightingLink provided",
-        PLATFORM_ALL,
-        SI_WA_FOR_EVER);
-
-    SI_WA_ENABLE(
-        WaWatermarkLinesBlocks,
-        "TBD",
-        "No HWSightingLink provided",
-        PLATFORM_ALL,
-        SI_WA_FOR_EVER);
-
-    SI_WA_ENABLE(
-        WaGTCLockAcquisitionDelay,
-        "Set Min Lock Duration = 1 (bits 11:8 of GTC_PORT_MISC_x) when enabling maintenance phase, and reset to default when maintenance phase is disabled.",
-        "No Link Provided" ,
-        PLATFORM_ALL,
-        SI_WA_FOR_EVER
-        );
-
-    SI_WA_ENABLE(
-        WaUseYCordforPSR2,
-        "No HWBugLink provided",
-        "No HWSightingLink provided",
-        PLATFORM_ALL,
-        SI_WA_FOR_EVER);
-		
-	SI_WA_ENABLE(
-		WaPruneModesHavingHfrontPorchBetween122To130,
-		"No Link Provided" ,
-		"Link",
-		PLATFORM_ALL,
-		SI_WA_FOR_EVER);
-		
-
-    SI_WA_ENABLE(
-        WaPlaneSizeAlignmentFor180Rotation,
-        "No Link Provided" ,
-		"No Link Provided" ,
-        PLATFORM_ALL,
-        SI_WA_FOR_EVER
-    );
-	SI_WA_ENABLE(
-		WaInitCDClkNewSeq,
-		"No HWBugLink provided",
-		"No HWSightingLink provided",
-		PLATFORM_ALL,
-		SI_WA_FOR_EVER);
-
-    
-    
-    
-
-
-    
-    
-    
-    SI_WA_ENABLE(
         WaHucStreamoutEnable,
         "No Link Provided" ,
         "No HWSightingLink provided",
@@ -1482,10 +1352,138 @@ void InitKblWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
     
     SI_WA_ENABLE(
         WaVFEStateAfterPipeControlwithMediaStateClear,
-        "No Link Provided" ,
+        "No HWBugLink provided",
         "No HWSightingLink provided",
         PLATFORM_ALL,
         SI_WA_FOR_EVER);
+}
+void InitKblDisplayWaTable(
+    PWA_TABLE                       pWaTable,
+    PSKU_FEATURE_TABLE              pSkuTable,
+    PWA_INIT_PARAM                  pWaParam)
+{
+    int iStepId_KBL = (int)pWaParam->usRevId;
+    SI_WA_ENABLE(
+        WaDisableRCWithAsyncFlip,
+        "No Link Provided" ,
+        "No HWSightingLink provided",
+        PLATFORM_ALL,
+        SI_WA_FOR_EVER
+        );
+
+    SI_WA_ENABLE(
+        WaDisableIPC,
+        "No HWBugLink provided",
+        "No HWSightingLink provided",
+        PLATFORM_ALL,
+        SI_WA_FOR_EVER
+        );
+
+    SI_WA_ENABLE(
+        WaIncreaseLatencyIPCEnabled,
+        "No Link Provided" ,
+        "No Link Provided" ,
+        PLATFORM_ALL,
+        SI_WA_FOR_EVER
+        );
+
+    SI_WA_ENABLE(
+        WaDisableTWM,
+        "No Link Provided" ,
+        "No Link Provided" ,
+        PLATFORM_ALL,
+        SI_WA_FOR_EVER
+        );
+
+    SI_WA_ENABLE(
+        WaIgnoreDDIAStrap,
+        "No HWBugLink provided",
+        "No HWSightingLink provided",
+        PLATFORM_ALL,
+        SI_WA_FOR_EVER 
+        );
+
+    SI_WA_ENABLE(
+        WaWmMemoryReadLatency,
+        "No HWBugLink provided",
+        "No Link Provided" ,
+        PLATFORM_ALL,
+        SI_WA_FOR_EVER 
+        );
+
+    SI_WA_ENABLE(
+        WaControlPrimaryTLBUtilization,
+        "No HWBugLink provided",
+        "No HWSightingLink provided",
+        PLATFORM_ALL,
+        SI_WA_FOR_EVER);
+
+    
+    SI_WA_ENABLE(
+         WaEnableChickenDCPR,
+        "TBD",
+        "No Link Provided" ,
+        PLATFORM_ALL,
+        SI_WA_FOR_EVER);
+    
+    SI_WA_ENABLE(
+        WaPSR2MultipleRegionUpdateCorruption,
+        "Wa to set 0x42080[3] = 1 before PSR2 enable",
+        "No HWSightingLink provided",
+        PLATFORM_ALL,
+        SI_WA_FOR_EVER);
+
+    
+    SI_WA_ENABLE(
+        WaEnableBandWidthLimitation,
+        "TBD",
+        "No HWSightingLink provided",
+        PLATFORM_ALL,
+        SI_WA_FOR_EVER);
+
+    SI_WA_ENABLE(
+        WaWatermarkLinesBlocks,
+        "TBD",
+        "No HWSightingLink provided",
+        PLATFORM_ALL,
+        SI_WA_FOR_EVER);
+
+    SI_WA_ENABLE(
+        WaGTCLockAcquisitionDelay,
+        "Set Min Lock Duration = 1 (bits 11:8 of GTC_PORT_MISC_x) when enabling maintenance phase, and reset to default when maintenance phase is disabled.",
+        "No Link Provided" ,
+        PLATFORM_ALL,
+        SI_WA_FOR_EVER
+        );
+
+    SI_WA_ENABLE(
+        WaUseYCordforPSR2,
+        "No HWBugLink provided",
+        "No HWSightingLink provided",
+        PLATFORM_ALL,
+        SI_WA_FOR_EVER);
+		
+	SI_WA_ENABLE(
+		WaPruneModesHavingHfrontPorchBetween122To130,
+		"No Link Provided" ,
+		"Link",
+		PLATFORM_ALL,
+		SI_WA_FOR_EVER);
+		
+
+    SI_WA_ENABLE(
+        WaPlaneSizeAlignmentFor180Rotation,
+        "No Link Provided" ,
+		"No Link Provided" ,
+        PLATFORM_ALL,
+        SI_WA_FOR_EVER
+    );
+	SI_WA_ENABLE(
+		WaInitCDClkNewSeq,
+		"No HWBugLink provided",
+		"No HWSightingLink provided",
+		PLATFORM_ALL,
+		SI_WA_FOR_EVER);
 
     SI_WA_ENABLE(
         DisableSpritePassThroughMode,
@@ -1543,14 +1541,12 @@ void InitKblWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         "No Link Provided" ,
         PLATFORM_ALL,
         SI_WA_FOR_EVER);
-
 }
 
 #ifdef __KCH
 void InitKblHASWaTable(PHW_DEVICE_EXTENSION pKchContext, PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_PARAM pWaParam )
 {
     int iStepId_KBL = (int)pWaParam->usRevId;
-    int iStepId_PCH = (int)pWaParam->usRevId_PCH;
 
     
     SI_WA_ENABLE(

@@ -1225,7 +1225,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
 
     },
 
-    /// 96
+    /// 96 (0x60)
     { ALL, ISA_RESERVED_60, ISA_Inst_Reserved, "reserved_60", 0, 0,
     {
     },
