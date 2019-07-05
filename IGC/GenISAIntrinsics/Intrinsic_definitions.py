@@ -140,6 +140,7 @@ Imported_Intrinsics = \
     "GenISA_RuntimeValue": ["any:float",["int"],"NoMem"],
     "GenISA_GetBufferPtr": ["anyptr",["int","int"],"NoMem"],
     "GenISA_DCL_inputVec": ["anyfloat",["int","int"],"NoMem"],
+    # (dwordAttributeOrSetupIndex, e_interpolation_PSOnly)->anyvector
     "GenISA_DCL_ShaderInputVec": ["anyvector",["int","int"],"NoMem"],
     "GenISA_DCL_GSinputVec": ["float4",["int","int"],"NoMem"],
     "GenISA_DCL_SystemValue": ["anyfloat",["int"],"NoMem"],
