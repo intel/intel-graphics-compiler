@@ -13568,7 +13568,7 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset)
         // Use width of 8 always, and only the value of the first lane is
         // used. Need to set noMask in order to have the valid value in
         // the first lane.
-        uint32_t width8 = 8;
+        uint32_t width8 = getGRFSize() / 4;
         for (uint32_t i = 0; i < VecMessInfo.numInsts; ++i)
         {
             // raw operand, eltOffBytes is in bytes.
@@ -13577,7 +13577,7 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset)
             uint32_t numBlks = VecMessInfo.insts[i].numBlks;
 
             uint32_t eltOff = eltOffBytes / eltBytes;  // in unit of element
-            uint32_t blkBits = 8 * blkInBytes;
+            uint32_t blkBits = (getGRFSize() / 4) * blkInBytes;
             uint32_t instTotalBytes = blkInBytes * numBlks;
             uint32_t instElts = instTotalBytes / eltBytes;
             uint32_t nbelts = instElts * width8;
@@ -13600,14 +13600,14 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset)
             {
                 rawAddrVar = eOffset;
             }
-            CVariable* addrVarSIMD8 = m_currShader->GetNewVariable(8, rawAddrVar->GetType(), EALIGN_GRF);
+            CVariable* addrVarSIMD8 = m_currShader->GetNewVariable(getGRFSize() / 4, rawAddrVar->GetType(), EALIGN_GRF);
             m_encoder->SetNoMask();
-            m_encoder->SetSimdSize(SIMDMode::SIMD8);
+            m_encoder->SetSimdSize(lanesToSIMDMode(addrVarSIMD8->GetNumberElement()));
             m_encoder->Copy(addrVarSIMD8, rawAddrVar);
 
             subLoadDst = m_currShader->GetNewVariable((uint16_t)nbelts, destType, EALIGN_GRF);
             m_encoder->SetNoMask();
-            m_encoder->SetSimdSize(SIMDMode::SIMD8);
+            m_encoder->SetSimdSize(lanesToSIMDMode(addrVarSIMD8->GetNumberElement()));
             VectorMessage::MESSAGE_KIND messageType = VecMessInfo.insts[i].kind;
             switch (messageType) {
             case VectorMessage::MESSAGE_A32_BYTE_SCATTERED_RW:
