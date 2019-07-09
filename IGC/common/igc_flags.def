@@ -233,6 +233,7 @@ DECLARE_IGC_REGKEY(bool, EnableSingleVertexDispatch,    false, "Vertex Shader Si
 DECLARE_IGC_REGKEY(bool, allowLICM,                     true,  "Enable LICM in IGC.")
 DECLARE_IGC_REGKEY(DWORD, CSSpillThresholdSLM,          12,    "Spill Threshold for CS SIMD16 with SLM")
 DECLARE_IGC_REGKEY(DWORD, CSSpillThresholdNoSLM,        5,     "Spill Threshold for CS SIMD16 without SLM")
+DECLARE_IGC_REGKEY(DWORD, AllowedSpillRegCount,         0,     "Max allowed spill size without recompile")
 DECLARE_IGC_REGKEY(bool, EnableTypeDemotion,            true,  "Enable Type Demotion")
 DECLARE_IGC_REGKEY(bool, EnablePreRARematFlag,          true,  "Enable PreRA Rematerialization of Flag")
 DECLARE_IGC_REGKEY(bool, EnableGASResolver,             true,  "Enable GAS Resolver")
