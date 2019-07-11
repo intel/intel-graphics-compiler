@@ -1245,7 +1245,7 @@ BranchInstruction : Predicate BRANCH_OP ExecSize TargetLabel
          {
             pCisaBuilder->CISA_create_switch_instruction($1, $2.exec_size, $3.cisa_gen_opnd, (int)$5, switch_label_array, CISAlineno);
          }
-         //  1          2         3       4        5         6    
+         //  1          2         3       4        5         6
          | Predicate  FCALL   ExecSize SymbolName NUMBER NUMBER
          {
             pCisaBuilder->CISA_create_fcall_instruction($1.cisa_gen_opnd, $2, $3.emask, $3.exec_size, $4, (unsigned)$5, (unsigned)$6, CISAlineno);

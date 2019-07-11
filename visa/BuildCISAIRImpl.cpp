@@ -531,7 +531,7 @@ void restoreFCallState(G4_Kernel* kernel, savedFCallStates& savedFCallState)
 static void Stitch_Compiled_Units(G4_Kernel* kernel, std::map<std::string, G4_Kernel*>& compilation_units)
 {
 
-    // Append flowgraph of all callees to kernel. For now just assume all functions in the modules 
+    // Append flowgraph of all callees to kernel. For now just assume all functions in the modules
     // may be called
     for (auto&& iter : compilation_units)
     {

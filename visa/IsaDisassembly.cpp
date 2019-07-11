@@ -2487,7 +2487,7 @@ std::string printKernelHeader(
 
     /// Print all functions in the same object
     if (isKernel)
-    { 
+    {
         for (unsigned i = 0; i < isaHeader.num_functions; i++)
         {
             sstr << "\n" << ".funcdecl ";
