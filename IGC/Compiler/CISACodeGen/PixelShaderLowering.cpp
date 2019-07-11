@@ -123,7 +123,7 @@ bool PixelShaderAddMask::runOnFunction(llvm::Function &F)
                     {
                         mask = BinaryOperator::CreateNot(discardCond, "", rtw);
                     }
-                    
+
                     rtw->setPMask(mask);
                 }
                 else
@@ -330,7 +330,7 @@ void PixelShaderLowering::FindIntrinsicOutput(
                 GenISAIntrinsic::ID IID = inst->getIntrinsicID();
                 if (IID == GenISAIntrinsic::GenISA_uavSerializeAll ||
                     IID == GenISAIntrinsic::GenISA_uavSerializeOnResID)
-                { 
+                {
                     uavPixelSync = true;
                 }
                 else if(IID == GenISAIntrinsic::GenISA_OUTPUT)
@@ -363,7 +363,7 @@ void PixelShaderLowering::FindIntrinsicOutput(
                                 }
                                 else
                                 {
-                                    inst->setOperand(i, 
+                                    inst->setOperand(i,
                                         ConstantFP::get(inst->getOperand(i)->getType(), 0.0f));
                                 }
                             }
@@ -611,7 +611,7 @@ CallInst* PixelShaderLowering::addRTWrite(
     Value* hasDepth = (depth || m_modMD->psInfo.outputDepth) ? i1true : i1false;
     Value* hasStencil = (stencil || m_modMD->psInfo.outputStencil) ? i1true : i1false;
 
-    Value* arguments[] = { 
+    Value* arguments[] = {
         needsSrc0Alpha ? src0Alpha : undefSrc0Alpha,    // 0
         oMask ? oMask : undef,                          // 1 - oMask
         color.mask,                                     // 2 - pMask
@@ -737,7 +737,7 @@ void PixelShaderLowering::EmitRTWrite(
             }
         }
     }
-    
+
     uint32_t RTindexVal = -1;
     //According to Spec, the RT Write instruction must follow this order : dual source followed by single source
     if (useDualSrcBlend(colors))
@@ -815,7 +815,7 @@ inline Value* fixHFSource(IRBuilder<> &builder, Value *val)
 }
 
 CallInst* PixelShaderLowering::addDualBlendWrite(
-    BasicBlock* bbToAdd, Value* oMask, 
+    BasicBlock* bbToAdd, Value* oMask,
     ColorOutput& color0, ColorOutput& color1,
     Value* depth, Value* stencil, uint index)
 {
@@ -972,7 +972,7 @@ bool PixelShaderLowering::optBlendState(
     Function* fBallot = GenISAIntrinsic::getDeclaration(m_module,
         GenISAIntrinsic::GenISA_WaveBallot);
 
-    bool enableBlendToDiscard = 
+    bool enableBlendToDiscard =
         IGC_IS_FLAG_ENABLED(EnableBlendToDiscard) &&
         m_cgCtx->platform.enableBlendToDiscardAndFill();
     enableBlendToFill = enableBlendToFill &&
@@ -1147,7 +1147,7 @@ bool PixelShaderLowering::optBlendState(
             Value* ane0 = irb.CreateFCmpUNE(a, f0);
 
             Value* cne0 = irb.CreateAnyValuesNotZero(colorOut.color, 3);
-            
+
             colorOut.mask = irb.CreateAnd(ane0, cne0);
             hasDiscard = true;
         }
@@ -1367,29 +1367,9 @@ DiscardLowering::DiscardLowering()
     initializeDiscardLoweringPass(*PassRegistry::getPassRegistry());
 }
 
-Instruction* DiscardLowering::addPhi(Instruction* v, BasicBlock* newRetBB)
-{
-    unsigned n = m_discards.size();
-
-    PHINode* phi = PHINode::Create(v->getType(), n + 1, "", &(*newRetBB->begin()));
-
-    // add phi incoming edge from previous return BB
-    phi->addIncoming(v, newRetBB->getPrevNode());
-
-    // add undef from discard incoming
-    for (unsigned i = 0; i < n; i++)
-    {
-        phi->addIncoming(UndefValue::get(v->getType()),
-            m_discards[i]->getParent());
-    }
-    return phi;
-}
-
 bool DiscardLowering::lowerDiscards(Function& F)
 {
-    unsigned numDiscards = m_discards.size();
-
-    if (numDiscards == 0)
+    if (m_discards.empty() && m_isHelperInvocationCalls.empty())
     {
         return false;
     }
@@ -1402,8 +1382,6 @@ bool DiscardLowering::lowerDiscards(Function& F)
             sampleNode->getOperand(0)->getOperand(0));
         isSampleEntry = (samplePhaseEntry == &F);
     }
-
-    m_module->getOrInsertNamedMetadata("KillPixel");
 
     m_earlyRet = BasicBlock::Create(m_module->getContext(), "DiscardRet", &F);
 
@@ -1427,8 +1405,13 @@ bool DiscardLowering::lowerDiscards(Function& F)
     Value* discardMask = CallInst::Create(fInitMask, llvm::None, "",
         m_entryBB->getFirstNonPHI());
 
+    bool killsPixels = false;
+
     for (auto discard : m_discards)
     {
+        assert(discard->isGenIntrinsic(GenISAIntrinsic::GenISA_discard));
+        killsPixels = true;
+
         BasicBlock* bbDiscard;
         BasicBlock* bbAfter;
 
@@ -1458,10 +1441,26 @@ bool DiscardLowering::lowerDiscards(Function& F)
         B.CreateCondBr(v, m_earlyRet, bbAfter);
     }
 
+    if (killsPixels)
+    {
+        m_module->getOrInsertNamedMetadata("KillPixel");
+    }
+
+    for (auto inst : m_isHelperInvocationCalls)
+    {
+        IRBuilder<> B(inst);
+        Function* getPixelMask = GenISAIntrinsic::getDeclaration(m_module,
+            GenISAIntrinsic::GenISA_GetPixelMask);
+        llvm::Value* pixelMask = B.CreateCall(getPixelMask, { discardMask });
+        inst->replaceAllUsesWith(B.CreateNot(pixelMask));
+        inst->eraseFromParent();
+    }
+
     for (auto discard : m_discards)
     {
         discard->eraseFromParent();
     }
+
 
     return true;
 }
@@ -1513,6 +1512,10 @@ bool DiscardLowering::runOnFunction(Function& F)
                     }
                     m_discards.push_back(inst);
                 }
+                else if (inst->isGenIntrinsic(GenISAIntrinsic::GenISA_IsHelperInvocation))
+                {
+                    m_isHelperInvocationCalls.push_back(inst);
+                }
                 else
                 if (inst->isGenIntrinsic(GenISAIntrinsic::GenISA_OUTPUT))
                 {
@@ -1550,7 +1553,7 @@ bool DiscardLowering::runOnFunction(Function& F)
         I->eraseFromParent();
     }
 
-    
+
     Function* samplePhaseEntry = nullptr;
     Function* pixelPhaseEntry = nullptr;
     NamedMDNode* pixelNode = F.getParent()->getNamedMetadata("pixel_phase");

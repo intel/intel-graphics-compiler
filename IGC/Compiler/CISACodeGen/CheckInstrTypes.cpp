@@ -52,7 +52,7 @@ char CheckInstrTypes::ID = 0;
 
 CheckInstrTypes::CheckInstrTypes(IGC::SInstrTypes* instrList) : FunctionPass(ID), g_InstrTypes(instrList)
 {
-    initializeLoopInfoWrapperPassPass(*PassRegistry::getPassRegistry());    
+    initializeLoopInfoWrapperPassPass(*PassRegistry::getPassRegistry());
     initializeCheckInstrTypesPass(*PassRegistry::getPassRegistry());
 
     instrList->CorrelatedValuePropagationEnable = false;
@@ -372,7 +372,7 @@ bool InstrStatitic::runOnFunction(Function &F)
 {
     // run the pass
     visit(F);
- 
+
     // if this is a call for ending statistic, find out if the difference exceeds the threshold.
     if (m_stage == InstrStatStage::END)
     {

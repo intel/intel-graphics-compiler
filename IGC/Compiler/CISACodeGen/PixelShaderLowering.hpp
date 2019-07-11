@@ -68,7 +68,7 @@ class PixelShaderLowering : public llvm::FunctionPass
 {
 public:
     PixelShaderLowering();
-    
+
     virtual bool runOnFunction(llvm::Function &F) override;
 
     virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
@@ -94,7 +94,7 @@ private:
         llvm::Value* blendStateIndex;
         llvm::BasicBlock* bb;
         llvm::CallInst* inst;
-        
+
         ColorOutput()
         {
             memset(this, 0, sizeof(ColorOutput));
@@ -219,13 +219,9 @@ private:
     IGC::ModuleMetaData *m_modMD;
 
     smallvector<llvm::GenIntrinsicInst*, 4> m_discards;
+    smallvector<llvm::GenIntrinsicInst*, 4> m_isHelperInvocationCalls;
 
     bool lowerDiscards(llvm::Function& F);
-
-    // add phi node for output values in the new ret BB created for
-    // discard early return
-    llvm::Instruction* addPhi(llvm::Instruction* v,
-        llvm::BasicBlock* newRetBB);
 
 public:
     static char ID;
