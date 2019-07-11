@@ -965,7 +965,7 @@ void CodeGenPatternMatch::visitBinaryOperator(llvm::BinaryOperator &I)
                 MatchModifier(I);
         break;
     case Instruction::Sub:
-        match =
+        match = MatchMad(I) ||
                 MatchAbsNeg(I) ||
                 MatchMulAdd16(I) ||
                 MatchModifier(I);
@@ -976,7 +976,7 @@ void CodeGenPatternMatch::visitBinaryOperator(llvm::BinaryOperator &I)
                 MatchModifier(I);
         break;
     case Instruction::Add:
-        match =
+        match = MatchMad(I) ||
                 MatchMulAdd16(I) ||
                 MatchModifier(I);
         break;
@@ -1641,7 +1641,7 @@ bool CodeGenPatternMatch::MatchFMA( llvm::IntrinsicInst& I )
     return true;
 }
 
-bool CodeGenPatternMatch::MatchMad( llvm::BinaryOperator& I )
+bool CodeGenPatternMatch::MatchMad(llvm::BinaryOperator& I)
 {
     struct MadPattern : Pattern
     {
@@ -1652,13 +1652,34 @@ bool CodeGenPatternMatch::MatchMad( llvm::BinaryOperator& I )
         }
     };
 
-    if (m_ctx->getModuleMetaData()->isPrecise)
+    auto isFpMad = [](const Instruction &I)
+    {
+        return I.getType()->isFloatingPointTy();
+    };
+
+    if (isFpMad(I) && m_ctx->getModuleMetaData()->isPrecise)
     {
         return false;
     }
-
     if (m_ctx->type == ShaderType::VERTEX_SHADER &&
         m_ctx->m_DriverInfo.DisabeMatchMad())
+    {
+        return false;
+    }
+    if (IGC_IS_FLAG_ENABLED(DisableMatchMad))
+    {
+        return false;
+    }
+    if (isFpMad(I) && m_AllowContractions == false)
+    {
+        return false;
+    }
+    if (!isFpMad(I) && IGC_IS_FLAG_DISABLED(EnableIntegerMad))
+    {
+        return false;
+    }
+    if (!IGC_IS_FLAG_ENABLED(DisableMadRoundDepCheck) &&
+        m_MadRoundDep->RoundingDependsOnInst(&I))
     {
         return false;
     }
@@ -1667,20 +1688,13 @@ bool CodeGenPatternMatch::MatchMad( llvm::BinaryOperator& I )
     llvm::Value* sources[3];
     e_modifier src_mod[3];
 
-    if (m_AllowContractions == false || IGC_IS_FLAG_ENABLED(DisableMatchMad))
+    assert(I.getOpcode() == Instruction::FAdd ||
+           I.getOpcode() == Instruction::FSub ||
+           I.getOpcode() == Instruction::Add ||
+           I.getOpcode() == Instruction::Sub);
+    if (I.getOperand(0) != I.getOperand(1))
     {
-        return false;
-    }
-
-    assert(I.getOpcode() == Instruction::FAdd || I.getOpcode() == Instruction::FSub);
-
-    if (!IGC_IS_FLAG_ENABLED(DisableMadRoundDepCheck) && m_MadRoundDep->RoundingDependsOnInst(&I))
-    {
-        return false;
-    }
-    if(I.getOperand(0) != I.getOperand(1))
-    {
-        for(uint i=0; i<2; i++)
+        for (uint i=0; i<2; i++)
         {
             Value* src = I.getOperand(i);
             if (FPExtInst *fpextInst = llvm::dyn_cast<llvm::FPExtInst>(src))
@@ -1697,7 +1711,8 @@ bool CodeGenPatternMatch::MatchMad( llvm::BinaryOperator& I )
             }
             llvm::BinaryOperator* mul = llvm::dyn_cast<llvm::BinaryOperator>(src);
 
-            if(mul && mul->getOpcode() == Instruction::FMul)
+            if (mul && (mul->getOpcode() == Instruction::FMul ||
+                        mul->getOpcode() == Instruction::Mul))
             {
                 // in case we know we won't be able to remove the mul we don't merge it
                 if(!m_PosDep->PositionDependsOnInst(mul) && NeedInstruction(*mul))
@@ -1708,15 +1723,16 @@ bool CodeGenPatternMatch::MatchMad( llvm::BinaryOperator& I )
                 GetModifier(*sources[0], src_mod[0], sources[0]);
                 GetModifier(*sources[1], src_mod[1], sources[1]);
                 GetModifier(*sources[2], src_mod[2], sources[2]);
-                if(I.getOpcode() == Instruction::FSub)
+                if (I.getOpcode() == Instruction::FSub ||
+                    I.getOpcode() == Instruction::Sub)
                 {
-                    if(i==0)
+                    if (i==0)
                     {
                         src_mod[2] = CombineModifier(EMOD_NEG, src_mod[2]);
                     }
                     else
                     {
-                        if(llvm::isa<llvm::ConstantFP>(sources[0]))
+                        if (llvm::isa<llvm::Constant>(sources[0]))
                         {
                             src_mod[1] = CombineModifier(EMOD_NEG, src_mod[1]);
                         }
@@ -1731,10 +1747,28 @@ bool CodeGenPatternMatch::MatchMad( llvm::BinaryOperator& I )
             }
         }
     }
-    if(found)
+
+    // Check integer mad profitability.
+    if (found && !isFpMad(I)) {
+        auto isByteOrWordValue = [](Value* V) -> bool {
+            if (isa<Constant>(V))
+                return true;
+            // Trace the def-use chain and return the first non up-cast related value.
+            while (isa<ZExtInst>(V) || isa<SExtInst>(V) || isa<BitCastInst>(V))
+                V = cast<Instruction>(V)->getOperand(0);
+            const unsigned DWordSizeInBits = 32;
+            return V->getType()->getScalarSizeInBits() < DWordSizeInBits;
+        };
+
+        // One multiplicant should be *W or *B.
+        if (!isByteOrWordValue(sources[0]) && !isByteOrWordValue(sources[1]))
+            return false;
+    }
+
+    if (found)
     {
         MadPattern *pattern = new (m_allocator) MadPattern();
-        for(int i=0; i<3; i++)
+        for (int i = 0; i < 3; i++)
         {
             pattern->sources[i] = GetSource(sources[i], src_mod[i], false);
             if (isa<Constant>(sources[i]) &&
