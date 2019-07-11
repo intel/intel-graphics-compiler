@@ -25,7 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 
 ///===========================================================================
-/// This file contains types, enumerations, classes and other declarations 
+/// This file contains types, enumerations, classes and other declarations
 /// used by IGC link optimization.
 #pragma once
 
@@ -37,16 +37,28 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace IGC
 {
-
-static const ShaderType LTO_LAST_SHADER_STAGE = ShaderType::PIXEL_SHADER;
-static const int LTO_NUM_SHADER_STAGES = int(LTO_LAST_SHADER_STAGE) + 1;
-
+//////////////////////////////////////////////////////////////////////////////
+// Types and globals
+//////////////////////////////////////////////////////////////////////////////
 template <typename T>
 using VecOfVec = std::vector<std::vector<T> >;
 
 typedef std::vector<llvm::GenIntrinsicInst*> IntrinVec;
 typedef std::vector<IntrinVec> VecOfIntrinVec;
 
+static const ShaderType LTO_LAST_SHADER_STAGE = ShaderType::PIXEL_SHADER;
+static const int LTO_NUM_SHADER_STAGES = int(LTO_LAST_SHADER_STAGE) + 1;
+
+//////////////////////////////////////////////////////////////////////////////
+// Functions
+//////////////////////////////////////////////////////////////////////////////
+bool runPasses(CodeGenContext* ctx, ...);
+
+uint getImmValueU32(const llvm::Value* value);
+
+//////////////////////////////////////////////////////////////////////////////
+// LTO Context
+//////////////////////////////////////////////////////////////////////////////
 class LinkOptContext
 {
 private:
@@ -131,13 +143,12 @@ public:
     }
 
     bool m_abortLTO;
-   
+
     // vs inputs & outputs
-    // in[attrIdx] = { ShaderInputVec(attrIdx)};
-    // vs outputs, each attr has only 1 output intrinsic
-    // out[attrIdx] = { OUTPUT(xyzw, usage, attrIdx) };
-    // vs non-default outputs (like POSITION) are indexed in vector
-    // using values assigned to types;
+    // in[attrIdx] = { ShaderInputVec(attrIdx) }
+    // out[attrIdx] = { OUTPUT(x, y, z, w, usage, attrIdx) }
+    //     * each attr has only 1 output intrinsic;
+    //     * vs non-default outputs (like POSITION) are indexed in vector using values assigned to types;
     struct {
         VecOfIntrinVec inInsts;
         VecOfIntrinVec outInsts;
@@ -145,7 +156,9 @@ public:
     } vs;
 
     // hs inputs & outputs
-    // indexed by attr index, then ctrl point index
+    // inInsts[attrIdx] = HSinputVec(vertexIdx, attrIdx)
+    // outInsts[attrIdx] = OutputTessControlPoint(x, y, z, w, attrIdx, cpid, mask)
+    // pcOut[attrIdx] = PatchConstantOutput(x, y, z, w, attrIdx, mask)
     struct {
         VecOfIntrinVec inInsts;
         VecOfIntrinVec outInsts;
@@ -160,6 +173,8 @@ public:
     // ds inputs & outputs, inputs[elemIdx][ctrlIdx]
     // out[attrIdx] = { OUTPUT(xyzw, usage, attrIdx) }
     // each attr has only 1 output intrinsic
+    //  - DSCntrlPtInputVec(vertexIdx, attrIdx)
+    //  - DSPatchConstInputVec(inputIdx)
     struct {
         std::vector<
             std::vector<
@@ -179,7 +194,9 @@ public:
         VecOfIntrinVec inNonDefaultInsts;
     } gs;
 
+
     // ps inputs
+    // inInsts[attrIndex] = inputVec(attrIdx, interpolationMode)
     struct {
         VecOfIntrinVec inInsts;
     } ps;
@@ -290,11 +307,7 @@ public:
         llvm::GenIntrinsicInst* inst,
         unsigned elemIdx)
     {
-        if (gs.inInsts.size() < elemIdx + 1)
-        {
-            gs.inInsts.resize(elemIdx + 1);
-        }
-        gs.inInsts[elemIdx].push_back(inst);
+        ivecAppend(gs.inInsts, inst, elemIdx);
     }
 
     inline void addGSOutput(
@@ -304,15 +317,12 @@ public:
         ivecAppend(gs.outInsts, inst, index);
     }
 
+
     inline void addPSInput(
         llvm::GenIntrinsicInst* inst,
         unsigned index)
     {
-        if (ps.inInsts.size() < index + 1)
-        {
-            ps.inInsts.resize(index + 1);
-        }
-        ps.inInsts[index].push_back(inst);
+        ivecAppend(ps.inInsts, inst, index);
     }
 
 protected:
@@ -321,7 +331,7 @@ protected:
 };
 
 //////////////////////////////////////////////////////////////////////////////
-//
+// Analyze and gather information about shader's IO
 //////////////////////////////////////////////////////////////////////////////
 class ShaderIOAnalysis :
     public llvm::FunctionPass
@@ -364,7 +374,7 @@ public:
         AU.setPreservesCFG();
     }
 
-    llvm::StringRef getPassName() const  override { return "ShaderIOAnalysis"; }
+    llvm::StringRef getPassName() const override { return "ShaderIOAnalysis"; }
 
 protected:
     inline IGC::LinkOptContext* getContext() const { return m_context; }
@@ -388,8 +398,6 @@ protected:
         llvm::GenIntrinsicInst* inst);
     void addHSCtrlPtOutputDecl(
         llvm::GenIntrinsicInst* inst);
-    void addHSPatchConstOutputDecl(
-        llvm::GenIntrinsicInst* inst);
     void addHSOutputInputDecl(
         llvm::GenIntrinsicInst* inst);
     void addPatchConstOutput(
@@ -411,24 +419,14 @@ protected:
         return m_analysisType == OUTPUT;
     }
 
-    LinkOptContext* m_context;
-    ShaderType m_shaderType;
-    int m_analysisType;
+    LinkOptContext* const m_context;
+    const ShaderType m_shaderType;
+    const int m_analysisType;
 };
 
-bool runPasses(CodeGenContext* ctx, ...);
-
-inline uint getImmValueU32( const llvm::Value* value)
-{
-    const llvm::ConstantInt* cval;
-    cval = llvm::cast<llvm::ConstantInt>(value);
-    assert(cval->getBitWidth() == 32);
-
-    uint ival;
-    ival = (uint)cval->getZExtValue();
-    return ival;
-}
-
+//////////////////////////////////////////////////////////////////////////////
+// PS Actions
+//////////////////////////////////////////////////////////////////////////////
 class LTOPSConstRepAction : public LTOPSAction {
     llvm::APFloat imm;
 
@@ -451,7 +449,7 @@ public:
         {
             cv = llvm::ConstantFP::get(inst->getContext(), imm);
         }
-         
+
         inst->replaceAllUsesWith(cv);
         inst->eraseFromParent();
     }

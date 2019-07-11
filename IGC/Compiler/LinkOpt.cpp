@@ -1,4 +1,4 @@
-/*===================== begin_copyright_notice ==================================
+ /*===================== begin_copyright_notice ==================================
 
 Copyright (c) 2017 Intel Corporation
 
@@ -59,27 +59,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace llvm;
 using namespace std;
 
-//
-// Input/output intrinsics between shader stages
-// VS:
-//  - OUTPUT(x, y, z, w, usage, attrIdx)
-//
-// HS:
-//  - HSinputVec(vertexIdx, attrIdx)
-//  - OutputTessControlPoint(x, y, z, w, attrIdx, cpid, mask)
-//  - PatchConstantOutput(x, y, z, w, attrIdx, mask)
-//
-// DS:
-//  - DSCntrlPtInputVec(vertexIdx, attrIdx)
-//  - DSPatchConstInputVec(inputIdx)
-//
-// GS:
-//  - GSinputVec(vertexIdx, attrIdx)
-//  - OUTPUTGS(x, y, z, w, usage, attrIdx, emitCount)
-//
-// PS:
-//  - inputVec(attrIdx, interpolationMode)
-
 namespace IGC
 {
 
@@ -92,6 +71,35 @@ static const ShaderType s_dsType = ShaderType::DOMAIN_SHADER;
 static const ShaderType s_gsType = ShaderType::GEOMETRY_SHADER;
 static const ShaderType s_psType = ShaderType::PIXEL_SHADER;
 
+//////////////////////////////////////////////////////////////////////////////
+// API functions and facilities
+//////////////////////////////////////////////////////////////////////////////
+bool runPasses(CodeGenContext* ctx, ...)
+{
+    llvm::legacy::PassManager mpm;
+    va_list ap;
+    Pass* p;
+    va_start(ap, ctx);
+    while ((p = va_arg(ap, Pass*)))
+    {
+        mpm.add(p);
+    }
+    va_end(ap);
+
+    return mpm.run(*ctx->getModule());
+}
+
+uint getImmValueU32(const llvm::Value* value)
+{
+    const llvm::ConstantInt* cval;
+    cval = llvm::cast<llvm::ConstantInt>(value);
+    assert(cval->getBitWidth() == 32);
+
+    uint ival;
+    ival = (uint)cval->getZExtValue();
+    return ival;
+}
+
 static void LTODumpLLVMIR(CodeGenContext* ctx, const char* name)
 {
     if (IGC_IS_FLAG_ENABLED(EnableLTODebug))
@@ -99,6 +107,7 @@ static void LTODumpLLVMIR(CodeGenContext* ctx, const char* name)
         DumpLLVMIR(ctx, name);
     }
 }
+
 
 //////////////////////////////////////////////////////////////////////////////
 // LinkOptContext
@@ -149,12 +158,21 @@ char ShaderIOAnalysis::ID = 0;
 
 void ShaderIOAnalysis::addInputDecl(llvm::GenIntrinsicInst* inst)
 {
-    Value* val = inst->getOperand(INPUT_ATTR_ARG);
-
-    if (m_shaderType == ShaderType::PIXEL_SHADER)
+    switch (m_shaderType)
     {
+    case ShaderType::PIXEL_SHADER:
+    {
+        Value* val = inst->getOperand(INPUT_ATTR_ARG);
         uint imm = getImmValueU32(val);
+
         getContext()->addPSInput(inst, imm);
+        break;
+    }
+    case ShaderType::DOMAIN_SHADER:
+        break;
+    default:
+        assert(0);
+        break;
     }
 }
 
@@ -217,6 +235,7 @@ void ShaderIOAnalysis::addHSPatchConstInputDecl(llvm::GenIntrinsicInst* inst)
 
 void ShaderIOAnalysis::addOutputDecl(GenIntrinsicInst* inst)
 {
+
     Value* usage = inst->getOperand(OUTPUT_USAGE_ARG);
     Value* index = inst->getOperand(OUTPUT_ATTR_ARG);
     ShaderOutputType otype = (ShaderOutputType)getImmValueU32(usage);
@@ -254,7 +273,7 @@ void ShaderIOAnalysis::addOutputDecl(GenIntrinsicInst* inst)
             break;
 
         default:
-            assert(false && "Unknow shader type for OUTPUT intrinsic");
+            assert(false && "Unknown shader type for OUTPUT intrinsic");
         }
     }
     else if (otype == SHADER_OUTPUT_TYPE_POSITION ||
@@ -353,6 +372,7 @@ void ShaderIOAnalysis::addHSOutputInputDecl(GenIntrinsicInst* inst)
     }
 }
 
+
 void ShaderIOAnalysis::onGenIntrinsic(GenIntrinsicInst* inst)
 {
     assert(inst != nullptr);
@@ -438,6 +458,9 @@ void ShaderIOAnalysis::onGenIntrinsic(GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_OuterScalarTessFactors:
     case GenISAIntrinsic::GenISA_DCL_DSInputTessFactor:
         // todo, handle LTO on tess factors.
+        break;
+
+
     default:
         break;
     }
@@ -458,30 +481,74 @@ bool ShaderIOAnalysis::runOnFunction(Function& F)
     return false;
 }
 
-// check whether shader input is using constant interpolation
-static bool isConstInterpolationInput(GenIntrinsicInst* inst)
+//////////////////////////////////////////////////////////////////////////////
+// IO Index Mapper - when consecutive PS input indices assignment is insufficient.
+// E.g. when is depends on some state maintained by this object.
+//////////////////////////////////////////////////////////////////////////////
+struct LTOIOIndexMapper
 {
-    if (inst->getIntrinsicID() != GenISAIntrinsic::GenISA_DCL_inputVec)
-    {
-        return false;
-    }
+    virtual ~LTOIOIndexMapper() {};
+    // Get actual value of the index.
+    virtual unsigned get() const = 0;
+    // For i-th PS input, assign unique index to i-th element of the map.
+    virtual void assignIndex(std::vector<int>& psIdxMap, unsigned i) = 0;
+    // Ensure that the next unique index will be aligned appropriately.
+    virtual void align(std::vector<int>& psIdxMap) = 0;
+    // Update object's state for i-th index. If assignIndex() is about to be called for i-th index, then:
+    // * finalizeIndex() should not be executed before it
+    // * if finalizeIndex() is then called, the state should not change
+    virtual void finalizeIndex(std::vector<int>& psIdxMap, unsigned i) = 0;
+    // Call it when the whole psIn was processed.
+    virtual void finalizeRemainder(std::vector<int>& psIdxMap, const VecOfIntrinVec& psIn) = 0;
+protected:
+    static constexpr size_t attrAlignment = 4; // to oword boundary
+};
 
-    ConstantInt* modeVal = dyn_cast<ConstantInt>(
-        inst->getOperand(ShaderIOAnalysis::INPUT_INTERPMODE_ARG));
+// Most common variant - assign consecutive indices to PS inputs; straightforward alignment; no internal state.
+struct LTOPSIndexMapper : LTOIOIndexMapper
+{
+    virtual unsigned get() const { return nPsIn; }
+    virtual void assignIndex(std::vector<int>& psIdxMap, unsigned i) { psIdxMap[i] = nPsIn++; }
+    virtual void align(std::vector<int>&) { nPsIn = iSTD::Align(nPsIn, attrAlignment); }
+    virtual void finalizeIndex(std::vector<int>&, unsigned) {}
+    virtual void finalizeRemainder(std::vector<int>&, const VecOfIntrinVec&) {}
+private:
+    unsigned nPsIn = 0;
+};
+
+
+//////////////////////////////////////////////////////////////////////////////
+// Compact and link
+//////////////////////////////////////////////////////////////////////////////
+
+// returns true if the interpolation mode of i-th PS input attribute
+// (represented as input vector of all i-th PS input loads) is "constant interpolation"
+static bool isConstInterpolationInput(const IntrinVec& iv)
+{
     bool isConstInterpolation = false;
 
-    if (modeVal != nullptr)
+    for (const auto& inst : iv)
     {
-        e_interpolation mode =
-            static_cast<e_interpolation>(modeVal->getZExtValue());
-        if (mode == EINTERPOLATION_CONSTANT)
+
+        if (ConstantInt* modeVal = dyn_cast<ConstantInt>(
+            inst->getOperand(ShaderIOAnalysis::INPUT_INTERPMODE_ARG)))
         {
+            const e_interpolation mode =
+                static_cast<e_interpolation>(modeVal->getZExtValue());
+            if (mode == EINTERPOLATION_CONSTANT)
+            {
+                isConstInterpolation = true;
+            }
+            else
+            {
+                assert(!isConstInterpolation && "Mixed const and non-const interpolation attributes?");
+            }
+        }
+        else
+        {
+            assert(0 && "Dynamic interpolation mode is not allowed.");
             isConstInterpolation = true;
         }
-    }
-    else
-    {
-        isConstInterpolation = true;
     }
 
     return isConstInterpolation;
@@ -501,25 +568,21 @@ static bool isConstInterpolationOutput(const vector<Value*>& outVals)
     return constInterp;
 }
 
-static ConstantFP* isConstFP(const vector<Value*>& vals)
+// If input vector elements (llvm values) refers to the same float constant,
+// return the pointer to this constant. Nullptr otherwise.
+static ConstantFP* isConstFPReplicated(const vector<Value*>& vals)
 {
-    ConstantFP* cfp = nullptr;
+    ConstantFP* const cfp = vals.size() > 0 ?
+        dyn_cast<ConstantFP>(vals[0]) : nullptr;
 
-    if (vals.size() > 0)
+    for (unsigned i = 1; cfp && i < vals.size(); i++)
     {
-        cfp = dyn_cast<ConstantFP>(vals[0]);
-        if (cfp != nullptr)
+        if (cfp != vals[i])
         {
-            for (unsigned i = 1; i < vals.size(); i++)
-            {
-                if (cfp != vals[i])
-                {
-                    return nullptr;
-                }
-            }
-            return cfp;
+            return nullptr;
         }
     }
+
     return cfp;
 }
 
@@ -528,7 +591,7 @@ static ConstantFP* isConstFP(const vector<Value*>& vals)
 // will be grouped together in the front, then align index by 4 and followed
 // by other input attrs.
 //
-// psIdxMap is the outputed mapping between old PS input index & new index
+// psIdxMap is the outputted mapping between old PS input index & new index
 //   newPSAttrIndex = psIdxMap[oldPSAttrIndex]
 static void compactPsInputs(
     CodeGenContext* psCtx,
@@ -536,63 +599,50 @@ static void compactPsInputs(
     ShaderType inputShaderType,
     const VecOfIntrinVec& psIn,
     const VecOfVec<Value*>& outVals,
-    LTOPSActions& actions)
+    LTOPSActions& actions,
+    LTOIOIndexMapper& indexMapper)
 {
-    unsigned nPsIn = 0;
+    // GS only: count the number of constant interpolation attributes
     unsigned nConstInterp = 0;
-    actions.resize(psIn.size());
-
-    // count the number of constatnt interpolation attributes
-    for (unsigned i = 0; i < psIn.size(); i++)
+    for (unsigned i = 0; inputShaderType == ShaderType::GEOMETRY_SHADER && i < psIn.size(); i++)
     {
         const IntrinVec& iv = psIn[i];
-        ConstantFP* cfp;
-        if (iv.size() > 0)
+
+        // if last geometry stage's output is a replicated const, then do not count it
+        // as constant interpolation attribute - output constants will be propagated
+        if (!iv.empty() && !isConstFPReplicated(outVals[i]))
         {
-            if ((cfp = isConstFP(outVals[i])) != nullptr)
+            bool isConstInterpInput = isConstInterpolationInput(iv);
+
+            if (!psCtx->m_DriverInfo.WADisableConstInterpolationPromotion() &&
+                isConstInterpolationOutput(outVals[i]))
             {
-                continue;
+                isConstInterpInput = true;
             }
-            else
+
+            if (isConstInterpInput)
             {
-                bool isConstInterpInput = false;
-
-                for (auto inst : iv)
-                {
-                    if (isConstInterpolationInput(inst))
-                    {
-                        isConstInterpInput = true;
-                    }
-                }
-                if (inputShaderType == ShaderType::GEOMETRY_SHADER &&
-                    !psCtx->m_DriverInfo.WADisableConstInterpolationPromotion() &&
-                    isConstInterpolationOutput(outVals[i]))
-                {
-                    isConstInterpInput = true;
-                }
-
-                if (isConstInterpInput)
-                {
-                    nConstInterp++;
-                }
+                nConstInterp++;
             }
         }
     }
 
+    // Set of ps attrs that are either propagated constants, or constant interpolated attrs.
     set<int> psInClear;
+    actions.resize(psIn.size());
 
     // cleanup all constants, gather const interpolation inputs
     for (unsigned i = 0; i < psIn.size(); i++)
     {
         const IntrinVec& iv = psIn[i];
-        if (iv.size() > 0)
+
+        if (!iv.empty())
         {
             bool clean = false;
-            ConstantFP* cfp;
 
-            if ((cfp = isConstFP(outVals[i])) != nullptr)
+            if (const ConstantFP* cfp = isConstFPReplicated(outVals[i]))
             {
-                // if vs output is const, then just propogate it
+                // if last geometry stage's output is const, then just propagate it
                 APFloat immf = cfp->getValueAPF();
                 unique_ptr<LTOPSAction> act(new LTOPSConstRepAction(immf));
                 actions[i] = std::move(act);
@@ -601,22 +651,14 @@ static void compactPsInputs(
             else
             {
                 // check and handle constant interpolate attrs
-                bool isConstInterpInput = false;
-
-                for (auto inst : iv)
-                {
-                    if (isConstInterpolationInput(inst))
-                    {
-                        isConstInterpInput = true;
-                    }
-                }
+                bool isConstInterpInput = isConstInterpolationInput(iv);
 
                 // check for GS output can be promoted to const interpolation
                 bool updateInterpMode = false;
                 if (inputShaderType == ShaderType::GEOMETRY_SHADER &&
                     !psCtx->m_DriverInfo.WADisableConstInterpolationPromotion() &&
                     isConstInterpolationOutput(outVals[i]) &&
-                    !((nConstInterp & 0x3) == 1 &&nPsIn == nConstInterp - 1))
+                    !((nConstInterp & 0x3) == 1 && indexMapper.get() == nConstInterp - 1))
                 {
                     isConstInterpInput = true;
                     updateInterpMode = true;
@@ -624,7 +666,8 @@ static void compactPsInputs(
 
                 if (isConstInterpInput)
                 {
-                    psIdxMap[i] = nPsIn++;
+                    assert(psIdxMap[i] == -1);
+                    indexMapper.assignIndex(psIdxMap, i);
                     unique_ptr<LTOPSAction> act(
                         new LTOPSConstInterpAction(psIdxMap[i], updateInterpMode));
                     actions[i] = std::move(act);
@@ -637,23 +680,33 @@ static void compactPsInputs(
                 psInClear.insert(i);
             }
         }
+        indexMapper.finalizeIndex(psIdxMap, i);
     }
-    nPsIn = iSTD::Align(nPsIn, 4);
+    indexMapper.finalizeRemainder(psIdxMap, psIn);
+    indexMapper.align(psIdxMap);
 
+    // gather non-const interpolation inputs
     for (unsigned i = 0; i < psIn.size(); i++)
     {
         const IntrinVec& iv = psIn[i];
 
-        if (iv.size() > 0 && !psInClear.count(i))
+        if (!iv.empty() && psInClear.count(i) == 0)
         {
             if (psIdxMap[i] == -1)
             {
-                psIdxMap[i] = nPsIn++;
+                indexMapper.assignIndex(psIdxMap, i);
             }
+            else
+            {
+               assert(0);
+            }
+            assert(!actions[i]);
             unique_ptr<LTOPSAction> act(new LTOPSAdjustIndexAction(psIdxMap[i]));
             actions[i] = std::move(act);
         }
+        indexMapper.finalizeIndex(psIdxMap, i);
     }
+    indexMapper.finalizeRemainder(psIdxMap, psIn);
 }
 
 void applyPsLtoActions(
@@ -663,9 +716,9 @@ void applyPsLtoActions(
     for (unsigned i = 0; i < psIn.size(); i++)
     {
         IntrinVec& iv = psIn[i];
-        if (iv.size() > 0 && actions[i])
+        if (!iv.empty() && actions[i])
         {
-            for (auto inst : iv)
+            for (auto& inst : iv)
             {
                 (*actions[i])(inst);
             }
@@ -673,14 +726,15 @@ void applyPsLtoActions(
     }
 }
 
-// Compact VS/DS output attributes based on PS attr index map, -1 in index
+// Compact VS/DS/GS output attributes based on PS attr index map, -1 in index
 // map means it's not used by PS.
 // Returns true if any output instruction was removed.
-static bool compactVsDsOutput(
+static bool compactVsDsGsOutput(
+    const ShaderType outputShaderType,
     CodeGenContext* vsdsCtx,
     const vector<int>& psIdxMap,
     VecOfIntrinVec& outInsts,
-    VecOfVec<Value*>& outVals)
+    const VecOfVec<Value*>& outVals)
 {
     unsigned numOut = outInsts.size() * 4;
     VecOfIntrinVec newOut(outInsts.size());
@@ -723,6 +777,7 @@ static bool compactVsDsOutput(
                 // output attr is promoted to const interpolation, this may
                 // case the increasing of PS input attrs, so we need to create
                 // new output intrinsics in GS
+                assert(outputShaderType == ShaderType::GEOMETRY_SHADER);
                 newOut.resize(newIdx / 4 + 1);
                 liveOutInst.resize(newIdx / 4 + 1);
                 for (auto intrin : newOut[nNewOut - 1])
@@ -740,7 +795,7 @@ static bool compactVsDsOutput(
                 }
                 nNewOut = newIdx / 4 + 1;
             }
-
+            assert(newOut[newIdx / 4].size() == outVals[i].size());
             for (unsigned j = 0; j < newOut[newIdx / 4].size(); j++)
             {
                 newOut[newIdx / 4][j]->setOperand(newIdx % 4, outVals[i][j]);
@@ -751,7 +806,7 @@ static bool compactVsDsOutput(
 
     // If the size of attribute is aligned on a cache line we force the beginning of the
     // attributes to be aligned on 64B to reduce the number of cachelines accessed by SBE
-    if(iSTD::Align(maxIndex + 1, 8) % 16 == 0)
+    if (iSTD::Align(maxIndex + 1, 8) % 16 == 0)
     {
         vsdsCtx->getModuleMetaData()->URBInfo.has64BVertexHeaderOutput = true;
     }
@@ -772,91 +827,107 @@ static bool compactVsDsOutput(
     return outputRemoved;
 }
 
-// on enter: ps optimized, ds unified
-// after: dead attr removed, vs/ds optimized
-// Returns true if vs/ds output was removed.
-static bool linkOptVsDsGsToPs(
+
+// Call it for last geometry stage, to link the geometry stage outputs with PS inputs.
+// Input: PS optimized, last geometry stage unified.
+// Output: dead attr removed, last geometry stage optimized.
+// Returns true if last geometry stage output was removed.
+static bool linkOptLastGeomStageToPs(
     LinkOptContext* linkCtx,
     ShaderType outShaderType,
     CodeGenContext* outCtx,
-    VecOfIntrinVec& outInsts,
+    std::vector<VecOfIntrinVec*>& vecOutInsts,
     LTOPSActions& actions)
 {
     bool preStageOutputRemoved = false;
 
-    VecOfIntrinVec &psIn = linkCtx->ps.inInsts;
-    CodeGenContext* psCtx;
+    const uint numIoType = 1;
+    const std::array<VecOfIntrinVec*, 1>  psInVec{ { &linkCtx->ps.inInsts } };
 
-    psCtx = linkCtx->getPS();
-
-    if (outInsts.size() == 0)
+    for (uint ioType = 0; ioType < numIoType; ++ioType)
     {
-        return preStageOutputRemoved;
-    }
+        VecOfIntrinVec& outInsts = *vecOutInsts[ioType];
 
-    unsigned numOut = outInsts.size() * 4;
-    VecOfVec<Value*> outVals(numOut);
-    vector<int> psIdxMap(numOut, -1);   // -1 marks unused VS output
-
-    // gather vs output operands
-    for (unsigned i = 0; i < outInsts.size(); i++)
-    {
-        if (outInsts[i].size() != 0)
+        if (outInsts.empty())
         {
-            for (auto intrin : outInsts[i])
+            if (ioType == numIoType - 1)
+            {
+                return preStageOutputRemoved;
+            }
+            else
+            {
+                continue;
+            }
+        }
+
+        const unsigned numOut = outInsts.size() * 4;
+        VecOfVec<Value*> outVals(numOut);
+        vector<int> psIdxMap(numOut, -1);   // -1 marks unused last geometry stage's output
+
+        // gather vs output operands
+        for (unsigned i = 0; i < outInsts.size(); i++)
+        {
+            for (const auto& intrin : outInsts[i])
             {
                 for (unsigned j = 0; j < 4; j++)
                 {
                     Value* val = intrin->getOperand(j);
                     outVals[i * 4 + j].push_back(val);
                 }
-
             }
         }
-    }
 
-    // there are cases where PS has more inputs than VS outputs
-    // e.g. gl_PointCoord
-    if (psIn.size() > numOut)
-    {
-        psIn.resize(numOut);
-    }
-    // make sure all PS input will has a VS output
-    Value* f0 = ConstantFP::get(Type::getFloatTy(*outCtx->getLLVMContext()), 0);
-    for (unsigned i = 0; i < psIn.size(); i++)
-    {
-        if (psIn[i].size() > 0)
+        VecOfIntrinVec& psIn = *psInVec[ioType];
+        // there are cases where PS has more inputs than last geometry stage's outputs
+        // e.g. gl_PointCoord
+        if (psIn.size() > numOut)
         {
-            if (outInsts[i / 4].size() != 0 && outVals[i].size() != 0)
+            psIn.resize(numOut);
+        }
+
+        {
+            // make sure all PS input will have a last geometry stage's output
+            Value* f0 = ConstantFP::get(Type::getFloatTy(*outCtx->getLLVMContext()), 0);
+            for (unsigned i = 0; i < psIn.size(); i++)
             {
-                // for input with the output is undef, reset the output to 0.0f
-                for (unsigned j = 0; j < outVals[i].size(); j++)
+                if (!psIn[i].empty())
                 {
-                    if (isa<UndefValue>(outVals[i][j]))
+                    if (!outVals[i].empty())
                     {
-                        outVals[i][j] = f0;
+                        // for input with the output is undef, reset the output to 0.0f
+                        for (unsigned j = 0; j < outVals[i].size(); j++)
+                        {
+                            if (isa<UndefValue>(outVals[i][j]))
+                            {
+                                outVals[i][j] = f0;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // also for input with missing output, reset the output to 0.0f
+                        outVals[i].resize(psIn[i].size(), f0);
                     }
                 }
             }
-            else
-            {
-                // also for input with missing output, reset the output to 0.0f
-                outVals[i].resize(psIn[i].size(), f0);
-            }
         }
-    }
 
-    if (psCtx)
-    {
-        // compact PS input attrs (moving towards index 0)
-        compactPsInputs(psCtx, psIdxMap, outShaderType, psIn, outVals, actions);
-        applyPsLtoActions(psIn, actions);
+       std::unique_ptr<LTOIOIndexMapper> indexMapper(static_cast<LTOIOIndexMapper*>(new LTOPSIndexMapper));
+
+        if (CodeGenContext* psCtx = linkCtx->getPS())
+        {
+            compactPsInputs(psCtx, psIdxMap, outShaderType, psIn, outVals, actions, *indexMapper);
+            applyPsLtoActions(psIn, actions);
+        }
+
+        {
+            preStageOutputRemoved = compactVsDsGsOutput(outShaderType, outCtx, psIdxMap, outInsts, outVals) ||
+                preStageOutputRemoved;
+        }
     }
 
     // whether we have output values removed, so that we can do DCR again
     // to remove operations producing them
-    preStageOutputRemoved = compactVsDsOutput(outCtx, psIdxMap, outInsts, outVals);
-
     return preStageOutputRemoved;
 }
 
@@ -1011,7 +1082,7 @@ static bool linkOptHsToDs(LinkOptContext* linkCtx)
     return hsOutRemoved;
 }
 
-const static std::multimap<unsigned int, unsigned int> outputTypeToUsage =
+const static std::multimap<unsigned, unsigned> outputTypeToUsage =
 {
     { SHADER_OUTPUT_TYPE_POSITION, POSITION_X },
     { SHADER_OUTPUT_TYPE_POSITION, POSITION_Y },
@@ -1086,7 +1157,7 @@ static void linkOptVovToVov(LinkOptContext* linkCtx,
         {
             auto inputUsages = outputTypeToUsage.equal_range(ShaderOutputType(i));
             if (all_of(inputUsages.first, inputUsages.second,
-                [&inNonDefaultInsts](const std::pair<const unsigned int, unsigned int>& iter)
+                [&inNonDefaultInsts](const std::pair<const unsigned, unsigned>& iter)
                     { return iter.second >= inNonDefaultInsts.size() || inNonDefaultInsts[iter.second].empty(); }))
             {
                 assert(outNonDefaultInsts[i].size() == 1);
@@ -1104,21 +1175,6 @@ static void linkOptVovToVov(LinkOptContext* linkCtx,
     {
         shaderInputClipCullDistances->eraseFromParent();
     }
-}
-
-bool runPasses( CodeGenContext* ctx, ...)
-{
-    llvm::legacy::PassManager mpm;
-    va_list ap;
-    Pass* p;
-    va_start(ap, ctx);
-    while ((p = va_arg(ap, Pass*)))
-    {
-        mpm.add(p);
-    }
-    va_end(ap);
-
-    return mpm.run(*ctx->getModule());
 }
 
 static void ltoPrepare(LinkOptContext* linkContext)
@@ -1156,27 +1212,26 @@ static ShaderType ltoToPS(LinkOptContext* ltoCtx, LTOPSActions& actions)
     CodeGenContext* dsCtx = ltoCtx->getDS();
     CodeGenContext* vsCtx = ltoCtx->getVS();
     CodeGenContext* prePsCtx;
-    VecOfIntrinVec* prePsOuts;
+    std::vector<VecOfIntrinVec*> prePsOuts;
     ShaderType prevType;
 
     if (gsCtx != nullptr)
     {
         prePsCtx = gsCtx;
         prevType = s_gsType;
-        prePsOuts = &ltoCtx->gs.outInsts;
+        prePsOuts.push_back(&ltoCtx->gs.outInsts);
     }
-    else
-    if (dsCtx != nullptr)
+    else if (dsCtx != nullptr)
     {
         prePsCtx = dsCtx;
         prevType = s_dsType;
-        prePsOuts = &ltoCtx->ds.outInsts;
+        prePsOuts.push_back(&ltoCtx->ds.outInsts);
     }
-    else if(vsCtx != nullptr)
+    else if (vsCtx != nullptr)
     {
         prePsCtx = vsCtx;
         prevType = s_vsType;
-        prePsOuts = &ltoCtx->vs.outInsts;
+        prePsOuts.push_back(&ltoCtx->vs.outInsts);
     }
     else
     {
@@ -1201,12 +1256,11 @@ static ShaderType ltoToPS(LinkOptContext* ltoCtx, LTOPSActions& actions)
             LTODumpLLVMIR(psCtx, "beLTOI");
         }
         LTODumpLLVMIR(prePsCtx, "beLTOO");
-        if (linkOptVsDsGsToPs(ltoCtx, prevType, prePsCtx, *prePsOuts, actions))
+
+        if (linkOptLastGeomStageToPs(ltoCtx, prevType, prePsCtx, prePsOuts, actions))
         {
             // Outputs were removed from preStage, so DCR make sense in such case.
-            runPasses(prePsCtx,
-                createDeadCodeEliminationPass(),
-                nullptr);
+            runPasses(prePsCtx, createDeadCodeEliminationPass(), nullptr);
         }
         if (psCtx)
         {
@@ -1393,13 +1447,12 @@ void LinkOptIRGetPSActions(CodeGenContext* ctxs[], bool usesStreamOutput,
             prevType = ltoToHs(ltoCtx);
             break;
 
-        case ShaderType::VERTEX_SHADER:
-            break;
 
         default:
             assert(false && "Internal error in link opt!");
         }
     }
+
     if (psCtx)  DumpLLVMIR(psCtx, "lto");
     if (gsCtx)  DumpLLVMIR(gsCtx, "lto");
     if (dsCtx)  DumpLLVMIR(dsCtx, "lto");
@@ -1431,4 +1484,3 @@ void LinkOptIR(CodeGenContext* ctxs[], bool usesStreamOutput)
 }
 
 } // namespace IGC
-

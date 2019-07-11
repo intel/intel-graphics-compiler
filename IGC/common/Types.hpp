@@ -179,6 +179,9 @@ static const char *ShaderTypeString[] = {
     "ERROR"
 };
 
+static_assert(sizeof(ShaderTypeString) / sizeof(*ShaderTypeString) == static_cast<size_t>(ShaderType::END) + 1,
+    "Update the array");
+
 template <typename TIter>
 class RangeWrapper
 {
