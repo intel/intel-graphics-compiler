@@ -487,6 +487,8 @@ public:
     {
         instList.remove_if([=](G4_INST* inst) { return inst->isIntrinsic() && inst->asIntrinsicInst()->getIntrinsicId() == intrinId;});
     }
+
+    void addSamplerFlushBeforeEOT();
 };
 }
 

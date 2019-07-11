@@ -82,7 +82,7 @@ G4_DstRegRegion* CoalesceSpillFills::generateCoalescedFill(unsigned int scratchO
     const char* dclName = kernel.fg.builder->getNameString(kernel.fg.mem, 32,
         "COAL_FILL_%d", kernel.Declares.size());
     auto fillDcl = kernel.fg.builder->createDeclareNoLookup(dclName, G4_GRF,
-        NUM_DWORDS_PER_GRF, (unsigned short)dclSize, Type_UD, DeclareType::CoalescedFill);
+        NUM_DWORDS_PER_GRF, (unsigned short)(getGRFSize() == 64 ? dclSize/2 : dclSize), Type_UD, DeclareType::CoalescedFill);
 
     if (evenAlignDst)
     {
@@ -267,6 +267,10 @@ void CoalesceSpillFills::coalesceFills(std::list<INST_LIST_ITER>& coalesceableFi
         auto fillDst = fill->getDst();
         auto fillDstRegOff = fillDst->getRegOff();
         unsigned int dstDclRows = fillDst->getTopDcl()->getNumRows();
+        if (getGRFSize() == 64)
+        {
+            dstDclRows *= 2;
+        }
         unsigned int maxRow = dstDclRows + scratchOffset - fillDstRegOff - min;
 
         if (maxRow > dclSize)
@@ -385,7 +389,7 @@ bool CoalesceSpillFills::fillHeuristic(std::list<INST_LIST_ITER>& coalesceableFi
         // Now mark bits corresponding to rows
         unsigned int regOff = (*c)->getDst()->getRegOff();
         for (unsigned int r = regOff;
-            r < (regOff+scratchSize); r++)
+            r < (regOff+ (getGRFSize() == 64 ? (scratchSize + 1) / 2 : scratchSize)); r++)
         {
             it->second.set(r);
         }
@@ -637,7 +641,7 @@ void CoalesceSpillFills::keepConsecutiveSpills(std::list<INST_LIST_ITER>& instLi
                                 auto prevSrc1Row = (*candidate)->getSrc(1)->asSrcRegRegion()->getRegOff();
 
                                 unsigned int scratchOffDelta = scratchOffset - candOffset;
-                                if ((prevSrc1Row + scratchOffDelta) != curSrc1Row)
+                                if ((prevSrc1Row + (getGRFSize() == 64 ? (scratchOffDelta + 1) / 2: scratchOffDelta)) != curSrc1Row)
                                 {
                                     // Following is disallowed
                                     // send  (8) V10(1,0) ... <-- resLen = 4
@@ -950,7 +954,7 @@ void CoalesceSpillFills::replaceCoalescedOperands(G4_INST* inst)
         {
             auto dstRgn = dst->asDstRegRegion();
             auto newDstRgn = kernel.fg.builder->createDstRegRegion(Direct, it->second.first->getRegVar(),
-                it->second.second + dstRgn->getRegOff(), dstRgn->getSubRegOff(), dstRgn->getHorzStride(), dstRgn->getType());
+                (getGRFSize() == 64 ? (it->second.second + 1) / 2 : it->second.second) + dstRgn->getRegOff(), dstRgn->getSubRegOff(), dstRgn->getHorzStride(), dstRgn->getType());
 
             newDstRgn->setAccRegSel(dstRgn->getAccRegSel());
             inst->setDest(newDstRgn);
@@ -976,7 +980,7 @@ void CoalesceSpillFills::replaceCoalescedOperands(G4_INST* inst)
                 auto oldRgnDesc = srcRgn->getRegion();
 
                 auto newSrcRgn = kernel.fg.builder->createSrcRegRegion(srcRgn->getModifier(), Direct,
-                    it->second.first->getRegVar(), it->second.second + srcRgn->getRegOff(),
+                    it->second.first->getRegVar(), (getGRFSize() == 64 ? (it->second.second + 1) /2 : it->second.second) + srcRgn->getRegOff(),
                     srcRgn->getSubRegOff(), oldRgnDesc,
                     opnd->getType());
                 newSrcRgn->setAccRegSel(srcRgn->getAccRegSel());

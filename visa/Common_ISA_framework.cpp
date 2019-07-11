@@ -197,11 +197,8 @@ void CisaBinary::initKernel( int kernelIndex, VISAKernelImpl * kernel )
 
     if (!kernel->getIsKernel())
     {
-        /*
-            TODO: Linkage. Need to modify ISAASM to dump out if the function was delcared as a static or as a global.
-            If I see a definition, but not a body then this function needs to be declared as external.
-        */
-        m_header.functions[functionIndex].linkage = 2; //Setting to 2 for now, see TODO above!
+
+        m_header.functions[functionIndex].linkage = 0; // deprecated and MBZ
         m_header.functions[functionIndex].name_len = (unsigned char) nameLen;
         memcpy_s(&m_header.functions[functionIndex].name, COMMON_ISA_MAX_FILENAME_LENGTH, kernel->getName(), m_header.functions[functionIndex].name_len);
 

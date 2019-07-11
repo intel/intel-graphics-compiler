@@ -109,7 +109,6 @@ static void setOptBit(uint32_t &opts, uint32_t bit, bool isSet) {
     }
 }
 
-
 static void writeText(const Opts &opts, const std::string &outp) {
     if (opts.outputFile == "") {
 #ifdef WIN32

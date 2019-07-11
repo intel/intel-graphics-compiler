@@ -136,9 +136,9 @@ bool Options::parseOptions(int argc, const char* argv[])
                 m_vISAOptions.setArgSetByUser(vISAOpt);
                 break;
             case ET_2xINT32: {
-                uint32_t hi32 = atoi(argv[i]);
+                uint32_t hi32 = stoul(std::string(argv[i]));
                 i++;
-                uint32_t lo32 = atoi(argv[i]);
+                uint32_t lo32 = stoul(std::string(argv[i]));
                 uint64_t val64 = ((uint64_t)hi32 << 32) | (uint64_t)lo32;
                 m_vISAOptions.setUint64(vISAOpt, val64);
                 m_vISAOptions.setArgSetByUser(vISAOpt);

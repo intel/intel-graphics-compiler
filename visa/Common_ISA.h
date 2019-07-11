@@ -412,7 +412,6 @@ typedef struct {
 typedef struct {
     unsigned char linkage;
     unsigned char name_len;
-    //char* name;
     char name[COMMON_ISA_MAX_FILENAME_LENGTH];
     unsigned int offset;
     unsigned int size;
@@ -431,31 +430,9 @@ typedef struct {
     //   for cisa binary emmission
     char * cisa_binary_buffer;
     char * genx_binary_buffer;
-    //   for cisa linker
-    union {
-        void* scratch;
-        int   scratch_int;
-    };
-    //   for calling convention
-    bool           stack_call;
-    unsigned short num_callers;
 } compiled_unit_info_t;
 typedef compiled_unit_info_t kernel_info_t;
 typedef compiled_unit_info_t function_info_t;
-
-typedef struct {
-    unsigned char linkage;
-    unsigned short name_len;
-    unsigned char* name;
-    unsigned char bit_properties;
-    unsigned short num_elements;
-    unsigned char attribute_count;
-    attribute_info_t* attributes;
-    // Auxillary data
-    //   for cisa linker
-    void* scratch;
-    vISA::G4_Declare* dcl;
-} filescope_var_info_t;
 
 /*
  *  Format of the common ISA kernel binary.
@@ -470,10 +447,6 @@ typedef struct {
     unsigned short        num_kernels;
     kernel_info_t*        kernels;
     unsigned short        num_filescope_variables;
-    filescope_var_info_t* filescope_variables;
-    unsigned short        num_extern_functions;
-    unsigned short        num_global_functions;
-    unsigned short        num_static_functions;
     unsigned short        num_functions;
     function_info_t*      functions;
 } common_isa_header;
@@ -511,7 +484,6 @@ typedef kernel_format_t function_format_t;
 class print_format_provider_t {
 public:
     virtual uint32_t getNameIndex() const = 0;
-    virtual unsigned char getReturnType() const = 0;
 
     virtual const char* getString(uint32_t str_id) const = 0;
     virtual uint32_t getStringCount() const = 0;

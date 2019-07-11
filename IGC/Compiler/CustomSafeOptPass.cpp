@@ -1522,6 +1522,100 @@ void GenSpecificPattern::visitBinaryOperator(BinaryOperator &I)
             I.eraseFromParent();
         }
     }
+    else if (I.getOpcode() == Instruction::And)
+    {
+    /*  This `and` is basically fabs() done on high part of int representation.
+        For float instructions minus operand can end as SrcMod, but since we cast it
+        from double to int it will end as additional mov, and we can ignore this m_FNeg
+        anyway.
+
+        From :
+            %sub = fsub double -0.000000e+00, %res.039
+            %25 = bitcast double %sub to i64
+            %26 = bitcast i64 %25 to <2 x i32> // or directly double to <2xi32>
+            %27 = extractelement <2 x i32> %26, i32 1
+            %and31.i = and i32 %27, 2147483647
+
+        To:
+            %25 = bitcast double %res.039 to <2 x i32>
+            %27 = extractelement <2 x i32> %26, i32 1
+            %and31.i = and i32 %27, 2147483647
+
+        Or on Int64 without extract:
+        From:
+            %sub = fsub double -0.000000e+00, %res.039
+            %astype.i112.i.i = bitcast double %sub to i64
+            %and107.i.i = and i64 %astype.i112.i.i, 9223372032559808512 // 0x7FFFFFFF00000000
+        To:
+            %bit_cast = bitcast double %res.039 to i64
+            %and107.i.i = and i64 %bit_cast, 9223372032559808512 // 0x7FFFFFFF00000000
+
+    */
+
+        /*  Get src of either 2 bitcast chain: double -> i64, i64 -> 2xi32
+            or from single direct: double -> 2xi32
+        */
+        auto getValidBitcastSrc = [](Instruction *op) -> llvm::Value*
+        {
+            if (!(isa<BitCastInst>(op)))
+                return nullptr;
+
+            BitCastInst* opBC = cast<BitCastInst>(op);
+
+            auto opType = opBC->getType();
+            if (!(opType->isVectorTy() && opType->getVectorElementType()->isIntegerTy(32) && opType->getVectorNumElements() == 2))
+                return nullptr;
+
+            if (opBC->getSrcTy()->isDoubleTy())
+                return opBC->getOperand(0); // double -> 2xi32
+
+            BitCastInst* bitCastSrc = dyn_cast<BitCastInst>(opBC->getOperand(0));
+
+            if (bitCastSrc && bitCastSrc->getDestTy()->isIntegerTy(64) && bitCastSrc->getSrcTy()->isDoubleTy())
+                return bitCastSrc->getOperand(0); // double -> i64, i64 -> 2xi32
+
+            return nullptr;
+        };
+
+        using namespace llvm::PatternMatch;
+        Value* src_of_FNeg = nullptr;
+        Instruction* inst = nullptr;
+
+        auto fabs_on_int_pattern1 = m_And(m_ExtractElement(m_Instruction(inst), m_SpecificInt(1)), m_SpecificInt(0x7FFFFFFF));
+        auto fabs_on_int_pattern2 = m_And(m_Instruction(inst), m_SpecificInt(0x7FFFFFFF00000000));
+        auto fneg_pattern = m_FNeg(m_Value(src_of_FNeg));
+
+        if (match(&I, fabs_on_int_pattern1))
+        {
+            Value * src = getValidBitcastSrc(inst);
+            if (src && match(src, fneg_pattern) && src_of_FNeg->getType()->isDoubleTy())
+            {
+                llvm::IRBuilder<> builder(&I);
+                VectorType* vec2 = VectorType::get(builder.getInt32Ty(), 2);
+                Value* BC = builder.CreateBitCast(src_of_FNeg, vec2);
+                Value* EE = builder.CreateExtractElement(BC, builder.getInt32(1));
+                Value* AI = builder.CreateAnd(EE, builder.getInt32(0x7FFFFFFF));
+                I.replaceAllUsesWith(AI);
+                I.eraseFromParent();
+            }
+        }
+        else if (match(&I, fabs_on_int_pattern2))
+        {
+            BitCastInst * bitcast = dyn_cast<BitCastInst>(inst);
+            bool bitcastValid = bitcast && bitcast->getDestTy()->isIntegerTy(64) && bitcast->getSrcTy()->isDoubleTy();
+
+            if (bitcastValid && match(bitcast->getOperand(0), fneg_pattern) && src_of_FNeg->getType()->isDoubleTy())
+            {
+                llvm::IRBuilder<> builder(&I);
+                Value* BC = builder.CreateBitCast(src_of_FNeg, I.getType());
+                Value* AI = builder.CreateAnd(BC, builder.getInt64(0x7FFFFFFF00000000));
+                I.replaceAllUsesWith(AI);
+                I.eraseFromParent();
+            }
+        }
+
+
+    }
 }
 
 void GenSpecificPattern::visitCmpInst(CmpInst &I)

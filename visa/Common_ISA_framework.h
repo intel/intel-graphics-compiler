@@ -212,7 +212,6 @@ public:
         memset(&m_header, 0, sizeof(common_isa_header));
 
         m_header.num_kernels = 0;
-        m_header.num_global_functions = 0;
         m_header.num_functions = 0;
         m_upper_bound_kernels = 0;
         m_upper_bound_functions = 0;

@@ -190,11 +190,9 @@ static int pendingBracket;
 ".kernel_attr"      {TRACE("\n** KERNEL ATTR "); return DIRECTIVE_KERNEL_ATTR;}
 ".input"            {TRACE("\n** INPUT "); return DIRECTIVE_INPUT;}
 ".parameter"        {TRACE("\n** PARAMETER "); return DIRECTIVE_PARAMETER;}
-".return"           {TRACE("\n** RETURN "); return DIRECTIVE_RETURN;}
 ".loc"              {TRACE("\n** LOC "); return DIRECTIVE_LOC;}
 ".function"         {TRACE("\n** FUNCTION "); return DIRECTIVE_FUNC;}
 ".global_function"  {TRACE("\n** GLOBAL FUNCTION "); return DIRECTIVE_GLOBAL_FUNC;}
-".resolvedIndex"    {TRACE("\n** RESOLVED INDEX "); return DIRECTIVE_RESOLVED_INDEX;}
 ".kernel"           {TRACE("\n** KERNEL NAME DIRECTIVE "); return DIRECTIVE_KERNEL;}
 
 "."implicit[a-zA-Z0-9_\-$@?]* {

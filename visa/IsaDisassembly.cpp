@@ -2558,13 +2558,6 @@ std::string printKernelHeader(
         }
     }
 
-    /// .return directive for functions
-    if (!isKernel)
-    {
-        VISA_Type isa_type = (VISA_Type)(header->getReturnType() & 0xF);
-        sstr << "\n" << ".return " << CISATypeTable[isa_type].typeName;
-    }
-
     bool isTargetSet = false;
     for (unsigned i = 0; i < header->getAttrCount(); i++)
     {

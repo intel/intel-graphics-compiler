@@ -265,11 +265,9 @@ VISA_RawOpnd* rawOperandArray[16];
 %token DIRECTIVE_KERNEL_ATTR /* .kernel_attr */
 %token DIRECTIVE_INPUT      /* .input */
 %token DIRECTIVE_PARAMETER  /* .parameter */
-%token DIRECTIVE_RETURN     /* .return */
 %token DIRECTIVE_LOC        /* .loc */
 %token DIRECTIVE_FUNC       /* .function */
 %token DIRECTIVE_GLOBAL_FUNC       /* .global_function */
-%token DIRECTIVE_RESOLVED_INDEX /* .resolvedIndex */
 %token ABS                  /* .abs */
 %token SAT                  /* .sat */
 %token PIXEL_NULL_MASK      /* .pixel_null_mask */
@@ -539,7 +537,6 @@ CISAStmt : /* empty */
        | CISAStmt DirectiveInput          TrailingComment STMT_DELIM
        | CISAStmt DirectiveImplicitInput  TrailingComment STMT_DELIM
        | CISAStmt DirectiveParameter      TrailingComment STMT_DELIM
-       | CISAStmt DirectiveReturn         TrailingComment STMT_DELIM
        | CISAStmt DirectiveFunc           TrailingComment STMT_DELIM
        | CISAStmt DirectiveAttr           TrailingComment STMT_DELIM
        | CISAStmt CISAInst                TrailingComment STMT_DELIM
@@ -704,11 +701,6 @@ DirectiveParameter: DIRECTIVE_PARAMETER VAR  SIZE_NUM GEN_ATTR
                    temp_struct.attr_set = $4.attr_set;
                    pCisaBuilder->CISA_input_directive($2, 0, (unsigned short)$3, CISAlineno);
                };
-/* ----- .return    ------ */
-DirectiveReturn: DIRECTIVE_RETURN RETURN_TYPE
-                {
-                    //pBuilder->CISA_return_directive($2, CISAlineno);
-                }
 /* ----- .attribute ------ */
                //     1               2     3         4
 DirectiveAttr: DIRECTIVE_KERNEL_ATTR VAR EQUALS STRING_LITERAL {

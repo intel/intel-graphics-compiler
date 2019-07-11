@@ -433,12 +433,8 @@ int processCommonISAHeader(
             READ_FIELD_FROM_BUF(cisaHdr.kernels[i].gen_binaries[j].binary_size, uint32_t);
         }
 
-
-        cisaHdr.kernels[i].scratch = NULL;
         cisaHdr.kernels[i].cisa_binary_buffer = NULL;
         cisaHdr.kernels[i].genx_binary_buffer = NULL;
-        cisaHdr.kernels[i].stack_call = false;
-        cisaHdr.kernels[i].num_callers = 0;
     }
 
     READ_FIELD_FROM_BUF(cisaHdr.num_filescope_variables, uint16_t);
@@ -456,16 +452,9 @@ int processCommonISAHeader(
         cisaHdr.functions = NULL;
     }
 
-    cisaHdr.num_extern_functions = cisaHdr.num_static_functions = cisaHdr.num_global_functions = 0;
-
     for (int i = 0; i < cisaHdr.num_functions; i++) {
+        // field is deprecated 
         READ_FIELD_FROM_BUF(cisaHdr.functions[i].linkage, uint8_t);
-        if (cisaHdr.functions[i].linkage == CISA_LINKAGE_EXTERN)
-            cisaHdr.num_extern_functions++;
-        else if (cisaHdr.functions[i].linkage == CISA_LINKAGE_STATIC)
-            cisaHdr.num_static_functions++;
-        else
-            cisaHdr.num_global_functions++;
 
         READ_FIELD_FROM_BUF(cisaHdr.functions[i].name_len, uint8_t);
         memcpy_s(
@@ -489,11 +478,8 @@ int processCommonISAHeader(
             assert(cisaHdr.functions[i].function_reloc_symtab.num_syms == 0 && "function relocation not supported");
             cisaHdr.functions[i].function_reloc_symtab.reloc_syms = nullptr;
 
-            cisaHdr.functions[i].scratch = NULL;
             cisaHdr.functions[i].cisa_binary_buffer = NULL;
             cisaHdr.functions[i].genx_binary_buffer = NULL;
-            cisaHdr.functions[i].stack_call = false;
-            cisaHdr.functions[i].num_callers = 0;
     }
 
     return 0;

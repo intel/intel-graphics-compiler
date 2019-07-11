@@ -1200,7 +1200,7 @@ int Get_Size_Vector_Operand(vector_opnd * cisa_opnd)
 /*
 cisa3.0
 function_info {
-    ub linkage;
+    ub linkage; // MBZ
     ub name_len;
     ub name[name_len];
     ud offset;

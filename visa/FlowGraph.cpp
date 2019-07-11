@@ -1039,6 +1039,29 @@ void FlowGraph::handleWait()
     }
 }
 
+// Add a sampler cache flush with null return before the EOT send
+// bb must end with an EOT send
+void G4_BB::addSamplerFlushBeforeEOT()
+{
+    assert(this->isLastInstEOT() && "last instruction must be EOT");
+    auto builder = parent->builder;
+    int samplerFlushOpcode = 0x1F;
+    int samplerFlushFC = (SamplerSIMDMode::SIMD32 << 17) +
+        (samplerFlushOpcode << 12);
+    int desc = G4_SendMsgDescriptor::createDesc(samplerFlushFC, true,
+        1, 0);
+    G4_SrcRegRegion* sendMsgOpnd = builder->Create_Src_Opnd_From_Dcl(
+        builder->getBuiltinR0(),
+        builder->getRegionStride1());
+    auto msgDesc = builder->createSendMsgDesc(desc, SFIDtoInt(SFID::SAMPLER), true, true);
+    G4_INST* samplerFlushInst = builder->createSendInst(nullptr, G4_send,
+        8, builder->createNullDst(Type_UD), sendMsgOpnd,
+        builder->createImm(desc, Type_UD),
+        0, msgDesc, 0);
+    auto iter = std::prev(this->end());
+    this->insert(iter, samplerFlushInst);
+}
+
 //
 // Each g4_pseudo_exit instruction will be translated into one of the following:
 // -- a unconditional simd1 ret: translated into a EOT send (may be optionally merged with
@@ -1105,25 +1128,7 @@ void FlowGraph::handleExit(G4_BB* firstSubroutineBB)
                             needsEOTSend = false;
                             if (builder->getHasNullReturnSampler())
                             {
-                                // insert a sampler cache flush with null return
-                                // no need for this in other paths since they can never
-                                // generate sampler with null return
-                                int samplerFlushOpcode = 0x1F;
-                                int samplerFlushFC = (SamplerSIMDMode::SIMD32 << 17) +
-                                    (samplerFlushOpcode << 12);
-                                int desc = G4_SendMsgDescriptor::createDesc(samplerFlushFC, true,
-                                    1, 0);
-                                G4_SrcRegRegion* sendMsgOpnd = builder->Create_Src_Opnd_From_Dcl(
-                                    builder->getBuiltinR0(),
-                                    builder->getRegionStride1());
-                                auto msgDesc = builder->createSendMsgDesc(desc, SFIDtoInt(SFID::SAMPLER), true, true);
-                                G4_INST* samplerFlushInst = builder->createSendInst(nullptr, G4_send,
-                                    8, builder->createNullDst(Type_UD), sendMsgOpnd,
-                                    builder->createImm(desc, Type_UD),
-                                    0, msgDesc, 0);
-                                auto iter = bb->end();
-                                --iter;
-                                bb->insert(iter, samplerFlushInst);
+                                bb->addSamplerFlushBeforeEOT();
                             }
                         }
                     }
@@ -3870,6 +3875,11 @@ void G4_BB::addEOTSend(G4_INST* lastInst)
     sendInst->setCISAOff(movInst->getCISAOff());
     sendInst->setLocation(movInst->getLocation());
     instList.push_back(sendInst);
+
+    if (builder->getHasNullReturnSampler())
+    {
+        addSamplerFlushBeforeEOT();
+    }
 }
 
 void G4_BB::emitInstructionInfo(std::ostream& output, INST_LIST_ITER &it)

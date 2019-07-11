@@ -585,13 +585,6 @@ void CEncoder::Select(CVariable* flag, CVariable* dst, CVariable* src0, CVariabl
     }
 }
 
-void CEncoder::PredAdd(CVariable* flag, CVariable* dst, CVariable* src0, CVariable* src1)
-{
-    m_encoderState.m_flag.var = flag;
-
-    Arithmetic(ISA_ADD, dst, src0, src1);
-}
-
 void CEncoder::SetDstSubVar(uint subVar)
 {
     m_encoderState.m_dstOperand.subVar = int_cast<uint8_t>(subVar);

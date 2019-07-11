@@ -27,13 +27,25 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define MESSAGE_INFO_HPP
 
 #include "../api/iga_bxml_enums.hpp"
+#include "../Backend/Native/Field.hpp"
 #include "../IR/Types.hpp"
 
 #include <cstdint>
 #include <string>
+#include <tuple>
+#include <vector>
 
 namespace iga
 {
+    struct DescField {
+        DescField(int _off, int _len) : off(_off), len(_len) { }
+        int off, len;
+    };
+
+    using DiagnosticList = std::vector<std::pair<DescField,std::string>>;
+    using DecodedDescFields =
+        std::vector<std::tuple<Field,uint32_t,std::string>>;
+
     // This is generic list of send operations.  One or more messages may map
     // to the same element (hence why "generic").
     enum class SendOp {
@@ -42,11 +54,18 @@ namespace iga
         // load ops
         IS_LOAD_OP = 0x1000, // group can be tested via this bit
         LOAD,
+        LOAD_QUAD,
+        LOAD_STRIDED,
+        // special load operations
+        LOAD_STATUS,
+        LOAD_SURFACE_INFO,
         //
         ////////////////////////////////////
         // store ops
         IS_STORE_OP = 0x2000, // group can be tested via this bit
         STORE,
+        STORE_QUAD,
+        STORE_STRIDED,
         //
         ///////////////////////////////////
         // atomic ops
@@ -66,11 +85,26 @@ namespace iga
         ATOMIC_FMIN, ATOMIC_FMAX,
         ATOMIC_FCAS,
         //
-        // SPECIFY: do we add these?
-        //   FENCE
-        //   CACHE_CONTROL
-        //   BARRIER
-        //   THREAD_EXIT
+        //
+        READ_STATE, // e.g. surface info (NMS_RSI)
+        //
+        FENCE,
+        //
+        // gateway and thread-spawner events
+        BARRIER,
+        MONITOR,
+        UNMONITOR,
+        WAIT,
+        SIGNAL,
+        EOT,
+        //
+        // TODO: a domain expert should break this into better ops
+        SAMPLER_LOAD,
+        SAMPLER_FLUSH,
+        //
+        // TODO: a domain expert should break this into better ops
+        RENDER_WRITE,
+        RENDER_READ,
     };
     std::string format(SendOp op);
 
@@ -116,7 +150,7 @@ namespace iga
             VALID = 0x80000000,
             //
             // Set on atomic operations that return data
-            ATOMIC_LOAD  = 1 << 0,
+            ATOMIC_RETURNS  = 1 << 0,
             //
             // Set on HDC data port messages that are coherent.
             // (BTI 0xFF instead of 0xFD)
@@ -175,9 +209,19 @@ namespace iga
         // similar in funcntion.
         int       elemsPerAddr;
         //
+        // For LOAD_QUAD and STORE_QUAD, this holds a bit mask of up to four
+        // bits with which channels are *enabled* (not disabled).
+        //
+        // The elemsPerAddr field will still be set
+        // (with the set cardinality here).
+        int       channelsEnabled;
+        //
         // The number of channels in the size of the operation.
         // (The "SIMD" size.)
         int       execWidth;
+
+        // Caching options for the L1 cache (if supported)
+        CacheOpt  cachingL1;
         //
         // Caching options for the L3 cache (if supported)
         // In some HDC messages this is bit 13.  Some parts don't
@@ -193,15 +237,22 @@ namespace iga
         // possible immediate offset if the encoding supports it
         int32_t   immediateOffset;
         //
+        // A symbol value for this message (syntax).
+        std::string symbol;
+        //
+        //
         // This may hold a useful string telling the user the exact message
         // matching this specification up decode (if it exists).  This is
         // indended for for debugging only; the value and behavior are subject
         // to change at any time. The nullptr is a possible value.
-        std::string messageImplementation;
+        std::string description;
 
+        const char *docs = nullptr;
         //
         // A block message
-        bool isBlock() const {return execWidth == 1 && (isLoad() || isStore());}
+        bool isBlock() const {
+            return execWidth == 1 && (isLoad() || isStore());
+        }
         //
         // A proper load message (not an atomic returning a value)
         bool isLoad() const {
@@ -222,7 +273,7 @@ namespace iga
         }
         //
         // An atomic that returns a value
-        bool isAtomicLoad() const {return hasAttr(ATOMIC_LOAD);}
+        bool isAtomicLoad() const {return hasAttr(ATOMIC_RETURNS);}
 
         // Enables the operation to be used within a predicate assignment.
         operator bool() const {return hasAttr(VALID);}
@@ -240,7 +291,9 @@ namespace iga
             SFID sfid,
             uint32_t exDesc,
             uint32_t desc,
-            std::string *err = nullptr);
+            DiagnosticList &warnings,
+            DiagnosticList &errors,
+            DecodedDescFields *descDecodedField);
 
         //
         // Do we enable abstract encoding?
@@ -261,8 +314,6 @@ namespace iga
         //     SFID sfid,
         //     std::string *err = nullptr);
     }; //class MessageInfo
-
-
 } // iga
 
 #endif

@@ -173,7 +173,8 @@ extern "C" int iga_main(int argc, const char **argv)
             } else if (inp == "ICL" || inp == "CNLH" || inp == "11") {
                 p = IGA_GEN11;
             } else {
-                err("invalid platform option");
+                err("invalid platform option "
+                    "(use option -h=p to list platforms)");
             }
             baseOpts.platform = p;
         });

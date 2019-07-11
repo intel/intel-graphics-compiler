@@ -407,7 +407,6 @@ public:
 
     bool isKernel;
     int cunit;
-    const std::vector <char*>* resolvedCalleeNames;
 
     bool isExternFunc = false;
 
@@ -634,8 +633,6 @@ public:
     int getCUnitId() { return cunit; }
     void setIsKernel( bool value ) { isKernel = value; }
     bool getIsKernel() { return isKernel; }
-    void setResolvedCalleeNames(std::vector<char*>* nameList) { resolvedCalleeNames = nameList; }
-    const std::vector<char*>* getResolvedCalleeNames() { return resolvedCalleeNames; }
     void predefinedVarRegAssignment(uint8_t inputSize);
     void expandPredefinedVars();
     void setArgSize( unsigned short size ) { arg_size = size; }
@@ -693,6 +690,7 @@ public:
         }
     }
 
+    // If this is true (detected in TranslateInterface.cpp), we need a sampler flush before EOT
     bool getHasNullReturnSampler() const { return hasNullReturnSampler; }
 
     /*
@@ -866,7 +864,7 @@ public:
         Mem_Manager &m, Options *options, bool isFESP64Bits,
         FINALIZER_INFO *jitInfo = NULL, PVISA_WA_TABLE pWaTable = NULL)
         : curFile(NULL), curLine(0), curCISAOffset(-1), func_id(-1), metaData(jitInfo),
-        isKernel(false), cunit(0), resolvedCalleeNames(NULL),
+        isKernel(false), cunit(0),
         builtinSamplerHeaderInitialized(false), m_pWaTable(pWaTable), m_options(options), CanonicalRegionStride0(0, 1, 0),
         CanonicalRegionStride1(1, 1, 0), CanonicalRegionStride2(2, 1, 0), CanonicalRegionStride4(4, 1, 0),
         use64BitFEStackVars(isFESP64Bits), mem(m), phyregpool(pregs), hashtable(m), rgnpool(m), dclpool(m),

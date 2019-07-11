@@ -213,8 +213,6 @@ public:
     void addPendingLabelNames(std::string name) { m_pending_label_names.push_back(name); }
     void setIsKernel(bool isKernel) { m_isKernel = isKernel; };
     bool getIsKernel() const { return m_isKernel; }
-    void setReturnType(VISA_Type type) { m_return_type = type; }
-    VISA_Type getReturnType(){ return m_return_type; }
     unsigned long getCodeOffset(){ return m_cisa_kernel.entry; }
 
     CISA_GEN_VAR * getDeclFromName(const std::string &name);
@@ -920,7 +918,6 @@ private:
     CisaFramework::CisaInst * m_lastInst;
     bool m_isKernel;
     unsigned int m_resolvedIndex;
-    VISA_Type m_return_type;
 
     vISA::Mem_Manager m_mem;
     std::string m_name;
@@ -1026,10 +1023,6 @@ public:
     uint32_t getNameIndex() const
     {
         return m_kernel->m_cisa_kernel.name_index;
-    }
-    unsigned char getReturnType() const
-    {
-        return m_kernel->m_return_type;
     }
     const char* getString(uint32_t str_id) const
     {

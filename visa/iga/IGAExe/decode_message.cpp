@@ -69,6 +69,8 @@ static void formatSIMT(
     const iga::MessageInfo &mi,
     int grfSizeB)
 {
+    if (mi.elemSizeBitsRegFile == 0)
+        return;
     int currGrf = 0;
     for (int vecIx = 0; vecIx < mi.elemsPerAddr; vecIx++) {
         int dataSize = mi.elemSizeBitsRegFile/8;
@@ -186,10 +188,14 @@ bool decodeSendDescriptor(const Opts &opts)
             sfid = iga::SFID::RC;
         } else if (sfidStr == "URB") {
             sfid = iga::SFID::URB;
+        } else if (sfidStr == "TS") {
+            sfid = iga::SFID::TS;
         } else if (sfidStr == "VME") {
             sfid = iga::SFID::VME;
         } else if (sfidStr == "DCRO") {
             sfid = iga::SFID::DCRO;
+        } else if (sfidStr == "SMPL") {
+            sfid = iga::SFID::SMPL;
         } else {
             fatalExitWithMessage(
                 "-Xdsd: %s: invalid or unsupported SFID for this platform",
@@ -202,11 +208,13 @@ bool decodeSendDescriptor(const Opts &opts)
         case 0x2: sfid = iga::SFID::SMPL; break;
         case 0x3: sfid = iga::SFID::GTWY; break;
         case 0x4: sfid = iga::SFID::DC2;  break;
+        case 0x5: sfid = iga::SFID::RC;  break;
         case 0x6: sfid = iga::SFID::URB;  break;
         case 0x7:
             sfid = iga::SFID::TS;
             break;
         case 0x8:
+            sfid = iga::SFID::VME;
             break;
         case 0x9: sfid = iga::SFID::DCRO; break;
         case 0xA: sfid = iga::SFID::DC0;  break;
@@ -221,22 +229,93 @@ bool decodeSendDescriptor(const Opts &opts)
                 ex_desc);
         }
     }
-    std::string errInfo;
+
+    iga::DiagnosticList es;
+    iga::DiagnosticList ws;
+    auto emitDiagnostics = [&](const iga::DiagnosticList &ds) {
+        for (const auto &d : ds) {
+            std::stringstream ss;
+            if (d.first.len != 0) {
+                int off = d.first.off;
+                const char *which = "Desc";
+                if (off >= 32) {
+                    off -= 32;
+                    which = "ExDesc";
+                }
+                ss << "[";
+                if (d.first.len > 1) {
+                    ss << off + d.first.len - 1 << ":";
+                }
+                ss << off << "]: ";
+            }
+            ss << d.second << "\n";
+            if (&ds == &es)
+              emitRedText(std::cerr,ss.str());
+            else
+              emitYellowText(std::cerr,ss.str());
+        }
+    };
+
+    iga::DecodedDescFields decodedFields;
     auto mi = iga::MessageInfo::tryDecode(
         static_cast<iga::Platform>(opts.platform),
         sfid,
         ex_desc,
         desc,
-        &errInfo);
-    os <<  "MESSAGE";
-    if (mi)
-    {
-        if (!mi.messageImplementation.empty()) {
-            os << " (";
-            emitGreenText(os,mi.messageImplementation);
-            os << ")";
+        es,
+        ws,
+        &decodedFields);
+    emitDiagnostics(ws);
+    emitDiagnostics(es);
+    if (!decodedFields.empty()) {
+        os << "DESCRIPTOR FIELDS:\n";
+        for (const auto &df : decodedFields) {
+            std::stringstream ss;
+            const auto &f = std::get<0>(df);
+            const auto &val = std::get<1>(df);
+            const auto &meaning = std::get<2>(df);
+            int off = f.offset;
+            ss << "  ";
+            if (off > 32) {
+                off -= 32;
+                ss << "ExDesc";
+            } else {
+                ss << "Desc";
+            }
+            ss << "[";
+            if (f.length > 1) {
+                ss << std::dec << off + f.length - 1 << ":";
+            }
+            ss << off;
+            ss << "]";
+            while (ss.tellp() < 16) {
+                ss << ' ';
+            }
+            ss << "  " << std::setw(32) << std::left << f.name;
+            ss << "  ";
+            std::stringstream ssh;
+            int fw = (f.length + 4 - 1)/4;
+            ssh << "0x" << std::hex << std::uppercase <<  std::setw(fw) <<
+                std::setfill('0') << val;
+            ss << std::setw(12) << std::right << ssh.str();
+            if (!meaning.empty())
+                ss << "  " << meaning;
+            ss << "\n";
+
+            os << ss.str();
         }
         os << "\n";
+    }
+
+    emitGreenText(os,mi.symbol);
+    if (!mi.description.empty()) {
+        os << " (";
+        emitYellowText(os,mi.description);
+        os << ")";
+    }
+    os << "\n";
+    if (mi)
+    {
         os << "  Op:                         ";
         emitYellowText(os, format(mi.op));
         os << "\n";
@@ -259,40 +338,78 @@ bool decodeSendDescriptor(const Opts &opts)
         os << "  Address Size:               ";
         emitYellowText(os, mi.addrSizeBits);
         os << "b (per channel)\n";
-        os << "  Data Size (RegFile):        ";
+        os << "  Data Size";
+        if (mi.elemSizeBitsRegFile != mi.elemSizeBitsMemory) {
+            os << " (RegFile):        ";
+        } else {
+            os << ":                  ";
+        }
         emitYellowText(os, mi.elemSizeBitsRegFile);
         os << "b (per channel)\n";
-        os << "  Data Size (Memory):         ";
-        emitYellowText(os, mi.elemSizeBitsMemory);
-        os << "b (per channel)\n";
+        if (mi.elemSizeBitsRegFile != mi.elemSizeBitsMemory) {
+            os << "  Data Size (Memory):         ";
+            emitYellowText(os, mi.elemSizeBitsMemory);
+            os << "b (per channel)\n";
+        }
         os << "  Data Elements Per Address:  ";
         emitYellowText(os, mi.elemsPerAddr);
-        os << " element" << (mi.elemsPerAddr != 1 ? "s" : "") <<
-              " (per address)\n";
+        os << " element" << (mi.elemsPerAddr != 1 ? "s" : "");
+        if (mi.op == iga::SendOp::LOAD_QUAD ||
+            mi.op == iga::SendOp::STORE_QUAD)
+        {
+            os << "  (";
+            emitYellowText(os, ".");
+            if (mi.channelsEnabled & 0x1)
+              emitYellowText(os,"X");
+            if (mi.channelsEnabled & 0x2)
+              emitYellowText(os,"Y");
+            if (mi.channelsEnabled & 0x4)
+              emitYellowText(os,"Z");
+            if (mi.channelsEnabled & 0x8)
+              emitYellowText(os,"W");
+            os << " enabled)";
+        }
+        os << "\n";
+        //
         os << "  Execution Width:            ";
         emitYellowText(os,mi.execWidth);
         os << " channel" << (mi.execWidth != 1 ? "s" : "") << "\n";
-        os << "  L3 Caching:                 ";
-        emitYellowText(os,format(mi.cachingL3));
-        if (mi.cachingL3 == iga::CacheOpt::DEFAULT)
-            os << " (uses state \"MOCS\" settings)";
-        else
-            os << " (overrides state \"MOCS\" settings)";
+        bool emitCacheSettings = mi.isLoad() || mi.isStore() || mi.isAtomic();
+        if (emitCacheSettings) {
+            auto emitCaching =
+                [&] (const char *name, iga::CacheOpt co) {
+                    os << "  " << name << " Caching:                 ";
+                    emitYellowText(os,format(co));
+                    if (opts.verbosity > 0) {
+                        if (co == iga::CacheOpt::DEFAULT)
+                            os << " (uses state \"MOCS\" settings)";
+                        else
+                            os << " (overrides state \"MOCS\" settings)";
+                    }
+                    os << "\n";
+                };
+            emitCaching("L1", mi.cachingL1);
+            emitCaching("L3", mi.cachingL3);
+        }
         os << "\n";
         os << "  Immediate Offset:           ";
         emitYellowText(os,mi.immediateOffset);
         os << "\n";
         os << "\n";
         os << "  Attributes:\n";
+        auto emitAttr =
+            [&] (const char *attrDesc) {
+                os << "    - ";
+                emitYellowText(os,attrDesc);
+                os << "\n";
+            };
         auto checkAttr =
             [&] (int attr, const char *attrDesc) {
                 if (mi.hasAttr(attr)) {
-                    os << "    - ";
-                    emitYellowText(os,attrDesc);
-                    os << "\n";
+                    emitAttr(attrDesc);
                 }
             };
-        checkAttr(iga::MessageInfo::ATOMIC_LOAD, "atomic returns result");
+        checkAttr(iga::MessageInfo::ATOMIC_RETURNS, "atomic returns result");
         checkAttr(iga::MessageInfo::COHERENT,
             "coherent access (for stateless)");
         checkAttr(iga::MessageInfo::HAS_CHMASK,  "uses channel mask");
@@ -300,28 +417,36 @@ bool decodeSendDescriptor(const Opts &opts)
         checkAttr(iga::MessageInfo::SLM,         "slm");
         checkAttr(iga::MessageInfo::TRANSPOSED,  "transposed");
         checkAttr(iga::MessageInfo::TYPED,       "typed");
-        os << "\n";
-        os << "DATA PAYLOAD\n";
-        int grfSize = 32;
-        if (mi.hasAttr(iga::MessageInfo::TRANSPOSED)) {
-            // formatSIMD(opts, os, msgInfo, grfSize);
-            formatSIMD(opts, os, mi, grfSize);
-        } else {
-            formatSIMT(opts, os, mi, grfSize);
+        if (mi.isLoad() && ((desc >> 20) & 0x1F) == 0) {
+            emitAttr("prefetch (no data read into GRF; "
+                "instruction only prefetches to cache)");
         }
-        os <<
-          "\n"
-          "   legend:\n"
-          "     * 0, 1, ... A, ... V  indicates the SIMD channel (base 32)\n"
-          "       each character represents one byte in the register file\n"
-          "     * '-' means undefined or zero\n";
+        os << "\n";
 
-    }
-    else
-    {
-        os << " Unknown (";
-        emitRedText(os, errInfo);
-        os << ")\n";
+        // don't pretend to understand the sampler
+        bool showDataPayload =
+              mi.op != iga::SendOp::SAMPLER_LOAD &&
+              mi.op != iga::SendOp::RENDER_READ &&
+              mi.op != iga::SendOp::RENDER_WRITE &&
+              mi.op != iga::SendOp::FENCE;
+        if (showDataPayload) {
+            os << "DATA PAYLOAD\n";
+            int grfSize = 32;
+            if (mi.hasAttr(iga::MessageInfo::TRANSPOSED)) {
+                // formatSIMD(opts, os, msgInfo, grfSize);
+                formatSIMD(opts, os, mi, grfSize);
+            } else {
+                formatSIMT(opts, os, mi, grfSize);
+            }
+            if (opts.verbosity > 0) {
+                os <<
+                  "\n"
+                  "   legend:\n"
+                  "     * 0, 1, ... A, ... V  indicates the SIMD channel (base 32)\n"
+                  "       each character represents one byte in the register file\n"
+                  "     * '-' means undefined or zero\n";
+            }
+        }
     }
 
     return !mi;
