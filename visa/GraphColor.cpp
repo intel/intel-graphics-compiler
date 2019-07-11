@@ -9000,7 +9000,7 @@ int GlobalRA::coloringRegAlloc()
                 }
 #endif
                 bool disableSpillCoalecse = builder.getOption(vISA_DisableSpillCoalescing) ||
-                    builder.getOption(vISA_FastSpill) || builder.getOption(vISA_Debug) || getGRFSize() != 32;
+                    builder.getOption(vISA_FastSpill) || builder.getOption(vISA_Debug);
                 if (!reserveSpillReg && !disableSpillCoalecse && builder.useSends())
                 {
                     CoalesceSpillFills c(kernel, liveAnalysis, coloring, spillGMRF, iterationNo, rpe, *this);
