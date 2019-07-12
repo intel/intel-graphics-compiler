@@ -1916,7 +1916,7 @@ void HWConformity::generateMacl(INST_LIST_ITER it, G4_BB* bb)
 {
     G4_INST* mulInst = *it;
     MUST_BE_TRUE(mulInst->opcode() == G4_mul, "expect mul instruction");
-    if (mulInst->getExecSize() == 16)
+    if (mulInst->getExecSize() > builder.getNativeExecSize())
     {
         auto startIter = it;
         bool isFirstInst = startIter == bb->begin();
@@ -1959,7 +1959,7 @@ void HWConformity::doGenerateMacl(INST_LIST_ITER it, G4_BB *bb)
 {
     G4_INST* mulInst = *it;
     MUST_BE_TRUE(mulInst->opcode() == G4_mul, "expect mul instruction");
-    assert(mulInst->getExecSize() <= 8 && "expect simd8 or less inst");
+    assert(mulInst->getExecSize() <= builder.getNativeExecSize() && "expect single register inst");
 
     G4_Operand* src0 = mulInst->getSrc(0);
     G4_Operand* src1 = mulInst->getSrc(1);
