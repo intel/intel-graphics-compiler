@@ -25,7 +25,6 @@
 #======================= end_copyright_notice ==================================
 
 
-
 # CMake settings:
 #  - IGC_OPTION__LIBRARY_NAME
 #FCL
@@ -36,7 +35,6 @@
 #  - IGC_OPTION__INCLUDE_IGC_COMPILER_TOOLS
 #  - IGC_OPTION__OUTPUT_DIR
 #  - IGC_OPTION__USCLAUNCHER_TOOL for ILAdapter
-
 
 cmake_minimum_required(VERSION 2.8.12 FATAL_ERROR)
 if (${CMAKE_VERSION} VERSION_GREATER "3.0")
@@ -68,6 +66,7 @@ set(IGC_API_PATCH_VERSION 10)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
+
 
 
 # ======================================================================================================
