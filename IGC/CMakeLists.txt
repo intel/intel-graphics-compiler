@@ -102,7 +102,6 @@ function(igc_flag_remove_re flagsVarName)
   endif()
 endfunction(igc_flag_remove_re)
 
-
 # Adds flags to variable. If flag is in variable it is omitted.
 #
 # @param flagsVarName      Name of variable with flags. The variable will be updated.
@@ -120,7 +119,6 @@ function(igc_flag_add_once flagsVarName)
 
   set("${flagsVarName}" "${_updatedFlags}" PARENT_SCOPE)
 endfunction(igc_flag_add_once)
-
 
 # Removes flags from variable which match specified flag.
 #
@@ -153,7 +151,6 @@ function(igc_target_flag_property_add_once targetName propertyName)
   igc_flag_add_once(_flags "${ARGN}") # [WA#2] To handle ; correctly some lists must be put in string form.
   set_property(TARGET "${targetName}" PROPERTY "${propertyName}" "${_flags}")
 endfunction()
-
 
 # Adds flags to flag property of target (if they are not added already).
 #
