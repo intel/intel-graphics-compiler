@@ -1037,6 +1037,36 @@ namespace TC
         return internalDefines;
     }
 
+    // The expected extensions input string is in a form:
+    // -cl-ext=-all,+supported_ext_name,+second_supported_ext_name
+    std::string GetCDefinesForExtensions(llvm::StringRef extensions, unsigned int oclStd) {
+
+      std::string extDefines;
+      // string with defines should be similar in size, ",+" will change to "-D".
+      extDefines.reserve(extensions.size());
+
+      bool hasPrefix = extensions.consume_front("-cl-ext=-all,");
+      // If this prefix does not exist the input string does not contain valid extension list
+      // or it has all extensions disabled (-all without colon afterwards).
+      if (!hasPrefix) return extDefines;
+
+      llvm::SmallVector<StringRef, 0> v;
+      extensions.split(v, ',');
+
+      for (auto ext : v) {
+        if (ext.consume_front("+")) {
+          if (ext.equals("cl_intel_device_side_avc_motion_estimation")) {
+            // If the user provided -cl-std option we need to add the define only if it's 1.2 and above.
+            // This is because clang will not allow declarations of extension's functions which use avc types otherwise.
+            if (!(oclStd >= 120 || oclStd == 0)) continue;
+          }
+          extDefines.append(" -D").append(ext);
+        }
+      }
+
+      return extDefines;
+    }
+
     /*****************************************************************************\
 
     Function:
@@ -1402,32 +1432,10 @@ namespace TC
 
         optionsEx += " " + extensions;
 
-
+        unsigned int oclStd = GetOclCVersionFromOptions(pInputArgs->options.data(), nullptr, pInputArgs->oclVersion, exceptString);
         // get additional -D flags from internal options
         optionsEx += " " + GetCDefinesFromInternalOptions(pInternalOptions);
-
-        if (extensions.find("cl_intel_subgroups_short") != std::string::npos)
-        {
-            optionsEx += " -Dcl_intel_subgroups_short";
-        }
-        if (extensions.find("cl_intel_media_block_io") != std::string::npos)
-        {
-            optionsEx += " -Dcl_intel_media_block_io";
-        }
-        if (extensions.find("cl_intel_device_side_avc_motion_estimation") != std::string::npos)
-        {
-            // If the user provided -cl-std option we need to add the define only if it's 1.2 and above.
-            // This is because clang will not allow declarations of extension's functions which use avc types otherwise.
-            unsigned int oclStd = GetOclCVersionFromOptions(pInputArgs->options.data(), nullptr, pInputArgs->oclVersion, exceptString);
-            if (oclStd >= 120 || oclStd == 0) {
-              optionsEx += " -Dcl_intel_device_side_avc_motion_estimation";
-            }
-        }
-        if (extensions.find("cl_intel_64bit_global_atomics_placeholder") != std::string::npos)
-        {
-            optionsEx += " -Dcl_intel_64bit_global_atomics_placeholder";
-        }
-
+        optionsEx += " " + GetCDefinesForExtensions(extensions, oclStd);
         optionsEx += " -D__IMAGE_SUPPORT__ -D__ENDIAN_LITTLE__";
 
         IOCLFEBinaryResult *pResultPtr = NULL;
@@ -1453,9 +1461,6 @@ namespace TC
         {
             return false;
         }
-
-
-
 
         // if -dump-opt-llvm is enabled dump the llvm output to the file
         size_t dumpOptPosition = options.find("-dump-opt-llvm");
@@ -1488,7 +1493,6 @@ namespace TC
             }
         }
 
-        //pResult.release();
         pResultPtr->Release();
 
         return (0 == res);

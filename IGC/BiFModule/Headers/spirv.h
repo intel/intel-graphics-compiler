@@ -3720,12 +3720,31 @@ uint __builtin_spirv_OpAtomicLoad_p3i32_i32_i32(volatile local uint *Pointer, ui
 uint __builtin_spirv_OpAtomicLoad_p4i32_i32_i32(volatile generic uint *Pointer, uint Scope, uint Semantics);
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
 
+#if defined(cl_khr_int64_base_atomics) || defined(cl_khr_int64_extended_atomics)
+ulong __builtin_spirv_OpAtomicLoad_p0i64_i32_i32(volatile private ulong *Pointer, uint Scope, uint Semantics);
+ulong __builtin_spirv_OpAtomicLoad_p1i64_i32_i32(volatile global ulong *Pointer, uint Scope, uint Semantics);
+ulong __builtin_spirv_OpAtomicLoad_p3i64_i32_i32(volatile local ulong *Pointer, uint Scope, uint Semantics);
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+ulong __builtin_spirv_OpAtomicLoad_p4i64_i32_i32(volatile generic ulong *Pointer, uint Scope, uint Semantics);
+#endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+#endif // defined(cl_khr_int64_base_atomics) || defined(cl_khr_int64_extended_atomics)
+
 float __builtin_spirv_OpAtomicLoad_p0f32_i32_i32(volatile private float *Pointer, uint Scope, uint Semantics);
 float __builtin_spirv_OpAtomicLoad_p1f32_i32_i32(volatile global float *Pointer, uint Scope, uint Semantics);
 float __builtin_spirv_OpAtomicLoad_p3f32_i32_i32(volatile local float *Pointer, uint Scope, uint Semantics);
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 float __builtin_spirv_OpAtomicLoad_p4f32_i32_i32(volatile generic float *Pointer, uint Scope, uint Semantics);
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+#if defined(cl_khr_fp64)
+#if defined(cl_khr_int64_base_atomics)
+double __builtin_spirv_OpAtomicLoad_p0f64_i32_i32(volatile private double *Pointer, uint Scope, uint Semantics);
+double __builtin_spirv_OpAtomicLoad_p1f64_i32_i32(volatile global double *Pointer, uint Scope, uint Semantics);
+double __builtin_spirv_OpAtomicLoad_p3f64_i32_i32(volatile local double *Pointer, uint Scope, uint Semantics);
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+double __builtin_spirv_OpAtomicLoad_p4f64_i32_i32(volatile generic double *Pointer, uint Scope, uint Semantics);
+#endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+#endif // defined(cl_khr_int64_base_atomics)
+#endif // defined(cl_khr_fp64)
 
 void __builtin_spirv_OpAtomicStore_p0i32_i32_i32_i32(volatile private uint *Pointer, uint Scope, uint Semantics, uint Value);
 void __builtin_spirv_OpAtomicStore_p1i32_i32_i32_i32(volatile global uint *Pointer, uint Scope, uint Semantics, uint Value);
@@ -3733,6 +3752,14 @@ void __builtin_spirv_OpAtomicStore_p3i32_i32_i32_i32(volatile local uint *Pointe
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 void __builtin_spirv_OpAtomicStore_p4i32_i32_i32_i32(volatile generic uint *Pointer, uint Scope, uint Semantics, uint Value);
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+#if defined(cl_khr_int64_base_atomics) || defined(cl_khr_int64_extended_atomics)
+void __builtin_spirv_OpAtomicStore_p0i64_i32_i32_i64(volatile private ulong *Pointer, uint Scope, uint Semantics, ulong Value);
+void __builtin_spirv_OpAtomicStore_p1i64_i32_i32_i64(volatile global ulong *Pointer, uint Scope, uint Semantics, ulong Value);
+void __builtin_spirv_OpAtomicStore_p3i64_i32_i32_i64(volatile local ulong *Pointer, uint Scope, uint Semantics, ulong Value);
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+void __builtin_spirv_OpAtomicStore_p4i64_i32_i32_i64(volatile generic ulong *Pointer, uint Scope, uint Semantics, ulong Value);
+#endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+#endif // defined(cl_khr_int64_base_atomics) || defined(cl_khr_int64_extended_atomics)
 
 void __builtin_spirv_OpAtomicStore_p0f32_i32_i32_f32(volatile private float *Pointer, uint Scope, uint Semantics, float Value);
 void __builtin_spirv_OpAtomicStore_p1f32_i32_i32_f32(volatile global float *Pointer, uint Scope, uint Semantics, float Value);
@@ -3740,6 +3767,16 @@ void __builtin_spirv_OpAtomicStore_p3f32_i32_i32_f32(volatile local float *Point
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 void __builtin_spirv_OpAtomicStore_p4f32_i32_i32_f32(volatile generic float *Pointer, uint Scope, uint Semantics, float Value);
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+#if defined(cl_khr_fp64)
+#if defined(cl_khr_int64_base_atomics) || defined(cl_khr_int64_extended_atomics)
+void __builtin_spirv_OpAtomicStore_p0f64_i32_i32_f64(volatile private double *Pointer, uint Scope, uint Semantics, double Value);
+void __builtin_spirv_OpAtomicStore_p1f64_i32_i32_f64(volatile global double *Pointer, uint Scope, uint Semantics, double Value);
+void __builtin_spirv_OpAtomicStore_p3f64_i32_i32_f64(volatile local double *Pointer, uint Scope, uint Semantics, double Value);
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+void __builtin_spirv_OpAtomicStore_p4f64_i32_i32_f64(volatile generic double *Pointer, uint Scope, uint Semantics, double Value);
+#endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+#endif // defined(cl_khr_int64_base_atomics) || defined(cl_khr_int64_extended_atomics)
+#endif // defined(cl_khr_fp64)
 
 uint __builtin_spirv_OpAtomicExchange_p0i32_i32_i32_i32(volatile private uint *Pointer, uint Scope, uint Semantics, uint Value);
 uint __builtin_spirv_OpAtomicExchange_p1i32_i32_i32_i32(volatile global uint *Pointer, uint Scope, uint Semantics, uint Value);
@@ -3747,6 +3784,14 @@ uint __builtin_spirv_OpAtomicExchange_p3i32_i32_i32_i32(volatile local uint *Poi
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 uint __builtin_spirv_OpAtomicExchange_p4i32_i32_i32_i32(volatile generic uint *Pointer, uint Scope, uint Semantics, uint Value);
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+#if defined(cl_khr_int64_base_atomics)
+ulong __builtin_spirv_OpAtomicExchange_p0i64_i32_i32_i64(volatile private ulong *Pointer, uint Scope, uint Semantics, ulong Value);
+ulong __builtin_spirv_OpAtomicExchange_p1i64_i32_i32_i64(volatile global ulong *Pointer, uint Scope, uint Semantics, ulong Value);
+ulong __builtin_spirv_OpAtomicExchange_p3i64_i32_i32_i64(volatile local ulong *Pointer, uint Scope, uint Semantics, ulong Value);
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+ulong __builtin_spirv_OpAtomicExchange_p4i64_i32_i32_i64(volatile generic ulong *Pointer, uint Scope, uint Semantics, ulong Value);
+#endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+#endif // defined(cl_khr_int64_base_atomics)
 
 float __builtin_spirv_OpAtomicExchange_p0f32_i32_i32_f32(volatile private float *Pointer, uint Scope, uint Semantics, float Value);
 float __builtin_spirv_OpAtomicExchange_p1f32_i32_i32_f32(volatile global float *Pointer, uint Scope, uint Semantics, float Value);
@@ -3755,12 +3800,31 @@ float __builtin_spirv_OpAtomicExchange_p3f32_i32_i32_f32(volatile local float *P
 float __builtin_spirv_OpAtomicExchange_p4f32_i32_i32_f32(volatile generic float *Pointer, uint Scope, uint Semantics, float Value);
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
 
+#if defined(cl_khr_fp64)
+#if defined(cl_khr_int64_base_atomics)
+double __builtin_spirv_OpAtomicExchange_p0f64_i32_i32_f64(volatile private double *Pointer, uint Scope, uint Semantics, double Value);
+double __builtin_spirv_OpAtomicExchange_p1f64_i32_i32_f64(volatile global double *Pointer, uint Scope, uint Semantics, double Value);
+double __builtin_spirv_OpAtomicExchange_p3f64_i32_i32_f64(volatile local double *Pointer, uint Scope, uint Semantics, double Value);
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+double __builtin_spirv_OpAtomicExchange_p4f64_i32_i32_f64(volatile generic double *Pointer, uint Scope, uint Semantics, double Value);
+#endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+#endif // defined(cl_khr_int64_base_atomics)
+#endif // defined(cl_khr_fp64)
+
 uint __builtin_spirv_OpAtomicCompareExchange_p0i32_i32_i32_i32_i32_i32(volatile private uint *Pointer, uint Scope, uint Equal, uint Unequal, uint Value, uint Comparator);
 uint __builtin_spirv_OpAtomicCompareExchange_p1i32_i32_i32_i32_i32_i32(volatile global uint *Pointer, uint Scope, uint Equal, uint Unequal, uint Value, uint Comparator);
 uint __builtin_spirv_OpAtomicCompareExchange_p3i32_i32_i32_i32_i32_i32(volatile local uint *Pointer, uint Scope, uint Equal, uint Unequal, uint Value, uint Comparator);
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 uint __builtin_spirv_OpAtomicCompareExchange_p4i32_i32_i32_i32_i32_i32(volatile generic uint *Pointer, uint Scope, uint Equal, uint Unequal, uint Value, uint Comparator);
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+#if defined(cl_khr_int64_base_atomics)
+ulong __builtin_spirv_OpAtomicCompareExchange_p0i64_i32_i32_i32_i64_i64(volatile private ulong *Pointer, uint Scope, uint Equal, uint Unequal, ulong Value, ulong Comparator);
+ulong __builtin_spirv_OpAtomicCompareExchange_p1i64_i32_i32_i32_i64_i64(volatile global ulong *Pointer, uint Scope, uint Equal, uint Unequal, ulong Value, ulong Comparator);
+ulong __builtin_spirv_OpAtomicCompareExchange_p3i64_i32_i32_i32_i64_i64(volatile local ulong *Pointer, uint Scope, uint Equal, uint Unequal, ulong Value, ulong Comparator);
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+ulong __builtin_spirv_OpAtomicCompareExchange_p4i64_i32_i32_i32_i64_i64(volatile generic ulong *Pointer, uint Scope, uint Equal, uint Unequal, ulong Value, ulong Comparator);
+#endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+#endif // defined(cl_khr_int64_base_atomics)
 
 float __builtin_spirv_OpAtomicCompareExchange_p0f32_i32_i32_i32_f32_f32(volatile private float *Pointer, uint Scope, uint Equal, uint Unequal, float Value, float Comparator);
 float __builtin_spirv_OpAtomicCompareExchange_p1f32_i32_i32_i32_f32_f32(volatile global float *Pointer, uint Scope, uint Equal, uint Unequal, float Value, float Comparator);
@@ -3775,6 +3839,14 @@ uint __builtin_spirv_OpAtomicCompareExchangeWeak_p3i32_i32_i32_i32_i32_i32(volat
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 uint __builtin_spirv_OpAtomicCompareExchangeWeak_p4i32_i32_i32_i32_i32_i32(volatile generic uint *Pointer, uint Scope, uint Equal, uint Unequal, uint Value, uint Comparator);
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+#if defined(cl_khr_int64_base_atomics)
+ulong __builtin_spirv_OpAtomicCompareExchangeWeak_p0i64_i32_i32_i32_i64_i64(volatile private ulong *Pointer, uint Scope, uint Equal, uint Unequal, ulong Value, ulong Comparator);
+ulong __builtin_spirv_OpAtomicCompareExchangeWeak_p1i64_i32_i32_i32_i64_i64(volatile global ulong *Pointer, uint Scope, uint Equal, uint Unequal, ulong Value, ulong Comparator);
+ulong __builtin_spirv_OpAtomicCompareExchangeWeak_p3i64_i32_i32_i32_i64_i64(volatile local ulong *Pointer, uint Scope, uint Equal, uint Unequal, ulong Value, ulong Comparator);
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+ulong __builtin_spirv_OpAtomicCompareExchangeWeak_p4i64_i32_i32_i32_i64_i64(volatile generic ulong *Pointer, uint Scope, uint Equal, uint Unequal, ulong Value, ulong Comparator);
+#endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+#endif // defined(cl_khr_int64_base_atomics)
 
 uint __builtin_spirv_OpAtomicIIncrement_p0i32_i32_i32(volatile private uint *Pointer, uint Scope, uint Semantics);
 uint __builtin_spirv_OpAtomicIIncrement_p1i32_i32_i32(volatile global uint *Pointer, uint Scope, uint Semantics);
@@ -3782,6 +3854,14 @@ uint __builtin_spirv_OpAtomicIIncrement_p3i32_i32_i32(volatile local uint *Point
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 uint __builtin_spirv_OpAtomicIIncrement_p4i32_i32_i32(volatile generic uint *Pointer, uint Scope, uint Semantics);
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+#if defined(cl_khr_int64_base_atomics)
+ulong __builtin_spirv_OpAtomicIIncrement_p0i64_i32_i32(volatile private ulong *Pointer, uint Scope, uint Semantics);
+ulong __builtin_spirv_OpAtomicIIncrement_p1i64_i32_i32(volatile global ulong *Pointer, uint Scope, uint Semantics);
+ulong __builtin_spirv_OpAtomicIIncrement_p3i64_i32_i32(volatile local ulong *Pointer, uint Scope, uint Semantics);
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+ulong __builtin_spirv_OpAtomicIIncrement_p4i64_i32_i32(volatile generic ulong *Pointer, uint Scope, uint Semantics);
+#endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+#endif // defined(cl_khr_int64_base_atomics)
 
 uint __builtin_spirv_OpAtomicIDecrement_p0i32_i32_i32(volatile private uint *Pointer, uint Scope, uint Semantics);
 uint __builtin_spirv_OpAtomicIDecrement_p1i32_i32_i32(volatile global uint *Pointer, uint Scope, uint Semantics);
@@ -3789,6 +3869,14 @@ uint __builtin_spirv_OpAtomicIDecrement_p3i32_i32_i32(volatile local uint *Point
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 uint __builtin_spirv_OpAtomicIDecrement_p4i32_i32_i32(volatile generic uint *Pointer, uint Scope, uint Semantics);
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+#if defined(cl_khr_int64_base_atomics)
+ulong __builtin_spirv_OpAtomicIDecrement_p0i64_i32_i32(volatile private ulong *Pointer, uint Scope, uint Semantics);
+ulong __builtin_spirv_OpAtomicIDecrement_p1i64_i32_i32(volatile global ulong *Pointer, uint Scope, uint Semantics);
+ulong __builtin_spirv_OpAtomicIDecrement_p3i64_i32_i32(volatile local ulong *Pointer, uint Scope, uint Semantics);
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+ulong __builtin_spirv_OpAtomicIDecrement_p4i64_i32_i32(volatile generic ulong *Pointer, uint Scope, uint Semantics);
+#endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+#endif // defined(cl_khr_int64_base_atomics)
 
 uint __builtin_spirv_OpAtomicIAdd_p0i32_i32_i32_i32(volatile private uint *Pointer, uint Scope, uint Semantics, uint Value);
 uint __builtin_spirv_OpAtomicIAdd_p1i32_i32_i32_i32(volatile global uint *Pointer, uint Scope, uint Semantics, uint Value);
@@ -3796,6 +3884,14 @@ uint __builtin_spirv_OpAtomicIAdd_p3i32_i32_i32_i32(volatile local uint *Pointer
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 uint __builtin_spirv_OpAtomicIAdd_p4i32_i32_i32_i32(volatile generic uint *Pointer, uint Scope, uint Semantics, uint Value);
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+#if defined(cl_khr_int64_base_atomics)
+ulong __builtin_spirv_OpAtomicIAdd_p0i64_i32_i32_i64(volatile private ulong *Pointer, uint Scope, uint Semantics, ulong Value);
+ulong __builtin_spirv_OpAtomicIAdd_p1i64_i32_i32_i64(volatile global ulong *Pointer, uint Scope, uint Semantics, ulong Value);
+ulong __builtin_spirv_OpAtomicIAdd_p3i64_i32_i32_i64(volatile local ulong *Pointer, uint Scope, uint Semantics, ulong Value);
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+ulong __builtin_spirv_OpAtomicIAdd_p4i64_i32_i32_i64(volatile generic ulong *Pointer, uint Scope, uint Semantics, ulong Value);
+#endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+#endif // defined(cl_khr_int64_base_atomics)
 
 uint __builtin_spirv_OpAtomicISub_p0i32_i32_i32_i32(volatile private uint *Pointer, uint Scope, uint Semantics, uint Value);
 uint __builtin_spirv_OpAtomicISub_p1i32_i32_i32_i32(volatile global uint *Pointer, uint Scope, uint Semantics, uint Value);
@@ -3803,6 +3899,14 @@ uint __builtin_spirv_OpAtomicISub_p3i32_i32_i32_i32(volatile local uint *Pointer
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 uint __builtin_spirv_OpAtomicISub_p4i32_i32_i32_i32(volatile generic uint *Pointer, uint Scope, uint Semantics, uint Value);
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+#if defined(cl_khr_int64_base_atomics)
+ulong __builtin_spirv_OpAtomicISub_p0i64_i32_i32_i64(volatile private ulong *Pointer, uint Scope, uint Semantics, ulong Value);
+ulong __builtin_spirv_OpAtomicISub_p1i64_i32_i32_i64(volatile global ulong *Pointer, uint Scope, uint Semantics, ulong Value);
+ulong __builtin_spirv_OpAtomicISub_p3i64_i32_i32_i64(volatile local ulong *Pointer, uint Scope, uint Semantics, ulong Value);
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+ulong __builtin_spirv_OpAtomicISub_p4i64_i32_i32_i64(volatile generic ulong *Pointer, uint Scope, uint Semantics, ulong Value);
+#endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+#endif // defined(cl_khr_int64_base_atomics)
 
 int __builtin_spirv_OpAtomicSMin_p0i32_i32_i32_i32(volatile private uint *Pointer, uint Scope, uint Semantics, int Value);
 int __builtin_spirv_OpAtomicSMin_p1i32_i32_i32_i32(volatile global uint *Pointer, uint Scope, uint Semantics, int Value);
@@ -3810,6 +3914,14 @@ int __builtin_spirv_OpAtomicSMin_p3i32_i32_i32_i32(volatile local uint *Pointer,
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 int __builtin_spirv_OpAtomicSMin_p4i32_i32_i32_i32(volatile generic uint *Pointer, uint Scope, uint Semantics, int Value);
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+#if defined(cl_khr_int64_extended_atomics)
+long __builtin_spirv_OpAtomicSMin_p0i64_i32_i32_i64(volatile private ulong *Pointer, uint Scope, uint Semantics, long Value);
+long __builtin_spirv_OpAtomicSMin_p1i64_i32_i32_i64(volatile global ulong *Pointer, uint Scope, uint Semantics, long Value);
+long __builtin_spirv_OpAtomicSMin_p3i64_i32_i32_i64(volatile local ulong *Pointer, uint Scope, uint Semantics, long Value);
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+long __builtin_spirv_OpAtomicSMin_p4i64_i32_i32_i64(volatile generic ulong *Pointer, uint Scope, uint Semantics, long Value);
+#endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+#endif // defined(cl_khr_int64_extended_atomics)
 
 uint __builtin_spirv_OpAtomicUMin_p0i32_i32_i32_i32(volatile private uint *Pointer, uint Scope, uint Semantics, uint Value);
 uint __builtin_spirv_OpAtomicUMin_p1i32_i32_i32_i32(volatile global uint *Pointer, uint Scope, uint Semantics, uint Value);
@@ -3817,6 +3929,14 @@ uint __builtin_spirv_OpAtomicUMin_p3i32_i32_i32_i32(volatile local uint *Pointer
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 uint __builtin_spirv_OpAtomicUMin_p4i32_i32_i32_i32(volatile generic uint *Pointer, uint Scope, uint Semantics, uint Value);
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+#if defined(cl_khr_int64_extended_atomics)
+ulong __builtin_spirv_OpAtomicUMin_p0i64_i32_i32_i64(volatile private ulong *Pointer, uint Scope, uint Semantics, ulong Value);
+ulong __builtin_spirv_OpAtomicUMin_p1i64_i32_i32_i64(volatile global ulong *Pointer, uint Scope, uint Semantics, ulong Value);
+ulong __builtin_spirv_OpAtomicUMin_p3i64_i32_i32_i64(volatile local ulong *Pointer, uint Scope, uint Semantics, ulong Value);
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+ulong __builtin_spirv_OpAtomicUMin_p4i64_i32_i32_i64(volatile generic ulong *Pointer, uint Scope, uint Semantics, ulong Value);
+#endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+#endif // defined(cl_khr_int64_extended_atomics)
 
 int __builtin_spirv_OpAtomicSMax_p0i32_i32_i32_i32(volatile private uint *Pointer, uint Scope, uint Semantics, int Value);
 int __builtin_spirv_OpAtomicSMax_p1i32_i32_i32_i32(volatile global uint *Pointer, uint Scope, uint Semantics, int Value);
@@ -3824,6 +3944,14 @@ int __builtin_spirv_OpAtomicSMax_p3i32_i32_i32_i32(volatile local uint *Pointer,
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 int __builtin_spirv_OpAtomicSMax_p4i32_i32_i32_i32(volatile generic uint *Pointer, uint Scope, uint Semantics, int Value);
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+#if defined(cl_khr_int64_extended_atomics)
+long __builtin_spirv_OpAtomicSMax_p0i64_i32_i32_i64(volatile private ulong *Pointer, uint Scope, uint Semantics, long Value);
+long __builtin_spirv_OpAtomicSMax_p1i64_i32_i32_i64(volatile global ulong *Pointer, uint Scope, uint Semantics, long Value);
+long __builtin_spirv_OpAtomicSMax_p3i64_i32_i32_i64(volatile local ulong *Pointer, uint Scope, uint Semantics, long Value);
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+long __builtin_spirv_OpAtomicSMax_p4i64_i32_i32_i64(volatile generic ulong *Pointer, uint Scope, uint Semantics, long Value);
+#endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+#endif // defined(cl_khr_int64_extended_atomics)
 
 uint __builtin_spirv_OpAtomicUMax_p0i32_i32_i32_i32(volatile private uint *Pointer, uint Scope, uint Semantics, uint Value);
 uint __builtin_spirv_OpAtomicUMax_p1i32_i32_i32_i32(volatile global uint *Pointer, uint Scope, uint Semantics, uint Value);
@@ -3831,6 +3959,14 @@ uint __builtin_spirv_OpAtomicUMax_p3i32_i32_i32_i32(volatile local uint *Pointer
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 uint __builtin_spirv_OpAtomicUMax_p4i32_i32_i32_i32(volatile generic uint *Pointer, uint Scope, uint Semantics, uint Value);
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+#if defined(cl_khr_int64_extended_atomics)
+ulong __builtin_spirv_OpAtomicUMax_p0i64_i32_i32_i64(volatile private ulong *Pointer, uint Scope, uint Semantics, ulong Value);
+ulong __builtin_spirv_OpAtomicUMax_p1i64_i32_i32_i64(volatile global ulong *Pointer, uint Scope, uint Semantics, ulong Value);
+ulong __builtin_spirv_OpAtomicUMax_p3i64_i32_i32_i64(volatile local ulong *Pointer, uint Scope, uint Semantics, ulong Value);
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+ulong __builtin_spirv_OpAtomicUMax_p4i64_i32_i32_i64(volatile generic ulong *Pointer, uint Scope, uint Semantics, ulong Value);
+#endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+#endif // defined(cl_khr_int64_extended_atomics)
 
 uint __builtin_spirv_OpAtomicAnd_p0i32_i32_i32_i32(volatile private uint *Pointer, uint Scope, uint Semantics, uint Value);
 uint __builtin_spirv_OpAtomicAnd_p1i32_i32_i32_i32(volatile global uint *Pointer, uint Scope, uint Semantics, uint Value);
@@ -3838,6 +3974,14 @@ uint __builtin_spirv_OpAtomicAnd_p3i32_i32_i32_i32(volatile local uint *Pointer,
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 uint __builtin_spirv_OpAtomicAnd_p4i32_i32_i32_i32(volatile generic uint *Pointer, uint Scope, uint Semantics, uint Value);
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+#if defined(cl_khr_int64_extended_atomics)
+ulong __builtin_spirv_OpAtomicAnd_p0i64_i32_i32_i64(volatile private ulong *Pointer, uint Scope, uint Semantics, ulong Value);
+ulong __builtin_spirv_OpAtomicAnd_p1i64_i32_i32_i64(volatile global ulong *Pointer, uint Scope, uint Semantics, ulong Value);
+ulong __builtin_spirv_OpAtomicAnd_p3i64_i32_i32_i64(volatile local ulong *Pointer, uint Scope, uint Semantics, ulong Value);
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+ulong __builtin_spirv_OpAtomicAnd_p4i64_i32_i32_i64(volatile generic ulong *Pointer, uint Scope, uint Semantics, ulong Value);
+#endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+#endif // defined(cl_khr_int64_extended_atomics)
 
 uint __builtin_spirv_OpAtomicOr_p0i32_i32_i32_i32(volatile private uint *Pointer, uint Scope, uint Semantics, uint Value);
 uint __builtin_spirv_OpAtomicOr_p1i32_i32_i32_i32(volatile global uint *Pointer, uint Scope, uint Semantics, uint Value);
@@ -3845,6 +3989,14 @@ uint __builtin_spirv_OpAtomicOr_p3i32_i32_i32_i32(volatile local uint *Pointer, 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 uint __builtin_spirv_OpAtomicOr_p4i32_i32_i32_i32(volatile generic uint *Pointer, uint Scope, uint Semantics, uint Value);
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+#if defined(cl_khr_int64_extended_atomics)
+ulong __builtin_spirv_OpAtomicOr_p0i64_i32_i32_i64(volatile private ulong *Pointer, uint Scope, uint Semantics, ulong Value);
+ulong __builtin_spirv_OpAtomicOr_p1i64_i32_i32_i64(volatile global ulong *Pointer, uint Scope, uint Semantics, ulong Value);
+ulong __builtin_spirv_OpAtomicOr_p3i64_i32_i32_i64(volatile local ulong *Pointer, uint Scope, uint Semantics, ulong Value);
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+ulong __builtin_spirv_OpAtomicOr_p4i64_i32_i32_i64(volatile generic ulong *Pointer, uint Scope, uint Semantics, ulong Value);
+#endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+#endif // defined(cl_khr_int64_extended_atomics)
 
 uint __builtin_spirv_OpAtomicXor_p0i32_i32_i32_i32(volatile private uint *Pointer, uint Scope, uint Semantics, uint Value);
 uint __builtin_spirv_OpAtomicXor_p1i32_i32_i32_i32(volatile global uint *Pointer, uint Scope, uint Semantics, uint Value);
@@ -3852,6 +4004,14 @@ uint __builtin_spirv_OpAtomicXor_p3i32_i32_i32_i32(volatile local uint *Pointer,
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 uint __builtin_spirv_OpAtomicXor_p4i32_i32_i32_i32(volatile generic uint *Pointer, uint Scope, uint Semantics, uint Value);
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+#if defined(cl_khr_int64_extended_atomics)
+ulong __builtin_spirv_OpAtomicXor_p0i64_i32_i32_i64(volatile private ulong *Pointer, uint Scope, uint Semantics, ulong Value);
+ulong __builtin_spirv_OpAtomicXor_p1i64_i32_i32_i64(volatile global ulong *Pointer, uint Scope, uint Semantics, ulong Value);
+ulong __builtin_spirv_OpAtomicXor_p3i64_i32_i32_i64(volatile local ulong *Pointer, uint Scope, uint Semantics, ulong Value);
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+ulong __builtin_spirv_OpAtomicXor_p4i64_i32_i32_i64(volatile generic ulong *Pointer, uint Scope, uint Semantics, ulong Value);
+#endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+#endif // defined(cl_khr_int64_extended_atomics)
 
 bool __builtin_spirv_OpAtomicFlagTestAndSet_p0i32_i32_i32(volatile private uint *Pointer, uint Scope, uint Semantics);
 bool __builtin_spirv_OpAtomicFlagTestAndSet_p1i32_i32_i32(volatile global uint *Pointer, uint Scope, uint Semantics);

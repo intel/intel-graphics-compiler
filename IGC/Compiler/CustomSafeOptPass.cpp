@@ -1124,7 +1124,12 @@ bool TrivialLocalMemoryOpsElimination::isLocalBarrier(CallInst &I)
     for (auto arg = I.arg_begin(); arg != I.arg_end(); ++arg)
     {
         ConstantInt* ci = dyn_cast<ConstantInt>(arg);
-        argumentsOfMemoryBarrier.push_back(ci->getValue().getBoolValue());
+        if (ci) {
+          argumentsOfMemoryBarrier.push_back(ci->getValue().getBoolValue());
+        } else {
+          // argument is not a constant, so we can't tell.
+          return false;
+        }
     }
 
     return argumentsOfMemoryBarrier == m_argumentsOfLocalMemoryBarrier;
