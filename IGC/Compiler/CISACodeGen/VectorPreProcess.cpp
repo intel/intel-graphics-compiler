@@ -259,7 +259,7 @@ namespace
                 Value* offset = hasComputedOffset ? ptr : getStoreRaw()->getArgOperand(1);
                 ptr = getPointerOperand();
                 Type* types[2] = { ptr->getType(), newType };
-                Value* args[3] = { ptr, offset, storedValue };
+                Value* args[4] = { ptr, offset, storedValue, m_builder.getInt32(alignment) };
                 Function* newStoreRawFunction =
                     GenISAIntrinsic::getDeclaration(getStoreRaw()->getModule(), getStoreRaw()->getIntrinsicID(), types);
                 return m_builder.CreateCall(newStoreRawFunction, args);

@@ -694,8 +694,7 @@ void computeGlobalFreeGRFs(G4_Kernel& kernel)
 {
     auto gtpin = kernel.getGTPinData();
     gtpin->clearFreeGlobalRegs();
-    std::vector<bool> freeGRFs;
-    freeGRFs.resize(kernel.getNumRegTotal() * G4_GRF_REG_NBYTES, true);
+    std::vector<bool> freeGRFs(kernel.getNumRegTotal() * G4_GRF_REG_NBYTES, true);
     unsigned int start = 0, end = 0;
 
     // Mark r0 as busy. Done explicitly because move from r0 is inserted

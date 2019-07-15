@@ -891,37 +891,9 @@ void SendFusion::packPayload(
 
     int16_t msgLen = origDesc->MessageLength();
     int16_t extMsgLen = origDesc->extMessageLength();
+    RegionDesc* stride1 = Builder->getRegionStride1();
 
-    // mov (ES) DVar<D_regoff, D_sregoff>:Ty<1> SVar<S_regoff, S_sregoff>:Ty(1;1,0)
-    auto copyRegOpnd = [&](
-        G4_VarBase* DVar, G4_VarBase* SVar,
-        G4_Type Ty, unsigned char ES,
-        int16_t D_regoff, int16_t D_sregoff,
-        int16_t S_regoff, int16_t S_sregoff) -> G4_INST*
-    {
-        G4_SrcRegRegion* S = Builder->createSrcRegRegion(
-            Mod_src_undef, Direct, SVar, S_regoff, S_sregoff,
-            Builder->getRegionStride1(), Ty);
-        G4_DstRegRegion* D = Builder->createDstRegRegion(
-            Direct, DVar, D_regoff, D_sregoff, 1, Ty);
-        G4_INST* nInst = Builder->createInternalInst(
-            NULL, G4_mov, NULL, false, ES, D, S, nullptr, option);
-        bb->insert(InsertBeforePos, nInst);
-        return nInst;
-    };
-
-    // Temperaries for address payload
-    G4_Type Ty = Type_UD;
-    G4_VarBase* Dst0 = FusedSend->getOperand(Opnd_src0)->getBase();
-    G4_SrcRegRegion* S0 = Send0->getOperand(Opnd_src0)->asSrcRegRegion();
-    G4_VarBase* V0 = getVarBase(S0->getBase(), Ty);
-    G4_SrcRegRegion* S1 = Send1->getOperand(Opnd_src0)->asSrcRegRegion();
-    G4_VarBase* V1 = getVarBase(S1->getBase(), Ty);
-    int16_t d_roff = 0;
-    int16_t s0_roff = S0->getRegOff();
-    int16_t s1_roff = S1->getRegOff();
-
-    // Special case for exec_size = 1|2|4
+    // Sanity check for exec_size =1|2|4
     if (ExecSize < 8)
     {
         assert((origDesc->isDataPortWrite() ||
@@ -929,82 +901,24 @@ void SendFusion::packPayload(
             "Internal Error (SendFusion): unexpected read message!");
         assert((origDesc->isDataPortRead() || (msgLen + extMsgLen == 2)) &&
             "Internal Error (SendFusion): unexpected write message!");
-
-        /// Address payload
-        //     The combined address payload takes 2*ExecSize DW, which is 1 GRF.
-        G4_INST* Inst0 = copyRegOpnd(Dst0, V0, Ty, ExecSize, d_roff, 0, s0_roff, 0);
-        G4_INST* Inst1 = copyRegOpnd(Dst0, V1, Ty, ExecSize, d_roff, ExecSize, s1_roff, 0);
-
-        // Update DefUse
-        Inst0->addDefUse(FusedSend, Opnd_src0);
-        Send0->copyDef(Inst0, Opnd_src0, Opnd_src0, true);
-        Inst1->addDefUse(FusedSend, Opnd_src0);
-        Send1->copyDef(Inst1, Opnd_src0, Opnd_src0, true);
-
-        if (msgLen <= 1 && extMsgLen == 0)
-        {
-            // No source payload, done!
-            return;
-        }
-
-        // Source payload
-        //    Either in src0 or src1, but not both as ExecSize <= 4
-        Gen4_Operand_Number opn = (msgLen > 1) ? Opnd_src0 : Opnd_src1;
-        G4_SrcRegRegion* Reg0 = Send0->getOperand(opn)->asSrcRegRegion();
-        G4_SrcRegRegion* Reg1 = Send1->getOperand(opn)->asSrcRegRegion();
-        G4_VarBase* Var0 = getVarBase(Reg0->getBase(), Ty);
-        G4_VarBase* Var1 = getVarBase(Reg1->getBase(), Ty);
-        G4_VarBase* Dst = FusedSend->getOperand(opn)->getBase();
-        if (opn == Opnd_src0) {
-            // source payload must be on the second grf for simd8 dispatching.
-            d_roff += 1;
-            s0_roff += 1;
-            s1_roff += 1;
-        }
-        else {
-            d_roff = 0;
-            s0_roff = 0;
-            s1_roff = 0;
-        }
-
-        Inst0 = copyRegOpnd(Dst, Var0, Ty, ExecSize, d_roff, 0, s0_roff, 0);
-        Inst1 = copyRegOpnd(Dst, Var1, Ty, ExecSize, d_roff, ExecSize, s1_roff, 0);
-
-        // Update DefUse
-        Inst0->addDefUse(FusedSend, opn);
-        Send0->copyDef(Inst0, opn, Opnd_src0, true);
-        Inst1->addDefUse(FusedSend, opn);
-        Send1->copyDef(Inst1, opn, Opnd_src0, true);
-
-        return;
     }
 
-    ///
-    /// 1. copy address payload
-    ///
-    G4_INST* Inst0 = copyRegOpnd(Dst0, V0, Ty, ExecSize, d_roff,   0, s0_roff, 0);
-    G4_INST* Inst1 = copyRegOpnd(Dst0, V1, Ty, ExecSize, d_roff+1, 0, s1_roff, 0);
+    // Using a loop of count == 2 for handing both Msg & extMsg payload.
+    //
+    // Note that the following works for exec_size=1|2|4|8. It is designed
+    // to handle exec_size=8. It also works for exec_size=1|2|4 with minor
+    // changes.
+    int16_t numMov[2] = {msgLen, extMsgLen};
 
-    // Update DefUse
-    Inst0->addDefUse(FusedSend, Opnd_src0);
-    Send0->copyDef(Inst0, Opnd_src0, Opnd_src0, true);
-    Inst1->addDefUse(FusedSend, Opnd_src0);
-    Send1->copyDef(Inst1, Opnd_src0, Opnd_src0, true);
-
-    ///
-    /// 2. Copy source payload
-    //     Using a loop of count 2 for handing both Msg & extMsg payload.
-    int16_t addrLen = 1; // the number of grf of address payload
-    assert(msgLen >= addrLen);
-    int16_t remMsgLen = (int16_t)(msgLen - addrLen);
-    int16_t numMov[2] = { remMsgLen, extMsgLen };
-
-    for (int j = 0; j < 2; ++j)
+    for (int i=0; i < 2; ++i)
     {
-        int32_t nMov = numMov[j];
-        if (nMov <= 0)
-            continue;
-        Gen4_Operand_Number opn = (j == 0 ? Opnd_src0 : Opnd_src1);
+        int32_t nMov = numMov[i];
+        Gen4_Operand_Number opn = (i == 0 ? Opnd_src0 : Opnd_src1);
+        if (nMov <= 0) continue;
+        G4_Type Ty = FusedSend->getOperand(opn)->getType();
+
+        assert(G4_Type_Table[Ty].byteSize == 4 && "Unexpected type for send!");
+
         G4_SrcRegRegion* Reg0 = Send0->getOperand(opn)->asSrcRegRegion();
         G4_SrcRegRegion* Reg1 = Send1->getOperand(opn)->asSrcRegRegion();
         G4_VarBase* Var0 = getVarBase(Reg0->getBase(), Ty);
@@ -1012,24 +926,34 @@ void SendFusion::packPayload(
         G4_VarBase* Dst = FusedSend->getOperand(opn)->getBase();
         int16_t Off0 = Reg0->getRegOff();
         int16_t Off1 = Reg1->getRegOff();
-        if (j == 0) {
-            // source payload starts on the 2nd grf (simd8 dispatch)
-            Off0 += 1;
-            Off1 += 1;
-            d_roff += 2;
-        }
-
         for (int i = 0; i < nMov; ++i)
         {
             // copy Src0 to Dst
-            G4_INST* I0 = copyRegOpnd(Dst, Var0, Ty, ExecSize, d_roff + 2 * i, 0, Off0 + i, 0);
-            G4_INST* I1 = copyRegOpnd(Dst, Var1, Ty, ExecSize, d_roff + 2 * i + 1, 0, Off1 + i, 0);
+            G4_SrcRegRegion* S = Builder->createSrcRegRegion(
+                Mod_src_undef, Direct, Var0, Off0 + i, 0, stride1, Ty);
+            G4_DstRegRegion* D = Builder->createDstRegRegion(
+                Direct, Dst, 2 * i, 0, 1, Ty);
+            G4_INST* Inst0 = Builder->createInternalInst(
+                NULL, G4_mov, NULL, false, ExecSize, D, S, nullptr, option);
+            bb->insert(InsertBeforePos, Inst0);
+
+            // copy Src1 to Dst
+            S = Builder->createSrcRegRegion(
+                Mod_src_undef, Direct, Var1, Off1 + i, 0, stride1, Ty);
+            D = Builder->createDstRegRegion(
+                Direct, Dst,
+                (ExecSize == 8 ? (2 * i + 1) : 2 * i),
+                (ExecSize == 8 ? 0 : ExecSize),
+                1, Ty);
+            G4_INST* Inst1 = Builder->createInternalInst(
+                NULL, G4_mov, NULL, false, ExecSize, D, S, nullptr, option);
+            bb->insert(InsertBeforePos, Inst1);
 
             // Update DefUse
-            I0->addDefUse(FusedSend, opn);
-            Send0->copyDef(I0, opn, Opnd_src0, true);
-            I1->addDefUse(FusedSend, opn);
-            Send1->copyDef(I1, opn, Opnd_src0, true);
+            Inst0->addDefUse(FusedSend, opn);
+            Send0->copyDef(Inst0, opn, Opnd_src0, true);
+            Inst1->addDefUse(FusedSend, opn);
+            Send1->copyDef(Inst1, opn, Opnd_src0, true);
         }
     }
 }

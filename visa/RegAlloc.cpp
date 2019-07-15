@@ -1921,8 +1921,7 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
                                                    BitSet& use_gen,
                                                    BitSet& use_kill)
 {
-    std::vector<BitSet*> footprints;
-    footprints.resize(numVarId, 0);
+    std::vector<BitSet*> footprints(numVarId, 0);
     std::vector<std::pair<G4_Declare*, INST_LIST_RITER>> pseudoKills;
     std::stack<BitSet*> toDelete;
 
@@ -3085,8 +3084,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
         // Verify Live-in
         std::map<uint32_t, G4_Declare*> LiveInRegMap;
         std::map<uint32_t, G4_Declare*>::iterator LiveInRegMapIt;
-        std::vector<uint32_t> liveInRegVec;
-        liveInRegVec.resize(numGRF * G4_GRF_REG_SIZE, UINT_MAX);
+        std::vector<uint32_t> liveInRegVec(numGRF * G4_GRF_REG_SIZE, UINT_MAX);
 
         for (auto dcl_it : kernel.Declares)
         {
@@ -3144,8 +3142,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
         G4_Declare *ret = kernel.fg.builder->getStackCallRet();
         std::map<uint32_t, G4_Declare*> liveOutRegMap;
         std::map<uint32_t, G4_Declare*>::iterator liveOutRegMapIt;
-        std::vector<uint32_t> liveOutRegVec;
-        liveOutRegVec.resize(numGRF * G4_GRF_REG_SIZE, UINT_MAX);
+        std::vector<uint32_t> liveOutRegVec(numGRF * G4_GRF_REG_SIZE, UINT_MAX);
 
         for (DECLARE_LIST_ITER dcl_it = kernel.Declares.begin();
             dcl_it != kernel.Declares.end();

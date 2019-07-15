@@ -859,8 +859,8 @@ void BankConflictPass::setupBankConflictsForBB(G4_BB* bb,
     {
         if (!gra.kernel.fg.builder->lowHighBundle())
         {
-            for (std::list<G4_INST*>::iterator i = bb->begin();
-                i != bb->end();
+            for (std::list<G4_INST*>::iterator i = bb->begin(), iend = bb->end();
+                i != iend;
                 i++)
             {
                 G4_INST* inst = (*i);
@@ -1691,7 +1691,7 @@ void Interference::markInterferenceForSend(G4_BB* bb,
                         }
                         else
                         {
-                            for (int j = dstPreg; j < dstPreg + dstNumRows; j++)
+                            for (int j = dstPreg, sum = dstPreg + dstNumRows; j < sum; j++)
                             {
                                 int k = getGRFDclForHRA(j)->getRegVar()->getId();
                                 if (!varSplitCheckBeforeIntf(k, srcId))
@@ -1720,7 +1720,7 @@ void Interference::markInterferenceForSend(G4_BB* bb,
 
                             reg = preg->asGreg()->getRegNum();
 
-                            for (int j = reg; j < reg + numrows; j++)
+                            for (int j = reg, sum = reg + numrows; j < sum; j++)
                             {
                                 int k = getGRFDclForHRA(j)->getRegVar()->getId();
                                 if (!varSplitCheckBeforeIntf(dstId, k))
@@ -4485,7 +4485,7 @@ void Interference::buildInterferenceWithLocalRA(G4_BB* bb)
                 // If it is available, and we still see a def that means there was no
                 // corresponding use. In such cases mark the physical register as
                 // busy, so interference building can take place correctly.
-                for (int j = reg; j < reg + numrows; j++)
+                for (int j = reg, sum = reg + numrows; j < sum; j++)
                 {
                     int k = getGRFDclForHRA(j)->getRegVar()->getId();
 
@@ -4508,7 +4508,7 @@ void Interference::buildInterferenceWithLocalRA(G4_BB* bb)
                     if (localLR->getSizeInWords() % NUM_WORDS_PER_GRF != 0)
                         numrows--;
 
-                    for (int j = reg; j < reg + numrows; j++)
+                    for (int j = reg, sum = reg + numrows; j < sum; j++)
                     {
                         cur.set(j, true);
 #ifdef DEBUG_VERBOSE_ON
@@ -4584,7 +4584,7 @@ void Interference::buildInterferenceWithLocalRA(G4_BB* bb)
 
                     reg = preg->asGreg()->getRegNum();
 
-                    for (int j = reg; j < reg + numrows; j++)
+                    for (int j = reg, sum = reg + numrows; j < sum; j++)
                     {
                         int k = getGRFDclForHRA(j)->getRegVar()->getId();
 
@@ -6568,8 +6568,8 @@ void GraphColor::addCallerSaveRestoreCode()
             OptimizeActiveRegsFootprint(callerSaveRegs, retRegs);
 
             unsigned callerSaveRegsWritten = 0;
-            for (std::vector<bool>::iterator vit = callerSaveRegs.begin();
-                vit != callerSaveRegs.end();
+            for (std::vector<bool>::iterator vit = callerSaveRegs.begin(), vitend = callerSaveRegs.end();
+                vit != vitend;
                 vit++)
                 callerSaveRegsWritten += ((*vit) ? 1 : 0);
 
@@ -6674,9 +6674,7 @@ void GraphColor::addCalleeSaveRestoreCode()
 
     // Determine the callee-save registers.
 
-    std::vector<bool> calleeSaveRegs;
-    calleeSaveRegs.reserve(numCalleeSaveRegs);
-    calleeSaveRegs.resize(numCalleeSaveRegs, false);
+    std::vector<bool> calleeSaveRegs(numCalleeSaveRegs, false);
     unsigned calleeSaveRegCount = 0;
 
     unsigned pseudoVCEId = builder.kernel.fg.pseudoVCEDcl->getRegVar()->getId();
@@ -6708,8 +6706,8 @@ void GraphColor::addCalleeSaveRestoreCode()
 
     OptimizeActiveRegsFootprint(calleeSaveRegs);
     unsigned calleeSaveRegsWritten = 0;
-    for (std::vector<bool>::iterator vit = calleeSaveRegs.begin();
-        vit != calleeSaveRegs.end();
+    for (std::vector<bool>::iterator vit = calleeSaveRegs.begin(), vitend = calleeSaveRegs.end();
+        vit != vitend;
         vit++)
         calleeSaveRegsWritten += ((*vit) ? 1 : 0);
 
@@ -7711,7 +7709,7 @@ void VarSplit::createSubDcls(G4_Kernel& kernel, G4_Declare* oldDcl, std::vector<
     }
 
     int splitVarSize = kernel.getSimdSize() == 8 ? 1 : 2;
-    for (unsigned int i = 0; i < oldDcl->getByteSize() / G4_GRF_REG_NBYTES; i += splitVarSize)
+    for (unsigned int i = 0, bSizePerGRFSize = (oldDcl->getByteSize() / G4_GRF_REG_NBYTES); i < bSizePerGRFSize; i += splitVarSize)
     {
         G4_Declare* splitDcl = NULL;
         unsigned leftBound = i * G4_GRF_REG_NBYTES;
@@ -8195,7 +8193,7 @@ void VarSplit::localSplit(IR_Builder& builder,
 
         G4_Declare * topDcl = (*it).first->getDeclare();
         bool aligned = true;
-        for (VAR_RANGE_LIST_ITER vt = (*it).second.list.begin(); vt != (*it).second.list.end(); vt++)
+        for (VAR_RANGE_LIST_ITER vt = (*it).second.list.begin(), vtEnd = (*it).second.list.end(); vt != vtEnd; vt++)
         {
             unsigned leftBound = (*vt)->leftBound;
             unsigned rightBound = (*vt)->rightBound;
@@ -10358,8 +10356,7 @@ void FlagSpillCleanup::spillFillCodeCleanFlag(IR_Builder&        builder,
 void GlobalRA::insertPhyRegDecls()
 {
     int numGRF = kernel.getNumRegTotal();
-    std::vector<bool> grfUsed;
-    grfUsed.resize(numGRF, false);
+    std::vector<bool> grfUsed(numGRF, false);
     GRFDclsForHRA.resize(numGRF);
 
     for (auto curBB : kernel.fg)
@@ -11275,7 +11272,7 @@ void GlobalRA::assignLocForReturnAddr()
     // a data structure for doing a quick map[id] ---> block
     //
     G4_BB**  BBs = (G4_BB**)builder.mem.alloc(fg.getNumBB() * sizeof(G4_BB*));
-    for (BB_LIST_ITER it = fg.begin(); it != fg.end(); it++)
+    for (BB_LIST_ITER it = fg.begin(), bbEnd = fg.end(); it != bbEnd; it++)
     {
         unsigned i = (*it)->getId();
         retLoc[i] = UNDEFINED_VAL;
@@ -11287,7 +11284,7 @@ void GlobalRA::assignLocForReturnAddr()
     //
     std::list<G4_BB *> caller;                                          // just to accelerate the algorithm later
 
-    for (unsigned i = 0; i < fg.getNumBB(); i++)
+    for (unsigned i = 0, bbNum = fg.getNumBB(); i < bbNum; i++)
     {
         G4_BB* bb = BBs[i];
         if (bb->isEndWithCall() == false)
@@ -11353,7 +11350,7 @@ void GlobalRA::assignLocForReturnAddr()
         // Sub2, code sharing is detected, we need to this phase to make sure that Sub1 and Sub3 use the
         // same location.
         //
-        for (unsigned i = 0; i < fg.getNumBB(); i++)
+        for (unsigned i = 0, bbNum = fg.getNumBB(); i < bbNum; i++)
         {
             G4_BB* bb = BBs[i];
             if (getSubRetLoc(bb) != UNDEFINED_VAL)
@@ -11435,7 +11432,7 @@ void GlobalRA::assignLocForReturnAddr()
             //
             //  Assign ret loc for subroutines firstly, and then check if it is wrong (due to circle in call graph).
             //
-            for (unsigned i = 0; i < fg.getNumBB(); i++)
+            for (unsigned i = 0, bbNum = fg.getNumBB(); i < bbNum; i++)
             {
                 //
                 // reset the return BB's retLoc

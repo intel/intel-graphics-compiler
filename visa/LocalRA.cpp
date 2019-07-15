@@ -1261,8 +1261,7 @@ void LocalRA::calculateInputIntervals()
     setLexicalID(false);
 
     int numGRF = kernel.getNumRegTotal();
-    std::vector<uint32_t> inputRegLastRef;
-    inputRegLastRef.resize(numGRF * G4_GRF_REG_SIZE, UINT_MAX);
+    std::vector<uint32_t> inputRegLastRef(numGRF * G4_GRF_REG_SIZE, UINT_MAX);
 
     for (BB_LIST_RITER bb_it = kernel.fg.rbegin(), bb_rend = kernel.fg.rend();
         bb_it != bb_rend;

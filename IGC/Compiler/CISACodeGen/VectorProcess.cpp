@@ -480,7 +480,7 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
             GenISAIntrinsic::GenISA_storerawvector_indexed,
             types);
         Value* V = Builder.CreateBitCast(II->getOperand(2), newVTy);
-        Builder.CreateCall3(F, newPtr, II->getOperand(1), V);
+        Builder.CreateCall4(F, newPtr, II->getOperand(1), V, II->getOperand(3));
         II->eraseFromParent();
     }
     return true;
