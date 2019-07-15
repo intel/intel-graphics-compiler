@@ -4247,16 +4247,16 @@ struct AccInterval
     }
 
     // see if this interval needs both halves of the acc
-    bool needBothAcc() const
+    bool needBothAcc(IR_Builder& builder) const
     {
         switch (inst->getDst()->getType())
         {
         case Type_F:
-            return inst->getExecSize() == 16;
+            return inst->getExecSize() == (builder.getNativeExecSize() * 2);
         case Type_HF:
             return false;
         case Type_DF:
-            return inst->getExecSize() > 4;
+            return inst->getExecSize() > (builder.getNativeExecSize() / 2);
         default:
             return true;
         }
@@ -4381,7 +4381,7 @@ static bool isAccCandidate(G4_INST* inst, G4_Kernel& kernel, int& lastUse, bool&
         {
             return false;
         }
-        if (!useInst->canSrcBeAcc(srcId))
+        if (!useInst->canSrcBeAcc(opndNum))
         {
             return false;
         }
@@ -4563,8 +4563,9 @@ struct AccAssignment
 {
     std::vector<bool> freeAccs;
     std::list<AccInterval*> activeIntervals;
+    IR_Builder& builder;
 
-    AccAssignment(int numGeneralAcc)
+    AccAssignment(int numGeneralAcc, IR_Builder& m_builder) : builder (m_builder)
     {
         freeAccs.resize(numGeneralAcc * 2, true);
     }
@@ -4579,7 +4580,7 @@ struct AccAssignment
             {
                 assert(!freeAccs[active->assignedAcc] && "active interval's acc should not be free");
                 freeAccs[active->assignedAcc] = true;
-                if (active->needBothAcc())
+                if (active->needBothAcc(builder))
                 {
                     assert(!freeAccs[active->assignedAcc + 1] && "active interval's acc should not be free");
                     freeAccs[active->assignedAcc + 1] = true;
@@ -4604,7 +4605,7 @@ struct AccAssignment
         spillInterval->assignedAcc = -1;
         activeIntervals.erase(acc0Iter);
         freeAccs[accID] = true;
-        if (spillInterval->needBothAcc())
+        if (spillInterval->needBothAcc(builder))
         {
             assert(accID % 2 == 0 && "accID must be even-aligned in this case");
             freeAccs[accID+1] = true;
@@ -4622,7 +4623,7 @@ struct AccAssignment
         }
         freeAccs[interval->assignedAcc] = false;
 
-        if (interval->needBothAcc())
+        if (interval->needBothAcc(builder))
         {
             assert(interval->assignedAcc == 0 && "Total 2 acc support right now");
             if (!freeAccs[interval->assignedAcc + 1]) // && activeIntervals.size()
@@ -4645,14 +4646,14 @@ struct AccAssignment
             return true;
         }
 
-        int step = interval->needBothAcc() ? 2 : 1;
+        int step = interval->needBothAcc(builder) ? 2 : 1;
         for (int i = 0, end = interval->mustBeAcc0 ? 1 : (int)freeAccs.size(); i < end; i += step)
         {
-            if (freeAccs[i] && (!interval->needBothAcc() || freeAccs[i+1]))
+            if (freeAccs[i] && (!interval->needBothAcc(builder) || freeAccs[i+1]))
             {
                 interval->assignedAcc = i;
                 freeAccs[i] = false;
-                if (interval->needBothAcc())
+                if (interval->needBothAcc(builder))
                 {
                     freeAccs[i+1] = false;
                 }
@@ -4707,7 +4708,7 @@ void HWConformity::multiAccSubstitution(G4_BB* bb)
 
 
     //modified linear scan to assign free accs to intervals
-    AccAssignment accAssign(numGeneralAcc);
+    AccAssignment accAssign(numGeneralAcc, builder);
 
     for (auto interval : intervals)
     {
@@ -4750,7 +4751,7 @@ void HWConformity::multiAccSubstitution(G4_BB* bb)
 
                 tmpAssignValue[0] = accAssign.freeAccs[spillCandidate->assignedAcc];
                 accAssign.freeAccs[spillCandidate->assignedAcc] = true;
-                if (spillCandidate->needBothAcc())
+                if (spillCandidate->needBothAcc(builder))
                 {
                     tmpAssignValue[1] = accAssign.freeAccs[spillCandidate->assignedAcc + 1];
                     accAssign.freeAccs[spillCandidate->assignedAcc + 1] = true;
@@ -4764,7 +4765,7 @@ void HWConformity::multiAccSubstitution(G4_BB* bb)
                 else
                 {
                     accAssign.freeAccs[spillCandidate->assignedAcc] = tmpAssignValue[0];
-                    if (spillCandidate->needBothAcc())
+                    if (spillCandidate->needBothAcc(builder))
                     {
                         accAssign.freeAccs[spillCandidate->assignedAcc + 1] = tmpAssignValue[1];
                     }

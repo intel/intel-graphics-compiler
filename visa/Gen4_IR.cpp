@@ -7811,6 +7811,52 @@ bool G4_INST::mayExpandToAccMacro() const
            (opcode() == G4_pln && !builder.doPlane());
 }
 
+bool G4_INST::canExecSizeBeAcc(Gen4_Operand_Number opndNum) const
+{
+    switch (dst->getType())
+    {
+    case Type_W:
+    case Type_UW:
+    case Type_HF:
+        if (getExecSize() != (builder.getNativeExecSize() * 2))
+        {
+            return false;
+        }
+        break;
+    case Type_F:
+        if (getExecSize() != (builder.getNativeExecSize() * 2) && getExecSize() != builder.getNativeExecSize())
+        {
+            return false;
+        }
+        break;
+    case Type_DF:
+        if (!builder.useAccForDF())
+        {
+            return false;
+        }
+        if (getExecSize() != builder.getNativeExecSize() && getExecSize() != (builder.getNativeExecSize() / 2))
+        {
+            return false;
+        }
+        break;
+    case Type_D:
+    case Type_UD:
+        if (getExecSize() != builder.getNativeExecSize())
+        {
+            return false;
+        }
+        if (opndNum != Opnd_dst && isSignSensitive(opndNum))
+        {
+            return false;
+        }
+        break;
+    default:
+        return false;
+    }
+
+    return true;
+}
+
 // returns true if dst may be replaced by an explicit acc
 // in addition to opcode-specific checks, we require
 // -- dst must be GRF
@@ -7846,40 +7892,8 @@ bool G4_INST::canDstBeAcc() const
         }
     }
 
-    switch (dst->getType())
+    if (!canExecSizeBeAcc(Opnd_dst))
     {
-    case Type_W:
-    case Type_UW:
-    case Type_HF:
-        if (getExecSize() != 16)
-        {
-            return false;
-        }
-        break;
-    case Type_F:
-        if (getExecSize() != 16 && getExecSize() != 8)
-        {
-            return false;
-        }
-        break;
-    case Type_DF:
-         if (!builder.useAccForDF())
-         {
-             return false;
-         }
-        if (getExecSize() != 8 && getExecSize() != 4)
-        {
-            return false;
-        }
-        break;
-    case Type_D:
-    case Type_UD:
-        if (getExecSize() != 8)
-        {
-            return false;
-        }
-        break;
-    default:
         return false;
     }
 
@@ -7941,8 +7955,9 @@ bool G4_INST::canDstBeAcc() const
 // in addition to opcode-specific checks, we require
 // -- contiguous regions
 // -- simd8 for D/UD, simd8/16 for F, simd16 for HF/W, other types not allowed
-bool G4_INST::canSrcBeAcc(int srcId) const
+bool G4_INST::canSrcBeAcc(Gen4_Operand_Number opndNum) const
 {
+    int srcId = opndNum == Opnd_src0 ? 0 : 1;
     assert((srcId == 0 || srcId == 1) && "must be either src0 or src1");
     if (getSrc(srcId) == nullptr || !getSrc(srcId)->isSrcRegRegion())
     {
@@ -7965,45 +7980,8 @@ bool G4_INST::canSrcBeAcc(int srcId) const
         return false;
     }
 
-    switch (src->getType())
+    if (!canExecSizeBeAcc(opndNum))
     {
-    case Type_W:
-    case Type_UW:
-    case Type_HF:
-        if (getExecSize() != 16)
-        {
-            return false;
-        }
-        break;
-    case Type_F:
-        if (getExecSize() != 16 && getExecSize() != 8)
-        {
-            return false;
-        }
-        break;
-    case Type_DF:
-         if (!builder.useAccForDF())
-         {
-             return false;
-         }
-
-        if (getExecSize() != 8 && getExecSize() != 4)
-        {
-            return false;
-        }
-        break;
-    case Type_D:
-    case Type_UD:
-        if (getExecSize() != 8)
-        {
-            return false;
-        }
-        if (isSignSensitive(srcId == 0 ? Opnd_src0 : Opnd_src1))
-        {
-            return false;
-        }
-        break;
-    default:
         return false;
     }
 

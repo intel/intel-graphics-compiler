@@ -1042,8 +1042,9 @@ public:
         return op == G4_mulh;
     }
 
+    bool canExecSizeBeAcc(Gen4_Operand_Number opndNum) const;
     bool canDstBeAcc() const;
-    bool canSrcBeAcc(int srcId) const;
+    bool canSrcBeAcc(Gen4_Operand_Number opndNum) const;
 
 private:
     bool detectComprInst() const;
