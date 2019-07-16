@@ -389,12 +389,12 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager& mpm)
 
     bool needDPEmu = (IGC_IS_FLAG_ENABLED(ForceDPEmulation) ||
         (ctx.m_DriverInfo.NeedFP64() && !ctx.platform.supportFP64()));
-    uint32_t theEmuKind = (ctx.m_DriverInfo.NeedI64BitDivRem() ? EmuKind::EMU_I64DIVREM : 0);
+    uint32_t theEmuKind = (needDPEmu ? EmuKind::EMU_DP : 0);
+    theEmuKind |= (ctx.m_DriverInfo.NeedI64BitDivRem() ? EmuKind::EMU_I64DIVREM : 0);
     theEmuKind |=
         ((IGC_IS_FLAG_ENABLED(ForceSPDivEmulation) ||
-        (ctx.m_DriverInfo.NeedIEEESPDiv() && !ctx.platform.hasCorrectlyRoundedMacros()))
-            ? EmuKind::EMU_SP_DIV : 0);
-    theEmuKind |= (needDPEmu ? EmuKind::EMU_DP : 0);
+          (ctx.m_DriverInfo.NeedIEEESPDiv() && !ctx.platform.hasCorrectlyRoundedMacros()))
+        ? EmuKind::EMU_SP_DIV : 0);
 
     if (theEmuKind > 0 || IGC_IS_FLAG_ENABLED(EnableTestIGCBuiltin))
     {
