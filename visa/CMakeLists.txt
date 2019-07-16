@@ -109,7 +109,7 @@ BISON_TARGET(CISAParser CISA.y ${CMAKE_CURRENT_BINARY_DIR}/CISA.tab.c COMPILE_FL
 FLEX_TARGET(CISAScanner CISA.l ${CMAKE_CURRENT_BINARY_DIR}/lex.CISA.c COMPILE_FLAGS "-PCISA ${WIN_FLEX_FLAG}")
 ADD_FLEX_BISON_DEPENDENCY(CISAScanner CISAParser)
 
-add_custom_target(CISAScanner_target DEPENDS ${FLEX_CISAScanner_OUTPUTS})
+add_custom_target(CISAScanner_target DEPENDS ${FLEX_CISAScanner_OUTPUTS} ${BISON_CISAParser_OUTPUTS})
 
 if (MSVC)
   #set up standard defines from the common WDK path.
@@ -201,11 +201,7 @@ set(GenX_CISA_dis_Common_Sources
   IsaVerification.cpp
   DebugInfo.cpp
 )
-set(CISA_ld_Common_Sources
-  CISA_ld/CISA_ld.cpp
-  CISA_ld/CISALinker.cpp
-  DebugInfo.h
-)
+
 set(Jitter_Common_Sources
   Common_ISA.cpp
 )
@@ -277,10 +273,7 @@ set(GenX_CISA_dis_Common_Headers
   IsaVerification.h
   Option.h
 )
-set(CISA_ld_Common_Headers
-  CISA_ld/CISA_ld.h
-  CISA_ld/CISALinker.h
-)
+
 set(Jitter_Common_Headers
   Common_ISA.h
 )
