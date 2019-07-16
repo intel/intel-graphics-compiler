@@ -236,7 +236,6 @@ macro(  win_dynamic_runtime )
   endif()
 endmacro( win_dynamic_runtime)
 
-
 # Registers setting and relations on flag options which are usually connected to compiler / linker options.
 #
 # Settings on the same domain can be set on different calls of this function. Groups with the same
