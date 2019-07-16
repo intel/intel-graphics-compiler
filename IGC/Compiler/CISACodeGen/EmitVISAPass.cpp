@@ -147,6 +147,7 @@ uint EmitPass::DecideInstanceAndSlice(llvm::BasicBlock &blk, SDAG &sdag, bool &s
             numInstance = 1;
             slicing = false;
         }
+
         else if (IsSubGroupIntrinsicWithSimd32Implementation(GetOpCode(sdag.m_root)))
         {
             numInstance = 1;

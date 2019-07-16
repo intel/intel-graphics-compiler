@@ -1065,6 +1065,19 @@ bool IsMediaIOIntrinsic(llvm::Instruction* inst)
     return false;
 }
 
+bool IsSIMDBlockIntrinsic(llvm::Instruction* inst)
+{
+    if (auto *pGI = dyn_cast<llvm::GenIntrinsicInst>(inst))
+    {
+        GenISAIntrinsic::ID id = pGI->getIntrinsicID();
+
+        return id == GenISAIntrinsic::GenISA_simdBlockRead ||
+            id == GenISAIntrinsic::GenISA_simdBlockWrite;
+    }
+
+    return false;
+}
+
 bool isSubGroupIntrinsic(const llvm::Instruction *I)
 {
     const GenIntrinsicInst *GII = dyn_cast<GenIntrinsicInst>(I);

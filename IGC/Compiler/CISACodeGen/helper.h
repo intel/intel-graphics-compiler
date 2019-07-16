@@ -156,6 +156,7 @@ bool isGather4Instruction(llvm::Instruction* inst);
 bool isVectorInputInstruction(llvm::Instruction* inst);
 
 bool IsMediaIOIntrinsic(llvm::Instruction *inst);
+bool IsSIMDBlockIntrinsic(llvm::Instruction* inst);
 bool isSubGroupIntrinsic(const llvm::Instruction *I);
 
 bool isURBWriteIntrinsic(const llvm::Instruction* inst);
