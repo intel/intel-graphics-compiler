@@ -34,6 +34,7 @@ DEF_VISA_OPTION(vISA_dumpLiveness,               ET_BOOL, "-dumpLiveness",      
 //=== Optimization options ===
 DEF_VISA_OPTION(vISA_EnableAlways,          ET_BOOL, NULLSTR,            UNUSED, true)
 DEF_VISA_OPTION(vISA_EnableSendFusion,      ET_BOOL, "-enableSendFusion",   UNUSED, false)
+DEF_VISA_OPTION(vISA_EnableWriteFusion,     ET_BOOL, "-enableWriteFusion",  UNUSED, false)
 DEF_VISA_OPTION(vISA_EnableAtomicFusion,    ET_BOOL, "-enableAtomicFusion", UNUSED, false)
 DEF_VISA_OPTION(vISA_LocalCopyProp,         ET_BOOL, "-nocopyprop",      UNUSED, true)
 DEF_VISA_OPTION(vISA_LocalFlagOpt,          ET_BOOL, "-noflagopt",       UNUSED, true)

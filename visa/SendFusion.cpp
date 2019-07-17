@@ -403,8 +403,11 @@ bool SendFusion::simplifyAndCheckCandidate(INST_LIST_ITER Iter)
     {
         isAtomicCand = isAtomicCandidate(msgDesc);
     }
-    if  ((!isAtomicCand && msgDesc->isDataPortWrite()) ||
-         (isAtomicCand && rspLen > 0))
+
+    // -enableWriteFusion is for testing only, as it's not safe
+    if  ((!Builder->getOption(vISA_EnableWriteFusion)) &&
+         ((!isAtomicCand && msgDesc->isDataPortWrite()) ||
+          (isAtomicCand && rspLen > 0)))
     {
         return false;
     }
@@ -888,12 +891,39 @@ void SendFusion::packPayload(
     unsigned char ExecSize = Send0->getExecSize();
     G4_SendMsgDescriptor* origDesc = Send0->getMsgDesc();
     int option = Send0->getOption();
-
     int16_t msgLen = origDesc->MessageLength();
     int16_t extMsgLen = origDesc->extMessageLength();
-    RegionDesc* stride1 = Builder->getRegionStride1();
 
-    // Sanity check for exec_size =1|2|4
+    // mov (ES) DVar<D_regoff, D_sregoff>:Ty<1> SVar<S_regoff, S_sregoff>:Ty(1;1,0)
+    auto copyRegOpnd = [&](
+        G4_VarBase* DVar, G4_VarBase* SVar,
+        G4_Type Ty, unsigned char ES,
+        int16_t D_regoff, int16_t D_sregoff,
+        int16_t S_regoff, int16_t S_sregoff) -> G4_INST*
+    {
+        G4_SrcRegRegion* S = Builder->createSrcRegRegion(
+            Mod_src_undef, Direct, SVar, S_regoff, S_sregoff,
+            Builder->getRegionStride1(), Ty);
+        G4_DstRegRegion* D = Builder->createDstRegRegion(
+            Direct, DVar, D_regoff, D_sregoff, 1, Ty);
+        G4_INST* nInst = Builder->createInternalInst(
+            NULL, G4_mov, NULL, false, ES, D, S, nullptr, option);
+        bb->insert(InsertBeforePos, nInst);
+        return nInst;
+    };
+
+    // Temperaries for address payload
+    G4_Type Ty = origDesc->isA64Message() ? Type_UQ : Type_UD;
+    G4_VarBase* Dst0 = FusedSend->getOperand(Opnd_src0)->getBase();
+    G4_SrcRegRegion* S0 = Send0->getOperand(Opnd_src0)->asSrcRegRegion();
+    G4_VarBase* V0 = getVarBase(S0->getBase(), Ty);
+    G4_SrcRegRegion* S1 = Send1->getOperand(Opnd_src0)->asSrcRegRegion();
+    G4_VarBase* V1 = getVarBase(S1->getBase(), Ty);
+    int16_t d_roff = 0;
+    int16_t s0_roff = S0->getRegOff();
+    int16_t s1_roff = S1->getRegOff();
+
+    // Special case for exec_size = 1|2|4
     if (ExecSize < 8)
     {
         assert((origDesc->isDataPortWrite() ||
@@ -901,59 +931,123 @@ void SendFusion::packPayload(
             "Internal Error (SendFusion): unexpected read message!");
         assert((origDesc->isDataPortRead() || (msgLen + extMsgLen == 2)) &&
             "Internal Error (SendFusion): unexpected write message!");
-    }
 
-    // Using a loop of count == 2 for handing both Msg & extMsg payload.
-    //
-    // Note that the following works for exec_size=1|2|4|8. It is designed
-    // to handle exec_size=8. It also works for exec_size=1|2|4 with minor
-    // changes.
-    int16_t numMov[2] = {msgLen, extMsgLen};
+        /// Address payload size (in unit of GRF)
+        //    A64: 2*ExecSize UQ (1 GRF for ExecSize=1|2; 2 GRF for ExecSize=4)
+        //    Otherwise: 2*ExecSize DW, which is 1 GRF.
+        G4_INST* Inst0 = copyRegOpnd(Dst0, V0, Ty, ExecSize, d_roff, 0, s0_roff, 0);
+        G4_INST* Inst1;
+        if (origDesc->isA64Message() && ExecSize == 4) {
+            Inst1 = copyRegOpnd(Dst0, V1, Ty, ExecSize, d_roff + 1, 0, s1_roff, 0);
+        }
+        else {
+            Inst1 = copyRegOpnd(Dst0, V1, Ty, ExecSize, d_roff, ExecSize, s1_roff, 0);
+        }
 
-    for (int i=0; i < 2; ++i)
-    {
-        int32_t nMov = numMov[i];
-        Gen4_Operand_Number opn = (i == 0 ? Opnd_src0 : Opnd_src1);
-        if (nMov <= 0) continue;
-        G4_Type Ty = FusedSend->getOperand(opn)->getType();
+        // Update DefUse
+        Inst0->addDefUse(FusedSend, Opnd_src0);
+        Send0->copyDef(Inst0, Opnd_src0, Opnd_src0, true);
+        Inst1->addDefUse(FusedSend, Opnd_src0);
+        Send1->copyDef(Inst1, Opnd_src0, Opnd_src0, true);
 
-        assert(G4_Type_Table[Ty].byteSize == 4 && "Unexpected type for send!");
+        if (msgLen <= 1 && extMsgLen == 0)
+        {
+            // No source payload, done!
+            return;
+        }
 
+        // Source payload
+        //    Either in src0 or src1, but not both as ExecSize <= 4
+        Ty = Type_UD; // source payload
+        Gen4_Operand_Number opn = (msgLen > 1) ? Opnd_src0 : Opnd_src1;
         G4_SrcRegRegion* Reg0 = Send0->getOperand(opn)->asSrcRegRegion();
         G4_SrcRegRegion* Reg1 = Send1->getOperand(opn)->asSrcRegRegion();
         G4_VarBase* Var0 = getVarBase(Reg0->getBase(), Ty);
         G4_VarBase* Var1 = getVarBase(Reg1->getBase(), Ty);
         G4_VarBase* Dst = FusedSend->getOperand(opn)->getBase();
+        d_roff = 0;
+        s0_roff = Reg0->getRegOff();
+        s1_roff = Reg1->getRegOff();
+        if (opn == Opnd_src0) {
+            // source payload follows address payload in Opnd_src0.
+            d_roff += ((origDesc->isA64Message() && ExecSize == 4) ? 2 : 1);
+            s0_roff += 1;
+            s1_roff += 1;
+        }
+
+        Inst0 = copyRegOpnd(Dst, Var0, Ty, ExecSize, d_roff, 0, s0_roff, 0);
+        Inst1 = copyRegOpnd(Dst, Var1, Ty, ExecSize, d_roff, ExecSize, s1_roff, 0);
+
+        // Update DefUse
+        Inst0->addDefUse(FusedSend, opn);
+        Send0->copyDef(Inst0, opn, Opnd_src0, true);
+        Inst1->addDefUse(FusedSend, opn);
+        Send1->copyDef(Inst1, opn, Opnd_src0, true);
+
+        return;
+    }
+
+    // Now, ExecSize = 8
+    // the number of grf for address payload in the original send
+    const int16_t addrLen = (origDesc->isA64Message() ? 2 : 1);
+
+    ///
+    /// 1. copy address payload
+    ///
+    G4_INST* Inst0 = copyRegOpnd(Dst0, V0, Ty, ExecSize, d_roff,   0, s0_roff, 0);
+    G4_INST* Inst1 = copyRegOpnd(Dst0, V1, Ty, ExecSize, d_roff+addrLen, 0, s1_roff, 0);
+
+    // Update DefUse
+    Inst0->addDefUse(FusedSend, Opnd_src0);
+    Send0->copyDef(Inst0, Opnd_src0, Opnd_src0, true);
+    Inst1->addDefUse(FusedSend, Opnd_src0);
+    Send1->copyDef(Inst1, Opnd_src0, Opnd_src0, true);
+
+    ///
+    /// 2. Copy source payload
+    //     Using a loop of count 2 for handing both Msg & extMsg payload.
+
+    Ty = Type_UD; // source payload
+    assert(msgLen >= addrLen);
+    int16_t remMsgLen = (int16_t)(msgLen - addrLen);
+    int16_t numMov[2] = { remMsgLen, extMsgLen };
+
+    for (int j = 0; j < 2; ++j)
+    {
+        int32_t nMov = numMov[j];
+        if (nMov <= 0)
+            continue;
+        Gen4_Operand_Number opn = (j == 0 ? Opnd_src0 : Opnd_src1);
+        G4_SrcRegRegion* Reg0 = Send0->getOperand(opn)->asSrcRegRegion();
+        G4_SrcRegRegion* Reg1 = Send1->getOperand(opn)->asSrcRegRegion();
+        G4_VarBase* Var0 = getVarBase(Reg0->getBase(), Ty);
+        G4_VarBase* Var1 = getVarBase(Reg1->getBase(), Ty);
+        G4_VarBase* Dst = FusedSend->getOperand(opn)->getBase();
+        int16_t Off = 0;
         int16_t Off0 = Reg0->getRegOff();
         int16_t Off1 = Reg1->getRegOff();
+        if (j == 0) {
+            // source payload follows address payload in Opnd_src0
+            Off0 += addrLen;
+            Off1 += addrLen;
+            Off += (2 * addrLen);
+        }
+        else
+        {
+            d_roff = 0;
+        }
+
         for (int i = 0; i < nMov; ++i)
         {
-            // copy Src0 to Dst
-            G4_SrcRegRegion* S = Builder->createSrcRegRegion(
-                Mod_src_undef, Direct, Var0, Off0 + i, 0, stride1, Ty);
-            G4_DstRegRegion* D = Builder->createDstRegRegion(
-                Direct, Dst, 2 * i, 0, 1, Ty);
-            G4_INST* Inst0 = Builder->createInternalInst(
-                NULL, G4_mov, NULL, false, ExecSize, D, S, nullptr, option);
-            bb->insert(InsertBeforePos, Inst0);
-
-            // copy Src1 to Dst
-            S = Builder->createSrcRegRegion(
-                Mod_src_undef, Direct, Var1, Off1 + i, 0, stride1, Ty);
-            D = Builder->createDstRegRegion(
-                Direct, Dst,
-                (ExecSize == 8 ? (2 * i + 1) : 2 * i),
-                (ExecSize == 8 ? 0 : ExecSize),
-                1, Ty);
-            G4_INST* Inst1 = Builder->createInternalInst(
-                NULL, G4_mov, NULL, false, ExecSize, D, S, nullptr, option);
-            bb->insert(InsertBeforePos, Inst1);
+            // copy operands of both send0 and send1 to Dst
+            G4_INST* I0 = copyRegOpnd(Dst, Var0, Ty, ExecSize, Off + 2 * i, 0, Off0 + i, 0);
+            G4_INST* I1 = copyRegOpnd(Dst, Var1, Ty, ExecSize, Off + 2 * i + 1, 0, Off1 + i, 0);
 
             // Update DefUse
-            Inst0->addDefUse(FusedSend, opn);
-            Send0->copyDef(Inst0, opn, Opnd_src0, true);
-            Inst1->addDefUse(FusedSend, opn);
-            Send1->copyDef(Inst1, opn, Opnd_src0, true);
+            I0->addDefUse(FusedSend, opn);
+            Send0->copyDef(I0, opn, Opnd_src0, true);
+            I1->addDefUse(FusedSend, opn);
+            Send1->copyDef(I1, opn, Opnd_src0, true);
         }
     }
 }
@@ -1294,9 +1388,23 @@ void SendFusion::doFusion(
     // Also for the message type that we handle, if execSize is 1|2|4,
     //     write:  msgLen+extMsgLen = 2; and
     //     read:   msgLen = 1 && rspLen = 1
-    uint32_t newMsgLen = (ExecSize < 8 ? msgLen : 2*msgLen);
-    uint32_t newRspLen = (ExecSize < 8 ? rspLen : 2*rspLen);
-    uint32_t newExtMsgLen = (ExecSize < 8 ? extMsgLen : 2*extMsgLen);
+    uint32_t newMsgLen = 2*msgLen;
+    uint32_t newRspLen = 2*rspLen;
+    uint32_t newExtMsgLen = 2*extMsgLen;
+    if (ExecSize < 8)
+    {
+        // Re-adjust length, note that msgLen should be > 0
+        if (ExecSize == 4 && desc->isA64Message() && msgLen > 0)
+        {
+            // addr : 2 GRF; source : 1 GRF
+            newMsgLen = (msgLen == 1 ? 2 : 3);
+        }
+        else {
+            newMsgLen = msgLen;
+        }
+        newRspLen = rspLen;
+        newExtMsgLen = extMsgLen;
+    }
 
     G4_Predicate* Pred = nullptr;
     if (!isWrtEnable)
@@ -1356,7 +1464,9 @@ void SendFusion::doFusion(
     //           <O1>
 
     // Special case of two reads whose payloads can be concatenated using split send.
-    if (!isSplitSend && ExecSize == 8 && rspLen > 0 && (msgLen == 1))
+    if (!isSplitSend && ExecSize == 8 && rspLen > 0 &&
+        (msgLen == 1 || (msgLen == 2 && desc->isA64Message())) &&
+        extMsgLen == 0)
     {
         G4_SendMsgDescriptor* newDesc = Builder->createSendMsgDesc(
             newFC, newRspLen, msgLen,
