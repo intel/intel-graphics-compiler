@@ -6730,19 +6730,23 @@ void Optimizer::evenlySplitInst(INST_LIST_ITER iter, G4_BB* bb)
                 G4_INST *inst = *ii;
 
                 G4_InstSend* sendInst = inst->asSendInst();
-                if (sendInst && sendInst->isFence() && sendInst->getMsgDesc()->ResponseLength() > 0)
+                if (sendInst && sendInst->isFence())
                 {
-                    // commit is enabled for the fence, need to generate a move after to make sure the fence is complete
-                    // mov (8) r1.0<1>:ud r1.0<8;8,1>:ud {NoMask}
-                    INST_LIST_ITER nextIter = ii;
-                    nextIter++;
-                    G4_DstRegRegion* dst = inst->getDst();
-                    G4_Declare* fenceDcl = dst->getBase()->asRegVar()->getDeclare();
-                    G4_DstRegRegion* movDst = builder.createDstRegRegion(
-                        Direct, builder.phyregpool.getNullReg(), 0, 0, 1, fenceDcl->getElemType());
-                    G4_SrcRegRegion* movSrc = builder.Create_Src_Opnd_From_Dcl(fenceDcl, builder.createRegionDesc(8,8,1));
-                    G4_INST* movInst = builder.createInternalInst( NULL, G4_mov, NULL, false, 8, movDst, movSrc, NULL, InstOpt_WriteEnable);
-                    bb->insert(nextIter, movInst);
+                    // ToDo: replace with fence.wait intrinsic so we could hide fence latency by scheduling them apart
+                    if (sendInst->getMsgDesc()->ResponseLength() > 0)
+                    {
+                        // commit is enabled for the fence, need to generate a move after to make sure the fence is complete
+                        // mov (8) r1.0<1>:ud r1.0<8;8,1>:ud {NoMask}
+                        INST_LIST_ITER nextIter = ii;
+                        nextIter++;
+                        G4_DstRegRegion* dst = inst->getDst();
+                        G4_Declare* fenceDcl = dst->getBase()->asRegVar()->getDeclare();
+                        G4_DstRegRegion* movDst = builder.createDstRegRegion(
+                            Direct, builder.phyregpool.getNullReg(), 0, 0, 1, fenceDcl->getElemType());
+                        G4_SrcRegRegion* movSrc = builder.Create_Src_Opnd_From_Dcl(fenceDcl, builder.createRegionDesc(8, 8, 1));
+                        G4_INST* movInst = builder.createInternalInst(NULL, G4_mov, NULL, false, 8, movDst, movSrc, NULL, InstOpt_WriteEnable);
+                        bb->insert(nextIter, movInst);
+                    }
                 }
 
 
