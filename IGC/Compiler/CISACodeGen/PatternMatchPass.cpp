@@ -1899,6 +1899,46 @@ bool CodeGenPatternMatch::MatchMad( llvm::BinaryOperator& I )
             return false;
     }
 
+    if (found && IGC_IS_FLAG_ENABLED(EnableMadRoundDepCheck))
+    {
+        /*=============================================================================
+        This checks for pattern
+
+        mul x a b
+        add y x c
+        floor z y
+
+        ----or---
+
+        mul x a b
+        add y x c
+        floor z abs(y)
+
+        If the case falls in either of the two cases, Mad optimisation is skipped because
+        small precision difference between Mul+add and Mad can be extrapolated by floor
+        =============================================================================*/
+
+        for (auto iter = I.user_begin(); iter != I.user_end(); iter++)
+        {
+            if (IntrinsicInst* source = dyn_cast<IntrinsicInst>(*iter))
+            {
+                if (source->getIntrinsicID() == Intrinsic::fabs)
+                {
+                    for (auto it = source->user_begin(); it != source->user_end(); it++)
+                    {
+                        IntrinsicInst* source_fabs = dyn_cast<IntrinsicInst>(*it);
+                        if (source_fabs && source_fabs->getIntrinsicID() == Intrinsic::floor)
+                            return false;
+                    }
+                }
+                if (source->getIntrinsicID() == Intrinsic::floor)
+                {
+                    return false;
+                }
+            }
+        }
+    }
+
     if (found)
     {
         MadPattern *pattern = new (m_allocator) MadPattern();
