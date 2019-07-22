@@ -533,6 +533,7 @@ typedef enum __NATIVEGTTYPE
 #define IICL_LP_1x4x8_ULT_DEVICE_F0_ID          0x8A5B
 #define IICL_LP_0x0x0_ULT_DEVICE_A0_ID          0x8A70
 #define IICL_LP_1x1x8_ULT_DEVICE_A0_ID          0x8A71
+#define IICL_LP_1x4x8_LOW_MEDIA_ULT_DEVICE_F0_ID 0x8A56
 
 //LKF
 #define ILKF_1x8x8_DESK_DEVICE_F0_ID            0x9840
