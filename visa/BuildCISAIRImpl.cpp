@@ -947,6 +947,9 @@ bool CISA_IR_Builder::CISA_general_variable_decl(char * var_name,
         parentDecl = (VISA_GenVar *)m_kernel->getDeclFromName(var_alias_name);
     }
 
+    if (!m_kernel)
+        abort();
+
     m_kernel->CreateVISAGenVar(genVar, var_name, var_elemts_num, data_type, var_align, parentDecl, var_alias_offset);
 
     if( scope.attr_set )
@@ -2564,6 +2567,8 @@ VISA_opnd * CISA_IR_Builder::CISA_dst_general_operand(char * var_name,
 {
     VISA_VectorOpnd *cisa_opnd = NULL;
     int status = CM_SUCCESS;
+    if (!m_kernel)
+      abort();
     auto *decl = (VISA_GenVar *)m_kernel->getDeclFromName(var_name);
     MUST_BE_TRUE(decl, "undeclared variable");
     status = m_kernel->CreateVISADstOperand(cisa_opnd, decl, hstride, roff, sroff);

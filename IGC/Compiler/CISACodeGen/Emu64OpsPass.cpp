@@ -153,12 +153,12 @@ private:
   }
 
   void dupMemoryAttribute(LoadInst *NewLD, LoadInst *RefLD, unsigned Off) const {
-    unsigned Align = getAlignment(RefLD);    
-    
+    unsigned Align = getAlignment(RefLD);
+
     NewLD->setVolatile(RefLD->isVolatile());
     NewLD->setAlignment(unsigned(MinAlign(Align, Off)));
     NewLD->setOrdering(RefLD->getOrdering());
-    IGCLLVM::CopySyncScopeID(NewLD, RefLD);    
+    IGCLLVM::CopySyncScopeID(NewLD, RefLD);
   }
 
   void dupMemoryAttribute(StoreInst *NewST, StoreInst *RefST, unsigned Off) const {
@@ -1392,7 +1392,7 @@ bool InstExpander::visitFPToSI(FPToSIInst &F2S) {
 // basic block than the insert basic block value in IRB will be invalid after
 // this method completes. A correct insert point should be set in IRB after this
 // method is called.
-// 
+//
 Value *InstExpander::convertUIToFP32(Type *DstTy, Value *Lo, Value *Hi, Instruction *Pos) {
   BuilderType::InsertPointGuard Guard(*IRB);
   IRB->SetInsertPoint(Pos);
@@ -1810,6 +1810,7 @@ Emu64BitCall:
         case GenISAIntrinsic::GenISA_broadcastMessagePhase:
         case GenISAIntrinsic::GenISA_broadcastMessagePhaseV:
         case GenISAIntrinsic::GenISA_simdGetMessagePhase:
+        case GenISAIntrinsic::GenISA_RuntimeValue:
         {
             auto *GenCopy = Call.clone();
             GenCopy->insertBefore(&Call);

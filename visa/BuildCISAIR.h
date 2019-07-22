@@ -119,7 +119,7 @@ public:
     string_pool_entry** branch_targets;
     common_isa_header m_header;
 
-    VISAKernelImpl *m_kernel;
+    VISAKernelImpl *m_kernel = nullptr;
     CisaFramework::CisaBinary *m_cisaBinary;
     VISAKernelImpl * get_kernel() { return m_kernel; }
 

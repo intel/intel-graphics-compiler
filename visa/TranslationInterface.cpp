@@ -6059,7 +6059,9 @@ int IR_Builder::translateVISARawSendsInst(G4_Predicate *predOpnd, Common_ISA_Exe
         descVal = G4_SendMsgDescriptor::createDesc(0, false, numSrc0, numDst);
     }
 
-    G4_SendMsgDescriptor *sendMsgDesc = createSendMsgDesc(descVal, exDescVal, true, true);
+    G4_SendMsgDescriptor *sendMsgDesc = createSendMsgDesc(
+        intToSFID(ffid), descVal, exDescVal, numSrc1,
+        true, true, nullptr);
 
     MUST_BE_TRUE(sendMsgDesc->MessageLength() == numSrc0, "message length mismatch for raw sends");
     if (!dstOpnd->isNullReg()) {

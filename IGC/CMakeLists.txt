@@ -761,7 +761,6 @@ function(igc_config_flag_apply_settings settingsDomainName flagsVarBaseName patt
     message(FATAL_ERROR "Pattern type \"${patternType}\" is invalid. Supported patter types/keywords:\nPATTERN, NEG_PATTERN, ALL_PATTERN, ALL_PATTERN_NOINHERIT")
   endif()
 
-
   set(_matchedAllConfigs YES)
   set(_selectedConfigs)
   set(_selectedFlagsVarNames)

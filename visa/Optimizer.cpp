@@ -7943,6 +7943,7 @@ public:
     }
 
     // some platform/shaders require a memory fence before the end of thread
+    // ToDo: add fence only when the writes can reach EOT without a fence in between
     void Optimizer::insertFenceBeforeEOT()
     {
         if (!builder.needFenceBeforeEOT() || !builder.getOption(vISA_clearHDCWritesBeforeEOT))
@@ -7951,6 +7952,7 @@ public:
         }
 
         bool hasUAVWrites = false;
+        bool hasSLMWrites = false;
         for (auto bb : kernel.fg)
         {
             for (auto inst : *bb)
@@ -7960,18 +7962,28 @@ public:
                     auto msgDesc = inst->asSendInst()->getMsgDesc();
                     if (msgDesc->isDataPortWrite() && msgDesc->isHDC())
                     {
-                        hasUAVWrites = true;
-                        break;
+                        if (msgDesc->isSLMMessage())
+                        {
+                            hasSLMWrites = true;
+                        }
+                        else
+                        {
+                            hasUAVWrites = true;
+                        }
                     }
                 }
+                if (hasUAVWrites && hasSLMWrites)
+                {
+                    break;
+                }
             }
-            if (hasUAVWrites)
+            if (hasUAVWrites && hasSLMWrites)
             {
                 break;
             }
         }
 
-        if (!hasUAVWrites)
+        if (!hasUAVWrites && !hasSLMWrites)
         {
             return;
         }
@@ -7981,8 +7993,16 @@ public:
             if (bb->isLastInstEOT())
             {
                 auto iter = std::prev(bb->end());
-                auto fenceInst = builder.createFenceInstruction(0, true, true, false);
-                bb->insert(iter, fenceInst);
+                if (hasUAVWrites)
+                {
+                    auto fenceInst = builder.createFenceInstruction(0, true, true, false);
+                    bb->insert(iter, fenceInst);
+                }
+                if (hasSLMWrites)
+                {
+                    auto fenceInst = builder.createFenceInstruction(0, true, false, false);
+                    bb->insert(iter, fenceInst);
+                }
                 builder.instList.clear();
             }
         }
