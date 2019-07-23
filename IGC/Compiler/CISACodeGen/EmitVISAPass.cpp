@@ -14580,12 +14580,23 @@ ResourceDescriptor EmitPass::GetResourceVariable(Value* resourcePtr)
             if (resource.m_resource->GetElemSize() < 4)
             {
                 // vISA assumes all BTIs to be 32 bit. Need to cast, otherwise higher bits would be uninitialized.
+                unsigned numInstance = resource.m_resource->GetNumberInstance();
                 CVariable* newResource = m_currShader->GetNewVariable(
                     resource.m_resource->GetNumberElement(),
                     ISA_TYPE_UD,
                     resource.m_resource->IsUniform() ? EALIGN_DWORD : EALIGN_GRF,
-                    resource.m_resource->IsUniform());
+                    resource.m_resource->IsUniform(),
+                    numInstance);
+
                 m_encoder->Cast(newResource, resource.m_resource);
+
+                if (numInstance == 2)
+                {
+                    m_encoder->SetSecondHalf(!m_encoder->IsSecondHalf());
+                    m_encoder->Cast(newResource, resource.m_resource);
+                    m_encoder->SetSecondHalf(!m_encoder->IsSecondHalf());
+                }
+
                 resource.m_resource = newResource;
             }
 
