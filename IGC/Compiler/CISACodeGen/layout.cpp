@@ -220,6 +220,16 @@ void Layout::LayoutBlocks(Function &func, LoopInfo &LI)
     visitSet.insert(entry); 
     InsPos[entry] = entry;
 
+    // Push a return block to make sure the last BB is the return block.
+    if (BasicBlock * lastReturnBlock = getLastReturnBlock(func))
+    {
+        if (lastReturnBlock != entry)
+        {
+            visitVec.push_back(lastReturnBlock);
+            visitSet.insert(lastReturnBlock);
+        }
+    }
+
     while (!visitVec.empty())
     {
         llvm::BasicBlock* blk = visitVec.back();
