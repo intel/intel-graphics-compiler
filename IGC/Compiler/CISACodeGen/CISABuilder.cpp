@@ -4319,6 +4319,7 @@ void CEncoder::CreateSymbolTable(void*& buffer, unsigned& bufferSize, unsigned& 
     tableEntries = 0;
     Module* pModule = m_program->GetContext()->getModule();
     ModuleMetaData* modMD = m_program->GetContext()->getModuleMetaData();
+
     std::vector<Function*> funcsToExport;
 
     if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer))
@@ -4356,7 +4357,8 @@ void CEncoder::CreateSymbolTable(void*& buffer, unsigned& bufferSize, unsigned& 
                 assert(pFunc->getName().size() <= vISA::MAX_SYMBOL_NAME_LENGTH);
                 strcpy_s(entry_ptr->s_name, vISA::MAX_SYMBOL_NAME_LENGTH, pFunc->getName().str().c_str());
 
-                if (pFunc->isDeclaration())
+                bool isTrue = false;
+                if (pFunc->isDeclaration() || isTrue)
                 {
                     // If the function is only declared, set as undefined type
                     entry_ptr->s_type = vISA::GenSymType::S_UNDEF;

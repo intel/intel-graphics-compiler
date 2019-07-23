@@ -392,8 +392,6 @@ bool GenXCodeGenModule::runOnModule(Module &M)
             {
                 if (isEntryFunc(pMdUtils, F))
                 {
-                    // No calls to kernels. It should be already inlined before CodeGen.
-                    assert(F->use_empty() && "kernel being called");
                     FGA->setSubGroupMap(F, F);
                     FGA->createFunctionGroup(F);
                     // There may be multiple kernels, set one as the default

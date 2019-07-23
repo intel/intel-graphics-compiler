@@ -90,7 +90,6 @@ private:
 #define PASS_ANALYSIS false
 IGC_INITIALIZE_PASS_BEGIN(ProcessFuncAttributes, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
-//IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_END(ProcessFuncAttributes, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 char ProcessFuncAttributes::ID = 0;
@@ -342,14 +341,15 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
             }
         }
 
-        if (notKernel)
+        bool istrue = false;
+        if (notKernel || istrue)
         {
             if (!keepAlwaysInline)
             {
                 bool forceSubroutine = IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_FORCE_SUBROUTINE;
                 bool forceStackCall = IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_FORCE_STACKCALL;
 
-                if (forceSubroutine || forceStackCall)
+                if ((forceSubroutine || forceStackCall) && (istrue == false))
                 {
                     // add the following line in order to stress-test 
                     // subroutine call or stack call
@@ -372,6 +372,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                 for (auto u = F->user_begin(), e = F->user_end(); u != e; u++)
                 {
                     CallInst* call = dyn_cast<CallInst>(*u);
+
                     if (!call || call->getCalledValue() != F)
                     {
                         isIndirect = true;
@@ -382,7 +383,10 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                 {                    
                     pCtx->m_enableFunctionPointer = true;
                     F->addFnAttr("IndirectlyCalled");
-                    F->addFnAttr("visaStackCall");
+
+                    if(istrue == false)
+                        F->addFnAttr("visaStackCall");
+
                     if (isExtern)
                     {
                         F->setLinkage(GlobalValue::ExternalLinkage);

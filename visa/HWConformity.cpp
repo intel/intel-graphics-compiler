@@ -4544,21 +4544,6 @@ static bool replaceDstWithAcc(G4_INST* inst, int accNum, IR_Builder& builder)
     return true;
 }
 
-static uint32_t getNumACC(IR_Builder& builder)
-{
-    uint32_t numAcc = builder.getOptions()->getuInt32Option(vISA_numGeneralAcc);
-    if (numAcc == 0)
-    {
-        numAcc = builder.getNumACC();
-    }
-
-    if (builder.kernel.getNumRegTotal() == 256)
-    {
-        numAcc *= 2;
-    }
-    return numAcc;
-}
-
 struct AccAssignment
 {
     std::vector<bool> freeAccs;
@@ -4669,7 +4654,7 @@ struct AccAssignment
 
 void HWConformity::multiAccSubstitution(G4_BB* bb)
 {
-    int numGeneralAcc = getNumACC(builder);
+    int numGeneralAcc = builder.getNumACC();
 
     std::vector<AccInterval*> intervals;
 
