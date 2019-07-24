@@ -231,6 +231,7 @@ public:
     void Loc(unsigned int line);
     void File(std::string& s);
     void PredAdd(CVariable* flag, CVariable* dst, CVariable* src0, CVariable* src1);
+    void DebugLinePlaceholder();
 
     inline void Jump(uint label);
     inline void Cast(CVariable* dst, CVariable* src);

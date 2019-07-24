@@ -15168,3 +15168,9 @@ void EmitPass::emitDP4A(GenIntrinsicInst* GII) {
     m_encoder->Push();
 }
 
+void EmitPass::emitDebugPlaceholder(llvm::GenIntrinsicInst* I)
+{
+    m_encoder->Loc(I->getDebugLoc().getLine());
+    m_encoder->DebugLinePlaceholder();
+}
+

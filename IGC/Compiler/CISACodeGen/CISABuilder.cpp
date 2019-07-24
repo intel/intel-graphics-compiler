@@ -5620,6 +5620,11 @@ void CEncoder::Lifetime(VISAVarLifetime StartOrEnd, CVariable* dst)
     V(vKernel->AppendVISALifetime(StartOrEnd, srcOpnd));
 }
 
+void CEncoder::DebugLinePlaceholder()
+{
+    V(vKernel->AppendVISADebugLinePlaceholder());
+}
+
 
 std::string CEncoder::GetVariableName(CVariable* var)
 {

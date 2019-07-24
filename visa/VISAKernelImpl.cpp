@@ -4825,6 +4825,24 @@ int VISAKernelImpl::AppendVISAMiscFileInst(const char *fileName)
     return status;
 }
 
+int VISAKernelImpl::AppendVISADebugLinePlaceholder()
+{
+    //AppendVISAInstCommon();
+#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
+    startTimer(TIMER_VISA_BUILDER_APPEND_INST);
+#endif
+    int status = CM_SUCCESS;
+
+    if (IS_GEN_BOTH_PATH)
+    {
+        m_builder->generateDebugInfoPlaceholder();
+    }
+#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
+    stopTimer(TIMER_VISA_BUILDER_APPEND_INST);
+#endif
+    return status;
+}
+
 int VISAKernelImpl::AppendVISAMiscLOC(unsigned int lineNumber)
 {
     AppendVISAInstCommon();

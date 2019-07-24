@@ -33,6 +33,7 @@ using namespace IGC::IGCMD;
 using namespace std;
 
 char DebugInfoPass::ID = 0;
+char CatchAllLineNumber::ID = 0;
 
 DebugInfoPass::DebugInfoPass(CShaderProgram::KernelShaderMap &k) :
     ModulePass(ID),
@@ -259,4 +260,40 @@ void DebugInfoData::markOutputVars(const llvm::Instruction* pInst)
             (void)m_outputVals.insert(pVar);
         }
     }
+}
+
+CatchAllLineNumber::CatchAllLineNumber() :
+    FunctionPass(ID)
+{
+    initializeMetaDataUtilsWrapperPass(*PassRegistry::getPassRegistry());
+}
+
+CatchAllLineNumber::~CatchAllLineNumber()
+{
+}
+
+bool CatchAllLineNumber::runOnFunction(llvm::Function& F)
+{
+    // Insert placeholder intrinsic instruction in each kernel.
+    if (!F.getSubprogram() || F.isDeclaration())
+        return false;
+
+    if (F.getCallingConv() != llvm::CallingConv::SPIR_KERNEL)
+        return false;
+
+    llvm::IRBuilder<> Builder(F.getParent()->getContext());
+    DIBuilder di(*F.getParent());
+    Function* lineNumPlaceholder = GenISAIntrinsic::getDeclaration(F.getParent(), GenISAIntrinsic::ID::GenISA_CatchAllDebugLine);
+    auto intCall = Builder.CreateCall(lineNumPlaceholder);
+
+    auto line = F.getSubprogram()->getLine();
+    auto scope = F.getSubprogram();
+
+    auto dbg = DILocation::get(F.getParent()->getContext(), line, 0, scope);
+
+    intCall->setDebugLoc(dbg);
+
+    intCall->insertBefore(&*F.getEntryBlock().getFirstInsertionPt());
+
+    return true;
 }

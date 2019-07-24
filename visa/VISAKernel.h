@@ -477,6 +477,8 @@ public:
 
     CM_BUILDER_API int AppendVISAMiscLOC(unsigned int lineNumber);
 
+    CM_BUILDER_API int AppendVISADebugLinePlaceholder();
+
     CM_BUILDER_API int AppendVISAMiscRawSend(VISA_PredOpnd *pred, Common_VISA_EMask_Ctrl emask, Common_ISA_Exec_Size executionSize, unsigned char modifiers,
         unsigned int exMsgDesc, unsigned char srcSize, unsigned char dstSize, VISA_VectorOpnd *desc,
         VISA_RawOpnd *src, VISA_RawOpnd *dst);

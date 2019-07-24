@@ -39,6 +39,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "SendFusion.h"
 #include "Common_BinaryEncoding.h"
 #include <tuple>
+#include "DebugInfo.h"
 
 using namespace std;
 using namespace vISA;
@@ -599,6 +600,7 @@ void Optimizer::initOptimizations()
     INITIALIZE_PASS(loadThreadPayload,       vISA_loadThreadPayload,       TIMER_MISC_OPTS);
     INITIALIZE_PASS(insertFenceBeforeEOT,    vISA_EnableAlways,            TIMER_MISC_OPTS);
     INITIALIZE_PASS(insertScratchReadBeforeEOT, vISA_clearScratchWritesBeforeEOT, TIMER_MISC_OPTS);
+    INITIALIZE_PASS(mapOrphans,              vISA_EnableAlways,            TIMER_MISC_OPTS);
 
     // Verify all passes are initialized.
 #ifdef _DEBUG
@@ -1192,6 +1194,8 @@ int Optimizer::optimization()
 
     // Insert a dummy compact instruction if requested for SKL+
     runPass(PI_insertDummyCompactInst);
+
+    runPass(PI_mapOrphans);
 
     return CM_SUCCESS;
 }
@@ -8004,6 +8008,39 @@ public:
                     bb->insert(iter, fenceInst);
                 }
                 builder.instList.clear();
+            }
+        }
+    }
+
+    void Optimizer::mapOrphans()
+    {
+        auto catchAllCISAOff = UNMAPPABLE_VISA_INDEX;
+        for (auto bb : kernel.fg)
+        {
+            for (auto instIt = bb->begin(); instIt != bb->end();)
+            {
+                auto inst = (*instIt);
+                if (inst->opcode() == G4_opcode::G4_DebugInfoPlaceholder)
+                {
+                    catchAllCISAOff = catchAllCISAOff == UNMAPPABLE_VISA_INDEX ? inst->getCISAOff() : catchAllCISAOff;
+                    instIt = bb->erase(instIt);
+                    continue;
+                }
+                instIt++;
+            }
+        }
+
+        if (catchAllCISAOff == UNMAPPABLE_VISA_INDEX)
+            return;
+
+        for (auto bb : kernel.fg)
+        {
+            for (auto inst : bb->getInstList())
+            {
+                if (inst->getCISAOff() == UNMAPPABLE_VISA_INDEX)
+                {
+                    inst->setCISAOff(catchAllCISAOff);
+                }
             }
         }
     }

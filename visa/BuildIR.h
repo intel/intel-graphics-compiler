@@ -1572,6 +1572,15 @@ public:
         unsigned int option, int lineno, int CISAoff,
         const char* srcFilename);
 
+    G4_INST* createCFInst(
+        G4_Predicate* prd,
+        G4_opcode op,
+        unsigned char size,
+        G4_Label* jip,
+        G4_Label* uip,
+        unsigned int option,
+        int lineno = 0,
+        bool addToInstList= true);
     G4_INST* createInternalCFInst(G4_Predicate* prd, G4_opcode op,
         unsigned char size, G4_Label* jip, G4_Label* uip,
         unsigned int option, int lineno = 0, int CISAoff = -1,
@@ -2535,6 +2544,8 @@ public:
         bool pixelNullMask, bool nullDst);
 
     void materializeGlobalImm(G4_BB* entryBB);
+
+    int generateDebugInfoPlaceholder();
 
 #include "HWCapsOpen.inc"
 

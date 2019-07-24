@@ -244,6 +244,8 @@ HANDLE_INST( pseudo_callee_restore, 1, 0, InstTypeMisc, GENX_BDW, ATTR_NONE )
 HANDLE_NAME_INST( pseudo_lifetime_end, "lifetime", 2, 1, InstTypeMisc, \
                   GENX_BDW, ATTR_NONE )
 HANDLE_INST( intrinsic, 1, 3, InstTypeMisc, GENX_BDW, ATTR_NONE )
+HANDLE_INST(DebugInfoPlaceholder, 0, 0, InstTypeMisc, \
+                  GENX_BDW, ATTR_NONE )
 
 //
 // InstTypePseudoLogic

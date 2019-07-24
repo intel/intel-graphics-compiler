@@ -313,22 +313,19 @@ G4_INST* IR_Builder::createInternalInst(G4_Predicate* prd,
 
 G4_INST* IR_Builder::createIf(G4_Predicate* prd, uint8_t size, uint32_t option)
 {
-    auto inst = createInternalCFInst(prd, G4_if, size, nullptr, nullptr, option);
-    instList.push_back(inst);
+    auto inst = createCFInst(prd, G4_if, size, nullptr, nullptr, option);
     return inst;
 }
 
 G4_INST* IR_Builder::createElse(uint8_t size, uint32_t option)
 {
-    auto inst = createInternalCFInst(nullptr, G4_else, size, nullptr, nullptr, option);
-    instList.push_back(inst);
+    auto inst = createCFInst(nullptr, G4_else, size, nullptr, nullptr, option);
     return inst;
 }
 
 G4_INST* IR_Builder::createEndif(uint8_t size, uint32_t option)
 {
-    auto inst = createInternalCFInst(nullptr, G4_endif, size, nullptr, nullptr, option);
-    instList.push_back(inst);
+    auto inst = createCFInst(nullptr, G4_endif, size, nullptr, nullptr, option);
     return inst;
 }
 
@@ -344,15 +341,44 @@ G4_INST* IR_Builder::createInternalCFInst(
     const char* srcFilename)
 {
     MUST_BE_TRUE(G4_Inst_Table[op].instType == InstTypeFlow,
-                 "IR_Builder::createInternalCFInst must be used with InstTypeFlow instruction class");
+        "IR_Builder::createInternalCFInst must be used with InstTypeFlow instruction class");
 
-    G4_InstCF* ii = new (mem)G4_InstCF(*this, prd, op, size, jip, uip, option);
+    auto ii = createCFInst(prd, op, size, jip, uip, option, lineno, false);
 
     ii->setCISAOff(CISAoff);
 
     if (m_options->getOption(vISA_EmitLocation))
     {
         ii->setLocation(new (mem) MDLocation(lineno, srcFilename));
+    }
+
+    return ii;
+}
+
+G4_INST* IR_Builder::createCFInst(
+    G4_Predicate* prd,
+    G4_opcode op,
+    unsigned char size,
+    G4_Label* jip,
+    G4_Label* uip,
+    unsigned int option,
+    int lineno,
+    bool addToInstList)
+{
+    MUST_BE_TRUE(G4_Inst_Table[op].instType == InstTypeFlow,
+        "IR_Builder::createCFInst must be used with InstTypeFlow instruction class");
+
+    G4_InstCF* ii = new (mem)G4_InstCF(*this, prd, op, size, jip, uip, option);
+
+    if (addToInstList)
+    {
+        ii->setCISAOff(curCISAOffset);
+
+        if (m_options->getOption(vISA_EmitLocation))
+        {
+            ii->setLocation(new (mem) MDLocation(lineno == 0 ? curLine : lineno, curFile));
+        }
+        instList.push_back(ii);
     }
 
     instAllocList.push_back(ii);

@@ -250,6 +250,8 @@ private:
     void removeLifetimeOps();
     void recomputeBound(std::unordered_set<G4_Declare*>& declares);
 
+    void mapOrphans();
+
     G4_Imm* foldConstVal(G4_Imm* const1, G4_Imm* const2, G4_opcode op);
 
     /// Each optimization should be a member function of this class.
@@ -333,6 +335,7 @@ public:
         PI_loadThreadPayload,
         PI_insertFenceBeforeEOT,
         PI_insertScratchReadBeforeEOT,
+        PI_mapOrphans,
         PI_NUM_PASSES
     };
 

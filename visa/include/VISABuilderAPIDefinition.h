@@ -497,6 +497,8 @@ public:
 
     CM_BUILDER_API virtual int AppendVISAMiscLOC(unsigned int lineNumber) = 0;
 
+    CM_BUILDER_API virtual int AppendVISADebugLinePlaceholder() = 0;
+
     /// AppendVISAMiscRawSend -- create a GEN send instruction
     /// [pred] send/sendc (esize) <dst> <src> <exMsgDesc> <desc> {emask}
     /// bit 0 of modifiers controls whether it's send (0) or sendc (1)

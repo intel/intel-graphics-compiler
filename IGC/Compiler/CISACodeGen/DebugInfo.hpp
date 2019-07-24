@@ -45,6 +45,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/IGCPassSupport.h"
 #include "Types.hpp"
 #include "ShaderCodeGen.hpp"
+#include "llvm/IR/DIBuilder.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -105,5 +106,22 @@ namespace IGC
         }
 
         void EmitDebugInfo(bool);
+    };
+
+    class CatchAllLineNumber : public llvm::FunctionPass
+    {
+    public:
+        CatchAllLineNumber();
+        virtual ~CatchAllLineNumber();
+
+    private:
+        static char ID;
+
+        virtual bool runOnFunction(llvm::Function& F) override;
+
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
+        {
+            AU.setPreservesAll();
+        }
     };
 };

@@ -123,6 +123,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <iStdLib/utility.h>
 
 #include "Compiler/DebugInfo/VISADebugEmitter.hpp"
+#include "Compiler/CISACodeGen/DebugInfo.hpp"
 
 #include <string>
 #include <algorithm>
@@ -305,6 +306,8 @@ static void CommonOCLBasedPasses(
     {
         mpm.add(createPromoteMemoryToRegisterPass());
     }
+
+    mpm.add(new CatchAllLineNumber());
 
     // OCL has built-ins so it always need to run inlining
     {
