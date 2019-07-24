@@ -861,13 +861,23 @@ std::vector<std::pair<unsigned int, unsigned int>> VISAModule::getGenISARange(co
 
     for (unsigned int i = 0; i != GenISARange.size() - 1; i++)
     {
-        if (GenISARange[i + 1].first == GenISARange[i].second)
+        if (GenISARange[i].first == (unsigned int)-1 && GenISARange[i].second == (unsigned int)-1)
+            continue;
+
+        for (unsigned int j = i + 1; j != GenISARange.size(); j++)
         {
-            GenISARange[i + 1].first = GenISARange[i].first;
-            GenISARange[i].first = (unsigned int)-1;
-            GenISARange[i].second = (unsigned int)-1;
+            if (GenISARange[j].first == (unsigned int)-1 && GenISARange[j].second == (unsigned int)-1)
+                continue;
+
+            if (GenISARange[j].first == GenISARange[i].second)
+            {
+                GenISARange[i].second = GenISARange[j].second;
+                GenISARange[j].first = (unsigned int)-1;
+                GenISARange[j].second = (unsigned int)-1;
+            }
         }
     }
+
 
     for (auto it = GenISARange.begin(); it != GenISARange.end();)
     {

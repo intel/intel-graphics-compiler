@@ -293,6 +293,7 @@ bool StatelessToStatefull::getOffsetFromGEP(
                     Value *OffsetValue = ConstantInt::get(int32Ty, Offset);
 
                     PointerValue = BinaryOperator::CreateAdd(PointerValue, OffsetValue, "", GEP);
+                    cast<llvm::Instruction>(PointerValue)->setDebugLoc(GEP->getDebugLoc());
                 }
                 Ty = StTy->getElementType(Field);
             }
@@ -307,20 +308,24 @@ bool StatelessToStatefull::getOffsetFromGEP(
                         Value *OffsetValue = ConstantInt::get(int32Ty, Offset);
 
                         PointerValue = BinaryOperator::CreateAdd(PointerValue, OffsetValue, "", GEP);
+                        cast<llvm::Instruction>(PointerValue)->setDebugLoc(GEP->getDebugLoc());
                     }
                 }
                 else
                 {
                     Value *NewIdx = CastInst::CreateTruncOrBitCast(Idx, int32Ty, "", GEP);
+                    cast<llvm::Instruction>(NewIdx)->setDebugLoc(GEP->getDebugLoc());
 
                     APInt ElementSize = APInt(int32Ty->getPrimitiveSizeInBits(), DL->getTypeAllocSize(Ty));
 
                     if (ElementSize != 1)
                     {
                         NewIdx = BinaryOperator::CreateMul(NewIdx, ConstantInt::get(int32Ty, ElementSize), "", GEP);
+                        cast<llvm::Instruction>(NewIdx)->setDebugLoc(GEP->getDebugLoc());
                     }
 
                     PointerValue = BinaryOperator::CreateAdd(PointerValue, NewIdx, "", GEP);
+                    cast<llvm::Instruction>(PointerValue)->setDebugLoc(GEP->getDebugLoc());
                 }
             }
         }
