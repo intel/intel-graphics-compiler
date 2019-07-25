@@ -1094,6 +1094,20 @@ public:
         }
     }
 
+    bool isLastBBReturnOrExit() const
+    {
+        G4_BB* lastBB = back();
+        if (lastBB->size() > 0)
+        {
+            G4_INST* I = lastBB->back();
+            if (I->isReturn() || I->isFReturn() || I->isExit())
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
 private:
     //
     // Flow group traversal routines
