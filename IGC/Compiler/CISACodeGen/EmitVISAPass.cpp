@@ -3259,15 +3259,17 @@ void EmitPass::PredAdd(const SSource& pred, bool invert, const SSource sources[2
     CVariable* src0 = GetSrcVariable(sources[0]);
     CVariable* src1 = GetSrcVariable(sources[1]);
 
+    // base condition
     SetSourceModifiers(0, sources[0]);
     SetSourceModifiers(1, sources[1]);
+    m_encoder->Copy(m_destination, src0);
+    m_encoder->Push();
+
+    // predicate add
     m_encoder->SetDstModifier(modifier);
     m_encoder->SetPredicateMode(modifier.predMode);
     m_encoder->SetInversePredicate(invert);
-    m_encoder->PredAdd(flag, src0, src0, src1);
-    m_encoder->Push();
-
-    m_encoder->Copy(m_destination, src0);
+    m_encoder->PredAdd(flag, m_destination, m_destination, src1);
     m_encoder->Push();
 }
 

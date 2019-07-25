@@ -1691,7 +1691,6 @@ bool CodeGenPatternMatch::MatchPredAdd(llvm::BinaryOperator& I)
 
     // FSub is not supported currently due to addional instruction requirement
     assert(I.getOpcode() == Instruction::FAdd);
-    static int irene = 0;
     for (uint iAdd = 0; iAdd < 2 && !found; iAdd++)
     {
         Value* src = I.getOperand(iAdd);
@@ -1746,14 +1745,6 @@ bool CodeGenPatternMatch::MatchPredAdd(llvm::BinaryOperator& I)
                     sources[0] = I.getOperand(1 ^ iAdd);
                     sources[1] = mul->getOperand(1 ^ iMul);
                     pred = selInst->getOperand(0);
-
-                    // no pattern match if optimized fadd has the immediate value in the first operand
-                    // This is due to the implementation where sources[0] can be used as the addition result in
-                    // EmitPass::PredAdd()
-                    if (ConstantFP *fp0 = dyn_cast<llvm::ConstantFP>(sources[0]))
-                    {
-                        break;
-                    }
 
                     GetModifier(*sources[0], src_mod[0], sources[0]);
                     GetModifier(*sources[1], src_mod[1], sources[1]);
