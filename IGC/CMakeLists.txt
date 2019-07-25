@@ -23,7 +23,7 @@
 
 
 #======================= end_copyright_notice ==================================
-
+ 
 
 # CMake settings:
 #  - IGC_OPTION__LIBRARY_NAME

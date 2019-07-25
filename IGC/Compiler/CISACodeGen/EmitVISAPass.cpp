@@ -4678,7 +4678,9 @@ void EmitPass::emitSimdShuffleDown(llvm::Instruction* inst)
     m_encoder->Push();
 
     // Emit mov with direct addressing when delta is a compile-time constant.
-    if (pDelta->IsImmediate() && m_SimdMode == SIMDMode::SIMD8)
+    const bool useDirectAddressng = pDelta->IsImmediate()
+        && m_currShader->m_Platform->GetPlatformFamily() != IGFX_GEN8_CORE;
+    if (useDirectAddressng && m_SimdMode == SIMDMode::SIMD8)
     {
         const uint dataIndex = pDelta->GetImmediateValue() % nbElements;
 
@@ -4688,7 +4690,7 @@ void EmitPass::emitSimdShuffleDown(llvm::Instruction* inst)
         m_encoder->Push();
         return;
     }
-    if (pDelta->IsImmediate() && m_SimdMode == SIMDMode::SIMD16)
+    if (useDirectAddressng && m_SimdMode == SIMDMode::SIMD16)
     {
         const uint dataIndex = pDelta->GetImmediateValue() % nbElements;
 

@@ -1817,6 +1817,11 @@ bool CodeGenPatternMatch::MatchMad( llvm::BinaryOperator& I )
     {
         return false;
     }
+    bool preventMadForRound = false;
+    if (IGC_IS_FLAG_ENABLED(EnableMadRoundDepCheck) || m_ctx->m_DriverInfo.PreventMadforRound())
+    {
+        preventMadForRound = true;
+    }
 
     bool found = false;
     llvm::Value* sources[3];
@@ -1899,7 +1904,7 @@ bool CodeGenPatternMatch::MatchMad( llvm::BinaryOperator& I )
             return false;
     }
 
-    if (found && IGC_IS_FLAG_ENABLED(EnableMadRoundDepCheck))
+    if (found && preventMadForRound)
     {
         /*=============================================================================
         This checks for pattern
@@ -1916,6 +1921,7 @@ bool CodeGenPatternMatch::MatchMad( llvm::BinaryOperator& I )
 
         If the case falls in either of the two cases, Mad optimisation is skipped because
         small precision difference between Mul+add and Mad can be extrapolated by floor
+        (currently just enabled for floor operation, if required add for ceiling in future)
         =============================================================================*/
 
         for (auto iter = I.user_begin(); iter != I.user_end(); iter++)
