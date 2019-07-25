@@ -632,7 +632,6 @@ public:
     bool isFCall() const { return op == G4_pseudo_fcall; }
     bool isReturn() const { return op == G4_return; }
     bool isFReturn() const { return (op == G4_pseudo_fret); }
-    bool isExit() const { return (op == G4_pseudo_exit);  }
     bool isMath() const { return op == G4_math; }
     bool isIntrinsic() const { return op == G4_intrinsic; }
     bool isSend() const { return op == G4_send || op == G4_sendc || op == G4_sends || op == G4_sendsc; }
