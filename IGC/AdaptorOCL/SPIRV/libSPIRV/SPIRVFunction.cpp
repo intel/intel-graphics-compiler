@@ -149,6 +149,7 @@ SPIRVFunction::decodeBB(SPIRVDecoder &Decoder) {
 
           switch (Decoder.OpCode)
           {
+          case OpNop:
           case OpName:
           case OpDecorate:
           // We don't currently have a use for these structured control flow
