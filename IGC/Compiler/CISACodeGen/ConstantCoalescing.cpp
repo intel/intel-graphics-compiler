@@ -536,12 +536,9 @@ void ConstantCoalescing::ProcessBlock(
                             MergeScatterLoad(inst, nullptr, bufid, elt_idxv, eltid, 1, indcb_gathers);
 #else
                             if (UsesTypedConstantBuffer(m_ctx) &&
-                                bufType == CONSTANT_BUFFER &&
-                                ((offsetInBytes % 4) == 0) &&
-                                !inst->getType()->isVectorTy())
+                                bufType == CONSTANT_BUFFER)
                             {
-                                uint eltid = offsetInBytes >> 2;
-                                ScatterToSampler(inst, nullptr, addrSpace, elt_idxv, eltid, indcb_gathers);
+                                ScatterToSampler(inst, nullptr, addrSpace, elt_idxv, offsetInBytes, indcb_gathers);
                             }
 #endif
                         }
@@ -1034,14 +1031,22 @@ Value *ConstantCoalescing::SimpleBaseOffset( Value *elt_idxv, uint &offset )
 
             offset = or_offset;
 
-            // Example of pattern handled below:
-            //  %27 = shl i32 %26, 4
-            //  %168 = add i32 %27, 32
-            //  %fromGBP33 = inttoptr i32 %168 to float addrspace(65538)*
-            //  %ldrawidx34 = load float, float addrspace(65538)* %fromGBP33, align 16
-            //  %173 = or i32 %168, 4
-            //  %fromGBP35 = inttoptr i32 %173 to float addrspace(65538)*
-            //  %ldrawidx36 = load float, float addrspace(65538)* %fromGBP35, align 4
+            // Examples of patterns handled below:
+            // - shl/add/or
+            //      %27 = shl i32 %26, 4
+            //      %168 = add i32 %27, 32
+            //      %fromGBP33 = inttoptr i32 %168 to float addrspace(65538)*
+            //      %ldrawidx34 = load float, float addrspace(65538)* %fromGBP33, align 16
+            //      %173 = or i32 %168, 4
+            //      %fromGBP35 = inttoptr i32 %173 to float addrspace(65538)*
+            //      %ldrawidx36 = load float, float addrspace(65538)* %fromGBP35, align 4
+            //
+            // - mul/shl/or
+            //        %6 = mul i32 %4, 76
+            //        %7 = shl i32 %6, 4
+            //        %11 = or i32 %7, 8
+            //        %12 = inttoptr i32 %11 to <2 x i32> addrspace(65536)*
+            //
             if (inst0_op == Instruction::Add &&
                 isa<Instruction>(inst0->getOperand(0)) &&
                 isa<ConstantInt>(inst0->getOperand(1)))
@@ -1086,6 +1091,12 @@ Value *ConstantCoalescing::SimpleBaseOffset( Value *elt_idxv, uint &offset )
                             ConstantInt* and_mask_val = cast<ConstantInt>(shl_inst0->getOperand(1));
                             uint and_mask = (uint)and_mask_val->getZExtValue();
                             shl_base = (1 << iSTD::bsf(and_mask));
+                        }
+                        else if(shl_inst0_op == Instruction::Mul && isa<ConstantInt>(shl_inst0->getOperand(1)))
+                        {
+                            ConstantInt* mul_multiplier_val = cast<ConstantInt>(shl_inst0->getOperand(1));
+                            uint mul_multiplier = (uint)mul_multiplier_val->getZExtValue();
+                            shl_base = (1 << iSTD::bsf(mul_multiplier));
                         }
                     }
 
@@ -1683,7 +1694,8 @@ bool ConstantCoalescing::IsSamplerAlignedAddress(Value* addr) const
                 return true;
             }
         }
-        else if (inst->getOpcode() == Instruction::Add)
+        else if (inst->getOpcode() == Instruction::Add ||
+                 inst->getOpcode() == Instruction::Or)
         {
             if (IsSamplerAlignedAddress(inst->getOperand(0)) &&
                 IsSamplerAlignedAddress(inst->getOperand(1)))
@@ -1759,14 +1771,21 @@ Value* ConstantCoalescing::GetSamplerAlignedAddress(Value* addr)
         }
     }
     else if (inst &&
-             inst->getOpcode() == Instruction::Add)
+             (inst->getOpcode() == Instruction::Add ||
+              inst->getOpcode() == Instruction::Or))
     {
         Value* a = GetSamplerAlignedAddress(inst->getOperand(0));
         Value* b = GetSamplerAlignedAddress(inst->getOperand(1));
 
         irBuilder->SetInsertPoint(inst);
-
-        elementIndex = irBuilder->CreateAdd(a, b);
+        if (inst->getOpcode() == Instruction::Add)
+        {
+            elementIndex = irBuilder->CreateAdd(a, b);
+        }
+        else
+        {
+            elementIndex = irBuilder->CreateOr(a, b);
+        }
         wiAns->incUpdateDepend(elementIndex, WIAnalysis::RANDOM);
     }
     else if (ConstantInt* constant = dyn_cast<ConstantInt>(addr))
@@ -1780,52 +1799,75 @@ Value* ConstantCoalescing::GetSamplerAlignedAddress(Value* addr)
     return elementIndex;
 }
 
-/// replace non-uniform scatter load with sampler load messages
-void ConstantCoalescing::ScatterToSampler( Instruction *load,
-                                      Value *bufIdxV, uint addrSpace,
-                                      Value *eltIdxV, uint eltid,
-                                      std::vector<BufChunk*> &chunk_vec )
+
+/// Replace non-uniform scatter load with sampler load messages.
+void ConstantCoalescing::ScatterToSampler(
+    Instruction *load,
+    Value *bufIdxV,
+    uint   addrSpace,
+    Value *baseAddressInBytes, // base address calculated by SimpleBaseOffset()
+    uint   offsetInBytes, // offset from baseAddressInBytes
+    std::vector<BufChunk*> &chunk_vec )
 {
-    Instruction* ishl = dyn_cast<Instruction>(eltIdxV);
-    if( ishl != nullptr && IsSamplerAlignedAddress(ishl))
+    constexpr uint samplerElementSizeInBytes = sizeof(uint32_t);
+    constexpr uint samplerLoadSizeInDwords = 4;
+    constexpr uint samplerLoadSizeInBytes = samplerLoadSizeInDwords * samplerElementSizeInBytes;
+    const uint loadSizeInBytes = load->getType()->getPrimitiveSizeInBits() / 8;
+
+    assert(!load->getType()->isVectorTy() || load->getType()->getVectorNumElements() <= 4);
+
+    // Code below doesn't support crossing 4 DWORD boundary i.e. mapping a
+    // single input load to multiple sampler loads.
+    const bool canBeLoadedUsingSampler =
+        (((offsetInBytes % samplerLoadSizeInBytes) + loadSizeInBytes) <= samplerLoadSizeInBytes);
+
+    Instruction* baseInBytes = dyn_cast<Instruction>(baseAddressInBytes);
+    if (baseInBytes &&
+        IsSamplerAlignedAddress(baseAddressInBytes) &&
+        canBeLoadedUsingSampler)
     {
-        irBuilder->SetInsertPoint( ishl );
+        irBuilder->SetInsertPoint(baseInBytes);
 
-        Value* elementIndex = GetSamplerAlignedAddress(ishl);
+        WIAnalysis::WIDependancy baseInBytesDep = wiAns->whichDepend(baseInBytes);
 
-        WIAnalysis::WIDependancy ishlDep = wiAns->whichDepend(ishl);
-        // it is possible that ishl is uniform, yet load is non-uniform due to the use location of load
-        if (elementIndex != ishl->getOperand(0))
+        Value* baseAddressInOwords = GetSamplerAlignedAddress(baseInBytes);
+        assert(baseAddressInOwords);
+
+        // it is possible that baseInBytes is uniform, yet load is non-uniform due to the use location of load
+        if (baseAddressInOwords != baseInBytes->getOperand(0))
         {
-            Value* newVal = irBuilder->CreateShl(elementIndex, ConstantInt::get(elementIndex->getType(), 4));
-            wiAns->incUpdateDepend(newVal, ishlDep);
-            ishl->replaceAllUsesWith(newVal);
+            Value* newVal = irBuilder->CreateShl(baseAddressInOwords, ConstantInt::get(baseAddressInOwords->getType(), 4));
+            wiAns->incUpdateDepend(newVal, baseInBytesDep);
+            baseInBytes->replaceAllUsesWith(newVal);
         }
-        else if (wiAns->whichDepend(elementIndex) != ishlDep)
+        else if (wiAns->whichDepend(baseAddressInOwords) != baseInBytesDep)
         {
-            // quick fix for a special case: elementIndex is uniform and ishl is not uniform.
-            // If we use ishl-src0 (elementIndx) directly at cf-join point by this transform,
-            // we can change the uniformness of elementIndex
-            elementIndex = irBuilder->CreateShl(elementIndex, ConstantInt::get(elementIndex->getType(), 0));
-            wiAns->incUpdateDepend(elementIndex, ishlDep);
-            Value* newVal = irBuilder->CreateShl(elementIndex, ConstantInt::get(elementIndex->getType(), 4));
-            wiAns->incUpdateDepend(newVal, ishlDep);
-            ishl->replaceAllUsesWith(newVal);
+            // quick fix for a special case: baseAddressInOwords is uniform and baseInBytes is not uniform.
+            // If we use baseInBytes-src0 (elementIndx) directly at cf-join point by this transform,
+            // we can change the uniformness of baseAddressInOwords
+            baseAddressInOwords = irBuilder->CreateShl(baseAddressInOwords, ConstantInt::get(baseAddressInOwords->getType(), 0));
+            wiAns->incUpdateDepend(baseAddressInOwords, baseInBytesDep);
+            Value* newVal = irBuilder->CreateShl(baseAddressInOwords, ConstantInt::get(baseAddressInOwords->getType(), 4));
+            wiAns->incUpdateDepend(newVal, baseInBytesDep);
+            baseInBytes->replaceAllUsesWith(newVal);
         }
         BufChunk *cov_chunk = nullptr;
         for( std::vector<BufChunk*>::reverse_iterator rit = chunk_vec.rbegin(),
             rie = chunk_vec.rend(); rit != rie; ++rit )
         {
             BufChunk *cur_chunk = *rit;
+            // Look for an existing sampler load covering data range of the input load.
             if (CompareBufferBase(cur_chunk->bufIdxV, cur_chunk->addrSpace, bufIdxV, addrSpace) &&
-                cur_chunk->baseIdxV == elementIndex &&
-                cur_chunk->chunkIO->getType()->getScalarSizeInBits() == load->getType()->getScalarSizeInBits())
+                cur_chunk->baseIdxV == baseAddressInOwords)
             {
-               if(eltid>= cur_chunk->chunkStart && eltid<cur_chunk->chunkStart + cur_chunk->chunkSize)
-               {
-                   cov_chunk = cur_chunk;
-                   break;
-               }
+                const uint chunkStartInBytes = cur_chunk->chunkStart * cur_chunk->elementSize;
+                const uint chunkEndInBytes = (cur_chunk->chunkStart + cur_chunk->chunkSize) * cur_chunk->elementSize;
+                if (offsetInBytes >= chunkStartInBytes &&
+                    (offsetInBytes + loadSizeInBytes) <= chunkEndInBytes)
+                {
+                    cov_chunk = cur_chunk;
+                    break;
+                }
             }
         }
         irBuilder->SetInsertPoint( load );
@@ -1835,22 +1877,23 @@ void ConstantCoalescing::ScatterToSampler( Instruction *load,
             cov_chunk = new BufChunk();
             cov_chunk->bufIdxV = bufIdxV;
             cov_chunk->addrSpace = addrSpace;
-            cov_chunk->baseIdxV = elementIndex;
-            cov_chunk->chunkStart = iSTD::RoundDown(eltid,4);
-            cov_chunk->chunkSize = 4;
-            if(eltid>=4)
+            cov_chunk->baseIdxV = baseAddressInOwords;
+            cov_chunk->elementSize = samplerElementSizeInBytes;
+            cov_chunk->chunkStart = iSTD::RoundDown((offsetInBytes / samplerElementSizeInBytes), samplerLoadSizeInDwords);
+            cov_chunk->chunkSize = samplerLoadSizeInDwords;
+            if(offsetInBytes >= samplerLoadSizeInBytes)
             {
-                elementIndex = irBuilder->CreateAdd(elementIndex, ConstantInt::get(elementIndex->getType(), (eltid/4)));
-                wiAns->incUpdateDepend( elementIndex, WIAnalysis::RANDOM );
+                baseAddressInOwords = irBuilder->CreateAdd(baseAddressInOwords, ConstantInt::get(baseAddressInOwords->getType(), (offsetInBytes / samplerLoadSizeInBytes)));
+                wiAns->incUpdateDepend( baseAddressInOwords, WIAnalysis::RANDOM );
             }
-            if (elementIndex->getType()->getIntegerBitWidth() >= 32)
+            if (baseAddressInOwords->getType()->getIntegerBitWidth() >= 32)
             {
-                elementIndex = irBuilder->CreateAnd(elementIndex, ConstantInt::get(elementIndex->getType(), 0x0FFFFFFF));
-                wiAns->incUpdateDepend(elementIndex, WIAnalysis::RANDOM);
+                baseAddressInOwords = irBuilder->CreateAnd(baseAddressInOwords, ConstantInt::get(baseAddressInOwords->getType(), 0x0FFFFFFF));
+                wiAns->incUpdateDepend(baseAddressInOwords, WIAnalysis::RANDOM);
             }
-            elementIndex = irBuilder->CreateZExtOrTrunc(elementIndex, irBuilder->getInt32Ty());
-            wiAns->incUpdateDepend(elementIndex, WIAnalysis::RANDOM);
-            ld = CreateSamplerLoad(elementIndex, addrSpace);
+            baseAddressInOwords = irBuilder->CreateZExtOrTrunc(baseAddressInOwords, irBuilder->getInt32Ty());
+            wiAns->incUpdateDepend(baseAddressInOwords, WIAnalysis::RANDOM);
+            ld = CreateSamplerLoad(baseAddressInOwords, addrSpace);
             cov_chunk->chunkIO = ld;
             chunk_vec.push_back( cov_chunk );
         }
@@ -1859,15 +1902,7 @@ void ConstantCoalescing::ScatterToSampler( Instruction *load,
             ld = cov_chunk->chunkIO;
         }
 
-        Instruction *splitter =
-            cast<Instruction>(irBuilder->CreateExtractElement(ld, irBuilder->getInt32(eltid%4)));
-        wiAns->incUpdateDepend( splitter, WIAnalysis::RANDOM );
-        if(splitter->getType() != load->getType()->getScalarType())
-        {
-            splitter = cast<Instruction>(irBuilder->CreateBitCast(splitter, load->getType()->getScalarType()));
-            wiAns->incUpdateDepend( splitter, WIAnalysis::RANDOM );
-        }
-        load->replaceAllUsesWith( splitter );
+        ReplaceLoadWithSamplerLoad(load, ld, (offsetInBytes % samplerLoadSizeInBytes));
     }
 }
 
@@ -1893,6 +1928,132 @@ Instruction* ConstantCoalescing::CreateSamplerLoad(Value* index, uint addrSpace)
     Instruction* ld = irBuilder->CreateCall(l, attr);
     wiAns->incUpdateDepend( ld, WIAnalysis::RANDOM );
     return ld;
+}
+
+/// Extract data from sampler load, repack data if needed and replace the load instruction.
+void ConstantCoalescing::ReplaceLoadWithSamplerLoad(
+    Instruction *loadToReplace, ///< input scattered load to replace
+    Instruction* ldData, ///< corresponding sampler load result
+    uint offsetInBytes) ///< offset in bytes from the start of the sampler load to the beginning of the data to extract
+{
+    Type* const srcTy = ldData->getType();
+    Type* const dstTy = loadToReplace->getType();
+    assert(srcTy->isVectorTy() && srcTy->getVectorElementType()->isFloatTy());
+
+    const uint dstSizeInBytes = dstTy->getPrimitiveSizeInBits() / 8;
+
+    irBuilder->SetInsertPoint(loadToReplace);
+
+    Value *result = nullptr;
+    if (srcTy == dstTy)
+    {
+        // result is vector of 4 floats
+        assert(offsetInBytes == 0);
+        result = ldData;
+    }
+    else if (srcTy->getPrimitiveSizeInBits() == dstTy->getPrimitiveSizeInBits())
+    {
+        // result is a vector of one of the following:
+        // - 2 64-bit values
+        // - 4 32-bit integer values
+        assert(offsetInBytes == 0);
+        result = irBuilder->CreateBitCast(ldData, dstTy);
+        wiAns->incUpdateDepend(result, WIAnalysis::RANDOM);
+    }
+    else if ((dstSizeInBytes % 4) == 0 && (offsetInBytes % 4) == 0)
+    {
+        // result is one of the following:
+        // - 64-bit scalar
+        // - vector of 2 or 3 32-bit integer values
+        // - dword aligned vector of 2 or 4 16-bit values
+        // - dword aligned vector of 4 8-bit values
+
+        // create a new vector with 2 or 3 components from sampler load data and
+        // bitcast to the destination type
+        const uint numElem = (dstSizeInBytes + 3) / 4;
+        const uint firstElem = offsetInBytes / 4;
+        result = UndefValue::get(VectorType::get(srcTy->getVectorElementType(), numElem));
+        for (uint i = 0; i < numElem; ++i)
+        {
+            Value* element = (irBuilder->CreateExtractElement(ldData, irBuilder->getInt32(firstElem + i)));
+            wiAns->incUpdateDepend(element, WIAnalysis::RANDOM);
+            if (numElem == 1)
+            {
+                result = element;
+            }
+            else
+            {
+                result = irBuilder->CreateInsertElement(result, element, irBuilder->getInt32(i));
+                wiAns->incUpdateDepend(result, WIAnalysis::RANDOM);
+            }
+        }
+        if (dstTy != result->getType())
+        {
+            result = irBuilder->CreateBitCast(result, dstTy);
+            wiAns->incUpdateDepend(result, WIAnalysis::RANDOM);
+        }
+    }
+    else
+    {
+        const uint numElem = (dstSizeInBytes + 3) / 4;
+        const uint firstElem = offsetInBytes / 4;
+
+        // extract up to 4 DWORDs of sampler data
+        SmallVector<Value*, 4> srcData;
+        for (uint i = 0; i < numElem; ++i)
+        {
+            Value* element = irBuilder->CreateExtractElement(ldData, irBuilder->getInt32(firstElem + i));
+            wiAns->incUpdateDepend(element, WIAnalysis::RANDOM);
+            srcData.push_back(element);
+        }
+
+        // Extracts a single element of destination data type.
+        auto ExtractFromSamplerData = [this, &offsetInBytes, &srcData](
+            Type* dstTy,
+            uint i)->Value*
+        {
+            assert(dstTy->isIntegerTy() || dstTy->isFloatingPointTy());
+            assert(dstTy->getPrimitiveSizeInBits() < 64);
+            const uint offsetInBits = ((offsetInBytes % 4) * 8) + (dstTy->getPrimitiveSizeInBits() * i);
+
+            assert(offsetInBits + dstTy->getPrimitiveSizeInBits() <= 32);
+            Value* result = irBuilder->CreateBitCast(srcData[offsetInBits / 32], irBuilder->getInt32Ty());
+            wiAns->incUpdateDepend(result, WIAnalysis::RANDOM);
+            if (offsetInBits > 0)
+            {
+                result = irBuilder->CreateLShr(result, irBuilder->getInt32(offsetInBits % 32));
+                wiAns->incUpdateDepend(result, WIAnalysis::RANDOM);
+            }
+            if (dstTy->getScalarSizeInBits() < 32)
+            {
+                result = irBuilder->CreateZExtOrTrunc(result, IntegerType::get(dstTy->getContext(), dstTy->getPrimitiveSizeInBits()));
+                wiAns->incUpdateDepend(result, WIAnalysis::RANDOM);
+            }
+            if (result->getType() != dstTy)
+            {
+                result = irBuilder->CreateBitCast(result, dstTy);
+                wiAns->incUpdateDepend(result, WIAnalysis::RANDOM);
+            }
+            return result;
+        };
+
+        if (dstTy->isVectorTy())
+        {
+            result = UndefValue::get(dstTy);
+            for (uint i = 0; i < dstTy->getVectorNumElements(); i++)
+            {
+                Value* tmpData = ExtractFromSamplerData(dstTy->getVectorElementType(), i);
+                result = irBuilder->CreateInsertElement(result, tmpData, irBuilder->getInt32(i));
+                wiAns->incUpdateDepend(result, WIAnalysis::RANDOM);
+            }
+        }
+        else
+        {
+            result = ExtractFromSamplerData(dstTy, 0);
+        }
+    }
+
+    loadToReplace->replaceAllUsesWith(result);
 }
 
 

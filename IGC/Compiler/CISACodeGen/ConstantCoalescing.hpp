@@ -117,6 +117,12 @@ private:
             return val;
         }
 
+        Value *CreateOr(Value *LHS, Value *RHS, const Twine &Name = "") {
+            Value * val = IGCIRBuilder<>::CreateOr(LHS, RHS, Name);
+            m_TT->RegisterNewValueAndAssignID(val);
+            return val;
+        }
+
         Value *CreateAnd(Value *LHS, Value *RHS, const Twine &Name = "") {
             Value * val = IRBuilder<>::CreateAnd(LHS, RHS, Name);
             m_TT->RegisterNewValueAndAssignID(val);
@@ -250,6 +256,10 @@ private:
     llvm::Instruction *EnlargeChunkAddExtract(BufChunk *cov_chunk, uint size_adj, uint eltid);
     llvm::Instruction *AdjustChunkAddExtract(BufChunk *cov_chunk, uint start_adj, uint size_adj, uint eltid);
     llvm::Instruction *CreateSamplerLoad(llvm::Value* index, uint addrSpace);
+    void ReplaceLoadWithSamplerLoad(
+        Instruction *loadToReplace,
+        Instruction* ldData,
+        uint offsetInBytes);
     void MergeUniformLoad(llvm::Instruction *load,
         llvm::Value *bufIdxV, uint addrSpace,
         llvm::Value *eltIdxV, uint offsetInBytes,
