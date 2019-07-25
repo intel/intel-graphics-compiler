@@ -256,6 +256,7 @@ public:
     virtual bool PreventMadforRound() const { return false; }
 
 
+
 };
 
 }//namespace IGC

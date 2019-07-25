@@ -1808,6 +1808,7 @@ bool CodeGenPatternMatch::MatchMad( llvm::BinaryOperator& I )
     {
         return false;
     }
+
     bool preventMadForRound = false;
     if (IGC_IS_FLAG_ENABLED(EnableMadRoundDepCheck) || m_ctx->m_DriverInfo.PreventMadforRound())
     {
