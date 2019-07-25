@@ -1235,12 +1235,12 @@ class RelocationEntry
     std::string symName;       // the symbol name that it's address to be resolved
 
     RelocationEntry(G4_INST* i, int pos, RelocationType type, const std::string& symbolName) :
-        inst(i), opndPos(pos), relocType(type), symName(symbolName) {}
+        inst(i), opndPos(pos), relocType(type), symName(symbolName){}
 
 public:
-    static RelocationEntry createSymbolAddrReloc(G4_INST* inst, int opndPos, const std::string& symbolName)
+    static RelocationEntry createSymbolAddrReloc(G4_INST* inst, int opndPos, const std::string& symbolName, RelocationType type)
     {
-        RelocationEntry entry(inst, opndPos, RelocationType::R_SYM_ADDR, symbolName);
+        RelocationEntry entry(inst, opndPos, type, symbolName);
         return entry;
     }
 
@@ -1260,6 +1260,10 @@ public:
         {
             case RelocationType::R_SYM_ADDR:
                 return "R_SYM_ADDR";
+            case RelocationType::R_SYM_ADDR_32:
+                return "R_SYM_ADDR_32";
+            case RelocationType::R_SYM_ADDR_32_HI:
+                return "R_SYM_ADDR_32_HI";
             default:
                 assert(false && "unhandled relocation type");
                 return "";
@@ -1273,7 +1277,12 @@ public:
 
     const std::string& getSymbolName() const
     {
-        assert(relocType == RelocationType::R_SYM_ADDR && "invalid relocation type");
+        bool isValidRelocType =
+            relocType == RelocationType::R_SYM_ADDR ||
+            relocType == RelocationType::R_SYM_ADDR_32 ||
+            relocType == RelocationType::R_SYM_ADDR_32_HI;
+
+        assert(isValidRelocType && "invalid relocation type");
         return symName;
     }
 

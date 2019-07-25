@@ -57,7 +57,9 @@ typedef struct {
 /// GenRelocType - Specify the relocation's type
 enum GenRelocType {
     R_NONE     = 0,
-    R_SYM_ADDR = 1
+    R_SYM_ADDR = 1,      //64-bit type
+    R_SYM_ADDR_32 = 2,   //lower 32-bit of 64-bit address.
+    R_SYM_ADDR_32_HI = 3 //higher 32bits of 64-bit address
 };
 
 /// GenRelocEntry - An relocation table entry

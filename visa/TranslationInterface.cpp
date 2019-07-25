@@ -2354,12 +2354,35 @@ int IR_Builder::translateVISACFSymbolInst(const std::string& symbolName, G4_DstR
     startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
 
-    // symbolic imm representing symbol's address
-    auto funcAddr = createRelocImm(Type_UQ);
-    auto movInst = createInst(nullptr, G4_mov, nullptr, false, 1, dst, funcAddr, nullptr, InstOpt_WriteEnable);
+    if (no64bitType())
+    {
+        auto* funcAddrLow = createRelocImm(Type_UD);
+        auto* funcAddrHigh = createRelocImm(Type_UD);
 
-    RelocationEntry relocEntry = RelocationEntry::createSymbolAddrReloc(movInst, 0, symbolName);
-    kernel.addRelocation(relocEntry);
+        dst->setType(Type_UD);
+        G4_INST* movLo = createInst(nullptr, G4_mov, nullptr, false, 1, dst, funcAddrLow, nullptr, InstOpt_WriteEnable);
+        G4_DstRegRegion* tempDst = createDstRegRegion(*dst);
+
+        tempDst->setSubRegOff(1);
+        tempDst->setType(Type_UD);
+        G4_INST* movHi = createInst(nullptr, G4_mov, nullptr, false, 1, tempDst, funcAddrHigh, nullptr, InstOpt_WriteEnable);
+
+        RelocationEntry relocEntryLo = RelocationEntry::createSymbolAddrReloc(movLo, 0, symbolName, GenRelocType::R_SYM_ADDR_32);
+        kernel.addRelocation(relocEntryLo);
+
+        RelocationEntry relocEntryHi = RelocationEntry::createSymbolAddrReloc(movHi, 0, symbolName, GenRelocType::R_SYM_ADDR_32_HI);
+        kernel.addRelocation(relocEntryHi);
+
+    }
+    else
+    {
+        // symbolic imm representing symbol's address
+        auto funcAddr = createRelocImm(Type_UQ);
+        auto movInst = createInst(nullptr, G4_mov, nullptr, false, 1, dst, funcAddr, nullptr, InstOpt_WriteEnable);
+
+        RelocationEntry relocEntry = RelocationEntry::createSymbolAddrReloc(movInst, 0, symbolName, GenRelocType::R_SYM_ADDR);
+        kernel.addRelocation(relocEntry);
+    }
 
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);

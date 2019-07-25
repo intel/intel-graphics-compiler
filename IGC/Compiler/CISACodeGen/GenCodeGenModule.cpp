@@ -513,11 +513,6 @@ bool GenXFunctionGroupAnalysis::verify()
                 Function *F = *FI;
                 if (F->hasFnAttribute("IndirectlyCalled"))
                 {
-                    // Check if all extern functions are added to the main kernel group
-                    FunctionGroup* FG = getGroup(F);
-                    FunctionGroup* defaultFG = getGroupForHead(getDefaultKernel());
-                    if (FG != defaultFG)
-                        return false;
                     continue;
                 }
                 // If F is an unused non-kernel function, although it should have been

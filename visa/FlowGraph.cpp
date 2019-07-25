@@ -5440,8 +5440,16 @@ void RelocationEntry::dump() const
     {
         case RelocationType::R_NONE:
             std::cerr << "R_NONE: symbol name = " << symName;
+            break;
         case RelocationType::R_SYM_ADDR:
             std::cerr << "R_SYM_ADDR: symbol name = " << symName;
+            break;
+        case RelocationType::R_SYM_ADDR_32:
+            std::cerr << "R_SYM_ADDR_32: symbol name = " << symName;
+            break;
+        case RelocationType::R_SYM_ADDR_32_HI:
+            std::cerr << "R_SYM_ADDR_32_HI: symbol name = " << symName;
+            break;
     }
     std::cerr << "\n";
 }
