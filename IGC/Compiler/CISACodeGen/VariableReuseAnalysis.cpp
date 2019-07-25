@@ -990,8 +990,26 @@ void VariableReuseAnalysis::visitExtractElementInst(ExtractElementInst& I)
         return;
     }
 
+
     ExtractElementInst* EEI = &I;
     Value* vecVal = EEI->getVectorOperand();
+
+    // Before doing extractMask explicitly, don't do aliasing
+    // for extractElement whose vector operand are the candidate
+    // of the existing extractMask optimization, as doing so will
+    // disable the existing extractMask optimization, which will
+    // cause perf regression.
+    if (Instruction * Inst = dyn_cast<Instruction>(vecVal))
+    {
+        if (IGC_IS_FLAG_DISABLED(EnableExtractMask) &&
+            (isSampleInstruction(Inst) || isLdInstruction(Inst)))
+        {
+            // OCL can have sample (image read), not ld. For 3d/mac,
+            // need to check more
+            return;
+        }
+    }
+
     // If inst is dead, EEI is an argument, or EEI & vecVal have
     // different uniformness, skip it. (Current igc & visa interface
     // requires any argument value to be a root value, not alias.)
