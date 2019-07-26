@@ -111,9 +111,27 @@ bool DebugInfoPass::runOnModule(llvm::Module& M)
         m_pDebugEmitter = m_currShader->diData->m_pDebugEmitter;
         std::vector<std::pair<unsigned int, std::pair<llvm::Function*, IGC::VISAModule*>>> sortedVISAModules;
 
+        // Sort modules in order of their placement in binary
+        DbgDecoder decodedDbg(m_currShader->ProgramOutput()->m_debugDataGenISA);
+        auto getLastGenOff = [&decodedDbg](IGC::VISAModule* v)
+        {
+            unsigned int genOff = 0;
+
+            for (auto& item : decodedDbg.compiledObjs)
+            {
+                auto& name = item.kernelName;
+                auto firstInst = (v->GetInstInfoMap()->begin())->first;
+                auto funcName = firstInst->getParent()->getParent()->getName();
+                if (funcName.compare(name) == 0)
+                    genOff = item.CISAIndexMap.back().second;
+            }
+
+            return genOff;
+        };
+
         for (auto& m : m_currShader->diData->m_VISAModules)
         {
-            auto lastVISAId = m.second->GetCurrentVISAId();
+            auto lastVISAId = getLastGenOff(m.second);
             sortedVISAModules.push_back(std::make_pair(lastVISAId, std::make_pair(m.first, m.second)));
         }
 

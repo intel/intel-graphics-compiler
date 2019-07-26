@@ -548,6 +548,11 @@ static void Stitch_Compiled_Units(G4_Kernel* kernel, std::map<std::string, G4_Ke
         {
             // Setup successor/predecessor
             G4_INST* fcall = cur->back();
+            if (kernel->getOption(vISA_GenerateDebugInfo))
+            {
+                kernel->getKernelDebugInfo()->setFCallInst(fcall);
+            }
+
             if (!fcall->asCFInst()->isIndirectCall())
             {
                 std::string funcName = fcall->asCFInst()->getCallee();

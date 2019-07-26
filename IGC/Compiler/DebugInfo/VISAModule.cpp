@@ -718,6 +718,7 @@ void VISAModule::Reset()
 
 void VISAModule::buildDirectElfMaps()
 {
+    auto co = getCompileUnit();
     VISAIndexToInst.clear();
     VISAIndexToSize.clear();
     for (VISAModule::const_iterator II = begin(), IE = end(); II != IE; ++II)
@@ -738,16 +739,16 @@ void VISAModule::buildDirectElfMaps()
 
     GenISAToVISAIndex.clear();
     for (auto i = 0;
-        i != m_pShader->m_VISAIndexToGenISAOff.size();
+        i != co->CISAIndexMap.size();
         i++)
     {
-        auto& item = m_pShader->m_VISAIndexToGenISAOff[i];
+        auto& item = co->CISAIndexMap[i];
         GenISAToVISAIndex.push_back(std::make_pair(item.second, item.first));
     }
 
     // Compute all Gen ISA offsets corresponding to each VISA index
     VISAIndexToAllGenISAOff.clear();
-    for (auto& item : m_pShader->m_VISAIndexToGenISAOff)
+    for (auto& item : co->CISAIndexMap)
     {
         auto VISAIndex = item.first;
         auto GenISAOffset = item.second;
@@ -763,7 +764,7 @@ void VISAModule::buildDirectElfMaps()
     }
 
     GenISAInstSizeBytes.clear();
-    for (auto i = 0; i != m_pShader->m_VISAIndexToGenISAOff.size() - 1; i++)
+    for (auto i = 0; i != co->CISAIndexMap.size() - 1; i++)
     {
         unsigned int size = GenISAToVISAIndex[i + 1].first - GenISAToVISAIndex[i].first;
         GenISAInstSizeBytes.insert(std::make_pair(GenISAToVISAIndex[i].first, size));

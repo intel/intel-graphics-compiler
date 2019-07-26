@@ -215,6 +215,7 @@ void DebugEmitter::Finalize(void *&pBuffer, unsigned int &size, bool finalize)
         m_pDwarfDebug->setDecodedDbg(decodedDbg);
 
         m_pVISAModule->buildDirectElfMaps();
+        auto co = m_pVISAModule->getCompileUnit();
 
         // Emit src line mapping directly instead of
         // relying on dbgmerge. elf generated will have
@@ -226,20 +227,30 @@ void DebugEmitter::Finalize(void *&pBuffer, unsigned int &size, bool finalize)
         unsigned int prevLastGenOff = lastGenOff;
         m_pDwarfDebug->lowPc = lastGenOff;
 
-        for (auto item : m_pVISAModule->GenISAToVISAIndex)
+        if (co->subs.size() == 0)
         {
-            if ((item.first > lastGenOff) || ((item.first | lastGenOff) == 0))
+            GenISAToVISAIndex = m_pVISAModule->GenISAToVISAIndex;
+            if(GenISAToVISAIndex.size() > 0)
+                lastGenOff = GenISAToVISAIndex.back().first;
+            m_pDwarfDebug->lowPc = co->relocOffset;
+        }
+        else
+        {
+            for (auto item : m_pVISAModule->GenISAToVISAIndex)
             {
-                if (item.second <= subEnd ||
-                    item.second == 0xffffffff)
+                if ((item.first > lastGenOff) || ((item.first | lastGenOff) == 0))
                 {
-                    GenISAToVISAIndex.push_back(item);
-                    lastGenOff = item.first;
-                    continue;
-                }
+                    if (item.second <= subEnd ||
+                        item.second == 0xffffffff)
+                    {
+                        GenISAToVISAIndex.push_back(item);
+                        lastGenOff = item.first;
+                        continue;
+                    }
 
-                if (item.second > subEnd)
-                    break;
+                    if (item.second > subEnd)
+                        break;
+                }
             }
         }
 

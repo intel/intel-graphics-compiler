@@ -667,8 +667,8 @@ void KernelDebugInfo::generateByteOffsetMapping(std::list<G4_BB*>& stackCallEntr
             if (inst->getGenOffset() != UNDEFINED_GEN_OFFSET)
             {
                 int cisaByteIndex = inst->getCISAOff();
-                maxGenIsaOffset = std::max(maxGenIsaOffset, (uint64_t)inst->getGenOffset()) +
-                    (inst->isCompactedInst() ? 8 : 16);
+                maxGenIsaOffset = (uint64_t)inst->getGenOffset() + 
+                                    (inst->isCompactedInst() ? 8 : 16);
                 if(cisaByteIndex == -1)
                 {
                     continue;
@@ -2113,12 +2113,29 @@ bool KernelDebugInfo::isFcallWithSaveRestore(G4_INST* inst)
     return retval;
 }
 
+bool KernelDebugInfo::isFCallInst(G4_INST* inst)
+{
+    if (!inst)
+        return false;
+
+    if (callerSaveRestore.find(inst) == callerSaveRestore.end())
+        return false;
+    return true;
+}
+
+void KernelDebugInfo::setFCallInst(G4_INST* fcall)
+{
+    SaveRestore sr;
+    callerSaveRestore.insert(std::make_pair(fcall, sr));
+}
+
 // Compute extra instructions in insts over oldInsts list and
 // return a new list.
 INST_LIST KernelDebugInfo::getDeltaInstructions(G4_BB* bb)
 {
     INST_LIST deltaInsts;
-    std::copy(bb->begin(), bb->end(), deltaInsts.begin());
+    for (auto instIt = bb->begin(); instIt != bb->end(); instIt++)
+        deltaInsts.push_back(*instIt);
 
     for (auto oldInstsIt : oldInsts)
     {

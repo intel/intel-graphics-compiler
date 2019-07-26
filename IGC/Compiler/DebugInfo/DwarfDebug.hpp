@@ -661,7 +661,14 @@ namespace IGC
         unsigned int lowPc = 0, highPc = 0;
 
         DbgDecoder* getDecodedDbg() { return decodedDbg; }
-        void setDecodedDbg(DbgDecoder* d) { decodedDbg = d; }
+        void setDecodedDbg(DbgDecoder* d)
+        {
+            if (decodedDbg)
+            {
+                delete decodedDbg;
+            }
+            decodedDbg = d;
+        }
         unsigned int CopyDebugLoc(unsigned int offset);
 
     private:

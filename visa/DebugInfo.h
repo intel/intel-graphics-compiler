@@ -260,13 +260,20 @@ public:
     void addCalleeSaveInst(G4_INST* inst);
     void addCalleeRestoreInst(G4_INST* inst);
     bool isFcallWithSaveRestore(G4_INST* inst);
+    void setFCallInst(G4_INST* fcall);
+    bool isFCallInst(G4_INST* inst);
 
     std::vector<G4_INST*>& getCallerSaveInsts(G4_INST* fcall);
     std::vector<G4_INST*>& getCallerRestoreInsts(G4_INST* fcall);
     std::vector<G4_INST*>& getCalleeSaveInsts();
     std::vector<G4_INST*>& getCalleeRestoreInsts();
 
-    void setOldInstList(G4_BB* bb) { oldInsts.clear(); std::copy(bb->begin(), bb->end(), oldInsts.begin()); }
+    void setOldInstList(G4_BB* bb)
+    {
+        oldInsts.clear();
+        for (auto instIt = bb->begin(); instIt != bb->end(); instIt++)
+            oldInsts.push_back(*instIt);
+    }
     void clearOldInstList() { oldInsts.clear(); }
     INST_LIST getDeltaInstructions(G4_BB* bb);
 

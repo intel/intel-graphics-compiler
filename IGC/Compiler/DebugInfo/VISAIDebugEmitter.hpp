@@ -99,6 +99,14 @@ public:
     virtual void SetVISAModule(IGC::VISAModule*) = 0;
 };
 
+template<typename T> T read(void*& dbg)
+{
+    T* dbgT = (T*)dbg;
+    T data = *dbgT;
+    dbg = ++dbgT;
+    return data;
+}
+
 // Decode Gen debug info data structure
 class DbgDecoder
 {
@@ -150,6 +158,14 @@ public:
         uint16_t end = 0;
         VarAlloc var;
     };
+    class LiveIntervalGenISA
+    {
+    public:
+        uint32_t start = 0;
+        uint32_t end = 0;
+        VarAlloc var;
+    };
+
     class VarInfo
     {
     public:
@@ -198,6 +214,36 @@ public:
         uint32_t endVISAIndex;
         std::vector<LiveIntervalsVISA> retval;
     };
+    class RegInfoMapping
+    {
+    public:
+        uint16_t srcRegOff = 0;
+        uint16_t numBytes = 0;
+        bool dstInReg = false;
+        Mapping dst;
+    };
+    class PhyRegSaveInfoPerIP
+    {
+    public:
+        uint32_t genIPOffset = 0;
+        uint16_t numEntries = 0;
+        std::vector<RegInfoMapping> data;
+    };
+    class CallFrameInfo
+    {
+    public:
+        uint16_t frameSize = 0;
+        bool befpValid = false;
+        std::vector<LiveIntervalGenISA> befp;
+        bool callerbefpValid = false;
+        std::vector<LiveIntervalGenISA> callerbefp;
+        bool retAddrValid = false;
+        std::vector<LiveIntervalGenISA> retAddr;
+        uint16_t numCalleeSaveEntries = 0;
+        std::vector<PhyRegSaveInfoPerIP> calleeSaveEntry;
+        uint16_t numCallerSaveEntries = 0;
+        std::vector<PhyRegSaveInfoPerIP> callerSaveEntry;
+    };
     class DbgInfoFormat
     {
     public:
@@ -209,122 +255,207 @@ public:
 
         uint16_t numSubRoutines = 0;
         std::vector<SubroutineInfo> subs;
+        CallFrameInfo cfi;
     };
 
     std::vector<DbgInfoFormat> compiledObjs;
 
 private:
-    void* dbg;
-    uint16_t numCompiledObj = 0;
-    uint32_t magic = 0;
-
-    template<typename T> T read()
+    void readMappingReg(DbgDecoder::Mapping& mapping)
     {
-        T* dbgT = (T*)dbg;
-        T data = *dbgT;
-        dbg = ++dbgT;
-        return data;
+        mapping.r.regNum = read<uint16_t>(dbg);
+        mapping.r.subRegNum = read<uint16_t>(dbg);
+    }
+
+    void readMappingMem(DbgDecoder::Mapping& mapping)
+    {
+        uint32_t temp = read<uint32_t>(dbg);
+        mapping.m.memoryOffset = (temp & 0x7fffffff);
+        mapping.m.isBaseOffBEFP = (temp & 0x80000000);
+    }
+
+    LiveIntervalsVISA readLiveIntervalsVISA()
+    {
+        DbgDecoder::LiveIntervalsVISA lv;
+        lv.start = read<uint16_t>(dbg);
+        lv.end = read<uint16_t>(dbg);
+        lv.var = readVarAlloc();
+        return lv;
+    }
+
+    LiveIntervalGenISA readLiveIntervalGenISA()
+    {
+        DbgDecoder::LiveIntervalGenISA lr;
+        lr.start = read<uint32_t>(dbg);
+        lr.end = read<uint32_t>(dbg);
+        lr.var = readVarAlloc();
+        return lr;
+    }
+
+    RegInfoMapping readRegInfoMapping()
+    {
+        DbgDecoder::RegInfoMapping info;
+        info.srcRegOff = read<uint16_t>(dbg);
+        info.numBytes = read<uint16_t>(dbg);
+        info.dstInReg = (bool)read<uint8_t>(dbg);
+        if (info.dstInReg)
+        {
+            readMappingReg(info.dst);
+        }
+        else
+        {
+            readMappingMem(info.dst);
+        }
+        return info;
     }
 
     VarAlloc readVarAlloc()
     {
-        VarAlloc data;
+        DbgDecoder::VarAlloc data;
         const unsigned int phyRefGRF = 2;
         const unsigned int phyRefMem = 3;
 
-        data.virtualType = (VarAlloc::VirtualVarType)read<uint8_t>();
-        data.physicalType = (VarAlloc::PhysicalVarType)read<uint8_t>();
+        data.virtualType = (DbgDecoder::VarAlloc::VirtualVarType)read<uint8_t>(dbg);
+        data.physicalType = (DbgDecoder::VarAlloc::PhysicalVarType)read<uint8_t>(dbg);
 
         if (data.physicalType == phyRefGRF)
         {
-            data.mapping.r.regNum = read<uint16_t>();
-            data.mapping.r.subRegNum = read<uint16_t>();
+            readMappingReg(data.mapping);
         }
         else if (data.physicalType == phyRefMem)
         {
-            uint32_t temp = read<uint32_t>();
-            data.mapping.m.memoryOffset = (temp & 0x7fffffff);
-            data.mapping.m.isBaseOffBEFP = (temp & 0x80000000);
+            readMappingMem(data.mapping);
         }
         return data;
     }
 
+    void* dbg;
+    uint16_t numCompiledObj = 0;
+    uint32_t magic = 0;
+
     void decode()
     {
-        magic = read<uint32_t>();
-        numCompiledObj = read<uint16_t>();
+        magic = read<uint32_t>(dbg);
+        numCompiledObj = read<uint16_t>(dbg);
 
         for (unsigned int i = 0; i != numCompiledObj; i++)
         {
             DbgInfoFormat f;
-            uint8_t nameLen = read<uint8_t>();
+            uint8_t nameLen = read<uint8_t>(dbg);
             for (unsigned int j = 0; j != nameLen; j++)
-                f.kernelName += read<char>();
-            f.relocOffset = read<uint32_t>();
+                f.kernelName += read<char>(dbg);
+            f.relocOffset = read<uint32_t>(dbg);
 
             // cisa offsets map
-            uint32_t count = read<uint32_t>();
+            uint32_t count = read<uint32_t>(dbg);
             for (unsigned int j = 0; j != count; j++)
             {
-                uint32_t cisaOffset = read<uint32_t>();
-                uint32_t genOffset = read<uint32_t>();
-                f.CISAOffsetMap.push_back(std::make_pair(cisaOffset, genOffset));
+                uint32_t cisaOffset = read<uint32_t>(dbg);
+                uint32_t genOffset = read<uint32_t>(dbg);
+                f.CISAOffsetMap.push_back(std::make_pair(cisaOffset, f.relocOffset + genOffset));
             }
 
             // cisa index map
-            count = read<uint32_t>();
+            count = read<uint32_t>(dbg);
             for (unsigned int j = 0; j != count; j++)
             {
-                uint32_t cisaIndex = read<uint32_t>();
-                uint32_t genOffset = read<uint32_t>();
-                f.CISAIndexMap.push_back(std::make_pair(cisaIndex, genOffset));
+                uint32_t cisaIndex = read<uint32_t>(dbg);
+                uint32_t genOffset = read<uint32_t>(dbg);
+                f.CISAIndexMap.push_back(std::make_pair(cisaIndex, f.relocOffset + genOffset));
             }
 
             // var info
-            count = read<uint32_t>();
+            count = read<uint32_t>(dbg);
             for (unsigned int j = 0; j != count; j++)
             {
                 VarInfo v;
 
-                nameLen = read<uint8_t>();
+                nameLen = read<uint8_t>(dbg);
                 for (unsigned int k = 0; k != nameLen; k++)
-                    v.name += read<char>();
+                    v.name += read<char>(dbg);
 
-                auto countLRs = read<uint16_t>();
+                auto countLRs = read<uint16_t>(dbg);
                 for (unsigned int k = 0; k != countLRs; k++)
                 {
-                    LiveIntervalsVISA lv;
-                    lv.start = read<uint16_t>();
-                    lv.end = read<uint16_t>();
-                    lv.var = readVarAlloc();
-
+                    LiveIntervalsVISA lv = readLiveIntervalsVISA();
                     v.lrs.push_back(lv);
                 }
 
                 f.Vars.push_back(v);
             }
 
-            count = read<uint16_t>();
+            // subroutines
+            count = read<uint16_t>(dbg);
             for (unsigned int j = 0; j != count; j++)
             {
                 SubroutineInfo sub;
-                nameLen = read<uint8_t>();
+                nameLen = read<uint8_t>(dbg);
                 for (unsigned int k = 0; k != nameLen; k++)
-                    sub.name += read<char>();
+                    sub.name += read<char>(dbg);
 
-                sub.startVISAIndex = read<uint32_t>();
-                sub.endVISAIndex = read<uint32_t>();
-                auto countLRs = read<uint16_t>();
+                sub.startVISAIndex = read<uint32_t>(dbg);
+                sub.endVISAIndex = read<uint32_t>(dbg);
+                auto countLRs = read<uint16_t>(dbg);
                 for (unsigned int k = 0; k != countLRs; k++)
                 {
-                    LiveIntervalsVISA lv;
-                    lv.start = read<uint16_t>();
-                    lv.end = read<uint16_t>();
-                    lv.var = readVarAlloc();
-
+                    LiveIntervalsVISA lv = readLiveIntervalsVISA();
                     sub.retval.push_back(lv);
                 }
                 f.subs.push_back(sub);
+            }
+
+            // call frame information
+            f.cfi.frameSize = read<uint16_t>(dbg);
+            f.cfi.befpValid = (bool)read<uint8_t>(dbg);
+            if (f.cfi.befpValid)
+            {
+                count = read<uint16_t>(dbg);
+                for (unsigned int j = 0; j != count; j++)
+                {
+                    LiveIntervalGenISA lv = readLiveIntervalGenISA();;
+                    f.cfi.befp.push_back(lv);
+                }
+            }
+            f.cfi.callerbefpValid = (bool)read<uint8_t>(dbg);
+            if (f.cfi.callerbefpValid)
+            {
+                count = read<uint16_t>(dbg);
+                for (unsigned int j = 0; j != count; j++)
+                {
+                    LiveIntervalGenISA lv = readLiveIntervalGenISA();
+                    f.cfi.callerbefp.push_back(lv);
+                }
+            }
+            f.cfi.retAddrValid = (bool)read<uint8_t>(dbg);
+            if (f.cfi.retAddrValid)
+            {
+                count = read<uint16_t>(dbg);
+                for (unsigned int j = 0; j != count; j++)
+                {
+                    LiveIntervalGenISA lv = readLiveIntervalGenISA();
+                    f.cfi.retAddr.push_back(lv);
+                }
+            }
+            f.cfi.numCalleeSaveEntries = read<uint16_t>(dbg);
+            for (unsigned int j = 0; j != f.cfi.numCalleeSaveEntries; j++)
+            {
+                PhyRegSaveInfoPerIP phyRegSave;
+                phyRegSave.genIPOffset = read<uint32_t>(dbg);
+                phyRegSave.numEntries = read<uint16_t>(dbg);
+                for (unsigned int k = 0; k != phyRegSave.numEntries; k++)
+                    phyRegSave.data.push_back(readRegInfoMapping());
+                f.cfi.calleeSaveEntry.push_back(phyRegSave);
+            }
+
+            f.cfi.numCallerSaveEntries = read<uint16_t>(dbg);
+            for (unsigned int j = 0; j != f.cfi.numCallerSaveEntries; j++)
+            {
+                PhyRegSaveInfoPerIP phyRegSave;
+                phyRegSave.genIPOffset = read<uint32_t>(dbg);
+                phyRegSave.numEntries = read<uint16_t>(dbg);
+                for (unsigned int k = 0; k != phyRegSave.numEntries; k++)
+                    phyRegSave.data.push_back(readRegInfoMapping());
+                f.cfi.callerSaveEntry.push_back(phyRegSave);
             }
 
             compiledObjs.push_back(f);

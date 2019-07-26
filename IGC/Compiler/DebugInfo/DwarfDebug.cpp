@@ -2334,6 +2334,9 @@ void DwarfDebug::emitDebugLoc()
             }
         }
     }
+
+    DotDebugLocEntries.clear();
+
 #else
     for (SmallVectorImpl<DotDebugLocEntry>::iterator
            I = DotDebugLocEntries.begin(), E = DotDebugLocEntries.end();
