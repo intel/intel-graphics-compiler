@@ -104,7 +104,7 @@ namespace IGC
                 if (!basedir.empty() && basedir.back() != '/')
                     basedir.push_back('/');
 
-                    basedir += GetProcessName();
+                basedir += GetProcessName();
 
                 if (addpid)
                     basedir += MakeStr("_", GetProcessId());
