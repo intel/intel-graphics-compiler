@@ -94,7 +94,7 @@ class G4_Declare;
 #define  COMMON_ISA_GRF_REG_SIZE (getGRFSize()) /// # of bytes in a CISA GRF register
 
 #define COMMON_ISA_MAX_ADDRREG_WIDTH   8
-#define COMMON_ISA_MAX_FILENAME_LENGTH   255
+#define COMMON_ISA_MAX_FILENAME_LENGTH   1023
 
 #define COMMON_ISA_MAX_KERNEL_NAME_LEN  255
 #define COMMON_ISA_MAX_ADDRESS_OFFSET   4096
@@ -693,7 +693,7 @@ typedef struct _CISA_INST
     dst = *((type *) &buf[byte_pos]); \
     byte_pos += sizeof(type);
 
-#define STRING_LEN  512
+#define STRING_LEN  1024
 
 struct Common_ISA_Attribute{
     char* name;
