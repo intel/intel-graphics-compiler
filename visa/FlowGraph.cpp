@@ -893,7 +893,10 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
     setPhysicalPredSucc();
     if (hasGoto)
     {
-        if (builder->getOption(vISA_EnableStructurizer))
+        // Structurizer requires that the last BB has no goto (ie, the
+        // last BB is either a return or an exit).
+        if (builder->getOption(vISA_EnableStructurizer) &&
+            !endWithGotoInLastBB())
         {
             if (builder->getOption(vISA_DumpDotAll))
             {

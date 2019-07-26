@@ -1094,6 +1094,16 @@ public:
         }
     }
 
+    bool endWithGotoInLastBB() const
+    {
+        if (BBs.empty())
+        {
+            return false;
+        }
+        G4_BB* lastBB = back();
+        return lastBB->isEndWithGoto();
+    }
+
 private:
     //
     // Flow group traversal routines
