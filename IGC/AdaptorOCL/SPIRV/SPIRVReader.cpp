@@ -2498,7 +2498,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
       if (auto LM = static_cast<SPIRVLoopMerge *>(Prev))
         setLLVMLoopMetadata(LM, BI);
 
-      return mapValue(BV, BI);
+    return mapValue(BV, BI);
     }
     break;
 
@@ -2517,7 +2517,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
       if (auto LM = static_cast<SPIRVLoopMerge *>(Prev))
         setLLVMLoopMetadata(LM, BC);
 
-      return mapValue(BV, BC);
+    return mapValue(BV, BC);
     }
     break;
 
