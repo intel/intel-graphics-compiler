@@ -889,7 +889,7 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SamplePos(
     llvm::Value* int32_resourceIdx,
     llvm::Value* int32_samplerIdx)
 {
-    llvm::Value* sampleInfo = sampleInfo = this->Create_SampleInfo(int32_resourceIdx);
+    llvm::Value* sampleInfo = this->Create_SampleInfo(int32_resourceIdx);
 
 
     llvm::Value* int32_texX = this->CreateExtractElement(sampleInfo, m_int0);
