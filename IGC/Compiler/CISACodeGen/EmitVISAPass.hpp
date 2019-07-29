@@ -521,7 +521,7 @@ private:
         llvm::BasicBlock *ifBB, llvm::BasicBlock* &otherBB, llvm::BasicBlock* &emptyBB);
 
     // Used to check for the constraint types with the actual llvmIR params for inlineASM instructions
-    bool validateInlineAsmConstraints(llvm::CallInst* inst);
+    bool validateInlineAsmConstraints(llvm::CallInst* inst, llvm::SmallVector<llvm::StringRef, 8> &constraints);
 
     void emitGetMessagePhaseType(llvm::GenIntrinsicInst* inst, VISA_Type type, uint32_t width);
     void emitSetMessagePhaseType(llvm::GenIntrinsicInst* inst, VISA_Type type);

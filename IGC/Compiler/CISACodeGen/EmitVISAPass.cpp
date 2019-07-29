@@ -7700,24 +7700,30 @@ void EmitPass::EmitIntrinsicMessage(llvm::IntrinsicInst* inst)
     }
 }
 
-bool EmitPass::validateInlineAsmConstraints(llvm::CallInst* inst)
+bool EmitPass::validateInlineAsmConstraints(llvm::CallInst* inst, SmallVector<StringRef, 8> &constraints)
 {
  #if defined ( _DEBUG )
     assert(inst->isInlineAsm());
     InlineAsm* IA = cast<InlineAsm>(inst->getCalledValue());
     StringRef constraintStr(IA->getConstraintString());
-    SmallVector<StringRef, 8> constraints;
 
     //lambda for checking constraint types
     auto CheckConstraintTypes = [this](StringRef str)->bool
     {
-        // TODO: Only "r" constraint allowed for now. Add more checks as needed
-        if (!str.equals("r"))
+        // TODO: Only "rw" (raw register operand) constraint allowed for now. Add more checks as needed
+        if (str.equals("=rw") || str.equals("+rw"))
         {
-            assert(0 && "Constraint type not supported");
+            return true;
+        }
+        else if (str.equals("rw"))
+        {
+            return true;
+        }
+        else
+        {
+            assert(0 && "Unsupported constraint type!");
             return false;
         }
-        return true;
     };
 
     // Get a list of constraint tokens
@@ -7728,8 +7734,7 @@ bool EmitPass::validateInlineAsmConstraints(llvm::CallInst* inst)
     while (index < constraints.size() &&
         (constraints[index].startswith("=") || constraints[index].startswith("+")))
     {
-        CheckConstraintTypes(constraints[index].substr(1));
-        index++;
+        CheckConstraintTypes(constraints[index++]);
     }
 
     // Check the input constraint tokens
@@ -7763,7 +7768,8 @@ void EmitPass::EmitInlineAsm(llvm::CallInst* inst)
     const char* asmStr = IA->getAsmString().c_str();
     const char* lastEmitted = asmStr;
     smallvector<CVariable*, 8> opnds;
-    validateInlineAsmConstraints(inst);
+    SmallVector<StringRef, 8> constraints;
+    validateInlineAsmConstraints(inst, constraints);
 
     if (m_destination)
     {

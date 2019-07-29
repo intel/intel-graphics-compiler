@@ -669,28 +669,69 @@ int CISA_IR_Builder::ParseVISAText(const std::string& visaHeader, const std::str
     }
 
     // Parse the header string
-    YY_BUFFER_STATE headerBuf = CISA_scan_string(visaHeader.c_str());
-    if (CISAparse() != 0)
+    if (!visaHeader.empty())
     {
-        assert(0 && "Parsing header message failed");
-        return CM_FAILURE;
+        YY_BUFFER_STATE headerBuf = CISA_scan_string(visaHeader.c_str());
+        if (CISAparse() != 0)
+        {
+            assert(0 && "Parsing header message failed");
+            return CM_FAILURE;
+        }
+        CISA_delete_buffer(headerBuf);
     }
-    CISA_delete_buffer(headerBuf);
 
     // Parse the visa body
-    YY_BUFFER_STATE visaBuf = CISA_scan_string(visaText.c_str());
-    if (CISAparse() != 0)
+    if (!visaText.empty())
     {
-        assert(0 && "Parsing visa text failed");
-        return CM_FAILURE;
+        YY_BUFFER_STATE visaBuf = CISA_scan_string(visaText.c_str());
+        if (CISAparse() != 0)
+        {
+            assert(0 && "Parsing visa text failed");
+            return CM_FAILURE;
+        }
+        CISA_delete_buffer(visaBuf);
     }
-    CISA_delete_buffer(visaBuf);
 
     if (CISAout)
     {
         fclose(CISAout);
     }
 
+    return CM_SUCCESS;
+#else
+    assert(0 && "Asm parsing not supported on this platform");
+    return CM_FAILURE;
+#endif
+}
+
+// Parses inline asm file from ShaderOverride
+int CISA_IR_Builder::ParseVISAText(const std::string& visaFile)
+{
+#if defined(__linux__) || defined(_WIN64) || defined(_WIN32)
+    // Direct output of parser to null
+#if defined(_WIN64) || defined(_WIN32)
+    CISAout = fopen("nul", "w");
+#else
+    CISAout = fopen("/dev/null", "w");
+#endif
+    CISAin = fopen(visaFile.c_str(), "r");
+    if (!CISAin)
+    {
+        assert(0 && "Failed to open file");
+        return CM_FAILURE;
+    }
+
+    if (CISAparse() != 0)
+    {
+        assert(0 && "Parsing visa text failed");
+        return CM_FAILURE;
+    }
+    fclose(CISAin);
+
+    if (CISAout)
+    {
+        fclose(CISAout);
+    }
     return CM_SUCCESS;
 #else
     assert(0 && "Asm parsing not supported on this platform");
@@ -1068,8 +1109,9 @@ bool CISA_IR_Builder::CISA_attr_directive(
     const char* input_name, const char* input_var, int line_no)
 {
 
-    if (strcmp(input_name, "AsmName") == 0 ||
-        strcmp(input_name, "OutputAsmPath") == 0)
+    if (!m_options.getOption(VISA_AsmFileNameUser) &&
+        (strcmp(input_name, "AsmName") == 0 ||
+         strcmp(input_name, "OutputAsmPath") == 0))
     {
         if (strcmp(input_name, "AsmName") == 0) {
             std::cerr << "WARNING: AsmName deprecated "

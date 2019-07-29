@@ -109,6 +109,7 @@ public:
 
     // Used for inline asm code generation
     CM_BUILDER_API virtual int ParseVISAText(const std::string& visaHeader, const std::string& visaText, const std::string& visaTextFile);
+    CM_BUILDER_API virtual int ParseVISAText(const std::string& visaFile);
     CM_BUILDER_API virtual int WriteVISAHeader();
     CM_BUILDER_API std::stringstream& GetAsmTextStream() { return m_ssIsaAsm; }
     CM_BUILDER_API std::stringstream& GetAsmTextHeaderStream() { return m_ssIsaAsmHeader; }

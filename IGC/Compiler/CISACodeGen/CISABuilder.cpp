@@ -4441,11 +4441,28 @@ void CEncoder::Compile(bool hasSymbolTable)
     int vIsaCompile = 0;
     VISAKernel* pMainKernel = nullptr;
 
+    // ShaderOverride for .visaasm files
+    std::string visaAsmOverrideFile = "";
+    bool visaAsmOverride = false;
+    if (IGC_IS_FLAG_ENABLED(ShaderOverride))
+    {
+        Debug::DumpName name = IGC::Debug::GetDumpNameObj(m_program, "visaasm");
+        visaAsmOverrideFile = name.overridePath();
+        // Check if the override file can be opened
+        FILE* tempFile = fopen(visaAsmOverrideFile.c_str(), "r");
+        if (tempFile)
+        {
+            visaAsmOverride = true;
+            fclose(tempFile);
+        }
+    }
+
     // Compile generated VISA text string for inlineAsm
-    if (m_hasInlineAsm)
+    if (m_hasInlineAsm || visaAsmOverride)
     {
         // Finalize the text builder by writing the header
-        V(vbuilder->WriteVISAHeader());
+        if (m_hasInlineAsm)
+            V(vbuilder->WriteVISAHeader());
 
         llvm::SmallVector<const char*, 10> params;
         InitBuildParams(params);
@@ -4457,8 +4474,22 @@ void CEncoder::Compile(bool hasSymbolTable)
         SetBuilderOptions(vAsmTextBuilder);
 
         // Parse the generated VISA text
-        std::string parseTextFile = m_enableVISAdump ? GetDumpFileName("inline.visaasm") : "";
-        V(vAsmTextBuilder->ParseVISAText(vbuilder->GetAsmTextHeaderStream().str(), vbuilder->GetAsmTextStream().str(), parseTextFile));
+        if (visaAsmOverride)
+        {
+            // Manually set the asm file path instead of using the path provided in the override shader file
+            std::string asmName = GetDumpFileName("");
+            asmName.pop_back();
+            vAsmTextBuilder->SetOption(VISA_AsmFileNameUser, true);
+            vAsmTextBuilder->SetOption(VISA_AsmFileName, asmName.c_str());
+            V(vAsmTextBuilder->ParseVISAText(visaAsmOverrideFile));
+            asmName = asmName + ".visaasm";
+            appendToShaderOverrideLogFile(asmName, "OVERRIDEN: ");
+        }
+        else
+        {
+            std::string parseTextFile = m_enableVISAdump ? GetDumpFileName("inline.visaasm") : "";
+            V(vAsmTextBuilder->ParseVISAText(vbuilder->GetAsmTextHeaderStream().str(), vbuilder->GetAsmTextStream().str(), parseTextFile));
+        }
 
         pMainKernel = vAsmTextBuilder->GetVISAKernel();
         vIsaCompile = vAsmTextBuilder->Compile(m_enableVISAdump ? GetDumpFileName("isa").c_str() : "");

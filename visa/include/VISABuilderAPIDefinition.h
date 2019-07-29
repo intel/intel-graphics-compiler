@@ -822,6 +822,7 @@ public:
 
     // For inline asm code generation
     CM_BUILDER_API virtual int ParseVISAText(const std::string& visaHeader, const std::string& visaText, const std::string& visaTextFile) = 0;
+    CM_BUILDER_API virtual int ParseVISAText(const std::string& visaFile) = 0;
     CM_BUILDER_API virtual int WriteVISAHeader() = 0;
     CM_BUILDER_API virtual std::stringstream& GetAsmTextStream() = 0;
     CM_BUILDER_API virtual std::stringstream& GetAsmTextHeaderStream() = 0;
