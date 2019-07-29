@@ -49,12 +49,12 @@ char SampleMultiversioning::ID = 0;
 #define DEBUG_TYPE "SampleMultiversioning"
 
 SampleMultiversioning::SampleMultiversioning(CodeGenContext *pContext)
-    : pContext(pContext), FunctionPass(ID)
+    : FunctionPass(ID), pContext(pContext)
 {
     initializeSampleMultiversioningPass(*PassRegistry::getPassRegistry());
 }
 
-SampleMultiversioning::SampleMultiversioning() : pContext(nullptr), FunctionPass(ID)
+SampleMultiversioning::SampleMultiversioning() : FunctionPass(ID), pContext(nullptr)
 {
     initializeSampleMultiversioningPass(*PassRegistry::getPassRegistry());
 }

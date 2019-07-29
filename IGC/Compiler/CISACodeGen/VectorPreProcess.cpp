@@ -101,8 +101,8 @@ namespace
     {
         Instruction* const m_inst;
         IRBuilder<> m_builder;
-        AbstractLoadInst(LoadInst* LI) : m_builder(LI), m_inst(LI) {}
-        AbstractLoadInst(LdRawIntrinsic* LdRI) : m_builder(LdRI), m_inst(LdRI) {}
+        AbstractLoadInst(LoadInst* LI) : m_inst(LI), m_builder(LI) {}
+        AbstractLoadInst(LdRawIntrinsic* LdRI) : m_inst(LdRI), m_builder(LdRI) {}
 
         LoadInst* getLoad() const
         {
@@ -205,8 +205,8 @@ namespace
     {
         Instruction* const m_inst;
         IRBuilder<> m_builder;
-        AbstractStoreInst(StoreInst* SI) : m_builder(SI), m_inst(SI) {}
-        AbstractStoreInst(GenIntrinsicInst* SRI) : m_builder(SRI), m_inst(SRI) {}
+        AbstractStoreInst(StoreInst* SI) : m_inst(SI), m_builder(SI) {}
+        AbstractStoreInst(GenIntrinsicInst* SRI) : m_inst(SRI), m_builder(SRI) {}
 
         StoreInst* getStore() const
         {

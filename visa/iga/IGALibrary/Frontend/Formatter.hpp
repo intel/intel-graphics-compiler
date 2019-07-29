@@ -78,8 +78,8 @@ namespace iga {
             , labeler(_labeler)
             , labelerContext(_labelerCtx)
             , numericLabels(_numericLabels)
-            , printInstPc(_printInstPc)
             , hexFloats(_hexFloats)
+            , printInstPc(_printInstPc)
             , syntaxExtensions(_syntaxExtensions)
         {
         }
@@ -151,10 +151,10 @@ namespace iga {
     protected:
         std::ostream&    o;
         BasicFormatter(std::ostream &out) :
-            o(out),
             currColLen(0),
             currColStart(0),
-            currColDebt(0)
+            currColDebt(0),
+            o(out)
         {
         }
     public:
@@ -279,9 +279,9 @@ namespace iga {
             , flagMod(9)
             // r120.11<1>:hf
             , dstOp(12)
+            , srcOp(16)
             , sendDstOp(7) // null:ud
                            // r120.4<4;4,1>:ub
-            , srcOp(16)
             , sendSrcOp(6) // r120#1
             , sendDesc(10)
         {

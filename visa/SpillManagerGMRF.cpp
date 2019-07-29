@@ -142,7 +142,8 @@ SpillManagerGMRF::SpillManagerGMRF(
     unsigned indrSpillRegSize,
     bool enableSpillSpaceCompression,
     bool useScratchMsg)
-    : builder_(g.kernel.fg.builder)
+    : gra(g)
+    , builder_(g.kernel.fg.builder)
     , varIdCount_(varIdCount)
     , latestImplicitVarIdCount_(0)
     , lvInfo_(lvInfo)
@@ -151,17 +152,16 @@ SpillManagerGMRF::SpillManagerGMRF(
     , spilledLRs_(spilledLRs)
     , nextSpillOffset_(spillAreaOffset)
     , iterationNo_(iterationNo)
-    , failSafeSpill_(failSafeSpill)
-    , doSpillSpaceCompression(enableSpillSpaceCompression)
-    , useScratchMsg_(useScratchMsg)
     , bbId_(UINT_MAX)
     , inSIMDCFContext_(false)
-    , mem_(1024)
+    , doSpillSpaceCompression(enableSpillSpaceCompression)
+    , failSafeSpill_(failSafeSpill)
     , spillIntf_(intf)
+    , mem_(1024)
     , numGRFSpill(0)
     , numGRFFill(0)
     , numGRFMove(0)
-    , gra(g)
+    , useScratchMsg_(useScratchMsg)
 {
     const unsigned size = sizeof(unsigned) * varIdCount;
     spillRangeCount_ = (unsigned*)allocMem(size);

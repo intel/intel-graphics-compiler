@@ -159,7 +159,7 @@ namespace //Anonymous
 
     public:
         MetadataBuilder(IGC::IGCMD::MetaDataUtils* pMdUtils, DataContext& dataContext, IGC::ModuleMetaData* moduleMD)
-            : modMD(moduleMD), _pMdUtils(pMdUtils), _dataContext(dataContext) {}
+            : _pMdUtils(pMdUtils), modMD(moduleMD), _dataContext(dataContext) {}
 
         /// Return function metadata if function is kernel
         IGC::FunctionMetaData* getKernelMetadata(const llvm::Function* func)

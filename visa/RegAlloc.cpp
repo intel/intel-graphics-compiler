@@ -374,8 +374,8 @@ LivenessAnalysis::LivenessAnalysis(
         unsigned char kind,
         bool verifyRA,
         bool forceRun) :
-        numVarId(0), numSplitVar(0), numSplitStartID(0), numUnassignedVarId(0), numAddrId(0), selectedRF(kind), m(4096),
-        fg(g.kernel.fg), pointsToAnalysis(g.pointsToAnalysis), gra(g)
+        numVarId(0), numSplitVar(0), numSplitStartID(0), numUnassignedVarId(0), numAddrId(0), selectedRF(kind),
+        pointsToAnalysis(g.pointsToAnalysis), m(4096), gra(g), fg(g.kernel.fg)
 {
     //
     // NOTE:

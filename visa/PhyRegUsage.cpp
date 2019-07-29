@@ -32,24 +32,24 @@ using namespace std;
 using namespace vISA;
 
 PhyRegUsage::PhyRegUsage(PhyRegUsageParms& p) :
+    gra(p.gra),
+    lrs(p.lrs),
+    availableGregs(p.availableGregs),
+    availableSubRegs(p.availableSubRegs),
+    availableAddrs(p.availableAddrs),
+    availableFlags(p.availableFlags),
     colorHeuristic(FIRST_FIT),
     startARFReg(p.startARFReg),
     startFLAGReg(p.startFlagReg),
     startGRFReg(p.startGRFReg),
     bank1_start(p.bank1_start),
-    bank1_end(p.bank1_end),
     bank2_start(p.bank2_start),
+    bank1_end(p.bank1_end),
     bank2_end(p.bank2_end),
+    totalGRFNum(p.totalGRF),
     honorBankBias(p.doBankConflict),
     builder(*p.gra.kernel.fg.builder),
-    regPool(p.gra.regPool),
-    availableGregs(p.availableGregs),
-    availableSubRegs(p.availableSubRegs),
-    availableAddrs(p.availableAddrs),
-    availableFlags(p.availableFlags),
-    gra(p.gra),
-    totalGRFNum(p.totalGRF),
-    lrs(p.lrs)
+    regPool(p.gra.regPool)
 {
     maxGRFCanBeUsed = p.maxGRFCanBeUsed;
     regFile = p.rFile;

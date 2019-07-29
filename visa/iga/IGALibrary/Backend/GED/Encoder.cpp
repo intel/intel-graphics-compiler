@@ -73,8 +73,8 @@ EncoderBase::EncoderBase(
     const EncoderOpts &opts)
     : GEDBitProcessor(model, errHandler)
     , m_opts(opts)
-    , m_mem(nullptr)
     , m_numberInstructionsEncoded(0)
+    , m_mem(nullptr)
 {
 }
 

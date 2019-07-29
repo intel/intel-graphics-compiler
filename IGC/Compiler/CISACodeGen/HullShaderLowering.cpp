@@ -818,8 +818,8 @@ m_pInputControlPointCount(0),
 m_pMaxInputSignatureCount(0),
 m_pMaxOutputSignatureCount(0),
 m_pMaxPatchConstantSignatureDeclarations(0),
-m_HasClipCullAsInput(false),
 m_pShaderDispatchMode(SINGLE_PATCH_DISPATCH_MODE),
+m_HasClipCullAsInput(false),
 m_ForcedDispatchMask(0)
 {}
 

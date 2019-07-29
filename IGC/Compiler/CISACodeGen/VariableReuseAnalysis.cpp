@@ -70,10 +70,9 @@ llvm::FunctionPass *IGC::createVariableReuseAnalysisPass() {
 
 VariableReuseAnalysis::VariableReuseAnalysis()
     : FunctionPass(ID),
-      m_WIA(nullptr), m_LV(nullptr), m_DeSSA(nullptr),
+      m_pCtx(nullptr), m_WIA(nullptr), m_LV(nullptr), m_DeSSA(nullptr),
       m_PatternMatch(nullptr), m_coalescingEngine(nullptr),
-      m_pCtx(nullptr), m_RPE(nullptr), m_SimdSize(0),
-      m_IsFunctionPressureLow(Status::Undef),
+      m_RPE(nullptr), m_SimdSize(0), m_IsFunctionPressureLow(Status::Undef),
       m_IsBlockPressureLow(Status::Undef) {
   initializeVariableReuseAnalysisPass(*PassRegistry::getPassRegistry());
 }

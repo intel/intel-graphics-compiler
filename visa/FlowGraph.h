@@ -368,9 +368,9 @@ public:
         id(i), preId(0), rpostId(0),
         traversal(0), idom(NULL), beforeCall(NULL),
         afterCall(NULL), calleeInfo(NULL), BBType(G4_BB_NONE_TYPE),
-        inNaturalLoop(false), loopNestLevel(0), scopeID(0), inSimdFlow(false),
-        physicalPred(NULL), physicalSucc(NULL), parent(fg),
-        instList(alloc), hasSendInBB(false)
+        inNaturalLoop(false), hasSendInBB(false), loopNestLevel(0), scopeID(0),
+        inSimdFlow(false), physicalPred(NULL), physicalSucc(NULL), parent(fg),
+        instList(alloc)
     {
     }
 
@@ -889,8 +889,8 @@ public:
       traversalNum(0), numBBId(0), reducible(true),
       doIPA(false), hasStackCalls(false), isStackCallFunc(false), autoLabelId(0),
       pKernel(kernel), mem(m), instListAlloc(alloc),
-      builder(NULL), kernelInfo(NULL), globalOpndHT(m), framePtrDcl(NULL), stackPtrDcl(NULL),
-      scratchRegDcl(NULL), pseudoVCEDcl(NULL) {}
+      kernelInfo(NULL), builder(NULL), globalOpndHT(m), framePtrDcl(NULL),
+      stackPtrDcl(NULL), scratchRegDcl(NULL), pseudoVCEDcl(NULL) {}
 
     ~FlowGraph();
 
@@ -1345,12 +1345,12 @@ public:
 
     G4_Kernel(INST_LIST_NODE_ALLOCATOR& alloc,
               Mem_Manager &m, Options *options, unsigned char major, unsigned char minor)
-              : m_options(options), RAType(RA_Type::UNKNOWN_RA), fg(alloc, this, m),
-              major_version(major), minor_version(minor), asmInstCount(0), kernelID(0),
-              tokenInstructionCount(0), tokenReuseCount(0), AWTokenReuseCount(0),
-              ARTokenReuseCount(0), AATokenReuseCount(0), mathInstCount(0), syncInstCount(0),mathReuseCount(0),
-              ARSyncInstCount(0), AWSyncInstCount(0),
-              bank_good_num(0), bank_ok_num(0), bank_bad_num(0)
+              : m_options(options), RAType(RA_Type::UNKNOWN_RA),
+              asmInstCount(0), kernelID(0), tokenInstructionCount(0), tokenReuseCount(0),
+              AWTokenReuseCount(0), ARTokenReuseCount(0), AATokenReuseCount(0),
+              mathInstCount(0), syncInstCount(0),mathReuseCount(0),
+              ARSyncInstCount(0), AWSyncInstCount(0), bank_good_num(0), bank_ok_num(0),
+              bank_bad_num(0), fg(alloc, this, m), major_version(major), minor_version(minor)
     {
         ASSERT_USER(
             major < COMMON_ISA_MAJOR_VER ||

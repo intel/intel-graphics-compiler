@@ -3290,9 +3290,9 @@ unsigned int CShader::GetSamplerCount(unsigned int samplerCount)
 }
 
 CShaderProgram::CShaderProgram(CodeGenContext* ctx, llvm::Function* kernel)
-  : m_context(ctx)
+  : m_shaderStats(nullptr)
+  , m_context(ctx)
   , m_kernel(kernel)
-  , m_shaderStats(nullptr)
 {
     memset(m_SIMDshaders, 0, 4 * sizeof(CShader*));
 }

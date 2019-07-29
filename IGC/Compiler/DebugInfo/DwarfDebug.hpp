@@ -152,7 +152,7 @@ namespace IGC
     public:
         // AbsVar may be NULL.
         DbgVariable(const llvm::DILocalVariable* V, const llvm::DILocation *IA_, DbgVariable* AV)
-            : Var(V), TheDIE(0), DotDebugLocOffset(~0U), IA(IA_), AbsVar(AV), m_pDbgInst(0) { }
+            : Var(V), IA(IA_), TheDIE(0), DotDebugLocOffset(~0U), AbsVar(AV), m_pDbgInst(0) { }
 
         // Accessors.
         const llvm::DILocation* getLocation() const { return IA; }

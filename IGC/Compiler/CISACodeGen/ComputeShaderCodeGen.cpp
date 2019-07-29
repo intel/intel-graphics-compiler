@@ -51,8 +51,8 @@ CComputeShader::CComputeShader(llvm::Function *pFunc, CShaderProgram* pProgram)
     , m_pThread_ID_in_Group_Y(nullptr)
     , m_pThread_ID_in_Group_Z(nullptr)
     , m_dispatchAlongY(false)
-    , m_hasSLM(false)
     , m_disableMidThreadPreemption(false)
+    , m_hasSLM(false)
 {
 }
 

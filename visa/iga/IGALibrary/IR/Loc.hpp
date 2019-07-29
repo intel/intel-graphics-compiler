@@ -55,9 +55,9 @@ struct Loc {
         uint32_t cl,
         uint32_t off,
         uint32_t len)
-        : line(ln)
+        : offset((PC)off)
+        , line(ln)
         , col(cl)
-        , offset((PC)off)
         , extent(len)
     {
     }

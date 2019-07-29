@@ -138,8 +138,8 @@ namespace vISA
     public:
         SendFusion(FlowGraph* aCFG, Mem_Manager* aMMgr)
             : CFG(aCFG),
-              MMgr(aMMgr),
               Builder(aCFG->builder),
+              MMgr(aMMgr),
               CurrBB(nullptr),
               DMaskUD(nullptr),
               FlagDefPerBB(nullptr),

@@ -58,7 +58,7 @@ class VISAKernelImpl : public VISAFunction
 
 public:
     VISAKernelImpl(CISA_IR_Builder* cisaBuilder, CM_VISA_BUILDER_OPTION buildOption, Options *option)
-        : m_CISABuilder(cisaBuilder), m_mem(4096), m_options(option)
+        : m_mem(4096), m_CISABuilder(cisaBuilder), m_options(option)
     {
         //CisaBinary* module = NULL;
         mBuildOption = buildOption;

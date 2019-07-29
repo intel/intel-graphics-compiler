@@ -8539,7 +8539,7 @@ struct BUNDLE_INFO
     OPND_PATTERN dstPattern;
     OPND_PATTERN srcPattern[MAX_NUM_SRC];
 
-    BUNDLE_INFO(G4_BB* instBB, INST_LIST_ITER& instPos, int limit) : bb(instBB), sizeLimit(limit)
+    BUNDLE_INFO(G4_BB* instBB, INST_LIST_ITER& instPos, int limit) : sizeLimit(limit), bb(instBB)
     {
 
         inst[0] = *instPos;
@@ -10905,7 +10905,7 @@ namespace {
         G4_Type dataType;
 
         BucketDescr(int BI, G4_Type DT, RW RWT, AccessMask AM, bool IsARF)
-            : bucketIdx(BI), dataType(DT), type(RWT), mask(AM), isARF(IsARF)
+            : bucketIdx(BI), type(RWT), mask(AM), isARF(IsARF), dataType(DT)
         {
             assert(dataType != Type_UNDEF && "Bad data type ?");
         }

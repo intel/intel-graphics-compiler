@@ -787,15 +787,15 @@ G4_INST::G4_INST(const IR_Builder& irb,
     G4_Operand* s1,
     unsigned int opt) :
     op(o), dst(d), predicate(prd), mod(m), option(opt),
+    useInstList(irb.getAllocator()),
+    defInstList(irb.getAllocator()),
     local_id(0),
     srcCISAoff(-1),
+    location(NULL),
     sat(s),
     evenlySplitInst(false),
     execSize(size),
     bin(nullptr),
-    useInstList(irb.getAllocator()),
-    defInstList(irb.getAllocator()),
-    location(NULL),
     builder(irb)
 {
     srcs[0] = s0;
@@ -830,15 +830,15 @@ G4_INST::G4_INST(const IR_Builder& irb,
     G4_Operand* s2,
     unsigned int opt) :
     op(o), dst(d), predicate(prd), mod(m), option(opt),
+    useInstList(irb.getAllocator()),
+    defInstList(irb.getAllocator()),
     local_id(0),
     srcCISAoff(-1),
+    location(NULL),
     sat(s),
     evenlySplitInst(false),
     execSize(size),
     bin(nullptr),
-    useInstList(irb.getAllocator()),
-    defInstList(irb.getAllocator()),
-    location(NULL),
     builder(irb)
 {
     srcs[0] = s0;

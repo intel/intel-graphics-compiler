@@ -498,8 +498,8 @@ void RegisterEstimator::print(raw_ostream& OS, int dumpLevel)
 }
 
 RegPressureTracker::RegPressureTracker(RegisterEstimator* RPE) :
-    m_pRPE(RPE),
-    m_BB(nullptr)
+    m_BB(nullptr),
+    m_pRPE(RPE)
 {
     m_TrackRegPressure = !m_pRPE->hasNoGRFPressure();
     if (!m_TrackRegPressure)

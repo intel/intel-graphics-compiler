@@ -210,7 +210,7 @@ namespace vISA
 
     public:
         Rematerialization(G4_Kernel& k, LivenessAnalysis& l, GraphColor& c, RPE& r, GlobalRA& g) :
-            kernel(k), liveness(l), coloring(c), doms(k.fg), rpe(r), gra(g)
+            kernel(k), liveness(l), coloring(c), gra(g), doms(k.fg), rpe(r)
         {
             unsigned numGRFs = k.getNumRegTotal();
             auto scale = [=](unsigned threshold) -> unsigned {

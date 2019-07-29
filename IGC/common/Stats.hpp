@@ -74,8 +74,8 @@ class ShaderStats
 {
 public:
     explicit ShaderStats()
-        : m_totalShaderCount(0),
-          m_shaderType(ShaderType::UNKNOWN),
+        : m_shaderType(ShaderType::UNKNOWN),
+          m_totalShaderCount(0),
           m_TotalSimd8(0),
           m_TotalSimd16(0),
           m_TotalSimd32(0)

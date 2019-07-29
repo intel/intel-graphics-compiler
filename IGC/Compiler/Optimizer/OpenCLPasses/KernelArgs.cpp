@@ -54,8 +54,8 @@ KernelArg::KernelArg(KernelArg::ArgType argType, KernelArg::AccessQual accessQua
     m_locationIndex(-1),
     m_locationCount(-1),
     m_needsAllocation(typeAlwaysNeedsAllocation()),
-    m_imageInfo({ false, false }),
-    m_isEmulationArgument(false)
+    m_isEmulationArgument(false),
+    m_imageInfo({ false, false })
 {
 }
 
@@ -71,8 +71,8 @@ KernelArg::KernelArg(const Argument* arg, const DataLayout* DL, const StringRef 
     m_locationIndex(location_index),
     m_locationCount(location_count),
     m_needsAllocation(needBindlessHandle || typeAlwaysNeedsAllocation()),
-    m_imageInfo({ false, false }),
-    m_isEmulationArgument(isEmulationArgument)
+    m_isEmulationArgument(isEmulationArgument),
+    m_imageInfo({ false, false })
 {
     m_allocateSize = calcAllocateSize(arg, DL);
     m_elemAllocateSize = calcElemAllocateSize(arg, DL);
@@ -92,8 +92,8 @@ KernelArg::KernelArg(const ImplicitArg& implicitArg, const DataLayout* DL, const
     m_locationIndex(-1),
     m_locationCount(-1),
     m_needsAllocation(typeAlwaysNeedsAllocation()),
-    m_imageInfo({ false, false }),
-    m_isEmulationArgument(false)
+    m_isEmulationArgument(false),
+    m_imageInfo({ false, false })
 {
     m_elemAllocateSize = m_allocateSize / implicitArg.getNumberElements();
     if (implicitArg.isLocalIDs() && GRFSize == 64)

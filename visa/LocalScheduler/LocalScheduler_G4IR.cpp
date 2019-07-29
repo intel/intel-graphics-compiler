@@ -202,9 +202,9 @@ void G4_BB_Schedule::dumpSchedule(G4_BB *bb)
 //
 G4_BB_Schedule::G4_BB_Schedule(G4_Kernel* k, Mem_Manager& m, G4_BB* block,
     const LatencyTable& LT)
-    : kernel(k)
-    , mem(m)
+    : mem(m)
     , bb(block)
+    , kernel(k)
 
 {
     // we use local id in the scheduler for determining two instructions' original ordering

@@ -47,7 +47,7 @@ namespace IGC
         llvm::Value        *value;
 
         SPrintfArgDescriptor(SHADER_PRINTF_TYPE _argType, llvm::Value *_value, uint _vecSize = 0) :
-            argType(_argType), value(_value), vecSize(_vecSize) {};
+            argType(_argType), vecSize(_vecSize), value(_value) {};
 
         SPrintfArgDescriptor() :
             argType(SHADER_PRINTF_INVALID), value(nullptr) {};

@@ -56,7 +56,7 @@ struct BlockInference
     std::vector<ResolvedTarget> resolved;
 
     BlockInference(std::map<int32_t, Block *> &bs, MemManager *a)
-        : blockStarts(bs), allocator(a) { }
+        : allocator(a), blockStarts(bs) { }
 
     Block *getBlock(int32_t pc) {
         auto itr = blockStarts.find(pc);

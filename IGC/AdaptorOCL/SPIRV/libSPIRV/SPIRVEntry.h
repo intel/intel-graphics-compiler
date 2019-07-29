@@ -471,8 +471,8 @@ public:
     validate();
   }
   // Incomplete constructor
-  SPIRVLine():FileName(SPIRVID_INVALID), Line(SPIRVWORD_MAX),
-      Column(SPIRVWORD_MAX), SPIRVEntryNoIdGeneric(OpLine){}
+  SPIRVLine(): SPIRVEntryNoIdGeneric(OpLine), FileName(SPIRVID_INVALID),
+    Line(SPIRVWORD_MAX), Column(SPIRVWORD_MAX) {}
 
   SPIRVWord getColumn() const {
     return Column;

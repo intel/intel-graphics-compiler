@@ -99,8 +99,8 @@ static Region macroDefaultSourceRegion(
 
 DecoderBase::DecoderBase(const Model &model, ErrorHandler &errHandler) :
     GEDBitProcessor(model,errHandler),
-    m_kernel(nullptr),
     m_gedModel(IGAToGEDTranslation::lowerPlatform(model.platform)),
+    m_kernel(nullptr),
     m_opSpec(nullptr)
 {
     IGA_ASSERT(m_gedModel != GED_MODEL_INVALID, "invalid GED model");

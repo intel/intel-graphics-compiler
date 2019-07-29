@@ -1651,9 +1651,9 @@ public:
                uint32_t numElems,
                G4_Type        ty,
                std::vector<G4_Declare*>& dcllist) :
-      name(n), regFile(k), numElements(numElems), elemType(ty), addressed(false),
-      isSplittedDcl(false), isPartialDcl(false),
-      offsetFromBase(-1), liveIn(false), liveOut(false), noWidening(false), refInSend(false)
+      name(n), regFile(k), elemType(ty), addressed(false), liveIn(false),
+      liveOut(false), noWidening(false), isSplittedDcl(false), isPartialDcl(false),
+      refInSend(false), numElements(numElems), offsetFromBase(-1)
     {
         //
         // set the rest values to default uninitialized values
@@ -2589,8 +2589,8 @@ namespace vISA
 
         // To support sub register alignment
         G4_RegVar(G4_Declare* d, RegVarType t) :
-            G4_VarBase(VK_regVar), id(UNDEFINED_VAL), decl(d), disp(UINT_MAX), subAlign(Any),
-            type(t)
+            G4_VarBase(VK_regVar), id(UNDEFINED_VAL), type(t), decl(d),
+            disp(UINT_MAX), subAlign(Any)
         {
         }
         void *operator new(size_t sz, Mem_Manager& m) {return m.alloc(sz);}
@@ -2685,8 +2685,8 @@ namespace vISA
     public:
         G4_RegVarTransient(G4_Declare* d, G4_RegVar* base, G4_Operand* reprRegion,
             unsigned eSize, TransientType t) :
-            G4_RegVar(d, Transient), baseRegVar(base), execSize(eSize), type(t),
-            repRegion(reprRegion)
+            G4_RegVar(d, Transient), baseRegVar(base), repRegion(reprRegion),
+            execSize(eSize), type(t)
         {
         }
 

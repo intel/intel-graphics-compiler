@@ -99,8 +99,8 @@ public:
 
 
     SpillManager(GlobalRA& g, const LIVERANGE_LIST & splrs, uint32_t startTempDclId) :
-        builder(*g.kernel.fg.builder), bbId(UINT_MAX), spilledLRs(splrs), origTempDclId(startTempDclId),
-        gra(g), kernel(g.kernel), pointsToAnalysis(g.pointsToAnalysis)
+        gra(g), kernel(g.kernel), pointsToAnalysis(g.pointsToAnalysis), builder(*g.kernel.fg.builder),
+        bbId(UINT_MAX), spilledLRs(splrs), origTempDclId(startTempDclId)
     {
         tempDclId = startTempDclId;
         numFlagSpillStore = numFlagSpillLoad = 0;

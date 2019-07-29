@@ -36,7 +36,7 @@ struct Checker {
     ErrorHandler *m_errHandler;
     const Model  &m_model;
 
-    Checker(const Model &model, ErrorHandler *err) : m_model(model), m_errHandler(err) { }
+    Checker(const Model &model, ErrorHandler *err) : m_errHandler(err), m_model(model) { }
 
     void warning(const Loc &loc, const char *msg) {
         m_errHandler->reportWarning(loc, msg);

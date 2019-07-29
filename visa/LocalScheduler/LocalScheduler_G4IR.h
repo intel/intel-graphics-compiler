@@ -215,7 +215,7 @@ struct BucketNode {
     // The mask helps us track the dependences at a byte granularity.
     Mask mask;
     BucketNode(Node *node1, const Mask &mask1, Gen4_Operand_Number opndNum1)
-        : node(node1), mask(mask1), opndNum(opndNum1) {}
+        : node(node1), opndNum(opndNum1), mask(mask1) {}
 };
 
 typedef std::vector<BucketNode *> BUCKET_VECTOR;
@@ -240,7 +240,7 @@ struct BucketDescr {
     // The mask helps us track the dependences at a byte granularity.
     Mask mask;
     BucketDescr(int Bucket, const Mask &Mask, Gen4_Operand_Number Operand)
-        : bucket(Bucket), mask(Mask), operand(Operand) { ; }
+        : bucket(Bucket), operand(Operand), mask(Mask) { ; }
 };
 
 class DDD {

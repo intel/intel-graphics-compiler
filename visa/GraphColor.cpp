@@ -102,9 +102,9 @@ static const unsigned IN_LOOP_REFERENCE_COUNT_FACTOR = 4;
 
 
 Interference::Interference(LivenessAnalysis* l, LiveRange**& lr, unsigned n, unsigned ns, unsigned nm,
-    GlobalRA& g) : maxId(n),
-    splitStartId(ns), splitNum(nm), builder(*g.kernel.fg.builder),
-    gra(g), kernel(g.kernel), lrs(lr), liveAnalysis(l)
+    GlobalRA& g) : gra(g), kernel(g.kernel), lrs(lr),
+    builder(*g.kernel.fg.builder), maxId(n), splitStartId(ns), splitNum(nm),
+    liveAnalysis(l)
 {
 }
 
@@ -2292,7 +2292,7 @@ void GlobalRA::getBankAlignment(LiveRange* lr, BankAlign &align)
 }
 
 Augmentation::Augmentation(G4_Kernel& k, Interference& i, LivenessAnalysis& l, LiveRange* ranges[], GlobalRA& g) :
-    intf(i), kernel(k), gra(g), liveAnalysis(l), fcallRetMap(g.fcallRetMap), m(kernel.fg.mem)
+    kernel(k), intf(i), gra(g), liveAnalysis(l), fcallRetMap(g.fcallRetMap), m(kernel.fg.mem)
 {
     lrs = ranges;
 }
@@ -4717,11 +4717,11 @@ void Interference::dumpInterference() const
 }
 
 GraphColor::GraphColor(LivenessAnalysis& live, unsigned totalGRF, bool hybrid, bool forceSpill_) :
-    gra(live.gra), isHybrid(hybrid), totalGRFRegCount(totalGRF), numVar(live.getNumSelectedVar()), numSplitStartID(live.getNumSplitStartID()), numSplitVar(live.getNumSplitVar()),
+    gra(live.gra), totalGRFRegCount(totalGRF), numVar(live.getNumSelectedVar()), numSplitStartID(live.getNumSplitStartID()), numSplitVar(live.getNumSplitVar()),
     intf(&live, lrs, live.getNumSelectedVar(), live.getNumSplitStartID(), live.getNumSplitVar(), gra), regPool(gra.regPool),
-    builder(gra.builder), lrs(NULL),
+    builder(gra.builder), lrs(NULL), isHybrid(hybrid),
     forceSpill(forceSpill_), mem(GRAPH_COLOR_MEM_SIZE),
-    liveAnalysis(live), kernel(gra.kernel)
+    kernel(gra.kernel), liveAnalysis(live)
 {
     oddTotalDegree = 1;
     evenTotalDegree = 1;

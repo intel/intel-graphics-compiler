@@ -50,7 +50,7 @@ namespace llvm
         DummyPass *dummyPass;
      public:
          GenIntrinsicsTTIImpl(IGC::CodeGenContext *pCtx, DummyPass *pDummyPass) :
-             ctx(pCtx), BaseT(pCtx->getModule()->getDataLayout()) {
+             BaseT(pCtx->getModule()->getDataLayout()), ctx(pCtx) {
              dummyPass = pDummyPass;
          }
 

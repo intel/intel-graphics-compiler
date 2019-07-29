@@ -205,11 +205,11 @@ IGC_INITIALIZE_PASS_END(PixelShaderLowering, PASS_FLAG, PASS_DESCRIPTION, PASS_C
 
 PixelShaderLowering::PixelShaderLowering() :
     FunctionPass(ID),
-    SkipSrc0Alpha(false),
-    m_dualSrcBlendEnabled(false),
+    m_module(nullptr),
     PDT(nullptr),
     m_ReturnBlock(nullptr),
-    m_module(nullptr),
+    SkipSrc0Alpha(false),
+    m_dualSrcBlendEnabled(false),
     uavPixelSync(false)
 {
     initializePixelShaderLoweringPass(*PassRegistry::getPassRegistry());

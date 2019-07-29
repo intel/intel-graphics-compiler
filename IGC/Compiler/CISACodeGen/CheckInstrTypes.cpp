@@ -356,7 +356,7 @@ IGC_INITIALIZE_PASS_END(InstrStatitic, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONL
 char InstrStatitic::ID = 0;
 
 InstrStatitic::InstrStatitic(CodeGenContext* ctx, InstrStatTypes type, InstrStatStage stage, int threshold) :
-    FunctionPass(ID), m_type(type), m_stage(stage), m_ctx(ctx), m_threshold(threshold)
+    FunctionPass(ID), m_ctx(ctx), m_type(type), m_stage(stage), m_threshold(threshold)
 {
     initializeInstrStatiticPass(*PassRegistry::getPassRegistry());
 

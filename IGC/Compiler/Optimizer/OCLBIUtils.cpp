@@ -1433,7 +1433,7 @@ class CNewVMESend : public CCommand
 
 public:
   CNewVMESend(GenISAIntrinsic::ID intrinsicId, CImagesBI::ParamMap* paramMap, CodeGenContext *pCtx, bool isOverloaded, int numImgArgs)
-    : id(intrinsicId), m_pParamMap(paramMap), m_Ctx(pCtx), m_IsOverLoaded(isOverloaded), m_numImgArgs(numImgArgs) {}
+    : id(intrinsicId), m_pParamMap(paramMap), m_numImgArgs(numImgArgs), m_IsOverLoaded(isOverloaded), m_Ctx(pCtx) {}
 
   static std::unique_ptr<CNewVMESend> create(GenISAIntrinsic::ID intrinsicId, CImagesBI::ParamMap* paramMap, CodeGenContext *pCtx, bool isOverloaded, int numImgArgs = 3)
   {

@@ -69,9 +69,9 @@ namespace iga
         // TODO: should track firstUse? (i.e. if live dominated by another use)
         Dep() { }
         Dep(Type t, Instruction *_use)
-            : def(nullptr)
+            : useType(t)
+            , def(nullptr)
             , use(_use)
-            , useType(t)
             , minInOrderDist(0)
             , crossesBranch(false)
         {

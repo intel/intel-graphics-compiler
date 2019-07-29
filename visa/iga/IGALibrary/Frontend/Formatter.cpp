@@ -90,8 +90,8 @@ public:
         const ColumnPreferences &colPrefs = ColumnPreferences())
         : BasicFormatter(out)
         , errorHandler(err)
-        , cols(colPrefs)
         , opts(fopts)
+        , cols(colPrefs)
         , currInst(nullptr)
     {
         model = Model::LookupModel(opts.platform);

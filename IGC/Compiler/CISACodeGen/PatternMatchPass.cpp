@@ -68,16 +68,16 @@ m_blocks( nullptr ),
 m_numBlocks( 0 ),
 m_root( nullptr ),
 m_currentPattern( nullptr ),
-m_DL( 0 ),
-m_WI( nullptr ),
-m_LivenessInfo(nullptr),
 m_Platform(),
 m_AllowContractions( true ),
 m_NeedVMask( false ),
 m_samplertoRenderTargetEnable( false ),
 m_ctx( nullptr ),
 DT( nullptr ),
-LI( nullptr )
+LI( nullptr ),
+m_DL( 0 ),
+m_WI( nullptr ),
+m_LivenessInfo(nullptr)
 {
     initializeCodeGenPatternMatchPass( *PassRegistry::getPassRegistry() );
 }

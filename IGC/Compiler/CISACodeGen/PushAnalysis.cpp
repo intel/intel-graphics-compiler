@@ -85,9 +85,9 @@ IGC_INITIALIZE_PASS_END(PushAnalysis, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY
 
 PushAnalysis::PushAnalysis()
     : ModulePass(ID)
+    , m_PDT(nullptr)
     , m_cbToLoad((uint)-1)
     , m_maxStatelessOffset(0)
-    , m_PDT(nullptr)
 {
     initializePushAnalysisPass(*PassRegistry::getPassRegistry());
 }

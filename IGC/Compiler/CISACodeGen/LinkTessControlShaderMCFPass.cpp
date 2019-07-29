@@ -327,12 +327,12 @@ namespace IGC
 
 
     LinkTessControlShaderMCF::LinkTessControlShaderMCF() :
+        llvm::ModulePass(ID),
         mNumBarriers(0),
         mOutputControlPointCount(0),
         mNumInstructions(0),
         m_useMultipleHardwareThread(false),
-        mIsPhiWith3OrMoreIncomingValues(false),
-        llvm::ModulePass(ID)
+        mIsPhiWith3OrMoreIncomingValues(false)
     {
         initializeLinkTessControlShaderMCFPass(*llvm::PassRegistry::getPassRegistry());
     }

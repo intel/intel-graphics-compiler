@@ -293,9 +293,9 @@ struct RegisterPressure
     Mem_Manager& mem;
 
     RegisterPressure(G4_Kernel& kernel, Mem_Manager& mem, RPE* rpe)
-        : kernel(kernel)
+        : rpe(rpe)
+        , kernel(kernel)
         , mem(mem)
-        , rpe(rpe)
     {
         // Initialize rpe if not available.
         if (rpe == nullptr) {

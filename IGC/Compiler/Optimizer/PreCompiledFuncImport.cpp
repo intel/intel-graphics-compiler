@@ -78,9 +78,9 @@ char PreCompiledFuncImport::ID = 0;
 PreCompiledFuncImport::PreCompiledFuncImport(
     CodeGenContext *CGCtx, uint32_t TheEmuKind) :
     ModulePass(ID),
-    m_emuKind(TheEmuKind),
     m_pCtx (CGCtx),
-    m_enableSubroutineCallForEmulation(false)
+    m_enableSubroutineCallForEmulation(false),
+    m_emuKind(TheEmuKind)
 {
     initializePreCompiledFuncImportPass(*PassRegistry::getPassRegistry());
 

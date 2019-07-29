@@ -40,7 +40,7 @@ IGC_INITIALIZE_PASS(MetaDataUtilsWrapper, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_
 
 char MetaDataUtilsWrapper::ID = 0;
 
-MetaDataUtilsWrapper::MetaDataUtilsWrapper(MetaDataUtils *pMdUtils, ModuleMetaData *moduleMD) : ImmutablePass(ID), m_pMdUtils(pMdUtils), m_isUtilsOwner(false), modMD(moduleMD)
+MetaDataUtilsWrapper::MetaDataUtilsWrapper(MetaDataUtils *pMdUtils, ModuleMetaData *moduleMD) : ImmutablePass(ID), m_pMdUtils(pMdUtils), modMD(moduleMD), m_isUtilsOwner(false)
 {
     initializeMetaDataUtilsWrapperPass(*PassRegistry::getPassRegistry());
 }
