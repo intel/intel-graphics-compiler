@@ -37,7 +37,7 @@ function(igc_resource_embed_file symbolFilesVarName symbolName embeddedFilePath)
   endif()
 
   if(CMAKE_SYSTEM_NAME MATCHES "Windows")
-    set(IGC_PYTHON "${BS_DIR_MIGRATION_BINARIES}/build-tools/python2-win32/python.exe")
+    set(IGC_PYTHON "${BS_DIR_EXTERNAL_COMPONENTS}/build-tools/python2-win32/python.exe")
   else()
     find_program(IGC_PYTHON NAMES "python2" "python")
   endif()
