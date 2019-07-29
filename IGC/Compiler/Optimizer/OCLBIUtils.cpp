@@ -225,6 +225,8 @@ Argument* CImagesBI::CImagesUtils::findImageFromBufferPtr(const MetaDataUtils &M
 
 Value* CImagesBI::CImagesUtils::traceImageOrSamplerArgument(CallInst* pCallInst, unsigned int paramIndex, const MetaDataUtils *pMdUtils, const IGC::ModuleMetaData* modMD)
 {
+    std::vector<ConstantInt*> gepIndices;
+
     std::function<Value*(Value*)> track = [&track](Value *pVal) -> Value*
     {
         for (auto U : pVal->users())
@@ -248,6 +250,58 @@ Value* CImagesBI::CImagesUtils::traceImageOrSamplerArgument(CallInst* pCallInst,
             }
         }
 
+        return nullptr;
+    };
+
+    std::function<Value*(Value*)> findAlloca = [&](Value *pVal) -> Value*
+    {
+        if (auto *GEP = dyn_cast<GetElementPtrInst>(pVal))
+        {
+            gepIndices.push_back(dyn_cast<ConstantInt>(GEP->getOperand(2)));
+            if (auto *leaf = findAlloca(GEP->getOperand(0)))
+                return leaf;
+        }
+        else if (CastInst* inst = dyn_cast<CastInst>(pVal))
+        {
+            if (auto *leaf = findAlloca(inst->getOperand(0)))
+                return leaf;
+        }
+        else if (auto *allocaInst = dyn_cast<AllocaInst>(pVal))
+        {
+            return allocaInst;
+        }
+        return nullptr;
+    };
+
+    std::function<Value*(Value*, int)> findArgument = [&](Value *pVal, int depth) -> Value*
+    {
+        for (auto U : pVal->users())
+        {
+            if (auto *GEP = dyn_cast<GetElementPtrInst>(U))
+            {
+                if (gepIndices[depth-1] != dyn_cast<ConstantInt>(GEP->getOperand(2)))
+                    continue;
+                if (auto *leaf = findArgument(GEP, depth-1))
+                    return leaf;
+            }
+            else if (CastInst* inst = dyn_cast<CastInst>(U))
+            {
+                if (auto *leaf = findArgument(inst, depth))
+                    return leaf;
+            }
+            else if (CallInst *callInst = dyn_cast<CallInst>(U))
+            {
+                if (callInst->getCalledFunction()->getIntrinsicID() == Intrinsic::ID::memcpy)
+                {
+                    if (auto *leaf = findArgument(findAlloca(callInst->getOperand(1)), depth))
+                        return leaf;
+                }
+            }
+            else if (auto *ST = dyn_cast<StoreInst>(U))
+            {
+                return ST->getValueOperand();
+            }
+        }
         return nullptr;
     };
 
@@ -392,141 +446,49 @@ Value* CImagesBI::CImagesUtils::traceImageOrSamplerArgument(CallInst* pCallInst,
                     pSamplerVal->getAggregateElement(0U) : pSamplerVal;
             }
 
+            // Simple case:
+            // If, after stripping casts and zero GEPs, we make it to alloca then the base of that alloca must contain the image.
+            // track() will walk through casts and zero GEPs that don't change the offset of the pointer until arriving at the store
+            // (assuming it is the only store to that location for an image) whose value should be the image argument.
+            Value *pVal = addr->stripPointerCasts();
+            if (isa<AllocaInst>(pVal))
             {
-                Value *pVal = addr->stripPointerCasts();
-                // If, after stripping casts and zero GEPs, we make it to an
-                // alloca then the base of that alloca must contain the image.
-                // track() will walk through casts and zero GEPs that don't
-                // change the offset of the pointer until arriving at the store
-                // (assuming it is the only store to that location for an image)
-                // whose value should be the image argument.
-                if (isa<AllocaInst>(pVal))
-                {
-                    auto *pArg = track(pVal);
-                    if (pArg && (isa<Argument>(pArg) || isa<ConstantInt>(pArg)))
-                        return pArg;
-                }
+                auto *pArg = track(pVal);
+                if (pArg && (isa<Argument>(pArg) || isa<ConstantInt>(pArg)))
+                    return pArg;
             }
 
+            // More complicated case:
+            // We need to go through non-zero GEPs, memcpys and casts to reach an argument.
+            // In the same time we need to track the indices for geps as there might be more loads/stores to given alloca.
             GetElementPtrInst* getElementPtr = dyn_cast<GetElementPtrInst>(addr);
-            ConstantInt* index = NULL;
             if (getElementPtr && getElementPtr->getNumIndices() == 2)
             {
-               // assuming this is execution model dispatch kernel
-               // addr is getelementptr called on block descriptor
-               // %block.capture.addr.i = getelementptr inbounds <...>* %block.i, i32 0,i32 index
-               // want to redirect search to 
-               // store %opencl.image1d_t addrspace(1)* %0, %opencl.image1d_t addrspace(1)** %5, align 8
-               // and continue existing search path
-               CastInst* blockDescr = nullptr;
-               for (CastInst* ptr = dyn_cast<CastInst>(getElementPtr->getOperand(0)); ptr; ptr = dyn_cast<CastInst>(ptr->getOperand(0)))
-                  blockDescr = ptr;
-               if (blockDescr && isa<AllocaInst>(blockDescr->getOperand(0)))
-                  addr = dyn_cast<AllocaInst>(blockDescr->getOperand(0));
-               index = dyn_cast<ConstantInt>(getElementPtr->getOperand(2));
+                addr = findAlloca(getElementPtr);
+                if (addr && isa<AllocaInst>(addr))
+                {
+                    auto *pArg = findArgument(addr, gepIndices.size());
+                    if (pArg && isa<Argument>(pArg))
+                    {
+                        return pArg;
+                    }
+                    else
+                    {
+                        assert(addr && "Expected reaching kernel's argument.");
+                        return nullptr;
+                    }
+                }
+                else
+                {
+                    assert(addr && "Expected alloca.");
+                    return nullptr;
+                }
             }
-            else if (getElementPtr && getElementPtr->getNumIndices() > 1)
+            else
             {
-                Value *pVal = addr->stripPointerCasts();
-                if (pVal && isa<AllocaInst>(pVal))
-                    addr = pVal;
-                index = dyn_cast<ConstantInt>(getElementPtr->getOperand(2));
-            }
-
-            StoreInst* store = NULL;
-
-            if ((addr == nullptr) || !isa<AllocaInst>(addr) || (index == nullptr))
-            {
-                // Most likely this is indirect access coming from Array of Samplers. Cannot trace.
+                assert(getElementPtr && "Expected 2-op GEP instruction.");
                 return nullptr;
             }
-            
-            // isa<AllocaInst>(addr)
-            // alloca used to store image or sampler, assumed to have usages:
-            //   1. as many loads as needed.
-            //   2. One and only one store.
-            //   3. alloca used to store super block descriptor and index points to image arg
-            //   4. bitcast for lifetime.
-            //
-            // FIXME: this is pretty fragile.
-            for (auto i = addr->user_begin(), e = addr->user_end(); i != e; ++i)
-            {
-               Value* user = *i;
-               if (isa<BitCastInst>(user))
-               {
-                   continue;
-               }
-
-               getElementPtr = dyn_cast<GetElementPtrInst>(user);
-               ConstantInt* foundindex = (getElementPtr && getElementPtr->getNumIndices() == 2) ? dyn_cast<ConstantInt>(getElementPtr->getOperand(2)) : NULL;
-               bool matchAtdispatch = (foundindex && index && foundindex->getValue() == index->getValue());
-               if (isa<LoadInst>(user) || ( index!=NULL && !matchAtdispatch))
-               {
-                  // Found a load, ignore it.
-                  // or this is dispatch kernel search 
-                  // and we need to find proper getElementPtr
-                  continue;
-               }
-               if (matchAtdispatch)
-               {
-                  // dispatch kernel search 
-                  // first usege of proper getElementPtr is the store of input argument image
-                  std::function<Value*(Value*)> trackStore = [&trackStore](Value *pVal) -> Value*
-                  {
-                     for (auto U : pVal->users())
-                     {
-                        if (isa<StoreInst>(U)) return U;
-                        if (Value *leaf = trackStore(U)) return leaf;
-                     }
-                     return nullptr;
-                  };
-
-                  user = trackStore(user);
-               }
-               assert(isa<StoreInst>(user) && !store && "expected only one store instruction");
-               store = cast<StoreInst>(user);
-            }
-
-            if (!store)
-            {
-                std::function<Value*(Value*)> track2 = [&track2](Value *pVal) -> Value*
-                {
-                    for (auto U : pVal->users())
-                    {
-                        if (CallInst *callInst = dyn_cast<CallInst>(U))
-                        {
-                            if (callInst->getCalledFunction()->getIntrinsicID() == Intrinsic::ID::memcpy)
-                                return callInst->getOperand(1);
-                        } else if (Value *leaf = track2(U))
-                            return leaf;
-                    }
-                    return nullptr;
-                };
-
-                Value *tmpptr = nullptr;
-                for (auto i = addr->user_begin(), e = addr->user_end(); !tmpptr && i != e; ++i)
-                {
-                    Value* user = *i;
-                    tmpptr = track2(user);
-                }
-
-                if (tmpptr && isa<CastInst>(tmpptr))
-                {
-                    Value *pVal = tmpptr->stripPointerCasts();
-                    if (pVal && isa<AllocaInst>(pVal))
-                    {
-                        auto *pArg = track(pVal);
-                        if (pArg && (isa<Argument>(pArg) || isa<ConstantInt>(pArg)))
-                            return pArg;
-                    }
-                    baseValue = tmpptr;
-                    continue;
-                }
-            }
-
-            assert(store && "expected one store instruction");
-            // Update the baseValue and repeat the check.
-            baseValue = store->getValueOperand();
         }
         else if (ConstantExpr *samplerStateUseE = llvm::dyn_cast<ConstantExpr> (baseValue))
         {
