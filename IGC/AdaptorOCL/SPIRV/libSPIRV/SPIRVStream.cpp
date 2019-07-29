@@ -197,7 +197,7 @@ SPIRVDecoder::getEntry() {
   Entry->setWordCount(WordCount);
   IS >> *Entry;
 
-  if (isModuleScopeAllowedOpCode(OpCode) && !Scope || 
+  if ((isModuleScopeAllowedOpCode(OpCode) && !Scope) ||
       // No need to attach scope to debug info extension operations
       (Entry->hasNoScope()))
   {}

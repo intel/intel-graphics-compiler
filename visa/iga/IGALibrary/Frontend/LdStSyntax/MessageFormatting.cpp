@@ -253,7 +253,7 @@ FormatResult iga::FormatLdStInstruction(
     int numSrcs = i.getSourceCount();
     if (dst.getKind() != Operand::Kind::DIRECT ||
         src0.getKind() != Operand::Kind::DIRECT ||
-        numSrcs > 1 && src1.getKind() != Operand::Kind::DIRECT)
+        (numSrcs > 1 && src1.getKind() != Operand::Kind::DIRECT))
     {
         return r.error("an operand is indirect");
     }

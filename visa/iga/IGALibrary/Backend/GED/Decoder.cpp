@@ -1868,8 +1868,8 @@ void DecoderBase::decodeOptions(Instruction *inst)
 
     if (GED_WORKAROUND(
         /* really need to get GED to support ThrCtrl on GEN7-8 send's */
-            !os.isSendOrSendsFamily() && os.supportsThreadCtrl() ||
-            os.isSendOrSendsFamily() && m_model.platform >= Platform::GEN9))
+            (!os.isSendOrSendsFamily() && os.supportsThreadCtrl()) ||
+            (os.isSendOrSendsFamily() && m_model.platform >= Platform::GEN9)))
     {
         GED_THREAD_CTRL trdCntrl = GED_THREAD_CTRL_Normal;
         GED_DECODE_RAW_TO(ThreadCtrl, trdCntrl);

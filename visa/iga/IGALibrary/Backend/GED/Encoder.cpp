@@ -177,7 +177,7 @@ void EncoderBase::encodeBlock(Block *blk)
         bool mustNotCompact =
             inst->hasInstOpt(InstOpt::NOCOMPACT);
         int32_t iLen = 16;
-        if ((mustCompact || !mustNotCompact && m_opts.autoCompact)) {
+        if (mustCompact || (!mustNotCompact && m_opts.autoCompact)) {
             // try compact first
             status = GED_EncodeIns(&m_gedInst, GED_INS_TYPE_COMPACT, m_instBuf + currentPc());
             if (status == GED_RETURN_VALUE_SUCCESS) {

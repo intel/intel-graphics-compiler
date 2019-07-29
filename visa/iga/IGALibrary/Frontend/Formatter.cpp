@@ -814,7 +814,7 @@ void Formatter::formatRegister(
     //  - caller demands it (e.g. it's a nonsend) AND
     //       the register chosen has subregisters (e.g. not ce and null)
     //  - OR it's non-zero (either bad IR or something's there)
-    if (emitSubReg && ri->hasSubregs() || reg.subRegNum != 0) {
+    if ((emitSubReg && ri->hasSubregs()) || reg.subRegNum != 0) {
         emit('.');
         emit((int)reg.subRegNum);
     }

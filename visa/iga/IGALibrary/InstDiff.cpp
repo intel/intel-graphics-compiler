@@ -378,7 +378,7 @@ iga_status_t iga::DiffFieldsFromPCs(
                 ss << which << ": extra padding at end of kernel";
             }
             const iga::MInst *mi = (const iga::MInst *)&bits[pc];
-            if (mi->isCompact() && bitsLen - pc < 8 ||
+            if ((mi->isCompact() && bitsLen - pc < 8) ||
                 bitsLen - pc < 16)
             {
                 std::stringstream ss;

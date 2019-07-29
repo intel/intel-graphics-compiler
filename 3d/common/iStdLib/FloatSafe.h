@@ -624,7 +624,7 @@ inline float Float32SafeFMA( const float a, const float b, const float c )
 
         case ( 2 << 10 ):
             cond5 = ( rsign & ( ur < 0x00800000 ) ) | 
-                    ( !rsign & ( (ur < 0x007fffff ) | ( ( ur == 0x007fffff ) & ( remain < 0x80000000 ) ) ) );
+                    ( (!rsign) & ( (ur < 0x007fffff ) | ( ( ur == 0x007fffff ) & ( remain < 0x80000000 ) ) ) );
 
             if( cond5 != 0 )
             {

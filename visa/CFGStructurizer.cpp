@@ -3490,7 +3490,7 @@ bool CFGStructurizer::convertGoto(ANodeBB *node, G4_BB *nextJoinBB)
     G4_BB *exitbb = node->getExitBB();
     ANodeHG *innermostWhile = getInnerMostWhile(node);
     ANodeKind kind = ANKIND_GOTOJOIN;
-    MUST_BE_TRUE(innermostWhile || !innermostWhile && !node->getHasBreak(),
+    MUST_BE_TRUE(innermostWhile || (!innermostWhile && !node->getHasBreak()),
                  "Break isn't inside a while");
     if (innermostWhile && node->getHasBreak() &&
         innermostWhile->getKind() == ANKIND_SCF)

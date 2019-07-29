@@ -127,7 +127,7 @@ bool RegSet::addPredicationInputs(const Instruction &i, RegSet &rs)
     const FlagModifier fm = i.getFlagModifier();
     bool readsFlagRegister =
         pred.function != PredCtrl::NONE ||
-        i.getOp() == Op::SEL && fm != FlagModifier::NONE;
+        (i.getOp() == Op::SEL && fm != FlagModifier::NONE);
     if (readsFlagRegister) {
         // add the ARF offset from ExecMaskOffset
         // E.g.

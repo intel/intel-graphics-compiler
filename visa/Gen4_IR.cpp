@@ -4861,7 +4861,7 @@ unsigned G4_DstRegRegion::computeRightBound( uint8_t exec_size )
 /// should have (nearly) identical code for compareOperand
 static G4_CmpRelation compareRegRegionToOperand(G4_Operand* regRegion, G4_Operand* opnd)
 {
-    assert(regRegion->isSrcRegRegion() || regRegion->isDstRegRegion() && "expect either src or dst regRegion");
+    assert((regRegion->isSrcRegRegion() || regRegion->isDstRegRegion()) && "expect either src or dst regRegion");
     bool legal_opnd = opnd->isSrcRegRegion() || opnd->isDstRegRegion() || opnd->isPredicate() || opnd->isCondMod();
     G4_VarBase* myBase = regRegion->getBase();
     G4_VarBase *opndBase = opnd->getBase();

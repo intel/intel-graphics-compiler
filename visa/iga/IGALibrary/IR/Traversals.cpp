@@ -84,7 +84,7 @@ KernelIterator::KernelIterator(
     nextBlock();
     // invariants established
     IGA_ASSERT(
-        bi == be || ii != ie && m_currInst && m_currBlock,
+        bi == be || (ii != ie && m_currInst && m_currBlock),
         "KernelIterator construction invariants failed");
 }
 

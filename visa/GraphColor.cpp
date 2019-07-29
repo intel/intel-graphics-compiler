@@ -9148,8 +9148,8 @@ int GlobalRA::coloringRegAlloc()
     inst->opcode() == G4_mov &&  \
     (inst->getDst() && inst->getSrc(0)) && \
     (inst->getDst()->getTopDcl() && inst->getSrc(0)->getTopDcl()) && \
-    (inst->getDst()->getTopDcl()->getRegFile() == G4_FLAG && inst->getSrc(0)->getTopDcl()->getRegFile() == G4_GRF || \
-    inst->getDst()->getTopDcl()->getRegFile() == G4_GRF && inst->getSrc(0)->getTopDcl()->getRegFile() == G4_FLAG) \
+    ((inst->getDst()->getTopDcl()->getRegFile() == G4_FLAG && inst->getSrc(0)->getTopDcl()->getRegFile() == G4_GRF) || \
+    (inst->getDst()->getTopDcl()->getRegFile() == G4_GRF && inst->getSrc(0)->getTopDcl()->getRegFile() == G4_FLAG)) \
     )
 
 #define IS_SPILL_KILL_CANDIDATE(preScratchAccess) \
