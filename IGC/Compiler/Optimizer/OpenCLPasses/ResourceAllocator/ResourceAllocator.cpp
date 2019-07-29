@@ -48,6 +48,18 @@ IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(ExtensionArgAnalysis)
 IGC_INITIALIZE_PASS_END(ResourceAllocator, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
+enum class AllocationType
+{
+    BindlessImage, BindlessSampler, Image, Sampler, Other, None
+};
+
+enum class BindlessAllocationMode
+{
+    Unsupported, // No platform support for bindless resources or allocation as bindless disabled.
+    Supported,   // Platform supports bindless resources and allocation is enabled.
+    Preferred    // Bindless resources are supported, enabled and preferred over bindful alterntives.
+};
+
 char ResourceAllocator::ID = 0;
 
 ResourceAllocator::ResourceAllocator() : ModulePass(ID)
@@ -75,6 +87,148 @@ bool ResourceAllocator::runOnModule(Module &M)
     return true;
 }
 
+static bool isArgumentBindless(KernelArg::ArgType argType)
+{
+    switch (argType)
+    {
+    case KernelArg::ArgType::BINDLESS_IMAGE_1D:
+    case KernelArg::ArgType::BINDLESS_IMAGE_1D_BUFFER:
+    case KernelArg::ArgType::BINDLESS_IMAGE_2D:
+    case KernelArg::ArgType::BINDLESS_IMAGE_2D_DEPTH:
+    case KernelArg::ArgType::BINDLESS_IMAGE_2D_MSAA:
+    case KernelArg::ArgType::BINDLESS_IMAGE_2D_MSAA_DEPTH:
+    case KernelArg::ArgType::BINDLESS_IMAGE_3D:
+    case KernelArg::ArgType::BINDLESS_IMAGE_CUBE:
+    case KernelArg::ArgType::BINDLESS_IMAGE_CUBE_DEPTH:
+    case KernelArg::ArgType::BINDLESS_IMAGE_1D_ARRAY:
+    case KernelArg::ArgType::BINDLESS_IMAGE_2D_ARRAY:
+    case KernelArg::ArgType::BINDLESS_IMAGE_2D_DEPTH_ARRAY:
+    case KernelArg::ArgType::BINDLESS_IMAGE_2D_MSAA_ARRAY:
+    case KernelArg::ArgType::BINDLESS_IMAGE_2D_MSAA_DEPTH_ARRAY:
+    case KernelArg::ArgType::BINDLESS_IMAGE_CUBE_ARRAY:
+    case KernelArg::ArgType::BINDLESS_IMAGE_CUBE_DEPTH_ARRAY:
+    case KernelArg::ArgType::BINDLESS_SAMPLER:
+        return true;
+    default:
+        return false;
+    }
+}
+
+static AllocationType getAllocationType(KernelArg::ArgType argType, BindlessAllocationMode mode)
+{
+    switch (argType)
+    {
+    case KernelArg::ArgType::IMAGE_1D:
+    case KernelArg::ArgType::IMAGE_1D_BUFFER:
+    case KernelArg::ArgType::IMAGE_2D:
+    case KernelArg::ArgType::IMAGE_2D_DEPTH:
+    case KernelArg::ArgType::IMAGE_2D_MSAA:
+    case KernelArg::ArgType::IMAGE_2D_MSAA_DEPTH:
+    case KernelArg::ArgType::IMAGE_3D:
+    case KernelArg::ArgType::IMAGE_CUBE:
+    case KernelArg::ArgType::IMAGE_CUBE_DEPTH:
+    case KernelArg::ArgType::IMAGE_1D_ARRAY:
+    case KernelArg::ArgType::IMAGE_2D_ARRAY:
+    case KernelArg::ArgType::IMAGE_2D_DEPTH_ARRAY:
+    case KernelArg::ArgType::IMAGE_2D_MSAA_ARRAY:
+    case KernelArg::ArgType::IMAGE_2D_MSAA_DEPTH_ARRAY:
+    case KernelArg::ArgType::IMAGE_CUBE_ARRAY:
+    case KernelArg::ArgType::IMAGE_CUBE_DEPTH_ARRAY:
+        if (mode == BindlessAllocationMode::Preferred)
+            return AllocationType::BindlessImage;
+        return AllocationType::Image;
+
+    case KernelArg::ArgType::BINDLESS_IMAGE_1D:
+    case KernelArg::ArgType::BINDLESS_IMAGE_1D_BUFFER:
+    case KernelArg::ArgType::BINDLESS_IMAGE_2D:
+    case KernelArg::ArgType::BINDLESS_IMAGE_2D_DEPTH:
+    case KernelArg::ArgType::BINDLESS_IMAGE_2D_MSAA:
+    case KernelArg::ArgType::BINDLESS_IMAGE_2D_MSAA_DEPTH:
+    case KernelArg::ArgType::BINDLESS_IMAGE_3D:
+    case KernelArg::ArgType::BINDLESS_IMAGE_CUBE:
+    case KernelArg::ArgType::BINDLESS_IMAGE_CUBE_DEPTH:
+    case KernelArg::ArgType::BINDLESS_IMAGE_1D_ARRAY:
+    case KernelArg::ArgType::BINDLESS_IMAGE_2D_ARRAY:
+    case KernelArg::ArgType::BINDLESS_IMAGE_2D_DEPTH_ARRAY:
+    case KernelArg::ArgType::BINDLESS_IMAGE_2D_MSAA_ARRAY:
+    case KernelArg::ArgType::BINDLESS_IMAGE_2D_MSAA_DEPTH_ARRAY:
+    case KernelArg::ArgType::BINDLESS_IMAGE_CUBE_ARRAY:
+    case KernelArg::ArgType::BINDLESS_IMAGE_CUBE_DEPTH_ARRAY:
+        if (mode == BindlessAllocationMode::Unsupported)
+            return AllocationType::Image;
+        return AllocationType::BindlessImage;
+
+    case KernelArg::ArgType::SAMPLER:
+        if (mode == BindlessAllocationMode::Preferred)
+            return AllocationType::BindlessSampler;
+        return AllocationType::Sampler;
+
+    case KernelArg::ArgType::BINDLESS_SAMPLER:
+        if (mode == BindlessAllocationMode::Unsupported)
+            return AllocationType::Sampler;
+        return AllocationType::BindlessSampler;
+
+    case KernelArg::ArgType::PTR_GLOBAL:
+    case KernelArg::ArgType::PTR_CONSTANT:
+    case KernelArg::ArgType::PTR_DEVICE_QUEUE:
+    case KernelArg::ArgType::IMPLICIT_CONSTANT_BASE:
+    case KernelArg::ArgType::IMPLICIT_GLOBAL_BASE:
+    case KernelArg::ArgType::IMPLICIT_PRIVATE_BASE:
+    case KernelArg::ArgType::IMPLICIT_PRINTF_BUFFER:
+    case KernelArg::ArgType::IMPLICIT_DEVICE_ENQUEUE_EVENT_POOL:
+    case KernelArg::ArgType::IMPLICIT_DEVICE_ENQUEUE_DEFAULT_DEVICE_QUEUE:
+        return AllocationType::Other;
+
+    default:
+        return AllocationType::None;
+    }
+}
+
+static int decodeBufferId(const llvm::Argument *arg)
+{
+    assert(arg->getType()->isPointerTy()
+        && "Expected a pointer type for address space decoded samplers");
+    unsigned int addressSpace = arg->getType()->getPointerAddressSpace();
+
+    // This is a buffer. Try to decode this
+    bool directIdx = false;
+    unsigned int bufId = 0;
+    DecodeAS4GFXResource(addressSpace, directIdx, bufId);
+    assert(directIdx == true && "Expected a direct index for address space decoded images");
+
+    return bufId;
+}
+
+static int getImageExtensionType(ExtensionArgAnalysis& EAA, const llvm::Argument *arg)
+{
+    assert(!EAA.isMediaArg(arg) || !EAA.isVaArg(arg));
+
+    if (EAA.isMediaArg(arg) || EAA.isVaArg(arg))
+    {
+        return ResourceExtensionTypeEnum::MediaResourceType;
+    }
+    else if (EAA.isMediaBlockArg(arg))
+    {
+        return ResourceExtensionTypeEnum::MediaResourceBlockType;
+    }
+    return ResourceExtensionTypeEnum::NonExtensionType;
+}
+
+static int getSamplerExtensionType(ExtensionArgAnalysis& EAA, const llvm::Argument *arg)
+{
+    assert(!EAA.isMediaSamplerArg(arg) || !EAA.isVaArg(arg));
+
+    if (EAA.isMediaSamplerArg(arg))
+    {
+        return ResourceExtensionTypeEnum::MediaSamplerType;
+    }
+    else if (EAA.isVaArg(arg))
+    {
+        return EAA.GetExtensionSamplerType();
+    }
+    return ResourceExtensionTypeEnum::NonExtensionType;
+}
+
 bool ResourceAllocator::runOnFunction(llvm::Function &F)
 {
     // This does two things:
@@ -84,12 +238,11 @@ bool ResourceAllocator::runOnFunction(llvm::Function &F)
 
     CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     assert(ctx);
-    KernelArgs kernelArgs(
-        F, 
-        &(F.getParent()->getDataLayout()), 
-        getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(), 
-        getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData(),
-        ctx->platform.getGRFSize());
+
+    MetaDataUtils *MDU = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    ModuleMetaData *MMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+
+    KernelArgs kernelArgs(F, &(F.getParent()->getDataLayout()), MDU, MMD, ctx->platform.getGRFSize());
     ExtensionArgAnalysis& EAA = getAnalysis<ExtensionArgAnalysis>(F);
 
     ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
@@ -97,6 +250,8 @@ bool ResourceAllocator::runOnFunction(llvm::Function &F)
         assert("Function was not found.");
     FunctionMetaData *funcMD = &modMD->FuncMD[&F];
     ResourceAllocMD *resAllocMD = &funcMD->resAllocMD;
+
+    CompOptions &CompilerOpts = MMD->compOpt;
 
     // Go over all of the kernel args.
     // For each kernel arg, if it represents an explicit image or buffer argument, 
@@ -106,198 +261,99 @@ bool ResourceAllocator::runOnFunction(llvm::Function &F)
     std::vector<ArgAllocMD> paramAllocations(F.arg_size(), defaultArgAlloc);
     int numUAVs = 0, numResources = 0, numSamplers = 0;
 
-    // Since bindless textures/samplers could potentially be promoted to bindful later, we allocate these
-    // first to minimize "holes" in the BT index
-    for (auto arg : kernelArgs)
+    BindlessAllocationMode allocationMode = BindlessAllocationMode::Unsupported;
+
+    if (IGC_IS_FLAG_ENABLED(EnableFallbackToBindless) && ctx->platform.supportBindless())
     {
-        ArgAllocMD argAlloc;
-        switch (arg.getArgType())
-        {
-        case KernelArg::ArgType::BINDLESS_IMAGE_1D:
-        case KernelArg::ArgType::BINDLESS_IMAGE_1D_BUFFER:
-        case KernelArg::ArgType::BINDLESS_IMAGE_2D:
-        case KernelArg::ArgType::BINDLESS_IMAGE_2D_DEPTH:
-        case KernelArg::ArgType::BINDLESS_IMAGE_2D_MSAA:
-        case KernelArg::ArgType::BINDLESS_IMAGE_2D_MSAA_DEPTH:
-        case KernelArg::ArgType::BINDLESS_IMAGE_3D:
-        case KernelArg::ArgType::BINDLESS_IMAGE_CUBE:
-        case KernelArg::ArgType::BINDLESS_IMAGE_CUBE_DEPTH:
-        case KernelArg::ArgType::BINDLESS_IMAGE_1D_ARRAY:
-        case KernelArg::ArgType::BINDLESS_IMAGE_2D_ARRAY:
-        case KernelArg::ArgType::BINDLESS_IMAGE_2D_DEPTH_ARRAY:
-        case KernelArg::ArgType::BINDLESS_IMAGE_2D_MSAA_ARRAY:
-        case KernelArg::ArgType::BINDLESS_IMAGE_2D_MSAA_DEPTH_ARRAY:
-        case KernelArg::ArgType::BINDLESS_IMAGE_CUBE_ARRAY:
-        case KernelArg::ArgType::BINDLESS_IMAGE_CUBE_DEPTH_ARRAY:
-        {
-            const llvm::Argument *pArg = arg.getArg();
-            assert(pArg->getType()->isPointerTy() && "Expected a pointer type for address space decoded samplers");
-
-            if (IGC_IS_FLAG_ENABLED(EnableFallbackToBindless) && ctx->platform.supportBindless())
-            {
-                argAlloc.type = ResourceTypeEnum::BindlessUAVResourceType;
-                argAlloc.indexType = numUAVs;
-            }
-            else
-            {
-                unsigned int address_space = pArg->getType()->getPointerAddressSpace();
-
-                // This is a buffer. Try to decode this
-                bool directIdx = false;
-                unsigned int bufId = 0;
-                DecodeAS4GFXResource(address_space, directIdx, bufId);
-                assert(directIdx == true && "Expected a direct index for address space decoded images");
-
-                argAlloc.type = ResourceTypeEnum::UAVResourceType;
-                argAlloc.indexType = bufId;
-            }
-            numUAVs++;
-        }
-        break;
-
-        case KernelArg::ArgType::BINDLESS_SAMPLER:
-        {
-            const llvm::Argument *pArg = arg.getArg();
-            assert(pArg->getType()->isPointerTy() && "Expected a pointer type for address space decoded samplers");
-
-            if (IGC_IS_FLAG_ENABLED(EnableFallbackToBindless) && ctx->platform.supportBindless())
-            {
-                argAlloc.type = ResourceTypeEnum::BindlessSamplerResourceType;
-                argAlloc.indexType = numSamplers;
-            }
-            else
-            {
-                unsigned int address_space = pArg->getType()->getPointerAddressSpace();
-
-                // This is a buffer. Try to decode this
-                bool directIdx = false;
-                unsigned int bufId = 0;
-                DecodeAS4GFXResource(address_space, directIdx, bufId);
-                assert(directIdx == true && "Expected a direct index for address space decoded sampler");
-
-                argAlloc.type = ResourceTypeEnum::SamplerResourceType;
-                argAlloc.indexType = bufId;
-            }
-            numSamplers++;
-        }
-        break;
-
-        default:
-            continue;
-        }
-
-        // We want the location to be arg.getArgNo() and not i, because
-        // this is eventually accessed by the state processor. The SP
-        // aware of the KernelArgs array, it only knows each argument's
-        // original arg number. 
-        paramAllocations[arg.getAssociatedArgNo()] = argAlloc;
+        allocationMode = BindlessAllocationMode::Supported;
     }
 
-    for( auto arg : kernelArgs )
+    if (CompilerOpts.PreferBindlessImages && ctx->platform.supportBindless())
     {
+        allocationMode = BindlessAllocationMode::Preferred;
+    }
+
+    for (auto arg : kernelArgs)
+    {
+        const AllocationType allocType = getAllocationType(arg.getArgType(), allocationMode);
+
         ArgAllocMD argAlloc;
-
-        switch( arg.getArgType() )
+        switch (allocType)
         {
-
-        case KernelArg::ArgType::IMAGE_1D:
-        case KernelArg::ArgType::IMAGE_1D_BUFFER:
-        case KernelArg::ArgType::IMAGE_2D:
-        case KernelArg::ArgType::IMAGE_2D_DEPTH:
-        case KernelArg::ArgType::IMAGE_2D_MSAA:
-        case KernelArg::ArgType::IMAGE_2D_MSAA_DEPTH:
-        case KernelArg::ArgType::IMAGE_3D:
-        case KernelArg::ArgType::IMAGE_CUBE:
-        case KernelArg::ArgType::IMAGE_CUBE_DEPTH:
-        case KernelArg::ArgType::IMAGE_1D_ARRAY:
-        case KernelArg::ArgType::IMAGE_2D_ARRAY:
-        case KernelArg::ArgType::IMAGE_2D_DEPTH_ARRAY:
-        case KernelArg::ArgType::IMAGE_2D_MSAA_ARRAY:
-        case KernelArg::ArgType::IMAGE_2D_MSAA_DEPTH_ARRAY:
-        case KernelArg::ArgType::IMAGE_CUBE_ARRAY:
-        case KernelArg::ArgType::IMAGE_CUBE_DEPTH_ARRAY:
-            if( arg.getAccessQual() == KernelArg::WRITE_ONLY ||
-                arg.getAccessQual() == KernelArg::READ_WRITE )
-            {
-                argAlloc.type = ResourceTypeEnum::UAVResourceType;
-                argAlloc.indexType = numUAVs;
-                numUAVs++;
-            }
-            else
-            {
-                argAlloc.type = ResourceTypeEnum::SRVResourceType;
-                argAlloc.indexType = numResources;
-                numResources++;
-            }
-            
-            assert( !(EAA.isMediaArg( arg.getArg( ) ) && EAA.isVaArg( arg.getArg( ) )) );
-
-            if( EAA.isMediaArg( arg.getArg( ) ) || EAA.isVaArg( arg.getArg( ) ) )
-            {
-                argAlloc.extensionType = ResourceExtensionTypeEnum::MediaResourceType;
-            }
-            else if( EAA.isMediaBlockArg( arg.getArg( ) ) )
-            {
-                argAlloc.extensionType = ResourceExtensionTypeEnum::MediaResourceBlockType;
-            }
-            else
-            {
-                argAlloc.extensionType = ResourceExtensionTypeEnum::NonExtensionType;
-            }
-            break;
-
-        case KernelArg::ArgType::PTR_GLOBAL:
-        case KernelArg::ArgType::PTR_CONSTANT:
-        case KernelArg::ArgType::PTR_DEVICE_QUEUE:
-        case KernelArg::ArgType::IMPLICIT_CONSTANT_BASE:
-        case KernelArg::ArgType::IMPLICIT_GLOBAL_BASE:
-        case KernelArg::ArgType::IMPLICIT_PRIVATE_BASE:
-        case KernelArg::ArgType::IMPLICIT_PRINTF_BUFFER:
-            argAlloc.type = ResourceTypeEnum::UAVResourceType;
+        case AllocationType::BindlessImage:
+            argAlloc.type = ResourceTypeEnum::BindlessUAVResourceType;
             argAlloc.indexType = numUAVs;
+            argAlloc.extensionType = getImageExtensionType(EAA, arg.getArg());
             numUAVs++;
             break;
-        
-        case KernelArg::ArgType::SAMPLER:
-            argAlloc.type = ResourceTypeEnum::SamplerResourceType;
 
-            assert( !(EAA.isMediaSamplerArg( arg.getArg( ) ) && EAA.isVaArg( arg.getArg( ) )) );
-
-            if( EAA.isMediaSamplerArg( arg.getArg( ) ) )
+        case AllocationType::Image:
+            // Allocating bindless as bindful
+            if (isArgumentBindless(arg.getArgType()))
             {
-                argAlloc.extensionType = ResourceExtensionTypeEnum::MediaSamplerType;
+                argAlloc.type = ResourceTypeEnum::UAVResourceType;
+                argAlloc.indexType = decodeBufferId(arg.getArg());
             }
-            else if( EAA.isVaArg( arg.getArg() ) )
-            {
-                argAlloc.extensionType = EAA.GetExtensionSamplerType();
-            }
+            // Allocating bindful as bindful
             else
             {
-                argAlloc.extensionType = ResourceExtensionTypeEnum::NonExtensionType;
+                if (arg.getAccessQual() == KernelArg::WRITE_ONLY ||
+                        arg.getAccessQual() == KernelArg::READ_WRITE)
+                {
+                    argAlloc.type = ResourceTypeEnum::UAVResourceType;
+                    argAlloc.indexType = numUAVs;
+                    numUAVs++;
+                }
+                else
+                {
+                    argAlloc.type = ResourceTypeEnum::SRVResourceType;
+                    argAlloc.indexType = numResources;
+                    numResources++;
+                }
             }
-            
+            argAlloc.extensionType = getImageExtensionType(EAA, arg.getArg());
+            break;
+
+        case AllocationType::BindlessSampler:
+            argAlloc.type = ResourceTypeEnum::BindlessSamplerResourceType;
             argAlloc.indexType = numSamplers;
             numSamplers++;
             break;
 
-        case KernelArg::ArgType::IMPLICIT_DEVICE_ENQUEUE_EVENT_POOL:
-        case KernelArg::ArgType::IMPLICIT_DEVICE_ENQUEUE_DEFAULT_DEVICE_QUEUE:
+        case AllocationType::Sampler:
+            // Allocating bindless as bindful
+            if (isArgumentBindless(arg.getArgType()))
+            {
+                argAlloc.type = ResourceTypeEnum::SamplerResourceType;
+                argAlloc.indexType = decodeBufferId(arg.getArg());
+            }
+            // Allocating bindful as bindful
+            else
+            {
+                argAlloc.type = ResourceTypeEnum::SamplerResourceType;
+                argAlloc.indexType = numSamplers;
+                argAlloc.extensionType = getSamplerExtensionType(EAA, arg.getArg());
+                numSamplers++;
+            }
+            break;
+
+        case AllocationType::Other:
             argAlloc.type = ResourceTypeEnum::UAVResourceType;
             argAlloc.indexType = numUAVs;
             numUAVs++;
             break;
 
         default:
+        case AllocationType::None:
             continue;
         }
-
         // We want the location to be arg.getArgNo() and not i, because
         // this is eventually accessed by the state processor. The SP
         // aware of the KernelArgs array, it only knows each argument's
         // original arg number. 
         paramAllocations[arg.getAssociatedArgNo()] = argAlloc;
     }
-    
+
     // Param allocations must be inserted to the Metadata Utils in order.
     MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     for( auto i : paramAllocations )

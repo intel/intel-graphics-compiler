@@ -1040,6 +1040,10 @@ private:
                 {
                     PromoteStatelessToBindless = true;
                 }
+                if (strstr(options, "-cl-intel-use-bindless-images"))
+                {
+                    PreferBindlessImages = true;
+                }
             }
 
 
@@ -1054,6 +1058,7 @@ private:
             bool replaceGlobalOffsetsByZero = false;
             bool IntelEnablePreRAScheduling = true;
             bool PromoteStatelessToBindless = false;
+            bool PreferBindlessImages = false;
 
         };
 

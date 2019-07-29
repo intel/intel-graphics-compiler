@@ -244,6 +244,13 @@ static void CommonOCLBasedPasses(
     CompilerOpts.HasBufferOffsetArg =
         pContext->m_InternalOptions.IntelHasBufferOffsetArg;
 
+    CompilerOpts.PreferBindlessImages =
+        pContext->m_InternalOptions.PreferBindlessImages;
+
+    if (CompilerOpts.PreferBindlessImages) {
+        pContext->getModuleMetaData()->UseBindlessImage = true;
+    }
+
     // right now we don't support any standard function in the code gen
     // maybe we want to support some at some point to take advantage of LLVM optimizations
     TargetLibraryInfoImpl TLI;

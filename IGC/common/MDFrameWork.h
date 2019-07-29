@@ -200,6 +200,7 @@ namespace IGC
         bool pixelShaderDoNotAbortOnSpill               = false;
         bool UniformWGS                                 = false;
         bool disableVertexComponentPacking              = false;
+        bool PreferBindlessImages                       = false;
     };
 
     struct ComputeShaderInfo
