@@ -67,8 +67,6 @@ static Common_VISA_EMask_Ctrl  Get_CISA_Emask(const char* str);
 static CHANNEL_OUTPUT_FORMAT   Get_Channel_Output(const char* str);
 static void                    appendStringLiteralChar(char c, char *buf, size_t *len);
 
-static int pendingBracket;
-
 #ifdef _MSC_VER
 #include <io.h>
 #pragma warning(disable:4102; disable:4244; disable:4267)

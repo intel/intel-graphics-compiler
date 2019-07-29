@@ -642,12 +642,6 @@ DeclPredicate: DIRECTIVE_DECL VAR P_CLASS NUM_ELTS NUMBER GEN_ATTR
                //     1      2     3       4       5       6         7
 DeclSampler: DIRECTIVE_DECL VAR S_CLASS NUM_ELTS NUMBER  V_NAME GEN_ATTR
                {
-                   attr_gen_struct temp_struct;
-                   temp_struct.value = $7.value;
-                   temp_struct.name = $7.name;
-                   temp_struct.string_val = $7.string_val;
-                   temp_struct.isInt = $7.isInt;
-                   temp_struct.attr_set = $7.attr_set;
                    pCisaBuilder->CISA_sampler_variable_decl($2, (int)$5, $6, CISAlineno);
                };
 
@@ -667,12 +661,6 @@ DeclSurface: DIRECTIVE_DECL VAR T_CLASS NUM_ELTS NUMBER  V_NAME GEN_ATTR
                //     1          2       3        4        5
 DirectiveInput: DIRECTIVE_INPUT VAR OFFSET_NUM SIZE_NUM GEN_ATTR
                {
-                   attr_gen_struct temp_struct;
-                   temp_struct.value = $5.value;
-                   temp_struct.name = $5.name;
-                   temp_struct.string_val = $5.string_val;
-                   temp_struct.isInt = $5.isInt;
-                   temp_struct.attr_set = $5.attr_set;
                    pCisaBuilder->CISA_input_directive($2, (short)$3, (unsigned short)$4, CISAlineno);
                };
 
@@ -680,12 +668,6 @@ DirectiveInput: DIRECTIVE_INPUT VAR OFFSET_NUM SIZE_NUM GEN_ATTR
                //              1        2       3        4        5
 DirectiveImplicitInput: IMPLICIT_INPUT VAR OFFSET_NUM SIZE_NUM GEN_ATTR
                {
-                   attr_gen_struct temp_struct;
-                   temp_struct.value = $5.value;
-                   temp_struct.name = $5.name;
-                   temp_struct.string_val = $5.string_val;
-                   temp_struct.isInt = $5.isInt;
-                   temp_struct.attr_set = $5.attr_set;
                    pCisaBuilder->CISA_implicit_input_directive($1, $2, (short)$3, (unsigned short)$4, CISAlineno);
                };
 
@@ -693,12 +675,6 @@ DirectiveImplicitInput: IMPLICIT_INPUT VAR OFFSET_NUM SIZE_NUM GEN_ATTR
                //            1           2       3        4
 DirectiveParameter: DIRECTIVE_PARAMETER VAR  SIZE_NUM GEN_ATTR
                {
-                   attr_gen_struct temp_struct;
-                   temp_struct.value = $4.value;
-                   temp_struct.name = $4.name;
-                   temp_struct.string_val = $4.string_val;
-                   temp_struct.isInt = $4.isInt;
-                   temp_struct.attr_set = $4.attr_set;
                    pCisaBuilder->CISA_input_directive($2, 0, (unsigned short)$3, CISAlineno);
                };
 /* ----- .attribute ------ */
