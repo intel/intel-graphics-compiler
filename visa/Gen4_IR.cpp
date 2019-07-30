@@ -7592,7 +7592,6 @@ void LiveIntervalInfo::addLiveInterval(uint32_t start, uint32_t end)
     else
     {
         bool done = false, firstcheck = false;
-        std::pair<uint32_t, uint32_t>* prev = nullptr;
         // Check if a new live-interval can be pushed independently of others
         for (auto lr_it = liveIntervals.begin();
             lr_it != liveIntervals.end();
@@ -7615,7 +7614,6 @@ void LiveIntervalInfo::addLiveInterval(uint32_t start, uint32_t end)
             if (lr.second < start)
             {
                 firstcheck = true;
-                prev = &lr;
             }
 
             if (lr.first <= start && lr.second >= end)

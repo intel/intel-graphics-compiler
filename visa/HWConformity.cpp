@@ -3148,7 +3148,6 @@ void HWConformity::fix64bInst( INST_LIST_ITER iter, G4_BB* bb )
                         // mov (e) r[a0.0]<1>:q src<1;1,0>:q
                         // into
                         // mov (e*2) r[a0.0]<1>:ud src<1;1,0>:ud {NoMask}
-                        INST_LIST_ITER movIter = iter;
                         ++iter;
                         G4_INST* movInst = *iter;
                         MUST_BE_TRUE(movInst->opcode() == G4_mov && movInst->getDst() == dst &&
@@ -5239,7 +5238,7 @@ void HWConformity::convertMAD2MulAdd( INST_LIST_ITER iter, G4_BB *bb )
         inst->getCISAOff(),
         inst->getSrcFilename() );
 
-    auto addIter = bb->insert( tIter, addOp );
+    bb->insert( tIter, addOp );
 
     // predicate/condmod/saturate, if they exist, are propagated to the add instruction
     inst->setSaturate( false );

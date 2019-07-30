@@ -2326,9 +2326,8 @@ void SaveRestoreInfo::update(G4_INST* inst, int32_t memOffset, uint32_t regWithM
             MUST_BE_TRUE(regWithMemOffset == srcreg, "Send src not initialized with offset");
 
             auto responselen = inst->getMsgDesc()->ResponseLength();
-            int32_t startoff, endoff;
+            int32_t startoff;
             startoff = memOffset * G4_GRF_REG_NBYTES / 2;
-            endoff = startoff + (responselen * G4_GRF_REG_NBYTES);
 
             for (auto reg = dstreg; reg < (responselen + dstreg); reg++)
             {

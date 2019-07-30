@@ -237,10 +237,8 @@ bool decodeSendDescriptor(const Opts &opts)
             std::stringstream ss;
             if (d.first.len != 0) {
                 int off = d.first.off;
-                const char *which = "Desc";
                 if (off >= 32) {
                     off -= 32;
-                    which = "ExDesc";
                 }
                 ss << "[";
                 if (d.first.len > 1) {

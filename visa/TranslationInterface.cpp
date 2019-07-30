@@ -1456,7 +1456,6 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(ISA_Opcode opcode, Common_
     G4_SrcRegRegion *src1 = nullptr;
     G4_SrcRegRegion *src2 = nullptr;
     G4_SrcRegRegion *neg_src1 = nullptr;
-    G4_SrcRegRegion *neg_src0 = nullptr;
 
     G4_Imm *immData = nullptr;
 
@@ -10159,22 +10158,6 @@ int IR_Builder::translateVISALifetimeInst(uint8_t properties, G4_Operand* var)
 {
     // Lifetime.start/end are two variants of this instruction
     createImm(properties & 0x1, Type_UB);
-    unsigned short varType = (properties >> 4) & 0x3;
-
-    // varType encodings:
-    // 0 - general
-    // 1 - address
-    // 2 - predicate
-
-    Common_ISA_Var_Class varClass = GENERAL_VAR;
-    if(varType == 1)
-    {
-        varClass = ADDRESS_VAR;
-    }
-    else if(varType == 2)
-    {
-        varClass = PREDICATE_VAR;
-    }
 
     if((properties & 0x1) == LIFETIME_START)
     {

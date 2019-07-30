@@ -7713,7 +7713,6 @@ public:
         static const unsigned SCRATCH_MSG_DESC_CATEGORY = 18;
         static const unsigned SCRATCH_MSG_DESC_OPERATION_MODE = 17;
         static const unsigned SCRATCH_MSG_DESC_CHANNEL_MODE = 16;
-        static const unsigned SCRATCH_MSG_INVALIDATE_AFTER_READ = 15;
         static const unsigned SCRATCH_MSG_DESC_BLOCK_SIZE = 12;
 
         // write 8 GRFs at a time
@@ -10672,7 +10671,6 @@ void Optimizer::split4GRFVars()
     {
         for (auto inst : *bb)
         {
-            bool changed = false;
             auto dst = inst->getDst();
             if (dst && dst->getTopDcl())
             {
@@ -10685,7 +10683,6 @@ void Optimizer::split4GRFVars()
                         dst->getRegOff() - (isLow ? 0 : 2), dst->getSubRegOff(),
                         dst->getHorzStride(), dst->getType(), dst->getAccRegSel());
                     inst->setDest(NewDst);
-                    changed = true;
                 }
             }
 
@@ -10705,7 +10702,6 @@ void Optimizer::split4GRFVars()
                             NewSrcDcl->getRegVar(), srcRegion->getRegOff() - (isLow ? 0 : 2),
                             srcRegion->getSubRegOff(), srcRegion->getRegion(), src->getType(), src->getAccRegSel());
                         inst->setSrc(NewSrc, i);
-                        changed = true;
                     }
                 }
             }

@@ -304,7 +304,6 @@ int64_t FlowGraph::insertDummyUUIDMov()
 bool FlowGraph::matchBranch(int &sn, INST_LIST& instlist, INST_LIST_ITER &it)
 {
     G4_INST* inst = *it;
-    G4_INST* prev = NULL;
     //
     // process if-endif or if-else-endif
     //
@@ -405,7 +404,6 @@ bool FlowGraph::matchBranch(int &sn, INST_LIST& instlist, INST_LIST_ITER &it)
                 MUST_BE_TRUE(false, "ERROR: Can not find endif for if!");
                 return false;
             }
-            prev = inst;
             it++;
         }   // while
     }

@@ -975,7 +975,6 @@ namespace vISA
         // even then nullptr is returned.
 
         Reference* uniqueDef = nullptr;
-        bool fullDef = false;
 
         unsigned int lb = src->getLeftBound(), rb = src->getRightBound();
         for (auto&& r : refs.def)
@@ -994,14 +993,12 @@ namespace vISA
                 else
                 {
                     uniqueDef = &r;
-                    fullDef = true;
                 }
             }
             else if ((curlb <= lb && currb >= lb) ||
                 (curlb <= rb && currb >= lb))
             {
                 // Partial overlap
-                fullDef = false;
                 uniqueDef = nullptr;
                 break;
             }

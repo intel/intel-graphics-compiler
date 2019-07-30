@@ -2341,10 +2341,8 @@ static std::string printInstructionDataport(
         case ISA_GATHER_SCALED:
         case ISA_SCATTER_SCALED:
         {
-            Common_ISA_SVM_Block_Type blockSize;
             Common_ISA_SVM_Block_Num numBlocks;
 
-            blockSize = static_cast<Common_ISA_SVM_Block_Type>(getPrimitiveOperand<uint8_t>(inst, i++));
             numBlocks = static_cast<Common_ISA_SVM_Block_Num>(getPrimitiveOperand<uint8_t>(inst, i++));
             // ignore scale (MBZ)
             (void) getPrimitiveOperand<uint8_t>(inst, i++);

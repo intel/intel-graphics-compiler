@@ -1925,16 +1925,8 @@ SpillManagerGMRF::initMHeader (
         getSpillOffset(offset);
         unsigned segmentDisp = offset / OWORD_BYTE_SIZE;
         G4_Imm * segmentDispImm = builder_->createImm (segmentDisp, Type_UD);
-        G4_RegVar * baseRegVar = NULL;
-        if (region->isSrcRegRegion())
-        {
-            baseRegVar = getReprRegVar(region->asSrcRegRegion()->getBase()->asRegVar());
-        }
-        else if (region->isDstRegRegion())
-        {
-            baseRegVar = getReprRegVar(region->asDstRegRegion()->getBase()->asRegVar());
-        }
-        else
+
+        if (!region->isSrcRegRegion() && !region->isDstRegRegion())
         {
             MUST_BE_TRUE (false, ERROR_GRAPHCOLOR);
         }
@@ -3880,9 +3872,6 @@ SpillManagerGMRF::insertSpillFillCode (
     G4_Kernel * kernel, PointsToAnalysis& pointsToAnalysis
 )
 {
-
-    auto refCount = [](LiveRange* l1, LiveRange* l2) { return l1->getRefCount() > l2->getRefCount(); };
-
     // Set the spill flag of all spilled regvars.
     for (LR_LIST::const_iterator lt = spilledLRs_.begin ();
         lt != spilledLRs_.end (); ++lt) {

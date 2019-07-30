@@ -76,13 +76,11 @@ void HWConformity::fixOpndTypeAlign( G4_BB* bb )
     {
         G4_INST *inst = *i;
         G4_opcode opcode = inst->opcode();
-        bool instIsChanged = false;
         if (opcode == G4_nop || opcode == G4_label || inst->isSend()) {
             next_iter++;
         } else if (fixInstOpndTypeAlign(i, bb)) {
             next_iter = i;
             next_iter++;
-            instIsChanged = true;
         } else {
             next_iter++;
         }

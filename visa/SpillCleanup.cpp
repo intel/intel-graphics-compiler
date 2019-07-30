@@ -237,7 +237,7 @@ void CoalesceSpillFills::coalesceSpills(std::list<INST_LIST_ITER>& coalesceableS
         bb->erase(spill);
     }
     coalesceableSpills.clear();
-    auto copyIt = bb->insert(f, coalescedSpillSrc->getInst());
+    bb->insert(f, coalescedSpillSrc->getInst());
 }
 
 void CoalesceSpillFills::coalesceFills(std::list<INST_LIST_ITER>& coalesceableFills, unsigned int min,
@@ -302,7 +302,7 @@ void CoalesceSpillFills::coalesceFills(std::list<INST_LIST_ITER>& coalesceableFi
     }
 
     coalesceableFills.clear();
-    auto copyIt = bb->insert(f, coalescedFillDst->getInst());
+    bb->insert(f, coalescedFillDst->getInst());
 
     //    copyToOldFills(coalescedFillDst, indFills, f, bb, srcCISAOff);
 }

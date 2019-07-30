@@ -835,7 +835,7 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign)
         {
             if (kernel.getOption(vISA_GenerateDebugInfo))
             {
-                uint32_t start = 0, end = 0;
+                uint32_t start = 0;
                 for (auto rit = kernel.fg.rbegin();
                     rit != kernel.fg.rend();
                     rit++)
@@ -844,7 +844,6 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign)
 
                     if (bb->size() > 0)
                     {
-                        end = bb->back()->getCISAOff();
                         break;
                     }
                 }

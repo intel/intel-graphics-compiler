@@ -674,7 +674,6 @@ void BankConflictPass::setupBankForSrc0(G4_INST* inst, G4_INST* prevInst)
 void BankConflictPass::setupBankConflictsforTwoGRFs(G4_INST* inst)
 {
     BankConflict srcBC[3];
-    unsigned int regNum[3];
     unsigned int refNum[3];
     unsigned int offset[3];
     G4_Declare * dcls[3];
@@ -699,7 +698,6 @@ void BankConflictPass::setupBankConflictsforTwoGRFs(G4_INST* inst)
         dcls[i] = GetTopDclFromRegRegion(src);
         opndDcls[i] = src->getBase()->asRegVar()->getDeclare();
 
-        regNum[i] = dcls[i]->getNumRows();
         refNum[i] = gra.getNumRefs(dcls[i]);
         offset[i] = (opndDcls[i]->getOffsetFromBase() + src->getLeftBound()) / G4_GRF_REG_NBYTES;
         srcBC[i] = gra.getBankConflict(dcls[i]);
@@ -4280,7 +4278,6 @@ void Augmentation::buildInterferenceIncompatibleMask()
 {
     // Create 2 active lists - 1 for holding active live-intervals
     // with non-default mask and other for default mask
-    unsigned int oldStartIdx = 0;
 
     for (auto dcl_it = sortedIntervals.begin(), end = sortedIntervals.end();
         dcl_it != end;
@@ -4352,8 +4349,6 @@ void Augmentation::buildInterferenceIncompatibleMask()
                 " to default list" << std::endl);
 #endif
         }
-
-        oldStartIdx = startIdx;
     }
 }
 
@@ -10547,7 +10542,6 @@ void VerifyAugmentation::verifyAlign(G4_Declare* dcl)
     if (it == masks.end())
         return;
 
-    auto augData = (*it);
     auto dclMask = std::get<1>((*it).second);
 
     if (dclMask == AugmentationMasks::Default32Bit)
@@ -10774,33 +10768,6 @@ void VerifyAugmentation::verify()
                 return true;
             }
         }
-        return false;
-    };
-
-    auto overlap = [](LiveRange* p1, LiveRange* p2)
-    {
-        if (!p1 || !p2)
-            return false;
-
-        auto grf1 = p1->getPhyReg();
-        auto grf2 = p2->getPhyReg();
-
-        if (!grf1 || !grf2)
-            return false;
-
-        if (!grf1->isGreg() || !grf2->isGreg())
-            return false;
-
-        unsigned startp1 = grf1->asGreg()->getRegNum() * G4_GRF_REG_NBYTES + (p1->getPhyRegOff() * p1->getDcl()->getElemSize());
-        unsigned int startp2 = grf2->asGreg()->getRegNum() * G4_GRF_REG_NBYTES + (p2->getPhyRegOff()*p2->getDcl()->getElemSize());
-        unsigned int endp1 = startp1 + p1->getVar()->getDeclare()->getByteSize();
-        unsigned int endp2 = startp2 + p2->getVar()->getDeclare()->getByteSize();
-
-        if (startp1 > startp2 && startp1 < endp2)
-            return true;
-        if (startp2 > startp1 && startp2 < endp1)
-            return true;
-
         return false;
     };
 
