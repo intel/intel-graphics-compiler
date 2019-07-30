@@ -7702,7 +7702,6 @@ void EmitPass::EmitIntrinsicMessage(llvm::IntrinsicInst* inst)
 
 bool EmitPass::validateInlineAsmConstraints(llvm::CallInst* inst, SmallVector<StringRef, 8> &constraints)
 {
- #if defined ( _DEBUG )
     assert(inst->isInlineAsm());
     InlineAsm* IA = cast<InlineAsm>(inst->getCalledValue());
     StringRef constraintStr(IA->getConstraintString());
@@ -7711,12 +7710,18 @@ bool EmitPass::validateInlineAsmConstraints(llvm::CallInst* inst, SmallVector<St
     auto CheckConstraintTypes = [this](StringRef str)->bool
     {
         // TODO: Only "rw" (raw register operand) constraint allowed for now. Add more checks as needed
-        if (str.equals("=rw") || str.equals("+rw"))
+        if (str.equals("=rw"))
         {
             return true;
         }
         else if (str.equals("rw"))
         {
+            return true;
+        }
+        else if (str.equals("0"))
+        {
+            // Also allows matching input reg to output reg. We only support one output reg for now,
+            // and since output reg is always first, only match with '0'
             return true;
         }
         else
@@ -7729,34 +7734,37 @@ bool EmitPass::validateInlineAsmConstraints(llvm::CallInst* inst, SmallVector<St
     // Get a list of constraint tokens
     constraintStr.split(constraints, ',');
 
+    bool success = true;
+
     // Check the output constraint tokens
     unsigned index = 0;
-    while (index < constraints.size() &&
-        (constraints[index].startswith("=") || constraints[index].startswith("+")))
+    while (index < constraints.size() && constraints[index].startswith("="))
     {
-        CheckConstraintTypes(constraints[index++]);
+        success &= CheckConstraintTypes(constraints[index++]);
     }
 
-    // Check the input constraint tokens
-    for (unsigned i = 0; i < inst->getNumArgOperands(); i++)
+    if (success)
     {
-        StringRef tstr = constraints[index++];
-        CVariable* cv = GetSymbol(inst->getArgOperand(i));
-
-        if (tstr.endswith(".u"))
+        // Check the input constraint tokens
+        for (unsigned i = 0; i < inst->getNumArgOperands(); i++)
         {
-            // Check if var is uniform
-            if (!cv->IsUniform())
+            StringRef tstr = constraints[index++];
+            CVariable* cv = GetSymbol(inst->getArgOperand(i));
+
+            if (tstr.endswith(".u"))
             {
-                assert(0 && "Compiler cannot prove variable is uniform");
-                return false;
+                // Check if var is uniform
+                if (!cv->IsUniform())
+                {
+                    assert(0 && "Compiler cannot prove variable is uniform");
+                    return false;
+                }
+                tstr = tstr.substr(0, tstr.size() - 2);
             }
-            tstr = tstr.substr(0, tstr.size() - 2);
+            success &= CheckConstraintTypes(tstr);
         }
-        CheckConstraintTypes(tstr);
     }
-#endif
-    return true;
+    return success;
 }
 
 // Parse the inlined asm string to generate VISA operands
@@ -7769,11 +7777,33 @@ void EmitPass::EmitInlineAsm(llvm::CallInst* inst)
     const char* lastEmitted = asmStr;
     smallvector<CVariable*, 8> opnds;
     SmallVector<StringRef, 8> constraints;
-    validateInlineAsmConstraints(inst, constraints);
+    if(!validateInlineAsmConstraints(inst, constraints))
+    {
+        assert(0 && "Constraints for inline assembly cannot be validated");
+    }
 
     if (m_destination)
     {
-        opnds.push_back(m_destination);
+        // Check if dest operand is also an input
+        // If so, push the input operand as the destination
+        bool hasReadWriteReg = false;
+        unsigned opNum = 0;
+        for (StringRef str : constraints)
+        {
+            if (str.startswith("="))
+                continue;
+            else if (str.equals("0"))
+            {
+                opnds.push_back(GetSymbol(inst->getArgOperand(opNum)));
+                hasReadWriteReg = true;
+                break;
+            }
+            opNum++;
+        }
+        if (!hasReadWriteReg)
+        {
+            opnds.push_back(m_destination);
+        }
     }
     for (unsigned i = 0; i < inst->getNumArgOperands(); i++)
     {
