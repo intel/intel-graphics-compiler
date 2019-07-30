@@ -8371,6 +8371,12 @@ typedef struct _WA_TABLE
         "WA for clamping the lower cosine range",
         WA_BUG_TYPE_CORRUPTION,
         WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+          
+        WA_DECLARE(
+        Wa_1409392000,
+        "Workaround",
+        WA_BUG_TYPE_UNKNOWN,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
 
 } WA_TABLE, *PWA_TABLE;
 
