@@ -188,7 +188,7 @@ Imported_Intrinsics = \
     "GenISA_DCL_HSinputVec": ["float4",["int","int"],"NoMem"],
     # (owordVertexIndex, owordAttributeIndex)->float4
     "GenISA_DCL_HSOutputCntrlPtInputVec": ["float4",["int","int"],"ReadMem"],
-    "GenISA_HSURBPatchHeaderRead": ["float8",[],"NoMem"],
+    "GenISA_HSURBPatchHeaderRead": ["float8",[],"ReadMem"],
     "GenISA_RenderTargetRead": ["float4",["int"],"ReadMem"],
     "GenISA_RenderTargetReadSampleFreq": ["float4",["int","int"],"ReadMem"],
     "GenISA_patchInstanceId": ["int",[],"NoMem"],
