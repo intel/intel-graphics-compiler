@@ -4415,6 +4415,102 @@ void GlobalOpndHashTable::dump()
     }
 }
 
+void G4_Kernel::computeChannelSlicing()
+{
+    std::unordered_set<G4_Declare*> skipSendDcls;
+    unsigned int simdSize = getSimdSize();
+    channelSliced = true;
+
+    if (simdSize == 8 || simdSize == 16)
+    {
+        // SIMD8/16 kernels are not sliced
+        channelSliced = false;
+        return;
+    }
+
+    for (auto bb : fg)
+    {
+        for (auto inst : bb->getInstList())
+        {
+            if (inst->isPseudoKill() || inst->isWriteEnableInst())
+                continue;
+
+            if (inst->isSend())
+            {
+                auto dst = inst->getDst();
+                if (dst && dst->isDstRegRegion())
+                    skipSendDcls.insert(dst->getTopDcl());
+
+                auto src = inst->getSrc(0);
+                if (src && src->isSrcRegRegion())
+                    skipSendDcls.insert(src->getTopDcl());
+
+                src = inst->getSrc(1);
+                if (src && src->isSrcRegRegion())
+                    skipSendDcls.insert(src->getTopDcl());
+            }
+        }
+    }
+
+    // .dcl V1 size = 128 bytes
+    // op (16|M0) V1(0,0)     ..
+    // op (16|M16) V1(2,0)    ..
+    // For above sequence, return 32. Instruction
+    // is broken in to 2 only due to hw restriction.
+    // Allocation of dcl is still as if it were a
+    // SIMD32 kernel.
+
+    // dcl -> lb, rb, emask offset
+    std::unordered_map<G4_Declare*, std::vector<std::tuple<unsigned int, unsigned int, unsigned int>>> defaultDefs;
+    for (auto bb : fg)
+    {
+        for (auto inst : bb->getInstList())
+        {
+            auto dst = inst->getDst();
+            if (!dst || !dst->isDstRegRegion() || !dst->getTopDcl() || 
+                skipSendDcls.find(dst->getTopDcl()) != skipSendDcls.end() ||
+                dst->asDstRegRegion()->getHorzStride() != 1)
+                continue;
+
+            auto regFileKind = dst->getTopDcl()->getRegFile();
+            if (regFileKind != G4_RegFileKind::G4_GRF && regFileKind != G4_RegFileKind::G4_INPUT)
+                continue;
+
+            auto dstElemSize = G4_Type_Table[dst->getType()].byteSize;
+
+            if (dst->getTopDcl()->getByteSize() <= dstElemSize * simdSize)
+                continue;
+
+            std::vector<std::tuple<unsigned int, unsigned int, unsigned int>> v =
+                { std::make_tuple(dst->getLeftBound(), dst->getRightBound(), inst->getMaskOffset()) };
+            defaultDefs.insert(std::make_pair(dst->getTopDcl(), v));
+        }
+    }
+
+    for (auto dd : defaultDefs)
+    {
+        auto elemSize = dd.first->getElemSize();
+        for (auto defs : dd.second)
+        {
+            auto lb = std::get<0>(defs);
+            auto rb = std::get<1>(defs);
+            auto emaskOffset = std::get<2>(defs);
+
+            // Look for single instruction
+            if (emaskOffset == 0 && lb == 0 && rb == elemSize * 32)
+                channelSliced = false;
+            // Or broken instruction
+            if (emaskOffset == 16 && lb == elemSize * 16 && rb == elemSize * 32)
+                channelSliced = false;
+        }
+
+        if (!channelSliced)
+            break;
+    }
+
+    return;
+}
+
 void G4_Kernel::calculateSimdSize()
 {
     // Iterate over all instructions in kernel to check
@@ -4442,7 +4538,7 @@ void G4_Kernel::calculateSimdSize()
                 if (size > 16)
                 {
                     simdSize = 32;
-                    return;
+                    break;
                 }
                 else if (size > 8)
                 {
@@ -4450,7 +4546,11 @@ void G4_Kernel::calculateSimdSize()
                 }
             }
         }
+        if (simdSize == 32)
+            break;
     }
+
+    computeChannelSlicing();
 }
 
 void G4_Kernel::dump() const

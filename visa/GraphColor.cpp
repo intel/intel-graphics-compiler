@@ -2239,6 +2239,8 @@ void GlobalRA::updateSubRegAlignment(G4_SubReg_Align subAlign)
 // even/odd alignment that HW conformity computes.
 void GlobalRA::evenAlign()
 {
+    auto kernelSimdSizeToUse = kernel.getSimdSizeWithSlicing();
+
     // Update alignment of all GRF declares to align
     for (auto dcl : kernel.Declares)
     {
@@ -2248,11 +2250,16 @@ void GlobalRA::evenAlign()
             auto topdclAugMask = getAugmentationMask(topdcl);
 
             if (!areAllDefsNoMask(topdcl) && !topdcl->getIsPartialDcl() &&
-                topdclAugMask != AugmentationMasks::NonDefault &&
-                topdclAugMask != AugmentationMasks::Default64Bit)
+                topdclAugMask != AugmentationMasks::NonDefault)
             {
-                if ((topdcl->getElemSize() >= 4 || topdclAugMask == AugmentationMasks::Default32Bit) &&
-                    topdcl->getByteSize() >= GENX_GRF_REG_SIZ &&
+                auto elemSizeToUse = topdcl->getElemSize();
+                if (elemSizeToUse < 4 && topdclAugMask == AugmentationMasks::Default32Bit)
+                    // :uw with hstride 2 can also be Default32Bit and hence needs even alignment
+                    elemSizeToUse = 4;
+
+                if (// Even align if size is between 1-2 GRFs, for >2GRF sizes use weak edges
+                    (elemSizeToUse * kernelSimdSizeToUse) > (unsigned int)GENX_GRF_REG_SIZ &&
+                    (elemSizeToUse * kernelSimdSizeToUse) <= (unsigned int)(2*GENX_GRF_REG_SIZ) &&
                     !(kernel.fg.builder->getOption(vISA_enablePreemption) &&
                         dcl == kernel.fg.builder->getBuiltinR0()))
                 {
@@ -4168,6 +4175,22 @@ bool Interference::isStrongEdgeBetween(G4_Declare* dcl1, G4_Declare* dcl2)
     return false;
 }
 
+bool Augmentation::weakEdgeNeeded(AugmentationMasks m)
+{
+    // Weak edge needed in case #GRF exceeds 2
+
+    if (m == AugmentationMasks::Default64Bit)
+        return (G4_Type_Table[Type_Q].byteSize*kernel.getSimdSizeWithSlicing()) > (unsigned int)(2 * GENX_GRF_REG_SIZ);
+
+    if (m == AugmentationMasks::Default32Bit)
+    {
+        // Even align up to 2 GRFs size variable, use weak edges beyond
+        return (G4_Type_Table[Type_D].byteSize*kernel.getSimdSizeWithSlicing()) > (unsigned int)(2 * GENX_GRF_REG_SIZ);
+    }
+
+    return false;
+}
+
 //
 // Mark interference between newDcl and other incompatible dcls in current active lists.
 //
@@ -4185,10 +4208,8 @@ void Augmentation::buildSIMDIntfDcl(G4_Declare* newDcl, bool isCall)
         {
             if (liveAnalysis.livenessClass(G4_GRF) &&
                 // Populate compatible sparse intf data structure
-                // only for 64-bit bit types since others can be
-                // handled using Even align.
-                gra.getAugmentationMask(defaultDcl) == AugmentationMasks::Default64Bit &&
-                newDclAugMask == AugmentationMasks::Default64Bit)
+                // only for weak edges.
+                weakEdgeNeeded(newDclAugMask))
             {
                 if (defaultDcl->getRegVar()->isPhyRegAssigned() &&
                     newDcl->getRegVar()->isPhyRegAssigned())
