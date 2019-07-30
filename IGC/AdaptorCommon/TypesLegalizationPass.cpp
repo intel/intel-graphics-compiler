@@ -217,6 +217,10 @@ TypesLegalizationPass::ResolveValue( Instruction *ip,Value *val,SmallVector<unsi
   {
     IRBuilder<> builder( ld );
     Value* gep = CreateGEP( builder,ld->getOperand( 0 ),indices );
+    unsigned alignment = ld->getAlignment();
+    unsigned pointerTypeSize = gep->getType()->getPointerElementType()->getScalarSizeInBits() / 8;
+    if ( alignment && pointerTypeSize == alignment )
+      return builder.CreateAlignedLoad( gep, alignment );
     return builder.CreateLoad( gep );
   }
   else if(Constant *c = dyn_cast<Constant>(val)) {
