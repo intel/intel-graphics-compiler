@@ -169,12 +169,10 @@ typedef enum _SrcType_
     SRC_TYPE_UB,
     SRC_TYPE_B,
     SRC_TYPE_DF,
-    SRC_TYPE_VF,
-    SRC_TYPE_V,
     SRC_TYPE_F,
-    SRC_TYPE_UQ = 10,
-    SRC_TYPE_Q = 11,
-    SRC_TYPE_HF = 12,
+    SRC_TYPE_UQ = 8,
+    SRC_TYPE_Q = 9,
+    SRC_TYPE_HF = 10,
     SRC_TYPE_UNDEF = 0xFFFFFFFF
 } SrcType;
 
@@ -217,12 +215,10 @@ typedef enum _DstType_
     DST_TYPE_UB,
     DST_TYPE_B,
     DST_TYPE_DF,
-    DST_TYPE_VF,
-    DST_TYPE_V,
-    DST_TYPE_F = 9,
-    DST_TYPE_UQ = 10,
-    DST_TYPE_Q = 11,
-    DST_TYPE_HF = 12, // for half float
+    DST_TYPE_F = 7,
+    DST_TYPE_UQ = 8,
+    DST_TYPE_Q = 9,
+    DST_TYPE_HF = 10, // for half float
     DST_TYPE_UNDEF = 0xFFFFFFFF
 } DstType;
 

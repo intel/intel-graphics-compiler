@@ -409,11 +409,6 @@ inline uint32_t GetOperandSrcType(G4_Operand *src)
         case Type_HF:
             type = SRC_TYPE_HF;
             break;
-        case Type_VF:
-            type = SRC_TYPE_VF;
-            break;
-        case Type_V:
-            type = SRC_TYPE_V;
         default:
             type = SRC_TYPE_UNDEF;
             MUST_BE_TRUE(false, "Binary code emission error: unknown type");
@@ -638,12 +633,6 @@ inline void SetOperandDstType(BinInst *mybin, G4_DstRegRegion *dst)
             break;
         case Type_HF:
             SetDstType(mybin, DST_TYPE_HF);
-            break;
-        case Type_VF:
-            SetDstType(mybin, DST_TYPE_VF);
-            break;
-        case Type_V:
-            SetDstType(mybin, DST_TYPE_V);
             break;
         default:
             MUST_BE_TRUE(false, "Encoding error: destination type unknown");
