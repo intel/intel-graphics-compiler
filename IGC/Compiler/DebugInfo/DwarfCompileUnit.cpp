@@ -667,23 +667,6 @@ DIE *CompileUnit::getOrCreateTypeDIE(const MDNode *TyNode)
         assert(isa<DIDerivedType>(Ty) && "Unknown kind of DIType");
         constructTypeDIE(*TyDIE, cast<DIDerivedType>(Ty));
     }
-    // If this is a named finished type then include it in the list of types
-    // for the accelerator tables.
-    if (!Ty->getName().empty() && !Ty->isForwardDecl())
-    {
-        bool IsImplementation = 0;
-        if (isa<DICompositeType>(Ty))
-        {
-            DICompositeType* CT = cast<DICompositeType>(Ty);
-            // A runtime language of 0 actually means C/C++ and that any
-            // non-negative value is some version of Objective-C/C++.
-            IsImplementation = (CT->getRuntimeLang() == 0) || CT->isObjcClassComplete();
-        }
-#ifdef LLVM_3400
-        //unsigned Flags = IsImplementation ? dwarf::DW_FLAG_type_implementation : 0;
-        //addAccelType(Ty.getName(), std::make_pair(TyDIE, Flags));
-#endif
-    }
 
     return TyDIE;
 }
