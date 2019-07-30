@@ -2504,7 +2504,7 @@ SpillManagerGMRF::sendInSpilledRegVarPortions (
 
     if (currentStride)
     {
-        createFillSendInstr(fillRangeDcl, mRangeDcl, regOff, currentStride, srcRegOff);
+        createFillInstr(fillRangeDcl, mRangeDcl, regOff, currentStride, srcRegOff);
         numGRFFill++;
         if (height - currentStride > 0)
         {
@@ -2630,8 +2630,7 @@ void SpillManagerGMRF::preloadSpillRange (
         // Attach preloadRegion to dummy mov so getLeftBound/getRightBound won't crash when called from crossGRF in createFillSendMsgDesc
         builder_->createInternalInst(NULL, G4_mov, NULL, false, execSize, builder_->createNullDst(Type_UD), preloadRegion, NULL, 0);
         numGRFFill++;
-        createFillSendInstr (
-            spillRangeDcl, mRangeDcl, preloadRegion, execSize);
+        createFillInstr(spillRangeDcl, mRangeDcl, preloadRegion, execSize);
     }
     else
     {
@@ -2641,7 +2640,7 @@ void SpillManagerGMRF::preloadSpillRange (
             rDesc, spilledRangeRegion->getType ());
 
         numGRFFill++;
-        createFillSendInstr(
+        createFillInstr(
                 spillRangeDcl, mRangeDcl, preloadRegion, execSize, 0);
     }
 }
@@ -2706,6 +2705,7 @@ SpillManagerGMRF::createSpillSendInstr (
 
     return sendInst;
 }
+
 
 // Create the send instruction to perform the spill of the spilled region's
 // segment into spill memory.
@@ -2955,6 +2955,20 @@ G4_Imm* SpillManagerGMRF::createFillSendMsgDesc(
     return builder_->createImm(message, Type_UD);
 }
 
+G4_INST*
+SpillManagerGMRF::createFillInstr(
+    G4_Declare* fillRangeDcl,
+    G4_Declare* mRangeDcl,
+    unsigned          regOff,
+    unsigned          height,
+    unsigned          srcRegOff
+)
+{
+    {
+        return createFillSendInstr(fillRangeDcl, mRangeDcl, regOff, height, srcRegOff);
+    }
+}
+
 // Create the send instruction to perform the fill of the spilled regvars's
 // segment from spill memory.
 
@@ -2996,6 +3010,21 @@ SpillManagerGMRF::createFillSendInstr (
         mRangeDcl->getRegVar(), 0, 0, builder_->getRegionStride1(), Type_UD);
 
     return createSendInst ((unsigned char) execSize, postDst, payload, messageDescImm, SFID::DP_DC, false, InstOpt_WriteEnable);
+}
+
+
+G4_INST*
+SpillManagerGMRF::createFillInstr(
+    G4_Declare* fillRangeDcl,
+    G4_Declare* mRangeDcl,
+    G4_SrcRegRegion* filledRangeRegion,
+    unsigned          execSize,
+    unsigned          regOff
+)
+{
+    {
+        return createFillSendInstr(fillRangeDcl, mRangeDcl, filledRangeRegion, execSize);
+    }
 }
 
 // Create the send instruction to perform the fill of the filled region's
@@ -3157,7 +3186,11 @@ SpillManagerGMRF::sendOutSpilledRegVarPortions (
     if (currentStride)
     {
         initMWritePayload (spillRangeDcl, mRangeDcl, regOff, currentStride);
-        createSpillSendInstr (spillRangeDcl, mRangeDcl, regOff, currentStride, srcRegOff);
+        {
+            createSpillSendInstr(spillRangeDcl, mRangeDcl, regOff, currentStride, srcRegOff);
+        }
+
+
         numGRFSpill++;
 
         if (height - currentStride > 0) {
@@ -3317,8 +3350,10 @@ SpillManagerGMRF::insertSpillRangeCode (
         {
             initMWritePayload(
                 spillRangeDcl, mRangeDcl, spilledRegion, execSize);
-            spillSendInst = createSpillSendInstr(
-                spillRangeDcl, mRangeDcl, spilledRegion, execSize, spillSendOption);
+            {
+                spillSendInst = createSpillSendInstr(
+                    spillRangeDcl, mRangeDcl, spilledRegion, execSize, spillSendOption);
+            }
             numGRFSpill++;
         }
         if (failSafeSpill_)
@@ -3383,7 +3418,7 @@ SpillManagerGMRF::insertFillGRFRangeCode (
         G4_Declare * mRangeDcl =
             createAndInitMHeader(filledRegion, execSize);
         numGRFFill++;
-        fillSendInst = createFillSendInstr(fillRangeDcl, mRangeDcl, filledRegion, execSize);
+        fillSendInst = createFillInstr(fillRangeDcl, mRangeDcl, filledRegion, execSize);
 
         LocalLiveRange* filledLLR = gra.getLocalLR(filledRegion->getBase()->asRegVar()->getDeclare());
         if (filledLLR && filledLLR->getSplit())
