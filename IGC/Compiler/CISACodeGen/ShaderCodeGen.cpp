@@ -474,12 +474,11 @@ namespace IGC
     mpm.add(CreatePrivateMemoryResolution());
 
     // Run MemOpt
-    if (!isOptDisabled &&
-        ctx.m_instrTypes.hasLoadStore && IGC_IS_FLAG_DISABLED(DisableMemOpt)) {
+    bool doMemOpt = ctx.m_instrTypes.hasLoadStore && IGC_IS_FLAG_DISABLED(DisableMemOpt);
+    if (!isOptDisabled && doMemOpt) {
         if (IGC_IS_FLAG_ENABLED(EnableAdvMemOpt))
           mpm.add(createAdvMemOptPass());
         mpm.add(createMemOptPass());
-        mpm.add(createIGCInstructionCombiningPass());
     }
 
     if (ctx.type == ShaderType::OPENCL_SHADER &&
@@ -530,7 +529,7 @@ namespace IGC
     if (!isOptDisabled)
     {
         // Optimize lower-level IR
-        if (!fastCompile)
+        if (!fastCompile || doMemOpt)
         {
             mpm.add(createIGCInstructionCombiningPass());
         }
