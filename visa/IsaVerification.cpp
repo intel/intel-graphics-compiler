@@ -2867,6 +2867,7 @@ static void verifyKernelAttributes(
 
     REPORT_HEADER(options, numSLMSize <= 1,
         "More than 1 kernel attribute defined SLMSize");
+
 }
 
 void verifyKernelHeader(const common_isa_header& isaHeader,

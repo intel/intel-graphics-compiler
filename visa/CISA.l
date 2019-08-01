@@ -679,7 +679,7 @@ CM_AVS_(4|8|16)x(4|8) {
         return DOUBLEFLOAT;
     }
 
-qSLMSize[ ]*=[ ]* {TRACE("\n** File name of assembly "); CISAlval.string = "SLMSize"; return SLM_SIZE;}
+qSLMSize[ ]*=[ ]* {TRACE("\n** SLM Size "); CISAlval.string = "SLMSize"; return SLM_SIZE;}
 
 qFlagRegNum[ ]*=[ ]* {TRACE("\n** Flag regisetr number "); CISAlval.string = "FlagRegNum"; return FLAG_REG_NAME;}
 
