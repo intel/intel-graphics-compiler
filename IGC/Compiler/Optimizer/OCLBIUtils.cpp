@@ -257,8 +257,13 @@ Value* CImagesBI::CImagesUtils::traceImageOrSamplerArgument(CallInst* pCallInst,
     {
         if (auto *GEP = dyn_cast<GetElementPtrInst>(pVal))
         {
-            gepIndices.push_back(dyn_cast<ConstantInt>(GEP->getOperand(2)));
-            if (auto *leaf = findAlloca(GEP->getOperand(0)))
+            if (!GEP->hasAllConstantIndices())
+                return nullptr;
+
+            for (unsigned int i = GEP->getNumIndices(); i > 1; --i)
+                gepIndices.push_back(dyn_cast<ConstantInt>(GEP->getOperand(i)));
+
+            if (auto * leaf = findAlloca(GEP->getOperand(0)))
                 return leaf;
         }
         else if (CastInst* inst = dyn_cast<CastInst>(pVal))
@@ -273,15 +278,34 @@ Value* CImagesBI::CImagesUtils::traceImageOrSamplerArgument(CallInst* pCallInst,
         return nullptr;
     };
 
-    std::function<Value*(Value*, int)> findArgument = [&](Value *pVal, int depth) -> Value*
+    std::function<Value*(Value*, int)> findArgument = [&](Value *pVal, unsigned int depth) -> Value*
     {
         for (auto U : pVal->users())
         {
             if (auto *GEP = dyn_cast<GetElementPtrInst>(U))
             {
-                if (gepIndices[depth-1] != dyn_cast<ConstantInt>(GEP->getOperand(2)))
+                if (!GEP->hasAllConstantIndices())
+                    return nullptr;
+
+                if (GEP->getNumIndices() > depth + 1)
                     continue;
-                if (auto *leaf = findArgument(GEP, depth-1))
+
+                bool matchingGep = false;
+                for (unsigned int i = 1; i < GEP->getNumIndices(); ++i)
+                {
+                    if (gepIndices[depth - i] == dyn_cast<ConstantInt>(GEP->getOperand(i + 1)))
+                        matchingGep = true;
+                    else
+                    {
+                        matchingGep = false;
+                        continue;
+                    }
+                }
+
+                if (!matchingGep)
+                    continue;
+
+                if (auto * leaf = findArgument(GEP, depth - (GEP->getNumIndices() - 1)))
                     return leaf;
             }
             else if (CastInst* inst = dyn_cast<CastInst>(U))
@@ -461,8 +485,7 @@ Value* CImagesBI::CImagesUtils::traceImageOrSamplerArgument(CallInst* pCallInst,
             // More complicated case:
             // We need to go through non-zero GEPs, memcpys and casts to reach an argument.
             // In the same time we need to track the indices for geps as there might be more loads/stores to given alloca.
-            GetElementPtrInst* getElementPtr = dyn_cast<GetElementPtrInst>(addr);
-            if (getElementPtr && getElementPtr->getNumIndices() == 2)
+            if (GetElementPtrInst * getElementPtr = dyn_cast<GetElementPtrInst>(addr))
             {
                 addr = findAlloca(getElementPtr);
                 if (addr && isa<AllocaInst>(addr))
