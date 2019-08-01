@@ -93,7 +93,7 @@ void __cdecl DebugMessageStr(std::string& output, unsigned int ulDebugLevel, con
 #else
         if (IGC_IS_FLAG_ENABLED(DebugSurfaceStateOutput))
         {
-          fprintf(stderr, fmt, args);
+          vfprintf(stderr, fmt, args);
         }
 #endif
 
