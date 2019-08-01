@@ -54,7 +54,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/ADT/StringRef.h"
 #include "llvm/ADT/Triple.h"
 #include "llvm/ADT/Twine.h"
-#include "llvm/Bitcode/BitstreamReader.h"
+#include "llvm/Bitstream/BitstreamReader.h"
 #include "llvm/Bitcode/LLVMBitCodes.h"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/IR/Argument.h"
@@ -910,7 +910,7 @@ BitcodeReader::BitcodeReader(BitstreamCursor Stream, StringRef Strtab,
                              StringRef ProducerIdentification,
                              LLVMContext &Context)
     : BitcodeReaderBase(std::move(Stream), Strtab), Context(Context),
-      ValueList(Context) {
+      ValueList(Context, Stream.SizeInBytes()) {
   this->ProducerIdentification = ProducerIdentification;
 }
 
@@ -1036,7 +1036,8 @@ static GlobalValueSummary::GVFlags getDecodedGVSummaryFlags(uint64_t RawFlags,
 
 // Decode the flags for GlobalVariable in the summary
 static GlobalVarSummary::GVarFlags getDecodedGVarFlags(uint64_t RawFlags) {
-  return GlobalVarSummary::GVarFlags((RawFlags & 0x1) ? true : false);
+  return GlobalVarSummary::GVarFlags((RawFlags & 0x1) ? true : false,
+                                     (RawFlags & 0x2) ? true : false);
 }
 
 static GlobalValue::VisibilityTypes getDecodedVisibility(unsigned Val) {
@@ -1329,6 +1330,11 @@ static uint64_t getRawAttributeMask(Attribute::AttrKind Val) {
     return 1ULL << 61;
   case Attribute::WillReturn:
     return 1ULL << 62;
+  case Attribute::NoFree:
+    return 1ULL << 63;
+  case Attribute::NoSync:
+    llvm_unreachable("nosync attribute not supported in raw format");
+    break;
   case Attribute::Dereferenceable:
     llvm_unreachable("dereferenceable attribute not supported in raw format");
     break;
@@ -1342,9 +1348,11 @@ static uint64_t getRawAttributeMask(Attribute::AttrKind Val) {
   case Attribute::AllocSize:
     llvm_unreachable("allocsize not supported in raw format");
     break;
+  case Attribute::SanitizeMemTag:
+    llvm_unreachable("sanitize_memtag attribute not supported in raw format");
+    break;
   default:
       llvm_unreachable("Unsupported attribute type");
-    break;
       //return 0;
   }  
 }
@@ -1354,10 +1362,12 @@ static void addRawAttributeValue(AttrBuilder &B, uint64_t Val) {
 
   for (Attribute::AttrKind I = Attribute::None; I != Attribute::EndAttrKinds;
        I = Attribute::AttrKind(I + 1)) {
-    if (I == Attribute::Dereferenceable ||
+    if (I == Attribute::SanitizeMemTag ||
+        I == Attribute::Dereferenceable ||
         I == Attribute::DereferenceableOrNull ||
         I == Attribute::ArgMemOnly ||
-        I == Attribute::AllocSize)
+        I == Attribute::AllocSize ||
+        I == Attribute::NoSync)
       continue;
     if (uint64_t A = (Val & getRawAttributeMask(I))) {
       if (I == Attribute::Alignment)
@@ -1496,6 +1506,8 @@ static Attribute::AttrKind getAttrFromCode(uint64_t Code) {
     return Attribute::NoCapture;
   case bitc::ATTR_KIND_NO_DUPLICATE:
     return Attribute::NoDuplicate;
+  case bitc::ATTR_KIND_NOFREE:
+    return Attribute::NoFree;
   case bitc::ATTR_KIND_NO_IMPLICIT_FLOAT:
     return Attribute::NoImplicitFloat;
   case bitc::ATTR_KIND_NO_INLINE:
@@ -1516,6 +1528,8 @@ static Attribute::AttrKind getAttrFromCode(uint64_t Code) {
     return Attribute::NoRedZone;
   case bitc::ATTR_KIND_NO_RETURN:
     return Attribute::NoReturn;
+  case bitc::ATTR_KIND_NOSYNC:
+    return Attribute::NoSync;
   case bitc::ATTR_KIND_NOCF_CHECK:
     return Attribute::NoCfCheck;
   case bitc::ATTR_KIND_NO_UNWIND:
@@ -1578,6 +1592,8 @@ static Attribute::AttrKind getAttrFromCode(uint64_t Code) {
     return Attribute::ZExt;
   case bitc::ATTR_KIND_IMMARG:
     return Attribute::ImmArg;
+  case bitc::ATTR_KIND_SANITIZE_MEMTAG:
+    return Attribute::SanitizeMemTag;
   }
 }
 
@@ -1940,7 +1956,8 @@ Error BitcodeReader::parseTypeTableBody() {
       ResultTy = getTypeByID(Record[1]);
       if (!ResultTy || !StructType::isValidElementType(ResultTy))
         return error("Invalid type");
-      ResultTy = VectorType::get(ResultTy, Record[0]);
+      bool Scalable = Record.size() > 2 ? Record[2] : false;
+      ResultTy = VectorType::get(ResultTy, Record[0], Scalable);
       break;
     }
 
@@ -4216,6 +4233,10 @@ Error BitcodeReader::parseFunctionBody(Function *F) {
           popValue(Record, OpNum, NextValueNo, LHS->getType(), RHS))
         return error("Invalid record");
 
+      if (OpNum >= Record.size())
+        return error(
+            "Invalid record: operand number exceeded available operands");
+
       unsigned PredVal = Record[OpNum];
       bool IsFP = LHS->getType()->isFPOrFPVectorTy();
       FastMathFlags FMF;
@@ -5735,10 +5756,16 @@ void ModuleSummaryIndexBitcodeReader::parseTypeIdCompatibleVtableSummaryRecord(
     parseTypeIdCompatibleVtableInfo(Record, Slot, TypeId);
 }
 
-static void setImmutableRefs(std::vector<ValueInfo> &Refs, unsigned Count) {
-  // Read-only refs are in the end of the refs list.
-  for (unsigned RefNo = Refs.size() - Count; RefNo < Refs.size(); ++RefNo)
+static void setSpecialRefs(std::vector<ValueInfo> &Refs, unsigned ROCnt,
+                           unsigned WOCnt) {
+  // Readonly and writeonly refs are in the end of the refs list.
+  assert(ROCnt + WOCnt <= Refs.size());
+  unsigned FirstWORef = Refs.size() - WOCnt;
+  unsigned RefNo = FirstWORef - ROCnt;
+  for (; RefNo < FirstWORef; ++RefNo)
     Refs[RefNo].setReadOnly();
+  for (; RefNo < Refs.size(); ++RefNo)
+    Refs[RefNo].setWriteOnly();
 }
 
 // Eagerly parse the entire summary block. This populates the GlobalValueSummary
@@ -5765,9 +5792,9 @@ Error ModuleSummaryIndexBitcodeReader::parseEntireSummary(unsigned ID) {
   }
   const uint64_t Version = Record[0];
   const bool IsOldProfileFormat = Version == 1;
-  if (Version < 1 || Version > 6)
+  if (Version < 1 || Version > 7)
     return error("Invalid summary version " + Twine(Version) +
-                 ". Version should be in the range [1-6].");
+                 ". Version should be in the range [1-7].");
   Record.clear();
 
   // Keep around the last seen summary to be used when we see an optional
@@ -5866,15 +5893,19 @@ Error ModuleSummaryIndexBitcodeReader::parseEntireSummary(unsigned ID) {
       unsigned InstCount = Record[2];
       uint64_t RawFunFlags = 0;
       unsigned NumRefs = Record[3];
-      unsigned NumImmutableRefs = 0;
+      unsigned NumRORefs = 0, NumWORefs = 0;
       int RefListStartIndex = 4;
       if (Version >= 4) {
         RawFunFlags = Record[3];
         NumRefs = Record[4];
         RefListStartIndex = 5;
         if (Version >= 5) {
-          NumImmutableRefs = Record[5];
+          NumRORefs = Record[5];
           RefListStartIndex = 6;
+          if (Version >= 7) {
+            NumWORefs = Record[6];
+            RefListStartIndex = 7;
+          }
         }
       }
 
@@ -5894,7 +5925,7 @@ Error ModuleSummaryIndexBitcodeReader::parseEntireSummary(unsigned ID) {
       std::vector<FunctionSummary::EdgeTy> Calls = makeCallList(
           ArrayRef<uint64_t>(Record).slice(CallGraphEdgeStartIndex),
           IsOldProfileFormat, HasProfile, HasRelBF);
-      setImmutableRefs(Refs, NumImmutableRefs);
+      setSpecialRefs(Refs, NumRORefs, NumWORefs);
       auto FS = llvm::make_unique<FunctionSummary>(
           Flags, InstCount, getDecodedFFlags(RawFunFlags), /*EntryCount=*/0,
           std::move(Refs), std::move(Calls), std::move(PendingTypeTests),
@@ -5945,7 +5976,8 @@ Error ModuleSummaryIndexBitcodeReader::parseEntireSummary(unsigned ID) {
       unsigned ValueID = Record[0];
       uint64_t RawFlags = Record[1];
       unsigned RefArrayStart = 2;
-      GlobalVarSummary::GVarFlags GVF;
+      GlobalVarSummary::GVarFlags GVF(/* ReadOnly */ false,
+                                      /* WriteOnly */ false);
       auto Flags = getDecodedGVSummaryFlags(RawFlags, Version);
       if (Version >= 5) {
         GVF = getDecodedGVarFlags(Record[2]);
@@ -6002,7 +6034,7 @@ Error ModuleSummaryIndexBitcodeReader::parseEntireSummary(unsigned ID) {
       uint64_t RawFunFlags = 0;
       uint64_t EntryCount = 0;
       unsigned NumRefs = Record[4];
-      unsigned NumImmutableRefs = 0;
+      unsigned NumRORefs = 0, NumWORefs = 0;
       int RefListStartIndex = 5;
 
       if (Version >= 4) {
@@ -6010,13 +6042,19 @@ Error ModuleSummaryIndexBitcodeReader::parseEntireSummary(unsigned ID) {
         RefListStartIndex = 6;
         size_t NumRefsIndex = 5;
         if (Version >= 5) {
+          unsigned NumRORefsOffset = 1;
           RefListStartIndex = 7;
           if (Version >= 6) {
             NumRefsIndex = 6;
             EntryCount = Record[5];
             RefListStartIndex = 8;
+            if (Version >= 7) {
+              RefListStartIndex = 9;
+              NumWORefs = Record[8];
+              NumRORefsOffset = 2;
+            }
           }
-          NumImmutableRefs = Record[RefListStartIndex - 1];
+          NumRORefs = Record[RefListStartIndex - NumRORefsOffset];
         }
         NumRefs = Record[NumRefsIndex];
       }
@@ -6032,7 +6070,7 @@ Error ModuleSummaryIndexBitcodeReader::parseEntireSummary(unsigned ID) {
           ArrayRef<uint64_t>(Record).slice(CallGraphEdgeStartIndex),
           IsOldProfileFormat, HasProfile, false);
       ValueInfo VI = getValueInfoFromValueId(ValueID).first;
-      setImmutableRefs(Refs, NumImmutableRefs);
+      setSpecialRefs(Refs, NumRORefs, NumWORefs);
       auto FS = llvm::make_unique<FunctionSummary>(
           Flags, InstCount, getDecodedFFlags(RawFunFlags), EntryCount,
           std::move(Refs), std::move(Edges), std::move(PendingTypeTests),
@@ -6079,7 +6117,8 @@ Error ModuleSummaryIndexBitcodeReader::parseEntireSummary(unsigned ID) {
       uint64_t ModuleId = Record[1];
       uint64_t RawFlags = Record[2];
       unsigned RefArrayStart = 3;
-      GlobalVarSummary::GVarFlags GVF;
+      GlobalVarSummary::GVarFlags GVF(/* ReadOnly */ false,
+                                      /* WriteOnly */ false);
       auto Flags = getDecodedGVSummaryFlags(RawFlags, Version);
       if (Version >= 5) {
         GVF = getDecodedGVarFlags(Record[3]);
