@@ -126,7 +126,7 @@ void WIFuncResolution::visitCallInst(CallInst &CI)
     else if( funcName.equals(WIFuncsAnalysis::GET_GROUP_ID) )
     {
         wiRes = getGroupId(CI);
-    }
+    } 
     else if( funcName.equals(WIFuncsAnalysis::GET_GLOBAL_SIZE) )
     {
         wiRes = getGlobalSize(CI);
