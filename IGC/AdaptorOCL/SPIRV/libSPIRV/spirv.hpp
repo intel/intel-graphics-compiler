@@ -402,6 +402,7 @@ enum Decoration {
     DecorationMaxByteOffset = 45,
     DecorationNoSignedWrap = 4469,
     DecorationNoUnsignedWrap = 4470,
+    DecorationReferencedIndirectlyINTEL = 5802,
 };
 
 enum BuiltIn {

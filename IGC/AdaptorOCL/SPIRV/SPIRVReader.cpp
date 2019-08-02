@@ -2831,6 +2831,22 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
     }
     break;
 
+  case OpFunctionPointerCallINTEL: {
+    SPIRVFunctionPointerCallINTEL * BC =
+      static_cast<SPIRVFunctionPointerCallINTEL *>(BV);
+    auto Call = CallInst::Create(transValue(BC->getCalledValue(), F, BB),
+      transValue(BC->getArgumentValues(), F, BB),
+      BC->getName(), BB);
+    return mapValue(BV, Call);
+    }
+
+  case OpFunctionPointerINTEL: {
+    SPIRVFunctionPointerINTEL * BC =
+      static_cast<SPIRVFunctionPointerINTEL *>(BV);
+    SPIRVFunction* F = BC->getFunction();
+    BV->setName(F->getName());
+    return mapValue(BV, transFunction(F));
+    }
 
   case OpExtInst:
     return mapValue(BV, transOCLBuiltinFromExtInst(
@@ -3022,6 +3038,8 @@ SPIRVToLLVM::transFunction(SPIRVFunction *BF) {
   Function *F = dyn_cast<Function>(mapValue(BF, Function::Create(FT, Linkage,
       BF->getName(), M)));
   mapFunction(BF, F);
+  if (BF->hasDecorate(DecorationReferencedIndirectlyINTEL))
+    F->addFnAttr("referenced-indirectly");
   if (!F->isIntrinsic()) {
     F->setCallingConv(IsKernel ? CallingConv::SPIR_KERNEL :
         CallingConv::SPIR_FUNC);
