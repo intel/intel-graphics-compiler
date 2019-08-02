@@ -497,7 +497,7 @@ Value* CImagesBI::CImagesUtils::traceImageOrSamplerArgument(CallInst* pCallInst,
                     }
                     else
                     {
-                        assert(addr && "Expected reaching kernel's argument.");
+                        assert(pArg && "Expected reaching kernel's argument.");
                         return nullptr;
                     }
                 }
@@ -509,7 +509,7 @@ Value* CImagesBI::CImagesUtils::traceImageOrSamplerArgument(CallInst* pCallInst,
             }
             else
             {
-                assert(getElementPtr && "Expected 2-op GEP instruction.");
+                assert(getElementPtr && "Expected GEP instruction.");
                 return nullptr;
             }
         }
