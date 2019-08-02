@@ -259,12 +259,31 @@ FunctionPass *IGC::createPromoteConstantPass() { return new PromoteConstant(); }
 //
 // We only promote when there is load of GV inside loops.
 //
-static bool checkUses(GlobalVariable *GV, const Function *F, LoopInfo &LI) {
+static bool checkUses(GlobalVariable *GV, const Function *F, LoopInfo &LI, const ConstantArray* llvm_used) {
   bool LoadInLoop = false;
   for (auto U : GV->users()) {
+    // Because of ProgramScopeConstantAnalysis there might be user in llvm.used
+    // let's ignore this one, as it doesn't prevent opt.
+    // TODO: is there any other case of Constant to worry about. (?)
+    if (auto Const = dyn_cast<Constant>(U))
+    {
+        bool foundInLLVMUsed = false;
+        unsigned numOperands = llvm_used ? llvm_used->getNumOperands() : 0;
+        for (unsigned i = 0; i != numOperands; ++i)
+        {
+            Value* gvi = llvm_used->getOperand(i)->stripPointerCastsNoFollowAliases();
+            if (gvi == Const->stripPointerCastsNoFollowAliases())
+            {
+                foundInLLVMUsed = true;
+                break;
+            }
+        }
+        if (foundInLLVMUsed)
+            continue;
+    }
+
     auto Inst = dyn_cast<Instruction>(U);
     if (!Inst)
-      // TODO: this may be a const expr.
       return false;
 
     if (F != Inst->getParent()->getParent())
@@ -282,6 +301,9 @@ static bool checkUses(GlobalVariable *GV, const Function *F, LoopInfo &LI) {
         LoadInLoop = true;
     }
   }
+
+  if (IGC_IS_FLAG_ENABLED(AllowNonLoopConstantPromotion))
+      return true;
 
   return LoadInLoop;
 }
@@ -341,6 +363,11 @@ static bool checkSize(GlobalVariable *GV, VectorType *&DataType,
     N *= VectorSize;
   }
   unsigned VS = getLegalVectorSize(N);
+
+  // Allow experimental overriding for bigger than 32 elem. tables
+  if (IGC_IS_FLAG_ENABLED(AllowNonLoopConstantPromotion))
+    VS = 1U << Log2_32_Ceil(N);
+
   if (VS == 0)
     return false;
 
@@ -404,7 +431,7 @@ static bool checkType(GlobalVariable *GV) {
   if (auto CDA = dyn_cast<ConstantDataArray>(Init))
     return !CDA->isString();
 
-  // Not simply data. Need to check if all emements have the same type in a
+  // Not simply data. Need to check if all elements have the same type in a
   // constant array.
   if (auto CA = dyn_cast<ConstantArray>(Init)) {
     auto EltTy = CA->getType()->getElementType();
@@ -491,9 +518,10 @@ static void promote(GlobalVariable *GV, VectorType *AllocaType, bool IsSigned,
   // Transform all uses
   for (auto UI = GV->user_begin(); UI != GV->user_end(); /*empty*/) {
     auto GEP = dyn_cast<GetElementPtrInst>(*UI++);
-    assert(GEP && "nullptr");
-    if (GEP->getParent()->getParent() != F)
+    // might be Constant user in llvm.used
+    if (!GEP || GEP->getParent()->getParent() != F)
       continue;
+
     assert(GEP->getNumIndices() == 2);
     // This is the index to address the array, and the first index is to address
     // the global variable itself.
@@ -626,6 +654,9 @@ bool PromoteConstant::runOnFunction(Function &F) {
   Module *M = F.getParent();
   bool Changed = false;
 
+  auto gv = M->getGlobalVariable("llvm.used");
+  ConstantArray* llvm_used = gv ? dyn_cast_or_null<ConstantArray>(gv->getInitializer()) : nullptr;
+
   for (auto I = M->global_begin(); I != M->global_end(); /*empty*/) {
     GlobalVariable *GV = &(*I++);
     if (GV->user_empty() || !GV->isConstant() || !GV->hasInitializer() ||
@@ -633,7 +664,7 @@ bool PromoteConstant::runOnFunction(Function &F) {
       continue;
     if (!checkType(GV))
       continue;
-    if (!checkUses(GV, &F, LI))
+    if (!checkUses(GV, &F, LI, llvm_used))
       continue;
 
     // Rewrite as cmp+sel sequence if profitable.
