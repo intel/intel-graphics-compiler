@@ -485,9 +485,9 @@ private:
 
     // Split SIMD16 message data payload(MDP) for scattered/untyped write
     // messages into two SIMD8 MDPs : V0 and V1.
-    void SplitMDP16To8(CVariable* MDP, uint32_t MDPOfst, uint32_t NumBlks, CVariable* V0, CVariable* V1);
+    void SplitPayloadToLowerSIMD(CVariable* MDP, uint32_t MDPOfst, uint32_t NumBlks, CVariable* V0, CVariable* V1, uint32_t fromSize = 16);
     // Merge two SIMD8 MDPs (V0 & V1) for scattered/untyped read messages into one SIMD16 message : MDP
-    void MergeMDP8To16(CVariable* V0, CVariable *V1, uint32_t NumBlks, CVariable* MDP, uint32_t MDPOfst);
+    void MergePayloadToHigherSIMD(CVariable* V0, CVariable *V1, uint32_t NumBlks, CVariable* MDP, uint32_t MDPOfst, uint32_t toSize = 16);
 
     // save compile time by avoiding retry if the amount of spill is (very) small
     bool AvoidRetryOnSmallSpill() const;

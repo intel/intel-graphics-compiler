@@ -1253,14 +1253,15 @@ CEncoder::SplitEMask(Common_ISA_Exec_Size fromExecSize,
 
 // Splitting SIMD16 Message Data Payload (MDP at offset = MDPOfst) for A64
 // scatter/untyped write messages to two SIMD8 MDPs (V0 and V1).
-void CEncoder::SplitMDP16To8(CVariable* MDP, uint32_t MDPOfst, uint32_t NumBlks, CVariable* V0, CVariable* V1)
+void CEncoder::SplitPayloadToLowerSIMD(CVariable* MDP, uint32_t MDPOfst, uint32_t NumBlks, CVariable* V0, CVariable* V1, uint32_t fromSize)
 {
     VISA_GenVar* GV = GetVISAVariable(MDP);
     VISA_GenVar* v0GV = GetVISAVariable(V0);
     VISA_GenVar* v1GV = GetVISAVariable(V1);
     VISA_VectorOpnd *movDst0, *movDst1, *srcOpnd;
-    const Common_ISA_Exec_Size fromESize = EXEC_SIZE_16;
-    const Common_ISA_Exec_Size toESize = EXEC_SIZE_8;
+    const uint32_t toSize = fromSize / 2;
+    const Common_ISA_Exec_Size fromESize = getExecSize(lanesToSIMDMode(fromSize));
+    const Common_ISA_Exec_Size toESize = getExecSize(lanesToSIMDMode(toSize));
     const uint32_t eltBytes = MDP->GetElemSize();
     assert(eltBytes == V0->GetElemSize() && eltBytes == V1->GetElemSize() &&
         "Element size should be the same among SIMD16 MDP and SIMD8 MDP!");
@@ -1276,8 +1277,8 @@ void CEncoder::SplitMDP16To8(CVariable* MDP, uint32_t MDPOfst, uint32_t NumBlks,
             uint32_t MDPStart = MDPOfst / eltBytes;
             for (uint32_t i = 0; i < NumBlks; ++i)
             {
-                uint32_t dstOfst = i * 8;
-                uint32_t srcOfst = i * 16 + MDPStart;
+                uint32_t dstOfst = i * toSize;
+                uint32_t srcOfst = i * fromSize + MDPStart;
                 V(vKernel->CreateVISADstOperand(movDst0, v0GV, 1, dstOfst / GRFElts, dstOfst % GRFElts));
                 V(vKernel->CreateVISADstOperand(movDst1, v1GV, 1, dstOfst / GRFElts, dstOfst % GRFElts));
 
@@ -1289,7 +1290,7 @@ void CEncoder::SplitMDP16To8(CVariable* MDP, uint32_t MDPOfst, uint32_t NumBlks,
                     SplitEMask(fromESize, toESize, 0, execNM),
                     toESize, movDst0, srcOpnd));
 
-                srcOfst += 8;
+                srcOfst += toSize;
                 V(vKernel->CreateVISASrcOperand(srcOpnd, GV, MODIFIER_NONE,
                     1, 1, 0, srcOfst / GRFElts, srcOfst % GRFElts));
 
@@ -1303,14 +1304,15 @@ void CEncoder::SplitMDP16To8(CVariable* MDP, uint32_t MDPOfst, uint32_t NumBlks,
 }
 
 // Merge two SIMD8 MDP (V0 and V1) into a single SIMD16 MDP (MDP at offset = MDPOfst)
-void CEncoder::MergeMDP8To16(CVariable* V0, CVariable* V1, uint32_t NumBlks, CVariable* MDP, uint32_t MDPOfst)
+void CEncoder::MergePayloadToHigherSIMD(CVariable* V0, CVariable* V1, uint32_t NumBlks, CVariable* MDP, uint32_t MDPOfst, uint32_t toSize)
 {
     VISA_GenVar* GV = GetVISAVariable(MDP);
     VISA_GenVar* v0GV = GetVISAVariable(V0);
     VISA_GenVar* v1GV = GetVISAVariable(V1);
     VISA_VectorOpnd *movDst, *movSrc0, *movSrc1;
-    const Common_ISA_Exec_Size fromESize = EXEC_SIZE_16;
-    const Common_ISA_Exec_Size toESize = EXEC_SIZE_8;
+    const uint32_t fromSize = toSize / 2;
+    const Common_ISA_Exec_Size fromESize = getExecSize(lanesToSIMDMode(toSize));
+    const Common_ISA_Exec_Size toESize = getExecSize(lanesToSIMDMode(fromSize));
     const uint32_t eltBytes = MDP->GetElemSize();
     assert(eltBytes == V0->GetElemSize() && eltBytes == V1->GetElemSize() &&
            "Element size should be the same among SIMD16 MDP and SIMD8 MDP!");
@@ -1326,8 +1328,8 @@ void CEncoder::MergeMDP8To16(CVariable* V0, CVariable* V1, uint32_t NumBlks, CVa
             uint32_t MDPStart = MDPOfst / eltBytes;
             for (uint32_t i = 0; i < NumBlks; ++i)
             {
-                uint32_t dstOfst = i * 16 + MDPStart;
-                uint32_t srcOfst = i * 8;
+                uint32_t dstOfst = i * toSize + MDPStart;
+                uint32_t srcOfst = i * fromSize;
                 V(vKernel->CreateVISADstOperand(movDst, GV, 1, dstOfst / GRFElts, dstOfst % GRFElts));
                 V(vKernel->CreateVISASrcOperand(movSrc0, v0GV, MODIFIER_NONE,
                     1, 1, 0, srcOfst / GRFElts, srcOfst % GRFElts));
@@ -1339,7 +1341,7 @@ void CEncoder::MergeMDP8To16(CVariable* V0, CVariable* V1, uint32_t NumBlks, CVa
                     SplitEMask(fromESize, toESize, 0, execNM),
                     toESize, movDst, movSrc0));
 
-                dstOfst += 8;
+                dstOfst += fromSize;
                 V(vKernel->CreateVISADstOperand(movDst, GV, 1, dstOfst / GRFElts, dstOfst % GRFElts));
                 V(vKernel->AppendVISADataMovementInst(
                     ISA_MOV, nullptr, false,
@@ -4828,7 +4830,7 @@ void CEncoder::GatherA64(CVariable *dst,
             }
 
             uint32_t dstOfstBytes = dst->GetAliasOffset() + m_encoderState.m_dstOperand.subVar * getGRFSize();
-            MergeMDP8To16(V0, V1, numElems, dst, dstOfstBytes);
+            MergePayloadToHigherSIMD(V0, V1, numElems, dst, dstOfstBytes, 16);
         }
         return;
     }
@@ -4893,7 +4895,7 @@ void CEncoder::ScatterA64(CVariable *src,
                                            src->IsUniform());
             // Starting offset is calculated from AliasOffset only (subVar not used).
             uint32_t srcOfstBytes = src->GetAliasOffset();
-            SplitMDP16To8(src, srcOfstBytes, numElems, V0, V1);
+            SplitPayloadToLowerSIMD(src, srcOfstBytes, numElems, V0, V1, 16);
 
             for (unsigned p = 0; p < 2; ++p)
             {
@@ -5210,7 +5212,7 @@ void CEncoder::Gather4A64(CVariable *dst, CVariable *offset) {
                     addressOpnd, dstOpnd));
             }
 
-            MergeMDP8To16(V0, V1, nd, dst, dstOfstBytes);
+            MergePayloadToHigherSIMD(V0, V1, nd, dst, dstOfstBytes, 16);
         }
         return;
     }
@@ -5289,7 +5291,7 @@ void CEncoder::Scatter4A64(CVariable *src, CVariable *offset) {
                                            src->GetAlign(),
                                            src->IsUniform());
 
-            SplitMDP16To8(src, srcOfstBytes, nd, V0, V1);
+            SplitPayloadToLowerSIMD(src, srcOfstBytes, nd, V0, V1, 16);
 
             for (unsigned p = 0; p < 2; ++p)
             {
