@@ -1999,7 +1999,7 @@ void DescDecoder::tryDecodeSampler()
             break;
         case 0x1F:
             sym << "sample_ld2ds";
-            desc << "sample multi-sample without mcs";
+            messageDesc = "sample multi-sample without mcs";
             params = 6;
             break;
         default:
