@@ -199,7 +199,7 @@ public:
                 bool L1_Flush,
                 bool SWFence);
     void FlushSamplerCache();
-    void EndOfThread();
+    void EOT();
     void OWLoadA64(CVariable* dst, CVariable* offset, uint dstSize, uint dstOffset = 0);
     void OWStoreA64(CVariable* dst, CVariable* offset, uint dstSize, uint srcOffset);
     void MediaBlockMessage(ISA_Opcode subOpcode,

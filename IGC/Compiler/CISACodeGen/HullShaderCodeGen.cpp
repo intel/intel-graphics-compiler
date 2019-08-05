@@ -441,7 +441,7 @@ void CHullShader::EmitPatchConstantHeader(
         false,
         false,
         0,
-        EU_GEN8_URB_OPCODE_SIMD8_WRITE);
+        EU_URB_OPCODE_SIMD8_WRITE);
 
     CVariable* pMessDesc = ImmToVariable(desc, ISA_TYPE_D);
 
@@ -465,7 +465,7 @@ void CHullShader::AddEpilogue(llvm::ReturnInst* pRet)
 
     if (addDummyURB)
     {
-        EmitEOTURBWrite();
+        EOTURBWrite();
     }
 
     CShader::AddEpilogue(pRet);

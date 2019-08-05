@@ -148,7 +148,7 @@ SProgramOutput* CShader::ProgramOutput()
     return &m_simdProgram;
 }
 
-void CShader::EmitEOTURBWrite()
+void CShader::EOTURBWrite()
 {
     CEncoder& encoder = GetEncoder();
     uint messageLength = 3;
@@ -163,16 +163,16 @@ void CShader::EmitEOTURBWrite()
     // use 0 as write mask
     CopyVariable(pEOTPayload, zero, 1);
 
-    uint exDesc = EU_MESSAGE_TARGET_URB | (1 << 5);
+    constexpr uint exDesc = EU_MESSAGE_TARGET_URB | cMessageExtendedDescriptorEOTBit;
 
-    uint desc = UrbMessage(
+    const uint desc = UrbMessage(
         messageLength,
         0,
         true,
         false,
         true,
         0,
-        EU_GEN8_URB_OPCODE_SIMD8_WRITE);
+        EU_URB_OPCODE_SIMD8_WRITE);
 
     CVariable* pMessDesc = ImmToVariable(desc, ISA_TYPE_D);
 
@@ -194,7 +194,7 @@ void CShader::EOTRenderTarget()
         perCoarse = (static_cast<CPixelShader*>(this)->GetPhase() != PSPHASE_LEGACY);
     }
 
-    uint Desc = PixelDataPort(
+    const uint Desc = PixelDataPort(
         false,
         m_SIMDSize == SIMDMode::SIMD8 ? 4 : 8,
         0,
@@ -208,18 +208,18 @@ void CShader::EOTRenderTarget()
 
     this->SetBindingTableEntryCountAndBitmap(true, m_pBtiLayout->GetNullSurfaceIdx());
 
-    // EOT = bit 5
-    // NULL Render target = bit 20
-    uint exDesc = EU_MESSAGE_TARGET_DATA_PORT_WRITE | BIT(5) | BIT(20);
+    constexpr uint nullRenderTargetBit = BIT(20);
+    constexpr uint exDesc = EU_MESSAGE_TARGET_DATA_PORT_WRITE | cMessageExtendedDescriptorEOTBit | nullRenderTargetBit;
 
     CVariable* payload = GetNewVariable(4 * numLanes(m_SIMDSize), ISA_TYPE_UD, EALIGN_GRF);
     encoder.SendC(nullptr, payload, exDesc, ImmToVariable(Desc, ISA_TYPE_UD));
     encoder.Push();
 }
 
+
 void CShader::AddEpilogue(llvm::ReturnInst* ret)
 {
-    encoder.EndOfThread();
+    encoder.EOT();
     encoder.Push();
 }
 

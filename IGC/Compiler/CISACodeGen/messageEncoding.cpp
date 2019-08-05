@@ -28,7 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/CISACodeGen.h"
 #include "common/Types.hpp"
 
-/*********************************************************************************** 
+/***********************************************************************************
 This File contains all the helper functions to generate the message descriptor for the different
 messages we use for 3D compiler, once the messages are implemented in C-ISA we can get rid of this.
 Most likely some messages will stay encoded manually by the code generator
@@ -63,7 +63,7 @@ uint Sampler(
     bool endOfThread,
     bool FP16Input,
     bool FP16Return)
-{    
+{
     assert( resourceIndex  < 256 );
     assert( samplerIndex   < 16  );
     assert( messageType    >= 0 && int(messageType)    < 32 );
@@ -72,7 +72,7 @@ uint Sampler(
     assert( messageLength  >  0 && messageLength  < 16  );
 
     // if endOfThread == true, responseLength needs to be 0
-    assert( !endOfThread || responseLength == 0); 
+    assert( !endOfThread || responseLength == 0);
 
     SEUSamplerMessageDescriptorGen7 messageDescriptor;
     memset(&messageDescriptor, 0, sizeof(messageDescriptor));
@@ -86,7 +86,7 @@ uint Sampler(
     messageDescriptor.DW0.All.MessageLength = messageLength;
     messageDescriptor.DW0.All.FP16Input = FP16Input;
     messageDescriptor.DW0.All.FP16Return = FP16Return;
-    messageDescriptor.DW0.All.EndOfThread = endOfThread; 
+    messageDescriptor.DW0.All.EndOfThread = endOfThread;
 
     return messageDescriptor.DW0.Value;
 }
@@ -180,7 +180,7 @@ uint encodeMessageDescriptorForAtomicUnaryOp(
     uint binding_table_index)
 {
     SEUDataPortMessageDescriptorGen8_0 messageDescriptor = { 0 };
-    
+
     uint messageSpecificControl = 0;
 
     messageSpecificControl |= atomic_op_type;
@@ -199,7 +199,7 @@ uint encodeMessageDescriptorForAtomicUnaryOp(
 
     switch(atomic_op_type)
     {
-        
+
         case EU_DATA_PORT_A64_ATOMIC_OPERATION_FMIN:
         {
             messageDescriptor.DW0.All.MessageSpecificControl = 2;//FMIN
@@ -311,7 +311,7 @@ uint DataPortRead(
     const uint messageSpecificControl,
     const bool invalidateAfterReadEnableHint,
     const DATA_PORT_TARGET_CACHE targetCache,
-    const uint bindingTableIndex ) 
+    const uint bindingTableIndex )
 {
     static_assert( 0 == DATA_PORT_TARGET_DATA_CACHE,     "Table index order" );
     static_assert( 1 == DATA_PORT_TARGET_RENDER_CACHE,   "Table index order" );
@@ -323,18 +323,18 @@ uint DataPortRead(
     {
         // DATA_PORT_TARGET_DATA_CACHE
         {
-            EU_GEN7_DATA_CACHE_MESSAGE_TYPE_OWORD_BLOCK_READ,               // EU_DATA_PORT_READ_MESSAGE_TYPE_OWORD_BLOCK_READ          
-            EU_GEN7_DATA_CACHE_MESSAGE_TYPE_OWORD_DUAL_BLOCK_READ,          // EU_DATA_PORT_READ_MESSAGE_TYPE_OWORD_DUAL_BLOCK_READ     
-            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_MEDIA_BLOCK_READ          
-            EU_GEN7_DATA_CACHE_MESSAGE_TYPE_DWORD_SCATTERED_READ,           // EU_DATA_PORT_READ_MESSAGE_TYPE_DWORD_SCATTERED_READ      
-            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_RENDERTARGET_UNORM_READ   
-            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_AVC_LOOPFILTER_READ       
+            EU_GEN7_DATA_CACHE_MESSAGE_TYPE_OWORD_BLOCK_READ,               // EU_DATA_PORT_READ_MESSAGE_TYPE_OWORD_BLOCK_READ
+            EU_GEN7_DATA_CACHE_MESSAGE_TYPE_OWORD_DUAL_BLOCK_READ,          // EU_DATA_PORT_READ_MESSAGE_TYPE_OWORD_DUAL_BLOCK_READ
+            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_MEDIA_BLOCK_READ
+            EU_GEN7_DATA_CACHE_MESSAGE_TYPE_DWORD_SCATTERED_READ,           // EU_DATA_PORT_READ_MESSAGE_TYPE_DWORD_SCATTERED_READ
+            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_RENDERTARGET_UNORM_READ
+            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_AVC_LOOPFILTER_READ
             EU_GEN7_DATA_CACHE_MESSAGE_TYPE_UNALIGNED_OWORD_BLOCK_READ,     // EU_DATA_PORT_READ_MESSAGE_TYPE_UNALIGNED_OWORD_BLOCK_READ
-            EU_GEN7_DATA_CACHE_MESSAGE_TYPE_BYTE_SCATTERED_READ,            // EU_DATA_PORT_READ_MESSAGE_TYPE_BYTE_SCATTERED_READ       
-            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_UNTYPED_SURFACE_READ      
-            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_TYPED_SURFACE_READ        
-            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_A64_SCATTERED_READ        
-            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_A64_UNTYPED_SURFACE_READ        
+            EU_GEN7_DATA_CACHE_MESSAGE_TYPE_BYTE_SCATTERED_READ,            // EU_DATA_PORT_READ_MESSAGE_TYPE_BYTE_SCATTERED_READ
+            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_UNTYPED_SURFACE_READ
+            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_TYPED_SURFACE_READ
+            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_A64_SCATTERED_READ
+            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_A64_UNTYPED_SURFACE_READ
             INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_A64_BLOCK_READ
             INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_TRANSPOSE_READ
             INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_RENDER_TARGET_READ
@@ -342,18 +342,18 @@ uint DataPortRead(
         },
         // DATA_PORT_TARGET_RENDER_CACHE
         {
-            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_OWORD_BLOCK_READ          
-            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_OWORD_DUAL_BLOCK_READ     
-            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_MEDIA_BLOCK_READ          
-            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_DWORD_SCATTERED_READ      
-            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_RENDERTARGET_UNORM_READ   
-            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_AVC_LOOPFILTER_READ       
+            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_OWORD_BLOCK_READ
+            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_OWORD_DUAL_BLOCK_READ
+            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_MEDIA_BLOCK_READ
+            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_DWORD_SCATTERED_READ
+            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_RENDERTARGET_UNORM_READ
+            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_AVC_LOOPFILTER_READ
             INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_UNALIGNED_OWORD_BLOCK_READ
-            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_BYTE_SCATTERED_READ       
-            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_UNTYPED_SURFACE_READ      
-            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_TYPED_SURFACE_READ        
-            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_A64_UNTYPED_SURFACE_READ        
-            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_A64_SCATTERED_READ        
+            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_BYTE_SCATTERED_READ
+            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_UNTYPED_SURFACE_READ
+            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_TYPED_SURFACE_READ
+            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_A64_UNTYPED_SURFACE_READ
+            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_A64_SCATTERED_READ
             INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_A64_BLOCK_READ
             INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_TRANSPOSE_READ
             EU_GEN9_RENDER_CACHE_MESSAGE_TYPE_RENDER_TARGET_READ,           // EU_DATA_PORT_READ_MESSAGE_TYPE_RENDER_TARGET_READ
@@ -361,18 +361,18 @@ uint DataPortRead(
         },
         // DATA_PORT_TARGET_SAMPLER_CACHE
         {
-            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_OWORD_BLOCK_READ          
-            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_OWORD_DUAL_BLOCK_READ     
-            EU_GEN7_SAMPLER_CACHE_MESSAGE_TYPE_MEDIA_BLOCK_READ,            // EU_DATA_PORT_READ_MESSAGE_TYPE_MEDIA_BLOCK_READ          
-            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_DWORD_SCATTERED_READ      
-            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_RENDERTARGET_UNORM_READ   
-            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_AVC_LOOPFILTER_READ       
+            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_OWORD_BLOCK_READ
+            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_OWORD_DUAL_BLOCK_READ
+            EU_GEN7_SAMPLER_CACHE_MESSAGE_TYPE_MEDIA_BLOCK_READ,            // EU_DATA_PORT_READ_MESSAGE_TYPE_MEDIA_BLOCK_READ
+            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_DWORD_SCATTERED_READ
+            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_RENDERTARGET_UNORM_READ
+            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_AVC_LOOPFILTER_READ
             EU_GEN7_SAMPLER_CACHE_MESSAGE_TYPE_UNALIGNED_OWORD_BLOCK_READ,  // EU_DATA_PORT_READ_MESSAGE_TYPE_UNALIGNED_OWORD_BLOCK_READ
-            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_BYTE_SCATTERED_READ       
-            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_UNTYPED_SURFACE_READ      
-            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_TYPED_SURFACE_READ        
-            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_A64_UNTYPED_SURFACE_READ        
-            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_A64_SCATTERED_READ        
+            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_BYTE_SCATTERED_READ
+            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_UNTYPED_SURFACE_READ
+            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_TYPED_SURFACE_READ
+            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_A64_UNTYPED_SURFACE_READ
+            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_A64_SCATTERED_READ
             INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_A64_BLOCK_READ
             INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_TRANSPOSE_READ
             INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_RENDER_TARGET_READ
@@ -380,18 +380,18 @@ uint DataPortRead(
         },
         // DATA_PORT_TARGET_CONSTANT_CACHE
         {
-            EU_GEN7_CONSTANT_CACHE_MESSAGE_TYPE_OWORD_BLOCK_READ,           // EU_DATA_PORT_READ_MESSAGE_TYPE_OWORD_BLOCK_READ          
-            EU_GEN7_CONSTANT_CACHE_MESSAGE_TYPE_OWORD_DUAL_BLOCK_READ,      // EU_DATA_PORT_READ_MESSAGE_TYPE_OWORD_DUAL_BLOCK_READ     
-            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_MEDIA_BLOCK_READ          
-            EU_GEN7_CONSTANT_CACHE_MESSAGE_TYPE_DWORD_SCATTERED_READ,       // EU_DATA_PORT_READ_MESSAGE_TYPE_DWORD_SCATTERED_READ      
-            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_RENDERTARGET_UNORM_READ   
-            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_AVC_LOOPFILTER_READ       
+            EU_GEN7_CONSTANT_CACHE_MESSAGE_TYPE_OWORD_BLOCK_READ,           // EU_DATA_PORT_READ_MESSAGE_TYPE_OWORD_BLOCK_READ
+            EU_GEN7_CONSTANT_CACHE_MESSAGE_TYPE_OWORD_DUAL_BLOCK_READ,      // EU_DATA_PORT_READ_MESSAGE_TYPE_OWORD_DUAL_BLOCK_READ
+            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_MEDIA_BLOCK_READ
+            EU_GEN7_CONSTANT_CACHE_MESSAGE_TYPE_DWORD_SCATTERED_READ,       // EU_DATA_PORT_READ_MESSAGE_TYPE_DWORD_SCATTERED_READ
+            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_RENDERTARGET_UNORM_READ
+            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_AVC_LOOPFILTER_READ
             EU_GEN7_CONSTANT_CACHE_MESSAGE_TYPE_UNALIGNED_OWORD_BLOCK_READ, // EU_DATA_PORT_READ_MESSAGE_TYPE_UNALIGNED_OWORD_BLOCK_READ
-            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_BYTE_SCATTERED_READ       
-            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_UNTYPED_SURFACE_READ      
-            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_TYPED_SURFACE_READ        
-            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_A64_UNTYPED_SURFACE_READ        
-            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_A64_SCATTERED_READ        
+            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_BYTE_SCATTERED_READ
+            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_UNTYPED_SURFACE_READ
+            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_TYPED_SURFACE_READ
+            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_A64_UNTYPED_SURFACE_READ
+            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_A64_SCATTERED_READ
             INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_A64_BLOCK_READ
             INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_TRANSPOSE_READ
             INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_RENDER_TARGET_READ
@@ -399,18 +399,18 @@ uint DataPortRead(
         },
         // DATA_PORT_TARGET_DATA_CACHE_1
         {
-            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_OWORD_BLOCK_READ          
-            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_OWORD_DUAL_BLOCK_READ     
-            EU_GEN7_5_DATA_CACHE_1_MESSAGE_TYPE_MEDIA_BLOCK_READ,           // EU_DATA_PORT_READ_MESSAGE_TYPE_MEDIA_BLOCK_READ          
-            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_DWORD_SCATTERED_READ      
-            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_RENDERTARGET_UNORM_READ   
-            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_AVC_LOOPFILTER_READ       
+            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_OWORD_BLOCK_READ
+            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_OWORD_DUAL_BLOCK_READ
+            EU_GEN7_5_DATA_CACHE_1_MESSAGE_TYPE_MEDIA_BLOCK_READ,           // EU_DATA_PORT_READ_MESSAGE_TYPE_MEDIA_BLOCK_READ
+            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_DWORD_SCATTERED_READ
+            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_RENDERTARGET_UNORM_READ
+            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_AVC_LOOPFILTER_READ
             INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_UNALIGNED_OWORD_BLOCK_READ
-            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_BYTE_SCATTERED_READ       
-            EU_GEN7_5_DATA_CACHE_1_MESSAGE_TYPE_UNTYPED_SURFACE_READ,       // EU_DATA_PORT_READ_MESSAGE_TYPE_UNTYPED_SURFACE_READ      
-            EU_GEN7_5_DATA_CACHE_1_MESSAGE_TYPE_TYPED_SURFACE_READ,         // EU_DATA_PORT_READ_MESSAGE_TYPE_TYPED_SURFACE_READ        
-            EU_GEN8_DATA_CACHE_1_MESSAGE_TYPE_A64_UNTYPED_SURFACE_READ,     // EU_DATA_PORT_READ_MESSAGE_TYPE_A64_UNTYPED_SURFACE_READ         
-            EU_GEN8_DATA_CACHE_1_MESSAGE_TYPE_A64_SCATTERED_READ,           // EU_DATA_PORT_READ_MESSAGE_TYPE_A64_SCATTERED_READ         
+            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_BYTE_SCATTERED_READ
+            EU_GEN7_5_DATA_CACHE_1_MESSAGE_TYPE_UNTYPED_SURFACE_READ,       // EU_DATA_PORT_READ_MESSAGE_TYPE_UNTYPED_SURFACE_READ
+            EU_GEN7_5_DATA_CACHE_1_MESSAGE_TYPE_TYPED_SURFACE_READ,         // EU_DATA_PORT_READ_MESSAGE_TYPE_TYPED_SURFACE_READ
+            EU_GEN8_DATA_CACHE_1_MESSAGE_TYPE_A64_UNTYPED_SURFACE_READ,     // EU_DATA_PORT_READ_MESSAGE_TYPE_A64_UNTYPED_SURFACE_READ
+            EU_GEN8_DATA_CACHE_1_MESSAGE_TYPE_A64_SCATTERED_READ,           // EU_DATA_PORT_READ_MESSAGE_TYPE_A64_SCATTERED_READ
             EU_GEN8_DATA_CACHE_1_MESSAGE_TYPE_A64_BLOCK_READ,               // EU_DATA_PORT_READ_MESSAGE_TYPE_A64_BLOCK_READ
             INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_TRANSPOSE_READ
             INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_RENDER_TARGET_READ
@@ -424,7 +424,7 @@ uint DataPortRead(
     memset(&messageDescriptor, 0, sizeof(messageDescriptor));
 
     messageDescriptor.DW0.All.BindingTableIndex       = bindingTableIndex;
-    messageDescriptor.DW0.All.MessageSpecificControl  = messageSpecificControl | 
+    messageDescriptor.DW0.All.MessageSpecificControl  = messageSpecificControl |
         ( invalidateAfterReadEnableHint ? EU_DATA_PORT_INVALIDATE_AFTER_READ_ENABLE : 0 );
     messageDescriptor.DW0.All.MessageType             = hwMessageType;
     messageDescriptor.DW0.All.HeaderPresent           = headerPresent;
@@ -499,17 +499,17 @@ uint UrbMessage(
     const uint  messageLength,
     const uint  responseLength,
     const bool   endOfThread,
-    const bool   perSlotOffset, 
+    const bool   perSlotOffset,
     const bool   channelMaskPresent,
     const uint  globalOffset,
-    const EU_GEN8_URB_OPCODE urbOpcode )
+    const EU_URB_OPCODE urbOpcode)
 {
     SEUURBMessageDescriptorGen8_0 messageDescriptor ;
     memset(&messageDescriptor, 0, sizeof(messageDescriptor));
 
     messageDescriptor.DW0.Simd8.URBOpcode             = urbOpcode;
     messageDescriptor.DW0.Simd8.GlobalOffset          = globalOffset;
-    messageDescriptor.DW0.Simd8.ChannelMaskPresent  = channelMaskPresent;
+    messageDescriptor.DW0.Simd8.ChannelMaskPresent    = channelMaskPresent;
     messageDescriptor.DW0.Simd8.PerSlotOffset         = perSlotOffset;
     messageDescriptor.DW0.Simd8.ResponseLength        = responseLength;
     messageDescriptor.DW0.Simd8.MessageLength         = messageLength;
@@ -635,7 +635,7 @@ unsigned int PixelInterpolator(
     messageDescriptor.DW0.All.SlotGroupSelect = pass;
     messageDescriptor.DW0.All.ResponseLength = responseLength;
     messageDescriptor.DW0.All.MessageLength = messageLength;
-    messageDescriptor.DW0.All.EndOfThread = false; 
+    messageDescriptor.DW0.All.EndOfThread = false;
 
     return messageDescriptor.DW0.Value;
 }
@@ -665,7 +665,7 @@ unsigned int PixelInterpolator(
     messageDescriptor.DW0.All.HeaderPresent = false;
     messageDescriptor.DW0.All.ResponseLength = responseLength;
     messageDescriptor.DW0.All.MessageLength = messageLength;
-    messageDescriptor.DW0.All.EndOfThread = false; 
+    messageDescriptor.DW0.All.EndOfThread = false;
 
     return messageDescriptor.DW0.Value;
 }
@@ -681,7 +681,7 @@ unsigned int PixelInterpolator(
 {
     SEUPixelInterpolatorMessageDescriptorGen7_0 messageDescriptor;
     memset(&messageDescriptor, 0, sizeof(messageDescriptor));
-    
+
     messageDescriptor.DW0.All.MessageType = messageType;
     messageDescriptor.DW0.All.InterpolationMode = interpolationMode;
     messageDescriptor.DW0.All.SlotGroupSelect = pass;
@@ -721,7 +721,7 @@ unsigned int PIPullPixelPayload(
     EU_PIXEL_INTERPOLATOR_SIMD_MODE executionMode,
     DWORD responseLength,
     DWORD messageLenght,
-    bool inputCoverage, 
+    bool inputCoverage,
     bool linearCentroidBary,
     bool linearCenterBary,
     bool perspectiveCentroid,
@@ -744,11 +744,11 @@ unsigned int PIPullPixelPayload(
             unsigned int InterpolationMode : BITFIELD_BIT( 14 );
             unsigned int ShadingRate       : BITFIELD_BIT( 15 );
             unsigned int SimdMode          : BITFIELD_BIT( 16 );
-            unsigned int                   : BITFIELD_RANGE( 17, 18 );    
+            unsigned int                   : BITFIELD_RANGE( 17, 18 );
             unsigned int HeaderPresent     : BITFIELD_BIT(19);
-            unsigned int ResponseLength    : BITFIELD_RANGE( 20, 24 );  
-            unsigned int MessageLength     : BITFIELD_RANGE( 25, 28 );  
-            unsigned int                   : BITFIELD_RANGE( 29, 30 );   
+            unsigned int ResponseLength    : BITFIELD_RANGE( 20, 24 );
+            unsigned int MessageLength     : BITFIELD_RANGE( 25, 28 );
+            unsigned int                   : BITFIELD_RANGE( 29, 30 );
             unsigned int EndOfThread       : BITFIELD_BIT(31);
         } All;
 

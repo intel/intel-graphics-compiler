@@ -5992,7 +5992,7 @@ void EmitPass::emitURBReadCommon(llvm::GenIntrinsicInst* inst, const QuadEltUnit
             perSlotOffset != nullptr,
             channelMaskPresent,
             globalOffset.Count(),
-            EU_GEN8_URB_OPCODE_SIMD8_READ);
+            EU_URB_OPCODE_SIMD8_READ);
 
         constexpr uint exDesc = EU_MESSAGE_TARGET_URB;
         CVariable* const pMessDesc = m_currShader->ImmToVariable(desc, ISA_TYPE_UD);
@@ -6487,11 +6487,11 @@ void EmitPass::emitSurfaceInfo(GenIntrinsicInst* inst)
     ForceDMask(false);
 
     DATA_PORT_TARGET_CACHE targetCache = DATA_PORT_TARGET_CONSTANT_CACHE;
-    EU_GEN6_MESSAGE_TARGET messageTarget = EU_GEN6_MESSAGE_TARGET_DATA_PORT_CONSTANT_CACHE;
+    EU_MESSAGE_TARGET messageTarget = EU_MESSAGE_TARGET_DATA_PORT_DATA_CACHE_READ_ONLY;
     if (m_currShader->m_Platform->supportSamplerCacheResinfo())
     {
         targetCache = DATA_PORT_TARGET_SAMPLER_CACHE;
-        messageTarget = EU_GEN6_MESSAGE_TARGET_DATA_PORT_SAMPLER_CACHE;
+        messageTarget = EU_MESSAGE_TARGET_DATA_PORT_READ;
     }
 
     uint messageSpecificControl = DataPortRead(

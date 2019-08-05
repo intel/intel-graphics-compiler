@@ -318,7 +318,7 @@ void CDomainShader::AddEpilogue(llvm::ReturnInst* pRet)
 
         if(addDummyURB)
         {
-            EmitEOTURBWrite();
+            EOTURBWrite();
         }
     }
     CShader::AddEpilogue(pRet);

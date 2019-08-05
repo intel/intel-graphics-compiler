@@ -2607,7 +2607,7 @@ void CEncoder::FlushSamplerCache()
     V(vKernel->AppendVISASyncInst(ISA_SAMPLR_CACHE_FLUSH));
 }
 
-void CEncoder::EndOfThread()
+void CEncoder::EOT()
 {
     VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
     V(vKernel->AppendVISACFRetInst(predOpnd, vISA_EMASK_M1, EXEC_SIZE_1));

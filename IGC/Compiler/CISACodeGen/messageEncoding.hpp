@@ -431,7 +431,7 @@ enum EU_DATA_PORT_UNTYPED_SURFACE_SIMD_MODE
     EU_DATA_PORT_UNTYPED_SURFACE_SIMD_8        = 32
 };
 
-enum EU_DATA_PORT_READ_MESSAGE_TYPE 
+enum EU_DATA_PORT_READ_MESSAGE_TYPE
 
 {
     EU_DATA_PORT_READ_MESSAGE_TYPE_OWORD_BLOCK_READ           = 0,
@@ -494,7 +494,7 @@ struct SEUSamplerMessageDescriptorGen7 //Gen8 uses the same
             unsigned int       ResponseLength                      : 5;
             unsigned int       MessageLength                       : 4;
             unsigned int       FP16Input                           : 1;
-            unsigned int       FP16Return                           : 1;
+            unsigned int       FP16Return                          : 1;
             unsigned int       EndOfThread                         : 1;    // bool
         } All;
 
@@ -520,9 +520,9 @@ const unsigned int cConvertDataPortWriteMessageType[NUM_EU_DATA_PORT_WRITE_MESSA
     EU_GEN7_RENDER_CACHE_MESSAGE_TYPE_MEMORY_FENCE,                  // EU_DATA_PORT_WRITE_MESSAGE_TYPE_MEMORY_FENCE
     // EU_GEN7_DATA_CACHE_MESSAGE_TYPE_MEMORY_FENCE and EU_GEN7_RENDER_CACHE_MESSAGE_TYPE_MEMORY_FENCE are the same constants
     EU_GEN7_5_DATA_CACHE_1_MESSAGE_TYPE_ATOMIC_COUNTER_OPERATION,     // EU_DATA_PORT_WRITE_MESSAGE_TYPE_COUNTER_ATOMIC_OPERATION
-    EU_GEN7_5_DATA_CACHE_1_MESSAGE_TYPE_ATOMIC_COUNTER_OPERATION_SIMD4x2, // EU_DATA_PORT_WRITE_MESSAGE_TYPE_COUNTER_ATOMIC_OPERATION_SIMD4x2        
+    EU_GEN7_5_DATA_CACHE_1_MESSAGE_TYPE_ATOMIC_COUNTER_OPERATION_SIMD4x2, // EU_DATA_PORT_WRITE_MESSAGE_TYPE_COUNTER_ATOMIC_OPERATION_SIMD4x2
     EU_GEN7_5_DATA_CACHE_1_MESSAGE_TYPE_UNTYPED_ATOMIC_OPERATION_SIMD4X2, // EU_DATA_PORT_WRITE_MESSAGE_TYPE_UNTYPED_ATOMIC_OPERATION_SIMD4x2
-    EU_GEN7_5_DATA_CACHE_1_MESSAGE_TYPE_TYPED_ATOMIC_OPERATION_SIMD4X2,   // EU_DATA_PORT_WRITE_MESSAGE_TYPE_TYPED_ATOMIC_OPERATION_SIMD4x2        
+    EU_GEN7_5_DATA_CACHE_1_MESSAGE_TYPE_TYPED_ATOMIC_OPERATION_SIMD4X2,   // EU_DATA_PORT_WRITE_MESSAGE_TYPE_TYPED_ATOMIC_OPERATION_SIMD4x2
     EU_GEN8_DATA_CACHE_1_MESSAGE_TYPE_A64_UNTYPED_SURFACE_WRITE,     // EU_DATA_PORT_WRITE_MESSAGE_TYPE_A64_UNTYPED_SURFACE_WRITE
     EU_GEN8_DATA_CACHE_1_MESSAGE_TYPE_A64_SCATTERED_WRITE,           // EU_DATA_PORT_WRITE_MESSAGE_TYPE_A64_SCATTERED_WRITE
     EU_GEN8_DATA_CACHE_1_MESSAGE_TYPE_A64_UNTYPED_ATOMIC_OPERATION,  // EU_DATA_PORT_WRITE_MESSAGE_TYPE_A64_UNTYPED_ATOMIC_OPERATION
@@ -534,18 +534,6 @@ enum EU_DATA_PORT_DWORD_SCATTERED_BLOCK_CONTROL
 {
     EU_DATA_PORT_DWORD_SCATTERED_BLOCK_CONTROL_8DWORDS  = 2,
     EU_DATA_PORT_DWORD_SCATTERED_BLOCK_CONTROL_16DWORDS = 3
-};
-
-enum EU_GEN6_MESSAGE_TARGET
-{
-    EU_GEN6_MESSAGE_TARGET_NULL                      = 0,
-    EU_GEN6_MESSAGE_TARGET_SAMPLER                   = 2,
-    EU_GEN6_MESSAGE_TARGET_GATEWAY                   = 3,
-    EU_GEN6_MESSAGE_TARGET_DATA_PORT_SAMPLER_CACHE   = 4,
-    EU_GEN6_MESSAGE_TARGET_DATA_PORT_RENDER_CACHE    = 5,
-    EU_GEN6_MESSAGE_TARGET_URB                       = 6,
-    EU_GEN6_MESSAGE_TARGET_THREAD_SPAWNER            = 7,
-    EU_GEN6_MESSAGE_TARGET_DATA_PORT_CONSTANT_CACHE  = 9,
 };
 
 /*****************************************************************************\
@@ -569,7 +557,7 @@ enum EU_DATA_PORT_ATOMIC_OPERATION_TYPE
     EU_DATA_PORT_ATOMIC_OPERATION_CMPWR         = 14,
     EU_DATA_PORT_ATOMIC_OPERATION_PREDEC        = 15,
 
-    // A64 Atomic Operations 
+    // A64 Atomic Operations
     EU_DATA_PORT_A64_ATOMIC_OPERATION_AND       = 16,
     EU_DATA_PORT_A64_ATOMIC_OPERATION_OR        = 17,
     EU_DATA_PORT_A64_ATOMIC_OPERATION_XOR       = 18,
@@ -606,7 +594,7 @@ struct SEUDataPortMessageDescriptorGen8_0
             unsigned int       MessageType                         : 5;
 
             // cache message type is represented by 5-bits and for messages
-            // that use Data Port Data Cache0 message type is represented 
+            // that use Data Port Data Cache0 message type is represented
             // by 4-bits and should be using SEUDataPortMessageDescriptorGen7_0.
             unsigned int       HeaderPresent                       : 1;  // bool
             unsigned int       ResponseLength                      : 5;
@@ -617,7 +605,6 @@ struct SEUDataPortMessageDescriptorGen8_0
 
         unsigned int   Value;
     } DW0;
-
 };
 
 
@@ -660,7 +647,7 @@ struct SEUPixelDataPortMessageDescriptorGen8_0
             unsigned int       PerSample                           : 1;
             unsigned int       MessageType                         : 4;
             unsigned int       PerCoarse                           : 1;
-            unsigned int       HeaderPresent                       : 1;  
+            unsigned int       HeaderPresent                       : 1;
             unsigned int       ResponseLength                      : 5;
             unsigned int       MessageLength                       : 4;
             unsigned int       Reserved                            : 1;
@@ -698,20 +685,19 @@ struct SEUURBMessageDescriptorGen8_0
     } DW0;
 };
 
-enum EU_GEN8_URB_OPCODE
+enum EU_URB_OPCODE
 {
-    EU_GEN8_URB_OPCODE_WRITE_HWORD  = 0,
-    EU_GEN8_URB_OPCODE_WRITE_OWORD  = 1,
-    EU_GEN8_URB_OPCODE_READ_HWORD   = 2,
-    EU_GEN8_URB_OPCODE_READ_OWORD   = 3,
-    EU_GEN8_URB_OPCODE_ATOMIC_MOV   = 4,
-    EU_GEN8_URB_OPCODE_ATOMIC_INC   = 5,
-    EU_GEN8_URB_OPCODE_ATOMIC_ADD   = 6,
-    EU_GEN8_URB_OPCODE_SIMD8_WRITE  = 7,
-    EU_GEN8_URB_OPCODE_SIMD8_READ   = 8
+    EU_URB_OPCODE_WRITE_HWORD  = 0,
+    EU_URB_OPCODE_WRITE_OWORD  = 1,
+    EU_URB_OPCODE_READ_HWORD   = 2,
+    EU_URB_OPCODE_READ_OWORD   = 3,
+    EU_URB_OPCODE_ATOMIC_MOV   = 4,
+    EU_URB_OPCODE_ATOMIC_INC   = 5,
+    EU_URB_OPCODE_ATOMIC_ADD   = 6,
+    EU_URB_OPCODE_SIMD8_WRITE  = 7,
+    EU_URB_OPCODE_SIMD8_READ   = 8,
 };
 
-//C_ASSERT( sizeof(SEUSamplerMessageDescriptorGen6) == 1*sizeof(unsigned int) );
 EU_GEN6_SAMPLER_MESSAGE_TYPE GetSampleMessage(EOPCODE opCode);
 
 EU_SAMPLER_SIMD_MODE samplerSimdMode(SIMDMode simd);
@@ -786,10 +772,10 @@ unsigned int UrbMessage(
     const unsigned int  messageLength,
     const unsigned int  responseLength,
     const bool   endOfThread,
-    const bool   perSlotOffset, 
+    const bool   perSlotOffset,
     const bool   channelMaskPresent,
     const unsigned int  globalOffset,
-    const EU_GEN8_URB_OPCODE urbOpcode );
+    const EU_URB_OPCODE urbOpcode);
 
 unsigned int PixelInterpolator(
     const unsigned int messageLength,
@@ -823,7 +809,7 @@ unsigned int PIPullPixelPayload(
     EU_PIXEL_INTERPOLATOR_SIMD_MODE executionMode,
     DWORD responseLength,
     DWORD messageLenght,
-    bool inputCoverage, 
+    bool inputCoverage,
     bool linearCentroidBary,
     bool linearCenterBary,
     bool perspectiveCentroid,
@@ -831,11 +817,11 @@ unsigned int PIPullPixelPayload(
     bool OutputCoverageMask);
 
 uint32_t VMEDescriptor(
-  COMMON_ISA_VME_STREAM_MODE streamMode,
-  const uint32_t bti,
-  const uint32_t msgType,
-  const uint32_t regs2snd,
-  const uint32_t regs2rcv
+    COMMON_ISA_VME_STREAM_MODE streamMode,
+    const uint32_t bti,
+    const uint32_t msgType,
+    const uint32_t regs2snd,
+    const uint32_t regs2rcv
   );
 
 

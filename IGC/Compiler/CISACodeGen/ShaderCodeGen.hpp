@@ -92,7 +92,7 @@ public:
     virtual void AddPrologue() {}
     virtual void PreAnalysisPass();
     virtual void ExtractGlobalVariables() {}
-    void         EmitEOTURBWrite();
+    void         EOTURBWrite();
     void         EOTRenderTarget();
     virtual void AddEpilogue(llvm::ReturnInst* ret);
 
@@ -272,13 +272,14 @@ public:
     ShaderStats *m_shaderStats;
 
     // Number of binding table entries per cache line.
-    static const DWORD cBTEntriesPerCacheLine = 32;
+    static constexpr DWORD cBTEntriesPerCacheLine = 32;
     // Max BTI value that can increase binding table count.
     // SampleEngine:    Binding Table Index is set to 252 specifies the bindless surface offset.
     // DataPort:        The special entry 255 is used to reference Stateless A32 or A64 address model,
     //                  and the special entry 254 is used to reference the SLM address model.
     //                  The special entry 252 is used to reference bindless resource operation.
-    static const DWORD MAX_BINDING_TABLE_INDEX = 251;
+    static constexpr DWORD MAX_BINDING_TABLE_INDEX = 251;
+    static constexpr uint cMessageExtendedDescriptorEOTBit = BIT(5);
 
     CVariable* GetCCTupleToVariableMapping(CoalescingEngine::CCTuple* ccTuple)
     {
