@@ -3670,6 +3670,12 @@ namespace IGC
         auto ClContext = static_cast<OpenCLProgramContext*>(context);
         KernelDebugEnable = ClContext->m_InternalOptions.KernelDebugEnable;
         ForceNonCoherentStatelessBti = ClContext->m_ShouldUseNonCoherentStatelessBTI;
+
+        if (ClContext->m_InternalOptions.DoReRA &&
+            !ClContext->gtpin_init)
+        {
+            SaveOption(vISA_ReRAPostSchedule, true);
+        }
     }
 
     bool EnableBarrierInstCounterBits = false;
