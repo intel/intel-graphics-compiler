@@ -2829,8 +2829,7 @@ private:
             } else if (m_opSpec->isBranching() && m_model.supportsSimplifiedBranches()) {
                 // no more types for branching
                 t = Type::UD;
-            }
-            else {
+            } else {
                 Fail(expected_err);
             }
         }

@@ -671,7 +671,7 @@ private:
                     //    ss);
                 }
             } else if (desc.type == SendDescArg::IMM) {
-                // try to get the imm send desc info
+                // try to get the imm send desc info via GED
                 EmitSendDescriptorInfoGED(
                     model->platform,
                     i.getOpSpec(),
