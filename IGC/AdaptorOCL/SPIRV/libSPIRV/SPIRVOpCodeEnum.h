@@ -343,6 +343,9 @@ _SPIRV_OP(SubgroupImageBlockWriteINTEL, 5578)
 // media_block_io extension.
 _SPIRV_OP(SubgroupImageMediaBlockReadINTEL, 5580)
 _SPIRV_OP(SubgroupImageMediaBlockWriteINTEL, 5581)
+// Function pointers
+_SPIRV_OP(FunctionPointerINTEL, 5600)
+_SPIRV_OP(FunctionPointerCallINTEL, 5601)
 // device_side_avc_motion_estimation extension
 _SPIRV_OP(VmeImageINTEL, 5699)
 _SPIRV_OP(TypeVmeImageINTEL, 5700)
@@ -462,5 +465,3 @@ _SPIRV_OP(SubgroupAvcSicGetIpeChromaModeINTEL, 5813)
 _SPIRV_OP(SubgroupAvcSicGetPackedSkcLumaCountThresholdINTEL, 5814)
 _SPIRV_OP(SubgroupAvcSicGetPackedSkcLumaSumThresholdINTEL, 5815)
 _SPIRV_OP(SubgroupAvcSicGetInterRawSadsINTEL, 5816)
-_SPIRV_OP(FunctionPointerINTEL, 5817)
-_SPIRV_OP(FunctionPointerCallINTEL, 5818)
