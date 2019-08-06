@@ -1229,7 +1229,7 @@ long __builtin_spirv_OpAtomicSMax_p0i64_i32_i32_i64( volatile __private ulong *P
 
 long __builtin_spirv_OpAtomicSMax_p1i64_i32_i32_i64( volatile __global ulong *Pointer, uint Scope, uint Semantics, long Value)
 {
-    atomic_operation_1op( __builtin_IB_atomic_max_global_i64, uint, (global long*)Pointer, Scope, Semantics, Value );
+    atomic_operation_1op( __builtin_IB_atomic_max_global_i64, ulong, (global long*)Pointer, Scope, Semantics, Value );
 }
 
 long __builtin_spirv_OpAtomicSMax_p3i64_i32_i32_i64( volatile __local ulong *Pointer, uint Scope, uint Semantics, long Value)
@@ -1250,11 +1250,11 @@ long __builtin_spirv_OpAtomicSMax_p4i64_i32_i32_i64( volatile __generic ulong *P
 {
     if(__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
-        return __builtin_spirv_OpAtomicSMax_p3i64_i32_i32_i64( (__local int*)Pointer, Scope, Semantics, Value );
+        return __builtin_spirv_OpAtomicSMax_p3i64_i32_i32_i64( (__local ulong*)Pointer, Scope, Semantics, Value );
     }
     else
     {
-        return __builtin_spirv_OpAtomicSMax_p1i64_i32_i32_i64( (__global int*)Pointer, Scope, Semantics, Value );
+        return __builtin_spirv_OpAtomicSMax_p1i64_i32_i32_i64( (__global ulong*)Pointer, Scope, Semantics, Value );
     }
 }
 
