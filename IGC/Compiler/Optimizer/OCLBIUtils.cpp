@@ -261,7 +261,7 @@ Value* CImagesBI::CImagesUtils::traceImageOrSamplerArgument(CallInst* pCallInst,
                 return nullptr;
 
             for (unsigned int i = GEP->getNumIndices(); i > 1; --i)
-                gepIndices.push_back(dyn_cast<ConstantInt>(GEP->getOperand(i)));
+                gepIndices.push_back(cast<ConstantInt>(GEP->getOperand(i)));
 
             if (auto * leaf = findAlloca(GEP->getOperand(0)))
                 return leaf;
@@ -293,7 +293,7 @@ Value* CImagesBI::CImagesUtils::traceImageOrSamplerArgument(CallInst* pCallInst,
                 bool matchingGep = false;
                 for (unsigned int i = 1; i < GEP->getNumIndices(); ++i)
                 {
-                    if (gepIndices[depth - i] == dyn_cast<ConstantInt>(GEP->getOperand(i + 1)))
+                    if (gepIndices[depth - i]->getZExtValue() == cast<ConstantInt>(GEP->getOperand(i + 1))->getZExtValue())
                         matchingGep = true;
                     else
                     {
@@ -497,13 +497,13 @@ Value* CImagesBI::CImagesUtils::traceImageOrSamplerArgument(CallInst* pCallInst,
                     }
                     else
                     {
-                        assert(pArg && "Expected reaching kernel's argument.");
+                        // Cannot trace, it could be indirect access
                         return nullptr;
                     }
                 }
                 else
                 {
-                    assert(addr && "Expected alloca.");
+                    // Cannot trace, it could be indirect access
                     return nullptr;
                 }
             }
