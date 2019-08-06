@@ -2228,38 +2228,13 @@ void GlobalRA::updateSubRegAlignment(G4_SubReg_Align subAlign)
     }
 }
 
-bool GlobalRA::evenAlignNeeded(G4_Declare* dcl)
-{
-    // Return true if even alignment is needed
-    // Even align needed if for given SIMD size and elem type,
-    // a complete def uses between 1-2 GRFs.
-    auto kernelSimdSizeToUse = kernel.getSimdSizeWithSlicing();
-    G4_Declare* topdcl = dcl->getRootDeclare();
-    auto topdclAugMask = getAugmentationMask(topdcl);
-
-    if (!areAllDefsNoMask(topdcl) && !topdcl->getIsPartialDcl() &&
-        topdclAugMask != AugmentationMasks::NonDefault)
-    {
-        auto elemSizeToUse = topdcl->getElemSize();
-        if (elemSizeToUse < 4 && topdclAugMask == AugmentationMasks::Default32Bit)
-            // :uw with hstride 2 can also be Default32Bit and hence needs even alignment
-            elemSizeToUse = 4;
-        else if (elemSizeToUse < 8 && topdclAugMask == AugmentationMasks::Default64Bit)
-            elemSizeToUse = 8;
-
-        if (// Even align if size is between 1-2 GRFs, for >2GRF sizes use weak edges
-            (elemSizeToUse * kernelSimdSizeToUse) > (unsigned int)GENX_GRF_REG_SIZ &&
-            (elemSizeToUse * kernelSimdSizeToUse) <= (unsigned int)(2 * GENX_GRF_REG_SIZ) &&
-            !(kernel.fg.builder->getOption(vISA_enablePreemption) &&
-                dcl == kernel.fg.builder->getBuiltinR0()))
-        {
-            return true;
-        }
-    }
-        return false;
-}
-
 // This function can be invoked before local RA or after augmentation.
+// When invoked before local RA, it sets all vars to be Even aligned,
+// including NoMask ones. This is safe, but conservative. Post
+// augmentation, dcl masks are available so only non-NoMask vars will
+// be Even aligned. Others will be Either aligned. There is no need
+// to store old value of align because HW has no restriction on
+// even/odd alignment that HW conformity computes.
 void GlobalRA::evenAlign()
 {
     // Update alignment of all GRF declares to align
@@ -2267,9 +2242,20 @@ void GlobalRA::evenAlign()
     {
         if (dcl->getRegFile() & G4_GRF)
         {
-            if (evenAlignNeeded(dcl))
+            G4_Declare* topdcl = dcl->getRootDeclare();
+            auto topdclAugMask = getAugmentationMask(topdcl);
+
+            if (!areAllDefsNoMask(topdcl) && !topdcl->getIsPartialDcl() &&
+                topdclAugMask != AugmentationMasks::NonDefault &&
+                topdclAugMask != AugmentationMasks::Default64Bit)
             {
-                setEvenAligned(dcl, true);
+                if ((topdcl->getElemSize() >= 4 || topdclAugMask == AugmentationMasks::Default32Bit) &&
+                    topdcl->getByteSize() >= GENX_GRF_REG_SIZ &&
+                    !(kernel.fg.builder->getOption(vISA_enablePreemption) &&
+                        dcl == kernel.fg.builder->getBuiltinR0()))
+                {
+                    setEvenAligned(dcl, true);
+                }
             }
         }
     }
@@ -3127,7 +3113,9 @@ bool Augmentation::markNonDefaultMaskDef()
             prevAugMask = gra.getAugmentationMask(dcl);
         }
 
-        if (gra.evenAlignNeeded(dcl))
+        if (liveAnalysis.livenessClass(G4_GRF) &&
+            gra.getAugmentationMask(dcl) == AugmentationMasks::Default32Bit &&
+            kernel.getSimdSize() > NUM_DWORDS_PER_GRF)
         {
             auto dclLR = gra.getLocalLR(dcl);
             if (dclLR)
@@ -3136,7 +3124,7 @@ bool Augmentation::markNonDefaultMaskDef()
                 auto phyReg = dclLR->getPhyReg(s);
                 if (phyReg && phyReg->asGreg()->getRegNum() % 2 != 0)
                 {
-                    // If LRA assignment is not 2GRF aligned for then
+                    // If LRA assignment is not 2GRF aligned for SIMD16 then
                     // mark it as non-default. GRA candidates cannot fully
                     // overlap with such ranges. Partial overlap is illegal.
                     gra.setAugmentationMask(dcl, AugmentationMasks::NonDefault);
@@ -4178,22 +4166,6 @@ bool Interference::isStrongEdgeBetween(G4_Declare* dcl1, G4_Declare* dcl2)
     return false;
 }
 
-bool Augmentation::weakEdgeNeeded(AugmentationMasks m)
-{
-    // Weak edge needed in case #GRF exceeds 2
-
-    if (m == AugmentationMasks::Default64Bit)
-        return (G4_Type_Table[Type_Q].byteSize*kernel.getSimdSizeWithSlicing()) > (unsigned int)(2 * GENX_GRF_REG_SIZ);
-
-    if (m == AugmentationMasks::Default32Bit)
-    {
-        // Even align up to 2 GRFs size variable, use weak edges beyond
-        return (G4_Type_Table[Type_D].byteSize*kernel.getSimdSizeWithSlicing()) > (unsigned int)(2 * GENX_GRF_REG_SIZ);
-    }
-
-    return false;
-}
-
 //
 // Mark interference between newDcl and other incompatible dcls in current active lists.
 //
@@ -4211,8 +4183,10 @@ void Augmentation::buildSIMDIntfDcl(G4_Declare* newDcl, bool isCall)
         {
             if (liveAnalysis.livenessClass(G4_GRF) &&
                 // Populate compatible sparse intf data structure
-                // only for weak edges.
-                weakEdgeNeeded(newDclAugMask))
+                // only for 64-bit bit types since others can be
+                // handled using Even align.
+                gra.getAugmentationMask(defaultDcl) == AugmentationMasks::Default64Bit &&
+                newDclAugMask == AugmentationMasks::Default64Bit)
             {
                 if (defaultDcl->getRegVar()->isPhyRegAssigned() &&
                     newDcl->getRegVar()->isPhyRegAssigned())
@@ -4428,7 +4402,7 @@ void Augmentation::augmentIntfGraph()
 
         if (liveAnalysis.livenessClass(G4_GRF))
         {
-            if (kernel.getSimdSize() >= NUM_DWORDS_PER_GRF)
+            if (kernel.getSimdSize() > NUM_DWORDS_PER_GRF)
             {
                 // Set alignment of all GRF candidates
                 // to 2GRF except for NoMask variables
@@ -10568,9 +10542,9 @@ void VerifyAugmentation::verifyAlign(G4_Declare* dcl)
     if (it == masks.end())
         return;
 
-    if (dcl->getByteSize() >= NUM_DWORDS_PER_GRF * G4_Type_Table[Type_UD].byteSize &&
-        dcl->getByteSize() <= 2 * NUM_DWORDS_PER_GRF * G4_Type_Table[Type_UD].byteSize &&
-        kernel->getSimdSize() > NUM_DWORDS_PER_GRF)
+    auto dclMask = std::get<1>((*it).second);
+
+    if (dclMask == AugmentationMasks::Default32Bit)
     {
         auto assignment = dcl->getRegVar()->getPhyReg();
         if (assignment && assignment->isGreg())
@@ -10666,14 +10640,6 @@ void VerifyAugmentation::labelBBs()
 #endif
 }
 
-unsigned int getGRFBaseOffset(G4_Declare* dcl)
-{
-    unsigned int regNum = dcl->getRegVar()->getPhyReg()->asGreg()->getRegNum();
-    unsigned int regOff = dcl->getRegVar()->getPhyRegOff();
-    auto type = dcl->getElemType();
-    return (regNum * G4_GRF_REG_NBYTES) + (regOff * getTypeSize(type));
-}
-
 bool VerifyAugmentation::interfereBetween(G4_Declare* dcl1, G4_Declare* dcl2)
 {
     bool interferes = true;
@@ -10742,8 +10708,8 @@ bool VerifyAugmentation::interfereBetween(G4_Declare* dcl1, G4_Declare* dcl2)
 
             if (lr1->getAssigned() && lr2->getAssigned())
             {
-                auto preg1Start = getGRFBaseOffset(dcl1);
-                auto preg2Start = getGRFBaseOffset(dcl2);
+                auto preg1Start = dcl1->getGRFBaseOffset();
+                auto preg2Start = dcl2->getGRFBaseOffset();
                 auto preg1End = preg1Start + dcl1->getByteSize();
                 auto preg2End = preg2Start + dcl2->getByteSize();
 
@@ -10788,8 +10754,8 @@ void VerifyAugmentation::verify()
     {
         if (dcl1->getRegFile() == G4_RegFileKind::G4_GRF && dcl2->getRegFile() == G4_RegFileKind::G4_GRF)
         {
-            auto preg1Start = getGRFBaseOffset(dcl1);
-            auto preg2Start = getGRFBaseOffset(dcl2);
+            auto preg1Start = dcl1->getGRFBaseOffset();
+            auto preg2Start = dcl2->getGRFBaseOffset();
             auto preg1End = preg1Start + dcl1->getByteSize();
             auto preg2End = preg2Start + dcl2->getByteSize();
 
@@ -10854,9 +10820,6 @@ void VerifyAugmentation::verify()
             if (dclMask != aDclMask)
             {
                 bool interfere = interfereBetween(activeDcl, dcl);
-
-                if (activeDcl->getIsPartialDcl() || dcl->getIsPartialDcl())
-                    continue;
 
                 if (!interfere)
                 {
