@@ -421,6 +421,7 @@ public:
         if (!m_comment.empty()) {
             inst->setComment(m_comment);
         }
+
         m_pc += inst->hasInstOpt(InstOpt::COMPACTED) ? 8 : 16;
 
         // after any branching instruction or EOT, split the basic block
