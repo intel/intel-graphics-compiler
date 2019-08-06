@@ -259,7 +259,8 @@ bool ResourceAllocator::runOnFunction(llvm::Function &F)
     ArgAllocMD defaultArgAlloc;
     defaultArgAlloc.type = ResourceTypeEnum::OtherResourceType;
     std::vector<ArgAllocMD> paramAllocations(F.arg_size(), defaultArgAlloc);
-    int numUAVs = 0, numResources = 0, numSamplers = 0;
+    int numUAVs = ((OpenCLProgramContext*)ctx)->m_numUAVs;
+    int numResources = 0, numSamplers = 0;
 
     BindlessAllocationMode allocationMode = BindlessAllocationMode::Unsupported;
 
