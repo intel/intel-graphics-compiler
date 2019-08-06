@@ -700,7 +700,7 @@ bool GenParser::parsePrimary(bool consumed, ImmVal &v) {
         // // join (16) LABEL                // passes
         // // mov (1) r65:ud LABEL:ud        // fails
         // // mov (1) r65:ud (2 + LABEL):ud  // fails (poor diagnostic)
-        if (m_opSpec && m_opSpec->isBranching()) {
+        if (m_opSpec && (m_opSpec->isBranching() || m_opSpec->op == Op::MOV)) {
             if (consumed) {
                 //   jmpi (LABEL + 2)
                 //         ^^^^^ already consumed LPAREN
@@ -792,7 +792,7 @@ bool GenParser::tryParseInstOptDepInfoToken(InstOptSet &instOpts)
             return false; // unrecognized option
         }
         if (!instOpts.add(newOpt)) {
-            // adding the option doesn't change the set... (it's duplicate)
+            // adding the option doesn't change the set... (it's a duplicate)
             Fail(loc, "duplicate instruction options");
         }
     } else {
@@ -1859,8 +1859,7 @@ private:
         // ensure the subregister is not out of bounds
         if (dty != Type::INVALID) {
             int typeSize = TypeSizeInBits(dty)/8;
-            if (!ri.isSubRegByteOffsetValid(regNum, subregNum * typeSize, m_model.getGRFByteSize()) &&
-                ri.regName == RegName::GRF_R) {
+            if (!ri.isSubRegByteOffsetValid(regNum, subregNum * typeSize, m_model.getGRFByteSize())) {
                 Warning(subregLoc, "subregister out of bounds for data type");
             } else if (typeSize < ri.accGran) {
                 Warning(regnameLoc, "access granularity too small for data type");
@@ -2083,7 +2082,7 @@ private:
                 // failed constant expression without consuming any input
                 if (LookingAt(IDENT)) {
                     // e.g. LABEL64
-                    if (m_opSpec->isBranching()) {
+                    if (m_opSpec->isBranching() || m_opSpec->op == Op::MOV) {
                         m_srcKinds[srcOpIx] = Operand::Kind::LABEL;
                         std::string str = GetTokenAsString(Next(0));
                         Skip(1);
@@ -2201,8 +2200,7 @@ private:
             // ensure the subregister is not out of bounds
             int typeSize = TypeSizeInBits(sty)/8;
             if (ri.isRegNumberValid(regNum) &&
-                !ri.isSubRegByteOffsetValid(regNum, subregNum * typeSize, m_model.getGRFByteSize()) &&
-                ri.regName == RegName::GRF_R)
+                !ri.isSubRegByteOffsetValid(regNum, subregNum * typeSize, m_model.getGRFByteSize()))
             {
                 // don't add an extra error if the parent register is
                 // already out of bounds
@@ -2691,7 +2689,7 @@ private:
         const Loc valLoc,
         const std::string &lbl)
     {
-        Type type = ParseSrcOpTypeWithDefault(srcOpIx, true);
+        Type type = ParseSrcOpTypeWithDefault(srcOpIx, true, true);
         m_handler.InstSrcOpImmLabel(srcOpIx, opStart, lbl, type);
     }
 
@@ -2783,31 +2781,45 @@ private:
 
     Type ParseDstOpTypeWithDefault() {
         if (m_opSpec->hasImplicitDstType(m_model.platform)) {
-            if (!LookingAt(COLON)) {
-                return m_opSpec->implicitDstType(m_model.platform);
-            } else if (m_parseOpts.deprecatedSyntaxWarnings) {
-                Warning("implicit type on dst should be omitted");
+            if (LookingAt(COLON)) {
+                if (m_parseOpts.deprecatedSyntaxWarnings)
+                    Warning("implicit type on dst should be omitted");
+                // parse the type but ignore it
+                ParseOpTypeWithDefault(DST_TYPES, "expected destination type");
             }
+            // use the implicit type anyway
+            return m_opSpec->implicitDstType(m_model.platform);
         }
         return ParseOpTypeWithDefault(DST_TYPES, "expected destination type");
     }
-    Type ParseSrcOpTypeWithDefault(int srcOpIx, bool immOrLbl) {
+
+    Type ParseSrcOpTypeWithDefault(int srcOpIx, bool immOrLbl, bool isLable = false) {
         if (m_opSpec->hasImplicitSrcType(srcOpIx, immOrLbl, m_model.platform)) {
-            if (!LookingAt(COLON)) {
-                return m_opSpec->implicitSrcType(srcOpIx, immOrLbl, m_model.platform);
-            } else if (m_parseOpts.deprecatedSyntaxWarnings) {
-                WarningF("implicit type on src should be omitted", srcOpIx);
+            if (LookingAt(COLON)) {
+                if (m_parseOpts.deprecatedSyntaxWarnings)
+                    WarningF("implicit type on src should be omitted", srcOpIx);
+                // parse the type but ignore it
+                ParseOpTypeWithDefault(SRC_TYPES, "expected source type");
             }
+            // use the implicit type anyway
+            return m_opSpec->implicitSrcType(srcOpIx, immOrLbl, m_model.platform);
+        } else if(m_opSpec->op == Op::MOV && immOrLbl && isLable) {
+            // support mov label without giving label's type
+            return Type::UD;
         }
+
         return ParseOpTypeWithDefault(SRC_TYPES, "expected source type");
     }
     Type ParseSrcOpTypeWithoutDefault(int srcOpIx, bool immOrLbl) {
         if (m_opSpec->hasImplicitSrcType(srcOpIx, immOrLbl, m_model.platform)) {
-            if (!LookingAt(COLON)) {
-                return m_opSpec->implicitSrcType(srcOpIx, immOrLbl, m_model.platform);
-            } else if (m_parseOpts.deprecatedSyntaxWarnings) {
-                WarningF("implicit type on src should be omitted", srcOpIx);
+            if (LookingAt(COLON)) {
+                if (m_parseOpts.deprecatedSyntaxWarnings)
+                    WarningF("implicit type on src should be omitted", srcOpIx);
+                // parse the type but ignore it
+                TryParseOpType(SRC_TYPES);
             }
+            // use the implicit type anyway
+            return m_opSpec->implicitSrcType(srcOpIx, immOrLbl, m_model.platform);
         }
         Type t = TryParseOpType(SRC_TYPES);
         if (t == Type::INVALID &&

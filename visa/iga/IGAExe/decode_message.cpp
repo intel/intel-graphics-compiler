@@ -203,35 +203,16 @@ bool decodeSendDescriptor(const Opts &opts)
         }
     } else {
         // decode it from ex_desc[3:0]
-        switch (ex_desc & 0xF) {
-        case 0x0: sfid = iga::SFID::NULL_; break;
-        case 0x2: sfid = iga::SFID::SMPL; break;
-        case 0x3: sfid = iga::SFID::GTWY; break;
-        case 0x4: sfid = iga::SFID::DC2;  break;
-        case 0x5: sfid = iga::SFID::RC;  break;
-        case 0x6: sfid = iga::SFID::URB;  break;
-        case 0x7:
-            sfid = iga::SFID::TS;
-            break;
-        case 0x8:
-            sfid = iga::SFID::VME;
-            break;
-        case 0x9: sfid = iga::SFID::DCRO; break;
-        case 0xA: sfid = iga::SFID::DC0;  break;
-        case 0xB: sfid = iga::SFID::PIXI; break;
-        case 0xC: sfid = iga::SFID::DC1;  break;
-        case 0xD:
-            sfid = iga::SFID::CRE;
-            break;
-        default:
+        sfid = iga::MessageInfo::sfidFromEncoding(
+            static_cast<iga::Platform>(opts.platform), ex_desc & 0xF);
+        if (sfid == iga::SFID::INVALID) {
             fatalExitWithMessage(
-                "-Xdsd: 0x%x: invalid or unsupported SFID for this platform",
-                ex_desc);
+              "-Xdsd: 0x%x: invalid or unsupported SFID for this platform",
+              ex_desc);
         }
     }
 
-    iga::DiagnosticList es;
-    iga::DiagnosticList ws;
+    iga::DiagnosticList es, ws;
     auto emitDiagnostics = [&](const iga::DiagnosticList &ds) {
         for (const auto &d : ds) {
             std::stringstream ss;

@@ -777,6 +777,7 @@ void BinaryEncodingIGA::DoAll()
             igaInst->addInstOpts(getIGAInstOptSet(inst));
 
 
+
 #if _DEBUG
             igaInst->validate();
 #endif

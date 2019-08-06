@@ -75,7 +75,7 @@ namespace iga
         ATOMIC_LOAD, ATOMIC_STORE,
         ATOMIC_AND, ATOMIC_XOR, ATOMIC_OR,
         // atomic integer ops
-        ATOMIC_IINC, ATOMIC_IDEC,
+        ATOMIC_IINC, ATOMIC_IDEC, ATOMIC_IPDEC,
         ATOMIC_IADD, ATOMIC_ISUB, ATOMIC_IRSUB,
         ATOMIC_ICAS,
         ATOMIC_SMIN, ATOMIC_SMAX, // signed
@@ -294,6 +294,9 @@ namespace iga
             DiagnosticList &warnings,
             DiagnosticList &errors,
             DecodedDescFields *descDecodedField);
+
+        static SFID sfidFromEncoding(Platform p, uint32_t sfidBits);
+        static SFID sfidFromOp(Platform p, Op op, uint32_t exDesc);
 
         //
         // Do we enable abstract encoding?

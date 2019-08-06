@@ -137,7 +137,7 @@ namespace iga
 
         // state that is valid over encodeInst()
         ged_ins_t                                 m_gedInst;
-        bool                                      m_encodeAlign16;
+        bool                                      m_encodeAlign16 = false;
         Op                                        m_opcode;
         size_t                                    m_numberInstructionsEncoded;
 

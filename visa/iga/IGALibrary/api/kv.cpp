@@ -470,24 +470,36 @@ kv_status_t kv_get_message_sfid(const kv_t *kv, int32_t pc, int32_t *sfid_enum)
 uint32_t kv_get_message_len(
     const kv_t *kv, int32_t pc, uint32_t* mLen, uint32_t* emLen, uint32_t* rLen)
 {
-    if (!mLen || !emLen || !rLen)
+    if (!kv || !mLen || !emLen || !rLen)
         return 0;
 
     const Instruction *inst = getInstruction(kv, pc);
-    if (!inst) {
+    if (!inst)
         return 0;
-    }
+    else if (!inst->getOpSpec().isSendOrSendsFamily())
+        return 0;
 
     auto exDesc = inst->getExtMsgDescriptor();
     auto desc = inst->getMsgDescriptor();
 
-    // TODO: do I check for immediates?
-    //if (exDesc.type != SendDescArg::IMM || desc.type != SendDescArg::IMM)
-    //    return 0;
+    uint32_t numSet = 0;
+    if (desc.type == SendDescArg::IMM) {
+        *rLen = (desc.imm >> 20) & 0x1F; // Desc[24:20]
+        *mLen = (desc.imm >> 25) & 0x1F; // Desc[29:25]
+        numSet += 2;
+    } else {
+        *rLen = KV_INVALID_LEN;
+        *mLen = KV_INVALID_LEN;
+    }
 
-    Platform p = ((KernelViewImpl *)kv)->m_model.platform;
+    if (exDesc.type == SendDescArg::IMM) {
+        *emLen = (exDesc.imm >> 6) & 0x3F; // ExDesc[10:6]
+        numSet++;
+    } else {
+        *emLen = KV_INVALID_LEN;
+    }
 
-    return getMessageLengths(p, inst->getOpSpec(), exDesc.imm, desc.imm, mLen, emLen, rLen);
+    return numSet;
 }
 
 uint32_t kv_get_execution_size(const kv_t *kv, int32_t pc)
