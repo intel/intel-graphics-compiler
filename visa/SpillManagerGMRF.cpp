@@ -3119,15 +3119,21 @@ SpillManagerGMRF::replaceFilledRange (
         isMultiRegComprSource (filledRegion, filledInst)?
         filledInst->getExecSize () / 2:
         filledInst->getExecSize ();
-    G4_SrcRegRegion * fillRangeSrcRegion =
-        createFillRangeSrcRegion (
-            fillRangeDcl->getRegVar (), filledRegion, execSize);
 
     for (int i = 0; i < G4_MAX_SRCS; i++) {
-        G4_SrcRegRegion * src =
-            (G4_SrcRegRegion *) filledInst->getSrc(i);
-        if (src != NULL && *src == *filledRegion)
-            filledInst->setSrc (fillRangeSrcRegion, i);
+        G4_Operand * src = filledInst->getSrc(i);
+
+        if (src != NULL && src->isSrcRegRegion())
+        {
+            G4_SrcRegRegion* srcRgn = src->asSrcRegRegion();
+            if (*srcRgn == *filledRegion)
+            {
+                G4_SrcRegRegion* fillRangeSrcRegion =
+                    createFillRangeSrcRegion(
+                        fillRangeDcl->getRegVar(), filledRegion, execSize);
+                filledInst->setSrc(fillRangeSrcRegion, i);
+            }
+        }
     }
 }
 
