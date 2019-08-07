@@ -62,6 +62,8 @@ add_executable("${IGC_BUILD__PROJ__ElfPackager}"
     ${IGC_SOURCE_DIR}/AdaptorOCL/CLElfLib/ElfReader.h
   )
 
+add_dependencies("${IGC_BUILD__PROJ__ElfPackager}" "${IGC_BUILD__PROJ__GenISAIntrinsics}")
+
 target_link_libraries(${IGC_BUILD__PROJ__ElfPackager}
     ${IGC_BUILD__LLVM_LIBS_TO_LINK})
 
