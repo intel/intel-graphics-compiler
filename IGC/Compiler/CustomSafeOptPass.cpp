@@ -45,24 +45,24 @@ The passes are
     GenStrengthReduction
     FlattenSmallSwitch
 
-CustomSafeOptPass does peephole optimizations 
+CustomSafeOptPass does peephole optimizations
 For example, reduce the alloca size so there is a chance to promote indexed temp.
 
-GenSpecificPattern reverts llvm changes back to what is needed. 
-For example, llvm changes AND to OR, and GenSpecificPaattern changes it back to 
+GenSpecificPattern reverts llvm changes back to what is needed.
+For example, llvm changes AND to OR, and GenSpecificPaattern changes it back to
 allow more optimizations
 
-IGCConstProp was originated from llvm copy-prop code with one addition for 
+IGCConstProp was originated from llvm copy-prop code with one addition for
 shader-constant replacement. So llvm copyright is added above.
 
-IGCIndirectICBPropagaion reads the immediate constant buffer from meta data and 
+IGCIndirectICBPropagaion reads the immediate constant buffer from meta data and
 use them as immediates instead of using send messages to read from buffer.
 
 CustomLoopInfo returns true if there is any sampleL in a loop for the driver.
 
 GenStrengthReduction performs a fdiv optimization.
 
-FlattenSmallSwitch flatten the if/else or switch structure and use cmp+sel 
+FlattenSmallSwitch flatten the if/else or switch structure and use cmp+sel
 instead if the structure is small.
 
 =============================================================================*/
@@ -119,35 +119,35 @@ CustomSafeOptPass::CustomSafeOptPass() : FunctionPass(ID)
 // In some cases we link LLVM with NDEBUG set with IGC without NDEBUG set, this causes this function to not be missing during linking
 // Once we switch to CMAKE this code can be removed
 #if (defined(_INTERNAL) && defined(NDEBUG)) && ( !defined( LLVM_ENABLE_THREADS ) || LLVM_ENABLE_THREADS == 0 || ( defined( IGC_CMAKE ) && defined( NDEBUG ) ) || ( !defined( IGC_CMAKE ) && !defined( NDEBUG ) ) )
-void AnnotateHappensBefore(const char *file, int line,
-                           const volatile void *cv) {}
-void AnnotateHappensAfter(const char *file, int line,
-                          const volatile void *cv) {}
-void AnnotateIgnoreWritesBegin(const char *file, int line) {}
-void AnnotateIgnoreWritesEnd(const char *file, int line) {}
+void AnnotateHappensBefore(const char* file, int line,
+    const volatile void* cv) {}
+void AnnotateHappensAfter(const char* file, int line,
+    const volatile void* cv) {}
+void AnnotateIgnoreWritesBegin(const char* file, int line) {}
+void AnnotateIgnoreWritesEnd(const char* file, int line) {}
 #endif
 #endif
 
 #define DEBUG_TYPE "CustomSafeOptPass"
 
-STATISTIC(Stat_FcmpRemoved,  "Number of insts removed in FCmp Opt");
-STATISTIC(Stat_FloatRemoved,  "Number of insts removed in Float Opt");
-STATISTIC(Stat_DiscardRemoved,  "Number of insts removed in Discard Opt");
+STATISTIC(Stat_FcmpRemoved, "Number of insts removed in FCmp Opt");
+STATISTIC(Stat_FloatRemoved, "Number of insts removed in Float Opt");
+STATISTIC(Stat_DiscardRemoved, "Number of insts removed in Discard Opt");
 
-bool CustomSafeOptPass::runOnFunction(Function &F)
+bool CustomSafeOptPass::runOnFunction(Function& F)
 {
     psHasSideEffect = getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->m_instrTypes.psHasSideEffect;
     visit(F);
     return true;
 }
 
-void CustomSafeOptPass::visitInstruction(Instruction &I)
+void CustomSafeOptPass::visitInstruction(Instruction& I)
 {
     // nothing
 }
 
 
-void CustomSafeOptPass::visitAllocaInst(AllocaInst &I)
+void CustomSafeOptPass::visitAllocaInst(AllocaInst& I)
 {
     // reduce the alloca size so there is a chance to promote indexed temp.
 
@@ -177,7 +177,7 @@ void CustomSafeOptPass::visitAllocaInst(AllocaInst &I)
 
     if (!(pType->getArrayElementType()->isFloatingPointTy() ||
         pType->getArrayElementType()->isIntegerTy() ||
-        pType->getArrayElementType()->isPointerTy() ))
+        pType->getArrayElementType()->isPointerTy()))
     {
         return;
     }
@@ -188,19 +188,19 @@ void CustomSafeOptPass::visitAllocaInst(AllocaInst &I)
     // Find all uses of this alloca
     for (Value::user_iterator it = I.user_begin(), e = I.user_end(); it != e; ++it)
     {
-        if (GetElementPtrInst *pGEP = llvm::dyn_cast<GetElementPtrInst>(*it))
+        if (GetElementPtrInst * pGEP = llvm::dyn_cast<GetElementPtrInst>(*it))
         {
-            ConstantInt *C0 = dyn_cast<ConstantInt>(pGEP->getOperand(1));
+            ConstantInt* C0 = dyn_cast<ConstantInt>(pGEP->getOperand(1));
             if (!C0 || !C0->isZero() || pGEP->getNumOperands() != 3)
             {
                 return;
             }
             for (Value::user_iterator use_it = pGEP->user_begin(), use_e = pGEP->user_end(); use_it != use_e; ++use_it)
             {
-                if (llvm::LoadInst* pLoad = llvm::dyn_cast<llvm::LoadInst>(*use_it))
+                if (llvm::LoadInst * pLoad = llvm::dyn_cast<llvm::LoadInst>(*use_it))
                 {
                 }
-                else if (llvm::StoreInst* pStore = llvm::dyn_cast<llvm::StoreInst>(*use_it))
+                else if (llvm::StoreInst * pStore = llvm::dyn_cast<llvm::StoreInst>(*use_it))
                 {
                     llvm::Value* pValueOp = pStore->getValueOperand();
                     if (pValueOp == *it)
@@ -245,12 +245,12 @@ void CustomSafeOptPass::visitAllocaInst(AllocaInst &I)
     // found a case to optimize
     IGCLLVM::IRBuilder<> IRB(&I);
     llvm::ArrayType* allocaArraySize = llvm::ArrayType::get(pType->getArrayElementType(), newSize);
-    llvm::Value* newAlloca = IRB.CreateAlloca( allocaArraySize, nullptr);
+    llvm::Value* newAlloca = IRB.CreateAlloca(allocaArraySize, nullptr);
     llvm::Value* gepArg1;
 
     for (Value::user_iterator it = I.user_begin(), e = I.user_end(); it != e; ++it)
     {
-        if (GetElementPtrInst *pGEP = llvm::dyn_cast<GetElementPtrInst>(*it))
+        if (GetElementPtrInst * pGEP = llvm::dyn_cast<GetElementPtrInst>(*it))
         {
             if (dyn_cast<ConstantInt>(pGEP->getOperand(2)))
             {
@@ -271,7 +271,7 @@ void CustomSafeOptPass::visitAllocaInst(AllocaInst &I)
     }
 }
 
-void CustomSafeOptPass::visitLoadInst(LoadInst &load)
+void CustomSafeOptPass::visitLoadInst(LoadInst& load)
 {
     // Optimize indirect access to private arrays. Handle cases where
     // array index is a select between two immediate constant values.
@@ -297,7 +297,7 @@ void CustomSafeOptPass::visitLoadInst(LoadInst &load)
         // only private arrays are handled
         return;
     }
-    if (GetElementPtrInst* gep = dyn_cast<GetElementPtrInst>(ptr))
+    if (GetElementPtrInst * gep = dyn_cast<GetElementPtrInst>(ptr))
     {
         bool found = false;
         uint selIdx = 0;
@@ -330,7 +330,7 @@ void CustomSafeOptPass::visitLoadInst(LoadInst &load)
         if (found)
         {
             SelectInst* sel = cast<SelectInst>(gep->getOperand(selIdx + 1));
-            SmallVector<Value *, 8> indices;
+            SmallVector<Value*, 8> indices;
             indices.append(gep->idx_begin(), gep->idx_end());
             indices[selIdx] = sel->getOperand(1);
             GetElementPtrInst* gep1 = GetElementPtrInst::Create(nullptr, gep->getPointerOperand(), indices, gep->getName(), gep);
@@ -362,10 +362,10 @@ void CustomSafeOptPass::visitLoadInst(LoadInst &load)
 
 }
 
-void CustomSafeOptPass::visitCallInst(CallInst &C)
+void CustomSafeOptPass::visitCallInst(CallInst& C)
 {
     // discard optimizations
-    if(llvm::GenIntrinsicInst* inst = llvm::dyn_cast<GenIntrinsicInst>(&C))
+    if (llvm::GenIntrinsicInst * inst = llvm::dyn_cast<GenIntrinsicInst>(&C))
     {
         GenISAIntrinsic::ID id = inst->getIntrinsicID();
         // try to prune the destination size
@@ -373,31 +373,31 @@ void CustomSafeOptPass::visitCallInst(CallInst &C)
         {
         case GenISAIntrinsic::GenISA_discard:
         {
-            Value *srcVal0 = C.getOperand(0);
-            if(ConstantInt *CI = dyn_cast<ConstantInt>(srcVal0))
+            Value* srcVal0 = C.getOperand(0);
+            if (ConstantInt * CI = dyn_cast<ConstantInt>(srcVal0))
             {
-                if(CI->isZero()){ // i1 is false
+                if (CI->isZero()) { // i1 is false
                     C.eraseFromParent();
                     ++Stat_DiscardRemoved;
                 }
-                else if(!psHasSideEffect)
+                else if (!psHasSideEffect)
                 {
-                    BasicBlock *blk = C.getParent();
-                    BasicBlock *pred = blk->getSinglePredecessor();
-                    if(blk && pred)
+                    BasicBlock* blk = C.getParent();
+                    BasicBlock* pred = blk->getSinglePredecessor();
+                    if (blk && pred)
                     {
-                        BranchInst *cbr = dyn_cast<BranchInst>(pred->getTerminator());
-                        if(cbr && cbr->isConditional())
+                        BranchInst* cbr = dyn_cast<BranchInst>(pred->getTerminator());
+                        if (cbr && cbr->isConditional())
                         {
-                            if(blk == cbr->getSuccessor(0))
+                            if (blk == cbr->getSuccessor(0))
                             {
                                 C.setOperand(0, cbr->getCondition());
                                 C.removeFromParent();
                                 C.insertBefore(cbr);
                             }
-                            else if(blk == cbr->getSuccessor(1))
+                            else if (blk == cbr->getSuccessor(1))
                             {
-                                Value *flipCond = llvm::BinaryOperator::CreateNot(cbr->getCondition(), "", cbr);
+                                Value* flipCond = llvm::BinaryOperator::CreateNot(cbr->getCondition(), "", cbr);
                                 C.setOperand(0, flipCond);
                                 C.removeFromParent();
                                 C.insertBefore(cbr);
@@ -501,7 +501,7 @@ void CustomSafeOptPass::visitf32tof16(llvm::CallInst* inst)
     }
     Instruction* lastValue = addInst;
 
-    if (BitCastInst* finalBitCast = dyn_cast<BitCastInst>(*(addInst->user_begin())))
+    if (BitCastInst * finalBitCast = dyn_cast<BitCastInst>(*(addInst->user_begin())))
     {
         lastValue = finalBitCast;
     }
@@ -568,10 +568,10 @@ void CustomSafeOptPass::visitBfi(llvm::CallInst* inst)
     assert(inst->getType()->isIntegerTy(32));
     ConstantInt* widthV = dyn_cast<ConstantInt>(inst->getOperand(0));
     ConstantInt* offsetV = dyn_cast<ConstantInt>(inst->getOperand(1));
-    if(widthV && offsetV)
+    if (widthV && offsetV)
     {
         // transformation is beneficial if src3 is constant or if the offset is zero
-        if(isa<ConstantInt>(inst->getOperand(3)) || offsetV->isZero())
+        if (isa<ConstantInt>(inst->getOperand(3)) || offsetV->isZero())
         {
             unsigned int width = static_cast<unsigned int>(widthV->getZExtValue());
             unsigned int offset = static_cast<unsigned int>(offsetV->getZExtValue());
@@ -616,17 +616,17 @@ void CustomSafeOptPass::visitMulH(CallInst* inst, bool isSigned)
 }
 
 // if phi is used in a FPTrunc and the sources all come from fpext we can skip the conversions
-void CustomSafeOptPass::visitFPTruncInst(FPTruncInst &I)
+void CustomSafeOptPass::visitFPTruncInst(FPTruncInst& I)
 {
-    if(PHINode* phi = dyn_cast<PHINode>(I.getOperand(0)))
+    if (PHINode * phi = dyn_cast<PHINode>(I.getOperand(0)))
     {
         bool foundPattern = true;
         unsigned int numSrc = phi->getNumIncomingValues();
         SmallVector<Value*, 6> newSources(numSrc);
-        for(unsigned int i = 0; i < numSrc; i++)
+        for (unsigned int i = 0; i < numSrc; i++)
         {
             FPExtInst* source = dyn_cast<FPExtInst>(phi->getIncomingValue(i));
-            if(source && source->getOperand(0)->getType() == I.getType())
+            if (source && source->getOperand(0)->getType() == I.getType())
             {
                 newSources[i] = source->getOperand(0);
             }
@@ -636,18 +636,18 @@ void CustomSafeOptPass::visitFPTruncInst(FPTruncInst &I)
                 break;
             }
         }
-        if(foundPattern)
+        if (foundPattern)
         {
             PHINode* newPhi = PHINode::Create(I.getType(), numSrc, "", phi);
-            for(unsigned int i = 0; i < numSrc; i++)
+            for (unsigned int i = 0; i < numSrc; i++)
             {
                 newPhi->addIncoming(newSources[i], phi->getIncomingBlock(i));
             }
-            
+
             I.replaceAllUsesWith(newPhi);
             I.eraseFromParent();
             // if phi has other uses we add a fpext to avoid having two phi
-            if(!phi->use_empty())
+            if (!phi->use_empty())
             {
                 IRBuilder<> builder(&(*phi->getParent()->getFirstInsertionPt()));
                 Value* extV = builder.CreateFPExt(newPhi, phi->getType());
@@ -655,12 +655,12 @@ void CustomSafeOptPass::visitFPTruncInst(FPTruncInst &I)
             }
         }
     }
-    
+
 }
 
 void CustomSafeOptPass::visitFPToUIInst(llvm::FPToUIInst& FPUII)
 {
-    if (llvm::IntrinsicInst* intrinsicInst = llvm::dyn_cast<llvm::IntrinsicInst>(FPUII.getOperand(0)))
+    if (llvm::IntrinsicInst * intrinsicInst = llvm::dyn_cast<llvm::IntrinsicInst>(FPUII.getOperand(0)))
     {
         if (intrinsicInst->getIntrinsicID() == Intrinsic::floor)
         {
@@ -676,17 +676,17 @@ void CustomSafeOptPass::visitFPToUIInst(llvm::FPToUIInst& FPUII)
 /// This remove simplify bitcast across phi and select instruction
 /// LLVM doesn't catch those case and it is common in DX10+ as the input language is not typed
 /// TODO: support cases where some sources are constant
-void CustomSafeOptPass::visitBitCast(BitCastInst &BC)
+void CustomSafeOptPass::visitBitCast(BitCastInst& BC)
 {
-    if(SelectInst* sel = dyn_cast<SelectInst>(BC.getOperand(0)))
+    if (SelectInst * sel = dyn_cast<SelectInst>(BC.getOperand(0)))
     {
         BitCastInst* trueVal = dyn_cast<BitCastInst>(sel->getTrueValue());
         BitCastInst* falseVal = dyn_cast<BitCastInst>(sel->getFalseValue());
-        if(trueVal && falseVal)
+        if (trueVal && falseVal)
         {
             Value* trueValOrignalType = trueVal->getOperand(0);
             Value* falseValOrignalType = falseVal->getOperand(0);
-            if(trueValOrignalType->getType() == BC.getType() &&
+            if (trueValOrignalType->getType() == BC.getType() &&
                 falseValOrignalType->getType() == BC.getType())
             {
                 Value* cond = sel->getCondition();
@@ -696,21 +696,21 @@ void CustomSafeOptPass::visitBitCast(BitCastInst &BC)
             }
         }
     }
-    else if(PHINode* phi = dyn_cast<PHINode>(BC.getOperand(0)))
+    else if (PHINode * phi = dyn_cast<PHINode>(BC.getOperand(0)))
     {
-        if(phi->hasOneUse())
+        if (phi->hasOneUse())
         {
             bool foundPattern = true;
             unsigned int numSrc = phi->getNumIncomingValues();
             SmallVector<Value*, 6> newSources(numSrc);
-            for(unsigned int i = 0; i < numSrc; i++)
+            for (unsigned int i = 0; i < numSrc; i++)
             {
                 BitCastInst* source = dyn_cast<BitCastInst>(phi->getIncomingValue(i));
-                if(source && source->getOperand(0)->getType() == BC.getType())
+                if (source && source->getOperand(0)->getType() == BC.getType())
                 {
                     newSources[i] = source->getOperand(0);
                 }
-                else if(Constant* C = dyn_cast<Constant>(phi->getIncomingValue(i)))
+                else if (Constant * C = dyn_cast<Constant>(phi->getIncomingValue(i)))
                 {
                     newSources[i] = ConstantExpr::getCast(Instruction::BitCast, C, BC.getType());
                 }
@@ -720,10 +720,10 @@ void CustomSafeOptPass::visitBitCast(BitCastInst &BC)
                     break;
                 }
             }
-            if(foundPattern)
+            if (foundPattern)
             {
                 PHINode* newPhi = PHINode::Create(BC.getType(), numSrc, "", phi);
-                for(unsigned int i = 0; i < numSrc; i++)
+                for (unsigned int i = 0; i < numSrc; i++)
                 {
                     newPhi->addIncoming(newSources[i], phi->getIncomingBlock(i));
                 }
@@ -734,19 +734,19 @@ void CustomSafeOptPass::visitBitCast(BitCastInst &BC)
     }
 }
 
-bool CustomSafeOptPass::isEmulatedAdd(BinaryOperator &I)
+bool CustomSafeOptPass::isEmulatedAdd(BinaryOperator& I)
 {
     if (I.getOpcode() == Instruction::Or)
     {
-        if (BinaryOperator *OrOp0 = dyn_cast<BinaryOperator>(I.getOperand(0)))
+        if (BinaryOperator * OrOp0 = dyn_cast<BinaryOperator>(I.getOperand(0)))
         {
             if (OrOp0->getOpcode() == Instruction::Shl)
             {
                 // Check the SHl. If we have a constant Shift Left val then we can check
                 // it to see if it is emulating an add.
-                if (ConstantInt *pConstShiftLeft = dyn_cast<ConstantInt>(OrOp0->getOperand(1)))
+                if (ConstantInt * pConstShiftLeft = dyn_cast<ConstantInt>(OrOp0->getOperand(1)))
                 {
-                    if (ConstantInt *pConstOrVal = dyn_cast<ConstantInt>(I.getOperand(1)))
+                    if (ConstantInt * pConstOrVal = dyn_cast<ConstantInt>(I.getOperand(1)))
                     {
                         int const_shift = int_cast<int>(pConstShiftLeft->getZExtValue());
                         int const_or_val = int_cast<int>(pConstOrVal->getZExtValue());
@@ -762,9 +762,9 @@ bool CustomSafeOptPass::isEmulatedAdd(BinaryOperator &I)
             {
                 // Check to see if the Or is emulating and add.
                 // If we have a constant Mul and a constant Or. The Mul constant needs to be divisible by the rounded up 2^n of Or value.
-                if (ConstantInt *pConstMul = dyn_cast<ConstantInt>(OrOp0->getOperand(1)))
+                if (ConstantInt * pConstMul = dyn_cast<ConstantInt>(OrOp0->getOperand(1)))
                 {
-                    if (ConstantInt *pConstOrVal = dyn_cast<ConstantInt>(I.getOperand(1)))
+                    if (ConstantInt * pConstOrVal = dyn_cast<ConstantInt>(I.getOperand(1)))
                     {
                         if (pConstOrVal->isNegative() == false)
                         {
@@ -783,7 +783,7 @@ bool CustomSafeOptPass::isEmulatedAdd(BinaryOperator &I)
     return false;
 }
 
-void CustomSafeOptPass::visitBinaryOperator(BinaryOperator &I)
+void CustomSafeOptPass::visitBinaryOperator(BinaryOperator& I)
 {
     // move immediate value in consecutive integer adds to the last added value.
     // this can allow more chance of doing CSE and memopt.
@@ -792,25 +792,25 @@ void CustomSafeOptPass::visitBinaryOperator(BinaryOperator &I)
     //        to
     //    a = b + c
     //    d = a + 8
-    
+
     CodeGenContext* pContext = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     // WA for remaining bug in custom pass
-    if(pContext->m_DriverInfo.WADisableCustomPass())
+    if (pContext->m_DriverInfo.WADisableCustomPass())
         return;
     if (I.getType()->isIntegerTy())
     {
         if ((I.getOpcode() == Instruction::Add || isEmulatedAdd(I)) &&
             I.hasOneUse())
         {
-            ConstantInt *src0imm = dyn_cast<ConstantInt>(I.getOperand(0));
-            ConstantInt *src1imm = dyn_cast<ConstantInt>(I.getOperand(1));
+            ConstantInt* src0imm = dyn_cast<ConstantInt>(I.getOperand(0));
+            ConstantInt* src1imm = dyn_cast<ConstantInt>(I.getOperand(1));
             if (src0imm || src1imm)
             {
                 llvm::Instruction* nextInst = llvm::dyn_cast<llvm::Instruction>(*(I.user_begin()));
                 if (nextInst && nextInst->getOpcode() == Instruction::Add)
                 {
-                    ConstantInt *secondSrc0imm = dyn_cast<ConstantInt>(nextInst->getOperand(0));
-                    ConstantInt *secondSrc1imm = dyn_cast<ConstantInt>(nextInst->getOperand(1));
+                    ConstantInt* secondSrc0imm = dyn_cast<ConstantInt>(nextInst->getOperand(0));
+                    ConstantInt* secondSrc1imm = dyn_cast<ConstantInt>(nextInst->getOperand(1));
                     // found 2 add instructions to swap srcs
                     if (!secondSrc0imm && !secondSrc1imm && nextInst->getOperand(0) != nextInst->getOperand(1))
                     {
@@ -818,7 +818,7 @@ void CustomSafeOptPass::visitBinaryOperator(BinaryOperator &I)
                         {
                             if (nextInst->getOperand(i) == &I)
                             {
-                                Value * newAdd = BinaryOperator::CreateAdd(src0imm ? I.getOperand(1) : I.getOperand(0), nextInst->getOperand(1 - i), "", nextInst);
+                                Value* newAdd = BinaryOperator::CreateAdd(src0imm ? I.getOperand(1) : I.getOperand(0), nextInst->getOperand(1 - i), "", nextInst);
                                 nextInst->setOperand(0, newAdd);
                                 nextInst->setOperand(1, I.getOperand(src0imm ? 0 : 1));
                                 break;
@@ -846,9 +846,9 @@ void IGC::CustomSafeOptPass::visitLdptr(llvm::CallInst* inst)
     // % 10 = call fast <4 x float> @llvm.genx.GenISA.typedread.p196608v4f32(<4 x float> addrspace(196608)* null, i32 %_s1.i, i32 %_s14.i, i32 0, i32 0), !dbg !123
     // when the index comes directly from threadid
 
-    Constant *src1 = dyn_cast<Constant>(inst->getOperand(1));
-    Constant *src2 = dyn_cast<Constant>(inst->getOperand(2));
-    Constant *src3 = dyn_cast<Constant>(inst->getOperand(3));
+    Constant* src1 = dyn_cast<Constant>(inst->getOperand(1));
+    Constant* src2 = dyn_cast<Constant>(inst->getOperand(2));
+    Constant* src3 = dyn_cast<Constant>(inst->getOperand(3));
 
     // src2 and src3 has to be zero
     if (!src2 || !src3 || !src2->isZeroValue() || !src3->isZeroValue())
@@ -893,8 +893,8 @@ void IGC::CustomSafeOptPass::visitLdptr(llvm::CallInst* inst)
             return;
         }
 
-        GenIntrinsicInst *CI0 = dyn_cast<GenIntrinsicInst>(bitcastInst0->getOperand(0));
-        GenIntrinsicInst *CI1 = dyn_cast<GenIntrinsicInst>(bitcastInst1->getOperand(0));
+        GenIntrinsicInst* CI0 = dyn_cast<GenIntrinsicInst>(bitcastInst0->getOperand(0));
+        GenIntrinsicInst* CI1 = dyn_cast<GenIntrinsicInst>(bitcastInst1->getOperand(0));
         if (!CI0 || !CI1 ||
             CI0->getIntrinsicID() != GenISAIntrinsic::GenISA_DCL_SystemValue ||
             CI1->getIntrinsicID() != GenISAIntrinsic::GenISA_DCL_SystemValue)
@@ -905,7 +905,7 @@ void IGC::CustomSafeOptPass::visitLdptr(llvm::CallInst* inst)
 
     // do the transformation
     llvm::IRBuilder<> builder(inst);
-    Module *M = inst->getParent()->getParent()->getParent();
+    Module* M = inst->getParent()->getParent()->getParent();
 
     Function* pLdIntrinsic = llvm::GenISAIntrinsic::getDeclaration(
         M,
@@ -927,7 +927,7 @@ void IGC::CustomSafeOptPass::visitLdptr(llvm::CallInst* inst)
     // FIXME: is it better to make typedRead return ty a anyvector?
     if (inst->getType() != pNewCallInst->getType())
     {
-        assert(inst->getType()->isVectorTy() && inst->getType()->getVectorElementType()->isIntegerTy(32) && 
+        assert(inst->getType()->isVectorTy() && inst->getType()->getVectorElementType()->isIntegerTy(32) &&
             inst->getType()->getVectorNumElements() == 4 && "expect int4 here");
         auto bitCastInst = builder.CreateBitCast(pNewCallInst, inst->getType());
         inst->replaceAllUsesWith(bitCastInst);
@@ -942,11 +942,11 @@ void IGC::CustomSafeOptPass::visitSampleBptr(llvm::SampleIntrinsic* sampleInst)
 {
     // sampleB with bias_value==0 -> sample
     llvm::ConstantFP* constBias = llvm::dyn_cast<llvm::ConstantFP>(sampleInst->getOperand(0));
-    if(constBias && constBias->isZero())
+    if (constBias && constBias->isZero())
     {
         // Copy args skipping bias operand:
         llvm::SmallVector<llvm::Value*, 10> args;
-        for(unsigned int i = 1; i < sampleInst->getNumArgOperands(); i++)
+        for (unsigned int i = 1; i < sampleInst->getNumArgOperands(); i++)
         {
             args.push_back(sampleInst->getArgOperand(i));
         }
@@ -963,12 +963,12 @@ void IGC::CustomSafeOptPass::visitSampleBptr(llvm::SampleIntrinsic* sampleInst)
             GenISAIntrinsic::GenISA_sampleptr,
             overloadedTys);
 
-        llvm::Value *newSample = llvm::CallInst::Create(sampleIntr, args, "", sampleInst);
+        llvm::Value* newSample = llvm::CallInst::Create(sampleIntr, args, "", sampleInst);
         sampleInst->replaceAllUsesWith(newSample);
     }
 }
 
-void CustomSafeOptPass::visitExtractElementInst(ExtractElementInst &I)
+void CustomSafeOptPass::visitExtractElementInst(ExtractElementInst& I)
 {
     // convert:
     // %1 = lshr i32 %0, 16,
@@ -979,42 +979,42 @@ void CustomSafeOptPass::visitExtractElementInst(ExtractElementInst &I)
     // %3 = extractelement <2 x half> %2, i32 1
     BitCastInst* bitCast = dyn_cast<BitCastInst>(I.getVectorOperand());
     ConstantInt* cstIndex = dyn_cast<ConstantInt>(I.getIndexOperand());
-    if(bitCast && cstIndex)
+    if (bitCast && cstIndex)
     {
         // skip intermediate bitcast
-        while(isa<BitCastInst>(bitCast->getOperand(0)))
+        while (isa<BitCastInst>(bitCast->getOperand(0)))
         {
             bitCast = cast<BitCastInst>(bitCast->getOperand(0));
         }
-        if(BinaryOperator* binOp = dyn_cast<BinaryOperator>(bitCast->getOperand(0)))
+        if (BinaryOperator * binOp = dyn_cast<BinaryOperator>(bitCast->getOperand(0)))
         {
             unsigned int bitShift = 0;
             bool rightShift = false;
-            if(binOp->getOpcode() == Instruction::LShr)
+            if (binOp->getOpcode() == Instruction::LShr)
             {
-                if(ConstantInt* cstShift = dyn_cast<ConstantInt>(binOp->getOperand(1)))
+                if (ConstantInt * cstShift = dyn_cast<ConstantInt>(binOp->getOperand(1)))
                 {
                     bitShift = (unsigned int)cstShift->getZExtValue();
                     rightShift = true;
                 }
             }
-            else if(binOp->getOpcode() == Instruction::Shl)
+            else if (binOp->getOpcode() == Instruction::Shl)
             {
-                if(ConstantInt* cstShift = dyn_cast<ConstantInt>(binOp->getOperand(1)))
+                if (ConstantInt * cstShift = dyn_cast<ConstantInt>(binOp->getOperand(1)))
                 {
                     bitShift = (unsigned int)cstShift->getZExtValue();
                 }
             }
-            if(bitShift != 0)
+            if (bitShift != 0)
             {
                 Type* vecType = I.getVectorOperand()->getType();
                 unsigned int eltSize = vecType->getVectorElementType()->getPrimitiveSizeInBits();
-                if(bitShift % eltSize == 0)
+                if (bitShift % eltSize == 0)
                 {
                     int elOffset = (int)(bitShift / eltSize);
                     elOffset = rightShift ? elOffset : -elOffset;
                     unsigned int newIndex = (unsigned int)((int)cstIndex->getZExtValue() + elOffset);
-                    if(newIndex < vecType->getVectorNumElements())
+                    if (newIndex < vecType->getVectorNumElements())
                     {
                         IRBuilder<> builder(&I);
                         Value* newBitCast = builder.CreateBitCast(binOp->getOperand(0), vecType);
@@ -1043,19 +1043,19 @@ TrivialLocalMemoryOpsElimination::TrivialLocalMemoryOpsElimination() : FunctionP
     initializeTrivialLocalMemoryOpsEliminationPass(*PassRegistry::getPassRegistry());
 }
 
-bool TrivialLocalMemoryOpsElimination::runOnFunction(Function &F)
+bool TrivialLocalMemoryOpsElimination::runOnFunction(Function& F)
 {
     bool change = false;
     visit(F);
     if (!abortPass && (m_LocalLoadsToRemove.empty() || m_LocalStoresToRemove.empty()))
     {
-        for (StoreInst *Inst : m_LocalStoresToRemove)
+        for (StoreInst* Inst : m_LocalStoresToRemove)
         {
             Inst->eraseFromParent();
             change = true;
         }
 
-        for (LoadInst *Inst : m_LocalLoadsToRemove)
+        for (LoadInst* Inst : m_LocalLoadsToRemove)
         {
             if (Inst->use_empty())
             {
@@ -1064,7 +1064,7 @@ bool TrivialLocalMemoryOpsElimination::runOnFunction(Function &F)
             }
         }
 
-        for (CallInst *Inst : m_LocalFencesBariersToRemove)
+        for (CallInst* Inst : m_LocalFencesBariersToRemove)
         {
             Inst->eraseFromParent();
             change = true;
@@ -1086,12 +1086,12 @@ call void @llvm.genx.GenISA.threadgroupbarrier()
 if we remove call void @llvm.genx.GenISA.memoryfence(i1 true, i1 false, i1 false, i1 false, i1 false, i1 false, i1 true)
 we must remove next instruction if it is call void @llvm.genx.GenISA.threadgroupbarrier()
 */
-void TrivialLocalMemoryOpsElimination::findNextThreadGroupBarrierInst(Instruction &I)
+void TrivialLocalMemoryOpsElimination::findNextThreadGroupBarrierInst(Instruction& I)
 {
     auto nextInst = I.getNextNonDebugInstruction();
     if (isa<GenIntrinsicInst>(nextInst))
     {
-        GenIntrinsicInst *II = dyn_cast<GenIntrinsicInst>(nextInst);
+        GenIntrinsicInst* II = dyn_cast<GenIntrinsicInst>(nextInst);
         if (II->getIntrinsicID() == GenISAIntrinsic::GenISA_threadgroupbarrier)
         {
             m_LocalFencesBariersToRemove.push_back(dyn_cast<CallInst>(nextInst));
@@ -1099,7 +1099,7 @@ void TrivialLocalMemoryOpsElimination::findNextThreadGroupBarrierInst(Instructio
     }
 }
 
-void TrivialLocalMemoryOpsElimination::visitLoadInst(LoadInst &I)
+void TrivialLocalMemoryOpsElimination::visitLoadInst(LoadInst& I)
 {
     if (I.getPointerAddressSpace() == ADDRESS_SPACE_LOCAL)
     {
@@ -1107,7 +1107,7 @@ void TrivialLocalMemoryOpsElimination::visitLoadInst(LoadInst &I)
     }
 }
 
-void TrivialLocalMemoryOpsElimination::visitStoreInst(StoreInst &I)
+void TrivialLocalMemoryOpsElimination::visitStoreInst(StoreInst& I)
 {
     if (I.getPointerAddressSpace() == ADDRESS_SPACE_LOCAL)
     {
@@ -1115,7 +1115,7 @@ void TrivialLocalMemoryOpsElimination::visitStoreInst(StoreInst &I)
     }
 }
 
-bool TrivialLocalMemoryOpsElimination::isLocalBarrier(CallInst &I)
+bool TrivialLocalMemoryOpsElimination::isLocalBarrier(CallInst& I)
 {
     //check arguments in call void @llvm.genx.GenISA.memoryfence(i1 true, i1 false, i1 false, i1 false, i1 false, i1 false, i1 true) if match to
     // (i1 true, i1 false, i1 false, i1 false, i1 false, i1 false, i1 true) it is local barrier
@@ -1125,10 +1125,11 @@ bool TrivialLocalMemoryOpsElimination::isLocalBarrier(CallInst &I)
     {
         ConstantInt* ci = dyn_cast<ConstantInt>(arg);
         if (ci) {
-          argumentsOfMemoryBarrier.push_back(ci->getValue().getBoolValue());
-        } else {
-          // argument is not a constant, so we can't tell.
-          return false;
+            argumentsOfMemoryBarrier.push_back(ci->getValue().getBoolValue());
+        }
+        else {
+            // argument is not a constant, so we can't tell.
+            return false;
         }
     }
 
@@ -1136,7 +1137,7 @@ bool TrivialLocalMemoryOpsElimination::isLocalBarrier(CallInst &I)
 }
 
 // If any call instruction use pointer to local memory abort pass execution
-void TrivialLocalMemoryOpsElimination::anyCallInstUseLocalMemory(CallInst &I)
+void TrivialLocalMemoryOpsElimination::anyCallInstUseLocalMemory(CallInst& I)
 {
     Function* fn = I.getCalledFunction();
 
@@ -1152,7 +1153,7 @@ void TrivialLocalMemoryOpsElimination::anyCallInstUseLocalMemory(CallInst &I)
     }
 }
 
-void TrivialLocalMemoryOpsElimination::visitCallInst(CallInst &I)
+void TrivialLocalMemoryOpsElimination::visitCallInst(CallInst& I)
 {
     // detect only: llvm.genx.GenISA.memoryfence(i1 true, i1 false, i1 false, i1 false, i1 false, i1 false, i1 true)
     // (note: the first and last arguments are true)
@@ -1161,7 +1162,7 @@ void TrivialLocalMemoryOpsElimination::visitCallInst(CallInst &I)
 
     if (isa<GenIntrinsicInst>(I))
     {
-        GenIntrinsicInst *II = dyn_cast<GenIntrinsicInst>(&I);
+        GenIntrinsicInst* II = dyn_cast<GenIntrinsicInst>(&I);
         if (II->getIntrinsicID() == GenISAIntrinsic::GenISA_memoryfence)
         {
             if (isLocalBarrier(I))
@@ -1190,7 +1191,7 @@ GenSpecificPattern::GenSpecificPattern() : FunctionPass(ID)
     initializeGenSpecificPatternPass(*PassRegistry::getPassRegistry());
 }
 
-bool GenSpecificPattern::runOnFunction(Function &F)
+bool GenSpecificPattern::runOnFunction(Function& F)
 {
     visit(F);
     return true;
@@ -1199,17 +1200,17 @@ bool GenSpecificPattern::runOnFunction(Function &F)
 // Lower SDiv to better code sequence if possible
 void GenSpecificPattern::visitSDiv(llvm::BinaryOperator& I)
 {
-    if(ConstantInt* divisor = dyn_cast<ConstantInt>(I.getOperand(1)))
+    if (ConstantInt * divisor = dyn_cast<ConstantInt>(I.getOperand(1)))
     {
         // signed division of power of 2 can be transformed to asr
         // For negative values we need to make sure we round correctly
         int log2Div = divisor->getValue().exactLogBase2();
-        if(log2Div > 0)
+        if (log2Div > 0)
         {
             unsigned int intWidth = divisor->getBitWidth();
             IRBuilder<> builder(&I);
-            Value * signedBitOnly = I.getOperand(0);
-            if(log2Div > 1)
+            Value* signedBitOnly = I.getOperand(0);
+            if (log2Div > 1)
             {
                 signedBitOnly = builder.CreateAShr(signedBitOnly, builder.getIntN(intWidth, intWidth - 1));
             }
@@ -1256,11 +1257,11 @@ into:
 And similarly for patterns reversing 16 and 64 bit type values.
 */
 template <typename MaskType>
-void GenSpecificPattern::matchReverse(BinaryOperator &I)
+void GenSpecificPattern::matchReverse(BinaryOperator& I)
 {
     using namespace llvm::PatternMatch;
     assert(I.getType()->isIntegerTy());
-    Value *nextOrShl = nullptr, *nextOrShr = nullptr;
+    Value* nextOrShl = nullptr, * nextOrShr = nullptr;
     uint64_t currentShiftShl = 0, currentShiftShr = 0;
     uint64_t currentMaskShl = 0, currentMaskShr = 0;
     auto patternBfrevFirst =
@@ -1326,7 +1327,7 @@ void GenSpecificPattern::matchReverse(BinaryOperator &I)
     if (isBfrevMatchFound)
     {
         llvm::IRBuilder<> builder(&I);
-        Function *bfrevFunc = GenISAIntrinsic::getDeclaration(
+        Function* bfrevFunc = GenISAIntrinsic::getDeclaration(
             I.getParent()->getParent()->getParent(), GenISAIntrinsic::GenISA_bfrev, builder.getInt32Ty());
         if (bitWidth == 16)
         {
@@ -1357,7 +1358,7 @@ void GenSpecificPattern::matchReverse(BinaryOperator &I)
     }
 }
 
-void GenSpecificPattern::visitBinaryOperator(BinaryOperator &I)
+void GenSpecificPattern::visitBinaryOperator(BinaryOperator& I)
 {
     if (I.getOpcode() == Instruction::Or)
     {
@@ -1393,19 +1394,19 @@ void GenSpecificPattern::visitBinaryOperator(BinaryOperator &I)
         %22 = shl i32 %14, 2
         %23 = add i32 %22, 19
         */
-        Value *AndOp1 = nullptr, *EltOp1 = nullptr;
+        Value* AndOp1 = nullptr, * EltOp1 = nullptr;
         auto pattern1 = m_Or(
             m_And(m_Value(AndOp1), m_SpecificInt(0xFFFFFFFF)),
             m_Shl(m_Value(EltOp1), m_SpecificInt(32)));
 
-    #if LLVM_VERSION_MAJOR >= 7
-        Value *AndOp2 = nullptr, *EltOp2 = nullptr, *VecOp = nullptr;
+#if LLVM_VERSION_MAJOR >= 7
+        Value * AndOp2 = nullptr, *EltOp2 = nullptr, *VecOp = nullptr;
         auto pattern2 = m_Or(
             m_And(m_Value(AndOp2), m_SpecificInt(0xFFFFFFFF)),
-            m_BitCast(m_InsertElement(m_Value(VecOp),m_Value(EltOp2),m_SpecificInt(1))));
-    #endif // LLVM_VERSION_MAJOR >= 7
+            m_BitCast(m_InsertElement(m_Value(VecOp), m_Value(EltOp2), m_SpecificInt(1))));
+#endif // LLVM_VERSION_MAJOR >= 7
         // Transforms pattern1 or pattern2 to a bitcast,extract,insert,insert,bitcast
-        auto transformPattern = [=](BinaryOperator &I, Value* Op1, Value* Op2)
+        auto transformPattern = [=](BinaryOperator& I, Value* Op1, Value* Op2)
         {
             llvm::IRBuilder<> builder(&I);
             VectorType* vec2 = VectorType::get(builder.getInt32Ty(), 2);
@@ -1423,11 +1424,11 @@ void GenSpecificPattern::visitBinaryOperator(BinaryOperator &I)
         {
             transformPattern(I, AndOp1, EltOp1);
         }
-    #if LLVM_VERSION_MAJOR >= 7
+#if LLVM_VERSION_MAJOR >= 7
         else if (match(&I, pattern2) && AndOp2->getType()->isIntegerTy(64))
         {
             ConstantVector* cVec = dyn_cast<ConstantVector>(VecOp);
-            VectorType * vector_type = dyn_cast<VectorType>(VecOp->getType());
+            VectorType* vector_type = dyn_cast<VectorType>(VecOp->getType());
             if (cVec && vector_type &&
                 isa<ConstantInt>(cVec->getOperand(0)) &&
                 cast<ConstantInt>(cVec->getOperand(0))->isZero() &&
@@ -1437,7 +1438,7 @@ void GenSpecificPattern::visitBinaryOperator(BinaryOperator &I)
                 transformPattern(I, AndOp2, EltOp2);
             }
         }
-    #endif // LLVM_VERSION_MAJOR >= 7
+#endif // LLVM_VERSION_MAJOR >= 7
         else
         {
 
@@ -1449,13 +1450,13 @@ void GenSpecificPattern::visitBinaryOperator(BinaryOperator &I)
                 % 22 = shl i32 % 14, 2
                 % 23 = add i32 % 22, 3
             */
-            ConstantInt *OrConstant = dyn_cast<ConstantInt>(I.getOperand(1));
+            ConstantInt* OrConstant = dyn_cast<ConstantInt>(I.getOperand(1));
             if (OrConstant)
             {
                 llvm::Instruction* ShlInst = llvm::dyn_cast<llvm::Instruction>(I.getOperand(0));
                 if (ShlInst && ShlInst->getOpcode() == Instruction::Shl)
                 {
-                    ConstantInt *ShlConstant = dyn_cast<ConstantInt>(ShlInst->getOperand(1));
+                    ConstantInt* ShlConstant = dyn_cast<ConstantInt>(ShlInst->getOperand(1));
                     if (ShlConstant)
                     {
                         // if the constant bit width is larger than 64, we cannot store ShlIntValue and OrIntValue rawdata as uint64_t.
@@ -1468,7 +1469,7 @@ void GenSpecificPattern::visitBinaryOperator(BinaryOperator &I)
 
                         if (OrIntValue < pow(2, ShlIntValue))
                         {
-                            Value * newAdd = BinaryOperator::CreateAdd(I.getOperand(0), I.getOperand(1), "", &I);
+                            Value* newAdd = BinaryOperator::CreateAdd(I.getOperand(0), I.getOperand(1), "", &I);
                             I.replaceAllUsesWith(newAdd);
                         }
                     }
@@ -1487,7 +1488,7 @@ void GenSpecificPattern::visitBinaryOperator(BinaryOperator &I)
         */
         for (int ImmSrcId1 = 0; ImmSrcId1 < 2; ImmSrcId1++)
         {
-            ConstantInt *IConstant = dyn_cast<ConstantInt>(I.getOperand(ImmSrcId1));
+            ConstantInt* IConstant = dyn_cast<ConstantInt>(I.getOperand(ImmSrcId1));
             if (IConstant)
             {
                 llvm::Instruction* AddInst = llvm::dyn_cast<llvm::Instruction>(I.getOperand(1 - ImmSrcId1));
@@ -1495,7 +1496,7 @@ void GenSpecificPattern::visitBinaryOperator(BinaryOperator &I)
                 {
                     for (int ImmSrcId2 = 0; ImmSrcId2 < 2; ImmSrcId2++)
                     {
-                        ConstantInt *AddConstant = dyn_cast<ConstantInt>(AddInst->getOperand(ImmSrcId2));
+                        ConstantInt* AddConstant = dyn_cast<ConstantInt>(AddInst->getOperand(ImmSrcId2));
                         if (AddConstant)
                         {
                             llvm::APInt CombineAddValue = AddConstant->getValue() + IConstant->getValue();
@@ -1529,38 +1530,38 @@ void GenSpecificPattern::visitBinaryOperator(BinaryOperator &I)
     }
     else if (I.getOpcode() == Instruction::And)
     {
-    /*  This `and` is basically fabs() done on high part of int representation.
-        For float instructions minus operand can end as SrcMod, but since we cast it
-        from double to int it will end as additional mov, and we can ignore this m_FNeg
-        anyway.
+        /*  This `and` is basically fabs() done on high part of int representation.
+            For float instructions minus operand can end as SrcMod, but since we cast it
+            from double to int it will end as additional mov, and we can ignore this m_FNeg
+            anyway.
 
-        From :
-            %sub = fsub double -0.000000e+00, %res.039
-            %25 = bitcast double %sub to i64
-            %26 = bitcast i64 %25 to <2 x i32> // or directly double to <2xi32>
-            %27 = extractelement <2 x i32> %26, i32 1
-            %and31.i = and i32 %27, 2147483647
+            From :
+                %sub = fsub double -0.000000e+00, %res.039
+                %25 = bitcast double %sub to i64
+                %26 = bitcast i64 %25 to <2 x i32> // or directly double to <2xi32>
+                %27 = extractelement <2 x i32> %26, i32 1
+                %and31.i = and i32 %27, 2147483647
 
-        To:
-            %25 = bitcast double %res.039 to <2 x i32>
-            %27 = extractelement <2 x i32> %26, i32 1
-            %and31.i = and i32 %27, 2147483647
+            To:
+                %25 = bitcast double %res.039 to <2 x i32>
+                %27 = extractelement <2 x i32> %26, i32 1
+                %and31.i = and i32 %27, 2147483647
 
-        Or on Int64 without extract:
-        From:
-            %sub = fsub double -0.000000e+00, %res.039
-            %astype.i112.i.i = bitcast double %sub to i64
-            %and107.i.i = and i64 %astype.i112.i.i, 9223372032559808512 // 0x7FFFFFFF00000000
-        To:
-            %bit_cast = bitcast double %res.039 to i64
-            %and107.i.i = and i64 %bit_cast, 9223372032559808512 // 0x7FFFFFFF00000000
+            Or on Int64 without extract:
+            From:
+                %sub = fsub double -0.000000e+00, %res.039
+                %astype.i112.i.i = bitcast double %sub to i64
+                %and107.i.i = and i64 %astype.i112.i.i, 9223372032559808512 // 0x7FFFFFFF00000000
+            To:
+                %bit_cast = bitcast double %res.039 to i64
+                %and107.i.i = and i64 %bit_cast, 9223372032559808512 // 0x7FFFFFFF00000000
 
-    */
+        */
 
         /*  Get src of either 2 bitcast chain: double -> i64, i64 -> 2xi32
             or from single direct: double -> 2xi32
         */
-        auto getValidBitcastSrc = [](Instruction *op) -> llvm::Value*
+        auto getValidBitcastSrc = [](Instruction* op) -> llvm::Value *
         {
             if (!(isa<BitCastInst>(op)))
                 return nullptr;
@@ -1592,7 +1593,7 @@ void GenSpecificPattern::visitBinaryOperator(BinaryOperator &I)
 
         if (match(&I, fabs_on_int_pattern1))
         {
-            Value * src = getValidBitcastSrc(inst);
+            Value* src = getValidBitcastSrc(inst);
             if (src && match(src, fneg_pattern) && src_of_FNeg->getType()->isDoubleTy())
             {
                 llvm::IRBuilder<> builder(&I);
@@ -1606,7 +1607,7 @@ void GenSpecificPattern::visitBinaryOperator(BinaryOperator &I)
         }
         else if (match(&I, fabs_on_int_pattern2))
         {
-            BitCastInst * bitcast = dyn_cast<BitCastInst>(inst);
+            BitCastInst* bitcast = dyn_cast<BitCastInst>(inst);
             bool bitcastValid = bitcast && bitcast->getDestTy()->isIntegerTy(64) && bitcast->getSrcTy()->isDoubleTy();
 
             if (bitcastValid && match(bitcast->getOperand(0), fneg_pattern) && src_of_FNeg->getType()->isDoubleTy())
@@ -1623,7 +1624,7 @@ void GenSpecificPattern::visitBinaryOperator(BinaryOperator &I)
     }
 }
 
-void GenSpecificPattern::visitCmpInst(CmpInst &I)
+void GenSpecificPattern::visitCmpInst(CmpInst& I)
 {
     using namespace llvm::PatternMatch;
     CmpInst::Predicate Pred = CmpInst::Predicate::BAD_ICMP_PREDICATE;
@@ -1646,7 +1647,7 @@ void GenSpecificPattern::visitCmpInst(CmpInst &I)
         I.replaceAllUsesWith(new_Val);
         I.eraseFromParent();
     }
-    else 
+    else
     {
         CodeGenContext* pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
         if (pCtx->m_DriverInfo.IgnoreNan())
@@ -1659,7 +1660,7 @@ void GenSpecificPattern::visitCmpInst(CmpInst &I)
     }
 }
 
-void GenSpecificPattern::visitSelectInst(SelectInst &I)
+void GenSpecificPattern::visitSelectInst(SelectInst& I)
 {
     /*
     from
@@ -1682,35 +1683,35 @@ void GenSpecificPattern::visitSelectInst(SelectInst &I)
         %48 = bitcast i32 %47 to float
     */
 
-    assert( I.getOpcode() == Instruction::Select );
+    assert(I.getOpcode() == Instruction::Select);
 
     bool skipOpt = false;
 
-    ConstantInt *Cint = dyn_cast<ConstantInt>( I.getOperand(2) );
-    if( Cint && Cint->isZero() )
+    ConstantInt* Cint = dyn_cast<ConstantInt>(I.getOperand(2));
+    if (Cint && Cint->isZero())
     {
-        llvm::Instruction* cmpInst = llvm::dyn_cast<llvm::Instruction>( I.getOperand(0) );
-        if( cmpInst &&
+        llvm::Instruction* cmpInst = llvm::dyn_cast<llvm::Instruction>(I.getOperand(0));
+        if (cmpInst &&
             cmpInst->getOpcode() == Instruction::ICmp &&
-            I.getOperand(1) != cmpInst->getOperand(0) )
+            I.getOperand(1) != cmpInst->getOperand(0))
         {
             // disable the cases for csel or where we can optimize the instructions to such as add.ge.* later in vISA
-            ConstantInt *C = dyn_cast<ConstantInt>( cmpInst->getOperand(1) );
-            if( C && C->isZero() )
+            ConstantInt* C = dyn_cast<ConstantInt>(cmpInst->getOperand(1));
+            if (C && C->isZero())
             {
                 skipOpt = true;
             }
 
-            if( !skipOpt )
+            if (!skipOpt)
             {
                 // temporary disable the case where cmp is used in multiple sel, and not all of them have src2=0
                 // we should remove this if we can allow both flag and grf dst for the cmp to be used.
-                for(auto selI = cmpInst->user_begin(), E = cmpInst->user_end(); selI!=E; ++selI)
+                for (auto selI = cmpInst->user_begin(), E = cmpInst->user_end(); selI != E; ++selI)
                 {
-                    if(llvm::SelectInst* selInst = llvm::dyn_cast<llvm::SelectInst>(*selI))
+                    if (llvm::SelectInst * selInst = llvm::dyn_cast<llvm::SelectInst>(*selI))
                     {
-                        ConstantInt *C = dyn_cast<ConstantInt>( selInst->getOperand(2) );
-                        if( !(C && C->isZero()) )
+                        ConstantInt* C = dyn_cast<ConstantInt>(selInst->getOperand(2));
+                        if (!(C && C->isZero()))
                         {
                             skipOpt = true;
                             break;
@@ -1719,53 +1720,53 @@ void GenSpecificPattern::visitSelectInst(SelectInst &I)
                 }
             }
 
-            if( !skipOpt )
+            if (!skipOpt)
             {
-                Value * newValueSext = CastInst::CreateSExtOrBitCast( I.getOperand(0), I.getType(), "", &I );
-                Value * newValueAnd = BinaryOperator::CreateAnd( I.getOperand(1), newValueSext, "", &I );
-                I.replaceAllUsesWith( newValueAnd );
+                Value* newValueSext = CastInst::CreateSExtOrBitCast(I.getOperand(0), I.getType(), "", &I);
+                Value* newValueAnd = BinaryOperator::CreateAnd(I.getOperand(1), newValueSext, "", &I);
+                I.replaceAllUsesWith(newValueAnd);
             }
         }
     }
     else
     {
-        ConstantFP *Cfp = dyn_cast<ConstantFP>( I.getOperand(2) );
-        if( Cfp && Cfp->isZero() )
+        ConstantFP* Cfp = dyn_cast<ConstantFP>(I.getOperand(2));
+        if (Cfp && Cfp->isZero())
         {
-            llvm::Instruction* cmpInst = llvm::dyn_cast<llvm::Instruction>( I.getOperand(0) );
-            if( cmpInst &&
+            llvm::Instruction* cmpInst = llvm::dyn_cast<llvm::Instruction>(I.getOperand(0));
+            if (cmpInst &&
                 cmpInst->getOpcode() == Instruction::FCmp &&
-                I.getOperand(1) != cmpInst->getOperand(0) )
+                I.getOperand(1) != cmpInst->getOperand(0))
             {
                 // disable the cases for csel or where we can optimize the instructions to such as add.ge.* later in vISA
-                ConstantFP *C = dyn_cast<ConstantFP>( cmpInst->getOperand(1) );
-                if( C && C->isZero() )
+                ConstantFP* C = dyn_cast<ConstantFP>(cmpInst->getOperand(1));
+                if (C && C->isZero())
                 {
                     skipOpt = true;
                 }
 
-                if( !skipOpt )
+                if (!skipOpt)
                 {
-                    for(auto selI = cmpInst->user_begin(), E = cmpInst->user_end(); selI!=E; ++selI)
+                    for (auto selI = cmpInst->user_begin(), E = cmpInst->user_end(); selI != E; ++selI)
                     {
-                        if(llvm::SelectInst* selInst = llvm::dyn_cast<llvm::SelectInst>(*selI))
+                        if (llvm::SelectInst * selInst = llvm::dyn_cast<llvm::SelectInst>(*selI))
                         {
                             // temporary disable the case where cmp is used in multiple sel, and not all of them have src2=0
                             // we should remove this if we can allow both flag and grf dst for the cmp to be used.
-                            ConstantFP *C2 = dyn_cast<ConstantFP>( selInst->getOperand(2) );
-                            if( !(C2 && C2->isZero()) )
+                            ConstantFP* C2 = dyn_cast<ConstantFP>(selInst->getOperand(2));
+                            if (!(C2 && C2->isZero()))
                             {
                                 skipOpt = true;
                                 break;
                             }
 
                             // if it is cmp-sel(1.0 / 0.0)-mul, we could better patten match it later in codeGen.
-                            ConstantFP *C1 = dyn_cast<ConstantFP>(selInst->getOperand(1));
+                            ConstantFP* C1 = dyn_cast<ConstantFP>(selInst->getOperand(1));
                             if (C1 && C2 && selInst->hasOneUse())
                             {
                                 if ((C2->isZero() && C1->isExactlyValue(1.f)) || (C1->isZero() && C2->isExactlyValue(1.f)))
                                 {
-                                    Instruction *mulInst = dyn_cast<Instruction>(*selInst->user_begin());
+                                    Instruction* mulInst = dyn_cast<Instruction>(*selInst->user_begin());
                                     if (mulInst && mulInst->getOpcode() == Instruction::FMul)
                                     {
                                         skipOpt = true;
@@ -1777,25 +1778,25 @@ void GenSpecificPattern::visitSelectInst(SelectInst &I)
                     }
                 }
 
-                if( !skipOpt )
+                if (!skipOpt)
                 {
-                    ConstantFP *C1 = dyn_cast<ConstantFP>( I.getOperand(1) );
+                    ConstantFP* C1 = dyn_cast<ConstantFP>(I.getOperand(1));
                     if (C1)
                     {
                         if (C1->getType()->isHalfTy())
                         {
-                            Value * newValueSext = CastInst::CreateSExtOrBitCast(I.getOperand(0), Type::getInt16Ty(I.getContext()), "", &I);
-                            Value * newConstant = ConstantInt::get(I.getContext(), C1->getValueAPF().bitcastToAPInt());
-                            Value * newValueAnd = BinaryOperator::CreateAnd(newValueSext, newConstant, "", &I);
-                            Value * newValueCastFP = CastInst::CreateZExtOrBitCast(newValueAnd, Type::getHalfTy(I.getContext()), "", &I);
+                            Value* newValueSext = CastInst::CreateSExtOrBitCast(I.getOperand(0), Type::getInt16Ty(I.getContext()), "", &I);
+                            Value* newConstant = ConstantInt::get(I.getContext(), C1->getValueAPF().bitcastToAPInt());
+                            Value* newValueAnd = BinaryOperator::CreateAnd(newValueSext, newConstant, "", &I);
+                            Value* newValueCastFP = CastInst::CreateZExtOrBitCast(newValueAnd, Type::getHalfTy(I.getContext()), "", &I);
                             I.replaceAllUsesWith(newValueCastFP);
                         }
                         else if (C1->getType()->isFloatTy())
                         {
-                            Value * newValueSext = CastInst::CreateSExtOrBitCast(I.getOperand(0), Type::getInt32Ty(I.getContext()), "", &I);
-                            Value * newConstant = ConstantInt::get(I.getContext(), C1->getValueAPF().bitcastToAPInt());
-                            Value * newValueAnd = BinaryOperator::CreateAnd(newValueSext, newConstant, "", &I);
-                            Value * newValueCastFP = CastInst::CreateZExtOrBitCast(newValueAnd, Type::getFloatTy(I.getContext()), "", &I);
+                            Value* newValueSext = CastInst::CreateSExtOrBitCast(I.getOperand(0), Type::getInt32Ty(I.getContext()), "", &I);
+                            Value* newConstant = ConstantInt::get(I.getContext(), C1->getValueAPF().bitcastToAPInt());
+                            Value* newValueAnd = BinaryOperator::CreateAnd(newValueSext, newConstant, "", &I);
+                            Value* newValueCastFP = CastInst::CreateZExtOrBitCast(newValueAnd, Type::getFloatTy(I.getContext()), "", &I);
                             I.replaceAllUsesWith(newValueCastFP);
                         }
                     }
@@ -1803,19 +1804,19 @@ void GenSpecificPattern::visitSelectInst(SelectInst &I)
                     {
                         if (I.getOperand(1)->getType()->isHalfTy())
                         {
-                            Value * newValueSext = CastInst::CreateSExtOrBitCast(I.getOperand(0), Type::getInt16Ty(I.getContext()), "", &I);
-                            Value * newValueBitcast = CastInst::CreateZExtOrBitCast(I.getOperand(1), Type::getInt16Ty(I.getContext()), "", &I);
-                            Value * newValueAnd = BinaryOperator::CreateAnd(newValueSext, newValueBitcast, "", &I);
-                            Value * newValueCastFP = CastInst::CreateZExtOrBitCast(newValueAnd, Type::getHalfTy(I.getContext()), "", &I); \
-                            I.replaceAllUsesWith(newValueCastFP);
+                            Value* newValueSext = CastInst::CreateSExtOrBitCast(I.getOperand(0), Type::getInt16Ty(I.getContext()), "", &I);
+                            Value* newValueBitcast = CastInst::CreateZExtOrBitCast(I.getOperand(1), Type::getInt16Ty(I.getContext()), "", &I);
+                            Value* newValueAnd = BinaryOperator::CreateAnd(newValueSext, newValueBitcast, "", &I);
+                            Value* newValueCastFP = CastInst::CreateZExtOrBitCast(newValueAnd, Type::getHalfTy(I.getContext()), "", &I); \
+                                I.replaceAllUsesWith(newValueCastFP);
                         }
                         else if (I.getOperand(1)->getType()->isFloatTy())
                         {
-                            Value * newValueSext = CastInst::CreateSExtOrBitCast(I.getOperand(0), Type::getInt32Ty(I.getContext()), "", &I);
-                            Value * newValueBitcast = CastInst::CreateZExtOrBitCast(I.getOperand(1), Type::getInt32Ty(I.getContext()), "", &I);
-                            Value * newValueAnd = BinaryOperator::CreateAnd(newValueSext, newValueBitcast, "", &I);
-                            Value * newValueCastFP = CastInst::CreateZExtOrBitCast(newValueAnd, Type::getFloatTy(I.getContext()), "", &I); \
-                            I.replaceAllUsesWith(newValueCastFP);
+                            Value* newValueSext = CastInst::CreateSExtOrBitCast(I.getOperand(0), Type::getInt32Ty(I.getContext()), "", &I);
+                            Value* newValueBitcast = CastInst::CreateZExtOrBitCast(I.getOperand(1), Type::getInt32Ty(I.getContext()), "", &I);
+                            Value* newValueAnd = BinaryOperator::CreateAnd(newValueSext, newValueBitcast, "", &I);
+                            Value* newValueCastFP = CastInst::CreateZExtOrBitCast(newValueAnd, Type::getFloatTy(I.getContext()), "", &I); \
+                                I.replaceAllUsesWith(newValueCastFP);
                         }
                     }
                 }
@@ -1838,7 +1839,7 @@ void GenSpecificPattern::visitSelectInst(SelectInst &I)
         This tranform allows for min/max instructions to be
         picked up in the IsMinOrMax instruction in PatternMatchPass.cpp
     */
-    if (auto *compInst = dyn_cast<ICmpInst>(I.getOperand(0)))
+    if (auto * compInst = dyn_cast<ICmpInst>(I.getOperand(0)))
     {
         auto selOp1 = I.getOperand(1);
         auto selOp2 = I.getOperand(2);
@@ -1852,18 +1853,18 @@ void GenSpecificPattern::visitSelectInst(SelectInst &I)
             icmpType->isIntegerTy() &&
             selOp1->getType()->getIntegerBitWidth() < icmpType->getIntegerBitWidth())
         {
-            Value * newSelOp1 = NULL;
-            Value * newSelOp2 = NULL;
+            Value* newSelOp1 = NULL;
+            Value* newSelOp2 = NULL;
             if (trunc1 &&
                 (trunc1->getOperand(0) == cmpOp0 ||
-                 trunc1->getOperand(0) == cmpOp1))
+                    trunc1->getOperand(0) == cmpOp1))
             {
                 newSelOp1 = (trunc1->getOperand(0) == cmpOp0) ? cmpOp0 : cmpOp1;
             }
 
             if (trunc2 &&
                 (trunc2->getOperand(0) == cmpOp0 ||
-                 trunc2->getOperand(0) == cmpOp1))
+                    trunc2->getOperand(0) == cmpOp1))
             {
                 newSelOp2 = (trunc2->getOperand(0) == cmpOp0) ? cmpOp0 : cmpOp1;
             }
@@ -1871,7 +1872,7 @@ void GenSpecificPattern::visitSelectInst(SelectInst &I)
             if (isa<llvm::ConstantInt>(selOp1) &&
                 isa<llvm::ConstantInt>(cmpOp0) &&
                 (cast<llvm::ConstantInt>(selOp1)->getZExtValue() ==
-                 cast<llvm::ConstantInt>(cmpOp0)->getZExtValue()))
+                    cast<llvm::ConstantInt>(cmpOp0)->getZExtValue()))
             {
                 assert(newSelOp1 == NULL);
                 newSelOp1 = cmpOp0;
@@ -1880,7 +1881,7 @@ void GenSpecificPattern::visitSelectInst(SelectInst &I)
             if (isa<llvm::ConstantInt>(selOp1) &&
                 isa<llvm::ConstantInt>(cmpOp1) &&
                 (cast<llvm::ConstantInt>(selOp1)->getZExtValue() ==
-                 cast<llvm::ConstantInt>(cmpOp1)->getZExtValue()))
+                    cast<llvm::ConstantInt>(cmpOp1)->getZExtValue()))
             {
                 assert(newSelOp1 == NULL);
                 newSelOp1 = cmpOp1;
@@ -1889,7 +1890,7 @@ void GenSpecificPattern::visitSelectInst(SelectInst &I)
             if (isa<llvm::ConstantInt>(selOp2) &&
                 isa<llvm::ConstantInt>(cmpOp0) &&
                 (cast<llvm::ConstantInt>(selOp2)->getZExtValue() ==
-                 cast<llvm::ConstantInt>(cmpOp0)->getZExtValue()))
+                    cast<llvm::ConstantInt>(cmpOp0)->getZExtValue()))
             {
                 assert(newSelOp2 == NULL);
                 newSelOp2 = cmpOp0;
@@ -1898,7 +1899,7 @@ void GenSpecificPattern::visitSelectInst(SelectInst &I)
             if (isa<llvm::ConstantInt>(selOp2) &&
                 isa<llvm::ConstantInt>(cmpOp1) &&
                 (cast<llvm::ConstantInt>(selOp2)->getZExtValue() ==
-                 cast<llvm::ConstantInt>(cmpOp1)->getZExtValue()))
+                    cast<llvm::ConstantInt>(cmpOp1)->getZExtValue()))
             {
                 assert(newSelOp2 == NULL);
                 newSelOp2 = cmpOp1;
@@ -1917,19 +1918,19 @@ void GenSpecificPattern::visitSelectInst(SelectInst &I)
 
 }
 
-void GenSpecificPattern::visitCastInst(CastInst &I)
+void GenSpecificPattern::visitCastInst(CastInst& I)
 {
     Instruction* srcVal = nullptr;
-    if(isa<SIToFPInst>(&I))
+    if (isa<SIToFPInst>(&I))
     {
         srcVal = dyn_cast<FPToSIInst>(I.getOperand(0));
     }
-    if(srcVal && srcVal->getOperand(0)->getType() == I.getType())
+    if (srcVal && srcVal->getOperand(0)->getType() == I.getType())
     {
-        if((srcVal = dyn_cast<Instruction>(srcVal->getOperand(0))))
+        if ((srcVal = dyn_cast<Instruction>(srcVal->getOperand(0))))
         {
             // need fast math to know that we can ignore Nan
-            if(srcVal->isFast())
+            if (srcVal->isFast())
             {
                 IRBuilder<> builder(&I);
                 Function* func = Intrinsic::getDeclaration(
@@ -1957,9 +1958,9 @@ to:
     %19 = bitcast <2 x i32> %18 to double
 */
 
-void GenSpecificPattern::visitBitCastInst(BitCastInst &I)
+void GenSpecificPattern::visitBitCastInst(BitCastInst& I)
 {
-    if(I.getType()->isDoubleTy() && I.getOperand(0)->getType()->isIntegerTy(64))
+    if (I.getType()->isDoubleTy() && I.getOperand(0)->getType()->isIntegerTy(64))
     {
         BinaryOperator* binOperator = nullptr;
         if ((binOperator = dyn_cast<BinaryOperator>(I.getOperand(0))) && binOperator->getOpcode() == Instruction::Or)
@@ -1980,7 +1981,7 @@ void GenSpecificPattern::visitBitCastInst(BitCastInst &I)
                     if (isa<Constant>(insertElementInst->getOperand(0)) && cast<ConstantInt>(insertElementInst->getOperand(2))->getZExtValue() == 1)
                     {
                         IRBuilder<> builder(&I);
-                        Value *vectorValue = UndefValue::get(bitCastInst->getOperand(0)->getType());
+                        Value* vectorValue = UndefValue::get(bitCastInst->getOperand(0)->getType());
                         vectorValue = builder.CreateInsertElement(vectorValue, zExtInst->getOperand(0), builder.getInt32(0));
                         vectorValue = builder.CreateInsertElement(vectorValue, insertElementInst->getOperand(1), builder.getInt32(1));
                         Value* newBitCast = builder.CreateBitCast(vectorValue, builder.getDoubleTy());
@@ -1993,23 +1994,23 @@ void GenSpecificPattern::visitBitCastInst(BitCastInst &I)
     }
 }
 
-void GenSpecificPattern::visitZExtInst(ZExtInst &ZEI)
+void GenSpecificPattern::visitZExtInst(ZExtInst& ZEI)
 {
-    CmpInst *Cmp = dyn_cast<CmpInst>(ZEI.getOperand(0));
+    CmpInst* Cmp = dyn_cast<CmpInst>(ZEI.getOperand(0));
     if (!Cmp)
         return;
 
     IRBuilder<> Builder(&ZEI);
 
-    Value *S = Builder.CreateSExt(Cmp, ZEI.getType());
-    Value *N = Builder.CreateNeg(S);
+    Value* S = Builder.CreateSExt(Cmp, ZEI.getType());
+    Value* N = Builder.CreateNeg(S);
     ZEI.replaceAllUsesWith(N);
     ZEI.eraseFromParent();
 }
 
 void GenSpecificPattern::visitIntToPtr(llvm::IntToPtrInst& I)
 {
-    if(ZExtInst* zext = dyn_cast<ZExtInst>(I.getOperand(0)))
+    if (ZExtInst * zext = dyn_cast<ZExtInst>(I.getOperand(0)))
     {
         IRBuilder<> builder(&I);
         Value* newV = builder.CreateIntToPtr(zext->getOperand(0), I.getType());
@@ -2018,7 +2019,7 @@ void GenSpecificPattern::visitIntToPtr(llvm::IntToPtrInst& I)
     }
 }
 
-void GenSpecificPattern::visitTruncInst(llvm::TruncInst &I)
+void GenSpecificPattern::visitTruncInst(llvm::TruncInst& I)
 {
     /*
     from
@@ -2030,8 +2031,8 @@ void GenSpecificPattern::visitTruncInst(llvm::TruncInst &I)
     */
 
     using namespace llvm::PatternMatch;
-    Value *LHS = nullptr;
-    ConstantInt *CI;
+    Value* LHS = nullptr;
+    ConstantInt* CI;
     if (match(&I, m_Trunc(m_LShr(m_Value(LHS), m_ConstantInt(CI)))) &&
         I.getType()->isIntegerTy(32) &&
         LHS->getType()->isIntegerTy(64) &&
@@ -2063,7 +2064,7 @@ IGC_INITIALIZE_PASS_END(IGCConstProp, PASS_FLAG3, PASS_DESCRIPTION3, PASS_CFG_ON
 char IGCConstProp::ID = 0;
 
 IGCConstProp::IGCConstProp(bool enableMathConstProp,
-                           bool enableSimplifyGEP) :
+    bool enableSimplifyGEP) :
     FunctionPass(ID),
     m_enableMathConstProp(enableMathConstProp),
     m_enableSimplifyGEP(enableSimplifyGEP),
@@ -2077,11 +2078,11 @@ static Constant* GetConstantValue(Type* type, char* rawData)
     unsigned int size_in_bytes = type->getPrimitiveSizeInBits() / 8;
     uint64_t returnConstant = 0;
     memcpy_s(&returnConstant, size_in_bytes, rawData, size_in_bytes);
-    if(type->isIntegerTy())
+    if (type->isIntegerTy())
     {
         return ConstantInt::get(type, returnConstant);
     }
-    else if(type->isFloatingPointTy())
+    else if (type->isFloatingPointTy())
     {
         return  ConstantFP::get(type->getContext(),
             APFloat(type->getFltSemantics(), APInt(type->getPrimitiveSizeInBits(), returnConstant)));
@@ -2089,51 +2090,51 @@ static Constant* GetConstantValue(Type* type, char* rawData)
     return nullptr;
 }
 
-bool IGCConstProp::EvalConstantAddress(Value* address, unsigned int &offset, Value* ptrSrc)
+bool IGCConstProp::EvalConstantAddress(Value* address, unsigned int& offset, Value* ptrSrc)
 {
-    if((ptrSrc == nullptr && isa<ConstantPointerNull>(address)) ||
-       (ptrSrc == address))
+    if ((ptrSrc == nullptr && isa<ConstantPointerNull>(address)) ||
+        (ptrSrc == address))
     {
         offset = 0;
         return true;
     }
-    else if (Instruction* ptrExpr = dyn_cast<Instruction>(address))
+    else if (Instruction * ptrExpr = dyn_cast<Instruction>(address))
     {
-        if(ptrExpr->getOpcode() == Instruction::BitCast ||
-           ptrExpr->getOpcode() == Instruction::AddrSpaceCast)
+        if (ptrExpr->getOpcode() == Instruction::BitCast ||
+            ptrExpr->getOpcode() == Instruction::AddrSpaceCast)
         {
             return EvalConstantAddress(ptrExpr->getOperand(0), offset, ptrSrc);
         }
-        if(ptrExpr->getOpcode() == Instruction::IntToPtr)
+        if (ptrExpr->getOpcode() == Instruction::IntToPtr)
         {
-            Value *eltIdxVal = ptrExpr->getOperand(0);
-            ConstantInt *eltIdx = dyn_cast<ConstantInt>(eltIdxVal);
-            if(!eltIdx)
+            Value* eltIdxVal = ptrExpr->getOperand(0);
+            ConstantInt* eltIdx = dyn_cast<ConstantInt>(eltIdxVal);
+            if (!eltIdx)
                 return false;
             offset = int_cast<unsigned>(eltIdx->getZExtValue());
             return true;
         }
-        else if(ptrExpr->getOpcode() == Instruction::GetElementPtr)
+        else if (ptrExpr->getOpcode() == Instruction::GetElementPtr)
         {
             offset = 0;
-            if(!EvalConstantAddress(ptrExpr->getOperand(0), offset, ptrSrc))
+            if (!EvalConstantAddress(ptrExpr->getOperand(0), offset, ptrSrc))
             {
                 return false;
             }
-            Type *Ty = ptrExpr->getType();
+            Type* Ty = ptrExpr->getType();
             gep_type_iterator GTI = gep_type_begin(ptrExpr);
-            for(auto OI = ptrExpr->op_begin() + 1, E = ptrExpr->op_end(); OI != E; ++OI, ++GTI) {
-                Value *Idx = *OI;
-                if(StructType *StTy = GTI.getStructTypeOrNull()) {
+            for (auto OI = ptrExpr->op_begin() + 1, E = ptrExpr->op_end(); OI != E; ++OI, ++GTI) {
+                Value* Idx = *OI;
+                if (StructType * StTy = GTI.getStructTypeOrNull()) {
                     unsigned Field = int_cast<unsigned>(cast<ConstantInt>(Idx)->getZExtValue());
-                    if(Field) {
+                    if (Field) {
                         offset += int_cast<unsigned int>(m_TD->getStructLayout(StTy)->getElementOffset(Field));
                     }
                     Ty = StTy->getElementType(Field);
                 }
                 else {
                     Ty = GTI.getIndexedType();
-                    if(const ConstantInt *CI = dyn_cast<ConstantInt>(Idx)) {
+                    if (const ConstantInt * CI = dyn_cast<ConstantInt>(Idx)) {
                         offset += int_cast<unsigned int>(
                             m_TD->getTypeAllocSize(Ty) * CI->getSExtValue());
                     }
@@ -2149,14 +2150,14 @@ bool IGCConstProp::EvalConstantAddress(Value* address, unsigned int &offset, Val
     return false;
 }
 
-bool GetStatelessBufferInfo(Value* pointer, unsigned &bufferId,
-    BufferType &bufferTy, Value* &bufferSrcPtr)
+bool GetStatelessBufferInfo(Value* pointer, unsigned& bufferId,
+    BufferType& bufferTy, Value*& bufferSrcPtr)
 {
     // If the buffer info is not encoded in the address space, we can still find it by
     // tracing the pointer to where it's created.
     Value* src = IGC::TracePointerSource(pointer);
     BufferAccessType accType;
-    if(src && IGC::GetResourcePointerInfo(src, bufferId, bufferTy, accType))
+    if (src && IGC::GetResourcePointerInfo(src, bufferId, bufferTy, accType))
     {
         bufferSrcPtr = src;
         return true;
@@ -2167,19 +2168,19 @@ bool GetStatelessBufferInfo(Value* pointer, unsigned &bufferId,
 Constant* IGCConstProp::ReplaceFromDynConstants(unsigned bufId, unsigned eltId, unsigned int size_in_bytes, Type* type)
 {
     ConstantAddress cl;
-    char * pConstVal;
+    char* pConstVal;
     cl.bufId = bufId;
     cl.eltId = eltId;
     cl.size = size_in_bytes;
 
     CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    ModuleMetaData *modMD = ctx->getModuleMetaData();
+    ModuleMetaData* modMD = ctx->getModuleMetaData();
 
     auto it = modMD->inlineDynConstants.find(cl);
     if ((it != modMD->inlineDynConstants.end()) && (it->first.size == cl.size))
     {
         // For constant buffer accesses of size <= 32bit.
-        if(size_in_bytes <= 4)
+        if (size_in_bytes <= 4)
         {
             // This constant is
             //          found in the Dynamic inline constants list, and
@@ -2187,7 +2188,7 @@ Constant* IGCConstProp::ReplaceFromDynConstants(unsigned bufId, unsigned eltId, 
             if (!(type->isVectorTy()))
             {
                 // Handling for base types (Integer/FloatingPoint)
-                pConstVal = (char *) (&(it->second));
+                pConstVal = (char*)(&(it->second));
                 return GetConstantValue(type, pConstVal);
             }
         }
@@ -2195,14 +2196,14 @@ Constant* IGCConstProp::ReplaceFromDynConstants(unsigned bufId, unsigned eltId, 
     return nullptr;
 }
 
-Constant *IGCConstProp::replaceShaderConstant(LoadInst *inst)
+Constant* IGCConstProp::replaceShaderConstant(LoadInst* inst)
 {
     unsigned as = inst->getPointerAddressSpace();
     bool directBuf = false;
     unsigned bufId = 0;
     unsigned int size_in_bytes = 0;
     CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    ModuleMetaData *modMD = ctx->getModuleMetaData();
+    ModuleMetaData* modMD = ctx->getModuleMetaData();
 
     BufferType bufType;
     Value* pointerSrc = nullptr;
@@ -2219,36 +2220,36 @@ Constant *IGCConstProp::replaceShaderConstant(LoadInst *inst)
     {
         bufType = IGC::DecodeAS4GFXResource(as, directBuf, bufId);
     }
-    
-    if(bufType == CONSTANT_BUFFER && 
-        directBuf && modMD) 
+
+    if (bufType == CONSTANT_BUFFER &&
+        directBuf && modMD)
     {
-        Value *ptrVal = inst->getPointerOperand();
+        Value* ptrVal = inst->getPointerOperand();
         unsigned eltId = 0;
         size_in_bytes = inst->getType()->getPrimitiveSizeInBits() / 8;
-        if(!EvalConstantAddress(ptrVal, eltId, pointerSrc))
+        if (!EvalConstantAddress(ptrVal, eltId, pointerSrc))
         {
             return nullptr;
         }
 
-        if(size_in_bytes)
+        if (size_in_bytes)
         {
             if (modMD->immConstant.data.size() &&
                 (bufId == modMD->pushInfo.inlineConstantBufferSlot))
             {
-                char *offset = &(modMD->immConstant.data[0]);
+                char* offset = &(modMD->immConstant.data[0]);
                 if (inst->getType()->isVectorTy())
                 {
-                    Type *srcEltTy = inst->getType()->getVectorElementType();
+                    Type* srcEltTy = inst->getType()->getVectorElementType();
                     uint32_t srcNElts = inst->getType()->getVectorNumElements();
                     uint32_t eltSize_in_bytes = srcEltTy->getPrimitiveSizeInBits() / 8;
                     IRBuilder<> builder(inst);
-                    Value *vectorValue = UndefValue::get(inst->getType());
+                    Value* vectorValue = UndefValue::get(inst->getType());
                     for (uint i = 0; i < srcNElts; i++)
                     {
                         vectorValue = builder.CreateInsertElement(
                             vectorValue,
-                            GetConstantValue(srcEltTy, offset + eltId + (i*eltSize_in_bytes)),
+                            GetConstantValue(srcEltTy, offset + eltId + (i * eltSize_in_bytes)),
                             builder.getInt32(i));
                     }
                     return dyn_cast<Constant>(vectorValue);
@@ -2267,14 +2268,14 @@ Constant *IGCConstProp::replaceShaderConstant(LoadInst *inst)
     return nullptr;
 }
 
-Constant *IGCConstProp::ConstantFoldCallInstruction(CallInst *inst)
+Constant* IGCConstProp::ConstantFoldCallInstruction(CallInst* inst)
 {
-    Constant *C = nullptr;
+    Constant* C = nullptr;
     if (inst)
     {
-        llvm::Type * type = inst->getType();
+        llvm::Type* type = inst->getType();
         // used for GenISA_sqrt and GenISA_rsq
-        ConstantFP *C0 = dyn_cast<ConstantFP>(inst->getOperand(0));
+        ConstantFP* C0 = dyn_cast<ConstantFP>(inst->getOperand(0));
         EOPCODE igcop = GetOpCode(inst);
 
         // special case of gen-intrinsic
@@ -2306,36 +2307,36 @@ Constant *IGCConstProp::ConstantFoldCallInstruction(CallInst *inst)
             break;
         case llvm_max:
         {
-            ConstantFP *CFP0 = dyn_cast<ConstantFP>(inst->getOperand(0));
-            ConstantFP *CFP1 = dyn_cast<ConstantFP>(inst->getOperand(1));
+            ConstantFP* CFP0 = dyn_cast<ConstantFP>(inst->getOperand(0));
+            ConstantFP* CFP1 = dyn_cast<ConstantFP>(inst->getOperand(1));
             if (CFP0 && CFP1)
             {
-                const APFloat &A = CFP0->getValueAPF();
-                const APFloat &B = CFP1->getValueAPF();
+                const APFloat& A = CFP0->getValueAPF();
+                const APFloat& B = CFP1->getValueAPF();
                 C = ConstantFP::get(inst->getContext(), maxnum(A, B));
             }
         }
         break;
         case llvm_min:
         {
-            ConstantFP *CFP0 = dyn_cast<ConstantFP>(inst->getOperand(0));
-            ConstantFP *CFP1 = dyn_cast<ConstantFP>(inst->getOperand(1));
+            ConstantFP* CFP0 = dyn_cast<ConstantFP>(inst->getOperand(0));
+            ConstantFP* CFP1 = dyn_cast<ConstantFP>(inst->getOperand(1));
             if (CFP0 && CFP1)
             {
-                const APFloat &A = CFP0->getValueAPF();
-                const APFloat &B = CFP1->getValueAPF();
+                const APFloat& A = CFP0->getValueAPF();
+                const APFloat& B = CFP1->getValueAPF();
                 C = ConstantFP::get(inst->getContext(), minnum(A, B));
             }
         }
         break;
         case llvm_fsat:
         {
-            ConstantFP *CFP0 = dyn_cast<ConstantFP>(inst->getOperand(0));
+            ConstantFP* CFP0 = dyn_cast<ConstantFP>(inst->getOperand(0));
             if (CFP0)
             {
-                const APFloat &A = CFP0->getValueAPF();
-                const APFloat &zero = cast<ConstantFP>(ConstantFP::get(type, 0.))->getValueAPF();
-                const APFloat &One = cast<ConstantFP>(ConstantFP::get(type, 1.))->getValueAPF();
+                const APFloat& A = CFP0->getValueAPF();
+                const APFloat& zero = cast<ConstantFP>(ConstantFP::get(type, 0.))->getValueAPF();
+                const APFloat& One = cast<ConstantFP>(ConstantFP::get(type, 1.))->getValueAPF();
                 C = ConstantFP::get(inst->getContext(), minnum(One, maxnum(zero, A)));
             }
         }
@@ -2347,8 +2348,8 @@ Constant *IGCConstProp::ConstantFoldCallInstruction(CallInst *inst)
         {
             float C0value = 0;
             float C1value = 0;
-            ConstantFP *C0 = dyn_cast<ConstantFP>(inst->getOperand(0));
-            ConstantFP *C1 = nullptr;
+            ConstantFP* C0 = dyn_cast<ConstantFP>(inst->getOperand(0));
+            ConstantFP* C1 = nullptr;
             if (C0)
             {
                 C0value = C0->getValueAPF().convertToFloat();
@@ -2406,14 +2407,14 @@ Constant *IGCConstProp::ConstantFoldCallInstruction(CallInst *inst)
 // %95 = extractelement <4 x i16> <i16 3, i16 16, i16 21, i16 39>, i32 %94
 // %96 = icmp eq i16 %95, 0
 //
-Constant *IGCConstProp::ConstantFoldCmpInst(CmpInst *CI)
+Constant* IGCConstProp::ConstantFoldCmpInst(CmpInst* CI)
 {
     // Only handle scalar result.
     if (CI->getType()->isVectorTy())
         return nullptr;
 
-    Value *LHS = CI->getOperand(0);
-    Value *RHS = CI->getOperand(1);
+    Value* LHS = CI->getOperand(0);
+    Value* RHS = CI->getOperand(1);
     if (!isa<Constant>(RHS) && CI->isCommutative())
         std::swap(LHS, RHS);
     if (!isa<ConstantInt>(RHS) && !isa<ConstantFP>(RHS))
@@ -2427,11 +2428,11 @@ Constant *IGCConstProp::ConstantFoldCmpInst(CmpInst *CI)
         unsigned N = VecOpnd->getType()->getVectorNumElements();
         for (unsigned i = 0; i < N; ++i)
         {
-            Constant *Opnd = VecOpnd->getAggregateElement(i);
+            Constant* Opnd = VecOpnd->getAggregateElement(i);
             assert(Opnd && "null entry");
             if (isa<UndefValue>(Opnd))
                 continue;
-            Constant *Result = ConstantFoldCompareInstOperands(
+            Constant* Result = ConstantFoldCompareInstOperands(
                 CI->getPredicate(), Opnd, cast<Constant>(RHS), CI->getFunction()->getParent()->getDataLayout());
             if (!Result->isAllOnesValue())
                 AllTrue = false;
@@ -2461,57 +2462,57 @@ Constant *IGCConstProp::ConstantFoldCmpInst(CmpInst *CI)
 // %Temp - 119.i.i.v.v = select i1 %Temp - 118.i.i, <2 x i32> <i32 0, i32 17>, <2 x i32> <i32 4, i32 17>
 // %scalar9 = extractelement <2 x i32> %Temp - 119.i.i.v.v, i32 1
 //
-Constant *IGCConstProp::ConstantFoldExtractElement(ExtractElementInst *EEI)
+Constant* IGCConstProp::ConstantFoldExtractElement(ExtractElementInst* EEI)
 {
 
-    Constant *EltIdx = dyn_cast<Constant>(EEI->getIndexOperand());
+    Constant* EltIdx = dyn_cast<Constant>(EEI->getIndexOperand());
     if (EltIdx)
     {
-        if (InsertElementInst *IEI = dyn_cast<InsertElementInst>(EEI->getVectorOperand()))
-    {
-        Constant *InsertIdx = dyn_cast<Constant>(IEI->getOperand(2));
-            // try to find the constant from a chain of InsertElement
-        while(IEI && InsertIdx)
+        if (InsertElementInst * IEI = dyn_cast<InsertElementInst>(EEI->getVectorOperand()))
         {
-            if (InsertIdx == EltIdx)
+            Constant* InsertIdx = dyn_cast<Constant>(IEI->getOperand(2));
+            // try to find the constant from a chain of InsertElement
+            while (IEI && InsertIdx)
             {
-                Constant *EltVal = dyn_cast<Constant>(IEI->getOperand(1));
-                return EltVal;
-            }
-            else
-            {
-                Value *Vec = IEI->getOperand(0);
-                if (isa<ConstantDataVector>(Vec))
+                if (InsertIdx == EltIdx)
                 {
-                    ConstantDataVector *CVec = cast<ConstantDataVector>(Vec);
-                    return CVec->getAggregateElement(EltIdx);
-                }
-                else if (isa<InsertElementInst>(Vec))
-                {
-                    IEI = cast<InsertElementInst>(Vec);
-                    InsertIdx = dyn_cast<Constant>(IEI->getOperand(2));
+                    Constant* EltVal = dyn_cast<Constant>(IEI->getOperand(1));
+                    return EltVal;
                 }
                 else
                 {
-                    break;
+                    Value* Vec = IEI->getOperand(0);
+                    if (isa<ConstantDataVector>(Vec))
+                    {
+                        ConstantDataVector* CVec = cast<ConstantDataVector>(Vec);
+                        return CVec->getAggregateElement(EltIdx);
+                    }
+                    else if (isa<InsertElementInst>(Vec))
+                    {
+                        IEI = cast<InsertElementInst>(Vec);
+                        InsertIdx = dyn_cast<Constant>(IEI->getOperand(2));
+                    }
+                    else
+                    {
+                        break;
+                    }
                 }
             }
         }
-    }
-        else if (SelectInst *sel = dyn_cast<SelectInst>(EEI->getVectorOperand()))
+        else if (SelectInst * sel = dyn_cast<SelectInst>(EEI->getVectorOperand()))
         {
-            Value *vec0 = sel->getOperand(1);
-            Value *vec1 = sel->getOperand(2);
+            Value* vec0 = sel->getOperand(1);
+            Value* vec1 = sel->getOperand(2);
 
             assert(vec0->getType() == vec1->getType());
 
             if (isa<ConstantDataVector>(vec0) && isa<ConstantDataVector>(vec1))
             {
-                ConstantDataVector *cvec0 = cast<ConstantDataVector>(vec0);
-                ConstantDataVector *cvec1 = cast<ConstantDataVector>(vec1);
+                ConstantDataVector* cvec0 = cast<ConstantDataVector>(vec0);
+                ConstantDataVector* cvec1 = cast<ConstantDataVector>(vec1);
                 Constant* cval0 = cvec0->getAggregateElement(EltIdx);
                 Constant* cval1 = cvec1->getAggregateElement(EltIdx);
-                
+
                 if (cval0 == cval1)
                 {
                     return cval0;
@@ -2532,7 +2533,7 @@ Constant *IGCConstProp::ConstantFoldExtractElement(ExtractElementInst *EEI)
 //  (This was added to remove redundant loads. If the
 //  the future LLVM does better job on this (reassociation), we should use LLVM's
 //  instead.)
-bool IGCConstProp::simplifyAdd(BinaryOperator *BO)
+bool IGCConstProp::simplifyAdd(BinaryOperator* BO)
 {
     // Only handle Add
     if (BO->getOpcode() != Instruction::Add)
@@ -2540,17 +2541,17 @@ bool IGCConstProp::simplifyAdd(BinaryOperator *BO)
         return false;
     }
 
-    Value *LHS = BO->getOperand(0);
-    Value *RHS = BO->getOperand(1);
+    Value* LHS = BO->getOperand(0);
+    Value* RHS = BO->getOperand(1);
     bool changed = false;
-    if (BinaryOperator *LBO = dyn_cast<BinaryOperator>(LHS))
+    if (BinaryOperator * LBO = dyn_cast<BinaryOperator>(LHS))
     {
         if (simplifyAdd(LBO))
         {
             changed = true;
         }
     }
-    if (BinaryOperator *RBO = dyn_cast<BinaryOperator>(RHS))
+    if (BinaryOperator * RBO = dyn_cast<BinaryOperator>(RHS))
     {
         if (simplifyAdd(RBO))
         {
@@ -2561,27 +2562,27 @@ bool IGCConstProp::simplifyAdd(BinaryOperator *BO)
     // Refresh LHS and RHS
     LHS = BO->getOperand(0);
     RHS = BO->getOperand(1);
-    BinaryOperator *LHSbo = dyn_cast<BinaryOperator>(LHS);
-    BinaryOperator *RHSbo = dyn_cast<BinaryOperator>(RHS);
+    BinaryOperator* LHSbo = dyn_cast<BinaryOperator>(LHS);
+    BinaryOperator* RHSbo = dyn_cast<BinaryOperator>(RHS);
     bool isLHSAdd = LHSbo && LHSbo->getOpcode() == Instruction::Add;
     bool isRHSAdd = RHSbo && RHSbo->getOpcode() == Instruction::Add;
     IRBuilder<> Builder(BO);
     if (isLHSAdd && isRHSAdd)
     {
-        Value *A = LHSbo->getOperand(0);
-        Value *B = LHSbo->getOperand(1);
-        Value *C = RHSbo->getOperand(0);
-        Value *D = RHSbo->getOperand(1);
+        Value* A = LHSbo->getOperand(0);
+        Value* B = LHSbo->getOperand(1);
+        Value* C = RHSbo->getOperand(0);
+        Value* D = RHSbo->getOperand(1);
 
-        ConstantInt *C0 = dyn_cast<ConstantInt>(B);
-        ConstantInt *C1 = dyn_cast<ConstantInt>(D);
+        ConstantInt* C0 = dyn_cast<ConstantInt>(B);
+        ConstantInt* C1 = dyn_cast<ConstantInt>(D);
 
         if (C0 || C1)
         {
-            Value *R = nullptr;
+            Value* R = nullptr;
             if (C0 && C1)
             {
-                Value *newC = ConstantFoldBinaryOpOperands(Instruction::Add,
+                Value* newC = ConstantFoldBinaryOpOperands(Instruction::Add,
                     C0, C1, *m_TD);
                 R = Builder.CreateAdd(A, C);
                 R = Builder.CreateAdd(R, newC);
@@ -2602,24 +2603,24 @@ bool IGCConstProp::simplifyAdd(BinaryOperator *BO)
     }
     else if (isLHSAdd)
     {
-        Value *A = LHSbo->getOperand(0);
-        Value *B = LHSbo->getOperand(1);
-        Value *C = RHS;
+        Value* A = LHSbo->getOperand(0);
+        Value* B = LHSbo->getOperand(1);
+        Value* C = RHS;
 
-        ConstantInt *C0 = dyn_cast<ConstantInt>(B);
-        ConstantInt *C1 = dyn_cast<ConstantInt>(C);
+        ConstantInt* C0 = dyn_cast<ConstantInt>(B);
+        ConstantInt* C1 = dyn_cast<ConstantInt>(C);
 
         if (C0 && C1)
         {
-            Value *newC = ConstantFoldBinaryOpOperands(Instruction::Add,
+            Value* newC = ConstantFoldBinaryOpOperands(Instruction::Add,
                 C0, C1, *m_TD);
-            Value *R = Builder.CreateAdd(A, newC);
+            Value* R = Builder.CreateAdd(A, newC);
             BO->replaceAllUsesWith(R);
             return true;
         }
         if (C0)
         {
-            Value *R = Builder.CreateAdd(A, C);
+            Value* R = Builder.CreateAdd(A, C);
             R = Builder.CreateAdd(R, B);
             BO->replaceAllUsesWith(R);
             return true;
@@ -2627,31 +2628,31 @@ bool IGCConstProp::simplifyAdd(BinaryOperator *BO)
     }
     else if (isRHSAdd)
     {
-        Value *A = LHS;
-        Value *B = RHSbo->getOperand(0);
-        Value *C = RHSbo->getOperand(1);
+        Value* A = LHS;
+        Value* B = RHSbo->getOperand(0);
+        Value* C = RHSbo->getOperand(1);
 
-        ConstantInt *C0 = dyn_cast<ConstantInt>(A);
-        ConstantInt *C1 = dyn_cast<ConstantInt>(C);
+        ConstantInt* C0 = dyn_cast<ConstantInt>(A);
+        ConstantInt* C1 = dyn_cast<ConstantInt>(C);
 
         if (C0 && C1)
         {
-            Constant *Ops[] = { C0, C1 };
-            Value *newC = ConstantFoldBinaryOpOperands(Instruction::Add,
+            Constant* Ops[] = { C0, C1 };
+            Value* newC = ConstantFoldBinaryOpOperands(Instruction::Add,
                 C0, C1, *m_TD);
-            Value *R = Builder.CreateAdd(B, newC);
+            Value* R = Builder.CreateAdd(B, newC);
             BO->replaceAllUsesWith(R);
             return true;
         }
         if (C0)
         {
-            Value *R = Builder.CreateAdd(RHS, A);
+            Value* R = Builder.CreateAdd(RHS, A);
             BO->replaceAllUsesWith(R);
             return true;
         }
         if (C1)
         {
-            Value *R = Builder.CreateAdd(A, B);
+            Value* R = Builder.CreateAdd(A, B);
             R = Builder.CreateAdd(R, C);
             BO->replaceAllUsesWith(R);
             return true;
@@ -2659,19 +2660,19 @@ bool IGCConstProp::simplifyAdd(BinaryOperator *BO)
     }
     else
     {
-        if (ConstantInt *CLHS = dyn_cast<ConstantInt>(LHS))
+        if (ConstantInt * CLHS = dyn_cast<ConstantInt>(LHS))
         {
-            if (ConstantInt *CRHS = dyn_cast<ConstantInt>(RHS))
+            if (ConstantInt * CRHS = dyn_cast<ConstantInt>(RHS))
             {
-                Constant *Ops[] = { CLHS, CRHS };
-                Value *newC = ConstantFoldBinaryOpOperands(Instruction::Add,
+                Constant* Ops[] = { CLHS, CRHS };
+                Value* newC = ConstantFoldBinaryOpOperands(Instruction::Add,
                     CLHS, CRHS, *m_TD);
                 BO->replaceAllUsesWith(newC);
                 return true;
             }
 
             // Constant is kept as RHS
-            Value *R = Builder.CreateAdd(RHS, LHS);
+            Value* R = Builder.CreateAdd(RHS, LHS);
             BO->replaceAllUsesWith(R);
             return true;
         }
@@ -2679,13 +2680,13 @@ bool IGCConstProp::simplifyAdd(BinaryOperator *BO)
     return changed;
 }
 
-bool IGCConstProp::simplifyGEP(GetElementPtrInst *GEP)
+bool IGCConstProp::simplifyGEP(GetElementPtrInst* GEP)
 {
     bool changed = false;
     for (int i = 0; i < (int)GEP->getNumIndices(); ++i)
     {
-        Value *Index = GEP->getOperand(i + 1);
-        BinaryOperator *BO = dyn_cast<BinaryOperator>(Index);
+        Value* Index = GEP->getOperand(i + 1);
+        BinaryOperator* BO = dyn_cast<BinaryOperator>(Index);
         if (!BO || BO->getOpcode() != Instruction::Add)
         {
             continue;
@@ -2705,7 +2706,7 @@ bool IGCConstProp::simplifyGEP(GetElementPtrInst *GEP)
 * we don't have to do this if llvm version uses a virtual function in place of calling
 * ConstantFoldInstruction.
 */
-bool IGCConstProp::runOnFunction(Function &F)
+bool IGCConstProp::runOnFunction(Function& F)
 {
     module = F.getParent();
     // Initialize the worklist to all of the instructions ready to process...
@@ -2719,13 +2720,13 @@ bool IGCConstProp::runOnFunction(Function &F)
     m_TLI = &getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
     while (!WorkList.empty())
     {
-        Instruction *I = *WorkList.rbegin();
+        Instruction* I = *WorkList.rbegin();
         WorkList.remove(I);    // Get an element from the worklist...
         if (I->use_empty())                  // Don't muck with dead instructions...
         {
             continue;
         }
-        Constant *C = nullptr;
+        Constant* C = nullptr;
         C = ConstantFoldInstruction(I, *m_TD, m_TLI);
 
         if (!C && isa<CallInst>(I))
@@ -2759,16 +2760,16 @@ bool IGCConstProp::runOnFunction(Function &F)
             // Replace all of the uses of a variable with uses of the constant.
             I->replaceAllUsesWith(C);
 
-            if ( 0 /* isa<ConstantPointerNull>(C)*/) // disable optimization generating invalid IR until it gets re-written
+            if (0 /* isa<ConstantPointerNull>(C)*/) // disable optimization generating invalid IR until it gets re-written
             {
                 // if we are changing function calls/ genisa intrinsics, then we need 
                 // to fix the function declarations to account for the change in pointer address type
                 for (Value::user_iterator UI = C->user_begin(), UE = C->user_end();
                     UI != UE; ++UI)
                 {
-                    if (GenIntrinsicInst *genIntr = dyn_cast<GenIntrinsicInst>(*UI))
+                    if (GenIntrinsicInst * genIntr = dyn_cast<GenIntrinsicInst>(*UI))
                     {
-                                    GenISAIntrinsic::ID ID = genIntr->getIntrinsicID();
+                        GenISAIntrinsic::ID ID = genIntr->getIntrinsicID();
                         if (ID == GenISAIntrinsic::GenISA_storerawvector_indexed)
                         {
                             llvm::Type* tys[2];
@@ -2811,7 +2812,7 @@ bool IGCConstProp::runOnFunction(Function &F)
             continue;
         }
 
-        if (GetElementPtrInst *GEP = dyn_cast<GetElementPtrInst>(I))
+        if (GetElementPtrInst * GEP = dyn_cast<GetElementPtrInst>(I))
         {
             if (m_enableSimplifyGEP && simplifyGEP(GEP))
             {
@@ -2834,8 +2835,8 @@ namespace {
             initializeIGCIndirectICBPropagaionPass(*PassRegistry::getPassRegistry());
         }
         virtual llvm::StringRef getPassName() const { return "Indirect ICB Propagaion"; }
-        virtual bool runOnFunction(Function &F);
-        virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const
+        virtual bool runOnFunction(Function& F);
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const
         {
             AU.setPreservesCFG();
             AU.addRequired<CodeGenContextWrapper>();
@@ -2847,27 +2848,27 @@ namespace {
 } // namespace
 
 char IGCIndirectICBPropagaion::ID = 0;
-FunctionPass *IGC::createIGCIndirectICBPropagaionPass() { return new IGCIndirectICBPropagaion(); }
+FunctionPass* IGC::createIGCIndirectICBPropagaionPass() { return new IGCIndirectICBPropagaion(); }
 
-bool IGCIndirectICBPropagaion::runOnFunction(Function &F)
+bool IGCIndirectICBPropagaion::runOnFunction(Function& F)
 {
-    CodeGenContext *ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    ModuleMetaData *modMD = ctx->getModuleMetaData();
+    CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    ModuleMetaData* modMD = ctx->getModuleMetaData();
 
     //MaxImmConstantSizePushed = 256 by default. For float values, it will contains 64 numbers, and stored in 8 GRF
-    if (modMD && 
+    if (modMD &&
         modMD->immConstant.data.size() &&
         modMD->immConstant.data.size() <= IGC_GET_FLAG_VALUE(MaxImmConstantSizePushed))
     {
         uint maxImmConstantSizePushed = modMD->immConstant.data.size();
-        char *offset = &(modMD->immConstant.data[0]);
+        char* offset = &(modMD->immConstant.data[0]);
         IRBuilder<> m_builder(F.getContext());
 
-        for (auto &BB : F)
+        for (auto& BB : F)
         {
             for (auto BI = BB.begin(), BE = BB.end(); BI != BE;)
             {
-                if (llvm::LoadInst* inst = llvm::dyn_cast<llvm::LoadInst>(&(*BI++)))
+                if (llvm::LoadInst * inst = llvm::dyn_cast<llvm::LoadInst>(&(*BI++)))
                 {
                     unsigned as = inst->getPointerAddressSpace();
                     bool directBuf;
@@ -2879,14 +2880,14 @@ bool IGCIndirectICBPropagaion::runOnFunction(Function &F)
                         (IGC::INVALID_CONSTANT_BUFFER_INVALID_ADDR != modMD->pushInfo.inlineConstantBufferOffset && ADDRESS_SPACE_CONSTANT == as && isICBOffseted(inst, modMD->pushInfo.inlineConstantBufferOffset));
                     if (bICBNoOffset || bICBOffseted)
                     {
-                        Value *ptrVal = inst->getPointerOperand();
-                        Value *eltPtr = nullptr;
-                        Value *eltIdx = nullptr;
-                        if (IntToPtrInst *i2p = dyn_cast<IntToPtrInst>(ptrVal))
+                        Value* ptrVal = inst->getPointerOperand();
+                        Value* eltPtr = nullptr;
+                        Value* eltIdx = nullptr;
+                        if (IntToPtrInst * i2p = dyn_cast<IntToPtrInst>(ptrVal))
                         {
                             eltPtr = i2p->getOperand(0);
                         }
-                        else if (GetElementPtrInst *gep = dyn_cast<GetElementPtrInst>(ptrVal))
+                        else if (GetElementPtrInst * gep = dyn_cast<GetElementPtrInst>(ptrVal))
                         {
                             if (gep->getNumOperands() != 3)
                             {
@@ -2899,7 +2900,7 @@ bool IGCIndirectICBPropagaion::runOnFunction(Function &F)
                             {
                                 continue;
                             }
-                            
+
                             eltIdx = gep->getOperand(2);
                         }
                         else
@@ -2919,7 +2920,7 @@ bool IGCIndirectICBPropagaion::runOnFunction(Function &F)
                                 for (unsigned int i = 0; i < maxImmConstantSizePushed; i += size_in_bytes)
                                 {
                                     memcpy_s(&returnConstant, size_in_bytes, offset + i, size_in_bytes);
-                                    Value *fp = ConstantFP::get(inst->getType(), returnConstant);
+                                    Value* fp = ConstantFP::get(inst->getType(), returnConstant);
                                     ICBbuffer = m_builder.CreateInsertElement(ICBbuffer, fp, m_builder.getInt32(i / size_in_bytes));
                                 }
 
@@ -2927,7 +2928,7 @@ bool IGCIndirectICBPropagaion::runOnFunction(Function &F)
                                 {
                                     eltIdx = m_builder.CreateLShr(eltPtr, m_builder.getInt32(2));
                                 }
-                                Value *ICBvalue = m_builder.CreateExtractElement(ICBbuffer, eltIdx);
+                                Value* ICBvalue = m_builder.CreateExtractElement(ICBbuffer, eltIdx);
                                 inst->replaceAllUsesWith(ICBvalue);
                             }
                             else if (inst->getType()->isIntegerTy(32))
@@ -2936,14 +2937,14 @@ bool IGCIndirectICBPropagaion::runOnFunction(Function &F)
                                 for (unsigned int i = 0; i < maxImmConstantSizePushed; i += size_in_bytes)
                                 {
                                     memcpy_s(&returnConstant, size_in_bytes, offset + i, size_in_bytes);
-                                    Value *fp = ConstantInt::get(inst->getType(), returnConstant);
+                                    Value* fp = ConstantInt::get(inst->getType(), returnConstant);
                                     ICBbuffer = m_builder.CreateInsertElement(ICBbuffer, fp, m_builder.getInt32(i / size_in_bytes));
                                 }
                                 if (eltPtr)
                                 {
                                     eltIdx = m_builder.CreateLShr(eltPtr, m_builder.getInt32(2));
                                 }
-                                Value *ICBvalue = m_builder.CreateExtractElement(ICBbuffer, eltIdx);
+                                Value* ICBvalue = m_builder.CreateExtractElement(ICBbuffer, eltIdx);
                                 inst->replaceAllUsesWith(ICBvalue);
                             }
                         }
@@ -2957,7 +2958,7 @@ bool IGCIndirectICBPropagaion::runOnFunction(Function &F)
 }
 
 bool IGCIndirectICBPropagaion::isICBOffseted(llvm::LoadInst* inst, uint offset) {
-    Value *ptrVal = inst->getPointerOperand();
+    Value* ptrVal = inst->getPointerOperand();
     std::vector<Value*> srcInstList;
     IGC::TracePointerSource(ptrVal, false, true, srcInstList);
     if (srcInstList.size())
@@ -2976,10 +2977,10 @@ bool IGCIndirectICBPropagaion::isICBOffseted(llvm::LoadInst* inst, uint offset) 
 
 IGC_INITIALIZE_PASS_BEGIN(IGCIndirectICBPropagaion, "IGCIndirectICBPropagaion",
     "IGCIndirectICBPropagaion", false, false)
-IGC_INITIALIZE_PASS_END(IGCIndirectICBPropagaion, "IGCIndirectICBPropagaion",
-    "IGCIndirectICBPropagaion", false, false)
+    IGC_INITIALIZE_PASS_END(IGCIndirectICBPropagaion, "IGCIndirectICBPropagaion",
+        "IGCIndirectICBPropagaion", false, false)
 
-namespace {
+    namespace {
     class NanHandling : public FunctionPass, public llvm::InstVisitor<NanHandling>
     {
     public:
@@ -2996,47 +2997,47 @@ namespace {
         }
 
         virtual llvm::StringRef getPassName() const { return "NAN handling"; }
-        virtual bool runOnFunction(llvm::Function &F);
-        void visitBranchInst(llvm::BranchInst &I);
-        void loopNanCases(Function &F);
+        virtual bool runOnFunction(llvm::Function& F);
+        void visitBranchInst(llvm::BranchInst& I);
+        void loopNanCases(Function& F);
 
     private:
-        int longestPathInstCount(llvm::BasicBlock *BB, int &depth);
-        void swapBranch(llvm::Instruction *inst, llvm::BranchInst &BI);
+        int longestPathInstCount(llvm::BasicBlock* BB, int& depth);
+        void swapBranch(llvm::Instruction* inst, llvm::BranchInst& BI);
         SmallVector<llvm::BranchInst*, 10> visitedInst;
     };
 } // namespace
 
 char NanHandling::ID = 0;
-FunctionPass *IGC::createNanHandlingPass() { return new NanHandling(); }
+FunctionPass* IGC::createNanHandlingPass() { return new NanHandling(); }
 
-bool NanHandling::runOnFunction(Function &F)
+bool NanHandling::runOnFunction(Function& F)
 {
     loopNanCases(F);
     visit(F);
     return true;
 }
 
-void NanHandling::loopNanCases(Function &F)
+void NanHandling::loopNanCases(Function& F)
 {
     // take care of loop cases
     visitedInst.clear();
-    llvm::LoopInfo *LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
+    llvm::LoopInfo* LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
     if (LI && !LI->empty())
     {
         FastMathFlags FMF;
         FMF.clear();
         for (LoopInfo::iterator I = LI->begin(), E = LI->end(); I != E; ++I)
         {
-            Loop *loop = *I;
+            Loop* loop = *I;
             BranchInst* br = cast<BranchInst>(loop->getLoopLatch()->getTerminator());
             BasicBlock* header = loop->getHeader();
             if (br && br->isConditional() && header)
             {
                 visitedInst.push_back(br);
-                if (FCmpInst *brCmpInst = dyn_cast<FCmpInst>(br->getCondition()))
+                if (FCmpInst * brCmpInst = dyn_cast<FCmpInst>(br->getCondition()))
                 {
-                    FPMathOperator *FPO = dyn_cast<FPMathOperator>(brCmpInst);
+                    FPMathOperator* FPO = dyn_cast<FPMathOperator>(brCmpInst);
                     if (!FPO || !FPO->isFast())
                     {
                         continue;
@@ -3046,15 +3047,15 @@ void NanHandling::loopNanCases(Function &F)
                         swapBranch(brCmpInst, *br);
                     }
                 }
-                else if (BinaryOperator *andOrInst = dyn_cast<BinaryOperator>(br->getCondition()))
+                else if (BinaryOperator * andOrInst = dyn_cast<BinaryOperator>(br->getCondition()))
                 {
                     if (andOrInst->getOpcode() != BinaryOperator::And &&
                         andOrInst->getOpcode() != BinaryOperator::Or)
                     {
                         continue;
                     }
-                    FCmpInst *brCmpInst0 = dyn_cast<FCmpInst>(andOrInst->getOperand(0));
-                    FCmpInst *brCmpInst1 = dyn_cast<FCmpInst>(andOrInst->getOperand(1));
+                    FCmpInst* brCmpInst0 = dyn_cast<FCmpInst>(andOrInst->getOperand(0));
+                    FCmpInst* brCmpInst1 = dyn_cast<FCmpInst>(andOrInst->getOperand(1));
                     if (!brCmpInst0 || !brCmpInst1)
                     {
                         continue;
@@ -3070,12 +3071,12 @@ void NanHandling::loopNanCases(Function &F)
     }
 }
 
-int NanHandling::longestPathInstCount(llvm::BasicBlock *BB, int &depth)
+int NanHandling::longestPathInstCount(llvm::BasicBlock* BB, int& depth)
 {
 #define MAX_SEARCH_DEPTH 10
 
     depth++;
-    if (!BB || depth>MAX_SEARCH_DEPTH)
+    if (!BB || depth > MAX_SEARCH_DEPTH)
         return 0;
 
     int sumSuccInstCount = 0;
@@ -3086,9 +3087,9 @@ int NanHandling::longestPathInstCount(llvm::BasicBlock *BB, int &depth)
     return (int)(BB->getInstList().size()) + sumSuccInstCount;
 }
 
-void NanHandling::swapBranch(llvm::Instruction *inst, llvm::BranchInst &BI)
+void NanHandling::swapBranch(llvm::Instruction* inst, llvm::BranchInst& BI)
 {
-    if (FCmpInst *brCondition = dyn_cast<FCmpInst>(inst))
+    if (FCmpInst * brCondition = dyn_cast<FCmpInst>(inst))
     {
         if (inst->hasOneUse())
         {
@@ -3103,7 +3104,7 @@ void NanHandling::swapBranch(llvm::Instruction *inst, llvm::BranchInst &BI)
     }
 }
 
-void NanHandling::visitBranchInst(llvm::BranchInst &I)
+void NanHandling::visitBranchInst(llvm::BranchInst& I)
 {
     if (!I.isConditional())
         return;
@@ -3115,14 +3116,14 @@ void NanHandling::visitBranchInst(llvm::BranchInst &I)
             return;
     }
 
-    FCmpInst *brCmpInst = dyn_cast<FCmpInst>(I.getCondition());
-    FCmpInst *src0 = nullptr;
-    FCmpInst *src1 = nullptr;
+    FCmpInst* brCmpInst = dyn_cast<FCmpInst>(I.getCondition());
+    FCmpInst* src0 = nullptr;
+    FCmpInst* src1 = nullptr;
 
     // if the branching is based on a cmp instruction
     if (brCmpInst)
     {
-        FPMathOperator *FPO = dyn_cast<FPMathOperator>(brCmpInst);
+        FPMathOperator* FPO = dyn_cast<FPMathOperator>(brCmpInst);
         if (!FPO || !FPO->isFast())
             return;
 
@@ -3130,7 +3131,7 @@ void NanHandling::visitBranchInst(llvm::BranchInst &I)
             return;
     }
     // if the branching is based on a and/or from multiple conditions.
-    else if (BinaryOperator *andOrInst = dyn_cast<BinaryOperator>(I.getCondition()))
+    else if (BinaryOperator * andOrInst = dyn_cast<BinaryOperator>(I.getCondition()))
     {
         if (andOrInst->getOpcode() != BinaryOperator::And && andOrInst->getOpcode() != BinaryOperator::Or)
             return;
@@ -3175,37 +3176,37 @@ IGC_INITIALIZE_PASS_END(NanHandling, "NanHandling", "NanHandling", false, false)
 
 namespace {
 
-class GenStrengthReduction : public FunctionPass
-{
-public:
-    static char ID;
-    GenStrengthReduction() : FunctionPass(ID)
+    class GenStrengthReduction : public FunctionPass
     {
-        initializeGenStrengthReductionPass(*PassRegistry::getPassRegistry());
-    }
-    virtual llvm::StringRef getPassName() const { return "Gen strength reduction"; }
-    virtual bool runOnFunction(Function &F);
+    public:
+        static char ID;
+        GenStrengthReduction() : FunctionPass(ID)
+        {
+            initializeGenStrengthReductionPass(*PassRegistry::getPassRegistry());
+        }
+        virtual llvm::StringRef getPassName() const { return "Gen strength reduction"; }
+        virtual bool runOnFunction(Function& F);
 
-private:
-    bool processInst(Instruction *Inst);
-    // Transform (extract-element (bitcast %vector) ...) to
-    // (bitcast (extract-element %vector) ...) in order to help coalescing in DeSSA.
-    bool optimizeVectorBitCast(Function &F) const;
-};
+    private:
+        bool processInst(Instruction* Inst);
+        // Transform (extract-element (bitcast %vector) ...) to
+        // (bitcast (extract-element %vector) ...) in order to help coalescing in DeSSA.
+        bool optimizeVectorBitCast(Function& F) const;
+    };
 
 } // namespace
 
 char GenStrengthReduction::ID = 0;
-FunctionPass *IGC::createGenStrengthReductionPass() { return new GenStrengthReduction(); }
+FunctionPass* IGC::createGenStrengthReductionPass() { return new GenStrengthReduction(); }
 
-bool GenStrengthReduction::runOnFunction(Function &F)
+bool GenStrengthReduction::runOnFunction(Function& F)
 {
     bool Changed = false;
-    for (auto &BB : F)
+    for (auto& BB : F)
     {
         for (auto BI = BB.begin(), BE = BB.end(); BI != BE;)
         {
-            Instruction *Inst = &(*BI++);
+            Instruction* Inst = &(*BI++);
             if (isInstructionTriviallyDead(Inst))
             {
                 Inst->eraseFromParent();
@@ -3223,7 +3224,7 @@ bool GenStrengthReduction::runOnFunction(Function &F)
 
 // Check if this is a fdiv that allows reciprocal, and its divident is not known
 // to be 1.0.
-static bool isCandidateFDiv(Instruction *Inst)
+static bool isCandidateFDiv(Instruction* Inst)
 {
     // Only floating points, and no vectors.
     if (!Inst->getType()->isFloatingPointTy() || Inst->use_empty())
@@ -3232,7 +3233,7 @@ static bool isCandidateFDiv(Instruction *Inst)
     auto Op = dyn_cast<FPMathOperator>(Inst);
     if (Op && Op->getOpcode() == Instruction::FDiv && Op->hasAllowReciprocal())
     {
-        Value *Src0 = Op->getOperand(0);
+        Value* Src0 = Op->getOperand(0);
         if (auto CFP = dyn_cast<ConstantFP>(Src0))
             return !CFP->isExactlyValue(1.0);
         return true;
@@ -3240,17 +3241,17 @@ static bool isCandidateFDiv(Instruction *Inst)
     return false;
 }
 
-bool GenStrengthReduction::processInst(Instruction *Inst)
+bool GenStrengthReduction::processInst(Instruction* Inst)
 {
 
     unsigned opc = Inst->getOpcode();
     auto Op = dyn_cast<FPMathOperator>(Inst);
     if (opc == Instruction::Select)
     {
-        Value *oprd1 = Inst->getOperand(1);
-        Value *oprd2 = Inst->getOperand(2);
-        ConstantFP *CF1 = dyn_cast<ConstantFP>(oprd1);
-        ConstantFP *CF2 = dyn_cast<ConstantFP>(oprd2);
+        Value* oprd1 = Inst->getOperand(1);
+        Value* oprd2 = Inst->getOperand(2);
+        ConstantFP* CF1 = dyn_cast<ConstantFP>(oprd1);
+        ConstantFP* CF2 = dyn_cast<ConstantFP>(oprd2);
         if (oprd1 == oprd2 ||
             (CF1 && CF2 && CF1->isExactlyValue(CF2->getValueAPF())))
         {
@@ -3259,17 +3260,17 @@ bool GenStrengthReduction::processInst(Instruction *Inst)
             return true;
         }
     }
-    if (Op && 
-        Op->hasNoNaNs() && 
+    if (Op &&
+        Op->hasNoNaNs() &&
         Op->hasNoInfs() &&
         Op->hasNoSignedZeros())
     {
         switch (opc)
         {
-        case Instruction::FDiv :
-          {
-            Value *Oprd0 = Inst->getOperand(0);
-            if (ConstantFP *CF = dyn_cast<ConstantFP>(Oprd0))
+        case Instruction::FDiv:
+        {
+            Value* Oprd0 = Inst->getOperand(0);
+            if (ConstantFP * CF = dyn_cast<ConstantFP>(Oprd0))
             {
                 if (CF->isZero())
                 {
@@ -3279,12 +3280,12 @@ bool GenStrengthReduction::processInst(Instruction *Inst)
                 }
             }
             break;
-          }
-        case Instruction::FMul :
-          {
-            for (int i=0; i < 2; ++i)
+        }
+        case Instruction::FMul:
+        {
+            for (int i = 0; i < 2; ++i)
             {
-                ConstantFP  *CF = dyn_cast<ConstantFP>(Inst->getOperand(i));
+                ConstantFP* CF = dyn_cast<ConstantFP>(Inst->getOperand(i));
                 if (CF && CF->isZero())
                 {
                     Inst->replaceAllUsesWith(CF);
@@ -3293,22 +3294,22 @@ bool GenStrengthReduction::processInst(Instruction *Inst)
                 }
             }
             break;
-          }
-        case Instruction::FAdd :
-          {
+        }
+        case Instruction::FAdd:
+        {
             for (int i = 0; i < 2; ++i)
             {
-                ConstantFP  *CF = dyn_cast<ConstantFP>(Inst->getOperand(i));
+                ConstantFP* CF = dyn_cast<ConstantFP>(Inst->getOperand(i));
                 if (CF && CF->isZero())
                 {
-                    Value *otherOprd = Inst->getOperand(1-i);
+                    Value* otherOprd = Inst->getOperand(1 - i);
                     Inst->replaceAllUsesWith(otherOprd);
                     Inst->eraseFromParent();
                     return true;
                 }
             }
             break;
-          }
+        }
         }
     }
 
@@ -3322,27 +3323,27 @@ bool GenStrengthReduction::processInst(Instruction *Inst)
     // %2 = fmul arcp float %x, %1
     if (isCandidateFDiv(Inst))
     {
-        Value *Src1 = Inst->getOperand(1);
+        Value* Src1 = Inst->getOperand(1);
         if (isa<Constant>(Src1))
         {
             // should not happen (but do see "fdiv  x / 0.0f"). Skip.
             return false;
         }
 
-        Value *Src0 = ConstantFP::get(Inst->getType(), 1.0);
-        Instruction *Inv = nullptr;
+        Value* Src0 = ConstantFP::get(Inst->getType(), 1.0);
+        Instruction* Inv = nullptr;
 
         // Check if there is any other (x / Src1). If so, commonize 1/Src1.
         for (auto UI = Src1->user_begin(), UE = Src1->user_end();
-             UI != UE; ++UI)
+            UI != UE; ++UI)
         {
-            Value *Val = *UI;
-            Instruction *I = dyn_cast<Instruction>(Val);
+            Value* Val = *UI;
+            Instruction* I = dyn_cast<Instruction>(Val);
             if (I && I != Inst && I->getOpcode() == Instruction::FDiv &&
                 I->getOperand(1) == Src1 && isCandidateFDiv(I))
             {
                 // special case
-                if (ConstantFP *CF = dyn_cast<ConstantFP>(I->getOperand(0)))
+                if (ConstantFP * CF = dyn_cast<ConstantFP>(I->getOperand(0)))
                 {
                     if (CF->isZero())
                     {
@@ -3355,12 +3356,12 @@ bool GenStrengthReduction::processInst(Instruction *Inst)
                 // or in the entry BB if Src1 is an argument.
                 if (!Inv)
                 {
-                    Instruction *insertBefore = dyn_cast<Instruction>(Src1);
+                    Instruction* insertBefore = dyn_cast<Instruction>(Src1);
                     if (insertBefore)
                     {
                         if (isa<PHINode>(insertBefore))
                         {
-                            BasicBlock *BB = insertBefore->getParent();
+                            BasicBlock* BB = insertBefore->getParent();
                             insertBefore = &(*BB->getFirstInsertionPt());
                         }
                         else
@@ -3374,14 +3375,14 @@ bool GenStrengthReduction::processInst(Instruction *Inst)
                     else
                     {
                         // Src1 is an argument and insert at the begin of entry BB
-                        BasicBlock &entryBB = Inst->getParent()->getParent()->getEntryBlock();
+                        BasicBlock& entryBB = Inst->getParent()->getParent()->getEntryBlock();
                         insertBefore = &(*entryBB.getFirstInsertionPt());
                     }
                     Inv = BinaryOperator::CreateFDiv(Src0, Src1, "", insertBefore);
                     Inv->setFastMathFlags(Inst->getFastMathFlags());
                 }
 
-                Instruction *Mul = BinaryOperator::CreateFMul(I->getOperand(0), Inv, "", I);
+                Instruction* Mul = BinaryOperator::CreateFMul(I->getOperand(0), Inv, "", I);
                 Mul->setFastMathFlags(Inst->getFastMathFlags());
                 I->replaceAllUsesWith(Mul);
                 // Don't erase it as doing so would invalidate iterator in this func's caller
@@ -3407,17 +3408,17 @@ bool GenStrengthReduction::processInst(Instruction *Inst)
     return false;
 }
 
-bool GenStrengthReduction::optimizeVectorBitCast(Function &F) const {
+bool GenStrengthReduction::optimizeVectorBitCast(Function& F) const {
     IRBuilder<> Builder(F.getContext());
 
     bool Changed = false;
-    for (auto &BB : F) {
+    for (auto& BB : F) {
         for (auto BI = BB.begin(), BE = BB.end(); BI != BE; /*EMPTY*/) {
-            BitCastInst *BC = dyn_cast<BitCastInst>(&*BI++);
+            BitCastInst* BC = dyn_cast<BitCastInst>(&*BI++);
             if (!BC) continue;
             // Skip non-element-wise bitcast.
-            VectorType *DstVTy = dyn_cast<VectorType>(BC->getType());
-            VectorType *SrcVTy = dyn_cast<VectorType>(BC->getOperand(0)->getType());
+            VectorType* DstVTy = dyn_cast<VectorType>(BC->getType());
+            VectorType* SrcVTy = dyn_cast<VectorType>(BC->getOperand(0)->getType());
             if (!DstVTy || !SrcVTy || DstVTy->getNumElements() != SrcVTy->getNumElements())
                 continue;
             // Skip if it's not used only all extract-element.
@@ -3430,10 +3431,10 @@ bool GenStrengthReduction::optimizeVectorBitCast(Function &F) const {
             if (!ExactOnly)
                 continue;
             // Autobots, transform and roll out!
-            Value *Src = BC->getOperand(0);
-            Type *DstEltTy = DstVTy->getElementType();
+            Value* Src = BC->getOperand(0);
+            Type* DstEltTy = DstVTy->getElementType();
             for (auto UI = BC->user_begin(), UE = BC->user_end(); UI != UE;
-                 /*EMPTY*/) {
+                /*EMPTY*/) {
                 auto EEI = cast<ExtractElementInst>(*UI++);
                 Builder.SetInsertPoint(EEI);
                 auto NewVal = Builder.CreateExtractElement(Src, EEI->getIndexOperand());
@@ -3450,76 +3451,76 @@ bool GenStrengthReduction::optimizeVectorBitCast(Function &F) const {
 }
 
 IGC_INITIALIZE_PASS_BEGIN(GenStrengthReduction, "GenStrengthReduction",
-                          "GenStrengthReduction", false, false)
-IGC_INITIALIZE_PASS_END(GenStrengthReduction, "GenStrengthReduction",
-                        "GenStrengthReduction", false, false)
+    "GenStrengthReduction", false, false)
+    IGC_INITIALIZE_PASS_END(GenStrengthReduction, "GenStrengthReduction",
+        "GenStrengthReduction", false, false)
 
 
-/*========================== FlattenSmallSwitch ==============================
+    /*========================== FlattenSmallSwitch ==============================
 
-This class flatten small switch. For example,
+    This class flatten small switch. For example,
 
-before optimization:
-    switch i32 %115, label %else229 [
-    i32 1, label %then214
-    i32 2, label %then222
-    ]
+    before optimization:
+        switch i32 %115, label %else229 [
+        i32 1, label %then214
+        i32 2, label %then222
+        ]
 
-    then214:                                          ; preds = %then153
-    %150 = fdiv float 1.000000e+00, %res_s208
-    %151 = fmul float %147, %150
-    br label %ifcont237
+        then214:                                          ; preds = %then153
+        %150 = fdiv float 1.000000e+00, %res_s208
+        %151 = fmul float %147, %150
+        br label %ifcont237
 
-    then222:                                          ; preds = %then153
-    %152 = fsub float 1.000000e+00, %141
-    br label %ifcont237
+        then222:                                          ; preds = %then153
+        %152 = fsub float 1.000000e+00, %141
+        br label %ifcont237
 
-    else229:                                          ; preds = %then153
-    %res_s230 = icmp eq i32 %115, 3
-    %. = select i1 %res_s230, float 1.000000e+00, float 0.000000e+00
-    br label %ifcont237
+        else229:                                          ; preds = %then153
+        %res_s230 = icmp eq i32 %115, 3
+        %. = select i1 %res_s230, float 1.000000e+00, float 0.000000e+00
+        br label %ifcont237
 
-    ifcont237:                                        ; preds = %else229, %then222, %then214
-    %"r[9][0].x.0" = phi float [ %151, %then214 ], [ %152, %then222 ], [ %., %else229 ]
+        ifcont237:                                        ; preds = %else229, %then222, %then214
+        %"r[9][0].x.0" = phi float [ %151, %then214 ], [ %152, %then222 ], [ %., %else229 ]
 
-after optimization:
-    %res_s230 = icmp eq i32 %115, 3
-    %. = select i1 %res_s230, float 1.000000e+00, float 0.000000e+00
-    %150 = fdiv float 1.000000e+00, %res_s208
-    %151 = fmul float %147, %150
-    %152 = icmp eq i32 %115, 1
-    %153 = select i1 %152, float %151, float %.
-    %154 = fsub float 1.000000e+00, %141
-    %155 = icmp eq i32 %115, 2
-    %156 = select i1 %155, float %154, float %153
+    after optimization:
+        %res_s230 = icmp eq i32 %115, 3
+        %. = select i1 %res_s230, float 1.000000e+00, float 0.000000e+00
+        %150 = fdiv float 1.000000e+00, %res_s208
+        %151 = fmul float %147, %150
+        %152 = icmp eq i32 %115, 1
+        %153 = select i1 %152, float %151, float %.
+        %154 = fsub float 1.000000e+00, %141
+        %155 = icmp eq i32 %115, 2
+        %156 = select i1 %155, float %154, float %153
 
-=============================================================================*/
-namespace {
-class FlattenSmallSwitch : public FunctionPass
-{
-public:
-    static char ID;
-    FlattenSmallSwitch() : FunctionPass(ID)
+    =============================================================================*/
+    namespace {
+    class FlattenSmallSwitch : public FunctionPass
     {
-        initializeFlattenSmallSwitchPass(*PassRegistry::getPassRegistry());
-    }
-    virtual llvm::StringRef getPassName() const { return "Flatten Small Switch"; }
-    virtual bool runOnFunction(Function &F);
-    bool processSwitchInst(SwitchInst *SI);
-};
+    public:
+        static char ID;
+        FlattenSmallSwitch() : FunctionPass(ID)
+        {
+            initializeFlattenSmallSwitchPass(*PassRegistry::getPassRegistry());
+        }
+        virtual llvm::StringRef getPassName() const { return "Flatten Small Switch"; }
+        virtual bool runOnFunction(Function& F);
+        bool processSwitchInst(SwitchInst* SI);
+    };
 
 } // namespace
 
 char FlattenSmallSwitch::ID = 0;
-FunctionPass *IGC::createFlattenSmallSwitchPass() { return new FlattenSmallSwitch(); }
+FunctionPass* IGC::createFlattenSmallSwitchPass() { return new FlattenSmallSwitch(); }
 
-bool FlattenSmallSwitch::processSwitchInst(SwitchInst *SI) 
+bool FlattenSmallSwitch::processSwitchInst(SwitchInst* SI)
 {
     const unsigned maxSwitchCases = 3;  // only apply to switch with 3 cases or less
     const unsigned maxCaseInsts = 3;    // only apply optimization when each case has 3 instructions or less.
 
     BasicBlock* Default = SI->getDefaultDest();
-    Value *Val = SI->getCondition();  // The value we are switching on...
+    Value* Val = SI->getCondition();  // The value we are switching on...
     IRBuilder<> builder(SI);
 
     if (SI->getNumCases() > maxSwitchCases || SI->getNumCases() == 0)
@@ -3531,15 +3532,15 @@ bool FlattenSmallSwitch::processSwitchInst(SwitchInst *SI)
     // Currently, there are two options:
     // 1. The Dest block is the default block from the switch
     // 2. The Dest block is jumped to by all of the switch cases (and the default)
-    BasicBlock *Dest = nullptr;
+    BasicBlock* Dest = nullptr;
     {
-        const auto *CaseSucc = 
+        const auto* CaseSucc =
 #if LLVM_VERSION_MAJOR == 4
             SI->case_begin().getCaseSuccessor();
 #elif LLVM_VERSION_MAJOR >= 7
             SI->case_begin()->getCaseSuccessor();
 #endif
-        auto *BI = dyn_cast<BranchInst>(CaseSucc->getTerminator());
+        auto* BI = dyn_cast<BranchInst>(CaseSucc->getTerminator());
 
         if (BI == nullptr)
             return false;
@@ -3553,9 +3554,9 @@ bool FlattenSmallSwitch::processSwitchInst(SwitchInst *SI)
     }
 
     // Does BB unconditionally branch to MergeBlock?
-    auto branchPattern = [](const BasicBlock *BB, const BasicBlock *MergeBlock)
+    auto branchPattern = [](const BasicBlock* BB, const BasicBlock* MergeBlock)
     {
-        auto *br = dyn_cast<BranchInst>(BB->getTerminator());
+        auto* br = dyn_cast<BranchInst>(BB->getTerminator());
 
         if (br == nullptr)
             return false;
@@ -3572,7 +3573,7 @@ bool FlattenSmallSwitch::processSwitchInst(SwitchInst *SI)
     // We can speculatively execute a basic block if it
     // is small, unconditionally branches to Dest, and doesn't
     // have high latency or unsafe to speculate instructions.
-    auto canSpeculateBlock = [&](BasicBlock *BB)
+    auto canSpeculateBlock = [&](BasicBlock* BB)
     {
         if (BB->size() > maxCaseInsts)
             return false;
@@ -3580,19 +3581,19 @@ bool FlattenSmallSwitch::processSwitchInst(SwitchInst *SI)
         if (!branchPattern(BB, Dest))
             return false;
 
-        for (auto &I : *BB)
+        for (auto& I : *BB)
         {
-            auto *inst = &I;
+            auto* inst = &I;
 
             if (isa<BranchInst>(inst))
                 continue;
 
             // if there is any high-latency instruction in the switch,
             // don't flatten it
-            if (isSampleInstruction(inst)  ||
+            if (isSampleInstruction(inst) ||
                 isGather4Instruction(inst) ||
-                isInfoInstruction(inst)    ||
-                isLdInstruction(inst)      ||
+                isInfoInstruction(inst) ||
+                isLdInstruction(inst) ||
                 // If the instruction can't be speculated (e.g., phi node),
                 // punt.
                 !isSafeToSpeculativelyExecute(inst))
@@ -3604,9 +3605,9 @@ bool FlattenSmallSwitch::processSwitchInst(SwitchInst *SI)
         return true;
     };
 
-    for (auto &I : SI->cases())
+    for (auto& I : SI->cases())
     {
-        BasicBlock *CaseDest = I.getCaseSuccessor();
+        BasicBlock* CaseDest = I.getCaseSuccessor();
 
         if (!canSpeculateBlock(CaseDest))
             return false;
@@ -3624,9 +3625,9 @@ bool FlattenSmallSwitch::processSwitchInst(SwitchInst *SI)
 
     // Get all PHI nodes that needs to be replaced
     SmallVector<PHINode*, 4> PhiNodes;
-    for (auto &I : *Dest)
+    for (auto& I : *Dest)
     {
-        auto *Phi = dyn_cast<PHINode>(&I);
+        auto* Phi = dyn_cast<PHINode>(&I);
 
         if (!Phi)
             break;
@@ -3642,10 +3643,10 @@ bool FlattenSmallSwitch::processSwitchInst(SwitchInst *SI)
 
     // Move all instructions except the last (i.e., the branch)
     // from BB to the InsertPoint.
-    auto splice = [](BasicBlock *BB, Instruction *InsertPoint)
+    auto splice = [](BasicBlock* BB, Instruction* InsertPoint)
     {
         Instruction* preIter = nullptr;
-        for (auto &iter : *BB)
+        for (auto& iter : *BB)
         {
             if (preIter)
             {
@@ -3660,27 +3661,27 @@ bool FlattenSmallSwitch::processSwitchInst(SwitchInst *SI)
         splice(Default, SI);
 
     // move case blocks out
-    for (auto &I : SI->cases())
+    for (auto& I : SI->cases())
     {
-        BasicBlock *CaseDest = I.getCaseSuccessor();
+        BasicBlock* CaseDest = I.getCaseSuccessor();
         splice(CaseDest, SI);
     }
 
     // replaces PHI with select
-    for (auto *Phi : PhiNodes)
+    for (auto* Phi : PhiNodes)
     {
-        Value *vTemp = Phi->getIncomingValueForBlock(
+        Value* vTemp = Phi->getIncomingValueForBlock(
             DefaultMergeBlock ? SI->getParent() : Default);
 
-        for (auto &I : SI->cases())
+        for (auto& I : SI->cases())
         {
-            BasicBlock *CaseDest   = I.getCaseSuccessor();
-            ConstantInt *CaseValue = I.getCaseValue();
+            BasicBlock* CaseDest = I.getCaseSuccessor();
+            ConstantInt* CaseValue = I.getCaseValue();
 
-            Value *selTrueValue = Phi->getIncomingValueForBlock(CaseDest);
+            Value* selTrueValue = Phi->getIncomingValueForBlock(CaseDest);
             builder.SetInsertPoint(SI);
-            Value *cmp = builder.CreateICmp(CmpInst::Predicate::ICMP_EQ, Val, CaseValue);
-            Value *sel = builder.CreateSelect(cmp, selTrueValue, vTemp);
+            Value* cmp = builder.CreateICmp(CmpInst::Predicate::ICMP_EQ, Val, CaseValue);
+            Value* sel = builder.CreateSelect(cmp, selTrueValue, vTemp);
             vTemp = sel;
         }
 
@@ -3691,10 +3692,10 @@ bool FlattenSmallSwitch::processSwitchInst(SwitchInst *SI)
     builder.CreateBr(Dest);
 
     // Remove the switch.
-    BasicBlock *SelectBB = SI->getParent();
-    for (unsigned i = 0, e = SI->getNumSuccessors(); i < e; ++i) 
+    BasicBlock* SelectBB = SI->getParent();
+    for (unsigned i = 0, e = SI->getNumSuccessors(); i < e; ++i)
     {
-        BasicBlock *Succ = SI->getSuccessor(i);
+        BasicBlock* Succ = SI->getSuccessor(i);
         if (Succ == Dest)
         {
             continue;
@@ -3706,13 +3707,13 @@ bool FlattenSmallSwitch::processSwitchInst(SwitchInst *SI)
     return true;
 }
 
-bool FlattenSmallSwitch::runOnFunction(Function &F)
+bool FlattenSmallSwitch::runOnFunction(Function& F)
 {
     bool Changed = false;
-    for (Function::iterator I = F.begin(), E = F.end(); I != E; ) 
+    for (Function::iterator I = F.begin(), E = F.end(); I != E; )
     {
-        BasicBlock *Cur = &*I++; // Advance over block so we don't traverse new blocks
-        if (SwitchInst *SI = dyn_cast<SwitchInst>(Cur->getTerminator()))
+        BasicBlock* Cur = &*I++; // Advance over block so we don't traverse new blocks
+        if (SwitchInst * SI = dyn_cast<SwitchInst>(Cur->getTerminator()))
         {
             Changed |= processSwitchInst(SI);
         }
@@ -3730,14 +3731,14 @@ FCmpPaternMatch::FCmpPaternMatch() : FunctionPass(ID)
     initializeFCmpPaternMatchPass(*PassRegistry::getPassRegistry());
 }
 
-bool FCmpPaternMatch::runOnFunction(Function &F)
+bool FCmpPaternMatch::runOnFunction(Function& F)
 {
     bool change = true;
     visit(F);
     return change;
 }
 
-void FCmpPaternMatch::visitSelectInst(SelectInst &I)
+void FCmpPaternMatch::visitSelectInst(SelectInst& I)
 {
     /*
     from
@@ -3755,8 +3756,8 @@ void FCmpPaternMatch::visitSelectInst(SelectInst &I)
     {
         bool swapNodesFromSel = false;
         bool isSelWithConstants = false;
-        ConstantFP *Cfp1 = dyn_cast<ConstantFP>(I.getOperand(1));
-        ConstantFP *Cfp2 = dyn_cast<ConstantFP>(I.getOperand(2));
+        ConstantFP* Cfp1 = dyn_cast<ConstantFP>(I.getOperand(1));
+        ConstantFP* Cfp2 = dyn_cast<ConstantFP>(I.getOperand(2));
         if (Cfp1 && Cfp1->getValueAPF().isFiniteNonZero() &&
             Cfp2 && Cfp2->isZero())
         {
@@ -3773,7 +3774,7 @@ void FCmpPaternMatch::visitSelectInst(SelectInst &I)
         {
             for (auto bitCastI : I.users())
             {
-                if (BitCastInst* bitcastInst = dyn_cast<BitCastInst>(bitCastI))
+                if (BitCastInst * bitcastInst = dyn_cast<BitCastInst>(bitCastI))
                 {
                     for (auto cmpI : bitcastInst->users())
                     {
@@ -3781,7 +3782,7 @@ void FCmpPaternMatch::visitSelectInst(SelectInst &I)
                         if (iCmpInst &&
                             iCmpInst->isEquality())
                         {
-                            ConstantInt *icmpC = dyn_cast<ConstantInt>(iCmpInst->getOperand(1));
+                            ConstantInt* icmpC = dyn_cast<ConstantInt>(iCmpInst->getOperand(1));
                             if (!icmpC || !icmpC->isZero())
                             {
                                 continue;
@@ -3808,7 +3809,7 @@ void FCmpPaternMatch::visitSelectInst(SelectInst &I)
                                     }
                                 }
 
-                                if (SelectInst* selInst = dyn_cast<SelectInst>(brOrSelI))
+                                if (SelectInst * selInst = dyn_cast<SelectInst>(brOrSelI))
                                 {
                                     //match
                                     matchedBrSelInsts.push_back(selInst);
@@ -3846,32 +3847,32 @@ IGC_INITIALIZE_PASS_END(FlattenSmallSwitch, "flattenSmallSwitch", "flattenSmallS
 //    else
 //        res = false
 namespace {
-class LogicalAndToBranch : public FunctionPass
-{
-public:
-    static char ID;
-    const int NUM_INST_THRESHOLD = 32;
-    LogicalAndToBranch();
+    class LogicalAndToBranch : public FunctionPass
+    {
+    public:
+        static char ID;
+        const int NUM_INST_THRESHOLD = 32;
+        LogicalAndToBranch();
 
-    StringRef getPassName() const override { return "LogicalAndToBranch"; }
+        StringRef getPassName() const override { return "LogicalAndToBranch"; }
 
-    bool runOnFunction(Function& F) override;
+        bool runOnFunction(Function& F) override;
 
-protected:
-    SmallPtrSet<Instruction*, 8> m_sched;
+    protected:
+        SmallPtrSet<Instruction*, 8> m_sched;
 
-    // schedule instruction up before insertPos
-    bool scheduleUp(BasicBlock* bb, Value* V, Instruction* &insertPos);
+        // schedule instruction up before insertPos
+        bool scheduleUp(BasicBlock* bb, Value* V, Instruction*& insertPos);
 
-    // check if it's safe to convert instructions between cond0 & cond1,
-    // moveInsts are the values referened out of (cond0, cond1), we need to
-    // move them before cond0
-    bool isSafeToConvert(Instruction* cond0, Instruction* cond1,
-        smallvector<Instruction*, 8>& moveInsts);
+        // check if it's safe to convert instructions between cond0 & cond1,
+        // moveInsts are the values referened out of (cond0, cond1), we need to
+        // move them before cond0
+        bool isSafeToConvert(Instruction* cond0, Instruction* cond1,
+            smallvector<Instruction*, 8> & moveInsts);
 
-    void convertAndToBranch(Instruction* opAnd,
-        Instruction* cond0, Instruction* cond1, BasicBlock* &newBB);
-};
+        void convertAndToBranch(Instruction* opAnd,
+            Instruction* cond0, Instruction* cond1, BasicBlock*& newBB);
+    };
 
 }
 
@@ -3879,7 +3880,7 @@ IGC_INITIALIZE_PASS_BEGIN(LogicalAndToBranch, "logicalAndToBranch", "logicalAndT
 IGC_INITIALIZE_PASS_END(LogicalAndToBranch, "logicalAndToBranch", "logicalAndToBranch", false, false)
 
 char LogicalAndToBranch::ID = 0;
-FunctionPass *IGC::createLogicalAndToBranchPass() { return new LogicalAndToBranch(); }
+FunctionPass* IGC::createLogicalAndToBranchPass() { return new LogicalAndToBranch(); }
 
 LogicalAndToBranch::LogicalAndToBranch() : FunctionPass(ID)
 {
@@ -3887,9 +3888,9 @@ LogicalAndToBranch::LogicalAndToBranch() : FunctionPass(ID)
 }
 
 bool LogicalAndToBranch::scheduleUp(BasicBlock* bb, Value* V,
-    Instruction* &insertPos)
+    Instruction*& insertPos)
 {
-    Instruction *inst = dyn_cast<Instruction>(V);
+    Instruction* inst = dyn_cast<Instruction>(V);
     if (!inst)
         return false;
 
@@ -3946,10 +3947,10 @@ bool LogicalAndToBranch::scheduleUp(BasicBlock* bb, Value* V,
 //       %andRes = phi [%cond1, if.then], [false, if.else]
 //       ...
 void LogicalAndToBranch::convertAndToBranch(Instruction* opAnd,
-    Instruction* cond0, Instruction* cond1, BasicBlock* &newBB)
+    Instruction* cond0, Instruction* cond1, BasicBlock*& newBB)
 {
     BasicBlock* bb = opAnd->getParent();
-    BasicBlock *bbThen, *bbElse, *bbEnd;
+    BasicBlock* bbThen, * bbElse, * bbEnd;
 
     bbThen = bb->splitBasicBlock(cond0->getNextNode(), "if.then");
     bbElse = bbThen->splitBasicBlock(opAnd, "if.else");
@@ -3972,7 +3973,7 @@ void LogicalAndToBranch::convertAndToBranch(Instruction* opAnd,
 
 bool LogicalAndToBranch::isSafeToConvert(
     Instruction* cond0, Instruction* cond1,
-    smallvector<Instruction*, 8>& moveInsts)
+    smallvector<Instruction*, 8> & moveInsts)
 {
     BasicBlock::iterator is0(cond0);
     BasicBlock::iterator is1(cond1);
@@ -4024,7 +4025,7 @@ bool LogicalAndToBranch::runOnFunction(Function& F)
     for (auto BI = F.begin(), BE = F.end(); BI != BE; )
     {
         // advance iterator before handling current BB
-        BasicBlock *bb = &*BI++;
+        BasicBlock* bb = &*BI++;
 
         for (auto II = bb->begin(), IE = bb->end(); II != IE; )
         {

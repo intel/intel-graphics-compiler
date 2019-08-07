@@ -66,31 +66,31 @@ WIFuncsAnalysis::WIFuncsAnalysis() : ModulePass(ID)
     initializeWIFuncsAnalysisPass(*PassRegistry::getPassRegistry());
 }
 
-bool WIFuncsAnalysis::runOnModule(Module &M)
+bool WIFuncsAnalysis::runOnModule(Module& M)
 {
     // Run on all functions defined in this module
-    for( Module::iterator I = M.begin(), E = M.end(); I != E; ++I )
+    for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I)
     {
         Function* pFunc = &(*I);
-        if( pFunc->isDeclaration() ) continue;
+        if (pFunc->isDeclaration()) continue;
         runOnFunction(*pFunc);
     }
 
     return true;
 }
 
-bool WIFuncsAnalysis::runOnFunction(Function &F)
+bool WIFuncsAnalysis::runOnFunction(Function& F)
 {
     // Processing new function
-    m_hasLocalID           = false;
-    m_hasGlobalSize        = false;
-    m_hasLocalSize         = false;
-    m_hasWorkDim           = false;
-    m_hasNumGroups         = false;
+    m_hasLocalID = false;
+    m_hasGlobalSize = false;
+    m_hasLocalSize = false;
+    m_hasWorkDim = false;
+    m_hasNumGroups = false;
     m_hasEnqueuedLocalSize = false;
     m_hasStageInGridOrigin = false;
-    m_hasStageInGridSize   = false;
-    
+    m_hasStageInGridSize = false;
+
     // Visit the function
     visit(F);
 
@@ -102,29 +102,29 @@ bool WIFuncsAnalysis::runOnFunction(Function &F)
     implicitArgs.push_back(ImplicitArg::PAYLOAD_HEADER);
 
     // Check if additional implicit information is needed based on the function analysis
-    if( m_hasWorkDim )
+    if (m_hasWorkDim)
     {
         implicitArgs.push_back(ImplicitArg::WORK_DIM);
     }
-    if( m_hasNumGroups )
+    if (m_hasNumGroups)
     {
         implicitArgs.push_back(ImplicitArg::NUM_GROUPS);
     }
-    if( m_hasGlobalSize )
+    if (m_hasGlobalSize)
     {
         implicitArgs.push_back(ImplicitArg::GLOBAL_SIZE);
     }
-    if ( m_hasLocalSize )
+    if (m_hasLocalSize)
     {
         implicitArgs.push_back(ImplicitArg::LOCAL_SIZE);
     }
-    if ( m_hasLocalID )
+    if (m_hasLocalID)
     {
         implicitArgs.push_back(ImplicitArg::LOCAL_ID_X);
         implicitArgs.push_back(ImplicitArg::LOCAL_ID_Y);
         implicitArgs.push_back(ImplicitArg::LOCAL_ID_Z);
     }
-    if ( m_hasEnqueuedLocalSize )
+    if (m_hasEnqueuedLocalSize)
     {
         implicitArgs.push_back(ImplicitArg::ENQUEUED_LOCAL_WORK_SIZE);
     }
@@ -139,11 +139,11 @@ bool WIFuncsAnalysis::runOnFunction(Function &F)
 
     // Create the metadata representing the implicit args needed by this function
     ImplicitArgs::addImplicitArgs(F, implicitArgs, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils());
-    
+
     return true;
 }
 
-void WIFuncsAnalysis::visitCallInst(CallInst &CI)
+void WIFuncsAnalysis::visitCallInst(CallInst& CI)
 {
     if (!CI.getCalledFunction())
     {
@@ -152,29 +152,29 @@ void WIFuncsAnalysis::visitCallInst(CallInst &CI)
 
     // Check for OpenCL WI function calls
     StringRef funcName = CI.getCalledFunction()->getName();
-    if( funcName.equals(GET_LOCAL_ID_X) ||
+    if (funcName.equals(GET_LOCAL_ID_X) ||
         funcName.equals(GET_LOCAL_ID_Y) ||
-        funcName.equals(GET_LOCAL_ID_Z) )
+        funcName.equals(GET_LOCAL_ID_Z))
     {
         m_hasLocalID = true;
     }
-    else if( funcName.equals(GET_GLOBAL_SIZE) )
+    else if (funcName.equals(GET_GLOBAL_SIZE))
     {
         m_hasGlobalSize = true;
-    } 
+    }
     else if (funcName.equals(GET_LOCAL_SIZE))
     {
         m_hasLocalSize = true;
     }
-    else if( funcName.equals(GET_WORK_DIM) )
+    else if (funcName.equals(GET_WORK_DIM))
     {
         m_hasWorkDim = true;
-    } 
-    else if( funcName.equals(GET_NUM_GROUPS) )
+    }
+    else if (funcName.equals(GET_NUM_GROUPS))
     {
         m_hasNumGroups = true;
-    } 
-    else if ( funcName.equals(GET_ENQUEUED_LOCAL_SIZE) ) {
+    }
+    else if (funcName.equals(GET_ENQUEUED_LOCAL_SIZE)) {
         m_hasEnqueuedLocalSize = true;
     }
     else if (funcName.equals(GET_STAGE_IN_GRID_ORIGIN)) {

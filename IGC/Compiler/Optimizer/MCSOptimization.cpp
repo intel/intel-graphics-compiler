@@ -54,9 +54,9 @@ class MCSOptimization : public FunctionPass, public InstVisitor<MCSOptimization>
 {
 public:
     MCSOptimization() : FunctionPass(ID) {}
-    bool runOnFunction(Function &F);
-    void visitCallInst(llvm::CallInst &I);
-    void getAnalysisUsage(llvm::AnalysisUsage &AU) const
+    bool runOnFunction(Function& F);
+    void visitCallInst(llvm::CallInst& I);
+    void getAnalysisUsage(llvm::AnalysisUsage& AU) const
     {
         AU.addRequired<CodeGenContextWrapper>();
     }
@@ -69,9 +69,9 @@ public:
     bool m_changed;
 
 private:
-    bool shaderSamplesCompressedSurfaces(CodeGenContext *ctx)
+    bool shaderSamplesCompressedSurfaces(CodeGenContext* ctx)
     {
-        ModuleMetaData *modMD = ctx->getModuleMetaData();
+        ModuleMetaData* modMD = ctx->getModuleMetaData();
         for (unsigned int i = 0; i < NUM_SHADER_RESOURCE_VIEW_SIZE; i++)
         {
             if (modMD->m_ShaderResourceViewMcsMask[i] != 0)
@@ -86,9 +86,9 @@ protected:
 
 char MCSOptimization::ID = 0;
 
-bool MCSOptimization::runOnFunction(Function &F)
+bool MCSOptimization::runOnFunction(Function& F)
 {
-    
+
     if (IGC_IS_FLAG_ENABLED(DisableMCSOpt))
     {
         return false;
@@ -98,12 +98,12 @@ bool MCSOptimization::runOnFunction(Function &F)
     return m_changed;
 }
 
-void MCSOptimization::visitCallInst(llvm::CallInst &I)
+void MCSOptimization::visitCallInst(llvm::CallInst& I)
 {
     Function* F = I.getParent()->getParent();
     IGCIRBuilder<> IRB(F->getContext());
 
-    if (LdmcsInstrinsic* ldMcs = dyn_cast<LdmcsInstrinsic>(&I))
+    if (LdmcsInstrinsic * ldMcs = dyn_cast<LdmcsInstrinsic>(&I))
     {
         CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
@@ -134,7 +134,7 @@ void MCSOptimization::visitCallInst(llvm::CallInst &I)
             assert(textureIndex <= 127 && "Texture index is incorrectly extracted from ld_mcs");
 
             unsigned long long resultBit = resourceViewMcsMaskElement >> resourceViewMaskTextureBit;
-            if((resultBit & 1) == 0)
+            if ((resultBit & 1) == 0)
             {
                 return;
             }
@@ -142,11 +142,11 @@ void MCSOptimization::visitCallInst(llvm::CallInst &I)
         ExtractElementInst* EEI = nullptr;
         for (auto useItr : ldMcs->users())
         {
-            if(ExtractElementInst* ee1 = dyn_cast<ExtractElementInst>(useItr))
+            if (ExtractElementInst * ee1 = dyn_cast<ExtractElementInst>(useItr))
             {
-                if(ConstantInt* channel = dyn_cast<ConstantInt>(ee1->getOperand(1)))
+                if (ConstantInt * channel = dyn_cast<ConstantInt>(ee1->getOperand(1)))
                 {
-                    if(channel->isZero())
+                    if (channel->isZero())
                     {
                         EEI = ee1;
                         break;
@@ -154,7 +154,7 @@ void MCSOptimization::visitCallInst(llvm::CallInst &I)
                 }
             }
         }
-        
+
         if (EEI != nullptr)
         {
             if (EEI->hasOneUse())
@@ -164,7 +164,7 @@ void MCSOptimization::visitCallInst(llvm::CallInst &I)
 
             for (auto it = EEI->getIterator(); it != EEI->getParent()->end(); ++it)
             {
-                if (LdmsInstrinsic* ldmsIntr = dyn_cast<LdmsInstrinsic>(&*it))
+                if (LdmsInstrinsic * ldmsIntr = dyn_cast<LdmsInstrinsic>(&*it))
                 {
                     if (ldmsIntr->getOperand(1) == dyn_cast<Value>(EEI))
                     {
@@ -185,7 +185,7 @@ void MCSOptimization::visitCallInst(llvm::CallInst &I)
                 Instruction* ldmsInst = dyn_cast<Instruction>(*BitcastUses);
                 if (ldmsInst)
                 {
-                    if (ConstantInt* CI = dyn_cast<ConstantInt>(ldmsInst->getOperand(0)))
+                    if (ConstantInt * CI = dyn_cast<ConstantInt>(ldmsInst->getOperand(0)))
                     {
                         useBlocks.insert(ldmsInst->getParent());
                     }
@@ -203,7 +203,7 @@ void MCSOptimization::visitCallInst(llvm::CallInst &I)
                 std::vector<LdmsInstrinsic*> ldmsInstsToMove;
                 for (auto inst = BB->begin(); inst != BB->end(); inst++)
                 {
-                    if (LdmsInstrinsic* ldmsIntr = dyn_cast<LdmsInstrinsic>(inst))
+                    if (LdmsInstrinsic * ldmsIntr = dyn_cast<LdmsInstrinsic>(inst))
                     {
                         if (ldmsIntr->getOperand(1) == dyn_cast<Value>(EEI))
                         {
@@ -249,11 +249,11 @@ void MCSOptimization::visitCallInst(llvm::CallInst &I)
                         ldmsUseBB = ldmsUse->getParent();
                         IRB.SetInsertPoint(ldmsUse);
                         Value* ValueisMCSNotZero = nullptr;
-                        for(unsigned int i = 0; i < ldmsUse->getNumMcsOperands(); i++)
+                        for (unsigned int i = 0; i < ldmsUse->getNumMcsOperands(); i++)
                         {
                             Value* mcs = firstUse->getMcsOperand(i);
                             Value* cnd1 = IRB.CreateICmpNE(mcs, ConstantInt::get(mcs->getType(), 0));
-                            if(ValueisMCSNotZero == nullptr)
+                            if (ValueisMCSNotZero == nullptr)
                             {
                                 ValueisMCSNotZero = cnd1;
                             }
@@ -294,10 +294,10 @@ namespace IGC {
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS true
     IGC_INITIALIZE_PASS_BEGIN(MCSOptimization, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-    IGC_INITIALIZE_PASS_END(MCSOptimization, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+        IGC_INITIALIZE_PASS_END(MCSOptimization, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-FunctionPass* CreateMCSOptimization()
-{
-    return new MCSOptimization();
-}
+        FunctionPass* CreateMCSOptimization()
+    {
+        return new MCSOptimization();
+    }
 }

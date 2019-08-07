@@ -40,43 +40,43 @@ namespace IGC
 
     class CheckInstrTypes : public llvm::FunctionPass, public llvm::InstVisitor<CheckInstrTypes>
     {
-        llvm::LoopInfo *LI;
+        llvm::LoopInfo* LI;
 
     public:
         static char ID;
-        CheckInstrTypes() : FunctionPass(ID), g_InstrTypes(nullptr) 
+        CheckInstrTypes() : FunctionPass(ID), g_InstrTypes(nullptr)
         {
         };
         CheckInstrTypes(IGC::SInstrTypes* instrList);
 
-        virtual bool runOnFunction(llvm::Function &F) override;
+        virtual bool runOnFunction(llvm::Function& F) override;
 
         virtual llvm::StringRef getPassName() const override
         {
             return "CheckInstrTypes";
         }
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.addRequired<llvm::LoopInfoWrapperPass>();
             AU.setPreservesAll();
         }
 
-        void visitInstruction(llvm::Instruction &I);
+        void visitInstruction(llvm::Instruction& I);
 
-        void visitCallInst(llvm::CallInst &C);
-        void visitBranchInst(llvm::BranchInst &I);
-        void visitSwitchInst(llvm::SwitchInst &I);
-        void visitIndirectBrInst(llvm::IndirectBrInst &I);
-        void visitICmpInst(llvm::ICmpInst &I);
-        void visitFCmpInst(llvm::FCmpInst &I);
-        void visitAllocaInst(llvm::AllocaInst &I);
-        void visitLoadInst(llvm::LoadInst &I);
-        void visitStoreInst(llvm::StoreInst &I);
-        void visitGetElementPtrInst(llvm::GetElementPtrInst &I);
-        void visitPHINode(llvm::PHINode &PN);
-        void visitSelectInst(llvm::SelectInst &I);
-        void SetLoopFlags(llvm::Function &F);
+        void visitCallInst(llvm::CallInst& C);
+        void visitBranchInst(llvm::BranchInst& I);
+        void visitSwitchInst(llvm::SwitchInst& I);
+        void visitIndirectBrInst(llvm::IndirectBrInst& I);
+        void visitICmpInst(llvm::ICmpInst& I);
+        void visitFCmpInst(llvm::FCmpInst& I);
+        void visitAllocaInst(llvm::AllocaInst& I);
+        void visitLoadInst(llvm::LoadInst& I);
+        void visitStoreInst(llvm::StoreInst& I);
+        void visitGetElementPtrInst(llvm::GetElementPtrInst& I);
+        void visitPHINode(llvm::PHINode& PN);
+        void visitSelectInst(llvm::SelectInst& I);
+        void SetLoopFlags(llvm::Function& F);
 
     private:
         IGC::SInstrTypes* g_InstrTypes;
@@ -92,19 +92,19 @@ namespace IGC
         };
         InstrStatitic(CodeGenContext* ctx, InstrStatTypes type, InstrStatStage stage, int threshold);
 
-        virtual bool runOnFunction(llvm::Function &F) override;
+        virtual bool runOnFunction(llvm::Function& F) override;
 
         virtual llvm::StringRef getPassName() const override
         {
             return "InstrStatitic";
         }
 
-        void visitInstruction(llvm::Instruction &I);
-        void visitLoadInst(llvm::LoadInst &I);
-        void visitStoreInst(llvm::StoreInst &I);
+        void visitInstruction(llvm::Instruction& I);
+        void visitLoadInst(llvm::LoadInst& I);
+        void visitStoreInst(llvm::StoreInst& I);
 
     private:
-        CodeGenContext *m_ctx;
+        CodeGenContext* m_ctx;
         IGC::InstrStatTypes m_type;
         InstrStatStage m_stage;
         int m_threshold;

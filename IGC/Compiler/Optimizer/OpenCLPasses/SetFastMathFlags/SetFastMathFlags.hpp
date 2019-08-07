@@ -53,9 +53,9 @@ namespace IGC
             return "SetFastMathFlags";
         }
 
-        virtual bool runOnModule(llvm::Module &M) override;
+        virtual bool runOnModule(llvm::Module& M) override;
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.setPreservesCFG();
             AU.addRequired<MetaDataUtilsWrapper>();
@@ -66,7 +66,7 @@ namespace IGC
         /// @param  M - the module
         /// @param  fmfs - the fast math flags
         /// @return true if made any changes to the module.
-        static bool setFlags(llvm::Module &M, llvm::FastMathFlags fmfs);
+        static bool setFlags(llvm::Module& M, llvm::FastMathFlags fmfs);
     };
 
 } // namespace IGC

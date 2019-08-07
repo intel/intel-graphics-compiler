@@ -50,19 +50,19 @@ VolatileWorkaround::VolatileWorkaround() : FunctionPass(ID)
     initializeVolatileWorkaroundPass(*PassRegistry::getPassRegistry());
 }
 
-bool VolatileWorkaround::runOnFunction(Function &F)
+bool VolatileWorkaround::runOnFunction(Function& F)
 {
     visit(F);
     return true;
 }
 
 
-void VolatileWorkaround::visitLoadInst(LoadInst &I)
+void VolatileWorkaround::visitLoadInst(LoadInst& I)
 {
     I.setVolatile(false);
 }
 
-void VolatileWorkaround::visitStoreInst(StoreInst &I)
+void VolatileWorkaround::visitStoreInst(StoreInst& I)
 {
     I.setVolatile(false);
 }

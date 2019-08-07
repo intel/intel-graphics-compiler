@@ -35,8 +35,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 
 namespace IGC {
-  llvm::FunctionPass *createPreRARematFlagPass();
-  void initializePreRARematFlagPass(llvm::PassRegistry &);
+    llvm::FunctionPass* createPreRARematFlagPass();
+    void initializePreRARematFlagPass(llvm::PassRegistry&);
 } // End namespace IGC
 
 #endif // _CISA_PRERAREMATFLAG_H_

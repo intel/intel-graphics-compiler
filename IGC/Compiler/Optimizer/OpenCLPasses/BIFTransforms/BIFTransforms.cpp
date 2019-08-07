@@ -39,31 +39,31 @@ using namespace llvm;
 
 namespace {
 
-class BIFTransforms : public ModulePass
-{
-public:
-    static char ID;
-    virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const
+    class BIFTransforms : public ModulePass
     {
-        AU.setPreservesCFG();
-    }
+    public:
+        static char ID;
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const
+        {
+            AU.setPreservesCFG();
+        }
 
-    BIFTransforms();
+        BIFTransforms();
 
-    ~BIFTransforms() {}
+        ~BIFTransforms() {}
 
-    virtual bool runOnModule(Module &M);
+        virtual bool runOnModule(Module& M);
 
-    virtual llvm::StringRef getPassName() const
-    {
-        return "BIFTransforms";
-    }
+        virtual llvm::StringRef getPassName() const
+        {
+            return "BIFTransforms";
+        }
 
-private:
-    // Replace some BI Functions with faster versions, such as
-    // length --> fast_length, etc.
-    bool replaceBIF(Function& F);
-};
+    private:
+        // Replace some BI Functions with faster versions, such as
+        // length --> fast_length, etc.
+        bool replaceBIF(Function& F);
+    };
 
 } // namespace
 
@@ -96,7 +96,7 @@ bool BIFTransforms::replaceBIF(Function& F)
     {
         return false;
     }
-    Type *Ty = AI->getType();
+    Type* Ty = AI->getType();
     if (Ty->isHalfTy() ||
         (Ty->isVectorTy() && Ty->getVectorElementType()->isHalfTy()))
     {
@@ -130,12 +130,12 @@ bool BIFTransforms::replaceBIF(Function& F)
     return changed;
 }
 
-bool BIFTransforms::runOnModule(Module &M)
+bool BIFTransforms::runOnModule(Module& M)
 {
     // OCL builtin uses SPIR name mangling (Itanium C++ ABI + extension)
     //  mangledName (n) = _Z<lengthof(n)><n><type> 
     bool changed = false;
-    for (Function &F : M)
+    for (Function& F : M)
     {
         if (F.isDeclaration())
         {
@@ -148,9 +148,9 @@ bool BIFTransforms::runOnModule(Module &M)
     }
     return changed;
 }
- 
+
 // Public interface to this pass
-ModulePass *createBIFTransformsPass()
+ModulePass* createBIFTransformsPass()
 {
     return new BIFTransforms();
 }

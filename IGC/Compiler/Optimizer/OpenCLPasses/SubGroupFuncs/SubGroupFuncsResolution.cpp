@@ -49,27 +49,27 @@ IGC_INITIALIZE_PASS_END(SubGroupFuncsResolution, PASS_FLAG, PASS_DESCRIPTION, PA
 
 char SubGroupFuncsResolution::ID = 0;
 
-const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_BARRIER            = "__builtin_IB_sub_group_barrier";
-const llvm::StringRef SubGroupFuncsResolution::GET_MAX_SUB_GROUP_SIZE       = "__builtin_IB_get_simd_size";
-const llvm::StringRef SubGroupFuncsResolution::GET_SUB_GROUP_LOCAL_ID       = "__builtin_IB_get_simd_id";
-const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE            = "__builtin_IB_simd_shuffle";
-const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_US            = "__builtin_IB_simd_shuffle_us";
-const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_F          = "__builtin_IB_simd_shuffle_f";
-const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_H          = "__builtin_IB_simd_shuffle_h";
-const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_B          = "__builtin_IB_simd_shuffle_b";
-const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_DF         = "__builtin_IB_simd_shuffle_df";
-const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_DOWN       = "__builtin_IB_simd_shuffle_down";
-const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_DOWN_US    = "__builtin_IB_simd_shuffle_down_us";
-const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_DOWN_UC    = "__builtin_IB_simd_shuffle_down_uc";
-const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_READ_1_GBL        = "__builtin_IB_simd_block_read_1_global";
-const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_READ_2_GBL        = "__builtin_IB_simd_block_read_2_global";
-const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_READ_4_GBL        = "__builtin_IB_simd_block_read_4_global";
-const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_READ_8_GBL        = "__builtin_IB_simd_block_read_8_global";
-const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_READ_1_GBL_H      = "__builtin_IB_simd_block_read_1_global_h";
-const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_READ_2_GBL_H      = "__builtin_IB_simd_block_read_2_global_h";
-const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_READ_4_GBL_H      = "__builtin_IB_simd_block_read_4_global_h";
-const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_READ_8_GBL_H      = "__builtin_IB_simd_block_read_8_global_h";
-const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_READ_16_GBL_H     = "__builtin_IB_simd_block_read_16_global_h";
+const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_BARRIER = "__builtin_IB_sub_group_barrier";
+const llvm::StringRef SubGroupFuncsResolution::GET_MAX_SUB_GROUP_SIZE = "__builtin_IB_get_simd_size";
+const llvm::StringRef SubGroupFuncsResolution::GET_SUB_GROUP_LOCAL_ID = "__builtin_IB_get_simd_id";
+const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE = "__builtin_IB_simd_shuffle";
+const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_US = "__builtin_IB_simd_shuffle_us";
+const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_F = "__builtin_IB_simd_shuffle_f";
+const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_H = "__builtin_IB_simd_shuffle_h";
+const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_B = "__builtin_IB_simd_shuffle_b";
+const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_DF = "__builtin_IB_simd_shuffle_df";
+const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_DOWN = "__builtin_IB_simd_shuffle_down";
+const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_DOWN_US = "__builtin_IB_simd_shuffle_down_us";
+const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_DOWN_UC = "__builtin_IB_simd_shuffle_down_uc";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_READ_1_GBL = "__builtin_IB_simd_block_read_1_global";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_READ_2_GBL = "__builtin_IB_simd_block_read_2_global";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_READ_4_GBL = "__builtin_IB_simd_block_read_4_global";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_READ_8_GBL = "__builtin_IB_simd_block_read_8_global";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_READ_1_GBL_H = "__builtin_IB_simd_block_read_1_global_h";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_READ_2_GBL_H = "__builtin_IB_simd_block_read_2_global_h";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_READ_4_GBL_H = "__builtin_IB_simd_block_read_4_global_h";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_READ_8_GBL_H = "__builtin_IB_simd_block_read_8_global_h";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_READ_16_GBL_H = "__builtin_IB_simd_block_read_16_global_h";
 
 const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_READ_1_GBL_B = "__builtin_IB_simd_block_read_1_global_b";
 const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_READ_2_GBL_B = "__builtin_IB_simd_block_read_2_global_b";
@@ -77,20 +77,20 @@ const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_READ_4_GBL_B = "__buil
 const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_READ_8_GBL_B = "__builtin_IB_simd_block_read_8_global_b";
 const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_READ_16_GBL_B = "__builtin_IB_simd_block_read_16_global_b";
 
-const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_READ_1_GBL_L      = "__builtin_IB_simd_block_read_1_global_l";
-const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_READ_2_GBL_L      = "__builtin_IB_simd_block_read_2_global_l";
-const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_READ_4_GBL_L      = "__builtin_IB_simd_block_read_4_global_l";
-const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_READ_8_GBL_L      = "__builtin_IB_simd_block_read_8_global_l";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_READ_1_GBL_L = "__builtin_IB_simd_block_read_1_global_l";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_READ_2_GBL_L = "__builtin_IB_simd_block_read_2_global_l";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_READ_4_GBL_L = "__builtin_IB_simd_block_read_4_global_l";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_READ_8_GBL_L = "__builtin_IB_simd_block_read_8_global_l";
 
-const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_WRITE_1_GBL       = "__builtin_IB_simd_block_write_1_global";
-const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_WRITE_2_GBL       = "__builtin_IB_simd_block_write_2_global";
-const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_WRITE_4_GBL       = "__builtin_IB_simd_block_write_4_global";
-const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_WRITE_8_GBL       = "__builtin_IB_simd_block_write_8_global";
-const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_WRITE_1_GBL_H     = "__builtin_IB_simd_block_write_1_global_h";
-const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_WRITE_2_GBL_H     = "__builtin_IB_simd_block_write_2_global_h";
-const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_WRITE_4_GBL_H     = "__builtin_IB_simd_block_write_4_global_h";
-const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_WRITE_8_GBL_H     = "__builtin_IB_simd_block_write_8_global_h";
-const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_WRITE_16_GBL_H    = "__builtin_IB_simd_block_write_16_global_h";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_WRITE_1_GBL = "__builtin_IB_simd_block_write_1_global";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_WRITE_2_GBL = "__builtin_IB_simd_block_write_2_global";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_WRITE_4_GBL = "__builtin_IB_simd_block_write_4_global";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_WRITE_8_GBL = "__builtin_IB_simd_block_write_8_global";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_WRITE_1_GBL_H = "__builtin_IB_simd_block_write_1_global_h";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_WRITE_2_GBL_H = "__builtin_IB_simd_block_write_2_global_h";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_WRITE_4_GBL_H = "__builtin_IB_simd_block_write_4_global_h";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_WRITE_8_GBL_H = "__builtin_IB_simd_block_write_8_global_h";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_WRITE_16_GBL_H = "__builtin_IB_simd_block_write_16_global_h";
 
 const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_WRITE_1_GBL_B = "__builtin_IB_simd_block_write_1_global_b";
 const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_WRITE_2_GBL_B = "__builtin_IB_simd_block_write_2_global_b";
@@ -98,20 +98,20 @@ const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_WRITE_4_GBL_B = "__bui
 const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_WRITE_8_GBL_B = "__builtin_IB_simd_block_write_8_global_b";
 const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_WRITE_16_GBL_B = "__builtin_IB_simd_block_write_16_global_b";
 
-const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_WRITE_1_GBL_L     = "__builtin_IB_simd_block_write_1_global_l";
-const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_WRITE_2_GBL_L     = "__builtin_IB_simd_block_write_2_global_l";
-const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_WRITE_4_GBL_L     = "__builtin_IB_simd_block_write_4_global_l";
-const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_WRITE_8_GBL_L     = "__builtin_IB_simd_block_write_8_global_l";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_WRITE_1_GBL_L = "__builtin_IB_simd_block_write_1_global_l";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_WRITE_2_GBL_L = "__builtin_IB_simd_block_write_2_global_l";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_WRITE_4_GBL_L = "__builtin_IB_simd_block_write_4_global_l";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_WRITE_8_GBL_L = "__builtin_IB_simd_block_write_8_global_l";
 
-const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_1      = "__builtin_IB_simd_media_block_read_1";
-const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_2      = "__builtin_IB_simd_media_block_read_2";
-const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_4      = "__builtin_IB_simd_media_block_read_4";
-const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_8      = "__builtin_IB_simd_media_block_read_8";
-const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_1_H    = "__builtin_IB_simd_media_block_read_1_h";
-const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_2_H    = "__builtin_IB_simd_media_block_read_2_h";
-const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_4_H    = "__builtin_IB_simd_media_block_read_4_h";
-const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_8_H    = "__builtin_IB_simd_media_block_read_8_h";
-const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_16_H   = "__builtin_IB_simd_media_block_read_16_h";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_1 = "__builtin_IB_simd_media_block_read_1";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_2 = "__builtin_IB_simd_media_block_read_2";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_4 = "__builtin_IB_simd_media_block_read_4";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_8 = "__builtin_IB_simd_media_block_read_8";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_1_H = "__builtin_IB_simd_media_block_read_1_h";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_2_H = "__builtin_IB_simd_media_block_read_2_h";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_4_H = "__builtin_IB_simd_media_block_read_4_h";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_8_H = "__builtin_IB_simd_media_block_read_8_h";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_16_H = "__builtin_IB_simd_media_block_read_16_h";
 
 const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_1_B = "__builtin_IB_simd_media_block_read_1_b";
 const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_2_B = "__builtin_IB_simd_media_block_read_2_b";
@@ -119,25 +119,25 @@ const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_4_B = "__bu
 const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_8_B = "__builtin_IB_simd_media_block_read_8_b";
 const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_16_B = "__builtin_IB_simd_media_block_read_16_b";
 
-const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_1_L    = "__builtin_IB_simd_media_block_read_1_l";
-const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_2_L    = "__builtin_IB_simd_media_block_read_2_l";
-const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_4_L    = "__builtin_IB_simd_media_block_read_4_l";
-const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_8_L    = "__builtin_IB_simd_media_block_read_8_l";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_1_L = "__builtin_IB_simd_media_block_read_1_l";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_2_L = "__builtin_IB_simd_media_block_read_2_l";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_4_L = "__builtin_IB_simd_media_block_read_4_l";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_8_L = "__builtin_IB_simd_media_block_read_8_l";
 
-const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_1     = "__builtin_IB_simd_media_block_write_1";
-const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_2     = "__builtin_IB_simd_media_block_write_2";
-const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_4     = "__builtin_IB_simd_media_block_write_4";
-const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_8     = "__builtin_IB_simd_media_block_write_8";
-const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_1_H   = "__builtin_IB_simd_media_block_write_1_h";
-const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_2_H   = "__builtin_IB_simd_media_block_write_2_h";
-const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_4_H   = "__builtin_IB_simd_media_block_write_4_h";
-const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_8_H   = "__builtin_IB_simd_media_block_write_8_h";
-const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_16_H  = "__builtin_IB_simd_media_block_write_16_h";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_1 = "__builtin_IB_simd_media_block_write_1";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_2 = "__builtin_IB_simd_media_block_write_2";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_4 = "__builtin_IB_simd_media_block_write_4";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_8 = "__builtin_IB_simd_media_block_write_8";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_1_H = "__builtin_IB_simd_media_block_write_1_h";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_2_H = "__builtin_IB_simd_media_block_write_2_h";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_4_H = "__builtin_IB_simd_media_block_write_4_h";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_8_H = "__builtin_IB_simd_media_block_write_8_h";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_16_H = "__builtin_IB_simd_media_block_write_16_h";
 
-const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_1_L   = "__builtin_IB_simd_media_block_write_1_l";
-const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_2_L   = "__builtin_IB_simd_media_block_write_2_l";
-const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_4_L   = "__builtin_IB_simd_media_block_write_4_l";
-const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_8_L   = "__builtin_IB_simd_media_block_write_8_l";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_1_L = "__builtin_IB_simd_media_block_write_1_l";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_2_L = "__builtin_IB_simd_media_block_write_2_l";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_4_L = "__builtin_IB_simd_media_block_write_4_l";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_8_L = "__builtin_IB_simd_media_block_write_8_l";
 
 const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_1_B = "__builtin_IB_simd_media_block_write_1_b";
 const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_2_B = "__builtin_IB_simd_media_block_write_2_b";
@@ -145,34 +145,34 @@ const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_4_B = "__b
 const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_8_B = "__builtin_IB_simd_media_block_write_8_b";
 const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_16_B = "__builtin_IB_simd_media_block_write_16_b";
 
-const llvm::StringRef SubGroupFuncsResolution::MEDIA_BLOCK_READ             = "__builtin_IB_media_block_read";
-const llvm::StringRef SubGroupFuncsResolution::MEDIA_BLOCK_WRITE            = "__builtin_IB_media_block_write";
+const llvm::StringRef SubGroupFuncsResolution::MEDIA_BLOCK_READ = "__builtin_IB_media_block_read";
+const llvm::StringRef SubGroupFuncsResolution::MEDIA_BLOCK_WRITE = "__builtin_IB_media_block_write";
 
-const llvm::StringRef SubGroupFuncsResolution::MEDIA_BLOCK_RECTANGLE_READ   = "__builtin_IB_media_block_rectangle_read";
-const llvm::StringRef SubGroupFuncsResolution::GET_IMAGE_BTI                = "__builtin_IB_get_image_bti";
-const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_REDUCE_ADD         = "__builtin_IB_sub_group_reduce_OpGroupIAdd";
-const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_REDUCE_IMAX        = "__builtin_IB_sub_group_reduce_OpGroupSMax";
-const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_REDUCE_UMAX        = "__builtin_IB_sub_group_reduce_OpGroupUMax";
-const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_REDUCE_IMIN        = "__builtin_IB_sub_group_reduce_OpGroupSMin";
-const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_REDUCE_UMIN        = "__builtin_IB_sub_group_reduce_OpGroupUMin";
-const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_REDUCE_FADD        = "__builtin_IB_sub_group_reduce_OpGroupFAdd";
-const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_REDUCE_FMAX        = "__builtin_IB_sub_group_reduce_OpGroupFMax";
-const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_REDUCE_FMIN        = "__builtin_IB_sub_group_reduce_OpGroupFMin";
-const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SCAN_ADD           = "__builtin_IB_sub_group_scan_OpGroupIAdd";
-const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SCAN_IMAX          = "__builtin_IB_sub_group_scan_OpGroupSMax";
-const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SCAN_UMAX          = "__builtin_IB_sub_group_scan_OpGroupUMax";
-const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SCAN_IMIN          = "__builtin_IB_sub_group_scan_OpGroupSMin";
-const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SCAN_UMIN          = "__builtin_IB_sub_group_scan_OpGroupUMin";
-const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SCAN_FADD          = "__builtin_IB_sub_group_scan_OpGroupFAdd";
-const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SCAN_FMAX          = "__builtin_IB_sub_group_scan_OpGroupFMax";
-const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SCAN_FMIN          = "__builtin_IB_sub_group_scan_OpGroupFMin";
+const llvm::StringRef SubGroupFuncsResolution::MEDIA_BLOCK_RECTANGLE_READ = "__builtin_IB_media_block_rectangle_read";
+const llvm::StringRef SubGroupFuncsResolution::GET_IMAGE_BTI = "__builtin_IB_get_image_bti";
+const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_REDUCE_ADD = "__builtin_IB_sub_group_reduce_OpGroupIAdd";
+const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_REDUCE_IMAX = "__builtin_IB_sub_group_reduce_OpGroupSMax";
+const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_REDUCE_UMAX = "__builtin_IB_sub_group_reduce_OpGroupUMax";
+const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_REDUCE_IMIN = "__builtin_IB_sub_group_reduce_OpGroupSMin";
+const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_REDUCE_UMIN = "__builtin_IB_sub_group_reduce_OpGroupUMin";
+const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_REDUCE_FADD = "__builtin_IB_sub_group_reduce_OpGroupFAdd";
+const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_REDUCE_FMAX = "__builtin_IB_sub_group_reduce_OpGroupFMax";
+const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_REDUCE_FMIN = "__builtin_IB_sub_group_reduce_OpGroupFMin";
+const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SCAN_ADD = "__builtin_IB_sub_group_scan_OpGroupIAdd";
+const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SCAN_IMAX = "__builtin_IB_sub_group_scan_OpGroupSMax";
+const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SCAN_UMAX = "__builtin_IB_sub_group_scan_OpGroupUMax";
+const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SCAN_IMIN = "__builtin_IB_sub_group_scan_OpGroupSMin";
+const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SCAN_UMIN = "__builtin_IB_sub_group_scan_OpGroupUMin";
+const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SCAN_FADD = "__builtin_IB_sub_group_scan_OpGroupFAdd";
+const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SCAN_FMAX = "__builtin_IB_sub_group_scan_OpGroupFMax";
+const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SCAN_FMIN = "__builtin_IB_sub_group_scan_OpGroupFMin";
 
-SubGroupFuncsResolution::SubGroupFuncsResolution(void) : FunctionPass( ID )
+SubGroupFuncsResolution::SubGroupFuncsResolution(void) : FunctionPass(ID)
 {
-    initializeSubGroupFuncsResolutionPass( *PassRegistry::getPassRegistry() );
+    initializeSubGroupFuncsResolutionPass(*PassRegistry::getPassRegistry());
 }
 
-bool SubGroupFuncsResolution::runOnFunction( Function &F )
+bool SubGroupFuncsResolution::runOnFunction(Function& F)
 {
     m_pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
@@ -180,9 +180,9 @@ bool SubGroupFuncsResolution::runOnFunction( Function &F )
     m_instsToDelete.clear();
     m_changed = false;
 
-    visit( F );
+    visit(F);
 
-    for (Instruction * inst : m_instsToDelete) {
+    for (Instruction* inst : m_instsToDelete) {
         inst->eraseFromParent();
     }
 
@@ -190,43 +190,43 @@ bool SubGroupFuncsResolution::runOnFunction( Function &F )
 }
 
 // Debug line info helper function
-static void updateDebugLoc( Instruction *pOrigin, Instruction *pNew )
+static void updateDebugLoc(Instruction* pOrigin, Instruction* pNew)
 {
-    assert( pOrigin && pNew && "Expect valid instructions" );
-    pNew->setDebugLoc( pOrigin->getDebugLoc() );
+    assert(pOrigin && pNew && "Expect valid instructions");
+    pNew->setDebugLoc(pOrigin->getDebugLoc());
 }
 
 // Helps to obtain temporary index corresponding to the kernel argument.
 // This index will be used during codegen to resolve BTIs for Images (SRVs and UAVs).
-void SubGroupFuncsResolution::BTIHelper( llvm::CallInst &CI )
+void SubGroupFuncsResolution::BTIHelper(llvm::CallInst& CI)
 {
-    Function *F = CI.getParent()->getParent();
+    Function* F = CI.getParent()->getParent();
     ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
 
-    for ( Function::arg_iterator arg = F->arg_begin(), e = F->arg_end(); arg != e; ++arg )
+    for (Function::arg_iterator arg = F->arg_begin(), e = F->arg_end(); arg != e; ++arg)
     {
-        int argNo = ( *arg ).getArgNo();
-        FunctionMetaData *funcMD = &modMD->FuncMD[F];
-        ResourceAllocMD *resAllocMD = &funcMD->resAllocMD;
-        assert((size_t) argNo < resAllocMD->argAllocMDList.size() && "ArgAllocMD List Out of Bounds");
-        ArgAllocMD *argAlloc = &resAllocMD->argAllocMDList[argNo];
-        m_argIndexMap[ &(*arg) ] = CImagesBI::ParamInfo(
+        int argNo = (*arg).getArgNo();
+        FunctionMetaData* funcMD = &modMD->FuncMD[F];
+        ResourceAllocMD* resAllocMD = &funcMD->resAllocMD;
+        assert((size_t)argNo < resAllocMD->argAllocMDList.size() && "ArgAllocMD List Out of Bounds");
+        ArgAllocMD* argAlloc = &resAllocMD->argAllocMDList[argNo];
+        m_argIndexMap[&(*arg)] = CImagesBI::ParamInfo(
             argAlloc->indexType,
-            (ResourceTypeEnum) argAlloc->type,
-            (ResourceExtensionTypeEnum) argAlloc->extensionType);
+            (ResourceTypeEnum)argAlloc->type,
+            (ResourceExtensionTypeEnum)argAlloc->extensionType);
     }
 }
 
-int32_t SubGroupFuncsResolution::GetSIMDSize(Function *F)
+int32_t SubGroupFuncsResolution::GetSIMDSize(Function* F)
 {
-    auto *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    auto* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     auto funcInfoMD = pMdUtils->getFunctionsInfoItem(F);
     int32_t simdSize = funcInfoMD->getSubGroupSize()->getSIMD_size();
 
     return simdSize;
 }
 
-void SubGroupFuncsResolution::CheckSIMDSize(Instruction &I, StringRef msg)
+void SubGroupFuncsResolution::CheckSIMDSize(Instruction& I, StringRef msg)
 {
     int32_t simdSize = GetSIMDSize(I.getParent()->getParent());
 
@@ -237,14 +237,14 @@ void SubGroupFuncsResolution::CheckSIMDSize(Instruction &I, StringRef msg)
     }
 }
 
-void SubGroupFuncsResolution::mediaBlockRead(llvm::CallInst &CI)
+void SubGroupFuncsResolution::mediaBlockRead(llvm::CallInst& CI)
 {
     // Creates intrinsics that will be lowered in the CodeGen and will handle the simd_media_block_read
     SmallVector<Value*, 5> args;
     pushMediaBlockArgs(args, CI);
 
     // Check if the only use of CI is conversion to float. If so, use float version of intrinsic and remove the cast instruction.
-    
+
     Value* use = NULL;
     if (CI.hasOneUse())
     {
@@ -253,45 +253,45 @@ void SubGroupFuncsResolution::mediaBlockRead(llvm::CallInst &CI)
 
     if (use && isa<BitCastInst>(use) && (use->getType()->getScalarType()->isFloatTy() || use->getType()->getScalarType()->isHalfTy()))
     {
-        BitCastInst * bitCast = cast<BitCastInst>(use);
-        Function*  simdMediaBlockReadFunc = GenISAIntrinsic::getDeclaration(
-                                                CI.getCalledFunction()->getParent(),
-                                                GenISAIntrinsic::GenISA_simdMediaBlockRead,
-                                                use->getType());
+        BitCastInst* bitCast = cast<BitCastInst>(use);
+        Function* simdMediaBlockReadFunc = GenISAIntrinsic::getDeclaration(
+            CI.getCalledFunction()->getParent(),
+            GenISAIntrinsic::GenISA_simdMediaBlockRead,
+            use->getType());
         Instruction* simdMediaBlockRead = CallInst::Create(simdMediaBlockReadFunc, args, "", &CI);
         use->replaceAllUsesWith(simdMediaBlockRead);
         m_instsToDelete.push_back(bitCast);
         m_instsToDelete.push_back(&CI);
     }
     else {
-        Function*  simdMediaBlockReadFunc = GenISAIntrinsic::getDeclaration(
-                                                CI.getCalledFunction()->getParent(),
-                                                GenISAIntrinsic::GenISA_simdMediaBlockRead, 
-                                                CI.getType());
+        Function* simdMediaBlockReadFunc = GenISAIntrinsic::getDeclaration(
+            CI.getCalledFunction()->getParent(),
+            GenISAIntrinsic::GenISA_simdMediaBlockRead,
+            CI.getType());
         Instruction* simdMediaBlockRead = CallInst::Create(simdMediaBlockReadFunc, args, "", &CI);
         CI.replaceAllUsesWith(simdMediaBlockRead);
         CI.eraseFromParent();
     }
-    
+
 }
 
-void SubGroupFuncsResolution::mediaBlockWrite(llvm::CallInst &CI)
+void SubGroupFuncsResolution::mediaBlockWrite(llvm::CallInst& CI)
 {
     SmallVector<Value*, 5> args;
     pushMediaBlockArgs(args, CI);
     args.push_back(CI.getArgOperand(2)); // push data
 
     Function* simdMediaBlockWriteFunc = GenISAIntrinsic::getDeclaration(
-                                            CI.getCalledFunction()->getParent(),
-                                            GenISAIntrinsic::GenISA_simdMediaBlockWrite,
-                                            CI.getArgOperand(2)->getType());
+        CI.getCalledFunction()->getParent(),
+        GenISAIntrinsic::GenISA_simdMediaBlockWrite,
+        CI.getArgOperand(2)->getType());
     Instruction* simdMediaBlockWrite = CallInst::Create(simdMediaBlockWriteFunc, args, "", &CI);
 
     CI.replaceAllUsesWith(simdMediaBlockWrite);
     CI.eraseFromParent();
 }
 
-void SubGroupFuncsResolution::simdBlockRead(llvm::CallInst &CI)
+void SubGroupFuncsResolution::simdBlockRead(llvm::CallInst& CI)
 {
     // Creates intrinsics that will be lowered in the CodeGen and will handle the simd_block_read
     LLVMContext& C = CI.getCalledFunction()->getContext();
@@ -300,7 +300,7 @@ void SubGroupFuncsResolution::simdBlockRead(llvm::CallInst &CI)
     assert(PtrTy && "simdBlockRead has non-pointer type!");
     SmallVector<Value*, 1> args;
     args.push_back(Ptr);
-    SmallVector<Type*, 2>  types; 
+    SmallVector<Type*, 2>  types;
     types.push_back(nullptr); types.push_back(nullptr);
     GenISAIntrinsic::ID  genIntrinID = GenISAIntrinsic::GenISA_simdBlockRead;
     ADDRESS_SPACE AS = (ADDRESS_SPACE)PtrTy->getAddressSpace();
@@ -331,7 +331,7 @@ void SubGroupFuncsResolution::simdBlockRead(llvm::CallInst &CI)
     }
 
     // Check if the only use of CI is conversion to float. If so, use float version of intrinsic and remove the cast instruction.
-    
+
     Value* use = NULL;
     if (CI.hasOneUse())
     {
@@ -340,32 +340,32 @@ void SubGroupFuncsResolution::simdBlockRead(llvm::CallInst &CI)
 
     if (use && isa<BitCastInst>(use) &&
         (use->getType()->getScalarType()->isFloatTy() ||
-         use->getType()->getScalarType()->isDoubleTy()))
+            use->getType()->getScalarType()->isDoubleTy()))
     {
-        BitCastInst * bitCast = cast<BitCastInst>(use);
+        BitCastInst* bitCast = cast<BitCastInst>(use);
         types[0] = bitCast->getType();
-        Function    * simdBlockReadFunc = GenISAIntrinsic::getDeclaration(
-                                                    CI.getCalledFunction()->getParent(),
-                                                    genIntrinID,
-                                                    types);
-        Instruction * simdBlockRead = CallInst::Create(simdBlockReadFunc, args, "", &CI);
+        Function* simdBlockReadFunc = GenISAIntrinsic::getDeclaration(
+            CI.getCalledFunction()->getParent(),
+            genIntrinID,
+            types);
+        Instruction* simdBlockRead = CallInst::Create(simdBlockReadFunc, args, "", &CI);
         use->replaceAllUsesWith(simdBlockRead);
         m_instsToDelete.push_back(bitCast);
         m_instsToDelete.push_back(&CI);
     }
     else {
         types[0] = CI.getType();
-        Function    * simdBlockReadFunc = GenISAIntrinsic::getDeclaration(
-                                                   CI.getCalledFunction()->getParent(),
-                                                   genIntrinID,
-                                                   types);
-        Instruction * simdBlockRead = CallInst::Create(simdBlockReadFunc, args, "", &CI);
+        Function* simdBlockReadFunc = GenISAIntrinsic::getDeclaration(
+            CI.getCalledFunction()->getParent(),
+            genIntrinID,
+            types);
+        Instruction* simdBlockRead = CallInst::Create(simdBlockReadFunc, args, "", &CI);
         CI.replaceAllUsesWith(simdBlockRead);
         CI.eraseFromParent();
     }
 }
 
-void SubGroupFuncsResolution::simdBlockWrite(llvm::CallInst &CI)
+void SubGroupFuncsResolution::simdBlockWrite(llvm::CallInst& CI)
 {
     LLVMContext& C = CI.getCalledFunction()->getContext();
     Value* Ptr = CI.getArgOperand(0);
@@ -381,7 +381,7 @@ void SubGroupFuncsResolution::simdBlockWrite(llvm::CallInst &CI)
 
     SmallVector<Value*, 2> args;
     SmallVector<Type*, 2>  types;
-    Value * dataArg = CI.getArgOperand(1);
+    Value* dataArg = CI.getArgOperand(1);
 
     args.push_back(CI.getArgOperand(0));
     args.push_back(dataArg);
@@ -406,59 +406,59 @@ void SubGroupFuncsResolution::simdBlockWrite(llvm::CallInst &CI)
     }
 
     types.push_back(dataArg->getType());
-    Function*    simdBlockWriteFunc = GenISAIntrinsic::getDeclaration(CI.getCalledFunction()->getParent(), 
-                                                                      GenISAIntrinsic::GenISA_simdBlockWrite, types);
+    Function* simdBlockWriteFunc = GenISAIntrinsic::getDeclaration(CI.getCalledFunction()->getParent(),
+        GenISAIntrinsic::GenISA_simdBlockWrite, types);
     Instruction* simdBlockWrite = CallInst::Create(simdBlockWriteFunc, args, "", &CI);
 
     CI.replaceAllUsesWith(simdBlockWrite);
     CI.eraseFromParent();
 }
 
-void SubGroupFuncsResolution::pushMediaBlockArgs( llvm::SmallVector<llvm::Value*, 5> &args, llvm::CallInst &CI )
+void SubGroupFuncsResolution::pushMediaBlockArgs(llvm::SmallVector<llvm::Value*, 5> & args, llvm::CallInst& CI)
 {
     LLVMContext& C = CI.getCalledFunction()->getContext();
 
-    if ( m_argIndexMap.empty() )
+    if (m_argIndexMap.empty())
     {
-        BTIHelper( CI );
+        BTIHelper(CI);
     }
 
-    Argument *pImg = nullptr;
-    ConstantInt* imageIndex     = IGC::CImagesBI::CImagesUtils::getImageIndex( &m_argIndexMap, &CI, 0, pImg );
+    Argument* pImg = nullptr;
+    ConstantInt* imageIndex = IGC::CImagesBI::CImagesUtils::getImageIndex(&m_argIndexMap, &CI, 0, pImg);
 
-    ConstantInt* constIndex     = ConstantInt::get( ( Type::getInt32Ty( C ) ), 0 );
-    Instruction* xOffset        = ExtractElementInst::Create( CI.getArgOperand( 1 ), constIndex, "xOffset", &CI );
+    ConstantInt* constIndex = ConstantInt::get((Type::getInt32Ty(C)), 0);
+    Instruction* xOffset = ExtractElementInst::Create(CI.getArgOperand(1), constIndex, "xOffset", &CI);
 
-    ConstantInt* constIndex2    = ConstantInt::get( ( Type::getInt32Ty( C ) ), 1 );
-    Instruction* yOffset        = ExtractElementInst::Create( CI.getArgOperand( 1 ), constIndex2, "yOffset", &CI );
+    ConstantInt* constIndex2 = ConstantInt::get((Type::getInt32Ty(C)), 1);
+    Instruction* yOffset = ExtractElementInst::Create(CI.getArgOperand(1), constIndex2, "yOffset", &CI);
 
-    BufferType   imageType      = IGC::CImagesBI::CImagesUtils::getImageType( &m_argIndexMap, &CI, 0 );
-    uint32_t     isUAV          = imageType == UAV ? 1 : 0;
-    ConstantInt* isImageTypeUAV = ConstantInt::get( ( Type::getInt32Ty( C ) ), isUAV );
+    BufferType   imageType = IGC::CImagesBI::CImagesUtils::getImageType(&m_argIndexMap, &CI, 0);
+    uint32_t     isUAV = imageType == UAV ? 1 : 0;
+    ConstantInt* isImageTypeUAV = ConstantInt::get((Type::getInt32Ty(C)), isUAV);
 
-    updateDebugLoc( &CI, xOffset );
-    updateDebugLoc( &CI, yOffset );
+    updateDebugLoc(&CI, xOffset);
+    updateDebugLoc(&CI, yOffset);
 
-    args.push_back( imageIndex );
-    args.push_back( xOffset );
-    args.push_back( yOffset );
-    args.push_back( isImageTypeUAV );
+    args.push_back(imageIndex);
+    args.push_back(xOffset);
+    args.push_back(yOffset);
+    args.push_back(isImageTypeUAV);
 }
 
-void SubGroupFuncsResolution::subGroupReduce(WaveOps op, CallInst &CI)
+void SubGroupFuncsResolution::subGroupReduce(WaveOps op, CallInst& CI)
 {
     IRBuilder<> IRB(&CI);
     Value* arg = CI.getArgOperand(0);
     Value* opVal = IRB.getInt8((uint8_t)op);
     Value* args[2] = { arg, opVal };
-    Function* waveAll = GenISAIntrinsic::getDeclaration(CI.getCalledFunction()->getParent(), 
+    Function* waveAll = GenISAIntrinsic::getDeclaration(CI.getCalledFunction()->getParent(),
         GenISAIntrinsic::GenISA_WaveAll,
         arg->getType());
     Instruction* waveAllCall = IRB.CreateCall(waveAll, args);
     CI.replaceAllUsesWith(waveAllCall);
 }
 
-void SubGroupFuncsResolution::subGroupScan(WaveOps op, CallInst &CI)
+void SubGroupFuncsResolution::subGroupScan(WaveOps op, CallInst& CI)
 {
     IRBuilder<> IRB(&CI);
     Value* arg = CI.getArgOperand(0);
@@ -471,9 +471,9 @@ void SubGroupFuncsResolution::subGroupScan(WaveOps op, CallInst &CI)
     CI.replaceAllUsesWith(waveScanCall);
 }
 
-void SubGroupFuncsResolution::visitCallInst( CallInst &CI )
+void SubGroupFuncsResolution::visitCallInst(CallInst& CI)
 {
-    Function *func = CI.getCalledFunction();
+    Function* func = CI.getCalledFunction();
     if (!func)
         return;
     StringRef funcName = func->getName();
@@ -481,159 +481,159 @@ void SubGroupFuncsResolution::visitCallInst( CallInst &CI )
 
     auto reduceTypeStr = { "i16", "i32", "i64" };
 
-    if ( funcName.equals( SubGroupFuncsResolution::GET_MAX_SUB_GROUP_SIZE ) )
+    if (funcName.equals(SubGroupFuncsResolution::GET_MAX_SUB_GROUP_SIZE))
     {
         int32_t simdSize = GetSIMDSize(CI.getParent()->getParent());
         if (simdSize == 8 || simdSize == 16 || simdSize == 32)
         {
-            auto *C = ConstantInt::get(Type::getInt32Ty(Ctx), simdSize);
+            auto* C = ConstantInt::get(Type::getInt32Ty(Ctx), simdSize);
             CI.replaceAllUsesWith(C);
         }
         else
         {
             // Creates intrinsics that will be lowered in the CodeGen and will handle the sub_group size
-            Function*    simdSizeFunc = GenISAIntrinsic::getDeclaration(CI.getCalledFunction()->getParent(), GenISAIntrinsic::GenISA_simdSize);
-            Instruction*  simdSize = CallInst::Create(simdSizeFunc, "simdSize", &CI);
+            Function* simdSizeFunc = GenISAIntrinsic::getDeclaration(CI.getCalledFunction()->getParent(), GenISAIntrinsic::GenISA_simdSize);
+            Instruction* simdSize = CallInst::Create(simdSizeFunc, "simdSize", &CI);
             CI.replaceAllUsesWith(simdSize);
         }
         CI.eraseFromParent();
     }
-    else if ( funcName.equals( SubGroupFuncsResolution::GET_SUB_GROUP_LOCAL_ID ) )
+    else if (funcName.equals(SubGroupFuncsResolution::GET_SUB_GROUP_LOCAL_ID))
     {
         // Creates intrinsics that will be lowered in the CodeGen and will handle the sub_group_local_id
-        IntegerType* typeInt32 = Type::getInt32Ty( Ctx );
+        IntegerType* typeInt32 = Type::getInt32Ty(Ctx);
 
-        Function*    simdLaneIdFunc = GenISAIntrinsic::getDeclaration( CI.getCalledFunction()->getParent(), GenISAIntrinsic::GenISA_simdLaneId );
-        Instruction* simdLaneId16   = CallInst::Create( simdLaneIdFunc, "simdLaneId16", &CI );
-        Instruction* simdLaneId     = ZExtInst::CreateIntegerCast( simdLaneId16, typeInt32, false, "simdLaneId", &CI );
+        Function* simdLaneIdFunc = GenISAIntrinsic::getDeclaration(CI.getCalledFunction()->getParent(), GenISAIntrinsic::GenISA_simdLaneId);
+        Instruction* simdLaneId16 = CallInst::Create(simdLaneIdFunc, "simdLaneId16", &CI);
+        Instruction* simdLaneId = ZExtInst::CreateIntegerCast(simdLaneId16, typeInt32, false, "simdLaneId", &CI);
 
-        CI.replaceAllUsesWith( simdLaneId );
+        CI.replaceAllUsesWith(simdLaneId);
         CI.eraseFromParent();
     }
-    else if ( funcName.equals( SubGroupFuncsResolution::SUB_GROUP_SHUFFLE )    ||
-              funcName.equals( SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_US ) ||
-              funcName.equals( SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_F ) ||
-              funcName.equals( SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_H ) ||
-              funcName.equals( SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_B ) || 
-              funcName.equals( SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_DF )
-              )
+    else if (funcName.equals(SubGroupFuncsResolution::SUB_GROUP_SHUFFLE) ||
+        funcName.equals(SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_US) ||
+        funcName.equals(SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_F) ||
+        funcName.equals(SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_H) ||
+        funcName.equals(SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_B) ||
+        funcName.equals(SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_DF)
+        )
     {
         CheckSIMDSize(CI, "Shuffle not supported in SIMD32");
 
         // Creates intrinsics that will be lowered in the CodeGen and will handle the sub_group_shuffle function
-        Value*  args[2];
+        Value* args[2];
         args[0] = CI.getArgOperand(0);
         args[1] = CI.getArgOperand(1);
 
-        Function*    simdShuffleFunc = GenISAIntrinsic::getDeclaration(CI.getCalledFunction()->getParent(), 
-                                                                       GenISAIntrinsic::GenISA_WaveShuffleIndex, args[0]->getType());
+        Function* simdShuffleFunc = GenISAIntrinsic::getDeclaration(CI.getCalledFunction()->getParent(),
+            GenISAIntrinsic::GenISA_WaveShuffleIndex, args[0]->getType());
         Instruction* simdShuffle = CallInst::Create(simdShuffleFunc, args, "simdShuffle", &CI);
 
         CI.replaceAllUsesWith(simdShuffle);
         CI.eraseFromParent();
     }
-    else if ( funcName.equals( SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_DOWN ) || 
-              funcName.equals( SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_DOWN_US ) ||
-              funcName.equals( SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_DOWN_UC ) )
+    else if (funcName.equals(SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_DOWN) ||
+        funcName.equals(SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_DOWN_US) ||
+        funcName.equals(SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_DOWN_UC))
     {
         CheckSIMDSize(CI, "Shuffle Down not supported in SIMD32");
 
         // Creates intrinsics that will be lowered in the CodeGen and will handle the sub_group_shuffle_down function
-        Value*  args[3];
-        args[0] = CI.getArgOperand( 0 );
-        args[1] = CI.getArgOperand( 1 );
-        args[2] = CI.getArgOperand( 2 );
+        Value* args[3];
+        args[0] = CI.getArgOperand(0);
+        args[1] = CI.getArgOperand(1);
+        args[2] = CI.getArgOperand(2);
 
-        Function*    simdShuffleDownFunc = GenISAIntrinsic::getDeclaration( CI.getCalledFunction()->getParent(), 
-                                                                            GenISAIntrinsic::GenISA_simdShuffleDown,
-                                                                            args[0]->getType());
-        Instruction* simdShuffleDown = CallInst::Create( simdShuffleDownFunc, args, "simdShuffleDown", &CI );
+        Function* simdShuffleDownFunc = GenISAIntrinsic::getDeclaration(CI.getCalledFunction()->getParent(),
+            GenISAIntrinsic::GenISA_simdShuffleDown,
+            args[0]->getType());
+        Instruction* simdShuffleDown = CallInst::Create(simdShuffleDownFunc, args, "simdShuffleDown", &CI);
 
-        CI.replaceAllUsesWith( simdShuffleDown );
+        CI.replaceAllUsesWith(simdShuffleDown);
         CI.eraseFromParent();
     }
-    else if ( funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_READ_1_GBL ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_READ_2_GBL ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_READ_4_GBL ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_READ_8_GBL ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_READ_1_GBL_B ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_READ_2_GBL_B ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_READ_4_GBL_B ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_READ_8_GBL_B ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_READ_16_GBL_B ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_READ_1_GBL_H) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_READ_2_GBL_H) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_READ_4_GBL_H) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_READ_8_GBL_H) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_READ_16_GBL_H) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_READ_1_GBL_L ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_READ_2_GBL_L ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_READ_4_GBL_L ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_READ_8_GBL_L ) )
+    else if (funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_READ_1_GBL) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_READ_2_GBL) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_READ_4_GBL) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_READ_8_GBL) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_READ_1_GBL_B) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_READ_2_GBL_B) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_READ_4_GBL_B) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_READ_8_GBL_B) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_READ_16_GBL_B) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_READ_1_GBL_H) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_READ_2_GBL_H) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_READ_4_GBL_H) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_READ_8_GBL_H) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_READ_16_GBL_H) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_READ_1_GBL_L) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_READ_2_GBL_L) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_READ_4_GBL_L) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_READ_8_GBL_L))
     {
         simdBlockRead(CI);
     }
-    else if ( funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_WRITE_1_GBL ) ||
-              funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_WRITE_2_GBL ) ||
-              funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_WRITE_4_GBL ) ||
-              funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_WRITE_8_GBL ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_WRITE_1_GBL_B ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_WRITE_2_GBL_B ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_WRITE_4_GBL_B ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_WRITE_8_GBL_B ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_WRITE_16_GBL_B ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_WRITE_1_GBL_H ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_WRITE_2_GBL_H ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_WRITE_4_GBL_H ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_WRITE_8_GBL_H ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_WRITE_16_GBL_H ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_WRITE_1_GBL_L ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_WRITE_2_GBL_L ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_WRITE_4_GBL_L ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_WRITE_8_GBL_L ) )
+    else if (funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_WRITE_1_GBL) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_WRITE_2_GBL) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_WRITE_4_GBL) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_WRITE_8_GBL) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_WRITE_1_GBL_B) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_WRITE_2_GBL_B) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_WRITE_4_GBL_B) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_WRITE_8_GBL_B) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_WRITE_16_GBL_B) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_WRITE_1_GBL_H) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_WRITE_2_GBL_H) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_WRITE_4_GBL_H) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_WRITE_8_GBL_H) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_WRITE_16_GBL_H) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_WRITE_1_GBL_L) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_WRITE_2_GBL_L) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_WRITE_4_GBL_L) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_WRITE_8_GBL_L))
     {
         simdBlockWrite(CI);
     }
-    else if ( funcName.equals( SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_1 ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_2 ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_4 ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_8 ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_1_B ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_2_B ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_4_B ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_8_B ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_16_B ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_1_H) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_2_H) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_4_H) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_8_H) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_16_H) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_1_L ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_2_L ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_4_L ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_8_L ) )
+    else if (funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_1) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_2) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_4) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_8) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_1_B) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_2_B) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_4_B) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_8_B) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_16_B) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_1_H) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_2_H) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_4_H) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_8_H) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_16_H) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_1_L) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_2_L) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_4_L) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_8_L))
     {
         CheckSIMDSize(CI, "SIMD Media Block Read not supported in SIMD32");
         mediaBlockRead(CI);
     }
-    else if ( funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_1 ) ||
-              funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_2 ) ||
-              funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_4 ) ||
-              funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_8 ) ||
-              funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_1_B ) ||
-              funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_2_B ) ||
-              funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_4_B ) ||
-              funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_8_B ) ||
-              funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_16_B) ||
-              funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_1_H) ||
-              funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_2_H) ||
-              funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_4_H) ||
-              funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_8_H) ||
-              funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_16_H) ||
-              funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_1_L ) ||
-              funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_2_L ) ||
-              funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_4_L ) ||
-              funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_8_L ) )
+    else if (funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_1) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_2) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_4) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_8) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_1_B) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_2_B) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_4_B) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_8_B) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_16_B) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_1_H) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_2_H) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_4_H) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_8_H) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_16_H) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_1_L) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_2_L) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_4_L) ||
+        funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_8_L))
     {
         CheckSIMDSize(CI, "SIMD Media Block Write not supported in SIMD32");
         mediaBlockWrite(CI);
@@ -733,7 +733,7 @@ void SubGroupFuncsResolution::visitCallInst( CallInst &CI )
         args.push_back(CI.getArgOperand(3)); // blockHeight
         args.push_back(CI.getArgOperand(4)); // destination
 
-        Function*    MediaBlockRectangleReadFunc = GenISAIntrinsic::getDeclaration(CI.getCalledFunction()->getParent(), GenISAIntrinsic::GenISA_MediaBlockRectangleRead);
+        Function* MediaBlockRectangleReadFunc = GenISAIntrinsic::getDeclaration(CI.getCalledFunction()->getParent(), GenISAIntrinsic::GenISA_MediaBlockRectangleRead);
         Instruction* MediaBlockRectangleRead = CallInst::Create(MediaBlockRectangleReadFunc, args, "", &CI);
 
         CI.replaceAllUsesWith(MediaBlockRectangleRead);
@@ -746,7 +746,7 @@ void SubGroupFuncsResolution::visitCallInst( CallInst &CI )
             BTIHelper(CI);
         }
 
-        Argument *pImg = nullptr;
+        Argument* pImg = nullptr;
         ConstantInt* imageIndex = IGC::CImagesBI::CImagesUtils::getImageIndex(&m_argIndexMap, &CI, 0, pImg);
 
         CI.replaceAllUsesWith(imageIndex);
@@ -816,9 +816,9 @@ void SubGroupFuncsResolution::visitCallInst( CallInst &CI )
     {
         return subGroupScan(WaveOps::FMIN, CI);
     }
-    else if(funcName.startswith(SubGroupFuncsResolution::SUB_GROUP_BARRIER))
+    else if (funcName.startswith(SubGroupFuncsResolution::SUB_GROUP_BARRIER))
     {
-        Function*    waveBarrier = GenISAIntrinsic::getDeclaration(
+        Function* waveBarrier = GenISAIntrinsic::getDeclaration(
             CI.getCalledFunction()->getParent(),
             GenISAIntrinsic::GenISA_wavebarrier);
         CallInst::Create(waveBarrier, "", &CI);
@@ -845,8 +845,8 @@ void SubGroupFuncsResolution::CheckMediaBlockInstError(llvm::GenIntrinsicInst* i
     IGC::IGCMD::FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(F);
     unsigned int subGrpSize = funcInfoMD->getSubGroupSize()->getSIMD_size();
 
-    auto *pFunc = inst->getCalledFunction();
-    auto *pDataType = isRead ? pFunc->getReturnType() : inst->getOperand(6)->getType();
+    auto* pFunc = inst->getCalledFunction();
+    auto* pDataType = isRead ? pFunc->getReturnType() : inst->getOperand(6)->getType();
 
     const llvm::DataLayout* DL = &F->getParent()->getDataLayout();
 

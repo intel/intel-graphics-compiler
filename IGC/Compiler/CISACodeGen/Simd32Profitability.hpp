@@ -54,9 +54,9 @@ namespace IGC
             return "Simd32Profitability";
         }
 
-        virtual bool runOnFunction(llvm::Function &F) override;
+        virtual bool runOnFunction(llvm::Function& F) override;
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.setPreservesAll();
             AU.addRequired<WIAnalysis>();
@@ -70,23 +70,23 @@ namespace IGC
         bool isSimd16Profitable() const { return m_isSimd16Profitable; }
 
     private:
-        llvm::Function *F;
-        llvm::PostDominatorTree *PDT;
-        llvm::LoopInfo *LI;
-        IGCMD::MetaDataUtils *pMdUtils;
-        WIAnalysis *WI;
+        llvm::Function* F;
+        llvm::PostDominatorTree* PDT;
+        llvm::LoopInfo* LI;
+        IGCMD::MetaDataUtils* pMdUtils;
+        WIAnalysis* WI;
         bool m_isSimd32Profitable;
         bool m_isSimd16Profitable;
 
         unsigned getLoopCyclomaticComplexity();
-        bool checkSimd32Profitable(CodeGenContext *);
-        bool checkSimd16Profitable(CodeGenContext *);
+        bool checkSimd32Profitable(CodeGenContext*);
+        bool checkSimd16Profitable(CodeGenContext*);
 
-        unsigned estimateLoopCount(llvm::Loop *L);
-        unsigned estimateLoopCount_CASE1(llvm::Loop *L);
-        unsigned estimateLoopCount_CASE2(llvm::Loop *L);
+        unsigned estimateLoopCount(llvm::Loop* L);
+        unsigned estimateLoopCount_CASE1(llvm::Loop* L);
+        unsigned estimateLoopCount_CASE2(llvm::Loop* L);
 
-        bool isSelectBasedOnGlobalIdX(llvm::Value *);
+        bool isSelectBasedOnGlobalIdX(llvm::Value*);
 
         bool checkPSSimd32Profitable();
     };

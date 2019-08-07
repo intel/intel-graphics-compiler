@@ -38,7 +38,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/Transforms/Utils/ValueMapper.h>
 #include "common/LLVMWarningsPop.hpp"
 
-void initializeGenUpdateCBPass(llvm::PassRegistry &);
+void initializeGenUpdateCBPass(llvm::PassRegistry&);
 
 namespace IGC
 {
@@ -52,25 +52,25 @@ namespace IGC
             initializeGenUpdateCBPass(*llvm::PassRegistry::getPassRegistry());
         }
         virtual llvm::StringRef getPassName() const { return "GenUpdateCB"; }
-        virtual bool runOnFunction(llvm::Function &F);
-        virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const
+        virtual bool runOnFunction(llvm::Function& F);
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const
         {
             AU.setPreservesCFG();
             AU.addRequired<CodeGenContextWrapper>();
             AU.addRequired<llvm::DominatorTreeWrapperPass>();
         }
     private:
-        bool isConstantBufferLoad(llvm::LoadInst* inst, unsigned &bufId);
+        bool isConstantBufferLoad(llvm::LoadInst* inst, unsigned& bufId);
 
         bool allSrcConstantOrImm(llvm::Instruction* inst);
         bool updateCbAllowedInst(llvm::Instruction* inst);
-        void InsertInstTree(llvm::Instruction *inst, llvm::Instruction *pos);
+        void InsertInstTree(llvm::Instruction* inst, llvm::Instruction* pos);
         llvm::Instruction* CreateModule(llvm::Module* newModule);
 
         const unsigned FLAG_LOAD = 1;
         const unsigned FLAG_RESINFO = 2;
 
-        CodeGenContext *m_ctx;
+        CodeGenContext* m_ctx;
 
         // For each instruction in m_CbUpadteMap, we record whether it's
         // coming from a load or resinfo.

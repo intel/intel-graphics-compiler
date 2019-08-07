@@ -55,7 +55,7 @@ AlignmentAnalysis::AlignmentAnalysis() : FunctionPass(ID)
     initializeAlignmentAnalysisPass(*PassRegistry::getPassRegistry());
 }
 
-bool AlignmentAnalysis::runOnFunction(Function &F)
+bool AlignmentAnalysis::runOnFunction(Function& F)
 {
     m_DL = &F.getParent()->getDataLayout();
 
@@ -69,7 +69,7 @@ bool AlignmentAnalysis::runOnFunction(Function &F)
     std::set<Instruction*> inList;
 
     // First, initialize the worklist with all of the instructions in the function.
-    for( llvm::inst_iterator inst = inst_begin(F), instEnd = inst_end(F); inst != instEnd; ++inst )
+    for (llvm::inst_iterator inst = inst_begin(F), instEnd = inst_end(F); inst != instEnd; ++inst)
     {
         workList.push_back(&*inst);
         inList.insert(&*inst);
@@ -77,7 +77,7 @@ bool AlignmentAnalysis::runOnFunction(Function &F)
 
     // It is more efficient to handle the earlier instructions first, 
     // so we pop from the front.
-    while( !inList.empty() )
+    while (!inList.empty())
     {
         // Get the next instruction
         Instruction* inst = workList.front();
@@ -85,15 +85,15 @@ bool AlignmentAnalysis::runOnFunction(Function &F)
         inList.erase(inst);
 
         // Get the alignment of this instruction
-        if( processInstruction(inst) )
+        if (processInstruction(inst))
         {
             // The alignment of inst changed, (re-)process all users, by
             // adding them to the end of the queue.
-            for( auto user = inst->user_begin(), userEnd = inst->user_end(); user != userEnd; ++user )
+            for (auto user = inst->user_begin(), userEnd = inst->user_end(); user != userEnd; ++user)
             {
                 Instruction* userInst = cast<Instruction>(*user);
                 // If the user is already in the queue, no need to add it again
-                if( inList.find(userInst) == inList.end() )
+                if (inList.find(userInst) == inList.end())
                 {
                     workList.push_back(userInst);
                     inList.insert(userInst);
@@ -103,7 +103,7 @@ bool AlignmentAnalysis::runOnFunction(Function &F)
     }
 
     // in a second step change the alignment for instructions which have improved
-    for(llvm::inst_iterator inst = inst_begin(F), instEnd = inst_end(F); inst != instEnd; ++inst)
+    for (llvm::inst_iterator inst = inst_begin(F), instEnd = inst_end(F); inst != instEnd; ++inst)
     {
         SetInstAlignment(*inst);
     }
@@ -114,7 +114,7 @@ bool AlignmentAnalysis::processInstruction(llvm::Instruction* I)
 {
     // Get the currently known alignment of I.
     unsigned int currAlign = getAlignValue(I);
-    
+
     // Compute the instruction's alignment 
     // using the alignment of the arguments.
     unsigned int newAlign = 0;
@@ -123,7 +123,7 @@ bool AlignmentAnalysis::processInstruction(llvm::Instruction* I)
         // If a pointer is specifically given an 'align' field in the MD, use it.
         MDNode* alignmentMD = I->getMetadata("align");
         if (alignmentMD)
-            newAlign = (unsigned) mdconst::dyn_extract<ConstantInt>(alignmentMD->getOperand(0))->getZExtValue();
+            newAlign = (unsigned)mdconst::dyn_extract<ConstantInt>(alignmentMD->getOperand(0))->getZExtValue();
     }
     if (!newAlign)
     {
@@ -138,7 +138,7 @@ bool AlignmentAnalysis::processInstruction(llvm::Instruction* I)
     // value, so return true. Otherwise, this instruction has stabilized
     // (for now).
 
-    if( newAlign != currAlign )
+    if (newAlign != currAlign)
     {
         m_alignmentMap[I] = newAlign;
         return true;
@@ -147,19 +147,19 @@ bool AlignmentAnalysis::processInstruction(llvm::Instruction* I)
     return false;
 }
 
-unsigned int AlignmentAnalysis::visitInstruction(Instruction &I)
+unsigned int AlignmentAnalysis::visitInstruction(Instruction& I)
 {
     // The safe thing to do for unknown instructions is to return 1.
     return MinimumAlignment;
 }
 
-unsigned int AlignmentAnalysis::visitAllocaInst(AllocaInst &I)
+unsigned int AlignmentAnalysis::visitAllocaInst(AllocaInst& I)
 {
     // Return the alignment of the alloca, which ought to be correct
     unsigned int newAlign = I.getAlignment();
-    
+
     // If the alloca uses the default alignment, pull it from the datalayout
-    if( !newAlign )
+    if (!newAlign)
     {
         Type* allocaType = I.getType();
         newAlign = m_DL->getABITypeAlignment(allocaType->getPointerElementType());
@@ -168,7 +168,7 @@ unsigned int AlignmentAnalysis::visitAllocaInst(AllocaInst &I)
     return newAlign;
 }
 
-unsigned int AlignmentAnalysis::visitSelectInst(SelectInst &I)
+unsigned int AlignmentAnalysis::visitSelectInst(SelectInst& I)
 {
     Value* srcTrue = I.getTrueValue();
     Value* srcFalse = I.getFalseValue();
@@ -178,14 +178,14 @@ unsigned int AlignmentAnalysis::visitSelectInst(SelectInst &I)
     return iSTD::Min(getAlignValue(srcTrue), getAlignValue(srcFalse));
 }
 
-unsigned int AlignmentAnalysis::visitPHINode(PHINode &I)
+unsigned int AlignmentAnalysis::visitPHINode(PHINode& I)
 {
     unsigned int newAlign = Value::MaximumAlignment;
 
     // The alignment of a PHI is the minimal alignment of any of the
     // incoming values.
     unsigned numVals = I.getNumIncomingValues();
-    for( unsigned int i = 0; i < numVals; ++i )
+    for (unsigned int i = 0; i < numVals; ++i)
     {
         Value* op = I.getIncomingValue(i);
         newAlign = iSTD::Min(newAlign, getAlignValue(op));
@@ -194,45 +194,45 @@ unsigned int AlignmentAnalysis::visitPHINode(PHINode &I)
     return newAlign;
 }
 
-void AlignmentAnalysis::SetInstAlignment(llvm::Instruction &I)
+void AlignmentAnalysis::SetInstAlignment(llvm::Instruction& I)
 {
-    if(isa<LoadInst>(I))
+    if (isa<LoadInst>(I))
     {
         SetInstAlignment(cast<LoadInst>(I));
     }
-    else if(isa<StoreInst>(I))
+    else if (isa<StoreInst>(I))
     {
         SetInstAlignment(cast<StoreInst>(I));
     }
-    if(isa<MemSetInst>(I))
+    if (isa<MemSetInst>(I))
     {
         SetInstAlignment(cast<MemSetInst>(I));
     }
-    if(isa<MemCpyInst>(I))
+    if (isa<MemCpyInst>(I))
     {
         SetInstAlignment(cast<MemCpyInst>(I));
     }
-    if(isa<MemMoveInst>(I))
+    if (isa<MemMoveInst>(I))
     {
         SetInstAlignment(cast<MemMoveInst>(I));
     }
 }
 
-void AlignmentAnalysis::SetInstAlignment(LoadInst &I)
+void AlignmentAnalysis::SetInstAlignment(LoadInst& I)
 {
     // Set the align attribute of the load according to the detected
     // alignment of its operand.
     I.setAlignment(iSTD::Max(I.getAlignment(), getAlignValue(I.getPointerOperand())));
 }
 
-void AlignmentAnalysis::SetInstAlignment(StoreInst &I)
+void AlignmentAnalysis::SetInstAlignment(StoreInst& I)
 {
     // Set the align attribute of the store according to the detected
     // alignment of its operand.
     I.setAlignment(iSTD::Max(I.getAlignment(), getAlignValue(I.getPointerOperand())));
 }
 
-unsigned int AlignmentAnalysis::visitAdd(BinaryOperator &I)
+unsigned int AlignmentAnalysis::visitAdd(BinaryOperator& I)
 {
     // Addition can not improve the alignment.
     // In a more precise analysis, it could (e.g. 3 + 1 = 4)
@@ -251,18 +251,18 @@ unsigned int AlignmentAnalysis::visitAdd(BinaryOperator &I)
     return iSTD::Min(getAlignValue(op0), getAlignValue(op1));
 }
 
-unsigned int AlignmentAnalysis::visitMul(BinaryOperator &I)
+unsigned int AlignmentAnalysis::visitMul(BinaryOperator& I)
 {
     // Because we are dealing with powers of 2, 
     // align(x * y) = align(x) * align(y)
     Value* op0 = I.getOperand(0);
     Value* op1 = I.getOperand(1);
 
-    return iSTD::Min(Value::MaximumAlignment, 
-                     getAlignValue(op0) * getAlignValue(op1));
+    return iSTD::Min(Value::MaximumAlignment,
+        getAlignValue(op0) * getAlignValue(op1));
 }
 
-unsigned int AlignmentAnalysis::visitShl(BinaryOperator &I)
+unsigned int AlignmentAnalysis::visitShl(BinaryOperator& I)
 {
     // If we are shifting left by a constant, we know the
     // alignment improves according to that value.
@@ -270,7 +270,7 @@ unsigned int AlignmentAnalysis::visitShl(BinaryOperator &I)
     Value* op0 = I.getOperand(0);
     Value* op1 = I.getOperand(1);
 
-    if (ConstantInt* constOp1 = dyn_cast<ConstantInt>(op1))
+    if (ConstantInt * constOp1 = dyn_cast<ConstantInt>(op1))
     {
         return iSTD::Min(Value::MaximumAlignment,
             getAlignValue(op0) << constOp1->getZExtValue());
@@ -281,7 +281,7 @@ unsigned int AlignmentAnalysis::visitShl(BinaryOperator &I)
     }
 }
 
-unsigned int AlignmentAnalysis::visitAnd(BinaryOperator &I)
+unsigned int AlignmentAnalysis::visitAnd(BinaryOperator& I)
 {
     Value* op0 = I.getOperand(0);
     Value* op1 = I.getOperand(1);
@@ -293,17 +293,17 @@ unsigned int AlignmentAnalysis::visitAnd(BinaryOperator &I)
         getAlignValue(op1));
 }
 
-unsigned int AlignmentAnalysis::visitGetElementPtrInst(GetElementPtrInst &I)
+unsigned int AlignmentAnalysis::visitGetElementPtrInst(GetElementPtrInst& I)
 {
     // The alignment can never be better than the alignment of the base pointer
     unsigned int newAlign = getAlignValue(I.getPointerOperand());
 
-    Type *Ty = I.getPointerOperand()->getType()->getScalarType();
+    Type* Ty = I.getPointerOperand()->getType()->getScalarType();
     gep_type_iterator GTI = gep_type_begin(&I);
     for (auto op = I.op_begin() + 1, opE = I.op_end(); op != opE; ++op, ++GTI)
     {
         unsigned int offset = 0;
-        if (StructType *StTy = GTI.getStructTypeOrNull())
+        if (StructType * StTy = GTI.getStructTypeOrNull())
         {
             unsigned int Field = int_cast<unsigned int>((cast<Constant>(*op))->getUniqueInteger().getZExtValue());
             offset = int_cast<unsigned int>(m_DL->getStructLayout(StTy)->getElementOffset(Field));
@@ -331,37 +331,37 @@ unsigned int AlignmentAnalysis::visitGetElementPtrInst(GetElementPtrInst &I)
 // Casts don't change the alignment.
 // Technically we could do better (a trunc or an extend may improve alignment)
 // but this doesn't seem important enough.
-unsigned int AlignmentAnalysis::visitBitCastInst(BitCastInst &I)
+unsigned int AlignmentAnalysis::visitBitCastInst(BitCastInst& I)
 {
     return getAlignValue(I.getOperand(0));
 }
 
-unsigned int AlignmentAnalysis::visitPtrToIntInst(PtrToIntInst &I)
+unsigned int AlignmentAnalysis::visitPtrToIntInst(PtrToIntInst& I)
 {
     return getAlignValue(I.getOperand(0));
 }
 
-unsigned int AlignmentAnalysis::visitIntToPtrInst(IntToPtrInst &I)
+unsigned int AlignmentAnalysis::visitIntToPtrInst(IntToPtrInst& I)
 {
     return getAlignValue(I.getOperand(0));
 }
 
-unsigned int AlignmentAnalysis::visitTruncInst(TruncInst &I)
+unsigned int AlignmentAnalysis::visitTruncInst(TruncInst& I)
 {
     return getAlignValue(I.getOperand(0));
 }
 
-unsigned int AlignmentAnalysis::visitZExtInst(ZExtInst &I)
+unsigned int AlignmentAnalysis::visitZExtInst(ZExtInst& I)
 {
     return getAlignValue(I.getOperand(0));
 }
 
-unsigned int AlignmentAnalysis::visitSExtInst(SExtInst &I)
+unsigned int AlignmentAnalysis::visitSExtInst(SExtInst& I)
 {
     return getAlignValue(I.getOperand(0));
 }
 
-unsigned int AlignmentAnalysis::visitCallInst(CallInst &I)
+unsigned int AlignmentAnalysis::visitCallInst(CallInst& I)
 {
     // Handle alignment for memcpy and memset
     Function* callee = I.getCalledFunction();
@@ -371,7 +371,7 @@ unsigned int AlignmentAnalysis::visitCallInst(CallInst &I)
         return MinimumAlignment;
 
     StringRef calleeName = callee->getName();
-    IntrinsicInst *Intri = dyn_cast<IntrinsicInst>(&I);
+    IntrinsicInst* Intri = dyn_cast<IntrinsicInst>(&I);
     llvm::Intrinsic::ID ID = llvm::Intrinsic::ID::not_intrinsic;
 
     if (Intri)
@@ -381,12 +381,12 @@ unsigned int AlignmentAnalysis::visitCallInst(CallInst &I)
         (!Intri && calleeName.startswith("__builtin_IB_memcpy_")))
     {
         unsigned int origAlign = MinimumAlignment;
-        if (ConstantInt *CI = dyn_cast<ConstantInt>(I.getArgOperand(3)))
+        if (ConstantInt * CI = dyn_cast<ConstantInt>(I.getArgOperand(3)))
         {
             origAlign = (unsigned int)CI->getZExtValue();
         }
-        unsigned int dstAlign   = getAlignValue(I.getArgOperand(0));
-        unsigned int srcAlign   = getAlignValue(I.getArgOperand(1));
+        unsigned int dstAlign = getAlignValue(I.getArgOperand(0));
+        unsigned int srcAlign = getAlignValue(I.getArgOperand(1));
 
         // Need to get the Min of dest alignment and src alignment
         unsigned int minAlign = iSTD::Min(dstAlign, srcAlign);
@@ -405,12 +405,12 @@ unsigned int AlignmentAnalysis::visitCallInst(CallInst &I)
     if (Intri && ID == Intrinsic::memset)
     {
         unsigned int origAlign = MinimumAlignment;
-        if (ConstantInt *CI = dyn_cast<ConstantInt>(I.getArgOperand(3)))
+        if (ConstantInt * CI = dyn_cast<ConstantInt>(I.getArgOperand(3)))
         {
             origAlign = (unsigned int)CI->getZExtValue();
         }
         unsigned int dstAlign = getAlignValue(I.getArgOperand(0));
- 
+
         // As the original intrinsic's alignemnt is the minimum one, use
         // max to get a better alignment.
         if (dstAlign > origAlign)
@@ -419,13 +419,13 @@ unsigned int AlignmentAnalysis::visitCallInst(CallInst &I)
         }
 
         // return value does not matter
-        return MinimumAlignment; 
+        return MinimumAlignment;
     }
 
     return MinimumAlignment;
 }
 
-void AlignmentAnalysis::SetInstAlignment(MemSetInst &I)
+void AlignmentAnalysis::SetInstAlignment(MemSetInst& I)
 {
     // Set the align attribute of the memset according to the detected
     // alignment of its operand.
@@ -438,7 +438,7 @@ void AlignmentAnalysis::SetInstAlignment(MemSetInst &I)
 #endif
 }
 
-void AlignmentAnalysis::SetInstAlignment(MemCpyInst &I)
+void AlignmentAnalysis::SetInstAlignment(MemCpyInst& I)
 {
     // Set the align attribute of the memcpy based on the minimum alignment of its source and dest fields
     unsigned alignment = iSTD::Min(getAlignValue(I.getRawDest()), getAlignValue(I.getRawSource()));
@@ -451,7 +451,7 @@ void AlignmentAnalysis::SetInstAlignment(MemCpyInst &I)
 #endif
 }
 
-void AlignmentAnalysis::SetInstAlignment(MemMoveInst &I)
+void AlignmentAnalysis::SetInstAlignment(MemMoveInst& I)
 {
     // Set the align attribute of the memmove based on the minimum alignment of its source and dest fields
     unsigned alignment = iSTD::Min(getAlignValue(I.getRawDest()), getAlignValue(I.getRawSource()));
@@ -464,12 +464,12 @@ void AlignmentAnalysis::SetInstAlignment(MemMoveInst &I)
 #endif
 }
 
-unsigned int AlignmentAnalysis::getAlignValue(Value *V) const
+unsigned int AlignmentAnalysis::getAlignValue(Value* V) const
 {
-    if( Instruction* inst = dyn_cast<Instruction>(V) )
+    if (Instruction * inst = dyn_cast<Instruction>(V))
     {
         auto iter = m_alignmentMap.find(V);
-        if( iter == m_alignmentMap.end() )
+        if (iter == m_alignmentMap.end())
         {
             // Instructions are initialize to maximum alignment 
             // (this is the "top" value)
@@ -478,18 +478,18 @@ unsigned int AlignmentAnalysis::getAlignValue(Value *V) const
 
         return iter->second;
     }
-    else if( Constant* con = dyn_cast<Constant>(V) )
+    else if (Constant * con = dyn_cast<Constant>(V))
     {
-        if( ConstantInt* constInt = dyn_cast<ConstantInt>(V) )
+        if (ConstantInt * constInt = dyn_cast<ConstantInt>(V))
         {
             return getConstantAlignment(constInt->getZExtValue());
         }
-        else if( GlobalVariable* GV = dyn_cast<GlobalVariable>(V) )
+        else if (GlobalVariable * GV = dyn_cast<GlobalVariable>(V))
         {
             unsigned int align = GV->getAlignment();
-    
+
             // If the globalvariable uses the default alignment, pull it from the datalayout
-            if( !align )
+            if (!align)
             {
                 Type* gvType = GV->getType();
                 return m_DL->getABITypeAlignment(gvType->getPointerElementType());
@@ -503,13 +503,13 @@ unsigned int AlignmentAnalysis::getAlignValue(Value *V) const
         // Not an int or a globalvariable, be pessimistic.
         return MinimumAlignment;
     }
-    else if( Argument* arg = dyn_cast<Argument>(V) )
+    else if (Argument * arg = dyn_cast<Argument>(V))
     {
-        if( arg->getType()->isPointerTy() )
+        if (arg->getType()->isPointerTy())
         {
             // Pointer arguments are guaranteed to be aligned on the ABI alignment
             Type* pointedTo = arg->getType()->getPointerElementType();
-            if( pointedTo->isSized() )
+            if (pointedTo->isSized())
             {
                 return m_DL->getABITypeAlignment(pointedTo);
             }

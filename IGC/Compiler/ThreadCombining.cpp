@@ -48,9 +48,9 @@ IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_END(ThreadCombining, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-bool ThreadCombining::isBarrier(llvm::Instruction &I) const
+bool ThreadCombining::isBarrier(llvm::Instruction& I) const
 {
-    if (llvm::GenIntrinsicInst* pIntrinsic = llvm::dyn_cast<llvm::GenIntrinsicInst>(&I))
+    if (llvm::GenIntrinsicInst * pIntrinsic = llvm::dyn_cast<llvm::GenIntrinsicInst>(&I))
     {
         if (pIntrinsic->getIntrinsicID() == llvm::GenISAIntrinsic::GenISA_threadgroupbarrier)
         {
@@ -89,7 +89,7 @@ bool ThreadCombining::isSLMUsed(llvm::Instruction* I) const
     return ptrType;
 }
 
-unsigned int ThreadCombining::GetthreadGroupSize(llvm::Module &M, dim dimension)
+unsigned int ThreadCombining::GetthreadGroupSize(llvm::Module& M, dim dimension)
 {
     unsigned int threadGroupSize = 0;
     llvm::GlobalVariable* pGlobal = nullptr;
@@ -117,7 +117,7 @@ unsigned int ThreadCombining::GetthreadGroupSize(llvm::Module &M, dim dimension)
     return threadGroupSize;
 }
 
-void ThreadCombining::SetthreadGroupSize(llvm::Module &M, llvm::Constant* size, dim dimension)
+void ThreadCombining::SetthreadGroupSize(llvm::Module& M, llvm::Constant* size, dim dimension)
 {
     llvm::GlobalVariable* pGlobal = nullptr;
     switch (dimension)
@@ -290,7 +290,7 @@ void ThreadCombining::FindRegistersAliveAcrossBarriers(llvm::Function* m_kernel,
             {
                 for (unsigned int i = 0; i < inst->getNumOperands(); ++i)
                 {
-                    if (Instruction* I = dyn_cast<Instruction>(inst->getOperand(i))) // If the last barrier does not dominate the instruction then we need to store and restore
+                    if (Instruction * I = dyn_cast<Instruction>(inst->getOperand(i))) // If the last barrier does not dominate the instruction then we need to store and restore
                     {
                         if (!DT->getDomTree().dominates(*barrierInst, I))
                         {
@@ -355,7 +355,7 @@ bool ThreadCombining::canDoOptimization(Function* m_kernel, llvm::Module& M)
     if (threadGroupSize_X == 1 ||
         threadGroupSize_Y == 1 ||
         threadGroupSize_Z != 1 ||
-        (!m_SLMUsed && IGC_IS_FLAG_DISABLED(EnableThreadCombiningWithNoSLM))||
+        (!m_SLMUsed && IGC_IS_FLAG_DISABLED(EnableThreadCombiningWithNoSLM)) ||
         anyBarrierWithinControlFlow)
     {
         return false;
@@ -375,8 +375,8 @@ bool ThreadCombining::canDoOptimization(Function* m_kernel, llvm::Module& M)
 ///    provided by the loop kernel
 
 void ThreadCombining::CreateNewKernel(llvm::Module& M,
-                                      llvm::IRBuilder<> builder,
-                                      llvm::Function* newFunc)
+    llvm::IRBuilder<> builder,
+    llvm::Function* newFunc)
 {
 
     DominatorTreeWrapperPass* DT = &getAnalysis<DominatorTreeWrapperPass>(*m_kernel);
@@ -427,10 +427,10 @@ void ThreadCombining::CreateNewKernel(llvm::Module& M,
 
             for (auto& aliveInst : m_aliveAcrossBarrier)
             {
-                 // m_LiveRegistersPerBarrier stores for each barrier, all the registers that are alive across that
-                // barrier. We check if a register is alive across the nextBarrier and store all of those values in
-                // a vector that is passed back to the calling function so that we can retrieve it when we execute
-                // the code after nextBarrier
+                // m_LiveRegistersPerBarrier stores for each barrier, all the registers that are alive across that
+               // barrier. We check if a register is alive across the nextBarrier and store all of those values in
+               // a vector that is passed back to the calling function so that we can retrieve it when we execute
+               // the code after nextBarrier
                 if (m_LiveRegistersPerBarrier[nextBarrier].find(aliveInst) != m_LiveRegistersPerBarrier[nextBarrier].end())
                 {
                     builder.CreateStore(aliveInst, &(*argIter));
@@ -458,7 +458,7 @@ void ThreadCombining::CreateNewKernel(llvm::Module& M,
                         use_it != it->use_end();
                         use_it++)
                     {
-                        Instruction *useInst = dyn_cast<Instruction>(use_it->getUser());
+                        Instruction* useInst = dyn_cast<Instruction>(use_it->getUser());
 
                         // Check if the use instruction lies between the current barrier and the next
                         if (DT->getDomTree().dominates(currentBarrier, useInst) &&
@@ -494,7 +494,7 @@ void ThreadCombining::CreateNewKernel(llvm::Module& M,
                     use_it != it2->use_end();
                     use_it++)
                 {
-                    Instruction *useInst = dyn_cast<Instruction>(use_it->getUser());
+                    Instruction* useInst = dyn_cast<Instruction>(use_it->getUser());
 
                     if (DT->getDomTree().dominates(*lastBarrier, useInst))
                     {
@@ -565,7 +565,7 @@ void ThreadCombining::CreateNewKernel(llvm::Module& M,
     {
         for (auto& inst : BI)
         {
-            if (GenIntrinsicInst* b = dyn_cast<GenIntrinsicInst>(&inst))
+            if (GenIntrinsicInst * b = dyn_cast<GenIntrinsicInst>(&inst))
             {
                 if (b->getIntrinsicID() == GenISAIntrinsic::GenISA_DCL_SystemValue)
                 {
@@ -634,7 +634,7 @@ bool ThreadCombining::runOnModule(llvm::Module& M)
     float currentThreadOccupancy = csCtx->GetThreadOccupancy(simdMode);
     unsigned x = (threadGroupSize_X % 2 == 0) ? threadGroupSize_X / 2 : threadGroupSize_X;
     unsigned y = (threadGroupSize_Y % 2 == 0) ? threadGroupSize_Y / 2 : threadGroupSize_Y;
-    float newThreadOccupancy = GetThreadOccupancyPerSubslice(simdMode, x*y, GetHwThreadsPerWG(csCtx->platform), csCtx->m_slmSize, csCtx->GetSlmSizePerSubslice());
+    float newThreadOccupancy = GetThreadOccupancyPerSubslice(simdMode, x * y, GetHwThreadsPerWG(csCtx->platform), csCtx->m_slmSize, csCtx->GetSlmSizePerSubslice());
 
     unsigned int newSizeX = threadGroupSize_X;
     unsigned int newSizeY = threadGroupSize_Y;
@@ -645,15 +645,15 @@ bool ThreadCombining::runOnModule(llvm::Module& M)
         newSizeX = IGC_GET_FLAG_VALUE(ForceGroupSizeX);
         newSizeY = IGC_GET_FLAG_VALUE(ForceGroupSizeY);
     }
-    else if (x*y >= minTGSizeHeuristic && newThreadOccupancy > currentThreadOccupancy)
+    else if (x * y >= minTGSizeHeuristic && newThreadOccupancy > currentThreadOccupancy)
     {
         newSizeX = x;
         newSizeY = y;
         currentThreadOccupancy = newThreadOccupancy;
         x = (x % 2 == 0) ? x / 2 : x;
         y = (y % 2 == 0) ? y / 2 : y;
-        newThreadOccupancy = GetThreadOccupancyPerSubslice(simdMode, x*y, GetHwThreadsPerWG(csCtx->platform), csCtx->m_slmSize, csCtx->GetSlmSizePerSubslice());
-        if (x*y >= minTGSizeHeuristic && newThreadOccupancy > currentThreadOccupancy)
+        newThreadOccupancy = GetThreadOccupancyPerSubslice(simdMode, x * y, GetHwThreadsPerWG(csCtx->platform), csCtx->m_slmSize, csCtx->GetSlmSizePerSubslice());
+        if (x * y >= minTGSizeHeuristic && newThreadOccupancy > currentThreadOccupancy)
         {
             newSizeX = x;
             newSizeY = y;
@@ -683,7 +683,7 @@ bool ThreadCombining::runOnModule(llvm::Module& M)
     for (auto& it : m_aliveAcrossBarrier)
     {
         llvm::Instruction* aliveInst = dyn_cast<Instruction>(it);
-        PointerType *PtrTy = PointerType::get(aliveInst->getType(), 0);
+        PointerType* PtrTy = PointerType::get(aliveInst->getType(), 0);
         callArgTypes.push_back(PtrTy);
     }
 

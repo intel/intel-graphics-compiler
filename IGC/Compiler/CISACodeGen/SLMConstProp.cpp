@@ -71,12 +71,12 @@ namespace
             // and all the locations, if defined, have the same constant.
             PATTERN_REPEAT_WITH_STRIDE
         };
-  
+
         struct PatternInfo {
             PatternType  Type;
             int          offset;
             int          stride;
-            Constant*    storedVal;
+            Constant* storedVal;
         };
 
         // Detailed info about a store
@@ -84,7 +84,7 @@ namespace
             PatternType  ty;  // Pattern type if this store is part of
                               // a pattern.
             int  ix;          // ix into m_storeInsts vector
-            SymExpr *SE;      // Store's address
+            SymExpr* SE;      // Store's address
             Constant* Val;    // Store's value if it is constant.
             int offset;       // offset relative to a particular SymExpr. Its meaning
                               // is based on the context in which it is used.
@@ -97,9 +97,9 @@ namespace
             initializeSLMConstPropPass(*PassRegistry::getPassRegistry());
         }
 
-        bool runOnFunction(Function &F) override;
+        bool runOnFunction(Function& F) override;
 
-        void getAnalysisUsage(AnalysisUsage &AU) const override
+        void getAnalysisUsage(AnalysisUsage& AU) const override
         {
             AU.addRequired<MetaDataUtilsWrapper>();
             AU.addRequired<CodeGenContextWrapper>();
@@ -108,9 +108,9 @@ namespace
         }
 
     private:
-        CodeGenContext *m_Ctx;
-        Function *m_F;
-        LoopInfo *m_LI;
+        CodeGenContext* m_Ctx;
+        Function* m_F;
+        LoopInfo* m_LI;
         DominatorTree* m_DT;
         const DataLayout* m_DL;
         SymbolicEvaluation m_SymEval;
@@ -149,7 +149,7 @@ namespace
 void SymbolicEvaluation::dump_symbols()
 {
     assert((int)m_symInfos.size() <= m_nextValueID &&
-           "ValueInfoMap has the incorrect number of entries!");
+        "ValueInfoMap has the incorrect number of entries!");
 
     // for sorting symbols in increasing ID.
     std::vector<Value*> Vals(m_nextValueID);
@@ -161,15 +161,15 @@ void SymbolicEvaluation::dump_symbols()
     }
 
     dbgs() << "\nSymbols used\n";
-    for(int i=0; i < m_nextValueID; ++i) {
+    for (int i = 0; i < m_nextValueID; ++i) {
         Value* V = Vals[i];
         // V should not be nullptr, but check it
         // for safety.
         if (V) {
             dbgs() << "\n    V"
-                   << i
-                   << ":    "
-                   << *V;
+                << i
+                << ":    "
+                << *V;
         }
     }
     dbgs() << "\n\n";
@@ -178,12 +178,13 @@ void SymbolicEvaluation::dump_symbols()
 void SymbolicEvaluation::print(raw_ostream& OS, SymProd* P)
 {
     bool hasError = false;
-    for(int i = 0; i < (int)P->Prod.size(); ++i) {
+    for (int i = 0; i < (int)P->Prod.size(); ++i) {
         Value* V = P->Prod[i];
-        if (ValueSymInfo* VSI = getSymInfo(V)) {
+        if (ValueSymInfo * VSI = getSymInfo(V)) {
             OS << (i == 0 ? "V" : " * V")
-               <<  VSI->ID;
-        } else {
+                << VSI->ID;
+        }
+        else {
             OS << (i == 0 ? "Ve" : " * Ve");
             hasError = true;
         }
@@ -205,7 +206,7 @@ void SymbolicEvaluation::print(raw_ostream& OS, SymTerm* T)
 void SymbolicEvaluation::print(raw_ostream& OS, SymExpr* SE)
 {
     int e = (int)SE->SymTerms.size();
-    for(int i=0; i < e; ++i) {
+    for (int i = 0; i < e; ++i) {
         if (i > 0) {
             OS << " + ";
         }
@@ -244,14 +245,14 @@ SymExpr* SymbolicEvaluation::getSymExpr(Value* V)
     // Stop if non-Pointer type or non-integer type.
     // Since systemValue is prototyped as to return a float,
     // the float type is accepted here.
-    Type *Ty = V->getType();
+    Type* Ty = V->getType();
     if (!Ty->isPointerTy() && !Ty->isIntegerTy() &&
         !Ty->isFloatTy())
     {
         return nullptr;
     }
 
-    if (ValueSymInfo* VSI = getSymInfo(V))
+    if (ValueSymInfo * VSI = getSymInfo(V))
     {
         return VSI->symExpr;
     }
@@ -263,7 +264,7 @@ SymExpr* SymbolicEvaluation::getSymExpr(Value* V)
     if (expr == nullptr)
     {
         // Create a SymExpr (it is a constant)
-        SymExpr* E = new (m_symEvaAllocator) SymExpr ();
+        SymExpr* E = new (m_symEvaAllocator) SymExpr();
         E->ConstTerm = coeff;
         setSymInfo(V, E);
 
@@ -275,13 +276,13 @@ SymExpr* SymbolicEvaluation::getSymExpr(Value* V)
 void SymbolicEvaluation::getSymExprOrConstant(Value* V, SymExpr*& S, int64_t& C)
 {
     S = nullptr;
-    if (ValueSymInfo* VSI = getSymInfo(V))
+    if (ValueSymInfo * VSI = getSymInfo(V))
     {
         S = VSI->symExpr;
         return;
     }
 
-    if (ConstantInt* CI = dyn_cast<ConstantInt>(V))
+    if (ConstantInt * CI = dyn_cast<ConstantInt>(V))
     {
         C = CI->getSExtValue();
         return;
@@ -294,13 +295,13 @@ void SymbolicEvaluation::getSymExprOrConstant(Value* V, SymExpr*& S, int64_t& C)
     SymExpr* S0;
     SymExpr* S1;
     int64_t  C0, C1;
-    if (Instruction* I = dyn_cast<Instruction>(V))
+    if (Instruction * I = dyn_cast<Instruction>(V))
     {
         unsigned opc = I->getOpcode();
         switch (opc) {
         case Instruction::Sub:
         case Instruction::Add:
-          {
+        {
             Value* V0 = I->getOperand(0);
             Value* V1 = I->getOperand(1);
             getSymExprOrConstant(V0, S0, C0);
@@ -333,9 +334,9 @@ void SymbolicEvaluation::getSymExprOrConstant(Value* V, SymExpr*& S, int64_t& C)
                 }
             }
             break;
-          }
+        }
         case Instruction::Mul:
-          {
+        {
             Value* V0 = I->getOperand(0);
             Value* V1 = I->getOperand(1);
             getSymExprOrConstant(V0, S0, C0);
@@ -345,7 +346,7 @@ void SymbolicEvaluation::getSymExprOrConstant(Value* V, SymExpr*& S, int64_t& C)
                 C = C0 * C1;
                 return;
             }
- 
+
             // Don't handle Value * Value for now.
             // Only handle Value * const
             if (!S0 || !S1)
@@ -354,14 +355,14 @@ void SymbolicEvaluation::getSymExprOrConstant(Value* V, SymExpr*& S, int64_t& C)
                 bool isS0Valid = (S0 != nullptr);
                 S = mul(isS0Valid ? S0 : S1, (isS0Valid) ? C1 : C0);
             }
- 
+
             break;
-          }
+        }
 
         case Instruction::BitCast:
         case Instruction::IntToPtr:
         case Instruction::PtrToInt:
-          {
+        {
             Value* V0 = I->getOperand(0);
             getSymExprOrConstant(V0, S, C);
             if (!S)
@@ -369,10 +370,10 @@ void SymbolicEvaluation::getSymExprOrConstant(Value* V, SymExpr*& S, int64_t& C)
                 return;
             }
             break;
-          }
+        }
         }
     }
- 
+
     // Unevaluable for V.
     if (S == nullptr)
     {
@@ -400,7 +401,7 @@ int SymbolicEvaluation::cmp(const SymProd* T0, const SymProd* T1)
     if (sz0 < sz1) {
         return 1;
     }
-    for (int i=0; i < sz0; ++i)
+    for (int i = 0; i < sz0; ++i)
     {
         Value* V0 = T0->Prod[i];
         Value* V1 = T1->Prod[i];
@@ -431,14 +432,14 @@ int SymbolicEvaluation::cmp(const SymProd* T0, const SymProd* T1)
 SymExpr* SymbolicEvaluation::add(
     SymExpr* S0, SymExpr* S1, bool negateS1)
 {
-    SymExpr *Expr = new (m_symEvaAllocator) SymExpr();
+    SymExpr* Expr = new (m_symEvaAllocator) SymExpr();
 
-    int i0=0, i1=0;
+    int i0 = 0, i1 = 0;
     const int e0 = S0->SymTerms.size();
     const int e1 = S1->SymTerms.size();
     while (i0 < e0 && i1 < e1)
     {
-        SymTerm *T = nullptr;
+        SymTerm* T = nullptr;
         int64_t Coeff;
         SymTerm* T0 = S0->SymTerms[i0];
         SymTerm* T1 = S1->SymTerms[i1];
@@ -466,9 +467,9 @@ SymExpr* SymbolicEvaluation::add(
                 ++i1;
             }
         }
- 
+
         if (T != nullptr) {
-            SymTerm *newT = new (m_symEvaAllocator) SymTerm();
+            SymTerm* newT = new (m_symEvaAllocator) SymTerm();
             Expr->SymTerms.push_back(newT);
             copy(newT, T);
             newT->Coeff = Coeff;
@@ -477,14 +478,14 @@ SymExpr* SymbolicEvaluation::add(
 
     while (i0 < e0)
     {
-        SymTerm *newT = new (m_symEvaAllocator) SymTerm();
+        SymTerm* newT = new (m_symEvaAllocator) SymTerm();
         Expr->SymTerms.push_back(newT);
         copy(newT, S0->SymTerms[i0]);
         ++i0;
     }
     while (i1 < e1)
     {
-        SymTerm *newT = new (m_symEvaAllocator) SymTerm();
+        SymTerm* newT = new (m_symEvaAllocator) SymTerm();
         Expr->SymTerms.push_back(newT);
         copy(newT, S1->SymTerms[i1]);
         if (negateS1) {
@@ -494,13 +495,13 @@ SymExpr* SymbolicEvaluation::add(
     }
 
     Expr->ConstTerm = negateS1 ? (S0->ConstTerm - S1->ConstTerm)
-                               : (S0->ConstTerm + S1->ConstTerm);
+        : (S0->ConstTerm + S1->ConstTerm);
     return Expr;
 }
 
 SymExpr* SymbolicEvaluation::add(SymExpr* S, int64_t C)
 {
-    SymExpr *Expr = new (m_symEvaAllocator) SymExpr();
+    SymExpr* Expr = new (m_symEvaAllocator) SymExpr();
     copy(Expr, S);
     Expr->ConstTerm += C;
     return Expr;
@@ -513,7 +514,7 @@ SymExpr* SymbolicEvaluation::mul(SymExpr* S, int64_t C)
     {
         for (int i = 0, e = S->SymTerms.size(); i < e; ++i)
         {
-            SymTerm *newT = new (m_symEvaAllocator) SymTerm();
+            SymTerm* newT = new (m_symEvaAllocator) SymTerm();
             copy(newT, S->SymTerms[i]);
             newT->Coeff *= C;
             Expr->SymTerms.push_back(newT);
@@ -534,7 +535,7 @@ bool SymbolicEvaluation::isOffByConstant(
         return false;
     }
 
-    for (int i=0; i < e; ++i)
+    for (int i = 0; i < e; ++i)
     {
         if (S0->SymTerms[i]->Coeff != S1->SymTerms[i]->Coeff ||
             cmp(S0->SymTerms[i]->Term, S1->SymTerms[i]->Term) != 0) {
@@ -559,7 +560,7 @@ IGC_INITIALIZE_PASS_END(SLMConstProp, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY
 
 char SLMConstProp::ID = 0;
 
-FunctionPass *IGC::createSLMConstPropPass()
+FunctionPass* IGC::createSLMConstPropPass()
 {
     return new SLMConstProp();
 }
@@ -576,7 +577,7 @@ bool SLMConstProp::isLinearFuncOfLocalIds(SymExpr* SE)
         Value* Val = aT->Term->Prod[0];
 
         // Check if val is local ids, if not, quit
-        GenIntrinsicInst *sysVal = dyn_cast<llvm::GenIntrinsicInst>(Val);
+        GenIntrinsicInst* sysVal = dyn_cast<llvm::GenIntrinsicInst>(Val);
         if (!sysVal ||
             sysVal->getIntrinsicID() != GenISAIntrinsic::GenISA_DCL_SystemValue) {
             return false;
@@ -603,7 +604,7 @@ bool SLMConstProp::isEqual(Constant* C0, Constant* C1)
 
     ConstantFP* CF0;
     ConstantFP* CF1;
-    if (ConstantDataVector* CDV0 = dyn_cast<ConstantDataVector>(C0))
+    if (ConstantDataVector * CDV0 = dyn_cast<ConstantDataVector>(C0))
     {
         CF0 = dyn_cast<ConstantFP>(CDV0->getElementAsConstant(0));
     }
@@ -612,7 +613,7 @@ bool SLMConstProp::isEqual(Constant* C0, Constant* C1)
         CF0 = dyn_cast<ConstantFP>(C0);
     }
 
-    if (ConstantDataVector* CDV1 = dyn_cast<ConstantDataVector>(C1))
+    if (ConstantDataVector * CDV1 = dyn_cast<ConstantDataVector>(C1))
     {
         CF1 = dyn_cast<ConstantFP>(CDV1->getElementAsConstant(0));
     }
@@ -630,7 +631,7 @@ bool SLMConstProp::isEqual(Constant* C0, Constant* C1)
 
 bool SLMConstProp::isFloatType(Type* Ty)
 {
-    if (VectorType* vTy = dyn_cast<VectorType>(Ty))
+    if (VectorType * vTy = dyn_cast<VectorType>(Ty))
     {
         if (vTy->getNumElements() > 1)
         {
@@ -661,14 +662,14 @@ bool SLMConstProp::find_PATTERN_REPEAT_WITH_STRIDE(PatternInfo& aPattern)
     // (Strong requirement, and can be relaxed to cover more cases if we
     //  have more cases.)
     int nStores = (int)m_storeInsts.size();
-    for (int i=1; i < (nStores - 1); ++i)
+    for (int i = 1; i < (nStores - 1); ++i)
     {
         int ix = m_storeInfos[i].ix;
         StoreInst* SI = m_storeInsts[ix];
         Type* Ty = SI->getValueOperand()->getType();
         int off = m_storeInfos[i].offset;
         int endOff = off + (int)m_DL->getTypeStoreSize(Ty);
-        if (m_storeInfos[i+1].offset < endOff) {
+        if (m_storeInfos[i + 1].offset < endOff) {
             return false;
         }
     }
@@ -686,7 +687,7 @@ bool SLMConstProp::find_PATTERN_REPEAT_WITH_STRIDE(PatternInfo& aPattern)
             }
             else if (ix_2nd == -1) {
                 if (isEqual(m_storeInfos[ix_1st].Val,
-                            m_storeInfos[i].Val))
+                    m_storeInfos[i].Val))
                 {
                     ix_2nd = i;
                     break;
@@ -696,10 +697,10 @@ bool SLMConstProp::find_PATTERN_REPEAT_WITH_STRIDE(PatternInfo& aPattern)
     }
 
     assert(ix_1st != -1 &&
-           "Constant store expected, but not found!");
+        "Constant store expected, but not found!");
 
     SymExpr* basePtr = m_storeInfos[0].SE;
-    StoreInst* lastSI = m_storeInsts[m_storeInfos[nStores-1].ix];
+    StoreInst* lastSI = m_storeInsts[m_storeInfos[nStores - 1].ix];
     Type* lastTy = lastSI->getValueOperand()->getType();
 
     // Keep track of which stores are in this pattern.
@@ -744,7 +745,7 @@ bool SLMConstProp::find_PATTERN_REPEAT_WITH_STRIDE(PatternInfo& aPattern)
 
         // Now verify that every store at offset that is multiple of "stride",
         // will have the same constant as its stored value.
-        Constant*  CVal0 = m_storeInfos[ix_1st].Val;
+        Constant* CVal0 = m_storeInfos[ix_1st].Val;
         int offset = m_storeInfos[ix_1st].offset;
         offset = (offset % stride);
         for (int i = 0; i < nStores; ++i)
@@ -769,19 +770,19 @@ bool SLMConstProp::find_PATTERN_REPEAT_WITH_STRIDE(PatternInfo& aPattern)
             }
         }
     }
-    
+
     // pattern found.
     aPattern.Type = PATTERN_REPEAT_WITH_STRIDE;
     aPattern.stride = stride;
     aPattern.storedVal = m_storeInfos[ix_1st].Val;
-  
+
     // Normalize the offset to be smaller than stride
     // (They are still the same pattern.)
     int normalized_ofst = m_storeInfos[ix_1st].offset + (int)basePtr->ConstTerm;
     aPattern.offset = (normalized_ofst % stride);
 
     // Set type for each storeInfos
-    for (int i=0, e = patternStores.size(); i < e; ++i)
+    for (int i = 0, e = patternStores.size(); i < e; ++i)
     {
         int ix = patternStores[i];
         m_storeInfos[ix].ty = PATTERN_REPEAT_WITH_STRIDE;
@@ -791,14 +792,14 @@ bool SLMConstProp::find_PATTERN_REPEAT_WITH_STRIDE(PatternInfo& aPattern)
     return true;
 }
 
-bool SLMConstProp::perform_PATTERN_REPEAT_WITH_STRIDE (
+bool SLMConstProp::perform_PATTERN_REPEAT_WITH_STRIDE(
     PatternInfo& aPattern)
 {
     bool mayAccessPattern = false;
     bool changed = false;
     SymExpr* basePtr = nullptr;
     int nLoads = (int)m_loadInsts.size();
-    for(int i=0; i < nLoads; ++i)
+    for (int i = 0; i < nLoads; ++i)
     {
         LoadInst* LI = m_loadInsts[i];
         Value* ptrAddr = LI->getPointerOperand();
@@ -809,7 +810,7 @@ bool SLMConstProp::perform_PATTERN_REPEAT_WITH_STRIDE (
             mayAccessPattern = true;
             continue;
         }
-        SymExpr*  aSE = m_SymEval.getSymExpr(ptrAddr);
+        SymExpr* aSE = m_SymEval.getSymExpr(ptrAddr);
 
         if (basePtr == nullptr)
         {
@@ -883,10 +884,10 @@ bool SLMConstProp::analyzeConstantStores()
 
     int nStores = (int)m_storeInsts.size();
     m_storeInfos.resize(nStores);
- 
+
     // Initially, use storeInfos[0]'s SE as the base SE.
     SymExpr* basePtr = nullptr;
-    for (int i=0; i < nStores; ++i)
+    for (int i = 0; i < nStores; ++i)
     {
         int64_t diff = 0;
         StoreInst* SI = m_storeInsts[i];
@@ -899,7 +900,7 @@ bool SLMConstProp::analyzeConstantStores()
             return false;
         }
         m_storeInfos[i].ix = i;
-        SymExpr*  aSE = m_SymEval.getSymExpr(ptrAddr);
+        SymExpr* aSE = m_SymEval.getSymExpr(ptrAddr);
         m_storeInfos[i].SE = aSE;
         m_storeInfos[i].Val = dyn_cast<Constant>(storedVal);
 
@@ -928,7 +929,7 @@ bool SLMConstProp::analyzeConstantStores()
     int adjustAmt = m_storeInfos[0].offset;
     if (adjustAmt != 0)
     {
-        for (int i=0; i < nStores; ++i) {
+        for (int i = 0; i < nStores; ++i) {
             m_storeInfos[i].offset -= adjustAmt;
         }
     }
@@ -940,7 +941,7 @@ bool SLMConstProp::analyzeConstantStores()
     if (!isLinearFuncOfLocalIds(basePtr)) {
         return false;
     }
- 
+
     //
     // Now, all stores are analzable, meaning their address is base + const-offset.
     // Next, find a pattern that we want to handle.
@@ -964,9 +965,9 @@ bool SLMConstProp::analyzeConstantStores()
 bool SLMConstProp::performConstProp()
 {
     bool changed = false;
-    for (int i=0, e = m_patternInfos.size(); i < e; ++i)
+    for (int i = 0, e = m_patternInfos.size(); i < e; ++i)
     {
-        switch ( m_patternInfos[i].Type) {
+        switch (m_patternInfos[i].Type) {
         case PATTERN_REPEAT_WITH_STRIDE:
             changed = perform_PATTERN_REPEAT_WITH_STRIDE(m_patternInfos[i]);
             break;
@@ -991,7 +992,7 @@ bool SLMConstProp::runOnFunction(Function& F)
 #endif
 
     // Do this only for the top function
-    MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     if (pMdUtils->findFunctionsInfoItem(&F) == pMdUtils->end_FunctionsInfo())
     {
         return false;
@@ -1048,28 +1049,28 @@ bool SLMConstProp::runOnFunction(Function& F)
 
     for (Function::iterator FI = m_F->begin(), FE = m_F->end(); FI != FE; ++FI)
     {
-        BasicBlock *BB = &*FI;
+        BasicBlock* BB = &*FI;
         for (BasicBlock::iterator BI = BB->begin(), BE = BB->end(); BI != BE; ++BI)
         {
-            Instruction *I = &*BI;
-            if (LoadInst *LI = dyn_cast<LoadInst>(I)) {
+            Instruction* I = &*BI;
+            if (LoadInst * LI = dyn_cast<LoadInst>(I)) {
                 if (LI->getPointerAddressSpace() == ADDRESS_SPACE_LOCAL) {
                     m_loadInsts.push_back(LI);
                     (void)loadBBs.insert(BB);
                 }
             }
-            else if (StoreInst *SI = dyn_cast<StoreInst>(I)) {
+            else if (StoreInst * SI = dyn_cast<StoreInst>(I)) {
                 if (SI->getPointerAddressSpace() == ADDRESS_SPACE_LOCAL)
                 {
                     m_storeInsts.push_back(SI);
                     (void)storeBBs.insert(BB);
-                    if (Constant* CVal = dyn_cast<Constant>(SI->getValueOperand()))
+                    if (Constant * CVal = dyn_cast<Constant>(SI->getValueOperand()))
                     {
                         hasConstantStore = true;
                     }
                 }
             }
-            else if (CallInst *CallI = dyn_cast<CallInst>(I)) {
+            else if (CallInst * CallI = dyn_cast<CallInst>(I)) {
                 // Skip if a user func is invoked.
                 Function* Callee = CallI->getCalledFunction();
                 if ((!Callee && !CallI->isInlineAsm()) || (Callee && !Callee->isDeclaration())) {
@@ -1078,7 +1079,7 @@ bool SLMConstProp::runOnFunction(Function& F)
                 }
 
                 bool checkSLMArg = true;
-                if (GenIntrinsicInst* GII = dyn_cast<GenIntrinsicInst>(CallI)) {
+                if (GenIntrinsicInst * GII = dyn_cast<GenIntrinsicInst>(CallI)) {
                     GenISAIntrinsic::ID id = GII->getIntrinsicID();
                     if (!barrierInst &&
                         id == GenISAIntrinsic::GenISA_threadgroupbarrier) {
@@ -1092,9 +1093,9 @@ bool SLMConstProp::runOnFunction(Function& F)
                     // Make sure those intrinsic does not use ptr to SLM
                     // (for example, SLM atomic, etc.
                     for (int i = 0, e = (int)CallI->getNumArgOperands();
-                         i < e; ++i) {
+                        i < e; ++i) {
                         Type* Ty = CallI->getArgOperand(i)->getType();
-                        if (PointerType* PTy = dyn_cast<PointerType>(Ty)) {
+                        if (PointerType * PTy = dyn_cast<PointerType>(Ty)) {
                             if (PTy->getAddressSpace() == ADDRESS_SPACE_LOCAL)
                             {
                                 usedByNonLDST = true;
@@ -1107,9 +1108,9 @@ bool SLMConstProp::runOnFunction(Function& F)
                     }
                 }
             }
-            else if (AddrSpaceCastInst *ASC = dyn_cast<AddrSpaceCastInst>(I)) {
-                PointerType *DstPTy = cast<PointerType>(ASC->getDestTy());
-                PointerType *SrcPTy = cast<PointerType>(ASC->getSrcTy());
+            else if (AddrSpaceCastInst * ASC = dyn_cast<AddrSpaceCastInst>(I)) {
+                PointerType* DstPTy = cast<PointerType>(ASC->getDestTy());
+                PointerType* SrcPTy = cast<PointerType>(ASC->getSrcTy());
                 if (DstPTy->getAddressSpace() == ADDRESS_SPACE_LOCAL ||
                     SrcPTy->getAddressSpace() == ADDRESS_SPACE_LOCAL) {
                     usedByNonLDST = true;
@@ -1122,9 +1123,9 @@ bool SLMConstProp::runOnFunction(Function& F)
             break;
         }
     }
-    
+
     if (mayHaveUserFuncCalls || usedByNonLDST ||
-        !hasConstantStore || !barrierInst || m_loadInsts.size() == 0 ) {
+        !hasConstantStore || !barrierInst || m_loadInsts.size() == 0) {
         return false;
     }
 
@@ -1149,12 +1150,12 @@ bool SLMConstProp::runOnFunction(Function& F)
     if (sameBBAsBarrier)
     {
         // Make sure there is no store after barrier instruction
-        BasicBlock::iterator II (barrierInst);
+        BasicBlock::iterator II(barrierInst);
         BasicBlock::iterator IE = barrierBB->end();
         for (++II; II != IE; ++II)
         {
             Instruction* Inst = &*II;
-            StoreInst *SI = dyn_cast<StoreInst>(Inst);
+            StoreInst* SI = dyn_cast<StoreInst>(Inst);
             if (SI && SI->getPointerAddressSpace() == ADDRESS_SPACE_LOCAL) {
                 return false;
             }
@@ -1180,7 +1181,7 @@ bool SLMConstProp::runOnFunction(Function& F)
         for (BasicBlock::iterator II = barrierBB->begin(); II != IE; ++II)
         {
             Instruction* Inst = &*II;
-            LoadInst *LI = dyn_cast<LoadInst>(Inst);
+            LoadInst* LI = dyn_cast<LoadInst>(Inst);
             if (LI && LI->getPointerAddressSpace() == ADDRESS_SPACE_LOCAL) {
                 return false;
             }
@@ -1188,7 +1189,7 @@ bool SLMConstProp::runOnFunction(Function& F)
     }
 
     Module* M = m_F->getParent();
-    m_DL = & M->getDataLayout();
+    m_DL = &M->getDataLayout();
 
     // Analyze the constant stores and see if they have a particular pattern
     if (!analyzeConstantStores()) {
@@ -1204,7 +1205,7 @@ bool SLMConstProp::runOnFunction(Function& F)
     {
         CodeGenContextWrapper* pCtxWrapper = &getAnalysis<CodeGenContextWrapper>();
         m_Ctx = pCtxWrapper->getCodeGenContext();
-        
+
         //COMPILER_TIME_END(cgCtx, TIME_CG_PreCodeEmit);
         DumpLLVMIR(m_Ctx, "afterSLMConstProp");
     }

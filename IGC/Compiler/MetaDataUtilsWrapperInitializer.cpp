@@ -48,7 +48,7 @@ MetaDataUtilsWrapperInitializer::MetaDataUtilsWrapperInitializer() : ModulePass(
 
 bool MetaDataUtilsWrapperInitializer::runOnModule(Module& M)
 {
-    MetaDataUtilsWrapper &mduw = getAnalysis<MetaDataUtilsWrapper>();
+    MetaDataUtilsWrapper& mduw = getAnalysis<MetaDataUtilsWrapper>();
     mduw.getMetaDataUtils()->setModule(&M);
     return true;
 }

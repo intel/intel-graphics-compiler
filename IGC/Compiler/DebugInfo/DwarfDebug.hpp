@@ -64,7 +64,7 @@ namespace llvm
     class MCSection;
 }
 
-bool isUnsignedDIType(IGC::DwarfDebug *DD, llvm::DIType* Ty);
+bool isUnsignedDIType(IGC::DwarfDebug* DD, llvm::DIType* Ty);
 
 namespace IGC
 {
@@ -86,8 +86,8 @@ namespace IGC
     class DotDebugLocEntry
     {
         // Begin and end symbols for the address range that this location is valid.
-        const llvm::MCSymbol *Begin = nullptr;
-        const llvm::MCSymbol *End = nullptr;
+        const llvm::MCSymbol* Begin = nullptr;
+        const llvm::MCSymbol* End = nullptr;
 
         // start/end %ip
         const uint64_t start = 0;
@@ -98,14 +98,14 @@ namespace IGC
         const llvm::Instruction* m_pDbgInst;
 
         // The variable to which this location entry corresponds.
-        const llvm::MDNode *Variable;
+        const llvm::MDNode* Variable;
 
         // Whether this location has been merged.
         bool Merged;
 
     public:
         DotDebugLocEntry() : Begin(0), End(0), m_pDbgInst(nullptr), Variable(nullptr), Merged(false) { }
-        DotDebugLocEntry(const llvm::MCSymbol *B, const llvm::MCSymbol *E, const llvm::Instruction* pDbgInst, const llvm::MDNode *V)
+        DotDebugLocEntry(const llvm::MCSymbol* B, const llvm::MCSymbol* E, const llvm::Instruction* pDbgInst, const llvm::MDNode* V)
             : Begin(B), End(E), m_pDbgInst(pDbgInst), Variable(V), Merged(false) { }
         DotDebugLocEntry(const uint64_t s, const uint64_t e, const llvm::Instruction* pDbgInst, const llvm::MDNode* V)
             : start(s), end(e), m_pDbgInst(pDbgInst), Variable(V) {}
@@ -114,7 +114,7 @@ namespace IGC
         /// labels are referenced is used to find debug_loc offset for a given DIE.
         bool isEmpty() { return start == 0 && end == 0; }
         bool isMerged() { return Merged; }
-        void Merge(DotDebugLocEntry *Next)
+        void Merge(DotDebugLocEntry* Next)
         {
             if (Begin && m_pDbgInst == Next->m_pDbgInst && End == Next->Begin)
             {
@@ -123,9 +123,9 @@ namespace IGC
             }
         }
 
-        const llvm::MDNode *getVariable() const { return Variable; }
-        const llvm::MCSymbol *getBeginSym() const { return Begin; }
-        const llvm::MCSymbol *getEndSym() const { return End; }
+        const llvm::MDNode* getVariable() const { return Variable; }
+        const llvm::MCSymbol* getBeginSym() const { return Begin; }
+        const llvm::MCSymbol* getEndSym() const { return End; }
         const llvm::Instruction* getDbgInst() const { return m_pDbgInst; }
         uint64_t getStart() const { return start; }
         uint64_t getEnd() const { return end; }
@@ -141,30 +141,30 @@ namespace IGC
     /// \brief This class is used to track local variable information.
     class DbgVariable
     {
-        const llvm::DILocalVariable *Var;   // Variable Descriptor.
-        const llvm::DILocation *IA;              // Inlined at location.
-        DIE *TheDIE;                       // Variable DIE.
+        const llvm::DILocalVariable* Var;   // Variable Descriptor.
+        const llvm::DILocation* IA;              // Inlined at location.
+        DIE* TheDIE;                       // Variable DIE.
         unsigned DotDebugLocOffset;        // Offset in DotDebugLocEntries.
-        DbgVariable *AbsVar = nullptr;     // Corresponding Abstract variable, if any.
-        const llvm::Instruction *m_pDbgInst; // DBG_VALUE instruction of the variable.
+        DbgVariable* AbsVar = nullptr;     // Corresponding Abstract variable, if any.
+        const llvm::Instruction* m_pDbgInst; // DBG_VALUE instruction of the variable.
         std::string decorations;
 
     public:
         // AbsVar may be NULL.
-        DbgVariable(const llvm::DILocalVariable* V, const llvm::DILocation *IA_, DbgVariable* AV)
+        DbgVariable(const llvm::DILocalVariable* V, const llvm::DILocation* IA_, DbgVariable* AV)
             : Var(V), IA(IA_), TheDIE(0), DotDebugLocOffset(~0U), AbsVar(AV), m_pDbgInst(0) { }
 
         // Accessors.
         const llvm::DILocation* getLocation() const { return IA; }
         const llvm::DILocalVariable* getVariable()      const { return Var; }
-        void setDIE(DIE *D)                       { TheDIE = D; }
-        DIE *getDIE()                       const { return TheDIE; }
-        void setDotDebugLocOffset(unsigned O)     { DotDebugLocOffset = O; }
+        void setDIE(DIE* D) { TheDIE = D; }
+        DIE* getDIE()                       const { return TheDIE; }
+        void setDotDebugLocOffset(unsigned O) { DotDebugLocOffset = O; }
         unsigned getDotDebugLocOffset()     const { return DotDebugLocOffset; }
         llvm::StringRef getName()           const { return Var->getName(); }
-        DbgVariable *getAbstractVariable()  const { return AbsVar; }
-        const llvm::Instruction *getDbgInst() const { return m_pDbgInst; }
-        void setDbgInst(const llvm::Instruction *pInst) { m_pDbgInst = pInst; }
+        DbgVariable* getAbstractVariable()  const { return AbsVar; }
+        const llvm::Instruction* getDbgInst() const { return m_pDbgInst; }
+        void setDbgInst(const llvm::Instruction* pInst) { m_pDbgInst = pInst; }
         // Translate tag to proper Dwarf tag.
         llvm::dwarf::Tag getTag()                  const
         {
@@ -224,12 +224,12 @@ namespace IGC
         /// resolve - Look in the DwarfDebug map for the MDNode that
         /// corresponds to the reference.
         /// Find the MDNode for the given reference.
-        template <typename T> T *resolve(llvm::TypedDINodeRef<T> Ref) const {
-          return Ref.resolve();
+        template <typename T> T * resolve(llvm::TypedDINodeRef<T> Ref) const {
+            return Ref.resolve();
         }
 #else
-        template <typename T> inline T *resolve(T* Ref) const {
-          return Ref;
+        template <typename T> inline T* resolve(T* Ref) const {
+            return Ref;
         }
 #endif
     };
@@ -237,44 +237,44 @@ namespace IGC
     /// \brief Helper used to pair up a symbol and its DWARF compile unit.
     struct SymbolCU
     {
-        SymbolCU(CompileUnit *CU, const llvm::MCSymbol *Sym) : Sym(Sym), CU(CU) {}
-        const llvm::MCSymbol *Sym;
-        CompileUnit *CU;
+        SymbolCU(CompileUnit* CU, const llvm::MCSymbol* Sym) : Sym(Sym), CU(CU) {}
+        const llvm::MCSymbol* Sym;
+        CompileUnit* CU;
     };
 
     /// \brief Collects and handles llvm::dwarf debug information.
     class DwarfDebug
     {
         // Target of Dwarf emission.
-        IGC::StreamEmitter *Asm;
+        IGC::StreamEmitter* Asm;
 
-        ::IGC::VISAModule *m_pModule;
+        ::IGC::VISAModule* m_pModule;
 
         // All DIEValues are allocated through this allocator.
         llvm::BumpPtrAllocator DIEValueAllocator;
 
         // Handle to the a compile unit used for the inline extension handling.
-        CompileUnit *FirstCU;
+        CompileUnit* FirstCU;
 
         // Maps MDNode with its corresponding CompileUnit.
-        llvm::DenseMap <const llvm::MDNode *, CompileUnit *> CUMap;
+        llvm::DenseMap <const llvm::MDNode*, CompileUnit*> CUMap;
 
         // Maps subprogram MDNode with its corresponding CompileUnit.
-        llvm::DenseMap <const llvm::MDNode *, CompileUnit *> SPMap;
+        llvm::DenseMap <const llvm::MDNode*, CompileUnit*> SPMap;
 
         // Maps a CU DIE with its corresponding CompileUnit.
-        llvm::DenseMap <const DIE *, CompileUnit *> CUDieMap;
+        llvm::DenseMap <const DIE*, CompileUnit*> CUDieMap;
 
         /// Maps MDNodes for type sysstem with the corresponding DIEs. These DIEs can
         /// be shared across CUs, that is why we keep the map here instead
         /// of in CompileUnit.
-        llvm::DenseMap<const llvm::MDNode *, DIE *> MDTypeNodeToDieMap;
+        llvm::DenseMap<const llvm::MDNode*, DIE*> MDTypeNodeToDieMap;
 
         // Used to uniquely define abbreviations.
         llvm::FoldingSet<DIEAbbrev> AbbreviationsSet;
 
         // A list of all the unique abbreviations in use.
-        std::vector<DIEAbbrev *> Abbreviations;
+        std::vector<DIEAbbrev*> Abbreviations;
 
         // Stores the current file ID for a given compile unit.
         llvm::DenseMap <unsigned, unsigned> FileIDCUMap;
@@ -286,23 +286,23 @@ namespace IGC
         std::vector<SymbolCU> ArangeLabels;
 
         // Provides a unique id per text section.
-        typedef llvm::DenseMap<const llvm::MCSection *, llvm::SmallVector<SymbolCU, 8> > SectionMapType;
+        typedef llvm::DenseMap<const llvm::MCSection*, llvm::SmallVector<SymbolCU, 8> > SectionMapType;
         SectionMapType SectionMap;
 
         // List of arguments for current function.
-        llvm::SmallVector<DbgVariable *, 8> CurrentFnArguments;
+        llvm::SmallVector<DbgVariable*, 8> CurrentFnArguments;
 
         ::IGC::LexicalScopes LScopes;
 
         // Collection of abstract subprogram DIEs.
-        llvm::DenseMap<const llvm::MDNode *, DIE *> AbstractSPDies;
+        llvm::DenseMap<const llvm::MDNode*, DIE*> AbstractSPDies;
 
         // Collection of dbg variables of a scope.
-        typedef llvm::DenseMap<::IGC::LexicalScope *, llvm::SmallVector<DbgVariable *, 8> > ScopeVariablesMap;
+        typedef llvm::DenseMap<::IGC::LexicalScope*, llvm::SmallVector<DbgVariable*, 8> > ScopeVariablesMap;
         ScopeVariablesMap ScopeVariables;
 
         // Collection of abstract variables.
-        llvm::DenseMap<const llvm::MDNode *, DbgVariable *> AbstractVariables;
+        llvm::DenseMap<const llvm::MDNode*, DbgVariable*> AbstractVariables;
 
         // Collection of DotDebugLocEntry.
         llvm::SmallVector<DotDebugLocEntry, 4> DotDebugLocEntries;
@@ -310,17 +310,17 @@ namespace IGC
 
         // Collection of subprogram DIEs that are marked (at the end of the module)
         // as DW_AT_inline.
-        llvm::SmallPtrSet<DIE *, 4> InlinedSubprogramDIEs;
+        llvm::SmallPtrSet<DIE*, 4> InlinedSubprogramDIEs;
 
         // This is a collection of subprogram MDNodes that are processed to
         // create DIEs.
-        llvm::SmallPtrSet<const llvm::MDNode *, 16> ProcessedSPNodes;
+        llvm::SmallPtrSet<const llvm::MDNode*, 16> ProcessedSPNodes;
 
         // Maps instruction with label emitted before instruction.
-        llvm::DenseMap<const llvm::Instruction *, llvm::MCSymbol *> LabelsBeforeInsn;
+        llvm::DenseMap<const llvm::Instruction*, llvm::MCSymbol*> LabelsBeforeInsn;
 
         // Maps instruction with label emitted after instruction.
-        llvm::DenseMap<const llvm::Instruction *, llvm::MCSymbol *> LabelsAfterInsn;
+        llvm::DenseMap<const llvm::Instruction*, llvm::MCSymbol*> LabelsAfterInsn;
 
         // Every user variable mentioned by a DBG_VALUE instruction in order of
         // appearance.
@@ -332,7 +332,7 @@ namespace IGC
         typedef llvm::DenseMap<const llvm::MDNode*, llvm::SmallVector<const llvm::Instruction*, 4> > DbgValueHistoryMap;
         DbgValueHistoryMap DbgValues;
 
-        llvm::SmallVector<const llvm::MCSymbol *, 8> DebugRangeSymbols;
+        llvm::SmallVector<const llvm::MCSymbol*, 8> DebugRangeSymbols;
 
         // Used when emitting Gen ISA offsets directly
         llvm::SmallVector<unsigned int, 8> GenISADebugRangeSymbols;
@@ -340,7 +340,7 @@ namespace IGC
         // Previous instruction's location information. This is used to determine
         // label location to indicate scope boundries in llvm::dwarf debug info.
         llvm::DebugLoc PrevInstLoc;
-        llvm::MCSymbol *PrevLabel;
+        llvm::MCSymbol* PrevLabel;
 
         // This location indicates end of function prologue and beginning of function
         // body.
@@ -349,12 +349,12 @@ namespace IGC
         // Section Symbols: these are assembler temporary labels that are emitted at
         // the beginning of each supported llvm::dwarf section.  These are used to form
         // section offsets and are created by EmitSectionLabels.
-        llvm::MCSymbol *DwarfInfoSectionSym, *DwarfAbbrevSectionSym;
-        llvm::MCSymbol *DwarfStrSectionSym, *TextSectionSym, *DwarfDebugRangeSectionSym;
-        llvm::MCSymbol *DwarfDebugLocSectionSym, *DwarfLineSectionSym;
-        llvm::MCSymbol *FunctionBeginSym, *FunctionEndSym;
-        llvm::MCSymbol *ModuleBeginSym, *ModuleEndSym;
-        llvm::MCSymbol *DwarfFrameSectionSym;
+        llvm::MCSymbol* DwarfInfoSectionSym, * DwarfAbbrevSectionSym;
+        llvm::MCSymbol* DwarfStrSectionSym, * TextSectionSym, * DwarfDebugRangeSectionSym;
+        llvm::MCSymbol* DwarfDebugLocSectionSym, * DwarfLineSectionSym;
+        llvm::MCSymbol* FunctionBeginSym, * FunctionEndSym;
+        llvm::MCSymbol* ModuleBeginSym, * ModuleEndSym;
+        llvm::MCSymbol* DwarfFrameSectionSym;
 
         // As an optimization, there is no need to emit an entry in the directory
         // table for the same directory as DW_AT_comp_dir.
@@ -367,13 +367,13 @@ namespace IGC
         // have exposed. See accessor functions below for description.
 
         // Holder for types that are going to be extracted out into a type unit.
-        std::vector<DIE *> TypeUnits;
+        std::vector<DIE*> TypeUnits;
 
         // Version of llvm::dwarf we're emitting.
         unsigned DwarfVersion;
 
         // A pointer to all units in the section.
-        llvm::SmallVector<CompileUnit *, 1> CUs;
+        llvm::SmallVector<CompileUnit*, 1> CUs;
 
         // Collection of strings for this unit and assorted symbols.
         // A String->Symbol mapping of strings used by indirect
@@ -385,39 +385,39 @@ namespace IGC
 
     private:
 
-        void addScopeVariable(::IGC::LexicalScope *LS, DbgVariable *Var);
+        void addScopeVariable(::IGC::LexicalScope* LS, DbgVariable* Var);
 
         /// \brief Find abstract variable associated with Var.
-        DbgVariable *findAbstractVariable(llvm::DIVariable* Var, llvm::DebugLoc Loc);
+        DbgVariable* findAbstractVariable(llvm::DIVariable* Var, llvm::DebugLoc Loc);
 
         /// \brief Find DIE for the given subprogram and attach appropriate
         /// DW_AT_low_pc and DW_AT_high_pc attributes. If there are global
         /// variables in this scope then create and insert DIEs for these
         /// variables.
-        DIE *updateSubprogramScopeDIE(CompileUnit *SPCU, llvm::DISubprogram* SP);
+        DIE* updateSubprogramScopeDIE(CompileUnit* SPCU, llvm::DISubprogram* SP);
 
         /// \brief Construct new DW_TAG_lexical_block for this scope and
         /// attach DW_AT_low_pc/DW_AT_high_pc labels.
-        DIE *constructLexicalScopeDIE(CompileUnit *TheCU, ::IGC::LexicalScope *Scope);
+        DIE* constructLexicalScopeDIE(CompileUnit* TheCU, ::IGC::LexicalScope* Scope);
         /// A helper function to check whether the DIE for a given Scope is going
         /// to be null.
-        bool isLexicalScopeDIENull(::IGC::LexicalScope *Scope);
+        bool isLexicalScopeDIENull(::IGC::LexicalScope* Scope);
 
         /// \brief This scope represents inlined body of a function. Construct
         /// DIE to represent this concrete inlined copy of the function.
-        DIE *constructInlinedScopeDIE(CompileUnit *TheCU, ::IGC::LexicalScope *Scope);
+        DIE* constructInlinedScopeDIE(CompileUnit* TheCU, ::IGC::LexicalScope* Scope);
 
         /// \brief Construct a DIE for this scope.
-        DIE *constructScopeDIE(CompileUnit *TheCU, ::IGC::LexicalScope *Scope);
+        DIE* constructScopeDIE(CompileUnit* TheCU, ::IGC::LexicalScope* Scope);
         /// A helper function to create children of a Scope DIE.
-        DIE *createScopeChildrenDIE(CompileUnit *TheCU, ::IGC::LexicalScope *Scope,
-            llvm::SmallVectorImpl<DIE*> &Children);
+        DIE* createScopeChildrenDIE(CompileUnit* TheCU, ::IGC::LexicalScope* Scope,
+            llvm::SmallVectorImpl<DIE*>& Children);
 
         /// \brief Emit initial Dwarf sections with a label at the start of each one.
         void emitSectionLabels();
 
         /// \brief Compute the size and offset of a DIE given an incoming Offset.
-        unsigned computeSizeAndOffset(DIE *Die, unsigned Offset);
+        unsigned computeSizeAndOffset(DIE* Die, unsigned Offset);
 
         /// \brief Compute the size and offset of all the DIEs.
         void computeSizeAndOffsets();
@@ -458,19 +458,19 @@ namespace IGC
         void emitDebugFrame();
 
         /// \brief Recursively Emits a debug information entry.
-        void emitDIE(DIE *Die);
+        void emitDIE(DIE* Die);
 
         /// \brief Create new CompileUnit for the given metadata node with tag
         /// DW_TAG_compile_unit.
-        CompileUnit *constructCompileUnit(llvm::DICompileUnit* DIUnit);
+        CompileUnit* constructCompileUnit(llvm::DICompileUnit* DIUnit);
 
         /// \brief Construct subprogram DIE.
-        void constructSubprogramDIE(CompileUnit *TheCU, const llvm::MDNode *N);
+        void constructSubprogramDIE(CompileUnit* TheCU, const llvm::MDNode* N);
 
         /// \brief Register a source line with debug info. Returns the unique
         /// label that was emitted and which provides correspondence to the
         /// source line list.
-        void recordSourceLine(unsigned Line, unsigned Col, const llvm::MDNode *Scope,
+        void recordSourceLine(unsigned Line, unsigned Col, const llvm::MDNode* Scope,
             unsigned Flags);
 
         /// \brief Indentify instructions that are marking the beginning of or
@@ -479,51 +479,51 @@ namespace IGC
 
         /// \brief If Var is an current function argument that add it in
         /// CurrentFnArguments list.
-        bool addCurrentFnArgument(const llvm::Function *MF,
-            DbgVariable *Var, ::IGC::LexicalScope *Scope);
+        bool addCurrentFnArgument(const llvm::Function* MF,
+            DbgVariable* Var, ::IGC::LexicalScope* Scope);
 
         /// \brief Populate LexicalScope entries with variables' info.
-        void collectVariableInfo(const llvm::Function *MF,
-            llvm::SmallPtrSet<const llvm::MDNode *, 16> &ProcessedVars);
+        void collectVariableInfo(const llvm::Function* MF,
+            llvm::SmallPtrSet<const llvm::MDNode*, 16> & ProcessedVars);
 
         /// \brief Ensure that a label will be emitted before MI.
-        void requestLabelBeforeInsn(const llvm::Instruction *MI)
+        void requestLabelBeforeInsn(const llvm::Instruction* MI)
         {
             LabelsBeforeInsn.insert(std::make_pair(MI, (llvm::MCSymbol*)0));
         }
 
         /// \brief Return Label preceding the instruction.
-        llvm::MCSymbol *getLabelBeforeInsn(const llvm::Instruction *MI)
+        llvm::MCSymbol* getLabelBeforeInsn(const llvm::Instruction* MI)
         {
-            llvm::MCSymbol *Label = LabelsBeforeInsn.lookup(MI);
+            llvm::MCSymbol* Label = LabelsBeforeInsn.lookup(MI);
             assert(Label && "Didn't insert label before instruction");
             return Label;
         }
 
         /// \brief Ensure that a label will be emitted after MI.
-        void requestLabelAfterInsn(const llvm::Instruction *MI)
+        void requestLabelAfterInsn(const llvm::Instruction* MI)
         {
             LabelsAfterInsn.insert(std::make_pair(MI, (llvm::MCSymbol*)0));
         }
 
         /// \brief Return Label immediately following the instruction.
-        llvm::MCSymbol *getLabelAfterInsn(const llvm::Instruction *MI)
+        llvm::MCSymbol* getLabelAfterInsn(const llvm::Instruction* MI)
         {
             return LabelsAfterInsn.lookup(MI);
         }
 
         /// isSubprogramContext - Return true if Context is either a subprogram
         /// or another context nested inside a subprogram.
-        bool isSubprogramContext(const llvm::MDNode *Context);
+        bool isSubprogramContext(const llvm::MDNode* Context);
 
         /// \brief Define a unique number for the abbreviation.
-        void assignAbbrevNumber(DIEAbbrev &Abbrev);
+        void assignAbbrevNumber(DIEAbbrev& Abbrev);
 
     public:
         //===--------------------------------------------------------------------===//
         // Main entry points.
         //
-        DwarfDebug(IGC::StreamEmitter *A, ::IGC::VISAModule *M);
+        DwarfDebug(IGC::StreamEmitter* A, ::IGC::VISAModule* M);
 
         ~DwarfDebug()
         {
@@ -534,11 +534,11 @@ namespace IGC
             }
         }
 
-        void insertDIE(const llvm::MDNode *TypeMD, DIE *Die)
+        void insertDIE(const llvm::MDNode* TypeMD, DIE* Die)
         {
             MDTypeNodeToDieMap.insert(std::make_pair(TypeMD, Die));
         }
-        DIE *getDIE(const llvm::MDNode *TypeMD)
+        DIE* getDIE(const llvm::MDNode* TypeMD)
         {
             return MDTypeNodeToDieMap.lookup(TypeMD);
         }
@@ -551,20 +551,20 @@ namespace IGC
         void endModule();
 
         /// \brief Gather pre-function debug information.
-        void beginFunction(const llvm::Function *MF, IGC::VISAModule*);
+        void beginFunction(const llvm::Function* MF, IGC::VISAModule*);
 
         /// \brief Gather and emit post-function debug information.
-        void endFunction(const llvm::Function *MF);
+        void endFunction(const llvm::Function* MF);
 
         /// \brief Process beginning of an instruction.
-        void beginInstruction(const llvm::Instruction *MI, bool recordSrcLine);
+        void beginInstruction(const llvm::Instruction* MI, bool recordSrcLine);
 
         /// \brief Process end of an instruction.
-        void endInstruction(const llvm::Instruction *MI);
+        void endInstruction(const llvm::Instruction* MI);
 
         /// \brief Add a DIE to the set of types that we're going to pull into
         /// type units.
-        void addTypeUnitType(DIE *Die) { TypeUnits.push_back(Die); }
+        void addTypeUnitType(DIE* Die) { TypeUnits.push_back(Die); }
 
         /// \brief Add a label so that arange data can be generated for it.
         void addArangeLabel(SymbolCU SCU) { ArangeLabels.push_back(SCU); }
@@ -579,22 +579,22 @@ namespace IGC
 
         /// Find the MDNode for the given reference.
 #if LLVM_VERSION_MAJOR <= 8
-        template <typename T> T *resolve(llvm::TypedDINodeRef<T> Ref) const
+        template <typename T> T * resolve(llvm::TypedDINodeRef<T> Ref) const
         {
-          return Ref.resolve();
+            return Ref.resolve();
         }
 #else
-        template <typename T> inline T *resolve(T* Ref) const
+        template <typename T> inline T* resolve(T* Ref) const
         {
-          return Ref;
+            return Ref;
         }
 #endif
         /// \brief Returns the entry into the start of the pool.
-        llvm::MCSymbol *getStringPoolSym();
+        llvm::MCSymbol* getStringPoolSym();
 
         /// \brief Returns an entry into the string pool with the given
         /// string text.
-        llvm::MCSymbol *getStringPoolEntry(llvm::StringRef Str);
+        llvm::MCSymbol* getStringPoolEntry(llvm::StringRef Str);
 
         //Following added during LLVM 4.0 upgrade
 

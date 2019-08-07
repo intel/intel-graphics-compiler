@@ -36,8 +36,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace IGC {
 
-void initializeKernelFunctionCloningPass(llvm::PassRegistry &);
-llvm::ModulePass *createKernelFunctionCloningPass();
+    void initializeKernelFunctionCloningPass(llvm::PassRegistry&);
+    llvm::ModulePass* createKernelFunctionCloningPass();
 
 } // End IGC namespace
 

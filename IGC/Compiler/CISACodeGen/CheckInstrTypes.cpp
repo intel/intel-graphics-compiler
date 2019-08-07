@@ -93,7 +93,7 @@ CheckInstrTypes::CheckInstrTypes(IGC::SInstrTypes* instrList) : FunctionPass(ID)
     instrList->sampleCmpToDiscardOptimizationSlot = 0;
 }
 
-void CheckInstrTypes::SetLoopFlags(Function &F)
+void CheckInstrTypes::SetLoopFlags(Function& F)
 {
     LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
 
@@ -103,7 +103,7 @@ void CheckInstrTypes::SetLoopFlags(Function &F)
         for (auto it = LI->begin(); it != LI->end(); it++)
         {
             g_InstrTypes->numOfLoop++;
-            Loop *L = (*it);
+            Loop* L = (*it);
             for (uint i = 0; i < L->getNumBlocks(); i++)
             {
                 g_InstrTypes->numLoopInsts += L->getBlocks()[i]->getInstList().size();
@@ -112,7 +112,7 @@ void CheckInstrTypes::SetLoopFlags(Function &F)
     }
 }
 
-bool CheckInstrTypes::runOnFunction(Function &F)
+bool CheckInstrTypes::runOnFunction(Function& F)
 {
     LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
     g_InstrTypes->hasLoop |= !(LI->empty());
@@ -125,8 +125,8 @@ bool CheckInstrTypes::runOnFunction(Function &F)
     return false;
 }
 
-void CheckInstrTypes::visitInstruction(llvm::Instruction &I)
- {
+void CheckInstrTypes::visitInstruction(llvm::Instruction& I)
+{
     if (!llvm::isa<llvm::DbgInfoIntrinsic>(&I))
     {
         g_InstrTypes->numInsts++;
@@ -139,14 +139,14 @@ void CheckInstrTypes::visitInstruction(llvm::Instruction &I)
     }
 }
 
-void CheckInstrTypes::visitCallInst(CallInst &C)
+void CheckInstrTypes::visitCallInst(CallInst& C)
 {
     g_InstrTypes->numInsts++;
     g_InstrTypes->hasCall = true;
 
     Function* calledFunc = C.getCalledFunction();
 
-    if(calledFunc == NULL)
+    if (calledFunc == NULL)
     {
         if (C.isInlineAsm())
         {
@@ -156,7 +156,7 @@ void CheckInstrTypes::visitCallInst(CallInst &C)
                 Type* opndTy = C.getArgOperand(i)->getType();
                 if (opndTy->isPointerTy() &&
                     (cast<PointerType>(opndTy)->getAddressSpace() == ADDRESS_SPACE_GLOBAL ||
-                     cast<PointerType>(opndTy)->getAddressSpace() == ADDRESS_SPACE_CONSTANT))
+                        cast<PointerType>(opndTy)->getAddressSpace() == ADDRESS_SPACE_CONSTANT))
                 {
                     // If an inline asm call directly accesses a pointer, we need to enable
                     // bindless/stateless support since user does not know the BTI the
@@ -170,16 +170,16 @@ void CheckInstrTypes::visitCallInst(CallInst &C)
         g_InstrTypes->hasSubroutines = true;
         g_InstrTypes->hasIndirectCall = true;
     }
-    else if(!calledFunc->isDeclaration())
+    else if (!calledFunc->isDeclaration())
     {
         g_InstrTypes->hasSubroutines = true;
     }
-    if(C.mayWriteToMemory())
+    if (C.mayWriteToMemory())
     {
-        if(GenIntrinsicInst *CI = dyn_cast<GenIntrinsicInst>(&C))
+        if (GenIntrinsicInst * CI = dyn_cast<GenIntrinsicInst>(&C))
         {
             GenISAIntrinsic::ID IID = CI->getIntrinsicID();
-            if(IID != GenISA_OUTPUT && IID != GenISA_discard)
+            if (IID != GenISA_OUTPUT && IID != GenISA_discard)
             {
                 g_InstrTypes->psHasSideEffect = true;
             }
@@ -191,7 +191,7 @@ void CheckInstrTypes::visitCallInst(CallInst &C)
         g_InstrTypes->numSample++;
     }
 
-    if (GenIntrinsicInst *CI = llvm::dyn_cast<GenIntrinsicInst>(&C))
+    if (GenIntrinsicInst * CI = llvm::dyn_cast<GenIntrinsicInst>(&C))
     {
         switch (CI->getIntrinsicID())
         {
@@ -231,36 +231,36 @@ void CheckInstrTypes::visitCallInst(CallInst &C)
     }
 }
 
-void CheckInstrTypes::visitBranchInst(BranchInst &I)
+void CheckInstrTypes::visitBranchInst(BranchInst& I)
 {
     g_InstrTypes->numInsts++;
 }
 
-void CheckInstrTypes::visitSwitchInst(SwitchInst &I)
+void CheckInstrTypes::visitSwitchInst(SwitchInst& I)
 {
     g_InstrTypes->numInsts++;
     g_InstrTypes->hasSwitch = true;
 }
 
-void CheckInstrTypes::visitIndirectBrInst(IndirectBrInst &I)
+void CheckInstrTypes::visitIndirectBrInst(IndirectBrInst& I)
 {
     g_InstrTypes->numInsts++;
     g_InstrTypes->hasIndirectBranch = true;
 }
 
-void CheckInstrTypes::visitICmpInst(ICmpInst &I)
+void CheckInstrTypes::visitICmpInst(ICmpInst& I)
 {
     g_InstrTypes->numInsts++;
     g_InstrTypes->hasCmp = true;
 }
 
-void CheckInstrTypes::visitFCmpInst(FCmpInst &I)
+void CheckInstrTypes::visitFCmpInst(FCmpInst& I)
 {
     g_InstrTypes->numInsts++;
     g_InstrTypes->hasCmp = true;
 }
 
-void CheckInstrTypes::visitAllocaInst(AllocaInst &I)
+void CheckInstrTypes::visitAllocaInst(AllocaInst& I)
 {
     g_InstrTypes->numInsts++;
     if (I.isArrayAllocation() ||
@@ -287,7 +287,7 @@ void CheckInstrTypes::visitAllocaInst(AllocaInst &I)
     }
 }
 
-void CheckInstrTypes::visitLoadInst(LoadInst &I)
+void CheckInstrTypes::visitLoadInst(LoadInst& I)
 {
     g_InstrTypes->numInsts++;
     g_InstrTypes->hasLoadStore = true;
@@ -301,7 +301,7 @@ void CheckInstrTypes::visitLoadInst(LoadInst &I)
     }
 }
 
-void CheckInstrTypes::visitStoreInst(StoreInst &I)
+void CheckInstrTypes::visitStoreInst(StoreInst& I)
 {
     g_InstrTypes->numInsts++;
     g_InstrTypes->hasLoadStore = true;
@@ -320,19 +320,19 @@ void CheckInstrTypes::visitStoreInst(StoreInst &I)
     }
 }
 
-void CheckInstrTypes::visitPHINode(PHINode &PN)
+void CheckInstrTypes::visitPHINode(PHINode& PN)
 {
     g_InstrTypes->numInsts++;
     g_InstrTypes->hasPhi = true;
 }
 
-void CheckInstrTypes::visitSelectInst(SelectInst &I)
+void CheckInstrTypes::visitSelectInst(SelectInst& I)
 {
     g_InstrTypes->numInsts++;
     g_InstrTypes->hasSel = true;
 }
 
-void CheckInstrTypes::visitGetElementPtrInst(llvm::GetElementPtrInst &I)
+void CheckInstrTypes::visitGetElementPtrInst(llvm::GetElementPtrInst& I)
 {
     g_InstrTypes->numInsts++;
     if (I.getPointerAddressSpace() == ADDRESS_SPACE_GENERIC)
@@ -368,7 +368,7 @@ InstrStatitic::InstrStatitic(CodeGenContext* ctx, InstrStatTypes type, InstrStat
     }
 }
 
-bool InstrStatitic::runOnFunction(Function &F)
+bool InstrStatitic::runOnFunction(Function& F)
 {
     // run the pass
     visit(F);
@@ -385,16 +385,16 @@ bool InstrStatitic::runOnFunction(Function &F)
     return false;
 }
 
-void InstrStatitic::visitInstruction(llvm::Instruction &I)
+void InstrStatitic::visitInstruction(llvm::Instruction& I)
 {
 }
 
-void InstrStatitic::visitLoadInst(LoadInst &I)
+void InstrStatitic::visitLoadInst(LoadInst& I)
 {
     m_ctx->instrStat[m_type][m_stage]++;
 }
 
-void InstrStatitic::visitStoreInst(StoreInst &I)
+void InstrStatitic::visitStoreInst(StoreInst& I)
 {
     m_ctx->instrStat[m_type][m_stage]++;
 }

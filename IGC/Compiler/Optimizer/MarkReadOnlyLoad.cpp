@@ -38,42 +38,42 @@ using namespace IGC;
 
 namespace {
 
-class MarkReadOnlyLoad : public FunctionPass,
-    public InstVisitor<MarkReadOnlyLoad>
-{
-public:
-    static char ID;
-
-    MarkReadOnlyLoad();
-    ~MarkReadOnlyLoad() {}
-
-    StringRef getPassName() const override
+    class MarkReadOnlyLoad : public FunctionPass,
+        public InstVisitor<MarkReadOnlyLoad>
     {
-        return "MarkReadOnlyLoadPass";
-    }
+    public:
+        static char ID;
 
-    void getAnalysisUsage(AnalysisUsage& AU) const override
-    {
-        AU.addRequired<CodeGenContextWrapper>();
-        AU.setPreservesCFG();
-    }
+        MarkReadOnlyLoad();
+        ~MarkReadOnlyLoad() {}
 
-    bool runOnFunction(Function& F) override;
+        StringRef getPassName() const override
+        {
+            return "MarkReadOnlyLoadPass";
+        }
 
-    void visitLoadInst(LoadInst& LI);
+        void getAnalysisUsage(AnalysisUsage& AU) const override
+        {
+            AU.addRequired<CodeGenContextWrapper>();
+            AU.setPreservesCFG();
+        }
 
-private:
-    MDNode* m_mdNode;
-    bool m_changed;
-};
+        bool runOnFunction(Function& F) override;
+
+        void visitLoadInst(LoadInst& LI);
+
+    private:
+        MDNode* m_mdNode;
+        bool m_changed;
+    };
 
 } // namespace
 
 namespace IGC {
-FunctionPass* createMarkReadOnlyLoadPass()
-{
-    return new MarkReadOnlyLoad();
-}
+    FunctionPass* createMarkReadOnlyLoadPass()
+    {
+        return new MarkReadOnlyLoad();
+    }
 
 } // namespace IGC
 
@@ -84,10 +84,10 @@ FunctionPass* createMarkReadOnlyLoadPass()
 IGC_INITIALIZE_PASS_BEGIN(MarkReadOnlyLoad,
     PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
     IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
-IGC_INITIALIZE_PASS_END(MarkReadOnlyLoad,
-    PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+    IGC_INITIALIZE_PASS_END(MarkReadOnlyLoad,
+        PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char MarkReadOnlyLoad::ID = 0;
+    char MarkReadOnlyLoad::ID = 0;
 
 MarkReadOnlyLoad::MarkReadOnlyLoad()
     : FunctionPass(ID)

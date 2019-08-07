@@ -46,12 +46,12 @@ public:
 
     ~RemoveNonPositionOutput() {}
 
-    virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+    virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
     {
         AU.setPreservesCFG();
     }
 
-    virtual bool runOnFunction(llvm::Function &F) override;
+    virtual bool runOnFunction(llvm::Function& F) override;
 
     virtual llvm::StringRef getPassName() const override
     {
@@ -79,13 +79,13 @@ RemoveNonPositionOutput::RemoveNonPositionOutput() : FunctionPass(ID)
     initializeRemoveNonPositionOutputPass(*PassRegistry::getPassRegistry());
 }
 
-bool RemoveNonPositionOutput::runOnFunction(Function &F)
+bool RemoveNonPositionOutput::runOnFunction(Function& F)
 {
     // Initialize the worklist to all of the instructions ready to process...
     SmallVector<Instruction*, 10> instructionToRemove;
     for (inst_iterator II = inst_begin(F), E = inst_end(F); II != E; ++II)
     {
-        if (GenIntrinsicInst *inst = dyn_cast<GenIntrinsicInst>(&*II))
+        if (GenIntrinsicInst * inst = dyn_cast<GenIntrinsicInst>(&*II))
         {
             if (inst->getIntrinsicID() == GenISAIntrinsic::GenISA_OUTPUT)
             {

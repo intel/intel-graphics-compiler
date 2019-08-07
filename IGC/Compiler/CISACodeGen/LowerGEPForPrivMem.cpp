@@ -51,73 +51,73 @@ using namespace IGC;
 using namespace IGC::IGCMD;
 
 namespace IGC {
-/// @brief  LowerGEPForPrivMem pass is used for lowering the allocas identified while visiting the alloca instructions
-///         and then inserting insert/extract elements instead of load stores. This allows us
-///         to store the data in registers instead of propagating it to scratch space.
-class LowerGEPForPrivMem : public llvm::FunctionPass, public llvm::InstVisitor<LowerGEPForPrivMem>
-{
-public:
-    LowerGEPForPrivMem();
-
-    ~LowerGEPForPrivMem() {}
-
-    virtual llvm::StringRef getPassName() const override
+    /// @brief  LowerGEPForPrivMem pass is used for lowering the allocas identified while visiting the alloca instructions
+    ///         and then inserting insert/extract elements instead of load stores. This allows us
+    ///         to store the data in registers instead of propagating it to scratch space.
+    class LowerGEPForPrivMem : public llvm::FunctionPass, public llvm::InstVisitor<LowerGEPForPrivMem>
     {
-        return "LowerGEPForPrivMem";
-    }
+    public:
+        LowerGEPForPrivMem();
 
-    virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
-    {
-        AU.addRequired<RegisterPressureEstimate>();
-        AU.addRequired<MetaDataUtilsWrapper>();
-        AU.addRequired<CodeGenContextWrapper>();
-        AU.addRequired<WIAnalysis>();
-        AU.setPreservesCFG();
-    }
+        ~LowerGEPForPrivMem() {}
 
-    virtual bool runOnFunction(llvm::Function &F) override;
+        virtual llvm::StringRef getPassName() const override
+        {
+            return "LowerGEPForPrivMem";
+        }
 
-    void visitAllocaInst(llvm::AllocaInst &I);
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
+        {
+            AU.addRequired<RegisterPressureEstimate>();
+            AU.addRequired<MetaDataUtilsWrapper>();
+            AU.addRequired<CodeGenContextWrapper>();
+            AU.addRequired<WIAnalysis>();
+            AU.setPreservesCFG();
+        }
 
-    unsigned int extractAllocaSize(llvm::AllocaInst* pAlloca);
+        virtual bool runOnFunction(llvm::Function& F) override;
 
-private:
-    llvm::AllocaInst* createVectorForAlloca(
-        llvm::AllocaInst *pAlloca,
-        llvm::Type *pBaseType);
-    void handleAllocaInst(llvm::AllocaInst *pAlloca);
+        void visitAllocaInst(llvm::AllocaInst& I);
 
-    bool CheckIfAllocaPromotable(llvm::AllocaInst* pAlloca);
-    bool IsNativeType(Type* type);
-    /// Conservatively check if a store allow an Alloca to be uniform
-    bool IsUniformStore(llvm::StoreInst* pStore);
-public:
-    static char ID;
+        unsigned int extractAllocaSize(llvm::AllocaInst* pAlloca);
 
-private:
-    const llvm::DataLayout                              *m_pDL;
-    CodeGenContext                                      *m_ctx;
-    std::vector<llvm::AllocaInst*>                       m_allocasToPrivMem;
-    RegisterPressureEstimate*                            m_pRegisterPressureEstimate;
-    llvm::Function                                      *m_pFunc;
+    private:
+        llvm::AllocaInst* createVectorForAlloca(
+            llvm::AllocaInst* pAlloca,
+            llvm::Type* pBaseType);
+        void handleAllocaInst(llvm::AllocaInst* pAlloca);
 
-    /// Keep track of each BB affected by promoting MemtoReg and the current pressure at that block
-    llvm::DenseMap<llvm::BasicBlock *, unsigned>         m_pBBPressure;
+        bool CheckIfAllocaPromotable(llvm::AllocaInst* pAlloca);
+        bool IsNativeType(Type* type);
+        /// Conservatively check if a store allow an Alloca to be uniform
+        bool IsUniformStore(llvm::StoreInst* pStore);
+    public:
+        static char ID;
 
-    struct PromotedLiverange
-    {
-        unsigned int lowId;
-        unsigned int highId;
-        unsigned int varSize;
+    private:
+        const llvm::DataLayout* m_pDL;
+        CodeGenContext* m_ctx;
+        std::vector<llvm::AllocaInst*>                       m_allocasToPrivMem;
+        RegisterPressureEstimate* m_pRegisterPressureEstimate;
+        llvm::Function* m_pFunc;
+
+        /// Keep track of each BB affected by promoting MemtoReg and the current pressure at that block
+        llvm::DenseMap<llvm::BasicBlock*, unsigned>         m_pBBPressure;
+
+        struct PromotedLiverange
+        {
+            unsigned int lowId;
+            unsigned int highId;
+            unsigned int varSize;
+        };
+
+        std::vector<PromotedLiverange> m_promotedLiveranges;
     };
 
-    std::vector<PromotedLiverange> m_promotedLiveranges;
-};
-
-FunctionPass *createPromotePrivateArrayToReg()
-{
-    return new LowerGEPForPrivMem();
-}
+    FunctionPass* createPromotePrivateArrayToReg()
+    {
+        return new LowerGEPForPrivMem();
+    }
 }
 
 // Register pass to igc-opt
@@ -148,17 +148,17 @@ llvm::AllocaInst* LowerGEPForPrivMem::createVectorForAlloca(
 
     llvm::VectorType* pVecType = llvm::VectorType::get(pBaseType, totalSize);
 
-    AllocaInst *pAllocaValue = IRB.CreateAlloca(pVecType);
+    AllocaInst* pAllocaValue = IRB.CreateAlloca(pVecType);
     return pAllocaValue;
 }
 
-bool LowerGEPForPrivMem::runOnFunction(llvm::Function &F)
+bool LowerGEPForPrivMem::runOnFunction(llvm::Function& F)
 {
     m_pFunc = &F;
     CodeGenContextWrapper* pCtxWrapper = &getAnalysis<CodeGenContextWrapper>();
     m_ctx = pCtxWrapper->getCodeGenContext();
 
-    MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     if (pMdUtils->findFunctionsInfoItem(&F) == pMdUtils->end_FunctionsInfo())
     {
         return false;
@@ -170,7 +170,7 @@ bool LowerGEPForPrivMem::runOnFunction(llvm::Function &F)
 
     visit(F);
 
-    std::vector<llvm::AllocaInst*> &allocaToHande = m_allocasToPrivMem;
+    std::vector<llvm::AllocaInst*>& allocaToHande = m_allocasToPrivMem;
     for (auto pAlloca : allocaToHande)
     {
         handleAllocaInst(pAlloca);
@@ -193,7 +193,7 @@ bool LowerGEPForPrivMem::runOnFunction(llvm::Function &F)
 
 void TransposeHelper::EraseDeadCode()
 {
-    for(auto pInst = m_toBeRemovedGEP.rbegin(); pInst != m_toBeRemovedGEP.rend(); ++pInst)
+    for (auto pInst = m_toBeRemovedGEP.rbegin(); pInst != m_toBeRemovedGEP.rend(); ++pInst)
     {
         assert((*pInst)->use_empty() && "Instruction still has usage");
         (*pInst)->eraseFromParent();
@@ -210,13 +210,13 @@ unsigned int LowerGEPForPrivMem::extractAllocaSize(llvm::AllocaInst* pAlloca)
 
 static void GetAllocaLiverange(Instruction* I, unsigned int& liverangeStart, unsigned int& liverangeEnd, RegisterPressureEstimate* rpe)
 {
-    for(Value::user_iterator use_it = I->user_begin(), use_e = I->user_end(); use_it != use_e; ++use_it)
+    for (Value::user_iterator use_it = I->user_begin(), use_e = I->user_end(); use_it != use_e; ++use_it)
     {
-        if(isa<GetElementPtrInst>(*use_it) || isa<BitCastInst>(*use_it))
+        if (isa<GetElementPtrInst>(*use_it) || isa<BitCastInst>(*use_it))
         {
             GetAllocaLiverange(cast<Instruction>(*use_it), liverangeStart, liverangeEnd, rpe);
         }
-        else if(isa<LoadInst>(*use_it) || isa<StoreInst>(*use_it) || isa<llvm::IntrinsicInst>(*use_it))
+        else if (isa<LoadInst>(*use_it) || isa<StoreInst>(*use_it) || isa<llvm::IntrinsicInst>(*use_it))
         {
             unsigned int idx = rpe->getAssignedNumberForInst(cast<Instruction>(*use_it));
             liverangeStart = std::min(liverangeStart, idx);
@@ -227,7 +227,7 @@ static void GetAllocaLiverange(Instruction* I, unsigned int& liverangeStart, uns
 
 bool LowerGEPForPrivMem::IsNativeType(Type* type)
 {
-    if((type->isDoubleTy() && !m_ctx->platform.supportFP64()) ||
+    if ((type->isDoubleTy() && !m_ctx->platform.supportFP64()) ||
         (type->isIntegerTy(64) && m_ctx->platform.hasNo64BitInst()))
     {
         return false;
@@ -239,7 +239,7 @@ bool LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* pAlloca)
 {
     auto WI = &getAnalysis<WIAnalysis>();
     bool isUniformAlloca = WI->whichDepend(pAlloca) == WIAnalysis::UNIFORM;
-    if(isUniformAlloca)
+    if (isUniformAlloca)
     {
         IRBuilder<> builder(pAlloca);
         MDNode* node = MDNode::get(pAlloca->getContext(), ConstantAsMetadata::get(builder.getInt1(true)));
@@ -250,7 +250,7 @@ bool LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* pAlloca)
 
     // scale alloc size based on the number of GRFs we have
     float grfRatio = m_ctx->getNumGRFPerThread() / 128.0f;
-    allowedAllocaSizeInBytes = (uint32_t) (allowedAllocaSizeInBytes * grfRatio);
+    allowedAllocaSizeInBytes = (uint32_t)(allowedAllocaSizeInBytes * grfRatio);
 
     if (m_ctx->type == ShaderType::COMPUTE_SHADER)
     {
@@ -261,22 +261,22 @@ bool LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* pAlloca)
         allowedAllocaSizeInBytes = allowedAllocaSizeInBytes / d;
     }
     Type* baseType = nullptr;
-    if(!CanUseSOALayout(pAlloca, baseType))
+    if (!CanUseSOALayout(pAlloca, baseType))
     {
         return false;
     }
-    if(!IsNativeType(baseType))
+    if (!IsNativeType(baseType))
     {
         return false;
     }
-    if(isUniformAlloca)
+    if (isUniformAlloca)
     {
         // Heuristic: for uniform alloca we divide the size by 8 to adjust the pressure
         // as they will be allocated as uniform array
         allocaSize = iSTD::Round(allocaSize, 8) / 8;
     }
 
-    if(allocaSize <= IGC_GET_FLAG_VALUE(ByPassAllocaSizeHeuristic))
+    if (allocaSize <= IGC_GET_FLAG_VALUE(ByPassAllocaSizeHeuristic))
     {
         return true;
     }
@@ -298,27 +298,27 @@ bool LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* pAlloca)
     unsigned int highestAssignedNumber = 0;
 
     GetAllocaLiverange(pAlloca, lowestAssignedNumber, highestAssignedNumber, m_pRegisterPressureEstimate);
-    
+
     uint32_t maxGRFPressure = (uint32_t)(grfRatio * MAX_PRESSURE_GRF_NUM * 4);
 
     unsigned int pressure = 0;
-    for(unsigned int i = lowestAssignedNumber; i <= highestAssignedNumber; i++)
+    for (unsigned int i = lowestAssignedNumber; i <= highestAssignedNumber; i++)
     {
         pressure = std::max(
             pressure, m_pRegisterPressureEstimate->getRegisterPressureForInstructionFromRPMap(i));
     }
 
-    for(auto it : m_promotedLiveranges)
+    for (auto it : m_promotedLiveranges)
     {
         // check interval intersection
-        if((it.lowId < lowestAssignedNumber && it.highId > lowestAssignedNumber) ||
+        if ((it.lowId < lowestAssignedNumber && it.highId > lowestAssignedNumber) ||
             (it.lowId > lowestAssignedNumber && it.lowId < highestAssignedNumber))
         {
             pressure += it.varSize;
         }
     }
 
-    if(allocaSize + pressure > maxGRFPressure)
+    if (allocaSize + pressure > maxGRFPressure)
     {
         return false;
     }
@@ -332,24 +332,24 @@ bool LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* pAlloca)
 
 static Type* GetBaseType(Type* pType)
 {
-    if(pType->isStructTy())
+    if (pType->isStructTy())
     {
         int num_elements = pType->getStructNumElements();
-        if(num_elements != 1)
+        if (num_elements != 1)
             return nullptr;
 
         pType = pType->getStructElementType(0);
     }
 
-    while(pType->isArrayTy())
+    while (pType->isArrayTy())
     {
         pType = pType->getArrayElementType();
     }
 
-    if(pType->isStructTy())
+    if (pType->isStructTy())
     {
         int num_elements = pType->getStructNumElements();
-        if(num_elements != 1)
+        if (num_elements != 1)
             return nullptr;
 
         pType = pType->getStructElementType(0);
@@ -359,58 +359,58 @@ static Type* GetBaseType(Type* pType)
 
 static bool CheckUsesForSOAAlyout(Instruction* I, bool& vectorSOA)
 {
-    for(Value::user_iterator use_it = I->user_begin(), use_e = I->user_end(); use_it != use_e; ++use_it)
+    for (Value::user_iterator use_it = I->user_begin(), use_e = I->user_end(); use_it != use_e; ++use_it)
     {
-        if(GetElementPtrInst* gep = dyn_cast<GetElementPtrInst>(*use_it))
+        if (GetElementPtrInst * gep = dyn_cast<GetElementPtrInst>(*use_it))
         {
-            if(CheckUsesForSOAAlyout(gep, vectorSOA))
+            if (CheckUsesForSOAAlyout(gep, vectorSOA))
                 continue;
         }
-        if(llvm::LoadInst* pLoad = llvm::dyn_cast<llvm::LoadInst>(*use_it))
+        if (llvm::LoadInst * pLoad = llvm::dyn_cast<llvm::LoadInst>(*use_it))
         {
             vectorSOA &= pLoad->getType()->isVectorTy();
-            if(!pLoad->isSimple())
+            if (!pLoad->isSimple())
                 return false;
         }
-        else if(llvm::StoreInst* pStore = llvm::dyn_cast<llvm::StoreInst>(*use_it))
+        else if (llvm::StoreInst * pStore = llvm::dyn_cast<llvm::StoreInst>(*use_it))
         {
-            if(!pStore->isSimple())
+            if (!pStore->isSimple())
                 return false;
             llvm::Value* pValueOp = pStore->getValueOperand();
             vectorSOA &= pStore->getValueOperand()->getType()->isVectorTy();
-            if(pValueOp == I)
+            if (pValueOp == I)
             {
                 // GEP instruction is the stored value of the StoreInst (not supported case)
                 return false;
             }
         }
-        else if(llvm::BitCastInst *pBitCast = llvm::dyn_cast<llvm::BitCastInst>(*use_it))
+        else if (llvm::BitCastInst * pBitCast = llvm::dyn_cast<llvm::BitCastInst>(*use_it))
         {
             Type* baseT = GetBaseType(pBitCast->getType()->getPointerElementType());
             Type* sourceType = GetBaseType(pBitCast->getOperand(0)->getType()->getPointerElementType());
-            if(pBitCast->use_empty())
+            if (pBitCast->use_empty())
             {
                 continue;
             }
-            else if(baseT != nullptr &&
+            else if (baseT != nullptr &&
                 baseT->getScalarSizeInBits() != 0 &&
                 baseT->getScalarSizeInBits() == sourceType->getScalarSizeInBits())
             {
                 vectorSOA &= baseT->getPrimitiveSizeInBits() == sourceType->getPrimitiveSizeInBits();
-                if(CheckUsesForSOAAlyout(pBitCast, vectorSOA))
+                if (CheckUsesForSOAAlyout(pBitCast, vectorSOA))
                     continue;
             }
-            else if(IsBitCastForLifetimeMark(pBitCast))
+            else if (IsBitCastForLifetimeMark(pBitCast))
             {
                 continue;
             }
             // Not a candidate.
             return false;
         }
-        else if(IntrinsicInst* intr = dyn_cast<IntrinsicInst>(*use_it))
+        else if (IntrinsicInst * intr = dyn_cast<IntrinsicInst>(*use_it))
         {
             llvm::Intrinsic::ID  IID = intr->getIntrinsicID();
-            if(IID == llvm::Intrinsic::lifetime_start ||
+            if (IID == llvm::Intrinsic::lifetime_start ||
                 IID == llvm::Intrinsic::lifetime_end)
             {
                 continue;
@@ -432,29 +432,29 @@ bool IGC::CanUseSOALayout(AllocaInst* I, Type*& base)
     // Don't even look at non-array allocas.
     // (extractAllocaDim can not handle them anyway, causing a crash)
     llvm::Type* pType = I->getType()->getPointerElementType();
-    if(pType->isStructTy() && pType->getStructNumElements() == 1)
+    if (pType->isStructTy() && pType->getStructNumElements() == 1)
     {
         pType = pType->getStructElementType(0);
     }
-    if((!pType->isArrayTy() && !pType->isVectorTy()) || I->isArrayAllocation())
+    if ((!pType->isArrayTy() && !pType->isVectorTy()) || I->isArrayAllocation())
         return false;
 
     base = GetBaseType(pType);
-    if(base == nullptr)
+    if (base == nullptr)
         return false;
     // only handle case with a simple base type
-    if(!(base->getScalarType()->isFloatingPointTy() || base->getScalarType()->isIntegerTy()))
+    if (!(base->getScalarType()->isFloatingPointTy() || base->getScalarType()->isIntegerTy()))
         return false;
     bool vectorSOA = true;
     bool useSOA = CheckUsesForSOAAlyout(I, vectorSOA);
-    if(!vectorSOA)
+    if (!vectorSOA)
     {
         base = base->getScalarType();
     }
     return useSOA;
 }
 
-void LowerGEPForPrivMem::visitAllocaInst(AllocaInst &I)
+void LowerGEPForPrivMem::visitAllocaInst(AllocaInst& I)
 {
     // Alloca should always be private memory
     assert(I.getType()->getAddressSpace() == ADDRESS_SPACE_PRIVATE);
@@ -469,32 +469,32 @@ void LowerGEPForPrivMem::visitAllocaInst(AllocaInst &I)
 void TransposeHelper::HandleAllocaSources(Instruction* v, Value* idx)
 {
     SmallVector<Value*, 10> instructions;
-    for(Value::user_iterator it = v->user_begin(), e = v->user_end(); it != e; ++it)
+    for (Value::user_iterator it = v->user_begin(), e = v->user_end(); it != e; ++it)
     {
         Value* inst = cast<Value>(*it);
         instructions.push_back(inst);
     }
-    
-    for(auto instruction : instructions)
+
+    for (auto instruction : instructions)
     {
-        if(GetElementPtrInst *pGEP = dyn_cast<GetElementPtrInst>(instruction))
+        if (GetElementPtrInst * pGEP = dyn_cast<GetElementPtrInst>(instruction))
         {
             handleGEPInst(pGEP, idx);
         }
-        else if(BitCastInst* bitcast = dyn_cast<BitCastInst>(instruction))
+        else if (BitCastInst * bitcast = dyn_cast<BitCastInst>(instruction))
         {
             m_toBeRemovedGEP.push_back(bitcast);
             HandleAllocaSources(bitcast, idx);
         }
-        else if(StoreInst *pStore = llvm::dyn_cast<StoreInst>(instruction))
+        else if (StoreInst * pStore = llvm::dyn_cast<StoreInst>(instruction))
         {
             handleStoreInst(pStore, idx);
         }
-        else if(LoadInst *pLoad = llvm::dyn_cast<LoadInst>(instruction))
+        else if (LoadInst * pLoad = llvm::dyn_cast<LoadInst>(instruction))
         {
             handleLoadInst(pLoad, idx);
         }
-        else if(IntrinsicInst* inst = dyn_cast<IntrinsicInst>(instruction))
+        else if (IntrinsicInst * inst = dyn_cast<IntrinsicInst>(instruction))
         {
             handleLifetimeMark(inst);
         }
@@ -505,12 +505,12 @@ class TransposeHelperPromote : public TransposeHelper
 {
 public:
     void handleLoadInst(
-        LoadInst *pLoad,
-        Value *pScalarizedIdx);
+        LoadInst* pLoad,
+        Value* pScalarizedIdx);
     void handleStoreInst(
-        StoreInst *pStore,
-        Value *pScalarizedIdx);
-    AllocaInst *pVecAlloca;
+        StoreInst* pStore,
+        Value* pScalarizedIdx);
+    AllocaInst* pVecAlloca;
     TransposeHelperPromote(AllocaInst* pAI) : TransposeHelper(false) { pVecAlloca = pAI; }
 };
 
@@ -525,7 +525,7 @@ void LowerGEPForPrivMem::handleAllocaInst(llvm::AllocaInst* pAlloca)
     {
         return;
     }
-    
+
     IRBuilder<> IRB(pVecAlloca);
     Value* idx = IRB.getInt32(0);
     TransposeHelperPromote helper(pVecAlloca);
@@ -533,7 +533,7 @@ void LowerGEPForPrivMem::handleAllocaInst(llvm::AllocaInst* pAlloca)
     helper.EraseDeadCode();
 }
 
-void TransposeHelper::handleLifetimeMark(IntrinsicInst *inst)
+void TransposeHelper::handleLifetimeMark(IntrinsicInst* inst)
 {
     assert(inst->getIntrinsicID() == llvm::Intrinsic::lifetime_start ||
         inst->getIntrinsicID() == llvm::Intrinsic::lifetime_end);
@@ -541,7 +541,7 @@ void TransposeHelper::handleLifetimeMark(IntrinsicInst *inst)
 }
 
 void TransposeHelper::handleGEPInst(
-    llvm::GetElementPtrInst *pGEP,
+    llvm::GetElementPtrInst* pGEP,
     llvm::Value* idx)
 {
     assert(static_cast<ADDRESS_SPACE>(pGEP->getPointerAddressSpace()) == ADDRESS_SPACE_PRIVATE);
@@ -559,26 +559,26 @@ void TransposeHelper::handleGEPInst(
     // Formula: index = (%1 x 3 + %2) x 2
     //
     IRBuilder<> IRB(pGEP);
-    Value *pScalarizedIdx = IRB.getInt32(0);
+    Value* pScalarizedIdx = IRB.getInt32(0);
     Type* T = pGEP->getPointerOperandType()->getPointerElementType();
     for (unsigned i = 0, e = pGEP->getNumIndices(); i < e; ++i)
     {
         auto GepOpnd = IRB.CreateZExtOrTrunc(pGEP->getOperand(i + 1), IRB.getInt32Ty());
         unsigned int arr_sz = 1;
-        if(T->isStructTy())
+        if (T->isStructTy())
         {
             arr_sz = 1;
             T = T->getStructElementType(0);
         }
-        else if(T->isArrayTy())
+        else if (T->isArrayTy())
         {
             arr_sz = int_cast<unsigned int>(T->getArrayNumElements());
             T = T->getArrayElementType();
         }
-        else if(T->isVectorTy())
+        else if (T->isVectorTy())
         {
             // based on whether we want the index in number of element or number of vector
-            if(m_vectorIndex)
+            if (m_vectorIndex)
             {
                 arr_sz = 1;
             }
@@ -598,13 +598,13 @@ void TransposeHelper::handleGEPInst(
 
 // Load N elements from a vector alloca, Idx, ... Idx + N - 1. Return a scalar
 // or a vector value depending on N.
-static Value *loadEltsFromVecAlloca(
-    unsigned N, AllocaInst *pVecAlloca,
-    Value *pScalarizedIdx, 
-    IRBuilder<> &IRB,
+static Value* loadEltsFromVecAlloca(
+    unsigned N, AllocaInst* pVecAlloca,
+    Value* pScalarizedIdx,
+    IRBuilder<>& IRB,
     Type* scalarType)
 {
-    Value *pLoadVecAlloca = IRB.CreateLoad(pVecAlloca);
+    Value* pLoadVecAlloca = IRB.CreateLoad(pVecAlloca);
     if (N == 1)
     {
         return IRB.CreateBitCast(
@@ -621,11 +621,11 @@ static Value *loadEltsFromVecAlloca(
     // replace all uses of %v with <%v0, %v1>
     assert(N > 1 && "out of sync");
     Type* Ty = VectorType::get(scalarType, N);
-    Value *Result = UndefValue::get(Ty);
+    Value* Result = UndefValue::get(Ty);
 
-    for(unsigned i = 0; i < N; ++i)
+    for (unsigned i = 0; i < N; ++i)
     {
-        Value *VectorIdx = ConstantInt::get(pScalarizedIdx->getType(), i);
+        Value* VectorIdx = ConstantInt::get(pScalarizedIdx->getType(), i);
         auto Idx = IRB.CreateAdd(pScalarizedIdx, VectorIdx);
         auto Val = IRB.CreateExtractElement(pLoadVecAlloca, Idx);
         Val = IRB.CreateBitCast(Val, scalarType);
@@ -635,22 +635,22 @@ static Value *loadEltsFromVecAlloca(
 }
 
 void TransposeHelperPromote::handleLoadInst(
-    LoadInst *pLoad,
-    Value *pScalarizedIdx)
+    LoadInst* pLoad,
+    Value* pScalarizedIdx)
 {
     assert(pLoad->isSimple());
     IRBuilder<> IRB(pLoad);
     unsigned N = pLoad->getType()->isVectorTy()
-                     ? pLoad->getType()->getVectorNumElements()
-                     : 1;
-    Value *Val = loadEltsFromVecAlloca(N, pVecAlloca, pScalarizedIdx, IRB, pLoad->getType()->getScalarType());
+        ? pLoad->getType()->getVectorNumElements()
+        : 1;
+    Value* Val = loadEltsFromVecAlloca(N, pVecAlloca, pScalarizedIdx, IRB, pLoad->getType()->getScalarType());
     pLoad->replaceAllUsesWith(Val);
     pLoad->eraseFromParent();
 }
 
 void TransposeHelperPromote::handleStoreInst(
-    llvm::StoreInst *pStore,
-    llvm::Value *pScalarizedIdx)
+    llvm::StoreInst* pStore,
+    llvm::Value* pScalarizedIdx)
 {
     // Add Store instruction to remove list
     assert(pStore->isSimple());
@@ -672,7 +672,7 @@ void TransposeHelperPromote::handleStoreInst(
         // store <32 x float> %w1, <32 x float>* %ptr1
         for (unsigned i = 0, e = pStoreVal->getType()->getVectorNumElements(); i < e; ++i)
         {
-            Value *VectorIdx = ConstantInt::get(pScalarizedIdx->getType(), i);
+            Value* VectorIdx = ConstantInt::get(pScalarizedIdx->getType(), i);
             auto Val = IRB.CreateExtractElement(pStoreVal, VectorIdx);
             Val = IRB.CreateBitCast(Val, pLoadVecAlloca->getType()->getScalarType());
             auto Idx = IRB.CreateAdd(pScalarizedIdx, VectorIdx);

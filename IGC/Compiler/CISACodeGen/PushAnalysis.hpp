@@ -43,143 +43,143 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace IGC
 {
-enum class PushConstantMode
-{
-    NO_PUSH_CONSTANT    = 0,
-    SIMPLE_PUSH         = 1,
-    GATHER_CONSTANT     = 2,
-};
-
-class PushAnalysis : public llvm::ModulePass
-{
-    const llvm::DataLayout *m_DL;
-    static const uint32_t MaxConstantBufferIndexSize;
-    static const uint32_t MaxNumOfPushedInputs;
-    static const uint32_t TessFactorsURBHeader;
-    static const uint32_t HSEightPatchMaxNumOfPushedControlPoints;
-    static const uint32_t m_pMaxNumOfVSPushedInputs;
-    static const uint32_t m_pMaxNumOfHSPushedInputs;
-    static const uint32_t m_pMaxNumOfDSPushedInputs;
-    static const uint32_t m_pMaxNumOfGSPushedInputs;
-
-    bool m_funcTypeChanged;
-    std::map <llvm::Function*, bool> m_isFuncTypeChanged;
-
-    llvm::Module* m_module;
-    llvm::Function *m_pFunction;
-    IGCMD::MetaDataUtils *m_pMdUtils;
-    llvm::PostDominatorTree* m_PDT;
-    llvm::DominatorTree* m_DT;
-    llvm::BasicBlock* m_entryBB;
-
-    PullConstantHeuristics *m_pullConstantHeuristics;
-
-    CollectHullShaderProperties* m_hsProps;
-    CollectDomainShaderProperties* m_dsProps;
-    CollectVertexShaderProperties* m_vsProps;
-    CollectGeometryShaderProperties* m_gsProps;
-    CodeGenContext* m_context;
-    llvm::DenseMap<llvm::Instruction*, bool> m_statelessLoads;
-    uint    m_cbToLoad;
-    uint    m_maxStatelessOffset;
-    int    m_argIndex;
-    std::vector < llvm::Value* > m_argList;
-    FunctionUpgrader m_pFuncUpgrade;
-
-    // Helper function
-    /// Return true if the constant is in the range which we are allowed to push
-    bool IsPushableShaderConstant(llvm::Instruction *inst, uint& bufId, uint& eltId, bool &isStateless);
-
-    bool GetConstantOffsetForDynamicUniformBuffer(
-        uint bufferId,
-        llvm::Value *offsetValue,
-        uint &relativeOffsetInBytes);
-    
-    /// process simple push for the function
-    void BlockPushConstants();
-
-    /// Try to push allocate space for the constant to be pushed
-    unsigned int AllocatePushedConstant(
-        llvm::Instruction* load, unsigned int cbIdx, unsigned int offset, unsigned int maxSizeAllowed, bool isStateless);
-
-    /// promote the load to function argument
-    void PromoteLoadToSimplePush(llvm::Instruction* load, SimplePushInfo& info, unsigned int offset);
-
-    /// return true if the inputs are uniform
-    bool AreUniformInputsBasedOnDispatchMode();
-    /// return true if we are allowed to push constants
-    bool CanPushConstants();
-
-    /// Return true if the Load is a stateless.
-    bool IsStatelessCBLoad(llvm::Instruction *inst, unsigned int& pBaseAddress, unsigned int& offset);
-
-    /// return the maximum number of inputs pushed for this kernel
-    unsigned int GetMaxNumberOfPushedInputs();
-    unsigned int GetHSMaxNumberOfPushedInputs();
-    bool DispatchGRFHardwareWAForHSAndGSDisabled();
-
-    /// return the push constant mode supported based on driver and platform support
-    PushConstantMode GetPushConstantMode();
-
-    void processGather(llvm::Instruction* inst, uint bufId, uint eltId);
-    void processInput(llvm::Instruction* inst, bool gsInstancingUsed);
-    void processInputVec(llvm::Instruction* inst, bool gsInstancingUsed);
-    void processURBRead(llvm::Instruction* inst, bool gsInstancingUsed,
-        bool vsHasConstantBufferIndexedWithInstanceId,
-        uint32_t vsUrbReadIndexForInstanceIdSGV);
-    void processRuntimeValue(llvm::GenIntrinsicInst* intrinsic);
-
-    int getGRFSize() const { return m_context->platform.getGRFSize(); }
-
-public:
-    static char ID;
-    PushAnalysis();
-    virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+    enum class PushConstantMode
     {
-        AU.setPreservesCFG();
-        AU.addRequired<MetaDataUtilsWrapper>();
-        AU.addRequired<CodeGenContextWrapper>();
-        AU.addRequired<llvm::PostDominatorTreeWrapperPass>();
-        AU.addRequired<llvm::DominatorTreeWrapperPass>();
-        AU.addRequired<PullConstantHeuristics>();
-    }
+        NO_PUSH_CONSTANT = 0,
+        SIMPLE_PUSH = 1,
+        GATHER_CONSTANT = 2,
+    };
 
-    llvm::Value* addArgumentAndMetadata(llvm::Type *pType, std::string argName, IGC::WIAnalysis::WIDependancy dependency);
-    bool runOnModule(llvm::Module& ) override;
-    void ProcessFunction();
-    void AnalyzeFunction(llvm::Function *F)
+    class PushAnalysis : public llvm::ModulePass
     {
-        m_pFunction = F;
-        m_module = F->getParent();
+        const llvm::DataLayout* m_DL;
+        static const uint32_t MaxConstantBufferIndexSize;
+        static const uint32_t MaxNumOfPushedInputs;
+        static const uint32_t TessFactorsURBHeader;
+        static const uint32_t HSEightPatchMaxNumOfPushedControlPoints;
+        static const uint32_t m_pMaxNumOfVSPushedInputs;
+        static const uint32_t m_pMaxNumOfHSPushedInputs;
+        static const uint32_t m_pMaxNumOfDSPushedInputs;
+        static const uint32_t m_pMaxNumOfGSPushedInputs;
 
-        // We need to initialize m_argIndex and m_argList appropriately as there might be some arguments added before push analysis stage
-        m_argIndex = 0;
-        m_argList.clear();
-        for (auto arg = m_pFunction->arg_begin(); arg != m_pFunction->arg_end(); ++arg)
+        bool m_funcTypeChanged;
+        std::map <llvm::Function*, bool> m_isFuncTypeChanged;
+
+        llvm::Module* m_module;
+        llvm::Function* m_pFunction;
+        IGCMD::MetaDataUtils* m_pMdUtils;
+        llvm::PostDominatorTree* m_PDT;
+        llvm::DominatorTree* m_DT;
+        llvm::BasicBlock* m_entryBB;
+
+        PullConstantHeuristics* m_pullConstantHeuristics;
+
+        CollectHullShaderProperties* m_hsProps;
+        CollectDomainShaderProperties* m_dsProps;
+        CollectVertexShaderProperties* m_vsProps;
+        CollectGeometryShaderProperties* m_gsProps;
+        CodeGenContext* m_context;
+        llvm::DenseMap<llvm::Instruction*, bool> m_statelessLoads;
+        uint    m_cbToLoad;
+        uint    m_maxStatelessOffset;
+        int    m_argIndex;
+        std::vector < llvm::Value* > m_argList;
+        FunctionUpgrader m_pFuncUpgrade;
+
+        // Helper function
+        /// Return true if the constant is in the range which we are allowed to push
+        bool IsPushableShaderConstant(llvm::Instruction* inst, uint& bufId, uint& eltId, bool& isStateless);
+
+        bool GetConstantOffsetForDynamicUniformBuffer(
+            uint bufferId,
+            llvm::Value* offsetValue,
+            uint& relativeOffsetInBytes);
+
+        /// process simple push for the function
+        void BlockPushConstants();
+
+        /// Try to push allocate space for the constant to be pushed
+        unsigned int AllocatePushedConstant(
+            llvm::Instruction* load, unsigned int cbIdx, unsigned int offset, unsigned int maxSizeAllowed, bool isStateless);
+
+        /// promote the load to function argument
+        void PromoteLoadToSimplePush(llvm::Instruction* load, SimplePushInfo& info, unsigned int offset);
+
+        /// return true if the inputs are uniform
+        bool AreUniformInputsBasedOnDispatchMode();
+        /// return true if we are allowed to push constants
+        bool CanPushConstants();
+
+        /// Return true if the Load is a stateless.
+        bool IsStatelessCBLoad(llvm::Instruction* inst, unsigned int& pBaseAddress, unsigned int& offset);
+
+        /// return the maximum number of inputs pushed for this kernel
+        unsigned int GetMaxNumberOfPushedInputs();
+        unsigned int GetHSMaxNumberOfPushedInputs();
+        bool DispatchGRFHardwareWAForHSAndGSDisabled();
+
+        /// return the push constant mode supported based on driver and platform support
+        PushConstantMode GetPushConstantMode();
+
+        void processGather(llvm::Instruction* inst, uint bufId, uint eltId);
+        void processInput(llvm::Instruction* inst, bool gsInstancingUsed);
+        void processInputVec(llvm::Instruction* inst, bool gsInstancingUsed);
+        void processURBRead(llvm::Instruction* inst, bool gsInstancingUsed,
+            bool vsHasConstantBufferIndexedWithInstanceId,
+            uint32_t vsUrbReadIndexForInstanceIdSGV);
+        void processRuntimeValue(llvm::GenIntrinsicInst* intrinsic);
+
+        int getGRFSize() const { return m_context->platform.getGRFSize(); }
+
+    public:
+        static char ID;
+        PushAnalysis();
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
-            m_argList.push_back(&(*arg));
-            m_argIndex++;
+            AU.setPreservesCFG();
+            AU.addRequired<MetaDataUtilsWrapper>();
+            AU.addRequired<CodeGenContextWrapper>();
+            AU.addRequired<llvm::PostDominatorTreeWrapperPass>();
+            AU.addRequired<llvm::DominatorTreeWrapperPass>();
+            AU.addRequired<PullConstantHeuristics>();
         }
-        m_argIndex = m_argIndex - 1;
 
-        if (m_pMdUtils->findFunctionsInfoItem(F) != m_pMdUtils->end_FunctionsInfo())
+        llvm::Value* addArgumentAndMetadata(llvm::Type* pType, std::string argName, IGC::WIAnalysis::WIDependancy dependency);
+        bool runOnModule(llvm::Module&) override;
+        void ProcessFunction();
+        void AnalyzeFunction(llvm::Function* F)
         {
-            // TODO: when doing codegen for cps shader.  We will run CodeGen twice, 
-            // first for coarse_phase, then pixel_phase, see CodeGen().
-            // While the pushinfo metadata is not stored using function as index.
-            // So when doing codege for pixel_phase, we need to clear legacy
-            // pushinfo metadata from coarse_phase. A better solution is to store
-            // pushinfo with function index. It's tricky here, refactor in future.
-            ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-            modMD->pushInfo.pushAnalysisWIInfos.clear();
+            m_pFunction = F;
+            m_module = F->getParent();
 
-            ProcessFunction();
+            // We need to initialize m_argIndex and m_argList appropriately as there might be some arguments added before push analysis stage
+            m_argIndex = 0;
+            m_argList.clear();
+            for (auto arg = m_pFunction->arg_begin(); arg != m_pFunction->arg_end(); ++arg)
+            {
+                m_argList.push_back(&(*arg));
+                m_argIndex++;
+            }
+            m_argIndex = m_argIndex - 1;
+
+            if (m_pMdUtils->findFunctionsInfoItem(F) != m_pMdUtils->end_FunctionsInfo())
+            {
+                // TODO: when doing codegen for cps shader.  We will run CodeGen twice, 
+                // first for coarse_phase, then pixel_phase, see CodeGen().
+                // While the pushinfo metadata is not stored using function as index.
+                // So when doing codege for pixel_phase, we need to clear legacy
+                // pushinfo metadata from coarse_phase. A better solution is to store
+                // pushinfo with function index. It's tricky here, refactor in future.
+                ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+                modMD->pushInfo.pushAnalysisWIInfos.clear();
+
+                ProcessFunction();
+            }
         }
-    }
 
-    virtual llvm::StringRef getPassName() const override {
-        return "PushAnalysis";
-    }
-};
+        virtual llvm::StringRef getPassName() const override {
+            return "PushAnalysis";
+        }
+    };
 
 }//namespace IGC

@@ -42,32 +42,32 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using namespace llvm;
 namespace IGC {
-class SampleMultiversioning : public llvm::FunctionPass,
-                        public llvm::InstVisitor<SampleMultiversioning> {
-public:
-    static char ID;
-    CodeGenContext *pContext;
-    DominatorTree *DT;
+    class SampleMultiversioning : public llvm::FunctionPass,
+        public llvm::InstVisitor<SampleMultiversioning> {
+    public:
+        static char ID;
+        CodeGenContext* pContext;
+        DominatorTree* DT;
 
-    SampleMultiversioning(CodeGenContext *pContext);
-    SampleMultiversioning();
-    ~SampleMultiversioning() {}
+        SampleMultiversioning(CodeGenContext* pContext);
+        SampleMultiversioning();
+        ~SampleMultiversioning() {}
 
-    virtual llvm::StringRef getPassName() const override {
-        return "Sample Multiversioning";
-    }
+        virtual llvm::StringRef getPassName() const override {
+            return "Sample Multiversioning";
+        }
 
-    virtual bool runOnFunction(llvm::Function &F) override;
+        virtual bool runOnFunction(llvm::Function& F) override;
 
-    virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
-        AU.addRequired<CodeGenContextWrapper>();
-        AU.addRequired<llvm::DominatorTreeWrapperPass>();
-        AU.setPreservesCFG();
-    }
-private:
-    bool isOnlyExtractedAfterSample(Value *SampleInst, SmallVector<Instruction *, 4> &ExtrVals);
-    bool isOnlyMultiplied(Instruction *Sample, Instruction *Val, SmallSet<Value *, 4> &MulVals);
-    Instruction * getPureFunction(Value * Val);
-    bool isOnlyMultipliedAfterSample(Instruction * Val, SmallSet<Value*, 4>& MulVals);
-};
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override {
+            AU.addRequired<CodeGenContextWrapper>();
+            AU.addRequired<llvm::DominatorTreeWrapperPass>();
+            AU.setPreservesCFG();
+        }
+    private:
+        bool isOnlyExtractedAfterSample(Value* SampleInst, SmallVector<Instruction*, 4> & ExtrVals);
+        bool isOnlyMultiplied(Instruction* Sample, Instruction* Val, SmallSet<Value*, 4> & MulVals);
+        Instruction* getPureFunction(Value* Val);
+        bool isOnlyMultipliedAfterSample(Instruction* Val, SmallSet<Value*, 4> & MulVals);
+    };
 } // namespace IGC

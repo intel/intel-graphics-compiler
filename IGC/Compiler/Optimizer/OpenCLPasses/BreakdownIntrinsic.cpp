@@ -59,10 +59,10 @@ BreakdownIntrinsicPass::BreakdownIntrinsicPass()
     initializeBreakdownIntrinsicPassPass(*PassRegistry::getPassRegistry());
 }
 
-void BreakdownIntrinsicPass::visitIntrinsicInst(llvm::IntrinsicInst &I)
+void BreakdownIntrinsicPass::visitIntrinsicInst(llvm::IntrinsicInst& I)
 {
     //const MetaDataUtils &mdUtils = *(getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils());
-    ModuleMetaData &modMD = *(getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
+    ModuleMetaData& modMD = *(getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
     llvm::IRBuilder<> builder(&I);
     bool md_added = false;
 
@@ -72,8 +72,8 @@ void BreakdownIntrinsicPass::visitIntrinsicInst(llvm::IntrinsicInst &I)
         // For FMA only break it up if unsafe math optimizations are set
         (I.getIntrinsicID() == llvm::Intrinsic::fma && modMD.compOpt.UnsafeMathOptimizations))
     {
-        llvm::Value *pMulInst = builder.CreateFMul(I.getOperand(0), I.getOperand(1));
-        llvm::Value *pAddInst = builder.CreateFAdd(pMulInst, I.getOperand(2));
+        llvm::Value* pMulInst = builder.CreateFMul(I.getOperand(0), I.getOperand(1));
+        llvm::Value* pAddInst = builder.CreateFAdd(pMulInst, I.getOperand(2));
         I.replaceAllUsesWith(pAddInst);
         I.eraseFromParent();
         m_changed = true;
@@ -87,7 +87,7 @@ void BreakdownIntrinsicPass::visitIntrinsicInst(llvm::IntrinsicInst &I)
     }
 }
 
-bool BreakdownIntrinsicPass::runOnFunction(llvm::Function &F)
+bool BreakdownIntrinsicPass::runOnFunction(llvm::Function& F)
 {
     m_pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     visit(F);

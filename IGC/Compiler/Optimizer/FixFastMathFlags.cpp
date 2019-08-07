@@ -64,7 +64,7 @@ FixFastMathFlags::FixFastMathFlags() : FunctionPass(ID)
     initializeFixFastMathFlagsPass(*PassRegistry::getPassRegistry());
 }
 
-bool FixFastMathFlags::runOnFunction(Function &F)
+bool FixFastMathFlags::runOnFunction(Function& F)
 {
     for (auto& bb : F)
     {
@@ -87,7 +87,7 @@ bool FixFastMathFlags::runOnFunction(Function &F)
     return m_changed;
 }
 
-void FixFastMathFlags::visitFCmpInst(FCmpInst &FC)
+void FixFastMathFlags::visitFCmpInst(FCmpInst& FC)
 {
     if (isNaNCheck(FC)) {
         FastMathFlags FMF;

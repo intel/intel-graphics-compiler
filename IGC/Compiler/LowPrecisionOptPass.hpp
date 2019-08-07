@@ -50,12 +50,12 @@ namespace IGC
     class LowPrecisionOpt : public llvm::FunctionPass, public llvm::InstVisitor<LowPrecisionOpt>
     {
     private:
-        llvm::IGCIRBuilder<> *m_builder;
+        llvm::IGCIRBuilder<>* m_builder;
         bool m_changed;
-        llvm::Function *m_func_llvm_GenISA_DCL_inputVec_f16;
-        llvm::Function *m_func_llvm_GenISA_DCL_inputVec_f32;
-        llvm::Function *m_currFunction;
-        llvm::Function *func_llvm_floor_f32;
+        llvm::Function* m_func_llvm_GenISA_DCL_inputVec_f16;
+        llvm::Function* m_func_llvm_GenISA_DCL_inputVec_f32;
+        llvm::Function* m_currFunction;
+        llvm::Function* func_llvm_floor_f32;
         ShaderType shdrType;
         typedef struct _moveBundle
         {
@@ -78,9 +78,9 @@ namespace IGC
 
         ~LowPrecisionOpt() {}
 
-        virtual bool runOnFunction(llvm::Function &F) override;
+        virtual bool runOnFunction(llvm::Function& F) override;
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.setPreservesCFG();
             AU.addRequired<MetaDataUtilsWrapper>();
@@ -92,10 +92,10 @@ namespace IGC
             return "LowPrecisionOpt Pass";
         }
 
-        void visitFPExtInst(llvm::FPExtInst &I);
-        void visitFPTruncInst(llvm::FPTruncInst &I);
-        void visitIntrinsicInst(llvm::IntrinsicInst &I);
-        void visitCallInst(llvm::CallInst &I);
-        bool propagateSamplerType(llvm::GenIntrinsicInst &I);
+        void visitFPExtInst(llvm::FPExtInst& I);
+        void visitFPTruncInst(llvm::FPTruncInst& I);
+        void visitIntrinsicInst(llvm::IntrinsicInst& I);
+        void visitCallInst(llvm::CallInst& I);
+        bool propagateSamplerType(llvm::GenIntrinsicInst& I);
     };
 } // namespace IGC

@@ -51,7 +51,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 
-void initializeMemOptPass(llvm::PassRegistry &);
-llvm::FunctionPass *createMemOptPass();
+void initializeMemOptPass(llvm::PassRegistry&);
+llvm::FunctionPass* createMemOptPass();
 
 #endif // _CISA_MEMOPT_H_

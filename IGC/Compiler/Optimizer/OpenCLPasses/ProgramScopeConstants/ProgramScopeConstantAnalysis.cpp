@@ -54,12 +54,12 @@ ProgramScopeConstantAnalysis::ProgramScopeConstantAnalysis() : ModulePass(ID)
     initializeProgramScopeConstantAnalysisPass(*PassRegistry::getPassRegistry());
 }
 
-bool ProgramScopeConstantAnalysis::runOnModule(Module &M)
+bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
 {
     DataVector inlineConstantBuffer;
     DataVector inlineGlobalBuffer;
 
-    unsigned globalBufferAlignment   = 0;
+    unsigned globalBufferAlignment = 0;
     unsigned constantBufferAlignment = 0;
 
     BufferOffsetMap inlineProgramScopeOffsets;
@@ -71,11 +71,11 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module &M)
     LLVMContext& C = M.getContext();
     m_DL = &M.getDataLayout();
 
-    for(Module::global_iterator I = M.global_begin(), E = M.global_end(); I != E; ++I)
+    for (Module::global_iterator I = M.global_begin(), E = M.global_end(); I != E; ++I)
     {
         GlobalVariable* globalVar = &(*I);
         bool useGlobalRelocation = IGC_IS_FLAG_ENABLED(EnableGlobalRelocation) && (globalVar->hasExternalLinkage() || globalVar->hasCommonLinkage());
-        
+
         PointerType* ptrType = cast<PointerType>(globalVar->getType());
         assert(ptrType && "The type of a global variable must be a pointer type");
 
@@ -92,16 +92,16 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module &M)
             continue;
         }
 
-        if(AS != ADDRESS_SPACE_CONSTANT &&
-           AS != ADDRESS_SPACE_GLOBAL)
+        if (AS != ADDRESS_SPACE_CONSTANT &&
+            AS != ADDRESS_SPACE_GLOBAL)
         {
             assert(0 && "program scope variable with unexpected address space");
             continue;
         }
 
-        DataVector &inlineProgramScopeBuffer = (AS == ADDRESS_SPACE_GLOBAL) ? inlineGlobalBuffer : inlineConstantBuffer;
-        unsigned &bufferAlignment = (AS == ADDRESS_SPACE_GLOBAL) ? globalBufferAlignment : constantBufferAlignment;
-        
+        DataVector& inlineProgramScopeBuffer = (AS == ADDRESS_SPACE_GLOBAL) ? inlineGlobalBuffer : inlineConstantBuffer;
+        unsigned& bufferAlignment = (AS == ADDRESS_SPACE_GLOBAL) ? globalBufferAlignment : constantBufferAlignment;
+
         // The only way to get a null initializer is via an external variable.
         // Linking has already occurred; everything should be resolved.
         Constant* initializer = globalVar->getInitializer();
@@ -147,14 +147,14 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module &M)
         IGC::appendToUsed(M, globalArray);
     }
 
-    MetaDataUtils *mdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-    ModuleMetaData *modMd = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+    MetaDataUtils* mdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    ModuleMetaData* modMd = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
 
     if (inlineConstantBuffer.size() > 0)
     {
         // If we found something, add everything to the metadata.
         InlineProgramScopeBuffer ilpsb;
-        for(unsigned char v : inlineConstantBuffer)
+        for (unsigned char v : inlineConstantBuffer)
         {
             ilpsb.Buffer.push_back(v);
         }
@@ -171,7 +171,7 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module &M)
         // Don't need implicit args for global relocation
         if (IGC_IS_FLAG_DISABLED(EnableGlobalRelocation))
         {
-            for (auto &pFunc : M)
+            for (auto& pFunc : M)
             {
                 if (pFunc.isDeclaration()) continue;
 
@@ -188,7 +188,7 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module &M)
     {
         // If we found something, add everything to the metadata.
         InlineProgramScopeBuffer ilpsb;
-        for(unsigned char v : inlineGlobalBuffer)
+        for (unsigned char v : inlineGlobalBuffer)
         {
             ilpsb.Buffer.push_back(v);
         }
@@ -198,7 +198,7 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module &M)
         // Don't need implicit args for global relocation
         if (IGC_IS_FLAG_DISABLED(EnableGlobalRelocation))
         {
-            for (auto &pFunc : M)
+            for (auto& pFunc : M)
             {
                 if (pFunc.isDeclaration()) continue;
 
@@ -216,7 +216,7 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module &M)
 
     if (pointerOffsetInfoList.size() > 0)
     {
-        for (auto &info : pointerOffsetInfoList)
+        for (auto& info : pointerOffsetInfoList)
         {
             // We currently just use a single buffer at index 0; hardcode
             // the patch to reference it.
@@ -279,7 +279,7 @@ void ProgramScopeConstantAnalysis::alignBuffer(DataVector& buffer, unsigned int 
 // If a generic address space pointer is discovered, we attmept
 // to walk back to find the named address space if we can.
 //
-static unsigned WalkCastsToFindNamedAddrSpace(const Value *val)
+static unsigned WalkCastsToFindNamedAddrSpace(const Value* val)
 {
     assert(isa<PointerType>(val->getType()));
 
@@ -290,7 +290,7 @@ static unsigned WalkCastsToFindNamedAddrSpace(const Value *val)
         return currAddrSpace;
     }
 
-    if (const Operator *op = dyn_cast<Operator>(val))
+    if (const Operator * op = dyn_cast<Operator>(val))
     {
         // look through the bitcast (to be addrspacecast in 3.4).
         if (op->getOpcode() == Instruction::BitCast ||
@@ -301,7 +301,7 @@ static unsigned WalkCastsToFindNamedAddrSpace(const Value *val)
         // look through the (inttoptr (ptrtoint @a)) combo.
         else if (op->getOpcode() == Instruction::IntToPtr)
         {
-            if (const Operator *opop = dyn_cast<Operator>(op->getOperand(0)))
+            if (const Operator * opop = dyn_cast<Operator>(op->getOperand(0)))
             {
                 if (opop->getOpcode() == Instruction::PtrToInt)
                 {
@@ -310,7 +310,7 @@ static unsigned WalkCastsToFindNamedAddrSpace(const Value *val)
             }
         }
         // Just look through the gep if it does no offset arithmetic.
-        else if (const GEPOperator *GEP = dyn_cast<GEPOperator>(op))
+        else if (const GEPOperator * GEP = dyn_cast<GEPOperator>(op))
         {
             if (GEP->hasAllZeroIndices())
             {
@@ -322,11 +322,11 @@ static unsigned WalkCastsToFindNamedAddrSpace(const Value *val)
     return currAddrSpace;
 }
 
-void ProgramScopeConstantAnalysis::addData(Constant* initializer, 
-                                           DataVector& inlineProgramScopeBuffer, 
-                                           PointerOffsetInfoList &pointerOffsetInfoList,
-                                           BufferOffsetMap &inlineProgramScopeOffsets,
-                                           unsigned addressSpace)
+void ProgramScopeConstantAnalysis::addData(Constant* initializer,
+    DataVector& inlineProgramScopeBuffer,
+    PointerOffsetInfoList& pointerOffsetInfoList,
+    BufferOffsetMap& inlineProgramScopeOffsets,
+    unsigned addressSpace)
 {
     // Initial alignment padding before insert the current constant into the buffer.
     alignBuffer(inlineProgramScopeBuffer, m_DL->getABITypeAlignment(initializer->getType()));
@@ -334,13 +334,13 @@ void ProgramScopeConstantAnalysis::addData(Constant* initializer,
     // We need to do extra work with pointers here: we don't know their actual addresses
     // at compile time so we find the offset from the base of the buffer they point to
     // so we can patch in the absolute address later.
-    if (PointerType *ptrType = dyn_cast<PointerType>(initializer->getType()))
+    if (PointerType * ptrType = dyn_cast<PointerType>(initializer->getType()))
     {
         int64_t offset = 0;
         const unsigned int pointerSize = int_cast<unsigned int>(m_DL->getTypeAllocSize(ptrType));
         // This case is the most common: here, we look for a pointer that can be decomposed into
         // a base + offset with the base itself being another global variable previously defined.
-        if (GlobalVariable *ptrBase = dyn_cast<GlobalVariable>(GetPointerBaseWithConstantOffset(initializer, offset, *m_DL)))
+        if (GlobalVariable * ptrBase = dyn_cast<GlobalVariable>(GetPointerBaseWithConstantOffset(initializer, offset, *m_DL)))
         {
             const unsigned pointedToAddrSpace = WalkCastsToFindNamedAddrSpace(initializer);
 
@@ -348,9 +348,9 @@ void ProgramScopeConstantAnalysis::addData(Constant* initializer,
 
             // We can only patch global and constant pointers.
             if ((pointedToAddrSpace == ADDRESS_SPACE_GLOBAL ||
-                 pointedToAddrSpace == ADDRESS_SPACE_CONSTANT) &&
+                pointedToAddrSpace == ADDRESS_SPACE_CONSTANT) &&
                 (addressSpace == ADDRESS_SPACE_GLOBAL ||
-                 addressSpace == ADDRESS_SPACE_CONSTANT))
+                    addressSpace == ADDRESS_SPACE_CONSTANT))
             {
                 auto iter = inlineProgramScopeOffsets.find(ptrBase);
                 assert(iter != inlineProgramScopeOffsets.end());
@@ -366,7 +366,7 @@ void ProgramScopeConstantAnalysis::addData(Constant* initializer,
                 // Insert just the offset of the pointer.  The base address of the buffer it points
                 // to will be added to it at runtime.
                 inlineProgramScopeBuffer.insert(
-                    inlineProgramScopeBuffer.end(), (char*)&pointeeOffset, ((char*)&pointeeOffset) + pointerSize);
+                    inlineProgramScopeBuffer.end(), (char*)& pointeeOffset, ((char*)& pointeeOffset) + pointerSize);
             }
             else
             {
@@ -375,7 +375,7 @@ void ProgramScopeConstantAnalysis::addData(Constant* initializer,
                 inlineProgramScopeBuffer.insert(inlineProgramScopeBuffer.end(), pointerSize, 0);
             }
         }
-        else if (ConstantPointerNull *CPN = dyn_cast<ConstantPointerNull>(initializer))
+        else if (ConstantPointerNull * CPN = dyn_cast<ConstantPointerNull>(initializer))
         {
             inlineProgramScopeBuffer.insert(inlineProgramScopeBuffer.end(), pointerSize, 0);
         }
@@ -384,7 +384,7 @@ void ProgramScopeConstantAnalysis::addData(Constant* initializer,
             // function pointers may be resolved anyway by the time we get to this pass?
             inlineProgramScopeBuffer.insert(inlineProgramScopeBuffer.end(), pointerSize, 0);
         }
-        else if (ConstantExpr *ce = dyn_cast<ConstantExpr>(initializer))
+        else if (ConstantExpr * ce = dyn_cast<ConstantExpr>(initializer))
         {
             if (ce->getOpcode() == Instruction::IntToPtr)
             {
@@ -392,15 +392,16 @@ void ProgramScopeConstantAnalysis::addData(Constant* initializer,
                 // in an LLVM sense but OpenCL has no vector of pointers type.
                 if (isa<ConstantInt>(ce->getOperand(0))) {
                     uint64_t val = *cast<ConstantInt>(ce->getOperand(0))->getValue().getRawData();
-                    inlineProgramScopeBuffer.insert(inlineProgramScopeBuffer.end(), (char*)&val, ((char*)&val) + pointerSize);
-                } else {
+                    inlineProgramScopeBuffer.insert(inlineProgramScopeBuffer.end(), (char*)& val, ((char*)& val) + pointerSize);
+                }
+                else {
                     addData(ce->getOperand(0), inlineProgramScopeBuffer, pointerOffsetInfoList, inlineProgramScopeOffsets, addressSpace);
                 }
             }
-            else if (GEPOperator *GEP = dyn_cast<GEPOperator>(ce))
+            else if (GEPOperator * GEP = dyn_cast<GEPOperator>(ce))
             {
-                for (auto &Op : GEP->operands())
-                    if (Constant *C = dyn_cast<Constant>(&Op))
+                for (auto& Op : GEP->operands())
+                    if (Constant * C = dyn_cast<Constant>(&Op))
                         addData(C, inlineProgramScopeBuffer, pointerOffsetInfoList, inlineProgramScopeOffsets, addressSpace);
             }
             else
@@ -414,14 +415,14 @@ void ProgramScopeConstantAnalysis::addData(Constant* initializer,
             assert(0 && "unknown pointer shape encountered");
         }
     }
-    else if (const UndefValue *UV = dyn_cast<UndefValue>(initializer))
+    else if (const UndefValue * UV = dyn_cast<UndefValue>(initializer))
     {
         // It's undef, just throw in zeros.
         const unsigned int zeroSize = int_cast<unsigned int>(m_DL->getTypeAllocSize(UV->getType()));
         inlineProgramScopeBuffer.insert(inlineProgramScopeBuffer.end(), zeroSize, 0);
     }
     // Must check for constant expressions before we start doing type-based checks
-    else if (ConstantExpr* ce = dyn_cast<ConstantExpr>(initializer))
+    else if (ConstantExpr * ce = dyn_cast<ConstantExpr>(initializer))
     {
         // Constant expressions are evil. We only handle a subset that we expect.
         // Right now, this means a bitcast, or a ptrtoint/inttoptr pair. 
@@ -446,13 +447,13 @@ void ProgramScopeConstantAnalysis::addData(Constant* initializer,
             assert(0 && "Unexpected constant expression type");
         }
     }
-    else if (ConstantDataSequential* cds = dyn_cast<ConstantDataSequential>(initializer))
+    else if (ConstantDataSequential * cds = dyn_cast<ConstantDataSequential>(initializer))
     {
-        for (unsigned i=0; i < cds->getNumElements(); i++) {
+        for (unsigned i = 0; i < cds->getNumElements(); i++) {
             addData(cds->getElementAsConstant(i), inlineProgramScopeBuffer, pointerOffsetInfoList, inlineProgramScopeOffsets, addressSpace);
         }
     }
-    else if (ConstantAggregateZero* cag = dyn_cast<ConstantAggregateZero>(initializer))
+    else if (ConstantAggregateZero * cag = dyn_cast<ConstantAggregateZero>(initializer))
     {
         // Zero aggregates are filled with, well, zeroes.
         const unsigned int zeroSize = int_cast<unsigned int>(m_DL->getTypeAllocSize(cag->getType()));
@@ -461,7 +462,7 @@ void ProgramScopeConstantAnalysis::addData(Constant* initializer,
     // If this is an sequential type which is not a CDS or zero, have to collect the values
     // element by element. Note that this is not exclusive with the two cases above, so the 
     // order of ifs is meaningful.
-    else if (CompositeType* cmpType = dyn_cast<CompositeType>(initializer->getType()))
+    else if (CompositeType * cmpType = dyn_cast<CompositeType>(initializer->getType()))
     {
         const int numElts = initializer->getNumOperands();
         for (int i = 0; i < numElts; ++i)
@@ -473,14 +474,14 @@ void ProgramScopeConstantAnalysis::addData(Constant* initializer,
         }
     }
     // And, finally, we have to handle base types - ints and floats.
-    else 
+    else
     {
         APInt intVal(32, 0, false);
-        if (ConstantInt* ci = dyn_cast<ConstantInt>(initializer))
+        if (ConstantInt * ci = dyn_cast<ConstantInt>(initializer))
         {
             intVal = ci->getValue();
         }
-        else if (ConstantFP* cfp = dyn_cast<ConstantFP>(initializer))
+        else if (ConstantFP * cfp = dyn_cast<ConstantFP>(initializer))
         {
             intVal = cfp->getValueAPF().bitcastToAPInt();
         }
@@ -488,13 +489,13 @@ void ProgramScopeConstantAnalysis::addData(Constant* initializer,
         {
             assert(0 && "Unsupported constant type");
         }
-        
+
         int bitWidth = intVal.getBitWidth();
         assert((bitWidth % 8 == 0) && (bitWidth <= 64) && "Unsupported bitwidth");
 
         const uint64_t* val = intVal.getRawData();
         inlineProgramScopeBuffer.insert(inlineProgramScopeBuffer.end(), (char*)val, ((char*)val) + (bitWidth / 8));
-    }    
+    }
 
 
     // final padding.  This gets used by the vec3 types that will insert zero padding at the

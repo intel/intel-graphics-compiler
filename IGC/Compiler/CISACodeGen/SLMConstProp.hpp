@@ -72,7 +72,7 @@ namespace IGC
         SymProd* Term;
         int64_t Coeff;
 
-        SymTerm () : Term(nullptr), Coeff(1) {}
+        SymTerm() : Term(nullptr), Coeff(1) {}
 
         SymTerm(const SymTerm& T) = delete;
         SymTerm& operator=(const SymTerm& T) = delete;
@@ -89,7 +89,7 @@ namespace IGC
         SymExpr() : ConstTerm(0) {}
     };
 
-    /* 
+    /*
      *  This is an integer symbolic evaluation, intended for address calculation
      *  of straight-line code.
      *
@@ -124,7 +124,7 @@ namespace IGC
         // can divide all coeffs of S's symbolic terms.
         bool isFactor(SymExpr* S, int N)
         {
-            for(int i=0, e = S->SymTerms.size(); i < e; ++i)
+            for (int i = 0, e = S->SymTerms.size(); i < e; ++i)
             {
                 if ((S->SymTerms[i]->Coeff % N) != 0) {
                     return false;
@@ -133,7 +133,7 @@ namespace IGC
             return true;
         }
 
-        void copy(SymTerm *D, SymTerm* S)
+        void copy(SymTerm* D, SymTerm* S)
         {
             D->Term = new (m_symEvaAllocator) SymProd(*S->Term);
             D->Coeff = S->Coeff;
@@ -143,7 +143,7 @@ namespace IGC
         {
             for (int i = 0, e = S->SymTerms.size(); i < e; ++i)
             {
-                SymTerm *newT = new (m_symEvaAllocator) SymTerm();
+                SymTerm* newT = new (m_symEvaAllocator) SymTerm();
                 copy(newT, S->SymTerms[i]);
                 D->SymTerms.push_back(newT);
             }
@@ -169,7 +169,7 @@ namespace IGC
             int ID;
             SymExpr* symExpr;
         } ValueSymInfo;
-        typedef llvm::DenseMap<llvm::Value *, ValueSymInfo*> SymInfoMap;
+        typedef llvm::DenseMap<llvm::Value*, ValueSymInfo*> SymInfoMap;
 
         // Used to assign a unique ID to ValueSymInfo
         int m_nextValueID;
@@ -187,7 +187,7 @@ namespace IGC
             auto SIIter = m_symInfos.find(V);
             if (SIIter != m_symInfos.end())
             {
-                ValueSymInfo *VSI = SIIter->second;
+                ValueSymInfo* VSI = SIIter->second;
                 return VSI;
             }
             return nullptr;
@@ -202,5 +202,5 @@ namespace IGC
         }
     };
 
-    llvm::FunctionPass *createSLMConstPropPass();
+    llvm::FunctionPass* createSLMConstPropPass();
 }  // namespace IGC

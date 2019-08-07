@@ -33,8 +33,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 
 namespace IGC {
-  llvm::FunctionPass *createFixAddrSpaceCastPass();
-  void initializeAddrSpaceCastFixingPass(llvm::PassRegistry &);
+    llvm::FunctionPass* createFixAddrSpaceCastPass();
+    void initializeAddrSpaceCastFixingPass(llvm::PassRegistry&);
 } // End namespace IGC
 
 #endif // _CISA_FIXADDRSPACECAST_H_

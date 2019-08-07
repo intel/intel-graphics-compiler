@@ -62,16 +62,16 @@ namespace IGC
             return "ReplaceUnsupportedIntrinsics";
         }
 
-        virtual bool runOnFunction(llvm::Function &F) override;
+        virtual bool runOnFunction(llvm::Function& F) override;
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
         }
 
         void visitIntrinsicInst(llvm::IntrinsicInst& I);
 
     private:
-    
+
         std::vector<llvm::IntrinsicInst*> m_instsToReplace;
 
     };

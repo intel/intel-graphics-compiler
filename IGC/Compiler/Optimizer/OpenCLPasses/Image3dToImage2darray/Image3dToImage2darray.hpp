@@ -52,22 +52,22 @@ namespace IGC
             return "Image3dToImage2darray";
         }
 
-        virtual bool runOnFunction(llvm::Function &F) override;
+        virtual bool runOnFunction(llvm::Function& F) override;
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.setPreservesCFG();
             AU.addRequired<MetaDataUtilsWrapper>();
         }
 
-        void visitCallInst(llvm::CallInst &CI);
+        void visitCallInst(llvm::CallInst& CI);
 
     private:
         bool m_Changed;
-        IGCMD::MetaDataUtils *m_MetadataUtils;
-        IGC::ModuleMetaData *m_modMD;
+        IGCMD::MetaDataUtils* m_MetadataUtils;
+        IGC::ModuleMetaData* m_modMD;
         static bool createImageAnnotations(
-            llvm::GenIntrinsicInst *pCall,
+            llvm::GenIntrinsicInst* pCall,
             unsigned imageIdx,
             const IGCMD::MetaDataUtils* pMdUtils,
             const IGC::ModuleMetaData* m_modMD,

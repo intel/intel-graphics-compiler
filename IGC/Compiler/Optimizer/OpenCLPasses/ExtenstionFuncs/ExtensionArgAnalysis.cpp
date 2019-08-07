@@ -144,18 +144,18 @@ namespace IGC
         initializeExtensionArgAnalysisPass(*PassRegistry::getPassRegistry());
     }
 
-    void ExtensionArgAnalysis::visitCallInst(llvm::CallInst &CI)
+    void ExtensionArgAnalysis::visitCallInst(llvm::CallInst& CI)
     {
-        auto *F = CI.getCalledFunction();
+        auto* F = CI.getCalledFunction();
 
         if (!F)
         {
             return;
         }
 
-        auto SetExtension = [&](int argIndex, ResourceExtensionTypeEnum expected, SmallPtrSet<Argument*, 3> &Args)
+        auto SetExtension = [&](int argIndex, ResourceExtensionTypeEnum expected, SmallPtrSet<Argument*, 3> & Args)
         {
-            if (auto *pArg = dyn_cast<Argument>(CImagesBI::CImagesUtils::traceImageOrSamplerArgument(&CI, argIndex))) {
+            if (auto * pArg = dyn_cast<Argument>(CImagesBI::CImagesUtils::traceImageOrSamplerArgument(&CI, argIndex))) {
                 if (m_ExtensionMap.count(pArg) != 0)
                 {
                     if (m_ExtensionMap[pArg] != expected)
@@ -178,7 +178,7 @@ namespace IGC
         //
         auto CheckandSetSIMD16 = [&]()
         {
-            if (IGC::IGCMD::MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils())
+            if (IGC::IGCMD::MetaDataUtils * pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils())
             {
                 auto funcIter = pMdUtils->findFunctionsInfoItem(CI.getParent()->getParent());
                 if (funcIter != pMdUtils->end_FunctionsInfo())
@@ -231,7 +231,7 @@ namespace IGC
 
     }
 
-    bool ExtensionArgAnalysis::runOnFunction(Function &F)
+    bool ExtensionArgAnalysis::runOnFunction(Function& F)
     {
         m_ExtensionMap.clear();
         m_MediaArgs.clear();

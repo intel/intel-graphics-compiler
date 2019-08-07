@@ -54,9 +54,9 @@ SetFastMathFlags::SetFastMathFlags() : ModulePass(ID)
     initializeSetFastMathFlagsPass(*PassRegistry::getPassRegistry());
 }
 
-bool SetFastMathFlags::runOnModule(Module &M) 
+bool SetFastMathFlags::runOnModule(Module& M)
 {
-    const ModuleMetaData &modMD = *(getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
+    const ModuleMetaData& modMD = *(getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
     FastMathFlags fmfs;
     if (modMD.compOpt.FastRelaxedMath)
     {
@@ -77,7 +77,7 @@ bool SetFastMathFlags::runOnModule(Module &M)
     return setFlags(M, fmfs);
 }
 
-static bool setMathFlags(IntrinsicInst *II) {
+static bool setMathFlags(IntrinsicInst* II) {
     switch (II->getIntrinsicID()) {
     case Intrinsic::pow:
     case Intrinsic::exp2:
@@ -91,14 +91,14 @@ static bool setMathFlags(IntrinsicInst *II) {
     return false;
 }
 
-bool SetFastMathFlags::setFlags(Module &M, FastMathFlags fmfs)
+bool SetFastMathFlags::setFlags(Module& M, FastMathFlags fmfs)
 {
     if (!fmfs.any())
     {
         return false;
     }
     bool changed = false;
-    for (Function &F : M)
+    for (Function& F : M)
     {
         for (inst_iterator i = inst_begin(&F), e = inst_end(&F); i != e; ++i)
         {

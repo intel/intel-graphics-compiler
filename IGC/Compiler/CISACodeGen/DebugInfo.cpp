@@ -35,7 +35,7 @@ using namespace std;
 char DebugInfoPass::ID = 0;
 char CatchAllLineNumber::ID = 0;
 
-DebugInfoPass::DebugInfoPass(CShaderProgram::KernelShaderMap &k) :
+DebugInfoPass::DebugInfoPass(CShaderProgram::KernelShaderMap& k) :
     ModulePass(ID),
     kernels(k)
 {
@@ -91,7 +91,7 @@ bool DebugInfoPass::runOnModule(llvm::Module& M)
         // Look for the right CShaderProgram instance
         m_currShader = currShader;
 
-        MetaDataUtils *pMdUtils = m_currShader->GetMetaDataUtils();
+        MetaDataUtils* pMdUtils = m_currShader->GetMetaDataUtils();
         if (!isEntryFunc(pMdUtils, m_currShader->entry))
             continue;
 
@@ -177,8 +177,8 @@ bool DebugInfoPass::runOnModule(llvm::Module& M)
 void DebugInfoPass::EmitDebugInfo(bool finalize)
 {
     unsigned int dbgSize = 0;
-    void *dbgInfo = nullptr;
-    void *buffer = nullptr;
+    void* dbgInfo = nullptr;
+    void* buffer = nullptr;
 
     IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->Finalize(buffer, dbgSize, finalize);)
 
@@ -227,12 +227,12 @@ void DebugInfoData::markOutput(llvm::Function& F, CShader* m_currShader)
 
 void DebugInfoData::markOutputVars(const llvm::Instruction* pInst)
 {
-    const Value * pVal = nullptr;
-    if (const DbgDeclareInst *pDbgAddrInst = dyn_cast<DbgDeclareInst>(pInst))
+    const Value* pVal = nullptr;
+    if (const DbgDeclareInst * pDbgAddrInst = dyn_cast<DbgDeclareInst>(pInst))
     {
         pVal = pDbgAddrInst->getAddress();
     }
-    else if (const DbgValueInst *pDbgValInst = dyn_cast<DbgValueInst>(pInst))
+    else if (const DbgValueInst * pDbgValInst = dyn_cast<DbgValueInst>(pInst))
     {
         pVal = pDbgValInst->getValue();
     }
@@ -247,7 +247,7 @@ void DebugInfoData::markOutputVars(const llvm::Instruction* pInst)
         return;
     }
 
-    if (const Constant *pConstVal = dyn_cast<Constant>(pVal))
+    if (const Constant * pConstVal = dyn_cast<Constant>(pVal))
     {
         if (!isa<GlobalVariable>(pVal) && !isa<ConstantExpr>(pVal))
         {
@@ -255,7 +255,7 @@ void DebugInfoData::markOutputVars(const llvm::Instruction* pInst)
         }
     }
 
-    Value *pValue = const_cast<Value*>(pVal);
+    Value* pValue = const_cast<Value*>(pVal);
     if (isa<GlobalVariable>(pValue))
     {
         return;
@@ -265,7 +265,7 @@ void DebugInfoData::markOutputVars(const llvm::Instruction* pInst)
         return;
     }
 
-    CVariable *pVar = m_pShader->GetSymbol(pValue);
+    CVariable* pVar = m_pShader->GetSymbol(pValue);
     if (pVar->GetVarType() == EVARTYPE_GENERAL)
     {
         // We want to attach "Output" attribute to all src variables

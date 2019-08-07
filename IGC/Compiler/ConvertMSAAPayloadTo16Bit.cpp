@@ -54,99 +54,99 @@ ConvertMSAAPayloadTo16Bit::ConvertMSAAPayloadTo16Bit() : FunctionPass(ID)
     initializeWorkaroundAnalysisPass(*PassRegistry::getPassRegistry());
 };
 
-void ConvertMSAAPayloadTo16Bit::visitCallInst(CallInst &I)
+void ConvertMSAAPayloadTo16Bit::visitCallInst(CallInst& I)
 {
-    if (const GenIntrinsicInst* intr = dyn_cast<GenIntrinsicInst>(&I))
+    if (const GenIntrinsicInst * intr = dyn_cast<GenIntrinsicInst>(&I))
     {
         GenISAIntrinsic::ID intrID = intr->getIntrinsicID();
         switch (intrID)
         {
-            case GenISAIntrinsic::GenISA_ldmsptr:
+        case GenISAIntrinsic::GenISA_ldmsptr:
+        {
+            GenIntrinsicInst* ldmcs = nullptr;
+            Value* mcsData = I.getOperand(1);
+            if (BitCastInst * bcast = dyn_cast<BitCastInst>(mcsData))
             {
-                GenIntrinsicInst* ldmcs = nullptr;
-                Value* mcsData = I.getOperand(1);
-                if(BitCastInst* bcast = dyn_cast<BitCastInst>(mcsData))
-                {
-                    mcsData = bcast->getOperand(0);
-                }
-                if(ExtractElementInst* extractInst = dyn_cast<ExtractElementInst>(mcsData))
-                {
-                    mcsData = extractInst->getOperand(0);
-                }    
-                if(BitCastInst* bcast = dyn_cast<BitCastInst>(mcsData))
-                {
-                    mcsData = bcast->getOperand(0);
-                }
-                ldmcs = dyn_cast<GenIntrinsicInst>(mcsData);
-                
+                mcsData = bcast->getOperand(0);
+            }
+            if (ExtractElementInst * extractInst = dyn_cast<ExtractElementInst>(mcsData))
+            {
+                mcsData = extractInst->getOperand(0);
+            }
+            if (BitCastInst * bcast = dyn_cast<BitCastInst>(mcsData))
+            {
+                mcsData = bcast->getOperand(0);
+            }
+            ldmcs = dyn_cast<GenIntrinsicInst>(mcsData);
 
-                assert(ldmcs!=NULL);
-                Type* coordType = m_builder->getInt32Ty();
-                Type* types_ldmcs[] = { 
-                    VectorType::get(m_builder->getInt16Ty(), 4),
-                    coordType,
-                    ldmcs->getOperand(4)->getType() };
 
-                Function *func_ldmcs =
-                    GenISAIntrinsic::getDeclaration(
+            assert(ldmcs != NULL);
+            Type* coordType = m_builder->getInt32Ty();
+            Type* types_ldmcs[] = {
+                VectorType::get(m_builder->getInt16Ty(), 4),
+                coordType,
+                ldmcs->getOperand(4)->getType() };
+
+            Function* func_ldmcs =
+                GenISAIntrinsic::getDeclaration(
                     I.getParent()->getParent()->getParent(),
                     GenISAIntrinsic::GenISA_ldmcsptr,
                     llvm::ArrayRef<Type*>(types_ldmcs, 3));
 
-               m_builder->SetInsertPoint(ldmcs);
-               Value * packed_tex_params_ldmcs[] = {
-                    m_builder->CreateTrunc(ldmcs->getOperand(0), coordType),
-                    m_builder->CreateTrunc(ldmcs->getOperand(1), coordType),
-                    m_builder->CreateTrunc(ldmcs->getOperand(2), coordType),
-                    m_builder->CreateTrunc(ldmcs->getOperand(3), coordType),
-                    ldmcs->getOperand(4),
-                    ldmcs->getOperand(5),
-                    ldmcs->getOperand(6),
-                    ldmcs->getOperand(7)
-                };
+            m_builder->SetInsertPoint(ldmcs);
+            Value* packed_tex_params_ldmcs[] = {
+                 m_builder->CreateTrunc(ldmcs->getOperand(0), coordType),
+                 m_builder->CreateTrunc(ldmcs->getOperand(1), coordType),
+                 m_builder->CreateTrunc(ldmcs->getOperand(2), coordType),
+                 m_builder->CreateTrunc(ldmcs->getOperand(3), coordType),
+                 ldmcs->getOperand(4),
+                 ldmcs->getOperand(5),
+                 ldmcs->getOperand(6),
+                 ldmcs->getOperand(7)
+            };
 
-               llvm::CallInst* new_mcs_call = m_builder->CreateCall(func_ldmcs, packed_tex_params_ldmcs);
+            llvm::CallInst* new_mcs_call = m_builder->CreateCall(func_ldmcs, packed_tex_params_ldmcs);
 
-                llvm::Value* mcs0 = m_builder->CreateExtractElement(new_mcs_call, m_builder->getInt32(0));
-                llvm::Value* mcs1 = m_builder->CreateExtractElement(new_mcs_call, m_builder->getInt32(1));
-                llvm::Value* mcs2 = m_builder->CreateExtractElement(new_mcs_call, m_builder->getInt32(2));
-                llvm::Value* mcs3 = m_builder->CreateExtractElement(new_mcs_call, m_builder->getInt32(3));
+            llvm::Value* mcs0 = m_builder->CreateExtractElement(new_mcs_call, m_builder->getInt32(0));
+            llvm::Value* mcs1 = m_builder->CreateExtractElement(new_mcs_call, m_builder->getInt32(1));
+            llvm::Value* mcs2 = m_builder->CreateExtractElement(new_mcs_call, m_builder->getInt32(2));
+            llvm::Value* mcs3 = m_builder->CreateExtractElement(new_mcs_call, m_builder->getInt32(3));
 
-               Type* types_ldms[] = { I.getType(), I.getOperand(7)->getType() };
-               Function *func_ldms = GenISAIntrinsic::getDeclaration(
-                   I.getParent()->getParent()->getParent(),
-                   GenISAIntrinsic::GenISA_ldmsptr16bit,
-                   ArrayRef<Type*>(types_ldms, 2));
+            Type* types_ldms[] = { I.getType(), I.getOperand(7)->getType() };
+            Function* func_ldms = GenISAIntrinsic::getDeclaration(
+                I.getParent()->getParent()->getParent(),
+                GenISAIntrinsic::GenISA_ldmsptr16bit,
+                ArrayRef<Type*>(types_ldms, 2));
 
-               m_builder->SetInsertPoint(&I);
-               llvm::Value * packed_tex_params_ldms[] = {
-                    m_builder->CreateTrunc(I.getOperand(0), m_builder->getInt16Ty(), ""),
-                    mcs0,
-                    mcs1,
-                    mcs2,
-                    mcs3,
-                    m_builder->CreateTrunc(I.getOperand(3), m_builder->getInt16Ty()),
-                    m_builder->CreateTrunc(I.getOperand(4), m_builder->getInt16Ty()),
-                    m_builder->CreateTrunc(I.getOperand(5), m_builder->getInt16Ty()),
-                    m_builder->CreateTrunc(I.getOperand(6), m_builder->getInt16Ty()),
-                    I.getOperand(7),
-                    I.getOperand(8),
-                    I.getOperand(9),
-                    I.getOperand(10)
-                };
+            m_builder->SetInsertPoint(&I);
+            llvm::Value* packed_tex_params_ldms[] = {
+                 m_builder->CreateTrunc(I.getOperand(0), m_builder->getInt16Ty(), ""),
+                 mcs0,
+                 mcs1,
+                 mcs2,
+                 mcs3,
+                 m_builder->CreateTrunc(I.getOperand(3), m_builder->getInt16Ty()),
+                 m_builder->CreateTrunc(I.getOperand(4), m_builder->getInt16Ty()),
+                 m_builder->CreateTrunc(I.getOperand(5), m_builder->getInt16Ty()),
+                 m_builder->CreateTrunc(I.getOperand(6), m_builder->getInt16Ty()),
+                 I.getOperand(7),
+                 I.getOperand(8),
+                 I.getOperand(9),
+                 I.getOperand(10)
+            };
 
-                llvm::CallInst* new_ldms = m_builder->CreateCall(func_ldms, packed_tex_params_ldms);
-                (&I)->replaceAllUsesWith(new_ldms);
-                break;
-            }         
+            llvm::CallInst* new_ldms = m_builder->CreateCall(func_ldms, packed_tex_params_ldms);
+            (&I)->replaceAllUsesWith(new_ldms);
+            break;
+        }
 
-            default:
-                break;
+        default:
+            break;
         }
     }
 }
 
-bool ConvertMSAAPayloadTo16Bit::runOnFunction(Function &F)
+bool ConvertMSAAPayloadTo16Bit::runOnFunction(Function& F)
 {
     m_pCtxWrapper = &getAnalysis<CodeGenContextWrapper>();
     CodeGenContext* cgCtx = m_pCtxWrapper->getCodeGenContext();

@@ -23,7 +23,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
-/* 
+/*
     This pass try's to hoist the URBWrite instruction in the shader code generated
     There are 2 reasons we need to do this
     1) Since we emit all the outputs only at the end of the program, this causes the live ranges for the registers holding the output data to be really long
@@ -58,26 +58,26 @@ using namespace IGC::Debug;
 
 namespace IGC {
 
-char CodeHoisting::ID = 0;
+    char CodeHoisting::ID = 0;
 #define PASS_FLAG "CodeHoisting"
 #define PASS_DESCRIPTION "Code Hoisting"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(CodeHoisting, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-IGC_INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
-IGC_INITIALIZE_PASS_DEPENDENCY(PostDominatorTreeWrapperPass)
-IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
-IGC_INITIALIZE_PASS_END(CodeHoisting, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+    IGC_INITIALIZE_PASS_BEGIN(CodeHoisting, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+        IGC_INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
+        IGC_INITIALIZE_PASS_DEPENDENCY(PostDominatorTreeWrapperPass)
+        IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
+        IGC_INITIALIZE_PASS_END(CodeHoisting, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-    CodeHoisting::CodeHoisting() : llvm::FunctionPass(ID)
+        CodeHoisting::CodeHoisting() : llvm::FunctionPass(ID)
     {
         initializeCodeHoistingPass(*PassRegistry::getPassRegistry());
     }
 
-    bool CodeHoisting::runOnFunction(Function &F)
+    bool CodeHoisting::runOnFunction(Function& F)
     {
         bool everMadeChange = false;
-        CodeGenContext *ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+        CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
         DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
         PDT = &getAnalysis<PostDominatorTreeWrapperPass>().getPostDomTree();
         LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
@@ -102,7 +102,7 @@ IGC_INITIALIZE_PASS_END(CodeHoisting, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY
         MapVector<llvm::Instruction*, llvm::Instruction*>::iterator it;
         for (auto it : instMovDataMap)
         {
-            if(it.second != nullptr)
+            if (it.second != nullptr)
             {
                 if (llvm::dyn_cast<llvm::PHINode>((it.second)->getNextNode()))
                 {
@@ -117,7 +117,7 @@ IGC_INITIALIZE_PASS_END(CodeHoisting, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY
                     (it.first)->moveBefore(currInst);
                 }
                 else
-                { 
+                {
                     (it.first)->moveBefore((it.second)->getNextNode());
                 }
                 everMadeChange = true;
@@ -142,7 +142,7 @@ IGC_INITIALIZE_PASS_END(CodeHoisting, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY
         }
 
         Value* woffV = urbWrite->getOperand(0);
-        if (ConstantInt* woffCI = dyn_cast<ConstantInt>(woffV))
+        if (ConstantInt * woffCI = dyn_cast<ConstantInt>(woffV))
         {
             unsigned woff = int_cast<unsigned>(woffCI->getZExtValue());
             do {
@@ -151,7 +151,7 @@ IGC_INITIALIZE_PASS_END(CodeHoisting, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY
                 if (intrin && intrin->isGenIntrinsic(GenISAIntrinsic::GenISA_URBRead))
                 {
                     Value* roffV = intrin->getOperand(1);
-                    if (ConstantInt* roffCI = dyn_cast<ConstantInt>(roffV))
+                    if (ConstantInt * roffCI = dyn_cast<ConstantInt>(roffV))
                     {
                         unsigned roff = int_cast<unsigned>(roffCI->getZExtValue());
                         if (roff == woff || roff == woff + 1)
@@ -184,8 +184,8 @@ IGC_INITIALIZE_PASS_END(CodeHoisting, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY
     /// Determine whether it is safe to elevate the specified machine
     /// instruction out of its current block into a predecessor
     bool CodeHoisting::isSafeToHoistURBWriteInstruction(
-        Instruction *urbWrite,
-        Instruction* &tgtInst)
+        Instruction* urbWrite,
+        Instruction*& tgtInst)
     {
         // tgtInst contains the location to move the URBWrite instruction to
         const int sourceStartOffset = 0, sourceEndOffset = 10;
@@ -244,10 +244,10 @@ IGC_INITIALIZE_PASS_END(CodeHoisting, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY
                         tgtInst = argDef;
                     }
                     else
-                    if (isInstPrecede(tgtInst, argDef))
-                    {
-                        tgtInst = argDef;
-                    }
+                        if (isInstPrecede(tgtInst, argDef))
+                        {
+                            tgtInst = argDef;
+                        }
                 }
             }
             assert(tgtInst != nullptr);
@@ -291,28 +291,28 @@ IGC_INITIALIZE_PASS_END(CodeHoisting, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY
                     tgtInst = argDef;
                 }
                 else
-                if (tgtInst->getParent() != defBB)
-                {
-                    // candidate position not the same BB as current arg def
-                    // find the common post dominator
-                    BasicBlock* cmnDom = PDT->findNearestCommonDominator(
-                        tgtInst->getParent(), defBB);
-                    assert(cmnDom == tgtInst->getParent() ||
-                        cmnDom == defBB);
+                    if (tgtInst->getParent() != defBB)
+                    {
+                        // candidate position not the same BB as current arg def
+                        // find the common post dominator
+                        BasicBlock* cmnDom = PDT->findNearestCommonDominator(
+                            tgtInst->getParent(), defBB);
+                        assert(cmnDom == tgtInst->getParent() ||
+                            cmnDom == defBB);
 
-                    if (cmnDom == defBB)
-                    {
-                        tgtInst = argDef;
+                        if (cmnDom == defBB)
+                        {
+                            tgtInst = argDef;
+                        }
                     }
-                }
-                else
-                {
-                    // candidate position is the same BB as current arg def
-                    if (isInstPrecede(tgtInst, argDef))
+                    else
                     {
-                        tgtInst = argDef;
+                        // candidate position is the same BB as current arg def
+                        if (isInstPrecede(tgtInst, argDef))
+                        {
+                            tgtInst = argDef;
+                        }
                     }
-                }
             }
             else
             {
@@ -330,7 +330,7 @@ IGC_INITIALIZE_PASS_END(CodeHoisting, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY
         return true;
     }
 
-    void CodeHoisting::hoistURBWriteInBB(BasicBlock &blk)
+    void CodeHoisting::hoistURBWriteInBB(BasicBlock& blk)
     {
         if (blk.empty())
             return;
@@ -340,7 +340,7 @@ IGC_INITIALIZE_PASS_END(CodeHoisting, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY
         --I;
         bool processedBegin = false;
         do {
-            Instruction *inst = &(*I);
+            Instruction* inst = &(*I);
 
             // Predecrement I (if it's not begin) so that it isn't invalidated by sinking.
             processedBegin = (I == blk.begin());

@@ -52,7 +52,7 @@ namespace IGC
             return "ProgramScopeConstantResolutionPass";
         }
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.addRequired<MetaDataUtilsWrapper>();
             AU.addRequired<CodeGenContextWrapper>();
@@ -60,7 +60,7 @@ namespace IGC
 
         /// @brief  Main entry point.
         /// @param  M The destination module.
-        virtual bool runOnModule(llvm::Module &M) override;
+        virtual bool runOnModule(llvm::Module& M) override;
 
     private:
         bool RunCautiously;

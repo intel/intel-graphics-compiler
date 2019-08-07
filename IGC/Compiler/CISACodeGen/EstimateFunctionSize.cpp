@@ -45,15 +45,15 @@ char EstimateFunctionSize::ID = 0;
 IGC_INITIALIZE_PASS_BEGIN(EstimateFunctionSize, "EstimateFunctionSize", "EstimateFunctionSize", false, true)
 IGC_INITIALIZE_PASS_END(EstimateFunctionSize, "EstimateFunctionSize", "EstimateFunctionSize", false, true)
 
-llvm::ModulePass *IGC::createEstimateFunctionSizePass() {
-  initializeEstimateFunctionSizePass(*PassRegistry::getPassRegistry());
-  return new EstimateFunctionSize;
+llvm::ModulePass* IGC::createEstimateFunctionSizePass() {
+    initializeEstimateFunctionSizePass(*PassRegistry::getPassRegistry());
+    return new EstimateFunctionSize;
 }
 
-llvm::ModulePass *
+llvm::ModulePass*
 IGC::createEstimateFunctionSizePass(EstimateFunctionSize::AnalysisLevel AL) {
-  initializeEstimateFunctionSizePass(*PassRegistry::getPassRegistry());
-  return new EstimateFunctionSize(AL);
+    initializeEstimateFunctionSizePass(*PassRegistry::getPassRegistry());
+    return new EstimateFunctionSize(AL);
 }
 
 EstimateFunctionSize::EstimateFunctionSize(AnalysisLevel AL)
@@ -61,16 +61,16 @@ EstimateFunctionSize::EstimateFunctionSize(AnalysisLevel AL)
 
 EstimateFunctionSize::~EstimateFunctionSize() { clear(); }
 
-void EstimateFunctionSize::getAnalysisUsage(AnalysisUsage &AU) const {
-  AU.setPreservesAll();
+void EstimateFunctionSize::getAnalysisUsage(AnalysisUsage& AU) const {
+    AU.setPreservesAll();
 }
 
-bool EstimateFunctionSize::runOnModule(Module &Mod) {
-  clear();
-  M = &Mod;
-  analyze();
-  checkSubroutine();
-  return false;
+bool EstimateFunctionSize::runOnModule(Module& Mod) {
+    clear();
+    M = &Mod;
+    analyze();
+    checkSubroutine();
+    return false;
 }
 
 // Given a module, estimate the maximal function size with complete inlining.
@@ -112,268 +112,269 @@ bool EstimateFunctionSize::runOnModule(Module &Mod) {
 //
 namespace {
 
-/// Associate each function with a partially expanded size and remaining
-/// unexpanded function list.
-struct FunctionNode {
-  FunctionNode(Function *F, std::size_t Size)
-      : F(F), Size(Size), Processed(false), CallingSubroutine(false) {}
+    /// Associate each function with a partially expanded size and remaining
+    /// unexpanded function list.
+    struct FunctionNode {
+        FunctionNode(Function* F, std::size_t Size)
+            : F(F), Size(Size), Processed(false), CallingSubroutine(false) {}
 
-  Function *F;
+        Function* F;
 
-  /// \brief Partially expanded size, or completely expanded size for a
-  /// leaf node.
-  std::size_t Size;
+        /// \brief Partially expanded size, or completely expanded size for a
+        /// leaf node.
+        std::size_t Size;
 
-  /// \brief A flag to indicate whether this node has been fully expanded.
-  bool Processed;
+        /// \brief A flag to indicate whether this node has been fully expanded.
+        bool Processed;
 
-  /// \brief A flag to indicate whether this node has a subroutine call before
-  /// expanding.
-  bool CallingSubroutine;
+        /// \brief A flag to indicate whether this node has a subroutine call before
+        /// expanding.
+        bool CallingSubroutine;
 
-  /// \brief All functions directly called in this function.
-  std::vector<Function *> CalleeList;
+        /// \brief All functions directly called in this function.
+        std::vector<Function*> CalleeList;
 
-  /// \brief All functions that call this function F.
-  std::vector<Function *> CallerList;
+        /// \brief All functions that call this function F.
+        std::vector<Function*> CallerList;
 
-  /// \brief A node becomes a leaf when all called functions are expanded.
-  bool isLeaf() const { return CalleeList.empty(); }
+        /// \brief A node becomes a leaf when all called functions are expanded.
+        bool isLeaf() const { return CalleeList.empty(); }
 
-  /// \brief Add a caller or callee.
-  void addCallee(Function *G) {
-    assert(!G->empty());
-    CalleeList.push_back(G);
-    CallingSubroutine = true;
-  }
-  void addCaller(Function *G) {
-    assert(!G->empty());
-    CallerList.push_back(G);
-  }
+        /// \brief Add a caller or callee.
+        void addCallee(Function* G) {
+            assert(!G->empty());
+            CalleeList.push_back(G);
+            CallingSubroutine = true;
+        }
+        void addCaller(Function* G) {
+            assert(!G->empty());
+            CallerList.push_back(G);
+        }
 
-  /// \brief A single step to expand F: accumulate the size and remove it
-  /// from the callee list.
-  void expand(FunctionNode *Node) {
-    // Multiple calls to a function is allowed as in the example above.
-    for (auto I = CalleeList.begin(); I != CalleeList.end(); /* empty */) {
-      if (*I == Node->F) {
-        Size += Node->Size;
-        I = CalleeList.erase(I);
-      } else
-        ++I;
-    }
-  }
+        /// \brief A single step to expand F: accumulate the size and remove it
+        /// from the callee list.
+        void expand(FunctionNode* Node) {
+            // Multiple calls to a function is allowed as in the example above.
+            for (auto I = CalleeList.begin(); I != CalleeList.end(); /* empty */) {
+                if (*I == Node->F) {
+                    Size += Node->Size;
+                    I = CalleeList.erase(I);
+                }
+                else
+                    ++I;
+            }
+        }
 
-  void print(raw_ostream &os);
+        void print(raw_ostream& os);
 
 #if defined(_DEBUG)
-  void dump() { print(llvm::errs()); }
+        void dump() { print(llvm::errs()); }
 #endif
-};
+    };
 
 } // namespace
 
-void FunctionNode::print(raw_ostream &os) {
-  os << "Function: " << F->getName() << ", " << Size << "\n";
-  for (auto G : CalleeList)
-    os << "--->>>" << G->getName() << "\n";
-  for (auto G : CallerList)
-    os << "<<<---" << G->getName() << "\n";
+void FunctionNode::print(raw_ostream& os) {
+    os << "Function: " << F->getName() << ", " << Size << "\n";
+    for (auto G : CalleeList)
+        os << "--->>>" << G->getName() << "\n";
+    for (auto G : CallerList)
+        os << "<<<---" << G->getName() << "\n";
 }
 
 void EstimateFunctionSize::clear() {
-  M = nullptr;
-  for (auto I = ECG.begin(), E = ECG.end(); I != E; ++I) {
-    auto Node = (FunctionNode *)I->second;
-    delete Node;
-  }
-  ECG.clear();
+    M = nullptr;
+    for (auto I = ECG.begin(), E = ECG.end(); I != E; ++I) {
+        auto Node = (FunctionNode*)I->second;
+        delete Node;
+    }
+    ECG.clear();
 }
 
 void EstimateFunctionSize::analyze() {
-  auto getSize = [](llvm::Function &F) -> std::size_t {
-    std::size_t Size = 0;
-    for (auto &BB : F.getBasicBlockList())
-      Size += BB.size();
-    return Size;
-  };
+    auto getSize = [](llvm::Function& F) -> std::size_t {
+        std::size_t Size = 0;
+        for (auto& BB : F.getBasicBlockList())
+            Size += BB.size();
+        return Size;
+    };
 
-  // Initial the data structure.
-  for (auto &F : M->getFunctionList()) {
-    if (F.empty())
-      continue;
-    ECG[&F] = new FunctionNode(&F, getSize(F));
-  }
-
-  // Visit all call instructions and populate CG.
-  for (auto &F : M->getFunctionList()) {
-    if (F.empty())
-      continue;
-
-    FunctionNode *Node = get<FunctionNode>(&F);
-    for (auto U : F.users()) {
-      // Other users (like bitcast/store) are ignored.
-      if (auto *CI = dyn_cast<CallInst>(U)) {
-        // G calls F, or G --> F
-        Function *G = CI->getParent()->getParent();
-        get<FunctionNode>(G)->addCallee(&F);
-        Node->addCaller(G);
-      }
+    // Initial the data structure.
+    for (auto& F : M->getFunctionList()) {
+        if (F.empty())
+            continue;
+        ECG[&F] = new FunctionNode(&F, getSize(F));
     }
-  }
 
-  // Expand leaf nodes until all are expanded (the second list is empty).
-  while (true) {
-    // Find unexpanded leaf nodes.
-    SmallVector<FunctionNode *, 8> LeafNodes;
+    // Visit all call instructions and populate CG.
+    for (auto& F : M->getFunctionList()) {
+        if (F.empty())
+            continue;
+
+        FunctionNode* Node = get<FunctionNode>(&F);
+        for (auto U : F.users()) {
+            // Other users (like bitcast/store) are ignored.
+            if (auto * CI = dyn_cast<CallInst>(U)) {
+                // G calls F, or G --> F
+                Function* G = CI->getParent()->getParent();
+                get<FunctionNode>(G)->addCallee(&F);
+                Node->addCaller(G);
+            }
+        }
+    }
+
+    // Expand leaf nodes until all are expanded (the second list is empty).
+    while (true) {
+        // Find unexpanded leaf nodes.
+        SmallVector<FunctionNode*, 8> LeafNodes;
+        for (auto I = ECG.begin(), E = ECG.end(); I != E; ++I) {
+            auto Node = (FunctionNode*)I->second;
+            if (!Node->Processed && Node->isLeaf())
+                LeafNodes.push_back(Node);
+        }
+
+        // Done.
+        if (LeafNodes.empty())
+            break;
+
+        // Expand leaf nodes one by one.
+        for (auto Node : LeafNodes) {
+            assert(Node->CalleeList.empty());
+            // Populate to its Callers.
+            for (auto Caller : Node->CallerList)
+                get<FunctionNode>(Caller)->expand(Node);
+            Node->Processed = true;
+        }
+    }
+
+    HasRecursion = false;
     for (auto I = ECG.begin(), E = ECG.end(); I != E; ++I) {
-      auto Node = (FunctionNode *)I->second;
-      if (!Node->Processed && Node->isLeaf())
-        LeafNodes.push_back(Node);
+        FunctionNode* Node = (FunctionNode*)I->second;
+        if (!Node->isLeaf()) {
+            HasRecursion = true;
+        }
     }
-
-    // Done.
-    if (LeafNodes.empty())
-      break;
-
-    // Expand leaf nodes one by one.
-    for (auto Node : LeafNodes) {
-      assert(Node->CalleeList.empty());
-      // Populate to its Callers.
-      for (auto Caller : Node->CallerList)
-        get<FunctionNode>(Caller)->expand(Node);
-      Node->Processed = true;
-    }
-  }
-
-  HasRecursion = false;
-  for (auto I = ECG.begin(), E = ECG.end(); I != E; ++I) {
-    FunctionNode *Node = (FunctionNode *)I->second;
-    if (!Node->isLeaf()) {
-      HasRecursion = true;
-    }
-  }
 }
 
 /// \brief Return the estimated maximal function size after complete inlining.
 std::size_t EstimateFunctionSize::getMaxExpandedSize() const {
-  std::size_t MaxSize = 0;
-  for (auto I = ECG.begin(), E = ECG.end(); I != E; ++I) {
-    FunctionNode *Node = (FunctionNode *)I->second;
-    // Only functions with subroutine calls count.
-    if (Node->CallingSubroutine)
-      MaxSize = std::max(MaxSize, Node->Size);
-  }
-  return MaxSize;
+    std::size_t MaxSize = 0;
+    for (auto I = ECG.begin(), E = ECG.end(); I != E; ++I) {
+        FunctionNode* Node = (FunctionNode*)I->second;
+        // Only functions with subroutine calls count.
+        if (Node->CallingSubroutine)
+            MaxSize = std::max(MaxSize, Node->Size);
+    }
+    return MaxSize;
 }
 
 void EstimateFunctionSize::checkSubroutine() {
-  auto CGW = getAnalysisIfAvailable<CodeGenContextWrapper>();
-  if (!CGW || AL != AL_Module)
-    return;
+    auto CGW = getAnalysisIfAvailable<CodeGenContextWrapper>();
+    if (!CGW || AL != AL_Module)
+        return;
 
-  bool neverInline = false;
+    bool neverInline = false;
 
-  CodeGenContext *pContext = CGW->getCodeGenContext();
-  bool EnableSubroutine = true;
-  if (pContext->type != ShaderType::OPENCL_SHADER &&
-      pContext->type != ShaderType::COMPUTE_SHADER)
-    EnableSubroutine = false;
-  else if (pContext->m_instrTypes.hasIndirectCall)
-    EnableSubroutine = false;
+    CodeGenContext* pContext = CGW->getCodeGenContext();
+    bool EnableSubroutine = true;
+    if (pContext->type != ShaderType::OPENCL_SHADER &&
+        pContext->type != ShaderType::COMPUTE_SHADER)
+        EnableSubroutine = false;
+    else if (pContext->m_instrTypes.hasIndirectCall)
+        EnableSubroutine = false;
 
-  // Enable subroutine if function has the "UserSubroutine" attribute
-  if (!EnableSubroutine) {
-    for (Function& F : *M) {
-        if (F.hasFnAttribute("UserSubroutine")) {
-            EnableSubroutine = true;
-            if (F.hasFnAttribute(llvm::Attribute::NoInline)) {
-                neverInline = true;
+    // Enable subroutine if function has the "UserSubroutine" attribute
+    if (!EnableSubroutine) {
+        for (Function& F : *M) {
+            if (F.hasFnAttribute("UserSubroutine")) {
+                EnableSubroutine = true;
+                if (F.hasFnAttribute(llvm::Attribute::NoInline)) {
+                    neverInline = true;
+                }
             }
         }
     }
-  }
 
-  if (neverInline) {
-    EnableSubroutine = true;
-  }
-  else if (EnableSubroutine) {
-    std::size_t Threshold = IGC_GET_FLAG_VALUE(SubroutineThreshold);
-    std::size_t MaxSize = getMaxExpandedSize();
-    if (MaxSize <= Threshold && !HasRecursion)
-      EnableSubroutine = false;
-  }
+    if (neverInline) {
+        EnableSubroutine = true;
+    }
+    else if (EnableSubroutine) {
+        std::size_t Threshold = IGC_GET_FLAG_VALUE(SubroutineThreshold);
+        std::size_t MaxSize = getMaxExpandedSize();
+        if (MaxSize <= Threshold && !HasRecursion)
+            EnableSubroutine = false;
+    }
 
-  if (IGC_IS_FLAG_ENABLED(EnableOCLNoInlineAttr) &&
-      pContext->type == ShaderType::OPENCL_SHADER)
-  {
-      for (Function& F : *M)
-      {
-          if (F.hasFnAttribute(llvm::Attribute::NoInline) &&
-              !F.hasFnAttribute(llvm::Attribute::Builtin)) {
-              EnableSubroutine = true;
-              break;
-          }
-      }
-  }
-
-  for (Function& F : *M)
-  {
-    if (F.hasFnAttribute("KMPLOCK"))
+    if (IGC_IS_FLAG_ENABLED(EnableOCLNoInlineAttr) &&
+        pContext->type == ShaderType::OPENCL_SHADER)
     {
-      EnableSubroutine = true;
-      break;
+        for (Function& F : *M)
+        {
+            if (F.hasFnAttribute(llvm::Attribute::NoInline) &&
+                !F.hasFnAttribute(llvm::Attribute::Builtin)) {
+                EnableSubroutine = true;
+                break;
+            }
+        }
     }
-  }
 
-  if (EnableSubroutine) {
-    // Disable retry manager when subroutine is enabled.
-    pContext->m_retryManager.Disable();
-  }
+    for (Function& F : *M)
+    {
+        if (F.hasFnAttribute("KMPLOCK"))
+        {
+            EnableSubroutine = true;
+            break;
+        }
+    }
 
-  assert(!HasRecursion || EnableSubroutine);
-  // Store result into the context (this decision should be immutable).
-  pContext->m_enableSubroutine = EnableSubroutine;
+    if (EnableSubroutine) {
+        // Disable retry manager when subroutine is enabled.
+        pContext->m_retryManager.Disable();
+    }
+
+    assert(!HasRecursion || EnableSubroutine);
+    // Store result into the context (this decision should be immutable).
+    pContext->m_enableSubroutine = EnableSubroutine;
 }
 
-std::size_t EstimateFunctionSize::getExpandedSize(const Function *F) const {
-  auto I = ECG.find((Function*)F);
-  if ( I != ECG.end() ) {
-    FunctionNode *Node = (FunctionNode *)I->second;
-    assert(F == Node->F);
-    return Node->Size;
-  }
+std::size_t EstimateFunctionSize::getExpandedSize(const Function* F) const {
+    auto I = ECG.find((Function*)F);
+    if (I != ECG.end()) {
+        FunctionNode* Node = (FunctionNode*)I->second;
+        assert(F == Node->F);
+        return Node->Size;
+    }
 
-  // Unknown.
-  return std::numeric_limits<std::size_t>::max();
+    // Unknown.
+    return std::numeric_limits<std::size_t>::max();
 }
 
-bool EstimateFunctionSize::onlyCalledOnce(const Function *F) {
-  auto I = ECG.find((Function *)F);
-  if (I != ECG.end()) {
-    FunctionNode *Node = (FunctionNode *)I->second;
-    assert(F == Node->F);
-    // one call-site and not a recursion
-    if (Node->CallerList.size() == 1 &&
-        Node->CallerList.front() != F) {
-      return true;
-    }
-    // OpenCL specific, called once by each kernel
-    SmallPtrSet<Function *, 8> CallerSet;
-    auto MdWrapper = getAnalysisIfAvailable<MetaDataUtilsWrapper>();
-    if (MdWrapper) {
-      auto pMdUtils = MdWrapper->getMetaDataUtils();
-      for (auto Caller : Node->CallerList) {
-        if (!isEntryFunc(pMdUtils, Caller)) {
-          return false;
+bool EstimateFunctionSize::onlyCalledOnce(const Function* F) {
+    auto I = ECG.find((Function*)F);
+    if (I != ECG.end()) {
+        FunctionNode* Node = (FunctionNode*)I->second;
+        assert(F == Node->F);
+        // one call-site and not a recursion
+        if (Node->CallerList.size() == 1 &&
+            Node->CallerList.front() != F) {
+            return true;
         }
-        if (CallerSet.count(Caller)) {
-          return false;
+        // OpenCL specific, called once by each kernel
+        SmallPtrSet<Function*, 8> CallerSet;
+        auto MdWrapper = getAnalysisIfAvailable<MetaDataUtilsWrapper>();
+        if (MdWrapper) {
+            auto pMdUtils = MdWrapper->getMetaDataUtils();
+            for (auto Caller : Node->CallerList) {
+                if (!isEntryFunc(pMdUtils, Caller)) {
+                    return false;
+                }
+                if (CallerSet.count(Caller)) {
+                    return false;
+                }
+                CallerSet.insert(Caller);
+            }
+            return true;
         }
-        CallerSet.insert(Caller);
-      }
-      return true;
     }
-  }
-  return false;
+    return false;
 }

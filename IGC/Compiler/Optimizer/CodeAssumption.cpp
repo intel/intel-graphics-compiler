@@ -77,13 +77,13 @@ bool CodeAssumption::runOnModule(Module& M)
     return m_changed;
 }
 
-void CodeAssumption::uniformHelper(Module *M)
+void CodeAssumption::uniformHelper(Module* M)
 {
     ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
 
     for (Module::iterator I = M->begin(), E = M->end(); I != E; ++I)
     {
-        Function *F = &(*I);
+        Function* F = &(*I);
         if (F->isDeclaration())
             continue;
 
@@ -96,14 +96,14 @@ void CodeAssumption::uniformHelper(Module *M)
         }
 
         // Entry BB and its unique successors if any
-        BasicBlock *BB = &F->getEntryBlock();
+        BasicBlock* BB = &F->getEntryBlock();
         while (BB)
         {
             auto NI = BB->begin();
             for (auto II = NI, IE = BB->end(); II != IE; II = NI)
             {
                 ++NI;
-                CallInst *CallI = dyn_cast<CallInst>(II);
+                CallInst* CallI = dyn_cast<CallInst>(II);
                 if (!CallI)
                     continue;
                 Function* callee = CallI->getCalledFunction();
@@ -116,7 +116,7 @@ void CodeAssumption::uniformHelper(Module *M)
                     // The value must be uniform. Using shuffle with index=0 to
                     // enforce it. (This is entry BB, thus lane 0 must be active.)
                     Type* int32Ty = Type::getInt32Ty(M->getContext());
-                    Value*  args[2];
+                    Value* args[2];
                     args[0] = CallI;
                     args[1] = ConstantInt::getNullValue(int32Ty);
 
@@ -142,7 +142,7 @@ void CodeAssumption::uniformHelper(Module *M)
     }
 }
 
-void CodeAssumption::addAssumption(Module *M)
+void CodeAssumption::addAssumption(Module* M)
 {
     // Do it for 64-bit pointer only
     if (M->getDataLayout().getPointerSize() != 8) {
@@ -159,7 +159,7 @@ void CodeAssumption::addAssumption(Module *M)
         {
             for (auto U = F->user_begin(), UE = F->user_end(); U != UE; ++U)
             {
-                CallInst *CI = dyn_cast<CallInst>(*U);
+                CallInst* CI = dyn_cast<CallInst>(*U);
                 if (!CI || !CI->getType()->isIntegerTy())
                 {
                     // sanity check
@@ -170,9 +170,9 @@ void CodeAssumption::addAssumption(Module *M)
                 ++InsertBefore;
                 IRBuilder<> IRB(CI->getParent(), InsertBefore);
 
-                Constant *Zero = ConstantInt::get(CI->getType(), 0);
-                Value *icmp = IRB.CreateICmpSGE(CI, Zero, "assumeCond");
-                (void) IRB.CreateAssumption(icmp);
+                Constant* Zero = ConstantInt::get(CI->getType(), 0);
+                Value* icmp = IRB.CreateICmpSGE(CI, Zero, "assumeCond");
+                (void)IRB.CreateAssumption(icmp);
 
                 if (CI->getType()->isIntegerTy(64))
                 {
@@ -180,14 +180,14 @@ void CodeAssumption::addAssumption(Module *M)
                     // Assume y is positive as well.
                     for (auto UI = CI->user_begin(), UE = CI->user_end(); UI != UE; ++UI)
                     {
-                        Instruction *userInst = dyn_cast<Instruction>(*UI);
+                        Instruction* userInst = dyn_cast<Instruction>(*UI);
                         if (userInst && userInst->getOpcode() == Instruction::Trunc &&
                             userInst->getType()->isIntegerTy(32))
                         {
                             BasicBlock::iterator pos(userInst);
                             ++pos;
                             IRBuilder<> builder(userInst->getParent(), pos);
-                            Value *tmp = builder.CreateICmpSGE(userInst, Zero, "assumeCond");
+                            Value* tmp = builder.CreateICmpSGE(userInst, Zero, "assumeCond");
                             (void)IRB.CreateAssumption(tmp);
                         }
                     }
@@ -221,10 +221,10 @@ void CodeAssumption::addAssumption(Module *M)
 // undefined behavior, and thus, do not bother overflow)!
 //
 bool CodeAssumption::isPositiveIndVar(
-    PHINode *PN, const DataLayout* DL, AssumptionCache* AC)
+    PHINode* PN, const DataLayout* DL, AssumptionCache* AC)
 {
-    auto getCxtInst = [](Value *I) -> Instruction * {
-        if (PHINode *phinode = dyn_cast<PHINode>(I)) {
+    auto getCxtInst = [](Value* I) -> Instruction * {
+        if (PHINode * phinode = dyn_cast<PHINode>(I)) {
             // llvm.assume for a PHI is inserted right after all
             // PHI instructions in the same BB. This assumption is
             // always true no matter where the PHI is used. To make
@@ -232,7 +232,7 @@ bool CodeAssumption::isPositiveIndVar(
             // to be the last of this BB.
             return phinode->getParent()->getTerminator();
         }
-        else if (Instruction *Inst = dyn_cast<Instruction>(I)) {
+        else if (Instruction * Inst = dyn_cast<Instruction>(I)) {
             return Inst;
         }
         return nullptr;
@@ -242,11 +242,11 @@ bool CodeAssumption::isPositiveIndVar(
     if (nOpnds != 2 || !PN->getType()->isIntegerTy(32)) {
         return false;
     }
-    Value *NonConstVal = nullptr;
+    Value* NonConstVal = nullptr;
     for (int i = 0; i < nOpnds; ++i)
     {
-        Value *aVal = PN->getOperand(i);
-        ConstantInt *IConst = dyn_cast<ConstantInt>(aVal);
+        Value* aVal = PN->getOperand(i);
+        ConstantInt* IConst = dyn_cast<ConstantInt>(aVal);
         if ((IConst && IConst->getSExtValue() >= 0) ||
             (!IConst &&
                 valueIsPositive(aVal, DL, AC, getCxtInst(aVal)))) {
@@ -260,11 +260,11 @@ bool CodeAssumption::isPositiveIndVar(
     if (!NonConstVal) {
         return true;
     }
-    Instruction *Inst = dyn_cast<Instruction>(NonConstVal);
+    Instruction* Inst = dyn_cast<Instruction>(NonConstVal);
     if (!Inst || Inst->getOpcode() != Instruction::Add) {
         return false;
     }
-    ConstantInt *IC = nullptr;
+    ConstantInt* IC = nullptr;
     if (Inst->getOperand(0) == PN) {
         IC = dyn_cast<ConstantInt>(Inst->getOperand(1));
     }
@@ -289,18 +289,18 @@ bool CodeAssumption::addAssumption(Function* F, AssumptionCache* AC)
         changed = false;
         for (auto BI = F->begin(), BE = F->end(); BI != BE; ++BI)
         {
-            BasicBlock *BB = &(*BI);
+            BasicBlock* BB = &(*BI);
             for (auto II = BB->begin(), IE = BB->end(); II != IE; ++II)
             {
-                Instruction *Inst = &(*II);
-                PHINode *PN = dyn_cast<PHINode>(Inst);
+                Instruction* Inst = &(*II);
+                PHINode* PN = dyn_cast<PHINode>(Inst);
                 if (!PN) break;
                 if (assumptionAdded.count(PN) == 0 &&
                     CodeAssumption::isPositiveIndVar(PN, &DL, AC))
                 {
                     IRBuilder<> IRB(BB->getFirstNonPHI());
-                    Constant *Zero = ConstantInt::get(PN->getType(), 0);
-                    Value *icmp = IRB.CreateICmpSGE(PN, Zero, "assumeCond");
+                    Constant* Zero = ConstantInt::get(PN->getType(), 0);
+                    Value* icmp = IRB.CreateICmpSGE(PN, Zero, "assumeCond");
                     CallInst* assumeInst = IRB.CreateAssumption(icmp);
 
                     // Register assumption
@@ -320,7 +320,7 @@ bool CodeAssumption::addAssumption(Function* F, AssumptionCache* AC)
 }
 
 // Return true if SubGroupID is uniform
-bool CodeAssumption::IsSGIdUniform(MetaDataUtils* pMDU, ModuleMetaData *modMD, Function* F)
+bool CodeAssumption::IsSGIdUniform(MetaDataUtils* pMDU, ModuleMetaData* modMD, Function* F)
 {
     if (!isEntryFunc(pMDU, F)) {
         return false;
@@ -360,7 +360,7 @@ bool CodeAssumption::IsSGIdUniform(MetaDataUtils* pMDU, ModuleMetaData *modMD, F
             }
         }
     }
-   
+
 
     if (threadGroupSize->hasValue())
     {
@@ -381,8 +381,8 @@ bool CodeAssumption::IsSGIdUniform(MetaDataUtils* pMDU, ModuleMetaData *modMD, F
             }
             else if (hasWO &&
                 ((Y == 1 && Z == 1) ||
-                 (X == 1 && Z == 1) ||
-                 (X == 1 && Y == 1)))
+                (X == 1 && Z == 1) ||
+                    (X == 1 && Y == 1)))
             {
                 return true;
             }

@@ -48,7 +48,7 @@ using namespace IGC;
 //This code must check that all the similar sample inst results are divided by the same value (= 1+loop trip count)
 //And must also check that the motion(first) sample inst result is also divided by the same value (=1+loop trip count)
 static bool samplesAveragedEqually(const std::vector<Instruction*>& similarSampleInsts)
-{    
+{
     unsigned similarToTexelSampleInstsCount = similarSampleInsts.size();
     unsigned totalSimilarSamples = similarToTexelSampleInstsCount + 1; //texel(sample2) + similar to texel(sample3,4,5)
     const float cmpAveragingFactor = (float)1.0 / (float(totalSimilarSamples));
@@ -58,7 +58,7 @@ static bool samplesAveragedEqually(const std::vector<Instruction*>& similarSampl
         std::set<Value*> texels; //for storing texel_x, texel_y, texel_z of this sampleInst
         for (int i = 0; i < 3; i++)
         {
-            instItr++; 
+            instItr++;
             if (instItr->getOpcode() == Instruction::ExtractElement)
             {
                 texels.insert(&*instItr);
@@ -68,7 +68,7 @@ static bool samplesAveragedEqually(const std::vector<Instruction*>& similarSampl
                 return false; //Sample->followed by 3 EE == this  pattern is not matching
             }
         }
-        
+
         instItr++;
         for (int i = 0; i < 3; i++)
         {
@@ -80,12 +80,12 @@ static bool samplesAveragedEqually(const std::vector<Instruction*>& similarSampl
                     return false;
                 }
                 texels.erase(instItr->getOperand(0));
-                if (ConstantFP *CF = dyn_cast<ConstantFP>(instItr->getOperand(1)))
+                if (ConstantFP * CF = dyn_cast<ConstantFP>(instItr->getOperand(1)))
                 {
                     if (!CF->getType()->isFloatTy() || CF->getValueAPF().convertToFloat() != cmpAveragingFactor)
                         return false;
                 }
-                else if (ConstantFP *CF = dyn_cast<ConstantFP>(instItr->getOperand(0)))
+                else if (ConstantFP * CF = dyn_cast<ConstantFP>(instItr->getOperand(0)))
                 {
                     if (!CF->getType()->isFloatTy() || CF->getValueAPF().convertToFloat() != cmpAveragingFactor)
                         return false;
@@ -116,25 +116,25 @@ detectSampleAveragePattern2(const std::vector<Instruction*>& sampleInsts, Instru
     float averagingFactor = float(1.0 / (nSampleInsts + 1));
 
     Instruction* base[3];
-    for(auto* UI : texSample->users())
+    for (auto* UI : texSample->users())
     {
         ExtractElementInst* ui = dyn_cast<ExtractElementInst>(UI);
-        if(ui == nullptr)
+        if (ui == nullptr)
         {
             return false;
         }
         ConstantInt* ci = dyn_cast<ConstantInt>(ui->getIndexOperand());
-        if(ci == nullptr)
+        if (ci == nullptr)
         {
             return false;
         }
         unsigned idx = static_cast<unsigned>(ci->getZExtValue());
-        if(idx <= 2)
+        if (idx <= 2)
         {
             base[idx] = ui;
         }
     }
-    
+
     Instruction* rgb[3] = { nullptr };
 
     for (unsigned i = 0; i < nSampleInsts; i++)
@@ -194,12 +194,12 @@ detectSampleAveragePattern2(const std::vector<Instruction*>& sampleInsts, Instru
     for (unsigned i = 0; i < 3; i++)
     {
         Instruction* fadd = dyn_cast<Instruction>(*rgb[i]->users().begin());
-        if(fadd == nullptr || fadd->getOpcode() != Instruction::FAdd ||
+        if (fadd == nullptr || fadd->getOpcode() != Instruction::FAdd ||
             fadd->getNumUses() > 1)
         {
             return false;
         }
-        if(fadd->getOperand(0) != base[i] &&
+        if (fadd->getOperand(0) != base[i] &&
             fadd->getOperand(1) != base[i])
         {
             return false;
@@ -238,9 +238,9 @@ detectSampleAveragePattern2(const std::vector<Instruction*>& sampleInsts, Instru
 // @llvm.genx.GenISA.sampleptr5 => samples(tex1....)
 bool GatingSimilarSamples::checkAndSaveSimilarSampleInsts()
 {
-    for (auto &I : BB->getInstList())
+    for (auto& I : BB->getInstList())
     {
-        if (SampleIntrinsic *SI = dyn_cast<SampleIntrinsic>(&I))
+        if (SampleIntrinsic * SI = dyn_cast<SampleIntrinsic>(&I))
         {
             if (motionSample == nullptr)
             {
@@ -267,7 +267,7 @@ bool GatingSimilarSamples::checkAndSaveSimilarSampleInsts()
     return true;
 }
 
-bool GatingSimilarSamples::setOrCmpGatingValue(Value* &gatingValueToCmp1, Instruction* mulInst, const Instruction* texelSampleInst)
+bool GatingSimilarSamples::setOrCmpGatingValue(Value*& gatingValueToCmp1, Instruction* mulInst, const Instruction* texelSampleInst)
 {
     if (!gatingValueToCmp1)
     {
@@ -294,19 +294,19 @@ bool GatingSimilarSamples::setOrCmpGatingValue(Value* &gatingValueToCmp1, Instru
 //          vec2 tc = out_texcoord0 - motion.xy * float(i);
 //          color += texture2D(texture_unit0, tc).xyz / float(n);
 bool GatingSimilarSamples::findAndSetCommonGatingValue()
-{    
+{
     gatingValue_mul1 = nullptr;
     gatingValue_mul2 = nullptr;
 
-    for (auto &texelSampleInstInLoop : similarSampleInsts)
+    for (auto& texelSampleInstInLoop : similarSampleInsts)
     {
         Instruction* firstOp = dyn_cast<Instruction>(texelSampleInstInLoop->getOperand(0)); //tc.1
         Instruction* secondOp = dyn_cast<Instruction>(texelSampleInstInLoop->getOperand(1)); //tc.2
-        if(!(firstOp && secondOp)) return false;
+        if (!(firstOp && secondOp)) return false;
         if (firstOp->getOpcode() == Instruction::FSub || firstOp->getOpcode() == Instruction::FAdd)
         {//i.e. (texcoord0 (+/-) something) 
             Instruction* mayBeMulInst = dyn_cast<Instruction>(firstOp->getOperand(1));
-            if(!mayBeMulInst) return false;
+            if (!mayBeMulInst) return false;
             //that "texcoord0 - something" might be "texcoord0 - FMul" OR it might be "tc - (0 - -FMul)"
             if (mayBeMulInst->getOpcode() == Instruction::FMul)
             {//i.e. something is FMul!
@@ -317,7 +317,7 @@ bool GatingSimilarSamples::findAndSetCommonGatingValue()
             {//that means we have this "tc - (0 - -FMul)"            
                 Instruction* realMulInst = dyn_cast<Instruction>(mayBeMulInst->getOperand(1));
                 if (!realMulInst) return false;
-                if (ConstantFP *mustBeZero = dyn_cast<ConstantFP>(mayBeMulInst->getOperand(0)))
+                if (ConstantFP * mustBeZero = dyn_cast<ConstantFP>(mayBeMulInst->getOperand(0)))
                 {
                     if (!mustBeZero->getType()->isFloatTy() || mustBeZero->getValueAPF().convertToFloat() != 0.0f)
                         return false;
@@ -342,7 +342,7 @@ bool GatingSimilarSamples::findAndSetCommonGatingValue()
         {
             //i.e. (out_texcoord0 (+/-) something) 
             Instruction* mayBeMulInst = dyn_cast<Instruction>(secondOp->getOperand(1));
-            if(!mayBeMulInst) return false;
+            if (!mayBeMulInst) return false;
             //that "tc - something" might be "tc - FMul" OR it might be "tc - (0 - -FMul)"
             if (mayBeMulInst->getOpcode() == Instruction::FMul)
             {//i.e. something is FMul!
@@ -353,7 +353,7 @@ bool GatingSimilarSamples::findAndSetCommonGatingValue()
             {//that means we have this "tc - (0 - -FMul)"            
                 Instruction* realMulInst = dyn_cast<Instruction>(mayBeMulInst->getOperand(1));
                 if (!realMulInst) return false;
-                if (ConstantFP *mustBeZero = dyn_cast<ConstantFP>(mayBeMulInst->getOperand(0)))
+                if (ConstantFP * mustBeZero = dyn_cast<ConstantFP>(mayBeMulInst->getOperand(0)))
                 {
                     if (!mustBeZero->getType()->isFloatTy() || mustBeZero->getValueAPF().convertToFloat() != 0.0f)
                         return false;
@@ -403,7 +403,7 @@ bool GatingSimilarSamples::areSampleInstructionsSimilar(Instruction* firstSample
 
 
 //This pass assumes loop unrolling has been performed
-bool GatingSimilarSamples::runOnFunction(llvm::Function &F)
+bool GatingSimilarSamples::runOnFunction(llvm::Function& F)
 {
     BB = nullptr; //opt runs only if single BB in function
     motionSample = nullptr;
@@ -430,11 +430,11 @@ bool GatingSimilarSamples::runOnFunction(llvm::Function &F)
     //By now we know that all similar sample inst results are divided by the same values and added with equal weights.
     if (!findAndSetCommonGatingValue())
         return false;
-    
+
     //save the final result inst
     for (BasicBlock::reverse_iterator rItr = BB->rbegin(); rItr != BB->rend(); rItr++)
     {
-        if (GenIntrinsicInst *GenI = dyn_cast<GenIntrinsicInst>(&*rItr))//  GenISAIntrinsic::GenISA_OUTPUT)
+        if (GenIntrinsicInst * GenI = dyn_cast<GenIntrinsicInst>(&*rItr))//  GenISAIntrinsic::GenISA_OUTPUT)
         {
             if (GenI->getIntrinsicID() == GenISAIntrinsic::GenISA_OUTPUT)
             {
@@ -445,7 +445,7 @@ bool GatingSimilarSamples::runOnFunction(llvm::Function &F)
     }
     if (resultInst == nullptr)
         return false;
-    
+
     //extract original texel.xyz and averaged color.xyz values for creating 3 PHI nodes 
     BasicBlock::iterator temp = texelSample->getIterator();
     temp++;
@@ -467,9 +467,9 @@ bool GatingSimilarSamples::runOnFunction(llvm::Function &F)
     IRB.setFastMathFlags(FMF);
     IRB.SetInsertPoint(similarSampleInsts[0]);
     Value* gatingVal1 = IRB.CreateBitCast(gatingValue_mul1, IRB.getFloatTy());
-    Value* cnd1 = IRB.CreateFCmpONE(gatingVal1, ConstantFP::get(IRB.getFloatTy(), 0.0f)); 
+    Value* cnd1 = IRB.CreateFCmpONE(gatingVal1, ConstantFP::get(IRB.getFloatTy(), 0.0f));
     Value* gatingVal2 = IRB.CreateBitCast(gatingValue_mul2, IRB.getFloatTy());
-    Value* cnd2 = IRB.CreateFCmpONE(gatingVal2, ConstantFP::get(IRB.getFloatTy(), 0.0f)); 
+    Value* cnd2 = IRB.CreateFCmpONE(gatingVal2, ConstantFP::get(IRB.getFloatTy(), 0.0f));
     Value* isGatingValueNotZero = IRB.CreateOr(cnd1, cnd2);
     IGCLLVM::TerminatorInst* thenBlockTerminator = SplitBlockAndInsertIfThen(isGatingValueNotZero, similarSampleInsts[0], false);
     BasicBlock* thenBlock = thenBlockTerminator->getParent();
@@ -478,12 +478,12 @@ bool GatingSimilarSamples::runOnFunction(llvm::Function &F)
         return false;
     }
 
-   
+
     //move all insts starting from similarSampleInst[0] upto resultInst(non-inluding) into the new then block
     BasicBlock* tailBlock = thenBlockTerminator->getSuccessor(0);
     thenBlock->getInstList().splice(thenBlock->begin(), tailBlock->getInstList(), similarSampleInsts[0]->getIterator(), resultInst->getIterator());
 
-    
+
     Value* avg_color_x = resultInst->getOperand(0);
     Value* avg_color_y = resultInst->getOperand(1);
     Value* avg_color_z = resultInst->getOperand(2);
@@ -494,7 +494,7 @@ bool GatingSimilarSamples::runOnFunction(llvm::Function &F)
     PN1->addIncoming(avg_color_x, thenBlock);
     PN1->addIncoming(texel_x, texelSample->getParent());
     resultInst->setOperand(0, PN1);
-    
+
     PHINode* PN2 = IRB.CreatePHI(avg_color_y->getType(), 2);
     PN2->addIncoming(avg_color_y, thenBlock);
     PN2->addIncoming(texel_y, texelSample->getParent());
@@ -504,7 +504,7 @@ bool GatingSimilarSamples::runOnFunction(llvm::Function &F)
     PN3->addIncoming(avg_color_z, thenBlock);
     PN3->addIncoming(texel_z, texelSample->getParent());
     resultInst->setOperand(2, PN3);
-    
+
     return true;
 }
 
@@ -512,11 +512,11 @@ char IGC::GatingSimilarSamples::ID = 0;
 
 IGC_INITIALIZE_PASS_BEGIN(GatingSimilarSamples, "loop-gating",
     "Loop Gating Optimization", false, false)
-INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
-IGC_INITIALIZE_PASS_END(GatingSimilarSamples, "loop-gating",
+    INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
+    IGC_INITIALIZE_PASS_END(GatingSimilarSamples, "loop-gating",
         "Loop Gating Optimization", false, false)
 
-llvm::FunctionPass* IGC::CreateGatingSimilarSamples()
+    llvm::FunctionPass* IGC::CreateGatingSimilarSamples()
 {
     return new GatingSimilarSamples();
 }

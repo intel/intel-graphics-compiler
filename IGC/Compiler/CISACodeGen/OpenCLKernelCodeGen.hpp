@@ -34,94 +34,94 @@ namespace IGC
 namespace IGC
 {
 
-class COpenCLKernel : public CShader
-{
-public:
-    friend class CShaderProgram;
-    COpenCLKernel(const OpenCLProgramContext* ctx, llvm::Function*, CShaderProgram* pProgram);
-    ~COpenCLKernel();
+    class COpenCLKernel : public CShader
+    {
+    public:
+        friend class CShaderProgram;
+        COpenCLKernel(const OpenCLProgramContext* ctx, llvm::Function*, CShaderProgram* pProgram);
+        ~COpenCLKernel();
 
-    virtual void PreCompile();
-    virtual void AllocatePayload();
-    virtual void ParseShaderSpecificOpcode( llvm::Instruction* inst );
-    virtual void ExtractGlobalVariables() {}
+        virtual void PreCompile();
+        virtual void AllocatePayload();
+        virtual void ParseShaderSpecificOpcode(llvm::Instruction* inst);
+        virtual void ExtractGlobalVariables() {}
 
-    bool        hasReadWriteImage(llvm::Function &F);
-    bool        CompileSIMDSize(SIMDMode simdMode, EmitPass &EP, llvm::Function &F);
-    SIMDStatus  checkSIMDCompileConds(SIMDMode simdMode, EmitPass &EP, llvm::Function &F);
+        bool        hasReadWriteImage(llvm::Function& F);
+        bool        CompileSIMDSize(SIMDMode simdMode, EmitPass& EP, llvm::Function& F);
+        SIMDStatus  checkSIMDCompileConds(SIMDMode simdMode, EmitPass& EP, llvm::Function& F);
 
-    void        FillKernel();
+        void        FillKernel();
 
-    // Recomputes the binding table layout according to the present kernel args
-    void RecomputeBTLayout();
+        // Recomputes the binding table layout according to the present kernel args
+        void RecomputeBTLayout();
 
-    // Set m_HasTID to true if TID functions were found
-    void SetHasTID();
+        // Set m_HasTID to true if TID functions were found
+        void SetHasTID();
 
-    // Set m_HasGlobalSize to true if TID functions were found
-    void SetHasGlobalSize();
+        // Set m_HasGlobalSize to true if TID functions were found
+        void SetHasGlobalSize();
 
-    bool HasFullDispatchMask();
+        bool HasFullDispatchMask();
 
-    // Returns the immediate value mapped to GlobalVariable c.
-    // (GlobalVariables represent the pointer to the global,
-    // which is a compile-time constant)
-    virtual unsigned int GetGlobalMappingValue(llvm::Value* c);
-    virtual CVariable* GetGlobalMapping(llvm::Value* c);
+        // Returns the immediate value mapped to GlobalVariable c.
+        // (GlobalVariables represent the pointer to the global,
+        // which is a compile-time constant)
+        virtual unsigned int GetGlobalMappingValue(llvm::Value* c);
+        virtual CVariable* GetGlobalMapping(llvm::Value* c);
 
-    const SOpenCLKernelInfo &getKernelInfo() const { return m_kernelInfo; }
+        const SOpenCLKernelInfo& getKernelInfo() const { return m_kernelInfo; }
 
-public:
-    SOpenCLProgramInfo* m_programInfo;
-    SOpenCLKernelInfo m_kernelInfo;
+    public:
+        SOpenCLProgramInfo* m_programInfo;
+        SOpenCLKernelInfo m_kernelInfo;
 
-    unsigned int m_perWIStatelessPrivateMemSize;
+        unsigned int m_perWIStatelessPrivateMemSize;
 
-    bool        GetDisableMidThreadPreemption() const { return m_disableMidThreadPreemption; }
-    void        SetDisableMidthreadPreemption() { m_disableMidThreadPreemption = true; }
+        bool        GetDisableMidThreadPreemption() const { return m_disableMidThreadPreemption; }
+        void        SetDisableMidthreadPreemption() { m_disableMidThreadPreemption = true; }
 
-protected:
-    // Creates appropriate annotation based on the kernel arg
-    void CreateAnnotations(IGC::KernelArg* kernelArg, uint payloadPosition);
+    protected:
+        // Creates appropriate annotation based on the kernel arg
+        void CreateAnnotations(IGC::KernelArg* kernelArg, uint payloadPosition);
 
-    // Creates annotations for inline sampler_t objects
-    void CreateInlineSamplerAnnotations();
+        // Creates annotations for inline sampler_t objects
+        void CreateInlineSamplerAnnotations();
 
-    // Creates annotations for kernel argument information (kernel reflection)
-    void CreateKernelArgInfo();
+        // Creates annotations for kernel argument information (kernel reflection)
+        void CreateKernelArgInfo();
 
-    // Creates annotations for kernel attribution information (kernel reflection)
-    void CreateKernelAttributeInfo();
-    std::string getVecTypeHintString(IGC::IGCMD::VectorTypeHintMetaDataHandle& vecTypeHintInfo);
-    std::string getThreadGroupSizeString(IGC::IGCMD::ThreadGroupSizeMetaDataHandle& threadGroupSize, bool isHint);
-    std::string getSubGroupSizeString(IGC::IGCMD::SubGroupSizeMetaDataHandle& subGroupSize);
-    std::string getWorkgroupWalkOrderString(const IGC::WorkGroupWalkOrderMD& workgroupWalkOrder);
-    // Create annotation for printf strings.
-    void CreatePrintfStringAnnotations();
+        // Creates annotations for kernel attribution information (kernel reflection)
+        void CreateKernelAttributeInfo();
+        std::string getVecTypeHintString(IGC::IGCMD::VectorTypeHintMetaDataHandle& vecTypeHintInfo);
+        std::string getThreadGroupSizeString(IGC::IGCMD::ThreadGroupSizeMetaDataHandle& threadGroupSize, bool isHint);
+        std::string getSubGroupSizeString(IGC::IGCMD::SubGroupSizeMetaDataHandle& subGroupSize);
+        std::string getWorkgroupWalkOrderString(const IGC::WorkGroupWalkOrderMD& workgroupWalkOrder);
+        // Create annotation for printf strings.
+        void CreatePrintfStringAnnotations();
 
-    // Load from MD and return the resource information for argument number argNo
-    SOpenCLKernelInfo::SResourceInfo getResourceInfo(int argNo);
+        // Load from MD and return the resource information for argument number argNo
+        SOpenCLKernelInfo::SResourceInfo getResourceInfo(int argNo);
 
-    // Load from MD and return the resource extension information for argument number argNo
-    ResourceExtensionTypeEnum getExtensionInfo(int argNo);
+        // Load from MD and return the resource extension information for argument number argNo
+        ResourceExtensionTypeEnum getExtensionInfo(int argNo);
 
-    // Resolve the binding table index for resource resInfo (using the BTL)
-    unsigned int getBTI(SOpenCLKernelInfo::SResourceInfo& resInfo);
+        // Resolve the binding table index for resource resInfo (using the BTL)
+        unsigned int getBTI(SOpenCLKernelInfo::SResourceInfo& resInfo);
 
-    // Find the sum of inline local sizes used by this kernel
-    unsigned int getSumFixedTGSMSizes(llvm::Function* F);
+        // Find the sum of inline local sizes used by this kernel
+        unsigned int getSumFixedTGSMSizes(llvm::Function* F);
 
-    bool m_HasTID;
-    bool m_HasGlobalSize;
-    bool m_disableMidThreadPreemption;
+        bool m_HasTID;
+        bool m_HasGlobalSize;
+        bool m_disableMidThreadPreemption;
 
-    // Maps GlobalVariables representing local address-space pointers
-    // to their offsets in SLM.
-    std::map<llvm::Value*, unsigned int> m_localOffsetsMap;
+        // Maps GlobalVariables representing local address-space pointers
+        // to their offsets in SLM.
+        std::map<llvm::Value*, unsigned int> m_localOffsetsMap;
 
-    OpenCLProgramContext* m_Context;
+        OpenCLProgramContext* m_Context;
 
-    void ClearKernelInfo();
-};
+        void ClearKernelInfo();
+    };
 
 }

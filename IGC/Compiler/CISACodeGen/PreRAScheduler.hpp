@@ -28,7 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 
-void initializePreRASchedulerPass(llvm::PassRegistry &);
-llvm::FunctionPass *createPreRASchedulerPass();
+void initializePreRASchedulerPass(llvm::PassRegistry&);
+llvm::FunctionPass* createPreRASchedulerPass();
 
 #endif // _CISA_PreRAScheduler_H_

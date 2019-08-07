@@ -58,7 +58,7 @@ namespace IGC
             return "ImageFuncsAnalysis";
         }
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.setPreservesCFG();
             AU.addRequired<MetaDataUtilsWrapper>();
@@ -69,19 +69,19 @@ namespace IGC
         ///         function calls, analyzes them and creates metadata that represents the implicit image
         ///          information needded by each function for resolving these function calls
         /// @param  M The destination module.
-        virtual bool runOnModule(llvm::Module &M) override;
+        virtual bool runOnModule(llvm::Module& M) override;
 
         /// @brief  Function entry point.
         ///         Finds all OpenCL relevant image dimension function calls in this function, analyzes them 
         ///          and creates metadata that represents the implicit image information needded by this function 
         ///         for resolving these function calls
         /// @param  F The destination function.
-        bool runOnFunction(llvm::Function &F);
+        bool runOnFunction(llvm::Function& F);
 
         /// @brief  Call instrucitons visitor.
         ///         Checks for OpenCL image dimension functions and anlyzes it
         /// @param  CI The call instruction.
-        void visitCallInst(llvm::CallInst &CI);
+        void visitCallInst(llvm::CallInst& CI);
 
 
         // All image functions needed resolved by implicit arguments

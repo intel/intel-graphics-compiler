@@ -149,29 +149,29 @@ namespace
 
         static char ID; // Pass identification, replacement for typeid
         VectorProcess()
-          : FunctionPass(ID)
-          , m_DL(nullptr)
-          , m_C(nullptr)
-          , has_8Byte_A64_BS(true)
-          , m_WorkList()
+            : FunctionPass(ID)
+            , m_DL(nullptr)
+            , m_C(nullptr)
+            , has_8Byte_A64_BS(true)
+            , m_WorkList()
         {
             initializeVectorProcessPass(*PassRegistry::getPassRegistry());
         }
         StringRef getPassName() const override { return "VectorProcess"; }
-        bool runOnFunction(Function &F) override;
-        void getAnalysisUsage(AnalysisUsage &AU) const override
+        bool runOnFunction(Function& F) override;
+        void getAnalysisUsage(AnalysisUsage& AU) const override
         {
             AU.setPreservesCFG();
             AU.addRequired<CodeGenContextWrapper>();
         }
 
     private:
-        bool reLayoutLoadStore(Instruction *Inst);
-        bool optimizeBitCast(BitCastInst *BC);
+        bool reLayoutLoadStore(Instruction* Inst);
+        bool optimizeBitCast(BitCastInst* BC);
 
-     private:
-        const DataLayout *m_DL;
-        LLVMContext *m_C;
+    private:
+        const DataLayout* m_DL;
+        LLVMContext* m_C;
         bool has_8Byte_A64_BS; // true if 8-byte A64 Byte scattered is supported
         InstWorkVector m_WorkList;
     };
@@ -188,40 +188,40 @@ IGC_INITIALIZE_PASS_END(VectorProcess, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONL
 
 char VectorProcess::ID = 0;
 
-FunctionPass *IGC::createVectorProcessPass()
+FunctionPass* IGC::createVectorProcessPass()
 {
     return new VectorProcess();
 }
 
 bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
 {
-    LoadInst  *LI = dyn_cast<LoadInst>(Inst);
-    StoreInst *SI = dyn_cast<StoreInst>(Inst);
+    LoadInst* LI = dyn_cast<LoadInst>(Inst);
+    StoreInst* SI = dyn_cast<StoreInst>(Inst);
     GenIntrinsicInst* II = dyn_cast<GenIntrinsicInst>(Inst);
 
     assert(
-        (LI || SI || 
-            (II &&
-             (II->getIntrinsicID() == GenISAIntrinsic::GenISA_ldrawvector_indexed ||
-              II->getIntrinsicID() == GenISAIntrinsic::GenISA_storerawvector_indexed)))
-         && "Inst should be either load or store");
+        (LI || SI ||
+        (II &&
+            (II->getIntrinsicID() == GenISAIntrinsic::GenISA_ldrawvector_indexed ||
+                II->getIntrinsicID() == GenISAIntrinsic::GenISA_storerawvector_indexed)))
+        && "Inst should be either load or store");
 
-    Value *Ptr = nullptr;
+    Value* Ptr = nullptr;
     if (LI != nullptr)
     {
         Ptr = LI->getPointerOperand();
     }
     else
-    if (SI != nullptr)
-    {
-        Ptr = SI->getPointerOperand();
-    }
-    else
-    {
-        Ptr = II->getOperand(0);
-    }
+        if (SI != nullptr)
+        {
+            Ptr = SI->getPointerOperand();
+        }
+        else
+        {
+            Ptr = II->getOperand(0);
+        }
 
-    Type  *Ty;
+    Type* Ty;
     if (LI)
     {
         Ty = LI->getType();
@@ -230,7 +230,7 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
     {
         Ty = SI->getOperand(0)->getType();
     }
-    else if(II->getIntrinsicID() == GenISAIntrinsic::GenISA_ldrawvector_indexed)
+    else if (II->getIntrinsicID() == GenISAIntrinsic::GenISA_ldrawvector_indexed)
     {
         Ty = II->getType();
     }
@@ -239,19 +239,19 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
         Ty = II->getArgOperand(2)->getType();
     }
 
-    VectorType *VTy = dyn_cast<VectorType>(Ty);
+    VectorType* VTy = dyn_cast<VectorType>(Ty);
 
     // Treat a scalar as 1-element vector
     uint32_t nelts = VTy ? int_cast<uint32_t>(VTy->getNumElements()) : 1;
-    Type      *eTy = VTy ? VTy->getElementType() : Ty;
+    Type* eTy = VTy ? VTy->getElementType() : Ty;
     uint32_t eTyBits = int_cast<unsigned int>(m_DL->getTypeSizeInBits(eTy));
 
-    assert((eTyBits ==  8 || eTyBits == 16 || eTyBits == 32 || eTyBits == 64) &&
-           "the Size of Vector element must be 8/16/32/64 bits.");
- 
+    assert((eTyBits == 8 || eTyBits == 16 || eTyBits == 32 || eTyBits == 64) &&
+        "the Size of Vector element must be 8/16/32/64 bits.");
+
     uint32_t eTyBytes = (eTyBits >> 3);
     uint32_t TBytes = nelts * eTyBytes;  // Total size in bytes
-    
+
     //
     // Assumption:
     //    1. if vector size < 4 bytes, it must be 1 or 2 bytes (never 3);
@@ -271,25 +271,25 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
     // to a 1-element vector (or scalar) so all elements are read/written with
     // a single message.
     //
-    Type *new_eTy;
+    Type* new_eTy;
     uint32_t new_nelts;
-    PointerType *PtrTy = cast<PointerType>(Ptr->getType());
+    PointerType* PtrTy = cast<PointerType>(Ptr->getType());
 
-    if( TBytes == 1 )
+    if (TBytes == 1)
     {
         assert(nelts == 1 && "Internal Error: something wrong");
         return false;
     }
-    else if( TBytes == 2 || TBytes == 4)
+    else if (TBytes == 2 || TBytes == 4)
     {
-        if( nelts == 1)
+        if (nelts == 1)
         {
             // No conversion needed.
             return false;
         }
         new_nelts = 1;
         new_eTy = (TBytes == 2) ? Type::getInt16Ty(*m_C)
-                                : Type::getInt32Ty(*m_C);
+            : Type::getInt32Ty(*m_C);
     }
     else
     {
@@ -302,30 +302,30 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
             align = LI->getAlignment();
         }
         else
-        if (SI)
-        {
-            align = SI->getAlignment();
-        }
-        else
-        {
-            align = 1;
-        }
+            if (SI)
+            {
+                align = SI->getAlignment();
+            }
+            else
+            {
+                align = 1;
+            }
 
         bool useQW = useA64 && ((TBytes % 8) == 0) &&
             ((has_8Byte_A64_BS && align < 4) || (eTyBytes == 8U && align >= 8U));
         const uint32_t new_eTyBytes = useQW ? 8 : 4;
-        if( eTyBytes == new_eTyBytes )
+        if (eTyBytes == new_eTyBytes)
         {
             // The original vector is already a good one. Skip.
             return false;
         }
         new_eTy = useQW ? Type::getInt64Ty(*m_C) : Type::getInt32Ty(*m_C);
-        assert( (TBytes % new_eTyBytes) == 0 && "Wrong new vector size");
+        assert((TBytes % new_eTyBytes) == 0 && "Wrong new vector size");
         new_nelts = TBytes / new_eTyBytes;
     }
 
     IGCIRBuilder<> Builder(Inst);
-    Type *newVTy;
+    Type* newVTy;
     if (new_nelts == 1)
     {
         newVTy = new_eTy;
@@ -334,9 +334,9 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
     {
         newVTy = VectorType::get(new_eTy, new_nelts);
     }
-    Type *newPtrTy = PointerType::get(newVTy, PtrTy->getPointerAddressSpace());
+    Type* newPtrTy = PointerType::get(newVTy, PtrTy->getPointerAddressSpace());
     Value* newPtr;
-    if (IntToPtrInst* i2p = dyn_cast<IntToPtrInst>(Ptr))
+    if (IntToPtrInst * i2p = dyn_cast<IntToPtrInst>(Ptr))
     {
         newPtr = Builder.CreateIntToPtr(i2p->getOperand(0), newPtrTy, "IntToPtr2");
     }
@@ -347,10 +347,10 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
 
     if (LI)
     {
-        Value *V = Builder.CreateAlignedLoad(newPtr,
-                                             LI->getAlignment(),
-                                             LI->isVolatile(),
-                                             "vCastload");
+        Value* V = Builder.CreateAlignedLoad(newPtr,
+            LI->getAlignment(),
+            LI->isVolatile(),
+            "vCastload");
 
         if (eTy->isPointerTy())
         {
@@ -359,18 +359,18 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
             //        the original vector type with ptr element type replaced
             //        with int-element type.
             // second, IntToPtr cast to the original vector type.
-            Type *int_eTy = Type::getIntNTy(*m_C, eTyBits);
-            Type *new_intTy = VTy ? VectorType::get(int_eTy, nelts) : int_eTy;
+            Type* int_eTy = Type::getIntNTy(*m_C, eTyBits);
+            Type* new_intTy = VTy ? VectorType::get(int_eTy, nelts) : int_eTy;
             V = Builder.CreateBitCast(V, new_intTy);
             if (VTy)
             {
                 // If we need a vector inttoptr, scalarize it here.
-                auto *BC = V;
+                auto* BC = V;
                 V = UndefValue::get(Ty);
-                for (unsigned i=0; i < nelts; i++)
+                for (unsigned i = 0; i < nelts; i++)
                 {
-                    auto *EE  = Builder.CreateExtractElement(BC, i);
-                    auto *ITP = Builder.CreateIntToPtr(EE, eTy);
+                    auto* EE = Builder.CreateExtractElement(BC, i);
+                    auto* ITP = Builder.CreateIntToPtr(EE, eTy);
                     V = Builder.CreateInsertElement(V, ITP, i);
                 }
             }
@@ -387,140 +387,140 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
         LI->eraseFromParent();
     }
     else
-    if (SI)
-    {
-        Value *StoreVal = SI->getValueOperand();
-        Value *V;
-        if (eTy->isPointerTy())
+        if (SI)
         {
-
-            // Similar to the load. First, PtrtoInt cast to a new vector,
-            // and then bitcast to the stored type.
-            Type *int_eTy = Type::getIntNTy(*m_C, eTyBits);
-            if(VTy)
+            Value* StoreVal = SI->getValueOperand();
+            Value* V;
+            if (eTy->isPointerTy())
             {
-                // If we need a vector inttoptr, scalarize it here.
-                V = UndefValue::get(VectorType::get(int_eTy, nelts));
-                for(unsigned i = 0; i < nelts; i++)
+
+                // Similar to the load. First, PtrtoInt cast to a new vector,
+                // and then bitcast to the stored type.
+                Type* int_eTy = Type::getIntNTy(*m_C, eTyBits);
+                if (VTy)
                 {
-                    auto *EE = Builder.CreateExtractElement(StoreVal, i);
-                    auto *ITP = Builder.CreatePtrToInt(EE, int_eTy);
-                    V = Builder.CreateInsertElement(V, ITP, i);
+                    // If we need a vector inttoptr, scalarize it here.
+                    V = UndefValue::get(VectorType::get(int_eTy, nelts));
+                    for (unsigned i = 0; i < nelts; i++)
+                    {
+                        auto* EE = Builder.CreateExtractElement(StoreVal, i);
+                        auto* ITP = Builder.CreatePtrToInt(EE, int_eTy);
+                        V = Builder.CreateInsertElement(V, ITP, i);
+                    }
+                }
+                else if (isa<IntToPtrInst>(StoreVal) &&
+                    cast<IntToPtrInst>(StoreVal)->getOperand(0)->getType() == int_eTy)
+                {
+                    // Detect case when creating PtrToInt and BitCast instructions
+                    // is not needed. This is when store value is created from 
+                    // a vector with the same type as the target vector type.
+                    //
+                    // e.g. example from a Vulkan shader with variable pointers:
+                    // Before:
+                    //     %7 = bitcast <2 x i32> %assembled.vect7 to i64
+                    //     %Temp-26.i.VP = inttoptr i64 %7 to i32 addrspace(1179648)*
+                    //     store i32 addrspace(1179648)* %Temp-26.i.VP, i32 addrspace(1179648)** %6, align 8
+                    // After:
+                    //     store <2 x i32> %assembled.vect7, <2 x i32>* %vptrcast, align 8
+
+                    V = cast<IntToPtrInst>(StoreVal)->getOperand(0);
+                }
+                else
+                {
+                    V = Builder.CreatePtrToInt(StoreVal, int_eTy);
+                }
+
+                if (isa<BitCastInst>(V) &&
+                    (cast<BitCastInst>(V)->getOperand(0)->getType() == newVTy))
+                {
+                    V = cast<BitCastInst>(V)->getOperand(0);
+                }
+                else
+                {
+                    V = Builder.CreateBitCast(V, newVTy);
                 }
             }
-            else if (isa<IntToPtrInst>(StoreVal) &&
-                     cast<IntToPtrInst>(StoreVal)->getOperand(0)->getType() == int_eTy)
-            {
-                // Detect case when creating PtrToInt and BitCast instructions
-                // is not needed. This is when store value is created from 
-                // a vector with the same type as the target vector type.
-                //
-                // e.g. example from a Vulkan shader with variable pointers:
-                // Before:
-                //     %7 = bitcast <2 x i32> %assembled.vect7 to i64
-                //     %Temp-26.i.VP = inttoptr i64 %7 to i32 addrspace(1179648)*
-                //     store i32 addrspace(1179648)* %Temp-26.i.VP, i32 addrspace(1179648)** %6, align 8
-                // After:
-                //     store <2 x i32> %assembled.vect7, <2 x i32>* %vptrcast, align 8
-
-                V = cast<IntToPtrInst>(StoreVal)->getOperand(0);
-            }
             else
             {
-                V = Builder.CreatePtrToInt(StoreVal, int_eTy);
+                V = Builder.CreateBitCast(StoreVal, newVTy);
             }
+            (void)Builder.CreateAlignedStore(V, newPtr,
+                SI->getAlignment(),
+                SI->isVolatile());
+            SI->eraseFromParent();
+        }
+        else if (II->getIntrinsicID() == GenISAIntrinsic::GenISA_ldrawvector_indexed)
+        {
+            Type* types[] =
+            {
+                newVTy,
+                newPtrTy
+            };
 
-            if (isa<BitCastInst>(V) &&
-                (cast<BitCastInst>(V)->getOperand(0)->getType() == newVTy))
-            {
-                V = cast<BitCastInst>(V)->getOperand(0);
-            }
-            else
-            {
-                V = Builder.CreateBitCast(V, newVTy);
-            }
+            Function* F = GenISAIntrinsic::getDeclaration(
+                II->getParent()->getParent()->getParent(),
+                GenISAIntrinsic::GenISA_ldrawvector_indexed,
+                types);
+            Value* V = Builder.CreateCall3(F, newPtr, II->getOperand(1), II->getOperand(2));
+            V = Builder.CreateBitCast(V, Ty);
+
+            II->replaceAllUsesWith(V);
+            II->eraseFromParent();
         }
         else
         {
-            V = Builder.CreateBitCast(StoreVal, newVTy);
+            Type* types[] =
+            {
+                newPtrTy,
+                newVTy
+            };
+
+            Function* F = GenISAIntrinsic::getDeclaration(
+                II->getParent()->getParent()->getParent(),
+                GenISAIntrinsic::GenISA_storerawvector_indexed,
+                types);
+            Value* V = Builder.CreateBitCast(II->getOperand(2), newVTy);
+            Builder.CreateCall4(F, newPtr, II->getOperand(1), V, II->getOperand(3));
+            II->eraseFromParent();
         }
-        (void) Builder.CreateAlignedStore(V, newPtr,
-                                          SI->getAlignment(),
-                                          SI->isVolatile());
-        SI->eraseFromParent();
-    }
-    else if(II->getIntrinsicID() == GenISAIntrinsic::GenISA_ldrawvector_indexed)
-    {
-        Type* types[] =
-        {
-            newVTy,
-            newPtrTy
-        };
-
-        Function* F = GenISAIntrinsic::getDeclaration(
-            II->getParent()->getParent()->getParent(),
-            GenISAIntrinsic::GenISA_ldrawvector_indexed,
-            types);
-        Value* V = Builder.CreateCall3(F, newPtr, II->getOperand(1), II->getOperand(2));
-        V = Builder.CreateBitCast(V, Ty);
-
-        II->replaceAllUsesWith(V);
-        II->eraseFromParent();
-    }
-    else
-    {
-        Type* types[] =
-        {
-            newPtrTy,
-            newVTy
-        };
-
-        Function* F = GenISAIntrinsic::getDeclaration(
-            II->getParent()->getParent()->getParent(),
-            GenISAIntrinsic::GenISA_storerawvector_indexed,
-            types);
-        Value* V = Builder.CreateBitCast(II->getOperand(2), newVTy);
-        Builder.CreateCall4(F, newPtr, II->getOperand(1), V, II->getOperand(3));
-        II->eraseFromParent();
-    }
     return true;
 }
 
-bool VectorProcess::optimizeBitCast(BitCastInst *BC)
+bool VectorProcess::optimizeBitCast(BitCastInst* BC)
 {
     bool change = false;
-    Value *Src = BC->getOperand(0);
-    Type *SrcTy = Src->getType();
-    Type *Ty = BC->getType();
+    Value* Src = BC->getOperand(0);
+    Type* SrcTy = Src->getType();
+    Type* Ty = BC->getType();
 
-    if( Ty == SrcTy )
+    if (Ty == SrcTy)
     {
         BC->replaceAllUsesWith(Src);
         return true;
     }
 
     // Only handle non-pointer bitcast
-    if( isa<PointerType>(Ty) || isa<PointerType>(SrcTy) )
+    if (isa<PointerType>(Ty) || isa<PointerType>(SrcTy))
     {
         return false;
     }
-    
-    for( Value::user_iterator UI = BC->user_begin(), UE = BC->user_end();
-         UI != UE; ++UI )
+
+    for (Value::user_iterator UI = BC->user_begin(), UE = BC->user_end();
+        UI != UE; ++UI)
     {
-        if( BitCastInst *Inst = dyn_cast<BitCastInst>(*UI))
+        if (BitCastInst * Inst = dyn_cast<BitCastInst>(*UI))
         {
             IRBuilder<> Builder(Inst);
-            Type *Ty1 = Inst->getType();
-            if( SrcTy == Ty1 )
+            Type* Ty1 = Inst->getType();
+            if (SrcTy == Ty1)
             {
                 Inst->replaceAllUsesWith(Src);
             }
             else
             {
-                BitCastInst *nBC = (BitCastInst*)Builder.CreateBitCast(Src, Ty1);
+                BitCastInst* nBC = (BitCastInst*)Builder.CreateBitCast(Src, Ty1);
                 Inst->replaceAllUsesWith(nBC);
-                
+
                 // Add nBC so it will be processed again.
                 m_WorkList.push_back(nBC);
             }
@@ -535,12 +535,12 @@ bool VectorProcess::runOnFunction(Function& F)
     CodeGenContext* cgCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     bool changed = false;
     m_DL = &F.getParent()->getDataLayout();
-    m_C  = &F.getContext();
+    m_C = &F.getContext();
     has_8Byte_A64_BS = cgCtx->platform.has8ByteA64ByteScatteredMessage();
 
     //  Adjust load/store layout by inserting bitcast.
     //  Those bitcasts should not be optimized away.
-    for( inst_iterator I = inst_begin(F), E = inst_end(F); I != E; ++I )
+    for (inst_iterator I = inst_begin(F), E = inst_end(F); I != E; ++I)
     {
         Instruction* inst = &*I;
         if (isa<LoadInst>(inst) || isa<StoreInst>(inst))
@@ -548,19 +548,19 @@ bool VectorProcess::runOnFunction(Function& F)
             m_WorkList.push_back(inst);
         }
         else
-        if (GenIntrinsicInst* intrin = dyn_cast<GenIntrinsicInst>(inst))
-        {
-            if (intrin->getIntrinsicID() == GenISAIntrinsic::GenISA_ldrawvector_indexed ||
-                intrin->getIntrinsicID() == GenISAIntrinsic::GenISA_storerawvector_indexed)
+            if (GenIntrinsicInst * intrin = dyn_cast<GenIntrinsicInst>(inst))
             {
-                m_WorkList.push_back(inst);
+                if (intrin->getIntrinsicID() == GenISAIntrinsic::GenISA_ldrawvector_indexed ||
+                    intrin->getIntrinsicID() == GenISAIntrinsic::GenISA_storerawvector_indexed)
+                {
+                    m_WorkList.push_back(inst);
+                }
             }
-        }
     }
 
-    for( unsigned i=0; i < m_WorkList.size(); ++i )
+    for (unsigned i = 0; i < m_WorkList.size(); ++i)
     {
-        if( reLayoutLoadStore(m_WorkList[i]) )
+        if (reLayoutLoadStore(m_WorkList[i]))
         {
             changed = true;
         }
@@ -568,30 +568,30 @@ bool VectorProcess::runOnFunction(Function& F)
     m_WorkList.clear();
 
     // To remove unnecessary bitcast
-    if( changed )
+    if (changed)
     {
-        for( inst_iterator I = inst_begin(F), E = inst_end(F); I != E; ++I )
+        for (inst_iterator I = inst_begin(F), E = inst_end(F); I != E; ++I)
         {
             Instruction* inst = &*I;
-            if( isa<BitCastInst>(inst) )
+            if (isa<BitCastInst>(inst))
             {
                 m_WorkList.push_back(inst);
-            }            
+            }
         }
 
         bool doclean = false;
-        for( unsigned i=0; i < m_WorkList.size(); ++i )
+        for (unsigned i = 0; i < m_WorkList.size(); ++i)
         {
-            if (BitCastInst *Inst = dyn_cast<BitCastInst>(m_WorkList[i])) 
+            if (BitCastInst * Inst = dyn_cast<BitCastInst>(m_WorkList[i]))
             {
-                if( optimizeBitCast(Inst))
+                if (optimizeBitCast(Inst))
                 {
                     doclean = true;
                 }
             }
         }
 
-        while( doclean )
+        while (doclean)
         {
             // Given  b2 = bitcast A,  T2
             //        b1 = bitcast b2, T1
@@ -601,9 +601,9 @@ bool VectorProcess::runOnFunction(Function& F)
             // Therefore, we expect "while" will take three iterations at most. And
             // WorkList is the set of bitcasts,  which isn't expected to be big.
             doclean = false;
-            for( unsigned i=0; i < m_WorkList.size(); ++i )
+            for (unsigned i = 0; i < m_WorkList.size(); ++i)
             {
-                if( m_WorkList[i] && m_WorkList[i]->use_empty() )
+                if (m_WorkList[i] && m_WorkList[i]->use_empty())
                 {
                     m_WorkList[i]->eraseFromParent();
                     m_WorkList[i] = NULL;
@@ -642,11 +642,11 @@ bool VectorProcess::runOnFunction(Function& F)
 // (Note that VectorMessage and VectorProcess must be in sync with regard
 //  to this agreetment.)
 //
-void VectorMessage::getInfo(Type *Ty, uint32_t Align, bool useA32,
+void VectorMessage::getInfo(Type* Ty, uint32_t Align, bool useA32,
     bool forceByteScatteredRW)
 {
-    VectorType *VTy = dyn_cast<VectorType>(Ty);
-    Type *eTy = VTy ? VTy->getVectorElementType() : Ty;
+    VectorType* VTy = dyn_cast<VectorType>(Ty);
+    Type* eTy = VTy ? VTy->getVectorElementType() : Ty;
     unsigned eltSize = m_emitter->GetScalarTypeSizeInRegister(eTy);
     unsigned nElts = VTy ? VTy->getVectorNumElements() : 1;
     // total bytes
@@ -677,8 +677,8 @@ void VectorMessage::getInfo(Type *Ty, uint32_t Align, bool useA32,
         MB = useA32
             ? A32_BYTE_SCATTERED_MAX_BYTES
             : ((has_8B_A64_BS && eltSize == 8)
-              ? A64_BYTE_SCATTERED_MAX_BYTES_8B
-              : A64_BYTE_SCATTERED_MAX_BYTES);
+                ? A64_BYTE_SCATTERED_MAX_BYTES_8B
+                : A64_BYTE_SCATTERED_MAX_BYTES);
         defaultDataType = ISA_TYPE_UB;
 
         // To make sure that vector and message match.

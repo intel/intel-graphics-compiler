@@ -92,7 +92,7 @@ namespace IGC
         {
             unsigned int offset = GetDispatchSignature().ZWDelta;
             AllocateInput(m_ZWDelta, offset);
-         }
+        }
         if (m_SampleOffsetX || m_SampleOffsetY)
         {
             unsigned int offset = GetDispatchSignature().pixelOffset;
@@ -232,7 +232,7 @@ namespace IGC
             }
         }
 
-        assert(offset%getGRFSize() == 0);
+        assert(offset % getGRFSize() == 0);
         // need to return the starting grf for constant to client
         ProgramOutput()->m_startReg = offset / getGRFSize();
 
@@ -240,7 +240,7 @@ namespace IGC
         AllocateConstants3DShader(offset);
 
 
-        assert(offset%getGRFSize() == 0);
+        assert(offset % getGRFSize() == 0);
         unsigned int payloadEnd = offset;
         //Allocate size for values coming from VS
         for (uint i = 0; i < setup.size(); i++)
@@ -316,42 +316,42 @@ namespace IGC
         switch (mode)
         {
         case EINTERPOLATION_LINEAR:
-            if (!m_PerspectivePixel){
+            if (!m_PerspectivePixel) {
                 m_PerspectivePixel =
                     GetNewVariable(2 * numLanes(m_SIMDSize), ISA_TYPE_F, EALIGN_GRF, false, m_numberInstance);
             }
             baryReg = m_PerspectivePixel;
             break;
         case EINTERPOLATION_LINEARCENTROID:
-            if (!m_PerspectiveCentroid){
+            if (!m_PerspectiveCentroid) {
                 m_PerspectiveCentroid =
                     GetNewVariable(2 * numLanes(m_SIMDSize), ISA_TYPE_F, EALIGN_GRF, false, m_numberInstance);
             }
             baryReg = m_PerspectiveCentroid;
             break;
         case EINTERPOLATION_LINEARSAMPLE:
-            if (!m_PerspectiveSample){
+            if (!m_PerspectiveSample) {
                 m_PerspectiveSample =
                     GetNewVariable(2 * numLanes(m_SIMDSize), ISA_TYPE_F, EALIGN_GRF, false, m_numberInstance);
             }
             baryReg = m_PerspectiveSample;
             break;
         case EINTERPOLATION_LINEARNOPERSPECTIVE:
-            if (!m_NoPerspectivePixel){
+            if (!m_NoPerspectivePixel) {
                 m_NoPerspectivePixel =
                     GetNewVariable(2 * numLanes(m_SIMDSize), ISA_TYPE_F, EALIGN_GRF, false, m_numberInstance);
             }
             baryReg = m_NoPerspectivePixel;
             break;
         case EINTERPOLATION_LINEARNOPERSPECTIVECENTROID:
-            if (!m_NoPerspectiveCentroid){
+            if (!m_NoPerspectiveCentroid) {
                 m_NoPerspectiveCentroid =
                     GetNewVariable(2 * numLanes(m_SIMDSize), ISA_TYPE_F, EALIGN_GRF, false, m_numberInstance);
             }
             baryReg = m_NoPerspectiveCentroid;
             break;
         case EINTERPOLATION_LINEARNOPERSPECTIVESAMPLE:
-            if (!m_NoPerspectiveSample){
+            if (!m_NoPerspectiveSample) {
                 m_NoPerspectiveSample =
                     GetNewVariable(2 * numLanes(m_SIMDSize), ISA_TYPE_F, EALIGN_GRF, false, m_numberInstance);
             }
@@ -369,42 +369,42 @@ namespace IGC
         switch (mode)
         {
         case EINTERPOLATION_LINEAR:
-            if (!m_PerspectivePixelLowered){
+            if (!m_PerspectivePixelLowered) {
                 m_PerspectivePixelLowered =
                     GetNewVariable(2 * numLanes(m_SIMDSize), ISA_TYPE_HF, EALIGN_GRF, false, m_numberInstance);
             }
             baryReg = m_PerspectivePixelLowered;
             break;
         case EINTERPOLATION_LINEARCENTROID:
-            if (!m_PerspectiveCentroidLowered){
+            if (!m_PerspectiveCentroidLowered) {
                 m_PerspectiveCentroidLowered =
                     GetNewVariable(2 * numLanes(m_SIMDSize), ISA_TYPE_HF, EALIGN_GRF, false, m_numberInstance);
             }
             baryReg = m_PerspectiveCentroidLowered;
             break;
         case EINTERPOLATION_LINEARSAMPLE:
-            if (!m_PerspectiveSampleLowered){
+            if (!m_PerspectiveSampleLowered) {
                 m_PerspectiveSampleLowered =
                     GetNewVariable(2 * numLanes(m_SIMDSize), ISA_TYPE_HF, EALIGN_GRF, false, m_numberInstance);
             }
             baryReg = m_PerspectiveSampleLowered;
             break;
         case EINTERPOLATION_LINEARNOPERSPECTIVE:
-            if (!m_NoPerspectivePixelLowered){
+            if (!m_NoPerspectivePixelLowered) {
                 m_NoPerspectivePixelLowered =
                     GetNewVariable(2 * numLanes(m_SIMDSize), ISA_TYPE_HF, EALIGN_GRF, false, m_numberInstance);
             }
             baryReg = m_NoPerspectivePixelLowered;
             break;
         case EINTERPOLATION_LINEARNOPERSPECTIVECENTROID:
-            if (!m_NoPerspectiveCentroidLowered){
+            if (!m_NoPerspectiveCentroidLowered) {
                 m_NoPerspectiveCentroidLowered =
                     GetNewVariable(2 * numLanes(m_SIMDSize), ISA_TYPE_HF, EALIGN_GRF, false, m_numberInstance);
             }
             baryReg = m_NoPerspectiveCentroidLowered;
             break;
         case EINTERPOLATION_LINEARNOPERSPECTIVESAMPLE:
-            if (!m_NoPerspectiveSampleLowered){
+            if (!m_NoPerspectiveSampleLowered) {
                 m_NoPerspectiveSampleLowered =
                     GetNewVariable(2 * numLanes(m_SIMDSize), ISA_TYPE_HF, EALIGN_GRF, false, m_numberInstance);
             }
@@ -420,24 +420,24 @@ namespace IGC
     CVariable* CPixelShader::GetInputDelta(uint index, bool loweredInput)
     {
         CVariable* inputVar = setup[index];
-        if(inputVar == nullptr)
+        if (inputVar == nullptr)
         {
-                if(loweredInput)
-            {
-                if(index % 2 == 0)
+                if (loweredInput)
                 {
-                    inputVar = GetNewVariable(8, ISA_TYPE_F, EALIGN_GRF, true);
-                    setup[index + 1] = GetNewAlias(inputVar, ISA_TYPE_F, 16, 4);
+                    if (index % 2 == 0)
+                    {
+                        inputVar = GetNewVariable(8, ISA_TYPE_F, EALIGN_GRF, true);
+                        setup[index + 1] = GetNewAlias(inputVar, ISA_TYPE_F, 16, 4);
+                    }
+                    else
+                    {
+                        inputVar = GetNewAlias(GetInputDelta(index - 1), ISA_TYPE_F, 16, 4);
+                    }
                 }
                 else
                 {
-                    inputVar = GetNewAlias(GetInputDelta(index - 1), ISA_TYPE_F, 16, 4);
+                    inputVar = GetNewVariable(4, ISA_TYPE_F, EALIGN_OWORD, true);
                 }
-            }
-            else
-            {
-                inputVar = GetNewVariable(4, ISA_TYPE_F, EALIGN_OWORD, true);
-            }
             setup[index] = inputVar;
         }
         return inputVar;
@@ -446,16 +446,16 @@ namespace IGC
     CVariable* CPixelShader::GetInputDeltaLowered(uint index)
     {
         CVariable* inputVar = setupLowered[index];
-        if(inputVar == nullptr)
+        if (inputVar == nullptr)
         {
             assert(LowerPSInput());
-            if(index % 2 == 0)
+            if (index % 2 == 0)
             {
                 inputVar = GetNewVariable(8, ISA_TYPE_HF, EALIGN_OWORD, true);
             }
             else
             {
-                if(setupLowered[index - 1])
+                if (setupLowered[index - 1])
                 {
                     inputVar = GetNewAlias(setupLowered[index - 1], ISA_TYPE_HF, 8, 4);
                 }
@@ -561,7 +561,7 @@ namespace IGC
         return m_pCPSRequestedSizeY;
     }
 
-    CPixelShader::CPixelShader(llvm::Function *pFunc, CShaderProgram* pProgram) : CShader(pFunc, pProgram)
+    CPixelShader::CPixelShader(llvm::Function* pFunc, CShaderProgram* pProgram) : CShader(pFunc, pProgram)
     {
         m_RenderTargetMask = 0;
         m_HasoDepth = false;
@@ -692,7 +692,7 @@ namespace IGC
             }
         }
         {
-            if(simd8Shader)
+            if (simd8Shader)
             {
                 pKernelProgram->simd8 = *simd8Shader->ProgramOutput();
                 pShader = simd8Shader;
@@ -703,7 +703,7 @@ namespace IGC
 
     void CPixelShader::FillProgram(SPixelShaderKernelProgram* pKernelProgram)
     {
-        const PixelShaderInfo &psInfo = GetContext()->getModuleMetaData()->psInfo;
+        const PixelShaderInfo& psInfo = GetContext()->getModuleMetaData()->psInfo;
 
         pKernelProgram->blendToFillEnabled = psInfo.blendToFillEnabled;
         pKernelProgram->forceEarlyZ = psInfo.forceEarlyZ;
@@ -733,7 +733,7 @@ namespace IGC
         pKernelProgram->hasInputCoverageMask = m_HasInputCoverageMask;
         pKernelProgram->hasPullBary = m_HasPullBary;
         pKernelProgram->isPerSample = IsPerSample();
-        if (NamedMDNode* primIdNod = entry->getParent()->getNamedMetadata("PrimIdLocation"))
+        if (NamedMDNode * primIdNod = entry->getParent()->getNamedMetadata("PrimIdLocation"))
         {
             pKernelProgram->primIdLocation = int_cast<uint>(
                 mdconst::dyn_extract<ConstantInt>(primIdNod->getOperand(0)->getOperand(0))->getZExtValue());
@@ -752,7 +752,7 @@ namespace IGC
         CreateGatherMap();
         CreateConstantBufferOutput(pKernelProgram);
 
-        pKernelProgram->bindingTableEntryCount  = this->GetMaxUsedBindingTableEntryCount();
+        pKernelProgram->bindingTableEntryCount = this->GetMaxUsedBindingTableEntryCount();
         pKernelProgram->BindingTableEntryBitmap = this->GetBindingTableEntryBitmap();
 
         // PS packed attributes
@@ -776,7 +776,7 @@ namespace IGC
                 useComponent = false;
                 pKernelProgram->attributeActiveComponent[i / 4] = USC::GFX3DSTATE_SF_ATTRIBUTE_ACTIVE_COMPONENT_DISABLED;
             }
-            if(useComponent)
+            if (useComponent)
             {
                 pKernelProgram->nbOfSFOutput = i / 4 + 1;
             }
@@ -792,7 +792,7 @@ namespace IGC
     {
         CreateImplicitArgs();
         m_R1 = GetNewVariable((getGRFSize() >> 2), ISA_TYPE_D, EALIGN_GRF, false, m_numberInstance);
-        CodeGenContext *ctx = GetContext();
+        CodeGenContext* ctx = GetContext();
 
         // make sure the return block is properly set
         if (ctx->getModule()->getNamedMetadata("KillPixel"))
@@ -801,7 +801,7 @@ namespace IGC
         }
 
         setup.resize(4 * g_c_Max_PS_attributes, nullptr);
-        if(LowerPSInput())
+        if (LowerPSInput())
         {
             setupLowered.resize(4 * g_c_Max_PS_attributes, nullptr);
         }
@@ -814,7 +814,7 @@ namespace IGC
         {
             m_HasDouble = true;
         }
-        if (GenIntrinsicInst* genIntr = dyn_cast<GenIntrinsicInst>(inst))
+        if (GenIntrinsicInst * genIntr = dyn_cast<GenIntrinsicInst>(inst))
         {
             switch (genIntr->getIntrinsicID())
             {
@@ -855,7 +855,7 @@ namespace IGC
                 if (inst->getType()->isHalfTy())
                 {
                     e_interpolation mode = (e_interpolation)llvm::cast<llvm::ConstantInt>(inst->getOperand(1))->getZExtValue();
-                    if(mode != EINTERPOLATION_CONSTANT)
+                    if (mode != EINTERPOLATION_CONSTANT)
                     {
                         loweredSetupIndexes.insert(setupIndex);
                         modesUsed[mode] = true;
@@ -973,7 +973,7 @@ namespace IGC
         if (m_phase == PSPHASE_PIXEL)
         {
             uint responseLength = 2;
-            m_PixelPhasePayload = GetNewVariable(responseLength*(getGRFSize() >> 2), ISA_TYPE_D, EALIGN_GRF);
+            m_PixelPhasePayload = GetNewVariable(responseLength * (getGRFSize() >> 2), ISA_TYPE_D, EALIGN_GRF);
             m_PixelPhaseCounter = GetNewAlias(m_PixelPhasePayload, ISA_TYPE_UW, 0, 1);
             m_CoarseParentIndex = GetNewAlias(m_PixelPhasePayload, ISA_TYPE_UW, getGRFSize(), numLanes(m_SIMDSize));
             m_R1 = GetNewAlias(m_PixelPhasePayload, ISA_TYPE_D, 0, 8);
@@ -1077,7 +1077,7 @@ namespace IGC
         return m_CurrentPhaseCounter;
     }
 
-    bool CPixelShader::CompileSIMDSize(SIMDMode simdMode, EmitPass &EP, llvm::Function &F)
+    bool CPixelShader::CompileSIMDSize(SIMDMode simdMode, EmitPass& EP, llvm::Function& F)
     {
         if (!CompileSIMDSizeInCommon())
             return false;
@@ -1109,19 +1109,19 @@ namespace IGC
             // Coarse pixel shader doesn't support SIMD32
             return false;
         }
-       if(simdMode == SIMDMode::SIMD16 && EP.m_ShaderMode == ShaderDispatchMode::NOT_APPLICABLE)
-       {
-           if (forceSIMD16)
-           {
-               return true;
-           }
-           CShader* simd8Program = m_parent->GetShader(SIMDMode::SIMD8);
-           if(simd8Program == nullptr || simd8Program->ProgramOutput()->m_scratchSpaceUsedBySpills > 0)
-           {
-               return false;
-           }
-       }
-       if (simdMode == SIMDMode::SIMD32)
+        if (simdMode == SIMDMode::SIMD16 && EP.m_ShaderMode == ShaderDispatchMode::NOT_APPLICABLE)
+        {
+            if (forceSIMD16)
+            {
+                return true;
+            }
+            CShader* simd8Program = m_parent->GetShader(SIMDMode::SIMD8);
+            if (simd8Program == nullptr || simd8Program->ProgramOutput()->m_scratchSpaceUsedBySpills > 0)
+            {
+                return false;
+            }
+        }
+        if (simdMode == SIMDMode::SIMD32)
         {
             if (forceSIMD32)
             {
@@ -1136,7 +1136,7 @@ namespace IGC
                 return false;
             }
 
-            const PixelShaderInfo &psInfo = ctx->getModuleMetaData()->psInfo;
+            const PixelShaderInfo& psInfo = ctx->getModuleMetaData()->psInfo;
 
             if (psInfo.ForceEnableSimd32) // UMD forced compilation of simd32.
             {
@@ -1148,14 +1148,14 @@ namespace IGC
                 return false;
             }
 
-            if(iSTD::BitCount(m_RenderTargetMask) > 1)
+            if (iSTD::BitCount(m_RenderTargetMask) > 1)
             {
                 // don't compile SIMD32 for MRT as we may trash the render cache
                 return false;
             }
 
-            Simd32ProfitabilityAnalysis &PA = EP.getAnalysis<Simd32ProfitabilityAnalysis>();
-            if(PA.isSimd32Profitable())
+            Simd32ProfitabilityAnalysis& PA = EP.getAnalysis<Simd32ProfitabilityAnalysis>();
+            if (PA.isSimd32Profitable())
             {
                 return true;
             }
@@ -1170,11 +1170,11 @@ namespace IGC
                 return true;
             }
 
-            if(simd16Program)
+            if (simd16Program)
             {
                 uint sendStallCycle = static_cast<CPixelShader*>(simd16Program)->m_sendStallCycle;
                 uint staticCycle = static_cast<CPixelShader*>(simd16Program)->m_staticCycle;
-                if(sendStallCycle / (float)staticCycle > 0.4)
+                if (sendStallCycle / (float)staticCycle > 0.4)
                 {
                     return true;
                 }
@@ -1250,7 +1250,7 @@ namespace IGC
             pixelPhase = mdconst::dyn_extract<Function>(pixelNode->getOperand(0)->getOperand(0));
         }
         CShaderProgram::KernelShaderMap shaders;
-        MetaDataUtils *pMdUtils = ctx->getMetaDataUtils();
+        MetaDataUtils* pMdUtils = ctx->getMetaDataUtils();
         if (coarsePhase && pixelPhase)
         {
             //Multi stage PS, need to do separate compiler and link them
@@ -1264,7 +1264,7 @@ namespace IGC
             memset(&outputs, 0, 2 * sizeof(SPixelShaderKernelProgram));
             for (unsigned int i = 0; i < numStage; i++)
             {
-                Function *phaseFunc = (i == 0) ? coarsePhase : pixelPhase;
+                Function* phaseFunc = (i == 0) ? coarsePhase : pixelPhase;
                 FunctionInfoMetaDataHandle phaseFI = (i == 0) ? coarseFI : pixelFI;
 
                 shaders.clear();
@@ -1300,7 +1300,7 @@ namespace IGC
             // Single PS
             CodeGen(ctx, shaders);
             // Assuming single shader information in metadata
-            Function *pFunc = getUniqueEntryFunc(pMdUtils);
+            Function* pFunc = getUniqueEntryFunc(pMdUtils);
             // gather data to send back to the driver
             shaders[pFunc]->FillProgram(&ctx->programOutput);
             COMPILER_SHADER_STATS_PRINT(shaders[pFunc]->m_shaderStats, ShaderType::PIXEL_SHADER, ctx->hash, "");
@@ -1323,11 +1323,11 @@ namespace IGC
         Function* pixelPhase = mdconst::dyn_extract<Function>(pixelNode->getOperand(0)->getOperand(0));
         for (auto BB = pixelPhase->begin(), BE = pixelPhase->end(); BB != BE; ++BB)
         {
-            llvm::BasicBlock *pLLVMBB = &(*BB);
-            llvm::BasicBlock::InstListType &instructionList = pLLVMBB->getInstList();
+            llvm::BasicBlock* pLLVMBB = &(*BB);
+            llvm::BasicBlock::InstListType& instructionList = pLLVMBB->getInstList();
             for (auto I = instructionList.begin(), E = instructionList.end(); I != E; ++I)
             {
-                if (GenIntrinsicInst* intr = dyn_cast<GenIntrinsicInst>(I))
+                if (GenIntrinsicInst * intr = dyn_cast<GenIntrinsicInst>(I))
                 {
                     GenISAIntrinsic::ID IID = intr->getIntrinsicID();
                     if (IID == GenISAIntrinsic::GenISA_DCL_inputVec)
@@ -1364,7 +1364,7 @@ namespace IGC
 
     void CPixelShader::ExtractGlobalVariables()
     {
-        llvm::Module *module = GetContext()->getModule();
+        llvm::Module* module = GetContext()->getModule();
         llvm::GlobalVariable* pGlobal = module->getGlobalVariable("SamplerCount");
         if (pGlobal)
         {
@@ -1398,12 +1398,12 @@ namespace IGC
 
         if (LowerPSInput())
         {
-            for(; iterSetupIndex != iterSetupIndexEnd; ++iterSetupIndex)
+            for (; iterSetupIndex != iterSetupIndexEnd; ++iterSetupIndex)
             {
                 bool combineTwoDelta = false;
                 auto nextElemt = iterSetupIndex;
                 nextElemt++;
-                if(nextElemt != iterSetupIndexEnd && *iterSetupIndex % 2 == 0 && *iterSetupIndex + 1 == *nextElemt)
+                if (nextElemt != iterSetupIndexEnd && *iterSetupIndex % 2 == 0 && *iterSetupIndex + 1 == *nextElemt)
                 {
                     combineTwoDelta = true;
                 }
@@ -1412,11 +1412,11 @@ namespace IGC
                 CVariable* inputVarLowered = GetInputDeltaLowered(index);
 
                 encoder.SetSrcRegion(0, 1, 1, 0);
-                encoder.SetUniformSIMDSize(combineTwoDelta? SIMDMode::SIMD8 : SIMDMode::SIMD4);
+                encoder.SetUniformSIMDSize(combineTwoDelta ? SIMDMode::SIMD8 : SIMDMode::SIMD4);
                 encoder.SetNoMask();
                 encoder.Cast(inputVarLowered, inputVar);
                 encoder.Push();
-                if(combineTwoDelta)
+                if (combineTwoDelta)
                 {
                     ++iterSetupIndex;
                 }

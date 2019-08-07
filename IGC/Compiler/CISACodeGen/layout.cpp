@@ -72,7 +72,7 @@ Layout::Layout() : FunctionPass(ID), m_PDT(nullptr)
     initializeLayoutPass(*PassRegistry::getPassRegistry());
 }
 
-void Layout::getAnalysisUsage(llvm::AnalysisUsage &AU) const
+void Layout::getAnalysisUsage(llvm::AnalysisUsage& AU) const
 {
     // Doesn't change the IR at all, it juts move the blocks so no changes in the IR
     AU.setPreservesAll();
@@ -80,28 +80,28 @@ void Layout::getAnalysisUsage(llvm::AnalysisUsage &AU) const
     AU.addRequired<llvm::PostDominatorTreeWrapperPass>();
 }
 
-bool Layout::runOnFunction( Function& func )
+bool Layout::runOnFunction(Function& func)
 {
     m_PDT = &getAnalysis<PostDominatorTreeWrapperPass>().getPostDomTree();
     LoopInfo& LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
     if (LI.empty())
     {
-        LayoutBlocks( func );
+        LayoutBlocks(func);
     }
     else
     {
-        LayoutBlocks( func, LI );
+        LayoutBlocks(func, LI);
     }
-    MEM_SNAPSHOT( IGC::SMS_AFTER_LAYOUTPASS );
+    MEM_SNAPSHOT(IGC::SMS_AFTER_LAYOUTPASS);
     return true;
 }
 
 #define BREAK_BLOCK_SIZE_LIMIT 3
 
-static bool HasThreadGroupBarrierInBlock(BasicBlock *blk)
+static bool HasThreadGroupBarrierInBlock(BasicBlock * blk)
 {
     std::string Name = GenISAIntrinsic::getName(GenISAIntrinsic::GenISA_threadgroupbarrier);
-    Module *Mod = blk->getParent()->getParent();
+    Module* Mod = blk->getParent()->getParent();
     if (auto GroupBarrier = Mod->getFunction(Name))
     {
         for (auto U : GroupBarrier->users())
@@ -116,7 +116,7 @@ static bool HasThreadGroupBarrierInBlock(BasicBlock *blk)
     return false;
 }
 
-BasicBlock* Layout::getLastReturnBlock(Function &Func)
+BasicBlock* Layout::getLastReturnBlock(Function& Func)
 {
     Function::BasicBlockListType& bblist = Func.getBasicBlockList();
     for (Function::BasicBlockListType::reverse_iterator RI = bblist.rbegin(),
@@ -142,19 +142,19 @@ BasicBlock* Layout::getLastReturnBlock(Function &Func)
 // block, if it is false, select non-empty block.
 //
 BasicBlock* Layout::selectSucc(
-    BasicBlock *CurrBlk,
+    BasicBlock* CurrBlk,
     bool SelectNoInstBlk,
     const LoopInfo& LI,
     const std::set<BasicBlock*>& VisitSet)
 {
-    SmallVector<BasicBlock *, 4> Succs;
+    SmallVector<BasicBlock*, 4> Succs;
     for (succ_iterator SI = succ_begin(CurrBlk), SE = succ_end(CurrBlk);
         SI != SE; ++SI)
     {
-        BasicBlock *succ = *SI;
+        BasicBlock* succ = *SI;
         if (VisitSet.count(succ) == 0 &&
             ((SelectNoInstBlk && succ->size() <= 1) ||
-             (!SelectNoInstBlk && succ->size() > 1)))
+            (!SelectNoInstBlk && succ->size() > 1)))
         {
             Succs.push_back(succ);
         }
@@ -163,7 +163,7 @@ BasicBlock* Layout::selectSucc(
     // Right now, only handle the case of two empty blocks.
     // If it has no two empty blocks, just take the first
     // one and return it.
-    if (Succs.size() != 2  || !SelectNoInstBlk) {
+    if (Succs.size() != 2 || !SelectNoInstBlk) {
         return Succs.empty() ? nullptr : Succs[0];
     }
 
@@ -195,9 +195,9 @@ BasicBlock* Layout::selectSucc(
     //
     // For simplicity, assume those BBs are not inside loops. It could
     // be applied to Loop later when appropriate testing is done.
-    BasicBlock *S0 = Succs[0], *S1 = Succs[1];
-    BasicBlock *SS0 = S0->getSingleSuccessor();
-    
+    BasicBlock* S0 = Succs[0], * S1 = Succs[1];
+    BasicBlock* SS0 = S0->getSingleSuccessor();
+
     if (SS0 && (SS0 != S1) && isa<PHINode>(&*SS0->begin()) &&
         !LI.getLoopFor(S0) &&
         m_PDT->dominates(SS0, S1))
@@ -208,7 +208,7 @@ BasicBlock* Layout::selectSucc(
     return S0;
 }
 
-void Layout::LayoutBlocks(Function &func, LoopInfo &LI)
+void Layout::LayoutBlocks(Function& func, LoopInfo& LI)
 {
     std::vector<llvm::BasicBlock*> visitVec;
     std::set<llvm::BasicBlock*> visitSet;
@@ -217,7 +217,7 @@ void Layout::LayoutBlocks(Function &func, LoopInfo &LI)
 
     llvm::BasicBlock* entry = &(func.getEntryBlock());
     visitVec.push_back(entry);
-    visitSet.insert(entry); 
+    visitSet.insert(entry);
     InsPos[entry] = entry;
 
     // Push a return block to make sure the last BB is the return block.
@@ -233,11 +233,11 @@ void Layout::LayoutBlocks(Function &func, LoopInfo &LI)
     while (!visitVec.empty())
     {
         llvm::BasicBlock* blk = visitVec.back();
-        llvm::Loop *curLoop = LI.getLoopFor(blk);
-        if (curLoop) 
+        llvm::Loop* curLoop = LI.getLoopFor(blk);
+        if (curLoop)
         {
             auto hd = curLoop->getHeader();
-            if (blk == hd && InsPos.find(hd) == InsPos.end()) 
+            if (blk == hd && InsPos.find(hd) == InsPos.end())
             {
                 InsPos[blk] = blk;
             }
@@ -259,7 +259,7 @@ void Layout::LayoutBlocks(Function &func, LoopInfo &LI)
             if (blk != visitVec.back())
                 continue;
             // push: time for DFS visit
-            if (BasicBlock *aBlk = selectSucc(blk, true, LI, visitSet))
+            if (BasicBlock * aBlk = selectSucc(blk, true, LI, visitSet))
             {
                 visitVec.push_back(aBlk);
                 visitSet.insert(aBlk);
@@ -271,21 +271,21 @@ void Layout::LayoutBlocks(Function &func, LoopInfo &LI)
         if (blk == visitVec.back())
         {
             visitVec.pop_back();
-            if (curLoop) 
+            if (curLoop)
             {
                 auto hd = curLoop->getHeader();
-                if (blk != hd) 
+                if (blk != hd)
                 {
                     // move the block to the beginning of the loop 
                     auto insp = InsPos[hd];
                     assert(insp);
-                    if (blk != insp) 
+                    if (blk != insp)
                     {
                         blk->moveBefore(insp);
                         InsPos[hd] = blk;
                     }
                 }
-                else 
+                else
                 {
                     // move the entire loop to the beginning of
                     // the parent loop
@@ -312,7 +312,7 @@ void Layout::LayoutBlocks(Function &func, LoopInfo &LI)
                     InsPos[PaHd] = hd;
                 }
             }
-            else 
+            else
             {
                 auto insp = InsPos[entry];
                 if (blk != insp)
@@ -329,27 +329,27 @@ void Layout::LayoutBlocks(Function &func, LoopInfo &LI)
     // assert(PDT.getRootNode()->getBlock() == 0x0 ||
     //       PDT.getRootNode()->getBlock() == &(func.getBasicBlockList().back()));
     // fix the loop-exit pattern, put break-blocks into the loop
-    for(llvm::Function::iterator blkIter = func.begin(), blkEnd = func.end(); 
+    for (llvm::Function::iterator blkIter = func.begin(), blkEnd = func.end();
         blkIter != blkEnd; ++blkIter)
     {
-        llvm::BasicBlock *blk = &(*blkIter);
-        llvm::Loop *curLoop = LI.getLoopFor(blk);
+        llvm::BasicBlock* blk = &(*blkIter);
+        llvm::Loop* curLoop = LI.getLoopFor(blk);
         bool allPredLoopExit = true;
         unsigned numPreds = 0;
         llvm::SmallPtrSet<llvm::BasicBlock*, 4> predSet;
-        for(pred_iterator predIter = pred_begin(blk), predEnd = pred_end(blk); 
-            predIter != predEnd; ++predIter) 
+        for (pred_iterator predIter = pred_begin(blk), predEnd = pred_end(blk);
+            predIter != predEnd; ++predIter)
         {
-            llvm::BasicBlock *pred = *predIter;
+            llvm::BasicBlock* pred = *predIter;
             numPreds++;
-            llvm::Loop *predLoop = LI.getLoopFor(pred);
+            llvm::Loop* predLoop = LI.getLoopFor(pred);
             if (curLoop == predLoop)
             {
-                llvm::BasicBlock *predPred = pred->getSinglePredecessor();
+                llvm::BasicBlock* predPred = pred->getSinglePredecessor();
                 if (predPred)
                 {
-                    llvm::Loop *predPredLoop = LI.getLoopFor(predPred);
-                    if (predPredLoop != curLoop && 
+                    llvm::Loop* predPredLoop = LI.getLoopFor(predPred);
+                    if (predPredLoop != curLoop &&
                         (!curLoop || curLoop->contains(predPredLoop)))
                     {
                         if (pred->size() <= BREAK_BLOCK_SIZE_LIMIT &&
@@ -376,18 +376,18 @@ void Layout::LayoutBlocks(Function &func, LoopInfo &LI)
         }
         if (allPredLoopExit && numPreds > 1)
         {
-            for(SmallPtrSet<BasicBlock*, 4>::iterator predIter = predSet.begin(),
+            for (SmallPtrSet<BasicBlock*, 4>::iterator predIter = predSet.begin(),
                 predEnd = predSet.end(); predIter != predEnd; ++predIter)
             {
-                llvm::BasicBlock *pred = *predIter;
-                llvm::BasicBlock *predPred = pred->getSinglePredecessor();
+                llvm::BasicBlock* pred = *predIter;
+                llvm::BasicBlock* predPred = pred->getSinglePredecessor();
                 pred->moveAfter(predPred);
             }
         }
     }
 }
 
-void Layout::LayoutBlocks( Function &func )
+void Layout::LayoutBlocks(Function& func)
 {
     std::vector<llvm::BasicBlock*> visitVec;
     std::set<llvm::BasicBlock*> visitSet;
@@ -396,7 +396,7 @@ void Layout::LayoutBlocks( Function &func )
     visitVec.push_back(entry);
 
     // Push a return block to make sure the last BB is the return block.
-    if (BasicBlock* lastReturnBlock = getLastReturnBlock(func))
+    if (BasicBlock * lastReturnBlock = getLastReturnBlock(func))
     {
         if (lastReturnBlock != entry)
         {
@@ -405,7 +405,7 @@ void Layout::LayoutBlocks( Function &func )
         }
     }
 
-    while ( !visitVec.empty() )
+    while (!visitVec.empty())
     {
         llvm::BasicBlock* blk = visitVec.back();
         // push in the empty successor 

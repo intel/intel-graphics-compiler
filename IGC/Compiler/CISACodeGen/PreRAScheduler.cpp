@@ -43,7 +43,7 @@ using namespace llvm;
 using namespace IGC;
 using namespace IGC::Debug;
 
-namespace IGC{
+namespace IGC {
     class PreRAScheduler : public FunctionPass {
     public:
         /* Assuming we are scheduling for SIMD16 PS, max GRF space available for transformation is 128 GRF's.
@@ -59,10 +59,10 @@ namespace IGC{
             initializePreRASchedulerPass(*PassRegistry::getPassRegistry());
         }
 
-        bool runOnFunction(Function &F) override;
+        bool runOnFunction(Function& F) override;
 
         LivenessAnalysis* m_pLVA;
-        DominatorTree *m_pDT;
+        DominatorTree* m_pDT;
         RegisterEstimator* m_pRPE;
 
         virtual void releaseMemory() override {
@@ -170,8 +170,8 @@ namespace IGC{
 
         BumpPtrAllocator Allocator;
 
-        void getAnalysisUsage(AnalysisUsage &AU) const override {
-            AU.setPreservesCFG(); 
+        void getAnalysisUsage(AnalysisUsage& AU) const override {
+            AU.setPreservesCFG();
             AU.addRequired<DominatorTreeWrapperPass>();
             AU.addRequired<CodeGenContextWrapper>();
             AU.addRequired<LivenessAnalysis>();
@@ -185,19 +185,19 @@ namespace IGC{
 
         void addNodesToSortedReadyList(Node* readyNode, uint32_t current_cycle = 0);
 
-        Node* FindReadyListWinnerCandidate(unsigned currentBBPressure, uint32_t &current_cycle, Node* prevScheduledNode);
+        Node* FindReadyListWinnerCandidate(unsigned currentBBPressure, uint32_t& current_cycle, Node* prevScheduledNode);
 
         unsigned instructionLatency(Instruction* inst) const;
 
         void handleMemoryReadWriteInstructions(
             Node* currInstNode,
             std::list<Node*>& lastLoadNodes,
-            Node* &lastStoreNode);
+            Node*& lastStoreNode);
 
         void buildBasicBlockDDG(
             BasicBlock* BB,
             std::list<Node*>& lastLoadNodes,
-            Node* &lastStoreNode);
+            Node*& lastStoreNode);
 
         unsigned calculateBasicBlockLiveInPressure(BasicBlock* BB);
 
@@ -208,13 +208,13 @@ namespace IGC{
         Node* FindFirstUnscheduledNodeInLatencyQueue(Node* prevScheduledNode);
         Node* FindFirstUnscheduledNodeInLatencyQueueFromHoldQueue(Node* prevScheduledNode);
 
-        bool fixExtractValue(Function &F) const;
+        bool fixExtractValue(Function& F) const;
     };
 
     char PreRAScheduler::ID = 0;
 } // End anonymous namespace;
 
-FunctionPass *createPreRASchedulerPass() {
+FunctionPass* createPreRASchedulerPass() {
     return new PreRAScheduler();
 }
 
@@ -355,14 +355,14 @@ PreRAScheduler::Node* PreRAScheduler::FindFirstUnscheduledNodeInLatencyQueue(Nod
             prevScheduledNode &&
             isSampleLoadGather4InfoInstruction(prevScheduledNode->instruction))
         {
-            std::vector<Node*> &it = longLatencyTextureIdxSortedReadyMap[
+            std::vector<Node*>& it = longLatencyTextureIdxSortedReadyMap[
                 findSampleInstructionTextureIdx(prevScheduledNode->instruction)];
-                if (!it.empty())
-                {
-                    Node* readyNodeInMap = it.front();
-                    //it.pop_front();
-                    return readyNodeInMap;
-                }
+            if (!it.empty())
+            {
+                Node* readyNodeInMap = it.front();
+                //it.pop_front();
+                return readyNodeInMap;
+            }
         }
     }
 
@@ -446,7 +446,7 @@ PreRAScheduler::Node* PreRAScheduler::FindFirstUnscheduledNodeInLatencyQueueFrom
     return scheduled;
 }
 
-PreRAScheduler::Node* PreRAScheduler::FindReadyListWinnerCandidate(unsigned currentBBPressure, uint32_t &current_cycle, Node* prevScheduledNode)
+PreRAScheduler::Node* PreRAScheduler::FindReadyListWinnerCandidate(unsigned currentBBPressure, uint32_t& current_cycle, Node* prevScheduledNode)
 {
     // TODO:: improve the winner candidate choice for the readyList
     // if the pressure is low, schedule for latency
@@ -489,7 +489,7 @@ PreRAScheduler::Node* PreRAScheduler::FindReadyListWinnerCandidate(unsigned curr
 void PreRAScheduler::handleMemoryReadWriteInstructions(
     Node* currInstNode,
     std::list<Node*>& lastLoadNodes,
-    Node* &lastStoreNode)
+    Node*& lastStoreNode)
 {
     // Edge information only added for instructions associated with each other due to alias-ing. 
     // No edge information added for other instructions connected by use-def chain
@@ -576,7 +576,7 @@ unsigned PreRAScheduler::instructionLatency(Instruction* inst) const
 void PreRAScheduler::buildBasicBlockDDG(
     BasicBlock* BB,
     std::list<Node*>& lastLoadNodes,
-    Node* &lastStoreNode)
+    Node*& lastStoreNode)
 {
     BasicBlock::iterator I = BB->end();
     --I;
@@ -584,7 +584,7 @@ void PreRAScheduler::buildBasicBlockDDG(
 
     do
     {
-        Instruction *BI = &(*I);
+        Instruction* BI = &(*I);
         struct Node* currInstNode = nullptr;
         processedBegin = (I == BB->begin());
         if (!processedBegin)
@@ -631,7 +631,7 @@ void PreRAScheduler::buildBasicBlockDDG(
             //Add an edge from dest to all its users
             for (auto UI = BI->user_begin(), UE = BI->user_end(); UI != UE; ++UI)
             {
-                Instruction *useInst = dyn_cast<Instruction>(*UI);
+                Instruction* useInst = dyn_cast<Instruction>(*UI);
 
                 if (isa<PHINode>(useInst) || useInst->isTerminator())
                 {
@@ -641,9 +641,9 @@ void PreRAScheduler::buildBasicBlockDDG(
                 // ignore users from other BB's as we are doing local list scheduling
                 if (useInst->getParent() == BB)
                 {
-                       // Edge information only added for instructions associated with each other due to alias-ing. 
-                    // No edge information added for other instructions connected by use-def chain
-                    // first create a node for the user instruction if it does not already exist
+                    // Edge information only added for instructions associated with each other due to alias-ing. 
+                 // No edge information added for other instructions connected by use-def chain
+                 // first create a node for the user instruction if it does not already exist
                     struct Node* useInstNode = nullptr;
                     auto useInstFound = m_pInstToNodeMap.find(m_pLVA->ValueIds[useInst]);
                     if (useInstFound == m_pInstToNodeMap.end())
@@ -688,7 +688,7 @@ bool PreRAScheduler::ScheduleReadyNodes(
     // First, skip phi nodes if any; but need to update register pressure.
     for (BasicBlock::iterator BI = BB->begin(), BE = BB->end(); BI != BE; ++BI)
     {
-        Instruction *I = &(*BI);
+        Instruction* I = &(*BI);
         if (!isa<PHINode>(I))
         {
             break;
@@ -715,7 +715,7 @@ bool PreRAScheduler::ScheduleReadyNodes(
         ** If we are high on pressure schedule in instruction order
         */
         if ((scheduleNode = FindReadyListWinnerCandidate(
-             RPTracker.getCurrNumGRF((uint16_t)m_pSIMDSize), current_cycle, prevScheduledNode)) == nullptr)
+            RPTracker.getCurrNumGRF((uint16_t)m_pSIMDSize), current_cycle, prevScheduledNode)) == nullptr)
         {
             // we have scheduled all the nodes or its an error
             assert(0 && "should not reach here");
@@ -753,9 +753,9 @@ bool PreRAScheduler::ScheduleReadyNodes(
 
         // Edge information only added for instructions associated with each other due to alias-ing. 
         // No edge information added for other instructions connected by use-def chain
-        for ( auto schNodeUserBegin = scheduleNode->instruction->user_begin(), schNodeUserEnd = scheduleNode->instruction->user_end(); 
-              schNodeUserBegin != schNodeUserEnd;
-              ++schNodeUserBegin )
+        for (auto schNodeUserBegin = scheduleNode->instruction->user_begin(), schNodeUserEnd = scheduleNode->instruction->user_end();
+            schNodeUserBegin != schNodeUserEnd;
+            ++schNodeUserBegin)
         {
             Instruction* useInst = dyn_cast<Instruction>(*schNodeUserBegin);
             if (isa<PHINode>(useInst) || useInst->isTerminator())
@@ -870,8 +870,8 @@ void PreRAScheduler::dumpPriorityQueueContents()
         readyMapIt++)
     {
         for (std::vector<Node*>::iterator readyMapNodeIt = readyMapIt->second.begin();
-             readyMapNodeIt != readyMapIt->second.end();
-             readyMapNodeIt++)
+            readyMapNodeIt != readyMapIt->second.end();
+            readyMapNodeIt++)
         {
             (*readyMapNodeIt)->instruction->dump();
             ods() << (*readyMapNodeIt)->nodeDelay << "\n";
@@ -913,8 +913,8 @@ void PreRAScheduler::dumpPriorityQueueContents()
     IGC_SET_FLAG_VALUE(PrintToConsole, 0);
 }
 
-bool PreRAScheduler::runOnFunction(Function &F) {
-    CodeGenContext *ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+bool PreRAScheduler::runOnFunction(Function& F) {
+    CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     m_pLVA = &getAnalysis<LivenessAnalysis>();
     m_pDT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
     m_pRPE = &getAnalysis<RegisterEstimator>();
@@ -923,12 +923,12 @@ bool PreRAScheduler::runOnFunction(Function &F) {
     RegPressureTracker RPTracker(m_pRPE);
 
     bool Changed = false;
-    
+
     if (!IGC_IS_FLAG_ENABLED(SetMaxPreRASchedulerRegPressureThreshold))
     {
         if (ctx->m_instrTypes.hasDiscard ||
-            (ctx->m_instrTypes.numBB == 1 && ctx->m_instrTypes.numSample && ctx->m_instrTypes.numInsts/ctx->m_instrTypes.numSample<30) ||
-            (ctx->m_instrTypes.numBB != 1 && ctx->m_instrTypes.numBB && ctx->m_instrTypes.numInsts/ctx->m_instrTypes.numBB>100))
+            (ctx->m_instrTypes.numBB == 1 && ctx->m_instrTypes.numSample && ctx->m_instrTypes.numInsts / ctx->m_instrTypes.numSample < 30) ||
+            (ctx->m_instrTypes.numBB != 1 && ctx->m_instrTypes.numBB && ctx->m_instrTypes.numInsts / ctx->m_instrTypes.numBB > 100))
         {
             maxPerBBRegisterPressureThreshold = 110;
         }
@@ -939,7 +939,7 @@ bool PreRAScheduler::runOnFunction(Function &F) {
         DE = df_end(m_pDT->getRootNode()); DI != DE; ++DI)
     {
         struct Node* lastStoreNode = nullptr; // used to track the last store node to add dependency between the loads and stores
-        std::list<Node *> lastLoadNodes; // used to track the list of load nodes before a store node is encountered so they can be aliased
+        std::list<Node*> lastLoadNodes; // used to track the list of load nodes before a store node is encountered so they can be aliased
         lastLoadNodes.clear();
         clearDDG();
 
@@ -968,28 +968,28 @@ bool PreRAScheduler::runOnFunction(Function &F) {
     }
 
     if (Changed)
-      Changed |= fixExtractValue(F);
+        Changed |= fixExtractValue(F);
 
     DumpLLVMIR(ctx, "AfterPreRAScheduler");
     return Changed;
 }
 
-bool PreRAScheduler::fixExtractValue(Function &F) const {
-  bool Changed = false;
-  // Find 'extractvalue' and pull them just after the definition of their
-  // aggregation source.
-  for (auto &BB : F) {
-    for (auto BI = BB.begin(), BE = BB.end(); BI!= BE; /*EMPTY*/) {
-      auto EVI = dyn_cast<ExtractValueInst>(&*BI++);
-      if (!EVI)
-        continue;
-      Instruction *I = dyn_cast<Instruction>(EVI->getAggregateOperand());
-      if (!I || I->getParent() != EVI->getParent())
-        continue;
-      // Move this 'extractvalue' just after the aggregate value.
-      EVI->moveBefore(&*std::next(I->getIterator()));
-      Changed = true;
+bool PreRAScheduler::fixExtractValue(Function& F) const {
+    bool Changed = false;
+    // Find 'extractvalue' and pull them just after the definition of their
+    // aggregation source.
+    for (auto& BB : F) {
+        for (auto BI = BB.begin(), BE = BB.end(); BI != BE; /*EMPTY*/) {
+            auto EVI = dyn_cast<ExtractValueInst>(&*BI++);
+            if (!EVI)
+                continue;
+            Instruction* I = dyn_cast<Instruction>(EVI->getAggregateOperand());
+            if (!I || I->getParent() != EVI->getParent())
+                continue;
+            // Move this 'extractvalue' just after the aggregate value.
+            EVI->moveBefore(&*std::next(I->getIterator()));
+            Changed = true;
+        }
     }
-  }
-  return Changed;
+    return Changed;
 }

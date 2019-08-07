@@ -35,4 +35,4 @@ namespace IGC
     class CodeGenContext;
 }
 
-llvm::Pass* createLowerGSInterfacePass(IGC::CodeGenContext * pContext);
+llvm::Pass* createLowerGSInterfacePass(IGC::CodeGenContext* pContext);

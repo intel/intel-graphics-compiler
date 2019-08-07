@@ -61,11 +61,11 @@ namespace IGC
 
         // @brief iterate on all the functions in the module and replace calls from __builtin_IB_* to the match 
         //        GenISA intrinsics
-        virtual bool runOnFunction(llvm::Function &F) override;
-        void visitCallInst(llvm::CallInst &CI);
+        virtual bool runOnFunction(llvm::Function& F) override;
+        void visitCallInst(llvm::CallInst& CI);
 
     protected:
-        bool fillIndexMap(llvm::Function &F);
+        bool fillIndexMap(llvm::Function& F);
         unsigned int getResourceIndex(llvm::MDNode* argResourceTypes, unsigned int argNo);
 
         CImagesBI::ParamMap m_argIndexMap;

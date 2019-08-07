@@ -43,18 +43,18 @@ char CollectGeometryShaderProperties::ID = 0;
 #define PASS_DESCRIPTION "Collect GS Properties"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN( CollectGeometryShaderProperties, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS )
-IGC_INITIALIZE_PASS_END( CollectGeometryShaderProperties, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS )
+IGC_INITIALIZE_PASS_BEGIN(CollectGeometryShaderProperties, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(CollectGeometryShaderProperties, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 
 CollectGeometryShaderProperties::CollectGeometryShaderProperties()
     : ImmutablePass(ID)
 {
-    initializeCollectGeometryShaderPropertiesPass( *PassRegistry::getPassRegistry() );
+    initializeCollectGeometryShaderPropertiesPass(*PassRegistry::getPassRegistry());
 }
 
 
-void CollectGeometryShaderProperties::gatherInformation(Function &F)
+void CollectGeometryShaderProperties::gatherInformation(Function& F)
 {
     ExtractGlobalVariables(F);
     CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
@@ -62,31 +62,31 @@ void CollectGeometryShaderProperties::gatherInformation(Function &F)
     visit(F);
 }
 
-void CollectGeometryShaderProperties::visitCallInst(llvm::CallInst & I)
+void CollectGeometryShaderProperties::visitCallInst(llvm::CallInst& I)
 {
-    if(GenIntrinsicInst *CI = dyn_cast<GenIntrinsicInst>(&I))
+    if (GenIntrinsicInst * CI = dyn_cast<GenIntrinsicInst>(&I))
     {
-        switch(CI->getIntrinsicID())
+        switch (CI->getIntrinsicID())
         {
         case llvm::GenISAIntrinsic::GenISA_GsCutControlHeader:
         case llvm::GenISAIntrinsic::GenISA_GsStreamHeader:
-            {
-                HandleCutOrStreamHeader(*CI);
-                break;
-            }
+        {
+            HandleCutOrStreamHeader(*CI);
+            break;
+        }
 
         case llvm::GenISAIntrinsic::GenISA_DCL_GSsystemValue:
         case llvm::GenISAIntrinsic::GenISA_DCL_SystemValue:
-            {
-                HandleSystemInput(*CI);
-                break;
-            }
+        {
+            HandleSystemInput(*CI);
+            break;
+        }
 
         case llvm::GenISAIntrinsic::GenISA_OUTPUTGS:
-            {
-                HandleOutputWrite(*CI);
-                break;
-            }
+        {
+            HandleOutputWrite(*CI);
+            break;
+        }
 
         default:
             //nothing to do
@@ -95,9 +95,9 @@ void CollectGeometryShaderProperties::visitCallInst(llvm::CallInst & I)
     }
 }
 
-void CollectGeometryShaderProperties::ExtractGlobalVariables( llvm::Function & F )
+void CollectGeometryShaderProperties::ExtractGlobalVariables(llvm::Function& F)
 {
-    llvm::Module *module = F.getParent();
+    llvm::Module* module = F.getParent();
     // GsMaxOutputVertices/GsOutputPrimitiveTopology are all global variables
     // set in the front-end with the same names. These have to be retrieved and typecast correctly.
     llvm::GlobalVariable* pGlobal = module->getGlobalVariable("GsMaxOutputVertices");
@@ -132,7 +132,7 @@ void CollectGeometryShaderProperties::ExtractGlobalVariables( llvm::Function & F
     m_gsProps.Output().DefaultStreamID(defaultStreamID);
 
     pGlobal = module->getGlobalVariable("GsInstanceCount");
-    auto instanceCount = (pGlobal == nullptr) ? 0 : 
+    auto instanceCount = (pGlobal == nullptr) ? 0 :
         static_cast<unsigned int>(
         (llvm::cast<llvm::ConstantInt>(pGlobal->getInitializer())->getZExtValue()));
     m_gsProps.Input().InstanceCount(instanceCount);
@@ -141,7 +141,7 @@ void CollectGeometryShaderProperties::ExtractGlobalVariables( llvm::Function & F
     // bitmask value in the global variable GsOutputClipDistanceMask. Least significant bit
     // means clip plane #0 is used etc until bit 7 that corresponds to clip plane 7.
     pGlobal = module->getGlobalVariable("GsOutputClipDistanceMask");
-    auto outputClipDistanceMask = 
+    auto outputClipDistanceMask =
         (pGlobal == nullptr) ? 0 : static_cast<unsigned int>(
             llvm::cast<llvm::ConstantInt>(pGlobal->getInitializer())->getZExtValue());
     auto hasOutputClipDistances = outputClipDistanceMask != 0;
@@ -150,7 +150,7 @@ void CollectGeometryShaderProperties::ExtractGlobalVariables( llvm::Function & F
 
     // Deal with cull distances the same way as we do with clip distances.
     pGlobal = module->getGlobalVariable("GsOutputCullDistanceMask");
-    auto outputCullDistanceMask = 
+    auto outputCullDistanceMask =
         (pGlobal == nullptr) ? 0 : static_cast<unsigned int>(
             llvm::cast<llvm::ConstantInt>(pGlobal->getInitializer())->getZExtValue());
     auto hasOutputCullDistances = outputCullDistanceMask != 0;
@@ -167,7 +167,7 @@ void CollectGeometryShaderProperties::ExtractGlobalVariables( llvm::Function & F
         m_gsProps.Input().PerVertex().HasClipDistances(true);
         m_gsProps.Input().PerVertex().HasCullDistances(true);
     }
-    if(context->getModuleMetaData()->URBInfo.has64BVertexHeaderOutput)
+    if (context->getModuleMetaData()->URBInfo.has64BVertexHeaderOutput)
     {
         m_gsProps.Output().PerVertex().HasClipDistances(true);
         m_gsProps.Output().PerVertex().HasCullDistances(true);
@@ -175,7 +175,7 @@ void CollectGeometryShaderProperties::ExtractGlobalVariables( llvm::Function & F
 
 }
 
-void CollectGeometryShaderProperties::HandleSystemInput(llvm::GenIntrinsicInst & I)
+void CollectGeometryShaderProperties::HandleSystemInput(llvm::GenIntrinsicInst& I)
 {
     unsigned int sgvIndex = I.getIntrinsicID() == llvm::GenISAIntrinsic::GenISA_DCL_GSsystemValue ? 1 : 0;
     SGVUsage usage = static_cast<SGVUsage>
@@ -203,11 +203,11 @@ void CollectGeometryShaderProperties::HandleSystemInput(llvm::GenIntrinsicInst &
     }
 }
 
-void CollectGeometryShaderProperties::HandleOutputWrite(llvm::GenIntrinsicInst & I)
+void CollectGeometryShaderProperties::HandleOutputWrite(llvm::GenIntrinsicInst& I)
 {
     const unsigned int shaderTypeArgIdx = 4;
     const unsigned int shaderAttrArgIdx = 5;
-    ShaderOutputType outType =  static_cast<ShaderOutputType>(
+    ShaderOutputType outType = static_cast<ShaderOutputType>(
         llvm::cast<llvm::ConstantInt>(I.getOperand(shaderTypeArgIdx))->getZExtValue());
     switch (outType)
     {
@@ -217,7 +217,7 @@ void CollectGeometryShaderProperties::HandleOutputWrite(llvm::GenIntrinsicInst &
         // this should have been recognized already by global variable extraction 
         // that deals with clip or cull distance masks
         assert(m_gsProps.Output().PerVertex().HasClipDistances() ||
-               m_gsProps.Output().PerVertex().HasCullDistances() );
+            m_gsProps.Output().PerVertex().HasCullDistances());
         break;
     case SHADER_OUTPUT_TYPE_VIEWPORT_ARRAY_INDEX:
         m_gsProps.Output().HasViewportArrayIndex(true);
@@ -226,29 +226,29 @@ void CollectGeometryShaderProperties::HandleOutputWrite(llvm::GenIntrinsicInst &
         m_gsProps.Output().HasRenderTargetArrayIndex(true);
         break;
     case SHADER_OUTPUT_TYPE_DEFAULT:
-        {
-            unsigned int attribIdx = int_cast<unsigned int>(llvm::cast<llvm::ConstantInt>(
-                I.getOperand(shaderAttrArgIdx))->getZExtValue());
-            unsigned int maxattribcount = std::max(
-                attribIdx+1, 
-                m_gsProps.Output().PerVertex().MaxAttributeCount());
-            m_gsProps.Output().PerVertex().MaxAttributeCount(maxattribcount);
-            break;
-        }
+    {
+        unsigned int attribIdx = int_cast<unsigned int>(llvm::cast<llvm::ConstantInt>(
+            I.getOperand(shaderAttrArgIdx))->getZExtValue());
+        unsigned int maxattribcount = std::max(
+            attribIdx + 1,
+            m_gsProps.Output().PerVertex().MaxAttributeCount());
+        m_gsProps.Output().PerVertex().MaxAttributeCount(maxattribcount);
+        break;
+    }
     default:
         // we don't need to do anything for them
         break;
     }
 }
 
-void CollectGeometryShaderProperties::HandleCutOrStreamHeader(llvm::GenIntrinsicInst & I)
+void CollectGeometryShaderProperties::HandleCutOrStreamHeader(llvm::GenIntrinsicInst& I)
 {
     // set control data format based on the intrinsic type
     auto format = (I.getIntrinsicID() == llvm::GenISAIntrinsic::GenISA_GsCutControlHeader) ?
-         USC::GFX3DSTATE_CONTROL_DATA_FORMAT_CUT : USC::GFX3DSTATE_CONTROL_DATA_FORMAT_SID;
+        USC::GFX3DSTATE_CONTROL_DATA_FORMAT_CUT : USC::GFX3DSTATE_CONTROL_DATA_FORMAT_SID;
     m_gsProps.Output().ControlDataFormat(format);
 
-    auto pVertexCount = llvm::dyn_cast<llvm::ConstantInt>(I.getOperand(I.getNumOperands()-2));
+    auto pVertexCount = llvm::dyn_cast<llvm::ConstantInt>(I.getOperand(I.getNumOperands() - 2));
     // if the emitCount is not a constant int, we have runtime value of vertex count
     m_gsProps.Output().HasNonstaticVertexCount(pVertexCount == nullptr);
 

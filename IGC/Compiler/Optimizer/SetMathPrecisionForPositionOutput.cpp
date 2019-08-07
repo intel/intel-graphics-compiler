@@ -33,7 +33,7 @@ namespace IGC
 {
     char SetMathPrecisionForPositionOutput::ID = 0;
 
-    bool SetMathPrecisionForPositionOutput::runOnFunction(llvm::Function &F)
+    bool SetMathPrecisionForPositionOutput::runOnFunction(llvm::Function& F)
     {
         m_visitedInst.clear();
         visit(F);
@@ -42,7 +42,7 @@ namespace IGC
 
     void SetMathPrecisionForPositionOutput::visitCallInst(CallInst& I)
     {
-        if (GenIntrinsicInst* intr = dyn_cast<GenIntrinsicInst>(&I))
+        if (GenIntrinsicInst * intr = dyn_cast<GenIntrinsicInst>(&I))
         {
             if (intr->getIntrinsicID() == GenISAIntrinsic::GenISA_OUTPUT)
             {
@@ -76,7 +76,7 @@ namespace IGC
         }
         for (unsigned int i = 0; i < inst->getNumOperands(); ++i)
         {
-            if (Instruction* srcInst = dyn_cast<Instruction>(inst->getOperand(i)))
+            if (Instruction * srcInst = dyn_cast<Instruction>(inst->getOperand(i)))
             {
                 UpdateDependency(srcInst);
             }

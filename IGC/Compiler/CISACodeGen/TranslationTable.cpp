@@ -60,7 +60,7 @@ namespace IGC
 
     bool TranslationTable::run(Function& F)
     {
-         unsigned int counter = 0;
+        unsigned int counter = 0;
 
         //initialize all arguments
         for (llvm::Function::arg_iterator funcArg = F.arg_begin(), funcArge = F.arg_end();

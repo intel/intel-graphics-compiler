@@ -46,8 +46,8 @@ namespace IGC
             return "Scalarizer in Codegen";
         }
 
-        virtual bool runOnFunction(llvm::Function &F);
-        void visitBinaryOperator(llvm::BinaryOperator &I);
+        virtual bool runOnFunction(llvm::Function& F);
+        void visitBinaryOperator(llvm::BinaryOperator& I);
 
     private:
         llvm::IRBuilder<>* m_builder;

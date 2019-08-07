@@ -33,8 +33,8 @@ STRUCT: S3DRender
 struct S3DRenderUnitCapabilities
 {
     unsigned int   IsBarycentricInterpolationSupported : 1;     // BIT(0)
-    unsigned int   IsInstructionCompactionSupported    : 1;     // BIT(1)
-    unsigned int                                       :14;
+    unsigned int   IsInstructionCompactionSupported : 1;     // BIT(1)
+    unsigned int : 14;
 };
 
 /*****************************************************************************\
@@ -57,7 +57,7 @@ struct S3DKernelHardwareCapabilities
     unsigned int   SubSliceCount;
     unsigned int   ThreadCount;
     unsigned int   EUCount;
-    unsigned int   EUCountPerSubSlice; 
+    unsigned int   EUCountPerSubSlice;
     unsigned int   EUThreadsPerEU;
     unsigned int   EUCountPerPoolMax;
     unsigned int   KernelPointerAlignSize;
@@ -66,26 +66,26 @@ struct S3DKernelHardwareCapabilities
 
 namespace IGC
 {
-/*****************************************************************************\
-STRUCT: S3DHardwareCapabilities
-\*****************************************************************************/
-struct SCompilerHwCaps
-{
-    unsigned int   VertexShaderThreads;
-    unsigned int   VertexShaderThreadsPosh;
-    unsigned int   HullShaderThreads;
-    unsigned int   DomainShaderThreads;
-    unsigned int   GeometryShaderThreads;
-    unsigned int   PixelShaderThreadsWindowerRange;
-    unsigned int   MediaShaderThreads;
-    unsigned int   SharedLocalMemoryBlockSize;
+    /*****************************************************************************\
+    STRUCT: S3DHardwareCapabilities
+    \*****************************************************************************/
+    struct SCompilerHwCaps
+    {
+        unsigned int   VertexShaderThreads;
+        unsigned int   VertexShaderThreadsPosh;
+        unsigned int   HullShaderThreads;
+        unsigned int   DomainShaderThreads;
+        unsigned int   GeometryShaderThreads;
+        unsigned int   PixelShaderThreadsWindowerRange;
+        unsigned int   MediaShaderThreads;
+        unsigned int   SharedLocalMemoryBlockSize;
 
-    S3DKernelHardwareCapabilities   KernelHwCaps;
-};
+        S3DKernelHardwareCapabilities   KernelHwCaps;
+    };
 
-class CPlatform;
+    class CPlatform;
 
-void SetCompilerCaps(const SUscSkuFeatureTable* pSkuFeatureTable, CPlatform* platform);
-void SetCompilerCaps(SKU_FEATURE_TABLE* pSkuFeatureTable, CPlatform* platform);
+    void SetCompilerCaps(const SUscSkuFeatureTable* pSkuFeatureTable, CPlatform* platform);
+    void SetCompilerCaps(SKU_FEATURE_TABLE* pSkuFeatureTable, CPlatform* platform);
 
 }

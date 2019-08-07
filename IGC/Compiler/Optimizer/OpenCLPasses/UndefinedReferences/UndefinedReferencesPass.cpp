@@ -63,7 +63,7 @@ UndefinedReferencesPass::UndefinedReferencesPass() : ModulePass(ID)
 // undefined references and errorMessage will be appended with the appropriate
 // information.
 //
-static bool ExistUndefinedReferencesInModule(Module &module, std::string &errorMessage)
+static bool ExistUndefinedReferencesInModule(Module& module, std::string& errorMessage)
 {
     raw_string_ostream strStream(errorMessage);
     bool foundUndef = false;
@@ -73,7 +73,7 @@ static bool ExistUndefinedReferencesInModule(Module &module, std::string &errorM
     Module::global_iterator GVarIter = module.global_begin();
     for (; GVarIter != module.global_end();)
     {
-        GlobalVariable *pGVar = &(*GVarIter);
+        GlobalVariable* pGVar = &(*GVarIter);
         if (pGVar->isDeclaration() && pGVar->hasNUsesOrMore(1))
         {
             strStream << msg << GVarIter->getName().str() << "'\n";
@@ -97,7 +97,7 @@ static bool ExistUndefinedReferencesInModule(Module &module, std::string &errorM
         }
     }
 
-    for (auto &F : module)
+    for (auto& F : module)
     {
         if (F.isDeclaration() && !F.isIntrinsic() && !GenISAIntrinsic::isIntrinsic(&F) && F.hasNUsesOrMore(1))
         {
@@ -124,7 +124,7 @@ static bool ExistUndefinedReferencesInModule(Module &module, std::string &errorM
     return foundUndef;
 }
 
-bool UndefinedReferencesPass::runOnModule(Module &M)
+bool UndefinedReferencesPass::runOnModule(Module& M)
 {
     // At this point all references should have been linked to definitions, any
     // undefined references should generate errors.

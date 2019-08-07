@@ -57,14 +57,14 @@ namespace IGC
         {
             return "Find Interesting Constants";
         }
-        virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.addRequired<CodeGenContextWrapper>();
         }
 
-        virtual bool runOnFunction(llvm::Function &F) override;
-        bool doFinalization(llvm::Module &) override;
-        void visitLoadInst(llvm::LoadInst &I);
+        virtual bool runOnFunction(llvm::Function& F) override;
+        bool doFinalization(llvm::Module&) override;
+        void visitLoadInst(llvm::LoadInst& I);
 
     private:
         unsigned int m_foldsToZero;
@@ -74,8 +74,8 @@ namespace IGC
         std::vector<SConstantAddrValue> m_InterestingConstants;
 
         // Helper functions
-        bool getConstantAddress(llvm::LoadInst &I, unsigned &bufId, unsigned &eltId, int &size_in_bytes);
-        bool FoldsToConst(llvm::Instruction* inst, llvm::Instruction* use, bool &propagate);
+        bool getConstantAddress(llvm::LoadInst& I, unsigned& bufId, unsigned& eltId, int& size_in_bytes);
+        bool FoldsToConst(llvm::Instruction* inst, llvm::Instruction* use, bool& propagate);
         bool FoldsToZero(llvm::Instruction* inst, llvm::Instruction* use);
         bool FoldsToSource(llvm::Instruction* inst, llvm::Instruction* use);
         void FoldsToConstPropagate(llvm::Instruction* I);

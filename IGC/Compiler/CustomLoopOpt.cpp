@@ -74,7 +74,7 @@ bool CustomLoopVersioning::isCBLoad(Value* val, unsigned& bufId, unsigned& offse
         return false;
 
     Value* ptr = ld->getPointerOperand();
-    if (IntToPtrInst* itop = dyn_cast<IntToPtrInst>(ptr))
+    if (IntToPtrInst * itop = dyn_cast<IntToPtrInst>(ptr))
     {
         ConstantInt* ci = dyn_cast<ConstantInt>(
             itop->getOperand(0));
@@ -84,7 +84,7 @@ bool CustomLoopVersioning::isCBLoad(Value* val, unsigned& bufId, unsigned& offse
             return true;
         }
     }
-    if (ConstantExpr* itop = dyn_cast<ConstantExpr>(ptr))
+    if (ConstantExpr * itop = dyn_cast<ConstantExpr>(ptr))
     {
         if (itop->getOpcode() == Instruction::IntToPtr)
         {
@@ -99,7 +99,7 @@ bool CustomLoopVersioning::isCBLoad(Value* val, unsigned& bufId, unsigned& offse
 bool CustomLoopVersioning::runOnFunction(Function& F)
 {
     // Skip non-kernel function.                                                  
-    IGCMD::MetaDataUtils *mdu = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    IGCMD::MetaDataUtils* mdu = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     auto FII = mdu->findFunctionsInfoItem(&F);
     if (FII == mdu->end_FunctionsInfo())
         return false;
@@ -166,10 +166,10 @@ bool CustomLoopVersioning::runOnFunction(Function& F)
 //   
 // 
 bool CustomLoopVersioning::detectLoop(Loop* loop,
-    Value* &var_range_x, Value* &var_range_y,
-    LoadInst* &var_CBLoad_preHdr,
-    Value* &var_t_preHdr,
-    Value* &var_nextT_preHdr)
+    Value*& var_range_x, Value*& var_range_y,
+    LoadInst*& var_CBLoad_preHdr,
+    Value*& var_t_preHdr,
+    Value*& var_nextT_preHdr)
 {
     BasicBlock* preHdr = loop->getLoopPreheader();
     BasicBlock* header = loop->getHeader();
@@ -182,7 +182,7 @@ bool CustomLoopVersioning::detectLoop(Loop* loop,
     CallInst* imin = i1 ? dyn_cast<CallInst>(i1) : nullptr;
 
     if (!(imax && GetOpCode(imax) == llvm_max &&
-          imin && GetOpCode(imin) == llvm_min))
+        imin && GetOpCode(imin) == llvm_min))
     {
         return false;
     }
@@ -436,9 +436,9 @@ void CustomLoopVersioning::rewriteLoopSeg2(Loop* loop,
     Instruction* fmul = nullptr;
     for (auto* max_Users : imax->users())
     {
-        if (Instruction* fdiv = dyn_cast<BinaryOperator>(max_Users))
+        if (Instruction * fdiv = dyn_cast<BinaryOperator>(max_Users))
         {
-            if (ConstantFP *cf = dyn_cast<ConstantFP>(fdiv->getOperand(0)))
+            if (ConstantFP * cf = dyn_cast<ConstantFP>(fdiv->getOperand(0)))
             {
                 if (cf->isExactlyValue(1.0))
                 {
@@ -576,7 +576,7 @@ bool CustomLoopVersioning::processLoop(Loop* loop)
     BasicBlock* PH = llvm::SplitBlock(preHdr, preHdr->getTerminator(), m_DT, m_LI);
 
     // create loop seg 1 and insert before orig loop
-    SmallVector<BasicBlock *, 8> seg1Blocks;
+    SmallVector<BasicBlock*, 8> seg1Blocks;
     Loop* loopSeg1 = llvm::cloneLoopWithPreheader(
         PH, preHdr, loop, m_vmapToSeg1, ".seg1", m_LI, m_DT, seg1Blocks);
     llvm::remapInstructionsInBlocks(seg1Blocks, m_vmapToSeg1);
@@ -609,7 +609,7 @@ bool CustomLoopVersioning::processLoop(Loop* loop)
     assert(afterLoop && "No single successor to loop exit block");
 
     // create loop seg 2 and insert before orig loop (after loop seg 1)
-    SmallVector<BasicBlock *, 8> seg2Blocks;
+    SmallVector<BasicBlock*, 8> seg2Blocks;
     Loop* loopSeg2 = llvm::cloneLoopWithPreheader(
         PH, loopSeg1->getHeader(), loop, m_vmapToSeg2, ".seg2", m_LI, m_DT, seg2Blocks);
     llvm::remapInstructionsInBlocks(seg2Blocks, m_vmapToSeg2);
@@ -621,7 +621,7 @@ bool CustomLoopVersioning::processLoop(Loop* loop)
     linkLoops(loopSeg1, loopSeg2, afterLoop);
 
     // create seg3 after seg2 before changing loop2 body
-    SmallVector<BasicBlock *, 8> seg3Blocks;
+    SmallVector<BasicBlock*, 8> seg3Blocks;
     Loop* loopSeg3 = llvm::cloneLoopWithPreheader(
         PH, loopSeg2->getHeader(), loop, m_vmapToSeg3, ".seg3", m_LI, m_DT, seg3Blocks);
     llvm::remapInstructionsInBlocks(seg3Blocks, m_vmapToSeg3);
@@ -644,7 +644,7 @@ bool CustomLoopVersioning::processLoop(Loop* loop)
 }
 
 void CustomLoopVersioning::addPhiNodes(
-    const SmallVectorImpl<Instruction*> &liveOuts,
+    const SmallVectorImpl<Instruction*>& liveOuts,
     Loop* loopSeg1, Loop* loopSeg2, BasicBlock* bbSeg3, Loop* origLoop)
 {
     BasicBlock* phiBB = origLoop->getExitBlock();
@@ -694,8 +694,8 @@ public:
     }
 
     bool runOnFunction(Function& F);
-    bool processLoop(Loop* loop, DominatorTree *DT, LoopInfo *LI, bool PreserveLCSSA);
-    bool processOneLoop(Loop* loop, DominatorTree *DT, LoopInfo *LI, bool PreserveLCSSA);
+    bool processLoop(Loop* loop, DominatorTree* DT, LoopInfo* LI, bool PreserveLCSSA);
+    bool processOneLoop(Loop* loop, DominatorTree* DT, LoopInfo* LI, bool PreserveLCSSA);
 
 
     llvm::StringRef getPassName() const
@@ -704,7 +704,7 @@ public:
     }
 
 private:
-    CodeGenContext * m_cgCtx;
+    CodeGenContext* m_cgCtx;
     llvm::LoopInfo* m_LI;
     llvm::DominatorTree* m_DT;
     llvm::Function* m_function;
@@ -736,16 +736,16 @@ LoopCanonicalization::LoopCanonicalization() : FunctionPass(ID)
 /// If this occurs, revector all of these backedges to target a new basic block
 /// and have that block branch to the loop header.  This ensures that loops
 /// have exactly one backedge.
-static BasicBlock *insertUniqueBackedgeBlock(Loop *L, BasicBlock *Preheader,
-    DominatorTree *DT, LoopInfo *LI) {
+static BasicBlock* insertUniqueBackedgeBlock(Loop* L, BasicBlock* Preheader,
+    DominatorTree* DT, LoopInfo* LI) {
     assert(L->getNumBackEdges() > 1 && "Must have > 1 backedge!");
 
     // Get information about the loop
-    BasicBlock *Header = L->getHeader();
-    Function *F = Header->getParent();
+    BasicBlock* Header = L->getHeader();
+    Function* F = Header->getParent();
 
     // Unique backedge insertion currently depends on having a preheader.
-    if(!Preheader)
+    if (!Preheader)
         return nullptr;
 
     // The header is not an EH pad; preheader insertion should ensure this.
@@ -753,20 +753,20 @@ static BasicBlock *insertUniqueBackedgeBlock(Loop *L, BasicBlock *Preheader,
 
     // Figure out which basic blocks contain back-edges to the loop header.
     std::vector<BasicBlock*> BackedgeBlocks;
-    for(pred_iterator I = pred_begin(Header), E = pred_end(Header); I != E; ++I) {
-        BasicBlock *P = *I;
+    for (pred_iterator I = pred_begin(Header), E = pred_end(Header); I != E; ++I) {
+        BasicBlock* P = *I;
 
         // Indirectbr edges cannot be split, so we must fail if we find one.
-        if(isa<IndirectBrInst>(P->getTerminator()))
+        if (isa<IndirectBrInst>(P->getTerminator()))
             return nullptr;
 
-        if(P != Preheader) BackedgeBlocks.push_back(P);
+        if (P != Preheader) BackedgeBlocks.push_back(P);
     }
 
     // Create and insert the new backedge block...
-    BasicBlock *BEBlock = BasicBlock::Create(Header->getContext(),
+    BasicBlock* BEBlock = BasicBlock::Create(Header->getContext(),
         Header->getName() + ".backedge", F);
-    BranchInst *BETerminator = BranchInst::Create(Header, BEBlock);
+    BranchInst* BETerminator = BranchInst::Create(Header, BEBlock);
     BETerminator->setDebugLoc(Header->getFirstNonPHI()->getDebugLoc());
 
     // Move the new backedge block to right after the last backedge block.
@@ -775,28 +775,28 @@ static BasicBlock *insertUniqueBackedgeBlock(Loop *L, BasicBlock *Preheader,
 
     // Now that the block has been inserted into the function, create PHI nodes in
     // the backedge block which correspond to any PHI nodes in the header block.
-    for(BasicBlock::iterator I = Header->begin(); isa<PHINode>(I); ++I) {
-        PHINode *PN = cast<PHINode>(I);
-        PHINode *NewPN = PHINode::Create(PN->getType(), BackedgeBlocks.size(),
+    for (BasicBlock::iterator I = Header->begin(); isa<PHINode>(I); ++I) {
+        PHINode* PN = cast<PHINode>(I);
+        PHINode* NewPN = PHINode::Create(PN->getType(), BackedgeBlocks.size(),
             PN->getName() + ".be", BETerminator);
 
         // Loop over the PHI node, moving all entries except the one for the
         // preheader over to the new PHI node.
         unsigned PreheaderIdx = ~0U;
         bool HasUniqueIncomingValue = true;
-        Value *UniqueValue = nullptr;
-        for(unsigned i = 0, e = PN->getNumIncomingValues(); i != e; ++i) {
-            BasicBlock *IBB = PN->getIncomingBlock(i);
-            Value *IV = PN->getIncomingValue(i);
-            if(IBB == Preheader) {
+        Value* UniqueValue = nullptr;
+        for (unsigned i = 0, e = PN->getNumIncomingValues(); i != e; ++i) {
+            BasicBlock* IBB = PN->getIncomingBlock(i);
+            Value* IV = PN->getIncomingValue(i);
+            if (IBB == Preheader) {
                 PreheaderIdx = i;
             }
             else {
                 NewPN->addIncoming(IV, IBB);
-                if(HasUniqueIncomingValue) {
-                    if(!UniqueValue)
+                if (HasUniqueIncomingValue) {
+                    if (!UniqueValue)
                         UniqueValue = IV;
-                    else if(UniqueValue != IV)
+                    else if (UniqueValue != IV)
                         HasUniqueIncomingValue = false;
                 }
             }
@@ -804,12 +804,12 @@ static BasicBlock *insertUniqueBackedgeBlock(Loop *L, BasicBlock *Preheader,
 
         // Delete all of the incoming values from the old PN except the preheader's
         assert(PreheaderIdx != ~0U && "PHI has no preheader entry??");
-        if(PreheaderIdx != 0) {
+        if (PreheaderIdx != 0) {
             PN->setIncomingValue(0, PN->getIncomingValue(PreheaderIdx));
             PN->setIncomingBlock(0, PN->getIncomingBlock(PreheaderIdx));
         }
         // Nuke all entries except the zero'th.
-        for(unsigned i = 0, e = PN->getNumIncomingValues() - 1; i != e; ++i)
+        for (unsigned i = 0, e = PN->getNumIncomingValues() - 1; i != e; ++i)
             PN->removeIncomingValue(e - i, false);
 
         // Finally, add the newly constructed PHI node as the entry for the BEBlock.
@@ -818,7 +818,7 @@ static BasicBlock *insertUniqueBackedgeBlock(Loop *L, BasicBlock *Preheader,
         // As an optimization, if all incoming values in the new PhiNode (which is a
         // subset of the incoming values of the old PHI node) have the same value,
         // eliminate the PHI Node.
-        if(HasUniqueIncomingValue) {
+        if (HasUniqueIncomingValue) {
             NewPN->replaceAllUsesWith(UniqueValue);
             BEBlock->getInstList().erase(NewPN);
         }
@@ -829,14 +829,14 @@ static BasicBlock *insertUniqueBackedgeBlock(Loop *L, BasicBlock *Preheader,
     // If one of the backedges has llvm.loop metadata attached, we remove
     // it from the backedge and add it to BEBlock.
     unsigned LoopMDKind = BEBlock->getContext().getMDKindID("llvm.loop");
-    MDNode *LoopMD = nullptr;
-    for(unsigned i = 0, e = BackedgeBlocks.size(); i != e; ++i) {
-        IGCLLVM::TerminatorInst *TI = BackedgeBlocks[i]->getTerminator();
-        if(!LoopMD)
+    MDNode* LoopMD = nullptr;
+    for (unsigned i = 0, e = BackedgeBlocks.size(); i != e; ++i) {
+        IGCLLVM::TerminatorInst* TI = BackedgeBlocks[i]->getTerminator();
+        if (!LoopMD)
             LoopMD = TI->getMetadata(LoopMDKind);
         TI->setMetadata(LoopMDKind, nullptr);
-        for(unsigned Op = 0, e = TI->getNumSuccessors(); Op != e; ++Op)
-            if(TI->getSuccessor(Op) == Header)
+        for (unsigned Op = 0, e = TI->getNumSuccessors(); Op != e; ++Op)
+            if (TI->getSuccessor(Op) == Header)
                 TI->setSuccessor(Op, BEBlock);
     }
     BEBlock->getTerminator()->setMetadata(LoopMDKind, LoopMD);
@@ -856,58 +856,58 @@ static BasicBlock *insertUniqueBackedgeBlock(Loop *L, BasicBlock *Preheader,
 bool LoopCanonicalization::runOnFunction(llvm::Function& F)
 {
     bool Changed = false;
-    LoopInfo *LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
-    DominatorTree *DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
+    LoopInfo* LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
+    DominatorTree* DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
     bool PreserveLCSSA = mustPreserveAnalysisID(LCSSAID);
 
     // Simplify each loop nest in the function.
-    for(LoopInfo::iterator I = LI->begin(), E = LI->end(); I != E; ++I)
+    for (LoopInfo::iterator I = LI->begin(), E = LI->end(); I != E; ++I)
         Changed |= processLoop(*I, DT, LI, PreserveLCSSA);
     return Changed;
 }
 
-bool LoopCanonicalization::processLoop(llvm::Loop* L, DominatorTree *DT, LoopInfo *LI, bool PreserveLCSSA)
+bool LoopCanonicalization::processLoop(llvm::Loop* L, DominatorTree* DT, LoopInfo* LI, bool PreserveLCSSA)
 {
     bool changed = false;
     // Worklist maintains our depth-first queue of loops in this nest to process.
-    SmallVector<Loop *, 4> Worklist;
+    SmallVector<Loop*, 4> Worklist;
     Worklist.push_back(L);
 
     // Walk the worklist from front to back, pushing newly found sub loops onto
     // the back. This will let us process loops from back to front in depth-first
     // order. We can use this simple process because loops form a tree.
-    for(unsigned Idx = 0; Idx != Worklist.size(); ++Idx) {
-        Loop *L2 = Worklist[Idx];
+    for (unsigned Idx = 0; Idx != Worklist.size(); ++Idx) {
+        Loop* L2 = Worklist[Idx];
         Worklist.append(L2->begin(), L2->end());
     }
 
-    while(!Worklist.empty())
+    while (!Worklist.empty())
         changed |= processOneLoop(Worklist.pop_back_val(), DT, LI, PreserveLCSSA);
     return changed;
 }
 
 // Do basic loop canonicalization to ensure correctness. We need a single header and single latch
-bool LoopCanonicalization::processOneLoop(Loop* L, DominatorTree *DT, LoopInfo *LI, bool PreserveLCSSA)
+bool LoopCanonicalization::processOneLoop(Loop* L, DominatorTree* DT, LoopInfo* LI, bool PreserveLCSSA)
 {
     bool changed = false;
     // Does the loop already have a preheader?  If so, don't insert one.
-    BasicBlock *Preheader = L->getLoopPreheader();
-    if(!Preheader) {
+    BasicBlock* Preheader = L->getLoopPreheader();
+    if (!Preheader) {
         Preheader = IGCLLVM::InsertPreheaderForLoop(L, DT, LI, PreserveLCSSA);
-        if(Preheader) {
+        if (Preheader) {
             changed = true;
         }
     }
 
     // If the header has more than two predecessors at this point (from the
     // preheader and from multiple backedges), we must adjust the loop.
-    BasicBlock *LoopLatch = L->getLoopLatch();
-    if(!LoopLatch) {
+    BasicBlock* LoopLatch = L->getLoopLatch();
+    if (!LoopLatch) {
         // If we either couldn't, or didn't want to, identify nesting of the loops,
         // insert a new block that all backedges target, then make it jump to the
         // loop header.
         LoopLatch = insertUniqueBackedgeBlock(L, Preheader, DT, LI);
-        if(LoopLatch) {
+        if (LoopLatch) {
             changed = true;
         }
     }
@@ -916,9 +916,9 @@ bool LoopCanonicalization::processOneLoop(Loop* L, DominatorTree *DT, LoopInfo *
 
 namespace IGC
 {
-FunctionPass* createLoopCanonicalization()
-{
-    return new LoopCanonicalization();
-}
+    FunctionPass* createLoopCanonicalization()
+    {
+        return new LoopCanonicalization();
+    }
 }
 

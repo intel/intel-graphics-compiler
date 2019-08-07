@@ -129,7 +129,7 @@ namespace //Anonymous
         SPIRV_MAX_NUM_SUB_GROUPS,
         NUM_FUNCTIONS_WITH_BLOCK_ARGS
     };
-    
+
     const std::map<DeviceEnqueueFunction, const char*>  DeviceEnqueueFunctionNames = {
         { DeviceEnqueueFunction::ENQUEUE_KERNEL, "_Z14enqueue_kernel" },
         { DeviceEnqueueFunction::ENQUEUE_KERNEL_BASIC, "__enqueue_kernel_basic" },
@@ -192,7 +192,7 @@ namespace //Anonymous
         {
             auto funcInfoMD = getOrEmitKernelMetadata(const_cast<llvm::Function*>(func));
             assert((funcInfoMD != nullptr) && "cannot get or emit for kernel metadata");
-            assert(funcInfoMD->m_OpenCLArgBaseTypes.size() > (unsigned) argNum);
+            assert(funcInfoMD->m_OpenCLArgBaseTypes.size() > (unsigned)argNum);
             return funcInfoMD->m_OpenCLArgBaseTypes[argNum];
         }
 
@@ -262,9 +262,9 @@ namespace //Anonymous
         }
 
         /// Check if type is OCL image type
-        static bool isImageType(const llvm::Type* type, llvm::SmallVectorImpl<llvm::StringRef> *nameFractions = nullptr)
+        static bool isImageType(const llvm::Type* type, llvm::SmallVectorImpl<llvm::StringRef>* nameFractions = nullptr)
         {
-            if (auto *sType = toStructType(type))
+            if (auto * sType = toStructType(type))
             {
                 if (sType->isOpaque())
                 {
@@ -293,9 +293,9 @@ namespace //Anonymous
         }
 
         /// Check if type is OCL event_t
-        static bool isEventType(llvm::Type * type)
+        static bool isEventType(llvm::Type* type)
         {
-            if (auto *sType = toStructType(type))
+            if (auto * sType = toStructType(type))
             {
                 if (sType->isOpaque())
                 {
@@ -309,7 +309,7 @@ namespace //Anonymous
         /// Check if type is OCL queue_t
         static bool isQueueType(llvm::Type* type)
         {
-            if (auto *sType = toStructType(type))
+            if (auto * sType = toStructType(type))
             {
                 if (sType->isOpaque())
                 {
@@ -385,7 +385,7 @@ namespace //Anonymous
     class ConstantStructValue : public StructValue
     {
     private:
-        llvm::ConstantStruct* getStructValue(){ return cast<llvm::ConstantStruct>(_structValue); }
+        llvm::ConstantStruct* getStructValue() { return cast<llvm::ConstantStruct>(_structValue); }
     public:
         explicit ConstantStructValue(llvm::ConstantStruct* value) : StructValue(value) {}
         virtual llvm::Value* getValueStoredAtIndex(GEPIndex index) override
@@ -394,7 +394,7 @@ namespace //Anonymous
                 ? getStructValue()->getAggregateElement(index)
                 : nullptr;
 
-            if (ConstantExpr *CE = dyn_cast_or_null<ConstantExpr>(v)) {
+            if (ConstantExpr * CE = dyn_cast_or_null<ConstantExpr>(v)) {
                 if (CE->getOpcode() == Instruction::BitCast)
                     v = CE->getOperand(0);
             }
@@ -413,7 +413,7 @@ namespace //Anonymous
     {
     private:
         std::vector<llvm::Value*> _storedValues;
-        llvm::AllocaInst* getStructValue(){ return cast<llvm::AllocaInst>(_structValue); }
+        llvm::AllocaInst* getStructValue() { return cast<llvm::AllocaInst>(_structValue); }
 
         llvm::Value* getValueStoredTo(llvm::Value* ptrVal)
         {
@@ -469,7 +469,7 @@ namespace //Anonymous
             populateStoredValues();
         }
 
-        virtual llvm::Value* getValueStoredAtIndex(GEPIndex index) override 
+        virtual llvm::Value* getValueStoredAtIndex(GEPIndex index) override
         {
             return _storedValues.size() > index ? _storedValues[index] : nullptr;
         }
@@ -656,7 +656,7 @@ namespace //Anonymous
         /// Populate captures list ordered by capture indicies
         bool populateCapturedValues(llvm::ArrayRef<GEPIndex> captureIndicies)
         {
-            assert(captureIndicies.size() == 0 || *std::max_element(captureIndicies.begin(), captureIndicies.end()) < _paramStruct->getNumElements() );
+            assert(captureIndicies.size() == 0 || *std::max_element(captureIndicies.begin(), captureIndicies.end()) < _paramStruct->getNumElements());
 
             for (auto captureIndex : captureIndicies)
             {
@@ -813,14 +813,14 @@ namespace //Anonymous
 
             while (arg != call.arg_operands().end())
             {
-                if ((*arg)->getType()->isIntegerTy(32)) 
+                if ((*arg)->getType()->isIntegerTy(32))
                 {
                     _local_sizes.push_back(*(arg++));
                 }
-                else if((*arg)->getType()->isIntegerTy(64))
+                else if ((*arg)->getType()->isIntegerTy(64))
                 {
                     Type* int32Ty = Type::getInt32Ty(call.getParent()->getContext());
-                    Value *newArg = CastInst::CreateTruncOrBitCast(*arg, int32Ty, "", &call);
+                    Value* newArg = CastInst::CreateTruncOrBitCast(*arg, int32Ty, "", &call);
                     _local_sizes.push_back(newArg);
                     arg++;
                 }
@@ -916,7 +916,7 @@ namespace //Anonymous
                     arg = builder.CreateLoad(arg);
                 }
 
-                if (!arg->getType()->isIntegerTy(64) && !arg->getType()->isIntegerTy(32)) 
+                if (!arg->getType()->isIntegerTy(64) && !arg->getType()->isIntegerTy(32))
                     report_fatal_error("OpEnqueueKernel signature does not match");
 
                 if (arg->getType()->isIntegerTy(64))
@@ -1276,7 +1276,7 @@ namespace //Anonymous
     private:
 
         // Implements getParentKernel functionality
-        const llvm::Function* getParentKernelImpl(const llvm::Function* invokeFunc, std::set<const llvm::Function*> &processedFuncs);
+        const llvm::Function* getParentKernelImpl(const llvm::Function* invokeFunc, std::set<const llvm::Function*>& processedFuncs);
     };
 
     //////////////////////////////////////////////////////////////////////////
@@ -1302,7 +1302,7 @@ namespace //Anonymous
             AU.addRequired<CodeGenContextWrapper>();
         }
 
-        bool runOnModule(Module &M) override
+        bool runOnModule(Module& M) override
         {
             bool changed = false;
             auto pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
@@ -1358,7 +1358,7 @@ namespace //Anonymous
                 SmallVector<User*, 4> Users(func->users());
                 for (auto user : Users)
                 {
-                    if (auto *instr = dyn_cast<Instruction>(user))
+                    if (auto * instr = dyn_cast<Instruction>(user))
                         instr->eraseFromParent();
                 }
 
@@ -1376,7 +1376,7 @@ namespace //Anonymous
                 dataContext.getMetaDataBuilder().getOrEmitKernelMetadata(dispatchKernel);
 
                 dataContext.getMetaDataBuilder().EmitDeviceEnqueueMetadataPair(invokeFunc, dispatchKernel);
-                
+
                 changed = true;
             }
 
@@ -1392,7 +1392,7 @@ namespace //Anonymous
 
             // Remove values not supported by compiler (extern global BlockStacks and pointer to functions)
             changed = RemoveUnsupportedInstFromModule(M) || changed;
-            
+
             return changed;
         }
 
@@ -1432,7 +1432,8 @@ namespace //Anonymous
             const CallInst* inst = dyn_cast<CallInst>(&*(invokeFunc->begin()->begin()));
             if (inst) {
                 return inst->getCalledFunction();
-            } else {
+            }
+            else {
                 return nullptr;
             }
         }
@@ -1459,7 +1460,7 @@ namespace //Anonymous
         // All functions which call enqueue_kernel should be inlined up to
         // kernel or block_invoke level to proper argument number detection of
         // captured images and samplers
-        bool InlineEnqueueKernelCalls(llvm::Module &M, DataContext& dataContext)
+        bool InlineEnqueueKernelCalls(llvm::Module& M, DataContext& dataContext)
         {
             bool changed = false;
             for (auto& func : M.functions())
@@ -1484,16 +1485,16 @@ namespace //Anonymous
 
                     for (auto user : func.users()) {
                         if (auto callInst = dyn_cast<llvm::CallInst>(user)) {
-                        //for each call to enqueue_kernel
+                            //for each call to enqueue_kernel
                             functionsToInline.insert(callInst->getParent()->getParent());
                         }
                     }
 
                     for (auto func : functionsToInline)
-                        {
-                            //try to inline the caller
+                    {
+                        //try to inline the caller
                         inlined = InlineToParents(func, dataContext) || inlined;
-                        }
+                    }
                     changed = inlined || changed;
 
                 } while (inlined); // if callers are inlined, restart loop with new users list
@@ -1508,10 +1509,10 @@ namespace //Anonymous
         // To achieve this, we need to: 
         // 1. Inline the inner invoke function called by this kernel - analyzeInvokeFunction assumes that.
         // 2. Remove the metadata related to this kernel, so that codegen does not treat it as a regular kernel.
-        bool HandleIvokeKernelWrappers(llvm::Module &M, DataContext& dataContext, IGC::ModuleMetaData* modMD)
+        bool HandleIvokeKernelWrappers(llvm::Module& M, DataContext& dataContext, IGC::ModuleMetaData* modMD)
         {
             bool changed = false;
-            for (auto &func : M.functions()) {
+            for (auto& func : M.functions()) {
                 if (!isDeviceEnqueueFunction(func.getName())) continue;
 
                 for (auto user : func.users()) {
@@ -1519,7 +1520,7 @@ namespace //Anonymous
                     if (!callInst) continue;
 
                     for (auto& arg : callInst->arg_operands()) {
-                        if (Function* invoke = dyn_cast<Function>(arg)) {
+                        if (Function * invoke = dyn_cast<Function>(arg)) {
                             if (isInvokeFunctionKernelWrapper(invoke, dataContext)) {
                                 // Inline the wrapped invoke function.
                                 Function* innerInvoke = getInvokeFunctionFromKernelWrapper(invoke, dataContext);
@@ -1540,7 +1541,7 @@ namespace //Anonymous
 
         // ResolveIndirectCalls - resolves all idirect calls assuming these are block calls
         // calls are inlined to properly resolve cases when block returns block
-        bool ResolveIndirectBlockCalls(llvm::Module &M)
+        bool ResolveIndirectBlockCalls(llvm::Module& M)
         {
             bool changed = false;
             for (auto& func : M.functions())
@@ -1597,7 +1598,7 @@ namespace //Anonymous
             {
                 if (func.isDeclaration())
                     continue;
-                
+
                 for (auto& BB : func)
                 {
                     for (auto& I : BB)
@@ -1642,7 +1643,8 @@ namespace //Anonymous
                     {
                         if (!isa<llvm::Constant>(user)) {
                             user->replaceUsesOfWith(&func, nullPtrConst);
-                        } else {
+                        }
+                        else {
                             user->replaceAllUsesWith(llvm::Constant::getNullValue(user->getType()));
                         }
                         changed = true;
@@ -1719,7 +1721,7 @@ namespace //Anonymous
         IGC::IGCMD::FunctionInfoMetaDataHandle dispatchMd = _pMdUtils->getOrInsertFunctionsInfoItem(const_cast<llvm::Function*>(kernelFunc));
 
         auto funcMD = &modMD->FuncMD[const_cast<llvm::Function*>(kernelFunc)];//insert if not present 
-                                                                                  
+
         //set function type for dispatch
         dispatchMd->setType(FunctionTypeMD::KernelFunction);
 
@@ -1769,7 +1771,7 @@ namespace //Anonymous
     bool KindQuery::isSamplerArg(const llvm::Argument* arg) const
     {
         // Currently we support sampler types being represented as contant pointers or integer types
-        if (arg == nullptr || !(arg->getType()->isIntegerTy() || arg->getType()->isPointerTy())) 
+        if (arg == nullptr || !(arg->getType()->isIntegerTy() || arg->getType()->isPointerTy()))
             return false;
 
         auto parentFunc = arg->getParent();
@@ -1831,15 +1833,15 @@ namespace //Anonymous
     CallHandler* DataContext::registerCallHandler(llvm::CallInst& call)
     {
         // device enqueue call handlers factories registry
-        const std::pair<DeviceEnqueueFunction, std::function<CallHandler*(llvm::CallInst&, DataContext& dm)>> handlers[] =
+        const std::pair<DeviceEnqueueFunction, std::function<CallHandler* (llvm::CallInst&, DataContext & dm)>> handlers[] =
         {
             {
                 DeviceEnqueueFunction::MAX_SUB_GROUP_SIZE_FOR_NDRANGE,
-                [](llvm::CallInst& call, DataContext& dm){ return new KernelSubGroupSizeCall(new ObjCNDRangeAndBlockCallArgs(call, dm)); }
+                [](llvm::CallInst& call, DataContext& dm) { return new KernelSubGroupSizeCall(new ObjCNDRangeAndBlockCallArgs(call, dm)); }
             },
             {
                 DeviceEnqueueFunction::PREFERRED_WORK_GROUP_SIZE_MULTIPLE,
-                [](llvm::CallInst& call, DataContext& dm){ return new KernelSubGroupSizeCall(new ObjCBlockCallArgs(call, dm)); }
+                [](llvm::CallInst& call, DataContext& dm) { return new KernelSubGroupSizeCall(new ObjCBlockCallArgs(call, dm)); }
             },
             {
                 DeviceEnqueueFunction::PREFERRED_WORK_GROUP_MULTIPLE_IMPL,
@@ -1851,47 +1853,47 @@ namespace //Anonymous
             },
             {
                 DeviceEnqueueFunction::SUB_GROUP_COUNT_FOR_NDRANGE,
-                [](llvm::CallInst& call, DataContext& dm){ return new KernelSubGroupCountForNDRangeCall(new ObjCNDRangeAndBlockCallArgs(call, dm)); }
+                [](llvm::CallInst& call, DataContext& dm) { return new KernelSubGroupCountForNDRangeCall(new ObjCNDRangeAndBlockCallArgs(call, dm)); }
             },
             {
                 DeviceEnqueueFunction::ENQUEUE_KERNEL,
-                [](llvm::CallInst& call, DataContext& dm){ return new EnqueueKernelCall(new ObjCEnqueueKernelArgs(call, dm)); }
+                [](llvm::CallInst& call, DataContext& dm) { return new EnqueueKernelCall(new ObjCEnqueueKernelArgs(call, dm)); }
             },
             {
                 DeviceEnqueueFunction::ENQUEUE_KERNEL_BASIC,
-                [](llvm::CallInst& call, DataContext& dm){ return new EnqueueKernelCall(new ObjCEnqueueKernelArgs(call, dm)); }
+                [](llvm::CallInst& call, DataContext& dm) { return new EnqueueKernelCall(new ObjCEnqueueKernelArgs(call, dm)); }
             },
             {
                 DeviceEnqueueFunction::ENQUEUE_KERNEL_VAARGS,
-                [](llvm::CallInst& call, DataContext& dm){ return new EnqueueKernelCall(new ObjCEnqueueKernelArgs(call, dm)); }
+                [](llvm::CallInst& call, DataContext& dm) { return new EnqueueKernelCall(new ObjCEnqueueKernelArgs(call, dm)); }
             },
             {
                 DeviceEnqueueFunction::ENQUEUE_KERNEL_EVENTS_VAARGS,
-                [](llvm::CallInst& call, DataContext& dm){ return new EnqueueKernelCall(new ObjCEnqueueKernelArgs(call, dm)); }
+                [](llvm::CallInst& call, DataContext& dm) { return new EnqueueKernelCall(new ObjCEnqueueKernelArgs(call, dm)); }
             },
             {
                 DeviceEnqueueFunction::SPIRV_MAX_SUB_GROUP_SIZE_FOR_NDRANGE,
-                [](llvm::CallInst& call, DataContext& dm){ return new KernelSubGroupSizeCall(new SPIRVNDRangeAndInvokeCallArgs(call, dm)); }
+                [](llvm::CallInst& call, DataContext& dm) { return new KernelSubGroupSizeCall(new SPIRVNDRangeAndInvokeCallArgs(call, dm)); }
             },
             {
                 DeviceEnqueueFunction::SPIRV_PREFERRED_WORK_GROUP_SIZE_MULTIPLE,
-                [](llvm::CallInst& call, DataContext& dm){ return new KernelSubGroupSizeCall(new SPIRVInvokeCallArgs(call, dm)); }
+                [](llvm::CallInst& call, DataContext& dm) { return new KernelSubGroupSizeCall(new SPIRVInvokeCallArgs(call, dm)); }
             },
             {
                 DeviceEnqueueFunction::SPIRV_LOCAL_SIZE_FOR_SUB_GROUP_COUNT,
-                [](llvm::CallInst& call, DataContext& dm){ return new KernelLocalSizeForSubgroupCount(new SPIRVSubgroupCountAndInvokeCallArgs(call, dm)); }
+                [](llvm::CallInst& call, DataContext& dm) { return new KernelLocalSizeForSubgroupCount(new SPIRVSubgroupCountAndInvokeCallArgs(call, dm)); }
             },
             {
                 DeviceEnqueueFunction::SPIRV_MAX_NUM_SUB_GROUPS,
-                [](llvm::CallInst& call, DataContext& dm){ return new KernelMaxNumSubgroups(new SPIRVInvokeCallArgs(call, dm)); }
+                [](llvm::CallInst& call, DataContext& dm) { return new KernelMaxNumSubgroups(new SPIRVInvokeCallArgs(call, dm)); }
             },
             {
                 DeviceEnqueueFunction::SPIRV_SUB_GROUP_COUNT_FOR_NDRANGE,
-                [](llvm::CallInst& call, DataContext& dm){ return new KernelSubGroupCountForNDRangeCall(new SPIRVNDRangeAndInvokeCallArgs(call, dm)); }
+                [](llvm::CallInst& call, DataContext& dm) { return new KernelSubGroupCountForNDRangeCall(new SPIRVNDRangeAndInvokeCallArgs(call, dm)); }
             },
             {
                 DeviceEnqueueFunction::SPIRV_ENQUEUE_KERNEL,
-                [](llvm::CallInst& call, DataContext& dm){ return new EnqueueKernelCall(new SPIRVOpEnqueueKernelCallArgs(call, dm)); }
+                [](llvm::CallInst& call, DataContext& dm) { return new EnqueueKernelCall(new SPIRVOpEnqueueKernelCallArgs(call, dm)); }
             },
         };
 
@@ -1939,7 +1941,7 @@ namespace //Anonymous
     {
         for (auto& pair : _invocations)
         {
-            if (auto& dispatcher = pair.second._dispatcher)
+            if (auto & dispatcher = pair.second._dispatcher)
             {
                 if (dispatcher->getDispatchKernel() == dispatchFunc)
                 {
@@ -1959,7 +1961,7 @@ namespace //Anonymous
         return _deviceEnqueueParamValueMap[value].get();
     }
 
-    const llvm::Function* DataContext::getParentKernelImpl(const llvm::Function* invokeFunc, std::set<const llvm::Function*> &processedFuncs)
+    const llvm::Function* DataContext::getParentKernelImpl(const llvm::Function* invokeFunc, std::set<const llvm::Function*>& processedFuncs)
     {
         if (invokeFunc == nullptr) report_fatal_error("invoke function should not be null");
 
@@ -2009,7 +2011,7 @@ namespace //Anonymous
             return nullptr;
 
         return getParentKernelImpl(parentCandidate, processedFuncs);
-        
+
     }
 
     llvm::Value* DataContext::getSourceValueFor(llvm::Value* value, llvm::Instruction* destValue /*= nullptr*/)
@@ -2081,24 +2083,24 @@ namespace //Anonymous
             auto myFunction = getElemPtrInstr->getParent()->getParent();
             if (isInvokeFunc(myFunction))
             {
-              auto sourcePointer = getSourceValueFor(getElemPtrInstr->getPointerOperand());
-              //assuming that block_invoke function always has the first argument which is the pointer to block descriptor
-              auto sourceArg = llvm::dyn_cast_or_null<llvm::Argument>(sourcePointer);
-              if (sourceArg != nullptr && sourceArg->getArgNo() == 0)
-              {
-                auto dispatcherCallingMe = getDispatcherForInvokeFunc(myFunction);
-
-                if (auto elemIdxValue = dyn_cast<const llvm::ConstantInt>(getElemPtrInstr->getOperand(getElemPtrInstr->getNumOperands() - 1)))
+                auto sourcePointer = getSourceValueFor(getElemPtrInstr->getPointerOperand());
+                //assuming that block_invoke function always has the first argument which is the pointer to block descriptor
+                auto sourceArg = llvm::dyn_cast_or_null<llvm::Argument>(sourcePointer);
+                if (sourceArg != nullptr && sourceArg->getArgNo() == 0)
                 {
-                    auto elemIndex = (GEPIndex)elemIdxValue->getZExtValue();
-                    unsigned argId = 0;
-                    for (auto idx : dispatcherCallingMe->getCaptureIndicies())
+                    auto dispatcherCallingMe = getDispatcherForInvokeFunc(myFunction);
+
+                    if (auto elemIdxValue = dyn_cast<const llvm::ConstantInt>(getElemPtrInstr->getOperand(getElemPtrInstr->getNumOperands() - 1)))
                     {
-                        if (elemIndex == idx) return dispatcherCallingMe->getCaptureArgs()[argId];
-                        argId++;
+                        auto elemIndex = (GEPIndex)elemIdxValue->getZExtValue();
+                        unsigned argId = 0;
+                        for (auto idx : dispatcherCallingMe->getCaptureIndicies())
+                        {
+                            if (elemIndex == idx) return dispatcherCallingMe->getCaptureArgs()[argId];
+                            argId++;
+                        }
                     }
                 }
-              }
             }
         }
 
@@ -2282,16 +2284,16 @@ namespace //Anonymous
         Value* block_descriptor_val = ConstantPointerNull::get(builder.getInt8PtrTy());
         if (_captureStructType) {
             block_descriptor_val = builder.CreateAlloca(_captureStructType, nullptr, ".block_struct");
-        auto dl = getFunction()->getParent()->getDataLayout();
-        auto blockStructAlign = getPrefStructAlignment(_captureStructType, &dl);
+            auto dl = getFunction()->getParent()->getDataLayout();
+            auto blockStructAlign = getPrefStructAlignment(_captureStructType, &dl);
             cast<AllocaInst>(block_descriptor_val)->setAlignment(blockStructAlign);
-        //IRBuilder: store arguments to structure
-        StoreInstBuilder storeBuilder(builder);
-        for (unsigned argIdx = 0; argIdx < getCaptureIndicies().size(); ++argIdx)
-        {
-            auto srcArg = captures[argIdx];
-            storeBuilder.Store(block_descriptor_val, srcArg, getCaptureIndicies()[argIdx]);
-        }
+            //IRBuilder: store arguments to structure
+            StoreInstBuilder storeBuilder(builder);
+            for (unsigned argIdx = 0; argIdx < getCaptureIndicies().size(); ++argIdx)
+            {
+                auto srcArg = captures[argIdx];
+                storeBuilder.Store(block_descriptor_val, srcArg, getCaptureIndicies()[argIdx]);
+            }
         }
 
         //IRBuilder: call block_invoke
@@ -2357,7 +2359,7 @@ namespace //Anonymous
                 // note: byValArgs is filled in sorted manner
                 if ((byValI != byValE) && (argNum == *byValI))
                 {
-                    IGCLLVM::ArgumentAddAttr(arg, IGCLLVM::AttributeSet::FunctionIndex, llvm::Attribute::ByVal);                    
+                    IGCLLVM::ArgumentAddAttr(arg, IGCLLVM::AttributeSet::FunctionIndex, llvm::Attribute::ByVal);
                     ++byValI;
                 }
             }
@@ -2424,7 +2426,7 @@ namespace //Anonymous
                 return CaptureKind::POINTER;
             }
         }
-       
+
         return CaptureKind::SCALAR;
     }
 
@@ -2696,8 +2698,8 @@ namespace //Anonymous
         {
             auto CastValue = [&](Value* pEvt)
             {
-                auto *pNewType = PointerType::get(pEvt->getType()->getPointerElementType(), ADDRESS_SPACE_PRIVATE);
-                auto *pCasted  = builder.CreatePointerBitCastOrAddrSpaceCast(pEvt, pNewType);
+                auto* pNewType = PointerType::get(pEvt->getType()->getPointerElementType(), ADDRESS_SPACE_PRIVATE);
+                auto* pCasted = builder.CreatePointerBitCastOrAddrSpaceCast(pEvt, pNewType);
                 return pCasted;
             };
 

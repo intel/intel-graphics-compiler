@@ -60,7 +60,7 @@ FixResourcePtr::FixResourcePtr() : FunctionPass(ID)
     initializeFixResourcePtrPass(*PassRegistry::getPassRegistry());
 }
 
-bool FixResourcePtr::runOnFunction(llvm::Function &F)
+bool FixResourcePtr::runOnFunction(llvm::Function& F)
 {
     llvm::IRBuilder<> __builder(F.getContext());
     builder = &__builder;
@@ -74,7 +74,7 @@ bool FixResourcePtr::runOnFunction(llvm::Function &F)
     inst_iterator  e = inst_end(&F);
     for (; it != e; ++it)
     {
-        GenIntrinsicInst *inst = dyn_cast<GenIntrinsicInst>(&*it);
+        GenIntrinsicInst* inst = dyn_cast<GenIntrinsicInst>(&*it);
         if (inst && inst->getIntrinsicID() == GenISAIntrinsic::GenISA_GetBufferPtr)
         {
             unsigned int as = inst->getType()->getPointerAddressSpace();
@@ -89,19 +89,19 @@ bool FixResourcePtr::runOnFunction(llvm::Function &F)
             }
         }
     }
- 
+
     // fix the load/store that uses pointer coming from a GetBufferPtr/GetElementPtr,
     // change it to intrinsic that directly uses buf-pointer
     while (!fixlist.empty())
     {
-        Instruction *inst = fixlist.back();
+        Instruction* inst = fixlist.back();
         fixlist.pop_back();
 
         FindGetElementPtr(inst, inst);
     }
     while (!eraseList.empty())
     {
-        Instruction *inst = eraseList.back();
+        Instruction* inst = eraseList.back();
         eraseList.pop_back();
         inst->eraseFromParent();
     }
@@ -110,41 +110,41 @@ bool FixResourcePtr::runOnFunction(llvm::Function &F)
 
 
 // Function modifies address space in all BitCast or GEP uses input pointer.
-void FixResourcePtr::FixAddressSpaceInAllUses(Value *ptr, uint newAS, uint oldAS)
+void FixResourcePtr::FixAddressSpaceInAllUses(Value* ptr, uint newAS, uint oldAS)
 {
     assert(newAS != oldAS);
 
     for (auto UI = ptr->user_begin(), E = ptr->user_end(); UI != E; ++UI)
     {
-        Instruction *inst = dyn_cast<Instruction>(*UI);
-        PointerType *instType = nullptr;
-        if (BitCastInst* bitCastInst = dyn_cast<BitCastInst>(inst))
+        Instruction* inst = dyn_cast<Instruction>(*UI);
+        PointerType* instType = nullptr;
+        if (BitCastInst * bitCastInst = dyn_cast<BitCastInst>(inst))
         {
             instType = dyn_cast<PointerType>(bitCastInst->getType());
         }
-        else if (GetElementPtrInst* gepInst = dyn_cast<GetElementPtrInst>(inst))
+        else if (GetElementPtrInst * gepInst = dyn_cast<GetElementPtrInst>(inst))
         {
             instType = dyn_cast<PointerType>(gepInst->getType());
         }
 
         if (instType && instType->getAddressSpace() == oldAS)
         {
-            Type *eltType = instType->getElementType();
-            PointerType *ptrType = PointerType::get(eltType, newAS);
+            Type* eltType = instType->getElementType();
+            PointerType* ptrType = PointerType::get(eltType, newAS);
             inst->mutateType(ptrType);
             FixAddressSpaceInAllUses(inst, newAS, oldAS);
         }
     }
 }
 
-void FixResourcePtr::RemoveGetBufferPtr(GenIntrinsicInst *bufPtr, Value* bufIdx)
+void FixResourcePtr::RemoveGetBufferPtr(GenIntrinsicInst* bufPtr, Value* bufIdx)
 {
     uint outAS = bufPtr->getType()->getPointerAddressSpace();
     uint origAS = outAS;
     BufferType bufType = (BufferType)(cast<ConstantInt>(bufPtr->getOperand(1))->getZExtValue());
     uint encodeAS = EncodeAS4GFXResource(*bufIdx, bufType, 0);
-    if (outAS != encodeAS && 
-        (bufType == CONSTANT_BUFFER || bufType == RESOURCE || bufType == UAV) )
+    if (outAS != encodeAS &&
+        (bufType == CONSTANT_BUFFER || bufType == RESOURCE || bufType == UAV))
     {
         // happens to OGL, need to fix if address-space encoding is wrong
         outAS = encodeAS;
@@ -155,26 +155,26 @@ void FixResourcePtr::RemoveGetBufferPtr(GenIntrinsicInst *bufPtr, Value* bufIdx)
     // fold instructions on the worklist to constant null-pointer value
     while (!foldlist.empty())
     {
-        Instruction *inst = foldlist.back();
+        Instruction* inst = foldlist.back();
         foldlist.pop_back();
 
-        PointerType *instType = dyn_cast<PointerType>(inst->getType());
+        PointerType* instType = dyn_cast<PointerType>(inst->getType());
         assert(instType);
-        Type *eltType = instType->getElementType();
-        PointerType *ptrType = PointerType::get(eltType, outAS);
+        Type* eltType = instType->getElementType();
+        PointerType* ptrType = PointerType::get(eltType, outAS);
         inst->mutateType(ptrType);
         // iterate all the uses, put bitcast on the worklist
         for (auto UI = inst->user_begin(), E = inst->user_end(); UI != E; ++UI)
         {
-            if (BitCastInst* use = dyn_cast<BitCastInst>(*UI))
+            if (BitCastInst * use = dyn_cast<BitCastInst>(*UI))
             {
                 foldlist.push_back(use);
             }
-            else if (GetElementPtrInst* gep = dyn_cast<GetElementPtrInst>(*UI))
+            else if (GetElementPtrInst * gep = dyn_cast<GetElementPtrInst>(*UI))
             {
                 Value* byteOffset = GetByteOffset(gep);
                 builder->SetInsertPoint(gep);
-                Value *int2ptr = builder->CreateIntToPtr(byteOffset, ptrType);
+                Value* int2ptr = builder->CreateIntToPtr(byteOffset, ptrType);
                 gep->mutateType(ptrType);
                 gep->replaceAllUsesWith(int2ptr);
                 if (outAS != origAS)
@@ -183,77 +183,77 @@ void FixResourcePtr::RemoveGetBufferPtr(GenIntrinsicInst *bufPtr, Value* bufIdx)
                 }
             }
         }
-        ConstantPointerNull *basePtr = ConstantPointerNull::get(ptrType);
+        ConstantPointerNull* basePtr = ConstantPointerNull::get(ptrType);
         inst->replaceAllUsesWith(basePtr);
     }
 }
 
-void FixResourcePtr::FindGetElementPtr(Instruction *bufPtr, Instruction *searchPtr)
+void FixResourcePtr::FindGetElementPtr(Instruction* bufPtr, Instruction* searchPtr)
 {
     // iterate all the uses, recursively find the GetElementPtr
     for (auto UI = searchPtr->user_begin(), E = searchPtr->user_end(); UI != E; ++UI)
     {
-        if (BitCastInst* use = dyn_cast<BitCastInst>(*UI))
+        if (BitCastInst * use = dyn_cast<BitCastInst>(*UI))
         {
             FindGetElementPtr(bufPtr, use);
         }
-        else if (GetElementPtrInst *use = dyn_cast<GetElementPtrInst>(*UI))
+        else if (GetElementPtrInst * use = dyn_cast<GetElementPtrInst>(*UI))
         {
             FindLoadStore(bufPtr, use, use);
         }
-        else if (LoadInst *ld = dyn_cast<LoadInst>(*UI))
+        else if (LoadInst * ld = dyn_cast<LoadInst>(*UI))
         {
             // fix load
-            Value *offsetValue = builder->getInt32(0);
-            Value *loadIndexed = CreateLoadIntrinsic(ld, bufPtr, offsetValue);
+            Value* offsetValue = builder->getInt32(0);
+            Value* loadIndexed = CreateLoadIntrinsic(ld, bufPtr, offsetValue);
             ld->replaceAllUsesWith(loadIndexed);
             eraseList.push_back(ld);
         }
-        else if (StoreInst *st = dyn_cast<StoreInst>(*UI))
+        else if (StoreInst * st = dyn_cast<StoreInst>(*UI))
         {
             // fix store
-            Value *offsetValue = builder->getInt32(0);
-            Value *storeIndexed = CreateStoreIntrinsic(st, bufPtr, offsetValue);
+            Value* offsetValue = builder->getInt32(0);
+            Value* storeIndexed = CreateStoreIntrinsic(st, bufPtr, offsetValue);
             st->replaceAllUsesWith(storeIndexed);
             eraseList.push_back(st);
         }
     }
 }
 
-void FixResourcePtr::FindLoadStore(Instruction *bufPtr, Instruction *eltPtr, Instruction *searchPtr)
+void FixResourcePtr::FindLoadStore(Instruction* bufPtr, Instruction* eltPtr, Instruction* searchPtr)
 {
     // iterate all the uses, put bitcast on the worklist, recursively find the load/store
     for (auto UI = searchPtr->user_begin(), E = searchPtr->user_end(); UI != E; ++UI)
     {
-        if (BitCastInst* use = dyn_cast<BitCastInst>(*UI))
+        if (BitCastInst * use = dyn_cast<BitCastInst>(*UI))
         {
             FindLoadStore(bufPtr, eltPtr, use);
         }
-        else if (LoadInst *use = dyn_cast<LoadInst>(*UI))
+        else if (LoadInst * use = dyn_cast<LoadInst>(*UI))
         {
             // fix load
-            Value *offsetValue = GetByteOffset(eltPtr);
-            Value *loadIndexed = CreateLoadIntrinsic(use, bufPtr, offsetValue);
+            Value* offsetValue = GetByteOffset(eltPtr);
+            Value* loadIndexed = CreateLoadIntrinsic(use, bufPtr, offsetValue);
             use->replaceAllUsesWith(loadIndexed);
             eraseList.push_back(use);
         }
-        else if (StoreInst *use = dyn_cast<StoreInst>(*UI))
+        else if (StoreInst * use = dyn_cast<StoreInst>(*UI))
         {
             // fix store
-            Value *offsetValue = GetByteOffset(eltPtr);
-            Value *storeIndexed = CreateStoreIntrinsic(use, bufPtr, offsetValue);
+            Value* offsetValue = GetByteOffset(eltPtr);
+            Value* storeIndexed = CreateStoreIntrinsic(use, bufPtr, offsetValue);
             use->replaceAllUsesWith(storeIndexed);
             eraseList.push_back(use);
         }
     }
 }
 
-Value* FixResourcePtr::GetByteOffset(Instruction *eltPtr)
+Value* FixResourcePtr::GetByteOffset(Instruction* eltPtr)
 {
     assert(eltPtr->getNumOperands() == 2);
-    Value *ptrOp = eltPtr->getOperand(0);
-    PointerType *ptrTy = dyn_cast<PointerType>(ptrOp->getType());
-    Value *eltIdx = eltPtr->getOperand(1);
+    Value* ptrOp = eltPtr->getOperand(0);
+    PointerType* ptrTy = dyn_cast<PointerType>(ptrOp->getType());
+    Value* eltIdx = eltPtr->getOperand(1);
 
     builder->SetInsertPoint(eltPtr);
     // decide offset in bytes
@@ -261,10 +261,10 @@ Value* FixResourcePtr::GetByteOffset(Instruction *eltPtr)
     uint  eltBytes = int_cast<uint>(DL->getTypeStoreSize(ptrTy->getElementType()));
     APInt eltSize = APInt(32, eltBytes);
 
-    Value *offsetValue = eltIdx;
+    Value* offsetValue = eltIdx;
     if (eltSize != 1)
     {
-        if (const ConstantInt *CI = dyn_cast<ConstantInt>(eltIdx))
+        if (const ConstantInt * CI = dyn_cast<ConstantInt>(eltIdx))
         {
             uint32_t byteOffset = int_cast<uint32_t>(eltBytes * CI->getSExtValue());
             offsetValue = ConstantInt::get(eltIdx->getType(), byteOffset);
@@ -282,9 +282,9 @@ Value* FixResourcePtr::GetByteOffset(Instruction *eltPtr)
     return offsetValue;
 }
 
-Value* FixResourcePtr::CreateLoadIntrinsic(LoadInst *inst, Instruction* bufPtr, Value *offsetVal)
+Value* FixResourcePtr::CreateLoadIntrinsic(LoadInst* inst, Instruction* bufPtr, Value* offsetVal)
 {
-    Function *l;
+    Function* l;
     builder->SetInsertPoint(inst);
     llvm::Type* tys[2];
     tys[0] = inst->getType();
@@ -310,18 +310,18 @@ Value* FixResourcePtr::CreateLoadIntrinsic(LoadInst *inst, Instruction* bufPtr, 
     {
         if (!inst->getType()->isFloatTy())
         {
-            Value *bitcast = dyn_cast<Instruction>(builder->CreateBitCast(ld, inst->getType()));
+            Value* bitcast = dyn_cast<Instruction>(builder->CreateBitCast(ld, inst->getType()));
             ld = bitcast;
         }
     }
     return ld;
 }
 
-Value* FixResourcePtr::CreateStoreIntrinsic(StoreInst *inst, Instruction* bufPtr, Value* offsetVal)
+Value* FixResourcePtr::CreateStoreIntrinsic(StoreInst* inst, Instruction* bufPtr, Value* offsetVal)
 {
-    Function *l;
+    Function* l;
     builder->SetInsertPoint(inst);
-    Value *storeVal = inst->getValueOperand();
+    Value* storeVal = inst->getValueOperand();
     if (storeVal->getType()->isVectorTy())
     {
         llvm::Type* tys[2];
@@ -388,7 +388,7 @@ Value* FixResourcePtr::CreateStoreIntrinsic(StoreInst *inst, Instruction* bufPtr
 /// 
 Value* FixResourcePtr::ResolveBufferIndex(Value* bufferIndex, Value* vectorIndex)
 {
-    if (Constant* c = dyn_cast<Constant>(bufferIndex))
+    if (Constant * c = dyn_cast<Constant>(bufferIndex))
     {
         if (vectorIndex && isa<ConstantInt>(vectorIndex))
         {
@@ -400,15 +400,15 @@ Value* FixResourcePtr::ResolveBufferIndex(Value* bufferIndex, Value* vectorIndex
         }
         assert(0);
     }
-    else if (ExtractElementInst* ee = dyn_cast<ExtractElementInst>(bufferIndex))
+    else if (ExtractElementInst * ee = dyn_cast<ExtractElementInst>(bufferIndex))
     {
         return ResolveBufferIndex(
-                ee->getOperand(0),  // vector argument to extract from 
-                ee->getOperand(1)); // element index in vector
+            ee->getOperand(0),  // vector argument to extract from 
+            ee->getOperand(1)); // element index in vector
     }
-    else if (InsertElementInst* ie = dyn_cast<InsertElementInst>(bufferIndex))
+    else if (InsertElementInst * ie = dyn_cast<InsertElementInst>(bufferIndex))
     {
-        if (vectorIndex && 
+        if (vectorIndex &&
             isa<ConstantInt>(vectorIndex) &&
             isa<ConstantInt>(ie->getOperand(2)))
         {

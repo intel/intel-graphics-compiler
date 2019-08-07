@@ -65,8 +65,8 @@ class RectListOptimizationPass : public FunctionPass
     typedef unsigned int channel_idx;
 
     //Data structure related to Each attribute mapping to rectangle values
-    typedef std::unordered_map<Value *, std::set<vertex_idx>> coordToVertMap;
-    typedef std::unordered_map<channel_idx, std::set<Value *>> channelToCoordMap;
+    typedef std::unordered_map<Value*, std::set<vertex_idx>> coordToVertMap;
+    typedef std::unordered_map<channel_idx, std::set<Value*>> channelToCoordMap;
 
     typedef struct _ATTRIB_SOURCELIST_STRUCT {
         ShaderOutputType outType;
@@ -78,7 +78,7 @@ class RectListOptimizationPass : public FunctionPass
 
     //GS ouput instructions grouped together by all attributes
     //Map => Vertex Idx ---> <attribute_idx, output_gs instruction>
-    typedef std::unordered_map<attribute_idx, Instruction *> attributeInstMap;
+    typedef std::unordered_map<attribute_idx, Instruction*> attributeInstMap;
     typedef std::vector<attributeInstMap> vetexAttribVec;
     vetexAttribVec m_gsouputM;
 
@@ -91,12 +91,12 @@ class RectListOptimizationPass : public FunctionPass
 
 
     //Helper Methods
-    bool isGSTriStripPrimTopology(Function &F);
-    bool isGSOutputVertValid(Function &F);
-    bool scanAndInserOutputGSList(Function &F);
-    void analyzeForRectList(Function &F, IGC::GeometryShaderContext *pgsctx);
-    bool isRectCoords(std::set<Value *> &X, std::set<Value *> &Y, coordToVertMap &rectCoordToVertM);
-    bool isConstantCoords(std::set<Value *> &ChannelValues, coordToVertMap &rectCoordToVertM);
+    bool isGSTriStripPrimTopology(Function& F);
+    bool isGSOutputVertValid(Function& F);
+    bool scanAndInserOutputGSList(Function& F);
+    void analyzeForRectList(Function& F, IGC::GeometryShaderContext* pgsctx);
+    bool isRectCoords(std::set<Value*>& X, std::set<Value*>& Y, coordToVertMap& rectCoordToVertM);
+    bool isConstantCoords(std::set<Value*>& ChannelValues, coordToVertMap& rectCoordToVertM);
 public:
     static char ID;
 
@@ -108,15 +108,15 @@ public:
         m_gsouputM.resize(m_NUM_OUTPUT_VERT_FOR_RECTLIST);
     }
 
-    virtual bool runOnFunction(llvm::Function & F) override;
-    void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+    virtual bool runOnFunction(llvm::Function& F) override;
+    void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
     {
         AU.addRequired<MetaDataUtilsWrapper>();
         AU.addRequired<CollectGeometryShaderProperties>();
         AU.addRequired<CodeGenContextWrapper>();
     }
     virtual llvm::StringRef getPassName() const override { return "RectListOptimization"; }
-    void visitCallInst(llvm::CallInst & I);
+    void visitCallInst(llvm::CallInst& I);
 
 
 };
@@ -124,7 +124,7 @@ public:
 char RectListOptimizationPass::ID = 0;
 
 //helper methods
-bool RectListOptimizationPass::isGSTriStripPrimTopology(Function &F)
+bool RectListOptimizationPass::isGSTriStripPrimTopology(Function& F)
 {
     auto pPrimTopology = F.getParent()->getGlobalVariable("GsOutputPrimitiveTopology");
     const unsigned int primitiveTopology = static_cast<unsigned int>(
@@ -132,7 +132,7 @@ bool RectListOptimizationPass::isGSTriStripPrimTopology(Function &F)
     return (primitiveTopology == GFX3DPRIM_TRISTRIP);
 }
 
-bool RectListOptimizationPass::isGSOutputVertValid(Function &F)
+bool RectListOptimizationPass::isGSOutputVertValid(Function& F)
 {
     auto pMaxOutputVertices = F.getParent()->getGlobalVariable("GsMaxOutputVertices");
     assert(pMaxOutputVertices != nullptr && "GsMaxOutputVertices must be defined");
@@ -149,31 +149,31 @@ bool RectListOptimizationPass::isGSOutputVertValid(Function &F)
 //                    Attribute 0 ---> OutputGS Inst 0
 //                    Attribute 1 ---> OutputGS Inst 1
 //                    .........
-bool RectListOptimizationPass::scanAndInserOutputGSList(Function &F) {
+bool RectListOptimizationPass::scanAndInserOutputGSList(Function& F) {
     bool foundValidMapping = true;
-    typedef std::unordered_map<Value *, vertex_idx > emitCntToVidMap;
+    typedef std::unordered_map<Value*, vertex_idx > emitCntToVidMap;
     emitCntToVidMap emitCntToVidM;
 
     int vertexIdx = 0;
     for (auto I = F.begin(), E = F.end(); I != E && foundValidMapping; ++I) {
-        llvm::BasicBlock::InstListType &instList = I->getInstList();
+        llvm::BasicBlock::InstListType& instList = I->getInstList();
         for (auto instIter = instList.begin(), instIterEnd = instList.end();
             instIter != instIterEnd && foundValidMapping;
             ++instIter)
         {
-            llvm::Instruction *inst = &(*instIter);
-            if (GenIntrinsicInst *CI = dyn_cast<GenIntrinsicInst>(inst)) {
+            llvm::Instruction* inst = &(*instIter);
+            if (GenIntrinsicInst * CI = dyn_cast<GenIntrinsicInst>(inst)) {
                 if (CI->getIntrinsicID() == llvm::GenISAIntrinsic::GenISA_OUTPUTGS) {
                     ShaderOutputType outType = static_cast<ShaderOutputType>(
                         llvm::cast<llvm::ConstantInt>(inst->getOperand(m_OUTPUTGS_shaderTypeArgIdx))->getZExtValue());
 
                     unsigned int attrIdx =
                         static_cast<unsigned int>(llvm::cast<llvm::ConstantInt>(inst->getOperand(m_OUTPUTGS_shaderAttrArgIdx))->getZExtValue());
-                    Value *emitCntV = inst->getOperand(m_OUTPUTGS_EmitCountArgIdx);
-                    ConstantInt * CI = dyn_cast<ConstantInt>(emitCntV);
+                    Value* emitCntV = inst->getOperand(m_OUTPUTGS_EmitCountArgIdx);
+                    ConstantInt* CI = dyn_cast<ConstantInt>(emitCntV);
                     // We are taking a conservative estimate here to handle a simple case
                     // We expect the emits to be of constant count ranging from 0-3
-                    if (!CI || 
+                    if (!CI ||
                         (unsigned int)CI->getZExtValue() >= m_NUM_OUTPUT_VERT_FOR_RECTLIST) {
 
                         foundValidMapping = false;
@@ -216,10 +216,10 @@ bool RectListOptimizationPass::scanAndInserOutputGSList(Function &F) {
 
 // Method to detect Rectangle Coordinates
 bool RectListOptimizationPass::isRectCoords(
-    std::set<Value *> &XChannel,
-    std::set<Value *> &YChannel,
-    coordToVertMap &rectCoordToVertM
-    ) 
+    std::set<Value*>& XChannel,
+    std::set<Value*>& YChannel,
+    coordToVertMap& rectCoordToVertM
+)
 {
     bool isRectCoords = true;
 
@@ -248,10 +248,10 @@ bool RectListOptimizationPass::isRectCoords(
         }
 
         //Validation of condition 2 for both Y and X Channel
-        std::vector<std::set<Value *> *> tempArr = { &XChannel, &YChannel };
+        std::vector<std::set<Value*>*> tempArr = { &XChannel, &YChannel };
         for (unsigned i = 0; i < tempArr.size() && isRectCoords; i++) {
-            for (std::set<Value *>::iterator it = tempArr[i]->begin(); it != tempArr[i]->end(); it++) {
-                Value *V = *it;
+            for (std::set<Value*>::iterator it = tempArr[i]->begin(); it != tempArr[i]->end(); it++) {
+                Value* V = *it;
                 coordToVertMap::iterator coordToVertIt = rectCoordToVertM.find(V);
                 if (coordToVertIt == rectCoordToVertM.end()) {
                     assert("Not able to find one of the XChannel Values");
@@ -275,8 +275,8 @@ bool RectListOptimizationPass::isRectCoords(
 //Condition 2: That Value should have 4 vertices mapped to it from rectCoordToVertM
 //This means for this channel all vertices use the same value.
 bool RectListOptimizationPass::isConstantCoords(
-    std::set<Value *> &ChannelValues,
-    coordToVertMap &rectCoordToVertM )
+    std::set<Value*>& ChannelValues,
+    coordToVertMap& rectCoordToVertM)
 {
     bool isConstantCoord = false;
 
@@ -285,13 +285,13 @@ bool RectListOptimizationPass::isConstantCoords(
             //fails condition 1
             break;
         }
-        Value *uniqueValue = *ChannelValues.begin();
+        Value* uniqueValue = *ChannelValues.begin();
         coordToVertMap::iterator it = rectCoordToVertM.find(uniqueValue);
         if (it == rectCoordToVertM.end()) {
             assert("Not able to find the value in the unique value in Vale to vertex List map");
             break;
         }
-        if (it->second.size() != m_NUM_OUTPUT_VERT_FOR_RECTLIST ) {
+        if (it->second.size() != m_NUM_OUTPUT_VERT_FOR_RECTLIST) {
             //fails condition 2
             break;
         }
@@ -301,15 +301,15 @@ bool RectListOptimizationPass::isConstantCoords(
     return isConstantCoord;
 }
 
-void RectListOptimizationPass::analyzeForRectList(Function &F, GeometryShaderContext *pgsctx)
+void RectListOptimizationPass::analyzeForRectList(Function& F, GeometryShaderContext* pgsctx)
 {
     //Now we expand each attribute to Map 
     //1. each Value to correspoding list of vertices (0-4) 
     //2. Each channel (X,Y,Z,W) to list of Values
-    for (vertex_idx vid = 0; vid < m_NUM_OUTPUT_VERT_FOR_RECTLIST ; vid++) {
+    for (vertex_idx vid = 0; vid < m_NUM_OUTPUT_VERT_FOR_RECTLIST; vid++) {
         for (attributeInstMap::iterator it = m_gsouputM[vid].begin(); it != m_gsouputM[vid].end(); it++) {
             //For each attribute we see corresponding instruction
-            Instruction *inst = it->second;
+            Instruction* inst = it->second;
             atrribRectListMap::iterator arit = m_rectListPerAttrib.find(it->first);
             if (arit == m_rectListPerAttrib.end()) {
                 ATTRIB_SOURCELIST_ST rectList;
@@ -319,13 +319,13 @@ void RectListOptimizationPass::analyzeForRectList(Function &F, GeometryShaderCon
                 arit = m_rectListPerAttrib.find(it->first);
             }
             for (unsigned int ch_id = 0; ch_id < NUM_SHADER_CHANNELS; ch_id++) {
-                Value *channelV = inst->getOperand(ch_id);
+                Value* channelV = inst->getOperand(ch_id);
                 channelToCoordMap::iterator chtocoordit = arit->second.channelToCoordM.find(ch_id);
                 if (chtocoordit != arit->second.channelToCoordM.end()) {
                     chtocoordit->second.insert(channelV);
                 }
                 else {
-                    std::set<Value *> tempChV;
+                    std::set<Value*> tempChV;
                     tempChV.insert(channelV);
                     arit->second.channelToCoordM.insert(std::make_pair(ch_id, tempChV));
                 }
@@ -341,7 +341,7 @@ void RectListOptimizationPass::analyzeForRectList(Function &F, GeometryShaderCon
             }
         }
     }
-    
+
     //Now there can be only two possibilities for this to be a rectlist
     //a. For SV_POSITION it must be a rectangle for XY Channel and constant for ZY channel
     //b. For any other attribute it must be either be a rectangle or constant for XY Channel
@@ -350,7 +350,7 @@ void RectListOptimizationPass::analyzeForRectList(Function &F, GeometryShaderCon
     bool isRectList = false;
     assert(m_rectListPerAttrib.size() != 0 && "Empty attribute list, should not happen\n");
     for (atrribRectListMap::iterator it = m_rectListPerAttrib.begin(); it != m_rectListPerAttrib.end(); it++) {
-        ATTRIB_SOURCELIST_ST *pAttrSrcList = &it->second;
+        ATTRIB_SOURCELIST_ST* pAttrSrcList = &it->second;
         channelToCoordMap::iterator ctCitXit = pAttrSrcList->channelToCoordM.find(SHADER_CHANNEL_X);
         channelToCoordMap::iterator ctCitYit = pAttrSrcList->channelToCoordM.find(SHADER_CHANNEL_Y);
         channelToCoordMap::iterator ctCitZit = pAttrSrcList->channelToCoordM.find(SHADER_CHANNEL_Z);
@@ -361,7 +361,7 @@ void RectListOptimizationPass::analyzeForRectList(Function &F, GeometryShaderCon
         if (ctCitXit == pAttrSrcList->channelToCoordM.end() ||
             ctCitYit == pAttrSrcList->channelToCoordM.end() ||
             ctCitZit == pAttrSrcList->channelToCoordM.end() ||
-            ctCitWit == pAttrSrcList->channelToCoordM.end()) 
+            ctCitWit == pAttrSrcList->channelToCoordM.end())
         {
             assert("Not able to find one of the Channel X/Y/Z/W!!!");
             break;
@@ -375,7 +375,7 @@ void RectListOptimizationPass::analyzeForRectList(Function &F, GeometryShaderCon
         bool bisRectCoords = isRectCoords(ctCitXit->second, ctCitYit->second, pAttrSrcList->rectCoordToVertM);
         if (!bisRectCoords)
         {
-            if (pAttrSrcList->outType == SHADER_OUTPUT_TYPE_POSITION) 
+            if (pAttrSrcList->outType == SHADER_OUTPUT_TYPE_POSITION)
             {
                 //for POSITION its a must have to be a rect
                 break;
@@ -408,11 +408,11 @@ void RectListOptimizationPass::analyzeForRectList(Function &F, GeometryShaderCon
 
     //Right now just setup the hint for driver to turn this ON whenever needed
     //TBD : Need to check if this needs to be filled instead in CGeometryShader::FillProgram
-    pgsctx->programOutput.m_bCanEnableRectList = (bPositionFound == true)?isRectList:false;
+    pgsctx->programOutput.m_bCanEnableRectList = (bPositionFound == true) ? isRectList : false;
     return;
 }
 
-bool RectListOptimizationPass::runOnFunction(Function &F)
+bool RectListOptimizationPass::runOnFunction(Function& F)
 {
     bool changed = false;
     do {
@@ -421,7 +421,7 @@ bool RectListOptimizationPass::runOnFunction(Function &F)
             break;
         }
 
-        IGCMD::MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+        IGCMD::MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
         if (pMdUtils->findFunctionsInfoItem(&F) == pMdUtils->end_FunctionsInfo())
         {
             assert("failed to find the function in metadata\n");
@@ -432,15 +432,15 @@ bool RectListOptimizationPass::runOnFunction(Function &F)
             assert("Failed to get the code gen context or not a Geometry shader\n");
             break;
         }
-        IGC::GeometryShaderContext *pgsctx = static_cast <IGC::GeometryShaderContext *>(ctx);
+        IGC::GeometryShaderContext* pgsctx = static_cast <IGC::GeometryShaderContext*>(ctx);
         if (!pgsctx) {
             assert("Failed to get the GS code gen context \n");
             break;
         }
 
-          //First we need to detect if the shader has valid conditions to pursue
-        //Check if number of vertices are 4
-        if(!isGSOutputVertValid(F))
+        //First we need to detect if the shader has valid conditions to pursue
+      //Check if number of vertices are 4
+        if (!isGSOutputVertValid(F))
             break;
         //Create a map of Vertex to (attribute, instruction)
         if (!scanAndInserOutputGSList(F))
@@ -451,12 +451,12 @@ bool RectListOptimizationPass::runOnFunction(Function &F)
 
         //TBD: Add option to eleminate 4th vertex if needed
 
-    }while(false);
+    } while (false);
 
     return changed;
 }
 
-void RectListOptimizationPass::visitCallInst(llvm::CallInst &I)
+void RectListOptimizationPass::visitCallInst(llvm::CallInst& I)
 {
     return;
 }
@@ -467,11 +467,11 @@ namespace IGC {
 #define PASS_DESCRIPTION "This is an optimization pass for inserting RECTLIST topology "
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS true
-IGC_INITIALIZE_PASS_BEGIN(RectListOptimizationPass, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-IGC_INITIALIZE_PASS_END(RectListOptimizationPass, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+    IGC_INITIALIZE_PASS_BEGIN(RectListOptimizationPass, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+        IGC_INITIALIZE_PASS_END(RectListOptimizationPass, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-llvm::Pass* createRectListOptimizationPass()
-{
-    return new RectListOptimizationPass();
-}
+        llvm::Pass* createRectListOptimizationPass()
+    {
+        return new RectListOptimizationPass();
+    }
 }

@@ -35,8 +35,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 
 namespace IGC {
-  llvm::FunctionPass *createTypeDemotePass();
-  void initializeTypeDemotePass(llvm::PassRegistry &);
+    llvm::FunctionPass* createTypeDemotePass();
+    void initializeTypeDemotePass(llvm::PassRegistry&);
 } // End namespace IGC
 
 #endif // _CISA_TYPEDEMOTE_H_

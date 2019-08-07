@@ -44,8 +44,8 @@ namespace IGC
             return "Fix Fast Math Flags";
         }
 
-        virtual bool runOnFunction(llvm::Function &F) override;
-        void visitFCmpInst(llvm::FCmpInst &FC);
+        virtual bool runOnFunction(llvm::Function& F) override;
+        void visitFCmpInst(llvm::FCmpInst& FC);
 
     private:
         bool m_changed = false;

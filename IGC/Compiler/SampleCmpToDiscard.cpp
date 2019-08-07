@@ -38,12 +38,12 @@ public:
     SampleCmpToDiscard() : FunctionPass(ID)
     {
     }
-    virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const
+    virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const
     {
         AU.addRequired<CodeGenContextWrapper>();
     }
 
-    virtual bool runOnFunction(Function &F);
+    virtual bool runOnFunction(Function& F);
 
     virtual llvm::StringRef getPassName() const
     {
@@ -61,7 +61,7 @@ FunctionPass* IGC::CreateSampleCmpToDiscardPass()
     return new SampleCmpToDiscard();
 }
 
-bool SampleCmpToDiscard::runOnFunction(Function &F)
+bool SampleCmpToDiscard::runOnFunction(Function& F)
 {
     auto pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     if (pCtx->type != ShaderType::PIXEL_SHADER)
@@ -85,19 +85,19 @@ bool SampleCmpToDiscard::processBlock(BasicBlock* BB)
     for (auto II = BB->rbegin(), IE = BB->rend(); II != IE; ++II)
     {
         instToValMap.clear();
-        if (GenIntrinsicInst* genIntr = dyn_cast<GenIntrinsicInst>(&(*II)))
+        if (GenIntrinsicInst * genIntr = dyn_cast<GenIntrinsicInst>(&(*II)))
         {
             Instruction* valueToFold = nullptr;
             GenISAIntrinsic::ID ID = genIntr->getIntrinsicID();
             // only consider sample_lc
             if (ID == GenISAIntrinsic::GenISA_sampleCptr ||
-                ID == GenISAIntrinsic::GenISA_sampleBCptr )
+                ID == GenISAIntrinsic::GenISA_sampleBCptr)
             {
                 if (genIntr->hasOneUse())
                 {
-                    if (ExtractElementInst* ext = dyn_cast<ExtractElementInst>(*genIntr->user_begin()))
+                    if (ExtractElementInst * ext = dyn_cast<ExtractElementInst>(*genIntr->user_begin()))
                     {
-                        if (ConstantInt* index = dyn_cast<ConstantInt>(ext->getIndexOperand()))
+                        if (ConstantInt * index = dyn_cast<ConstantInt>(ext->getIndexOperand()))
                         {
                             if (index->isZero())
                             {
@@ -148,7 +148,7 @@ bool SampleCmpToDiscard::canFoldValue(Instruction* inst, std::map<Value*, APFloa
     * %93 = extractelement <4 x half> %92, i32 0
     * %94 = fsub half 0xH3C00, %93 // 1 - B
     * %95 = fmul half %94, 0xH3400 // 0.25 * (1-B)
-    * %96 = fadd half %95, %93 // 0.25 * ( 1-B) + B 
+    * %96 = fadd half %95, %93 // 0.25 * ( 1-B) + B
     * call void @llvm.genx.GenISA.OUTPUT.f16(half %96, half %96, half %96, half %96, i32 0, i32 0)
     * ret void
     */
@@ -180,7 +180,7 @@ bool SampleCmpToDiscard::canFoldValue(Instruction* inst, std::map<Value*, APFloa
             auto itOtherOp = (bin->getOperand(0) == inst) ? instToValMap.find(bin->getOperand(1)) : instToValMap.find(bin->getOperand(0));
             if (isa<ConstantFP>(bin->getOperand(0)))
             {
-                ConstantFP *C0 = dyn_cast<ConstantFP>(bin->getOperand(0));
+                ConstantFP* C0 = dyn_cast<ConstantFP>(bin->getOperand(0));
                 newConstantFloat = C0->getValueAPF();
                 newConstantFloat.subtract(mapFind->second, llvm::APFloat::rmNearestTiesToEven);
                 instToValMap.emplace(bin, newConstantFloat);
@@ -188,7 +188,7 @@ bool SampleCmpToDiscard::canFoldValue(Instruction* inst, std::map<Value*, APFloa
             }
             else if (isa<ConstantFP>(bin->getOperand(1)))
             {
-                ConstantFP *C0 = dyn_cast<ConstantFP>(bin->getOperand(1));
+                ConstantFP* C0 = dyn_cast<ConstantFP>(bin->getOperand(1));
                 newConstantFloat = mapFind->second;
                 newConstantFloat.subtract(C0->getValueAPF(), llvm::APFloat::rmNearestTiesToEven);
                 instToValMap.emplace(bin, newConstantFloat);
@@ -216,7 +216,7 @@ bool SampleCmpToDiscard::canFoldValue(Instruction* inst, std::map<Value*, APFloa
             auto itOtherOp = (bin->getOperand(0) == inst) ? instToValMap.find(bin->getOperand(1)) : instToValMap.find(bin->getOperand(0));
             if (isa<ConstantFP>(bin->getOperand(0)))
             {
-                ConstantFP *C0 = dyn_cast<ConstantFP>(bin->getOperand(0));
+                ConstantFP* C0 = dyn_cast<ConstantFP>(bin->getOperand(0));
                 newConstantFloat = mapFind->second;
                 newConstantFloat.add(C0->getValueAPF(), llvm::APFloat::rmNearestTiesToEven);
                 instToValMap.emplace(bin, newConstantFloat);
@@ -224,7 +224,7 @@ bool SampleCmpToDiscard::canFoldValue(Instruction* inst, std::map<Value*, APFloa
             }
             else if (isa<ConstantFP>(bin->getOperand(1)))
             {
-                ConstantFP *C0 = dyn_cast<ConstantFP>(bin->getOperand(1));
+                ConstantFP* C0 = dyn_cast<ConstantFP>(bin->getOperand(1));
                 newConstantFloat = mapFind->second;
                 newConstantFloat.add(C0->getValueAPF(), llvm::APFloat::rmNearestTiesToEven);
                 instToValMap.emplace(bin, newConstantFloat);
@@ -244,7 +244,7 @@ bool SampleCmpToDiscard::canFoldValue(Instruction* inst, std::map<Value*, APFloa
             auto itOtherOp = (bin->getOperand(0) == inst) ? instToValMap.find(bin->getOperand(1)) : instToValMap.find(bin->getOperand(0));
             if (isa<ConstantFP>(bin->getOperand(0)))
             {
-                ConstantFP *C0 = dyn_cast<ConstantFP>(bin->getOperand(0));
+                ConstantFP* C0 = dyn_cast<ConstantFP>(bin->getOperand(0));
                 newConstantFloat = mapFind->second;
                 newConstantFloat.multiply(C0->getValueAPF(), llvm::APFloat::rmNearestTiesToEven);
                 instToValMap.emplace(bin, newConstantFloat);
@@ -252,7 +252,7 @@ bool SampleCmpToDiscard::canFoldValue(Instruction* inst, std::map<Value*, APFloa
             }
             else if (isa<ConstantFP>(bin->getOperand(1)))
             {
-                ConstantFP *C0 = dyn_cast<ConstantFP>(bin->getOperand(1));
+                ConstantFP* C0 = dyn_cast<ConstantFP>(bin->getOperand(1));
                 newConstantFloat = mapFind->second;
                 newConstantFloat.multiply(C0->getValueAPF(), llvm::APFloat::rmNearestTiesToEven);
                 instToValMap.emplace(bin, newConstantFloat);
@@ -269,7 +269,7 @@ bool SampleCmpToDiscard::canFoldValue(Instruction* inst, std::map<Value*, APFloa
 
         else if (isa<GenIntrinsicInst>(*UI) && ((mapFind->second).compare(newConstantFloat) == APFloat::cmpEqual))
         {
-            GenIntrinsicInst *CI = dyn_cast<GenIntrinsicInst>(*UI);
+            GenIntrinsicInst* CI = dyn_cast<GenIntrinsicInst>(*UI);
             if ((CI->getIntrinsicID() == GenISA_RTWrite) && (llvm::isa<llvm::ReturnInst>(CI->getNextNode())))
             {
                 return true;

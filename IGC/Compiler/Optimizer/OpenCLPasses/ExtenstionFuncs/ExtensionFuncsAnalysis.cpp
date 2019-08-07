@@ -54,14 +54,14 @@ const StringRef ExtensionFuncsAnalysis::VME_SEARCH_PATH_TYPE = "__builtin_IB_vme
 const StringRef ExtensionFuncsAnalysis::VME_HELPER_GET_HANDLE = "__builtin_IB_vme_helper_get_handle";
 const StringRef ExtensionFuncsAnalysis::VME_HELPER_GET_AS = "__builtin_IB_vme_helper_get_as";
 
-bool ExtensionFuncsAnalysis::runOnModule(Module &M)
+bool ExtensionFuncsAnalysis::runOnModule(Module& M)
 {
     bool changed = false;
     // Run on all functions defined in this module
-    for( Module::iterator I = M.begin(), E = M.end(); I != E; ++I )
+    for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I)
     {
         Function* pFunc = &(*I);
-        if( pFunc->isDeclaration() ) continue;
+        if (pFunc->isDeclaration()) continue;
         if (runOnFunction(*pFunc))
         {
             changed = true;
@@ -71,20 +71,20 @@ bool ExtensionFuncsAnalysis::runOnModule(Module &M)
     return changed;
 }
 
-bool ExtensionFuncsAnalysis::runOnFunction(Function &F)
+bool ExtensionFuncsAnalysis::runOnFunction(Function& F)
 {
     // Processing new function
     m_hasVME = false;
-    
+
     // Visit the function
     visit(F);
 
     // Check if VME implicit information is needed based on the function analysis
-    if( !m_hasVME ) return false;
+    if (!m_hasVME) return false;
 
     // Add the implicit arguments needed by this function
     SmallVector<ImplicitArg::ArgType, ImplicitArg::NUM_IMPLICIT_ARGS> implicitArgs;
-    
+
     implicitArgs.push_back(ImplicitArg::VME_MB_BLOCK_TYPE);
     implicitArgs.push_back(ImplicitArg::VME_SUBPIXEL_MODE);
     implicitArgs.push_back(ImplicitArg::VME_SAD_ADJUST_MODE);
@@ -92,14 +92,14 @@ bool ExtensionFuncsAnalysis::runOnFunction(Function &F)
 
     // Create the metadata representing the VME implicit args needed by this function
     ImplicitArgs::addImplicitArgs(F, implicitArgs, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils());
-    
+
     return true;
 }
 
-void ExtensionFuncsAnalysis::visitCallInst(CallInst &CI)
+void ExtensionFuncsAnalysis::visitCallInst(CallInst& CI)
 {
     // Check for VME function calls
-    if (Function *F = CI.getCalledFunction())
+    if (Function * F = CI.getCalledFunction())
     {
         StringRef funcName = F->getName();
         if (funcName.equals(VME_MB_BLOCK_TYPE) ||

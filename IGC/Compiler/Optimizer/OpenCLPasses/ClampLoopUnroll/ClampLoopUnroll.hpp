@@ -52,14 +52,14 @@ namespace IGC
             return "ClampLoopUnroll";
         }
 
-        virtual bool runOnFunction(llvm::Function &F) override;
+        virtual bool runOnFunction(llvm::Function& F) override;
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.setPreservesCFG();
         }
 
-        void visitTerminatorInst(IGCLLVM::TerminatorInst &I);
+        void visitTerminatorInst(IGCLLVM::TerminatorInst& I);
 
     private:
         unsigned m_MaxUnrollFactor;

@@ -56,7 +56,7 @@ namespace IGC
             return "SubGroupFuncsResolution";
         }
 
-        void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+        void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.addRequired<CodeGenContextWrapper>();
             AU.addRequired<MetaDataUtilsWrapper>();
@@ -65,27 +65,27 @@ namespace IGC
         /// @brief  Main entry point.
         ///         Finds all OpenCL Sub Group function calls and resolve them into an llvm sequence
         /// @param  F The destination function.
-        virtual bool runOnFunction(llvm::Function &F) override;
+        virtual bool runOnFunction(llvm::Function& F) override;
 
         /// @brief  Call instructions visitor.
         ///         Checks for OpenCL Sub Group  functions and resolves them into appropriate sequence of code
         /// @param  CI The call instruction.
-        void visitCallInst(llvm::CallInst &CI);
+        void visitCallInst(llvm::CallInst& CI);
 
-        void BTIHelper(llvm::CallInst &CI);
+        void BTIHelper(llvm::CallInst& CI);
 
-        void mediaBlockRead(llvm::CallInst &CI);
-        void mediaBlockWrite(llvm::CallInst &CI);
+        void mediaBlockRead(llvm::CallInst& CI);
+        void mediaBlockWrite(llvm::CallInst& CI);
 
-        void simdBlockRead(llvm::CallInst &CI);
-        void simdBlockWrite(llvm::CallInst &CI);
+        void simdBlockRead(llvm::CallInst& CI);
+        void simdBlockWrite(llvm::CallInst& CI);
 
-        void pushMediaBlockArgs(llvm::SmallVector<llvm::Value*, 5> &args, llvm::CallInst &CI );
+        void pushMediaBlockArgs(llvm::SmallVector<llvm::Value*, 5> & args, llvm::CallInst& CI);
 
         void CheckMediaBlockInstError(llvm::GenIntrinsicInst* inst, bool isRead);
 
-        void subGroupReduce(WaveOps op, llvm::CallInst &CI);
-        void subGroupScan(WaveOps op, llvm::CallInst &CI);
+        void subGroupReduce(WaveOps op, llvm::CallInst& CI);
+        void subGroupScan(WaveOps op, llvm::CallInst& CI);
 
         static const llvm::StringRef SUB_GROUP_BARRIER;
         static const llvm::StringRef GET_MAX_SUB_GROUP_SIZE;
@@ -99,7 +99,7 @@ namespace IGC
         static const llvm::StringRef SUB_GROUP_SHUFFLE_DOWN;
         static const llvm::StringRef SUB_GROUP_SHUFFLE_DOWN_US;
         static const llvm::StringRef SUB_GROUP_SHUFFLE_DOWN_UC;
-        
+
         static const llvm::StringRef SIMD_BLOCK_READ_1_GBL;
         static const llvm::StringRef SIMD_BLOCK_READ_2_GBL;
         static const llvm::StringRef SIMD_BLOCK_READ_4_GBL;
@@ -118,7 +118,7 @@ namespace IGC
         static const llvm::StringRef SIMD_BLOCK_READ_2_GBL_L;
         static const llvm::StringRef SIMD_BLOCK_READ_4_GBL_L;
         static const llvm::StringRef SIMD_BLOCK_READ_8_GBL_L;
-        
+
         static const llvm::StringRef SIMD_BLOCK_WRITE_1_GBL;
         static const llvm::StringRef SIMD_BLOCK_WRITE_2_GBL;
         static const llvm::StringRef SIMD_BLOCK_WRITE_4_GBL;
@@ -204,7 +204,7 @@ namespace IGC
     private:
         /// @brief  Container for instructions to be deleted after visiting a function.
         llvm::SmallVector<llvm::Instruction*, 16>  m_instsToDelete;
-        
+
         /// @brief - maps image and sampler kernel parameters to BTIs
         CImagesBI::ParamMap m_argIndexMap;
 
@@ -214,11 +214,11 @@ namespace IGC
         CodeGenContext* m_pCtx;
 
         /// @brief examine metadata for intel_reqd_sub_group_size
-        int32_t GetSIMDSize(llvm::Function *F);
+        int32_t GetSIMDSize(llvm::Function* F);
 
         /// @brief emits the given error message in SIMD32.  Used on subgroup functions
         // that aren't currently supported in SIMD32.
-        void CheckSIMDSize(llvm::Instruction &I, llvm::StringRef msg);
+        void CheckSIMDSize(llvm::Instruction& I, llvm::StringRef msg);
     };
 
 } // namespace IGC

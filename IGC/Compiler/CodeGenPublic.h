@@ -89,24 +89,24 @@ namespace IGC
 
     struct SProgramOutput
     {
-        void*           m_programBin;     //<! Must be 16 byte aligned, and padded to a 64 byte boundary
+        void* m_programBin;     //<! Must be 16 byte aligned, and padded to a 64 byte boundary
         unsigned int    m_programSize;    //<! Number of bytes of program data (including padding)
         unsigned int    m_unpaddedProgramSize;      //<! program size without padding used for binary linking
         unsigned int    m_startReg;                 //<! Which GRF to start with
         unsigned int    m_scratchSpaceUsedBySpills; //<! amount of scratch space needed for shader spilling
         unsigned int    m_scratchSpaceUsedByShader; //<! amount of scratch space needed by shader
         unsigned int    m_scratchSpaceUsedByGtpin; //<! amount of scratch space used by gtpin
-        void*           m_debugDataVISA;            //<! VISA debug data (source -> VISA)
+        void* m_debugDataVISA;            //<! VISA debug data (source -> VISA)
         unsigned int    m_debugDataVISASize;        //<! Number of bytes of VISA debug data
-        void*           m_debugDataGenISA;          //<! GenISA debug data (VISA -> GenISA)
+        void* m_debugDataGenISA;          //<! GenISA debug data (VISA -> GenISA)
         unsigned int    m_debugDataGenISASize;      //<! Number of bytes of GenISA debug data
         unsigned int    m_InstructionCount;
-        void*           m_gtpinBuffer;              // Will be populated by VISA only when special switch is passed by gtpin
+        void* m_gtpinBuffer;              // Will be populated by VISA only when special switch is passed by gtpin
         unsigned int    m_gtpinBufferSize;
-        void*           m_funcSymbolTable;
+        void* m_funcSymbolTable;
         unsigned int    m_funcSymbolTableSize;
         unsigned int    m_funcSymbolTableEntries;
-        void*           m_funcRelocationTable;
+        void* m_funcRelocationTable;
         unsigned int    m_funcRelocationTableSize;
         unsigned int    m_funcRelocationTableEntries;
         unsigned int    m_offsetToSkipPerThreadDataLoad = 0;
@@ -115,7 +115,7 @@ namespace IGC
         bool            m_separatePvtSpill = false;
         bool            m_roundPower2KBytes = false;
         unsigned int m_scratchSpaceSizeLimit = 0;
-    
+
         void Destroy()
         {
             if (m_programBin)
@@ -131,7 +131,7 @@ namespace IGC
                 IGC::aligned_free(m_debugDataGenISA);
             }
         }
-        
+
         void init(bool setSeparatePvtSpillT, bool roundPower2KBytes, unsigned int scratchSpaceSizeLimitT)
         {
             m_separatePvtSpill = setSeparatePvtSpillT;
@@ -160,20 +160,20 @@ namespace IGC
         {
             m_scratchSpaceUsedByShader = scratchSpaceUsedByShader;
         }
-private:
-    unsigned int roundSize(unsigned int size) const
-    {
-        if (m_roundPower2KBytes)
+    private:
+        unsigned int roundSize(unsigned int size) const
         {
-            size = roundPower2KBbyte(size);
+            if (m_roundPower2KBytes)
+            {
+                size = roundPower2KBbyte(size);
+            }
+            return size;
         }
-        return size;
-    }
 
-    unsigned int roundPower2KBbyte(unsigned int size) const
-    {
-        return (size ? iSTD::RoundPower2(iSTD::Max(int_cast<DWORD>(size), static_cast<DWORD>(sizeof(KILOBYTE)))) : 0);
-    }
+        unsigned int roundPower2KBbyte(unsigned int size) const
+        {
+            return (size ? iSTD::RoundPower2(iSTD::Max(int_cast<DWORD>(size), static_cast<DWORD>(sizeof(KILOBYTE)))) : 0);
+        }
 
     };
 
@@ -266,7 +266,7 @@ private:
         unsigned int statelessCBPushedSize;
 
         // GenUpdateCB outputs
-        void        *m_ConstantBufferReplaceShaderPatterns;
+        void* m_ConstantBufferReplaceShaderPatterns;
         uint        m_ConstantBufferReplaceShaderPatternsSize;
         uint        m_ConstantBufferUsageMask;
         uint        m_ConstantBufferReplaceSize;
@@ -445,7 +445,7 @@ private:
         unsigned int                        TgsmTotalByteCount;
         unsigned int                        ThreadGroupSize;
 
-        void*                               ThreadPayloadData;
+        void* ThreadPayloadData;
 
         unsigned int                        CSHThreadDispatchChannel;
 
@@ -531,10 +531,10 @@ private:
         std::vector<iOpenCL::KernelArgumentInfoAnnotation*> m_kernelArgInfo;
         std::vector<iOpenCL::PrintfStringAnnotation*>       m_printfStringAnnotations;
 
-        iOpenCL::PrintfBufferAnnotation                    *m_printfBufferAnnotation;
-        iOpenCL::StartGASAnnotation                        *m_startGAS = NULL;
-        iOpenCL::WindowSizeGASAnnotation                   *m_WindowSizeGAS = NULL;
-        iOpenCL::PrivateMemSizeAnnotation                  *m_PrivateMemSize = NULL;
+        iOpenCL::PrintfBufferAnnotation* m_printfBufferAnnotation;
+        iOpenCL::StartGASAnnotation* m_startGAS = NULL;
+        iOpenCL::WindowSizeGASAnnotation* m_WindowSizeGAS = NULL;
+        iOpenCL::PrivateMemSizeAnnotation* m_PrivateMemSize = NULL;
         std::string                                         m_kernelAttributeInfo;
 
         bool                                                m_HasInlineVmeSamplers = false;
@@ -586,8 +586,8 @@ private:
         CBTILayout(
             const USC::SShaderStageBTLayout* pLayout,
             const std::vector<unsigned char>& colorBufferMappings) :
-                m_pLayout(pLayout),
-                m_ColorBufferMappings(colorBufferMappings)
+            m_pLayout(pLayout),
+            m_ColorBufferMappings(colorBufferMappings)
         {}
 
     protected:
@@ -705,8 +705,8 @@ private:
         /// information about the driver
         const CDriverInfo& m_DriverInfo;
         /// output: driver instrumentation
-        TimeStats       *m_compilerTimeStats = nullptr;
-        ShaderStats     *m_sumShaderStats = nullptr;
+        TimeStats* m_compilerTimeStats = nullptr;
+        ShaderStats* m_sumShaderStats = nullptr;
         /// output: list of buffer IDs which are promoted to direct AS
         std::unordered_set<unsigned> m_buffersPromotedToDirectAS;
         // float 16, float32 and float64 denorm mode
@@ -748,7 +748,7 @@ private:
         //For storing error message
         std::string oclErrorMessage;
 
-        void *m_ConstantBufferReplaceShaderPatterns = nullptr;
+        void* m_ConstantBufferReplaceShaderPatterns = nullptr;
         uint m_ConstantBufferReplaceShaderPatternsSize = 0;
         uint m_ConstantBufferUsageMask = 0;
         uint m_ConstantBufferReplaceSize = 0;
@@ -760,18 +760,18 @@ private:
 
     protected:
         // Objects pointed to by these pointers are owned by this class.
-        LLVMContextWrapper *llvmCtxWrapper;
+        LLVMContextWrapper* llvmCtxWrapper;
         /// input: LLVM module
-        llvm::Module*   module = nullptr;
+        llvm::Module* module = nullptr;
         /// input: IGC MetaData Utils
-        IGC::IGCMD::MetaDataUtils  *m_pMdUtils = nullptr;
-        IGC::ModuleMetaData *modMD = nullptr;
+        IGC::IGCMD::MetaDataUtils* m_pMdUtils = nullptr;
+        IGC::ModuleMetaData* modMD = nullptr;
     public:
         CodeGenContext(
             ShaderType          _type,      ///< shader type
-            const CBTILayout&   _bitLayout, ///< binding table layout to be used in code gen
-            const CPlatform&    _platform,  ///< IGC HW platform description
-            const CDriverInfo&  driverInfo, ///< Queries to know runtime features support
+            const CBTILayout& _bitLayout, ///< binding table layout to be used in code gen
+            const CPlatform& _platform,  ///< IGC HW platform description
+            const CDriverInfo& driverInfo, ///< Queries to know runtime features support
             const bool          createResourceDimTypes = true,
             LLVMContextWrapper* LLVMContext = nullptr)///< LLVM context to use, if null a new one will be created
             : type(_type), platform(_platform), btiLayout(_bitLayout), m_DriverInfo(driverInfo), llvmCtxWrapper(LLVMContext)
@@ -804,7 +804,7 @@ private:
         IGC::IGCMD::MetaDataUtils* getMetaDataUtils();
         llvm::Module* getModule() const;
 
-        void setModule(llvm::Module *m);
+        void setModule(llvm::Module* m);
         // Several clients explicitly delete module without resetting module to null.
         // This causes the issue later when the dtor is invoked (trying to delete a
         // dangling pointer again). This function is used to replace any explicit
@@ -834,9 +834,9 @@ private:
         // output: shader information
         SVertexShaderKernelProgram programOutput;
         VertexShaderContext(
-            const CBTILayout&   btiLayout, ///< binding table layout to be used in code gen
-            const CPlatform&    platform,  ///< IGC HW platform description
-            const CDriverInfo&  driverInfo,
+            const CBTILayout& btiLayout, ///< binding table layout to be used in code gen
+            const CPlatform& platform,  ///< IGC HW platform description
+            const CDriverInfo& driverInfo,
             const bool          createResourceDimTypes = true,
             LLVMContextWrapper* llvmCtxWrapper = nullptr) ///< LLVM context to use, if null a new one will be created
             : CodeGenContext(ShaderType::VERTEX_SHADER, btiLayout, platform, driverInfo, createResourceDimTypes, llvmCtxWrapper)
@@ -852,9 +852,9 @@ private:
         // output: shader information
         SPixelShaderKernelProgram programOutput;
         PixelShaderContext(
-            const CBTILayout&   btiLayout, ///< binding table layout to be used in code gen
-            const CPlatform&    platform,  ///< IGC HW platform description
-            const CDriverInfo&  driverInfo,
+            const CBTILayout& btiLayout, ///< binding table layout to be used in code gen
+            const CPlatform& platform,  ///< IGC HW platform description
+            const CDriverInfo& driverInfo,
             const bool          createResourceDimTypes = true,
             LLVMContextWrapper* llvmCtxWrapper = nullptr) ///< LLVM context to use, if null a new one will be created
             : CodeGenContext(ShaderType::PIXEL_SHADER, btiLayout, platform, driverInfo, createResourceDimTypes, llvmCtxWrapper)
@@ -869,9 +869,9 @@ private:
         // output: shader information
         SGeometryShaderKernelProgram programOutput;
         GeometryShaderContext(
-            const CBTILayout&   btiLayout, ///< binding table layout to be used in code gen
-            const CPlatform&    platform,  ///< IGC HW platform description
-            const CDriverInfo&  driverInfo,
+            const CBTILayout& btiLayout, ///< binding table layout to be used in code gen
+            const CPlatform& platform,  ///< IGC HW platform description
+            const CDriverInfo& driverInfo,
             const bool          createResourceDimTypes = true,
             LLVMContextWrapper* llvmCtxWrapper = nullptr) ///< LLVM context to use, if null a new one will be created
             : CodeGenContext(ShaderType::GEOMETRY_SHADER, btiLayout, platform, driverInfo, createResourceDimTypes, llvmCtxWrapper)
@@ -908,9 +908,9 @@ private:
         unsigned m_slmSize;
 
         ComputeShaderContext(
-            const CBTILayout&   btiLayout, ///< binding table layout to be used in code gen
-            const CPlatform&    platform,  ///< IGC HW platform description
-            const CDriverInfo&  driverInfo,
+            const CBTILayout& btiLayout, ///< binding table layout to be used in code gen
+            const CPlatform& platform,  ///< IGC HW platform description
+            const CDriverInfo& driverInfo,
             const bool          createResourceDimTypes = true,
             LLVMContextWrapper* llvmCtxWrapper = nullptr) ///< LLVM context to use, if null a new one will be created
             : CodeGenContext(ShaderType::COMPUTE_SHADER, btiLayout, platform, driverInfo, createResourceDimTypes, llvmCtxWrapper)
@@ -939,9 +939,9 @@ private:
         // output: shader information
         SHullShaderKernelProgram programOutput;
         HullShaderContext(
-            const CBTILayout&   btiLayout, ///< binding table layout to be used in code gen
-            const CPlatform&    platform,  ///< IGC HW platform description
-            const CDriverInfo&  driverInfo,
+            const CBTILayout& btiLayout, ///< binding table layout to be used in code gen
+            const CPlatform& platform,  ///< IGC HW platform description
+            const CDriverInfo& driverInfo,
             const bool          createResourceDimTypes = true,
             LLVMContextWrapper* llvmCtxWrapper = nullptr) ///< LLVM context to use, if null a new one will be created
             : CodeGenContext(ShaderType::HULL_SHADER, btiLayout, platform, driverInfo, createResourceDimTypes, llvmCtxWrapper)
@@ -956,9 +956,9 @@ private:
         // output: shader information
         SDomainShaderKernelProgram programOutput;
         DomainShaderContext(
-            const CBTILayout&   btiLayout, ///< binding table layout to be used in code gen
-            const CPlatform&    platform,  ///< IGC HW platform description
-            const CDriverInfo&  driverInfo,
+            const CBTILayout& btiLayout, ///< binding table layout to be used in code gen
+            const CPlatform& platform,  ///< IGC HW platform description
+            const CDriverInfo& driverInfo,
             const bool          createResourceDimTypes = true,
             LLVMContextWrapper* llvmCtxWrapper = nullptr) ///< LLVM context to use, if null a new one will be created
             : CodeGenContext(ShaderType::DOMAIN_SHADER, btiLayout, platform, driverInfo, createResourceDimTypes, llvmCtxWrapper)
@@ -990,7 +990,7 @@ private:
                 if (pInputArgs->pInternalOptions == nullptr)
                     return;
 
-                const char *options = pInputArgs->pInternalOptions;
+                const char* options = pInputArgs->pInternalOptions;
                 if (strstr(options, "-cl-replace-global-offsets-by-zero"))
                 {
                     replaceGlobalOffsetsByZero = true;
@@ -1076,7 +1076,7 @@ private:
                 if (pInputArgs->pOptions == nullptr)
                     return;
 
-                const char *options = pInputArgs->pOptions;
+                const char* options = pInputArgs->pOptions;
                 if (strstr(options, "-cl-fp32-correctly-rounded-divide-sqrt"))
                 {
                     CorrectlyRoundedSqrt = true;
@@ -1152,7 +1152,7 @@ private:
      * Then driver will push pNewCB to thread payload.
      */
     void FoldDerivedConstant(char* bitcode, uint bitcodeSize, void* CBptr[15],
-        std::function<void (uint[4], uint, uint, bool)> getResInfoCB, uint* pNewCB);
+        std::function<void(uint[4], uint, uint, bool)> getResInfoCB, uint* pNewCB);
 
     // Apply link optimization to shader programs.
     void LinkOptIR(CodeGenContext* ctxs[], bool usesStreamOutput);

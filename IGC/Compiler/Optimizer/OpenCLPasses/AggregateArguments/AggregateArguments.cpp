@@ -64,7 +64,7 @@ bool isSupportedAggregateArgument(Argument* arg)
     {
         Type* type = arg->getType()->getPointerElementType();
 
-        if (StructType* structType = dyn_cast<StructType>(type))
+        if (StructType * structType = dyn_cast<StructType>(type))
         {
             return !structType->isOpaque();
         }
@@ -82,9 +82,9 @@ AggregateArgumentsAnalysis::AggregateArgumentsAnalysis() : FunctionPass(ID)
 // arguments into multiple implicit basic type arguments.  This pass
 // must be run after function inlining.
 //
-bool AggregateArgumentsAnalysis::runOnFunction(Function &F)
+bool AggregateArgumentsAnalysis::runOnFunction(Function& F)
 {
-    if( F.isDeclaration() )
+    if (F.isDeclaration())
     {
         return false;
     }
@@ -99,11 +99,11 @@ bool AggregateArgumentsAnalysis::runOnFunction(Function &F)
     bool changed = false;
 
     Function::arg_iterator argument = F.arg_begin();
-    for( ; argument != F.arg_end(); ++argument )
+    for (; argument != F.arg_end(); ++argument)
     {
         Argument* arg = &(*argument);
 
-        if( !isSupportedAggregateArgument(arg) )
+        if (!isSupportedAggregateArgument(arg))
         {
             continue;
         }
@@ -121,11 +121,11 @@ bool AggregateArgumentsAnalysis::runOnFunction(Function &F)
 
 static uint64_t getNumElements(SequentialType* type)
 {
-    if (ArrayType *arrayType = dyn_cast<ArrayType>(type))
+    if (ArrayType * arrayType = dyn_cast<ArrayType>(type))
     {
         return arrayType->getNumElements();
     }
-    if (VectorType *vectorType = dyn_cast<VectorType>(type))
+    if (VectorType * vectorType = dyn_cast<VectorType>(type))
     {
         return vectorType->getNumElements();
     }
@@ -137,7 +137,7 @@ void AggregateArgumentsAnalysis::addImplictArgs(Type* type, uint64_t baseAllocaO
 {
     assert(baseAllocaOffset < UINT_MAX);
     // Structs and Unions are StructTypes
-    if( StructType* structType = dyn_cast<StructType>(type) )
+    if (StructType * structType = dyn_cast<StructType>(type))
     {
         const StructLayout* layout = m_pDL->getStructLayout(structType);
 
@@ -145,7 +145,7 @@ void AggregateArgumentsAnalysis::addImplictArgs(Type* type, uint64_t baseAllocaO
 
         // build the implicit arguments forwards for all elements
         // in the struct
-        for( unsigned int i=0; i<numElements; ++i )
+        for (unsigned int i = 0; i < numElements; ++i)
         {
             Type* elementType = structType->getElementType(i);
             uint64_t elementOffsetInStruct = layout->getElementOffset(i);
@@ -155,7 +155,7 @@ void AggregateArgumentsAnalysis::addImplictArgs(Type* type, uint64_t baseAllocaO
     }
     else if (isa<ArrayType>(type) || isa<VectorType>(type))
     {
-        SequentialType *seqType = cast<SequentialType>(type);
+        SequentialType* seqType = cast<SequentialType>(type);
         uint64_t numElements = getNumElements(seqType);
         assert(numElements < UINT_MAX);
 
@@ -165,12 +165,12 @@ void AggregateArgumentsAnalysis::addImplictArgs(Type* type, uint64_t baseAllocaO
         // build the implicit arguments forwards for all elements of the 
         // array.  If this happens to be an array of struct, the elements
         // of the struct will be handled in the recursive step.
-        for( unsigned int i=0; i<numElements; ++i )
+        for (unsigned int i = 0; i < numElements; ++i)
         {
-            addImplictArgs(elementType, baseAllocaOffset + i*elementSize);
+            addImplictArgs(elementType, baseAllocaOffset + i * elementSize);
         }
     }
-    else 
+    else
     {
         // ...finally we have found a basic type contained inside
         // the aggregate.  Add it to the list of implicit args.
@@ -178,7 +178,7 @@ void AggregateArgumentsAnalysis::addImplictArgs(Type* type, uint64_t baseAllocaO
 
         ImplicitArg::ArgType implicitArgType = ImplicitArg::CONSTANT_REG_DWORD;
 
-        switch(elementSize)
+        switch (elementSize)
         {
         case 8:
             implicitArgType = ImplicitArg::CONSTANT_REG_BYTE;
@@ -187,7 +187,7 @@ void AggregateArgumentsAnalysis::addImplictArgs(Type* type, uint64_t baseAllocaO
             implicitArgType = ImplicitArg::CONSTANT_REG_WORD;
             break;
         case 32:
-            if( type->isFloatTy() )
+            if (type->isFloatTy())
             {
                 implicitArgType = ImplicitArg::CONSTANT_REG_FP32;
             }
@@ -213,7 +213,7 @@ ResolveAggregateArguments::ResolveAggregateArguments() : FunctionPass(ID)
     initializeResolveAggregateArgumentsPass(*PassRegistry::getPassRegistry());
 }
 
-bool ResolveAggregateArguments::runOnFunction(Function &F)
+bool ResolveAggregateArguments::runOnFunction(Function& F)
 {
     if (!isEntryFunc(getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(), &F))
     {
@@ -228,25 +228,25 @@ bool ResolveAggregateArguments::runOnFunction(Function &F)
     IRBuilder<> irBuilder(&F.getEntryBlock(), F.getEntryBlock().begin());
 
     Function::arg_iterator argument = F.arg_begin();
-    for( ; argument != F.arg_end(); ++argument )
+    for (; argument != F.arg_end(); ++argument)
     {
         Argument* arg = &(*argument);
 
-        if( !isSupportedAggregateArgument(arg) )
+        if (!isSupportedAggregateArgument(arg))
         {
             continue;
         }
 
-        StructType *structType = cast<StructType>(arg->getType()->getPointerElementType());
+        StructType* structType = cast<StructType>(arg->getType()->getPointerElementType());
 
         // LLVM assumes the caller has create an alloca and pushed the contents
         // of the struct on the stack.  Since we dont have a caller, create
         // the alloca here.
         std::string allocaName = std::string(arg->getName()) + "_alloca";
-        llvm::AllocaInst* base = irBuilder.CreateAlloca(structType, 0, allocaName );
+        llvm::AllocaInst* base = irBuilder.CreateAlloca(structType, 0, allocaName);
 
         // Now that we have the alloca push the contents of the struct onto the stack
-        storeArgument(arg, base, irBuilder);          
+        storeArgument(arg, base, irBuilder);
 
         arg->replaceAllUsesWith(base);
         changed = true;
@@ -266,7 +266,7 @@ void ResolveAggregateArguments::storeArgument(const Argument* arg, AllocaInst* b
     Function::arg_iterator implicitArgToStore = m_pFunction->arg_begin();
     for (unsigned int i = 0; i < baseImplicitArg + startArgNo; ++i, ++implicitArgToStore);
 
-    Value *baseAsPtri8 = irBuilder.CreateBitCast(base, Type::getInt8PtrTy(base->getContext(), ADDRESS_SPACE_PRIVATE));
+    Value* baseAsPtri8 = irBuilder.CreateBitCast(base, Type::getInt8PtrTy(base->getContext(), ADDRESS_SPACE_PRIVATE));
 
     // Iterate over all base type args of the structure and store them
     // into the correct offset from the alloca.
@@ -283,7 +283,7 @@ void ResolveAggregateArguments::storeArgument(const Argument* arg, AllocaInst* b
 
 }
 
-void ResolveAggregateArguments::getImplicitArg(unsigned int explicitArgNo, unsigned int &startArgNo, unsigned int &endArgNo)
+void ResolveAggregateArguments::getImplicitArg(unsigned int explicitArgNo, unsigned int& startArgNo, unsigned int& endArgNo)
 {
     unsigned int numImplicitArgs = m_implicitArgs.size();
 

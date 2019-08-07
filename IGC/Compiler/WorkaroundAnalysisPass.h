@@ -39,65 +39,65 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace IGC
 {
-class WorkaroundAnalysis : public llvm::FunctionPass,
-    public llvm::InstVisitor<WorkaroundAnalysis>
-{
-    llvm::IGCIRBuilder<> *m_builder;
-public:
-    static char ID;
-
-    WorkaroundAnalysis();
-
-    ~WorkaroundAnalysis() {}
-
-    virtual bool runOnFunction(llvm::Function &F) override;
-
-    virtual llvm::StringRef getPassName() const override
+    class WorkaroundAnalysis : public llvm::FunctionPass,
+        public llvm::InstVisitor<WorkaroundAnalysis>
     {
-        return "WorkaroundAnalysis Pass";
-    }
+        llvm::IGCIRBuilder<>* m_builder;
+    public:
+        static char ID;
 
-    virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+        WorkaroundAnalysis();
+
+        ~WorkaroundAnalysis() {}
+
+        virtual bool runOnFunction(llvm::Function& F) override;
+
+        virtual llvm::StringRef getPassName() const override
+        {
+            return "WorkaroundAnalysis Pass";
+        }
+
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
+        {
+            AU.addRequired<MetaDataUtilsWrapper>();
+            AU.addRequired<CodeGenContextWrapper>();
+        }
+
+        void visitCallInst(llvm::CallInst& I);
+
+    private:
+        void GatherOffsetWorkaround(llvm::SamplerGatherIntrinsic* gatherpo);
+        void ldmsOffsetWorkaournd(llvm::LdMSIntrinsic* ldms);
+        const llvm::DataLayout* m_pDataLayout;
+        llvm::Module* m_pModule;
+        CodeGenContextWrapper* m_pCtxWrapper;
+    };
+
+    class WAFMinFMax : public llvm::FunctionPass,
+        public llvm::InstVisitor<WAFMinFMax>
     {
-        AU.addRequired<MetaDataUtilsWrapper>();
-        AU.addRequired<CodeGenContextWrapper>();
-    }
+    public:
+        static char ID;
+        WAFMinFMax();
+        virtual ~WAFMinFMax() { }
 
-    void visitCallInst(llvm::CallInst &I);
+        bool runOnFunction(llvm::Function& F) override;
 
-private:
-    void GatherOffsetWorkaround(llvm::SamplerGatherIntrinsic* gatherpo);
-    void ldmsOffsetWorkaournd(llvm::LdMSIntrinsic* ldms);
-    const llvm::DataLayout   *m_pDataLayout;
-    llvm::Module* m_pModule;
-    CodeGenContextWrapper*    m_pCtxWrapper;
-};
+        llvm::StringRef getPassName() const override
+        {
+            return "WAFMinFMax";
+        }
+        void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
+        {
+            AU.addRequired<MetaDataUtilsWrapper>();
+            AU.addRequired<CodeGenContextWrapper>();
+        }
 
-class WAFMinFMax : public llvm::FunctionPass,
-    public llvm::InstVisitor<WAFMinFMax>
-{
-public:
-    static char ID;
-    WAFMinFMax();
-    virtual ~WAFMinFMax() { }
+        void visitCallInst(llvm::CallInst& I);
 
-    bool runOnFunction(llvm::Function& F) override;
-
-    llvm::StringRef getPassName() const override
-    {
-        return "WAFMinFMax";
-    }
-    void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
-    {
-        AU.addRequired<MetaDataUtilsWrapper>();
-        AU.addRequired<CodeGenContextWrapper>();
-    }
-
-    void visitCallInst(llvm::CallInst& I);
-
-private:
-    llvm::IGCIRBuilder<> *m_builder;
-    CodeGenContext* m_ctx;
-};
+    private:
+        llvm::IGCIRBuilder<>* m_builder;
+        CodeGenContext* m_ctx;
+    };
 
 } // namespace IGC

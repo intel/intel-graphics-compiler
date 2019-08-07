@@ -58,7 +58,7 @@ namespace IGC
             AU.addRequired<MetaDataUtilsWrapper>();
         }
 
-        virtual bool runOnFunction(llvm::Function &F) override;
+        virtual bool runOnFunction(llvm::Function& F) override;
 
     private:
         void addImplictArgs(llvm::Type* type, uint64_t baseAllocaOffset);
@@ -92,15 +92,15 @@ namespace IGC
             AU.addRequired<CodeGenContextWrapper>();
         }
 
-        virtual bool runOnFunction(llvm::Function &F) override;
+        virtual bool runOnFunction(llvm::Function& F) override;
 
     private:
         void storeArgument(const llvm::Argument*, llvm::AllocaInst* base, llvm::IRBuilder<>& irBuilder);
 
-        void getImplicitArg(unsigned int explicitArgNo, unsigned int &startArgNo, unsigned int &endArgNo);
+        void getImplicitArg(unsigned int explicitArgNo, unsigned int& startArgNo, unsigned int& endArgNo);
 
     protected:
-        llvm::Function  *m_pFunction;
+        llvm::Function* m_pFunction;
 
         ImplicitArgs m_implicitArgs;
     };

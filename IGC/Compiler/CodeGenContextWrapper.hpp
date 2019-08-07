@@ -70,7 +70,7 @@ namespace IGC
         }
 
     private:
-        CodeGenContext *m_ctx;
+        CodeGenContext* m_ctx;
         bool m_ctxOwner;
 
     };

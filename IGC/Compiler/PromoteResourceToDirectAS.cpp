@@ -59,9 +59,9 @@ PromoteResourceToDirectAS::PromoteResourceToDirectAS()
     initializePromoteResourceToDirectASPass(*PassRegistry::getPassRegistry());
 }
 
-bool PromoteResourceToDirectAS::runOnFunction(Function &F)
+bool PromoteResourceToDirectAS::runOnFunction(Function& F)
 {
-    if(IGC_IS_FLAG_ENABLED(DisablePromoteToDirectAS))
+    if (IGC_IS_FLAG_ENABLED(DisablePromoteToDirectAS))
     {
         return false;
     }
@@ -74,38 +74,38 @@ bool PromoteResourceToDirectAS::runOnFunction(Function &F)
 }
 
 // Determine the new buffer type
-Type* GetBufferAccessType(Instruction *inst)
+Type* GetBufferAccessType(Instruction* inst)
 {
-    if (LoadInst* load = dyn_cast<LoadInst>(inst))
+    if (LoadInst * load = dyn_cast<LoadInst>(inst))
     {
         return load->getType();
     }
-    else if (StoreInst* store = dyn_cast<StoreInst>(inst))
+    else if (StoreInst * store = dyn_cast<StoreInst>(inst))
     {
         return store->getOperand(0)->getType();
     }
-    else if (GenIntrinsicInst* pIntr = dyn_cast<GenIntrinsicInst>(inst))
+    else if (GenIntrinsicInst * pIntr = dyn_cast<GenIntrinsicInst>(inst))
     {
-        switch(pIntr->getIntrinsicID())
+        switch (pIntr->getIntrinsicID())
         {
-            case GenISAIntrinsic::GenISA_storeraw_indexed:
-            case GenISAIntrinsic::GenISA_storerawvector_indexed:
-                return pIntr->getOperand(2)->getType();
-            case GenISAIntrinsic::GenISA_ldrawvector_indexed:
-            case GenISAIntrinsic::GenISA_ldraw_indexed:
-            case GenISAIntrinsic::GenISA_intatomicraw:
-            case GenISAIntrinsic::GenISA_intatomictyped:
-            case GenISAIntrinsic::GenISA_icmpxchgatomictyped:
-            case GenISAIntrinsic::GenISA_floatatomicraw:
-            case GenISAIntrinsic::GenISA_icmpxchgatomicraw:
-            case GenISAIntrinsic::GenISA_fcmpxchgatomicraw:
-            case GenISAIntrinsic::GenISA_intatomicrawA64:
-            case GenISAIntrinsic::GenISA_floatatomicrawA64:
-            case GenISAIntrinsic::GenISA_icmpxchgatomicrawA64:
-            case GenISAIntrinsic::GenISA_fcmpxchgatomicrawA64:
-                return pIntr->getType();
-            default:
-                break;
+        case GenISAIntrinsic::GenISA_storeraw_indexed:
+        case GenISAIntrinsic::GenISA_storerawvector_indexed:
+            return pIntr->getOperand(2)->getType();
+        case GenISAIntrinsic::GenISA_ldrawvector_indexed:
+        case GenISAIntrinsic::GenISA_ldraw_indexed:
+        case GenISAIntrinsic::GenISA_intatomicraw:
+        case GenISAIntrinsic::GenISA_intatomictyped:
+        case GenISAIntrinsic::GenISA_icmpxchgatomictyped:
+        case GenISAIntrinsic::GenISA_floatatomicraw:
+        case GenISAIntrinsic::GenISA_icmpxchgatomicraw:
+        case GenISAIntrinsic::GenISA_fcmpxchgatomicraw:
+        case GenISAIntrinsic::GenISA_intatomicrawA64:
+        case GenISAIntrinsic::GenISA_floatatomicrawA64:
+        case GenISAIntrinsic::GenISA_icmpxchgatomicrawA64:
+        case GenISAIntrinsic::GenISA_fcmpxchgatomicrawA64:
+            return pIntr->getType();
+        default:
+            break;
         }
     }
 
@@ -121,9 +121,9 @@ Argument* FindArrayBaseArg(AllocaInst* alloca)
     // First, find GEP taking first element of an array. It is assumed to be immediate user of alloca.
     Argument* arg = nullptr;
     GetElementPtrInst* baseGep = nullptr;
-    for(Value::user_iterator use_it = alloca->user_begin(), use_e = alloca->user_end(); use_it != use_e; ++use_it)
+    for (Value::user_iterator use_it = alloca->user_begin(), use_e = alloca->user_end(); use_it != use_e; ++use_it)
     {
-        if(auto gep = dyn_cast<GetElementPtrInst>(*use_it))
+        if (auto gep = dyn_cast<GetElementPtrInst>(*use_it))
         {
             if (gep->getNumIndices() == 2)
             {
@@ -175,12 +175,12 @@ Value* FindArrayIndex(const std::vector<Value*>& instList, IGCIRBuilder<>& build
                 // Example: %1 = getelementptr inbounds %"struct.texture", %"struct.texture"* %aot, i64 %arrayIndex, i32 0
                 arrayIndex = gep->getOperand(1);
             }
-            else if(pointerElementTy->isArrayTy() && gep->getOperand(1) == builder.getInt64(0))
+            else if (pointerElementTy->isArrayTy() && gep->getOperand(1) == builder.getInt64(0))
             {
                 // Example: %2 = getelementptr inbounds [8 x %"struct.texture"], [8 x %"struct.texture"]* %aot, i64 0, i64 %arrayIndex, i32 0
                 arrayIndex = gep->getOperand(2);
             }
-            else if(pointerElementTy->isPointerTy() && pointerElementTy->getPointerElementType()->isStructTy() && gep->getOperand(1) == builder.getInt64(0))
+            else if (pointerElementTy->isPointerTy() && pointerElementTy->getPointerElementType()->isStructTy() && gep->getOperand(1) == builder.getInt64(0))
             {
                 // Example: %3 = getelementptr inbounds %"struct.texture", %"struct.texture"** %aot, i64 0, i64 %arrayIndex, i32 0
                 arrayIndex = gep->getOperand(2);
@@ -190,7 +190,7 @@ Value* FindArrayIndex(const std::vector<Value*>& instList, IGCIRBuilder<>& build
     return arrayIndex;
 }
 
-void PromoteResourceToDirectAS::PromoteSamplerTextureToDirectAS(GenIntrinsicInst *&pIntr, Value* resourcePtr)
+void PromoteResourceToDirectAS::PromoteSamplerTextureToDirectAS(GenIntrinsicInst*& pIntr, Value* resourcePtr)
 {
     IGCIRBuilder<> builder(pIntr);
 
@@ -238,7 +238,7 @@ void PromoteResourceToDirectAS::PromoteSamplerTextureToDirectAS(GenIntrinsicInst
         {
             canPromote = true;
         }
-        else if (Argument* argPtr = dyn_cast<Argument>(srcPtr))
+        else if (Argument * argPtr = dyn_cast<Argument>(srcPtr))
         {
             // Source comes from kernel arguments
             // We only promote if the argument comes from the entry function.
@@ -247,13 +247,13 @@ void PromoteResourceToDirectAS::PromoteSamplerTextureToDirectAS(GenIntrinsicInst
             if (isEntryFunc(m_pMdUtils, function))
             {
                 assert(m_pCodeGenContext->type == ShaderType::OPENCL_SHADER);
-                ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+                ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
                 if (modMD->FuncMD.find(function) != modMD->FuncMD.end())
                 {
-                    FunctionMetaData *funcMD = &modMD->FuncMD[function];
-                    ResourceAllocMD *resAllocMD = &funcMD->resAllocMD;
-                    ArgAllocMD *argInfo = &resAllocMD->argAllocMDList[argPtr->getArgNo()];
-                    assert((size_t) argPtr->getArgNo() < resAllocMD->argAllocMDList.size() && "ArgAllocMD List Out of Bounds Error");
+                    FunctionMetaData* funcMD = &modMD->FuncMD[function];
+                    ResourceAllocMD* resAllocMD = &funcMD->resAllocMD;
+                    ArgAllocMD* argInfo = &resAllocMD->argAllocMDList[argPtr->getArgNo()];
+                    assert((size_t)argPtr->getArgNo() < resAllocMD->argAllocMDList.size() && "ArgAllocMD List Out of Bounds Error");
 
                     if (argInfo->type == ResourceTypeEnum::BindlessUAVResourceType)
                     {
@@ -302,7 +302,7 @@ void PromoteResourceToDirectAS::PromoteSamplerTextureToDirectAS(GenIntrinsicInst
     }
 }
 
-bool PatchGetElementPtr(const std::vector<Value*> &instList, Type* dstTy, unsigned directAS, Value* patchedSourcePtr, Value* &dstPtr)
+bool PatchGetElementPtr(const std::vector<Value*>& instList, Type* dstTy, unsigned directAS, Value* patchedSourcePtr, Value*& dstPtr)
 {
     unsigned numInstructions = instList.size();
     Value* patchedInst = patchedSourcePtr;
@@ -319,17 +319,17 @@ bool PatchGetElementPtr(const std::vector<Value*> &instList, Type* dstTy, unsign
     // %1 = bitcast int addrspace(131072)* %0 to float addrspace(131072)*
     // %2 = getelementptr float, float addrspace(131072)* %1, i32 8
     std::vector<Value*> patchInstructions;
-    for(int i = numInstructions - 1; i >= 0; i--)
+    for (int i = numInstructions - 1; i >= 0; i--)
     {
         Value* inst = instList[i];
-        if(isa<GetElementPtrInst>(inst))
+        if (isa<GetElementPtrInst>(inst))
         {
             patchInstructions.push_back(inst);
         }
-        else if(BitCastInst* cast = dyn_cast<BitCastInst>(inst))
+        else if (BitCastInst * cast = dyn_cast<BitCastInst>(inst))
         {
             // Bitcast from pointer to pointer
-            if(cast->getType()->isPointerTy() && cast->getOperand(0)->getType()->isPointerTy())
+            if (cast->getType()->isPointerTy() && cast->getOperand(0)->getType()->isPointerTy())
                 patchInstructions.push_back(inst);
         }
     }
@@ -351,10 +351,10 @@ bool PatchGetElementPtr(const std::vector<Value*> &instList, Type* dstTy, unsign
         patchedInst = ConstantPointerNull::get(newptrType);
     }
 
-    for (unsigned i = 0; i < (unsigned) patchInstructions.size(); i++)
+    for (unsigned i = 0; i < (unsigned)patchInstructions.size(); i++)
     {
         Value* inst = patchInstructions[i];
-        if (GetElementPtrInst* gepInst = dyn_cast<GetElementPtrInst>(inst))
+        if (GetElementPtrInst * gepInst = dyn_cast<GetElementPtrInst>(inst))
         {
             llvm::SmallVector<llvm::Value*, 4> gepArgs(gepInst->idx_begin(), gepInst->idx_end());
             // Create the new GEP instruction
@@ -363,7 +363,7 @@ bool PatchGetElementPtr(const std::vector<Value*> &instList, Type* dstTy, unsign
             else
                 patchedInst = GetElementPtrInst::Create(nullptr, patchedInst, gepArgs, "", gepInst);
         }
-        else if (BitCastInst* cast = dyn_cast<BitCastInst>(inst))
+        else if (BitCastInst * cast = dyn_cast<BitCastInst>(inst))
         {
             PointerType* newptrType = PointerType::get(cast->getType()->getPointerElementType(), directAS);
             patchedInst = BitCastInst::Create(Instruction::BitCast, patchedInst, newptrType, "", cast);
@@ -381,7 +381,7 @@ bool PatchGetElementPtr(const std::vector<Value*> &instList, Type* dstTy, unsign
     return (dstPtr->getType()->getPointerElementType() == dstTy);
 }
 
-bool PatchInstructionAddressSpace(const std::vector<Value*> &instList, Type* dstTy, unsigned directAS, Value* &dstPtr)
+bool PatchInstructionAddressSpace(const std::vector<Value*>& instList, Type* dstTy, unsigned directAS, Value*& dstPtr)
 {
     unsigned numInstructions = instList.size();
     dstPtr = nullptr;
@@ -396,15 +396,15 @@ bool PatchInstructionAddressSpace(const std::vector<Value*> &instList, Type* dst
     PHINode* phiNode = nullptr;
     SelectInst* selectInst = nullptr;
     std::vector<Value*> remainingInst;
-    for(unsigned i = 0; i < numInstructions; i++)
+    for (unsigned i = 0; i < numInstructions; i++)
     {
         Value* inst = instList[i];
-        if (PHINode* phi = dyn_cast<PHINode>(inst))
+        if (PHINode * phi = dyn_cast<PHINode>(inst))
         {
             phiNode = phi;
             break;
         }
-        else if (SelectInst *select = dyn_cast<SelectInst>(inst))
+        else if (SelectInst * select = dyn_cast<SelectInst>(inst))
         {
             selectInst = select;
             break;
@@ -422,8 +422,8 @@ bool PatchInstructionAddressSpace(const std::vector<Value*> &instList, Type* dst
         Value* bufferPtr1 = nullptr;
         std::vector<Value*> tempList0, tempList1;
         // Call trace again to get the instructions list for each branch of the select
-        if(IGC::TracePointerSource(selectInst->getOperand(1), true, true, tempList0) &&
-           IGC::TracePointerSource(selectInst->getOperand(2), true, true, tempList1))
+        if (IGC::TracePointerSource(selectInst->getOperand(1), true, true, tempList0) &&
+            IGC::TracePointerSource(selectInst->getOperand(2), true, true, tempList1))
         {
             assert(selectInst->getOperand(1)->getType()->isPointerTy() && selectInst->getOperand(2)->getType()->isPointerTy());
             Type* srcType0 = selectInst->getOperand(1)->getType()->getPointerElementType();
@@ -446,7 +446,7 @@ bool PatchInstructionAddressSpace(const std::vector<Value*> &instList, Type* dst
     {
         PointerType* newPhiTy = PointerType::get(phiNode->getType()->getPointerElementType(), directAS);
         PHINode* pNewPhi = PHINode::Create(newPhiTy, phiNode->getNumIncomingValues(), "", phiNode);
-        for(unsigned int i = 0; i < phiNode->getNumIncomingValues(); ++i)
+        for (unsigned int i = 0; i < phiNode->getNumIncomingValues(); ++i)
         {
             Value* incomingVal = phiNode->getIncomingValue(i);
             assert(incomingVal->getType()->isPointerTy());
@@ -479,9 +479,9 @@ bool PatchInstructionAddressSpace(const std::vector<Value*> &instList, Type* dst
         success = PatchGetElementPtr(instList, dstTy, directAS, nullptr, dstPtr);
     }
 
-    if(!dstPtr || !dstPtr->getType()->isPointerTy())
+    if (!dstPtr || !dstPtr->getType()->isPointerTy())
         return false;
-    if(dstPtr->getType()->getPointerElementType() != dstTy)
+    if (dstPtr->getType()->getPointerElementType() != dstTy)
         return false;
 
     return success;
@@ -530,33 +530,33 @@ void PromoteResourceToDirectAS::PromoteBufferToDirectAS(Instruction* inst, Value
     unsigned directAS = IGC::EncodeAS4GFXResource(*builder.getInt32(bufferID), bufType, 0);
 
     Value* pBuffer = nullptr;
-    Type*  pBufferType = GetBufferAccessType(inst);
+    Type* pBufferType = GetBufferAccessType(inst);
 
-    if(!PatchInstructionAddressSpace(instructionList, pBufferType, directAS, pBuffer))
+    if (!PatchInstructionAddressSpace(instructionList, pBufferType, directAS, pBuffer))
     {
         // Patching failed
         return;
     }
 
-    if (LoadInst* load = dyn_cast<LoadInst>(inst))
+    if (LoadInst * load = dyn_cast<LoadInst>(inst))
     {
         LoadInst* newload = IGC::cloneLoad(load, pBuffer);
         load->replaceAllUsesWith(newload);
         load->eraseFromParent();
         m_pCodeGenContext->m_buffersPromotedToDirectAS.insert(bufferID);
     }
-    else if (StoreInst* store = dyn_cast<StoreInst>(inst))
+    else if (StoreInst * store = dyn_cast<StoreInst>(inst))
     {
         StoreInst* newstore = IGC::cloneStore(store, store->getOperand(0), pBuffer);
         store->replaceAllUsesWith(newstore);
         store->eraseFromParent();
         m_pCodeGenContext->m_buffersPromotedToDirectAS.insert(bufferID);
     }
-    else if (GenIntrinsicInst* pIntr = dyn_cast<GenIntrinsicInst>(inst))
+    else if (GenIntrinsicInst * pIntr = dyn_cast<GenIntrinsicInst>(inst))
     {
         Value* pNewBufferAccessInst = nullptr;
 
-        switch(pIntr->getIntrinsicID())
+        switch (pIntr->getIntrinsicID())
         {
             // TODO: ldraw and storeraw currently does not support non-aligned memory, if promote fails
             // then default alignment is 4. Need to implement support for ldraw and storeraw to support
@@ -567,102 +567,102 @@ void PromoteResourceToDirectAS::PromoteBufferToDirectAS(Instruction* inst, Value
             // For this example instruction, InstructionCombining pass generates align4 if alignment
             // is not set. Forcing alignment to 1 generates the correct alignment value align2.
             // TODO: Why is no alignment and align1 treated differently by InstructionCombining?
-            case GenISAIntrinsic::GenISA_ldraw_indexed:
-            case GenISAIntrinsic::GenISA_ldrawvector_indexed:
+        case GenISAIntrinsic::GenISA_ldraw_indexed:
+        case GenISAIntrinsic::GenISA_ldrawvector_indexed:
+        {
+            Value* offsetVal = pIntr->getOperand(1);
+            PointerType* ptrType = PointerType::get(pBufferType, directAS);
+            pBuffer = builder.CreateIntToPtr(offsetVal, ptrType);
+
+            unsigned alignment = cast<LdRawIntrinsic>(pIntr)->getAlignment();
+
+            // Promote ldraw back to load
+            pNewBufferAccessInst = builder.CreateAlignedLoad(pBuffer, alignment);
+            break;
+        }
+        case GenISAIntrinsic::GenISA_storeraw_indexed:
+        case GenISAIntrinsic::GenISA_storerawvector_indexed:
+        {
+            Value* offsetVal = pIntr->getOperand(1);
+            PointerType* ptrType = PointerType::get(pBufferType, directAS);
+            pBuffer = builder.CreateIntToPtr(offsetVal, ptrType);
+
+            unsigned alignment = (unsigned)llvm::cast<llvm::ConstantInt>(pIntr->getOperand(3))->getZExtValue();
+
+            // Promote storeraw back to store
+            Value* storeVal = pIntr->getOperand(2);
+            pNewBufferAccessInst = builder.CreateAlignedStore(storeVal, pBuffer, alignment);
+            break;
+        }
+        default:
+        {
+            bool is64BitPtr = true;
+            switch (pIntr->getIntrinsicID())
             {
-                Value* offsetVal = pIntr->getOperand(1);
-                PointerType *ptrType = PointerType::get(pBufferType, directAS);
-                pBuffer = builder.CreateIntToPtr(offsetVal, ptrType);
-
-                unsigned alignment = cast<LdRawIntrinsic>(pIntr)->getAlignment();
-
-                // Promote ldraw back to load
-                pNewBufferAccessInst = builder.CreateAlignedLoad(pBuffer, alignment);
+            case GenISAIntrinsic::GenISA_intatomicraw:
+            case GenISAIntrinsic::GenISA_floatatomicraw:
+            case GenISAIntrinsic::GenISA_intatomictyped:
+            case GenISAIntrinsic::GenISA_icmpxchgatomictyped:
+            case GenISAIntrinsic::GenISA_icmpxchgatomicraw:
+            case GenISAIntrinsic::GenISA_fcmpxchgatomicraw:
+                is64BitPtr = false;
                 break;
-            }
-            case GenISAIntrinsic::GenISA_storeraw_indexed:
-            case GenISAIntrinsic::GenISA_storerawvector_indexed:
-            {
-                Value* offsetVal = pIntr->getOperand(1);
-                PointerType *ptrType = PointerType::get(pBufferType, directAS);
-                pBuffer = builder.CreateIntToPtr(offsetVal, ptrType);
-
-                unsigned alignment = (unsigned)llvm::cast<llvm::ConstantInt>(pIntr->getOperand(3))->getZExtValue();
-
-                // Promote storeraw back to store
-                Value* storeVal = pIntr->getOperand(2);
-                pNewBufferAccessInst = builder.CreateAlignedStore(storeVal, pBuffer, alignment);
-                break;
-            }
+            case GenISAIntrinsic::GenISA_intatomicrawA64:
+            case GenISAIntrinsic::GenISA_floatatomicrawA64:
+            case GenISAIntrinsic::GenISA_icmpxchgatomicrawA64:
+            case GenISAIntrinsic::GenISA_fcmpxchgatomicrawA64:
             default:
+                is64BitPtr = true;
+                break;
+            }
+
+            // clone atomicraw instructions
+            llvm::SmallVector<llvm::Value*, 8> args;
+            llvm::SmallVector<Type*, 3> types;
+
+            PointerType* newptrType = PointerType::get(pBufferType, directAS);
+            Value* sourcePointer = ConstantPointerNull::get(newptrType);
+            Value* bufferAddress = nullptr;
+
+            types.push_back(pIntr->getType());
+            types.push_back(sourcePointer->getType());
+
+            if (is64BitPtr)
             {
-                bool is64BitPtr = true;
-                switch (pIntr->getIntrinsicID())
+                if (!isa<ConstantPointerNull>(pBuffer))
                 {
-                    case GenISAIntrinsic::GenISA_intatomicraw:
-                    case GenISAIntrinsic::GenISA_floatatomicraw:
-                    case GenISAIntrinsic::GenISA_intatomictyped:
-                    case GenISAIntrinsic::GenISA_icmpxchgatomictyped:
-                    case GenISAIntrinsic::GenISA_icmpxchgatomicraw:
-                    case GenISAIntrinsic::GenISA_fcmpxchgatomicraw:
-                        is64BitPtr = false;
-                        break;
-                    case GenISAIntrinsic::GenISA_intatomicrawA64:
-                    case GenISAIntrinsic::GenISA_floatatomicrawA64:
-                    case GenISAIntrinsic::GenISA_icmpxchgatomicrawA64:
-                    case GenISAIntrinsic::GenISA_fcmpxchgatomicrawA64:
-                    default:
-                        is64BitPtr = true;
-                        break;
-                }
-
-                // clone atomicraw instructions
-                llvm::SmallVector<llvm::Value*, 8> args;
-                llvm::SmallVector<Type*, 3> types;
-
-                PointerType* newptrType = PointerType::get(pBufferType, directAS);
-                Value* sourcePointer = ConstantPointerNull::get(newptrType);
-                Value* bufferAddress = nullptr;
-
-                types.push_back(pIntr->getType());
-                types.push_back(sourcePointer->getType());
-
-                if (is64BitPtr)
-                {
-                    if (!isa<ConstantPointerNull>(pBuffer))
-                    {
-                        bufferAddress = pBuffer;
-                    }
-                    else
-                    {
-                        bufferAddress = sourcePointer;
-                    }
-                    types.push_back(bufferAddress->getType());
+                    bufferAddress = pBuffer;
                 }
                 else
                 {
-                    bufferAddress = pIntr->getArgOperand(1);
-                    if (!isa<ConstantPointerNull>(pBuffer))
-                    {
-                        assert(isa<ConstantInt>(bufferAddress) && cast<ConstantInt>(bufferAddress)->getZExtValue() == 0);
-                        assert(pIntr->getIntrinsicID() != GenISAIntrinsic::GenISA_intatomictyped &&
-                               pIntr->getIntrinsicID() != GenISAIntrinsic::GenISA_icmpxchgatomictyped);
-                        bufferAddress = builder.CreatePtrToInt(pBuffer, builder.getInt32Ty());
-                    }
+                    bufferAddress = sourcePointer;
                 }
-
-                args.push_back(sourcePointer);
-                args.push_back(bufferAddress);
-                for (unsigned i = 2; i < pIntr->getNumArgOperands(); i++)
-                {
-                    args.push_back(pIntr->getArgOperand(i));
-                }
-
-                Module* module = pIntr->getParent()->getParent()->getParent();
-                Function* pFunc = GenISAIntrinsic::getDeclaration(module, pIntr->getIntrinsicID(), types);
-                pNewBufferAccessInst = builder.CreateCall(pFunc, args);
-                break;
+                types.push_back(bufferAddress->getType());
             }
+            else
+            {
+                bufferAddress = pIntr->getArgOperand(1);
+                if (!isa<ConstantPointerNull>(pBuffer))
+                {
+                    assert(isa<ConstantInt>(bufferAddress) && cast<ConstantInt>(bufferAddress)->getZExtValue() == 0);
+                    assert(pIntr->getIntrinsicID() != GenISAIntrinsic::GenISA_intatomictyped &&
+                        pIntr->getIntrinsicID() != GenISAIntrinsic::GenISA_icmpxchgatomictyped);
+                    bufferAddress = builder.CreatePtrToInt(pBuffer, builder.getInt32Ty());
+                }
+            }
+
+            args.push_back(sourcePointer);
+            args.push_back(bufferAddress);
+            for (unsigned i = 2; i < pIntr->getNumArgOperands(); i++)
+            {
+                args.push_back(pIntr->getArgOperand(i));
+            }
+
+            Module* module = pIntr->getParent()->getParent()->getParent();
+            Function* pFunc = GenISAIntrinsic::getDeclaration(module, pIntr->getIntrinsicID(), types);
+            pNewBufferAccessInst = builder.CreateCall(pFunc, args);
+            break;
+        }
         }
 
         if (pNewBufferAccessInst)
@@ -671,9 +671,9 @@ void PromoteResourceToDirectAS::PromoteBufferToDirectAS(Instruction* inst, Value
             Instruction* newInst = cast<Instruction>(pNewBufferAccessInst);
 
             // Clone metadata
-            llvm::SmallVector<std::pair<unsigned, llvm::MDNode *>, 4> MDs;
+            llvm::SmallVector<std::pair<unsigned, llvm::MDNode*>, 4> MDs;
             oldInst->getAllMetadata(MDs);
-            for (llvm::SmallVectorImpl<std::pair<unsigned, llvm::MDNode *> >::iterator MI = MDs.begin(), ME = MDs.end(); MI != ME; ++MI)
+            for (llvm::SmallVectorImpl<std::pair<unsigned, llvm::MDNode*> >::iterator MI = MDs.begin(), ME = MDs.end(); MI != ME; ++MI)
             {
                 newInst->setMetadata(MI->first, MI->second);
             }
@@ -684,13 +684,13 @@ void PromoteResourceToDirectAS::PromoteBufferToDirectAS(Instruction* inst, Value
     }
 }
 
-void PromoteResourceToDirectAS::visitInstruction(Instruction &I)
+void PromoteResourceToDirectAS::visitInstruction(Instruction& I)
 {
     bool resourceAccessed = false;
-    if (llvm::GenIntrinsicInst *pIntr = llvm::dyn_cast<llvm::GenIntrinsicInst>(&I))
+    if (llvm::GenIntrinsicInst * pIntr = llvm::dyn_cast<llvm::GenIntrinsicInst>(&I))
     {
         // Figure out the intrinsic operands for texture & sampler
-        llvm::Value *pTextureValue = nullptr, *pSamplerValue = nullptr;
+        llvm::Value* pTextureValue = nullptr, * pSamplerValue = nullptr;
         IGC::getTextureAndSamplerOperands(pIntr, pTextureValue, pSamplerValue);
 
         if (pTextureValue && pTextureValue->getType()->isPointerTy())

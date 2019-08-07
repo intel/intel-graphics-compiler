@@ -37,7 +37,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace llvm;
 using namespace IGC::Legalizer;
 
-bool InstElementizer::elementize(Instruction *I) {
-  llvm_unreachable("NOT IMPLEMENTED YET!");
-  return false;
+bool InstElementizer::elementize(Instruction* I) {
+    llvm_unreachable("NOT IMPLEMENTED YET!");
+    return false;
 }

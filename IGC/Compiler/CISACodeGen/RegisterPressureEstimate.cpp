@@ -46,13 +46,13 @@ IGC_INITIALIZE_PASS_END(RegisterPressureEstimate, PASS_FLAG, PASS_DESCRIPTION, P
 
 namespace IGC
 {
-    void RegisterPressureEstimate::getAnalysisUsage(AnalysisUsage &AU) const 
+    void RegisterPressureEstimate::getAnalysisUsage(AnalysisUsage& AU) const
     {
         AU.setPreservesAll();
         AU.addRequired<LoopInfoWrapperPass>();
     }
 
-    bool RegisterPressureEstimate::runOnFunction(Function &F)
+    bool RegisterPressureEstimate::runOnFunction(Function& F)
     {
         m_pFunc = &F;
         LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
@@ -68,26 +68,26 @@ namespace IGC
     /// - Phi nodes in each basic block get the same number;
     /// - All other instructions get a unique number, if assigned.
     ///
-    void RegisterPressureEstimate::assignNumbers() 
+    void RegisterPressureEstimate::assignNumbers()
     {
         unsigned Num = 0;
 
         // Arguments assigned with number 0.
         for (auto AI = m_pFunc->arg_begin(), AE = m_pFunc->arg_end(); AI != AE; ++AI)
         {
-            Argument *Arg = &(*AI);
+            Argument* Arg = &(*AI);
             m_pNumbers[Arg] = Num;
         }
 
         // Assign a number to basic blocks and instructions.
-        auto &BBs = m_pFunc->getBasicBlockList();
-        for (auto BI = BBs.begin(), BE = BBs.end(); BI != BE; ++BI) 
+        auto& BBs = m_pFunc->getBasicBlockList();
+        for (auto BI = BBs.begin(), BE = BBs.end(); BI != BE; ++BI)
         {
-            BasicBlock *BB = &*BI;
+            BasicBlock* BB = &*BI;
             unsigned BlockNum = m_pNumbers[BB] = Num++;
-            for (auto II = BB->begin(), IE = BB->end(); II != IE; ++II) 
+            for (auto II = BB->begin(), IE = BB->end(); II != IE; ++II)
             {
-                Instruction *Inst = &(*II);
+                Instruction* Inst = &(*II);
                 if (isa<DbgInfoIntrinsic>(Inst))
                 {
                     continue;
@@ -105,7 +105,7 @@ namespace IGC
     }
 
     /// Construct a string from a unsigned integer with the intended width.
-    static std::string alignedString(unsigned Val) 
+    static std::string alignedString(unsigned Val)
     {
         const unsigned Width = 3;
         std::string Str = Twine(Val).str();
@@ -117,11 +117,11 @@ namespace IGC
         return Str;
     }
 
-    void RegisterPressureEstimate::printNumbering(raw_ostream &OS)  
+    void RegisterPressureEstimate::printNumbering(raw_ostream& OS)
     {
-        auto &BBs = m_pFunc->getBasicBlockList();
+        auto& BBs = m_pFunc->getBasicBlockList();
         unsigned UnamedBBNum = 1;
-        for (auto BI = BBs.begin(), BE = BBs.end(); BI != BE; ++BI) 
+        for (auto BI = BBs.begin(), BE = BBs.end(); BI != BE; ++BI)
         {
             if (m_pNumbers.count(&(*BI)))
             {
@@ -136,9 +136,9 @@ namespace IGC
                 OS << ";<label>:" + Twine(UnamedBBNum++) << "\n";
             }
 
-            for (auto II = BI->begin(), IE = BI->end(); II != IE; ++II) 
+            for (auto II = BI->begin(), IE = BI->end(); II != IE; ++II)
             {
-                Instruction *Inst = &(*II);
+                Instruction* Inst = &(*II);
                 if (m_pNumbers.count(Inst))
                 {
                     OS << "[" << alignedString(m_pNumbers[Inst]) << "] ";
@@ -149,7 +149,7 @@ namespace IGC
         }
     }
 
-    void RegisterPressureEstimate::dumpNumbering() 
+    void RegisterPressureEstimate::dumpNumbering()
     {
         printNumbering(ods());
     }
@@ -161,11 +161,11 @@ namespace IGC
 
     unsigned RegisterPressureEstimate::getMaxAssignedNumberForFunction()
     {
-        auto &BBs = m_pFunc->getBasicBlockList();
-        unsigned maxInstructionNumber = 0; 
+        auto& BBs = m_pFunc->getBasicBlockList();
+        unsigned maxInstructionNumber = 0;
         for (auto BI = BBs.begin(), BE = BBs.end(); BI != BE; ++BI)
         {
-            BasicBlock *pBB = &*BI;
+            BasicBlock* pBB = &*BI;
             maxInstructionNumber = (m_pNumbers[&pBB->back()] > maxInstructionNumber) ? m_pNumbers[&pBB->back()] : maxInstructionNumber;
         }
         return maxInstructionNumber;
@@ -181,9 +181,9 @@ namespace IGC
         return m_pNumbers[&pBB->front()];
     }
 
-    void RegisterPressureEstimate::LiveRange::setBegin(unsigned Begin) 
+    void RegisterPressureEstimate::LiveRange::setBegin(unsigned Begin)
     {
-        for (auto &Seg : Segments)
+        for (auto& Seg : Segments)
         {
             if (Seg.Begin < Begin)
             {
@@ -192,11 +192,11 @@ namespace IGC
         }
     }
 
-    void RegisterPressureEstimate::LiveRange::sortAndMerge() 
+    void RegisterPressureEstimate::LiveRange::sortAndMerge()
     {
         std::sort(Segments.begin(), Segments.end());
         unsigned NewSize = 0;
-        for (unsigned i = 0; i != Segments.size(); ++i) 
+        for (unsigned i = 0; i != Segments.size(); ++i)
         {
             if (NewSize && Segments[i].Begin <= Segments[NewSize - 1].End)
             {
@@ -211,9 +211,9 @@ namespace IGC
         Segments.resize(NewSize);
     }
 
-    void RegisterPressureEstimate::LiveRange::print(raw_ostream &OS) const
+    void RegisterPressureEstimate::LiveRange::print(raw_ostream& OS) const
     {
-        for (auto &Seg : Segments)
+        for (auto& Seg : Segments)
         {
             OS << "  [" << Seg.Begin << ", " << Seg.End << ")";
         }
@@ -224,10 +224,10 @@ namespace IGC
         print(ods());
     }
 
-    void RegisterPressureEstimate::printLiveRanges(raw_ostream &OS)
+    void RegisterPressureEstimate::printLiveRanges(raw_ostream& OS)
     {
         OS << "\nLive ranges:";
-        for (auto &Item : m_pLiveRanges)
+        for (auto& Item : m_pLiveRanges)
         {
             OS << "\n";
             Item.first->printAsOperand(OS);
@@ -237,7 +237,7 @@ namespace IGC
         }
     }
 
-    void RegisterPressureEstimate::dumpLiveRanges() 
+    void RegisterPressureEstimate::dumpLiveRanges()
     {
         printLiveRanges(ods());
     }
@@ -273,25 +273,25 @@ namespace IGC
     ///    b.livein = live
     ///
     /// Return true if live interval is calculated successfully; false otherwise.
-    bool RegisterPressureEstimate::buildLiveIntervals(bool RemoveLR) 
+    bool RegisterPressureEstimate::buildLiveIntervals(bool RemoveLR)
     {
         // Clear existing data if any.
         m_pNumbers.clear();
 
-        clear(RemoveLR); 
- 
+        clear(RemoveLR);
+
         // Assign a number to arguments, basic blocks and instructions.
         assignNumbers();
-        
-        // A side data structure to build live intervals.
-        DenseMap<BasicBlock *, std::set<Value *>> BlockLiveMap;
-        auto &BBs = m_pFunc->getBasicBlockList();
 
-        for (auto BI = BBs.begin(), BE = BBs.end(); BI != BE; ++BI) 
+        // A side data structure to build live intervals.
+        DenseMap<BasicBlock*, std::set<Value*>> BlockLiveMap;
+        auto& BBs = m_pFunc->getBasicBlockList();
+
+        for (auto BI = BBs.begin(), BE = BBs.end(); BI != BE; ++BI)
         {
             for (auto II = BI->begin(), IE = BI->end(); II != IE; ++II)
             {
-                Instruction *Inst = &*II;
+                Instruction* Inst = &*II;
                 if (isa<DbgInfoIntrinsic>(Inst))
                 {
                     continue;
@@ -305,32 +305,32 @@ namespace IGC
         }
 
         // Top level loop to visit each block once in reverse order.
-        for (auto BI = BBs.rbegin(), BE = BBs.rend(); BI != BE; ++BI) 
+        for (auto BI = BBs.rbegin(), BE = BBs.rend(); BI != BE; ++BI)
         {
-            BasicBlock *BB = &*BI;
-            auto Result = BlockLiveMap.insert(std::make_pair(BB, std::set<Value *>()));
+            BasicBlock* BB = &*BI;
+            auto Result = BlockLiveMap.insert(std::make_pair(BB, std::set<Value*>()));
             assert(Result.second && "must not be processed yet");
-            std::set<Value *> &Live = Result.first->second;
+            std::set<Value*>& Live = Result.first->second;
 
             // live = union of successor.livein for each successor of b
             //
             // for each phi of successors of b do
             //     live.add(phi.inputOf(b))
             //
-            for (auto PI = succ_begin(BB), PE = succ_end(BB); PI != PE; ++PI) 
+            for (auto PI = succ_begin(BB), PE = succ_end(BB); PI != PE; ++PI)
             {
-                BasicBlock *Succ = *PI;
+                BasicBlock* Succ = *PI;
                 auto Iter = BlockLiveMap.find(Succ);
                 if (Iter != BlockLiveMap.end())
                 {
-                    std::set<Value *> &SuccLive = Iter->second;
+                    std::set<Value*>& SuccLive = Iter->second;
                     Live.insert(SuccLive.begin(), SuccLive.end());
                 }
 
                 // For each phi node from successors, update liveness.
                 for (auto II = Succ->begin(), IE = Succ->end(); II != IE; ++II)
                 {
-                    Instruction *Inst = &*II;
+                    Instruction* Inst = &*II;
                     if (auto PN = dyn_cast<PHINode>(Inst))
                     {
                         Live.insert(PN->getIncomingValueForBlock(BB));
@@ -348,10 +348,10 @@ namespace IGC
 
             // for each opnd in live do
             //    intervals[opnd].addRange(b.from, b.to)
-            for (auto I = Live.begin(), E = Live.end(); I != E; ++I) 
+            for (auto I = Live.begin(), E = Live.end(); I != E; ++I)
             {
                 unsigned End = m_pNumbers[&BB->back()] + 1;
-                Value *V = *I;
+                Value* V = *I;
                 if (auto LR = getLiveRangeOrNull(V))
                 {
                     LR->addSegment(BlockNum, End);
@@ -365,9 +365,9 @@ namespace IGC
             //     for each input operand opnd of op do
             //         intervals[opnd].addRange(b.from, op.id)
             //         live.add(opnd)
-            for (auto II = BB->rbegin(), IE = BB->rend(); II != IE; ++II) 
+            for (auto II = BB->rbegin(), IE = BB->rend(); II != IE; ++II)
             {
-                Instruction *Inst = &*II;
+                Instruction* Inst = &*II;
 
                 // Skip debugging intrinsic calls.
                 if (isa<DbgInfoIntrinsic>(Inst))
@@ -396,10 +396,10 @@ namespace IGC
                 // Handle its input operands.
                 for (auto OI = Inst->op_begin(), OE = Inst->op_end(); OI != OE; ++OI)
                 {
-                    Value *Opnd = *OI;
+                    Value* Opnd = *OI;
                     if (isa<Argument>(Opnd) || isa<Instruction>(Opnd))
                     {
-                        if (LiveRange *LR = getLiveRangeOrNull(Opnd))
+                        if (LiveRange * LR = getLiveRangeOrNull(Opnd))
                         {
                             LR->addSegment(BlockNum, InstNum);
                         }
@@ -413,7 +413,7 @@ namespace IGC
             //
             for (auto II = BB->begin(), IE = BB->end(); II != IE; ++II)
             {
-                Instruction *Inst = &*II;
+                Instruction* Inst = &*II;
                 if (isa<PHINode>(Inst))
                 {
                     Live.erase(Inst);
@@ -432,10 +432,10 @@ namespace IGC
             //
             if (LI->isLoopHeader(BB))
             {
-                Loop *L = LI->getLoopFor(BB);
+                Loop* L = LI->getLoopFor(BB);
                 if (L != nullptr)
                 {
-                    if (BasicBlock *Latch = L->getLoopLatch())
+                    if (BasicBlock * Latch = L->getLoopLatch())
                     {
                         for (auto I = Live.begin(), E = Live.end(); I != E; ++I)
                         {
@@ -486,7 +486,7 @@ namespace IGC
         // Segments are sorted.
         for (auto I = m_pLiveRanges.begin(), E = m_pLiveRanges.end(); I != E; ++I)
         {
-            for(auto &Seg: I->second->Segments)
+            for (auto& Seg : I->second->Segments)
             {
                 for (unsigned number = Seg.Begin; number < Seg.End; number++)
                 {
@@ -497,7 +497,7 @@ namespace IGC
         }
     }
 
-    unsigned RegisterPressureEstimate::getRegisterPressure(Instruction *Inst) const
+    unsigned RegisterPressureEstimate::getRegisterPressure(Instruction* Inst) const
     {
         auto Iter = m_pNumbers.find(Inst);
         if (Iter != m_pNumbers.end())
@@ -513,7 +513,7 @@ namespace IGC
             {
                 if (I->second->contains(N))
                 {
-                    Value *V = I->first;
+                    Value* V = I->first;
                     Presssure += V->getType()->getPrimitiveSizeInBits() / 8;
                 }
             }
@@ -533,7 +533,7 @@ namespace IGC
         {
             for (auto II = BI->begin(), IE = BI->end(); II != IE; ++II)
             {
-                Instruction *Inst = &(*II);
+                Instruction* Inst = &(*II);
                 MaxPressure = std::max(MaxPressure, getRegisterPressure(Inst));
             }
         }
@@ -541,20 +541,20 @@ namespace IGC
         return MaxPressure;
     }
 
-    unsigned RegisterPressureEstimate::getRegisterPressure(BasicBlock *BB) const
+    unsigned RegisterPressureEstimate::getRegisterPressure(BasicBlock* BB) const
     {
         unsigned RP = 0;
         for (auto II = BB->begin(), IE = BB->end(); II != IE; ++II)
         {
-            Instruction *Inst = &(*II);
+            Instruction* Inst = &(*II);
             RP = std::max(RP, getRegisterPressure(Inst));
         }
         return RP;
     }
 
     void RegisterPressureEstimate::printRegisterPressureInfo
-        (bool Detailed,
-        const char *msg) const
+    (bool Detailed,
+        const char* msg) const
     {
         unsigned MaxRP = getRegisterPressure();
 
@@ -562,7 +562,7 @@ namespace IGC
         {
             for (inst_iterator I = inst_begin(m_pFunc), E = inst_end(m_pFunc); I != E; ++I)
             {
-                Instruction *Inst = &*I;
+                Instruction* Inst = &*I;
                 ods() << "[RP = " << getRegisterPressure(Inst) << "]";
                 Inst->print(ods());
                 ods() << "\n";

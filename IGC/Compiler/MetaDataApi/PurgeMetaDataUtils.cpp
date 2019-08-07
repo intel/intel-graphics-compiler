@@ -52,20 +52,20 @@ PurgeMetaDataUtils::PurgeMetaDataUtils() : ModulePass(ID)
 // Remove metadata entries in metadata utils for inlined or dead functions.
 // TODO: get rid of this step if we do not keep any non-kernel function in the
 // metadata util object.
-bool PurgeMetaDataUtils::runOnModule(Module &M)
+bool PurgeMetaDataUtils::runOnModule(Module& M)
 {
     m_pModule = &M;
     m_changed = false;
 
-    CodeGenContext *pContext = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    IGCMD::MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    CodeGenContext* pContext = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    IGCMD::MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
 
-    auto toBeDeleted = [=](llvm::Module *M, void *ptr)
+    auto toBeDeleted = [=](llvm::Module* M, void* ptr)
     {
-        llvm::Function *F = nullptr;
+        llvm::Function* F = nullptr;
 
         // Function may have been removed already.
-        for (auto &G : M->getFunctionList())
+        for (auto& G : M->getFunctionList())
         {
             if (&G == ptr)
             {
@@ -98,7 +98,7 @@ bool PurgeMetaDataUtils::runOnModule(Module &M)
     };
 
     // Collect all functions for which metadata will be removed.
-    SmallVector<llvm::Function *, 8> ToBeDeleted;
+    SmallVector<llvm::Function*, 8> ToBeDeleted;
     for (auto i = pMdUtils->begin_FunctionsInfo(), e = pMdUtils->end_FunctionsInfo(); i != e; ++i)
     {
         if (toBeDeleted(pContext->getModule(), i->first))

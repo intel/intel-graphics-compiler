@@ -63,10 +63,10 @@ IGC_INITIALIZE_PASS_END(WorkaroundAnalysis, PASS_FLAG, PASS_DESCRIPTION, PASS_CF
 
 char WorkaroundAnalysis::ID = 0;
 
-int GetSampleCResourceIdx(llvm::CallInst &I)
+int GetSampleCResourceIdx(llvm::CallInst& I)
 {
     int textLocation = -1;
-    if (SampleIntrinsic* pSamplerLoadInst = dyn_cast<SampleIntrinsic>(&I))
+    if (SampleIntrinsic * pSamplerLoadInst = dyn_cast<SampleIntrinsic>(&I))
     {
         textLocation = pSamplerLoadInst->getSamplerIndex();
         llvm::Value* pArgLocation = pSamplerLoadInst->getOperand(textLocation);
@@ -88,7 +88,7 @@ WorkaroundAnalysis::WorkaroundAnalysis()
     initializeWorkaroundAnalysisPass(*PassRegistry::getPassRegistry());
 }
 
-bool WorkaroundAnalysis::runOnFunction(Function &F)
+bool WorkaroundAnalysis::runOnFunction(Function& F)
 {
     m_pCtxWrapper = &getAnalysis<CodeGenContextWrapper>();
     m_pDataLayout = &F.getParent()->getDataLayout();
@@ -105,7 +105,7 @@ const unsigned MaxTrackingDepth = 8;
 /// IsKnownNotSNaN() - Check whether a value won't be an SNaN. By definition,
 /// all Gen instructions on floating pointer values (except FMAX/FMIN, MOV,
 /// LOAD) will return QNaN is one of the operand is NaN (either QNaN or SNaN).
-static bool IsKnownNotSNaN(Value *V, unsigned Depth = 0) {
+static bool IsKnownNotSNaN(Value* V, unsigned Depth = 0) {
     // Is unknown if the maximal depth reaches.
     if (Depth > MaxTrackingDepth)
         return false;
@@ -115,7 +115,7 @@ static bool IsKnownNotSNaN(Value *V, unsigned Depth = 0) {
         return true;
 
     // With FP constant, check whether it's SNaN directly.
-    if (ConstantFP *CFP = dyn_cast<ConstantFP>(V)) {
+    if (ConstantFP * CFP = dyn_cast<ConstantFP>(V)) {
         APFloat FVal = CFP->getValueAPF();
 
         if (!FVal.isNaN())
@@ -132,15 +132,15 @@ static bool IsKnownNotSNaN(Value *V, unsigned Depth = 0) {
         return false;
     }
 
-    Instruction *I = dyn_cast<Instruction>(V);
+    Instruction* I = dyn_cast<Instruction>(V);
     if (!I)
         return false;
 
     // Phi-node is known not SNaN if all its incoming values are not SNaN.
-    if (PHINode *PN = dyn_cast<PHINode>(V)) {
+    if (PHINode * PN = dyn_cast<PHINode>(V)) {
         bool NotSNaN = true;
         for (unsigned i = 0, e = PN->getNumIncomingValues(); i != e; ++i) {
-            Value *InVal = PN->getIncomingValue(i);
+            Value* InVal = PN->getIncomingValue(i);
             if (V == InVal)
                 continue;
             NotSNaN = NotSNaN && IsKnownNotSNaN(InVal, Depth + 1);
@@ -158,14 +158,14 @@ static bool IsKnownNotSNaN(Value *V, unsigned Depth = 0) {
         // safe math mode.
         // Skip 0 - x, which may be lowered as '-' source modifier, which won't
         // quietize the NaN.
-        if (ConstantFP *CFP = dyn_cast<ConstantFP>(I->getOperand(0))) {
+        if (ConstantFP * CFP = dyn_cast<ConstantFP>(I->getOperand(0))) {
             if (CFP->isZero())
                 return false;
         }
         return true;
     case Instruction::Select:
         return IsKnownNotSNaN(I->getOperand(1), Depth + 1) &&
-               IsKnownNotSNaN(I->getOperand(2), Depth + 1);
+            IsKnownNotSNaN(I->getOperand(2), Depth + 1);
     case Instruction::FAdd:
     case Instruction::FMul:
     case Instruction::FDiv:
@@ -173,14 +173,15 @@ static bool IsKnownNotSNaN(Value *V, unsigned Depth = 0) {
         // the NaN.
         return true;
     case Instruction::Call:
-        if (GenIntrinsicInst *GII = dyn_cast<GenIntrinsicInst>(I)) {
+        if (GenIntrinsicInst * GII = dyn_cast<GenIntrinsicInst>(I)) {
             switch (GII->getIntrinsicID()) {
             case GenISAIntrinsic::GenISA_rsq:
                 return true;
             default:
                 break;
             }
-        } else if (IntrinsicInst *II = dyn_cast<IntrinsicInst>(I)) {
+        }
+        else if (IntrinsicInst * II = dyn_cast<IntrinsicInst>(I)) {
             switch (II->getIntrinsicID()) {
             case Intrinsic::sqrt:
             case Intrinsic::powi:
@@ -218,47 +219,47 @@ static bool IsKnownNotSNaN(Value *V, unsigned Depth = 0) {
     return false;
 }
 
-static Constant *getQNaN(Type *Ty) {
-  APFloat QNaN = APFloat::getQNaN(Ty->getFltSemantics());
-  return ConstantFP::get(Ty->getContext(), QNaN);
+static Constant* getQNaN(Type* Ty) {
+    APFloat QNaN = APFloat::getQNaN(Ty->getFltSemantics());
+    return ConstantFP::get(Ty->getContext(), QNaN);
 }
 
-void WorkaroundAnalysis::visitCallInst(llvm::CallInst &I)
+void WorkaroundAnalysis::visitCallInst(llvm::CallInst& I)
 {
     CodeGenContext* pCodeGenCtx = m_pCtxWrapper->getCodeGenContext();
 
     // TODO: Fix this for all Shaders once and for all
     if (pCodeGenCtx->type == ShaderType::VERTEX_SHADER && pCodeGenCtx->isPOSH())
     {
-        if (const GenIntrinsicInst* intr = dyn_cast<GenIntrinsicInst>(&I))
+        if (const GenIntrinsicInst * intr = dyn_cast<GenIntrinsicInst>(&I))
         {
             VertexShaderContext* pShaderCtx = static_cast <VertexShaderContext*>(pCodeGenCtx);
             switch (intr->getIntrinsicID())
             {
-                case llvm::GenISAIntrinsic::GenISA_gather4Cptr:
-                case llvm::GenISAIntrinsic::GenISA_gather4POCptr:
-                case llvm::GenISAIntrinsic::GenISA_gather4POptr:
-                case llvm::GenISAIntrinsic::GenISA_gather4ptr:
-                case llvm::GenISAIntrinsic::GenISA_sampleptr:
-                case llvm::GenISAIntrinsic::GenISA_sampleLptr:
-                case llvm::GenISAIntrinsic::GenISA_sampleBCptr:
-                case llvm::GenISAIntrinsic::GenISA_sampleBptr:
-                case llvm::GenISAIntrinsic::GenISA_sampleCptr:
-                case llvm::GenISAIntrinsic::GenISA_sampleDCptr:
-                case llvm::GenISAIntrinsic::GenISA_sampleDptr:
-                case llvm::GenISAIntrinsic::GenISA_sampleKillPix:
-                case llvm::GenISAIntrinsic::GenISA_sampleLCptr:
-                case llvm::GenISAIntrinsic::GenISA_sampleinfoptr:
-                    pShaderCtx->programOutput.m_SamplerCount = 1;
-                    break;
-                default:
-                    break;
+            case llvm::GenISAIntrinsic::GenISA_gather4Cptr:
+            case llvm::GenISAIntrinsic::GenISA_gather4POCptr:
+            case llvm::GenISAIntrinsic::GenISA_gather4POptr:
+            case llvm::GenISAIntrinsic::GenISA_gather4ptr:
+            case llvm::GenISAIntrinsic::GenISA_sampleptr:
+            case llvm::GenISAIntrinsic::GenISA_sampleLptr:
+            case llvm::GenISAIntrinsic::GenISA_sampleBCptr:
+            case llvm::GenISAIntrinsic::GenISA_sampleBptr:
+            case llvm::GenISAIntrinsic::GenISA_sampleCptr:
+            case llvm::GenISAIntrinsic::GenISA_sampleDCptr:
+            case llvm::GenISAIntrinsic::GenISA_sampleDptr:
+            case llvm::GenISAIntrinsic::GenISA_sampleKillPix:
+            case llvm::GenISAIntrinsic::GenISA_sampleLCptr:
+            case llvm::GenISAIntrinsic::GenISA_sampleinfoptr:
+                pShaderCtx->programOutput.m_SamplerCount = 1;
+                break;
+            default:
+                break;
             }
         }
     }
 
 
-    if (const GenIntrinsicInst* intr = dyn_cast<GenIntrinsicInst>(&I))
+    if (const GenIntrinsicInst * intr = dyn_cast<GenIntrinsicInst>(&I))
     {
         switch (intr->getIntrinsicID())
         {
@@ -309,7 +310,7 @@ void WorkaroundAnalysis::visitCallInst(llvm::CallInst &I)
                 pShaderCtx->programOutput.m_AccessedBySampleC[bufferIndex / 32] |= BIT(bufferIndex % 32);
             }
         }
-         break;
+        break;
         case llvm::GenISAIntrinsic::GenISA_RenderTargetReadSampleFreq:
         {
             //Render target read should return 0 when the sample is outside primitive processed. 
@@ -340,7 +341,7 @@ void WorkaroundAnalysis::visitCallInst(llvm::CallInst &I)
                 Value* valueY = m_builder->CreateExtractElement(cloneinst, m_builder->getInt32(1));
                 Value* valueZ = m_builder->CreateExtractElement(cloneinst, m_builder->getInt32(2));
                 Value* valueW = m_builder->CreateExtractElement(cloneinst, m_builder->getInt32(3));
-                
+
                 Value* selW = m_builder->CreateSelect(cmpInst, valueW, one);
 
                 llvm::Value* newValue = llvm::UndefValue::get(llvm::VectorType::get(m_builder->getFloatTy(), 4));
@@ -365,19 +366,19 @@ void WorkaroundAnalysis::ldmsOffsetWorkaournd(LdMSIntrinsic* ldms)
 {
     // In some cases immediate offsets are not working in hardware for ldms message
     // to solve it we add directly the offset to the integer coordinate
-    Value* zero = m_builder->getInt32(0); 
-    if(ldms->getImmOffset(0) == zero &&
+    Value* zero = m_builder->getInt32(0);
+    if (ldms->getImmOffset(0) == zero &&
         ldms->getImmOffset(1) == zero &&
         ldms->getImmOffset(2) == zero)
     {
         return;
     }
-    for(unsigned int i = 0; i < 2; i++)
+    for (unsigned int i = 0; i < 2; i++)
     {
         m_builder->SetInsertPoint(ldms);
         Value* coord = ldms->getCoordinate(i);
         Value* newCoord = m_builder->CreateAdd(
-            coord, 
+            coord,
             m_builder->CreateTrunc(ldms->getImmOffset(i), coord->getType()));
         ldms->setCoordinate(i, newCoord);
         ldms->setImmOffset(i, m_builder->getInt32(0));
@@ -387,13 +388,13 @@ void WorkaroundAnalysis::ldmsOffsetWorkaournd(LdMSIntrinsic* ldms)
 /// transform gather4poc and gatherpo into gather4c/gather4
 void WorkaroundAnalysis::GatherOffsetWorkaround(SamplerGatherIntrinsic* gatherpo)
 {
-    if(IGC_IS_FLAG_DISABLED(EnableGather4cpoWA))
+    if (IGC_IS_FLAG_DISABLED(EnableGather4cpoWA))
     {
         return;
     }
     Value* zero = m_builder->getInt32(0);
     bool hasRef = gatherpo->getIntrinsicID() == llvm::GenISAIntrinsic::GenISA_gather4POCptr;
-    if(gatherpo->getOperand(hasRef ? 8 : 7) != zero ||
+    if (gatherpo->getOperand(hasRef ? 8 : 7) != zero ||
         gatherpo->getOperand(hasRef ? 9 : 8) != zero ||
         gatherpo->getOperand(hasRef ? 10 : 9) != zero)
     {
@@ -402,7 +403,7 @@ void WorkaroundAnalysis::GatherOffsetWorkaround(SamplerGatherIntrinsic* gatherpo
     }
     Value* resource = gatherpo->getTextureValue();
     Value* sampler = gatherpo->getSamplerValue();
-    Function* resInfo = 
+    Function* resInfo =
         GenISAIntrinsic::getDeclaration(m_pModule, GenISAIntrinsic::GenISA_resinfoptr, resource->getType());
     m_builder->SetInsertPoint(gatherpo);
     Value* info = m_builder->CreateCall2(resInfo, resource, m_builder->getInt32(0));
@@ -422,7 +423,7 @@ void WorkaroundAnalysis::GatherOffsetWorkaround(SamplerGatherIntrinsic* gatherpo
     arg.push_back(zero);
     arg.push_back(gatherpo->getOperand(hasRef ? 11 : 10));
 
-    for(unsigned int i = 0; i < 2; i++)
+    for (unsigned int i = 0; i < 2; i++)
     {
         Value* coord = gatherpo->getOperand(i + (hasRef ? 1 : 0));
         Value* offset = gatherpo->getOperand(i + (hasRef ? 3 : 2));
@@ -446,7 +447,7 @@ void WorkaroundAnalysis::GatherOffsetWorkaround(SamplerGatherIntrinsic* gatherpo
         gatherpo->getOperand(0)->getType(),
         resource->getType(),
         sampler->getType(),
-    }; 
+    };
     Function* gather4Func = GenISAIntrinsic::getDeclaration(
         m_pModule,
         hasRef ? GenISAIntrinsic::GenISA_gather4Cptr : GenISAIntrinsic::GenISA_gather4ptr,
@@ -484,9 +485,9 @@ bool WAFMinFMax::runOnFunction(Function& F)
     return true;
 }
 
-void WAFMinFMax::visitCallInst(CallInst &I)
+void WAFMinFMax::visitCallInst(CallInst& I)
 {
-    if (const IntrinsicInst* intr = dyn_cast<IntrinsicInst>(&I))
+    if (const IntrinsicInst * intr = dyn_cast<IntrinsicInst>(&I))
     {
         switch (intr->getIntrinsicID())
         {
@@ -535,8 +536,8 @@ void WAFMinFMax::visitCallInst(CallInst &I)
 
                 // Note that m_enableFMaxFMinPlusZero is used here for GEN9 only; if it
                 // is set,  it means that IEEE-mode min/max is used if denorm bit is set.
-                Type *Ty = intr->getType();
-                ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+                Type* Ty = intr->getType();
+                ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
                 bool minmaxModeSetByDenormBit =
                     (!m_ctx->platform.hasIEEEMinmaxBit() ||
                         m_ctx->platform.WaOCLEnableFMaxFMinPlusZero() ||
@@ -550,10 +551,10 @@ void WAFMinFMax::visitCallInst(CallInst &I)
                     m_builder->SetInsertPoint(&I);
 
                     Intrinsic::ID IID = Intrinsic::minnum;
-                    Function *IFunc =
+                    Function* IFunc =
                         Intrinsic::getDeclaration(I.getParent()->getParent()->getParent(),
                             IID, I.getType());
-                    Value *QNaN = getQNaN(I.getType());
+                    Value* QNaN = getQNaN(I.getType());
 
                     Value* src0 = I.getOperand(0);
                     if (!IsKnownNotSNaN(src0))

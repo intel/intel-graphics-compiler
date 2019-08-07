@@ -67,423 +67,423 @@ using namespace IGC;
 
 namespace IGC
 {
-///////////////////////////////////////////////////////////////////////////////
-// Following classes extend abstract MC classes.
-// These classes are needed to create concrete instance of MCStreamer.
-///////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////
+    // Following classes extend abstract MC classes.
+    // These classes are needed to create concrete instance of MCStreamer.
+    ///////////////////////////////////////////////////////////////////////////////
 
-class VISAMCAsmInfo : public MCAsmInfoELF
-{
-public:
-    VISAMCAsmInfo(unsigned int pointerSize) : MCAsmInfoELF()
+    class VISAMCAsmInfo : public MCAsmInfoELF
     {
-        DwarfUsesRelocationsAcrossSections = true;
+    public:
+        VISAMCAsmInfo(unsigned int pointerSize) : MCAsmInfoELF()
+        {
+            DwarfUsesRelocationsAcrossSections = true;
 #if LLVM_VERSION_MAJOR >= 7
-        CodePointerSize = pointerSize;
+            CodePointerSize = pointerSize;
 #else
-        PointerSize = pointerSize;
+            PointerSize = pointerSize;
 #endif
-    }
-};
+        }
+    };
 
-class VISAELFObjectWriter : public MCELFObjectTargetWriter
-{
-public:
-    VISAELFObjectWriter(bool is64Bit, uint8_t osABI,
-        uint16_t eMachine, bool hasRelocationAddend) :
-        MCELFObjectTargetWriter(is64Bit, osABI, eMachine, hasRelocationAddend)
+    class VISAELFObjectWriter : public MCELFObjectTargetWriter
     {
-    }
-
-    unsigned getRelocType(MCContext &Ctx, const MCValue &Target,
-        const MCFixup &Fixup, bool IsPCRel) const {
-        // This is required for resolution of strings
-        // referenced in string pool table.
-        // Added during LLVM 3.3 -> 3.5 upgrade
-        if (is64Bit())
+    public:
+        VISAELFObjectWriter(bool is64Bit, uint8_t osABI,
+            uint16_t eMachine, bool hasRelocationAddend) :
+            MCELFObjectTargetWriter(is64Bit, osABI, eMachine, hasRelocationAddend)
         {
-            return ELF::R_X86_64_32;
         }
 
-        return ELF::R_386_32;
-    }
-
-
-    virtual unsigned int GetRelocType(const MCValue& target, const MCFixup& fixup,
-        bool v) const
-    {
-        // This is required for resolution of strings
-        // referenced in string pool table.
-        // Added during LLVM 3.3 -> 3.5 upgrade
-        if (is64Bit())
-        {
-            return ELF::R_X86_64_32;
-        }
-        
-        return ELF::R_386_32;
-    }
-
-    virtual unsigned GetRelocType(const MCValue &target, const MCFixup &fixup,
-        bool isPCRel, bool /*isRelocWithSymbol*/, int64_t /*addend*/) const
-    {
-        // determine the type of the relocation
-
-        MCSymbolRefExpr::VariantKind modifier = target.isAbsolute() ?
-            MCSymbolRefExpr::VK_None : target.getSymA()->getKind();
-        unsigned type = ELF::R_X86_64_NONE;
-        if (getEMachine() == ELF::EM_X86_64)
-        {
-            if (isPCRel)
+        unsigned getRelocType(MCContext& Ctx, const MCValue& Target,
+            const MCFixup& Fixup, bool IsPCRel) const {
+            // This is required for resolution of strings
+            // referenced in string pool table.
+            // Added during LLVM 3.3 -> 3.5 upgrade
+            if (is64Bit())
             {
-                switch ((unsigned)fixup.getKind())
+                return ELF::R_X86_64_32;
+            }
+
+            return ELF::R_386_32;
+        }
+
+
+        virtual unsigned int GetRelocType(const MCValue& target, const MCFixup& fixup,
+            bool v) const
+        {
+            // This is required for resolution of strings
+            // referenced in string pool table.
+            // Added during LLVM 3.3 -> 3.5 upgrade
+            if (is64Bit())
+            {
+                return ELF::R_X86_64_32;
+            }
+
+            return ELF::R_386_32;
+        }
+
+        virtual unsigned GetRelocType(const MCValue& target, const MCFixup& fixup,
+            bool isPCRel, bool /*isRelocWithSymbol*/, int64_t /*addend*/) const
+        {
+            // determine the type of the relocation
+
+            MCSymbolRefExpr::VariantKind modifier = target.isAbsolute() ?
+                MCSymbolRefExpr::VK_None : target.getSymA()->getKind();
+            unsigned type = ELF::R_X86_64_NONE;
+            if (getEMachine() == ELF::EM_X86_64)
+            {
+                if (isPCRel)
                 {
-                default: llvm_unreachable("invalid fixup kind!");
-
-                case FK_Data_8: type = ELF::R_X86_64_PC64; break;
-                case FK_Data_4: type = ELF::R_X86_64_PC32; break;
-                case FK_Data_2: type = ELF::R_X86_64_PC16; break;
-
-                case FK_PCRel_8:
-                    assert(modifier == MCSymbolRefExpr::VK_None);
-                    type = ELF::R_X86_64_PC64;
-                    break;
-                case FK_PCRel_4:
-                    switch (modifier)
+                    switch ((unsigned)fixup.getKind())
                     {
-                    default:
-                        llvm_unreachable("Unimplemented");
-                    case MCSymbolRefExpr::VK_None:
-                        type = ELF::R_X86_64_PC32;
+                    default: llvm_unreachable("invalid fixup kind!");
+
+                    case FK_Data_8: type = ELF::R_X86_64_PC64; break;
+                    case FK_Data_4: type = ELF::R_X86_64_PC32; break;
+                    case FK_Data_2: type = ELF::R_X86_64_PC16; break;
+
+                    case FK_PCRel_8:
+                        assert(modifier == MCSymbolRefExpr::VK_None);
+                        type = ELF::R_X86_64_PC64;
                         break;
-                    case MCSymbolRefExpr::VK_PLT:
-                        type = ELF::R_X86_64_PLT32;
+                    case FK_PCRel_4:
+                        switch (modifier)
+                        {
+                        default:
+                            llvm_unreachable("Unimplemented");
+                        case MCSymbolRefExpr::VK_None:
+                            type = ELF::R_X86_64_PC32;
+                            break;
+                        case MCSymbolRefExpr::VK_PLT:
+                            type = ELF::R_X86_64_PLT32;
+                            break;
+                        case MCSymbolRefExpr::VK_GOTPCREL:
+                            type = ELF::R_X86_64_GOTPCREL;
+                            break;
+                        case MCSymbolRefExpr::VK_GOTTPOFF:
+                            type = ELF::R_X86_64_GOTTPOFF;
+                            break;
+                        case MCSymbolRefExpr::VK_TLSGD:
+                            type = ELF::R_X86_64_TLSGD;
+                            break;
+                        case MCSymbolRefExpr::VK_TLSLD:
+                            type = ELF::R_X86_64_TLSLD;
+                            break;
+                        }
                         break;
-                    case MCSymbolRefExpr::VK_GOTPCREL:
-                        type = ELF::R_X86_64_GOTPCREL;
+                    case FK_PCRel_2:
+                        assert(modifier == MCSymbolRefExpr::VK_None);
+                        type = ELF::R_X86_64_PC16;
                         break;
-                    case MCSymbolRefExpr::VK_GOTTPOFF:
-                        type = ELF::R_X86_64_GOTTPOFF;
-                        break;
-                    case MCSymbolRefExpr::VK_TLSGD:
-                        type = ELF::R_X86_64_TLSGD;
-                        break;
-                    case MCSymbolRefExpr::VK_TLSLD:
-                        type = ELF::R_X86_64_TLSLD;
+                    case FK_PCRel_1:
+                        assert(modifier == MCSymbolRefExpr::VK_None);
+                        type = ELF::R_X86_64_PC8;
                         break;
                     }
-                    break;
-                case FK_PCRel_2:
-                    assert(modifier == MCSymbolRefExpr::VK_None);
-                    type = ELF::R_X86_64_PC16;
-                    break;
-                case FK_PCRel_1:
-                    assert(modifier == MCSymbolRefExpr::VK_None);
-                    type = ELF::R_X86_64_PC8;
-                    break;
+                }
+                else
+                {
+                    switch ((unsigned)fixup.getKind())
+                    {
+                    default: llvm_unreachable("invalid fixup kind!");
+                    case FK_Data_8:
+                        switch (modifier)
+                        {
+                        default:
+                            llvm_unreachable("Unimplemented");
+                        case MCSymbolRefExpr::VK_None:
+                            type = ELF::R_X86_64_64;
+                            break;
+                        case MCSymbolRefExpr::VK_GOT:
+                            type = ELF::R_X86_64_GOT64;
+                            break;
+                        case MCSymbolRefExpr::VK_GOTOFF:
+                            type = ELF::R_X86_64_GOTOFF64;
+                            break;
+                        case MCSymbolRefExpr::VK_TPOFF:
+                            type = ELF::R_X86_64_TPOFF64;
+                            break;
+                        case MCSymbolRefExpr::VK_DTPOFF:
+                            type = ELF::R_X86_64_DTPOFF64;
+                            break;
+                        }
+                        break;
+                    case FK_Data_4:
+                        type = ELF::R_X86_64_32;
+                        break;
+                    case FK_Data_2: type = ELF::R_X86_64_16; break;
+                    case FK_PCRel_1:
+                    case FK_Data_1: type = ELF::R_X86_64_8; break;
+                    }
+                }
+            }
+            else if (getEMachine() == ELF::EM_386)
+            {
+                if (isPCRel)
+                {
+                    switch ((unsigned)fixup.getKind())
+                    {
+                    default: llvm_unreachable("invalid fixup kind!");
+
+                    case FK_PCRel_4:
+                    case FK_Data_4:
+                        switch (modifier)
+                        {
+                        default:
+                            llvm_unreachable("Unimplemented");
+                        case MCSymbolRefExpr::VK_None:
+                            type = ELF::R_386_PC32;
+                            break;
+                        case MCSymbolRefExpr::VK_PLT:
+                            type = ELF::R_386_PLT32;
+                            break;
+                        }
+                        break;
+                    }
+                }
+                else
+                {
+                    switch ((unsigned)fixup.getKind())
+                    {
+                    default: llvm_unreachable("invalid fixup kind!");
+
+                    case FK_PCRel_4:
+                    case FK_Data_4:
+                        switch (modifier)
+                        {
+                        default:
+                            llvm_unreachable("Unimplemented");
+                        case MCSymbolRefExpr::VK_None:
+                            type = ELF::R_386_32;
+                            break;
+                        case MCSymbolRefExpr::VK_GOT:
+                            type = ELF::R_386_GOT32;
+                            break;
+                        case MCSymbolRefExpr::VK_GOTOFF:
+                            type = ELF::R_386_GOTOFF;
+                            break;
+                        case MCSymbolRefExpr::VK_TLSGD:
+                            type = ELF::R_386_TLS_GD;
+                            break;
+                        case MCSymbolRefExpr::VK_TPOFF:
+                            type = ELF::R_386_TLS_LE_32;
+                            break;
+                        case MCSymbolRefExpr::VK_INDNTPOFF:
+                            type = ELF::R_386_TLS_IE;
+                            break;
+                        case MCSymbolRefExpr::VK_NTPOFF:
+                            type = ELF::R_386_TLS_LE;
+                            break;
+                        case MCSymbolRefExpr::VK_GOTNTPOFF:
+                            type = ELF::R_386_TLS_GOTIE;
+                            break;
+                        case MCSymbolRefExpr::VK_TLSLDM:
+                            type = ELF::R_386_TLS_LDM;
+                            break;
+                        case MCSymbolRefExpr::VK_DTPOFF:
+                            type = ELF::R_386_TLS_LDO_32;
+                            break;
+                        case MCSymbolRefExpr::VK_GOTTPOFF:
+                            type = ELF::R_386_TLS_IE_32;
+                            break;
+                        }
+                        break;
+                    case FK_Data_2: type = ELF::R_386_16; break;
+                    case FK_PCRel_1:
+                    case FK_Data_1: type = ELF::R_386_8; break;
+                    }
                 }
             }
             else
-            {
-                switch ((unsigned)fixup.getKind())
-                {
-                default: llvm_unreachable("invalid fixup kind!");
-                case FK_Data_8:
-                    switch (modifier)
-                    {
-                    default:
-                        llvm_unreachable("Unimplemented");
-                    case MCSymbolRefExpr::VK_None:
-                        type = ELF::R_X86_64_64;
-                        break;
-                    case MCSymbolRefExpr::VK_GOT:
-                        type = ELF::R_X86_64_GOT64;
-                        break;
-                    case MCSymbolRefExpr::VK_GOTOFF:
-                        type = ELF::R_X86_64_GOTOFF64;
-                        break;
-                    case MCSymbolRefExpr::VK_TPOFF:
-                        type = ELF::R_X86_64_TPOFF64;
-                        break;
-                    case MCSymbolRefExpr::VK_DTPOFF:
-                        type = ELF::R_X86_64_DTPOFF64;
-                        break;
-                    }
-                    break;
-                case FK_Data_4:
-                    type = ELF::R_X86_64_32;
-                    break;
-                case FK_Data_2: type = ELF::R_X86_64_16; break;
-                case FK_PCRel_1:
-                case FK_Data_1: type = ELF::R_X86_64_8; break;
-                }
-            }
+                llvm_unreachable("Unsupported ELF machine type.");
+
+            return type;
         }
-        else if (getEMachine() == ELF::EM_386)
-        {
-            if (isPCRel)
-            {
-                switch ((unsigned)fixup.getKind())
-                {
-                default: llvm_unreachable("invalid fixup kind!");
+    };
 
-                case FK_PCRel_4:
-                case FK_Data_4:
-                    switch (modifier)
-                    {
-                    default:
-                        llvm_unreachable("Unimplemented");
-                    case MCSymbolRefExpr::VK_None:
-                        type = ELF::R_386_PC32;
-                        break;
-                    case MCSymbolRefExpr::VK_PLT:
-                        type = ELF::R_386_PLT32;
-                        break;
-                    }
-                    break;
-                }
-            }
-            else
-            {
-                switch ((unsigned)fixup.getKind())
-                {
-                default: llvm_unreachable("invalid fixup kind!");
-
-                case FK_PCRel_4:
-                case FK_Data_4:
-                    switch (modifier)
-                    {
-                    default:
-                        llvm_unreachable("Unimplemented");
-                    case MCSymbolRefExpr::VK_None:
-                        type = ELF::R_386_32;
-                        break;
-                    case MCSymbolRefExpr::VK_GOT:
-                        type = ELF::R_386_GOT32;
-                        break;
-                    case MCSymbolRefExpr::VK_GOTOFF:
-                        type = ELF::R_386_GOTOFF;
-                        break;
-                    case MCSymbolRefExpr::VK_TLSGD:
-                        type = ELF::R_386_TLS_GD;
-                        break;
-                    case MCSymbolRefExpr::VK_TPOFF:
-                        type = ELF::R_386_TLS_LE_32;
-                        break;
-                    case MCSymbolRefExpr::VK_INDNTPOFF:
-                        type = ELF::R_386_TLS_IE;
-                        break;
-                    case MCSymbolRefExpr::VK_NTPOFF:
-                        type = ELF::R_386_TLS_LE;
-                        break;
-                    case MCSymbolRefExpr::VK_GOTNTPOFF:
-                        type = ELF::R_386_TLS_GOTIE;
-                        break;
-                    case MCSymbolRefExpr::VK_TLSLDM:
-                        type = ELF::R_386_TLS_LDM;
-                        break;
-                    case MCSymbolRefExpr::VK_DTPOFF:
-                        type = ELF::R_386_TLS_LDO_32;
-                        break;
-                    case MCSymbolRefExpr::VK_GOTTPOFF:
-                        type = ELF::R_386_TLS_IE_32;
-                        break;
-                    }
-                    break;
-                case FK_Data_2: type = ELF::R_386_16; break;
-                case FK_PCRel_1:
-                case FK_Data_1: type = ELF::R_386_8; break;
-                }
-            }
-        }
-        else
-            llvm_unreachable("Unsupported ELF machine type.");
-
-        return type;
-    }
-};
-
-class VISAAsmBackend : public IGCLLVM::MCAsmBackend
-{
-    StringRef m_targetTriple;
-    bool m_is64Bit;
-public:
-    VISAAsmBackend(StringRef targetTriple, bool is64Bit)
-        : IGCLLVM::MCAsmBackend(),
-        m_targetTriple(targetTriple), m_is64Bit(is64Bit) {}
-
-    unsigned getNumFixupKinds() const override
+    class VISAAsmBackend : public IGCLLVM::MCAsmBackend
     {
-        return 0;
-    }
+        StringRef m_targetTriple;
+        bool m_is64Bit;
+    public:
+        VISAAsmBackend(StringRef targetTriple, bool is64Bit)
+            : IGCLLVM::MCAsmBackend(),
+            m_targetTriple(targetTriple), m_is64Bit(is64Bit) {}
 
-    static unsigned getFixupKindLog2Size(unsigned Kind)
-    {
-        switch (Kind)
+        unsigned getNumFixupKinds() const override
         {
-        default: llvm_unreachable("invalid fixup kind!");
-        case FK_PCRel_1:
-        case FK_SecRel_1:
-        case FK_Data_1: return 0;
-        case FK_PCRel_2:
-        case FK_SecRel_2:
-        case FK_Data_2: return 1;
-        case FK_PCRel_4:
-        case FK_SecRel_4:
-        case FK_Data_4: return 2;
-        case FK_PCRel_8:
-        case FK_SecRel_8:
-        case FK_Data_8: return 3;
+            return 0;
         }
-    }
+
+        static unsigned getFixupKindLog2Size(unsigned Kind)
+        {
+            switch (Kind)
+            {
+            default: llvm_unreachable("invalid fixup kind!");
+            case FK_PCRel_1:
+            case FK_SecRel_1:
+            case FK_Data_1: return 0;
+            case FK_PCRel_2:
+            case FK_SecRel_2:
+            case FK_Data_2: return 1;
+            case FK_PCRel_4:
+            case FK_SecRel_4:
+            case FK_Data_4: return 2;
+            case FK_PCRel_8:
+            case FK_SecRel_8:
+            case FK_Data_8: return 3;
+            }
+        }
 
 #if LLVM_VERSION_MAJOR == 4
-    void applyFixup(const MCFixup &fixup, char *pData, unsigned dataSize, uint64_t value, bool isPCRel) const override
-    {
-        unsigned size = 1 << getFixupKindLog2Size(fixup.getKind());
-
-        assert(fixup.getOffset() + size <= dataSize &&
-            "Invalid fixup offset!");
-
-        // Check that uppper bits are either all zeros or all ones.
-        // Specifically ignore overflow/underflow as long as the leakage is
-        // limited to the lower bits. This is to remain compatible with
-        // other assemblers.
-        assert(isIntN(size * 8 + 1, value) &&
-            "value does not fit in the fixup field");
-
-        for (unsigned i = 0; i != size; ++i)
+        void applyFixup(const MCFixup & fixup, char* pData, unsigned dataSize, uint64_t value, bool isPCRel) const override
         {
-            pData[fixup.getOffset() + i] = uint8_t(value >> (i * 8));
+            unsigned size = 1 << getFixupKindLog2Size(fixup.getKind());
+
+            assert(fixup.getOffset() + size <= dataSize &&
+                "Invalid fixup offset!");
+
+            // Check that uppper bits are either all zeros or all ones.
+            // Specifically ignore overflow/underflow as long as the leakage is
+            // limited to the lower bits. This is to remain compatible with
+            // other assemblers.
+            assert(isIntN(size * 8 + 1, value) &&
+                "value does not fit in the fixup field");
+
+            for (unsigned i = 0; i != size; ++i)
+            {
+                pData[fixup.getOffset() + i] = uint8_t(value >> (i * 8));
+            }
         }
-    }
 #elif LLVM_VERSION_MAJOR >= 7    
-    void applyFixup(const MCAssembler &Asm, const MCFixup &fixup,
-                      const MCValue &Target, MutableArrayRef<char> Data,
-                      uint64_t value, bool IsResolved,
-                      const MCSubtargetInfo *STI) const override
-    {
-        unsigned size = 1 << getFixupKindLog2Size(fixup.getKind());
-
-        assert(fixup.getOffset() + size <= Data.size() &&
-            "Invalid fixup offset!");
-
-        // Check that uppper bits are either all zeros or all ones.
-        // Specifically ignore overflow/underflow as long as the leakage is
-        // limited to the lower bits. This is to remain compatible with
-        // other assemblers.
-        assert(isIntN(size * 8 + 1, value) &&
-            "value does not fit in the fixup field");
-
-        for (unsigned i = 0; i != size; ++i)
+        void applyFixup(const MCAssembler & Asm, const MCFixup & fixup,
+            const MCValue & Target, MutableArrayRef<char> Data,
+            uint64_t value, bool IsResolved,
+            const MCSubtargetInfo * STI) const override
         {
-            Data[fixup.getOffset() + i] = uint8_t(value >> (i * 8));
+            unsigned size = 1 << getFixupKindLog2Size(fixup.getKind());
+
+            assert(fixup.getOffset() + size <= Data.size() &&
+                "Invalid fixup offset!");
+
+            // Check that uppper bits are either all zeros or all ones.
+            // Specifically ignore overflow/underflow as long as the leakage is
+            // limited to the lower bits. This is to remain compatible with
+            // other assemblers.
+            assert(isIntN(size * 8 + 1, value) &&
+                "value does not fit in the fixup field");
+
+            for (unsigned i = 0; i != size; ++i)
+            {
+                Data[fixup.getOffset() + i] = uint8_t(value >> (i * 8));
+            }
         }
-    }
 #endif
 
 #if LLVM_VERSION_MAJOR == 4
-    bool mayNeedRelaxation(const MCInst &inst) const override
+        bool mayNeedRelaxation(const MCInst & inst) const override
 #elif LLVM_VERSION_MAJOR >= 7
-    bool mayNeedRelaxation(const MCInst &inst, const MCSubtargetInfo &STI) const override
+        bool mayNeedRelaxation(const MCInst & inst, const MCSubtargetInfo & STI) const override
 #endif
-    {
-        assert(false && "TODO: implement this");
-        llvm_unreachable("Unimplemented");
-        return false;
-    }
+        {
+            assert(false && "TODO: implement this");
+            llvm_unreachable("Unimplemented");
+            return false;
+        }
 
-    bool fixupNeedsRelaxation(const MCFixup &fixup,
-        uint64_t value,
-        const MCRelaxableFragment *pDF,
-        const MCAsmLayout &layout) const override
-    {
-        assert(false && "TODO: implement this");
-        llvm_unreachable("Unimplemented");
-        return false;
-    }
+        bool fixupNeedsRelaxation(const MCFixup& fixup,
+            uint64_t value,
+            const MCRelaxableFragment* pDF,
+            const MCAsmLayout& layout) const override
+        {
+            assert(false && "TODO: implement this");
+            llvm_unreachable("Unimplemented");
+            return false;
+        }
 
-    void relaxInstruction(const MCInst &inst, const MCSubtargetInfo &STI,
-        MCInst &res) const override
-    {
-        assert(false && "TODO: implement this");
-        llvm_unreachable("Unimplemented");
-    }
+        void relaxInstruction(const MCInst& inst, const MCSubtargetInfo& STI,
+            MCInst& res) const override
+        {
+            assert(false && "TODO: implement this");
+            llvm_unreachable("Unimplemented");
+        }
 
 #if LLVM_VERSION_MAJOR == 4
-    bool writeNopData(uint64_t count, MCObjectWriter *pOW) const override
-    {
-        for (uint64_t i = 0; i < count; ++i)
+        bool writeNopData(uint64_t count, MCObjectWriter * pOW) const override
         {
-            pOW->write8(0x90);
+            for (uint64_t i = 0; i < count; ++i)
+            {
+                pOW->write8(0x90);
+            }
+            return true;
         }
-        return true;
-    }
 #elif LLVM_VERSION_MAJOR >= 7
-    bool writeNopData(raw_ostream &OS, uint64_t Count) const override
-    {
-        const char nop = (char) 0x90;
-        for (uint64_t i = 0; i < Count; ++i)
+        bool writeNopData(raw_ostream & OS, uint64_t Count) const override
         {
-            OS.write(&nop, 1);
+            const char nop = (char)0x90;
+            for (uint64_t i = 0; i < Count; ++i)
+            {
+                OS.write(&nop, 1);
+            }
+            return true;
         }
-        return true;
-    }
 #endif
 
-    /// createObjectWriter - Create a new MCObjectWriter instance for use by the
-    /// assembler backend to emit the final object file.
+        /// createObjectWriter - Create a new MCObjectWriter instance for use by the
+        /// assembler backend to emit the final object file.
 #if LLVM_VERSION_MAJOR == 4
-    MCObjectWriter *createObjectWriter(llvm::raw_pwrite_stream &os) const override
-    {
-        Triple triple(m_targetTriple);
-        uint8_t osABI = MCELFObjectTargetWriter::getOSABI(triple.getOS());
-        uint16_t eMachine = m_is64Bit ? ELF::EM_X86_64 : ELF::EM_386;
-        // Only i386 uses Rel instead of RelA.
-        bool hasRelocationAddend = eMachine != ELF::EM_386;
-        MCELFObjectTargetWriter *pMOTW = new VISAELFObjectWriter(m_is64Bit, osABI, eMachine, hasRelocationAddend);
-        return createELFObjectWriter(pMOTW, os,  /*IsLittleEndian=*/true);
-    }
+        MCObjectWriter * createObjectWriter(llvm::raw_pwrite_stream & os) const override
+        {
+            Triple triple(m_targetTriple);
+            uint8_t osABI = MCELFObjectTargetWriter::getOSABI(triple.getOS());
+            uint16_t eMachine = m_is64Bit ? ELF::EM_X86_64 : ELF::EM_386;
+            // Only i386 uses Rel instead of RelA.
+            bool hasRelocationAddend = eMachine != ELF::EM_386;
+            MCELFObjectTargetWriter* pMOTW = new VISAELFObjectWriter(m_is64Bit, osABI, eMachine, hasRelocationAddend);
+            return createELFObjectWriter(pMOTW, os,  /*IsLittleEndian=*/true);
+        }
 #elif LLVM_VERSION_MAJOR >= 7
-    std::unique_ptr<MCObjectWriter> createObjectWriter(llvm::raw_pwrite_stream &os) const
-    {
-        Triple triple(m_targetTriple);
-        uint8_t osABI = MCELFObjectTargetWriter::getOSABI(triple.getOS());
-        uint16_t eMachine = m_is64Bit ? ELF::EM_X86_64 : ELF::EM_386;
-        // Only i386 uses Rel instead of RelA.
-        bool hasRelocationAddend = eMachine != ELF::EM_386;        
-        std::unique_ptr<MCELFObjectTargetWriter> pMOTW
-            = llvm::make_unique<VISAELFObjectWriter>(m_is64Bit, osABI, eMachine, hasRelocationAddend);
-        return createELFObjectWriter(std::move(pMOTW), os,  /*IsLittleEndian=*/true);
-    }
+        std::unique_ptr<MCObjectWriter> createObjectWriter(llvm::raw_pwrite_stream & os) const
+        {
+            Triple triple(m_targetTriple);
+            uint8_t osABI = MCELFObjectTargetWriter::getOSABI(triple.getOS());
+            uint16_t eMachine = m_is64Bit ? ELF::EM_X86_64 : ELF::EM_386;
+            // Only i386 uses Rel instead of RelA.
+            bool hasRelocationAddend = eMachine != ELF::EM_386;
+            std::unique_ptr<MCELFObjectTargetWriter> pMOTW
+                = llvm::make_unique<VISAELFObjectWriter>(m_is64Bit, osABI, eMachine, hasRelocationAddend);
+            return createELFObjectWriter(std::move(pMOTW), os,  /*IsLittleEndian=*/true);
+        }
 #endif
 
 #if LLVM_VERSION_MAJOR >= 7
-    std::unique_ptr<MCObjectTargetWriter> createObjectTargetWriter() const override
-    {
-        assert(false && "TODO: implement this");
-        llvm_unreachable("Unimplemented");
-    }
+        std::unique_ptr<MCObjectTargetWriter> createObjectTargetWriter() const override
+        {
+            assert(false && "TODO: implement this");
+            llvm_unreachable("Unimplemented");
+        }
 #endif
-};
+    };
 
-class VISAMCCodeEmitter : public MCCodeEmitter
-{
-    /// EncodeInstruction - Encode the given \p inst to bytes on the output
-    /// stream \p OS.
-    virtual void encodeInstruction(const MCInst &inst, raw_ostream &os, SmallVectorImpl<MCFixup> &fixups,
-    const MCSubtargetInfo &m) const
+    class VISAMCCodeEmitter : public MCCodeEmitter
     {
-        assert(false && "TODO: implement this");
-        llvm_unreachable("Unimplemented");
-    }
+        /// EncodeInstruction - Encode the given \p inst to bytes on the output
+        /// stream \p OS.
+        virtual void encodeInstruction(const MCInst& inst, raw_ostream& os, SmallVectorImpl<MCFixup>& fixups,
+            const MCSubtargetInfo& m) const
+        {
+            assert(false && "TODO: implement this");
+            llvm_unreachable("Unimplemented");
+        }
 
-    void operator=(const VISAMCCodeEmitter &)
-    {
-        assert(false && "TODO: implement this");
-        llvm_unreachable("Unimplemented");
-    }
+        void operator=(const VISAMCCodeEmitter&)
+        {
+            assert(false && "TODO: implement this");
+            llvm_unreachable("Unimplemented");
+        }
 
-};
+    };
 
 } // namespace IGC
 
@@ -496,18 +496,18 @@ StreamEmitter::StreamEmitter(raw_pwrite_stream& outStream, const std::string& da
     m_pAsmInfo = new VISAMCAsmInfo(GetPointerSize());
     m_pObjFileInfo = new MCObjectFileInfo();
 
-    MCRegisterInfo *regInfo = nullptr;
+    MCRegisterInfo* regInfo = nullptr;
 
     // Create new MC context
     m_pContext = new MCContext((const llvm::MCAsmInfo*)m_pAsmInfo, regInfo, m_pObjFileInfo, m_pSrcMgr);
 
     Triple triple = Triple(GetTargetTriple());
 
-    m_pObjFileInfo->InitMCObjectFileInfo(Triple(GetTargetTriple()), false, CodeModel::Default, *m_pContext);  
+    m_pObjFileInfo->InitMCObjectFileInfo(Triple(GetTargetTriple()), false, CodeModel::Default, *m_pContext);
 
-    VISAMCCodeEmitter *pCodeEmitter = new VISAMCCodeEmitter();
-    bool is64Bit = GetPointerSize() == 8;    
-    VISAAsmBackend *pAsmBackend = new VISAAsmBackend(GetTargetTriple(), is64Bit);
+    VISAMCCodeEmitter* pCodeEmitter = new VISAMCCodeEmitter();
+    bool is64Bit = GetPointerSize() == 8;
+    VISAAsmBackend* pAsmBackend = new VISAAsmBackend(GetTargetTriple(), is64Bit);
 
     bool isRelaxAll = false;
     bool isNoExecStack = false;
@@ -515,7 +515,7 @@ StreamEmitter::StreamEmitter(raw_pwrite_stream& outStream, const std::string& da
 #ifdef LLVM_3400
         // /*MCTargetStreamer* */ nullptr,
 #endif
-        *pAsmBackend, outStream, pCodeEmitter, isRelaxAll);        
+        * pAsmBackend, outStream, pCodeEmitter, isRelaxAll);
 
     m_pMCStreamer->InitSections(isNoExecStack);
 #elif LLVM_VERSION_MAJOR >= 7
@@ -524,7 +524,7 @@ StreamEmitter::StreamEmitter(raw_pwrite_stream& outStream, const std::string& da
     m_pAsmInfo = new VISAMCAsmInfo(GetPointerSize());
     m_pObjFileInfo = new MCObjectFileInfo();
 
-    MCRegisterInfo *regInfo = nullptr;
+    MCRegisterInfo* regInfo = nullptr;
 
     // Create new MC context
     m_pContext = new MCContext((const llvm::MCAsmInfo*)m_pAsmInfo, regInfo, m_pObjFileInfo, m_pSrcMgr);
@@ -581,63 +581,63 @@ bool StreamEmitter::IsLittleEndian() const
     return m_pDataLayout->isLittleEndian();
 }
 
-const MCSection *StreamEmitter::GetTextSection() const
+const MCSection* StreamEmitter::GetTextSection() const
 {
     return GetObjFileLowering().getTextSection();
 }
 
-const MCSection *StreamEmitter::GetDataSection() const
+const MCSection* StreamEmitter::GetDataSection() const
 {
     return GetObjFileLowering().getDataSection();
 }
 
-const MCSection *StreamEmitter::GetDwarfAbbrevSection() const
+const MCSection* StreamEmitter::GetDwarfAbbrevSection() const
 {
     return GetObjFileLowering().getDwarfAbbrevSection();
 }
 
-const MCSection *StreamEmitter::GetDwarfInfoSection() const
+const MCSection* StreamEmitter::GetDwarfInfoSection() const
 {
     return GetObjFileLowering().getDwarfInfoSection();
 }
 
-const MCSection *StreamEmitter::GetDwarfLineSection() const
+const MCSection* StreamEmitter::GetDwarfLineSection() const
 {
     return GetObjFileLowering().getDwarfLineSection();
 }
 
-const MCSection *StreamEmitter::GetDwarfLocSection() const
+const MCSection* StreamEmitter::GetDwarfLocSection() const
 {
     return GetObjFileLowering().getDwarfLocSection();
 }
 
-const MCSection *StreamEmitter::GetDwarfMacroInfoSection() const
+const MCSection* StreamEmitter::GetDwarfMacroInfoSection() const
 {
     //return GetObjFileLowering().getDwarfMacroInfoSection();
     return nullptr;
 }
 
-const MCSection *StreamEmitter::GetDwarfRangesSection() const
+const MCSection* StreamEmitter::GetDwarfRangesSection() const
 {
     return GetObjFileLowering().getDwarfRangesSection();
 }
 
-const MCSection *StreamEmitter::GetDwarfStrSection() const
+const MCSection* StreamEmitter::GetDwarfStrSection() const
 {
     return GetObjFileLowering().getDwarfStrSection();
 }
 
-const MCSection *StreamEmitter::GetDwarfFrameSection() const
+const MCSection* StreamEmitter::GetDwarfFrameSection() const
 {
     return GetObjFileLowering().getDwarfFrameSection();
 }
 
-void StreamEmitter::SwitchSection(const MCSection *pSection, const MCExpr *pSubsection) const
+void StreamEmitter::SwitchSection(const MCSection* pSection, const MCExpr* pSubsection) const
 {
     m_pMCStreamer->SwitchSection(const_cast<MCSection*>(pSection), pSubsection);
 }
 
-MCSymbol *StreamEmitter::GetSymbol(const GlobalValue *pGV) const
+MCSymbol* StreamEmitter::GetSymbol(const GlobalValue* pGV) const
 {
     /*
     //Original code (as reference)
@@ -649,17 +649,17 @@ MCSymbol *StreamEmitter::GetSymbol(const GlobalValue *pGV) const
     return m_pContext->getOrCreateSymbol(Twine(m_pAsmInfo->getPrivateGlobalPrefix()) + pGV->getName());
 }
 
-MCSymbol *StreamEmitter::GetTempSymbol(StringRef name, unsigned id) const
+MCSymbol* StreamEmitter::GetTempSymbol(StringRef name, unsigned id) const
 {
     return m_pContext->getOrCreateSymbol(Twine(m_pAsmInfo->getPrivateGlobalPrefix()) + name + Twine(id));
 }
 
-MCSymbol *StreamEmitter::GetTempSymbol(StringRef name) const
+MCSymbol* StreamEmitter::GetTempSymbol(StringRef name) const
 {
     return m_pContext->getOrCreateSymbol(Twine(m_pAsmInfo->getPrivateGlobalPrefix()) + name);
 }
 
-MCSymbol *StreamEmitter::CreateTempSymbol() const
+MCSymbol* StreamEmitter::CreateTempSymbol() const
 {
     return m_pContext->createTempSymbol();
 }
@@ -679,7 +679,7 @@ void StreamEmitter::EmitBytes(StringRef data, unsigned addrSpace) const
     m_pMCStreamer->EmitBytes(data);
 }
 
-void StreamEmitter::EmitValue(const MCExpr *value, unsigned size, unsigned addrSpace) const
+void StreamEmitter::EmitValue(const MCExpr* value, unsigned size, unsigned addrSpace) const
 {
     m_pMCStreamer->EmitValue(value, size);
 }
@@ -704,7 +704,7 @@ void StreamEmitter::EmitInt32(int value) const
     EmitIntValue(value, 4);
 }
 
-void StreamEmitter::EmitSLEB128(int64_t value, const char * /*desc*/) const
+void StreamEmitter::EmitSLEB128(int64_t value, const char* /*desc*/) const
 {
     m_pMCStreamer->EmitSLEB128IntValue(value);
 }
@@ -718,18 +718,18 @@ void StreamEmitter::EmitULEB128(uint64_t value, llvm::StringRef /*desc*/, unsign
 #endif
 }
 
-void StreamEmitter::EmitLabel(MCSymbol *pLabel) const
+void StreamEmitter::EmitLabel(MCSymbol* pLabel) const
 {
     m_pMCStreamer->EmitLabel(pLabel);
 }
 
-void StreamEmitter::EmitLabelDifference(const MCSymbol *pHi, const MCSymbol *pLo, unsigned size) const
+void StreamEmitter::EmitLabelDifference(const MCSymbol* pHi, const MCSymbol* pLo, unsigned size) const
 {
-    const MCExpr *hiExpr = MCSymbolRefExpr::create(pHi, *m_pContext);
-    const MCExpr *loExpr = MCSymbolRefExpr::create(pLo, *m_pContext);
+    const MCExpr* hiExpr = MCSymbolRefExpr::create(pHi, *m_pContext);
+    const MCExpr* loExpr = MCSymbolRefExpr::create(pLo, *m_pContext);
 
     // Get the pHi-pLo expression.
-    const MCExpr *pDiff = MCBinaryExpr::createSub(hiExpr, loExpr, *m_pContext);
+    const MCExpr* pDiff = MCBinaryExpr::createSub(hiExpr, loExpr, *m_pContext);
 
     if (!m_pAsmInfo->doesSetDirectiveSuppressReloc())
     {
@@ -738,23 +738,23 @@ void StreamEmitter::EmitLabelDifference(const MCSymbol *pHi, const MCSymbol *pLo
     }
 
     // Otherwise, emit with .set (aka assignment).
-    MCSymbol *pSetLabel = GetTempSymbol("set", m_setCounter++);
+    MCSymbol* pSetLabel = GetTempSymbol("set", m_setCounter++);
     m_pMCStreamer->EmitAssignment(pSetLabel, pDiff);
     m_pMCStreamer->EmitSymbolValue(pSetLabel, size);
 }
 
-void StreamEmitter::EmitLabelOffsetDifference(const MCSymbol *pHi, uint64_t Offset, const MCSymbol *pLo, unsigned size) const
+void StreamEmitter::EmitLabelOffsetDifference(const MCSymbol* pHi, uint64_t Offset, const MCSymbol* pLo, unsigned size) const
 {
-    const MCExpr *pHiExpr = MCSymbolRefExpr::create(pHi, *m_pContext);
-    const MCExpr *pLoExpr = MCSymbolRefExpr::create(pLo, *m_pContext);
-    const MCExpr *pOffsetExpr = MCConstantExpr::create(Offset, *m_pContext);
+    const MCExpr* pHiExpr = MCSymbolRefExpr::create(pHi, *m_pContext);
+    const MCExpr* pLoExpr = MCSymbolRefExpr::create(pLo, *m_pContext);
+    const MCExpr* pOffsetExpr = MCConstantExpr::create(Offset, *m_pContext);
 
     // Emit pHi+Offset - pLo
     // Get the pHi+Offset expression.
-    const MCExpr *pPlus = MCBinaryExpr::createAdd(pHiExpr, pOffsetExpr, *m_pContext);
+    const MCExpr* pPlus = MCBinaryExpr::createAdd(pHiExpr, pOffsetExpr, *m_pContext);
 
     // Get the pHi+Offset-pLo expression.
-    const MCExpr *pDiff = MCBinaryExpr::createSub(pPlus, pLoExpr, *m_pContext);
+    const MCExpr* pDiff = MCBinaryExpr::createSub(pPlus, pLoExpr, *m_pContext);
 
     if (!m_pAsmInfo->doesSetDirectiveSuppressReloc())
     {
@@ -762,47 +762,47 @@ void StreamEmitter::EmitLabelOffsetDifference(const MCSymbol *pHi, uint64_t Offs
         return;
     }
     // Otherwise, emit with .set (aka assignment).
-    MCSymbol *pSetLabel = GetTempSymbol("set", m_setCounter++);
+    MCSymbol* pSetLabel = GetTempSymbol("set", m_setCounter++);
     m_pMCStreamer->EmitAssignment(pSetLabel, pDiff);
     m_pMCStreamer->EmitSymbolValue(pSetLabel, size);
 }
 
-void StreamEmitter::EmitLabelPlusOffset(const MCSymbol *pLabel, uint64_t Offset, unsigned size, bool /*isSectionRelative*/) const
+void StreamEmitter::EmitLabelPlusOffset(const MCSymbol* pLabel, uint64_t Offset, unsigned size, bool /*isSectionRelative*/) const
 {
     // Emit pLabel+Offset (or just pLabel if Offset is zero)
-    const MCExpr *pLabelExpr = MCSymbolRefExpr::create(pLabel, *m_pContext);
-    const MCExpr *pOffsetExpr = MCConstantExpr::create(Offset, *m_pContext);
+    const MCExpr* pLabelExpr = MCSymbolRefExpr::create(pLabel, *m_pContext);
+    const MCExpr* pOffsetExpr = MCConstantExpr::create(Offset, *m_pContext);
 
-    const MCExpr *pExpr = (Offset) ? MCBinaryExpr::createAdd(pLabelExpr, pOffsetExpr, *m_pContext) : pLabelExpr;
+    const MCExpr* pExpr = (Offset) ? MCBinaryExpr::createAdd(pLabelExpr, pOffsetExpr, *m_pContext) : pLabelExpr;
 
     m_pMCStreamer->EmitValue(pExpr, size);
 }
 
-void StreamEmitter::EmitLabelReference(const MCSymbol *pLabel, unsigned size, bool isSectionRelative) const
+void StreamEmitter::EmitLabelReference(const MCSymbol* pLabel, unsigned size, bool isSectionRelative) const
 {
     EmitLabelPlusOffset(pLabel, 0, size, isSectionRelative);
 }
 
-void StreamEmitter::EmitELFDiffSize(MCSymbol *pLabel, const MCSymbol *pHi, const MCSymbol *pLo) const
+void StreamEmitter::EmitELFDiffSize(MCSymbol* pLabel, const MCSymbol* pHi, const MCSymbol* pLo) const
 {
-    const MCExpr *hiExpr = MCSymbolRefExpr::create(pHi, *m_pContext);
-    const MCExpr *loExpr = MCSymbolRefExpr::create(pLo, *m_pContext);
+    const MCExpr* hiExpr = MCSymbolRefExpr::create(pHi, *m_pContext);
+    const MCExpr* loExpr = MCSymbolRefExpr::create(pLo, *m_pContext);
 
     // Get the pHi-pLo expression.
-    const MCExpr *pDiff = MCBinaryExpr::createSub(hiExpr, loExpr, *m_pContext);
+    const MCExpr* pDiff = MCBinaryExpr::createSub(hiExpr, loExpr, *m_pContext);
 
     m_pMCStreamer->emitELFSize(pLabel, pDiff);
 }
 
-void StreamEmitter::EmitSymbolValue(const MCSymbol *pSym, unsigned size, unsigned addrSpace) const
+void StreamEmitter::EmitSymbolValue(const MCSymbol* pSym, unsigned size, unsigned addrSpace) const
 {
     m_pMCStreamer->EmitSymbolValue(pSym, size);
 }
 
-void StreamEmitter::EmitSectionOffset(const MCSymbol *pLabel, const MCSymbol *pSectionLabel) const
+void StreamEmitter::EmitSectionOffset(const MCSymbol* pLabel, const MCSymbol* pSectionLabel) const
 {
     // Get the section that we're referring to, based on pSectionLabel.
-    const MCSection &section = pSectionLabel->getSection();
+    const MCSection& section = pSectionLabel->getSection();
 
     // If pLabel has already been emitted, verify that it is in the same section as
     // section label for sanity.
@@ -871,9 +871,9 @@ void StreamEmitter::EmitDwarfLocDirective(unsigned fileNo, unsigned line, unsign
     m_pMCStreamer->EmitDwarfLocDirective(fileNo, line, column, flags, isa, discriminator, fileName);
 }
 
-void StreamEmitter::SetMCLineTableSymbol(MCSymbol *pSym, unsigned id) const
+void StreamEmitter::SetMCLineTableSymbol(MCSymbol* pSym, unsigned id) const
 {
-//    m_pContext->setMCLineTableSymbol(pSym, id);
+    //    m_pContext->setMCLineTableSymbol(pSym, id);
 }
 
 void StreamEmitter::Finalize() const

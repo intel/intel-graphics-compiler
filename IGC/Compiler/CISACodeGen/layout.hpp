@@ -33,39 +33,39 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace IGC
 {
-class CShader;
+    class CShader;
 
-/// @brief sort basic blocks into topological order
-/// Arbitrary reverse postorder is not sufficient.
-/// Whenever it is possible, we want to layout blocks in such way 
-/// that the vIsa Jitter can recognize the control-flow structures
-class Layout : public llvm::FunctionPass
-{
-public:
-    static char ID;
-    Layout();
+    /// @brief sort basic blocks into topological order
+    /// Arbitrary reverse postorder is not sufficient.
+    /// Whenever it is possible, we want to layout blocks in such way 
+    /// that the vIsa Jitter can recognize the control-flow structures
+    class Layout : public llvm::FunctionPass
+    {
+    public:
+        static char ID;
+        Layout();
 
-    virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override;
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override;
 
-    /// @brief Provides name of pass
-    virtual llvm::StringRef getPassName() const override {
-        return "Layout";
-    }
+        /// @brief Provides name of pass
+        virtual llvm::StringRef getPassName() const override {
+            return "Layout";
+        }
 
-    virtual bool runOnFunction(llvm::Function &func) override;
+        virtual bool runOnFunction(llvm::Function& func) override;
 
-private:
-    llvm::BasicBlock *getLastReturnBlock(llvm::Function &Func);
-    void LayoutBlocks(llvm::Function &func, llvm::LoopInfo &LI);
-    void LayoutBlocks(llvm::Function &func);
-    llvm::BasicBlock *selectSucc(
-        llvm::BasicBlock *CurrBlk,
-        bool SelectNoInstBlk,
-        const llvm::LoopInfo& LI,
-        const std::set<llvm::BasicBlock*>& VisitSet);
+    private:
+        llvm::BasicBlock* getLastReturnBlock(llvm::Function& Func);
+        void LayoutBlocks(llvm::Function& func, llvm::LoopInfo& LI);
+        void LayoutBlocks(llvm::Function& func);
+        llvm::BasicBlock* selectSucc(
+            llvm::BasicBlock* CurrBlk,
+            bool SelectNoInstBlk,
+            const llvm::LoopInfo& LI,
+            const std::set<llvm::BasicBlock*>& VisitSet);
 
 
-    llvm::PostDominatorTree *m_PDT;
-};
+        llvm::PostDominatorTree* m_PDT;
+    };
 
 }

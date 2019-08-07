@@ -63,7 +63,7 @@ const llvm::StringRef ImageFuncsAnalysis::GET_SAMPLER_ADDRESS_MODE = "__builtin_
 const llvm::StringRef ImageFuncsAnalysis::GET_SAMPLER_NORMALIZED_COORDS = "__builtin_IB_is_normalized_coords";
 const llvm::StringRef ImageFuncsAnalysis::GET_SAMPLER_SNAP_WA_REQUIRED = "__builtin_IB_get_snap_wa_reqd";
 
-bool ImageFuncsAnalysis::runOnModule(Module &M) {
+bool ImageFuncsAnalysis::runOnModule(Module& M) {
     bool changed = false;
     // Run on all functions defined in this module
     for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I) {
@@ -78,8 +78,8 @@ bool ImageFuncsAnalysis::runOnModule(Module &M) {
     return changed;
 }
 
-bool ImageFuncsAnalysis::runOnFunction(Function &F) {
-    
+bool ImageFuncsAnalysis::runOnFunction(Function& F) {
+
     // Visit the function
     visit(F);
 
@@ -90,7 +90,7 @@ bool ImageFuncsAnalysis::runOnFunction(Function &F) {
     return true;
 }
 
-void ImageFuncsAnalysis::visitCallInst(CallInst &CI)
+void ImageFuncsAnalysis::visitCallInst(CallInst& CI)
 {
     if (!CI.getCalledFunction())
     {
@@ -102,35 +102,35 @@ void ImageFuncsAnalysis::visitCallInst(CallInst &CI)
     // Check for OpenCL image dimension function calls
     std::set<int>* imageFunc = nullptr;
 
-    if(funcName == GET_IMAGE_HEIGHT) 
+    if (funcName == GET_IMAGE_HEIGHT)
     {
         imageFunc = &m_argMap[ImplicitArg::IMAGE_HEIGHT];
     }
-    else if(funcName == GET_IMAGE_WIDTH)
+    else if (funcName == GET_IMAGE_WIDTH)
     {
         imageFunc = &m_argMap[ImplicitArg::IMAGE_WIDTH];
     }
-    else if(funcName == GET_IMAGE_DEPTH)
+    else if (funcName == GET_IMAGE_DEPTH)
     {
         imageFunc = &m_argMap[ImplicitArg::IMAGE_DEPTH];
     }
-    else if(funcName == GET_IMAGE_NUM_MIP_LEVELS)
+    else if (funcName == GET_IMAGE_NUM_MIP_LEVELS)
     {
         imageFunc = &m_argMap[ImplicitArg::IMAGE_NUM_MIP_LEVELS];
     }
-    else if(funcName == GET_IMAGE_CHANNEL_DATA_TYPE)
+    else if (funcName == GET_IMAGE_CHANNEL_DATA_TYPE)
     {
         imageFunc = &m_argMap[ImplicitArg::IMAGE_CHANNEL_DATA_TYPE];
     }
-    else if(funcName == GET_IMAGE_CHANNEL_ORDER)
+    else if (funcName == GET_IMAGE_CHANNEL_ORDER)
     {
         imageFunc = &m_argMap[ImplicitArg::IMAGE_CHANNEL_ORDER];
     }
-    else if(funcName == GET_IMAGE_SRGB_CHANNEL_ORDER)
+    else if (funcName == GET_IMAGE_SRGB_CHANNEL_ORDER)
     {
         imageFunc = &m_argMap[ImplicitArg::IMAGE_SRGB_CHANNEL_ORDER];
     }
-    else if(funcName == GET_IMAGE_ARRAY_SIZE)
+    else if (funcName == GET_IMAGE_ARRAY_SIZE)
     {
         imageFunc = &m_argMap[ImplicitArg::IMAGE_ARRAY_SIZE];
     }
@@ -138,19 +138,19 @@ void ImageFuncsAnalysis::visitCallInst(CallInst &CI)
     {
         imageFunc = &m_argMap[ImplicitArg::IMAGE_NUM_SAMPLES];
     }
-    else if(funcName == GET_SAMPLER_ADDRESS_MODE)
+    else if (funcName == GET_SAMPLER_ADDRESS_MODE)
     {
         imageFunc = &m_argMap[ImplicitArg::SAMPLER_ADDRESS];
     }
-    else if(funcName == GET_SAMPLER_NORMALIZED_COORDS)
+    else if (funcName == GET_SAMPLER_NORMALIZED_COORDS)
     {
         imageFunc = &m_argMap[ImplicitArg::SAMPLER_NORMALIZED];
     }
-    else if(funcName == GET_SAMPLER_SNAP_WA_REQUIRED)
+    else if (funcName == GET_SAMPLER_SNAP_WA_REQUIRED)
     {
         imageFunc = &m_argMap[ImplicitArg::SAMPLER_SNAP_WA];
     }
-    else 
+    else
     {
         // Non image function, do nothing
         return;
@@ -159,7 +159,7 @@ void ImageFuncsAnalysis::visitCallInst(CallInst &CI)
     // Extract the arg num and add it to the appropriate data structure    
     assert(CI.getNumArgOperands() == 1 && "Supported image/sampler functions are expected\
                                            to have only one argument");
-    
+
     // We only care about image and sampler arguments here, inline samplers
     // don't require extra kernel parameters.
     Value* callArg = CImagesBI::CImagesUtils::traceImageOrSamplerArgument(&CI, 0, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(), getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
@@ -169,7 +169,7 @@ void ImageFuncsAnalysis::visitCallInst(CallInst &CI)
     // These WAs need to be reworked to support indirect case in the future.
     if (callArg)
     {
-        if (Argument* arg = dyn_cast<Argument>(callArg))
+        if (Argument * arg = dyn_cast<Argument>(callArg))
         {
             imageFunc->insert(arg->getArgNo());
         }

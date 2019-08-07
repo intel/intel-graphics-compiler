@@ -29,7 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace USC
 {
-struct SShaderStageBTLayout;
+    struct SShaderStageBTLayout;
 }
 
 namespace llvm
@@ -40,171 +40,171 @@ namespace llvm
 namespace IGC
 {
 
-enum e_mask : unsigned char
-{
-    EMASK_Q1,
-    EMASK_Q2,
-    EMASK_Q3,
-    EMASK_Q4,
-    EMASK_H1,
-    EMASK_H2,
-};
-
-enum e_varType : unsigned char
-{
-    EVARTYPE_GENERAL,
-    EVARTYPE_ADDRESS,
-    EVARTYPE_PREDICATE,
-    EVARTYPE_SURFACE,
-    EVARTYPE_SAMPLER
-};
-
-enum e_alignment : unsigned char
-{
-    EALIGN_BYTE,
-    EALIGN_WORD,
-    EALIGN_DWORD,
-    EALIGN_QWORD,
-    EALIGN_OWORD,
-    EALIGN_HWORD,
-    EALIGN_GRF = EALIGN_HWORD,
-    EALIGN_32WORD,
-    EALIGN_2GRF = EALIGN_32WORD,
-    EALIGN_AUTO
-};
-
-static const unsigned int alignmentSize[] = 
-{
-    1,
-    2,
-    4,
-    8,
-    16,
-    32,
-    64
-};
-
-class calignmentSize
-{
-public:
-    unsigned int operator[](unsigned int idx)
+    enum e_mask : unsigned char
     {
-        return alignmentSize[idx];
-    }
-};
+        EMASK_Q1,
+        EMASK_Q2,
+        EMASK_Q3,
+        EMASK_Q4,
+        EMASK_H1,
+        EMASK_H2,
+    };
 
-// XMACRO defining the CISA opCode
-// need to move to the CISA encoding file when breaking down code
+    enum e_varType : unsigned char
+    {
+        EVARTYPE_GENERAL,
+        EVARTYPE_ADDRESS,
+        EVARTYPE_PREDICATE,
+        EVARTYPE_SURFACE,
+        EVARTYPE_SAMPLER
+    };
+
+    enum e_alignment : unsigned char
+    {
+        EALIGN_BYTE,
+        EALIGN_WORD,
+        EALIGN_DWORD,
+        EALIGN_QWORD,
+        EALIGN_OWORD,
+        EALIGN_HWORD,
+        EALIGN_GRF = EALIGN_HWORD,
+        EALIGN_32WORD,
+        EALIGN_2GRF = EALIGN_32WORD,
+        EALIGN_AUTO
+    };
+
+    static const unsigned int alignmentSize[] =
+    {
+        1,
+        2,
+        4,
+        8,
+        16,
+        32,
+        64
+    };
+
+    class calignmentSize
+    {
+    public:
+        unsigned int operator[](unsigned int idx)
+        {
+            return alignmentSize[idx];
+        }
+    };
+
+    // XMACRO defining the CISA opCode
+    // need to move to the CISA encoding file when breaking down code
 #define DECLARE_CISA_OPCODE(opCode, name, visaname) \
     opCode,
-enum e_opcode
-{
- #include "isaDef.def"
-};
+    enum e_opcode
+    {
+#include "isaDef.def"
+    };
 #undef DECLARE_CISA_OPCODE
 
 #define DECLARE_CISA_OPCODE(opCode, name, visaname) \
     visaname,
-static ISA_Opcode ConvertOpcode[ ] =
-{
-#include "isaDef.def"
-};
+    static ISA_Opcode ConvertOpcode[] =
+    {
+    #include "isaDef.def"
+    };
 #undef DECLARE_CISA_OPCODE
 
-enum e_modifier : unsigned char
-{
-    EMOD_NONE,
-    EMOD_SAT,
-    EMOD_ABS,
-    EMOD_NEG,
-    EMOD_NEGABS,
-    EMOD_NOT,
-};
+    enum e_modifier : unsigned char
+    {
+        EMOD_NONE,
+        EMOD_SAT,
+        EMOD_ABS,
+        EMOD_NEG,
+        EMOD_NEGABS,
+        EMOD_NOT,
+    };
 
-enum e_predMode
-{
-    EPRED_NORMAL,
-    EPRED_ALL,
-    EPRED_ANY,
-};
+    enum e_predMode
+    {
+        EPRED_NORMAL,
+        EPRED_ALL,
+        EPRED_ANY,
+    };
 
-enum e_instType : unsigned char
-{
-    EINSTTYPE_INVALID,
-    EINSTTYPE_ALU,
-    EINSTTYPE_BRANCH,
-    EINSTTYPE_URBWRITE,
-    EINSTTYPE_SEND,
-    EINSTTYPE_RENDERTARGETWRITE,
-    EINSTTYPE_SAMPLE,
-    EINSTTYPE_LD,
-    EINSTTYPE_INFO,
-    EINSTTYPE_GATHER4,
-    EINSTTYPE_TYPED4_READ,
-    EINSTTYPE_OWLOAD,
-    EINSTTYPE_GATHER,
-    EINSTTYPE_SCATTER,
-    EINSTTYPE_SCATTER4,
-    EINSTTYPE_TYPED4_WRITE,
-    EINSTTYPE_EOT,
-    EINSTTYPE_ADDRADD,
-    EINSTTYPE_LDMS,
-    EINSTTYPE_BARRIER,
-    EINSTTYPE_FENCE,
-};
+    enum e_instType : unsigned char
+    {
+        EINSTTYPE_INVALID,
+        EINSTTYPE_ALU,
+        EINSTTYPE_BRANCH,
+        EINSTTYPE_URBWRITE,
+        EINSTTYPE_SEND,
+        EINSTTYPE_RENDERTARGETWRITE,
+        EINSTTYPE_SAMPLE,
+        EINSTTYPE_LD,
+        EINSTTYPE_INFO,
+        EINSTTYPE_GATHER4,
+        EINSTTYPE_TYPED4_READ,
+        EINSTTYPE_OWLOAD,
+        EINSTTYPE_GATHER,
+        EINSTTYPE_SCATTER,
+        EINSTTYPE_SCATTER4,
+        EINSTTYPE_TYPED4_WRITE,
+        EINSTTYPE_EOT,
+        EINSTTYPE_ADDRADD,
+        EINSTTYPE_LDMS,
+        EINSTTYPE_BARRIER,
+        EINSTTYPE_FENCE,
+    };
 
-enum e_predicate : unsigned char
-{
-    EPREDICATE_EQ,
-    EPREDICATE_NE,
-    EPREDICATE_GT,
-    EPREDICATE_GE,
-    EPREDICATE_LT,
-    EPREDICATE_LE,
-};
+    enum e_predicate : unsigned char
+    {
+        EPREDICATE_EQ,
+        EPREDICATE_NE,
+        EPREDICATE_GT,
+        EPREDICATE_GE,
+        EPREDICATE_LT,
+        EPREDICATE_LE,
+    };
 
-enum e_predefSurface : unsigned char
-{
-    ESURFACE_NORMAL,
-    ESURFACE_SLM,
-    ESURFACE_STATELESS,
-    ESURFACE_BINDLESS,
-};
+    enum e_predefSurface : unsigned char
+    {
+        ESURFACE_NORMAL,
+        ESURFACE_SLM,
+        ESURFACE_STATELESS,
+        ESURFACE_BINDLESS,
+    };
 
-enum e_predefSampler : unsigned char
-{
-    ESAMPLER_NORMAL,
-    ESAMPLER_BINDLESS,
-};
+    enum e_predefSampler : unsigned char
+    {
+        ESAMPLER_NORMAL,
+        ESAMPLER_BINDLESS,
+    };
 
-enum e_barrierKind : unsigned char
-{
-    EBARRIER_NORMAL,  // default (signal+wait)
-    EBARRIER_SIGNAL,
-    EBARRIER_WAIT
-};
+    enum e_barrierKind : unsigned char
+    {
+        EBARRIER_NORMAL,  // default (signal+wait)
+        EBARRIER_SIGNAL,
+        EBARRIER_WAIT
+    };
 
-enum e_instance : unsigned char
-{
-    EINSTANCE_UNSPECIFIED,
-    EINSTANCE_FIRST_HALF,
-    EINSTANCE_SECOND_HALF
-};
+    enum e_instance : unsigned char
+    {
+        EINSTANCE_UNSPECIFIED,
+        EINSTANCE_FIRST_HALF,
+        EINSTANCE_SECOND_HALF
+    };
 
-class CVariable;
+    class CVariable;
 
-struct ResourceDescriptor
-{
-    CVariable* m_resource;
-    e_predefSurface m_surfaceType;
-    ResourceDescriptor() : m_resource(nullptr), m_surfaceType(ESURFACE_NORMAL) {}
-};
+    struct ResourceDescriptor
+    {
+        CVariable* m_resource;
+        e_predefSurface m_surfaceType;
+        ResourceDescriptor() : m_resource(nullptr), m_surfaceType(ESURFACE_NORMAL) {}
+    };
 
-struct SamplerDescriptor
-{
-    CVariable* m_sampler;
-    e_predefSampler m_samplerType;
-    SamplerDescriptor() : m_sampler(nullptr), m_samplerType(ESAMPLER_NORMAL) {}
-};
+    struct SamplerDescriptor
+    {
+        CVariable* m_sampler;
+        e_predefSampler m_samplerType;
+        SamplerDescriptor() : m_sampler(nullptr), m_samplerType(ESAMPLER_NORMAL) {}
+    };
 
 }

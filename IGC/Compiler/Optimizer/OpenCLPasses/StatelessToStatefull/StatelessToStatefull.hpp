@@ -49,7 +49,7 @@ namespace IGC
 
         ~StatelessToStatefull() {}
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.setPreservesCFG();
             AU.addRequired<MetaDataUtilsWrapper>();
@@ -62,11 +62,11 @@ namespace IGC
             return "StatelessToStatefull";
         }
 
-        virtual bool runOnFunction(llvm::Function &F) override;
+        virtual bool runOnFunction(llvm::Function& F) override;
 
-        void visitLoadInst(llvm::LoadInst &I);
-        void visitStoreInst(llvm::StoreInst &I);
-        void visitCallInst(llvm::CallInst &I);
+        void visitLoadInst(llvm::LoadInst& I);
+        void visitStoreInst(llvm::StoreInst& I);
+        void visitCallInst(llvm::CallInst& I);
 
     private:
         llvm::CallInst* createBufferPtr(
@@ -79,10 +79,10 @@ namespace IGC
         llvm::Argument* getBufferOffsetArg(llvm::Function* F, uint32_t ArgNumber);
         void setPointerSizeTo32bit(int32_t AddrSpace, llvm::Module* M);
 
-        void updateArgInfo(const KernelArg *KA, bool IsPositive);
-        void finalizeArgInitialValue(llvm::Function *F);
+        void updateArgInfo(const KernelArg* KA, bool IsPositive);
+        void finalizeArgInitialValue(llvm::Function* F);
 
-        const KernelArg* getKernelArg(llvm::Value *Arg)
+        const KernelArg* getKernelArg(llvm::Value* Arg)
         {
             assert(m_pKernelArgs && "Should initialize it before use!");
             for (const KernelArg& arg : *m_pKernelArgs) {
@@ -93,7 +93,7 @@ namespace IGC
             return nullptr;
         }
 
-        const KernelArg* getBufferOffsetKernelArg(const KernelArg *KA)
+        const KernelArg* getBufferOffsetKernelArg(const KernelArg* KA)
         {
             assert(m_pKernelArgs && "KernelArgs: should initialize it before use!");
             int argno = KA->getAssociatedArgNo();
@@ -112,15 +112,15 @@ namespace IGC
         // can be on or off, which is indicated by this boolean flag.
         bool       m_hasOptionalBufferOffsetArg;
 
-        llvm::AssumptionCacheTracker *m_ACT;
-        llvm::AssumptionCache *getAC(llvm::Function *F)
+        llvm::AssumptionCacheTracker* m_ACT;
+        llvm::AssumptionCache* getAC(llvm::Function* F)
         {
             return (m_ACT != nullptr ? &m_ACT->getAssumptionCache(*F)
-                                     : nullptr) ;
+                : nullptr);
         }
 
-        ImplicitArgs *m_pImplicitArgs;
-        KernelArgs   *m_pKernelArgs;
+        ImplicitArgs* m_pImplicitArgs;
+        KernelArgs* m_pKernelArgs;
         ArgInfoMap   m_argsInfo;
         bool m_changed;
     };

@@ -40,88 +40,88 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace
 {
 
-using namespace llvm;
-using namespace IGC;
+    using namespace llvm;
+    using namespace IGC;
 
-/// Used to store information about instructions and their positions in the current BB.
-class InstWithIndex
-{
-public:
-    // Initialize pointer to null and place to -1 to recognize "empty" entries
-    InstWithIndex() : m_inst(nullptr), m_place(-1)
+    /// Used to store information about instructions and their positions in the current BB.
+    class InstWithIndex
     {
+    public:
+        // Initialize pointer to null and place to -1 to recognize "empty" entries
+        InstWithIndex() : m_inst(nullptr), m_place(-1)
+        {
+        }
+
+        InstWithIndex(CallInst* inst, int place) :
+            m_inst(inst),
+            m_place(place)
+        {
+        }
+
+        int GetPlace() const { return m_place; }
+        CallInst* GetInst() const { return m_inst; }
+
+    private:
+        CallInst* m_inst;
+        int m_place;
+    };
+
+    class MergeURBWrites : public BasicBlockPass
+    {
+    public:
+        MergeURBWrites() :
+            BasicBlockPass(ID)
+        { }
+
+        virtual bool doInitialization(Function& F);
+        virtual bool runOnBasicBlock(BasicBlock& BB);
+
+        virtual void getAnalysisUsage(AnalysisUsage& AU) const
+        {
+            AU.setPreservesCFG();
+            AU.addRequired<CodeGenContextWrapper>();
+        }
+
+        virtual llvm::StringRef getPassName() const { return "MergeURBWrites"; }
+
+    private:
+        /// Stores all URB write instructions in a vector.
+        /// Also merges partial (channel granularity) writes to the same offset.
+        void FillWriteList(BasicBlock& BB);
+
+        // Tries to merge two writes to adjacent offsets into a single instruction.
+        // Does this by going through write list containing stored write instructions
+        // in order of offsets and merging adjacent writes.
+        void MergeInstructions();
+
+        // represents the map (urb index) --> (instruction, instruction index in BB)
+        std::vector<InstWithIndex> m_writeList;
+        bool m_bbModified;
+        static char ID;
+    };
+
+    char MergeURBWrites::ID = 0;
+
+
+    /// Returns true if the data is in consecutive dwords and the write can be done
+    /// without channel mask.
+    bool RequiresChannelMask(unsigned int mask)
+    {
+        // if mask contains only consecutive bits (no 'holes') we can issue urb write with no
+        // channel mask.
+        return ((mask + 1) & mask) != 0;
     }
 
-    InstWithIndex(CallInst * inst, int place) :
-        m_inst(inst),
-        m_place(place)
+    unsigned int GetChannelMask(CallInst* inst)
     {
+        return int_cast<unsigned int>(cast<ConstantInt>(inst->getOperand(1))->getZExtValue());
     }
-
-    int GetPlace() const { return m_place;}
-    CallInst * GetInst() const { return m_inst;}
-
-private:
-    CallInst * m_inst;
-    int m_place;
-};
-
-class MergeURBWrites : public BasicBlockPass
-{
-public:
-    MergeURBWrites() :
-        BasicBlockPass(ID)
-    { }
-
-    virtual bool doInitialization(Function & F);
-    virtual bool runOnBasicBlock(BasicBlock & BB);
-
-    virtual void getAnalysisUsage(AnalysisUsage & AU) const
-    {
-        AU.setPreservesCFG();
-        AU.addRequired<CodeGenContextWrapper>();
-    }
-
-    virtual llvm::StringRef getPassName() const { return "MergeURBWrites"; }
-
-private:
-    /// Stores all URB write instructions in a vector.
-    /// Also merges partial (channel granularity) writes to the same offset.
-    void FillWriteList(BasicBlock &BB);
-
-    // Tries to merge two writes to adjacent offsets into a single instruction.
-    // Does this by going through write list containing stored write instructions
-    // in order of offsets and merging adjacent writes.
-    void MergeInstructions();
-
-    // represents the map (urb index) --> (instruction, instruction index in BB)
-    std::vector<InstWithIndex> m_writeList;
-    bool m_bbModified;
-    static char ID;
-};
-
-char MergeURBWrites::ID = 0;
-
-
-/// Returns true if the data is in consecutive dwords and the write can be done
-/// without channel mask.
-bool RequiresChannelMask(unsigned int mask)
-{
-    // if mask contains only consecutive bits (no 'holes') we can issue urb write with no
-    // channel mask.
-    return ((mask + 1) & mask) != 0;
-}
-
-unsigned int GetChannelMask(CallInst* inst)
-{
-    return int_cast<unsigned int>(cast<ConstantInt>(inst->getOperand(1))->getZExtValue());
-}
 
 } // end of unnamed namespace to contain class definition and auxiliary functions
 
 /// Do initialization of the data structure.
 /// We want to allocate space for the vector only once.
-bool MergeURBWrites::doInitialization(Function & F)
+bool MergeURBWrites::doInitialization(Function& F)
 {
     m_writeList.reserve(128); //most of the time we won't exceed offset = 127
     return false;
@@ -146,19 +146,19 @@ bool MergeURBWrites::doInitialization(Function & F)
 ///    so e.g. we don't handle |aaaa|bbbbbbbb|cccc| -> |aaaabbbb|bbbbcccc|
 /// this will be addressed in the future.
 ///
-bool MergeURBWrites::runOnBasicBlock(BasicBlock & BB)
+bool MergeURBWrites::runOnBasicBlock(BasicBlock& BB)
 {
     FillWriteList(BB);
     MergeInstructions();
     return m_bbModified;
 }
 
-void MergeURBWrites::FillWriteList(BasicBlock &BB)
+void MergeURBWrites::FillWriteList(BasicBlock& BB)
 {
     m_bbModified = false;
     m_writeList.clear();
     int instCounter = 0; // counts the instruction in the BB
-    for(auto iit = BB.begin(); iit != BB.end(); ++iit, ++instCounter)
+    for (auto iit = BB.begin(); iit != BB.end(); ++iit, ++instCounter)
     {
         auto intrinsic = dyn_cast<GenIntrinsicInst>(iit);
         if (intrinsic == nullptr) continue;
@@ -177,8 +177,8 @@ void MergeURBWrites::FillWriteList(BasicBlock &BB)
         }
 
         // intrinsic has the format: URB_write (%offset, %mask, %data0, ... , %data7)
-        ConstantInt * pOffset = dyn_cast<ConstantInt>(iit->getOperand(0));
-        ConstantInt * pImmediateMask = dyn_cast<ConstantInt>(iit->getOperand(1));
+        ConstantInt* pOffset = dyn_cast<ConstantInt>(iit->getOperand(0));
+        ConstantInt* pImmediateMask = dyn_cast<ConstantInt>(iit->getOperand(1));
         if (pOffset == nullptr || pImmediateMask == nullptr || (GetChannelMask(intrinsic) > 0x0F))
         {
             // for now, we don't handle the following cases:
@@ -193,7 +193,7 @@ void MergeURBWrites::FillWriteList(BasicBlock &BB)
         // if we reach outside of the vector, grow it (filling with nullptr)
         if (offset >= m_writeList.size())
         {
-            m_writeList.resize(offset+1);
+            m_writeList.resize(offset + 1);
         }
         auto elem = m_writeList[offset];
         // we encountered an instruction writing at the same offset,
@@ -218,13 +218,13 @@ void MergeURBWrites::FillWriteList(BasicBlock &BB)
                 intrinsic->setOperand(1, mergedMaskValue);
                 // move data operands from the older instruction to the newer one
                 unsigned int opIndex = 0;
-                while (takeFromOlderMask != 0 )
+                while (takeFromOlderMask != 0)
                 {
                     if (takeFromOlderMask & 1)
                     {
                         intrinsic->setOperand(
-                            opIndex+2,
-                            m_writeList[offset].GetInst()->getOperand(opIndex+2));
+                            opIndex + 2,
+                            m_writeList[offset].GetInst()->getOperand(opIndex + 2));
                     }
                     ++opIndex;
                     takeFromOlderMask = takeFromOlderMask >> 1;
@@ -255,7 +255,7 @@ void MergeURBWrites::MergeInstructions()
     llvm::SmallVector<InstWithIndex, 16> URBWrite8;
 
     auto last = std::prev(m_writeList.end());
-    for(auto ii = m_writeList.begin(); ii != m_writeList.end() && ii != last; ++ii)
+    for (auto ii = m_writeList.begin(); ii != m_writeList.end() && ii != last; ++ii)
     {
         auto next = std::next(ii);
         if (ii->GetInst() == nullptr || next->GetInst() == nullptr)
@@ -287,14 +287,14 @@ void MergeURBWrites::MergeInstructions()
         //
         // determine which instruction is appearing earlier in the BB
         const bool inOrder = ii->GetPlace() < next->GetPlace();
-        CallInst * earlierInst = inOrder ? ii->GetInst() : next->GetInst();
-        CallInst * laterInst  = !inOrder ? ii->GetInst() : next->GetInst();
+        CallInst* earlierInst = inOrder ? ii->GetInst() : next->GetInst();
+        CallInst* laterInst = !inOrder ? ii->GetInst() : next->GetInst();
 
         // merge per-channel write masks
         auto lowWriteMask = GetChannelMask(ii->GetInst());
         auto highWriteMask = GetChannelMask(next->GetInst());
         assert(lowWriteMask <= 0x0F && highWriteMask <= 0x0F);
-        auto mergedMask =  lowWriteMask | (highWriteMask<<4);
+        auto mergedMask = lowWriteMask | (highWriteMask << 4);
 
         // Move the data operands from the earlier instruction to the later instruction.
         // If instructions are in order, we need to add new operands to positions 2..5 while
@@ -302,12 +302,12 @@ void MergeURBWrites::MergeInstructions()
         // If in reversed order, we just need to add new operands to positions 6...9.
         const unsigned int displacement = inOrder ? 4 : 0;
         const unsigned int displacement2 = inOrder ? 0 : 4;
-        for(unsigned int k = 2; k < 6; ++k)
+        for (unsigned int k = 2; k < 6; ++k)
         {
             // move existing operand if necessary
-            laterInst->setOperand(k+displacement, laterInst->getOperand(k));
+            laterInst->setOperand(k + displacement, laterInst->getOperand(k));
             // get the new one from the other instruction
-            laterInst->setOperand(k+displacement2, earlierInst->getOperand(k));
+            laterInst->setOperand(k + displacement2, earlierInst->getOperand(k));
         }
 
         // now take the smaller of the two offsets from the instruction in the current slot

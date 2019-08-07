@@ -37,7 +37,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace IGC {
 
-llvm::FunctionPass *createGenNullPointerLowerPass();
+    llvm::FunctionPass* createGenNullPointerLowerPass();
 
 } // End namespace IGC
 #endif // _CISA_GENNULLPOINTERLOWERING_H_

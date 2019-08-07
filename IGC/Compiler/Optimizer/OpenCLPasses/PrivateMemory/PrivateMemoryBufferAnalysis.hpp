@@ -58,20 +58,20 @@ namespace IGC
             return "PrivateMemoryBufferAnalysis";
         }
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.setPreservesAll();
         }
 
         /// @brief  Process module
         /// @param  M The module to process
-        bool runOnModule(llvm::Module &M) override;
+        bool runOnModule(llvm::Module& M) override;
 
         /// @brief  Alloca instructions visitor.
         ///         Checks for private memory allocation, determins the size and offset of each allocation, 
         ///         helps calculate the total amount of private memory needed by each wotk item.
         /// @param  AI The alloca instruction.
-        void visitAllocaInst(llvm::AllocaInst &AI);
+        void visitAllocaInst(llvm::AllocaInst& AI);
 
         /// @brief  get offset of alloca instruction in private memory buffer for given function.
         /// @param  pFunc The function conatins the alloca.
@@ -98,7 +98,7 @@ namespace IGC
         /// @brief  get alloca instructions to handle of given function.
         /// @param  pFunc The function.
         /// @return alloca instructions of given function.
-        std::vector<llvm::AllocaInst*> &getAllocaInsts(llvm::Function* pFunc)
+        std::vector<llvm::AllocaInst*>& getAllocaInsts(llvm::Function* pFunc)
         {
             assert(m_privateInfoMap.count(pFunc) && "Function should have private buffer info");
             return m_privateInfoMap[pFunc].m_allocaInsts;
@@ -117,7 +117,7 @@ namespace IGC
         /// @brief  Finds all alloca instructions, analyzes them, determins the size and offset of each
         ///         private buffer.
         /// @param  F The destination function.
-        void runOnFunction(llvm::Function &F);
+        void runOnFunction(llvm::Function& F);
 
     private:
 
@@ -144,7 +144,7 @@ namespace IGC
             /// @brief - map between alloca instruction and total size
             std::map<llvm::AllocaInst*, unsigned int> m_bufferSizes;
         } PrivateBufferPerFuncInfo;
-        
+
         /// @brief - map between function and total private buffer size
         std::map<llvm::Function*, PrivateBufferPerFuncInfo> m_privateInfoMap;
     };

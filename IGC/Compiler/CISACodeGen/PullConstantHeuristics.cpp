@@ -53,7 +53,7 @@ static unsigned estimateShaderLifetime(unsigned int EUCnt, unsigned SendMsgCnt, 
     return EUCnt * EUInstCycleCount + SendMsgCnt * SendInstCycleCount + RTWriteCnt * RTWriteInstCycleCount;
 }
 
-static bool isSendMessage(GenIntrinsicInst *inst)
+static bool isSendMessage(GenIntrinsicInst* inst)
 {
     if (isSampleInstruction(inst) || isSampleLoadGather4InfoInstruction(inst))
     {
@@ -72,7 +72,7 @@ static unsigned getEUInstEstimate(Instruction* inst)
     {
         return 1;
     }
-    
+
     //handling remaining inst types
     switch (inst->getOpcode())
     {
@@ -88,16 +88,16 @@ static unsigned getEUInstEstimate(Instruction* inst)
 }
 
 //estimate EU, SendMsg and RTWrite insts required by the PS
-static std::tuple<unsigned, unsigned, unsigned> getInstStats(const Function &F) {
+static std::tuple<unsigned, unsigned, unsigned> getInstStats(const Function& F) {
     unsigned EUInstCnt = 0;
     unsigned int SendMsgInstCnt = 0;
     unsigned int RTWriteInstCnt = 0;
     for (auto BBI = F.getBasicBlockList().begin(); BBI != F.getBasicBlockList().end(); BBI++)
     {
-        llvm::BasicBlock *BB = const_cast<llvm::BasicBlock*>(&*BBI);
+        llvm::BasicBlock* BB = const_cast<llvm::BasicBlock*>(&*BBI);
         for (auto II = BB->begin(); II != BB->end(); II++)
         {
-            if (llvm::GenIntrinsicInst* pIntrinsic = llvm::dyn_cast<llvm::GenIntrinsicInst>(II))
+            if (llvm::GenIntrinsicInst * pIntrinsic = llvm::dyn_cast<llvm::GenIntrinsicInst>(II))
             {
                 if (isSendMessage(pIntrinsic))
                     SendMsgInstCnt++;
@@ -115,9 +115,9 @@ static std::tuple<unsigned, unsigned, unsigned> getInstStats(const Function &F) 
 
 //Pixel Shader Dispatch can be bottleneck if
 //    thread_payload_size > max(simd4_sample_instr, simd4_eu_instr / 16, simd4_rt_write * 2, shader_lifetime / 56)
-unsigned int PullConstantHeuristics::getPSDBottleNeckThreshold(const Function &F)
+unsigned int PullConstantHeuristics::getPSDBottleNeckThreshold(const Function& F)
 {
-    CodeGenContext *ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     const unsigned numThreadsPerSubslice = ctx->platform.getMaxNumberThreadPerSubslice(); //read from ctx.platform
     const unsigned roofLineIPC = 16;
     const unsigned pixelRate = 2;
@@ -140,21 +140,21 @@ unsigned int PullConstantHeuristics::getPSDBottleNeckThreshold(const Function &F
 
 //currentPayloadSize = payloadHeaderSIMD16 + payloadBarySIMD16 + inputSize;
 //
-static unsigned getCurrentPayloadSizeEstimate(const Function &F)
+static unsigned getCurrentPayloadSizeEstimate(const Function& F)
 {
     unsigned payloadHeaderSIMD16 = 3;
     unsigned payloadBarySIMD16 = 4;
     unsigned inputGRFSize = 1;
-    
+
     //helper variables
     unsigned maxValueFromInputVec = 0;
     std::set<unsigned> countOfDifferentBary;
     for (auto BBI = F.getBasicBlockList().begin(); BBI != F.getBasicBlockList().end(); BBI++)
     {
-        llvm::BasicBlock *BB = const_cast<llvm::BasicBlock*>(&*BBI);
+        llvm::BasicBlock* BB = const_cast<llvm::BasicBlock*>(&*BBI);
         for (auto II = BB->begin(); II != BB->end(); II++)
         {
-            if (llvm::GenIntrinsicInst* pIntrinsic = llvm::dyn_cast<llvm::GenIntrinsicInst>(II))
+            if (llvm::GenIntrinsicInst * pIntrinsic = llvm::dyn_cast<llvm::GenIntrinsicInst>(II))
             {
                 if (pIntrinsic->getIntrinsicID() == GenISAIntrinsic::GenISA_DCL_inputVec)
                 {
@@ -169,7 +169,7 @@ static unsigned getCurrentPayloadSizeEstimate(const Function &F)
     return payloadHeaderSIMD16 + payloadBarySIMD16 + inputGRFSize;
 }
 
-bool PullConstantHeuristics::runOnModule( Module &M)
+bool PullConstantHeuristics::runOnModule(Module& M)
 {
     if (IGC_IS_FLAG_ENABLED(DisablePullConstantHeuristics))
     {

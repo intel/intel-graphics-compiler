@@ -41,7 +41,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace IGC
 {
-    typedef llvm::SetVector<llvm::GlobalVariable *> GlobalVariableSet;
+    typedef llvm::SetVector<llvm::GlobalVariable*> GlobalVariableSet;
 
     /// @brief  This pass resolves references to inline local address space variables
     class InlineLocalsResolution : public llvm::ModulePass
@@ -64,9 +64,9 @@ namespace IGC
 
         /// @brief  Main entry point.
         /// @param  M The destination module.
-        virtual bool runOnModule(llvm::Module &M) override;
+        virtual bool runOnModule(llvm::Module& M) override;
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.setPreservesCFG();
             AU.addRequired<MetaDataUtilsWrapper>();
@@ -90,10 +90,10 @@ namespace IGC
 
     private:
 
-        llvm::MapVector<llvm::Function *, GlobalVariableSet> m_FuncToVarsMap;
+        llvm::MapVector<llvm::Function*, GlobalVariableSet> m_FuncToVarsMap;
         std::map<llvm::Function*, unsigned int> m_FuncToMemPoolSizeMap;
         std::set<llvm::Function*> m_chkSet;
-        llvm::GlobalVariable *m_pGV;
+        llvm::GlobalVariable* m_pGV;
     };
 
 } // namespace IGC

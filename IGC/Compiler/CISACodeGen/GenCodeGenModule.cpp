@@ -68,7 +68,7 @@ IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(GenXFunctionGroupAnalysis)
 IGC_INITIALIZE_PASS_END(GenXCodeGenModule, "GenXCodeGenModule", "GenXCodeGenModule", false, false)
 
-llvm::ModulePass *IGC::createGenXCodeGenModulePass()
+llvm::ModulePass* IGC::createGenXCodeGenModulePass()
 {
     initializeGenXCodeGenModulePass(*PassRegistry::getPassRegistry());
     return new GenXCodeGenModule;
@@ -82,7 +82,7 @@ GenXCodeGenModule::GenXCodeGenModule()
 
 GenXCodeGenModule::~GenXCodeGenModule() {}
 
-void GenXCodeGenModule::getAnalysisUsage(AnalysisUsage &AU) const 
+void GenXCodeGenModule::getAnalysisUsage(AnalysisUsage& AU) const
 {
     AU.addRequired<MetaDataUtilsWrapper>();
     AU.addRequired<GenXFunctionGroupAnalysis>();
@@ -91,9 +91,9 @@ void GenXCodeGenModule::getAnalysisUsage(AnalysisUsage &AU) const
 }
 
 // Update cloned function's metadata.
-static inline void CloneFuncMetadata(IGCMD::MetaDataUtils *pM,
-                                     llvm::Function *ClonedF,
-                                     llvm::Function *F)
+static inline void CloneFuncMetadata(IGCMD::MetaDataUtils* pM,
+    llvm::Function* ClonedF,
+    llvm::Function* F)
 {
     using namespace IGC::IGCMD;
     auto Info = pM->getFunctionsInfoItem(F);
@@ -108,7 +108,7 @@ static inline void CloneFuncMetadata(IGCMD::MetaDataUtils *pM,
     // Copy explicit argument info, if any.
     unsigned i = 0;
     for (auto AI = Info->begin_ArgInfoList(), AE = Info->begin_ArgInfoList();
-         AI != AE; ++AI)
+        AI != AE; ++AI)
     {
         NewInfo->addArgInfoListItem(Info->getArgInfoListItem(i));
         i++;
@@ -117,8 +117,8 @@ static inline void CloneFuncMetadata(IGCMD::MetaDataUtils *pM,
     // Copy implicit argument info, if any.
     i = 0;
     for (auto AI = Info->begin_ImplicitArgInfoList(),
-         AE = Info->end_ImplicitArgInfoList();
-         AI != AE; ++AI) 
+        AE = Info->end_ImplicitArgInfoList();
+        AI != AE; ++AI)
     {
         NewInfo->addImplicitArgInfoListItem(Info->getImplicitArgInfoListItem(i));
         i++;
@@ -128,45 +128,45 @@ static inline void CloneFuncMetadata(IGCMD::MetaDataUtils *pM,
     pM->save(F->getContext());
 }
 
-Function *GenXCodeGenModule::cloneFunc(Function *F)
+Function* GenXCodeGenModule::cloneFunc(Function* F)
 {
     ValueToValueMapTy VMap;
 
-    Function *ClonedFunc = CloneFunction(F, VMap);  
+    Function* ClonedFunc = CloneFunction(F, VMap);
     //if the function is not added as part of clone, add it
     if (!F->getParent()->getFunction(ClonedFunc->getName()))
-    F->getParent()->getFunctionList().push_back(ClonedFunc);
+        F->getParent()->getFunctionList().push_back(ClonedFunc);
     CloneFuncMetadata(pMdUtils, ClonedFunc, F);
 
     // record function is cloned in debug-info
     {
         IF_DEBUG_INFO(bool full;)
             IF_DEBUG_INFO(bool lineOnly;)
-            IF_DEBUG_INFO(CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();)
+            IF_DEBUG_INFO(CodeGenContext * ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();)
             bool anyDebugInfo;
         anyDebugInfo = false;
         IF_DEBUG_INFO(anyDebugInfo = DebugMetadataInfo::hasAnyDebugInfo(ctx, full, lineOnly);)
 
 
-        if (anyDebugInfo)
-        {
-            auto modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-            if (modMD)
+            if (anyDebugInfo)
             {
-                auto funcIt = modMD->FuncMD.find(ClonedFunc);
-                if (funcIt != modMD->FuncMD.end())
+                auto modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+                if (modMD)
                 {
-                    funcIt->second.isCloned = true;
+                    auto funcIt = modMD->FuncMD.find(ClonedFunc);
+                    if (funcIt != modMD->FuncMD.end())
+                    {
+                        funcIt->second.isCloned = true;
+                    }
+                    else
+                    {
+                        IGC::FunctionMetaData fMD;
+                        fMD.isCloned = true;
+                        modMD->FuncMD.insert(std::make_pair(ClonedFunc, fMD));
+                    }
+                    IF_DEBUG_INFO(ClonedFunc->setName(DebugMetadataInfo::getUniqueFuncName(*F));)
                 }
-                else
-                {
-                    IGC::FunctionMetaData fMD;
-                    fMD.isCloned = true;
-                    modMD->FuncMD.insert(std::make_pair(ClonedFunc, fMD));
-                }
-                IF_DEBUG_INFO(ClonedFunc->setName(DebugMetadataInfo::getUniqueFuncName(*F));)
             }
-        }
     }
     return ClonedFunc;
 }
@@ -174,7 +174,7 @@ Function *GenXCodeGenModule::cloneFunc(Function *F)
 inline Function* getCallerFunc(Value* user)
 {
     Function* caller = nullptr;
-    if (CallInst* CI = dyn_cast<CallInst>(user))
+    if (CallInst * CI = dyn_cast<CallInst>(user))
     {
         caller = CI->getParent()->getParent();
     }
@@ -182,14 +182,14 @@ inline Function* getCallerFunc(Value* user)
     return caller;
 }
 
-void GenXCodeGenModule::processFunction(Function &F)
+void GenXCodeGenModule::processFunction(Function& F)
 {
     // force stack-call for self-recursion
     for (auto U : F.users())
     {
-        if (CallInst *CI = dyn_cast<CallInst>(U))
+        if (CallInst * CI = dyn_cast<CallInst>(U))
         {
-            Function *Caller = CI->getParent()->getParent();
+            Function* Caller = CI->getParent()->getParent();
             if (Caller == &F)
             {
                 F.addFnAttr("visaStackCall");
@@ -200,11 +200,11 @@ void GenXCodeGenModule::processFunction(Function &F)
 
     // See what FunctionGroups this Function is called from.
     SetVector<std::pair<FunctionGroup*, Function*>> CallerFGs;
-    for (auto U : F.users()) 
+    for (auto U : F.users())
     {
         Function* Caller = getCallerFunc(U);
-        FunctionGroup *FG = FGA->getGroup(Caller);
-        Function *SubGrpH = FGA->useStackCall(&F) ? (&F) : FGA->getSubGroupMap(Caller);
+        FunctionGroup* FG = FGA->getGroup(Caller);
+        Function* SubGrpH = FGA->useStackCall(&F) ? (&F) : FGA->getSubGroupMap(Caller);
         if (FG == nullptr || SubGrpH == nullptr)
             continue;
         CallerFGs.insert(std::make_pair(FG, SubGrpH));
@@ -223,17 +223,17 @@ void GenXCodeGenModule::processFunction(Function &F)
         {
             // clone the function, add to this function group
             auto FCloned = cloneFunc(&F);
-            Function *SubGrpH = FGA->useStackCall(&F) ? FCloned : FGPair.second;
+            Function* SubGrpH = FGA->useStackCall(&F) ? FCloned : FGPair.second;
             FGA->addToFunctionGroup(FCloned, FGPair.first, SubGrpH);
             Modified = true;
             // update the edge after clone, it can handle self-recursion
             for (auto UI = F.use_begin(), UE = F.use_end(); UI != UE; /*empty*/)
             {
                 // Increment iterator after setting U to change the use.
-                Use *U = &*UI++;
-                Function *Caller = cast<CallInst>(U->getUser())->getParent()->getParent();
-                FunctionGroup *InFG = FGA->getGroup(Caller);
-                Function *InSubGrpH = FGA->useStackCall(&F) ? FCloned : FGA->getSubGroupMap(Caller);
+                Use* U = &*UI++;
+                Function* Caller = cast<CallInst>(U->getUser())->getParent()->getParent();
+                FunctionGroup* InFG = FGA->getGroup(Caller);
+                Function* InSubGrpH = FGA->useStackCall(&F) ? FCloned : FGA->getSubGroupMap(Caller);
                 if (InFG == FGPair.first && InSubGrpH == SubGrpH)
                 {
                     *U = FCloned;
@@ -243,24 +243,24 @@ void GenXCodeGenModule::processFunction(Function &F)
     }
 }
 
-void GenXCodeGenModule::processSCC(std::vector<llvm::CallGraphNode *> *SCCNodes)
+void GenXCodeGenModule::processSCC(std::vector<llvm::CallGraphNode*>* SCCNodes)
 {
     // force stack-call for every function in SCC
-    for (CallGraphNode *Node : (*SCCNodes))
+    for (CallGraphNode* Node : (*SCCNodes))
     {
-        Function *F = Node->getFunction();
+        Function* F = Node->getFunction();
         F->addFnAttr("visaStackCall");
     }
 
     // See what FunctionGroups this SCC is called from.
     SetVector<FunctionGroup*> CallerFGs;
-    for (CallGraphNode *Node : (*SCCNodes))
+    for (CallGraphNode* Node : (*SCCNodes))
     {
-        Function *F = Node->getFunction();
+        Function* F = Node->getFunction();
         for (auto U : F->users())
         {
-            Function *Caller = getCallerFunc(U);
-            FunctionGroup *FG = FGA->getGroup(Caller);
+            Function* Caller = getCallerFunc(U);
+            FunctionGroup* FG = FGA->getGroup(Caller);
             if (FG == nullptr)
                 continue;
             CallerFGs.insert(FG);
@@ -272,9 +272,9 @@ void GenXCodeGenModule::processSCC(std::vector<llvm::CallGraphNode *> *SCCNodes)
     {
         if (FirstPair)
         {
-            for (CallGraphNode *Node : (*SCCNodes))
+            for (CallGraphNode* Node : (*SCCNodes))
             {
-                Function *F = Node->getFunction();
+                Function* F = Node->getFunction();
                 FGA->addToFunctionGroup(F, FG, F);
             }
             FirstPair = false;
@@ -283,9 +283,9 @@ void GenXCodeGenModule::processSCC(std::vector<llvm::CallGraphNode *> *SCCNodes)
         {
             // clone the functions in scc, add to this function group
             llvm::DenseMap<Function*, Function*> CloneMap;
-            for (CallGraphNode *Node : (*SCCNodes))
+            for (CallGraphNode* Node : (*SCCNodes))
             {
-                Function *F = Node->getFunction();
+                Function* F = Node->getFunction();
                 auto FCloned = cloneFunc(F);
                 FGA->addToFunctionGroup(FCloned, FG, FCloned);
                 CloneMap.insert(std::make_pair(F, FCloned));
@@ -293,15 +293,15 @@ void GenXCodeGenModule::processSCC(std::vector<llvm::CallGraphNode *> *SCCNodes)
             Modified = true;
             // update the call-edges for every function in SCC, 
             // move edges to the cloned SCC, including the recursion edge
-            for (CallGraphNode *Node : (*SCCNodes))
+            for (CallGraphNode* Node : (*SCCNodes))
             {
-                Function *F = Node->getFunction();
+                Function* F = Node->getFunction();
                 for (auto UI = F->use_begin(), UE = F->use_end(); UI != UE; /*empty*/)
                 {
                     // Increment iterator after setting U to change the use.
-                    Use *U = &*UI++;
-                    Function *Caller = cast<CallInst>(U->getUser())->getParent()->getParent();
-                    FunctionGroup *InFG = FGA->getGroup(Caller);
+                    Use* U = &*UI++;
+                    Function* Caller = cast<CallInst>(U->getUser())->getParent()->getParent();
+                    FunctionGroup* InFG = FGA->getGroup(Caller);
                     if (InFG == FG)
                     {
                         *U = CloneMap[F];
@@ -313,18 +313,18 @@ void GenXCodeGenModule::processSCC(std::vector<llvm::CallGraphNode *> *SCCNodes)
 }
 
 /// Deduce non-null argument attributes for subroutines.
-static bool DeduceNonNullAttribute(Module &M) 
+static bool DeduceNonNullAttribute(Module& M)
 {
     bool Modifided = false;
-    for (auto &F : M.getFunctionList())
+    for (auto& F : M.getFunctionList())
     {
         if (F.isDeclaration() || F.hasExternalLinkage() || F.hasAddressTaken())
             continue;
 
         bool Skip = false;
-        for (auto U : F.users()) 
+        for (auto U : F.users())
         {
-            if (!isa<CallInst>(U)) 
+            if (!isa<CallInst>(U))
             {
                 Skip = true;
                 break;
@@ -333,7 +333,7 @@ static bool DeduceNonNullAttribute(Module &M)
         if (Skip)
             continue;
 
-        for (auto &Arg : F.args()) 
+        for (auto& Arg : F.args())
         {
             // Only for used pointer arguments.
             if (Arg.use_empty() || !Arg.getType()->isPointerTy())
@@ -342,10 +342,10 @@ static bool DeduceNonNullAttribute(Module &M)
             // If all call sites are passing a non-null value to this argument, then
             // this argument cannot be a null ptr.
             bool NotNull = true;
-            for (auto U : F.users()) 
+            for (auto U : F.users())
             {
                 auto CI = cast<CallInst>(U);
-                Value *V = CI->getArgOperand(Arg.getArgNo());
+                Value* V = CI->getArgOperand(Arg.getArgNo());
                 auto DL = F.getParent()->getDataLayout();
                 if (!isKnownNonZero(V, DL))
                 {
@@ -363,7 +363,7 @@ static bool DeduceNonNullAttribute(Module &M)
     return Modifided;
 }
 
-bool GenXCodeGenModule::runOnModule(Module &M) 
+bool GenXCodeGenModule::runOnModule(Module& M)
 {
     FGA = &getAnalysis<GenXFunctionGroupAnalysis>();
 
@@ -372,22 +372,22 @@ bool GenXCodeGenModule::runOnModule(Module &M)
         return false;
 
     pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-    CallGraph &CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();
+    CallGraph& CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();
     FGA->setDefaultkernel(nullptr);
 
-    std::vector<std::vector<CallGraphNode *>*> SCCVec;
+    std::vector<std::vector<CallGraphNode*>*> SCCVec;
     for (auto I = scc_begin(&CG), IE = scc_end(&CG); I != IE; ++I)
     {
-        std::vector<CallGraphNode *> *SCCNodes = new std::vector<CallGraphNode *>((*I));
+        std::vector<CallGraphNode*>* SCCNodes = new std::vector<CallGraphNode*>((*I));
         SCCVec.push_back(SCCNodes);
     }
 
     for (auto I = SCCVec.rbegin(), IE = SCCVec.rend(); I != IE; ++I)
     {
-        std::vector<CallGraphNode *> *SCCNodes = (*I);
-        for (CallGraphNode *Node : (*SCCNodes)) 
+        std::vector<CallGraphNode*>* SCCNodes = (*I);
+        for (CallGraphNode* Node : (*SCCNodes))
         {
-            Function *F = Node->getFunction();
+            Function* F = Node->getFunction();
             if (F != nullptr && !F->isDeclaration())
             {
                 if (isEntryFunc(pMdUtils, F))
@@ -410,7 +410,7 @@ bool GenXCodeGenModule::runOnModule(Module &M)
                     // Mark caller group if it calls or uses this function
                     for (auto U : F->users())
                     {
-                        if (CallInst* CI = dyn_cast<CallInst>(U))
+                        if (CallInst * CI = dyn_cast<CallInst>(U))
                         {
                             Function* Caller = CI->getParent()->getParent();
                             FGA->getGroup(Caller)->m_hasExternFCall = true;
@@ -433,13 +433,13 @@ bool GenXCodeGenModule::runOnModule(Module &M)
 
     // By swapping, we sort the function list to ensure codegen order for
     // functions. This relies on llvm module pass manager's implementation detail.
-    SmallVector<Function *, 16> OrderedList;
-    for (auto GI = FGA->begin(), GE = FGA->end(); GI != GE; ++GI) 
+    SmallVector<Function*, 16> OrderedList;
+    for (auto GI = FGA->begin(), GE = FGA->end(); GI != GE; ++GI)
     {
         for (auto SubGI = (*GI)->Functions.begin(), SubGE = (*GI)->Functions.end();
             SubGI != SubGE; ++SubGI)
         {
-            for (auto FI = (*SubGI)->begin(), FE = (*SubGI)->end(); FI != FE; ++FI) 
+            for (auto FI = (*SubGI)->begin(), FE = (*SubGI)->end(); FI != FE; ++FI)
             {
                 OrderedList.push_back(*FI);
             }
@@ -450,10 +450,10 @@ bool GenXCodeGenModule::runOnModule(Module &M)
     //  Input L2 = [A, C, G, B, D, E, F] // Functions in the module
     // Output L2 = [A, B, C, D, E, G, F] // Ordered functions in the module
     assert(OrderedList.size() <= M.size() && "out of sync");
-    Function *CurF = &(*M.begin());
-    for (auto I = OrderedList.begin(), E = OrderedList.end(); I != E; ++I) 
+    Function* CurF = &(*M.begin());
+    for (auto I = OrderedList.begin(), E = OrderedList.end(); I != E; ++I)
     {
-        Function *F = *I;
+        Function* F = *I;
         if (CurF != F)
             // Move F before CurF. This just works See BasicBlock::moveBefore.
             // CurF remains the same for the next iteration.
@@ -486,9 +486,9 @@ IGC_INITIALIZE_PASS_BEGIN(GenXFunctionGroupAnalysis, "GenXFunctionGroupAnalysis"
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_END(GenXFunctionGroupAnalysis, "GenXFunctionGroupAnalysis", "GenXFunctionGroupAnalysis", false, true)
 
-llvm::ImmutablePass *IGC::createGenXFunctionGroupAnalysisPass() {
-  initializeGenXFunctionGroupAnalysisPass(*PassRegistry::getPassRegistry());
-  return new GenXFunctionGroupAnalysis;
+llvm::ImmutablePass* IGC::createGenXFunctionGroupAnalysisPass() {
+    initializeGenXFunctionGroupAnalysisPass(*PassRegistry::getPassRegistry());
+    return new GenXFunctionGroupAnalysis;
 }
 
 GenXFunctionGroupAnalysis::GenXFunctionGroupAnalysis()
@@ -496,39 +496,39 @@ GenXFunctionGroupAnalysis::GenXFunctionGroupAnalysis()
     initializeGenXFunctionGroupAnalysisPass(*PassRegistry::getPassRegistry());
 }
 
-void GenXFunctionGroupAnalysis::getAnalysisUsage(AnalysisUsage &AU) const {
+void GenXFunctionGroupAnalysis::getAnalysisUsage(AnalysisUsage& AU) const {
     AU.addRequired<MetaDataUtilsWrapper>();
     AU.setPreservesAll();
 }
 
-bool GenXFunctionGroupAnalysis::verify() 
+bool GenXFunctionGroupAnalysis::verify()
 {
-    for (auto GI = begin(), GE = end(); GI != GE; ++GI) 
+    for (auto GI = begin(), GE = end(); GI != GE; ++GI)
     {
         for (auto SubGI = (*GI)->Functions.begin(), SubGE = (*GI)->Functions.end();
-            SubGI != SubGE; ++SubGI) 
+            SubGI != SubGE; ++SubGI)
         {
-            for (auto FI = (*SubGI)->begin(), FE = (*SubGI)->end(); FI != FE; ++FI) 
+            for (auto FI = (*SubGI)->begin(), FE = (*SubGI)->end(); FI != FE; ++FI)
             {
-                Function *F = *FI;
+                Function* F = *FI;
                 if (F->hasFnAttribute("IndirectlyCalled"))
                 {
                     continue;
                 }
                 // If F is an unused non-kernel function, although it should have been
                 // deleted, that is fine.
-                for (auto U : F->users()) 
+                for (auto U : F->users())
                 {
-                    Function *Caller = getCallerFunc(U);
-                    FunctionGroup *CallerFG = getGroup(Caller);
+                    Function* Caller = getCallerFunc(U);
+                    FunctionGroup* CallerFG = getGroup(Caller);
                     // Caller's FG should be the same as FG. Otherwise, something is wrong.
-                    if (CallerFG != (*GI)) 
+                    if (CallerFG != (*GI))
                     {
                         printf("%s\n", F->getName().data());
                         printf("%s\n", Caller->getName().data());
                         return false;
                     }
-                    Function *SubGrpH = getSubGroupMap(F);
+                    Function* SubGrpH = getSubGroupMap(F);
                     // Caller's sub-group header must be the first element of the sub-vector
                     if (SubGrpH != (*SubGI)->front())
                         return false;
@@ -540,12 +540,12 @@ bool GenXFunctionGroupAnalysis::verify()
     return true;
 }
 
-bool GenXFunctionGroupAnalysis::useStackCall(llvm::Function *F)
+bool GenXFunctionGroupAnalysis::useStackCall(llvm::Function* F)
 {
     return (F->hasFnAttribute("visaStackCall"));
 }
 
-bool GenXFunctionGroupAnalysis::rebuild(llvm::Module *Mod) {
+bool GenXFunctionGroupAnalysis::rebuild(llvm::Module* Mod) {
     clear();
     auto pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
 
@@ -555,22 +555,22 @@ bool GenXFunctionGroupAnalysis::rebuild(llvm::Module *Mod) {
     // from its group. It is rather cheap to build and verify when there is no
     // subroutine in this module.
     //
-    FunctionGroup *CurFG = nullptr;
+    FunctionGroup* CurFG = nullptr;
     Function* CurSubGrpH = nullptr;
-    for (auto I = Mod->begin(), E = Mod->end(); I != E; ++I) 
+    for (auto I = Mod->begin(), E = Mod->end(); I != E; ++I)
     {
-        Function *F = &(*I);
+        Function* F = &(*I);
 
         // Skip declarations.
         if (F->empty())
             continue;
 
-        if (isEntryFunc(pMdUtils, F)) 
+        if (isEntryFunc(pMdUtils, F))
         {
             CurFG = createFunctionGroup(F);
             CurSubGrpH = F;
         }
-        else 
+        else
         {
             if (useStackCall(F))
                 CurSubGrpH = F;
@@ -585,7 +585,7 @@ bool GenXFunctionGroupAnalysis::rebuild(llvm::Module *Mod) {
     }
 
     // Verification.
-    if (!verify()) 
+    if (!verify())
     {
         clear();
         return false;
@@ -596,10 +596,10 @@ bool GenXFunctionGroupAnalysis::rebuild(llvm::Module *Mod) {
     return true;
 }
 
-void GenXFunctionGroupAnalysis::replaceEntryFunc(Function *OF, Function *NF)
+void GenXFunctionGroupAnalysis::replaceEntryFunc(Function* OF, Function* NF)
 {
     auto groupMapIter = GroupMap.find(OF);
-    FunctionGroup *FG = groupMapIter->second;
+    FunctionGroup* FG = groupMapIter->second;
     GroupMap.erase(groupMapIter);
     GroupMap.insert(std::make_pair(NF, FG));
 
@@ -614,9 +614,9 @@ void GenXFunctionGroupAnalysis::replaceEntryFunc(Function *OF, Function *NF)
     }
     DenseMap<Function*, Function*>::iterator SGII, SGIE;
     for (SGII = SubGroupMap.begin(), SGIE = SubGroupMap.end();
-         SGII != SGIE; ++SGII)
+        SGII != SGIE; ++SGII)
     {
-        Function *SGH = SGII->second;
+        Function* SGH = SGII->second;
         if (SGH == OF)
         {
             SGII->second = NF;
@@ -629,12 +629,12 @@ void GenXFunctionGroupAnalysis::clear()
     GroupMap.clear();
     SubGroupMap.clear();
     for (auto I = begin(), E = end(); I != E; ++I)
-        delete *I;
+        delete* I;
     Groups.clear();
     M = nullptr;
 }
 
-FunctionGroup *GenXFunctionGroupAnalysis::getGroup(Function *F)
+FunctionGroup* GenXFunctionGroupAnalysis::getGroup(Function* F)
 {
     auto I = GroupMap.find(F);
     if (I == GroupMap.end())
@@ -642,7 +642,7 @@ FunctionGroup *GenXFunctionGroupAnalysis::getGroup(Function *F)
     return I->second;
 }
 
-FunctionGroup *GenXFunctionGroupAnalysis::getGroupForHead(Function *F)
+FunctionGroup* GenXFunctionGroupAnalysis::getGroupForHead(Function* F)
 {
     auto FG = getGroup(F);
     if (FG->getHead() == F)
@@ -652,16 +652,16 @@ FunctionGroup *GenXFunctionGroupAnalysis::getGroupForHead(Function *F)
     return nullptr;
 }
 
-void GenXFunctionGroupAnalysis::addToFunctionGroup(Function *F, 
-                                                   FunctionGroup *FG,
-                                                   Function *SubGrpH)
+void GenXFunctionGroupAnalysis::addToFunctionGroup(Function* F,
+    FunctionGroup* FG,
+    Function* SubGrpH)
 {
     assert(!GroupMap[F] && "Function already attached to FunctionGroup");
     GroupMap[F] = FG;
     setSubGroupMap(F, SubGrpH);
-    if (F == SubGrpH) 
+    if (F == SubGrpH)
     {
-        auto *SubGrp = new llvm::SmallVector<llvm::AssertingVH<llvm::Function>, 8>();
+        auto* SubGrp = new llvm::SmallVector<llvm::AssertingVH<llvm::Function>, 8>();
         SubGrp->push_back(F);
         FG->Functions.push_back(SubGrp);
     }
@@ -669,7 +669,7 @@ void GenXFunctionGroupAnalysis::addToFunctionGroup(Function *F,
     {
         for (auto I = FG->Functions.begin(), E = FG->Functions.end(); I != E; I++)
         {
-            auto *SubGrp = (*I);
+            auto* SubGrp = (*I);
             if (SubGrp->front() == SubGrpH)
             {
                 SubGrp->push_back(F);
@@ -677,10 +677,10 @@ void GenXFunctionGroupAnalysis::addToFunctionGroup(Function *F,
             }
         }
         assert(false);
-    }  
+    }
 }
 
-FunctionGroup *GenXFunctionGroupAnalysis::createFunctionGroup(Function *F)
+FunctionGroup* GenXFunctionGroupAnalysis::createFunctionGroup(Function* F)
 {
     auto FG = new FunctionGroup;
     Groups.push_back(FG);
@@ -688,26 +688,26 @@ FunctionGroup *GenXFunctionGroupAnalysis::createFunctionGroup(Function *F)
     return FG;
 }
 
-void GenXFunctionGroupAnalysis::print(raw_ostream &os) 
+void GenXFunctionGroupAnalysis::print(raw_ostream& os)
 {
-    if (!M)     
+    if (!M)
     {
         os << "(nil)\n";
         return;
     }
 
     unsigned TotalSize = 0;
-    for (auto GI = begin(), GE = end(); GI != GE; ++GI) 
+    for (auto GI = begin(), GE = end(); GI != GE; ++GI)
     {
         for (auto SubGI = (*GI)->Functions.begin(), SubGE = (*GI)->Functions.end();
-            SubGI != SubGE; ++SubGI) 
+            SubGI != SubGE; ++SubGI)
         {
-            for (auto FI = (*SubGI)->begin(), FE = (*SubGI)->end(); FI != FE; ++FI) 
+            for (auto FI = (*SubGI)->begin(), FE = (*SubGI)->end(); FI != FE; ++FI)
             {
-                Function *F = *FI;
+                Function* F = *FI;
                 unsigned Size = std::accumulate(
                     F->begin(), F->end(), 0,
-                    [](unsigned s, BasicBlock &BB) { return (unsigned)BB.size() + s; });
+                    [](unsigned s, BasicBlock& BB) { return (unsigned)BB.size() + s; });
                 TotalSize += Size;
                 if (F == (*GI)->getHead())
                     os << "K: " << F->getName() << " [" << Size << "]\n";
@@ -729,28 +729,28 @@ void GenXFunctionGroupAnalysis::dump() {
 
 namespace {
 
-/// \brief Custom inliner for subroutines.
-class SubroutineInliner : public LegacyInlinerBase {
-    EstimateFunctionSize *FSA;
+    /// \brief Custom inliner for subroutines.
+    class SubroutineInliner : public LegacyInlinerBase {
+        EstimateFunctionSize* FSA;
 
-public:
-    static char ID; // Pass identification, replacement for typeid
+    public:
+        static char ID; // Pass identification, replacement for typeid
 
-    // Use extremely low threshold.
-    SubroutineInliner()
-      : LegacyInlinerBase(ID, /*InsertLifetime*/ false),
-        FSA(nullptr) {}
+        // Use extremely low threshold.
+        SubroutineInliner()
+            : LegacyInlinerBase(ID, /*InsertLifetime*/ false),
+            FSA(nullptr) {}
 
-    InlineCost getInlineCost(CallSite CS) override;
+        InlineCost getInlineCost(CallSite CS) override;
 
-    void getAnalysisUsage(AnalysisUsage &AU) const override;
-    bool runOnSCC(CallGraphSCC &SCC) override;
+        void getAnalysisUsage(AnalysisUsage& AU) const override;
+        bool runOnSCC(CallGraphSCC& SCC) override;
 
-    using llvm::Pass::doFinalization;
-    bool doFinalization(CallGraph &CG) override {
-        return removeDeadFunctions(CG);
-    }
-};
+        using llvm::Pass::doFinalization;
+        bool doFinalization(CallGraph& CG) override {
+            return removeDeadFunctions(CG);
+        }
+    };
 
 } // namespace
 
@@ -761,30 +761,30 @@ IGC_INITIALIZE_PASS_END(SubroutineInliner, "SubroutineInliner", "SubroutineInlin
 
 char SubroutineInliner::ID = 0;
 
-void SubroutineInliner::getAnalysisUsage(AnalysisUsage &AU) const 
+void SubroutineInliner::getAnalysisUsage(AnalysisUsage& AU) const
 {
     AU.addRequired<EstimateFunctionSize>();
     AU.addRequired<CodeGenContextWrapper>();
     LegacyInlinerBase::getAnalysisUsage(AU);
 }
 
-bool SubroutineInliner::runOnSCC(CallGraphSCC &SCC) 
+bool SubroutineInliner::runOnSCC(CallGraphSCC& SCC)
 {
-    FSA = &getAnalysis<EstimateFunctionSize>(); 
+    FSA = &getAnalysis<EstimateFunctionSize>();
     return LegacyInlinerBase::runOnSCC(SCC);
 }
 
 /// \brief Get the inline cost for the subroutine-inliner.
 ///
-InlineCost SubroutineInliner::getInlineCost(CallSite CS) 
+InlineCost SubroutineInliner::getInlineCost(CallSite CS)
 {
-    Function *Callee = CS.getCalledFunction();
-    Function *Caller = CS.getCaller();
+    Function* Callee = CS.getCalledFunction();
+    Function* Caller = CS.getCaller();
     CodeGenContext* pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
     // Inline direct calls to functions with always inline attribute or a function
     // whose estimated size is under certain predefined limit.
-    if (Callee && !Callee->isDeclaration() && isInlineViable(*Callee)) 
+    if (Callee && !Callee->isDeclaration() && isInlineViable(*Callee))
     {
         if (CS.hasFnAttr(llvm::Attribute::AlwaysInline))
             return IGCLLVM::InlineCost::getAlways();
@@ -804,7 +804,7 @@ InlineCost SubroutineInliner::getInlineCost(CallSite CS)
             return IGCLLVM::InlineCost::getNever();
 
         if (Callee->hasFnAttribute("KMPLOCK"))
-          return IGCLLVM::InlineCost::getNever();
+            return IGCLLVM::InlineCost::getNever();
 
         if (Callee->hasFnAttribute("UserSubroutine") &&
             Callee->hasFnAttribute(llvm::Attribute::NoInline))
@@ -816,7 +816,7 @@ InlineCost SubroutineInliner::getInlineCost(CallSite CS)
             std::size_t Threshold = IGC_GET_FLAG_VALUE(SubroutineInlinerThreshold);
 
             // A single block function containing only a few instructions.
-            auto isTrivialCall = [](const llvm::Function *F) {
+            auto isTrivialCall = [](const llvm::Function* F) {
                 if (!F->empty() && F->size() == 1)
                     return F->front().size() <= 5;
                 return false;
@@ -824,14 +824,14 @@ InlineCost SubroutineInliner::getInlineCost(CallSite CS)
 
             if (FSA->getExpandedSize(Caller) <= Threshold ||
                 FSA->onlyCalledOnce(Callee) || isTrivialCall(Callee))
-              return IGCLLVM::InlineCost::getAlways();
+                return IGCLLVM::InlineCost::getAlways();
         }
     }
 
     return IGCLLVM::InlineCost::getNever();
 }
 
-Pass *IGC::createSubroutineInlinerPass() 
+Pass* IGC::createSubroutineInlinerPass()
 {
     initializeSubroutineInlinerPass(*PassRegistry::getPassRegistry());
     return new SubroutineInliner();

@@ -64,13 +64,13 @@ LowPrecisionOpt::LowPrecisionOpt() : FunctionPass(ID)
     func_llvm_floor_f32 = nullptr;
 }
 
-bool LowPrecisionOpt::runOnFunction(Function &F)
+bool LowPrecisionOpt::runOnFunction(Function& F)
 {
     m_changed = false;
     CodeGenContextWrapper* pCtxWrapper = &getAnalysis<CodeGenContextWrapper>();
     CodeGenContext* ctx = pCtxWrapper->getCodeGenContext();
 
-    MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
 
     if (pMdUtils->findFunctionsInfoItem(&F) == pMdUtils->end_FunctionsInfo())
     {
@@ -98,9 +98,9 @@ bool LowPrecisionOpt::runOnFunction(Function &F)
     return m_changed;
 }
 
-void LowPrecisionOpt::visitFPExtInst(llvm::FPExtInst &I)
+void LowPrecisionOpt::visitFPExtInst(llvm::FPExtInst& I)
 {
-    if(!m_simplifyAlu)
+    if (!m_simplifyAlu)
     {
         return;
     }
@@ -115,10 +115,10 @@ void LowPrecisionOpt::visitFPExtInst(llvm::FPExtInst &I)
             I.eraseFromParent();
             m_changed = true;
         }
-        else if (callInst &&  callInst->hasOneUse())
+        else if (callInst && callInst->hasOneUse())
         {
             GenISAIntrinsic::ID ID = callInst->getIntrinsicID();
-            if(ID == GenISAIntrinsic::GenISA_DCL_ShaderInputVec || ID == GenISAIntrinsic::GenISA_DCL_inputVec)
+            if (ID == GenISAIntrinsic::GenISA_DCL_ShaderInputVec || ID == GenISAIntrinsic::GenISA_DCL_inputVec)
             {
                 /*
                 Catches a pattern where we have a lowp input, then extend it back up. This
@@ -148,9 +148,9 @@ void LowPrecisionOpt::visitFPExtInst(llvm::FPExtInst &I)
     }
 }
 
-void LowPrecisionOpt::visitFPTruncInst(llvm::FPTruncInst &I)
+void LowPrecisionOpt::visitFPTruncInst(llvm::FPTruncInst& I)
 {
-    if(!m_simplifyAlu)
+    if (!m_simplifyAlu)
     {
         return;
     }
@@ -172,21 +172,21 @@ void LowPrecisionOpt::visitFPTruncInst(llvm::FPTruncInst &I)
 
 // If all the uses of a sampler instruction are converted to a different floating point type
 // try to propagate the type in the sampler
-bool LowPrecisionOpt::propagateSamplerType(llvm::GenIntrinsicInst &I)
+bool LowPrecisionOpt::propagateSamplerType(llvm::GenIntrinsicInst& I)
 {
     if (IGC_IS_FLAG_DISABLED(UpConvertF16Sampler) && I.getType()->getVectorElementType()->isHalfTy())
     {
         return false;
     }
 
-    IGC::CodeGenContext &CGContext = *getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    IGC::CodeGenContext& CGContext = *getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     if (!CGContext.platform.supportFP16())
     {
         return false;
     }
-    
+
     Type* eltTy = I.getType()->getVectorElementType();
-    Type *newDstType = nullptr;
+    Type* newDstType = nullptr;
     if (eltTy->isFloatingPointTy())
     {
         // check that all uses are extractelement followed by fpext
@@ -302,7 +302,7 @@ bool LowPrecisionOpt::propagateSamplerType(llvm::GenIntrinsicInst &I)
 
     for (auto use = I.user_begin(); use != I.user_end(); ++use)
     {
-        ExtractElementInst*  extractElt = cast<ExtractElementInst>(*use);
+        ExtractElementInst* extractElt = cast<ExtractElementInst>(*use);
         m_builder->SetInsertPoint(extractElt);
 
         Value* extractUse = *extractElt->user_begin();
@@ -329,9 +329,9 @@ bool LowPrecisionOpt::propagateSamplerType(llvm::GenIntrinsicInst &I)
     return true;
 }
 
-void LowPrecisionOpt::visitIntrinsicInst(llvm::IntrinsicInst &I)
+void LowPrecisionOpt::visitIntrinsicInst(llvm::IntrinsicInst& I)
 {
-    if(!m_simplifyAlu)
+    if (!m_simplifyAlu)
     {
         return;
     }
@@ -384,9 +384,9 @@ void LowPrecisionOpt::visitIntrinsicInst(llvm::IntrinsicInst &I)
 }
 
 /*FP16SamplerOptimization*/
-void LowPrecisionOpt::visitCallInst(CallInst &I)
+void LowPrecisionOpt::visitCallInst(CallInst& I)
 {
-    if(!m_changeSample)
+    if (!m_changeSample)
     {
         return;
     }

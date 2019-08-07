@@ -62,7 +62,7 @@ namespace IGC
         // Constructs a wrapper to the given MetaDataUtils instance.
         // 
         // MetaDataUtilsWrapper will NOT be the owner of the MetaDataUtils.
-        MetaDataUtilsWrapper(IGCMD::MetaDataUtils *pMdUtils, ModuleMetaData *moduleMD = nullptr);
+        MetaDataUtilsWrapper(IGCMD::MetaDataUtils* pMdUtils, ModuleMetaData* moduleMD = nullptr);
 
         ~MetaDataUtilsWrapper();
 
@@ -75,8 +75,8 @@ namespace IGC
         }
 
     private:
-        IGCMD::MetaDataUtils *m_pMdUtils;
-        IGC::ModuleMetaData *modMD;
+        IGCMD::MetaDataUtils* m_pMdUtils;
+        IGC::ModuleMetaData* modMD;
         bool m_isUtilsOwner;
 
     };

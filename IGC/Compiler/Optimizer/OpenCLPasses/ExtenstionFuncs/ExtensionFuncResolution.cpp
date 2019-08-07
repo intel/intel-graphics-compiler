@@ -53,7 +53,7 @@ ExtensionFuncsResolution::ExtensionFuncsResolution() : FunctionPass(ID), m_impli
     initializeExtensionFuncsResolutionPass(*PassRegistry::getPassRegistry());
 }
 
-bool ExtensionFuncsResolution::runOnFunction(Function &F)
+bool ExtensionFuncsResolution::runOnFunction(Function& F)
 {
     m_changed = false;
     m_implicitArgs = ImplicitArgs(F, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils());
@@ -61,7 +61,7 @@ bool ExtensionFuncsResolution::runOnFunction(Function &F)
     return m_changed;
 }
 
-void ExtensionFuncsResolution::visitCallInst(CallInst &CI)
+void ExtensionFuncsResolution::visitCallInst(CallInst& CI)
 {
     if (!CI.getCalledFunction())
     {
@@ -70,24 +70,24 @@ void ExtensionFuncsResolution::visitCallInst(CallInst &CI)
 
     StringRef funcName = CI.getCalledFunction()->getName();
     Function& F = *(CI.getParent()->getParent());
-    
+
     ImplicitArg::ArgType argType;
-    if( funcName.equals(ExtensionFuncsAnalysis::VME_MB_BLOCK_TYPE) )
+    if (funcName.equals(ExtensionFuncsAnalysis::VME_MB_BLOCK_TYPE))
     {
         argType = ImplicitArg::VME_MB_BLOCK_TYPE;
     }
-    else if( funcName.equals(ExtensionFuncsAnalysis::VME_SUBPIXEL_MODE) )
+    else if (funcName.equals(ExtensionFuncsAnalysis::VME_SUBPIXEL_MODE))
     {
         argType = ImplicitArg::VME_SUBPIXEL_MODE;
     }
-    else if( funcName.equals(ExtensionFuncsAnalysis::VME_SAD_ADJUST_MODE) )
+    else if (funcName.equals(ExtensionFuncsAnalysis::VME_SAD_ADJUST_MODE))
     {
         argType = ImplicitArg::VME_SAD_ADJUST_MODE;
     }
-    else if( funcName.equals(ExtensionFuncsAnalysis::VME_SEARCH_PATH_TYPE) )
+    else if (funcName.equals(ExtensionFuncsAnalysis::VME_SEARCH_PATH_TYPE))
     {
         argType = ImplicitArg::VME_SEARCH_PATH_TYPE;
-    } 
+    }
     else if (funcName.startswith(ExtensionFuncsAnalysis::VME_HELPER_GET_HANDLE)) {
         // Load from the opaque vme pointer and return the a vector with values.
         assert(CI.getNumArgOperands() == 1);

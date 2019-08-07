@@ -65,11 +65,11 @@ namespace IGC
 
         /// @brief  Main entry point.
         /// @param  M The destination module.
-        virtual bool runOnModule(llvm::Module &M) override;
+        virtual bool runOnModule(llvm::Module& M) override;
 
     protected:
 
-        bool runOnFunction(llvm::Function &F);
+        bool runOnFunction(llvm::Function& F);
     };
 
 } // namespace IGC

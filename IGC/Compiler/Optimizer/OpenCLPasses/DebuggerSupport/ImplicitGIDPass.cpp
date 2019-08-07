@@ -98,7 +98,7 @@ bool ImplicitGlobalId::runOnFunction(Function& F)
 }
 
 void ImplicitGlobalId::runOnBasicBlock(llvm::AllocaInst* alloca0, llvm::AllocaInst* alloca1, llvm::AllocaInst* alloca2,
-    llvm::Instruction *insertBefore, GlobalOrLocal wi)
+    llvm::Instruction* insertBefore, GlobalOrLocal wi)
 {
     IRBuilder<> B(insertBefore);
     // **********************************************************************
@@ -107,7 +107,7 @@ void ImplicitGlobalId::runOnBasicBlock(llvm::AllocaInst* alloca0, llvm::AllocaIn
     B.SetCurrentDebugLocation(DebugLoc());
     // **********************************************************************
 
-    Value *id_at_dim = CreateGetId(B, wi);
+    Value* id_at_dim = CreateGetId(B, wi);
 
     std::string name = "gid";
     if (wi == GlobalOrLocal::Local)
@@ -118,7 +118,7 @@ void ImplicitGlobalId::runOnBasicBlock(llvm::AllocaInst* alloca0, llvm::AllocaIn
     {
         name = "grid";
     }
-    
+
     const uint64_t dims[] = { 0, 1, 2 };
     auto val0 = B.CreateExtractElement(id_at_dim, dims[0], Twine(name) + Twine(dims[0]));
     auto val1 = B.CreateExtractElement(id_at_dim, dims[1], Twine(name) + Twine(dims[1]));
@@ -136,7 +136,7 @@ void ImplicitGlobalId::insertComputeIds(Function* pFunc)
     BasicBlock& entry_block = pFunc->getEntryBlock();
     Instruction* insert_before = &(entry_block.front());
 
-    assert( insert_before && "There is no instruction in the current basic block!" );
+    assert(insert_before && "There is no instruction in the current basic block!");
 
     // Prepare to create debug metadata for implicit gid variables
     //
@@ -147,7 +147,7 @@ void ImplicitGlobalId::insertComputeIds(Function* pFunc)
         return;
 
     llvm::DIType* gid_di_type = getOrCreateIntDIType();
-    AllocaInst *gid_alloca[3];
+    AllocaInst* gid_alloca[3];
     SmallVector<uint64_t, 1> NewDIExpr;
     for (unsigned i = 0; i < 3; ++i)
     {
@@ -165,7 +165,7 @@ void ImplicitGlobalId::insertComputeIds(Function* pFunc)
 
     // Similar code for local id
     llvm::DIType* lid_di_type = getOrCreateIntDIType();
-    AllocaInst *lid_alloca[3];
+    AllocaInst* lid_alloca[3];
     for (unsigned i = 0; i < 3; ++i)
     {
         // Create implicit local variables to hold the gids
@@ -176,13 +176,13 @@ void ImplicitGlobalId::insertComputeIds(Function* pFunc)
         llvm::DILocalVariable* var = m_pDIB->createAutoVariable(scope, lid_alloca[i]->getName(), nullptr,
             1, lid_di_type);
 
-        m_pDIB->insertDeclare(lid_alloca[i], var, m_pDIB->createExpression(NewDIExpr), loc.get() , insert_before);
+        m_pDIB->insertDeclare(lid_alloca[i], var, m_pDIB->createExpression(NewDIExpr), loc.get(), insert_before);
     }
     runOnBasicBlock(lid_alloca[0], lid_alloca[1], lid_alloca[2], insert_before, GlobalOrLocal::Local);
 
     // Similar code for work item id
     llvm::DIType* grid_di_type = getOrCreateIntDIType();
-    AllocaInst *grid_alloca[3];
+    AllocaInst* grid_alloca[3];
     for (unsigned i = 0; i < 3; ++i)
     {
         // Create implicit local variables to hold the work item ids
@@ -205,7 +205,7 @@ bool ImplicitGlobalId::getBBScope(const BasicBlock& BB, llvm::DIScope*& scope_ou
         if (!loc)
             continue;
         auto scope = loc.getScope();
-        if (llvm::isa<llvm::DILexicalBlock>(scope) || 
+        if (llvm::isa<llvm::DILexicalBlock>(scope) ||
             llvm::isa<DISubprogram>(scope))
         {
             scope_out = llvm::cast<llvm::DIScope>(scope);
@@ -234,7 +234,7 @@ llvm::DIType* ImplicitGlobalId::getOrCreateIntDIType()
     return m_pDIB->createBasicType(typeName, m_uiSizeT, dwarf::DW_ATE_signed);
 }
 
-Value* ImplicitGlobalId::CreateGetId(IRBuilder<> &B, GlobalOrLocal wi)
+Value* ImplicitGlobalId::CreateGetId(IRBuilder<>& B, GlobalOrLocal wi)
 {
     const char dimChr = '0';
     const std::string nameCall = std::string("globalId");
@@ -258,13 +258,13 @@ Value* ImplicitGlobalId::CreateGetId(IRBuilder<> &B, GlobalOrLocal wi)
     {
         //Create one
         // Create parameters and return values
-        Type *pResult = VectorType::get(IntegerType::get(m_pModule->getContext(), m_uiSizeT), 3);
+        Type* pResult = VectorType::get(IntegerType::get(m_pModule->getContext(), m_uiSizeT), 3);
         std::vector<Type*> funcTyArgs;
 
         // Create function declaration
-        FunctionType *pFuncTy = FunctionType::get(pResult, funcTyArgs, false);
+        FunctionType* pFuncTy = FunctionType::get(pResult, funcTyArgs, false);
         assert(pFuncTy && "Failed to create new function type");
-        Function *pNewFunc = Function::Create(pFuncTy, GlobalValue::ExternalLinkage, nameFunc, m_pModule);
+        Function* pNewFunc = Function::Create(pFuncTy, GlobalValue::ExternalLinkage, nameFunc, m_pModule);
         assert(pNewFunc && "Failed to create new function declaration");
 
         // Set function attributes

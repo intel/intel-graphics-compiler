@@ -37,7 +37,7 @@ namespace llvm
         static char ID;
         DummyPass();
     };
-    
+
     // This implementation allows us to define our own costs for the GenIntrinsics
     // Did not use BasicTTIImplBase because the overloaded constructors have TragetMachine as an argument, 
     // so I inherited from its parent which has only DL as its arguments
@@ -47,33 +47,33 @@ namespace llvm
         typedef TargetTransformInfo TTI;
         friend BaseT;
         IGC::CodeGenContext* ctx;
-        DummyPass *dummyPass;
-     public:
-         GenIntrinsicsTTIImpl(IGC::CodeGenContext *pCtx, DummyPass *pDummyPass) :
-             BaseT(pCtx->getModule()->getDataLayout()), ctx(pCtx) {
-             dummyPass = pDummyPass;
-         }
+        DummyPass* dummyPass;
+    public:
+        GenIntrinsicsTTIImpl(IGC::CodeGenContext* pCtx, DummyPass* pDummyPass) :
+            BaseT(pCtx->getModule()->getDataLayout()), ctx(pCtx) {
+            dummyPass = pDummyPass;
+        }
 
-         bool shouldBuildLookupTables();
+        bool shouldBuildLookupTables();
 
-         bool isLoweredToCall(const Function *F);
+        bool isLoweredToCall(const Function* F);
 
-         void *getAdjustedAnalysisPointer(const void *ID);
+        void* getAdjustedAnalysisPointer(const void* ID);
 
-         void getUnrollingPreferences(Loop *L,
+        void getUnrollingPreferences(Loop* L,
 #if LLVM_VERSION_MAJOR >= 7
-         ScalarEvolution &SE, 
+            ScalarEvolution & SE,
 #endif
-         TTI::UnrollingPreferences &UP);
+            TTI::UnrollingPreferences & UP);
 
-         bool isProfitableToHoist(Instruction *I);
+        bool isProfitableToHoist(Instruction* I);
 
-         using BaseT::getCallCost;
-         unsigned getCallCost(const Function *F, ArrayRef<const Value *> Args
+        using BaseT::getCallCost;
+        unsigned getCallCost(const Function* F, ArrayRef<const Value*> Args
 #if LLVM_VERSION_MAJOR >= 9
-         , const User *U
+            , const User * U
 #endif
-         );
+        );
     };
 
 }

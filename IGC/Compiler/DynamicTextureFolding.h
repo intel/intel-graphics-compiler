@@ -51,16 +51,16 @@ namespace IGC
         {
             return "Dynamic Texture Folding";
         }
-        virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.addRequired<CodeGenContextWrapper>();
         }
 
-        virtual bool runOnFunction(llvm::Function &F) override;
-        void visitCallInst(llvm::CallInst &I);
+        virtual bool runOnFunction(llvm::Function& F) override;
+        void visitCallInst(llvm::CallInst& I);
 
     private:
-        void FoldSingleTextureValue(llvm::CallInst &I);
+        void FoldSingleTextureValue(llvm::CallInst& I);
     };
 }
 

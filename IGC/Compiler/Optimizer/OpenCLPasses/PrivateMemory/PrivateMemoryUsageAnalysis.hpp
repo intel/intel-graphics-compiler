@@ -55,7 +55,7 @@ namespace IGC
             return "PrivateMemoryUsageAnalysis";
         }
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.addRequired<MetaDataUtilsWrapper>();
             AU.addRequired<CodeGenContextWrapper>();
@@ -66,26 +66,26 @@ namespace IGC
         ///         analyzes them and checks if the functions use private memory.
         ///         If so, private base implicit argument is added to the implicit arguments of the function
         /// @param  M The destination module.
-        virtual bool runOnModule(llvm::Module &M) override;
+        virtual bool runOnModule(llvm::Module& M) override;
 
         /// @brief  Alloca instructions visitor.
         ///         Analyzes if there are private memory allocation.
         /// @param  AI The alloca instruction.
-        void visitAllocaInst(llvm::AllocaInst &AI);
+        void visitAllocaInst(llvm::AllocaInst& AI);
 
         /// @brief  BinaryOperator instructions visitor.
         ///         Analyzes if there are private memory allocation.
         /// @param  I The binary op
         void visitBinaryOperator(llvm::BinaryOperator& I);
 
-        void visitCallInst(llvm::CallInst &CI);
+        void visitCallInst(llvm::CallInst& CI);
 
     private:
         /// @brief  Function entry point.
         ///         Finds all alloca instructions in this function, analyzes them and adds 
         ///         private base implicit argument if needed.
         /// @param  F The destination function.
-        bool runOnFunction(llvm::Function &F);
+        bool runOnFunction(llvm::Function& F);
 
 
         /// @brief  A flag signaling if the current function uses private memory

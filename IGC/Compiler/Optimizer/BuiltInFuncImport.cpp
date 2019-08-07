@@ -95,7 +95,7 @@ static const MangleSubstTy MangleSubst =
     { "20ocl_image2dmsaadepth",      "25ocl_image2d_msaa_depth" },
     { "25ocl_image2darraymsaadepth", "31ocl_image2d_array_msaa_depth" },
     { "16ocl_image2ddepth",          "20ocl_image2d_depth" },
-    { "21ocl_image2darraydepth",     "26ocl_image2d_array_depth" } 
+    { "21ocl_image2darraydepth",     "26ocl_image2d_array_depth" }
 };
 
 static std::unordered_map<std::string, std::string> MangleStr =
@@ -181,7 +181,7 @@ static std::unordered_map<std::string, std::string> MangleStr =
         "52intel_sub_group_avc_sic_evaluate_with_dual_reference14ocl_image2d_roS_S_11ocl_sampler33intel_sub_group_avc_sic_payload_t" }
 };
 
-static bool isMangledImageFn(StringRef FName, const MangleSubstTy &MangleSubst)
+static bool isMangledImageFn(StringRef FName, const MangleSubstTy& MangleSubst)
 {
     bool UpdateMangle = std::any_of(MangleSubst.begin(), MangleSubst.end(),
         [=](PairTy Pair) { return FName.find(Pair.first) != StringRef::npos; });
@@ -189,13 +189,13 @@ static bool isMangledImageFn(StringRef FName, const MangleSubstTy &MangleSubst)
     return (FName.startswith("_Z") && UpdateMangle);
 }
 
-static std::string updatedMangleName(const std::string &FuncName, const std::string &Mangle)
+static std::string updatedMangleName(const std::string& FuncName, const std::string& Mangle)
 {
     std::string Qual = (FuncName.find("write") != std::string::npos) ? "_wo" : "_ro";
     return Mangle + Qual;
 }
 
-static std::string updateSPIRmangleName(StringRef FuncName, const MangleSubstTy &MangleSubst)
+static std::string updateSPIRmangleName(StringRef FuncName, const MangleSubstTy& MangleSubst)
 {
     std::string NewNameStr = FuncName.str();
     for (auto Key : MangleSubst)
@@ -235,9 +235,9 @@ static std::string updateSPIRmangleName38_to_40(StringRef FuncName, char letter)
     return new38FuncName;
 }
 
-void IGC::BIImport::supportOldManglingSchemes(Module &M)
+void IGC::BIImport::supportOldManglingSchemes(Module& M)
 {
-    for (auto &F : M)
+    for (auto& F : M)
     {
         if (F.isDeclaration())
         {
@@ -272,17 +272,17 @@ void IGC::BIImport::supportOldManglingSchemes(Module &M)
     }
 }
 
-Function *BIImport::GetBuiltinFunction(llvm::StringRef funcName, llvm::Module* GenericModule)
+Function* BIImport::GetBuiltinFunction(llvm::StringRef funcName, llvm::Module* GenericModule)
 {
-    Function *pFunc = nullptr;
+    Function* pFunc = nullptr;
     if ((pFunc = GenericModule->getFunction(funcName)) && !pFunc->isDeclaration())
         return pFunc;
     return nullptr;
 }
 
-Function *BIImport::GetBuiltinFunction2(llvm::StringRef funcName) const
+Function* BIImport::GetBuiltinFunction2(llvm::StringRef funcName) const
 {
-    Function *pFunc = nullptr;
+    Function* pFunc = nullptr;
     if ((pFunc = m_GenericModule->getFunction(funcName)) && !pFunc->isDeclaration())
         return pFunc;
     // If the generic and size modules are linked before hand, don't
@@ -293,12 +293,12 @@ Function *BIImport::GetBuiltinFunction2(llvm::StringRef funcName) const
     return nullptr;
 }
 
-static bool materialized_use_empty(const Value *v)
+static bool materialized_use_empty(const Value* v)
 {
     return v->materialized_use_begin() == v->use_end();
 }
 
-void BIImport::WriteElfHeaderToMap(DenseMap<StringRef, int> &Map, char* pData, size_t dataSize)
+void BIImport::WriteElfHeaderToMap(DenseMap<StringRef, int>& Map, char* pData, size_t dataSize)
 {
     //Data from pData is layed out as follows.....
     //First two bytes are the string size 
@@ -317,9 +317,9 @@ void BIImport::WriteElfHeaderToMap(DenseMap<StringRef, int> &Map, char* pData, s
 
 }
 
-std::unique_ptr<llvm::Module> BIImport::Construct(Module &M, CLElfLib::CElfReader * pElfReader, bool hasSizet)
+std::unique_ptr<llvm::Module> BIImport::Construct(Module& M, CLElfLib::CElfReader* pElfReader, bool hasSizet)
 {
-    char *pData = NULL;
+    char* pData = NULL;
     size_t dataSize = 0;
     StringRef line = "";
     std::string num_line = "";
@@ -328,7 +328,7 @@ std::unique_ptr<llvm::Module> BIImport::Construct(Module &M, CLElfLib::CElfReade
     WriteElfHeaderToMap(Map, pData, dataSize);
     if (hasSizet)
     {
-        char *pData_sizet = NULL;
+        char* pData_sizet = NULL;
         size_t dataSize_sizet = 0;
         if (M.getDataLayout().getPointerSizeInBits() == 32)
         {
@@ -344,14 +344,14 @@ std::unique_ptr<llvm::Module> BIImport::Construct(Module &M, CLElfLib::CElfReade
     unsigned numOfHeaders = pElfReader->GetElfHeader()->NumSectionHeaderEntries;
     std::vector<std::unique_ptr<llvm::Module>> elf_index(numOfHeaders);
 
-    std::function<void(Function*)> Explore = [&](Function *pRoot) -> void
+    std::function<void(Function*)> Explore = [&](Function* pRoot) -> void
     {
         TFunctionsVec calledFuncs;
         GetCalledFunctions(pRoot, calledFuncs);
 
-        for (auto *pCallee : calledFuncs)
+        for (auto* pCallee : calledFuncs)
         {
-            Function *pFunc = nullptr;
+            Function* pFunc = nullptr;
             if (pCallee->isDeclaration())
             {
                 auto funcName = pCallee->getName();
@@ -366,7 +366,7 @@ std::unique_ptr<llvm::Module> BIImport::Construct(Module &M, CLElfLib::CElfReade
                 if (SectionIndex == 0 || pCallee->isIntrinsic()) continue;
                 if (elf_index[SectionIndex] == NULL)
                 {
-                    char *pData_Func = NULL;
+                    char* pData_Func = NULL;
                     size_t SectionSize = 0;
                     pElfReader->GetSectionData(SectionIndex, pData_Func, SectionSize);
                     std::unique_ptr<MemoryBuffer> OutputBuffer =
@@ -394,7 +394,7 @@ std::unique_ptr<llvm::Module> BIImport::Construct(Module &M, CLElfLib::CElfReade
             {
                 if (Error Err = pFunc->materialize()) {
                     std::string Msg;
-                    handleAllErrors(std::move(Err), [&](ErrorInfoBase &EIB) {
+                    handleAllErrors(std::move(Err), [&](ErrorInfoBase& EIB) {
                         errs() << "===> Materialize Failure: " << EIB.message().c_str() << '\n';
                     });
                     assert(0 && "Failed to materialize Global Variables");
@@ -409,17 +409,17 @@ std::unique_ptr<llvm::Module> BIImport::Construct(Module &M, CLElfLib::CElfReade
 
     supportOldManglingSchemes(M);
 
-    for (auto &func : M)
+    for (auto& func : M)
     {
         Explore(&func);
     }
 
     // nuke the unused functions so we can materializeAll() quickly
-    auto CleanUnused = [](Module *Module)
+    auto CleanUnused = [](Module* Module)
     {
         for (auto I = Module->begin(), E = Module->end(); I != E; )
         {
-            auto *F = &(*I++);
+            auto* F = &(*I++);
             if (F->isDeclaration() || F->isMaterializable())
             {
                 if (materialized_use_empty(F))
@@ -433,7 +433,7 @@ std::unique_ptr<llvm::Module> BIImport::Construct(Module &M, CLElfLib::CElfReade
     std::unique_ptr<llvm::Module> BIM(new Module("BIF", M.getContext()));
     Linker ld(*BIM);
 
-    for (auto &setIterator : elf_index)
+    for (auto& setIterator : elf_index)
     {
         if (setIterator == NULL)
         {
@@ -456,14 +456,14 @@ std::unique_ptr<llvm::Module> BIImport::Construct(Module &M, CLElfLib::CElfReade
     //2)Check if Global has a user
     //3)link all of the Globals with a user to BIM
 
-    auto &Globals = BIM->getGlobalList();
-    for (auto &global_iterator : Globals)
+    auto& Globals = BIM->getGlobalList();
+    for (auto& global_iterator : Globals)
     {
         if (!global_iterator.hasInitializer() && !global_iterator.use_empty())
         {
             int SectionIndex = Map[global_iterator.getName()];
             if (SectionIndex == 0) continue;
-            char *pData_Func = NULL;
+            char* pData_Func = NULL;
             size_t SectionSize = 0;
             pElfReader->GetSectionData(SectionIndex, pData_Func, SectionSize);
             std::unique_ptr<MemoryBuffer> OutputBuffer =
@@ -485,7 +485,7 @@ std::unique_ptr<llvm::Module> BIImport::Construct(Module &M, CLElfLib::CElfReade
     return BIM;
 }
 
-bool BIImport::runOnModule(Module &M)
+bool BIImport::runOnModule(Module& M)
 {
     if (m_GenericModule == nullptr)
     {
@@ -493,7 +493,7 @@ bool BIImport::runOnModule(Module &M)
     }
 
 
-    for (auto &F : M)
+    for (auto& F : M)
     {
         if (F.isDeclaration())
         {
@@ -527,14 +527,14 @@ bool BIImport::runOnModule(Module &M)
         }
     }
 
-    std::function<void(Function*)> Explore = [&](Function *pRoot) -> void
+    std::function<void(Function*)> Explore = [&](Function* pRoot) -> void
     {
         TFunctionsVec calledFuncs;
         GetCalledFunctions(pRoot, calledFuncs);
 
-        for (auto *pCallee : calledFuncs)
+        for (auto* pCallee : calledFuncs)
         {
-            Function *pFunc = nullptr;
+            Function* pFunc = nullptr;
             if (pCallee->isDeclaration())
             {
                 auto funcName = pCallee->getName();
@@ -551,7 +551,7 @@ bool BIImport::runOnModule(Module &M)
             {
                 if (Error Err = pFunc->materialize()) {
                     std::string Msg;
-                    handleAllErrors(std::move(Err), [&](ErrorInfoBase &EIB) {
+                    handleAllErrors(std::move(Err), [&](ErrorInfoBase& EIB) {
                         errs() << "===> Materialize Failure: " << EIB.message().c_str() << '\n';
                     });
                     assert(0 && "Failed to materialize Global Variables");
@@ -570,17 +570,17 @@ bool BIImport::runOnModule(Module &M)
         }
     };
 
-    for (auto &func : M)
+    for (auto& func : M)
     {
         Explore(&func);
     }
 
     // nuke the unused functions so we can materializeAll() quickly
-    auto CleanUnused = [](Module *Module)
+    auto CleanUnused = [](Module* Module)
     {
         for (auto I = Module->begin(), E = Module->end(); I != E; )
         {
-            auto *F = &(*I++);
+            auto* F = &(*I++);
             if (F->isDeclaration() || F->isMaterializable())
             {
                 if (materialized_use_empty(F))
@@ -623,7 +623,7 @@ bool BIImport::runOnModule(Module &M)
     std::vector<Instruction*> InstToRemove;
 
     //temporary work around for sampler types and pipes
-    for (auto &func : M)
+    for (auto& func : M)
     {
         auto funcName = func.getName();
         if (funcName.startswith("__builtin_IB_convert_sampler_to_int") ||
@@ -661,7 +661,7 @@ void BIImport::GetCalledFunctions(const Function* pFunc, TFunctionsVec& calledFu
     // Iterate over function instructions and look for call instructions
     for (const_inst_iterator it = inst_begin(pFunc), e = inst_end(pFunc); it != e; ++it)
     {
-        const CallInst *pInstCall = dyn_cast<CallInst>(&*it);
+        const CallInst* pInstCall = dyn_cast<CallInst>(&*it);
         if (!pInstCall) continue;
         Function* pCalledFunc = pInstCall->getCalledFunction();
         if (!pCalledFunc)
@@ -677,18 +677,18 @@ void BIImport::GetCalledFunctions(const Function* pFunc, TFunctionsVec& calledFu
     }
 }
 
-void BIImport::removeFunctionBitcasts(Module &M)
+void BIImport::removeFunctionBitcasts(Module& M)
 {
     std::vector<Instruction*> list_delete;
-    DenseMap<Function *, std::vector<Function *>> bitcastFunctionMap;
+    DenseMap<Function*, std::vector<Function*>> bitcastFunctionMap;
 
-    for (Function &func : M)
+    for (Function& func : M)
     {
-        for (auto &BB : func)
+        for (auto& BB : func)
         {
             for (auto I = BB.begin(), E = BB.end(); I != E; I++)
             {
-                CallInst *pInstCall = dyn_cast<CallInst>(I);
+                CallInst* pInstCall = dyn_cast<CallInst>(I);
                 if (!pInstCall || pInstCall->getCalledFunction()) continue;
                 if (auto constExpr = dyn_cast<llvm::ConstantExpr>(pInstCall->getCalledValue()))
                 {
@@ -698,14 +698,14 @@ void BIImport::removeFunctionBitcasts(Module &M)
                         // Map between values (functions) in source of bitcast
                         // to their counterpart values in destination
                         llvm::ValueToValueMapTy  operandMap;
-                        Function *pDstFunc = nullptr;
+                        Function* pDstFunc = nullptr;
                         auto BCFMI = bitcastFunctionMap.find(funcTobeChanged);
                         bool notExists = BCFMI == bitcastFunctionMap.end();
                         if (!notExists)
                         {
                             auto funcVec = bitcastFunctionMap[funcTobeChanged];
                             notExists = true;
-                            for (Function *F : funcVec) {
+                            for (Function* F : funcVec) {
                                 if (pInstCall->getFunctionType() == F->getFunctionType())
                                 {
                                     notExists = false;
@@ -775,7 +775,7 @@ void BIImport::removeFunctionBitcasts(Module &M)
     }
 }
 
-void BIImport::InitializeBIFlags(Module &M)
+void BIImport::InitializeBIFlags(Module& M)
 {
     auto MD = *(getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
     auto pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
@@ -784,7 +784,7 @@ void BIImport::InitializeBIFlags(Module &M)
     ///         If the given global variable does not exist, does nothing.
     auto initializeVarWithValue = [&M](StringRef varName, uint32_t value)
     {
-        GlobalVariable *gv = M.getGlobalVariable(varName);
+        GlobalVariable* gv = M.getGlobalVariable(varName);
         if (gv == nullptr)
             return;
         gv->setInitializer(ConstantInt::get(Type::getInt32Ty(M.getContext()), value));
@@ -816,12 +816,12 @@ void BIImport::InitializeBIFlags(Module &M)
 
     if (pCtx->type == ShaderType::OPENCL_SHADER)
     {
-    float profilingTimerResolution = static_cast<OpenCLProgramContext*>(pCtx)->getProfilingTimerResolution();
-    initializeVarWithValue("__ProfilingTimerResolution", *reinterpret_cast<int*>(&profilingTimerResolution));
+        float profilingTimerResolution = static_cast<OpenCLProgramContext*>(pCtx)->getProfilingTimerResolution();
+        initializeVarWithValue("__ProfilingTimerResolution", *reinterpret_cast<int*>(&profilingTimerResolution));
     }
 }
 
-extern "C" llvm::ModulePass *createBuiltInImportPass(
+extern "C" llvm::ModulePass* createBuiltInImportPass(
     std::unique_ptr<Module> pGenericModule,
     std::unique_ptr<Module> pSizeModule)
 {
@@ -851,7 +851,7 @@ PreBIImportAnalysis::PreBIImportAnalysis() : ModulePass(ID)
     initializeWIFuncsAnalysisPass(*PassRegistry::getPassRegistry());
 }
 
-bool PreBIImportAnalysis::runOnModule(Module &M)
+bool PreBIImportAnalysis::runOnModule(Module& M)
 {
     // Run on all functions defined in this module
     for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I)
@@ -863,9 +863,9 @@ bool PreBIImportAnalysis::runOnModule(Module &M)
             funcName == OCL_GET_LOCAL_ID ||
             funcName == OCL_GET_GROUP_ID)
         {
-            MetaDataUtils *pMdUtil = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-            ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-            
+            MetaDataUtils* pMdUtil = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+            ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+
             // Breadth-first search
 
             std::set<llvm::Function*>   visited;
@@ -876,7 +876,7 @@ bool PreBIImportAnalysis::runOnModule(Module &M)
 
             while (!functQueue.empty())
             {
-                Function *pCallee = functQueue.front();
+                Function* pCallee = functQueue.front();
                 functQueue.pop();
 
                 if (visited.find(pCallee) != visited.end())
@@ -892,7 +892,7 @@ bool PreBIImportAnalysis::runOnModule(Module &M)
                 std::set<llvm::Function*> callerSet;
                 for (auto U = pCallee->user_begin(), UE = pCallee->user_end(); U != UE; ++U)
                 {
-                    CallInst *cInst = dyn_cast<CallInst>(*U);
+                    CallInst* cInst = dyn_cast<CallInst>(*U);
                     if (cInst)
                     {
                         callerSet.insert(cInst->getParent()->getParent());

@@ -54,9 +54,9 @@ namespace IGC
             return "CorrectlyRoundedDivSqrt";
         }
 
-        virtual bool runOnModule(llvm::Module &M) override;
+        virtual bool runOnModule(llvm::Module& M) override;
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.setPreservesCFG();
             AU.addRequired<MetaDataUtilsWrapper>();
@@ -64,15 +64,15 @@ namespace IGC
 
         /// @brief  replace given divide instruction with a call to a correctly rounded version.
         /// @param  I - the fdiv instruction.
-        void visitFDiv(llvm::BinaryOperator &I);
+        void visitFDiv(llvm::BinaryOperator& I);
 
     private:
         /// @brief  if the given function is a sqrt function, replace the declaration with a correctly rounded version.
         /// @param  F - the function.
         /// @return true if the function was changed.
-        static bool processDeclaration(llvm::Function &F);
+        static bool processDeclaration(llvm::Function& F);
 
-        static llvm::Value *emitIEEEDivide(llvm::BinaryOperator *I, llvm::Value *Op0, llvm::Value *Op1);
+        static llvm::Value* emitIEEEDivide(llvm::BinaryOperator* I, llvm::Value* Op0, llvm::Value* Op1);
 
         /// @brief  Indicates if the pass changed the processed function
         bool m_changed;

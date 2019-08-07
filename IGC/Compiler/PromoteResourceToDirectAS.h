@@ -49,22 +49,22 @@ namespace IGC
             return "PromoteResourceToDirectAS";
         }
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.addRequired<IGC::MetaDataUtilsWrapper>();
             AU.addRequired<IGC::CodeGenContextWrapper>();
             AU.setPreservesCFG();
         }
 
-        bool            runOnFunction(llvm::Function &F) override;
-        void            visitInstruction(llvm::Instruction &I);
+        bool            runOnFunction(llvm::Function& F) override;
+        void            visitInstruction(llvm::Instruction& I);
 
     private:
-        void PromoteSamplerTextureToDirectAS(llvm::GenIntrinsicInst *&pIntr, llvm::Value* resourcePtr);
+        void PromoteSamplerTextureToDirectAS(llvm::GenIntrinsicInst*& pIntr, llvm::Value* resourcePtr);
         void PromoteBufferToDirectAS(llvm::Instruction* inst, llvm::Value* resourcePtr);
 
         CodeGenContext* m_pCodeGenContext;
-        IGCMD::MetaDataUtils*  m_pMdUtils;
+        IGCMD::MetaDataUtils* m_pMdUtils;
     };
 
 } // namespace IGC

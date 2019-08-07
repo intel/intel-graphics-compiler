@@ -23,7 +23,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
- 
+
 ///=======================================================================================
 /// This file contains types, enumerations, classes and other declarations used by
 /// the IGC IR Verification Pass.
@@ -69,11 +69,11 @@ namespace IGC
         }
 
         /// Entry point of the pass.
-        virtual bool runOnModule(llvm::Module &M) override;
+        virtual bool runOnModule(llvm::Module& M) override;
 
     protected:
         // Module
-        llvm::Module *m_Module;
+        llvm::Module* m_Module;
 
         // String for collecting verification error messages.
         std::string   m_str;
@@ -95,16 +95,16 @@ namespace IGC
         void initVerificationPass();
 
         void addIRSpecObject(IRSpecObjectClass objClass, unsigned int ID);
-            
+
         /// Verification of the function and its content.
-        bool verifyFunction(llvm::Function &F);
+        bool verifyFunction(llvm::Function& F);
 
         /// Verification of instruction.
-        bool verifyInstruction(llvm::Instruction &inst);
+        bool verifyInstruction(llvm::Instruction& inst);
 
         /// Common verification function that is executed
         /// for all types of instructions.
-        bool verifyInstCommon(llvm::Instruction &inst);
+        bool verifyInstCommon(llvm::Instruction& inst);
 
         ///------------------------------------------------------
         /// Instruction verification functions for specific
@@ -112,22 +112,22 @@ namespace IGC
         ///------------------------------------------------------
 
         /// Specific verification function for Call instructions.
-        bool verifyInstCall(llvm::Instruction &inst);
+        bool verifyInstCall(llvm::Instruction& inst);
         /// Specific verification function for insert/extract instructions.
-        bool verifyVectorInst(llvm::Instruction &inst);
+        bool verifyVectorInst(llvm::Instruction& inst);
 
         ///------------------------------------------------------
 
         /// Verification of values
-        bool verifyValue(llvm::Value *val);
+        bool verifyValue(llvm::Value* val);
 
         /// Verification of type
-        bool verifyType(llvm::Type *type, llvm::Value *val);
+        bool verifyType(llvm::Type* type, llvm::Value* val);
 
         /// Dumps the verification errors.
-        void dumpMessages(llvm::Module &M);
+        void dumpMessages(llvm::Module& M);
 
         /// Prints the LLVM value into m_messagesToDump text stream.
-        void printValue(llvm::Value *value);
+        void printValue(llvm::Value* value);
     };
 } // namespace IGC

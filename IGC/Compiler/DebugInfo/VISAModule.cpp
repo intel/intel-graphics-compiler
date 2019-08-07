@@ -75,7 +75,7 @@ VISAModule::const_iterator VISAModule::end() const
     return m_instList.end();
 }
 
-void VISAModule::BeginInstruction(Instruction * pInst)
+void VISAModule::BeginInstruction(Instruction* pInst)
 {
     assert(!m_instInfoMap.count(pInst) && "Instruction emitted twice!");
     // Assume VISA Id was updated by this point, validate that.
@@ -85,14 +85,14 @@ void VISAModule::BeginInstruction(Instruction * pInst)
     m_instList.push_back(pInst);
 }
 
-void VISAModule::EndInstruction(Instruction * pInst)
+void VISAModule::EndInstruction(Instruction* pInst)
 {
     assert(m_instList.size() > 0 &&
-           m_instList.back() == pInst &&
-           "Trying to end Instruction other than the last one called with begin!");
+        m_instList.back() == pInst &&
+        "Trying to end Instruction other than the last one called with begin!");
     assert(m_instInfoMap.count(pInst) &&
-           m_instInfoMap[pInst].m_size == INVALID_SIZE &&
-           "Trying to end instruction more than once!");
+        m_instInfoMap[pInst].m_size == INVALID_SIZE &&
+        "Trying to end instruction more than once!");
     // Assume VISA Id was updated by this point, validate that.
     ValidateVisaId();
 
@@ -111,14 +111,14 @@ void VISAModule::EndEncodingMark()
     UpdateVisaId();
 }
 
-unsigned int VISAModule::GetVisaOffset(const llvm::Instruction *pInst) const
+unsigned int VISAModule::GetVisaOffset(const llvm::Instruction* pInst) const
 {
     InstInfoMap::const_iterator itr = m_instInfoMap.find(pInst);
     assert(itr != m_instInfoMap.end() && "Invalid Instruction");
     return itr->second.m_offset;
 }
 
-unsigned int VISAModule::GetVisaSize(const llvm::Instruction *pInst) const
+unsigned int VISAModule::GetVisaSize(const llvm::Instruction* pInst) const
 {
     InstInfoMap::const_iterator itr = m_instInfoMap.find(pInst);
     assert(itr != m_instInfoMap.end() && "Invalid Instruction");
@@ -227,11 +227,11 @@ bool VISAModule::IsDebugValue(const Instruction* pInst) const
 
 const MDNode* VISAModule::GetDebugVariable(const Instruction* pInst) const
 {
-    if (const DbgDeclareInst *pDclInst = dyn_cast<DbgDeclareInst>(pInst))
+    if (const DbgDeclareInst * pDclInst = dyn_cast<DbgDeclareInst>(pInst))
     {
         return pDclInst->getVariable();
     }
-    if (const DbgValueInst *pValInst = dyn_cast<DbgValueInst>(pInst))
+    if (const DbgValueInst * pValInst = dyn_cast<DbgValueInst>(pInst))
     {
         return pValInst->getVariable();
     }
@@ -314,7 +314,7 @@ const Argument* VISAModule::GetTracedArgument64Ops(const Value* pVal) const
     }
     auto storeInst = cast<const StoreInst>(pBaseValue);
     pBaseValue = storeInst->getValueOperand();
-    
+
     // Get to extractvalue from insertelement
     // %27 = extractvalue { i32, i32 } %25, 1
     if (!isa<const InsertElementInst>(pBaseValue))
@@ -345,7 +345,7 @@ const Argument* VISAModule::GetTracedArgument64Ops(const Value* pVal) const
     return arg;
 }
 
-const Argument* VISAModule::GetTracedArgument(const Value *pVal, bool isAddress) const
+const Argument* VISAModule::GetTracedArgument(const Value* pVal, bool isAddress) const
 {
     const Value* pBaseValue = pVal;
     while (true)
@@ -383,12 +383,12 @@ const Argument* VISAModule::GetTracedArgument(const Value *pVal, bool isAddress)
             pBaseValue = pStore->getValueOperand();
             isAddress = false;
         }
-        if (const Argument* pArg = dyn_cast<const Argument>(pBaseValue))
+        if (const Argument * pArg = dyn_cast<const Argument>(pBaseValue))
         {
             // Reached an Argument, return it.
             return pArg;
         }
-        else if (const CastInst* pInst = dyn_cast<const CastInst>(pBaseValue))
+        else if (const CastInst * pInst = dyn_cast<const CastInst>(pBaseValue))
         {
             // Reached a CastInst (could happen for image).
             // Update the baseValue and repeat the check.
@@ -406,16 +406,16 @@ const Argument* VISAModule::GetTracedArgument(const Value *pVal, bool isAddress)
 
 VISAVariableLocation VISAModule::GetVariableLocation(const llvm::Instruction* pInst) const
 {
-    const Value * pVal = nullptr;
-    MDNode * pNode = nullptr;
+    const Value* pVal = nullptr;
+    MDNode* pNode = nullptr;
     bool isDbgDclInst = false;
-    if (const DbgDeclareInst *pDbgAddrInst = dyn_cast<DbgDeclareInst>(pInst))
+    if (const DbgDeclareInst * pDbgAddrInst = dyn_cast<DbgDeclareInst>(pInst))
     {
         pVal = pDbgAddrInst->getAddress();
         pNode = pDbgAddrInst->getVariable();
         isDbgDclInst = true;
     }
-    else if (const DbgValueInst *pDbgValInst = dyn_cast<DbgValueInst>(pInst))
+    else if (const DbgValueInst * pDbgValInst = dyn_cast<DbgValueInst>(pInst))
     {
         pVal = pDbgValInst->getValue();
         pNode = pDbgValInst->getVariable();
@@ -431,7 +431,7 @@ VISAVariableLocation VISAModule::GetVariableLocation(const llvm::Instruction* pI
         return VISAVariableLocation();
     }
 
-    if (const Constant *pConstVal = dyn_cast<Constant>(pVal))
+    if (const Constant * pConstVal = dyn_cast<Constant>(pVal))
     {
         if (!isa<GlobalVariable>(pVal) && !isa<ConstantExpr>(pVal))
         {
@@ -441,7 +441,7 @@ VISAVariableLocation VISAModule::GetVariableLocation(const llvm::Instruction* pI
     }
 
     // Try trace value to an argument
-    const Argument *pArgument = GetTracedArgument(pVal, isDbgDclInst);
+    const Argument* pArgument = GetTracedArgument(pVal, isDbgDclInst);
 
     if (!pArgument
         && isDbgDclInst)
@@ -456,9 +456,9 @@ VISAVariableLocation VISAModule::GetVariableLocation(const llvm::Instruction* pI
         // Check if it is argument of image or sampler
         IGC::IGCMD::MetaDataUtils::FunctionsInfoMap::iterator itr =
             m_pShader->GetMetaDataUtils()->findFunctionsInfoItem(const_cast<Function*>(m_pEntryFunc));
-        CodeGenContext *pCtx = m_pShader->GetContext();
+        CodeGenContext* pCtx = m_pShader->GetContext();
         ModuleMetaData* modMD = pCtx->getModuleMetaData();
-        if (itr != m_pShader->GetMetaDataUtils()->end_FunctionsInfo() 
+        if (itr != m_pShader->GetMetaDataUtils()->end_FunctionsInfo()
             && modMD->FuncMD.find(const_cast<Function*>(m_pEntryFunc)) != modMD->FuncMD.end())
         {
             unsigned int explicitArgsNum = IGCLLVM::GetFuncArgSize(m_pEntryFunc) - itr->second->size_ImplicitArgInfoList();
@@ -466,10 +466,10 @@ VISAVariableLocation VISAModule::GetVariableLocation(const llvm::Instruction* pI
             {
                 const std::string typeStr = modMD->FuncMD[const_cast<Function*>(m_pEntryFunc)].m_OpenCLArgBaseTypes[pArgument->getArgNo()];
                 KernelArg::ArgType argType = KernelArg::calcArgType(pArgument, typeStr);
-                FunctionMetaData *funcMD = &modMD->FuncMD[const_cast<Function*>(m_pEntryFunc)];
-                ResourceAllocMD *resAllocMD = &funcMD->resAllocMD;
+                FunctionMetaData* funcMD = &modMD->FuncMD[const_cast<Function*>(m_pEntryFunc)];
+                ResourceAllocMD* resAllocMD = &funcMD->resAllocMD;
                 assert(resAllocMD->argAllocMDList.size() == IGCLLVM::GetFuncArgSize(m_pEntryFunc) && "Invalid ArgAllocMDList");
-                ArgAllocMD *argAlloc = &resAllocMD->argAllocMDList[pArgument->getArgNo()];
+                ArgAllocMD* argAlloc = &resAllocMD->argAllocMDList[pArgument->getArgNo()];
                 unsigned int index = argAlloc->indexType;
 
                 switch (argType)
@@ -513,9 +513,9 @@ VISAVariableLocation VISAModule::GetVariableLocation(const llvm::Instruction* pI
         }
     }
 
-    Value *pValue = const_cast<Value*>(pVal);
+    Value* pValue = const_cast<Value*>(pVal);
 
-    Type *pType = pValue->getType();
+    Type* pType = pValue->getType();
     if (isDbgDclInst)
     {
         assert(pType->isPointerTy() && "DBG declare intrinsic must point to an address");
@@ -570,8 +570,8 @@ VISAVariableLocation VISAModule::GetVariableLocation(const llvm::Instruction* pI
     else if (!m_pShader->IsValueUsed(pValue)) {
         return VISAVariableLocation();
     }
-    
-    CVariable *pVar = nullptr;
+
+    CVariable* pVar = nullptr;
     if (globalSubCVar)
         pVar = globalSubCVar;
     else
@@ -602,25 +602,25 @@ VISAVariableLocation VISAModule::GetVariableLocation(const llvm::Instruction* pI
     default:
         assert(false && "Unhandled VISA register type!");
     }
-    
+
     assert(false && "Empty variable location");
     return VISAVariableLocation();
 }
 
-void VISAModule::GetConstantData(const Constant *pConstVal, DataVector& rawData) const
+void VISAModule::GetConstantData(const Constant* pConstVal, DataVector& rawData) const
 {
-    if (const ConstantPointerNull *CPN = dyn_cast<ConstantPointerNull>(pConstVal))
+    if (const ConstantPointerNull * CPN = dyn_cast<ConstantPointerNull>(pConstVal))
     {
         DataLayout DL(GetDataLayout());
         rawData.insert(rawData.end(), DL.getPointerSize(), 0);
     }
-    else if (const ConstantDataSequential* cds = dyn_cast<ConstantDataSequential>(pConstVal))
+    else if (const ConstantDataSequential * cds = dyn_cast<ConstantDataSequential>(pConstVal))
     {
         for (unsigned i = 0; i < cds->getNumElements(); i++) {
             GetConstantData(cds->getElementAsConstant(i), rawData);
         }
     }
-    else if (const ConstantAggregateZero* cag = dyn_cast<ConstantAggregateZero>(pConstVal))
+    else if (const ConstantAggregateZero * cag = dyn_cast<ConstantAggregateZero>(pConstVal))
     {
         // Zero aggregates are filled with, well, zeroes.
         DataLayout DL(GetDataLayout());
@@ -630,7 +630,7 @@ void VISAModule::GetConstantData(const Constant *pConstVal, DataVector& rawData)
     // If this is an sequential type which is not a CDS or zero, have to collect the values
     // element by element. Note that this is not exclusive with the two cases above, so the 
     // order of ifs is meaningful.
-    else if (CompositeType* cmpType = dyn_cast<CompositeType>(pConstVal->getType()))
+    else if (CompositeType * cmpType = dyn_cast<CompositeType>(pConstVal->getType()))
     {
         const int numElts = pConstVal->getNumOperands();
         for (int i = 0; i < numElts; ++i)
@@ -645,11 +645,11 @@ void VISAModule::GetConstantData(const Constant *pConstVal, DataVector& rawData)
     else
     {
         APInt intVal(32, 0, false);
-        if (const ConstantInt* ci = dyn_cast<ConstantInt>(pConstVal))
+        if (const ConstantInt * ci = dyn_cast<ConstantInt>(pConstVal))
         {
             intVal = ci->getValue();
         }
-        else if (const ConstantFP* cfp = dyn_cast<ConstantFP>(pConstVal))
+        else if (const ConstantFP * cfp = dyn_cast<ConstantFP>(pConstVal))
         {
             intVal = cfp->getValueAPF().bitcastToAPInt();
         }
@@ -693,7 +693,7 @@ const std::string& VISAModule::GetTargetTriple() const
 
 void VISAModule::UpdateVisaId()
 {
-    auto *Kernel = m_pShader->GetEncoder().GetVISAKernel();
+    auto* Kernel = m_pShader->GetEncoder().GetVISAKernel();
     m_currentVisaId = Kernel->getvIsaInstCount();
 }
 
@@ -711,7 +711,7 @@ uint16_t VISAModule::GetSIMDSize() const
 
 void VISAModule::Reset()
 {
-    m_instList.clear(); 
+    m_instList.clear();
     isCloned = false;
     UpdateVisaId();
 }
@@ -723,8 +723,8 @@ void VISAModule::buildDirectElfMaps()
     VISAIndexToSize.clear();
     for (VISAModule::const_iterator II = begin(), IE = end(); II != IE; ++II)
     {
-        const Instruction *pInst = *II;
-        
+        const Instruction* pInst = *II;
+
         InstInfoMap::const_iterator itr = m_instInfoMap.find(pInst);
         if (itr == m_instInfoMap.end())
             continue;
@@ -732,8 +732,8 @@ void VISAModule::buildDirectElfMaps()
         unsigned int currOffset = itr->second.m_offset;
         VISAIndexToInst.insert(std::make_pair(currOffset, pInst));
         unsigned int currSize = itr->second.m_size;
-        for(auto index = currOffset; index != (currOffset+currSize); index++)
-            VISAIndexToSize.insert(std::make_pair(index, 
+        for (auto index = currOffset; index != (currOffset + currSize); index++)
+            VISAIndexToSize.insert(std::make_pair(index,
                 std::make_pair(currOffset, currSize)));
     }
 
@@ -790,7 +790,7 @@ std::vector<std::pair<unsigned int, unsigned int>> VISAModule::getGenISARange(co
         // Iterate to next BB if required.
         if (start->getNextNode())
             return start->getNextNode();
-        else if(start->getParent()->getNextNode())
+        else if (start->getParent()->getNextNode())
             return &(start->getParent()->getNextNode()->front());
         return (const llvm::Instruction*)nullptr;
     };
@@ -920,7 +920,7 @@ bool VISAVariableLocation::IsTexture() const
 bool VISAVariableLocation::IsSLM() const
 {
     if (!HasSurface())
-            return false;
+        return false;
 
     auto surface = GetSurface();
     if (surface == VISAModule::LOCAL_SURFACE_BTI + VISAModule::TEXTURE_REGISTER_BEGIN)

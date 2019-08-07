@@ -30,7 +30,7 @@ FIXME? ::
 1. We do not consider illegal vector lenghts of legal ints
 2. we are not legalizing all the ALU instructions
 3. !! When legalizing, there need to be a check on generated vector length. eg: non-power of 2 lengths not allowed except 3. what is max allowed?
-4. StoreInst : Need to consider illegal type being stored directly without being cast back to a legal. 
+4. StoreInst : Need to consider illegal type being stored directly without being cast back to a legal.
 */
 
 
@@ -57,19 +57,19 @@ IGC_INITIALIZE_PASS_END(PeepholeTypeLegalizer, PASS_FLAG, PASS_DESC, PASS_CFG_ON
 
 PeepholeTypeLegalizer::PeepholeTypeLegalizer() : FunctionPass(ID),
 TheModule(nullptr), TheFunction(nullptr), NonBitcastInstructionsLegalized(false), CastInst_ZExtWithIntermediateIllegalsEliminated(false),
-Bitcast_BitcastWithIntermediateIllegalsEliminated(false), Changed(false), DL(nullptr){
+Bitcast_BitcastWithIntermediateIllegalsEliminated(false), Changed(false), DL(nullptr) {
     initializePeepholeTypeLegalizerPass(*PassRegistry::getPassRegistry());
 }
 
 
-void PeepholeTypeLegalizer::getAnalysisUsage(AnalysisUsage &AU) const {
+void PeepholeTypeLegalizer::getAnalysisUsage(AnalysisUsage& AU) const {
     AU.setPreservesCFG();
 }
 
-FunctionPass *createPeepholeTypeLegalizerPass() { return new PeepholeTypeLegalizer(); }
+FunctionPass* createPeepholeTypeLegalizerPass() { return new PeepholeTypeLegalizer(); }
 
 
-bool PeepholeTypeLegalizer::runOnFunction(Function &F) {    
+bool PeepholeTypeLegalizer::runOnFunction(Function& F) {
     DL = &F.getParent()->getDataLayout();
     assert(DL->isLittleEndian() && "ONLY SUPPORT LITTLE ENDIANNESS!");
 
@@ -84,7 +84,7 @@ bool PeepholeTypeLegalizer::runOnFunction(Function &F) {
         CastInst_ZExtWithIntermediateIllegalsEliminated = true;
         visit(F);
         Bitcast_BitcastWithIntermediateIllegalsEliminated = true;
-    }    
+    }
     return Changed;
 }
 
@@ -107,11 +107,11 @@ void promoteInt(unsigned srcWidth, unsigned& quotient, unsigned& promoteToInt, u
 }
 
 
-void PeepholeTypeLegalizer::visitInstruction(Instruction &I) {
-    
+void PeepholeTypeLegalizer::visitInstruction(Instruction& I) {
+
     if (I.getNumOperands() == 0)
         return;
-    
+
     if (!I.getOperand(0)->getType()->isIntOrIntVectorTy() &&
         !dyn_cast<ExtractElementInst>(&I))
         return; // Legalization for int types only or for extractelements
@@ -143,7 +143,7 @@ void PeepholeTypeLegalizer::visitInstruction(Instruction &I) {
     }
 }
 
-void PeepholeTypeLegalizer::legalizePhiInstruction(Instruction &I)
+void PeepholeTypeLegalizer::legalizePhiInstruction(Instruction& I)
 {
     assert(isa<PHINode>(&I));
 
@@ -195,7 +195,7 @@ void PeepholeTypeLegalizer::legalizePhiInstruction(Instruction &I)
     oldPhi->eraseFromParent();
 }
 
-void PeepholeTypeLegalizer::legalizeExtractElement(Instruction &I)
+void PeepholeTypeLegalizer::legalizeExtractElement(Instruction& I)
 {
     assert(isa<ExtractElementInst>(&I));
 
@@ -248,7 +248,7 @@ void PeepholeTypeLegalizer::legalizeExtractElement(Instruction &I)
 
         Changed = true;
     }
-    else 
+    else
     {
         //We also need to check if the index of the extract element is a legal bitwidth
         auto Index = extract->getOperand(1);
@@ -265,16 +265,16 @@ void PeepholeTypeLegalizer::legalizeExtractElement(Instruction &I)
                 else
                     operand1 = m_builder->CreateIntCast(Index, Type::getInt32Ty(I.getContext()), false);
 
-                Value *New_EI = m_builder->CreateExtractElement(extract->getOperand(0), operand1);
+                Value* New_EI = m_builder->CreateExtractElement(extract->getOperand(0), operand1);
                 extract->replaceAllUsesWith(New_EI);
                 extract->eraseFromParent();
                 Changed = true;
             }
-        }   
+        }
     }
 }
 
-void PeepholeTypeLegalizer::legalizeBinaryOperator(Instruction &I) {
+void PeepholeTypeLegalizer::legalizeBinaryOperator(Instruction& I) {
     /*
     sample pattern:
 
@@ -294,8 +294,8 @@ void PeepholeTypeLegalizer::legalizeBinaryOperator(Instruction &I) {
     ALU2 (%8 i80)
     ...
     */
-    Value *Src1 = nullptr;
-    Value *Src2 = nullptr;
+    Value* Src1 = nullptr;
+    Value* Src2 = nullptr;
 
     //For Select instruction we need to act on operands 1 and 2
     if (isa<SelectInst>(&I))
@@ -318,28 +318,28 @@ void PeepholeTypeLegalizer::legalizeBinaryOperator(Instruction &I) {
 
     if (isLegalInteger(Src1width) || Src1width == 1) // nothing to legalize
         return;
-    
+
     promoteInt(Src1width, quotient, promoteToInt, DL->getLargestLegalIntTypeSizeInBits());
 
     if (promoteToInt == Src1width) {
         return; // nothing to do
     }
 
-    Value *NewLargeSrc1 = m_builder->CreateZExt(Src1, Type::getIntNTy(I.getContext(), promoteToInt*quotient));
-    Value *NewLargeSrc2 = m_builder->CreateZExt(Src2, Type::getIntNTy(I.getContext(), promoteToInt*quotient));
+    Value* NewLargeSrc1 = m_builder->CreateZExt(Src1, Type::getIntNTy(I.getContext(), promoteToInt * quotient));
+    Value* NewLargeSrc2 = m_builder->CreateZExt(Src2, Type::getIntNTy(I.getContext(), promoteToInt * quotient));
 
     if (quotient > 1)
     {
-        Value *NewLargeSrc1VecForm = m_builder->CreateBitCast(NewLargeSrc1,
+        Value* NewLargeSrc1VecForm = m_builder->CreateBitCast(NewLargeSrc1,
             llvm::VectorType::get(llvm::Type::getIntNTy(I.getContext(), promoteToInt), quotient));
-        Value *NewLargeSrc2VecForm = m_builder->CreateBitCast(NewLargeSrc2,
+        Value* NewLargeSrc2VecForm = m_builder->CreateBitCast(NewLargeSrc2,
             llvm::VectorType::get(llvm::Type::getIntNTy(I.getContext(), promoteToInt), quotient));
-        Value *NewLargeResVecForm = UndefValue::get(llvm::VectorType::get(llvm::Type::getIntNTy(I.getContext(), promoteToInt), quotient));
-        
+        Value* NewLargeResVecForm = UndefValue::get(llvm::VectorType::get(llvm::Type::getIntNTy(I.getContext(), promoteToInt), quotient));
+
         bool instSupported = true;
         for (unsigned Idx = 0; Idx < quotient; Idx++)
         {
-            Value *NewInst = NULL;
+            Value* NewInst = NULL;
             switch (I.getOpcode()) {
             case Instruction::And:
                 NewInst = m_builder->CreateAnd(m_builder->CreateExtractElement(NewLargeSrc1VecForm, Idx),
@@ -356,14 +356,15 @@ void PeepholeTypeLegalizer::legalizeBinaryOperator(Instruction &I) {
             case Instruction::LShr:
             {
                 if (auto val = dyn_cast<ConstantInt>(Src2)) {
-                    unsigned offset = (unsigned) val->getSExtValue() / promoteToInt;
+                    unsigned offset = (unsigned)val->getSExtValue() / promoteToInt;
                     unsigned elementToMove = Idx + offset;
 
                     if (elementToMove < quotient)
                         NewInst = m_builder->CreateExtractElement(NewLargeSrc1VecForm, elementToMove);
                     else
                         NewInst = ConstantInt::get(IntegerType::get(I.getContext(), promoteToInt), 0, true);
-                } else {
+                }
+                else {
                     instSupported = false;
                     assert(false && "Shift by amount is not a constant.");
                 }
@@ -393,15 +394,15 @@ void PeepholeTypeLegalizer::legalizeBinaryOperator(Instruction &I) {
         if (instSupported) {
             // Re-bitcast vector into Large illegal type which is to be in turn trunc'ed to original illegal type
             NewLargeSrc1 = m_builder->CreateBitCast(NewLargeResVecForm, NewLargeSrc1->getType());
-            Value *NewIllegal = m_builder->CreateTrunc(NewLargeSrc1, Src1->getType());
+            Value* NewIllegal = m_builder->CreateTrunc(NewLargeSrc1, Src1->getType());
 
             I.replaceAllUsesWith(NewIllegal);
             I.eraseFromParent();
-        }        
+        }
     }
     else {
-        Value *NewLargeRes = NULL;
-        Value *NewIllegal = NULL;
+        Value* NewLargeRes = NULL;
+        Value* NewIllegal = NULL;
         switch (I.getOpcode()) {
         case Instruction::And:
             NewLargeRes = m_builder->CreateAnd(NewLargeSrc1, NewLargeSrc2);
@@ -426,10 +427,10 @@ void PeepholeTypeLegalizer::legalizeBinaryOperator(Instruction &I) {
                 // Must use sext [note that NewLargeSrc1/2 are zext]
                 int shiftAmt = promoteToInt - Src1width;
                 assert(shiftAmt > 0 && "Should not happen, something wrong!");
-                Value *V1 = m_builder->CreateShl(NewLargeSrc1, shiftAmt);
-                Value *PromotedSrc1 = m_builder->CreateAShr(V1, shiftAmt);
-                Value *V2 = m_builder->CreateShl(NewLargeSrc2, shiftAmt);
-                Value *PromotedSrc2 = m_builder->CreateAShr(V2, shiftAmt);
+                Value* V1 = m_builder->CreateShl(NewLargeSrc1, shiftAmt);
+                Value* PromotedSrc1 = m_builder->CreateAShr(V1, shiftAmt);
+                Value* V2 = m_builder->CreateShl(NewLargeSrc2, shiftAmt);
+                Value* PromotedSrc2 = m_builder->CreateAShr(V2, shiftAmt);
                 NewLargeRes = m_builder->CreateICmp(cmpInst->getPredicate(), PromotedSrc1, PromotedSrc2);
             }
             else
@@ -454,455 +455,287 @@ void PeepholeTypeLegalizer::legalizeBinaryOperator(Instruction &I) {
 
         if (!NewIllegal)
             NewIllegal = m_builder->CreateTrunc(NewLargeRes, Src1->getType());
-        
+
         I.replaceAllUsesWith(NewIllegal);
-        I.eraseFromParent();        
+        I.eraseFromParent();
     }
     Changed = true;
 }
 
-void PeepholeTypeLegalizer::legalizeUnaryInstruction(Instruction &I) {
+void PeepholeTypeLegalizer::legalizeUnaryInstruction(Instruction& I) {
     switch (I.getOpcode()) {
-        case Instruction::BitCast:
-        {
-            /*
-            sample pattern:
-            %1 = bitcast i8 addrspace(1)* %7 to i70 addrspace(1)*
-            %2 = load i70, i70 addrspace(1)* %1 align 1
-            ALU(i70)
-            -->
-            %1 = bitcast i8 addrspace(1)* %7 to {i64, i8} addrspace(1)*
-            %2 = bitcast <9 x i8> addrspace(1)* %1 to i70 addrspace(1)*
-            %3 = load i70, i70 addrspace(1)* %2, align 1
-            ALU(i70)
+    case Instruction::BitCast:
+    {
+        /*
+        sample pattern:
+        %1 = bitcast i8 addrspace(1)* %7 to i70 addrspace(1)*
+        %2 = load i70, i70 addrspace(1)* %1 align 1
+        ALU(i70)
+        -->
+        %1 = bitcast i8 addrspace(1)* %7 to {i64, i8} addrspace(1)*
+        %2 = bitcast <9 x i8> addrspace(1)* %1 to i70 addrspace(1)*
+        %3 = load i70, i70 addrspace(1)* %2, align 1
+        ALU(i70)
 
-            OR
+        OR
 
-            %1 = bitcast i8 addrspace(1)* %7 to i24 addrspace(1)*
-            %2 = load i24, i24 addrspace(1)* %1, align 1
-            %3 = zext i24 %2 to i32
-            %4 = and i32 undef, -16777216
-            %5 = or i32 %4, %3
-            -->
-            %1 = bitcast i8 addrspace(1)* %7 to i32 addrspace(1)*
-            %2 = bitcast i32 addrspace(1)* %1 to i24 addrspace(1)*
-            %3 = load i24, i24 addrspace(1)* %2, align 1
-            %4 = zext i24 %2 to i32
-            %5 = and i32 undef, -16777216
-            %6 = or i32 %4, %3
+        %1 = bitcast i8 addrspace(1)* %7 to i24 addrspace(1)*
+        %2 = load i24, i24 addrspace(1)* %1, align 1
+        %3 = zext i24 %2 to i32
+        %4 = and i32 undef, -16777216
+        %5 = or i32 %4, %3
+        -->
+        %1 = bitcast i8 addrspace(1)* %7 to i32 addrspace(1)*
+        %2 = bitcast i32 addrspace(1)* %1 to i24 addrspace(1)*
+        %3 = load i24, i24 addrspace(1)* %2, align 1
+        %4 = zext i24 %2 to i32
+        %5 = and i32 undef, -16777216
+        %6 = or i32 %4, %3
 
-            */
+        */
 
-            if (!I.getType()->isVectorTy() && I.getType()->isPointerTy()) {
-                if (isLegalInteger(DL->getPointerTypeSizeInBits(I.getType())) || DL->getPointerTypeSizeInBits(I.getType()) == 1)
-                    return;
+        if (!I.getType()->isVectorTy() && I.getType()->isPointerTy()) {
+            if (isLegalInteger(DL->getPointerTypeSizeInBits(I.getType())) || DL->getPointerTypeSizeInBits(I.getType()) == 1)
+                return;
 
-                unsigned quotient, promoteToInt, Src1width = DL->getPointerTypeSizeInBits(I.getType());
-                promoteInt(Src1width, quotient, promoteToInt, 8);// byte level addressing
+            unsigned quotient, promoteToInt, Src1width = DL->getPointerTypeSizeInBits(I.getType());
+            promoteInt(Src1width, quotient, promoteToInt, 8);// byte level addressing
 
-                if (quotient > 1)
-                {
-                    Type *I8xXTy = VectorType::get(m_builder->getInt8Ty(), quotient);
-                    Type *I8xXPtrTy = PointerType::get(I8xXTy, I.getType()->getPointerAddressSpace());
+            if (quotient > 1)
+            {
+                Type* I8xXTy = VectorType::get(m_builder->getInt8Ty(), quotient);
+                Type* I8xXPtrTy = PointerType::get(I8xXTy, I.getType()->getPointerAddressSpace());
 
-                    Value *newBitCastToVec = m_builder->CreateBitCast(I.getOperand(0), I8xXPtrTy);
-                    Value *newBitCastToScalar = m_builder->CreateBitCast(newBitCastToVec, I.getType());
+                Value* newBitCastToVec = m_builder->CreateBitCast(I.getOperand(0), I8xXPtrTy);
+                Value* newBitCastToScalar = m_builder->CreateBitCast(newBitCastToVec, I.getType());
 
-                    I.replaceAllUsesWith(newBitCastToScalar);
-                    I.eraseFromParent();
-                }
-                else {
-                    Value *newUpBitCast = m_builder->CreateBitCast(I.getOperand(0), Type::getIntNPtrTy(I.getContext(), promoteToInt, I.getType()->getPointerAddressSpace()));
-                    Value *newDownBitCast = m_builder->CreateBitCast(newUpBitCast, I.getType());
-
-                    I.replaceAllUsesWith(newDownBitCast);
-                    I.eraseFromParent();
-                }
-                Changed = true;
-            }
-        }
-        break;
-        case Instruction::Load:
-        {
-            /* !!! LEGALIZE to i(quotient * promoteToInt) */
-            /*
-            sample pattern:
-            %1 = bitcast i8 addrspace(1)* %7 to i70 addrspace(1)*
-            %2 = load i70, i70 addrspace(1)* %1 align 1
-            ALU(i70)
-
-            -->
-            %1 = bitcast i8 addrspace(1)* %7 to i70 addrspace(1)*
-            %2 = bitcast i70 addrspace(1)* to <9 x i8> addrspace(1)*
-            %3 = load <9 x i8>, <9 x i8> addrspace(1)*, align 1
-            %4 = bitcast <9 x i8> %3 to i72
-            %5 = zext i72, i128
-            %6 = trunc i128 %5, i70
-            ALU(i70)
-
-            OR
-
-            %1 = bitcast i8 addrspace(1)* %7 to i24 addrspace(1)*
-            %2 = load i24, i24 addrspace(1)* %1, align 1
-            ALU(i24)
-
-            -->
-            %1 = bitcast i8 addrspace(1)* %7 to i24 addrspace(1)*
-            %2 = bitcast i24 addrspace(1)* %1 to i32 addrspace(1)*
-            %3 = load i32, i24 addrspace(1)* %2, align 1
-            %4 = trunc %2, i24
-            ALU(i24)
-
-            */
-
-            if (isLegalInteger(I.getType()->getScalarSizeInBits()) || I.getType()->getScalarSizeInBits() == 1)
-                return; // Nothing to legalize
-
-            unsigned loadQuotient, loadPromoteToInt, loadSrcWidth = DL->getPointerTypeSizeInBits(I.getOperand(0)->getType());
-            promoteInt(loadSrcWidth, loadQuotient, loadPromoteToInt, 8); // hard coded to 8 since our hardware is bte addressable.
-
-            if (loadQuotient > 1) {
-                Value *newBitCast = m_builder->CreatePointerCast(I.getOperand(0), llvm::VectorType::get(llvm::Type::getIntNTy(I.getContext(), loadPromoteToInt), loadQuotient));
-                Value *newLoadInst = m_builder->CreateLoad(newBitCast);
-                // mask the extra bits loaded for type legalization
-                unsigned maskCnt = (loadPromoteToInt*loadQuotient) - loadSrcWidth;
-                unsigned char mask = 0xff;
-                for (unsigned i = 0; i < maskCnt; ++i) {
-                    mask >>= 1;
-                }
-                Value *maskedHighByte = m_builder->CreateAnd(m_builder->CreateExtractElement(newLoadInst, loadQuotient - 1), mask);
-                Value *newMaskedLoad = m_builder->CreateInsertElement(newLoadInst, maskedHighByte, loadQuotient - 1);
-                Value *newBitCastBackToScalar = m_builder->CreateBitCast(newMaskedLoad, Type::getIntNTy(I.getContext(), loadPromoteToInt*loadQuotient));
-
-                //extend new large scalar to a scalar length of legal vector of MAX_LEGAL_INT
-                unsigned quotient, promoteToInt, SrcWidth = DL->getPointerTypeSizeInBits(I.getOperand(0)->getType());
-                promoteInt(SrcWidth, quotient, promoteToInt, DL->getLargestLegalIntTypeSizeInBits());
-
-                Value *newZextInst = m_builder->CreateZExt(newBitCastBackToScalar, Type::getIntNTy(I.getContext(), promoteToInt*quotient));
-                Value *newTruncInst = m_builder->CreateTrunc(newZextInst, I.getType());
-
-                I.replaceAllUsesWith(newTruncInst);
+                I.replaceAllUsesWith(newBitCastToScalar);
                 I.eraseFromParent();
             }
             else {
-                Value *newBitCast = m_builder->CreatePointerCast(I.getOperand(0), llvm::VectorType::get(llvm::Type::getIntNTy(I.getContext(), loadPromoteToInt), loadQuotient));
-                Value *newLoadInst = m_builder->CreateLoad(newBitCast);
-                // mask the extra bits loaded for type legalization
-                unsigned maskCnt = (loadPromoteToInt*loadQuotient) - loadSrcWidth;
-                unsigned char mask = 0xff;
-                for (unsigned i = 0; i < maskCnt; ++i) {
-                    mask >>= 1;
-                }
-                newLoadInst = m_builder->CreateAnd(newLoadInst, mask);
-                Value *newTruncInst = m_builder->CreateTrunc(newLoadInst, I.getType());
+                Value* newUpBitCast = m_builder->CreateBitCast(I.getOperand(0), Type::getIntNPtrTy(I.getContext(), promoteToInt, I.getType()->getPointerAddressSpace()));
+                Value* newDownBitCast = m_builder->CreateBitCast(newUpBitCast, I.getType());
 
-                I.replaceAllUsesWith(newTruncInst);
+                I.replaceAllUsesWith(newDownBitCast);
                 I.eraseFromParent();
             }
             Changed = true;
         }
-        break;
-        case Instruction::SExt:
-        {
-            if (isLegalInteger(I.getType()->getScalarSizeInBits()) || I.getType()->getScalarSizeInBits() == 1)
-                return; // Nothing to legalize
+    }
+    break;
+    case Instruction::Load:
+    {
+        /* !!! LEGALIZE to i(quotient * promoteToInt) */
+        /*
+        sample pattern:
+        %1 = bitcast i8 addrspace(1)* %7 to i70 addrspace(1)*
+        %2 = load i70, i70 addrspace(1)* %1 align 1
+        ALU(i70)
 
-            if (I.getOperand(0)->getType()->getIntegerBitWidth() == 1)
-            {
-                unsigned quotient, promoteToInt, Src1width = I.getOperand(0)->getType()->getIntegerBitWidth();
-                promoteInt(Src1width, quotient, promoteToInt, DL->getLargestLegalIntTypeSizeInBits());
+        -->
+        %1 = bitcast i8 addrspace(1)* %7 to i70 addrspace(1)*
+        %2 = bitcast i70 addrspace(1)* to <9 x i8> addrspace(1)*
+        %3 = load <9 x i8>, <9 x i8> addrspace(1)*, align 1
+        %4 = bitcast <9 x i8> %3 to i72
+        %5 = zext i72, i128
+        %6 = trunc i128 %5, i70
+        ALU(i70)
 
-                Value* Src1 = I.getOperand(0);
-                Value* newZextInst = m_builder->CreateZExt(Src1, Type::getIntNTy(I.getContext(), promoteToInt*quotient));
-                Value* newtruncInst = m_builder->CreateTrunc(newZextInst, I.getType());
+        OR
 
-                I.replaceAllUsesWith(newtruncInst);
-                I.eraseFromParent();
+        %1 = bitcast i8 addrspace(1)* %7 to i24 addrspace(1)*
+        %2 = load i24, i24 addrspace(1)* %1, align 1
+        ALU(i24)
 
-                Changed = true;
+        -->
+        %1 = bitcast i8 addrspace(1)* %7 to i24 addrspace(1)*
+        %2 = bitcast i24 addrspace(1)* %1 to i32 addrspace(1)*
+        %3 = load i32, i24 addrspace(1)* %2, align 1
+        %4 = trunc %2, i24
+        ALU(i24)
+
+        */
+
+        if (isLegalInteger(I.getType()->getScalarSizeInBits()) || I.getType()->getScalarSizeInBits() == 1)
+            return; // Nothing to legalize
+
+        unsigned loadQuotient, loadPromoteToInt, loadSrcWidth = DL->getPointerTypeSizeInBits(I.getOperand(0)->getType());
+        promoteInt(loadSrcWidth, loadQuotient, loadPromoteToInt, 8); // hard coded to 8 since our hardware is bte addressable.
+
+        if (loadQuotient > 1) {
+            Value* newBitCast = m_builder->CreatePointerCast(I.getOperand(0), llvm::VectorType::get(llvm::Type::getIntNTy(I.getContext(), loadPromoteToInt), loadQuotient));
+            Value* newLoadInst = m_builder->CreateLoad(newBitCast);
+            // mask the extra bits loaded for type legalization
+            unsigned maskCnt = (loadPromoteToInt * loadQuotient) - loadSrcWidth;
+            unsigned char mask = 0xff;
+            for (unsigned i = 0; i < maskCnt; ++i) {
+                mask >>= 1;
             }
-            else
-            {
-                assert(false && "SExt Instruction seen with illegal int type and BitWidth > 1. Legalization support missing.");
-            }
-        }
-        break;
-        case Instruction::Trunc:
-        {
-            // %1 = trunc i192 %0 to i128
-            // -->
-            // %1 = bitcast i192 %0 to <3 x i64>
-            // %2 = extractelement %1, 0
-            // %3 = insertelement %undef, %2, 0
-            // %4 = extractelement %1, 1
-            // %5 = insertelement %3, %4, 1
-            // %6 = bitcast <2 x i64> %5 to i128
-            unsigned dstSize = I.getType()->getScalarSizeInBits();
-            unsigned srcSize = I.getOperand(0)->getType()->getScalarSizeInBits();
+            Value* maskedHighByte = m_builder->CreateAnd(m_builder->CreateExtractElement(newLoadInst, loadQuotient - 1), mask);
+            Value* newMaskedLoad = m_builder->CreateInsertElement(newLoadInst, maskedHighByte, loadQuotient - 1);
+            Value* newBitCastBackToScalar = m_builder->CreateBitCast(newMaskedLoad, Type::getIntNTy(I.getContext(), loadPromoteToInt * loadQuotient));
 
-            if (isLegalInteger(srcSize) && isLegalInteger(dstSize)) // nothing to legalize
-                return;
+            //extend new large scalar to a scalar length of legal vector of MAX_LEGAL_INT
+            unsigned quotient, promoteToInt, SrcWidth = DL->getPointerTypeSizeInBits(I.getOperand(0)->getType());
+            promoteInt(SrcWidth, quotient, promoteToInt, DL->getLargestLegalIntTypeSizeInBits());
 
-            // Find the largest common denominator that's also a legal type size
-            unsigned promotedInt = 0;
-            for (unsigned i = DL->getLargestLegalIntTypeSizeInBits(); i >= 8; i >>= 1)
-            {
-                if (dstSize % i == 0 && srcSize % i == 0)
-                {
-                    promotedInt = i;
-                    break;
-                }
-            }
+            Value* newZextInst = m_builder->CreateZExt(newBitCastBackToScalar, Type::getIntNTy(I.getContext(), promoteToInt * quotient));
+            Value* newTruncInst = m_builder->CreateTrunc(newZextInst, I.getType());
 
-            if(promotedInt == 0) // common denominator not found
-            {
-                return;
-            }
-
-            unsigned numSrcElements = srcSize / promotedInt;
-            unsigned numDstElements = dstSize / promotedInt;
-            Type* srcVecTy = VectorType::get(Type::getIntNTy(I.getContext(), promotedInt), numSrcElements);
-            Type* dstVecTy = VectorType::get(Type::getIntNTy(I.getContext(), promotedInt), numDstElements);
-
-            // Bitcast the illegal src type to a legal vector
-            Value* srcVec = m_builder->CreateBitCast(I.getOperand(0), srcVecTy);
-            Value* dstVec = UndefValue::get(dstVecTy);
-
-            for (unsigned i = 0; i < numDstElements; i++)
-            {
-                Value* v = m_builder->CreateExtractElement(srcVec, m_builder->getInt32(i));
-                dstVec = m_builder->CreateInsertElement(dstVec, v, m_builder->getInt32(i));
-            }
-            // Cast back to original dst type
-            Value* result = m_builder->CreateBitCast(dstVec, I.getType());
-            I.replaceAllUsesWith(result);
+            I.replaceAllUsesWith(newTruncInst);
             I.eraseFromParent();
+        }
+        else {
+            Value* newBitCast = m_builder->CreatePointerCast(I.getOperand(0), llvm::VectorType::get(llvm::Type::getIntNTy(I.getContext(), loadPromoteToInt), loadQuotient));
+            Value* newLoadInst = m_builder->CreateLoad(newBitCast);
+            // mask the extra bits loaded for type legalization
+            unsigned maskCnt = (loadPromoteToInt * loadQuotient) - loadSrcWidth;
+            unsigned char mask = 0xff;
+            for (unsigned i = 0; i < maskCnt; ++i) {
+                mask >>= 1;
+            }
+            newLoadInst = m_builder->CreateAnd(newLoadInst, mask);
+            Value* newTruncInst = m_builder->CreateTrunc(newLoadInst, I.getType());
+
+            I.replaceAllUsesWith(newTruncInst);
+            I.eraseFromParent();
+        }
+        Changed = true;
+    }
+    break;
+    case Instruction::SExt:
+    {
+        if (isLegalInteger(I.getType()->getScalarSizeInBits()) || I.getType()->getScalarSizeInBits() == 1)
+            return; // Nothing to legalize
+
+        if (I.getOperand(0)->getType()->getIntegerBitWidth() == 1)
+        {
+            unsigned quotient, promoteToInt, Src1width = I.getOperand(0)->getType()->getIntegerBitWidth();
+            promoteInt(Src1width, quotient, promoteToInt, DL->getLargestLegalIntTypeSizeInBits());
+
+            Value* Src1 = I.getOperand(0);
+            Value* newZextInst = m_builder->CreateZExt(Src1, Type::getIntNTy(I.getContext(), promoteToInt * quotient));
+            Value* newtruncInst = m_builder->CreateTrunc(newZextInst, I.getType());
+
+            I.replaceAllUsesWith(newtruncInst);
+            I.eraseFromParent();
+
             Changed = true;
         }
+        else
+        {
+            assert(false && "SExt Instruction seen with illegal int type and BitWidth > 1. Legalization support missing.");
+        }
+    }
+    break;
+    case Instruction::Trunc:
+    {
+        // %1 = trunc i192 %0 to i128
+        // -->
+        // %1 = bitcast i192 %0 to <3 x i64>
+        // %2 = extractelement %1, 0
+        // %3 = insertelement %undef, %2, 0
+        // %4 = extractelement %1, 1
+        // %5 = insertelement %3, %4, 1
+        // %6 = bitcast <2 x i64> %5 to i128
+        unsigned dstSize = I.getType()->getScalarSizeInBits();
+        unsigned srcSize = I.getOperand(0)->getType()->getScalarSizeInBits();
+
+        if (isLegalInteger(srcSize) && isLegalInteger(dstSize)) // nothing to legalize
+            return;
+
+        // Find the largest common denominator that's also a legal type size
+        unsigned promotedInt = 0;
+        for (unsigned i = DL->getLargestLegalIntTypeSizeInBits(); i >= 8; i >>= 1)
+        {
+            if (dstSize % i == 0 && srcSize % i == 0)
+            {
+                promotedInt = i;
+                break;
+            }
+        }
+
+        if (promotedInt == 0) // common denominator not found
+        {
+            return;
+        }
+
+        unsigned numSrcElements = srcSize / promotedInt;
+        unsigned numDstElements = dstSize / promotedInt;
+        Type* srcVecTy = VectorType::get(Type::getIntNTy(I.getContext(), promotedInt), numSrcElements);
+        Type* dstVecTy = VectorType::get(Type::getIntNTy(I.getContext(), promotedInt), numDstElements);
+
+        // Bitcast the illegal src type to a legal vector
+        Value* srcVec = m_builder->CreateBitCast(I.getOperand(0), srcVecTy);
+        Value* dstVec = UndefValue::get(dstVecTy);
+
+        for (unsigned i = 0; i < numDstElements; i++)
+        {
+            Value* v = m_builder->CreateExtractElement(srcVec, m_builder->getInt32(i));
+            dstVec = m_builder->CreateInsertElement(dstVec, v, m_builder->getInt32(i));
+        }
+        // Cast back to original dst type
+        Value* result = m_builder->CreateBitCast(dstVec, I.getType());
+        I.replaceAllUsesWith(result);
+        I.eraseFromParent();
+        Changed = true;
+    }
+    break;
+    case Instruction::Store:
+        // 1. load byte padded data from pointer
+        // 2. mask out the all bits except top padded ones.
+        // 3. zext the incoming ILLEGAL to byte padded value
+        // 4. OR the zext'ed value and masked load.
+        // 5. store the OR'ed value into byte padded size pointer
+        assert(false && "Store Instruction seen with illegal int type. Legalization support missing.");
         break;
-        case Instruction::Store:
-            // 1. load byte padded data from pointer
-            // 2. mask out the all bits except top padded ones.
-            // 3. zext the incoming ILLEGAL to byte padded value
-            // 4. OR the zext'ed value and masked load.
-            // 5. store the OR'ed value into byte padded size pointer
-            assert(false && "Store Instruction seen with illegal int type. Legalization support missing.");
-            break;
     }
 }
 
 
-void PeepholeTypeLegalizer::cleanupZExtInst(Instruction &I) {
+void PeepholeTypeLegalizer::cleanupZExtInst(Instruction& I) {
     if (isLegalInteger(I.getOperand(0)->getType()->getScalarSizeInBits()))  // objective is to clean up any intermediate ILLEGAL ints
         return;
 
-    Instruction *prevInst = dyn_cast<Instruction>(I.getOperand(0));
+    Instruction* prevInst = dyn_cast<Instruction>(I.getOperand(0));
     if (!prevInst)
         return;
 
     switch (prevInst->getOpcode()) {
-        case Instruction::Trunc:
-        {
-            //then we only need to mask out the truncated bits
-            unsigned quotient, promoteToInt, Src1width = prevInst->getOperand(0)->getType()->getIntegerBitWidth();
-            promoteInt(Src1width, quotient, promoteToInt, DL->getLargestLegalIntTypeSizeInBits());
+    case Instruction::Trunc:
+    {
+        //then we only need to mask out the truncated bits
+        unsigned quotient, promoteToInt, Src1width = prevInst->getOperand(0)->getType()->getIntegerBitWidth();
+        promoteInt(Src1width, quotient, promoteToInt, DL->getLargestLegalIntTypeSizeInBits());
 
-            unsigned long long mask = ULLONG_MAX; //0xffffffffffffffffui64
+        unsigned long long mask = ULLONG_MAX; //0xffffffffffffffffui64
 
-            int activeBits = prevInst->getType()->getIntegerBitWidth(); // or I.getoperand(0)->getType()->getIntegerBitWidth();
+        int activeBits = prevInst->getType()->getIntegerBitWidth(); // or I.getoperand(0)->getType()->getIntegerBitWidth();
 
-            if (promoteToInt*quotient == Src1width) { // As in the example sighted below
-                if (quotient > 1) {
-                    /*
-                    sample pattern:
-                    ALU
-                    ...
-                    %1.    insertelement %? i64, <2 x i64>, 1
-                    %2.    bitcast %1 <2 x i64>, i128
-                    %3.    trunc %2 i128, i80
-                    %4.    zext %3 i80, i128
-                    %5.    bitcast %4 i128 , <2 x i64>
-                    %6.    extractelement %5 i64, <2 x i64>, 0
-                    ...
-                    ALU
-
-                    {also applies for :
-                    %2.    bitcast %1 <1 x i64>, i64
-                    }
-                    -->
-                    ALU
-                    ...
-                    %1.    insertelement %? i64, <2 x i64>, 1
-                    %2.    bitcast %1 <2 x i64>, i128
-                    %3.    bitcast %2, <2 x i64>
-                    %4.    extractelement %3, 0
-                    %5.    and %4, mask_0
-                    %6.    insertelement %5, 0
-                    %7.    bitcast %6, i128
-                    %8.    bitcast %7 i128 , <2 x i64>
-                    %9.    extractelement %5 i64, <2 x i64>, 0
-                    ...
-                    ALU
-                    */
-                    if ((promoteToInt*quotient) == I.getType()->getScalarSizeInBits()) { // rhis is the case for all trunc-zext pairs generated by first step of this legalization pass
-                        Value *truncSrcAsVec = m_builder->CreateBitCast(prevInst->getOperand(0),
-                            llvm::VectorType::get(llvm::Type::getIntNTy(I.getContext(), promoteToInt), quotient));
-                        Value *vecRes = UndefValue::get(llvm::VectorType::get(llvm::Type::getIntNTy(I.getContext(), promoteToInt), quotient));
-                        Value *Elmt;
-                        Value *maskedElmt;
-
-                        for (unsigned Idx = 0; Idx < quotient; ++Idx) {
-                            Elmt = m_builder->CreateExtractElement(truncSrcAsVec, Idx);
-                            mask >>= 64 - std::min(64, activeBits);
-                            maskedElmt = m_builder->CreateAnd(Elmt, mask);
-                            m_builder->CreateInsertElement(vecRes, maskedElmt, Idx);
-                            activeBits -= std::min(64, activeBits);
-                        }
-                        Value *bitcastBackToScalar = m_builder->CreateBitCast(vecRes, prevInst->getType());
-
-                        I.replaceAllUsesWith(bitcastBackToScalar);
-                        I.eraseFromParent();
-                        Changed = true;
-                    }
-                    else {
-                        // this is a place holder, but DO NOT expect to need an implementation for this case.
-                    }
-                }
-                else {
-                    /*
-                    sample pattern:
-                    ALU1
-                    ...
-                    %1.    trunc %ALU1 i64, i37
-                    %2.    zext %1 i37, i64
-                    ...
-                    ALU2 (%2)
-                    -->
-                    ALU
-                    ...
-                    %1. and i64 %ALU1, mask
-                    ...
-                    ALU2 (%1)
-                    */
-                    mask >>= 64 - activeBits;
-                    Value *maskedElmt = m_builder->CreateAnd(prevInst->getOperand(0), mask);
-                    Value *cleanedUpInst = NULL;
-                    if (I.getType()->getScalarSizeInBits() < maskedElmt->getType()->getScalarSizeInBits())
-                        cleanedUpInst = m_builder->CreateTrunc(maskedElmt, I.getType());
-                    else if (I.getType()->getScalarSizeInBits() > maskedElmt->getType()->getScalarSizeInBits())
-                        cleanedUpInst = m_builder->CreateZExt(maskedElmt, I.getType());
-                    else
-                        cleanedUpInst = maskedElmt;
-
-                    I.replaceAllUsesWith(cleanedUpInst);
-                    I.eraseFromParent();
-                    Changed = true;
-                }
-            }
-            else { // (promoteToInt*quotient != Src1width) case            
-                   // No support yet
-            }
-        }
-            break;
-        case Instruction::BitCast:
-        {
-            /*
-            Does this handle the first bitcast-zext? :: NO
-
-            %1.    bitcast %src <5 x i16>, i80
-            %2.    zext %1 i80, i128
-            %3.    bitcast %2, <2x i64>
-            %4.    extractelement %3, 0
-            ...
-            ALU (%4)
-            -->
-            %1.    convert %src <5 x i16>, <2 x i64>
-            %2.    bitcast <2 x i64>, i128
-            %3.    bitcast %2, <2 x i64>
-            ...
-            ALU (%7)
-            */
-
-            unsigned quotient, promoteToInt, srcWidth = I.getOperand(0)->getType()->getScalarSizeInBits();
-            promoteInt(srcWidth, quotient, promoteToInt, DL->getLargestLegalIntTypeSizeInBits());
-
-            if (quotient*promoteToInt != I.getType()->getScalarSizeInBits()) {
-                assert(false && "Target size of zext is also illegal and needs promotion to a legal int or vec of largest legal int. Support for this extra legalization is not implemented yet.");
-                return;
-            }
-
-            unsigned ipElmtSize = prevInst->getOperand(0)->getType()->getScalarSizeInBits();
-            unsigned ipVecSize = prevInst->getOperand(0)->getType()->getVectorNumElements();
-            unsigned convFactor = promoteToInt / ipElmtSize;
-
-            Value *vecRes = UndefValue::get(llvm::VectorType::get(llvm::Type::getIntNTy(I.getContext(), promoteToInt), quotient));
-            Type *resElmtTy = Type::getIntNTy(I.getContext(), promoteToInt);
-            unsigned Idx = 0;
-
-            for (unsigned o = 0; o < quotient; ++o) {
-                Value *NewVal, *Hi;
-                unsigned i = 0;
-
-                NewVal = m_builder->CreateZExt(
-                    m_builder->CreateExtractElement(prevInst->getOperand(0), m_builder->getIntN(promoteToInt, Idx)), resElmtTy);
-                ++Idx;
-                if (++i < convFactor) {
-                    if (Idx < ipVecSize) {
-                        Hi = m_builder->CreateZExt(
-                            m_builder->CreateExtractElement(prevInst->getOperand(0), m_builder->getIntN(promoteToInt, Idx)), resElmtTy);
-                        NewVal = m_builder->CreateOr(m_builder->CreateShl(Hi, ipElmtSize), NewVal);
-                        ++Idx;
-                    }
-                    else {
-                        break;
-                    }
-                }
-                m_builder->CreateInsertElement(vecRes, NewVal, o);
-            }
-            Value *bitcastBackToScalar = m_builder->CreateBitCast(vecRes, I.getType());
-
-            I.replaceAllUsesWith(bitcastBackToScalar);
-            I.eraseFromParent();
-            Changed = true;
-        }
-            break;
-        //default:
-        //    printf("Unhandled source to ZExt Instruction seen with illegal int type. Legalization support missing. Source Inst opcode:%d", prevInst->getOpcode());
-        //    assert(false);
-    }
-}
-
-void PeepholeTypeLegalizer::cleanupBitCastInst(Instruction &I) {
-
-    /*
-    Need to handle:
-    1.    bitcast 
-    2.    bitcast addrspace*
-
-    a.    bitcast iSrc , iILLEGAL
-        bitcast iILLEGAL, iSrc
-    b.    bitcast iSrc, iILLEGAL
-        bitcast iILLEGAL, iLEGAL
-    */
-
-    Instruction *prevInst = dyn_cast<Instruction>(I.getOperand(0));
-    if (!prevInst)
-        return;
-    switch (prevInst->getOpcode()) {
-        case Instruction::BitCast:
-        {
-            Type* srcType = prevInst->getOperand(0)->getType();
-            Type* dstType = I.getType();
-            if (srcType == dstType)
-            {
-                //then we have a redundant pair of bitcast
+        if (promoteToInt * quotient == Src1width) { // As in the example sighted below
+            if (quotient > 1) {
                 /*
                 sample pattern:
                 ALU
                 ...
                 %1.    insertelement %? i64, <2 x i64>, 1
                 %2.    bitcast %1 <2 x i64>, i128
-                %3. bitcast %2, <2 x i64>
+                %3.    trunc %2 i128, i80
+                %4.    zext %3 i80, i128
+                %5.    bitcast %4 i128 , <2 x i64>
+                %6.    extractelement %5 i64, <2 x i64>, 0
+                ...
+                ALU
+
+                {also applies for :
+                %2.    bitcast %1 <1 x i64>, i64
+                }
+                -->
+                ALU
+                ...
+                %1.    insertelement %? i64, <2 x i64>, 1
+                %2.    bitcast %1 <2 x i64>, i128
+                %3.    bitcast %2, <2 x i64>
                 %4.    extractelement %3, 0
                 %5.    and %4, mask_0
                 %6.    insertelement %5, 0
@@ -911,39 +744,207 @@ void PeepholeTypeLegalizer::cleanupBitCastInst(Instruction &I) {
                 %9.    extractelement %5 i64, <2 x i64>, 0
                 ...
                 ALU
+                */
+                if ((promoteToInt * quotient) == I.getType()->getScalarSizeInBits()) { // rhis is the case for all trunc-zext pairs generated by first step of this legalization pass
+                    Value* truncSrcAsVec = m_builder->CreateBitCast(prevInst->getOperand(0),
+                        llvm::VectorType::get(llvm::Type::getIntNTy(I.getContext(), promoteToInt), quotient));
+                    Value* vecRes = UndefValue::get(llvm::VectorType::get(llvm::Type::getIntNTy(I.getContext(), promoteToInt), quotient));
+                    Value* Elmt;
+                    Value* maskedElmt;
+
+                    for (unsigned Idx = 0; Idx < quotient; ++Idx) {
+                        Elmt = m_builder->CreateExtractElement(truncSrcAsVec, Idx);
+                        mask >>= 64 - std::min(64, activeBits);
+                        maskedElmt = m_builder->CreateAnd(Elmt, mask);
+                        m_builder->CreateInsertElement(vecRes, maskedElmt, Idx);
+                        activeBits -= std::min(64, activeBits);
+                    }
+                    Value* bitcastBackToScalar = m_builder->CreateBitCast(vecRes, prevInst->getType());
+
+                    I.replaceAllUsesWith(bitcastBackToScalar);
+                    I.eraseFromParent();
+                    Changed = true;
+                }
+                else {
+                    // this is a place holder, but DO NOT expect to need an implementation for this case.
+                }
+            }
+            else {
+                /*
+                sample pattern:
+                ALU1
+                ...
+                %1.    trunc %ALU1 i64, i37
+                %2.    zext %1 i37, i64
+                ...
+                ALU2 (%2)
                 -->
                 ALU
                 ...
-                %1.    insertelement %? i64, <2 x i64>, 1
-                %2.    extractelement %1, 0
-                %3.    and %2, mask_0
-                %4.    insertelement %3, 0
-                %5.    extractelement %4 i64, <2 x i64>, 0
+                %1. and i64 %ALU1, mask
                 ...
-                ALU
+                ALU2 (%1)
                 */
-                I.replaceAllUsesWith(prevInst->getOperand(0));
+                mask >>= 64 - activeBits;
+                Value* maskedElmt = m_builder->CreateAnd(prevInst->getOperand(0), mask);
+                Value* cleanedUpInst = NULL;
+                if (I.getType()->getScalarSizeInBits() < maskedElmt->getType()->getScalarSizeInBits())
+                    cleanedUpInst = m_builder->CreateTrunc(maskedElmt, I.getType());
+                else if (I.getType()->getScalarSizeInBits() > maskedElmt->getType()->getScalarSizeInBits())
+                    cleanedUpInst = m_builder->CreateZExt(maskedElmt, I.getType());
+                else
+                    cleanedUpInst = maskedElmt;
+
+                I.replaceAllUsesWith(cleanedUpInst);
                 I.eraseFromParent();
                 Changed = true;
             }
-            else
-            {
-                // Handles 1.b Directly bitcasts iSrc to iLegal
-                m_builder->SetInsertPoint(&I);
-                Value* newBitcast = m_builder->CreateBitCast(prevInst->getOperand(0), I.getType());
-                I.replaceAllUsesWith(newBitcast);
-                I.eraseFromParent();
-                Changed = true;
-            }
-            // We may be able to remove the first bitcast
-            if (prevInst->use_empty())
-            {
-                prevInst->eraseFromParent();
-                Changed = true;
-            }
-            break;
         }
-        /*default:
-            assert(false && "Unhandled source to BitCast Instruction seen with illegal int type. Legalization support missing.");*/
+        else { // (promoteToInt*quotient != Src1width) case            
+               // No support yet
+        }
+    }
+    break;
+    case Instruction::BitCast:
+    {
+        /*
+        Does this handle the first bitcast-zext? :: NO
+
+        %1.    bitcast %src <5 x i16>, i80
+        %2.    zext %1 i80, i128
+        %3.    bitcast %2, <2x i64>
+        %4.    extractelement %3, 0
+        ...
+        ALU (%4)
+        -->
+        %1.    convert %src <5 x i16>, <2 x i64>
+        %2.    bitcast <2 x i64>, i128
+        %3.    bitcast %2, <2 x i64>
+        ...
+        ALU (%7)
+        */
+
+        unsigned quotient, promoteToInt, srcWidth = I.getOperand(0)->getType()->getScalarSizeInBits();
+        promoteInt(srcWidth, quotient, promoteToInt, DL->getLargestLegalIntTypeSizeInBits());
+
+        if (quotient * promoteToInt != I.getType()->getScalarSizeInBits()) {
+            assert(false && "Target size of zext is also illegal and needs promotion to a legal int or vec of largest legal int. Support for this extra legalization is not implemented yet.");
+            return;
+        }
+
+        unsigned ipElmtSize = prevInst->getOperand(0)->getType()->getScalarSizeInBits();
+        unsigned ipVecSize = prevInst->getOperand(0)->getType()->getVectorNumElements();
+        unsigned convFactor = promoteToInt / ipElmtSize;
+
+        Value* vecRes = UndefValue::get(llvm::VectorType::get(llvm::Type::getIntNTy(I.getContext(), promoteToInt), quotient));
+        Type* resElmtTy = Type::getIntNTy(I.getContext(), promoteToInt);
+        unsigned Idx = 0;
+
+        for (unsigned o = 0; o < quotient; ++o) {
+            Value* NewVal, * Hi;
+            unsigned i = 0;
+
+            NewVal = m_builder->CreateZExt(
+                m_builder->CreateExtractElement(prevInst->getOperand(0), m_builder->getIntN(promoteToInt, Idx)), resElmtTy);
+            ++Idx;
+            if (++i < convFactor) {
+                if (Idx < ipVecSize) {
+                    Hi = m_builder->CreateZExt(
+                        m_builder->CreateExtractElement(prevInst->getOperand(0), m_builder->getIntN(promoteToInt, Idx)), resElmtTy);
+                    NewVal = m_builder->CreateOr(m_builder->CreateShl(Hi, ipElmtSize), NewVal);
+                    ++Idx;
+                }
+                else {
+                    break;
+                }
+            }
+            m_builder->CreateInsertElement(vecRes, NewVal, o);
+        }
+        Value* bitcastBackToScalar = m_builder->CreateBitCast(vecRes, I.getType());
+
+        I.replaceAllUsesWith(bitcastBackToScalar);
+        I.eraseFromParent();
+        Changed = true;
+    }
+    break;
+    //default:
+    //    printf("Unhandled source to ZExt Instruction seen with illegal int type. Legalization support missing. Source Inst opcode:%d", prevInst->getOpcode());
+    //    assert(false);
+    }
+}
+
+void PeepholeTypeLegalizer::cleanupBitCastInst(Instruction& I) {
+
+    /*
+    Need to handle:
+    1.    bitcast
+    2.    bitcast addrspace*
+
+    a.    bitcast iSrc , iILLEGAL
+        bitcast iILLEGAL, iSrc
+    b.    bitcast iSrc, iILLEGAL
+        bitcast iILLEGAL, iLEGAL
+    */
+
+    Instruction* prevInst = dyn_cast<Instruction>(I.getOperand(0));
+    if (!prevInst)
+        return;
+    switch (prevInst->getOpcode()) {
+    case Instruction::BitCast:
+    {
+        Type* srcType = prevInst->getOperand(0)->getType();
+        Type* dstType = I.getType();
+        if (srcType == dstType)
+        {
+            //then we have a redundant pair of bitcast
+            /*
+            sample pattern:
+            ALU
+            ...
+            %1.    insertelement %? i64, <2 x i64>, 1
+            %2.    bitcast %1 <2 x i64>, i128
+            %3. bitcast %2, <2 x i64>
+            %4.    extractelement %3, 0
+            %5.    and %4, mask_0
+            %6.    insertelement %5, 0
+            %7.    bitcast %6, i128
+            %8.    bitcast %7 i128 , <2 x i64>
+            %9.    extractelement %5 i64, <2 x i64>, 0
+            ...
+            ALU
+            -->
+            ALU
+            ...
+            %1.    insertelement %? i64, <2 x i64>, 1
+            %2.    extractelement %1, 0
+            %3.    and %2, mask_0
+            %4.    insertelement %3, 0
+            %5.    extractelement %4 i64, <2 x i64>, 0
+            ...
+            ALU
+            */
+            I.replaceAllUsesWith(prevInst->getOperand(0));
+            I.eraseFromParent();
+            Changed = true;
+        }
+        else
+        {
+            // Handles 1.b Directly bitcasts iSrc to iLegal
+            m_builder->SetInsertPoint(&I);
+            Value* newBitcast = m_builder->CreateBitCast(prevInst->getOperand(0), I.getType());
+            I.replaceAllUsesWith(newBitcast);
+            I.eraseFromParent();
+            Changed = true;
+        }
+        // We may be able to remove the first bitcast
+        if (prevInst->use_empty())
+        {
+            prevInst->eraseFromParent();
+            Changed = true;
+        }
+        break;
+    }
+    /*default:
+        assert(false && "Unhandled source to BitCast Instruction seen with illegal int type. Legalization support missing.");*/
     }
 }

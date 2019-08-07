@@ -30,18 +30,20 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/MDFrameWork.h"
 #include "common/igc_regkeys.hpp"
 
-namespace IGC { namespace IGCMD {
+namespace IGC {
+    namespace IGCMD {
 
-    class IGCMetaDataHelper
-    {
+        class IGCMetaDataHelper
+        {
 
-    public:
-        static void addFunction(MetaDataUtils &mdUtils, llvm::Function *pFunc, IGC::FunctionTypeMD type = IGC::FunctionTypeMD::KernelFunction);
+        public:
+            static void addFunction(MetaDataUtils& mdUtils, llvm::Function* pFunc, IGC::FunctionTypeMD type = IGC::FunctionTypeMD::KernelFunction);
 
-        // In OCL, thread group size (hint) is given by kernel attributes reqd_work_group_size and work_group_size_hint.
-        // Return thread group size (hint) if present; return 0 otherwise.
-        static uint32_t getThreadGroupSize(MetaDataUtils &mdUtils, llvm::Function *pKernelFunc);
-        static uint32_t getThreadGroupSizeHint(MetaDataUtils &mdUtils, llvm::Function *pKernelFunc);
-    };
+            // In OCL, thread group size (hint) is given by kernel attributes reqd_work_group_size and work_group_size_hint.
+            // Return thread group size (hint) if present; return 0 otherwise.
+            static uint32_t getThreadGroupSize(MetaDataUtils& mdUtils, llvm::Function* pKernelFunc);
+            static uint32_t getThreadGroupSizeHint(MetaDataUtils& mdUtils, llvm::Function* pKernelFunc);
+        };
 
-} }
+    }
+}

@@ -40,7 +40,7 @@ using namespace IGC;
 using namespace IGC::IGCMD;
 using namespace llvm;
 
-KernelArg::KernelArg(KernelArg::ArgType argType, KernelArg::AccessQual accessQual, unsigned int allocateSize, unsigned int elemAllocateSize, size_t align, bool isConstantBuf, const llvm::Argument * arg, unsigned int associatedArgNo ):
+KernelArg::KernelArg(KernelArg::ArgType argType, KernelArg::AccessQual accessQual, unsigned int allocateSize, unsigned int elemAllocateSize, size_t align, bool isConstantBuf, const llvm::Argument* arg, unsigned int associatedArgNo) :
     m_implicitArgument(false),
     m_argType(argType),
     m_accessQual(accessQual),
@@ -98,7 +98,7 @@ KernelArg::KernelArg(const ImplicitArg& implicitArg, const DataLayout* DL, const
     m_elemAllocateSize = m_allocateSize / implicitArg.getNumberElements();
     if (implicitArg.isLocalIDs() && GRFSize == 64)
     {
-        m_elemAllocateSize = m_allocateSize / (GRFSize/2);
+        m_elemAllocateSize = m_allocateSize / (GRFSize / 2);
     }
 }
 
@@ -128,7 +128,7 @@ unsigned int KernelArg::calcAlignment(const Argument* arg, const DataLayout* DL)
 unsigned int KernelArg::calcElemAllocateSize(const Argument* arg, const DataLayout* DL) const
 {
     if (!needsAllocation()) return 0;
-     
+
     return int_cast<unsigned int>(DL->getTypeAllocSize(arg->getType()->getScalarType()));
 }
 
@@ -136,89 +136,89 @@ KernelArg::ArgType KernelArg::calcArgType(const Argument* arg, const StringRef t
 {
     switch (arg->getType()->getTypeID())
     {
-    
+
     case Type::PointerTyID:
+    {
+        PointerType* ptrType = cast<PointerType>(arg->getType());
+
+        // Check for pointer address space
+        switch (ptrType->getAddressSpace())
         {
-            PointerType* ptrType = cast<PointerType>(arg->getType());
+        case ADDRESS_SPACE_PRIVATE:
+        {
 
-            // Check for pointer address space
-            switch (ptrType->getAddressSpace())
+            Type* type = arg->getType();
+            if (typeStr.equals("queue_t"))
             {
-            case ADDRESS_SPACE_PRIVATE:
-                {
-
-                    Type* type = arg->getType();
-                    if (typeStr.equals("queue_t"))
-                    {
-                        return KernelArg::ArgType::PTR_DEVICE_QUEUE;
-                    }
-                    else if (arg->hasByValAttr() &&
-                        type->isPointerTy() &&
-                        type->getPointerElementType()->isStructTy())
-                    {
-                        // Pass by value structs will show up as private pointer
-                        // arguments in the function signiture.  
-                        return KernelArg::ArgType::STRUCT;
-                    }
-                    else
-                    {
-                        return KernelArg::ArgType::IMPLICIT_PRIVATE_BASE;
-                    }
-                }
-
-            case ADDRESS_SPACE_GLOBAL:
-                {
-                    ArgType imgArgType;
-                    // Check if argument is image
-                    if (isImage(arg, typeStr, imgArgType)) return imgArgType;
-                }
-                return KernelArg::ArgType::PTR_GLOBAL;
-            
-            case ADDRESS_SPACE_CONSTANT:
-                // Bindless samplers are stored in addrspace(2)
-                if (isSampler(arg, typeStr))
-                    return KernelArg::ArgType::SAMPLER;
-                else if (isBindlessSampler(arg, typeStr))
-                    return KernelArg::ArgType::BINDLESS_SAMPLER;
-
-                return KernelArg::ArgType::PTR_CONSTANT;
-            case ADDRESS_SPACE_LOCAL:
-                return KernelArg::ArgType::PTR_LOCAL;
-            
-            default:
-#if 0
-                // Need to disable this assertion for two-phase-inlining, i.e.
-                // kernel arguments will be used for subroutines, which may 
-                // have arguments from other address spaces. It is unfortunate
-                // that we cannot run ResourceAllocator only on kernels since
-                // BuiltinsConverter checks caller's resource allocation info.
-                //
-                // For the final codegen, this allocation info is only queried
-                // for kernels. This should not affect correctness, but a waste
-                // on subroutines.
-                //
-                // FIXME: There is a chain of dependency.
-                assert(false && "Unrecognized address space");
-#endif
-                // This is a buffer. Try to decode this
-                int address_space = ptrType->getPointerAddressSpace();
-                bool directIdx = false;
-                unsigned int bufId = 0;
-                BufferType bufType = DecodeAS4GFXResource(address_space, directIdx, bufId);
-
-                // Check if this arg is an image
-                if (bufType == BufferType::UAV)
-                {
-                    ArgType imgArgType;
-                    // Check if argument is image
-                    if (isImage(arg, typeStr, imgArgType)) return imgArgType;
-                }
-                else if (bufType == BufferType::SAMPLER)
-                    return KernelArg::ArgType::SAMPLER;
-
-                return KernelArg::ArgType::NOT_TO_ALLOCATE;
+                return KernelArg::ArgType::PTR_DEVICE_QUEUE;
+            }
+            else if (arg->hasByValAttr() &&
+                type->isPointerTy() &&
+                type->getPointerElementType()->isStructTy())
+            {
+                // Pass by value structs will show up as private pointer
+                // arguments in the function signiture.  
+                return KernelArg::ArgType::STRUCT;
+            }
+            else
+            {
+                return KernelArg::ArgType::IMPLICIT_PRIVATE_BASE;
             }
         }
+
+        case ADDRESS_SPACE_GLOBAL:
+        {
+            ArgType imgArgType;
+            // Check if argument is image
+            if (isImage(arg, typeStr, imgArgType)) return imgArgType;
+        }
+        return KernelArg::ArgType::PTR_GLOBAL;
+
+        case ADDRESS_SPACE_CONSTANT:
+            // Bindless samplers are stored in addrspace(2)
+            if (isSampler(arg, typeStr))
+                return KernelArg::ArgType::SAMPLER;
+            else if (isBindlessSampler(arg, typeStr))
+                return KernelArg::ArgType::BINDLESS_SAMPLER;
+
+            return KernelArg::ArgType::PTR_CONSTANT;
+        case ADDRESS_SPACE_LOCAL:
+            return KernelArg::ArgType::PTR_LOCAL;
+
+        default:
+#if 0
+            // Need to disable this assertion for two-phase-inlining, i.e.
+            // kernel arguments will be used for subroutines, which may 
+            // have arguments from other address spaces. It is unfortunate
+            // that we cannot run ResourceAllocator only on kernels since
+            // BuiltinsConverter checks caller's resource allocation info.
+            //
+            // For the final codegen, this allocation info is only queried
+            // for kernels. This should not affect correctness, but a waste
+            // on subroutines.
+            //
+            // FIXME: There is a chain of dependency.
+            assert(false && "Unrecognized address space");
+#endif
+            // This is a buffer. Try to decode this
+            int address_space = ptrType->getPointerAddressSpace();
+            bool directIdx = false;
+            unsigned int bufId = 0;
+            BufferType bufType = DecodeAS4GFXResource(address_space, directIdx, bufId);
+
+            // Check if this arg is an image
+            if (bufType == BufferType::UAV)
+            {
+                ArgType imgArgType;
+                // Check if argument is image
+                if (isImage(arg, typeStr, imgArgType)) return imgArgType;
+            }
+            else if (bufType == BufferType::SAMPLER)
+                return KernelArg::ArgType::SAMPLER;
+
+            return KernelArg::ArgType::NOT_TO_ALLOCATE;
+        }
+    }
     case  Type::IntegerTyID:
         // Check if argument is sampler
         if (isSampler(arg, typeStr)) return KernelArg::ArgType::SAMPLER;
@@ -232,14 +232,14 @@ KernelArg::ArgType KernelArg::calcArgType(const Argument* arg, const StringRef t
 
 KernelArg::ArgType KernelArg::calcArgType(const ImplicitArg& arg) const
 {
-    switch(arg.getArgType())
+    switch (arg.getArgType())
     {
     case ImplicitArg::R0:
         return KernelArg::ArgType::IMPLICIT_R0;
     case ImplicitArg::PAYLOAD_HEADER:
         return KernelArg::ArgType::IMPLICIT_PAYLOAD_HEADER;
     case ImplicitArg::PRIVATE_BASE:
-            return KernelArg::ArgType::IMPLICIT_PRIVATE_BASE;
+        return KernelArg::ArgType::IMPLICIT_PRIVATE_BASE;
     case ImplicitArg::CONSTANT_BASE:
         return KernelArg::ArgType::IMPLICIT_CONSTANT_BASE;
     case ImplicitArg::PRINTF_BUFFER:
@@ -257,7 +257,7 @@ KernelArg::ArgType KernelArg::calcArgType(const ImplicitArg& arg) const
     case ImplicitArg::LOCAL_SIZE:
         return KernelArg::ArgType::IMPLICIT_LOCAL_SIZE;
     case ImplicitArg::ENQUEUED_LOCAL_WORK_SIZE:
-      return KernelArg::ArgType::IMPLICIT_ENQUEUED_LOCAL_WORK_SIZE;
+        return KernelArg::ArgType::IMPLICIT_ENQUEUED_LOCAL_WORK_SIZE;
     case ImplicitArg::LOCAL_ID_X:
         // fall through until LOCAL_ID_Z
     case ImplicitArg::LOCAL_ID_Y:
@@ -278,7 +278,7 @@ KernelArg::ArgType KernelArg::calcArgType(const ImplicitArg& arg) const
         return KernelArg::ArgType::CONSTANT_REG;
     case ImplicitArg::CONSTANT_REG_BYTE:
         return KernelArg::ArgType::CONSTANT_REG;
-    
+
     case ImplicitArg::IMAGE_HEIGHT:
         return KernelArg::ArgType::IMPLICIT_IMAGE_HEIGHT;
     case ImplicitArg::IMAGE_WIDTH:
@@ -303,7 +303,7 @@ KernelArg::ArgType KernelArg::calcArgType(const ImplicitArg& arg) const
         return KernelArg::ArgType::IMPLICIT_SAMPLER_NORMALIZED;
     case ImplicitArg::SAMPLER_SNAP_WA:
         return KernelArg::ArgType::IMPLICIT_SAMPLER_SNAP_WA;
-        
+
     case ImplicitArg::VME_MB_BLOCK_TYPE:
         return KernelArg::ArgType::IMPLICIT_VME_MB_BLOCK_TYPE;
     case ImplicitArg::VME_SUBPIXEL_MODE:
@@ -324,7 +324,7 @@ KernelArg::ArgType KernelArg::calcArgType(const ImplicitArg& arg) const
     case ImplicitArg::DEVICE_ENQUEUE_PREFERED_WORKGROUP_MULTIPLE:
         return KernelArg::ArgType::IMPLICIT_DEVICE_ENQUEUE_PREFERED_WORKGROUP_MULTIPLE;
     case ImplicitArg::GET_OBJECT_ID:
-       return KernelArg::ArgType::IMPLICIT_DEVICE_ENQUEUE_DATA_PARAMETER_OBJECT_ID;
+        return KernelArg::ArgType::IMPLICIT_DEVICE_ENQUEUE_DATA_PARAMETER_OBJECT_ID;
     case ImplicitArg::GET_BLOCK_SIMD_SIZE:
         return KernelArg::ArgType::IMPLICIT_DEVICE_ENQUEUE_DISPATCHER_SIMD_SIZE;
 
@@ -358,14 +358,14 @@ KernelArg::AccessQual KernelArg::calcAccessQual(const Argument* arg, const Strin
 unsigned int KernelArg::calcAssociatedArgNo(const ImplicitArg& implicitArg, const Argument* arg, unsigned int ExplicitArgNo) const
 {
     ImplicitArg::ArgType argType = implicitArg.getArgType();
-    if ( ((argType >= ImplicitArg::IMAGE_HEIGHT) &&
-          (argType <= ImplicitArg::SAMPLER_SNAP_WA)) ||
-         ((argType >= ImplicitArg::CONSTANT_REG_FP32) &&
-          (argType <= ImplicitArg::CONSTANT_REG_BYTE)) ||
-         (argType == ImplicitArg::GET_OBJECT_ID) ||
-         (argType == ImplicitArg::GET_BLOCK_SIMD_SIZE) ||
-         (argType == ImplicitArg::BUFFER_OFFSET)
-       )
+    if (((argType >= ImplicitArg::IMAGE_HEIGHT) &&
+        (argType <= ImplicitArg::SAMPLER_SNAP_WA)) ||
+        ((argType >= ImplicitArg::CONSTANT_REG_FP32) &&
+        (argType <= ImplicitArg::CONSTANT_REG_BYTE)) ||
+            (argType == ImplicitArg::GET_OBJECT_ID) ||
+        (argType == ImplicitArg::GET_BLOCK_SIMD_SIZE) ||
+        (argType == ImplicitArg::BUFFER_OFFSET)
+        )
     {
         // For implicit image and sampler and struct arguments and buffer offset,
         // the implicit arg's value represents the index of the associated
@@ -377,7 +377,7 @@ unsigned int KernelArg::calcAssociatedArgNo(const ImplicitArg& implicitArg, cons
 
 unsigned int KernelArg::getNumComponents() const
 {
-    if (VectorType* vecType = dyn_cast<VectorType>(m_arg->getType()))
+    if (VectorType * vecType = dyn_cast<VectorType>(m_arg->getType()))
     {
         // Vector
         return int_cast<unsigned int>(vecType->getNumElements());
@@ -417,7 +417,7 @@ bool KernelArg::needsAllocation() const
     return m_needsAllocation;
 }
 
-KernelArg::ArgType KernelArg::getArgType() const{
+KernelArg::ArgType KernelArg::getArgType() const {
     return m_argType;
 }
 
@@ -459,8 +459,8 @@ bool KernelArg::isImage(const Argument* arg, const StringRef typeStr, ArgType& i
     // Get the original OpenCL type from the metadata and check if it's an image
     // clang 3.8 introduced a new type mangling that includes the image access qualifier.
     // Accept those too.
-    std::vector<std::string> accessQual { "_t", "_ro_t", "_wo_t", "_rw_t" };
-    for (auto &postfix : accessQual)
+    std::vector<std::string> accessQual{ "_t", "_ro_t", "_wo_t", "_rw_t" };
+    for (auto& postfix : accessQual)
     {
         if (typeStr.equals("image1d" + postfix))
         {
@@ -642,7 +642,7 @@ bool KernelArg::isSampler(const Argument* arg, const StringRef typeStr)
     return (typeStr.equals("sampler_t"));
 }
 
-bool KernelArg::isBindlessSampler(const Argument* arg, const StringRef typeStr) 
+bool KernelArg::isBindlessSampler(const Argument* arg, const StringRef typeStr)
 {
     return (typeStr.equals("bindless_sampler_t"));
 }
@@ -708,13 +708,13 @@ std::map<KernelArg::ArgType, iOpenCL::DATA_PARAMETER_TOKEN> initArgTypeTokenMap(
 }
 const std::map<KernelArg::ArgType, iOpenCL::DATA_PARAMETER_TOKEN> KernelArg::argTypeTokenMap = initArgTypeTokenMap();
 
-bool KernelArgsOrder::VerifyOrder(std::array<KernelArg::ArgType, static_cast<int32_t>(KernelArg::ArgType::End)> & order, KernelArg::ArgType sent)
+bool KernelArgsOrder::VerifyOrder(std::array<KernelArg::ArgType, static_cast<int32_t>(KernelArg::ArgType::End)>& order, KernelArg::ArgType sent)
 {
     bool validOrder = false;
     // It's not safe to iterate over a random generated sentinel
-    if( order[static_cast<uint>(KernelArg::ArgType::End)-1] == sent )
+    if (order[static_cast<uint>(KernelArg::ArgType::End) - 1] == sent)
     {
-        order[static_cast<uint>(KernelArg::ArgType::End)-1] = KernelArg::ArgType::Default;
+        order[static_cast<uint>(KernelArg::ArgType::End) - 1] = KernelArg::ArgType::Default;
         validOrder = true;
     }
     else
@@ -725,11 +725,11 @@ bool KernelArgsOrder::VerifyOrder(std::array<KernelArg::ArgType, static_cast<int
     return validOrder;
 }
 
-void KernelArgsOrder::TransposeGenerateOrder(std::array<KernelArg::ArgType, static_cast<int32_t>(KernelArg::ArgType::End)> & order)
+void KernelArgsOrder::TransposeGenerateOrder(std::array<KernelArg::ArgType, static_cast<int32_t>(KernelArg::ArgType::End)>& order)
 {
     int i = 0;
 
-    for (const auto &j : order)
+    for (const auto& j : order)
     {
         m_position[static_cast<uint32_t>(j)] = i++;
     }
@@ -737,9 +737,9 @@ void KernelArgsOrder::TransposeGenerateOrder(std::array<KernelArg::ArgType, stat
 
 KernelArgsOrder::KernelArgsOrder(InputType layout)
 {
-    const KernelArg::ArgType SENTINEL = KernelArg::ArgType::End; 
+    const KernelArg::ArgType SENTINEL = KernelArg::ArgType::End;
 
-    switch(layout)
+    switch (layout)
     {
     case InputType::INDEPENDENT:
     case InputType::CURBE:
@@ -751,7 +751,7 @@ KernelArgsOrder::KernelArgsOrder(InputType layout)
             KernelArg::ArgType::RUNTIME_VALUE,
 
             KernelArg::ArgType::IMPLICIT_PAYLOAD_HEADER,
-        
+
             KernelArg::ArgType::PTR_LOCAL,
             KernelArg::ArgType::PTR_GLOBAL,
             KernelArg::ArgType::PTR_CONSTANT,
@@ -784,7 +784,7 @@ KernelArgsOrder::KernelArgsOrder(InputType layout)
             KernelArg::ArgType::IMPLICIT_SAMPLER_ADDRESS,
             KernelArg::ArgType::IMPLICIT_SAMPLER_NORMALIZED,
             KernelArg::ArgType::IMPLICIT_SAMPLER_SNAP_WA,
- 
+
             KernelArg::ArgType::IMPLICIT_VME_MB_BLOCK_TYPE,
             KernelArg::ArgType::IMPLICIT_VME_SUBPIXEL_MODE,
             KernelArg::ArgType::IMPLICIT_VME_SAD_ADJUST_MODE,
@@ -797,7 +797,7 @@ KernelArgsOrder::KernelArgsOrder(InputType layout)
             KernelArg::ArgType::IMPLICIT_DEVICE_ENQUEUE_PREFERED_WORKGROUP_MULTIPLE,
             KernelArg::ArgType::IMPLICIT_DEVICE_ENQUEUE_DATA_PARAMETER_OBJECT_ID,
             KernelArg::ArgType::IMPLICIT_DEVICE_ENQUEUE_DISPATCHER_SIMD_SIZE,
-            
+
             KernelArg::ArgType::IMPLICIT_LOCAL_MEMORY_STATELESS_WINDOW_START_ADDRESS,
             KernelArg::ArgType::IMPLICIT_LOCAL_MEMORY_STATELESS_WINDOW_SIZE,
             KernelArg::ArgType::IMPLICIT_PRIVATE_MEMORY_STATELESS_SIZE,
@@ -844,13 +844,13 @@ KernelArgsOrder::KernelArgsOrder(InputType layout)
             SENTINEL,
         };
 
-        if(VerifyOrder(CURBE, SENTINEL))
+        if (VerifyOrder(CURBE, SENTINEL))
         {
             TransposeGenerateOrder(CURBE);
         }
 
     }
-        break;
+    break;
     case InputType::INDIRECT:
     {
         std::array<KernelArg::ArgType, static_cast<int32_t>(KernelArg::ArgType::End)> INDIRECT =
@@ -861,7 +861,7 @@ KernelArgsOrder::KernelArgsOrder(InputType layout)
             KernelArg::ArgType::IMPLICIT_LOCAL_IDS,
 
             KernelArg::ArgType::RUNTIME_VALUE,
-            
+
             KernelArg::ArgType::IMPLICIT_PAYLOAD_HEADER,
             KernelArg::ArgType::PTR_LOCAL,
             KernelArg::ArgType::PTR_GLOBAL,
@@ -894,7 +894,7 @@ KernelArgsOrder::KernelArgsOrder(InputType layout)
             KernelArg::ArgType::IMPLICIT_SAMPLER_ADDRESS,
             KernelArg::ArgType::IMPLICIT_SAMPLER_NORMALIZED,
             KernelArg::ArgType::IMPLICIT_SAMPLER_SNAP_WA,
-            
+
             KernelArg::ArgType::IMPLICIT_VME_MB_BLOCK_TYPE,
             KernelArg::ArgType::IMPLICIT_VME_SUBPIXEL_MODE,
             KernelArg::ArgType::IMPLICIT_VME_SAD_ADJUST_MODE,
@@ -951,37 +951,37 @@ KernelArgsOrder::KernelArgsOrder(InputType layout)
             SENTINEL,
         };
 
-        if(VerifyOrder(INDIRECT, SENTINEL))
+        if (VerifyOrder(INDIRECT, SENTINEL))
         {
-            TransposeGenerateOrder( INDIRECT );
+            TransposeGenerateOrder(INDIRECT);
         }
     }
-        break;
+    break;
     default:
         assert(0);
         break;
     }
 }
 
-bool KernelArgsOrder::operator()(const KernelArg::ArgType &lhs, const KernelArg::ArgType &rhs) const
+bool KernelArgsOrder::operator()(const KernelArg::ArgType& lhs, const KernelArg::ArgType& rhs) const
 {
     return m_position[static_cast<int32_t>(lhs)] < m_position[static_cast<int32_t>(rhs)];
 }
 
 KernelArgs::const_iterator::const_iterator(
-                        AllocationArgs::const_iterator major, 
-                        AllocationArgs::const_iterator majorEnd, 
-                        std::vector<KernelArg>::const_iterator minor)
-                        :   m_major(major), 
-                            m_majorEnd(majorEnd), 
-                            m_minor(minor) 
+    AllocationArgs::const_iterator major,
+    AllocationArgs::const_iterator majorEnd,
+    std::vector<KernelArg>::const_iterator minor)
+    : m_major(major),
+    m_majorEnd(majorEnd),
+    m_minor(minor)
 {
 }
 
 KernelArgs::const_iterator& KernelArgs::const_iterator::operator++()
 {
     ++m_minor;
-    
+
     if (m_minor == (*m_major).second.end())
     {
         ++m_major;
@@ -995,25 +995,25 @@ KernelArgs::const_iterator& KernelArgs::const_iterator::operator++()
 }
 
 const KernelArg& KernelArgs::const_iterator::operator*()
-{ 
-    return *m_minor; 
-} 
+{
+    return *m_minor;
+}
 
 bool KernelArgs::const_iterator::operator!=(const const_iterator& iterator)
-{ 
-    return (m_major != iterator.m_major) || (m_minor != iterator.m_minor); 
+{
+    return (m_major != iterator.m_major) || (m_minor != iterator.m_minor);
 }
 
 KernelArgs::KernelArgs(const Function& F, const DataLayout* DL, MetaDataUtils* pMdUtils, ModuleMetaData* moduleMD, unsigned int GRFSize, KernelArgsOrder::InputType layout)
-    : m_KernelArgsOrder( layout ), 
-      m_args( m_KernelArgsOrder )
+    : m_KernelArgsOrder(layout),
+    m_args(m_KernelArgsOrder)
 {
     ImplicitArgs implicitArgs(F, pMdUtils);
     const unsigned int numImplicitArgs = implicitArgs.size();
     const unsigned int numRuntimeValue = moduleMD ? moduleMD->pushInfo.constantReg.size() : 0;
     const unsigned int numExplicitArgs = IGCLLVM::GetFuncArgSize(F) - numImplicitArgs - numRuntimeValue;
     llvm::Function::const_arg_iterator funcArg = F.arg_begin();
-    
+
     FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(const_cast<llvm::Function*>(&F));
     // Explicit function args
     for (int i = 0, e = numExplicitArgs; i < e; ++i, ++funcArg)
@@ -1022,11 +1022,11 @@ KernelArgs::KernelArgs(const Function& F, const DataLayout* DL, MetaDataUtils* p
         if (moduleMD && moduleMD->UseBindlessImage)
         {
             // Check for bindless images which require allocation
-            FunctionMetaData *funcMD = &moduleMD->FuncMD[const_cast<llvm::Function*>(&F)];
-            ResourceAllocMD *resAllocMD = &funcMD->resAllocMD;
+            FunctionMetaData* funcMD = &moduleMD->FuncMD[const_cast<llvm::Function*>(&F)];
+            ResourceAllocMD* resAllocMD = &funcMD->resAllocMD;
             if (resAllocMD->argAllocMDList.size() > funcArg->getArgNo())
             {
-                ArgAllocMD *argAlloc = &resAllocMD->argAllocMDList[funcArg->getArgNo()];
+                ArgAllocMD* argAlloc = &resAllocMD->argAllocMDList[funcArg->getArgNo()];
                 if (argAlloc->type == ResourceTypeEnum::BindlessUAVResourceType ||
                     argAlloc->type == ResourceTypeEnum::BindlessSamplerResourceType)
                 {
@@ -1052,7 +1052,7 @@ KernelArgs::KernelArgs(const Function& F, const DataLayout* DL, MetaDataUtils* p
 
         std::string argBaseType = "";
         std::string argAccessQualItem = "";
-        
+
         if (it != moduleMD->FuncMD.end())
         {
             if (it->second.m_OpenCLArgBaseTypes.size() > (unsigned)i)
@@ -1066,13 +1066,13 @@ KernelArgs::KernelArgs(const Function& F, const DataLayout* DL, MetaDataUtils* p
             DL,
             argBaseType,
             argAccessQualItem,
-            location_index, 
-            location_count, 
+            location_index,
+            location_count,
             needAllocation,
             is_emulation_argument);
 
         if ((kernelArg.getArgType() == KernelArg::ArgType::IMAGE_3D ||
-             kernelArg.getArgType() == KernelArg::ArgType::BINDLESS_IMAGE_3D) &&
+            kernelArg.getArgType() == KernelArg::ArgType::BINDLESS_IMAGE_3D) &&
             funcInfoMD->isArgInfoListHasValue()) {
             for (auto AI = funcInfoMD->begin_ArgInfoList(), AE = funcInfoMD->end_ArgInfoList(); AI != AE; ++AI) {
                 ArgInfoMetaDataHandle argInfo = *AI;
@@ -1086,16 +1086,16 @@ KernelArgs::KernelArgs(const Function& F, const DataLayout* DL, MetaDataUtils* p
             }
         }
 
-        addAllocationArg(kernelArg); 
+        addAllocationArg(kernelArg);
     }
 
     // Implicit function args
     for (unsigned int i = 0; i < numImplicitArgs; ++i, ++funcArg)
     {
         KernelArg kernelArg = KernelArg(implicitArgs[i], DL, &(*funcArg), implicitArgs.getExplicitArgNum(i), implicitArgs.getStructArgOffset(i), GRFSize);
-        addAllocationArg(kernelArg); 
+        addAllocationArg(kernelArg);
     }
-    
+
     // Need to add Runtime Values, so they can trigger NOSBuffer allocation in correct
     // order (especially needed when InputType::INDEPENDENT or InputType::CURBE is used).
     for (unsigned int i = 0; i < numRuntimeValue; ++i, ++funcArg)
@@ -1109,7 +1109,7 @@ KernelArgs::KernelArgs(const Function& F, const DataLayout* DL, MetaDataUtils* p
             true,                                   // isConstantBuf
             &(*funcArg),                            // arg
             numExplicitArgs + numImplicitArgs + 1); // associatedArgNo
-        addAllocationArg(kernelArg); 
+        addAllocationArg(kernelArg);
     }
 }
 
@@ -1145,7 +1145,7 @@ void KernelArgs::checkForZeroPerThreadData()
     bool HWWAForZeroLengthPTDRequired = true;
     for (AllocationArgs::const_iterator i = m_args.begin(), e = m_args.end(); i != e; ++i)
     {
-        const KernelArg *arg = i->second.data();
+        const KernelArg* arg = i->second.data();
         if (arg->needsAllocation() && !arg->isConstantBuf())
         {
             if (++PerThreadData > 0 + 1 /* IMPLICIT_R0 */)

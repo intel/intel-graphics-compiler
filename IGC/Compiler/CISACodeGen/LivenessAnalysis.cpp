@@ -51,7 +51,7 @@ using namespace IGC;
 
 char LivenessAnalysis::ID = 0;
 
-std::string LivenessAnalysis::getllvmValueName(Value *V)
+std::string LivenessAnalysis::getllvmValueName(Value* V)
 {
     if (V->hasName())
     {
@@ -79,14 +79,14 @@ IGC_INITIALIZE_PASS_BEGIN(LivenessAnalysis, PASS_FLAG, PASS_DESCRIPTION, PASS_CF
 IGC_INITIALIZE_PASS_END(LivenessAnalysis, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 // runOnFunction set up Map only. calculate() computes Liveness.
-bool LivenessAnalysis::runOnFunction(Function &F)
+bool LivenessAnalysis::runOnFunction(Function& F)
 {
     m_F = &F;
 
     // Pre-allocate memory to avoid many small alocations.
     // todo: reuse it from LiveVars
     size_t nVals = m_F->arg_size();
-    for (auto &BB : *m_F) {
+    for (auto& BB : *m_F) {
         nVals += BB.size();
     }
 
@@ -134,14 +134,14 @@ void LivenessAnalysis::initValueIds()
     for (inst_iterator II = inst_begin(m_F), IE = inst_end(m_F);
         II != IE; ++II)
     {
-        Instruction *Inst = &*II;
+        Instruction* Inst = &*II;
         ValueIds.insert(std::make_pair(Inst, ix));
         IdValues.push_back(Inst);
         ++ix;
     }
 }
 
-void LivenessAnalysis::setLiveIn(BasicBlock *BB, Value *V)
+void LivenessAnalysis::setLiveIn(BasicBlock* BB, Value* V)
 {
     ValueToIntMap::iterator I = ValueIds.find(V);
     if (I == ValueIds.end())
@@ -152,19 +152,19 @@ void LivenessAnalysis::setLiveIn(BasicBlock *BB, Value *V)
     setLiveIn(BB, id);
 }
 
-inline void LivenessAnalysis::setLiveIn(BasicBlock *BB, int ValueID)
+inline void LivenessAnalysis::setLiveIn(BasicBlock* BB, int ValueID)
 {
-    SBitVector &BV = BBLiveIns[BB];
+    SBitVector& BV = BBLiveIns[BB];
     BV.set(ValueID);
 }
 
-inline void LivenessAnalysis::setKillInsts(Value *V, Instruction *kill)
+inline void LivenessAnalysis::setKillInsts(Value* V, Instruction* kill)
 {
     ValueVec& VS = KillInsts[kill];
     VS.push_back(V);
 }
 
-bool LivenessAnalysis::isInstLastUseOfValue(Value *V, Instruction *I)
+bool LivenessAnalysis::isInstLastUseOfValue(Value* V, Instruction* I)
 {
     ValueVec& VS = KillInsts[I];
     for (int i = 0, e = (int)VS.size(); i < e; ++I)
@@ -177,17 +177,17 @@ bool LivenessAnalysis::isInstLastUseOfValue(Value *V, Instruction *I)
     return false;
 }
 
-bool LivenessAnalysis::isBefore(Instruction *A, Instruction *B)
+bool LivenessAnalysis::isBefore(Instruction* A, Instruction* B)
 {
     assert(A->getParent() == B->getParent() &&
-           "A and B must be within the same BB!");
+        "A and B must be within the same BB!");
 
     int nA = (int)getDistance(A);
     int nB = (int)getDistance(B);
     return nA < nB;
 }
 
-void LivenessAnalysis::calculate(Function *F)
+void LivenessAnalysis::calculate(Function* F)
 {
     // If m_LV is not nullptr, it means that the full liveness has been
     // computed. No need to recompute and just return.
@@ -225,9 +225,9 @@ void LivenessAnalysis::calculate(Function *F)
     KillInsts.grow(mapCap1);
 
     for (LiveVars::iterator LVI = m_LV->begin(), LVE = m_LV->end();
-         LVI != LVE; ++LVI)
+        LVI != LVE; ++LVI)
     {
-        Value *V = LVI->first;
+        Value* V = LVI->first;
         LiveVars::LVInfo* lvi = LVI->second;
         ValueToIntMap::iterator VI = ValueIds.find(V);
         if (VI == ValueIds.end())
@@ -239,30 +239,30 @@ void LivenessAnalysis::calculate(Function *F)
 
         // V is either an instruction or an argument. If defBB is nullptr,
         // V is an argument; otherwise, it is the defining BB.
-        BasicBlock *defBB = nullptr;
-        if (Instruction *defInst = dyn_cast<Instruction>(V))
+        BasicBlock* defBB = nullptr;
+        if (Instruction * defInst = dyn_cast<Instruction>(V))
         {
             defBB = defInst->getParent();
         }
 
         for (SmallPtrSet<BasicBlock*, 8>::iterator II = lvi->AliveBlocks.begin(),
-                                                   IE = lvi->AliveBlocks.end();
-             II != IE; ++II)
+            IE = lvi->AliveBlocks.end();
+            II != IE; ++II)
         {
-            BasicBlock *BB = *II;
+            BasicBlock* BB = *II;
             setLiveIn(BB, valID);
         }
 
         for (std::vector<Instruction*>::iterator II = lvi->Kills.begin(),
-                                                 IE = lvi->Kills.end();
-             II != IE; ++II)
+            IE = lvi->Kills.end();
+            II != IE; ++II)
         {
-            Instruction *inst = *II;
+            Instruction* inst = *II;
             setKillInsts(V, inst);
 
             // If inst's BB isn't "V"'s defBB, V must be live into this BB.
             // This condition check also works when "V" is an argument.
-            BasicBlock *useBB = inst->getParent();
+            BasicBlock* useBB = inst->getParent();
             if (defBB != useBB)
             {
                 setLiveIn(useBB, valID);
@@ -276,7 +276,7 @@ void LivenessAnalysis::calculate(Function *F)
     }
 }
 
-void LivenessAnalysis::print_livein(raw_ostream& OS, BasicBlock *BB)
+void LivenessAnalysis::print_livein(raw_ostream& OS, BasicBlock* BB)
 {
     SBitVector& BitVec = BBLiveIns[BB];
     OS << "    Live-In-Values (#values = " << BitVec.count() << " ):\n";
@@ -286,7 +286,7 @@ void LivenessAnalysis::print_livein(raw_ostream& OS, BasicBlock *BB)
     for (I = BitVec.begin(), E = BitVec.end(); I != E; ++I)
     {
         int id = *I;
-        Value *V = IdValues[id];
+        Value* V = IdValues[id];
         assert(V && "Value should be in Value Map!");
         if (nVals == 0) {
             OS << "      ";
@@ -319,14 +319,14 @@ void LivenessAnalysis::print(raw_ostream& OS)
     Debug::Banner(OS, ss.str());
 
     for (Function::iterator I = m_F->begin(), E = m_F->end(); I != E; ++I) {
-        BasicBlock *BB = &*I;
+        BasicBlock* BB = &*I;
         OS << "BB:";
         if (BB->hasName())
             OS << " " << BB->getName();
         OS << "       ; preds =";
         bool isFirst = true;
         for (pred_iterator PI = pred_begin(BB), PE = pred_end(BB); PI != PE; ++PI) {
-            BasicBlock *pred = *PI;
+            BasicBlock* pred = *PI;
             OS << ((isFirst) ? " " : ", ");
             OS << (pred->hasName() ? pred->getName() : "Unamed(wrong)");
             isFirst = false;
@@ -334,7 +334,7 @@ void LivenessAnalysis::print(raw_ostream& OS)
         OS << "\n";
         print_livein(OS, BB);
         for (BasicBlock::iterator it = BB->begin(), ie = BB->end(); it != ie; ++it) {
-            Instruction *I = &*it;
+            Instruction* I = &*it;
             OS << *I << '\n';
         }
         OS << "\n";
@@ -349,7 +349,7 @@ void LivenessAnalysis::dump()
 
 }
 
-void LivenessAnalysis::dump_livein(BasicBlock *BB)
+void LivenessAnalysis::dump_livein(BasicBlock* BB)
 {
     print_livein(dbgs(), BB);
 }

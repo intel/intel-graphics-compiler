@@ -65,13 +65,13 @@ RewriteLocalSize::RewriteLocalSize() : ModulePass(ID)
     initializeRewriteLocalSizePass(*PassRegistry::getPassRegistry());
 }
 
-bool RewriteLocalSize::runOnModule(Module &M)
+bool RewriteLocalSize::runOnModule(Module& M)
 {
-    Function *LS = M.getFunction(WIFuncsAnalysis::GET_LOCAL_SIZE);
+    Function* LS = M.getFunction(WIFuncsAnalysis::GET_LOCAL_SIZE);
     if (!LS)
         return false;
 
-    Function *ELS = M.getFunction(WIFuncsAnalysis::GET_ENQUEUED_LOCAL_SIZE);
+    Function* ELS = M.getFunction(WIFuncsAnalysis::GET_ENQUEUED_LOCAL_SIZE);
     if (!ELS)
         LS->setName(WIFuncsAnalysis::GET_ENQUEUED_LOCAL_SIZE);
     else

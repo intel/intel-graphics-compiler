@@ -53,25 +53,25 @@ BuiltinsConverter::BuiltinsConverter(void) : FunctionPass(ID)
     initializeBuiltinsConverterPass(*PassRegistry::getPassRegistry());
 }
 
-bool BuiltinsConverter::fillIndexMap(Function &F)
+bool BuiltinsConverter::fillIndexMap(Function& F)
 {
     ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-    FunctionMetaData *funcMD = &modMD->FuncMD[&F];
-    ResourceAllocMD *resAllocMD = &funcMD->resAllocMD;
+    FunctionMetaData* funcMD = &modMD->FuncMD[&F];
+    ResourceAllocMD* resAllocMD = &funcMD->resAllocMD;
     for (Function::arg_iterator arg = F.arg_begin(), e = F.arg_end(); arg != e; ++arg)
     {
         int argNo = (*arg).getArgNo();
         assert(resAllocMD->argAllocMDList.size() > 0 && "ArgAllocMDList is empty.");
-        ArgAllocMD *argAlloc = &resAllocMD->argAllocMDList[argNo];
+        ArgAllocMD* argAlloc = &resAllocMD->argAllocMDList[argNo];
         if (argAlloc->type == OtherResourceType)
         {
             // Other resource type has no valid index and is not needed in the map.
             continue;
         }
-            m_argIndexMap[&(*arg)] = CImagesBI::ParamInfo(
-                argAlloc->indexType,
-                (ResourceTypeEnum)argAlloc->type,
-                (ResourceExtensionTypeEnum)argAlloc->extensionType);
+        m_argIndexMap[&(*arg)] = CImagesBI::ParamInfo(
+            argAlloc->indexType,
+            (ResourceTypeEnum)argAlloc->type,
+            (ResourceExtensionTypeEnum)argAlloc->extensionType);
     }
 
     // The sampler arguments have already been allocated indices by the ResourceAllocator.
@@ -82,19 +82,19 @@ bool BuiltinsConverter::fillIndexMap(Function &F)
     return true;
 }
 
-void BuiltinsConverter::visitCallInst(llvm::CallInst &CI) 
+void BuiltinsConverter::visitCallInst(llvm::CallInst& CI)
 {
     Function* callee = CI.getCalledFunction();
     if (!callee) return;
 
     bool resolved = m_pResolve->resolveBI(&CI);
-    if(resolved) 
+    if (resolved)
     {
         CI.eraseFromParent();
     }
 }
 
-bool BuiltinsConverter::runOnFunction(Function &F)
+bool BuiltinsConverter::runOnFunction(Function& F)
 {
     m_argIndexMap.clear();
     m_inlineIndexMap.clear();
@@ -104,14 +104,14 @@ bool BuiltinsConverter::runOnFunction(Function &F)
     ModuleMetaData* modMD = ctx->getModuleMetaData();
 
     if (ctx->getMetaDataUtils()->findFunctionsInfoItem(&F) == ctx->getMetaDataUtils()->end_FunctionsInfo() ||
-            modMD->FuncMD.find(&F) == modMD->FuncMD.end())
+        modMD->FuncMD.find(&F) == modMD->FuncMD.end())
     {
         return false;
     }
 
     if (!fillIndexMap(F))
         return false;
-    
+
     CBuiltinsResolver resolve(&m_argIndexMap, &m_inlineIndexMap, &m_nextSampler, ctx);
     m_pResolve = &resolve;
     visit(F);

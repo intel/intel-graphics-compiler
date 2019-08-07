@@ -55,7 +55,7 @@ namespace IGC
             return "DisableLoopUnrollOnRetry";
         }
 
-        virtual bool runOnLoop(Loop *L, LPPassManager &LPM);
+        virtual bool runOnLoop(Loop* L, LPPassManager& LPM);
     };
 
 } // namespace IGC

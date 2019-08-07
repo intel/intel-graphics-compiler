@@ -50,14 +50,14 @@ using namespace IGC::IGCMD;
 namespace {
 
     class MemOpt2 : public FunctionPass {
-        const DataLayout *DL;
-        AliasAnalysis *AA;
+        const DataLayout* DL;
+        AliasAnalysis* AA;
 
         RegisterPressureEstimate* RPE;
 
         unsigned MaxLiveOutThreshold = 16;
 
-        DenseSet<Instruction *> Scheduled;
+        DenseSet<Instruction*> Scheduled;
 
     public:
         static char ID;
@@ -72,16 +72,16 @@ namespace {
             }
         }
 
-        bool runOnFunction(Function &F) override;
+        bool runOnFunction(Function& F) override;
 
-        bool doFinalization(Module &F) override
+        bool doFinalization(Module& F) override
         {
             Clear();
             return false;
         }
 
     private:
-        void getAnalysisUsage(AnalysisUsage &AU) const override {
+        void getAnalysisUsage(AnalysisUsage& AU) const override {
             AU.setPreservesCFG();
             AU.addRequired<AAResultsWrapperPass>();
             AU.addRequired<CodeGenContextWrapper>();
@@ -89,14 +89,14 @@ namespace {
             AU.addRequired<RegisterPressureEstimate>();
         }
 
-        bool clusterSampler(BasicBlock *BB);
+        bool clusterSampler(BasicBlock* BB);
 
-        bool clusterMediaBlockRead(BasicBlock *BB);
+        bool clusterMediaBlockRead(BasicBlock* BB);
 
-        bool isSafeToMoveTo(Instruction *I, Instruction *Pos, const SmallVectorImpl<Instruction *> *CheckList) const;
+        bool isSafeToMoveTo(Instruction* I, Instruction* Pos, const SmallVectorImpl<Instruction*>* CheckList) const;
 
-        bool clusterLoad(BasicBlock *BB);
-        bool isDefinedBefore(BasicBlock *BB, Instruction *I, Instruction *Pos) const {
+        bool clusterLoad(BasicBlock* BB);
+        bool isDefinedBefore(BasicBlock* BB, Instruction* I, Instruction* Pos) const {
             // Shortcut
             if (I == Pos)
                 return true;
@@ -107,41 +107,41 @@ namespace {
 
             return &*BI == I;
         }
-        bool isSafeToScheduleLoad(const LoadInst *LD,
-                const SmallVectorImpl<Instruction *> *CheckList) const;
+        bool isSafeToScheduleLoad(const LoadInst* LD,
+            const SmallVectorImpl<Instruction*>* CheckList) const;
         bool schedule(
-            BasicBlock *BB, Value *V, Instruction *&InsertPos,
-            const SmallVectorImpl<Instruction *> *CheckList = nullptr);
+            BasicBlock* BB, Value* V, Instruction*& InsertPos,
+            const SmallVectorImpl<Instruction*>* CheckList = nullptr);
 
-        MemoryLocation getLocation(Instruction *I) const {
-            if (LoadInst *LD = dyn_cast<LoadInst>(I))
+        MemoryLocation getLocation(Instruction* I) const {
+            if (LoadInst * LD = dyn_cast<LoadInst>(I))
                 return MemoryLocation::get(LD);
-            if (StoreInst *ST = dyn_cast<StoreInst>(I))
+            if (StoreInst * ST = dyn_cast<StoreInst>(I))
                 return MemoryLocation::get(ST);
             return MemoryLocation();
         }
 
-        unsigned getNumLiveOuts(Instruction *I) const {
-            Type *Ty = I->getType();
+        unsigned getNumLiveOuts(Instruction* I) const {
+            Type* Ty = I->getType();
             if (Ty->isVoidTy())
                 return 0;
             // Don't understand non-single-value type.
             if (!Ty->isSingleValueType())
                 return UINT_MAX;
             // Simply return 1 so far for scalar types.
-            VectorType *VecTy = dyn_cast<VectorType>(Ty);
+            VectorType* VecTy = dyn_cast<VectorType>(Ty);
             if (!VecTy)
                 return 1;
             // Check how that vector is used.
             unsigned UseCount = 0;
             for (auto UI = I->user_begin(), UE = I->user_end(); UI != UE; ++UI) {
-                Instruction *I = dyn_cast<Instruction>(*UI);
+                Instruction* I = dyn_cast<Instruction>(*UI);
                 if (!I || isInstructionTriviallyDead(I))
                     continue;
-                ExtractElementInst *EEI = dyn_cast<ExtractElementInst>(I);
+                ExtractElementInst* EEI = dyn_cast<ExtractElementInst>(I);
                 if (!EEI)
                     return int_cast<unsigned>(VecTy->getNumElements());
-                Value *Idx = EEI->getIndexOperand();
+                Value* Idx = EEI->getIndexOperand();
                 if (!isa<Constant>(Idx))
                     return int_cast<unsigned>(VecTy->getNumElements());
                 ++UseCount;
@@ -149,8 +149,8 @@ namespace {
             return UseCount;
         }
 
-        unsigned getNumLiveOutBytes(Instruction *I) const {
-            Type *Ty = I->getType();
+        unsigned getNumLiveOutBytes(Instruction* I) const {
+            Type* Ty = I->getType();
             if (Ty->isVoidTy())
                 return 0;
             // Don't understand non-single-value type.
@@ -158,19 +158,19 @@ namespace {
                 return UINT_MAX;
             unsigned EltByte = (Ty->getScalarSizeInBits() + 7) / 8;
             // Simply return 1 so far for scalar types.
-            VectorType *VecTy = dyn_cast<VectorType>(Ty);
+            VectorType* VecTy = dyn_cast<VectorType>(Ty);
             if (!VecTy)
                 return EltByte;
             // Check how that vector is used.
             unsigned UseCount = 0;
             for (auto UI = I->user_begin(), UE = I->user_end(); UI != UE; ++UI) {
-                Instruction *I = dyn_cast<Instruction>(*UI);
+                Instruction* I = dyn_cast<Instruction>(*UI);
                 if (!I || isInstructionTriviallyDead(I))
                     continue;
-                ExtractElementInst *EEI = dyn_cast<ExtractElementInst>(I);
+                ExtractElementInst* EEI = dyn_cast<ExtractElementInst>(I);
                 if (!EEI)
                     return unsigned(VecTy->getNumElements()) * EltByte;
-                Value *Idx = EEI->getIndexOperand();
+                Value* Idx = EEI->getIndexOperand();
                 if (!isa<Constant>(Idx))
                     return unsigned(VecTy->getNumElements()) * EltByte;
                 ++UseCount;
@@ -193,7 +193,7 @@ namespace {
 
 } // End anonymous namespace;
 
-FunctionPass *createMemOpt2Pass(int MLT) {
+FunctionPass* createMemOpt2Pass(int MLT) {
     return new MemOpt2(MLT);
 }
 
@@ -207,14 +207,14 @@ IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(RegisterPressureEstimate)
 IGC_INITIALIZE_PASS_END(MemOpt2, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-bool MemOpt2::runOnFunction(Function &F) {
+bool MemOpt2::runOnFunction(Function& F) {
     // Skip non-kernel function.
-    MetaDataUtils *MDU = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    MetaDataUtils* MDU = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     auto FII = MDU->findFunctionsInfoItem(&F);
     if (FII == MDU->end_FunctionsInfo())
         return false;
 
-    IGC::CodeGenContext *cgCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    IGC::CodeGenContext* cgCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     DL = &F.getParent()->getDataLayout();
     AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
 
@@ -226,7 +226,7 @@ bool MemOpt2::runOnFunction(Function &F) {
     RPE->buildRPMapPerInstruction();
 
     bool Changed = false;
-    for (auto &BB : F) {
+    for (auto& BB : F) {
         bool LocalChanged = false;
         // Clear bookkeeping.
         Clear();
@@ -251,7 +251,7 @@ bool MemOpt2::runOnFunction(Function &F) {
     return Changed;
 }
 
-bool MemOpt2::isSafeToMoveTo(Instruction *I, Instruction *Pos, const SmallVectorImpl<Instruction *> *CheckList) const {
+bool MemOpt2::isSafeToMoveTo(Instruction* I, Instruction* Pos, const SmallVectorImpl<Instruction*>* CheckList) const {
     // TODO: So far, we simply don't allow rescheduling load/atomic operations.
     // Add alias analysis to allow memory operations to be rescheduled.
     if (auto LD = dyn_cast<LoadInst>(I)) {
@@ -259,7 +259,7 @@ bool MemOpt2::isSafeToMoveTo(Instruction *I, Instruction *Pos, const SmallVector
             return isSafeToScheduleLoad(LD, CheckList);
         return false;
     }
-    if (GenIntrinsicInst *GII = dyn_cast<GenIntrinsicInst>(I)) {
+    if (GenIntrinsicInst * GII = dyn_cast<GenIntrinsicInst>(I)) {
         switch (GII->getIntrinsicID()) {
         case GenISAIntrinsic::GenISA_intatomicraw:
         case GenISAIntrinsic::GenISA_floatatomicraw:
@@ -285,17 +285,17 @@ bool MemOpt2::isSafeToMoveTo(Instruction *I, Instruction *Pos, const SmallVector
     return true;
 }
 
-bool MemOpt2::clusterSampler(BasicBlock *BB) {
+bool MemOpt2::clusterSampler(BasicBlock* BB) {
     const unsigned CLUSTER_SAMPLER_THRESHOLD = 5;
 
     bool Changed = false;
 
-    Instruction *InsertPos = nullptr;
+    Instruction* InsertPos = nullptr;
     unsigned Count = 0;
     unsigned numSched = 0;
     Scheduled.clear();
     for (auto BI = BB->begin(), BE = BB->end(); BI != BE; ++BI) {
-        GenIntrinsicInst *GII = dyn_cast<GenIntrinsicInst>(BI);
+        GenIntrinsicInst* GII = dyn_cast<GenIntrinsicInst>(BI);
         if (!GII)
             continue;
         switch (GII->getIntrinsicID()) {
@@ -333,44 +333,44 @@ bool MemOpt2::clusterSampler(BasicBlock *BB) {
 //
 // Congregate MediaBlockRead instrs to hide latency.
 //
-bool MemOpt2::clusterMediaBlockRead(BasicBlock *BB) {
-  bool Changed = false;
-
-  Instruction *InsertPos = nullptr;
-  unsigned Count = 0;
-  Scheduled.clear();
-
-  for (auto &BI : BB->getInstList()) {
-    if (GenIntrinsicInst *GII = dyn_cast<GenIntrinsicInst>(&BI)) {
-      if (GII->getIntrinsicID() == GenISAIntrinsic::GenISA_simdMediaBlockRead) {
-        if (!InsertPos)
-          InsertPos = GII;
-        // Reschedule the MB read to InsertPos
-        Count += getNumLiveOuts(GII);
-        // Here experimental threshold 40 means compiler can congregate as many as
-        // 5 intel_sub_group_block_read8 instrcutions. We can fine tune
-        // the heuristic when we see more examples using intel_sub_group_block_read.
-        if (Count > 40) {
-          Count = 0;
-          InsertPos = GII;
-        }
-        else
-          Changed |= schedule(BB, GII, InsertPos);
-      }
-    }
-  }
-
-  return Changed;
-}
-
-bool MemOpt2::clusterLoad(BasicBlock *BB) {
+bool MemOpt2::clusterMediaBlockRead(BasicBlock* BB) {
     bool Changed = false;
 
-    Instruction *InsertPos = nullptr;
+    Instruction* InsertPos = nullptr;
+    unsigned Count = 0;
+    Scheduled.clear();
+
+    for (auto& BI : BB->getInstList()) {
+        if (GenIntrinsicInst * GII = dyn_cast<GenIntrinsicInst>(&BI)) {
+            if (GII->getIntrinsicID() == GenISAIntrinsic::GenISA_simdMediaBlockRead) {
+                if (!InsertPos)
+                    InsertPos = GII;
+                // Reschedule the MB read to InsertPos
+                Count += getNumLiveOuts(GII);
+                // Here experimental threshold 40 means compiler can congregate as many as
+                // 5 intel_sub_group_block_read8 instrcutions. We can fine tune
+                // the heuristic when we see more examples using intel_sub_group_block_read.
+                if (Count > 40) {
+                    Count = 0;
+                    InsertPos = GII;
+                }
+                else
+                    Changed |= schedule(BB, GII, InsertPos);
+            }
+        }
+    }
+
+    return Changed;
+}
+
+bool MemOpt2::clusterLoad(BasicBlock* BB) {
+    bool Changed = false;
+
+    Instruction* InsertPos = nullptr;
     unsigned MaxLiveOutByte = getMaxLiveOutThreshold() * 4;
     unsigned CountByte = 0;
     for (auto BI = BB->begin(), BE = BB->end(); BI != BE; ++BI) {
-        LoadInst *Lead = dyn_cast<LoadInst>(BI);
+        LoadInst* Lead = dyn_cast<LoadInst>(BI);
         if (!Lead || !Lead->isSimple())
             continue;
         if (Lead->getPointerAddressSpace() != ADDRESS_SPACE_LOCAL &&
@@ -381,14 +381,14 @@ bool MemOpt2::clusterLoad(BasicBlock *BB) {
         if (CountByte > MaxLiveOutByte)
             continue;
 
-        SmallVector<Instruction *, 8> CheckList;
+        SmallVector<Instruction*, 8> CheckList;
         InsertPos = Lead;
         // Find candidate the cluster them.
         BasicBlock::iterator I = BasicBlock::iterator(InsertPos), E;
         for (I = std::next(I), E = BB->end(); I != E; ++I) {
             if (I->mayWriteToMemory())
                 CheckList.push_back(&(*I));
-            LoadInst *Next = dyn_cast<LoadInst>(I);
+            LoadInst* Next = dyn_cast<LoadInst>(I);
             if (!Next || !Next->isSimple())
                 continue;
             // Skip memory accesses on different memory address space.
@@ -410,11 +410,11 @@ bool MemOpt2::clusterLoad(BasicBlock *BB) {
     return Changed;
 }
 
-bool MemOpt2::isSafeToScheduleLoad(const LoadInst *LD,
-        const SmallVectorImpl<Instruction *> *CheckList) const {
+bool MemOpt2::isSafeToScheduleLoad(const LoadInst* LD,
+    const SmallVectorImpl<Instruction*>* CheckList) const {
     MemoryLocation A = MemoryLocation::get(LD);
 
-    for (auto *I : *CheckList) {
+    for (auto* I : *CheckList) {
         // Skip instructions never writing to memory.
         if (!I->mayWriteToMemory())
             continue;
@@ -427,9 +427,9 @@ bool MemOpt2::isSafeToScheduleLoad(const LoadInst *LD,
     return true;
 }
 
-bool MemOpt2::schedule(BasicBlock *BB, Value *V, Instruction *&InsertPos,
-        const SmallVectorImpl<Instruction *> *CheckList) {
-    Instruction *I = dyn_cast<Instruction>(V);
+bool MemOpt2::schedule(BasicBlock* BB, Value* V, Instruction*& InsertPos,
+    const SmallVectorImpl<Instruction*>* CheckList) {
+    Instruction* I = dyn_cast<Instruction>(V);
     if (!I)
         return false;
 

@@ -46,7 +46,7 @@ namespace IGC
             return "PurgeMetaDataUtilsPass";
         }
 
-        virtual bool runOnModule(llvm::Module &M) override;
+        virtual bool runOnModule(llvm::Module& M) override;
 
         virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override {
             AU.addRequired<MetaDataUtilsWrapper>();
@@ -56,7 +56,7 @@ namespace IGC
         // Pass identification, replacement for typeid
         static char ID;
     protected:
-        llvm::Module *m_pModule;
+        llvm::Module* m_pModule;
 
         /// @brief  Indicates if the pass changed the processed function
         bool m_changed;

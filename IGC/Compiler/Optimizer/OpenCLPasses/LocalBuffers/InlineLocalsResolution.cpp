@@ -53,7 +53,7 @@ IGC_INITIALIZE_PASS_END(InlineLocalsResolution, PASS_FLAG, PASS_DESCRIPTION, PAS
 char InlineLocalsResolution::ID = 0;
 const llvm::StringRef BUILTIN_MEMPOOL = "__builtin_IB_AllocLocalMemPool";
 
-InlineLocalsResolution::InlineLocalsResolution() : 
+InlineLocalsResolution::InlineLocalsResolution() :
     ModulePass(ID), m_pGV(nullptr)
 {
     initializeInlineLocalsResolutionPass(*PassRegistry::getPassRegistry());
@@ -61,19 +61,19 @@ InlineLocalsResolution::InlineLocalsResolution() :
 
 const unsigned int InlineLocalsResolution::VALID_LOCAL_HIGH_BITS = 0x10000000;
 
-static bool useAsPointerOnly(Value *V) {
+static bool useAsPointerOnly(Value* V) {
     assert(V->getType()->isPointerTy() && "Expect the input value is a pointer!");
 
-    SmallSet<PHINode *, 8> VisitedPHIs;
-    SmallVector<Value *, 16> WorkList;
+    SmallSet<PHINode*, 8> VisitedPHIs;
+    SmallVector<Value*, 16> WorkList;
     WorkList.push_back(V);
 
-    StoreInst *ST = nullptr;
-    PHINode *PN = nullptr;
+    StoreInst* ST = nullptr;
+    PHINode* PN = nullptr;
     while (!WorkList.empty()) {
-        Value *Val = WorkList.pop_back_val();
-        for (auto *U : Val->users()) {
-            Operator *Op = dyn_cast<Operator>(U);
+        Value* Val = WorkList.pop_back_val();
+        for (auto* U : Val->users()) {
+            Operator* Op = dyn_cast<Operator>(U);
             if (!Op)
                 continue;
             switch (Op->getOpcode()) {
@@ -109,10 +109,10 @@ static bool useAsPointerOnly(Value *V) {
     return true;
 }
 
-bool InlineLocalsResolution::runOnModule(Module &M)
+bool InlineLocalsResolution::runOnModule(Module& M)
 {
-    MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-    ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+    MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
     // Compute the offset of each inline local in the kernel,
     // and their total size.
     std::map<Function*, unsigned int> sizeMap;
@@ -121,7 +121,7 @@ bool InlineLocalsResolution::runOnModule(Module &M)
 
     LLVMContext& C = M.getContext();
 
-    for( Module::iterator I = M.begin(), E = M.end(); I != E; ++I )
+    for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I)
     {
         Function* pFunc = &(*I);
 
@@ -134,7 +134,7 @@ bool InlineLocalsResolution::runOnModule(Module &M)
 
         // Get the offset at which local arguments start
         auto sizeIter = sizeMap.find(pFunc);
-        if( sizeIter != sizeMap.end() )
+        if (sizeIter != sizeMap.end())
         {
             totalSize += sizeIter->second;
         }
@@ -143,24 +143,24 @@ bool InlineLocalsResolution::runOnModule(Module &M)
         totalSize = (totalSize & 0xFFFF);
 
         bool IsFirstSLMArgument = true;
-        for( Function::arg_iterator A = pFunc->arg_begin(), AE = pFunc->arg_end(); A != AE; ++A )
+        for (Function::arg_iterator A = pFunc->arg_begin(), AE = pFunc->arg_end(); A != AE; ++A)
         {
             Argument* arg = &(*A);
             PointerType* ptrType = dyn_cast<PointerType>(arg->getType());
             // Check that this is a pointer
-            if( !ptrType )
+            if (!ptrType)
             {
                 continue;
             }
 
             // To the local address space
-            if( ptrType->getAddressSpace() != ADDRESS_SPACE_LOCAL )
+            if (ptrType->getAddressSpace() != ADDRESS_SPACE_LOCAL)
             {
                 continue;
             }
 
             // Which is used
-            if( arg->use_empty() )
+            if (arg->use_empty())
             {
                 continue;
             }
@@ -185,7 +185,8 @@ bool InlineLocalsResolution::runOnModule(Module &M)
 
                 IGC::appendToUsed(M, ExtSLM);
                 IsFirstSLMArgument = false;
-            } else {
+            }
+            else {
                 // FIXME: The following code should be removed as well by
                 // populating similar adjustment in prolog during code
                 // emission.
@@ -199,7 +200,7 @@ bool InlineLocalsResolution::runOnModule(Module &M)
                 Value* pMovedCharPtr = GetElementPtrInst::Create(nullptr, pCharPtr, idx, "movedLocal", pInsertBefore);
 
                 Value* pMovedPtr = CastInst::CreatePointerCast(pMovedCharPtr, ptrType, "charToLocal", pInsertBefore);
-                
+
                 // Running over arg users and use replaceUsesOfWith to fix them is not enough,
                 // because it does not cover the usage of arg in metadata (e.g. for debug info intrinsic).
                 // Thus, replaceAllUsesWith should be used in order to fix also debug info.
@@ -240,9 +241,9 @@ void InlineLocalsResolution::collectInfoOnSharedLocalMem(Module& M)
             for (auto I = inst_begin(&(*F)), IE = inst_end(&(*F)); I != IE; ++I)
             {
                 Instruction* inst = &(*I);
-                if (CallInst *CI = dyn_cast<CallInst>(inst))
+                if (CallInst * CI = dyn_cast<CallInst>(inst))
                 {
-                    Function *pFunc = CI->getCalledFunction();
+                    Function* pFunc = CI->getCalledFunction();
                     if (pFunc && pFunc->getName().equals(BUILTIN_MEMPOOL))
                     {
                         // should always be called with constant operands
@@ -286,7 +287,7 @@ void InlineLocalsResolution::collectInfoOnSharedLocalMem(Module& M)
         if (!callsToReplace.empty())
         {
 
-            Type *bufType = ArrayType::get(Type::getInt8Ty(M.getContext()), uint64_t(maxBytesOnModule));
+            Type* bufType = ArrayType::get(Type::getInt8Ty(M.getContext()), uint64_t(maxBytesOnModule));
 
             m_pGV = new GlobalVariable(M, bufType, false,
                 GlobalVariable::ExternalLinkage, ConstantAggregateZero::get(bufType),
@@ -299,12 +300,12 @@ void InlineLocalsResolution::collectInfoOnSharedLocalMem(Module& M)
 
             for (auto call : callsToReplace)
             {
-                CastInst *cast =
+                CastInst* cast =
                     new BitCastInst(
-                    m_pGV,
-                    call->getCalledFunction()->getReturnType(),
-                    "mempoolcast",
-                    call);
+                        m_pGV,
+                        call->getCalledFunction()->getReturnType(),
+                        "mempoolcast",
+                        call);
 
                 cast->setDebugLoc(call->getDebugLoc());
 
@@ -358,11 +359,11 @@ void InlineLocalsResolution::collectInfoOnSharedLocalMem(Module& M)
     // set debugging info, and insert mov inst.
     IF_DEBUG_INFO(for (auto I : m_FuncToVarsMap))
     {
-        IF_DEBUG_INFO(Function *userFunc = I.first;)
-        IF_DEBUG_INFO(for (auto G : I.second))
+        IF_DEBUG_INFO(Function * userFunc = I.first;)
+            IF_DEBUG_INFO(for (auto G : I.second))
         {
-            IF_DEBUG_INFO(Instruction* pInsertBefore = &(*userFunc->begin()->getFirstInsertionPt());)
-            TODO("Should inline local buffer points to origin offset 'globalVar' or to fixed offset 'pMovedPtr'?");
+            IF_DEBUG_INFO(Instruction * pInsertBefore = &(*userFunc->begin()->getFirstInsertionPt());)
+                TODO("Should inline local buffer points to origin offset 'globalVar' or to fixed offset 'pMovedPtr'?");
             IF_DEBUG_INFO(DebugInfoUtils::UpdateGlobalVarDebugInfo(G, G, pInsertBefore, true););
         }
     }
@@ -371,10 +372,10 @@ void InlineLocalsResolution::collectInfoOnSharedLocalMem(Module& M)
 void InlineLocalsResolution::computeOffsetList(Module& M, std::map<Function*, unsigned int>& sizeMap)
 {
     std::map<Function*, std::map<GlobalVariable*, unsigned int>> offsetMap;
-    MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-    ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+    MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
     DataLayout DL = M.getDataLayout();
-    CallGraph &CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();
+    CallGraph& CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();
 
     if (m_FuncToVarsMap.empty())
     {
@@ -384,9 +385,9 @@ void InlineLocalsResolution::computeOffsetList(Module& M, std::map<Function*, un
     // let's travese the CallGraph to calculate the local 
     // variables of kernel from all user functions.
     m_chkSet.clear();
-    for (auto &N : CG)
+    for (auto& N : CG)
     {
-        Function *f = N.second->getFunction();
+        Function* f = N.second->getFunction();
         if (!f || f->isDeclaration() || m_chkSet.find(f) != m_chkSet.end()) continue;
         traveseCGN(*N.second);
     }
@@ -454,7 +455,7 @@ void InlineLocalsResolution::computeOffsetList(Module& M, std::map<Function*, un
             unsigned Offset = offsetIter->second;
             if (!useAsPointerOnly(offsetIter->first))
                 Offset |= VALID_LOCAL_HIGH_BITS;
-            
+
             LocalOffsetMD localOffset;
             localOffset.m_Var = offsetIter->first;
             localOffset.m_Offset = Offset;
@@ -464,13 +465,13 @@ void InlineLocalsResolution::computeOffsetList(Module& M, std::map<Function*, un
     pMdUtils->save(M.getContext());
 }
 
-void InlineLocalsResolution::traveseCGN(llvm::CallGraphNode &CGN)
+void InlineLocalsResolution::traveseCGN(llvm::CallGraphNode& CGN)
 {
-    Function * f = CGN.getFunction();
+    Function* f = CGN.getFunction();
 
     for (auto N : CGN)
     {
-        Function *sub = N.second->getFunction();
+        Function* sub = N.second->getFunction();
         if (!sub || sub->isDeclaration()) continue;
 
         // we reach here, because there is sub-function inside the node
@@ -484,8 +485,8 @@ void InlineLocalsResolution::traveseCGN(llvm::CallGraphNode &CGN)
         // the sub-routine was visited before, collect information
 
         // count each global on this sub-routine
-        GlobalVariableSet &GS_f = m_FuncToVarsMap[f];
-        GlobalVariableSet &GS_sub = m_FuncToVarsMap[sub];
+        GlobalVariableSet& GS_f = m_FuncToVarsMap[f];
+        GlobalVariableSet& GS_sub = m_FuncToVarsMap[sub];
         for (auto I = GS_sub.begin(); I != GS_sub.end(); ++I)
         {
             GS_f.insert(*I);

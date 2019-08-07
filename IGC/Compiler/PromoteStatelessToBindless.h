@@ -49,14 +49,14 @@ namespace IGC
             return "PromoteStatelessToBindless";
         }
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.addRequired<IGC::MetaDataUtilsWrapper>();
             AU.setPreservesCFG();
         }
 
-        bool runOnFunction(llvm::Function &F) override;
-        void visitInstruction(llvm::Instruction &I);
+        bool runOnFunction(llvm::Function& F) override;
+        void visitInstruction(llvm::Instruction& I);
 
     private:
         void GetAccessInstToSrcPointerMap(llvm::Instruction* inst, llvm::Value* resourcePtr);

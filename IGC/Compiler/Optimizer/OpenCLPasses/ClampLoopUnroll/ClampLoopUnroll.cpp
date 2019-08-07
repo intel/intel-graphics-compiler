@@ -42,7 +42,7 @@ using namespace IGC;
 IGC_INITIALIZE_PASS_BEGIN(ClampLoopUnroll, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_END(ClampLoopUnroll, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-static const char *const LoopMDName = "llvm.loop";
+static const char* const LoopMDName = "llvm.loop";
 
 char ClampLoopUnroll::ID = 0;
 
@@ -58,24 +58,24 @@ ClampLoopUnroll::ClampLoopUnroll(unsigned maxUnrollFactor) :
     initializeClampLoopUnrollPass(*PassRegistry::getPassRegistry());
 }
 
-static MDNode* GetUnrollCountMD(const IGCLLVM::TerminatorInst &I, unsigned unroll)
+static MDNode* GetUnrollCountMD(const IGCLLVM::TerminatorInst& I, unsigned unroll)
 {
-    LLVMContext &Context = I.getContext();
-    SmallVector<Metadata *, 2> UnrollMD;
+    LLVMContext& Context = I.getContext();
+    SmallVector<Metadata*, 2> UnrollMD;
     UnrollMD.push_back(MDString::get(Context, "llvm.loop.unroll.count"));
     UnrollMD.push_back(ConstantAsMetadata::get(ConstantInt::get(Type::getInt32Ty(Context), unroll)));
-    SmallVector<Metadata *, 2> MDs;
+    SmallVector<Metadata*, 2> MDs;
     MDs.push_back(nullptr);
     MDs.push_back(MDNode::get(Context, UnrollMD));
 
-    MDNode *NewUnrollMD = MDNode::get(Context, MDs);
+    MDNode* NewUnrollMD = MDNode::get(Context, MDs);
     // Set operand 0 to refer to the loop id itself.
     NewUnrollMD->replaceOperandWith(0, NewUnrollMD);
 
     return NewUnrollMD;
 }
 
-void ClampLoopUnroll::visitTerminatorInst(IGCLLVM::TerminatorInst &I)
+void ClampLoopUnroll::visitTerminatorInst(IGCLLVM::TerminatorInst& I)
 {
     MDNode* MD = I.getMetadata(LoopMDName);
 
@@ -93,7 +93,7 @@ void ClampLoopUnroll::visitTerminatorInst(IGCLLVM::TerminatorInst &I)
     m_Changed = true;
 }
 
-bool ClampLoopUnroll::runOnFunction(Function &F)
+bool ClampLoopUnroll::runOnFunction(Function& F)
 {
 #if 0
     visit(F);

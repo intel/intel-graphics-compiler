@@ -42,34 +42,34 @@ using namespace IGC;
 
 namespace {
 
-  // A simple pass to shrink vector load into scalar or narrow vector load
-  // when only partial elements are used.
-  class LdShrink : public FunctionPass {
-    const DataLayout *DL;
+    // A simple pass to shrink vector load into scalar or narrow vector load
+    // when only partial elements are used.
+    class LdShrink : public FunctionPass {
+        const DataLayout* DL;
 
-  public:
-    static char ID;
+    public:
+        static char ID;
 
-    LdShrink() : FunctionPass(ID) {
-      initializeLdShrinkPass(*PassRegistry::getPassRegistry());
-    }
+        LdShrink() : FunctionPass(ID) {
+            initializeLdShrinkPass(*PassRegistry::getPassRegistry());
+        }
 
-    bool runOnFunction(Function &F) override;
+        bool runOnFunction(Function& F) override;
 
-  private:
-    void getAnalysisUsage(AnalysisUsage &AU) const override {
-      AU.setPreservesCFG();
-    }
+    private:
+        void getAnalysisUsage(AnalysisUsage& AU) const override {
+            AU.setPreservesCFG();
+        }
 
-    unsigned getExtractIndexMask(LoadInst *LI) const;
-  };
+        unsigned getExtractIndexMask(LoadInst* LI) const;
+    };
 
-  char LdShrink::ID = 0;
+    char LdShrink::ID = 0;
 
 } // End anonymous namespace
 
-FunctionPass *createLdShrinkPass() {
-  return new LdShrink();
+FunctionPass* createLdShrinkPass() {
+    return new LdShrink();
 }
 
 #define PASS_FLAG     "igc-ldshrink"
@@ -79,91 +79,91 @@ FunctionPass *createLdShrinkPass() {
 IGC_INITIALIZE_PASS_BEGIN(LdShrink, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_END(LdShrink, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-unsigned LdShrink::getExtractIndexMask(LoadInst *LI) const {
-  VectorType *VTy = dyn_cast<VectorType>(LI->getType());
-  // Skip non-vector loads.
-  if (!VTy)
-    return 0;
-  // Skip if there are more than 32 elements.
-  if (VTy->getNumElements() > 32)
-    return 0;
-  // Check whether all users are ExtractElement with constant index.
-  // Collect index mask at the same time.
-  Type *Ty = VTy->getScalarType();
-  // Skip non-BYTE addressable data types. So far, check integer types
-  // only.
-  if (IntegerType *ITy = dyn_cast<IntegerType>(Ty))
-    if (!ITy->isPowerOf2ByteWidth())
-      return 0;
+unsigned LdShrink::getExtractIndexMask(LoadInst* LI) const {
+    VectorType* VTy = dyn_cast<VectorType>(LI->getType());
+    // Skip non-vector loads.
+    if (!VTy)
+        return 0;
+    // Skip if there are more than 32 elements.
+    if (VTy->getNumElements() > 32)
+        return 0;
+    // Check whether all users are ExtractElement with constant index.
+    // Collect index mask at the same time.
+    Type* Ty = VTy->getScalarType();
+    // Skip non-BYTE addressable data types. So far, check integer types
+    // only.
+    if (IntegerType * ITy = dyn_cast<IntegerType>(Ty))
+        if (!ITy->isPowerOf2ByteWidth())
+            return 0;
 
-  unsigned Mask = 0; // Maxmimally 32 elements.
+    unsigned Mask = 0; // Maxmimally 32 elements.
 
-  for (auto UI = LI->user_begin(), UE = LI->user_end(); UI != UE; ++UI) {
-    ExtractElementInst *EEI = dyn_cast<ExtractElementInst>(*UI);
-    if (!EEI)
-      return 0;
-    // Skip non-constant index.
-    auto Idx = dyn_cast<ConstantInt>(EEI->getIndexOperand());
-    if (!Idx)
-      return 0;
-    assert(Idx->getZExtValue() < 32 && "Index is out of range!");
-    Mask |= (1 << Idx->getZExtValue());
-  }
+    for (auto UI = LI->user_begin(), UE = LI->user_end(); UI != UE; ++UI) {
+        ExtractElementInst* EEI = dyn_cast<ExtractElementInst>(*UI);
+        if (!EEI)
+            return 0;
+        // Skip non-constant index.
+        auto Idx = dyn_cast<ConstantInt>(EEI->getIndexOperand());
+        if (!Idx)
+            return 0;
+        assert(Idx->getZExtValue() < 32 && "Index is out of range!");
+        Mask |= (1 << Idx->getZExtValue());
+    }
 
-  return Mask;
+    return Mask;
 }
 
-bool LdShrink::runOnFunction(Function &F) {
+bool LdShrink::runOnFunction(Function& F) {
     DL = &F.getParent()->getDataLayout();
-  if (!DL)
-    return false;
+    if (!DL)
+        return false;
 
-  bool Changed = false;
-  for (auto &BB : F) {
-    for (auto BI = BB.begin(), BE = BB.end(); BI != BE; /*EMPTY*/) {
-      LoadInst *LI = dyn_cast<LoadInst>(BI++);
-      // Skip non-load instructions.
-      if (!LI)
-        continue;
-      // Skip non-simple load.
-      if (!LI->isSimple())
-        continue;
-      // Replace it with scalar load or narrow vector load.
-      unsigned Mask = getExtractIndexMask(LI);
-      if (!Mask)
-        continue;
-      if (!isShiftedMask_32(Mask))
-        continue;
-      unsigned Offset = llvm::countTrailingZeros(Mask);
-      unsigned Length = llvm::countTrailingZeros((Mask >> Offset) + 1);
-      // TODO: So far skip narrow vector.
-      if (Length != 1)
-        continue;
+    bool Changed = false;
+    for (auto& BB : F) {
+        for (auto BI = BB.begin(), BE = BB.end(); BI != BE; /*EMPTY*/) {
+            LoadInst* LI = dyn_cast<LoadInst>(BI++);
+            // Skip non-load instructions.
+            if (!LI)
+                continue;
+            // Skip non-simple load.
+            if (!LI->isSimple())
+                continue;
+            // Replace it with scalar load or narrow vector load.
+            unsigned Mask = getExtractIndexMask(LI);
+            if (!Mask)
+                continue;
+            if (!isShiftedMask_32(Mask))
+                continue;
+            unsigned Offset = llvm::countTrailingZeros(Mask);
+            unsigned Length = llvm::countTrailingZeros((Mask >> Offset) + 1);
+            // TODO: So far skip narrow vector.
+            if (Length != 1)
+                continue;
 
-      IRBuilder<> Builder(LI);
+            IRBuilder<> Builder(LI);
 
-      // Shrink it to scalar load.
-      auto Ptr = LI->getPointerOperand();
-      Type *Ty = LI->getType();
-      Type *ScalarTy = Ty->getScalarType();
-      PointerType *PtrTy = cast<PointerType>(Ptr->getType());
-      PointerType *ScalarPtrTy
-        = PointerType::get(ScalarTy, PtrTy->getAddressSpace());
-      Value *ScalarPtr = Builder.CreatePointerCast(Ptr, ScalarPtrTy);
-      if (Offset)
-        ScalarPtr = Builder.CreateInBoundsGEP(ScalarPtr, Builder.getInt32(Offset));
+            // Shrink it to scalar load.
+            auto Ptr = LI->getPointerOperand();
+            Type* Ty = LI->getType();
+            Type* ScalarTy = Ty->getScalarType();
+            PointerType* PtrTy = cast<PointerType>(Ptr->getType());
+            PointerType* ScalarPtrTy
+                = PointerType::get(ScalarTy, PtrTy->getAddressSpace());
+            Value* ScalarPtr = Builder.CreatePointerCast(Ptr, ScalarPtrTy);
+            if (Offset)
+                ScalarPtr = Builder.CreateInBoundsGEP(ScalarPtr, Builder.getInt32(Offset));
 
-      unsigned Align
-          = int_cast<unsigned int>(MinAlign(LI->getAlignment(),
-                   DL->getTypeStoreSize(ScalarTy) * Offset));
+            unsigned Align
+                = int_cast<unsigned int>(MinAlign(LI->getAlignment(),
+                    DL->getTypeStoreSize(ScalarTy) * Offset));
 
-      LoadInst *NewLoad = Builder.CreateAlignedLoad(ScalarPtr, Align);
-      NewLoad->setDebugLoc(LI->getDebugLoc());
+            LoadInst* NewLoad = Builder.CreateAlignedLoad(ScalarPtr, Align);
+            NewLoad->setDebugLoc(LI->getDebugLoc());
 
-      ExtractElementInst *EEI = cast<ExtractElementInst>(*LI->user_begin());
-      EEI->replaceAllUsesWith(NewLoad);
+            ExtractElementInst* EEI = cast<ExtractElementInst>(*LI->user_begin());
+            EEI->replaceAllUsesWith(NewLoad);
+        }
     }
-  }
 
-  return Changed;
+    return Changed;
 }

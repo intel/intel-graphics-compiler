@@ -39,35 +39,35 @@ namespace llvm
 
 namespace IGC
 {
-/// Tries to promote array in private memory to indexable vector
-/// Uses register pressure to make sure it won't cause spilling
-llvm::FunctionPass *createPromotePrivateArrayToReg();
+    /// Tries to promote array in private memory to indexable vector
+    /// Uses register pressure to make sure it won't cause spilling
+    llvm::FunctionPass* createPromotePrivateArrayToReg();
 
-/// Array can be stored in SOA form
-/// Helper allowing function to detect if an array can stored in SOA form
-/// It is true
-bool CanUseSOALayout(llvm::AllocaInst* inst, llvm::Type*& baseType);
+    /// Array can be stored in SOA form
+    /// Helper allowing function to detect if an array can stored in SOA form
+    /// It is true
+    bool CanUseSOALayout(llvm::AllocaInst* inst, llvm::Type*& baseType);
 
-class TransposeHelper
-{
-public:
-    TransposeHelper(bool vectorIndex) : m_vectorIndex(vectorIndex) {}
-    void HandleAllocaSources(
-        llvm::Instruction* v,
-        llvm::Value* idx);
-    void handleGEPInst(
-        llvm::GetElementPtrInst *pGEP,
-        llvm::Value* idx);
-    virtual void handleLoadInst(
-        llvm::LoadInst *pLoad,
-        llvm::Value *pScalarizedIdx) = 0;
-    virtual void handleStoreInst(
-        llvm::StoreInst *pStore,
-        llvm::Value *pScalarizedIdx) = 0;
-    void handleLifetimeMark(llvm::IntrinsicInst *inst);
-    void EraseDeadCode();
-private:
-    bool m_vectorIndex;
-    std::vector<llvm::Instruction*> m_toBeRemovedGEP;
-};
+    class TransposeHelper
+    {
+    public:
+        TransposeHelper(bool vectorIndex) : m_vectorIndex(vectorIndex) {}
+        void HandleAllocaSources(
+            llvm::Instruction* v,
+            llvm::Value* idx);
+        void handleGEPInst(
+            llvm::GetElementPtrInst* pGEP,
+            llvm::Value* idx);
+        virtual void handleLoadInst(
+            llvm::LoadInst* pLoad,
+            llvm::Value* pScalarizedIdx) = 0;
+        virtual void handleStoreInst(
+            llvm::StoreInst* pStore,
+            llvm::Value* pScalarizedIdx) = 0;
+        void handleLifetimeMark(llvm::IntrinsicInst* inst);
+        void EraseDeadCode();
+    private:
+        bool m_vectorIndex;
+        std::vector<llvm::Instruction*> m_toBeRemovedGEP;
+    };
 }

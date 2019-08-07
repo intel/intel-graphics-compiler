@@ -29,70 +29,70 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace IGC
 {
-class CComputeShader : public CShader
-{
-public:
-    CComputeShader(llvm::Function *pFunc, CShaderProgram* pProgram);
-    ~CComputeShader();
-
-    virtual void        AllocatePayload() override;
-    virtual void        AddPrologue() override;
-    virtual bool        CompileSIMDSize(SIMDMode simdMode, EmitPass &EP, llvm::Function &F) override;
-    virtual void        InitEncoder(SIMDMode simdMode, bool canAbortOnSpill, ShaderDispatchMode shaderMode = ShaderDispatchMode::NOT_APPLICABLE) override;
-
-    void        FillProgram(SComputeShaderKernelProgram* pKernelProgram);
-    void        PreCompile() override;
-    void        ExtractGlobalVariables() override;
-    void        CreateThreadPayloadData(void* & pThreadPayload, uint& curbeTotalDataLength, uint& curbeReadLength);
-    uint        GetNumberOfId();
-    void        ParseShaderSpecificOpcode(llvm::Instruction* inst) override;
-
-    /// Get the Thread ID's in Group
-    CVariable*  CreateThreadIDinGroup(uint channelNum);
-    uint        GetThreadGroupSize() const { return m_threadGroupSize; }
-    bool        GetDispatchAlongY() const { return m_dispatchAlongY; }
-    void        SetDisableMidthreadPreemption()
+    class CComputeShader : public CShader
     {
-        m_disableMidThreadPreemption = true;
-    }
+    public:
+        CComputeShader(llvm::Function* pFunc, CShaderProgram* pProgram);
+        ~CComputeShader();
 
-    bool        HasSLM() const { return m_hasSLM; }
-    bool        HasFullDispatchMask() override;
+        virtual void        AllocatePayload() override;
+        virtual void        AddPrologue() override;
+        virtual bool        CompileSIMDSize(SIMDMode simdMode, EmitPass& EP, llvm::Function& F) override;
+        virtual void        InitEncoder(SIMDMode simdMode, bool canAbortOnSpill, ShaderDispatchMode shaderMode = ShaderDispatchMode::NOT_APPLICABLE) override;
 
-protected:
-    /// Size of a thread group (X x Y x Z) provided by the front-end.
-    uint                   m_threadGroupSize;
-    uint                   m_threadGroupSize_X;
-    uint                   m_threadGroupSize_Y;
-    uint                   m_threadGroupSize_Z;
+        void        FillProgram(SComputeShaderKernelProgram* pKernelProgram);
+        void        PreCompile() override;
+        void        ExtractGlobalVariables() override;
+        void        CreateThreadPayloadData(void*& pThreadPayload, uint& curbeTotalDataLength, uint& curbeReadLength);
+        uint        GetNumberOfId();
+        void        ParseShaderSpecificOpcode(llvm::Instruction* inst) override;
 
-    /// The set of X/Y/Z that form the local thread ID for each channel.
-    CVariable*             m_pThread_ID_in_Group_X;
-    CVariable*             m_pThread_ID_in_Group_Y;
-    CVariable*             m_pThread_ID_in_Group_Z;
-
-    uint                   m_numberOfUntypedAccess;
-    uint                   m_numberOfTypedAccess;
-    uint                   m_num1DAccesses;
-    uint                   m_num2DAccesses;
-
-    bool                   m_dispatchAlongY;
-    bool                   m_disableMidThreadPreemption;
-    bool                   m_hasSLM;
-
-private:
-    CShader* getSIMDEntry(CodeGenContext* ctx, SIMDMode simdMode)
-    {
-        CShader* prog = ctx->m_retryManager.GetSIMDEntry(simdMode);
-        if (prog)
+        /// Get the Thread ID's in Group
+        CVariable* CreateThreadIDinGroup(uint channelNum);
+        uint        GetThreadGroupSize() const { return m_threadGroupSize; }
+        bool        GetDispatchAlongY() const { return m_dispatchAlongY; }
+        void        SetDisableMidthreadPreemption()
         {
-            return prog;
+            m_disableMidThreadPreemption = true;
         }
-        else
+
+        bool        HasSLM() const { return m_hasSLM; }
+        bool        HasFullDispatchMask() override;
+
+    protected:
+        /// Size of a thread group (X x Y x Z) provided by the front-end.
+        uint                   m_threadGroupSize;
+        uint                   m_threadGroupSize_X;
+        uint                   m_threadGroupSize_Y;
+        uint                   m_threadGroupSize_Z;
+
+        /// The set of X/Y/Z that form the local thread ID for each channel.
+        CVariable* m_pThread_ID_in_Group_X;
+        CVariable* m_pThread_ID_in_Group_Y;
+        CVariable* m_pThread_ID_in_Group_Z;
+
+        uint                   m_numberOfUntypedAccess;
+        uint                   m_numberOfTypedAccess;
+        uint                   m_num1DAccesses;
+        uint                   m_num2DAccesses;
+
+        bool                   m_dispatchAlongY;
+        bool                   m_disableMidThreadPreemption;
+        bool                   m_hasSLM;
+
+    private:
+        CShader* getSIMDEntry(CodeGenContext* ctx, SIMDMode simdMode)
         {
-            return m_parent->GetShader(simdMode);
+            CShader* prog = ctx->m_retryManager.GetSIMDEntry(simdMode);
+            if (prog)
+            {
+                return prog;
+            }
+            else
+            {
+                return m_parent->GetShader(simdMode);
+            }
         }
-    }
-};
+    };
 
 }

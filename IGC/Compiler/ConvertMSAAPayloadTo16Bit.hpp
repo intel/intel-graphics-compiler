@@ -41,7 +41,7 @@ namespace IGC
     {
         llvm::IRBuilder<>* m_builder;
         llvm::Module* m_pModule;
-        CodeGenContextWrapper*    m_pCtxWrapper;
+        CodeGenContextWrapper* m_pCtxWrapper;
     public:
 
         static char ID;
@@ -49,7 +49,7 @@ namespace IGC
 
         ~ConvertMSAAPayloadTo16Bit() {}
 
-        virtual bool runOnFunction(llvm::Function &F) override;
+        virtual bool runOnFunction(llvm::Function& F) override;
 
         virtual llvm::StringRef getPassName() const override
         {
@@ -61,7 +61,7 @@ namespace IGC
             AU.addRequired<CodeGenContextWrapper>();
         }
 
-        void visitCallInst(llvm::CallInst &I);
+        void visitCallInst(llvm::CallInst& I);
     };
 }
 

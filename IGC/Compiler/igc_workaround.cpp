@@ -31,106 +31,106 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace IGC
 {
 
-void SetWorkaroundTable(SKU_FEATURE_TABLE* pSkuFeatureTable, CPlatform* platform)
-{
-    WA_TABLE          waTable;
-    memset(&waTable, 0, sizeof(WA_TABLE));
-    WA_INIT_PARAM      stWaInitParam = {};
-    stWaInitParam.ePlatformType = platform->getPlatformInfo().ePlatformType;
-    stWaInitParam.usRevId = platform->getPlatformInfo().usRevId;
-    stWaInitParam.usRevId_PCH = platform->getPlatformInfo().usRevId_PCH;
-    GT_SYSTEM_INFO sysInfo = platform->GetGTSystemInfo();
-    stWaInitParam.pGtSysInfo = &sysInfo;
-
-    switch(platform->getPlatformInfo().eProductFamily)
+    void SetWorkaroundTable(SKU_FEATURE_TABLE* pSkuFeatureTable, CPlatform* platform)
     {
-    case IGFX_BROADWELL:
-        InitBdwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
-        break;
-    case IGFX_CHERRYVIEW:
-        InitChvWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
-        break;
-    case IGFX_BROXTON:
-        InitBxtWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
-        break;
-    case IGFX_SKYLAKE:
-    case IGFX_GENNEXT:
-        InitSklWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
-        break;
-    case IGFX_CANNONLAKE:
-        InitCnlWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
-        break;
-    case IGFX_KABYLAKE:
-        InitKblDisplayWaTable(&waTable, pSkuFeatureTable, &stWaInitParam); //Display WA only
-        InitKblNonDisplayWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);//Non Display WA
-        break;
-    case IGFX_COFFEELAKE:
-        InitKblDisplayWaTable(&waTable, pSkuFeatureTable, &stWaInitParam); //Display WA only
-        InitCflNonDisplayWaTable(&waTable, pSkuFeatureTable, &stWaInitParam); //Non Display WA
-        break;
-    case IGFX_GEMINILAKE:
-        InitGlkWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
-        break;
-    case IGFX_ICELAKE:
-        InitIclHwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
-        break;
-    case IGFX_ICELAKE_LP:
-        InitIclLpHwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
-        break;
-    case IGFX_LAKEFIELD:
-        InitLkfHwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
-        break;
-    default:
-        assert(false);
-        break;
+        WA_TABLE          waTable;
+        memset(&waTable, 0, sizeof(WA_TABLE));
+        WA_INIT_PARAM      stWaInitParam = {};
+        stWaInitParam.ePlatformType = platform->getPlatformInfo().ePlatformType;
+        stWaInitParam.usRevId = platform->getPlatformInfo().usRevId;
+        stWaInitParam.usRevId_PCH = platform->getPlatformInfo().usRevId_PCH;
+        GT_SYSTEM_INFO sysInfo = platform->GetGTSystemInfo();
+        stWaInitParam.pGtSysInfo = &sysInfo;
+
+        switch (platform->getPlatformInfo().eProductFamily)
+        {
+        case IGFX_BROADWELL:
+            InitBdwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
+            break;
+        case IGFX_CHERRYVIEW:
+            InitChvWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
+            break;
+        case IGFX_BROXTON:
+            InitBxtWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
+            break;
+        case IGFX_SKYLAKE:
+        case IGFX_GENNEXT:
+            InitSklWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
+            break;
+        case IGFX_CANNONLAKE:
+            InitCnlWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
+            break;
+        case IGFX_KABYLAKE:
+            InitKblDisplayWaTable(&waTable, pSkuFeatureTable, &stWaInitParam); //Display WA only
+            InitKblNonDisplayWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);//Non Display WA
+            break;
+        case IGFX_COFFEELAKE:
+            InitKblDisplayWaTable(&waTable, pSkuFeatureTable, &stWaInitParam); //Display WA only
+            InitCflNonDisplayWaTable(&waTable, pSkuFeatureTable, &stWaInitParam); //Non Display WA
+            break;
+        case IGFX_GEMINILAKE:
+            InitGlkWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
+            break;
+        case IGFX_ICELAKE:
+            InitIclHwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
+            break;
+        case IGFX_ICELAKE_LP:
+            InitIclLpHwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
+            break;
+        case IGFX_LAKEFIELD:
+            InitLkfHwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
+            break;
+        default:
+            assert(false);
+            break;
+        }
+
+        platform->SetWATable(waTable);
+        platform->SetSkuTable(*pSkuFeatureTable);
     }
 
-    platform->SetWATable(waTable);
-    platform->SetSkuTable(*pSkuFeatureTable);
-}
+    // Function to workaround some API send us the usc SKU structure, convert it to the common
+    // sku feature structure used by all the driver to not depend on USC structure
+    void ConvertSkuTable(const SUscSkuFeatureTable* pUSCSkuFeatureTable, SKU_FEATURE_TABLE& SkuFeatureTable)
+    {
+        memset(&SkuFeatureTable, 0, sizeof(SKU_FEATURE_TABLE));
+        SkuFeatureTable.FtrDesktop = pUSCSkuFeatureTable->FtrDesktop;
+        SkuFeatureTable.FtrGtBigDie = pUSCSkuFeatureTable->FtrGtBigDie;
+        SkuFeatureTable.FtrGtMediumDie = pUSCSkuFeatureTable->FtrGtMediumDie;
+        SkuFeatureTable.FtrGtSmallDie = pUSCSkuFeatureTable->FtrGtSmallDie;
+        SkuFeatureTable.FtrGT1 = pUSCSkuFeatureTable->FtrGT1;
+        SkuFeatureTable.FtrGT1_5 = pUSCSkuFeatureTable->FtrGT1_5;
+        SkuFeatureTable.FtrGT2 = pUSCSkuFeatureTable->FtrGT2;
+        SkuFeatureTable.FtrGT3 = pUSCSkuFeatureTable->FtrGT3;
+        SkuFeatureTable.FtrGT4 = pUSCSkuFeatureTable->FtrGT4;
+        SkuFeatureTable.FtrIVBM0M1Platform = pUSCSkuFeatureTable->FtrIVBM0M1Platform;
+        SkuFeatureTable.FtrSGTPVSKUStrapPresent = pUSCSkuFeatureTable->FtrSGTPVSKUStrapPresent;
+        SkuFeatureTable.FtrGTA = pUSCSkuFeatureTable->FtrGTA;
+        SkuFeatureTable.FtrGTC = pUSCSkuFeatureTable->FtrGTC;
+        SkuFeatureTable.FtrGTX = pUSCSkuFeatureTable->FtrGTX;
+        SkuFeatureTable.Ftr5Slice = pUSCSkuFeatureTable->Ftr5Slice;
+        SkuFeatureTable.FtrGpGpuMidThreadLevelPreempt = pUSCSkuFeatureTable->FtrGpGpuMidThreadLevelPreempt;
+        SkuFeatureTable.FtrIoMmuPageFaulting = pUSCSkuFeatureTable->FtrIoMmuPageFaulting;
+        SkuFeatureTable.FtrWddm2Svm = pUSCSkuFeatureTable->FtrWddm2Svm;
+        SkuFeatureTable.FtrPooledEuEnabled = pUSCSkuFeatureTable->FtrPooledEuEnabled;
+    }
 
-// Function to workaround some API send us the usc SKU structure, convert it to the common
-// sku feature structure used by all the driver to not depend on USC structure
-void ConvertSkuTable(const SUscSkuFeatureTable* pUSCSkuFeatureTable, SKU_FEATURE_TABLE& SkuFeatureTable)
-{
-    memset(&SkuFeatureTable, 0, sizeof(SKU_FEATURE_TABLE));
-    SkuFeatureTable.FtrDesktop = pUSCSkuFeatureTable->FtrDesktop;
-    SkuFeatureTable.FtrGtBigDie = pUSCSkuFeatureTable->FtrGtBigDie;
-    SkuFeatureTable.FtrGtMediumDie = pUSCSkuFeatureTable->FtrGtMediumDie;
-    SkuFeatureTable.FtrGtSmallDie = pUSCSkuFeatureTable->FtrGtSmallDie;
-    SkuFeatureTable.FtrGT1 = pUSCSkuFeatureTable->FtrGT1;
-    SkuFeatureTable.FtrGT1_5 = pUSCSkuFeatureTable->FtrGT1_5;
-    SkuFeatureTable.FtrGT2 = pUSCSkuFeatureTable->FtrGT2;
-    SkuFeatureTable.FtrGT3 = pUSCSkuFeatureTable->FtrGT3;
-    SkuFeatureTable.FtrGT4 = pUSCSkuFeatureTable->FtrGT4;
-    SkuFeatureTable.FtrIVBM0M1Platform = pUSCSkuFeatureTable->FtrIVBM0M1Platform;
-    SkuFeatureTable.FtrSGTPVSKUStrapPresent = pUSCSkuFeatureTable->FtrSGTPVSKUStrapPresent;
-    SkuFeatureTable.FtrGTA = pUSCSkuFeatureTable->FtrGTA;
-    SkuFeatureTable.FtrGTC = pUSCSkuFeatureTable->FtrGTC;
-    SkuFeatureTable.FtrGTX = pUSCSkuFeatureTable->FtrGTX;
-    SkuFeatureTable.Ftr5Slice = pUSCSkuFeatureTable->Ftr5Slice;
-    SkuFeatureTable.FtrGpGpuMidThreadLevelPreempt = pUSCSkuFeatureTable->FtrGpGpuMidThreadLevelPreempt;
-    SkuFeatureTable.FtrIoMmuPageFaulting = pUSCSkuFeatureTable->FtrIoMmuPageFaulting;
-    SkuFeatureTable.FtrWddm2Svm = pUSCSkuFeatureTable->FtrWddm2Svm;
-    SkuFeatureTable.FtrPooledEuEnabled = pUSCSkuFeatureTable->FtrPooledEuEnabled;
-}
+    void SetWorkaroundTable(const SUscSkuFeatureTable* pSkuFeatureTable, CPlatform* platform)
+    {
+        SKU_FEATURE_TABLE SkuFeatureTable;
+        ConvertSkuTable(pSkuFeatureTable, SkuFeatureTable);
+        SetWorkaroundTable(&SkuFeatureTable, platform);
+    }
 
-void SetWorkaroundTable(const SUscSkuFeatureTable* pSkuFeatureTable , CPlatform* platform)
-{
-    SKU_FEATURE_TABLE SkuFeatureTable;
-    ConvertSkuTable(pSkuFeatureTable, SkuFeatureTable);
-    SetWorkaroundTable(&SkuFeatureTable, platform);
-}
-
-void SetGTSystemInfo(const SUscGTSystemInfo* pGTSystemInfo, CPlatform* platform)
-{
-    platform->SetGTSystemInfo(*pGTSystemInfo);
-}
+    void SetGTSystemInfo(const SUscGTSystemInfo* pGTSystemInfo, CPlatform* platform)
+    {
+        platform->SetGTSystemInfo(*pGTSystemInfo);
+    }
 
 
-void SetGTSystemInfo(const GT_SYSTEM_INFO* pGTSystemInfo, CPlatform* platform)
-{
-    platform->SetGTSystemInfo(*pGTSystemInfo);
-}
+    void SetGTSystemInfo(const GT_SYSTEM_INFO* pGTSystemInfo, CPlatform* platform)
+    {
+        platform->SetGTSystemInfo(*pGTSystemInfo);
+    }
 
 }

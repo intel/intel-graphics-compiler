@@ -102,7 +102,7 @@ namespace IGC
             m_pFloatType(nullptr),
             m_pIntType(nullptr)
         {}
-        virtual ~CCommand(void){};
+        virtual ~CCommand(void) {};
 
     protected:
         llvm::Value* m_pFloatZero;
@@ -121,19 +121,19 @@ namespace IGC
     {
         switch (type)
         {
-            case IGC::UAVResourceType:
-            case IGC::BindlessUAVResourceType:
-                return UAV;
-            case IGC::SRVResourceType:
-                return RESOURCE;
-            case IGC::SamplerResourceType:
-            case IGC::BindlessSamplerResourceType:
-                return SAMPLER;
-            case IGC::OtherResourceType:
-                return BUFFER_TYPE_UNKNOWN;
-            default:
-                assert(0 && "unknown type!");
-                return BUFFER_TYPE_UNKNOWN;
+        case IGC::UAVResourceType:
+        case IGC::BindlessUAVResourceType:
+            return UAV;
+        case IGC::SRVResourceType:
+            return RESOURCE;
+        case IGC::SamplerResourceType:
+        case IGC::BindlessSamplerResourceType:
+            return SAMPLER;
+        case IGC::OtherResourceType:
+            return BUFFER_TYPE_UNKNOWN;
+        default:
+            assert(0 && "unknown type!");
+            return BUFFER_TYPE_UNKNOWN;
         }
     };
 
@@ -162,7 +162,7 @@ namespace IGC
             ParamInfo(int i, ResourceTypeEnum t, ResourceExtensionTypeEnum extension) :
                 index(i), type(ResourceTypeMap(t)), extension(extension) {}
             ParamInfo() :
-                index(0), type(BUFFER_TYPE_UNKNOWN), extension(NonExtensionType){}
+                index(0), type(BUFFER_TYPE_UNKNOWN), extension(NonExtensionType) {}
 
             int index;
             BufferType type;
@@ -178,12 +178,12 @@ namespace IGC
             /// @brief  trace back the base value that belongs to a given image or sampler
             /// @param  paramIndex  the index of the image or sampler parameter in the call instruction
             /// @returns  the image or sampler base value (Argument for image, Argument or ConstInt for sampler)
-            static llvm::Value* traceImageOrSamplerArgument(llvm::CallInst* pCallInst, unsigned int paramIndex, const IGC::IGCMD::MetaDataUtils *pMdUtils = nullptr, const IGC::ModuleMetaData *modMD = nullptr);
+            static llvm::Value* traceImageOrSamplerArgument(llvm::CallInst* pCallInst, unsigned int paramIndex, const IGC::IGCMD::MetaDataUtils* pMdUtils = nullptr, const IGC::ModuleMetaData* modMD = nullptr);
 
             /// @brief  find the BTI of the image argumant
             /// @param  paramIndex  the index of the image paramtere in the call isntruciton
             /// @returns  the image index 
-            static llvm::ConstantInt* getImageIndex(ParamMap* pParamMap, llvm::CallInst* pCallInst, unsigned int paramIndex, llvm::Argument* &imageParam);
+            static llvm::ConstantInt* getImageIndex(ParamMap* pParamMap, llvm::CallInst* pCallInst, unsigned int paramIndex, llvm::Argument*& imageParam);
 
             /// @brief  find the type (UAV/RESOURCE) of the image argumant
             /// @returns  the image type 
@@ -191,7 +191,7 @@ namespace IGC
 
             /// @brief  find the image argument associated with the given bufType and idx
             /// @returns the image argument
-            static llvm::Argument* findImageFromBufferPtr(const IGC::IGCMD::MetaDataUtils &MdUtils, llvm::Function *F, BufferType bufType, uint64_t idx, const IGC::ModuleMetaData *modMD);
+            static llvm::Argument* findImageFromBufferPtr(const IGC::IGCMD::MetaDataUtils& MdUtils, llvm::Function* F, BufferType bufType, uint64_t idx, const IGC::ModuleMetaData* modMD);
         };
 
         CImagesBI(ParamMap* paramMap, InlineMap* inlineMap, int* nextSampler, Dimension Dim) :
@@ -211,7 +211,7 @@ namespace IGC
         /// @brief  push the colors to the function argument list
         /// @param  Color       the Color value
         void prepareColor(llvm::Value* Color);
-    
+
         /// @brief  set LOD to Zero and push the function argument list
         /// @param  Coord       the type of zero (int or float) 
         void prepareLOD(CoordType Coord);
@@ -224,8 +224,8 @@ namespace IGC
         llvm::Value* createGetBufferPtr(void);
 
         /// @brief  returns "true" if the "val" is integer or float with fractional part = 0.
-        static bool derivedFromInt(const llvm::Value * pVal);
-        
+        static bool derivedFromInt(const llvm::Value* pVal);
+
         void verifiyCommand(IGC::CodeGenContext*);
 
     protected:
@@ -233,15 +233,15 @@ namespace IGC
         void prepareImageBTI(void);
         // m_pParamMap - maps image and sampler kernel parameters to BTIs
         //               and sampler array indexes, respecitvely
-        ParamMap *m_pParamMap;
+        ParamMap* m_pParamMap;
 
         // m_pInlineMap - maps inline sampler values (CLK_...) to sampler
         //                array indexes.
-        InlineMap *m_pInlineMap;
+        InlineMap* m_pInlineMap;
 
         // The next sampler index to allocate a newly encountered
         // inline sampler
-        int *m_pNextSampler;
+        int* m_pNextSampler;
 
         Dimension m_dim;
         llvm::Value* CoordX;

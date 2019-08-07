@@ -50,14 +50,14 @@ public:
     }
     static char ID;
 
-    bool runOnFunction(llvm::Function &F) override;
+    bool runOnFunction(llvm::Function& F) override;
 
-    void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+    void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
     {
         AU.setPreservesCFG();
         AU.addRequired<MetaDataUtilsWrapper>();
     }
-    
+
     virtual llvm::StringRef getPassName() const override
     {
         return "GlobalToLocal";
@@ -71,9 +71,9 @@ Pass* createGlobalToLocalPass()
     return new GlobalToLocal();
 }
 
-bool GlobalToLocal::runOnFunction(llvm::Function &F)
+bool GlobalToLocal::runOnFunction(llvm::Function& F)
 {
-    MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     if (pMdUtils->findFunctionsInfoItem(&F) == pMdUtils->end_FunctionsInfo())
     {
         return false;
@@ -82,20 +82,20 @@ bool GlobalToLocal::runOnFunction(llvm::Function &F)
 
     IGCLLVM::IRBuilder<> builder(topFirstBB);
 
-    Module::GlobalListType&  globalList = F.getParent()->getGlobalList();
-    for(auto GI = globalList.begin(), GE = globalList.end(); GI != GE; ++GI)
+    Module::GlobalListType& globalList = F.getParent()->getGlobalList();
+    for (auto GI = globalList.begin(), GE = globalList.end(); GI != GE; ++GI)
     {
         GlobalVariable* global = &(*GI);
-        if(!global->use_empty())
+        if (!global->use_empty())
         {
             // removes constant expressions which may be added by one of the LLVM optimization passes
             // If these constant expressions are not removed it causes issues when replaceAllUsesWith() 
             // is called on the Global
             global->removeDeadConstantUsers();
-            
+
             builder.SetInsertPoint(topFirstBB);
             Instruction* alloc = builder.CreateAlloca(global->getType()->getPointerElementType());
-            if(global->hasInitializer())
+            if (global->hasInitializer())
             {
                 new StoreInst(global->getInitializer(), alloc, topFirstBB);
             }

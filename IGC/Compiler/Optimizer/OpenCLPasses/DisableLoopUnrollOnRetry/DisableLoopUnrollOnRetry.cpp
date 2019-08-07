@@ -50,10 +50,10 @@ DisableLoopUnrollOnRetry::DisableLoopUnrollOnRetry()
     initializeDisableLoopUnrollOnRetryPass(*PassRegistry::getPassRegistry());
 }
 
-bool DisableLoopUnrollOnRetry::runOnLoop(Loop *L, LPPassManager &LPM)
+bool DisableLoopUnrollOnRetry::runOnLoop(Loop* L, LPPassManager& LPM)
 {
-    bool changed = false;   
-    if (MDNode *LoopID = L->getLoopID())
+    bool changed = false;
+    if (MDNode * LoopID = L->getLoopID())
     {
         if (!(GetUnrollMetadata(LoopID, "llvm.loop.unroll.enable") ||
             GetUnrollMetadata(LoopID, "llvm.loop.unroll.full")))

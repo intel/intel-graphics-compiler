@@ -38,8 +38,8 @@ namespace llvm
 
 namespace IGC
 {
-    llvm::FunctionPass *createVectorPreProcessPass();
-    llvm::FunctionPass *createVectorProcessPass();
+    llvm::FunctionPass* createVectorPreProcessPass();
+    llvm::FunctionPass* createVectorProcessPass();
 
     class EmitPass;
 
@@ -87,14 +87,14 @@ namespace IGC
         } insts[VECMESSAGEINFO_MAX_LEN];
         uint16_t  numInsts;
 
-        VectorMessage(EmitPass *emitter) : m_emitter(emitter) {}
-        void getInfo(llvm::Type *Ty, uint32_t Align, bool useA32,
+        VectorMessage(EmitPass* emitter) : m_emitter(emitter) {}
+        void getInfo(llvm::Type* Ty, uint32_t Align, bool useA32,
             bool forceByteScatteredRW = false);
 
 
 
     private:
-        const EmitPass *m_emitter;
+        const EmitPass* m_emitter;
 
         VectorMessage(const VectorMessage&);   // not implemented
         void operator=(const VectorMessage&);  // not implemented

@@ -42,7 +42,7 @@ namespace
 {
     // If V is scalar, return 1.
     // if V is vector, return the number of elements.
-    inline int getNumElts(Value *V) {
+    inline int getNumElts(Value* V) {
         VectorType* VTy = dyn_cast<VectorType>(V->getType());
         return VTy ? (int)VTy->getNumElements() : 1;
     }
@@ -51,202 +51,202 @@ namespace
 char VariableReuseAnalysis::ID = 0;
 
 IGC_INITIALIZE_PASS_BEGIN(VariableReuseAnalysis, "VariableReuseAnalysis",
-                          "VariableReuseAnalysis", false, true)
-// IGC_INITIALIZE_PASS_DEPENDENCY(RegisterEstimator)
-IGC_INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
-IGC_INITIALIZE_PASS_DEPENDENCY(WIAnalysis)
-IGC_INITIALIZE_PASS_DEPENDENCY(LiveVarsAnalysis)
-IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenPatternMatch)
-IGC_INITIALIZE_PASS_DEPENDENCY(DeSSA)
-IGC_INITIALIZE_PASS_DEPENDENCY(CoalescingEngine)
-IGC_INITIALIZE_PASS_DEPENDENCY(BlockCoalescing)
-IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
-IGC_INITIALIZE_PASS_END(VariableReuseAnalysis, "VariableReuseAnalysis",
-                        "VariableReuseAnalysis", false, true)
+    "VariableReuseAnalysis", false, true)
+    // IGC_INITIALIZE_PASS_DEPENDENCY(RegisterEstimator)
+    IGC_INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
+    IGC_INITIALIZE_PASS_DEPENDENCY(WIAnalysis)
+    IGC_INITIALIZE_PASS_DEPENDENCY(LiveVarsAnalysis)
+    IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenPatternMatch)
+    IGC_INITIALIZE_PASS_DEPENDENCY(DeSSA)
+    IGC_INITIALIZE_PASS_DEPENDENCY(CoalescingEngine)
+    IGC_INITIALIZE_PASS_DEPENDENCY(BlockCoalescing)
+    IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
+    IGC_INITIALIZE_PASS_END(VariableReuseAnalysis, "VariableReuseAnalysis",
+        "VariableReuseAnalysis", false, true)
 
-llvm::FunctionPass *IGC::createVariableReuseAnalysisPass() {
-  return new VariableReuseAnalysis;
+    llvm::FunctionPass* IGC::createVariableReuseAnalysisPass() {
+    return new VariableReuseAnalysis;
 }
 
 VariableReuseAnalysis::VariableReuseAnalysis()
     : FunctionPass(ID),
-      m_pCtx(nullptr), m_WIA(nullptr), m_LV(nullptr), m_DeSSA(nullptr),
-      m_PatternMatch(nullptr), m_coalescingEngine(nullptr),
-      m_RPE(nullptr), m_SimdSize(0), m_IsFunctionPressureLow(Status::Undef),
-      m_IsBlockPressureLow(Status::Undef) {
-  initializeVariableReuseAnalysisPass(*PassRegistry::getPassRegistry());
+    m_pCtx(nullptr), m_WIA(nullptr), m_LV(nullptr), m_DeSSA(nullptr),
+    m_PatternMatch(nullptr), m_coalescingEngine(nullptr),
+    m_RPE(nullptr), m_SimdSize(0), m_IsFunctionPressureLow(Status::Undef),
+    m_IsBlockPressureLow(Status::Undef) {
+    initializeVariableReuseAnalysisPass(*PassRegistry::getPassRegistry());
 }
 
-bool VariableReuseAnalysis::runOnFunction(Function &F)
+bool VariableReuseAnalysis::runOnFunction(Function& F)
 {
-  m_F = &F;
+    m_F = &F;
 
-  m_WIA = &(getAnalysis<WIAnalysis>());
-  if (IGC_IS_FLAG_DISABLED(DisableDeSSA))
-  {
-    m_DeSSA = &getAnalysis<DeSSA>();
-  }
-  m_LV = &(getAnalysis<LiveVarsAnalysis>().getLiveVars());
-  m_PatternMatch = &getAnalysis<CodeGenPatternMatch>();
-  m_pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-  m_coalescingEngine = &getAnalysis<CoalescingEngine>();
-  m_DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
-  m_DL = &F.getParent()->getDataLayout();
+    m_WIA = &(getAnalysis<WIAnalysis>());
+    if (IGC_IS_FLAG_DISABLED(DisableDeSSA))
+    {
+        m_DeSSA = &getAnalysis<DeSSA>();
+    }
+    m_LV = &(getAnalysis<LiveVarsAnalysis>().getLiveVars());
+    m_PatternMatch = &getAnalysis<CodeGenPatternMatch>();
+    m_pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    m_coalescingEngine = &getAnalysis<CoalescingEngine>();
+    m_DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
+    m_DL = &F.getParent()->getDataLayout();
 
-  // FIXME: enable RPE.
-  // m_RPE = &getAnalysis<RegisterEstimator>();
+    // FIXME: enable RPE.
+    // m_RPE = &getAnalysis<RegisterEstimator>();
 
-  // Nothing but cleanup data from previous runs.
-  reset();
+    // Nothing but cleanup data from previous runs.
+    reset();
 
-  if (IGC_IS_FLAG_ENABLED(EnableVariableAlias) &&
-      m_DeSSA &&
-      !m_pCtx->getModuleMetaData()->compOpt.OptDisable &&
-      m_pCtx->platform.GetPlatformFamily() >= IGFX_GEN9_CORE)
-  {
-      // Setup ArgDeSSARoot (for subroutine, it might be conservative,
-      // but it should work.). 
-      m_ArgDeSSARoot.clear();
-      for (auto II = F.arg_begin(), IE = F.arg_end(); II != IE; ++II)
-      {
-          Value* A = II;
-          if (Value* R = m_DeSSA->getRootValue(A)) {
-              m_ArgDeSSARoot.push_back(R);
-          }
-      }
+    if (IGC_IS_FLAG_ENABLED(EnableVariableAlias) &&
+        m_DeSSA &&
+        !m_pCtx->getModuleMetaData()->compOpt.OptDisable &&
+        m_pCtx->platform.GetPlatformFamily() >= IGFX_GEN9_CORE)
+    {
+        // Setup ArgDeSSARoot (for subroutine, it might be conservative,
+        // but it should work.). 
+        m_ArgDeSSARoot.clear();
+        for (auto II = F.arg_begin(), IE = F.arg_end(); II != IE; ++II)
+        {
+            Value* A = II;
+            if (Value * R = m_DeSSA->getRootValue(A)) {
+                m_ArgDeSSARoot.push_back(R);
+            }
+        }
 
-      // 0. Merge Variables
-      //    Merge two different variables into a single one.
-      //    The two vars that will be merged should have the same
-      //    size/type and normally are defined with different values.
-      //    Once merged, they are put in the same DeSSA congruent class
-      mergeVariables(&F);
+        // 0. Merge Variables
+        //    Merge two different variables into a single one.
+        //    The two vars that will be merged should have the same
+        //    size/type and normally are defined with different values.
+        //    Once merged, they are put in the same DeSSA congruent class
+        mergeVariables(&F);
 
-      // 1. SubVector aliasing
-      //    Two variables alias each other if they have the same values.
-      //    Although they have different names, the two variables share
-      //    the same values over their live ranges. The cases such as
-      //    extractElement/insertElement, etc. Once aliasing is identified,
-      //    the liveness of the alias root is updated to be the sum of both.
-      //    This is the same as DeSSA alias.
-      InsertElementAliasing(&F);
+        // 1. SubVector aliasing
+        //    Two variables alias each other if they have the same values.
+        //    Although they have different names, the two variables share
+        //    the same values over their live ranges. The cases such as
+        //    extractElement/insertElement, etc. Once aliasing is identified,
+        //    the liveness of the alias root is updated to be the sum of both.
+        //    This is the same as DeSSA alias.
+        InsertElementAliasing(&F);
 
-      // 2. Handle extractElement, etc that handles a single instruction or
-      //    a few instruction, not invovled in a complicated patterns like
-      //    InsertElement.
-      visitLiveInstructions(&F);
+        // 2. Handle extractElement, etc that handles a single instruction or
+        //    a few instruction, not invovled in a complicated patterns like
+        //    InsertElement.
+        visitLiveInstructions(&F);
 
-      postProcessing();
+        postProcessing();
 
-      if (IGC_IS_FLAG_ENABLED(DumpVariableAlias))
-      {
-          auto name =
-              Debug::DumpName(Debug::GetShaderOutputName())
-              .Hash(m_pCtx->hash)
-              .Type(m_pCtx->type)
-              .Pass("VariableAlias")
-              .PostFix(F.getName())
-              .Extension("txt");
-          printAlias(Debug::Dump(name, Debug::DumpType::DBG_MSG_TEXT).stream(), m_F);
-      }
-  }
+        if (IGC_IS_FLAG_ENABLED(DumpVariableAlias))
+        {
+            auto name =
+                Debug::DumpName(Debug::GetShaderOutputName())
+                .Hash(m_pCtx->hash)
+                .Type(m_pCtx->type)
+                .Pass("VariableAlias")
+                .PostFix(F.getName())
+                .Extension("txt");
+            printAlias(Debug::Dump(name, Debug::DumpType::DBG_MSG_TEXT).stream(), m_F);
+        }
+    }
 
-  m_F = nullptr;
-  return false;
+    m_F = nullptr;
+    return false;
 }
 
 static unsigned getMaxReuseDistance(uint16_t size) {
-  return (size == 8) ? 10 : 5;
+    return (size == 8) ? 10 : 5;
 }
 
-bool VariableReuseAnalysis::checkUseInst(Instruction *UseInst, LiveVars *LV) {
-  BasicBlock *CurBB = UseInst->getParent();
-  if (UseInst->isUsedOutsideOfBlock(CurBB))
-    return false;
+bool VariableReuseAnalysis::checkUseInst(Instruction* UseInst, LiveVars* LV) {
+    BasicBlock* CurBB = UseInst->getParent();
+    if (UseInst->isUsedOutsideOfBlock(CurBB))
+        return false;
 
-  // This situation can occur:
-  //
-  //     ,------.
-  //     |      |
-  //     |      v
-  //     |   t2 = phi ... t1 ...
-  //     |      |
-  //     |      v
-  //     |   t1 = ...
-  //     |  ... = ... t1 ...
-  //     |      |
-  //     `------'
-  //
-  // Disallow reuse if t1 has a phi use.
-  // Disallow reuse if t1 has a far away use when the pressure is not low.
-  unsigned DefLoc = LV->getDistance(UseInst);
-  unsigned FarUseLoc = 0;
-  for (auto UI : UseInst->users()) {
-    if (isa<PHINode>(UI))
-      return false;
+    // This situation can occur:
+    //
+    //     ,------.
+    //     |      |
+    //     |      v
+    //     |   t2 = phi ... t1 ...
+    //     |      |
+    //     |      v
+    //     |   t1 = ...
+    //     |  ... = ... t1 ...
+    //     |      |
+    //     `------'
+    //
+    // Disallow reuse if t1 has a phi use.
+    // Disallow reuse if t1 has a far away use when the pressure is not low.
+    unsigned DefLoc = LV->getDistance(UseInst);
+    unsigned FarUseLoc = 0;
+    for (auto UI : UseInst->users()) {
+        if (isa<PHINode>(UI))
+            return false;
 
-    auto Inst = dyn_cast<Instruction>(UI);
-    if (!Inst)
-      return false;
-    unsigned UseLoc = LV->getDistance(Inst);
-    FarUseLoc = std::max(FarUseLoc, UseLoc);
-  }
-
-  // When the whole function or block pressure is low, skip the distance check.
-  if (isCurFunctionPressureLow() || isCurBlockPressureLow())
-    return true;
-
-  // Use distance to limit reuse.
-  const unsigned FarUseDistance = getMaxReuseDistance(m_SimdSize);
-  return FarUseLoc <= DefLoc + FarUseDistance;
-}
-
-bool VariableReuseAnalysis::checkDefInst(Instruction *DefInst,
-                                         Instruction *UseInst, LiveVars *LV) {
-  assert(DefInst && UseInst);
-  if (isa<PHINode>(DefInst))
-    return false;
-
-  if (auto CI = dyn_cast<CallInst>(DefInst)) {
-    Function *F = CI->getCalledFunction();
-    // Do not reuse the return symbol of subroutine/stack calls.
-    if (!F || !F->isDeclaration())
-      return false;
-
-    if (isa<GenIntrinsicInst>(DefInst)) {
-      // Just skip all gen intrinsic calls. Some intrinsic calls may have
-      // special meaning.
-      return false;
+        auto Inst = dyn_cast<Instruction>(UI);
+        if (!Inst)
+            return false;
+        unsigned UseLoc = LV->getDistance(Inst);
+        FarUseLoc = std::max(FarUseLoc, UseLoc);
     }
-  }
 
-  // This is a block level reuse.
-  BasicBlock *CurBB = UseInst->getParent();
-  if (DefInst->getParent() != CurBB || DefInst->isUsedOutsideOfBlock(CurBB))
-    return false;
+    // When the whole function or block pressure is low, skip the distance check.
+    if (isCurFunctionPressureLow() || isCurBlockPressureLow())
+        return true;
 
-  // Check whether UseInst is the last use of DefInst. If not, this source
-  // variable cannot be reused.
-  Instruction *LastUse = LV->getLVInfo(DefInst).findKill(CurBB);
-  if (LastUse != UseInst)
-    return false;
+    // Use distance to limit reuse.
+    const unsigned FarUseDistance = getMaxReuseDistance(m_SimdSize);
+    return FarUseLoc <= DefLoc + FarUseDistance;
+}
 
-  // When the whole function or block pressure is low, skip the distance check.
-  if (isCurFunctionPressureLow() || isCurBlockPressureLow())
-    return true;
+bool VariableReuseAnalysis::checkDefInst(Instruction* DefInst,
+    Instruction* UseInst, LiveVars* LV) {
+    assert(DefInst && UseInst);
+    if (isa<PHINode>(DefInst))
+        return false;
 
-  // Use distance to limit far reuses.
-  unsigned DefLoc = LV->getDistance(DefInst);
-  unsigned UseLoc = LV->getDistance(UseInst);
-  const unsigned FarDefDistance = getMaxReuseDistance(m_SimdSize);
-  return UseLoc <= DefLoc + FarDefDistance;
+    if (auto CI = dyn_cast<CallInst>(DefInst)) {
+        Function* F = CI->getCalledFunction();
+        // Do not reuse the return symbol of subroutine/stack calls.
+        if (!F || !F->isDeclaration())
+            return false;
+
+        if (isa<GenIntrinsicInst>(DefInst)) {
+            // Just skip all gen intrinsic calls. Some intrinsic calls may have
+            // special meaning.
+            return false;
+        }
+    }
+
+    // This is a block level reuse.
+    BasicBlock* CurBB = UseInst->getParent();
+    if (DefInst->getParent() != CurBB || DefInst->isUsedOutsideOfBlock(CurBB))
+        return false;
+
+    // Check whether UseInst is the last use of DefInst. If not, this source
+    // variable cannot be reused.
+    Instruction* LastUse = LV->getLVInfo(DefInst).findKill(CurBB);
+    if (LastUse != UseInst)
+        return false;
+
+    // When the whole function or block pressure is low, skip the distance check.
+    if (isCurFunctionPressureLow() || isCurBlockPressureLow())
+        return true;
+
+    // Use distance to limit far reuses.
+    unsigned DefLoc = LV->getDistance(DefInst);
+    unsigned UseLoc = LV->getDistance(UseInst);
+    const unsigned FarDefDistance = getMaxReuseDistance(m_SimdSize);
+    return UseLoc <= DefLoc + FarDefDistance;
 }
 
 bool VariableReuseAnalysis::isAliaser_tbd(Value* V)
 {
     return m_ValueAliasMap.count(V) > 0;
 }
-bool VariableReuseAnalysis::isAliasee_tbd(Value*V)
+bool VariableReuseAnalysis::isAliasee_tbd(Value* V)
 {
     return m_AliasRootMap.count(V) > 0;
 }
@@ -269,8 +269,8 @@ void VariableReuseAnalysis::insertAliasPair(Value* NewAliaser, SSubVecDesc& Root
 {
     Value* Aliasee = RootSV.BaseVector;
     assert(m_ValueAliasMap.count(NewAliaser) == 0 &&
-           m_ValueAliasMap.count(Aliasee) == 0 &&
-           "ICE: Aliaser already in map");
+        m_ValueAliasMap.count(Aliasee) == 0 &&
+        "ICE: Aliaser already in map");
     m_ValueAliasMap.insert(std::make_pair(NewAliaser, RootSV));
 
     // Update aliasRoot map
@@ -289,10 +289,10 @@ void VariableReuseAnalysis::insertAliasPair(Value* NewAliaser, SSubVecDesc& Root
     {
         TinyPtrVector<Value*>& TPV1 = II->second;
         for (int i = 0, sz = (int)TPV1.size(); i < sz; ++i) {
-            Value *oldAliaser = TPV1[i];
+            Value* oldAliaser = TPV1[i];
             auto II1 = m_ValueAliasMap.find(oldAliaser);
             assert(II1 != m_ValueAliasMap.end() &&
-                   "ICE: alias not in value alias map");
+                "ICE: alias not in value alias map");
             II1->second.BaseVector = Aliasee;
             II1->second.StartElementOffset += RootSV.StartElementOffset;
 
@@ -326,14 +326,14 @@ bool VariableReuseAnalysis::isSameSizeValue(Value* V0, Value* V1)
 
     Type* eTy0 = (VTy0 ? VTy0->getElementType() : Ty0);
     Type* eTy1 = (VTy1 ? VTy1->getElementType() : Ty1);
-    PointerType *ePTy0 = dyn_cast<PointerType>(eTy0);
-    PointerType *ePTy1 = dyn_cast<PointerType>(eTy1);
+    PointerType* ePTy0 = dyn_cast<PointerType>(eTy0);
+    PointerType* ePTy1 = dyn_cast<PointerType>(eTy1);
     uint32_t eBits0 =
         ePTy0 ? m_pCtx->getRegisterPointerSizeInBits(ePTy0->getAddressSpace())
-              : (uint32_t)m_DL->getTypeSizeInBits(eTy0);
+        : (uint32_t)m_DL->getTypeSizeInBits(eTy0);
     uint32_t eBits1 =
         ePTy1 ? m_pCtx->getRegisterPointerSizeInBits(ePTy1->getAddressSpace())
-              : (uint32_t)m_DL->getTypeSizeInBits(eTy1);
+        : (uint32_t)m_DL->getTypeSizeInBits(eTy1);
     if (eBits0 == 0 || eBits1 == 0 || eBits0 != eBits1) {
         return false;
     }
@@ -347,7 +347,7 @@ void VariableReuseAnalysis::mergeVariables(Function* F)
         Instruction* I = &*II;
         if (!m_PatternMatch->NeedInstruction(*I))
             continue;
-        if (GenIntrinsicInst *CI = dyn_cast<GenIntrinsicInst>(I))
+        if (GenIntrinsicInst * CI = dyn_cast<GenIntrinsicInst>(I))
         {
             switch (CI->getIntrinsicID()) {
             default:
@@ -397,7 +397,7 @@ void VariableReuseAnalysis::setLifeTimeStartPos(
             break;
         }
 
-        if (PHINode *PHI = dyn_cast<PHINode>(I)) {
+        if (PHINode * PHI = dyn_cast<PHINode>(I)) {
             Value* PHI_root = m_DeSSA->getRootValue(PHI);
             int sz1 = (int)PHI->getNumIncomingValues();
             for (int i1 = 0; i1 < sz1; ++i1)
@@ -423,18 +423,18 @@ void VariableReuseAnalysis::setLifeTimeStartPos(
 
     auto BSI = defBBSet.begin();
     auto BSE = defBBSet.end();
-    BasicBlock *NearestDomBB = *BSI;
+    BasicBlock* NearestDomBB = *BSI;
     for (++BSI; BSI != BSE; ++BSI)
     {
-        BasicBlock *aB = *BSI;
+        BasicBlock* aB = *BSI;
         NearestDomBB = m_DT->findNearestCommonDominator(NearestDomBB, aB);
     }
 
     // phiSrcMovBBSet
     for (auto II = phiSrcMovBBSet.begin(), IE = phiSrcMovBBSet.end();
-         II != IE; ++II)
+        II != IE; ++II)
     {
-        BasicBlock *aB = *II;
+        BasicBlock* aB = *II;
         NearestDomBB = m_DT->findNearestCommonDominator(NearestDomBB, aB);
     }
 
@@ -497,12 +497,12 @@ void VariableReuseAnalysis::postProcessing()
             for (int i = 0, sz = (int)allVals.size(); i < sz; ++i)
             {
                 Value* V = allVals[i];
-                if (Instruction* I = dyn_cast<Instruction>(V))
+                if (Instruction * I = dyn_cast<Instruction>(V))
                 {
 
                     BasicBlock* BB = I->getParent();
                     defBBSet.insert(BB);
-                    if (PHINode *PI = dyn_cast<PHINode>(I)) {
+                    if (PHINode * PI = dyn_cast<PHINode>(I)) {
                         phiDefBBSet.insert(BB);
                     }
                 }
@@ -521,10 +521,10 @@ void VariableReuseAnalysis::postProcessing()
 
             auto BSI = defBBSet.begin();
             auto BSE = defBBSet.end();
-            BasicBlock *NearestDomBB = *BSI;
+            BasicBlock* NearestDomBB = *BSI;
             for (++BSI; BSI != BSE; ++BSI)
             {
-                BasicBlock *aB = *BSI;
+                BasicBlock* aB = *BSI;
                 NearestDomBB = m_DT->findNearestCommonDominator(NearestDomBB, aB);
             }
 
@@ -628,7 +628,7 @@ void VariableReuseAnalysis::postProcessing()
     }
 }
 
-Value* VariableReuseAnalysis::getRootValue(Value *V)
+Value* VariableReuseAnalysis::getRootValue(Value* V)
 {
     Value* dessaRV = nullptr;
     if (m_DeSSA) {
@@ -685,14 +685,14 @@ bool VariableReuseAnalysis::addAlias(Value* Aliaser, SSubVecDesc& SVD)
     }
     else {
         SSubVecDesc& existingRSV = II->second;
-        Value *existingRV = existingRSV.BaseVector;
+        Value* existingRV = existingRSV.BaseVector;
         if (isSameSizeValue(Aliaser, Aliasee) &&
             tSVD.StartElementOffset == 0) {
             // add alias(Aliasee, existingRV)
             insertAliasPair(Aliasee, existingRSV);
         }
         else if (isSameSizeValue(Aliaser, existingRV) &&
-                 existingRSV.StartElementOffset == 0)
+            existingRSV.StartElementOffset == 0)
         {
             insertAliasPair(existingRV, tSVD);
         }
@@ -705,10 +705,10 @@ bool VariableReuseAnalysis::addAlias(Value* Aliaser, SSubVecDesc& SVD)
 
 // Return all values in the set rooted at Aliasee
 void VariableReuseAnalysis::getAllValues(
-    SmallVector<Value*, 8>& AllValues,
+    SmallVector<Value*, 8> & AllValues,
     Value* Aliasee)
 {
-    SmallVector<Value*, 8> valInCC; 
+    SmallVector<Value*, 8> valInCC;
     m_DeSSA->getAllValuesInCongruentClass(Aliasee, valInCC);
     AllValues.insert(AllValues.end(), valInCC.begin(), valInCC.end());
     valInCC.clear();
@@ -732,7 +732,7 @@ void VariableReuseAnalysis::getAllValues(
 //   b = insertElement  <vectorType> V1,  a,  <constant IEI_ix>
 // where EEI_ix and IEI_ix are constants; Return false otherwise.
 bool VariableReuseAnalysis::getVectorIndicesIfConstant(
-    InsertElementInst* IEI, int& IEI_ix, Value*& EEI_Vec, int&EEI_ix)
+    InsertElementInst* IEI, int& IEI_ix, Value*& EEI_Vec, int& EEI_ix)
 {
     // Check if I has constant index, skip if not.
     ConstantInt* CI = dyn_cast<ConstantInt>(IEI->getOperand(2));
@@ -743,8 +743,8 @@ bool VariableReuseAnalysis::getVectorIndicesIfConstant(
 
     // Check that the elements inserted are from extractElement
     // Also, special-handling of insertelement itself.
-    Value *elem = IEI->getOperand(1);
-    ExtractElementInst *EEI = dyn_cast<ExtractElementInst>(elem);
+    Value* elem = IEI->getOperand(1);
+    ExtractElementInst* EEI = dyn_cast<ExtractElementInst>(elem);
     if (!EEI) {
         // Just insertelement itself
         EEI_ix = 0;
@@ -769,7 +769,7 @@ bool VariableReuseAnalysis::checkAndGetAllInsertElements(
     int nelts = (int)VTy->getNumElements();
     assert(nelts == (int)AllElts.size() && "AllElts's size is set up correctly!");
 
-    InsertElementInst *I = FirstIEI;
+    InsertElementInst* I = FirstIEI;
     while (I)
     {
         Value* EEI_Vec;
@@ -810,7 +810,7 @@ void VariableReuseAnalysis::visitCallInst(CallInst& I)
         return;
     }
 
-    if (GenIntrinsicInst* GII = dyn_cast<GenIntrinsicInst>(&I))
+    if (GenIntrinsicInst * GII = dyn_cast<GenIntrinsicInst>(&I))
     {
         GenISAIntrinsic::ID id = GII->getIntrinsicID();
         if (id == GenISAIntrinsic::GenISA_Copy)
@@ -842,7 +842,7 @@ void VariableReuseAnalysis::visitCallInst(CallInst& I)
                 return;
             }
 
-            if (ConstantInt* CST = dyn_cast<ConstantInt>(Index))
+            if (ConstantInt * CST = dyn_cast<ConstantInt>(Index))
             {
                 int ix = (int)CST->getZExtValue();
                 SSubVecDesc SV;
@@ -938,7 +938,7 @@ void VariableReuseAnalysis::visitInsertElementInst_toBeDeleted(InsertElementInst
 
     assert(AllIEIs.size() == nelts && "ICE: wrong the number of IEIs!");
 
-    InsertElementInst *LastIEI = cast<InsertElementInst>(AllIEIs.back());
+    InsertElementInst* LastIEI = cast<InsertElementInst>(AllIEIs.back());
     SSubVecDesc SV;
     SmallVector<SSubVecDesc, 4> SVs;
     if (IsExtractFrom(AllElts, &I, LastIEI, SV))
@@ -1163,7 +1163,7 @@ bool VariableReuseAnalysis::aliasHasInterference(Value* Aliaser, Value* Aliasee)
     Value* AliaseeInsEltRoot = m_DeSSA->getInsEltRoot(Aliasee);
     for (int i = 0, sz0 = (int)Aliasercc.size(); i < sz0; ++i)
     {
-        Value *val0 = Aliasercc[i];
+        Value* val0 = Aliasercc[i];
         for (int j = 0, sz1 = (int)Aliaseecc.size(); j < sz1; ++j)
         {
             Value* val1 = Aliaseecc[j];
@@ -1217,7 +1217,7 @@ bool VariableReuseAnalysis::hasInterference(Value* V0, Value* V1)
     // Check every pair of values in two congruent classes
     for (int i = 0, sz0 = (int)V0cc.size(); i < sz0; ++i)
     {
-        Value *val0 = V0cc[i];
+        Value* val0 = V0cc[i];
         for (int j = 0, sz1 = (int)V1cc.size(); j < sz1; ++j)
         {
             Value* val1 = V1cc[j];
@@ -1279,7 +1279,7 @@ bool VariableReuseAnalysis::IsExtractFrom(
     int nelts = (int)AllElts.size();
     Value* BaseVec = AllElts[0].Vec;
     int BaseStartIx = AllElts[0].EltIx;
-    VectorType *BVTy = dyn_cast<VectorType>(BaseVec->getType());
+    VectorType* BVTy = dyn_cast<VectorType>(BaseVec->getType());
     if (BVTy == nullptr) {
         // Base is not a vector, so IEI cannot be
         // a subvector of another vector!
@@ -1318,7 +1318,7 @@ bool VariableReuseAnalysis::IsExtractFrom(
 
 bool VariableReuseAnalysis::IsInsertTo(
     VecEltTy& AllElts, InsertElementInst* FirstIEI,
-    InsertElementInst* LastIEI, SmallVector<SSubVecDesc, 4>& SVs)
+    InsertElementInst* LastIEI, SmallVector<SSubVecDesc, 4> & SVs)
 {
     int nelts = (int)AllElts.size();
     Value* SubVec = AllElts[0].Vec;
@@ -1335,7 +1335,7 @@ bool VariableReuseAnalysis::IsInsertTo(
             return false;
         }
 
-        Value *NextSub = (i < (nelts - 1)) ? AllElts[i+1].Vec : nullptr;
+        Value* NextSub = (i < (nelts - 1)) ? AllElts[i + 1].Vec : nullptr;
         if (SubVec != NextSub)
         {
             // NextSub should be the new sub vector. Make sure it is not in SVs
@@ -1347,7 +1347,7 @@ bool VariableReuseAnalysis::IsInsertTo(
             }
 
             // End of the SubVec.
-            VectorType *BVTy = dyn_cast<VectorType>(SubVec->getType());
+            VectorType* BVTy = dyn_cast<VectorType>(SubVec->getType());
             int sub_nelts = BVTy ? (int)BVTy->getNumElements() : 1;
             // If Sub's size is not smaller than IEI's, or not all sub's
             // elements are used, skip.
@@ -1361,7 +1361,7 @@ bool VariableReuseAnalysis::IsInsertTo(
             SVs.push_back(sv);
 
             SubVec = NextSub;
-            SubStartIx = i+1;
+            SubStartIx = i + 1;
         }
     }
 
@@ -1389,7 +1389,7 @@ bool VariableReuseAnalysis::IsInsertTo(
     return true;
 }
 
-void VariableReuseAnalysis::printAlias(raw_ostream & OS, const Function* F) const
+void VariableReuseAnalysis::printAlias(raw_ostream& OS, const Function* F) const
 {
     // Assign each inst/arg a unique integer so that the output
     // would be in order. It is useful when doing comparison.
@@ -1415,19 +1415,19 @@ void VariableReuseAnalysis::printAlias(raw_ostream & OS, const Function* F) cons
     };
 
     OS << "\nSummary of Variable Alias Info: "
-       << (F ? F->getName().str() : "Function")
-       << "\n";
+        << (F ? F->getName().str() : "Function")
+        << "\n";
 
     if (IGC_GET_FLAG_VALUE(VATemp) == 0)
     {   // tobedeleted
         for (auto& MI : m_AliasRootMap)
         {
-            Value *aliasee = MI.first; // root value
+            Value* aliasee = MI.first; // root value
             TinyPtrVector<llvm::Value*> aliasers = MI.second;
             OS << "Aliasee : " << *aliasee << "\n";
             for (auto VI : aliasers)
             {
-                Value *aliaser = VI;
+                Value* aliaser = VI;
                 auto II = m_ValueAliasMap.find(aliaser);
                 if (II == m_ValueAliasMap.end()) {
                     OS << "    " << *aliaser << "  [Wrong Value Alias]\n";
@@ -1451,10 +1451,10 @@ void VariableReuseAnalysis::printAlias(raw_ostream & OS, const Function* F) cons
     }
     std::sort(sortedAlias.begin(), sortedAlias.end(), SubVecCmp);
 
-    for (int i=0, sz = (int)sortedAlias.size(); i < sz; ++i)
+    for (int i = 0, sz = (int)sortedAlias.size(); i < sz; ++i)
     {
         SSubVecDesc* SV = sortedAlias[i];
-        Value *aliasee = SV->BaseVector;
+        Value* aliasee = SV->BaseVector;
         if (SV->Aliaser != aliasee) {
             // Not alias root
             continue;
@@ -1464,12 +1464,12 @@ void VariableReuseAnalysis::printAlias(raw_ostream & OS, const Function* F) cons
         for (auto VI : SV->Aliasers)
         {
             SSubVecDesc* aSV = VI;
-            Value *aliaser = aSV->Aliaser;
+            Value* aliaser = aSV->Aliaser;
             Value* dessaRoot = m_DeSSA ? m_DeSSA->getRootValue(aliaser) : nullptr;
             const char* inCC = dessaRoot ? ".inDessaCC" : "";
             OS << "    " << *aliaser
-               << "  [" << aSV->StartElementOffset << "]"
-               << inCC << "\n";
+                << "  [" << aSV->StartElementOffset << "]"
+                << inCC << "\n";
         }
         OS << "\n";
     }
@@ -1666,7 +1666,7 @@ bool VariableReuseAnalysis::getAllInsEltsIfAvailable(
 
 Value* VariableReuseAnalysis::traceAliasValue(Value* V)
 {
-    if (CastInst* CastI = dyn_cast_or_null<CastInst>(V))
+    if (CastInst * CastI = dyn_cast_or_null<CastInst>(V))
     {
         Value* Src = CastI->getOperand(0);
         if (isa<Constant>(Src))
@@ -1718,7 +1718,7 @@ bool VariableReuseAnalysis::getElementValue(
 
     // Check that the elements inserted are from extractElement.
     // Also, if no ExtractELement, get IEI's element value as S.
-    Value *elem0 = IEI->getOperand(1);
+    Value* elem0 = IEI->getOperand(1);
     if (hasBeenPayloadCoalesced(elem0) ||
         isa<Constant>(elem0) ||
         isOrCoalescedWithArg(elem0))
@@ -1729,8 +1729,8 @@ bool VariableReuseAnalysis::getElementValue(
         return false;
     }
 
-    Value *elem = traceAliasValue(elem0);
-    ExtractElementInst *EEI = dyn_cast<ExtractElementInst>(elem);
+    Value* elem = traceAliasValue(elem0);
+    ExtractElementInst* EEI = dyn_cast<ExtractElementInst>(elem);
     S = elem;
     if (!EEI) {
         // case 2. No sub-vector alias, but it is okay
@@ -1934,7 +1934,7 @@ bool VariableReuseAnalysis::processInsertTo(VecInsEltInfoTy& AllIEIs)
 
         // If Sub == nullptr or NextSub != Sub, this is the last element
         // of the current Sub (it is a scalar in case of sub == nullpr).
-        Value *NextSub = (i < (nelts - 1)) ? AllIEIs[i + 1].FromVec : nullptr;
+        Value* NextSub = (i < (nelts - 1)) ? AllIEIs[i + 1].FromVec : nullptr;
         if (!Sub || Sub != NextSub)
         {
             // End of the current Sub
@@ -2054,13 +2054,13 @@ bool VariableReuseAnalysis::aliasInterfere(Value* Sub, Value* Base, int BaseIdx)
     auto II0 = m_aliasMap.find(Sub);
     if (II0 != m_aliasMap.end()) {
         SSubVecDesc* SV0 = II0->second;
-        for (int i=0, sz = (int)SV0->Aliasers.size(); i < sz; ++i) {
+        for (int i = 0, sz = (int)SV0->Aliasers.size(); i < sz; ++i) {
             SSubVecDesc* tSV = SV0->Aliasers[i];
             Vec0.push_back(tSV->Aliaser);
         }
     }
 
-    for (int i0=0, sz0 = (int)Vec0.size(); i0 < sz0; ++i0)
+    for (int i0 = 0, sz0 = (int)Vec0.size(); i0 < sz0; ++i0)
     {
         Value* V0 = Vec0[i0];
         for (int i1 = 0, sz1 = (int)Vec1.size(); i1 < sz1; ++i1) {

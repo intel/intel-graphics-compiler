@@ -9,8 +9,8 @@
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 
 namespace IGC {
-void initializeAdvCodeMotionPass(llvm::PassRegistry &);
-llvm::FunctionPass *createAdvCodeMotionPass(unsigned Control);
+    void initializeAdvCodeMotionPass(llvm::PassRegistry&);
+    llvm::FunctionPass* createAdvCodeMotionPass(unsigned Control);
 } // End namespace IGC
 
 #endif // _CISA_ADVCODEMOTION_H_

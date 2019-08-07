@@ -36,82 +36,82 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace IGC
 {
-llvm::FunctionPass* CreateEarlyOutPatternsPass();
-llvm::FunctionPass* CreateLowerFmaPass();
-llvm::FunctionPass* CreateHoistFMulInLoopPass();
+    llvm::FunctionPass* CreateEarlyOutPatternsPass();
+    llvm::FunctionPass* CreateLowerFmaPass();
+    llvm::FunctionPass* CreateHoistFMulInLoopPass();
 
-class CustomUnsafeOptPass : public llvm::FunctionPass, public llvm::InstVisitor<CustomUnsafeOptPass>
-{
-public:
-    static char ID;
-
-    CustomUnsafeOptPass();
-
-    ~CustomUnsafeOptPass() {}
-
-    virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+    class CustomUnsafeOptPass : public llvm::FunctionPass, public llvm::InstVisitor<CustomUnsafeOptPass>
     {
-        AU.setPreservesCFG();
-        AU.addRequired<MetaDataUtilsWrapper>();
-        AU.addRequired<CodeGenContextWrapper>();
-    }
+    public:
+        static char ID;
 
-    virtual bool runOnFunction(llvm::Function &F) override;
+        CustomUnsafeOptPass();
 
-    virtual llvm::StringRef getPassName() const override
-    {
-        return "Custom Unsafe Optimization Pass";
-    }
+        ~CustomUnsafeOptPass() {}
 
-    void visitInstruction(llvm::Instruction &I);
-    void visitBinaryOperator(llvm::BinaryOperator &I);
-    void visitFCmpInst(llvm::FCmpInst &FC);
-    void visitSelectInst(llvm::SelectInst &I);
-    void visitCallInst(llvm::CallInst &I);
-    void visitFPToSIInst(llvm::FPToSIInst &I);
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
+        {
+            AU.setPreservesCFG();
+            AU.addRequired<MetaDataUtilsWrapper>();
+            AU.addRequired<CodeGenContextWrapper>();
+        }
 
-    bool visitBinaryOperatorPropNegate(llvm::BinaryOperator &I);
-    bool visitBinaryOperatorNegateMultiply(llvm::BinaryOperator &I);
-    bool visitBinaryOperatorTwoConstants(llvm::BinaryOperator &I);
-    bool visitBinaryOperatorDivDivOp(llvm::BinaryOperator &I);
-    bool visitBinaryOperatorDivRsq(llvm::BinaryOperator &I);
-    bool visitBinaryOperatorAddDiv(llvm::BinaryOperator &I);
-    bool visitBinaryOperatorFmulFaddPropagation(llvm::BinaryOperator &I);
-    bool visitBinaryOperatorExtractCommonMultiplier(llvm::BinaryOperator &I);
-    bool removeCommonMultiplier(llvm::Value *I, llvm::Value *commonMultiplier);
-    bool visitBinaryOperatorFmulToFmad(llvm::BinaryOperator &I);
-    bool visitBinaryOperatorToFmad(llvm::BinaryOperator &I);
-    bool visitBinaryOperatorAddSubOp(llvm::BinaryOperator &I);
-    bool visitBinaryOperatorDivAddDiv(llvm::BinaryOperator &I);
-    bool isFDiv(llvm::Value *I, llvm::Value *&numerator, llvm::Value *&denominator);
-    bool possibleForFmadOpt(llvm::Instruction *inst);
-    bool visitFCmpInstFCmpFAddOp(llvm::FCmpInst &FC);
-    bool visitFCmpInstFCmpSelOp(llvm::FCmpInst &FC);
-    bool visitFMulFCmpOp(llvm::FCmpInst &FC);
-    bool visitExchangeCB(llvm::BinaryOperator &I);
+        virtual bool runOnFunction(llvm::Function& F) override;
 
-    bool m_isChanged;
-    bool m_disableReorderingOpt;
-    IGC::CodeGenContext *m_ctx;
-    IGCMD::MetaDataUtils *m_pMdUtils;
+        virtual llvm::StringRef getPassName() const override
+        {
+            return "Custom Unsafe Optimization Pass";
+        }
 
-private:
-    inline llvm::BinaryOperator* copyIRFlags(
-        llvm::BinaryOperator* newOp,
-        llvm::Value* oldOp)
-    {
-        newOp->copyIRFlags(oldOp);
+        void visitInstruction(llvm::Instruction& I);
+        void visitBinaryOperator(llvm::BinaryOperator& I);
+        void visitFCmpInst(llvm::FCmpInst& FC);
+        void visitSelectInst(llvm::SelectInst& I);
+        void visitCallInst(llvm::CallInst& I);
+        void visitFPToSIInst(llvm::FPToSIInst& I);
 
-        llvm::DebugLoc dbg = ((llvm::Instruction*)oldOp)->getDebugLoc();
-        newOp->setDebugLoc(dbg);
+        bool visitBinaryOperatorPropNegate(llvm::BinaryOperator& I);
+        bool visitBinaryOperatorNegateMultiply(llvm::BinaryOperator& I);
+        bool visitBinaryOperatorTwoConstants(llvm::BinaryOperator& I);
+        bool visitBinaryOperatorDivDivOp(llvm::BinaryOperator& I);
+        bool visitBinaryOperatorDivRsq(llvm::BinaryOperator& I);
+        bool visitBinaryOperatorAddDiv(llvm::BinaryOperator& I);
+        bool visitBinaryOperatorFmulFaddPropagation(llvm::BinaryOperator& I);
+        bool visitBinaryOperatorExtractCommonMultiplier(llvm::BinaryOperator& I);
+        bool removeCommonMultiplier(llvm::Value* I, llvm::Value* commonMultiplier);
+        bool visitBinaryOperatorFmulToFmad(llvm::BinaryOperator& I);
+        bool visitBinaryOperatorToFmad(llvm::BinaryOperator& I);
+        bool visitBinaryOperatorAddSubOp(llvm::BinaryOperator& I);
+        bool visitBinaryOperatorDivAddDiv(llvm::BinaryOperator& I);
+        bool isFDiv(llvm::Value* I, llvm::Value*& numerator, llvm::Value*& denominator);
+        bool possibleForFmadOpt(llvm::Instruction* inst);
+        bool visitFCmpInstFCmpFAddOp(llvm::FCmpInst& FC);
+        bool visitFCmpInstFCmpSelOp(llvm::FCmpInst& FC);
+        bool visitFMulFCmpOp(llvm::FCmpInst& FC);
+        bool visitExchangeCB(llvm::BinaryOperator& I);
 
-        return newOp;
-    }
+        bool m_isChanged;
+        bool m_disableReorderingOpt;
+        IGC::CodeGenContext* m_ctx;
+        IGCMD::MetaDataUtils* m_pMdUtils;
 
-    void reassociateMulAdd(llvm::Function &F);
+    private:
+        inline llvm::BinaryOperator* copyIRFlags(
+            llvm::BinaryOperator* newOp,
+            llvm::Value* oldOp)
+        {
+            newOp->copyIRFlags(oldOp);
 
-    void strengthReducePow(llvm::IntrinsicInst* intrin,
-        llvm::Value* exponent);
-};
+            llvm::DebugLoc dbg = ((llvm::Instruction*)oldOp)->getDebugLoc();
+            newOp->setDebugLoc(dbg);
+
+            return newOp;
+        }
+
+        void reassociateMulAdd(llvm::Function& F);
+
+        void strengthReducePow(llvm::IntrinsicInst* intrin,
+            llvm::Value* exponent);
+    };
 
 } // namespace IGC

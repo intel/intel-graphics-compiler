@@ -47,17 +47,17 @@ namespace IGC
             return "Half Promotion Pass";
         }
 
-        virtual bool runOnFunction(llvm::Function &F) override;
-        void visitCallInst(llvm::CallInst &I);
-        void visitBinaryOperator(llvm::BinaryOperator &BI);
-        void visitFCmp(llvm::FCmpInst &CmpI);
-        void visitCastInst(llvm::CastInst &CI);
-        void visitPHINode(llvm::PHINode &PHI);
-        void visitSelectInst(llvm::SelectInst &SI);
+        virtual bool runOnFunction(llvm::Function& F) override;
+        void visitCallInst(llvm::CallInst& I);
+        void visitBinaryOperator(llvm::BinaryOperator& BI);
+        void visitFCmp(llvm::FCmpInst& CmpI);
+        void visitCastInst(llvm::CastInst& CI);
+        void visitPHINode(llvm::PHINode& PHI);
+        void visitSelectInst(llvm::SelectInst& SI);
 
     private:
-        void handleGenIntrinsic(llvm::GenIntrinsicInst &I);
-        void handleLLVMIntrinsic(llvm::IntrinsicInst &I);
+        void handleGenIntrinsic(llvm::GenIntrinsicInst& I);
+        void handleLLVMIntrinsic(llvm::IntrinsicInst& I);
 
         bool m_changed = false;
     };

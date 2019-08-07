@@ -130,7 +130,7 @@ void IGC::insertOCLMissingDebugConstMetadata(CodeGenContext* ctx)
                 auto init = g->getInitializer();
 
                 bool isConstForThisFunc = false;
-                llvm::SmallVector<llvm::DIGlobalVariableExpression *, 1> GVs;
+                llvm::SmallVector<llvm::DIGlobalVariableExpression*, 1> GVs;
                 g->getDebugInfo(GVs);
                 for (unsigned int j = 0; j < GVs.size(); j++)
                 {
@@ -183,12 +183,12 @@ void DebugEmitter::Initialize(CShader* pShader, bool debugEnabled)
     m_pDwarfDebug = new DwarfDebug(m_pStreamEmitter, m_pVISAModule);
 }
 
-void DebugEmitter::setFunction(llvm::Function* F, bool isCloned) 
-{ 
-    m_pVISAModule->SetEntryFunction(F, isCloned); 
+void DebugEmitter::setFunction(llvm::Function* F, bool isCloned)
+{
+    m_pVISAModule->SetEntryFunction(F, isCloned);
 }
 
-void DebugEmitter::Finalize(void *&pBuffer, unsigned int &size, bool finalize)
+void DebugEmitter::Finalize(void*& pBuffer, unsigned int& size, bool finalize)
 {
     pBuffer = nullptr;
     size = 0;
@@ -203,7 +203,7 @@ void DebugEmitter::Finalize(void *&pBuffer, unsigned int &size, bool finalize)
         doneOnce = true;
     }
 
-    const Function *pFunc = m_pVISAModule->GetEntryFunction();
+    const Function* pFunc = m_pVISAModule->GetEntryFunction();
     // Collect debug information for given function.
     m_pStreamEmitter->SwitchSection(m_pStreamEmitter->GetTextSection());
     m_pDwarfDebug->beginFunction(pFunc, m_pVISAModule);
@@ -230,7 +230,7 @@ void DebugEmitter::Finalize(void *&pBuffer, unsigned int &size, bool finalize)
         if (co->subs.size() == 0)
         {
             GenISAToVISAIndex = m_pVISAModule->GenISAToVISAIndex;
-            if(GenISAToVISAIndex.size() > 0)
+            if (GenISAToVISAIndex.size() > 0)
                 lastGenOff = GenISAToVISAIndex.back().first;
             m_pDwarfDebug->lowPc = co->relocOffset;
         }
@@ -285,7 +285,7 @@ void DebugEmitter::Finalize(void *&pBuffer, unsigned int &size, bool finalize)
                     instIt = VISAIndexToInst.find(visaId);
                     // Loop till at least one VISA instruction
                     // is found.
-                    if(instIt != VISAIndexToInst.end())
+                    if (instIt != VISAIndexToInst.end())
                         break;
                 }
             }
@@ -328,7 +328,7 @@ void DebugEmitter::Finalize(void *&pBuffer, unsigned int &size, bool finalize)
     {
         for (VISAModule::const_iterator II = m_pVISAModule->begin(), IE = m_pVISAModule->end(); II != IE; ++II)
         {
-            const Instruction *pInst = *II;
+            const Instruction* pInst = *II;
             unsigned int currOffset = m_pVISAModule->GetVisaOffset(pInst);
 
             int currSize = (int)m_pVISAModule->GetVisaSize(pInst);
@@ -370,7 +370,7 @@ void DebugEmitter::Finalize(void *&pBuffer, unsigned int &size, bool finalize)
         unsigned int phtSize = sizeof(llvm::ELF::Elf32_Phdr);
         if (is64Bit)
             phtSize = sizeof(llvm::ELF::Elf64_Phdr);
-        
+
         pBuffer = (char*)malloc((size + phtSize) * sizeof(char));
         memcpy_s(pBuffer, size * sizeof(char), m_outStream.str().data(), size);
 
@@ -442,7 +442,7 @@ void DebugEmitter::writeProgramHeaderTable(bool is64Bit, void* pBuffer, unsigned
     }
 }
 
-void DebugEmitter::BeginInstruction(Instruction *pInst)
+void DebugEmitter::BeginInstruction(Instruction* pInst)
 {
     BeginEncodingMark();
     if (!m_debugEnabled)
@@ -452,7 +452,7 @@ void DebugEmitter::BeginInstruction(Instruction *pInst)
     m_pVISAModule->BeginInstruction(pInst);
 }
 
-void DebugEmitter::EndInstruction(Instruction *pInst)
+void DebugEmitter::EndInstruction(Instruction* pInst)
 {
     EndEncodingMark();
     if (!m_debugEnabled)
@@ -472,7 +472,7 @@ void DebugEmitter::EndEncodingMark()
     m_pVISAModule->EndEncodingMark();
 }
 
-void DebugEmitter::Free(void *pBuffer)
+void DebugEmitter::Free(void* pBuffer)
 {
     if (pBuffer)
     {
@@ -534,7 +534,7 @@ void DebugEmitter::ResetVISAModule()
                     }
 
                     auto& loc = inst.getDebugLoc();
-                    
+
                     if (loc)
                     {
                         hasDbgLoc = true;

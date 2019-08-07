@@ -55,19 +55,19 @@ BreakConstantExpr::BreakConstantExpr() : FunctionPass(ID)
     initializeBreakConstantExprPass(*PassRegistry::getPassRegistry());
 }
 
-bool BreakConstantExpr::runOnFunction(Function &F)
+bool BreakConstantExpr::runOnFunction(Function& F)
 {
     bool changed = false;
     // Go over all the instructions in the function
-    for( inst_iterator it = inst_begin(F), e = inst_end(F); it != e; ++it )
+    for (inst_iterator it = inst_begin(F), e = inst_end(F); it != e; ++it)
     {
-        Instruction *pInst = &*it;
-        if (DbgDeclareInst *DbgDclInst = dyn_cast<DbgDeclareInst>(pInst)) {
+        Instruction* pInst = &*it;
+        if (DbgDeclareInst * DbgDclInst = dyn_cast<DbgDeclareInst>(pInst)) {
             // For DbgDeclareInst, the operand is a metadata that might
             // contain a constant expression.
             Value* op = DbgDclInst->getAddress();
             // If the debug adress is a constant expression, recursively break it up.
-            if (ConstantExpr* expr = dyn_cast_or_null<ConstantExpr>(op))
+            if (ConstantExpr * expr = dyn_cast_or_null<ConstantExpr>(op))
             {
                 breakExpressions(expr, 0, pInst);
                 changed = true;
@@ -77,12 +77,12 @@ bool BreakConstantExpr::runOnFunction(Function &F)
 #if 0
         //Disable handling of llvm.dbg.value instruction as it needs
         //proper handling of metadata.
-        if (DbgValueInst *DbgValInst = dyn_cast<DbgValueInst>(pInst)) {
+        if (DbgValueInst * DbgValInst = dyn_cast<DbgValueInst>(pInst)) {
             // For DbgValueInst, the operand is a metadata that might
             // contain a constant expression.
             Value* op = DbgValInst->getValue();
             // If the debug value operand is a constant expression, recursively break it up.
-            if (ConstantExpr* expr = dyn_cast_or_null<ConstantExpr>(op))
+            if (ConstantExpr * expr = dyn_cast_or_null<ConstantExpr>(op))
             {
                 breakExpressions(expr, 0, pInst);
                 changed = true;
@@ -93,17 +93,17 @@ bool BreakConstantExpr::runOnFunction(Function &F)
 
         // And all the operands of each instruction
         int numOperands = it->getNumOperands();
-        for( int i = 0; i < numOperands; ++i )
+        for (int i = 0; i < numOperands; ++i)
         {
             Value* op = it->getOperand(i);
 
             // If the operand is a constant expression, recursively break it up.
-            if (ConstantExpr* expr = dyn_cast<ConstantExpr>(op))
+            if (ConstantExpr * expr = dyn_cast<ConstantExpr>(op))
             {
                 breakExpressions(expr, i, pInst);
                 changed = true;
             }
-            else if (ConstantVector* cvec = dyn_cast<ConstantVector>(op))
+            else if (ConstantVector * cvec = dyn_cast<ConstantVector>(op))
             {
                 changed |= breakExpressionsInVector(cvec, i, pInst);
             }
@@ -114,12 +114,12 @@ bool BreakConstantExpr::runOnFunction(Function &F)
 
 void BreakConstantExpr::replaceConstantWith(llvm::Constant* exprOrVec, llvm::Instruction* newInst, int operandIndex, llvm::Instruction* user)
 {
-    if (PHINode* phi = dyn_cast<PHINode>(user))
+    if (PHINode * phi = dyn_cast<PHINode>(user))
     {
         newInst->insertBefore(phi->getIncomingBlock(operandIndex)->getTerminator());
         user->setOperand(operandIndex, newInst);
     }
-    else if (DbgInfoIntrinsic* dbg = dyn_cast<DbgInfoIntrinsic>(user))
+    else if (DbgInfoIntrinsic * dbg = dyn_cast<DbgInfoIntrinsic>(user))
     {
         newInst->insertBefore(user);
         // For debug info intrinsic, the operand is a metadata that
@@ -153,15 +153,15 @@ void BreakConstantExpr::breakExpressions(llvm::ConstantExpr* expr, int operandIn
     // Thew new instruction may itself reference constant expressions.
     // So, recursively process all of its arguments.
     int numOperands = newInst->getNumOperands();
-    for( int i = 0; i < numOperands; ++i )
+    for (int i = 0; i < numOperands; ++i)
     {
         Value* op = newInst->getOperand(i);
         ConstantExpr* innerExpr = dyn_cast<ConstantExpr>(op);
-        if( innerExpr )
+        if (innerExpr)
         {
             breakExpressions(innerExpr, i, newInst);
         }
-        else if (ConstantVector* cvec = dyn_cast<ConstantVector>(op))
+        else if (ConstantVector * cvec = dyn_cast<ConstantVector>(op))
         {
             breakExpressionsInVector(cvec, i, newInst);
         }
@@ -182,7 +182,7 @@ bool BreakConstantExpr::breakExpressionsInVector(llvm::ConstantVector* cvec, int
 
     if (hasConstantExpression)
     {
-        Value* currVec = UndefValue::get(cvec->getType());        
+        Value* currVec = UndefValue::get(cvec->getType());
         const unsigned vecSize = cvec->getNumOperands();
 
         for (unsigned elemIdx = 0; elemIdx < vecSize; ++elemIdx)
@@ -195,7 +195,7 @@ bool BreakConstantExpr::breakExpressionsInVector(llvm::ConstantVector* cvec, int
 
             if (elemIdx < cvec->getNumOperands() - 1)
             {
-                if (PHINode* phi = dyn_cast<PHINode>(user))
+                if (PHINode * phi = dyn_cast<PHINode>(user))
                 {
                     newInst->insertBefore(phi->getIncomingBlock(operandIndex)->getTerminator());
                 }
@@ -210,7 +210,7 @@ bool BreakConstantExpr::breakExpressionsInVector(llvm::ConstantVector* cvec, int
                 replaceConstantWith(cvec, newInst, operandIndex, user);
             }
 
-            if (ConstantExpr* expr = dyn_cast<ConstantExpr>(op))
+            if (ConstantExpr * expr = dyn_cast<ConstantExpr>(op))
             {
                 breakExpressions(expr, 1, newInst);
             }

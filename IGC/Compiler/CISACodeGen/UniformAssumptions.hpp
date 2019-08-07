@@ -16,11 +16,11 @@ namespace IGC {
 
         UniformAssumptions();
 
-        virtual bool runOnFunction(llvm::Function &F) override;
+        virtual bool runOnFunction(llvm::Function& F) override;
 
-        void visitCallInst(llvm::CallInst &CI);
+        void visitCallInst(llvm::CallInst& CI);
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override {
             AU.setPreservesCFG();
             AU.addRequired<WIAnalysis>();
             AU.addRequired<CodeGenContextWrapper>();
@@ -28,12 +28,12 @@ namespace IGC {
 
     private:
         static const int s_cMaxRecursion = 16;
-        
+
         bool IsAssumedUniform(llvm::Value* V, int recursionLevel = 0) const;
         void MakeUniformResourceOperand(llvm::Value* V, llvm::CallInst* CI);
-        void HoistAssumptions(llvm::Function &F);
-        void CollectAssumptions(llvm::Function &F);
-        void OptimizeResourceAccesses(llvm::Function &F);
+        void HoistAssumptions(llvm::Function& F);
+        void CollectAssumptions(llvm::Function& F);
+        void OptimizeResourceAccesses(llvm::Function& F);
 
         bool m_changed = false;
         WIAnalysis* m_WIAnalysis = nullptr;

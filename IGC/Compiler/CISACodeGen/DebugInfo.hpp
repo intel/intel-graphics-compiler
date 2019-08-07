@@ -59,11 +59,11 @@ namespace IGC
     public:
         std::map<llvm::Function*, VISAModule*> m_VISAModules;
         CShader* m_pShader = nullptr;
-        IDebugEmitter * m_pDebugEmitter = nullptr;
+        IDebugEmitter* m_pDebugEmitter = nullptr;
 
         void markOutputVars(const llvm::Instruction* pInst);
         void markOutput(llvm::Function& F, CShader* m_currShader);
-        
+
         void addVISAModule(llvm::Function* F, VISAModule* m)
         {
             auto it = m_VISAModules.find(F);
@@ -99,7 +99,7 @@ namespace IGC
         virtual bool doInitialization(llvm::Module& M) override;
         virtual bool doFinalization(llvm::Module& M) override;
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.addRequired<MetaDataUtilsWrapper>();
             AU.setPreservesAll();

@@ -37,32 +37,32 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //--------------------------
 //             name    size
 //--------------------------
-IGC_IR_FP_TYPE(half,     16)
-IGC_IR_FP_TYPE(float,    32)
-IGC_IR_FP_TYPE(double,   64)
+IGC_IR_FP_TYPE(half, 16)
+IGC_IR_FP_TYPE(float, 32)
+IGC_IR_FP_TYPE(double, 64)
 
 // Vector sizes
 //------------------------------------
 //                 name       size
 //                         in elements
 //------------------------------------
-IGC_IR_VECTOR_TYPE(x1,           1)
-IGC_IR_VECTOR_TYPE(x2,           2)
-IGC_IR_VECTOR_TYPE(x3,           3)
-IGC_IR_VECTOR_TYPE(x4,           4)
-IGC_IR_VECTOR_TYPE(x5,           5)
-IGC_IR_VECTOR_TYPE(x6,           6)
-IGC_IR_VECTOR_TYPE(x7,           7)
-IGC_IR_VECTOR_TYPE(x8,           8)
-IGC_IR_VECTOR_TYPE(x9,           9)
-IGC_IR_VECTOR_TYPE(x10,         10)
-IGC_IR_VECTOR_TYPE(x11,         11)
-IGC_IR_VECTOR_TYPE(x12,         12)
-IGC_IR_VECTOR_TYPE(x13,         13)
-IGC_IR_VECTOR_TYPE(x14,         14)
-IGC_IR_VECTOR_TYPE(x15,         15)
-IGC_IR_VECTOR_TYPE(x16,         16)
-IGC_IR_VECTOR_TYPE(x32,         32)
+IGC_IR_VECTOR_TYPE(x1, 1)
+IGC_IR_VECTOR_TYPE(x2, 2)
+IGC_IR_VECTOR_TYPE(x3, 3)
+IGC_IR_VECTOR_TYPE(x4, 4)
+IGC_IR_VECTOR_TYPE(x5, 5)
+IGC_IR_VECTOR_TYPE(x6, 6)
+IGC_IR_VECTOR_TYPE(x7, 7)
+IGC_IR_VECTOR_TYPE(x8, 8)
+IGC_IR_VECTOR_TYPE(x9, 9)
+IGC_IR_VECTOR_TYPE(x10, 10)
+IGC_IR_VECTOR_TYPE(x11, 11)
+IGC_IR_VECTOR_TYPE(x12, 12)
+IGC_IR_VECTOR_TYPE(x13, 13)
+IGC_IR_VECTOR_TYPE(x14, 14)
+IGC_IR_VECTOR_TYPE(x15, 15)
+IGC_IR_VECTOR_TYPE(x16, 16)
+IGC_IR_VECTOR_TYPE(x32, 32)
 
 // LLVM intrinsics supported by IGC IR
 //------------------------------------

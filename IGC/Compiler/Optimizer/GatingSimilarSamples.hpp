@@ -57,8 +57,8 @@ namespace IGC
         {
             initializeGatingSimilarSamplesPass(*llvm::PassRegistry::getPassRegistry());
         }
-        virtual bool runOnFunction(llvm::Function &F) override;
-        void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+        virtual bool runOnFunction(llvm::Function& F) override;
+        void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.addRequired<IGC::CodeGenContextWrapper>();
         }
@@ -68,7 +68,7 @@ namespace IGC
         {
             return "GatingSimilarSamples";
         }
-        
+
     private:
         llvm::BasicBlock* BB;
         llvm::Instruction* motionSample;
@@ -79,11 +79,11 @@ namespace IGC
         llvm::Value* gatingValue_mul1; //motion.x
         llvm::Value* gatingValue_mul2; //motion.y
         std::vector<llvm::Instruction*> similarSampleInsts;
-        bool areSampleInstructionsSimilar( llvm::Instruction*, llvm::Instruction*);
+        bool areSampleInstructionsSimilar(llvm::Instruction*, llvm::Instruction*);
         bool checkAndSaveSimilarSampleInsts();
-        bool setOrCmpGatingValue(llvm::Value* &gatingValueToCmp1, llvm::Instruction* mulInst, const llvm::Instruction* texelSampleInst);
+        bool setOrCmpGatingValue(llvm::Value*& gatingValueToCmp1, llvm::Instruction* mulInst, const llvm::Instruction* texelSampleInst);
         bool findAndSetCommonGatingValue();
     };
-    
+
     llvm::FunctionPass* CreateGatingSimilarSamples();
 }

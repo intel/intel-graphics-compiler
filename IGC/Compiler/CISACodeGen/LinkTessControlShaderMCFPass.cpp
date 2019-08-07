@@ -74,7 +74,7 @@ namespace IGC
 
         /// @brief  Constructor
         LinkTessControlShaderMCF();
-        ~LinkTessControlShaderMCF() 
+        ~LinkTessControlShaderMCF()
         {
             delete mpBuilder;
         };
@@ -97,10 +97,10 @@ namespace IGC
         virtual bool runOnModule(llvm::Module& M) override;
 
     private:
-        llvm::IGCIRBuilder<>*  mpBuilder{ nullptr };
-        Module*             mpModule{ nullptr };
-        DominatorTree*      mpDT{ nullptr };
-        Function*           mpMainFunction{ nullptr };
+        llvm::IGCIRBuilder<>* mpBuilder{ nullptr };
+        Module* mpModule{ nullptr };
+        DominatorTree* mpDT{ nullptr };
+        Function* mpMainFunction{ nullptr };
         uint32_t            mNumBarriers;
         uint32_t            mOutputControlPointCount;
         uint32_t            mNumInstructions;
@@ -130,13 +130,13 @@ namespace IGC
         /// @brief Used to keep track of all alloca values that are live across
         ///        barrier. 
         //////////////////////////////////////////////////////////////////////////
-        
+
         typedef llvm::Value* global_alloca_key_t;
 
         class GlobalAllocas
         {
             std::map<global_alloca_key_t, Value*>  mGlobalAllocas;
-            bool mGlobalAllocasUpdated = {false};
+            bool mGlobalAllocasUpdated = { false };
 
         public:
             /// @brief  Returns LLVM type for the alloca specified by key.
@@ -192,7 +192,7 @@ namespace IGC
             std::vector<BasicBlock*> exits;   ///< terminator blocks
             std::vector<BasicBlock*> blocks;  ///< blocks in a continuation function
             std::set<global_alloca_key_t> inputs; ///< global allocas for ins/outs
-         };
+        };
         std::set<global_alloca_key_t> fullInputsList;
 
         //////////////////////////////////////////////////////////////////////////
@@ -220,7 +220,7 @@ namespace IGC
             bool isPreBarrierBlock{ false };
             BarrierInfo* pBarrierInfo{ nullptr };
             BarrierInfo* pPreBarrierInfo{ nullptr };
-            BasicBlock*  pPostBarrierBlock{ nullptr };
+            BasicBlock* pPostBarrierBlock{ nullptr };
         };
 
         // Maps metadata to basic blocks.
@@ -311,22 +311,22 @@ namespace IGC
         void BuildContinuationFunction(ContinuationFunction& cf);
         void BuildContinuationFunctions(Function& f);
         void RebuildMainFunction(void);
-        void TCSwHWBarriersSupport(MetaDataUtils *pMdUtils);
+        void TCSwHWBarriersSupport(MetaDataUtils* pMdUtils);
         bool SelectTCSwHWBarrierSupport(void);
         llvm::Function* CreateNewTCSFunction(llvm::Function* pCurrentFunc);
     };
 
     char LinkTessControlShaderMCF::ID = 0;
     // Register pass to igc-opt
-    #define PASS_FLAG "igc-LinkTessControlShaderMCF"
-    #define PASS_DESCRIPTION "Perform looping of tessellation function based on control point count"
-    #define PASS_CFG_ONLY false
-    #define PASS_ANALYSIS false
+#define PASS_FLAG "igc-LinkTessControlShaderMCF"
+#define PASS_DESCRIPTION "Perform looping of tessellation function based on control point count"
+#define PASS_CFG_ONLY false
+#define PASS_ANALYSIS false
     IGC_INITIALIZE_PASS_BEGIN(LinkTessControlShaderMCF, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-    IGC_INITIALIZE_PASS_END(LinkTessControlShaderMCF, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+        IGC_INITIALIZE_PASS_END(LinkTessControlShaderMCF, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 
-    LinkTessControlShaderMCF::LinkTessControlShaderMCF() :
+        LinkTessControlShaderMCF::LinkTessControlShaderMCF() :
         llvm::ModulePass(ID),
         mNumBarriers(0),
         mOutputControlPointCount(0),
@@ -340,7 +340,7 @@ namespace IGC
 
     HullShaderDispatchModes LinkTessControlShaderMCF::DetermineDispatchMode(void)
     {
-        llvm::NamedMDNode *metaData = GetModule()->getOrInsertNamedMetadata("HullShaderDispatchMode");
+        llvm::NamedMDNode* metaData = GetModule()->getOrInsertNamedMetadata("HullShaderDispatchMode");
         IGC::CodeGenContext* pCodeGenContext = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
         /* Instance Count
@@ -369,14 +369,14 @@ namespace IGC
 
         if (pCodeGenContext->platform.useOnlyEightPatchDispatchHS() ||
             (pCodeGenContext->platform.supportHSEightPatchDispatch() &&
-            !(m_useMultipleHardwareThread && mOutputControlPointCount >= 16) &&
-            !useSinglePatch &&
-            IGC_IS_FLAG_DISABLED(EnableHSSinglePatchDispatch)))
+                !(m_useMultipleHardwareThread && mOutputControlPointCount >= 16) &&
+                !useSinglePatch &&
+                IGC_IS_FLAG_DISABLED(EnableHSSinglePatchDispatch)))
         {
             Constant* cval = llvm::ConstantInt::get(
                 Builder().getInt32Ty(),
                 HullShaderDispatchModes::EIGHT_PATCH_DISPATCH_MODE);
-            llvm::MDNode *mdNode = llvm::MDNode::get(
+            llvm::MDNode* mdNode = llvm::MDNode::get(
                 Builder().getContext(),
                 llvm::ConstantAsMetadata::get(cval));
             metaData->addOperand(mdNode);
@@ -387,7 +387,7 @@ namespace IGC
             Constant* cval = llvm::ConstantInt::get(
                 Builder().getInt32Ty(),
                 HullShaderDispatchModes::SINGLE_PATCH_DISPATCH_MODE);
-            llvm::MDNode *mdNode = llvm::MDNode::get(
+            llvm::MDNode* mdNode = llvm::MDNode::get(
                 Builder().getContext(),
                 llvm::ConstantAsMetadata::get(cval));
             metaData->addOperand(mdNode);
@@ -405,7 +405,7 @@ namespace IGC
         {
             Instruction& inst = cast<Instruction>(*i);
             mNumInstructions++;
-            if (GenIntrinsicInst* pInst = dyn_cast<GenIntrinsicInst>(&inst))
+            if (GenIntrinsicInst * pInst = dyn_cast<GenIntrinsicInst>(&inst))
             {
                 GenISAIntrinsic::ID IID = pInst->getIntrinsicID();
                 if (IID == GenISAIntrinsic::GenISA_threadgroupbarrier)
@@ -425,7 +425,7 @@ namespace IGC
                     mMemoryFence.push_back(pInst);
                 }
             }
-            else if (PHINode* pPhi = dyn_cast<PHINode>(&inst))
+            else if (PHINode * pPhi = dyn_cast<PHINode>(&inst))
             {
                 // Set this member only when 'barrier' instr is before PHI.
                 mIsPhiWith3OrMoreIncomingValues = ((pPhi->getNumIncomingValues() >= 3) && (mNumBarriers > 0));
@@ -489,7 +489,7 @@ namespace IGC
                     for (BasicBlock::iterator i = pPostBarrierBlock->begin(), e = pPostBarrierBlock->end(); i != e; ++i)
                     {
                         Instruction* pInst = &(*i);
-                        if (llvm::BranchInst* pBrInst = dyn_cast<BranchInst>(pInst))
+                        if (llvm::BranchInst * pBrInst = dyn_cast<BranchInst>(pInst))
                         {
                             // Replace  :   br COND, BB_IF_TRUE, BB_IF_FALSE
                             // with     :   br COND, BB_IF_TRUE.postbarrier, BB_IF_FALSE
@@ -672,7 +672,7 @@ namespace IGC
                 Instruction* pUserInst = cast<Instruction>(pUser);
                 BasicBlock* pUseBlock = pUserInst->getParent();
 
-                if (PHINode* pPhi = dyn_cast<PHINode>(pUser))
+                if (PHINode * pPhi = dyn_cast<PHINode>(pUser))
                 {
                     for (uint32_t incoming = 0; incoming < pPhi->getNumIncomingValues(); ++incoming)
                     {
@@ -733,7 +733,7 @@ namespace IGC
         BasicBlock* pDefBlock = pDef->getParent();
         std::string defName = pDef->getName();
         std::string newName = "l_" + defName;
-        
+
         // Start with inserting new alloca after defining instruction.
         BasicBlock::iterator ii(pDef);
         Builder().SetInsertPoint(&(*(++ii)));
@@ -831,7 +831,7 @@ namespace IGC
     /// @brief Replace live value marked in our tables with a new one. 
     void LinkTessControlShaderMCF::ReplaceLive(Value* pOld, Value* pNew)
     {
-        for (auto & edgeMapEntry : mEdgeLives)
+        for (auto& edgeMapEntry : mEdgeLives)
         {
             EdgeLives& edge = edgeMapEntry.second;
             auto pos = edge.lives.find(pOld);
@@ -861,7 +861,7 @@ namespace IGC
                 // and make all uses go through it.
                 if (!isa<AllocaInst>(pInst))
                 {
-                    Instruction *pNewDef = ReplaceWithIntermittentAlloca(pInst);
+                    Instruction* pNewDef = ReplaceWithIntermittentAlloca(pInst);
                     ReplaceLive(pLive, pNewDef);
                 }
             }
@@ -893,7 +893,7 @@ namespace IGC
                 cf.inputs.insert(inputArg);
             }
         }
-        
+
         // Generate outputs.
         for (auto& pExit : cf.exits)
         {
@@ -931,19 +931,19 @@ namespace IGC
     /// @param cf - current continuation function
     void LinkTessControlShaderMCF::FixUpControlPointID(ContinuationFunction& cf)
     {
-       SmallVector<Instruction*, 10> instructionToRemove;
+        SmallVector<Instruction*, 10> instructionToRemove;
 
-       llvm::Value* pHSControlPointID = llvm::GenISAIntrinsic::getDeclaration(
+        llvm::Value* pHSControlPointID = llvm::GenISAIntrinsic::getDeclaration(
             cf.pFunc->getParent(),
             GenISAIntrinsic::GenISA_DCL_HSControlPointID);
 
-       Argument* arg0 = &(*cf.pFunc->arg_begin());
+        Argument* arg0 = &(*cf.pFunc->arg_begin());
 
-       for (Value::user_iterator i = pHSControlPointID->user_begin(), e = pHSControlPointID->user_end();
+        for (Value::user_iterator i = pHSControlPointID->user_begin(), e = pHSControlPointID->user_end();
             i != e;
             ++i)
-       {
-            Instruction *useInst = cast<Instruction>(*i);
+        {
+            Instruction* useInst = cast<Instruction>(*i);
             if (useInst->getParent()->getParent() == cf.pFunc)
             {
                 instructionToRemove.push_back(useInst);
@@ -951,7 +951,7 @@ namespace IGC
             }
         }
 
-        for (auto &inst : instructionToRemove)
+        for (auto& inst : instructionToRemove)
         {
             inst->eraseFromParent();
         }
@@ -981,7 +981,7 @@ namespace IGC
                 {
                     isPHIInBB = true;
                 }
-                else if (llvm::BranchInst* pBrInst = dyn_cast<BranchInst>(pInst))
+                else if (llvm::BranchInst * pBrInst = dyn_cast<BranchInst>(pInst))
                 {
                     // Check whether any of successors(i.e. BB) matches pBarrierBlock.
                     for (unsigned int successorId = 0; successorId < pBrInst->getNumSuccessors(); ++successorId)
@@ -1026,7 +1026,7 @@ namespace IGC
             for (BasicBlock::iterator i = pBarrierBlock->begin(), e = pBarrierBlock->end(); i != e; ++i)
             {
                 Instruction* pDef = &*i;
-                if (PHINode* pPhi = dyn_cast<PHINode>(pDef))
+                if (PHINode * pPhi = dyn_cast<PHINode>(pDef))
                 {
                     phiToRemove.push_back(pPhi);
 
@@ -1057,8 +1057,8 @@ namespace IGC
                 }
             }
         }
-        
-        for (auto &phiInst : phiToRemove)
+
+        for (auto& phiInst : phiToRemove)
         {
             phiInst->eraseFromParent();
         }
@@ -1072,9 +1072,9 @@ namespace IGC
         std::vector<BasicBlock*> blocksToRemove;
 
         // Find blocks to be removed.
-         for (Function::iterator bb = f.begin(), be = f.end();
-              bb != be;
-              ++bb)
+        for (Function::iterator bb = f.begin(), be = f.end();
+            bb != be;
+            ++bb)
         {
             BasicBlock* pBlock = &*bb;
             if (pBlock->getParent() == &f)
@@ -1131,7 +1131,7 @@ namespace IGC
             if (vmap.count(pVal) == 0)
             {
                 // Copy the name over...
-                ai->setName("arg"+pVal->getName());
+                ai->setName("arg" + pVal->getName());
                 // Add mapping to ValueMap
                 vmap[pVal] = static_cast<Argument*>(&*ai);
                 ++ai;
@@ -1144,7 +1144,7 @@ namespace IGC
         CloneAndPruneFunctionInto(cf.pFunc, pMainFunc, vmap, false, returns);
         FixUpControlPointID(cf);
     }
-    
+
     //////////////////////////////////////////////////////////////////////////
     /// @brief Replace each usage of global loaded from HSControlPointID by 
     ///        a call directly to it. As a result, instead of having one load 
@@ -1180,7 +1180,7 @@ namespace IGC
         llvm::Value* pHSControlPointID = llvm::GenISAIntrinsic::getDeclaration(
             f.getParent(),
             GenISAIntrinsic::GenISA_DCL_HSControlPointID);
-        
+
         // Pass through usages of the call to HSControlPointID.
         // e.g.: %3 = call i32 @llvm.genx.GenISA.DCL.HSControlPointID()
         //      %16 = call i32 @llvm.genx.GenISA.DCL.HSControlPointID()
@@ -1188,7 +1188,7 @@ namespace IGC
             i != e;
             ++i)
         {
-            Instruction *useInst = cast<Instruction>(*i);
+            Instruction* useInst = cast<Instruction>(*i);
 
             // Pass through the usages of the each HSControlPointID's call result.
             // e.g.: call void @llvm.genx.GenISA.OutputTessControlPoint(float %19, float %20, float %21, float %22, i32 %11, i32 %16, i32 %17)
@@ -1199,17 +1199,17 @@ namespace IGC
             {
                 // Find the 'store' instr and check if it is storing local val(i.e.the result of HSControlPointID's call) into a global variable.
                 // e.g.: store i32 %3, i32* @0
-                if (llvm::StoreInst* storeInst = llvm::dyn_cast<llvm::StoreInst>(*_i))
+                if (llvm::StoreInst * storeInst = llvm::dyn_cast<llvm::StoreInst>(*_i))
                 {
                     llvm::Value* op1 = storeInst->getOperand(1);
-                    if(isa<GlobalVariable>(op1))
+                    if (isa<GlobalVariable>(op1))
                     {
                         // Pass through usages of that global to find load instructions to replace.
                         // e.g.: %5 = load i32, i32* @0
                         //      % 4 = load i32, i32* @0
                         for (auto ui = op1->user_begin(), ue = op1->user_end(); ui != ue; ++ui)
                         {
-                            if (llvm::LoadInst* ldInst = llvm::dyn_cast<llvm::LoadInst>(*ui))
+                            if (llvm::LoadInst * ldInst = llvm::dyn_cast<llvm::LoadInst>(*ui))
                             {
                                 instructionToUpdate.push_back(ldInst);
                             }
@@ -1221,7 +1221,7 @@ namespace IGC
 
         // Do the actual replacement of global variable to variable resulting 
         // from call to HSControlPointID.
-        for (auto &ldInst : instructionToUpdate)
+        for (auto& ldInst : instructionToUpdate)
         {
             Builder().SetInsertPoint(ldInst);
             llvm::Value* pCPId = Builder().CreateCall(pHSControlPointID);
@@ -1312,7 +1312,7 @@ namespace IGC
     void LinkTessControlShaderMCF::GlobalAllocas::MoveAllocas(Instruction* pInsert)
     {
         assert(pInsert);
-        for(auto& ai : mGlobalAllocas)
+        for (auto& ai : mGlobalAllocas)
         {
             Instruction* pAllocaInst = cast<Instruction>(ai.second);
             pAllocaInst->moveBefore(pInsert);
@@ -1328,7 +1328,7 @@ namespace IGC
         uint32_t arraySize)
     {
         std::string suffix = "[" + std::to_string(arraySize) + "]";
-        for(auto& ai : mGlobalAllocas)
+        for (auto& ai : mGlobalAllocas)
         {
             Value* pOldAlloca = ai.second;
             std::string name = pOldAlloca->getName().str() + suffix;
@@ -1360,7 +1360,7 @@ namespace IGC
         // Now we can delete old function.
         PurgeFunction(*GetMainFunction());
         Function* pNewFunc = GetMainFunction();
-        
+
         // Determine the dispatch mode
         HullShaderDispatchModes dispatchMode = DetermineDispatchMode();
 
@@ -1384,15 +1384,15 @@ namespace IGC
         {
         case SINGLE_PATCH_DISPATCH_MODE:
             // In single patch mode we will need SIMD lane ID to calculate CPID.
-            {
-                Value* pSimdLane = Builder().CreateCall(
-                    GenISAIntrinsic::getDeclaration(pNewFunc->getParent(), GenISAIntrinsic::GenISA_simdLaneId),
-                    None,
-                    VALUE_NAME("simd_lane_id"));
-                pBaseCPID = Builder().CreateZExt(pSimdLane, Builder().getInt32Ty());
-                pCpidIncrement = llvm::ConstantInt::get(Builder().getInt32Ty(), SIMDSize);
-            }
-            break;
+        {
+            Value* pSimdLane = Builder().CreateCall(
+                GenISAIntrinsic::getDeclaration(pNewFunc->getParent(), GenISAIntrinsic::GenISA_simdLaneId),
+                None,
+                VALUE_NAME("simd_lane_id"));
+            pBaseCPID = Builder().CreateZExt(pSimdLane, Builder().getInt32Ty());
+            pCpidIncrement = llvm::ConstantInt::get(Builder().getInt32Ty(), SIMDSize);
+        }
+        break;
 
         case EIGHT_PATCH_DISPATCH_MODE:
             pBaseCPID = pConstant0;
@@ -1407,7 +1407,7 @@ namespace IGC
 
         // The barrier state machine part. It consists of the loop enclosing switch
         // over the next state == barrier ID. Loop is finished when the next state is (-1).
-        
+
         Builder().SetInsertPoint(pStateDone);
         PHINode* pNextStatePhi = Builder().CreatePHI(Builder().getInt32Ty(),
             mContinuationFunctions.size(),
@@ -1455,7 +1455,7 @@ namespace IGC
             }
 
             Builder().SetInsertPoint(pStateCheckBlock);
-            Value* pCond = Builder().CreateICmpEQ(pStatePhi, llvm::ConstantInt::get(Builder().getInt32Ty(),pCF->id));
+            Value* pCond = Builder().CreateICmpEQ(pStatePhi, llvm::ConstantInt::get(Builder().getInt32Ty(), pCF->id));
             Builder().CreateCondBr(pCond, pStateExecBlock, pExit);
 
             // Create a loop over CPID.
@@ -1487,11 +1487,11 @@ namespace IGC
             // Just forward arguments to continuation functions.
             std::vector<Value*> args;
             // First argument is control point ID.
-            args.push_back(pCurrentCPID);            
+            args.push_back(pCurrentCPID);
             for (auto input : pCF->inputs)
             {
                 Value* pAlloca = mGlobalAllocas.GetGlobalAlloca(input);
-                Value* indexList[2] = {pConstant0, pCurrentCPID};
+                Value* indexList[2] = { pConstant0, pCurrentCPID };
                 // Create GEP for curent instance.
                 Value* pGEP = Builder().CreateGEP(pAlloca, ArrayRef<Value*>(indexList, 2),
                     VALUE_NAME(std::string("p_") + pAlloca->getName()));
@@ -1519,7 +1519,7 @@ namespace IGC
             pNextStatePhi->addIncoming(pNextStateCall, pNextStateCall->getParent());
         }
         // Add state loop condition check.
-        Value* pCond = Builder().CreateICmpEQ(pNextStatePhi, llvm::ConstantInt::get(Builder().getInt32Ty(),ExitState));
+        Value* pCond = Builder().CreateICmpEQ(pNextStatePhi, llvm::ConstantInt::get(Builder().getInt32Ty(), ExitState));
         Builder().CreateCondBr(pCond, pExit, pStateLoopHeader);
 
         // Add function terminator.
@@ -1530,7 +1530,7 @@ namespace IGC
     llvm::Function* LinkTessControlShaderMCF::CreateNewTCSFunction(llvm::Function* pCurrentFunc)
     {
         llvm::IRBuilder<> irBuilder(pCurrentFunc->getContext());
-        CodeGenContext *ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+        CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
         std::vector<llvm::Type*> callArgTypes;
         for (auto& argIter : range(pCurrentFunc->arg_begin(), pCurrentFunc->arg_end()))
@@ -1543,7 +1543,7 @@ namespace IGC
 
         llvm::Function* pNewFunction = llvm::Function::Create(
             llvm::FunctionType::get(
-            irBuilder.getVoidTy(), callArgTypes, false),
+                irBuilder.getVoidTy(), callArgTypes, false),
             llvm::GlobalValue::PrivateLinkage,
             funcName,
             ctx->getModule());
@@ -1558,8 +1558,8 @@ namespace IGC
         for (auto oldArg = pToBeDeletedFunc->arg_begin(),
             oldArgEnd = pToBeDeletedFunc->arg_end(),
             newArg = pNewFunction->arg_begin();
-        oldArg != oldArgEnd;
-        ++oldArg, ++newArg)
+            oldArg != oldArgEnd;
+            ++oldArg, ++newArg)
         {
             oldArg->replaceAllUsesWith(&(*newArg));
             newArg->takeName(&(*oldArg));
@@ -1581,7 +1581,7 @@ namespace IGC
 
         for (Value::user_iterator i = pHSControlPointID->user_begin(), e = pHSControlPointID->user_end(); i != e; ++i)
         {
-            Instruction *useInst = cast<Instruction>(*i);
+            Instruction* useInst = cast<Instruction>(*i);
             if (useInst->getParent()->getParent() == pNewFunction)
             {
                 instructionToRemove.push_back(useInst);
@@ -1589,16 +1589,16 @@ namespace IGC
             }
         }
 
-        for (auto &inst : instructionToRemove)
+        for (auto& inst : instructionToRemove)
         {
             inst->eraseFromParent();
         }
         return pNewFunction;
     }
 
-    void LinkTessControlShaderMCF::TCSwHWBarriersSupport(MetaDataUtils *pMdUtils)
+    void LinkTessControlShaderMCF::TCSwHWBarriersSupport(MetaDataUtils* pMdUtils)
     {
-        CodeGenContext *ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+        CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
         std::string oldEntryFuncName = GetMainFunction()->getName().str();
         llvm::Function* pNewTCSFunction = CreateNewTCSFunction(mpMainFunction);
 
@@ -1622,7 +1622,7 @@ namespace IGC
 
         // first create a call to simdLaneId() intrinsic
         llvm::Value* pCPId = nullptr;
-        llvm::Function *pFuncPatchInstanceIdOrSIMDLaneId = nullptr;
+        llvm::Function* pFuncPatchInstanceIdOrSIMDLaneId = nullptr;
         switch (dispatchMode)
         {
         case SINGLE_PATCH_DISPATCH_MODE:
@@ -1662,14 +1662,14 @@ namespace IGC
         }
 
         // We don't need to deal with any loops when we are using multiple hardware threads
-        if(!m_useMultipleHardwareThread)
+        if (!m_useMultipleHardwareThread)
         {
             // initialize instanceCount to output control point count
             llvm::Value* pInstanceCount = Builder().getInt32(mOutputControlPointCount);
 
             // initialize loopCounter
             llvm::Value* pLoopCounter = Builder().CreateAlloca(Builder().getInt32Ty(), 0, "loopCounter");
-            llvm::Value* pConstInt    = Builder().getInt32(0);
+            llvm::Value* pConstInt = Builder().getInt32(0);
             Builder().CreateStore(pConstInt, pLoopCounter, false);
 
             // create loop-entry basic block and setInsertPoint to loop-entry
@@ -1711,8 +1711,8 @@ namespace IGC
                     llvm::ConstantInt::get(Builder().getInt32Ty(), SIMDSize));
                 pCurrentCPID = Builder().CreateAdd(
                     Builder().CreateZExt(
-                    pCPId,
-                    Builder().getInt32Ty()),
+                        pCPId,
+                        Builder().getInt32Ty()),
                     pMulLoopCounterRes);
 
                 // cmp currentCPID to instanceCount so we enable only the required lanes
@@ -1823,7 +1823,7 @@ namespace IGC
     /// option in comparison to TCS with SW barriers.
     bool LinkTessControlShaderMCF::SelectTCSwHWBarrierSupport(void)
     {
-        if ((mNumBarriers == 0) ||           
+        if ((mNumBarriers == 0) ||
             (mNumInstructions > LARGE_INSTRUCTIONS_COUNT))
         {
             // Comment for mNumInstructions > LARGE_INSTRUCTIONS_COUNT:
@@ -1841,11 +1841,11 @@ namespace IGC
     //////////////////////////////////////////////////////////////////////////
     /// @brief Perform pass operations.
     /// @param M- The original module.
-    bool LinkTessControlShaderMCF::runOnModule(llvm::Module &M)
+    bool LinkTessControlShaderMCF::runOnModule(llvm::Module& M)
     {
         mpModule = &M;
 
-        MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+        MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
         if (pMdUtils->size_FunctionsInfo() != 1)
         {
             return false;

@@ -55,7 +55,7 @@ namespace IGC
             return "ExtensionFuncsResolution";
         }
 
-        void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+        void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.setPreservesCFG();
             AU.addRequired<MetaDataUtilsWrapper>();
@@ -65,12 +65,12 @@ namespace IGC
         /// @brief  Main entry point.
         ///         Finds all VME function calls and resolve them into an llvm sequence
         /// @param  F The destination function.
-        virtual bool runOnFunction(llvm::Function &F) override;
+        virtual bool runOnFunction(llvm::Function& F) override;
 
         /// @brief  Call instructions visitor.
         ///         Checks for VME functions and resolves them into appropriate sequence of code
         /// @param  CI The call instruction.
-        void visitCallInst(llvm::CallInst &CI);
+        void visitCallInst(llvm::CallInst& CI);
 
     private:
 

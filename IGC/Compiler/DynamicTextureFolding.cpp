@@ -50,10 +50,10 @@ DynamicTextureFolding::DynamicTextureFolding() : FunctionPass(ID)
     initializeDynamicTextureFoldingPass(*PassRegistry::getPassRegistry());
 }
 
-void DynamicTextureFolding::FoldSingleTextureValue(CallInst &I)
+void DynamicTextureFolding::FoldSingleTextureValue(CallInst& I)
 {
     CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    ModuleMetaData *modMD = ctx->getModuleMetaData();
+    ModuleMetaData* modMD = ctx->getModuleMetaData();
 
     // nothing to fold
     if (modMD->inlineDynTextures.size() == 0)
@@ -79,14 +79,14 @@ void DynamicTextureFolding::FoldSingleTextureValue(CallInst &I)
         }
         else
         {
-            (&I)->replaceAllUsesWith(ConstantFP::get((&I)->getType(), *(float*)&(it->second)));
+            (&I)->replaceAllUsesWith(ConstantFP::get((&I)->getType(), *(float*) & (it->second)));
         }
     }
 }
 
-void DynamicTextureFolding::visitCallInst(CallInst &I)
+void DynamicTextureFolding::visitCallInst(CallInst& I)
 {
-    if (GenIntrinsicInst *pCall = dyn_cast<GenIntrinsicInst>(&I))
+    if (GenIntrinsicInst * pCall = dyn_cast<GenIntrinsicInst>(&I))
     {
         auto ID = pCall->getIntrinsicID();
         if (ID == GenISAIntrinsic::GenISA_sampleptr ||
@@ -100,7 +100,7 @@ void DynamicTextureFolding::visitCallInst(CallInst &I)
     }
 }
 
-bool DynamicTextureFolding::runOnFunction(Function &F)
+bool DynamicTextureFolding::runOnFunction(Function& F)
 {
     visit(F);
     return false;

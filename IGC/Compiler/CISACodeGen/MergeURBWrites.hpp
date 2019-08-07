@@ -30,11 +30,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/Pass.h>
 #include "common/LLVMWarningsPop.hpp"
 
-namespace IGC 
+namespace IGC
 {
 
-class CShader;
-llvm::BasicBlockPass* createMergeURBWritesPass();
+    class CShader;
+    llvm::BasicBlockPass* createMergeURBWritesPass();
 
 }
 

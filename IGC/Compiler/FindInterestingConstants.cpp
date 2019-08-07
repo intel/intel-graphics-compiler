@@ -50,29 +50,29 @@ FindInterestingConstants::FindInterestingConstants() : FunctionPass(ID)
     initializeFindInterestingConstantsPass(*PassRegistry::getPassRegistry());
 }
 
-bool FindInterestingConstants::FoldsToConst(Instruction* inst, Instruction* use, bool &propagate)
+bool FindInterestingConstants::FoldsToConst(Instruction* inst, Instruction* use, bool& propagate)
 {
     propagate = false;
 
     // "use" instruction should have some operand(s)
     assert(use->getNumOperands() != 0);
-    if (BranchInst* brInst = dyn_cast<BranchInst>(use))
+    if (BranchInst * brInst = dyn_cast<BranchInst>(use))
     {
         m_constFoldBranch = true;
         return false;
     }
 
-    for (auto &U : use->operands())
+    for (auto& U : use->operands())
     {
-        Value *V = U.get();
+        Value* V = U.get();
         if (V == inst)
             continue;
-        else if (Constant* op = dyn_cast<Constant>(V))
+        else if (Constant * op = dyn_cast<Constant>(V))
             continue;
         else
         {
             // For select instruction all operands need not be constants to simplify the instruction
-            if (SelectInst* selInst = dyn_cast<SelectInst>(use))
+            if (SelectInst * selInst = dyn_cast<SelectInst>(use))
             {
                 if (selInst->getOperand(0) == inst)
                     return true;
@@ -95,7 +95,7 @@ void FindInterestingConstants::FoldsToConstPropagate(llvm::Instruction* I)
             (m_foldsToConst >= IGC_GET_FLAG_VALUE(FoldsToConstPropThreshold)))
             break;
 
-        if (Instruction* useInst = dyn_cast<Instruction>(*UI))
+        if (Instruction * useInst = dyn_cast<Instruction>(*UI))
         {
             if (useInst->getParent() == I->getParent())    // TBD Do we need this
             {
@@ -113,12 +113,12 @@ void FindInterestingConstants::FoldsToConstPropagate(llvm::Instruction* I)
 bool FindInterestingConstants::FoldsToZero(Instruction* inst, Instruction* use)
 {
     bool propagate = false;
-    if (BranchInst* brInst = dyn_cast<BranchInst>(use))
+    if (BranchInst * brInst = dyn_cast<BranchInst>(use))
     {
         m_constFoldBranch = true;
         return false;
     }
-    if (BinaryOperator *binInst = dyn_cast<BinaryOperator>(use))
+    if (BinaryOperator * binInst = dyn_cast<BinaryOperator>(use))
     {
         if (binInst->getOpcode() == Instruction::FMul)
         {
@@ -146,7 +146,7 @@ void FindInterestingConstants::FoldsToZeroPropagate(llvm::Instruction* I)
         if ((m_constFoldBranch) ||
             (m_foldsToZero >= IGC_GET_FLAG_VALUE(FoldsToZeroPropThreshold)))
             break;
-        if (Instruction* useInst = dyn_cast<Instruction>(*UI))
+        if (Instruction * useInst = dyn_cast<Instruction>(*UI))
         {
             if (FoldsToZero(I, useInst))
             {
@@ -159,7 +159,7 @@ void FindInterestingConstants::FoldsToZeroPropagate(llvm::Instruction* I)
 
 bool FindInterestingConstants::FoldsToSource(llvm::Instruction* inst, llvm::Instruction* use)
 {
-    if (BinaryOperator *binInst = dyn_cast<BinaryOperator>(use))
+    if (BinaryOperator * binInst = dyn_cast<BinaryOperator>(use))
     {
         if (binInst->getOpcode() == Instruction::FMul)
         {
@@ -178,7 +178,7 @@ void FindInterestingConstants::FoldsToSourcePropagate(llvm::Instruction* I)
 {
     for (auto UI = I->user_begin(), UE = I->user_end(); UI != UE; ++UI)
     {
-        if (Instruction* useInst = dyn_cast<Instruction>(*UI))
+        if (Instruction * useInst = dyn_cast<Instruction>(*UI))
         {
             if (FoldsToSource(I, useInst))
             {
@@ -193,7 +193,7 @@ void FindInterestingConstants::FoldsToSourcePropagate(llvm::Instruction* I)
 }
 
 // Get constant address from load instruction
-bool FindInterestingConstants::getConstantAddress(llvm::LoadInst &I, unsigned &bufId, unsigned &eltId, int &size_in_bytes)
+bool FindInterestingConstants::getConstantAddress(llvm::LoadInst& I, unsigned& bufId, unsigned& eltId, int& size_in_bytes)
 {
     // Check if the load instruction is with constant buffer address
     unsigned as = I.getPointerAddressSpace();
@@ -203,19 +203,19 @@ bool FindInterestingConstants::getConstantAddress(llvm::LoadInst &I, unsigned &b
 
     if (bufType == CONSTANT_BUFFER && directBuf)
     {
-        Value *ptrVal = I.getPointerOperand();
+        Value* ptrVal = I.getPointerOperand();
         eltId = 0;
 
         if (isa<ConstantPointerNull>(ptrVal))
         {
             eltId = 0;
         }
-        else if (ConstantExpr *ptrExpr = dyn_cast<ConstantExpr>(ptrVal))
+        else if (ConstantExpr * ptrExpr = dyn_cast<ConstantExpr>(ptrVal))
         {
             if (ptrExpr->getOpcode() == Instruction::IntToPtr)
             {
-                Value *eltIdxVal = ptrExpr->getOperand(0);
-                ConstantInt *eltIdx = dyn_cast<ConstantInt>(eltIdxVal);
+                Value* eltIdxVal = ptrExpr->getOperand(0);
+                ConstantInt* eltIdx = dyn_cast<ConstantInt>(eltIdxVal);
                 if (!eltIdx)
                     return false;
                 eltId = int_cast<unsigned>(eltIdx->getZExtValue());
@@ -225,10 +225,10 @@ bool FindInterestingConstants::getConstantAddress(llvm::LoadInst &I, unsigned &b
                 return false;
             }
         }
-        else if (IntToPtrInst *i2p = dyn_cast<IntToPtrInst>(ptrVal))
+        else if (IntToPtrInst * i2p = dyn_cast<IntToPtrInst>(ptrVal))
         {
-            Value *eltIdxVal = i2p->getOperand(0);
-            ConstantInt *eltIdx = dyn_cast<ConstantInt>(eltIdxVal);
+            Value* eltIdxVal = i2p->getOperand(0);
+            ConstantInt* eltIdx = dyn_cast<ConstantInt>(eltIdxVal);
             if (!eltIdx)
                 return false;
             eltId = int_cast<unsigned>(eltIdx->getZExtValue());
@@ -262,7 +262,7 @@ void FindInterestingConstants::addInterestingConstant(CodeGenContext* ctx, unsig
     }
 }
 
-void FindInterestingConstants::visitLoadInst(llvm::LoadInst &I)
+void FindInterestingConstants::visitLoadInst(llvm::LoadInst& I)
 {
     CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     unsigned bufId;
@@ -273,7 +273,7 @@ void FindInterestingConstants::visitLoadInst(llvm::LoadInst &I)
     m_foldsToConst = 0;
     m_foldsToSource = 0;
     m_constFoldBranch = false;
-    if(getConstantAddress(I, bufId, eltId, size_in_bytes))
+    if (getConstantAddress(I, bufId, eltId, size_in_bytes))
     {
         /*
         This Constant is interesting, if the use instruction:
@@ -330,7 +330,7 @@ void FindInterestingConstants::copyInterestingConstants(ContextT* pShaderCtx)
     pShaderCtx->programOutput.m_pInterestingConstants = m_InterestingConstants;
 }
 
-bool FindInterestingConstants::doFinalization(llvm::Module &M)
+bool FindInterestingConstants::doFinalization(llvm::Module& M)
 {
     if (m_InterestingConstants.size() != 0)
     {
@@ -370,7 +370,7 @@ bool FindInterestingConstants::doFinalization(llvm::Module &M)
     return false;
 }
 
-bool FindInterestingConstants::runOnFunction(Function &F)
+bool FindInterestingConstants::runOnFunction(Function& F)
 {
     visit(F);
     return false;

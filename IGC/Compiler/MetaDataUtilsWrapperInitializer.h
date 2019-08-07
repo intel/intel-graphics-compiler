@@ -48,7 +48,7 @@ namespace IGC
         // MetaDataUtilsWrapper pass
         bool runOnModule(llvm::Module& M) override;
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.setPreservesCFG();
             AU.addRequired<MetaDataUtilsWrapper>();

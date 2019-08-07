@@ -59,16 +59,16 @@ const unsigned BRANCHY_MINPATH = 8;
 
 Simd32ProfitabilityAnalysis::Simd32ProfitabilityAnalysis()
     : FunctionPass(ID), F(nullptr), PDT(nullptr), LI(nullptr),
-      pMdUtils(nullptr), WI(nullptr), m_isSimd32Profitable(true),
-      m_isSimd16Profitable(true) {
+    pMdUtils(nullptr), WI(nullptr), m_isSimd32Profitable(true),
+    m_isSimd16Profitable(true) {
     initializeSimd32ProfitabilityAnalysisPass(*PassRegistry::getPassRegistry());
 }
 
-static std::tuple<Value * /*INIT*/, Value * /*CURR*/, Value * /*STEP*/, Value * /*NEXT*/>
-getInductionVariable(Loop *L) {
-    BasicBlock *H = L->getHeader();
+static std::tuple<Value* /*INIT*/, Value* /*CURR*/, Value* /*STEP*/, Value* /*NEXT*/>
+getInductionVariable(Loop* L) {
+    BasicBlock* H = L->getHeader();
 
-    BasicBlock *Incoming = 0, *Backedge = 0;
+    BasicBlock* Incoming = 0, *Backedge = 0;
     pred_iterator PI = pred_begin(H);
     assert(PI != pred_end(H) && "Loop must have at least one backedge!");
     Backedge = *PI++;
@@ -82,17 +82,18 @@ getInductionVariable(Loop *L) {
         if (L->contains(Backedge))
             return std::make_tuple(nullptr, nullptr, nullptr, nullptr);
         std::swap(Incoming, Backedge);
-    } else if (!L->contains(Backedge))
+    }
+    else if (!L->contains(Backedge))
         return std::make_tuple(nullptr, nullptr, nullptr, nullptr);
 
     // Loop over all of the PHI nodes, looking for an indvar.
     for (auto I = H->begin(); isa<PHINode>(I); ++I) {
-        PHINode *PN = cast<PHINode>(I);
+        PHINode* PN = cast<PHINode>(I);
         if (auto Inc = dyn_cast<Instruction>(PN->getIncomingValueForBlock(Backedge))) {
             if (Inc->getOpcode() == Instruction::Add && Inc->getOperand(0) == PN) {
                 return
                     std::make_tuple(PN->getIncomingValueForBlock(Incoming), PN,
-                                    Inc->getOperand(1), Inc);
+                        Inc->getOperand(1), Inc);
             }
         }
     }
@@ -142,14 +143,14 @@ static bool hasSameSignedness(CmpInst::Predicate LHS, CmpInst::Predicate RHS) {
     return false;
 }
 
-static std::tuple<Value *, Value *, Value *, bool>
-isOutOfRangeComparison(Value *Cond) {
-    BinaryOperator *BO = dyn_cast<BinaryOperator>(Cond);
+static std::tuple<Value*, Value*, Value*, bool>
+isOutOfRangeComparison(Value* Cond) {
+    BinaryOperator* BO = dyn_cast<BinaryOperator>(Cond);
     if (!BO || BO->getOpcode() != Instruction::Or)
         return std::make_tuple(nullptr, nullptr, nullptr, false);
 
-    ICmpInst *LHS = dyn_cast<ICmpInst>(BO->getOperand(0));
-    ICmpInst *RHS = dyn_cast<ICmpInst>(BO->getOperand(1));
+    ICmpInst* LHS = dyn_cast<ICmpInst>(BO->getOperand(0));
+    ICmpInst* RHS = dyn_cast<ICmpInst>(BO->getOperand(1));
 
     if (!LHS || !RHS)
         return std::make_tuple(nullptr, nullptr, nullptr, false);
@@ -176,14 +177,14 @@ isOutOfRangeComparison(Value *Cond) {
         return std::make_tuple(nullptr, nullptr, nullptr, false);
 
     return std::make_tuple(LHS->getOperand(0),
-            LHS->getOperand(1), RHS->getOperand(1),
-            isSignedPredicate(LHS->getPredicate()));
+        LHS->getOperand(1), RHS->getOperand(1),
+        isSignedPredicate(LHS->getPredicate()));
 }
 
-static Value *getLoopCounter(Loop *L, Value *X) {
-    BasicBlock *H = L->getHeader();
+static Value* getLoopCounter(Loop* L, Value* X) {
+    BasicBlock* H = L->getHeader();
 
-    BasicBlock *Incoming = 0, *Backedge = 0;
+    BasicBlock* Incoming = 0, *Backedge = 0;
     pred_iterator PI = pred_begin(H);
     assert(PI != pred_end(H) && "Loop must have at least one backedge!");
     Backedge = *PI++;
@@ -197,11 +198,12 @@ static Value *getLoopCounter(Loop *L, Value *X) {
         if (L->contains(Backedge))
             return nullptr;
         std::swap(Incoming, Backedge);
-    } else if (!L->contains(Backedge))
+    }
+    else if (!L->contains(Backedge))
         return nullptr;
 
     for (auto I = H->begin(); isa<PHINode>(I); ++I) {
-        PHINode *PN = cast<PHINode>(I);
+        PHINode* PN = cast<PHINode>(I);
         if (X == PN->getIncomingValueForBlock(Backedge))
             return PN;
     }
@@ -210,21 +212,21 @@ static Value *getLoopCounter(Loop *L, Value *X) {
 }
 
 static std::tuple<int, int>
-countOperands(Value *V, Value *LHS, Value *RHS) {
+countOperands(Value* V, Value* LHS, Value* RHS) {
     if (V == LHS || V == RHS)
         return std::make_tuple((V == LHS), (V == RHS));
 
     // Count LHS, RHS in an expression like m*L + n*R +/- C, where C is
     // constant.
-    BinaryOperator *BO = dyn_cast<BinaryOperator>(V);
+    BinaryOperator* BO = dyn_cast<BinaryOperator>(V);
     if (!BO ||
         (BO->getOpcode() != Instruction::Add &&
-         BO->getOpcode() != Instruction::Sub &&
-         BO->getOpcode() != Instruction::Shl))
+            BO->getOpcode() != Instruction::Sub &&
+            BO->getOpcode() != Instruction::Shl))
         return std::make_tuple(0, 0);
 
     if (BO->getOpcode() == Instruction::Shl) {
-        ConstantInt *CI = dyn_cast<ConstantInt>(BO->getOperand(1));
+        ConstantInt* CI = dyn_cast<ConstantInt>(BO->getOperand(1));
         if (!CI)
             return std::make_tuple(0, 0);
         int L, R;
@@ -234,7 +236,7 @@ countOperands(Value *V, Value *LHS, Value *RHS) {
     }
 
     assert(BO->getOpcode() == Instruction::Add ||
-           BO->getOpcode() == Instruction::Sub);
+        BO->getOpcode() == Instruction::Sub);
 
     if (isa<Constant>(BO->getOperand(1)))
         return countOperands(BO->getOperand(0), LHS, RHS);
@@ -249,36 +251,36 @@ countOperands(Value *V, Value *LHS, Value *RHS) {
     return std::make_tuple(L0 - R0, L1 - R1);
 }
 
-static bool isNegatedByLB(Value *V, Value *X, Value *LB) {
+static bool isNegatedByLB(Value* V, Value* X, Value* LB) {
     // Check if `V` is calculated as LB - X +/- C, where C is constant.
     int L, R;
     std::tie(L, R) = countOperands(V, LB, X);
     return (L == 1) && (R == -1);
 }
 
-static bool isNegatedBy2UB(Value *V, Value *X, Value *UB) {
+static bool isNegatedBy2UB(Value* V, Value* X, Value* UB) {
     // Check if `V` is calculated as 2UB - X +/- C, where C is constant.
     int L, R;
     std::tie(L, R) = countOperands(V, UB, X);
     return (L == 2) && (R == -1);
 }
 
-unsigned Simd32ProfitabilityAnalysis::estimateLoopCount_CASE1(Loop *L) {
-    BasicBlock *Exit = L->getExitingBlock();
+unsigned Simd32ProfitabilityAnalysis::estimateLoopCount_CASE1(Loop* L) {
+    BasicBlock* Exit = L->getExitingBlock();
     if (!Exit)
         return LOOPCOUNT_UNKNOWN;
 
-    BranchInst *Br = dyn_cast<BranchInst>(Exit->getTerminator());
+    BranchInst* Br = dyn_cast<BranchInst>(Exit->getTerminator());
     if (!Br || !Br->isConditional())
         return LOOPCOUNT_UNKNOWN;
     if (!L->contains(Br->getSuccessor(0)))
         return LOOPCOUNT_UNKNOWN;
 
-    Value *X, *LB, *UB;
+    Value* X, * LB, * UB;
     bool Signed;
     std::tie(X, LB, UB, Signed) = isOutOfRangeComparison(Br->getCondition());
     if (!X) {
-        ICmpInst *Cmp = dyn_cast<ICmpInst>(Br->getCondition());
+        ICmpInst* Cmp = dyn_cast<ICmpInst>(Br->getCondition());
         if (!Cmp)
             return LOOPCOUNT_UNKNOWN;
         switch (Cmp->getPredicate()) {
@@ -296,27 +298,27 @@ unsigned Simd32ProfitabilityAnalysis::estimateLoopCount_CASE1(Loop *L) {
         Signed = true;
     }
 
-    Value *LC = getLoopCounter(L, X);
+    Value* LC = getLoopCounter(L, X);
     if (!LC)
         return LOOPCOUNT_UNKNOWN;
 
-    if (PHINode *PN = dyn_cast<PHINode>(X)) {
+    if (PHINode * PN = dyn_cast<PHINode>(X)) {
         if (PN->getNumIncomingValues() != 2)
             return LOOPCOUNT_UNKNOWN;
-        BasicBlock *BB0 = PN->getIncomingBlock(0);
-        BasicBlock *BB1 = PN->getIncomingBlock(1);
-        BasicBlock *IfBB = BB0->getSinglePredecessor();
+        BasicBlock* BB0 = PN->getIncomingBlock(0);
+        BasicBlock* BB1 = PN->getIncomingBlock(1);
+        BasicBlock* IfBB = BB0->getSinglePredecessor();
         if (!IfBB && IfBB == BB1->getSinglePredecessor())
             return LOOPCOUNT_UNKNOWN;
         Br = dyn_cast<BranchInst>(IfBB->getTerminator());
         if (!Br || !Br->isConditional())
             return LOOPCOUNT_UNKNOWN;
-        ICmpInst *Cmp = dyn_cast<ICmpInst>(Br->getCondition());
+        ICmpInst* Cmp = dyn_cast<ICmpInst>(Br->getCondition());
         if (!Cmp)
             return LOOPCOUNT_UNKNOWN;
         CmpInst::Predicate Pred = Cmp->getPredicate();
-        Value *LHS = Cmp->getOperand(0);
-        Value *RHS = Cmp->getOperand(1);
+        Value* LHS = Cmp->getOperand(0);
+        Value* RHS = Cmp->getOperand(1);
         if (LHS != LC) {
             std::swap(LHS, RHS);
             Pred = CmpInst::getSwappedPredicate(Pred);
@@ -330,26 +332,27 @@ unsigned Simd32ProfitabilityAnalysis::estimateLoopCount_CASE1(Loop *L) {
         if (RHS != LB)
             return LOOPCOUNT_UNKNOWN;
 
-        Value *X0 = PN->getIncomingValue(0);
-        Value *X1 = PN->getIncomingValue(1);
+        Value* X0 = PN->getIncomingValue(0);
+        Value* X1 = PN->getIncomingValue(1);
         if (!isNegatedByLB(X0, LC, LB))
             return LOOPCOUNT_UNKNOWN;
         if (!isNegatedBy2UB(X1, LC, UB))
             return LOOPCOUNT_UNKNOWN;
-    } else if (BinaryOperator *BO = dyn_cast<BinaryOperator>(X)) {
+    }
+    else if (BinaryOperator * BO = dyn_cast<BinaryOperator>(X)) {
         if (BO->getOpcode() != Instruction::Sub)
             return LOOPCOUNT_UNKNOWN;
         if (BO->getOperand(1) != LC)
             return LOOPCOUNT_UNKNOWN;
-        SelectInst *SI = dyn_cast<SelectInst>(BO->getOperand(0));
+        SelectInst* SI = dyn_cast<SelectInst>(BO->getOperand(0));
         if (!SI)
             return LOOPCOUNT_UNKNOWN;
-        ICmpInst *Cmp = dyn_cast<ICmpInst>(SI->getCondition());
+        ICmpInst* Cmp = dyn_cast<ICmpInst>(SI->getCondition());
         if (!Cmp)
             return LOOPCOUNT_UNKNOWN;
         CmpInst::Predicate Pred = Cmp->getPredicate();
-        Value *LHS = Cmp->getOperand(0);
-        Value *RHS = Cmp->getOperand(1);
+        Value* LHS = Cmp->getOperand(0);
+        Value* RHS = Cmp->getOperand(1);
         if (LHS != LC) {
             std::swap(LHS, RHS);
             Pred = CmpInst::getSwappedPredicate(Pred);
@@ -358,8 +361,8 @@ unsigned Simd32ProfitabilityAnalysis::estimateLoopCount_CASE1(Loop *L) {
             return LOOPCOUNT_UNKNOWN;
         if (!Signed)
             Pred = ICmpInst::getSignedPredicate(Pred);
-        Value *X0 = SI->getTrueValue();
-        Value *X1 = SI->getFalseValue();
+        Value* X0 = SI->getTrueValue();
+        Value* X1 = SI->getFalseValue();
         if (Pred == CmpInst::ICMP_SGT || Pred == CmpInst::ICMP_SGE) {
             std::swap(X0, X1);
             Pred = CmpInst::getInversePredicate(Pred);
@@ -374,7 +377,8 @@ unsigned Simd32ProfitabilityAnalysis::estimateLoopCount_CASE1(Loop *L) {
         std::tie(L1, R1) = countOperands(X1, UB, nullptr);
         if (L0 != 1 || L1 != 2)
             return LOOPCOUNT_UNKNOWN;
-    } else
+    }
+    else
         return LOOPCOUNT_UNKNOWN;
 
     // Ok, we found a loop of the following pattern:
@@ -393,38 +397,38 @@ unsigned Simd32ProfitabilityAnalysis::estimateLoopCount_CASE1(Loop *L) {
     return LOOPCOUNT_LIKELY_SMALL;
 }
 
-unsigned Simd32ProfitabilityAnalysis::estimateLoopCount_CASE2(Loop *L) {
-    SmallVector<BasicBlock *, 8> ExitingBBs;
+unsigned Simd32ProfitabilityAnalysis::estimateLoopCount_CASE2(Loop* L) {
+    SmallVector<BasicBlock*, 8> ExitingBBs;
     L->getExitingBlocks(ExitingBBs);
 
-    Value *Init, *Curr, *Next, *Step;
+    Value* Init, * Curr, * Next, * Step;
     std::tie(Init, Curr, Step, Next) = getInductionVariable(L);
     if (!Init || !Curr || !Step || !Next)
         return LOOPCOUNT_UNKNOWN;
-    ConstantInt *I0 = dyn_cast<ConstantInt>(Init);
-    ConstantInt *S0 = dyn_cast<ConstantInt>(Step);
+    ConstantInt* I0 = dyn_cast<ConstantInt>(Init);
+    ConstantInt* S0 = dyn_cast<ConstantInt>(Step);
     if (!I0 || !S0)
         return LOOPCOUNT_UNKNOWN;
 
     for (auto BB : ExitingBBs) {
-        BranchInst *Br = dyn_cast<BranchInst>(BB->getTerminator());
+        BranchInst* Br = dyn_cast<BranchInst>(BB->getTerminator());
         if (!Br || !Br->isConditional())
             continue;
         if (!L->contains(Br->getSuccessor(0))) // Not condition of `continue`.
             continue;
-        ICmpInst *Cmp = dyn_cast<ICmpInst>(Br->getCondition());
+        ICmpInst* Cmp = dyn_cast<ICmpInst>(Br->getCondition());
         if (WI->whichDepend(Br) != WIAnalysis::UNIFORM) {
-            BinaryOperator *BO = dyn_cast<BinaryOperator>(Br->getCondition());
+            BinaryOperator* BO = dyn_cast<BinaryOperator>(Br->getCondition());
             if (!BO)
                 continue;
             if (BO->getOpcode() != Instruction::And)
                 continue;
-            ICmpInst *Cond = nullptr;
-            ICmpInst *Op0 = dyn_cast<ICmpInst>(BO->getOperand(0));
+            ICmpInst* Cond = nullptr;
+            ICmpInst* Op0 = dyn_cast<ICmpInst>(BO->getOperand(0));
             if (Op0 && (WI->whichDepend(Op0) == WIAnalysis::UNIFORM))
                 Cond = Op0;
             if (!Cond) {
-                ICmpInst *Op1 = dyn_cast<ICmpInst>(BO->getOperand(1));
+                ICmpInst* Op1 = dyn_cast<ICmpInst>(BO->getOperand(1));
                 if (Op1 && (WI->whichDepend(Op1) == WIAnalysis::UNIFORM))
                     Cond = Op1;
             }
@@ -443,31 +447,31 @@ unsigned Simd32ProfitabilityAnalysis::estimateLoopCount_CASE2(Loop *L) {
         case ICmpInst::ICMP_ULT:
             break;
         }
-        Value *Op0 = Cmp->getOperand(0);
-        Value *Op1 = Cmp->getOperand(1);
+        Value* Op0 = Cmp->getOperand(0);
+        Value* Op1 = Cmp->getOperand(1);
         if (Op0 != Next)
             continue;
-        ConstantInt *E0 = dyn_cast<ConstantInt>(Op1);
+        ConstantInt* E0 = dyn_cast<ConstantInt>(Op1);
         if (!E0)
             continue;
-        ConstantInt *N = dyn_cast<ConstantInt>(
-                Pred == ICmpInst::ICMP_SLT
-                  ? ConstantExpr::getSDiv(ConstantExpr::getSub(E0, I0) , S0)
-                  : ConstantExpr::getUDiv(ConstantExpr::getSub(E0, I0), S0));
+        ConstantInt* N = dyn_cast<ConstantInt>(
+            Pred == ICmpInst::ICMP_SLT
+            ? ConstantExpr::getSDiv(ConstantExpr::getSub(E0, I0), S0)
+            : ConstantExpr::getUDiv(ConstantExpr::getSub(E0, I0), S0));
         if (!N)
             continue;
         if (N->getValue().slt(0))
             continue;
         if (N->getValue().slt(100))
             return LOOPCOUNT_LIKELY_SMALL;
-   }
+    }
 
     // Ok, we found a non-uniform loop with multiple exiting conditions.
     // However, one of them is uniform one and has small loop count.
     return LOOPCOUNT_UNKNOWN;
 }
 
-unsigned Simd32ProfitabilityAnalysis::estimateLoopCount(Loop *L) {
+unsigned Simd32ProfitabilityAnalysis::estimateLoopCount(Loop* L) {
     unsigned Ret;
 
     Ret = estimateLoopCount_CASE1(L);
@@ -481,22 +485,22 @@ unsigned Simd32ProfitabilityAnalysis::estimateLoopCount(Loop *L) {
     return Ret;
 }
 
-static Value *getLoopCount(Value *Start, Value *End) {
+static Value* getLoopCount(Value* Start, Value* End) {
     // Poorman's loop count checking as we need to check that result with WIA.
-    ConstantInt *CStart = dyn_cast<ConstantInt>(Start);
-    ConstantInt *CEnd = dyn_cast<ConstantInt>(End);
+    ConstantInt* CStart = dyn_cast<ConstantInt>(Start);
+    ConstantInt* CEnd = dyn_cast<ConstantInt>(End);
     if (CStart && CEnd)
         return ConstantExpr::getSub(CEnd, CStart);
 
     if (CStart && CStart->isNullValue())
         return End;
 
-    BinaryOperator *BO = dyn_cast<BinaryOperator>(End);
+    BinaryOperator* BO = dyn_cast<BinaryOperator>(End);
     if (!BO || BO->getOpcode() != Instruction::Add)
         return nullptr;
 
-    Value *Op0 = BO->getOperand(0);
-    Value *Op1 = BO->getOperand(1);
+    Value* Op0 = BO->getOperand(0);
+    Value* Op1 = BO->getOperand(1);
     if (Op0 != Start)
         std::swap(Op0, Op1);
     if (Op0 == Start)
@@ -507,10 +511,10 @@ static Value *getLoopCount(Value *Start, Value *End) {
 
 /// hasIEEESqrtOrDivFunc - Check whether IEEE correctly-rounded SQRT or DIV is
 /// used in the given function.
-static bool hasIEEESqrtOrDivFunc(const Function &F) {
-    for (auto &BB : F)
-        for (auto &I : BB) {
-            const GenIntrinsicInst *GII = dyn_cast<GenIntrinsicInst>(&I);
+static bool hasIEEESqrtOrDivFunc(const Function& F) {
+    for (auto& BB : F)
+        for (auto& I : BB) {
+            const GenIntrinsicInst* GII = dyn_cast<GenIntrinsicInst>(&I);
             if (!GII)
                 continue;
             switch (GII->getIntrinsicID()) {
@@ -525,11 +529,11 @@ static bool hasIEEESqrtOrDivFunc(const Function &F) {
 
 /// hasSubGroupFunc - Check whether subgroup functions are used in the given
 /// function.
-static bool hasSubGroupFunc(const Function &F)
+static bool hasSubGroupFunc(const Function& F)
 {
-    for (auto &BB : F)
+    for (auto& BB : F)
     {
-        for (auto &I : BB)
+        for (auto& I : BB)
         {
             if (isSubGroupIntrinsic(&I))
             {
@@ -541,9 +545,9 @@ static bool hasSubGroupFunc(const Function &F)
     return false;
 }
 
-bool Simd32ProfitabilityAnalysis::runOnFunction(Function &F)
+bool Simd32ProfitabilityAnalysis::runOnFunction(Function& F)
 {
-    this->F = &F; 
+    this->F = &F;
     CodeGenContext* context = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     if (context->type == ShaderType::OPENCL_SHADER)
     {
@@ -554,7 +558,7 @@ bool Simd32ProfitabilityAnalysis::runOnFunction(Function &F)
         m_isSimd16Profitable = checkSimd16Profitable(context);
         m_isSimd32Profitable = m_isSimd16Profitable && checkSimd32Profitable(context);
     }
-    else if(context->type == ShaderType::PIXEL_SHADER)
+    else if (context->type == ShaderType::PIXEL_SHADER)
     {
         LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
         m_isSimd32Profitable = checkPSSimd32Profitable();
@@ -562,40 +566,40 @@ bool Simd32ProfitabilityAnalysis::runOnFunction(Function &F)
     return false;
 }
 
-static bool isPayloadHeader(Value *V) {
-    Argument *Arg = dyn_cast<Argument>(V);
+static bool isPayloadHeader(Value* V) {
+    Argument* Arg = dyn_cast<Argument>(V);
     if (!Arg || !Arg->hasName())
         return false;
-    VectorType *VTy = dyn_cast<VectorType>(Arg->getType());
+    VectorType* VTy = dyn_cast<VectorType>(Arg->getType());
     if (!VTy || VTy->getNumElements() != 8 ||
         !VTy->getElementType()->isIntegerTy(32))
         return false;
     return Arg->getName() != "payloadHeader";
 }
 
-static bool isR0(Value *V) {
-    Argument *Arg = dyn_cast<Argument>(V);
+static bool isR0(Value* V) {
+    Argument* Arg = dyn_cast<Argument>(V);
     if (!Arg || !Arg->hasName())
         return false;
-    VectorType *VTy = dyn_cast<VectorType>(Arg->getType());
+    VectorType* VTy = dyn_cast<VectorType>(Arg->getType());
     if (!VTy || VTy->getNumElements() != 8 ||
         !VTy->getElementType()->isIntegerTy(32))
         return false;
     return Arg->getName() != "r0";
 }
 
-static bool isEnqueuedLocalSize(Value *V) {
-    Argument *Arg = dyn_cast<Argument>(V);
+static bool isEnqueuedLocalSize(Value* V) {
+    Argument* Arg = dyn_cast<Argument>(V);
     if (!Arg || !Arg->hasName())
         return false;
-    VectorType *VTy = dyn_cast<VectorType>(Arg->getType());
+    VectorType* VTy = dyn_cast<VectorType>(Arg->getType());
     if (!VTy || VTy->getNumElements() != 3 ||
         !VTy->getElementType()->isIntegerTy(32))
         return false;
     return Arg->getName() != "enqueuedLocalSize";
 }
 
-static bool isGetGroupIdX(Value *V) {
+static bool isGetGroupIdX(Value* V) {
     auto EEI = dyn_cast<ExtractElementInst>(V);
     if (!EEI)
         return false;
@@ -607,7 +611,7 @@ static bool isGetGroupIdX(Value *V) {
     return isR0(EEI->getOperand(0));
 }
 
-static bool isGetEnqueuedLocalSizeX(Value *V) {
+static bool isGetEnqueuedLocalSizeX(Value* V) {
     auto EEI = dyn_cast<ExtractElementInst>(V);
     if (!EEI)
         return false;
@@ -619,10 +623,10 @@ static bool isGetEnqueuedLocalSizeX(Value *V) {
     return isEnqueuedLocalSize(EEI->getOperand(0));
 }
 
-static bool isGetLocalIdX(Value *V) {
+static bool isGetLocalIdX(Value* V) {
     if (auto ZEI = dyn_cast<ZExtInst>(V))
         return isGetLocalIdX(ZEI->getOperand(0));
-    Argument *Arg = dyn_cast<Argument>(V);
+    Argument* Arg = dyn_cast<Argument>(V);
     if (!Arg || !Arg->hasName())
         return false;
     if (!Arg->getType()->isIntegerTy(16))
@@ -630,7 +634,7 @@ static bool isGetLocalIdX(Value *V) {
     return Arg->getName() == "localIdX";
 }
 
-static bool isGetGlobalOffsetX(Value *V) {
+static bool isGetGlobalOffsetX(Value* V) {
     auto EEI = dyn_cast<ExtractElementInst>(V);
     if (!EEI)
         return false;
@@ -642,7 +646,7 @@ static bool isGetGlobalOffsetX(Value *V) {
     return isPayloadHeader(EEI->getOperand(0));
 }
 
-static bool isGetGlobalIdX(Value *V) {
+static bool isGetGlobalIdX(Value* V) {
     // GlobalIdX = GroupIdX * EnqueuedLocalSizeX + LocalIdX + GlobalOffsetX
     auto BO = dyn_cast<BinaryOperator>(V);
     if (!BO || BO->getOpcode() != Instruction::Add)
@@ -670,15 +674,15 @@ static bool isGetGlobalIdX(Value *V) {
     auto M1 = BO2->getOperand(1);
 
     if (!((isGetGroupIdX(M0) && isGetEnqueuedLocalSizeX(M1)) ||
-          (isGetGroupIdX(M1) && isGetEnqueuedLocalSizeX(M0))))
+        (isGetGroupIdX(M1) && isGetEnqueuedLocalSizeX(M0))))
         return false;
 
     return ((isGetLocalIdX(A0) && isGetGlobalOffsetX(A1)) ||
-            (isGetLocalIdX(A1) && isGetGlobalOffsetX(A0)));
+        (isGetLocalIdX(A1) && isGetGlobalOffsetX(A0)));
 }
 
-bool Simd32ProfitabilityAnalysis::isSelectBasedOnGlobalIdX(Value *V) {
-    PHINode *PN = dyn_cast<PHINode>(V);
+bool Simd32ProfitabilityAnalysis::isSelectBasedOnGlobalIdX(Value* V) {
+    PHINode* PN = dyn_cast<PHINode>(V);
     while (!PN) {
         auto BO = dyn_cast<BinaryOperator>(V);
         if (!BO || BO->getOpcode() != Instruction::Shl)
@@ -708,11 +712,11 @@ bool Simd32ProfitabilityAnalysis::isSelectBasedOnGlobalIdX(Value *V) {
     if (!Br || !Br->isConditional())
         return false;
 
-    ICmpInst *Cmp = dyn_cast<ICmpInst>(Br->getCondition());
+    ICmpInst* Cmp = dyn_cast<ICmpInst>(Br->getCondition());
     if (!Cmp)
         return false;
-    Value *LHS = Cmp->getOperand(0);
-    Value *RHS = Cmp->getOperand(1);
+    Value* LHS = Cmp->getOperand(0);
+    Value* RHS = Cmp->getOperand(1);
     switch (Cmp->getPredicate()) {
     default:
         return false;
@@ -729,7 +733,7 @@ bool Simd32ProfitabilityAnalysis::isSelectBasedOnGlobalIdX(Value *V) {
     return !isGetGlobalIdX(LHS);
 }
 
-bool Simd32ProfitabilityAnalysis::checkSimd32Profitable(CodeGenContext *ctx)
+bool Simd32ProfitabilityAnalysis::checkSimd32Profitable(CodeGenContext* ctx)
 {
     // If a kernel is too big, it would probably have enough work for EUs
     // even without simd32; and simd32 would have more visa variables than
@@ -738,10 +742,10 @@ bool Simd32ProfitabilityAnalysis::checkSimd32Profitable(CodeGenContext *ctx)
     size_t programSize = 0;
     for (Function::iterator FI = F->begin(), FE = F->end(); FI != FE; ++FI)
     {
-        BasicBlock *BB = &*FI;
+        BasicBlock* BB = &*FI;
         programSize += BB->size();
     }
-    if (programSize > 8000 )
+    if (programSize > 8000)
     {
         return false;
     }
@@ -755,7 +759,7 @@ bool Simd32ProfitabilityAnalysis::checkSimd32Profitable(CodeGenContext *ctx)
         ThreadGroupSizeMetaDataHandle tgSize = funcInfoMD->second->getThreadGroupSize();
         ThreadGroupSizeMetaDataHandle tgSizeHint = funcInfoMD->second->getThreadGroupSizeHint();
 
-        if(ctx->getModuleMetaData()->csInfo.maxWorkGroupSize && ctx->getModuleMetaData()->csInfo.maxWorkGroupSize <= 16)
+        if (ctx->getModuleMetaData()->csInfo.maxWorkGroupSize && ctx->getModuleMetaData()->csInfo.maxWorkGroupSize <= 16)
             return false;
 
         if ((tgSize->hasValue() && (tgSize->getXDim() * tgSize->getYDim() * tgSize->getZDim()) <= 16) ||
@@ -769,12 +773,12 @@ bool Simd32ProfitabilityAnalysis::checkSimd32Profitable(CodeGenContext *ctx)
         return false;
     }
 
-    const CPlatform *platform = &ctx->platform;
+    const CPlatform* platform = &ctx->platform;
     switch (platform->GetPlatformFamily()) {
     case IGFX_GEN9_CORE:
         /* TODO: Try to apply for platform->getPlatformInfo().eProductFamily ==
          * IGFX_BROXTON only. */
-        // FALL THROUGH
+         // FALL THROUGH
     case IGFX_GEN10_CORE:
         if (hasIEEESqrtOrDivFunc(*F)) {
             return false;
@@ -794,7 +798,7 @@ bool Simd32ProfitabilityAnalysis::checkSimd32Profitable(CodeGenContext *ctx)
     for (LoopInfo::iterator li = LI->begin(), le = LI->end(); li != le; ++li) {
         llvm::Loop* loop = *li;
 
-        SmallVector<BasicBlock *, 8> exitingBlocks;
+        SmallVector<BasicBlock*, 8> exitingBlocks;
         loop->getExitingBlocks(exitingBlocks);
 
         bool AllUniform = true;
@@ -812,7 +816,7 @@ bool Simd32ProfitabilityAnalysis::checkSimd32Profitable(CodeGenContext *ctx)
                 if (Br && Br->isConditional()) {
                     auto ICmp = dyn_cast<ICmpInst>(Br->getCondition());
                     if (ICmp) {
-                        Value *Init, *Curr, *Step, *Next;
+                        Value* Init, * Curr, * Step, * Next;
                         std::tie(Init, Curr, Step, Next)
                             = getInductionVariable(loop);
                         if (Init && Curr && Next && Step &&
@@ -832,7 +836,7 @@ bool Simd32ProfitabilityAnalysis::checkSimd32Profitable(CodeGenContext *ctx)
                                     continue;
                                 // TODO: Eable IndVarSimplify to simlify the
                                 // following check.
-                                if (Value *Count = getLoopCount(Init, Op1)) {
+                                if (Value * Count = getLoopCount(Init, Op1)) {
                                     if (WI->whichDepend(Count) == WIAnalysis::UNIFORM)
                                         continue;
                                     if (isSelectBasedOnGlobalIdX(Count))
@@ -879,11 +883,11 @@ static const unsigned CYCLOMATIC_COMPLEXITY_THRESHOLD = 200;
 unsigned Simd32ProfitabilityAnalysis::getLoopCyclomaticComplexity() {
     unsigned MaxCC = 0;
     for (LoopInfo::iterator I = LI->begin(), E = LI->end(); I != E; ++I) {
-        Loop *L = *I;
+        Loop* L = *I;
         unsigned CC = 2;
         for (auto BI = L->block_begin(), BE = L->block_end(); BI != BE; ++BI) {
-            BasicBlock *BB = *BI;
-            IGCLLVM::TerminatorInst *TI = BB->getTerminator();
+            BasicBlock* BB = *BI;
+            IGCLLVM::TerminatorInst* TI = BB->getTerminator();
             bool IsUniform = WI->whichDepend(TI) == WIAnalysis::UNIFORM;
             CC += TI->getNumSuccessors() * (IsUniform ? 1 : 2);
         }
@@ -893,12 +897,12 @@ unsigned Simd32ProfitabilityAnalysis::getLoopCyclomaticComplexity() {
     return MaxCC;
 }
 
-static unsigned getNumOfNonUniformExits(Loop *L, WIAnalysis *WI) {
-    SmallVector<BasicBlock *, 8> ExistingBlocks;
+static unsigned getNumOfNonUniformExits(Loop* L, WIAnalysis* WI) {
+    SmallVector<BasicBlock*, 8> ExistingBlocks;
     L->getExitingBlocks(ExistingBlocks);
     unsigned Count = 0;
     for (auto BB : ExistingBlocks) {
-        IGCLLVM::TerminatorInst *TI = BB->getTerminator();
+        IGCLLVM::TerminatorInst* TI = BB->getTerminator();
         bool IsUniform = WI->whichDepend(TI) == WIAnalysis::UNIFORM;
         Count += !IsUniform;
     }
@@ -907,7 +911,7 @@ static unsigned getNumOfNonUniformExits(Loop *L, WIAnalysis *WI) {
 }
 
 /// Check if a loop or its subloop has multiple non-uniform exists.
-static bool hasMultipleExits(Loop *L, WIAnalysis *WI) {
+static bool hasMultipleExits(Loop* L, WIAnalysis* WI) {
     if (getNumOfNonUniformExits(L, WI) > 1)
         return true;
     for (auto InnerL : L->getSubLoops())
@@ -927,8 +931,8 @@ static bool hasMultipleExits(Loop *L, WIAnalysis *WI) {
 ///             L7
 /// then it returns {L2, L5}
 ///
-static void getNestedLoopsWithMultpleExists(Loop *L, WIAnalysis *WI,
-                                            SmallVectorImpl<Loop *> &Result) {
+static void getNestedLoopsWithMultpleExists(Loop* L, WIAnalysis* WI,
+    SmallVectorImpl<Loop*>& Result) {
     if (getNumOfNonUniformExits(L, WI) > 1) {
         for (auto InnerL : L->getSubLoops()) {
             if (hasMultipleExits(InnerL, WI)) {
@@ -947,12 +951,12 @@ static void getNestedLoopsWithMultpleExists(Loop *L, WIAnalysis *WI,
 
 
 /// Check if loops with multiple exists dominate the entire function.
-static bool hasNestedLoopsWithMultipleExits(Function *F, LoopInfo *LI,
-                                            WIAnalysis *WI) {
+static bool hasNestedLoopsWithMultipleExits(Function* F, LoopInfo* LI,
+    WIAnalysis* WI) {
     // Find top level nested loops with multiple non-uniform exists.
-    SmallVector<Loop *, 8> Loops;
+    SmallVector<Loop*, 8> Loops;
     for (LoopInfo::iterator I = LI->begin(), E = LI->end(); I != E; ++I) {
-        Loop *L = *I;
+        Loop* L = *I;
         getNestedLoopsWithMultpleExists(L, WI, Loops);
     }
 
@@ -966,7 +970,7 @@ static bool hasNestedLoopsWithMultipleExits(Function *F, LoopInfo *LI,
     // number of instructions. A higher ratio means these loops dominate this
     // kernel.
     unsigned FuncSize = 0;
-    for (auto &BB : F->getBasicBlockList())
+    for (auto& BB : F->getBasicBlockList())
         FuncSize += (unsigned)BB.size();
 
     bool retVal = false;
@@ -978,51 +982,51 @@ static bool hasNestedLoopsWithMultipleExits(Function *F, LoopInfo *LI,
     return retVal;
 }
 
-static bool hasLongStridedLdStInLoop(Function *F, LoopInfo *LI, WIAnalysis *WI) {
-  SmallVector<Loop *, 32> Loops;
-  // Collect innermost simple loop.
-  for (auto I = LI->begin(), E = LI->end(); I != E; ++I) {
-    auto L = *I;
-    if (!L->empty())
-      continue;
-    if (L->getNumBlocks() != 2)
-      continue;
-    auto *Latch = L->getLoopLatch();
-    if (!Latch || !Latch->front().isTerminator())
-      continue;
-    Loops.push_back(L);
-  }
-  unsigned LDs = 0;
-  unsigned STs = 0;
-  for (auto L : Loops) {
-    auto BB = L->getHeader();
-    for (auto I = BB->begin(), E = BB->end(); I != E; ++I) {
-      if (auto LD = dyn_cast<LoadInst>(&*I)) {
-        VectorType *VTy = dyn_cast<VectorType>(LD->getType());
-        if (!VTy || VTy->getBitWidth() <= 128)
-          continue;
-        if (WI->whichDepend(LD) == WIAnalysis::UNIFORM)
-          continue;
-        ++LDs;
-      }
-      if (auto ST = dyn_cast<StoreInst>(&*I)) {
-        Value *Ptr = ST->getPointerOperand();
-        Value *Val = ST->getValueOperand();
-        VectorType *VTy = dyn_cast<VectorType>(Val->getType());
-        if (!VTy || VTy->getBitWidth() <= 128)
-          continue;
-        if (WI->whichDepend(Ptr) == WIAnalysis::UNIFORM)
-          continue;
-        ++STs;
-      }
+static bool hasLongStridedLdStInLoop(Function* F, LoopInfo* LI, WIAnalysis* WI) {
+    SmallVector<Loop*, 32> Loops;
+    // Collect innermost simple loop.
+    for (auto I = LI->begin(), E = LI->end(); I != E; ++I) {
+        auto L = *I;
+        if (!L->empty())
+            continue;
+        if (L->getNumBlocks() != 2)
+            continue;
+        auto* Latch = L->getLoopLatch();
+        if (!Latch || !Latch->front().isTerminator())
+            continue;
+        Loops.push_back(L);
     }
-    if (LDs > 3 || STs > 3)
-      return true;
-  }
-  return false;
+    unsigned LDs = 0;
+    unsigned STs = 0;
+    for (auto L : Loops) {
+        auto BB = L->getHeader();
+        for (auto I = BB->begin(), E = BB->end(); I != E; ++I) {
+            if (auto LD = dyn_cast<LoadInst>(&*I)) {
+                VectorType* VTy = dyn_cast<VectorType>(LD->getType());
+                if (!VTy || VTy->getBitWidth() <= 128)
+                    continue;
+                if (WI->whichDepend(LD) == WIAnalysis::UNIFORM)
+                    continue;
+                ++LDs;
+            }
+            if (auto ST = dyn_cast<StoreInst>(&*I)) {
+                Value* Ptr = ST->getPointerOperand();
+                Value* Val = ST->getValueOperand();
+                VectorType* VTy = dyn_cast<VectorType>(Val->getType());
+                if (!VTy || VTy->getBitWidth() <= 128)
+                    continue;
+                if (WI->whichDepend(Ptr) == WIAnalysis::UNIFORM)
+                    continue;
+                ++STs;
+            }
+        }
+        if (LDs > 3 || STs > 3)
+            return true;
+    }
+    return false;
 }
 
-bool Simd32ProfitabilityAnalysis::checkSimd16Profitable(CodeGenContext *ctx) {
+bool Simd32ProfitabilityAnalysis::checkSimd16Profitable(CodeGenContext* ctx) {
     if ((IGC_GET_FLAG_VALUE(OCLSIMD16SelectionMask) & 0x1) &&
         getLoopCyclomaticComplexity() >= CYCLOMATIC_COMPLEXITY_THRESHOLD) {
         return false;
@@ -1036,26 +1040,26 @@ bool Simd32ProfitabilityAnalysis::checkSimd16Profitable(CodeGenContext *ctx) {
     // If there's wider vector load/store in a loop, skip SIMD16.
     if ((IGC_GET_FLAG_VALUE(OCLSIMD16SelectionMask) & 0x4) &&
         hasLongStridedLdStInLoop(F, LI, WI)) {
-      return false;
+        return false;
     }
 
-    auto hasDouble = [](Function &F) {
-      for (auto &BB : F)
-        for (auto &I : BB) {
-          if (I.getType()->isDoubleTy())
-            return true;
-          for (Value *V : I.operands())
-            if (V->getType()->isDoubleTy())
-              return true;
-        }
-      return false;
+    auto hasDouble = [](Function& F) {
+        for (auto& BB : F)
+            for (auto& I : BB) {
+                if (I.getType()->isDoubleTy())
+                    return true;
+                for (Value* V : I.operands())
+                    if (V->getType()->isDoubleTy())
+                        return true;
+            }
+        return false;
     };
 
-    const CPlatform *platform = &ctx->platform;
+    const CPlatform* platform = &ctx->platform;
     if (platform->GetPlatformFamily() == IGFX_GEN9_CORE &&
         platform->getPlatformInfo().eProductFamily == IGFX_GEMINILAKE &&
         hasDouble(*F)) {
-      return false;
+        return false;
     }
 
     return true;
@@ -1070,31 +1074,31 @@ bool Simd32ProfitabilityAnalysis::checkPSSimd32Profitable()
     unsigned int numberOfBB = 0;
     BasicBlock* returnBlock = nullptr;
     bool hasDiscard = F->getParent()->getNamedMetadata("KillPixel") != nullptr;
-    for(Function::iterator FI = F->begin(), FE = F->end(); FI != FE; ++FI)
+    for (Function::iterator FI = F->begin(), FE = F->end(); FI != FE; ++FI)
     {
-        for(auto II = FI->begin(), IE = FI->end(); II != IE; ++II)
+        for (auto II = FI->begin(), IE = FI->end(); II != IE; ++II)
         {
-            if(II->getType() == Type::getHalfTy(F->getContext()))
+            if (II->getType() == Type::getHalfTy(F->getContext()))
             {
                 numberOfHalfInstructions++;
             }
-            if(isa<CmpInst>(*II))
+            if (isa<CmpInst>(*II))
             {
                 numberOfCmp++;
             }
-            if(isSampleLoadGather4InfoInstruction(&(*II)))
+            if (isSampleLoadGather4InfoInstruction(&(*II)))
             {
                 numberOfSample++;
             }
             numberInstructions++;
         }
-        if(isa<ReturnInst>(FI->getTerminator()))
+        if (isa<ReturnInst>(FI->getTerminator()))
         {
             returnBlock = &(*FI);
         }
         numberOfBB++;
     }
-    if(numberInstructions > 4000 || numberInstructions == 0)
+    if (numberInstructions > 4000 || numberInstructions == 0)
     {
         return false;
     }
@@ -1102,44 +1106,44 @@ bool Simd32ProfitabilityAnalysis::checkPSSimd32Profitable()
     // Original SIMD32 heurtistic
     // if 1BB, short, has sample, no discard, no cmp, enable SIMD32
     // skip cmp to avoid flag spill
-    if(!hasDiscard && numberOfCmp == 0 && numberOfSample > 0 && numberOfBB == 1 && numberInstructions < 80)
+    if (!hasDiscard && numberOfCmp == 0 && numberOfSample > 0 && numberOfBB == 1 && numberInstructions < 80)
     {
         return true;
     }
 
     // disable SIMD32 for shader with multiple render target as it puts pressure on the render cache
     unsigned int numberRTWrite = 0;
-    for(auto it = returnBlock->begin(), ie = returnBlock->end(); it != ie; ++it)
+    for (auto it = returnBlock->begin(), ie = returnBlock->end(); it != ie; ++it)
     {
-        if(GenIntrinsicInst* intr = dyn_cast<GenIntrinsicInst>(it))
+        if (GenIntrinsicInst * intr = dyn_cast<GenIntrinsicInst>(it))
         {
-            if(intr->getIntrinsicID() == GenISAIntrinsic::GenISA_RTWrite)
+            if (intr->getIntrinsicID() == GenISAIntrinsic::GenISA_RTWrite)
             {
                 numberRTWrite++;
             }
         }
     }
-    if(numberRTWrite > 1)
+    if (numberRTWrite > 1)
     {
         return false;
     }
 
     // Case where we expect to be bound by pixel dispatch time. For small shaderd without IO
     // It is better to go with SIMD32
-    if(returnBlock == &F->getEntryBlock() && !hasDiscard)
+    if (returnBlock == &F->getEntryBlock() && !hasDiscard)
     {
         bool hasIO = false;
         unsigned int numberInstructions = returnBlock->size();
-        if(numberInstructions < 10)
+        if (numberInstructions < 10)
         {
-            for(auto II = returnBlock->begin(), IE = returnBlock->end(); II != IE; ++II)
+            for (auto II = returnBlock->begin(), IE = returnBlock->end(); II != IE; ++II)
             {
-                if(II->mayReadOrWriteMemory() && !isa<RTWritIntrinsic>(II))
+                if (II->mayReadOrWriteMemory() && !isa<RTWritIntrinsic>(II))
                 {
                     hasIO = true;
                     break;
                 }
-                if(isa<SampleIntrinsic>(II) ||
+                if (isa<SampleIntrinsic>(II) ||
                     isa<SamplerLoadIntrinsic>(II) ||
                     isa<InfoIntrinsic>(II) ||
                     isa<SamplerGatherIntrinsic>(II))
@@ -1148,31 +1152,31 @@ bool Simd32ProfitabilityAnalysis::checkPSSimd32Profitable()
                     break;
                 }
             }
-            if(!hasIO)
+            if (!hasIO)
             {
                 // for small program without IO using SIMD32 allows hiding the thread dispatch time
                 return true;
             }
         }
     }
-    
-    if(IGC_IS_FLAG_ENABLED(PSSIMD32HeuristicFP16))
+
+    if (IGC_IS_FLAG_ENABLED(PSSIMD32HeuristicFP16))
     {
         // If we have a large ratio of half use SIMD32 to hide latency better
         float ratioHalf = (float)numberOfHalfInstructions / (float)numberInstructions;
-        if(ratioHalf >= 0.5f)
+        if (ratioHalf >= 0.5f)
         {
             return true;
         }
     }
 
-    if(IGC_IS_FLAG_ENABLED(PSSIMD32HeuristicLoopAndDiscard))
+    if (IGC_IS_FLAG_ENABLED(PSSIMD32HeuristicLoopAndDiscard))
     {
         // If we have a discard and the first block is small we may be bound by PSD so we try to enable SIMD32
-        if(hasDiscard)
+        if (hasDiscard)
         {
-            BasicBlock&entryBB = F->getEntryBlock();
-            if(!isa<ReturnInst>(entryBB.getTerminator()) && entryBB.size() < 50)
+            BasicBlock& entryBB = F->getEntryBlock();
+            if (!isa<ReturnInst>(entryBB.getTerminator()) && entryBB.size() < 50)
             {
                 return true;
             }
@@ -1181,14 +1185,14 @@ bool Simd32ProfitabilityAnalysis::checkPSSimd32Profitable()
         // If we have a loop with high latency enable SIMD32 to reduce latency
         unsigned int numberOfInstructions = 0;
         unsigned int numberOfHighLatencyInst = 0;
-        for(LoopInfo::iterator li = LI->begin(), le = LI->end(); li != le; ++li)
+        for (LoopInfo::iterator li = LI->begin(), le = LI->end(); li != le; ++li)
         {
             llvm::Loop* loop = *li;
-            for(auto BI = loop->block_begin(), BE = loop->block_end(); BI != BE; ++BI)
+            for (auto BI = loop->block_begin(), BE = loop->block_end(); BI != BE; ++BI)
             {
-                for(auto II = (*BI)->begin(), IE = (*BI)->end(); II != IE; ++II)
+                for (auto II = (*BI)->begin(), IE = (*BI)->end(); II != IE; ++II)
                 {
-                    if(isa<SampleIntrinsic>(II))
+                    if (isa<SampleIntrinsic>(II))
                     {
                         numberOfHighLatencyInst++;
                     }
@@ -1196,7 +1200,7 @@ bool Simd32ProfitabilityAnalysis::checkPSSimd32Profitable()
                 }
             }
         }
-        if(numberOfInstructions < 85 && numberOfHighLatencyInst >= 1)
+        if (numberOfInstructions < 85 && numberOfHighLatencyInst >= 1)
         {
             // high latency small loop
             return true;

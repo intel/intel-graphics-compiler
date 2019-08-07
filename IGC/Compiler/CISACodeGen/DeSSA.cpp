@@ -99,23 +99,23 @@ using namespace IGC::IGCMD;
 #define PASS_DESCRIPTION "coalesce moves coming from phi nodes"
 #define PASS_CFG_ONLY true
 #define PASS_ANALYSIS true
-IGC_INITIALIZE_PASS_BEGIN( DeSSA, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS )
-IGC_INITIALIZE_PASS_DEPENDENCY(WIAnalysis )
-IGC_INITIALIZE_PASS_DEPENDENCY(LiveVarsAnalysis )
-IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenPatternMatch )
-IGC_INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass )
+IGC_INITIALIZE_PASS_BEGIN(DeSSA, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_DEPENDENCY(WIAnalysis)
+IGC_INITIALIZE_PASS_DEPENDENCY(LiveVarsAnalysis)
+IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenPatternMatch)
+IGC_INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
 IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
-IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper )
-IGC_INITIALIZE_PASS_END( DeSSA, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS )
+IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
+IGC_INITIALIZE_PASS_END(DeSSA, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 char DeSSA::ID = 0;
 
-DeSSA::DeSSA() : FunctionPass( ID )
+DeSSA::DeSSA() : FunctionPass(ID)
 {
-    initializeDeSSAPass( *PassRegistry::getPassRegistry( ) );
+    initializeDeSSAPass(*PassRegistry::getPassRegistry());
 }
 
-void DeSSA::print(raw_ostream &OS, const Module* ) const
+void DeSSA::print(raw_ostream& OS, const Module*) const
 {
     // Assign each inst/arg a unique integer so that the output
     // would be in order. It is useful when doing comparison.
@@ -150,7 +150,7 @@ void DeSSA::print(raw_ostream &OS, const Module* ) const
         for (auto& I : AliasMap) {
             Value* aliaser = I.first;
             Value* aliasee = I.second;
-            SmallVector<Value*, 8>&  allAliasers = output[aliasee];
+            SmallVector<Value*, 8> & allAliasers = output[aliasee];
             if (aliaser != aliasee) {
                 allAliasers.push_back(aliaser);
             }
@@ -165,7 +165,7 @@ void DeSSA::print(raw_ostream &OS, const Module* ) const
         }
         for (auto& I : ValKeyVec) {
             Value* aliasee = I;
-            SmallVector<Value*, 8>& allAliasers = output[aliasee];
+            SmallVector<Value*, 8> & allAliasers = output[aliasee];
 
             if (doSort) {
                 std::sort(allAliasers.begin(), allAliasers.end(), valCmp);
@@ -190,7 +190,7 @@ void DeSSA::print(raw_ostream &OS, const Module* ) const
     for (auto& I : InsEltMap) {
         Value* val = I.first;
         Value* rootV = I.second;
-        SmallVector<Value*, 8>&  allVals = output[rootV];
+        SmallVector<Value*, 8> & allVals = output[rootV];
         if (rootV != val) {
             allVals.push_back(val);
         }
@@ -205,7 +205,7 @@ void DeSSA::print(raw_ostream &OS, const Module* ) const
     }
     for (auto& I : ValKeyVec) {
         Value* rootV = I;
-        SmallVector<Value*, 8>& allVals = output[rootV];
+        SmallVector<Value*, 8> & allVals = output[rootV];
 
         if (doSort) {
             std::sort(allVals.begin(), allVals.end(), valCmp);
@@ -230,7 +230,7 @@ void DeSSA::print(raw_ostream &OS, const Module* ) const
         // All InsElt output has been sorted
         for (auto& I : ValKeyVec) {
             Value* rootV = I;
-            SmallVector<Value*, 8>& allVals = output[rootV];
+            SmallVector<Value*, 8> & allVals = output[rootV];
 
             OS << "  Root Value: ";
             rootV->printAsOperand(OS);
@@ -272,7 +272,7 @@ void DeSSA::print(raw_ostream &OS, const Module* ) const
             Leader = Leader->parent;
         }
 
-        SmallVector<Node*, 8>&  allNodes = nodeOutput[Leader];
+        SmallVector<Node*, 8> & allNodes = nodeOutput[Leader];
         if (N != Leader) {
             allNodes.push_back(N);
         }
@@ -293,20 +293,21 @@ void DeSSA::print(raw_ostream &OS, const Module* ) const
     }
     for (auto& I : NodeKeyVec) {
         Node* Leader = I;
-        SmallVector<Node*, 8>& allNodes = nodeOutput[Leader];
+        SmallVector<Node*, 8> & allNodes = nodeOutput[Leader];
         if (doSort) {
             std::sort(allNodes.begin(), allNodes.end(), nodeCmp);
         }
 
-        Value *VL;
+        Value* VL;
         if (isIsolated(Leader)) {
             assert(allNodes.size() == 0 &&
-                   "ICE: isolated node still in multi-value CC!");
+                "ICE: isolated node still in multi-value CC!");
             VL = Leader->value;
             OS << "\nVar isolated : ";
             VL->print(OS);
             OS << "\n";
-        } else {
+        }
+        else {
             OS << "\nLeader : ";
             Leader->value->print(OS);
             OS << "\n";
@@ -323,304 +324,305 @@ void DeSSA::print(raw_ostream &OS, const Module* ) const
 }
 
 void DeSSA::dump() const {
-  print(dbgs());
+    print(dbgs());
 }
 
-bool DeSSA::runOnFunction(Function &MF)
+bool DeSSA::runOnFunction(Function& MF)
 {
-  m_F = &MF;
-  CurrColor = 0;
-  MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-  if (pMdUtils->findFunctionsInfoItem(&MF) == pMdUtils->end_FunctionsInfo())
-  {
-    return false;
-  }
-  CTX = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-  DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
-  WIA = &getAnalysis<WIAnalysis>();
-  LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
-  CG = &getAnalysis<CodeGenPatternMatch>();
-  DL = &MF.getParent()->getDataLayout();
-  LV = &getAnalysis<LiveVarsAnalysis>().getLiveVars();
+    m_F = &MF;
+    CurrColor = 0;
+    MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    if (pMdUtils->findFunctionsInfoItem(&MF) == pMdUtils->end_FunctionsInfo())
+    {
+        return false;
+    }
+    CTX = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
+    WIA = &getAnalysis<WIAnalysis>();
+    LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
+    CG = &getAnalysis<CodeGenPatternMatch>();
+    DL = &MF.getParent()->getDataLayout();
+    LV = &getAnalysis<LiveVarsAnalysis>().getLiveVars();
 
-  // make sure we do not run WIAnalysis between CodeGen and DeSSA,
-  // therefore m_program's Uniform Helper is still valid, which is
-  // used indirectly in DeSSA::GetPhiTemp().
-  // If we cannot maintain this assertion, then we should do
-  //   m_program->SetUniformHelper(WIA);
+    // make sure we do not run WIAnalysis between CodeGen and DeSSA,
+    // therefore m_program's Uniform Helper is still valid, which is
+    // used indirectly in DeSSA::GetPhiTemp().
+    // If we cannot maintain this assertion, then we should do
+    //   m_program->SetUniformHelper(WIA);
 
-  if (IGC_IS_FLAG_ENABLED(EnableDeSSAAlias))
-  {
-      //
-      // The DeSSA/Coalescing procedure:
-      //   1. Follow Dominance tree to set up alias map. While setting up alias map,
-      //      update liveness for aliasee so that alasee's liveness is the sum of
-      //      all its aliasers.
-      //      By aliaser/aliasee, it means the following:
-      //             aliaser = bitcast aliasee
-      //      (Most aliasing is from bitcast, some can be from other cast instructions
-      //       such as inttoptr/ptrtoint. It could be also from insElt/extElt.)
-      //
-      //      By traversing dominance tree depth-first (DF), it is guaranteed that
-      //      a def will be visited before its use except PHI node. Since PHI inst
-      //      is not a candidate for aliasing, this means that the def of aliasee has
-      //      been visited before the aliaser instruction. For example,
-      //            x = bitcast y
-      //         The def of y should be visited before visiting this bitcast inst.
-      //      Let alias(v0, v1) denote that v0 is an alias to v1. DF dominance-tree
-      //      traversal may not handle aliasing in the following order:
-      //              alias(v0, v1)
-      //              alias(v1, v2)
-      //      rather, it must be in the order
-      //              alias(v1, v2)
-      //              alias(v0, v1)
-      //      By doing DF dominance-tree traversal, this kind of aliasing chain will
-      //      be handled directly.
-      //
-      //   2. Set up InsEltMap, which coalesces vector values used in InsertElement
-      //      instructions. It is treated as "alias", meaning the root value's
-      //      liveness is the sum of all its non-root values. The difference b/w
-      //      AliasMap and InsEltMap is that AliasMap is pure alias in that all
-      //      aliasers have the same values as its aliasee (single-valued, like SSA);
-      //      while InsElt has multiple-valued values. This difference does not matter
-      //      in dessa, but it would matter when handling sub-vector aliasing later.
-      //      
-      //      We could remove InsEltMap by adding each value into DeSSA node. To do
-      //      so, dessa traversal needs to be modified to have def of those values
-      //      in PhiSrcDefs. This will generally have a larger CC, which means more
-      //      compiling time.
-      //   3. Make sure DeSSA node only use the node value, that is, given value V,
-      //        its Node value:
-      //                V_aliasee = AliasMap[V] if V is in map, or V otherwise
-      //                node_value = InsEltMap[V_aliasee] if in InsEltMap; or V_aliasee
-      //                             otherwise.
-      //      Note that since the type of aliasess may be different from aliaser,
-      //      the values in the same CC will have different types.  Keep this in mind
-      //      when creating CVariable in GetSymbol().
-      //
-      //  Note that the algorithem forces coalescing of aliasing inst and InsertElement
-      //  inst before PHI-coalescing, which means it favors coaslescing of those aliasing
-      //  inst and InsertElement instructions. Thus, values in AliasMap/InsEltMap are
-      //  guananteed to be coalesced together at the end of DeSSA. PHI coalescing may
-      //  extend those maps by adding other values.
-      //
-      for (df_iterator<DomTreeNode*> DI = df_begin(DT->getRootNode()),
-          DE = df_end(DT->getRootNode()); DI != DE; ++DI) {
-          CoalesceAliasInstForBasicBlock(DI->getBlock());
-      }
-  }
+    if (IGC_IS_FLAG_ENABLED(EnableDeSSAAlias))
+    {
+        //
+        // The DeSSA/Coalescing procedure:
+        //   1. Follow Dominance tree to set up alias map. While setting up alias map,
+        //      update liveness for aliasee so that alasee's liveness is the sum of
+        //      all its aliasers.
+        //      By aliaser/aliasee, it means the following:
+        //             aliaser = bitcast aliasee
+        //      (Most aliasing is from bitcast, some can be from other cast instructions
+        //       such as inttoptr/ptrtoint. It could be also from insElt/extElt.)
+        //
+        //      By traversing dominance tree depth-first (DF), it is guaranteed that
+        //      a def will be visited before its use except PHI node. Since PHI inst
+        //      is not a candidate for aliasing, this means that the def of aliasee has
+        //      been visited before the aliaser instruction. For example,
+        //            x = bitcast y
+        //         The def of y should be visited before visiting this bitcast inst.
+        //      Let alias(v0, v1) denote that v0 is an alias to v1. DF dominance-tree
+        //      traversal may not handle aliasing in the following order:
+        //              alias(v0, v1)
+        //              alias(v1, v2)
+        //      rather, it must be in the order
+        //              alias(v1, v2)
+        //              alias(v0, v1)
+        //      By doing DF dominance-tree traversal, this kind of aliasing chain will
+        //      be handled directly.
+        //
+        //   2. Set up InsEltMap, which coalesces vector values used in InsertElement
+        //      instructions. It is treated as "alias", meaning the root value's
+        //      liveness is the sum of all its non-root values. The difference b/w
+        //      AliasMap and InsEltMap is that AliasMap is pure alias in that all
+        //      aliasers have the same values as its aliasee (single-valued, like SSA);
+        //      while InsElt has multiple-valued values. This difference does not matter
+        //      in dessa, but it would matter when handling sub-vector aliasing later.
+        //      
+        //      We could remove InsEltMap by adding each value into DeSSA node. To do
+        //      so, dessa traversal needs to be modified to have def of those values
+        //      in PhiSrcDefs. This will generally have a larger CC, which means more
+        //      compiling time.
+        //   3. Make sure DeSSA node only use the node value, that is, given value V,
+        //        its Node value:
+        //                V_aliasee = AliasMap[V] if V is in map, or V otherwise
+        //                node_value = InsEltMap[V_aliasee] if in InsEltMap; or V_aliasee
+        //                             otherwise.
+        //      Note that since the type of aliasess may be different from aliaser,
+        //      the values in the same CC will have different types.  Keep this in mind
+        //      when creating CVariable in GetSymbol().
+        //
+        //  Note that the algorithem forces coalescing of aliasing inst and InsertElement
+        //  inst before PHI-coalescing, which means it favors coaslescing of those aliasing
+        //  inst and InsertElement instructions. Thus, values in AliasMap/InsEltMap are
+        //  guananteed to be coalesced together at the end of DeSSA. PHI coalescing may
+        //  extend those maps by adding other values.
+        //
+        for (df_iterator<DomTreeNode*> DI = df_begin(DT->getRootNode()),
+            DE = df_end(DT->getRootNode()); DI != DE; ++DI) {
+            CoalesceAliasInstForBasicBlock(DI->getBlock());
+        }
+    }
 
-  for (df_iterator<DomTreeNode*> DI = df_begin(DT->getRootNode()),
-      DE = df_end(DT->getRootNode()); DI != DE; ++DI) {
-      CoalesceInsertElementsForBasicBlock(DI->getBlock());
-  }
+    for (df_iterator<DomTreeNode*> DI = df_begin(DT->getRootNode()),
+        DE = df_end(DT->getRootNode()); DI != DE; ++DI) {
+        CoalesceInsertElementsForBasicBlock(DI->getBlock());
+    }
 
-  // checkPHILoopInput
-  //  PreHeader:
-  //      x = ...
-  //  Header:
-  //      phi0 = [x, PreHeader], [t0, End]
-  //      phi1 = [x, PreHeader], [t1, End]
-  //      phi2 = [x, PreHeader], [t2, End]
-  //      ...
-  //  End:
-  //      ...
-  //      goto Header
-  //
-  //  The algorithme below will start with a largest congruent class possible,
-  //  which unions all phi's with the same source operands. This ends up with
-  //  a single congruent class of all phi's with x as their source operand.
-  //  Later, the algorithm isolates phi's as they interfere with each other,
-  //  causing mov instructions to be generated within the loop at BB End.
-  //
-  //  However, since all phi instructions are live at the same time, we will
-  //  not be able to coalesce them. In another word, there is no need to put
-  //  all phi's into the same congruent class in the first place. To achieve
-  //  this, we use a Value-to-int map to keep how many times a value is used
-  //  in the phi's,  and if the number of uses is over a threshold, we will
-  //  isolate the source operand and do not union it with its phi. In doing
-  //  so it is likely for the algorithm to coalesce the phi's dst and the
-  //  other src that is used in the loop, and therefore remove mov instrutions
-  //  in the loop.
+    // checkPHILoopInput
+    //  PreHeader:
+    //      x = ...
+    //  Header:
+    //      phi0 = [x, PreHeader], [t0, End]
+    //      phi1 = [x, PreHeader], [t1, End]
+    //      phi2 = [x, PreHeader], [t2, End]
+    //      ...
+    //  End:
+    //      ...
+    //      goto Header
+    //
+    //  The algorithme below will start with a largest congruent class possible,
+    //  which unions all phi's with the same source operands. This ends up with
+    //  a single congruent class of all phi's with x as their source operand.
+    //  Later, the algorithm isolates phi's as they interfere with each other,
+    //  causing mov instructions to be generated within the loop at BB End.
+    //
+    //  However, since all phi instructions are live at the same time, we will
+    //  not be able to coalesce them. In another word, there is no need to put
+    //  all phi's into the same congruent class in the first place. To achieve
+    //  this, we use a Value-to-int map to keep how many times a value is used
+    //  in the phi's,  and if the number of uses is over a threshold, we will
+    //  isolate the source operand and do not union it with its phi. In doing
+    //  so it is likely for the algorithm to coalesce the phi's dst and the
+    //  other src that is used in the loop, and therefore remove mov instrutions
+    //  in the loop.
   //
   //  Note that isolating a value introduce additional copy, thus a threshold
   //  is used here as a heuristic to try to make sure that a benefit is more
   //  than the cost. 
-  enum { PHI_SRC_USE_THRESHOLD = 3 };  // arbitrary number
-  DenseMap<Value *, int> PHILoopPreHeaderSrcs;
+    enum { PHI_SRC_USE_THRESHOLD = 3 };  // arbitrary number
+    DenseMap<Value*, int> PHILoopPreHeaderSrcs;
 
-  // build initial congruent class using union-find
-  for (Function::iterator I = MF.begin(), E = MF.end();
-       I != E; ++I)
-  {
-    // First, initialize PHILoopPreHeaderSrcs map
-    BasicBlock *MBB = &*I;
-    Loop *LP = LI ? LI->getLoopFor(MBB) : nullptr;
-    BasicBlock *PreHeader = LP ? LP->getLoopPredecessor() : nullptr;
-    bool checkPHILoopInput = LP && (LP->getHeader() == MBB) && PreHeader;
-    PHILoopPreHeaderSrcs.clear();
-    if (checkPHILoopInput)
+    // build initial congruent class using union-find
+    for (Function::iterator I = MF.begin(), E = MF.end();
+        I != E; ++I)
     {
-      for (BasicBlock::iterator BBI = I->begin(), BBE = I->end();
-           BBI != BBE; ++BBI) {
-        PHINode *PHI = dyn_cast<PHINode>(BBI);
-        if (!PHI) {
-          break;
+        // First, initialize PHILoopPreHeaderSrcs map
+        BasicBlock* MBB = &*I;
+        Loop* LP = LI ? LI->getLoopFor(MBB) : nullptr;
+        BasicBlock* PreHeader = LP ? LP->getLoopPredecessor() : nullptr;
+        bool checkPHILoopInput = LP && (LP->getHeader() == MBB) && PreHeader;
+        PHILoopPreHeaderSrcs.clear();
+        if (checkPHILoopInput)
+        {
+            for (BasicBlock::iterator BBI = I->begin(), BBE = I->end();
+                BBI != BBE; ++BBI) {
+                PHINode* PHI = dyn_cast<PHINode>(BBI);
+                if (!PHI) {
+                    break;
+                }
+
+                int srcIx = PHI->getBasicBlockIndex(PreHeader);
+                if (srcIx < 0) {
+                    continue;
+                }
+                Value* SrcVal = PHI->getOperand(srcIx);
+                if (isa<Constant>(SrcVal)) {
+                    continue;
+                }
+                if (PHILoopPreHeaderSrcs.count(SrcVal) == 0) {
+                    PHILoopPreHeaderSrcs[SrcVal] = 0;  // initialize to zero
+                }
+                PHILoopPreHeaderSrcs[SrcVal] += 1;
+            }
         }
 
-        int srcIx = PHI->getBasicBlockIndex(PreHeader);
-        if (srcIx < 0) {
-          continue;
+        for (BasicBlock::iterator BBI = I->begin(), BBE = I->end();
+            BBI != BBE; ++BBI) {
+            PHINode* PHI = dyn_cast<PHINode>(BBI);
+            if (!PHI) {
+                break;
+            }
+
+            e_alignment DefAlign = GetPreferredAlignment(PHI, WIA, CTX);
+            assert(PHI == getNodeValue(PHI));
+
+            addReg(PHI, DefAlign);
+            PHISrcDefs[&(*I)].push_back(PHI);
+
+            for (unsigned i = 0; i < PHI->getNumOperands(); ++i) {
+                Value* OrigSrcVal = PHI->getOperand(i);
+                // skip constant
+                if (isa<Constant>(OrigSrcVal))
+                    continue;
+
+                // condition for preheader-src-isolation
+                bool PreheaderSrcIsolation = (checkPHILoopInput &&
+                    !isa<InsertElementInst>(OrigSrcVal) && !isa<PHINode>(OrigSrcVal) &&
+                    PHI->getIncomingBlock(i) == PreHeader &&
+                    PHILoopPreHeaderSrcs.count(OrigSrcVal) > 0 &&
+                    PHILoopPreHeaderSrcs[OrigSrcVal] >= PHI_SRC_USE_THRESHOLD);
+                // add src to the union
+                Value* SrcVal;
+                SrcVal = getNodeValue(OrigSrcVal);
+                e_alignment SrcAlign = GetPreferredAlignment(OrigSrcVal, WIA, CTX);
+                Instruction* DefMI = dyn_cast<Instruction>(SrcVal);
+                if (DefMI) {
+                    if (CG->SIMDConstExpr(DefMI)) {
+                        continue;  // special case, simdSize becomes a constant in vISA
+                    }
+                    addReg(SrcVal, SrcAlign);
+                    PHISrcDefs[DefMI->getParent()].push_back(DefMI);
+                    if (WIA->whichDepend(PHI) == WIA->whichDepend(SrcVal) && !PreheaderSrcIsolation) {
+                        unionRegs(PHI, SrcVal);
+                    }
+                }
+                else if (isa<Argument>(SrcVal)) {
+                    addReg(SrcVal, SrcAlign);
+                    PHISrcArgs.insert(SrcVal);
+                    if (WIA->whichDepend(PHI) == WIA->whichDepend(SrcVal) && !PreheaderSrcIsolation) {
+                        unionRegs(PHI, SrcVal);
+                    }
+                }
+                // cases that we need to isolate source
+                if (CG->IsForceIsolated(SrcVal) || PreheaderSrcIsolation) {
+                    isolateReg(SrcVal);
+                }
+            } // end of source-operand loop
+            // isolate complex type that IGC does not handle
+            if (PHI->getType()->isStructTy() ||
+                PHI->getType()->isArrayTy()) {
+                isolateReg(PHI);
+            }
         }
-        Value *SrcVal = PHI->getOperand(srcIx);
-        if (isa<Constant>(SrcVal)) {
-          continue;
-        }
-        if (PHILoopPreHeaderSrcs.count(SrcVal) == 0) {
-          PHILoopPreHeaderSrcs[SrcVal] = 0;  // initialize to zero
-        }
-        PHILoopPreHeaderSrcs[SrcVal] += 1;
-      }
     }
 
-    for (BasicBlock::iterator BBI = I->begin(), BBE = I->end();
-         BBI != BBE; ++BBI) {
-      PHINode *PHI = dyn_cast<PHINode>(BBI);
-      if (!PHI) {
-        break;
-      }
+    // \todo, the original paper talks aibout some before-hand quick
+    // isolation. The idea is to identify those essential splitting first
+    // in order to avoid unnecessary splitting in the next loop.
 
-      e_alignment DefAlign = GetPreferredAlignment(PHI, WIA, CTX);
-      assert(PHI == getNodeValue(PHI));
-
-      addReg(PHI, DefAlign);
-      PHISrcDefs[&(*I)].push_back(PHI);
-
-      for (unsigned i = 0; i < PHI->getNumOperands(); ++i) {
-        Value* OrigSrcVal = PHI->getOperand(i);
-        // skip constant
-        if (isa<Constant>(OrigSrcVal))
-          continue;
-
-        // condition for preheader-src-isolation
-        bool PreheaderSrcIsolation = (checkPHILoopInput &&
-            !isa<InsertElementInst>(OrigSrcVal) && !isa<PHINode>(OrigSrcVal) &&
-            PHI->getIncomingBlock(i) == PreHeader &&
-            PHILoopPreHeaderSrcs.count(OrigSrcVal) > 0 &&
-            PHILoopPreHeaderSrcs[OrigSrcVal] >= PHI_SRC_USE_THRESHOLD);
-        // add src to the union
-        Value *SrcVal;
-        SrcVal = getNodeValue(OrigSrcVal);
-        e_alignment SrcAlign = GetPreferredAlignment(OrigSrcVal, WIA, CTX);
-        Instruction *DefMI = dyn_cast<Instruction>(SrcVal);
-        if (DefMI) {
-          if (CG->SIMDConstExpr(DefMI)) {
-              continue;  // special case, simdSize becomes a constant in vISA
-          }
-          addReg(SrcVal, SrcAlign);
-          PHISrcDefs[DefMI->getParent()].push_back(DefMI);
-          if (WIA->whichDepend(PHI) == WIA->whichDepend(SrcVal) && !PreheaderSrcIsolation) {
-            unionRegs(PHI, SrcVal);
-          }
-        } else if (isa<Argument>(SrcVal)) {
-          addReg(SrcVal, SrcAlign);
-          PHISrcArgs.insert(SrcVal);
-          if (WIA->whichDepend(PHI) == WIA->whichDepend(SrcVal) && !PreheaderSrcIsolation) {
-            unionRegs(PHI, SrcVal);
-          }
+    // Perform a depth-first traversal of the dominator tree, splitting
+    // interferences amongst PHI-congruence classes.
+    if (!RegNodeMap.empty()) {
+        DenseMap<int, Value*> CurrentDominatingParent;
+        DenseMap<Value*, Value*> ImmediateDominatingParent;
+        // first, go through the function arguments
+        SplitInterferencesForArgument(CurrentDominatingParent, ImmediateDominatingParent);
+        // Then all the blocks
+        for (df_iterator<DomTreeNode*> DI = df_begin(DT->getRootNode()),
+            DE = df_end(DT->getRootNode()); DI != DE; ++DI) {
+            SplitInterferencesForBasicBlock(DI->getBlock(),
+                CurrentDominatingParent,
+                ImmediateDominatingParent);
         }
-        // cases that we need to isolate source
-        if ( CG->IsForceIsolated(SrcVal) || PreheaderSrcIsolation) {
-          isolateReg(SrcVal);
-        }
-      } // end of source-operand loop
-      // isolate complex type that IGC does not handle
-      if (PHI->getType()->isStructTy() ||
-          PHI->getType()->isArrayTy()) {
-        isolateReg(PHI);
-      }
     }
-  }
 
-  // \todo, the original paper talks aibout some before-hand quick
-  // isolation. The idea is to identify those essential splitting first
-  // in order to avoid unnecessary splitting in the next loop.
+    // Handle values that have specific alignment requirement.
+    SplitInterferencesForAlignment();
 
-  // Perform a depth-first traversal of the dominator tree, splitting
-  // interferences amongst PHI-congruence classes.
-  if (!RegNodeMap.empty()) {
-      DenseMap<int, Value*> CurrentDominatingParent;
-      DenseMap<Value*, Value*> ImmediateDominatingParent;
-      // first, go through the function arguments
-      SplitInterferencesForArgument(CurrentDominatingParent, ImmediateDominatingParent);
-      // Then all the blocks
-      for (df_iterator<DomTreeNode*> DI = df_begin(DT->getRootNode()),
-          DE = df_end(DT->getRootNode()); DI != DE; ++DI) {
-          SplitInterferencesForBasicBlock(DI->getBlock(),
-              CurrentDominatingParent,
-              ImmediateDominatingParent);
-      }
-  }
+    if (IGC_IS_FLAG_ENABLED(DumpDeSSA))
+    {
+        const char* fname = MF.getName().data();
+        using namespace IGC::Debug;
+        auto name =
+            DumpName(GetShaderOutputName())
+            .Hash(CTX->hash)
+            .Type(CTX->type)
+            .Pass("dessa")
+            .PostFix(fname)
+            .Retry(CTX->m_retryManager.GetRetryId())
+            .Extension("txt");
 
-  // Handle values that have specific alignment requirement.
-  SplitInterferencesForAlignment();
+        Dump dessaDump(name, DumpType::DBG_MSG_TEXT);
 
-  if (IGC_IS_FLAG_ENABLED(DumpDeSSA))
-  {
-      const char* fname = MF.getName().data();
-      using namespace IGC::Debug;
-      auto name =
-          DumpName(GetShaderOutputName())
-          .Hash(CTX->hash)
-          .Type(CTX->type)
-          .Pass("dessa")
-          .PostFix(fname)
-          .Retry(CTX->m_retryManager.GetRetryId())
-          .Extension("txt");
-
-      Dump dessaDump(name, DumpType::DBG_MSG_TEXT);
-
-      DumpLock();
-      print(dessaDump.stream());
-      DumpUnlock();
-  }
-  m_F = nullptr;
-  return false;
+        DumpLock();
+        print(dessaDump.stream());
+        DumpUnlock();
+    }
+    m_F = nullptr;
+    return false;
 }
 
-void DeSSA::addReg(Value *Val, e_alignment Align) {
-  if (RegNodeMap.count(Val))
-    return;
-  RegNodeMap[Val] = new (Allocator) Node(Val, ++CurrColor, Align);
+void DeSSA::addReg(Value* Val, e_alignment Align) {
+    if (RegNodeMap.count(Val))
+        return;
+    RegNodeMap[Val] = new (Allocator) Node(Val, ++CurrColor, Align);
 }
 // Using Path Halving in union-find
 DeSSA::Node*
 DeSSA::Node::getLeader() {
-  Node *N = this;
-  Node *Parent = parent;
-  Node *Grandparent = Parent->parent;
+    Node* N = this;
+    Node* Parent = parent;
+    Node* Grandparent = Parent->parent;
 
-  while (Parent != Grandparent) {
-    N->parent = Grandparent;
-    N = Grandparent;
-    Parent = N->parent;
-    Grandparent = Parent->parent;
-  }
+    while (Parent != Grandparent) {
+        N->parent = Grandparent;
+        N = Grandparent;
+        Parent = N->parent;
+        Grandparent = Parent->parent;
+    }
 
-  return Parent;
+    return Parent;
 }
 
-Value* DeSSA::getRegRoot(Value* Val, e_alignment *pAlign) const {
-  auto RI = RegNodeMap.find(Val);
-  if (RI == RegNodeMap.end())
-    return nullptr;
-  Node *TheNode = RI->second;
-  if (isIsolated(TheNode))
-    return nullptr;
-  Node *TheLeader = TheNode->getLeader();
-  if (pAlign)
-    *pAlign = TheLeader->alignment;
-  return TheLeader->value;
+Value* DeSSA::getRegRoot(Value* Val, e_alignment* pAlign) const {
+    auto RI = RegNodeMap.find(Val);
+    if (RI == RegNodeMap.end())
+        return nullptr;
+    Node* TheNode = RI->second;
+    if (isIsolated(TheNode))
+        return nullptr;
+    Node* TheLeader = TheNode->getLeader();
+    if (pAlign)
+        * pAlign = TheLeader->alignment;
+    return TheLeader->value;
 }
 
 int DeSSA::getRootColor(Value* V)
@@ -628,10 +630,10 @@ int DeSSA::getRootColor(Value* V)
     auto RI = RegNodeMap.find(V);
     if (RI == RegNodeMap.end())
         return 0;
-    Node *TheNode = RI->second;
+    Node* TheNode = RI->second;
     if (isIsolated(TheNode))
         return 0;
-    Node *TheLeader = TheNode->getLeader();
+    Node* TheLeader = TheNode->getLeader();
     return TheLeader->color;
 }
 
@@ -639,8 +641,8 @@ void DeSSA::unionRegs(Node* Nd1, Node* Nd2)
 {
     Node* N1 = Nd1->getLeader();
     Node* N2 = Nd2->getLeader();
-    Node *NewLeader = nullptr;
-    Node *Leadee = nullptr;
+    Node* NewLeader = nullptr;
+    Node* Leadee = nullptr;
 
     if (N1 == N2)
         return;
@@ -664,8 +666,8 @@ void DeSSA::unionRegs(Node* Nd1, Node* Nd2)
     Leadee->parent = NewLeader;
 
     // Link the circular list of Leadee right before NewLeader
-    Node *Leadee_prev = Leadee->prev;
-    Node *NewLeader_prev = NewLeader->prev;
+    Node* Leadee_prev = Leadee->prev;
+    Node* NewLeader_prev = NewLeader->prev;
     NewLeader_prev->next = Leadee;
     Leadee->prev = NewLeader_prev;
     Leadee_prev->next = NewLeader;
@@ -673,17 +675,17 @@ void DeSSA::unionRegs(Node* Nd1, Node* Nd2)
 }
 
 void DeSSA::isolateReg(Value* Val) {
-  Node *ND = RegNodeMap[Val];
-  splitNode(ND);
+    Node* ND = RegNodeMap[Val];
+    splitNode(ND);
 }
 
-bool DeSSA::isIsolated(Value *V) const {
-  auto RI = RegNodeMap.find(V);
-  if (RI == RegNodeMap.end()) {
-      return true;
-  }
-  Node *DestNode = RI->second;
-  return isIsolated(DestNode);
+bool DeSSA::isIsolated(Value* V) const {
+    auto RI = RegNodeMap.find(V);
+    if (RI == RegNodeMap.end()) {
+        return true;
+    }
+    Node* DestNode = RI->second;
+    return isIsolated(DestNode);
 }
 
 // Split node ND from its existing congurent class, and the
@@ -779,191 +781,196 @@ void DeSSA::splitNode(Node* ND)
 /// interference in multiple distinct sets at once.
 void
 DeSSA::SplitInterferencesForBasicBlock(
-    BasicBlock *MBB,
-    DenseMap<int, Value*> &CurrentDominatingParent,
-    DenseMap<Value*, Value*> &ImmediateDominatingParent) {
-  // Sort defs by their order in the original basic block, as the code below
-  // assumes that it is processing definitions in dominance order.
-  std::vector<Instruction*> &DefInstrs = PHISrcDefs[MBB];
-  std::sort(DefInstrs.begin(), DefInstrs.end(), MIIndexCompare(LV));
+    BasicBlock* MBB,
+    DenseMap<int, Value*>& CurrentDominatingParent,
+    DenseMap<Value*, Value*>& ImmediateDominatingParent) {
+    // Sort defs by their order in the original basic block, as the code below
+    // assumes that it is processing definitions in dominance order.
+    std::vector<Instruction*>& DefInstrs = PHISrcDefs[MBB];
+    std::sort(DefInstrs.begin(), DefInstrs.end(), MIIndexCompare(LV));
 
-  for (std::vector<Instruction*>::const_iterator BBI = DefInstrs.begin(),
-       BBE = DefInstrs.end(); BBI != BBE; ++BBI) {
- 
-    Instruction *DefMI = *BBI;
+    for (std::vector<Instruction*>::const_iterator BBI = DefInstrs.begin(),
+        BBE = DefInstrs.end(); BBI != BBE; ++BBI) {
 
-    // If the virtual register being defined is not used in any PHI or has
-    // already been isolated, then there are no more interferences to check.
-    int RootC = getRootColor(DefMI);
-    if (!RootC)
-      continue;
+        Instruction* DefMI = *BBI;
 
-    // The input to this pass sometimes is not in SSA form in every basic
-    // block, as some virtual registers have redefinitions. We could eliminate
-    // this by fixing the passes that generate the non-SSA code, or we could
-    // handle it here by tracking defining machine instructions rather than
-    // virtual registers. For now, we just handle the situation conservatively
-    // in a way that will possibly lead to false interferences.
-    Value* NewParent = CurrentDominatingParent[RootC];
-    if (NewParent == DefMI)
-      continue;
+        // If the virtual register being defined is not used in any PHI or has
+        // already been isolated, then there are no more interferences to check.
+        int RootC = getRootColor(DefMI);
+        if (!RootC)
+            continue;
 
-    // Pop registers from the stack represented by ImmediateDominatingParent
-    // until we find a parent that dominates the current instruction.
-    while (NewParent) {
-      if (getRootColor(NewParent)) {
-        // we have added the another condition because the domination-test
-        // does not work between two phi-node. See the following comments
-        // from the DT::dominates:
-        // " It is not possible to determine dominance between two PHI nodes 
-        //   based on their ordering
-        //  if (isa<PHINode>(A) && isa<PHINode>(B)) 
-        //    return false;"
-        if (isa<Argument>(NewParent)) {
-          break;
-        } else if (DT->dominates(cast<Instruction>(NewParent), DefMI)) {
-          break;
-        } else if (cast<Instruction>(NewParent)->getParent() == MBB &&
-                   isa<PHINode>(DefMI) && isa<PHINode>(NewParent)) {
-          break;
+        // The input to this pass sometimes is not in SSA form in every basic
+        // block, as some virtual registers have redefinitions. We could eliminate
+        // this by fixing the passes that generate the non-SSA code, or we could
+        // handle it here by tracking defining machine instructions rather than
+        // virtual registers. For now, we just handle the situation conservatively
+        // in a way that will possibly lead to false interferences.
+        Value* NewParent = CurrentDominatingParent[RootC];
+        if (NewParent == DefMI)
+            continue;
+
+        // Pop registers from the stack represented by ImmediateDominatingParent
+        // until we find a parent that dominates the current instruction.
+        while (NewParent) {
+            if (getRootColor(NewParent)) {
+                // we have added the another condition because the domination-test
+                // does not work between two phi-node. See the following comments
+                // from the DT::dominates:
+                // " It is not possible to determine dominance between two PHI nodes 
+                //   based on their ordering
+                //  if (isa<PHINode>(A) && isa<PHINode>(B)) 
+                //    return false;"
+                if (isa<Argument>(NewParent)) {
+                    break;
+                }
+                else if (DT->dominates(cast<Instruction>(NewParent), DefMI)) {
+                    break;
+                }
+                else if (cast<Instruction>(NewParent)->getParent() == MBB &&
+                    isa<PHINode>(DefMI) && isa<PHINode>(NewParent)) {
+                    break;
+                }
+            }
+            NewParent = ImmediateDominatingParent[NewParent];
         }
-      }
-      NewParent = ImmediateDominatingParent[NewParent];
+        // If NewParent is nonzero, then its definition dominates the current
+        // instruction, so it is only necessary to check for the liveness of
+        // NewParent in order to check for an interference.
+        if (NewParent && LV->isLiveAt(NewParent, DefMI)) {
+            // If there is an interference, always isolate the new register. This
+            // could be improved by using a heuristic that decides which of the two
+            // registers to isolate.
+            isolateReg(DefMI);
+            CurrentDominatingParent[RootC] = NewParent;
+        }
+        else {
+            // If there is no interference, update ImmediateDominatingParent and set
+            // the CurrentDominatingParent for this color to the current register.
+            ImmediateDominatingParent[DefMI] = NewParent;
+            CurrentDominatingParent[RootC] = DefMI;
+        }
     }
-    // If NewParent is nonzero, then its definition dominates the current
-    // instruction, so it is only necessary to check for the liveness of
-    // NewParent in order to check for an interference.
-    if (NewParent && LV->isLiveAt(NewParent, DefMI)) {
-      // If there is an interference, always isolate the new register. This
-      // could be improved by using a heuristic that decides which of the two
-      // registers to isolate.
-      isolateReg(DefMI);
-      CurrentDominatingParent[RootC] = NewParent;
-    } else {
-      // If there is no interference, update ImmediateDominatingParent and set
-      // the CurrentDominatingParent for this color to the current register.
-      ImmediateDominatingParent[DefMI] = NewParent;
-      CurrentDominatingParent[RootC] = DefMI;
-    }
-  }
 
-  // We now walk the PHIs in successor blocks and check for interferences. This
-  // is necessary because the use of a PHI's operands are logically contained in
-  // the predecessor block. The def of a PHI's destination register is processed
-  // along with the other defs in a basic block.
+    // We now walk the PHIs in successor blocks and check for interferences. This
+    // is necessary because the use of a PHI's operands are logically contained in
+    // the predecessor block. The def of a PHI's destination register is processed
+    // along with the other defs in a basic block.
 
-  CurrentPHIForColor.clear();
+    CurrentPHIForColor.clear();
 
-  for (succ_iterator SI = succ_begin(MBB), E = succ_end(MBB); SI != E; ++SI) { 
-    for (BasicBlock::iterator BBI = (*SI)->begin(), BBE = (*SI)->end();
-         BBI != BBE; ++BBI) {
-      PHINode *PHI = dyn_cast<PHINode>(BBI);
-      if (!PHI) {
-        break;
-      }
+    for (succ_iterator SI = succ_begin(MBB), E = succ_end(MBB); SI != E; ++SI) {
+        for (BasicBlock::iterator BBI = (*SI)->begin(), BBE = (*SI)->end();
+            BBI != BBE; ++BBI) {
+            PHINode* PHI = dyn_cast<PHINode>(BBI);
+            if (!PHI) {
+                break;
+            }
 
-      int RootC = getRootColor(PHI);
-      // check live-out interference
-      if (IGC_IS_FLAG_ENABLED(EnableDeSSAWA) && !RootC)
-      {
-          // [todo] delete this code
-          if (CTX->type == ShaderType::COMPUTE_SHADER)
-          {
-              for (unsigned i = 0; !RootC && i < PHI->getNumOperands(); i++) {
-                  Value* SrcVal = PHI->getOperand(i);
-                  if (!isa<Constant>(SrcVal)) {
-                      SrcVal = getNodeValue(SrcVal);
-                      RootC = getRootColor(SrcVal);
-                  }
-              }
-          }
-      }
-      if (!RootC) {
-        continue;
-      }
-      // Find the index of the PHI operand that corresponds to this basic block.
-      unsigned PredIndex;
-      for (PredIndex = 0; PredIndex < PHI->getNumOperands(); ++PredIndex) {
-          if (PHI->getIncomingBlock(PredIndex) == MBB)
-              break;
-      }
-      assert(PredIndex < PHI->getNumOperands());
-      Value* PredValue = PHI->getOperand(PredIndex);
-      PredValue = getNodeValue(PredValue);
-      std::pair<Instruction*, Value*> &CurrentPHI = CurrentPHIForColor[RootC];
-      // If two PHIs have the same operand from every shared predecessor, then
-      // they don't actually interfere. Otherwise, isolate the current PHI. This
-      // could possibly be improved, e.g. we could isolate the PHI with the
-      // fewest operands.
-      if (CurrentPHI.first && CurrentPHI.second != PredValue) {
-        isolateReg(PHI);
-        continue;
-      }
-      else {
-        CurrentPHI = std::make_pair(PHI, PredValue);
-      }
+            int RootC = getRootColor(PHI);
+            // check live-out interference
+            if (IGC_IS_FLAG_ENABLED(EnableDeSSAWA) && !RootC)
+            {
+                // [todo] delete this code
+                if (CTX->type == ShaderType::COMPUTE_SHADER)
+                {
+                    for (unsigned i = 0; !RootC && i < PHI->getNumOperands(); i++) {
+                        Value* SrcVal = PHI->getOperand(i);
+                        if (!isa<Constant>(SrcVal)) {
+                            SrcVal = getNodeValue(SrcVal);
+                            RootC = getRootColor(SrcVal);
+                        }
+                    }
+                }
+            }
+            if (!RootC) {
+                continue;
+            }
+            // Find the index of the PHI operand that corresponds to this basic block.
+            unsigned PredIndex;
+            for (PredIndex = 0; PredIndex < PHI->getNumOperands(); ++PredIndex) {
+                if (PHI->getIncomingBlock(PredIndex) == MBB)
+                    break;
+            }
+            assert(PredIndex < PHI->getNumOperands());
+            Value* PredValue = PHI->getOperand(PredIndex);
+            PredValue = getNodeValue(PredValue);
+            std::pair<Instruction*, Value*>& CurrentPHI = CurrentPHIForColor[RootC];
+            // If two PHIs have the same operand from every shared predecessor, then
+            // they don't actually interfere. Otherwise, isolate the current PHI. This
+            // could possibly be improved, e.g. we could isolate the PHI with the
+            // fewest operands.
+            if (CurrentPHI.first && CurrentPHI.second != PredValue) {
+                isolateReg(PHI);
+                continue;
+            }
+            else {
+                CurrentPHI = std::make_pair(PHI, PredValue);
+            }
 
-      // check live-out interference
+            // check live-out interference
 #if 0
-      Value *RootV = getRegRoot(PHI);
-      for (unsigned i = 0; !RootV && i < PHI->getNumOperands(); i++) {
-          Value* SrcVal = PHI->getOperand(i);
-          if (!isa<Constant>(SrcVal)) {
-              Value *SrcRootV = getRegRoot(SrcVal);
-              if (SrcRootV && SrcRootV == OrigRootV) {
-                  RootV = SrcRootV;
-                  printf("JGU_DEBUG: enter this code!\n");
-              }
-          }
-      }
+            Value * RootV = getRegRoot(PHI);
+            for (unsigned i = 0; !RootV && i < PHI->getNumOperands(); i++) {
+                Value* SrcVal = PHI->getOperand(i);
+                if (!isa<Constant>(SrcVal)) {
+                    Value* SrcRootV = getRegRoot(SrcVal);
+                    if (SrcRootV && SrcRootV == OrigRootV) {
+                        RootV = SrcRootV;
+                        printf("JGU_DEBUG: enter this code!\n");
+                    }
+                }
+            }
 #endif
 
-      // Pop registers from the stack represented by ImmediateDominatingParent
-      // until we find a parent that dominates the current instruction.
-      Value *NewParent = CurrentDominatingParent[RootC];
-      while (NewParent) {
-        if (getRootColor(NewParent)) {
-          if (isa<Argument>(NewParent)) {
-            break;
-          } else if (DT->dominates(cast<Instruction>(NewParent)->getParent(), MBB)) {
-            break;
-          }
-        }
-        NewParent = ImmediateDominatingParent[NewParent];
-      }
-      CurrentDominatingParent[RootC] = NewParent;
+            // Pop registers from the stack represented by ImmediateDominatingParent
+            // until we find a parent that dominates the current instruction.
+            Value* NewParent = CurrentDominatingParent[RootC];
+            while (NewParent) {
+                if (getRootColor(NewParent)) {
+                    if (isa<Argument>(NewParent)) {
+                        break;
+                    }
+                    else if (DT->dominates(cast<Instruction>(NewParent)->getParent(), MBB)) {
+                        break;
+                    }
+                }
+                NewParent = ImmediateDominatingParent[NewParent];
+            }
+            CurrentDominatingParent[RootC] = NewParent;
 
-      // If there is an interference with a register, always isolate the
-      // register rather than the PHI. It is also possible to isolate the
-      // PHI, but that introduces copies for all of the registers involved
-      // in that PHI.
-      if (NewParent && NewParent != PredValue && LV->isLiveOut(NewParent, *MBB)) {
-        isolateReg(NewParent);
-      }
+            // If there is an interference with a register, always isolate the
+            // register rather than the PHI. It is also possible to isolate the
+            // PHI, but that introduces copies for all of the registers involved
+            // in that PHI.
+            if (NewParent && NewParent != PredValue && LV->isLiveOut(NewParent, *MBB)) {
+                isolateReg(NewParent);
+            }
+        }
     }
-  }
 }
 
 void
 DeSSA::SplitInterferencesForArgument(
-    DenseMap<int, Value*> &CurrentDominatingParent,
-    DenseMap<Value*, Value*> &ImmediateDominatingParent) {
-  // No two arguments can be in the same congruent class
-  for (auto BBI = PHISrcArgs.begin(),
-       BBE = PHISrcArgs.end(); BBI != BBE; ++BBI) {
-    Value *AV = *BBI;
-    // If the virtual register being defined is not used in any PHI or has
-    // already been isolated, then there are no more interferences to check.
-    int RootC = getRootColor(AV);
-    if (!RootC)
-      continue;
-    Value* NewParent = CurrentDominatingParent[RootC];
-    if (NewParent) {
-      isolateReg(AV);
-    } else {
-      CurrentDominatingParent[RootC] = AV;
+    DenseMap<int, Value*>& CurrentDominatingParent,
+    DenseMap<Value*, Value*>& ImmediateDominatingParent) {
+    // No two arguments can be in the same congruent class
+    for (auto BBI = PHISrcArgs.begin(),
+        BBE = PHISrcArgs.end(); BBI != BBE; ++BBI) {
+        Value* AV = *BBI;
+        // If the virtual register being defined is not used in any PHI or has
+        // already been isolated, then there are no more interferences to check.
+        int RootC = getRootColor(AV);
+        if (!RootC)
+            continue;
+        Value* NewParent = CurrentDominatingParent[RootC];
+        if (NewParent) {
+            isolateReg(AV);
+        }
+        else {
+            CurrentDominatingParent[RootC] = AV;
+        }
     }
-  }
 }
 
 // [todo] get rid of alignment-based isolation in dessa.
@@ -976,15 +983,15 @@ void DeSSA::SplitInterferencesForAlignment()
     for (auto I = RegNodeMap.begin(), E = RegNodeMap.end(); I != E; ++I)
     {
         // Find a root Node
-        Node *rootNode = I->second;
+        Node* rootNode = I->second;
         if (rootNode->parent != rootNode) {
             continue;
         }
 
         e_alignment Align = EALIGN_AUTO;
         // Find the most restrictive alignment, i.e. GRF aligned ones.
-        Node *N = rootNode;
-        Node *Curr;
+        Node* N = rootNode;
+        Node* Curr;
         do {
             Curr = N;
             N = Curr->next;
@@ -1019,7 +1026,7 @@ void DeSSA::SplitInterferencesForAlignment()
 }
 
 Value*
-DeSSA::getInsEltRoot(Value* Val) const 
+DeSSA::getInsEltRoot(Value* Val) const
 {
     auto RI = InsEltMap.find(Val);
     if (RI == InsEltMap.end())
@@ -1028,13 +1035,13 @@ DeSSA::getInsEltRoot(Value* Val) const
 }
 
 void
-DeSSA::CoalesceInsertElementsForBasicBlock(BasicBlock *Blk)
+DeSSA::CoalesceInsertElementsForBasicBlock(BasicBlock* Blk)
 {
     if (IGC_IS_FLAG_ENABLED(EnableDeSSAAlias))
     {
         for (BasicBlock::iterator BBI = Blk->begin(), BBE = Blk->end();
             BBI != BBE; ++BBI) {
-            Instruction *Inst = &(*BBI);
+            Instruction* Inst = &(*BBI);
 
             if (!CG->NeedInstruction(*Inst)) {
                 continue;
@@ -1047,8 +1054,8 @@ DeSSA::CoalesceInsertElementsForBasicBlock(BasicBlock *Blk)
             // For keeping the existing behavior of InsEltMap unchanged
             if (isa<InsertElementInst>(Inst))
             {
-                Value *origSrcV = Inst->getOperand(0);
-                Value *SrcV = getAliasee(origSrcV);
+                Value* origSrcV = Inst->getOperand(0);
+                Value* SrcV = getAliasee(origSrcV);
                 if (SrcV != Inst && isArgOrNeededInst(origSrcV))
                 {
                     // union them
@@ -1063,7 +1070,7 @@ DeSSA::CoalesceInsertElementsForBasicBlock(BasicBlock *Blk)
 
                         Value* SrcVRoot = getInsEltRoot(SrcV);
                         Value* InstRoot = getInsEltRoot(Inst);
- 
+
                         // union them and their liveness info
                         InsEltMapUnionValue(SrcV, Inst);
                         LV->mergeUseFrom(SrcVRoot, InstRoot);
@@ -1076,7 +1083,7 @@ DeSSA::CoalesceInsertElementsForBasicBlock(BasicBlock *Blk)
 
     for (BasicBlock::iterator BBI = Blk->begin(), BBE = Blk->end();
         BBI != BBE; ++BBI) {
-        Instruction *Inst = &(*BBI);
+        Instruction* Inst = &(*BBI);
         // skip phi, phi is handled in the 2nd loop
         if (isa<PHINode>(Inst))
         {
@@ -1085,9 +1092,9 @@ DeSSA::CoalesceInsertElementsForBasicBlock(BasicBlock *Blk)
 
         // extend the liveness of InsertElement due to union
         for (unsigned i = 0; i < Inst->getNumOperands(); ++i) {
-            Value *SrcV = Inst->getOperand(i);
+            Value* SrcV = Inst->getOperand(i);
             if (isa<InsertElementInst>(SrcV)) {
-                Value *RootV = getInsEltRoot(SrcV);
+                Value* RootV = getInsEltRoot(SrcV);
                 if (RootV != SrcV) {
                     LV->HandleVirtRegUse(RootV, Blk, Inst, true);
                 }
@@ -1100,16 +1107,16 @@ DeSSA::CoalesceInsertElementsForBasicBlock(BasicBlock *Blk)
         // handle InsertElement
         InsEltMapAddValue(Inst);
 
-        Value *SrcV = Inst->getOperand(0);
+        Value* SrcV = Inst->getOperand(0);
         if (isa<Instruction>(SrcV) || isa<Argument>(SrcV)) {
             if (!LV->isLiveAt(SrcV, Inst)) {
-                Instruction *SrcDef = dyn_cast<Instruction>(SrcV);
+                Instruction* SrcDef = dyn_cast<Instruction>(SrcV);
                 if (SrcDef && WIA->whichDepend(SrcDef) == WIA->whichDepend(Inst)) {
                     // passed the liveness and alignment test
                     // may need to create a node for srcv, for example, when srcv is phi/arg
                     InsEltMapAddValue(SrcV);
                     InsEltMapUnionValue(SrcV, Inst);
-                 }
+                }
             }
         }
     }
@@ -1119,15 +1126,15 @@ DeSSA::CoalesceInsertElementsForBasicBlock(BasicBlock *Blk)
     {
         for (BasicBlock::iterator BBI = (*SI)->begin(), BBE = (*SI)->end(); BBI != BBE; ++BBI)
         {
-            PHINode *phi = dyn_cast<PHINode>(BBI);
+            PHINode* phi = dyn_cast<PHINode>(BBI);
             if (phi)
             {
                 // extend the liveness of InsertElement due to union
-                Value *SrcV = phi->getIncomingValueForBlock(Blk);
+                Value* SrcV = phi->getIncomingValueForBlock(Blk);
                 if (isa<InsertElementInst>(SrcV)) {
-                    Value *RootV = getInsEltRoot(SrcV);
+                    Value* RootV = getInsEltRoot(SrcV);
                     if (RootV != SrcV) {
-                        BasicBlock *DefBlk = (isa<Instruction>(RootV)) ?
+                        BasicBlock* DefBlk = (isa<Instruction>(RootV)) ?
                             cast<Instruction>(RootV)->getParent() : NULL;
                         LV->MarkVirtRegAliveInBlock(LV->getLVInfo(RootV), DefBlk, Blk);
                     }
@@ -1141,7 +1148,7 @@ DeSSA::CoalesceInsertElementsForBasicBlock(BasicBlock *Blk)
     }
 }
 
-Value* DeSSA::getRootValue(Value* Val, e_alignment *pAlign) const
+Value* DeSSA::getRootValue(Value* Val, e_alignment* pAlign) const
 {
     if (IGC_IS_FLAG_ENABLED(EnableDeSSAAlias))
     {
@@ -1154,14 +1161,14 @@ Value* DeSSA::getRootValue(Value* Val, e_alignment *pAlign) const
         if (IEI != InsEltMap.end()) {
             mapVal = IEI->second;
         }
-        Value *PhiRootVal = getRegRoot(mapVal ? mapVal : Val, pAlign);
+        Value* PhiRootVal = getRegRoot(mapVal ? mapVal : Val, pAlign);
         return (PhiRootVal ? PhiRootVal : mapVal);
     }
- 
+
     auto RI = InsEltMap.find(Val);
     if (RI != InsEltMap.end()) {
-        Value *InsEltRoot = RI->second;
-        Value *PhiRootVal = getRegRoot(InsEltRoot, pAlign);
+        Value* InsEltRoot = RI->second;
+        Value* PhiRootVal = getRegRoot(InsEltRoot, pAlign);
         return (PhiRootVal ? PhiRootVal : InsEltRoot);
     }
     return getRegRoot(Val, pAlign);
@@ -1169,7 +1176,7 @@ Value* DeSSA::getRootValue(Value* Val, e_alignment *pAlign) const
 
 void DeSSA::getAllValuesInCongruentClass(
     Value* V,
-    SmallVector<Value*, 8>& ValsInCC)
+    SmallVector<Value*, 8> & ValsInCC)
 {
     // Handle InsertElement specially. Note that only rootValue from
     // a sequence of insertElement is in congruent class. The RootValue
@@ -1191,14 +1198,14 @@ void DeSSA::getAllValuesInCongruentClass(
     return;
 }
 
-void DeSSA::CoalesceAliasInstForBasicBlock(BasicBlock *Blk)
+void DeSSA::CoalesceAliasInstForBasicBlock(BasicBlock* Blk)
 {
     if (IGC_GET_FLAG_VALUE(EnableDeSSAAlias) < 2) {
         return;
     }
     for (BasicBlock::iterator BBI = Blk->begin(), BBE = Blk->end();
         BBI != BBE; ++BBI) {
-        Instruction *I = &(*BBI);
+        Instruction* I = &(*BBI);
 
         // Now, better to think of code as a sequence Codegen Patterns,
         // not a sequence of llvm instructions.
@@ -1206,7 +1213,7 @@ void DeSSA::CoalesceAliasInstForBasicBlock(BasicBlock *Blk)
             continue;
         }
 
-        if (InsertElementInst* IEI = dyn_cast<InsertElementInst>(I))
+        if (InsertElementInst * IEI = dyn_cast<InsertElementInst>(I))
         {
             if (isa<UndefValue>(I->getOperand(0)))
             {
@@ -1244,7 +1251,7 @@ void DeSSA::CoalesceAliasInstForBasicBlock(BasicBlock *Blk)
                 }
             }
         }
-        else if (CastInst* CastI = dyn_cast<CastInst>(I))
+        else if (CastInst * CastI = dyn_cast<CastInst>(I))
         {
             if (IGC_GET_FLAG_VALUE(EnableDeSSAAlias) < 3) {
                 continue;
@@ -1274,12 +1281,12 @@ void DeSSA::CoalesceAliasInstForBasicBlock(BasicBlock *Blk)
                     assert(false && "ICE: Use visited before definition!");
                 }
             }
-        } 
+        }
     }
 }
 
 int DeSSA::checkInsertElementAlias(
-    InsertElementInst* IEI, SmallVector<Value*, 16>& AllIEIs)
+    InsertElementInst* IEI, SmallVector<Value*, 16> & AllIEIs)
 {
     assert(isa<UndefValue>(IEI->getOperand(0)) &&
         "ICE: need to pass first IEI as the argument");

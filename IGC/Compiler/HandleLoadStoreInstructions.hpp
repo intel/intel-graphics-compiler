@@ -55,11 +55,11 @@ namespace IGC
 
         /// @brief  Main entry point.
         /// @param  F The destination function.
-        virtual bool runOnFunction(llvm::Function &F) override;
-        void visitLoadInst(llvm::LoadInst &I);
-        void visitStoreInst(llvm::StoreInst &I);
+        virtual bool runOnFunction(llvm::Function& F) override;
+        void visitLoadInst(llvm::LoadInst& I);
+        void visitStoreInst(llvm::StoreInst& I);
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
         }
 

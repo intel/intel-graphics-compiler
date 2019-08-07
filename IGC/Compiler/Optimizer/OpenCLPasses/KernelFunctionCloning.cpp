@@ -77,78 +77,78 @@ using namespace IGC::IGCMD;
 //
 
 namespace {
-class KernelFunctionCloning : public ModulePass {
-public:
-  static char ID;
+    class KernelFunctionCloning : public ModulePass {
+    public:
+        static char ID;
 
-  KernelFunctionCloning() : ModulePass(ID) {}
+        KernelFunctionCloning() : ModulePass(ID) {}
 
-  bool runOnModule(Module &) override;
+        bool runOnModule(Module&) override;
 
-private:
-  void getAnalysisUsage(AnalysisUsage &AU) const override {
-    AU.setPreservesCFG();
-    AU.addRequired<CodeGenContextWrapper>();
-    AU.addRequired<MetaDataUtilsWrapper>();
-  }
-};
+    private:
+        void getAnalysisUsage(AnalysisUsage& AU) const override {
+            AU.setPreservesCFG();
+            AU.addRequired<CodeGenContextWrapper>();
+            AU.addRequired<MetaDataUtilsWrapper>();
+        }
+    };
 
 } // End anonymous namespace
 
 namespace IGC {
 
-ModulePass *createKernelFunctionCloningPass() {
-  return new KernelFunctionCloning();
-}
+    ModulePass* createKernelFunctionCloningPass() {
+        return new KernelFunctionCloning();
+    }
 
 #define PASS_FLAG "igc-kernel-function-cloning"
 #define PASS_DESC "Clone kernel functions if it's called."
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(KernelFunctionCloning, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
-IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
-IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
-IGC_INITIALIZE_PASS_END(KernelFunctionCloning, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
+    IGC_INITIALIZE_PASS_BEGIN(KernelFunctionCloning, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
+        IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
+        IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
+        IGC_INITIALIZE_PASS_END(KernelFunctionCloning, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 } // End IGC namespace
 
 char KernelFunctionCloning::ID = 0;
 
-bool KernelFunctionCloning::runOnModule(Module &M) {
-  MetaDataUtils *MDU = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+bool KernelFunctionCloning::runOnModule(Module& M) {
+    MetaDataUtils* MDU = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
 
-  // Collect kernel functions being called.
-  SmallVector<Function *, 8> KernelsToClone;
-  for (auto &F : M) {
-    auto FII = MDU->findFunctionsInfoItem(&F);
-    if (FII == MDU->end_FunctionsInfo())
-      continue;
-    // Check this kernell function is called.
-    for (auto *U : F.users()) {
-      ImmutableCallSite CS(U);
-      if (!CS)
-        continue;
-      KernelsToClone.push_back(&F);
-      break;
+    // Collect kernel functions being called.
+    SmallVector<Function*, 8> KernelsToClone;
+    for (auto& F : M) {
+        auto FII = MDU->findFunctionsInfoItem(&F);
+        if (FII == MDU->end_FunctionsInfo())
+            continue;
+        // Check this kernell function is called.
+        for (auto* U : F.users()) {
+            ImmutableCallSite CS(U);
+            if (!CS)
+                continue;
+            KernelsToClone.push_back(&F);
+            break;
+        }
     }
-  }
 
-  // Clone it
-  bool Changed = false;
-  for (auto *F : KernelsToClone) {
-    ValueToValueMapTy VMap;
-    auto *NewF = CloneFunction(F, VMap);
-    NewF->setLinkage(GlobalValue::InternalLinkage);
-    if(!F->getParent()->getFunction(NewF->getName()))
-        F->getParent()->getFunctionList().push_back(NewF);
-    for (auto *U : F->users()) {
-      CallSite CS(U);
-      if (!CS)
-        continue;
-      CS.setCalledFunction(NewF);
+    // Clone it
+    bool Changed = false;
+    for (auto* F : KernelsToClone) {
+        ValueToValueMapTy VMap;
+        auto* NewF = CloneFunction(F, VMap);
+        NewF->setLinkage(GlobalValue::InternalLinkage);
+        if (!F->getParent()->getFunction(NewF->getName()))
+            F->getParent()->getFunctionList().push_back(NewF);
+        for (auto* U : F->users()) {
+            CallSite CS(U);
+            if (!CS)
+                continue;
+            CS.setCalledFunction(NewF);
+        }
+        Changed = true;
     }
-    Changed = true;
-  }
 
-  return Changed;
+    return Changed;
 }

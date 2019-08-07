@@ -51,33 +51,33 @@ namespace IGC
 
         ~CustomSafeOptPass() {}
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.addRequired<CodeGenContextWrapper>();
             AU.setPreservesCFG();
         }
 
-        virtual bool runOnFunction(llvm::Function &F) override;
+        virtual bool runOnFunction(llvm::Function& F) override;
 
         virtual llvm::StringRef getPassName() const override
         {
             return "Custom Pass Optimization";
         }
 
-        void visitInstruction(llvm::Instruction &I);
-        void visitAllocaInst(llvm::AllocaInst &I);
-        void visitCallInst(llvm::CallInst &C);
-        void visitBinaryOperator(llvm::BinaryOperator &I);
-        bool isEmulatedAdd(llvm::BinaryOperator &I);
+        void visitInstruction(llvm::Instruction& I);
+        void visitAllocaInst(llvm::AllocaInst& I);
+        void visitCallInst(llvm::CallInst& C);
+        void visitBinaryOperator(llvm::BinaryOperator& I);
+        bool isEmulatedAdd(llvm::BinaryOperator& I);
         void visitBfi(llvm::CallInst* inst);
         void visitf32tof16(llvm::CallInst* inst);
         void visitSampleBptr(llvm::SampleIntrinsic* inst);
         void visitMulH(llvm::CallInst* inst, bool isSigned);
         void visitFPToUIInst(llvm::FPToUIInst& FPUII);
-        void visitFPTruncInst(llvm::FPTruncInst &I);
+        void visitFPTruncInst(llvm::FPTruncInst& I);
         void visitExtractElementInst(llvm::ExtractElementInst& I);
         void visitLdptr(llvm::CallInst* inst);
-        void visitLoadInst(llvm::LoadInst &I);
+        void visitLoadInst(llvm::LoadInst& I);
         //
         // IEEE Floating point arithmetic is not associative.  Any pattern
         // match that changes the order or paramters is unsafe.
@@ -92,9 +92,9 @@ namespace IGC
 
         // When in doubt assume a floating point optimization is unsafe!
 
-        void visitBinaryOperatorTwoConstants(llvm::BinaryOperator &I);
-        void visitBinaryOperatorPropNegate(llvm::BinaryOperator &I);
-        void visitBitCast(llvm::BitCastInst &BC);
+        void visitBinaryOperatorTwoConstants(llvm::BinaryOperator& I);
+        void visitBinaryOperatorPropNegate(llvm::BinaryOperator& I);
+        void visitBitCast(llvm::BitCastInst& BC);
 
     private:
         bool psHasSideEffect;
@@ -110,19 +110,19 @@ namespace IGC
 
         ~TrivialLocalMemoryOpsElimination() {}
 
-        virtual bool runOnFunction(llvm::Function &F) override;
+        virtual bool runOnFunction(llvm::Function& F) override;
 
         virtual llvm::StringRef getPassName() const override
         {
             return "TrivialLocalMemoryOpsElimination";
         }
 
-        void visitLoadInst(llvm::LoadInst &I);
-        void visitStoreInst(llvm::StoreInst &I);
-        void visitCallInst(llvm::CallInst &I);
-        bool isLocalBarrier(llvm::CallInst &I);
-        void findNextThreadGroupBarrierInst(llvm::Instruction &I);
-        void anyCallInstUseLocalMemory(llvm::CallInst &I);
+        void visitLoadInst(llvm::LoadInst& I);
+        void visitStoreInst(llvm::StoreInst& I);
+        void visitCallInst(llvm::CallInst& I);
+        bool isLocalBarrier(llvm::CallInst& I);
+        void findNextThreadGroupBarrierInst(llvm::Instruction& I);
+        void anyCallInstUseLocalMemory(llvm::CallInst& I);
 
     private:
         llvm::SmallVector<llvm::LoadInst*, 16> m_LocalLoadsToRemove;
@@ -143,30 +143,30 @@ namespace IGC
 
         ~GenSpecificPattern() {}
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.setPreservesCFG();
             AU.addRequired<CodeGenContextWrapper>();
         }
 
-        virtual bool runOnFunction(llvm::Function &F) override;
+        virtual bool runOnFunction(llvm::Function& F) override;
 
         virtual llvm::StringRef getPassName() const override
         {
             return "GenSpecificPattern";
         }
 
-        void visitBinaryOperator(llvm::BinaryOperator &I);
-        void visitSelectInst(llvm::SelectInst &I);
-        void visitCmpInst(llvm::CmpInst &I);
-        void visitZExtInst(llvm::ZExtInst &I);
-        void visitCastInst(llvm::CastInst &I);
+        void visitBinaryOperator(llvm::BinaryOperator& I);
+        void visitSelectInst(llvm::SelectInst& I);
+        void visitCmpInst(llvm::CmpInst& I);
+        void visitZExtInst(llvm::ZExtInst& I);
+        void visitCastInst(llvm::CastInst& I);
         void visitIntToPtr(llvm::IntToPtrInst& I);
         void visitSDiv(llvm::BinaryOperator& I);
-        void visitTruncInst(llvm::TruncInst &I);
-        void visitBitCastInst(llvm::BitCastInst &I);
+        void visitTruncInst(llvm::TruncInst& I);
+        void visitBitCastInst(llvm::BitCastInst& I);
 
-        template <typename MaskType> void matchReverse(llvm::BinaryOperator &I);
+        template <typename MaskType> void matchReverse(llvm::BinaryOperator& I);
     };
 
     class FCmpPaternMatch : public llvm::FunctionPass, public llvm::InstVisitor<FCmpPaternMatch>
@@ -178,14 +178,14 @@ namespace IGC
 
         ~FCmpPaternMatch() {}
 
-        virtual bool runOnFunction(llvm::Function &F) override;
+        virtual bool runOnFunction(llvm::Function& F) override;
 
         virtual llvm::StringRef getPassName() const override
         {
             return "FCmpPaternMatch";
         }
 
-        void visitSelectInst(llvm::SelectInst &I);
+        void visitSelectInst(llvm::SelectInst& I);
     };
 
     class IGCConstProp : public llvm::FunctionPass
@@ -193,47 +193,47 @@ namespace IGC
     public:
         static char ID;
 
-        IGCConstProp(bool enableMathConstProp=false,
-                     bool enableSimplifyGEP = false);
+        IGCConstProp(bool enableMathConstProp = false,
+            bool enableSimplifyGEP = false);
 
         ~IGCConstProp() {}
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.addRequired<llvm::TargetLibraryInfoWrapperPass>();
             AU.addRequired<CodeGenContextWrapper>();
             AU.setPreservesCFG();
         }
 
-        virtual bool runOnFunction(llvm::Function &F) override;
+        virtual bool runOnFunction(llvm::Function& F) override;
 
         virtual llvm::StringRef getPassName() const override
         {
             return "specialized const-prop with shader-const replacement";
         }
     private:
-        llvm::Module *module;
+        llvm::Module* module;
         llvm::Constant* ReplaceFromDynConstants(unsigned bufId, unsigned eltId, unsigned int size_in_bytes, llvm::Type* type);
-        llvm::Constant* replaceShaderConstant(llvm::LoadInst *inst);
-        llvm::Constant* ConstantFoldCallInstruction(llvm::CallInst *inst);
-        llvm::Constant* ConstantFoldCmpInst(llvm::CmpInst *inst);
-        llvm::Constant* ConstantFoldExtractElement(llvm::ExtractElementInst *inst);
-        bool simplifyAdd(llvm::BinaryOperator *BO);
-        bool simplifyGEP(llvm::GetElementPtrInst *GEP);
+        llvm::Constant* replaceShaderConstant(llvm::LoadInst* inst);
+        llvm::Constant* ConstantFoldCallInstruction(llvm::CallInst* inst);
+        llvm::Constant* ConstantFoldCmpInst(llvm::CmpInst* inst);
+        llvm::Constant* ConstantFoldExtractElement(llvm::ExtractElementInst* inst);
+        bool simplifyAdd(llvm::BinaryOperator* BO);
+        bool simplifyGEP(llvm::GetElementPtrInst* GEP);
         // try to evaluate the address if it is constant.
-        bool EvalConstantAddress(llvm::Value* address, unsigned int &offset, llvm::Value* ptrSrc = nullptr);
+        bool EvalConstantAddress(llvm::Value* address, unsigned int& offset, llvm::Value* ptrSrc = nullptr);
         bool m_enableMathConstProp;
         bool m_enableSimplifyGEP;
-        const llvm::DataLayout *m_TD;
-        llvm::TargetLibraryInfo *m_TLI;
+        const llvm::DataLayout* m_TD;
+        llvm::TargetLibraryInfo* m_TLI;
     };
-    
-    llvm::FunctionPass *createGenStrengthReductionPass();
-    llvm::FunctionPass *createNanHandlingPass();
-    llvm::FunctionPass *createFlattenSmallSwitchPass();
-    llvm::FunctionPass *createIGCIndirectICBPropagaionPass();
-    llvm::FunctionPass *createBlendToDiscardPass();
-    llvm::FunctionPass *createMarkReadOnlyLoadPass();
-    llvm::FunctionPass *createLogicalAndToBranchPass();
- 
+
+    llvm::FunctionPass* createGenStrengthReductionPass();
+    llvm::FunctionPass* createNanHandlingPass();
+    llvm::FunctionPass* createFlattenSmallSwitchPass();
+    llvm::FunctionPass* createIGCIndirectICBPropagaionPass();
+    llvm::FunctionPass* createBlendToDiscardPass();
+    llvm::FunctionPass* createMarkReadOnlyLoadPass();
+    llvm::FunctionPass* createLogicalAndToBranchPass();
+
 } // namespace IGC

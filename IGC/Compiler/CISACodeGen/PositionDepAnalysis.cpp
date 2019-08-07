@@ -36,75 +36,75 @@ char PositionDepAnalysis::ID = 0;
 #define PASS_DESCRIPTION "Pos"
 #define PASS_CFG_ONLY true
 #define PASS_ANALYSIS true
-IGC_INITIALIZE_PASS_BEGIN( PositionDepAnalysis, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS )
-IGC_INITIALIZE_PASS_DEPENDENCY( WIAnalysis )
-IGC_INITIALIZE_PASS_DEPENDENCY( DominatorTreeWrapperPass )
+IGC_INITIALIZE_PASS_BEGIN(PositionDepAnalysis, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_DEPENDENCY(WIAnalysis)
+IGC_INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
 IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
-IGC_INITIALIZE_PASS_DEPENDENCY( MetaDataUtilsWrapper )
-IGC_INITIALIZE_PASS_END( PositionDepAnalysis, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS )
+IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
+IGC_INITIALIZE_PASS_END(PositionDepAnalysis, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 namespace IGC
 {
 
 
-PositionDepAnalysis::PositionDepAnalysis() : FunctionPass(ID)
-{
-    initializePositionDepAnalysisPass( *PassRegistry::getPassRegistry() );
-}
-
-bool PositionDepAnalysis::runOnFunction(llvm::Function &F)
-{
-    CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    if(ctx->type == ShaderType::VERTEX_SHADER && ctx->m_DriverInfo.PreventZFighting())
+    PositionDepAnalysis::PositionDepAnalysis() : FunctionPass(ID)
     {
-        visit(F);
+        initializePositionDepAnalysisPass(*PassRegistry::getPassRegistry());
     }
-    return false;
-}
 
-void PositionDepAnalysis::visitCallInst(CallInst& I)
-{
-    if (GenIntrinsicInst* intr = dyn_cast<GenIntrinsicInst>(&I))
+    bool PositionDepAnalysis::runOnFunction(llvm::Function& F)
     {
-        if (intr->getIntrinsicID() == GenISAIntrinsic::GenISA_URBWrite)
+        CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+        if (ctx->type == ShaderType::VERTEX_SHADER && ctx->m_DriverInfo.PreventZFighting())
         {
-            if(ConstantInt* index = dyn_cast<ConstantInt>(intr->getOperand(0)))
+            visit(F);
+        }
+        return false;
+    }
+
+    void PositionDepAnalysis::visitCallInst(CallInst& I)
+    {
+        if (GenIntrinsicInst * intr = dyn_cast<GenIntrinsicInst>(&I))
+        {
+            if (intr->getIntrinsicID() == GenISAIntrinsic::GenISA_URBWrite)
             {
-                // position is written at offset 0 or 1
-                if(index->isZero() || index->isOne())
+                if (ConstantInt * index = dyn_cast<ConstantInt>(intr->getOperand(0)))
                 {
-                    unsigned int baseSourceIndex = index->isZero() ? 6 : 2;
-                    for(unsigned int i = 0; i < 4; i++)
+                    // position is written at offset 0 or 1
+                    if (index->isZero() || index->isOne())
                     {
-                        if(Instruction* instDep = dyn_cast<Instruction>(intr->getOperand(baseSourceIndex + i)))
+                        unsigned int baseSourceIndex = index->isZero() ? 6 : 2;
+                        for (unsigned int i = 0; i < 4; i++)
                         {
-                            UpdateDependency(instDep);
+                            if (Instruction * instDep = dyn_cast<Instruction>(intr->getOperand(baseSourceIndex + i)))
+                            {
+                                UpdateDependency(instDep);
+                            }
                         }
                     }
                 }
             }
         }
     }
-}
 
-void PositionDepAnalysis::UpdateDependency(Instruction* inst)
-{
-    auto it = m_PositionDep.insert(inst);
-    if(it.second)
+    void PositionDepAnalysis::UpdateDependency(Instruction* inst)
     {
-        for(unsigned int i = 0; i < inst->getNumOperands(); ++i)
+        auto it = m_PositionDep.insert(inst);
+        if (it.second)
         {
-            if(Instruction* srcInst = dyn_cast<Instruction>(inst->getOperand(i)))
+            for (unsigned int i = 0; i < inst->getNumOperands(); ++i)
             {
-                UpdateDependency(srcInst);
+                if (Instruction * srcInst = dyn_cast<Instruction>(inst->getOperand(i)))
+                {
+                    UpdateDependency(srcInst);
+                }
             }
         }
     }
-}
-bool PositionDepAnalysis::PositionDependsOnInst(Instruction* inst)
-{
-    return m_PositionDep.find(inst) != m_PositionDep.end();
-}
+    bool PositionDepAnalysis::PositionDependsOnInst(Instruction* inst)
+    {
+        return m_PositionDep.find(inst) != m_PositionDep.end();
+    }
 
 
 

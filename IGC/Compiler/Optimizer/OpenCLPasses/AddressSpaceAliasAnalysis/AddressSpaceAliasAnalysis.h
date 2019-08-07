@@ -33,7 +33,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace IGC {
 
-llvm::ImmutablePass *createAddressSpaceAAWrapperPass();
-void addAddressSpaceAAResult(llvm::Pass &, llvm::Function &, llvm::AAResults &);
+    llvm::ImmutablePass* createAddressSpaceAAWrapperPass();
+    void addAddressSpaceAAResult(llvm::Pass&, llvm::Function&, llvm::AAResults&);
 
 } // End IGC namespace

@@ -65,7 +65,7 @@ using namespace ::IGC;
 
 /// Profile - Used to gather unique data for the abbreviation folding set.
 ///
-void DIEAbbrevData::Profile(FoldingSetNodeID &ID) const
+void DIEAbbrevData::Profile(FoldingSetNodeID& ID) const
 {
     // Explicitly cast to an integer type for which FoldingSetNodeID has
     // overloads.  Otherwise MSVC 2010 thinks this call is ambiguous.
@@ -79,7 +79,7 @@ void DIEAbbrevData::Profile(FoldingSetNodeID &ID) const
 
 /// Profile - Used to gather unique data for the abbreviation folding set.
 ///
-void DIEAbbrev::Profile(FoldingSetNodeID &ID) const
+void DIEAbbrev::Profile(FoldingSetNodeID& ID) const
 {
     ID.AddInteger(unsigned(Tag));
     ID.AddInteger(ChildrenFlag);
@@ -93,7 +93,7 @@ void DIEAbbrev::Profile(FoldingSetNodeID &ID) const
 
 /// Emit - Print the abbreviation using the specified asm printer.
 ///
-void DIEAbbrev::Emit(StreamEmitter *AP) const
+void DIEAbbrev::Emit(StreamEmitter* AP) const
 {
     // Emit its Dwarf tag type.
     AP->EmitULEB128(Tag, dwarf::TagString(Tag));
@@ -104,7 +104,7 @@ void DIEAbbrev::Emit(StreamEmitter *AP) const
     // For each attribute description.
     for (unsigned i = 0, N = Data.size(); i < N; ++i)
     {
-        const DIEAbbrevData &AttrData = Data[i];
+        const DIEAbbrevData& AttrData = Data[i];
 
         // Emit attribute type.
         AP->EmitULEB128(AttrData.getAttribute(), dwarf::AttributeString(AttrData.getAttribute()));
@@ -119,24 +119,24 @@ void DIEAbbrev::Emit(StreamEmitter *AP) const
 }
 
 #ifndef NDEBUG
-void DIEAbbrev::print(raw_ostream &O)
+void DIEAbbrev::print(raw_ostream& O)
 {
-  O << "Abbreviation @"
-    << format("0x%lx", (long)(intptr_t)this)
-    << "  "
-    << dwarf::TagString(Tag)
-    << " "
-    << dwarf::ChildrenString(ChildrenFlag)
-    << '\n';
+    O << "Abbreviation @"
+        << format("0x%lx", (long)(intptr_t)this)
+        << "  "
+        << dwarf::TagString(Tag)
+        << " "
+        << dwarf::ChildrenString(ChildrenFlag)
+        << '\n';
 
-  for (unsigned i = 0, N = Data.size(); i < N; ++i)
-  {
-    O << "  "
-      << dwarf::AttributeString(Data[i].getAttribute())
-      << "  "
-      << dwarf::FormEncodingString(Data[i].getForm())
-      << '\n';
-  }
+    for (unsigned i = 0, N = Data.size(); i < N; ++i)
+    {
+        O << "  "
+            << dwarf::AttributeString(Data[i].getAttribute())
+            << "  "
+            << dwarf::FormEncodingString(Data[i].getForm())
+            << '\n';
+    }
 }
 
 void DIEAbbrev::dump()
@@ -151,24 +151,24 @@ void DIEAbbrev::dump()
 
 DIE::~DIE()
 {
-  for (unsigned i = 0, N = Children.size(); i < N; ++i)
-    delete Children[i];
+    for (unsigned i = 0, N = Children.size(); i < N; ++i)
+        delete Children[i];
 }
 
 /// Climb up the parent chain to get the compile unit DIE to which this DIE
 /// belongs.
-const DIE *DIE::getCompileUnit() const
+const DIE* DIE::getCompileUnit() const
 {
-    const DIE *Cu = getCompileUnitOrNull();
+    const DIE* Cu = getCompileUnitOrNull();
     assert(Cu && "We should not have orphaned DIEs.");
     return Cu;
 }
 
 /// Climb up the parent chain to get the compile unit DIE this DIE belongs
 /// to. Return NULL if DIE is not added to an owner yet.
-const DIE *DIE::getCompileUnitOrNull() const
+const DIE* DIE::getCompileUnitOrNull() const
 {
-    const DIE *p = this;
+    const DIE* p = this;
     while (p)
     {
         if (p->getTag() == dwarf::DW_TAG_compile_unit)
@@ -178,21 +178,21 @@ const DIE *DIE::getCompileUnitOrNull() const
     return NULL;
 }
 
-DIEValue *DIE::findAttribute(uint16_t Attribute)
+DIEValue* DIE::findAttribute(uint16_t Attribute)
 {
-  const SmallVectorImpl<DIEValue *> &Values = getValues();
-  const DIEAbbrev &Abbrevs = getAbbrev();
+    const SmallVectorImpl<DIEValue*>& Values = getValues();
+    const DIEAbbrev& Abbrevs = getAbbrev();
 
-  // Iterate through all the attributes until we find the one we're
-  // looking for, if we can't find it return NULL.
-  for (size_t i = 0; i < Values.size(); ++i)
-    if (Abbrevs.getData()[i].getAttribute() == Attribute)
-      return Values[i];
-  return NULL;
+    // Iterate through all the attributes until we find the one we're
+    // looking for, if we can't find it return NULL.
+    for (size_t i = 0; i < Values.size(); ++i)
+        if (Abbrevs.getData()[i].getAttribute() == Attribute)
+            return Values[i];
+    return NULL;
 }
 
 #ifndef NDEBUG
-void DIE::print(raw_ostream &O, unsigned IndentCount) const
+void DIE::print(raw_ostream& O, unsigned IndentCount) const
 {
     const std::string Indent(IndentCount, ' ');
     bool isBlock = Abbrev.getTag() == 0;
@@ -214,7 +214,7 @@ void DIE::print(raw_ostream &O, unsigned IndentCount) const
         O << "Size: " << Size << "\n";
     }
 
-    const SmallVectorImpl<DIEAbbrevData> &Data = Abbrev.getData();
+    const SmallVectorImpl<DIEAbbrevData>& Data = Abbrev.getData();
 
     IndentCount += 2;
     for (unsigned i = 0, N = Data.size(); i < N; ++i)
@@ -244,7 +244,7 @@ void DIE::print(raw_ostream &O, unsigned IndentCount) const
 
 void DIE::dump()
 {
-  print(dbgs());
+    print(dbgs());
 }
 #endif
 
@@ -261,7 +261,7 @@ void DIEValue::dump() const
 
 /// EmitValue - Emit integer of appropriate size.
 ///
-void DIEInteger::EmitValue(StreamEmitter *Asm, dwarf::Form Form) const
+void DIEInteger::EmitValue(StreamEmitter* Asm, dwarf::Form Form) const
 {
     unsigned Size = ~0U;
     switch (Form)
@@ -291,7 +291,7 @@ void DIEInteger::EmitValue(StreamEmitter *Asm, dwarf::Form Form) const
 
 /// SizeOf - Determine size of integer value in bytes.
 ///
-unsigned DIEInteger::SizeOf(StreamEmitter *AP, dwarf::Form Form) const
+unsigned DIEInteger::SizeOf(StreamEmitter* AP, dwarf::Form Form) const
 {
     switch (Form)
     {
@@ -316,7 +316,7 @@ unsigned DIEInteger::SizeOf(StreamEmitter *AP, dwarf::Form Form) const
 }
 
 #ifndef NDEBUG
-void DIEInteger::print(raw_ostream &O) const
+void DIEInteger::print(raw_ostream& O) const
 {
     O << "Int: " << (int64_t)Integer << "  0x";
     O.write_hex(Integer);
@@ -329,14 +329,14 @@ void DIEInteger::print(raw_ostream &O) const
 
 /// EmitValue - Emit expression value.
 ///
-void DIEExpr::EmitValue(StreamEmitter *AP, dwarf::Form Form) const
+void DIEExpr::EmitValue(StreamEmitter* AP, dwarf::Form Form) const
 {
     AP->EmitValue(Expr, SizeOf(AP, Form));
 }
 
 /// SizeOf - Determine size of expression value in bytes.
 ///
-unsigned DIEExpr::SizeOf(StreamEmitter *AP, dwarf::Form Form) const
+unsigned DIEExpr::SizeOf(StreamEmitter* AP, dwarf::Form Form) const
 {
     if (Form == dwarf::DW_FORM_data4) return 4;
     if (Form == dwarf::DW_FORM_sec_offset) return 4;
@@ -345,7 +345,7 @@ unsigned DIEExpr::SizeOf(StreamEmitter *AP, dwarf::Form Form) const
 }
 
 #ifndef NDEBUG
-void DIEExpr::print(raw_ostream &O) const
+void DIEExpr::print(raw_ostream& O) const
 {
     O << "Expr: ";
     //Expr->print(O);
@@ -358,7 +358,7 @@ void DIEExpr::print(raw_ostream &O) const
 
 /// EmitValue - Emit label value.
 ///
-void DIELabel::EmitValue(StreamEmitter *AP, dwarf::Form Form) const
+void DIELabel::EmitValue(StreamEmitter* AP, dwarf::Form Form) const
 {
     AP->EmitLabelReference(Label, SizeOf(AP, Form),
         Form == dwarf::DW_FORM_strp ||
@@ -368,7 +368,7 @@ void DIELabel::EmitValue(StreamEmitter *AP, dwarf::Form Form) const
 
 /// SizeOf - Determine size of label value in bytes.
 ///
-unsigned DIELabel::SizeOf(StreamEmitter *AP, dwarf::Form Form) const
+unsigned DIELabel::SizeOf(StreamEmitter* AP, dwarf::Form Form) const
 {
     if (Form == dwarf::DW_FORM_data4) return 4;
     if (Form == dwarf::DW_FORM_sec_offset) return 4;
@@ -377,7 +377,7 @@ unsigned DIELabel::SizeOf(StreamEmitter *AP, dwarf::Form Form) const
 }
 
 #ifndef NDEBUG
-void DIELabel::print(raw_ostream &O) const
+void DIELabel::print(raw_ostream& O) const
 {
     O << "Lbl: " << Label->getName();
 }
@@ -389,14 +389,14 @@ void DIELabel::print(raw_ostream &O) const
 
 /// EmitValue - Emit delta value.
 ///
-void DIEDelta::EmitValue(StreamEmitter *AP, dwarf::Form Form) const
+void DIEDelta::EmitValue(StreamEmitter* AP, dwarf::Form Form) const
 {
     AP->EmitLabelDifference(LabelHi, LabelLo, SizeOf(AP, Form));
 }
 
 /// SizeOf - Determine size of delta value in bytes.
 ///
-unsigned DIEDelta::SizeOf(StreamEmitter *AP, dwarf::Form Form) const
+unsigned DIEDelta::SizeOf(StreamEmitter* AP, dwarf::Form Form) const
 {
     if (Form == dwarf::DW_FORM_data4) return 4;
     if (Form == dwarf::DW_FORM_strp) return 4;
@@ -404,7 +404,7 @@ unsigned DIEDelta::SizeOf(StreamEmitter *AP, dwarf::Form Form) const
 }
 
 #ifndef NDEBUG
-void DIEDelta::print(raw_ostream &O) const
+void DIEDelta::print(raw_ostream& O) const
 {
     O << "Del: " << LabelHi->getName() << "-" << LabelLo->getName();
 }
@@ -416,20 +416,20 @@ void DIEDelta::print(raw_ostream &O) const
 
 /// EmitValue - Emit string value.
 ///
-void DIEString::EmitValue(StreamEmitter *AP, dwarf::Form Form) const
+void DIEString::EmitValue(StreamEmitter* AP, dwarf::Form Form) const
 {
     Access->EmitValue(AP, Form);
 }
 
 /// SizeOf - Determine size of delta value in bytes.
 ///
-unsigned DIEString::SizeOf(StreamEmitter *AP, dwarf::Form Form) const
+unsigned DIEString::SizeOf(StreamEmitter* AP, dwarf::Form Form) const
 {
     return Access->SizeOf(AP, Form);
 }
 
 #ifndef NDEBUG
-void DIEString::print(raw_ostream &O) const
+void DIEString::print(raw_ostream& O) const
 {
     O << "String: " << Str << "\tSymbol: ";
     Access->print(O);
@@ -442,7 +442,7 @@ void DIEString::print(raw_ostream &O) const
 
 /// EmitValue - Emit string value.
 ///
-void DIEInlinedString::EmitValue(StreamEmitter *AP, dwarf::Form Form) const
+void DIEInlinedString::EmitValue(StreamEmitter* AP, dwarf::Form Form) const
 {
     AP->EmitBytes(Str);
     AP->EmitInt8(0);
@@ -450,13 +450,13 @@ void DIEInlinedString::EmitValue(StreamEmitter *AP, dwarf::Form Form) const
 
 /// SizeOf - Determine size of delta value in bytes.
 ///
-unsigned DIEInlinedString::SizeOf(StreamEmitter *AP, dwarf::Form Form) const
+unsigned DIEInlinedString::SizeOf(StreamEmitter* AP, dwarf::Form Form) const
 {
-    return Str.size()+1;
+    return Str.size() + 1;
 }
 
 #ifndef NDEBUG
-void DIEInlinedString::print(raw_ostream &O) const
+void DIEInlinedString::print(raw_ostream& O) const
 {
     O << "Inlined string: " << Str << "\tSymbol: ";
 }
@@ -468,12 +468,12 @@ void DIEInlinedString::print(raw_ostream &O) const
 
 /// EmitValue - Emit debug information entry offset.
 ///
-void DIEEntry::EmitValue(StreamEmitter *AP, dwarf::Form Form) const
+void DIEEntry::EmitValue(StreamEmitter* AP, dwarf::Form Form) const
 {
     AP->EmitInt32(Entry->getOffset());
 }
 
-unsigned DIEEntry::getRefAddrSize(StreamEmitter *AP, unsigned DwarfVersion)
+unsigned DIEEntry::getRefAddrSize(StreamEmitter* AP, unsigned DwarfVersion)
 {
     // DWARF4: References that use the attribute form DW_FORM_ref_addr are
     // specified to be four bytes in the DWARF 32-bit format and eight bytes
@@ -485,7 +485,7 @@ unsigned DIEEntry::getRefAddrSize(StreamEmitter *AP, unsigned DwarfVersion)
 }
 
 #ifndef NDEBUG
-void DIEEntry::print(raw_ostream &O) const
+void DIEEntry::print(raw_ostream& O) const
 {
     O << format("Die: 0x%lx", (long)(intptr_t)Entry);
 }
@@ -497,11 +497,11 @@ void DIEEntry::print(raw_ostream &O) const
 
 /// ComputeSize - calculate the size of the block.
 ///
-unsigned DIEBlock::ComputeSize(StreamEmitter *AP)
+unsigned DIEBlock::ComputeSize(StreamEmitter* AP)
 {
     if (!Size)
     {
-        const SmallVectorImpl<DIEAbbrevData> &AbbrevData = Abbrev.getData();
+        const SmallVectorImpl<DIEAbbrevData>& AbbrevData = Abbrev.getData();
         for (unsigned i = 0, N = Values.size(); i < N; ++i)
             Size += Values[i]->SizeOf(AP, AbbrevData[i].getForm());
     }
@@ -511,7 +511,7 @@ unsigned DIEBlock::ComputeSize(StreamEmitter *AP)
 
 /// EmitValue - Emit block data.
 ///
-void DIEBlock::EmitValue(StreamEmitter *Asm, dwarf::Form Form) const
+void DIEBlock::EmitValue(StreamEmitter* Asm, dwarf::Form Form) const
 {
     switch (Form)
     {
@@ -522,14 +522,14 @@ void DIEBlock::EmitValue(StreamEmitter *Asm, dwarf::Form Form) const
     case dwarf::DW_FORM_block:  Asm->EmitULEB128(Size); break;
     }
 
-    const SmallVectorImpl<DIEAbbrevData> &AbbrevData = Abbrev.getData();
+    const SmallVectorImpl<DIEAbbrevData>& AbbrevData = Abbrev.getData();
     for (unsigned i = 0, N = Values.size(); i < N; ++i)
         Values[i]->EmitValue(Asm, AbbrevData[i].getForm());
 }
 
 /// SizeOf - Determine size of block data in bytes.
 ///
-unsigned DIEBlock::SizeOf(StreamEmitter * /*AP*/, dwarf::Form Form) const
+unsigned DIEBlock::SizeOf(StreamEmitter* /*AP*/, dwarf::Form Form) const
 {
     switch (Form)
     {
@@ -542,7 +542,7 @@ unsigned DIEBlock::SizeOf(StreamEmitter * /*AP*/, dwarf::Form Form) const
 }
 
 #ifndef NDEBUG
-void DIEBlock::print(raw_ostream &O) const
+void DIEBlock::print(raw_ostream& O) const
 {
     O << "Blk: ";
     DIE::print(O, 5);

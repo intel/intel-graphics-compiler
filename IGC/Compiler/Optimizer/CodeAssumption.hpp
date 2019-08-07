@@ -56,9 +56,9 @@ namespace IGC
 
         CodeAssumption() : ModulePass(ID), m_changed(false) {}
 
-        bool runOnModule(llvm::Module &) override;
+        bool runOnModule(llvm::Module&) override;
 
-        void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+        void getAnalysisUsage(llvm::AnalysisUsage& AU) const override {
             AU.setPreservesCFG();
             AU.addRequired<MetaDataUtilsWrapper>();
             AU.addRequired<CodeGenContextWrapper>();
@@ -67,9 +67,9 @@ namespace IGC
         // APIs used directly
         static bool addAssumption(
             llvm::Function* F,
-            llvm::AssumptionCache *AC);
+            llvm::AssumptionCache* AC);
 
-        static bool IsSGIdUniform(IGCMD::MetaDataUtils* pMDU, ModuleMetaData *modMD, llvm::Function* F);
+        static bool IsSGIdUniform(IGCMD::MetaDataUtils* pMDU, ModuleMetaData* modMD, llvm::Function* F);
 
     private:
         bool m_changed;
@@ -84,8 +84,8 @@ namespace IGC
 
         // helpers
         static bool isPositiveIndVar(
-            llvm::PHINode *PN,
-            const llvm::DataLayout *DL,
-            llvm::AssumptionCache *AC);
+            llvm::PHINode* PN,
+            const llvm::DataLayout* DL,
+            llvm::AssumptionCache* AC);
     };
 }

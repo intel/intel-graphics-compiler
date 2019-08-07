@@ -49,7 +49,7 @@ ScalarizerCodeGen::ScalarizerCodeGen() : FunctionPass(ID)
 }
 
 
-bool ScalarizerCodeGen::runOnFunction(Function &F)
+bool ScalarizerCodeGen::runOnFunction(Function& F)
 {
     llvm::IRBuilder<> builder(F.getContext());
     m_builder = &builder;
@@ -58,7 +58,7 @@ bool ScalarizerCodeGen::runOnFunction(Function &F)
     return false;
 }
 
-void ScalarizerCodeGen::visitBinaryOperator(llvm::BinaryOperator &I)
+void ScalarizerCodeGen::visitBinaryOperator(llvm::BinaryOperator& I)
 {
     // Scalarizing vector type And/Or instructions
     if (I.getOpcode() == Instruction::And || I.getOpcode() == Instruction::Or || I.getOpcode() == Instruction::Xor)
@@ -67,7 +67,7 @@ void ScalarizerCodeGen::visitBinaryOperator(llvm::BinaryOperator &I)
         {
             bool isNewTypeVector = false;
 
-            VectorType *instType = cast<VectorType>(I.getType());
+            VectorType* instType = cast<VectorType>(I.getType());
             unsigned numElements = int_cast<unsigned>(instType->getNumElements());
             unsigned scalarSize = instType->getScalarSizeInBits();
             unsigned newScalarBits = numElements * scalarSize;
@@ -95,32 +95,32 @@ void ScalarizerCodeGen::visitBinaryOperator(llvm::BinaryOperator &I)
 
             if (newType)
             {
-                Value *src0 = I.getOperand(0);
-                Value *src1 = I.getOperand(1);
+                Value* src0 = I.getOperand(0);
+                Value* src1 = I.getOperand(1);
                 auto logicOp = I.getOpcode();
                 m_builder->SetInsertPoint(&I);
                 // bitcast the operands to new type
-                Value *castedSrc0 = m_builder->CreateBitCast(src0, newType);
-                Value *castedSrc1 = m_builder->CreateBitCast(src1, newType);
-                Value *newBitCastInst;
+                Value* castedSrc0 = m_builder->CreateBitCast(src0, newType);
+                Value* castedSrc1 = m_builder->CreateBitCast(src1, newType);
+                Value* newBitCastInst;
 
                 // Generate scalar logic operations, and then bitcast the result to a vector type
                 if (!isNewTypeVector)
                 {
-                    Value *newLogicInst = m_builder->CreateBinOp(logicOp, castedSrc0, castedSrc1);
+                    Value* newLogicInst = m_builder->CreateBinOp(logicOp, castedSrc0, castedSrc1);
                     newBitCastInst = m_builder->CreateBitCast(newLogicInst, instType);
                 }
                 else
                 {
-                    VectorType *newVecType = cast<VectorType>(newType);
+                    VectorType* newVecType = cast<VectorType>(newType);
                     unsigned newVecTypeNumEle = int_cast<unsigned>(newVecType->getNumElements());
-                    Value *ieLogicOp = UndefValue::get(newType);
+                    Value* ieLogicOp = UndefValue::get(newType);
                     for (unsigned i = 0; i < newVecTypeNumEle; i++)
                     {
-                        Value *constIndex = ConstantInt::get(m_builder->getInt32Ty(), i);
-                        Value *eeSrc0 = m_builder->CreateExtractElement(castedSrc0, constIndex);
-                        Value *eeSrc1 = m_builder->CreateExtractElement(castedSrc1, constIndex);
-                        Value *newLogicInst = m_builder->CreateBinOp(logicOp, eeSrc0, eeSrc1);
+                        Value* constIndex = ConstantInt::get(m_builder->getInt32Ty(), i);
+                        Value* eeSrc0 = m_builder->CreateExtractElement(castedSrc0, constIndex);
+                        Value* eeSrc1 = m_builder->CreateExtractElement(castedSrc1, constIndex);
+                        Value* newLogicInst = m_builder->CreateBinOp(logicOp, eeSrc0, eeSrc1);
                         ieLogicOp = m_builder->CreateInsertElement(ieLogicOp, newLogicInst, constIndex);
                     }
                     newBitCastInst = m_builder->CreateBitCast(ieLogicOp, instType);

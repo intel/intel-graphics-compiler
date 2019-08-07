@@ -45,10 +45,10 @@ namespace IGC
         static char ID;
     public:
         FoldKnownWorkGroupSizes() : FunctionPass(ID) {}
-        bool runOnFunction(llvm::Function &F);
-        void visitCallInst(llvm::CallInst &I);
+        bool runOnFunction(llvm::Function& F);
+        void visitCallInst(llvm::CallInst& I);
 
-        void getAnalysisUsage(llvm::AnalysisUsage &AU) const
+        void getAnalysisUsage(llvm::AnalysisUsage& AU) const
         {
             AU.addRequired<IGC::CodeGenContextWrapper>();
         }
@@ -64,13 +64,13 @@ using namespace llvm;
 using namespace IGC;
 using namespace IGCMD;
 
-bool FoldKnownWorkGroupSizes::runOnFunction(Function &F)
+bool FoldKnownWorkGroupSizes::runOnFunction(Function& F)
 {
     visit(F);
     return m_changed;
 }
 
-void FoldKnownWorkGroupSizes::visitCallInst(llvm::CallInst &I)
+void FoldKnownWorkGroupSizes::visitCallInst(llvm::CallInst& I)
 {
     Function* function = I.getParent()->getParent();
     Module* module = function->getParent();
@@ -107,7 +107,7 @@ void FoldKnownWorkGroupSizes::visitCallInst(llvm::CallInst &I)
         ThreadGroupSizeMetaDataHandle tgMD = funcMDHandle->getThreadGroupSize();
         //Check threadGroup has value
         if (!tgMD->hasValue())
-            return;        
+            return;
 
         IRBuilder<> IRB(&I);
 
@@ -117,10 +117,10 @@ void FoldKnownWorkGroupSizes::visitCallInst(llvm::CallInst &I)
             (uint32_t)tgMD->getYDim(),
             (uint32_t)tgMD->getZDim(),
         };
-        auto *CV = ConstantDataVector::get(I.getContext(), Dims);
+        auto* CV = ConstantDataVector::get(I.getContext(), Dims);
 
-        auto *Dim = I.getArgOperand(0);
-        auto *EE = IRB.CreateExtractElement(CV, Dim, "enqueuedLocalSize");
+        auto* Dim = I.getArgOperand(0);
+        auto* EE = IRB.CreateExtractElement(CV, Dim, "enqueuedLocalSize");
 
         I.replaceAllUsesWith(EE);
         // TODO: erase when patch token is not required

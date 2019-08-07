@@ -44,55 +44,55 @@ using namespace IGC;
 
 namespace {
 
-/**
- * Check sampler result and do early out using discard based on blend state.
- */
-class BlendToDiscard : public FunctionPass
-{
-public:
-    static char ID;
-
-    BlendToDiscard() : FunctionPass(ID)
+    /**
+     * Check sampler result and do early out using discard based on blend state.
+     */
+    class BlendToDiscard : public FunctionPass
     {
-        initializeBlendToDiscardPass(*PassRegistry::getPassRegistry());
-    }
+    public:
+        static char ID;
 
-    void getAnalysisUsage(AnalysisUsage& AU) const override
-    {
-        AU.setPreservesCFG();
-        AU.addRequired<CodeGenContextWrapper>();
-        AU.addRequired<MetaDataUtilsWrapper>();
-    }
-    
-    virtual llvm::StringRef getPassName() const override
-    {
-        return "BlendToDiscard";
-    }
-
-    bool runOnFunction(Function& F) override;
-    
-private:
-    CodeGenContext* m_cgCtx;
-    ModuleMetaData* m_modMD;
-    Module* m_module;
-
-    bool discardOnAlpha(GenIntrinsicInst* out);
-
-    // Blend to discard opt for multiple render target writes
-    bool blendToDiscardMRT(GenIntrinsicInst** outInst, unsigned nOutInsts);
-
-    Instruction* isFMul(Value* v)
-    {
-        Instruction* inst = dyn_cast<Instruction>(v);
-        if (inst && inst->getOpcode() == Instruction::FMul)
+        BlendToDiscard() : FunctionPass(ID)
         {
-            return inst;
+            initializeBlendToDiscardPass(*PassRegistry::getPassRegistry());
         }
-        return nullptr;
-    }
 
-    void createDiscard(Instruction* extract, bool check0);
-};
+        void getAnalysisUsage(AnalysisUsage& AU) const override
+        {
+            AU.setPreservesCFG();
+            AU.addRequired<CodeGenContextWrapper>();
+            AU.addRequired<MetaDataUtilsWrapper>();
+        }
+
+        virtual llvm::StringRef getPassName() const override
+        {
+            return "BlendToDiscard";
+        }
+
+        bool runOnFunction(Function& F) override;
+
+    private:
+        CodeGenContext* m_cgCtx;
+        ModuleMetaData* m_modMD;
+        Module* m_module;
+
+        bool discardOnAlpha(GenIntrinsicInst* out);
+
+        // Blend to discard opt for multiple render target writes
+        bool blendToDiscardMRT(GenIntrinsicInst** outInst, unsigned nOutInsts);
+
+        Instruction* isFMul(Value* v)
+        {
+            Instruction* inst = dyn_cast<Instruction>(v);
+            if (inst && inst->getOpcode() == Instruction::FMul)
+            {
+                return inst;
+            }
+            return nullptr;
+        }
+
+        void createDiscard(Instruction* extract, bool check0);
+    };
 
 } // namespace
 
@@ -100,12 +100,12 @@ char BlendToDiscard::ID = 0;
 
 IGC_INITIALIZE_PASS_BEGIN(BlendToDiscard,
     "BlendToDiscard", "BlendToDiscard", false, false)
-IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
-IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper);
-IGC_INITIALIZE_PASS_END(BlendToDiscard, 
+    IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
+    IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper);
+IGC_INITIALIZE_PASS_END(BlendToDiscard,
     "BlendToDiscard", "BlendToDiscard", false, false)
 
-FunctionPass* IGC::createBlendToDiscardPass()
+    FunctionPass* IGC::createBlendToDiscardPass()
 {
     return new BlendToDiscard();
 }
@@ -122,7 +122,7 @@ bool BlendToDiscard::runOnFunction(Function& F)
 
 
     // Skip non-kernel function.                                                  
-    IGCMD::MetaDataUtils *mdu =
+    IGCMD::MetaDataUtils* mdu =
         getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     auto FII = mdu->findFunctionsInfoItem(&F);
     if (FII == mdu->end_FunctionsInfo())
@@ -139,7 +139,7 @@ bool BlendToDiscard::runOnFunction(Function& F)
     {
         return false;
     }
-    
+
     smallvector<GenIntrinsicInst*, 8> outInst(MAX_NUM_OUTPUTS);
     unsigned nOutInsts = 0, nOutValues = 0;
 
@@ -200,10 +200,10 @@ bool BlendToDiscard::runOnFunction(Function& F)
         changed = discardOnAlpha(outInst[0]);
     }
     else
-    if (nOutInsts == 2 && outInst[0] != nullptr && outInst[1] != nullptr)
-    {
-        changed = blendToDiscardMRT(outInst.data(), nOutInsts);
-    }
+        if (nOutInsts == 2 && outInst[0] != nullptr && outInst[1] != nullptr)
+        {
+            changed = blendToDiscardMRT(outInst.data(), nOutInsts);
+        }
 
 #ifdef DEBUG_BLENDTODISCARD
     if (changed)
@@ -263,7 +263,7 @@ bool BlendToDiscard::discardOnAlpha(GenIntrinsicInst* out)
                     continue;
                 }
 
-                if (ExtractElementInst* extract = dyn_cast<ExtractElementInst>(v))
+                if (ExtractElementInst * extract = dyn_cast<ExtractElementInst>(v))
                 {
                     GenIntrinsicInst* intrin = dyn_cast<GenIntrinsicInst>(
                         extract->getVectorOperand());
@@ -286,7 +286,7 @@ bool BlendToDiscard::discardOnAlpha(GenIntrinsicInst* out)
             }
         }
     }
-    
+
     return changed;
 }
 

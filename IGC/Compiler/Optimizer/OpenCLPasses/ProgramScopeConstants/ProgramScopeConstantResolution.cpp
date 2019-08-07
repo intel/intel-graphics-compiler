@@ -60,11 +60,11 @@ ProgramScopeConstantResolution::ProgramScopeConstantResolution(bool Conservative
     initializeProgramScopeConstantResolutionPass(*PassRegistry::getPassRegistry());
 }
 
-static bool needRunConservatively(const Module &M) {
-    for (auto &F : M) {
-        for (auto &BB : F) {
-            for (auto &I : BB) {
-                const AddrSpaceCastInst *ASCI = dyn_cast<AddrSpaceCastInst>(&I);
+static bool needRunConservatively(const Module& M) {
+    for (auto& F : M) {
+        for (auto& BB : F) {
+            for (auto& I : BB) {
+                const AddrSpaceCastInst* ASCI = dyn_cast<AddrSpaceCastInst>(&I);
                 if (!ASCI)
                     continue;
                 if (ASCI->getSrcTy()->getPointerAddressSpace() == ADDRESS_SPACE_CONSTANT)
@@ -75,12 +75,12 @@ static bool needRunConservatively(const Module &M) {
     return false;
 }
 
-bool ProgramScopeConstantResolution::runOnModule(Module &M)
+bool ProgramScopeConstantResolution::runOnModule(Module& M)
 {
     LLVMContext& C = M.getContext();
 
-    MetaDataUtils *mdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-    ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+    MetaDataUtils* mdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
     if (modMD->inlineProgramScopeOffsets.empty())
     {
         // There are no constants, or no constants are used, so we have nothing to do.
@@ -88,25 +88,25 @@ bool ProgramScopeConstantResolution::runOnModule(Module &M)
     }
 
     if (RunCautiously) {
-       if (!needRunConservatively(M))
-        return false;
-       // RED ALERT! RED ALERT! RED ALERT! Rats found!
-       // Per OpenCL C spec, no `constant` object are allowed to be written.
-       // Compile should report compile time errors once such kind of usage is
-       // found. However, we have tests, which needs passing, rely on a
-       // constant buffer to be populated with data in runtime. That violates
-       // the OpenCL C spec, either OCL 1.2 or OCL 2.0.
-       //
-       // We will run constant lowering if we are asked to run cautiously and
-       // we found cases where we need to run conservatively, i.e., there are
-       // `addrspacecast` from constant address space into other address spaces
-       // (private/local/global) where writes are allowed. Once such cases are
-       // found, we run constant lowering in the original order before
-       // optimization; otherwise, we run post-optimization lowering of
-       // constant.
+        if (!needRunConservatively(M))
+            return false;
+        // RED ALERT! RED ALERT! RED ALERT! Rats found!
+        // Per OpenCL C spec, no `constant` object are allowed to be written.
+        // Compile should report compile time errors once such kind of usage is
+        // found. However, we have tests, which needs passing, rely on a
+        // constant buffer to be populated with data in runtime. That violates
+        // the OpenCL C spec, either OCL 1.2 or OCL 2.0.
+        //
+        // We will run constant lowering if we are asked to run cautiously and
+        // we found cases where we need to run conservatively, i.e., there are
+        // `addrspacecast` from constant address space into other address spaces
+        // (private/local/global) where writes are allowed. Once such cases are
+        // found, we run constant lowering in the original order before
+        // optimization; otherwise, we run post-optimization lowering of
+        // constant.
     }
 
-    for( Module::global_iterator I = M.global_begin(), E = M.global_end(); I != E; ++I )
+    for (Module::global_iterator I = M.global_begin(), E = M.global_end(); I != E; ++I)
     {
         GlobalVariable* pGlobalVar = &(*I);
         PointerType* ptrType = cast<PointerType>(pGlobalVar->getType());
@@ -117,15 +117,15 @@ bool ProgramScopeConstantResolution::runOnModule(Module &M)
 
         // local address space variables are also generated as GlobalVariables.
         // Ignore them here.
-        if( AS == ADDRESS_SPACE_LOCAL)
+        if (AS == ADDRESS_SPACE_LOCAL)
         {
             continue;
         }
 
-        if( AS != ADDRESS_SPACE_CONSTANT &&
+        if (AS != ADDRESS_SPACE_CONSTANT &&
             AS != ADDRESS_SPACE_GLOBAL &&
             // This is a workaround for clang bug, clang creates string constants with private address sapce!
-            AS != ADDRESS_SPACE_PRIVATE )
+            AS != ADDRESS_SPACE_PRIVATE)
         {
             assert(0 && "program scope variable with unexpected address space");
             continue;
@@ -133,7 +133,7 @@ bool ProgramScopeConstantResolution::runOnModule(Module &M)
 
         Constant* initializer = pGlobalVar->getInitializer();
         assert(initializer && "Constant must be initialized");
-        if( !initializer )
+        if (!initializer)
         {
             continue;
         }
@@ -148,18 +148,18 @@ bool ProgramScopeConstantResolution::runOnModule(Module &M)
         int offset = -1;
 
         auto bufferOffset = modMD->inlineProgramScopeOffsets.find(pGlobalVar);
-        if( bufferOffset != modMD->inlineProgramScopeOffsets.end() )
+        if (bufferOffset != modMD->inlineProgramScopeOffsets.end())
         {
             offset = bufferOffset->second;
         }
-        
+
         // This constant is not used, so it didn't get an offset.
-        if( offset == -1 )
+        if (offset == -1)
         {
             continue;
         }
 
-        ConstantInt * pOffset = ConstantInt::get(Type::getInt32Ty(C), offset);
+        ConstantInt* pOffset = ConstantInt::get(Type::getInt32Ty(C), offset);
         const ImplicitArg::ArgType argType =
             AS == ADDRESS_SPACE_GLOBAL ? ImplicitArg::GLOBAL_BASE : ImplicitArg::CONSTANT_BASE;
 
@@ -195,7 +195,7 @@ bool ProgramScopeConstantResolution::runOnModule(Module &M)
 
             if (!funcToVarSet[userFunc].count(pGlobalVar))
             {
-                Instruction *pEntryPoint = &(*userFunc->getEntryBlock().getFirstInsertionPt());
+                Instruction* pEntryPoint = &(*userFunc->getEntryBlock().getFirstInsertionPt());
 
                 // Create a GEP to get to the right offset in the constant buffer
                 GetElementPtrInst* gep = GetElementPtrInst::Create(nullptr, &*bufArg, pOffset, "off" + pGlobalVar->getName(), pEntryPoint);
@@ -205,7 +205,7 @@ bool ProgramScopeConstantResolution::runOnModule(Module &M)
                 // Update the map with the fix new value
                 funcToVarSet[userFunc][pGlobalVar] = pNewVal;
             }
-            
+
             Value* bc = funcToVarSet[userFunc][pGlobalVar];
             assert(bc != nullptr && "Program Scope buffer handling is broken!");
 

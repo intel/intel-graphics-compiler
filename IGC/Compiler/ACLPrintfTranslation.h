@@ -36,29 +36,29 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace IGC
 {
-class ACLPrintfTranslation : public llvm::ModulePass, public llvm::InstVisitor < ACLPrintfTranslation >
-{
-public:
-static char ID;
+    class ACLPrintfTranslation : public llvm::ModulePass, public llvm::InstVisitor < ACLPrintfTranslation >
+    {
+    public:
+        static char ID;
 
-ACLPrintfTranslation();
+        ACLPrintfTranslation();
 
-~ACLPrintfTranslation() {}
+        ~ACLPrintfTranslation() {}
 
-virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
-{
-AU.addRequired<IGC::MetaDataUtilsWrapper>();
-AU.setPreservesCFG();
-}
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
+        {
+            AU.addRequired<IGC::MetaDataUtilsWrapper>();
+            AU.setPreservesCFG();
+        }
 
-virtual bool runOnModule(llvm::Module &M) override;
-void visitCallInst(llvm::CallInst &CI);
+        virtual bool runOnModule(llvm::Module& M) override;
+        void visitCallInst(llvm::CallInst& CI);
 
-virtual llvm::StringRef getPassName() const override
-{
-return "Translate ACL Printf";
-}
+        virtual llvm::StringRef getPassName() const override
+        {
+            return "Translate ACL Printf";
+        }
 
-};
+    };
 
 } // namespace IGC

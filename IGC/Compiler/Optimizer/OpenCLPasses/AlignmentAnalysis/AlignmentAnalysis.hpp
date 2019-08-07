@@ -61,38 +61,38 @@ namespace IGC
             return "AlignmentAnalysisPass";
         }
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.setPreservesCFG();
         }
 
         /// @brief  Main entry point.
-        virtual bool runOnFunction(llvm::Function &F) override;
+        virtual bool runOnFunction(llvm::Function& F) override;
 
         // @ brief Instruction visitors
-        unsigned int visitInstruction(llvm::Instruction &I);
-        unsigned int visitAllocaInst(llvm::AllocaInst &I);
-        unsigned int visitIntToPtrInst(llvm::IntToPtrInst &I);
-        unsigned int visitPtrToIntInst(llvm::PtrToIntInst &I);
-        unsigned int visitSelectInst(llvm::SelectInst &I);
-        unsigned int visitGetElementPtrInst(llvm::GetElementPtrInst &I);
-        unsigned int visitPHINode(llvm::PHINode &I);
-        unsigned int visitBitCastInst(llvm::BitCastInst &I);
-        unsigned int visitAdd(llvm::BinaryOperator &I);
-        unsigned int visitMul(llvm::BinaryOperator &I);
-        unsigned int visitShl(llvm::BinaryOperator &I);
-        unsigned int visitAnd(llvm::BinaryOperator &I);
-        unsigned int visitTruncInst(llvm::TruncInst &I);
-        unsigned int visitZExtInst(llvm::ZExtInst &I);
-        unsigned int visitSExtInst(llvm::SExtInst &I);
-        unsigned int visitCallInst(llvm::CallInst &I);
+        unsigned int visitInstruction(llvm::Instruction& I);
+        unsigned int visitAllocaInst(llvm::AllocaInst& I);
+        unsigned int visitIntToPtrInst(llvm::IntToPtrInst& I);
+        unsigned int visitPtrToIntInst(llvm::PtrToIntInst& I);
+        unsigned int visitSelectInst(llvm::SelectInst& I);
+        unsigned int visitGetElementPtrInst(llvm::GetElementPtrInst& I);
+        unsigned int visitPHINode(llvm::PHINode& I);
+        unsigned int visitBitCastInst(llvm::BitCastInst& I);
+        unsigned int visitAdd(llvm::BinaryOperator& I);
+        unsigned int visitMul(llvm::BinaryOperator& I);
+        unsigned int visitShl(llvm::BinaryOperator& I);
+        unsigned int visitAnd(llvm::BinaryOperator& I);
+        unsigned int visitTruncInst(llvm::TruncInst& I);
+        unsigned int visitZExtInst(llvm::ZExtInst& I);
+        unsigned int visitSExtInst(llvm::SExtInst& I);
+        unsigned int visitCallInst(llvm::CallInst& I);
 
-        void SetInstAlignment(llvm::Instruction &I);
-        void SetInstAlignment(llvm::LoadInst &I);
-        void SetInstAlignment(llvm::StoreInst &I);
-        void SetInstAlignment(llvm::MemSetInst &I);
-        void SetInstAlignment(llvm::MemCpyInst &I);
-        void SetInstAlignment(llvm::MemMoveInst &I);
+        void SetInstAlignment(llvm::Instruction& I);
+        void SetInstAlignment(llvm::LoadInst& I);
+        void SetInstAlignment(llvm::StoreInst& I);
+        void SetInstAlignment(llvm::MemSetInst& I);
+        void SetInstAlignment(llvm::MemCpyInst& I);
+        void SetInstAlignment(llvm::MemMoveInst& I);
 
     protected:
         /// @breif Evaluates the alignment of I based on its operands.
@@ -104,7 +104,7 @@ namespace IGC
         /// @brief Returns the alignment for V, if it is known.
         ///        Otherwise, returns the maximum alignment.
         /// @param V the value the alignment of which we're interested in
-        unsigned int getAlignValue(llvm::Value *V) const;
+        unsigned int getAlignValue(llvm::Value* V) const;
 
         /// @brief Returns the alignment of a constant integer.
         ///        This is normally 1 << ctz(C) (the highest power of 2 that divides C), 
@@ -116,7 +116,7 @@ namespace IGC
 
         static const unsigned int MinimumAlignment = 1;
 
-        const llvm::DataLayout *m_DL;
+        const llvm::DataLayout* m_DL;
     };
 
 } // namespace IGC

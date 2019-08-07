@@ -62,28 +62,28 @@ HalfPromotion::HalfPromotion() : FunctionPass(ID)
     initializeHalfPromotionPass(*PassRegistry::getPassRegistry());
 }
 
-bool HalfPromotion::runOnFunction(Function &F) 
+bool HalfPromotion::runOnFunction(Function& F)
 {
     visit(F);
     return m_changed;
 }
 
-void HalfPromotion::visitCallInst(llvm::CallInst &I)
+void HalfPromotion::visitCallInst(llvm::CallInst& I)
 {
-    if(llvm::isa<llvm::IntrinsicInst>(I) && I.getType()->isHalfTy())
+    if (llvm::isa<llvm::IntrinsicInst>(I) && I.getType()->isHalfTy())
     {
         handleLLVMIntrinsic(llvm::cast<IntrinsicInst>(I));
     }
-    else if(llvm::isa<GenIntrinsicInst>(I) && I.getType()->isHalfTy())
+    else if (llvm::isa<GenIntrinsicInst>(I) && I.getType()->isHalfTy())
     {
         handleGenIntrinsic(llvm::cast<GenIntrinsicInst>(I));
     }
 }
 
-void IGC::HalfPromotion::handleLLVMIntrinsic(llvm::IntrinsicInst &I)
+void IGC::HalfPromotion::handleLLVMIntrinsic(llvm::IntrinsicInst& I)
 {
     Intrinsic::ID id = I.getIntrinsicID();
-    if(id == Intrinsic::cos ||
+    if (id == Intrinsic::cos ||
         id == Intrinsic::sin ||
         id == Intrinsic::log2 ||
         id == Intrinsic::exp2 ||
@@ -105,7 +105,7 @@ void IGC::HalfPromotion::handleLLVMIntrinsic(llvm::IntrinsicInst &I)
             I.getIntrinsicID(),
             builder.getFloatTy());
 
-        for(unsigned i = 0; i < I.getNumArgOperands(); ++i)
+        for (unsigned i = 0; i < I.getNumArgOperands(); ++i)
         {
             if (I.getOperand(i)->getType()->isHalfTy())
             {
@@ -127,10 +127,10 @@ void IGC::HalfPromotion::handleLLVMIntrinsic(llvm::IntrinsicInst &I)
     }
 }
 
-void IGC::HalfPromotion::handleGenIntrinsic(llvm::GenIntrinsicInst &I)
+void IGC::HalfPromotion::handleGenIntrinsic(llvm::GenIntrinsicInst& I)
 {
     GenISAIntrinsic::ID id = I.getIntrinsicID();
-    if(id == GenISAIntrinsic::GenISA_fsat ||
+    if (id == GenISAIntrinsic::GenISA_fsat ||
         id == GenISAIntrinsic::GenISA_rsq ||
         id == GenISAIntrinsic::GenISA_GradientX ||
         id == GenISAIntrinsic::GenISA_GradientY ||
@@ -145,9 +145,9 @@ void IGC::HalfPromotion::handleGenIntrinsic(llvm::GenIntrinsicInst &I)
             I.getIntrinsicID(),
             builder.getFloatTy());
 
-        for(unsigned i = 0; i < I.getNumArgOperands(); ++i)
+        for (unsigned i = 0; i < I.getNumArgOperands(); ++i)
         {
-            if(I.getOperand(i)->getType()->isHalfTy())
+            if (I.getOperand(i)->getType()->isHalfTy())
             {
                 Value* op = builder.CreateFPExt(I.getOperand(i), builder.getFloatTy());
                 arguments.push_back(op);
@@ -167,9 +167,9 @@ void IGC::HalfPromotion::handleGenIntrinsic(llvm::GenIntrinsicInst &I)
     }
 }
 
-void HalfPromotion::visitFCmp(llvm::FCmpInst &CmpI)
+void HalfPromotion::visitFCmp(llvm::FCmpInst& CmpI)
 {
-    if(CmpI.getOperand(0)->getType()->isHalfTy())
+    if (CmpI.getOperand(0)->getType()->isHalfTy())
     {
         llvm::IGCIRBuilder<> builder(&CmpI);
         Value* op1 = builder.CreateFPExt(CmpI.getOperand(0), builder.getFloatTy());
@@ -180,13 +180,13 @@ void HalfPromotion::visitFCmp(llvm::FCmpInst &CmpI)
     }
 }
 
-void HalfPromotion::visitBinaryOperator(llvm::BinaryOperator &BI)
+void HalfPromotion::visitBinaryOperator(llvm::BinaryOperator& BI)
 {
-    if(BI.getType()->isHalfTy() &&
-       (BI.getOpcode() == BinaryOperator::FAdd ||
-        BI.getOpcode() == BinaryOperator::FSub ||
-        BI.getOpcode() == BinaryOperator::FMul ||
-        BI.getOpcode() == BinaryOperator::FDiv))
+    if (BI.getType()->isHalfTy() &&
+        (BI.getOpcode() == BinaryOperator::FAdd ||
+            BI.getOpcode() == BinaryOperator::FSub ||
+            BI.getOpcode() == BinaryOperator::FMul ||
+            BI.getOpcode() == BinaryOperator::FDiv))
     {
         llvm::IGCIRBuilder<> builder(&BI);
         Value* op1 = builder.CreateFPExt(BI.getOperand(0), builder.getFloatTy());
@@ -211,15 +211,15 @@ void HalfPromotion::visitBinaryOperator(llvm::BinaryOperator &BI)
 
 */
 
-void HalfPromotion::visitCastInst(llvm::CastInst &CI)
+void HalfPromotion::visitCastInst(llvm::CastInst& CI)
 {
-    if(CI.getType()->isHalfTy() &&
+    if (CI.getType()->isHalfTy() &&
         (CI.getOpcode() == CastInst::UIToFP ||
-         CI.getOpcode() == CastInst::SIToFP))
+            CI.getOpcode() == CastInst::SIToFP))
     {
         llvm::IGCIRBuilder<> builder(&CI);
         Value* newOp = nullptr;
-        if(CI.getOpcode() == CastInst::UIToFP)
+        if (CI.getOpcode() == CastInst::UIToFP)
         {
             newOp = builder.CreateUIToFP(CI.getOperand(0), builder.getFloatTy());
         }
@@ -231,14 +231,14 @@ void HalfPromotion::visitCastInst(llvm::CastInst &CI)
         CI.replaceAllUsesWith(f16Val);
         m_changed = true;
     }
-    else if(CI.getOperand(0)->getType()->isHalfTy() &&
-            (CI.getOpcode() == CastInst::FPToUI ||
-             CI.getOpcode() == CastInst::FPToSI))
+    else if (CI.getOperand(0)->getType()->isHalfTy() &&
+        (CI.getOpcode() == CastInst::FPToUI ||
+            CI.getOpcode() == CastInst::FPToSI))
     {
         llvm::IGCIRBuilder<> builder(&CI);
         Value* newOp = nullptr;
         Value* f32Val = builder.CreateFPExt(CI.getOperand(0), builder.getFloatTy());
-        if(CI.getOpcode() == CastInst::FPToUI)
+        if (CI.getOpcode() == CastInst::FPToUI)
         {
             newOp = builder.CreateFPToUI(f32Val, CI.getType());
         }
@@ -251,9 +251,9 @@ void HalfPromotion::visitCastInst(llvm::CastInst &CI)
     }
 }
 
-void HalfPromotion::visitSelectInst(llvm::SelectInst &SI)
+void HalfPromotion::visitSelectInst(llvm::SelectInst& SI)
 {
-    if(SI.getTrueValue()->getType()->isHalfTy())
+    if (SI.getTrueValue()->getType()->isHalfTy())
     {
         llvm::IGCIRBuilder<> builder(&SI);
         Value* opTrue = builder.CreateFPExt(SI.getTrueValue(), builder.getFloatTy());
@@ -265,17 +265,17 @@ void HalfPromotion::visitSelectInst(llvm::SelectInst &SI)
     }
 }
 
-void HalfPromotion::visitPHINode(llvm::PHINode &PHI)
+void HalfPromotion::visitPHINode(llvm::PHINode& PHI)
 {
-    if(!PHI.getType()->isHalfTy())
+    if (!PHI.getType()->isHalfTy())
     {
         return;
     }
 
     llvm::IGCIRBuilder<> builder(&PHI);
-    llvm::PHINode *pNewPhi = llvm::PHINode::Create(builder.getFloatTy(), PHI.getNumIncomingValues(), "", &PHI);
+    llvm::PHINode* pNewPhi = llvm::PHINode::Create(builder.getFloatTy(), PHI.getNumIncomingValues(), "", &PHI);
 
-    for(unsigned int i = 0; i < PHI.getNumIncomingValues(); ++i)
+    for (unsigned int i = 0; i < PHI.getNumIncomingValues(); ++i)
     {
         builder.SetInsertPoint(PHI.getIncomingBlock(i)->getTerminator());
         Value* phiFloatValue = builder.CreateFPExt(PHI.getIncomingValue(i), builder.getFloatTy());

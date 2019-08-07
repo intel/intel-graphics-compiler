@@ -52,34 +52,34 @@ IGC_INITIALIZE_PASS_END(CorrectlyRoundedDivSqrt, PASS_FLAG, PASS_DESCRIPTION, PA
 char CorrectlyRoundedDivSqrt::ID = 0;
 
 CorrectlyRoundedDivSqrt::CorrectlyRoundedDivSqrt() : ModulePass(ID),
-    m_forceCR(false), m_hasHalfTy(false), m_IsCorrectlyRounded(false)
+m_forceCR(false), m_hasHalfTy(false), m_IsCorrectlyRounded(false)
 {
     initializeCorrectlyRoundedDivSqrtPass(*PassRegistry::getPassRegistry());
 }
 
 CorrectlyRoundedDivSqrt::CorrectlyRoundedDivSqrt(bool forceCR, bool HasHalf) : ModulePass(ID),
-    m_forceCR(forceCR), m_hasHalfTy(HasHalf), m_IsCorrectlyRounded(false)
+m_forceCR(forceCR), m_hasHalfTy(HasHalf), m_IsCorrectlyRounded(false)
 {
     initializeCorrectlyRoundedDivSqrtPass(*PassRegistry::getPassRegistry());
 }
 
-bool CorrectlyRoundedDivSqrt::runOnModule(Module &M) 
+bool CorrectlyRoundedDivSqrt::runOnModule(Module& M)
 {
     // Was the module compiled with the CR flag on?
     m_IsCorrectlyRounded = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData()->compOpt.CorrectlyRoundedDivSqrt;
 
     // Even if it wasn't, it's possible that CR was requested through a build-time option
     // (This is relevant at least for SPIR)
-    if( !m_IsCorrectlyRounded && !m_forceCR )
+    if (!m_IsCorrectlyRounded && !m_forceCR)
     {
         return false;
     }
 
     m_changed = false;
 
-    for( Function &F : M )
+    for (Function& F : M)
     {
-        if( F.isDeclaration() )
+        if (F.isDeclaration())
         {
             if (!m_hasHalfTy)
                 m_changed |= processDeclaration(F);
@@ -92,10 +92,10 @@ bool CorrectlyRoundedDivSqrt::runOnModule(Module &M)
     return m_changed;
 }
 
-bool CorrectlyRoundedDivSqrt::processDeclaration(Function &F)
+bool CorrectlyRoundedDivSqrt::processDeclaration(Function& F)
 {
     StringRef name = F.getName();
-    if( name.startswith("_Z4sqrt") )
+    if (name.startswith("_Z4sqrt"))
     {
         std::string newName = name.str();
         newName[2] = '7';
@@ -104,7 +104,7 @@ bool CorrectlyRoundedDivSqrt::processDeclaration(Function &F)
         return true;
     }
     else if (name.startswith("__builtin_spirv_OpenCL_sqrt_") &&
-             !name.startswith("__builtin_spirv_OpenCL_sqrt_cr"))
+        !name.startswith("__builtin_spirv_OpenCL_sqrt_cr"))
     {
         std::string newName = name.str();
         newName.insert(28, "cr_");
@@ -116,9 +116,9 @@ bool CorrectlyRoundedDivSqrt::processDeclaration(Function &F)
     return false;
 }
 
-Value *CorrectlyRoundedDivSqrt::emitIEEEDivide(BinaryOperator *I, Value *Op0, Value *Op1)
+Value* CorrectlyRoundedDivSqrt::emitIEEEDivide(BinaryOperator* I, Value* Op0, Value* Op1)
 {
-    Type *Ty = Op0->getType();
+    Type* Ty = Op0->getType();
     IRBuilder<> IRB(I);
 
     auto* IEEEDivide = GenISAIntrinsic::getDeclaration(
@@ -126,10 +126,10 @@ Value *CorrectlyRoundedDivSqrt::emitIEEEDivide(BinaryOperator *I, Value *Op0, Va
         GenISAIntrinsic::GenISA_IEEE_Divide,
         Ty->getScalarType());
 
-    Value *Divide = nullptr;
+    Value* Divide = nullptr;
     if (!isa<VectorType>(Ty))
     {
-        Value *Args[] = { Op0, Op1 };
+        Value* Args[] = { Op0, Op1 };
         Divide = IRB.CreateCall(IEEEDivide, Args);
     }
     else
@@ -138,10 +138,10 @@ Value *CorrectlyRoundedDivSqrt::emitIEEEDivide(BinaryOperator *I, Value *Op0, Va
         Divide = UndefValue::get(Ty);
         for (unsigned i = 0; i < VecLen; i++)
         {
-            auto *SOp0 = IRB.CreateExtractElement(Op0, i);
-            auto *SOp1 = IRB.CreateExtractElement(Op1, i);
-            Value *Args[] = { SOp0, SOp1 };
-            auto *ScalarDivide = IRB.CreateCall(IEEEDivide, Args);
+            auto* SOp0 = IRB.CreateExtractElement(Op0, i);
+            auto* SOp1 = IRB.CreateExtractElement(Op1, i);
+            Value* Args[] = { SOp0, SOp1 };
+            auto* ScalarDivide = IRB.CreateCall(IEEEDivide, Args);
             Divide = IRB.CreateInsertElement(Divide, ScalarDivide, i);
         }
     }
@@ -149,13 +149,13 @@ Value *CorrectlyRoundedDivSqrt::emitIEEEDivide(BinaryOperator *I, Value *Op0, Va
     return Divide;
 }
 
-void CorrectlyRoundedDivSqrt::visitFDiv(BinaryOperator &I)
+void CorrectlyRoundedDivSqrt::visitFDiv(BinaryOperator& I)
 {
-    Type *Ty = I.getType();
+    Type* Ty = I.getType();
 
     if (Ty->getScalarType()->isFloatTy())
     {
-        auto *Divide = emitIEEEDivide(&I, I.getOperand(0), I.getOperand(1));
+        auto* Divide = emitIEEEDivide(&I, I.getOperand(0), I.getOperand(1));
 
         I.replaceAllUsesWith(Divide);
         I.eraseFromParent();

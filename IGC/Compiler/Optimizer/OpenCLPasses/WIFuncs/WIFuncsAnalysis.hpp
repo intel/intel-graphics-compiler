@@ -57,7 +57,7 @@ namespace IGC
             return "WIFuncsAnalysis";
         }
 
-        void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+        void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.addRequired<MetaDataUtilsWrapper>();
         }
@@ -67,12 +67,12 @@ namespace IGC
         ///         analyzes them and creates metadata that represents the implicit information needed
         ///         by each function for resolving these function calls
         /// @param  M The destination module.
-        virtual bool runOnModule(llvm::Module &M) override;
+        virtual bool runOnModule(llvm::Module& M) override;
 
         /// @brief  Call instructions visitor.
         ///         Checks for OpenCL WI functions and analyzes it
         /// @param  CI The call instruction.
-        void visitCallInst(llvm::CallInst &CI);
+        void visitCallInst(llvm::CallInst& CI);
 
         static const llvm::StringRef GET_LOCAL_ID_X;
         static const llvm::StringRef GET_LOCAL_ID_Y;
@@ -93,7 +93,7 @@ namespace IGC
         ///         metadata that represents the implicit information needed by this function 
         ///         for resolving these function calls
         /// @param  F The destination function.
-        bool runOnFunction(llvm::Function &F);
+        bool runOnFunction(llvm::Function& F);
 
 
         /// @brief  Marks whether local id is needed by the current function

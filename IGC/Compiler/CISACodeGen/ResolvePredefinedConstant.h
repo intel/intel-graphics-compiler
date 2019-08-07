@@ -33,8 +33,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/LLVMWarningsPop.hpp"
 
 namespace IGC {
-  llvm::ModulePass *createResolvePredefinedConstantPass();
-  void initializePredefinedConstantResolvingPass(llvm::PassRegistry &);
+    llvm::ModulePass* createResolvePredefinedConstantPass();
+    void initializePredefinedConstantResolvingPass(llvm::PassRegistry&);
 } // End namespace IGC
 
 #endif // _CISA_RESOLVEPREDEFINEDCONSTANT_H_

@@ -41,29 +41,29 @@ using namespace llvm;
 using namespace IGC;
 
 namespace {
-class GenericAddressAnalysis : public FunctionPass {
-public:
-    static char ID;
+    class GenericAddressAnalysis : public FunctionPass {
+    public:
+        static char ID;
 
-    GenericAddressAnalysis()
-        : FunctionPass(ID)
-    {
-    }
-    ~GenericAddressAnalysis() = default;
+        GenericAddressAnalysis()
+            : FunctionPass(ID)
+        {
+        }
+        ~GenericAddressAnalysis() = default;
 
-    virtual void getAnalysisUsage(AnalysisUsage& AU) const override
-    {
-        AU.setPreservesCFG();
-        AU.addRequired<MetaDataUtilsWrapper>();
-    }
+        virtual void getAnalysisUsage(AnalysisUsage& AU) const override
+        {
+            AU.setPreservesCFG();
+            AU.addRequired<MetaDataUtilsWrapper>();
+        }
 
-    virtual StringRef getPassName() const override
-    {
-        return "GenericAddressAnalysis";
-    }
+        virtual StringRef getPassName() const override
+        {
+            return "GenericAddressAnalysis";
+        }
 
-    virtual bool runOnFunction(Function& F) override;
-};
+        virtual bool runOnFunction(Function& F) override;
+    };
 } // namespace
 
 // Register pass
@@ -107,40 +107,40 @@ bool GenericAddressAnalysis::runOnFunction(Function& F)
 }
 
 namespace {
-class GenericAddressDynamicResolution : public FunctionPass {
-public:
-    static char ID;
-    Module* m_module = nullptr;
+    class GenericAddressDynamicResolution : public FunctionPass {
+    public:
+        static char ID;
+        Module* m_module = nullptr;
 
-    GenericAddressDynamicResolution()
-        : FunctionPass(ID)
-    {
-    }
-    ~GenericAddressDynamicResolution() = default;
+        GenericAddressDynamicResolution()
+            : FunctionPass(ID)
+        {
+        }
+        ~GenericAddressDynamicResolution() = default;
 
-    virtual StringRef getPassName() const override
-    {
-        return "GenericAddressDynamicResolution";
-    }
+        virtual StringRef getPassName() const override
+        {
+            return "GenericAddressDynamicResolution";
+        }
 
-    virtual void getAnalysisUsage(AnalysisUsage& AU) const override
-    {
-        AU.addRequired<MetaDataUtilsWrapper>();
-        AU.addRequired<CodeGenContextWrapper>();
-    }
+        virtual void getAnalysisUsage(AnalysisUsage& AU) const override
+        {
+            AU.addRequired<MetaDataUtilsWrapper>();
+            AU.addRequired<CodeGenContextWrapper>();
+        }
 
-    virtual bool runOnFunction(Function& F) override;
+        virtual bool runOnFunction(Function& F) override;
 
-    bool visitLoadStoreInst(Instruction& I);
-    bool visitIntrinsicCall(CallInst& I);
-    Module* getModule() { return m_module; }
+        bool visitLoadStoreInst(Instruction& I);
+        bool visitIntrinsicCall(CallInst& I);
+        Module* getModule() { return m_module; }
 
-private:
-    Value* addIsAddrSpaceComparison(Value* pointer, Instruction* insertPoint, unsigned targetAS);
-    Type* getPointerAsIntType(LLVMContext& Ctx, unsigned AS);
-    Value* getAddrSpaceWindowEndAddress(Instruction& insertPoint, unsigned targetAS);
-    void resolveGAS(Instruction& I, Value* pointerOperand, unsigned targetAS);
-};
+    private:
+        Value* addIsAddrSpaceComparison(Value* pointer, Instruction* insertPoint, unsigned targetAS);
+        Type* getPointerAsIntType(LLVMContext& Ctx, unsigned AS);
+        Value* getAddrSpaceWindowEndAddress(Instruction& insertPoint, unsigned targetAS);
+        void resolveGAS(Instruction& I, Value* pointerOperand, unsigned targetAS);
+    };
 
 } // namespace
 
@@ -172,7 +172,7 @@ bool GenericAddressDynamicResolution::runOnFunction(Function& F)
         for (inst_iterator i = inst_begin(F); i != inst_end(F); ++i) {
             Instruction& instruction = (*i);
 
-            if (CallInst* intrinsic = dyn_cast<CallInst>(&instruction)) {
+            if (CallInst * intrinsic = dyn_cast<CallInst>(&instruction)) {
                 changed = visitIntrinsicCall(*intrinsic);
             }
 
@@ -229,7 +229,8 @@ Value* GenericAddressDynamicResolution::addIsAddrSpaceComparison(Value* pointer,
 
     if (windowStartPtr) {
         windowStartAsInt = PtrToIntInst::Create(Instruction::PtrToInt, windowStartPtr, intPtrTy, "", insertPoint);
-    } else {
+    }
+    else {
         // Kernel might not have implicit argument for ImplicitArg::PRIVATE_BASE
         windowStartAsInt = ConstantInt::get(intPtrTy, 0);
     }
@@ -250,15 +251,17 @@ bool GenericAddressDynamicResolution::visitLoadStoreInst(Instruction& I)
     unsigned int pointerAddressSpace = ADDRESS_SPACE_NUM_ADDRESSES;
     unsigned int pointerAlignment = 0;
 
-    if (LoadInst* load = dyn_cast<LoadInst>(&I)) {
+    if (LoadInst * load = dyn_cast<LoadInst>(&I)) {
         pointerOperand = load->getPointerOperand();
         pointerAddressSpace = load->getPointerAddressSpace();
         pointerAlignment = load->getAlignment();
-    } else if (StoreInst* store = dyn_cast<StoreInst>(&I)) {
+    }
+    else if (StoreInst * store = dyn_cast<StoreInst>(&I)) {
         pointerOperand = store->getPointerOperand();
         pointerAddressSpace = store->getPointerAddressSpace();
         pointerAlignment = store->getAlignment();
-    } else {
+    }
+    else {
         report_fatal_error("Unable to resolve generic address space pointer");
     }
 
@@ -275,15 +278,17 @@ Value* GenericAddressDynamicResolution::getAddrSpaceWindowEndAddress(Instruction
 {
     Function* pCurrentFunc = insertPoint.getParent()->getParent();
     ImplicitArgs implicitArgs = ImplicitArgs(*pCurrentFunc, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils());
-    Argument *windowStart = nullptr, *windowSize = nullptr;
+    Argument* windowStart = nullptr, * windowSize = nullptr;
 
     if (targetAS == ADDRESS_SPACE_LOCAL) {
         windowStart = implicitArgs.getImplicitArg(*pCurrentFunc, ImplicitArg::LOCAL_MEMORY_STATELESS_WINDOW_START_ADDRESS);
         windowSize = implicitArgs.getImplicitArg(*pCurrentFunc, ImplicitArg::LOCAL_MEMORY_STATELESS_WINDOW_SIZE);
-    } else if (targetAS == ADDRESS_SPACE_PRIVATE) {
+    }
+    else if (targetAS == ADDRESS_SPACE_PRIVATE) {
         windowStart = implicitArgs.getImplicitArg(*pCurrentFunc, ImplicitArg::PRIVATE_BASE);
         windowSize = implicitArgs.getImplicitArg(*pCurrentFunc, ImplicitArg::PRIVATE_MEMORY_STATELESS_SIZE);
-    } else
+    }
+    else
         assert(false && "Unknown AddrSpace");
 
     if ((windowStart != nullptr) && (windowSize != nullptr)) {
@@ -292,11 +297,13 @@ Value* GenericAddressDynamicResolution::getAddrSpaceWindowEndAddress(Instruction
         Value* windowSizeAsInt = CastInst::CreateZExtOrBitCast(windowSize, intPtrTy, "", &insertPoint);
         Value* windowEnd = BinaryOperator::CreateAdd(windowStartAsInt, windowSizeAsInt, "localWindowEnd", &insertPoint);
         return windowEnd;
-    } else if ((windowStart == nullptr) && (windowSize != nullptr)) {
+    }
+    else if ((windowStart == nullptr) && (windowSize != nullptr)) {
         // Assume start from 0 if windowStart is not defined.
         Type* intPtrTy = getPointerAsIntType(pCurrentFunc->getContext(), ADDRESS_SPACE_GENERIC);
         return CastInst::CreateZExtOrBitCast(windowSize, intPtrTy, "", &insertPoint);
-    } else
+    }
+    else
         assert(false && "AddrSpace without limit");
 
     return ConstantInt::get(Type::getInt32Ty(insertPoint.getContext()), 0);
@@ -321,11 +328,13 @@ void GenericAddressDynamicResolution::resolveGAS(Instruction& I, Value* pointerO
         IRBuilder<> localBuilder(localLoadBlock);
         PointerType* localPtrType = pointerType->getElementType()->getPointerTo(targetAS);
         Value* localPtr = localBuilder.CreateAddrSpaceCast(pointerOperand, localPtrType);
-        if (LoadInst* LI = dyn_cast<LoadInst>(&I)) {
+        if (LoadInst * LI = dyn_cast<LoadInst>(&I)) {
             localLoad = localBuilder.CreateAlignedLoad(localPtr, LI->getAlignment(), LI->isVolatile(), "localLoad");
-        } else if (StoreInst* SI = dyn_cast<StoreInst>(&I)) {
+        }
+        else if (StoreInst * SI = dyn_cast<StoreInst>(&I)) {
             localBuilder.CreateAlignedStore(I.getOperand(0), localPtr, SI->getAlignment(), SI->isVolatile());
-        } else {
+        }
+        else {
             // Inst I is a to_local(pointerOperand) call, and we can use localPtr as I's result.
             localLoad = localPtr;
         }
@@ -338,11 +347,13 @@ void GenericAddressDynamicResolution::resolveGAS(Instruction& I, Value* pointerO
         PointerType* ptrType = pointerType->getElementType()->getPointerTo(ADDRESS_SPACE_GLOBAL_OR_PRIVATE);
         Value* nonLocalPtr = nonLocalBuilder.CreateAddrSpaceCast(pointerOperand, ptrType);
 
-        if (LoadInst* LI = dyn_cast<LoadInst>(&I)) {
+        if (LoadInst * LI = dyn_cast<LoadInst>(&I)) {
             nonLocalLoad = nonLocalBuilder.CreateAlignedLoad(nonLocalPtr, LI->getAlignment(), LI->isVolatile(), "globalOrPrivateLoad");
-        } else if (StoreInst* SI = dyn_cast<StoreInst>(&I)) {
+        }
+        else if (StoreInst * SI = dyn_cast<StoreInst>(&I)) {
             nonLocalBuilder.CreateAlignedStore(I.getOperand(0), nonLocalPtr, SI->getAlignment(), SI->isVolatile());
-        } else {
+        }
+        else {
             // Inst I is a to_local(pointerOperand) call, and we can use null as I's result.
             nonLocalLoad = Constant::getNullValue(pointerType->getElementType()->getPointerTo(targetAS));
         }
@@ -386,7 +397,7 @@ bool GenericAddressDynamicResolution::visitIntrinsicCall(CallInst& I)
         // First to check whether we can simplify trivial cases like addrspacecast from
         // global/private to local, or from local to local.
         //
-        if (AddrSpaceCastInst* AI = dyn_cast<AddrSpaceCastInst>(arg)) {
+        if (AddrSpaceCastInst * AI = dyn_cast<AddrSpaceCastInst>(arg)) {
             //    to_local(__global*)  -> null
             //    to_local(__private*) -> null
             PointerType* ptrType = cast<PointerType>(AI->getSrcTy());
@@ -395,7 +406,8 @@ bool GenericAddressDynamicResolution::visitIntrinsicCall(CallInst& I)
                 I.replaceAllUsesWith(np);
                 I.eraseFromParent();
                 changed = true;
-            } else if (ptrType->getAddressSpace() == targetAS) {
+            }
+            else if (ptrType->getAddressSpace() == targetAS) {
                 //  to_local(__local*)  -> __local*
                 I.replaceAllUsesWith(AI->getOperand(0));
                 I.eraseFromParent();
@@ -414,12 +426,12 @@ bool GenericAddressDynamicResolution::visitIntrinsicCall(CallInst& I)
 }
 
 namespace IGC {
-FunctionPass* createGenericAddressAnalysisPass()
-{
-    return new GenericAddressAnalysis;
-}
-FunctionPass* createGenericAddressDynamicResolutionPass()
-{
-    return new GenericAddressDynamicResolution;
-}
+    FunctionPass* createGenericAddressAnalysisPass()
+    {
+        return new GenericAddressAnalysis;
+    }
+    FunctionPass* createGenericAddressDynamicResolutionPass()
+    {
+        return new GenericAddressDynamicResolution;
+    }
 } // namespace IGC

@@ -55,7 +55,7 @@ PromoteStatelessToBindless::PromoteStatelessToBindless()
     initializePromoteStatelessToBindlessPass(*PassRegistry::getPassRegistry());
 }
 
-bool PromoteStatelessToBindless::runOnFunction(Function &F)
+bool PromoteStatelessToBindless::runOnFunction(Function& F)
 {
     visit(F);
     PromoteStatelessToBindlessBuffers(F);
@@ -63,7 +63,7 @@ bool PromoteStatelessToBindless::runOnFunction(Function &F)
     return true;
 }
 
-void PromoteStatelessToBindless::visitInstruction(Instruction &I)
+void PromoteStatelessToBindless::visitInstruction(Instruction& I)
 {
     Value* bufptr = IGC::GetBufferOperand(&I);
 
@@ -86,7 +86,7 @@ void PromoteStatelessToBindless::GetAccessInstToSrcPointerMap(Instruction* inst,
     //We only support LoadInst, StoreInst, GenISA_simdBlockRead, and GenISA_simdBlockWrite intrinsic
     if (!isa<LoadInst>(inst) && !isa<StoreInst>(inst))
     {
-        if (GenIntrinsicInst* GInst = dyn_cast<GenIntrinsicInst>(inst))
+        if (GenIntrinsicInst * GInst = dyn_cast<GenIntrinsicInst>(inst))
         {
             switch (GInst->getIntrinsicID())
             {
@@ -118,7 +118,7 @@ void PromoteStatelessToBindless::GetAccessInstToSrcPointerMap(Instruction* inst,
 
 void PromoteStatelessToBindless::PromoteStatelessToBindlessBuffers(Function& F) const
 {
-    ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+    ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
     for (auto inst : m_AccessToSrcPtrMap)
     {
         Argument* srcPtr = cast<Argument>(inst.second);
@@ -128,9 +128,9 @@ void PromoteStatelessToBindless::PromoteStatelessToBindlessBuffers(Function& F) 
             srcPtr->replaceAllUsesWith(nullSrcPtr);
             if (modMD->FuncMD.find(&F) != modMD->FuncMD.end())
             {
-                FunctionMetaData *funcMD = &modMD->FuncMD[&F];
-                ResourceAllocMD *resourceAlloc = &funcMD->resAllocMD;
-                ArgAllocMD *argInfo = &resourceAlloc->argAllocMDList[srcPtr->getArgNo()];
+                FunctionMetaData* funcMD = &modMD->FuncMD[&F];
+                ResourceAllocMD* resourceAlloc = &funcMD->resAllocMD;
+                ArgAllocMD* argInfo = &resourceAlloc->argAllocMDList[srcPtr->getArgNo()];
                 assert((size_t)srcPtr->getArgNo() < resourceAlloc->argAllocMDList.size() && "ArgAllocMD List Out of Bounds");
                 if (argInfo->type == ResourceTypeEnum::UAVResourceType)
                 {
@@ -154,18 +154,18 @@ void PromoteStatelessToBindless::PromoteStatelessToBindlessBuffers(Function& F) 
         Value* basePointer = builder.CreatePointerCast(srcPtr, basePointerType);
         Value* bufferOffset = builder.CreatePtrToInt(resourcePtr, builder.getInt32Ty());
 
-        if (LoadInst* load = dyn_cast<LoadInst>(accessInst))
+        if (LoadInst * load = dyn_cast<LoadInst>(accessInst))
         {
             Value* ldraw = IGC::CreateLoadRawIntrinsic(load, cast<Instruction>(basePointer), bufferOffset);
             load->replaceAllUsesWith(ldraw);
             load->eraseFromParent();
         }
-        else if (StoreInst* store = dyn_cast<StoreInst>(accessInst))
+        else if (StoreInst * store = dyn_cast<StoreInst>(accessInst))
         {
             IGC::CreateStoreRawIntrinsic(store, cast<Instruction>(basePointer), bufferOffset);
             store->eraseFromParent();
         }
-        else if (GenIntrinsicInst* pIntr = dyn_cast<GenIntrinsicInst>(accessInst))
+        else if (GenIntrinsicInst * pIntr = dyn_cast<GenIntrinsicInst>(accessInst))
         {
             if (pIntr->getIntrinsicID() == GenISAIntrinsic::GenISA_simdBlockRead)
             {

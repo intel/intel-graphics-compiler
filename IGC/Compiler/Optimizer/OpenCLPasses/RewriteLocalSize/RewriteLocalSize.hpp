@@ -49,12 +49,12 @@ namespace IGC
             return "RewriteLocalSize";
         }
 
-        void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+        void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.setPreservesCFG();
         }
 
-        bool runOnModule(llvm::Module &M) override;
+        bool runOnModule(llvm::Module& M) override;
     };
 
 } // namespace IGC

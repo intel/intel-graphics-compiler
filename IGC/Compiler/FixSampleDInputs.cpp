@@ -46,9 +46,9 @@ namespace IGC
             FunctionPass(ID)
         { }
 
-        virtual bool runOnFunction(Function &F) override;
+        virtual bool runOnFunction(Function& F) override;
 
-        virtual void getAnalysisUsage(AnalysisUsage &AU) const override
+        virtual void getAnalysisUsage(AnalysisUsage& AU) const override
         {
             AU.setPreservesCFG();
         }
@@ -57,7 +57,7 @@ namespace IGC
         static char ID;
     };
 
-    bool FixSampleDInputsPass::runOnFunction(Function &F)
+    bool FixSampleDInputsPass::runOnFunction(Function& F)
     {
         bool changed = false;
         Module* M = F.getParent();

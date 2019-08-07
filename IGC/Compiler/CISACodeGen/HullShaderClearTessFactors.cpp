@@ -53,12 +53,12 @@ namespace
 
         StringRef getPassName() const override { return "ClearTessFactors"; }
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.setPreservesCFG();
         }
 
-        virtual bool runOnFunction(Function &F) override;
+        virtual bool runOnFunction(Function& F) override;
 
     private:
         std::vector<CallInst*> mIntrinsicInstToRemove;
@@ -69,14 +69,14 @@ namespace
 
     char ClearTessFactors::ID = 0;
 
-    #define PASS_FLAG     "igc-cleartessfactors"
-    #define PASS_DESC     "Clear tessellation factors"
-    #define PASS_CFG_ONLY false
-    #define PASS_ANALYSIS false
+#define PASS_FLAG     "igc-cleartessfactors"
+#define PASS_DESC     "Clear tessellation factors"
+#define PASS_CFG_ONLY false
+#define PASS_ANALYSIS false
     IGC_INITIALIZE_PASS_BEGIN(ClearTessFactors, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
-    IGC_INITIALIZE_PASS_END(ClearTessFactors, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
+        IGC_INITIALIZE_PASS_END(ClearTessFactors, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-    bool isReturnBlock(BasicBlock* BB)
+        bool isReturnBlock(BasicBlock* BB)
     {
         // Check whether current BB has only 'ret' instruction.
         bool isRet = true;
@@ -105,7 +105,7 @@ namespace
                 // Last instruction is return instruction
                 retCondition = true;
             }
-            else if (llvm::BranchInst* pBrInst = dyn_cast<BranchInst>(&(*II)))
+            else if (llvm::BranchInst * pBrInst = dyn_cast<BranchInst>(&(*II)))
             {
                 // Last instruction is branch instruction. Check whether target BB
                 // has only 'ret' instruction.
@@ -137,7 +137,7 @@ void ClearTessFactors::processBlock(BasicBlock* BB, unsigned int tessShaderDomai
 
         for (auto II = BB->rbegin(), IE = BB->rend(); II != IE; ++II)
         {
-            if (GenIntrinsicInst* genIntr = dyn_cast<GenIntrinsicInst>(&(*II)))
+            if (GenIntrinsicInst * genIntr = dyn_cast<GenIntrinsicInst>(&(*II)))
             {
                 GenISAIntrinsic::ID ID = genIntr->getIntrinsicID();
 
@@ -148,8 +148,8 @@ void ClearTessFactors::processBlock(BasicBlock* BB, unsigned int tessShaderDomai
                 }
 
                 // Intrinsic has the format: URBWrite (%offset, %mask, %data0, ... , %data7)
-                ConstantInt * pOffset = dyn_cast<ConstantInt>(genIntr->getOperand(0));
-                ConstantInt * pImmediateMask = dyn_cast<ConstantInt>(genIntr->getOperand(1));
+                ConstantInt* pOffset = dyn_cast<ConstantInt>(genIntr->getOperand(0));
+                ConstantInt* pImmediateMask = dyn_cast<ConstantInt>(genIntr->getOperand(1));
                 if (pOffset == nullptr || pImmediateMask == nullptr)
                 {
                     intrinsicInstToRemove.push_back(genIntr);
@@ -192,10 +192,10 @@ void ClearTessFactors::processBlock(BasicBlock* BB, unsigned int tessShaderDomai
                 bool isZero = false;
                 for (unsigned int i = urbWriteOuterTessFactorStartIndex; i < urbWriteOuterTessFactorStopIndex; i++)
                 {
-                    unsigned int outerTessFactorPositionInURBWriteMask = 1 << (i-2);
+                    unsigned int outerTessFactorPositionInURBWriteMask = 1 << (i - 2);
                     bool isOuterTessFactorWritten = (mask & outerTessFactorPositionInURBWriteMask);
 
-                    llvm::ConstantFP *zero = llvm::dyn_cast<llvm::ConstantFP>(genIntr->getOperand(i));
+                    llvm::ConstantFP* zero = llvm::dyn_cast<llvm::ConstantFP>(genIntr->getOperand(i));
                     if (zero && zero->isExactlyValue(0.f) && isOuterTessFactorWritten)
                     {
                         // Clear tessellation factors. Only one outer tessellation factor needs to be set to zero
@@ -239,7 +239,7 @@ void ClearTessFactors::processBlock(BasicBlock* BB, unsigned int tessShaderDomai
     }
 }
 
-bool ClearTessFactors::runOnFunction(Function &F)
+bool ClearTessFactors::runOnFunction(Function& F)
 {
     /*
     This is an example of what this optimization does:
@@ -265,7 +265,7 @@ bool ClearTessFactors::runOnFunction(Function &F)
 
     */
     unsigned int tessShaderDomain = USC::TESSELLATOR_DOMAIN_ISOLINE;
-    llvm::NamedMDNode *pMetaData = F.getParent()->getOrInsertNamedMetadata("TessellationShaderDomain");
+    llvm::NamedMDNode* pMetaData = F.getParent()->getOrInsertNamedMetadata("TessellationShaderDomain");
     if (pMetaData && (pMetaData->getNumOperands() == 1))
     {
         llvm::MDNode* pTessShaderDomain = pMetaData->getOperand(0);

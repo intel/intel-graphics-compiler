@@ -48,19 +48,19 @@ namespace IGC
             return "Error Check";
         }
 
-        void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+        void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.addRequired<CodeGenContextWrapper>();
             AU.addRequired<MetaDataUtilsWrapper>();
         }
 
-        virtual bool runOnFunction(llvm::Function &F) override;
+        virtual bool runOnFunction(llvm::Function& F) override;
 
-        void visitInstruction(llvm::Instruction &I);
+        void visitInstruction(llvm::Instruction& I);
 
     private:
         bool m_hasError = false;
-     };
- 
+    };
+
 } // namespace IGC
 

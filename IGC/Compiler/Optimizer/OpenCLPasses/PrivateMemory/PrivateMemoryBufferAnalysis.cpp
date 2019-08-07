@@ -49,7 +49,7 @@ PrivateMemoryBufferAnalysis::PrivateMemoryBufferAnalysis() : ModulePass(ID)
     initializePrivateMemoryBufferAnalysisPass(*PassRegistry::getPassRegistry());
 }
 
-bool PrivateMemoryBufferAnalysis::runOnModule(llvm::Module &M)
+bool PrivateMemoryBufferAnalysis::runOnModule(llvm::Module& M)
 {
     // Get the analysis
     m_DL = &M.getDataLayout();
@@ -65,7 +65,7 @@ bool PrivateMemoryBufferAnalysis::runOnModule(llvm::Module &M)
     return false;
 }
 
-void PrivateMemoryBufferAnalysis::runOnFunction(llvm::Function &F)
+void PrivateMemoryBufferAnalysis::runOnFunction(llvm::Function& F)
 {
     if (F.isDeclaration())
     {
@@ -75,9 +75,9 @@ void PrivateMemoryBufferAnalysis::runOnFunction(llvm::Function &F)
     // Processing new function
     m_currentOffset = 0;
     m_maxAlignment = 0;
-     
+
     visit(F);
-     
+
     // Align total size for the next WI 
     m_currentOffset = iSTD::Align(m_currentOffset, m_maxAlignment);
 
@@ -85,14 +85,14 @@ void PrivateMemoryBufferAnalysis::runOnFunction(llvm::Function &F)
     m_privateInfoMap[&F].m_bufferTotalSize = m_currentOffset;
 }
 
-void PrivateMemoryBufferAnalysis::visitAllocaInst(AllocaInst &AI)
+void PrivateMemoryBufferAnalysis::visitAllocaInst(AllocaInst& AI)
 {
-    assert (AI.getType()->getAddressSpace() == ADDRESS_SPACE_PRIVATE && "Allocaitons are expected to be in private address space");
+    assert(AI.getType()->getAddressSpace() == ADDRESS_SPACE_PRIVATE && "Allocaitons are expected to be in private address space");
 
     // If private memory has no users, no point of analysing it.
-    if( AI.use_empty() ) return;
+    if (AI.use_empty()) return;
 
-    Function *pFunc = AI.getParent()->getParent();
+    Function* pFunc = AI.getParent()->getParent();
 
     m_privateInfoMap[pFunc].m_allocaInsts.push_back(&AI);
 
@@ -113,7 +113,7 @@ void PrivateMemoryBufferAnalysis::visitAllocaInst(AllocaInst &AI)
 
     // Determine buffer size
     assert(isa<ConstantInt>(AI.getArraySize()) && "Private memory array size is expected to be constant int!");
-    unsigned int bufferSize = static_cast<unsigned int>(cast<ConstantInt>(AI.getArraySize())->getZExtValue() *  m_DL->getTypeAllocSize(AI.getAllocatedType()));
+    unsigned int bufferSize = static_cast<unsigned int>(cast<ConstantInt>(AI.getArraySize())->getZExtValue() * m_DL->getTypeAllocSize(AI.getAllocatedType()));
     m_privateInfoMap[pFunc].m_bufferSizes[&AI] = bufferSize;
 
     // Advance offset

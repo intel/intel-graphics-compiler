@@ -55,16 +55,16 @@ namespace IGC
             return "OpenCLPrintfAnalysis";
         }
 
-        void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+        void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.addRequired<MetaDataUtilsWrapper>();
         }
 
         /// @brief  Main entry point.
         /// @param  M The destination module.
-        virtual bool runOnModule(llvm::Module &M) override;
+        virtual bool runOnModule(llvm::Module& M) override;
 
-        void visitCallInst(llvm::CallInst &callInst);
+        void visitCallInst(llvm::CallInst& callInst);
 
         static const llvm::StringRef OPENCL_PRINTF_FUNCTION_NAME;
 
@@ -73,7 +73,7 @@ namespace IGC
         /// @brief  Adds an implicit argument for address of printf output buffer
         ///         created by the Runtime and an implicit argument for maximum
         ///         size of the buffer.
-        void addPrintfBufferArgs(llvm::Function &F);
+        void addPrintfBufferArgs(llvm::Function& F);
 
         bool m_hasPrintf;
     };

@@ -27,7 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /*========================== CustomUnsafeOptPass.cpp ==========================
 
  This file contains CustomUnsafeOptPass and EarlyOutPatterns
- 
+
  CustomUnsafeOptPass does peephole optimizations which might affect precision.
  This pass combines things like:
     x * 0 = 0               or
@@ -37,8 +37,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
  EarlyOutPatterns does a few early out cases that adds control flow to
- avoid heavy computation that is not needed. 
- For example, if a long/expensive sequence of instruction result is 0 when 
+ avoid heavy computation that is not needed.
+ For example, if a long/expensive sequence of instruction result is 0 when
  one of the input r0 is 0, we can modify the sequence to
      if(r0==0)
      {
@@ -50,7 +50,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
      }
  The cases are added with existing workload analysis and should be limited to
  the target shader since adding control flow can add overhead to other shaders.
- 
+
 =============================================================================*/
 
 
@@ -95,20 +95,20 @@ char CustomUnsafeOptPass::ID = 0;
 
 #define DEBUG_TYPE "CustomUnSafeOptPass"
 
-STATISTIC(Stat_FcmpRemoved,  "Number of insts removed in FCmp Opt");
-STATISTIC(Stat_FloatRemoved,  "Number of insts removed in Float Opt");
-STATISTIC(Stat_DiscardRemoved,  "Number of insts removed in Discard Opt");
+STATISTIC(Stat_FcmpRemoved, "Number of insts removed in FCmp Opt");
+STATISTIC(Stat_FloatRemoved, "Number of insts removed in Float Opt");
+STATISTIC(Stat_DiscardRemoved, "Number of insts removed in Discard Opt");
 
 static bool allowUnsafeMathOpt(CodeGenContext* ctx, llvm::BinaryOperator& op)
 {
     // always allow unsafe opt if instruction has the flag
-    if(llvm::isa<llvm::FPMathOperator>(op) && op.getFastMathFlags().isFast())
+    if (llvm::isa<llvm::FPMathOperator>(op) && op.getFastMathFlags().isFast())
     {
         return true;
     }
 
     // then checking compiler options in metadata
-    if(ctx->getModuleMetaData()->compOpt.FastRelaxedMath)
+    if (ctx->getModuleMetaData()->compOpt.FastRelaxedMath)
     {
         return true;
     }
@@ -123,14 +123,14 @@ static bool allowUnsafeMathOpt(CodeGenContext* ctx, llvm::BinaryOperator& op)
 
 CustomUnsafeOptPass::CustomUnsafeOptPass()
     : FunctionPass(ID),
-      m_disableReorderingOpt(0),
-      m_ctx(nullptr),
-      m_pMdUtils(nullptr)
+    m_disableReorderingOpt(0),
+    m_ctx(nullptr),
+    m_pMdUtils(nullptr)
 {
     initializeCustomUnsafeOptPassPass(*PassRegistry::getPassRegistry());
 }
 
-bool CustomUnsafeOptPass::runOnFunction(Function &F)
+bool CustomUnsafeOptPass::runOnFunction(Function& F)
 {
     if (IGC_IS_FLAG_ENABLED(DisableCustomUnsafeOpt))
     {
@@ -156,7 +156,7 @@ bool CustomUnsafeOptPass::runOnFunction(Function &F)
     m_isChanged = true;
     // re-run the pass if the shader is changed within the pass.
     // also set a iterCount<=10 to make sure it doesn't run into infinate loop unexpectedly.
-    while (m_isChanged && iterCount<=10)
+    while (m_isChanged && iterCount <= 10)
     {
         iterCount++;
         m_isChanged = false;
@@ -169,15 +169,15 @@ bool CustomUnsafeOptPass::runOnFunction(Function &F)
     return true;
 }
 
-void CustomUnsafeOptPass::visitInstruction(Instruction &I)
+void CustomUnsafeOptPass::visitInstruction(Instruction& I)
 {
     // nothing
 }
 
-void CustomUnsafeOptPass::visitFPToSIInst(llvm::FPToSIInst &I)
+void CustomUnsafeOptPass::visitFPToSIInst(llvm::FPToSIInst& I)
 {
-    /* 
-    For cases like this, %141 doesn't need rounding because the only possible values are 0.0, 1.0, 2.0, 3.0, and 4.0. 
+    /*
+    For cases like this, %141 doesn't need rounding because the only possible values are 0.0, 1.0, 2.0, 3.0, and 4.0.
     We can skip %142 and %143
 
     % 132 = select i1 % 131, float 1.000000e+00, float 0.000000e+00, !dbg !328
@@ -192,15 +192,15 @@ void CustomUnsafeOptPass::visitFPToSIInst(llvm::FPToSIInst &I)
     % 143 = call fast float @llvm.floor.f32(float %142), !dbg !330
     % 144 = fptosi float %143 to i32, !dbg !331
     */
-    if (CallInst *floorInst = dyn_cast<CallInst>((&I)->getOperand(0)))
+    if (CallInst * floorInst = dyn_cast<CallInst>((&I)->getOperand(0)))
     {
         if (GetOpCode(floorInst) == llvm_floor)
         {
-            if (BinaryOperator *faddInst = dyn_cast<BinaryOperator>(floorInst->getOperand(0)))
+            if (BinaryOperator * faddInst = dyn_cast<BinaryOperator>(floorInst->getOperand(0)))
             {
                 if (faddInst->getOpcode() == Instruction::FAdd)
                 {
-                    ConstantFP *C0_5 = dyn_cast<ConstantFP>(faddInst->getOperand(1));
+                    ConstantFP* C0_5 = dyn_cast<ConstantFP>(faddInst->getOperand(1));
                     if (C0_5 && C0_5->isExactlyValue(0.5))
                     {
                         // check all the sources are from 1.0 and 0.0
@@ -226,10 +226,10 @@ void CustomUnsafeOptPass::visitFPToSIInst(llvm::FPToSIInst &I)
                                     allowOpt = false;
                                 }
                             }
-                            else if(dyn_cast<SelectInst>(inst))
+                            else if (dyn_cast<SelectInst>(inst))
                             {
-                                ConstantFP *c1 = dyn_cast<ConstantFP>(inst->getOperand(1));
-                                ConstantFP *c2 = dyn_cast<ConstantFP>(inst->getOperand(2));
+                                ConstantFP* c1 = dyn_cast<ConstantFP>(inst->getOperand(1));
+                                ConstantFP* c2 = dyn_cast<ConstantFP>(inst->getOperand(2));
                                 if (!c1 || !c2 ||
                                     (!c1->isZeroValue() && !c1->isExactlyValue(1.0f)) ||
                                     (!c2->isZeroValue() && !c2->isExactlyValue(1.0f)))
@@ -241,7 +241,7 @@ void CustomUnsafeOptPass::visitFPToSIInst(llvm::FPToSIInst &I)
                             {
                                 allowOpt = false;
                             }
-                            if(InstList.size() >8)
+                            if (InstList.size() > 8)
                             {
                                 allowOpt = false;
                             }
@@ -258,20 +258,20 @@ void CustomUnsafeOptPass::visitFPToSIInst(llvm::FPToSIInst &I)
     }
 }
 
-bool CustomUnsafeOptPass::possibleForFmadOpt( llvm::Instruction *inst )
+bool CustomUnsafeOptPass::possibleForFmadOpt(llvm::Instruction* inst)
 {
-    if( inst->getOpcode() == Instruction::FAdd )
+    if (inst->getOpcode() == Instruction::FAdd)
     {
-        if(BinaryOperator* src0 = llvm::dyn_cast<llvm::BinaryOperator>(inst->getOperand(0)))
+        if (BinaryOperator * src0 = llvm::dyn_cast<llvm::BinaryOperator>(inst->getOperand(0)))
         {
-            if(src0->getOpcode() == Instruction::FMul)
+            if (src0->getOpcode() == Instruction::FMul)
             {
                 return true;
             }
         }
-        if(BinaryOperator* src1 = llvm::dyn_cast<llvm::BinaryOperator>(inst->getOperand(1)))
+        if (BinaryOperator * src1 = llvm::dyn_cast<llvm::BinaryOperator>(inst->getOperand(1)))
         {
-            if(src1->getOpcode() == Instruction::FMul)
+            if (src1->getOpcode() == Instruction::FMul)
             {
                 return true;
             }
@@ -280,55 +280,55 @@ bool CustomUnsafeOptPass::possibleForFmadOpt( llvm::Instruction *inst )
     return false;
 }
 
-bool CustomUnsafeOptPass::visitBinaryOperatorFmulFaddPropagation(BinaryOperator &I)
+bool CustomUnsafeOptPass::visitBinaryOperatorFmulFaddPropagation(BinaryOperator& I)
 {
     if (m_disableReorderingOpt)
     {
         return false;
     }
 
-/*
-    Pattern 1:
-        From
-            %r2.x_1 = fmul float %r2.x_, %r1.y_, !dbg !10
-            %r2.y_2 = fmul float %r2.y_, %r1.y_, !dbg !10    -> Src1
-            %r2.z_3 = fmul float %r2.z_, %r1.y_, !dbg !10
+    /*
+        Pattern 1:
+            From
+                %r2.x_1 = fmul float %r2.x_, %r1.y_, !dbg !10
+                %r2.y_2 = fmul float %r2.y_, %r1.y_, !dbg !10    -> Src1
+                %r2.z_3 = fmul float %r2.z_, %r1.y_, !dbg !10
 
-            %oC0.x_ = fmul float %r2.x_1, 0x3FE3333340000000, !dbg !12
-            %oC0.y_ = fmul float %r2.y_2, 0x3FE3333340000000, !dbg !12  -> Base
-            %oC0.z_ = fmul float %r2.z_3, 0x3FE3333340000000, !dbg !12
+                %oC0.x_ = fmul float %r2.x_1, 0x3FE3333340000000, !dbg !12
+                %oC0.y_ = fmul float %r2.y_2, 0x3FE3333340000000, !dbg !12  -> Base
+                %oC0.z_ = fmul float %r2.z_3, 0x3FE3333340000000, !dbg !12
 
-        To
-            %r2.x_1 = fmul float 0x3FE3333340000000, %r1.y_, !dbg !10
-            %oC0.x_ = fmul float %r2.x_1, %r2.x_, !dbg !12
-            %oC0.y_ = fmul float %r2.x_1, %r2.y_, !dbg !12
-            %oC0.z_ = fmul float %r2.x_1, %r2.z_, !dbg !12
+            To
+                %r2.x_1 = fmul float 0x3FE3333340000000, %r1.y_, !dbg !10
+                %oC0.x_ = fmul float %r2.x_1, %r2.x_, !dbg !12
+                %oC0.y_ = fmul float %r2.x_1, %r2.y_, !dbg !12
+                %oC0.z_ = fmul float %r2.x_1, %r2.z_, !dbg !12
 
-     Pattern 2:
-        From
-            %r0.x_ = fmul float %r1.x_, %r2.z_, !dbg !10
-            %r0.y_ = fmul float %r1.y_, %r2.z_, !dbg !10                -> Src1
-            %r0.z_ = fmul float %r1.z_, %r2.z_, !dbg !10
-            %r2.x_1 = fmul float %r2.x_, 0x3FE6666660000000, !dbg !12
-            %r2.y_2 = fmul float %r2.y_, 0x3FE6666660000000, !dbg !12   -> Src2
-            %r2.z_3 = fmul float %r2.z_, 0x3FE6666660000000, !dbg !12
-            %oC0.x_ = fmul float %r0.x_, %r2.x_1, !dbg !14
-            %oC0.y_ = fmul float %r0.y_, %r2.y_2, !dbg !14              -> Base
-            %oC0.z_ = fmul float %r0.z_, %r2.z_3, !dbg !14
+         Pattern 2:
+            From
+                %r0.x_ = fmul float %r1.x_, %r2.z_, !dbg !10
+                %r0.y_ = fmul float %r1.y_, %r2.z_, !dbg !10                -> Src1
+                %r0.z_ = fmul float %r1.z_, %r2.z_, !dbg !10
+                %r2.x_1 = fmul float %r2.x_, 0x3FE6666660000000, !dbg !12
+                %r2.y_2 = fmul float %r2.y_, 0x3FE6666660000000, !dbg !12   -> Src2
+                %r2.z_3 = fmul float %r2.z_, 0x3FE6666660000000, !dbg !12
+                %oC0.x_ = fmul float %r0.x_, %r2.x_1, !dbg !14
+                %oC0.y_ = fmul float %r0.y_, %r2.y_2, !dbg !14              -> Base
+                %oC0.z_ = fmul float %r0.z_, %r2.z_3, !dbg !14
 
-        To
-            %r0.x_ = fmul float 0x3FE6666660000000, %r2.z_, !dbg !10
-            %r2.x_1 = fmul float %r2.x_, %r0.x_, !dbg !12
-            %r2.y_2 = fmul float %r2.y_, %r0.x_, !dbg !12
-            %r2.z_3 = fmul float %r2.z_, %r0.x_, !dbg !12
-            %oC0.x_ = fmul float %r1.x_, %r2.x_1, !dbg !14
-            %oC0.y_ = fmul float %r1.y_, %r2.y_2, !dbg !14
-            %oC0.z_ = fmul float %r1.z_, %r2.z_3, !dbg !14
-*/
+            To
+                %r0.x_ = fmul float 0x3FE6666660000000, %r2.z_, !dbg !10
+                %r2.x_1 = fmul float %r2.x_, %r0.x_, !dbg !12
+                %r2.y_2 = fmul float %r2.y_, %r0.x_, !dbg !12
+                %r2.z_3 = fmul float %r2.z_, %r0.x_, !dbg !12
+                %oC0.x_ = fmul float %r1.x_, %r2.x_1, !dbg !14
+                %oC0.y_ = fmul float %r1.y_, %r2.y_2, !dbg !14
+                %oC0.z_ = fmul float %r1.z_, %r2.z_3, !dbg !14
+    */
     llvm::Instruction::BinaryOps opcode = I.getOpcode();
 
     // only fmul or fadd can call into this function
-    assert( opcode == Instruction::FMul || opcode == Instruction::FAdd );
+    assert(opcode == Instruction::FMul || opcode == Instruction::FAdd);
 
     llvm::Instruction* instBase[4];
     llvm::Instruction* instSrc1[4];
@@ -340,16 +340,16 @@ bool CustomUnsafeOptPass::visitBinaryOperatorFmulFaddPropagation(BinaryOperator 
     bool matchPattern1 = false;
     bool matchPattern2 = false;
 
-    for( int i=0; i<4; i++ )
+    for (int i = 0; i < 4; i++)
     {
         instBase[i] = NULL;
         instSrc1[i] = NULL;
         instSrc2[i] = NULL;
     }
 
-    instBase[0] = llvm::dyn_cast<llvm::Instruction>( &I );
-    if( instBase[0] == nullptr ||
-        instBase[0]->getOperand(0) == instBase[0]->getOperand(1) )
+    instBase[0] = llvm::dyn_cast<llvm::Instruction>(&I);
+    if (instBase[0] == nullptr ||
+        instBase[0]->getOperand(0) == instBase[0]->getOperand(1))
     {
         return false;
     }
@@ -362,20 +362,20 @@ bool CustomUnsafeOptPass::visitBinaryOperatorFmulFaddPropagation(BinaryOperator 
         instBase[1] = GetNextInstruction(instBase[1]);
     }
 
-    if( instBase[1] == nullptr ||
+    if (instBase[1] == nullptr ||
         instBase[1]->getOpcode() != opcode ||
-        instBase[1]->getOperand(0) == instBase[1]->getOperand(1) )
+        instBase[1]->getOperand(0) == instBase[1]->getOperand(1))
     {
         return false;
     }
 
-    if( instBase[0]->getOperand(0) == instBase[1]->getOperand(0) )
+    if (instBase[0]->getOperand(0) == instBase[1]->getOperand(0))
     {
         sameSrcIdBase = 0;
         numOfSet = 2;
         matchPattern1 = true;
     }
-    else if( instBase[0]->getOperand(1) == instBase[1]->getOperand(1) )
+    else if (instBase[0]->getOperand(1) == instBase[1]->getOperand(1))
     {
         sameSrcIdBase = 1;
         numOfSet = 2;
@@ -385,9 +385,9 @@ bool CustomUnsafeOptPass::visitBinaryOperatorFmulFaddPropagation(BinaryOperator 
     {
         matchPattern2 = true;
     }
-    for( int i=2; i<4; i++ )
+    for (int i = 2; i < 4; i++)
     {
-        instBase[i] = GetNextInstruction(instBase[i-1]);
+        instBase[i] = GetNextInstruction(instBase[i - 1]);
 
         if (instBase[i] &&
             instBase[i - 1]->getOpcode() != instBase[i]->getOpcode())
@@ -395,51 +395,51 @@ bool CustomUnsafeOptPass::visitBinaryOperatorFmulFaddPropagation(BinaryOperator 
             instBase[i] = GetNextInstruction(instBase[i]);
         }
 
-        if( !instBase[i] ||
+        if (!instBase[i] ||
             instBase[i]->getOpcode() != opcode ||
             instBase[i]->getOperand(0) == instBase[i]->getOperand(1) ||
-            possibleForFmadOpt( instBase[i] ) )
+            possibleForFmadOpt(instBase[i]))
         {
             break;
         }
-        numOfSet = i+1;
+        numOfSet = i + 1;
     }
 
-    if( numOfSet < 2 )
+    if (numOfSet < 2)
     {
         return false;
     }
 
-    if( matchPattern1 )
+    if (matchPattern1)
     {
-        for( int i=0; i<numOfSet; i++ )
+        for (int i = 0; i < numOfSet; i++)
         {
-            if( i > 0 &&
-                instBase[i]->getOperand(sameSrcIdBase) != instBase[0]->getOperand(sameSrcIdBase) )
+            if (i > 0 &&
+                instBase[i]->getOperand(sameSrcIdBase) != instBase[0]->getOperand(sameSrcIdBase))
             {
                 numOfSet = i;
                 break;
             }
 
-            instSrc1[i] = llvm::dyn_cast<llvm::Instruction>( instBase[i]->getOperand( 1-sameSrcIdBase ) );
+            instSrc1[i] = llvm::dyn_cast<llvm::Instruction>(instBase[i]->getOperand(1 - sameSrcIdBase));
 
-            if( !instSrc1[i] ||
+            if (!instSrc1[i] ||
                 !instSrc1[i]->hasOneUse() ||
                 instSrc1[i]->getOpcode() != opcode ||
-                possibleForFmadOpt( instSrc1[i] ) )
+                possibleForFmadOpt(instSrc1[i]))
             {
                 numOfSet = i;
                 break;
             }
         }
 
-        if( numOfSet > 1 )
+        if (numOfSet > 1)
         {
-            if( instSrc1[0]->getOperand(0) == instSrc1[1]->getOperand(0) )
+            if (instSrc1[0]->getOperand(0) == instSrc1[1]->getOperand(0))
             {
                 sameSrcId1 = 0;
             }
-            else if( instSrc1[0]->getOperand(1) == instSrc1[1]->getOperand(1) )
+            else if (instSrc1[0]->getOperand(1) == instSrc1[1]->getOperand(1))
             {
                 sameSrcId1 = 1;
             }
@@ -460,9 +460,9 @@ bool CustomUnsafeOptPass::visitBinaryOperatorFmulFaddPropagation(BinaryOperator 
                 }
             }
 
-            for( int i=2; i<numOfSet; i++ )
+            for (int i = 2; i < numOfSet; i++)
             {
-                if( instSrc1[i]->getOperand(sameSrcId1) != instSrc1[0]->getOperand(sameSrcId1) )
+                if (instSrc1[i]->getOperand(sameSrcId1) != instSrc1[0]->getOperand(sameSrcId1))
                 {
                     numOfSet = i;
                     break;
@@ -470,24 +470,24 @@ bool CustomUnsafeOptPass::visitBinaryOperatorFmulFaddPropagation(BinaryOperator 
             }
         }
 
-        if( numOfSet > 1 &&
-            opcode == Instruction::FMul )
+        if (numOfSet > 1 &&
+            opcode == Instruction::FMul)
         {
-            if( !dyn_cast<ConstantFP>( instSrc1[0]->getOperand( sameSrcId1 ) ) )
+            if (!dyn_cast<ConstantFP>(instSrc1[0]->getOperand(sameSrcId1)))
             {
-                if (llvm::Instruction *tempInstr = llvm::dyn_cast<llvm::Instruction>( instSrc1[0]->getOperand( sameSrcId1 ) ))
+                if (llvm::Instruction * tempInstr = llvm::dyn_cast<llvm::Instruction>(instSrc1[0]->getOperand(sameSrcId1)))
                 {
-                    if( tempInstr->getOpcode() == Instruction::FDiv )
+                    if (tempInstr->getOpcode() == Instruction::FDiv)
                     {
-                        ConstantFP *C0 = dyn_cast<ConstantFP>( tempInstr->getOperand(0) );
-                        if( C0 && C0->isExactlyValue( 1.0 ) )
+                        ConstantFP* C0 = dyn_cast<ConstantFP>(tempInstr->getOperand(0));
+                        if (C0 && C0->isExactlyValue(1.0))
                         {
                             numOfSet = 0;
                         }
                     }
 
                     IGC::EOPCODE intrinsic_name = IGC::GetOpCode(tempInstr);
-                    if(intrinsic_name==IGC::llvm_exp)
+                    if (intrinsic_name == IGC::llvm_exp)
                     {
                         numOfSet = 0;
                     }
@@ -496,46 +496,46 @@ bool CustomUnsafeOptPass::visitBinaryOperatorFmulFaddPropagation(BinaryOperator 
         }
 
         // start the optimization for pattern 1
-        if( numOfSet > 1 )
+        if (numOfSet > 1)
         {
             Value* tempOp = instBase[0]->getOperand(sameSrcIdBase);
-            for( int i=0; i<numOfSet; i++ )
+            for (int i = 0; i < numOfSet; i++)
             {
-                instBase[i]->setOperand( 1-sameSrcIdBase, instBase[0]->getOperand(1-sameSrcIdBase) );
+                instBase[i]->setOperand(1 - sameSrcIdBase, instBase[0]->getOperand(1 - sameSrcIdBase));
             }
-            for( int i=0; i<numOfSet; i++ )
+            for (int i = 0; i < numOfSet; i++)
             {
-                instBase[i]->setOperand( sameSrcIdBase, instSrc1[i]->getOperand(1-sameSrcId1) );
+                instBase[i]->setOperand(sameSrcIdBase, instSrc1[i]->getOperand(1 - sameSrcId1));
             }
-            instSrc1[0]->setOperand( 1-sameSrcId1, tempOp );
+            instSrc1[0]->setOperand(1 - sameSrcId1, tempOp);
             // move instSrc1[0] to before base
-            instSrc1[0]->moveBefore( instBase[0] );
+            instSrc1[0]->moveBefore(instBase[0]);
             return true;
         }
     }
     else  // check pattern 2
     {
-        for( int i=0; i < numOfSet; i++ )
+        for (int i = 0; i < numOfSet; i++)
         {
-            if( instBase[i]->getOperand(0) == instBase[i]->getOperand(1) ||
-                dyn_cast<ConstantFP>( instBase[i]->getOperand(0) ) ||
-                dyn_cast<ConstantFP>( instBase[i]->getOperand(1) ) ||
-                possibleForFmadOpt( instBase[i] ) )
+            if (instBase[i]->getOperand(0) == instBase[i]->getOperand(1) ||
+                dyn_cast<ConstantFP>(instBase[i]->getOperand(0)) ||
+                dyn_cast<ConstantFP>(instBase[i]->getOperand(1)) ||
+                possibleForFmadOpt(instBase[i]))
             {
                 numOfSet = i;
                 break;
             }
         }
 
-        if( numOfSet > 1 )
+        if (numOfSet > 1)
         {
-            for( int i=0; i < numOfSet; i++ )
+            for (int i = 0; i < numOfSet; i++)
             {
-                instSrc1[i] = llvm::dyn_cast<llvm::Instruction>( instBase[i]->getOperand( 0 ) );
-                instSrc2[i] = llvm::dyn_cast<llvm::Instruction>( instBase[i]->getOperand( 1 ) );
-                if( !instSrc1[i] || !instSrc1[i]->hasOneUse() || instSrc1[i]->getOpcode() != opcode ||
+                instSrc1[i] = llvm::dyn_cast<llvm::Instruction>(instBase[i]->getOperand(0));
+                instSrc2[i] = llvm::dyn_cast<llvm::Instruction>(instBase[i]->getOperand(1));
+                if (!instSrc1[i] || !instSrc1[i]->hasOneUse() || instSrc1[i]->getOpcode() != opcode ||
                     !instSrc2[i] || !instSrc2[i]->hasOneUse() || instSrc2[i]->getOpcode() != opcode ||
-                    possibleForFmadOpt( instSrc1[i] ) || possibleForFmadOpt( instSrc2[i] ) )
+                    possibleForFmadOpt(instSrc1[i]) || possibleForFmadOpt(instSrc2[i]))
                 {
                     numOfSet = i;
                     break;
@@ -543,13 +543,13 @@ bool CustomUnsafeOptPass::visitBinaryOperatorFmulFaddPropagation(BinaryOperator 
             }
         }
 
-        if( numOfSet > 1 )
+        if (numOfSet > 1)
         {
-            if( instSrc1[0]->getOperand(0) == instSrc1[1]->getOperand(0) )
+            if (instSrc1[0]->getOperand(0) == instSrc1[1]->getOperand(0))
             {
                 sameSrcId1 = 0;
             }
-            else if( instSrc1[0]->getOperand(1) == instSrc1[1]->getOperand(1) )
+            else if (instSrc1[0]->getOperand(1) == instSrc1[1]->getOperand(1))
             {
                 sameSrcId1 = 1;
             }
@@ -558,11 +558,11 @@ bool CustomUnsafeOptPass::visitBinaryOperatorFmulFaddPropagation(BinaryOperator 
                 return false;
             }
 
-            if( instSrc2[0]->getOperand(0) == instSrc2[1]->getOperand(0) )
+            if (instSrc2[0]->getOperand(0) == instSrc2[1]->getOperand(0))
             {
                 sameSrcId2 = 0;
             }
-            else if( instSrc2[0]->getOperand(1) == instSrc2[1]->getOperand(1) )
+            else if (instSrc2[0]->getOperand(1) == instSrc2[1]->getOperand(1))
             {
                 sameSrcId2 = 1;
             }
@@ -586,10 +586,10 @@ bool CustomUnsafeOptPass::visitBinaryOperatorFmulFaddPropagation(BinaryOperator 
                 }
             }
 
-            for( int i=2; i < numOfSet; i++ )
+            for (int i = 2; i < numOfSet; i++)
             {
-                if( instSrc1[0]->getOperand(sameSrcId1) != instSrc1[i]->getOperand(sameSrcId1) ||
-                    instSrc2[0]->getOperand(sameSrcId2) != instSrc2[i]->getOperand(sameSrcId2) )
+                if (instSrc1[0]->getOperand(sameSrcId1) != instSrc1[i]->getOperand(sameSrcId1) ||
+                    instSrc2[0]->getOperand(sameSrcId2) != instSrc2[i]->getOperand(sameSrcId2))
                 {
                     numOfSet = i;
                     break;
@@ -598,37 +598,37 @@ bool CustomUnsafeOptPass::visitBinaryOperatorFmulFaddPropagation(BinaryOperator 
         }
 
         // start the optimization for pattern 2
-        if( numOfSet > 1 )
+        if (numOfSet > 1)
         {
             Value* tempOp = instSrc2[0]->getOperand(sameSrcId2);
 
-            for( int i=0; i<numOfSet; i++ )
+            for (int i = 0; i < numOfSet; i++)
             {
-                instSrc2[i]->setOperand( sameSrcId2, instBase[0]->getOperand(0) );
+                instSrc2[i]->setOperand(sameSrcId2, instBase[0]->getOperand(0));
             }
 
-            for( int i=0; i<numOfSet; i++ )
+            for (int i = 0; i < numOfSet; i++)
             {
-                instBase[i]->setOperand( 0, instSrc1[i]->getOperand(1-sameSrcId1) );
+                instBase[i]->setOperand(0, instSrc1[i]->getOperand(1 - sameSrcId1));
             }
 
-            instSrc1[0]->setOperand( 1-sameSrcId1, tempOp );
+            instSrc1[0]->setOperand(1 - sameSrcId1, tempOp);
 
-            for( int i=0; i<numOfSet; i++ )
+            for (int i = 0; i < numOfSet; i++)
             {
-                instSrc2[i]->moveBefore( instBase[0] );
+                instSrc2[i]->moveBefore(instBase[0]);
             }
-            instSrc1[0]->moveBefore( instSrc2[0] );
+            instSrc1[0]->moveBefore(instSrc2[0]);
             return true;
         }
     }
     return false;
 }
 
-bool CustomUnsafeOptPass::removeCommonMultiplier(llvm::Value *I, llvm::Value *commonMultiplier)
+bool CustomUnsafeOptPass::removeCommonMultiplier(llvm::Value* I, llvm::Value* commonMultiplier)
 {
-    Value *numerator = NULL;
-    Value *denumerator = NULL;
+    Value* numerator = NULL;
+    Value* denumerator = NULL;
     if (isFDiv(I, numerator, denumerator))
     {
         llvm::Instruction* multiplier = llvm::dyn_cast<llvm::Instruction>(numerator);
@@ -642,7 +642,7 @@ bool CustomUnsafeOptPass::removeCommonMultiplier(llvm::Value *I, llvm::Value *co
     return false;
 }
 
-bool CustomUnsafeOptPass::visitBinaryOperatorExtractCommonMultiplier(BinaryOperator &I)
+bool CustomUnsafeOptPass::visitBinaryOperatorExtractCommonMultiplier(BinaryOperator& I)
 {
     bool patternFound = false;
 
@@ -653,16 +653,16 @@ bool CustomUnsafeOptPass::visitBinaryOperatorExtractCommonMultiplier(BinaryOpera
 
     llvm::Instruction* src0 = llvm::dyn_cast<llvm::Instruction>(I.getOperand(0));
 
-    Value *numerator0 = NULL;
-    Value *denumerator0 = NULL;
+    Value* numerator0 = NULL;
+    Value* denumerator0 = NULL;
 
     if (src0 && src0->hasOneUse() && isFDiv(src0, numerator0, denumerator0))
     {
-        if (llvm::Instruction *inst = llvm::dyn_cast<llvm::Instruction>(numerator0))
+        if (llvm::Instruction * inst = llvm::dyn_cast<llvm::Instruction>(numerator0))
         {
             if (inst->getOpcode() == Instruction::FMul)
             {
-                if (llvm::Instruction* commonMultiplier = llvm::dyn_cast<llvm::Instruction>(inst->getOperand(1)))
+                if (llvm::Instruction * commonMultiplier = llvm::dyn_cast<llvm::Instruction>(inst->getOperand(1)))
                 {
                     llvm::Instruction* sumComponent = llvm::dyn_cast<llvm::Instruction>(I.getOperand(1));
                     llvm::Instruction* currentRoot = &I;
@@ -690,7 +690,7 @@ bool CustomUnsafeOptPass::visitBinaryOperatorExtractCommonMultiplier(BinaryOpera
                     }
                     if (patternFound)
                     {
-                        Instruction *newResult = copyIRFlags(BinaryOperator::CreateFMul(commonMultiplier, previousRoot, ""), &I);
+                        Instruction* newResult = copyIRFlags(BinaryOperator::CreateFMul(commonMultiplier, previousRoot, ""), &I);
                         newResult->insertAfter(previousRoot);
                         previousRoot->replaceAllUsesWith(newResult);
                         newResult->setOperand(1, previousRoot);
@@ -705,7 +705,7 @@ bool CustomUnsafeOptPass::visitBinaryOperatorExtractCommonMultiplier(BinaryOpera
 }
 
 
-bool CustomUnsafeOptPass::visitBinaryOperatorToFmad(BinaryOperator &I)
+bool CustomUnsafeOptPass::visitBinaryOperatorToFmad(BinaryOperator& I)
 {
     if (m_disableReorderingOpt)
     {
@@ -737,16 +737,16 @@ bool CustomUnsafeOptPass::visitBinaryOperatorToFmad(BinaryOperator &I)
     ConstantFP* C0 = dyn_cast<ConstantFP>(addInst->getOperand(1));
     ConstantFP* C1 = dyn_cast<ConstantFP>(mulInst->getOperand(1));
 
-    if(!C0 || !C1 || !addInst->hasOneUse())
+    if (!C0 || !C1 || !addInst->hasOneUse())
     {
         return false;
     }
 
-    Value *op0 = copyIRFlags(BinaryOperator::CreateFMul(addInst->getOperand(0), C1, "", &I), &I);
+    Value* op0 = copyIRFlags(BinaryOperator::CreateFMul(addInst->getOperand(0), C1, "", &I), &I);
 
     APFloat C0Float = C0->getValueAPF();
     C0Float.multiply(C1->getValueAPF(), llvm::APFloat::rmNearestTiesToEven);
-    Value *op1 = ConstantFP::get(C0->getContext(), C0Float);
+    Value* op1 = ConstantFP::get(C0->getContext(), C0Float);
 
     if (addInst->getOpcode() == Instruction::FAdd)
     {
@@ -762,7 +762,7 @@ bool CustomUnsafeOptPass::visitBinaryOperatorToFmad(BinaryOperator &I)
     return true;
 }
 
-bool CustomUnsafeOptPass::visitBinaryOperatorFmulToFmad(BinaryOperator &I)
+bool CustomUnsafeOptPass::visitBinaryOperatorFmulToFmad(BinaryOperator& I)
 {
     bool patternFound = false;
 
@@ -796,17 +796,17 @@ bool CustomUnsafeOptPass::visitBinaryOperatorFmulToFmad(BinaryOperator &I)
         FsubOrFaddInst = llvm::dyn_cast<llvm::Instruction>(I.getOperand(1 - xIndex));
         if (FsubOrFaddInst &&
             FsubOrFaddInst->hasOneUse() &&
-            (FsubOrFaddInst->getOpcode() == Instruction::FSub || FsubOrFaddInst->getOpcode() == Instruction::FAdd) )
+            (FsubOrFaddInst->getOpcode() == Instruction::FSub || FsubOrFaddInst->getOpcode() == Instruction::FAdd))
         {
-            ConstantFP *Cx = dyn_cast<ConstantFP>(I.getOperand(xIndex));
-            ConstantFP *C0 = dyn_cast<ConstantFP>(FsubOrFaddInst->getOperand(0));
+            ConstantFP* Cx = dyn_cast<ConstantFP>(I.getOperand(xIndex));
+            ConstantFP* C0 = dyn_cast<ConstantFP>(FsubOrFaddInst->getOperand(0));
             if (C0 && !C0->isZero() && (C0->isExactlyValue(1.f) || Cx))
             {
                 enableOpt = true;
                 immOneIndex = 0;
                 break;
             }
-            ConstantFP *C1 = dyn_cast<ConstantFP>(FsubOrFaddInst->getOperand(1));
+            ConstantFP* C1 = dyn_cast<ConstantFP>(FsubOrFaddInst->getOperand(1));
             if (C1 && !C1->isZero() && (C1->isExactlyValue(1.f) || Cx))
             {
                 enableOpt = true;
@@ -819,15 +819,15 @@ bool CustomUnsafeOptPass::visitBinaryOperatorFmulToFmad(BinaryOperator &I)
     // start optimization
     if (enableOpt)
     {
-        Value *op1 = nullptr;
-        Value *op2 = nullptr;
-        ConstantFP *Cx = dyn_cast<ConstantFP>(I.getOperand(xIndex));
+        Value* op1 = nullptr;
+        Value* op2 = nullptr;
+        ConstantFP* Cx = dyn_cast<ConstantFP>(I.getOperand(xIndex));
 
         if (immOneIndex == 0)
         {
             if (Cx)
             {
-                ConstantFP *C0 = dyn_cast<ConstantFP>(FsubOrFaddInst->getOperand(0));
+                ConstantFP* C0 = dyn_cast<ConstantFP>(FsubOrFaddInst->getOperand(0));
                 APFloat CxFloat = Cx->getValueAPF();
                 CxFloat.multiply(C0->getValueAPF(), llvm::APFloat::rmNearestTiesToEven);
                 op1 = ConstantFP::get(C0->getContext(), CxFloat);
@@ -843,7 +843,7 @@ bool CustomUnsafeOptPass::visitBinaryOperatorFmulToFmad(BinaryOperator &I)
             op1 = copyIRFlags(BinaryOperator::CreateFMul(I.getOperand(xIndex), FsubOrFaddInst->getOperand(0), "", &I), &I);
             if (Cx)
             {
-                ConstantFP *C1 = dyn_cast<ConstantFP>(FsubOrFaddInst->getOperand(1));
+                ConstantFP* C1 = dyn_cast<ConstantFP>(FsubOrFaddInst->getOperand(1));
                 APFloat CxFloat = Cx->getValueAPF();
                 CxFloat.multiply(C1->getValueAPF(), llvm::APFloat::rmNearestTiesToEven);
                 op2 = ConstantFP::get(C1->getContext(), CxFloat);
@@ -870,10 +870,10 @@ bool CustomUnsafeOptPass::visitBinaryOperatorFmulToFmad(BinaryOperator &I)
     return patternFound;
 }
 
-bool CustomUnsafeOptPass::isFDiv(Value *I, Value *&numerator, Value *&denominator)
+bool CustomUnsafeOptPass::isFDiv(Value* I, Value*& numerator, Value*& denominator)
 {
     bool result = false;
-    if (llvm::Instruction *div = llvm::dyn_cast<llvm::Instruction>(I))
+    if (llvm::Instruction * div = llvm::dyn_cast<llvm::Instruction>(I))
     {
         if (div->getOpcode() == Instruction::FDiv)
         {
@@ -883,7 +883,7 @@ bool CustomUnsafeOptPass::isFDiv(Value *I, Value *&numerator, Value *&denominato
         }
         else if (div->getOpcode() == Instruction::FMul)
         {
-            if (llvm::Instruction *inv = llvm::dyn_cast<llvm::Instruction>(div->getOperand(1)))
+            if (llvm::Instruction * inv = llvm::dyn_cast<llvm::Instruction>(div->getOperand(1)))
             {
                 if (inv->getOpcode() == Instruction::FDiv &&
                     dyn_cast<ConstantFP>(inv->getOperand(0)) &&
@@ -899,7 +899,7 @@ bool CustomUnsafeOptPass::isFDiv(Value *I, Value *&numerator, Value *&denominato
     return result;
 }
 
-bool CustomUnsafeOptPass::visitBinaryOperatorDivAddDiv(BinaryOperator &I)
+bool CustomUnsafeOptPass::visitBinaryOperatorDivAddDiv(BinaryOperator& I)
 {
     // A/B +C/D can be changed to (A * D +C * B)/(B * D).
     if (m_disableReorderingOpt)
@@ -907,44 +907,44 @@ bool CustomUnsafeOptPass::visitBinaryOperatorDivAddDiv(BinaryOperator &I)
         return false;
     }
 
-    Value *numerator0 = NULL;
-    Value *numerator1 = NULL;
-    Value *denumerator0 = NULL;
-    Value *denumerator1 = NULL;
+    Value* numerator0 = NULL;
+    Value* numerator1 = NULL;
+    Value* denumerator0 = NULL;
+    Value* denumerator1 = NULL;
 
     if (isFDiv(I.getOperand(0), numerator0, denumerator0) &&
         isFDiv(I.getOperand(1), numerator1, denumerator1) &&
         denumerator0 != denumerator1)
     {
-        Value *mul0 = copyIRFlags(BinaryOperator::CreateFMul(numerator0, denumerator1, "", &I), &I);
-        Value *mul1 = copyIRFlags(BinaryOperator::CreateFMul(numerator1, denumerator0, "", &I), &I);
-        Value *mul2 = copyIRFlags(BinaryOperator::CreateFMul(denumerator0, denumerator1, "", &I), &I);
-        Value *mul2inv = copyIRFlags(BinaryOperator::CreateFDiv(ConstantFP::get(mul2->getType(), 1.0), mul2, "", &I), &I);
-        Value *add_mul0_mul1 = copyIRFlags(BinaryOperator::CreateFAdd(mul0, mul1, "", &I), &I);
+        Value* mul0 = copyIRFlags(BinaryOperator::CreateFMul(numerator0, denumerator1, "", &I), &I);
+        Value* mul1 = copyIRFlags(BinaryOperator::CreateFMul(numerator1, denumerator0, "", &I), &I);
+        Value* mul2 = copyIRFlags(BinaryOperator::CreateFMul(denumerator0, denumerator1, "", &I), &I);
+        Value* mul2inv = copyIRFlags(BinaryOperator::CreateFDiv(ConstantFP::get(mul2->getType(), 1.0), mul2, "", &I), &I);
+        Value* add_mul0_mul1 = copyIRFlags(BinaryOperator::CreateFAdd(mul0, mul1, "", &I), &I);
         I.replaceAllUsesWith(copyIRFlags(BinaryOperator::CreateFMul(add_mul0_mul1, mul2inv, "", &I), &I));
         return true;
     }
     return false;
 }
-    
-bool CustomUnsafeOptPass::visitBinaryOperatorDivDivOp(BinaryOperator &I)
+
+bool CustomUnsafeOptPass::visitBinaryOperatorDivDivOp(BinaryOperator& I)
 {
     if (m_disableReorderingOpt)
     {
         return false;
     }
 
-    llvm::Instruction* prevInst = llvm::dyn_cast<llvm::Instruction>( I.getOperand( 1 ) );
+    llvm::Instruction* prevInst = llvm::dyn_cast<llvm::Instruction>(I.getOperand(1));
     bool patternFound = false;
 
-    if( prevInst && prevInst->getOpcode() == Instruction::FDiv )
+    if (prevInst && prevInst->getOpcode() == Instruction::FDiv)
     {
-        Value * prevInstOp = prevInst->getOperand( 0 );
-        ConstantFP *C0 = dyn_cast<ConstantFP>(prevInstOp);
+        Value* prevInstOp = prevInst->getOperand(0);
+        ConstantFP* C0 = dyn_cast<ConstantFP>(prevInstOp);
 
         if (C0 && C0->isExactlyValue(1.0))
         {
-            ConstantFP * Iconst = dyn_cast<ConstantFP>(I.getOperand(0));
+            ConstantFP* Iconst = dyn_cast<ConstantFP>(I.getOperand(0));
             if (Iconst && Iconst->isExactlyValue(1.0))
             {
                 // a = 1 / b
@@ -971,7 +971,7 @@ bool CustomUnsafeOptPass::visitBinaryOperatorDivDivOp(BinaryOperator &I)
     return patternFound;
 }
 
-bool CustomUnsafeOptPass::visitBinaryOperatorAddSubOp(BinaryOperator &I)
+bool CustomUnsafeOptPass::visitBinaryOperatorAddSubOp(BinaryOperator& I)
 {
     bool patternFound = false;
     if (m_disableReorderingOpt)
@@ -983,21 +983,21 @@ bool CustomUnsafeOptPass::visitBinaryOperatorAddSubOp(BinaryOperator &I)
     // d = a - x
     //    =>
     // d = b
-    assert( I.getOpcode() == Instruction::FAdd || I.getOpcode() == Instruction::FSub );
+    assert(I.getOpcode() == Instruction::FAdd || I.getOpcode() == Instruction::FSub);
 
     Value* op[2];
     op[0] = I.getOperand(0);
     op[1] = I.getOperand(1);
 
-    for( int i=0; i<2; i++)
+    for (int i = 0; i < 2; i++)
     {
-        llvm::Instruction* sourceInst = llvm::dyn_cast<llvm::Instruction>( op[i] );
-        if( !sourceInst )
+        llvm::Instruction* sourceInst = llvm::dyn_cast<llvm::Instruction>(op[i]);
+        if (!sourceInst)
         {
             continue;
         }
 
-        if( I.getOpcode() == Instruction::FAdd && sourceInst->getOpcode() == Instruction::FSub)
+        if (I.getOpcode() == Instruction::FAdd && sourceInst->getOpcode() == Instruction::FSub)
         {
             // a = b - x
             // d = a + x
@@ -1005,20 +1005,20 @@ bool CustomUnsafeOptPass::visitBinaryOperatorAddSubOp(BinaryOperator &I)
             // d = b
             if (op[1 - i] == sourceInst->getOperand(1))
             {
-                I.replaceAllUsesWith( sourceInst->getOperand(0) );
+                I.replaceAllUsesWith(sourceInst->getOperand(0));
                 ++Stat_FloatRemoved;
                 m_isChanged = true;
                 patternFound = true;
                 break;
             }
         }
-        else if( I.getOpcode() == Instruction::FSub && sourceInst->getOpcode() == Instruction::FSub)
+        else if (I.getOpcode() == Instruction::FSub && sourceInst->getOpcode() == Instruction::FSub)
         {
             // a = x - b
             // d = x - a
             //    =>
             // d = b
-            if( i == 1 && op[0] == sourceInst->getOperand(0) )
+            if (i == 1 && op[0] == sourceInst->getOperand(0))
             {
                 I.replaceAllUsesWith(sourceInst->getOperand(1));
                 ++Stat_FloatRemoved;
@@ -1026,18 +1026,18 @@ bool CustomUnsafeOptPass::visitBinaryOperatorAddSubOp(BinaryOperator &I)
                 patternFound = true;
             }
         }
-        else if( I.getOpcode() == Instruction::FSub && sourceInst->getOpcode() == Instruction::FAdd)
+        else if (I.getOpcode() == Instruction::FSub && sourceInst->getOpcode() == Instruction::FAdd)
         {
             Value* srcOp[2];
             srcOp[0] = sourceInst->getOperand(0);
             srcOp[1] = sourceInst->getOperand(1);
-            if( i == 0 )
+            if (i == 0)
             {
-                for( int srci=0; srci<2; srci++ )
+                for (int srci = 0; srci < 2; srci++)
                 {
-                    if( op[1-i] == srcOp[srci] )
+                    if (op[1 - i] == srcOp[srci])
                     {
-                        I.replaceAllUsesWith( srcOp[1-srci] );
+                        I.replaceAllUsesWith(srcOp[1 - srci]);
                         ++Stat_FloatRemoved;
                         m_isChanged = true;
                         patternFound = true;
@@ -1045,16 +1045,16 @@ bool CustomUnsafeOptPass::visitBinaryOperatorAddSubOp(BinaryOperator &I)
                     }
                 }
             }
-            else if( i == 1 )
+            else if (i == 1)
             {
-                for( int srci=0; srci<2; srci++ )
+                for (int srci = 0; srci < 2; srci++)
                 {
-                    if( op[1-i] == srcOp[srci] )
+                    if (op[1 - i] == srcOp[srci])
                     {
                         I.replaceAllUsesWith(
                             copyIRFlags(BinaryOperator::CreateFSub(
-                                            ConstantFP::get(op[0]->getType(), 0), srcOp[1-srci], "", &I),
-                                        &I));
+                                ConstantFP::get(op[0]->getType(), 0), srcOp[1 - srci], "", &I),
+                                &I));
                         ++Stat_FloatRemoved;
                         m_isChanged = true;
                         patternFound = true;
@@ -1071,7 +1071,7 @@ bool CustomUnsafeOptPass::visitBinaryOperatorAddSubOp(BinaryOperator &I)
     return patternFound;
 }
 
-bool CustomUnsafeOptPass::visitBinaryOperatorPropNegate(BinaryOperator &I)
+bool CustomUnsafeOptPass::visitBinaryOperatorPropNegate(BinaryOperator& I)
 {
     if (m_disableReorderingOpt)
     {
@@ -1084,20 +1084,20 @@ bool CustomUnsafeOptPass::visitBinaryOperatorPropNegate(BinaryOperator &I)
     // c = a + d
     //    =>
     // c = d - b
-    assert( I.getOpcode() == Instruction::FAdd );
+    assert(I.getOpcode() == Instruction::FAdd);
 
-    for( int i=0; i<2; i++ )
+    for (int i = 0; i < 2; i++)
     {
-        llvm::Instruction* prevInst = llvm::dyn_cast<llvm::Instruction>( I.getOperand( i ) );
-        if( prevInst && prevInst->getOpcode() == Instruction::FSub )
+        llvm::Instruction* prevInst = llvm::dyn_cast<llvm::Instruction>(I.getOperand(i));
+        if (prevInst && prevInst->getOpcode() == Instruction::FSub)
         {
-            ConstantFP *fp0 = dyn_cast<ConstantFP>( prevInst->getOperand( 0 ) );
-            if( fp0 && fp0->isZero() )
+            ConstantFP* fp0 = dyn_cast<ConstantFP>(prevInst->getOperand(0));
+            if (fp0 && fp0->isZero())
             {
                 I.replaceAllUsesWith(
                     copyIRFlags(BinaryOperator::CreateFSub(
-                                    I.getOperand(1 - i), prevInst->getOperand(1), "", &I),
-                                &I));
+                        I.getOperand(1 - i), prevInst->getOperand(1), "", &I),
+                        &I));
                 ++Stat_FloatRemoved;
                 m_isChanged = true;
                 foundPattern = true;
@@ -1108,7 +1108,7 @@ bool CustomUnsafeOptPass::visitBinaryOperatorPropNegate(BinaryOperator &I)
     return foundPattern;
 }
 
-bool CustomUnsafeOptPass::visitBinaryOperatorNegateMultiply(BinaryOperator &I)
+bool CustomUnsafeOptPass::visitBinaryOperatorNegateMultiply(BinaryOperator& I)
 {
     // a = b * c
     // d = 0 - a
@@ -1126,9 +1126,9 @@ bool CustomUnsafeOptPass::visitBinaryOperatorNegateMultiply(BinaryOperator &I)
             // if one of the mul src is imm, apply the negate on that imm
             for (int i = 0; i < 2; i++)
             {
-                if (llvm::Instruction* fmulSrc = llvm::dyn_cast<llvm::Instruction>(fmulInst->getOperand(i)))
+                if (llvm::Instruction * fmulSrc = llvm::dyn_cast<llvm::Instruction>(fmulInst->getOperand(i)))
                 {
-                    if (ConstantFP *fp = dyn_cast<ConstantFP>(fmulSrc))
+                    if (ConstantFP * fp = dyn_cast<ConstantFP>(fmulSrc))
                     {
                         APFloat newConstantFloat = fp->getValueAPF();
                         newConstantFloat.changeSign();
@@ -1155,7 +1155,7 @@ bool CustomUnsafeOptPass::visitBinaryOperatorNegateMultiply(BinaryOperator &I)
     return patternFound;
 }
 
-bool CustomUnsafeOptPass::visitBinaryOperatorTwoConstants(BinaryOperator &I)
+bool CustomUnsafeOptPass::visitBinaryOperatorTwoConstants(BinaryOperator& I)
 {
     bool patternFound = false;
 
@@ -1171,84 +1171,84 @@ bool CustomUnsafeOptPass::visitBinaryOperatorTwoConstants(BinaryOperator &I)
 
     // this optimization works on fadd, fsub, and fmul
 
-    assert( dyn_cast<ConstantFP>( I.getOperand(0) ) || dyn_cast<ConstantFP>( I.getOperand(1) ) );
+    assert(dyn_cast<ConstantFP>(I.getOperand(0)) || dyn_cast<ConstantFP>(I.getOperand(1)));
 
     llvm::Instruction::BinaryOps opcode = I.getOpcode();
-    assert( opcode == Instruction::FAdd || opcode == Instruction::FSub || opcode == Instruction::FMul );
+    assert(opcode == Instruction::FAdd || opcode == Instruction::FSub || opcode == Instruction::FMul);
 
     int regSrcNum = (dyn_cast<ConstantFP>(I.getOperand(0))) ? 1 : 0;
-    Value * Iop = I.getOperand( regSrcNum );
+    Value* Iop = I.getOperand(regSrcNum);
 
-    llvm::Instruction* prevInst = llvm::dyn_cast<llvm::Instruction>( Iop );
+    llvm::Instruction* prevInst = llvm::dyn_cast<llvm::Instruction>(Iop);
 
     if (!prevInst)
     {
         return patternFound;
     }
 
-    if( prevInst->getOpcode() != Instruction::FMul &&
+    if (prevInst->getOpcode() != Instruction::FMul &&
         prevInst->getOpcode() != Instruction::FAdd &&
-        prevInst->getOpcode() != Instruction::FSub )
+        prevInst->getOpcode() != Instruction::FSub)
     {
         return patternFound;
     }
 
     // check if prevInst has one constant in the srcs.
-    if( dyn_cast<ConstantFP>( prevInst->getOperand(0) ) || dyn_cast<ConstantFP>( prevInst->getOperand(1) ) )
+    if (dyn_cast<ConstantFP>(prevInst->getOperand(0)) || dyn_cast<ConstantFP>(prevInst->getOperand(1)))
     {
         if (!prevInst->hasOneUse() &&
-            I.getOpcode() == Instruction::FSub )
+            I.getOpcode() == Instruction::FSub)
         {
-            ConstantFP *ConstantZero = dyn_cast<ConstantFP>(I.getOperand(0));
+            ConstantFP* ConstantZero = dyn_cast<ConstantFP>(I.getOperand(0));
             if (ConstantZero && ConstantZero->isZeroValue())
             {
                 return patternFound;
             }
         }
 
-        int prevInstRegSrcNum = (dyn_cast<ConstantFP>( prevInst->getOperand(0)) ) ? 1 : 0;
+        int prevInstRegSrcNum = (dyn_cast<ConstantFP>(prevInst->getOperand(0))) ? 1 : 0;
 
-        Value * prevInstOp = prevInst->getOperand( prevInstRegSrcNum );
+        Value* prevInstOp = prevInst->getOperand(prevInstRegSrcNum);
 
-        ConstantFP *C0 = dyn_cast<ConstantFP>( prevInst->getOperand( 1-prevInstRegSrcNum ) );
-        ConstantFP *C1 = dyn_cast<ConstantFP>( I.getOperand( 1-regSrcNum ) );
+        ConstantFP* C0 = dyn_cast<ConstantFP>(prevInst->getOperand(1 - prevInstRegSrcNum));
+        ConstantFP* C1 = dyn_cast<ConstantFP>(I.getOperand(1 - regSrcNum));
 
-        assert( C0 && C1 );
+        assert(C0 && C1);
 
         APFloat newConstantFloat(0.0);
         bool orderConstantFirst = false;
         bool changeOpToAdd = false;
         bool changeOpToSub = false;
-        if( prevInst->getOpcode() == Instruction::FMul && opcode == Instruction::FMul )
+        if (prevInst->getOpcode() == Instruction::FMul && opcode == Instruction::FMul)
         {
             newConstantFloat = C0->getValueAPF();
             newConstantFloat.multiply(C1->getValueAPF(), llvm::APFloat::rmNearestTiesToEven);
         }
-        else if( prevInst->getOpcode() == Instruction::FAdd && opcode == Instruction::FAdd )
+        else if (prevInst->getOpcode() == Instruction::FAdd && opcode == Instruction::FAdd)
         {
             newConstantFloat = C0->getValueAPF();
             newConstantFloat.add(C1->getValueAPF(), llvm::APFloat::rmNearestTiesToEven);
         }
-        else if( prevInst->getOpcode() == Instruction::FSub && opcode == Instruction::FSub )
+        else if (prevInst->getOpcode() == Instruction::FSub && opcode == Instruction::FSub)
         {
-            if( prevInstRegSrcNum == 0 && regSrcNum == 0)
+            if (prevInstRegSrcNum == 0 && regSrcNum == 0)
             {
                 newConstantFloat = C0->getValueAPF();
                 newConstantFloat.add(C1->getValueAPF(), llvm::APFloat::rmNearestTiesToEven);
             }
-            else if( prevInstRegSrcNum == 0 && regSrcNum == 1)
+            else if (prevInstRegSrcNum == 0 && regSrcNum == 1)
             {
                 newConstantFloat = C0->getValueAPF();
                 newConstantFloat.add(C1->getValueAPF(), llvm::APFloat::rmNearestTiesToEven);
                 orderConstantFirst = true;
             }
-            else if( prevInstRegSrcNum == 1 && regSrcNum == 0)
+            else if (prevInstRegSrcNum == 1 && regSrcNum == 0)
             {
                 newConstantFloat = C0->getValueAPF();
                 newConstantFloat.subtract(C1->getValueAPF(), llvm::APFloat::rmNearestTiesToEven);
                 orderConstantFirst = true;
             }
-            else if( prevInstRegSrcNum == 1 && regSrcNum == 1)
+            else if (prevInstRegSrcNum == 1 && regSrcNum == 1)
             {
                 newConstantFloat = C1->getValueAPF();
                 newConstantFloat.subtract(C0->getValueAPF(), llvm::APFloat::rmNearestTiesToEven);
@@ -1256,9 +1256,9 @@ bool CustomUnsafeOptPass::visitBinaryOperatorTwoConstants(BinaryOperator &I)
             }
 
         }
-        else if( prevInst->getOpcode() == Instruction::FAdd && opcode == Instruction::FSub )
+        else if (prevInst->getOpcode() == Instruction::FAdd && opcode == Instruction::FSub)
         {
-            if( regSrcNum == 0 )
+            if (regSrcNum == 0)
             {
                 newConstantFloat = C0->getValueAPF();
                 newConstantFloat.subtract(C1->getValueAPF(), llvm::APFloat::rmNearestTiesToEven);
@@ -1271,9 +1271,9 @@ bool CustomUnsafeOptPass::visitBinaryOperatorTwoConstants(BinaryOperator &I)
                 orderConstantFirst = true;
             }
         }
-        else if( prevInst->getOpcode() == Instruction::FSub && opcode == Instruction::FAdd )
+        else if (prevInst->getOpcode() == Instruction::FSub && opcode == Instruction::FAdd)
         {
-            if( prevInstRegSrcNum == 0 )
+            if (prevInstRegSrcNum == 0)
             {
                 newConstantFloat = C1->getValueAPF();
                 newConstantFloat.subtract(C0->getValueAPF(), llvm::APFloat::rmNearestTiesToEven);
@@ -1294,17 +1294,17 @@ bool CustomUnsafeOptPass::visitBinaryOperatorTwoConstants(BinaryOperator &I)
 
         ++Stat_FloatRemoved;
         Constant* newConstant = ConstantFP::get(C1->getContext(), newConstantFloat);
-        if( newConstant->isZeroValue() && !orderConstantFirst)
+        if (newConstant->isZeroValue() && !orderConstantFirst)
         {
-            if( opcode == Instruction::FAdd || opcode == Instruction::FSub )
+            if (opcode == Instruction::FAdd || opcode == Instruction::FSub)
             {
-                I.replaceAllUsesWith( prevInstOp );
+                I.replaceAllUsesWith(prevInstOp);
                 patternFound = true;
                 m_isChanged = true;
             }
-            else if( opcode == Instruction::FMul )
+            else if (opcode == Instruction::FMul)
             {
-                I.replaceAllUsesWith( ConstantFP::get( Iop->getType(), 0 ) );
+                I.replaceAllUsesWith(ConstantFP::get(Iop->getType(), 0));
                 patternFound = true;
                 m_isChanged = true;
             }
@@ -1313,26 +1313,26 @@ bool CustomUnsafeOptPass::visitBinaryOperatorTwoConstants(BinaryOperator &I)
         {
             if (changeOpToAdd)
             {
-               I.replaceAllUsesWith(
-                   copyIRFlags(BinaryOperator::CreateFAdd(prevInstOp, newConstant, "", &I), &I));
+                I.replaceAllUsesWith(
+                    copyIRFlags(BinaryOperator::CreateFAdd(prevInstOp, newConstant, "", &I), &I));
             }
-            else if( changeOpToSub )
+            else if (changeOpToSub)
             {
-               if( orderConstantFirst )
-               {
-                   I.replaceAllUsesWith(
-                       copyIRFlags(BinaryOperator::CreateFSub(newConstant, prevInstOp, "", &I), &I));
-               }
-               else
-               {
-                   I.replaceAllUsesWith(
-                       copyIRFlags(BinaryOperator::CreateFSub(prevInstOp, newConstant, "", &I), &I));
-               }
+                if (orderConstantFirst)
+                {
+                    I.replaceAllUsesWith(
+                        copyIRFlags(BinaryOperator::CreateFSub(newConstant, prevInstOp, "", &I), &I));
+                }
+                else
+                {
+                    I.replaceAllUsesWith(
+                        copyIRFlags(BinaryOperator::CreateFSub(prevInstOp, newConstant, "", &I), &I));
+                }
             }
             else
             {
-                I.setOperand( orderConstantFirst, prevInstOp );
-                I.setOperand( 1-orderConstantFirst, newConstant );
+                I.setOperand(orderConstantFirst, prevInstOp);
+                I.setOperand(1 - orderConstantFirst, newConstant);
             }
             patternFound = true;
         }
@@ -1340,13 +1340,13 @@ bool CustomUnsafeOptPass::visitBinaryOperatorTwoConstants(BinaryOperator &I)
     return patternFound;
 }
 
-bool CustomUnsafeOptPass::visitBinaryOperatorDivRsq(BinaryOperator &I)
+bool CustomUnsafeOptPass::visitBinaryOperatorDivRsq(BinaryOperator& I)
 {
-    if (GenIntrinsicInst *genIntr = dyn_cast<GenIntrinsicInst>(I.getOperand(1)))
+    if (GenIntrinsicInst * genIntr = dyn_cast<GenIntrinsicInst>(I.getOperand(1)))
     {
         if (genIntr->getIntrinsicID() == GenISAIntrinsic::GenISA_rsq)
         {
-            if (ConstantFP *fp0 = dyn_cast<ConstantFP>(I.getOperand(0)))
+            if (ConstantFP * fp0 = dyn_cast<ConstantFP>(I.getOperand(0)))
             {
                 llvm::IRBuilder<> builder(I.getContext());
                 llvm::CallInst* sqrt_call = llvm::IntrinsicInst::Create(
@@ -1370,21 +1370,21 @@ bool CustomUnsafeOptPass::visitBinaryOperatorDivRsq(BinaryOperator &I)
     return false;
 }
 
-bool CustomUnsafeOptPass::visitBinaryOperatorAddDiv(BinaryOperator &I)
+bool CustomUnsafeOptPass::visitBinaryOperatorAddDiv(BinaryOperator& I)
 {
     llvm::Instruction* faddInst = llvm::dyn_cast<llvm::Instruction>(I.getOperand(0));
 
     if (faddInst &&
         (faddInst->getOpcode() == Instruction::FAdd ||
-        faddInst->getOpcode() == Instruction::FSub) &&
+            faddInst->getOpcode() == Instruction::FSub) &&
         faddInst->hasOneUse())
     {
         for (int i = 0; i < 2; i++)
         {
             if (faddInst->getOperand(i) == I.getOperand(1))
             {
-                Value *div = BinaryOperator::CreateFDiv(faddInst->getOperand(1-i), I.getOperand(1), "", faddInst);
-                Value *one = ConstantFP::get(I.getType(), 1.0);
+                Value* div = BinaryOperator::CreateFDiv(faddInst->getOperand(1 - i), I.getOperand(1), "", faddInst);
+                Value* one = ConstantFP::get(I.getType(), 1.0);
 
                 if (faddInst->getOpcode() == Instruction::FAdd)
                 {
@@ -1415,7 +1415,7 @@ bool CustomUnsafeOptPass::visitBinaryOperatorAddDiv(BinaryOperator &I)
     return false;
 }
 
-bool CustomUnsafeOptPass::visitExchangeCB(llvm::BinaryOperator &I)
+bool CustomUnsafeOptPass::visitExchangeCB(llvm::BinaryOperator& I)
 {
     // a = b x CB0
     // c = b x CB1
@@ -1442,7 +1442,7 @@ bool CustomUnsafeOptPass::visitExchangeCB(llvm::BinaryOperator &I)
 
     for (int i = 0; i < 2; i++)
     {
-        if (LoadInst* ld0 = dyn_cast<LoadInst>(inst0->getOperand(i)))
+        if (LoadInst * ld0 = dyn_cast<LoadInst>(inst0->getOperand(i)))
         {
             if (IGC::DecodeAS4GFXResource(ld0->getPointerAddressSpace(), directBuf, bufId) == CONSTANT_BUFFER && directBuf)
             {
@@ -1463,7 +1463,7 @@ bool CustomUnsafeOptPass::visitExchangeCB(llvm::BinaryOperator &I)
     hasCB = 0;
     for (int i = 0; i < 2; i++)
     {
-        if (LoadInst* ld1 = dyn_cast<LoadInst>(inst1->getOperand(i)))
+        if (LoadInst * ld1 = dyn_cast<LoadInst>(inst1->getOperand(i)))
         {
             if (IGC::DecodeAS4GFXResource(ld1->getPointerAddressSpace(), directBuf, bufId) == CONSTANT_BUFFER && directBuf)
             {
@@ -1480,18 +1480,18 @@ bool CustomUnsafeOptPass::visitExchangeCB(llvm::BinaryOperator &I)
 
     if (hasCB != 1)
         return false;
-    
+
     if (inst0->getOperand(1 - cbIndex0) != inst1->getOperand(1 - cbIndex1))
         return false;
 
     // perform the change
-    Value *CBsum = copyIRFlags(BinaryOperator::CreateFAdd(inst0->getOperand(cbIndex0), inst1->getOperand(cbIndex1), "", &I), &I);
+    Value* CBsum = copyIRFlags(BinaryOperator::CreateFAdd(inst0->getOperand(cbIndex0), inst1->getOperand(cbIndex1), "", &I), &I);
     I.replaceAllUsesWith(copyIRFlags(BinaryOperator::CreateFMul(inst0->getOperand(1 - cbIndex0), CBsum, "", &I), &I));
-    
+
     return true;
 }
 
-void CustomUnsafeOptPass::visitBinaryOperator(BinaryOperator &I)
+void CustomUnsafeOptPass::visitBinaryOperator(BinaryOperator& I)
 {
     if (I.use_empty())
     {
@@ -1500,281 +1500,281 @@ void CustomUnsafeOptPass::visitBinaryOperator(BinaryOperator &I)
 
     if (allowUnsafeMathOpt(m_ctx, I))
     {
-        Value*    op0 = I.getOperand(0);
-        Value*    op1 = I.getOperand(1);
-        if (op0->getType()->isFPOrFPVectorTy() && op1->getType()->isFPOrFPVectorTy() )
+        Value* op0 = I.getOperand(0);
+        Value* op1 = I.getOperand(1);
+        if (op0->getType()->isFPOrFPVectorTy() && op1->getType()->isFPOrFPVectorTy())
         {
-            ConstantFP *fp0 = dyn_cast<ConstantFP>( op0 );
-            ConstantFP *fp1 = dyn_cast<ConstantFP>( op1 );
-            Type *opType = op0->getType();
+            ConstantFP* fp0 = dyn_cast<ConstantFP>(op0);
+            ConstantFP* fp1 = dyn_cast<ConstantFP>(op1);
+            Type* opType = op0->getType();
 
             switch (I.getOpcode())
             {
-                case Instruction::FSub:
-                    if (op0 == op1)
+            case Instruction::FSub:
+                if (op0 == op1)
+                {
+                    // X - X => 0
+                    I.replaceAllUsesWith(ConstantFP::get(opType, 0));
+                    ++Stat_FloatRemoved;
+                    m_isChanged = true;
+                }
+                else if (fp1 && fp1->isZero())
+                {
+                    // X - 0 => X
+                    I.replaceAllUsesWith(op0);
+                    ++Stat_FloatRemoved;
+                    m_isChanged = true;
+                }
+                else if (fp0 && fp0->isZero())
+                {
+                    m_isChanged |= visitBinaryOperatorNegateMultiply(I);
+                }
+                else
+                {
+                    bool patternFound = false;
+                    if (fp0 || fp1)
                     {
-                        // X - X => 0
-                        I.replaceAllUsesWith(ConstantFP::get(opType, 0));
-                        ++Stat_FloatRemoved;
-                        m_isChanged = true;
-                    }
-                    else if( fp1 && fp1->isZero() )
-                    {
-                        // X - 0 => X
-                        I.replaceAllUsesWith(op0);
-                        ++Stat_FloatRemoved;
-                        m_isChanged = true;
-                    }
-                    else if( fp0 && fp0->isZero() )
-                    {
-                        m_isChanged |= visitBinaryOperatorNegateMultiply(I);
+                        // a = b + C0
+                        // d = a + C1
+                        //    =>
+                        // d = b + ( C0 + C1 )
+                        patternFound = visitBinaryOperatorTwoConstants(I);
                     }
                     else
                     {
-                        bool patternFound = false;
-                        if (fp0 || fp1)
+                        // a = b + x
+                        // d = a - x
+                        //    =>
+                        // d = b
+                        patternFound = visitBinaryOperatorAddSubOp(I);
+                    }
+                    m_isChanged |= patternFound;
+                }
+
+                break;
+
+            case Instruction::FAdd:
+                if (fp0 && fp0->isZero())
+                {
+                    // 0 + X => X
+                    I.replaceAllUsesWith(op1);
+                    ++Stat_FloatRemoved;
+                    m_isChanged = true;
+                }
+                else if (fp1 && fp1->isZero())
+                {
+                    // X + 0 => X
+                    I.replaceAllUsesWith(op0);
+                    ++Stat_FloatRemoved;
+                    m_isChanged = true;
+                }
+                else
+                {
+                    bool patternFound = false;
+                    if (fp0 || fp1)
+                    {
+                        // a = b + C0
+                        // d = a + C1
+                        //    =>
+                        // d = b + ( C0 + C1 )
+                        patternFound = visitBinaryOperatorTwoConstants(I);
+                    }
+
+                    if (op0 != op1)
+                    {
+                        // a = b - x
+                        // d = a + x
+                        //    =>
+                        // d = b
+                        if (!patternFound)
                         {
-                            // a = b + C0
-                            // d = a + C1
-                            //    =>
-                            // d = b + ( C0 + C1 )
-                            patternFound = visitBinaryOperatorTwoConstants(I);
-                        }
-                        else
-                        {
-                            // a = b + x
-                            // d = a - x
-                            //    =>
-                            // d = b
                             patternFound = visitBinaryOperatorAddSubOp(I);
                         }
-                        m_isChanged |= patternFound;
-                    }
 
-                    break;
-
-                case Instruction::FAdd:
-                    if( fp0 && fp0->isZero() )
-                    {
-                        // 0 + X => X
-                        I.replaceAllUsesWith( op1 );
-                        ++Stat_FloatRemoved;
-                        m_isChanged = true;
-                    }
-                    else if( fp1 && fp1->isZero() )
-                    {
-                        // X + 0 => X
-                        I.replaceAllUsesWith( op0 );
-                        ++Stat_FloatRemoved;
-                        m_isChanged = true;
-                    }
-                    else
-                    {
-                        bool patternFound = false;
-                        if (fp0 || fp1)
-                        {
-                            // a = b + C0
-                            // d = a + C1
-                            //    =>
-                            // d = b + ( C0 + C1 )
-                            patternFound = visitBinaryOperatorTwoConstants(I);
-                        }
-
-                        if (op0 != op1)
-                        {
-                            // a = b - x
-                            // d = a + x
-                            //    =>
-                            // d = b
-                            if (!patternFound)
-                            {
-                                patternFound = visitBinaryOperatorAddSubOp(I);
-                            }
-
-                            // a = 0 - b
-                            // c = a + d
-                            //    =>
-                            // c = d - b
-                            if (!patternFound)
-                            {
-                                patternFound = visitBinaryOperatorPropNegate(I);
-                            }
-                        }
-
-                        // fmul/fadd propagation
-                        if (!patternFound)
-                        {
-                            patternFound = visitBinaryOperatorFmulFaddPropagation(I);
-                        }
-
-                        // A/B +C/D can be changed to (A * D +C * B)/(B * D).
-                        if (!patternFound && IGC_IS_FLAG_ENABLED(EnableSumFractions))
-                        {
-                            patternFound = visitBinaryOperatorDivAddDiv(I);
-                        }
-
-                        if (!patternFound && IGC_IS_FLAG_ENABLED(EnableExtractCommonMultiplier))
-                        {
-                            patternFound = visitBinaryOperatorExtractCommonMultiplier(I);
-                        }
-
-                        if (!patternFound)
-                        {
-                            patternFound = visitExchangeCB(I);
-                        }
-                        m_isChanged |= patternFound;
-                    }
-                    break;
-
-                case Instruction::FMul:
-                    if ( (fp0 && fp0->isZero()) ||
-                         (fp1 && fp1->isZero()) )
-                    {
-                        // X * 0 => 0
-                        // 0 * X => 0
-                        I.replaceAllUsesWith(ConstantFP::get(opType, 0));
-                        ++Stat_FloatRemoved;
-                        m_isChanged = true;
-                    }
-                    else if ( fp0 && fp0->isExactlyValue( 1.0 ) )
-                    {
-                        // 1 * X => X
-                        I.replaceAllUsesWith(op1);
-                        ++Stat_FloatRemoved;
-                        m_isChanged = true;
-                    }
-                    else if ( fp1 && fp1->isExactlyValue( 1.0 ) )
-                    {
-                        // X * 1 => X
-                        I.replaceAllUsesWith(op0);
-                        ++Stat_FloatRemoved;
-                        m_isChanged = true;
-                    }
-                    // X * -1 => -X
-                    else if( fp1 && fp1->isExactlyValue( -1.0 ) )
-                    {
-                        I.replaceAllUsesWith(
-                            copyIRFlags(BinaryOperator::CreateFSub(ConstantFP::get(opType, 0), op0, "", &I), &I));
-                        ++Stat_FloatRemoved;
-                        m_isChanged = true;
-                    }
-                    else if( fp0 && fp0->isExactlyValue( -1.0 ) )
-                    {
-                        I.replaceAllUsesWith(
-                            copyIRFlags(BinaryOperator::CreateFSub(ConstantFP::get(opType, 0), op1, "", &I), &I));
-                        ++Stat_FloatRemoved;
-                        m_isChanged = true;
-                    }
-                    else
-                    {
-                        bool patternFound = false;
-
-                        if (fp0 || fp1)
-                        {
-                            // a = b * C0
-                            // d = a * C1
-                            //    =>
-                            // d = b * ( C0 * C1 )
-                            patternFound = visitBinaryOperatorTwoConstants(I);
-                        }
-
-                        // fmul/fadd propagation
-                        if (!patternFound)
-                        {
-                            patternFound = visitBinaryOperatorFmulFaddPropagation(I);
-                        }
-
-                        //x*(1 - a) = x - x*a
-                        if (!patternFound)
-                        {
-                            patternFound = visitBinaryOperatorFmulToFmad(I);
-                        }
-
-                        //C1*(a + C0) = a*C1 + C0*C1
-                        if (!patternFound)
-                        {
-                            patternFound = visitBinaryOperatorToFmad(I);
-                        }
-
-                        m_isChanged |= patternFound;
-                    }
-                    break;
-
-                case Instruction::FDiv:
-                    if ( fp0 && fp0->isZero() )
-                    {
-                        // 0 / X => 0
-                        I.replaceAllUsesWith(ConstantFP::get(opType, 0));
-                        ++Stat_FloatRemoved;
-                        m_isChanged = true;
-                    }
-                    else if ( fp1 && fp1->isExactlyValue( 1.0 ) )
-                    {
-                        // X / 1 => X
-                        I.replaceAllUsesWith(op0);
-                        ++Stat_FloatRemoved;
-                        m_isChanged = true;
-                    }
-                    else
-                    {
-                        // a = 1 / b
-                        // c = 1 / a
+                        // a = 0 - b
+                        // c = a + d
                         //    =>
-                        // c = b
-                        //     or
-                        // a = 1 / b
-                        // d = c / a
-                        //    =>
-                        // d = b * c
-                        bool patternFound = false;
-                        patternFound = visitBinaryOperatorDivDivOp(I);
-
-                        // 1/rsq -> rsq or a/rsq -> a * sqrt
+                        // c = d - b
                         if (!patternFound)
                         {
-                            patternFound = visitBinaryOperatorDivRsq(I);
+                            patternFound = visitBinaryOperatorPropNegate(I);
+                        }
+                    }
+
+                    // fmul/fadd propagation
+                    if (!patternFound)
+                    {
+                        patternFound = visitBinaryOperatorFmulFaddPropagation(I);
+                    }
+
+                    // A/B +C/D can be changed to (A * D +C * B)/(B * D).
+                    if (!patternFound && IGC_IS_FLAG_ENABLED(EnableSumFractions))
+                    {
+                        patternFound = visitBinaryOperatorDivAddDiv(I);
+                    }
+
+                    if (!patternFound && IGC_IS_FLAG_ENABLED(EnableExtractCommonMultiplier))
+                    {
+                        patternFound = visitBinaryOperatorExtractCommonMultiplier(I);
+                    }
+
+                    if (!patternFound)
+                    {
+                        patternFound = visitExchangeCB(I);
+                    }
+                    m_isChanged |= patternFound;
+                }
+                break;
+
+            case Instruction::FMul:
+                if ((fp0 && fp0->isZero()) ||
+                    (fp1 && fp1->isZero()))
+                {
+                    // X * 0 => 0
+                    // 0 * X => 0
+                    I.replaceAllUsesWith(ConstantFP::get(opType, 0));
+                    ++Stat_FloatRemoved;
+                    m_isChanged = true;
+                }
+                else if (fp0 && fp0->isExactlyValue(1.0))
+                {
+                    // 1 * X => X
+                    I.replaceAllUsesWith(op1);
+                    ++Stat_FloatRemoved;
+                    m_isChanged = true;
+                }
+                else if (fp1 && fp1->isExactlyValue(1.0))
+                {
+                    // X * 1 => X
+                    I.replaceAllUsesWith(op0);
+                    ++Stat_FloatRemoved;
+                    m_isChanged = true;
+                }
+                // X * -1 => -X
+                else if (fp1 && fp1->isExactlyValue(-1.0))
+                {
+                    I.replaceAllUsesWith(
+                        copyIRFlags(BinaryOperator::CreateFSub(ConstantFP::get(opType, 0), op0, "", &I), &I));
+                    ++Stat_FloatRemoved;
+                    m_isChanged = true;
+                }
+                else if (fp0 && fp0->isExactlyValue(-1.0))
+                {
+                    I.replaceAllUsesWith(
+                        copyIRFlags(BinaryOperator::CreateFSub(ConstantFP::get(opType, 0), op1, "", &I), &I));
+                    ++Stat_FloatRemoved;
+                    m_isChanged = true;
+                }
+                else
+                {
+                    bool patternFound = false;
+
+                    if (fp0 || fp1)
+                    {
+                        // a = b * C0
+                        // d = a * C1
+                        //    =>
+                        // d = b * ( C0 * C1 )
+                        patternFound = visitBinaryOperatorTwoConstants(I);
+                    }
+
+                    // fmul/fadd propagation
+                    if (!patternFound)
+                    {
+                        patternFound = visitBinaryOperatorFmulFaddPropagation(I);
+                    }
+
+                    //x*(1 - a) = x - x*a
+                    if (!patternFound)
+                    {
+                        patternFound = visitBinaryOperatorFmulToFmad(I);
+                    }
+
+                    //C1*(a + C0) = a*C1 + C0*C1
+                    if (!patternFound)
+                    {
+                        patternFound = visitBinaryOperatorToFmad(I);
+                    }
+
+                    m_isChanged |= patternFound;
+                }
+                break;
+
+            case Instruction::FDiv:
+                if (fp0 && fp0->isZero())
+                {
+                    // 0 / X => 0
+                    I.replaceAllUsesWith(ConstantFP::get(opType, 0));
+                    ++Stat_FloatRemoved;
+                    m_isChanged = true;
+                }
+                else if (fp1 && fp1->isExactlyValue(1.0))
+                {
+                    // X / 1 => X
+                    I.replaceAllUsesWith(op0);
+                    ++Stat_FloatRemoved;
+                    m_isChanged = true;
+                }
+                else
+                {
+                    // a = 1 / b
+                    // c = 1 / a
+                    //    =>
+                    // c = b
+                    //     or
+                    // a = 1 / b
+                    // d = c / a
+                    //    =>
+                    // d = b * c
+                    bool patternFound = false;
+                    patternFound = visitBinaryOperatorDivDivOp(I);
+
+                    // 1/rsq -> rsq or a/rsq -> a * sqrt
+                    if (!patternFound)
+                    {
+                        patternFound = visitBinaryOperatorDivRsq(I);
+                    }
+
+                    // skip for double type.
+                    if (opType->getTypeID() == llvm::Type::FloatTyID || opType->getTypeID() == llvm::Type::HalfTyID)
+                    {
+                        // add r6.x, -r6.y, |r6.x|
+                        // div_sat r6.x, r6.x, r6.y
+                        //     To
+                        // div r6.y, l(1.000000, 1.000000, 1.000000, 1.000000), r6.y
+                        // mad_sat r6.x, | r6.x | , r6.y, l(-1.000000)
+                        if (!patternFound)
+                        {
+                            patternFound = visitBinaryOperatorAddDiv(I);
                         }
 
-                        // skip for double type.
-                        if (opType->getTypeID() == llvm::Type::FloatTyID || opType->getTypeID() == llvm::Type::HalfTyID)
+                        // FDIV to FMUL+INV
+                        if (!patternFound)
                         {
-                            // add r6.x, -r6.y, |r6.x|
-                            // div_sat r6.x, r6.x, r6.y
-                            //     To
-                            // div r6.y, l(1.000000, 1.000000, 1.000000, 1.000000), r6.y
-                            // mad_sat r6.x, | r6.x | , r6.y, l(-1.000000)
-                            if (!patternFound)
+                            if (!(fp0 && fp0->isExactlyValue(1.0)))
                             {
-                                patternFound = visitBinaryOperatorAddDiv(I);
-                            }
-
-                            // FDIV to FMUL+INV
-                            if (!patternFound)
-                            {
-                                if (!(fp0 && fp0->isExactlyValue(1.0)))
+                                if (m_ctx->getModuleMetaData()->compOpt.FastRelaxedMath || I.hasAllowReciprocal())
                                 {
-                                    if (m_ctx->getModuleMetaData()->compOpt.FastRelaxedMath || I.hasAllowReciprocal())
-                                    {
-                                        Value *invOp = copyIRFlags(BinaryOperator::CreateFDiv(ConstantFP::get(opType, 1.0), op1, "", &I), &I);
-                                        I.replaceAllUsesWith(
-                                            copyIRFlags(BinaryOperator::CreateFMul(op0, invOp, "", &I), &I));
-                                        patternFound = true;
-                                    }
+                                    Value* invOp = copyIRFlags(BinaryOperator::CreateFDiv(ConstantFP::get(opType, 1.0), op1, "", &I), &I);
+                                    I.replaceAllUsesWith(
+                                        copyIRFlags(BinaryOperator::CreateFMul(op0, invOp, "", &I), &I));
+                                    patternFound = true;
                                 }
                             }
                         }
-                        m_isChanged |= patternFound;
                     }
-                    break;
+                    m_isChanged |= patternFound;
+                }
+                break;
 
-                default:
-                    break;
+            default:
+                break;
             }
         }
     }
 }
 
-bool CustomUnsafeOptPass::visitFCmpInstFCmpFAddOp(FCmpInst &FC)
+bool CustomUnsafeOptPass::visitFCmpInstFCmpFAddOp(FCmpInst& FC)
 {
     //  %3 = fadd float %2, 0x40015C29
     //  %4 = fcmp uge float %3, 0.0
@@ -1784,21 +1784,21 @@ bool CustomUnsafeOptPass::visitFCmpInstFCmpFAddOp(FCmpInst &FC)
     // other optimization otherwise
 
     Value* fcmpOp1 = FC.getOperand(1);
-    ConstantFP *fcmpConstant = dyn_cast<ConstantFP>(fcmpOp1);
-    if( fcmpConstant )
+    ConstantFP* fcmpConstant = dyn_cast<ConstantFP>(fcmpOp1);
+    if (fcmpConstant)
     {
-        llvm::Instruction* faddInst = llvm::dyn_cast<llvm::Instruction>( FC.getOperand(0) );
-        if( faddInst &&
-            ( faddInst->getOpcode() == Instruction::FAdd ||
-            faddInst->getOpcode() == Instruction::FSub ) &&
+        llvm::Instruction* faddInst = llvm::dyn_cast<llvm::Instruction>(FC.getOperand(0));
+        if (faddInst &&
+            (faddInst->getOpcode() == Instruction::FAdd ||
+                faddInst->getOpcode() == Instruction::FSub) &&
             faddInst->hasOneUse())
         {
             Value* faddOp1 = faddInst->getOperand(1);
-            ConstantFP *faddConstant = dyn_cast<ConstantFP>(faddOp1);
-            if( faddConstant )
+            ConstantFP* faddConstant = dyn_cast<ConstantFP>(faddOp1);
+            if (faddConstant)
             {
                 APFloat newConstantFloat(0.0);
-                if( faddInst->getOpcode() == Instruction::FAdd )
+                if (faddInst->getOpcode() == Instruction::FAdd)
                 {
                     newConstantFloat = fcmpConstant->getValueAPF();
                     newConstantFloat.subtract(faddConstant->getValueAPF(), llvm::APFloat::rmNearestTiesToEven);
@@ -1810,8 +1810,8 @@ bool CustomUnsafeOptPass::visitFCmpInstFCmpFAddOp(FCmpInst &FC)
                 }
 
                 ConstantFP* newConstant = ConstantFP::get(fcmpConstant->getContext(), newConstantFloat);
-                FC.setOperand( 0, faddInst->getOperand(0) );
-                FC.setOperand( 1, newConstant );
+                FC.setOperand(0, faddInst->getOperand(0));
+                FC.setOperand(1, newConstant);
                 ++Stat_FcmpRemoved;
                 return true;
             }
@@ -1820,7 +1820,7 @@ bool CustomUnsafeOptPass::visitFCmpInstFCmpFAddOp(FCmpInst &FC)
     return false;
 }
 
-bool CustomUnsafeOptPass::visitFMulFCmpOp(FCmpInst &FC)
+bool CustomUnsafeOptPass::visitFMulFCmpOp(FCmpInst& FC)
 {
     // pattern match fmul+fsub+fcmp into fcmp
     bool patternFound = false;
@@ -1840,7 +1840,7 @@ bool CustomUnsafeOptPass::visitFMulFCmpOp(FCmpInst &FC)
         {
             continue;
         }
-        ConstantFP *fpc = dyn_cast<ConstantFP>(prevInst[i]->getOperand(0));
+        ConstantFP* fpc = dyn_cast<ConstantFP>(prevInst[i]->getOperand(0));
         if (!fpc || !fpc->isZero() || prevInst[i]->getOperand(1) != prevInst[1 - i])
         {
             continue;
@@ -1871,7 +1871,7 @@ bool CustomUnsafeOptPass::visitFMulFCmpOp(FCmpInst &FC)
                 break;
             }
         }
-        else if (ConstantFP *fmulConstant = dyn_cast<ConstantFP>(prevInst[1 - i]->getOperand(1)))
+        else if (ConstantFP * fmulConstant = dyn_cast<ConstantFP>(prevInst[1 - i]->getOperand(1)))
         {
             if (fmulConstant->isZeroValue())
             {
@@ -1943,7 +1943,7 @@ bool CustomUnsafeOptPass::visitFMulFCmpOp(FCmpInst &FC)
     return patternFound;
 }
 
-bool CustomUnsafeOptPass::visitFCmpInstFCmpSelOp(FCmpInst &FC)
+bool CustomUnsafeOptPass::visitFCmpInstFCmpSelOp(FCmpInst& FC)
 {
     //  %17 = fcmp ole float %16, 0.000000e+00
     //  %18 = select i1 %17, float 0.000000e+00, float 1.000000e+00
@@ -1951,33 +1951,33 @@ bool CustomUnsafeOptPass::visitFCmpInstFCmpSelOp(FCmpInst &FC)
     //  %20 = fcmp ueq float %18, %19
     //         =>
     //  %20 = fcmp ole float %16, 0.000000e+00
-    llvm::Instruction* fSubInst = llvm::dyn_cast<llvm::Instruction>( FC.getOperand(1) );
-    if( fSubInst &&
-        fSubInst->getOpcode() == Instruction::FSub )
+    llvm::Instruction* fSubInst = llvm::dyn_cast<llvm::Instruction>(FC.getOperand(1));
+    if (fSubInst &&
+        fSubInst->getOpcode() == Instruction::FSub)
     {
-        ConstantFP *fSubConstant = dyn_cast<ConstantFP>(fSubInst->getOperand(0));
+        ConstantFP* fSubConstant = dyn_cast<ConstantFP>(fSubInst->getOperand(0));
 
-        llvm::Instruction* selectInst = llvm::dyn_cast<llvm::Instruction>( FC.getOperand(0) );
+        llvm::Instruction* selectInst = llvm::dyn_cast<llvm::Instruction>(FC.getOperand(0));
 
-        if( selectInst &&
+        if (selectInst &&
             selectInst->getOpcode() == Instruction::Select &&
-            selectInst == llvm::dyn_cast<llvm::Instruction>( fSubInst->getOperand(1) ) &&
+            selectInst == llvm::dyn_cast<llvm::Instruction>(fSubInst->getOperand(1)) &&
             fSubConstant &&
             fSubConstant->isZero())
         {
-            ConstantFP *selectConstant1 = dyn_cast<ConstantFP>(selectInst->getOperand(1));
-            ConstantFP *selectConstant2 = dyn_cast<ConstantFP>(selectInst->getOperand(2));
+            ConstantFP* selectConstant1 = dyn_cast<ConstantFP>(selectInst->getOperand(1));
+            ConstantFP* selectConstant2 = dyn_cast<ConstantFP>(selectInst->getOperand(2));
 
-            llvm::Instruction* fCmpInst = llvm::dyn_cast<llvm::Instruction>( selectInst->getOperand(0) );
+            llvm::Instruction* fCmpInst = llvm::dyn_cast<llvm::Instruction>(selectInst->getOperand(0));
 
             if (fCmpInst &&
                 fCmpInst->getOpcode() == Instruction::FCmp &&
                 selectConstant1 && selectConstant2 &&
-                selectConstant1->isZero() && !selectConstant2->isZero() )
+                selectConstant1->isZero() && !selectConstant2->isZero())
             {
-                FC.setOperand(0,fCmpInst->getOperand(0));
-                FC.setOperand(1,fCmpInst->getOperand(1));
-                if( FC.getPredicate() == FCmpInst::FCMP_UNE )
+                FC.setOperand(0, fCmpInst->getOperand(0));
+                FC.setOperand(1, fCmpInst->getOperand(1));
+                if (FC.getPredicate() == FCmpInst::FCMP_UNE)
                 {
                     FC.setPredicate(dyn_cast<FCmpInst>(fCmpInst)->getInversePredicate());
                 }
@@ -1985,7 +1985,7 @@ bool CustomUnsafeOptPass::visitFCmpInstFCmpSelOp(FCmpInst &FC)
                 {
                     FC.setPredicate(dyn_cast<FCmpInst>(fCmpInst)->getPredicate());
                 }
-                Stat_FcmpRemoved+=3;
+                Stat_FcmpRemoved += 3;
                 return true;
             }
         }
@@ -1993,14 +1993,14 @@ bool CustomUnsafeOptPass::visitFCmpInstFCmpSelOp(FCmpInst &FC)
     return false;
 }
 
-void CustomUnsafeOptPass::visitFCmpInst(FCmpInst &FC)
+void CustomUnsafeOptPass::visitFCmpInst(FCmpInst& FC)
 {
     bool patternFound = false;
     if (FC.use_empty())
     {
         return;
     }
-    if(FC.getPredicate()==CmpInst::FCMP_UNO)
+    if (FC.getPredicate() == CmpInst::FCMP_UNO)
     {
         if (m_ctx->m_DriverInfo.IgnoreNan())
         {
@@ -2010,7 +2010,7 @@ void CustomUnsafeOptPass::visitFCmpInst(FCmpInst &FC)
             patternFound = true;
         }
     }
-    else if(FC.getPredicate()==CmpInst::FCMP_ORD)
+    else if (FC.getPredicate() == CmpInst::FCMP_ORD)
     {
         if (m_ctx->m_DriverInfo.IgnoreNan())
         {
@@ -2025,7 +2025,7 @@ void CustomUnsafeOptPass::visitFCmpInst(FCmpInst &FC)
         patternFound = visitFCmpInstFCmpFAddOp(FC);
         if (!patternFound &&
             (FC.getPredicate() == FCmpInst::FCMP_UEQ ||
-             FC.getPredicate() == FCmpInst::FCMP_UNE ))
+                FC.getPredicate() == FCmpInst::FCMP_UNE))
         {
             patternFound = visitFCmpInstFCmpSelOp(FC);
         }
@@ -2038,13 +2038,13 @@ void CustomUnsafeOptPass::visitFCmpInst(FCmpInst &FC)
     m_isChanged |= patternFound;
 }
 
-void CustomUnsafeOptPass::visitSelectInst(SelectInst &I)
+void CustomUnsafeOptPass::visitSelectInst(SelectInst& I)
 {
-    if (llvm::FCmpInst* cmpInst = llvm::dyn_cast<llvm::FCmpInst>(I.getOperand(0)))
+    if (llvm::FCmpInst * cmpInst = llvm::dyn_cast<llvm::FCmpInst>(I.getOperand(0)))
     {
         if (dyn_cast<FCmpInst>(cmpInst)->getPredicate() == FCmpInst::FCMP_OEQ)
         {
-            if (ConstantFP* cmpConstant = dyn_cast<ConstantFP>(cmpInst->getOperand(1)))
+            if (ConstantFP * cmpConstant = dyn_cast<ConstantFP>(cmpInst->getOperand(1)))
             {
                 if (cmpConstant->isZeroValue())
                 {
@@ -2065,7 +2065,7 @@ void CustomUnsafeOptPass::visitSelectInst(SelectInst &I)
                         {
                             llvm::Instruction* mulInst = llvm::dyn_cast<llvm::Instruction>(addInst->getOperand(j)); // %16
                             if (mulInst && mulInst->getOpcode() == Instruction::FMul &&
-                                addInst->getOperand(1-j) == I.getOperand(1) )
+                                addInst->getOperand(1 - j) == I.getOperand(1))
                             {
                                 for (uint k = 0; k < 2; k++)
                                 {
@@ -2109,7 +2109,7 @@ void CustomUnsafeOptPass::visitSelectInst(SelectInst &I)
                                     if (subInst &&
                                         subInst->getOpcode() == Instruction::FSub &&
                                         subInst->getOperand(0) == I.getOperand(1) &&
-                                        subInst->getOperand(1) == addInst->getOperand(1-j) &&
+                                        subInst->getOperand(1) == addInst->getOperand(1 - j) &&
                                         mulInst->getOperand(1 - k) == cmpInst->getOperand(0))
                                     {
                                         I.replaceAllUsesWith(I.getOperand(2));
@@ -2144,89 +2144,89 @@ void CustomUnsafeOptPass::strengthReducePow(
         intrin->eraseFromParent();
     }
     else
-    if (exponent == ConstantFP::get(exponent->getType(), 1.0))
-    {
-        intrin->replaceAllUsesWith(src);
-        intrin->eraseFromParent();
-    }
-    else
-    if (exponent == ConstantFP::get(exponent->getType(), 2.0))
-    {
-        // pow(x, 2.0) -> x * x
-        Value* x2 = irb.CreateFMul(src, src);
-        intrin->replaceAllUsesWith(x2);
-        intrin->eraseFromParent();
-    }
-    else
-    if (exponent == ConstantFP::get(exponent->getType(), 3.0))
-    {
-        // pow(x, 3.0) -> x * x * x
-        Value* x2 = irb.CreateFMul(src, src); 
-        Value* x3 = irb.CreateFMul(x2, src); 
-        intrin->replaceAllUsesWith(x3);
-        intrin->eraseFromParent();
-    }
-    else
-    if (exponent == ConstantFP::get(exponent->getType(), 4.0))
-    {
-        // pow(x, 4.0) -> (x*x) * (x*x)
-        Value* x2 = irb.CreateFMul(src, src); 
-        Value* x4 = irb.CreateFMul(x2, x2);
-        intrin->replaceAllUsesWith(x4);
-        intrin->eraseFromParent();
-    }
-    else
-    if (exponent == ConstantFP::get(exponent->getType(), 5.0))
-    {
-        // pow(x, 5.0) -> (x*x) * (x*x) * x
-        Value* x2 = irb.CreateFMul(src, src);
-        Value* x4 = irb.CreateFMul(x2, x2);
-        Value* x5 = irb.CreateFMul(x4, src);
-        intrin->replaceAllUsesWith(x5);
-        intrin->eraseFromParent();
-    }
-    else
-    if (exponent == ConstantFP::get(exponent->getType(), 6.0))
-    {
-        // pow(x, 6.0) -> (x*x) * (x*x) * (x*x)
-        Value* x2 = irb.CreateFMul(src, src); 
-        Value* x4 = irb.CreateFMul(x2, x2); 
-        Value* x6 = irb.CreateFMul(x4, x2); 
-        intrin->replaceAllUsesWith(x6);
-        intrin->eraseFromParent();
-    }
-    else
-    if (exponent == ConstantFP::get(exponent->getType(), 8.0))
-    {
-        // pow(x, 8.0) -> ((x*x) * (x*x)) * ((x*x) * (x*x))
-        Value* x2 = irb.CreateFMul(src, src);
-        Value* x4 = irb.CreateFMul(x2, x2); 
-        Value* x8 = irb.CreateFMul(x4, x4);
-        intrin->replaceAllUsesWith(x8);
-        intrin->eraseFromParent();
-    }
-    else
-    if (IGC_IS_FLAG_ENABLED(EnablePowToLogMulExp))
-    {
-        // pow(x, y) -> exp2(log2(x) * y)
-        Function* logf = Intrinsic::getDeclaration(
-            m_ctx->getModule(), Intrinsic::log2, src->getType());
-        Function* expf = Intrinsic::getDeclaration(
-            m_ctx->getModule(), Intrinsic::exp2, src->getType());
-        CallInst* logv = irb.CreateCall(logf, src);
-        Value* mulv = irb.CreateFMul(logv, exponent);
-        CallInst* expv = irb.CreateCall(expf, mulv);
-        intrin->replaceAllUsesWith(expv);
-        intrin->eraseFromParent();
-    }
+        if (exponent == ConstantFP::get(exponent->getType(), 1.0))
+        {
+            intrin->replaceAllUsesWith(src);
+            intrin->eraseFromParent();
+        }
+        else
+            if (exponent == ConstantFP::get(exponent->getType(), 2.0))
+            {
+                // pow(x, 2.0) -> x * x
+                Value* x2 = irb.CreateFMul(src, src);
+                intrin->replaceAllUsesWith(x2);
+                intrin->eraseFromParent();
+            }
+            else
+                if (exponent == ConstantFP::get(exponent->getType(), 3.0))
+                {
+                    // pow(x, 3.0) -> x * x * x
+                    Value* x2 = irb.CreateFMul(src, src);
+                    Value* x3 = irb.CreateFMul(x2, src);
+                    intrin->replaceAllUsesWith(x3);
+                    intrin->eraseFromParent();
+                }
+                else
+                    if (exponent == ConstantFP::get(exponent->getType(), 4.0))
+                    {
+                        // pow(x, 4.0) -> (x*x) * (x*x)
+                        Value* x2 = irb.CreateFMul(src, src);
+                        Value* x4 = irb.CreateFMul(x2, x2);
+                        intrin->replaceAllUsesWith(x4);
+                        intrin->eraseFromParent();
+                    }
+                    else
+                        if (exponent == ConstantFP::get(exponent->getType(), 5.0))
+                        {
+                            // pow(x, 5.0) -> (x*x) * (x*x) * x
+                            Value* x2 = irb.CreateFMul(src, src);
+                            Value* x4 = irb.CreateFMul(x2, x2);
+                            Value* x5 = irb.CreateFMul(x4, src);
+                            intrin->replaceAllUsesWith(x5);
+                            intrin->eraseFromParent();
+                        }
+                        else
+                            if (exponent == ConstantFP::get(exponent->getType(), 6.0))
+                            {
+                                // pow(x, 6.0) -> (x*x) * (x*x) * (x*x)
+                                Value* x2 = irb.CreateFMul(src, src);
+                                Value* x4 = irb.CreateFMul(x2, x2);
+                                Value* x6 = irb.CreateFMul(x4, x2);
+                                intrin->replaceAllUsesWith(x6);
+                                intrin->eraseFromParent();
+                            }
+                            else
+                                if (exponent == ConstantFP::get(exponent->getType(), 8.0))
+                                {
+                                    // pow(x, 8.0) -> ((x*x) * (x*x)) * ((x*x) * (x*x))
+                                    Value* x2 = irb.CreateFMul(src, src);
+                                    Value* x4 = irb.CreateFMul(x2, x2);
+                                    Value* x8 = irb.CreateFMul(x4, x4);
+                                    intrin->replaceAllUsesWith(x8);
+                                    intrin->eraseFromParent();
+                                }
+                                else
+                                    if (IGC_IS_FLAG_ENABLED(EnablePowToLogMulExp))
+                                    {
+                                        // pow(x, y) -> exp2(log2(x) * y)
+                                        Function* logf = Intrinsic::getDeclaration(
+                                            m_ctx->getModule(), Intrinsic::log2, src->getType());
+                                        Function* expf = Intrinsic::getDeclaration(
+                                            m_ctx->getModule(), Intrinsic::exp2, src->getType());
+                                        CallInst* logv = irb.CreateCall(logf, src);
+                                        Value* mulv = irb.CreateFMul(logv, exponent);
+                                        CallInst* expv = irb.CreateCall(expf, mulv);
+                                        intrin->replaceAllUsesWith(expv);
+                                        intrin->eraseFromParent();
+                                    }
 }
 
-void CustomUnsafeOptPass::visitCallInst(llvm::CallInst &I)
+void CustomUnsafeOptPass::visitCallInst(llvm::CallInst& I)
 {
-    if(llvm::IntrinsicInst* intr = dyn_cast<llvm::IntrinsicInst>(&I))
+    if (llvm::IntrinsicInst * intr = dyn_cast<llvm::IntrinsicInst>(&I))
     {
         llvm::Intrinsic::ID ID = intr->getIntrinsicID();
-        if(ID == llvm::Intrinsic::pow)
+        if (ID == llvm::Intrinsic::pow)
         {
             strengthReducePow(intr, intr->getOperand(1));
         }
@@ -2235,7 +2235,7 @@ void CustomUnsafeOptPass::visitCallInst(llvm::CallInst &I)
             // y*y = x if y = sqrt(x).
             for (auto iter = intr->user_begin(); iter != intr->user_end(); iter++)
             {
-                if (llvm::Instruction* mul = dyn_cast<Instruction>(*iter))
+                if (llvm::Instruction * mul = dyn_cast<Instruction>(*iter))
                 {
                     if (mul->getOpcode() == Instruction::FMul &&
                         mul->getOperand(0) == mul->getOperand(1))
@@ -2249,7 +2249,7 @@ void CustomUnsafeOptPass::visitCallInst(llvm::CallInst &I)
 }
 
 // Search for reassociation candidate.
-static bool searchFAdd(Instruction *DefI, Instruction *UseI, unsigned &level)
+static bool searchFAdd(Instruction* DefI, Instruction* UseI, unsigned& level)
 {
     // Could search further, however we need to rewrite
     // instructions along the path. So limit this two
@@ -2264,7 +2264,7 @@ static bool searchFAdd(Instruction *DefI, Instruction *UseI, unsigned &level)
         return false;
 
     // Swap operands such DefI is always the LHS in UseI.
-    Value *Op = UseI->getOperand(1);
+    Value* Op = UseI->getOperand(1);
     bool IsFAdd = UseI->getOpcode() == Instruction::FAdd;
     if (DefI == Op)
     {
@@ -2300,7 +2300,7 @@ static bool searchFAdd(Instruction *DefI, Instruction *UseI, unsigned &level)
 //
 // a * b +/- e + c * d -> MAD, MAD
 //
-void CustomUnsafeOptPass::reassociateMulAdd(Function &F)
+void CustomUnsafeOptPass::reassociateMulAdd(Function& F)
 {
     if (m_disableReorderingOpt)
     {
@@ -2315,23 +2315,23 @@ void CustomUnsafeOptPass::reassociateMulAdd(Function &F)
 
     using namespace PatternMatch;
 
-    for (auto &BB : F.getBasicBlockList())
+    for (auto& BB : F.getBasicBlockList())
     {
         for (auto I = BB.begin(); I != BB.end(); /*Empty*/)
         {
-            Instruction *Inst = &*I++;
-            Value *A, *B, *C, *D;
+            Instruction* Inst = &*I++;
+            Value* A, * B, * C, * D;
             // Match Exp = A * B + C * D with a single use so that
             // it is benefical to fold one FSub/FAdd with A * B.
             if (match(Inst, m_OneUse(m_FAdd(m_FMul(m_Value(A), m_Value(B)),
-                                            m_FMul(m_Value(C), m_Value(D))))))
+                m_FMul(m_Value(C), m_Value(D))))))
             {
-                Instruction *L0 = Inst->user_back();
+                Instruction* L0 = Inst->user_back();
                 unsigned level = 0;
                 if (searchFAdd(Inst, L0, level))
                 {
-                    Value *T0 = Inst->getOperand(0);
-                    Value *T1 = Inst->getOperand(1);
+                    Value* T0 = Inst->getOperand(0);
+                    Value* T1 = Inst->getOperand(1);
 
                     // rewrite the expression tree
                     if (level == 0)
@@ -2352,10 +2352,10 @@ void CustomUnsafeOptPass::reassociateMulAdd(Function &F)
                         // t3  = t2 - E   // L0
                         IRBuilder<> Builder(L0);
                         Builder.setFastMathFlags(L0->getFastMathFlags());
-                        Value *E = L0->getOperand(1);
+                        Value* E = L0->getOperand(1);
                         auto OpKind = BinaryOperator::BinaryOps(L0->getOpcode());
-                        Value *NewInst = Builder.CreateBinOp(OpKind, T0, E, Inst->getName());
-                        Value *NewL0 = Builder.CreateFAdd(NewInst, T1, L0->getName());
+                        Value* NewInst = Builder.CreateBinOp(OpKind, T0, E, Inst->getName());
+                        Value* NewL0 = Builder.CreateFAdd(NewInst, T1, L0->getName());
                         L0->replaceAllUsesWith(NewL0);
                         m_isChanged = true;
                     }
@@ -2380,16 +2380,16 @@ void CustomUnsafeOptPass::reassociateMulAdd(Function &F)
                         // t4n = t3n + t2 // NewL0
                         // t5n = t4n + t1 // NewL1
                         // t5  = t4 - G   // L1
-                        Instruction *L1 = L0->user_back();
+                        Instruction* L1 = L0->user_back();
                         IRBuilder<> Builder(L1);
                         Builder.setFastMathFlags(L1->getFastMathFlags());
-                        Value *T2 = L0->getOperand(1);
-                        Value *G = L1->getOperand(1);
+                        Value* T2 = L0->getOperand(1);
+                        Value* G = L1->getOperand(1);
 
                         auto OpKind = BinaryOperator::BinaryOps(L1->getOpcode());
-                        Value *NewInst = Builder.CreateBinOp(OpKind, T0, G, Inst->getName());
-                        Value *NewL0 = Builder.CreateFAdd(NewInst, T2, L0->getName());
-                        Value *NewL1 = Builder.CreateFAdd(NewL0, T1, L1->getName());
+                        Value* NewInst = Builder.CreateBinOp(OpKind, T0, G, Inst->getName());
+                        Value* NewL0 = Builder.CreateFAdd(NewInst, T2, L0->getName());
+                        Value* NewL1 = Builder.CreateFAdd(NewL0, T1, L1->getName());
                         L1->replaceAllUsesWith(NewL1);
                         m_isChanged = true;
                     }
@@ -2427,12 +2427,12 @@ public:
         m_ctx(nullptr), m_ShaderLength(0)
     {
     }
-    virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const
+    virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const
     {
         AU.addRequired<CodeGenContextWrapper>();
     }
 
-    virtual bool runOnFunction(Function &F);
+    virtual bool runOnFunction(Function& F);
     virtual bool processBlock(BasicBlock* BB);
 
     virtual llvm::StringRef getPassName() const
@@ -2440,45 +2440,45 @@ public:
         return "EarlyOutPatterns";
     }
 private:
-    static bool canOptimizeSampleInst(SmallVector<Instruction*, 4> &Channels, GenIntrinsicInst *GII);
-    static bool canOptimizeDotProduct(SmallVector<Instruction*, 4> &Values, Instruction *I);
-    static bool canOptimizeNdotL(SmallVector<Instruction*, 4> &Values, FCmpInst *FC);
-    static bool canOptimizeDirectOutput(SmallVector<Instruction*, 4> &Values, GenIntrinsicInst *GII, Value *&SI, unsigned int ShaderLength);
-    static bool DotProductMatch(const Instruction *I);
-    static bool DotProductSourceMatch(const Instruction *I);
+    static bool canOptimizeSampleInst(SmallVector<Instruction*, 4> & Channels, GenIntrinsicInst* GII);
+    static bool canOptimizeDotProduct(SmallVector<Instruction*, 4> & Values, Instruction* I);
+    static bool canOptimizeNdotL(SmallVector<Instruction*, 4> & Values, FCmpInst* FC);
+    static bool canOptimizeDirectOutput(SmallVector<Instruction*, 4> & Values, GenIntrinsicInst* GII, Value*& SI, unsigned int ShaderLength);
+    static bool DotProductMatch(const Instruction* I);
+    static bool DotProductSourceMatch(const Instruction* I);
     static BasicBlock* tryFoldAndSplit(
         ArrayRef<Instruction*> Values,
-        Instruction *Root,
+        Instruction* Root,
         const unsigned FoldThreshold,
         const unsigned FoldThresholdMultiChannel,
         const unsigned RatioNeeded);
     static bool trackAddSources(BinaryOperator* addInst);
     static DenseSet<const Value*> tryAndFoldValues(ArrayRef<Instruction*> Values);
-    static BasicBlock* SplitBasicBlock(Instruction* inst, const DenseSet<const Value*> &FoldedVals);
-    static bool FoldsToZero(const Instruction* inst, const Value* use, const DenseSet<const Value*> &FoldedVals);
+    static BasicBlock* SplitBasicBlock(Instruction* inst, const DenseSet<const Value*>& FoldedVals);
+    static bool FoldsToZero(const Instruction* inst, const Value* use, const DenseSet<const Value*>& FoldedVals);
     static void MoveOutputToConvergeBlock(BasicBlock* divergeBlock, BasicBlock* convergeBlock);
     static bool EarlyOutBenefit(
         const Instruction* earlyOutInst,
-        const DenseSet<const Value*> &FoldedVals,
+        const DenseSet<const Value*>& FoldedVals,
         const unsigned int ratioNeeded);
-    static void foldFromAdd(SmallVector<Instruction*, 4> &Values, Instruction *&NewInsertPoint);
-    static Instruction* moveToDef(Instruction *Def, ArrayRef<Instruction*> Users);
+    static void foldFromAdd(SmallVector<Instruction*, 4> & Values, Instruction*& NewInsertPoint);
+    static Instruction* moveToDef(Instruction* Def, ArrayRef<Instruction*> Users);
     static bool isSplitProfitable(
-        const Instruction *Root,
+        const Instruction* Root,
         ArrayRef<Instruction*> Values,
-        const DenseSet<const Value*> &FoldedVals,
+        const DenseSet<const Value*>& FoldedVals,
         // Number of instructions which needs to be folded in order for the optimization to be worth it
         const unsigned FoldThreshold,
         // For cases where we need to AND several channels we have a higher threshold
         const unsigned FoldThresholdMultiChannel,
         const unsigned RatioNeeded);
     static BasicBlock* cmpAndSplitAtPoint(
-        Instruction *Root,
+        Instruction* Root,
         ArrayRef<Instruction*> Values,
-        const DenseSet<const Value*> &FoldedVals);
-    static unsigned int shortPathToOutput(Value *inst, unsigned int limit);
+        const DenseSet<const Value*>& FoldedVals);
+    static unsigned int shortPathToOutput(Value* inst, unsigned int limit);
 
-    CodeGenContext *m_ctx;
+    CodeGenContext* m_ctx;
     unsigned int m_ShaderLength;
 };
 
@@ -2489,7 +2489,7 @@ FunctionPass* IGC::CreateEarlyOutPatternsPass()
     return new EarlyOutPatterns();
 }
 
-bool EarlyOutPatterns::runOnFunction(Function &F)
+bool EarlyOutPatterns::runOnFunction(Function& F)
 {
     m_ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     if (IGC_IS_FLAG_ENABLED(DisableEarlyOutPatterns) ||
@@ -2507,7 +2507,7 @@ bool EarlyOutPatterns::runOnFunction(Function &F)
     }
 
     bool changed = false;
-    for(auto BI = F.begin(), BE = F.end(); BI != BE;)
+    for (auto BI = F.begin(), BE = F.end(); BI != BE;)
     {
         BasicBlock* currentBB = &(*BI);
         ++BI;
@@ -2518,7 +2518,7 @@ bool EarlyOutPatterns::runOnFunction(Function &F)
 
 // Calculates whether the given 'use' evaluates to zero given that 'inst' is known to
 // evaluate to zero.
-bool EarlyOutPatterns::FoldsToZero(const Instruction* inst, const Value* use, const DenseSet<const Value*> &FoldedVals)
+bool EarlyOutPatterns::FoldsToZero(const Instruction* inst, const Value* use, const DenseSet<const Value*>& FoldedVals)
 {
     auto isZero = [](const Value* V)
     {
@@ -2527,9 +2527,9 @@ bool EarlyOutPatterns::FoldsToZero(const Instruction* inst, const Value* use, co
 
     auto geZero = [](const Value* V)
     {
-        if (auto *CFP = dyn_cast<ConstantFP>(V))
+        if (auto * CFP = dyn_cast<ConstantFP>(V))
         {
-            auto &APF = CFP->getValueAPF();
+            auto& APF = CFP->getValueAPF();
             if (CFP->getType()->isDoubleTy())
                 return APF.convertToDouble() >= 0.0;
             else if (CFP->getType()->isFloatTy())
@@ -2539,7 +2539,7 @@ bool EarlyOutPatterns::FoldsToZero(const Instruction* inst, const Value* use, co
         return false;
     };
 
-    if (auto *binInst = dyn_cast<BinaryOperator>(use))
+    if (auto * binInst = dyn_cast<BinaryOperator>(use))
     {
         switch (binInst->getOpcode())
         {
@@ -2556,11 +2556,11 @@ bool EarlyOutPatterns::FoldsToZero(const Instruction* inst, const Value* use, co
             return false;
         }
     }
-    else if (auto *BI = dyn_cast<BitCastInst>(use))
+    else if (auto * BI = dyn_cast<BitCastInst>(use))
     {
         return true;
     }
-    else if (auto *SI = dyn_cast<SelectInst>(use))
+    else if (auto * SI = dyn_cast<SelectInst>(use))
     {
         // Assuming %x is 0, if the other operand is also
         // 0 the result of the select must be 0 as well.
@@ -2576,18 +2576,18 @@ bool EarlyOutPatterns::FoldsToZero(const Instruction* inst, const Value* use, co
         // If we have previously visited this select with a
         // folded value, check the map and allow the
         // select to be folded.
-        auto *OtherOp = (inst == SI->getTrueValue()) ?
+        auto* OtherOp = (inst == SI->getTrueValue()) ?
             SI->getFalseValue() :
             SI->getTrueValue();
 
         return FoldedVals.count(OtherOp) != 0;
     }
-    else if (auto* CI = dyn_cast<CallInst>(use))
+    else if (auto * CI = dyn_cast<CallInst>(use))
     {
         // if x == 0
         switch (GetOpCode(CI))
         {
-        // max(0, x) or min(x, 0) == 0
+            // max(0, x) or min(x, 0) == 0
         case llvm_max:
             return isZero(CI->getArgOperand(0)) ||
                 isZero(CI->getArgOperand(1));
@@ -2595,14 +2595,14 @@ bool EarlyOutPatterns::FoldsToZero(const Instruction* inst, const Value* use, co
             return geZero(CI->getArgOperand(0)) ||
                 geZero(CI->getArgOperand(1));
 
-        // Useful in matching dp3_sat
+            // Useful in matching dp3_sat
         case llvm_fsat:
             return true;
         default:
             return false;
         }
     }
-    else if (auto* inst = dyn_cast<Instruction>(use))
+    else if (auto * inst = dyn_cast<Instruction>(use))
     {
         if (inst->getOpcode() == Instruction::SExt)
         {
@@ -2617,7 +2617,7 @@ bool EarlyOutPatterns::FoldsToZero(const Instruction* inst, const Value* use, co
 // by instruction skipped is greater than the threshold return false
 bool EarlyOutPatterns::EarlyOutBenefit(
     const Instruction* earlyOutInst,
-    const DenseSet<const Value*> &FoldedVals,
+    const DenseSet<const Value*>& FoldedVals,
     const unsigned int ratioNeeded)
 {
     auto* BB = earlyOutInst->getParent();
@@ -2628,8 +2628,8 @@ bool EarlyOutPatterns::EarlyOutBenefit(
     DenseSet<const Value*> instDuplicated;
     instDuplicated.insert(BB->getTerminator());
 
-    for(auto it = BB->rbegin(); &(*it) != earlyOutInst; ++it)
-    { 
+    for (auto it = BB->rbegin(); &(*it) != earlyOutInst; ++it)
+    {
         numberOfInstruction++;
         const Instruction* inst = &(*it);
 
@@ -2639,20 +2639,20 @@ bool EarlyOutPatterns::EarlyOutBenefit(
         bool instNeeded = false;
 
         // We can't throw away side effects
-        if(inst->mayWriteToMemory())
+        if (inst->mayWriteToMemory())
         {
             instNeeded = true;
         }
         else
         {
-            for (auto *UI : inst->users())
+            for (auto* UI : inst->users())
             {
-                if (auto *useInst = dyn_cast<Instruction>(UI))
+                if (auto * useInst = dyn_cast<Instruction>(UI))
                 {
                     // We must also keep the instruction if its use has
                     // escaped into another BB or, transitively, because
                     // its user must be kept.
-                    if(useInst->getParent() != BB || instDuplicated.count(useInst) != 0)
+                    if (useInst->getParent() != BB || instDuplicated.count(useInst) != 0)
                     {
                         instNeeded = true;
                         break;
@@ -2661,20 +2661,20 @@ bool EarlyOutPatterns::EarlyOutBenefit(
             }
         }
 
-        if(instNeeded)
+        if (instNeeded)
         {
             bool noOp = false;
-            if(inst->getOpcode() == Instruction::FAdd)
+            if (inst->getOpcode() == Instruction::FAdd)
             {
                 // x + 0 = x, should be folded so don't add it
                 // to the count.
-                if(FoldedVals.count(inst->getOperand(0)) != 0 ||
-                   FoldedVals.count(inst->getOperand(1)) != 0)
+                if (FoldedVals.count(inst->getOperand(0)) != 0 ||
+                    FoldedVals.count(inst->getOperand(1)) != 0)
                 {
                     noOp = true;
                 }
             }
-            if(!noOp)
+            if (!noOp)
             {
                 numberOfInstructionDuplicated++;
             }
@@ -2685,7 +2685,7 @@ bool EarlyOutPatterns::EarlyOutBenefit(
     return numberOfInstructionDuplicated * ratioNeeded <= numberOfInstruction;
 }
 
-void EarlyOutPatterns::foldFromAdd(SmallVector<Instruction*, 4> &Values, Instruction *&NewInsertPoint)
+void EarlyOutPatterns::foldFromAdd(SmallVector<Instruction*, 4> & Values, Instruction*& NewInsertPoint)
 {
     // if the sample has only one channel
     if (Values.size() == 1)
@@ -2707,10 +2707,10 @@ void EarlyOutPatterns::foldFromAdd(SmallVector<Instruction*, 4> &Values, Instruc
     }
 }
 
-Instruction* EarlyOutPatterns::moveToDef(Instruction *Def, ArrayRef<Instruction*> Users)
+Instruction* EarlyOutPatterns::moveToDef(Instruction* Def, ArrayRef<Instruction*> Users)
 {
-    Instruction *insertPoint = Def;
-    
+    Instruction* insertPoint = Def;
+
     for (auto it : Users)
     {
         // has a bitcast between extractelement and sample* instruction.
@@ -2722,7 +2722,7 @@ Instruction* EarlyOutPatterns::moveToDef(Instruction *Def, ArrayRef<Instruction*
             insertPoint = bitcast;
         }
     }
-    for ( auto it : Users)
+    for (auto it : Users)
     {
         // move all the users right after the def instruction for simplicity
         it->moveBefore(insertPoint->getNextNode());
@@ -2733,9 +2733,9 @@ Instruction* EarlyOutPatterns::moveToDef(Instruction *Def, ArrayRef<Instruction*
 }
 
 bool EarlyOutPatterns::isSplitProfitable(
-    const Instruction *Root,
+    const Instruction* Root,
     ArrayRef<Instruction*> Values,
-    const DenseSet<const Value*> &FoldedVals,
+    const DenseSet<const Value*>& FoldedVals,
     const unsigned FoldThreshold,
     const unsigned FoldThresholdMultiChannel,
     const unsigned RatioNeeded)
@@ -2755,12 +2755,12 @@ bool EarlyOutPatterns::isSplitProfitable(
 // a profitable splitting point, generate the == 0 comparison
 // and split the basic block at that point.
 BasicBlock* EarlyOutPatterns::cmpAndSplitAtPoint(
-    Instruction *Root,
+    Instruction* Root,
     ArrayRef<Instruction*> Values,
-    const DenseSet<const Value*> &FoldedVals)
+    const DenseSet<const Value*>& FoldedVals)
 {
     IRBuilder<> builder(Root->getNextNode());
-    Instruction *splitCondition = nullptr;
+    Instruction* splitCondition = nullptr;
 
     if (Values[0]->getType()->isIntOrIntVectorTy())
     {
@@ -2793,7 +2793,7 @@ BasicBlock* EarlyOutPatterns::cmpAndSplitAtPoint(
 
 BasicBlock* EarlyOutPatterns::tryFoldAndSplit(
     ArrayRef<Instruction*> Values,
-    Instruction *Root,
+    Instruction* Root,
     const unsigned FoldThreshold,
     const unsigned FoldThresholdMultiChannel,
     const unsigned RatioNeeded)
@@ -2816,7 +2816,7 @@ BasicBlock* EarlyOutPatterns::tryFoldAndSplit(
         nullptr;
 }
 
-bool EarlyOutPatterns::canOptimizeDotProduct(SmallVector<Instruction*, 4> &Values, Instruction *I)
+bool EarlyOutPatterns::canOptimizeDotProduct(SmallVector<Instruction*, 4> & Values, Instruction* I)
 {
     Values.push_back(I);
     return true;
@@ -2824,19 +2824,19 @@ bool EarlyOutPatterns::canOptimizeDotProduct(SmallVector<Instruction*, 4> &Value
 
 // Matches the llvm instruction pattern we generate after decomposing
 // a dot product.
-bool EarlyOutPatterns::DotProductMatch(const Instruction *I)
+bool EarlyOutPatterns::DotProductMatch(const Instruction* I)
 {
     if (I->getOpcode() != Instruction::FAdd)
         return false;
 
     using namespace PatternMatch;
 
-    Value *X1 = nullptr;
-    Value *Y1 = nullptr;
-    Value *Z1 = nullptr;
-    Value *X2 = nullptr;
-    Value *Y2 = nullptr;
-    Value *Z2 = nullptr;
+    Value* X1 = nullptr;
+    Value* Y1 = nullptr;
+    Value* Z1 = nullptr;
+    Value* X2 = nullptr;
+    Value* Y2 = nullptr;
+    Value* Z2 = nullptr;
 
     // dp3
     return match(I,
@@ -2848,16 +2848,16 @@ bool EarlyOutPatterns::DotProductMatch(const Instruction *I)
 }
 
 // Does is a dot product pattern the source of this instruction?
-bool EarlyOutPatterns::DotProductSourceMatch(const Instruction *I)
+bool EarlyOutPatterns::DotProductSourceMatch(const Instruction* I)
 {
-    if (auto *Src = dyn_cast<Instruction>(I->getOperand(0)))
+    if (auto * Src = dyn_cast<Instruction>(I->getOperand(0)))
         return DotProductMatch(Src);
 
     return false;
 }
 
 
-bool EarlyOutPatterns::canOptimizeNdotL(SmallVector<Instruction*, 4> &Values, FCmpInst *FC)
+bool EarlyOutPatterns::canOptimizeNdotL(SmallVector<Instruction*, 4> & Values, FCmpInst* FC)
 {
     // this function checks the lighting pattern -
     //     in short, the shader has a dot(N, L), multiply it with color, and max with 0.
@@ -2891,8 +2891,8 @@ bool EarlyOutPatterns::canOptimizeNdotL(SmallVector<Instruction*, 4> &Values, FC
     }
 
     // check if FC is from a dp3
-    Instruction *src0 = dyn_cast<Instruction>(FC->getOperand(0));
-    if(!src0 || !DotProductMatch(src0))
+    Instruction* src0 = dyn_cast<Instruction>(FC->getOperand(0));
+    if (!src0 || !DotProductMatch(src0))
     {
         return false;
     }
@@ -2901,7 +2901,7 @@ bool EarlyOutPatterns::canOptimizeNdotL(SmallVector<Instruction*, 4> &Values, FC
 
     // sext is needed between "fcmp" and "and".
     // also the result should have 3 uses - x,y,z component of the light ray.
-    Instruction *sextInst = dyn_cast<Instruction>(*FC->user_begin());
+    Instruction* sextInst = dyn_cast<Instruction>(*FC->user_begin());
     if (!sextInst || sextInst->getOpcode() != Instruction::SExt || !sextInst->hasNUses(3))
     {
         return false;
@@ -2917,7 +2917,7 @@ bool EarlyOutPatterns::canOptimizeNdotL(SmallVector<Instruction*, 4> &Values, FC
         }
 
         // % 342 = bitcast i32 %res_s246 to float
-        BitCastInst *bitCastInst = dyn_cast<BitCastInst>(*andInst->user_begin());
+        BitCastInst* bitCastInst = dyn_cast<BitCastInst>(*andInst->user_begin());
         if (!bitCastInst || !bitCastInst->hasOneUse())
         {
             return false;
@@ -2954,16 +2954,16 @@ bool EarlyOutPatterns::canOptimizeNdotL(SmallVector<Instruction*, 4> &Values, FC
     }
 
     // find all instructions contribute to FC and safely move them up to skip as many instructions as possible after early out
-    DenseSet<llvm::Instruction *> Scheduled;
+    DenseSet<llvm::Instruction*> Scheduled;
     Scheduled.clear();
-    BasicBlock *BB = FC->getParent();
-    Instruction *InsertPos = &*BB->getFirstInsertionPt();
+    BasicBlock* BB = FC->getParent();
+    Instruction* InsertPos = &*BB->getFirstInsertionPt();
     safeScheduleUp(BB, cast<Value>(FC), InsertPos, Scheduled);
 
     return true;
 }
 
-bool EarlyOutPatterns::canOptimizeSampleInst(SmallVector<Instruction*, 4> &Channels, GenIntrinsicInst *GII)
+bool EarlyOutPatterns::canOptimizeSampleInst(SmallVector<Instruction*, 4> & Channels, GenIntrinsicInst* GII)
 {
     auto ID = GII->getIntrinsicID();
 
@@ -2983,14 +2983,14 @@ bool EarlyOutPatterns::canOptimizeSampleInst(SmallVector<Instruction*, 4> &Chann
             //                or
             // % 280 = call fast <4 x float> @llvm.genx.GenISA.sampleptr....
             // % 285 = extractelement <4 x float> % 280, i32 0, !dbg !182
-            if (auto *bitCast = dyn_cast<BitCastInst>(I))
+            if (auto * bitCast = dyn_cast<BitCastInst>(I))
             {
                 if (bitCast->hasOneUse())
                 {
                     I = *bitCast->user_begin();
                 }
             }
-            if (auto *extract = dyn_cast<ExtractElementInst>(I))
+            if (auto * extract = dyn_cast<ExtractElementInst>(I))
             {
                 if (GII->getParent() == extract->getParent() &&
                     isa<ConstantInt>(extract->getIndexOperand()))
@@ -3057,17 +3057,17 @@ bool EarlyOutPatterns::processBlock(BasicBlock* BB)
     while (BBSplit)
     {
         BBSplit = false;
-        for (auto &II : *BB)
+        for (auto& II : *BB)
         {
             SmallVector<Instruction*, 4> Values;
             bool OptCandidate = false;
-            Instruction *Root = &II;
+            Instruction* Root = &II;
 
             unsigned FoldThreshold = 5;
             unsigned FoldThresholdMultiChannel = 10;
             unsigned RatioNeeded = 10;
 
-            if (auto *SI = dyn_cast<SampleIntrinsic>(&II))
+            if (auto * SI = dyn_cast<SampleIntrinsic>(&II))
             {
                 OptCandidate = SamplePatternEnable && canOptimizeSampleInst(Values, SI);
 
@@ -3086,7 +3086,7 @@ bool EarlyOutPatterns::processBlock(BasicBlock* BB)
                 FoldThreshold = 9;
                 RatioNeeded = 3;
             }
-            else if (auto *GII = dyn_cast<GenIntrinsicInst>(&II))
+            else if (auto * GII = dyn_cast<GenIntrinsicInst>(&II))
             {
                 Value* SI = nullptr;
                 int outputCount = 0;
@@ -3099,17 +3099,17 @@ bool EarlyOutPatterns::processBlock(BasicBlock* BB)
                 case GenISAIntrinsic::GenISA_OUTPUT:
                     for (auto iter = GII->getParent()->begin(); iter != GII->getParent()->end(); iter++)
                     {
-                        GenIntrinsicInst * outI = dyn_cast<GenIntrinsicInst>(iter);
+                        GenIntrinsicInst* outI = dyn_cast<GenIntrinsicInst>(iter);
                         if (outI && outI->getIntrinsicID() == GenISAIntrinsic::GenISA_OUTPUT)
                         {
-                                outputCount++;
+                            outputCount++;
                         }
                     }
                     // only handle cases with one output
                     if (outputCount != 1)
                         continue;
 
-                    OptCandidate = DirectOutputPatternEnable && 
+                    OptCandidate = DirectOutputPatternEnable &&
                         canOptimizeDirectOutput(Values, GII, SI, m_ShaderLength);
 
                     if (!OptCandidate)
@@ -3125,7 +3125,7 @@ bool EarlyOutPatterns::processBlock(BasicBlock* BB)
                     break;
                 }
             }
-            else if (auto *FC = dyn_cast<FCmpInst>(&II))
+            else if (auto * FC = dyn_cast<FCmpInst>(&II))
             {
                 OptCandidate = NdotLPatternEnable &&
                     canOptimizeNdotL(Values, FC) && canOptimizeDotProduct(Values, &II);
@@ -3149,7 +3149,7 @@ bool EarlyOutPatterns::processBlock(BasicBlock* BB)
 }
 
 
-unsigned int EarlyOutPatterns::shortPathToOutput(Value *Val, unsigned int limit)
+unsigned int EarlyOutPatterns::shortPathToOutput(Value* Val, unsigned int limit)
 {
     if (limit == 0)
     {
@@ -3157,7 +3157,7 @@ unsigned int EarlyOutPatterns::shortPathToOutput(Value *Val, unsigned int limit)
     }
     limit--;
 
-    if (Instruction *inst = dyn_cast<Instruction>(Val))
+    if (Instruction * inst = dyn_cast<Instruction>(Val))
     {
         unsigned int maxDepth = 0;
         for (unsigned int i = 0; i < inst->getNumOperands(); i++)
@@ -3172,13 +3172,13 @@ unsigned int EarlyOutPatterns::shortPathToOutput(Value *Val, unsigned int limit)
     }
 }
 
-bool EarlyOutPatterns::canOptimizeDirectOutput(SmallVector<Instruction*, 4> &Values, GenIntrinsicInst *GII, Value *&SI, unsigned int ShaderLength)
+bool EarlyOutPatterns::canOptimizeDirectOutput(SmallVector<Instruction*, 4> & Values, GenIntrinsicInst* GII, Value*& SI, unsigned int ShaderLength)
 {
 #define MAX_FMUL_VEC_SIZE 8
 #define PATH_TO_OUTPUT_LIMIT 5
 
     //Find the case where most calculation goes to .w channel, and very few instructions are used to calculate .xyz.
-    if (Instruction *inst = dyn_cast<Instruction>(GII->getOperand(3)))
+    if (Instruction * inst = dyn_cast<Instruction>(GII->getOperand(3)))
     {
         unsigned int findex = 0;
         smallvector<llvm::Value*, MAX_FMUL_VEC_SIZE> fmulVec;
@@ -3190,15 +3190,15 @@ bool EarlyOutPatterns::canOptimizeDirectOutput(SmallVector<Instruction*, 4> &Val
         // If the sample result = 0, skip all the instructions contribute to the other src of mul.
         while (findex < fmulVec.size() && findex < MAX_FMUL_VEC_SIZE)
         {
-            if (ExtractElementInst* eeInst = dyn_cast<ExtractElementInst>(fmulVec[findex]))
+            if (ExtractElementInst * eeInst = dyn_cast<ExtractElementInst>(fmulVec[findex]))
             {
-                if (SampleIntrinsic* genIntr = dyn_cast<SampleIntrinsic>(eeInst->getOperand(0)))
+                if (SampleIntrinsic * genIntr = dyn_cast<SampleIntrinsic>(eeInst->getOperand(0)))
                 {
                     for (unsigned int i = 0; i < genIntr->getNumOperands(); i++)
                     {
                         if (dyn_cast<Constant>(genIntr->getOperand(i)))
                             continue;
-                        else if (GenIntrinsicInst *intrinsic = dyn_cast<GenIntrinsicInst>(genIntr->getOperand(i)))
+                        else if (GenIntrinsicInst * intrinsic = dyn_cast<GenIntrinsicInst>(genIntr->getOperand(i)))
                         {
                             if (intrinsic->getIntrinsicID() == GenISAIntrinsic::GenISA_DCL_inputVec)
                             {
@@ -3212,7 +3212,7 @@ bool EarlyOutPatterns::canOptimizeDirectOutput(SmallVector<Instruction*, 4> &Val
                     break;
                 }
             }
-            else if (BinaryOperator* fmulInst = dyn_cast<BinaryOperator>(fmulVec[findex]))
+            else if (BinaryOperator * fmulInst = dyn_cast<BinaryOperator>(fmulVec[findex]))
             {
                 if (fmulInst->getOpcode() == Instruction::FMul)
                 {
@@ -3221,7 +3221,7 @@ bool EarlyOutPatterns::canOptimizeDirectOutput(SmallVector<Instruction*, 4> &Val
                 }
             }
             findex++;
-        } 
+        }
     }
 
     if (SI == nullptr)
@@ -3240,30 +3240,30 @@ bool EarlyOutPatterns::canOptimizeDirectOutput(SmallVector<Instruction*, 4> &Val
 
 bool EarlyOutPatterns::trackAddSources(BinaryOperator* addInst)
 {
-    for(unsigned int i = 0; i < 2; i++)
+    for (unsigned int i = 0; i < 2; i++)
     {
         Value* source = addInst->getOperand(i);
-        if(BinaryOperator* binSrc = dyn_cast<BinaryOperator>(source))
+        if (BinaryOperator * binSrc = dyn_cast<BinaryOperator>(source))
         {
-            if(binSrc->getOpcode() == Instruction::FAdd)
+            if (binSrc->getOpcode() == Instruction::FAdd)
             {
-                if(trackAddSources(binSrc))
+                if (trackAddSources(binSrc))
                 {
                     continue;
                 }
             }
         }
-        else if(ExtractElementInst* ext = dyn_cast<ExtractElementInst>(source))
+        else if (ExtractElementInst * ext = dyn_cast<ExtractElementInst>(source))
         {
-            if(ConstantInt* index = dyn_cast<ConstantInt>(ext->getIndexOperand()))
+            if (ConstantInt * index = dyn_cast<ConstantInt>(ext->getIndexOperand()))
             {
-                if(index->isZero())
+                if (index->isZero())
                 {
-                    if(GenIntrinsicInst* genIntr = dyn_cast<GenIntrinsicInst>(ext->getVectorOperand()))
+                    if (GenIntrinsicInst * genIntr = dyn_cast<GenIntrinsicInst>(ext->getVectorOperand()))
                     {
                         GenISAIntrinsic::ID ID = genIntr->getIntrinsicID();
-                        if(ID == GenISAIntrinsic::GenISA_sampleLCptr ||
-                           ID == GenISAIntrinsic::GenISA_sampleptr)
+                        if (ID == GenISAIntrinsic::GenISA_sampleLCptr ||
+                            ID == GenISAIntrinsic::GenISA_sampleptr)
                         {
                             continue;
                         }
@@ -3281,12 +3281,12 @@ bool EarlyOutPatterns::trackAddSources(BinaryOperator* addInst)
 // == 0, determine which other instructions could be folded away to 0 as well.
 DenseSet<const Value*> EarlyOutPatterns::tryAndFoldValues(ArrayRef<Instruction*> Values)
 {
-    std::function<void(const Instruction*, DenseSet<const Value*> &)> fold =
-        [&fold](const Instruction* inst, DenseSet<const Value*> &FoldedVals) -> void
+    std::function<void(const Instruction*, DenseSet<const Value*>&)> fold =
+        [&fold](const Instruction* inst, DenseSet<const Value*>& FoldedVals) -> void
     {
         for (auto UI : inst->users())
         {
-            if (auto* useInst = dyn_cast<Instruction>(UI))
+            if (auto * useInst = dyn_cast<Instruction>(UI))
             {
                 if (useInst->getParent() == inst->getParent())
                 {
@@ -3313,7 +3313,7 @@ DenseSet<const Value*> EarlyOutPatterns::tryAndFoldValues(ArrayRef<Instruction*>
 }
 
 // return the new block where the code after inst was moved
-BasicBlock* EarlyOutPatterns::SplitBasicBlock(Instruction* inst, const DenseSet<const Value*> &FoldedVals)
+BasicBlock* EarlyOutPatterns::SplitBasicBlock(Instruction* inst, const DenseSet<const Value*>& FoldedVals)
 {
     IRBuilder<> builder(inst->getContext());
     BasicBlock* currentBB = inst->getParent();
@@ -3323,12 +3323,12 @@ BasicBlock* EarlyOutPatterns::SplitBasicBlock(Instruction* inst, const DenseSet<
     currentBB->replaceSuccessorsPhiUsesWith(endifBlock);
 
     // copy the end of the block to the else part
-    elseBlock->getInstList().splice(elseBlock->begin(), 
-        currentBB->getInstList(), 
-        inst->getNextNode()->getIterator(), 
+    elseBlock->getInstList().splice(elseBlock->begin(),
+        currentBB->getInstList(),
+        inst->getNextNode()->getIterator(),
         currentBB->getTerminator()->getIterator());
     endifBlock->getInstList().splice(endifBlock->begin(), currentBB->getInstList(), currentBB->getTerminator());
-    if(isa<ReturnInst>(endifBlock->getTerminator()))
+    if (isa<ReturnInst>(endifBlock->getTerminator()))
     {
         MoveOutputToConvergeBlock(elseBlock, endifBlock);
     }
@@ -3339,25 +3339,25 @@ BasicBlock* EarlyOutPatterns::SplitBasicBlock(Instruction* inst, const DenseSet<
     BasicBlock* ifBlock = CloneBasicBlock(elseBlock, VMap);
     ifBlock->setName(VALUE_NAME("EO_IF"));
     currentBB->getParent()->getBasicBlockList().insertAfter(currentBB->getIterator(), ifBlock);
-    for(auto II = ifBlock->begin(), IE = ifBlock->end(); II != IE; ++II)
+    for (auto II = ifBlock->begin(), IE = ifBlock->end(); II != IE; ++II)
     {
-        for(unsigned op = 0, E = II->getNumOperands(); op != E; ++op)
+        for (unsigned op = 0, E = II->getNumOperands(); op != E; ++op)
         {
-            Value *Op = II->getOperand(op);
+            Value* Op = II->getOperand(op);
             ValueToValueMapTy::iterator It = VMap.find(Op);
-            if(It != VMap.end())
+            if (It != VMap.end())
                 II->setOperand(op, It->second);
         }
     }
     // create phi instruction
-    for(auto II = elseBlock->begin(), IE = elseBlock->end(); II != IE; ++II)
+    for (auto II = elseBlock->begin(), IE = elseBlock->end(); II != IE; ++II)
     {
         PHINode* newPhi = nullptr;
-        for(auto UI = II->user_begin(), UE = II->user_end(); UI != UE; ++UI)
+        for (auto UI = II->user_begin(), UE = II->user_end(); UI != UE; ++UI)
         {
-            if(Instruction* useInst = dyn_cast<Instruction>(*UI))
+            if (Instruction * useInst = dyn_cast<Instruction>(*UI))
             {
-                if(useInst->getParent() != elseBlock)
+                if (useInst->getParent() != elseBlock)
                 {
                     newPhi = PHINode::Create(II->getType(), 2, "", &(*endifBlock->begin()));
                     II->replaceUsesOutsideBlock(newPhi, elseBlock);
@@ -3369,7 +3369,7 @@ BasicBlock* EarlyOutPatterns::SplitBasicBlock(Instruction* inst, const DenseSet<
         }
     }
     // replace the folded values with 0
-    for(auto it : FoldedVals)
+    for (auto it : FoldedVals)
     {
         if (it->getType()->isIntOrIntVectorTy())
         {
@@ -3390,11 +3390,11 @@ BasicBlock* EarlyOutPatterns::SplitBasicBlock(Instruction* inst, const DenseSet<
 
 void EarlyOutPatterns::MoveOutputToConvergeBlock(BasicBlock* divergeBlock, BasicBlock* convergeBlock)
 {
-    for(auto it = divergeBlock->begin(), ie = divergeBlock->end(); it != ie; )
+    for (auto it = divergeBlock->begin(), ie = divergeBlock->end(); it != ie; )
     {
         Instruction* I = &(*it);
         ++it;
-        if(GenIntrinsicInst* intr = dyn_cast<GenIntrinsicInst>(I))
+        if (GenIntrinsicInst * intr = dyn_cast<GenIntrinsicInst>(I))
         {
             auto id = intr->getIntrinsicID();
             if (id == GenISAIntrinsic::GenISA_OUTPUT)
@@ -3489,7 +3489,7 @@ public:
     bool runOnFunction(Function& F);
 
 protected:
-    CodeGenContext *m_ctx;
+    CodeGenContext* m_ctx;
     LoopInfo* m_LI;
     llvm::BumpPtrAllocator Allocator;
 
@@ -3638,7 +3638,7 @@ protected:
     void updateOutLoopSumUse(
         llvm::Loop* loop,
         llvm::Instruction* fsum,
-        const smallvector<llvm::Value*, 4>& invariants,
+        const smallvector<llvm::Value*, 4> & invariants,
         llvm::Value* nonZero,
         const FastMathFlags& FMF);
 };
@@ -3791,31 +3791,31 @@ void HoistFMulInLoopPass::combineNode(MulNode* node,
         node->left = node->right = nullptr;
     }
     else
-    if (isInvariantLeaf(node->left))
-    {
-        // replace the mul reference with non-invariant source
-        node->replace = node->value;
-        node->value = node->right->value;
-
-        if (isLeafNode(node->right))
+        if (isInvariantLeaf(node->left))
         {
-            node->left = node->right = nullptr;
-            node->hasInvariant = false;
-        }
-    }
-    else
-    if (isInvariantLeaf(node->right))
-    {
-        // replace the mul reference with non-invariant source
-        node->replace = node->value;
-        node->value = node->left->value;
+            // replace the mul reference with non-invariant source
+            node->replace = node->value;
+            node->value = node->right->value;
 
-        if (isLeafNode(node->left))
-        {
-            node->left = node->right = nullptr;
-            node->hasInvariant = false;
+            if (isLeafNode(node->right))
+            {
+                node->left = node->right = nullptr;
+                node->hasInvariant = false;
+            }
         }
-    }
+        else
+            if (isInvariantLeaf(node->right))
+            {
+                // replace the mul reference with non-invariant source
+                node->replace = node->value;
+                node->value = node->left->value;
+
+                if (isLeafNode(node->left))
+                {
+                    node->left = node->right = nullptr;
+                    node->hasInvariant = false;
+                }
+            }
 
     // check whether the product is used by other places
     if (!isRoot && !isLeafNode(node) && !node->replace &&
@@ -3852,7 +3852,7 @@ void HoistFMulInLoopPass::combineNode(MulNode* node,
 // the sum result by loop invariant factors
 void HoistFMulInLoopPass::updateOutLoopSumUse(
     Loop* loop, Instruction* fsum,
-    const smallvector<llvm::Value*, 4>& invariants,
+    const smallvector<llvm::Value*, 4> & invariants,
     Value* nonZero,
     const FastMathFlags& FMF)
 {
@@ -3872,7 +3872,7 @@ void HoistFMulInLoopPass::updateOutLoopSumUse(
         Instruction* insertPoint;
         bool isLCSSA = false;
 
-        if (PHINode* phiUse = dyn_cast<PHINode>(inst))
+        if (PHINode * phiUse = dyn_cast<PHINode>(inst))
         {
             if (phiUse->getNumOperands() == 1)
             {
@@ -3982,7 +3982,7 @@ bool HoistFMulInLoopPass::hoistMulInLoop(Loop* loop, bool replacePhi)
             {
                 phiNonZeroValueIdx = 0;
             }
-            
+
             bool skip = false;
             BasicBlock* bb = phi->getIncomingBlock(phiNonZeroValueIdx);
             Loop* lp = loop;
@@ -4036,14 +4036,14 @@ bool HoistFMulInLoopPass::hoistMulInLoop(Loop* loop, bool replacePhi)
                     addsrc = dyn_cast<BinaryOperator>(fsum->getOperand(1));
                 }
                 else
-                if (fsum->getOperand(1) == phi)
-                {
-                    addsrc = dyn_cast<BinaryOperator>(fsum->getOperand(0));
-                }
-                else
-                {
-                    break;
-                }
+                    if (fsum->getOperand(1) == phi)
+                    {
+                        addsrc = dyn_cast<BinaryOperator>(fsum->getOperand(0));
+                    }
+                    else
+                    {
+                        break;
+                    }
 
                 // skip if other add/phi result referece inside loop
                 for (auto* UI : fsum->users())

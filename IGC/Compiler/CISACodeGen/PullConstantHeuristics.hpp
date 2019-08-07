@@ -44,19 +44,19 @@ namespace IGC
     class PullConstantHeuristics : public llvm::ModulePass
     {
     public:
-        PullConstantHeuristics(): llvm::ModulePass(ID)
+        PullConstantHeuristics() : llvm::ModulePass(ID)
         {
             initializePullConstantHeuristicsPass(*llvm::PassRegistry::getPassRegistry());
         }
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.addRequired<IGC::CodeGenContextWrapper>();
             AU.setPreservesAll();
         }
 
-        bool runOnModule(llvm::Module &M) override;
-        unsigned getPSDBottleNeckThreshold(const llvm::Function &F);
+        bool runOnModule(llvm::Module& M) override;
+        unsigned getPSDBottleNeckThreshold(const llvm::Function& F);
 
         unsigned getPushConstantThreshold(llvm::Function* F)
         {
@@ -68,8 +68,8 @@ namespace IGC
             {
                 return thresholdMap[F];
             }
-                
-        }        
+
+        }
         static char ID;
     private:
         const unsigned pushConstantGRFThreshold = 31; //GRF threshold for non-PS or large shaderS

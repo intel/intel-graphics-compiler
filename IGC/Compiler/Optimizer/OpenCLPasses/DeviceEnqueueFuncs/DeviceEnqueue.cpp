@@ -58,31 +58,31 @@ IGC_INITIALIZE_PASS_END(DeviceEnqueueFuncsResolution, PASS_FLAG2, PASS_DESCRIPTI
 
 char DeviceEnqueueFuncsAnalysis::ID = 0;
 
-const llvm::StringRef GET_DEFAULT_DEVICE_QUEUE        = "__builtin_IB_get_default_device_queue";
-const llvm::StringRef GET_EVENT_POOL                  = "__builtin_IB_get_event_pool";
-const llvm::StringRef GET_MAX_WORKGROUP_SIZE          = "__builtin_IB_get_max_workgroup_size";
-const llvm::StringRef GET_PARENT_EVENT                = "__builtin_IB_get_parent_event";
+const llvm::StringRef GET_DEFAULT_DEVICE_QUEUE = "__builtin_IB_get_default_device_queue";
+const llvm::StringRef GET_EVENT_POOL = "__builtin_IB_get_event_pool";
+const llvm::StringRef GET_MAX_WORKGROUP_SIZE = "__builtin_IB_get_max_workgroup_size";
+const llvm::StringRef GET_PARENT_EVENT = "__builtin_IB_get_parent_event";
 const llvm::StringRef GET_PREFERED_WORKGROUP_MULTIPLE = "__builtin_IB_get_prefered_workgroup_multiple";
-const llvm::StringRef GET_OBJECT_ID                   = "__builtin_IB_get_object_id";
-const llvm::StringRef GET_BLOCK_SIMD_SIZE             = "__builtin_IB_get_block_simd_size";
+const llvm::StringRef GET_OBJECT_ID = "__builtin_IB_get_object_id";
+const llvm::StringRef GET_BLOCK_SIMD_SIZE = "__builtin_IB_get_block_simd_size";
 
-DeviceEnqueueFuncsAnalysis::DeviceEnqueueFuncsAnalysis() : 
+DeviceEnqueueFuncsAnalysis::DeviceEnqueueFuncsAnalysis() :
     ModulePass(ID),
     m_hasDeviceEnqueue(false)
 {
     initializeDeviceEnqueueFuncsAnalysisPass(*PassRegistry::getPassRegistry());
 }
 
-bool DeviceEnqueueFuncsAnalysis::runOnModule(Module &M) {
+bool DeviceEnqueueFuncsAnalysis::runOnModule(Module& M) {
     bool changed = false;
     // Run on all functions defined in this module
-    for(Module::iterator I = M.begin(), E = M.end(); I != E; ++I) {
+    for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I) {
         Function* pFunc = &(*I);
-        if(pFunc->isDeclaration())
+        if (pFunc->isDeclaration())
         {
             continue;
         }
-        if(runOnFunction(*pFunc))
+        if (runOnFunction(*pFunc))
         {
             changed = true;
         }
@@ -91,8 +91,8 @@ bool DeviceEnqueueFuncsAnalysis::runOnModule(Module &M) {
     return changed;
 }
 
-bool DeviceEnqueueFuncsAnalysis::runOnFunction(Function &F) {
-    
+bool DeviceEnqueueFuncsAnalysis::runOnFunction(Function& F) {
+
     m_newImplicitArgs.clear();
     m_newNumberedImplicitArgs.clear();
 
@@ -105,35 +105,35 @@ bool DeviceEnqueueFuncsAnalysis::runOnFunction(Function &F) {
     return m_hasDeviceEnqueue;
 }
 
-void DeviceEnqueueFuncsAnalysis::visitCallInst(CallInst &CI)
+void DeviceEnqueueFuncsAnalysis::visitCallInst(CallInst& CI)
 {
     if (!CI.getCalledFunction())
     {
         return;
     }
-    
+
     StringRef funcName = CI.getCalledFunction()->getName();
 
     // Check for OpenCL image dimension function calls
     ImplicitArg::ArgType argType = ImplicitArg::NUM_IMPLICIT_ARGS;
 
-    if(funcName == GET_DEFAULT_DEVICE_QUEUE)
+    if (funcName == GET_DEFAULT_DEVICE_QUEUE)
     {
         argType = ImplicitArg::DEVICE_ENQUEUE_DEFAULT_DEVICE_QUEUE;
     }
-    else if(funcName == GET_EVENT_POOL)
+    else if (funcName == GET_EVENT_POOL)
     {
         argType = ImplicitArg::DEVICE_ENQUEUE_EVENT_POOL;
     }
-    else if(funcName == GET_MAX_WORKGROUP_SIZE)
+    else if (funcName == GET_MAX_WORKGROUP_SIZE)
     {
         argType = ImplicitArg::DEVICE_ENQUEUE_MAX_WORKGROUP_SIZE;
     }
-    else if(funcName == GET_PARENT_EVENT)
+    else if (funcName == GET_PARENT_EVENT)
     {
         argType = ImplicitArg::DEVICE_ENQUEUE_PARENT_EVENT;
     }
-    else if(funcName == GET_PREFERED_WORKGROUP_MULTIPLE)
+    else if (funcName == GET_PREFERED_WORKGROUP_MULTIPLE)
     {
         argType = ImplicitArg::DEVICE_ENQUEUE_PREFERED_WORKGROUP_MULTIPLE;
     }
@@ -163,10 +163,10 @@ void DeviceEnqueueFuncsAnalysis::visitCallInst(CallInst &CI)
     }
 
 
-    if(argType != ImplicitArg::NUM_IMPLICIT_ARGS)
+    if (argType != ImplicitArg::NUM_IMPLICIT_ARGS)
     {
 
-        if(std::find(m_newImplicitArgs.begin(), m_newImplicitArgs.end(), argType) == m_newImplicitArgs.end())
+        if (std::find(m_newImplicitArgs.begin(), m_newImplicitArgs.end(), argType) == m_newImplicitArgs.end())
         {
             m_newImplicitArgs.push_back(argType);
         }
@@ -186,18 +186,18 @@ DeviceEnqueueFuncsResolution::DeviceEnqueueFuncsResolution() :
     initializeDeviceEnqueueFuncsResolutionPass(*PassRegistry::getPassRegistry());
 }
 
-bool DeviceEnqueueFuncsResolution::runOnFunction(Function &F)
+bool DeviceEnqueueFuncsResolution::runOnFunction(Function& F)
 {
     m_Changed = false;
-    
+
     m_implicitArgs = ImplicitArgs(F, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils());
-    
+
     visit(F);
 
     return m_Changed;
 }
 
-void DeviceEnqueueFuncsResolution::visitCallInst(CallInst &CI)
+void DeviceEnqueueFuncsResolution::visitCallInst(CallInst& CI)
 {
     if (!CI.getCalledFunction())
     {
@@ -211,27 +211,27 @@ void DeviceEnqueueFuncsResolution::visitCallInst(CallInst &CI)
     // Check for OpenCL image dimension function calls
     Value* enqueueResource = NULL;
 
-    if(funcName == GET_DEFAULT_DEVICE_QUEUE)
+    if (funcName == GET_DEFAULT_DEVICE_QUEUE)
     {
         enqueueResource = m_implicitArgs.getImplicitArg(F, ImplicitArg::DEVICE_ENQUEUE_DEFAULT_DEVICE_QUEUE);
         assert(enqueueResource != NULL);
     }
-    else if(funcName == GET_EVENT_POOL)
+    else if (funcName == GET_EVENT_POOL)
     {
         enqueueResource = m_implicitArgs.getImplicitArg(F, ImplicitArg::DEVICE_ENQUEUE_EVENT_POOL);
         assert(enqueueResource != NULL);
     }
-    else if(funcName == GET_MAX_WORKGROUP_SIZE)
+    else if (funcName == GET_MAX_WORKGROUP_SIZE)
     {
         enqueueResource = m_implicitArgs.getImplicitArg(F, ImplicitArg::DEVICE_ENQUEUE_MAX_WORKGROUP_SIZE);
         assert(enqueueResource != NULL);
     }
-    else if(funcName == GET_PARENT_EVENT)
+    else if (funcName == GET_PARENT_EVENT)
     {
         enqueueResource = m_implicitArgs.getImplicitArg(F, ImplicitArg::DEVICE_ENQUEUE_PARENT_EVENT);
         assert(enqueueResource != NULL);
     }
-    else if(funcName == GET_PREFERED_WORKGROUP_MULTIPLE)
+    else if (funcName == GET_PREFERED_WORKGROUP_MULTIPLE)
     {
         enqueueResource = m_implicitArgs.getImplicitArg(F, ImplicitArg::DEVICE_ENQUEUE_PREFERED_WORKGROUP_MULTIPLE);
         assert(enqueueResource != NULL);
@@ -248,7 +248,7 @@ void DeviceEnqueueFuncsResolution::visitCallInst(CallInst &CI)
     }
 
 
-    if(enqueueResource != NULL)
+    if (enqueueResource != NULL)
     {
         CI.replaceAllUsesWith(enqueueResource);
         CI.eraseFromParent();

@@ -52,10 +52,10 @@ IGC_INITIALIZE_PASS_END(VerificationPass, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_
 char VerificationPass::ID = 0;
 
 VerificationPass::VerificationPass() :
-                      ModulePass(ID),
-                      m_Module(nullptr),
-                      m_str(),
-                      m_messagesToDump(m_str)
+    ModulePass(ID),
+    m_Module(nullptr),
+    m_str(),
+    m_messagesToDump(m_str)
 {
     initializeVerificationPassPass(*PassRegistry::getPassRegistry());
     initVerificationPass();
@@ -63,10 +63,10 @@ VerificationPass::VerificationPass() :
 
 void VerificationPass::initVerificationPass()
 {
-///
-/// Fill the m_IGC_IR_spec structure with the values
-/// provided in the "IR" section of IGC_IR_spec.hpp.
-///
+    ///
+    /// Fill the m_IGC_IR_spec structure with the values
+    /// provided in the "IR" section of IGC_IR_spec.hpp.
+    ///
 #define SPECIFIC_INSTRUCTION_VERIFIER(insType, verifierFunc)
 
 #define IGC_IR_FP_TYPE(name, size) \
@@ -105,7 +105,7 @@ void VerificationPass::addIRSpecObject(IRSpecObjectClass objClass, unsigned int 
     }
 }
 
-bool VerificationPass::runOnModule(Module &M)
+bool VerificationPass::runOnModule(Module& M)
 {
     m_Module = &M;
     bool success = true;
@@ -115,13 +115,13 @@ bool VerificationPass::runOnModule(Module &M)
         // Verify the content of IR functions.
         for (auto funcIt = M.begin(), E = M.end(); funcIt != E; ++funcIt)
         {
-           if (!funcIt->isDeclaration())
-           {
-              if (!verifyFunction(*funcIt))
-              {
-                 success = false;
-              }
-           }
+            if (!funcIt->isDeclaration())
+            {
+                if (!verifyFunction(*funcIt))
+                {
+                    success = false;
+                }
+            }
         }
 
         if (!success)
@@ -135,23 +135,23 @@ bool VerificationPass::runOnModule(Module &M)
     return false;
 }
 
-bool VerificationPass::verifyFunction(Function &F)
+bool VerificationPass::verifyFunction(Function& F)
 {
-   bool success = true;
+    bool success = true;
 
-   for ( auto inst = inst_begin(F), last = inst_end(F); inst != last; ++inst)
-   {
-      if (!verifyInstruction(*inst))
-      {
-         success = false;
-         break;
-      }
-   }
+    for (auto inst = inst_begin(F), last = inst_end(F); inst != last; ++inst)
+    {
+        if (!verifyInstruction(*inst))
+        {
+            success = false;
+            break;
+        }
+    }
 
-   return success;
+    return success;
 }
 
-bool VerificationPass::verifyInstruction(Instruction &inst)
+bool VerificationPass::verifyInstruction(Instruction& inst)
 {
     bool success = true;
     bool verified = false;
@@ -187,13 +187,13 @@ bool VerificationPass::verifyInstruction(Instruction &inst)
 
     if (!verified && !verifyInstCommon(inst))
     {
-       success = false;
+        success = false;
     }
 
     return success;
 }
 
-bool VerificationPass::verifyInstCommon(Instruction &inst)
+bool VerificationPass::verifyInstCommon(Instruction& inst)
 {
     // Walk over all the operands of each instruction
     bool success = true;
@@ -201,10 +201,10 @@ bool VerificationPass::verifyInstCommon(Instruction &inst)
 
     for (int i = 0; i < numOperands; ++i)
     {
-       if (!verifyValue(inst.getOperand(i)))
-       {
-          success = false;
-       }
+        if (!verifyValue(inst.getOperand(i)))
+        {
+            success = false;
+        }
     }
 
     return success;
@@ -217,9 +217,9 @@ bool VerificationPass::verifyInstCommon(Instruction &inst)
 ///
 /// Specific verification function for Call instructions.
 ///
-bool VerificationPass::verifyInstCall(Instruction &inst)
+bool VerificationPass::verifyInstCall(Instruction& inst)
 {
-    CallInst  *instCall = dyn_cast<CallInst>(&inst);
+    CallInst* instCall = dyn_cast<CallInst>(&inst);
     assert(instCall && "Unexpected instruction");
 
     if (GenIntrinsicInst::classof(instCall))
@@ -227,7 +227,7 @@ bool VerificationPass::verifyInstCall(Instruction &inst)
         return true;
     }
 
-    if (IntrinsicInst *CI = dyn_cast<IntrinsicInst>(instCall))
+    if (IntrinsicInst * CI = dyn_cast<IntrinsicInst>(instCall))
     {
         Intrinsic::ID intrinID = (Intrinsic::ID) instCall->getCalledFunction()->getIntrinsicID();
         if (!m_IGC_IR_spec.IGCLLVMIntrinsics.count(intrinID))
@@ -237,7 +237,7 @@ bool VerificationPass::verifyInstCall(Instruction &inst)
             return false;
         }
     }
-    if(!verifyInstCommon(inst))
+    if (!verifyInstCommon(inst))
     {
         return false;
     }
@@ -245,21 +245,21 @@ bool VerificationPass::verifyInstCall(Instruction &inst)
     return true;
 }
 
-bool VerificationPass::verifyVectorInst(llvm::Instruction &inst)
+bool VerificationPass::verifyVectorInst(llvm::Instruction& inst)
 {
     bool success = true;
     int numOperands = inst.getNumOperands();
 
-    for(int i = 0; i < numOperands; ++i)
+    for (int i = 0; i < numOperands; ++i)
     {
         Value* val = inst.getOperand(i);
         Type* T = val->getType();
-        if(T->isVectorTy())
+        if (T->isVectorTy())
         {
             // Insert and extract element support relaxed vector type
             T = T->getVectorElementType();
         }
-        if(!verifyType(T, val))
+        if (!verifyType(T, val))
         {
             success = false;
         }
@@ -269,13 +269,13 @@ bool VerificationPass::verifyVectorInst(llvm::Instruction &inst)
 
 ///-----------------------------------------------------------------------------------
 
-bool VerificationPass::verifyValue(Value *val)
+bool VerificationPass::verifyValue(Value* val)
 {
     // Check that the type is allowed in IGC IR.
     return verifyType(val->getType(), val);
 }
 
-bool VerificationPass::verifyType(Type *type, Value *val)
+bool VerificationPass::verifyType(Type* type, Value* val)
 {
     bool success = true;
 
@@ -360,7 +360,7 @@ bool VerificationPass::verifyType(Type *type, Value *val)
     return success;
 }
 
-void VerificationPass::printValue(Value *value) {
+void VerificationPass::printValue(Value* value) {
     if (!value)
         return;
     m_messagesToDump << *value << '\n';

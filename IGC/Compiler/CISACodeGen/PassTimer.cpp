@@ -26,17 +26,17 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Compiler/CISACodeGen/PassTimer.hpp"
 
-char PassTimer::ID=0;
+char PassTimer::ID = 0;
 
-bool PassTimer::runOnModule(llvm::Module &M)
+bool PassTimer::runOnModule(llvm::Module& M)
 {
-    if( m_isStart )
+    if (m_isStart)
     {
-        COMPILER_TIME_START( m_context, m_index );
+        COMPILER_TIME_START(m_context, m_index);
     }
     else
     {
-        COMPILER_TIME_END( m_context, m_index );
+        COMPILER_TIME_END(m_context, m_index);
     }
 
     return false;

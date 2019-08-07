@@ -36,18 +36,18 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace IGC {
 
     class CodeHoisting : public llvm::FunctionPass {
-        llvm::DominatorTree *DT;
-        llvm::PostDominatorTree *PDT;
-        llvm::LoopInfo *LI;
+        llvm::DominatorTree* DT;
+        llvm::PostDominatorTree* PDT;
+        llvm::LoopInfo* LI;
 
     public:
         static char ID; // Pass identification
 
         CodeHoisting();
 
-        virtual bool runOnFunction(llvm::Function &F) override;
+        virtual bool runOnFunction(llvm::Function& F) override;
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override {
             AU.setPreservesCFG();
             AU.addRequired<llvm::DominatorTreeWrapperPass>();
             AU.addRequired<llvm::PostDominatorTreeWrapperPass>();
@@ -67,12 +67,12 @@ namespace IGC {
 
         /// local processing
         bool isSafeToHoistURBWriteInstruction(
-            llvm::Instruction *inst,
-            llvm::Instruction* &tgtInst);
+            llvm::Instruction* inst,
+            llvm::Instruction*& tgtInst);
 
         /// data members for local-hoisting
         llvm::MapVector<llvm::Instruction*, llvm::Instruction*> instMovDataMap;
-        llvm::DenseMap<llvm::BasicBlock*, llvm::Instruction *> basicBlockReadInstructionMap;
+        llvm::DenseMap<llvm::BasicBlock*, llvm::Instruction*> basicBlockReadInstructionMap;
     };
 
 }

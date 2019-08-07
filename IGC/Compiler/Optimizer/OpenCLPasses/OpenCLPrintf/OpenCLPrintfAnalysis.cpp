@@ -56,7 +56,7 @@ OpenCLPrintfAnalysis::OpenCLPrintfAnalysis() : ModulePass(ID)
 
 const StringRef OpenCLPrintfAnalysis::OPENCL_PRINTF_FUNCTION_NAME = "printf";
 
-bool OpenCLPrintfAnalysis::runOnModule(Module &M)
+bool OpenCLPrintfAnalysis::runOnModule(Module& M)
 {
     m_hasPrintf = false;
 
@@ -76,7 +76,7 @@ bool OpenCLPrintfAnalysis::runOnModule(Module &M)
     return m_hasPrintf;
 }
 
-void OpenCLPrintfAnalysis::visitCallInst(llvm::CallInst &callInst)
+void OpenCLPrintfAnalysis::visitCallInst(llvm::CallInst& callInst)
 {
     if (!callInst.getCalledFunction())
     {
@@ -87,10 +87,10 @@ void OpenCLPrintfAnalysis::visitCallInst(llvm::CallInst &callInst)
     m_hasPrintf |= (funcName == OpenCLPrintfAnalysis::OPENCL_PRINTF_FUNCTION_NAME);
 }
 
-void OpenCLPrintfAnalysis::addPrintfBufferArgs(Function &F)
+void OpenCLPrintfAnalysis::addPrintfBufferArgs(Function& F)
 {
     SmallVector<ImplicitArg::ArgType, 1> implicitArgs;
-    MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     implicitArgs.push_back(ImplicitArg::PRINTF_BUFFER);
     ImplicitArgs::addImplicitArgs(F, implicitArgs, pMdUtils);
 }

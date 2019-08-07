@@ -73,55 +73,55 @@ bool IGC::isLegalOCLVersion(int major, int minor)
 // to compile both Clang <= 3.8 and Clang 4.0, the below function had to be added.
 // TODO: Explore using just Function Metadata going forward.
 
-void SPIRMetaDataTranslation::WarpFunctionMetadata(Module& M) 
+void SPIRMetaDataTranslation::WarpFunctionMetadata(Module& M)
 {
     llvm::NamedMDNode* opencl_kernels = M.getOrInsertNamedMetadata("opencl.kernels");
 
     std::set<llvm::Function*> Functions;
-    for (uint i = 0; i < opencl_kernels->getNumOperands(); i++) 
+    for (uint i = 0; i < opencl_kernels->getNumOperands(); i++)
     {
         auto pMdNode = opencl_kernels->getOperand(i);
-        if (pMdNode != NULL) 
+        if (pMdNode != NULL)
         {
-            llvm::Function *opFunc =
+            llvm::Function* opFunc =
                 mdconst::dyn_extract<llvm::Function>(pMdNode->getOperand(0));
             Functions.insert(opFunc);
         }
     }
 
-    for (auto &Func : M) 
+    for (auto& Func : M)
     {
         if (Functions.find(&Func) == Functions.end() &&
             Func.getCallingConv() == CallingConv::SPIR_KERNEL)
         {
             llvm::SmallVector<StringRef, 8> Names;
             llvm::SmallVector<std::pair<unsigned, llvm::MDNode*>, 7> Info;
-            llvm::SmallVector<Metadata *, 7> Args;
+            llvm::SmallVector<Metadata*, 7> Args;
             Func.getContext().getMDKindNames(Names);
             Func.getAllMetadata(Info);
             Args.push_back(ConstantAsMetadata::get(&Func));
-            for (auto i : Info) 
+            for (auto i : Info)
             {
                 llvm::SmallVector<Metadata*, 2> Mdvector;
                 auto firstElem = MDString::get(M.getContext(), Names[i.first]);
                 Mdvector.push_back(firstElem);
-                for (uint ops = 0; ops < i.second->getNumOperands(); ops++) 
+                for (uint ops = 0; ops < i.second->getNumOperands(); ops++)
                 {
                     Mdvector.push_back(i.second->getOperand(ops));
                 }
-                Args.push_back(MDTuple::get(M.getContext(),Mdvector));
+                Args.push_back(MDTuple::get(M.getContext(), Mdvector));
             }
             opencl_kernels->addOperand(MDTuple::get(M.getContext(), Args));
         }
     }
 }
 
-bool SPIRMetaDataTranslation::runOnModule(Module& M) 
+bool SPIRMetaDataTranslation::runOnModule(Module& M)
 {
     WarpFunctionMetadata(M);
-    MetaDataUtilsWrapper &mduw = getAnalysis<MetaDataUtilsWrapper>();
-    MetaDataUtils *pIgcMDUtils = mduw.getMetaDataUtils();
-    ModuleMetaData *modMD = mduw.getModuleMetaData();
+    MetaDataUtilsWrapper& mduw = getAnalysis<MetaDataUtilsWrapper>();
+    MetaDataUtils* pIgcMDUtils = mduw.getMetaDataUtils();
+    ModuleMetaData* modMD = mduw.getModuleMetaData();
     SPIRMD::SpirMetaDataUtils spirMDUtils(&M);
 
     // if no version information is present, check for -std=CLX.X compiler option
@@ -133,7 +133,7 @@ bool SPIRMetaDataTranslation::runOnModule(Module& M)
         oclMajor = oclVersion->getMajor();
         oclMinor = oclVersion->getMinor();
     }
-    else 
+    else
     {
         if (!spirMDUtils.empty_CompilerOptions())
         {
@@ -159,16 +159,16 @@ bool SPIRMetaDataTranslation::runOnModule(Module& M)
     // Handling Functions
     SPIRMD::SpirMetaDataUtils::KernelsList::const_iterator ki = spirMDUtils.begin_Kernels();
     SPIRMD::SpirMetaDataUtils::KernelsList::const_iterator ke = spirMDUtils.end_Kernels();
-    for (; ki != ke; ++ki) 
+    for (; ki != ke; ++ki)
     {
         IGCMD::FunctionInfoMetaDataHandle fHandle = IGCMD::FunctionInfoMetaDataHandle(IGCMD::FunctionInfoMetaData::get());
         IGC::FunctionMetaData funcMD;
         SPIRMD::KernelMetaDataHandle spirKernel = *ki;
-        fHandle->setType(FunctionTypeMD::KernelFunction); 
+        fHandle->setType(FunctionTypeMD::KernelFunction);
 
         // Handling Thread Group Size
         SPIRMD::WorkGroupDimensionsMetaDataHandle reqdWorkGroupSize = spirKernel->getRequiredWorkGroupSize();
-        if (reqdWorkGroupSize->hasValue()) 
+        if (reqdWorkGroupSize->hasValue())
         {
             IGCMD::ThreadGroupSizeMetaDataHandle tgzHandle = fHandle->getThreadGroupSize();
             tgzHandle->setXDim(reqdWorkGroupSize->getXDim());
@@ -178,7 +178,7 @@ bool SPIRMetaDataTranslation::runOnModule(Module& M)
 
         // Handling Thread Group Size Hint
         SPIRMD::WorkGroupDimensionsMetaDataHandle workGroupSizeHint = spirKernel->getWorkGroupSizeHint();
-        if (workGroupSizeHint->hasValue()) 
+        if (workGroupSizeHint->hasValue())
         {
             IGCMD::ThreadGroupSizeMetaDataHandle tgzhHandle = fHandle->getThreadGroupSizeHint();
             tgzhHandle->setXDim(workGroupSizeHint->getXDim());
@@ -203,8 +203,8 @@ bool SPIRMetaDataTranslation::runOnModule(Module& M)
         // Handling Sub Group Size
         SPIRMD::WorkgroupWalkOrderMetaDataHandle workgroupWalkOrder = spirKernel->getWorkgroupWalkOrder();
         if (workgroupWalkOrder->hasValue())
-        {            
-            WorkGroupWalkOrderMD &igc_workGroupWalkOrder = funcMD.workGroupWalkOrder;
+        {
+            WorkGroupWalkOrderMD& igc_workGroupWalkOrder = funcMD.workGroupWalkOrder;
             int dim0 = workgroupWalkOrder->getDim0();
             int dim1 = workgroupWalkOrder->getDim1();
             int dim2 = workgroupWalkOrder->getDim2();
@@ -215,7 +215,7 @@ bool SPIRMetaDataTranslation::runOnModule(Module& M)
 
         // Handling OpenCL Vector Type Hint
         SPIRMD::VectorTypeHintMetaDataHandle vectorTypeHint = spirKernel->getVectorTypeHint();
-        if (vectorTypeHint->hasValue()) 
+        if (vectorTypeHint->hasValue())
         {
             IGCMD::VectorTypeHintMetaDataHandle vthHandle = fHandle->getOpenCLVectorTypeHint();
             vthHandle->setVecType(vectorTypeHint->getVecType());
@@ -223,11 +223,11 @@ bool SPIRMetaDataTranslation::runOnModule(Module& M)
         }
 
         // Handling OpenCL Kernel Args Address Spaces
-        if (spirKernel->isArgAddressSpacesHasValue()) 
+        if (spirKernel->isArgAddressSpacesHasValue())
         {
             SPIRMD::KernelMetaData::ArgAddressSpacesList::const_iterator i = spirKernel->begin_ArgAddressSpaces();
             SPIRMD::KernelMetaData::ArgAddressSpacesList::const_iterator e = spirKernel->end_ArgAddressSpaces();
-            
+
             for (; i != e; ++i)
             {
                 funcMD.m_OpenCLArgAddressSpaces.push_back(*i);
@@ -235,7 +235,7 @@ bool SPIRMetaDataTranslation::runOnModule(Module& M)
         }
 
         // Handling OpenCL Kernel Args Access Qualifiers
-        if (spirKernel->isArgAccessQualifiersHasValue()) 
+        if (spirKernel->isArgAccessQualifiersHasValue())
         {
             SPIRMD::KernelMetaData::ArgAccessQualifiersList::const_iterator i = spirKernel->begin_ArgAccessQualifiers();
             SPIRMD::KernelMetaData::ArgAccessQualifiersList::const_iterator e = spirKernel->end_ArgAccessQualifiers();
@@ -246,7 +246,7 @@ bool SPIRMetaDataTranslation::runOnModule(Module& M)
         }
 
         // Handling OpenCL Kernel Args Types
-        if (spirKernel->isArgTypesHasValue()) 
+        if (spirKernel->isArgTypesHasValue())
         {
             SPIRMD::KernelMetaData::ArgTypesList::const_iterator i = spirKernel->begin_ArgTypes();
             SPIRMD::KernelMetaData::ArgTypesList::const_iterator e = spirKernel->end_ArgTypes();
@@ -257,7 +257,7 @@ bool SPIRMetaDataTranslation::runOnModule(Module& M)
         }
 
         //Handling OpenCL Kernel Args Base Types
-        if (spirKernel->isArgBaseTypesHasValue()) 
+        if (spirKernel->isArgBaseTypesHasValue())
         {
             SPIRMD::KernelMetaData::ArgBaseTypesList::const_iterator i = spirKernel->begin_ArgBaseTypes();
             SPIRMD::KernelMetaData::ArgBaseTypesList::const_iterator e = spirKernel->end_ArgBaseTypes();
@@ -268,7 +268,7 @@ bool SPIRMetaDataTranslation::runOnModule(Module& M)
         }
 
         //Handling OpenCL Kernel Args Type Qualifiers
-        if (spirKernel->isArgTypeQualifiersHasValue()) 
+        if (spirKernel->isArgTypeQualifiersHasValue())
         {
             SPIRMD::KernelMetaData::ArgTypeQualifiersList::const_iterator i = spirKernel->begin_ArgTypeQualifiers();
             SPIRMD::KernelMetaData::ArgTypeQualifiersList::const_iterator e = spirKernel->end_ArgTypeQualifiers();
@@ -279,7 +279,7 @@ bool SPIRMetaDataTranslation::runOnModule(Module& M)
         }
 
         //Handling OpenCL Kernel Args Names
-        if (spirKernel->isArgNamesHasValue()) 
+        if (spirKernel->isArgNamesHasValue())
         {
             SPIRMD::KernelMetaData::ArgNamesList::const_iterator i = spirKernel->begin_ArgNames();
             SPIRMD::KernelMetaData::ArgNamesList::const_iterator e = spirKernel->end_ArgNames();
@@ -299,73 +299,73 @@ bool SPIRMetaDataTranslation::runOnModule(Module& M)
     // is the actual compiler options list.
     if (!spirMDUtils.empty_CompilerOptions())
     {
-    SPIRMD::InnerCompilerOptionsMetaDataListHandle compilerOptions = spirMDUtils.getCompilerOptionsItem(0);
-    SPIRMD::InnerCompilerOptionsMetaDataList::const_iterator coi = compilerOptions->begin();
-    SPIRMD::InnerCompilerOptionsMetaDataList::const_iterator coe = compilerOptions->end();
-    for (; coi != coe; ++coi)
-    {
-        std::string co = *coi;
-        // Compiler options that originate from OpenCL are represented by the same name, without the "-cl" prefix.
-        if (co.find("-cl") == 0)
+        SPIRMD::InnerCompilerOptionsMetaDataListHandle compilerOptions = spirMDUtils.getCompilerOptionsItem(0);
+        SPIRMD::InnerCompilerOptionsMetaDataList::const_iterator coi = compilerOptions->begin();
+        SPIRMD::InnerCompilerOptionsMetaDataList::const_iterator coe = compilerOptions->end();
+        for (; coi != coe; ++coi)
         {
-            co.erase(0,3);
-        }
+            std::string co = *coi;
+            // Compiler options that originate from OpenCL are represented by the same name, without the "-cl" prefix.
+            if (co.find("-cl") == 0)
+            {
+                co.erase(0, 3);
+            }
 
-        enum OCL_OPTIONS
-        {
-            DENORM_ARE_ZERO,
-            CORRECTLY_ROUNDED_SQRT,
-            OPT_DISABLE,
-            MAD_ENABLE,
-            NO_SIGNED_ZERO,
-            UNSAFE_MATH,
-            FINITE_MATH,
-            FAST_RELAXED_MATH,
-            DASH_G,
-            RELAXED_BUILTINS,
-            NONE,
-        };
-        int igc_compiler_option = llvm::StringSwitch<OCL_OPTIONS>(co)
-            .Case("-denorms-are-zero", DENORM_ARE_ZERO)
-            .Case("-fp32-correctly-rounded-divide-sqrt", CORRECTLY_ROUNDED_SQRT)
-            .Case("-opt-disable", OPT_DISABLE)
-            .Case("-mad-enable", MAD_ENABLE)
-            .Case("-no-signed-zeros", NO_SIGNED_ZERO)
-            .Case("-unsafe-math-optimizations", UNSAFE_MATH)
-            .Case("-finite-math-only", FINITE_MATH)
-            .Case("-fast-relaxed-math", FAST_RELAXED_MATH)
-            .Case("-g", DASH_G)
-            .Case("-relaxed-builtins", RELAXED_BUILTINS)
-            .Default(NONE);
+            enum OCL_OPTIONS
+            {
+                DENORM_ARE_ZERO,
+                CORRECTLY_ROUNDED_SQRT,
+                OPT_DISABLE,
+                MAD_ENABLE,
+                NO_SIGNED_ZERO,
+                UNSAFE_MATH,
+                FINITE_MATH,
+                FAST_RELAXED_MATH,
+                DASH_G,
+                RELAXED_BUILTINS,
+                NONE,
+            };
+            int igc_compiler_option = llvm::StringSwitch<OCL_OPTIONS>(co)
+                .Case("-denorms-are-zero", DENORM_ARE_ZERO)
+                .Case("-fp32-correctly-rounded-divide-sqrt", CORRECTLY_ROUNDED_SQRT)
+                .Case("-opt-disable", OPT_DISABLE)
+                .Case("-mad-enable", MAD_ENABLE)
+                .Case("-no-signed-zeros", NO_SIGNED_ZERO)
+                .Case("-unsafe-math-optimizations", UNSAFE_MATH)
+                .Case("-finite-math-only", FINITE_MATH)
+                .Case("-fast-relaxed-math", FAST_RELAXED_MATH)
+                .Case("-g", DASH_G)
+                .Case("-relaxed-builtins", RELAXED_BUILTINS)
+                .Default(NONE);
 
-         
-        switch(igc_compiler_option)
-        {
-        case DENORM_ARE_ZERO: modMD->compOpt.DenormsAreZero = true;
-            break;
-        case CORRECTLY_ROUNDED_SQRT: modMD->compOpt.CorrectlyRoundedDivSqrt = true;
-            break;
-        case OPT_DISABLE: modMD->compOpt.OptDisable = true;
-            break;
-        case MAD_ENABLE:modMD->compOpt.MadEnable = true;
-            break;
-        case NO_SIGNED_ZERO: modMD->compOpt.NoSignedZeros = true;
-            break;
-        case UNSAFE_MATH:modMD->compOpt.UnsafeMathOptimizations = true;
-            break;
-        case FINITE_MATH: modMD->compOpt.FiniteMathOnly = true;
-            break;
-        case FAST_RELAXED_MATH: 
-        case RELAXED_BUILTINS:
-            modMD->compOpt.FastRelaxedMath = true;
-            modMD->compOpt.RelaxedBuiltins = true;
-            break;
-        case DASH_G: modMD->compOpt.DashGSpecified = true;
-            break;
-        default:
-            break;
+
+            switch (igc_compiler_option)
+            {
+            case DENORM_ARE_ZERO: modMD->compOpt.DenormsAreZero = true;
+                break;
+            case CORRECTLY_ROUNDED_SQRT: modMD->compOpt.CorrectlyRoundedDivSqrt = true;
+                break;
+            case OPT_DISABLE: modMD->compOpt.OptDisable = true;
+                break;
+            case MAD_ENABLE:modMD->compOpt.MadEnable = true;
+                break;
+            case NO_SIGNED_ZERO: modMD->compOpt.NoSignedZeros = true;
+                break;
+            case UNSAFE_MATH:modMD->compOpt.UnsafeMathOptimizations = true;
+                break;
+            case FINITE_MATH: modMD->compOpt.FiniteMathOnly = true;
+                break;
+            case FAST_RELAXED_MATH:
+            case RELAXED_BUILTINS:
+                modMD->compOpt.FastRelaxedMath = true;
+                modMD->compOpt.RelaxedBuiltins = true;
+                break;
+            case DASH_G: modMD->compOpt.DashGSpecified = true;
+                break;
+            default:
+                break;
+            }
         }
-    }
     }
 
     // Handling Floating Point Contractions

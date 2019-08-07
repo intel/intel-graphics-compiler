@@ -53,19 +53,19 @@ namespace IGC
             return "WGFuncResolution";
         }
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.setPreservesCFG();
         }
 
         // Entry point of the pass.
-        virtual bool runOnModule(llvm::Module &M) override;
+        virtual bool runOnModule(llvm::Module& M) override;
 
         // Call instructions visitor.
-        void visitCallInst(llvm::CallInst &callInst);
+        void visitCallInst(llvm::CallInst& callInst);
 
     private:
-        llvm::Module *m_pModule;
+        llvm::Module* m_pModule;
 
         /// @brief  Indicates if the pass changed the processed function
         bool m_changed;

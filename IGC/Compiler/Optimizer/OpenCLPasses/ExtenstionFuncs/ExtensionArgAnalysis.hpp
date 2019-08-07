@@ -62,15 +62,15 @@ namespace IGC
             return "ExtensionArgAnalysis";
         }
 
-        void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+        void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
-          AU.addRequired<MetaDataUtilsWrapper>();
+            AU.addRequired<MetaDataUtilsWrapper>();
         }
 
         /// @brief  Function entry point.
         ///         Checks if this is a VME function and analyzes its function arguments (images, samplers)
         /// @param  F The destination function.
-        bool runOnFunction(llvm::Function &F) override;
+        bool runOnFunction(llvm::Function& F) override;
 
         /// @brief  Returns true if the given argument is a VME image or sampler argument
         /// @param  arg A function argument
@@ -87,17 +87,17 @@ namespace IGC
         {
             return (m_MediaBlockArgs.count(const_cast<llvm::Argument*>(arg)) > 0) ? true : false;
         }
-        bool isVaArg( const llvm::Argument* arg )
+        bool isVaArg(const llvm::Argument* arg)
         {
             return (m_vaArgs.count(const_cast<llvm::Argument*>(arg)) > 0) ? true : false;
         }
 
-        ResourceExtensionTypeEnum GetExtensionSamplerType( )
+        ResourceExtensionTypeEnum GetExtensionSamplerType()
         {
             return m_extensionType;
         }
 
-        void visitCallInst(llvm::CallInst &CI);
+        void visitCallInst(llvm::CallInst& CI);
     private:
 
         llvm::DenseMap<llvm::Argument*, ResourceExtensionTypeEnum> m_ExtensionMap;

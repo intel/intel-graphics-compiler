@@ -37,26 +37,26 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace IGC
 {
 
-class InfiniteLoopRemoval :
-    public llvm::FunctionPass
-{
-public:
-    static char ID;
-
-    InfiniteLoopRemoval();
-
-    virtual bool runOnFunction(llvm::Function& F) override;
-
-    virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
+    class InfiniteLoopRemoval :
+        public llvm::FunctionPass
     {
-        AU.addRequired<llvm::PostDominatorTreeWrapperPass>();
-        AU.addRequired<llvm::LoopInfoWrapperPass>();
-    }
+    public:
+        static char ID;
 
-    virtual llvm::StringRef getPassName() const override
-    {
-        return "InfiniteLoopRemoval";
-    }
-};
+        InfiniteLoopRemoval();
+
+        virtual bool runOnFunction(llvm::Function& F) override;
+
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
+        {
+            AU.addRequired<llvm::PostDominatorTreeWrapperPass>();
+            AU.addRequired<llvm::LoopInfoWrapperPass>();
+        }
+
+        virtual llvm::StringRef getPassName() const override
+        {
+            return "InfiniteLoopRemoval";
+        }
+    };
 
 } // namespace

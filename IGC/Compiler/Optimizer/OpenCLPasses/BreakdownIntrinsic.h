@@ -52,19 +52,19 @@ namespace IGC
             return "BreakdownIntrinsicPass";
         }
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.addRequired<IGC::MetaDataUtilsWrapper>();
             AU.addRequired<CodeGenContextWrapper>();
         }
 
-        virtual bool runOnFunction(llvm::Function &F) override;
-        void visitIntrinsicInst(llvm::IntrinsicInst &I);
+        virtual bool runOnFunction(llvm::Function& F) override;
+        void visitIntrinsicInst(llvm::IntrinsicInst& I);
 
     private:
         bool m_changed;
-        IGC::IGCMD::MetaDataUtils *m_pMdUtils;
-        IGC::ModuleMetaData *modMD;
+        IGC::IGCMD::MetaDataUtils* m_pMdUtils;
+        IGC::ModuleMetaData* modMD;
     };
 
 }

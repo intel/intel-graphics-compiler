@@ -50,20 +50,20 @@ IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_END(ErrorCheck, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-ErrorCheck::ErrorCheck(void) : FunctionPass( ID )
+ErrorCheck::ErrorCheck(void) : FunctionPass(ID)
 {
-    initializeErrorCheckPass( *PassRegistry::getPassRegistry() );
+    initializeErrorCheckPass(*PassRegistry::getPassRegistry());
 }
 
-bool ErrorCheck::runOnFunction( Function &F )
+bool ErrorCheck::runOnFunction(Function& F)
 {
     // add more checks as needed later
-    visit( F );
+    visit(F);
 
     return m_hasError;
 }
 
-void ErrorCheck::visitInstruction( llvm::Instruction &I )
+void ErrorCheck::visitInstruction(llvm::Instruction& I)
 {
     auto ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 

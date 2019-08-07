@@ -74,7 +74,7 @@ OctEltUnit GeometryShaderProperties::VertexProperties::HeaderSize() const
 
 QuadEltUnit GeometryShaderProperties::VertexProperties::Size() const
 {
-    const unsigned int numAttributesPadded = iSTD::Align(m_maxAttributeCount, 2);    
+    const unsigned int numAttributesPadded = iSTD::Align(m_maxAttributeCount, 2);
     return QuadEltUnit(numAttributesPadded) + HeaderSize();
 }
 
@@ -112,10 +112,10 @@ GeometryShaderProperties::InputProperties::InputProperties()
 {}
 
 GeometryShaderProperties::InputProperties::InputProperties(
-    bool hasPrimID, 
+    bool hasPrimID,
     bool hasInstanceID,
     USC::GSHADER_INPUT_PRIMITIVE_TYPE inputPrimitiveType,
-    const VertexProperties & perVertex)
+    const VertexProperties& perVertex)
     : m_hasPrimitiveID(hasPrimID)
     , m_hasInstanceID(hasInstanceID)
     , m_inputPrimitiveType(inputPrimitiveType)
@@ -166,46 +166,46 @@ void GeometryShaderProperties::InputProperties::InputPrimitiveType(
 
 unsigned int GeometryShaderProperties::InputProperties::VertexCount() const
 {
-    switch(m_inputPrimitiveType)
+    switch (m_inputPrimitiveType)
     {
-    case USC::GSHADER_INPUT_POINT        : return 1;
-    case USC::GSHADER_INPUT_LINE         : return 2;
-    case USC::GSHADER_INPUT_LINE_ADJ     : return 4;
-    case USC::GSHADER_INPUT_TRIANGLE     : return 3;
-    case USC::GSHADER_INPUT_TRIANGLE_ADJ : return 6;
+    case USC::GSHADER_INPUT_POINT: return 1;
+    case USC::GSHADER_INPUT_LINE: return 2;
+    case USC::GSHADER_INPUT_LINE_ADJ: return 4;
+    case USC::GSHADER_INPUT_TRIANGLE: return 3;
+    case USC::GSHADER_INPUT_TRIANGLE_ADJ: return 6;
 
-    case USC::GSHADER_INPUT_PATCHLIST_1  : return 1;
-    case USC::GSHADER_INPUT_PATCHLIST_2  : return 2;
-    case USC::GSHADER_INPUT_PATCHLIST_3  : return 3;
-    case USC::GSHADER_INPUT_PATCHLIST_4  : return 4;
-    case USC::GSHADER_INPUT_PATCHLIST_5  : return 5;
-    case USC::GSHADER_INPUT_PATCHLIST_6  : return 6;
-    case USC::GSHADER_INPUT_PATCHLIST_7  : return 7;
-    case USC::GSHADER_INPUT_PATCHLIST_8  : return 8;
-    case USC::GSHADER_INPUT_PATCHLIST_9  : return 9;
-    case USC::GSHADER_INPUT_PATCHLIST_10 : return 10;
-    case USC::GSHADER_INPUT_PATCHLIST_11 : return 11;
-    case USC::GSHADER_INPUT_PATCHLIST_12 : return 12;
-    case USC::GSHADER_INPUT_PATCHLIST_13 : return 13;
-    case USC::GSHADER_INPUT_PATCHLIST_14 : return 14;
-    case USC::GSHADER_INPUT_PATCHLIST_15 : return 15;
-    case USC::GSHADER_INPUT_PATCHLIST_16 : return 16;
-    case USC::GSHADER_INPUT_PATCHLIST_17 : return 17;
-    case USC::GSHADER_INPUT_PATCHLIST_18 : return 18;
-    case USC::GSHADER_INPUT_PATCHLIST_19 : return 19;
-    case USC::GSHADER_INPUT_PATCHLIST_20 : return 20;
-    case USC::GSHADER_INPUT_PATCHLIST_21 : return 21;
-    case USC::GSHADER_INPUT_PATCHLIST_22 : return 22;
-    case USC::GSHADER_INPUT_PATCHLIST_23 : return 23;
-    case USC::GSHADER_INPUT_PATCHLIST_24 : return 24;
-    case USC::GSHADER_INPUT_PATCHLIST_25 : return 25;
-    case USC::GSHADER_INPUT_PATCHLIST_26 : return 26;
-    case USC::GSHADER_INPUT_PATCHLIST_27 : return 27;
-    case USC::GSHADER_INPUT_PATCHLIST_28 : return 28;
-    case USC::GSHADER_INPUT_PATCHLIST_29 : return 29;
-    case USC::GSHADER_INPUT_PATCHLIST_30 : return 30;
-    case USC::GSHADER_INPUT_PATCHLIST_31 : return 31;
-    case USC::GSHADER_INPUT_PATCHLIST_32 : return 32;
+    case USC::GSHADER_INPUT_PATCHLIST_1: return 1;
+    case USC::GSHADER_INPUT_PATCHLIST_2: return 2;
+    case USC::GSHADER_INPUT_PATCHLIST_3: return 3;
+    case USC::GSHADER_INPUT_PATCHLIST_4: return 4;
+    case USC::GSHADER_INPUT_PATCHLIST_5: return 5;
+    case USC::GSHADER_INPUT_PATCHLIST_6: return 6;
+    case USC::GSHADER_INPUT_PATCHLIST_7: return 7;
+    case USC::GSHADER_INPUT_PATCHLIST_8: return 8;
+    case USC::GSHADER_INPUT_PATCHLIST_9: return 9;
+    case USC::GSHADER_INPUT_PATCHLIST_10: return 10;
+    case USC::GSHADER_INPUT_PATCHLIST_11: return 11;
+    case USC::GSHADER_INPUT_PATCHLIST_12: return 12;
+    case USC::GSHADER_INPUT_PATCHLIST_13: return 13;
+    case USC::GSHADER_INPUT_PATCHLIST_14: return 14;
+    case USC::GSHADER_INPUT_PATCHLIST_15: return 15;
+    case USC::GSHADER_INPUT_PATCHLIST_16: return 16;
+    case USC::GSHADER_INPUT_PATCHLIST_17: return 17;
+    case USC::GSHADER_INPUT_PATCHLIST_18: return 18;
+    case USC::GSHADER_INPUT_PATCHLIST_19: return 19;
+    case USC::GSHADER_INPUT_PATCHLIST_20: return 20;
+    case USC::GSHADER_INPUT_PATCHLIST_21: return 21;
+    case USC::GSHADER_INPUT_PATCHLIST_22: return 22;
+    case USC::GSHADER_INPUT_PATCHLIST_23: return 23;
+    case USC::GSHADER_INPUT_PATCHLIST_24: return 24;
+    case USC::GSHADER_INPUT_PATCHLIST_25: return 25;
+    case USC::GSHADER_INPUT_PATCHLIST_26: return 26;
+    case USC::GSHADER_INPUT_PATCHLIST_27: return 27;
+    case USC::GSHADER_INPUT_PATCHLIST_28: return 28;
+    case USC::GSHADER_INPUT_PATCHLIST_29: return 29;
+    case USC::GSHADER_INPUT_PATCHLIST_30: return 30;
+    case USC::GSHADER_INPUT_PATCHLIST_31: return 31;
+    case USC::GSHADER_INPUT_PATCHLIST_32: return 32;
 
     default:
         return 0;
@@ -230,7 +230,7 @@ GeometryShaderProperties::OutputProperties::OutputProperties()
     , m_actualStaticVertexCount(0)
     , m_defaultStreamID(0)
     , m_topologyType(USC::GFX3DPRIM_POINTLIST)
-    , m_controlDataFormat(USC::GFX3DSTATE_CONTROL_DATA_FORMAT_CUT)    
+    , m_controlDataFormat(USC::GFX3DSTATE_CONTROL_DATA_FORMAT_CUT)
     , m_lastNonzeroCutSidDword(0)
 { }
 
@@ -311,7 +311,7 @@ unsigned int GeometryShaderProperties::OutputProperties::ActualStaticVertexCount
 /// We need OutputVerteCount field in the header if the count of emitted vertices
 /// is a runtime value.
 bool GeometryShaderProperties::OutputProperties::HasNonstaticVertexCount() const
-{ 
+{
     return m_hasNonstaticVertexCount;
 }
 
@@ -342,9 +342,9 @@ bool GeometryShaderProperties::OutputProperties::HasRenderTargetArrayIndex() con
 ///  - When cuts have appeared and output topology type is different than point list.
 bool GeometryShaderProperties::OutputProperties::ControlDataHeaderRequired() const
 {
-    return (m_hasNontrivialCuts && m_topologyType != USC::GFX3DPRIM_POINTLIST ) ||
-           (m_controlDataFormat == USC::GFX3DSTATE_CONTROL_DATA_FORMAT_SID) || 
-           (m_isCtrlHeaderPaddingRequired);
+    return (m_hasNontrivialCuts && m_topologyType != USC::GFX3DPRIM_POINTLIST) ||
+        (m_controlDataFormat == USC::GFX3DSTATE_CONTROL_DATA_FORMAT_SID) ||
+        (m_isCtrlHeaderPaddingRequired);
 }
 
 bool GeometryShaderProperties::OutputProperties::ControlDataHeaderPaddingRequired() const
@@ -376,7 +376,7 @@ OctEltUnit GeometryShaderProperties::OutputProperties::ControlDataHeaderSize() c
 
     auto numVertices = HasNonstaticVertexCount() ? MaxVertexCount() : ActualStaticVertexCount();
     auto bitsPerVertex = (ControlDataFormat() == USC::GFX3DSTATE_CONTROL_DATA_FORMAT_CUT) ? 1 : 2;
-    return numVertices > 255 ? OctEltUnit(2*bitsPerVertex) : OctEltUnit(1*bitsPerVertex);
+    return numVertices > 255 ? OctEltUnit(2 * bitsPerVertex) : OctEltUnit(1 * bitsPerVertex);
 }
 
 OctEltUnit GeometryShaderProperties::OutputProperties::GlobalHeaderSize() const
@@ -405,8 +405,8 @@ GeometryShaderProperties::GeometryShaderProperties()
 }
 
 GeometryShaderProperties::GeometryShaderProperties(
-    const InputProperties & inputProps,
-    const OutputProperties & outputProps)
+    const InputProperties& inputProps,
+    const OutputProperties& outputProps)
     : m_input(inputProps)
     , m_output(outputProps)
     , m_samplerCount(0)

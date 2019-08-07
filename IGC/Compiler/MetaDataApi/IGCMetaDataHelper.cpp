@@ -30,7 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace IGC;
 using namespace IGC::IGCMD;
 
-void IGCMetaDataHelper::addFunction(MetaDataUtils &mdUtils, llvm::Function *pFunc, FunctionTypeMD type)
+void IGCMetaDataHelper::addFunction(MetaDataUtils& mdUtils, llvm::Function* pFunc, FunctionTypeMD type)
 {
     auto finfo = FunctionInfoMetaDataHandle(FunctionInfoMetaData::get());
     finfo->setType(type);
@@ -38,28 +38,28 @@ void IGCMetaDataHelper::addFunction(MetaDataUtils &mdUtils, llvm::Function *pFun
     mdUtils.save(pFunc->getContext());
 }
 
-uint32_t IGCMetaDataHelper::getThreadGroupSizeHint(MetaDataUtils &mdUtils, llvm::Function *pKernelFunc)
+uint32_t IGCMetaDataHelper::getThreadGroupSizeHint(MetaDataUtils& mdUtils, llvm::Function* pKernelFunc)
 {
     FunctionInfoMetaDataHandle finfo = mdUtils.getFunctionsInfoItem(pKernelFunc);
     uint32_t size = 0;
     if (finfo->getThreadGroupSizeHint()->hasValue())
     {
         size = finfo->getThreadGroupSizeHint()->getXDim() *
-               finfo->getThreadGroupSizeHint()->getYDim() *
-               finfo->getThreadGroupSizeHint()->getZDim();
+            finfo->getThreadGroupSizeHint()->getYDim() *
+            finfo->getThreadGroupSizeHint()->getZDim();
     }
     return size;
 }
 
-uint32_t IGCMetaDataHelper::getThreadGroupSize(MetaDataUtils &mdUtils, llvm::Function *pKernelFunc)
+uint32_t IGCMetaDataHelper::getThreadGroupSize(MetaDataUtils& mdUtils, llvm::Function* pKernelFunc)
 {
     FunctionInfoMetaDataHandle finfo = mdUtils.getFunctionsInfoItem(pKernelFunc);
     uint32_t size = 0;
     if (finfo->getThreadGroupSize()->hasValue())
     {
         size = finfo->getThreadGroupSize()->getXDim() *
-               finfo->getThreadGroupSize()->getYDim() *
-               finfo->getThreadGroupSize()->getZDim();
+            finfo->getThreadGroupSize()->getYDim() *
+            finfo->getThreadGroupSize()->getZDim();
     }
     return size;
 }

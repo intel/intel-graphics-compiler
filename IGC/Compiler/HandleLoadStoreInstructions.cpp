@@ -53,21 +53,21 @@ HandleLoadStoreInstructions::HandleLoadStoreInstructions() : FunctionPass(ID)
     initializeHandleLoadStoreInstructionsPass(*PassRegistry::getPassRegistry());
 }
 
-bool HandleLoadStoreInstructions::runOnFunction(llvm::Function &F)
+bool HandleLoadStoreInstructions::runOnFunction(llvm::Function& F)
 {
     m_changed = false;
     visit(F);
     return m_changed;
 }
 
-void HandleLoadStoreInstructions::visitLoadInst(llvm::LoadInst &I)
+void HandleLoadStoreInstructions::visitLoadInst(llvm::LoadInst& I)
 {
     llvm::IRBuilder<> builder(&I);
-    llvm::Value *ptrv = llvm::cast<llvm::LoadInst>(I).getPointerOperand();
+    llvm::Value* ptrv = llvm::cast<llvm::LoadInst>(I).getPointerOperand();
 
-    if ( I.getType()->isDoubleTy() || 
-         ( I.getType()->isVectorTy() && 
-           I.getType()->getVectorElementType()->isDoubleTy() ) )
+    if (I.getType()->isDoubleTy() ||
+        (I.getType()->isVectorTy() &&
+            I.getType()->getVectorElementType()->isDoubleTy()))
     {
         // scalar/vector double instruction
         // Found an instruction of type
@@ -75,7 +75,7 @@ void HandleLoadStoreInstructions::visitLoadInst(llvm::LoadInst &I)
         uint32_t numVectorElements = 1;
         llvm::Type* doubleDstType = builder.getDoubleTy();
 
-        if( I.getType()->isVectorTy() )
+        if (I.getType()->isVectorTy())
         {
             numVectorElements = I.getType()->getVectorNumElements();
             doubleDstType = llvm::VectorType::get(builder.getDoubleTy(), numVectorElements);
@@ -87,15 +87,15 @@ void HandleLoadStoreInstructions::visitLoadInst(llvm::LoadInst &I)
         if (bufType == CONSTANT_BUFFER)
         {
             llvm::Type* floatyptr = llvm::PointerType::get(builder.getFloatTy(), as);
-            llvm::Value *byteOffset = nullptr;
+            llvm::Value* byteOffset = nullptr;
             if (!isa<ConstantPointerNull>(ptrv))
             {
-                if (ConstantExpr *ptrExpr = dyn_cast<ConstantExpr>(ptrv))
+                if (ConstantExpr * ptrExpr = dyn_cast<ConstantExpr>(ptrv))
                 {
                     assert(ptrExpr->getOpcode() == Instruction::IntToPtr);
                     byteOffset = ptrExpr->getOperand(0);
                 }
-                else if (IntToPtrInst *i2p = dyn_cast<IntToPtrInst>(ptrv))
+                else if (IntToPtrInst * i2p = dyn_cast<IntToPtrInst>(ptrv))
                 {
                     byteOffset = i2p->getOperand(0);
                 }
@@ -115,7 +115,7 @@ void HandleLoadStoreInstructions::visitLoadInst(llvm::LoadInst &I)
                 }
                 // new IntToPtr and new load
                 // cannot use irbuilder to create IntToPtr. It may create ConstantExpr instead of instruction
-                Value *i2p = llvm::IntToPtrInst::Create(Instruction::IntToPtr, offset, floatyptr, "splitDouble", &I);
+                Value* i2p = llvm::IntToPtrInst::Create(Instruction::IntToPtr, offset, floatyptr, "splitDouble", &I);
                 Value* data = builder.CreateLoad(i2p);
                 vec = builder.CreateInsertElement(vec, data, builder.getInt32(i));
             }
@@ -125,24 +125,24 @@ void HandleLoadStoreInstructions::visitLoadInst(llvm::LoadInst &I)
         else
         {
             // double to <floatx2> ; <doublex2> to <floatx4>
-            llvm::Type *dataType = llvm::VectorType::get(builder.getFloatTy(), numVectorElements * 2);
-            llvm::PointerType *ptrType = llvm::PointerType::get(dataType, ptrv->getType()->getPointerAddressSpace());
+            llvm::Type* dataType = llvm::VectorType::get(builder.getFloatTy(), numVectorElements * 2);
+            llvm::PointerType* ptrType = llvm::PointerType::get(dataType, ptrv->getType()->getPointerAddressSpace());
             ptrv = mutatePtrType(ptrv, ptrType, builder);
-            Value *newLoad = builder.CreateLoad(ptrv);
+            Value* newLoad = builder.CreateLoad(ptrv);
             newInst = builder.CreateBitCast(newLoad, doubleDstType);
         }
         I.replaceAllUsesWith(newInst);
         I.eraseFromParent();
         m_changed = true;
     }
-    else if(I.getType()->isIntegerTy(1))
+    else if (I.getType()->isIntegerTy(1))
     {
-        if(isa<Constant>(ptrv) || isa<IntToPtrInst>(ptrv))
+        if (isa<Constant>(ptrv) || isa<IntToPtrInst>(ptrv))
         {
             llvm::PointerType* int32ptr = llvm::PointerType::get(builder.getInt32Ty(), ptrv->getType()->getPointerAddressSpace());
             ptrv = mutatePtrType(ptrv, int32ptr, builder);
-            Value *newLoad = builder.CreateLoad(ptrv);
-            Value* newInst = builder.CreateTrunc(newLoad, builder.getInt1Ty());    
+            Value* newLoad = builder.CreateLoad(ptrv);
+            Value* newInst = builder.CreateTrunc(newLoad, builder.getInt1Ty());
             I.replaceAllUsesWith(newInst);
             I.eraseFromParent();
             m_changed = true;
@@ -150,13 +150,13 @@ void HandleLoadStoreInstructions::visitLoadInst(llvm::LoadInst &I)
     }
 }
 
-void HandleLoadStoreInstructions::visitStoreInst(llvm::StoreInst &I)
+void HandleLoadStoreInstructions::visitStoreInst(llvm::StoreInst& I)
 {
     llvm::IRBuilder<> builder(&I);
-    llvm::Value *ptrv = llvm::cast<llvm::StoreInst>(I).getPointerOperand();
+    llvm::Value* ptrv = llvm::cast<llvm::StoreInst>(I).getPointerOperand();
     if (I.getValueOperand()->getType()->isDoubleTy() ||
         (I.getValueOperand()->getType()->isVectorTy() &&
-        I.getValueOperand()->getType()->getVectorElementType()->isDoubleTy()))
+            I.getValueOperand()->getType()->getVectorElementType()->isDoubleTy()))
     {
         // scalar/vector double instruction
         uint32_t numVectorElements = 1;
@@ -167,7 +167,7 @@ void HandleLoadStoreInstructions::visitStoreInst(llvm::StoreInst &I)
         }
 
 
-            // %9 = bitcast double addrspace(8519681)* %8 to <2 x float> addrspace(8519681)*
+        // %9 = bitcast double addrspace(8519681)* %8 to <2 x float> addrspace(8519681)*
         llvm::Type* floatDatType = llvm::VectorType::get(builder.getFloatTy(), numVectorElements * 2);
         llvm::PointerType* floatPtrType = llvm::PointerType::get(floatDatType, ptrv->getType()->getPointerAddressSpace());
         ptrv = mutatePtrType(ptrv, floatPtrType, builder);

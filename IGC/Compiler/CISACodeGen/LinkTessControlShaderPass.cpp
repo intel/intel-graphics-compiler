@@ -60,7 +60,7 @@ namespace IGC
             return "LinkTessControlShader";
         }
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.addRequired<MetaDataUtilsWrapper>();
             AU.addRequired<CodeGenContextWrapper>();
@@ -68,9 +68,9 @@ namespace IGC
 
         /// @brief  Main entry point.
         /// @param  F The current function.
-        virtual bool runOnModule(llvm::Module &M) override;
+        virtual bool runOnModule(llvm::Module& M) override;
     private:
-        HullShaderDispatchModes DetermineDispatchMode(llvm::Module* mod, llvm::IRBuilder<> *irBuilder);
+        HullShaderDispatchModes DetermineDispatchMode(llvm::Module* mod, llvm::IRBuilder<>* irBuilder);
         static const uint32_t SIMDSize;
         llvm::Function* CreateNewTCSFunction(llvm::Function* pCurrentFunc);
         bool CheckIfBarrierInstructionExists(llvm::Function* pFunc);
@@ -79,24 +79,24 @@ namespace IGC
 
     char LinkTessControlShader::ID = 0;
     // Register pass to igc-opt
-    #define PASS_FLAG "igc-linkTessControlShader"
-    #define PASS_DESCRIPTION "Perform looping of tessellation function based on control point count"
-    #define PASS_CFG_ONLY false
-    #define PASS_ANALYSIS false
+#define PASS_FLAG "igc-linkTessControlShader"
+#define PASS_DESCRIPTION "Perform looping of tessellation function based on control point count"
+#define PASS_CFG_ONLY false
+#define PASS_ANALYSIS false
     IGC_INITIALIZE_PASS_BEGIN(LinkTessControlShader, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-    IGC_INITIALIZE_PASS_END(LinkTessControlShader, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+        IGC_INITIALIZE_PASS_END(LinkTessControlShader, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-    // SIMD size for tessellation workloads is SIMD8
-    const uint32_t LinkTessControlShader::SIMDSize = 8;
+        // SIMD size for tessellation workloads is SIMD8
+        const uint32_t LinkTessControlShader::SIMDSize = 8;
 
     LinkTessControlShader::LinkTessControlShader() : llvm::ModulePass(ID), m_useMultipleHardwareThread(false)
     {
         initializeLinkTessControlShaderPass(*llvm::PassRegistry::getPassRegistry());
     }
 
-    HullShaderDispatchModes LinkTessControlShader::DetermineDispatchMode(llvm::Module* mod, llvm::IRBuilder<> *irBuilder)
+    HullShaderDispatchModes LinkTessControlShader::DetermineDispatchMode(llvm::Module* mod, llvm::IRBuilder<>* irBuilder)
     {
-        llvm::NamedMDNode *metaData = mod->getOrInsertNamedMetadata("HullShaderDispatchMode");
+        llvm::NamedMDNode* metaData = mod->getOrInsertNamedMetadata("HullShaderDispatchMode");
 
         // now find out the output control point count
         llvm::GlobalVariable* pOCPCount = mod->getGlobalVariable("HSOutputControlPointCount");
@@ -130,14 +130,14 @@ namespace IGC
 
         if (pCodeGenContext->platform.useOnlyEightPatchDispatchHS() ||
             (pCodeGenContext->platform.supportHSEightPatchDispatch() &&
-             !(m_useMultipleHardwareThread && outputControlPointCount >= 16) &&
-             !useSinglePatch &&
-             IGC_IS_FLAG_DISABLED(EnableHSSinglePatchDispatch)))
+                !(m_useMultipleHardwareThread && outputControlPointCount >= 16) &&
+                !useSinglePatch &&
+                IGC_IS_FLAG_DISABLED(EnableHSSinglePatchDispatch)))
         {
             Constant* cval = llvm::ConstantInt::get(
                 irBuilder->getInt32Ty(),
                 HullShaderDispatchModes::EIGHT_PATCH_DISPATCH_MODE);
-            llvm::MDNode *mdNode = llvm::MDNode::get(
+            llvm::MDNode* mdNode = llvm::MDNode::get(
                 irBuilder->getContext(),
                 llvm::ConstantAsMetadata::get(cval));
             metaData->addOperand(mdNode);
@@ -148,7 +148,7 @@ namespace IGC
             Constant* cval = llvm::ConstantInt::get(
                 irBuilder->getInt32Ty(),
                 HullShaderDispatchModes::SINGLE_PATCH_DISPATCH_MODE);
-            llvm::MDNode *mdNode = llvm::MDNode::get(
+            llvm::MDNode* mdNode = llvm::MDNode::get(
                 irBuilder->getContext(),
                 llvm::ConstantAsMetadata::get(cval));
             metaData->addOperand(mdNode);
@@ -161,7 +161,7 @@ namespace IGC
     llvm::Function* LinkTessControlShader::CreateNewTCSFunction(llvm::Function* pCurrentFunc)
     {
         llvm::IRBuilder<> irBuilder(pCurrentFunc->getContext());
-        CodeGenContext *ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+        CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
         std::vector<llvm::Type*> callArgTypes;
         for (auto& argIter : range(pCurrentFunc->arg_begin(), pCurrentFunc->arg_end()))
@@ -189,8 +189,8 @@ namespace IGC
         for (auto oldArg = pToBeDeletedFunc->arg_begin(),
             oldArgEnd = pToBeDeletedFunc->arg_end(),
             newArg = pNewFunction->arg_begin();
-        oldArg != oldArgEnd;
-        ++oldArg, ++newArg)
+            oldArg != oldArgEnd;
+            ++oldArg, ++newArg)
         {
             oldArg->replaceAllUsesWith(&(*newArg));
             newArg->takeName(&(*oldArg));
@@ -201,18 +201,18 @@ namespace IGC
 
         // now replace all occurences of HSControlPointID with the current 
         // loop iteration CPID - pCurrentCPID
-       SmallVector<Instruction*, 10> instructionToRemove;
+        SmallVector<Instruction*, 10> instructionToRemove;
 
-       llvm::Value* pHSControlPointID = llvm::GenISAIntrinsic::getDeclaration(pNewFunction->getParent(),
+        llvm::Value* pHSControlPointID = llvm::GenISAIntrinsic::getDeclaration(pNewFunction->getParent(),
             GenISAIntrinsic::GenISA_DCL_HSControlPointID);
 
-       unsigned int argIndexInFunc = IGCLLVM::GetFuncArgSize(pNewFunction)-1;
-       Function::arg_iterator arg = pNewFunction->arg_begin();
-       for (unsigned int i = 0; i < argIndexInFunc; ++i, ++arg);
+        unsigned int argIndexInFunc = IGCLLVM::GetFuncArgSize(pNewFunction) - 1;
+        Function::arg_iterator arg = pNewFunction->arg_begin();
+        for (unsigned int i = 0; i < argIndexInFunc; ++i, ++arg);
 
-       for (Value::user_iterator i = pHSControlPointID->user_begin(), e = pHSControlPointID->user_end(); i != e; ++i)
+        for (Value::user_iterator i = pHSControlPointID->user_begin(), e = pHSControlPointID->user_end(); i != e; ++i)
         {
-            Instruction *useInst = cast<Instruction>(*i);
+            Instruction* useInst = cast<Instruction>(*i);
             if (useInst->getParent()->getParent() == pNewFunction)
             {
                 instructionToRemove.push_back(useInst);
@@ -220,7 +220,7 @@ namespace IGC
             }
         }
 
-        for (auto &inst : instructionToRemove)
+        for (auto& inst : instructionToRemove)
         {
             inst->eraseFromParent();
         }
@@ -237,7 +237,7 @@ namespace IGC
                 ii != ie;
                 ++ii)
             {
-                if (GenIntrinsicInst* inst = dyn_cast<GenIntrinsicInst>(ii))
+                if (GenIntrinsicInst * inst = dyn_cast<GenIntrinsicInst>(ii))
                 {
                     if (inst->getIntrinsicID() == GenISAIntrinsic::GenISA_threadgroupbarrier)
                     {
@@ -250,10 +250,10 @@ namespace IGC
         return false;
     }
 
-    bool LinkTessControlShader::runOnModule(llvm::Module &M)
+    bool LinkTessControlShader::runOnModule(llvm::Module& M)
     {
-        CodeGenContext *ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-        MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+        CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+        MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
         if (pMdUtils->size_FunctionsInfo() != 1)
         {
             return false;
@@ -285,7 +285,7 @@ namespace IGC
 
         // first create a call to simdLaneId() intrinsic
         llvm::Value* pCPId = nullptr;
-        llvm::Function *pFuncPatchInstanceIdOrSIMDLaneId = nullptr;
+        llvm::Function* pFuncPatchInstanceIdOrSIMDLaneId = nullptr;
         switch (dispatchMode)
         {
         case SINGLE_PATCH_DISPATCH_MODE:
@@ -295,7 +295,7 @@ namespace IGC
 
             if (m_useMultipleHardwareThread)
             {
-                 // CPID = patchInstanceID * 8 + SimdLaneId;
+                // CPID = patchInstanceID * 8 + SimdLaneId;
                 pFuncPatchInstanceIdOrSIMDLaneId = llvm::GenISAIntrinsic::getDeclaration(
                     pNewLoopFunc->getParent(), llvm::GenISAIntrinsic::GenISA_patchInstanceId);
                 pCPId = builder.CreateAdd(
@@ -309,14 +309,14 @@ namespace IGC
             break;
 
         case EIGHT_PATCH_DISPATCH_MODE:
-            if(m_useMultipleHardwareThread)
+            if (m_useMultipleHardwareThread)
             {
                 pFuncPatchInstanceIdOrSIMDLaneId = llvm::GenISAIntrinsic::getDeclaration(
                     pNewLoopFunc->getParent(), llvm::GenISAIntrinsic::GenISA_patchInstanceId);
                 pCPId = builder.CreateCall(pFuncPatchInstanceIdOrSIMDLaneId);
             }
             else
-            { 
+            {
                 pCPId = builder.getInt32(0);
             }
             break;
@@ -381,8 +381,8 @@ namespace IGC
                     llvm::ConstantInt::get(builder.getInt32Ty(), SIMDSize));
                 pCurrentCPID = builder.CreateAdd(
                     builder.CreateZExt(
-                    pCPId,
-                    builder.getInt32Ty()),
+                        pCPId,
+                        builder.getInt32Ty()),
                     pMulLoopCounterRes);
 
                 // cmp currentCPID to instanceCount so we enable only the required lanes

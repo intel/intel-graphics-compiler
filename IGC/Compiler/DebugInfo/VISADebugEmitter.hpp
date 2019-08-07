@@ -52,73 +52,73 @@ namespace llvm
 
 namespace IGC
 {
-class StreamEmitter;
-class VISAModule;
-class DwarfDebug;
-class CodeGenContext;
+    class StreamEmitter;
+    class VISAModule;
+    class DwarfDebug;
+    class CodeGenContext;
 
-void insertOCLMissingDebugConstMetadata(CodeGenContext* ctx);
+    void insertOCLMissingDebugConstMetadata(CodeGenContext* ctx);
 
-// Helper functions to analyze Debug info metadata present in LLVM IR
-class DebugMetadataInfo
-{
-public:
-    static bool hasDashgOption(CodeGenContext* ctx);
-    static bool hasAnyDebugInfo(CodeGenContext* ctx, bool& fullDebugInfo, bool& lineNumbersOnly);
-    static std::string getUniqueFuncName(llvm::Function& F);
-    static std::string getOrigFuncName(std::string cloneName);
-};
+    // Helper functions to analyze Debug info metadata present in LLVM IR
+    class DebugMetadataInfo
+    {
+    public:
+        static bool hasDashgOption(CodeGenContext* ctx);
+        static bool hasAnyDebugInfo(CodeGenContext* ctx, bool& fullDebugInfo, bool& lineNumbersOnly);
+        static std::string getUniqueFuncName(llvm::Function& F);
+        static std::string getOrigFuncName(std::string cloneName);
+    };
 
-class DebugEmitter : public IDebugEmitter
-{
-public:
-    DebugEmitter() : IDebugEmitter(),
-        m_initialized(false),
-        m_debugEnabled(false),
-        m_outStream(m_str),
-        m_pVISAModule(nullptr),
-        m_pStreamEmitter(nullptr),
-        m_pDwarfDebug(nullptr) {}
+    class DebugEmitter : public IDebugEmitter
+    {
+    public:
+        DebugEmitter() : IDebugEmitter(),
+            m_initialized(false),
+            m_debugEnabled(false),
+            m_outStream(m_str),
+            m_pVISAModule(nullptr),
+            m_pStreamEmitter(nullptr),
+            m_pDwarfDebug(nullptr) {}
 
-    ~DebugEmitter();
+        ~DebugEmitter();
 
-    // IDebugEmitter interface methods
-    void Initialize(CShader* pShader, bool debugEnabled);
-    void Finalize(void *&pBuffer, unsigned int &size, bool finalize);
-    void BeginInstruction(llvm::Instruction *pInst);
-    void EndInstruction(llvm::Instruction *pInst);
-    void BeginEncodingMark();
-    void EndEncodingMark();
-    void Free(void *pBuffer);
-    void setFunction(llvm::Function* F, bool isCloned);
-    void ResetVISAModule();
-    VISAModule* GetVISAModule() { return m_pVISAModule; }
-    void SetVISAModule(VISAModule* other) { m_pVISAModule = other; }
+        // IDebugEmitter interface methods
+        void Initialize(CShader* pShader, bool debugEnabled);
+        void Finalize(void*& pBuffer, unsigned int& size, bool finalize);
+        void BeginInstruction(llvm::Instruction* pInst);
+        void EndInstruction(llvm::Instruction* pInst);
+        void BeginEncodingMark();
+        void EndEncodingMark();
+        void Free(void* pBuffer);
+        void setFunction(llvm::Function* F, bool isCloned);
+        void ResetVISAModule();
+        VISAModule* GetVISAModule() { return m_pVISAModule; }
+        void SetVISAModule(VISAModule* other) { m_pVISAModule = other; }
 
-private:
-    /// @brief Reset Debug Emitter instance.
-    void Reset();
+    private:
+        /// @brief Reset Debug Emitter instance.
+        void Reset();
 
-private:
-    bool m_initialized;
-    bool m_debugEnabled;
-    bool doneOnce = false;
+    private:
+        bool m_initialized;
+        bool m_debugEnabled;
+        bool doneOnce = false;
 
-    llvm::SmallVector<char, 1000> m_str;
-    llvm::raw_svector_ostream m_outStream;
+        llvm::SmallVector<char, 1000> m_str;
+        llvm::raw_svector_ostream m_outStream;
 
-    VISAModule    *m_pVISAModule;
-    StreamEmitter *m_pStreamEmitter;
+        VISAModule* m_pVISAModule;
+        StreamEmitter* m_pStreamEmitter;
 
-    /// m_pDwarfDebug - dwarf debug info processor.
-    DwarfDebug *m_pDwarfDebug;
+        /// m_pDwarfDebug - dwarf debug info processor.
+        DwarfDebug* m_pDwarfDebug;
 
-    std::vector<VISAModule*> toFree;
+        std::vector<VISAModule*> toFree;
 
-    unsigned int lastGenOff = 0;
+        unsigned int lastGenOff = 0;
 
-    void writeProgramHeaderTable(bool is64Bit, void* pBuffer, unsigned int size);
-    void setElfType(bool is64Bit, void* pBuffer);
-};
+        void writeProgramHeaderTable(bool is64Bit, void* pBuffer, unsigned int size);
+        void setElfType(bool is64Bit, void* pBuffer);
+    };
 
 } // namespace IGC

@@ -50,7 +50,7 @@ WGFuncResolution::WGFuncResolution() : ModulePass(ID)
     initializeWGFuncResolutionPass(*PassRegistry::getPassRegistry());
 }
 
-bool WGFuncResolution::runOnModule(Module &M)
+bool WGFuncResolution::runOnModule(Module& M)
 {
     m_changed = false;
     m_pModule = &M;
@@ -60,23 +60,23 @@ bool WGFuncResolution::runOnModule(Module &M)
     return m_changed;
 }
 
-void WGFuncResolution::visitCallInst(CallInst &callInst)
+void WGFuncResolution::visitCallInst(CallInst& callInst)
 {
-    Function *pCalledFunc = callInst.getCalledFunction();
+    Function* pCalledFunc = callInst.getCalledFunction();
     if (!pCalledFunc)
     {
         // Indirect call
         return;
     }
     StringRef funcName = pCalledFunc->getName();
-    if( funcName.startswith("__builtin_IB_work_group_any") )
+    if (funcName.startswith("__builtin_IB_work_group_any"))
     {
         SmallVector<Value*, 1> args;
 
         args.push_back(callInst.getOperand(0));
 
-        Function *isaIntrinFunc = GenISAIntrinsic::getDeclaration(m_pModule, GenISAIntrinsic::GenISA_WorkGroupAny);
-        CallInst *isaIntrinCall = CallInst::Create(isaIntrinFunc, args, callInst.getName(), &callInst);
+        Function* isaIntrinFunc = GenISAIntrinsic::getDeclaration(m_pModule, GenISAIntrinsic::GenISA_WorkGroupAny);
+        CallInst* isaIntrinCall = CallInst::Create(isaIntrinFunc, args, callInst.getName(), &callInst);
 
         isaIntrinCall->setDebugLoc(callInst.getDebugLoc());
 

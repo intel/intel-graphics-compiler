@@ -67,19 +67,19 @@ ResourceAllocator::ResourceAllocator() : ModulePass(ID)
     initializeResourceAllocatorPass(*PassRegistry::getPassRegistry());
 }
 
-bool ResourceAllocator::runOnModule(Module &M)
+bool ResourceAllocator::runOnModule(Module& M)
 {
     // There are two places resources can come from:
     // 1) Images and samplers passed as kernel arguments.
     // 2) Samplers declared inline in kernel scope or program scope.
-    
+
     // This allocates indices only for the arguments.
     // Indices for inline samplers are allocated in the OCL BI Conveter,
     // since finding all inline samplers requires going through the 
     // actual calls.
-    MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     // FunctionsInfo contains kernels only.
-    for( auto i = pMdUtils->begin_FunctionsInfo(), e = pMdUtils->end_FunctionsInfo(); i != e; ++i )
+    for (auto i = pMdUtils->begin_FunctionsInfo(), e = pMdUtils->end_FunctionsInfo(); i != e; ++i)
     {
         runOnFunction(*(i->first));
     }
@@ -184,7 +184,7 @@ static AllocationType getAllocationType(KernelArg::ArgType argType, BindlessAllo
     }
 }
 
-static int decodeBufferId(const llvm::Argument *arg)
+static int decodeBufferId(const llvm::Argument* arg)
 {
     assert(arg->getType()->isPointerTy()
         && "Expected a pointer type for address space decoded samplers");
@@ -199,7 +199,7 @@ static int decodeBufferId(const llvm::Argument *arg)
     return bufId;
 }
 
-static int getImageExtensionType(ExtensionArgAnalysis& EAA, const llvm::Argument *arg)
+static int getImageExtensionType(ExtensionArgAnalysis& EAA, const llvm::Argument* arg)
 {
     assert(!EAA.isMediaArg(arg) || !EAA.isVaArg(arg));
 
@@ -214,7 +214,7 @@ static int getImageExtensionType(ExtensionArgAnalysis& EAA, const llvm::Argument
     return ResourceExtensionTypeEnum::NonExtensionType;
 }
 
-static int getSamplerExtensionType(ExtensionArgAnalysis& EAA, const llvm::Argument *arg)
+static int getSamplerExtensionType(ExtensionArgAnalysis& EAA, const llvm::Argument* arg)
 {
     assert(!EAA.isMediaSamplerArg(arg) || !EAA.isVaArg(arg));
 
@@ -229,7 +229,7 @@ static int getSamplerExtensionType(ExtensionArgAnalysis& EAA, const llvm::Argume
     return ResourceExtensionTypeEnum::NonExtensionType;
 }
 
-bool ResourceAllocator::runOnFunction(llvm::Function &F)
+bool ResourceAllocator::runOnFunction(llvm::Function& F)
 {
     // This does two things:
     // * Count the number of UAVs/SRVs/Samplers used by the kernels
@@ -239,8 +239,8 @@ bool ResourceAllocator::runOnFunction(llvm::Function &F)
     CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     assert(ctx);
 
-    MetaDataUtils *MDU = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-    ModuleMetaData *MMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+    MetaDataUtils* MDU = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    ModuleMetaData* MMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
 
     KernelArgs kernelArgs(F, &(F.getParent()->getDataLayout()), MDU, MMD, ctx->platform.getGRFSize());
     ExtensionArgAnalysis& EAA = getAnalysis<ExtensionArgAnalysis>(F);
@@ -248,10 +248,10 @@ bool ResourceAllocator::runOnFunction(llvm::Function &F)
     ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
     if (modMD->FuncMD.find(&F) == modMD->FuncMD.end())
         assert("Function was not found.");
-    FunctionMetaData *funcMD = &modMD->FuncMD[&F];
-    ResourceAllocMD *resAllocMD = &funcMD->resAllocMD;
+    FunctionMetaData* funcMD = &modMD->FuncMD[&F];
+    ResourceAllocMD* resAllocMD = &funcMD->resAllocMD;
 
-    CompOptions &CompilerOpts = MMD->compOpt;
+    CompOptions& CompilerOpts = MMD->compOpt;
 
     // Go over all of the kernel args.
     // For each kernel arg, if it represents an explicit image or buffer argument, 
@@ -299,7 +299,7 @@ bool ResourceAllocator::runOnFunction(llvm::Function &F)
             else
             {
                 if (arg.getAccessQual() == KernelArg::WRITE_ONLY ||
-                        arg.getAccessQual() == KernelArg::READ_WRITE)
+                    arg.getAccessQual() == KernelArg::READ_WRITE)
                 {
                     argAlloc.type = ResourceTypeEnum::UAVResourceType;
                     argAlloc.indexType = numUAVs;
@@ -356,8 +356,8 @@ bool ResourceAllocator::runOnFunction(llvm::Function &F)
     }
 
     // Param allocations must be inserted to the Metadata Utils in order.
-    MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-    for( auto i : paramAllocations )
+    MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    for (auto i : paramAllocations)
     {
         resAllocMD->argAllocMDList.push_back(i);
     }
@@ -367,6 +367,6 @@ bool ResourceAllocator::runOnFunction(llvm::Function &F)
     resAllocMD->samplersNumType = numSamplers;
 
     pMdUtils->save(F.getContext());
-    
+
     return true;
 }

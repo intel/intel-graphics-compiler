@@ -95,7 +95,7 @@ namespace IGC
                 bool hasPrimID,
                 bool hasInstanceID,
                 USC::GSHADER_INPUT_PRIMITIVE_TYPE inputPrimitiveType,
-                const VertexProperties & perVertex);
+                const VertexProperties& perVertex);
 
             // ---- setters
             void HasPrimitiveID(bool hasPrimID);
@@ -117,8 +117,8 @@ namespace IGC
             /// Returns the kind of the input primitive (e.g. point, line with adj, etc).
             USC::GSHADER_INPUT_PRIMITIVE_TYPE InputPrimitiveType() const;
             /// Returns the reference to per-vertex properties object.
-            const VertexProperties & PerVertex() const { return m_perVertex; }
-            VertexProperties & PerVertex() { return m_perVertex; }
+            const VertexProperties& PerVertex() const { return m_perVertex; }
+            VertexProperties& PerVertex() { return m_perVertex; }
         private:
             bool m_hasPrimitiveID;
             bool m_hasInstanceID;
@@ -162,13 +162,13 @@ namespace IGC
             OctEltUnit ControlDataHeaderSize() const;
             OctEltUnit GlobalHeaderSize() const;
 
-            VertexProperties & PerVertex() { return m_perVertex; };
-            const VertexProperties & PerVertex() const { return m_perVertex; };
+            VertexProperties& PerVertex() { return m_perVertex; };
+            const VertexProperties& PerVertex() const { return m_perVertex; };
 
             bool ControlDataHeaderPaddingRequired() const;
             bool HasVtxCountMsgHalfCLSize() const;
-            
-            
+
+
         private:
             bool m_hasPrimitiveID;
             bool m_hasRenderTargetArrayIndex;
@@ -176,7 +176,7 @@ namespace IGC
             bool m_hasNontrivialCuts;
             bool m_hasNonstaticVertexCount;
             bool m_isCtrlHeaderPaddingRequired;
-            bool m_hasVtxCountMsgHalfCLSize;            
+            bool m_hasVtxCountMsgHalfCLSize;
             unsigned int m_maxVertexCount;
             unsigned int m_actualStaticVertexCount;
             int m_defaultStreamID;
@@ -188,13 +188,13 @@ namespace IGC
 
         GeometryShaderProperties();
         GeometryShaderProperties(
-            const InputProperties & inputProps,
-            const OutputProperties & outputProps);
+            const InputProperties& inputProps,
+            const OutputProperties& outputProps);
 
-        const InputProperties & Input() const { return m_input; };
-        InputProperties & Input() { return m_input; }
-        const OutputProperties & Output() const { return m_output; }
-        OutputProperties & Output() { return m_output; }
+        const InputProperties& Input() const { return m_input; };
+        InputProperties& Input() { return m_input; }
+        const OutputProperties& Output() const { return m_output; }
+        OutputProperties& Output() { return m_output; }
 
         void SamplerCount(unsigned int samplerCount);
         unsigned int SamplerCount() const;

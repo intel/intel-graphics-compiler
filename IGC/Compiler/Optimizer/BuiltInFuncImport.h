@@ -56,7 +56,7 @@ namespace IGC
             std::unique_ptr<llvm::Module> pSizeModule = nullptr);
 
         /// @brief analyses used
-        virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.addRequired<MetaDataUtilsWrapper>();
             AU.addRequired<CodeGenContextWrapper>();
@@ -71,10 +71,10 @@ namespace IGC
         /// @brief Main entry point.
         ///        Find all builtins to import, and import them along with callees and globals.
         /// @param M The destination module.
-        bool runOnModule(llvm::Module &M) override;
+        bool runOnModule(llvm::Module& M) override;
 
-        static void supportOldManglingSchemes(llvm::Module &M);
-        static std::unique_ptr<llvm::Module> Construct(llvm::Module &M, CLElfLib::CElfReader * pElfReader, bool hasSizet);
+        static void supportOldManglingSchemes(llvm::Module& M);
+        static std::unique_ptr<llvm::Module> Construct(llvm::Module& M, CLElfLib::CElfReader* pElfReader, bool hasSizet);
     protected:
         /// @brief Get all the functions called by given function.
         /// @param [IN] pFunc The given function.
@@ -83,19 +83,19 @@ namespace IGC
 
         /// @brief  Remove function bitcasts that sometimes may appear due to the changed in the way
         ///         the BiFs are linked. We can remove this code once llvm implements typeless pointers.
-        void removeFunctionBitcasts(llvm::Module &M);
+        void removeFunctionBitcasts(llvm::Module& M);
 
         /// @brief  Initialize values for global flags needed for the built-ins (FlushDenormal).
         ///         Only initializes flags that the built-ins need.
-        void InitializeBIFlags(llvm::Module &M);
+        void InitializeBIFlags(llvm::Module& M);
 
         /// @brief  Search through all builtin modules for the specified function.
         /// @param  funcName - name of func to search for.
-        static llvm::Function *GetBuiltinFunction(llvm::StringRef funcName, llvm::Module* GenericModule);
-        llvm::Function *GetBuiltinFunction2(llvm::StringRef funcName) const;
+        static llvm::Function* GetBuiltinFunction(llvm::StringRef funcName, llvm::Module* GenericModule);
+        llvm::Function* GetBuiltinFunction2(llvm::StringRef funcName) const;
 
         /// @brief  Read elf Header file that is constructed by Build Packager and write to a DenseMap.
-        static void WriteElfHeaderToMap(llvm::DenseMap<llvm::StringRef, int> &Map, char* pData, size_t dataSize);
+        static void WriteElfHeaderToMap(llvm::DenseMap<llvm::StringRef, int>& Map, char* pData, size_t dataSize);
 
     protected:
         /// Builtin module - contains the source function definition to import
@@ -105,7 +105,7 @@ namespace IGC
 
 } // namespace IGC
 
-extern "C" llvm::ModulePass *createBuiltInImportPass(
+extern "C" llvm::ModulePass* createBuiltInImportPass(
     std::unique_ptr<llvm::Module> pGenericModule, std::unique_ptr<llvm::Module> pSizeModule);
 
 namespace IGC
@@ -128,14 +128,14 @@ namespace IGC
             return "PreBIImportAnalysis";
         }
 
-        void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+        void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.addRequired<MetaDataUtilsWrapper>();
         }
 
         /// @brief  Main entry point.
         /// @param  M The destination module.
-        virtual bool runOnModule(llvm::Module &M) override;
+        virtual bool runOnModule(llvm::Module& M) override;
 
         static const llvm::StringRef OCL_GET_GLOBAL_OFFSET;
         static const llvm::StringRef OCL_GET_LOCAL_ID;

@@ -36,7 +36,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 
-void initializeThreadCombiningPass(llvm::PassRegistry &);
+void initializeThreadCombiningPass(llvm::PassRegistry&);
 
 namespace IGC
 {
@@ -83,10 +83,10 @@ namespace IGC
         std::map<llvm::Instruction*, std::set<llvm::Instruction*>> m_LiveRegistersPerBarrier;
         static char ID;
 
-        bool isBarrier(llvm::Instruction &I) const;
+        bool isBarrier(llvm::Instruction& I) const;
         bool isSLMUsed(llvm::Instruction* I) const;
-        unsigned int GetthreadGroupSize(llvm::Module &M, dim dimension);
-        void SetthreadGroupSize(llvm::Module &M, llvm::Constant* size, dim dimension);
+        unsigned int GetthreadGroupSize(llvm::Module& M, dim dimension);
+        void SetthreadGroupSize(llvm::Module& M, llvm::Constant* size, dim dimension);
         void CreateLoopKernel(
             llvm::Module& M,
             unsigned int newSizeX,

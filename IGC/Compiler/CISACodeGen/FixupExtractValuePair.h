@@ -9,8 +9,8 @@
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 
 namespace IGC {
-  llvm::FunctionPass *createExtractValuePairFixupPass();
-  void initializeExtractValuePairFixupPass(llvm::PassRegistry &);
+    llvm::FunctionPass* createExtractValuePairFixupPass();
+    void initializeExtractValuePairFixupPass(llvm::PassRegistry&);
 } // End namespace IGC
 
 #endif // _CISA_FIXUPEXTRACTVALUEPAIR_H_

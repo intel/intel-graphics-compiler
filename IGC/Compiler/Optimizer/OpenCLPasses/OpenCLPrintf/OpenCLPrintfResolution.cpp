@@ -131,21 +131,21 @@ const unsigned int  PrintfBufferSize = 4 * MB;
 // found anything that is not :
 // * a CastInst
 // * a GEP with non-zero indices
-inline GlobalVariable * getGlobalVariable(Value * const v)
+inline GlobalVariable* getGlobalVariable(Value* const v)
 {
-    Value * curr = v;
-    while(nullptr != curr)
+    Value* curr = v;
+    while (nullptr != curr)
     {
-        if(isa<GlobalVariable>(curr))
+        if (isa<GlobalVariable>(curr))
         {
             break;
         }
 
-        if(CastInst *castInst = dyn_cast<CastInst>(curr))
+        if (CastInst * castInst = dyn_cast<CastInst>(curr))
         {
             curr = castInst->getOperand(0);
         }
-        else if(GetElementPtrInst *getElemPtrInst = dyn_cast<GetElementPtrInst>(curr))
+        else if (GetElementPtrInst * getElemPtrInst = dyn_cast<GetElementPtrInst>(curr))
         {
             curr = getElemPtrInst->hasAllZeroIndices() ? getElemPtrInst->getPointerOperand() : nullptr;
         }
@@ -165,9 +165,9 @@ OpenCLPrintfResolution::OpenCLPrintfResolution() : FunctionPass(ID), m_atomicAdd
     initializeOpenCLPrintfResolutionPass(*PassRegistry::getPassRegistry());
 }
 
-bool IGC::OpenCLPrintfResolution::doInitialization(Module &M)
+bool IGC::OpenCLPrintfResolution::doInitialization(Module& M)
 {
-    m_module = (IGCLLVM::Module*)&M;
+    m_module = (IGCLLVM::Module*) & M;
     m_context = &M.getContext();
     m_CGContext = nullptr;
     m_stringIndex = 0;
@@ -177,7 +177,7 @@ bool IGC::OpenCLPrintfResolution::doInitialization(Module &M)
     return FunctionPass::doInitialization(M);
 }
 
-bool OpenCLPrintfResolution::runOnFunction(Function &F)
+bool OpenCLPrintfResolution::runOnFunction(Function& F)
 {
     if (m_CGContext == nullptr) {
         m_CGContext = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
@@ -192,7 +192,7 @@ bool OpenCLPrintfResolution::runOnFunction(Function &F)
     // Put strings found in the printf calls into metadata.
     // Replace the printf calls with sequences of instructions that
     // writes data into printf output buffer.
-    for(CallInst *printfCall : m_printfCalls)
+    for (CallInst* printfCall : m_printfCalls)
     {
         m_DL = printfCall->getDebugLoc();
         expandPrintfCall(*printfCall, F);
@@ -203,15 +203,15 @@ bool OpenCLPrintfResolution::runOnFunction(Function &F)
     return changed;
 }
 
-void OpenCLPrintfResolution::visitCallInst(CallInst &callInst)
+void OpenCLPrintfResolution::visitCallInst(CallInst& callInst)
 {
-    if(!callInst.getCalledFunction())
+    if (!callInst.getCalledFunction())
     {
         return;
     }
 
     StringRef  funcName = callInst.getCalledFunction()->getName();
-    if(funcName == OpenCLPrintfAnalysis::OPENCL_PRINTF_FUNCTION_NAME)
+    if (funcName == OpenCLPrintfAnalysis::OPENCL_PRINTF_FUNCTION_NAME)
     {
         m_printfCalls.push_back(&callInst);
     }
@@ -221,27 +221,27 @@ std::string OpenCLPrintfResolution::getEscapedString(const ConstantDataSequentia
 {
     std::string Name;
     // This is to avoid unnecessary characters that exceed the char range
-    for(unsigned i = 0, len = pCDS->getNumElements() - 1; i != len; i++)
+    for (unsigned i = 0, len = pCDS->getNumElements() - 1; i != len; i++)
     {
-        if(isa<ConstantInt>(pCDS->getElementAsConstant(i)))
+        if (isa<ConstantInt>(pCDS->getElementAsConstant(i)))
         {
-            if((cast<ConstantInt>(pCDS->getElementAsConstant(i))->getZExtValue()) > 127)
+            if ((cast<ConstantInt>(pCDS->getElementAsConstant(i))->getZExtValue()) > 127)
             {
                 Name = "";
                 return Name;
             }
             unsigned char C = (char)cast<ConstantInt>(pCDS->getElementAsConstant(i))->getZExtValue();
 
-            if(isprint(C) &&
-              (C != '\\') &&
-              (C != '"'))
+            if (isprint(C) &&
+                (C != '\\') &&
+                (C != '"'))
             {
                 Name.push_back(C);
             }
-            else 
+            else
             {
                 Name.push_back('\\');
-                switch (C) 
+                switch (C)
                 {
                 case '\a':
                     Name.push_back('a');
@@ -279,15 +279,15 @@ std::string OpenCLPrintfResolution::getEscapedString(const ConstantDataSequentia
     return Name;
 }
 
-int OpenCLPrintfResolution::processPrintfString(Value* printfArg, Function &F)
+int OpenCLPrintfResolution::processPrintfString(Value* printfArg, Function& F)
 {
-    GlobalVariable *formatString = getGlobalVariable(printfArg);
+    GlobalVariable* formatString = getGlobalVariable(printfArg);
 
-    ConstantDataArray *formatStringConst = ((nullptr != formatString) && (formatString->hasInitializer())) ? 
-                                            dyn_cast<ConstantDataArray>(formatString->getInitializer()) :
-                                            nullptr;
+    ConstantDataArray* formatStringConst = ((nullptr != formatString) && (formatString->hasInitializer())) ?
+        dyn_cast<ConstantDataArray>(formatString->getInitializer()) :
+        nullptr;
 
-    if(nullptr == formatStringConst)
+    if (nullptr == formatStringConst)
     {
         assert(0 && "Unexpected printf argument (expected string literal)");
         return 0;
@@ -296,42 +296,42 @@ int OpenCLPrintfResolution::processPrintfString(Value* printfArg, Function &F)
     // Add new metadata node and put the printf string into it.
     // The first element of metadata node is the string index,
     // the second element is the string itself.
-    NamedMDNode *namedMDNode = m_module->getOrInsertNamedMetadata(getPrintfStringsMDNodeName(F));
+    NamedMDNode* namedMDNode = m_module->getOrInsertNamedMetadata(getPrintfStringsMDNodeName(F));
     SmallVector<Metadata*, 2>  args;
-    Metadata *stringIndexVal = ConstantAsMetadata::get(
+    Metadata* stringIndexVal = ConstantAsMetadata::get(
         ConstantInt::get(m_int32Type, m_stringIndex++));
 
     std::string escaped_string = getEscapedString(formatStringConst);
-    MDString *final_string = MDString::get(*m_context, escaped_string);
+    MDString* final_string = MDString::get(*m_context, escaped_string);
 
     args.push_back(stringIndexVal);
     args.push_back(final_string);
 
-    MDNode *itemMDNode = MDNode::get(*m_context, args);
+    MDNode* itemMDNode = MDNode::get(*m_context, args);
     namedMDNode->addOperand(itemMDNode);
 
     return m_stringIndex - 1;
 }
 
 
-bool OpenCLPrintfResolution::argIsString(Value *printfArg)
+bool OpenCLPrintfResolution::argIsString(Value* printfArg)
 {
-    GlobalVariable *formatString = getGlobalVariable(printfArg);
-    if(nullptr == formatString)
+    GlobalVariable* formatString = getGlobalVariable(printfArg);
+    if (nullptr == formatString)
     {
         return false;
     }
 
-    ConstantDataArray *formatStringConst = dyn_cast<ConstantDataArray>(formatString->getInitializer());
+    ConstantDataArray* formatStringConst = dyn_cast<ConstantDataArray>(formatString->getInitializer());
     return ((nullptr != formatStringConst) && formatStringConst->isCString());
 }
 
-std::string OpenCLPrintfResolution::getPrintfStringsMDNodeName(Function &F)
+std::string OpenCLPrintfResolution::getPrintfStringsMDNodeName(Function& F)
 {
     return "printf.strings";
 }
 
-static StoreInst* genStoreInternal(Value *Val, Value *Ptr, BasicBlock *InsertAtEnd, DebugLoc DL)
+static StoreInst* genStoreInternal(Value* Val, Value* Ptr, BasicBlock* InsertAtEnd, DebugLoc DL)
 {
     bool isVolatile = false;
     unsigned Align = 4;
@@ -340,64 +340,64 @@ static StoreInst* genStoreInternal(Value *Val, Value *Ptr, BasicBlock *InsertAtE
     return SI;
 }
 
-void OpenCLPrintfResolution::expandPrintfCall(CallInst &printfCall, Function &F)
+void OpenCLPrintfResolution::expandPrintfCall(CallInst& printfCall, Function& F)
 {
-// Replace a printf call with IR instructions that fill the rintf
-// output buffer created by the Runtime:
-// --------------------------------------------------------------------------
-//       bufferPtr      - pointer to the printf output buffer. This pointer
-//                        is an implicit kernel argument. It is loaded into
-//                        GRF as part of thread payload.
-//       bufferSize     - size of the printf output buffer. By agreement with
-//                        Runtime, it is 4 Mb.
-//       dataSize       - size of printf data for current thread.
-//
-// Note: we use STATELESS mode for printf buffer access.
-//---------------------------------------------------------------------------
-//    writeOffset = atomic_add(bufferPtr, dataSize);
-//    writePtr = bufferPtr + writeOffset;
-//    endOffset = writeOffset + dataSize;
-//    if (endOffset < bufferSize) {                \
-//        // Write the format string index         |
-//        *writePtr = stringIndex;                 |
-//        writePtr += 4;                           |
-//                                                 |
-//        // Write the argument type               |
-//        *writePtr = argument[1].dataType;        |
-//        writePtr += 4;                           |
-//        // Write the argument value              |
-//        *writePtr = argument[1].value;           |
-//        writePtr += 4;                           | bblockTrue
-//        . . .                                    |
-//        . . .                                    |
-//        // Write the argument type               |
-//        *writePtr = argument[N].dataType;        |
-//        writePtr += 4;                           |
-//        // Write the argument value              |
-//        *writePtr = argument[N].value;           |
-//        writePtr += 4;                           |
-//                                                 |
-//        // printf returns 0 if successful        |
-//        return_val = 0;                          /
-//    }
-//    else {                                                           \
-//        // Check if the remaining output                             |
-//        // buffer space is enough for writing                        |
-//        //invalid string index.                                      |
-//        endOffset = writeOffset + 4;                                 |
-//        if (endOffset < bufferSize) {           \                    | bblockFalse
-//            // Write the invalid string index.  | bblockErrorString  |
-//            *writePtr = -1;                     |                    |
-//        }                                       /                    |
-//        // printf returns -1 if failed                               |
-//        return_val = -1;                                             /
-//   }
-// ----------------------------------------------------------------------
+    // Replace a printf call with IR instructions that fill the rintf
+    // output buffer created by the Runtime:
+    // --------------------------------------------------------------------------
+    //       bufferPtr      - pointer to the printf output buffer. This pointer
+    //                        is an implicit kernel argument. It is loaded into
+    //                        GRF as part of thread payload.
+    //       bufferSize     - size of the printf output buffer. By agreement with
+    //                        Runtime, it is 4 Mb.
+    //       dataSize       - size of printf data for current thread.
+    //
+    // Note: we use STATELESS mode for printf buffer access.
+    //---------------------------------------------------------------------------
+    //    writeOffset = atomic_add(bufferPtr, dataSize);
+    //    writePtr = bufferPtr + writeOffset;
+    //    endOffset = writeOffset + dataSize;
+    //    if (endOffset < bufferSize) {                \
+    //        // Write the format string index         |
+    //        *writePtr = stringIndex;                 |
+    //        writePtr += 4;                           |
+    //                                                 |
+    //        // Write the argument type               |
+    //        *writePtr = argument[1].dataType;        |
+    //        writePtr += 4;                           |
+    //        // Write the argument value              |
+    //        *writePtr = argument[1].value;           |
+    //        writePtr += 4;                           | bblockTrue
+    //        . . .                                    |
+    //        . . .                                    |
+    //        // Write the argument type               |
+    //        *writePtr = argument[N].dataType;        |
+    //        writePtr += 4;                           |
+    //        // Write the argument value              |
+    //        *writePtr = argument[N].value;           |
+    //        writePtr += 4;                           |
+    //                                                 |
+    //        // printf returns 0 if successful        |
+    //        return_val = 0;                          /
+    //    }
+    //    else {                                                           \
+    //        // Check if the remaining output                             |
+    //        // buffer space is enough for writing                        |
+    //        //invalid string index.                                      |
+    //        endOffset = writeOffset + 4;                                 |
+    //        if (endOffset < bufferSize) {           \                    | bblockFalse
+    //            // Write the invalid string index.  | bblockErrorString  |
+    //            *writePtr = -1;                     |                    |
+    //        }                                       /                    |
+    //        // printf returns -1 if failed                               |
+    //        return_val = -1;                                             /
+    //   }
+    // ----------------------------------------------------------------------
 
-    MetaDataUtils *MdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    MetaDataUtils* MdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     ImplicitArgs implicitArgs(F, MdUtils);
 
-    BasicBlock *currentBBlock = printfCall.getParent();
+    BasicBlock* currentBBlock = printfCall.getParent();
 
     // Put all printf argument into m_argDescriptors vector.
     // Scalarize vector arguments and substitute string arguments by their indices.
@@ -406,79 +406,79 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst &printfCall, Function &F)
     // writeOffset = atomic_add(bufferPtr, dataSize)
     Value* basebufferPtr = implicitArgs.getArgInFunc(F, ImplicitArg::PRINTF_BUFFER);
     Value* dataSizeVal = ConstantInt::get(m_int32Type, getTotalDataSize());
-    Instruction *writeOffsetStart = genAtomicAdd(basebufferPtr, dataSizeVal, printfCall, "write_offset");
+    Instruction* writeOffsetStart = genAtomicAdd(basebufferPtr, dataSizeVal, printfCall, "write_offset");
     writeOffsetStart->setDebugLoc(m_DL);
 
-    Instruction *writeOffset = writeOffsetStart;
-    Instruction *writeOffsetPtr = nullptr;
+    Instruction* writeOffset = writeOffsetStart;
+    Instruction* writeOffsetPtr = nullptr;
 
     // end_offset = write_offset + data_size
-    Instruction *endOffset = BinaryOperator::CreateAdd(writeOffset, dataSizeVal, "end_offset", &printfCall);
+    Instruction* endOffset = BinaryOperator::CreateAdd(writeOffset, dataSizeVal, "end_offset", &printfCall);
     endOffset->setDebugLoc(m_DL);
 
     // The size of output printf buffer is 4 MB by agreement with Runtime.
     Value* bufferMaxSize = ConstantInt::get(m_int32Type, PrintfBufferSize);
 
     // write_ptr = buffer_ptr + write_offset;
-    if(m_ptrSizeIntType != writeOffset->getType())
+    if (m_ptrSizeIntType != writeOffset->getType())
     {
         writeOffset = CastInst::Create(Instruction::CastOps::ZExt,
-                                       writeOffset,
-                                       m_ptrSizeIntType,
-                                       "write_offset",
-                                       &printfCall);
+            writeOffset,
+            m_ptrSizeIntType,
+            "write_offset",
+            &printfCall);
         writeOffset->setDebugLoc(m_DL);
     }
     Instruction* bufferPtr = CastInst::Create(Instruction::CastOps::PtrToInt,
-                                              basebufferPtr, 
-                                              m_ptrSizeIntType,
-                                              "buffer_ptr",
-                                              &printfCall);
+        basebufferPtr,
+        m_ptrSizeIntType,
+        "buffer_ptr",
+        &printfCall);
     bufferPtr->setDebugLoc(m_DL);
-    Instruction *writeOffsetAdd = BinaryOperator::CreateAdd(bufferPtr, 
-                                                            writeOffset,
-                                                            "write_offset",
-                                                            &printfCall);
+    Instruction* writeOffsetAdd = BinaryOperator::CreateAdd(bufferPtr,
+        writeOffset,
+        "write_offset",
+        &printfCall);
     writeOffsetAdd->setDebugLoc(m_DL);
     writeOffset = writeOffsetAdd;
 
     // if (end_offset < output_buffer_size))
-    Instruction *cmp1 = CmpInst::Create(Instruction::ICmp, 
-                                        CmpInst::ICMP_ULE,
-                                        endOffset,
-                                        bufferMaxSize,
-                                        "",
-                                        &printfCall);
+    Instruction* cmp1 = CmpInst::Create(Instruction::ICmp,
+        CmpInst::ICMP_ULE,
+        endOffset,
+        bufferMaxSize,
+        "",
+        &printfCall);
     cmp1->setDebugLoc(m_DL);
 
     // Since we need to insert a branch here, the current basic block should be
     // splitted into two parts.
-    BasicBlock *bblockJoin = currentBBlock->splitBasicBlock(BasicBlock::iterator(printfCall), "bblockJoin");
-    
+    BasicBlock* bblockJoin = currentBBlock->splitBasicBlock(BasicBlock::iterator(printfCall), "bblockJoin");
+
     // Create "true" and "false" branches.
-    BasicBlock *bblockTrue  = BasicBlock::Create(*m_context, "write_offset_true", &F, bblockJoin);
-    BasicBlock *bblockFalse = BasicBlock::Create(*m_context, "write_offset_false", &F, bblockJoin);
+    BasicBlock* bblockTrue = BasicBlock::Create(*m_context, "write_offset_true", &F, bblockJoin);
+    BasicBlock* bblockFalse = BasicBlock::Create(*m_context, "write_offset_false", &F, bblockJoin);
 
     currentBBlock->getTerminator()->eraseFromParent();
-    BranchInst *brInst = BranchInst::Create(bblockTrue, bblockFalse, cmp1, currentBBlock);
+    BranchInst* brInst = BranchInst::Create(bblockTrue, bblockFalse, cmp1, currentBBlock);
     brInst->setDebugLoc(m_DL);
 
     //  ----------- Fill "true" block ----------------
 
     // write_offset += 4;
-    Value *constVal4 = ConstantInt::get(m_ptrSizeIntType, 4);
-    
-    for(size_t i = 0, size = m_argDescriptors.size(); i < size; ++i)
+    Value* constVal4 = ConstantInt::get(m_ptrSizeIntType, 4);
+
+    for (size_t i = 0, size = m_argDescriptors.size(); i < size; ++i)
     {
-        SPrintfArgDescriptor *argDesc = &m_argDescriptors[i];
-        Value *printfArg = argDesc->value;
+        SPrintfArgDescriptor* argDesc = &m_argDescriptors[i];
+        Value* printfArg = argDesc->value;
         SHADER_PRINTF_TYPE dataType = argDesc->argType;
 
         // We don't store the dataType for format string (which is the first entry in m_argDescriptors).
         if (i != 0)
         {
             // *write_offset = argument[i].dataType
-            Value *argTypeVal = ConstantInt::get(m_int32Type, (unsigned int)dataType);
+            Value* argTypeVal = ConstantInt::get(m_int32Type, (unsigned int)dataType);
             writeOffsetPtr = CastInst::Create(Instruction::CastOps::IntToPtr, writeOffset,
                 m_int32Type->getPointerTo(ADDRESS_SPACE_GLOBAL), "write_offset_ptr", bblockTrue);
             writeOffsetPtr->setDebugLoc(m_DL);
@@ -490,7 +490,7 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst &printfCall, Function &F)
 
             // For vector arguments, add vector size after type ID.
             if (argDesc->vecSize > 0) {
-                Value *vecSizeVal = ConstantInt::get(m_int32Type, argDesc->vecSize);
+                Value* vecSizeVal = ConstantInt::get(m_int32Type, argDesc->vecSize);
                 writeOffsetPtr = CastInst::Create(Instruction::CastOps::IntToPtr, writeOffset,
                     m_int32Type->getPointerTo(ADDRESS_SPACE_GLOBAL), "write_offset_ptr", bblockTrue);
                 writeOffsetPtr->setDebugLoc(m_DL);
@@ -501,12 +501,12 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst &printfCall, Function &F)
                 writeOffset->setDebugLoc(m_DL);
             }
         }
-         
+
         writeOffsetPtr = generateCastToPtr(argDesc, writeOffset, bblockTrue);
         writeOffsetPtr->setDebugLoc(m_DL);
 
         // *write_offset = argument[i].value
-        genStoreInternal(printfArg, writeOffsetPtr , bblockTrue, m_DL);
+        genStoreInternal(printfArg, writeOffsetPtr, bblockTrue, m_DL);
 
         // write_offset += argument[i].size
         Value* offsetInc = ConstantInt::get(m_ptrSizeIntType, getArgTypeSize(dataType, argDesc->vecSize));
@@ -519,32 +519,32 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst &printfCall, Function &F)
 
     //  ----------- Fill "false" block ----------------
     // end_offset = write_offset + 4
-    Value *constVal4_32 = ConstantInt::get(m_int32Type, 4);
+    Value* constVal4_32 = ConstantInt::get(m_int32Type, 4);
     endOffset = BinaryOperator::CreateAdd(writeOffsetStart, constVal4_32, "end_offset", bblockFalse);
     endOffset->setDebugLoc(m_DL);
     // if (end_offset < output_buffer_size)
-    Instruction *cmp2 = CmpInst::Create(Instruction::ICmp,
-                                        CmpInst::ICMP_ULE,
-                                        endOffset,
-                                        bufferMaxSize,
-                                        "",
-                                        bblockFalse);
+    Instruction* cmp2 = CmpInst::Create(Instruction::ICmp,
+        CmpInst::ICMP_ULE,
+        endOffset,
+        bufferMaxSize,
+        "",
+        bblockFalse);
     cmp2->setDebugLoc(m_DL);
     // Here, we generate code that checks if the error string index can be
     // written into the output buffer. 
-    BasicBlock *bblockErrorString   = BasicBlock::Create(*m_context, "write_error_string", &F, bblockJoin);
-    BasicBlock *bblockFalseJoin     = BasicBlock::Create(*m_context, "bblockFalseJoin", &F, bblockJoin);
+    BasicBlock* bblockErrorString = BasicBlock::Create(*m_context, "write_error_string", &F, bblockJoin);
+    BasicBlock* bblockFalseJoin = BasicBlock::Create(*m_context, "bblockFalseJoin", &F, bblockJoin);
 
     brInst = BranchInst::Create(bblockErrorString, bblockFalseJoin, cmp2, bblockFalse);
     brInst->setDebugLoc(m_DL);
 
     // *writeOffset = -1;
-    Value *constValErrStringIdx = ConstantInt::get(m_int32Type, -1);
+    Value* constValErrStringIdx = ConstantInt::get(m_int32Type, -1);
     writeOffsetPtr = CastInst::Create(Instruction::CastOps::IntToPtr,
-                                      writeOffsetAdd,
-                                      m_int32Type->getPointerTo(ADDRESS_SPACE_GLOBAL),
-                                      "write_offset_ptr",
-                                      bblockErrorString);
+        writeOffsetAdd,
+        m_int32Type->getPointerTo(ADDRESS_SPACE_GLOBAL),
+        "write_offset_ptr",
+        bblockErrorString);
     writeOffsetPtr->setDebugLoc(m_DL);
     genStoreInternal(constValErrStringIdx, writeOffsetPtr, bblockErrorString, m_DL);
     brInst = BranchInst::Create(bblockFalseJoin, bblockErrorString);
@@ -556,9 +556,9 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst &printfCall, Function &F)
     brInst->setDebugLoc(m_DL);
 
     // return_val = select cmp1, 0, -1
-    Value *constVal0  = ConstantInt::get(m_int32Type, 0);
-    Value *constValm1 = ConstantInt::get(m_int32Type, -1);
-    Instruction *returnVal  = SelectInst::Create(cmp1, constVal0, constValm1, "printf_ret_val", &printfCall);
+    Value* constVal0 = ConstantInt::get(m_int32Type, 0);
+    Value* constValm1 = ConstantInt::get(m_int32Type, -1);
+    Instruction* returnVal = SelectInst::Create(cmp1, constVal0, constValm1, "printf_ret_val", &printfCall);
     returnVal->setDebugLoc(m_DL);
 
     printfCall.replaceAllUsesWith(returnVal);
@@ -566,43 +566,43 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst &printfCall, Function &F)
     m_argDescriptors.clear();
 }
 
-Value* OpenCLPrintfResolution::fixupPrintfArg(CallInst &printfCall, Value* arg, SHADER_PRINTF_TYPE & argDataType)
+Value* OpenCLPrintfResolution::fixupPrintfArg(CallInst& printfCall, Value* arg, SHADER_PRINTF_TYPE& argDataType)
 {
     // For string argument, add the string to the metadata and put the string index
     // into the vector of arguments.
-    switch(argDataType)
+    switch (argDataType)
     {
-    case SHADER_PRINTF_STRING_LITERAL: 
-        {
-            Function *F = printfCall.getParent()->getParent();
-            uint stringIndex = processPrintfString(arg, *F);
-            return ConstantInt::get(m_int32Type, stringIndex);
-        }
-        break;
+    case SHADER_PRINTF_STRING_LITERAL:
+    {
+        Function* F = printfCall.getParent()->getParent();
+        uint stringIndex = processPrintfString(arg, *F);
+        return ConstantInt::get(m_int32Type, stringIndex);
+    }
+    break;
     case SHADER_PRINTF_POINTER:
-        {
-            Instruction *tmp = CastInst::Create(Instruction::CastOps::PtrToInt,
-                                                arg,
-                                                m_ptrSizeIntType,
-                                                "",
-                                                &printfCall);
-            tmp->setDebugLoc(m_DL);
-            return tmp;
-        }
-        break;
+    {
+        Instruction* tmp = CastInst::Create(Instruction::CastOps::PtrToInt,
+            arg,
+            m_ptrSizeIntType,
+            "",
+            &printfCall);
+        tmp->setDebugLoc(m_DL);
+        return tmp;
+    }
+    break;
     case SHADER_PRINTF_FLOAT:
     case SHADER_PRINTF_VECTOR_FLOAT:
     case SHADER_PRINTF_DOUBLE:
     case SHADER_PRINTF_VECTOR_DOUBLE:
         // Cast halfs back to float. Cast doubles to floats if the platform does not support double fp type.
-        if ( arg->getType()->getScalarType()->isHalfTy() || (!m_fp64Supported && arg->getType()->getScalarType()->isDoubleTy()) )
+        if (arg->getType()->getScalarType()->isHalfTy() || (!m_fp64Supported && arg->getType()->getScalarType()->isDoubleTy()))
         {
             if (argDataType == SHADER_PRINTF_DOUBLE)
                 argDataType = SHADER_PRINTF_FLOAT;
             if (argDataType == SHADER_PRINTF_VECTOR_DOUBLE)
                 argDataType = SHADER_PRINTF_VECTOR_FLOAT;
 
-            if (ConstantFP* constVal = dyn_cast<ConstantFP>(arg))
+            if (ConstantFP * constVal = dyn_cast<ConstantFP>(arg))
             {
                 // If this is a constant, just replace it.
                 bool ignored;
@@ -610,27 +610,27 @@ Value* OpenCLPrintfResolution::fixupPrintfArg(CallInst &printfCall, Value* arg, 
                 FV.convert(APFloat::IEEEsingle(), APFloat::rmNearestTiesToEven, &ignored);
                 return ConstantFP::get(arg->getContext(), FV);
             }
-            else if(CastInst* fpCastVal = dyn_cast<CastInst>(arg))
+            else if (CastInst * fpCastVal = dyn_cast<CastInst>(arg))
             {
                 // If this is a fpcast, use the origin value.
-                Type *srcType = fpCastVal->getSrcTy();
-                if ( srcType->isFloatTy() || 
-                    (srcType->isVectorTy() && srcType->getVectorElementType()->isFloatTy()) )
+                Type* srcType = fpCastVal->getSrcTy();
+                if (srcType->isFloatTy() ||
+                    (srcType->isVectorTy() && srcType->getVectorElementType()->isFloatTy()))
                 {
                     return fpCastVal->getOperand(0);
                 }
             }
 
-            Type *newType = Type::getFloatTy(arg->getContext());
+            Type* newType = Type::getFloatTy(arg->getContext());
             if (arg->getType()->isVectorTy())
             {
                 newType = VectorType::get(newType, arg->getType()->getVectorNumElements());
             }
-            
-            Instruction *tmp = CastInst::CreateFPCast(arg,
-                                                      newType,
-                                                      "to_float",
-                                                      &printfCall);
+
+            Instruction* tmp = CastInst::CreateFPCast(arg,
+                newType,
+                "to_float",
+                &printfCall);
             tmp->setDebugLoc(m_DL);
             return tmp;
         }
@@ -643,12 +643,12 @@ Value* OpenCLPrintfResolution::fixupPrintfArg(CallInst &printfCall, Value* arg, 
     return arg;
 }
 
-void OpenCLPrintfResolution::preprocessPrintfArgs(CallInst &printfCall)
+void OpenCLPrintfResolution::preprocessPrintfArgs(CallInst& printfCall)
 {
-    for(int i = 0, numArgs = printfCall.getNumArgOperands(); i < numArgs; ++i)
+    for (int i = 0, numArgs = printfCall.getNumArgOperands(); i < numArgs; ++i)
     {
-        Value *arg = printfCall.getOperand(i);
-        Type  *argType = arg->getType();
+        Value* arg = printfCall.getOperand(i);
+        Type* argType = arg->getType();
         SHADER_PRINTF_TYPE argDataType = getPrintfArgDataType(arg);
         arg = fixupPrintfArg(printfCall, arg, argDataType);
         uint vecSize = 0;
@@ -659,10 +659,10 @@ void OpenCLPrintfResolution::preprocessPrintfArgs(CallInst &printfCall)
     }
 }
 
-CallInst* OpenCLPrintfResolution::genAtomicAdd(Value *outputBufferPtr,
-                                               Value *dataSize,
-                                               CallInst &printfCall,
-                                               StringRef name)
+CallInst* OpenCLPrintfResolution::genAtomicAdd(Value* outputBufferPtr,
+    Value* dataSize,
+    CallInst& printfCall,
+    StringRef name)
 {
     // outputBufferPtr->getType() could be "i8 addrspace(1)*", and the atomic prototype
     // requires "i32 addrspace(1)*":
@@ -672,23 +672,23 @@ CallInst* OpenCLPrintfResolution::genAtomicAdd(Value *outputBufferPtr,
     //
     Type* bufPtrType = Type::getInt32PtrTy(*m_context, ADDRESS_SPACE_GLOBAL);
     if (outputBufferPtr->getType() != bufPtrType) {
-      outputBufferPtr = CastInst::Create(Instruction::CastOps::BitCast,
-                                         outputBufferPtr,
-                                         bufPtrType,
-                                         "ptrBC",
-                                         &printfCall);
+        outputBufferPtr = CastInst::Create(Instruction::CastOps::BitCast,
+            outputBufferPtr,
+            bufPtrType,
+            "ptrBC",
+            &printfCall);
     }
 
     if (m_atomicAddFunc == nullptr) {
-      Type* argTypes[] = { outputBufferPtr->getType(), dataSize->getType() };
-      FunctionType *atomicFuncType = FunctionType::get(dataSize->getType(), argTypes, false);
-      m_atomicAddFunc = cast<Function>(m_module->getOrInsertFunction("__builtin_IB_atomic_add_global_i32",
-          atomicFuncType, IGCLLVM::AttributeSet()));
+        Type* argTypes[] = { outputBufferPtr->getType(), dataSize->getType() };
+        FunctionType* atomicFuncType = FunctionType::get(dataSize->getType(), argTypes, false);
+        m_atomicAddFunc = cast<Function>(m_module->getOrInsertFunction("__builtin_IB_atomic_add_global_i32",
+            atomicFuncType, IGCLLVM::AttributeSet()));
     }
     std::vector<Value*> args;
     args.push_back(outputBufferPtr);
     args.push_back(dataSize);
-    
+
     return CallInst::Create(m_atomicAddFunc, args, name, &printfCall);
 }
 
@@ -722,9 +722,9 @@ unsigned int OpenCLPrintfResolution::getTotalDataSize()
 
     // Skip 0-th operand (format string) and count total size of
     // the remaining arguments.
-    for(size_t i = 1, size = m_argDescriptors.size(); i < size; ++i)
+    for (size_t i = 1, size = m_argDescriptors.size(); i < size; ++i)
     {
-        SPrintfArgDescriptor *argDesc = &m_argDescriptors[i];
+        SPrintfArgDescriptor* argDesc = &m_argDescriptors[i];
         // Add size of the data type identifier.
         dataSize += 4;
         // Vector arguments require additional type identifier - number of elements.
@@ -737,9 +737,9 @@ unsigned int OpenCLPrintfResolution::getTotalDataSize()
     return dataSize;
 }
 
-SHADER_PRINTF_TYPE OpenCLPrintfResolution::getPrintfArgDataType(Value *printfArg)
+SHADER_PRINTF_TYPE OpenCLPrintfResolution::getPrintfArgDataType(Value* printfArg)
 {
-    Type *argType = printfArg->getType();
+    Type* argType = printfArg->getType();
 
     if (argIsString(printfArg))
     {
@@ -747,7 +747,7 @@ SHADER_PRINTF_TYPE OpenCLPrintfResolution::getPrintfArgDataType(Value *printfArg
     }
     else if (argType->isVectorTy())
     {
-        Type *elemType = argType->getVectorElementType();
+        Type* elemType = argType->getVectorElementType();
         if (elemType->isFloatingPointTy())
         {
             if (elemType->isDoubleTy())
@@ -773,21 +773,21 @@ SHADER_PRINTF_TYPE OpenCLPrintfResolution::getPrintfArgDataType(Value *printfArg
     }
     else
     {
-        if(argType->isPointerTy())
+        if (argType->isPointerTy())
         {
             return SHADER_PRINTF_POINTER;
         }
-        else if(argType->isFloatingPointTy())
+        else if (argType->isFloatingPointTy())
         {
             if (argType->isDoubleTy())
                 return SHADER_PRINTF_DOUBLE;
             else
                 return SHADER_PRINTF_FLOAT;
         }
-        else if(argType->isIntegerTy())
+        else if (argType->isIntegerTy())
         {
             unsigned int typeSize = argType->getScalarSizeInBits();
-            switch(typeSize)
+            switch (typeSize)
             {
             case 8:
                 return SHADER_PRINTF_BYTE;
@@ -803,10 +803,10 @@ SHADER_PRINTF_TYPE OpenCLPrintfResolution::getPrintfArgDataType(Value *printfArg
     return SHADER_PRINTF_INVALID;
 }
 
-Instruction *OpenCLPrintfResolution::generateCastToPtr(SPrintfArgDescriptor *argDesc, 
-                                                       Value *writeOffset, BasicBlock *bblock)
+Instruction* OpenCLPrintfResolution::generateCastToPtr(SPrintfArgDescriptor* argDesc,
+    Value* writeOffset, BasicBlock* bblock)
 {
-    Type *castedType = nullptr;
+    Type* castedType = nullptr;
 
     switch (argDesc->argType)
     {
@@ -822,7 +822,7 @@ Instruction *OpenCLPrintfResolution::generateCastToPtr(SPrintfArgDescriptor *arg
     case SHADER_PRINTF_VECTOR_LONG:
     case SHADER_PRINTF_VECTOR_FLOAT:
     case SHADER_PRINTF_VECTOR_DOUBLE: {
-        Type *origType = argDesc->value->getType();
+        Type* origType = argDesc->value->getType();
         castedType = origType->getPointerTo(ADDRESS_SPACE_GLOBAL);
         break;
     }
@@ -839,9 +839,9 @@ Instruction *OpenCLPrintfResolution::generateCastToPtr(SPrintfArgDescriptor *arg
         assert(0 && "Unexpected printf argument type");
     }
 
-    return CastInst::Create(Instruction::CastOps::IntToPtr, 
-                            writeOffset,
-                            castedType,
-                            "write_offset_ptr",
-                            bblock);
+    return CastInst::Create(Instruction::CastOps::IntToPtr,
+        writeOffset,
+        castedType,
+        "write_offset_ptr",
+        bblock);
 }

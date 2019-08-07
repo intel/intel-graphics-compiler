@@ -35,8 +35,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 
 namespace IGC {
-  llvm::FunctionPass *createResolveGASPass();
-  void initializeGASResolvingPass(llvm::PassRegistry &);
+    llvm::FunctionPass* createResolveGASPass();
+    void initializeGASResolvingPass(llvm::PassRegistry&);
 } // End namespace IGC
 
 #endif // _CISA_RESOLVEGAS_H_

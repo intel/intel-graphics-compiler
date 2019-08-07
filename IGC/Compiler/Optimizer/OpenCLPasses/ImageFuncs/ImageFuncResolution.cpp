@@ -55,7 +55,7 @@ ImageFuncResolution::ImageFuncResolution() : FunctionPass(ID), m_implicitArgs()
     initializeImageFuncResolutionPass(*PassRegistry::getPassRegistry());
 }
 
-bool ImageFuncResolution::runOnFunction(Function &F) {
+bool ImageFuncResolution::runOnFunction(Function& F) {
     const MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     m_implicitArgs = ImplicitArgs(F, pMdUtils);
     m_changed = false;
@@ -63,7 +63,7 @@ bool ImageFuncResolution::runOnFunction(Function &F) {
     return m_changed;
 }
 
-void ImageFuncResolution::visitCallInst(CallInst &CI)
+void ImageFuncResolution::visitCallInst(CallInst& CI)
 {
     if (!CI.getCalledFunction())
     {
@@ -71,19 +71,19 @@ void ImageFuncResolution::visitCallInst(CallInst &CI)
     }
 
     Value* imageRes = nullptr;
-    
+
     // Add appropriate sequence and image dimension func
     StringRef funcName = CI.getCalledFunction()->getName();
 
-    if( funcName.equals(ImageFuncsAnalysis::GET_IMAGE_HEIGHT) )
+    if (funcName.equals(ImageFuncsAnalysis::GET_IMAGE_HEIGHT))
     {
         imageRes = getImageHeight(CI);
     }
-    else if( funcName.equals(ImageFuncsAnalysis::GET_IMAGE_WIDTH) )
+    else if (funcName.equals(ImageFuncsAnalysis::GET_IMAGE_WIDTH))
     {
         imageRes = getImageWidth(CI);
     }
-    else if( funcName.equals(ImageFuncsAnalysis::GET_IMAGE_DEPTH) )
+    else if (funcName.equals(ImageFuncsAnalysis::GET_IMAGE_DEPTH))
     {
         imageRes = getImageDepth(CI);
     }
@@ -91,19 +91,19 @@ void ImageFuncResolution::visitCallInst(CallInst &CI)
     {
         imageRes = getImageNumMipLevels(CI);
     }
-    else if( funcName.equals(ImageFuncsAnalysis::GET_IMAGE_CHANNEL_DATA_TYPE) )
+    else if (funcName.equals(ImageFuncsAnalysis::GET_IMAGE_CHANNEL_DATA_TYPE))
     {
         imageRes = getImageChannelDataType(CI);
     }
-    else if( funcName.equals(ImageFuncsAnalysis::GET_IMAGE_CHANNEL_ORDER) )
+    else if (funcName.equals(ImageFuncsAnalysis::GET_IMAGE_CHANNEL_ORDER))
     {
         imageRes = getImageChannelOrder(CI);
     }
-    else if( funcName.equals(ImageFuncsAnalysis::GET_IMAGE_SRGB_CHANNEL_ORDER) )
+    else if (funcName.equals(ImageFuncsAnalysis::GET_IMAGE_SRGB_CHANNEL_ORDER))
     {
         imageRes = getImplicitImageArg(CI, ImplicitArg::IMAGE_SRGB_CHANNEL_ORDER);
     }
-    else if( funcName.equals(ImageFuncsAnalysis::GET_IMAGE_ARRAY_SIZE) )
+    else if (funcName.equals(ImageFuncsAnalysis::GET_IMAGE_ARRAY_SIZE))
     {
         imageRes = getImageArraySize(CI);
     }
@@ -111,19 +111,19 @@ void ImageFuncResolution::visitCallInst(CallInst &CI)
     {
         imageRes = getImageNumSamples(CI);
     }
-    else if( funcName.equals(ImageFuncsAnalysis::GET_SAMPLER_ADDRESS_MODE) )
+    else if (funcName.equals(ImageFuncsAnalysis::GET_SAMPLER_ADDRESS_MODE))
     {
         imageRes = getSamplerAddressMode(CI);
     }
-    else if( funcName.equals(ImageFuncsAnalysis::GET_SAMPLER_NORMALIZED_COORDS) )
+    else if (funcName.equals(ImageFuncsAnalysis::GET_SAMPLER_NORMALIZED_COORDS))
     {
         imageRes = getSamplerNormalizedCoords(CI);
     }
-    else if( funcName.equals(ImageFuncsAnalysis::GET_SAMPLER_SNAP_WA_REQUIRED) )
+    else if (funcName.equals(ImageFuncsAnalysis::GET_SAMPLER_SNAP_WA_REQUIRED))
     {
         imageRes = getSamplerSnapWARequired(CI);
     }
-    else 
+    else
     {
         // Non image function, do nothing
         return;
@@ -135,55 +135,55 @@ void ImageFuncResolution::visitCallInst(CallInst &CI)
     m_changed = true;
 }
 
-Value* ImageFuncResolution::getImageHeight(CallInst &CI) 
+Value* ImageFuncResolution::getImageHeight(CallInst& CI)
 {
     Argument* arg = getImplicitImageArg(CI, ImplicitArg::IMAGE_HEIGHT);
     return arg;
 }
 
-Value* ImageFuncResolution::getImageWidth(CallInst &CI) 
+Value* ImageFuncResolution::getImageWidth(CallInst& CI)
 {
     Argument* arg = getImplicitImageArg(CI, ImplicitArg::IMAGE_WIDTH);
     return arg;
 }
 
-Value* ImageFuncResolution::getImageDepth(CallInst &CI) 
+Value* ImageFuncResolution::getImageDepth(CallInst& CI)
 {
     Argument* arg = getImplicitImageArg(CI, ImplicitArg::IMAGE_DEPTH);
     return arg;
 }
 
-Value* ImageFuncResolution::getImageNumMipLevels(CallInst &CI) 
+Value* ImageFuncResolution::getImageNumMipLevels(CallInst& CI)
 {
     Argument* arg = getImplicitImageArg(CI, ImplicitArg::IMAGE_NUM_MIP_LEVELS);
     return arg;
 }
 
-Value* ImageFuncResolution::getImageChannelDataType(CallInst &CI) 
+Value* ImageFuncResolution::getImageChannelDataType(CallInst& CI)
 {
     Argument* arg = getImplicitImageArg(CI, ImplicitArg::IMAGE_CHANNEL_DATA_TYPE);
     return arg;
 }
 
-Value* ImageFuncResolution::getImageChannelOrder(CallInst &CI) 
+Value* ImageFuncResolution::getImageChannelOrder(CallInst& CI)
 {
     Argument* arg = getImplicitImageArg(CI, ImplicitArg::IMAGE_CHANNEL_ORDER);
     return arg;
 }
 
-Value* ImageFuncResolution::getImageArraySize(CallInst &CI) 
+Value* ImageFuncResolution::getImageArraySize(CallInst& CI)
 {
     Argument* arg = getImplicitImageArg(CI, ImplicitArg::IMAGE_ARRAY_SIZE);
     return arg;
 }
 
-Value* ImageFuncResolution::getImageNumSamples(CallInst &CI)
+Value* ImageFuncResolution::getImageNumSamples(CallInst& CI)
 {
     Argument* arg = getImplicitImageArg(CI, ImplicitArg::IMAGE_NUM_SAMPLES);
     return arg;
 }
 
-Value* ImageFuncResolution::getSamplerAddressMode(CallInst &CI)
+Value* ImageFuncResolution::getSamplerAddressMode(CallInst& CI)
 {
     MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
@@ -221,7 +221,7 @@ Value* ImageFuncResolution::getSamplerAddressMode(CallInst &CI)
     }
 }
 
-Value* ImageFuncResolution::getSamplerNormalizedCoords(CallInst &CI)
+Value* ImageFuncResolution::getSamplerNormalizedCoords(CallInst& CI)
 {
     MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
@@ -263,7 +263,7 @@ Value* ImageFuncResolution::getSamplerNormalizedCoords(CallInst &CI)
     }
 }
 
-Value* ImageFuncResolution::getSamplerSnapWARequired(CallInst &CI) 
+Value* ImageFuncResolution::getSamplerSnapWARequired(CallInst& CI)
 {
     MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
@@ -284,7 +284,7 @@ Value* ImageFuncResolution::getSamplerSnapWARequired(CallInst &CI)
         assert(isa<ConstantInt>(sampler) && "Sampler must be a constant integer");
 
         llvm::Function* pFunc = CI.getParent()->getParent();
-       
+
         bool snapWARequired = false;
         uint samplerVal = int_cast<unsigned int>(cast<ConstantInt>(sampler)->getZExtValue());
 
@@ -315,7 +315,7 @@ Value* ImageFuncResolution::getSamplerSnapWARequired(CallInst &CI)
     }
 }
 
-Argument* ImageFuncResolution::getImplicitImageArg(CallInst &CI, ImplicitArg::ArgType argType) {
+Argument* ImageFuncResolution::getImplicitImageArg(CallInst& CI, ImplicitArg::ArgType argType) {
     // Only images that are arguments are supported!
     Argument* image = cast<Argument>(CImagesBI::CImagesUtils::traceImageOrSamplerArgument(&CI, 0));
 
@@ -324,9 +324,9 @@ Argument* ImageFuncResolution::getImplicitImageArg(CallInst &CI, ImplicitArg::Ar
 
     Function* pFunc = CI.getParent()->getParent();
     unsigned int implicitArgIndexInFunc = IGCLLVM::GetFuncArgSize(pFunc) - numImplicitArgs + implicitArgIndex;
-    
+
     Function::arg_iterator arg = pFunc->arg_begin();
-    for (unsigned int i = 0; i < implicitArgIndexInFunc; ++i,  ++arg);
+    for (unsigned int i = 0; i < implicitArgIndexInFunc; ++i, ++arg);
 
     return &(*arg);
 }

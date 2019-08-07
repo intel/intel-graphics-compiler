@@ -180,7 +180,7 @@ namespace IGC
             unsigned int elemAllocateSize,
             size_t align,
             bool isConstantBuf,
-            const llvm::Argument * arg,
+            const llvm::Argument* arg,
             unsigned int associatedArgNo);
 
         /// @brief  Constructor.
@@ -205,7 +205,7 @@ namespace IGC
         /// @param  structArgOffset  The argument offset in the associated struct argument
         ///                     This param has meaning only for implicit arguments associated
         ///                     with aggregation explicit argument
-        KernelArg(const ImplicitArg & implicitArg, const llvm::DataLayout * DL, const llvm::Argument * arg, unsigned int ExplicitArgNo, unsigned int structArgOffset, unsigned int GRFSize);
+        KernelArg(const ImplicitArg& implicitArg, const llvm::DataLayout* DL, const llvm::Argument* arg, unsigned int ExplicitArgNo, unsigned int structArgOffset, unsigned int GRFSize);
 
         /// @brief  Getter functions
         ArgType                         getArgType()            const;
@@ -216,7 +216,7 @@ namespace IGC
         size_t                          getAlignment()          const;
         bool                            isConstantBuf()         const;
         bool                            needsAllocation()       const;
-        const llvm::Argument*           getArg()                const;
+        const llvm::Argument* getArg()                const;
         unsigned int                    getAssociatedArgNo()    const;
         unsigned int                    getStructArgOffset()    const;
         unsigned int                    getLocationIndex()      const;
@@ -226,11 +226,11 @@ namespace IGC
         bool                            getImgAccessedFloatCoords() const { return m_imageInfo.accessedByFloatCoord; }
         bool                            getImgAccessedIntCoords()   const { return m_imageInfo.accessedByIntCoord; }
         bool                            isImplicitArg() const { return m_implicitArgument; }
-        bool                            isEmulationArgument() const { return m_isEmulationArgument;  }
+        bool                            isEmulationArgument() const { return m_isEmulationArgument; }
 
         /// @brief  Setter functions
         void     setImgAccessedFloatCoords(bool val) { m_imageInfo.accessedByFloatCoord = val; }
-        void     setImgAccessedIntCoords(bool val)   { m_imageInfo.accessedByIntCoord = val; }
+        void     setImgAccessedIntCoords(bool val) { m_imageInfo.accessedByIntCoord = val; }
 
         /// @brief  Calculates the kernel arg type for the given explicit argument
         /// @param  arg         The explicit kernel argument
@@ -312,7 +312,7 @@ namespace IGC
         /// @brief  Indicates whether the argument is used in calculating the constant buffer length 
         bool                            m_isConstantBuf;
         /// @brief  The LLVM argument that represents this kernel argument
-        const llvm::Argument*           m_arg;
+        const llvm::Argument* m_arg;
         /// @brief  The argument number of the associated argument
         ///         For image dimension/BUFFER_OFFSET arguments this will return the argument number
         ///         of the assocaited image.
@@ -372,7 +372,7 @@ namespace IGC
         /// @brief  Verifies that passed array defines order for all Argument Types
         /// @param  order
         /// @param  sent    Sentinel
-        bool VerifyOrder(std::array<KernelArg::ArgType, static_cast<int32_t>(KernelArg::ArgType::End)> & order, KernelArg::ArgType sent);
+        bool VerifyOrder(std::array<KernelArg::ArgType, static_cast<int32_t>(KernelArg::ArgType::End)>& order, KernelArg::ArgType sent);
 
         /// @brief  Suppose that you have a 3 arguments: a, b, c and you want them shuffled to
         ///         b c a
@@ -386,7 +386,7 @@ namespace IGC
         ///         That way when you would like to obtain a position of an argument you need to call
         ///         PI(a) = 2;
         /// @param  order
-        void TransposeGenerateOrder(std::array<KernelArg::ArgType, static_cast<int32_t>(KernelArg::ArgType::End)> & order);
+        void TransposeGenerateOrder(std::array<KernelArg::ArgType, static_cast<int32_t>(KernelArg::ArgType::End)>& order);
 
     public:
         /// @brief  Constructor
@@ -398,11 +398,11 @@ namespace IGC
         //          strict weak ordering it defines, and false otherwise
         /// @param  lhs
         /// @param  rhs
-        bool operator()(const KernelArg::ArgType &lhs, const KernelArg::ArgType &rhs) const;
+        bool operator()(const KernelArg::ArgType& lhs, const KernelArg::ArgType& rhs) const;
     };
 
     /// @brief  KernelArgs represent all the explicit and implicit kernel arguments and used for payload allocation
- 
+
     class KernelArgs {
         // Types
     public:

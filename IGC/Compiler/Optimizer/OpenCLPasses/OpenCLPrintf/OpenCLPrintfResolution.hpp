@@ -44,9 +44,9 @@ namespace IGC
     {
         SHADER_PRINTF_TYPE  argType;
         uint                vecSize;
-        llvm::Value        *value;
+        llvm::Value* value;
 
-        SPrintfArgDescriptor(SHADER_PRINTF_TYPE _argType, llvm::Value *_value, uint _vecSize = 0) :
+        SPrintfArgDescriptor(SHADER_PRINTF_TYPE _argType, llvm::Value* _value, uint _vecSize = 0) :
             argType(_argType), vecSize(_vecSize), value(_value) {};
 
         SPrintfArgDescriptor() :
@@ -76,23 +76,23 @@ namespace IGC
             return "OpenCLPrintfResolution";
         }
 
-        void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+        void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.addRequired<MetaDataUtilsWrapper>();
             AU.addRequired<CodeGenContextWrapper>();
         }
 
-        virtual bool doInitialization(llvm::Module &M) override;
+        virtual bool doInitialization(llvm::Module& M) override;
 
         /// @brief  Pass entry point.
-        virtual bool runOnFunction(llvm::Function &F) override;
+        virtual bool runOnFunction(llvm::Function& F) override;
 
-        void visitCallInst(llvm::CallInst &callInst);
+        void visitCallInst(llvm::CallInst& callInst);
 
     private:
         // Construct a name for named metadata node that is used
         // to keep the kernel implicit arguments created for printf.
-        std::string getPrintfStringsMDNodeName(llvm::Function &F);
+        std::string getPrintfStringsMDNodeName(llvm::Function& F);
 
         // Function that takes care of chararcters that are not able to be printed
         // like \n, \r, \t,.......
@@ -100,31 +100,31 @@ namespace IGC
 
         // If printfArg is string, adds the string into metadata.
         // Returns the string index if the argument is string, and -1 otherwise.
-        int  processPrintfString(llvm::Value* printfArg, llvm::Function &F);
+        int  processPrintfString(llvm::Value* printfArg, llvm::Function& F);
 
         // Replaces a printf call with a sequence of IR instrictions.
-        void expandPrintfCall(llvm::CallInst &printfCall, llvm::Function &F);
-    
+        void expandPrintfCall(llvm::CallInst& printfCall, llvm::Function& F);
+
         // Walkes over printf arguments (including the format string) and adds them to printfArgs.
         // If an argument has vector type, adds the vector elements instead.
-        void preprocessPrintfArgs(llvm::CallInst &printfCall);
+        void preprocessPrintfArgs(llvm::CallInst& printfCall);
 
         // Fix up an individual scalar argument.
         // If an argument is a double, convert it into a float, since Gen
         // doesn't support doubles.
         // Returns the fixed version of the argument.
-        llvm::Value* fixupPrintfArg(llvm::CallInst &printfCall, llvm::Value* arg, SHADER_PRINTF_TYPE & argDataType);
+        llvm::Value* fixupPrintfArg(llvm::CallInst& printfCall, llvm::Value* arg, SHADER_PRINTF_TYPE& argDataType);
 
-//        llvm::Value* fixupVectorPrintfArg(llvm::CallInst &printfCall, llvm::Value* arg, SHADER_PRINTF_TYPE argDataType);
+        //        llvm::Value* fixupVectorPrintfArg(llvm::CallInst &printfCall, llvm::Value* arg, SHADER_PRINTF_TYPE argDataType);
 
-        // Returns true if a printf argument is string.
-        bool argIsString(llvm::Value *printfArg);
+                // Returns true if a printf argument is string.
+        bool argIsString(llvm::Value* printfArg);
 
         // Generates atomic_add function call:
         //   ret_val = atomic_add(output_buffer_ptr, data_size)
         // Returns the ret_val.
-        llvm::CallInst* genAtomicAdd(llvm::Value *outputBufferPtr, llvm::Value *dataSize,
-                                     llvm::CallInst &printfCall, llvm::StringRef name);
+        llvm::CallInst* genAtomicAdd(llvm::Value* outputBufferPtr, llvm::Value* dataSize,
+            llvm::CallInst& printfCall, llvm::StringRef name);
 
         // Computes the total size of output buffer space that is necessary
         // to keep the printf arguments.
@@ -134,22 +134,22 @@ namespace IGC
         unsigned int getArgTypeSize(SHADER_PRINTF_TYPE argType, uint vecSize);
 
         // Returns the SHADER_PRINTF_TYPE type of printf argument.
-        SHADER_PRINTF_TYPE getPrintfArgDataType(llvm::Value *printfArg);
+        SHADER_PRINTF_TYPE getPrintfArgDataType(llvm::Value* printfArg);
 
         // Creates Cast instruction that converts writeOffset to a pointer type
         // corresponding to the arg type.
-        llvm::Instruction *generateCastToPtr(SPrintfArgDescriptor *argDesc,
-                                             llvm::Value *writeOffset, llvm::BasicBlock *bblock);
+        llvm::Instruction* generateCastToPtr(SPrintfArgDescriptor* argDesc,
+            llvm::Value* writeOffset, llvm::BasicBlock* bblock);
 
     private:
-        IGCLLVM::Module        *m_module;
-        llvm::LLVMContext   *m_context;
-        llvm::Function      *m_atomicAddFunc;
+        IGCLLVM::Module* m_module;
+        llvm::LLVMContext* m_context;
+        llvm::Function* m_atomicAddFunc;
         unsigned int         m_stringIndex;
-        llvm::IntegerType   *m_ptrSizeIntType;
-        llvm::IntegerType   *m_int32Type;
+        llvm::IntegerType* m_ptrSizeIntType;
+        llvm::IntegerType* m_int32Type;
         llvm::DebugLoc       m_DL;
-        IGC::CodeGenContext *m_CGContext;
+        IGC::CodeGenContext* m_CGContext;
         bool                 m_fp64Supported;
 
         std::vector<llvm::CallInst*>        m_printfCalls;

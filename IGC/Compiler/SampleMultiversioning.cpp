@@ -40,15 +40,15 @@ using namespace IGC;
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
 IGC_INITIALIZE_PASS_BEGIN(SampleMultiversioning, PASS_FLAG, PASS_DESCRIPTION,
-                          PASS_CFG_ONLY, PASS_ANALYSIS)
-IGC_INITIALIZE_PASS_END(SampleMultiversioning, PASS_FLAG, PASS_DESCRIPTION,
-                        PASS_CFG_ONLY, PASS_ANALYSIS)
+    PASS_CFG_ONLY, PASS_ANALYSIS)
+    IGC_INITIALIZE_PASS_END(SampleMultiversioning, PASS_FLAG, PASS_DESCRIPTION,
+        PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char SampleMultiversioning::ID = 0;
+    char SampleMultiversioning::ID = 0;
 
 #define DEBUG_TYPE "SampleMultiversioning"
 
-SampleMultiversioning::SampleMultiversioning(CodeGenContext *pContext)
+SampleMultiversioning::SampleMultiversioning(CodeGenContext* pContext)
     : FunctionPass(ID), pContext(pContext)
 {
     initializeSampleMultiversioningPass(*PassRegistry::getPassRegistry());
@@ -59,12 +59,12 @@ SampleMultiversioning::SampleMultiversioning() : FunctionPass(ID), pContext(null
     initializeSampleMultiversioningPass(*PassRegistry::getPassRegistry());
 }
 
-bool SampleMultiversioning::isOnlyExtractedAfterSample(Value *SampleInst, SmallVector<Instruction *, 4> &ExtrVals)
+bool SampleMultiversioning::isOnlyExtractedAfterSample(Value* SampleInst, SmallVector<Instruction*, 4> & ExtrVals)
 {
-    SmallVector<Instruction *, 4> TmpExtrVals;
-    for (auto *Use : SampleInst->users())
+    SmallVector<Instruction*, 4> TmpExtrVals;
+    for (auto* Use : SampleInst->users())
     {
-        if (auto *EI = dyn_cast<ExtractElementInst>(Use))
+        if (auto * EI = dyn_cast<ExtractElementInst>(Use))
         {
             TmpExtrVals.push_back(EI);
         }
@@ -80,16 +80,16 @@ bool SampleMultiversioning::isOnlyExtractedAfterSample(Value *SampleInst, SmallV
     return true;
 }
 
-bool SampleMultiversioning::isOnlyMultiplied(Instruction *Sample, Instruction *Val, SmallSet<Value *, 4> &MulVals)
+bool SampleMultiversioning::isOnlyMultiplied(Instruction* Sample, Instruction* Val, SmallSet<Value*, 4> & MulVals)
 {
-    SmallSet<Value *, 4> TmpMulVals;
-    for (auto *Use2 : Val->users())
+    SmallSet<Value*, 4> TmpMulVals;
+    for (auto* Use2 : Val->users())
     {
-        if (auto *BOP = dyn_cast<BinaryOperator>(Use2))
+        if (auto * BOP = dyn_cast<BinaryOperator>(Use2))
         {
             if (BOP->getOpcode() == Instruction::FMul)
             {
-                Value *Dep = BOP->getOperand(1);
+                Value* Dep = BOP->getOperand(1);
                 if (Dep == Val)
                 {
                     Dep = BOP->getOperand(0);
@@ -150,7 +150,7 @@ bool SampleMultiversioning::isOnlyMultiplied(Instruction *Sample, Instruction *V
 // @TODO
 // Eliminate recursion
 
-Instruction* SampleMultiversioning::getPureFunction(Value *Val)
+Instruction* SampleMultiversioning::getPureFunction(Value* Val)
 {
     if (auto I = dyn_cast<Instruction>(Val))
     {
@@ -165,12 +165,12 @@ Instruction* SampleMultiversioning::getPureFunction(Value *Val)
     return nullptr;
 };
 
-bool SampleMultiversioning::isOnlyMultipliedAfterSample(Instruction *Val,
-    SmallSet<Value *, 4> &MulVals)
+bool SampleMultiversioning::isOnlyMultipliedAfterSample(Instruction* Val,
+    SmallSet<Value*, 4> & MulVals)
 {
-    SmallSet<Value *, 4> TmpMulVals;
+    SmallSet<Value*, 4> TmpMulVals;
 
-    SmallVector<Instruction *, 4> ExtrVals;
+    SmallVector<Instruction*, 4> ExtrVals;
     if (isOnlyExtractedAfterSample(Val, ExtrVals))
     {
         for (auto ExtrVal : ExtrVals)
@@ -192,23 +192,23 @@ bool SampleMultiversioning::isOnlyMultipliedAfterSample(Instruction *Val,
     return true;
 };
 
-bool SampleMultiversioning::runOnFunction(Function &F) {
+bool SampleMultiversioning::runOnFunction(Function& F) {
     DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
 
     struct MulAfterSample {
-        Instruction *Sample;
+        Instruction* Sample;
         SmallVector<Value*, 4> MulVals;
     };
     SmallVector<MulAfterSample, 4> SampleInsts;
 
-    SmallSet<Value *, 4> TmpMulVals;
+    SmallSet<Value*, 4> TmpMulVals;
     SmallVector<Value*, 4> MulVals;
-    for (BasicBlock &BB : F)
+    for (BasicBlock& BB : F)
     {
-        for (Instruction &Inst : BB)
+        for (Instruction& Inst : BB)
         {
             if (isSampleLoadGather4InfoInstruction(&Inst) ||
-            isa<LdRawIntrinsic>(Inst))
+                isa<LdRawIntrinsic>(Inst))
             {
                 if (isOnlyMultipliedAfterSample(&Inst, TmpMulVals))
                 {
@@ -216,7 +216,7 @@ bool SampleMultiversioning::runOnFunction(Function &F) {
                     {
                         MulVals.push_back(Val);
                     }
-                    SampleInsts.push_back({&Inst, MulVals});
+                    SampleInsts.push_back({ &Inst, MulVals });
                     MulVals.clear();
                 }
                 TmpMulVals.clear();
@@ -230,18 +230,18 @@ bool SampleMultiversioning::runOnFunction(Function &F) {
         // bitcast after sample
         // And instead of Mul
         // Reorder instructions if sample dominates the dependendency
-        for (auto &SI : SampleInsts)
+        for (auto& SI : SampleInsts)
         {
-            Instruction *Sample = SI.Sample;
-            BasicBlock *Parent = Sample->getParent();
+            Instruction* Sample = SI.Sample;
+            BasicBlock* Parent = Sample->getParent();
             assert(SI.MulVals.size());
 
-            BasicBlock *BB1 = Parent->splitBasicBlock(Sample);
+            BasicBlock* BB1 = Parent->splitBasicBlock(Sample);
             Parent->getTerminator()->eraseFromParent();
-            BasicBlock *BB2 =
+            BasicBlock* BB2 =
                 Sample->getParent()->splitBasicBlock(Sample->getNextNode());
 
-            PHINode *Phi;
+            PHINode* Phi;
             IRBuilder<> PHIBuilder(BB2);
             PHIBuilder.SetInsertPoint(&*BB2->begin());
             Phi = PHIBuilder.CreatePHI(Sample->getType(), 2);
@@ -249,9 +249,9 @@ bool SampleMultiversioning::runOnFunction(Function &F) {
 
             IRBuilder<> AndBuilder(Parent);
 
-            Value *PrevCmp = nullptr;
-            Value *And = nullptr;
-            for (auto &Dep : SI.MulVals)
+            Value* PrevCmp = nullptr;
+            Value* And = nullptr;
+            for (auto& Dep : SI.MulVals)
             {
                 auto Cmp = AndBuilder.CreateFCmp(
                     CmpInst::Predicate::FCMP_OEQ, Dep,
@@ -275,8 +275,8 @@ bool SampleMultiversioning::runOnFunction(Function &F) {
                                ConstantFP::get(F.getContext(), APFloat(0.0f)),
                                ConstantFP::get(F.getContext(), APFloat(0.0f)),
                                ConstantFP::get(F.getContext(), APFloat(0.0f)),
-                           }),
-                           Parent);
+                }),
+                Parent);
         }
         return true;
     }

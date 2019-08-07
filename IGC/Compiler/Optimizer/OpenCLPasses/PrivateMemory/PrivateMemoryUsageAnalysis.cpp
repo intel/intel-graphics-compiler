@@ -45,26 +45,26 @@ IGC_INITIALIZE_PASS_END(PrivateMemoryUsageAnalysis, PASS_FLAG, PASS_DESCRIPTION,
 char PrivateMemoryUsageAnalysis::ID = 0;
 
 PrivateMemoryUsageAnalysis::PrivateMemoryUsageAnalysis()
-  : ModulePass(ID), m_hasPrivateMem(false)
+    : ModulePass(ID), m_hasPrivateMem(false)
 {
     initializePrivateMemoryUsageAnalysisPass(*PassRegistry::getPassRegistry());
-    
+
 }
 
-bool PrivateMemoryUsageAnalysis::runOnModule(Module &M)
+bool PrivateMemoryUsageAnalysis::runOnModule(Module& M)
 {
     bool changed = false;
-    IGCMD::MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    IGCMD::MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
 
     // Run on all functions defined in this module
-    for( Module::iterator I = M.begin(), E = M.end(); I != E; ++I )
+    for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I)
     {
         Function* pFunc = &(*I);
-        if( pFunc->isDeclaration() )
+        if (pFunc->isDeclaration())
             continue;
         if (pMdUtils->findFunctionsInfoItem(pFunc) == pMdUtils->end_FunctionsInfo())
             continue;
-        if( runOnFunction(*pFunc) )
+        if (runOnFunction(*pFunc))
         {
             changed = true;
         }
@@ -73,37 +73,37 @@ bool PrivateMemoryUsageAnalysis::runOnModule(Module &M)
     return changed;
 }
 
-bool PrivateMemoryUsageAnalysis::runOnFunction(Function &F)
+bool PrivateMemoryUsageAnalysis::runOnFunction(Function& F)
 {
     // Processing new function
     m_hasPrivateMem = false;
-    
-     visit(F);
 
-     // Struct types always use private memory unless regtomem can 
-     // promote them.  Check the function signature to see if any 
-     // structs are passesed as arguments.
-     if( !m_hasPrivateMem )
-     {
-         Function::arg_iterator argument = F.arg_begin();
-         for( ; argument != F.arg_end(); ++argument )
-         {
-             Argument* arg = &(*argument);
+    visit(F);
 
-             if( arg->getType()->isPointerTy() )
-             {
-                 Type* type = arg->getType()->getPointerElementType();
+    // Struct types always use private memory unless regtomem can 
+    // promote them.  Check the function signature to see if any 
+    // structs are passesed as arguments.
+    if (!m_hasPrivateMem)
+    {
+        Function::arg_iterator argument = F.arg_begin();
+        for (; argument != F.arg_end(); ++argument)
+        {
+            Argument* arg = &(*argument);
 
-                 if( StructType *structType = dyn_cast<StructType>(type) )
-                 {
-                     if( !structType->isOpaque() )
-                     {
-                         m_hasPrivateMem = true;
-                     }
-                 }
-             }
-         }
-     }
+            if (arg->getType()->isPointerTy())
+            {
+                Type* type = arg->getType()->getPointerElementType();
+
+                if (StructType * structType = dyn_cast<StructType>(type))
+                {
+                    if (!structType->isOpaque())
+                    {
+                        m_hasPrivateMem = true;
+                    }
+                }
+            }
+        }
+    }
     //Add private memory implicit arg
     SmallVector<ImplicitArg::ArgType, ImplicitArg::NUM_IMPLICIT_ARGS> implicitArgs;
     implicitArgs.push_back(ImplicitArg::R0);
@@ -118,7 +118,7 @@ bool PrivateMemoryUsageAnalysis::runOnFunction(Function &F)
         CodeGenContext* pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
         // This is the condition that double emulation is used.
         if ((IGC_IS_FLAG_ENABLED(ForceDPEmulation) ||
-             (pCtx->m_DriverInfo.NeedFP64() && !pCtx->platform.supportFP64())))
+            (pCtx->m_DriverInfo.NeedFP64() && !pCtx->platform.supportFP64())))
         {
             m_hasPrivateMem = true;
         }
@@ -130,11 +130,11 @@ bool PrivateMemoryUsageAnalysis::runOnFunction(Function &F)
         implicitArgs.push_back(ImplicitArg::PRIVATE_BASE);
     }
     ImplicitArgs::addImplicitArgs(F, implicitArgs, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils());
-    
+
     return true;
 }
 
-void PrivateMemoryUsageAnalysis::visitCallInst(llvm::CallInst &CI)
+void PrivateMemoryUsageAnalysis::visitCallInst(llvm::CallInst& CI)
 {
     Function* calledFunc = CI.getCalledFunction();
     if (!calledFunc || calledFunc->hasFnAttribute("visaStackCall"))
@@ -144,14 +144,14 @@ void PrivateMemoryUsageAnalysis::visitCallInst(llvm::CallInst &CI)
     }
 }
 
-void PrivateMemoryUsageAnalysis::visitAllocaInst(llvm::AllocaInst &AI)
+void PrivateMemoryUsageAnalysis::visitAllocaInst(llvm::AllocaInst& AI)
 {
-    assert (AI.getType()->getAddressSpace() == ADDRESS_SPACE_PRIVATE && "Allocaitons are expected to be in private address space");
+    assert(AI.getType()->getAddressSpace() == ADDRESS_SPACE_PRIVATE && "Allocaitons are expected to be in private address space");
 
     // If we encountered Alloca, then the function uses private memory
     m_hasPrivateMem = true;
 }
 
-void PrivateMemoryUsageAnalysis::visitBinaryOperator(llvm::BinaryOperator &I)
+void PrivateMemoryUsageAnalysis::visitBinaryOperator(llvm::BinaryOperator& I)
 {
 }

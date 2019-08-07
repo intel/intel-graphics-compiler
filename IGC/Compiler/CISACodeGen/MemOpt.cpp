@@ -52,302 +52,302 @@ using namespace IGC;
 using namespace IGC::IGCMD;
 
 namespace {
-  // This pass merge consecutive loads/stores within a BB when it's safe:
-  // - Two loads (one of them is denoted as the leading load if it happens
-  //   before the other one in the program order) are safe to be merged, i.e.
-  //   the non-leading load is merged into the leading load, iff there's no
-  //   memory dependency between them which may results in different loading
-  //   result.
-  // - Two stores (one of them is denoted as the tailing store if it happens
-  //   after the other one in the program order) are safe to be merged, i.e.
-  //   the non-tailing store is merged into the tailing one, iff there's no
-  //   memory dependency between them which may results in different result.
-  //
-  class MemOpt : public FunctionPass {
-    const DataLayout *DL;
-    AliasAnalysis *AA;
-    ScalarEvolution *SE;
-    WIAnalysis *WI;
+    // This pass merge consecutive loads/stores within a BB when it's safe:
+    // - Two loads (one of them is denoted as the leading load if it happens
+    //   before the other one in the program order) are safe to be merged, i.e.
+    //   the non-leading load is merged into the leading load, iff there's no
+    //   memory dependency between them which may results in different loading
+    //   result.
+    // - Two stores (one of them is denoted as the tailing store if it happens
+    //   after the other one in the program order) are safe to be merged, i.e.
+    //   the non-tailing store is merged into the tailing one, iff there's no
+    //   memory dependency between them which may results in different result.
+    //
+    class MemOpt : public FunctionPass {
+        const DataLayout* DL;
+        AliasAnalysis* AA;
+        ScalarEvolution* SE;
+        WIAnalysis* WI;
 
-    CodeGenContext *CGC;
-    TargetLibraryInfo *TLI;
+        CodeGenContext* CGC;
+        TargetLibraryInfo* TLI;
 
-    // Map of profit vector lengths per scalar type. Each entry specifies the
-    // profit vector length of a given scalar type.
-    // NOTE: Prepare the profit vector lengths in the *DESCENDING* order.
-    typedef DenseMap<unsigned int, SmallVector<unsigned, 4> > ProfitVectorLengthsMap;
-    ProfitVectorLengthsMap ProfitVectorLengths;
+        // Map of profit vector lengths per scalar type. Each entry specifies the
+        // profit vector length of a given scalar type.
+        // NOTE: Prepare the profit vector lengths in the *DESCENDING* order.
+        typedef DenseMap<unsigned int, SmallVector<unsigned, 4> > ProfitVectorLengthsMap;
+        ProfitVectorLengthsMap ProfitVectorLengths;
 
-    // A list of memory references (within a BB) with the distance to a
-    // previous memory reference in this list.
-    typedef std::vector<std::pair<Instruction *, unsigned> > MemRefListTy;
-    typedef std::vector<Instruction *> TrivialMemRefListTy;
+        // A list of memory references (within a BB) with the distance to a
+        // previous memory reference in this list.
+        typedef std::vector<std::pair<Instruction*, unsigned> > MemRefListTy;
+        typedef std::vector<Instruction*> TrivialMemRefListTy;
 
-  public:
-    static char ID;
+    public:
+        static char ID;
 
-    MemOpt() :
-        FunctionPass(ID), DL(nullptr), AA(nullptr), SE(nullptr), WI(nullptr),
-        CGC(nullptr) {
-      initializeMemOptPass(*PassRegistry::getPassRegistry());
-    }
+        MemOpt() :
+            FunctionPass(ID), DL(nullptr), AA(nullptr), SE(nullptr), WI(nullptr),
+            CGC(nullptr) {
+            initializeMemOptPass(*PassRegistry::getPassRegistry());
+        }
 
-    bool runOnFunction(Function &F) override;
+        bool runOnFunction(Function& F) override;
 
-  private:
-    void getAnalysisUsage(AnalysisUsage &AU) const override {
-      AU.setPreservesCFG();
-      AU.addRequired<CodeGenContextWrapper>();
-      AU.addRequired<MetaDataUtilsWrapper>();
-      AU.addRequired<AAResultsWrapperPass>();
-      AU.addRequired<TargetLibraryInfoWrapperPass>();
-      AU.addRequired<ScalarEvolutionWrapperPass>();
-      AU.addRequired<WIAnalysis>();
-    }
+    private:
+        void getAnalysisUsage(AnalysisUsage& AU) const override {
+            AU.setPreservesCFG();
+            AU.addRequired<CodeGenContextWrapper>();
+            AU.addRequired<MetaDataUtilsWrapper>();
+            AU.addRequired<AAResultsWrapperPass>();
+            AU.addRequired<TargetLibraryInfoWrapperPass>();
+            AU.addRequired<ScalarEvolutionWrapperPass>();
+            AU.addRequired<WIAnalysis>();
+        }
 
-    void buildProfitVectorLengths(Function &F);
+        void buildProfitVectorLengths(Function& F);
 
-    bool mergeLoad(LoadInst *LeadingLoad, MemRefListTy::iterator MI,
-                   MemRefListTy &MemRefs, TrivialMemRefListTy &ToOpt);
-    bool mergeStore(StoreInst *LeadingStore, MemRefListTy::iterator MI,
-                    MemRefListTy &MemRefs, TrivialMemRefListTy &ToOpt);
+        bool mergeLoad(LoadInst* LeadingLoad, MemRefListTy::iterator MI,
+            MemRefListTy& MemRefs, TrivialMemRefListTy& ToOpt);
+        bool mergeStore(StoreInst* LeadingStore, MemRefListTy::iterator MI,
+            MemRefListTy& MemRefs, TrivialMemRefListTy& ToOpt);
 
-    unsigned getNumElements(Type *Ty) const {
-      return Ty->isVectorTy() ? Ty->getVectorNumElements() : 1;
-    }
+        unsigned getNumElements(Type* Ty) const {
+            return Ty->isVectorTy() ? Ty->getVectorNumElements() : 1;
+        }
 
-    MemoryLocation getLocation(Instruction *I) const {
+        MemoryLocation getLocation(Instruction* I) const {
 
-      if (LoadInst *LI = dyn_cast<LoadInst>(I))
-        return MemoryLocation::get(LI);
+            if (LoadInst * LI = dyn_cast<LoadInst>(I))
+                return MemoryLocation::get(LI);
 
-      if (StoreInst *SI = dyn_cast<StoreInst>(I))
-        return MemoryLocation::get(SI);
+            if (StoreInst * SI = dyn_cast<StoreInst>(I))
+                return MemoryLocation::get(SI);
 
-      if (isa<LdRawIntrinsic>(I))
-          return IGCLLVM::MemoryLocation::getForArgument(I, 0, TLI);
+            if (isa<LdRawIntrinsic>(I))
+                return IGCLLVM::MemoryLocation::getForArgument(I, 0, TLI);
 
-      // TODO: Do coarse-grained thing so far. Need better checking for
-      // non load or store instructions which may read/write memory.
-      return MemoryLocation();
-    }
+            // TODO: Do coarse-grained thing so far. Need better checking for
+            // non load or store instructions which may read/write memory.
+            return MemoryLocation();
+        }
 
-    bool hasSameSize(Type *A, Type *B) const {
-      // Shortcut if A is equal to B.
-      if (A == B)
-        return true;
-      return DL->getTypeStoreSize(A) == DL->getTypeStoreSize(B);
-    }
+        bool hasSameSize(Type* A, Type* B) const {
+            // Shortcut if A is equal to B.
+            if (A == B)
+                return true;
+            return DL->getTypeStoreSize(A) == DL->getTypeStoreSize(B);
+        }
 
-    Value *createBitOrPointerCast(Value *V, Type *DestTy,
-                                  IRBuilder<> &Builder) const {
-      if (V->getType() == DestTy)
-        return V;
+        Value* createBitOrPointerCast(Value* V, Type* DestTy,
+            IRBuilder<>& Builder) const {
+            if (V->getType() == DestTy)
+                return V;
 
-      if (V->getType()->isPointerTy() && DestTy->isIntegerTy())
-        return Builder.CreatePtrToInt(V, DestTy);
+            if (V->getType()->isPointerTy() && DestTy->isIntegerTy())
+                return Builder.CreatePtrToInt(V, DestTy);
 
-      if (V->getType()->isIntegerTy() && DestTy->isPointerTy())
-        return Builder.CreateIntToPtr(V, DestTy);
+            if (V->getType()->isIntegerTy() && DestTy->isPointerTy())
+                return Builder.CreateIntToPtr(V, DestTy);
 
-      if (V->getType()->isPointerTy() && DestTy->isPointerTy()) {
-        PointerType *SrcPtrTy = cast<PointerType>(V->getType());
-        PointerType *DstPtrTy = cast<PointerType>(DestTy);
-        if (SrcPtrTy->getPointerAddressSpace() !=
-            DstPtrTy->getPointerAddressSpace())
-          return Builder.CreateAddrSpaceCast(V, DestTy);
-      }
+            if (V->getType()->isPointerTy() && DestTy->isPointerTy()) {
+                PointerType* SrcPtrTy = cast<PointerType>(V->getType());
+                PointerType* DstPtrTy = cast<PointerType>(DestTy);
+                if (SrcPtrTy->getPointerAddressSpace() !=
+                    DstPtrTy->getPointerAddressSpace())
+                    return Builder.CreateAddrSpaceCast(V, DestTy);
+            }
 
-      return Builder.CreateBitCast(V, DestTy);
-    }
+            return Builder.CreateBitCast(V, DestTy);
+        }
 
-    bool isSafeToMergeLoad(const LoadInst *Ld,
-        const SmallVectorImpl<Instruction*> &checkList) const;
-    bool isSafeToMergeStores(
-        const SmallVectorImpl<std::tuple<StoreInst *, int64_t, MemRefListTy::iterator>> &Stores,
-        const SmallVectorImpl<Instruction*> &checkList) const;
+        bool isSafeToMergeLoad(const LoadInst* Ld,
+            const SmallVectorImpl<Instruction*>& checkList) const;
+        bool isSafeToMergeStores(
+            const SmallVectorImpl<std::tuple<StoreInst*, int64_t, MemRefListTy::iterator>>& Stores,
+            const SmallVectorImpl<Instruction*>& checkList) const;
 
-    bool shouldSkip(const Value *Ptr) const {
-      PointerType *PtrTy = cast<PointerType>(Ptr->getType());
-      unsigned AS = PtrTy->getPointerAddressSpace();
+        bool shouldSkip(const Value* Ptr) const {
+            PointerType* PtrTy = cast<PointerType>(Ptr->getType());
+            unsigned AS = PtrTy->getPointerAddressSpace();
 
-      if (PtrTy->getPointerAddressSpace() != ADDRESS_SPACE_PRIVATE) {
-        if (CGC->type != ShaderType::OPENCL_SHADER) {
-          // For non-OpenCL shader, skip constant buffer accesses.
-          bool DirectIndex;
-          unsigned BufID;
-          BufferType BufTy = DecodeAS4GFXResource(AS, DirectIndex, BufID);
-          if (BufTy == CONSTANT_BUFFER && UsesTypedConstantBuffer(CGC))
+            if (PtrTy->getPointerAddressSpace() != ADDRESS_SPACE_PRIVATE) {
+                if (CGC->type != ShaderType::OPENCL_SHADER) {
+                    // For non-OpenCL shader, skip constant buffer accesses.
+                    bool DirectIndex;
+                    unsigned BufID;
+                    BufferType BufTy = DecodeAS4GFXResource(AS, DirectIndex, BufID);
+                    if (BufTy == CONSTANT_BUFFER && UsesTypedConstantBuffer(CGC))
+                        return true;
+                }
+                return false;
+            }
+
+            return false;
+        }
+
+        /// Skip irrelevant instructions.
+        bool shouldSkip(const Instruction* I) const {
+            if (!I->mayReadOrWriteMemory())
+                return true;
+
+            if (auto LD = dyn_cast<LoadInst>(I))
+                return shouldSkip(LD->getPointerOperand());
+
+            if (auto ST = dyn_cast<StoreInst>(I))
+                return shouldSkip(ST->getPointerOperand());
+
+            return false;
+        }
+
+        template <typename AccessInstruction>
+        bool checkAlignmentBeforeMerge(AccessInstruction* inst,
+            SmallVector<std::tuple<AccessInstruction*, int64_t, MemRefListTy::iterator>, 8> & AccessIntrs,
+            unsigned& NumElts)
+        {
+            if (inst->getAlignment() < 4 && WI->whichDepend(inst) != WIAnalysis::UNIFORM)
+            {
+                // Need the first offset value (not necessarily zero)
+                auto firstOffset = std::get<1>(AccessIntrs[0]);
+                for (auto rit = AccessIntrs.rbegin(),
+                    rie = AccessIntrs.rend(); rit != rie; ++rit)
+                {
+                    unsigned accessSize = 0;
+                    auto cur_offset = std::get<1>(*rit);
+                    auto acessInst = std::get<0>(*rit);
+                    if (isa<LoadInst>(acessInst))
+                        accessSize = unsigned(DL->getTypeSizeInBits(acessInst->getType())) / 8;
+                    else
+                        accessSize = unsigned(DL->getTypeSizeInBits(acessInst->getOperand(0)->getType())) / 8;
+                    if ((cur_offset - firstOffset + accessSize) > 4)
+                        AccessIntrs.pop_back();
+                }
+
+                if (AccessIntrs.size() < 2)
+                    return false;
+
+                for (auto rit = AccessIntrs.rbegin(),
+                    rie = AccessIntrs.rend(); rit != rie; ++rit)
+                {
+                    if (std::get<0>(*rit)->getAlignment() >= 4)
+                        return false;
+                }
+
+                // Need to subtract the last offset by the first offset and add one to
+                // get the new size of the vector
+                auto lastOffset = std::get<1>(AccessIntrs[AccessIntrs.size() - 1]);
+                NumElts = unsigned(lastOffset - firstOffset) + 1;
+            }
             return true;
         }
-        return false;
-      }
 
-      return false;
-    }
+        /// Canonicalize the calculation of 64-bit pointer by performing the
+        /// following transformations to help SCEV to identify the constant offset
+        /// between pointers.
+        ///
+        /// (sext (add.nsw LHS RHS)) => (add.nsw (sext LHS) (sext RHS))
+        /// (zext (add.nuw LHS RHS)) => (add.nuw (zext LHS) (zext RHS))
+        ///
+        /// For SLM (and potentially private) memory, we could ignore `nsw`/`nuw`
+        /// as there are only 32 significant bits.
+        bool canonicalizeGEP64(Instruction*) const;
 
-    /// Skip irrelevant instructions.
-    bool shouldSkip(const Instruction *I) const {
-      if (!I->mayReadOrWriteMemory())
-        return true;
+        /// Optimize the calculation of 64-bit pointer by performing the following
+        /// transformations to reduce instruction strength.
+        ///
+        /// (add.nsw (sext LHS) (sext RHS)) => (sext (add.nsw LHS RHS))
+        /// (add.nuw (zext LHS) (zext RHS)) => (zext (add.nuw LHS RHS))
+        ///
+        /// In fact, this's the reverse operation of 64-bit pointer
+        /// canonicalization, which helps SCEV analysis but increases instruction
+        /// strength on 64-bit integer operations.
+        bool optimizeGEP64(Instruction*) const;
+    };
 
-      if (auto LD = dyn_cast<LoadInst>(I))
-        return shouldSkip(LD->getPointerOperand());
+    template<int M>
+    struct less_tuple {
+        template <typename T> bool operator()(const T& LHS, const T& RHS) const {
+            return std::get<M>(LHS) < std::get<M>(RHS);
+        }
+    };
 
-      if (auto ST = dyn_cast<StoreInst>(I))
-        return shouldSkip(ST->getPointerOperand());
+    // SymbolicPtr represents how a pointer is calculated from the following
+    // equation:
+    //
+    //  Ptr := BasePtr + \sum_i Scale_i * Index_i + Offset
+    //
+    // where Scale_i and Offset are constants.
+    //
 
-      return false;
-    }
+    enum ExtensionKind {
+        EK_NotExtended,
+        EK_SignExt,
+        EK_ZeroExt,
+    } Extension;
 
-    template <typename AccessInstruction>
-    bool checkAlignmentBeforeMerge(AccessInstruction* inst,
-        SmallVector<std::tuple<AccessInstruction*, int64_t, MemRefListTy::iterator>, 8> &AccessIntrs,
-        unsigned &NumElts)
-    {
-        if (inst->getAlignment() < 4 && WI->whichDepend(inst) != WIAnalysis::UNIFORM)
-        {
-            // Need the first offset value (not necessarily zero)
-            auto firstOffset = std::get<1>(AccessIntrs[0]);
-            for (auto rit = AccessIntrs.rbegin(),
-                rie = AccessIntrs.rend(); rit != rie; ++rit)
-            {
-                unsigned accessSize = 0;
-                auto cur_offset = std::get<1>(*rit);
-                auto acessInst = std::get<0>(*rit);
-                if (isa<LoadInst>(acessInst))
-                    accessSize = unsigned(DL->getTypeSizeInBits(acessInst->getType())) / 8;
-                else
-                    accessSize = unsigned(DL->getTypeSizeInBits(acessInst->getOperand(0)->getType())) / 8;
-                if ((cur_offset - firstOffset + accessSize) > 4)
-                    AccessIntrs.pop_back();
+    typedef PointerIntPair<Value*, 2, ExtensionKind> SymbolicIndex;
+    struct Term {
+        SymbolicIndex Idx;
+        int64_t Scale;
+
+        bool operator==(const Term& Other) const {
+            return Idx == Other.Idx && Scale == Other.Scale;
+        }
+
+        bool operator!=(const Term& Other) const {
+            return !operator==(Other);
+        }
+    };
+
+    struct SymbolicPointer {
+        const Value* BasePtr;
+        int64_t Offset;
+        SmallVector<Term, 8> Terms;
+
+        // getConstantOffset - Return the constant offset between two memory
+        // locations.
+        bool getConstantOffset(const SymbolicPointer& Other, int64_t& Off) {
+            if (!BasePtr || !Other.BasePtr)
+                return true;
+
+            if (BasePtr != Other.BasePtr &&
+                (!isa<ConstantPointerNull>(BasePtr) ||
+                    !isa<ConstantPointerNull>(Other.BasePtr)))
+                return true;
+
+            if (Terms.size() != Other.Terms.size())
+                return true;
+
+            // Check each term has occurrence in Other. Since, they have the same
+            // number of terms, it's safe to say they are equal if all terms are
+            // found in Other.
+            // TODO: Replace this check with a non-quadratic one.
+            for (unsigned i = 0, e = Terms.size(); i != e; ++i) {
+                bool Found = false;
+                for (unsigned j = 0, f = Other.Terms.size(); !Found && j != f; ++j) {
+                    if (Terms[i] == Other.Terms[j])
+                        Found = true;
+                }
+                if (!Found)
+                    return true;
             }
 
-            if (AccessIntrs.size() < 2)
-                return false;
-
-            for (auto rit = AccessIntrs.rbegin(),
-                rie = AccessIntrs.rend(); rit != rie; ++rit)
-            {
-                if (std::get<0>(*rit)->getAlignment() >= 4)
-                    return false;
-            }
-
-            // Need to subtract the last offset by the first offset and add one to
-            // get the new size of the vector
-            auto lastOffset = std::get<1>(AccessIntrs[AccessIntrs.size() - 1]);
-            NumElts = unsigned(lastOffset - firstOffset) + 1;
+            Off = Offset - Other.Offset;
+            return false;
         }
-        return true;
-    }
 
-    /// Canonicalize the calculation of 64-bit pointer by performing the
-    /// following transformations to help SCEV to identify the constant offset
-    /// between pointers.
-    ///
-    /// (sext (add.nsw LHS RHS)) => (add.nsw (sext LHS) (sext RHS))
-    /// (zext (add.nuw LHS RHS)) => (add.nuw (zext LHS) (zext RHS))
-    ///
-    /// For SLM (and potentially private) memory, we could ignore `nsw`/`nuw`
-    /// as there are only 32 significant bits.
-    bool canonicalizeGEP64(Instruction *) const;
+        static Value* getLinearExpression(Value* Val, APInt& Scale, APInt& Offset,
+            ExtensionKind& Extension, unsigned Depth,
+            const DataLayout* DL);
+        static bool decomposePointer(const Value* Ptr, SymbolicPointer& SymPtr,
+            CodeGenContext* DL);
 
-    /// Optimize the calculation of 64-bit pointer by performing the following
-    /// transformations to reduce instruction strength.
-    ///
-    /// (add.nsw (sext LHS) (sext RHS)) => (sext (add.nsw LHS RHS))
-    /// (add.nuw (zext LHS) (zext RHS)) => (zext (add.nuw LHS RHS))
-    ///
-    /// In fact, this's the reverse operation of 64-bit pointer
-    /// canonicalization, which helps SCEV analysis but increases instruction
-    /// strength on 64-bit integer operations.
-    bool optimizeGEP64(Instruction *) const;
-  };
-
-  template<int M>
-  struct less_tuple {
-    template <typename T> bool operator()(const T &LHS, const T &RHS) const {
-      return std::get<M>(LHS) < std::get<M>(RHS);
-    }
-  };
-
-  // SymbolicPtr represents how a pointer is calculated from the following
-  // equation:
-  //
-  //  Ptr := BasePtr + \sum_i Scale_i * Index_i + Offset
-  //
-  // where Scale_i and Offset are constants.
-  //
-
-  enum ExtensionKind {
-    EK_NotExtended,
-    EK_SignExt,
-    EK_ZeroExt,
-  } Extension;
-
-  typedef PointerIntPair<Value*, 2, ExtensionKind> SymbolicIndex;
-  struct Term {
-    SymbolicIndex Idx;
-    int64_t Scale;
-
-    bool operator==(const Term &Other) const {
-      return Idx == Other.Idx && Scale == Other.Scale;
-    }
-
-    bool operator!=(const Term &Other) const {
-      return !operator==(Other);
-    }
-  };
-
-  struct SymbolicPointer {
-    const Value *BasePtr;
-    int64_t Offset;
-    SmallVector<Term, 8> Terms;
-
-    // getConstantOffset - Return the constant offset between two memory
-    // locations.
-    bool getConstantOffset(const SymbolicPointer &Other, int64_t &Off) {
-      if (!BasePtr || !Other.BasePtr)
-        return true;
-
-      if (BasePtr != Other.BasePtr &&
-          (!isa<ConstantPointerNull>(BasePtr) ||
-           !isa<ConstantPointerNull>(Other.BasePtr)))
-        return true;
-
-      if (Terms.size() != Other.Terms.size())
-        return true;
-
-      // Check each term has occurrence in Other. Since, they have the same
-      // number of terms, it's safe to say they are equal if all terms are
-      // found in Other.
-      // TODO: Replace this check with a non-quadratic one.
-      for (unsigned i = 0, e = Terms.size(); i != e; ++i) {
-        bool Found = false;
-        for (unsigned j = 0, f = Other.Terms.size(); !Found && j != f; ++j) {
-          if (Terms[i] == Other.Terms[j])
-            Found = true;
-        }
-        if (!Found)
-          return true;
-      }
-
-      Off = Offset - Other.Offset;
-      return false;
-    }
-
-    static Value *getLinearExpression(Value *Val, APInt &Scale, APInt &Offset,
-        ExtensionKind &Extension, unsigned Depth,
-        const DataLayout *DL);
-    static bool decomposePointer(const Value *Ptr, SymbolicPointer &SymPtr,
-        CodeGenContext *DL);
-
-    static const unsigned MaxLookupSearchDepth = 6;
-  };
+        static const unsigned MaxLookupSearchDepth = 6;
+    };
 }
 
-FunctionPass *createMemOptPass() {
-  return new MemOpt();
+FunctionPass* createMemOptPass() {
+    return new MemOpt();
 }
 
 #define PASS_FLAG     "igc-memopt"
@@ -365,1072 +365,1083 @@ IGC_INITIALIZE_PASS_END(MemOpt, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYS
 
 char MemOpt::ID = 0;
 
-void MemOpt::buildProfitVectorLengths(Function &F) {
-  ProfitVectorLengths.clear();
+void MemOpt::buildProfitVectorLengths(Function& F) {
+    ProfitVectorLengths.clear();
 
-  // 64-bit integer
-  ProfitVectorLengths[64].push_back(2);
+    // 64-bit integer
+    ProfitVectorLengths[64].push_back(2);
 
-  // 32-bit integer and Float
-  ProfitVectorLengths[32].push_back(4);
-  ProfitVectorLengths[32].push_back(3);
-  ProfitVectorLengths[32].push_back(2);
+    // 32-bit integer and Float
+    ProfitVectorLengths[32].push_back(4);
+    ProfitVectorLengths[32].push_back(3);
+    ProfitVectorLengths[32].push_back(2);
 
-  // 16-bit integer and Hald
-  ProfitVectorLengths[16].push_back(8);
-  ProfitVectorLengths[16].push_back(6);
-  ProfitVectorLengths[16].push_back(4);
-  ProfitVectorLengths[16].push_back(2);
+    // 16-bit integer and Hald
+    ProfitVectorLengths[16].push_back(8);
+    ProfitVectorLengths[16].push_back(6);
+    ProfitVectorLengths[16].push_back(4);
+    ProfitVectorLengths[16].push_back(2);
 
-  // 8-bit integer
-  ProfitVectorLengths[8].push_back(16);
-  ProfitVectorLengths[8].push_back(12);
-  ProfitVectorLengths[8].push_back(8);
-  ProfitVectorLengths[8].push_back(4);
-  ProfitVectorLengths[8].push_back(2);
+    // 8-bit integer
+    ProfitVectorLengths[8].push_back(16);
+    ProfitVectorLengths[8].push_back(12);
+    ProfitVectorLengths[8].push_back(8);
+    ProfitVectorLengths[8].push_back(4);
+    ProfitVectorLengths[8].push_back(2);
 }
 
-bool MemOpt::runOnFunction(Function &F) {
-  // Skip non-kernel function.
-  MetaDataUtils *MDU = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-  auto FII = MDU->findFunctionsInfoItem(&F);
-  if (FII == MDU->end_FunctionsInfo())
-    return false;
-
-  DL = &F.getParent()->getDataLayout();
-  AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
-  SE = &getAnalysis<ScalarEvolutionWrapperPass>().getSE();
-  WI = &getAnalysis<WIAnalysis>();
-
-  CGC = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-  TLI = &getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
-
-  if (ProfitVectorLengths.empty())
-    buildProfitVectorLengths(F);
-
-  bool Changed = false;
-
-  for (Function::iterator BB = F.begin(), BBE = F.end(); BB != BBE; ++BB) {
-    // Find all instructions with memory reference. Remember the distance one
-    // by one.
-    MemRefListTy MemRefs;
-    TrivialMemRefListTy MemRefsToOptimize;
-    unsigned Distance = 0;
-    bool FirstMemRef = true;
-    for (auto BI = BB->begin(), BE = BB->end(); BI != BE; ++BI) {
-      Instruction *I = &(*BI);
-      Distance += FirstMemRef ? 0 : 1;
-      // Skip irrelevant instructions.
-      if (shouldSkip(I))
-        continue;
-      MemRefs.push_back(std::make_pair(I, Distance));
-      Distance = 0;
-      FirstMemRef = false;
-    }
-
-    // Skip BB with no more than 2 loads/stores.
-    if (MemRefs.size() < 2)
-      continue;
-
-    // Canonicalize 64-bit GEP to help SCEV find constant offset by
-    // distributing `zext`/`sext` over safe expressions.
-    for (auto &M : MemRefs)
-      Changed |= canonicalizeGEP64(M.first);
-
-    for (auto MI = MemRefs.begin(), ME = MemRefs.end(); MI != ME; ++MI) {
-      Instruction *I = MI->first;
-
-      // Skip already merged one.
-      if (!I)
-        continue;
-
-      if (LoadInst *LI = dyn_cast<LoadInst>(I))
-        Changed |= mergeLoad(LI, MI, MemRefs, MemRefsToOptimize);
-      else if (StoreInst *SI = dyn_cast<StoreInst>(I))
-        Changed |= mergeStore(SI, MI, MemRefs, MemRefsToOptimize);
-    }
-
-    // Optimize 64-bit GEP to reduce strength by factoring out `zext`/`sext`
-    // over safe expressions.
-    for (auto I : MemRefsToOptimize)
-      Changed |= optimizeGEP64(I);
-  }
-
-  DL = nullptr;
-  AA = nullptr;
-  SE = nullptr;
-
-  return Changed;
-}
-
-bool MemOpt::mergeLoad(LoadInst *LeadingLoad,
-                       MemRefListTy::iterator MI, MemRefListTy& MemRefs,
-                       TrivialMemRefListTy &ToOpt) {
-  // Push the leading load into the list to be optimized (after
-  // canonicalization.) It will be swapped with the new one if it's merged.
-  ToOpt.push_back(LeadingLoad);
-
-  if (!LeadingLoad->isSimple())
-    return false;
-
-  if (!LeadingLoad->isUnordered())
-    return false;
-
-  if (LeadingLoad->getType()->isPointerTy()) {
-    unsigned int AS = LeadingLoad->getType()->getPointerAddressSpace();
-    if (CGC->getRegisterPointerSizeInBits(AS) != DL->getPointerSizeInBits(AS)) {
-      // we cannot coalesce pointers which have been reduced as they are
-      // bigger in memory than in register
-      return false;
-    }
-  }
-
-  unsigned NumElts = 0;
-
-  Type *LeadingLoadType = LeadingLoad->getType();
-  Type *LeadingLoadScalarType = LeadingLoadType->getScalarType();
-  unsigned TypeSizeInBits =
-    unsigned(DL->getTypeSizeInBits(LeadingLoadScalarType));
-  if (!ProfitVectorLengths.count(TypeSizeInBits))
-      return false;
-  SmallVector<unsigned, 8> profitVec;
-  // FIXME: Enable for OCL shader only as other clients have regressions but
-  // there's no way to trace down.
-  bool isUniformLoad = (CGC->type == ShaderType::OPENCL_SHADER) &&
-                       (WI->whichDepend(LeadingLoad) == WIAnalysis::UNIFORM);
-  if (isUniformLoad) {
-    unsigned C = IGC_GET_FLAG_VALUE(UniformMemOptLimit);
-    if (C == 0) C = 256;
-    C /= TypeSizeInBits;
-    for (; C >= 2; --C)
-      profitVec.push_back(C);
-  } else {
-    SmallVector<unsigned, 4>& Vec = ProfitVectorLengths[TypeSizeInBits];
-    profitVec.append(Vec.begin(), Vec.end());
-  }
-
-  unsigned LdSize = unsigned(DL->getTypeStoreSize(LeadingLoadType));
-  unsigned LdScalarSize = unsigned(DL->getTypeStoreSize(LeadingLoadScalarType));
-
-  NumElts += getNumElements(LeadingLoadType);
-  if (NumElts > profitVec[0])
-    return false;
-
-  const SCEV *LeadingPtr = SE->getSCEV(LeadingLoad->getPointerOperand());
-  if (isa<SCEVCouldNotCompute>(LeadingPtr))
-    return false;
-
-  SmallVector<std::tuple<LoadInst *, int64_t, MemRefListTy::iterator>, 8>
-    LoadsToMerge;
-  LoadsToMerge.push_back(std::make_tuple(LeadingLoad, 0, MI));
-
-  // Loads to be merged is scanned in the program order and will be merged into
-  // the leading load. So two edges of that consecutive region are checked
-  // against the leading load, i.e.
-  // - the left-side edge, the leading load to the first load (mergable load
-  //   with the minimal offset)
-  // - the right-side edge, the last load (mergable load with the maximal
-  //   offset) to the leading load.
-  //
-  // A check list is maintained from the leading load to the current
-  // instruction as the list of instrucitons which may read or write memory but
-  // is not able to be merged into that leading load. Since we merge
-  // consecutive loads into the leading load, that check list is accumulated
-  // and each consecutive load needs to check against that accumulated check
-  // list.
-
-  // Two edges of the region where loads are merged into.
-  int64_t HighestOffset = LdSize;
-  int64_t LowestOffset = 0;
-
-  // List of instructions need dependency check.
-  SmallVector<Instruction*, 8> CheckList;
-
-  unsigned Limit = IGC_GET_FLAG_VALUE(MemOptWindowSize);
-  auto ME = MemRefs.end();
-  for (++MI; Limit != 0 && MI != ME; Limit -= MI->second, ++MI) {
-    // Bail out if the limit is reached.
-    if (Limit < MI->second)
-      break;
-
-    Instruction *NextMemRef = MI->first;
-
-    // Skip already merged one.
-    if (!NextMemRef)
-      continue;
-
-    CheckList.push_back(NextMemRef);
-
-    LoadInst *NextLoad = dyn_cast<LoadInst>(NextMemRef);
-
-    // Skip non-load instruction.
-    if (!NextLoad)
-      continue;
-
-    // Bail out if that load is not a simple one.
-    if (!NextLoad->isSimple())
-      break;
-
-    // If we get an ordered load (such as a cst_seq atomic load/store) dont
-    // merge.
-    if (!NextLoad->isUnordered())
-        break;
-
-    // Skip if that load is from different address spaces.
-    if (NextLoad->getPointerAddressSpace() !=
-        LeadingLoad->getPointerAddressSpace())
-      continue;
-
-    Type *NextLoadType = NextLoad->getType();
-
-    // Skip if they have different sizes.
-    if (!hasSameSize(NextLoadType->getScalarType(), LeadingLoadScalarType))
-      continue;
-
-    const SCEV *NextPtr = SE->getSCEV(NextLoad->getPointerOperand());
-    if (isa<SCEVCouldNotCompute>(NextPtr))
-      continue;
-
-    int64_t Off = 0;
-    const SCEVConstant *Offset
-      = dyn_cast<SCEVConstant>(SE->getMinusSCEV(NextPtr, LeadingPtr));
-    // Skip load with non-constant distance.
-    if (!Offset) {
-      
-      SymbolicPointer LeadingSymPtr;
-      SymbolicPointer NextSymPtr;
-      if (SymbolicPointer::decomposePointer(LeadingLoad->getPointerOperand(),
-                                            LeadingSymPtr, CGC) ||
-          SymbolicPointer::decomposePointer(NextLoad->getPointerOperand(),
-                                            NextSymPtr, CGC) ||
-          NextSymPtr.getConstantOffset(LeadingSymPtr, Off)) {
-          continue;
-      } else {
-          if (CGC->type != ShaderType::OPENCL_SHADER &&
-              LeadingSymPtr.Offset < 0)
-              continue;
-      }
-    } else {
-        Off = Offset->getValue()->getSExtValue();
-    }
-
-    unsigned NextLoadSize = unsigned(DL->getTypeStoreSize(NextLoadType));
-
-    // By assuming dead load elimination always works correctly, if the load on
-    // the same location is observed again, that is probably because there is
-    // an instruction with global effect between them. Bail out directly.
-    if (Off == 0 && LdSize == NextLoadSize)
-      break;
-
-    int64_t newHighestOffset = MAX(Off + NextLoadSize, HighestOffset);
-    int64_t newLowestOffset = MIN(Off, LowestOffset);
-
-    unsigned newNumElts = unsigned((newHighestOffset - newLowestOffset) /
-                                   LdScalarSize);
-
-    // Bail out if the resulting vector load is already not profitable.
-    if (newNumElts > profitVec[0])
-      continue;
-
-    HighestOffset = newHighestOffset;
-    LowestOffset = newLowestOffset;
-    NumElts = newNumElts;
-
-    // This load is to be merged. Remove it from check list.
-    CheckList.pop_back();
-
-    // If the candidate load cannot be safely merged, merge mergable loads
-    // currently found.
-    if (!isSafeToMergeLoad(NextLoad, CheckList))
-      break;
-
-    LoadsToMerge.push_back(std::make_tuple(NextLoad, Off, MI));
-  }
-
-  if (LoadsToMerge.size() < 2)
-    return false;
-
-  IRBuilder<> Builder(LeadingLoad);
-
-  // Start to merge loads.
-
-  assert(NumElts > 1
-         && "It's expected to merge into at least 2-element vector!");
-
-  // Try to find the profitable vector length first.
-  unsigned s = LoadsToMerge.size();
-  unsigned MaxElts = profitVec[0];
-  for (unsigned k = 1, e = profitVec.size();
-       NumElts != MaxElts && k != e && s != 1;) {
-    // Try next legal vector length.
-    while (NumElts < MaxElts && k != e) {
-      MaxElts = profitVec[k++];
-    }
-
-    if (NumElts == 3 && (LeadingLoadScalarType->isIntegerTy(16) || LeadingLoadScalarType->isHalfTy())) {
-      return false;
-    }
-
-    // Try remove loads to be merged.
-    while (NumElts > MaxElts && s != 1) {
-      Type *Ty = std::get<0>(LoadsToMerge[--s])->getType();
-      NumElts -= getNumElements(Ty);
-    }
-  }
-
-  if (NumElts != MaxElts || s < 2)
-    return false;
-
-  // Sort loads based on their offsets to the leading load and resize them to
-  // be merged to the profitable length.
-  std::sort(LoadsToMerge.begin(), LoadsToMerge.end(), less_tuple<1>());
-  LoadsToMerge.resize(s);
-
-  // Loads to be merged will be merged into the leading load. However, the
-  // pointer from the first load (with the minimal offset) will be used as the
-  // new pointer.
-  LoadInst *FirstLoad = std::get<0>(LoadsToMerge.front());
-  int64_t FirstOffset = std::get<1>(LoadsToMerge.front());
-  assert(FirstOffset <= 0 &&
-         "The 1st load should be either the leading load or "
-         "load with smaller offset!");
-  
-  // Next we need to check alignment
-  if (!checkAlignmentBeforeMerge(FirstLoad, LoadsToMerge, NumElts))
-      return false;
-
-  // Calculate the new pointer. If the leading load is not the first load,
-  // re-calculate it from the leading pointer.
-  // Alternatively, we could schedule instructions calculating the first
-  // pointer ahead the leading load. But it's much simpler to re-calculate
-  // it due to the constant offset.
-  Value *Ptr = LeadingLoad->getPointerOperand();
-  if (FirstOffset < 0) {
-    // If the first load is not the leading load, re-calculate the pointer
-    // from the pointer of the leading load.
-    assert(FirstOffset % LdScalarSize == 0 && "Remainder is expected to be 0!");
-
-    Value *Idx = Builder.getInt64(FirstOffset / LdScalarSize);
-    Type *Ty =
-      PointerType::get(LeadingLoadScalarType,
-                       LeadingLoad->getPointerAddressSpace());
-    Ptr = Builder.CreateBitCast(Ptr, Ty);
-
-    GEPOperator *FirstGEP =
-      dyn_cast<GEPOperator>(FirstLoad->getPointerOperand());
-    if (FirstGEP && FirstGEP->isInBounds())
-      Ptr = Builder.CreateInBoundsGEP(Ptr, Idx);
-    else
-      Ptr = Builder.CreateGEP(Ptr, Idx);
-  }
-
-  Type *NewLoadType = VectorType::get(LeadingLoadScalarType, NumElts);
-  Type *NewPointerType =
-    PointerType::get(NewLoadType, LeadingLoad->getPointerAddressSpace());
-  Value *NewPointer = Builder.CreateBitCast(Ptr, NewPointerType);
-  LoadInst *NewLoad =
-    Builder.CreateAlignedLoad(NewPointer, FirstLoad->getAlignment());
-  NewLoad->setDebugLoc(LeadingLoad->getDebugLoc());
-
-  // Unpack the load value to their uses. For original vector loads, extracting
-  // and inserting is necessary to avoid tracking uses of each element in the
-  // original vector load value.
-  unsigned Pos = 0;
-  MDNode* mdLoadInv = nullptr;
-  bool allInvariantLoads = true;
-  for (auto &I : LoadsToMerge) {
-    Type *Ty = std::get<0>(I)->getType();
-    Type *ScalarTy = Ty->getScalarType();
-    assert(hasSameSize(ScalarTy, LeadingLoadScalarType));
-
-    mdLoadInv = std::get<0>(I)->getMetadata(LLVMContext::MD_invariant_load);
-    if (!mdLoadInv)
-    {
-        allInvariantLoads = false;
-    }
-
-    Pos = unsigned((std::get<1>(I) -FirstOffset) / LdScalarSize);
-
-    if (Ty->isVectorTy()) {
-      if (Pos+Ty->getVectorNumElements() > NumElts) {
-        // This implies we're trying to extract an element from our new load
-        // with an index > the size of the new load.  This shouldn't happen,
-        // but we'll generate correct code if it does since we don't remove the
-        // original load for this element.
-        assert( 0 && "Trying to merge a load with an offset bigger than the load");
-        continue;
-      }
-      Value *Val = UndefValue::get(Ty);
-      for (unsigned i = 0, e = Ty->getVectorNumElements(); i != e; ++i) {
-        Value *Ex = Builder.CreateExtractElement(NewLoad, Builder.getInt32(Pos+i));
-        Ex = createBitOrPointerCast(Ex, ScalarTy, Builder);
-        Val = Builder.CreateInsertElement(Val, Ex, Builder.getInt32(i));
-      }
-      std::get<0>(I)->replaceAllUsesWith(Val);
-    } else {
-      if (Pos > NumElts) {
-        assert( 0 && "Trying to merge a load with an offset bigger than the load");
-        continue;
-      }
-      Value *Val = Builder.CreateExtractElement(NewLoad,
-                                                Builder.getInt32(Pos));
-      Val = createBitOrPointerCast(Val, ScalarTy, Builder);
-      std::get<0>(I)->replaceAllUsesWith(Val);
-    }
-  }
-
-  if (allInvariantLoads)
-  {
-      NewLoad->setMetadata(LLVMContext::MD_invariant_load, mdLoadInv);
-  }
-
-  // Replace the list to be optimized with the new load.
-  Instruction *NewOne = NewLoad;
-  std::swap(ToOpt.back(), NewOne);
-
-  for (auto &I : LoadsToMerge) {
-    LoadInst *LD = cast<LoadInst>(std::get<0>(I));
-    Value *Ptr = LD->getPointerOperand();
-    // make sure the load was merged before actually removing it
-    if (LD->use_empty()) {
-      LD->eraseFromParent();
-    }
-    RecursivelyDeleteTriviallyDeadInstructions(Ptr);
-    // Mark it as already merged.
-    std::get<2>(I)->first = nullptr;
-    // Checking zero distance is intentionally omitted here due to the first
-    // memory access won't be able to be checked again.
-    std::get<2>(I)->second -= 1;
-  }
-
-  return true;
-}
-
-bool MemOpt::mergeStore(StoreInst *LeadingStore,
-                        MemRefListTy::iterator MI, MemRefListTy &MemRefs,
-                        TrivialMemRefListTy &ToOpt) {
-  // Push the leading store into the list to be optimized (after
-  // canonicalization.) It will be swapped with the new one if it's merged.
-  ToOpt.push_back(LeadingStore);
-
-  if (!LeadingStore->isSimple())
-    return false;
-
-  if (!LeadingStore->isUnordered())
-    return false;
-
-  if (LeadingStore->getValueOperand()->getType()->isPointerTy()) {
-    unsigned AS =
-      LeadingStore->getValueOperand()->getType()->getPointerAddressSpace();
-    if (CGC->getRegisterPointerSizeInBits(AS) != DL->getPointerSizeInBits(AS)) {
-      // we cannot coalesce pointers which have been reduced as they are
-      // bigger in memory than in register
-      return false;
-    }
-  }
-
-  unsigned NumElts = 0;
-  Value *LeadingStoreVal = LeadingStore->getValueOperand();
-  Type *LeadingStoreType = LeadingStoreVal->getType();
-  Type *LeadingStoreScalarType = LeadingStoreType->getScalarType();
-  unsigned StSize = unsigned(DL->getTypeStoreSize(LeadingStoreType));
-  unsigned typeSizeInBits =
-    unsigned(DL->getTypeSizeInBits(LeadingStoreScalarType));
-  if (!ProfitVectorLengths.count(typeSizeInBits))
-    return false;
-  SmallVector<unsigned, 4 >& profitVec = ProfitVectorLengths[typeSizeInBits];
-
-  NumElts += getNumElements(LeadingStoreType);
-  if (NumElts >= profitVec[0])
-    return false;
-
-  const SCEV *LeadingPtr = SE->getSCEV(LeadingStore->getPointerOperand());
-  if (isa<SCEVCouldNotCompute>(LeadingPtr))
-    return false;
-
-  SmallVector<std::tuple<StoreInst *, int64_t, MemRefListTy::iterator>, 8>
-    StoresToMerge;
-  StoresToMerge.push_back(std::make_tuple(LeadingStore, 0, MI));
-
-  // Stores to be merged are scanned in the program order from the leading store
-  // but need to be merged into the tailing store. So two edges of that
-  // consecutive region are checked against the leading store, i.e.
-  // - the left-side edge, the leading store to the first store (mergable store
-  //   with the minimal offset)
-  // - the right-side edge, the last store (mergable store with the maximal
-  //   offset) to the leading store.
-  //
-  // A check list is maintained from a previous tailing mergable store to the
-  // new tailing store instruction because all those stores will be merged into
-  // the new tailing store. That is, we need to check all mergable stores each
-  // time a "new" tailing store is found. However, that check list needs not
-  // accumulating as we already check that all stores to be merged are safe to
-  // be merged into the "previous" tailing store.
-
-  // Two edges of the region where stores are merged into.
-  int64_t LastToLeading = StSize;
-  int64_t LeadingToFirst = 0;
-
-  // List of instructions need dependency check.
-  SmallVector<Instruction*, 8> CheckList;
-
-  unsigned Limit = IGC_GET_FLAG_VALUE(MemOptWindowSize);
-  auto ME = MemRefs.end();
-  for (++MI; Limit != 0 && MI != ME; Limit -= MI->second, ++MI) {
-    // Bail out if the limit is reached.
-    if (Limit < MI->second)
-      break;
-
-    Instruction *NextMemRef = MI->first;
-
-    // Skip already merged one.
-    if (!NextMemRef)
-      continue;
-
-    CheckList.push_back(NextMemRef);
-
-    StoreInst *NextStore = dyn_cast<StoreInst>(NextMemRef);
-    // Skip non-store instruction.
-    if (!NextStore)
-      continue;
-
-    // Bail out if that store is not a simple one.
-    if (!NextStore->isSimple())
-      break;
-
-    // If we get an ordered store (such as a cst_seq atomic load/store) dont
-    // merge.
-    if (!NextStore->isUnordered())
-      break;
-
-    // Skip if that store is from different address spaces.
-    if (NextStore->getPointerAddressSpace() !=
-        LeadingStore->getPointerAddressSpace())
-      continue;
-
-    Value *NextStoreVal = NextStore->getValueOperand();
-    Type *NextStoreType = NextStoreVal->getType();
-
-    // Skip if they have different sizes.
-    if (!hasSameSize(NextStoreType->getScalarType(), LeadingStoreScalarType))
-      continue;
-
-    const SCEV *NextPtr = SE->getSCEV(NextStore->getPointerOperand());
-    if (isa<SCEVCouldNotCompute>(NextPtr))
-      continue;
-
-    int64_t Off = 0;
-    const SCEVConstant *Offset
-      = dyn_cast<SCEVConstant>(SE->getMinusSCEV(NextPtr, LeadingPtr));
-    // Skip load with non-constant distance.
-    if (!Offset) {
-
-      SymbolicPointer LeadingSymPtr;
-      SymbolicPointer NextSymPtr;
-      if (SymbolicPointer::decomposePointer(
-          LeadingStore->getPointerOperand(), LeadingSymPtr, CGC) ||
-          SymbolicPointer::decomposePointer(NextStore->getPointerOperand(),
-                                            NextSymPtr, CGC) ||
-          NextSymPtr.getConstantOffset(LeadingSymPtr, Off))
-        continue;
-    } else
-      Off = Offset->getValue()->getSExtValue();
-
-    // By assuming dead store elimination always works correctly, if the store
-    // on the same location is observed again, that is probably because there
-    // is an instruction with global effect between them. Bail out directly.
-    if (Off == 0)
-      break;
-
-    unsigned NextStoreSize = unsigned(DL->getTypeStoreSize(NextStoreType));
-
-    // Check it's consecutive to the current stores to be merged.
-    if ((Off > 0 && Off != LastToLeading) ||
-        (Off < 0 && (-Off) != (LeadingToFirst + NextStoreSize)))
-      continue;
-
-    NumElts += getNumElements(NextStoreType);
-    // Bail out if the resulting vector store is already not profitable.
-    if (NumElts > profitVec[0])
-      break;
-
-    // This store is to be merged. Remove it from check list.
-    CheckList.pop_back();
-
-    // If the candidate store cannot be safely merged, merge mergable stores
-    // currently found.
-    if (!isSafeToMergeStores(StoresToMerge, CheckList))
-      break;
-
-    // Clear check list.
-    CheckList.clear();
-
-    StoresToMerge.push_back(std::make_tuple(NextStore, Off, MI));
-    if (Off > 0)
-      LastToLeading = Off + NextStoreSize;
-    else
-      LeadingToFirst = (-Off);
-
-    // Early out if the maximal profitable vector length is reached.
-    if (NumElts == profitVec[0])
-      break;
-  }
-
-  if (StoresToMerge.size() < 2)
-    return false;
-
-  // Tailing store is always the last one in the program order.
-  StoreInst *TailingStore = std::get<0>(StoresToMerge.back());
-  IRBuilder<> Builder(TailingStore);
-
-  // Start to merge stores.
-  NumElts = 0;
-  for (auto &I : StoresToMerge) {
-    Type *Ty = std::get<0>(I)->getValueOperand()->getType();
-    NumElts += getNumElements(Ty);
-  }
-
-  assert(NumElts > 1 &&
-         "It's expected to merge into at least 2-element vector!");
-
-  // Try to find the profitable vector length first.
-  unsigned s = StoresToMerge.size();
-  unsigned MaxElts = profitVec[0];
-  for(unsigned k = 1, e = profitVec.size();
-       NumElts != MaxElts && k != e && s != 1;) {
-    // Try next legal vector length.
-    while (NumElts < MaxElts && k != e)
-        MaxElts = profitVec[k++];
-    // Try remove stores to be merged.
-    while (NumElts > MaxElts && s != 1) {
-      Type *Ty = std::get<0>(StoresToMerge[--s])->getValueOperand()->getType();
-      NumElts -= getNumElements(Ty);
-    }
-  }
-
-  if (NumElts != MaxElts || s < 2)
-    return false;
-
-  // Resize stores to be merged to the profitable length and sort them based on
-  // their offsets to the leading store.
-  StoresToMerge.resize(s);
-  std::sort(StoresToMerge.begin(), StoresToMerge.end(), less_tuple<1>());
-
-  Type *NewStoreType = VectorType::get(LeadingStoreScalarType, NumElts);
-  Value *NewStoreVal = UndefValue::get(NewStoreType);
-
-  // Pack the store value from their original store values. For original vector
-  // store values, extracting and inserting is necessary to avoid tracking uses
-  // of each element in the original vector store value.
-  unsigned Pos = 0;
-  for (auto &I : StoresToMerge) {
-    Value *Val = std::get<0>(I)->getValueOperand();
-    Type *Ty = Val->getType();
-    Type *ScalarTy = Ty->getScalarType();
-    assert(hasSameSize(ScalarTy, LeadingStoreScalarType));
-
-    if (Ty->isVectorTy()) {
-      for (unsigned i = 0, e = Ty->getVectorNumElements(); i != e; ++i) {
-        Value *Ex = Builder.CreateExtractElement(Val, Builder.getInt32(i));
-        Ex = createBitOrPointerCast(Ex, LeadingStoreScalarType, Builder);
-        NewStoreVal = Builder.CreateInsertElement(NewStoreVal, Ex,
-                                                  Builder.getInt32(Pos++));
-      }
-    } else if (Ty->isPointerTy()) {
-      if (ScalarTy != LeadingStoreScalarType) {
-        if (LeadingStoreScalarType->isPointerTy()) {
-          Val =
-            Builder.CreatePointerBitCastOrAddrSpaceCast(Val,
-                                                        LeadingStoreScalarType);
-        } else {
-          Val =
-            Builder.CreatePtrToInt(Val,
-              Type::getIntNTy(Val->getContext(),
-                             LeadingStoreScalarType->getPrimitiveSizeInBits()));
-          // LeadingStoreScalarType may not be an integer type, bitcast it to
-          // the appropiate type.
-          Val = Builder.CreateBitCast(Val, LeadingStoreScalarType);
+bool MemOpt::runOnFunction(Function& F) {
+    // Skip non-kernel function.
+    MetaDataUtils* MDU = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    auto FII = MDU->findFunctionsInfoItem(&F);
+    if (FII == MDU->end_FunctionsInfo())
+        return false;
+
+    DL = &F.getParent()->getDataLayout();
+    AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
+    SE = &getAnalysis<ScalarEvolutionWrapperPass>().getSE();
+    WI = &getAnalysis<WIAnalysis>();
+
+    CGC = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    TLI = &getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
+
+    if (ProfitVectorLengths.empty())
+        buildProfitVectorLengths(F);
+
+    bool Changed = false;
+
+    for (Function::iterator BB = F.begin(), BBE = F.end(); BB != BBE; ++BB) {
+        // Find all instructions with memory reference. Remember the distance one
+        // by one.
+        MemRefListTy MemRefs;
+        TrivialMemRefListTy MemRefsToOptimize;
+        unsigned Distance = 0;
+        bool FirstMemRef = true;
+        for (auto BI = BB->begin(), BE = BB->end(); BI != BE; ++BI) {
+            Instruction* I = &(*BI);
+            Distance += FirstMemRef ? 0 : 1;
+            // Skip irrelevant instructions.
+            if (shouldSkip(I))
+                continue;
+            MemRefs.push_back(std::make_pair(I, Distance));
+            Distance = 0;
+            FirstMemRef = false;
         }
-      }
-      NewStoreVal = Builder.CreateInsertElement(NewStoreVal, Val,
-                                                Builder.getInt32(Pos++));
-    } else {
-      Val = createBitOrPointerCast(Val, LeadingStoreScalarType, Builder);
-      NewStoreVal = Builder.CreateInsertElement(NewStoreVal, Val,
-                                                Builder.getInt32(Pos++));
+
+        // Skip BB with no more than 2 loads/stores.
+        if (MemRefs.size() < 2)
+            continue;
+
+        // Canonicalize 64-bit GEP to help SCEV find constant offset by
+        // distributing `zext`/`sext` over safe expressions.
+        for (auto& M : MemRefs)
+            Changed |= canonicalizeGEP64(M.first);
+
+        for (auto MI = MemRefs.begin(), ME = MemRefs.end(); MI != ME; ++MI) {
+            Instruction* I = MI->first;
+
+            // Skip already merged one.
+            if (!I)
+                continue;
+
+            if (LoadInst * LI = dyn_cast<LoadInst>(I))
+                Changed |= mergeLoad(LI, MI, MemRefs, MemRefsToOptimize);
+            else if (StoreInst * SI = dyn_cast<StoreInst>(I))
+                Changed |= mergeStore(SI, MI, MemRefs, MemRefsToOptimize);
+        }
+
+        // Optimize 64-bit GEP to reduce strength by factoring out `zext`/`sext`
+        // over safe expressions.
+        for (auto I : MemRefsToOptimize)
+            Changed |= optimizeGEP64(I);
     }
-  }
 
-  // Stores to be merged will be merged into the tailing store. However, the
-  // pointer from the first store (with the minimal offset) will be used as the
-  // new pointer.
-  StoreInst *FirstStore = std::get<0>(StoresToMerge.front());
-  
-  // Next we need to check alignment
-  if (!checkAlignmentBeforeMerge(FirstStore, StoresToMerge, NumElts))
-      return false;
-  
-  // We don't need to recalculate the new pointer as we merge stores to the
-  // tailing store, which is dominated by all mergable stores' address
-  // calculations.
-  Type *NewPointerType =
-      PointerType::get(NewStoreType, LeadingStore->getPointerAddressSpace());
-  Value *NewPointer =
-      Builder.CreateBitCast(FirstStore->getPointerOperand(), NewPointerType);
-  StoreInst *NewStore =
-      Builder.CreateAlignedStore(NewStoreVal, NewPointer,
-                                 LeadingStore->getAlignment());
-  NewStore->setDebugLoc(TailingStore->getDebugLoc());
+    DL = nullptr;
+    AA = nullptr;
+    SE = nullptr;
 
-  // Replace the list to be optimized with the new store.
-  Instruction *NewOne = NewStore;
-  std::swap(ToOpt.back(), NewOne);
+    return Changed;
+}
 
-  for (auto &I : StoresToMerge) {
-    StoreInst *ST = cast<StoreInst>(std::get<0>(I));
-    Value *Ptr = ST->getPointerOperand();
-    ST->eraseFromParent();
-    RecursivelyDeleteTriviallyDeadInstructions(Ptr);
-    // Mark it as already merged.
-    std::get<2>(I)->first = nullptr;
-    // Checking zero distance is intentionally omitted here due to the first
-    // memory access won't be able to be checked again.
-    std::get<2>(I)->second -= 1;;
-  }
+bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
+    MemRefListTy::iterator MI, MemRefListTy& MemRefs,
+    TrivialMemRefListTy& ToOpt) {
+    // Push the leading load into the list to be optimized (after
+    // canonicalization.) It will be swapped with the new one if it's merged.
+    ToOpt.push_back(LeadingLoad);
 
-  return true;
+    if (!LeadingLoad->isSimple())
+        return false;
+
+    if (!LeadingLoad->isUnordered())
+        return false;
+
+    if (LeadingLoad->getType()->isPointerTy()) {
+        unsigned int AS = LeadingLoad->getType()->getPointerAddressSpace();
+        if (CGC->getRegisterPointerSizeInBits(AS) != DL->getPointerSizeInBits(AS)) {
+            // we cannot coalesce pointers which have been reduced as they are
+            // bigger in memory than in register
+            return false;
+        }
+    }
+
+    unsigned NumElts = 0;
+
+    Type* LeadingLoadType = LeadingLoad->getType();
+    Type* LeadingLoadScalarType = LeadingLoadType->getScalarType();
+    unsigned TypeSizeInBits =
+        unsigned(DL->getTypeSizeInBits(LeadingLoadScalarType));
+    if (!ProfitVectorLengths.count(TypeSizeInBits))
+        return false;
+    SmallVector<unsigned, 8> profitVec;
+    // FIXME: Enable for OCL shader only as other clients have regressions but
+    // there's no way to trace down.
+    bool isUniformLoad = (CGC->type == ShaderType::OPENCL_SHADER) &&
+        (WI->whichDepend(LeadingLoad) == WIAnalysis::UNIFORM);
+    if (isUniformLoad) {
+        unsigned C = IGC_GET_FLAG_VALUE(UniformMemOptLimit);
+        if (C == 0) C = 256;
+        C /= TypeSizeInBits;
+        for (; C >= 2; --C)
+            profitVec.push_back(C);
+    }
+    else {
+        SmallVector<unsigned, 4> & Vec = ProfitVectorLengths[TypeSizeInBits];
+        profitVec.append(Vec.begin(), Vec.end());
+    }
+
+    unsigned LdSize = unsigned(DL->getTypeStoreSize(LeadingLoadType));
+    unsigned LdScalarSize = unsigned(DL->getTypeStoreSize(LeadingLoadScalarType));
+
+    NumElts += getNumElements(LeadingLoadType);
+    if (NumElts > profitVec[0])
+        return false;
+
+    const SCEV* LeadingPtr = SE->getSCEV(LeadingLoad->getPointerOperand());
+    if (isa<SCEVCouldNotCompute>(LeadingPtr))
+        return false;
+
+    SmallVector<std::tuple<LoadInst*, int64_t, MemRefListTy::iterator>, 8>
+        LoadsToMerge;
+    LoadsToMerge.push_back(std::make_tuple(LeadingLoad, 0, MI));
+
+    // Loads to be merged is scanned in the program order and will be merged into
+    // the leading load. So two edges of that consecutive region are checked
+    // against the leading load, i.e.
+    // - the left-side edge, the leading load to the first load (mergable load
+    //   with the minimal offset)
+    // - the right-side edge, the last load (mergable load with the maximal
+    //   offset) to the leading load.
+    //
+    // A check list is maintained from the leading load to the current
+    // instruction as the list of instrucitons which may read or write memory but
+    // is not able to be merged into that leading load. Since we merge
+    // consecutive loads into the leading load, that check list is accumulated
+    // and each consecutive load needs to check against that accumulated check
+    // list.
+
+    // Two edges of the region where loads are merged into.
+    int64_t HighestOffset = LdSize;
+    int64_t LowestOffset = 0;
+
+    // List of instructions need dependency check.
+    SmallVector<Instruction*, 8> CheckList;
+
+    unsigned Limit = IGC_GET_FLAG_VALUE(MemOptWindowSize);
+    auto ME = MemRefs.end();
+    for (++MI; Limit != 0 && MI != ME; Limit -= MI->second, ++MI) {
+        // Bail out if the limit is reached.
+        if (Limit < MI->second)
+            break;
+
+        Instruction* NextMemRef = MI->first;
+
+        // Skip already merged one.
+        if (!NextMemRef)
+            continue;
+
+        CheckList.push_back(NextMemRef);
+
+        LoadInst* NextLoad = dyn_cast<LoadInst>(NextMemRef);
+
+        // Skip non-load instruction.
+        if (!NextLoad)
+            continue;
+
+        // Bail out if that load is not a simple one.
+        if (!NextLoad->isSimple())
+            break;
+
+        // If we get an ordered load (such as a cst_seq atomic load/store) dont
+        // merge.
+        if (!NextLoad->isUnordered())
+            break;
+
+        // Skip if that load is from different address spaces.
+        if (NextLoad->getPointerAddressSpace() !=
+            LeadingLoad->getPointerAddressSpace())
+            continue;
+
+        Type* NextLoadType = NextLoad->getType();
+
+        // Skip if they have different sizes.
+        if (!hasSameSize(NextLoadType->getScalarType(), LeadingLoadScalarType))
+            continue;
+
+        const SCEV* NextPtr = SE->getSCEV(NextLoad->getPointerOperand());
+        if (isa<SCEVCouldNotCompute>(NextPtr))
+            continue;
+
+        int64_t Off = 0;
+        const SCEVConstant* Offset
+            = dyn_cast<SCEVConstant>(SE->getMinusSCEV(NextPtr, LeadingPtr));
+        // Skip load with non-constant distance.
+        if (!Offset) {
+
+            SymbolicPointer LeadingSymPtr;
+            SymbolicPointer NextSymPtr;
+            if (SymbolicPointer::decomposePointer(LeadingLoad->getPointerOperand(),
+                LeadingSymPtr, CGC) ||
+                SymbolicPointer::decomposePointer(NextLoad->getPointerOperand(),
+                    NextSymPtr, CGC) ||
+                NextSymPtr.getConstantOffset(LeadingSymPtr, Off)) {
+                continue;
+            }
+            else {
+                if (CGC->type != ShaderType::OPENCL_SHADER &&
+                    LeadingSymPtr.Offset < 0)
+                    continue;
+            }
+        }
+        else {
+            Off = Offset->getValue()->getSExtValue();
+        }
+
+        unsigned NextLoadSize = unsigned(DL->getTypeStoreSize(NextLoadType));
+
+        // By assuming dead load elimination always works correctly, if the load on
+        // the same location is observed again, that is probably because there is
+        // an instruction with global effect between them. Bail out directly.
+        if (Off == 0 && LdSize == NextLoadSize)
+            break;
+
+        int64_t newHighestOffset = MAX(Off + NextLoadSize, HighestOffset);
+        int64_t newLowestOffset = MIN(Off, LowestOffset);
+
+        unsigned newNumElts = unsigned((newHighestOffset - newLowestOffset) /
+            LdScalarSize);
+
+        // Bail out if the resulting vector load is already not profitable.
+        if (newNumElts > profitVec[0])
+            continue;
+
+        HighestOffset = newHighestOffset;
+        LowestOffset = newLowestOffset;
+        NumElts = newNumElts;
+
+        // This load is to be merged. Remove it from check list.
+        CheckList.pop_back();
+
+        // If the candidate load cannot be safely merged, merge mergable loads
+        // currently found.
+        if (!isSafeToMergeLoad(NextLoad, CheckList))
+            break;
+
+        LoadsToMerge.push_back(std::make_tuple(NextLoad, Off, MI));
+    }
+
+    if (LoadsToMerge.size() < 2)
+        return false;
+
+    IRBuilder<> Builder(LeadingLoad);
+
+    // Start to merge loads.
+
+    assert(NumElts > 1
+        && "It's expected to merge into at least 2-element vector!");
+
+    // Try to find the profitable vector length first.
+    unsigned s = LoadsToMerge.size();
+    unsigned MaxElts = profitVec[0];
+    for (unsigned k = 1, e = profitVec.size();
+        NumElts != MaxElts && k != e && s != 1;) {
+        // Try next legal vector length.
+        while (NumElts < MaxElts && k != e) {
+            MaxElts = profitVec[k++];
+        }
+
+        if (NumElts == 3 && (LeadingLoadScalarType->isIntegerTy(16) || LeadingLoadScalarType->isHalfTy())) {
+            return false;
+        }
+
+        // Try remove loads to be merged.
+        while (NumElts > MaxElts && s != 1) {
+            Type* Ty = std::get<0>(LoadsToMerge[--s])->getType();
+            NumElts -= getNumElements(Ty);
+        }
+    }
+
+    if (NumElts != MaxElts || s < 2)
+        return false;
+
+    // Sort loads based on their offsets to the leading load and resize them to
+    // be merged to the profitable length.
+    std::sort(LoadsToMerge.begin(), LoadsToMerge.end(), less_tuple<1>());
+    LoadsToMerge.resize(s);
+
+    // Loads to be merged will be merged into the leading load. However, the
+    // pointer from the first load (with the minimal offset) will be used as the
+    // new pointer.
+    LoadInst* FirstLoad = std::get<0>(LoadsToMerge.front());
+    int64_t FirstOffset = std::get<1>(LoadsToMerge.front());
+    assert(FirstOffset <= 0 &&
+        "The 1st load should be either the leading load or "
+        "load with smaller offset!");
+
+    // Next we need to check alignment
+    if (!checkAlignmentBeforeMerge(FirstLoad, LoadsToMerge, NumElts))
+        return false;
+
+    // Calculate the new pointer. If the leading load is not the first load,
+    // re-calculate it from the leading pointer.
+    // Alternatively, we could schedule instructions calculating the first
+    // pointer ahead the leading load. But it's much simpler to re-calculate
+    // it due to the constant offset.
+    Value* Ptr = LeadingLoad->getPointerOperand();
+    if (FirstOffset < 0) {
+        // If the first load is not the leading load, re-calculate the pointer
+        // from the pointer of the leading load.
+        assert(FirstOffset % LdScalarSize == 0 && "Remainder is expected to be 0!");
+
+        Value* Idx = Builder.getInt64(FirstOffset / LdScalarSize);
+        Type* Ty =
+            PointerType::get(LeadingLoadScalarType,
+                LeadingLoad->getPointerAddressSpace());
+        Ptr = Builder.CreateBitCast(Ptr, Ty);
+
+        GEPOperator* FirstGEP =
+            dyn_cast<GEPOperator>(FirstLoad->getPointerOperand());
+        if (FirstGEP && FirstGEP->isInBounds())
+            Ptr = Builder.CreateInBoundsGEP(Ptr, Idx);
+        else
+            Ptr = Builder.CreateGEP(Ptr, Idx);
+    }
+
+    Type* NewLoadType = VectorType::get(LeadingLoadScalarType, NumElts);
+    Type* NewPointerType =
+        PointerType::get(NewLoadType, LeadingLoad->getPointerAddressSpace());
+    Value* NewPointer = Builder.CreateBitCast(Ptr, NewPointerType);
+    LoadInst* NewLoad =
+        Builder.CreateAlignedLoad(NewPointer, FirstLoad->getAlignment());
+    NewLoad->setDebugLoc(LeadingLoad->getDebugLoc());
+
+    // Unpack the load value to their uses. For original vector loads, extracting
+    // and inserting is necessary to avoid tracking uses of each element in the
+    // original vector load value.
+    unsigned Pos = 0;
+    MDNode* mdLoadInv = nullptr;
+    bool allInvariantLoads = true;
+    for (auto& I : LoadsToMerge) {
+        Type* Ty = std::get<0>(I)->getType();
+        Type* ScalarTy = Ty->getScalarType();
+        assert(hasSameSize(ScalarTy, LeadingLoadScalarType));
+
+        mdLoadInv = std::get<0>(I)->getMetadata(LLVMContext::MD_invariant_load);
+        if (!mdLoadInv)
+        {
+            allInvariantLoads = false;
+        }
+
+        Pos = unsigned((std::get<1>(I) - FirstOffset) / LdScalarSize);
+
+        if (Ty->isVectorTy()) {
+            if (Pos + Ty->getVectorNumElements() > NumElts) {
+                // This implies we're trying to extract an element from our new load
+                // with an index > the size of the new load.  This shouldn't happen,
+                // but we'll generate correct code if it does since we don't remove the
+                // original load for this element.
+                assert(0 && "Trying to merge a load with an offset bigger than the load");
+                continue;
+            }
+            Value* Val = UndefValue::get(Ty);
+            for (unsigned i = 0, e = Ty->getVectorNumElements(); i != e; ++i) {
+                Value* Ex = Builder.CreateExtractElement(NewLoad, Builder.getInt32(Pos + i));
+                Ex = createBitOrPointerCast(Ex, ScalarTy, Builder);
+                Val = Builder.CreateInsertElement(Val, Ex, Builder.getInt32(i));
+            }
+            std::get<0>(I)->replaceAllUsesWith(Val);
+        }
+        else {
+            if (Pos > NumElts) {
+                assert(0 && "Trying to merge a load with an offset bigger than the load");
+                continue;
+            }
+            Value* Val = Builder.CreateExtractElement(NewLoad,
+                Builder.getInt32(Pos));
+            Val = createBitOrPointerCast(Val, ScalarTy, Builder);
+            std::get<0>(I)->replaceAllUsesWith(Val);
+        }
+    }
+
+    if (allInvariantLoads)
+    {
+        NewLoad->setMetadata(LLVMContext::MD_invariant_load, mdLoadInv);
+    }
+
+    // Replace the list to be optimized with the new load.
+    Instruction* NewOne = NewLoad;
+    std::swap(ToOpt.back(), NewOne);
+
+    for (auto& I : LoadsToMerge) {
+        LoadInst* LD = cast<LoadInst>(std::get<0>(I));
+        Value* Ptr = LD->getPointerOperand();
+        // make sure the load was merged before actually removing it
+        if (LD->use_empty()) {
+            LD->eraseFromParent();
+        }
+        RecursivelyDeleteTriviallyDeadInstructions(Ptr);
+        // Mark it as already merged.
+        std::get<2>(I)->first = nullptr;
+        // Checking zero distance is intentionally omitted here due to the first
+        // memory access won't be able to be checked again.
+        std::get<2>(I)->second -= 1;
+    }
+
+    return true;
+}
+
+bool MemOpt::mergeStore(StoreInst* LeadingStore,
+    MemRefListTy::iterator MI, MemRefListTy& MemRefs,
+    TrivialMemRefListTy& ToOpt) {
+    // Push the leading store into the list to be optimized (after
+    // canonicalization.) It will be swapped with the new one if it's merged.
+    ToOpt.push_back(LeadingStore);
+
+    if (!LeadingStore->isSimple())
+        return false;
+
+    if (!LeadingStore->isUnordered())
+        return false;
+
+    if (LeadingStore->getValueOperand()->getType()->isPointerTy()) {
+        unsigned AS =
+            LeadingStore->getValueOperand()->getType()->getPointerAddressSpace();
+        if (CGC->getRegisterPointerSizeInBits(AS) != DL->getPointerSizeInBits(AS)) {
+            // we cannot coalesce pointers which have been reduced as they are
+            // bigger in memory than in register
+            return false;
+        }
+    }
+
+    unsigned NumElts = 0;
+    Value* LeadingStoreVal = LeadingStore->getValueOperand();
+    Type* LeadingStoreType = LeadingStoreVal->getType();
+    Type* LeadingStoreScalarType = LeadingStoreType->getScalarType();
+    unsigned StSize = unsigned(DL->getTypeStoreSize(LeadingStoreType));
+    unsigned typeSizeInBits =
+        unsigned(DL->getTypeSizeInBits(LeadingStoreScalarType));
+    if (!ProfitVectorLengths.count(typeSizeInBits))
+        return false;
+    SmallVector<unsigned, 4 > & profitVec = ProfitVectorLengths[typeSizeInBits];
+
+    NumElts += getNumElements(LeadingStoreType);
+    if (NumElts >= profitVec[0])
+        return false;
+
+    const SCEV* LeadingPtr = SE->getSCEV(LeadingStore->getPointerOperand());
+    if (isa<SCEVCouldNotCompute>(LeadingPtr))
+        return false;
+
+    SmallVector<std::tuple<StoreInst*, int64_t, MemRefListTy::iterator>, 8>
+        StoresToMerge;
+    StoresToMerge.push_back(std::make_tuple(LeadingStore, 0, MI));
+
+    // Stores to be merged are scanned in the program order from the leading store
+    // but need to be merged into the tailing store. So two edges of that
+    // consecutive region are checked against the leading store, i.e.
+    // - the left-side edge, the leading store to the first store (mergable store
+    //   with the minimal offset)
+    // - the right-side edge, the last store (mergable store with the maximal
+    //   offset) to the leading store.
+    //
+    // A check list is maintained from a previous tailing mergable store to the
+    // new tailing store instruction because all those stores will be merged into
+    // the new tailing store. That is, we need to check all mergable stores each
+    // time a "new" tailing store is found. However, that check list needs not
+    // accumulating as we already check that all stores to be merged are safe to
+    // be merged into the "previous" tailing store.
+
+    // Two edges of the region where stores are merged into.
+    int64_t LastToLeading = StSize;
+    int64_t LeadingToFirst = 0;
+
+    // List of instructions need dependency check.
+    SmallVector<Instruction*, 8> CheckList;
+
+    unsigned Limit = IGC_GET_FLAG_VALUE(MemOptWindowSize);
+    auto ME = MemRefs.end();
+    for (++MI; Limit != 0 && MI != ME; Limit -= MI->second, ++MI) {
+        // Bail out if the limit is reached.
+        if (Limit < MI->second)
+            break;
+
+        Instruction* NextMemRef = MI->first;
+
+        // Skip already merged one.
+        if (!NextMemRef)
+            continue;
+
+        CheckList.push_back(NextMemRef);
+
+        StoreInst* NextStore = dyn_cast<StoreInst>(NextMemRef);
+        // Skip non-store instruction.
+        if (!NextStore)
+            continue;
+
+        // Bail out if that store is not a simple one.
+        if (!NextStore->isSimple())
+            break;
+
+        // If we get an ordered store (such as a cst_seq atomic load/store) dont
+        // merge.
+        if (!NextStore->isUnordered())
+            break;
+
+        // Skip if that store is from different address spaces.
+        if (NextStore->getPointerAddressSpace() !=
+            LeadingStore->getPointerAddressSpace())
+            continue;
+
+        Value* NextStoreVal = NextStore->getValueOperand();
+        Type* NextStoreType = NextStoreVal->getType();
+
+        // Skip if they have different sizes.
+        if (!hasSameSize(NextStoreType->getScalarType(), LeadingStoreScalarType))
+            continue;
+
+        const SCEV* NextPtr = SE->getSCEV(NextStore->getPointerOperand());
+        if (isa<SCEVCouldNotCompute>(NextPtr))
+            continue;
+
+        int64_t Off = 0;
+        const SCEVConstant* Offset
+            = dyn_cast<SCEVConstant>(SE->getMinusSCEV(NextPtr, LeadingPtr));
+        // Skip load with non-constant distance.
+        if (!Offset) {
+
+            SymbolicPointer LeadingSymPtr;
+            SymbolicPointer NextSymPtr;
+            if (SymbolicPointer::decomposePointer(
+                LeadingStore->getPointerOperand(), LeadingSymPtr, CGC) ||
+                SymbolicPointer::decomposePointer(NextStore->getPointerOperand(),
+                    NextSymPtr, CGC) ||
+                NextSymPtr.getConstantOffset(LeadingSymPtr, Off))
+                continue;
+        }
+        else
+            Off = Offset->getValue()->getSExtValue();
+
+        // By assuming dead store elimination always works correctly, if the store
+        // on the same location is observed again, that is probably because there
+        // is an instruction with global effect between them. Bail out directly.
+        if (Off == 0)
+            break;
+
+        unsigned NextStoreSize = unsigned(DL->getTypeStoreSize(NextStoreType));
+
+        // Check it's consecutive to the current stores to be merged.
+        if ((Off > 0 && Off != LastToLeading) ||
+            (Off < 0 && (-Off) != (LeadingToFirst + NextStoreSize)))
+            continue;
+
+        NumElts += getNumElements(NextStoreType);
+        // Bail out if the resulting vector store is already not profitable.
+        if (NumElts > profitVec[0])
+            break;
+
+        // This store is to be merged. Remove it from check list.
+        CheckList.pop_back();
+
+        // If the candidate store cannot be safely merged, merge mergable stores
+        // currently found.
+        if (!isSafeToMergeStores(StoresToMerge, CheckList))
+            break;
+
+        // Clear check list.
+        CheckList.clear();
+
+        StoresToMerge.push_back(std::make_tuple(NextStore, Off, MI));
+        if (Off > 0)
+            LastToLeading = Off + NextStoreSize;
+        else
+            LeadingToFirst = (-Off);
+
+        // Early out if the maximal profitable vector length is reached.
+        if (NumElts == profitVec[0])
+            break;
+    }
+
+    if (StoresToMerge.size() < 2)
+        return false;
+
+    // Tailing store is always the last one in the program order.
+    StoreInst* TailingStore = std::get<0>(StoresToMerge.back());
+    IRBuilder<> Builder(TailingStore);
+
+    // Start to merge stores.
+    NumElts = 0;
+    for (auto& I : StoresToMerge) {
+        Type* Ty = std::get<0>(I)->getValueOperand()->getType();
+        NumElts += getNumElements(Ty);
+    }
+
+    assert(NumElts > 1 &&
+        "It's expected to merge into at least 2-element vector!");
+
+    // Try to find the profitable vector length first.
+    unsigned s = StoresToMerge.size();
+    unsigned MaxElts = profitVec[0];
+    for (unsigned k = 1, e = profitVec.size();
+        NumElts != MaxElts && k != e && s != 1;) {
+        // Try next legal vector length.
+        while (NumElts < MaxElts && k != e)
+            MaxElts = profitVec[k++];
+        // Try remove stores to be merged.
+        while (NumElts > MaxElts && s != 1) {
+            Type* Ty = std::get<0>(StoresToMerge[--s])->getValueOperand()->getType();
+            NumElts -= getNumElements(Ty);
+        }
+    }
+
+    if (NumElts != MaxElts || s < 2)
+        return false;
+
+    // Resize stores to be merged to the profitable length and sort them based on
+    // their offsets to the leading store.
+    StoresToMerge.resize(s);
+    std::sort(StoresToMerge.begin(), StoresToMerge.end(), less_tuple<1>());
+
+    Type* NewStoreType = VectorType::get(LeadingStoreScalarType, NumElts);
+    Value* NewStoreVal = UndefValue::get(NewStoreType);
+
+    // Pack the store value from their original store values. For original vector
+    // store values, extracting and inserting is necessary to avoid tracking uses
+    // of each element in the original vector store value.
+    unsigned Pos = 0;
+    for (auto& I : StoresToMerge) {
+        Value* Val = std::get<0>(I)->getValueOperand();
+        Type* Ty = Val->getType();
+        Type* ScalarTy = Ty->getScalarType();
+        assert(hasSameSize(ScalarTy, LeadingStoreScalarType));
+
+        if (Ty->isVectorTy()) {
+            for (unsigned i = 0, e = Ty->getVectorNumElements(); i != e; ++i) {
+                Value* Ex = Builder.CreateExtractElement(Val, Builder.getInt32(i));
+                Ex = createBitOrPointerCast(Ex, LeadingStoreScalarType, Builder);
+                NewStoreVal = Builder.CreateInsertElement(NewStoreVal, Ex,
+                    Builder.getInt32(Pos++));
+            }
+        }
+        else if (Ty->isPointerTy()) {
+            if (ScalarTy != LeadingStoreScalarType) {
+                if (LeadingStoreScalarType->isPointerTy()) {
+                    Val =
+                        Builder.CreatePointerBitCastOrAddrSpaceCast(Val,
+                            LeadingStoreScalarType);
+                }
+                else {
+                    Val =
+                        Builder.CreatePtrToInt(Val,
+                            Type::getIntNTy(Val->getContext(),
+                                LeadingStoreScalarType->getPrimitiveSizeInBits()));
+                    // LeadingStoreScalarType may not be an integer type, bitcast it to
+                    // the appropiate type.
+                    Val = Builder.CreateBitCast(Val, LeadingStoreScalarType);
+                }
+            }
+            NewStoreVal = Builder.CreateInsertElement(NewStoreVal, Val,
+                Builder.getInt32(Pos++));
+        }
+        else {
+            Val = createBitOrPointerCast(Val, LeadingStoreScalarType, Builder);
+            NewStoreVal = Builder.CreateInsertElement(NewStoreVal, Val,
+                Builder.getInt32(Pos++));
+        }
+    }
+
+    // Stores to be merged will be merged into the tailing store. However, the
+    // pointer from the first store (with the minimal offset) will be used as the
+    // new pointer.
+    StoreInst* FirstStore = std::get<0>(StoresToMerge.front());
+
+    // Next we need to check alignment
+    if (!checkAlignmentBeforeMerge(FirstStore, StoresToMerge, NumElts))
+        return false;
+
+    // We don't need to recalculate the new pointer as we merge stores to the
+    // tailing store, which is dominated by all mergable stores' address
+    // calculations.
+    Type* NewPointerType =
+        PointerType::get(NewStoreType, LeadingStore->getPointerAddressSpace());
+    Value* NewPointer =
+        Builder.CreateBitCast(FirstStore->getPointerOperand(), NewPointerType);
+    StoreInst* NewStore =
+        Builder.CreateAlignedStore(NewStoreVal, NewPointer,
+            LeadingStore->getAlignment());
+    NewStore->setDebugLoc(TailingStore->getDebugLoc());
+
+    // Replace the list to be optimized with the new store.
+    Instruction* NewOne = NewStore;
+    std::swap(ToOpt.back(), NewOne);
+
+    for (auto& I : StoresToMerge) {
+        StoreInst* ST = cast<StoreInst>(std::get<0>(I));
+        Value* Ptr = ST->getPointerOperand();
+        ST->eraseFromParent();
+        RecursivelyDeleteTriviallyDeadInstructions(Ptr);
+        // Mark it as already merged.
+        std::get<2>(I)->first = nullptr;
+        // Checking zero distance is intentionally omitted here due to the first
+        // memory access won't be able to be checked again.
+        std::get<2>(I)->second -= 1;;
+    }
+
+    return true;
 }
 
 /// isSafeToMergeLoad() - checks whether there is any alias from the specified
 /// load to any one in the check list, which may write to that location.
-bool MemOpt::isSafeToMergeLoad(const LoadInst *Ld,
-    const SmallVectorImpl<Instruction*> &CheckList) const {
+bool MemOpt::isSafeToMergeLoad(const LoadInst* Ld,
+    const SmallVectorImpl<Instruction*>& CheckList) const {
     MemoryLocation A = MemoryLocation::get(Ld);
 
-  for (auto *I : CheckList) {
-    // Skip instructions never writing to memory.
-    if (!I->mayWriteToMemory())
-      continue;
+    for (auto* I : CheckList) {
+        // Skip instructions never writing to memory.
+        if (!I->mayWriteToMemory())
+            continue;
 
-    MemoryLocation B = getLocation(I);
+        MemoryLocation B = getLocation(I);
 
-    if (!A.Ptr || !B.Ptr || AA->alias(A, B))
-      return false;
-  }
+        if (!A.Ptr || !B.Ptr || AA->alias(A, B))
+            return false;
+    }
 
-  return true;
+    return true;
 }
 
 /// isSafeToMergeStores() - checks whether there is any alias from the
 /// specified store set to any one in the check list, which may read/write to
 /// that location.
 bool MemOpt::isSafeToMergeStores(
-    const SmallVectorImpl<std::tuple<StoreInst *, int64_t, MemRefListTy::iterator> > &Stores,
-    const SmallVectorImpl<Instruction*> &CheckList) const {
-  // Arrange CheckList as the outer loop to favor the case where there are
-  // back-to-back stores only.
-  for (auto *I : CheckList) {
-    MemoryLocation A= getLocation(I);
+    const SmallVectorImpl<std::tuple<StoreInst*, int64_t, MemRefListTy::iterator> >& Stores,
+    const SmallVectorImpl<Instruction*>& CheckList) const {
+    // Arrange CheckList as the outer loop to favor the case where there are
+    // back-to-back stores only.
+    for (auto* I : CheckList) {
+        MemoryLocation A = getLocation(I);
 
-    for (auto &S : Stores) {
-      MemoryLocation B = getLocation(std::get<0>(S));
+        for (auto& S : Stores) {
+            MemoryLocation B = getLocation(std::get<0>(S));
 
-      if (!A.Ptr || !B.Ptr || AA->alias(A, B))
-        return false;
+            if (!A.Ptr || !B.Ptr || AA->alias(A, B))
+                return false;
+        }
     }
-  }
 
-  return true;
+    return true;
 }
 
 class ExtOperator : public Operator {
 public:
-  static inline bool classof(const Instruction *I) {
-    return I->getOpcode() == Instruction::SExt ||
-           I->getOpcode() == Instruction::ZExt;
-  }
-  static inline bool classof(const ConstantExpr *CE) {
-    return CE->getOpcode() == Instruction::SExt ||
-           CE->getOpcode() == Instruction::ZExt;
-  }
-  static inline bool classof(const Value *V) {
-    return (isa<Instruction>(V) && classof(cast<Instruction>(V))) ||
-           (isa<ConstantExpr>(V) && classof(cast<ConstantExpr>(V)));
-  }
+    static inline bool classof(const Instruction* I) {
+        return I->getOpcode() == Instruction::SExt ||
+            I->getOpcode() == Instruction::ZExt;
+    }
+    static inline bool classof(const ConstantExpr* CE) {
+        return CE->getOpcode() == Instruction::SExt ||
+            CE->getOpcode() == Instruction::ZExt;
+    }
+    static inline bool classof(const Value* V) {
+        return (isa<Instruction>(V) && classof(cast<Instruction>(V))) ||
+            (isa<ConstantExpr>(V) && classof(cast<ConstantExpr>(V)));
+    }
 
-  bool isZExt() const { return getOpcode() == Instruction::ZExt; }
-  bool isSExt() const { return getOpcode() == Instruction::SExt; }
+    bool isZExt() const { return getOpcode() == Instruction::ZExt; }
+    bool isSExt() const { return getOpcode() == Instruction::SExt; }
 
 #if LLVM_VERSION_MAJOR >= 7
-  ~ExtOperator() = delete;
+    ~ExtOperator() = delete;
 #endif
 };
 
 class OverflowingAdditiveOperator : public Operator {
 public:
-  static inline bool classof(const Instruction *I) {
-    return I->getOpcode() == Instruction::Add ||
-           I->getOpcode() == Instruction::Sub;
-  }
-  static inline bool classof(const ConstantExpr *CE) {
-    return CE->getOpcode() == Instruction::Add ||
-           CE->getOpcode() == Instruction::Sub;
-  }
-  static inline bool classof(const Value *V) {
-    return (isa<Instruction>(V) && classof(cast<Instruction>(V))) ||
-           (isa<ConstantExpr>(V) && classof(cast<ConstantExpr>(V)));
-  }
+    static inline bool classof(const Instruction* I) {
+        return I->getOpcode() == Instruction::Add ||
+            I->getOpcode() == Instruction::Sub;
+    }
+    static inline bool classof(const ConstantExpr* CE) {
+        return CE->getOpcode() == Instruction::Add ||
+            CE->getOpcode() == Instruction::Sub;
+    }
+    static inline bool classof(const Value* V) {
+        return (isa<Instruction>(V) && classof(cast<Instruction>(V))) ||
+            (isa<ConstantExpr>(V) && classof(cast<ConstantExpr>(V)));
+    }
 
-  bool hasNoUnsignedWrap() const {
-    return cast<OverflowingBinaryOperator>(this)->hasNoUnsignedWrap();
-  }
-  bool hasNoSignedWrap() const {
-    return cast<OverflowingBinaryOperator>(this)->hasNoSignedWrap();
-  }
+    bool hasNoUnsignedWrap() const {
+        return cast<OverflowingBinaryOperator>(this)->hasNoUnsignedWrap();
+    }
+    bool hasNoSignedWrap() const {
+        return cast<OverflowingBinaryOperator>(this)->hasNoSignedWrap();
+    }
 
 #if LLVM_VERSION_MAJOR >= 7
-  ~OverflowingAdditiveOperator() = delete;
+    ~OverflowingAdditiveOperator() = delete;
 #endif
 };
 
-class OrOperator : public ConcreteOperator<BinaryOperator, Instruction::Or> 
+class OrOperator : public ConcreteOperator<BinaryOperator, Instruction::Or>
 {
 #if LLVM_VERSION_MAJOR >= 7
     ~OrOperator() = delete;
 #endif
 };
-class BitCastOperator : public ConcreteOperator<Operator, Instruction::BitCast> 
+class BitCastOperator : public ConcreteOperator<Operator, Instruction::BitCast>
 {
 #if LLVM_VERSION_MAJOR >= 7
     ~BitCastOperator() = delete;
 #endif
 };
 
-bool MemOpt::canonicalizeGEP64(Instruction *I) const {
-  Value *Ptr = nullptr;
-  if (auto LD = dyn_cast<LoadInst>(I))
-    Ptr = LD->getPointerOperand();
-  else if (auto ST = dyn_cast<StoreInst>(I))
-    Ptr = ST->getPointerOperand();
+bool MemOpt::canonicalizeGEP64(Instruction* I) const {
+    Value* Ptr = nullptr;
+    if (auto LD = dyn_cast<LoadInst>(I))
+        Ptr = LD->getPointerOperand();
+    else if (auto ST = dyn_cast<StoreInst>(I))
+        Ptr = ST->getPointerOperand();
 
-  // Skip non 64-bit or non GEP-based pointers if any.
-  if (auto Cast = dyn_cast_or_null<llvm::BitCastOperator>(Ptr))
-    Ptr = Cast->getOperand(0);
-  GEPOperator *GEPOp = dyn_cast_or_null<GEPOperator>(Ptr);
-  if (!GEPOp)
-    return false;
-  if (CGC->getRegisterPointerSizeInBits(GEPOp->getPointerAddressSpace()) != 64)
-    return false;
+    // Skip non 64-bit or non GEP-based pointers if any.
+    if (auto Cast = dyn_cast_or_null<llvm::BitCastOperator>(Ptr))
+        Ptr = Cast->getOperand(0);
+    GEPOperator* GEPOp = dyn_cast_or_null<GEPOperator>(Ptr);
+    if (!GEPOp)
+        return false;
+    if (CGC->getRegisterPointerSizeInBits(GEPOp->getPointerAddressSpace()) != 64)
+        return false;
 
-  IRBuilder<> Builder(isa<Instruction>(GEPOp) ? cast<Instruction>(GEPOp) : I);
+    IRBuilder<> Builder(isa<Instruction>(GEPOp) ? cast<Instruction>(GEPOp) : I);
 
-  bool Changed = false;
-  for (auto U = GEPOp->idx_begin(), E = GEPOp->idx_end(); U != E; ++U) {
-    Value *Idx = U->get();
-    Type *IdxTy = Idx->getType();
-    if (!IdxTy->isIntegerTy(64))
-      continue;
-    auto ExtOp = dyn_cast<ExtOperator>(Idx);
-    if (!ExtOp)
-      continue;
-    auto CastOpcode = Instruction::CastOps(ExtOp->getOpcode());
-    // Distribute `ext` over binary operator with corresponding `nsw`/`nuw`
-    // flags.
-    auto BinOp = dyn_cast<OverflowingAdditiveOperator>(ExtOp->getOperand(0));
-    if (!BinOp) {
-      auto OrOp = dyn_cast<OrOperator>(ExtOp->getOperand(0));
-      if (!OrOp)
-        continue;
-      Value *LHS = OrOp->getOperand(0);
-      Value *RHS = OrOp->getOperand(1);
-      ConstantInt *RHSC = dyn_cast<ConstantInt>(RHS);
-      if (!RHSC || !MaskedValueIsZero(LHS, RHSC->getValue(), *DL))
-        continue;
-      // Treat `or` as `add.nsw` or `add.nuw`.
-      LHS = Builder.CreateCast(CastOpcode, LHS, IdxTy);
-      RHS = Builder.CreateCast(CastOpcode, RHS, IdxTy);
-      bool HasNUW = ExtOp->isZExt();
-      bool HasNSW = ExtOp->isSExt();
-      U->set(Builder.CreateAdd(LHS, RHS, ".or", HasNUW, HasNSW));
-      RecursivelyDeleteTriviallyDeadInstructions(ExtOp);
-      Changed = true;
-    } else if ((ExtOp->isSExt() && BinOp->hasNoSignedWrap()) ||
-               (ExtOp->isZExt() && BinOp->hasNoUnsignedWrap())) {
-      auto BinOpcode = BinaryOperator::BinaryOps(BinOp->getOpcode());
-      Value *LHS = BinOp->getOperand(0);
-      Value *RHS = BinOp->getOperand(1);
-      LHS = Builder.CreateCast(CastOpcode, LHS, IdxTy);
-      RHS = Builder.CreateCast(CastOpcode, RHS, IdxTy);
-      auto BO = cast<BinaryOperator>(Builder.CreateBinOp(BinOpcode, LHS, RHS));
-      if (BinOp->hasNoUnsignedWrap())
-        BO->setHasNoUnsignedWrap();
-      if (BinOp->hasNoSignedWrap())
-        BO->setHasNoSignedWrap();
-      U->set(BO);
-      RecursivelyDeleteTriviallyDeadInstructions(ExtOp);
-      Changed = true;
+    bool Changed = false;
+    for (auto U = GEPOp->idx_begin(), E = GEPOp->idx_end(); U != E; ++U) {
+        Value* Idx = U->get();
+        Type* IdxTy = Idx->getType();
+        if (!IdxTy->isIntegerTy(64))
+            continue;
+        auto ExtOp = dyn_cast<ExtOperator>(Idx);
+        if (!ExtOp)
+            continue;
+        auto CastOpcode = Instruction::CastOps(ExtOp->getOpcode());
+        // Distribute `ext` over binary operator with corresponding `nsw`/`nuw`
+        // flags.
+        auto BinOp = dyn_cast<OverflowingAdditiveOperator>(ExtOp->getOperand(0));
+        if (!BinOp) {
+            auto OrOp = dyn_cast<OrOperator>(ExtOp->getOperand(0));
+            if (!OrOp)
+                continue;
+            Value* LHS = OrOp->getOperand(0);
+            Value* RHS = OrOp->getOperand(1);
+            ConstantInt* RHSC = dyn_cast<ConstantInt>(RHS);
+            if (!RHSC || !MaskedValueIsZero(LHS, RHSC->getValue(), *DL))
+                continue;
+            // Treat `or` as `add.nsw` or `add.nuw`.
+            LHS = Builder.CreateCast(CastOpcode, LHS, IdxTy);
+            RHS = Builder.CreateCast(CastOpcode, RHS, IdxTy);
+            bool HasNUW = ExtOp->isZExt();
+            bool HasNSW = ExtOp->isSExt();
+            U->set(Builder.CreateAdd(LHS, RHS, ".or", HasNUW, HasNSW));
+            RecursivelyDeleteTriviallyDeadInstructions(ExtOp);
+            Changed = true;
+        }
+        else if ((ExtOp->isSExt() && BinOp->hasNoSignedWrap()) ||
+            (ExtOp->isZExt() && BinOp->hasNoUnsignedWrap())) {
+            auto BinOpcode = BinaryOperator::BinaryOps(BinOp->getOpcode());
+            Value* LHS = BinOp->getOperand(0);
+            Value* RHS = BinOp->getOperand(1);
+            LHS = Builder.CreateCast(CastOpcode, LHS, IdxTy);
+            RHS = Builder.CreateCast(CastOpcode, RHS, IdxTy);
+            auto BO = cast<BinaryOperator>(Builder.CreateBinOp(BinOpcode, LHS, RHS));
+            if (BinOp->hasNoUnsignedWrap())
+                BO->setHasNoUnsignedWrap();
+            if (BinOp->hasNoSignedWrap())
+                BO->setHasNoSignedWrap();
+            U->set(BO);
+            RecursivelyDeleteTriviallyDeadInstructions(ExtOp);
+            Changed = true;
+        }
     }
-  }
 
-  return Changed;
+    return Changed;
 }
 
-bool MemOpt::optimizeGEP64(Instruction *I) const {
-  Value *Ptr = nullptr;
-  if (auto LD = dyn_cast<LoadInst>(I))
-    Ptr = LD->getPointerOperand();
-  else if (auto ST = dyn_cast<StoreInst>(I))
-    Ptr = ST->getPointerOperand();
+bool MemOpt::optimizeGEP64(Instruction* I) const {
+    Value* Ptr = nullptr;
+    if (auto LD = dyn_cast<LoadInst>(I))
+        Ptr = LD->getPointerOperand();
+    else if (auto ST = dyn_cast<StoreInst>(I))
+        Ptr = ST->getPointerOperand();
 
-  // Skip non 64-bit or non GEP-based pointers if any.
-  if (auto Cast = dyn_cast_or_null<llvm::BitCastOperator>(Ptr))
-    Ptr = Cast->getOperand(0);
-  GEPOperator *GEPOp = dyn_cast_or_null<GEPOperator>(Ptr);
-  if (!GEPOp)
-    return false;
-  if (CGC->getRegisterPointerSizeInBits(GEPOp->getPointerAddressSpace()) != 64)
-    return false;
+    // Skip non 64-bit or non GEP-based pointers if any.
+    if (auto Cast = dyn_cast_or_null<llvm::BitCastOperator>(Ptr))
+        Ptr = Cast->getOperand(0);
+    GEPOperator* GEPOp = dyn_cast_or_null<GEPOperator>(Ptr);
+    if (!GEPOp)
+        return false;
+    if (CGC->getRegisterPointerSizeInBits(GEPOp->getPointerAddressSpace()) != 64)
+        return false;
 
-  IRBuilder<> Builder(isa<Instruction>(GEPOp) ? cast<Instruction>(GEPOp) : I);
+    IRBuilder<> Builder(isa<Instruction>(GEPOp) ? cast<Instruction>(GEPOp) : I);
 
-  bool Changed = false;
-  for (auto U = GEPOp->idx_begin(), E = GEPOp->idx_end(); U != E; ++U) {
-    Value *Idx = U->get();
-    Type *IdxTy = Idx->getType();
-    if (!IdxTy->isIntegerTy(64))
-      continue;
-    // Factor out `ext` through binary operator with corresponding `nsw`/`nuw`
-    // flags.
-    auto BinOp = dyn_cast<OverflowingAdditiveOperator>(Idx);
-    if (!BinOp)
-      continue;
-    auto BinOpcode = BinaryOperator::BinaryOps(BinOp->getOpcode());
-    Value *LHS = BinOp->getOperand(0);
-    Value *RHS = BinOp->getOperand(1);
-    auto ExtOp0 = dyn_cast<ExtOperator>(LHS);
-    if (!ExtOp0)
-      continue;
-    auto CastOpcode = Instruction::CastOps(ExtOp0->getOpcode());
-    auto ExtOp1 = dyn_cast<ExtOperator>(RHS);
-    if (ExtOp1 && ExtOp0->getOpcode() == ExtOp1->getOpcode() &&
-        ((ExtOp0->isZExt() && BinOp->hasNoUnsignedWrap()) ||
-         (ExtOp0->isSExt() && BinOp->hasNoSignedWrap()))) {
-      LHS = ExtOp0->getOperand(0);
-      RHS = ExtOp1->getOperand(0);
-      unsigned LHSBitWidth = LHS->getType()->getIntegerBitWidth();
-      unsigned RHSBitWidth = RHS->getType()->getIntegerBitWidth();
-      unsigned BitWidth = std::max(LHSBitWidth, RHSBitWidth);
-      // Either LHS or RHS may have smaller integer, extend them before
-      // creating `binop` over them.
-      if (LHSBitWidth < BitWidth) {
-        Type *Ty = Builder.getIntNTy(BitWidth);
-        LHS = Builder.CreateCast(CastOpcode, LHS, Ty);
-      }
-      if (RHSBitWidth < BitWidth) {
-        Type *Ty = Builder.getIntNTy(BitWidth);
-        RHS = Builder.CreateCast(CastOpcode, RHS, Ty);
-      }
-    } else if (isa<ConstantInt>(RHS)) {
-      LHS = ExtOp0->getOperand(0);
-      unsigned BitWidth = LHS->getType()->getIntegerBitWidth();
-      APInt Val = cast<ConstantInt>(RHS)->getValue();
-      if (!((ExtOp0->isZExt() && Val.isIntN(BitWidth)) ||
-            (ExtOp0->isSExt() && Val.isSignedIntN(BitWidth))))
-        continue;
-      if (!((ExtOp0->isZExt() && BinOp->hasNoUnsignedWrap()) ||
-            (ExtOp0->isSExt() && BinOp->hasNoSignedWrap())))
-        continue;
-      LHS = ExtOp0->getOperand(0);
-      RHS = Builder.CreateTrunc(RHS, LHS->getType());
-    } else
-      continue;
-    auto BO = cast<BinaryOperator>(Builder.CreateBinOp(BinOpcode, LHS, RHS));
-    if (BinOp->hasNoUnsignedWrap())
-      BO->setHasNoUnsignedWrap();
-    if (BinOp->hasNoSignedWrap())
-      BO->setHasNoSignedWrap();
-    U->set(Builder.CreateCast(CastOpcode, BO, IdxTy));
-    RecursivelyDeleteTriviallyDeadInstructions(BinOp);
-    Changed = true;
-  }
+    bool Changed = false;
+    for (auto U = GEPOp->idx_begin(), E = GEPOp->idx_end(); U != E; ++U) {
+        Value* Idx = U->get();
+        Type* IdxTy = Idx->getType();
+        if (!IdxTy->isIntegerTy(64))
+            continue;
+        // Factor out `ext` through binary operator with corresponding `nsw`/`nuw`
+        // flags.
+        auto BinOp = dyn_cast<OverflowingAdditiveOperator>(Idx);
+        if (!BinOp)
+            continue;
+        auto BinOpcode = BinaryOperator::BinaryOps(BinOp->getOpcode());
+        Value* LHS = BinOp->getOperand(0);
+        Value* RHS = BinOp->getOperand(1);
+        auto ExtOp0 = dyn_cast<ExtOperator>(LHS);
+        if (!ExtOp0)
+            continue;
+        auto CastOpcode = Instruction::CastOps(ExtOp0->getOpcode());
+        auto ExtOp1 = dyn_cast<ExtOperator>(RHS);
+        if (ExtOp1 && ExtOp0->getOpcode() == ExtOp1->getOpcode() &&
+            ((ExtOp0->isZExt() && BinOp->hasNoUnsignedWrap()) ||
+            (ExtOp0->isSExt() && BinOp->hasNoSignedWrap()))) {
+            LHS = ExtOp0->getOperand(0);
+            RHS = ExtOp1->getOperand(0);
+            unsigned LHSBitWidth = LHS->getType()->getIntegerBitWidth();
+            unsigned RHSBitWidth = RHS->getType()->getIntegerBitWidth();
+            unsigned BitWidth = std::max(LHSBitWidth, RHSBitWidth);
+            // Either LHS or RHS may have smaller integer, extend them before
+            // creating `binop` over them.
+            if (LHSBitWidth < BitWidth) {
+                Type* Ty = Builder.getIntNTy(BitWidth);
+                LHS = Builder.CreateCast(CastOpcode, LHS, Ty);
+            }
+            if (RHSBitWidth < BitWidth) {
+                Type* Ty = Builder.getIntNTy(BitWidth);
+                RHS = Builder.CreateCast(CastOpcode, RHS, Ty);
+            }
+        }
+        else if (isa<ConstantInt>(RHS)) {
+            LHS = ExtOp0->getOperand(0);
+            unsigned BitWidth = LHS->getType()->getIntegerBitWidth();
+            APInt Val = cast<ConstantInt>(RHS)->getValue();
+            if (!((ExtOp0->isZExt() && Val.isIntN(BitWidth)) ||
+                (ExtOp0->isSExt() && Val.isSignedIntN(BitWidth))))
+                continue;
+            if (!((ExtOp0->isZExt() && BinOp->hasNoUnsignedWrap()) ||
+                (ExtOp0->isSExt() && BinOp->hasNoSignedWrap())))
+                continue;
+            LHS = ExtOp0->getOperand(0);
+            RHS = Builder.CreateTrunc(RHS, LHS->getType());
+        }
+        else
+            continue;
+        auto BO = cast<BinaryOperator>(Builder.CreateBinOp(BinOpcode, LHS, RHS));
+        if (BinOp->hasNoUnsignedWrap())
+            BO->setHasNoUnsignedWrap();
+        if (BinOp->hasNoSignedWrap())
+            BO->setHasNoSignedWrap();
+        U->set(Builder.CreateCast(CastOpcode, BO, IdxTy));
+        RecursivelyDeleteTriviallyDeadInstructions(BinOp);
+        Changed = true;
+    }
 
-  return Changed;
+    return Changed;
 }
 
-Value *
-SymbolicPointer::getLinearExpression(Value *V, APInt &Scale, APInt &Offset,
-                                     ExtensionKind &Extension, unsigned Depth,
-                                     const DataLayout *DL) {
-  assert(V->getType()->isIntegerTy() && "Not an integer value");
+Value*
+SymbolicPointer::getLinearExpression(Value* V, APInt& Scale, APInt& Offset,
+    ExtensionKind& Extension, unsigned Depth,
+    const DataLayout* DL) {
+    assert(V->getType()->isIntegerTy() && "Not an integer value");
 
-  // Limit our recursion depth.
-  if (Depth == 16) {
+    // Limit our recursion depth.
+    if (Depth == 16) {
+        Scale = 1;
+        Offset = 0;
+        return V;
+    }
+
+    if (BinaryOperator * BOp = dyn_cast<BinaryOperator>(V)) {
+        if (ConstantInt * RHSC = dyn_cast<ConstantInt>(BOp->getOperand(1))) {
+            switch (BOp->getOpcode()) {
+            default: break;
+            case Instruction::Or:
+                // X|C == X+C if all the bits in C are unset in X.  Otherwise we can't
+                // analyze it.
+                if (!MaskedValueIsZero(BOp->getOperand(0), RHSC->getValue(), *DL))
+                    break;
+                // FALL THROUGH.
+            case Instruction::Add:
+                V = getLinearExpression(BOp->getOperand(0), Scale, Offset, Extension,
+                    Depth + 1, DL);
+                Offset += RHSC->getValue();
+                return V;
+            case Instruction::Mul:
+                V = getLinearExpression(BOp->getOperand(0), Scale, Offset, Extension,
+                    Depth + 1, DL);
+                Offset *= RHSC->getValue();
+                Scale *= RHSC->getValue();
+                return V;
+            case Instruction::Shl:
+                V = getLinearExpression(BOp->getOperand(0), Scale, Offset, Extension,
+                    Depth + 1, DL);
+                Offset <<= unsigned(RHSC->getValue().getLimitedValue());
+                Scale <<= unsigned(RHSC->getValue().getLimitedValue());
+                return V;
+            }
+        }
+    }
+
+    // Since GEP indices are sign extended anyway, we don't care about the high
+    // bits of a sign or zero extended value - just scales and offsets.  The
+    // extensions have to be consistent though.
+    if ((isa<SExtInst>(V) && Extension != EK_ZeroExt) ||
+        (isa<ZExtInst>(V) && Extension != EK_SignExt)) {
+        Value* CastOp = cast<CastInst>(V)->getOperand(0);
+        unsigned OldWidth = Scale.getBitWidth();
+        unsigned SmallWidth = CastOp->getType()->getPrimitiveSizeInBits();
+        Scale = Scale.trunc(SmallWidth);
+        Offset = Offset.trunc(SmallWidth);
+        Extension = isa<SExtInst>(V) ? EK_SignExt : EK_ZeroExt;
+
+        Value* Result = getLinearExpression(CastOp, Scale, Offset, Extension,
+            Depth + 1, DL);
+        Scale = Scale.zext(OldWidth);
+        if (Extension == EK_SignExt)
+            Offset = Offset.sext(OldWidth);
+        else
+            Offset = Offset.zext(OldWidth);
+
+        return Result;
+    }
+
     Scale = 1;
     Offset = 0;
     return V;
-  }
-
-  if (BinaryOperator *BOp = dyn_cast<BinaryOperator>(V)) {
-    if (ConstantInt *RHSC = dyn_cast<ConstantInt>(BOp->getOperand(1))) {
-      switch (BOp->getOpcode()) {
-      default: break;
-      case Instruction::Or:
-        // X|C == X+C if all the bits in C are unset in X.  Otherwise we can't
-        // analyze it.
-        if (!MaskedValueIsZero(BOp->getOperand(0), RHSC->getValue(), *DL))
-          break;
-        // FALL THROUGH.
-      case Instruction::Add:
-        V = getLinearExpression(BOp->getOperand(0), Scale, Offset, Extension,
-                                Depth+1, DL);
-        Offset += RHSC->getValue();
-        return V;
-      case Instruction::Mul:
-        V = getLinearExpression(BOp->getOperand(0), Scale, Offset, Extension,
-                                Depth+1, DL);
-        Offset *= RHSC->getValue();
-        Scale *= RHSC->getValue();
-        return V;
-      case Instruction::Shl:
-        V = getLinearExpression(BOp->getOperand(0), Scale, Offset, Extension,
-                                Depth+1, DL);
-        Offset <<= unsigned(RHSC->getValue().getLimitedValue());
-        Scale <<= unsigned(RHSC->getValue().getLimitedValue());
-        return V;
-      }
-    }
-  }
-
-  // Since GEP indices are sign extended anyway, we don't care about the high
-  // bits of a sign or zero extended value - just scales and offsets.  The
-  // extensions have to be consistent though.
-  if ((isa<SExtInst>(V) && Extension != EK_ZeroExt) ||
-      (isa<ZExtInst>(V) && Extension != EK_SignExt)) {
-    Value *CastOp = cast<CastInst>(V)->getOperand(0);
-    unsigned OldWidth = Scale.getBitWidth();
-    unsigned SmallWidth = CastOp->getType()->getPrimitiveSizeInBits();
-    Scale = Scale.trunc(SmallWidth);
-    Offset = Offset.trunc(SmallWidth);
-    Extension = isa<SExtInst>(V) ? EK_SignExt : EK_ZeroExt;
-
-    Value *Result = getLinearExpression(CastOp, Scale, Offset, Extension,
-                                        Depth+1, DL);
-    Scale = Scale.zext(OldWidth);
-    if (Extension == EK_SignExt)
-        Offset = Offset.sext(OldWidth);
-    else
-        Offset = Offset.zext(OldWidth);
-
-    return Result;
-  }
-
-  Scale = 1;
-  Offset = 0;
-  return V;
 }
 
 class IntToPtrOperator :
-    public ConcreteOperator<Operator, Instruction::IntToPtr> 
+    public ConcreteOperator<Operator, Instruction::IntToPtr>
 {
 #if LLVM_VERSION_MAJOR >= 7
     ~IntToPtrOperator() = delete;
@@ -1438,225 +1449,225 @@ class IntToPtrOperator :
 };
 
 bool
-SymbolicPointer::decomposePointer(const Value *Ptr, SymbolicPointer &SymPtr,
-                                  CodeGenContext *pContext) {
-  unsigned MaxLookup = MaxLookupSearchDepth;
-  const DataLayout* DL = &pContext->getModule()->getDataLayout();
-  SymPtr.Offset = 0;
-  SymPtr.BasePtr = nullptr;
-  do {
-    const Operator *Op = dyn_cast<Operator>(Ptr);
-    if (!Op) {
-      // The only non-operator case we can handle are GlobalAliases.
-      if (const GlobalAlias *GA = dyn_cast<GlobalAlias>(Ptr)) {
-        if (!GA->isInterposable()) {
-          Ptr = GA->getAliasee();
-          continue;
-        }
-      }
-      SymPtr.BasePtr = Ptr;
-      return false;
-    }
-
-    if (Op->getOpcode() == Instruction::BitCast) {
-      Ptr = Op->getOperand(0);
-      continue;
-    }
-
-    const GEPOperator *GEPOp = dyn_cast<GEPOperator>(Op);
-    if (!GEPOp) {
-      // If it's not a GEP, hand it off to SimplifyInstruction to see if it
-      // can come up with something. This matches what GetUnderlyingObject does.
-      if (const Instruction *I = dyn_cast<Instruction>(Ptr))
-        // TODO: Get a DominatorTree and use it here.
-        if (const Value *Simplified =
-              SimplifyInstruction(const_cast<Instruction *>(I), *DL)) {
-          Ptr = Simplified;
-          continue;
+SymbolicPointer::decomposePointer(const Value* Ptr, SymbolicPointer& SymPtr,
+    CodeGenContext* pContext) {
+    unsigned MaxLookup = MaxLookupSearchDepth;
+    const DataLayout* DL = &pContext->getModule()->getDataLayout();
+    SymPtr.Offset = 0;
+    SymPtr.BasePtr = nullptr;
+    do {
+        const Operator* Op = dyn_cast<Operator>(Ptr);
+        if (!Op) {
+            // The only non-operator case we can handle are GlobalAliases.
+            if (const GlobalAlias * GA = dyn_cast<GlobalAlias>(Ptr)) {
+                if (!GA->isInterposable()) {
+                    Ptr = GA->getAliasee();
+                    continue;
+                }
+            }
+            SymPtr.BasePtr = Ptr;
+            return false;
         }
 
-      // IntToPtr is treated like gep(i8* 0, Src).
-      // TODO: Unify the common handling of IntToPtr & GEP into a single
-      // routine.
-      if (const IntToPtrOperator *I2POp = dyn_cast<IntToPtrOperator>(Op)) {
-        PointerType *PtrTy = cast<PointerType>(I2POp->getType());
-        unsigned int ptrSize = pContext->getRegisterPointerSizeInBits(PtrTy->getAddressSpace());
-        Value *Src = I2POp->getOperand(0);
-        Value *BasePtr = ConstantPointerNull::get(PtrTy);
-
-        // Constant pointer.
-        if (ConstantInt *CI = dyn_cast<ConstantInt>(Src)) {
-          SymPtr.Offset += CI->getSExtValue();
-          SymPtr.BasePtr = BasePtr;
-          return false;
+        if (Op->getOpcode() == Instruction::BitCast) {
+            Ptr = Op->getOperand(0);
+            continue;
         }
 
-        // Treat that like (inttoptr (add (base offset)))
-        if (AddOperator *Add = dyn_cast<AddOperator>(Src)) {
-          // Note that we always assume LHS as the base and RHS as the offset.
-          // That's why GEP is invented in LLVM IR as the pointer arithmetic in
-          // C is always in form of (base + offset). By designating the base
-          // pointer, we won't run into the case where both operands are
-          // symmetric in `add` instruction.
-          if (!isa<ConstantInt>(Add->getOperand(1))) {
-            BasePtr = Add->getOperand(0);
-            Src = Add->getOperand(1);
-          }
+        const GEPOperator* GEPOp = dyn_cast<GEPOperator>(Op);
+        if (!GEPOp) {
+            // If it's not a GEP, hand it off to SimplifyInstruction to see if it
+            // can come up with something. This matches what GetUnderlyingObject does.
+            if (const Instruction * I = dyn_cast<Instruction>(Ptr))
+                // TODO: Get a DominatorTree and use it here.
+                if (const Value * Simplified =
+                    SimplifyInstruction(const_cast<Instruction*>(I), *DL)) {
+                    Ptr = Simplified;
+                    continue;
+                }
+
+            // IntToPtr is treated like gep(i8* 0, Src).
+            // TODO: Unify the common handling of IntToPtr & GEP into a single
+            // routine.
+            if (const IntToPtrOperator * I2POp = dyn_cast<IntToPtrOperator>(Op)) {
+                PointerType* PtrTy = cast<PointerType>(I2POp->getType());
+                unsigned int ptrSize = pContext->getRegisterPointerSizeInBits(PtrTy->getAddressSpace());
+                Value* Src = I2POp->getOperand(0);
+                Value* BasePtr = ConstantPointerNull::get(PtrTy);
+
+                // Constant pointer.
+                if (ConstantInt * CI = dyn_cast<ConstantInt>(Src)) {
+                    SymPtr.Offset += CI->getSExtValue();
+                    SymPtr.BasePtr = BasePtr;
+                    return false;
+                }
+
+                // Treat that like (inttoptr (add (base offset)))
+                if (AddOperator * Add = dyn_cast<AddOperator>(Src)) {
+                    // Note that we always assume LHS as the base and RHS as the offset.
+                    // That's why GEP is invented in LLVM IR as the pointer arithmetic in
+                    // C is always in form of (base + offset). By designating the base
+                    // pointer, we won't run into the case where both operands are
+                    // symmetric in `add` instruction.
+                    if (!isa<ConstantInt>(Add->getOperand(1))) {
+                        BasePtr = Add->getOperand(0);
+                        Src = Add->getOperand(1);
+                    }
+                }
+
+                uint64_t Scale = 1;
+                ExtensionKind Extension = EK_NotExtended;
+                unsigned Width = Src->getType()->getIntegerBitWidth();
+                if (ptrSize > Width)
+                    Extension = EK_SignExt;
+
+                APInt IndexScale(Width, 0), IndexOffset(Width, 0);
+                Src = getLinearExpression(Src, IndexScale, IndexOffset, Extension,
+                    0U, DL);
+                SymPtr.Offset += IndexOffset.getSExtValue() * Scale;
+                Scale *= IndexScale.getSExtValue();
+
+                SymbolicIndex Idx(Src, Extension);
+
+                // If we already had an occurrence of this index variable, merge this
+                // scale into it.  For example, we want to handle:
+                //   A[x][x] -> x*16 + x*4 -> x*20
+                // This also ensures that 'x' only appears in the index list once.
+                for (unsigned i = 0, e = SymPtr.Terms.size(); i != e; ++i) {
+                    if (SymPtr.Terms[i].Idx == Idx) {
+                        Scale += SymPtr.Terms[i].Scale;
+                        SymPtr.Terms.erase(SymPtr.Terms.begin() + i);
+                        break;
+                    }
+                }
+
+                // Make sure that we have a scale that makes sense for this target's
+                // pointer size.
+                if (unsigned ShiftBits = 64 - ptrSize) {
+                    Scale <<= ShiftBits;
+                    Scale = (int64_t)Scale >> ShiftBits;
+                }
+
+                if (Scale) {
+                    Term Entry = { Idx, int64_t(Scale) };
+                    SymPtr.Terms.push_back(Entry);
+                }
+
+                Ptr = BasePtr;
+            }
+
+            SymPtr.BasePtr = Ptr;
+            return false;
         }
 
-        uint64_t Scale = 1;
-        ExtensionKind Extension = EK_NotExtended;
-        unsigned Width = Src->getType()->getIntegerBitWidth();
-        if (ptrSize > Width)
-          Extension = EK_SignExt;
-
-        APInt IndexScale(Width, 0), IndexOffset(Width, 0);
-        Src = getLinearExpression(Src, IndexScale, IndexOffset, Extension,
-                                  0U, DL);
-        SymPtr.Offset += IndexOffset.getSExtValue() * Scale;
-        Scale *= IndexScale.getSExtValue();
-
-        SymbolicIndex Idx(Src, Extension);
-
-        // If we already had an occurrence of this index variable, merge this
-        // scale into it.  For example, we want to handle:
-        //   A[x][x] -> x*16 + x*4 -> x*20
-        // This also ensures that 'x' only appears in the index list once.
-        for (unsigned i = 0, e = SymPtr.Terms.size(); i != e; ++i) {
-          if (SymPtr.Terms[i].Idx == Idx) {
-            Scale += SymPtr.Terms[i].Scale;
-            SymPtr.Terms.erase(SymPtr.Terms.begin()+i);
-            break;
-          }
+        // Don't attempt to analyze GEPs over unsized objects.
+        if (!GEPOp->getOperand(0)->getType()->getPointerElementType()->isSized()) {
+            SymPtr.BasePtr = Ptr;
+            return false;
         }
 
-        // Make sure that we have a scale that makes sense for this target's
-        // pointer size.
-        if (unsigned ShiftBits = 64 - ptrSize) {
-          Scale <<= ShiftBits;
-          Scale = (int64_t)Scale >> ShiftBits;
+        // If we are lacking DataLayout information, we can't compute the offets of
+        // elements computed by GEPs.  However, we can handle bitcast equivalent
+        // GEPs.
+        if (!DL) {
+            if (!GEPOp->hasAllZeroIndices()) {
+                SymPtr.BasePtr = Ptr;
+                return false;
+            }
+            Ptr = GEPOp->getOperand(0);
+            continue;
         }
 
-        if (Scale) {
-          Term Entry = {Idx, int64_t(Scale)};
-          SymPtr.Terms.push_back(Entry);
+        unsigned int ptrSize =
+            pContext->getRegisterPointerSizeInBits(GEPOp->getPointerAddressSpace());
+        // Walk the indices of the GEP, accumulating them into BaseOff/VarIndices.
+        gep_type_iterator GTI = gep_type_begin(GEPOp);
+        for (User::const_op_iterator I = GEPOp->op_begin() + 1,
+            E = GEPOp->op_end(); I != E; ++I, ++GTI) {
+            Value* Index = *I;
+            // Compute the (potentially symbolic) offset in bytes for this index.
+            if (StructType * STy = GTI.getStructTypeOrNull()) {
+                // For a struct, add the member offset.
+                unsigned FieldNo = unsigned(cast<ConstantInt>(Index)->getZExtValue());
+                if (FieldNo == 0) continue;
+
+                SymPtr.Offset += DL->getStructLayout(STy)->getElementOffset(FieldNo);
+                continue;
+            }
+
+            // For an array/pointer, add the element offset, explicitly scaled.
+            if (ConstantInt * CIdx = dyn_cast<ConstantInt>(Index)) {
+                if (CIdx->isZero()) continue;
+                SymPtr.Offset += DL->getTypeAllocSize(GTI.getIndexedType()) * CIdx->getSExtValue();
+                continue;
+            }
+
+            // In some cases the GEP might have indices that don't directly have a baseoffset
+            // we need to dig deeper to find these
+            std::vector<Value*> terms = { Index };
+            if (BinaryOperator * BOp = dyn_cast<BinaryOperator>(Index))
+            {
+                if (!(dyn_cast<ConstantInt>(BOp->getOperand(1))) &&
+                    BOp->getOpcode() == Instruction::Add)
+                {
+                    terms.clear();
+                    terms.push_back(BOp->getOperand(0));
+                    terms.push_back(BOp->getOperand(1));
+                }
+            }
+
+            for (auto Ind : terms)
+            {
+                uint64_t Scale = DL->getTypeAllocSize(GTI.getIndexedType());
+                ExtensionKind Extension = EK_NotExtended;
+
+                // If the integer type is smaller than the pointer size, it is implicitly
+                // sign extended to pointer size.
+                unsigned Width = Index->getType()->getIntegerBitWidth();
+                if (ptrSize > Width)
+                    Extension = EK_SignExt;
+
+                // Use getLinearExpression to decompose the index into a C1*V+C2 form.
+                APInt IndexScale(Width, 0), IndexOffset(Width, 0);
+                Value* new_Ind = getLinearExpression(Ind, IndexScale, IndexOffset, Extension,
+                    0U, DL);
+
+                // The GEP index scale ("Scale") scales C1*V+C2, yielding (C1*V+C2)*Scale.
+                // This gives us an aggregate computation of (C1*Scale)*V + C2*Scale.
+                SymPtr.Offset += IndexOffset.getSExtValue() * Scale;
+                Scale *= IndexScale.getSExtValue();
+
+                SymbolicIndex Idx(new_Ind, Extension);
+
+                // If we already had an occurrence of this index variable, merge this
+                // scale into it.  For example, we want to handle:
+                //   A[x][x] -> x*16 + x*4 -> x*20
+                // This also ensures that 'x' only appears in the index list once.
+                for (unsigned i = 0, e = SymPtr.Terms.size(); i != e; ++i) {
+                    if (SymPtr.Terms[i].Idx == Idx) {
+                        Scale += SymPtr.Terms[i].Scale;
+                        SymPtr.Terms.erase(SymPtr.Terms.begin() + i);
+                        break;
+                    }
+                }
+
+                // Make sure that we have a scale that makes sense for this target's
+                // pointer size.
+                if (unsigned ShiftBits = 64 - ptrSize) {
+                    Scale <<= ShiftBits;
+                    Scale = (int64_t)Scale >> ShiftBits;
+                }
+
+                if (Scale) {
+                    Term Entry = { Idx, int64_t(Scale) };
+                    SymPtr.Terms.push_back(Entry);
+                }
+            }
         }
 
-        Ptr = BasePtr;
-      }
+        // Analyze the base pointer next.
+        Ptr = GEPOp->getOperand(0);
+    } while (--MaxLookup);
 
-      SymPtr.BasePtr = Ptr;
-      return false;
-    }
-
-    // Don't attempt to analyze GEPs over unsized objects.
-    if (!GEPOp->getOperand(0)->getType()->getPointerElementType()->isSized()) {
-      SymPtr.BasePtr = Ptr;
-      return false;
-    }
-
-    // If we are lacking DataLayout information, we can't compute the offets of
-    // elements computed by GEPs.  However, we can handle bitcast equivalent
-    // GEPs.
-    if (!DL) {
-      if (!GEPOp->hasAllZeroIndices()) {
-        SymPtr.BasePtr = Ptr;
-        return false;
-      }
-      Ptr = GEPOp->getOperand(0);
-      continue;
-    }
-
-    unsigned int ptrSize =
-        pContext->getRegisterPointerSizeInBits(GEPOp->getPointerAddressSpace());
-    // Walk the indices of the GEP, accumulating them into BaseOff/VarIndices.
-    gep_type_iterator GTI = gep_type_begin(GEPOp);
-    for (User::const_op_iterator I = GEPOp->op_begin()+1,
-         E = GEPOp->op_end(); I != E; ++I, ++GTI) {
-      Value *Index = *I;
-      // Compute the (potentially symbolic) offset in bytes for this index.
-      if (StructType *STy = GTI.getStructTypeOrNull()) {
-        // For a struct, add the member offset.
-        unsigned FieldNo = unsigned(cast<ConstantInt>(Index)->getZExtValue());
-        if (FieldNo == 0) continue;
-
-        SymPtr.Offset += DL->getStructLayout(STy)->getElementOffset(FieldNo);
-        continue;
-      }
-
-      // For an array/pointer, add the element offset, explicitly scaled.
-      if (ConstantInt *CIdx = dyn_cast<ConstantInt>(Index)) {
-        if (CIdx->isZero()) continue;
-        SymPtr.Offset += DL->getTypeAllocSize(GTI.getIndexedType()) * CIdx->getSExtValue();
-        continue;
-      }
-
-      // In some cases the GEP might have indices that don't directly have a baseoffset
-      // we need to dig deeper to find these
-      std::vector<Value*> terms = {Index};
-      if (BinaryOperator *BOp = dyn_cast<BinaryOperator>(Index))
-      {
-          if (!(dyn_cast<ConstantInt>(BOp->getOperand(1))) && 
-              BOp->getOpcode() == Instruction::Add)
-          {
-              terms.clear();
-              terms.push_back(BOp->getOperand(0));
-              terms.push_back(BOp->getOperand(1));
-          }
-      }
-
-      for (auto Ind : terms)
-      {
-          uint64_t Scale = DL->getTypeAllocSize(GTI.getIndexedType());
-          ExtensionKind Extension = EK_NotExtended;
-
-          // If the integer type is smaller than the pointer size, it is implicitly
-          // sign extended to pointer size.
-          unsigned Width = Index->getType()->getIntegerBitWidth();
-          if (ptrSize > Width)
-              Extension = EK_SignExt;
-
-          // Use getLinearExpression to decompose the index into a C1*V+C2 form.
-          APInt IndexScale(Width, 0), IndexOffset(Width, 0);
-          Value* new_Ind = getLinearExpression(Ind, IndexScale, IndexOffset, Extension,
-              0U, DL);
-
-          // The GEP index scale ("Scale") scales C1*V+C2, yielding (C1*V+C2)*Scale.
-          // This gives us an aggregate computation of (C1*Scale)*V + C2*Scale.
-          SymPtr.Offset += IndexOffset.getSExtValue() * Scale;
-          Scale *= IndexScale.getSExtValue();
-
-          SymbolicIndex Idx(new_Ind, Extension);
-
-          // If we already had an occurrence of this index variable, merge this
-          // scale into it.  For example, we want to handle:
-          //   A[x][x] -> x*16 + x*4 -> x*20
-          // This also ensures that 'x' only appears in the index list once.
-          for (unsigned i = 0, e = SymPtr.Terms.size(); i != e; ++i) {
-              if (SymPtr.Terms[i].Idx == Idx) {
-                  Scale += SymPtr.Terms[i].Scale;
-                  SymPtr.Terms.erase(SymPtr.Terms.begin() + i);
-                  break;
-              }
-          }
-
-          // Make sure that we have a scale that makes sense for this target's
-          // pointer size.
-          if (unsigned ShiftBits = 64 - ptrSize) {
-              Scale <<= ShiftBits;
-              Scale = (int64_t)Scale >> ShiftBits;
-          }
-
-          if (Scale) {
-              Term Entry = { Idx, int64_t(Scale) };
-              SymPtr.Terms.push_back(Entry);
-          }
-      }
-    }
-
-    // Analyze the base pointer next.
-    Ptr = GEPOp->getOperand(0);
-  } while (--MaxLookup);
-
-  return true;
+    return true;
 }

@@ -42,137 +42,137 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace IGC
 {
-///////////////////////////////////////////////////////////////////////////
-/// Enforce a single latch for every loop header. This needs to be ran before
-/// LLVM Loop canonicalization pass as LLVM loop simplification pass sometimes 
-/// decides to spilt the loop. Spliting the loop may cause functional issues 
-/// in case of barriers being used and it may cause extra SIMD divergence causing 
-/// performance degradation
-llvm::FunctionPass* createLoopCanonicalization();
-/**
- * Custom loop versioning.
- * Break loop into segments to expose loop invirants.
- *
- * Input loop:
- *   float t = ....;
- *   float nextT = t * CB_Load;
- *   [loop] while (t < loop_range_y)
- *   {
- *        float val0 = max(t, loop_range_x);
- *        float val1 = min(nextT, loop_range_y);
- *        float val = some_alu_func(val1 / val0);
- *        ......
- *        t = nextT;
- *        nextT *= CB_Load;
- *    }
- * 
- * Transformed loop:
- *   float t = ....;
- *   float nextT = t * CB_Load;
- *   [branch] if (CB_Load > 1.0 && loop_range_x * CB_Load < loop_range_y)
- *   {
- *       [loop] while (t < loop_range_x)        // loop seg 1
- *       {
- *           float val0 = loop_range_x;
- *           float val1 = nextT;
- *           float val = some_alu_func(val1 / val0);
- *           ......
- *           t = nextT;
- *           nextT *= CB_Load;
- *       }
- *       [loop] while (t < loop_range_y/CB_Load)  // loop seg 2
- *       {
- *           float val0 = t;
- *           float val1 = nextT;
- *           float val = some_alu_func(CB_Load);    // loop invirant
- *           ......
- *           t = nextT;
- *           nextT *= CB_Load;
- *       }
- *       {                                          // loop seg 3
- *           float val0 = t;
- *           float val1 = loop_range_y;
- *           float val = some_alu_func(val1 / val0);
- *           t = nextT;
- *           nextT *= CB_Load;
- *       }
- *   } else {
- *       [loop] while (t < loop_range_y)
- *       {
- *           float val0 = max(t, loop_range_x);
- *           float val1 = min(nextT, loop_range_y);
- *           float val = some_alu_func(val1 / val0);
- *           ......
- *           t = nextT;
- *           nextT *= CB_Load;
- *        }
- *   }
- */
-class CustomLoopVersioning : public llvm::FunctionPass
-{
-public:
-    static char ID;
-
-    CustomLoopVersioning();
-    ~CustomLoopVersioning() { }
-
-    void getAnalysisUsage(llvm::AnalysisUsage& AU) const
+    ///////////////////////////////////////////////////////////////////////////
+    /// Enforce a single latch for every loop header. This needs to be ran before
+    /// LLVM Loop canonicalization pass as LLVM loop simplification pass sometimes 
+    /// decides to spilt the loop. Spliting the loop may cause functional issues 
+    /// in case of barriers being used and it may cause extra SIMD divergence causing 
+    /// performance degradation
+    llvm::FunctionPass* createLoopCanonicalization();
+    /**
+     * Custom loop versioning.
+     * Break loop into segments to expose loop invirants.
+     *
+     * Input loop:
+     *   float t = ....;
+     *   float nextT = t * CB_Load;
+     *   [loop] while (t < loop_range_y)
+     *   {
+     *        float val0 = max(t, loop_range_x);
+     *        float val1 = min(nextT, loop_range_y);
+     *        float val = some_alu_func(val1 / val0);
+     *        ......
+     *        t = nextT;
+     *        nextT *= CB_Load;
+     *    }
+     *
+     * Transformed loop:
+     *   float t = ....;
+     *   float nextT = t * CB_Load;
+     *   [branch] if (CB_Load > 1.0 && loop_range_x * CB_Load < loop_range_y)
+     *   {
+     *       [loop] while (t < loop_range_x)        // loop seg 1
+     *       {
+     *           float val0 = loop_range_x;
+     *           float val1 = nextT;
+     *           float val = some_alu_func(val1 / val0);
+     *           ......
+     *           t = nextT;
+     *           nextT *= CB_Load;
+     *       }
+     *       [loop] while (t < loop_range_y/CB_Load)  // loop seg 2
+     *       {
+     *           float val0 = t;
+     *           float val1 = nextT;
+     *           float val = some_alu_func(CB_Load);    // loop invirant
+     *           ......
+     *           t = nextT;
+     *           nextT *= CB_Load;
+     *       }
+     *       {                                          // loop seg 3
+     *           float val0 = t;
+     *           float val1 = loop_range_y;
+     *           float val = some_alu_func(val1 / val0);
+     *           t = nextT;
+     *           nextT *= CB_Load;
+     *       }
+     *   } else {
+     *       [loop] while (t < loop_range_y)
+     *       {
+     *           float val0 = max(t, loop_range_x);
+     *           float val1 = min(nextT, loop_range_y);
+     *           float val = some_alu_func(val1 / val0);
+     *           ......
+     *           t = nextT;
+     *           nextT *= CB_Load;
+     *        }
+     *   }
+     */
+    class CustomLoopVersioning : public llvm::FunctionPass
     {
-        AU.addRequired<CodeGenContextWrapper>();
-        AU.addRequired<MetaDataUtilsWrapper>();
-        AU.addRequired<llvm::LoopInfoWrapperPass>();
-        AU.addRequired<llvm::DominatorTreeWrapperPass>();
-        AU.addRequiredID(llvm::LCSSAID);
-    }
+    public:
+        static char ID;
 
-    bool runOnFunction(llvm::Function& F);
-    bool processLoop(llvm::Loop* loop);
+        CustomLoopVersioning();
+        ~CustomLoopVersioning() { }
 
-    llvm::StringRef getPassName() const
-    {
-        return "Custom Loop Versioning";
-    }
+        void getAnalysisUsage(llvm::AnalysisUsage& AU) const
+        {
+            AU.addRequired<CodeGenContextWrapper>();
+            AU.addRequired<MetaDataUtilsWrapper>();
+            AU.addRequired<llvm::LoopInfoWrapperPass>();
+            AU.addRequired<llvm::DominatorTreeWrapperPass>();
+            AU.addRequiredID(llvm::LCSSAID);
+        }
 
-private:
-    CodeGenContext* m_cgCtx;
-    llvm::LoopInfo* m_LI;
-    llvm::DominatorTree* m_DT;
-    llvm::Function* m_function;
+        bool runOnFunction(llvm::Function& F);
+        bool processLoop(llvm::Loop* loop);
 
-    // value map from orig loop to loop seg1/seg2/seg3
-    llvm::ValueToValueMapTy m_vmapToSeg1;
-    llvm::ValueToValueMapTy m_vmapToSeg2;
-    llvm::ValueToValueMapTy m_vmapToSeg3;
+        llvm::StringRef getPassName() const
+        {
+            return "Custom Loop Versioning";
+        }
 
-    bool isCBLoad(llvm::Value* val, unsigned& bufId, unsigned& offset);
+    private:
+        CodeGenContext* m_cgCtx;
+        llvm::LoopInfo* m_LI;
+        llvm::DominatorTree* m_DT;
+        llvm::Function* m_function;
 
-    // create phi nodes for after loop BB
-    void addPhiNodes(
-        const llvm::SmallVectorImpl<llvm::Instruction*> &liveOuts,
-        llvm::Loop* loopSeg1, llvm::Loop* loopSeg2,
-        llvm::BasicBlock* bbSeg3, llvm::Loop* origLoop);
+        // value map from orig loop to loop seg1/seg2/seg3
+        llvm::ValueToValueMapTy m_vmapToSeg1;
+        llvm::ValueToValueMapTy m_vmapToSeg2;
+        llvm::ValueToValueMapTy m_vmapToSeg3;
 
-    bool detectLoop(llvm::Loop* loop,
-        llvm::Value* &var_range_x, llvm::Value* &var_range_y,
-        llvm::LoadInst* &var_MediumFactor_preHdr,
-        llvm::Value* &var_t_preHdr,
-        llvm::Value* &var_nextT_preHdr);
+        bool isCBLoad(llvm::Value* val, unsigned& bufId, unsigned& offset);
 
-    void linkLoops(llvm::Loop* loopSeg1, llvm::Loop* loopSeg2,
-        llvm::BasicBlock* afterLoop);
+        // create phi nodes for after loop BB
+        void addPhiNodes(
+            const llvm::SmallVectorImpl<llvm::Instruction*>& liveOuts,
+            llvm::Loop* loopSeg1, llvm::Loop* loopSeg2,
+            llvm::BasicBlock* bbSeg3, llvm::Loop* origLoop);
 
-    void rewriteLoopSeg1(llvm::Loop* loop,
-        llvm::Value* range_x, llvm::Value* range_y);
+        bool detectLoop(llvm::Loop* loop,
+            llvm::Value*& var_range_x, llvm::Value*& var_range_y,
+            llvm::LoadInst*& var_MediumFactor_preHdr,
+            llvm::Value*& var_t_preHdr,
+            llvm::Value*& var_nextT_preHdr);
 
-    void hoistSeg2Invariant(llvm::Loop* loop,
-        llvm::Instruction* fmul, llvm::Value* cbVal);
+        void linkLoops(llvm::Loop* loopSeg1, llvm::Loop* loopSeg2,
+            llvm::BasicBlock* afterLoop);
 
-    void rewriteLoopSeg2(llvm::Loop* loop,
-        llvm::Value* range_y, llvm::Value* cbVal);
+        void rewriteLoopSeg1(llvm::Loop* loop,
+            llvm::Value* range_x, llvm::Value* range_y);
 
-    void rewriteLoopSeg3(llvm::BasicBlock* bb,
-        llvm::Value* range_y);
-};
+        void hoistSeg2Invariant(llvm::Loop* loop,
+            llvm::Instruction* fmul, llvm::Value* cbVal);
+
+        void rewriteLoopSeg2(llvm::Loop* loop,
+            llvm::Value* range_y, llvm::Value* cbVal);
+
+        void rewriteLoopSeg3(llvm::BasicBlock* bb,
+            llvm::Value* range_y);
+    };
 
 } // namespace IGC
 

@@ -57,7 +57,7 @@ namespace IGC
             return "ExtensionFuncsAnalysis";
         }
 
-        void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+        void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.addRequired<MetaDataUtilsWrapper>();
         }
@@ -67,19 +67,19 @@ namespace IGC
         ///         analyzes them and creates metadata that represents the implicit information needed
         ///         by each function for resolving these function calls
         /// @param  M The destination module.
-        virtual bool runOnModule(llvm::Module &M) override;
+        virtual bool runOnModule(llvm::Module& M) override;
 
         /// @brief  Function entry point.
         ///         Finds all VME function calls in this function, analyzes them and creates 
         ///         metadata that represents the implicit information needed by this function 
         ///         for resolving these function calls
         /// @param  F The destination function.
-        bool runOnFunction(llvm::Function &F);
+        bool runOnFunction(llvm::Function& F);
 
         /// @brief  Call instructions visitor.
         ///         Checks for VME functions and analyzes it
         /// @param  CI The call instruction.
-        void visitCallInst(llvm::CallInst &CI);
+        void visitCallInst(llvm::CallInst& CI);
 
         static const llvm::StringRef VME_MB_BLOCK_TYPE;
         static const llvm::StringRef VME_SUBPIXEL_MODE;

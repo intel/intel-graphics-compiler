@@ -77,14 +77,14 @@ namespace IGC
             uniformInBytes(rhs.uniformInBytes)
         {}
 
-        RegUse& operator += (const RegUse & rhs)
+        RegUse& operator += (const RegUse& rhs)
         {
             nregs_simd16 += rhs.nregs_simd16;
             uniformInBytes += rhs.uniformInBytes;
             return *this;
         }
 
-        RegUse& operator -= (const RegUse & rhs)
+        RegUse& operator -= (const RegUse& rhs)
         {
             if (nregs_simd16 > rhs.nregs_simd16)
             {
@@ -173,21 +173,21 @@ namespace IGC
             initializeRegisterEstimatorPass(*llvm::PassRegistry::getPassRegistry());
         }
 
-        bool runOnFunction(llvm::Function &F) override;
+        bool runOnFunction(llvm::Function& F) override;
 
         void releaseMemory() override { clear(); }
 
         llvm::StringRef getPassName() const override { return "RegisterEstimator"; }
 
-        void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+        void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.addRequired<LivenessAnalysis>();
             AU.setPreservesAll();
         }
 
-        LivenessAnalysis *getLivenessAnalysis() const { return m_LVA; }
+        LivenessAnalysis* getLivenessAnalysis() const { return m_LVA; }
 
-        RegUse estimateNumOfRegs(llvm::Value *V) const;
+        RegUse estimateNumOfRegs(llvm::Value* V) const;
 
         // This will compute Register pressure estimates. It also saves
         // register pressure estimate per instruction if "doRPPerInst"
@@ -209,19 +209,19 @@ namespace IGC
         // A quick check to see if LivenessAnalysis is needed at all.
         bool hasNoGRFPressure() const { return m_noGRFPressure; }
 
-        uint32_t getNumLiveGRFAtInst(llvm::Instruction *I, uint16_t simdsize = 16);
+        uint32_t getNumLiveGRFAtInst(llvm::Instruction* I, uint16_t simdsize = 16);
 
         // Return the max number of GRF needed for a BB
-        uint32_t getMaxLiveGRFAtBB(llvm::BasicBlock *BB, uint16_t simdsize = 16) {
-            RegUsage &ruse = m_BBMaxLiveVirtRegs[BB];
-            RegUse &grfuse = ruse.allUses[REGISTER_CLASS_GRF];
+        uint32_t getMaxLiveGRFAtBB(llvm::BasicBlock* BB, uint16_t simdsize = 16) {
+            RegUsage& ruse = m_BBMaxLiveVirtRegs[BB];
+            RegUse& grfuse = ruse.allUses[REGISTER_CLASS_GRF];
             return getNumRegs(grfuse, simdsize);
         }
 
         // Return the number of GRF needed at entry to a BB
-        uint32_t getNumLiveInGRFAtBB(llvm::BasicBlock *BB, uint16_t simdsize = 16) {
-            RegUsage &ruse = m_BBLiveInVirtRegs[BB];
-            RegUse &grfuse = ruse.allUses[REGISTER_CLASS_GRF];
+        uint32_t getNumLiveInGRFAtBB(llvm::BasicBlock* BB, uint16_t simdsize = 16) {
+            RegUsage& ruse = m_BBLiveInVirtRegs[BB];
+            RegUse& grfuse = ruse.allUses[REGISTER_CLASS_GRF];
             return getNumRegs(grfuse, simdsize);
         }
 
@@ -232,10 +232,10 @@ namespace IGC
     private:
 
         bool m_RPEComputed;
-        const llvm::DataLayout *m_DL;
+        const llvm::DataLayout* m_DL;
         LivenessAnalysis* m_LVA;
-        llvm::Function *m_F;
-        WIAnalysis *m_WIA;   // optional
+        llvm::Function* m_F;
+        WIAnalysis* m_WIA;   // optional
 
         // The number of live registers needed at each instruction
         InstToRegUsageMap m_LiveVirtRegs;
@@ -265,18 +265,18 @@ namespace IGC
         void addRegUsage(RegUsage& RUsage, SBitVector& BV);
 
         uint32_t getNumGRF(RegUsage& rusage, uint16_t simdsize = 16) {
-            RegUse &grfuse = rusage.allUses[REGISTER_CLASS_GRF];
+            RegUse& grfuse = rusage.allUses[REGISTER_CLASS_GRF];
             return getNumRegs(grfuse, simdsize);
         }
 
-        int getNUsesInBB(llvm::Value *V, llvm::BasicBlock *BB);
+        int getNUsesInBB(llvm::Value* V, llvm::BasicBlock* BB);
 
-        void getLiveinRegsAtBB(RegUsage& RUsage, llvm::BasicBlock *BB)
+        void getLiveinRegsAtBB(RegUsage& RUsage, llvm::BasicBlock* BB)
         {
             RUsage = m_BBLiveInVirtRegs[BB];
             return;
         }
-        void getMaxLiveinRegsAtBB(RegUsage& RUsage, llvm::BasicBlock *BB)
+        void getMaxLiveinRegsAtBB(RegUsage& RUsage, llvm::BasicBlock* BB)
         {
             RUsage = m_BBMaxLiveVirtRegs[BB];
             return;
@@ -288,12 +288,12 @@ namespace IGC
             return (getNumRegs(ruse, simdsize) < (uint32_t)GRF_NUM_THRESHOLD);
         }
 
-        const RegUse *getRegUse(uint32_t valId)
+        const RegUse* getRegUse(uint32_t valId)
         {
             return &(m_ValueRegUses[valId]);
         }
 
-        const RegUse* getRegUse(llvm::Value *V)
+        const RegUse* getRegUse(llvm::Value* V)
         {
             ValueToIntMap::iterator II = m_LVA->ValueIds.find(V);
             if (II == m_LVA->ValueIds.end())
@@ -305,7 +305,7 @@ namespace IGC
             return getRegUse(valId);
         }
 
-        uint32_t getNumRegs(const RegUse &RUse, uint16_t simdsize) const
+        uint32_t getNumRegs(const RegUse& RUse, uint16_t simdsize) const
         {
             uint32_t uniformRegs =
                 (RUse.uniformInBytes + GRF_SIZE_IN_BYTE - 1) / GRF_SIZE_IN_BYTE;
@@ -315,7 +315,7 @@ namespace IGC
             case 32:
                 return 2 * RUse.nregs_simd16 + uniformRegs;
             default:
-                return (RUse.nregs_simd16 + 1)/2 + uniformRegs;
+                return (RUse.nregs_simd16 + 1) / 2 + uniformRegs;
             }
         }
 
@@ -327,17 +327,17 @@ namespace IGC
             m_BBLiveInVirtRegs.clear();
         }
 
-     public:
-         /// print - Convert to human readable form
-         void print(llvm::raw_ostream &OS, int dumpLevel);
-         void print(llvm::raw_ostream& OS, llvm::BasicBlock *BB, int dumpLevl);
+    public:
+        /// print - Convert to human readable form
+        void print(llvm::raw_ostream& OS, int dumpLevel);
+        void print(llvm::raw_ostream& OS, llvm::BasicBlock* BB, int dumpLevl);
 
 #if defined( _DEBUG )
-         /// dump - Dump RPE info to dbgs(), used in debugger.
-         void dump();
-         void dump(int dumpLevel);
-         void dump(llvm::BasicBlock *BB);
-         void dump(llvm::BasicBlock *BB, int dumpLevel);
+        /// dump - Dump RPE info to dbgs(), used in debugger.
+        void dump();
+        void dump(int dumpLevel);
+        void dump(llvm::BasicBlock* BB);
+        void dump(llvm::BasicBlock* BB, int dumpLevel);
 #endif
     };
 
@@ -355,14 +355,14 @@ namespace IGC
     //       of the stream.
     class RegPressureTracker {
     public:
-        RegPressureTracker(RegisterEstimator *RPE);
+        RegPressureTracker(RegisterEstimator* RPE);
 
         // init() will set up the initial live-in with BB's live-in.
         // If "doMaxRegInBB" is true, it will use the max live-in in this
         // BB instead of BB's live-in, which is more accurate, but also
         // more expensive.
-        void init(llvm::BasicBlock *BB, bool doMaxRegInBB = false);
-        void advance(llvm::Instruction *I);
+        void init(llvm::BasicBlock* BB, bool doMaxRegInBB = false);
+        void advance(llvm::Instruction* I);
 
         uint32_t getCurrNumGRF(uint16_t simdsize = 16)
         {

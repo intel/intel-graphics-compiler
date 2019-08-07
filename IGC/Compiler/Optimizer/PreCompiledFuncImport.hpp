@@ -128,11 +128,11 @@ namespace IGC
             m_emuKind(EMU_UNUSED)
         {};
 
-        PreCompiledFuncImport(CodeGenContext *CGCtx, uint32_t TheEmuKind);
+        PreCompiledFuncImport(CodeGenContext* CGCtx, uint32_t TheEmuKind);
 
         ~PreCompiledFuncImport() {}
 
-        void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+        void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.addRequired<CodeGenContextWrapper>();
             AU.addRequired<MetaDataUtilsWrapper>();
@@ -143,23 +143,23 @@ namespace IGC
             return "PreCompiledFuncImport";
         }
 
-        virtual bool runOnModule(llvm::Module &M) override;
+        virtual bool runOnModule(llvm::Module& M) override;
 
-        void visitBinaryOperator(llvm::BinaryOperator &I);
+        void visitBinaryOperator(llvm::BinaryOperator& I);
         void visitCastInst(llvm::CastInst& I);
-        void visitFPTruncInst(llvm::FPTruncInst &inst);
+        void visitFPTruncInst(llvm::FPTruncInst& inst);
         void visitFPExtInst(llvm::FPExtInst& I);
         void visitFCmpInst(llvm::FCmpInst& I);
         void visitCallInst(llvm::CallInst& I);
 
-        static void checkAndSetEnableSubroutine(CodeGenContext *CGCtx);
+        static void checkAndSetEnableSubroutine(CodeGenContext* CGCtx);
 
     private:
-        void processDivide(llvm::BinaryOperator &inst, EmulatedFunctions function);
+        void processDivide(llvm::BinaryOperator& inst, EmulatedFunctions function);
 
         void processFPBinaryOperator(llvm::Instruction& I, FunctionIDs FID);
         llvm::Function* getOrCreateFunction(FunctionIDs FID);
-        llvm::Value* createFlagValue(llvm::Function *F);
+        llvm::Value* createFlagValue(llvm::Function* F);
         uint32_t getFCmpMask(llvm::CmpInst::Predicate Pred);
 
         // Metadata & implicit args (IA)
@@ -169,17 +169,17 @@ namespace IGC
         //                  to the new function's argument list.
         llvm::SmallVector<llvm::Function*, 8> FuncNeedIA;
         llvm::SmallVector<llvm::Function*, 8> NewFuncWithIA;
-        llvm::DenseMap<llvm::Function *, ImplicitArgs *> FuncsImpArgs;
-        void addMDFuncEntryForEmulationFunc(llvm::Function *F);
-        bool usePrivateMemory(llvm::Function *F);
+        llvm::DenseMap<llvm::Function*, ImplicitArgs*> FuncsImpArgs;
+        void addMDFuncEntryForEmulationFunc(llvm::Function* F);
+        bool usePrivateMemory(llvm::Function* F);
         void createFuncWithIA();
         void replaceFunc(llvm::Function* old_func, llvm::Function* new_func);
         llvm::FunctionType* getNewFuncType(
             llvm::Function* pFunc, const ImplicitArgs* pImplicitArgs);
-        ImplicitArgs* getImplicitArgs(llvm::Function *F);
+        ImplicitArgs* getImplicitArgs(llvm::Function* F);
 
         bool preProcessDouble();
-        void eraseFunction(llvm::Module* M, llvm::Function *F) {
+        void eraseFunction(llvm::Module* M, llvm::Function* F) {
             M->getFunctionList().remove(F);
             delete F;
         }
@@ -189,20 +189,20 @@ namespace IGC
         CodeGenContext* m_pCtx;
         bool m_enableSubroutineCallForEmulation;
 
-        IGCMD::MetaDataUtils *m_pMdUtils;
-        llvm::Module *m_pModule;
+        IGCMD::MetaDataUtils* m_pMdUtils;
+        llvm::Module* m_pModule;
 
         /// @brief  Indicates if the pass changed the processed function
         bool m_changed;
 
-        const static char *m_sFunctionNames[NUM_FUNCTIONS][NUM_TYPES];
+        const static char* m_sFunctionNames[NUM_FUNCTIONS][NUM_TYPES];
 
         /// @brief  Kind of emulations. Its bits are defined by EmuKind.
         const uint32_t m_emuKind;
         bool isDPEmu() const { return (m_emuKind & EmuKind::EMU_DP) > 0; }
         bool isI64DivRem() const { return (m_emuKind & EmuKind::EMU_I64DIVREM) > 0; }
         bool isSPDiv() const { return (m_emuKind & EmuKind::EMU_SP_DIV) > 0; }
-        bool isDPConvFunc(llvm::Function *F) const;
+        bool isDPConvFunc(llvm::Function* F) const;
 
         bool m_libModuleToBeImported[NUM_LIBMODS];
         bool m_libModuleAlreadyImported[NUM_LIBMODS];

@@ -55,32 +55,32 @@ Image3dToImage2darray::Image3dToImage2darray() :
 }
 
 bool Image3dToImage2darray::createImageAnnotations(
-    GenIntrinsicInst *pCall,
+    GenIntrinsicInst* pCall,
     unsigned imageIdx,
     const MetaDataUtils* pMdUtils,
     const ModuleMetaData* modMD,
     const Value* pCoord)
 {
     uint argNum = 0;
-    auto *pFunc = pCall->getParent()->getParent();
+    auto* pFunc = pCall->getParent()->getParent();
     FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(pFunc);
-    auto *pImgOp = pCall->getArgOperand(imageIdx);
+    auto* pImgOp = pCall->getArgOperand(imageIdx);
 
     // Find the arg number of the image so we can look up its ArgInfoList metadata.
     if (pImgOp->getType()->isPointerTy())
     {
-        auto *pImg = CImagesBI::CImagesUtils::traceImageOrSamplerArgument(pCall, imageIdx, pMdUtils, modMD);
+        auto* pImg = CImagesBI::CImagesUtils::traceImageOrSamplerArgument(pCall, imageIdx, pMdUtils, modMD);
         if (pImg == nullptr)
             return false;
 
-        auto *pImgArg = cast<Argument>(pImg);
+        auto* pImgArg = cast<Argument>(pImg);
 
         argNum = pImgArg->getArgNo();
     }
-    else if (auto *Idx = dyn_cast<ConstantInt>(pImgOp))
+    else if (auto * Idx = dyn_cast<ConstantInt>(pImgOp))
     {
         uint64_t IdxVal = Idx->getZExtValue();
-        auto *arg = CImagesBI::CImagesUtils::findImageFromBufferPtr(*pMdUtils, pFunc, RESOURCE, IdxVal, modMD);
+        auto* arg = CImagesBI::CImagesUtils::findImageFromBufferPtr(*pMdUtils, pFunc, RESOURCE, IdxVal, modMD);
 
         if (!arg)
             return false;
@@ -138,9 +138,9 @@ bool Image3dToImage2darray::createImageAnnotations(
     return true;
 }
 
-void Image3dToImage2darray::visitCallInst(CallInst &CI)
+void Image3dToImage2darray::visitCallInst(CallInst& CI)
 {
-    GenIntrinsicInst *pCall = nullptr;
+    GenIntrinsicInst* pCall = nullptr;
     if ((pCall = dyn_cast<GenIntrinsicInst>(&CI)) == nullptr)
         return;
 
@@ -148,15 +148,15 @@ void Image3dToImage2darray::visitCallInst(CallInst &CI)
     {
     case GenISAIntrinsic::GenISA_ldptr:
     {
-        auto *pLoad = cast<SamplerLoadIntrinsic>(pCall);
-        auto *pCoord = pCall->getArgOperand(3);
+        auto* pLoad = cast<SamplerLoadIntrinsic>(pCall);
+        auto* pCoord = pCall->getArgOperand(3);
         m_Changed |= createImageAnnotations(pCall, pLoad->getTextureIndex(), m_MetadataUtils, m_modMD, pCoord);
         break;
     }
     case GenISAIntrinsic::GenISA_sampleLptr:
     {
-        auto *pSample = cast<SampleIntrinsic>(pCall);
-        auto *pCoord = pCall->getArgOperand(3);
+        auto* pSample = cast<SampleIntrinsic>(pCall);
+        auto* pCoord = pCall->getArgOperand(3);
         m_Changed |= createImageAnnotations(pCall, pSample->getTextureIndex(), m_MetadataUtils, m_modMD, pCoord);
         break;
     }
@@ -165,7 +165,7 @@ void Image3dToImage2darray::visitCallInst(CallInst &CI)
     }
 }
 
-bool Image3dToImage2darray::runOnFunction(Function &F)
+bool Image3dToImage2darray::runOnFunction(Function& F)
 {
     m_MetadataUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     m_modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();

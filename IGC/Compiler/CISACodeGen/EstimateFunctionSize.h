@@ -34,59 +34,59 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace IGC {
 
-/// \brief Estimate function size after complete inlining.
-///
-/// This pass visits the call graph and estimates the number of llvm IR
-/// instructions after complete inlining.
-class EstimateFunctionSize : public llvm::ModulePass {
-public:
-  static char ID;
+    /// \brief Estimate function size after complete inlining.
+    ///
+    /// This pass visits the call graph and estimates the number of llvm IR
+    /// instructions after complete inlining.
+    class EstimateFunctionSize : public llvm::ModulePass {
+    public:
+        static char ID;
 
-  enum AnalysisLevel {
-    AL_Module,
-    AL_Kernel
-  };
+        enum AnalysisLevel {
+            AL_Module,
+            AL_Kernel
+        };
 
-  explicit EstimateFunctionSize(AnalysisLevel = AL_Module);
-  ~EstimateFunctionSize();
-  virtual llvm::StringRef getPassName() const  override { return "Estimate Function Sizes"; }
-  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override;
-  bool runOnModule(llvm::Module &M) override;
+        explicit EstimateFunctionSize(AnalysisLevel = AL_Module);
+        ~EstimateFunctionSize();
+        virtual llvm::StringRef getPassName() const  override { return "Estimate Function Sizes"; }
+        void getAnalysisUsage(llvm::AnalysisUsage& AU) const override;
+        bool runOnModule(llvm::Module& M) override;
 
-  /// \brief Return the estimated maximal function size after complete inlining.
-  std::size_t getMaxExpandedSize() const;
+        /// \brief Return the estimated maximal function size after complete inlining.
+        std::size_t getMaxExpandedSize() const;
 
-  /// \brief Return the estimated function size after complete inlining.
-  std::size_t getExpandedSize(const llvm::Function *F) const;
+        /// \brief Return the estimated function size after complete inlining.
+        std::size_t getExpandedSize(const llvm::Function* F) const;
 
-  bool onlyCalledOnce(const llvm::Function *F);
+        bool onlyCalledOnce(const llvm::Function* F);
 
-  bool hasRecursion() const { return HasRecursion; }
+        bool hasRecursion() const { return HasRecursion; }
 
-private:
-  void analyze();
-  void checkSubroutine();
-  void clear();
+    private:
+        void analyze();
+        void checkSubroutine();
+        void clear();
 
-  /// \brief Return the associated opaque data.
-  template <typename T> T *get(llvm::Function *F) {
-    assert(ECG.count(F));
-    return static_cast<T *>(ECG[F]);
-  }
+        /// \brief Return the associated opaque data.
+        template <typename T> T* get(llvm::Function* F) {
+            assert(ECG.count(F));
+            return static_cast<T*>(ECG[F]);
+        }
 
-  /// \brief The module being analyzed.
-  llvm::Module *M;
+        /// \brief The module being analyzed.
+        llvm::Module* M;
 
-  /// \brief The analysis level to be performed.
-  AnalysisLevel AL;
+        /// \brief The analysis level to be performed.
+        AnalysisLevel AL;
 
-  bool HasRecursion;
-  /// Internal data structure for the analysis which is approximately an
-  /// extended call graph.
-  llvm::SmallDenseMap<llvm::Function *, void *> ECG;
-};
+        bool HasRecursion;
+        /// Internal data structure for the analysis which is approximately an
+        /// extended call graph.
+        llvm::SmallDenseMap<llvm::Function*, void*> ECG;
+    };
 
-llvm::ModulePass *createEstimateFunctionSizePass();
-llvm::ModulePass *createEstimateFunctionSizePass(EstimateFunctionSize::AnalysisLevel);
+    llvm::ModulePass* createEstimateFunctionSizePass();
+    llvm::ModulePass* createEstimateFunctionSizePass(EstimateFunctionSize::AnalysisLevel);
 
 } // namespace IGC

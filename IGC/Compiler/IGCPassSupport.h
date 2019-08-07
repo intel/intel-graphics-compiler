@@ -26,14 +26,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /**
  * create IGC variants form PassSupport macro, so we need llvm copyrigh header
  **/
-//===- llvm/PassSupport.h - Pass Support code -------------------*- C++ -*-===//
-//
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
-//
-//===----------------------------------------------------------------------===//
+ //===- llvm/PassSupport.h - Pass Support code -------------------*- C++ -*-===//
+ //
+ //                     The LLVM Compiler Infrastructure
+ //
+ // This file is distributed under the University of Illinois Open Source
+ // License. See LICENSE.TXT for details.
+ //
+ //===----------------------------------------------------------------------===//
 #pragma once
 
 #include "Compiler/InitializePasses.h"

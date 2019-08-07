@@ -55,7 +55,7 @@ namespace IGC
             return "ProgramScopeConstantAnalysisPass";
         }
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.setPreservesCFG();
             AU.addRequired<MetaDataUtilsWrapper>();
@@ -65,7 +65,7 @@ namespace IGC
         ///         Runs on all GlobalVariables in this module, finds the constants, and 
         ///         generates annotations for them.
         /// @param  M The destination module.
-        virtual bool runOnModule(llvm::Module &M) override;
+        virtual bool runOnModule(llvm::Module& M) override;
 
     protected:
         typedef std::vector<unsigned char> DataVector;
@@ -95,7 +95,7 @@ namespace IGC
             llvm::Constant* initializer,
             DataVector& inlineConstantBuffer,
             PointerOffsetInfoList& pointerOffsetInfo,
-            BufferOffsetMap &inlineProgramScopeOffsets,
+            BufferOffsetMap& inlineProgramScopeOffsets,
             unsigned addressSpace);
 
         /// @brief  Align the buffer according to the required alignment

@@ -61,23 +61,23 @@ enum ADDRESS_SPACE : unsigned int;
 namespace IGC
 {
 
-class CodeGenContext;
-struct SProgramOutput;
+    class CodeGenContext;
+    struct SProgramOutput;
 
 #ifdef _DEBUG
-template<typename T, size_t N>
-using smallvector = std::vector<T>;
+    template<typename T, size_t N>
+    using smallvector = std::vector<T>;
 #else
-template<typename T, size_t N>
-using smallvector = llvm::SmallVector<T, N>;
+    template<typename T, size_t N>
+    using smallvector = llvm::SmallVector<T, N>;
 #endif
 
-enum e_llvmType
-{
-    e_Instruction = 0,
-    e_Intrinsic   = 1,
-    e_GenISAIntrinsic = 1,
-};
+    enum e_llvmType
+    {
+        e_Instruction = 0,
+        e_Intrinsic = 1,
+        e_GenISAIntrinsic = 1,
+    };
 #define LLVMTYPEBYTE 24
 
 #define OPCODE(instName,llvmType) \
@@ -85,10 +85,10 @@ enum e_llvmType
 
 #define DECLARE_OPCODE(instName, llvmType, name, modifiers, sat, pred, condMod, mathIntrinsic, atomicIntrinsic, regioning) \
     name = OPCODE(llvm::llvmType::instName,e_##llvmType),
-enum EOPCODE
-{
+    enum EOPCODE
+    {
 #include "opCode.h"
-};
+    };
 #undef DECLARE_OPCODE
 
 #define DECLARE_OPCODE(instName, llvmType, name, modifiers, sat, pred, condMod, mathIntrinsic, atomicIntrinsic, regioning) \
@@ -96,276 +96,276 @@ enum EOPCODE
 #include "opCode.h"
 #undef DECLARE_OPCODE
 
-EOPCODE GetOpCode(const llvm::Instruction* inst);
-bool SupportsModifier(llvm::Instruction* inst);
-bool SupportsSaturate(llvm::Instruction* inst);
-bool SupportsPredicate(llvm::Instruction* inst);
-bool SupportsCondModifier(llvm::Instruction* inst);
-bool SupportsRegioning(llvm::Instruction* inst);
-bool IsMathIntrinsic(EOPCODE opcode);
-bool IsAtomicIntrinsic(EOPCODE opcode);
-bool IsGradientIntrinsic(EOPCODE opcode);
-bool IsSubGroupIntrinsicWithSimd32Implementation(EOPCODE opcode);
-bool UsesTypedConstantBuffer(CodeGenContext* pContext);
+    EOPCODE GetOpCode(const llvm::Instruction* inst);
+    bool SupportsModifier(llvm::Instruction* inst);
+    bool SupportsSaturate(llvm::Instruction* inst);
+    bool SupportsPredicate(llvm::Instruction* inst);
+    bool SupportsCondModifier(llvm::Instruction* inst);
+    bool SupportsRegioning(llvm::Instruction* inst);
+    bool IsMathIntrinsic(EOPCODE opcode);
+    bool IsAtomicIntrinsic(EOPCODE opcode);
+    bool IsGradientIntrinsic(EOPCODE opcode);
+    bool IsSubGroupIntrinsicWithSimd32Implementation(EOPCODE opcode);
+    bool UsesTypedConstantBuffer(CodeGenContext* pContext);
 
-bool ComputesGradient(llvm::Instruction* inst);
+    bool ComputesGradient(llvm::Instruction* inst);
 
-BufferType GetBufferType(uint addrSpace);
+    BufferType GetBufferType(uint addrSpace);
 
-void VectorToElement(
-    llvm::Value *inst, 
-    llvm::Value *elem[],
-    llvm::Type *int32Ty, 
-    llvm::Instruction *insert_before, 
-    int vsize=4);
-llvm::Value* ElementToVector(
-    llvm::Value *elem[],
-    llvm::Type *int32Ty, 
-    llvm::Instruction *insert_before, 
-    int vsize=4);
+    void VectorToElement(
+        llvm::Value* inst,
+        llvm::Value* elem[],
+        llvm::Type* int32Ty,
+        llvm::Instruction* insert_before,
+        int vsize = 4);
+    llvm::Value* ElementToVector(
+        llvm::Value* elem[],
+        llvm::Type* int32Ty,
+        llvm::Instruction* insert_before,
+        int vsize = 4);
 
-/// return true if pLLVMInst is load from constant-buffer with immediate constant-buffer index
-bool IsLoadFromDirectCB(llvm::Instruction *pLLVMInst, uint& cbId, llvm::Value* &eltPtrVal);
-bool IsReadOnlyLoadDirectCB(llvm::Instruction *pLLVMInst, uint& cbId, llvm::Value* &eltPtrVal, BufferType& buftype);
+    /// return true if pLLVMInst is load from constant-buffer with immediate constant-buffer index
+    bool IsLoadFromDirectCB(llvm::Instruction* pLLVMInst, uint& cbId, llvm::Value*& eltPtrVal);
+    bool IsReadOnlyLoadDirectCB(llvm::Instruction* pLLVMInst, uint& cbId, llvm::Value*& eltPtrVal, BufferType& buftype);
 
-int findSampleInstructionTextureIdx(llvm::Instruction* inst);
-llvm::Value* getTextureIndexArgBasedOnOpcode(llvm::Instruction* inst);
-llvm::Value* GetBufferOperand(llvm::Instruction* inst);
+    int findSampleInstructionTextureIdx(llvm::Instruction* inst);
+    llvm::Value* getTextureIndexArgBasedOnOpcode(llvm::Instruction* inst);
+    llvm::Value* GetBufferOperand(llvm::Instruction* inst);
 
-llvm::LoadInst* cloneLoad(llvm::LoadInst *Orig, llvm::Value *Ptr);
-llvm::StoreInst* cloneStore(llvm::StoreInst *Orig, llvm::Value *Val, llvm::Value *Ptr);
+    llvm::LoadInst* cloneLoad(llvm::LoadInst* Orig, llvm::Value* Ptr);
+    llvm::StoreInst* cloneStore(llvm::StoreInst* Orig, llvm::Value* Val, llvm::Value* Ptr);
 
-llvm::Value* CreateLoadRawIntrinsic(llvm::LoadInst *inst, llvm::Instruction* bufPtr, llvm::Value *offsetVal);
-llvm::Value* CreateStoreRawIntrinsic(llvm::StoreInst *inst, llvm::Instruction* bufPtr, llvm::Value* offsetVal);
+    llvm::Value* CreateLoadRawIntrinsic(llvm::LoadInst* inst, llvm::Instruction* bufPtr, llvm::Value* offsetVal);
+    llvm::Value* CreateStoreRawIntrinsic(llvm::StoreInst* inst, llvm::Instruction* bufPtr, llvm::Value* offsetVal);
 
-void getTextureAndSamplerOperands(llvm::GenIntrinsicInst *pIntr, llvm::Value*& pTextureValue, llvm::Value*& pSamplerValue);
-void ChangePtrTypeInIntrinsic(llvm::GenIntrinsicInst *&pIntr, llvm::Value* oldPtr, llvm::Value* newPtr, bool isExtendedForBindlessPromotion);
-void ChangePtrTypeInIntrinsic(llvm::GenIntrinsicInst *&pIntr, llvm::Value* oldPtr, llvm::Value* newPtr);
+    void getTextureAndSamplerOperands(llvm::GenIntrinsicInst* pIntr, llvm::Value*& pTextureValue, llvm::Value*& pSamplerValue);
+    void ChangePtrTypeInIntrinsic(llvm::GenIntrinsicInst*& pIntr, llvm::Value* oldPtr, llvm::Value* newPtr, bool isExtendedForBindlessPromotion);
+    void ChangePtrTypeInIntrinsic(llvm::GenIntrinsicInst*& pIntr, llvm::Value* oldPtr, llvm::Value* newPtr);
 
-llvm::Value* TracePointerSource(llvm::Value* resourcePtr);
-llvm::Value* TracePointerSource(llvm::Value* resourcePtr, bool hasBranching, bool fillList, std::vector<llvm::Value*> &instList);
-llvm::Value* TracePointerSource(llvm::Value* resourcePtr, bool hasBranching, bool fillList, std::vector<llvm::Value*> &instList, llvm::SmallSet<llvm::PHINode*, 8>& visitedPHIs);
-bool GetResourcePointerInfo(llvm::Value* srcPtr, unsigned &resID,
-    IGC::BufferType &resTy, IGC::BufferAccessType& accessTy);
+    llvm::Value* TracePointerSource(llvm::Value* resourcePtr);
+    llvm::Value* TracePointerSource(llvm::Value* resourcePtr, bool hasBranching, bool fillList, std::vector<llvm::Value*>& instList);
+    llvm::Value* TracePointerSource(llvm::Value* resourcePtr, bool hasBranching, bool fillList, std::vector<llvm::Value*>& instList, llvm::SmallSet<llvm::PHINode*, 8> & visitedPHIs);
+    bool GetResourcePointerInfo(llvm::Value* srcPtr, unsigned& resID,
+        IGC::BufferType& resTy, IGC::BufferAccessType& accessTy);
 
-bool isSampleLoadGather4InfoInstruction(llvm::Instruction* inst);
-bool isSampleInstruction(llvm::Instruction* inst);
-bool isInfoInstruction(llvm::Instruction* inst);
-bool isLdInstruction(llvm::Instruction* inst);
-bool isGather4Instruction(llvm::Instruction* inst);
-bool isVectorInputInstruction(llvm::Instruction* inst);
+    bool isSampleLoadGather4InfoInstruction(llvm::Instruction* inst);
+    bool isSampleInstruction(llvm::Instruction* inst);
+    bool isInfoInstruction(llvm::Instruction* inst);
+    bool isLdInstruction(llvm::Instruction* inst);
+    bool isGather4Instruction(llvm::Instruction* inst);
+    bool isVectorInputInstruction(llvm::Instruction* inst);
 
-bool IsMediaIOIntrinsic(llvm::Instruction *inst);
-bool IsSIMDBlockIntrinsic(llvm::Instruction* inst);
-bool isSubGroupIntrinsic(const llvm::Instruction *I);
+    bool IsMediaIOIntrinsic(llvm::Instruction* inst);
+    bool IsSIMDBlockIntrinsic(llvm::Instruction* inst);
+    bool isSubGroupIntrinsic(const llvm::Instruction* I);
 
-bool isURBWriteIntrinsic(const llvm::Instruction* inst);
+    bool isURBWriteIntrinsic(const llvm::Instruction* inst);
 
-unsigned EncodeAS4GFXResource(
-    const llvm::Value& bufIdx,
-    BufferType bufType,
-    unsigned uniqueIndAS);
+    unsigned EncodeAS4GFXResource(
+        const llvm::Value& bufIdx,
+        BufferType bufType,
+        unsigned uniqueIndAS);
 
-unsigned SetBufferAsBindless(unsigned addressSpaceOfPtr, BufferType bufferType);
+    unsigned SetBufferAsBindless(unsigned addressSpaceOfPtr, BufferType bufferType);
 
-BufferType DecodeAS4GFXResource(unsigned addrSpace, bool& directIdx, unsigned& bufId);
-int getConstantBufferLoadOffset(llvm::LoadInst *ld);
+    BufferType DecodeAS4GFXResource(unsigned addrSpace, bool& directIdx, unsigned& bufId);
+    int getConstantBufferLoadOffset(llvm::LoadInst* ld);
 
-bool IsDirectIdx(unsigned addrSpace);
-bool isNaNCheck(llvm::FCmpInst &FC);
+    bool IsDirectIdx(unsigned addrSpace);
+    bool isNaNCheck(llvm::FCmpInst& FC);
 
-inline bool IsBindless(BufferType t) 
-{
-    return t == BINDLESS || t == BINDLESS_READONLY;
-}
-
-bool IsUnsignedCmp(const llvm::CmpInst::Predicate Pred);
-bool IsSignedCmp(const llvm::CmpInst::Predicate Pred);
-
-bool IsBitCastForLifetimeMark(const llvm::Value *V);
-
-// isA64Ptr - Queries whether given pointer type requires 64-bit representation in vISA
-bool isA64Ptr(llvm::PointerType *PT, CodeGenContext* pContext);
-
-/// Return true if F is an entry function of a kernel or a shader.
-///    A entry function must have an entry in FunctionInfoMetaData
-///       with type KernelFunction;
-///    A non-entry function may have an entry, if so, that entry in
-///       FunctionInfoMetaData must have type UserFunction.
-inline bool isEntryFunc(const IGCMD::MetaDataUtils *pM, const llvm::Function *CF)
-{
-    llvm::Function *F = const_cast<llvm::Function*>(CF);
-    if (F == nullptr || F->empty() ||
-        pM->findFunctionsInfoItem(F) == pM->end_FunctionsInfo())
-        return false;
-
-    IGCMD::FunctionInfoMetaDataHandle Info = pM->getFunctionsInfoItem(F);
-    assert(Info->isTypeHasValue() && "FunctionInfoMetaData missing type!");
-    return Info->getType() == FunctionTypeMD::KernelFunction;
-}
-
-// Return a unique entry function.
-// Assert if more than one entry function exists.
-llvm::Function* getUniqueEntryFunc(const IGCMD::MetaDataUtils *pM);
-
-// \brief Get next instruction, returning null if it's the last of the BB.
-// This is the replacement of Instruction::getNextNode(), since getNextNode()
-// on last inst of BB will return sentinel node as instruction, which will
-// cause memory corruption.  A better solution is to switch to iterator and
-// avoid using getNextNode().
-inline llvm::Instruction* GetNextInstruction(llvm::Instruction* inst)
-{
-    llvm::BasicBlock::iterator I = llvm::BasicBlock::iterator(inst);
-    if (++I == inst->getParent()->end())
+    inline bool IsBindless(BufferType t)
     {
-        return nullptr;
+        return t == BINDLESS || t == BINDLESS_READONLY;
     }
-    return &(*I);
-}
 
-inline bool RTWriteHasSource0Alpha(
-    const llvm::RTWritIntrinsic* rtWrite,
-    ModuleMetaData* md)
-{
-    return !llvm::isa<llvm::UndefValue>(rtWrite->getSource0Alpha());
-}
-inline bool DoesRTWriteSrc0AlphaBelongToHomogeneousPart(
-    const llvm::RTWritIntrinsic* rtWrite,
-    ModuleMetaData* md)
-{
-    return !rtWrite->hasMask() && RTWriteHasSource0Alpha(rtWrite, md);
-}
+    bool IsUnsignedCmp(const llvm::CmpInst::Predicate Pred);
+    bool IsSignedCmp(const llvm::CmpInst::Predicate Pred);
 
-inline bool VectorUsedByConstExtractOnly(
-    llvm::Value* val,
-    llvm::SmallVector< llvm::SmallVector<llvm::ExtractElementInst*, 1>, 4>& extracts)
-{
-    for (auto UI = val->user_begin(), UE = val->user_end(); UI != UE; ++UI)
+    bool IsBitCastForLifetimeMark(const llvm::Value* V);
+
+    // isA64Ptr - Queries whether given pointer type requires 64-bit representation in vISA
+    bool isA64Ptr(llvm::PointerType* PT, CodeGenContext* pContext);
+
+    /// Return true if F is an entry function of a kernel or a shader.
+    ///    A entry function must have an entry in FunctionInfoMetaData
+    ///       with type KernelFunction;
+    ///    A non-entry function may have an entry, if so, that entry in
+    ///       FunctionInfoMetaData must have type UserFunction.
+    inline bool isEntryFunc(const IGCMD::MetaDataUtils* pM, const llvm::Function* CF)
     {
-        llvm::ExtractElementInst* ei =
-            llvm::dyn_cast<llvm::ExtractElementInst>(*UI);
-        if (!ei)
-        {
+        llvm::Function* F = const_cast<llvm::Function*>(CF);
+        if (F == nullptr || F->empty() ||
+            pM->findFunctionsInfoItem(F) == pM->end_FunctionsInfo())
             return false;
-        }
-        else
+
+        IGCMD::FunctionInfoMetaDataHandle Info = pM->getFunctionsInfoItem(F);
+        assert(Info->isTypeHasValue() && "FunctionInfoMetaData missing type!");
+        return Info->getType() == FunctionTypeMD::KernelFunction;
+    }
+
+    // Return a unique entry function.
+    // Assert if more than one entry function exists.
+    llvm::Function* getUniqueEntryFunc(const IGCMD::MetaDataUtils* pM);
+
+    // \brief Get next instruction, returning null if it's the last of the BB.
+    // This is the replacement of Instruction::getNextNode(), since getNextNode()
+    // on last inst of BB will return sentinel node as instruction, which will
+    // cause memory corruption.  A better solution is to switch to iterator and
+    // avoid using getNextNode().
+    inline llvm::Instruction* GetNextInstruction(llvm::Instruction* inst)
+    {
+        llvm::BasicBlock::iterator I = llvm::BasicBlock::iterator(inst);
+        if (++I == inst->getParent()->end())
         {
-            llvm::ConstantInt* idxv =
-                llvm::dyn_cast<llvm::ConstantInt>(ei->getIndexOperand());
-            if (!idxv)
+            return nullptr;
+        }
+        return &(*I);
+    }
+
+    inline bool RTWriteHasSource0Alpha(
+        const llvm::RTWritIntrinsic* rtWrite,
+        ModuleMetaData* md)
+    {
+        return !llvm::isa<llvm::UndefValue>(rtWrite->getSource0Alpha());
+    }
+    inline bool DoesRTWriteSrc0AlphaBelongToHomogeneousPart(
+        const llvm::RTWritIntrinsic* rtWrite,
+        ModuleMetaData* md)
+    {
+        return !rtWrite->hasMask() && RTWriteHasSource0Alpha(rtWrite, md);
+    }
+
+    inline bool VectorUsedByConstExtractOnly(
+        llvm::Value* val,
+        llvm::SmallVector< llvm::SmallVector<llvm::ExtractElementInst*, 1>, 4> & extracts)
+    {
+        for (auto UI = val->user_begin(), UE = val->user_end(); UI != UE; ++UI)
+        {
+            llvm::ExtractElementInst* ei =
+                llvm::dyn_cast<llvm::ExtractElementInst>(*UI);
+            if (!ei)
             {
                 return false;
             }
-            uint idx = (uint)idxv->getZExtValue();
-            extracts[idx].push_back(ei);
+            else
+            {
+                llvm::ConstantInt* idxv =
+                    llvm::dyn_cast<llvm::ConstantInt>(ei->getIndexOperand());
+                if (!idxv)
+                {
+                    return false;
+                }
+                uint idx = (uint)idxv->getZExtValue();
+                extracts[idx].push_back(ei);
+            }
         }
-    }
-    return true;
-}
-
-inline bool LoadUsedByConstExtractOnly(
-    llvm::LoadInst* ld,
-    llvm::SmallVector< llvm::SmallVector<llvm::ExtractElementInst*, 1>, 4>& extracts)
-{
-    return VectorUsedByConstExtractOnly(ld, extracts);
-}
-
-
-llvm::Value* mutatePtrType(llvm::Value* ptrv, llvm::PointerType* newType,
-    llvm::IRBuilder<>& builder, const llvm::Twine& name = "");
-
-unsigned int AppendConservativeRastWAHeader(IGC::SProgramOutput* program, SIMDMode simdmode);
-
-bool DSDualPatchEnabled(class CodeGenContext* ctx);
-
-/// \brief Check whether inst precedes given position in one basic block
-inline bool isInstPrecede(
-    const llvm::Instruction* inst,
-    const llvm::Instruction* pos)
-{
-    // must within same basic block
-    assert(inst->getParent() == pos->getParent());
-    if (inst == pos)
-    {
         return true;
     }
 
-    auto II = inst->getParent()->begin();
-    for (; &*II != inst && &*II != pos; ++ II)
-        ;
-    return &*II == inst;
-}
-
-// If true, the codegen will not emit any code for this instruction
-// (So dst and src are aliased to each other.)
-bool isNoOpInst(llvm::Instruction* I, CodeGenContext* Ctx);
-
-// CxtI is the instruction at which V is checked whether
-// it is positive or not. 
-bool valueIsPositive(
-    llvm::Value* V,
-    const llvm::DataLayout *DL,
-    llvm::AssumptionCache *AC = nullptr,
-    llvm::Instruction *CxtI = nullptr);
-
-inline float GetThreadOccupancyPerSubslice(SIMDMode simdMode, unsigned threadGroupSize, unsigned hwThreadPerSubslice, unsigned slmSize, unsigned slmSizePerSubSlice)
-{
-    unsigned simdWidth = 8;
-
-    switch (simdMode)
+    inline bool LoadUsedByConstExtractOnly(
+        llvm::LoadInst* ld,
+        llvm::SmallVector< llvm::SmallVector<llvm::ExtractElementInst*, 1>, 4> & extracts)
     {
-    case SIMDMode::SIMD8:   simdWidth = 8;  break;
-    case SIMDMode::SIMD16:  simdWidth = 16; break;
-    case SIMDMode::SIMD32:  simdWidth = 32; break;
-    default:
-        assert(false && "Invalid SIMD mode");
+        return VectorUsedByConstExtractOnly(ld, extracts);
     }
-    unsigned nThreadsPerTG = (threadGroupSize + simdWidth - 1) / simdWidth;
 
-    unsigned TGPerSubsliceNoSLM = hwThreadPerSubslice / nThreadsPerTG;
-    unsigned nTGDispatch = (slmSize == 0) ? TGPerSubsliceNoSLM : std::min(TGPerSubsliceNoSLM, slmSizePerSubSlice / slmSize);
 
-    float occupancy =
-        float(nTGDispatch * nThreadsPerTG) / float(hwThreadPerSubslice);
-    return occupancy;
-}
+    llvm::Value* mutatePtrType(llvm::Value* ptrv, llvm::PointerType* newType,
+        llvm::IRBuilder<>& builder, const llvm::Twine& name = "");
 
-// Duplicate of the LLVM function in llvm/Transforms/Utils/ModuleUtils.h
-// Global can now be any pointer type that uses addrspace
-void appendToUsed(llvm::Module &M, llvm::ArrayRef<llvm::GlobalValue *> Values);
+    unsigned int AppendConservativeRastWAHeader(IGC::SProgramOutput* program, SIMDMode simdmode);
 
-bool safeScheduleUp(llvm::BasicBlock *BB, llvm::Value *V, llvm::Instruction *&InsertPos, llvm::DenseSet<llvm::Instruction *> Scheduled);
+    bool DSDualPatchEnabled(class CodeGenContext* ctx);
 
-inline unsigned GetHwThreadsPerWG(const IGC::CPlatform& platform)
-{
-    unsigned hwThreadPerWorkgroup = platform.getMaxNumberThreadPerSubslice();
-
-    if (platform.supportPooledEU())
+    /// \brief Check whether inst precedes given position in one basic block
+    inline bool isInstPrecede(
+        const llvm::Instruction* inst,
+        const llvm::Instruction* pos)
     {
-        hwThreadPerWorkgroup = platform.getMaxNumberThreadPerWorkgroupPooledMax();
-    }
-    return hwThreadPerWorkgroup;
-}
+        // must within same basic block
+        assert(inst->getParent() == pos->getParent());
+        if (inst == pos)
+        {
+            return true;
+        }
 
-inline SIMDMode getLeastSIMDAllowed(unsigned int threadGroupSize, unsigned int hwThreadPerWorkgroup)
-{
-    if (hwThreadPerWorkgroup == 0)
-    {
-        hwThreadPerWorkgroup = 42; //On GT1 HW, there are 7 threads/EU and 6 EU/subslice, 42 is the minimum threads/workgroup any HW can support 
+        auto II = inst->getParent()->begin();
+        for (; &*II != inst && &*II != pos; ++II)
+            ;
+        return &*II == inst;
     }
-    if ((threadGroupSize <= hwThreadPerWorkgroup * 8) &&
-        threadGroupSize <= 512)
+
+    // If true, the codegen will not emit any code for this instruction
+    // (So dst and src are aliased to each other.)
+    bool isNoOpInst(llvm::Instruction* I, CodeGenContext* Ctx);
+
+    // CxtI is the instruction at which V is checked whether
+    // it is positive or not. 
+    bool valueIsPositive(
+        llvm::Value* V,
+        const llvm::DataLayout* DL,
+        llvm::AssumptionCache* AC = nullptr,
+        llvm::Instruction* CxtI = nullptr);
+
+    inline float GetThreadOccupancyPerSubslice(SIMDMode simdMode, unsigned threadGroupSize, unsigned hwThreadPerSubslice, unsigned slmSize, unsigned slmSizePerSubSlice)
     {
-        return SIMDMode::SIMD8;
+        unsigned simdWidth = 8;
+
+        switch (simdMode)
+        {
+        case SIMDMode::SIMD8:   simdWidth = 8;  break;
+        case SIMDMode::SIMD16:  simdWidth = 16; break;
+        case SIMDMode::SIMD32:  simdWidth = 32; break;
+        default:
+            assert(false && "Invalid SIMD mode");
+        }
+        unsigned nThreadsPerTG = (threadGroupSize + simdWidth - 1) / simdWidth;
+
+        unsigned TGPerSubsliceNoSLM = hwThreadPerSubslice / nThreadsPerTG;
+        unsigned nTGDispatch = (slmSize == 0) ? TGPerSubsliceNoSLM : std::min(TGPerSubsliceNoSLM, slmSizePerSubSlice / slmSize);
+
+        float occupancy =
+            float(nTGDispatch * nThreadsPerTG) / float(hwThreadPerSubslice);
+        return occupancy;
     }
-    else if (threadGroupSize <= hwThreadPerWorkgroup * 16)
+
+    // Duplicate of the LLVM function in llvm/Transforms/Utils/ModuleUtils.h
+    // Global can now be any pointer type that uses addrspace
+    void appendToUsed(llvm::Module& M, llvm::ArrayRef<llvm::GlobalValue*> Values);
+
+    bool safeScheduleUp(llvm::BasicBlock* BB, llvm::Value* V, llvm::Instruction*& InsertPos, llvm::DenseSet<llvm::Instruction*> Scheduled);
+
+    inline unsigned GetHwThreadsPerWG(const IGC::CPlatform& platform)
     {
-        return SIMDMode::SIMD16;
+        unsigned hwThreadPerWorkgroup = platform.getMaxNumberThreadPerSubslice();
+
+        if (platform.supportPooledEU())
+        {
+            hwThreadPerWorkgroup = platform.getMaxNumberThreadPerWorkgroupPooledMax();
+        }
+        return hwThreadPerWorkgroup;
     }
-    else
+
+    inline SIMDMode getLeastSIMDAllowed(unsigned int threadGroupSize, unsigned int hwThreadPerWorkgroup)
     {
-        return SIMDMode::SIMD32;
+        if (hwThreadPerWorkgroup == 0)
+        {
+            hwThreadPerWorkgroup = 42; //On GT1 HW, there are 7 threads/EU and 6 EU/subslice, 42 is the minimum threads/workgroup any HW can support 
+        }
+        if ((threadGroupSize <= hwThreadPerWorkgroup * 8) &&
+            threadGroupSize <= 512)
+        {
+            return SIMDMode::SIMD8;
+        }
+        else if (threadGroupSize <= hwThreadPerWorkgroup * 16)
+        {
+            return SIMDMode::SIMD16;
+        }
+        else
+        {
+            return SIMDMode::SIMD32;
+        }
     }
-}
 
 } // namespace IGC

@@ -79,9 +79,9 @@ const Instruction* PayloadMapping::GetSupremumOfNonHomogeneousPart(
 /// X 2 -> return rtwi2
 /// 1 X -> return rtwi1
 /// 1 2 -> return rtwi1
-static const Instruction * CompareOnMask(
-    const RTWritIntrinsic *rtwi1,
-    const RTWritIntrinsic *rtwi2)
+static const Instruction* CompareOnMask(
+    const RTWritIntrinsic* rtwi1,
+    const RTWritIntrinsic* rtwi2)
 {
     if (rtwi1->hasMask() && rtwi2->hasMask())
     {
@@ -102,9 +102,9 @@ static const Instruction * CompareOnMask(
 }
 
 ///
-const Instruction * PayloadMapping::GetSupremumOfNonHomogeneousPart_RTWrite(
-    const Instruction *inst1,
-    const Instruction *inst2)
+const Instruction* PayloadMapping::GetSupremumOfNonHomogeneousPart_RTWrite(
+    const Instruction* inst1,
+    const Instruction* inst2)
 {
     assert(llvm::isa<llvm::RTWritIntrinsic>(inst1));
     assert(llvm::isa<llvm::RTWritIntrinsic>(inst2));
@@ -137,7 +137,7 @@ const Instruction * PayloadMapping::GetSupremumOfNonHomogeneousPart_RTWrite(
 /// wants to model the 'reserved' part of the payload (which cannot
 /// be coalesced due to non-homogeneous) this method should handle
 /// that intrinsic and return the offset (in units of bytes).
-int PayloadMapping::GetLeftReservedOffset(const Instruction *inst, SIMDMode simdMode)
+int PayloadMapping::GetLeftReservedOffset(const Instruction* inst, SIMDMode simdMode)
 {
     const GenIntrinsicInst* intrinsicInst = dyn_cast<GenIntrinsicInst>(inst);
     assert(intrinsicInst);
@@ -152,7 +152,7 @@ int PayloadMapping::GetLeftReservedOffset(const Instruction *inst, SIMDMode simd
 }
 
 ///
-int PayloadMapping::GetLeftReservedOffset_RTWrite(const Instruction *inst, SIMDMode simdMode)
+int PayloadMapping::GetLeftReservedOffset_RTWrite(const Instruction* inst, SIMDMode simdMode)
 {
     assert(llvm::isa<llvm::RTWritIntrinsic>(inst));
     const RTWritIntrinsic* rtwi = cast<RTWritIntrinsic>(inst);
@@ -167,7 +167,7 @@ int PayloadMapping::GetLeftReservedOffset_RTWrite(const Instruction *inst, SIMDM
 
     if (RTWriteHasSource0Alpha(rtwi, m_CodeGenContext->getModuleMetaData()))
     {
-        assert( simdMode == SIMDMode::SIMD8 || simdMode == SIMDMode::SIMD16);
+        assert(simdMode == SIMDMode::SIMD8 || simdMode == SIMDMode::SIMD16);
         int multiplier = rtwi->getSource0Alpha()->getType()->isHalfTy() ? 1 : 2;
         if (simdMode == SIMDMode::SIMD8)
         {
@@ -183,7 +183,7 @@ int PayloadMapping::GetLeftReservedOffset_RTWrite(const Instruction *inst, SIMDM
 }
 
 /// 
-int PayloadMapping::GetRightReservedOffset(const Instruction *inst, SIMDMode simdMode)
+int PayloadMapping::GetRightReservedOffset(const Instruction* inst, SIMDMode simdMode)
 {
     const GenIntrinsicInst* intrinsicInst = dyn_cast<GenIntrinsicInst>(inst);
     assert(intrinsicInst);
@@ -197,7 +197,7 @@ int PayloadMapping::GetRightReservedOffset(const Instruction *inst, SIMDMode sim
     }
 }
 
-int PayloadMapping::GetRightReservedOffset_RTWrite(const Instruction *inst, SIMDMode simdMode)
+int PayloadMapping::GetRightReservedOffset_RTWrite(const Instruction* inst, SIMDMode simdMode)
 {
     assert(llvm::isa<llvm::RTWritIntrinsic>(inst));
     const RTWritIntrinsic* rtwi = cast<RTWritIntrinsic>(inst);
@@ -232,23 +232,23 @@ int PayloadMapping::GetRightReservedOffset_RTWrite(const Instruction *inst, SIMD
 /// Returns true if a given intrinsic (and its specific configuration) will produce
 /// non-homogeneous payload (the one in which some elements are not 'expanded' with simd mode)
 /// e.g. RT writes with oMask
-bool PayloadMapping::HasNonHomogeneousPayloadElements(const Instruction *inst)
+bool PayloadMapping::HasNonHomogeneousPayloadElements(const Instruction* inst)
 {
-    const GenIntrinsicInst* intrinsicInst = dyn_cast<GenIntrinsicInst>( inst );
+    const GenIntrinsicInst* intrinsicInst = dyn_cast<GenIntrinsicInst>(inst);
     assert(intrinsicInst);
 
-    switch( intrinsicInst->getIntrinsicID() )
+    switch (intrinsicInst->getIntrinsicID())
     {
-        case GenISAIntrinsic::GenISA_RTWrite:
-            return HasNonHomogeneousPayloadElements_RTWrite(intrinsicInst);
-        default:
-            return false;
+    case GenISAIntrinsic::GenISA_RTWrite:
+        return HasNonHomogeneousPayloadElements_RTWrite(intrinsicInst);
+    default:
+        return false;
     }
 
 }
 
 ///
-bool PayloadMapping::HasNonHomogeneousPayloadElements_RTWrite(const Instruction *inst)
+bool PayloadMapping::HasNonHomogeneousPayloadElements_RTWrite(const Instruction* inst)
 {
     assert(llvm::isa<llvm::RTWritIntrinsic>(inst));
     const RTWritIntrinsic* rtwi = cast<RTWritIntrinsic>(inst);
@@ -281,13 +281,13 @@ bool PayloadMapping::IsUndefOrZeroImmediate(const Value* value)
         return true;
     }
 
-    if (const llvm::ConstantInt *CInt = llvm::dyn_cast<llvm::ConstantInt>(value)){
-        if (CInt->getZExtValue() == 0){
+    if (const llvm::ConstantInt * CInt = llvm::dyn_cast<llvm::ConstantInt>(value)) {
+        if (CInt->getZExtValue() == 0) {
             return true;
         }
     }
 
-    if (const llvm::ConstantFP *CFP = llvm::dyn_cast<llvm::ConstantFP>(value))
+    if (const llvm::ConstantFP * CFP = llvm::dyn_cast<llvm::ConstantFP>(value))
     {
         APInt api = CFP->getValueAPF().bitcastToAPInt();
         if (api.getZExtValue() == 0)
@@ -300,21 +300,21 @@ bool PayloadMapping::IsUndefOrZeroImmediate(const Value* value)
 
 /// Return the number of payload elements that this instruction will
 /// generate.
-uint PayloadMapping::GetNumPayloadElements(const Instruction *inst)
+uint PayloadMapping::GetNumPayloadElements(const Instruction* inst)
 {
     const GenIntrinsicInst* intrinsicInst = dyn_cast<GenIntrinsicInst>(inst);
-    assert( intrinsicInst );
-    if(const SampleIntrinsic* sampleInst = dyn_cast<SampleIntrinsic>(inst))
+    assert(intrinsicInst);
+    if (const SampleIntrinsic * sampleInst = dyn_cast<SampleIntrinsic>(inst))
     {
         return GetNumPayloadElements_Sample(sampleInst);
     }
-    else if (const SamplerLoadIntrinsic* sampleInst = dyn_cast<SamplerLoadIntrinsic>(inst))
+    else if (const SamplerLoadIntrinsic * sampleInst = dyn_cast<SamplerLoadIntrinsic>(inst))
     {
         return GetNumPayloadElements_LDMS(sampleInst);
     }
 
-    switch(intrinsicInst->getIntrinsicID())
-    {        
+    switch (intrinsicInst->getIntrinsicID())
+    {
     case GenISAIntrinsic::GenISA_URBWrite:
         return GetNumPayloadElements_URBWrite(intrinsicInst);
     case GenISAIntrinsic::GenISA_RTWrite:
@@ -328,7 +328,7 @@ uint PayloadMapping::GetNumPayloadElements(const Instruction *inst)
 }
 
 /// \brief
-uint PayloadMapping::GetNumPayloadElements_LDMS(const GenIntrinsicInst *inst)
+uint PayloadMapping::GetNumPayloadElements_LDMS(const GenIntrinsicInst* inst)
 {
     const uint numOperands = inst->getNumOperands();
 
@@ -352,75 +352,75 @@ uint PayloadMapping::GetNumPayloadElements_LDMS(const GenIntrinsicInst *inst)
 }
 
 /// \brief Adjusts the number of sources for a sampler, based on a sampler type.
-void PayloadMapping::ValidateNumberofSources(EOPCODE opCode, uint &numberofSrcs)
+void PayloadMapping::ValidateNumberofSources(EOPCODE opCode, uint& numberofSrcs)
 {
-    switch(opCode)
+    switch (opCode)
     {
     case llvm_sample_dptr:
+    {
+        switch (numberofSrcs)
         {
-            switch(numberofSrcs)
-            {
-            case 1:
-                numberofSrcs++;
-            case 2:
-                numberofSrcs++;
-                break;
-            case 5:
-                numberofSrcs++;
-                break;
-            case 8:
-                numberofSrcs++;
-                break;
-            }
+        case 1:
+            numberofSrcs++;
+        case 2:
+            numberofSrcs++;
+            break;
+        case 5:
+            numberofSrcs++;
+            break;
+        case 8:
+            numberofSrcs++;
+            break;
         }
-        break;
+    }
+    break;
     case llvm_sample_dcptr:
+    {
+        switch (numberofSrcs)
         {
-            switch(numberofSrcs)
-            {
-            case 2:
-                numberofSrcs++;
-            case 3:
-                numberofSrcs++;
-                break;
-            case 5:
-                numberofSrcs++;
-            case 6:
-                numberofSrcs++;
-                break;
-            case 8:
-                numberofSrcs++;
-            case 9:
-                numberofSrcs++;
-                break;
-            }
+        case 2:
+            numberofSrcs++;
+        case 3:
+            numberofSrcs++;
+            break;
+        case 5:
+            numberofSrcs++;
+        case 6:
+            numberofSrcs++;
+            break;
+        case 8:
+            numberofSrcs++;
+        case 9:
+            numberofSrcs++;
+            break;
         }
-        break;
+    }
+    break;
     case llvm_sample_bptr:
     case llvm_sample_cptr:
     case llvm_sample_lptr:
+    {
+        switch (numberofSrcs)
         {
-            switch(numberofSrcs)
-            {
-            case 1:
-                numberofSrcs++;
-                break;
-            }
+        case 1:
+            numberofSrcs++;
+            break;
         }
-        break;
+    }
+    break;
     case llvm_sample_lcptr:
     case llvm_sample_bcptr:
+    {
+        switch (numberofSrcs)
         {
-            switch(numberofSrcs)
-            {
-            case 1:
-                numberofSrcs++;
-            case 2:
-                numberofSrcs++;
-                break;
-            }
+        case 1:
+            numberofSrcs++;
+        case 2:
+            numberofSrcs++;
+            break;
         }
-        break;
+    }
+    break;
     default:
         break;
     }
@@ -431,7 +431,7 @@ void PayloadMapping::ValidateNumberofSources(EOPCODE opCode, uint &numberofSrcs)
 ///
 /// Does not consider 'peeling' of the first element for split-send.
 /// The peeling itself is supposed to be done by a wrapper method.
-uint PayloadMapping::GetNonAdjustedNumPayloadElements_Sample(const SampleIntrinsic *inst)
+uint PayloadMapping::GetNonAdjustedNumPayloadElements_Sample(const SampleIntrinsic* inst)
 {
     const unsigned int  numOperands = inst->getNumOperands();
     unsigned int numSources = numOperands - 6;
@@ -471,20 +471,20 @@ uint PayloadMapping::GetNonAdjustedNumPayloadElements_Sample(const SampleIntrins
 /// \brief Gets the adjusted number of payload elements for sampler.
 ///
 /// Whether to peel is determined by the target GEN architecture.
-uint PayloadMapping::GetNumPayloadElements_Sample(const SampleIntrinsic *inst)
+uint PayloadMapping::GetNumPayloadElements_Sample(const SampleIntrinsic* inst)
 {
     unsigned int numSources = GetNonAdjustedNumPayloadElements_Sample(inst);
     return numSources;
 }
 
 /// \brief Determines whether sample instruction has LOD of zero
-bool PayloadMapping::IsZeroLOD(const SampleIntrinsic *inst)
+bool PayloadMapping::IsZeroLOD(const SampleIntrinsic* inst)
 {
     const CPlatform& platform = m_CodeGenContext->platform;
 
-    if(platform.supportSampleAndLd_lz())
+    if (platform.supportSampleAndLd_lz())
     {
-        if(const SampleIntrinsic* sampleInst = dyn_cast<SampleIntrinsic>(inst))
+        if (const SampleIntrinsic * sampleInst = dyn_cast<SampleIntrinsic>(inst))
         {
             return sampleInst->ZeroLOD();
         }
@@ -493,7 +493,7 @@ bool PayloadMapping::IsZeroLOD(const SampleIntrinsic *inst)
 }
 
 ///
-uint PayloadMapping::GetNumPayloadElements_URBWrite(const GenIntrinsicInst *inst)
+uint PayloadMapping::GetNumPayloadElements_URBWrite(const GenIntrinsicInst* inst)
 {
 
     //FIXME: this was copied from EmitPass::emitURBWrite.
@@ -501,7 +501,7 @@ uint PayloadMapping::GetNumPayloadElements_URBWrite(const GenIntrinsicInst *inst
     //modified there
 
     uint size = 0;
-    if( llvm::isa<llvm::ConstantInt>(inst->getOperand(1)) )
+    if (llvm::isa<llvm::ConstantInt>(inst->getOperand(1)))
     {
         uint mask = (uint)llvm::cast<llvm::ConstantInt>(inst->getOperand(1))->getZExtValue();
         size = iSTD::bsr(mask) + 1;
@@ -521,14 +521,14 @@ uint PayloadMapping::GetNumPayloadElements_URBWrite(const GenIntrinsicInst *inst
 /// Only [R G B A] part forms the homogeneous sequence. (Though one can
 /// also include s0Alpha in the homogeneous part if oM is not present, but that
 /// seemed not to give good results in terms of coalescing efficiency).
-uint PayloadMapping::GetNumPayloadElements_RTWrite(const GenIntrinsicInst *inst)
+uint PayloadMapping::GetNumPayloadElements_RTWrite(const GenIntrinsicInst* inst)
 {
     const int numElements = 4; //4 colors, always form homogeneous 'part'.
     return numElements;
 }
 
 ///
-Value* PayloadMapping::GetPayloadElementToValueMapping_URBWrite( const GenIntrinsicInst *inst, uint index )
+Value* PayloadMapping::GetPayloadElementToValueMapping_URBWrite(const GenIntrinsicInst* inst, uint index)
 {
     //First 3 operands are immediates with specific meaning (not part of payload)
     return inst->getOperand(index + 2);
@@ -538,7 +538,7 @@ Value* PayloadMapping::GetPayloadElementToValueMapping_URBWrite( const GenIntrin
 ///
 /// Peeling is not applied here.
 uint PayloadMapping::GetNonAdjustedPayloadElementIndexToValueIndexMapping_sample(
-    const SampleIntrinsic *inst, uint index)
+    const SampleIntrinsic* inst, uint index)
 {
     const bool zeroLOD = IsZeroLOD(inst);
     uint startIndex = zeroLOD ? 1 : 0;
@@ -547,8 +547,8 @@ uint PayloadMapping::GetNonAdjustedPayloadElementIndexToValueIndexMapping_sample
     //Here we want to get 'C', but to skip 'L'.
     // C L ...
     if (!(zeroLOD &&
-          index == 0 &&
-          IID == GenISAIntrinsic::GenISA_sampleLCptr))
+        index == 0 &&
+        IID == GenISAIntrinsic::GenISA_sampleLCptr))
     {
         index = index + startIndex;
     }
@@ -557,14 +557,14 @@ uint PayloadMapping::GetNonAdjustedPayloadElementIndexToValueIndexMapping_sample
 }
 
 /// \brief Gets payload element index to value mapping, adjusted with splitting decision(peeling).
-Value* PayloadMapping::GetPayloadElementToValueMapping_sample(const SampleIntrinsic *inst, const uint index)
+Value* PayloadMapping::GetPayloadElementToValueMapping_sample(const SampleIntrinsic* inst, const uint index)
 {
     uint valueIndex = GetNonAdjustedPayloadElementIndexToValueIndexMapping_sample(inst, index);
     return inst->getOperand(valueIndex);
 }
 
 /// \brief Gets payload element index to value mapping for RT writes.
-Value* PayloadMapping::GetPayloadElementToValueMapping_RTWrite(const GenIntrinsicInst *inst, const uint index)
+Value* PayloadMapping::GetPayloadElementToValueMapping_RTWrite(const GenIntrinsicInst* inst, const uint index)
 {
     //s0Alpha oM[R G B A] sZ oS
     assert(index < GetNumPayloadElements(inst));
@@ -585,7 +585,7 @@ Value* PayloadMapping::GetPayloadElementToValueMapping_RTWrite(const GenIntrinsi
     return nullptr;
 }
 
-Value* PayloadMapping::GetPayloadElementToValueMapping_LDMS(const SamplerLoadIntrinsic *inst, const uint index)
+Value* PayloadMapping::GetPayloadElementToValueMapping_LDMS(const SamplerLoadIntrinsic* inst, const uint index)
 {
     uint valueIndex = index;
 
@@ -593,12 +593,12 @@ Value* PayloadMapping::GetPayloadElementToValueMapping_LDMS(const SamplerLoadInt
 }
 
 
-Value* PayloadMapping::GetPayloadElementToValueMapping(const Instruction *inst, uint index)
+Value* PayloadMapping::GetPayloadElementToValueMapping(const Instruction* inst, uint index)
 {
-    assert(index < GetNumPayloadElements(inst) );
+    assert(index < GetNumPayloadElements(inst));
 
     const llvm::GenIntrinsicInst* intrinsicInst = dyn_cast<GenIntrinsicInst>(inst);
-    assert( intrinsicInst );
+    assert(intrinsicInst);
 
     std::pair<const llvm::Instruction*, uint> instIndexPair(inst, index);
 
@@ -610,14 +610,14 @@ Value* PayloadMapping::GetPayloadElementToValueMapping(const Instruction *inst, 
 
     Value* payloadValue = nullptr;
 
-    if (const SampleIntrinsic* sampleInst = dyn_cast<SampleIntrinsic>(inst))
+    if (const SampleIntrinsic * sampleInst = dyn_cast<SampleIntrinsic>(inst))
     {
         payloadValue = GetPayloadElementToValueMapping_sample(sampleInst, index);
         assert(payloadValue != nullptr);
         m_PayloadMappingCache.insert(std::pair<std::pair<const llvm::Instruction*, uint>, Value*>(instIndexPair, payloadValue));
         return payloadValue;
     }
-    else if (const SamplerLoadIntrinsic* sampleInst = dyn_cast<SamplerLoadIntrinsic>(inst))
+    else if (const SamplerLoadIntrinsic * sampleInst = dyn_cast<SamplerLoadIntrinsic>(inst))
     {
         payloadValue = GetPayloadElementToValueMapping_LDMS(sampleInst, index);
         assert(payloadValue != nullptr);
@@ -626,7 +626,7 @@ Value* PayloadMapping::GetPayloadElementToValueMapping(const Instruction *inst, 
     }
 
 
-    switch(intrinsicInst->getIntrinsicID())
+    switch (intrinsicInst->getIntrinsicID())
     {
     case GenISAIntrinsic::GenISA_URBWrite:
         payloadValue = GetPayloadElementToValueMapping_URBWrite(intrinsicInst, index);
@@ -647,9 +647,9 @@ Value* PayloadMapping::GetPayloadElementToValueMapping(const Instruction *inst, 
 }
 
 /// \brief Determines whether the payload is being split by peeling the first element.
-bool PayloadMapping::DoPeelFirstElement(const Instruction *inst)
+bool PayloadMapping::DoPeelFirstElement(const Instruction* inst)
 {
-    if (const SamplerLoadIntrinsic* sampleInst = dyn_cast<SamplerLoadIntrinsic>(inst))
+    if (const SamplerLoadIntrinsic * sampleInst = dyn_cast<SamplerLoadIntrinsic>(inst))
     {
         return true;
     }

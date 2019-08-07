@@ -62,7 +62,7 @@ IGC_INITIALIZE_PASS_DEPENDENCY(LivenessAnalysis)
 IGC_INITIALIZE_PASS_END(RegisterEstimator, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 
-uint32_t RegisterEstimator::getNumLiveGRFAtInst(Instruction *I, uint16_t simdsize)
+uint32_t RegisterEstimator::getNumLiveGRFAtInst(Instruction* I, uint16_t simdsize)
 {
     InstToRegUsageMap::iterator MI = m_LiveVirtRegs.find(I);
     if (MI != m_LiveVirtRegs.end())
@@ -71,7 +71,7 @@ uint32_t RegisterEstimator::getNumLiveGRFAtInst(Instruction *I, uint16_t simdsiz
         return getNumRegs(ruse, simdsize);
     }
 
-    BasicBlock *BB = I->getParent();
+    BasicBlock* BB = I->getParent();
     RegUsage nCurrLiveIns = m_BBLiveInVirtRegs[BB];
 
     ValueToIntMap& ValueIds = m_LVA->ValueIds;
@@ -79,15 +79,15 @@ uint32_t RegisterEstimator::getNumLiveGRFAtInst(Instruction *I, uint16_t simdsiz
 
     // Calculate the number of lives for each instruction of this BB
     for (BasicBlock::iterator II = BB->begin(), IE = BB->end();
-         II != IE; ++II)
+        II != IE; ++II)
     {
-        Instruction *Inst = &*II;
+        Instruction* Inst = &*II;
         if (Inst == I)
         {
             RegUse& ruse = nCurrLiveIns.allUses[REGISTER_CLASS_GRF];
             return getNumRegs(ruse, simdsize);
         }
- 
+
         // Kills
         ValueToValueVecMap::iterator II0 = KillInfo.find(Inst);
         if (II0 != KillInfo.end())
@@ -95,8 +95,8 @@ uint32_t RegisterEstimator::getNumLiveGRFAtInst(Instruction *I, uint16_t simdsiz
             ValueVec& VS = II0->second;
             for (int i = 0, e = (int)VS.size(); i < e; ++i)
             {
-                Value *killVal = VS[i];
-                if (const RegUse* pregs = getRegUse(killVal))
+                Value* killVal = VS[i];
+                if (const RegUse * pregs = getRegUse(killVal))
                 {
                     RegUse& ruse_curr = nCurrLiveIns.allUses[pregs->rClass];
                     ruse_curr -= (*pregs);
@@ -122,17 +122,17 @@ uint32_t RegisterEstimator::getNumLiveGRFAtInst(Instruction *I, uint16_t simdsiz
 void RegisterEstimator::addRegUsage(RegUsage& RUsage, SBitVector& BV)
 {
     for (SBitVector::iterator I = BV.begin(), E = BV.end();
-         I != E; ++I)
+        I != E; ++I)
     {
         int id = *I;
-        if (const RegUse* pregs = getRegUse(id))
+        if (const RegUse * pregs = getRegUse(id))
         {
             RUsage.allUses[pregs->rClass] += (*pregs);
         }
     }
 }
 
-RegUse RegisterEstimator::estimateNumOfRegs(Value *V) const
+RegUse RegisterEstimator::estimateNumOfRegs(Value* V) const
 {
     // Assume no sharing GRF among Values.
     RegUse regs;
@@ -145,11 +145,11 @@ RegUse RegisterEstimator::estimateNumOfRegs(Value *V) const
     }
 
     // GRF
-    Type *Ty = V->getType();
+    Type* Ty = V->getType();
     if (!Ty->isVoidTy())
     {
-        VectorType *VTy = dyn_cast<VectorType>(Ty);
-        Type *eltTy = VTy ? VTy->getElementType() : Ty;
+        VectorType* VTy = dyn_cast<VectorType>(Ty);
+        Type* eltTy = VTy ? VTy->getElementType() : Ty;
         uint32_t nelts = VTy ? int_cast<uint32_t>(VTy->getNumElements()) : 1;
         uint32_t eltBits = (uint32_t)m_DL->getTypeSizeInBits(eltTy);
         uint32_t nBytes = nelts * ((eltBits + 7) / 8);
@@ -210,7 +210,7 @@ void RegisterEstimator::calculate(bool doRPEPerInst)
     for (Function::iterator BI = m_F->begin(), BE = m_F->end();
         BI != BE; ++BI)
     {
-        BasicBlock *BB = &*BI;
+        BasicBlock* BB = &*BI;
         SBitVector& BitVec = BBLiveIns[BB];
         RegUsage nCurrLiveIns;
 
@@ -219,14 +219,14 @@ void RegisterEstimator::calculate(bool doRPEPerInst)
             I != E; ++I)
         {
             int id = *I;
-            if (const RegUse* pregs = getRegUse(id))
+            if (const RegUse * pregs = getRegUse(id))
             {
                 nCurrLiveIns.allUses[pregs->rClass] += (*pregs);
             }
         }
 
         m_BBLiveInVirtRegs.insert(std::make_pair(BB, nCurrLiveIns));
- 
+
         RegUsage bbMaxRegs = nCurrLiveIns;
 
         // Calculate the number of lives for each instruction of this BB.
@@ -234,11 +234,11 @@ void RegisterEstimator::calculate(bool doRPEPerInst)
         // of the instruction, not at entry (nor the largest of the both).
         for (BasicBlock::iterator I = BB->begin(), E = BB->end(); I != E; ++I)
         {
-            Instruction *Inst = &*I;
-             ValueToIntMap::iterator IDef = ValueIds.find(Inst);
+            Instruction* Inst = &*I;
+            ValueToIntMap::iterator IDef = ValueIds.find(Inst);
             if (IDef != ValueIds.end())
             {
-                if (const RegUse* pregs = getRegUse(Inst))
+                if (const RegUse * pregs = getRegUse(Inst))
                 {
                     RegUse& ruse_curr = nCurrLiveIns.allUses[pregs->rClass];
                     ruse_curr += (*pregs);
@@ -252,8 +252,8 @@ void RegisterEstimator::calculate(bool doRPEPerInst)
                 ValueVec& VS = IKill->second;
                 for (int i = 0, e = (int)VS.size(); i < e; ++i)
                 {
-                    Value *killVal = VS[i];
-                    if (const RegUse* pregs = getRegUse(killVal))
+                    Value* killVal = VS[i];
+                    if (const RegUse * pregs = getRegUse(killVal))
                     {
                         RegUse& ruse_curr = nCurrLiveIns.allUses[pregs->rClass];
                         ruse_curr -= (*pregs);
@@ -299,7 +299,7 @@ void RegisterEstimator::calculate(bool doRPEPerInst)
         E = m_LiveVirtRegs.end();
         I != E; ++I)
     {
-        Value *V = I->first;
+        Value* V = I->first;
         m_AllValues.push_back(V);
     }
     std::sort(m_AllValues.begin(), m_AllValues.end(), isNRegGreater(m_LiveVirtRegs));
@@ -311,12 +311,12 @@ void RegisterEstimator::calculate(bool doRPEPerInst)
     }
 }
 
-int RegisterEstimator::getNUsesInBB(Value *V, BasicBlock *BB)
+int RegisterEstimator::getNUsesInBB(Value* V, BasicBlock* BB)
 {
     int nUses = 0;
     for (auto UI = V->user_begin(), UE = V->user_end(); UI != UE; ++UI)
     {
-        Instruction *I = cast<Instruction>(*UI);
+        Instruction* I = cast<Instruction>(*UI);
         if (I->getParent() == BB)
         {
             ++nUses;
@@ -344,7 +344,7 @@ bool RegisterEstimator::runOnFunction(Function& F)
     ValueToIntMap::iterator VI, VE;
     for (VI = m_LVA->ValueIds.begin(), VE = m_LVA->ValueIds.end(); VI != VE; ++VI)
     {
-        Value *Val = VI->first;
+        Value* Val = VI->first;
         uint32_t valId = VI->second;
         RegUse regs = estimateNumOfRegs(Val);
         RegUse& ruse = estNumRegs.allUses[regs.rClass];
@@ -366,12 +366,12 @@ bool RegisterEstimator::runOnFunction(Function& F)
     return false;
 }
 
-void RegisterEstimator::print(raw_ostream& OS, BasicBlock *BB, int dumpLevel)
+void RegisterEstimator::print(raw_ostream& OS, BasicBlock* BB, int dumpLevel)
 {
-    uint32_t grf_livein_simd8   = getNumLiveInGRFAtBB(BB, 8);
-    uint32_t grf_livein_simd16  = getNumLiveInGRFAtBB(BB, 16);
-    uint32_t grf_livein_simd32  = getNumLiveInGRFAtBB(BB, 32);
-    uint32_t grf_maxlive_simd8  = getMaxLiveGRFAtBB(BB, 8);
+    uint32_t grf_livein_simd8 = getNumLiveInGRFAtBB(BB, 8);
+    uint32_t grf_livein_simd16 = getNumLiveInGRFAtBB(BB, 16);
+    uint32_t grf_livein_simd32 = getNumLiveInGRFAtBB(BB, 32);
+    uint32_t grf_maxlive_simd8 = getMaxLiveGRFAtBB(BB, 8);
     uint32_t grf_maxlive_simd16 = getMaxLiveGRFAtBB(BB, 16);
     uint32_t grf_maxlive_simd32 = getMaxLiveGRFAtBB(BB, 32);
 
@@ -379,13 +379,13 @@ void RegisterEstimator::print(raw_ostream& OS, BasicBlock *BB, int dumpLevel)
         OS << "  " << BB->getName() << "  ";
     OS << "\n  ";
     OS << "livein simd8|16|32=<"
-       << grf_livein_simd8 << ", "
-       << grf_livein_simd16 << ", "
-       << grf_livein_simd32 << ">  ";
+        << grf_livein_simd8 << ", "
+        << grf_livein_simd16 << ", "
+        << grf_livein_simd32 << ">  ";
     OS << "maxLive simd8|16|32=<"
-       << grf_maxlive_simd8 << ", "
-       << grf_maxlive_simd16 << ", "
-       << grf_maxlive_simd32 << ">\n";
+        << grf_maxlive_simd8 << ", "
+        << grf_maxlive_simd16 << ", "
+        << grf_maxlive_simd32 << ">\n";
     if (dumpLevel < 2)
     {
         return;
@@ -402,7 +402,7 @@ void RegisterEstimator::print(raw_ostream& OS, BasicBlock *BB, int dumpLevel)
         I != E; ++I)
     {
         int id = *I;
-        Value *V = IdValues[id];
+        Value* V = IdValues[id];
         assert(V && "Value should be in Value Map!");
 
         const RegUse* pregs = getRegUse(id);
@@ -423,9 +423,9 @@ void RegisterEstimator::print(raw_ostream& OS, BasicBlock *BB, int dumpLevel)
             OS << LivenessAnalysis::getllvmValueName(V) << " ";
         }
         OS << "{"
-           << getNumRegs(*pregs, 8) << ", "
-           << getNumRegs(*pregs, 16) << ", "
-           << getNumRegs(*pregs, 32) << "}, ";
+            << getNumRegs(*pregs, 8) << ", "
+            << getNumRegs(*pregs, 16) << ", "
+            << getNumRegs(*pregs, 32) << "}, ";
         ++nVals;
         if (nVals == 6)
         {
@@ -438,22 +438,22 @@ void RegisterEstimator::print(raw_ostream& OS, BasicBlock *BB, int dumpLevel)
 
     for (BasicBlock::iterator it = BB->begin(), ie = BB->end(); it != ie; ++it)
     {
-        Instruction *I = &*it;
+        Instruction* I = &*it;
         if (m_LiveVirtRegs.count(I) == 0) {
             OS << "  { not computed } ";
         }
         else
         {
             RegUsage& ruse = m_LiveVirtRegs[I];
-            RegUse &grfuse = ruse.allUses[REGISTER_CLASS_GRF];
+            RegUse& grfuse = ruse.allUses[REGISTER_CLASS_GRF];
             OS << "  {"
-               << getNumRegs(grfuse, 8) << ", "
-               << getNumRegs(grfuse, 16) << ", "
-               << getNumRegs(grfuse, 32) << "} ";
+                << getNumRegs(grfuse, 8) << ", "
+                << getNumRegs(grfuse, 16) << ", "
+                << getNumRegs(grfuse, 32) << "} ";
         }
         OS << *I;
         if (!m_pBB2ID.empty()) {
-            if (BranchInst *BrI = dyn_cast<BranchInst>(I))
+            if (BranchInst * BrI = dyn_cast<BranchInst>(I))
             {
                 OS << "  (";
                 for (int i = 0, e = (int)BrI->getNumSuccessors(); i < e; ++i)
@@ -479,12 +479,12 @@ void RegisterEstimator::print(raw_ostream& OS, int dumpLevel)
     int bid = 0;
     m_pBB2ID.clear();
     for (Function::iterator I = m_F->begin(), E = m_F->end(); I != E; ++I) {
-        BasicBlock *BB = &*I;
+        BasicBlock* BB = &*I;
         m_pBB2ID[BB] = bid;
         ++bid;
     }
     for (Function::iterator I = m_F->begin(), E = m_F->end(); I != E; ++I) {
-        BasicBlock *BB = &*I;
+        BasicBlock* BB = &*I;
         if (dumpLevel > FLAG_LEVEL_1)
         {
             OS << "\n";
@@ -524,7 +524,7 @@ RegPressureTracker::RegPressureTracker(RegisterEstimator* RPE) :
     m_DeadValueNumUses.grow(mapCap);
 }
 
-void RegPressureTracker::init(BasicBlock *BB, bool doMaxRegInBB)
+void RegPressureTracker::init(BasicBlock* BB, bool doMaxRegInBB)
 {
     m_BB = BB;
     if (!m_TrackRegPressure)
@@ -535,19 +535,19 @@ void RegPressureTracker::init(BasicBlock *BB, bool doMaxRegInBB)
     m_LiveOutSet.clear();
     m_DeadValueNumUses.clear();
 
-    LivenessAnalysis *LVA = m_pRPE->getLivenessAnalysis();
+    LivenessAnalysis* LVA = m_pRPE->getLivenessAnalysis();
 
     BBLiveInMap& BBLiveIns = LVA->BBLiveIns;
     SBitVector& BitVec = BBLiveIns[BB];
     for (succ_iterator SI = succ_begin(BB), E = succ_end(BB); SI != E; ++SI)
     {
-        BasicBlock *SuccBB = *SI;
+        BasicBlock* SuccBB = *SI;
         SBitVector& succBitVec = BBLiveIns[SuccBB];
         m_LiveOutSet |= succBitVec;
     }
 
     for (SBitVector::iterator I = BitVec.begin(), E = BitVec.end();
-         I != E; ++I)
+        I != E; ++I)
     {
         int id = *I;
         if (m_LiveOutSet.test(id))
@@ -555,16 +555,16 @@ void RegPressureTracker::init(BasicBlock *BB, bool doMaxRegInBB)
             continue;
         }
         // This Value has the last use in this BB, add it into the map.
-        Value *V = LVA->IdValues[id];
+        Value* V = LVA->IdValues[id];
         int nUses = m_pRPE->getNUsesInBB(V, BB);
         m_DeadValueNumUses[V] = nUses;
     }
 
     for (BasicBlock::iterator BI = m_BB->begin(), BE = m_BB->end();
-         BI != BE; ++BI)
+        BI != BE; ++BI)
     {
-        Instruction *Inst = &*BI;
-        Value *V = Inst;
+        Instruction* Inst = &*BI;
+        Value* V = Inst;
         ValueToIntMap::iterator VI = LVA->ValueIds.find(V);
         if (VI != LVA->ValueIds.end())
         {
@@ -581,20 +581,20 @@ void RegPressureTracker::init(BasicBlock *BB, bool doMaxRegInBB)
     m_pRPE->getMaxLiveinRegsAtBB(m_RUsage, BB);
 }
 
-void RegPressureTracker::advance(llvm::Instruction *I)
+void RegPressureTracker::advance(llvm::Instruction* I)
 {
     if (!m_TrackRegPressure)
     {
         return;
     }
 
-    Value *V = I;
-    LivenessAnalysis *LVA = m_pRPE->getLivenessAnalysis();
+    Value* V = I;
+    LivenessAnalysis* LVA = m_pRPE->getLivenessAnalysis();
     auto VI = LVA->ValueIds.find(V);
     if (VI != LVA->ValueIds.end())
     {
         int id = VI->second;
-        if (const RegUse* pRegs = m_pRPE->getRegUse(id))
+        if (const RegUse * pRegs = m_pRPE->getRegUse(id))
         {
             m_RUsage.allUses[pRegs->rClass] += *pRegs;
         }
@@ -603,7 +603,7 @@ void RegPressureTracker::advance(llvm::Instruction *I)
     // Update current register pressure
     for (auto OI = I->op_begin(), OE = I->op_end(); OI != OE; ++OI)
     {
-        Value *Opr = *OI;
+        Value* Opr = *OI;
         if (isa<Constant>(Opr))
         {
             continue;
@@ -615,7 +615,7 @@ void RegPressureTracker::advance(llvm::Instruction *I)
             --numUses;
             if (numUses == 0)
             {
-                if (const RegUse* pRegs = m_pRPE->getRegUse(Opr))
+                if (const RegUse * pRegs = m_pRPE->getRegUse(Opr))
                 {
                     m_RUsage.allUses[pRegs->rClass] -= *pRegs;
                 }
@@ -638,12 +638,12 @@ void RegisterEstimator::dump(int dumpLevel)
 
 }
 
-void RegisterEstimator::dump(BasicBlock *BB)
+void RegisterEstimator::dump(BasicBlock* BB)
 {
     dump(BB, 1);
 }
 
-void RegisterEstimator::dump(BasicBlock *BB, int dumpLevel)
+void RegisterEstimator::dump(BasicBlock* BB, int dumpLevel)
 {
     print(dbgs(), BB, dumpLevel);
 }

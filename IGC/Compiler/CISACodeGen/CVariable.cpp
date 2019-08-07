@@ -42,14 +42,14 @@ void CVariable::ResolveAlias()
     m_alias = aliasVar;
     assert((offset < (UINT16_MAX)) && "offset > higher than 64k");
 
-    m_aliasOffset = (uint16_t) offset;
+    m_aliasOffset = (uint16_t)offset;
 }
 
 /// CVariable constructor, for most generic cases
 ///
-CVariable::CVariable(uint16_t nbElement, bool uniform, VISA_Type type, 
-                     e_varType varType, e_alignment align, bool vectorUniform, 
-                     uint16_t numberOfInstance) :
+CVariable::CVariable(uint16_t nbElement, bool uniform, VISA_Type type,
+    e_varType varType, e_alignment align, bool vectorUniform,
+    uint16_t numberOfInstance) :
     m_immediateValue(0),
     m_alias(nullptr),
     m_nbElement(nbElement),
@@ -94,8 +94,8 @@ updateAlign(e_alignment align, unsigned offset)
 
 /// CVariable constructor, for alias
 ///
-CVariable::CVariable(CVariable* var, VISA_Type type, uint16_t offset, 
-                     uint16_t numElements, bool uniform) : 
+CVariable::CVariable(CVariable* var, VISA_Type type, uint16_t offset,
+    uint16_t numElements, bool uniform) :
     m_immediateValue(0),
     m_alias(var),
     m_aliasOffset(offset),
@@ -125,7 +125,7 @@ CVariable::CVariable(CVariable* var, VISA_Type type, uint16_t offset,
 
 /// CVariable constructor, for immediate
 ///
-CVariable::CVariable(uint64_t immediate, VISA_Type type) : 
+CVariable::CVariable(uint64_t immediate, VISA_Type type) :
     m_immediateValue(immediate),
     m_alias(nullptr),
     m_nbElement(1),

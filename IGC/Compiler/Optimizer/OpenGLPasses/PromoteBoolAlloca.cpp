@@ -46,9 +46,9 @@ public:
     }
     static char ID;
 
-    bool runOnFunction(llvm::Function &F) override;
+    bool runOnFunction(llvm::Function& F) override;
 
-    void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+    void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
     {
         AU.setPreservesCFG();
     }
@@ -59,8 +59,8 @@ public:
     }
 
 private:
-    llvm::Value* recreateVectorOrArray(llvm::Value *pV, llvm::Type* pNewTy, llvm::Instruction* pInsertBeforeInstr);
-    llvm::Value* recreateStructure(llvm::Value *pV, llvm::Type* pNewTy, llvm::Instruction* pInsertBeforeInstr);
+    llvm::Value* recreateVectorOrArray(llvm::Value* pV, llvm::Type* pNewTy, llvm::Instruction* pInsertBeforeInstr);
+    llvm::Value* recreateStructure(llvm::Value* pV, llvm::Type* pNewTy, llvm::Instruction* pInsertBeforeInstr);
     llvm::Type* getBaseTy(llvm::Type* pTy);
     void visitAlloca(llvm::AllocaInst& I);
     void RecursivelyChangePointerType(llvm::Instruction* oldPtr, llvm::Instruction* newPtr);
@@ -68,7 +68,7 @@ private:
 
 private:
     std::vector<llvm::Instruction*> m_instructionsToRemove;
-    const llvm::DataLayout *m_pDL;
+    const llvm::DataLayout* m_pDL;
 };
 
 char PromoteBoolAllocaPass::ID = 0;
@@ -104,24 +104,24 @@ llvm::Type* PromoteBoolAllocaPass::getBaseTy(llvm::Type* pTy)
         return pTy;
 }
 
-llvm::Value* PromoteBoolAllocaPass::recreateVectorOrArray(llvm::Value *pV, llvm::Type* pNewTy, llvm::Instruction* pInsertBeforeInstr)
+llvm::Value* PromoteBoolAllocaPass::recreateVectorOrArray(llvm::Value* pV, llvm::Type* pNewTy, llvm::Instruction* pInsertBeforeInstr)
 {
     llvm::IRBuilder<> builder(pInsertBeforeInstr->getContext());
     builder.SetInsertPoint(pInsertBeforeInstr);
 
-    llvm::Type *pOriginalValueTy = getBaseTy(pV->getType());
-    llvm::Type *pNewValueTy = getBaseTy(pNewTy);
+    llvm::Type* pOriginalValueTy = getBaseTy(pV->getType());
+    llvm::Type* pNewValueTy = getBaseTy(pNewTy);
 
     // We want to only promote from or to i1 types.
     if (pOriginalValueTy->isIntegerTy(1) || pNewValueTy->isIntegerTy(1) || pOriginalValueTy->isStructTy())
     {
-        llvm::Value *pLoaded = pV;
+        llvm::Value* pLoaded = pV;
         if (pV->getType()->isPointerTy())
             pLoaded = builder.CreateLoad(pV);
 
-        llvm::Type *pBaseTy = getBaseTy(pNewTy);
+        llvm::Type* pBaseTy = getBaseTy(pNewTy);
 
-        llvm::Value *pArr = nullptr;
+        llvm::Value* pArr = nullptr;
         if (llvm::isa<llvm::ConstantAggregateZero>(pV))
         {
             pArr = llvm::ConstantAggregateZero::get(pNewTy);
@@ -174,18 +174,18 @@ llvm::Value* PromoteBoolAllocaPass::recreateVectorOrArray(llvm::Value *pV, llvm:
     return pV;
 }
 
-llvm::Value* PromoteBoolAllocaPass::recreateStructure(llvm::Value *pV, llvm::Type* pNewTy, llvm::Instruction* pInsertBeforeInstr)
+llvm::Value* PromoteBoolAllocaPass::recreateStructure(llvm::Value* pV, llvm::Type* pNewTy, llvm::Instruction* pInsertBeforeInstr)
 {
     llvm::IRBuilder<> builder(pInsertBeforeInstr->getContext());
     builder.SetInsertPoint(pInsertBeforeInstr);
 
     assert(pV->getType()->isStructTy());
 
-    llvm::Value *pLoaded = pV;
+    llvm::Value* pLoaded = pV;
     if (pV->getType()->isPointerTy())
         pLoaded = builder.CreateLoad(pV);
 
-    llvm::Value *pStruct = llvm::UndefValue::get(pNewTy);
+    llvm::Value* pStruct = llvm::UndefValue::get(pNewTy);
 
     int num_elements = int_cast<int>(pV->getType()->getStructNumElements());
     for (int i = 0; i < num_elements; ++i)
@@ -218,13 +218,13 @@ void PromoteBoolAllocaPass::RecursivelyChangePointerType(llvm::Instruction* pOld
     for (auto II = pOldPtr->user_begin(), IE = pOldPtr->user_end(); II != IE; ++II)
     {
         llvm::Value* pNewVal = nullptr;
-        if (llvm::GetElementPtrInst* pGep = llvm::dyn_cast<llvm::GetElementPtrInst>(*II))
+        if (llvm::GetElementPtrInst * pGep = llvm::dyn_cast<llvm::GetElementPtrInst>(*II))
         {
             llvm::SmallVector<llvm::Value*, 8> Idx(pGep->idx_begin(), pGep->idx_end());
             llvm::GetElementPtrInst* newGep = llvm::GetElementPtrInst::Create(nullptr, pNewPtr, Idx, "", pGep);
             RecursivelyChangePointerType(pGep, newGep);
         }
-        else if (llvm::LoadInst* pLoad = llvm::dyn_cast<llvm::LoadInst>(*II))
+        else if (llvm::LoadInst * pLoad = llvm::dyn_cast<llvm::LoadInst>(*II))
         {
             llvm::Instruction* pNewLoad = IGC::cloneLoad(pLoad, pNewPtr);
             if (pLoad->getType()->isArrayTy() || pLoad->getType()->isVectorTy())
@@ -235,11 +235,11 @@ void PromoteBoolAllocaPass::RecursivelyChangePointerType(llvm::Instruction* pOld
                 pNewVal = Cast(pNewLoad, pLoad->getType(), pLoad->getNextNode());
             pLoad->replaceAllUsesWith(pNewVal);
         }
-        else if (llvm::StoreInst* pStore = llvm::dyn_cast<llvm::StoreInst>(*II))
+        else if (llvm::StoreInst * pStore = llvm::dyn_cast<llvm::StoreInst>(*II))
         {
             llvm::Value* pStoredValue = pStore->getValueOperand();
             // If the Stored value is a vector or array treat it, create a new value of the right type
-            llvm::Value *pNewData = nullptr;
+            llvm::Value* pNewData = nullptr;
 
             if (pStoredValue->getType()->isArrayTy() || pStoredValue->getType()->isVectorTy())
                 pNewData = recreateVectorOrArray(pStoredValue, pNewPtr->getType()->getPointerElementType(), pStore);
@@ -250,7 +250,7 @@ void PromoteBoolAllocaPass::RecursivelyChangePointerType(llvm::Instruction* pOld
 
             IGC::cloneStore(pStore, pNewData, pNewPtr);
         }
-        else if (llvm::CastInst* pCast = llvm::dyn_cast<llvm::CastInst>(*II))
+        else if (llvm::CastInst * pCast = llvm::dyn_cast<llvm::CastInst>(*II))
         {
             llvm::Value* newCast = llvm::CastInst::CreatePointerCast(pNewPtr, pCast->getType(), "", pCast);
             pCast->replaceAllUsesWith(newCast);
@@ -284,14 +284,14 @@ llvm::Type* PromoteBoolAllocaPass::LegalAllocaType(llvm::Type* pType) const
         break;
     case llvm::Type::StructTyID:
     {
-        llvm::StructType *pStructTy = llvm::cast<llvm::StructType>(pType);
+        llvm::StructType* pStructTy = llvm::cast<llvm::StructType>(pType);
         llvm::SmallVector<llvm::Type*, 8> fieldTypes;
         for (auto itt = pStructTy->element_begin(), ite = pStructTy->element_end(); itt != ite; ++itt)
         {
             llvm::Type* LegalTy = LegalAllocaType(*itt);
             fieldTypes.push_back(LegalTy);
         }
-        auto *pNewType = llvm::StructType::get(pType->getContext(), fieldTypes);
+        auto* pNewType = llvm::StructType::get(pType->getContext(), fieldTypes);
         if (!pStructTy->isLayoutIdentical(pNewType))
         {
             pLegalType = pNewType;
@@ -323,7 +323,7 @@ void PromoteBoolAllocaPass::visitAlloca(llvm::AllocaInst& I)
     }
 }
 
-bool PromoteBoolAllocaPass::runOnFunction(llvm::Function &F)
+bool PromoteBoolAllocaPass::runOnFunction(llvm::Function& F)
 {
     bool changed_instruction = false;
     m_pDL = &F.getParent()->getDataLayout();
@@ -334,7 +334,7 @@ bool PromoteBoolAllocaPass::runOnFunction(llvm::Function &F)
             ii != ie;
             ++ii)
         {
-            if (llvm::AllocaInst* pAlloca = llvm::dyn_cast<llvm::AllocaInst>(ii))
+            if (llvm::AllocaInst * pAlloca = llvm::dyn_cast<llvm::AllocaInst>(ii))
             {
                 visitAlloca(*pAlloca);
             }

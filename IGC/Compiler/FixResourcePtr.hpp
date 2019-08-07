@@ -53,14 +53,14 @@ namespace IGC
         /// @brief  Provides name of pass
         virtual llvm::StringRef getPassName() const override
         {
-            return "FixResourcePtrPass"; 
+            return "FixResourcePtrPass";
         }
 
         /// @brief  Main entry point.
         /// @param  F The destination function.
-        virtual bool runOnFunction(llvm::Function &F) override;
+        virtual bool runOnFunction(llvm::Function& F) override;
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
         }
 
@@ -68,28 +68,28 @@ namespace IGC
 
         llvm::Value* ResolveBufferIndex(llvm::Value* bufferIndex, llvm::Value* vectorIndex = nullptr);
 
-        void RemoveGetBufferPtr(llvm::GenIntrinsicInst *bufPtr, llvm::Value* bufIdx);
+        void RemoveGetBufferPtr(llvm::GenIntrinsicInst* bufPtr, llvm::Value* bufIdx);
 
-        void FindGetElementPtr(llvm::Instruction *bufPtr, llvm::Instruction *searchPtr);
+        void FindGetElementPtr(llvm::Instruction* bufPtr, llvm::Instruction* searchPtr);
 
-        void FindLoadStore(llvm::Instruction *bufPtr, llvm::Instruction *eltPtr, llvm::Instruction *searchPtr);
+        void FindLoadStore(llvm::Instruction* bufPtr, llvm::Instruction* eltPtr, llvm::Instruction* searchPtr);
 
-        llvm::Value *GetByteOffset(llvm::Instruction *eltPtr);
+        llvm::Value* GetByteOffset(llvm::Instruction* eltPtr);
 
-        llvm::Value *CreateLoadIntrinsic(llvm::LoadInst *inst, llvm::Instruction *bufPtr, llvm::Value *offsetVal);
+        llvm::Value* CreateLoadIntrinsic(llvm::LoadInst* inst, llvm::Instruction* bufPtr, llvm::Value* offsetVal);
 
-        llvm::Value *CreateStoreIntrinsic(llvm::StoreInst *inst, llvm::Instruction *bufPtr, llvm::Value *offsetVal);
+        llvm::Value* CreateStoreIntrinsic(llvm::StoreInst* inst, llvm::Instruction* bufPtr, llvm::Value* offsetVal);
 
-        void FixAddressSpaceInAllUses(llvm::Value *ptr, uint newAS, uint oldAS);
+        void FixAddressSpaceInAllUses(llvm::Value* ptr, uint newAS, uint oldAS);
 
         /// @brief  Indicates if the pass changed the processed function
         bool m_changed;
         /// Function we are processing
-        llvm::Function *curFunc;
+        llvm::Function* curFunc;
         /// Need data-layout for fixing pointer
-        const llvm::DataLayout *DL;
+        const llvm::DataLayout* DL;
         /// agent to modify the llvm-ir
-        llvm::IRBuilder<> *builder;
+        llvm::IRBuilder<>* builder;
         /// list of clean up after change
         std::vector<llvm::Instruction*> eraseList;
     };

@@ -29,4 +29,4 @@ namespace llvm {
     class ModulePass;
 }
 
-llvm::ModulePass *createBIFTransformsPass();
+llvm::ModulePass* createBIFTransformsPass();

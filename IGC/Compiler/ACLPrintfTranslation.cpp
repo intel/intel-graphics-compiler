@@ -24,19 +24,19 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-/**
- * IGCConstProp was originated from llvm copy-prop code with one addition for
- * shader-constant replacement. So we need to add llvm copyright
- **/
-//
-//===- ConstantProp.cpp - Code to perform Simple Constant Propagation -----===//
-//
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
-//
-//===----------------------------------------------------------------------===//
+ /**
+  * IGCConstProp was originated from llvm copy-prop code with one addition for
+  * shader-constant replacement. So we need to add llvm copyright
+  **/
+  //
+  //===- ConstantProp.cpp - Code to perform Simple Constant Propagation -----===//
+  //
+  //                     The LLVM Compiler Infrastructure
+  //
+  // This file is distributed under the University of Illinois Open Source
+  // License. See LICENSE.TXT for details.
+  //
+  //===----------------------------------------------------------------------===//
 
 #include "Compiler/ACLPrintfTranslation.h"
 #include "Compiler/IGCPassSupport.h"
@@ -64,23 +64,23 @@ IGC_INITIALIZE_PASS_END(ACLPrintfTranslation, PASS_FLAG, PASS_DESCRIPTION, PASS_
 char ACLPrintfTranslation::ID = 0;
 
 ACLPrintfTranslation::ACLPrintfTranslation()
-: ModulePass(ID)
+    : ModulePass(ID)
 {
     initializeACLPrintfTranslationPass(*PassRegistry::getPassRegistry());
 }
 
-void ACLPrintfTranslation::visitCallInst(llvm::CallInst &CI)
+void ACLPrintfTranslation::visitCallInst(llvm::CallInst& CI)
 {
     Function* callee = CI.getCalledFunction();
     if (!callee) return;
-        
-    for (unsigned int i=0; i<CI.getNumOperands();i++)
+
+    for (unsigned int i = 0; i < CI.getNumOperands(); i++)
     {
         Value* V = CI.getOperand(i);
         // we found one printf function
         if (V->getName() == "printf")
         {
-            for (unsigned int i=0; i<CI.getNumOperands();i++)
+            for (unsigned int i = 0; i < CI.getNumOperands(); i++)
             {
                 Value* V = CI.getOperand(i);
                 const Type* T = V->getType();
@@ -93,7 +93,7 @@ void ACLPrintfTranslation::visitCallInst(llvm::CallInst &CI)
                         ConstantFP* C = (ConstantFP*)V;
                         const APFloat apf = C->getValueAPF();
                         Constant* newC = ConstantFP::get(Type::getFloatTy(V->getContext()), apf.convertToDouble());
-                        
+
                         CI.setOperand(i, newC);
                     }
                     // if it is the result of a function as in printf("%f", acospi(2.0f))
@@ -109,14 +109,14 @@ void ACLPrintfTranslation::visitCallInst(llvm::CallInst &CI)
     }
 }
 
-bool ACLPrintfTranslation::runOnModule(Module &M)
+bool ACLPrintfTranslation::runOnModule(Module& M)
 {
     bool changed = false;
-    for (auto &funcIt : M.getFunctionList())
+    for (auto& funcIt : M.getFunctionList())
     {
         visit(funcIt);
     }
-    
+
     return changed;
 }
 

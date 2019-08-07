@@ -36,61 +36,61 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace IGC {
 
-namespace Legalizer {
+    namespace Legalizer {
 
-  class InstPromoter : public InstVisitor<InstPromoter, bool> {
-    friend class InstVisitor<InstPromoter, bool>;
+        class InstPromoter : public InstVisitor<InstPromoter, bool> {
+            friend class InstVisitor<InstPromoter, bool>;
 
-    TypeLegalizer *TL;
-    BuilderType *IRB;
+            TypeLegalizer* TL;
+            BuilderType* IRB;
 
-    Value *Promoted;
+            Value* Promoted;
 
-  public:
-    InstPromoter(TypeLegalizer *L, BuilderType *B) : TL(L), IRB(B) {}
+        public:
+            InstPromoter(TypeLegalizer* L, BuilderType* B) : TL(L), IRB(B) {}
 
-    bool promote(Instruction *I);
+            bool promote(Instruction* I);
 
-  private:
-    /// Helpers
-    const char *getSuffix() const { return TL->getSuffix(Promote); }
+        private:
+            /// Helpers
+            const char* getSuffix() const { return TL->getSuffix(Promote); }
 
-  private:
-    // By default, capture all missing instructions!
-    bool visitInstruction(Instruction &I);
+        private:
+            // By default, capture all missing instructions!
+            bool visitInstruction(Instruction& I);
 
-    /// Terminator instructions
-    ///
+            /// Terminator instructions
+            ///
 
-    bool visitTerminatorInst(IGCLLVM::TerminatorInst &I);
+            bool visitTerminatorInst(IGCLLVM::TerminatorInst& I);
 
-    /// Standard binary operators
-    ///
-    bool visitSelectInst(SelectInst &I);
+            /// Standard binary operators
+            ///
+            bool visitSelectInst(SelectInst& I);
 
-    bool visitICmpInst(ICmpInst &I);
+            bool visitICmpInst(ICmpInst& I);
 
-    bool visitBinaryOperator(BinaryOperator &I);
+            bool visitBinaryOperator(BinaryOperator& I);
 
-    /// Memory operators
-    ///
+            /// Memory operators
+            ///
 
-    bool visitLoadInst(LoadInst &I);
-    bool visitStoreInst(StoreInst &I);
+            bool visitLoadInst(LoadInst& I);
+            bool visitStoreInst(StoreInst& I);
 
-    /// Cast operators
+            /// Cast operators
 
-    bool visitTruncInst(TruncInst &I);
-    bool visitZExtInst(ZExtInst &I);
-    bool visitBitCastInst(BitCastInst &I);
+            bool visitTruncInst(TruncInst& I);
+            bool visitZExtInst(ZExtInst& I);
+            bool visitBitCastInst(BitCastInst& I);
 
-    /// Other operators
+            /// Other operators
 
-    bool visitGenIntrinsicInst(GenIntrinsicInst &I);
-    bool visitCallInst(CallInst &I);
-  };
+            bool visitGenIntrinsicInst(GenIntrinsicInst& I);
+            bool visitCallInst(CallInst& I);
+        };
 
-} // End Legalizer namespace
+    } // End Legalizer namespace
 
 } // End IGC namespace
 

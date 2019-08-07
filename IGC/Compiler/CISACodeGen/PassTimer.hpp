@@ -43,14 +43,14 @@ public:
         m_index = index;
         m_isStart = isStart;
     }
-    virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+    virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
     {
         AU.setPreservesAll();
     }
 
-    virtual bool runOnModule(llvm::Module &M) override;
-    
-    virtual llvm::StringRef getPassName() const override 
+    virtual bool runOnModule(llvm::Module& M) override;
+
+    virtual llvm::StringRef getPassName() const override
     {
         return "passTimer";
     }
