@@ -1609,11 +1609,9 @@ namespace TC
         // Elf is valid, so it is safe to access the header
         E_EH_TYPE ehType = *(const E_EH_TYPE *)&pElfReader->GetElfHeader()->Type;
 
-        switch (m_OutputFormat)
+        //{ { TB_DATA_FORMAT_ELF, TB_DATA_FORMAT_LLVM_BINARY } },
+        if (m_OutputFormat == TB_DATA_FORMAT_LLVM_BINARY || m_OutputFormat == TB_DATA_FORMAT_SPIR_V)
         {
-            //{ { TB_DATA_FORMAT_ELF, TB_DATA_FORMAT_LLVM_BINARY } },
-        case TB_DATA_FORMAT_LLVM_BINARY:
-        case TB_DATA_FORMAT_SPIR_V:
             switch (ehType)
             {
             case EH_TYPE_OPENCL_SOURCE:
@@ -1648,12 +1646,13 @@ namespace TC
                 exceptString = "Unsupported ELF header type";
                 return false;
             }
-            break;
-
-        default:
-            exceptString = "Unsupported output format";
-            return false;
         }
+        else
+        {
+            exceptString = "Unsupported output format";
+        }
+
+        return false;
     }
 
     /*****************************************************************************\
