@@ -1262,7 +1262,9 @@ namespace IGC
         VISA_GenVar* GV = GetVISAVariable(MDP);
         VISA_GenVar* v0GV = GetVISAVariable(V0);
         VISA_GenVar* v1GV = GetVISAVariable(V1);
-        VISA_VectorOpnd* movDst0, * movDst1, * srcOpnd;
+        VISA_VectorOpnd* movDst0 = nullptr;
+        VISA_VectorOpnd* movDst1 = nullptr;
+        VISA_VectorOpnd* srcOpnd = nullptr;
         const uint32_t toSize = fromSize / 2;
         const Common_ISA_Exec_Size fromESize = getExecSize(lanesToSIMDMode(fromSize));
         const Common_ISA_Exec_Size toESize = getExecSize(lanesToSIMDMode(toSize));
@@ -1313,7 +1315,9 @@ namespace IGC
         VISA_GenVar* GV = GetVISAVariable(MDP);
         VISA_GenVar* v0GV = GetVISAVariable(V0);
         VISA_GenVar* v1GV = GetVISAVariable(V1);
-        VISA_VectorOpnd* movDst, * movSrc0, * movSrc1;
+        VISA_VectorOpnd* movDst = nullptr;
+        VISA_VectorOpnd* movSrc0 = nullptr;
+        VISA_VectorOpnd* movSrc1 = nullptr;
         const uint32_t fromSize = toSize / 2;
         const Common_ISA_Exec_Size fromESize = getExecSize(lanesToSIMDMode(toSize));
         const Common_ISA_Exec_Size toESize = getExecSize(lanesToSIMDMode(fromSize));
