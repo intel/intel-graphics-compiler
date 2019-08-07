@@ -1041,6 +1041,40 @@ namespace vISA
             return (unsigned)(vars[dclid].bundleConflictDcls.size());
         }
 
+        unsigned int get_bundle(unsigned int baseReg, int offset)
+        {
+            return (((baseReg + offset) % 64) / 4);
+        }
+
+        unsigned short getOccupiedBundle(G4_Declare* dcl)
+        {
+            unsigned short occupiedBundles = 0;
+            unsigned bundleNum = 0;
+
+
+            for (size_t i = 0, dclConflictSize = getBundleConflictDclSize(dcl); i < dclConflictSize; i++)
+            {
+                int offset = 0;
+                G4_Declare* bDcl = getBundleConflictDcl(dcl, i, offset);
+                if (bDcl->getRegVar()->isPhyRegAssigned())
+                {
+                    unsigned int reg = bDcl->getRegVar()->getPhyReg()->asGreg()->getRegNum();
+                    unsigned int bundle = get_bundle(reg, offset);
+                    if (!(occupiedBundles & ((unsigned short)1 << bundle)))
+                    {
+                        bundleNum++;
+                    }
+                    occupiedBundles |= (unsigned short)1 << bundle;
+                }
+            }
+            if (bundleNum > 12)
+            {
+                occupiedBundles = 0;
+            }
+
+            return occupiedBundles;
+        }
+
         void addSubDcl(G4_Declare *dcl, G4_Declare* subDcl)
         {
             auto dclid = dcl->getDeclId();

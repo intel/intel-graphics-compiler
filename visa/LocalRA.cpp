@@ -73,7 +73,6 @@ BankAlign LocalRA::getBankAlignForUniqueAssign(G4_Declare *dcl)
     }
 }
 
-
 // returns true if kernel contains a back edge
 // call/return edge may also be considered as a back edge depending on layout.
 bool LocalRA::hasBackEdge()
@@ -629,6 +628,32 @@ void LocalRA::findRegisterCandiateWithAlignForward(int &i, BankAlign align, bool
     }
 }
 
+unsigned int LocalRA::get_bundle(unsigned int baseReg, int offset)
+{
+    return (((baseReg + offset) % 64) / 4);
+}
+
+int LocalRA::findBundleConflictFreeRegister(int curReg,
+                                            int endReg,
+                                            unsigned short occupiedBundles,
+                                            BankAlign align,
+                                            bool evenAlign)
+{
+    int i = curReg;
+    while (occupiedBundles & (1 << get_bundle(i, 0)))
+    {
+        i++;
+        findRegisterCandiateWithAlignForward(i, align, evenAlign);
+        if (i > endReg) //Out of bound, drop the bundle conflict considration
+        {
+            i = curReg;
+            break;
+        }
+    }
+
+    return i;
+}
+
 void LocalRA::findRegisterCandiateWithAlignBackward(int &i, BankAlign align, bool evenAlign)
 {
     if ((align == BankAlign::Even) && (i % 2 != 0))
@@ -775,18 +800,8 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign)
 
             if (assignFromFront)
             {
-                unsigned short occupiedBundles = 0;
-                for (size_t i = 0, dclConflictSize = gra.getBundleConflictDclSize(dcl); i < dclConflictSize; i++)
-                {
-                    int offset = 0;
-                    G4_Declare *bDcl = gra.getBundleConflictDcl(dcl, i, offset);
-                    if (bDcl->getRegVar()->isPhyRegAssigned())
-                    {
-                        unsigned int reg = bDcl->getRegVar()->getPhyReg()->asGreg()->getRegNum();
-                        unsigned int bundle = GET_BUNDLE(reg, offset);
-                        occupiedBundles |= (unsigned short)1 << bundle;
-                    }
-                }
+                unsigned short occupiedBundles = gra.getOccupiedBundle(dcl);
+
                 nrows = phyRegMgr.findFreeRegs(sizeInWords, (bankAlign != BankAlign::Either) ? bankAlign : align, 
                     subAlign, regNum, subregNum, 0, numRegLRA - 1, occupiedBundles, 0, false);
             }
@@ -1953,12 +1968,7 @@ bool PhyRegsLocalRA::findFreeMultipleRegsForward(int regIdx, BankAlign align, in
     }
 
     LocalRA::findRegisterCandiateWithAlignForward(i, align, multiSteps);
-
-    while (occupiedBundles & (1 << GET_BUNDLE(i, 0)))
-    {
-        i++;
-        LocalRA::findRegisterCandiateWithAlignForward(i, align, multiSteps);
-    }
+    i = LocalRA::findBundleConflictFreeRegister(i, endReg, occupiedBundles, align, multiSteps);
 
     startReg = i;
     while (i <= endReg + nrows - 1)
@@ -1974,11 +1984,7 @@ bool PhyRegsLocalRA::findFreeMultipleRegsForward(int regIdx, BankAlign align, in
             foundItem = 0;
             i++;
             LocalRA::findRegisterCandiateWithAlignForward(i, align, multiSteps);
-            while (occupiedBundles & (1 << GET_BUNDLE(i, 0)))
-            {
-                i++;
-                LocalRA::findRegisterCandiateWithAlignForward(i, align, multiSteps);
-            }
+            i = LocalRA::findBundleConflictFreeRegister(i, endReg, occupiedBundles, align, multiSteps);
             startReg = i;
             continue;
         }
@@ -2005,11 +2011,7 @@ bool PhyRegsLocalRA::findFreeMultipleRegsForward(int regIdx, BankAlign align, in
                     foundItem = 0;
                     i++;
                     LocalRA::findRegisterCandiateWithAlignForward(i, align, multiSteps);
-                    while (occupiedBundles & (1 << GET_BUNDLE(i, 0)))
-                    {
-                        i++;
-                        LocalRA::findRegisterCandiateWithAlignForward(i, align, multiSteps);
-                    }
+                    i = LocalRA::findBundleConflictFreeRegister(i, endReg, occupiedBundles, align, multiSteps);
                     startReg = i;
                     continue;
                 }
@@ -2629,19 +2631,7 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder
     int size = lr->getSizeInWords();
     G4_Declare *dcl = lr->getTopDcl();
     G4_SubReg_Align subalign = gra.getSubRegAlign(dcl);
-    unsigned short occupiedBundles = 0;
-
-    for (size_t i = 0, dclConflictSize = gra.getBundleConflictDclSize(dcl); i < dclConflictSize; i++)
-    {
-        int offset = 0;
-        G4_Declare *bDcl = gra.getBundleConflictDcl(dcl, i, offset);
-        if (bDcl->getRegVar()->isPhyRegAssigned())
-        {
-            unsigned int reg = bDcl->getRegVar()->getPhyReg()->asGreg()->getRegNum();
-            unsigned int bundle = GET_BUNDLE(reg, offset);
-            occupiedBundles |= (unsigned short)1 << bundle;
-        }
-    }
+    unsigned short occupiedBundles = gra.getOccupiedBundle(dcl);
 
     localRABound = numRegLRA - globalLRSize - 1;  //-1, localRABound will be counted in findFreeRegs()
 

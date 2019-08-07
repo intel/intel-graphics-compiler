@@ -109,6 +109,8 @@ namespace vISA
     public:
         static void getRowInfo(int size, int& nrows, int& lastRowSize);
         static void findRegisterCandiateWithAlignForward(int &i, BankAlign align, bool evenAlign);
+        static unsigned int get_bundle(unsigned int baseReg, int offset);
+        static int findBundleConflictFreeRegister(int curReg, int endReg, unsigned short occupiedBundles, BankAlign align, bool evenAlign);
         static void findRegisterCandiateWithAlignBackward(int &i, BankAlign align, bool evenAlign);
         static unsigned int convertSubRegOffFromWords(G4_Declare* dcl, int subregnuminwords);
         static unsigned int convertSubRegOffToWords(G4_Declare* dcl, int subregnum);
