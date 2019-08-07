@@ -1890,10 +1890,10 @@ void IR_Builder::generateBarrierSend()
 void IR_Builder::generateBarrierWait()
 {
     // wait n0.0<0;1,0>:ud
-    G4_SrcRegRegion* N0
-        = createSrcRegRegion(Mod_src_undef, Direct, phyregpool.getN0Reg(),
+    G4_Operand* waitSrc = hasUnifiedBarrier() ? static_cast<G4_Operand*>(createImm(0, Type_UD)) : 
+        createSrcRegRegion(Mod_src_undef, Direct, phyregpool.getN0Reg(),
             0, 0, getRegionScalar(), Type_UD);
-    createInst(nullptr, G4_wait, nullptr, false, 1, nullptr, N0, nullptr,
+    createInst(nullptr, G4_wait, nullptr, false, 1, nullptr, waitSrc, nullptr,
         InstOpt_WriteEnable);
 }
 

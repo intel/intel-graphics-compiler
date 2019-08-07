@@ -501,6 +501,9 @@
     {
         return false;
     }
-
-
+    
+    bool hasUnifiedBarrier() const
+    {
+        return false;
+    }
     // end HW capabilities
