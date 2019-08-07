@@ -3267,7 +3267,7 @@ endif()
 
 if(WIN32)
     igc_arch_get_cpu(_cpuSuffix)
-    set(COMMON_CLANG_LIBRARY_NAME common_clang${_cpuSuffix})
+    set(COMMON_CLANG_LIBRARY_NAME ${COMMON_CLANG_LIBRARY_NAME}${_cpuSuffix})
     set(COMMON_CLANG_LIB_FULL_NAME "${COMMON_CLANG_LIBRARY_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX}")
 
     message(STATUS "OpenCL Clang library name to load: ${COMMON_CLANG_LIB_FULL_NAME}")
