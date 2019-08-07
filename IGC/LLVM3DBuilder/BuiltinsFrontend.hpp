@@ -50,17 +50,11 @@ public:
     GFXCORE_FAMILY GetPlatformFamily() const { return m_platformInfo->eRenderCoreFamily; }
     bool hasHDCSupportForTypedReads() const { return m_platformInfo->eRenderCoreFamily >= IGFX_GEN10_CORE; }
     bool hasHDCSupportForTypedReadsUnormSnormToFloatConversion() const;
-    bool hasSupportforTenBitFloatConversion() const;
 };
 
 inline bool genplatform::hasHDCSupportForTypedReadsUnormSnormToFloatConversion() const
 {
     return m_platformInfo->eRenderCoreFamily >= IGFX_GEN10_CORE;
-}
-
-inline bool genplatform::hasSupportforTenBitFloatConversion() const
-{
-    return false;
 }
 
 

@@ -2643,6 +2643,7 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateGen9PlusIma
 {
     assert(m_Platform->GetPlatformFamily() >= IGFX_GEN9_CORE);
 
+
     if (m_Platform->hasHDCSupportForTypedReadsUnormSnormToFloatConversion())
     {
         // Starting with CNL, values returned by Typed Surface Read on several
@@ -2666,19 +2667,6 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateGen9PlusIma
         default:
             break;
         }
-    }
-    if (m_Platform->hasSupportforTenBitFloatConversion())
-    {
-        // Values returned by Typed Surface Read on 10_10_10_2 
-        // floating point (6E4) format surfaces do not need additional software conversion to
-        // floats if hardware natively supports it
-        switch (surfaceFormat)
-        {
-        case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R10G10B10A2_UNORM:
-            return pLdUAVTypedResult;
-        default:
-            break;
-        }        
     }
 
     llvm::Value* pFormatConvertedLLVMLdUAVTypedResult = pLdUAVTypedResult;
