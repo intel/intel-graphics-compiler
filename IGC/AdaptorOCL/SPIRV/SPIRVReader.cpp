@@ -959,7 +959,7 @@ public:
       auto scope = createScope(inst->getDIScope());
       auto iat = getInlinedAtFromScope(inst->getDIScope());
       if (!scope)
-          nullptr;
+          return nullptr;
       auto dbgValueInst = Builder.insertDbgValueIntrinsic(localVar, 0,
           createLocalVar(BM->get<SPIRVExtInst>(dbgValue.getVar())),
           createExpression(BM->get<SPIRVExtInst>(dbgValue.getExpression())),
