@@ -1567,8 +1567,9 @@ std::string sanitizePathString(std::string str)
         case '*':
         case '|':
         case '?':
+        case '<':
+        case '>':
             return true;
-          // '<' and '>' are technically okay
         default: return !isprint(c) && !isspace(c);
         }
         return false;
