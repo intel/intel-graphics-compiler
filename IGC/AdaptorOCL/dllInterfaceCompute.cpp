@@ -840,7 +840,17 @@ bool TranslateBuild(
     USC::SShaderStageBTLayout zeroLayout = USC::g_cZeroShaderStageBTLayout;
     IGC::COCLBTILayout oclLayout(&zeroLayout);
     OpenCLProgramContext oclContext(oclLayout, IGCPlatform, pInputArgs, *driverInfo, llvmContext);
+
+#ifdef __GNUC__
+    // Get rid of "the address of 'oclContext' will never be NULL" warning
+#pragma GCC diagnostic push
+#pragma GCC ignored "-Waddress"
+#endif // __GNUC__
     COMPILER_TIME_INIT(&oclContext, m_compilerTimeStats);
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif // __GNUC__
+
     COMPILER_TIME_START(&oclContext, TIME_TOTAL);
     oclContext.m_ProfilingTimerResolution = profilingTimerResolution;
 
