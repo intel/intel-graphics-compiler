@@ -114,6 +114,7 @@ local uchar* __builtin_IB_AllocLocalMemPool(bool allocAllWorkgroups, uint numAdd
 // See GenISAIntrinsics.td for documentation
 void     __builtin_IB_memfence(bool commitEnable, bool flushRW, bool flushConstant, bool flushTexture, bool flushIcache, bool isGlobal, bool invalidateL1);
 void     __builtin_IB_flush_sampler_cache(void);
+void     __builtin_IB_typedmemfence(bool invalidateCache);
 
 // Barrier
 void     __builtin_IB_thread_group_barrier(void) __attribute__((convergent));

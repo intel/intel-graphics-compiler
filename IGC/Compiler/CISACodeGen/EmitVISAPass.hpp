@@ -231,7 +231,8 @@ namespace IGC
         void emitThreadGroupBarrier(llvm::Instruction* inst);
         void emitMemoryFence(llvm::Instruction* inst);
         void emitMemoryFence(void);
-        void emitFlushSamplerCache(llvm::Instruction* inst);
+        void emitTypedMemoryFence(llvm::Instruction* inst);
+        void emitFlushSamplerCache();
         void emitSurfaceInfo(llvm::GenIntrinsicInst* intrinsic);
 
         void emitStackAlloca(llvm::GenIntrinsicInst* intrinsic);

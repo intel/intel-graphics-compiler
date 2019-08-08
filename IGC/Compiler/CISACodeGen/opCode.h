@@ -149,6 +149,7 @@ DECLARE_OPCODE(GenISA_typedwrite, GenISAIntrinsic, llvm_typed_write, false, fals
 DECLARE_OPCODE(GenISA_threadgroupbarrier, GenISAIntrinsic, llvm_thread_group_barrier, false, false, false, false, false, false, false)
 DECLARE_OPCODE(GenISA_memoryfence, GenISAIntrinsic, llvm_memory_fence, false, false, false, false, false, false, false)
 DECLARE_OPCODE(GenISA_flushsampler, GenISAIntrinsic, llvm_flush_sampler, false, false, false, false, false, false, false)
+DECLARE_OPCODE(GenISA_typedmemoryfence, GenISAIntrinsic, llvm_typed_memory_fence, false, false, false, false, false, false, false)
 DECLARE_OPCODE(GenISA_cycleCounter, GenISAIntrinsic, llvm_cycleCounter, false, false, false, false, false, false, false)
 DECLARE_OPCODE(GenISA_bfi, GenISAIntrinsic, llvm_bfi, false, false, false, false, true, false, false)
 DECLARE_OPCODE(GenISA_ibfe, GenISAIntrinsic, llvm_ibfe, false, false, false, false, true, false, false)

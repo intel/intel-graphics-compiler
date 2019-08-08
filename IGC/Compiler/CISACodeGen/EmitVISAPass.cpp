@@ -193,6 +193,7 @@ uint EmitPass::DecideInstanceAndSlice(llvm::BasicBlock& blk, SDAG& sdag, bool& s
             if (id == GenISAIntrinsic::GenISA_threadgroupbarrier ||
                 id == GenISAIntrinsic::GenISA_memoryfence ||
                 id == GenISAIntrinsic::GenISA_flushsampler ||
+                id == GenISAIntrinsic::GenISA_typedmemoryfence || 
                 id == GenISAIntrinsic::GenISA_vaErode ||
                 id == GenISAIntrinsic::GenISA_vaDilate ||
                 id == GenISAIntrinsic::GenISA_vaMinMax ||
@@ -7468,7 +7469,10 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
         emitMemoryFence(inst);
         break;
     case GenISAIntrinsic::GenISA_flushsampler:
-        emitFlushSamplerCache(inst);
+        emitFlushSamplerCache();
+        break;
+    case GenISAIntrinsic::GenISA_typedmemoryfence:
+        emitTypedMemoryFence(inst);
         break;
     case GenISAIntrinsic::GenISA_intatomicraw:
     case GenISAIntrinsic::GenISA_floatatomicraw:
@@ -12246,7 +12250,32 @@ void EmitPass::emitMemoryFence()
     m_encoder->Push();
 }
 
-void EmitPass::emitFlushSamplerCache(llvm::Instruction* inst)
+void EmitPass::emitTypedMemoryFence(llvm::Instruction* inst)
+{
+    CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+
+    bool CommitEnable = true;
+    bool L3_Flush_RW_Data = true;   //ToDo: determine if it's actually necessary
+    bool L3_Flush_Constant_Data = false;
+    bool L3_Flush_Texture_Data = false;
+    bool L3_Flush_Instructions = false;
+    bool Global_Mem_Fence = true;
+    bool L1_Invalidate = llvm::cast<llvm::ConstantInt>((inst->getOperand(0)))->getValue().getBoolValue() && ctx->platform.hasL1ReadOnlyCache();
+
+
+    m_encoder->Fence(CommitEnable,
+        L3_Flush_RW_Data,
+        L3_Flush_Constant_Data,
+        L3_Flush_Texture_Data,
+        L3_Flush_Instructions,
+        Global_Mem_Fence,
+        L1_Invalidate,
+        false);
+    emitFlushSamplerCache();
+}
+
+
+void EmitPass::emitFlushSamplerCache()
 {
     m_encoder->FlushSamplerCache();
     m_encoder->Push();
