@@ -53,6 +53,8 @@ namespace IGC
         , m_dispatchAlongY(false)
         , m_disableMidThreadPreemption(false)
         , m_hasSLM(false)
+        , m_tileY(false)
+        , m_walkOrder(WO_XYZ)
     {
     }
 
@@ -125,6 +127,16 @@ namespace IGC
         }
     }
 
+    void CComputeShader::selectWalkOrder()
+    {
+        if ((m_numberOfTypedAccess >= m_numberOfUntypedAccess) &&
+            m_threadGroupSize_Y % 4 == 0 &&
+            IGC_IS_FLAG_ENABLED(UseTiledCSThreadOrder)) {
+            m_tileY = true;
+            m_walkOrder = WO_YXZ;
+        }
+    }
+
     void CComputeShader::CreateThreadPayloadData(void*& pThreadPayload, uint& curbeTotalDataLength, uint& curbeReadLength)
     {
         typedef uint16_t ThreadPayloadEntry;
@@ -164,7 +176,6 @@ namespace IGC
 
         // Current heuristic is trivial, if there are more typed access than untyped access we walk in tile
         // otherwise we walk linearly
-        bool isDominatedByTypedMessage = m_numberOfTypedAccess >= m_numberOfUntypedAccess;
 
         for (uint y = 0; y < dimY; y += numberOfId)
         {
@@ -187,9 +198,7 @@ namespace IGC
                     lane++;
                 }
 
-                if (isDominatedByTypedMessage &&
-                    m_threadGroupSize_Y % 4 == 0 &&
-                    IGC_IS_FLAG_ENABLED(UseTiledCSThreadOrder))
+                if(m_tileY)
                 {
                     const unsigned int tileSizeY = 4;
                     ++currThreadY;
@@ -255,25 +264,30 @@ namespace IGC
         CShader::InitEncoder(simdMode, canAbortOnSpill, shaderMode);
     }
 
-    CVariable* CComputeShader::CreateThreadIDinGroup(uint channelNum)
+    CVariable* CComputeShader::CreateThreadIDsinGroup(SGVUsage channelNum)
     {
-        assert(channelNum < 3 && "Thread id's are in 3 dimensions only");
-        switch (channelNum)
+        return CreateThreadIDinGroup(channelNum);
+    }
+
+    CVariable* CComputeShader::CreateThreadIDinGroup(SGVUsage channelNum)
+    {
+        assert(channelNum <= THREAD_ID_IN_GROUP_Z && channelNum >= THREAD_ID_IN_GROUP_X && "Thread id's are in 3 dimensions only");
+        switch(channelNum)
         {
-        case 0:
-            if (m_pThread_ID_in_Group_X == nullptr)
+        case THREAD_ID_IN_GROUP_X:
+            if(m_pThread_ID_in_Group_X == nullptr)
             {
                 m_pThread_ID_in_Group_X = GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_W, EALIGN_GRF, false, m_numberInstance);
             }
             return m_pThread_ID_in_Group_X;
-        case 1:
-            if (m_pThread_ID_in_Group_Y == nullptr)
+        case THREAD_ID_IN_GROUP_Y:
+            if(m_pThread_ID_in_Group_Y == nullptr)
             {
                 m_pThread_ID_in_Group_Y = GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_W, EALIGN_GRF, false, m_numberInstance);
             }
             return m_pThread_ID_in_Group_Y;
-        case 2:
-            if (m_pThread_ID_in_Group_Z == nullptr)
+        case THREAD_ID_IN_GROUP_Z:
+            if(m_pThread_ID_in_Group_Z == nullptr)
             {
                 m_pThread_ID_in_Group_Z = GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_W, EALIGN_GRF, false, m_numberInstance);
             }
@@ -329,7 +343,7 @@ namespace IGC
         // so we allocate a dummy thread id in case no IDs are used
         if (bZeroIDs)
         {
-            CreateThreadIDinGroup(0);
+            CreateThreadIDinGroup(THREAD_ID_IN_GROUP_X);
         }
 
         // Per-thread constant data.
@@ -510,6 +524,7 @@ namespace IGC
         pKernelProgram->DisableMidThreadPreemption = m_disableMidThreadPreemption;
 
         pKernelProgram->BindingTableEntryCount = this->GetMaxUsedBindingTableEntryCount();
+
     }
 
     void CComputeShader::ExtractGlobalVariables()
@@ -536,6 +551,7 @@ namespace IGC
         {
             m_dispatchAlongY = true;
         }
+        selectWalkOrder();
     }
 
     void CComputeShader::AddPrologue()
