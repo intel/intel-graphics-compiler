@@ -45,9 +45,19 @@ float __builtin_spirv_divide_cr_f32_f32( float a,
         fb.f = b;
         aExp = (fa.u >> 23) & 0xff;
         bExp = (fb.u >> 23) & 0xff;
-        // Denormals as zero (DAZ)
-        if (aExp == 0) fa.u &= 0x80000000;
-        if (bExp == 0) fb.u &= 0x80000000;
+
+        // Normalize denormals -- scale by 2^32
+        if(!(fa.u & 0x7f800000)) {
+            binary32 x; x.u = 0x4f800000;
+            fa.f *= x.f;
+            aExp = ((fa.u >> 23) & 0xff) - 32;
+        }
+        if(!(fb.u & 0x7f800000)) {
+            binary32 x; x.u = 0x4f800000;
+            fb.f *= x.f;
+            bExp = ((fb.u >> 23) & 0xff) - 32;
+        }
+
         if ((fa.f != 0.0f) && (aExp != 0xff)) {
             // a is NOT 0 or INF or NAN
             flag = 1;
@@ -128,8 +138,6 @@ float __builtin_spirv_divide_cr_f32_f32( float a,
             //printf("y0=0x%08x\n", y0.u);
             q.f = fa.f * y0.f;
         }
-        // Denormals flush to zero (FTZ)
-        //if ((q.u & 0x7f800000) == 0) q.u &= 0x80000000;
         return q.f;
     } else {
         return FDIV_IEEE(a, b);
