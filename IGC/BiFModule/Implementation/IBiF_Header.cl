@@ -30,6 +30,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _IBIF_HEADER_
 #define _IBIF_HEADER_
 
+extern __constant int __Support64BitInst;
+extern __constant int __Need64BitIntEmulation;
+
 
 #ifdef cl_khr_fp16
 #pragma OPENCL EXTENSION cl_khr_fp16 : enable

@@ -102,6 +102,7 @@ void initializePreCompiledFuncImportPass(llvm::PassRegistry&);
 void initializePurgeMetaDataUtilsPass(llvm::PassRegistry&);
 void initializeResolveAggregateArgumentsPass(llvm::PassRegistry&);
 void initializeResolveOCLAtomicsPass(llvm::PassRegistry&);
+void initializeResolveSpinLocksPass(llvm::PassRegistry&);
 void initializeResourceAllocatorPass(llvm::PassRegistry&);
 void initializeScalarizeFunctionPass(llvm::PassRegistry&);
 void initializeSimd32ProfitabilityAnalysisPass(llvm::PassRegistry&);

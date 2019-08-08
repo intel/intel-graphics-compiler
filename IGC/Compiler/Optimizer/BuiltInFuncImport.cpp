@@ -796,7 +796,9 @@ void BIImport::InitializeBIFlags(Module& M)
     initializeVarWithValue("__FlushDenormals", isFlushDenormToZero ? 1 : 0);
     initializeVarWithValue("__DashGSpecified", MD.compOpt.DashGSpecified ? 1 : 0);
     initializeVarWithValue("__FastRelaxedMath", MD.compOpt.RelaxedBuiltins ? 1 : 0);
-    initializeVarWithValue("__UseNative64BitSubgroupBuiltin",
+    initializeVarWithValue("__Need64BitIntEmulation",
+        pCtx->platform.need64BitEmulation() ? 1 : 0);
+    initializeVarWithValue("__Support64BitInst",
         pCtx->platform.hasNo64BitInst() ? 0 : 1);
     initializeVarWithValue("__CRMacros",
         pCtx->platform.hasCorrectlyRoundedMacros() ? 1 : 0);
