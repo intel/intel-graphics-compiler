@@ -1292,7 +1292,7 @@ static const char* MessageTypeEnumerationDisassembly[64] =
     "Scratch Block Read", // 0
     "Scratch Block Write", // 1
     "OWord Block Read", // 2
-    "Unaligned OWord Block Read", // 3
+    "Aligned OWord Block Read", // 3
     "OWord Dual Block Read", // 4
     "DWord Scattered Read", // 5
     "Byte Scattered Read", // 6

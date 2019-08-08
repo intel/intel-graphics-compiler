@@ -623,7 +623,7 @@ bool G4_SendMsgDescriptor::isReadOnlyMessage(uint32_t msgDesc,
     case SFID::DP_DC:
         switch (subFuncID) {
         case DC_OWORD_BLOCK_READ:
-        case DC_UNALIGNED_OWORD_BLOCK_READ:
+        case DC_ALIGNED_OWORD_BLOCK_READ:
         case DC_DWORD_SCATTERED_READ:
         case DC_BYTE_SCATTERED_READ:
             return true;
@@ -3467,7 +3467,7 @@ bool G4_InstSend::isDirectSplittableSend()
         case DC_DWORD_SCATTERED_READ:   //dword scattered read: emask need be vertically cut according to splitting
         case DC_BYTE_SCATTERED_READ:       //byte scattered read
             return false;
-        case DC_UNALIGNED_OWORD_BLOCK_READ: //Nomask
+        case DC_ALIGNED_OWORD_BLOCK_READ: //Nomask
         case DC_OWORD_BLOCK_READ:
             return true;
         default: return false;

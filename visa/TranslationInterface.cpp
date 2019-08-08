@@ -2673,7 +2673,7 @@ int IR_Builder::translateVISAOwordLoadInst(
 
     if (unaligned)
     {
-        SET_DATAPORT_MESSAGE_TYPE(temp, DC_UNALIGNED_OWORD_BLOCK_READ)
+        SET_DATAPORT_MESSAGE_TYPE(temp, DC_ALIGNED_OWORD_BLOCK_READ)
     }
 
     // Set bit 12-8 for the message descriptor

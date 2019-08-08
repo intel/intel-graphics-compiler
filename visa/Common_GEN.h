@@ -27,7 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // enums for various fields in message-specific descriptors
 typedef enum {
     DC_OWORD_BLOCK_READ = 0,
-    DC_UNALIGNED_OWORD_BLOCK_READ = 1,
+    DC_ALIGNED_OWORD_BLOCK_READ = 1,
     DC_DWORD_SCATTERED_READ = 3,
     DC_BYTE_SCATTERED_READ = 4,
     DC_UNTYPED_ATOMIC = 6,
