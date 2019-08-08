@@ -70,8 +70,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace llvm;
 using namespace IGC;
 
-STATISTIC(TransformBlockEnqueCounter, "Counts number of functions greeted");
-
 // Command line option to dump the output .ll from this pass
 static cl::opt<bool>
 TransformBlocksOutput("TransformBlocksOutput", cl::desc("Output the .llvm generated from TransformBlocks pass"), cl::init(false));

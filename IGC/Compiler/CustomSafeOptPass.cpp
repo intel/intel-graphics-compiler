@@ -130,8 +130,6 @@ void AnnotateIgnoreWritesEnd(const char* file, int line) {}
 
 #define DEBUG_TYPE "CustomSafeOptPass"
 
-STATISTIC(Stat_FcmpRemoved, "Number of insts removed in FCmp Opt");
-STATISTIC(Stat_FloatRemoved, "Number of insts removed in Float Opt");
 STATISTIC(Stat_DiscardRemoved, "Number of insts removed in Discard Opt");
 
 bool CustomSafeOptPass::runOnFunction(Function& F)

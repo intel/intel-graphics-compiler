@@ -97,7 +97,6 @@ char CustomUnsafeOptPass::ID = 0;
 
 STATISTIC(Stat_FcmpRemoved, "Number of insts removed in FCmp Opt");
 STATISTIC(Stat_FloatRemoved, "Number of insts removed in Float Opt");
-STATISTIC(Stat_DiscardRemoved, "Number of insts removed in Discard Opt");
 
 static bool allowUnsafeMathOpt(CodeGenContext* ctx, llvm::BinaryOperator& op)
 {
