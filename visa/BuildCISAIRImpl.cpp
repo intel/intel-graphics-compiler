@@ -1166,9 +1166,7 @@ bool CISA_IR_Builder::CISA_attr_directiveNum(
 
 bool CISA_IR_Builder::CISA_create_label(char *label_name, int line_no)
 {
-    VISA_INST_Desc *inst_desc = NULL;
     VISA_LabelOpnd *opnd[1] = {NULL};
-    inst_desc = &CISA_INST_table[ISA_LABEL];
 
     //when we print out ./function from isa we also print out label.
     //if we don't skip it during re-parsing then we will have duplicate labels
@@ -1189,10 +1187,7 @@ bool CISA_IR_Builder::CISA_create_label(char *label_name, int line_no)
 
 bool CISA_IR_Builder::CISA_function_directive(char* func_name)
 {
-
-    VISA_INST_Desc *inst_desc = NULL;
     VISA_LabelOpnd *opnd[1] = {NULL};
-    inst_desc = &CISA_INST_table[ISA_SUBROUTINE];
     opnd[0] = m_kernel->getLabelOperandFromFunctionName(std::string(func_name));
     if (opnd[0] == NULL)
     {
@@ -1284,9 +1279,7 @@ bool CISA_IR_Builder::CISA_create_branch_instruction(VISA_opnd *pred,
                                                      char *target_label,
                                                      int line_no)
 {
-    VISA_INST_Desc *inst_desc = NULL;
     VISA_LabelOpnd * opnd[1];
-    inst_desc = &CISA_INST_table[opcode];
     int i = 0;
 
     switch(opcode)

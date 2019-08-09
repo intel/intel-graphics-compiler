@@ -1268,11 +1268,8 @@ static void readInstructionMisc(unsigned& bytePos, const char* buf, ISA_Opcode o
         }
     case ISA_VME_FBR:
         {
-            unsigned uniInputSize;
-
-            uniInputSize = 4;
-            VISA_RawOpnd*    UNIInput       = readRawOperandNG(bytePos, buf, container); //, uniInputSize * 32);
-            VISA_RawOpnd*    FBRInput       = readRawOperandNG(bytePos, buf, container); //, 128);
+            VISA_RawOpnd*    UNIInput       = readRawOperandNG(bytePos, buf, container);
+            VISA_RawOpnd*    FBRInput       = readRawOperandNG(bytePos, buf, container);
             uint8_t          surface        = readPrimitiveOperandNG<uint8_t>(bytePos, buf);
             VISA_VectorOpnd* FBRMbMode      = readVectorOperandNG(bytePos, buf, container,false);
             VISA_VectorOpnd* FBRSubMbShape  = readVectorOperandNG(bytePos, buf, container,false);
@@ -1289,22 +1286,9 @@ static void readInstructionMisc(unsigned& bytePos, const char* buf, ISA_Opcode o
             uint8_t       streamMode = readPrimitiveOperandNG<uint8_t>(bytePos, buf);
             uint8_t       searchCtrl = readPrimitiveOperandNG<uint8_t>(bytePos, buf);
 
-            unsigned uniInputSize;
-            uint8_t imeInputSize;
+            VISA_RawOpnd* UNIInput   = readRawOperandNG(bytePos, buf, container);
 
-            uniInputSize = 4;
-
-            VISA_RawOpnd* UNIInput   = readRawOperandNG(bytePos, buf, container); //, uniInputSize*32);
-
-            if((COMMON_ISA_VME_STREAM_MODE) streamMode != VME_STREAM_IN &&
-                (COMMON_ISA_VME_STREAM_MODE) streamMode != VME_STREAM_IN_OUT) {
-                    imeInputSize = 64;
-            } else if((COMMON_ISA_VME_SEARCH_CTRL) searchCtrl == VME_SEARCH_DUAL_REF_DUAL_REC) {
-                imeInputSize = 192;
-            } else {
-                imeInputSize = 128;
-            }
-            VISA_RawOpnd* IMEInput   = readRawOperandNG(bytePos, buf, container); //, imeInputSize);
+            VISA_RawOpnd* IMEInput   = readRawOperandNG(bytePos, buf, container);
 
             uint8_t       surface    = readPrimitiveOperandNG<uint8_t>(bytePos, buf);
             VISA_RawOpnd* ref0       = readRawOperandNG(bytePos, buf, container); //, 2);
@@ -1319,11 +1303,7 @@ static void readInstructionMisc(unsigned& bytePos, const char* buf, ISA_Opcode o
         }
     case ISA_VME_SIC:
         {
-            unsigned uniInputSize;
-
-            uniInputSize = 4;
-
-            VISA_RawOpnd* UNIInput = readRawOperandNG(bytePos, buf, container); //, uniInputSize * 32);
+            VISA_RawOpnd* UNIInput = readRawOperandNG(bytePos, buf, container);
             VISA_RawOpnd* SICInput = readRawOperandNG(bytePos, buf, container); //, 128); //SICInput
             uint8_t       surface  = readPrimitiveOperandNG<uint8_t>(bytePos, buf);
             VISA_RawOpnd* output   = readRawOperandNG(bytePos, buf, container);

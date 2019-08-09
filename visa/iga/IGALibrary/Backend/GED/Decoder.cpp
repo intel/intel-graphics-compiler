@@ -482,11 +482,9 @@ void DecoderBase::decodeBasicDestinationAlign16(Instruction *inst)
         break;
     }
     case GED_ADDR_MODE_Indirect: {
-        uint32_t hStride = 1;
         GED_DECODE_RAW(GED_DST_CHAN_EN, chEn, DstChanEn);
         if (chEn == GED_DST_CHAN_EN_xyzw) {
             warning("converting unary/binary Align16 dst to equivalent Align1");
-            hStride = 1;
         } else {
             fatal("unsupported Align16 Dst.ChEn (only .xyzw supported)");
         }

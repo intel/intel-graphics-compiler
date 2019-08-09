@@ -1898,7 +1898,6 @@ private:
         } else {
             addrOff = 0;
         }
-        const int ADDROFF_BITS = 10; // one is a sign bit
 
         // check if the imm offset out of bound
         int addroff_up_bound = 511;
@@ -1964,7 +1963,6 @@ private:
 
     // E.g. 3 in "a0.3"
     bool ParseAddrRegRefOpt(RegRef& addrReg) {
-        Loc loc = NextLoc();
         const RegInfo *ri;
         int regNum;
         if (!ConsumeReg(ri, regNum)) {
@@ -2848,7 +2846,6 @@ private:
         return t;
     }
     Type TryParseOpType(const IdentMap<Type> types) {
-        Loc loc = NextLoc();
         if (!LookingAt(COLON)) {
             return Type::INVALID;
         }
