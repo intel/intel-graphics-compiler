@@ -4249,7 +4249,7 @@ int VISAKernelImpl::AppendVISASvmScatterInst(VISA_PredOpnd *pred,
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
     stopTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    return CM_SUCCESS;
+    return status;
 }
 
 int VISAKernelImpl::AppendVISASvmAtomicInst(VISA_PredOpnd *pred,
@@ -4319,7 +4319,7 @@ int VISAKernelImpl::AppendVISASvmAtomicInst(VISA_PredOpnd *pred,
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
     stopTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    return CM_SUCCESS;
+    return status;
 }
 
 CisaFramework::CisaInst *
@@ -5287,7 +5287,7 @@ int VISAKernelImpl::AppendVISAMEAVS(VISA_StateOpndHandle *surface,  VISA_StateOp
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
     stopTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    return CM_SUCCESS;
+    return status;
 }
 /************* END APPEND APIS ************************/
 int VISAKernelImpl::AppendVISA3dSamplerMsgGeneric(ISA_Opcode opcode,
@@ -5872,7 +5872,7 @@ int VISAKernelImpl::AppendVISA3dTypedAtomic(
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
     stopTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    return CM_SUCCESS;
+    return status;
 }
 
 int VISAKernelImpl::AppendVISAVABooleanCentroid(VISA_StateOpndHandle *surface, VISA_VectorOpnd * uOffset,
