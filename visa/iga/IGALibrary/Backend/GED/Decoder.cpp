@@ -1775,8 +1775,8 @@ bool DecoderBase::isChanSelPacked()
     uint32_t chanSel = decodeSrcChanSel<S>();
     GED_SWIZZLE swizzle[4];
     decodeChSelToSwizzle(chanSel, swizzle);
-    return swizzle[0] != GED_SWIZZLE_x && swizzle[1] && GED_SWIZZLE_y &&
-           swizzle[2] != GED_SWIZZLE_z && swizzle[3] && GED_SWIZZLE_w;
+    return swizzle[0] != GED_SWIZZLE_x && swizzle[1] != GED_SWIZZLE_y &&
+           swizzle[2] != GED_SWIZZLE_z && swizzle[3] != GED_SWIZZLE_w;
 }
 
 void DecoderBase::decodeThreadOptions(Instruction *inst, GED_THREAD_CTRL trdCntrl)
