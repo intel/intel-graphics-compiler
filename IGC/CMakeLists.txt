@@ -36,7 +36,6 @@
 #  - IGC_OPTION__OUTPUT_DIR
 #  - IGC_OPTION__USCLAUNCHER_TOOL for ILAdapter
 
-
 cmake_minimum_required(VERSION 2.8.12 FATAL_ERROR)
 if (${CMAKE_VERSION} VERSION_GREATER "3.0")
   cmake_policy(SET CMP0043 OLD) # Have CMake to use the old behavior for COMPILE_DEFINITIONS_<CONFIG>

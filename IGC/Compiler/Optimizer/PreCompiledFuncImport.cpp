@@ -143,7 +143,7 @@ const PreCompiledFuncInfo PreCompiledFuncImport::m_functionInfos[NUM_FUNCTION_ID
     { "__igcbuiltin_dp_to_uint32",  LIBMOD_DP_CONV_I32 },
     { "__igcbuiltin_int32_to_dp",   LIBMOD_DP_CONV_I32 },
     { "__igcbuiltin_uint32_to_dp",  LIBMOD_DP_CONV_I32 },
-    { "__igcbuiltin_dp_to_sp",      LIBMOD_DP_CONV_SP },
+    { "__igcbuiltin_dp_to_sp",      LIBMOD_DP_CONV_SP },  
     { "__igcbuiltin_sp_to_dp",      LIBMOD_DP_CONV_SP },
     { "__igcbuiltin_dp_sqrt",       LIBMOD_DP_SQRT },
     { "__igcbuiltin_sp_div",        LIBMOD_SP_DIV }
@@ -189,7 +189,7 @@ bool PreCompiledFuncImport::preProcessDouble()
     {
         Function* Func = &(*II);
         for (inst_iterator i = inst_begin(Func), e = inst_end(Func);
-            i != e; ++i)
+             i != e; ++i)
         {
             Instruction* Inst = &*i;
             if (TruncInst * TI = dyn_cast<TruncInst>(Inst))
@@ -207,7 +207,7 @@ bool PreCompiledFuncImport::preProcessDouble()
                     TI->replaceAllUsesWith(newinst);
                     toBeDeleted.push_back(TI);
                 }
-            }
+            }          
             else if (UIToFPInst * UFI = dyn_cast<UIToFPInst>(Inst))
             {
                 Value* oprd = UFI->getOperand(0);
@@ -245,7 +245,7 @@ bool PreCompiledFuncImport::preProcessDouble()
                 GenIntrinsicInst* GII = dyn_cast<GenIntrinsicInst>(CallI);
                 if (resTy->isDoubleTy() &&
                     ((II && (II->getIntrinsicID() == Intrinsic::maxnum ||
-                        II->getIntrinsicID() == Intrinsic::minnum))))
+                             II->getIntrinsicID() == Intrinsic::minnum))))
                 {
                     // max and min on double operands
                     Value* Oprd0 = CallI->getOperand(0);
@@ -292,8 +292,8 @@ bool PreCompiledFuncImport::preProcessDouble()
                     CallI->replaceAllUsesWith(res);
                     toBeDeleted.push_back(CallI);
                 }
-                else  if (resTy->isDoubleTy() &&
-                    GII && (GII->getIntrinsicID() == GenISAIntrinsic::GenISA_fsat))
+                else  if (resTy->isDoubleTy() &&                  
+                          GII && (GII->getIntrinsicID() == GenISAIntrinsic::GenISA_fsat))
                 {
                     // y = fsat(x) :  1. y = 0.0 if x is NaN or x < 0.0;
                     //                2. y = 1.0 if x > 1.0;
@@ -302,7 +302,7 @@ bool PreCompiledFuncImport::preProcessDouble()
                     Constant* FC0 = ConstantFP::get(resTy, 0.0);
                     Constant* FC1 = ConstantFP::get(resTy, 1.0);
                     Instruction* cond = FCmpInst::Create(
-                        Instruction::FCmp,
+                        Instruction::FCmp, 
                         hasNoNaN ? FCmpInst::FCMP_OLT : FCmpInst::FCMP_ULT,
                         Oprd0, FC0, "", CallI);
                     cond->setDebugLoc(CallI->getDebugLoc());
@@ -320,7 +320,7 @@ bool PreCompiledFuncImport::preProcessDouble()
                     toBeDeleted.push_back(CallI);
                 }
             }
-        }
+        }  
     }
 
     for (int i = 0, e = (int)toBeDeleted.size(); i < e; ++i)
@@ -365,7 +365,7 @@ bool PreCompiledFuncImport::runOnModule(Module& M)
     {
         m_changed = true;
     }
-
+ 
     unsigned int count = 0;
     while (count < 2)
     {
@@ -417,7 +417,7 @@ bool PreCompiledFuncImport::runOnModule(Module& M)
                 m_pBuiltinModule = nullptr;
             }
         }
-        for (int i = 0; i < NUM_LIBMODS; ++i)
+        for (int i = 0; i < NUM_LIBMODS; ++i) 
         {
             m_libModuleToBeImported[i] = false;
         }
@@ -1337,11 +1337,11 @@ void PreCompiledFuncImport::visitCallInst(llvm::CallInst& I)
     {
         // bit 63 is sign bit, set it to zero. Don't use int64.
         VectorType* vec2Ty = VectorType::get(intTy, 2);
-        Instruction* twoI32 = CastInst::Create(
+        Instruction* twoI32 =  CastInst::Create(
             Instruction::BitCast, I.getOperand(0), vec2Ty, "", &I);
         twoI32->setDebugLoc(I.getDebugLoc());
         Instruction* topI32 = ExtractElementInst::Create(
-            twoI32, ConstantInt::get(intTy, 1), "", &I);
+            twoI32,  ConstantInt::get(intTy, 1), "", &I);
         topI32->setDebugLoc(I.getDebugLoc());
         Instruction* newTopI32 = BinaryOperator::CreateAnd(
             topI32, ConstantInt::get(intTy, 0x7fffffff), "", &I);
@@ -1352,7 +1352,7 @@ void PreCompiledFuncImport::visitCallInst(llvm::CallInst& I)
         Instruction* fabsVal = CastInst::Create(
             Instruction::BitCast, val, resTy, "DPEmuFabs", &I);
         fabsVal->setDebugLoc(I.getDebugLoc());
-
+ 
         I.replaceAllUsesWith(fabsVal);
         I.eraseFromParent();
 
@@ -1657,17 +1657,17 @@ void PreCompiledFuncImport::checkAndSetEnableSubroutine()
                 m_enableSubroutineCallForEmulation = true;
             }
             else
-                if (DPEmu && I->getType()->isDoubleTy() &&
-                    IInst && IInst->getIntrinsicID() == Intrinsic::fma)
-                {
-                    m_enableSubroutineCallForEmulation = true;
-                }
-                else
-                    if (SPDiv && I->getType()->isFloatTy() &&
-                        GII && GII->getIntrinsicID() == GenISAIntrinsic::GenISA_IEEE_Divide)
-                    {
-                        m_enableSubroutineCallForEmulation = true;
-                    }
+            if (DPEmu && I->getType()->isDoubleTy() &&
+                IInst && IInst->getIntrinsicID() == Intrinsic::fma)
+            {
+                m_enableSubroutineCallForEmulation = true;
+            }
+            else
+            if (SPDiv &&  I->getType()->isFloatTy() &&
+                GII && GII->getIntrinsicID() == GenISAIntrinsic::GenISA_IEEE_Divide)
+            {
+                m_enableSubroutineCallForEmulation = true;
+            }
 
             if (m_enableSubroutineCallForEmulation) {
                 m_pCtx->m_enableSubroutine = true;

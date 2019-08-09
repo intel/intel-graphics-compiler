@@ -1206,6 +1206,8 @@ void ScalarizeFunction::releaseAllSCMEntries()
 
 void ScalarizeFunction::resolveDeferredInstructions()
 {
+    std::map<Value*, Value*> dummyToScalarMap;
+
     // lambda to check if a value is a dummy instruction
     auto isDummyValue = [](Value* val)->bool
     {
@@ -1227,23 +1229,7 @@ void ScalarizeFunction::resolveDeferredInstructions()
 
         SCMEntry* currentInstEntry = getSCMEntry(vectorInst);
 
-        bool hasDummyLoad = false;
-        bool scalarsInitialized = (currentInstEntry->scalarValues[0] != NULL);
-
-        // Check if the instruction has been fully scalarized
-        if (scalarsInitialized)
-        {
-            for (unsigned i = 0; i < width; i++)
-            {
-                if (isDummyValue(currentInstEntry->scalarValues[i]))
-                {
-                    hasDummyLoad = true;
-                    break;
-                }
-            }
-        }
-
-        if (!scalarsInitialized || hasDummyLoad)
+        if (currentInstEntry->scalarValues[0] == NULL)
         {
             V_PRINT(scalarizer, "\t\tInst was not scalarized yet, Scalarizing now...\n");
             SmallVector<Value*, MAX_INPUT_VECTOR_WIDTH>newInsts;
@@ -1265,16 +1251,9 @@ void ScalarizeFunction::resolveDeferredInstructions()
             newInsts.resize(width);
             for (unsigned i = 0; i < width; i++)
             {
-                if (!scalarsInitialized || isDummyValue(currentInstEntry->scalarValues[i]))
-                {
-                    Value* constIndex = ConstantInt::get(Type::getInt32Ty(context()), i);
-                    Instruction* EE = ExtractElementInst::Create(vectorInst, constIndex, "scalar", &(*insertLocation));
-                    newInsts[i] = EE;
-                }
-                else
-                {
-                    newInsts[i] = currentInstEntry->scalarValues[i];
-                }
+                Value *constIndex = ConstantInt::get(Type::getInt32Ty(context()), i);
+                Instruction *EE = ExtractElementInst::Create(vectorInst, constIndex, "scalar", &(*insertLocation));
+                newInsts[i] = EE;
             }
             updateSCMEntryWithValues(currentInstEntry, &(newInsts[0]), vectorInst, false);
         }
@@ -1285,9 +1264,27 @@ void ScalarizeFunction::resolveDeferredInstructions()
             Instruction* dummyInst = dyn_cast<Instruction>(current.dummyVals[i]);
             assert(dummyInst && "Dummy values are all instructions!");
             Value* scalarVal = currentInstEntry->scalarValues[i];
-            dummyInst->replaceAllUsesWith(scalarVal);
-            IGCLLVM::DeleteInstruction(dummyInst);
+
+            if (isDummyValue(scalarVal))
+            {
+                // It's possible the scalar values are not resolved earlier and are themselves dummy instructions.
+                // In order to find the real value, we look in the map to see which value replaced it.
+                auto properScalarVal = dummyToScalarMap.find(scalarVal);
+                assert(properScalarVal != dummyToScalarMap.end() && "Replacement value not found!");
+                scalarVal = dummyToScalarMap[scalarVal];
+            }
+
+            // Save every dummy instruction with the scalar value its replaced with
+            dummyToScalarMap[dummyInst] = scalarVal;
         }
+    }
+
+    for ( auto entry : dummyToScalarMap )
+    {
+        // Replace and erase all dummy instructions (don't use eraseFromParent as the dummy is not in the function)
+        Instruction *dummyInst = cast<Instruction>(entry.first);
+        dummyInst->replaceAllUsesWith(entry.second);
+        IGCLLVM::DeleteInstruction(dummyInst);
     }
 
     // clear DRL
