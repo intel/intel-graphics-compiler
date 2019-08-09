@@ -777,6 +777,7 @@ void BinaryEncodingIGA::DoAll()
             igaInst->addInstOpts(getIGAInstOptSet(inst));
 
 
+
 #if _DEBUG
             igaInst->validate();
 #endif
@@ -840,7 +841,6 @@ void BinaryEncodingIGA::DoAll()
         kernel.fg.builder->getJitInfo()->offsetToSkipPerThreadDataLoad = (uint32_t)(*iter)->getGenOffset();
     }
 }
-
 
 SendDescArg BinaryEncodingIGA::getIGASendDescArg(G4_INST* sendInst) const
 {

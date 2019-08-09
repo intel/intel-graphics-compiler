@@ -48,7 +48,7 @@ namespace IGC
         void        ParseShaderSpecificOpcode(llvm::Instruction* inst) override;
 
         /// Get the Thread ID's in Group
-        CVariable* CreateThreadIDsinGroup(SGVUsage channelNum);
+        CVariable* CreateThreadIDinGroup(uint channelNum);
         uint        GetThreadGroupSize() const { return m_threadGroupSize; }
         bool        GetDispatchAlongY() const { return m_dispatchAlongY; }
         void        SetDisableMidthreadPreemption()
@@ -81,14 +81,6 @@ namespace IGC
         bool                   m_hasSLM;
 
     private:
-        enum WALK_ORDER {
-            WO_XYZ,
-            WO_XZY,
-            WO_YXZ,
-            WO_YZX,
-            WO_ZXY,
-            WO_ZYX
-        };
         CShader* getSIMDEntry(CodeGenContext* ctx, SIMDMode simdMode)
         {
             CShader* prog = ctx->m_retryManager.GetSIMDEntry(simdMode);
@@ -101,10 +93,6 @@ namespace IGC
                 return m_parent->GetShader(simdMode);
             }
         }
-        CVariable* CreateThreadIDinGroup(SGVUsage channelNum);
-        void selectWalkOrder();
-        bool m_tileY;
-        WALK_ORDER m_walkOrder;
     };
 
 }

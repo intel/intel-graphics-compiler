@@ -6781,21 +6781,21 @@ void EmitPass::emitCSSGV(GenIntrinsicInst* inst)
     case THREAD_ID_IN_GROUP_X:
     {
         assert(inst->getType() == Type::getInt16Ty(inst->getContext()) && "only 16bit ThreadID is supported now.");
-        pThreadIdInGroup = csProgram->CreateThreadIDsinGroup(THREAD_ID_IN_GROUP_X);
+        pThreadIdInGroup = csProgram->CreateThreadIDinGroup(0);
         m_currShader->CopyVariable(m_destination, pThreadIdInGroup);
         break;
     }
     case THREAD_ID_IN_GROUP_Y:
     {
         assert(inst->getType() == Type::getInt16Ty(inst->getContext()) && "only 16bit ThreadID is supported now.");
-        pThreadIdInGroup = csProgram->CreateThreadIDsinGroup(THREAD_ID_IN_GROUP_Y);
+        pThreadIdInGroup = csProgram->CreateThreadIDinGroup(1);
         m_currShader->CopyVariable(m_destination, pThreadIdInGroup);
         break;
     }
     case THREAD_ID_IN_GROUP_Z:
     {
         assert(inst->getType() == Type::getInt16Ty(inst->getContext()) && "only 16bit ThreadID is supported now.");
-        pThreadIdInGroup = csProgram->CreateThreadIDsinGroup(THREAD_ID_IN_GROUP_Z);
+        pThreadIdInGroup = csProgram->CreateThreadIDinGroup(2);
         m_currShader->CopyVariable(m_destination, pThreadIdInGroup);
         break;
     }
@@ -13979,8 +13979,6 @@ void EmitPass::emitVectorStore(StoreInst* inst)
             blkBits = useQW ? (align >= 8 ? 64 : 8)
                 : (!useA32 && align >= 4) ? 32 : 8;
             nBlks = useQW ? (64 / blkBits) : (32 / blkBits);
-#if 0
-#endif
         }
         else
         {
@@ -14010,8 +14008,6 @@ void EmitPass::emitVectorStore(StoreInst* inst)
             // Note that this is for elts = 1, so totalBytes is bytes per-lane.
             blkBits = useA32 ? 8 : ((eltBytes >= 4 && align >= eltBytes) ? eltBytes * 8 : 8);
             nBlks = (totalBytes * 8) / blkBits;
-#if 0
-#endif
         }
         setPredicateForDiscard();
         if (useA32)

@@ -32,6 +32,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using namespace iga;
 
+
 void Instruction::setDirectDestination(
     DstModifier dstMod,
     RegName rType,
