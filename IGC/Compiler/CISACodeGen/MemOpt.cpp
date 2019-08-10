@@ -201,7 +201,7 @@ namespace {
         }
 
         template <typename AccessInstruction>
-        bool checkAlignmentBeforeMerge(AccessInstruction* inst,
+        bool checkAlignmentBeforeMerge(const AccessInstruction* inst,
             SmallVector<std::tuple<AccessInstruction*, int64_t, MemRefListTy::iterator>, 8> & AccessIntrs,
             unsigned& NumElts)
         {
@@ -926,7 +926,7 @@ bool MemOpt::mergeStore(StoreInst* LeadingStore,
         int64_t Off = 0;
         const SCEVConstant* Offset
             = dyn_cast<SCEVConstant>(SE->getMinusSCEV(NextPtr, LeadingPtr));
-        // Skip load with non-constant distance.
+        // Skip store with non-constant distance.
         if (!Offset) {
 
             SymbolicPointer LeadingSymPtr;
@@ -1087,7 +1087,7 @@ bool MemOpt::mergeStore(StoreInst* LeadingStore,
         Builder.CreateBitCast(FirstStore->getPointerOperand(), NewPointerType);
     StoreInst* NewStore =
         Builder.CreateAlignedStore(NewStoreVal, NewPointer,
-            LeadingStore->getAlignment());
+            FirstStore->getAlignment());
     NewStore->setDebugLoc(TailingStore->getDebugLoc());
 
     // Replace the list to be optimized with the new store.
@@ -1103,7 +1103,7 @@ bool MemOpt::mergeStore(StoreInst* LeadingStore,
         std::get<2>(I)->first = nullptr;
         // Checking zero distance is intentionally omitted here due to the first
         // memory access won't be able to be checked again.
-        std::get<2>(I)->second -= 1;;
+        std::get<2>(I)->second -= 1;
     }
 
     return true;
