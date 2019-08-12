@@ -367,6 +367,7 @@ static void CommonOCLBasedPasses(
         mpm.add(new RewriteLocalSize());
 
     mpm.add(createSROAPass());
+    mpm.add(new BreakConstantExpr());
 
     mpm.add(CreateFoldKnownWorkGroupSizes());
 
