@@ -1577,7 +1577,7 @@ SPIRVToLLVM::transType(SPIRVType *T) {
         T->getArrayLength()));
   case OpTypePointer:
     return mapType(T, PointerType::get(transType(T->getPointerElementType()),
-        SPIRSPIRVAddrSpaceMap::rmap(T->getPointerStorageClass())));
+      SPIRSPIRVAddrSpaceMap::rmap(T->getPointerStorageClass())));
   case OpTypeVector:
     return mapType(T, VectorType::get(transType(T->getVectorComponentType()),
         T->getVectorComponentCount()));
@@ -1680,8 +1680,19 @@ SPIRVToLLVM::transTypeToOCLTypeName(SPIRVType *T, bool IsSigned) {
     break;
   case OpTypeArray:
     return "array";
-  case OpTypePointer:
-    return transTypeToOCLTypeName(T->getPointerElementType()) + "*";
+  case OpTypePointer: {
+    SPIRVType* ET = T->getPointerElementType();
+    if (isa<OpTypeFunction>(ET)) {
+      SPIRVTypeFunction* TF = static_cast<SPIRVTypeFunction*>(ET);
+      std::string name = transTypeToOCLTypeName(TF->getReturnType());
+      name += " (*)(";
+      for (unsigned I = 0, E = TF->getNumParameters(); I < E; ++I)
+        name += transTypeToOCLTypeName(TF->getParameterType(I)) + ',';
+      name.back() = ')'; // replace the last comma with a closing brace.
+      return name;
+    }
+    return transTypeToOCLTypeName(ET) + "*";
+  }
   case OpTypeVector:
     return transTypeToOCLTypeName(T->getVectorComponentType()) +
         T->getVectorComponentCount();
@@ -2832,16 +2843,19 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
     break;
 
   case OpFunctionPointerCallINTEL: {
-    SPIRVFunctionPointerCallINTEL * BC =
-      static_cast<SPIRVFunctionPointerCallINTEL *>(BV);
+    SPIRVFunctionPointerCallINTEL *BC =
+      static_cast<SPIRVFunctionPointerCallINTEL*>(BV);
     auto Call = CallInst::Create(transValue(BC->getCalledValue(), F, BB),
       transValue(BC->getArgumentValues(), F, BB),
       BC->getName(), BB);
+    // Assuming we are calling a regular device function
+    Call->setCallingConv(CallingConv::SPIR_FUNC);
+    // Don't set attributes, because at translation time we don't know which
+    // function exactly we are calling.
     return mapValue(BV, Call);
     }
-
   case OpFunctionPointerINTEL: {
-    SPIRVFunctionPointerINTEL * BC =
+    SPIRVFunctionPointerINTEL *BC =
       static_cast<SPIRVFunctionPointerINTEL *>(BV);
     SPIRVFunction* F = BC->getFunction();
     BV->setName(F->getName());
