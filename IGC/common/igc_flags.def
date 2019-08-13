@@ -210,6 +210,7 @@ DECLARE_IGC_REGKEY(bool, DumpOCLProgramInfo,            false, "dump OpenCL Patc
 DECLARE_IGC_REGKEY(bool, DumpPatchTokens,               false, "Enable dumping of patch tokens.")
 DECLARE_IGC_REGKEY(bool, DumpVariableAlias,             false, "Dump variable alias info, valid if EnableVariableAlias is on)")
 DECLARE_IGC_REGKEY(bool, DumpDeSSA,                     false, "dump DeSSA info into file.")
+DECLARE_IGC_REGKEY(bool, EnableScalarizerDebugLog,       false, "print step by step scalarizer debug info.")
 
 DECLARE_IGC_GROUP("Debugging features")
 DECLARE_IGC_REGKEY(bool, InitializeUndefValueEnable,    false, "Setting this to 1/true initializes all undefs in URB payload to 0")

@@ -36,14 +36,22 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/Operator.h"
 #include "llvm/IR/Module.h"
 #include "llvm/Support/CommandLine.h"
+#include "llvm/Support/raw_os_ostream.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "common/igc_regkeys.hpp"
 #include "common/Types.hpp"
+#include <iostream>
 
 using namespace llvm;
 using namespace IGC;
 
-#define V_PRINT(a,b) 
+#define V_PRINT(a,b) \
+    { \
+        if (IGC_IS_FLAG_ENABLED(EnableScalarizerDebugLog)) \
+        { \
+            outs() << b; \
+        } \
+    }
 
 namespace VectorizerUtils {
     static void SetDebugLocBy(Instruction* I, const Instruction* setBy) {
@@ -1215,9 +1223,9 @@ void ScalarizeFunction::resolveDeferredInstructions()
         return (ld && isa<ConstantPointerNull>(ld->getPointerOperand()));
     };
 
-    for (unsigned index = 0; index < m_DRL.size(); ++index)
+    for (auto deferredEntry = m_DRL.begin(); m_DRL.size() > 0;)
     {
-        DRLEntry current = m_DRL[index];
+        DRLEntry current = *deferredEntry;
         V_PRINT(scalarizer,
             "\tDRL Going to fix value of orig inst: " << *current.unresolvedInst << "\n");
         Instruction* vectorInst = dyn_cast<Instruction>(current.unresolvedInst);
@@ -1258,6 +1266,8 @@ void ScalarizeFunction::resolveDeferredInstructions()
             updateSCMEntryWithValues(currentInstEntry, &(newInsts[0]), vectorInst, false);
         }
 
+        bool totallyResolved = true;
+
         // Connect the resolved values to their consumers
         for (unsigned i = 0; i < width; ++i)
         {
@@ -1269,13 +1279,28 @@ void ScalarizeFunction::resolveDeferredInstructions()
             {
                 // It's possible the scalar values are not resolved earlier and are themselves dummy instructions.
                 // In order to find the real value, we look in the map to see which value replaced it.
-                auto properScalarVal = dummyToScalarMap.find(scalarVal);
-                assert(properScalarVal != dummyToScalarMap.end() && "Replacement value not found!");
+                if (dummyToScalarMap.count(scalarVal))
                 scalarVal = dummyToScalarMap[scalarVal];
+                else
+                    totallyResolved = false;
             }
 
             // Save every dummy instruction with the scalar value its replaced with
             dummyToScalarMap[dummyInst] = scalarVal;
+        }
+
+        if (totallyResolved)
+        {
+            m_DRL.erase(deferredEntry);
+        }
+        else
+        {
+            deferredEntry++;
+        }
+
+        if (deferredEntry == m_DRL.end())
+        {
+            deferredEntry = m_DRL.begin();
         }
     }
 
