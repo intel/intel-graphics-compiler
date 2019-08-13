@@ -8513,9 +8513,9 @@ getMsgBlockSizes(unsigned sizeInBits, unsigned alignInBits) {
     return std::make_pair(~0U, ~0U);
 }
 
-void EmitPass::emitLoad(LoadInst* inst)
+void EmitPass::emitLoad(LoadInst* inst, Value* offset, ConstantInt* immOffset)
 {
-    emitVectorLoad(inst, inst->getPointerOperand());
+    emitVectorLoad(inst, offset, immOffset);
 }
 
 void EmitPass::EmitNoModifier(llvm::Instruction* inst)
@@ -8558,10 +8558,10 @@ void EmitPass::EmitNoModifier(llvm::Instruction* inst)
         }
         break;
     case Instruction::Store:
-        emitStore(cast<StoreInst>(inst));
+        emitStore(cast<StoreInst>(inst), nullptr, nullptr);
         break;
     case Instruction::Load:
-        emitLoad(cast<LoadInst>(inst));
+        emitLoad(cast<LoadInst>(inst), nullptr, nullptr);
         break;
     case Instruction::GetElementPtr:
         emitGEP(cast<GetElementPtrInst>(inst));
@@ -9632,9 +9632,9 @@ void EmitPass::emitStore3DInner(Value* pllValToStore, Value* pllDstPtr, Value* p
     }
 }
 
-void EmitPass::emitStore(StoreInst* inst)
+void EmitPass::emitStore(StoreInst* inst, Value* offset, ConstantInt* immOffset)
 {
-    emitVectorStore(inst);
+    emitVectorStore(inst, offset, immOffset);
 }
 
 CVariable* EmitPass::GetSymbol(llvm::Value* v)
@@ -13360,15 +13360,20 @@ unsigned int EmitPass::GetScalarTypeSizeInRegister(Type* Ty) const
 }
 
 
-void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset)
+void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOffset)
 {
+    int immOffsetInt = 0;
+    if (immOffset)
+        immOffsetInt = static_cast<int>(immOffset->getSExtValue());
+
     Value* Ptr = inst->getPointerOperand();
     PointerType* ptrType = cast<PointerType>(Ptr->getType());
     bool useA32 = !IGC::isA64Ptr(ptrType, m_currShader->GetContext());
 
     ResourceDescriptor resource = GetResourceVariable(Ptr);
     // eOffset is in bytes as 2/19/14
-    CVariable* eOffset = GetSymbol(offset);
+    // offset corresponds to Int2Ptr operand obtained during pattern matching
+    CVariable* eOffset = GetSymbol(immOffset ? offset : Ptr);
     if (useA32)
     {
         eOffset = TruncatePointer(eOffset);
@@ -13786,8 +13791,12 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset)
     }
 }
 
-void EmitPass::emitVectorStore(StoreInst* inst)
+void EmitPass::emitVectorStore(StoreInst* inst, Value* offset, ConstantInt* immOffset)
 {
+    int immOffsetInt = 0;
+    if (immOffset)
+        immOffsetInt = static_cast<int>(immOffset->getSExtValue());
+
     Value* Ptr = inst->getPointerOperand();
     PointerType* ptrType = cast<PointerType>(Ptr->getType());
 
@@ -13797,7 +13806,8 @@ void EmitPass::emitVectorStore(StoreInst* inst)
         ForceDMask(false);
     }
     // As 2/19/14, eOffset is in bytes !
-    CVariable* eOffset = GetSymbol(Ptr);
+    // offset corresponds to Int2Ptr operand obtained during pattern matching
+    CVariable* eOffset = GetSymbol(immOffset ? offset : Ptr);
     bool useA32 = !isA64Ptr(ptrType, m_currShader->GetContext());
     if (useA32)
     {

@@ -2051,17 +2051,19 @@ namespace IGC
         return false;
     }
 
+
     bool CodeGenPatternMatch::MatchLoadStorePointer(llvm::Instruction& I, llvm::Value& ptrVal)
     {
         struct LoadStorePointerPattern : public Pattern
         {
             Instruction* inst;
             Value* offset;
+            ConstantInt* immOffset;
             virtual void Emit(EmitPass* pass, const DstModifier& modifier)
             {
                 if (isa<LoadInst>(inst))
                 {
-                    pass->emitVectorLoad(cast<LoadInst>(inst), offset);
+                    pass->emitVectorLoad(cast<LoadInst>(inst), offset, immOffset);
                 }
                 else if (isa<StoreInst>(inst))
                 {
@@ -2097,6 +2099,7 @@ namespace IGC
                 }
             }
             pattern->offset = cast<Instruction>(&ptrVal)->getOperand(0);
+            pattern->immOffset = ConstantInt::get(Type::getInt32Ty(I.getContext()), 0);
             MarkAsSource(pattern->offset);
             AddPattern(pattern);
             return true;
