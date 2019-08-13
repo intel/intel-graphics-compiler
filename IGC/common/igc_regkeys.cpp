@@ -492,6 +492,7 @@ void LoadRegistryKeys( void )
             IGC_SET_FLAG_VALUE(EnableVISABinary, true);
             IGC_SET_FLAG_VALUE(EnableVISADumpCommonISA, true);
             IGC_SET_FLAG_VALUE(EnableCapsDump, true);
+            IGC_SET_FLAG_VALUE(DumpPatchTokens, true);
         }
 
 

@@ -74,7 +74,7 @@ void DebugSurfaceStateCommand(
       std::string &output )
 {
 #if ( defined( _DEBUG ) || defined( _INTERNAL ) || defined( _RELEASE_INTERNAL ) )
-    if (IGC_IS_FLAG_ENABLED(DebugSurfaceStateOutput)) {
+    if (IGC_IS_FLAG_ENABLED(DumpPatchTokens)) {
         SSharedStateSurfaceState* p3DStateSurfaceState =
             (SSharedStateSurfaceState*)pLinearAddress;
 

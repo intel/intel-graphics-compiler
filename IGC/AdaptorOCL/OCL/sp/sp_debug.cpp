@@ -48,7 +48,7 @@ void __cdecl DebugMessage( unsigned int ulDebugLevel, const char* str, ... )
         va_start( args, str );
 
 #if defined(ICBE_LHDM) || defined(_WIN32)
-        if (IGC_IS_FLAG_ENABLED(DebugSurfaceStateOutput))
+        if (IGC_IS_FLAG_ENABLED(DumpPatchTokens))
         {
           const size_t length = _vscprintf(str, args);
           char* temp = new char[length + 1];
@@ -75,7 +75,7 @@ void __cdecl DebugMessageStr(std::string& output, unsigned int ulDebugLevel, con
         va_start(args, fmt);
 
 #if defined(ICBE_LHDM) || defined(_WIN32)
-        if (IGC_IS_FLAG_ENABLED(DebugSurfaceStateOutput))
+        if (IGC_IS_FLAG_ENABLED(DumpPatchTokens))
         {
           const size_t length = _vscprintf(fmt, args);
           char* temp = new char[length + 1];
@@ -91,9 +91,21 @@ void __cdecl DebugMessageStr(std::string& output, unsigned int ulDebugLevel, con
           }
         }
 #else
-        if (IGC_IS_FLAG_ENABLED(DebugSurfaceStateOutput))
+        if (IGC_IS_FLAG_ENABLED(DumpPatchTokens))
         {
-          vfprintf(stderr, fmt, args);
+            va_list argcopy;
+            va_copy(argcopy, args);
+
+            const size_t length = vsnprintf(NULL, 0, fmt, argcopy);
+
+            char* temp = new char[length + 1];
+
+            if (temp)
+            {
+                vsnprintf(temp, length + 1, fmt, args);
+                output += temp;
+                delete[] temp;
+            }
         }
 #endif
 
