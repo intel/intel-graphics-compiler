@@ -380,7 +380,7 @@ namespace {
         void convertChildren(ANodeHG *nodehg, G4_BB *nextJoinBB);
         void convertIf(ANodeHG *node, G4_BB *nextJoinBB);
         void convertDoWhile(ANodeHG *node, G4_BB *nextJoinBB);
-        bool convertGoto(ANodeBB *node, G4_BB *nextJoinBB);
+        void convertGoto(ANodeBB *node, G4_BB *nextJoinBB);
         void generateGotoJoin(G4_BB *gotoBB, G4_BB *jibBB, G4_BB *targetBB);
 
         // helper
@@ -3477,13 +3477,13 @@ void CFGStructurizer::generateGotoJoin(G4_BB *gotoBB, G4_BB *jibBB, G4_BB *joinB
     }
 }
 
-bool CFGStructurizer::convertGoto(ANodeBB *node, G4_BB *nextJoinBB)
+void CFGStructurizer::convertGoto(ANodeBB *node, G4_BB *nextJoinBB)
 {
     G4_BB *beginbb = node->getEndBB();
     G4_INST *gotoInst = getGotoInst(beginbb);
     if (!gotoInst || node->isVisited())
     {
-        return true;
+        return;
     }
     node->setVisited(true);
 
@@ -3518,32 +3518,23 @@ bool CFGStructurizer::convertGoto(ANodeBB *node, G4_BB *nextJoinBB)
 
     if (kind == ANKIND_JMPI)
     {
-        bool needInsertJoin = false;
-
-        // TODO: Should find the 1st join BB out of this loop instead
-        //       of using the next BB as join BB (see comments in
-        //       convertChildren().
-        G4_BB* joinbb = beginbb ? beginbb->getPhysicalSucc() : nullptr;
+        CFG->convertGotoToJmpi(gotoInst);
+        {
+            ANodeBB *exitndbb = getANodeBB(exitbb);
+            exitndbb->isJmpiTarget = true;
+        }
 
         if (beginbb == exitbb || isBefore(exitbb, beginbb))
         {
-            // we can not insert join to non-existent block
-            // this means we do not convert anything
-            if (!joinbb)
-                return false;
+            // TODO: Should find the 1st join BB out of this loop instead
+            //       of using the next BB as join BB (see comments in
+            //       convertChildren().
+            G4_BB *joinbb = beginbb->getPhysicalSucc();
 
-            needInsertJoin = true;
+            // set join's JIP to null as it will be handled later
+            CFG->insertJoinToBB(joinbb, execSize, nullptr);
         }
-
-        CFG->convertGotoToJmpi(gotoInst);
-        ANodeBB *exitndbb = getANodeBB(exitbb);
-        exitndbb->isJmpiTarget = true;        
-
-        // set join's JIP to null as it will be handled later
-        if (needInsertJoin)
-          CFG->insertJoinToBB(joinbb, execSize, nullptr);
-
-        return true;
+        return;
     }
 
     if (kind == ANKIND_SCF)
@@ -3579,7 +3570,7 @@ bool CFGStructurizer::convertGoto(ANodeBB *node, G4_BB *nextJoinBB)
             beginbb->push_back(breakInst);
             beginbb->push_back(endifInst);
 
-            return true;
+            return;
         }
 #endif
 
@@ -3590,7 +3581,7 @@ bool CFGStructurizer::convertGoto(ANodeBB *node, G4_BB *nextJoinBB)
             gotoInst->getSrcFilename());
         beginbb->pop_back();
         beginbb->push_back(breakInst);
-        return true;
+        return;
     }
 
     G4_BB *joinbb = exitbb;
@@ -3607,7 +3598,6 @@ bool CFGStructurizer::convertGoto(ANodeBB *node, G4_BB *nextJoinBB)
         }
     }
     generateGotoJoin(beginbb, JipBB, joinbb);
-    return true;
 }
 
 bool CFGStructurizer::convertPST(ANode *node, G4_BB *nextJoinBB)
@@ -3640,7 +3630,8 @@ bool CFGStructurizer::convertPST(ANode *node, G4_BB *nextJoinBB)
     }
     else if (ty == AN_BB)
     {
-        change = convertGoto((ANodeBB*)node, nextJoinBB);
+        convertGoto((ANodeBB*)node, nextJoinBB);
+        change = true;
     }
     else
     {
