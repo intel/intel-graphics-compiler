@@ -2121,7 +2121,7 @@ CVariable* CShader::getOrCreateArgumentSymbol(
     return var;
 }
 
-CVariable* CShader::getOrCreateArgSymbolForIndirectCall(llvm::CallInst* cInst, unsigned argIdx)
+CVariable* CShader::getOrCreateArgSymbolForIndirectCall(llvm::CallInst* cInst, unsigned argIdx, unsigned numImplicitArgs)
 {
     assert(argIdx < cInst->getNumArgOperands());
 
@@ -2135,8 +2135,6 @@ CVariable* CShader::getOrCreateArgSymbolForIndirectCall(llvm::CallInst* cInst, u
         return it->second;
     }
 
-    // Last 3 operands for an indirect call are always R0, PayloadHeader, and PrivateBase
-    unsigned numImplicitArgs = 3;
     unsigned numExplicitArgs = cInst->getNumArgOperands() - numImplicitArgs;
     if (argIdx < numExplicitArgs)
     {
@@ -2163,21 +2161,15 @@ CVariable* CShader::getOrCreateArgSymbolForIndirectCall(llvm::CallInst* cInst, u
         {
             ImplicitArg implictArg = implicitArgs[i];
             auto argType = implictArg.getArgType();
-            if (argType == ImplicitArg::ArgType::R0 ||
-                argType == ImplicitArg::ArgType::PAYLOAD_HEADER ||
-                argType == ImplicitArg::ArgType::PRIVATE_BASE)
+            Argument* implicitArgInFunc = implicitArgs.getImplicitArg(*parentFunc, argType);
+            if (Arg == implicitArgInFunc)
             {
-                Argument* implicitArgInFunc = implicitArgs.getImplicitArg(*parentFunc, argType);
-                if (Arg == implicitArgInFunc)
-                {
-                    bool isUniform = implictArg.getDependency() == WIAnalysis::UNIFORM;
-                    var = GetNewVariable((uint16_t)implictArg.getNumberElements(),
-                        implictArg.getVISAType(*m_DL),
-                        implictArg.getAlignType(*m_DL), isUniform,
-                        isUniform ? 1 : m_numberInstance);
-
-                    break;
-                }
+                bool isUniform = implictArg.getDependency() == WIAnalysis::UNIFORM;
+                var = GetNewVariable((uint16_t)implictArg.getNumberElements(),
+                    implictArg.getVISAType(*m_DL),
+                    implictArg.getAlignType(*m_DL), isUniform,
+                    isUniform ? 1 : m_numberInstance);
+                break;
             }
         }
     }

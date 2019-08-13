@@ -8767,6 +8767,7 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
     llvm::Function* F = inst->getCalledFunction();
     if (F) assert(!F->empty() && "unexpanded builtin?");
 
+    CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     bool isIndirectFCall = !F || F->hasFnAttribute("IndirectlyCalled");
     CVariable* ArgBlkVar = m_currShader->GetARGV();
     uint32_t offsetA = 0;  // visa argument offset
@@ -8799,7 +8800,7 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
             Value* operand = inst->getArgOperand(i);
             argType = operand->getType();
             Src = GetSymbol(operand);
-            ArgCV = m_currShader->getOrCreateArgSymbolForIndirectCall(inst, i);
+            ArgCV = m_currShader->getOrCreateArgSymbolForIndirectCall(inst, i, ctx->m_numIndirectImplicitArgs);
         }
         else
         {

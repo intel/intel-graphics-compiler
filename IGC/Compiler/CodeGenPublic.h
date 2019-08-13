@@ -724,6 +724,11 @@ namespace IGC
         bool m_enableSubroutine = false;
         bool m_enableFunctionPointer = false;
 
+        // Tracks the number of allowed implicit arguments used by indirect function calls.
+        // Since we cannot determine which function is called, indirect callsites needs a global count
+        // of all implicit args possibly used by the function
+        unsigned m_numIndirectImplicitArgs = 0;
+
         /// Adding multiversioning to partially redundant samples, if AIL is on.
         bool m_enableSampleMultiversioning = false;
 

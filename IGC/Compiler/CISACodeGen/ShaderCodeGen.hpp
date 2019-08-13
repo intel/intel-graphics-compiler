@@ -305,7 +305,7 @@ namespace IGC
             llvm::Argument* Arg,
             bool ArgInCallee, // true if Arg isn't in current func
             bool useStackCall = false);
-        CVariable* getOrCreateArgSymbolForIndirectCall(llvm::CallInst* cInst, unsigned argIdx);
+        CVariable* getOrCreateArgSymbolForIndirectCall(llvm::CallInst* cInst, unsigned argIdx, unsigned numImplicitArgs);
         VISA_Type GetType(llvm::Type* type);
 
         /// Evaluate constant expression and return the result immediate value.
