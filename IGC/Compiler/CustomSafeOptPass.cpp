@@ -1103,6 +1103,10 @@ void TrivialLocalMemoryOpsElimination::visitLoadInst(LoadInst& I)
     {
         m_LocalLoadsToRemove.push_back(&I);
     }
+    else if (I.getPointerAddressSpace() == ADDRESS_SPACE_GENERIC)
+    {
+        abortPass = true;
+    }
 }
 
 void TrivialLocalMemoryOpsElimination::visitStoreInst(StoreInst& I)
@@ -1110,6 +1114,10 @@ void TrivialLocalMemoryOpsElimination::visitStoreInst(StoreInst& I)
     if (I.getPointerAddressSpace() == ADDRESS_SPACE_LOCAL)
     {
         m_LocalStoresToRemove.push_back(&I);
+    }
+    else if (I.getPointerAddressSpace() == ADDRESS_SPACE_GENERIC)
+    {
+        abortPass = true;
     }
 }
 
