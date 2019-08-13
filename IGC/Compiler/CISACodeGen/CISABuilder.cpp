@@ -3701,7 +3701,11 @@ namespace IGC
             {
                 // 2 means #spill/fill is roughly 1% of #inst
                 // ToDo: tune the threshold
-                SaveOption(vISA_AbortOnSpillThreshold, 2u);
+                if (m_program->m_dispatchSize == SIMDMode::SIMD8)
+                    SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD8_SpillThreshold) * 2);
+
+                else if (m_program->m_dispatchSize == SIMDMode::SIMD16)
+                    SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD16_SpillThreshold) * 2);
             }
         }
 
