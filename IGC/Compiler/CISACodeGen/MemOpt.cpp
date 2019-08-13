@@ -37,6 +37,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/Pass.h>
 #include <llvm/Support/Debug.h>
+#include <llvm/Support/DebugCounter.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Transforms/Utils/Local.h>
 #include "common/LLVMWarningsPop.hpp"
@@ -50,6 +51,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace llvm;
 using namespace IGC;
 using namespace IGC::IGCMD;
+
+DEBUG_COUNTER(MergeLoadCounter, "memopt-merge-load",
+    "Controls count of merged loads");
+
+DEBUG_COUNTER(MergeStoreCounter, "memopt-merge-store",
+    "Controls count of merged stores");
 
 namespace {
     // This pass merge consecutive loads/stores within a BB when it's safe:
@@ -625,8 +632,15 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
         if (Off == 0 && LdSize == NextLoadSize)
             break;
 
-        int64_t newHighestOffset = MAX(Off + NextLoadSize, HighestOffset);
-        int64_t newLowestOffset = MIN(Off, LowestOffset);
+        int64_t newHighestOffset = std::max(Off + NextLoadSize, HighestOffset);
+        int64_t newLowestOffset = std::min(Off, LowestOffset);
+
+        // Ensure that the total size read evenly divides the element type.
+        // For example, we could have a packed struct <{i64, i32, i64}> that
+        // would compute a size of 20 but, without this guard, would set
+        // 'NumElts' to 2 as if the i32 wasn't present.
+        if (unsigned(newHighestOffset - newLowestOffset) % LdScalarSize != 0)
+            continue;
 
         unsigned newNumElts = unsigned((newHighestOffset - newLowestOffset) /
             LdScalarSize);
@@ -700,6 +714,9 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
 
     // Next we need to check alignment
     if (!checkAlignmentBeforeMerge(FirstLoad, LoadsToMerge, NumElts))
+        return false;
+
+    if (!DebugCounter::shouldExecute(MergeLoadCounter))
         return false;
 
     // Calculate the new pointer. If the leading load is not the first load,
@@ -1076,6 +1093,9 @@ bool MemOpt::mergeStore(StoreInst* LeadingStore,
 
     // Next we need to check alignment
     if (!checkAlignmentBeforeMerge(FirstStore, StoresToMerge, NumElts))
+        return false;
+
+    if (!DebugCounter::shouldExecute(MergeStoreCounter))
         return false;
 
     // We don't need to recalculate the new pointer as we merge stores to the
