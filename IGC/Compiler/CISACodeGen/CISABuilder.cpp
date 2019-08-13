@@ -3706,7 +3706,7 @@ namespace IGC
         }
 
         if ((context->type == ShaderType::OPENCL_SHADER || context->type == ShaderType::COMPUTE_SHADER) &&
-            m_program->m_Platform->supportGPGPUMidThreadPreemption() && !hasStackCall)
+            VISAPlatform >= GENX_SKL && IGC_IS_FLAG_ENABLED(EnablePreemption) && !hasStackCall)
         {
             SaveOption(vISA_enablePreemption, true);
         }
