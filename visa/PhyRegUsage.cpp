@@ -1051,7 +1051,7 @@ bool PhyRegUsage::assignRegs(bool  highInternalConflict,
             }
 
             PhyRegUsage::PhyReg phyReg = findGRFSubReg(forbidden, varBasis->getCalleeSaveBias(),
-                varBasis->getCallerSaveBias(), bankAlign != BankAlign::Either ? bankAlign : align, subAlign,
+                varBasis->getCallerSaveBias(), align != BankAlign::Either ? align : bankAlign, subAlign,
                 numAllocUnit(decl->getNumElems(), decl->getElemType()));
             if (phyReg.reg != -1)
             {
@@ -1115,7 +1115,7 @@ bool PhyRegUsage::assignRegs(bool  highInternalConflict,
 
             unsigned short occupiedBundles = gra.getOccupiedBundle(decl);
             bool success = findContiguousGRF(availableGregs, forbidden, occupiedBundles, 
-                bankAlign != BankAlign::Either ? bankAlign : align, decl->getNumRows(), endGRFReg,
+                align != BankAlign::Either ? align : bankAlign, decl->getNumRows(), endGRFReg,
                 startGRFReg, i, varBasis->getCalleeSaveBias(), varBasis->getEOTSrc());
             if (success) {
                 varBasis->setPhyReg(regPool.getGreg(i), 0);
