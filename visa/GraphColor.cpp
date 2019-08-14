@@ -5439,13 +5439,11 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
 
             if (!failed_alloc)
             {
-                // When evenAlignNeeded is true, it is binding for correctness
-                bool evenAlignNeeded = gra.isEvenAligned(lrVar->getDeclare());
-                BankAlign align = evenAlignNeeded ? BankAlign::Even : BankAlign::Either;
+                BankAlign align = gra.isEvenAligned(lrVar->getDeclare()) ? BankAlign::Even : BankAlign::Either;
                 if (allocFromBanks)
                 {
                     
-                    if (!isHybrid && oneGRFBankDivision && !evenAlignNeeded)
+                    if (!isHybrid && oneGRFBankDivision)
                     {
                         gra.getBankAlignment(lr, align);
                     }
