@@ -310,6 +310,7 @@ namespace vISA
         void buildSIMDIntfDcl(G4_Declare* newDcl, bool isCall);
         void buildSIMDIntfAll(G4_Declare* newDcl);
         void handleSIMDIntf(G4_Declare* firstDcl, G4_Declare* secondDcl, bool isCall);
+        bool weakEdgeNeeded(AugmentationMasks);
 
     public:
         Augmentation(G4_Kernel& k, Interference& i, LivenessAnalysis& l, LiveRange* ranges[], GlobalRA& g);
@@ -1198,7 +1199,9 @@ namespace vISA
         static uint32_t getRefCount(int loopNestLevel);
         bool isReRAPass();
         void updateSubRegAlignment(G4_SubReg_Align subAlign);
+        bool isChannelSliced();
         void evenAlign();
+        bool evenAlignNeeded(G4_Declare*);
         void getBankAlignment(LiveRange* lr, BankAlign &align);
         void printLiveIntervals();
         void reportUndefinedUses(LivenessAnalysis& liveAnalysis, G4_BB* bb, G4_INST* inst, G4_Declare* referencedDcl, std::set<G4_Declare*>& defs, std::ofstream& optreport, Gen4_Operand_Number opndNum);
