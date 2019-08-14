@@ -1297,7 +1297,6 @@ class G4_Kernel
     const char* name;
     unsigned numRegTotal;
     unsigned int simdSize;
-    bool channelSliced = true;
     bool hasAddrTaken;
     Options *m_options;
 
@@ -1441,11 +1440,8 @@ public:
 
     Options *getOptions(){ return m_options; }
     bool getOption(vISAOptions opt) const { return m_options->getOption(opt); }
-    void computeChannelSlicing();
     void calculateSimdSize();
     unsigned int getSimdSize() { return simdSize; }
-    bool getChannelSlicing() { return channelSliced; }
-    unsigned int getSimdSizeWithSlicing() { return channelSliced ? simdSize/2 : simdSize; }
 
     void setHasAddrTaken(bool val) { hasAddrTaken = val; }
     bool getHasAddrTaken() { return hasAddrTaken;  }
