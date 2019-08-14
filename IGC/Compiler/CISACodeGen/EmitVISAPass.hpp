@@ -247,16 +247,19 @@ namespace IGC
             CVariable* pSrc,
             bool isA64,
             bool is16Bit);
+        /// reduction facilities
+        CVariable* ScanReducePrepareSrc(VISA_Type type, uint64_t identityValue, bool negate, bool secondHalf,
+            CVariable* src, CVariable* dst, CVariable* flag = nullptr);
+        CVariable* ReduceHelper(e_opcode op, VISA_Type type, SIMDMode simd, CVariable* src);
         /// do reduction and accummulate all the activate channels, return a uniform
         void emitReductionAll(
             e_opcode op,
             uint64_t identityValue,
             VISA_Type type,
             bool negate,
-            CVariable* pSrc,
+            CVariable* src,
             CVariable* dst);
 
-        CVariable* ReduceHelper(e_opcode op, VISA_Type type, SIMDMode simd, CVariable* var);
         /// do prefix op across all activate channels
         void emitPreOrPostFixOp(
             e_opcode op,

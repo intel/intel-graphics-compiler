@@ -468,9 +468,10 @@ namespace IGC
         Common_ISA_Exec_Size  GetAluExecSize(CVariable* dst) const;
         Common_VISA_EMask_Ctrl GetAluEMask(CVariable* dst);
         bool IsSat();
+
+        // Variable splitting facilities (if crosses 2 GRF boundary).
         bool NeedSplitting(CVariable* var, const SModifier& mod,
-            unsigned& numParts,
-            bool isSource = false) const;
+            unsigned& numParts, bool isSource = false) const;
         SModifier SplitVariable(Common_ISA_Exec_Size fromExecSize,
             Common_ISA_Exec_Size toExecSize,
             unsigned thePart,

@@ -59,7 +59,6 @@ using namespace llvm;
 
 namespace IGC
 {
-
     Common_ISA_Exec_Size getExecSize(SIMDMode width)
     {
         switch (width)
@@ -203,6 +202,67 @@ namespace IGC
             "Unknown number of blocks/elements. Expect 1, 2, 4, or 8 only!");
         return static_cast<Common_ISA_SVM_Block_Num>(~0U);
     }
+
+    constexpr unsigned visaNumLanes(Common_ISA_Exec_Size execSize)
+    {
+        unsigned lanes = 0;
+        switch (execSize)
+        {
+        case EXEC_SIZE_1:  lanes = 1; break;
+        case EXEC_SIZE_2:  lanes = 2; break;
+        case EXEC_SIZE_4:  lanes = 4; break;
+        case EXEC_SIZE_8:  lanes = 8; break;
+        case EXEC_SIZE_16: lanes = 16; break;
+        case EXEC_SIZE_32: lanes = 32; break;
+        default: assert(false);
+        }
+        return lanes;
+    }
+
+    // Take certain attributes of either src or dst instruction operand and return the size
+    // of the associated grf region, accessed during instruction's execution, in bytes.
+    // If aligned==true, the size includes length of data block starting at the beginning of grf
+    // and ending at the subReg; this is useful to check if the region crosses 2 grf boundary.
+    // If special region attribute is not set, the regioning is <1; 1, 0> for src and <1> for dst.
+    // Note that the assertions may hit in certain cases, which should be handled separately,
+    // like uniform vars with operand with special region set.
+    constexpr unsigned GrfRegionSize(Common_ISA_Exec_Size execSize, unsigned elementSize,
+        const SModifier& mod, bool isSource, bool aligned = true)
+    {
+        constexpr unsigned grfSize = 32; // in bytes
+        // If subReg is big enough to cross grf boundary, adjust it.
+        const unsigned base = (mod.subReg * elementSize) % grfSize;
+        unsigned lastInRegion = aligned ? base : 0;
+        if (isSource)
+        {
+            // Formula based on algorithm provided in the spec (see Region Parameters)
+            const unsigned vstride = mod.specialRegion ? mod.region[0] : 1;
+            const unsigned width = mod.specialRegion ? mod.region[1] : 1;
+            const unsigned hstride = mod.specialRegion ? mod.region[2] : 0;
+            assert(width != 0);
+            const unsigned height = visaNumLanes(execSize) / width;
+            assert(height != 0);
+            lastInRegion += (height - 1) * vstride * elementSize +
+                (width - 1) * hstride * elementSize;
+        }
+        else
+        {
+            const unsigned hstride = mod.specialRegion ? mod.region[2] : 1;
+            lastInRegion += (visaNumLanes(execSize) - 1) * hstride * elementSize;
+        }
+        return lastInRegion + elementSize;
+    };
+    // Compile-time ULTs for GrfRegionSize()
+    static_assert(GrfRegionSize(EXEC_SIZE_16, 4, SModifier{}, false) == 64 &&
+        GrfRegionSize(EXEC_SIZE_16, 4, SModifier{ 16, {}, {0,0,2}, {}, {}, true }, false) == 124 &&
+        GrfRegionSize(EXEC_SIZE_16, 4, SModifier{ 15, {}, {0,0,2}, {}, {}, true }, false) == 124 + 7*4 &&
+        GrfRegionSize(EXEC_SIZE_8, 8, SModifier{ 1, {}, {0,0,2}, {}, {}, true }, false) == 128,
+        "GrfRegionSize compile-time test failed - dst.");
+    static_assert(GrfRegionSize(EXEC_SIZE_16, 4, SModifier{}, true) == 64 &&
+        GrfRegionSize(EXEC_SIZE_16, 4, SModifier{ {}, {}, {4,4,0}, {}, {}, true }, true) == 52 &&
+        GrfRegionSize(EXEC_SIZE_8, 8, SModifier{ 8, {}, {2,1,0}, {}, {}, true }, true) == 120 &&
+        GrfRegionSize(EXEC_SIZE_8, 8, SModifier{ 10, {}, {2,1,0}, {}, {}, true }, true) == 120 + 2*8,
+        "GrfRegionSize compile-time test failed - src.");
 
     // split a SIMD16 variable into two SIMD8 while satisfying vISA's raw operand alignment
     // return a tuple representing the vISA raw operand (var + offset) after split
@@ -1023,37 +1083,55 @@ namespace IGC
     // numParts - return the total parts to be split, e.g. if the region spans 4
     // GRFs, it needs splitting into 2 parts at least.
     bool CEncoder::NeedSplitting(CVariable* var, const SModifier& mod,
-        unsigned& numParts,
-        bool isSource) const {
+        unsigned& numParts, bool isSource) const
+    {
         // If nothing is specified, don't split.
         if (!var)
+        {
             return false;
+        }
+
         // Only handle SIMD16 now! We assume all data movements in SIMD8 will honor
         // the region rules.
         Common_ISA_Exec_Size simdSize = GetAluExecSize(var);
-        switch (simdSize) {
-        default:
-            return false;
+        const unsigned elemSize = var->GetElemSize();
+
+        switch (simdSize)
+        {
         case EXEC_SIZE_16:
             break;
-            // NOTE that SIMD32 will be supported differently based on the current
-            // implementation!
+        default:
+        {
+            // Checks for some rare cases that are not handled by the splitter, but should be detected and reported.
+            // Example: mov (8|M0)    r4.0<1>:q     r31.0<2;1,0>:q
+            constexpr unsigned maxBlockSize = 64; // size of 2 GRFs in bytes
+            // For uniform variables (which implies simdSize==1) the emitter may set regions with width>1.
+            // As it may happen in various places, we detect it here.
+            assert(var->IsUniform() || GrfRegionSize(simdSize, elemSize, mod, isSource) <= maxBlockSize);
+            return false;
+        }
         }
 
         // Only general variables need splitting so far.
         if (var->GetVarType() != EVARTYPE_GENERAL)
+        {
             return false;
+        }
 
         // Only varying variable need splitting so far.
         // NOTE: uniform variable is assumed to take less than 2 GRF+.
         if (var->IsUniform())
+        {
             return false;
+        }
 
-        unsigned elemSize = var->GetElemSize();
         // We assume there is no 2 GRF crossing when element size is smaller than
         // 4 bytes (or 32 bits), e.g. 16-bit WORD.
         if (elemSize < 4)
+        {
             return false;
+        }
+
         // If the data type has more than 4 bytes, i.e. 32 bits, it already crosses
         // 2+ GRFs by itself. There's no need to check further.
         if (elemSize > 4)
@@ -1062,8 +1140,10 @@ namespace IGC
             assert((isSource || !mod.specialRegion) &&
                 "It's expected that there's no special region associated with "
                 "QWORD type destination!");
-            if (isSource && mod.specialRegion) {
-                if (mod.region[1] == 1 && mod.region[0] == 0) {
+            if (isSource && mod.specialRegion)
+            {
+                if (mod.region[1] == 1 && mod.region[0] == 0)
+                {
                     // src region is <0;1,x>, can't cross 2 GRF.  No need to split.
                     return false;
                 }
@@ -1072,29 +1152,43 @@ namespace IGC
 
             numParts = std::max(numParts, 2U);
             return true;
+
         }
 
 
         // For 32-bit data types, without special region, they won't cross 2+ GRFs.
         if (!mod.specialRegion)
+        {
             return false;
+        }
 
         // Check regioning.
-        if (isSource) {
+        if (isSource)
+        {
             // FIXME: Need better support for region with non-1 width.
             if (mod.region[1] != 1)
+            {
                 return false;
+            }
+
             if (mod.region[0] < 2)
+            {
                 return false;
+            }
+
             // For src with width set to 1, region with > 1 vstride needs
             // splitting.
             numParts = std::max(numParts, unsigned(mod.region[0]));
             return true;
         }
+
         if (mod.region[2] < 2)
+        {
             return false;
-        numParts = std::max(numParts, unsigned(mod.region[2]));
+        }
+
         // For dst, region with > 1 hstride needs splitting.
+        numParts = std::max(numParts, unsigned(mod.region[2]));
         return true;
     }
 

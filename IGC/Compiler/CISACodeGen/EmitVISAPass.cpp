@@ -193,7 +193,7 @@ uint EmitPass::DecideInstanceAndSlice(llvm::BasicBlock& blk, SDAG& sdag, bool& s
             if (id == GenISAIntrinsic::GenISA_threadgroupbarrier ||
                 id == GenISAIntrinsic::GenISA_memoryfence ||
                 id == GenISAIntrinsic::GenISA_flushsampler ||
-                id == GenISAIntrinsic::GenISA_typedmemoryfence || 
+                id == GenISAIntrinsic::GenISA_typedmemoryfence ||
                 id == GenISAIntrinsic::GenISA_vaErode ||
                 id == GenISAIntrinsic::GenISA_vaDilate ||
                 id == GenISAIntrinsic::GenISA_vaMinMax ||
@@ -10344,12 +10344,58 @@ void EmitPass::emitSampleOffset(GenIntrinsicInst* inst)
 
 }
 
-CVariable* EmitPass::ReduceHelper(e_opcode op, VISA_Type type, SIMDMode simd, CVariable* var)
+// Copy identity value to dst with no mask, then src to dst with mask. Notes:
+// * dst may be nullptr - it will be created then
+// * actual second half setting is preserved
+CVariable* EmitPass::ScanReducePrepareSrc(VISA_Type type, uint64_t identityValue, bool negate, bool secondHalf,
+    CVariable* src, CVariable* dst, CVariable* flag)
 {
-    const bool isInt64Mul = (op == EOPCODE_MUL && CEncoder::IsIntegerType(type) && CEncoder::GetCISADataTypeSize(type) == 8);
-    CVariable* previousTemp = var;
-    auto alignment = type == ISA_TYPE_Q || type == ISA_TYPE_UQ || type == ISA_TYPE_DF ?
-        IGC::EALIGN_QWORD : IGC::EALIGN_DWORD;
+    if (!dst)
+    {
+        dst = m_currShader->GetNewVariable(
+            numLanes(m_currShader->m_SIMDSize),
+            type,
+            IGC::EALIGN_GRF,
+            false);
+    }
+    else
+    {
+        assert(numLanes(m_currShader->m_SIMDSize) == (dst->GetSize() / dst->GetElemSize()) &&
+            dst->GetType() == type && dst->GetAlign() == IGC::EALIGN_GRF && !dst->IsUniform());
+    }
+
+    // Set the GRF to <identity> with no mask. This will set all the registers to <identity>
+    CVariable* pIdentityValue = m_currShader->ImmToVariable(identityValue, type);
+    m_encoder->SetNoMask();
+    m_encoder->Copy(dst, pIdentityValue);
+    m_encoder->Push();
+
+    // Now copy the src with a mask so the disabled lanes still keep their <identity>
+    const bool savedSecondHalf = m_encoder->IsSecondHalf();
+    m_encoder->SetSecondHalf(secondHalf);
+    if (negate)
+    {
+        m_encoder->SetSrcModifier(0, EMOD_NEG);
+    }
+    if (flag)
+    {
+        m_encoder->SetPredicate(flag);
+    }
+    m_encoder->Copy(dst, src);
+    m_encoder->Push();
+    m_encoder->SetSecondHalf(savedSecondHalf);
+
+    return dst;
+}
+
+// Reduce all helper: dst_lane{k} = src_lane{simd + k} OP src_lane{k}, k = 0..(simd-1)
+CVariable* EmitPass::ReduceHelper(e_opcode op, VISA_Type type, SIMDMode simd, CVariable* src)
+{
+    const bool isInt64Mul = (op == EOPCODE_MUL && CEncoder::IsIntegerType(type) &&
+        CEncoder::GetCISADataTypeSize(type) == 8);
+    const bool is64bitType = type == ISA_TYPE_Q || type == ISA_TYPE_UQ || type == ISA_TYPE_DF;
+    const auto alignment = is64bitType ? IGC::EALIGN_QWORD : IGC::EALIGN_DWORD;
+    CVariable* previousTemp = src;
     CVariable* temp = m_currShader->GetNewVariable(
         numLanes(simd),
         type,
@@ -10380,47 +10426,16 @@ CVariable* EmitPass::ReduceHelper(e_opcode op, VISA_Type type, SIMDMode simd, CV
 
 // do reduction
 void EmitPass::emitReductionAll(
-    e_opcode op, uint64_t identityValue, VISA_Type type, bool negate, CVariable* pSrc, CVariable* dst)
+    e_opcode op, uint64_t identityValue, VISA_Type type, bool negate, CVariable* src, CVariable* dst)
 {
-    const bool isInt64Mul = (op == EOPCODE_MUL && CEncoder::IsIntegerType(type) && CEncoder::GetCISADataTypeSize(type) == 8);
+    const bool isInt64Mul = (op == EOPCODE_MUL && CEncoder::IsIntegerType(type) &&
+        CEncoder::GetCISADataTypeSize(type) == 8);
 
-    CVariable* srcH1 = m_currShader->GetNewVariable(
-        numLanes(m_currShader->m_SIMDSize),
-        type,
-        IGC::EALIGN_GRF,
-        false);
-    CVariable* pIdentityValue = m_currShader->ImmToVariable(identityValue, type);
-    m_encoder->SetNoMask();
-    m_encoder->Copy(srcH1, pIdentityValue);
-    m_encoder->Push();
-
-    if (negate)
-    {
-        m_encoder->SetSrcModifier(0, EMOD_NEG);
-    }
-    m_encoder->Copy(srcH1, pSrc);
-    m_encoder->Push();
+    CVariable* srcH1 = ScanReducePrepareSrc(type, identityValue, negate, false /*secondHalf*/, src, nullptr /*dst*/);
     CVariable* temp = srcH1;
     if (m_currShader->m_dispatchSize == SIMDMode::SIMD32)
     {
-        CVariable* srcH2 = m_currShader->GetNewVariable(
-            numLanes(m_currShader->m_SIMDSize),
-            type,
-            IGC::EALIGN_GRF,
-            false);
-        m_encoder->SetNoMask();
-        m_encoder->Copy(srcH2, pIdentityValue);
-        m_encoder->Push();
-
-        m_encoder->SetSecondHalf(true);
-        if (negate)
-        {
-            m_encoder->SetSrcModifier(0, EMOD_NEG);
-        }
-        m_encoder->Copy(srcH2, pSrc);
-        m_encoder->Push();
-        m_encoder->SetSecondHalf(false);
-
+        CVariable* srcH2 = ScanReducePrepareSrc(type, identityValue, negate, true /*secondHalf*/, src, nullptr /*dst*/);
         temp = m_currShader->GetNewVariable(
             numLanes(SIMDMode::SIMD16),
             type,
@@ -10461,9 +10476,7 @@ void EmitPass::emitReductionAll(
         m_encoder->GenericAlu(op, dst, temp, temp);
         m_encoder->Push();
     }
-
 }
-
 void EmitPass::emitPreOrPostFixOp(
     e_opcode op, uint64_t identityValue, VISA_Type type, bool negateSrc,
     CVariable* pSrc, CVariable* pSrcsArr[2], CVariable* Flag,
@@ -10488,28 +10501,9 @@ void EmitPass::emitPreOrPostFixOp(
     CVariable* maskedSrc[2] = { 0 };
     for (int i = 0; i < counter; ++i)
     {
-        CVariable* pSrcCopy = m_currShader->GetNewVariable(
-            numLanes(m_currShader->m_SIMDSize),
-            type,
-            IGC::EALIGN_GRF,
-            false);
-
-        // Set the GRF to <identity> with no mask. This will set all the registers to <identity>
-        CVariable* pIdentityValue = m_currShader->ImmToVariable(identityValue, type);
-        m_encoder->SetNoMask();
-        m_encoder->Copy(pSrcCopy, pIdentityValue);
-        m_encoder->Push();
-
-        // Now copy the src with a mask so the disabled lanes still keep their <identity>
-        if (negateSrc)
-        {
-            m_encoder->SetSrcModifier(0, EMOD_NEG);
-        }
+        CVariable* pSrcCopy = ScanReducePrepareSrc(type, identityValue, negateSrc, i == 1 /*secondHalf*/,
+            pSrc, nullptr /*dst*/, Flag);
         m_encoder->SetSecondHalf(i == 1);
-        if (Flag)
-            m_encoder->SetPredicate(Flag);
-        m_encoder->Copy(pSrcCopy, pSrc);
-        m_encoder->Push();
 
         // For case where we need the prefix shift the source by 1 lane
         if (isPrefix)
@@ -10521,6 +10515,7 @@ void EmitPass::emitPreOrPostFixOp(
             m_encoder->SetNoMask();
             if (i == 0)
             {
+                CVariable* pIdentityValue = m_currShader->ImmToVariable(identityValue, type);
                 m_encoder->Copy(pSrcCopy, pIdentityValue);
             }
             else
@@ -10796,11 +10791,8 @@ void EmitPass::emitPreOrPostFixOpScalar(
     CVariable* pSrcCopy[2] = { nullptr };
     for (int i = 0; i < counter; ++i)
     {
-        pSrcCopy[i] = m_currShader->GetNewVariable(
-            numLanes(m_currShader->m_SIMDSize),
-            type,
-            IGC::EALIGN_GRF,
-            false);
+        pSrcCopy[i] = ScanReducePrepareSrc(type, identityValue, negateSrc, i == 1 /*secondHalf*/,
+            src, nullptr /*dst*/, Flag);
 
         result[i] = m_currShader->GetNewVariable(
             numLanes(m_currShader->m_SIMDSize),
@@ -10808,23 +10800,7 @@ void EmitPass::emitPreOrPostFixOpScalar(
             IGC::EALIGN_GRF,
             false);
 
-        // Set the GRF to <identity> with no mask. This will set all the registers to <identity>
-        CVariable* pIdentityValue = m_currShader->ImmToVariable(identityValue, type);
         m_encoder->SetSecondHalf(i == 1);
-        m_encoder->SetNoMask();
-        m_encoder->Copy(pSrcCopy[i], pIdentityValue);
-        m_encoder->Push();
-
-        // Now copy the src with a mask so the disabled lanes still keep their <identity>
-        if (negateSrc)
-        {
-            m_encoder->SetSrcModifier(0, EMOD_NEG);
-        }
-        m_encoder->SetSecondHalf(i == 1);
-        if (Flag)
-            m_encoder->SetPredicate(Flag);
-        m_encoder->Copy(pSrcCopy[i], src);
-        m_encoder->Push();
 
         int srcIdx = 0;
         m_encoder->SetSimdSize(SIMDMode::SIMD1);
@@ -10836,6 +10812,7 @@ void EmitPass::emitPreOrPostFixOpScalar(
             if (i == 0)
             {
                 // (W) mov (1) result[0] identity
+                CVariable* pIdentityValue = m_currShader->ImmToVariable(identityValue, type);
                 m_encoder->Copy(result[i], pIdentityValue);
             }
             else
