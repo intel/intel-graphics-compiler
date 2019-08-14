@@ -453,11 +453,13 @@ kv_status_t kv_get_message_sfid(const kv_t *kv, int32_t pc, int32_t *sfid_enum)
         return kv_status_t::KV_NON_SEND_INSTRUCTION;
     }
 
+    Platform p = ((KernelViewImpl*)kv)->m_model.platform;
     auto exDesc = inst->getExtMsgDescriptor();
-    if (exDesc.type != SendDescArg::IMM)
+    bool isTrue = false;
+
+    if (exDesc.type != SendDescArg::IMM && isTrue)
         return kv_status_t::KV_DESCRIPTOR_INDIRECT;
 
-    Platform p = ((KernelViewImpl *)kv)->m_model.platform;
     SFID sfid = getSFID(p, inst->getOpSpec(), exDesc.imm, 0);
     *sfid_enum = static_cast<int32_t>(sfid);
 
