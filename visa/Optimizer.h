@@ -35,12 +35,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <unordered_set>
 
 typedef struct{
-    short immAddrOff;
-    int subReg; // need it?
+    short immAddrOff = 0;
+    int subReg = 0;
     INST_LIST_ITER iter;
-    bool canRemoveInst;
-    bool canUseImmed;
-    bool usedImmed;
+    bool canRemoveInst = false;
+    bool canUseImmed = false;
+    bool usedImmed = false;
 } AddrSubReg_Node;
 
 /**
@@ -99,11 +99,11 @@ typedef std::list<vISA::MSGTable*>::iterator MSGTable_ITER;
 
 typedef struct
 {
-    vISA::G4_INST *pred;
-    vISA::G4_INST *curr;
+    vISA::G4_INST *pred = nullptr;
+    vISA::G4_INST *curr = nullptr;
     INST_LIST_ITER predIt;
     INST_LIST_ITER currIt;
-    bool isA0Redef;
+    bool isA0Redef = false;
 } DEFA0;
 
 /**

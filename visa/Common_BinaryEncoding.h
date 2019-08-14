@@ -244,7 +244,7 @@ namespace vISA
         };
         uint32_t localInstNumber; // Instruction's position within the BB
         uint32_t instNumber;      // Global instruction number
-        bool compacted;
+        bool compacted = false;
 
         uint64_t genOffset;
 
@@ -261,57 +261,57 @@ namespace vISA
 
     void *operator new(size_t sz, Mem_Manager& m) {return m.alloc(sz);}
 
-            inline uint32_t GetBits(const int HighBit, const int LowBit)
+    inline uint32_t GetBits(const int HighBit, const int LowBit)
+    {
+        MUST_BE_TRUE(HighBit >= LowBit, "high bit must be >= low bit");
+
+        int retValue;
+        int HighDword = HighBit / BITS_PER_DWORD;
+        int LowDword = LowBit / BITS_PER_DWORD;
+        if (HighDword == LowDword)
         {
-                MUST_BE_TRUE(HighBit >= LowBit, "high bit must be >= low bit");
-
-                int retValue;
-                int HighDword = HighBit / BITS_PER_DWORD;
-                int LowDword = LowBit / BITS_PER_DWORD;
-                if (HighDword == LowDword)
-                {
-                    uint32_t Dword = HighDword;
-                    int mask = (int)(0xffffffff >> (32 - (HighBit - LowBit + 1)));
-                    uint32_t shift = LowBit - (Dword*BITS_PER_DWORD);
-
-                    retValue = DWords[Dword] >> shift;
-                    retValue &= mask;
-                }
-                else
-                {
-                    // only allow reading from at most 2 dwords
-                    MUST_BE_TRUE(HighDword == LowDword + 1, "can't return > 32 bits");
-                    uint32_t shift = LowBit - (LowDword*BITS_PER_DWORD);
-                    retValue = DWords[LowDword] >> shift;
-                    retValue |= GetBits(HighBit, (LowDword + 1) * BITS_PER_DWORD) << (32 - shift);
-                }
-
-                return retValue;
-        }
-
-        inline void SetBits(const uint32_t HighBit, const uint32_t LowBit, const uint32_t value)
-        {
-            MUST_BE_TRUE(HighBit >= LowBit, "high bit must be >= low bit");
-            MUST_BE_TRUE(HighBit / BITS_PER_DWORD == LowBit / BITS_PER_DWORD, "function doesn't handle bits crossing dword");
-
-            uint32_t maxvalue = ((1 << (HighBit - LowBit)) - 1) | (1 << (HighBit - LowBit));
-            uint32_t newvalue = value;
-            newvalue &= maxvalue;
-            uint32_t Dword = HighBit / BITS_PER_DWORD;
-
+            uint32_t Dword = HighDword;
             int mask = (int)(0xffffffff >> (32 - (HighBit - LowBit + 1)));
-            uint32_t shift = LowBit - (Dword*BITS_PER_DWORD);
-            mask <<= shift;
-            DWords[Dword] &= ~mask;
-            DWords[Dword] |= (newvalue << shift);
+            uint32_t shift = LowBit - (Dword * BITS_PER_DWORD);
+
+            retValue = DWords[Dword] >> shift;
+            retValue &= mask;
+        }
+        else
+        {
+            // only allow reading from at most 2 dwords
+            MUST_BE_TRUE(HighDword == LowDword + 1, "can't return > 32 bits");
+            uint32_t shift = LowBit - (LowDword * BITS_PER_DWORD);
+            retValue = DWords[LowDword] >> shift;
+            retValue |= GetBits(HighBit, (LowDword + 1) * BITS_PER_DWORD) << (32 - shift);
         }
 
-        void SetIs3Src(bool _is3src) { is3Src = _is3src; };
-        bool GetIs3Src() { return is3Src; };
+        return retValue;
+    }
+
+    inline void SetBits(const uint32_t HighBit, const uint32_t LowBit, const uint32_t value)
+    {
+        MUST_BE_TRUE(HighBit >= LowBit, "high bit must be >= low bit");
+        MUST_BE_TRUE(HighBit / BITS_PER_DWORD == LowBit / BITS_PER_DWORD, "function doesn't handle bits crossing dword");
+
+        uint32_t maxvalue = ((1 << (HighBit - LowBit)) - 1) | (1 << (HighBit - LowBit));
+        uint32_t newvalue = value;
+        newvalue &= maxvalue;
+        uint32_t Dword = HighBit / BITS_PER_DWORD;
+
+        int mask = (int)(0xffffffff >> (32 - (HighBit - LowBit + 1)));
+        uint32_t shift = LowBit - (Dword * BITS_PER_DWORD);
+        mask <<= shift;
+        DWords[Dword] &= ~mask;
+        DWords[Dword] |= (newvalue << shift);
+    }
+
+    void SetIs3Src(bool _is3src) { is3Src = _is3src; };
+    bool GetIs3Src() { return is3Src; };
 
     private:
         bool dontCompact = false;
-        bool mustCompact;
+        bool mustCompact = false;
 
     public:
         void SetDontCompactFlag(bool _d) { dontCompact = _d; };
@@ -919,13 +919,13 @@ namespace vISA
 
     public:
 
-    _BDWCompactSourceTable_ (Mem_Manager& m) : mem(m)
+        _BDWCompactSourceTable_(Mem_Manager& m) : mem(m)
         {
             for (unsigned i = 0; i < maxEntry; i++)
                 table[i] = NULL;
         }
 
-        bool FindIndex(uint32_t &index, uint32_t bits)
+        bool FindIndex(uint32_t& index, uint32_t bits)
         {
             for (HashNode* n = table[FindEntry(bits)]; n != NULL; n = n->next)
             {

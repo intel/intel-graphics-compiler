@@ -714,17 +714,17 @@ public:
     std::vector<G4_Declare*> pseudoA0DclList;
     std::vector<G4_Declare*> pseudoFlagDclList;
 
-    unsigned                    callerSaveAreaOffset;
-    unsigned                    calleeSaveAreaOffset;
-    unsigned                    paramOverflowAreaOffset;
-    unsigned                    paramOverflowAreaSize;
+    unsigned                    callerSaveAreaOffset = 0;
+    unsigned                    calleeSaveAreaOffset = 0;
+    unsigned                    paramOverflowAreaOffset = 0;
+    unsigned                    paramOverflowAreaSize = 0;
 
     // Bank conflict statistics.
     struct BankConflictStatistics
     {
-        unsigned NumOfGoodInsts;
-        unsigned NumOfBadInsts;
-        unsigned NumOfOKInsts;
+        unsigned NumOfGoodInsts = 0;
+        unsigned NumOfBadInsts = 0;
+        unsigned NumOfOKInsts = 0;
 
         void addGood() { ++NumOfGoodInsts; }
         void addBad() { ++NumOfBadInsts; }

@@ -761,9 +761,9 @@ void computeGlobalFreeGRFs(G4_Kernel& kernel)
 
 typedef struct Assignment
 {
-    G4_Declare* dcl;
+    G4_Declare* dcl = nullptr;
     AssignedReg reg;
-    unsigned int GRFBaseOffset;
+    unsigned int GRFBaseOffset = 0;
 } Assignment;
 
 void storeGRFAssignments(DECLARE_LIST& declares, std::vector<Assignment>& assignments)
@@ -3876,7 +3876,7 @@ bool Optimizer::foldCmpSel(G4_BB *BB, G4_INST *selInst, INST_LIST_ITER &selInst_
                 break;
             }
             cmpInst = (*DI).first;
-            if (cmpInst->opcode() != G4_cmp)
+            if (cmpInst && cmpInst->opcode() != G4_cmp)
             {
                 cmpInst = nullptr;
                 break;
@@ -7390,7 +7390,7 @@ public:
 
     void verify(G4_BB *bb, G4_INST *fromInstr, G4_INST *toInstr) {
         NSDS::BucketDescrBox FromInstrBuckets;
-        getBucketDescrs(fromInstr, FromInstrBuckets);
+        (void) getBucketDescrs(fromInstr, FromInstrBuckets);
 
         bool foundFrom = false;
         for (auto instr : *bb) {
@@ -7407,7 +7407,7 @@ public:
 
 
             NSDS::BucketDescrBox InstrInstrBuckets;
-            getBucketDescrs(instr, InstrInstrBuckets);
+            (void) getBucketDescrs(instr, InstrInstrBuckets);
             assert(!InstrInstrBuckets.hasIndirW);
             for (const BucketDescr &BD : InstrInstrBuckets.BDVec) {
                 if (BD.type & WRITE) {
@@ -7516,7 +7516,7 @@ public:
                 instr->setLocalId(0); // We are storing the IDs in it
 
                 NSDS::BucketDescrBox instrBuckets;
-                nsds.getBucketDescrs(instr, instrBuckets);
+                (void) nsds.getBucketDescrs(instr, instrBuckets);
 
                 // Cover any registers that the current instruction reads
                 // To be safe, predicated instrs can kill but cannot cover.
@@ -8318,8 +8318,14 @@ public:
                 G4_Operand *src = inst->getSrc(0);
                 G4_DstRegRegion *dst = inst->getDst();
 
-                G4_Declare *srcDcl = src->isRegRegion() ? GetTopDclFromRegRegion(src) : NULL;
+                G4_Declare *srcDcl = src->isRegRegion() ? GetTopDclFromRegRegion(src) : nullptr;
                 G4_Declare *dstDcl = GetTopDclFromRegRegion(dst);
+
+                if (!srcDcl || !dstDcl)
+                {
+                    ++ii;
+                    continue;
+                }
 
                 // If this move is between two different register files, then
                 // do not do register renaming.
@@ -11218,7 +11224,7 @@ void Optimizer::NoDD(void) {
                 continue;
             }
             BucketDescrWrapper currBDW;
-            getBucketDescrsForInst(currInstr, currBDW);
+            (void) getBucketDescrsForInst(currInstr, currBDW);
 
             // Try to insert NoDD in MAX_LOOK_BACK previous intructions
             bool succ = false;

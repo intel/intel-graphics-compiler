@@ -1341,21 +1341,21 @@ namespace vISA
         unsigned int   rightOff;        //right offset in the scratch space
         unsigned int   useCount;
 
-        bool     isSpill;
-        bool     isBlockLocal;
-        bool     directKill;
+        bool     isSpill = false;
+        bool     isBlockLocal = false;
+        bool     directKill = false;
 
-        bool     regKilled;
-        bool     regPartialKilled;
-        bool     regOverKilled;
-        bool     inRangePartialKilled;
-        bool     regInUse;
+        bool     regKilled = false;
+        bool     regPartialKilled = false;
+        bool     regOverKilled = false;
+        bool     inRangePartialKilled = false;
+        bool     regInUse = false;
 
-        bool     fillInUse;
-        bool     removeable;
-        bool     instKilled;
-        bool     evicted;
-        bool     scratchDefined;
+        bool     fillInUse = false;
+        bool     removeable = false;
+        bool     instKilled = false;
+        bool     evicted = false;
+        bool     scratchDefined = false;
 
         unsigned int   maskFlag;
 

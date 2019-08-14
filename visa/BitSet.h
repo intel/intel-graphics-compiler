@@ -60,7 +60,7 @@ public:
         copy(other);
     }
 
-    BitSet(BitSet && other)
+    BitSet(BitSet && other) noexcept
     {
         m_BitSetArray = other.m_BitSetArray;
         m_Size = other.m_Size;
@@ -323,7 +323,7 @@ public:
         return *this;
     }
 
-    BitSet& operator=(BitSet&& other)
+    BitSet& operator=(BitSet&& other) noexcept
     {
         m_BitSetArray = other.m_BitSetArray;
         m_Size = other.m_Size;

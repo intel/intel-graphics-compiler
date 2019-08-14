@@ -1107,28 +1107,30 @@ void HWConformity::fixOpnds( INST_LIST_ITER it, G4_BB *bb, G4_Type& exType )
 
     if( src2 &&
         src2->isSrcRegRegion() &&
-        src2->asSrcRegRegion()->getRegion()->isRegionWH() ){
+        src2->asSrcRegRegion()->getRegion()->isRegionWH() )
+    {
         inst->setSrc(insertMovBefore(it, 2, exType, bb), 2);
     }
 
-    if( src0 != NULL &&
+    if (src0 != NULL &&
         src0->isSrcRegRegion() &&
-        src0->asSrcRegRegion()->getRegion()->isRegionWH() ){
-            src0_use_VxH = true;
-    }
-
-    if( src1 != NULL && !( inst->isMath() && src1->isNullReg() ) &&
-        src1->isSrcRegRegion() &&
-        src1->asSrcRegRegion()->getRegion()->isRegionWH() ){
-            src1_use_VxH = true;
-    }
-
-    if( src1_use_VxH )
+        src0->asSrcRegRegion()->getRegion()->isRegionWH())
     {
-        if( ( INST_COMMUTATIVE(inst->opcode()) || inst->opcode() == G4_cmp )
+        src0_use_VxH = true;
+    }
+
+    if (src1 != NULL &&
+        src1->isSrcRegRegion() &&
+        src1->asSrcRegRegion()->getRegion()->isRegionWH())
+    {
+        src1_use_VxH = true;
+    }
+
+    if (src1_use_VxH)
+    {
+        if ((INST_COMMUTATIVE(inst->opcode()) || inst->opcode() == G4_cmp)
             && !src0_use_VxH &&
-            ! ( inst->opcode() == G4_mul &&
-            ( IS_DTYPE( src0->getType() ) ) ) )
+            !(inst->opcode() == G4_mul && IS_DTYPE(src0->getType())))
         {
             inst->setSrc( src1, 0 );
             inst->setSrc( src0, 1 );
@@ -2061,7 +2063,7 @@ bool HWConformity::fixMULInst( INST_LIST_ITER &i, G4_BB *bb )
     uint8_t exec_size = inst->getExecSize();
     bool srcExchanged = false;
 
-    if (dst && dst->isAccReg())
+    if (dst->isAccReg())
     {
         return false;
     }

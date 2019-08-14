@@ -362,7 +362,7 @@ private:
         IR_Builder& builder;
 
 public:
-        GlobalImmPool(IR_Builder& b) :builder(b) {}
+        GlobalImmPool(IR_Builder& b) : builder(b), immArray(), dclArray() {}
 
         G4_Declare* addImmVal(G4_Imm* imm, int numElt)
         {

@@ -7971,7 +7971,7 @@ int VISAKernelImpl::GetGenRelocEntryBuffer(void *&buffer, unsigned int &byteSize
     // allocate the buffer for relocation table
     buffer = allocCodeBlock(byteSize);
 
-    if (buffer == NULL || buffer == nullptr)
+    if (buffer == nullptr)
         return CM_FAILURE;
 
     GenRelocEntry* buffer_p = (GenRelocEntry*)buffer;

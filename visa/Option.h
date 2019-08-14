@@ -67,7 +67,7 @@ union EntryValue {
 };
 
 struct VISAOptionsEntry {
-    EntryType type;
+    EntryType type = ET_UNINIT;
     EntryValue val;
     EntryType getType(void) const { return type; }
     virtual void dump(void) const { std::cerr << "BASE"; }
@@ -231,7 +231,7 @@ private:
     // It is a map from vISAOptions->VISAOptionsLine
     class VISAOptionsDB {
     private:
-        Options *options;
+        Options *options = nullptr;
         std::unordered_map<vISAOptions, VISAOptionsLine, vISAOptionsHash> optionsMap;
         // Check if KEY has already a value assigned to it
         void freeIfAlreadySet(vISAOptions key, bool dontCheckNull = true) {
@@ -427,7 +427,7 @@ private:
             assert(Cstr && "Uninitialized?");
             return Cstr->getVal();
         }
-        VISAOptionsDB() {;}
+        VISAOptionsDB() {}
         VISAOptionsDB(Options *opt) {
             options = opt;
         }

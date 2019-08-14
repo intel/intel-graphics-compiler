@@ -8743,7 +8743,7 @@ int GlobalRA::coloringRegAlloc()
     std::vector<SpillManagerGMRF::EDGE> prevIntfEdges;
 
     int globalScratchOffset = builder.getOptions()->getuInt32Option(vISA_SpillMemOffset);
-    bool useScratchMsgForSpill = globalScratchOffset < SCRATCH_MSG_LIMIT * 0.6 && !hasStackCall;
+    bool useScratchMsgForSpill = globalScratchOffset < (int) (SCRATCH_MSG_LIMIT * 0.6) && !hasStackCall;
     bool enableSpillSpaceCompression = builder.getOption(vISA_SpillSpaceCompression);
 
     uint32_t nextSpillOffset = 0;
@@ -8970,7 +8970,7 @@ int GlobalRA::coloringRegAlloc()
                     {
                         spillSize += lr->getDcl()->getByteSize();
                     }
-                    if (spillSize * 1.5 < (SCRATCH_MSG_LIMIT - globalScratchOffset))
+                    if ((int)(spillSize * 1.5) < (SCRATCH_MSG_LIMIT - globalScratchOffset))
                     {
                         enableSpillSpaceCompression = false;
                     }

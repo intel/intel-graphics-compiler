@@ -92,8 +92,8 @@ struct RoutineContainer
 
     vector<string> stringPool;
 
-    CISA_IR_Builder* builder;
-    VISAKernel*      kernelBuilder;
+    CISA_IR_Builder* builder = nullptr;
+    VISAKernel*      kernelBuilder = nullptr;
     uint8_t majorVersion;
     uint8_t minorVersion;
 

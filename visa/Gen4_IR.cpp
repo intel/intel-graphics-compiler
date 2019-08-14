@@ -901,7 +901,7 @@ G4_InstSend::G4_InstSend(
 
 void G4_INST::setOpcode(G4_opcode opcd)
 {
-    MUST_BE_TRUE(opcd <= G4_NUM_OPCODE &&
+    MUST_BE_TRUE(opcd < G4_NUM_OPCODE &&
         (G4_Inst_Table[op].instType == G4_Inst_Table[opcd].instType ||
         G4_Inst_Table[opcd].instType == InstTypeMov ||
         (
@@ -1397,7 +1397,7 @@ void G4_INST::trimDefInstList()
             }
             else if( (*iter).first->getDst() )
             {
-                if( (*iter).first->hasNULLDst() && (*iter).first->hasNULLDst() )
+                if ((*iter).first->hasNULLDst())
                 {
                     rel = Rel_disjoint;
                 }
@@ -4535,7 +4535,7 @@ void G4_SrcRegRegion::emit(std::ostream& output, bool symbolreg)
     if (isAccRegValid())
     {
         // no vertical stride for 3-source instruction
-        if (inst->getNumSrc() != 3)
+        if (inst->getNumSrc() != 3 && desc)
         {
             output << "<" << desc->vertStride << ">";
         }
@@ -6560,7 +6560,7 @@ unsigned G4_SrcRegRegion::computeRightBound( uint8_t exec_size )
             }
             for( uint16_t i = 0; i < numAddrSubReg; i++ )
             {
-                bitVec[0] |= 0x3 << ( i * 2 );
+                bitVec[0] |= ((uint64_t) 0x3) << ( i * 2 );
             }
             right_bound = left_bound + G4_Type_Table[ADDR_REG_TYPE].byteSize * numAddrSubReg - 1;
         }
