@@ -167,6 +167,7 @@ public:
     /// getIGAInternalPlatform - a helper function to transform visa platform to iga platform
     static iga::Platform getIGAInternalPlatform(TARGET_PLATFORM genxPlatform);
 
+
 private:
 
     iga::PredCtrl getIGAPredCtrl(G4_Predicate_Control g4PredCntrl) const

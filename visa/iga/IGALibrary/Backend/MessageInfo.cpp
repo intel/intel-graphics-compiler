@@ -1837,32 +1837,38 @@ void DescDecoder::tryDecodeURB() {
 void DescDecoder::tryDecodeGTWY() {
     std::stringstream sym, desc;
     int opBits = getDescBits(0,3); // [2:0]
+    int expectMlen = 0;
     SendOp sendOp = SendOp::INVALID;
     switch (opBits) {
     case 1:
         sym << "signal";
         desc << "signal event";
+        expectMlen = 1; //
         sendOp = SendOp::SIGNAL;
         break;
     case 2:
         sym << "monitor";
         desc << "monitor event";
+        expectMlen = 1; // C.f. MDP_EVENT
         sendOp = SendOp::MONITOR;
         break;
     case 3:
         sym << "unmonitor";
         desc << "unmonitor event";
+        expectMlen = 1; // C.f. MDP_NO_EVENT
         sendOp = SendOp::UNMONITOR;
         break;
     case 4:
         sym << "barrier";
         desc << "barrier";
+        expectMlen = 1; // C.f. MDP_Barrier
         sendOp = SendOp::BARRIER;
         break;
     case 6:
         sym << "wait";
         desc << "wait for event";
         sendOp = SendOp::WAIT;
+        expectMlen = 1; // C.f. MDP_Timeout
         break;
     default:
         error(0,2,"unsupported GTWY op");
@@ -2232,7 +2238,7 @@ void DescDecoder::tryDecodeSampler()
             break;
         case 0x1F:
             sym << "sample_ld2ds";
-            desc << "sample multi-sample without mcs";
+            messageDesc = "sample multi-sample without mcs";
             params = 6;
             break;
         default:
