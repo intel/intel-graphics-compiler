@@ -201,7 +201,6 @@ namespace IGC
         bool UniformWGS                                 = false;
         bool disableVertexComponentPacking              = false;
         bool PreferBindlessImages                       = false;
-        bool disableMathRefactoring                     = false;
     };
 
     struct ComputeShaderInfo
