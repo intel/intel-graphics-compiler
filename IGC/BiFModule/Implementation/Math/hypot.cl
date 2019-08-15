@@ -126,42 +126,7 @@ GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( __builtin_spirv_OpenCL_hypot, double, d
 
 half __builtin_spirv_OpenCL_hypot_f16_f16( half x, half y )
 {
-    // Note: This isn't well specified, but apparently conformance
-    // tests expect the following behavior:
-    // 1) If either input is infinity, return infinity.
-    // 2) Else, if either input is NaN, return NaN.
-    // 3) Else, if both inputs are zero, return zero.
-    // 4) Else, return sqrt( x * x, y * y )
-
-    // Find the biggest absolute component:
-    half2 p = (half2)( x, y );
-    half2 a = __builtin_spirv_OpenCL_fabs_v2f16( p );
-    half maxc = a.x > a.y ? a.x : a.y;
-    half minc = a.x > a.y ? a.y : a.x;
-
-    half result;
-    if( __builtin_spirv_OpIsInf_f16(p.x) |
-        __builtin_spirv_OpIsInf_f16(p.y) )
-    {
-        result = INFINITY;
-    }
-    else if( __builtin_spirv_OpIsNan_f16( minc ) )
-    {
-        result = __builtin_spirv_OpenCL_nan_i32(0u);
-    }
-    else
-    {
-        // Scale by the biggest component.
-        // Compute the length of this scaled vector, then scale
-        // back up to compute the actual length.
-        half s = minc / maxc;
-        half t = __builtin_spirv_OpenCL_sqrt_f16( __builtin_spirv_OpenCL_mad_f16_f16_f16( s, s, (half)1.0f ) ); 
-        result = t * maxc;
-
-        result = ( maxc == (half)0.0f ) ? (half)0.0f : result;
-    }
-
-    return result;
+    return (half)__builtin_spirv_OpenCL_hypot_f32_f32(x, y);
 }
 
 GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( __builtin_spirv_OpenCL_hypot, half, half, half, f16, f16 )
