@@ -252,6 +252,9 @@ namespace IGC
         /// Allow aggressive vector value aliasing
         virtual bool EnableVecAliasing() const { return false; }
 
+        /// Prevent MAD optimization if result used in Floor
+        virtual bool PreventMadforRound() const { return false; }
+
 
 
     };

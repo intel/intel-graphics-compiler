@@ -1797,7 +1797,7 @@ namespace IGC
             return I.getType()->isFloatingPointTy();
         };
 
-        if (isFpMad(I) && (m_ctx->getModuleMetaData()->isPrecise || m_ctx->getModuleMetaData()->compOpt.disableMathRefactoring))
+        if (isFpMad(I) && m_ctx->getModuleMetaData()->isPrecise)
         {
             return false;
         }
@@ -1817,6 +1817,12 @@ namespace IGC
         if (!isFpMad(I) && IGC_IS_FLAG_DISABLED(EnableIntegerMad))
         {
             return false;
+        }
+
+        bool preventMadForRound = false;
+        if (IGC_IS_FLAG_ENABLED(EnableMadRoundDepCheck) || m_ctx->m_DriverInfo.PreventMadforRound())
+        {
+            preventMadForRound = true;
         }
 
         bool found = false;
@@ -1898,6 +1904,47 @@ namespace IGC
             // One multiplicant should be *W or *B.
             if (!isByteOrWordValue(sources[0]) && !isByteOrWordValue(sources[1]))
                 return false;
+        }
+
+        if (found && preventMadForRound)
+        {
+            /*=============================================================================
+            This checks for pattern
+
+            mul x a b
+            add y x c
+            floor z y
+
+            ----or---
+
+            mul x a b
+            add y x c
+            floor z abs(y)
+
+            If the case falls in either of the two cases, Mad optimisation is skipped because
+            small precision difference between Mul+add and Mad can be extrapolated by floor
+            (currently just enabled for floor operation, if required add for ceiling in future)
+            =============================================================================*/
+
+            for (auto iter = I.user_begin(); iter != I.user_end(); iter++)
+            {
+                if (IntrinsicInst * source = dyn_cast<IntrinsicInst>(*iter))
+                {
+                    if (source->getIntrinsicID() == Intrinsic::fabs)
+                    {
+                        for (auto it = source->user_begin(); it != source->user_end(); it++)
+                        {
+                            IntrinsicInst* source_fabs = dyn_cast<IntrinsicInst>(*it);
+                            if (source_fabs && source_fabs->getIntrinsicID() == Intrinsic::floor)
+                                return false;
+                        }
+                    }
+                    if (source->getIntrinsicID() == Intrinsic::floor)
+                    {
+                        return false;
+                    }
+                }
+            }
         }
 
         if (found)
