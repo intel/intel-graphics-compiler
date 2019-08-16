@@ -73,7 +73,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 
 # ================================================ Flags ===============================================
 
-
 # Escapes text for regular expressions.
 #
 # @param retValName Name of variable placeholder where result will be returned.
