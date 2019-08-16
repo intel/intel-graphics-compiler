@@ -87,7 +87,18 @@ namespace IGCLLVM
                 NoAliasTag);
         }
 
-        inline llvm::AllocaInst *CreateAlloca(llvm::Type *Ty, llvm::Value *ArraySize = nullptr, const llvm::Twine &Name = "") 
+        inline llvm::CallInst* CreateMemCpy(llvm::Value* Dst, unsigned DstAlign, llvm::Value* Src, unsigned SrcAlign,
+            llvm::Value* Size, bool isVolatile = false, llvm::MDNode* TBAATag = nullptr,
+            llvm::MDNode* TBAAStructTag = nullptr,
+            llvm::MDNode* ScopeTag = nullptr,
+            llvm::MDNode* NoAliasTag = nullptr)
+        {
+            return llvm::IRBuilder<T, Inserter>::CreateMemCpy(Dst, DstAlign, Src, SrcAlign, Size,
+                isVolatile, TBAATag, TBAAStructTag, ScopeTag,
+                NoAliasTag);
+        }
+
+        inline llvm::AllocaInst *CreateAlloca(llvm::Type *Ty, llvm::Value *ArraySize = nullptr, const llvm::Twine &Name = "")
         {
             return llvm::IRBuilder<T, Inserter>::CreateAlloca(Ty, 0/*for IGC addrSpace in alloca is always 0*/, ArraySize, Name);
         }
