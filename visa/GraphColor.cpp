@@ -9048,6 +9048,8 @@ int GlobalRA::coloringRegAlloc()
                     coloring.addSaveRestoreCode(localSpillAreaOwordSize);
                 }
 
+                //expandSpillFillIntrinsics();
+
                 if (builder.getOption(vISA_OptReport))
                 {
                     detectUndefinedUses(liveAnalysis, kernel);

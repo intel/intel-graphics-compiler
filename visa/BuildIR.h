@@ -1098,6 +1098,34 @@ public:
         return inst;
     }
 
+    G4_INST* createSpill(G4_SrcRegRegion* payload, uint16_t numRows, uint32_t offset, G4_Declare* fp, G4_InstOption option,
+        unsigned int lineno = 0, int CISAoff = -1, const char* srcFilename = nullptr)
+    {
+        auto builtInR0 = getBuiltinR0();
+        auto rd = getRegionStride1();
+        auto srcRgnr0 = createSrcRegRegion(Mod_src_undef, Direct, builtInR0->getRegVar(), 0, 0, rd, Type_UD);
+        G4_INST* spill = createInternalIntrinsicInst(nullptr, Intrinsic::Spill, 1, createNullDst(G4_Type::Type_UD), 
+            srcRgnr0, payload, nullptr, option, lineno, CISAoff, srcFilename);
+        spill->asSpillIntrinsic()->setFP(fp);
+        spill->asSpillIntrinsic()->setOffset(offset);
+        spill->asSpillIntrinsic()->setNumRows(numRows);
+        return spill;
+    }
+
+    G4_INST* createFill(G4_DstRegRegion* dstData, uint16_t numRows, uint32_t offset, G4_Declare* fp , G4_InstOption option,
+        unsigned int lineno = 0, int CISAoff = -1, const char* srcFilename = nullptr)
+    {
+        auto builtInR0 = getBuiltinR0();
+        auto rd = getRegionStride1();
+        auto srcRgnr0 = createSrcRegRegion(Mod_src_undef, Direct, builtInR0->getRegVar(), 0, 0, rd, Type_UD);
+        G4_INST* fill = createInternalIntrinsicInst(nullptr, Intrinsic::Fill, 1, dstData,
+            srcRgnr0, nullptr, nullptr, option, lineno, CISAoff, srcFilename);
+        fill->asFillIntrinsic()->setFP(fp);
+        fill->asFillIntrinsic()->setOffset(offset);
+        fill->asFillIntrinsic()->setNumRows(numRows);
+        return fill;
+    }
+
     /* numberOfFlags MEANS NUMBER OF WORDS (e.g., 1 means 16-bit), not number of bits or number of data elements in operands. */
     G4_Declare* createTempFlag(unsigned short numberOfFlags, const char* prefix = "TEMP_FLAG_" )
     {

@@ -173,6 +173,9 @@ class IR_Builder;
 class LocalLiveRange;
 class G4_Kernel;
 class G4_VarBase;
+
+class G4_SpillIntrinsic;
+class G4_FillIntrinsic;
 }
 void associateOpndWithInst(vISA::G4_Operand*, vISA::G4_INST*);
 
@@ -607,6 +610,10 @@ public:
     bool supportsNullDst() const;
 
     bool isPseudoKill() const;
+    bool isSpillIntrinsic() const;
+    G4_SpillIntrinsic* asSpillIntrinsic() const;
+    bool isFillIntrinsic() const;
+    G4_FillIntrinsic* asFillIntrinsic() const;
     bool isLifeTimeEnd() const { return op == G4_pseudo_lifetime_end; }
     bool isMov() const { return G4_Inst_Table[op].instType == InstTypeMov; }
     bool isLogic() const { return G4_Inst_Table[op].instType == InstTypeLogic; }
@@ -1374,6 +1381,8 @@ enum class Intrinsic
     Use,
     MemFence,
     PseudoKill,
+    Spill,
+    Fill,
     NumIntrinsics
 };
 
@@ -3753,6 +3762,28 @@ inline bool G4_INST::isPseudoKill() const
     return isIntrinsic() && asIntrinsicInst()->getIntrinsicId() == Intrinsic::PseudoKill;
 }
 
+inline bool G4_INST::isSpillIntrinsic() const
+{
+    return isIntrinsic() && asIntrinsicInst()->getIntrinsicId() == Intrinsic::Spill;
+}
+
+inline G4_SpillIntrinsic* G4_INST::asSpillIntrinsic() const
+{
+    MUST_BE_TRUE(isSpillIntrinsic(), "not a spill intrinsic");
+    return const_cast<G4_SpillIntrinsic*>(reinterpret_cast<const G4_SpillIntrinsic*>(this));
+}
+
+inline bool G4_INST::isFillIntrinsic() const
+{
+    return isIntrinsic() && asIntrinsicInst()->getIntrinsicId() == Intrinsic::Fill;
+}
+
+inline G4_FillIntrinsic* G4_INST::asFillIntrinsic() const
+{
+    MUST_BE_TRUE(isFillIntrinsic(), "not a fill intrinsic");
+    return const_cast<G4_FillIntrinsic*>(reinterpret_cast<const G4_FillIntrinsic*>(this));
+}
+
 inline const char* G4_INST::getLabelStr() const
 {
     MUST_BE_TRUE(srcs[0] != NULL && srcs[0]->isLabel(), ERROR_UNKNOWN);
@@ -3786,6 +3817,74 @@ inline const char* G4_InstCF::getUipLabelStr() const
     MUST_BE_TRUE(uip != NULL && uip->isLabel(), ERROR_UNKNOWN);
     return uip->asLabel()->getLabel();
 }
+
+class G4_SpillIntrinsic : public G4_InstIntrinsic
+{
+public:
+    G4_SpillIntrinsic(
+        const IR_Builder& builder,
+        G4_Predicate* prd,
+        Intrinsic intrinId,
+        uint8_t size,
+        G4_DstRegRegion* d,
+        G4_Operand* s0,
+        G4_Operand* s1,
+        G4_Operand* s2,
+        unsigned int opt) :
+        G4_InstIntrinsic(builder, prd, intrinId, size, d, s0, s1, s2, opt)
+    {
+
+    }
+
+    bool isOffBP() const { return getFP() != nullptr; }
+
+    uint32_t getNumRows() const { return numRows; }
+    uint32_t getOffset() const { return offset; }
+    G4_Declare* getFP() const { return fp; }
+
+    void setNumRows(uint32_t r) { numRows = r; }
+    void setOffset(uint32_t o) { offset = o; }
+    void setFP(G4_Declare* f) { fp = f; }
+
+private:
+    G4_Declare* fp = nullptr;
+    uint32_t numRows = 0;
+    uint32_t offset = 0;
+};
+
+class G4_FillIntrinsic : public G4_InstIntrinsic
+{
+public:
+    G4_FillIntrinsic(
+        const IR_Builder& builder,
+        G4_Predicate* prd,
+        Intrinsic intrinId,
+        uint8_t size,
+        G4_DstRegRegion* d,
+        G4_Operand* s0,
+        G4_Operand* s1,
+        G4_Operand* s2,
+        unsigned int opt) :
+        G4_InstIntrinsic(builder, prd, intrinId, size, d, s0, s1, s2, opt)
+    {
+
+    }
+
+    bool isOffBP() const { return getFP() != nullptr; }
+
+    uint32_t getNumRows() const { return numRows; }
+    uint32_t getOffset() const { return offset; }
+    G4_Declare* getFP() const { return fp; }
+
+    void setNumRows(uint32_t r) { numRows = r; }
+    void setOffset(uint32_t o) { offset = o; }
+    void setFP(G4_Declare* f) { fp = f; }
+
+private:
+    G4_Declare* fp = nullptr;
+    uint32_t numRows = 0;
+    uint32_t offset = 0;
+};
 
 } // namespace vISA
 

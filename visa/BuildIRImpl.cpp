@@ -673,7 +673,14 @@ G4_INST* IR_Builder::createIntrinsicInst(G4_Predicate* prd, Intrinsic intrinId,
     G4_Operand* src0, G4_Operand* src1, G4_Operand* src2,
     unsigned int option, int lineno, bool addToInstList)
 {
-    G4_INST* i = new (mem) G4_InstIntrinsic(*this, prd, intrinId, size, dst, src0, src1, src2, option);
+    G4_INST* i = nullptr;
+
+    if(intrinId == Intrinsic::Spill)
+        i = new (mem) G4_SpillIntrinsic(*this, prd, intrinId, size, dst, src0, src1, src2, option);
+    else if(intrinId == Intrinsic::Fill)
+        i = new (mem) G4_FillIntrinsic(*this, prd, intrinId, size, dst, src0, src1, src2, option);
+    else
+        i = new (mem) G4_InstIntrinsic(*this, prd, intrinId, size, dst, src0, src1, src2, option);
 
     if (addToInstList)
     {
