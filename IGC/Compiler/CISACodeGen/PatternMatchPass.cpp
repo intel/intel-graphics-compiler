@@ -1008,6 +1008,7 @@ namespace IGC
             match = MatchLrp(I) ||
                 MatchPredAdd(I) ||
                 MatchMad(I) ||
+                MatchSimpleAdd(I) ||
                 MatchModifier(I);
             break;
         case Instruction::And:
@@ -1779,6 +1780,115 @@ namespace IGC
             AddPattern(pattern);
         }
         return found;
+    }
+
+    // we match the following pattern
+    // %c = fcmp %1 %2
+    // %g = sext %c to i32
+    // %h = and i32 %g 1065353216
+    // %m = bitcast i32 %h to float
+    // %p = fadd %m %n
+    bool CodeGenPatternMatch::MatchSimpleAdd(llvm::BinaryOperator& I)
+    {
+        struct SimpleAddPattern : public Pattern
+        {
+            SSource sources[2];
+            SSource pred;
+
+            e_predMode predMode;
+            bool invertPred;
+            virtual void Emit(EmitPass* pass, const DstModifier& modifier)
+            {
+                DstModifier modf = modifier;
+                modf.predMode = predMode;
+                pass->PredAdd(pred, invertPred, sources, modf);
+            }
+        };
+
+        assert(I.getOpcode() == Instruction::FAdd);
+
+        if (IGC_IS_FLAG_ENABLED(DisableMatchSimpleAdd))
+        {
+            return false;
+        }
+
+        unsigned int repAddOperand = 0;
+        BitCastInst* bitCastInst0 = llvm::dyn_cast<llvm::BitCastInst>(I.getOperand(0));
+        BitCastInst* bitCastInst1 = llvm::dyn_cast<llvm::BitCastInst>(I.getOperand(1));
+        BitCastInst* bitCastInst = NULL;
+
+        if (!bitCastInst0 && !bitCastInst1)
+        {
+            return false;
+        }
+
+        if (bitCastInst1)
+        {
+            bitCastInst = bitCastInst1;
+            repAddOperand = 1;
+        }
+        else
+        {
+            bitCastInst = bitCastInst0;
+            repAddOperand = 0;
+        }
+
+        if (!bitCastInst->hasOneUse())
+        {
+            return false;
+        }
+
+        Instruction* andInst = dyn_cast<Instruction>(bitCastInst->getOperand(0));
+        if (!andInst || (andInst->getOpcode() != Instruction::And))
+        {
+            return false;
+        }
+
+        // check %h = and i32 %g 1065353216
+        if (!andInst->getType()->isIntegerTy(32))
+        {
+            return false;
+        }
+
+        ConstantInt* CInt = dyn_cast<ConstantInt>(andInst->getOperand(1));
+        if (!CInt || (CInt->getZExtValue() != 0x3f800000))
+        {
+            return false;
+        }
+
+        SExtInst* SExt = llvm::dyn_cast<llvm::SExtInst>(andInst->getOperand(0));
+        if (!SExt)
+        {
+            return false;
+        }
+
+        CmpInst* cmp = llvm::dyn_cast<CmpInst>(SExt->getOperand(0));
+        if (!cmp)
+        {
+            return false;
+        }
+
+        // match found
+        SimpleAddPattern* pattern = new (m_allocator) SimpleAddPattern();
+        llvm::Value* sources[2], * pred;
+        e_modifier src_mod[2], pred_mod;
+
+        sources[0] = I.getOperand(1 - repAddOperand);
+        sources[1] = ConstantFP::get(I.getType(), 1.0);
+        pred = cmp;
+
+        GetModifier(*sources[0], src_mod[0], sources[0]);
+        GetModifier(*sources[1], src_mod[1], sources[1]);
+        GetModifier(*pred, pred_mod, pred);
+
+        pattern->predMode = EPRED_NORMAL;
+        pattern->sources[0] = GetSource(sources[0], src_mod[0], false);
+        pattern->sources[1] = GetSource(sources[1], src_mod[1], false);
+        pattern->pred = GetSource(pred, pred_mod, false);
+        pattern->invertPred = false;
+        AddPattern(pattern);
+
+        return true;
     }
 
     bool CodeGenPatternMatch::MatchMad(llvm::BinaryOperator& I)
