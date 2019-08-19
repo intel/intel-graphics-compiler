@@ -56,7 +56,7 @@ bool FindInterestingConstants::FoldsToConst(Instruction* inst, Instruction* use,
 
     // "use" instruction should have some operand(s)
     assert(use->getNumOperands() != 0);
-    if (dyn_cast<BranchInst>(use))
+    if (BranchInst * brInst = dyn_cast<BranchInst>(use))
     {
         m_constFoldBranch = true;
         return false;
@@ -67,7 +67,7 @@ bool FindInterestingConstants::FoldsToConst(Instruction* inst, Instruction* use,
         Value* V = U.get();
         if (V == inst)
             continue;
-        else if (dyn_cast<Constant>(V))
+        else if (Constant * op = dyn_cast<Constant>(V))
             continue;
         else
         {
@@ -113,7 +113,7 @@ void FindInterestingConstants::FoldsToConstPropagate(llvm::Instruction* I)
 bool FindInterestingConstants::FoldsToZero(Instruction* inst, Instruction* use)
 {
     bool propagate = false;
-    if (dyn_cast<BranchInst>(use))
+    if (BranchInst * brInst = dyn_cast<BranchInst>(use))
     {
         m_constFoldBranch = true;
         return false;

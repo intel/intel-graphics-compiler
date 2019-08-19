@@ -1341,7 +1341,7 @@ uint64_t CShader::GetConstantExpr(ConstantExpr* CE) {
     case Instruction::LShr: {
         Constant* C = CE->getOperand(0);
         if (ConstantExpr * CE1 = dyn_cast<ConstantExpr>(C)) {
-            if (dyn_cast<IntegerType>(CE1->getType())) {
+            if (IntegerType * ITy = dyn_cast<IntegerType>(CE1->getType())) {
                 uint64_t ShAmt = GetImmediateVal(CE->getOperand(1));
                 return GetConstantExpr(CE1) >> ShAmt;
             }
@@ -2756,7 +2756,7 @@ bool CShader::CanTreatScalarSourceAsAlias(llvm::InsertElementInst* IEI) {
     if (!isa<llvm::Instruction>(ScalarOp))
         return false;
     // Skip the scalar operand may be treated as alias.
-    if (llvm::dyn_cast<llvm::PHINode>(ScalarOp))
+    if (auto PN = llvm::dyn_cast<llvm::PHINode>(ScalarOp))
         return false;
     if (auto EEI = llvm::dyn_cast<llvm::ExtractElementInst>(ScalarOp)) {
         if (CanTreatAsAlias(EEI))

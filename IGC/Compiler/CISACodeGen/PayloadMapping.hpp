@@ -104,7 +104,7 @@ namespace IGC
         {
             const llvm::GenIntrinsicInst* intrinsicInst = llvm::dyn_cast<llvm::GenIntrinsicInst>(inst);
             assert(intrinsicInst);
-            if (llvm::dyn_cast<llvm::SampleIntrinsic>(inst))
+            if (const llvm::SampleIntrinsic * sampleInst = llvm::dyn_cast<llvm::SampleIntrinsic>(inst))
             {
                 return true;
             }

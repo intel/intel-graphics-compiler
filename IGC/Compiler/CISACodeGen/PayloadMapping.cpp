@@ -649,7 +649,7 @@ Value* PayloadMapping::GetPayloadElementToValueMapping(const Instruction* inst, 
 /// \brief Determines whether the payload is being split by peeling the first element.
 bool PayloadMapping::DoPeelFirstElement(const Instruction* inst)
 {
-    if (dyn_cast<SamplerLoadIntrinsic>(inst))
+    if (const SamplerLoadIntrinsic * sampleInst = dyn_cast<SamplerLoadIntrinsic>(inst))
     {
         return true;
     }

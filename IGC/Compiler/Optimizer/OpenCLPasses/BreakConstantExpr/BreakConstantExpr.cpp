@@ -119,7 +119,7 @@ void BreakConstantExpr::replaceConstantWith(llvm::Constant* exprOrVec, llvm::Ins
         newInst->insertBefore(phi->getIncomingBlock(operandIndex)->getTerminator());
         user->setOperand(operandIndex, newInst);
     }
-    else if (dyn_cast<DbgInfoIntrinsic>(user))
+    else if (DbgInfoIntrinsic * dbg = dyn_cast<DbgInfoIntrinsic>(user))
     {
         newInst->insertBefore(user);
         // For debug info intrinsic, the operand is a metadata that

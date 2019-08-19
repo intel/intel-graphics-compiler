@@ -289,5 +289,5 @@ bool AdvMemOpt::hoistUniformLoad(ArrayRef<BasicBlock*> Line) const {
                 break;
         }
     }
-    return Changed;
+    return false;
 }

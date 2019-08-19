@@ -26,7 +26,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 #include "Compiler/CodeGenPublic.h"
 #include "visaBuilder_interface.h"
-#include "../../inc/common/UFO/portable_compiler.h"
 
 namespace USC
 {
@@ -106,7 +105,7 @@ namespace IGC
 
 #define DECLARE_CISA_OPCODE(opCode, name, visaname) \
     visaname,
-    __unused static ISA_Opcode ConvertOpcode[] =
+    static ISA_Opcode ConvertOpcode[] =
     {
     #include "isaDef.def"
     };

@@ -479,6 +479,8 @@ void SubGroupFuncsResolution::visitCallInst(CallInst& CI)
     StringRef funcName = func->getName();
     LLVMContext& Ctx = CI.getCalledFunction()->getContext();
 
+    auto reduceTypeStr = { "i16", "i32", "i64" };
+
     if (funcName.equals(SubGroupFuncsResolution::GET_MAX_SUB_GROUP_SIZE))
     {
         int32_t simdSize = GetSIMDSize(CI.getParent()->getParent());

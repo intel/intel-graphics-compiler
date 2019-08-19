@@ -278,14 +278,20 @@ namespace IGC
         // EmitRender target write intrinsic
         EmitRTWrite(colors, depth, stencil, mask, src0Alpha, debugLocs);
 
+        Function* samplePhase = nullptr;
         Function* pixelPhase = nullptr;
         Function* coarsePhase = nullptr;
         NamedMDNode* coarseNode = F.getParent()->getNamedMetadata("coarse_phase");
         NamedMDNode* pixelNode = F.getParent()->getNamedMetadata("pixel_phase");
+        NamedMDNode* sampleNode = F.getParent()->getNamedMetadata("sample_phase");
         bool cfgChanged = false;
         if (coarseNode)
         {
             coarsePhase = mdconst::dyn_extract<Function>(coarseNode->getOperand(0)->getOperand(0));
+        }
+        if (sampleNode)
+        {
+            samplePhase = mdconst::dyn_extract<Function>(sampleNode->getOperand(0)->getOperand(0));
         }
         if (pixelNode)
         {
@@ -1366,6 +1372,15 @@ namespace IGC
         if (m_discards.empty() && m_isHelperInvocationCalls.empty())
         {
             return false;
+        }
+
+        NamedMDNode* sampleNode = F.getParent()->getNamedMetadata("sample_phase");
+        bool isSampleEntry = false;
+        if (sampleNode)
+        {
+            Function* samplePhaseEntry = mdconst::dyn_extract<Function>(
+                sampleNode->getOperand(0)->getOperand(0));
+            isSampleEntry = (samplePhaseEntry == &F);
         }
 
         m_earlyRet = BasicBlock::Create(m_module->getContext(), "DiscardRet", &F);

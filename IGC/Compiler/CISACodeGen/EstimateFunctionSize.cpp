@@ -165,15 +165,14 @@ namespace {
             }
         }
 
-#if defined(_DEBUG)
         void print(raw_ostream& os);
 
+#if defined(_DEBUG)
         void dump() { print(llvm::errs()); }
 #endif
     };
 
 } // namespace
-#if defined(_DEBUG)
 
 void FunctionNode::print(raw_ostream& os) {
     os << "Function: " << F->getName() << ", " << Size << "\n";
@@ -182,7 +181,6 @@ void FunctionNode::print(raw_ostream& os) {
     for (auto G : CallerList)
         os << "<<<---" << G->getName() << "\n";
 }
-#endif
 
 void EstimateFunctionSize::clear() {
     M = nullptr;

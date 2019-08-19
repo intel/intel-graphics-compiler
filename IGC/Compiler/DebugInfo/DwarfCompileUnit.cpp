@@ -628,7 +628,7 @@ DIE* CompileUnit::getOrCreateContextDIE(DIScope* Context)
         return getOrCreateNameSpace(NS);
     if (auto * SP = dyn_cast<DISubprogram>(Context))
         return getOrCreateSubprogramDIE(SP);
-    if (dyn_cast<DIModule>(Context))
+    if (auto * M = dyn_cast<DIModule>(Context))
         assert("Missing implementation for DIModule!");
     return getDIE(Context);
 
@@ -1636,6 +1636,8 @@ void CompileUnit::buildSLM(DbgVariable& var, DIE* die, VISAVariableLocation* loc
 
         Address addr;
         addr.Set(Address::Space::eLocal, 0, 0);
+
+        static const uint32_t local_memory_space_mask = 0xffff;
 
         DIEBlock* Block = new (DIEValueAllocator)DIEBlock();
         addRegisterOffset(Block, varInfo.getGRF().regNum, 0);

@@ -46,8 +46,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     #define __thread                        __declspec(thread)
     #define __builtin_popcount              __popcnt
 
-    #define __unused
-
 #elif defined(__clang__)
 
     #define __noop
@@ -77,10 +75,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         #define __debugbreak()  do { asm volatile ("int3;"); } while (0)
     #endif
     #define __popcnt                __builtin_popcount
-
-    #ifndef __unused
-        #define __unused        __attribute__((unused))
-    #endif
 
 #elif __GNUC__
 
@@ -112,8 +106,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
     #define __debugbreak()      do { asm volatile ("int3;"); } while (0)
     #define __popcnt                __builtin_popcount
-
-    #define __unused            __attribute__((unused))
 
 #else
 

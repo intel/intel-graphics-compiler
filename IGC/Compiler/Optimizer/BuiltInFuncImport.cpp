@@ -321,6 +321,7 @@ std::unique_ptr<llvm::Module> BIImport::Construct(Module& M, CLElfLib::CElfReade
 {
     char* pData = NULL;
     size_t dataSize = 0;
+    StringRef line = "";
     std::string num_line = "";
     DenseMap<StringRef, int> Map(32768);
     pElfReader->GetSectionData(1, pData, dataSize);

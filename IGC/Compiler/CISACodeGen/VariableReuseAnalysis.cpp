@@ -502,7 +502,7 @@ void VariableReuseAnalysis::postProcessing()
 
                     BasicBlock* BB = I->getParent();
                     defBBSet.insert(BB);
-                    if (dyn_cast<PHINode>(I)) {
+                    if (PHINode * PI = dyn_cast<PHINode>(I)) {
                         phiDefBBSet.insert(BB);
                     }
                 }

@@ -337,6 +337,7 @@ bool CustomUnsafeOptPass::visitBinaryOperatorFmulFaddPropagation(BinaryOperator&
     int sameSrcId2 = 0;
     int numOfSet = 0;
     bool matchPattern1 = false;
+    bool matchPattern2 = false;
 
     for (int i = 0; i < 4; i++)
     {
@@ -378,6 +379,10 @@ bool CustomUnsafeOptPass::visitBinaryOperatorFmulFaddPropagation(BinaryOperator&
         sameSrcIdBase = 1;
         numOfSet = 2;
         matchPattern1 = true;
+    }
+    else
+    {
+        matchPattern2 = true;
     }
     for (int i = 2; i < 4; i++)
     {
@@ -2550,7 +2555,7 @@ bool EarlyOutPatterns::FoldsToZero(const Instruction* inst, const Value* use, co
             return false;
         }
     }
-    else if (dyn_cast<BitCastInst>(use))
+    else if (auto * BI = dyn_cast<BitCastInst>(use))
     {
         return true;
     }
@@ -3172,7 +3177,7 @@ bool EarlyOutPatterns::canOptimizeDirectOutput(SmallVector<Instruction*, 4> & Va
 #define PATH_TO_OUTPUT_LIMIT 5
 
     //Find the case where most calculation goes to .w channel, and very few instructions are used to calculate .xyz.
-    if (dyn_cast<Instruction>(GII->getOperand(3)))
+    if (Instruction * inst = dyn_cast<Instruction>(GII->getOperand(3)))
     {
         unsigned int findex = 0;
         smallvector<llvm::Value*, MAX_FMUL_VEC_SIZE> fmulVec;

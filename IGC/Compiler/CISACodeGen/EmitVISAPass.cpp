@@ -3992,7 +3992,7 @@ bool EmitPass::interceptRenderTargetWritePayloadCoalescing(
     {
         assert(ccTuple->GetRoot()); //in other words, there is a 'supremum' element
         assert(llvm::isa<llvm::RTWritIntrinsic>(ccTuple->GetRoot()));
-        if (llvm::dyn_cast<llvm::RTWritIntrinsic>(ccTuple->GetRoot()))
+        if (llvm::RTWritIntrinsic * rtwi = llvm::dyn_cast<llvm::RTWritIntrinsic>(ccTuple->GetRoot()))
         {
             //Take left reserved offset from 'root' of the group, not from this instruction.
             offset = m_CE->GetLeftReservedOffset(ccTuple->GetRoot(), m_currShader->m_SIMDSize);
@@ -4030,7 +4030,7 @@ bool EmitPass::interceptRenderTargetWritePayloadCoalescing(
         }
         else
         {
-            if (m_CE->GetValueCCTupleMapping(val))
+            if (CoalescingEngine::CCTuple * thisCCTuple = m_CE->GetValueCCTupleMapping(val))
             {
                 src[index] = GetSymbol(val);
             }
@@ -6150,7 +6150,7 @@ void EmitPass::interceptSamplePayloadCoalescing(
             }
             else
             {
-                if (m_CE->GetValueCCTupleMapping(val))
+                if (CoalescingEngine::CCTuple * thisCCTuple = m_CE->GetValueCCTupleMapping(val))
                 {
                     src = GetSymbol(val);
                 }
@@ -8243,6 +8243,17 @@ void EmitPass::emitExtract(llvm::Instruction* inst)
     }
 }
 
+static bool IsOWordAlignedLoad(LoadInst* inst)
+{
+    Value* ptrOpnd = inst->getPointerOperand();
+    if (ptrOpnd && isa<CallInst>(ptrOpnd) && GetOpCode(cast<CallInst>(ptrOpnd)) == llvm_owordptr)
+    {
+        assert(inst->getAlignment() == 16);
+        return true;
+    }
+    return false;
+}
+
 void EmitPass::emitUAVSerialize()
 {
     m_encoder->Wait();
@@ -8468,6 +8479,38 @@ void EmitPass::emitLoad3DInner(LdRawIntrinsic* inst, ResourceDescriptor& resourc
         }
         ResourceLoop(needLoop, flag, label);
     }
+}
+
+/// getMsgBlockSizes() - Return the block size and number of blocks considering
+/// the alignment.
+static std::pair<unsigned, unsigned>
+getMsgBlockSizes(unsigned sizeInBits, unsigned alignInBits) {
+    // BYTE
+    if (sizeInBits == 8)
+        return std::make_pair(8, 1);
+
+    // WORD
+    if (sizeInBits == 16) // W or short is supported through <2 x i8>.
+        return std::make_pair(8, 2);
+
+    // DWORD/QWORD need alignement checking.
+    bool isAligned = (alignInBits == 0) || (sizeInBits <= alignInBits);
+
+    // DWORD
+    if (sizeInBits == 32) {
+        if (isAligned)
+            return std::make_pair(32, 1);
+        return std::make_pair(8, 4);
+    }
+
+    // QWORD
+    if (sizeInBits == 64) {
+        if (isAligned)
+            return std::make_pair(64, 1);
+        return std::make_pair(8, 8);
+    }
+    assert(false && "Unsupported block size!");
+    return std::make_pair(~0U, ~0U);
 }
 
 void EmitPass::emitLoad(LoadInst* inst, Value* offset, ConstantInt* immOffset)

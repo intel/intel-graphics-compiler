@@ -1187,7 +1187,7 @@ namespace IGC
                 }
                 else
                 {
-                    if (GetValueCCTupleMapping(val))
+                    if (CoalescingEngine::CCTuple * thisCCTuple = GetValueCCTupleMapping(val))
                     {
                         if (!payloadOffsetComputed)
                         {

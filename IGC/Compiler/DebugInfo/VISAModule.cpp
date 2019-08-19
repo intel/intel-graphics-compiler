@@ -560,9 +560,14 @@ VISAVariableLocation VISAModule::GetVariableLocation(const llvm::Instruction* pI
     }
 
     // At this point we expect only a register
+    bool isSubGlobalVal = false;
     auto globalSubCVar = m_pShader->GetGlobalCVar(pValue);
-
-    if (!globalSubCVar && !m_pShader->IsValueUsed(pValue)) {
+    if (globalSubCVar)
+    {
+        // Subroutine
+        isSubGlobalVal = true;
+    }
+    else if (!m_pShader->IsValueUsed(pValue)) {
         return VISAVariableLocation();
     }
 
@@ -604,7 +609,7 @@ VISAVariableLocation VISAModule::GetVariableLocation(const llvm::Instruction* pI
 
 void VISAModule::GetConstantData(const Constant* pConstVal, DataVector& rawData) const
 {
-    if (dyn_cast<ConstantPointerNull>(pConstVal))
+    if (const ConstantPointerNull * CPN = dyn_cast<ConstantPointerNull>(pConstVal))
     {
         DataLayout DL(GetDataLayout());
         rawData.insert(rawData.end(), DL.getPointerSize(), 0);
@@ -625,7 +630,7 @@ void VISAModule::GetConstantData(const Constant* pConstVal, DataVector& rawData)
     // If this is an sequential type which is not a CDS or zero, have to collect the values
     // element by element. Note that this is not exclusive with the two cases above, so the 
     // order of ifs is meaningful.
-    else if (dyn_cast<CompositeType>(pConstVal->getType()))
+    else if (CompositeType * cmpType = dyn_cast<CompositeType>(pConstVal->getType()))
     {
         const int numElts = pConstVal->getNumOperands();
         for (int i = 0; i < numElts; ++i)

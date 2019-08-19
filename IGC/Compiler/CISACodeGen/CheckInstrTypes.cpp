@@ -275,7 +275,7 @@ void CheckInstrTypes::visitAllocaInst(AllocaInst& I)
         g_InstrTypes->hasPrimitiveAlloca = true;
     }
 
-    if (I.getMetadata("igc.read_only_array"))
+    if (auto md = I.getMetadata("igc.read_only_array"))
     {
         g_InstrTypes->hasReadOnlyArray = true;
     }

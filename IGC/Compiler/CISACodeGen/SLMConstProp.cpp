@@ -1064,7 +1064,7 @@ bool SLMConstProp::runOnFunction(Function& F)
                 {
                     m_storeInsts.push_back(SI);
                     (void)storeBBs.insert(BB);
-                    if (dyn_cast<Constant>(SI->getValueOperand()))
+                    if (Constant * CVal = dyn_cast<Constant>(SI->getValueOperand()))
                     {
                         hasConstantStore = true;
                     }
