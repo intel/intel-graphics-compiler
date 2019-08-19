@@ -828,6 +828,7 @@ public:
             builtinR0 = R0CopyDcl;
         }
 
+
         builtinA0 = createDeclareNoLookup(
             "BuiltinA0",
             G4_ADDRESS,

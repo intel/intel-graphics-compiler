@@ -8822,7 +8822,7 @@ int GlobalRA::coloringRegAlloc()
                 coloring.dumpRegisterPressure();
             }
 
-            unsigned spillRegSize = iterationNo;
+            unsigned spillRegSize = 0;
             unsigned indrSpillRegSize = 0;
             bool isColoringGood = coloring.regAlloc(doBankConflictReduction, highInternalConflict, reserveSpillReg, spillRegSize, indrSpillRegSize, &rpe);
             if (isColoringGood == false)
