@@ -67,9 +67,11 @@ void ErrorCheck::visitInstruction(llvm::Instruction& I)
 {
     auto ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
-    if (!ctx->m_DriverInfo.NeedFP64() && !ctx->platform.supportFP64())
+    if (!ctx->m_DriverInfo.NeedFP64() && !ctx->platform.supportFP64()
+        && IGC_IS_FLAG_DISABLED(ForceDPEmulation))
     {
         // check that input does not use double
+        // For testing purpose, this check is skipped if ForceDPEmulation is on.
         if (I.getType()->isDoubleTy())
         {
             ctx->EmitError("double type is not supported on this platform");
