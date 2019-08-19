@@ -1896,7 +1896,7 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
     }
 
     // Payload must be a multiple of a GRF register
-    dataParameterStreamSize += GetAlignmentOffset( dataParameterStreamSize, 32 );
+    dataParameterStreamSize += GetAlignmentOffset(dataParameterStreamSize, m_Context.platform.getGRFSize());
 
     if( retValue.Success )
     {
