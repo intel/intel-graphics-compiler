@@ -249,17 +249,14 @@ bool GenericAddressDynamicResolution::visitLoadStoreInst(Instruction& I)
 
     Value* pointerOperand = nullptr;
     unsigned int pointerAddressSpace = ADDRESS_SPACE_NUM_ADDRESSES;
-    unsigned int pointerAlignment = 0;
 
     if (LoadInst * load = dyn_cast<LoadInst>(&I)) {
         pointerOperand = load->getPointerOperand();
         pointerAddressSpace = load->getPointerAddressSpace();
-        pointerAlignment = load->getAlignment();
     }
     else if (StoreInst * store = dyn_cast<StoreInst>(&I)) {
         pointerOperand = store->getPointerOperand();
         pointerAddressSpace = store->getPointerAddressSpace();
-        pointerAlignment = store->getAlignment();
     }
     else {
         report_fatal_error("Unable to resolve generic address space pointer");

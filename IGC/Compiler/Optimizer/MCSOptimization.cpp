@@ -185,7 +185,7 @@ void MCSOptimization::visitCallInst(llvm::CallInst& I)
                 Instruction* ldmsInst = dyn_cast<Instruction>(*BitcastUses);
                 if (ldmsInst)
                 {
-                    if (ConstantInt * CI = dyn_cast<ConstantInt>(ldmsInst->getOperand(0)))
+                    if (dyn_cast<ConstantInt>(ldmsInst->getOperand(0)))
                     {
                         useBlocks.insert(ldmsInst->getParent());
                     }

@@ -93,6 +93,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "common/LLVMWarningsPop.hpp"
 
+#include "../../inc/common/UFO/portable_compiler.h"
+
 #include <utility>
 #include <functional>
 
@@ -102,10 +104,10 @@ namespace spv {
 using namespace llvm;
 
 namespace kOCLTypeQualifierName {
-  const static char *Const      = "const";
-  const static char *Volatile   = "volatile";
-  const static char *Restrict   = "restrict";
-  const static char *Pipe       = "pipe";
+  __unused const static char *Const      = "const";
+  __unused const static char *Volatile   = "volatile";
+  __unused const static char *Restrict   = "restrict";
+  __unused const static char *Pipe       = "pipe";
 }
 
 template<> inline void

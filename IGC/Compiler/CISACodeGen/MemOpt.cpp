@@ -290,7 +290,7 @@ namespace {
         EK_NotExtended,
         EK_SignExt,
         EK_ZeroExt,
-    } Extension;
+    };
 
     typedef PointerIntPair<Value*, 2, ExtensionKind> SymbolicIndex;
     struct Term {

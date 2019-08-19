@@ -227,7 +227,7 @@ bool VerificationPass::verifyInstCall(Instruction& inst)
         return true;
     }
 
-    if (IntrinsicInst * CI = dyn_cast<IntrinsicInst>(instCall))
+    if (dyn_cast<IntrinsicInst>(instCall))
     {
         Intrinsic::ID intrinID = (Intrinsic::ID) instCall->getCalledFunction()->getIntrinsicID();
         if (!m_IGC_IR_spec.IGCLLVMIntrinsics.count(intrinID))

@@ -195,7 +195,7 @@ void CustomSafeOptPass::visitAllocaInst(AllocaInst& I)
             }
             for (Value::user_iterator use_it = pGEP->user_begin(), use_e = pGEP->user_end(); use_it != use_e; ++use_it)
             {
-                if (llvm::LoadInst * pLoad = llvm::dyn_cast<llvm::LoadInst>(*use_it))
+                if (llvm::dyn_cast<llvm::LoadInst>(*use_it))
                 {
                 }
                 else if (llvm::StoreInst * pStore = llvm::dyn_cast<llvm::StoreInst>(*use_it))
@@ -2643,7 +2643,6 @@ bool IGCConstProp::simplifyAdd(BinaryOperator* BO)
 
         if (C0 && C1)
         {
-            Constant* Ops[] = { C0, C1 };
             Value* newC = ConstantFoldBinaryOpOperands(Instruction::Add,
                 C0, C1, *m_TD);
             Value* R = Builder.CreateAdd(B, newC);
@@ -2670,7 +2669,6 @@ bool IGCConstProp::simplifyAdd(BinaryOperator* BO)
         {
             if (ConstantInt * CRHS = dyn_cast<ConstantInt>(RHS))
             {
-                Constant* Ops[] = { CLHS, CRHS };
                 Value* newC = ConstantFoldBinaryOpOperands(Instruction::Add,
                     CLHS, CRHS, *m_TD);
                 BO->replaceAllUsesWith(newC);
@@ -3430,7 +3428,7 @@ bool GenStrengthReduction::optimizeVectorBitCast(Function& F) const {
             // Skip if it's not used only all extract-element.
             bool ExactOnly = true;
             for (auto User : BC->users()) {
-                if (auto EEI = dyn_cast<ExtractElementInst>(User)) continue;
+                if (dyn_cast<ExtractElementInst>(User)) continue;
                 ExactOnly = false;
                 break;
             }

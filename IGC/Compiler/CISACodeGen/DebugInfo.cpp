@@ -247,7 +247,7 @@ void DebugInfoData::markOutputVars(const llvm::Instruction* pInst)
         return;
     }
 
-    if (const Constant * pConstVal = dyn_cast<Constant>(pVal))
+    if (dyn_cast<Constant>(pVal))
     {
         if (!isa<GlobalVariable>(pVal) && !isa<ConstantExpr>(pVal))
         {
