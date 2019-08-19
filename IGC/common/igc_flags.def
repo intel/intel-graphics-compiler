@@ -287,6 +287,7 @@ DECLARE_IGC_REGKEY(bool, EnableThreadCombiningWithNoSLM, false, "Enable thread c
 DECLARE_IGC_REGKEY(DWORD, SubroutineThreshold,          110000, "Minimal kernel size to enable subroutines")
 DECLARE_IGC_REGKEY(DWORD, SubroutineInlinerThreshold,   3000, "Subroutine inliner threshold")
 DECLARE_IGC_REGKEY(bool, EnableConstantPromotion,       true, "Enable global constant data to register promotion")
+DECLARE_IGC_REGKEY(bool, AllowNonLoopConstantPromotion, false, "Allows promotion for constants not in loop (e.g. used once)")
 DECLARE_IGC_REGKEY(DWORD, ConstantPromotionSize,        2, "Threshold in number of GRFs")
 DECLARE_IGC_REGKEY(DWORD, ConstantPromotionCmpSelSize,  4, "Array size threshold for cmp-sel transform")
 DECLARE_IGC_REGKEY(bool, EnableVariableReuse,           true, "Enable local variable reuse")
