@@ -3749,19 +3749,20 @@ HoistFMulInLoopPass::MulNode* HoistFMulInLoopPass::visitFMul(
 // So we can optimize %90/%91/%92, while %82 need to be leave unmodified.
 //
 // The expression tree we built for %85 is:
-//        %85
-//        / \
-//      %83  \
-//      / \   \
-//    %81  ---%inv
-// And we will try to recursively propogate %81 to %83 & %85, and remove
-// %83 from the tree:
-//   ==>      %85              ==>      %85->%81
-//              / \                     [%inv, %inv]
-//           /   \
-//      %83->%81  \
-//      [%inv]     \
-//                %inv
+/*        %85
+          / \
+        %83  \
+        / \   \
+      %81  ---%inv
+   And we will try to recursively propogate %81 to %83 & %85, and remove
+   %83 from the tree:
+     ==>      %85              ==>      %85->%81
+              / \                     [%inv, %inv]
+             /   \
+        %83->%81  \
+        [%inv]     \
+                  %inv
+*/
 void HoistFMulInLoopPass::combineNode(MulNode* node,
     MulToNodeMapTy& nodeMap, bool isRoot)
 {

@@ -61,51 +61,51 @@ const unsigned int  PrintfBufferSize = 4 * MB;
 //
 // FORMAT OF PRINTF OUTPUT BUFFER:
 // ================================
-//
-//======================================================================
-//| DWORD  bufferSize             Size of the buffer in bytes          |  <-- This value is incremented by atomic_add
-//|====================================================================|
-//| DWORD  stringIndex_ch_0       Index of format string for channel 0 |  \
-//|--------------------------------------------------------------------|  |
-//| DWORD  data0Type              Type identifier                      |  |
-//|--------------------------------------------------------------------|  |
-//| DWORD  data0                  Data for channel 0                   |  |
-//|--------------------------------------------------------------------|  | Channel 0 data
-//| . . .  . . .                                                       |  |
-//|--------------------------------------------------------------------|  |
-//| DWORD  data1Type              Type identifier                      |  |
-//|--------------------------------------------------------------------|  |
-//| DWORD  data1                  Data for channel 0                   |  /
-//|====================================================================|  
-//| DWORD  stringIndex_ch_1       Index of format string for channel 1 |  \
-//|--------------------------------------------------------------------|  |
-//| DWORD  data0Type              Type identifier                      |  |
-//|--------------------------------------------------------------------|  |
-//| DWORD  data0                  Data for channel 1                   |  |
-//|--------------------------------------------------------------------|  |  Channel 1 data
-//| . . .  . . .                                                       |  |
-//|--------------------------------------------------------------------|  |
-//| DWORD  data0Type              Type identifier                      |  |
-//|--------------------------------------------------------------------|  |
-//| DWORD  data1                  Data for channel 1                   |  /
-//|====================================================================|  
-//| . . .  . . .                                                       |
-//| . . .  . . .                                                       |
-//| . . .  . . .                                                       |
-//|====================================================================|  
-//| DWORD  stringIndex_ch_N       Index of format string for channel N |  \
-//|--------------------------------------------------------------------|  |
-//| DWORD  data0Type              Type identifier                      |  |
-//|--------------------------------------------------------------------|  |
-//| DWORD  data0                  Data for channel N                   |  |
-//|--------------------------------------------------------------------|  |  Channel N data
-//| . . .  . . .                                                       |  |
-//|--------------------------------------------------------------------|  |
-//| DWORD  data0Type              Type identifier                      |  |
-//|--------------------------------------------------------------------|  |
-//| DWORD  data1                  Data for channel N                   |  /
-//|--------------------------------------------------------------------|
-
+/*
+  ======================================================================
+  | DWORD  bufferSize             Size of the buffer in bytes          |  <-- This value is incremented by atomic_add
+  |====================================================================|
+  | DWORD  stringIndex_ch_0       Index of format string for channel 0 |  \
+  |--------------------------------------------------------------------|  |
+  | DWORD  data0Type              Type identifier                      |  |
+  |--------------------------------------------------------------------|  |
+  | DWORD  data0                  Data for channel 0                   |  |
+  |--------------------------------------------------------------------|  | Channel 0 data
+  | . . .  . . .                                                       |  |
+  |--------------------------------------------------------------------|  |
+  | DWORD  data1Type              Type identifier                      |  |
+  |--------------------------------------------------------------------|  |
+  | DWORD  data1                  Data for channel 0                   |  /
+  |====================================================================|
+  | DWORD  stringIndex_ch_1       Index of format string for channel 1 |  \
+  |--------------------------------------------------------------------|  |
+  | DWORD  data0Type              Type identifier                      |  |
+  |--------------------------------------------------------------------|  |
+  | DWORD  data0                  Data for channel 1                   |  |
+  |--------------------------------------------------------------------|  |  Channel 1 data
+  | . . .  . . .                                                       |  |
+  |--------------------------------------------------------------------|  |
+  | DWORD  data0Type              Type identifier                      |  |
+  |--------------------------------------------------------------------|  |
+  | DWORD  data1                  Data for channel 1                   |  /
+  |====================================================================|
+  | . . .  . . .                                                       |
+  | . . .  . . .                                                       |
+  | . . .  . . .                                                       |
+  |====================================================================|
+  | DWORD  stringIndex_ch_N       Index of format string for channel N |  \
+  |--------------------------------------------------------------------|  |
+  | DWORD  data0Type              Type identifier                      |  |
+  |--------------------------------------------------------------------|  |
+  | DWORD  data0                  Data for channel N                   |  |
+  |--------------------------------------------------------------------|  |  Channel N data
+  | . . .  . . .                                                       |  |
+  |--------------------------------------------------------------------|  |
+  | DWORD  data0Type              Type identifier                      |  |
+  |--------------------------------------------------------------------|  |
+  | DWORD  data1                  Data for channel N                   |  /
+  |--------------------------------------------------------------------|
+*/
 
 // For vector arguments, 2 type identifiers are used: 1st is SHADER_PRINTF_VECTOR_*  and 2nd is the vector length.
 // These 2 type identifiers are followed by the elements of the vector.
@@ -342,58 +342,58 @@ static StoreInst* genStoreInternal(Value* Val, Value* Ptr, BasicBlock* InsertAtE
 
 void OpenCLPrintfResolution::expandPrintfCall(CallInst& printfCall, Function& F)
 {
-    // Replace a printf call with IR instructions that fill the rintf
-    // output buffer created by the Runtime:
-    // --------------------------------------------------------------------------
-    //       bufferPtr      - pointer to the printf output buffer. This pointer
-    //                        is an implicit kernel argument. It is loaded into
-    //                        GRF as part of thread payload.
-    //       bufferSize     - size of the printf output buffer. By agreement with
-    //                        Runtime, it is 4 Mb.
-    //       dataSize       - size of printf data for current thread.
-    //
-    // Note: we use STATELESS mode for printf buffer access.
-    //---------------------------------------------------------------------------
-    //    writeOffset = atomic_add(bufferPtr, dataSize);
-    //    writePtr = bufferPtr + writeOffset;
-    //    endOffset = writeOffset + dataSize;
-    //    if (endOffset < bufferSize) {                \
-    //        // Write the format string index         |
-    //        *writePtr = stringIndex;                 |
-    //        writePtr += 4;                           |
-    //                                                 |
-    //        // Write the argument type               |
-    //        *writePtr = argument[1].dataType;        |
-    //        writePtr += 4;                           |
-    //        // Write the argument value              |
-    //        *writePtr = argument[1].value;           |
-    //        writePtr += 4;                           | bblockTrue
-    //        . . .                                    |
-    //        . . .                                    |
-    //        // Write the argument type               |
-    //        *writePtr = argument[N].dataType;        |
-    //        writePtr += 4;                           |
-    //        // Write the argument value              |
-    //        *writePtr = argument[N].value;           |
-    //        writePtr += 4;                           |
-    //                                                 |
-    //        // printf returns 0 if successful        |
-    //        return_val = 0;                          /
-    //    }
-    //    else {                                                           \
-    //        // Check if the remaining output                             |
-    //        // buffer space is enough for writing                        |
-    //        //invalid string index.                                      |
-    //        endOffset = writeOffset + 4;                                 |
-    //        if (endOffset < bufferSize) {           \                    | bblockFalse
-    //            // Write the invalid string index.  | bblockErrorString  |
-    //            *writePtr = -1;                     |                    |
-    //        }                                       /                    |
-    //        // printf returns -1 if failed                               |
-    //        return_val = -1;                                             /
-    //   }
-    // ----------------------------------------------------------------------
+    /* Replace a printf call with IR instructions that fill the rintf
+       output buffer created by the Runtime:
+       --------------------------------------------------------------------------
+             bufferPtr      - pointer to the printf output buffer. This pointer
+                              is an implicit kernel argument. It is loaded into
+                              GRF as part of thread payload.
+             bufferSize     - size of the printf output buffer. By agreement with
+                              Runtime, it is 4 Mb.
+             dataSize       - size of printf data for current thread.
 
+       Note: we use STATELESS mode for printf buffer access.
+      ---------------------------------------------------------------------------
+          writeOffset = atomic_add(bufferPtr, dataSize);
+          writePtr = bufferPtr + writeOffset;
+          endOffset = writeOffset + dataSize;
+          if (endOffset < bufferSize) {                \
+              // Write the format string index         |
+              *writePtr = stringIndex;                 |
+              writePtr += 4;                           |
+                                                       |
+              // Write the argument type               |
+              *writePtr = argument[1].dataType;        |
+              writePtr += 4;                           |
+              // Write the argument value              |
+              *writePtr = argument[1].value;           |
+              writePtr += 4;                           | bblockTrue
+              . . .                                    |
+              . . .                                    |
+              // Write the argument type               |
+              *writePtr = argument[N].dataType;        |
+              writePtr += 4;                           |
+              // Write the argument value              |
+              *writePtr = argument[N].value;           |
+              writePtr += 4;                           |
+                                                       |
+              // printf returns 0 if successful        |
+              return_val = 0;                          /
+          }
+          else {                                                           \
+              // Check if the remaining output                             |
+              // buffer space is enough for writing                        |
+              //invalid string index.                                      |
+              endOffset = writeOffset + 4;                                 |
+              if (endOffset < bufferSize) {           \                    | bblockFalse
+                  // Write the invalid string index.  | bblockErrorString  |
+                  *writePtr = -1;                     |                    |
+              }                                       /                    |
+              // printf returns -1 if failed                               |
+              return_val = -1;                                             /
+         }
+       ----------------------------------------------------------------------
+    */
     MetaDataUtils* MdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     ImplicitArgs implicitArgs(F, MdUtils);
 

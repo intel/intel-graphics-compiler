@@ -74,15 +74,15 @@ bool EstimateFunctionSize::runOnModule(Module& Mod) {
 }
 
 // Given a module, estimate the maximal function size with complete inlining.
-//
-// A ----> B ----> C ---> D ---> F
-//  \       \       \
-//   \       \       \---> E
-//    \       \
-//     \       \---> C ---> D --> F
-//      \             \
-//       \----> F      \---> E
-//
+/*
+   A ----> B ----> C ---> D ---> F
+    \       \       \
+     \       \       \---> E
+      \       \
+       \       \---> C ---> D --> F
+        \             \
+         \----> F      \---> E
+*/
 // ExpandedSize(A) = size(A) + size(B) + 2 * size(C) + 2 * size(D)
 //                   + 2 * size(E) + 3 * size(F)
 //

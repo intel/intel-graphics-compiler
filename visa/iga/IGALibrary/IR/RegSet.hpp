@@ -57,8 +57,9 @@ namespace iga
     // NOTE: I have to replicate all the constants as scalars (not struct elements)
     // because the compiler refuses to accept that they are constant. :(
     //
-    // #define REGSET_NEXTSTART(REG) \
-        //  ALIGN_UP_TO(32,((REG).startOffset + (REG).numRegisters * (REG).bytesPerRegister))
+    /* #define REGSET_NEXTSTART(REG) \
+          ALIGN_UP_TO(32,((REG).startOffset + (REG).numRegisters * (REG).bytesPerRegister))
+    */
 #define RS_CREATE_SET(REGSYM,REGSYN,REGS,BPR,START) \
 const static size_t RS_ ## REGSYM ##_REGS = (REGS), RS_ ## REGSYM ## _BPR = (BPR), RS_ ## REGSYM ## _START = (START); \
 const static RegSetInfo RS_ ## REGSYM = {RegName::REGSYM, REGSYN, REGS, BPR, START, (RS_ ## REGSYM ## _REGS)*(RS_ ## REGSYM ## _BPR)}

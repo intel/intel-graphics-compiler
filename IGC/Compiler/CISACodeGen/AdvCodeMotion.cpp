@@ -411,17 +411,18 @@ bool AdvCodeMotion::hoistMost2(bool InvPred, BasicBlock* IfBB,
             return false;
     }
 
-    //    IfBB                 IfBB
-    //   /    \                TBB
-    //  |     TBB             /    \
-    //  |    /    \         FBB2  TBB2
-    //  |  FBB2  TBB2  =>    |    ...
-    // FBB  |    ...          \    /
-    //  |    \    /            JBB2
-    //  |     JBB2             JBB
-    //   \     /
-    //     JBB
-    // Hoist TBB only and simplify the CFG.
+    /*    IfBB                 IfBB
+         /    \                TBB
+        |     TBB             /    \
+        |    /    \         FBB2  TBB2
+        |  FBB2  TBB2  =>    |    ...
+       FBB  |    ...          \    /
+        |    \    /            JBB2
+        |     JBB2             JBB
+         \     /
+           JBB
+       Hoist TBB only and simplify the CFG.
+    */
 
     // Merge TBB into IfBB.
     if (InvPred) {

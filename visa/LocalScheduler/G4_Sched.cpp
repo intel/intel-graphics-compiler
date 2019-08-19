@@ -1169,13 +1169,13 @@ static void mergeSegments(const std::vector<unsigned>& RPtrace,
     assert(n >= 2);
 
     // Starts with a local minimum.
-    //
-    //  C        /\
-    //          /  \
-    //  A \    /    \
-    //  D  \  /      \
-    //  B   \/
-    //
+    /*
+        C        /\
+                /  \
+        A \    /    \
+        D  \  /      \
+        B   \/
+    */
     if (Min[0] < Max[0]) {
         unsigned Hi = RPtrace[0];
         unsigned Lo = RPtrace[Min[0]];
@@ -1205,16 +1205,15 @@ static void mergeSegments(const std::vector<unsigned>& RPtrace,
     }
 
     // Starts with local maximum.
-    //
-    //
-    //  D             /\
-    //               /  \
-    //  B     /\    /    \
-    //       /  \  /      \
-    //  C   /    \/
-    //     /
-    //  A /
-    //
+    /*
+        D             /\
+                     /  \
+        B     /\    /    \
+             /  \  /      \
+        C   /    \/
+           /
+        A /
+    */
     unsigned Hi = RPtrace[Max[0]];
     unsigned Lo = RPtrace[Min[0]];
     for (unsigned i = 1; i < n; ++i) {

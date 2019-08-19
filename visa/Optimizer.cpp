@@ -7467,19 +7467,19 @@ public:
     // Each instruction is wrapped in an IstrDescr object which keeps track of
     // the bucket status: that is whether they are covered or not by succeeding
     // instructions that read those registers.
-    //
-    //    InstrDescr
-    //    +--------+ +--------+
-    //    | sendA  | | sendB  |
-    //    |r0,r1,r2| |r2,r3,r4|  bucketStatusR,W
-    //    | T, F, T| | F, F, F| (covered flag T/F)
-    //    +--------+ +--------+
-    //      /  |  \  /   |   \
-    // +----+----+----+----+----+....+----+----+----+...
-    // | r0 | r1 | r2 | r3 | r4 |    |r128| p0 | p1 |
-    // +----+----+----+----+----+....+----+----+----+...
-    // Bucket                                           bucketVec
-    //
+    /*
+          InstrDescr
+          +--------+ +--------+
+          | sendA  | | sendB  |
+          |r0,r1,r2| |r2,r3,r4|  bucketStatusR,W
+          | T, F, T| | F, F, F| (covered flag T/F)
+          +--------+ +--------+
+            /  |  \  /   |   \
+       +----+----+----+----+----+....+----+----+----+...
+       | r0 | r1 | r2 | r3 | r4 |    |r128| p0 | p1 |
+       +----+----+----+----+----+....+----+----+----+...
+       Bucket                                           bucketVec
+    */
     // For each register read we check the bucket tha that corresponds to it.
     // We iterate over all the sends connected to it and mark that bucket
     // as covered. If the send instruction has all its buckets covered,

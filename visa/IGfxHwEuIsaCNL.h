@@ -3000,9 +3000,9 @@ typedef union tagEU_INSTRUCTION_BASIC_THREE_SRC {
         DWORD SourceDataType                                      : BITFIELD_RANGE( 43, 45); // SOURCE_DATA_TYPE
         DWORD DestinationDataType                                 : BITFIELD_RANGE( 46, 48); // DESTINATION_DATA_TYPE
 
-        ///*****************************************************************************\
-        //Four channel enables are defined for controlling which channels are written into the destination region. These channel mask bits are applied in a modulo-four manner to all ExecSize channels. There is 1-bit Channel Enable for each channel within the group of 4. If the bit is cleared, the write for the corresponding channel is disabled. If the bit is set, the write is enabled. Mnemonics for the bit being set for the group of 4 are  -x -,  -y -,  -z -, and  -w -, respectively, where  -x - corresponds to Channel 0 in the group and  -w - corresponds to channel 3 in the group
-        //\*****************************************************************************/
+        /*****************************************************************************\
+        Four channel enables are defined for controlling which channels are written into the destination region. These channel mask bits are applied in a modulo-four manner to all ExecSize channels. There is 1-bit Channel Enable for each channel within the group of 4. If the bit is cleared, the write for the corresponding channel is disabled. If the bit is set, the write is enabled. Mnemonics for the bit being set for the group of 4 are  -x -,  -y -,  -z -, and  -w -, respectively, where  -x - corresponds to Channel 0 in the group and  -w - corresponds to channel 3 in the group
+        \*****************************************************************************/
         DWORD DestinationChannelEnable                            : BITFIELD_RANGE( 49, 52); // ChanEn[4]
         DWORD DestinationSubregisterNumber                        : BITFIELD_RANGE( 53, 55); //
         DWORD DestinationRegisterNumber_DestinationRegisterNumber : BITFIELD_RANGE(  0,  7); //
