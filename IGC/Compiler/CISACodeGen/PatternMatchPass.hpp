@@ -321,6 +321,7 @@ namespace IGC
     bool isSat(llvm::Instruction* sat, llvm::Value*& source);
     bool isOne(llvm::Value* zero);
     bool isMinOrMax(llvm::Value* inst, llvm::Value*& source0, llvm::Value*& source1, bool& isMin, bool& isUnsigned);
+    bool isCandidateForConstantPool(llvm::Value * val);
     e_modifier CombineModifier(e_modifier mod1, e_modifier mod2);
 
     static uint GetNbSources(llvm::Instruction& v)

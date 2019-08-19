@@ -2760,18 +2760,14 @@ namespace IGC
             pattern->sources[1] = GetSource(I.getOperand(1), supportModifer, supportRegioning);
         }
 
-        if (nbSources > 1 && (I.getType()->isDoubleTy() || I.getType()->isIntegerTy(64)))
+        if (nbSources > 1)
         {
             // add df imm to constant pool for binary/ternary inst
-            // we do 64-bit int imm biggerthan 32 bits, since smaller may fit in D/W
+            // we do 64-bit int imm bigger than 32 bits, since smaller may fit in D/W
             for (int i = 0, numSrc = (int)nbSources; i < numSrc; ++i)
             {
                 Value* op = I.getOperand(i);
-                bool isDF = isa<ConstantFP>(op);
-                auto ci = dyn_cast<ConstantInt>(op);
-                bool isBigQW = ci && !ci->getValue().isNullValue() && !ci->getValue().isSignedIntN(32);
-
-                if (isDF || isBigQW)
+                if (isCandidateForConstantPool(op))
                 {
                     AddToConstantPool(I.getParent(), op);
                     pattern->sources[i].fromConstantPool = true;
@@ -2978,6 +2974,20 @@ namespace IGC
         pattern->sources[0] = GetSource(I.getCondition(), false, false);
         pattern->sources[1] = GetSource(I.getTrueValue(), true, false);
         pattern->sources[2] = GetSource(I.getFalseValue(), true, false);
+
+        // try to add to constant pool whatever possible.
+        if (isCandidateForConstantPool(I.getTrueValue()))
+        {
+            AddToConstantPool(I.getParent(), I.getTrueValue());
+            pattern->sources[1].fromConstantPool = true;
+        }
+
+        if (isCandidateForConstantPool(I.getFalseValue()))
+        {
+            AddToConstantPool(I.getParent(), I.getFalseValue());
+            pattern->sources[2].fromConstantPool = true;
+        }
+
         AddPattern(pattern);
         return true;
     }
@@ -3425,16 +3435,10 @@ namespace IGC
             }
             pattern->sources[i] = GetSource(src, mod, false);
 
-            if (src->getType()->isIntegerTy(64))
+            if (isCandidateForConstantPool(src))
             {
-                auto ci = dyn_cast<ConstantInt>(src);
-                bool isBigQW = ci && !ci->getValue().isNullValue() && !ci->getValue().isSignedIntN(32);
-
-                if (isBigQW)
-                {
-                    AddToConstantPool(I.getParent(), src);
-                    pattern->sources[i].fromConstantPool = true;
-                }
+                AddToConstantPool(I.getParent(), src);
+                pattern->sources[i].fromConstantPool = true;
             }
 
 
@@ -4225,6 +4229,14 @@ namespace IGC
         }
         return found;
     }
+
+    bool isCandidateForConstantPool(llvm::Value * val)
+    {
+        auto ci = dyn_cast<ConstantInt>(val);
+        bool isBigQW = ci && !ci->getValue().isNullValue() && !ci->getValue().isSignedIntN(32);
+        bool isDF = val->getType()->isDoubleTy();
+        return (isBigQW || isDF);
+    };
 
     uint CodeGenPatternMatch::GetBlockId(llvm::BasicBlock* block)
     {

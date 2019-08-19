@@ -3240,8 +3240,12 @@ void EmitPass::Select(const SSource sources[3], const DstModifier& modifier)
 {
     assert(modifier.flag == nullptr && sources[0].mod == EMOD_NONE);
     CVariable* flag = GetSrcVariable(sources[0]);
-    CVariable* src0 = GetSrcVariable(sources[1]);;
-    CVariable* src1 = GetSrcVariable(sources[2]);;
+
+    bool fromConstantPool = sources[1].fromConstantPool;
+    CVariable* src0 = GetSrcVariable(sources[1], fromConstantPool);
+
+    fromConstantPool = sources[2].fromConstantPool;
+    CVariable* src1 = GetSrcVariable(sources[2], fromConstantPool);
 
     SetSourceModifiers(0, sources[1]);
     SetSourceModifiers(1, sources[2]);
