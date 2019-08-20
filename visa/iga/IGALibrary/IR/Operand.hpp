@@ -96,7 +96,7 @@ public:
     const RegRef &getDirRegRef() const { return m_regOpReg; }
 
     // Applies to Operand::Kind::INDIRECT only
-    const RegRef &getIndAddrReg() const { return m_regOpIndReg; }
+    const RegRef &getIndAddrReg() const { return m_regOpReg; }
     int16_t getIndImmAddr() const { return m_regOpIndOff; }
 
     // Applies to Operand::Kind::DIRECT and Operand::Kind::INDIRECT
@@ -191,40 +191,33 @@ public:
   private:
     Operand::Kind m_kind;
 
-    union { // operand register/immediate value info
-        struct { // a register (direct or indirect)
-            union { // optional modifier (e.g. -r12, ~r12, (abs) (sat))
-                SrcModifier m_regOpSrcMod;
-                DstModifier m_regOpDstMod;
-            };
-            struct { // the actual register (GRF for Operand::Kind::INDIRECT)
-                RegName m_regOpName;  // r#, a#, null, ...
-                MathMacroExt m_regMathMacro; // implicit accumulator (r13.mme5)
-                Region  m_regOpRgn;    // <1>, <8;8,1>
-            };
-            union { // direct, macro, and indirect
-                RegRef m_regOpReg; // direct operands
-                struct {           // indirect operands
-                    RegRef m_regOpIndReg;  // e.g. a0.4
-                    int16_t m_regOpIndOff; // e.g. "16" in "r[a0.4 + 16]"
-                };
-            };
-        };
-
-        struct { // immediate operand (or label)
-            // the literal value (for immediate data)
-            // also set before labels are resolved (label is .s32)
-            // for numeric labels the value is normalized as bytes from
-            // the pre-increment PC of the instruction.  Hence,
-            //  * Pre-BDW branches which use units of QWORDS in the
-            //    encoding will be converted to bytes.
-            //  * JMPI uses the pos-increment PC; we normalize that here
-            //    as well to a pre-increment value.
-            ImmVal m_immValue;
-            // for resolved labels
-            Block *m_lblBlock;
-        };
+    // direct/indirect register information
+    union {
+        SrcModifier m_regOpSrcMod;
+        DstModifier m_regOpDstMod;
     };
+    RegName m_regOpName = RegName::INVALID;
+    MathMacroExt m_regMathMacro = MathMacroExt::INVALID;
+    Region  m_regOpRgn = Region::INVALID;
+
+    // direct/indirect register
+    RegRef m_regOpReg;
+
+    // indirect register offset
+    int16_t m_regOpIndOff = 0;
+
+    // Imm field information
+    ImmVal m_immValue;
+    // for resolved labels
+    // the literal value (for immediate data)
+    // also set before labels are resolved (label is .s32)
+    // for numeric labels the value is normalized as bytes from
+    // the pre-increment PC of the instruction.  Hence,
+    //  * Pre-BDW branches which use units of QWORDS in the
+    //    encoding will be converted to bytes.
+    //  * JMPI uses the pos-increment PC; we normalize that here
+    //    as well to a pre-increment value.
+    Block* m_lblBlock;
 
     // the operand type (e.g. :d, :f, etc...)
     Type m_type;

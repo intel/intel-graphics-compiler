@@ -280,8 +280,12 @@ typedef EnumBitset<InstOpt> InstOptSet;
 
 
 struct RegRef {
-    uint8_t  regNum;
-    uint8_t  subRegNum;
+    uint8_t  regNum    = 0;
+    uint8_t  subRegNum = 0;
+
+    RegRef(uint8_t reg_num, uint8_t sub_reg_num)
+        : regNum(reg_num), subRegNum(sub_reg_num) {}
+    RegRef() {}
 
     bool operator==(const RegRef &rr) const {
         return regNum == rr.regNum && subRegNum == rr.subRegNum;
@@ -290,12 +294,16 @@ struct RegRef {
         return !(*this == rr);
     }
 };
+
 static inline RegRef MakeRegRef(int r, int sr = 0) {
-    return {(uint8_t)r,(uint8_t)sr};
+    RegRef ref;
+    ref.regNum = r;
+    ref.subRegNum = sr;
+    return ref;
 }
 
-static const RegRef REGREF_INVALID = {0xFF,0xFF};
-static const RegRef REGREF_ZERO_ZERO = {0,0};
+static const RegRef REGREF_INVALID = MakeRegRef(0xFF,0xFF);
+static const RegRef REGREF_ZERO_ZERO = MakeRegRef(0,0);
 
 struct SendDescArg {
     enum {IMM, REG32A}  type;
@@ -303,7 +311,10 @@ struct SendDescArg {
         RegRef         reg;
         uint32_t       imm;
     };
-    void init() {
+
+    SendDescArg() {
+        type = IMM;
+        imm = 0;
     }
 };
 } // namespace

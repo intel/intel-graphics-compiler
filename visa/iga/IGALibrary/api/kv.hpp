@@ -52,13 +52,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 class KernelView
 {
     // handle to the IGA-internal KV object; may be nullptr upon error
-    kv_t           *m_kv;
+    kv_t           *m_kv = nullptr;
 
     // The status from kv_create
-    iga_status_t    m_disasm_status;
+    iga_status_t    m_disasm_status = IGA_SUCCESS;
 
     // The platform this kernel view platform corresponds to
-    iga_gen_t       m_gen;
+    iga_gen_t       m_gen = IGA_GEN_INVALID;
 public:
     // Constructs a kernel view.
     //

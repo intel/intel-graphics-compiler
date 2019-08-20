@@ -243,13 +243,11 @@ namespace iga
         union
         {
             FlagModifier        m_flagModifier; // conditional-modifier function
-            BranchCntrl             m_brnch; // for certain branching instructions
-            struct
-            {
-                struct SendDescArg  m_exDesc;
-                struct SendDescArg  m_desc;
-            };
+            BranchCntrl         m_brnch;        // for certain branching instructions
         };
+        SendDescArg  m_exDesc;
+        SendDescArg  m_desc;
+
         InstOptSet       m_instOpts; // miscellaneous instruction attributes
 
         int              m_instId; // unique id for this instruction (unique in the kernel)

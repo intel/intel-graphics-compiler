@@ -51,7 +51,7 @@ private:
     KernelViewImpl& operator =(const KernelViewImpl &k) { return *this; }
 public:
     const iga::Model                       &m_model;
-    iga::Kernel                            *m_kernel;
+    iga::Kernel                            *m_kernel = nullptr;
     iga::ErrorHandler                       m_errHandler;
     std::map<uint32_t,iga::Instruction*>    m_instsByPc;
     std::map<uint32_t, Block*>              m_blockToPcMap;
@@ -62,7 +62,6 @@ public:
         size_t bytesLength
     )
         : m_model(*iga::Model::LookupModel(platf))
-        , m_kernel(nullptr)
 
     {
         iga::Decoder decoder(*Model::LookupModel(platf), m_errHandler);
@@ -741,7 +740,7 @@ int32_t kv_is_source_vector(const kv_t *kv, int32_t pc, uint32_t sourceNumber)
     }
 
     auto src = inst->getSource((uint8_t)sourceNumber);
-    if (src.getKind() != Operand::Kind::DIRECT ||
+    if (src.getKind() != Operand::Kind::DIRECT &&
         src.getKind() != Operand::Kind::INDIRECT)
     {
         return -1;

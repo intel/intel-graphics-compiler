@@ -138,7 +138,7 @@ namespace iga
         // state that is valid over encodeInst()
         ged_ins_t                                 m_gedInst;
         bool                                      m_encodeAlign16 = false;
-        Op                                        m_opcode;
+        Op                                        m_opcode = Op::INVALID;
         size_t                                    m_numberInstructionsEncoded;
 
     private:
@@ -214,7 +214,7 @@ namespace iga
         /////////////////////////////////////////////////////////////
         // state valid over encodeKernel()
         MemManager                               *m_mem;
-        uint8_t                                  *m_instBuf; // the output bits
+        uint8_t                                  *m_instBuf = nullptr; // the output bits
         struct JumpPatch { // JIP and UIP label patching
             Instruction    *inst; // the instruction
             ged_ins_t       gedInst; // the partially constructed GED instruction
@@ -375,7 +375,7 @@ namespace iga
         RegName regName,
         uint8_t regNum)
     {
-        uint32_t regBits;
+        uint32_t regBits = 0;
         if (regName == RegName::GRF_R) {
             regBits = regNum; // GRF fast path
         } else { // ARF slower path

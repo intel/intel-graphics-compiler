@@ -58,38 +58,43 @@ namespace iga
 struct OperandInfo
 {
     Loc                      loc;
-    Operand::Kind            kind;
+    Operand::Kind            kind = Operand::Kind::INVALID;
 
-    union // operand register/immediate value info
+    union // optional modifier (e.g. -r12, ~r12, (abs) (sat))
     {
-        struct // a register (direct or indirect)
-        {
-            union // optional modifier (e.g. -r12, ~r12, (abs) (sat))
-            {
-                SrcModifier  regOpSrcMod;
-                DstModifier  regOpDstMod;
-            };
-            struct // the actual register (GRF for Operand::Kind::INDIRECT)
-            {
-                RegName        regOpName;    // e.g. r#, a#, null, ...
-                Region         regOpRgn;     // e.g. <1>, <8;8,1>
-                MathMacroExt   regOpMathMacroExtReg; // e.g. math macro spc acc
-            };
-            union // direct vs. indirect
-            {
-                RegRef       regOpReg; // direct operands
-                struct // indirect operands
-                {
-                    RegRef   regOpIndReg; // a0.4
-                    int16_t  regOpIndOff; // e.g. "16" in "r[a0.4,16]"
-                };
-            };
-        };
-        // immediate operands
-        ImmVal           immValue;
+        SrcModifier  regOpSrcMod = SrcModifier::NONE;
+        DstModifier  regOpDstMod;
     };
+    RegName        regOpName = RegName::INVALID;    // e.g. r#, a#, null, ...
+    Region         regOpRgn = Region::INVALID;     // e.g. <1>, <8;8,1>
+    MathMacroExt   regOpMathMacroExtReg = MathMacroExt::INVALID; // e.g. math macro spc acc
+
+    // direct/indirect register info
+    RegRef   regOpReg; // direct operands
+
+    // indirect register offset
+    int16_t  regOpIndOff = 0; // e.g. "16" in "r[a0.4,16]"
+
+    // imm field
+    ImmVal   immValue;
+
     std::string              immLabel;
-    Type                     type;
+    Type                     type = Type::INVALID;
+
+    OperandInfo()
+    {
+        kind = Operand::Kind::INVALID;
+        regOpSrcMod = SrcModifier::NONE;
+        regOpName = RegName::INVALID;
+        regOpRgn = Region::INVALID;
+        regOpMathMacroExtReg = MathMacroExt::INVALID;
+        regOpReg = REGREF_ZERO_ZERO;
+        regOpIndOff = 0;
+        immValue.u64 = 0;
+        immValue.kind = ImmVal::UNDEF;
+        immLabel.clear();
+        type = Type::INVALID;
+    }
 
     void reset()
     {
@@ -98,7 +103,7 @@ struct OperandInfo
         regOpName = RegName::INVALID;
         regOpRgn = Region::INVALID;
         regOpMathMacroExtReg = MathMacroExt::INVALID;
-        regOpIndReg = REGREF_ZERO_ZERO;
+        regOpReg = REGREF_ZERO_ZERO;
         regOpIndOff = 0;
         immValue.u64 = 0;
         immValue.kind = ImmVal::UNDEF;
@@ -124,21 +129,21 @@ class InstBuilder {
     // per-instruction state
     Loc                         m_loc;
     Predication                 m_predication;
-    const OpSpec               *m_opSpec;
-    BranchCntrl                 m_brnchCtrl;
+    const OpSpec               *m_opSpec = nullptr;
+    BranchCntrl                 m_brnchCtrl = BranchCntrl::OFF;
 
     RegRef                      m_flagReg; // shared by predication / condition modifier
 
-    ExecSize                    m_execSize;
-    ChannelOffset               m_chOff;
-    MaskCtrl                    m_maskCtrl;
+    ExecSize                    m_execSize = ExecSize::INVALID;
+    ChannelOffset               m_chOff    = ChannelOffset::M0;
+    MaskCtrl                    m_maskCtrl = MaskCtrl::NOMASK;
 
-    FlagModifier                m_flagModifier;
+    FlagModifier                m_flagModifier = FlagModifier::NONE;
+    DstModifier                 m_dstModifier  = DstModifier::NONE;
 
-    DstModifier                 m_dstModifier;
     OperandInfo                 m_dst;
     OperandInfo                 m_srcs[3];
-    int                         m_nSrcs;
+    int                         m_nSrcs = 0;
 
     SendDescArg                 m_exDesc;
     SendDescArg                 m_desc;
@@ -159,7 +164,7 @@ class InstBuilder {
     // (start-loc,start-pc,end-loc,end-pc
     using LabelInfo=std::tuple<Loc,uint32_t>;
     std::map<std::string,LabelInfo>  m_labelMap;
-    LabelInfo                       *m_currBlock;
+    LabelInfo                       *m_currBlock = nullptr;
     // unresolved operand labels
     struct UnresolvedLabel {
         Loc             loc;
@@ -169,8 +174,8 @@ class InstBuilder {
     };
     std::vector<UnresolvedLabel>     m_unresolvedLabels;
 
-    uint32_t                    m_pc; // current PC
-    uint32_t                    m_nextId; // next instruction id
+    uint32_t                    m_pc = 0; // current PC
+    uint32_t                    m_nextId = 0; // next instruction id
 
 
 
@@ -357,7 +362,7 @@ public:
             } else { // Operand::Kind::INDIRECT
                 inst->setInidirectDestination(
                     m_dstModifier,
-                    m_dst.regOpIndReg,
+                    m_dst.regOpReg,
                     m_dst.regOpIndOff,
                     m_dst.regOpRgn.getHz(),
                     m_dst.type);
@@ -389,7 +394,7 @@ public:
                 inst->setInidirectSource(
                     opIx,
                     src.regOpSrcMod,
-                    src.regOpIndReg,
+                    src.regOpReg,
                     src.regOpIndOff,
                     src.regOpRgn,
                     src.type);
@@ -510,7 +515,8 @@ public:
         Region::Horz rgnHorz,
         Type ty)
     {
-        RegRef rr{(uint8_t)reg,0};
+        RegRef rr;
+        rr.regNum = (uint8_t)reg;
         InstDstOpRegDirect(loc,rn,rr,rgnHorz,ty);
     }
     void InstDstOpRegDirect(
@@ -545,7 +551,8 @@ public:
 
         m_dst.regOpDstMod = m_dstModifier;
         m_dst.regOpName = rnm;
-        m_dst.regOpReg = {(uint8_t)regNum, 0};
+        m_dst.regOpReg = RegRef(static_cast<uint8_t>(regNum), 0);
+        m_dst.regOpReg.regNum = (uint8_t)regNum;
         m_dst.regOpRgn.setDstHz(rgnH);
         m_dst.regOpMathMacroExtReg = mme;
         m_dst.type = ty;
@@ -575,7 +582,7 @@ public:
 
         m_dst.regOpDstMod = m_dstModifier;
         m_dst.regOpName = RegName::GRF_R;
-        m_dst.regOpIndReg = addrReg;
+        m_dst.regOpReg = addrReg;
         m_dst.regOpIndOff = (uint16_t)addrOff;
         m_dst.regOpRgn.setDstHz(rgnHorz);
         m_dst.type = ty;
@@ -601,7 +608,8 @@ public:
         Region rgn, // region parameters
         Type ty)
     {
-        RegRef rr{(uint8_t)reg,0};
+        RegRef rr;
+        rr.regNum = (uint8_t)reg;
         InstSrcOpRegDirect(srcOpIx, loc, SrcModifier::NONE, rnm, rr, rgn, ty);
     }
     void InstSrcOpRegDirect(
@@ -642,7 +650,8 @@ public:
         src.kind = Operand::Kind::MACRO;
         src.regOpSrcMod = srcMod;
         src.regOpName = rnm;
-        src.regOpReg = {(uint8_t)regNum, 0};
+        src.regOpReg.regNum = (uint8_t)regNum;
+        src.regOpReg.subRegNum = 0;
         src.regOpRgn = rgn;
         src.regOpMathMacroExtReg = MathMacroExt;
         src.type = ty;
@@ -666,7 +675,7 @@ public:
         src.kind = Operand::Kind::INDIRECT;
         src.regOpSrcMod = srcMod;
         src.regOpName = RegName::GRF_R;
-        src.regOpIndReg = addrReg;
+        src.regOpReg = addrReg;
         src.regOpIndOff = (uint16_t)addrOff;
         src.regOpRgn = rgn;
         src.type = ty;

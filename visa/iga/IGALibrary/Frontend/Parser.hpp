@@ -57,7 +57,7 @@ namespace iga
             , message(m)
         {
         }
-        ~SyntaxError() throw () { }
+        ~SyntaxError() { }
     };
 
     ///////////////////////////////////////////////////////////////////////////
@@ -278,7 +278,7 @@ namespace iga
             {
                 for (size_t i = 2; i < len; i++) {
                     char chr = src[off + i];
-                    T dig = 0;
+                    char dig = 0;
                     if (chr >= '0' && chr <= '9')
                         dig = chr - '0';
                     else if (chr >= 'A' && chr <= 'F')

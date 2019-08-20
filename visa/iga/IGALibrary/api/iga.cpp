@@ -332,12 +332,14 @@ public:
                 delete kernel;
                 return IGA_UNSUPPORTED_PLATFORM;
             }
+            assert(kernel != nullptr);
             iga::ged::Encode(m_model, eopts, errHandler, *kernel, *bits, bitsLen);
         } else {
             if (!iga::native::IsEncodeSupported(m_model, eopts)) {
                 delete kernel;
                 return IGA_UNSUPPORTED_PLATFORM;
             }
+            assert(kernel != nullptr);
             iga::native::Encode(
                 m_model,
                 eopts,

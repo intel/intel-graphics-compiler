@@ -497,7 +497,8 @@ namespace iga
         // TODO: remove this an retain only translate<GED_CHANNEL_OFFSET>
         static ChannelOffset translate(GED_EXEC_MASK_OFFSET_CTRL ctrl)
         {
-            ChannelOffset mOffset;
+            assert(ctrl != GED_EXEC_MASK_OFFSET_CTRL_INVALID);
+            ChannelOffset mOffset = ChannelOffset::M0;
 
             switch (ctrl)
             {
@@ -535,10 +536,8 @@ namespace iga
                 mOffset = ChannelOffset::M0;
                 break;
             }
-
             return mOffset;
         }
-
 
         static MaskCtrl translate(GED_MASK_CTRL cntrl)
         {

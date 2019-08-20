@@ -97,7 +97,7 @@ const static RegSetInfo RS_ ## REGSYM = {RegName::REGSYM, REGSYN, REGS, BPR, STA
     static size_t relativeAddressOf(
         const RegSetInfo &rsi, RegRef rr, size_t tySzBits)
     {
-        return rsi.bytesPerRegister*rr.regNum + rr.subRegNum*tySzBits/8;
+        return static_cast<size_t>(rsi.bytesPerRegister) * rr.regNum + rr.subRegNum * tySzBits / 8;
     }
 
     // A register set represent all the storage in the register files
@@ -126,7 +126,7 @@ const static RegSetInfo RS_ ## REGSYM = {RegName::REGSYM, REGSYN, REGS, BPR, STA
         }
         bool add(const RegSetInfo &rs, size_t off, size_t len);
         bool addFullReg(const RegSetInfo &rs, int reg) {
-            return add(rs, rs.bytesPerRegister*reg, rs.bytesPerRegister);
+            return add(rs, static_cast<size_t>(rs.bytesPerRegister) * reg, rs.bytesPerRegister);
         }
         bool setDstRegion(
             RegName rn,

@@ -101,7 +101,8 @@ DecoderBase::DecoderBase(const Model &model, ErrorHandler &errHandler) :
     GEDBitProcessor(model,errHandler),
     m_gedModel(IGAToGEDTranslation::lowerPlatform(model.platform)),
     m_kernel(nullptr),
-    m_opSpec(nullptr)
+    m_opSpec(nullptr),
+    m_binary(nullptr)
 {
     IGA_ASSERT(m_gedModel != GED_MODEL_INVALID, "invalid GED model");
 }
@@ -492,7 +493,7 @@ void DecoderBase::decodeBasicDestinationAlign16(Instruction *inst)
         GED_DECODE_RAW(int32_t, addrImm, DstAddrImm);
 
         GED_DECODE_RAW(uint32_t, subRegNum, DstAddrSubRegNum);
-        RegRef a0 = {0, (uint8_t)subRegNum};
+        RegRef a0 = RegRef(0, (uint8_t)subRegNum);
         inst->setInidirectDestination(
             dstMod, a0, (uint16_t)addrImm, Region::Horz::HZ_1, type);
         break;
@@ -622,7 +623,7 @@ void DecoderBase::decodeTernaryDestinationAlign16(Instruction *inst)
     GED_DECODE_RAW(GED_DST_CHAN_EN, chEn, DstChanEn);
 
     RegName regName = RegName::INVALID;
-    RegRef regRef{0,0};
+    RegRef regRef;
     decodeReg(-1, regFile, regNumBits, regName, regRef);
 
     if (inst->isMacro()) {
@@ -766,7 +767,7 @@ void DecoderBase::decodeTernarySourceAlign16(Instruction *inst)
 
     if (isMacro) {
         MathMacroExt MathMacroReg = decodeSrcMathMacroReg<S>();
-        RegRef rr = {(uint8_t)regNum, 0};
+        RegRef rr = RegRef((uint8_t)regNum, 0);
         Region macroDftSrcRgn = macroDefaultSourceRegion(
             (int)S, inst->getOpSpec(), m_model.platform, inst->getExecSize());
         inst->setMacroSource(
@@ -780,10 +781,7 @@ void DecoderBase::decodeTernarySourceAlign16(Instruction *inst)
     } else {
         int subReg = type == Type::INVALID ?
             0 : binNumToSubRegNum(decodeSrcSubRegNum<S>(), RegName::GRF_R, type);
-        RegRef reg = {
-            (uint8_t)regNum,
-            (uint8_t)subReg
-        };
+        RegRef reg = RegRef((uint8_t)regNum, (uint8_t)subReg);
         Region rgn;
         if (decodeSrcRepCtrl<S>() == GED_REP_CTRL_NoRep) {
             GED_SWIZZLE swizzle[4];
@@ -927,7 +925,7 @@ void DecoderBase::decodeTernarySourceAlign1(Instruction *inst)
             if (m_model.supportsAlign16ImplicitAcc()) {
                 fatal("src%d: macro instructions must be Align16 for this platform.", (int)S);
             }
-            RegRef regRef{0,0};
+            RegRef regRef;
             RegName regName = decodeSourceReg<S>(regRef);
             Region macroDftSrcRgn = macroDefaultSourceRegion(
                 (int)S, inst->getOpSpec(), m_model.platform, inst->getExecSize());

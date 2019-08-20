@@ -71,7 +71,7 @@ static void WriteTokenContext(
     if (loc.offset >= (PC)inp.size()) {
         os << "<<EOF>>" << std::endl;
     } else if (loc.line > 0) {
-        size_t k = loc.offset - loc.col + 1;
+        size_t k = static_cast<size_t>(loc.offset) - loc.col + 1;
         while (k < inp.size() && inp[k] != '\n' && inp[k] != '\r')
             os << inp[k++];
         os << std::endl;

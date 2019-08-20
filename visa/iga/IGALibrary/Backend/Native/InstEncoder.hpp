@@ -60,8 +60,8 @@ namespace iga
 
     struct InstEncoderState
     {
-        int                            instIndex;
-        const Instruction             *inst;
+        int                            instIndex = 0;
+        const Instruction*             inst = nullptr;
 #ifdef IGA_VALIDATE_BITS
         // All the bit fields set by some field during this instruction encoding
         // e.g. if a field with bits [127:96] is set to 00000000....0001b
@@ -493,11 +493,11 @@ namespace iga
 
 
     class InstCompactor : public BitProcessor {
-        const OpSpec *os;
+        const OpSpec *os = nullptr;
 
         MInst compactedBits;
         MInst uncompactedBits;
-        CompactionDebugInfo *compactionDebugInfo;
+        CompactionDebugInfo *compactionDebugInfo = nullptr;
         bool compactionMissed = false;
 
         // the compaction result (if compaction enabled)

@@ -171,7 +171,7 @@ void Operand::setLabelSource(int32_t jipOrUip, Type type)
 }
 
 
-static const RegRef R0_0 = {0,0};
+static const RegRef R0_0 = MakeRegRef(0,0);
 const Operand Operand::DST_REG_IP_D(
     DstModifier::NONE,
     RegName::ARF_IP,

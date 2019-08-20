@@ -35,8 +35,12 @@ namespace iga
 {
     // machine instruction
     struct MInst {
+        MInst() {
+            dw0 = dw1 = dw2 = dw3 = 0;
+        }
+
         union {
-            struct {uint32_t dw0, dw1, dw2, dw3;};
+            struct {uint32_t dw0, dw1, dw2, dw3; };
             struct {uint32_t dws[4];};
             struct {uint64_t qw0, qw1;};
             struct {uint64_t qws[2];};

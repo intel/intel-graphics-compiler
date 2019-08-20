@@ -38,19 +38,17 @@ typedef int32_t   PC;
 // a source location (can also be binary for things like decoding)
 struct Loc {
     // int      file; // an optional file index
-    PC       offset; // file offset or binary offset (PC)
-    uint32_t line;
-    uint32_t col;
-    uint32_t extent; // length (in characters/bytes)
+    PC       offset = 0; // file offset or binary offset (PC)
+    uint32_t line   = 0;
+    uint32_t col    = 0;
+    uint32_t extent = 0; // length (in characters/bytes)
 
     Loc() {}
     Loc(PC pc)
         : offset(pc)
-        , line(0)
-        , col(0)
-        , extent(0)
     {
     }
+
     Loc(uint32_t ln,
         uint32_t cl,
         uint32_t off,

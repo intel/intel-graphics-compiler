@@ -321,7 +321,10 @@ bool BitSet<I>::operator==(const BitSet<I> &bs) const
     // do we have to worry about the ragged padding.
     // e.g. given 32b words if the bitset is 31 bits long, we have to
     // worry about the trailing bit
-    return memcmp(&words[0], &bs.words[0], sizeof(words)) == 0;
+    if (N != bs.N) { // We should not compare BitSets of different size
+        return false;
+    }
+    return memcmp(&words[0], &bs.words[0], wordsSize * sizeof(I)) == 0;
 }
 
 } // namespace iga

@@ -47,7 +47,7 @@ const RegSetInfo *RegSetInfo::ALL[] = {
 
 bool RegSet::add(const RegSetInfo &rs, size_t off, size_t len)
 {
-    IGA_ASSERT(off + len <= (size_t)(rs.numRegisters*rs.bytesPerRegister),
+    IGA_ASSERT(off + len <= (static_cast<size_t>(rs.numRegisters) * rs.bytesPerRegister),
         "register out of bounds");
     return bits.set(rs.startOffset + off, len);
 }
@@ -127,15 +127,15 @@ bool RegSet::addPredicationInputs(const Instruction &i, RegSet &rs)
     const FlagModifier fm = i.getFlagModifier();
     bool readsFlagRegister =
         pred.function != PredCtrl::NONE ||
-        (i.getOp() == Op::SEL && fm != FlagModifier::NONE);
+        i.getOp() == Op::SEL && fm != FlagModifier::NONE;
     if (readsFlagRegister) {
         // add the ARF offset from ExecMaskOffset
         // E.g.
         // (f1.0) op (16|M16) ...
         // is touching f1.1
         const RegRef &fr = i.getFlagReg();
-        size_t fByteOff = fr.regNum*RS_ARF_F.bytesPerRegister +
-            fr.subRegNum*2; // FIXME: magic number (needs some thought should be bytes per subreg)
+        size_t fByteOff = (size_t)fr.regNum*RS_ARF_F.bytesPerRegister +
+            (size_t)fr.subRegNum*2; // FIXME: magic number (needs some thought should be bytes per subreg)
         fByteOff += execOff/8; // move over by ARF offset
         return rs.bits.set(fByteOff + RS_ARF_F.startOffset, execSize/8);
     }
@@ -333,7 +333,7 @@ bool RegSet::addFlagModifierOutputs(const Instruction &i, RegSet &rs)
         const RegRef &fr = i.getFlagReg();
         int fByteOff = fr.regNum*RS_ARF_F.bytesPerRegister + fr.subRegNum*2; // 2 bytes per subreg
         fByteOff += execOff/8; // move over by ARF offset
-        return rs.bits.set(RS_ARF_F.startOffset + fByteOff, execSize/8);
+        return rs.bits.set(static_cast<size_t>(RS_ARF_F.startOffset) + fByteOff, execSize/8);
     }
     return false;
 }

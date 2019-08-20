@@ -39,9 +39,9 @@ namespace iga
         RegRef         reg;
     };
     struct DirRegOpInfo {
-        RegName   regName; // e.g. "r" or "acc"
+        RegName   regName = RegName::INVALID; // e.g. "r" or "acc"
         RegRef    regRef;  // 13
-        Type      type;
+        Type      type = Type::INVALID;
     };
 
     class DecoderBase : public GEDBitProcessor

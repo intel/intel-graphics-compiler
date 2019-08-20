@@ -34,9 +34,9 @@ using namespace iga;
 
 
 struct RegRange {
-    RegName regName;
-    int     regStart;
-    int     length;
+    RegName regName  = RegName::INVALID;
+    int     regStart = 0;
+    int     length   = 0;
 };
 
 // e.g. r13
@@ -122,7 +122,7 @@ static MAddrModel parseAddressModel(GenParser &p)
 //   AddrModel [r13,r14 + 0x100]
 struct AddrOperand {
     Loc         addrModelLoc;
-    MAddrModel  addrModel;
+    MAddrModel  addrModel = INVALID_ADDR_MODEL;
 
     RegRange    addrReg0;
     Loc         addrReg0Loc;
@@ -130,16 +130,16 @@ struct AddrOperand {
     RegRange    addrReg1;
     Loc         addrReg1Loc;
 
-    int32_t     addrOff;
+    int32_t     addrOff = 0;
     Loc         addrOffLoc;
 
-    Type        addrType;
+    Type        addrType = Type::INVALID;
 };
 
 struct DataOperand {
     Loc         loc;
     RegRange    reg;
-    Type        type;
+    Type        type = Type::INVALID;
 };
 
 struct LdStSyntax {
@@ -591,11 +591,9 @@ static void encodeDescriptors(
 
     // set the descriptors!
     SendDescArg exDescArg;
-    exDescArg.init();
     exDescArg.type = SendDescArg::IMM;
     exDescArg.imm = exDesc;
     SendDescArg descArg;
-    descArg.init();
     descArg.type = SendDescArg::IMM;
     descArg.imm = desc;
     handler.InstSendDescs(

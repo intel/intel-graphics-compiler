@@ -68,7 +68,7 @@ protected:
     const FormatOpts&            opts;
     struct ColumnPreferences     cols;
     const Instruction           *currInst;
-    const uint8_t               *bits; // optional bits to render
+    const uint8_t               *bits = nullptr; // optional bits to render
 
     void warning(const char *msg) {
         if (currInst) {
@@ -814,7 +814,7 @@ void Formatter::formatRegister(
     //  - caller demands it (e.g. it's a nonsend) AND
     //       the register chosen has subregisters (e.g. not ce and null)
     //  - OR it's non-zero (either bad IR or something's there)
-    if ((emitSubReg && ri->hasSubregs()) || reg.subRegNum != 0) {
+    if (emitSubReg && ri->hasSubregs() || reg.subRegNum != 0) {
         emit('.');
         emit((int)reg.subRegNum);
     }
@@ -1292,7 +1292,7 @@ static const char* MessageTypeEnumerationDisassembly[64] =
     "Scratch Block Read", // 0
     "Scratch Block Write", // 1
     "OWord Block Read", // 2
-    "Aligned OWord Block Read", // 3
+    "Unaligned OWord Block Read", // 3
     "OWord Dual Block Read", // 4
     "DWord Scattered Read", // 5
     "Byte Scattered Read", // 6
@@ -1606,7 +1606,8 @@ void Formatter::EmitSendDescriptorInfoGED(
             msgType = GED_GetMessageTypeDP_SAMPLER(desc, gedP, &getRetVal);
         } else if (sfid == SFID_DP_RC) {
             msgType = GED_GetMessageTypeDP_RC(desc, gedP, &getRetVal);
-        } else if (sfid == SFID_DP_CC || sfid == SFID_DP_DCRO) { // ccdp SFID_DP_CC Constant Cache Data Port
+        } else if (sfid == SFID_DP_CC) {
+            // SFID_DP_DCRO and SFID_DP_CC have the same value: Constant Cache Data Port
             if (p < iga::Platform::GEN9) {
                 msgType = GED_GetMessageTypeDP_CC(desc, gedP, &getRetVal);
             }

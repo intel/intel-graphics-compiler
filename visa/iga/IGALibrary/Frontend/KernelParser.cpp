@@ -1413,7 +1413,7 @@ private:
         }
         const char *p = &m_lexer.GetSource()[tk.loc.offset];
         std::string s;
-        s.reserve(tk.loc.extent + 1);
+        s.reserve((size_t)tk.loc.extent + 1);
         for (size_t i = 0; i < tk.loc.extent; i++) {
             s += *p++;
         }
@@ -1726,6 +1726,7 @@ private:
             if (LookingAt(LBRACK)) {
                 ParseDstOpRegInd(opStart, regNum * 32);
             } else {
+                assert(regInfo != nullptr);
                 FinishDstOpRegDirSubRegRgnTy(
                     opStart, regStart, *regInfo, regNum);
             }
@@ -1860,7 +1861,8 @@ private:
         if (dty != Type::INVALID) {
             int typeSize = TypeSizeInBits(dty)/8;
             if (!ri.isSubRegByteOffsetValid(regNum, subregNum * typeSize, m_model.getGRFByteSize())) {
-                Warning(subregLoc, "subregister out of bounds for data type");
+                Error(subregLoc,
+                    "subregister out of bounds for data type", ToSyntax(dty));
             } else if (typeSize < ri.accGran) {
                 Warning(regnameLoc, "access granularity too small for data type");
             }
@@ -2861,7 +2863,6 @@ private:
     void ParseSendDescs() {
         const Loc exDescLoc = NextLoc();
         SendDescArg exDesc;
-        exDesc.init();
         if (ParseAddrRegRefOpt(exDesc.reg)) {
             exDesc.type = SendDescArg::REG32A;
         } else {
@@ -2884,7 +2885,6 @@ private:
 
         const Loc descLoc = NextLoc();
         SendDescArg desc;
-        desc.init();
         if (ParseAddrRegRefOpt(desc.reg)) {
             desc.type = SendDescArg::REG32A;
         } else {
