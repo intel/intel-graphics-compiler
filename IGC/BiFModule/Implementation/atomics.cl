@@ -37,29 +37,16 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
   __local uint* __builtin_IB_get_local_lock();
 
-  __global uint* __builtin_IB_get_global_lock();
-
-#define LOCAL_SPINLOCK_START \
+#define SPINLOCK_START \
   { \
   volatile bool done = false; \
   while(!done) { \
        if(atomic_cmpxchg(__builtin_IB_get_local_lock(), 0, 1) == 0) {
 
-#define LOCAL_SPINLOCK_END \
+#define SPINLOCK_END \
             done = true; \
             atomic_store(__builtin_IB_get_local_lock(), 0); \
   }}}
-
-#define GLOBAL_SPINLOCK_START \
-  { \
-  volatile bool done = false; \
-  while(!done) { \
-      if(atomic_cmpxchg(__builtin_IB_get_global_lock(), 0, 1) == 0) {
-
-#define GLOBAL_SPINLOCK_END \
-            done = true; \
-            atomic_store(__builtin_IB_get_global_lock(), 0); \
-}}}
 
 #define FENCE_PRE_OP(Scope, Semantics) \
   if( ( (Semantics) & ( SEMANTICS_PRE_OP_NEED_FENCE ) ) > 0 )                     \
@@ -411,21 +398,7 @@ ulong __builtin_spirv_OpAtomicExchange_p0i64_i32_i32_i64( volatile __private ulo
 
 ulong __builtin_spirv_OpAtomicExchange_p1i64_i32_i32_i64( volatile __global ulong *Pointer, uint Scope, uint Semantics, ulong Value )
 {
-    if(!__Need64BitIntEmulation)
-    {
-        atomic_operation_1op( __builtin_IB_atomic_xchg_global_i64, ulong, (global long*)Pointer, Scope, Semantics, Value );
-    }
-    else
-    {
-        ulong orig;
-        FENCE_PRE_OP(Scope, Semantics)
-        GLOBAL_SPINLOCK_START
-        orig = *Pointer;
-        *Pointer = Value;
-        GLOBAL_SPINLOCK_END
-        FENCE_POST_OP(Scope, Semantics)
-        return orig;
-    }
+    atomic_operation_1op( __builtin_IB_atomic_xchg_global_i64, ulong, (global long*)Pointer, Scope, Semantics, Value );
 }
 
 
@@ -433,10 +406,10 @@ ulong __builtin_spirv_OpAtomicExchange_p3i64_i32_i32_i64( volatile __local ulong
 {
     ulong orig;
     FENCE_PRE_OP(Scope, Semantics)
-    LOCAL_SPINLOCK_START
+    SPINLOCK_START
     orig = *Pointer;
     *Pointer = Value;
-    LOCAL_SPINLOCK_END
+    SPINLOCK_END
     FENCE_POST_OP(Scope, Semantics)
     return orig;
 }
@@ -591,24 +564,7 @@ ulong __builtin_spirv_OpAtomicCompareExchange_p0i64_i32_i32_i32_i64_i64( volatil
 
 ulong __builtin_spirv_OpAtomicCompareExchange_p1i64_i32_i32_i32_i64_i64( volatile __global ulong *Pointer, uint Scope, uint Equal, uint Unequal, ulong Value, ulong Comparator)
 {
-    if(!__Need64BitIntEmulation)
-    {
-        atomic_cmpxhg( __builtin_IB_atomic_cmpxchg_global_i64, ulong, (global long*)Pointer, Scope, Equal, Value, Comparator );
-    }
-    else
-    {
-        ulong orig;
-        FENCE_PRE_OP(Scope, Equal)
-        GLOBAL_SPINLOCK_START
-        orig = *Pointer;
-        if( orig == Comparator )
-        {
-            *Pointer = Value;
-        }
-        GLOBAL_SPINLOCK_END
-        FENCE_POST_OP(Scope, Equal)
-        return orig;
-    }
+    atomic_cmpxhg( __builtin_IB_atomic_cmpxchg_global_i64, ulong, (global long*)Pointer, Scope, Equal, Value, Comparator );
 }
 
 
@@ -616,13 +572,13 @@ ulong __builtin_spirv_OpAtomicCompareExchange_p3i64_i32_i32_i32_i64_i64( volatil
 {
     ulong orig;
     FENCE_PRE_OP(Scope, Equal)
-    LOCAL_SPINLOCK_START
+    SPINLOCK_START
     orig = *Pointer;
     if( orig == Comparator )
     {
         *Pointer = Value;
     }
-    LOCAL_SPINLOCK_END
+    SPINLOCK_END
     FENCE_POST_OP(Scope, Equal)
     return orig;
 }
@@ -790,21 +746,7 @@ ulong __builtin_spirv_OpAtomicIIncrement_p0i64_i32_i32( volatile __private ulong
 
 ulong __builtin_spirv_OpAtomicIIncrement_p1i64_i32_i32( volatile __global ulong *Pointer, uint Scope, uint Semantics )
 {
-    if(!__Need64BitIntEmulation)
-    {
-        atomic_operation_0op( __builtin_IB_atomic_inc_global_i64, ulong, (global int*)Pointer, Scope, Semantics );
-    }
-    else
-    {
-        ulong orig;
-        FENCE_PRE_OP(Scope, Semantics)
-        GLOBAL_SPINLOCK_START
-        orig = *Pointer;
-        *Pointer += 1;
-        GLOBAL_SPINLOCK_END
-        FENCE_POST_OP(Scope, Semantics)
-        return orig;
-    }
+    atomic_operation_0op( __builtin_IB_atomic_inc_global_i64, ulong, (global int*)Pointer, Scope, Semantics );
 }
 
 
@@ -812,10 +754,10 @@ ulong __builtin_spirv_OpAtomicIIncrement_p3i64_i32_i32( volatile __local ulong *
 {
     ulong orig;
     FENCE_PRE_OP(Scope, Semantics)
-    LOCAL_SPINLOCK_START
+    SPINLOCK_START
     orig = *Pointer;
     *Pointer += 1;
-    LOCAL_SPINLOCK_END
+    SPINLOCK_END
     FENCE_POST_OP(Scope, Semantics)
     return orig;
 }
@@ -885,31 +827,17 @@ ulong __builtin_spirv_OpAtomicIDecrement_p0i64_i32_i32( volatile __private ulong
 
 ulong __builtin_spirv_OpAtomicIDecrement_p1i64_i32_i32( volatile __global ulong *Pointer, uint Scope, uint Semantics )
 {
-    if(!__Need64BitIntEmulation)
-    {
-        atomic_operation_0op( __builtin_IB_atomic_dec_global_i64, ulong, (global long*)Pointer, Scope, Semantics );
-    }
-    else
-    {
-        ulong orig;
-        FENCE_PRE_OP(Scope, Semantics)
-        GLOBAL_SPINLOCK_START
-        orig = *Pointer;
-        *Pointer -= 1;
-        GLOBAL_SPINLOCK_END
-        FENCE_POST_OP(Scope, Semantics)
-        return orig;
-    }
+    atomic_operation_0op( __builtin_IB_atomic_dec_global_i64, ulong, (global long*)Pointer, Scope, Semantics );
 }
 
 ulong __builtin_spirv_OpAtomicIDecrement_p3i64_i32_i32( volatile __local ulong *Pointer, uint Scope, uint Semantics )
 {
     ulong orig;
     FENCE_PRE_OP(Scope, Semantics)
-    LOCAL_SPINLOCK_START
+    SPINLOCK_START
     orig = *Pointer;
     *Pointer -= 1;
-    LOCAL_SPINLOCK_END
+    SPINLOCK_END
     FENCE_POST_OP(Scope, Semantics)
     return orig;
 }
@@ -979,31 +907,17 @@ ulong __builtin_spirv_OpAtomicIAdd_p0i64_i32_i32_i64( volatile __private ulong *
 
 ulong __builtin_spirv_OpAtomicIAdd_p1i64_i32_i32_i64( volatile __global ulong *Pointer, uint Scope, uint Semantics, ulong Value )
 {
-    if(!__Need64BitIntEmulation)
-    {
-        atomic_operation_1op( __builtin_IB_atomic_add_global_i64, ulong, (__global ulong*)Pointer, Scope, Semantics, Value );
-    }
-    else
-    {
-        ulong orig;
-        FENCE_PRE_OP(Scope, Semantics)
-        GLOBAL_SPINLOCK_START
-        orig = *Pointer;
-        *Pointer += Value;
-        GLOBAL_SPINLOCK_END
-        FENCE_POST_OP(Scope, Semantics)
-        return orig;
-    }
+    atomic_operation_1op( __builtin_IB_atomic_add_global_i64, ulong, (__global ulong*)Pointer, Scope, Semantics, Value );
 }
 
 ulong __builtin_spirv_OpAtomicIAdd_p3i64_i32_i32_i64( volatile __local ulong *Pointer, uint Scope, uint Semantics, ulong Value )
 {
     ulong orig;
     FENCE_PRE_OP(Scope, Semantics)
-    LOCAL_SPINLOCK_START
+    SPINLOCK_START
     orig = *Pointer;
     *Pointer += Value;
-    LOCAL_SPINLOCK_END
+    SPINLOCK_END
     FENCE_POST_OP(Scope, Semantics)
     return orig;
 }
@@ -1074,21 +988,7 @@ ulong __builtin_spirv_OpAtomicISub_p0i64_i32_i32_i64( volatile __private ulong *
 
 ulong __builtin_spirv_OpAtomicISub_p1i64_i32_i32_i64( volatile __global ulong *Pointer, uint Scope, uint Semantics, ulong Value )
 {
-    if(!__Need64BitIntEmulation)
-    {
-        atomic_operation_1op( __builtin_IB_atomic_add_global_i64, ulong, (global long*)Pointer, Scope, Semantics, -as_long(Value) );
-    }
-    else
-    {
-        ulong orig;
-        FENCE_PRE_OP(Scope, Semantics)
-        GLOBAL_SPINLOCK_START
-        orig = *Pointer;
-        *Pointer -= Value;
-        GLOBAL_SPINLOCK_END
-        FENCE_POST_OP(Scope, Semantics)
-        return orig;
-    }
+    atomic_operation_1op( __builtin_IB_atomic_add_global_i64, ulong, (global long*)Pointer, Scope, Semantics, -as_long(Value) );
 }
 
 
@@ -1096,10 +996,10 @@ ulong __builtin_spirv_OpAtomicISub_p3i64_i32_i32_i64( volatile __local ulong *Po
 {
     ulong orig;
     FENCE_PRE_OP(Scope, Semantics)
-    LOCAL_SPINLOCK_START
+    SPINLOCK_START
     orig = *Pointer;
     *Pointer -= Value;
-    LOCAL_SPINLOCK_END
+    SPINLOCK_END
     FENCE_POST_OP(Scope, Semantics)
     return orig;    
 }
@@ -1170,31 +1070,17 @@ long __builtin_spirv_OpAtomicSMin_p0i64_i32_i32_i64( volatile __private ulong *P
 
 long __builtin_spirv_OpAtomicSMin_p1i64_i32_i32_i64( volatile __global ulong *Pointer, uint Scope, uint Semantics, long Value)
 {
-    if(!__Need64BitIntEmulation)
-    {
-        atomic_operation_1op( __builtin_IB_atomic_min_global_i64, ulong, (__global long*)Pointer, Scope, Semantics, Value );
-    }
-    else
-    {
-        long orig;
-        FENCE_PRE_OP(Scope, Semantics)
-        GLOBAL_SPINLOCK_START
-        orig = *Pointer;
-        *Pointer = ( orig < Value ) ? orig : Value;
-        GLOBAL_SPINLOCK_END
-        FENCE_POST_OP(Scope, Semantics)
-        return orig;
-    }
+    atomic_operation_1op( __builtin_IB_atomic_min_global_i64, ulong, (__global long*)Pointer, Scope, Semantics, Value );
 }
 
 long __builtin_spirv_OpAtomicSMin_p3i64_i32_i32_i64( volatile __local ulong *Pointer, uint Scope, uint Semantics, long Value)
 {
     long orig;
     FENCE_PRE_OP(Scope, Semantics)
-    LOCAL_SPINLOCK_START
+    SPINLOCK_START
     orig = *Pointer;
     *Pointer = ( orig < Value ) ? orig : Value;
-    LOCAL_SPINLOCK_END
+    SPINLOCK_END
     FENCE_POST_OP(Scope, Semantics)
     return orig;
 }
@@ -1263,31 +1149,17 @@ ulong __builtin_spirv_OpAtomicUMin_p0i64_i32_i32_i64( volatile __private ulong *
 
 ulong __builtin_spirv_OpAtomicUMin_p1i64_i32_i32_i64( volatile __global ulong *Pointer, uint Scope, uint Semantics, ulong Value )
 {
-    if(!__Need64BitIntEmulation)
-    {
-        atomic_operation_1op( __builtin_IB_atomic_min_global_u64, ulong, Pointer, Scope, Semantics, Value );
-    }
-    else
-    {
-        ulong orig;
-        FENCE_PRE_OP(Scope, Semantics)
-        GLOBAL_SPINLOCK_START
-        orig = *Pointer;
-        *Pointer = ( orig < Value ) ? orig : Value;
-        GLOBAL_SPINLOCK_END
-        FENCE_POST_OP(Scope, Semantics)
-        return orig;
-    }
+    atomic_operation_1op( __builtin_IB_atomic_min_global_u64, ulong, Pointer, Scope, Semantics, Value );
 }
 
 ulong __builtin_spirv_OpAtomicUMin_p3i64_i32_i32_i64( volatile __local ulong *Pointer, uint Scope, uint Semantics, ulong Value )
 {
     ulong orig;
     FENCE_PRE_OP(Scope, Semantics)
-    LOCAL_SPINLOCK_START
+    SPINLOCK_START
     orig = *Pointer;
     *Pointer = ( orig < Value ) ? orig : Value;
-    LOCAL_SPINLOCK_END
+    SPINLOCK_END
     FENCE_POST_OP(Scope, Semantics)
     return orig;
 }
@@ -1357,31 +1229,17 @@ long __builtin_spirv_OpAtomicSMax_p0i64_i32_i32_i64( volatile __private ulong *P
 
 long __builtin_spirv_OpAtomicSMax_p1i64_i32_i32_i64( volatile __global ulong *Pointer, uint Scope, uint Semantics, long Value)
 {
-    if(!__Need64BitIntEmulation)
-    {
-        atomic_operation_1op( __builtin_IB_atomic_max_global_i64, ulong, (global long*)Pointer, Scope, Semantics, Value );
-    }
-    else
-    {
-        long orig;
-        FENCE_PRE_OP(Scope, Semantics)
-        GLOBAL_SPINLOCK_START
-        orig = *Pointer;
-        *Pointer = ( orig > Value ) ? orig : Value;
-        GLOBAL_SPINLOCK_END
-        FENCE_POST_OP(Scope, Semantics)
-        return orig;
-    }
+    atomic_operation_1op( __builtin_IB_atomic_max_global_i64, ulong, (global long*)Pointer, Scope, Semantics, Value );
 }
 
 long __builtin_spirv_OpAtomicSMax_p3i64_i32_i32_i64( volatile __local ulong *Pointer, uint Scope, uint Semantics, long Value)
 {
     long orig;
     FENCE_PRE_OP(Scope, Semantics)
-    LOCAL_SPINLOCK_START
+    SPINLOCK_START
     orig = *Pointer;
     *Pointer = ( orig > Value ) ? orig : Value;
-    LOCAL_SPINLOCK_END
+    SPINLOCK_END
     FENCE_POST_OP(Scope, Semantics)
     return orig;    
 }
@@ -1453,31 +1311,17 @@ ulong __builtin_spirv_OpAtomicUMax_p0i64_i32_i32_i64( volatile __private ulong *
 
 ulong __builtin_spirv_OpAtomicUMax_p1i64_i32_i32_i64( volatile __global ulong *Pointer, uint Scope, uint Semantics, ulong Value )
 {
-    if(!__Need64BitIntEmulation)
-    {
-        atomic_operation_1op( __builtin_IB_atomic_max_global_u64, ulong, Pointer, Scope, Semantics, Value );
-    }
-    else
-    {
-        ulong orig;
-        FENCE_PRE_OP(Scope, Semantics)
-        GLOBAL_SPINLOCK_START
-        orig = *Pointer;
-        *Pointer = ( orig > Value ) ? orig : Value;
-        GLOBAL_SPINLOCK_END
-        FENCE_POST_OP(Scope, Semantics)
-        return orig;
-    }
+    atomic_operation_1op( __builtin_IB_atomic_max_global_u64, ulong, Pointer, Scope, Semantics, Value );
 }
 
 ulong __builtin_spirv_OpAtomicUMax_p3i64_i32_i32_i64( volatile __local ulong *Pointer, uint Scope, uint Semantics, ulong Value )
 {
     ulong orig;
     FENCE_PRE_OP(Scope, Semantics)
-    LOCAL_SPINLOCK_START
+    SPINLOCK_START
     orig = *Pointer;
     *Pointer = ( orig > Value ) ? orig : Value;
-    LOCAL_SPINLOCK_END
+    SPINLOCK_END
     FENCE_POST_OP(Scope, Semantics)
     return orig;
 }
@@ -1547,31 +1391,17 @@ ulong __builtin_spirv_OpAtomicAnd_p0i64_i32_i32_i64( volatile __private ulong *P
 
 ulong __builtin_spirv_OpAtomicAnd_p1i64_i32_i32_i64( volatile __global ulong *Pointer, uint Scope, uint Semantics, ulong Value )
 {
-    if(!__Need64BitIntEmulation)
-    {
-        atomic_operation_1op( __builtin_IB_atomic_and_global_i64, ulong, (global long*)Pointer, Scope, Semantics, Value );
-    }
-    else
-    {
-        ulong orig;
-        FENCE_PRE_OP(Scope, Semantics)
-        GLOBAL_SPINLOCK_START
-        orig = *Pointer;
-        *Pointer &= Value;
-        GLOBAL_SPINLOCK_END
-        FENCE_POST_OP(Scope, Semantics)
-        return orig;
-    }
+    atomic_operation_1op( __builtin_IB_atomic_and_global_i64, ulong, (global long*)Pointer, Scope, Semantics, Value );
 }
 
 ulong __builtin_spirv_OpAtomicAnd_p3i64_i32_i32_i64( volatile __local ulong *Pointer, uint Scope, uint Semantics, ulong Value )
 {
     ulong orig;
     FENCE_PRE_OP(Scope, Semantics)
-    LOCAL_SPINLOCK_START
+    SPINLOCK_START
     orig = *Pointer;
     *Pointer &= Value;
-    LOCAL_SPINLOCK_END
+    SPINLOCK_END
     FENCE_POST_OP(Scope, Semantics)
     return orig;
 }
@@ -1641,31 +1471,17 @@ ulong __builtin_spirv_OpAtomicOr_p0i64_i32_i32_i64( volatile __private ulong *Po
 
 ulong __builtin_spirv_OpAtomicOr_p1i64_i32_i32_i64( volatile __global ulong *Pointer, uint Scope, uint Semantics, ulong Value )
 {
-    if(!__Need64BitIntEmulation)
-    {
-        atomic_operation_1op( __builtin_IB_atomic_or_global_i64, ulong, (global long*)Pointer, Scope, Semantics, Value );
-    }
-    else
-    {
-        ulong orig;
-        FENCE_PRE_OP(Scope, Semantics)
-        GLOBAL_SPINLOCK_START
-        orig = *Pointer;
-        *Pointer |= Value;
-        GLOBAL_SPINLOCK_END
-        FENCE_POST_OP(Scope, Semantics)
-        return orig;
-    }
+    atomic_operation_1op( __builtin_IB_atomic_or_global_i64, ulong, (global long*)Pointer, Scope, Semantics, Value );
 }
 
 ulong __builtin_spirv_OpAtomicOr_p3i64_i32_i32_i64( volatile __local ulong *Pointer, uint Scope, uint Semantics, ulong Value )
 {
       ulong orig;
       FENCE_PRE_OP(Scope, Semantics)
-      LOCAL_SPINLOCK_START
+      SPINLOCK_START
       orig = *Pointer;
       *Pointer |= Value;
-      LOCAL_SPINLOCK_END
+      SPINLOCK_END
       FENCE_POST_OP(Scope, Semantics)
       return orig;
 }
@@ -1736,31 +1552,17 @@ ulong __builtin_spirv_OpAtomicXor_p0i64_i32_i32_i64( volatile __private ulong *P
 
 ulong __builtin_spirv_OpAtomicXor_p1i64_i32_i32_i64( volatile __global ulong *Pointer, uint Scope, uint Semantics, ulong Value )
 {
-    if(!__Need64BitIntEmulation)
-    {
-        atomic_operation_1op( __builtin_IB_atomic_xor_global_i64, ulong, (global long*)Pointer, Scope, Semantics, Value );
-    }
-    else
-    {
-        ulong orig;
-        FENCE_PRE_OP(Scope, Semantics)
-        GLOBAL_SPINLOCK_START
-        orig = *Pointer;
-        *Pointer ^= Value;
-        GLOBAL_SPINLOCK_END
-        FENCE_POST_OP(Scope, Semantics)
-        return orig;
-    }
+    atomic_operation_1op( __builtin_IB_atomic_xor_global_i64, ulong, (global long*)Pointer, Scope, Semantics, Value );
 }
 
 ulong __builtin_spirv_OpAtomicXor_p3i64_i32_i32_i64( volatile __local ulong *Pointer, uint Scope, uint Semantics, ulong Value )
 {
     ulong orig;
     FENCE_PRE_OP(Scope, Semantics)
-    LOCAL_SPINLOCK_START
+    SPINLOCK_START
     orig = *Pointer;
     *Pointer ^= Value;
-    LOCAL_SPINLOCK_END
+    SPINLOCK_END
     FENCE_POST_OP(Scope, Semantics)
     return orig;
 }
@@ -1868,10 +1670,8 @@ void __builtin_IB_kmp_release_lock(__global int *lock)
 #undef SEMANTICS_NEED_FENCE
 #undef FENCE_PRE_OP
 #undef FENCE_POST_OP
-#undef LOCAL_SPINLOCK_START
-#undef LOCAL_SPINLOCK_END
-#undef GLOBAL_SPINLOCK_START
-#undef GLOBAL_SPINLOCK_END
+#undef SPINLOCK_START
+#undef SPINLOCK_END
 
 #undef atomic_operation_1op
 #undef atomic_operation_0op

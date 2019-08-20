@@ -50,7 +50,6 @@ IGC_INITIALIZE_PASS_END(ResolveOCLAtomics, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG
 char ResolveOCLAtomics::ID = 0;
 
 const llvm::StringRef BUILTIN_GET_LOCAL_LOCK = "__builtin_IB_get_local_lock";
-const llvm::StringRef BUILTIN_GET_GLOBAL_LOCK = "__builtin_IB_get_global_lock";
 
 ResolveOCLAtomics::ResolveOCLAtomics() : ModulePass(ID)
 {
@@ -127,6 +126,10 @@ void ResolveOCLAtomics::visitCallInst(CallInst& callInst)
     }
 
     StringRef funcName = callInst.getCalledFunction()->getName();
+
+    if (funcName == BUILTIN_GET_LOCAL_LOCK) {
+        processGetLocalLock(callInst);
+    }
 
     if( funcName.startswith("__builtin_IB_atomic") )
     {
@@ -269,3 +272,31 @@ CallInst* ResolveOCLAtomics::genGetBufferPtr(CallInst& callInst, BufferType bufT
     
     return CallInst::Create(getBufferPtr, getBufferPtrArgs, callInst.getName(), &callInst);
 }
+
+// i64 local atomics use a spinlock for emulation. 
+// This spinlock needs to be inserted at llvm-ir level, as OpenCL doesn't allow
+// local variables in program scope.
+void ResolveOCLAtomics::processGetLocalLock(CallInst& callInst)
+{
+    assert(callInst.getCalledFunction()->getName() == BUILTIN_GET_LOCAL_LOCK);
+    if (m_localLock == nullptr) {
+        Module* M = callInst.getModule();
+        auto& C = M->getContext();
+
+        m_localLock = new GlobalVariable(
+            *M,
+            Type::getInt32Ty(C),
+            false,
+            GlobalVariable::ExternalLinkage,
+            ConstantInt::get(Type::getInt32Ty(C), 0),
+            "spinlock",
+            nullptr,
+            GlobalValue::NotThreadLocal,
+            ADDRESS_SPACE_LOCAL);
+    }
+
+    callInst.replaceAllUsesWith(m_localLock);
+    callInst.eraseFromParent();
+    m_changed = true;
+}
+

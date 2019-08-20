@@ -1836,6 +1836,30 @@ Emu64BitCall:
             Emu->setExpandedValues(GenCopy, Lo, Hi);
             return true;
         }
+        case GenISAIntrinsic::GenISA_intatomicrawA64:
+        case GenISAIntrinsic::GenISA_icmpxchgatomicrawA64:
+        {
+            auto* GenCopy = Call.clone();
+            GenCopy->insertBefore(&Call);
+            IRB->SetInsertPoint(GenCopy);
+
+            uint opNum = 0;
+            for (auto& Op : Call.operands())
+            {
+              if (Emu->isInt64(Op.get()))
+              {
+                Value* NewVal = Combine2xi32Toi64(Op.get());
+                GenCopy->setOperand(opNum, NewVal);
+              }
+              opNum++;
+            }
+            IRB->SetInsertPoint(&Call);
+            Value* Lo, * Hi;
+            Spliti64To2xi32(GenCopy, Lo, Hi);
+            Call.replaceAllUsesWith(GenCopy);
+            Emu->setExpandedValues(GenCopy, Lo, Hi);
+            return true;
+        }
         case GenISAIntrinsic::GenISA_simdSetMessagePhaseV:
         case GenISAIntrinsic::GenISA_setMessagePhaseX:
         case GenISAIntrinsic::GenISA_setMessagePhaseXV:

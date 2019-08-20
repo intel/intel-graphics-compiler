@@ -78,7 +78,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/Optimizer/OpenCLPasses/LocalBuffers/InlineLocalsResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/ReplaceUnsupportedIntrinsics/ReplaceUnsupportedIntrinsics.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/Atomics/ResolveOCLAtomics.hpp"
-#include "Compiler/Optimizer/OpenCLPasses/Atomics/ResolveSpinLocks.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/WGFuncs/WGFuncResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/AlignmentAnalysis/AlignmentAnalysis.hpp"
 #include "Compiler/Optimizer/PreCompiledFuncImport.hpp"
@@ -380,7 +379,6 @@ static void CommonOCLBasedPasses(
     mpm.add(new ImageFuncsAnalysis());
     mpm.add(new OpenCLPrintfAnalysis());
     mpm.add(createDeadCodeEliminationPass());
-    mpm.add(new ResolveSpinLocks());
     mpm.add(new ProgramScopeConstantAnalysis());
     mpm.add(new PrivateMemoryUsageAnalysis());
     mpm.add(new AggregateArgumentsAnalysis());

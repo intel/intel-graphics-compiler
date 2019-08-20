@@ -116,6 +116,13 @@ namespace IGC
     /// @returns  call instruction to generated GenISA_GetBufferPtr.
         llvm::CallInst* genGetBufferPtr(llvm::CallInst& callInst, BufferType bufType);
 
+    /// @brief  Replace the "__builtin_IB_get_local_lock" call with a pointer to a local memory variable.
+    /// @param    callInst  call to "__builtin_IB_get_local_lock*" function.
+    void           processGetLocalLock(llvm::CallInst& callInst);
+
+    /// @brief  Stores the value of local value used for spinlock for i64 local atomics emulation.
+    llvm::GlobalVariable* m_localLock = nullptr;
+
     /// @brief  Indicates if the pass changed the processed function
     bool m_changed = false;
     };

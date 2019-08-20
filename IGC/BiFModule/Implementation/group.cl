@@ -24,6 +24,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
+ extern __constant int __UseNative64BitSubgroupBuiltin;
+
 // Group Instructions
 
 uint __spirv_BuiltInLocalInvocationIndex();
@@ -1585,7 +1587,7 @@ type  __builtin_spirv_##func##_i32_i32_##type_abbr(uint Execution, uint Operatio
     }                                                                                            \
     else if (Execution == Subgroup)                                                              \
     {                                                                                             \
-        if (sizeof(X) < 8 || __Support64BitInst)                                            \
+        if (sizeof(X) < 8 || __UseNative64BitSubgroupBuiltin)                                            \
         {                                                                                        \
             if (Operation == GroupOperationReduce)                                                     \
             {                                                                                         \
