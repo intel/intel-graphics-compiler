@@ -227,11 +227,6 @@ bool EmitPass::setCurrentShader(llvm::Function* F)
         {
             return false;
         }
-        // Only simd8 will be tried when there are subroutines in this group.
-        if (m_SimdMode != SIMDMode::SIMD8 && !FG->isSingle())
-        {
-            return false;
-        }
         Kernel = FG->getHead();
     }
     else
@@ -346,6 +341,15 @@ bool EmitPass::runOnFunction(llvm::Function& F)
 
     m_FGA = getAnalysisIfAvailable<GenXFunctionGroupAnalysis>();
     if (!setCurrentShader(&F))
+    {
+        return false;
+    }
+
+    // If max work group size is set, we need to compile for all requested SIMD modes.
+    // Otherwise, only compile simd8 for subroutines
+    if (ctx->getModuleMetaData()->csInfo.maxWorkGroupSize == 0 &&
+        m_FGA && !m_FGA->getGroup(&F)->isSingle() &&
+        m_SimdMode != SIMDMode::SIMD8)
     {
         return false;
     }
