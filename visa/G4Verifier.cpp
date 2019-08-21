@@ -348,6 +348,7 @@ void G4Verifier::verifyOpnd(G4_Operand* opnd, G4_INST* inst)
 
                 if (inst->getMsgDesc()->isScratchRW() == false &&
                     inst->getMsgDesc()->isOwordLoad() &&
+                    inst->getMsgDesc()->isValidFuncCtrl() &&
                     (inst->getMsgDesc()->getFuncCtrl() & 0x700) == 0)
                 {
                     correctRB = opnd->getLeftBound() + 15;

@@ -1229,7 +1229,8 @@ public:
         bool isRead,
         bool isWrite,
         G4_Operand* bti = nullptr,
-        G4_Operand* sti = nullptr);
+        G4_Operand* sti = nullptr,
+        bool isValidFuncCtrl = true);
 
     G4_SendMsgDescriptor* createReadMsgDesc(
         SFID sfid,
@@ -1260,7 +1261,8 @@ public:
         int src1Len,
         bool isRead,
         bool isWrite,
-        G4_Operand *bti);
+        G4_Operand *bti,
+        bool isValidFuncCtrl = true);
 
     G4_SendMsgDescriptor* createSendMsgDesc(
         unsigned funcCtrl,

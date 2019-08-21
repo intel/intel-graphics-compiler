@@ -260,6 +260,7 @@ G4_SendMsgDescriptor::G4_SendMsgDescriptor(
 
     readMsg = isRead;
     writeMsg = isWrite;
+    funcCtrlValid = true;
 
 
     m_bti = bti;
@@ -289,8 +290,9 @@ G4_SendMsgDescriptor::G4_SendMsgDescriptor(
     bool isRead,
     bool isWrite,
     G4_Operand *bti,
-    G4_Operand *sti)
-    : readMsg(isRead), writeMsg(isWrite), m_sti(sti), m_bti(bti)
+    G4_Operand *sti,
+    bool isValidFuncCtrl)
+    : readMsg(isRead), writeMsg(isWrite), m_sti(sti), m_bti(bti), funcCtrlValid(isValidFuncCtrl)
 {
     desc.value = descBits;
     extDesc.value = extDescBits;
@@ -316,8 +318,9 @@ G4_SendMsgDescriptor::G4_SendMsgDescriptor(
     int _src1Len,
     bool isRead,
     bool isWrite,
-    G4_Operand *bti)
-    : readMsg(isRead), writeMsg(isWrite), m_sti(nullptr), m_bti(bti), sfid(_sfid)
+    G4_Operand *bti,
+    bool isValidFuncCtrl)
+    : readMsg(isRead), writeMsg(isWrite), m_sti(nullptr), m_bti(bti), sfid(_sfid), funcCtrlValid(isValidFuncCtrl)
 {
     desc.value = _desc;
     extDesc.value = _extDesc;
@@ -7123,6 +7126,7 @@ void G4_InstSend::computeRightBound(G4_Operand* opnd)
 
             if (msgDesc->isScratchRW() == false &&
                 msgDesc->isOwordLoad() &&
+                msgDesc->isValidFuncCtrl() &&
                 (msgDesc->getFuncCtrl() & 0x700) == 0)
             {
                 //1 oword read

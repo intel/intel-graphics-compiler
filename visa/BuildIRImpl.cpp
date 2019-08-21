@@ -123,9 +123,10 @@ G4_SendMsgDescriptor* IR_Builder::createGeneralMsgDesc(
     bool isRead,
     bool isWrite,
     G4_Operand* bti,
-    G4_Operand* sti)
+    G4_Operand* sti,
+    bool isValidFuncCtrl)
 {
-    return new (mem) G4_SendMsgDescriptor(desc, extDesc, isRead, isWrite, bti, sti);
+    return new (mem) G4_SendMsgDescriptor(desc, extDesc, isRead, isWrite, bti, sti, isValidFuncCtrl);
 }
 
 G4_SendMsgDescriptor* IR_Builder::createSendMsgDesc(
@@ -135,9 +136,10 @@ G4_SendMsgDescriptor* IR_Builder::createSendMsgDesc(
     int src1Len,
     bool isRead,
     bool isWrite,
-    G4_Operand *bti)
+    G4_Operand *bti,
+    bool isValidFuncCtrl)
 {
-    return new (mem) G4_SendMsgDescriptor(sfid, desc, extDesc, src1Len, isRead, isWrite, bti);
+    return new (mem) G4_SendMsgDescriptor(sfid, desc, extDesc, src1Len, isRead, isWrite, bti, isValidFuncCtrl);
 }
 
 G4_SendMsgDescriptor* IR_Builder::createSendMsgDesc(
@@ -167,7 +169,7 @@ G4_SendMsgDescriptor* IR_Builder::createReadMsgDesc(SFID sfid,
 {
     //ToDo: move extDesc into SendMsgDesc ctor
     uint32_t extDesc = G4_SendMsgDescriptor::createExtDesc(sfid);
-    return new (mem) G4_SendMsgDescriptor(sfid, desc, extDesc, 0, true, false, bti);
+    return new (mem) G4_SendMsgDescriptor(sfid, desc, extDesc, 0, true, false, bti, true);
 }
 
 G4_SendMsgDescriptor* IR_Builder::createWriteMsgDesc(SFID sfid,
@@ -177,14 +179,14 @@ G4_SendMsgDescriptor* IR_Builder::createWriteMsgDesc(SFID sfid,
 {
     //ToDo: move extDesc into SendMsgDesc ctor
     uint32_t extDesc = G4_SendMsgDescriptor::createExtDesc(sfid, false, src1Len);
-    return new (mem) G4_SendMsgDescriptor(sfid, desc, extDesc, src1Len, false, true, bti);
+    return new (mem) G4_SendMsgDescriptor(sfid, desc, extDesc, src1Len, false, true, bti, true);
 }
 
 G4_SendMsgDescriptor* IR_Builder::createSyncMsgDesc(SFID sfid, uint32_t desc)
 {
     //ToDo: move extDesc into SendMsgDesc ctor
     uint32_t extDesc = G4_SendMsgDescriptor::createExtDesc(sfid);
-    return new (mem) G4_SendMsgDescriptor(sfid, desc, extDesc, 0, true, true, nullptr);
+    return new (mem) G4_SendMsgDescriptor(sfid, desc, extDesc, 0, true, true, nullptr, true);
 }
 
 G4_SendMsgDescriptor* IR_Builder::createSampleMsgDesc(
@@ -201,7 +203,7 @@ G4_SendMsgDescriptor* IR_Builder::createSampleMsgDesc(
     {
         extDesc |= 1 << CPS_LOD_COMPENSATION_ENABLE;
     }
-    return new (mem) G4_SendMsgDescriptor(desc, extDesc, true, false, bti, sti);
+    return new (mem) G4_SendMsgDescriptor(desc, extDesc, true, false, bti, sti, true);
 }
 
 G4_Operand* IR_Builder::emitSampleIndexGE16(

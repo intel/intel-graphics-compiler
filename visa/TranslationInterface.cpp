@@ -5995,7 +5995,7 @@ int IR_Builder::translateVISARawSendInst(G4_Predicate *predOpnd, Common_ISA_Exec
     }
 
     uint32_t desc = 0;
-    bool isRead = true, isWrite = true;
+    bool isRead = true, isWrite = true, isValidFuncCtrl = true;
     if (msgDescOpnd->isImm())
     {
         desc = (uint32_t) msgDescOpnd->asImm()->getImm();
@@ -6004,8 +6004,9 @@ int IR_Builder::translateVISARawSendInst(G4_Predicate *predOpnd, Common_ISA_Exec
     else
     {
         desc = G4_SendMsgDescriptor::createDesc(0, false, numSrc, numDst);
+        isValidFuncCtrl = false;
     }
-    G4_SendMsgDescriptor *sendMsgDesc = createGeneralMsgDesc(desc, exDesc, isRead, isWrite);
+    G4_SendMsgDescriptor *sendMsgDesc = createGeneralMsgDesc(desc, exDesc, isRead, isWrite, nullptr, nullptr, isValidFuncCtrl);
 
     // sanity check on srcLen/dstLen
     MUST_BE_TRUE(sendMsgDesc->MessageLength() <= numSrc, "message length mismatch for raw send");
@@ -6070,6 +6071,7 @@ int IR_Builder::translateVISARawSendsInst(G4_Predicate *predOpnd, Common_ISA_Exe
     }
 
     uint32_t descVal = 0;
+    bool isValidFuncCtrl = true;
     if (msgDescOpnd->isImm())
     {
         descVal = (uint32_t) msgDescOpnd->asImm()->getImm();
@@ -6077,11 +6079,12 @@ int IR_Builder::translateVISARawSendsInst(G4_Predicate *predOpnd, Common_ISA_Exe
     else
     {
         descVal = G4_SendMsgDescriptor::createDesc(0, false, numSrc0, numDst);
+        isValidFuncCtrl = false;
     }
 
     G4_SendMsgDescriptor *sendMsgDesc = createSendMsgDesc(
         intToSFID(ffid), descVal, exDescVal, numSrc1,
-        true, true, nullptr);
+        true, true, nullptr, isValidFuncCtrl);
 
     MUST_BE_TRUE(sendMsgDesc->MessageLength() == numSrc0, "message length mismatch for raw sends");
     if (!dstOpnd->isNullReg()) {

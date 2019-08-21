@@ -281,6 +281,9 @@ private:
     /// Whether is a dataport write message.
     bool writeMsg;
 
+    /// Whether funcCtrl is valid
+    bool funcCtrlValid;
+
     G4_Operand *m_sti;
     G4_Operand *m_bti;
 
@@ -301,7 +304,8 @@ public:
                         bool isRead,
                         bool isWrite,
                         G4_Operand *bti,
-                        G4_Operand *sti);
+                        G4_Operand *sti,
+                        bool isValidFuncCtrl);
 
     /// Preferred constructor takes an explicit SFID and src1 length
     G4_SendMsgDescriptor(
@@ -311,7 +315,8 @@ public:
         int src1Len,
         bool isRead,
         bool isWrite,
-        G4_Operand *bti);
+        G4_Operand *bti,
+        bool isValidFuncCtrl);
 
     void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
 
@@ -380,6 +385,7 @@ public:
     bool isCPSEnabled() const {return extDesc.layout.cps != 0;}
     bool isDataPortRead() const { return readMsg; }
     bool isDataPortWrite() const { return writeMsg; }
+    bool isValidFuncCtrl() const { return funcCtrlValid;  }
     bool isSampler() const {return getFuncId() == SFID::SAMPLER;}
     bool isHDC() const
     {
