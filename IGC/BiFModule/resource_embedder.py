@@ -93,7 +93,7 @@ try:
 
         if embeddedSize > 0:
             outFile.write(',')
-        outFile.write(','.join((('\n        0x' if (embeddedSize + i) % lineSize == 0 else ' 0x') + hexBytes[2*i:2*i+2]) for i in xrange(readSize)))
+        outFile.write(','.join((('\n        0x' if (embeddedSize + i) % lineSize == 0 else ' 0x') + hexBytes[2*i:2*i+2].decode("utf-8")) for i in range(readSize)))
 
         embeddedSize += readSize
         readBytes = inFile.read(chunkSize)
