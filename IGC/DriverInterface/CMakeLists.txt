@@ -28,6 +28,7 @@ set(IGC_BUILD__SRC__DriverInterface
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/MoveStaticAllocas.cpp"
   )
 
+
 if(IGC_BUILD__SPIRV_ENABLED)
   list(APPEND IGC_BUILD__SRC__DriverInterface
       "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/SPIRV/libSPIRV/SPIRVBasicBlock.cpp"
