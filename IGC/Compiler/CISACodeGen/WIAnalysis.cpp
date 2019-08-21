@@ -1092,7 +1092,11 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
         GII_id == GenISAIntrinsic::GenISA_getSR0 ||
         GII_id == GenISAIntrinsic::GenISA_mul_rtz ||
         GII_id == GenISAIntrinsic::GenISA_fma_rtz ||
-        GII_id == GenISAIntrinsic::GenISA_add_rtz)
+        GII_id == GenISAIntrinsic::GenISA_add_rtz ||
+        GII_id == GenISAIntrinsic::GenISA_slice_id ||
+        GII_id == GenISAIntrinsic::GenISA_subslice_id ||
+        GII_id == GenISAIntrinsic::GenISA_eu_id ||
+        GII_id == GenISAIntrinsic::GenISA_eu_thread_id)
     {
         if (intrinsic_name == llvm_input ||
             intrinsic_name == llvm_shaderinputvec)
