@@ -690,10 +690,10 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
                         //
                         addPredSuccEdges(curr_BB, next_BB);
                     }
-                    else if (i->getPredicate() != NULL) // pred means conditional branch
+                    else if (i->getPredicate())
                     {
                         // add fall through edge
-                        addPredSuccEdges(curr_BB, next_BB);
+                        addUniquePredSuccEdges(curr_BB, next_BB);
                     }
                 }    // if (i->opcode()
                 else if (i->opcode() == G4_if || i->opcode() == G4_while ||
@@ -743,7 +743,7 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
                     //
                     // pred means conditional branch
                     //
-                    if (i->getPredicate() != NULL) // need to add fall through edge
+                    if (i->getPredicate() != NULL)
                     {
                         // add fall through edge
                         addPredSuccEdges(curr_BB, next_BB);
@@ -753,7 +753,7 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
                 {
                     // does nothing for unconditional return;
                     // later phase will link the return and the return address
-                    if (i->getPredicate() != NULL) // need to add fall through edge
+                    if (i->getPredicate() != NULL)
                     {
                         // add fall through edge
                         addPredSuccEdges(curr_BB, next_BB);
@@ -765,7 +765,7 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
                 }
                 else if (i->opcode() == G4_pseudo_fret || i->opcode() == G4_pseudo_fc_ret)
                 {
-                    if (i->getPredicate() != NULL)
+                    if (i->getPredicate())
                     {
                         // need to add fall through edge
                         addPredSuccEdges(curr_BB, next_BB);
@@ -777,10 +777,11 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
                     hasSIMDCF = true;
                     addPredSuccEdges(curr_BB, getLabelBB(labelMap, i->asCFInst()->getUipLabelStr()));
 
-                    if (i->getPredicate() != NULL)
+                    if (i->getPredicate())
                     {
-                        // fall through
-                        addPredSuccEdges(curr_BB, next_BB);
+                        // fall through, but check if goto target is same as fall-thru
+                        // FIXME: replace all addPredSuccEdges with addUniquePredSuccEdges?
+                        addUniquePredSuccEdges(curr_BB, next_BB);
                     }
                 }
                 else
@@ -1938,13 +1939,11 @@ void FlowGraph::removeRedundantLabels()
 
             // check if the label is a function label
             unsigned int numNonCallerPreds = 0;
-            BB_LIST_ITER lt = bb->Preds.begin();
-            BB_LIST_ITER ltEnd = bb->Preds.end();
             bool isFuncLabel = true;
             G4_BB* pred_bb = NULL;
-            for (; lt != ltEnd; ++lt)
+            for (auto pred : bb->Preds)
             {
-                if (!((*lt)->isEndWithCall()))
+                if (!pred->isEndWithCall())
                 {
                     if (numNonCallerPreds > 0)
                     {
@@ -1952,11 +1951,11 @@ void FlowGraph::removeRedundantLabels()
                         break;
                     }
                     numNonCallerPreds++;
-                    pred_bb = (*lt);
+                    pred_bb = pred;
                 }
                 else
                 {
-                    G4_INST *i = (*lt)->back();
+                    G4_INST *i = pred->back();
                     if (i->getSrc(0)->isLabel())
                     {
                         if (i->getSrc(0) != removedBlockInst->getLabel())
@@ -1967,7 +1966,7 @@ void FlowGraph::removeRedundantLabels()
                                 break;
                             }
                             numNonCallerPreds++;
-                            pred_bb = (*lt);
+                            pred_bb = pred;
                         }
                     }
                 }
@@ -1989,18 +1988,11 @@ void FlowGraph::removeRedundantLabels()
             G4_Label *succ_label = bb->Succs.front()->front()->getLabel();
 
             // check if the last inst of pred is a control flow inst
-            lt = bb->Preds.begin();
-            for (; lt != bb->Preds.end(); ++lt)
+            for (auto pred : bb->Preds)
             {
-                BB_LIST_ITER jt = (*lt)->Succs.begin();
+                auto jt = std::find(pred->Succs.begin(), pred->Succs.end(), bb);
 
-                for (; jt != (*lt)->Succs.end(); ++jt)
-                {
-                    if ((*jt) == bb) {
-                        break;
-                    }
-                }
-                G4_INST *i = (*lt)->back();
+                G4_INST *i = pred->back();
                 // replace label in instructions
                 if (i->isFlowControl())
                 {
@@ -2009,8 +2001,8 @@ void FlowGraph::removeRedundantLabels()
                         // due to the switchjmp we may have multiple jmpi
                         // at the end of a block.
                         bool foundMatchingJmp = false;
-                        for (INST_LIST::iterator iter = --(*lt)->end();
-                            iter != (*lt)->begin(); --iter)
+                        for (INST_LIST::iterator iter = --pred->end();
+                            iter != pred->begin(); --iter)
                         {
                             i = *iter;
                             if (i->opcode() == G4_jmpi)
@@ -2096,8 +2088,8 @@ void FlowGraph::removeRedundantLabels()
                     }
                 }
 
-                (*lt)->Succs.insert(jt, bb->Succs.front());
-                (*lt)->Succs.erase(jt);
+                pred->Succs.insert(jt, bb->Succs.front());
+                pred->Succs.erase(jt);
 
                 // [Bug1915]: In rare case the precessor may have more than one Succ edge pointing
                 // to the same BB, due to empty block being eliminated.  For example, with
@@ -2114,16 +2106,16 @@ void FlowGraph::removeRedundantLabels()
                 // elsewhere there may be assumptions that if a BB ends with a jump it must have
                 // two successors
                 {
-                    BB_LIST_ITER succs = (*lt)->Succs.begin();
-                    BB_LIST_ITER end = (*lt)->Succs.end();
+                    BB_LIST_ITER succs = pred->Succs.begin();
+                    BB_LIST_ITER end = pred->Succs.end();
                     while (succs != end)
                     {
                         BB_LIST_ITER iter = succs;
                         ++succs;
                         if ((*iter) == bb)
                         {
-                            (*lt)->Succs.insert(iter, bb->Succs.front());
-                            (*lt)->Succs.erase(iter);
+                            pred->Succs.insert(iter, bb->Succs.front());
+                            pred->Succs.erase(iter);
                         }
                     }
                 }
