@@ -85,7 +85,9 @@ private:
         Value* V,
         SmallVector<std::pair<Value*, int>, 16>& EltSrcs);
     Value* removeUndefWrite(Value* StoreVal);
+#ifdef HANDLE_ALLOCA
     void handleAlloca(AllocaInst* AI);
+#endif
     void handleShuffleVector(ShuffleVectorInst* SVI);
 
     void convertCopyBuiltin(CallInst* CI);
@@ -127,10 +129,6 @@ bool AddCopyIntrinsic::runOnFunction(Function& F)
     }
 
     m_changed = false;
-    BasicBlock *EntryBB = &(F.getEntryBlock());
-    BasicBlock::iterator II = EntryBB->begin();
-    BasicBlock::iterator IE = EntryBB->end();
-    BasicBlock::iterator nextII = II;
     for (auto BI = F.begin(), BE = F.end(); BI != BE; ++BI)
     {
         BasicBlock* BB = &*BI;
@@ -369,6 +367,7 @@ Value* AddCopyIntrinsic::removeUndefWrite(Value* V)
     return newVec;
 }
 
+#ifdef HANDLE_ALLOCA
 void  AddCopyIntrinsic::handleAlloca(AllocaInst* AI)
 {
     if (!isCandidate(AI))
@@ -402,6 +401,7 @@ void  AddCopyIntrinsic::handleAlloca(AllocaInst* AI)
         m_changed = true;
     }
 }
+#endif
 
 void AddCopyIntrinsic::handleShuffleVector(ShuffleVectorInst* SVI)
 {

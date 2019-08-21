@@ -2841,7 +2841,7 @@ namespace IGC
         if (!I.isUnconditional())
         {
             Value* cond = I.getCondition();
-            if (GenIntrinsicInst * intrin = dyn_cast<GenIntrinsicInst>(cond,
+            if (dyn_cast<GenIntrinsicInst>(cond,
                 GenISAIntrinsic::GenISA_UpdateDiscardMask))
             {
                 pattern->isDiscardBranch = true;

@@ -102,16 +102,6 @@ namespace
 
     char MergeURBWrites::ID = 0;
 
-
-    /// Returns true if the data is in consecutive dwords and the write can be done
-    /// without channel mask.
-    bool RequiresChannelMask(unsigned int mask)
-    {
-        // if mask contains only consecutive bits (no 'holes') we can issue urb write with no
-        // channel mask.
-        return ((mask + 1) & mask) != 0;
-    }
-
     unsigned int GetChannelMask(CallInst* inst)
     {
         return int_cast<unsigned int>(cast<ConstantInt>(inst->getOperand(1))->getZExtValue());

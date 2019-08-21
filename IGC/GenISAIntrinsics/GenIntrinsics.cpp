@@ -39,6 +39,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/CodeGen/ValueTypes.h>
 #include "common/LLVMWarningsPop.hpp"
 
+#include "../../inc/common/UFO/portable_compiler.h"
+
 #include <cstring>
 
 using namespace llvm;
@@ -57,7 +59,7 @@ ID getIntrinsicForGCCBuiltin(const char *Prefix, const char *BuiltinName);
 
 /// Intrinsic::isOverloaded(ID) - Returns true if the intrinsic can be
 /// overloaded.
-static bool isOverloaded(ID id);
+__unused static bool isOverloaded(ID id);
 
 /// IITDescriptor - This is a type descriptor which explains the type
 /// requirements of an intrinsic.  This is returned by

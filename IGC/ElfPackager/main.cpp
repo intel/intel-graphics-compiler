@@ -315,7 +315,7 @@ int main(int argc, char *argv[])
                 FuncToGlobalsMap[inst->getParent()->getParent()].insert(iterator3.getName());
                 return;
             }
-            else if (auto inst = dyn_cast<GlobalValue>(U))
+            else if (dyn_cast<GlobalValue>(U))
             {
                 return;
             }

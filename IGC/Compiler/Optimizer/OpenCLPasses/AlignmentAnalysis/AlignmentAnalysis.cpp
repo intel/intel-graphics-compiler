@@ -466,7 +466,7 @@ void AlignmentAnalysis::SetInstAlignment(MemMoveInst& I)
 
 unsigned int AlignmentAnalysis::getAlignValue(Value* V) const
 {
-    if (Instruction * inst = dyn_cast<Instruction>(V))
+    if (dyn_cast<Instruction>(V))
     {
         auto iter = m_alignmentMap.find(V);
         if (iter == m_alignmentMap.end())
@@ -478,7 +478,7 @@ unsigned int AlignmentAnalysis::getAlignValue(Value* V) const
 
         return iter->second;
     }
-    else if (Constant * con = dyn_cast<Constant>(V))
+    else if (dyn_cast<Constant>(V))
     {
         if (ConstantInt * constInt = dyn_cast<ConstantInt>(V))
         {

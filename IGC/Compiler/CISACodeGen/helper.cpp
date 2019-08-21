@@ -360,7 +360,7 @@ namespace IGC
             }
             else if (auto allocaInst = dyn_cast<AllocaInst>(baseValue))
             {
-                if (auto md = allocaInst->getMetadata("igc.read_only_array"))
+                if (allocaInst->getMetadata("igc.read_only_array"))
                 {
                     // Found alloca marked as read_only array.
                     srcPtr = baseValue;

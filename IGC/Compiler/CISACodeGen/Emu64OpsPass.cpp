@@ -134,7 +134,6 @@ namespace {
             return VectorType::get(IRB->getInt32Ty(), NumElts * 2);
         }
 
-        bool hasExpandedValues(Value* V) const;
         ValuePair getExpandedValues(Value* V);
         void setExpandedValues(Value* V, Value* Lo, Value* Hi);
 
@@ -496,10 +495,6 @@ bool Emu64Ops::runOnFunction(Function& F) {
     return Changed;
 }
 
-bool Emu64Ops::hasExpandedValues(Value* V) const {
-    return ValueMap.find(V) != ValueMap.end();
-}
-
 ValuePair Emu64Ops::getExpandedValues(Value* V) {
     ValueMapTy::iterator VMI;
     bool New;
@@ -507,14 +502,14 @@ ValuePair Emu64Ops::getExpandedValues(Value* V) {
     if (!New)
         return VMI->second;
 
-    if (ConstantInt * CI = dyn_cast<ConstantInt>(V)) {
+    if (dyn_cast<ConstantInt>(V)) {
         Value* Lo = IRB->CreateTrunc(V, IRB->getInt32Ty());
         Value* Hi = IRB->CreateTrunc(IRB->CreateLShr(V, 32), IRB->getInt32Ty());
         VMI->second = std::make_pair(Lo, Hi);
         return VMI->second;
     }
 
-    if (UndefValue * Undef = dyn_cast<UndefValue>(V)) {
+    if (dyn_cast<UndefValue>(V)) {
         Value* Lo = UndefValue::get(IRB->getInt32Ty());
         Value* Hi = UndefValue::get(IRB->getInt32Ty());
         VMI->second = std::make_pair(Lo, Hi);

@@ -690,7 +690,7 @@ namespace IGC
                 unsigned val = resInfo[extract->getVectorOperand()].info[idx];
                 CalculatedValue[extract] = val;
             }
-            else if (StoreInst * store = dyn_cast<StoreInst>(inst))
+            else if (dyn_cast<StoreInst>(inst))
             {
                 pNewCB[newCBIndex] = (uint)(CalculatedValue[inst->getOperand(0)]);
                 newCBIndex++;

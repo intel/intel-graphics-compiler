@@ -283,7 +283,6 @@ void AddImplicitArgs::updateNewFuncArgs(llvm::Function* pFunc, llvm::Function* p
             std::string str0;
             llvm::raw_string_ostream s(str0);
             currArg->getType()->print(s);
-            StringRef argTypeName = s.str();
 
             BasicBlock &entry = pNewFunc->getEntryBlock();
             newArg = new llvm::BitCastInst(&(*currArg), (*I).getType(), "", &entry.front());
@@ -425,7 +424,6 @@ void AddImplicitArgs::replaceAllUsesWithNewOCLBuiltinFunction(CodeGenContext* ct
                 std::string str0;
                 llvm::raw_string_ostream s(str0);
                 arg->getType()->print(s);
-                StringRef argTypeName = s.str();
 
                 arg = new llvm::BitCastInst(arg, new_arg_iter->getType(), "", cInst);
             }

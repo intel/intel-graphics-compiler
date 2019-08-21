@@ -104,7 +104,7 @@ isOpenCLKernel(SPIRVFunction *BF) {
    return BF->getModule()->isEntryPoint(ExecutionModelKernel, BF->getId());
 }
 
-static void
+__unused static void
 dumpLLVM(Module *M, const std::string &FName) {
   std::error_code EC;
   raw_fd_ostream FS(FName, EC, sys::fs::F_None);
@@ -1956,14 +1956,6 @@ SPIRVToLLVM::postProcessOCL() {
   return true;
 }
 
-static Value* StripAddrspaceCast(Value *pVal)
-{
-    while (Operator::getOpcode(pVal) == Instruction::AddrSpaceCast)
-        pVal = cast<Operator>(pVal)->getOperand(0);
-
-    return pVal;
-}
-
 bool
 SPIRVToLLVM::postProcessFunctionsReturnStruct(Function *F) {
   
@@ -3697,12 +3689,12 @@ SPIRVToLLVM::transKernelMetadata()
         auto &funcInfo = MD.FuncMD[F];
 
         // Generate metadata for initializer
-        if (auto EM = BF->getExecutionMode(ExecutionModeInitializer)) {
+        if (BF->getExecutionMode(ExecutionModeInitializer)) {
             funcInfo.IsInitializer = true;
         }
 
         // Generate metadata for finalizer
-        if (auto EM = BF->getExecutionMode(ExecutionModeFinalizer)) {
+        if (BF->getExecutionMode(ExecutionModeFinalizer)) {
             funcInfo.IsFinalizer = true;
         }
 
@@ -3981,7 +3973,7 @@ SPIRVToLLVM::transCompilerOption() {
   return true;
 }
 
-static void dumpSPIRVBC(const char* fname, const char* data, unsigned int size)
+__unused static void dumpSPIRVBC(const char* fname, const char* data, unsigned int size)
 {
     FILE* fp;
     fp = fopen(fname, "wb");

@@ -375,7 +375,7 @@ void ProgramScopeConstantAnalysis::addData(Constant* initializer,
                 inlineProgramScopeBuffer.insert(inlineProgramScopeBuffer.end(), pointerSize, 0);
             }
         }
-        else if (ConstantPointerNull * CPN = dyn_cast<ConstantPointerNull>(initializer))
+        else if (dyn_cast<ConstantPointerNull>(initializer))
         {
             inlineProgramScopeBuffer.insert(inlineProgramScopeBuffer.end(), pointerSize, 0);
         }
@@ -462,7 +462,7 @@ void ProgramScopeConstantAnalysis::addData(Constant* initializer,
     // If this is an sequential type which is not a CDS or zero, have to collect the values
     // element by element. Note that this is not exclusive with the two cases above, so the 
     // order of ifs is meaningful.
-    else if (CompositeType * cmpType = dyn_cast<CompositeType>(initializer->getType()))
+    else if (dyn_cast<CompositeType>(initializer->getType()))
     {
         const int numElts = initializer->getNumOperands();
         for (int i = 0; i < numElts; ++i)

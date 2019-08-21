@@ -163,8 +163,6 @@ void ThreadCombining::CreateLoopKernel(
     BasicBlock* barrier = BasicBlock::Create(M.getContext(), "", m_kernel);
     BasicBlock* exitBarrierLoop = BasicBlock::Create(M.getContext(), "", m_kernel);
 
-    auto barrierIterator = m_LiveRegistersPerBarrier.begin();
-
     // mainEntry
     builder.SetInsertPoint(mainEntry);
     Value* iterBarriers = builder.CreateAlloca(builder.getInt32Ty(), nullptr, "iterBarriers");

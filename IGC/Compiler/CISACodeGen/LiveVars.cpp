@@ -771,7 +771,7 @@ void LiveVars::mergeUseFrom(Value* V, Value* fromV)
     {
         for (User* user : I->users())
         {
-            if (PHINode * PHI = dyn_cast<PHINode>(user))
+            if (dyn_cast<PHINode>(user))
             {
                 BasicBlock* BB = I->getParent();
                 MarkVirtRegAliveInBlock(LVI, defBB, BB);

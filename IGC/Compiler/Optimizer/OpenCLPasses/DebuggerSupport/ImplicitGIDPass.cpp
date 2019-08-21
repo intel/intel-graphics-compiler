@@ -236,7 +236,6 @@ llvm::DIType* ImplicitGlobalId::getOrCreateIntDIType()
 
 Value* ImplicitGlobalId::CreateGetId(IRBuilder<>& B, GlobalOrLocal wi)
 {
-    const char dimChr = '0';
     const std::string nameCall = std::string("globalId");
     std::string nameFunc;
     if (wi == GlobalOrLocal::Global)

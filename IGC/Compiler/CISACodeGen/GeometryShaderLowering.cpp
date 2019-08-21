@@ -153,45 +153,6 @@ namespace {
         CollectGeometryShaderProperties* m_gsProps;
     };
 
-    /// Returns the position of an attribute within the Vertex Header based on the semantics
-    /// of the attribute.
-    Unit<Element> GetOffsetInHeader(SGVUsage usage)
-    {
-        switch (usage)
-        {
-        case POINT_WIDTH:
-            return Unit<Element>(3);
-        case POSITION_X:
-            return Unit<Element>(4);
-        case POSITION_Y:
-            return Unit<Element>(5);
-        case POSITION_Z:
-            return Unit<Element>(6);
-        case POSITION_W:
-            return Unit<Element>(7);
-        case CLIP_DISTANCE_X:
-            return Unit<Element>(8);
-        case CLIP_DISTANCE_Y:
-            return Unit<Element>(9);
-        case CLIP_DISTANCE_Z:
-            return Unit<Element>(10);
-        case CLIP_DISTANCE_W:
-            return Unit<Element>(11);
-        default:
-            assert(0 && "unknown SGV usage");
-            return Unit<Element>(0);
-        }
-    }
-
-    llvm::Value* CreateImmediate(llvm::Module* pModule, uint immediate)
-    {
-        llvm::Value* pImm =
-            llvm::ConstantInt::get(
-                llvm::Type::getInt32Ty(pModule->getContext()), immediate);
-
-        return pImm;
-    }
-
 } // end of unnamed namespace 
 
 
