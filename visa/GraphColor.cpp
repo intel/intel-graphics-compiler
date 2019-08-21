@@ -10507,6 +10507,18 @@ void GlobalRA::fixAlignment()
         }
     }
 
+    if (getGenxPlatform() == GENX_BDW)
+    {
+        // BDW requires even_word alignment for scalar HF variables
+        for (auto dcl : kernel.Declares)
+        {
+            if (dcl->getElemType() == Type_HF && dcl->getSubRegAlign() == Any)
+            {
+                setSubRegAlign(dcl, Even_Word);
+            }
+        }
+    }
+
     // ToDo: remove these as it should be done by HWConformity
     for (auto BB : kernel.fg)
     {

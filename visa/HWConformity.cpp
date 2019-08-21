@@ -7243,7 +7243,7 @@ void HWConformity::helperGenerateTempDst(
     G4_DstRegRegion *dstRegion = builder.Create_Dst_Opnd_From_Dcl(dcl, hStride);
     inst->setDest(dstRegion);
 
-    RegionDesc* region = builder.createRegionDesc(execSize*hStride, execSize, hStride);
+    RegionDesc* region = execSize == 1 ? builder.getRegionScalar() : builder.createRegionDesc(execSize*hStride, execSize, hStride);
     G4_SrcRegRegion *srcRegion = builder.Create_Src_Opnd_From_Dcl(dcl, region);
 
     //creating a mov from temp dst to final destination using original options of fixed instruction
