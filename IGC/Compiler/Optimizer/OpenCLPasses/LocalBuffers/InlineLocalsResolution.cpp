@@ -338,10 +338,8 @@ void InlineLocalsResolution::collectInfoOnSharedLocalMem(Module& M)
             continue;
         }
 
-        // For each SLM buffer, make it external and disable dso local
-        // to avoid alignment changing by llvm.
-        globalVar->setLinkage(GlobalValue::ExternalLinkage);
-        globalVar->setDSOLocal(false);
+        // For each SLM buffer, set section to avoid alignment changing by llvm.
+        globalVar->setSection("SLMbuffer");
 
         // Find the functions which this globalVar belongs to.... 
         for (Value::user_iterator U = globalVar->user_begin(), UE = globalVar->user_end(); U != UE; ++U)
