@@ -1122,7 +1122,8 @@ namespace IGC
                 break;
             case GenISAIntrinsic::GenISA_URBRead:
             case GenISAIntrinsic::GenISA_URBReadOutput:
-                match = MatchURBRead(*CI);
+                match = MatchURBRead(*CI) ||
+                    MatchSingleInstruction(*CI);
                 break;
             default:
                 match = MatchSingleInstruction(I);
