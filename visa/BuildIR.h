@@ -1222,12 +1222,37 @@ public:
     RegionDesc *getRegionStride2() { return &CanonicalRegionStride2; }
     RegionDesc *getRegionStride4() { return &CanonicalRegionStride4; }
 
-    G4_SendMsgDescriptor* createSendMsgDesc(uint32_t desc,
+    // ToDo: get rid of this version and use the message type specific ones below instead,
+    // so we can avoid having to explicitly create extDesc bits
+    G4_SendMsgDescriptor* createGeneralMsgDesc(uint32_t desc,
         uint32_t extDesc,
         bool isRead,
         bool isWrite,
-        G4_Operand *bti = nullptr,
-        G4_Operand *sti = nullptr);
+        G4_Operand* bti = nullptr,
+        G4_Operand* sti = nullptr);
+
+    G4_SendMsgDescriptor* createReadMsgDesc(
+        SFID sfid,
+        uint32_t desc,
+        G4_Operand* bti = nullptr);
+
+    G4_SendMsgDescriptor* createWriteMsgDesc(
+        SFID sfid,
+        uint32_t desc,
+        int src1Len,
+        G4_Operand* bti = nullptr);
+
+    G4_SendMsgDescriptor* createSyncMsgDesc(
+        SFID sfid,
+        uint32_t desc);
+
+    G4_SendMsgDescriptor* createSampleMsgDesc(
+        uint32_t desc,
+        bool cps,
+        int src1Len,
+        G4_Operand* bti,
+        G4_Operand* sti);
+
     G4_SendMsgDescriptor* createSendMsgDesc(
         SFID sfid,
         uint32_t desc,
@@ -1236,6 +1261,7 @@ public:
         bool isRead,
         bool isWrite,
         G4_Operand *bti);
+
     G4_SendMsgDescriptor* createSendMsgDesc(
         unsigned funcCtrl,
         unsigned regs2rcv,
