@@ -345,15 +345,6 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         return false;
     }
 
-    // If max work group size is set, we need to compile for all requested SIMD modes.
-    // Otherwise, only compile simd8 for subroutines
-    if (ctx->getModuleMetaData()->csInfo.maxWorkGroupSize == 0 &&
-        m_FGA && !m_FGA->getGroup(&F)->isSingle() &&
-        m_SimdMode != SIMDMode::SIMD8)
-    {
-        return false;
-    }
-
     bool isCloned = false;
     if (DebugInfoData::hasDebugInfo(m_currShader))
     {

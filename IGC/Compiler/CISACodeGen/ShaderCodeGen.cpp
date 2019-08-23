@@ -939,13 +939,19 @@ namespace IGC
         if (leastSIMD <= 8)
         {
             AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD8, false);
-            AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD16, (ctx->getModuleMetaData()->csInfo.forcedSIMDSize != 16));
-            AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD32, (ctx->getModuleMetaData()->csInfo.forcedSIMDSize != 32));
+            if (!ctx->m_enableSubroutine)
+            {
+                AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD16, (ctx->getModuleMetaData()->csInfo.forcedSIMDSize != 16));
+                AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD32, (ctx->getModuleMetaData()->csInfo.forcedSIMDSize != 32));
+            }
         }
         else if (leastSIMD <= 16)
         {
             AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD16, false);
-            AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD32, (ctx->getModuleMetaData()->csInfo.forcedSIMDSize != 32));
+            if (!ctx->m_enableSubroutine)
+            {
+                AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD32, (ctx->getModuleMetaData()->csInfo.forcedSIMDSize != 32));
+            }
         }
         else
         {
@@ -956,8 +962,11 @@ namespace IGC
     {
         {
             // The order in which we call AddCodeGenPasses matters, please to not change order
-            AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD32, (ctx->getModuleMetaData()->csInfo.forcedSIMDSize != 32));
-            AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD16, (ctx->getModuleMetaData()->csInfo.forcedSIMDSize != 16));
+            if (!ctx->m_enableSubroutine)
+            {
+                AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD32, (ctx->getModuleMetaData()->csInfo.forcedSIMDSize != 32));
+                AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD16, (ctx->getModuleMetaData()->csInfo.forcedSIMDSize != 16));
+            }
             AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD8, false);
         }
     }
