@@ -6203,9 +6203,9 @@ void GraphColor::saveRegs(
         auto sendSrc2 = builder.createSrcRegRegion(Mod_src_undef, Direct, msgDcl->getRegVar(), 0, 0,
             builder.rgnpool.createRegion(8, 8, 1), Type_UD);
         G4_Imm* descImm = gra.createMsgDesc(owordSize, true, true);
-        auto msgDesc = builder.createWriteMsgDesc(SFID::DP_DC, (uint32_t)descImm->getInt(), messageLength, 
+        uint32_t extDesc = G4_SendMsgDescriptor::createExtDesc(SFID::DP_DC, false, messageLength);
+        auto msgDesc = builder.createSendMsgDesc((uint32_t)descImm->getInt(), extDesc, false, true,
             getScratchSurface());
-
         auto sendInst = builder.Create_SplitSend_Inst(nullptr, postDst, sendSrc1, sendSrc2, execSize, msgDesc,
             InstOpt_WriteEnable, false);
         auto exDescOpnd = sendInst->getMsgExtDescOperand();
@@ -6327,8 +6327,10 @@ void GraphColor::restoreRegs(
             dstDcl->getRegVar()->setPhyReg(regPool.getGreg(startReg), 0);
             G4_DstRegRegion* postDst = builder.createDstRegRegion(Direct, dstDcl->getRegVar(), 0, 0, 1, (execSize > 8) ? Type_UW : Type_UD);
             G4_SrcRegRegion* payload = builder.Create_Src_Opnd_From_Dcl(scratchRegDcl, builder.getRegionStride1());
+            G4_Imm* exDesc = builder.createImm(0xa, Type_UD);
             G4_Imm* desc = gra.createMsgDesc(owordSize, false, false);
-            auto msgDesc = builder.createReadMsgDesc(SFID::DP_DC, (uint32_t)desc->getInt(), getScratchSurface());
+            auto msgDesc = builder.createSendMsgDesc((uint32_t)desc->getInt(), (uint32_t)exDesc->getInt(), true, false,
+                getScratchSurface());
             auto sendInst = builder.Create_SplitSend_Inst(nullptr, postDst, payload, builder.createNullSrc(Type_UD), execSize,
                 msgDesc, InstOpt_WriteEnable, false);
             auto exDescOpnd = sendInst->getMsgExtDescOperand();

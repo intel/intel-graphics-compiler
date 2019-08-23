@@ -570,13 +570,12 @@ void SendFusion::simplifyMsg(INST_LIST_ITER SendIter)
 
     // Need to re-create descriptor for this send
     G4_SendMsgDescriptor* newDesc = Builder->createSendMsgDesc(
-        desc->getFuncId(),
         descImm,
         desc->getExtendedDesc(),
-        desc->extMessageLength(),
         desc->isDataPortRead(),
         desc->isDataPortWrite(),
-        desc->getBti());
+        desc->getBti(),
+        desc->getSti()); // should be nullptr
     Send->setMsgDesc(newDesc);
 
     // If addI or movI is dead, remove them.

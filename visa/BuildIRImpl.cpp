@@ -114,16 +114,15 @@ RegionDesc* RegionPool::createRegion(uint16_t vstride, uint16_t width, uint16_t 
     return rd;
 }
 
+
 /*
     Used in IR_Builder::translateVISARawSendInst. All the bits in des and extDesc are already set.
 */
-G4_SendMsgDescriptor* IR_Builder::createGeneralMsgDesc(
-    uint32_t desc,
-    uint32_t extDesc,
-    bool isRead,
-    bool isWrite,
-    G4_Operand* bti,
-    G4_Operand* sti)
+G4_SendMsgDescriptor* IR_Builder::createSendMsgDesc(uint32_t desc, uint32_t extDesc,
+                        bool isRead,
+                        bool isWrite,
+                        G4_Operand *bti,
+                        G4_Operand *sti)
 {
     return new (mem) G4_SendMsgDescriptor(desc, extDesc, isRead, isWrite, bti, sti);
 }
@@ -157,51 +156,6 @@ G4_SendMsgDescriptor* IR_Builder::createSendMsgDesc(
         funcCtrl, regs2rcv, regs2snd, SFIDtoInt(funcID), eot, (uint16_t) extMsgLength,
         extFuncCtrl, isRead, isWrite, bti, sti, *this);
     return msgDesc;
-}
-
-// shorthand for read msg desc. Note that extDesc still needs to be explicitly created,
-// SendMsgDesc ctor does not program all the bits
-G4_SendMsgDescriptor* IR_Builder::createReadMsgDesc(SFID sfid,
-    uint32_t desc,
-    G4_Operand* bti)
-{
-    //ToDo: move extDesc into SendMsgDesc ctor
-    uint32_t extDesc = G4_SendMsgDescriptor::createExtDesc(sfid);
-    return new (mem) G4_SendMsgDescriptor(sfid, desc, extDesc, 0, true, false, bti);
-}
-
-G4_SendMsgDescriptor* IR_Builder::createWriteMsgDesc(SFID sfid,
-    uint32_t desc,
-    int src1Len,
-    G4_Operand* bti)
-{
-    //ToDo: move extDesc into SendMsgDesc ctor
-    uint32_t extDesc = G4_SendMsgDescriptor::createExtDesc(sfid, false, src1Len);
-    return new (mem) G4_SendMsgDescriptor(sfid, desc, extDesc, src1Len, false, true, bti);
-}
-
-G4_SendMsgDescriptor* IR_Builder::createSyncMsgDesc(SFID sfid, uint32_t desc)
-{
-    //ToDo: move extDesc into SendMsgDesc ctor
-    uint32_t extDesc = G4_SendMsgDescriptor::createExtDesc(sfid);
-    return new (mem) G4_SendMsgDescriptor(sfid, desc, extDesc, 0, true, true, nullptr);
-}
-
-G4_SendMsgDescriptor* IR_Builder::createSampleMsgDesc(
-    uint32_t desc,
-    bool cps,
-    int src1Len,
-    G4_Operand* bti,
-    G4_Operand* sti)
-{
-#define CPS_LOD_COMPENSATION_ENABLE 11
-
-    uint32_t extDesc = G4_SendMsgDescriptor::createExtDesc(SFID::SAMPLER, false, src1Len);
-    if (cps)
-    {
-        extDesc |= 1 << CPS_LOD_COMPENSATION_ENABLE;
-    }
-    return new (mem) G4_SendMsgDescriptor(desc, extDesc, true, false, bti, sti);
 }
 
 G4_Operand* IR_Builder::emitSampleIndexGE16(

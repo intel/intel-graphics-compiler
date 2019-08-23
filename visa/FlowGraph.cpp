@@ -1055,7 +1055,7 @@ void G4_BB::addSamplerFlushBeforeEOT()
     G4_SrcRegRegion* sendMsgOpnd = builder->Create_Src_Opnd_From_Dcl(
         builder->getBuiltinR0(),
         builder->getRegionStride1());
-    auto msgDesc = builder->createSyncMsgDesc(SFID::SAMPLER, desc);
+    auto msgDesc = builder->createSendMsgDesc(desc, SFIDtoInt(SFID::SAMPLER), true, true);
     G4_INST* samplerFlushInst = builder->createSendInst(nullptr, G4_send,
         8, builder->createNullDst(Type_UD), sendMsgOpnd,
         builder->createImm(desc, Type_UD),
@@ -3850,7 +3850,7 @@ void G4_BB::addEOTSend(G4_INST* lastInst)
 
     G4_DstRegRegion *sendDst = builder->createNullDst(Type_UD);
 
-    auto msgDesc = builder->createGeneralMsgDesc(desc, exdesc, false, true);
+    auto msgDesc = builder->createSendMsgDesc(desc, exdesc, false, true);
     G4_INST* sendInst = builder->createSendInst(
         NULL,
         G4_send,
