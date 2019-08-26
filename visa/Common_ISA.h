@@ -152,7 +152,8 @@ typedef enum {
     LOCAL_SIZE              = 0x1,
     GROUP_COUNT             = 0x2,
     LOCAL_ID                = 0x3,
-    IMPLICIT_INPUT_COUNT    = 0x4
+    PSEUDO_INPUT            = 0x10,
+    IMPLICIT_INPUT_COUNT    = 0x5
 } Common_ISA_Implicit_Input_Kind;
 
 extern const char * implictKindStrings[IMPLICIT_INPUT_COUNT];
@@ -346,6 +347,7 @@ typedef struct {
     //   0x01 local size (3 x ud)
     //   0x02 group count (3 x ud)
     //   0x03 local id (3 x ud)
+    //   0x10 pseudo_input
     //   others, reserved.
     uint8_t kind;
     uint32_t index;
@@ -365,14 +367,24 @@ typedef struct {
     }
     uint8_t getImplicitKind() const
     {
-       return kind >> 3;
+        return kind >> 3;
     }
-    std::string getImplicitKindString() const
+    static bool isPseudoInput(uint8_t kind)
     {
-        uint32_t kind = getImplicitKind();
+        return kind == PSEUDO_INPUT;
+    }
+    bool isPseudoInput() const
+    {
+        return isPseudoInput(getImplicitKind());
+    }
+    static std::string getImplicitKindString(uint16_t kind)
+    {
         std::string kindString = ".implicit_";
-
-        if (kind >= IMPLICIT_INPUT_COUNT)
+        if (kind == PSEUDO_INPUT)
+        {
+            kindString.append(implictKindStrings[4]);
+        }
+        else if (kind >= IMPLICIT_INPUT_COUNT)
         {
             kindString.append("UNDEFINED_");
             kindString.append(patch::to_string(kind));
@@ -381,8 +393,12 @@ typedef struct {
         {
             kindString.append(implictKindStrings[kind]);
         }
-
         return kindString;
+    }
+    std::string getImplicitKindString() const
+    {
+        uint32_t kind = getImplicitKind();
+        return getImplicitKindString(kind);
     }
 } input_info_t;
 

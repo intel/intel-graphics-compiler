@@ -30,9 +30,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "VISADefines.h"
 
 #define ALLOC_ASSERT(X)      \
-    if (X == NULL) return 1; \
+    if (X == NULL) return 1;
 
-const char * implictKindStrings[IMPLICIT_INPUT_COUNT] = { "EXPLICIT", "LOCAL_SIZE", "GROUP_COUNT", "LOCAL_ID" };
+const char *implictKindStrings[IMPLICIT_INPUT_COUNT] = {
+    "EXPLICIT", "LOCAL_SIZE", "GROUP_COUNT", "LOCAL_ID", "PSEUDO_INPUT"};
 
 const char* Rel_op_str[ISA_CMP_UNDEF + 1] =
 {

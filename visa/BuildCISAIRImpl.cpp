@@ -1069,7 +1069,7 @@ bool CISA_IR_Builder::CISA_implicit_input_directive(char * argName, char *varNam
         auto implicitInputName = implicitArgName.substr(strlen(".implicit_"), implicitArgName.length());
         for (; numVal < IMPLICIT_INPUT_COUNT; ++numVal)
         {
-            if (!strcmp(implicitInputName.c_str(), implictKindStrings[numVal]))
+            if (!implicitInputName.compare(input_info_t::getImplicitKindString(numVal)))
             {
                 break;
             }
