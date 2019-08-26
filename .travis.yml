@@ -1,0 +1,51 @@
+language: cpp
+
+os:
+  - linux
+
+before_install:
+  - git clone -b ocl-open-80 https://github.com/intel/opencl-clang opencl-clang
+
+# Use Ubuntu 16.04 LTS (Xenial) as the Linux testing environment.
+dist: xenial
+
+git:
+  depth: 1
+
+branches:
+  only:
+    - master
+
+env:
+  matrix:
+    - BUILD_TYPE=Release
+
+addons:
+  apt:
+    sources:
+      - sourceline: 'deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-8 main'
+        key_url: 'https://apt.llvm.org/llvm-snapshot.gpg.key'
+      - ubuntu-toolchain-r-test
+    packages:
+      - llvm-8-tools
+      - llvm-8-dev
+      - libclang-8-dev
+      - clang-8
+      - clang-tools-8
+
+install:
+  - export TARBALL1=SPIRV-LLVM-Translator-v8.0.1-2-linux-${BUILD_TYPE}.zip
+  - wget https://github.com/KhronosGroup/SPIRV-LLVM-Translator/releases/download/v8.0.1-2/${TARBALL1} -O /tmp/${TARBALL1}
+  - unzip /tmp/${TARBALL1} -d spirv-llvm-translator
+
+compiler:
+  - gcc
+
+script:
+  - mkdir opencl-clang/build && cd opencl-clang/build
+  - cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DLLVM_NO_DEAD_STRIP=ON -DLLVMSPIRV_INCLUDED_IN_LLVM=OFF -DSPIRV_TRANSLATOR_DIR=../spirv-llvm-translator ..
+  - sudo make install
+  - cd ../..
+  - mkdir build && cd build
+  - cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DCMAKE_FIND_DEBUG_MODE=ON -DIGC_PREFERRED_LLVM_VERSION=8 -DCCLANG_FROM_SYSTEM=TRUE ../IGC
+  - make -j`nproc`
