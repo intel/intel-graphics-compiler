@@ -8080,8 +8080,6 @@ public:
         desc.layout.resLen = 1;
         desc.layout.msgLen = 1;
 
-        uint32_t extDesc = G4_SendMsgDescriptor::createExtDesc(SFID::DP_DC);
-
         for (auto bb : kernel.fg)
         {
             if (bb->isLastInstEOT())
@@ -8092,7 +8090,7 @@ public:
                     // an HDC fence is more efficient in this case
                     // fence with commit enable
                     int fenceDesc = G4_SendMsgDescriptor::createDesc((0x7 << 14) | (1 << 13), true, 1, 1);
-                    auto msgDesc = builder.createSendMsgDesc(fenceDesc, extDesc, true, true);
+                    auto msgDesc = builder.createSyncMsgDesc(SFID::DP_DC, fenceDesc);
                     auto src = builder.Create_Src_Opnd_From_Dcl(builder.getBuiltinR0(), builder.getRegionStride1());
                     auto dst = builder.Create_Dst_Opnd_From_Dcl(builder.getBuiltinR0(), 1);
                     G4_INST* inst = builder.createSendInst(nullptr, G4_send, 8, dst, src,
@@ -8102,7 +8100,7 @@ public:
                 else
                 {
                     // insert a dumy scratch read
-                    auto msgDesc = builder.createSendMsgDesc(desc.value, extDesc, true, false);
+                    auto msgDesc = builder.createReadMsgDesc(SFID::DP_DC, desc.value);
                     auto src = builder.Create_Src_Opnd_From_Dcl(builder.getBuiltinR0(), builder.getRegionStride1());
                     // We can use any dst that does not conflcit with EOT src, which must be between r112-r127
                     auto dstDcl = builder.createHardwiredDeclare(8, Type_UD, 1, 0);

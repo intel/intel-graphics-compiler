@@ -1839,7 +1839,6 @@ void IR_Builder::generateBarrierSend()
 {
 
 
-    int exdesc = SFIDtoInt(SFID::GATEWAY);
     // 1 message length, 0 response length, no header, no ack
     int desc = (0x1 << 25) + 0x4;
 
@@ -1874,7 +1873,7 @@ void IR_Builder::generateBarrierSend()
         0);
 
     // Generate the barrier send message
-    auto msgDesc = createSendMsgDesc(desc, exdesc, true, true);
+    auto msgDesc = createSyncMsgDesc(SFID::GATEWAY, desc);
     createSendInst(
         NULL,
         G4_send,
@@ -1922,8 +1921,8 @@ int IR_Builder::translateVISASyncInst(ISA_Opcode opcode, unsigned int mask)
             G4_DstRegRegion* sendDstOpnd = Create_Dst_Opnd_From_Dcl( dstDcl, 1);
             G4_SrcRegRegion* sendMsgOpnd = Create_Src_Opnd_From_Dcl( dcl, getRegionStride1());
 
-            auto msgDesc = createSendMsgDesc(desc, SFIDtoInt(SFID::SAMPLER), true, true);
-            createSendInst( NULL, G4_send, 8, sendDstOpnd, sendMsgOpnd,
+            auto msgDesc = createSyncMsgDesc(SFID::SAMPLER, desc);
+            createSendInst(nullptr, G4_send, 8, sendDstOpnd, sendMsgOpnd,
                 createImm(desc, Type_UD), 0, msgDesc, 0);
 
             G4_SrcRegRegion* moveSrcOpnd = createSrcRegRegion(Mod_src_undef, Direct, dstDcl->getRegVar(), 0, 0, getRegionStride1(), Type_UD);
@@ -6007,7 +6006,7 @@ int IR_Builder::translateVISARawSendInst(G4_Predicate *predOpnd, Common_ISA_Exec
     {
         desc = G4_SendMsgDescriptor::createDesc(0, false, numSrc, numDst);
     }
-    G4_SendMsgDescriptor *sendMsgDesc = createSendMsgDesc(desc, exDesc, isRead, isWrite);
+    G4_SendMsgDescriptor *sendMsgDesc = createGeneralMsgDesc(desc, exDesc, isRead, isWrite);
 
     // sanity check on srcLen/dstLen
     MUST_BE_TRUE(sendMsgDesc->MessageLength() <= numSrc, "message length mismatch for raw send");
@@ -8373,7 +8372,7 @@ int IR_Builder::translateVISARTWrite3DInst(
                 uint32_t desc = G4_SendMsgDescriptor::createDesc(fc, false, numRows, 0);
                 uint32_t extDesc = G4_SendMsgDescriptor::createMRTExtDesc(cntrls.s0aPresent, RTIndex,
                     false, 0);
-                msgDesc = createSendMsgDesc(desc, extDesc, false, true, surface);
+                msgDesc = createGeneralMsgDesc(desc, extDesc, false, true, surface);
 
                 if (!canEncodeFullExtDesc())
                 {
@@ -8510,8 +8509,6 @@ static void checkCPSEnable(VISASampler3DSubOpCode op,
                 "CPD LOD Compensation Enable only available for "
                 "sample, sample_b, sample_bc, sample_c and LOD");
 }
-
-#define CPS_LOD_COMPENSATION_ENABLE 11
 
 static G4_Operand* createSampleHeader(IR_Builder* builder, G4_Declare* header, VISASampler3DSubOpCode actualop,
     bool pixelNullMask, G4_Operand* aoffimmi, ChannelMask srcChannel, G4_Operand* sampler)
@@ -8722,14 +8719,12 @@ int IR_Builder::splitSampleInst(VISASampler3DSubOpCode actualop,
 
     uint32_t fc = createSamplerMsgDesc(actualop, execSize, isHalfReturn, halfInput);
     uint32_t desc = G4_SendMsgDescriptor::createDesc(fc, useHeader, numRows, responseLength);
-    uint32_t extDesc = G4_SendMsgDescriptor::createExtDesc(SFID::SAMPLER);
 
     if (cpsEnable)
     {
         checkCPSEnable(actualop, responseLength, 8);
-        extDesc |= (1 << CPS_LOD_COMPENSATION_ENABLE);
     }
-    G4_SendMsgDescriptor *msgDesc = createSendMsgDesc(desc, extDesc, true, false, surface, sampler);
+    G4_SendMsgDescriptor *msgDesc = createSampleMsgDesc(desc, cpsEnable, 0, surface, sampler);
 
     G4_InstSend* sendInst = nullptr;
     bool forceSplitSend = ForceSplitSend(*this, surface);
@@ -8883,7 +8878,7 @@ int IR_Builder::splitSampleInst(VISASampler3DSubOpCode actualop,
                 0);
         }
 
-        G4_SendMsgDescriptor *msgDesc2 = createSendMsgDesc(desc, extDesc, true, false, surface2, sampler2);
+        G4_SendMsgDescriptor *msgDesc2 = createSampleMsgDesc(desc, cpsEnable, 0, surface2, sampler2);
         msgDesc2->setHeaderPresent(useHeader);
 
         if (forceSplitSend)
@@ -9206,24 +9201,14 @@ int IR_Builder::translateVISASampler3DInst(
     if (msgs[1] == 0 && !forceSplitSend)
     {
         ASSERT_USER(sizes[1] == 0, "Expect the 2nd part of the payload has zero size!");
-        uint32_t extDesc = G4_SendMsgDescriptor::createExtDesc(SFID::SAMPLER);
-        if (cpsEnable)
-        {
-            extDesc |= (1 << CPS_LOD_COMPENSATION_ENABLE);
-        }
-        G4_SendMsgDescriptor *msgDesc = createSendMsgDesc(desc, extDesc, true, false, surface, samplerIdx);
+        G4_SendMsgDescriptor *msgDesc = createSampleMsgDesc(desc, cpsEnable, 0, surface, samplerIdx);
 
         sendInst = Create_Send_Inst_For_CISA(pred, dst, msgs[0], execSize,
                                               msgDesc, instOpt, false);
     }
     else
     {
-        uint32_t extDesc = G4_SendMsgDescriptor::createExtDesc(SFID::SAMPLER, false, sizes[1]);
-        if (cpsEnable)
-        {
-            extDesc |= (1 << CPS_LOD_COMPENSATION_ENABLE);
-        }
-        G4_SendMsgDescriptor *msgDesc = createSendMsgDesc(desc, extDesc, true, false, surface, samplerIdx);
+        G4_SendMsgDescriptor *msgDesc = createSampleMsgDesc(desc, cpsEnable, sizes[1], surface, samplerIdx);
         sendInst = Create_SplitSend_Inst(pred, dst, msgs[0], msgs[1],
             execSize, msgDesc, instOpt, false);
     }

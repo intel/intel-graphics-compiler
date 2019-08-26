@@ -932,8 +932,9 @@ namespace vISA
                 0, 1, samplerDst->getElemType());
 
             auto dstMsgDesc = dstInst->getMsgDesc();
-            G4_SendMsgDescriptor* newMsgDesc = kernel.fg.builder->createSendMsgDesc(dstMsgDesc->getDesc(), dstMsgDesc->getExtendedDesc(),
-                dstMsgDesc->isDataPortRead(), dstMsgDesc->isDataPortWrite(), kernel.fg.builder->duplicateOperand(dstMsgDesc->getBti()),
+            auto newMsgDesc = kernel.fg.builder->createGeneralMsgDesc(dstMsgDesc->getDesc(), 
+                dstMsgDesc->getExtendedDesc(), dstMsgDesc->isDataPortRead(), dstMsgDesc->isDataPortWrite(), 
+                kernel.fg.builder->duplicateOperand(dstMsgDesc->getBti()),
                 kernel.fg.builder->duplicateOperand(dstMsgDesc->getSti()));
 
             auto dupOp = kernel.fg.builder->createSplitSendInst(nullptr, dstInst->opcode(), dstInst->getExecSize(), samplerDstRgn,
