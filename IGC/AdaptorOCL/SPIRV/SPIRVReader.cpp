@@ -1552,7 +1552,7 @@ SPIRVToLLVM::transLinkageType(const SPIRVValue* V) {
         // Tentative definition
         return GlobalValue::CommonLinkage;
     }
-    return GlobalValue::LinkOnceODRLinkage;
+    return GlobalValue::ExternalLinkage;
   }
 }
 
