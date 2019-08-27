@@ -139,7 +139,7 @@ bool ProgramScopeConstantResolution::runOnModule(Module& M)
         }
 
         // If global variables are relocated it doesnt require implicit args
-        if (IGC_IS_FLAG_ENABLED(EnableGlobalRelocation))
+        if (modMD->compOpt.EnableGlobalRelocation)
         {
             continue;
         }

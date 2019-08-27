@@ -71,10 +71,13 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
     LLVMContext& C = M.getContext();
     m_DL = &M.getDataLayout();
 
+    ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+    bool EnableGlobalRelocation = modMD->compOpt.EnableGlobalRelocation;
+
     for (Module::global_iterator I = M.global_begin(), E = M.global_end(); I != E; ++I)
     {
         GlobalVariable* globalVar = &(*I);
-        bool useGlobalRelocation = IGC_IS_FLAG_ENABLED(EnableGlobalRelocation) && (globalVar->hasExternalLinkage() || globalVar->hasCommonLinkage());
+        bool useGlobalRelocation = EnableGlobalRelocation && (globalVar->hasExternalLinkage() || globalVar->hasCommonLinkage());
 
         PointerType* ptrType = cast<PointerType>(globalVar->getType());
         assert(ptrType && "The type of a global variable must be a pointer type");
@@ -168,8 +171,8 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
         // constant is used in the kernel; for example, a global buffer
         // may contain pointers that in turn point into the constant
         // address space).
-        // Don't need implicit args for global relocation
-        if (IGC_IS_FLAG_DISABLED(EnableGlobalRelocation))
+        // Don't add implicit arg if relocating the constant buffer address
+        if (!EnableGlobalRelocation)
         {
             for (auto& pFunc : M)
             {
@@ -180,7 +183,6 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
                 ImplicitArgs::addImplicitArgs(pFunc, implicitArgs, mdUtils);
             }
         }
-
         mdUtils->save(C);
     }
 
@@ -195,8 +197,8 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
         ilpsb.alignment = globalBufferAlignment;
         modMd->inlineGlobalBuffers.push_back(ilpsb);
 
-        // Don't need implicit args for global relocation
-        if (IGC_IS_FLAG_DISABLED(EnableGlobalRelocation))
+        // Don't add implicit arg if relocating the global buffer address
+        if (!EnableGlobalRelocation)
         {
             for (auto& pFunc : M)
             {
@@ -207,7 +209,6 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
                 ImplicitArgs::addImplicitArgs(pFunc, implicitArgs, mdUtils);
             }
         }
-
         mdUtils->save(C);
     }
 

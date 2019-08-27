@@ -454,7 +454,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
             }
         }
     }
-    if (IGC_IS_FLAG_ENABLED(EnableGlobalRelocation))
+    if (m_moduleMD->compOpt.EnableGlobalRelocation)
     {
         Module* pModule = F.getParent();
         for (auto gi = pModule->global_begin(), ge = pModule->global_end(); gi != ge; gi++)

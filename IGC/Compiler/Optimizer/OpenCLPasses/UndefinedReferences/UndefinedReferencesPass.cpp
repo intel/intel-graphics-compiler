@@ -83,8 +83,7 @@ static bool ExistUndefinedReferencesInModule(Module& module, std::string& errorM
         // Increment the iterator before attempting to remove a global variable
         GVarIter++;
 
-        if (IGC_IS_FLAG_ENABLED(EnableGlobalRelocation) &&
-            (pGVar->hasAtLeastLocalUnnamedAddr() == false) &&
+        if ((pGVar->hasAtLeastLocalUnnamedAddr() == false) &&
             (pGVar->hasExternalLinkage() || pGVar->hasCommonLinkage()))
         {
             continue;

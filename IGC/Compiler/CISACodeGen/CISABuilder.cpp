@@ -4464,7 +4464,7 @@ namespace IGC
             tableEntries += funcsToExport.size();
         }
 
-        if (IGC_IS_FLAG_ENABLED(EnableGlobalRelocation))
+        if (modMD->compOpt.EnableGlobalRelocation)
         {
             tableEntries += modMD->inlineProgramScopeOffsets.size();
         }
@@ -4508,7 +4508,7 @@ namespace IGC
                 }
             }
 
-            if (IGC_IS_FLAG_ENABLED(EnableGlobalRelocation))
+            if (modMD->compOpt.EnableGlobalRelocation)
             {
                 // Export global symbols
                 for (auto global : modMD->inlineProgramScopeOffsets)
@@ -4533,8 +4533,9 @@ namespace IGC
         buffer = nullptr;
         bufferSize = 0;
         tableEntries = 0;
+        ModuleMetaData* modMD = m_program->GetContext()->getModuleMetaData();
 
-        if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer) || IGC_IS_FLAG_ENABLED(EnableGlobalRelocation))
+        if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer) || modMD->compOpt.EnableGlobalRelocation)
         {
             // vISA will directly return the buffer with GenRelocEntry layout
             V(vMainKernel->GetGenRelocEntryBuffer(buffer, bufferSize, tableEntries));
