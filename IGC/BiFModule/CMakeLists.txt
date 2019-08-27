@@ -39,19 +39,20 @@ endif()
 # Order of chosing way how to take opencl-clang
 #1. CCLANG_FROM_SYSTEM - use installed on system opencl-clang toolchain
 #2. CCLANG_BUILD_PREBUILDS - use prebuilded opencl-clang toolchain
+#   CCLANG_BUILD_PREBUILDS_DIR - set path to prebuilt cclang folder
 #3. CCLANG_BUILD_INTREE_LLVM - use sources of opencl-clang toolchain
 
 find_library(CCLANG_FROM_SYSTEM ${COMMON_CLANG_LIBRARY_NAME})
 
 ### Check if user manual setup some of flag
-if(NOT DEFINED CCLANG_BUILD_PREBUILDS)
+if(NOT CCLANG_BUILD_PREBUILDS)
   set(CCLANG_BUILD_PREBUILDS FALSE)
 else()
   set(CCLANG_FROM_SYSTEM FALSE)
   set(CCLANG_BUILD_INTREE_LLVM FALSE)
 endif()
 
-if(NOT DEFINED CCLANG_BUILD_INTREE_LLVM)
+if(NOT CCLANG_BUILD_INTREE_LLVM)
   set(CCLANG_BUILD_INTREE_LLVM FALSE)
 else()
   set(CCLANG_BUILD_PREBUILDS FALSE)
@@ -61,7 +62,7 @@ endif()
 
 ### Check by order first available way to link with opencl-clang
 if(NOT CCLANG_FROM_SYSTEM)
-  if(NOT DEFINED CCLANG_BUILD_PREBUILDS_DIR)
+  if(NOT CCLANG_BUILD_PREBUILDS_DIR)
     # Detect CPU architecture
     igc_arch_get_cpu(cpuSuffix)
     set(CCLANG_BUILD_PREBUILDS_DIR "${IGC_BUILD__GFX_DEV_SRC_DIR}/../../prebuild-opencl-clang/Release/${cpuSuffix}/")
