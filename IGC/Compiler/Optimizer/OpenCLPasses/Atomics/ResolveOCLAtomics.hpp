@@ -52,68 +52,68 @@ namespace IGC
     class ResolveOCLAtomics : public llvm::ModulePass, public llvm::InstVisitor<ResolveOCLAtomics>
     {
     public:
-    // Pass identification, replacement for typeid
-    static char ID;
+        // Pass identification, replacement for typeid
+        static char ID;
 
-    /// @brief  Constructor
-    ResolveOCLAtomics();
+        /// @brief  Constructor
+        ResolveOCLAtomics();
 
-    /// @brief  Destructor
-    ~ResolveOCLAtomics() {}
+        /// @brief  Destructor
+        ~ResolveOCLAtomics() {}
 
-    /// @brief  Provides name of pass
-    virtual llvm::StringRef getPassName() const override
-    {
-        return "ResolveOCLAtomics";
-    }
+        /// @brief  Provides name of pass
+        virtual llvm::StringRef getPassName() const override
+        {
+            return "ResolveOCLAtomics";
+        }
 
-    // Entry point of the pass.
+        // Entry point of the pass.
         virtual bool runOnModule(llvm::Module& M) override;
 
-    // Call instructions visitor.
+        // Call instructions visitor.
         void visitCallInst(llvm::CallInst& callInst);
 
-    static const unsigned int ATTR_BUFFER_TYPE_SHIFT = 8;
+        static const unsigned int ATTR_BUFFER_TYPE_SHIFT = 8;
 
     protected:
         llvm::Module* m_pModule;
         llvm::IntegerType* m_Int32Ty;
-    bool               m_64bitPointer;
- 
-    // A map that keeps attributes for each "__builtin_IB_atomic_*" function name.
-    std::map<llvm::StringRef, OCLAtomicAttrs>  m_AtomicDescMap;
+        bool               m_64bitPointer;
 
-    void initResolveOCLAtomics();
+        // A map that keeps attributes for each "__builtin_IB_atomic_*" function name.
+        std::map<llvm::StringRef, OCLAtomicAttrs>  m_AtomicDescMap;
 
-    /// @brief    Packs the given atomic operation and buffer type into "attributes" integer.
-    /// @param    op        Atomic operation
-    /// @param    bufType   Buffer Type
-    /// @returns  Computed "attributes" integer.
-    OCLAtomicAttrs genAtomicAttrs(AtomicOp op, BufferType bufType);
+        void initResolveOCLAtomics();
 
-    /// @brief  Get the atomic operation for atomic function name.
-    /// @param    name    The name of atomic intrinsic.
-    /// @returns  The atomic operation.
-    AtomicOp       getAtomicOp(llvm::StringRef name);
+        /// @brief    Packs the given atomic operation and buffer type into "attributes" integer.
+        /// @param    op        Atomic operation
+        /// @param    bufType   Buffer Type
+        /// @returns  Computed "attributes" integer.
+        OCLAtomicAttrs genAtomicAttrs(AtomicOp op, BufferType bufType);
 
-    /// @brief  Get the buffer type for atomic function name.
-    /// @param    name    The name of atomic intrinsic.
-    /// @returns  The buffer type.
-    BufferType     getBufType(llvm::StringRef name);
+        /// @brief  Get the atomic operation for atomic function name.
+        /// @param    name    The name of atomic intrinsic.
+        /// @returns  The atomic operation.
+        AtomicOp       getAtomicOp(llvm::StringRef name);
 
-    /// @brief  Initialize the "atomic name <--> attributes" map.
-    void           initOCLAtomicsMap();
+        /// @brief  Get the buffer type for atomic function name.
+        /// @param    name    The name of atomic intrinsic.
+        /// @returns  The buffer type.
+        BufferType     getBufType(llvm::StringRef name);
 
-    /// @brief  Replace the "__builtin_IB_atomic_*" call with a call to GenISA atomic intrinsic.
-    /// @param    callInst  call to "__builtin_IB_atomic_*" function.
-    /// @param    op        atomic operation.
-    /// @param    bufType   buffer type.
+        /// @brief  Initialize the "atomic name <--> attributes" map.
+        void           initOCLAtomicsMap();
+
+        /// @brief  Replace the "__builtin_IB_atomic_*" call with a call to GenISA atomic intrinsic.
+        /// @param    callInst  call to "__builtin_IB_atomic_*" function.
+        /// @param    op        atomic operation.
+        /// @param    bufType   buffer type.
         void           processOCLAtomic(llvm::CallInst& callInst, AtomicOp op, BufferType bufType);
 
-    /// @brief  Generates a call to "GenISA_GetBufferPtr" intrinsic.
-    /// @param    callInst   call instruction to "__builtin_IB_atomic_*" built-in function.
-    /// @param    bufType    corresponding buffer type.
-    /// @returns  call instruction to generated GenISA_GetBufferPtr.
+        /// @brief  Generates a call to "GenISA_GetBufferPtr" intrinsic.
+        /// @param    callInst   call instruction to "__builtin_IB_atomic_*" built-in function.
+        /// @param    bufType    corresponding buffer type.
+        /// @returns  call instruction to generated GenISA_GetBufferPtr.
         llvm::CallInst* genGetBufferPtr(llvm::CallInst& callInst, BufferType bufType);
 
     /// @brief  Replace the "__builtin_IB_get_local_lock" call with a pointer to a local memory variable.

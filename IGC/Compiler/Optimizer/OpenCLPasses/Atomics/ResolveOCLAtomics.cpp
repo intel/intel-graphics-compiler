@@ -58,7 +58,7 @@ ResolveOCLAtomics::ResolveOCLAtomics() : ModulePass(ID)
 }
 
 OCLAtomicAttrs ResolveOCLAtomics::genAtomicAttrs(AtomicOp   op,
-                                                 BufferType bufType)
+    BufferType bufType)
 {
     //              bufType
     //                 |
@@ -95,7 +95,7 @@ void ResolveOCLAtomics::initOCLAtomicsMap()
 
 bool ResolveOCLAtomics::runOnModule(Module& M)
 {
-    m_pModule  = &M;
+    m_pModule = &M;
     m_Int32Ty = Type::getInt32Ty(m_pModule->getContext());
 
     int pointerSize = M.getDataLayout().getPointerSizeInBits();
@@ -109,7 +109,7 @@ bool ResolveOCLAtomics::runOnModule(Module& M)
     {
         m_64bitPointer = false;
     }
-    
+
     m_changed = false;
 
     // Visit all call instuctions in the function F.
@@ -263,13 +263,13 @@ CallInst* ResolveOCLAtomics::genGetBufferPtr(CallInst& callInst, BufferType bufT
     }
     Type* ptrType = PointerType::get(m_Int32Ty, addressSpace);
     Function* getBufferPtr = GenISAIntrinsic::getDeclaration(m_pModule, GenISAIntrinsic::GenISA_GetBufferPtr, ptrType);
-    
+
     // Generate a call to GenISA.GetBufferPtr intrinsic:
     //   %base_ptr = call float* @llvm.GenISA.GetBufferPtr(i32 %bufIdx, i32 %type)
     llvm::SmallVector<Value*, 2> getBufferPtrArgs;
     getBufferPtrArgs.push_back(bufIndexVal);
     getBufferPtrArgs.push_back(bufTypeVal);
-    
+
     return CallInst::Create(getBufferPtr, getBufferPtrArgs, callInst.getName(), &callInst);
 }
 
