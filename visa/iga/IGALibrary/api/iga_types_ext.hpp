@@ -234,8 +234,8 @@ namespace iga
     {
         NONE, // predication is off
         SEQ,  // no explicit function; e.g. f0.0
-        ANYV, // .anyv; e.g. "f0.0.anyv"
-        ALLV,
+        ANYV, // .anyv; e.g. "f0.0.anyv". any from f0.0-f1.0 on the same channel
+        ALLV, // all from f0.0-f1.0 on the same channel
         ANY2H,
         ALL2H,
         ANY4H,

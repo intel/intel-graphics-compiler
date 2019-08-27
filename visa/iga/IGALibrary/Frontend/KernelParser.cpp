@@ -1386,7 +1386,7 @@ private:
             {"any16h", PredCtrl::ANY16H},
             {"all16h", PredCtrl::ALL16H},
             {"any32h", PredCtrl::ANY32H},
-            {"all32h", PredCtrl::ALL32H},
+            {"all32h", PredCtrl::ALL32H}
         };
 
         const Loc prLoc = NextLoc(0);
