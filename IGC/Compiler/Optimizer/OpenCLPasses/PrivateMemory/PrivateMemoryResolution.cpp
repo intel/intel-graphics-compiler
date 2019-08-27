@@ -93,7 +93,7 @@ namespace IGC {
         /// @brief  The module level alloca information
         ModuleAllocaInfo* m_ModAllocaInfo;
 
-        /// @brief - Metadata API 
+        /// @brief - Metadata API
         IGCMD::MetaDataUtils* m_pMdUtils;
 
         /// @brief - Current processed function
@@ -391,7 +391,7 @@ bool PrivateMemoryResolution::safeToUseScratchSpace(llvm::Module& M) const
                 if (AddrSpaceCastInst * CI = dyn_cast<AddrSpaceCastInst>(&I)) {
                     // It is not safe to use scratch space as private memory if kernel does
                     // AS casting to ADDRESS_SPACE_GLOBAL_OR_PRIVATE or ADDRESS_SPACE_PRIVATE.
-                    // See speical hack CI code generated at ProgramScopeConstantResolution 
+                    // See speical hack CI code generated at ProgramScopeConstantResolution
                     const ADDRESS_SPACE targetAS = (ADDRESS_SPACE)(cast<PointerType>(CI->getType()))->getAddressSpace();
                     if (targetAS == ADDRESS_SPACE_GLOBAL_OR_PRIVATE || targetAS == ADDRESS_SPACE_PRIVATE) {
                         return false;
@@ -713,7 +713,7 @@ bool PrivateMemoryResolution::resolveAllocaInstuctions(bool stackCall)
     // [buffer0 thread1][buffer1 thread1]...[bufferN thread1]
     // ...
     // [buffer0 threadM][buffer1 threadM]...[bufferN threadM]
-    // Note that for each thread, all SIMD lanes of the same buffers are 
+    // Note that for each thread, all SIMD lanes of the same buffers are
     // laid out sequentially to preserve locality.
     // So, in fact, [buffer0 thread0] represents
     // [buffer0 lane0][buffer0 lane1]...[buffer0 laneK]
@@ -722,14 +722,14 @@ bool PrivateMemoryResolution::resolveAllocaInstuctions(bool stackCall)
     // Each row represent total private memory per thread
 
     // To get buffer i of thread j we need to calculate:
-    // {buffer i ptr} = privateBase + 
+    // {buffer i ptr} = privateBase +
     //                  threadId * {total private mem per thread} +
     //                  {buffer offset} +
     //                  {per lane offset}
 
     // Where:
     // privateBase                      = implicit argument, points to [buffer0 thread0]
-    // {total private mem per thread}   = simdSize * {total private mem per WI} 
+    // {total private mem per thread}   = simdSize * {total private mem per WI}
     // {buffer offset}                  = simdSize * {buffer i offset per WI}
     // {per lane offset}                = simdLaneId * sizeof(buffer i)
 
@@ -835,7 +835,7 @@ bool PrivateMemoryResolution::resolveAllocaInstuctions(bool stackCall)
 
 #if defined(_DEBUG)
                 {
-                    // Debug code to verify that the size of transposed memory 
+                    // Debug code to verify that the size of transposed memory
                     // fits into the allocated scratch region.
                     Type* pTmpType = pAI->getType()->getPointerElementType();
                     uint64_t tmpAllocaSize = bufferSize;
@@ -845,21 +845,21 @@ bool PrivateMemoryResolution::resolveAllocaInstuctions(bool stackCall)
                         {
                             pTmpType = pTmpType->getStructElementType(0);
                         }
-
-                        if (pTmpType->isArrayTy())
+                        else if (pTmpType->isArrayTy())
                         {
                             tmpAllocaSize *= pTmpType->getArrayNumElements();
+                            pTmpType = pTmpType->getSequentialElementType();
                         }
                         else if (pTmpType->isVectorTy())
                         {
                             tmpAllocaSize *= pTmpType->getVectorNumElements();
+                            pTmpType = pTmpType->getSequentialElementType();
                         }
                         else
                         {
                             assert(!"Unsupported type for memory transposition.");
                             break;
                         }
-                        pTmpType = pTmpType->getSequentialElementType();
                     }
                     assert(tmpAllocaSize <= m_ModAllocaInfo->getBufferSize(pAI));
                 }
