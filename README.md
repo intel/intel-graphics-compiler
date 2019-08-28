@@ -1,5 +1,7 @@
 # Intel® Graphics Compiler for OpenCL™
 
+Linux (Ubuntu): [![Linux Build Status](https://travis-ci.com/intel/intel-graphics-compiler.svg?branch=master)](https://travis-ci.com/intel/intel-graphics-compiler)
+
 ## Introduction
 
 The Intel® Graphics Compiler for OpenCL™ is an LLVM based compiler for
