@@ -35,7 +35,13 @@ PURPOSE: Defines meta data for holding/defining regkey variables
 
 typedef char debugString[256];
 
+#if defined( _WIN32 ) || defined( _WIN64 )
 #if defined( _DEBUG ) || defined( _INTERNAL )
+#define IGC_DEBUG_VARIABLES
+#endif
+#endif
+
+#if defined( __linux__ )
 #define IGC_DEBUG_VARIABLES
 #endif
 
@@ -67,7 +73,7 @@ struct SRegKeyVariableMetaData
 MACRO: IGC_REGKEY
 PURPOSE: Declares a new regkey variable.
 \*****************************************************************************/
-#define IGC_REGKEY( dataType, regkeyName, defaultValue, description )    \
+#define IGC_REGKEY( dataType, regkeyName, defaultValue, description, releaseMode )    \
 struct SRegKeyVariableMetaData_##regkeyName : public SRegKeyVariableMetaData \
 {                                                   \
     SRegKeyVariableMetaData_##regkeyName()          \
@@ -77,16 +83,20 @@ struct SRegKeyVariableMetaData_##regkeyName : public SRegKeyVariableMetaData \
     const char* GetName() const                     \
     {                                               \
         return #regkeyName;                         \
-    }                                                \
-    unsigned GetDefault() const                \
-    {                                                \
-        return (unsigned)defaultValue;                \
-    }                                                \
+    }                                               \
+    unsigned GetDefault() const                     \
+    {                                               \
+        return (unsigned)defaultValue;              \
+    }                                               \
+    bool IsReleaseMode() const                      \
+    {                                               \
+        return releaseMode;                         \
+    }                                               \
 } regkeyName
 
 // XMACRO defining the regkeys
-#define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description) \
-    IGC_REGKEY(dataType, regkeyName, defaultValue, description);
+#define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, releaseMode) \
+    IGC_REGKEY(dataType, regkeyName, defaultValue, description, releaseMode);
 struct SRegKeysList
 {
 #include "igc_regkeys.def"
@@ -94,6 +104,7 @@ struct SRegKeysList
 #undef DECLARE_IGC_REGKEY
 bool CheckHashRange(const std::vector<HashRange>&);
 extern SRegKeysList g_RegKeyList;
+#if defined( _DEBUG ) || ( _INTERNAL )
 #define IGC_GET_FLAG_VALUE( name )                 \
 ( CheckHashRange(g_RegKeyList.name.hashes) ? g_RegKeyList.name.m_Value : g_RegKeyList.name.GetDefault())
 #define IGC_IS_FLAG_ENABLED( name )                ( IGC_GET_FLAG_VALUE(name) != 0 )
@@ -101,7 +112,15 @@ extern SRegKeysList g_RegKeyList;
 #define IGC_SET_FLAG_VALUE( name, regkeyValue )    ( g_RegKeyList.name.m_Value = regkeyValue )
 #define IGC_GET_REGKEYSTRING( name )               \
 ( CheckHashRange(g_RegKeyList.name.hashes) ? g_RegKeyList.name.m_string : "" )
-
+#else
+#define IGC_GET_FLAG_VALUE( name )                 \
+( ( CheckHashRange(g_RegKeyList.name.hashes) && g_RegKeyList.name.IsReleaseMode() ) ? g_RegKeyList.name.m_Value : g_RegKeyList.name.GetDefault())
+#define IGC_IS_FLAG_ENABLED( name )                ( IGC_GET_FLAG_VALUE(name) != 0 )
+#define IGC_IS_FLAG_DISABLED( name )               ( !IGC_IS_FLAG_ENABLED(name) )
+#define IGC_SET_FLAG_VALUE( name, regkeyValue )    ( g_RegKeyList.name.m_Value = regkeyValue )
+#define IGC_GET_REGKEYSTRING( name )               \
+( ( CheckHashRange(g_RegKeyList.name.hashes) && g_RegKeyList.name.IsReleaseMode() ) ? g_RegKeyList.name.m_string : "" )
+#endif
 void DumpIGCRegistryKeyDefinitions();
 void LoadRegistryKeys();
 void SetCurrentDebugHash(unsigned long long hash);
@@ -109,7 +128,7 @@ void SetCurrentDebugHash(unsigned long long hash);
 static inline void SetCurrentDebugHash(unsigned long long hash) {}
 static inline void LoadRegistryKeys() {}
 #define IGC_SET_FLAG_VALUE( name, regkeyValue ) ;
-#define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description) \
+#define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, releaseMode) \
     static const unsigned int regkeyName##default = (unsigned int)defaultValue;
 class DebugVariable
 {

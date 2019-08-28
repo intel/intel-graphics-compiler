@@ -181,7 +181,7 @@ namespace IGC
 #if defined(IGC_DEBUG_VARIABLES)
             switch(flag)
             {
-#define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description) \
+#define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, releaseMode) \
             case OptionFlag::OPTION_##regkeyName: \
             strcpy(g_RegKeyList.regkeyName.m_string, s);   \
             break;                                
@@ -198,7 +198,7 @@ namespace IGC
 #if defined(IGC_DEBUG_VARIABLES)
             switch(flag)
             {
-#define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description) \
+#define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, releaseMode) \
             case OptionFlag::OPTION_##regkeyName: \
                 g_RegKeyList.regkeyName.m_Value = value;   \
             break;                                

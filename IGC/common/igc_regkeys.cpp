@@ -160,7 +160,7 @@ static const char* ConvertType(const char* flagType)
     }
     return flagType;
 }
-#define DECLARE_IGC_REGKEY( dataType, regkeyName, defaultValue, descriptionText ) \
+#define DECLARE_IGC_REGKEY( dataType, regkeyName, defaultValue, descriptionText, releaseMode ) \
     fprintf(fp, "    <Key name=\"%s\" type=\"%s\" location=\"%s\\%s\" description=\"%s\" />\n", \
         #regkeyName,                                                                             \
         ConvertType(#dataType),                                                                               \
@@ -365,7 +365,7 @@ static void LoadDebugFlagsFromFile()
 
     while (std::getline(input, line)) {
         ParseHashRange(line, hashes);
-#define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description)         \
+#define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, releaseMode)         \
 {                                                                                   \
     declareIGCKey(line, #dataType, #regkeyName, hashes, &(g_RegKeyList.regkeyName));\
 }
