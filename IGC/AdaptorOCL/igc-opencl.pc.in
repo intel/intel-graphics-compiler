@@ -5,6 +5,6 @@ libdir=${exec_prefix}/@CMAKE_INSTALL_LIBDIR@
 
 Name: igc-opencl
 Description: Intel(R) Graphics Compiler for OpenCL(TM)
-Version: @IGC_API_MAJOR_VERSION@.@IGC_API_MINOR_VERSION@.@IGC_API_PATCH_VERSION@@IGC_PC_PACKAGE_RELEASE@
+Version: @IGC_API_MAJOR_VERSION@.@IGC_API_MINOR_VERSION@.@IGC_API_PATCH_VERSION@
 Cflags: -I${includedir} -I${includedir}/cif -I${includedir}/ocl_igc_shared/executable_format -I${includedir}/ocl_igc_shared/device_enqueue
 Libs:
