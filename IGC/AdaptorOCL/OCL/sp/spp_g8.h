@@ -45,36 +45,45 @@ struct KernelData
     Util::BinaryStream* kernelDebugData = nullptr;
 };
 
-class CGen8OpenCLProgram : DisallowCopy
+// This is the base class to create an OpenCL ELF binary with patch tokens.
+// It owns BinaryStreams allocated.
+class CGen8OpenCLProgramBase : DisallowCopy {
+public:
+    explicit CGen8OpenCLProgramBase(PLATFORM platform);
+    virtual ~CGen8OpenCLProgramBase();
+
+    RETVAL GetProgramBinary(Util::BinaryStream& programBinary,
+        unsigned pointerSizeInBytes);
+
+    RETVAL GetProgramDebugData(Util::BinaryStream& programDebugData);
+
+    void CreateProgramScopePatchStream(const IGC::SOpenCLProgramInfo& programInfo);
+
+    // Used to store per-kernel binary streams and kernelInfo
+    std::vector<KernelData> m_KernelBinaries;
+
+    USC::SSystemThreadKernelOutput* m_pSystemThreadKernelOutput = nullptr;
+
+protected:
+    PLATFORM m_Platform;
+    CGen8OpenCLStateProcessor m_StateProcessor;
+    Util::BinaryStream* m_ProgramScopePatchStream = nullptr;
+};
+
+class CGen8OpenCLProgram : public CGen8OpenCLProgramBase
 {
 public:
     CGen8OpenCLProgram(PLATFORM platform, IGC::OpenCLProgramContext &context);
 
     ~CGen8OpenCLProgram();
 
-    RETVAL GetProgramBinary(
-        Util::BinaryStream& programBinary,
-        unsigned int pointerSizeInBytes );
-
-    RETVAL GetProgramDebugData(Util::BinaryStream& programDebugData);
-
     void CreateKernelBinaries();
-
-    void CreateProgramScopePatchStream(const IGC::SOpenCLProgramInfo& programInfo);
 
     // Used to track the kernel info from CodeGen
     std::vector<IGC::CShaderProgram*> m_ShaderProgramList;
-    USC::SSystemThreadKernelOutput* m_pSystemThreadKernelOutput = nullptr;
-
-    // Used to store per-kernel binary streams and kernelInfo
-    std::vector<KernelData> m_KernelBinaries;
 
 private:
-    CGen8OpenCLStateProcessor m_StateProcessor;
-    Util::BinaryStream* m_ProgramScopePatchStream;
-    PLATFORM  m_Platform;
-    IGC::OpenCLProgramContext* m_pContext;
+    IGC::OpenCLProgramContext* m_pContext = nullptr;
 };
-
 
 }

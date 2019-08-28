@@ -82,7 +82,7 @@ class CGen8OpenCLStateProcessor : DisallowCopy
 {
 
 public:
-    CGen8OpenCLStateProcessor( PLATFORM platform, const IGC::OpenCLProgramContext &context );
+    explicit CGen8OpenCLStateProcessor(PLATFORM platform);
     virtual ~CGen8OpenCLStateProcessor( void );
 
     virtual void CreateKernelBinary(
@@ -106,7 +106,8 @@ public:
         const std::string& kernelName,
         Util::BinaryStream& kernelDebugData);
 
-    const IGC::OpenCLProgramContext &m_Context;
+    // Optional OpeneCL program context.
+    const IGC::OpenCLProgramContext *m_Context;
 
     std::string m_oclStateDebugMessagePrintOut;
 

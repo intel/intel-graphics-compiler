@@ -225,12 +225,10 @@ struct SStateProcessorContextGen8_0
 
     } Surface;
 };
-CGen8OpenCLStateProcessor::CGen8OpenCLStateProcessor( PLATFORM platform, const IGC::OpenCLProgramContext &context ) :
-    m_Context( context ),
-    m_Platform( platform )
+CGen8OpenCLStateProcessor::CGen8OpenCLStateProcessor(PLATFORM platform)
+    : m_Platform(platform)
 {
     G6HWC::InitializeCapsGen8( &m_HWCaps );
-
 }
 
 CGen8OpenCLStateProcessor::~CGen8OpenCLStateProcessor( )
@@ -322,7 +320,7 @@ void CGen8OpenCLStateProcessor::CreateKernelBinary(
     if (IGC_IS_FLAG_ENABLED(EnableCosDump))
     {
         auto name = DumpName(IGC::Debug::GetShaderOutputName())
-            .Hash(m_Context.hash)
+            .Hash(m_Context ? m_Context->hash : ShaderHash())
             .Type(ShaderType::OPENCL_SHADER)
             .PostFix("kernel_" + annotations.m_kernelName + std::to_string( annotations.m_executionEnivronment.CompiledSIMDSize))
             .Extension("cos");
@@ -552,8 +550,9 @@ RETVAL CGen8OpenCLStateProcessor::CreateKernelHeap(
     RETVAL retValue = g_cInitRetValue;
 
     // Add the system kernel if required.
+    if (m_Context)
     {
-        const auto options = m_Context.m_InternalOptions;
+        const auto options = m_Context->m_InternalOptions;
         if (retValue.Success &&
             (options.IncludeSIPCSR ||
              options.IncludeSIPKernelDebug ||
@@ -606,7 +605,7 @@ RETVAL CGen8OpenCLStateProcessor::CreateSurfaceStateHeap(
     std::map<unsigned, SurfaceState> SurfaceStates;
 
     // First, System Thread Surface
-    if (retValue.Success && m_Context.m_InternalOptions.KernelDebugEnable)
+    if (retValue.Success && m_Context && m_Context->m_InternalOptions.KernelDebugEnable)
     {
         unsigned int bti = layout.GetSystemThreadBindingTableIndex();
 
@@ -885,7 +884,7 @@ RETVAL CGen8OpenCLStateProcessor::CreateDynamicStateHeap(
     if( numSamplers && retValue.Success )
     {
         // Handle border color state:
-        if (m_Context.m_DriverInfo.ProgrammableBorderColorInCompute())
+        if (m_Context && m_Context->m_DriverInfo.ProgrammableBorderColorInCompute())
         {
             // Indirect states for argument samplers:
             for (DWORD i = 0; i < numArgumentSamplers && retValue.Success; i++)
@@ -929,7 +928,7 @@ RETVAL CGen8OpenCLStateProcessor::CreateDynamicStateHeap(
         context.Dynamic.SamplerBorderColorStateOffset = borderColorOffsets[0];
 
         DWORD borderColorIndex = 0;
-        DWORD borderColorStep = m_Context.m_DriverInfo.ProgrammableBorderColorInCompute() ? 1 : 0;
+        DWORD borderColorStep = (m_Context && m_Context->m_DriverInfo.ProgrammableBorderColorInCompute()) ? 1 : 0;
 
         // First handle the sampler arguments
         for (auto i = annotations.m_samplerArgument.begin(); 
@@ -951,7 +950,7 @@ RETVAL CGen8OpenCLStateProcessor::CreateDynamicStateHeap(
                 bool    normalizedCoords = true;
                 bool    enable = true;
 
-                assert(m_Context.m_DriverInfo.ProgrammableBorderColorInCompute() || borderColorIndex == 0);
+                assert((m_Context && m_Context->m_DriverInfo.ProgrammableBorderColorInCompute()) || borderColorIndex == 0);
 
                 retValue = AddSamplerState(
                     enable,
@@ -995,7 +994,7 @@ RETVAL CGen8OpenCLStateProcessor::CreateDynamicStateHeap(
 
         if( retValue.Success )
         {
-            assert(!m_Context.m_DriverInfo.ProgrammableBorderColorInCompute() || borderColorIndex == numArgumentSamplers);
+            assert(!(m_Context && m_Context->m_DriverInfo.ProgrammableBorderColorInCompute()) || borderColorIndex == numArgumentSamplers);
 
             // And then the inline samplers
             for (auto i = annotations.m_samplerInput.begin(); 
@@ -1010,7 +1009,7 @@ RETVAL CGen8OpenCLStateProcessor::CreateDynamicStateHeap(
 
                 bool enable = true;
 
-                assert(m_Context.m_DriverInfo.ProgrammableBorderColorInCompute() || borderColorIndex == 0);
+                assert((m_Context && m_Context->m_DriverInfo.ProgrammableBorderColorInCompute()) || borderColorIndex == 0);
 
                 retValue = AddSamplerState(
                     enable,
@@ -1436,7 +1435,7 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
     // Patch for Surface State Scratch Space
 
     // Patch for ALLOCATE_SIP_SURFACE
-    if (retValue.Success && m_Context.m_InternalOptions.KernelDebugEnable)
+    if (retValue.Success && m_Context && m_Context->m_InternalOptions.KernelDebugEnable)
     {
         unsigned int bti = layout.GetSystemThreadBindingTableIndex();
 
@@ -1896,7 +1895,7 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
     }
 
     // Payload must be a multiple of a GRF register
-    dataParameterStreamSize += GetAlignmentOffset(dataParameterStreamSize, m_Context.platform.getGRFSize());
+    dataParameterStreamSize += GetAlignmentOffset(dataParameterStreamSize, CPlatform(m_Platform).getGRFSize());
 
     if( retValue.Success )
     {
