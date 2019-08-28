@@ -100,6 +100,8 @@ typedef struct
 typedef struct
 {
     ulong m_CLcompleteTimestamp;    // only scheduler updates state of events, here is timestamp used for profiling to indicate when this transition happened.
+    float m_TimestampResolution;    // resolution of the timestamp counter
+    uint m_padding;                 // padding is needed because of alignment requirements for events
     uint m_head;                    // pool head point in IGIL_DeviceEvent units (0 means first event)
     uint m_size;                    // number of events there is space for after m_size
     // variable legnth part starts here
