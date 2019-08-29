@@ -529,6 +529,12 @@ namespace IGC
 
         for (const auto& inst : iv)
         {
+            if (inst->getIntrinsicID() == GenISAIntrinsic::GenISA_Interpolate)
+            {
+                // The interpolation mode is always derived from GenISA_OUTPUT or other intrinsic
+                // A default interpolation mode is linear.
+                continue;
+            }
 
             if (ConstantInt * modeVal = dyn_cast<ConstantInt>(
                 inst->getOperand(ShaderIOAnalysis::INPUT_INTERPMODE_ARG)))
