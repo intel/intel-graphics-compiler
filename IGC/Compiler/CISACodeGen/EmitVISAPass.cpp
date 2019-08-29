@@ -3261,11 +3261,11 @@ void EmitPass::PredAdd(const SSource& pred, bool invert, const SSource sources[2
 
     // base condition
     SetSourceModifiers(0, sources[0]);
-    SetSourceModifiers(1, sources[1]);
     m_encoder->Copy(m_destination, src0);
     m_encoder->Push();
 
     // predicate add
+    SetSourceModifiers(1, sources[1]);
     m_encoder->SetDstModifier(modifier);
     m_encoder->SetPredicateMode(modifier.predMode);
     m_encoder->SetInversePredicate(invert);
