@@ -795,7 +795,9 @@ namespace IGC
     {
         AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD16, false);
     }
-    else if (IGC_IS_FLAG_ENABLED(ForceCSLeastSIMD))
+    // csInfo.forcedSIMDSize == 8 means force least SIMD. 
+    // If the SIMD8 is not allowed, it will return higher SIMD
+    else if (IGC_IS_FLAG_ENABLED(ForceCSLeastSIMD) || ctx->getModuleMetaData()->csInfo.forcedSIMDSize == 8)
     {
         AddCodeGenPasses(*ctx, shaders, PassMgr, simdModeAllowed, false);
     }
