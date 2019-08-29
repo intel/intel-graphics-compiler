@@ -808,10 +808,31 @@ namespace {
     }
 #endif
 
+#if LLVM_VERSION_MAJOR >= 9
+    void replaceSubtractionSaturation(IntrinsicInst * I) {
+        assert(I->getIntrinsicID() == Intrinsic::ssub_sat ||
+            I->getIntrinsicID() == Intrinsic::usub_sat);
+        IRBuilder<> Builder(I);
+
+	auto predicate = I->getIntrinsicID() == Intrinsic::usub_sat ? CmpInst::Predicate::ICMP_UGT : CmpInst::Predicate::ICMP_SGT;
+	
+	auto cmpInst = Builder.CreateICmp(predicate, I->getArgOperand(0), I->getArgOperand(1));
+	auto selectInst = Builder.CreateSelect(cmpInst, I->getArgOperand(0), I->getArgOperand(1));
+	auto result = Builder.CreateSub(selectInst, I->getArgOperand(1));
+	
+        I->replaceAllUsesWith(result);
+        I->eraseFromParent();
+    }
+#endif
+
     std::map<Intrinsic::ID, std::function<void(IntrinsicInst*)>> intrinsicToFunc = {
   #if LLVM_VERSION_MAJOR >= 8
       { Intrinsic::fshl, replaceFunnelShift },
       { Intrinsic::fshr, replaceFunnelShift },
+  #endif
+  #if LLVM_VERSION_MAJOR >= 9
+      { Intrinsic::ssub_sat, replaceSubtractionSaturation },
+      { Intrinsic::usub_sat, replaceSubtractionSaturation },
   #endif
       { Intrinsic::memcpy, replaceMemcpy },
       { Intrinsic::memset, replaceMemset },
