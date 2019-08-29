@@ -57,23 +57,23 @@ uchar __builtin_spirv_OpBitCount_i8(uchar Base)
     return __builtin_IB_popcount_1u8(Base);
 }
 
-uchar __builtin_spirv_OpBitCount_i16(ushort Base)
+ushort __builtin_spirv_OpBitCount_i16(ushort Base)
 {
-    return (uchar)__builtin_IB_popcount_1u16(Base);
+    return __builtin_IB_popcount_1u16(Base);
 }
 
-uchar __builtin_spirv_OpBitCount_i32(uint Base)
+uint __builtin_spirv_OpBitCount_i32(uint Base)
 {
-    return (uchar)__builtin_IB_popcount_1u32(Base);
+    return __builtin_IB_popcount_1u32(Base);
 }
 
-uchar __builtin_spirv_OpBitCount_i64(ulong Base)
+ulong __builtin_spirv_OpBitCount_i64(ulong Base)
 {
     return __builtin_spirv_OpBitCount_i32(Base >> 32) + __builtin_spirv_OpBitCount_i32((uint)Base);
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpBitCount, uchar, uchar, i8 ) 
-GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpBitCount, uchar, ushort, i16 ) 
-GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpBitCount, uchar, uint, i32 ) 
-GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpBitCount, uchar, ulong, i64 ) 
+GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpBitCount, ushort, ushort, i16 ) 
+GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpBitCount, uint, uint, i32 ) 
+GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpBitCount, ulong, ulong, i64 ) 
 

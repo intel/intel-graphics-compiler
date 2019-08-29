@@ -2882,12 +2882,6 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
     }
     break;
 
-  case OpBitCount:{
-    auto BI = static_cast<SPIRVInstruction *>(BV);
-    Type* RetTy = transType(BI->getType());
-    auto NewCI = CallInst::Create(F, "__builtin_spirv_OpBitCount_i8", BB);
-    return mapValue(BV, ZExtInst::CreateIntegerCast(NewCI, RetTy, 0, "", BB));
-  }
   case OpSizeOf:
   {
       auto BI = static_cast<SPIRVSizeOf*>(BV);
