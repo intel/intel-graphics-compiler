@@ -36,6 +36,10 @@ IGC is supported on the following 64 bit Linux operating systems:
 
 * [Ubuntu](https://github.com/intel/intel-graphics-compiler/blob/master/documentation/build_ubuntu.md)
 
+## Configuration flags
+
+* [Configuration flags for Linux Release](https://github.com/intel/intel-graphics-compiler/blob/master/documentation/configuration_flags.md)
+
 ## Supported Platforms
 
 * Intel Core Processors supporting Gen8 graphics devices
