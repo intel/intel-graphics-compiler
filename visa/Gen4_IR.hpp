@@ -1418,7 +1418,9 @@ static const IntrinsicInfo G4_Intrinsics[(int)Intrinsic::NumIntrinsics] =
     {Intrinsic::Wait,       "wait",         0,      0,      Phase::Optimizer,       { 0, 0, 0, false, false } },
     {Intrinsic::Use,        "use",          0,      1,      Phase::Scheduler,       { 0, 0, 0, false, false } },
     {Intrinsic::MemFence,   "mem_fence",    0,      0,      Phase::BinaryEncoding,  { 0, 0, 0, false, false } },
-    {Intrinsic::PseudoKill, "pseudo_kill",  1,      1,      Phase::RA,              { 0, 0, 0, false, false} }
+    {Intrinsic::PseudoKill, "pseudo_kill",  1,      1,      Phase::RA,              { 0, 0, 0, false, false } },
+    {Intrinsic::Spill,      "spill",        1,      2,      Phase::RA,              { 0, 0, 0, false, false } },
+    {Intrinsic::Fill,       "fill",         1,      1,      Phase::RA,              { 0, 0, 0, false, false } }
 };
 
 namespace vISA

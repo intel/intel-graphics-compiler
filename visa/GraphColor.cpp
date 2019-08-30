@@ -6170,50 +6170,15 @@ void GraphColor::saveRegs(
     {
         // add (1) r126.2<1>:ud    r125.7<0;1,0>:ud    0x2:ud
         // sends (8) null<1>:ud    r126.0    r1.0 ...
-        uint8_t execSize = (owordSize > 2) ? 16 : 8;
-        G4_DstRegRegion* dst = builder.createDstRegRegion(Direct, scratchRegDcl->getRegVar(), 0, 2, 1, Type_UD);
-        G4_Operand* src0 = NULL;
-        G4_Imm* src1 = NULL;
-        G4_opcode op;
-        if (framePtr)
-        {
-            src0 = builder.createSrcRegRegion(
-                Mod_src_undef, Direct, framePtr->getRegVar(), 0, 0, builder.getRegionScalar(), Type_UD);
-            src1 = builder.createImm(frameOwordOffset, Type_UD);
-            op = G4_add;
-        }
-        else
-        {
-            src0 = builder.createImm(frameOwordOffset, Type_UD);
-            op = G4_mov;
-        }
-        G4_INST* hdrSetInst = builder.createInternalInst(NULL, op, NULL, false, 1,
-            dst, src0, src1, InstOpt_WriteEnable);
-
-        bb->insert(insertIt, hdrSetInst);
-
-        builder.instList.clear();
-        G4_DstRegRegion * postDst = builder.createNullDst((execSize > 8) ? Type_UW : Type_UD);
-        auto sendSrc1 = builder.createSrcRegRegion(Mod_src_undef, Direct, scratchRegDcl->getRegVar(),
-            0, 0, builder.rgnpool.createRegion(8, 8, 1), Type_UD);
         unsigned messageLength = owordSize / 2;
-        G4_Declare *msgDcl = builder.createTempVar(messageLength * GENX_DATAPORT_IO_SZ,
+        G4_Declare* msgDcl = builder.createTempVar(messageLength * GENX_DATAPORT_IO_SZ,
             Type_UD, GRFALIGN, StackCallStr);
         msgDcl->getRegVar()->setPhyReg(regPool.getGreg(startReg), 0);
         auto sendSrc2 = builder.createSrcRegRegion(Mod_src_undef, Direct, msgDcl->getRegVar(), 0, 0,
-            builder.rgnpool.createRegion(8, 8, 1), Type_UD);
-        G4_Imm* descImm = gra.createMsgDesc(owordSize, true, true);
-        auto msgDesc = builder.createWriteMsgDesc(SFID::DP_DC, (uint32_t)descImm->getInt(), messageLength, 
-            getScratchSurface());
-
-        auto sendInst = builder.Create_SplitSend_Inst(nullptr, postDst, sendSrc1, sendSrc2, execSize, msgDesc,
-            InstOpt_WriteEnable, false);
-        auto exDescOpnd = sendInst->getMsgExtDescOperand();
-        if (exDescOpnd->isSrcRegRegion())
-        {
-            exDescOpnd->asSrcRegRegion()->getTopDcl()->getRegVar()->setPhyReg(builder.phyregpool.getAddrReg(), 0);
-        }
-        bb->splice(insertIt, builder.instList);
+            builder.getRegionStride1(), Type_UD);
+        MUST_BE_TRUE(frameOwordOffset % 2 == 0, "Frame oword offset is not aligned on 32-byte boundary");
+        auto spillIntrinsic = builder.createSpill(sendSrc2, messageLength, frameOwordOffset/2, framePtr, InstOpt_WriteEnable);
+        bb->insert(insertIt, spillIntrinsic);
     }
     else if (owordSize > 8)
     {
@@ -6286,60 +6251,16 @@ void GraphColor::restoreRegs(
     //
     if (owordSize == 8 || owordSize == 4 || owordSize == 2)
     {
+        uint8_t execSize = (owordSize > 2) ? 16 : 8;
+        unsigned responseLength = ROUND(owordSize, 2) / 2;
+        G4_Declare* dstDcl = builder.createTempVar(responseLength * GENX_DATAPORT_IO_SZ,
+            Type_UD, GRFALIGN, GraphColor::StackCallStr);
+        dstDcl->getRegVar()->setPhyReg(regPool.getGreg(startReg), 0);
+        G4_DstRegRegion* dstRgn = builder.createDstRegRegion(Direct, dstDcl->getRegVar(), 0, 0, 1, (execSize > 8) ? Type_UW : Type_UD);
 
-        //
-        // add (1) r126<1>:d FP<0;1,0>:d offset
-        //
-        {
-            G4_DstRegRegion* dst = builder.createDstRegRegion(Direct, scratchRegDcl->getRegVar(), 0, 2, 1, Type_UD);
-            RegionDesc* rDesc = builder.getRegionScalar();
-            G4_Operand* src0;
-            G4_Imm* src1;
-            G4_opcode op;
-            if (framePtr)
-            {
-                src0 = builder.createSrcRegRegion(
-                    Mod_src_undef, Direct, framePtr->getRegVar(), 0, 0, rDesc, Type_UD);
-                src1 = builder.createImm(frameOwordOffset, Type_UD);
-                op = G4_add;
-            }
-            else
-            {
-                src0 = builder.createImm(frameOwordOffset, Type_UD);
-                src1 = NULL;
-                op = G4_mov;
-            }
-            G4_INST* hdrSetInst = builder.createInternalInst(NULL, op, NULL, false, 1,
-                dst, src0, src1, InstOpt_WriteEnable);
-            bb->insert(insertIt, hdrSetInst);
-        }
-
-        //
-        //  send (16) r[startReg]<1>:uw r126 0xa desc:ud
-        //
-        {
-            builder.instList.clear();
-            uint8_t execSize = (owordSize > 2) ? 16 : 8;
-
-            unsigned responseLength = ROUND(owordSize, 2) / 2;
-            G4_Declare *dstDcl = builder.createTempVar(responseLength * GENX_DATAPORT_IO_SZ,
-                Type_UD, GRFALIGN, GraphColor::StackCallStr);
-            dstDcl->getRegVar()->setPhyReg(regPool.getGreg(startReg), 0);
-            G4_DstRegRegion* postDst = builder.createDstRegRegion(Direct, dstDcl->getRegVar(), 0, 0, 1, (execSize > 8) ? Type_UW : Type_UD);
-            G4_SrcRegRegion* payload = builder.Create_Src_Opnd_From_Dcl(scratchRegDcl, builder.getRegionStride1());
-            G4_Imm* desc = gra.createMsgDesc(owordSize, false, false);
-            auto msgDesc = builder.createReadMsgDesc(SFID::DP_DC, (uint32_t)desc->getInt(), getScratchSurface());
-            auto sendInst = builder.Create_SplitSend_Inst(nullptr, postDst, payload, builder.createNullSrc(Type_UD), execSize,
-                msgDesc, InstOpt_WriteEnable, false);
-            auto exDescOpnd = sendInst->getMsgExtDescOperand();
-            if (exDescOpnd->isSrcRegRegion())
-            {
-                exDescOpnd->asSrcRegRegion()->getTopDcl()->getRegVar()->setPhyReg(builder.phyregpool.getAddrReg(), 0);
-            }
-            bb->splice(insertIt, builder.instList);
-        }
-
-        builder.instList.clear();
+        MUST_BE_TRUE(frameOwordOffset % 2 == 0, "Frame oword offset not aligned to 32-byte boundary");
+        auto fillIntrinsic = builder.createFill(dstRgn, responseLength, frameOwordOffset / 2, framePtr, InstOpt_WriteEnable);
+        bb->insert(insertIt, fillIntrinsic);
     }
     //
     // Split into chunks of sizes 8 and remaining owords.
@@ -8612,6 +8533,8 @@ bool GlobalRA::hybridRA(bool doBankConflictReduction, bool highInternalConflict,
             coloring.addSaveRestoreCode(0);
         }
 
+        expandSpillFillIntrinsics();
+
         if (verifyAugmentation)
         {
             assignRegForAliasDcl();
@@ -9020,7 +8943,7 @@ int GlobalRA::coloringRegAlloc()
                     coloring.addSaveRestoreCode(localSpillAreaOwordSize);
                 }
 
-                //expandSpillFillIntrinsics();
+                expandSpillFillIntrinsics();
 
                 if (builder.getOption(vISA_OptReport))
                 {

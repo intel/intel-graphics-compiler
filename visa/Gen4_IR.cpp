@@ -3659,7 +3659,19 @@ void G4_INST::emit_inst(std::ostream& output, bool symbol_dst, bool *symbol_srcs
             output << ' ';
         }
 
-        for (unsigned i = 0; i < G4_Inst_Table[op].n_srcs; i++)
+        auto getNumSrcOpnds = [this]()
+        {
+            G4_opcode op = this->opcode();
+            unsigned int numOpnds = G4_Inst_Table[op].n_srcs;
+
+            if (op == G4_opcode::G4_intrinsic)
+                numOpnds = G4_Intrinsics[(int)this->asIntrinsicInst()->getIntrinsicId()].numSrc;
+
+            return numOpnds;
+        };
+
+        auto numSrcOpnds = getNumSrcOpnds();
+        for (unsigned i = 0; i < numSrcOpnds; i++)
         {
             if (srcs[i])
             {

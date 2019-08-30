@@ -4313,13 +4313,13 @@ uint32_t computeFillMsgDesc(unsigned int payloadSize, unsigned int offsetInGrfUn
 // Returns payload size in units of GRF rows
 static unsigned int getPayloadSizeGRF(unsigned int numRows)
 {
-    if (numRows > 8)
+    if (numRows >= 8)
         return 8u;
 
-    if (numRows > 4)
+    if (numRows >= 4)
         return 4u;
 
-    if (numRows > 2)
+    if (numRows >= 2)
         return 2u;
 
     return 1u;
@@ -4327,13 +4327,13 @@ static unsigned int getPayloadSizeGRF(unsigned int numRows)
 
 static unsigned int getPayloadSizeOword(unsigned int numOwords)
 {
-    if (numOwords > 8)
+    if (numOwords >= 8)
         return 8u;
 
-    if (numOwords > 4)
+    if (numOwords >= 4)
         return 4u;
 
-    if (numOwords > 2)
+    if (numOwords >= 2)
         return 2u;
 
     return 1u;
@@ -4351,7 +4351,7 @@ void GlobalRA::expandSpillIntrinsic(G4_BB* bb)
             bool isOffBP = inst->asSpillIntrinsic()->isOffBP();
             uint32_t numRows = inst->asSpillIntrinsic()->getNumRows();
             uint32_t offset = inst->asSpillIntrinsic()->getOffset();
-            auto payload = inst->getSrc(2)->asSrcRegRegion();
+            auto payload = inst->getSrc(1)->asSrcRegRegion();
             auto spillIt = instIt;
 
             auto rowOffset = payload->getRegOff();
@@ -4535,9 +4535,10 @@ void GlobalRA::expandFillIntrinsic(G4_BB* bb)
                             auto sendSrc0 = builder->createSrcRegRegion(Mod_src_undef, Direct, scratchRegDcl->getRegVar(),
                                 0, 0, builder->rgnpool.createRegion(8, 8, 1), Type_UD);
                             G4_Imm* desc = createMsgDesc(owordSize, false, false);
-                            auto msgDesc = builder->createReadMsgDesc(SFID::DP_DC, (uint32_t)desc->getInt());                      
-                            auto sendInst = builder->createInternalSplitSendInst(nullptr, G4_send, execSize, fillVar, sendSrc0, nullptr, desc, 
-                                InstOpt_WriteEnable, msgDesc, nullptr, inst->getLineNo(), inst->getCISAOff(), inst->getSrcFilename());
+                            auto msgDesc = builder->createReadMsgDesc(SFID::DP_DC, (uint32_t)desc->getInt());
+                            auto msgDescImm = builder->createImm(msgDesc->getDesc(), Type_UD);
+                            auto sendInst = builder->createInternalSendInst(nullptr, G4_send, execSize, fillVar, sendSrc0, msgDescImm, 
+                                InstOpt_WriteEnable, msgDesc, inst->getLineNo(), inst->getCISAOff(), inst->getSrcFilename());
 
                             return sendInst;
                         };
