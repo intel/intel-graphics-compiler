@@ -4187,7 +4187,6 @@ int IR_Builder::translateVISADwordAtomicInst(VISAAtomicOps atomicOp,
     {
         execSize = EXEC_SIZE_8;
     }
-
     // always 8 or 16
     unsigned exSize = Get_Common_ISA_Exec_Size(execSize);
     // can be 1 for scalar atomics
@@ -9671,6 +9670,7 @@ int IR_Builder::translateVISASVMScatterReadInst(
         execSize == EXEC_SIZE_4) {
         execSize = EXEC_SIZE_8;
     }
+
     unsigned exSize = Get_Common_ISA_Exec_Size(execSize);
     unsigned instExSize = Get_Common_ISA_Exec_Size(instExecSize);
     unsigned int instOpt = Get_Gen4_Emask(eMask, instExSize);
@@ -9749,6 +9749,7 @@ int IR_Builder::translateVISASVMScatterWriteInst(
         execSize == EXEC_SIZE_4) {
         execSize = EXEC_SIZE_8;
     }
+
     unsigned exSize = Get_Common_ISA_Exec_Size(execSize);
     unsigned instExSize = Get_Common_ISA_Exec_Size(instExecSize);
     unsigned int instOpt = Get_Gen4_Emask(eMask, instExSize);
@@ -9865,6 +9866,7 @@ int IR_Builder::translateVISASVMAtomicInst(
     {
         execSize = EXEC_SIZE_8;
     }
+
     MUST_BE_TRUE(execSize == EXEC_SIZE_8, "execution size must be 8 for SVM atomic messages");
 
     unsigned op = Get_Atomic_Op(atomicOp);
