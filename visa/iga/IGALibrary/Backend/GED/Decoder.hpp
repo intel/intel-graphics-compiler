@@ -58,6 +58,11 @@ namespace iga
             const void *binary,
             size_t binarySize);
 
+        // Set the SWSB endcoding mode, if not set, derived from platform
+        void setSWSBEncodingMode(SWSB_ENCODE_MODE mode)
+        {
+            m_SWSBEncodeMode = mode;
+        }
 
     private:
         Kernel *decodeKernel(
@@ -74,6 +79,8 @@ namespace iga
         const OpSpec *decodeOpSpec(Op op);
 
         Instruction *decodeNextInstruction(Kernel &kernel);
+
+        void decodeSWSB(Instruction* inst);
 
     protected:
         GED_ACCESS_MODE    decodeAccessMode();
@@ -176,6 +183,7 @@ namespace iga
         // OTHER INSTRUCTIONS
         ///////////////////////////////////////////////////////////////////////
         Instruction *decodeWaitInstruction(Kernel &kernel);
+        Instruction *decodeSyncInstruction(Kernel &kernel);
 
         ///////////////////////////////////////////////////////////////////////
         // OTHER HELPERS
@@ -333,6 +341,9 @@ namespace iga
         const OpSpec                 *m_opSpec;
         const void                   *m_binary;
 
+        // SWSB encoding mode
+        SWSB_ENCODE_MODE m_SWSBEncodeMode = SWSB_ENCODE_MODE::SWSBInvalidMode;
+
         // for GED workarounds: grab specific bits from the current instruction
         uint32_t getBitField(int ix, int len) const;
 
@@ -353,7 +364,6 @@ namespace iga
 
 
 } //end: namespace iga*
-
 
 namespace iga
 {

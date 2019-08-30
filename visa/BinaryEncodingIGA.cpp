@@ -841,6 +841,9 @@ void BinaryEncodingIGA::DoAll()
     }
 }
 
+SWSB_ENCODE_MODE BinaryEncodingIGA::getIGASWSBEncodeMode(const IR_Builder& builder) {
+        return SWSB_ENCODE_MODE::SWSBInvalidMode;
+}
 
 SendDescArg BinaryEncodingIGA::getIGASendDescArg(G4_INST* sendInst) const
 {

@@ -762,6 +762,7 @@ bool GenParser::tryParseInstOptDepInfoToken(InstOptSet &instOpts)
     auto loc = NextLoc();
     if (LookingAt(IDENT)) {
         InstOpt newOpt = InstOpt::ACCWREN;
+        bool is_swsb = false;
         // classic instruction option that affects instruction dependency
         // scheduling etc...
         if (ConsumeIdentEq("NoDDChk")) {
@@ -788,13 +789,51 @@ bool GenParser::tryParseInstOptDepInfoToken(InstOptSet &instOpts)
             }
         } else if (ConsumeIdentEq("Switch")) {
             newOpt = InstOpt::SWITCH;
+            if (!m_model.supportsHwDeps()) {
+                m_errorHandler.reportWarning(loc,
+                    "ignoring unsupported instruction option {Switch}");
+            }
         } else {
             return false; // unrecognized option
         }
-        if (!instOpts.add(newOpt)) {
+        if ((!is_swsb) && (!instOpts.add(newOpt))) {
             // adding the option doesn't change the set... (it's a duplicate)
             Fail(loc, "duplicate instruction options");
         }
+    } else if (Consume(DOLLAR)) {
+        // sbid directive
+        if (m_model.supportsHwDeps()) {
+            Fail(loc, "software dependencies not supported on this platform");
+        }
+        int32_t sbid;
+        ConsumeIntLitOrFail(sbid, "expected SBID token");
+        // $4
+        if (Consume(DOT)) {
+            if (ConsumeIdentEq("dst")) {
+                // $4.dst
+                m_handler.setDepInfoSBidDst(loc, sbid);
+            } else if (ConsumeIdentEq("src")) {
+                // $4.src
+                m_handler.setDepInfoSBidSrc(loc, sbid);
+            } else {
+                Fail("invalid SBID directive expecting 'dst' or 'src'");
+            }
+        } else if (!LookingAtAnyOf(COMMA,RBRACE)) {
+            Fail("syntax error in SBID directive"
+                " (expected '.' ',' or '}')");
+        } else {
+            // $4 (allocate/.set)
+            m_handler.setDepInfoSBidAlloc(loc, sbid);
+        }
+    } else if (Consume(AT)) {
+        // min dependency distance @3
+        if (m_model.supportsHwDeps()) {
+            Fail(loc, "software dependencies not supported on this platform");
+        }
+        int32_t dist;
+        auto loc = NextLoc();
+        ConsumeIntLitOrFail(dist,"expected register min distance value");
+        m_handler.setDepInfoDist(loc, InstBuilder::SWSBInfo::REG_DIST, dist);
     } else {
         return false;
     }
@@ -837,6 +876,8 @@ bool GenParser::tryParseInstOptToken(InstOptSet &instOpts) {
             Fail(loc, "Uncomapcted/NoCompact mutually exclusive "
                 "with Compacted");
         }
+    } else if (ConsumeIdentEq("Serialize")) {
+        newOpt = InstOpt::SERIALIZE;
     } else if (ConsumeIdentEq("NoMask")) {
         Fail(loc, "NoMask goes precedes predication as (W) for WrEn: "
             "e.g. (W) op (..) ...   or    (W&f0.0) op (..) ..");
@@ -1539,6 +1580,8 @@ private:
             // e.g. math.*, send.*, etc...
             pOs = ParseSubOp(pOs);
         }
+
+        // GED will reject this otherwise
         if (!m_hasWrEn && pOs->op == Op::JMPI) {
             Warning(mnemonicLoc,
                 "jmpi must have (W) specified (automatically adding)");
@@ -1782,6 +1825,8 @@ private:
         }
         // determine if we support the old-style
         bool supportOldStyleAcc2ToAcc7 = true;
+        supportOldStyleAcc2ToAcc7 = m_model.platform < Platform::GEN12P1;
+
         if (supportOldStyleAcc2ToAcc7) {
             if (ConsumeIdentOneOf<MathMacroExt>(MATHMACROREGS_OLDSTYLE, mme)) {
                 // warn?
@@ -2291,7 +2336,8 @@ private:
                 rgn = Region::SRC0X0;
             } else {
                 // packed access
-                rgn = Region::SRC2X1; // most conservative mux;
+                rgn = m_model.platform >= Platform::GEN12P1 ?
+                    Region::SRC1X0 : Region::SRC2X1; // most conservative mux
             }
         }
         return rgn;
@@ -2730,6 +2776,10 @@ private:
 
         const RegInfo *regInfo;
         int regNum;
+
+        // For GEN12 send now supports src1; sends goes away
+        // To support some older syntax floating around
+        // underneath IGA will insert a null src1 if needed
         if (enableImplicitOperand) {
             bool isSuccess = PeekReg(regInfo, regNum);
             if (!isSuccess || regInfo->regName == RegName::ARF_A) {
@@ -2877,6 +2927,11 @@ private:
             }
             exDesc.imm = (uint32_t)v.s64;
             exDesc.type = SendDescArg::IMM;
+            if (m_model.platform >= Platform::GEN12P1 && (exDesc.imm & 0xF)) {
+                Fail(exDescLoc,
+                    "ExDesc[3:0] must be 0's; SFID is expressed "
+                    "as a function control value (e.g. send.dc0 ...)");
+            }
         }
 
         if (LookingAt(COLON)) {
@@ -3023,6 +3078,8 @@ Kernel *iga::ParseGenKernel(
     Kernel *k = new Kernel(m);
 
     InstBuilder h(k, e);
+    if (popts.swsbEncodeMode != SWSB_ENCODE_MODE::SWSBInvalidMode)
+        h.setSWSBEncodingMode(popts.swsbEncodeMode);
 
     KernelParser p(m, h, inp, e, popts);
     try {

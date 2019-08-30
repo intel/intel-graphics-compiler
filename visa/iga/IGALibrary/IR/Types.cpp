@@ -48,6 +48,7 @@ const Region Region::SRC881 = REGION_VWH(VT_8,WI_8,HZ_1);
 const Region Region::SRCFF1 = REGION_VWH(VT_16,WI_16,HZ_1);
 // ternary align1 src0 and src1
 const Region Region::SRC0X0 = REGION_VWH(VT_0,WI_INVALID,HZ_0);
+const Region Region::SRC1X0 = REGION_VWH(VT_1,WI_INVALID,HZ_0);
 const Region Region::SRC2X1 = REGION_VWH(VT_2,WI_INVALID,HZ_1);
 const Region Region::SRC4X1 = REGION_VWH(VT_4,WI_INVALID,HZ_1);
 const Region Region::SRC8X1 = REGION_VWH(VT_8,WI_INVALID,HZ_1);

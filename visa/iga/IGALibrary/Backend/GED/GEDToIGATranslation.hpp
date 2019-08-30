@@ -265,6 +265,9 @@ namespace iga
             case GED_OPCODE_nop:
                 opcode = Op::NOP;
                 break;
+            case GED_OPCODE_sync:
+                opcode = Op::SYNC;
+                break;
             default:
                 opcode = Op::ILLEGAL;
                 break;
@@ -766,6 +769,18 @@ namespace iga
                 translateRgnW(w),
                 translateRgnH(h));
             return val;
+        }
+
+        static SyncFC translate(GED_SYNC_FC fc)
+        {
+            switch (fc) {
+            case GED_SYNC_FC_nop:   return SyncFC::NOP;
+            case GED_SYNC_FC_allrd: return SyncFC::ALLRD;
+            case GED_SYNC_FC_allwr: return SyncFC::ALLWR;
+            case GED_SYNC_FC_bar:   return SyncFC::BAR;
+            case GED_SYNC_FC_host:  return SyncFC::HOST;
+            default:                return SyncFC::INVALID;
+            }
         }
     }; //end: class
 } //end: namespace iga

@@ -260,6 +260,8 @@ typedef bool(CDECLATTRIBUTE *pIGAKVHasInstOpt)(const kv_t *kv, int32_t pc, uint3
 #define IGA_KV_GET_EXECUTION_SIZE "kv_get_execution_size"
 typedef uint32_t(CDECLATTRIBUTE *pIGAKVGetExecutionSize)(const kv_t *kv, int32_t pc);
 
+#define IGA_KV_GET_SWSB_INFO "kv_get_swsb_info"
+typedef int32_t(CDECLATTRIBUTE *pIGAKVGetSWSBInfo)(const kv_t *kv, int32_t pc);
 
 #define IGA_KV_GET_NUMBER_SOURCES_STR "kv_get_number_sources"
 typedef int32_t(CDECLATTRIBUTE *pIGAKVGetNumberSources)(const kv_t *kv, int32_t pc);
@@ -411,5 +413,6 @@ typedef struct
     pIGAKVGetFlagSubReg        kv_get_flag_subreg;
     pIGAKVGetPredicate         kv_get_predicate;
     pIGAKVGetIsInversePred     kv_get_inverse_predicate;
+    pIGAKVGetSWSBInfo          kv_get_swsb_info;
     pIGAKVHasInstOpt           kv_has_inst_opt;
 } kv_functions_t;

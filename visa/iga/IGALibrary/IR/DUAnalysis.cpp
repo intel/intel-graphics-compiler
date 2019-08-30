@@ -352,7 +352,9 @@ struct DepAnalysisComputer
             TRACE("        %s: deleting range\n", d.str().c_str());
             dItr = rLiveDefs.erase(dItr);
         } else {
-            d.minInOrderDist++;
+            if (i->getOpSpec().isFixedLatency()) {
+                d.minInOrderDist++;
+            }
             TRACE("        %s: extending range\n", d.str().c_str());
             dItr++;
         }

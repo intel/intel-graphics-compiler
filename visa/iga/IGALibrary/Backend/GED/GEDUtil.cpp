@@ -83,6 +83,9 @@ iga::SFID iga::getSFID(
     if(getRetVal == GED_RETURN_VALUE_SUCCESS)
         gedSFID = GED_GetSFID(&gedInst, &getRetVal);
 
+    // FIXME: duplicate code in Formatter::EmitSendDescriptorInfoGED
+    if (p >= Platform::GEN12P1)
+        gedSFID = IGAToGEDTranslation::lowerSFID(os.op);
 
     return GEDToIGATranslation::translate(gedSFID);
 }

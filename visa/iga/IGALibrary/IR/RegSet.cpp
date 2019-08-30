@@ -31,7 +31,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using namespace iga;
 
-
+// This module implements what awas the original intent for RegDeps.
+// Unfortunately, that module coupled certain machine state with the
+// dependencies that we don't want for things like DU analysis.
+//
+// FIXME: would be to
+//    (1) rename RegDeps in SWSBSetter to something like DepState
+//    (2) compose a RegSet within the DepState
+//
 
 const RegSetInfo *RegSetInfo::ALL[] = {
     &RS_GRF_R,
@@ -178,7 +185,6 @@ bool RegSet::addSourceInputs(const Instruction &i, RegSet &rs)
                 rgn = Region::SRC110;
             } else {
                 // ternary align 1 has some implicit regions that need filling in
-                //
                 // "GEN10 Regioning Rules for Align1 Ternary Operations"
                 //   1. Width is 1 when Vertical and Horizontal Strides are both zero (broadcast access).
                 //   2. Width is equal to Vertical Stride when Horizontal Stride is zero.

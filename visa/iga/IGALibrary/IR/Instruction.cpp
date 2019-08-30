@@ -147,6 +147,7 @@ std::string Instruction::str(Platform pltfm) const
     // TODO: see if we can wrestle the Platform out of this interface
     //  (or pass it as an argument to str())
     FormatOpts fopt(pltfm);
+    fopt.setSWSBEncodingMode(iga::Model::LookupModel(pltfm)->getSWSBEncodeMode());
     FormatInstruction(eh, ss, fopt, *this);
     return ss.str();
 }

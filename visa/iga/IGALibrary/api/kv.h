@@ -27,6 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define IGA_KV_H
 
 #include "iga.h"
+#include "iga_types_swsb.hpp"
 
 /*************************************************************************
  *                                                                       *
@@ -95,7 +96,11 @@ IGA_API kv_t *kv_create(
     size_t bytes_len,
     iga_status_t *status,
     char *errbuf,
-    size_t errbuf_cap
+    size_t errbuf_cap,
+    // if not specified, the swsb encoding mode will be derived from platfrom
+    // by SWSB::getEncodeMode
+    iga::SWSB_ENCODE_MODE swsb_enc_mode
+        = iga::SWSB_ENCODE_MODE::SWSBInvalidMode
     );
 
 /* destroys a kernel view */
@@ -290,6 +295,12 @@ IGA_API uint32_t kv_get_message_len(
  */
 IGA_API uint32_t kv_get_execution_size(const kv_t *kv, int32_t pc);
 
+/*
+ * Returns Software scoreboarding information.
+ */
+IGA_API bool kv_get_swsb_info(
+    const kv_t *kv, int32_t pc, iga::SWSB_ENCODE_MODE encdoe_mode,
+    iga::SWSB& swsb);
 
 /*
  * Returns number of sources this instruction has.

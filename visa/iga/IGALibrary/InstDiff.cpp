@@ -47,8 +47,8 @@ static std::string disassembleInst(
     Platform platform,
     bool useNativeDecoder,
     size_t fromPc,
-    const void *bits
-)
+    const void *bits,
+    bool enableSWSBGen12HPencoding = true)
 {
     ErrorHandler eh;
     std::stringstream ss;
@@ -56,6 +56,7 @@ static std::string disassembleInst(
     fopts.numericLabels = true;
     // fopts.hexFloats = opts.printHexFloats;
     fopts.hexFloats = false;
+    fopts.setSWSBEncodingMode(iga::Model::LookupModel(platform)->getSWSBEncodeMode());
     FormatInstruction(eh, ss, fopts, fromPc, bits, useNativeDecoder);
 
     return ss.str();

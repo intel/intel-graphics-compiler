@@ -504,6 +504,8 @@ private:
             // doesn't support types
             return;
         }
+        if (os.isSyncSubFunc() && op.getDirRegName() == RegName::ARF_NULL)
+            return;
         const Type& type = op.getType();
         bool lblArg =
                 op.getKind() == Operand::Kind::LABEL ||
@@ -593,7 +595,10 @@ private:
     //                 ^^^^^^^^^^^
     void formatInstOpts(const Instruction &i, const std::vector<const char *> &instOpts);
     bool hasInstOptTokens(const Instruction &i) const {
-        return !i.getInstOpts().empty();
+        bool hasDepInfo =
+            opts.platform >= Platform::GEN12P1 &&
+            i.getSWSB().hasSWSB();
+        return !i.getInstOpts().empty() || hasDepInfo;
     }
 
     virtual bool shouldPrintSFID(Platform p) const { return true; };
@@ -981,8 +986,12 @@ void Formatter::formatInstOpts(
     const auto &iopts = i.getInstOpts();
 
     bool hasDepInfo = false;
-    bool hasSendCPS = false;
-    if (iopts.empty() && !hasDepInfo && !hasSendCPS && extraInstOpts.empty()) {
+    bool hasSendInfo = false;
+
+    const auto &di = i.getSWSB();
+    hasDepInfo =
+        (opts.platform >= Platform::GEN12P1) && di.hasSWSB();
+    if (iopts.empty() && !hasDepInfo && !hasSendInfo && extraInstOpts.empty()) {
         return; // early out (no braces)
     }
 
@@ -995,7 +1004,43 @@ void Formatter::formatInstOpts(
         }
         emit(extraInstOpts[opIx]);
     }
+    if ((!iopts.empty() || hasSendInfo) && (hasDepInfo || !extraInstOpts.empty())) {
+        // something was output, prepend a , for the depinfo
+        emit(", ");
+    }
 
+    if (hasDepInfo) {
+        switch (di.distType) {
+        case SWSB::DistType::REG_DIST:
+            emit("@");
+            emit((int)di.minDist);
+            break;
+        default:
+            break;
+        }
+
+        if (di.hasBothDistAndToken())
+            emit(" ,");
+
+        switch (di.tokenType) {
+        case SWSB::TokenType::DST:
+            emit("$");
+            emit((int)di.sbid);
+            emit(".dst");
+            break;
+        case SWSB::TokenType::SRC:
+            emit("$");
+            emit((int)di.sbid);
+            emit(".src");
+            break;
+        case SWSB::TokenType::SET:
+            emit("$");
+            emit((int)di.sbid);
+            break;
+        default:
+            break;
+        }
+    }
     emit('}');
 } // end formatInstOpts
 
@@ -1112,10 +1157,9 @@ void GetDefaultLabelName(
 std::string FormatOpName(const iga::Model &model, const void *bits)
 {
     std::string s;
-    // TODO: use ... model->lookupOpSpecFromBits()
     iga::OpSpecMissInfo missInfo = {0};
-    unsigned opEnc = (unsigned)iga::getBits(bits, 0, 7);
-    const iga::OpSpec &os = model.lookupOpSpecByCode(opEnc);
+    const iga::OpSpec &os = model.lookupOpSpecFromBits(bits, missInfo);
+
     if (!os.isValid()) {
         std::stringstream ss;
         if (missInfo.parent) {
@@ -1394,6 +1438,35 @@ static const GED_RETURN_VALUE constructPartialGEDSendInstruction(
     return status;
 }
 
+static const GED_RETURN_VALUE constructPartialGEDSendInstructionGen12(
+    ged_ins_t* ins, GED_MODEL gedP, GED_OPCODE op,
+    bool supportsExMsgDesc, uint32_t exMsgDesc, uint32_t msgDesc, GED_SFID sfid)
+{
+    GED_RETURN_VALUE status = GED_InitEmptyIns(gedP, ins, op);
+
+    status = GED_SetExecSize(ins, 16);
+
+    if (supportsExMsgDesc && status == GED_RETURN_VALUE_SUCCESS) {
+            status = GED_SetExDescRegFile(ins, GED_REG_FILE_IMM);
+    }
+
+    if (status == GED_RETURN_VALUE_SUCCESS) {
+        status = GED_SetSFID(ins, sfid);
+    }
+
+    if (status == GED_RETURN_VALUE_SUCCESS) {
+        status = GED_SetExMsgDesc(ins, exMsgDesc);
+    }
+
+    if (status == GED_RETURN_VALUE_SUCCESS) {
+        status = GED_SetDescRegFile(ins, GED_REG_FILE_IMM);
+    }
+
+    if (status == GED_RETURN_VALUE_SUCCESS) {
+        status = GED_SetMsgDesc(ins, msgDesc);
+    }
+    return status;
+}
 
 
 
@@ -1466,6 +1539,22 @@ void Formatter::EmitSendDescriptorInfoGED(
     GED_SFID gedSFID = GED_SFID_INVALID;
     bool sfidSupportsHeader = true;
 
+
+    // For GEN12, extract sfid from subfunction, and construct the ged instruction
+    // with the given sfid. Otherwise (for platform < GEN12), SFID is part of exDesc.
+    if (p >= Platform::GEN12P1) {
+        // construct the entire GED inst, if failed, only get the SFID
+        if (ex_desc.type == SendDescArg::IMM) {
+            getRetVal = constructPartialGEDSendInstructionGen12(
+                &gedInst, gedP, gedOP, os.isSendsFamily(), ex_desc.imm, desc,
+                IGAToGEDTranslation::lowerSFID(os.op));
+            if (getRetVal == GED_RETURN_VALUE_SUCCESS)
+                has_ged_inst = true;
+        }
+        if (getRetVal != GED_RETURN_VALUE_SUCCESS) {
+            gedSFID = IGAToGEDTranslation::lowerSFID(os.op);
+        }
+    }
     if (p <= Platform::GEN11) {
         // if ex_desc is imm, construct the entire GED inst
         if (ex_desc.type == SendDescArg::IMM)
@@ -1524,6 +1613,22 @@ void Formatter::EmitSendDescriptorInfoGED(
         }
         hasSrc1Len = true;
     }
+
+    // get src1 length if ex_desc is imm
+    // (at this case we must have ged instruction being constructed)
+    if (p >= Platform::GEN12P1 && has_ged_inst) {
+        getRetVal = GED_RETURN_VALUE_INVALID_MODEL;
+        hasSrc1Len = true;
+        if (getRetVal != GED_RETURN_VALUE_SUCCESS) {
+            if (ex_desc.type == SendDescArg::IMM) {
+                src1Len = getSrc1LengthFromExDesc(ex_desc.imm);
+            } else {
+                // otherwise we're not able to get the src1 length
+                hasSrc1Len = false;
+            }
+        }
+    }
+
     if (hasSrc1Len)
         ss << "+" << src1Len;
     else
@@ -1602,6 +1707,9 @@ void Formatter::EmitSendDescriptorInfoGED(
     } else if (ex_desc.type == SendDescArg::IMM) {
         // Fail to get GED SFID, try to extract from the ex message
         uint32_t sfid = getSFID(ex_desc.imm);
+        if (p >= Platform::GEN12P1)
+            sfid = os.functionControlValue;
+
         if (sfid == SFID_SAMPLER_CACHE && p < iga::Platform::GEN9) {
             msgType = GED_GetMessageTypeDP_SAMPLER(desc, gedP, &getRetVal);
         } else if (sfid == SFID_DP_RC) {

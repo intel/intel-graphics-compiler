@@ -57,8 +57,8 @@ enum class Platform
     GEN9P5      = IGA_GEN_VER_ORDINAL( 9, 5 ),
     GEN10       = IGA_GEN_VER_ORDINAL(10, 0 ),
     GEN11       = IGA_GEN_VER_ORDINAL(11, 0 ),
-    GENNEXT     = IGA_GEN_VER_ORDINAL(12, 0)
-
+    GEN12P1     = IGA_GEN_VER_ORDINAL(12, 1 ), // TGL
+    GENNEXT     = IGA_GEN_VER_ORDINAL(13, 0)
 #undef IGA_GEN_VER_ORDINAL
 };
 
@@ -269,6 +269,7 @@ struct Region {
     static const Region SRCFF1;  // <16;16,1>
     static const Region SRC0X0;  // <0;0> (ternary align1 src0 and src1)
     static const Region SRC2X1;  // <2;1> (ternary align1 src0 and src1)
+    static const Region SRC1X0;  // <1;0> GEN12 changes 2 to 1 in encoding
     static const Region SRC4X1;  // <4;1> (ternary align1 src0 and src1)
     static const Region SRC8X1;  // <8;1> (ternary align1 src0 and src1)
     static const Region SRCXX0;  // <0>   (ternary align1 src2)

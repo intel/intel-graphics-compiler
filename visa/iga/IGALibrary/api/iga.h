@@ -107,6 +107,7 @@ typedef enum {
   , IGA_GEN9p5    = GEN_VER(9,5)
   , IGA_GEN10     = GEN_VER(10,0)
   , IGA_GEN11     = GEN_VER(11,0)
+  , IGA_GEN12p1   = GEN_VER(12,1)
 } iga_gen_t;
 
 
@@ -241,6 +242,8 @@ static_assert(sizeof(iga_assemble_options_t) == 6*4,
  *    op (...) ... {Uncompacted} // will not attempt to compact
  */
 #define IGA_ENCODER_OPT_AUTO_COMPACT            0x00000001u
+/* auto set instruction dependencies */
+#define IGA_ENCODER_OPT_AUTO_DEPENDENCIES       0x00000002u
 /* treat failure to compact an instruction with a {Compacted} annotation
 * as a hard error rather than just raising a warning */
 #define IGA_ENCODER_OPT_ERROR_ON_COMPACT_FAIL   0x00000004u

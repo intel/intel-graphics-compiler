@@ -183,8 +183,9 @@ namespace iga
             // send[c] (..)  reg  reg      ex_desc  desc
             SEND_UNARY = (SEND|HAS_DST|UNARY) + 1,
             // sends[c] (..) reg  reg  reg  ex_desc  desc
-            SEND_BINARY = (SEND|HAS_DST|BINARY) + 1,
+            // GEN12: send[c] (..) reg  reg  reg  ex_desc  desc
 
+            SEND_BINARY = (SEND|HAS_DST|BINARY) + 1,
 
             // illegal or nop
             NULLARY = SPECIAL + 1,
@@ -193,6 +194,8 @@ namespace iga
             // since they both take a single register
             //
             //   sync.<syctrl> (1)   nreg
+            // GEN12:
+            //   sync.<syctrl> (..)  reg
             SYNC_UNARY = (SPECIAL|UNARY) + 2,
         };
 
@@ -276,6 +279,8 @@ namespace iga
             return (a & attrs) != 0;
         }
         bool hasImpicitEm() const {
+            if (groupOp == Op::SYNC)
+                return true;
             switch (op) {
             case Op::NOP:
             case Op::ILLEGAL:
@@ -327,6 +332,8 @@ namespace iga
             Type type = Type::INVALID;
             if (isSendOrSendsFamily()) {
                 type = Type::UD;
+                if (p >= Platform::GEN12P1)
+                    type = Type::UB;
             }
             return type;
         }
@@ -349,6 +356,9 @@ namespace iga
         bool implicitDstTypeVal(Platform p, Type &type) const {
             if (isSendFamily() && p >= Platform::GEN8) {
                 type = Type::UD;
+                if (p >= Platform::GEN12P1) {
+                    type = Type::UB;
+                }
                 return true;
             }
             type = Type::INVALID;
@@ -369,9 +379,9 @@ namespace iga
             ExecSize es,
             Region rgn) const
         {
-            auto *pImplRgn = implicitSrcRegionPtr(srcOpIx, plt, es);
-            if (pImplRgn)
-                return *pImplRgn == rgn;
+            Region imRegion = implicitSrcRegion(srcOpIx, plt, es);
+            if (imRegion == rgn)
+                return true;
             return false;
         }
         bool hasImplicitSrcRegion(
@@ -379,55 +389,90 @@ namespace iga
             Platform plt,
             ExecSize es) const
         {
-            return implicitSrcRegionPtr(srcOpIx, plt, es) != nullptr;
+            return (implicitSrcRegion(srcOpIx, plt, es) != Region::INVALID);
         }
+
         // The source index here corresponds to syntactic position,
         // not encoding position
         Region implicitSrcRegion(
-            int srcOpIx, Platform pltf, ExecSize es) const
+            int srcOpIx,
+            Platform pltfm,
+            ExecSize execSize) const
         {
+            // TODO: fold this into implicitSrcRegionPtr and elide the macro hacking
+            //
             // TODO: this needs to work off the table from BXML
-            const Region *rgn = implicitSrcRegionPtr(srcOpIx, pltf, es);
-            if (!rgn)
-                return Region::SRC110;
-            return *rgn;
-        }
-        const Region *implicitSrcRegionPtr(
-            int srcOpIx, Platform pltfm, ExecSize execSize) const
-        {
-            if (isSendFamily()) {
-                return &Region::SRC010;
-            } else if (isSendFamily() || isSendsFamily()) {
-                // no regions on send's
-                return &Region::INVALID;
-            } else if (isMacro()) {
+            if (isSendFamily() && pltfm < Platform::GEN12P1) {
+                return Region::SRC010;
+            }
+            else if (isMacro()) {
                 if (isTernary()) {
                     // ternary macro: e.g. madm
-                    if (srcOpIx == 2)
-                        return &Region::SRCXX1;
-                    else
-                        return &Region::SRC2X1;
+                    if (srcOpIx == 2) {
+                        return Region::SRCXX1;
+                    }
+                    else {
+                        if (execSize == ExecSize::SIMD1) {
+                            return Region::SRC0X0;
+                        }
+                        else if (pltfm >= Platform::GEN12P1) {
+                            return Region::SRC1X0;
+                        }
+                        else {
+                            return Region::SRC2X1;
+                        }
+                    }
                 }
                 else {
-                    return &Region::SRC221;
+                    // basic macro: e.g. math.invm ...
+                    if (execSize == ExecSize::SIMD1) {
+                        return Region::SRC010;
+                    }
+                    else if (pltfm >= Platform::GEN12P1) {
+                        return Region::SRC110;
+                    }
+                    else {
+                        return Region::SRC221;
+                    }
                 }
-            } else {
+            }
+            else if (isSendFamily() || isSendsFamily()) {
+                // no regions on send's
+                return Region::SRC010;
+            }
+            else {
+                if (pltfm >= Platform::GEN12P1 && isBranching())
+                    return Region::SRC110;
+
                 if (srcOpIx == 0) {
                     switch (op) {
                     case Op::JMPI:
                     case Op::CALL:
                     case Op::CALLA:
                     case Op::BRD:
-                        return &Region::SRC010;
-                    // GED won't let us set 221
+                        return Region::SRC010;
+                        // GED won't let us set 221
                     case Op::BRC:
-                        return &Region::SRC221;
-                    case Op::RET:
-                        return &Region::SRC221;
+                        return Region::SRC221;
+                    case Op::RET: {
+                        if (pltfm >= Platform::GEN12P1)
+                            return Region::SRC010;
+                        else
+                            return Region::SRC221;
+                    }
+                    case Op::SYNC_NOP:
+                    case Op::SYNC_ALLRD:
+                    case Op::SYNC_ALLWR:
+                    case Op::SYNC_BAR:
+                    case Op::SYNC_FENCE:
+                    case Op::SYNC_HOST:
+                    case Op::SYNC:
+                        return Region::SRC010;
                     default:
                         ; // fallthrough to return nullptr
                     }
-                } else if (srcOpIx == 1) {
+                }
+                else if (srcOpIx == 1) {
                     // Encoder encodes Src0 into Src1, we have to lie here;
                     // <2;2,1> gets manually set in Src0 explicitly by
                     // the encoder, this is just for Src1
@@ -435,68 +480,15 @@ namespace iga
                     case Op::BRC:
                     case Op::CALL:
                     case Op::CALLA:
-                        return &Region::SRC010;
+                        return Region::SRC010;
                     default:
                         ; // fallthrough to return nullptr
                     }
                 }
-                return nullptr;
+                return Region::INVALID;
             }
         }
 
-        // an "implicit source type" is a type that should be omitted in syntax
-        // if present, we simply warn the user (it can still mismatch the default)
-        bool hasImplicitSrcType(int srcOpIx, bool isImmOrLbl, Platform pltfm) const {
-            Type type;
-            return implicitSrcTypeVal(srcOpIx, isImmOrLbl, pltfm, type);
-        }
-        Type implicitSrcType(int srcOpIx, bool isImmOrLbl, Platform pltfm) const {
-            Type type;
-            (void)implicitSrcTypeVal(srcOpIx, isImmOrLbl, pltfm, type);
-            return type;
-        }
-        bool implicitSrcTypeVal(
-            int srcOpIx,
-            bool isImmOrLbl,
-            Platform pltfm,
-            Type& type) const
-        {
-            // TODO: pull from BXML tables
-            if (isTypedBranch()) {
-                // e.g. jmpi, call, or brc
-                //   jmpi  r12.3:d
-                //   brd   r12.3:d
-                // we make the
-                if (op == Op::BRC) {
-                    //   brc   r12.3[:d]   null[:ud]
-                    //   brc   LABEL[:d]   LABEL[:d]
-                    type = srcOpIx == 0 || isImmOrLbl ? Type::D : Type::UD;
-                } else {
-                    type = Type::D;
-                }
-                return true;
-            } else if (isBranching()) {
-                // if, else, endif, while, break, cont, goto, join, ...
-                // let GED pick the defaults
-                type = Type::INVALID;
-                return true;
-            } else if (isSendFamily()) {
-                // TRB: we don't print the type on send instructions unless it's
-                // not :ud, this allows us to phase out types on send operands
-                // while meaningless, apparently there is a requirement on SKL
-                // requiring the sampler to read the type on the operand.
-
-                type = Type::UD;
-                return true;
-            } else if (isSendsFamily() || isSendFamily()) {
-                // for sends src0 is :ud, src1 has no type bits
-                type = srcOpIx == 0 ? Type::UD : Type::INVALID;
-                return true;
-            } else {
-                type = Type::INVALID;
-                return false;
-            }
-        }
         // a "default source type" is a type that we optionally place on an
         // operand; an example would be on a jmpi or while operand
         // e.g. while (..) -16    means      while (..) -16:d
@@ -591,13 +583,6 @@ namespace iga
             return op != Op::ILLEGAL;
         }
 
-        bool supportsDepCtrl(Platform pltf) const {
-            return
-                !isSendOrSendsFamily() &&
-                op != Op::NOP &&
-                op != Op::ILLEGAL;
-        }
-
         bool supportsBranchCtrl() const {
             return hasAttrs(Attr::SUPPORTS_BRCTL);
         }
@@ -633,7 +618,123 @@ namespace iga
             else
                 return 0;
         }
+
+        bool isSyncSubFunc() const { return groupOp == Op::SYNC; }
+
+        bool isVariableLatency() const {
+            return isSendOrSendsFamily() || isMathSubFunc()
+                ;
+        }
+        bool isFixedLatency() const {
+            // TODO: should subtract out special instructions?
+            // nop, wait, illegal
+            if (groupOp == Op::SYNC) {
+                return false; // sync.* gets shot down after DepChk
+            }
+            switch (op) {
+            case Op::ILLEGAL:
+            case Op::NOP:
+                // these get shot down after DepChk
+                return false;
+            default:
+                return !isVariableLatency();
+            }
+        }
+
+        bool implicitSrcTypeVal(
+            int srcOpIx,
+            bool isImmOrLbl,
+            Platform pltfm,
+            Type& type) const
+        {
+            // TODO: pull from BXML data (ideally somehow in the syntax)
+            if (isTypedBranch()) {
+                // branches no longer take types in GEN12
+                if (pltfm >= Platform::GEN12P1) {
+                    type = Type::INVALID;
+                    return true;
+                }
+                // e.g. jmpi, call, or brc
+                //   jmpi  r12.3:d
+                //   brd   r12.3:d
+                // we make the
+                if (op == Op::BRC) {
+                    //   brc   r12.3[:d]   null[:ud]
+                    //   brc   LABEL[:d]   LABEL[:d]
+                    type = srcOpIx == 0 || isImmOrLbl ? Type::D : Type::UD;
+                }
+                else {
+                    type = Type::D;
+                }
+                return true;
+            }
+            else if (isBranching()) {
+                // if, else, endif, while, break, cont, goto, join, ...
+                // let GED pick the defaults
+                type = Type::INVALID;
+                return true;
+            }
+            else if (isSendFamily() && pltfm < Platform::GEN12P1) {
+                // TRB: we don't print the type on send instructions unless it's
+                // not :ud, this allows us to phase out types on send operands
+                // while meaningless, apparently there is a requirement on SKL
+                // requiring the sampler to read the type from the operand.
+                //
+                // Types on sends are totally gone in GEN12.
+                type = Type::UD;
+                return true;
+            }
+            else if (isSendOrSendsFamily()) {
+                // for sends src0 is :ud, src1 has no type bits
+                if (pltfm < Platform::GEN12P1) {
+                    type = srcOpIx == 0 ? Type::UD : Type::INVALID;
+                }
+                else {
+                    type = Type::UB;
+                }
+                return true;
+            }
+            else if (isSyncSubFunc()) {
+                // sync imm32          has ud type
+                // sync reg32          type is required
+                // sync null           type is ommitted
+                if (isImmOrLbl) {
+                    type = Type::UD;
+                    return true;
+                }
+                type = Type::INVALID;
+                return false;
+            }
+            else {
+                type = Type::INVALID;
+                return false;
+            }
+        }
+
+        // An "implicit source type" is a type that should be omitted in syntax
+        // if present, we simply warn the user (it can still mismatch the default)
+        bool hasImplicitSrcType(
+            int srcOpIx, bool immOrLbl, Platform pltfm) const
+        {
+            Type type;
+            return implicitSrcTypeVal(srcOpIx, immOrLbl, pltfm, type);
+        }
+
+        Type implicitSrcType(
+            int srcOpIx, bool immOrLbl, Platform pltfm) const
+        {
+            Type type;
+            (void)implicitSrcTypeVal(srcOpIx, immOrLbl, pltfm, type);
+            return type;
+        }
+
+        bool supportsDepCtrl(Platform pltf) const {
+            return
+                !isSendOrSendsFamily() &&
+                pltf < Platform::GEN12P1 &&
+                op != Op::NOP &&
+                op != Op::ILLEGAL;
+        }
     }; // struct OpSpec
 } // namespace iga::*
-
 #endif // IGA_OPSPEC_HPP

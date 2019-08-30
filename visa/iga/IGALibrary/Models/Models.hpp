@@ -357,7 +357,7 @@ namespace iga
         //  - branches don't have types
         //  - the pc is always relative to pre-inc (even jmpi)
         bool supportsSimplifiedBranches() const {
-            return false;
+            return platform >= Platform::GEN12P1;
         }
 
         bool supportsAlign16() const { return platform <= Platform::GEN10; }
@@ -369,6 +369,29 @@ namespace iga
         uint32_t getNumFlagReg()  const;
         uint32_t getGRFByteSize() const;
 
+        /// getSWSBEncodeMode - get the default swsb encoding mode derived from platform
+        SWSB_ENCODE_MODE getSWSBEncodeMode() const {
+            if (platform == Platform::GEN12P1)
+                return SingleDistPipe;
+            return SWSBInvalidMode;
+        }
+
+        // Get the max number of swsb id
+        uint32_t getSWSBTokenNum() const {
+
+            switch(getSWSBEncodeMode()) {
+            case SWSB_ENCODE_MODE::SingleDistPipe:
+                return 16;
+            default:
+                break;
+            }
+
+            return 16;
+        }
+
+        uint32_t getSWSBMaxValidDistance() const {
+            return 7;
+        }
 
     }; // class model
 } // namespace iga::*

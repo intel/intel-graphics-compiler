@@ -9,6 +9,7 @@
 #include "bxml/Model9.hpp"
 #include "bxml/Model10.hpp"
 #include "bxml/Model11.hpp"
+#include "bxml/Model12P1.hpp"
 #include "../bits.hpp"
 #include "../bits.hpp"
 #include "../Backend/Native/MInst.hpp"
@@ -43,11 +44,20 @@ using namespace iga;
 // ordered by encoding of RegNum[7:4]
 // newest platforms first
 static const struct RegInfo REGISTER_SPECIFICATIONS[] = {
-    IGA_REGISTER_SPEC_UNIFORM(
+    IGA_REGISTER_SPEC_LE(
+        Platform::GEN11,
         RegName::GRF_R,"r","General",
-        0,0,
+        0, 0,
         1,
         128,(0)),
+
+    IGA_REGISTER_SPEC_GE(
+        Platform::GEN12P1,
+        RegName::GRF_R,"r","General",
+        0,0, // regNum7_4, regNumBase
+        1,   // accGran
+        256,(0)),
+
     IGA_REGISTER_SPEC_UNIFORM(
         RegName::ARF_NULL, "null", "Null",
         0x0, 0,
@@ -58,16 +68,32 @@ static const struct RegInfo REGISTER_SPECIFICATIONS[] = {
         2,
         1, (32)),
 
-    IGA_REGISTER_SPEC_UNIFORM(
+    // acc and mme share same RegNum[7:4], mme gets the high registers
+    IGA_REGISTER_SPEC_LE(
+        Platform::GEN11,
         RegName::ARF_ACC, "acc", "Accumulator",
         0x2, 0,
         1,
         2, (32,32)),
-    IGA_REGISTER_SPEC_UNIFORM( // acc2-9 are really mme0-7
+    IGA_REGISTER_SPEC_GE(
+        Platform::GEN12P1,
+        RegName::ARF_ACC, "acc", "Accumulator",
+        0x2, 0,
+        1,
+        8, (32,32,32,32,32,32,32,32)),
+    IGA_REGISTER_SPEC_LE(
+        Platform::GEN11,
         RegName::ARF_MME, "mme", "Math Macro",
-        0x2, 2,
+        0x2, 2, // offset by 2 "acc2-9"
         4,
         8, (32,32,32,32,32,32,32,32)),
+    IGA_REGISTER_SPEC_GE(
+        Platform::GEN12P1,
+        RegName::ARF_MME, "mme", "Math Macro",
+        0x2, 8, // offset by 8 "acc8-15"
+        4,
+        8, (32,32,32,32,32,32,32,32)),
+
 
     IGA_REGISTER_SPEC_UNIFORM(
         RegName::ARF_F, "f", "Flag Register",
@@ -113,6 +139,11 @@ static const struct RegInfo REGISTER_SPECIFICATIONS[] = {
         0x8, 0,
         4,
         1, (3*4)), // cr0.{0..2}:d
+
+        // with SWSB wait n{0,1} replaced by sync.{bar,host}, which
+        // implicitly reference notification registers;
+        // not sure if these are needed in CSR though, so leaving for now
+
     IGA_REGISTER_SPEC_UNIFORM(
         RegName::ARF_N, "n", "Notification Register",
         0x9, 0,
@@ -141,12 +172,27 @@ static const struct RegInfo REGISTER_SPECIFICATIONS[] = {
         0xC, 0,
         4,
         1, (4*4)), // tm0.{0..3}:d
-    IGA_REGISTER_SPEC_GE(
-        Platform::GEN7P5,
+
+    // fc0.0-31  stack-entry 0-31
+    // fc1.0     global counts
+    // fc2.0     top of stack pointers
+    // fc3.0-3   per channel counts
+    // fc4.0     call mask
+    IGA_REGISTER_SPEC(Platform::GEN7P5, Platform::GEN11,
         RegName::ARF_FC, "fc", "Flow Control",
         0xD, 0,
         4,
         5, (4*32,4*1,4*1,4*4,4*1)),
+    //  EU GOTO/JOIN instruction latency improvement HAS397165 removes two flow control registers
+    // fc0.0-31  per-channel IP
+    // fc1.0     channel enables
+    // fc2       call mask
+    // fc3       JEU fused mask
+    IGA_REGISTER_SPEC_GE(Platform::GEN12P1,
+        RegName::ARF_FC, "fc", "Flow Control",
+        0xD, 0,
+        4,
+        4, (4*32,4*1,4*1,4*1)),
     IGA_REGISTER_SPEC(Platform::GEN7, Platform::GEN7P5,
         RegName::ARF_DBG, "dbg", "Debug",
         0xF, 0,

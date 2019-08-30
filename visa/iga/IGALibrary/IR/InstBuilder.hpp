@@ -177,7 +177,30 @@ class InstBuilder {
     uint32_t                    m_pc = 0; // current PC
     uint32_t                    m_nextId = 0; // next instruction id
 
+    SWSB_ENCODE_MODE            m_swsbEncodeMode;
 
+public:
+    struct SWSBInfo {
+        enum DIST_TYPE {
+            NONE,
+            REG_DIST,
+        };
+        DIST_TYPE distType = NONE;
+        uint32_t regDist = 0;      // e.g. @3       0 = not set
+        int32_t memSBidAlloc = -1; // e.g. $2      -1 = not set
+        int32_t memSBidDst = -1;   // e.g. $2.dst  -1 = not set
+        int32_t memSBidSrc = -1;   // e.g. $2.src  -1 = not set
+        SWSBInfo() { } // sets default values as above
+        bool anyBarrierSet() const {
+            return sbidAllocSet() || sbidDstSet() || sbidSrcSet();
+        }
+        bool sbidAllocSet() const {return memSBidAlloc >= 0;}
+        bool sbidDstSet() const {return memSBidDst >= 0;}
+        bool sbidSrcSet() const {return memSBidSrc >= 0;}
+    };
+
+private:
+    SWSBInfo                    m_depInfo;
 
     void clearInstState() {
         m_predication.function = PredCtrl::NONE;
@@ -206,6 +229,7 @@ class InstBuilder {
         m_desc.imm = 0;
 
         m_instOpts.clear();
+        m_depInfo = SWSBInfo();
 
         m_comment.clear();
     }
@@ -216,12 +240,17 @@ public:
         , m_errorHandler(e)
         , m_kernel(kernel)
     {
+        m_swsbEncodeMode = m_model.getSWSBEncodeMode();
     }
 
     InstList &getInsts() {return m_insts;}
 
     ErrorHandler &errorHandler() {return m_errorHandler;}
 
+    void setSWSBEncodingMode(SWSB_ENCODE_MODE mode)
+    {
+        m_swsbEncodeMode = mode;
+    }
 
     // Called at the beginning of the program
     void ProgramStart() {
@@ -426,6 +455,48 @@ public:
         if (!m_comment.empty()) {
             inst->setComment(m_comment);
         }
+
+
+        SWSB swInfo;
+        // this assumes checks for incompatible stuff are done during parsing
+        if (m_depInfo.sbidSrcSet())
+        {
+            swInfo.sbid = m_depInfo.memSBidSrc;
+            swInfo.tokenType = SWSB::TokenType::SRC;
+        }
+        if (m_depInfo.sbidDstSet())
+        {
+            swInfo.sbid = m_depInfo.memSBidDst;
+            swInfo.tokenType = SWSB::TokenType::DST;
+        }
+        if (m_depInfo.sbidAllocSet())
+        {
+            swInfo.sbid = m_depInfo.memSBidAlloc;
+            swInfo.tokenType = SWSB::TokenType::SET;
+        }
+
+        if (m_depInfo.regDist > 0)
+        {
+            SWSB::DistType swsb_type = SWSB::DistType::NO_DIST;
+            switch(m_depInfo.distType) {
+            case SWSBInfo::REG_DIST:
+                swsb_type = SWSB::REG_DIST;
+                break;
+            default:
+                break;
+            }
+            swInfo.minDist = m_depInfo.regDist;
+            swInfo.distType = swsb_type;
+        }
+        SWSB::InstType inst_type = SWSB::InstType::OTHERS;
+        if (m_opSpec->isSendOrSendsFamily())
+            inst_type = SWSB::InstType::SEND;
+        else if (m_opSpec->isMathSubFunc())
+            inst_type = SWSB::InstType::MATH;
+        if (!swInfo.verify(m_model.getSWSBEncodeMode(), inst_type))
+            m_errorHandler.reportError(m_loc,
+                "Invalid SWSB token and dist combination");
+        inst->setSWSB(swInfo);
 
         m_pc += inst->hasInstOpt(InstOpt::COMPACTED) ? 8 : 16;
 
@@ -732,6 +803,8 @@ public:
         // NOTE: even though jmpi is relative post-increment, remember
         // that IGA keeps the offsets normalized as pre-increment and in
         // bytes for uniformity (HSW had some QWord labels)
+        // (after GEN12 jmpi is also pre-increment)
+
         OperandInfo src = m_srcs[srcOpIx]; // copy init values
         src.loc = loc;
         src.kind = Operand::Kind::LABEL;
@@ -806,6 +879,85 @@ public:
     // instruction option callbacks
     void InstOpts(const InstOptSet &instOpts) {
         m_instOpts = instOpts;
+    }
+
+
+    void setDepInfoSBidSrc(Loc loc, int32_t sbid) {
+        if (sbid > (int32_t)m_model.getSWSBTokenNum())
+            m_errorHandler.reportError(loc, "Invalid SWSB ID number");
+        if (m_depInfo.anyBarrierSet())
+            m_errorHandler.reportError(loc, "More than one SWSB barrier set");
+
+        m_depInfo.memSBidSrc = sbid;
+    }
+
+    void setDepInfoSBidDst(Loc loc, int32_t sbid) {
+        if (sbid > (int32_t)m_model.getSWSBTokenNum())
+            m_errorHandler.reportError(loc, "Invalid SWSB ID number");
+        if (m_depInfo.anyBarrierSet())
+            m_errorHandler.reportError(loc, "More than one SWSB barrier set");
+
+        m_depInfo.memSBidDst = sbid;
+    }
+
+    void setDepInfoSBidAlloc(Loc loc, int32_t sbid) {
+        if (sbid > (int32_t)m_model.getSWSBTokenNum())
+            m_errorHandler.reportError(loc, "Invalid SWSB ID number");
+        if (m_depInfo.anyBarrierSet())
+            m_errorHandler.reportError(loc, "More than one SWSB barrier set");
+
+        m_depInfo.memSBidAlloc = sbid;
+    }
+
+    void setDepInfoDist(Loc loc, SWSBInfo::DIST_TYPE type, uint32_t dist) {
+        if (dist > m_model.getSWSBMaxValidDistance())
+            m_errorHandler.reportError(loc, "Invalid SWSB distance number");
+        if (m_depInfo.distType != SWSBInfo::DIST_TYPE::NONE)
+            m_errorHandler.reportError(loc, "More than one SWSB distance set");
+        m_depInfo.distType = type;
+        m_depInfo.regDist = dist;
+    }
+
+    ///////////////////////////////////////////////
+    // for decoding from binary
+    void InstSwsb(Loc loc, SWSB swsb) {
+        m_depInfo = SWSBInfo(); // clobber old value
+        // verify the given swsb
+        SWSB::InstType inst_type = SWSB::InstType::OTHERS;
+        if (m_opSpec->isSendOrSendsFamily())
+            inst_type = SWSB::InstType::SEND;
+        else if (m_opSpec->isMathSubFunc())
+            inst_type = SWSB::InstType::MATH;
+        if (!swsb.verify(m_model.getSWSBEncodeMode(), inst_type))
+            m_errorHandler.reportError(loc, "invalid SWSB bits");
+
+
+        switch(swsb.tokenType) {
+        case SWSB::TokenType::NOTOKEN:
+            break;
+        case SWSB::TokenType::DST:
+            m_depInfo.memSBidDst = (int32_t)swsb.sbid;
+            break;
+        case SWSB::TokenType::SRC:
+            m_depInfo.memSBidSrc = (int32_t)swsb.sbid;
+            break;
+        case SWSB::TokenType::SET:
+            m_depInfo.memSBidAlloc = (int32_t)swsb.sbid;
+            break;
+        }
+
+        switch (swsb.distType) {
+        case SWSB::DistType::NO_DIST:
+            m_depInfo.distType = SWSBInfo::NONE;
+            break;
+        case SWSB::DistType::REG_DIST:
+            m_depInfo.distType = SWSBInfo::REG_DIST;
+            break;
+        default:
+            m_errorHandler.reportError(loc, "invalid SWSB bits");
+        }
+        if (swsb.distType != SWSB::DistType::NO_DIST)
+            m_depInfo.regDist = swsb.minDist;
     }
 
 

@@ -91,6 +91,7 @@ static const PlatformEntry ALL_PLATFORMS[] {
     {IGA_GEN9p5,  iga::Platform::GEN9P5,  "9p5"  },
     {IGA_GEN10,   iga::Platform::GEN10,   "10"   },
     {IGA_GEN11,   iga::Platform::GEN11,   "11"   },
+    {IGA_GEN12p1, iga::Platform::GEN12P1, "12p1" },
 };
 
 // conversion to an internal platform
@@ -326,6 +327,7 @@ public:
         EncoderOpts eopts(
               (aopts.encoder_opts & IGA_ENCODER_OPT_AUTO_COMPACT) != 0,
               (aopts.encoder_opts & IGA_ENCODER_OPT_ERROR_ON_COMPACT_FAIL) == 0);
+        eopts.autoDepSet = (aopts.encoder_opts & IGA_ENCODER_OPT_AUTO_DEPENDENCIES) != 0;
 
         if ((aopts.encoder_opts & IGA_ENCODER_OPT_USE_NATIVE) == 0) {
             if (!iga::ged::IsEncodeSupported(m_model, eopts)) {
@@ -372,8 +374,10 @@ public:
     FormatOpts formatterOpts(
         const iga_disassemble_options_t &dopts,
         const char *(*formatLabel)(int32_t, void *),
-        void *formatLabelEnv
-    )
+        void *formatLabelEnv,
+        // swsb encoding mode, if not specified, the encoding mode will
+        // be derived from platform by SWSB::getEncdoeMode
+        SWSB_ENCODE_MODE swsbEnMod = SWSB_ENCODE_MODE::SWSBInvalidMode)
     {
         FormatOpts fopts(
             m_model.platform,
@@ -393,6 +397,11 @@ public:
             (dopts.formatting_opts & IGA_FORMATTING_OPT_PRINT_DEPS) != 0;
         fopts.printLdSt =
             (dopts.formatting_opts & IGA_FORMATTING_OPT_PRINT_LDST) != 0;
+        if (swsbEnMod == SWSB_ENCODE_MODE::SWSBInvalidMode)
+            fopts.setSWSBEncodingMode(m_model.getSWSBEncodeMode());
+        else
+            fopts.setSWSBEncodingMode(swsbEnMod);
+
         return fopts;
     }
 

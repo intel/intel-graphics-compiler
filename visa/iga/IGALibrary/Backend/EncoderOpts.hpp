@@ -26,6 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef IGA_BACKEND_ENCODEROPTS
 #define IGA_BACKEND_ENCODEROPTS
 
+#include "../api/iga_types_swsb.hpp"
 
 namespace iga
 {
@@ -33,7 +34,10 @@ namespace iga
         bool autoCompact = false;
         bool explicitCompactMissIsWarning = false;
         bool ignoreNoCompactFormFound = false;
-
+        bool autoDepSet = false;
+        // Specify the swsb encoding mode. If not specified, the encoding mode will
+        // be derived from platform by SWSB::getEncodeMode
+        SWSB_ENCODE_MODE swsbEncodeMode = SWSB_ENCODE_MODE::SWSBInvalidMode;
 
         EncoderOpts(
             bool _autoCompact = false,

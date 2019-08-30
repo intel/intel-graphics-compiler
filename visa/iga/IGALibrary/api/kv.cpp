@@ -59,12 +59,14 @@ public:
     KernelViewImpl(
         iga::Platform platf,
         const void *bytes,
-        size_t bytesLength
+        size_t bytesLength,
+        SWSB_ENCODE_MODE swsb_enc_mode
     )
         : m_model(*iga::Model::LookupModel(platf))
 
     {
         iga::Decoder decoder(*Model::LookupModel(platf), m_errHandler);
+        decoder.setSWSBEncodingMode(swsb_enc_mode);
         IGA_ASSERT(Model::LookupModel(platf) != nullptr, "Unsupported platform");
         m_kernel = decoder.decodeKernelBlocks(bytes, bytesLength);
 
@@ -112,7 +114,8 @@ kv_t *kv_create(
     size_t bytes_len,
     iga_status_t *status,
     char *errbuf,
-    size_t errbuf_cap
+    size_t errbuf_cap,
+    SWSB_ENCODE_MODE swsb_enc_mode
 )
 {
     if (errbuf && errbuf_cap > 0)
@@ -130,8 +133,7 @@ kv_t *kv_create(
 
     KernelViewImpl *kvImpl = nullptr;
     try {
-        kvImpl = new (std::nothrow)KernelViewImpl(p, bytes, bytes_len
-        );
+        kvImpl = new (std::nothrow)KernelViewImpl(p, bytes, bytes_len, swsb_enc_mode);
         if (!kvImpl) {
             if (errbuf)
                 formatTo(errbuf, errbuf_cap, "%s", "failed to allocate");
@@ -280,6 +282,7 @@ size_t kv_get_inst_syntax(
 
     std::stringstream ss;
     FormatOpts fopts(kvImpl->m_model.platform, labeler, labeler_env);
+    fopts.setSWSBEncodingMode(kvImpl->m_model.getSWSBEncodeMode());
     FormatInstruction(
         kvImpl->m_errHandler,
         ss,
@@ -516,6 +519,19 @@ uint32_t kv_get_execution_size(const kv_t *kv, int32_t pc)
     return static_cast<uint32_t>(inst->getExecSize());
 }
 
+bool kv_get_swsb_info(const kv_t *kv, int32_t pc,
+    iga::SWSB_ENCODE_MODE encdoe_mode, iga::SWSB& swsb)
+{
+    if (!kv) {
+        return false;
+    }
+    const Instruction *inst = getInstruction(kv, pc);
+    if (!inst) {
+        return false;
+    }
+    swsb = inst->getSWSB();
+    return true;
+}
 
 int32_t kv_get_number_sources(const kv_t *kv, int32_t pc)
 {

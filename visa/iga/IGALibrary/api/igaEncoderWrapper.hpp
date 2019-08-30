@@ -8,6 +8,10 @@ class KernelEncoder
     uint32_t m_binarySize = 0;
     iga::Kernel* m_kernel = nullptr;
     bool m_autoCompact = false;
+    // enable IGA swsb set
+    bool m_enableAutoDeps = false;
+    // swsb encoding mode
+    iga::SWSB_ENCODE_MODE m_swsbEncodeMode = iga::SWSB_ENCODE_MODE::SWSBInvalidMode;
 
 public:
     // @param compact: auto compact instructions if applicable
@@ -32,4 +36,16 @@ public:
     // FIXME: Move this api to somewhere else that's more apporopriate
     static bool patchImmValue(const iga::Model& model, unsigned char* binary, iga::Type type, const iga::ImmVal &val);
 
+    // set swsb encoding mode. If not set, the encoding mode will be derived from platform
+    void setSWSBEncodingMode(iga::SWSB_ENCODE_MODE mode)
+    {
+        m_swsbEncodeMode = mode;
+    }
+
+    // enable IGA swsb set. When enabled, the original swsb in the input instructions will
+    // be obsoleted
+    void enableIGAAutoDeps(bool enable = true)
+    {
+        m_enableAutoDeps = enable;
+    }
 };

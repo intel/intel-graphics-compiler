@@ -698,6 +698,7 @@ namespace iga
                             const RegInfo *coverRegInfo =
                                 model.lookupArfRegInfoByRegNum(coverRegBits);
                             if (coverRegInfo) {
+                                // e.g. GEN12 acc10 is mme2
                                 ss << " (" <<
                                     coverRegInfo->syntax << (val & 0xF) << ")";
                             }

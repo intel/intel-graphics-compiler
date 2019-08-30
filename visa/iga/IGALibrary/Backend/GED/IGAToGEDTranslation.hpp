@@ -272,6 +272,46 @@ namespace iga
             case Op::NOP:
                 op = GED_OPCODE_nop;
                 break;
+            case Op::SYNC_NOP:
+            case Op::SYNC_ALLRD:
+            case Op::SYNC_ALLWR:
+            case Op::SYNC_BAR:
+            case Op::SYNC_FENCE:
+            case Op::SYNC_HOST:
+                op = GED_OPCODE_sync;
+                break;
+                // 12p1
+            case Op::SEND_CRE:
+            case Op::SEND_DC0:
+            case Op::SEND_DC1:
+            case Op::SEND_DC2:
+            case Op::SEND_DCRO:
+            case Op::SEND_GTWY:
+            case Op::SEND_NULL:
+            case Op::SEND_PIXI:
+            case Op::SEND_RC:
+            case Op::SEND_SMPL:
+            case Op::SEND_TS:
+            case Op::SEND_URB:
+            case Op::SEND_VME:
+                op = GED_OPCODE_send;
+                break;
+                // 12p1
+            case Op::SENDC_CRE:
+            case Op::SENDC_DC0:
+            case Op::SENDC_DC1:
+            case Op::SENDC_DC2:
+            case Op::SENDC_DCRO:
+            case Op::SENDC_GTWY:
+            case Op::SENDC_NULL:
+            case Op::SENDC_PIXI:
+            case Op::SENDC_RC:
+            case Op::SENDC_SMPL:
+            case Op::SENDC_TS:
+            case Op::SENDC_URB:
+            case Op::SENDC_VME:
+                op = GED_OPCODE_sendc;
+                break;
             default:
                 break;
             }
@@ -310,12 +350,28 @@ namespace iga
                 break;
             case Platform::GEN11:
                 pltf = GED_MODEL_GEN_11;
-
+                break;
+            case Platform::GEN12P1:
+                pltf = GED_MODEL_GEN_12_1;
+                break;
             default:
                 break;
             }
 
             return pltf;
+        }
+
+        static GED_SYNC_FC lowerSyncFC(Op op)
+        {
+            switch (op)
+            {
+            case Op::SYNC_ALLRD: return GED_SYNC_FC_allrd;
+            case Op::SYNC_ALLWR: return GED_SYNC_FC_allwr;
+            case Op::SYNC_BAR:   return GED_SYNC_FC_bar;
+            case Op::SYNC_HOST:  return GED_SYNC_FC_host;
+            case Op::SYNC_NOP:   return GED_SYNC_FC_nop;
+            default:             return GED_SYNC_FC_INVALID;
+            }
         }
 
         static GED_PRED_CTRL lowerPredCtrl(PredCtrl predMod)
@@ -398,6 +454,67 @@ namespace iga
             return srcMod;
         }
 
+        static GED_SFID lowerSFID(Op opcode)
+        {
+            GED_SFID sfid = GED_SFID_INVALID;
+            switch (opcode) {
+            case Op::SEND_NULL:
+            case Op::SENDC_NULL:
+                sfid = GED_SFID_NULL;
+                break;
+            case Op::SEND_SMPL:
+            case Op::SENDC_SMPL:
+                sfid = GED_SFID_SAMPLER;
+                break;
+            case Op::SEND_GTWY:
+            case Op::SENDC_GTWY:
+                sfid = GED_SFID_GATEWAY;
+                break;
+            case Op::SEND_DC2:
+            case Op::SENDC_DC2:
+                sfid = GED_SFID_DP_DC2;
+                break;
+            case Op::SEND_RC:
+            case Op::SENDC_RC:
+                sfid = GED_SFID_DP_RC;
+                break;
+            case Op::SEND_URB:
+            case Op::SENDC_URB:
+                sfid = GED_SFID_URB;
+                break;
+            case Op::SEND_TS:
+            case Op::SENDC_TS:
+                sfid = GED_SFID_SPAWNER;
+                break;
+            case Op::SEND_VME:
+            case Op::SENDC_VME:
+                sfid = GED_SFID_VME;
+                break;
+            case Op::SEND_DCRO:
+            case Op::SENDC_DCRO:
+                sfid = GED_SFID_DP_DCRO;
+                break;
+            case Op::SEND_DC0:
+            case Op::SENDC_DC0:
+                sfid = GED_SFID_DP_DC0;
+                break;
+            case Op::SEND_PIXI:
+            case Op::SENDC_PIXI:
+                sfid = GED_SFID_PI;
+                break;
+            case Op::SEND_DC1:
+            case Op::SENDC_DC1:
+                sfid = GED_SFID_DP_DC1;
+                break;
+            case Op::SEND_CRE:
+            case Op::SENDC_CRE:
+                sfid = GED_SFID_CRE;
+                break;
+            default:
+                break;
+            }
+            return sfid;
+        }
 
         static GED_SFID lowerSendTFID(uint32_t id, Platform platform)
         {

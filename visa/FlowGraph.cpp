@@ -3629,6 +3629,7 @@ void G4_Kernel::emit_asm(std::ostream& output, bool beforeRegAlloc, void * binar
         char* errBuf = new char[ERROR_STRING_MAX_LENGTH];
 
         KernelView kView(getIGAPlatform(), binary, binarySize,
+                         BinaryEncodingIGA::getIGASWSBEncodeMode(*fg.builder),
                          errBuf, ERROR_STRING_MAX_LENGTH);
         dissasemblyFailed = !kView.decodeSucceeded();
 

@@ -163,6 +163,7 @@ namespace iga
 
         void setMsgDesc(const SendDescArg &msg) { m_desc = msg; }
         void setExtMsgDesc(const SendDescArg &msg) { m_exDesc = msg; }
+        void setSWSB(SWSB swsb) { m_depInfo = swsb; }
         void addInstOpt(const InstOpt &opt) { m_instOpts.add(opt); }
         void addInstOpts(const InstOptSet &opts) { m_instOpts.add(opts); }
 
@@ -224,6 +225,7 @@ namespace iga
         const Block       *getJIP() const { return m_srcs[0].getTargetBlock(); }
         const Block       *getUIP() const { return m_srcs[1].getTargetBlock(); }
         const std::string  &getComment() const { return m_comment; }
+        SWSB             getSWSB() const { return m_depInfo; }
         bool             isBranching() const { return getOpSpec().isBranching(); }
 
         void             validate() const; // asserts on malformed IR
@@ -249,6 +251,7 @@ namespace iga
         SendDescArg  m_desc;
 
         InstOptSet       m_instOpts; // miscellaneous instruction attributes
+        SWSB             m_depInfo;
 
         int              m_instId; // unique id for this instruction (unique in the kernel)
 

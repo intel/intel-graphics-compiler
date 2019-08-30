@@ -100,6 +100,9 @@ namespace iga {
 
         Instruction *createNopInstruction();
         Instruction *createIllegalInstruction();
+        Instruction *createSyncNopInstruction(SWSB sw);
+        Instruction *createSyncAllRdInstruction(SWSB sw);
+        Instruction *createSyncAllWrInstruction(SWSB sw);
     private:
         const Model&                      m_model;
         MemManager                        m_mem;

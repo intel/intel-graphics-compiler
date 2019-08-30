@@ -8,6 +8,7 @@ set(IGA_ModelsOpen
   ${CMAKE_CURRENT_SOURCE_DIR}/bxml/Model9.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/bxml/Model10.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/bxml/Model11.hpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/bxml/Model12P1.hpp
 )
 set(IGA_ModelsExteneded )
 

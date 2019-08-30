@@ -45,12 +45,15 @@ namespace iga {
         bool supportLegacyDirectives = false;
         // emits warnings about deprecated syntax
         bool deprecatedSyntaxWarnings = true;
+        SWSB_ENCODE_MODE swsbEncodeMode = SWSB_ENCODE_MODE::SWSBInvalidMode;
+
         // sets the maximum number of fatal syntax errors allowable
         // before we give up on the parse
         size_t maxSyntaxErrors = 3;
 
         ParseOpts(const Model &model)
         {
+            swsbEncodeMode = model.getSWSBEncodeMode();
         }
     };
 

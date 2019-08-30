@@ -226,6 +226,12 @@ static void inferPlatformAndMode(
             os.platform = IGA_GEN8;
         } else if (prj == "9") {
             os.platform = IGA_GEN9;
+        } else if (prj == "10") {
+            os.platform = IGA_GEN10;
+        } else if (prj == "11") {
+            os.platform = IGA_GEN11;
+        } else if (prj == "12P1") {
+            os.platform = IGA_GEN12p1;
         }
     }
 }

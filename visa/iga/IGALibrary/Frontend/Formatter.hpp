@@ -53,6 +53,9 @@ namespace iga {
         bool              hexFloats = true;
         bool              printInstPc = false;
         bool              syntaxExtensions = false;
+        // swsb encoding mode, if not specified, the encoding mode will be
+        // derived from platform by SWSB::getEncodeMode
+        SWSB_ENCODE_MODE  swsbEncodingMode = SWSB_ENCODE_MODE::SWSBInvalidMode;
         bool              printInstDeps = true;
         bool              printInstBits = true;
         bool              printLdSt = false;
@@ -84,6 +87,10 @@ namespace iga {
         {
         }
 
+        void setSWSBEncodingMode(SWSB_ENCODE_MODE mode)
+        {
+            swsbEncodingMode = mode;
+        }
     };
 
 

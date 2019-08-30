@@ -63,4 +63,5 @@ typedef enum
 extern const ged_unsigned_table_t EnumInterpretersTable0[3];
 extern const ged_unsigned_table_t EnumInterpretersTable1[3];
 extern const ged_unsigned_table_t EnumInterpretersTable2[3];
+extern const ged_unsigned_table_t EnumInterpretersTable3[3];
 #endif // GED_ENUM_INTERPRETERS_H

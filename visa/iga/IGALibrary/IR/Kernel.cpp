@@ -171,3 +171,32 @@ Instruction *Kernel::createIllegalInstruction()
     return inst;
 }
 
+static Instruction *createSyncInstruction(SWSB &sw, const OpSpec &ops, MemManager &mem)
+{
+    Instruction *inst = new(&mem)Instruction(
+        ops,
+        ExecSize::SIMD8,
+        ChannelOffset::M0,
+        MaskCtrl::NOMASK);
+
+    const Predication predOpnd;
+    inst->setPredication(predOpnd);
+    inst->setFlagModifier(FlagModifier::NONE);
+    inst->setFlagReg(REGREF_ZERO_ZERO);
+    inst->setSWSB(sw);
+    inst->setSource(SourceIndex::SRC0, Operand::SRC_REG_NULL_UD);
+
+    return inst;
+}
+Instruction *Kernel::createSyncNopInstruction(SWSB sw)
+{
+    return createSyncInstruction(sw, m_model.lookupOpSpec(Op::SYNC_NOP), m_mem);
+}
+Instruction *Kernel::createSyncAllRdInstruction(SWSB sw)
+{
+    return createSyncInstruction(sw, m_model.lookupOpSpec(Op::SYNC_ALLRD), m_mem);
+}
+Instruction *Kernel::createSyncAllWrInstruction(SWSB sw)
+{
+    return createSyncInstruction(sw, m_model.lookupOpSpec(Op::SYNC_ALLWR), m_mem);
+}

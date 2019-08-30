@@ -2575,4 +2575,23 @@ const ged_disassembly_block_t* DisassemblyBlockTable254[8] =
     &DisassemblyBlockVar76, // 6
     NULL // 7
 }; // DisassemblyBlockTable254[]
+const ged_disassembly_block_t* DisassemblyBlockTable255[3] =
+{
+    &DisassemblyBlockVar55, // 0
+    &DisassemblyBlockVar56, // 1
+    NULL // 2
+}; // DisassemblyBlockTable255[]
+const ged_disassembly_block_t* DisassemblyBlockTable256[4] =
+{
+    &DisassemblyBlockVar55, // 0
+    &DisassemblyBlockVar56, // 1
+    &DisassemblyBlockVar57, // 2
+    NULL // 3
+}; // DisassemblyBlockTable256[]
+const ged_disassembly_block_t* DisassemblyBlockTable257[3] =
+{
+    &DisassemblyBlockVar55, // 0
+    &DisassemblyBlockVar229, // 1
+    NULL // 2
+}; // DisassemblyBlockTable257[]
 #endif // GED_DISASSEMBLY

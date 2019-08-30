@@ -33,7 +33,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ged_enumerations_internal.h"
 #include "ged_ins_field_internal.h"
 #include "ged_ins_field.h"
-GED_FIELD_TYPE fieldTypesByField[108] =
+GED_FIELD_TYPE fieldTypesByField[116] =
 {
     0x3, // 0
     0x0, // 1
@@ -142,9 +142,17 @@ GED_FIELD_TYPE fieldTypesByField[108] =
     0x103, // 104
     0x124, // 105
     0x124, // 106
-    0x102 // 107
+    0x102, // 107
+    0x100, // 108
+    0x100, // 109
+    0x100, // 110
+    0x100, // 111
+    0x103, // 112
+    0x103, // 113
+    0x100, // 114
+    0x100 // 115
 }; // fieldTypesByField[]
-const char** stringGettersByField[108] =
+const char** stringGettersByField[116] =
 {
     OpcodeEnumeration, // 0
     NULL, // 1
@@ -253,9 +261,17 @@ const char** stringGettersByField[108] =
     ExecutionDataTypeEnumeration, // 104
     NULL, // 105
     NULL, // 106
-    NULL // 107
+    NULL, // 107
+    NULL, // 108
+    NULL, // 109
+    NULL, // 110
+    NULL, // 111
+    SyncFCEnumeration, // 112
+    FusionCtrlEnumeration, // 113
+    NULL, // 114
+    NULL // 115
 }; // stringGettersByField[]
-const char* fieldNameByField[108] =
+const char* fieldNameByField[116] =
 {
     "Opcode", // 0
     "CmptCtrl", // 1
@@ -364,9 +380,17 @@ const char* fieldNameByField[108] =
     "ExecutionDataType", // 104
     "Src0TernaryImm", // 105
     "Src2TernaryImm", // 106
-    "Src2HorzStride" // 107
+    "Src2HorzStride", // 107
+    "SWSB", // 108
+    "Src1IsImm", // 109
+    "Src0IsImm", // 110
+    "Src0SubRegNumByte", // 111
+    "SyncFC", // 112
+    "FusionCtrl", // 113
+    "DataTypeIndexNoDep", // 114
+    "CompactedImm" // 115
 }; // fieldNameByField[]
-GED_FIELD_TYPE pseudoFieldTypesByField[35] =
+GED_FIELD_TYPE pseudoFieldTypesByField[36] =
 {
     0x103, // 0
     0x100, // 1
@@ -402,9 +426,10 @@ GED_FIELD_TYPE pseudoFieldTypesByField[35] =
     0x103, // 31
     0x103, // 32
     0x103, // 33
-    0x103 // 34
+    0x103, // 34
+    0x100 // 35
 }; // pseudoFieldTypesByField[]
-const char** stringGettersByPseudoField[35] =
+const char** stringGettersByPseudoField[36] =
 {
     ArchRegEnumeration, // 0
     NULL, // 1
@@ -440,9 +465,10 @@ const char** stringGettersByPseudoField[35] =
     MessageTypeEnumerationDisassembly, // 31
     MessageTypeEnumerationDisassembly, // 32
     MessageTypeEnumerationDisassembly, // 33
-    MessageTypeEnumerationDisassembly // 34
+    MessageTypeEnumerationDisassembly, // 34
+    NULL // 35
 }; // stringGettersByPseudoField[]
-const char* fieldNameByPseudoField[35] =
+const char* fieldNameByPseudoField[36] =
 {
     "ArchReg", // 0
     "ArchRegNum", // 1
@@ -478,5 +504,6 @@ const char* fieldNameByPseudoField[35] =
     "MessageTypeDP_DC0Legacy", // 31
     "MessageTypeDP_DC0ScratchBlock", // 32
     "MessageTypeDP_DC2", // 33
-    "MessageTypeDP_DCRO" // 34
+    "MessageTypeDP_DCRO", // 34
+    "ExMessageLength" // 35
 }; // fieldNameByPseudoField[]

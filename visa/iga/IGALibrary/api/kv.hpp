@@ -68,6 +68,7 @@ public:
         iga_gen_t platf,
         const void *bytes,
         size_t bytesLength,
+        iga::SWSB_ENCODE_MODE swsb_mode,
         char *decodeLog = nullptr,
         size_t decodeLogLen = 0)
         : m_kv(nullptr)
@@ -80,8 +81,8 @@ public:
             bytesLength,
             &m_disasm_status,
             decodeLog,
-            decodeLogLen
-            );
+            decodeLogLen,
+            swsb_mode);
     }
 
 
@@ -322,6 +323,11 @@ public:
         return static_cast<iga::ExecSize>(kv_get_execution_size(m_kv, pc));
     }
 
+    iga::SWSB getSWSBInfo(int32_t pc, iga::SWSB_ENCODE_MODE encdoe_mode) {
+        iga::SWSB swsb;
+        kv_get_swsb_info(m_kv, pc, encdoe_mode, swsb);
+        return swsb;
+    }
 
     // Returns opcode of the instruction
     //

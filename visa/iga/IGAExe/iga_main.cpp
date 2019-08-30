@@ -157,14 +157,12 @@ extern "C" int iga_main(int argc, const char **argv)
             } else if (inp == "BDW" || inp == "8") {
                 p = IGA_GEN8;
             } else if (inp == "CHV" ||
-                inp == "8LP" || inp == "8P1" || inp == "8.1")
-            {
+                inp == "8LP" || inp == "8P1" || inp == "8.1") {
                 p = IGA_GEN8lp;
             } else if (inp == "SKL" || inp == "9") {
                 p = IGA_GEN9;
             } else if (inp == "BXT" ||
-                inp == "9LP" || inp == "9P1" || inp == "9.1")
-            {
+                inp == "9LP" || inp == "9P1" || inp == "9.1") {
                 p = IGA_GEN9lp;
             } else if (inp == "KBL" || inp == "9P5" || inp == "9.5") {
                 p = IGA_GEN9p5;
@@ -172,6 +170,9 @@ extern "C" int iga_main(int argc, const char **argv)
                 p = IGA_GEN10;
             } else if (inp == "ICL" || inp == "CNLH" || inp == "11") {
                 p = IGA_GEN11;
+            } else if (inp == "TGL" || inp == "TGLLP" ||
+                inp == "12LP" || inp == "12P1" || inp == "12.1") {
+                p = IGA_GEN12p1;
             } else {
                 err("invalid platform option "
                     "(use option -h=p to list platforms)");
@@ -271,6 +272,16 @@ extern "C" int iga_main(int argc, const char **argv)
             fprintf(stderr, "%s\n",
                 "-Xdisable-ir-checking is deprecated; use -W* options");
         });
+    xGrp.defineFlag(
+        "auto-deps",
+        nullptr,
+        "IGA automatically sets instruction dependency information",
+        "This sets instruction dependencies automatically.  "
+        "Note, the algorithm is likely to be less efficient than compiler "
+        "output or carefully hand-tuned annotations."
+        "",
+        opts::OptAttrs::ALLOW_UNSET,
+        baseOpts.autosetDepInfo);
     xGrp.defineFlag(
         "autocompact",
         nullptr,

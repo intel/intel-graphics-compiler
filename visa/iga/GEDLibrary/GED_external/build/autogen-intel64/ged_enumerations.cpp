@@ -232,6 +232,12 @@ const char* ExecutionDataTypeEnumeration[3] =
     "Float", // 1
     NULL // 2
 }; // ExecutionDataTypeEnumeration[]
+const char* FusionCtrlEnumeration[3] =
+{
+    "", // 0
+    "Serialized", // 1
+    NULL // 2
+}; // FusionCtrlEnumeration[]
 const char* HeaderPresentEnumeration[3] =
 {
     "no", // 0
@@ -415,7 +421,7 @@ const char* NoSrcDepSetEnumeration[3] =
     "NoSrcDepSet", // 1
     NULL // 2
 }; // NoSrcDepSetEnumeration[]
-const char* OpcodeEnumeration[75] =
+const char* OpcodeEnumeration[76] =
 {
     "illegal", // 0
     "mov", // 1
@@ -488,10 +494,11 @@ const char* OpcodeEnumeration[75] =
     "ror", // 68
     "rol", // 69
     "dp4a", // 70
-    "f32to16", // 71
-    "f16to32", // 72
-    "dim", // 73
-    NULL // 74
+    "sync", // 71
+    "f32to16", // 72
+    "f16to32", // 73
+    "dim", // 74
+    NULL // 75
 }; // OpcodeEnumeration[]
 const char* PredCtrlEnumeration[19] =
 {
@@ -644,6 +651,16 @@ const char* SwizzleEnumeration[5] =
     "w", // 3
     NULL // 4
 }; // SwizzleEnumeration[]
+const char* SyncFCEnumeration[7] =
+{
+    "nop", // 0
+    "grfsb", // 1
+    "allrd", // 2
+    "allwr", // 3
+    "bar", // 4
+    "host", // 5
+    NULL // 6
+}; // SyncFCEnumeration[]
 const char* ThreadCtrlEnumeration[5] =
 {
     "", // 0

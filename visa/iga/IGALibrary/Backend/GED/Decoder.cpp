@@ -31,6 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Frontend/IRToString.hpp"
 #include "../../IR/IRChecker.hpp"
 #include "../../asserts.hpp"
+#include "../../IR/SWSBSetter.hpp"
 
 #include <sstream>
 #include <cstring>
@@ -90,6 +91,11 @@ static Region macroDefaultSourceRegion(
     } else if (srcOpIx == 2) {
         return Region::SRCXX1;
     } else {
+        if (p >= Platform::GEN12P1) {
+            return os.isTernary() ?
+                Region::SRC1X0 : // GEN12 ternary packed region
+                Region::SRC110;
+        }
         return os.isTernary() ?
             Region::SRC2X1 :
             Region::SRC441;
@@ -104,9 +110,44 @@ DecoderBase::DecoderBase(const Model &model, ErrorHandler &errHandler) :
     m_opSpec(nullptr),
     m_binary(nullptr)
 {
+    // Derived the swsb mode from plaform
+    if (m_SWSBEncodeMode == SWSB_ENCODE_MODE::SWSBInvalidMode)
+        m_SWSBEncodeMode = model.getSWSBEncodeMode();
     IGA_ASSERT(m_gedModel != GED_MODEL_INVALID, "invalid GED model");
 }
 
+void DecoderBase::decodeSWSB(Instruction* inst)
+{
+    if (m_model.platform >= Platform::GEN12P1) {
+        uint32_t swsbBits = 0;
+        if (inst->getOp() != Op::INVALID &&
+            inst->getOp() != Op::ILLEGAL)
+        {
+            GED_DECODE_RAW_TO(SWSB, swsbBits);
+        }
+        // must convert the raw encoding bits to our SWSB IR
+        SWSB::InstType inst_type = SWSB::InstType::OTHERS;
+        if (inst->getOpSpec().isSendOrSendsFamily())
+            inst_type = SWSB::InstType::SEND;
+        else if (inst->getOpSpec().isMathSubFunc())
+            inst_type = SWSB::InstType::MATH;
+        SWSB sw;
+        SWSB_STATUS status = sw.decode(swsbBits, m_SWSBEncodeMode, inst_type);
+
+        switch (status)
+        {
+        case iga::SWSB_STATUS::ERROR_SET_ON_VARIABLE_LENGTH_ONLY:
+            error("SBID set is only allowed on variable latency ops");
+            break;
+        case iga::SWSB_STATUS::ERROR_INVALID_SBID_VALUE:
+            error("invalid SBID value 0x%x", swsbBits);
+            break;
+        default:
+            break;
+        }
+        inst->setSWSB(sw);
+    }
+}
 
 Kernel *DecoderBase::decodeKernelBlocks(
     const void *binary,
@@ -183,11 +224,20 @@ unsigned DecoderBase::decodeOpGroup(Op op)
             fcBits = static_cast<unsigned>(mathFc);
             break;
         }
-        // TODO: Op::SEL(selfc)
+        case Op::SYNC: {
+            GED_DECODE(SyncFC, GED_SYNC_FC, syncFC, SyncFC);
+            fcBits = static_cast<unsigned>(syncFC);
+            break;
+        }
+        case Op::SENDC:
+        case Op::SEND: {
+            GED_DECODE(SFID, GED_SFID, sfid, SFID);
+            fcBits = static_cast<unsigned>(sfid);
+            break;
+        }
         default:
             break; // fallthrough with invalid fc_bits value
     }
-
     return fcBits;
 }
 
@@ -304,6 +354,7 @@ void DecoderBase::decodeInstructions(
 
 void DecoderBase::decodeNextInstructionEpilog(Instruction *inst)
 {
+    decodeSWSB(inst);
 }
 
 // Decodes a GED instruction to IGA IR and appends it to a given block
@@ -357,7 +408,11 @@ Instruction *DecoderBase::decodeNextInstruction(Kernel &kernel)
         inst = decodeSendInstruction(kernel);
         break;
     case OpSpec::SYNC_UNARY:
-        inst = decodeWaitInstruction(kernel);
+        if (m_model.platform < Platform::GEN12P1) {
+            inst = decodeWaitInstruction(kernel);
+        } else {
+            inst = decodeSyncInstruction(kernel);
+        }
         break;
     default: {
         std::stringstream ss;
@@ -377,8 +432,14 @@ Instruction *DecoderBase::decodeNextInstruction(Kernel &kernel)
 
 bool DecoderBase::hasImm64Src0Overlap()
 {
-    bool imm64Src0Overlap = false;
-    return imm64Src0Overlap;
+    if (m_model.platform < Platform::GEN12P1)
+        return false;
+
+    // SWSB overlaps the flag modifier with src0
+    // check if it's 64 bit imm
+    GED_REG_FILE regFile = decodeSrcRegFile<SourceIndex::SRC0>();
+    Type t = decodeSrcType<SourceIndex::SRC0>();
+    return (TypeIs64b(t) && (regFile == GED_REG_FILE_IMM));
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -1115,6 +1176,14 @@ void DecoderBase::decodeSendSource1(Instruction *inst)
 
 void DecoderBase::decodeSendInstructionOptions(Instruction *inst)
 {
+
+    if (m_model.platform >= Platform::GEN12P1) {
+        GED_FUSION_CTRL fusionCtrl = GED_FUSION_CTRL_Normal;
+        GED_DECODE_RAW_TO(FusionCtrl, fusionCtrl);
+        if (fusionCtrl == GED_FUSION_CTRL_Serialized) {
+            inst->addInstOpt(InstOpt::SERIALIZE);
+        }
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -1323,6 +1392,32 @@ Instruction *DecoderBase::decodeWaitInstruction(Kernel &kernel)
     return inst;
 }
 
+Instruction *DecoderBase::decodeSyncInstruction(Kernel &kernel)
+{
+    FlagRegInfo fri = decodeFlagRegInfo();
+    Instruction *inst = kernel.createBasicInstruction(
+            *m_opSpec,
+            fri.pred,
+            fri.reg,
+            decodeExecSize(),
+            decodeChannelOffset(),
+            decodeMaskCtrl(),
+            fri.modifier);
+    GED_REG_FILE regFile = decodeSrcRegFile<SourceIndex::SRC0>();
+    if (regFile == GED_REG_FILE_ARF) {
+        // e.g.
+        //   sync.nop     null
+        //   sync.allrd   null
+        //   ...
+        inst->setSource(SourceIndex::SRC0, Operand::SRC_REG_NULL_UB);
+    } else {
+        // e.g.
+        //   sync.allrd   0x15
+        //   ...
+        decodeSourceBasic<SourceIndex::SRC0>(inst, GED_ACCESS_MODE_Align1);
+    }
+    return inst;
+}
 
 Predication DecoderBase::decodePredication()
 {
@@ -1354,6 +1449,7 @@ FlagRegInfo DecoderBase::decodeFlagRegInfo(bool imm64Src0Overlaps) {
         fri.pred = decodePredication();
     }
     if (m_opSpec->supportsFlagModifier() && !imm64Src0Overlaps) {
+        // GEN12 SWSB overlaps CondModifier and Imm64 values
         GED_DECODE_RAW(GED_COND_MODIFIER, condMod, CondModifier);
         fri.modifier = GEDToIGATranslation::translate(condMod);
     } else if (m_opSpec->isMathSubFunc() && m_opSpec->isMacro()) {
@@ -1531,6 +1627,10 @@ DirRegOpInfo DecoderBase::decodeDstDirRegInfo() {
     DirRegOpInfo dri;
     dri.type = m_opSpec->implicitDstType(m_model.platform);
     bool hasDstType = true;
+    if (m_model.platform >= Platform::GEN12P1) {
+        hasDstType &= !m_opSpec->isSendOrSendsFamily();
+        hasDstType &= !m_opSpec->isBranching();
+    }
     if (hasDstType) {
         dri.type = decodeDstType();
     }
@@ -1550,6 +1650,14 @@ Type DecoderBase::decodeDstType() {
 
 bool DecoderBase::hasImplicitScalingType(Type& type, DirRegOpInfo& dri)
 {
+    // FIXME: when entering this function, assuming it MUST NOT be imm or label src
+    if (m_model.platform >= Platform::GEN12P1 &&
+        (m_opSpec->isSendFamily() || m_opSpec->isBranching()))
+    {
+        dri.type = m_opSpec->implicitSrcType(SourceIndex::SRC0, false, m_model.platform);
+        type = Type::D;
+        return true;
+    }
     return false;
 }
 

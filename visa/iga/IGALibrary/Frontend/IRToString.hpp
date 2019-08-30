@@ -57,6 +57,7 @@ static std::string ToSymbol(Platform x) {
     MAKE_CASE(Platform, GEN9P5);
     MAKE_CASE(Platform, GEN10);
     MAKE_CASE(Platform, GEN11);
+    MAKE_CASE(Platform, GEN12P1);
     MAKE_CASE(Platform, GENNEXT);
     MAKE_DEFAULT_CASE(Platform);
     }
@@ -330,6 +331,7 @@ static std::string ToSymbol(InstOpt x) {
     MAKE_CASE(InstOpt, NOPREEMPT);
     MAKE_CASE(InstOpt, NOSRCDEPSET);
     MAKE_CASE(InstOpt, SWITCH);
+    MAKE_CASE(InstOpt, SERIALIZE);
     MAKE_DEFAULT_CASE(InstOpt);
     }
 }
@@ -590,6 +592,7 @@ static std::string ToSyntax(const InstOpt &i) {
     case InstOpt::NOPREEMPT:   return "NoPreempt";
     case InstOpt::NOSRCDEPSET: return "NoSrcDepSet";
     case InstOpt::SWITCH:      return "Switch";
+    case InstOpt::SERIALIZE:   return "Serialize";
     default: return MakeErrorString("InstOpt",(int)i);
     }
 }
@@ -610,7 +613,8 @@ static void ToSyntaxNoBraces(
         InstOpt::NODDCLR,
         InstOpt::NOPREEMPT,
         InstOpt::NOSRCDEPSET,
-        InstOpt::SWITCH
+        InstOpt::SWITCH,
+        InstOpt::SERIALIZE
       };
 
 

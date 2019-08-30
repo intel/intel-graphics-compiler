@@ -57,6 +57,9 @@ bool assemble(
         IGA_ENCODER_OPT_ERROR_ON_COMPACT_FAIL,
         opts.errorOnCompactFail);
     setOptBit(aopts.encoder_opts,
+        IGA_ENCODER_OPT_AUTO_DEPENDENCIES,
+        opts.autosetDepInfo);
+    setOptBit(aopts.encoder_opts,
         IGA_ENCODER_OPT_USE_NATIVE,
         opts.useNativeEncoder);
     setOptBit(aopts.syntax_opts,

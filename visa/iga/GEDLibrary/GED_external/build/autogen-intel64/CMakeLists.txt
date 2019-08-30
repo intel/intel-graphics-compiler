@@ -18,6 +18,7 @@ set(GED_autogenintel64_cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_mapping_tables.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_gen10.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_gen11.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_gen12_1.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_gen7.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_gen7_5.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_gen8.cpp
@@ -48,6 +49,7 @@ set(GED_autogenintel64_h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_mapping_tables.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_gen10.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_gen11.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_gen12_1.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_gen7.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_gen7_5.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_gen8.h

@@ -29,6 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Frontend/IRToString.hpp"
 #include "../../Models/Models.hpp"
 #include "../../Timer/Timer.hpp"
+#include "../../IR/SWSBSetter.hpp"
 #include <cstring>
 
 using namespace iga;
@@ -323,11 +324,13 @@ void EncoderBase::encodeInstruction(Instruction& inst)
     }
 
     bool isImm64Src0Overlap = false;
+    isImm64Src0Overlap =
+        m_model.platform >= Platform::GEN12P1 &&
+        inst.getSource(0).getKind() == Operand::Kind::IMMEDIATE &&
+        TypeIs64b(inst.getSource(0).getType());
 
     if (!isImm64Src0Overlap && inst.getOpSpec().supportsFlagModifier()) {
-        {
             GED_ENCODE(CondModifier, IGAToGEDTranslation::lowerCondModifier(inst.getFlagModifier()));
-        }
     }
 
     bool hasFlagRegField = true;
@@ -358,6 +361,8 @@ void EncoderBase::encodeInstruction(Instruction& inst)
         encodeTernaryInstruction(inst, accessMode);
     } else if (os.isSendOrSendsFamily()) {
         encodeSendInstruction(inst);
+    } else if (os.isSyncSubFunc()) {
+        encodeSyncInstruction(inst);
     } else {
         encodeBasicInstruction(inst, accessMode);
     }
@@ -676,6 +681,8 @@ void EncoderBase::encodeBranchingInstruction(const Instruction& inst)
             GED_ENCODE(Src0RegFile, GED_REG_FILE_IMM);
             GED_ENCODE(Src0DataType, ty);
         }
+        //before gen12 don't need to set JIP for control flow instructions that have UIP
+        //JIP
         if (m_opcode == Op::WHILE ||
             m_opcode == Op::ENDIF ||
             m_opcode == Op::JOIN)
@@ -801,7 +808,7 @@ void EncoderBase::encodeSendInstruction(const Instruction& inst)
             // "Thankfully" for SKL 3D sampler doesn't support HF input.
             // For CNL it does, and that will be bit 29.
             // But this bug should be fixed in CNL.
-            //
+
             if (m_model.platform == Platform::GEN9 &&
                 msgDesc.type != SendDescArg::IMM)
             {
@@ -826,8 +833,30 @@ void EncoderBase::encodeSendInstruction(const Instruction& inst)
             GED_ENCODE(DescRegNum, regNumBits);
         }
     }
+
+    bool hasFusion = (m_model.platform >= Platform::GEN12P1);
+    if (hasFusion)
+    {
+        GED_ENCODE(FusionCtrl,
+            inst.hasInstOpt(InstOpt::SERIALIZE) ?
+            GED_FUSION_CTRL_Serialized : GED_FUSION_CTRL_Normal);
+    }
 } //end: encodeSendInstruction
 
+void EncoderBase::encodeSyncInstruction(const Instruction& inst)
+{
+    // Set the Dst.HorStride to 1 so that "sync.bar null" can be compacted
+    GED_ENCODE(DstHorzStride, 1);
+
+    const Operand &src = inst.getSource(0);
+    if (src.getKind() == Operand::Kind::IMMEDIATE) {
+        encodeSrcRegFile<SourceIndex::SRC0>(GED_REG_FILE_IMM);
+        encodeSrcType<SourceIndex::SRC0>(src.getType());
+        encodeImmVal(src.getImmediateValue(), src.getType());
+    } else {
+            encodeSrcRegFile<SourceIndex::SRC0>(GED_REG_FILE_ARF);
+    }
+}
 
 void EncoderBase::encodeBranchDestination(
     const Instruction& inst,
@@ -1227,6 +1256,9 @@ void EncoderBase::encodeSendSource0(const Operand& src)
 
 // The sends opCode exists on gen9+.
 // There is no sends opcode on pre-gen9.
+// Starting from gen12, send opcode can have two sources,
+// so the sends opcode is not needed.
+
 void EncoderBase::encodeSendsSource0(const Operand& src)
 {
     // "...for sends/sendsc instructions Src0.SrcMod, ... and Src0.SrcType are not used."
@@ -1649,6 +1681,21 @@ void EncoderBase::encodeOptions(const Instruction& inst)
     {
         GED_ENCODE(NoSrcDepSet, GED_NO_SRC_DEP_SET_Normal);
     }
+
+    if (m_model.platform >= Platform::GEN12P1 && m_opcode != Op::ILLEGAL) {
+        SWSB::InstType inst_type = SWSB::InstType::OTHERS;
+
+        if (inst.getOpSpec().isSendOrSendsFamily())
+            inst_type = SWSB::InstType::SEND;
+        else if (inst.getOpSpec().isMathSubFunc())
+            inst_type = SWSB::InstType::MATH;
+        uint32_t swsb_binary = inst.getSWSB().getSWSBBinary(
+                                    m_opts.swsbEncodeMode, inst_type);
+
+        assert(inst.getSWSB().verify(m_opts.swsbEncodeMode, inst_type));
+        GED_ENCODE(SWSB, swsb_binary);
+    }
+
 }
 
 

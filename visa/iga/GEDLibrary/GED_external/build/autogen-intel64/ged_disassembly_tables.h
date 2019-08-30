@@ -292,5 +292,8 @@ extern const ged_disassembly_block_t* DisassemblyBlockTable251[9];
 extern const ged_disassembly_block_t* DisassemblyBlockTable252[5];
 extern const ged_disassembly_block_t* DisassemblyBlockTable253[8];
 extern const ged_disassembly_block_t* DisassemblyBlockTable254[8];
+extern const ged_disassembly_block_t* DisassemblyBlockTable255[3];
+extern const ged_disassembly_block_t* DisassemblyBlockTable256[4];
+extern const ged_disassembly_block_t* DisassemblyBlockTable257[3];
 #endif // GED_DISASSEMBLY
 #endif // GED_DISASSEMBLY_TABLES_H

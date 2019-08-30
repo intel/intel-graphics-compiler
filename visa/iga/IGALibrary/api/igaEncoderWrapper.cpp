@@ -9,6 +9,8 @@ iga_status_t KernelEncoder::encode()
 
     ErrorHandler errHandler;
     EncoderOpts enc_opt(m_autoCompact, true);
+    enc_opt.autoDepSet = m_enableAutoDeps;
+    enc_opt.swsbEncodeMode = m_swsbEncodeMode;
 
     Encoder enc(m_kernel->getModel(), errHandler, enc_opt);
     enc.encodeKernel(

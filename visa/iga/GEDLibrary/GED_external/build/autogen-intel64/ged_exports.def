@@ -230,6 +230,22 @@ EXPORTS
   GED_SetSrc2TernaryImm
   GED_GetSrc2HorzStride
   GED_SetSrc2HorzStride
+  GED_GetSWSB
+  GED_SetSWSB
+  GED_GetSrc1IsImm
+  GED_SetSrc1IsImm
+  GED_GetSrc0IsImm
+  GED_SetSrc0IsImm
+  GED_GetSrc0SubRegNumByte
+  GED_SetSrc0SubRegNumByte
+  GED_GetSyncFC
+  GED_SetSyncFC
+  GED_GetFusionCtrl
+  GED_SetFusionCtrl
+  GED_GetDataTypeIndexNoDep
+  GED_SetDataTypeIndexNoDep
+  GED_GetCompactedImm
+  GED_SetCompactedImm
   GED_GetIndexedSrcAddrImm
   GED_SetIndexedSrcAddrImm
   GED_GetIndexedSrcAddrMode
@@ -256,6 +272,8 @@ EXPORTS
   GED_SetIndexedSrcSrcMod
   GED_GetIndexedSrcSubRegNum
   GED_SetIndexedSrcSubRegNum
+  GED_GetIndexedSrcSubRegNumByte
+  GED_SetIndexedSrcSubRegNumByte
   GED_GetIndexedSrcVertStride
   GED_SetIndexedSrcVertStride
   GED_GetIndexedSrcWidth
@@ -330,6 +348,8 @@ EXPORTS
   GED_SetMessageTypeDP_DC2
   GED_GetMessageTypeDP_DCRO
   GED_SetMessageTypeDP_DCRO
+  GED_GetExMessageLength
+  GED_SetExMessageLength
   GED_SetRawBits
   GED_GetAccessModeString
   GED_GetAccWrCtrlString
@@ -349,6 +369,7 @@ EXPORTS
   GED_GetEOTString
   GED_GetExecMaskOffsetCtrlString
   GED_GetExecutionDataTypeString
+  GED_GetFusionCtrlString
   GED_GetHeaderPresentString
   GED_GetMaskCtrlString
   GED_GetMathFCString
@@ -368,6 +389,7 @@ EXPORTS
   GED_GetSrcModString
   GED_GetSubFuncIDString
   GED_GetSwizzleString
+  GED_GetSyncFCString
   GED_GetThreadCtrlString
   GED_GetOperandWidth
   GED_GetOperandNumericType

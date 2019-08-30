@@ -28,6 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "iga.h"
 #include "iga_types_ext.hpp"
+#include "iga_types_swsb.hpp"
 
 #include "kv.hpp"
 

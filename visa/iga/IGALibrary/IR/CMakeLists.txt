@@ -1,4 +1,3 @@
-
 set(IGA_IR_Open
   ${CMAKE_CURRENT_SOURCE_DIR}/Block.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Block.hpp
@@ -23,12 +22,14 @@ set(IGA_IR_Open
   ${CMAKE_CURRENT_SOURCE_DIR}/BitSet.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Types.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Types.hpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/RegDeps.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/RegDeps.hpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/SWSBSetter.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/SWSBSetter.hpp
 )
-set(IGA_IR_Extended )
 
 set(IGA_IR
   ${IGA_IR_Open}
-  ${IGA_IR_Extended}
   PARENT_SCOPE
-  )
+)
 
