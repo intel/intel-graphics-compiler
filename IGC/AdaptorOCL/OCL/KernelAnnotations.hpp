@@ -259,19 +259,19 @@ struct GlobalPointerAnnotation
 
 struct ThreadPayload
 {
-    bool  HasLocalIDx;
-    bool  HasLocalIDy;
-    bool  HasLocalIDz;
-    bool  HasGlobalIDOffset;
-    bool  HasGroupID;
-    bool  HasLocalID;
-    bool  HasFlattenedLocalID;
-    bool  CompiledForIndirectPayloadStorage;
-    bool  UnusedPerThreadConstantPresent;
-    bool  HasStageInGridOrigin;
-    bool  HasStageInGridSize;
-    uint32_t OffsetToSkipPerThreadDataLoad;
-    bool  PassInlineData;
+    bool  HasLocalIDx = false;
+    bool  HasLocalIDy = false;
+    bool  HasLocalIDz = false;
+    bool  HasGlobalIDOffset = false;
+    bool  HasGroupID = false;
+    bool  HasLocalID = false;
+    bool  HasFlattenedLocalID = false;
+    bool  CompiledForIndirectPayloadStorage = false;
+    bool  UnusedPerThreadConstantPresent = false;
+    bool  HasStageInGridOrigin = false;
+    bool  HasStageInGridSize = false;
+    bool  PassInlineData = false;
+    uint32_t OffsetToSkipPerThreadDataLoad = 0;
 };
 
 struct ExecutionEnivronment
