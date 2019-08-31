@@ -2560,13 +2560,13 @@ bool G4_INST::canHoistTo(const G4_INST *defInst, bool simdBB) const
     G4_Type dstType = dst->getType(), srcType = srcs[0]->getType();
     bool rawMovInst = isRawMov();
     bool cantHoistMAD = (defInst->opcode() == G4_pseudo_mad && !(IS_TYPE_FLOAT_ALL(dstType) && IS_TYPE_FLOAT_ALL(defDstType)));
-    if (
-        ( defInst->useInstList.size() != 1 ) ||
-        ( defInst->opcode() == G4_sad2 ) ||
-        ( defInst->opcode() == G4_sada2 ) ||
+    if ((defInst->useInstList.size() != 1) ||
+        (defInst->opcode() == G4_sad2) ||
+        (defInst->opcode() == G4_sada2) ||
         (defInst->opcode() == G4_cbit && dstType != defDstType) ||
-        (( cantHoistMAD || (defInst->opcode() == G4_math)) &&
-        ( indirect_dst || ( dstType != defDstType && !rawMovInst ) ) ) )
+        (defInst->opcode() == G4_dp4a && dstType != defDstType) ||
+        ((cantHoistMAD || (defInst->opcode() == G4_math)) &&
+         (indirect_dst || (dstType != defDstType && !rawMovInst))))
     {
         return false;
     }
