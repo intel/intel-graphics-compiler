@@ -403,6 +403,11 @@ double __builtin_spirv_OpConvertSToF_f64_i64(long SignedValue)
     return SignedValue;
 }
 
+double  __builtin_spirv_OpConvertUToF_f64_i1(bool BoolValue)
+{
+    return BoolValue ? 1.0 : 0.0;
+}
+
 double __builtin_spirv_OpConvertUToF_f64_i8(uchar UnsignedValue)
 {
     return UnsignedValue;
