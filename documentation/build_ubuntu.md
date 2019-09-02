@@ -52,8 +52,8 @@ You can use following commands:
 ```shell
 $ cd <workspace>
 $ git clone -b release/8.x https://github.com/llvm/llvm-project llvm-project
-$ git clone -b ocl-open-80 https://github.com/intel/opencl-clang llvm_source/projects/opencl-clang
-$ git clone -b llvm_release_80 https://github.com/KhronosGroup/SPIRV-LLVM-Translator llvm_source/projects/llvm-spirv
+$ git clone -b ocl-open-80 https://github.com/intel/opencl-clang llvm-project/llvm/projects/opencl-clang
+$ git clone -b llvm_release_80 https://github.com/KhronosGroup/SPIRV-LLVM-Translator llvm-project/llvm/projects/llvm-spirv
 $ git clone https://github.com/intel/llvm-patches llvm_patches
 $ mv llvm-project/clang llvm-project/llvm/tools/
 ```
@@ -115,8 +115,8 @@ You can either use prebuilt packages or build from sources:
 ```shell
 $ cd <workspace>
 $ git clone -b release/9.x https://github.com/llvm/llvm-project llvm-project
-$ git clone -b ocl-open-90 https://github.com/intel/opencl-clang llvm_source/projects/opencl-clang
-$ git clone -b llvm_release_90 https://github.com/KhronosGroup/SPIRV-LLVM-Translator llvm_source/projects/llvm-spirv
+$ git clone -b ocl-open-90 https://github.com/intel/opencl-clang llvm-project/llvm/projects/opencl-clang
+$ git clone -b llvm_release_90 https://github.com/KhronosGroup/SPIRV-LLVM-Translator llvm-project/llvm/projects/llvm-spirv
 $ git clone https://github.com/intel/llvm-patches llvm_patches
 $ git clone https://github.com/intel/intel-graphics-compiler igc
 $ mv llvm-project/clang llvm-project/llvm/tools/
