@@ -21,10 +21,9 @@ https://opensource.org/licenses/MIT
 
 ## Dependencies
 
-* LLVM Source -  https://github.com/llvm-mirror/llvm
-* Clang Source - https://github.com/llvm-mirror/clang
+* LLVM Project -  https://github.com/llvm/llvm-project
 * OpenCL Clang - https://github.com/intel/opencl-clang
-* SPIRV-LLVM Translator - https://github.com/KhronosGroup/SPIRV-LLVM-Translator.git
+* SPIRV-LLVM Translator - https://github.com/KhronosGroup/SPIRV-LLVM-Translator
 
 ## Supported Linux versions
 
