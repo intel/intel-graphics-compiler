@@ -519,7 +519,7 @@ namespace IGC
         return m_pMdUtils;
     }
 
-    llvm::Module* CodeGenContext::getModule() const { return module; }
+    IGCLLVM::Module* CodeGenContext::getModule() const { return module; }
 
     static void initCompOptionFromRegkey(CodeGenContext* ctx)
     {
@@ -533,7 +533,7 @@ namespace IGC
 
     void CodeGenContext::setModule(llvm::Module* m)
     {
-        module = m;
+        module = (IGCLLVM::Module*)m;
         m_pMdUtils = new IGC::IGCMD::MetaDataUtils(m);
         modMD = new IGC::ModuleMetaData();
         initCompOptionFromRegkey(this);

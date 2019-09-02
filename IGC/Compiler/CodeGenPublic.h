@@ -767,7 +767,7 @@ namespace IGC
         // Objects pointed to by these pointers are owned by this class.
         LLVMContextWrapper* llvmCtxWrapper;
         /// input: LLVM module
-        llvm::Module* module = nullptr;
+        IGCLLVM::Module* module = nullptr;
         /// input: IGC MetaData Utils
         IGC::IGCMD::MetaDataUtils* m_pMdUtils = nullptr;
         IGC::ModuleMetaData* modMD = nullptr;
@@ -807,7 +807,7 @@ namespace IGC
         void initLLVMContextWrapper(bool createResourceDimTypes = true);
         llvm::LLVMContext* getLLVMContext();
         IGC::IGCMD::MetaDataUtils* getMetaDataUtils();
-        llvm::Module* getModule() const;
+        IGCLLVM::Module* getModule() const;
 
         void setModule(llvm::Module* m);
         // Several clients explicitly delete module without resetting module to null.
