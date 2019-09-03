@@ -1,13 +1,35 @@
 language: cpp
 
-os:
-  - linux
-
 before_install:
   - git clone -b ocl-open-80 https://github.com/intel/opencl-clang opencl-clang
 
-# Use Ubuntu 16.04 LTS (Xenial) as the Linux testing environment.
-dist: xenial
+
+v8: &v8
+  - llvm-8-tools
+  - llvm-8-dev
+  - libclang-8-dev
+  - clang-8
+  - clang-tools-8
+
+
+matrix:
+  include:
+    - os: linux
+      dist: xenial # Ubuntu 16.04
+      addons:
+        apt:
+          sources:
+            - sourceline: 'deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-8 main'
+              key_url: 'https://apt.llvm.org/llvm-snapshot.gpg.key'
+          packages: *v8
+    - os: linux
+      dist: bionic # Ubuntu 18.04
+      addons:
+        apt:
+          sources:
+            - sourceline: 'deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-8 main'
+              key_url: 'https://apt.llvm.org/llvm-snapshot.gpg.key'
+          packages: *v8
 
 git:
   depth: 1
@@ -19,19 +41,6 @@ branches:
 env:
   matrix:
     - BUILD_TYPE=Release
-
-addons:
-  apt:
-    sources:
-      - sourceline: 'deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-8 main'
-        key_url: 'https://apt.llvm.org/llvm-snapshot.gpg.key'
-      - ubuntu-toolchain-r-test
-    packages:
-      - llvm-8-tools
-      - llvm-8-dev
-      - libclang-8-dev
-      - clang-8
-      - clang-tools-8
 
 install:
   - export TARBALL1=SPIRV-LLVM-Translator-v8.0.1-2-linux-${BUILD_TYPE}.zip
