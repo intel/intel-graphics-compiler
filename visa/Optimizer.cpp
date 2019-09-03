@@ -6409,6 +6409,10 @@ G4_SrcRegRegion* IR_Builder::createSubSrcOperand( G4_SrcRegRegion* src, uint16_t
             case Type_HF:
             {
                 // can be one of acc0.8, acc1.0, acc1.8
+                if (src->getBase()->asAreg()->getArchRegType() == AREG_ACC1)
+                {
+                    start += 16;
+                }
                 G4_Areg* accReg = start >= 16 ? phyregpool.getAcc1Reg() : phyregpool.getAcc0Reg();
                 return createSrcRegRegion(src->getModifier(), Direct, accReg, 0, start % 16, src->getRegion(), srcType);
 
@@ -6487,6 +6491,10 @@ G4_DstRegRegion* IR_Builder::createSubDstOperand(G4_DstRegRegion* dst, uint16_t 
             case Type_HF:
             {
                 // can be one of acc0.8, acc1.0, acc1.8
+                if (dst->getBase()->asAreg()->getArchRegType() == AREG_ACC1)
+                {
+                    start += 16;
+                }
                 G4_Areg* accReg = start >= 16 ? phyregpool.getAcc1Reg() : phyregpool.getAcc0Reg();
                 return createDstRegRegion(
                     Direct, accReg, 0, start % 16, hs, dstType);
