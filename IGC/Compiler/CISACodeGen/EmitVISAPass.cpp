@@ -345,6 +345,26 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         return false;
     }
 
+    // If uses subroutines, we can only compile a single SIMD mode
+    if (m_FGA && !m_FGA->getGroup(&F)->isSingle())
+    {
+        // If max work group size is set, we need to compile the least allowed SIMD
+        if (ctx->m_DriverInfo.sendMultipleSIMDModes() &&
+            ctx->getModuleMetaData()->csInfo.maxWorkGroupSize != 0)
+        {
+            const SIMDMode leastSIMDMode = getLeastSIMDAllowed(ctx->getModuleMetaData()->csInfo.maxWorkGroupSize, GetHwThreadsPerWG(ctx->platform));
+            if (leastSIMDMode != m_SimdMode)
+            {
+                return false;
+            }
+        }
+        // Otherwise, only compile simd8 for subroutines
+        else if (m_SimdMode != SIMDMode::SIMD8)
+        {
+            return false;
+        }
+    }
+
     bool isCloned = false;
     if (DebugInfoData::hasDebugInfo(m_currShader))
     {
