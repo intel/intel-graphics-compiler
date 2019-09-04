@@ -1899,7 +1899,7 @@ void Interference::buildInterferenceWithinBB(G4_BB* bb, BitSet& live)
             }
         }
 
-        if (inst->isSend() && !dst->isNullReg())
+        if ((inst->isSend() || inst->isFillIntrinsic()) && !dst->isNullReg())
         {
             if (VISA_WA_CHECK(kernel.fg.builder->getPWaTable(), WaDisableSendSrcDstOverlap))
             {
@@ -6170,14 +6170,16 @@ void GraphColor::saveRegs(
     {
         // add (1) r126.2<1>:ud    r125.7<0;1,0>:ud    0x2:ud
         // sends (8) null<1>:ud    r126.0    r1.0 ...
+        uint8_t execSize = (owordSize > 2) ? 16 : 8;
         unsigned messageLength = owordSize / 2;
         G4_Declare* msgDcl = builder.createTempVar(messageLength * GENX_DATAPORT_IO_SZ,
             Type_UD, GRFALIGN, StackCallStr);
         msgDcl->getRegVar()->setPhyReg(regPool.getGreg(startReg), 0);
         auto sendSrc2 = builder.createSrcRegRegion(Mod_src_undef, Direct, msgDcl->getRegVar(), 0, 0,
             builder.getRegionStride1(), Type_UD);
+        G4_DstRegRegion* dst = builder.createNullDst((execSize > 8) ? Type_UW : Type_UD);
         MUST_BE_TRUE(frameOwordOffset % 2 == 0, "Frame oword offset is not aligned on 32-byte boundary");
-        auto spillIntrinsic = builder.createSpill(sendSrc2, messageLength, frameOwordOffset/2, framePtr, InstOpt_WriteEnable);
+        auto spillIntrinsic = builder.createSpill(dst, sendSrc2, execSize, messageLength, frameOwordOffset/2, framePtr, InstOpt_WriteEnable);
         bb->insert(insertIt, spillIntrinsic);
     }
     else if (owordSize > 8)
@@ -6259,7 +6261,7 @@ void GraphColor::restoreRegs(
         G4_DstRegRegion* dstRgn = builder.createDstRegRegion(Direct, dstDcl->getRegVar(), 0, 0, 1, (execSize > 8) ? Type_UW : Type_UD);
 
         MUST_BE_TRUE(frameOwordOffset % 2 == 0, "Frame oword offset not aligned to 32-byte boundary");
-        auto fillIntrinsic = builder.createFill(dstRgn, responseLength, frameOwordOffset / 2, framePtr, InstOpt_WriteEnable);
+        auto fillIntrinsic = builder.createFill(dstRgn, execSize, responseLength, frameOwordOffset / 2, framePtr, InstOpt_WriteEnable);
         bb->insert(insertIt, fillIntrinsic);
     }
     //
@@ -8915,7 +8917,8 @@ int GlobalRA::coloringRegAlloc()
 #endif
                 bool disableSpillCoalecse = builder.getOption(vISA_DisableSpillCoalescing) ||
                     builder.getOption(vISA_FastSpill) || builder.getOption(vISA_Debug);
-                if (!reserveSpillReg && !disableSpillCoalecse && builder.useSends())
+                if (!reserveSpillReg && !disableSpillCoalecse && builder.useSends() &&
+                    !kernel.fg.getHasStackCalls() && !kernel.fg.getIsStackCallFunc())
                 {
                     CoalesceSpillFills c(kernel, liveAnalysis, coloring, spillGMRF, iterationNo, rpe, *this);
                     c.run();

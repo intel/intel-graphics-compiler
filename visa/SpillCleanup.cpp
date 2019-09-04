@@ -37,7 +37,7 @@ uint32_t computeSpillMsgDesc(unsigned int payloadSize, unsigned int offset);
 namespace vISA
 {
 G4_SrcRegRegion* CoalesceSpillFills::generateCoalescedSpill(unsigned int scratchOffset, unsigned int payloadSize,
-    G4_SendMsgDescriptor* sample, bool useNoMask, G4_InstOption mask, int srcCISAOff, G4_Declare* spillDcl, unsigned int row)
+    bool useNoMask, G4_InstOption mask, int srcCISAOff, G4_Declare* spillDcl, unsigned int row)
 {
     // Generate split send instruction with specified payload size and offset
     auto header = kernel.fg.builder->createSrcRegRegion(Mod_src_undef, Direct,
@@ -46,19 +46,10 @@ G4_SrcRegRegion* CoalesceSpillFills::generateCoalescedSpill(unsigned int scratch
     auto spillSrcPayload = kernel.fg.builder->createSrcRegRegion(Mod_src_undef, Direct, spillDcl->getRegVar(),
         (short)REGISTER_ROW(row), 0, kernel.fg.builder->getRegionStride1(), Type_UD);
 
-    uint32_t spillMsgDesc = computeSpillMsgDesc(payloadSize, scratchOffset);
-
-    G4_SendMsgDescriptor* msgDesc = kernel.fg.builder->createSendMsgDesc(spillMsgDesc & 0x000FFFFFu,
-        0, 1, SFID::DP_DC, false, payloadSize, 0, false, true,
-        sample->getBti(), sample->getSti());
-
-    G4_Imm* msgDescImm = kernel.fg.builder->createImm(msgDesc->getDesc(), Type_UD);
-    G4_Imm* extDesc = kernel.fg.builder->createImm(msgDesc->getExtendedDesc(), Type_UD);
-
     // Create send instruction with payloadSize starting at scratch offset min
     unsigned int option = useNoMask ? InstOpt_WriteEnable : 0;
-    auto spillInst = kernel.fg.builder->createSplitSendInst(nullptr, G4_sends, 16,
-        kernel.fg.builder->createNullDst(Type_UW), header, spillSrcPayload, msgDescImm, option, msgDesc, extDesc);
+    auto spillInst = kernel.fg.builder->createSpill(kernel.fg.builder->createNullDst(Type_UW), header, spillSrcPayload, 16, payloadSize,
+        scratchOffset, nullptr, static_cast<G4_InstOption>(option), 0, srcCISAOff);
 
     if (!useNoMask)
     {
@@ -76,7 +67,7 @@ G4_SrcRegRegion* CoalesceSpillFills::generateCoalescedSpill(unsigned int scratch
 }
 
 G4_DstRegRegion* CoalesceSpillFills::generateCoalescedFill(unsigned int scratchOffset, unsigned int payloadSize,
-    unsigned int dclSize, G4_SendMsgDescriptor* sample, int srcCISAOff, bool evenAlignDst)
+    unsigned int dclSize, int srcCISAOff, bool evenAlignDst)
 {
     // Generate split send instruction with specified payload size and offset
     // Construct fillDst
@@ -98,18 +89,8 @@ G4_DstRegRegion* CoalesceSpillFills::generateCoalescedFill(unsigned int scratchO
         kernel.fg.builder->getBuiltinR0()->getRegVar(), 0, 0,
         kernel.fg.builder->getRegionStride1(), Type_UD);
 
-    uint32_t fillMsgDesc = computeFillMsgDesc(payloadSize, scratchOffset);
-
-    G4_SendMsgDescriptor* msgDesc = kernel.fg.builder->createSendMsgDesc(fillMsgDesc,
-        payloadSize, 1, sample->getFuncId(), false, 0, sample->getExtFuncCtrl(), true, false,
-        sample->getBti(), sample->getSti());
-
-    G4_Imm* msgDescImm = kernel.fg.builder->createImm(msgDesc->getDesc(), Type_UD);
-
-    // Create send instruction with payloadSize starting at scratch offset min
-    auto fillInst = kernel.fg.builder->createSendInst(nullptr, G4_send, 16,
-        fillDst, header, msgDescImm, InstOpt_WriteEnable, msgDesc);
-    fillInst->setCISAOff(srcCISAOff);
+    kernel.fg.builder->createFill(header, fillDst, 16, payloadSize, scratchOffset, nullptr,
+        InstOpt_WriteEnable, 0, srcCISAOff);
 
 #if 0
     fillInst->dump();
@@ -211,8 +192,7 @@ void CoalesceSpillFills::coalesceSpills(std::list<INST_LIST_ITER>& coalesceableS
     }
 
     auto coalescedSpillSrc = generateCoalescedSpill(min,
-        payloadSize, (*coalesceableSpills.front())->getMsgDesc(),
-        useNoMask, mask, srcCISAOff, dcl, minRow);
+        payloadSize, useNoMask, mask, srcCISAOff, dcl, minRow);
 
     if (declares.size() != 1)
     {
@@ -277,7 +257,7 @@ void CoalesceSpillFills::coalesceFills(std::list<INST_LIST_ITER>& coalesceableFi
     auto leadInst = *coalesceableFills.front();
 
     auto coalescedFillDst = generateCoalescedFill(min, payloadSize, dclSize,
-        leadInst->getMsgDesc(), srcCISAOff, gra.isEvenAligned(leadInst->getDst()->getTopDcl()));
+        srcCISAOff, gra.isEvenAligned(leadInst->getDst()->getTopDcl()));
 
     for (auto c : coalesceableFills)
     {
@@ -460,8 +440,20 @@ void CoalesceSpillFills::sendsInRange(std::list<INST_LIST_ITER>& instList,
     {
         unsigned scratchOffset, sizeInGrfUnit, lastScratchOffset;
         auto inst = *(*iter);
-        scratchOffset = inst->getMsgDesc()->getScratchRWOffset();
-        sizeInGrfUnit = inst->getMsgDesc()->getScratchRWSize();
+        if (inst->isSpillIntrinsic())
+        {
+            scratchOffset = inst->asSpillIntrinsic()->getOffset();
+            sizeInGrfUnit = inst->asSpillIntrinsic()->getNumRows();
+        }
+        else if (inst->isFillIntrinsic())
+        {
+            scratchOffset = inst->asFillIntrinsic()->getOffset();
+            sizeInGrfUnit = inst->asFillIntrinsic()->getNumRows();
+        }
+        else
+        {
+            MUST_BE_TRUE(false, "unknown inst type");
+        }
         lastScratchOffset = scratchOffset + sizeInGrfUnit - 1;
 
         if (min == 0xffffffff && max == 0)
@@ -1034,26 +1026,23 @@ void CoalesceSpillFills::fills()
                 continue;
             }
 
-            if (inst->isSend())
+            if (inst->isSpillIntrinsic())
             {
-                if (inst->getMsgDesc()->isScratchWrite())
+                spills.push_back(instIter);
+            }
+            else if (inst->isFillIntrinsic())
+            {
+                // Check if coalescing is possible
+                if (fillsToCoalesce.size() == 0)
                 {
-                    spills.push_back(instIter);
+                    w = 0;
+                    startIter = instIter;
+                    spills.clear();
                 }
-                else if (inst->getMsgDesc()->isScratchRead())
-                {
-                    // Check if coalescing is possible
-                    if (fillsToCoalesce.size() == 0)
-                    {
-                        w = 0;
-                        startIter = instIter;
-                        spills.clear();
-                    }
 
-                    if (!overlap(*instIter, spills))
-                    {
-                        fillsToCoalesce.push_back(instIter);
-                    }
+                if (!overlap(*instIter, spills))
+                {
+                    fillsToCoalesce.push_back(instIter);
                 }
             }
 
@@ -1137,14 +1126,13 @@ void CoalesceSpillFills::populateSendDstDcl()
                         sendDstDcl.insert(topdcl);
                     }
                 }
-                else if (inst->getMsgDesc()->isScratchWrite() &&
-                    inst->getSrc(1)->getBase()->asRegVar()->isRegVarCoalesced())
-                {
-                    auto topdcl = inst->getSrc(1)->getTopDcl();
+            }
+            else if (inst->isSpillIntrinsic() &&
+                inst->getSrc(1)->getBase()->asRegVar()->isRegVarCoalesced())
+            {
+                auto topdcl = inst->getSrc(1)->getTopDcl();
 
-                    sendDstDcl.insert(topdcl);
-                }
-
+                sendDstDcl.insert(topdcl);
             }
         }
     }
@@ -1175,64 +1163,61 @@ void CoalesceSpillFills::spills()
             }
 
             bool earlyCoalesce = false;
-            if (inst->isSend())
+            if (inst->isSpillIntrinsic())
             {
-                if (inst->getMsgDesc()->isScratchWrite())
+                // Check if coalescing is possible
+                if (spillsToCoalesce.size() == 0)
                 {
-                    // Check if coalescing is possible
-                    if (spillsToCoalesce.size() == 0)
-                    {
-                        w = 0;
-                        startIter = instIter;
-                        spillsToCoalesce.clear();
-                    }
-
-                    for (auto coalIt = spillsToCoalesce.begin();
-                        coalIt != spillsToCoalesce.end();
-                        )
-                    {
-                        bool fullOverlap = false;
-                        if (overlap(*instIter, *(*coalIt), fullOverlap))
-                        {
-                            if (fullOverlap)
-                            {
-#if 0
-                                printf("Deleting spill at $%d due to %d\n", (*(*coalIt))->getCISAOff(), (*instIter)->getCISAOff());
-#endif
-                                // Delete earlier spill since its made redundant
-                                // by current spill.
-                                bb->erase(*coalIt);
-                            }
-
-                            coalIt = spillsToCoalesce.erase(coalIt);
-                            continue;
-                        }
-                        coalIt++;
-                    }
-                    spillsToCoalesce.push_back(instIter);
+                    w = 0;
+                    startIter = instIter;
+                    spillsToCoalesce.clear();
                 }
-                else if (inst->getMsgDesc()->isScratchRead())
+
+                for (auto coalIt = spillsToCoalesce.begin();
+                    coalIt != spillsToCoalesce.end();
+                    )
                 {
-                    for (auto coalIt = spillsToCoalesce.begin();
-                        coalIt != spillsToCoalesce.end();
-                        )
+                    bool fullOverlap = false;
+                    if (overlap(*instIter, *(*coalIt), fullOverlap))
                     {
-                        bool temp = false;
-                        if (overlap(*instIter, *(*coalIt), temp))
+                        if (fullOverlap)
                         {
-#if 1
-                            // Instead of deleting scratch writes try coalescing
-                            // at this point. This way maybe the fill can also
-                            // be cleaned up in later phase.
-                            earlyCoalesce = true;
-                            break;
-#else
-                            coalIt = spillsToCoalesce.erase(coalIt);
-                            continue;
+#if 0
+                            printf("Deleting spill at $%d due to %d\n", (*(*coalIt))->getCISAOff(), (*instIter)->getCISAOff());
 #endif
+                            // Delete earlier spill since its made redundant
+                            // by current spill.
+                            bb->erase(*coalIt);
                         }
-                        coalIt++;
+
+                        coalIt = spillsToCoalesce.erase(coalIt);
+                        continue;
                     }
+                    coalIt++;
+                }
+                spillsToCoalesce.push_back(instIter);
+            }
+            else if (inst->isFillIntrinsic())
+            {
+                for (auto coalIt = spillsToCoalesce.begin();
+                    coalIt != spillsToCoalesce.end();
+                    )
+                {
+                    bool temp = false;
+                    if (overlap(*instIter, *(*coalIt), temp))
+                    {
+#if 1
+                        // Instead of deleting scratch writes try coalescing
+                        // at this point. This way maybe the fill can also
+                        // be cleaned up in later phase.
+                        earlyCoalesce = true;
+                        break;
+#else
+                        coalIt = spillsToCoalesce.erase(coalIt);
+                        continue;
+#endif
+                    }
+                    coalIt++;
                 }
             }
 
@@ -1437,8 +1422,7 @@ void CoalesceSpillFills::removeRedundantSplitMovs()
         {
             auto inst = (*instIt);
 
-            if (inst->isSplitSend() &&
-                inst->getMsgDesc()->isScratchWrite())
+            if (inst->isSpillIntrinsic())
             {
                 // Spill sends
                 auto src1Dcl = inst->getSrc(1)->getTopDcl();
@@ -1674,8 +1658,7 @@ void CoalesceSpillFills::spillFillCleanup()
         {
             auto inst = (*instIt);
 
-            if (inst->isSend() &&
-                inst->getMsgDesc()->isScratchRead())
+            if (inst->isFillIntrinsic())
             {
                 writesPerOffset.clear();
                 defs.clear();
@@ -1696,8 +1679,7 @@ void CoalesceSpillFills::spillFillCleanup()
                 {
                     auto pInst = (*pInstIt);
 
-                    if (pInst->isSplitSend() &&
-                        pInst->getMsgDesc()->isScratchWrite())
+                    if (pInst->isSpillIntrinsic())
                     {
                         unsigned int pRowStart, pNumRows;
                         getScratchMsgInfo(pInst, pRowStart, pNumRows);
@@ -1782,7 +1764,7 @@ void CoalesceSpillFills::spillFillCleanup()
 
                     auto write = writesPerOffset.find(row)->second;
                     G4_SrcRegRegion* src1Write = write->getSrc(1)->asSrcRegRegion();
-                    unsigned int writeRowStart = write->getMsgDesc()->getScratchRWOffset();
+                    unsigned int writeRowStart = write->asSpillIntrinsic()->getOffset();
                     unsigned int diff = row - writeRowStart;
                     G4_SrcRegRegion* nSrc = kernel.fg.builder->createSrcRegRegion(Mod_src_undef, Direct,
                         src1Write->getBase(), REGISTER_ROW(diff) + src1Write->getRegOff(), 0,
@@ -1826,10 +1808,10 @@ void CoalesceSpillFills::removeRedundantWrites()
         {
             auto inst = (*instIt);
 
-            if (inst->isSend())
+            if (inst->isSpillIntrinsic() || inst->isFillIntrinsic())
             {
                 unsigned int offset = 0, size = 0;
-                if (inst->getMsgDesc()->isScratchRead())
+                if (inst->isFillIntrinsic())
                 {
                     getScratchMsgInfo(inst, offset, size);
                     for (unsigned int k = offset; k != (offset + size); k++)
@@ -1841,7 +1823,7 @@ void CoalesceSpillFills::removeRedundantWrites()
                         }
                     }
                 }
-                else if (inst->getMsgDesc()->isScratchWrite())
+                else if (inst->isSpillIntrinsic())
                 {
                     getScratchMsgInfo(inst, offset, size);
                     bool allRowsFound = true;
@@ -1899,12 +1881,12 @@ void CoalesceSpillFills::removeRedundantWrites()
                 continue;
             }
 
-            if (inst->getMsgDesc()->isScratchRead() ||
-                inst->getMsgDesc()->isScratchWrite())
+            if (inst->isFillIntrinsic() ||
+                inst->isSpillIntrinsic())
             {
                 unsigned int offset, size;
                 getScratchMsgInfo(inst, offset, size);
-                bool isRead = inst->getMsgDesc()->isScratchRead();
+                bool isRead = inst->isFillIntrinsic();
                 for (unsigned int i = offset; i != (offset + size); i++)
                 {
                     auto it = scratchOffsetAccess.find(i);
