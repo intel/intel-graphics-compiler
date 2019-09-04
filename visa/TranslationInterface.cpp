@@ -156,6 +156,17 @@ static uint32_t buildDescForScatter(uint32_t msgType, Common_ISA_SVM_Block_Num n
     return MD;
 }
 
+// vector scatter messages are either SIMD8/16, so we have to round up
+// the exec size
+static Common_ISA_Exec_Size roundUpExecSize(Common_ISA_Exec_Size execSize)
+{
+    if (execSize == EXEC_SIZE_1 || execSize == EXEC_SIZE_2 || execSize == EXEC_SIZE_4)
+    {
+        return EXEC_SIZE_8;
+    }
+    return execSize;
+}
+
 int IR_Builder::translateVISAAddrInst(ISA_Opcode opcode, Common_ISA_Exec_Size executionSize,
                                       Common_VISA_EMask_Ctrl emask, G4_DstRegRegion *dstOpnd, G4_Operand *src0Opnd, G4_Operand *src1Opnd)
 {
@@ -295,7 +306,6 @@ void IR_Builder::expandPow(uint8_t exsize, G4_Predicate *predOpnd, bool saturate
     G4_SrcRegRegion* expSrc = Create_Src_Opnd_From_Dcl(tmpVar, getRegionStride1());
     createMathInst(duplicateOperand(predOpnd), saturate, exsize, dstOpnd, expSrc, createNullSrc(mathType), MATH_EXP, instOpt);
 }
-
 
 
 int IR_Builder::translateVISAArithmeticInst(ISA_Opcode opcode, Common_ISA_Exec_Size executionSize,
@@ -4185,10 +4195,8 @@ int IR_Builder::translateVISADwordAtomicInst(VISAAtomicOps atomicOp,
     surface = lowerSurface255To253(surface, *this);
 
     Common_ISA_Exec_Size instExecSize = execSize;
-    if (execSize == EXEC_SIZE_1 || execSize == EXEC_SIZE_2 || execSize == EXEC_SIZE_4)
-    {
-        execSize = EXEC_SIZE_8;
-    }
+    execSize = roundUpExecSize(execSize);
+
     // always 8 or 16
     unsigned exSize = Get_Common_ISA_Exec_Size(execSize);
     // can be 1 for scalar atomics
@@ -4404,7 +4412,7 @@ int IR_Builder::translateVISAGather4TypedInst(G4_Predicate           *pred,
 
     bool useSplitSend = useSends();
 
-    bool hasHeader = (getGenxPlatform() <= GENX_BDW);
+    bool hasHeader = getGenxPlatform() == GENX_BDW;
 
     payloadSource sources[5]; // (maybe header) + maximal 4 addresses
     unsigned len = 0;
@@ -4495,7 +4503,7 @@ int IR_Builder::translateVISAScatter4TypedInst(G4_Predicate           *pred,
 
     bool useSplitSend = useSends();
 
-    bool hasHeader = (getGenxPlatform() <= GENX_BDW);
+    bool hasHeader = getGenxPlatform() == GENX_BDW;
 
     payloadSource sources[6]; // (maybe header) + maximal 4 addresses + source
     unsigned len = 0;
@@ -4885,10 +4893,7 @@ int IR_Builder::translateGather4Inst(G4_Predicate           *pred,
         "Only support SIMD1, SIMD2, SIMD4, SIMD8 or SIMD16!");
 
     Common_ISA_Exec_Size instExecSize = execSize;
-    if (execSize == EXEC_SIZE_1 || execSize == EXEC_SIZE_2 ||
-        execSize == EXEC_SIZE_4) {
-        execSize = EXEC_SIZE_8;
-    }
+    execSize = roundUpExecSize(execSize);
 
     unsigned exSize = Get_Common_ISA_Exec_Size(execSize);
     unsigned instExSize = Get_Common_ISA_Exec_Size(instExecSize);
@@ -4990,10 +4995,7 @@ int IR_Builder::translateScatter4Inst(G4_Predicate           *pred,
         "Only support SIMD1, SIMD2, SIMD4, SIMD8 or SIMD16!");
 
     Common_ISA_Exec_Size instExecSize = execSize;
-    if (execSize == EXEC_SIZE_1 || execSize == EXEC_SIZE_2 ||
-        execSize == EXEC_SIZE_4) {
-        execSize = EXEC_SIZE_8;
-    }
+    execSize = roundUpExecSize(execSize);
 
     unsigned exSize = Get_Common_ISA_Exec_Size(execSize);
     unsigned instExSize = Get_Common_ISA_Exec_Size(instExecSize);
@@ -5249,10 +5251,7 @@ int IR_Builder::translateByteGatherInst(G4_Predicate *pred,
                 "Byte gather ONLY supports 1, 2, and 4 elements per slot!");
 
     Common_ISA_Exec_Size instExecSize = execSize;
-    if (execSize == EXEC_SIZE_1 || execSize == EXEC_SIZE_2 ||
-        execSize == EXEC_SIZE_4) {
-        execSize = EXEC_SIZE_8;
-    }
+    execSize = roundUpExecSize(execSize);
 
     unsigned exSize = Get_Common_ISA_Exec_Size(execSize);
     unsigned instExSize = Get_Common_ISA_Exec_Size(instExecSize);
@@ -5365,10 +5364,7 @@ int IR_Builder::translateByteScatterInst(G4_Predicate *pred,
                 "Byte scatter ONLY supports 1, 2, and 4 elements per slot!");
 
     Common_ISA_Exec_Size instExecSize = execSize;
-    if (execSize == EXEC_SIZE_1 || execSize == EXEC_SIZE_2 ||
-        execSize == EXEC_SIZE_4) {
-        execSize = EXEC_SIZE_8;
-    }
+    execSize = roundUpExecSize(execSize);
 
     unsigned exSize = Get_Common_ISA_Exec_Size(execSize);
     unsigned instExSize = Get_Common_ISA_Exec_Size(instExecSize);
@@ -9671,10 +9667,7 @@ int IR_Builder::translateVISASVMScatterReadInst(
                 "Only support SIMD1, SIMD2, SIMD4, SIMD8 or SIMD16!");
 
     Common_ISA_Exec_Size instExecSize = execSize;
-    if (execSize == EXEC_SIZE_1 || execSize == EXEC_SIZE_2 ||
-        execSize == EXEC_SIZE_4) {
-        execSize = EXEC_SIZE_8;
-    }
+    execSize = roundUpExecSize(execSize);
 
     unsigned exSize = Get_Common_ISA_Exec_Size(execSize);
     unsigned instExSize = Get_Common_ISA_Exec_Size(instExecSize);
@@ -9750,10 +9743,7 @@ int IR_Builder::translateVISASVMScatterWriteInst(
                 "Only support SIMD1, SIMD2, SIMD4, SIMD8 or SIMD16!");
 
     Common_ISA_Exec_Size instExecSize = execSize;
-    if (execSize == EXEC_SIZE_1 || execSize == EXEC_SIZE_2 ||
-        execSize == EXEC_SIZE_4) {
-        execSize = EXEC_SIZE_8;
-    }
+    execSize = roundUpExecSize(execSize);
 
     unsigned exSize = Get_Common_ISA_Exec_Size(execSize);
     unsigned instExSize = Get_Common_ISA_Exec_Size(instExecSize);
@@ -9867,12 +9857,7 @@ int IR_Builder::translateVISASVMAtomicInst(
 
 
     Common_ISA_Exec_Size instExecSize = execSize;
-    if (execSize == EXEC_SIZE_1 || execSize == EXEC_SIZE_2 || execSize == EXEC_SIZE_4)
-    {
-        execSize = EXEC_SIZE_8;
-    }
-
-    MUST_BE_TRUE(execSize == EXEC_SIZE_8, "execution size must be 8 for SVM atomic messages");
+    execSize = roundUpExecSize(execSize);
 
     unsigned op = Get_Atomic_Op(atomicOp);
 
