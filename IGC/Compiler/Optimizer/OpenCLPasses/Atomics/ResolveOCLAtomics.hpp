@@ -52,28 +52,28 @@ namespace IGC
     class ResolveOCLAtomics : public llvm::ModulePass, public llvm::InstVisitor<ResolveOCLAtomics>
     {
     public:
-        // Pass identification, replacement for typeid
-        static char ID;
+    // Pass identification, replacement for typeid
+    static char ID;
 
-        /// @brief  Constructor
-        ResolveOCLAtomics();
+    /// @brief  Constructor
+    ResolveOCLAtomics();
 
-        /// @brief  Destructor
-        ~ResolveOCLAtomics() {}
+    /// @brief  Destructor
+    ~ResolveOCLAtomics() {}
 
-        /// @brief  Provides name of pass
-        virtual llvm::StringRef getPassName() const override
-        {
-            return "ResolveOCLAtomics";
-        }
+    /// @brief  Provides name of pass
+    virtual llvm::StringRef getPassName() const override
+    {
+        return "ResolveOCLAtomics";
+    }
 
-        // Entry point of the pass.
+    // Entry point of the pass.
         virtual bool runOnModule(llvm::Module& M) override;
 
-        // Call instructions visitor.
+    // Call instructions visitor.
         void visitCallInst(llvm::CallInst& callInst);
 
-        static const unsigned int ATTR_BUFFER_TYPE_SHIFT = 8;
+    static const unsigned int ATTR_BUFFER_TYPE_SHIFT = 8;
 
     protected:
         llvm::Module* m_pModule;
@@ -115,15 +115,15 @@ namespace IGC
         /// @param    bufType    corresponding buffer type.
         /// @returns  call instruction to generated GenISA_GetBufferPtr.
         llvm::CallInst* genGetBufferPtr(llvm::CallInst& callInst, BufferType bufType);
+        
+        /// @brief  Replace the "__builtin_IB_get_local_lock" call with a pointer to a local memory variable.
+        /// @param    callInst  call to "__builtin_IB_get_local_lock*" function.
+        void           processGetLocalLock(llvm::CallInst& callInst);
 
-    /// @brief  Replace the "__builtin_IB_get_local_lock" call with a pointer to a local memory variable.
-    /// @param    callInst  call to "__builtin_IB_get_local_lock*" function.
-    void           processGetLocalLock(llvm::CallInst& callInst);
-
-    /// @brief  Stores the value of local value used for spinlock for i64 local atomics emulation.
-    llvm::GlobalVariable* m_localLock = nullptr;
-
-    /// @brief  Indicates if the pass changed the processed function
-    bool m_changed = false;
+        /// @brief  Stores the value of local value used for spinlock for i64 local atomics emulation.
+        llvm::GlobalVariable* m_localLock = nullptr;
+        
+        /// @brief  Indicates if the pass changed the processed function
+        bool m_changed = false;
     };
 }
