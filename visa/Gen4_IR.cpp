@@ -7033,16 +7033,6 @@ void G4_INST::computeRightBound(G4_Operand* opnd)
 
             done = true;
         }
-        else if (done == false && isFillIntrinsic())
-        {
-            asFillIntrinsic()->computeRightBound(opnd);
-            done = true;
-        }
-        else if (done == false && isSpillIntrinsic())
-        {
-            asSpillIntrinsic()->computeRightBound(opnd);
-            done = true;
-        }
 
         if( done == false )
         {
