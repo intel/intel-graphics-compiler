@@ -268,11 +268,7 @@ namespace IGC {
 
         // Visitor
         void visitCallInst(llvm::CallInst& I);
-        void visitCastInst(llvm::CastInst& I);  // to be deleted
-        void visitInsertElementInst(llvm::InsertElementInst& I);
-        void visitInsertElementInst_toBeDeleted(llvm::InsertElementInst& I);
         void visitExtractElementInst(llvm::ExtractElementInst& I);
-        void visitExtractElementInst_toBeDeleted(llvm::ExtractElementInst& I);
 
         bool isAliasedValue(llvm::Value* V) {
             if (IGC_GET_FLAG_VALUE(VATemp) > 0) {
