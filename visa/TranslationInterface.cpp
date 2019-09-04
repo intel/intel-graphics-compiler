@@ -2710,7 +2710,7 @@ int IR_Builder::translateVISAOwordLoadInst(
             NULL, d,
             payload,
             1,
-            (num_oword - 1) / 2 + 1,
+            (num_oword * 16 + getGRFSize() - 1) / getGRFSize(),
             send_exec_size,
             temp,
             tf_id,
@@ -2728,7 +2728,7 @@ int IR_Builder::translateVISAOwordLoadInst(
         Create_SplitSend_Inst_For_CISA(
             NULL, d, m0, 1,
             createNullSrc(Type_UD), 0,
-            (num_oword - 1) / 2 + 1,
+            (num_oword * 16 + getGRFSize() - 1) / getGRFSize(),
             send_exec_size,
             temp,
             0,
@@ -2798,6 +2798,8 @@ int IR_Builder::translateVISAOwordStoreInst(
 
     unsigned funcCtrl = DC_OWORD_BLOCK_WRITE << 14;
 
+    uint32_t payloadGRFSize = (num_oword * 16 + getGRFSize() - 1) / getGRFSize();
+
     // Set bit 12-8 for the message descriptor
     funcCtrl = setOwordForDesc(funcCtrl, num_oword, IsSLMSurface(surface));
     bool forceSplitSend = ForceSplitSend(*this, surface);
@@ -2815,7 +2817,7 @@ int IR_Builder::translateVISAOwordStoreInst(
         Create_MOV_Inst( headerDcl, 0, 2, 1, nullptr, nullptr, offOpnd, true );
 
         unsigned msgDesc = funcCtrl;
-        unsigned extMsgLength = (num_oword - 1) / 2 + 1;
+        unsigned extMsgLength = payloadGRFSize;
         uint16_t extFuncCtrl = 0;
 
         // message length = 1, response length = 0, header present = 1
@@ -2867,7 +2869,7 @@ int IR_Builder::translateVISAOwordStoreInst(
             NULL,
             post_dst_opnd,
             payload,
-            ((num_oword - 1) / 2 + 1) + 1,
+            payloadGRFSize + 1,
             0,
             send_size,
             funcCtrl,
