@@ -554,6 +554,7 @@ uchar   __builtin_IB_simd_media_block_read_1_b( int, int2 );
 uchar2  __builtin_IB_simd_media_block_read_2_b( int, int2 );
 uchar4  __builtin_IB_simd_media_block_read_4_b( int, int2 );
 uchar8  __builtin_IB_simd_media_block_read_8_b( int, int2 );
+uchar16  __builtin_IB_simd_media_block_read_16_b( int, int2 );
 
 ulong   __builtin_IB_simd_media_block_read_1_l( int, int2 );
 ulong2  __builtin_IB_simd_media_block_read_2_l( int, int2 );
@@ -576,6 +577,7 @@ void    __builtin_IB_simd_media_block_write_1_b( int, int2, uchar );
 void    __builtin_IB_simd_media_block_write_2_b( int, int2, uchar2 );
 void    __builtin_IB_simd_media_block_write_4_b( int, int2, uchar4 );
 void    __builtin_IB_simd_media_block_write_8_b( int, int2, uchar8 );
+void    __builtin_IB_simd_media_block_write_16_b( int, int2, uchar16 );
 
 void    __builtin_IB_simd_media_block_write_1_l( int, int2, ulong );
 void    __builtin_IB_simd_media_block_write_2_l( int, int2, ulong2 );
