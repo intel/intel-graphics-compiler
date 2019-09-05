@@ -1831,6 +1831,8 @@ Emu64BitCall:
             Emu->setExpandedValues(GenCopy, Lo, Hi);
             return true;
         }
+        case GenISAIntrinsic::GenISA_intatomicraw:
+        case GenISAIntrinsic::GenISA_icmpxchgatomicraw:
         case GenISAIntrinsic::GenISA_intatomicrawA64:
         case GenISAIntrinsic::GenISA_icmpxchgatomicrawA64:
         {
