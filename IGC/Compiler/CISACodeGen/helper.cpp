@@ -432,7 +432,7 @@ namespace IGC
                 }
                 return nullptr;
             }
-            else if (LoadInst * inst = dyn_cast<LoadInst>(baseValue))
+            else if (LoadInst* inst = dyn_cast<LoadInst>(baseValue))
             {
                 if (inst->getPointerAddressSpace() == 0)
                 {
@@ -1222,6 +1222,7 @@ namespace IGC
     bool IsSubGroupIntrinsicWithSimd32Implementation(EOPCODE opcode)
     {
         return (opcode == llvm_waveAll ||
+            opcode == llvm_waveClustered ||
             opcode == llvm_wavePrefix ||
             opcode == llvm_waveShuffleIndex);
     }
@@ -1586,7 +1587,7 @@ namespace IGC
     //    __builtin_assume(ret <= 0x0000ffff)
     //    return ret;
     // }
-    // 
+    //
     // This implementation relies completly on native llvm functions
     //
     //

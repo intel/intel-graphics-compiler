@@ -1080,14 +1080,14 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
         intrinsic_name == llvm_cycleCounter ||
         intrinsic_name == llvm_waveShuffleIndex ||
         intrinsic_name == llvm_waveBallot ||
+        intrinsic_name == llvm_waveAll ||
+        intrinsic_name == llvm_waveClustered ||
         intrinsic_name == llvm_ld_ptr ||
         intrinsic_name == llvm_add_pair ||
         intrinsic_name == llvm_sub_pair ||
         intrinsic_name == llvm_mul_pair ||
         intrinsic_name == llvm_ptr_to_pair ||
         intrinsic_name == llvm_pair_to_ptr ||
-        intrinsic_name == llvm_waveBallot ||
-        intrinsic_name == llvm_waveAll ||
         intrinsic_name == llvm_fma ||
         GII_id == GenISAIntrinsic::GenISA_getSR0 ||
         GII_id == GenISAIntrinsic::GenISA_mul_rtz ||
@@ -1145,6 +1145,19 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
         if (intrinsic_name == llvm_waveBallot || intrinsic_name == llvm_waveAll)
         {
             return WIAnalysis::UNIFORM;
+        }
+
+        if (intrinsic_name == llvm_waveClustered)
+        {
+            const unsigned clusterSize = static_cast<unsigned>(
+                cast<llvm::ConstantInt>(inst->getArgOperand(2))->getZExtValue());
+
+            constexpr unsigned maxSimdSize = 32;
+            if (clusterSize == maxSimdSize)
+            {
+                // TODO: do the same for SIMD8 and SIM16 if possible.
+                return WIAnalysis::UNIFORM;
+            }
         }
 
         // Iterate over all input dependencies. If all are uniform - propagate it.

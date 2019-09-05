@@ -247,11 +247,19 @@ namespace IGC
             CVariable* pSrc,
             bool isA64,
             bool is16Bit);
-        /// reduction facilities
+
+        /// reduction and prefix/postfix facilities
         CVariable* ScanReducePrepareSrc(VISA_Type type, uint64_t identityValue, bool negate, bool secondHalf,
             CVariable* src, CVariable* dst, CVariable* flag = nullptr);
-        CVariable* ReduceHelper(e_opcode op, VISA_Type type, SIMDMode simd, CVariable* src);
-        /// do reduction and accummulate all the activate channels, return a uniform
+        CVariable* ReductionReduceHelper(e_opcode op, VISA_Type type, SIMDMode simd, CVariable* src);
+        void ReductionExpandHelper(e_opcode op, VISA_Type type, CVariable* src, CVariable* dst);
+        void ReductionClusteredSrcHelper(CVariable* (&pSrc)[2], CVariable* src, uint16_t numLanes,
+            VISA_Type type, uint numInst, bool secondHalf);
+        CVariable* ReductionClusteredReduceHelper(e_opcode op, VISA_Type type, SIMDMode simd, bool secondHalf,
+            CVariable* src, CVariable* dst);
+        void ReductionClusteredExpandHelper(e_opcode op, VISA_Type type, SIMDMode simd, const uint clusterSize,
+            bool secondHalf, CVariable* src, CVariable* dst);
+        /// reduction and prefix/postfix emitters
         void emitReductionAll(
             e_opcode op,
             uint64_t identityValue,
@@ -259,8 +267,14 @@ namespace IGC
             bool negate,
             CVariable* src,
             CVariable* dst);
-
-        /// do prefix op across all activate channels
+        void emitReductionClustered(
+            const e_opcode op,
+            const uint64_t identityValue,
+            const VISA_Type type,
+            const bool negate,
+            const unsigned int clusterSize,
+            CVariable* const src,
+            CVariable* const dst);
         void emitPreOrPostFixOp(
             e_opcode op,
             uint64_t identityValue,
@@ -271,7 +285,6 @@ namespace IGC
             CVariable* Flag = nullptr,
             bool isPrefix = false,
             bool isQuad = false);
-
         void emitPreOrPostFixOpScalar(
             e_opcode op,
             uint64_t identityValue,
@@ -375,6 +388,7 @@ namespace IGC
         void emitWavePrefix(llvm::WavePrefixIntrinsic* I);
         void emitQuadPrefix(llvm::QuadPrefixIntrinsic* I);
         void emitWaveAll(llvm::GenIntrinsicInst* inst);
+        void emitWaveClustered(llvm::GenIntrinsicInst* inst);
 
         // Those three "vector" version shall be combined with
         // non-vector version.

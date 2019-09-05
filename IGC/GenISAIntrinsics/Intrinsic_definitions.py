@@ -141,7 +141,7 @@ Imported_Intrinsics = \
     "GenISA_RuntimeValue": ["any:float",["int"],"NoMem"],
     "GenISA_GetBufferPtr": ["anyptr",["int","int"],"NoMem"],
     "GenISA_DCL_inputVec": ["anyfloat",["int","int"],"NoMem"],
-    # (dwordAttributeOrSetupIndex, e_interpolation_PSOnly)->anyvector
+    # Signature: (dwordAttributeOrSetupIndex, e_interpolation_PSOnly)->anyvector
     "GenISA_DCL_ShaderInputVec": ["anyvector",["int","int"],"NoMem"],
     "GenISA_DCL_GSinputVec": ["float4",["int","int"],"NoMem"],
     "GenISA_DCL_SystemValue": ["any:float",["int"],"NoMem"],
@@ -179,7 +179,7 @@ Imported_Intrinsics = \
     "GenISA_DCL_HSControlPointID": ["int",[],"None"],
     "GenISA_OutputTessControlPoint": ["void",["float","float","float","float","int","int","int"],"None"],
     "GenISA_OutputTessFactors": ["void",["float","float","float","float","float","float"],"None"],
-    # (owordAttributeIndex)->float4
+    # Signature: (owordAttributeIndex)->float4
     "GenISA_DCL_HSPatchConstInputVec": ["float4",["int"],"ReadMem"],
     "GenISA_OuterScalarTessFactors": ["void",["int","float"],"None"],
     "GenISA_InnerScalarTessFactors": ["void",["int","float"],"None"],
@@ -187,7 +187,7 @@ Imported_Intrinsics = \
     "GenISA_DCL_DSInputTessFactor": ["float",["int"],"NoMem"],
     "GenISA_DCL_DSCntrlPtInputVec": ["float4",["int","int"],"NoMem"],
     "GenISA_DCL_HSinputVec": ["float4",["int","int"],"NoMem"],
-    # (owordVertexIndex, owordAttributeIndex)->float4
+    # Signature: (owordVertexIndex, owordAttributeIndex)->float4
     "GenISA_DCL_HSOutputCntrlPtInputVec": ["float4",["int","int"],"ReadMem"],
     "GenISA_HSURBPatchHeaderRead": ["float8",[],"ReadMem"],
     "GenISA_RenderTargetRead": ["float4",["int"],"ReadMem"],
@@ -261,11 +261,11 @@ Imported_Intrinsics = \
                                  "int","bool","bool","bool","bool","int"],"None"],
     "GenISA_RTWrite": ["void",["anyfloat","float","bool",0,0,0,0,"float","float","int","int","bool",
                        "bool","bool","bool","int"],"None"],
-    # (owordOffset, mask, x1, y1, z1, w1, x2, y2, z2, w2)
+    # Signature: (owordOffset, mask, x1, y1, z1, w1, x2, y2, z2, w2)
     "GenISA_URBWrite": ["void",["int","int","float","float","float","float","float","float","float","float"],"None"],
-    # (index, owordOffset)->float8
+    # Signature: (index, owordOffset)->float8
     "GenISA_URBRead": ["float8",["int","int"],"NoMem"],
-    # In-place data read using URB Write Handle. (owordOffset)->float8
+    # In-place data read using URB Write Handle. Signature: Signature: (owordOffset)->float8
     "GenISA_URBReadOutput": ["float8",["int"],"NoMem"],
     "GenISA_SetDebugReg": ["int",["int"],"None"],
     "GenISA_add_pair": [["int","int"],["int","int","int","int"],"NoMem"],
@@ -273,18 +273,24 @@ Imported_Intrinsics = \
     "GenISA_mul_pair": [["int","int"],["int","int","int","int"],"NoMem"],
     "GenISA_pair_to_ptr": ["anyptr",["int","int"],"NoMem"],
     "GenISA_ptr_to_pair": [["int","int"],["anyptr"],"NoMem"],
+    # Takes a boolean as input; return a bitfield with 1 for active lane with input true, 0 for the rest.
+    # All lanes get the same value. Signature: (bool)->bitfield_int32
     "GenISA_WaveBallot": ["int",["bool"],"Convergent,InaccessibleMemOnly"],
-    # Arg 0  - Mask value
-    # Return - assigns each lane the value of its corresponding bit.
+    # For each active lane n, return value of n-th bit from the input bitfield. Signature: (bitfield)->bool
     "GenISA_WaveInverseBallot": ["bool",["int"],"Convergent,InaccessibleMemOnly"],
+    # Read from a specific lane. Signature: (value, lane)->value
     "GenISA_WaveShuffleIndex": ["anyint",[0,"int"],"Convergent,NoMem"],
+    # Accumulate all the active lanes. Signature: (value, op)->result; where op is one of IGC::WaveOps
     "GenISA_WaveAll": ["anyint",[0,"char"],"Convergent,InaccessibleMemOnly"],
-    # Arg 0  - Src value
-    # Arg 1  - Operation type
-    # Arg 2  - Is the operation inclusive (1) or exclusive (0)?
-    # Arg 3  - a mask that specifies a subset of lanes to participate
-    #          in the computation.
-    # Return - The computed prefix/postfix result
+    # Accumulate all active lanes within consecutive input clusters and broadcast the result to associated output clusters.
+    # A k-cluster is a sequence of values from k consecutive (not necessarily active) lanes, such that: clusters are disjoint,
+    # size value is of 1 <= 2^p <= maxSubgroupSize, p >= 0.
+    # Signature: (value, op, size)->result; op is one of IGC::WaveOps; size must be a compile-time constant,
+    # and it is assumed that size > 1; the result for n-th input cluster is replicated to n-th output cluster.
+    "GenISA_WaveClustered": ["anyint",[0,"char", "int"],"Convergent,InaccessibleMemOnly"],
+    # Accumulate and keep the intermediate results in each lane.
+    # Signature: (value, op, type, mask)->result; op is one of IGC::WaveOps, type is either exclusive(0)
+    # or invlusive(1) operation; mask specifies a subset of lanes to participate in the computation.
     "GenISA_WavePrefix": ["anyint",[0,"char","bool","bool"],"Convergent,InaccessibleMemOnly"],
     "GenISA_QuadPrefix": ["anyint",[0,"char","bool"],"Convergent,InaccessibleMemOnly"],
     "GenISA_InitDiscardMask": ["bool",[],"None"],
