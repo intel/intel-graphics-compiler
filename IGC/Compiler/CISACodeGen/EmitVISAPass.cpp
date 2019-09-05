@@ -1115,8 +1115,7 @@ void EmitPass::InitConstant(llvm::BasicBlock* BB)
 
 void EmitPass::emitLifetimeStartAtEndOfBB(BasicBlock* BB)
 {
-    if (IGC_IS_FLAG_DISABLED(EnableVATemp) &&
-        IGC_GET_FLAG_VALUE(VATemp) == 0) {
+    if (IGC_GET_FLAG_VALUE(VATemp) == 0) {
         return;
     }
 
@@ -7936,13 +7935,14 @@ CVariable* EmitPass::Add(CVariable* Src0, CVariable* Src1, const CVariable* DstP
 // Insert lifetime start right before instruction I if it is a candidate.
 void EmitPass::emitLifetimeStart(CVariable* Var, BasicBlock* BB, Instruction* I, bool ForAllInstance)
 {
-    if ((IGC_IS_FLAG_DISABLED(EnableVATemp) &&
-        IGC_GET_FLAG_VALUE(VATemp) == 0) ||
-        Var == nullptr) {
+    if (IGC_GET_FLAG_VALUE(VATemp) == 0 || Var == nullptr) {
         return;
     }
 
+    // m_LifetimeAt1stDefOfBB uses dessa root of aliasee as its key
     Value* ARV = m_VRA->getAliasRootValue(I);
+    ARV = m_VRA->getRootValue(ARV);
+
     auto II = m_VRA->m_LifetimeAt1stDefOfBB.find(ARV);
     if (II != m_VRA->m_LifetimeAt1stDefOfBB.end())
     {

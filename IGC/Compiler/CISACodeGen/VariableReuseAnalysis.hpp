@@ -261,25 +261,15 @@ namespace IGC {
         bool checkDefInst(llvm::Instruction* DInst, llvm::Instruction* UInst,
             LiveVars* LV);
 
-        bool isLocalValue(llvm::Value* V);
-
-        bool aliasHasInterference(llvm::Value* Aliaser, llvm::Value* Aliasee);
-        bool hasInterference(llvm::Value* V0, llvm::Value* V1);
-
         // Visitor
-        void visitCallInst(llvm::CallInst& I);
         void visitExtractElementInst(llvm::ExtractElementInst& I);
 
         bool isAliasedValue(llvm::Value* V) {
             if (IGC_GET_FLAG_VALUE(VATemp) > 0) {
                 return isAliased(V);
             }
-            return (isAliaser_tbd(V) || isAliasee_tbd(V));
+            return false;
         }
-        bool isAliaser_tbd(llvm::Value* V);
-        bool isAliasee_tbd(llvm::Value* V);
-        int getCongruentClassSize(llvm::Value* V);
-        bool isSameSizeValue(llvm::Value* V0, llvm::Value* V1);
 
         // getRootValue():
         //   return dessa root value; if dessa root value
@@ -293,9 +283,6 @@ namespace IGC {
         void printAlias(llvm::raw_ostream& OS, const llvm::Function* F = nullptr) const;
         /// dumpAalias - dump alias info to dbgs().
         void dumpAlias() const;
-
-        // Collect aliases from subVector to base vector.
-        ValueAliasMapTy m_ValueAliasMap; // aliaser -> aliasee  [tobedeleted]
 
         //
         // m_aliasMap:
@@ -371,10 +358,6 @@ namespace IGC {
             llvm::Value* VecAliasee,
             int    Idx);
 
-
-        // Reverse of m_ValueAliasMap.
-        AliasRootMapTy    m_AliasRootMap;    // aliasee -> all its aliasers. [toBeDeleted]
-
         // No need to emit code for instructions in this map due to aliasing
         llvm::DenseMap <llvm::Instruction*, int> m_HasBecomeNoopInsts;
 
@@ -392,11 +375,12 @@ namespace IGC {
             m_SimdSize = 0;
             m_IsFunctionPressureLow = Status::Undef;
             m_IsBlockPressureLow = Status::Undef;
-            m_ValueAliasMap.clear();
-            m_AliasRootMap.clear();
             m_aliasMap.clear();
             m_root2AliasMap.clear();
             m_HasBecomeNoopInsts.clear();
+            m_LifetimeAt1stDefOfBB.clear();
+            m_LifetimeAtEndOfBB.clear();
+
         }
 
         // Initialize per-block states. In particular, check if the entire block has a
@@ -456,12 +440,6 @@ namespace IGC {
         bool hasAnotherInDCCAsAliasee(llvm::Value* V) const;
         bool isAliased(llvm::Value* V) const;
 
-
-        // Add entry to alias map.
-        bool addAlias(llvm::Value* Aliaser, SSubVecDesc& SVD);
-        // Insert entry in maps and update maps. Invoked by addAlias().
-        void insertAliasPair(llvm::Value* Aliaser, SSubVecDesc& SV);
-
         // Returns true for the following pattern:
         //   a = extractElement <vectorType> EEI_Vec, <constant EEI_ix>
         //   b = insertElement  <vectorType> V1,  E,  <constant IEI_ix>
@@ -472,26 +450,6 @@ namespace IGC {
             llvm::Value*& EEI_Vec,
             int& EEI_ix);
 
-        bool checkAndGetAllInsertElements(
-            llvm::InsertElementInst* FirstIEI,
-            ValueVectorTy& AllIEIs,
-            VecEltTy& AllElts);
-
-        bool IsExtractFrom(
-            VecEltTy& AllElts,
-            llvm::InsertElementInst* FirstIEI,
-            llvm::InsertElementInst* LastIEI,
-            SSubVecDesc& SV);
-
-        bool IsInsertTo(
-            VecEltTy& AllElts,
-            llvm::InsertElementInst* FirstIEI,
-            llvm::InsertElementInst* LastIEI,
-            llvm::SmallVector<SSubVecDesc, 4> & SVs);
-
-        void getAllValues(
-            llvm::SmallVector<llvm::Value*, 8> & AllValues,
-            llvm::Value* Aliasee);
 
         CodeGenContext* m_pCtx;
         WIAnalysis* m_WIA;
@@ -530,11 +488,6 @@ namespace IGC {
         // When this block has low register pressure, reuse can be applied
         // aggressively without checking each individual def-use pair.
         Status m_IsBlockPressureLow;
-
-        // Temporaries
-        //SmallPtrSet<llvm::Instruction*, 16> m_Visited;
-        ValueAliasMapTy m_ExtractFrom;
-        ValueAliasMapTy m_insertTo;
 
         // Temporaries under VATemp
         // if a value V is in a dessa CC and V is aliased,

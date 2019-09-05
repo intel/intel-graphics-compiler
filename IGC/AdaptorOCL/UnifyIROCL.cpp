@@ -404,7 +404,7 @@ static void CommonOCLBasedPasses(
     mpm.add(new SubGroupFuncsResolution());
 
     // This is an experimental pass!
-    mpm.add(createAddCopyIntrinsicPass());
+    // mpm.add(createAddCopyIntrinsicPass());
 
     // Run InlineLocals and GenericAddressDynamic together
     mpm.add(new InlineLocalsResolution());
