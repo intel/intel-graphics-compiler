@@ -20,6 +20,7 @@ $ export IGC_ShaderDumpEnable=1
 ```
 
 ### 3. Description of flags
+- **disableCompaction** - Disables compaction
 - **DumpCompilerStats** - Dump compiler statistics
 - **DumpDeSSA** - Dump DeSSA info into file
 - **DumpLLVMIR** - Dump LLVM IR
