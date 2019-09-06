@@ -1821,6 +1821,7 @@ Emu64BitCall:
         case GenISAIntrinsic::GenISA_broadcastMessagePhaseV:
         case GenISAIntrinsic::GenISA_simdGetMessagePhase:
         case GenISAIntrinsic::GenISA_RuntimeValue:
+        case GenISAIntrinsic::GenISA_simdBlockRead:
         {
             auto* GenCopy = Call.clone();
             GenCopy->insertBefore(&Call);
@@ -1870,6 +1871,7 @@ Emu64BitCall:
         case GenISAIntrinsic::GenISA_uitof_rtn:
         case GenISAIntrinsic::GenISA_uitof_rtp:
         case GenISAIntrinsic::GenISA_uitof_rtz:
+        case GenISAIntrinsic::GenISA_simdBlockWrite:
         {
             auto* GenCopy = Call.clone();
             GenCopy->insertBefore(&Call);
