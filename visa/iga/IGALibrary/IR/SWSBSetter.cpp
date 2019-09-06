@@ -335,7 +335,7 @@ void SWSBAnalyzer::calculateDependence(DepSet &currDep, SWSB &distanceDependency
                         }
                         // clear this instruction's dependency since it is satisfied
                         clearDepBuckets(*dep);
-                        assert(dep->getCompanion() != nullptr);
+
                         // clear its companion because when an in-order instruction is synced, both its
                         // input and output dependency are satisfied. The only case is that if it has
                         // read/write_always_interfere dependency, it should be reserved.
@@ -346,9 +346,13 @@ void SWSBAnalyzer::calculateDependence(DepSet &currDep, SWSB &distanceDependency
                         //      mov (1|M0)               r104.0<1>:ud  sr0.1<0;1,0>:ud
                         //      cmp(16 | M0)   (ne)f0.0   null:ud    r104.0<0; 1, 0> : ub   r62.4<0; 1, 0> : uw
                         // A@1 is required for cmp instead of I@1
-                        if (dep->getCompanion()->getDepType() != DEP_TYPE::WRITE_ALWAYS_INTERFERE &&
-                            dep->getCompanion()->getDepType() != DEP_TYPE::READ_ALWAYS_INTERFERE)
-                            clearDepBuckets(*dep->getCompanion());
+                        if (dep->getCompanion() != nullptr) {
+                            // In the case that this DepSet is generated from math_wa_info, it won't have companion
+                            if (dep->getCompanion()->getDepType() != DEP_TYPE::WRITE_ALWAYS_INTERFERE &&
+                                dep->getCompanion()->getDepType() != DEP_TYPE::READ_ALWAYS_INTERFERE) {
+                                clearDepBuckets(*dep->getCompanion());
+                            }
+                        }
                     } // end of if (prevDepClass == DEP_CLASS::IN_ORDER)
                     else // prev is out of order
                     {

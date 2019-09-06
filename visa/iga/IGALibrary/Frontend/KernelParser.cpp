@@ -1906,8 +1906,15 @@ private:
         if (dty != Type::INVALID) {
             int typeSize = TypeSizeInBits(dty)/8;
             if (!ri.isSubRegByteOffsetValid(regNum, subregNum * typeSize, m_model.getGRFByteSize())) {
-                Error(subregLoc,
-                    "subregister out of bounds for data type", ToSyntax(dty));
+                if (ri.regName == RegName::GRF_R) {
+                    Error(subregLoc,
+                        "subregister out of bounds for data type", ToSyntax(dty));
+                } else {
+                    // Print warning for non-GRF register, in case for those valid but strange case
+                    // e.g. null0.20:f
+                    Warning(subregLoc,
+                        "subregister out of bounds for data type");
+                }
             } else if (typeSize < ri.accGran) {
                 Warning(regnameLoc, "access granularity too small for data type");
             }

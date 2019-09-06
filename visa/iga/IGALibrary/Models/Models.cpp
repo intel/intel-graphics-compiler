@@ -75,8 +75,7 @@ static const struct RegInfo REGISTER_SPECIFICATIONS[] = {
         0x2, 0,
         1,
         2, (32,32)),
-    IGA_REGISTER_SPEC_GE(
-        Platform::GEN12P1,
+    IGA_REGISTER_SPEC(Platform::GEN12P1, Platform::GEN12P1,
         RegName::ARF_ACC, "acc", "Accumulator",
         0x2, 0,
         1,
@@ -87,14 +86,11 @@ static const struct RegInfo REGISTER_SPECIFICATIONS[] = {
         0x2, 2, // offset by 2 "acc2-9"
         4,
         8, (32,32,32,32,32,32,32,32)),
-    IGA_REGISTER_SPEC_GE(
-        Platform::GEN12P1,
+    IGA_REGISTER_SPEC(Platform::GEN12P1, Platform::GEN12P1,
         RegName::ARF_MME, "mme", "Math Macro",
         0x2, 8, // offset by 8 "acc8-15"
         4,
         8, (32,32,32,32,32,32,32,32)),
-
-
     IGA_REGISTER_SPEC_UNIFORM(
         RegName::ARF_F, "f", "Flag Register",
         0x3, 0,
