@@ -51,7 +51,7 @@ DECLARE_IGC_REGKEY(DWORD,DisableMixMode,                0,     "Disables mix mod
 DECLARE_IGC_REGKEY(DWORD,DisableHFMath,                 0,     "Disables HF math instructions.", false)
 DECLARE_IGC_REGKEY(debugString, VISAOptions,            0,     "Options to vISA. Space-separated options.", false)
 DECLARE_IGC_REGKEY(DWORD,disableIGASyntax,              false, "Disables GEN isa text output using IGA and new syntax.", false)
-DECLARE_IGC_REGKEY(DWORD,disableCompaction,             false, "Disables compaction.", false)
+DECLARE_IGC_REGKEY(DWORD,disableCompaction,             false, "Disables compaction.", true)
 DECLARE_IGC_REGKEY(DWORD,TotalGRFNum,                   0,     "Total GRF used for register allocation.", false)
 DECLARE_IGC_REGKEY(DWORD,ReservedRegisterNum,           0,     "Reserve regsiter number for spill cost testing.", false)
 DECLARE_IGC_REGKEY(DWORD, GRFNumToUse,                  0,     "Set the number of general registers to use (64 to totalGRFNum)", false)
