@@ -105,7 +105,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/SPIRMetaDataTranslation.h"
 #include "Compiler/Optimizer/OpenCLPasses/ErrorCheckPass.h"
-#include "AdaptorCommon/AddCopyIntrinsic.hpp"
 #include "Compiler/MetaDataApi/IGCMetaDataHelper.h"
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "Compiler/FixResourcePtr.hpp"
@@ -402,9 +401,6 @@ static void CommonOCLBasedPasses(
     mpm.add(new ResolveOCLAtomics());
     mpm.add(new ResourceAllocator());
     mpm.add(new SubGroupFuncsResolution());
-
-    // This is an experimental pass!
-    // mpm.add(createAddCopyIntrinsicPass());
 
     // Run InlineLocals and GenericAddressDynamic together
     mpm.add(new InlineLocalsResolution());

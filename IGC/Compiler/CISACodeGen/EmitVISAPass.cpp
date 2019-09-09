@@ -7683,10 +7683,6 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_dp4a_us:
         emitDP4A(inst);
         break;
-    case GenISAIntrinsic::GenISA_Copy:
-    {
-        emitGenISACopy(inst);
-    }
     case GenISAIntrinsic::GenISA_evaluateSampler:
         // nothing to do
         break;

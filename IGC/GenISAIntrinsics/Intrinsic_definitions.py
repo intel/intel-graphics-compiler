@@ -298,7 +298,6 @@ Imported_Intrinsics = \
     "GenISA_GetPixelMask": ["bool",["bool"],"None"],
     # Check whether invocation is a helper invocation.
     "GenISA_IsHelperInvocation": ["bool",["void"],"Convergent,InaccessibleMemOnly"],
-    "GenISA_Copy": ["anyvector",[0],"None"],
     "GenISA_dp4a_ss": ["int",["int","int","int"],"NoMem"],
     "GenISA_dp4a_uu": ["int",["int","int","int"],"NoMem"],
     "GenISA_dp4a_su": ["int",["int","int","int"],"NoMem"],
