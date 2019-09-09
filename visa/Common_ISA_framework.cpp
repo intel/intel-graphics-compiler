@@ -325,6 +325,24 @@ int CisaBinary::finalizeCisaBinary()
     return CM_SUCCESS;
 }
 
+int CisaBinary::dumpToStream(std::ostream * os)
+{
+    os->write(this->m_header_buffer, this->m_header_size);
+
+    for (int i = 0; i < m_header.num_kernels; i++)
+    {
+        os->write(m_header.kernels[i].cisa_binary_buffer, m_header.kernels[i].size);
+        os->write(m_header.kernels[i].genx_binary_buffer, m_header.kernels[i].binary_size);
+    }
+
+    for (int i = 0; i < m_header.num_functions; i++)
+    {
+        os->write(m_header.functions[i].cisa_binary_buffer, m_header.functions[i].size);
+        os->write(m_header.functions[i].genx_binary_buffer, m_header.functions[i].binary_size);
+    }
+    return CM_SUCCESS;
+}
+
 int CisaBinary::dumpToFile(std::string binFileName)
 {
     if ( binFileName == "" )
@@ -338,21 +356,9 @@ int CisaBinary::dumpToFile(std::string binFileName)
         std::cerr<<"Could not open %s"<< binFileName.c_str()<<std::endl;
         return CM_FAILURE;
     }
-    os.write(this->m_header_buffer, this->m_header_size);
-
-    for(int i = 0; i< m_header.num_kernels; i++)
-    {
-        os.write(m_header.kernels[i].cisa_binary_buffer, m_header.kernels[i].size);
-        os.write(m_header.kernels[i].genx_binary_buffer, m_header.kernels[i].binary_size);
-    }
-
-    for (int i = 0; i < m_header.num_functions; i++)
-    {
-        os.write(m_header.functions[i].cisa_binary_buffer, m_header.functions[i].size);
-        os.write(m_header.functions[i].genx_binary_buffer, m_header.functions[i].binary_size);
-    }
+    int result = dumpToStream(&os);
     os.close();
-    return CM_SUCCESS;
+    return result;
 }
 
 void CisaBinary::writeIsaAsmFile(string filename, string isaasmStr) const

@@ -256,6 +256,7 @@ public:
     void initKernel( int kernelIndex, VISAKernelImpl * kernel );
     int finalizeCisaBinary();
     int dumpToFile(std::string binFileName);
+    int dumpToStream(std::ostream *os);
 
     unsigned       getInstId() const { return m_instId; }
     void     incrementInstId() const { m_instId++;      }

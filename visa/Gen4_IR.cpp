@@ -2499,7 +2499,7 @@ bool G4_INST::canHoist(bool simdBB, const Options *opt) const
     if (src->isImm() ||
         archRegSrc ||
         indirectSrc ||
-        (src->asSrcRegRegion()->getModifier() != Mod_src_undef) ||
+        (src->isSrcRegRegion() && src->asSrcRegRegion()->getModifier() != Mod_src_undef) ||
         (defInstList.size() == 0) ||
         noMultiDefOpt)
     {

@@ -101,7 +101,7 @@ public:
     static int DestroyBuilder(CISA_IR_Builder *builder);
     CM_BUILDER_API virtual int AddKernel(VISAKernel *& kernel, const char* kernelName);
     CM_BUILDER_API virtual int AddFunction(VISAFunction *& function, const char* functionName);
-    CM_BUILDER_API virtual int Compile(const char * isaFileNameint);
+    CM_BUILDER_API virtual int Compile(const char * isaFileNameint, std::ostream * os = nullptr, bool emit_visa_only = false);
 
     CM_BUILDER_API void SetOption(vISAOptions option, bool val) { m_options.setOption(option, val); }
     CM_BUILDER_API void SetOption(vISAOptions option, uint32_t val) { m_options.setOption(option, val); }

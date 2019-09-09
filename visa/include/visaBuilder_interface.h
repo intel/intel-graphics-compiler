@@ -24,21 +24,21 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-struct VISA_GenVar;
-struct VISA_AddrVar;
-struct VISA_PredVar;
-struct VISA_SamplerVar;
-struct VISA_SurfaceVar;
-struct VISA_VMEVar;
-struct VISA_LabelVar;
-struct VISA_FileVar;
+typedef struct _VISA_GenVar      VISA_GenVar;
+typedef struct _VISA_AddrVar     VISA_AddrVar;
+typedef struct _VISA_PredVar     VISA_PredVar;
+typedef struct _VISA_SamplerVar  VISA_SamplerVar;
+typedef struct _VISA_SurfaceVar  VISA_SurfaceVar;
+typedef struct _VISA_VMEVar      VISA_VMEVar;
+typedef struct _VISA_LabelVar    VISA_LabelVar;
+typedef struct _VISA_FileVar     VISA_FileVar;
 
 
-struct VISA_PredOpnd;
-struct VISA_RawOpnd;
-struct VISA_VectorOpnd;
-struct VISA_LabelOpnd;
-struct VISA_StateOpndHandle;
+typedef struct _VISA_LabelOpnd        VISA_LabelOpnd;
+typedef struct _VISA_VectorOpnd       VISA_VectorOpnd;
+typedef struct _VISA_RawOpnd          VISA_RawOpnd;
+typedef struct _VISA_PredOpnd         VISA_PredOpnd;
+typedef struct _VISA_StateOpndHandle  VISA_StateOpndHandle;
 
 #define CM_BUILDER_API
 

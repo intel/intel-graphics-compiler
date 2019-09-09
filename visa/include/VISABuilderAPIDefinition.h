@@ -814,7 +814,7 @@ class VISABuilder
 public:
     CM_BUILDER_API virtual int AddKernel(VISAKernel *& kernel, const char* kernelName) = 0;
     CM_BUILDER_API virtual int AddFunction(VISAFunction *& function, const char* functionName) = 0;
-    CM_BUILDER_API virtual int Compile(const char * isaFileNameint) = 0;
+    CM_BUILDER_API virtual int Compile(const char * isaFileNameint, std::ostream* os = nullptr, bool emit_visa_only = false) = 0;
 
     CM_BUILDER_API virtual void SetOption(vISAOptions option, bool val) = 0;
     CM_BUILDER_API virtual void SetOption(vISAOptions option, uint32_t val) = 0;

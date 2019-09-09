@@ -741,7 +741,7 @@ int CISA_IR_Builder::ParseVISAText(const std::string& visaFile)
 
 // default size of the kernel mem manager in bytes
 #define KERNEL_MEM_SIZE    (4*1024*1024)
-int CISA_IR_Builder::Compile( const char* nameInput)
+int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_visa_only)
 {
 
     stopTimer(TIMER_BUILDER);   // TIMER_BUILDER is started when builder is created
@@ -795,9 +795,14 @@ int CISA_IR_Builder::Compile( const char* nameInput)
     /*
         In case there is an assert in compilation phase, at least vISA binary will be generated.
     */
-    if ( IS_VISA_BOTH_PATH && m_options.getOption(vISA_DumpvISA) )
+    if (IS_VISA_BOTH_PATH && m_options.getOption(vISA_DumpvISA) && nameInput && !os)
     {
         status = m_cisaBinary->dumpToFile(name);
+    }
+
+    if (os && emit_visa_only)
+    {
+        return m_cisaBinary->dumpToStream(os);
     }
 
     if ( IS_GEN_BOTH_PATH )
@@ -961,7 +966,10 @@ int CISA_IR_Builder::Compile( const char* nameInput)
             }
         }
 
-        status = m_cisaBinary->dumpToFile(name);
+        if (os)
+            status = m_cisaBinary->dumpToStream(os);
+        else
+            status = m_cisaBinary->dumpToFile(name);
     }
 
     stopTimer(TIMER_TOTAL); // have to record total time before dump the timer
