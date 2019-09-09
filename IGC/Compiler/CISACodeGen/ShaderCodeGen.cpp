@@ -64,6 +64,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/ResolvePredefinedConstant.h"
 #include "Compiler/CISACodeGen/Simd32Profitability.hpp"
 #include "Compiler/CISACodeGen/SimplifyConstant.h"
+#include "Compiler/CISACodeGen/TimeStatsCounter.h"
 #include "Compiler/CISACodeGen/TypeDemote.h"
 #include "Compiler/CISACodeGen/UniformAssumptions.hpp"
 #include "Compiler/Optimizer/LinkMultiRateShaders.hpp"
@@ -222,6 +223,8 @@ namespace IGC
     TODO("remove the following once all IGC passes are registered to PassRegistery in their constructor")
     initializeLoopInfoWrapperPassPass(*PassRegistry::getPassRegistry());
 
+    mpm.add(createTimeStatsCounterPass(&ctx, TIME_CG_Analysis, STATS_COUNTER_START));
+
     // transform pull constants and inputs into push constants and inputs
     mpm.add(new PushAnalysis());
     mpm.add(CreateSampleCmpToDiscardPass());
@@ -293,6 +296,9 @@ namespace IGC
     }
 
     mpm.add(new Layout());
+
+    mpm.add(createTimeStatsCounterPass(&ctx, TIME_CG_Analysis, STATS_COUNTER_END));
+
     }
 
     static void UpdateInstTypeHint(CodeGenContext& ctx)
@@ -316,6 +322,9 @@ namespace IGC
 
     inline void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm)
     {
+
+        mpm.add(createTimeStatsCounterPass(&ctx, TIME_CG_Legalization, STATS_COUNTER_START));
+
     // update type of instructions to know what passes are needed.
     UpdateInstTypeHint(ctx);
 
@@ -659,6 +668,8 @@ namespace IGC
     }
 
     mpm.add(new WAFMinFMax());
+
+    mpm.add(createTimeStatsCounterPass(&ctx, TIME_CG_Legalization, STATS_COUNTER_END));
     }
 
     inline void AddCodeGenPasses(CodeGenContext& ctx, CShaderProgram::KernelShaderMap& shaders, IGCPassManager& Passes, SIMDMode simdMode, bool canAbortOnSpill, ShaderDispatchMode shaderMode = ShaderDispatchMode::NOT_APPLICABLE, PSSignature* pSignature = nullptr)
@@ -698,6 +709,7 @@ namespace IGC
     {
     COMPILER_TIME_START(ctx, TIME_CodeGen);
 
+    COMPILER_TIME_START(ctx, TIME_CG_Add_Passes);
     IGCPassManager PassMgr(ctx, "CG");
         const PixelShaderInfo& psInfo = ctx->getModuleMetaData()->psInfo;
 
@@ -762,8 +774,13 @@ namespace IGC
             AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD32, earlyExit, ShaderDispatchMode::NOT_APPLICABLE, pSignature);
         }
     }
+
+    COMPILER_TIME_END(ctx, TIME_CG_Add_Passes);
+
     PassMgr.add(new DebugInfoPass(shaders));
+
     PassMgr.run(*(ctx->getModule()));
+
     DumpLLVMIR(ctx, "codegen");
 
     COMPILER_TIME_END(ctx, TIME_CodeGen);

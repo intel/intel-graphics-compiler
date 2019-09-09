@@ -1,0 +1,91 @@
+/*===================== begin_copyright_notice ==================================
+
+Copyright (c) 2017 Intel Corporation
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+======================= end_copyright_notice ==================================*/
+
+#include "Compiler/CISACodeGen/TimeStatsCounter.h"
+#include "Compiler/IGCPassSupport.h"
+
+#include "common/LLVMWarningsPush.hpp"
+#include <llvm/Pass.h>
+#include "common/LLVMWarningsPop.hpp"
+
+using namespace llvm;
+using namespace IGC;
+
+namespace {
+    class TimeStatsCounter : public FunctionPass {
+        CodeGenContext* ctx;
+        COMPILE_TIME_INTERVALS type;
+        TimeStatsCounterMode mode;
+
+    public:
+        static char ID;
+
+        TimeStatsCounter() : FunctionPass(ID) {
+            initializeTimeStatsCounterPass(*PassRegistry::getPassRegistry());
+        }
+
+        TimeStatsCounter(CodeGenContext* _ctx, COMPILE_TIME_INTERVALS _type, TimeStatsCounterMode _mode) : FunctionPass(ID) {
+            initializeTimeStatsCounterPass(*PassRegistry::getPassRegistry());
+            ctx = _ctx;
+            type = _type;
+            mode = _mode;
+        }
+
+        bool runOnFunction(Function&) override;
+
+    private:
+
+    };
+} // End anonymous namespace
+
+FunctionPass* IGC::createTimeStatsCounterPass(CodeGenContext* _ctx, COMPILE_TIME_INTERVALS _type, TimeStatsCounterMode _mode) {
+    return new TimeStatsCounter(_ctx, _type, _mode);
+}
+
+char TimeStatsCounter::ID = 0;
+
+#define PASS_FLAG     "time-stats-counter"
+#define PASS_DESC     "Utility to start and stop timestats counter"
+#define PASS_CFG_ONLY false
+#define PASS_ANALYSIS false
+namespace IGC {
+    IGC_INITIALIZE_PASS_BEGIN(TimeStatsCounter, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
+        IGC_INITIALIZE_PASS_END(TimeStatsCounter, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
+}
+
+bool TimeStatsCounter::runOnFunction(Function& F) {
+    if (mode == STATS_COUNTER_START)
+    {
+        COMPILER_TIME_START(ctx, type);
+    }
+    else
+    {
+        COMPILER_TIME_END(ctx, type);
+    }
+
+    return true;
+}
+
