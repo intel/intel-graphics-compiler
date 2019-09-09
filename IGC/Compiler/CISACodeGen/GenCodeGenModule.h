@@ -71,7 +71,7 @@ namespace IGC {
     /// \brief A collection of functions that are reachable from a kernel.
     class FunctionGroup {
     public:
-        friend class GenXCodeGenModule;
+        friend class GenXFunctionGroupAnalysis;
         /// \brief use 2-d vector of Functions to represent FunctionGroup. 
         /// Each sub-vector is a subgroup led by a kernel or a stack-call function.
         /// Element [0][0] is the group head. Element[i][0] is the sub-group head.
@@ -100,6 +100,9 @@ namespace IGC {
         /// \brief Indicate if any function in this group directly calls an externally linked function
         bool hasExternFCall() { return m_hasExternFCall; }
 
+        /// \brief Indicate if there are indirectly functions attached to this group
+        bool hasIndirectFuncs() { return m_hasIndirectFuncs; }
+
         void replaceGroupHead(llvm::Function* OH, llvm::Function* NH) {
             auto headSG = Functions[0];
             llvm::AssertingVH<llvm::Function>& HVH = (*headSG)[0];
@@ -109,6 +112,7 @@ namespace IGC {
 
     private:
         bool m_hasExternFCall = false;
+        bool m_hasIndirectFuncs = false;
     };
 
     class GenXFunctionGroupAnalysis : public llvm::ImmutablePass {
@@ -123,9 +127,6 @@ namespace IGC {
 
         /// \brief Each function also belongs to a uniquely defined sub-group of a stack-call entry
         llvm::DenseMap<llvm::Function*, llvm::Function*> SubGroupMap;
-
-        /// \brief the main kernel in this module
-        llvm::Function* DefaultKernel = nullptr;
 
     public:
         static char ID;
@@ -145,6 +146,9 @@ namespace IGC {
         /// fails to rebuild and returns true otherwise.
         ///
         bool rebuild(llvm::Module* Mod);
+
+        // Attach all indirectly called functions to a single kernel group
+        void addIndirectFuncsToKernelGroup(llvm::Module* pModule);
 
         // Replace OF with NF in Groups and GroupMap
         void replaceEntryFunc(llvm::Function* OF, llvm::Function* NF);
@@ -174,9 +178,6 @@ namespace IGC {
                 return nullptr;
             return I->second;
         }
-
-        llvm::Function* getDefaultKernel() { return DefaultKernel; }
-        void setDefaultkernel(llvm::Function* F) { DefaultKernel = F; }
 
         void setSubGroupMap(llvm::Function* F, llvm::Function* SubGroupHead) {
             SubGroupMap[F] = SubGroupHead;

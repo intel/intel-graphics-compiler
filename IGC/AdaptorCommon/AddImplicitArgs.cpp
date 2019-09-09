@@ -557,9 +557,10 @@ void AddImplicitArgs::FixIndirectCalls(Module& M)
                     Value* funcPtr = call->getCalledValue();
                     PointerType* funcTy = PointerType::get(FunctionType::get(call->getType(), argTys, false), 0);
                     funcPtr = builder.CreatePointerBitCastOrAddrSpaceCast(funcPtr, funcTy);
-                    Value* newCall = builder.CreateCall(funcPtr, args);
+                    CallInst* newCall = builder.CreateCall(funcPtr, args);
 
                     call->replaceAllUsesWith(newCall);
+                    newCall->copyMetadata(*call);
                     list_delete.push_back(call);
                 }
             }

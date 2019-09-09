@@ -373,7 +373,6 @@ bool GenXCodeGenModule::runOnModule(Module& M)
 
     pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     CallGraph& CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();
-    FGA->setDefaultkernel(nullptr);
 
     std::vector<std::vector<CallGraphNode*>*> SCCVec;
     for (auto I = scc_begin(&CG), IE = scc_end(&CG); I != IE; ++I)
@@ -394,28 +393,10 @@ bool GenXCodeGenModule::runOnModule(Module& M)
                 {
                     FGA->setSubGroupMap(F, F);
                     FGA->createFunctionGroup(F);
-                    // There may be multiple kernels, set one as the default
-                    if (FGA->getDefaultKernel() == nullptr)
-                        FGA->setDefaultkernel(F);
                 }
                 else if (F->hasFnAttribute("IndirectlyCalled"))
                 {
-                    // Add all externally linked functions into the default kernel group
-                    Function* defaultKernel = FGA->getDefaultKernel();
-                    assert(defaultKernel && "kernel does not exist in this group");
-                    FunctionGroup* defaultFG = FGA->getGroupForHead(defaultKernel);
-                    assert(defaultFG && "default kernel group does not exist");
-                    FGA->addToFunctionGroup(F, defaultFG, F);
-
-                    // Mark caller group if it calls or uses this function
-                    for (auto U : F->users())
-                    {
-                        if (CallInst * CI = dyn_cast<CallInst>(U))
-                        {
-                            Function* Caller = CI->getParent()->getParent();
-                            FGA->getGroup(Caller)->m_hasExternFCall = true;
-                        }
-                    }
+                    continue;
                 }
                 else if (SCCNodes->size() == 1)
                 {
@@ -430,6 +411,9 @@ bool GenXCodeGenModule::runOnModule(Module& M)
         }
         delete SCCNodes;
     }
+
+    // Add all indirect functions to the default kernel group
+    FGA->addIndirectFuncsToKernelGroup(&M);
 
     // By swapping, we sort the function list to ensure codegen order for
     // functions. This relies on llvm module pass manager's implementation detail.
@@ -464,7 +448,6 @@ bool GenXCodeGenModule::runOnModule(Module& M)
             CurF = &*(++it);
         }
     }
-
 
 #if defined(_DEBUG)
     assert(FGA->verify());
@@ -545,6 +528,50 @@ bool GenXFunctionGroupAnalysis::useStackCall(llvm::Function* F)
     return (F->hasFnAttribute("visaStackCall"));
 }
 
+void GenXFunctionGroupAnalysis::addIndirectFuncsToKernelGroup(llvm::Module* pModule)
+{
+    auto pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+
+    Function* defaultKernel = nullptr;
+    // Set the first kernel as the default
+    for (auto I = pModule->begin(), E = pModule->end(); I != E; ++I)
+    {
+        Function* F = &(*I);
+        if (isEntryFunc(pMdUtils, F))
+        {
+            defaultKernel = F;
+            break;
+        }
+    }
+    assert(defaultKernel && "kernel does not exist in this group");
+
+    FunctionGroup* defaultFG = getGroupForHead(defaultKernel);
+    assert(defaultFG && "default kernel group does not exist");
+
+    // Add all externally linked functions into the default kernel group
+    for (auto I = pModule->begin(), E = pModule->end(); I != E; ++I)
+    {
+        Function* F = &(*I);
+        if (F->isDeclaration() || isEntryFunc(pMdUtils, F)) continue;
+
+        if (F->hasFnAttribute("IndirectlyCalled"))
+        {
+            addToFunctionGroup(F, defaultFG, F);
+            defaultFG->m_hasIndirectFuncs = true;
+
+            // Mark caller group if it calls or uses this function
+            for (auto U : F->users())
+            {
+                if (CallInst * CI = dyn_cast<CallInst>(U))
+                {
+                    Function* Caller = CI->getParent()->getParent();
+                    getGroup(Caller)->m_hasExternFCall = true;
+                }
+            }
+        }
+    }
+}
+
 bool GenXFunctionGroupAnalysis::rebuild(llvm::Module* Mod) {
     clear();
     auto pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
@@ -570,6 +597,10 @@ bool GenXFunctionGroupAnalysis::rebuild(llvm::Module* Mod) {
             CurFG = createFunctionGroup(F);
             CurSubGrpH = F;
         }
+        else if (F->hasFnAttribute("IndirectlyCalled"))
+        {
+            continue;
+        }
         else
         {
             if (useStackCall(F))
@@ -583,6 +614,9 @@ bool GenXFunctionGroupAnalysis::rebuild(llvm::Module* Mod) {
             }
         }
     }
+
+    // Re-add all indirect functions to the default kernel group
+    addIndirectFuncsToKernelGroup(Mod);
 
     // Verification.
     if (!verify())

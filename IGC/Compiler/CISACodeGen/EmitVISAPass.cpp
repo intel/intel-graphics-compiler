@@ -453,6 +453,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
 
     if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer))
     {
+        SmallSet<Function*, 8> funcAddrSymbols;
         Module* pModule = F.getParent();
         for (auto& FI : pModule->getFunctionList())
         {
@@ -467,15 +468,21 @@ bool EmitPass::runOnFunction(llvm::Function& F)
                     {
                         if (inst->getParent()->getParent() == &F)
                         {
-                            m_currShader->CreateFunctionSymbol(&FI);
+                            funcAddrSymbols.insert(&FI);
                         }
                     }
                 }
             }
         }
+        for (auto pFunc : funcAddrSymbols)
+        {
+            m_currShader->CreateFunctionSymbol(pFunc);
+        }
     }
+
     if (m_moduleMD->compOpt.EnableGlobalRelocation)
     {
+        SmallSet<GlobalVariable*, 8> globalAddrSymbols;
         Module* pModule = F.getParent();
         for (auto gi = pModule->global_begin(), ge = pModule->global_end(); gi != ge; gi++)
         {
@@ -492,12 +499,16 @@ bool EmitPass::runOnFunction(llvm::Function& F)
                         {
                             if (inst->getParent()->getParent() == &F)
                             {
-                                m_currShader->CreateGlobalSymbol(pGlobal);
+                                globalAddrSymbols.insert(pGlobal);
                             }
                         }
                     }
                 }
             }
+        }
+        for (auto pGlobal : globalAddrSymbols)
+        {
+            m_currShader->CreateGlobalSymbol(pGlobal);
         }
     }
 
@@ -717,8 +728,8 @@ bool EmitPass::runOnFunction(llvm::Function& F)
     {
         destroyVISABuilder = true;
         // We only need one symbol table per module. If there are multiple kernels, only create a symbol
-        // table for the default one set by FGA
-        bool compileWithSymbolTable = !m_FGA || (m_FGA->getGroup(&F)->getHead() == m_FGA->getDefaultKernel());
+        // table for the one with indirectly called functions attached.
+        bool compileWithSymbolTable = !m_FGA || (m_FGA->getGroup(&F)->hasIndirectFuncs());
         m_encoder->Compile(compileWithSymbolTable);
         // if we are doing stack-call, do the following:
         // - Hard-code a large scratch-space for visa
