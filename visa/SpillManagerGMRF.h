@@ -127,10 +127,6 @@ public:
         logicalOffset += globalScratchOffset;
     }
 
-    static unsigned int createSpillSendMsgDescOWord(
-        unsigned int height,
-        unsigned int& execSize);
-
 private:
 
     // Methods
@@ -167,20 +163,20 @@ private:
     unsigned
     getSendMaxResponseLength () const;
 
-    static unsigned
-    getSendMsgLengthBitOffset ();
+    unsigned
+    getSendMsgLengthBitOffset () const;
 
     unsigned
     getSendMaxMessageLength () const;
 
-    static unsigned
-    getSendDescDataSizeBitOffset ();
+    unsigned
+    getSendDescDataSizeBitOffset () const;
 
     unsigned
     getSendReadTypeBitOffset () const;
 
-    static unsigned
-    getSendWriteTypeBitOffset ();
+    unsigned
+    getSendWriteTypeBitOffset () const;
 
     unsigned
     getSendScReadType () const;
@@ -189,7 +185,7 @@ private:
     getSendScWriteType () const;
 
     unsigned getSendOwordReadType() const;
-    static unsigned getSendOwordWriteType();
+    unsigned getSendOwordWriteType() const;
     unsigned getSendExDesc(bool isWrite, bool isScatter) const;
 
     unsigned
@@ -271,11 +267,11 @@ private:
         unsigned offset
     ) const;
 
-    static unsigned
+    unsigned
     cdiv (
         unsigned dvd,
         unsigned dvr
-    );
+    ) const;
 
     G4_RegVar *
     getRegVar (
@@ -580,10 +576,10 @@ private:
         unsigned          regOff = 0
     );
 
-    static unsigned
+    unsigned
     blockSendBlockSizeCode (
         unsigned        regOff
-    );
+    ) const;
 
     unsigned
     scatterSendBlockSizeCode (
@@ -678,6 +674,15 @@ private:
         unsigned          option
     );
 
+    void createSpill(
+        G4_Declare* spillDcl,
+        int spillRegOff,
+        int size,
+        int logicalOffset,
+        uint32_t spillMask,
+        int oldExecSize
+    );
+
     G4_Imm *
     createFillSendMsgDesc (
         unsigned          regOff,
@@ -719,6 +724,13 @@ private:
 
     G4_INST* createFillInstr(G4_Declare* fillRangeDcl, G4_Declare* mRangeDcl, unsigned regOff, unsigned height, unsigned srcRegOff = 0);
     G4_INST* createFillInstr(G4_Declare* fillRangeDcl, G4_Declare* mRangeDcl, G4_SrcRegRegion* filledRangeRegion, unsigned execSize, unsigned regOff = 0);
+
+    void createFill(
+        G4_Declare* fillDcl,
+        int fillRegOff,
+        int size,
+        int logicalOffset
+        );
 
     void
     replaceSpilledRange (
