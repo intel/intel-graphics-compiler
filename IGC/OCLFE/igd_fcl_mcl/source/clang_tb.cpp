@@ -301,7 +301,7 @@ namespace FCL
             std::string dumpPath = "c:\\Intel\\IGC\\";        // default if something goes wrong
             char custom_dir[256];
             FCLReadIGCRegistry("DumpToCustomDir", custom_dir, sizeof(custom_dir));
-            if (custom_dir != nullptr && strlen(custom_dir) > 0)
+            if (strlen(custom_dir) > 0)
             {
                 dumpPath = custom_dir;
             }
@@ -321,7 +321,7 @@ namespace FCL
             std::string dumpPath = "/tmp/IntelIGC/";        // default if something goes wrong
             char custom_dir[256];
             FCLReadIGCRegistry("DumpToCustomDir", custom_dir, sizeof(custom_dir));
-            if (custom_dir != nullptr && strlen(custom_dir) > 0)
+            if (strlen(custom_dir) > 0)
             {
                 dumpPath = custom_dir;
             }

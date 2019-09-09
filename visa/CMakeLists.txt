@@ -105,8 +105,8 @@ endif()
 # Set up the bison and flex targets. These commands will set up commands to generate the appropriate
 # source files from the input grammars. It will also set up the dependencies correctly for any
 # library or executable that uses the generated source
-BISON_TARGET(CISAParser CISA.y ${CMAKE_CURRENT_BINARY_DIR}/CISA.tab.c COMPILE_FLAGS "-vt -p CISA")
-FLEX_TARGET(CISAScanner CISA.l ${CMAKE_CURRENT_BINARY_DIR}/lex.CISA.c COMPILE_FLAGS "-PCISA ${WIN_FLEX_FLAG}")
+BISON_TARGET(CISAParser CISA.y ${CMAKE_CURRENT_BINARY_DIR}/CISA.tab.cpp COMPILE_FLAGS "-vt -p CISA")
+FLEX_TARGET(CISAScanner CISA.l ${CMAKE_CURRENT_BINARY_DIR}/lex.CISA.cpp COMPILE_FLAGS "-PCISA ${WIN_FLEX_FLAG}")
 ADD_FLEX_BISON_DEPENDENCY(CISAScanner CISAParser)
 
 add_custom_target(CISAScanner_target DEPENDS ${FLEX_CISAScanner_OUTPUTS} ${BISON_CISAParser_OUTPUTS})
@@ -134,7 +134,7 @@ include_directories(${Jitter_inc_dirs})
 
 # Tell cmake to generate code to compile the flex and bison generated source as c++ rather than c
 # (due to the fact that they are .c files rather than .cpp)
-set_source_files_properties( CISA.tab.c lex.CISA.c PROPERTIES LANGUAGE CXX )
+set_source_files_properties( CISA.tab.cpp lex.CISA.cpp PROPERTIES LANGUAGE CXX )
 
   set(LocalScheduler_SOURCES
     LocalScheduler/Dependencies_G4IR.cpp

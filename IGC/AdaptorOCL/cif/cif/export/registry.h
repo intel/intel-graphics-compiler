@@ -50,7 +50,8 @@ namespace Helpers {
 struct EntryPointInterfaceBase{
     EntryPointInterfaceBase(){
     }
-
+    virtual ~EntryPointInterfaceBase() = default;
+  
     virtual ICIF * Create(Version_t version, ICIF * parent) const = 0;
     virtual InterfaceId_t GetFirstIncompatible(CIF::CompatibilityDataHandle handle) const = 0;
     virtual void GetSupportedVersions(Version_t &verMin, Version_t &verMax) const = 0;

@@ -45,7 +45,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma warning(default: 4005)
 #endif
 
-#include "CISA.tab.h"
+#include "CISA.tab.hpp"
 
 #ifdef _DEBUG
 #define TRACE(str) fprintf(yyout, str); ECHO; fprintf(yyout, "\n")

@@ -727,10 +727,10 @@ public:
     return getValue(ConditionId);
   }
   SPIRVLabel *getTrueLabel() const {
-    return get<SPIRVLabel>(TrueLabelId);
+    return SPIRVEntry::get<SPIRVLabel>(TrueLabelId);
   }
   SPIRVLabel *getFalseLabel() const {
-    return get<SPIRVLabel>(FalseLabelId);
+    return SPIRVEntry::get<SPIRVLabel>(FalseLabelId);
   }
 protected:
   void setWordCount(SPIRVWord TheWordCount) {
@@ -940,7 +940,7 @@ public:
     SPIRVEntry::setWordCount(TheWordCount);
     LoopControlParameters.resize(TheWordCount - FixedWordCount);
   }
-  _SPIRV_DEF_DEC4(MergeBlock, ContinueTarget, LoopControl,
+  _SPIRV_DEF_DEC4_OVERRIDE(MergeBlock, ContinueTarget, LoopControl,
                   LoopControlParameters)
 
 protected:
@@ -1120,7 +1120,7 @@ public:
 
   SPIRVFunctionCallGeneric(SPIRVModule *BM, SPIRVWord ResId, SPIRVType *TheType,
     const std::vector<SPIRVWord> &TheArgs)
-    : SPIRVInstruction(TheArgs.size() + FixedWordCount, OC, TheType, ResId,
+    : SPIRVInstruction(TheArgs.size() + FixedWordCount, OC, TheType, ResId, NULL,
       BM),
     Args(TheArgs) {}
   SPIRVFunctionCallGeneric():SPIRVInstruction(OC) {}
@@ -1152,7 +1152,7 @@ class SPIRVFunctionCall:
 public:
   SPIRVFunctionCall():FunctionId(SPIRVID_INVALID) {}
   SPIRVFunction *getFunction()const {
-    return get<SPIRVFunction>(FunctionId);
+    return SPIRVEntry::get<SPIRVFunction>(FunctionId);
   }
   _SPIRV_DEF_DEC4(Type, Id, FunctionId, Args)
   void validate()const;
@@ -1169,8 +1169,8 @@ public:
     const std::vector<SPIRVWord>& TheArgs,
     SPIRVBasicBlock* BB);
   SPIRVFunctionPointerCallINTEL() : CalledValueId(SPIRVID_INVALID) {}
-  SPIRVValue* getCalledValue() const { return get<SPIRVValue>(CalledValueId); }
-  _SPIRV_DEF_DEC4(Type, Id, CalledValueId, Args)
+  SPIRVValue* getCalledValue() const { return SPIRVEntry::get<SPIRVValue>(CalledValueId); }
+  _SPIRV_DEF_DEC4_OVERRIDE(Type, Id, CalledValueId, Args)
   void validate() const override;
   bool isOperandLiteral(unsigned Index) const { return false; }
   CapVec getRequiredCapability() const override {
@@ -1188,8 +1188,8 @@ public:
   SPIRVFunctionPointerINTEL(SPIRVId TheId, SPIRVType* TheType,
     SPIRVFunction* TheFunction, SPIRVBasicBlock* BB);
   SPIRVFunctionPointerINTEL() : SPIRVInstruction(OC), TheFunction(SPIRVID_INVALID) {}
-  SPIRVFunction* getFunction() const { return get<SPIRVFunction>(TheFunction); }
-  _SPIRV_DEF_DEC3(Type, Id, TheFunction)
+  SPIRVFunction* getFunction() const { return SPIRVEntry::get<SPIRVFunction>(TheFunction); }
+  _SPIRV_DEF_DEC3_OVERRIDE(Type, Id, TheFunction)
   void validate() const override;
   bool isOperandLiteral(unsigned Index) const { return false; }
   CapVec getRequiredCapability() const override {
