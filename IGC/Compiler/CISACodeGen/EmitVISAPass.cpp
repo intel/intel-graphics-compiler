@@ -7667,6 +7667,9 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_add_rtz:
         emitFPOrtz(inst);
         break;
+    case GenISAIntrinsic::GenISA_CatchAllDebugLine:
+        emitDebugPlaceholder(inst);
+        break;
     default:
         // we assume that some of gen-intrinsic should always be pattern-matched away,
         // therefore we do not handle them in visa-emission, cases include:
