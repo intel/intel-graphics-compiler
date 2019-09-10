@@ -77,7 +77,7 @@ namespace {
         }
 
         bool hoistUniform(BasicBlock* Src, BasicBlock* Dst) const;
-        __unused bool hoistMost(bool InvPred, BasicBlock* IfBB,
+        __attr_unused bool hoistMost(bool InvPred, BasicBlock* IfBB,
             BasicBlock* TBB, BasicBlock* FBB, BasicBlock* JBB) const;
         bool hoistMost2(bool InvPred, BasicBlock* IfBB,
             BasicBlock* TBB, BasicBlock* FBB, BasicBlock* JBB) const;

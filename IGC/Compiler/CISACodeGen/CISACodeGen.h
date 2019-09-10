@@ -106,7 +106,7 @@ namespace IGC
 
 #define DECLARE_CISA_OPCODE(opCode, name, visaname) \
     visaname,
-    __unused static ISA_Opcode ConvertOpcode[] =
+    __attr_unused static ISA_Opcode ConvertOpcode[] =
     {
     #include "isaDef.def"
     };

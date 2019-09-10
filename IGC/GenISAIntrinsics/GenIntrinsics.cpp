@@ -59,7 +59,7 @@ ID getIntrinsicForGCCBuiltin(const char *Prefix, const char *BuiltinName);
 
 /// Intrinsic::isOverloaded(ID) - Returns true if the intrinsic can be
 /// overloaded.
-__unused static bool isOverloaded(ID id);
+__attr_unused static bool isOverloaded(ID id);
 
 /// IITDescriptor - This is a type descriptor which explains the type
 /// requirements of an intrinsic.  This is returned by

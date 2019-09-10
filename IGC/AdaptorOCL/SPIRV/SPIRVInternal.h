@@ -104,10 +104,10 @@ namespace spv {
 using namespace llvm;
 
 namespace kOCLTypeQualifierName {
-  __unused const static char *Const      = "const";
-  __unused const static char *Volatile   = "volatile";
-  __unused const static char *Restrict   = "restrict";
-  __unused const static char *Pipe       = "pipe";
+  __attr_unused const static char *Const      = "const";
+  __attr_unused const static char *Volatile   = "volatile";
+  __attr_unused const static char *Restrict   = "restrict";
+  __attr_unused const static char *Pipe       = "pipe";
 }
 
 template<> inline void
