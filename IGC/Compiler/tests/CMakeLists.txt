@@ -65,6 +65,7 @@ else()
   add_custom_command(
     TARGET check-igc
     PRE_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${LLVM_TOOLS_DIR}
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "\"$<TARGET_FILE:igc_opt>\"" ${LLVM_TOOLS_DIR}
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "\"$<TARGET_FILE:FileCheck>\"" ${LLVM_TOOLS_DIR}
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "\"$<TARGET_FILE:llvm-config>\"" ${LLVM_TOOLS_DIR}
