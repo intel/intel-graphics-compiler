@@ -199,6 +199,19 @@ namespace vISA
                 return false;
             }
 
+            auto op = inst->opcode();
+            if (op == G4_pseudo_callee_restore || op == G4_pseudo_callee_save ||
+                op == G4_pseudo_caller_restore || op == G4_pseudo_caller_save)
+                return false;
+
+            G4_Declare* dcl = nullptr;
+            if (inst->getDst() && inst->getDst()->getTopDcl())
+                dcl = inst->getDst()->getTopDcl();
+
+            if(kernel.fg.builder->isPreDefArg(dcl) || kernel.fg.builder->isPreDefRet(dcl) ||
+                kernel.fg.builder->isPreDefFEStackVar(dcl))
+                return false;
+
             return true;
         }
 

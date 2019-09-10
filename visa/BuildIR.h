@@ -1099,28 +1099,59 @@ public:
         return inst;
     }
 
-    G4_INST* createSpill(G4_SrcRegRegion* payload, uint16_t numRows, uint32_t offset, G4_Declare* fp, G4_InstOption option,
-        unsigned int lineno = 0, int CISAoff = -1, const char* srcFilename = nullptr)
+    G4_INST* createSpill(G4_DstRegRegion* dst, G4_SrcRegRegion* header, G4_SrcRegRegion* payload, unsigned int execSize, 
+        uint16_t numRows, uint32_t offset, G4_Declare* fp, G4_InstOption option, unsigned int lineno = 0, int CISAoff = -1,
+        const char* srcFilename = nullptr)
     {
-        auto builtInR0 = getBuiltinR0();
-        auto rd = getRegionStride1();
-        auto srcRgnr0 = createSrcRegRegion(Mod_src_undef, Direct, builtInR0->getRegVar(), 0, 0, rd, Type_UD);
-        G4_INST* spill = createInternalIntrinsicInst(nullptr, Intrinsic::Spill, 1, createNullDst(G4_Type::Type_UD), 
-            srcRgnr0, payload, nullptr, option, lineno, CISAoff, srcFilename);
+        G4_INST* spill = createIntrinsicInst(nullptr, Intrinsic::Spill, execSize, dst,
+            header, payload, nullptr, option, lineno);
+        spill->asSpillIntrinsic()->setSrcFilename(srcFilename);
+        spill->asSpillIntrinsic()->setCISAOff(CISAoff);
         spill->asSpillIntrinsic()->setFP(fp);
         spill->asSpillIntrinsic()->setOffset(offset);
         spill->asSpillIntrinsic()->setNumRows(numRows);
         return spill;
     }
 
-    G4_INST* createFill(G4_DstRegRegion* dstData, uint16_t numRows, uint32_t offset, G4_Declare* fp , G4_InstOption option,
+    G4_INST* createSpill(G4_DstRegRegion* dst, G4_SrcRegRegion* payload, unsigned int execSize, uint16_t numRows, uint32_t offset,
+        G4_Declare* fp, G4_InstOption option, unsigned int lineno = 0, int CISAoff = -1, const char* srcFilename = nullptr)
+    {
+        auto builtInR0 = getBuiltinR0();
+        auto rd = getRegionStride1();
+        auto srcRgnr0 = createSrcRegRegion(Mod_src_undef, Direct, builtInR0->getRegVar(), 0, 0, rd, Type_UD);
+        G4_INST* spill = createIntrinsicInst(nullptr, Intrinsic::Spill, execSize, dst, 
+            srcRgnr0, payload, nullptr, option, lineno);
+        spill->asSpillIntrinsic()->setSrcFilename(srcFilename);
+        spill->asSpillIntrinsic()->setCISAOff(CISAoff);
+        spill->asSpillIntrinsic()->setFP(fp);
+        spill->asSpillIntrinsic()->setOffset(offset);
+        spill->asSpillIntrinsic()->setNumRows(numRows);
+        return spill;
+    }
+
+    G4_INST* createFill(G4_SrcRegRegion* header, G4_DstRegRegion* dstData, unsigned int execSize, uint16_t numRows, uint32_t offset, 
+        G4_Declare* fp, G4_InstOption option, unsigned int lineno = 0, int CISAoff = -1, const char* srcFilename = nullptr)
+    {
+        G4_INST* fill = createIntrinsicInst(nullptr, Intrinsic::Fill, execSize, dstData,
+            header, nullptr, nullptr, option, lineno);
+        fill->asFillIntrinsic()->setSrcFilename(srcFilename);
+        fill->asFillIntrinsic()->setCISAOff(CISAoff);
+        fill->asFillIntrinsic()->setFP(fp);
+        fill->asFillIntrinsic()->setOffset(offset);
+        fill->asFillIntrinsic()->setNumRows(numRows);
+        return fill;
+    }
+
+    G4_INST* createFill(G4_DstRegRegion* dstData, unsigned int execSize, uint16_t numRows, uint32_t offset, G4_Declare* fp , G4_InstOption option,
         unsigned int lineno = 0, int CISAoff = -1, const char* srcFilename = nullptr)
     {
         auto builtInR0 = getBuiltinR0();
         auto rd = getRegionStride1();
         auto srcRgnr0 = createSrcRegRegion(Mod_src_undef, Direct, builtInR0->getRegVar(), 0, 0, rd, Type_UD);
-        G4_INST* fill = createInternalIntrinsicInst(nullptr, Intrinsic::Fill, 1, dstData,
-            srcRgnr0, nullptr, nullptr, option, lineno, CISAoff, srcFilename);
+        G4_INST* fill = createIntrinsicInst(nullptr, Intrinsic::Fill, execSize, dstData,
+            srcRgnr0, nullptr, nullptr, option, lineno);
+        fill->asFillIntrinsic()->setSrcFilename(srcFilename);
+        fill->asFillIntrinsic()->setCISAOff(CISAoff);
         fill->asFillIntrinsic()->setFP(fp);
         fill->asFillIntrinsic()->setOffset(offset);
         fill->asFillIntrinsic()->setNumRows(numRows);

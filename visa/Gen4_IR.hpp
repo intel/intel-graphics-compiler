@@ -1424,7 +1424,7 @@ static const IntrinsicInfo G4_Intrinsics[(int)Intrinsic::NumIntrinsics] =
     {Intrinsic::Wait,       "wait",         0,      0,      Phase::Optimizer,       { 0, 0, 0, false, false } },
     {Intrinsic::Use,        "use",          0,      1,      Phase::Scheduler,       { 0, 0, 0, false, false } },
     {Intrinsic::MemFence,   "mem_fence",    0,      0,      Phase::BinaryEncoding,  { 0, 0, 0, false, false } },
-    {Intrinsic::PseudoKill, "pseudo_kill",  1,      1,      Phase::RA,              { 0, 0, 0, false, false } },
+    {Intrinsic::PseudoKill, "pseudo_kill",  1,      1,      Phase::RA,              { 0, 0, 0, false, false} },
     {Intrinsic::Spill,      "spill",        1,      2,      Phase::RA,              { 0, 0, 0, false, false } },
     {Intrinsic::Fill,       "fill",         1,      1,      Phase::RA,              { 0, 0, 0, false, false } }
 };
@@ -1951,6 +1951,8 @@ class G4_Operand
 {
     friend class G4_INST;
     friend class G4_InstSend;
+    friend class G4_FillIntrinsic;
+    friend class G4_SpillIntrinsic;
 
 public:
     enum Kind {
@@ -3826,6 +3828,22 @@ inline const char* G4_InstCF::getUipLabelStr() const
     return uip->asLabel()->getLabel();
 }
 
+static void computeSpillFillOperandBound(G4_Operand* opnd, unsigned int LB, int numReg)
+{
+    if (numReg == 0)
+    {
+        return;
+    }
+
+    // read/write in units of GRF.
+    unsigned RB = std::min(opnd->getTopDcl()->getByteSize(),
+        LB + numReg * G4_GRF_REG_NBYTES) - 1;
+
+    unsigned NBytes = RB - LB + 1;
+    opnd->setBitVecFromSize(NBytes);
+    opnd->setRightBound(RB);
+}
+
 class G4_SpillIntrinsic : public G4_InstIntrinsic
 {
 public:
@@ -3844,6 +3862,8 @@ public:
 
     }
 
+    const static unsigned int InvalidOffset = 0xffffffff;
+
     bool isOffBP() const { return getFP() != nullptr; }
 
     uint32_t getNumRows() const { return numRows; }
@@ -3854,10 +3874,26 @@ public:
     void setOffset(uint32_t o) { offset = o; }
     void setFP(G4_Declare* f) { fp = f; }
 
+    bool isOffsetValid() { return offset != InvalidOffset; }
+
+    void computeRightBound(G4_Operand* opnd)
+    {
+        uint16_t numReg = 0;
+        if (opnd == getSrc(1))
+        {
+            numReg = asSpillIntrinsic()->getNumRows();
+        }
+        else if (opnd->isSrcRegRegion() && opnd == getSrc(0))
+        {
+            numReg = 1;
+        }
+        computeSpillFillOperandBound(opnd, opnd->left_bound, numReg);
+    }
+
 private:
     G4_Declare* fp = nullptr;
     uint32_t numRows = 0;
-    uint32_t offset = 0;
+    uint32_t offset = InvalidOffset;
 };
 
 class G4_FillIntrinsic : public G4_InstIntrinsic
@@ -3878,6 +3914,8 @@ public:
 
     }
 
+    const static unsigned int InvalidOffset = 0xffffffff;
+
     bool isOffBP() const { return getFP() != nullptr; }
 
     uint32_t getNumRows() const { return numRows; }
@@ -3888,10 +3926,27 @@ public:
     void setOffset(uint32_t o) { offset = o; }
     void setFP(G4_Declare* f) { fp = f; }
 
+    bool isOffsetValid() { return offset != InvalidOffset; }
+
+    void computeRightBound(G4_Operand* opnd)
+    {
+        uint16_t numReg = 0;
+        if (opnd == getDst())
+        {
+            numReg = asFillIntrinsic()->getNumRows();
+        }
+        else if (opnd->isSrcRegRegion() &&
+            (opnd == getSrc(0) || opnd == getSrc(1)))
+        {
+            numReg = 1;
+        }
+        computeSpillFillOperandBound(opnd, opnd->left_bound, numReg);
+    }
+
 private:
     G4_Declare* fp = nullptr;
     uint32_t numRows = 0;
-    uint32_t offset = 0;
+    uint32_t offset = InvalidOffset;
 };
 
 } // namespace vISA
