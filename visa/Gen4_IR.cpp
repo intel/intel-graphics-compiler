@@ -236,7 +236,7 @@ short Operand_Type_Rank( G4_Type type )
 G4_SendMsgDescriptor::G4_SendMsgDescriptor(
     uint32_t fCtrl, uint32_t regs2rcv,
     uint32_t regs2snd, uint32_t fID, bool isEot, uint16_t extMsgLen,
-    uint32_t extFCtrl, bool isRead, bool isWrite,
+    uint32_t extFCtrl, SendAccess access,
     G4_Operand *bti, G4_Operand *sti,
     IR_Builder& builder)
 {
@@ -258,8 +258,7 @@ G4_SendMsgDescriptor::G4_SendMsgDescriptor(
     eotAfterMessage = isEot; // [5]
     sfid = intToSFID(fID);
 
-    readMsg = isRead;
-    writeMsg = isWrite;
+    accessType = access;
     funcCtrlValid = true;
 
 
@@ -287,12 +286,11 @@ G4_SendMsgDescriptor::G4_SendMsgDescriptor(
 
 G4_SendMsgDescriptor::G4_SendMsgDescriptor(
     uint32_t descBits, uint32_t extDescBits,
-    bool isRead,
-    bool isWrite,
+    SendAccess access,
     G4_Operand *bti,
     G4_Operand *sti,
     bool isValidFuncCtrl)
-    : readMsg(isRead), writeMsg(isWrite), m_sti(sti), m_bti(bti), funcCtrlValid(isValidFuncCtrl)
+    : accessType(access), m_sti(sti), m_bti(bti), funcCtrlValid(isValidFuncCtrl)
 {
     desc.value = descBits;
     extDesc.value = extDescBits;
@@ -316,11 +314,10 @@ G4_SendMsgDescriptor::G4_SendMsgDescriptor(
     uint32_t _desc,
     uint32_t _extDesc,
     int _src1Len,
-    bool isRead,
-    bool isWrite,
+    SendAccess access,
     G4_Operand *bti,
     bool isValidFuncCtrl)
-    : readMsg(isRead), writeMsg(isWrite), m_sti(nullptr), m_bti(bti), sfid(_sfid), funcCtrlValid(isValidFuncCtrl)
+    : accessType(access), m_sti(nullptr), m_bti(bti), sfid(_sfid), funcCtrlValid(isValidFuncCtrl)
 {
     desc.value = _desc;
     extDesc.value = _extDesc;

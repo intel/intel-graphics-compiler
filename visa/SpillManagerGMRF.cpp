@@ -2428,7 +2428,8 @@ SpillManagerGMRF::createSendInst(
 {
     // ToDo: create exDesc in createSendMsgDesc()
     uint32_t exDesc = G4_SendMsgDescriptor::createExtDesc(funcID);
-    auto msgDesc = builder_->createSendMsgDesc(funcID, (uint32_t)desc->getInt(), exDesc, 0, !isWrite, isWrite, nullptr);
+    auto msgDesc = builder_->createSendMsgDesc(funcID, (uint32_t)desc->getInt(), exDesc, 0, 
+        isWrite ? SendAccess::WRITE_ONLY : SendAccess::READ_ONLY, nullptr);
     auto sendInst = builder_->createSendInst(
         NULL, G4_send, execSize, postDst,
         payload, desc, option, msgDesc);
@@ -4172,7 +4173,7 @@ SpillManagerGMRF::fixSpillFillCode (
                     unsigned int regs2rcv = ( message >> getSendRspLengthBitOffset() ) & 0x1F;
                     G4_SendMsgDescriptor * msgDesc = builder_->createSendMsgDesc( message,
                         regs2rcv, regs2snd, inst->getMsgDesc()->getFuncId(), inst->getMsgDesc()->isEOTInst(),
-                        0, inst->getMsgDesc()->getExtFuncCtrl(), true, false);
+                        0, inst->getMsgDesc()->getExtFuncCtrl(), SendAccess::READ_ONLY);
 
                     inst->setSrc( msg, 1 );
                     inst->asSendInst()->setMsgDesc( msgDesc );
@@ -4214,7 +4215,7 @@ SpillManagerGMRF::fixSpillFillCode (
                     unsigned int regs2rcv = ( message >> getSendRspLengthBitOffset() ) & 0x1F;
                     G4_SendMsgDescriptor * msgDesc = builder_->createSendMsgDesc( message,
                         regs2rcv, regs2snd, inst->getMsgDesc()->getFuncId(), inst->getMsgDesc()->isEOTInst(), 0,
-                        inst->getMsgDesc()->getExtFuncCtrl(), false, true);
+                        inst->getMsgDesc()->getExtFuncCtrl(), SendAccess::WRITE_ONLY);
 
                     inst->setSrc( msg, 1 );
                     inst->asSendInst()->setMsgDesc( msgDesc );
@@ -4327,7 +4328,7 @@ void GlobalRA::expandSpillIntrinsic(G4_BB* bb)
                         unsigned int execSize = inst->getExecSize(); //(numRows > 1) ? 16 : 8;
                         uint32_t spillMsgDesc = SpillManagerGMRF::createSpillSendMsgDescOWord(numRows, execSize);
                         G4_SendMsgDescriptor* msgDesc = kernel.fg.builder->createSendMsgDesc(spillMsgDesc & 0x000FFFFFu,
-                            0, 1, SFID::DP_DC, false, numRows, 0, false, true);
+                            0, 1, SFID::DP_DC, false, numRows, 0, SendAccess::WRITE_ONLY);
                         G4_Imm* msgDescImm = builder->createImm(msgDesc->getDesc(), Type_UD);
                         G4_Imm* extDesc = builder->createImm(msgDesc->getExtendedDesc(), Type_UD);
 
@@ -4347,7 +4348,7 @@ void GlobalRA::expandSpillIntrinsic(G4_BB* bb)
 
                             uint32_t spillMsgDesc = computeSpillMsgDesc(getPayloadSizeGRF(numRows), offset);
                             G4_SendMsgDescriptor* msgDesc = kernel.fg.builder->createSendMsgDesc(spillMsgDesc & 0x000FFFFFu,
-                                0, 1, SFID::DP_DC, false, getPayloadSizeGRF(numRows), 0, false, true);
+                                0, 1, SFID::DP_DC, false, getPayloadSizeGRF(numRows), 0, SendAccess::WRITE_ONLY);
                             G4_Imm* msgDescImm = builder->createImm(msgDesc->getDesc(), Type_UD);
 
                             G4_SrcRegRegion* headerOpnd = builder->Create_Src_Opnd_From_Dcl(builder->getBuiltinR0(), region);
@@ -4498,7 +4499,7 @@ void GlobalRA::expandFillIntrinsic(G4_BB* bb)
                             uint32_t fillMsgDesc = computeFillMsgDesc(getPayloadSizeGRF(numRows), offset);
 
                             G4_SendMsgDescriptor* msgDesc = kernel.fg.builder->createSendMsgDesc(fillMsgDesc,
-                                getPayloadSizeGRF(numRows), 1, SFID::DP_DC, false, 0, 0, true, false);
+                                getPayloadSizeGRF(numRows), 1, SFID::DP_DC, false, 0, 0, SendAccess::READ_ONLY);
 
                             G4_Imm* msgDescImm = builder->createImm(msgDesc->getDesc(), Type_UD);
 

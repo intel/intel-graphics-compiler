@@ -167,6 +167,15 @@ static Common_ISA_Exec_Size roundUpExecSize(Common_ISA_Exec_Size execSize)
     return execSize;
 }
 
+static SendAccess getSendAccessType(bool isRead, bool isWrite)
+{
+    if (isRead && isWrite)
+    {
+        return SendAccess::READ_WRITE;
+    }
+    return isRead ? SendAccess::READ_ONLY : SendAccess::WRITE_ONLY;
+}
+
 int IR_Builder::translateVISAAddrInst(ISA_Opcode opcode, Common_ISA_Exec_Size executionSize,
                                       Common_VISA_EMask_Ctrl emask, G4_DstRegRegion *dstOpnd, G4_Operand *src0Opnd, G4_Operand *src1Opnd)
 {
@@ -1812,7 +1821,7 @@ G4_INST* IR_Builder::createFenceInstruction( uint8_t flushParam, bool commitEnab
     // commitEnable = true: msg length = 1, response length = 1, dst == src
     // commitEnable = false: msg length = 1, response length = 0, dst == null
     return Create_Send_Inst_For_CISA( nullptr, sendDstOpnd, sendSrcOpnd, 1, (commitEnable ? 1 : 0), 8,
-        desc, SFID::DP_DC, false, true, true, true, createImm(BTI, Type_UD), nullptr, InstOpt_WriteEnable, isSendc);
+        desc, SFID::DP_DC, false, true, SendAccess::READ_WRITE, createImm(BTI, Type_UD), nullptr, InstOpt_WriteEnable, isSendc);
 
 }
 
@@ -2726,8 +2735,7 @@ int IR_Builder::translateVISAOwordLoadInst(
             tf_id,
             0,
             1,
-            true,
-            false,
+            SendAccess::READ_ONLY,
             surface,
             NULL,
             InstOpt_WriteEnable,
@@ -2745,10 +2753,9 @@ int IR_Builder::translateVISAOwordLoadInst(
             tf_id,
             false,
             true,
-            true,
-            false,
+            SendAccess::READ_ONLY,
             surface,
-            NULL,
+            nullptr,
             InstOpt_WriteEnable,
             false);
     }
@@ -2834,7 +2841,7 @@ int IR_Builder::translateVISAOwordStoreInst(
         msgDesc += (1 << getSendMsgLengthBitOffset()) + (1 << getSendHeaderPresentBitOffset());
 
         G4_SendMsgDescriptor* desc = createSendMsgDesc( msgDesc, 0, 1, SFID::DP_DC,
-            false, extMsgLength, extFuncCtrl, false, true, surface);
+            false, extMsgLength, extFuncCtrl, SendAccess::WRITE_ONLY, surface);
 
         uint8_t sendSize = FIX_OWORD_SEND_EXEC_SIZE(num_oword);
 
@@ -2886,8 +2893,7 @@ int IR_Builder::translateVISAOwordStoreInst(
             SFID::DP_DC,
             false,
             true,
-            false,
-            true,
+            SendAccess::WRITE_ONLY,
             surface,
             NULL,
             InstOpt_WriteEnable,
@@ -3046,8 +3052,7 @@ int IR_Builder::translateVISAMediaLoadInst(
         SFID::DP_DC1,
         0,
         1,
-        true,
-        false,
+        SendAccess::READ_ONLY,
         surface,
         NULL,
         InstOpt_WriteEnable,
@@ -3201,7 +3206,7 @@ int IR_Builder::translateVISAMediaStoreInst(
         uint16_t extFuncCtrl = 0;
 
         G4_SendMsgDescriptor* desc = createSendMsgDesc( msgDesc, 0, 1, SFID::DP_DC1,
-            false, extMsgLength, extFuncCtrl, false, true, surface);
+            false, extMsgLength, extFuncCtrl, SendAccess::WRITE_ONLY, surface);
 
         Create_SplitSend_Inst(nullptr, dstOpnd, headerOpnd, srcOpnd, 8, desc, InstOpt_WriteEnable, false);
     }
@@ -3253,8 +3258,7 @@ int IR_Builder::translateVISAMediaStoreInst(
             SFID::DP_DC1,
             0,
             1,
-            false,
-            true,
+            SendAccess::WRITE_ONLY,
             surface,
             NULL,
             InstOpt_WriteEnable,
@@ -3492,9 +3496,11 @@ int IR_Builder::translateVISAGatherInst(
             numElt,
             temp, 0,
             tf_id, false, true,
-            true, false,
+            SendAccess::READ_ONLY,
             surface, NULL, instOpt, false);
-    } else {
+    } 
+    else 
+    {
         Create_Send_Inst_For_CISA(
             pred,
             d,
@@ -3506,10 +3512,9 @@ int IR_Builder::translateVISAGatherInst(
             tf_id,
             0,
             !headerLess,
-            true,
-            false,
+            SendAccess::READ_ONLY,
             surface,
-            NULL,
+            nullptr,
             instOpt,
             false );
     }
@@ -3729,8 +3734,7 @@ int IR_Builder::translateVISAScatterInst(
         SFID::DP_DC,
         0,
         !headerLess,
-        false,
-        true,
+        SendAccess::WRITE_ONLY,
         surface,
         NULL,
         instOpt,
@@ -3896,11 +3900,11 @@ int IR_Builder::translateVISAGather4Inst(
         G4_SrcRegRegion *m0 = Create_Src_Opnd_From_Dcl(header, getRegionStride1());
         G4_SrcRegRegion *m1 = Create_Src_Opnd_From_Dcl(offset, getRegionStride1());
         Create_SplitSend_Inst_For_CISA(NULL, d,
-                                                   m0, 1, m1, numElt/GENX_DATAPORT_IO_SZ,
-                                                   (numElt/GENX_DATAPORT_IO_SZ) * num_channel,
-                                                   numElt, temp, 0, tf_id, false, hdrSize != 0,
-                                                   true, false,
-                                                   surface, NULL, instOpt, false);
+            m0, 1, m1, numElt / GENX_DATAPORT_IO_SZ,
+            (numElt / GENX_DATAPORT_IO_SZ)* num_channel,
+            numElt, temp, 0, tf_id, false, hdrSize != 0,
+            SendAccess::READ_ONLY,
+            surface, NULL, instOpt, false);
     }
     else
     {
@@ -3916,8 +3920,7 @@ int IR_Builder::translateVISAGather4Inst(
             tf_id,
             0,
             hdrSize != 0,
-            true,
-            false,
+            SendAccess::READ_ONLY,
             surface,
             NULL,
             instOpt,
@@ -4122,7 +4125,7 @@ int IR_Builder::translateVISAScatter4Inst(
                                                    m0, m0Len, m1, m1Len, 0,
                                                    numElt,
                                                    temp, 0, tf_id, false, hdrSize != 0,
-                                                   false, true,
+                                                   SendAccess::WRITE_ONLY,
                                                    surface, NULL,
                                                    instOpt, false);
     }
@@ -4140,8 +4143,7 @@ int IR_Builder::translateVISAScatter4Inst(
             tf_id,
             0,
             hdrSize != 0,
-            false,
-            true,
+            SendAccess::WRITE_ONLY,
             surface,
             NULL,
             instOpt,
@@ -4282,7 +4284,7 @@ int IR_Builder::translateVISADwordAtomicInst(VISAAtomicOps atomicOp,
             instExSize,
             MD, sfid,
             false, useHeader,
-            true, false,
+            SendAccess::READ_WRITE,
             surface, NULL,
             instOpt, false);
     } else {
@@ -4292,7 +4294,7 @@ int IR_Builder::translateVISADwordAtomicInst(VISAAtomicOps atomicOp,
             instExSize,
             MD, 0, sfid,
             false, useHeader,
-            true, false,
+            SendAccess::READ_WRITE,
             surface, NULL,
             instOpt, false);
     }
@@ -4457,8 +4459,8 @@ int IR_Builder::translateVISAGather4TypedInst(G4_Predicate           *pred,
             exSize,
             msgDesc, sfId,
             false, hasHeader,
-            true, false,
-            surface, NULL,
+            SendAccess::READ_ONLY,
+            surface, nullptr,
             instOpt, false);
     } else {
         Create_SplitSend_Inst_For_CISA(pred, dstOpnd,
@@ -4467,8 +4469,8 @@ int IR_Builder::translateVISAGather4TypedInst(G4_Predicate           *pred,
             exSize,
             msgDesc, 0, sfId,
             false, hasHeader,
-            true, false,
-            surface, NULL,
+            SendAccess::READ_ONLY,
+            surface, nullptr,
             instOpt, false);
     }
 
@@ -4559,7 +4561,7 @@ int IR_Builder::translateVISAScatter4TypedInst(G4_Predicate           *pred,
             exSize,
             msgDesc, sfId,
             false, hasHeader,
-            false, true,
+            SendAccess::WRITE_ONLY,
             surface, NULL,
             instOpt, false);
     } else
@@ -4570,7 +4572,7 @@ int IR_Builder::translateVISAScatter4TypedInst(G4_Predicate           *pred,
             exSize,
             msgDesc, 0, sfId,
             false, hasHeader,
-            false, true,
+            SendAccess::WRITE_ONLY,
             surface, NULL,
             instOpt, false);
     }
@@ -4668,8 +4670,8 @@ int IR_Builder::translateVISATypedAtomicInst(
             msgs[0], sizes[0], dstLength, exSize,
             msgDesc, SFID::DP_DC1,
             false, false,
-            true, true,
-            surface, NULL,
+            SendAccess::READ_WRITE,
+            surface, nullptr,
             instOpt, false);
     }
     else
@@ -4679,8 +4681,8 @@ int IR_Builder::translateVISATypedAtomicInst(
             dstLength, exSize,
             msgDesc, 0, SFID::DP_DC1,
             false, false,
-            true, true,
-            surface, NULL,
+            SendAccess::READ_WRITE,
+            surface, nullptr,
             instOpt, false);
     }
 
@@ -4827,7 +4829,7 @@ int IR_Builder::translateVISASLMUntypedScaledInst(
 
     uint32_t exFuncCtrl = 0;
     G4_SendMsgDescriptor *sendMsgDesc = createSendMsgDesc(MD, resLen, sizes[0], sfid,
-        false, sizes[1], (uint16_t)exFuncCtrl, isRead, !isRead);
+        false, sizes[1], (uint16_t)exFuncCtrl, isRead ? SendAccess::READ_ONLY : SendAccess::WRITE_ONLY);
 
     applySideBandOffset(sideBand, sendMsgDesc);
 
@@ -4956,7 +4958,7 @@ int IR_Builder::translateGather4Inst(G4_Predicate           *pred,
             instExSize,
             MD, sfid,
             false, useHeader,
-            true, false,
+            SendAccess::READ_ONLY,
             surface, NULL,
             instOpt, false);
     } else {
@@ -4966,7 +4968,7 @@ int IR_Builder::translateGather4Inst(G4_Predicate           *pred,
             instExSize,
             MD, 0, sfid,
             false, useHeader,
-            true, false,
+            SendAccess::READ_ONLY,
             surface, NULL,
             instOpt, false);
     }
@@ -5061,17 +5063,18 @@ int IR_Builder::translateScatter4Inst(G4_Predicate           *pred,
             instExSize,
             MD, sfid,
             false, useHeader,
-            false, true,
+            SendAccess::WRITE_ONLY,
             surface, NULL,
             instOpt, false);
-    } else {
+    }
+    else {
         Create_SplitSend_Inst_For_CISA(pred, dst,
             msgs[0], sizes[0], msgs[1], sizes[1],
             0,
             instExSize,
             MD, 0, sfid,
             false, useHeader,
-            false, true,
+            SendAccess::WRITE_ONLY,
             surface, NULL,
             instOpt, false);
     }
@@ -5191,7 +5194,7 @@ int IR_Builder::translateVISASLMByteScaledInst(bool isRead,
     unsigned resLen = isRead ? (exSize / GENX_DATAPORT_IO_SZ) * numBatch : 0;
 
     G4_SendMsgDescriptor *sendMsgDesc = createSendMsgDesc(MD, resLen, sizes[0], sfid,
-        false, sizes[1], exFuncCtrl, isRead, !isRead);
+        false, sizes[1], exFuncCtrl, isRead ? SendAccess::READ_ONLY : SendAccess::WRITE_ONLY);
 
     applySideBandOffset(sideBand, sendMsgDesc);
 
@@ -5320,7 +5323,7 @@ int IR_Builder::translateByteGatherInst(G4_Predicate *pred,
             instExSize,
             MD, sfid,
             false, useHeader,
-            true, false,
+            SendAccess::READ_ONLY,
             surface, NULL,
             instOpt, false);
     }
@@ -5331,7 +5334,7 @@ int IR_Builder::translateByteGatherInst(G4_Predicate *pred,
             instExSize,
             MD, 0, sfid,
             false, useHeader,
-            true, false,
+            SendAccess::READ_ONLY,
             surface, NULL,
             instOpt, false);
     }
@@ -5438,7 +5441,7 @@ int IR_Builder::translateByteScatterInst(G4_Predicate *pred,
             instExSize,
             MD, sfid,
             false, useHeader,
-            false, true,
+            SendAccess::WRITE_ONLY,
             surface, NULL,
             instOpt, false);
     } else {
@@ -5448,7 +5451,7 @@ int IR_Builder::translateByteScatterInst(G4_Predicate *pred,
             instExSize,
             MD, 0, sfid,
             false, useHeader,
-            false, true,
+            SendAccess::WRITE_ONLY,
             surface, NULL,
             instOpt, false);
     }
@@ -5707,8 +5710,7 @@ int IR_Builder::translateVISAVmeImeInst(
         SFID::VME,
         0,
         true,
-        true,
-        false,
+        SendAccess::READ_ONLY,
         surfaceOpnd,
         NULL,
         InstOpt_WriteEnable,
@@ -5778,8 +5780,7 @@ int IR_Builder::translateVISAVmeSicInst(
         SFID::CRE,
         0,
         true,
-        true,
-        false,
+        SendAccess::READ_ONLY,
         surfaceOpnd,
         NULL,
         InstOpt_WriteEnable,
@@ -5903,8 +5904,7 @@ int IR_Builder::translateVISAVmeFbrInst(
         SFID::CRE,
         0,
         true,  //head_present?
-        true,
-        false,
+        SendAccess::READ_ONLY,
         surfaceOpnd,
         NULL,
         InstOpt_WriteEnable,
@@ -5962,8 +5962,7 @@ int IR_Builder::translateVISAVmeIdmInst(
         SFID::VME,
         0,
         true,
-        true,
-        false,
+        SendAccess::READ_ONLY,
         surfaceOpnd,
         NULL,
         InstOpt_WriteEnable,
@@ -6004,7 +6003,8 @@ int IR_Builder::translateVISARawSendInst(G4_Predicate *predOpnd, Common_ISA_Exec
         desc = G4_SendMsgDescriptor::createDesc(0, false, numSrc, numDst);
         isValidFuncCtrl = false;
     }
-    G4_SendMsgDescriptor *sendMsgDesc = createGeneralMsgDesc(desc, exDesc, isRead, isWrite, nullptr, nullptr, isValidFuncCtrl);
+    G4_SendMsgDescriptor *sendMsgDesc = createGeneralMsgDesc(desc, exDesc, getSendAccessType(isRead, isWrite), 
+        nullptr, nullptr, isValidFuncCtrl);
 
     // sanity check on srcLen/dstLen
     MUST_BE_TRUE(sendMsgDesc->MessageLength() <= numSrc, "message length mismatch for raw send");
@@ -6082,7 +6082,7 @@ int IR_Builder::translateVISARawSendsInst(G4_Predicate *predOpnd, Common_ISA_Exe
 
     G4_SendMsgDescriptor *sendMsgDesc = createSendMsgDesc(
         intToSFID(ffid), descVal, exDescVal, numSrc1,
-        true, true, nullptr, isValidFuncCtrl);
+        SendAccess::READ_WRITE, nullptr, isValidFuncCtrl);
 
     MUST_BE_TRUE(sendMsgDesc->MessageLength() == numSrc0, "message length mismatch for raw sends");
     if (!dstOpnd->isNullReg()) {
@@ -6233,7 +6233,7 @@ int IR_Builder::translateVISASamplerVAGenericInst(
     if(reg_receive < 1)
         reg_receive = 1;
     Create_Send_Inst_For_CISA(NULL, post_dst, payload, 2, reg_receive, 8,
-        msg_descriptor, SFID::SAMPLER, 0, 1, true, false, surface, sampler, InstOpt_WriteEnable, false);
+        msg_descriptor, SFID::SAMPLER, 0, 1, SendAccess::READ_ONLY, surface, sampler, InstOpt_WriteEnable, false);
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
@@ -6465,8 +6465,7 @@ int IR_Builder::translateVISAAvsInst(
             SFID::SAMPLER,
             0,
             1,
-            true,
-            false,
+            SendAccess::READ_ONLY,
             surface,
             sampler,
             InstOpt_WriteEnable,
@@ -6780,8 +6779,7 @@ int IR_Builder::translateVISASamplerInst(
         SFID::SAMPLER,
         0,
         1,
-        true,
-        false,
+        SendAccess::READ_ONLY,
         surface,
         sampler,
         0,
@@ -7187,7 +7185,7 @@ int IR_Builder::translateVISAVaSklPlusGeneralInst(
     /// 18:17 SIMD Mode (SIMD32/64 = 3)  |  16:12 Message Type (sampler8x8 = 01011 = 0xB)
     unsigned msg_descriptor = (0x3 << 17) + (0xB  << 12);
     Create_Send_Inst_For_CISA(NULL, post_dst, payload, reg_to_send, reg_to_receive, 8,
-        msg_descriptor, SFID::SAMPLER, 0, 1, true, false, surface, sampler, 0, false);
+        msg_descriptor, SFID::SAMPLER, 0, 1, SendAccess::READ_ONLY, surface, sampler, 0, false);
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
@@ -7287,8 +7285,7 @@ int IR_Builder::translateVISASamplerNormInst(
         SFID::SAMPLER,
         0,
         1,
-        true,
-        false,
+        SendAccess::READ_ONLY,
         surface,
         sampler,
         0,
@@ -7413,12 +7410,12 @@ int IR_Builder::translateVISASampleInfoInst(
     {
         Create_SplitSend_Inst_For_CISA(NULL, dst, m0, numRows,
             createNullSrc(Type_UD), 0, retSize,
-            execSize, fc, 0, SFID::SAMPLER, false, useHeader, true, false, surface, NULL, instOpt, false);
+            execSize, fc, 0, SFID::SAMPLER, false, useHeader, SendAccess::READ_ONLY, surface, NULL, instOpt, false);
     }
     else
     {
         Create_Send_Inst_For_CISA(NULL, dst, m0, numRows, retSize,
-            execSize, fc, SFID::SAMPLER, false, useHeader, true, false, surface, NULL, instOpt, false);
+            execSize, fc, SFID::SAMPLER, false, useHeader, SendAccess::READ_ONLY, surface, NULL, instOpt, false);
     }
 
     return CM_SUCCESS;
@@ -7542,13 +7539,13 @@ int IR_Builder::translateVISAResInfoInst(
             src1Size = 0;
         }
         Create_SplitSend_Inst_For_CISA(NULL, dst, m0, src0Size, m1, src1Size, returnLength,
-            execSize, fc, 0, SFID::SAMPLER, false, useHeader, true, false, surface, NULL, instOpt, false);
+            execSize, fc, 0, SFID::SAMPLER, false, useHeader, SendAccess::READ_ONLY, surface, NULL, instOpt, false);
     }
     else
     {
         G4_SrcRegRegion *m = Create_Src_Opnd_From_Dcl(msg, getRegionStride1());
         Create_Send_Inst_For_CISA( NULL, dst, m, numRows, returnLength,
-            execSize, fc, SFID::SAMPLER, false, useHeader, true, false, surface, NULL, instOpt, false );
+            execSize, fc, SFID::SAMPLER, false, useHeader, SendAccess::READ_ONLY, surface, NULL, instOpt, false );
     }
 
     return CM_SUCCESS;
@@ -7738,11 +7735,11 @@ int IR_Builder::translateVISAURBWrite3DInst(
         }
 
         Create_SplitSend_Inst_For_CISA(pred, createNullDst(Type_UD), m0, 1, m1, numRows, 0,
-            execSize, fc, 0, SFID::URB, false, useHeader, false, true, NULL, NULL, instOpt, false);
+            execSize, fc, 0, SFID::URB, false, useHeader, SendAccess::WRITE_ONLY, NULL, NULL, instOpt, false);
     } else {
         G4_SrcRegRegion *m = Create_Src_Opnd_From_Dcl(msg, getRegionStride1());
         Create_Send_Inst_For_CISA( pred, createNullDst( Type_UD ), m, numRows, 0,
-            execSize, fc, SFID::URB, false, useHeader, false, true, nullptr, nullptr, instOpt, false );
+            execSize, fc, SFID::URB, false, useHeader, SendAccess::WRITE_ONLY, nullptr, nullptr, instOpt, false );
     }
     return CM_SUCCESS;
 }
@@ -8353,7 +8350,7 @@ int IR_Builder::translateVISARTWrite3DInst(
         {
             m0 = Create_Src_Opnd_From_Dcl(msg, getRegionStride1());
             msgDesc = createSendMsgDesc(fc, 0, RT_HEADER_SIZE, SFID::DP_WRITE, false, numRows,
-                0, false, true, surface);
+                0, SendAccess::WRITE_ONLY, surface);
             msgDesc->setHeaderPresent(useHeader);
         }
         else
@@ -8362,7 +8359,7 @@ int IR_Builder::translateVISARTWrite3DInst(
             {
                 // direct imm is a-ok for ext desc
                 msgDesc = createSendMsgDesc(fc, 0, numRows, SFID::DP_WRITE, false, 0,
-                        0, false, true, surface);
+                        0, SendAccess::WRITE_ONLY, surface);
             }
             else
             {
@@ -8372,7 +8369,7 @@ int IR_Builder::translateVISARTWrite3DInst(
                 uint32_t desc = G4_SendMsgDescriptor::createDesc(fc, false, numRows, 0);
                 uint32_t extDesc = G4_SendMsgDescriptor::createMRTExtDesc(cntrls.s0aPresent, RTIndex,
                     false, 0);
-                msgDesc = createGeneralMsgDesc(desc, extDesc, false, true, surface);
+                msgDesc = createGeneralMsgDesc(desc, extDesc, SendAccess::WRITE_ONLY, surface);
 
                 if (!canEncodeFullExtDesc())
                 {
@@ -8426,7 +8423,7 @@ int IR_Builder::translateVISARTWrite3DInst(
         if (useHeader)
             m = Create_Src_Opnd_From_Dcl(msg, getRegionStride1());
          Create_Send_Inst_For_CISA( pred, createNullDst( Type_UD ), m, numRows, 0,
-            execSize, fc, SFID::DP_WRITE, false, useHeader, false, true, surface, NULL, instOpt, true );
+            execSize, fc, SFID::DP_WRITE, false, useHeader, SendAccess::WRITE_ONLY, surface, NULL, instOpt, true );
     }
     return CM_SUCCESS;
 
@@ -9318,7 +9315,8 @@ int IR_Builder::translateVISALoad3DInst(
             responseLength,
             execSize, fc, SFID::SAMPLER,
             false, useHeader,
-            true, false, surface, NULL,
+            SendAccess::READ_ONLY,
+            surface, NULL,
             instOpt, false);
     }
     else
@@ -9328,7 +9326,7 @@ int IR_Builder::translateVISALoad3DInst(
             responseLength,
             execSize, fc, 0, SFID::SAMPLER,
             false, useHeader,
-            true, false,
+            SendAccess::READ_ONLY,
             surface, NULL,
             instOpt, false);
     }
@@ -9437,7 +9435,7 @@ int IR_Builder::translateVISAGather3dInst(
             responseLength,
             execSize, fc, SFID::SAMPLER,
             false, useHeader,
-            true, false,
+            SendAccess::READ_ONLY,
             surface, samplerIdx,
             instOpt, false);
     }
@@ -9448,7 +9446,7 @@ int IR_Builder::translateVISAGather3dInst(
             responseLength,
             execSize, fc, 0, SFID::SAMPLER,
             false, useHeader,
-            true, false,
+            SendAccess::READ_ONLY,
             surface, samplerIdx,
             instOpt, false);
     }
@@ -9519,7 +9517,7 @@ int IR_Builder::translateVISASVMBlockReadInst(
     dst->setType(Type_UD);
 
     Create_Send_Inst_For_CISA(NULL, dst, src, 1, rspLength, sendExecSize, desc,
-        SFID::DP_DC1, false, true, true, false, NULL, NULL, InstOpt_WriteEnable, false);
+        SFID::DP_DC1, false, true, SendAccess::READ_ONLY, NULL, NULL, InstOpt_WriteEnable, false);
 
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
@@ -9625,7 +9623,7 @@ int IR_Builder::translateVISASVMBlockWriteInst(
             0, sendExecSize,
             desc, SFID::DP_DC1,
             false, true,
-            false, true,
+            SendAccess::WRITE_ONLY,
             NULL, NULL,
             InstOpt_WriteEnable, false);
     }
@@ -9637,7 +9635,7 @@ int IR_Builder::translateVISASVMBlockWriteInst(
             0, sendExecSize,
             desc, 0, SFID::DP_DC1,
             false, true,
-            false, true,
+            SendAccess::WRITE_ONLY,
             NULL, NULL,
             InstOpt_WriteEnable, false);
     }
@@ -9716,7 +9714,7 @@ int IR_Builder::translateVISASVMScatterReadInst(
     desc |= DC1_A64_SCATTERED_READ << 14;
 
     Create_Send_Inst_For_CISA( pred, dst, addresses, messageLength, responseLength, instExSize, desc,
-        SFID::DP_DC1, false, false, true, false, NULL, NULL, instOpt, false );
+        SFID::DP_DC1, false, false, SendAccess::READ_ONLY, NULL, NULL, instOpt, false );
 
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
@@ -9793,7 +9791,7 @@ int IR_Builder::translateVISASVMScatterWriteInst(
             0, instExSize,
             desc, SFID::DP_DC1,
             false, false,
-            false, true,
+            SendAccess::WRITE_ONLY,
             NULL, NULL,
             instOpt, false);
     }
@@ -9804,7 +9802,7 @@ int IR_Builder::translateVISASVMScatterWriteInst(
             0, instExSize,
             desc, 0, SFID::DP_DC1,
             false, false,
-            false, true,
+            SendAccess::WRITE_ONLY,
             NULL, NULL,
             instOpt, false);
     }
@@ -9919,7 +9917,7 @@ int IR_Builder::translateVISASVMAtomicInst(
             instExSize,
             msgDesc, SFID::DP_DC1,
             false, false,
-            true, true,
+            SendAccess::READ_WRITE,
             NULL, NULL,
             instOpt, false);
     }
@@ -9931,7 +9929,7 @@ int IR_Builder::translateVISASVMAtomicInst(
             instExSize,
             msgDesc, 0, SFID::DP_DC1,
             false, false,
-            true, true,
+            SendAccess::READ_WRITE,
             NULL, NULL,
             instOpt, false);
     }
@@ -10001,7 +9999,7 @@ int IR_Builder::translateSVMGather4Inst(Common_ISA_Exec_Size    execSize,
             exSize,
             FC, sfid,
             false, false,
-            true, false,
+            SendAccess::READ_ONLY,
             NULL, NULL,
             instOpt, false);
     }
@@ -10012,7 +10010,7 @@ int IR_Builder::translateSVMGather4Inst(Common_ISA_Exec_Size    execSize,
             exSize,
             FC, 0, sfid,
             false, false,
-            true, false,
+            SendAccess::READ_ONLY,
             NULL, NULL,
             instOpt, false);
     }
@@ -10085,7 +10083,7 @@ int IR_Builder::translateSVMScatter4Inst(Common_ISA_Exec_Size   execSize,
             exSize,
             FC, sfid,
             false, false,
-            false, true,
+            SendAccess::WRITE_ONLY,
             NULL, NULL,
             instOpt, false);
     }
@@ -10096,7 +10094,7 @@ int IR_Builder::translateSVMScatter4Inst(Common_ISA_Exec_Size   execSize,
             exSize,
             FC, 0, sfid,
             false, false,
-            false, true,
+            SendAccess::WRITE_ONLY,
             NULL, NULL,
             instOpt, false);
     }

@@ -933,7 +933,7 @@ namespace vISA
 
             auto dstMsgDesc = dstInst->getMsgDesc();
             auto newMsgDesc = kernel.fg.builder->createGeneralMsgDesc(dstMsgDesc->getDesc(), 
-                dstMsgDesc->getExtendedDesc(), dstMsgDesc->isDataPortRead(), dstMsgDesc->isDataPortWrite(), 
+                dstMsgDesc->getExtendedDesc(), dstMsgDesc->getAccess(), 
                 kernel.fg.builder->duplicateOperand(dstMsgDesc->getBti()),
                 kernel.fg.builder->duplicateOperand(dstMsgDesc->getSti()));
 

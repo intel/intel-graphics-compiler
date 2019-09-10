@@ -1257,8 +1257,7 @@ public:
     // so we can avoid having to explicitly create extDesc bits
     G4_SendMsgDescriptor* createGeneralMsgDesc(uint32_t desc,
         uint32_t extDesc,
-        bool isRead,
-        bool isWrite,
+        SendAccess access,
         G4_Operand* bti = nullptr,
         G4_Operand* sti = nullptr,
         bool isValidFuncCtrl = true);
@@ -1290,8 +1289,7 @@ public:
         uint32_t desc,
         uint32_t extDesc,
         int src1Len,
-        bool isRead,
-        bool isWrite,
+        SendAccess access,
         G4_Operand *bti,
         bool isValidFuncCtrl = true);
 
@@ -1303,8 +1301,7 @@ public:
         bool eot,
         unsigned extMsgLength,
         uint16_t extFuncCtrl,
-        bool isRead,
-        bool isWrite,
+        SendAccess access,
         G4_Operand *bti = nullptr,
         G4_Operand *sti = nullptr);
 
@@ -1784,8 +1781,7 @@ public:
                         SFID tf_id,
                         bool eot,
                         bool head_present,
-                        bool isRead,
-                        bool isWrite,
+                        SendAccess access,
                         G4_Operand *bti,
                         G4_Operand *sti,
                         unsigned int option,
@@ -1799,8 +1795,7 @@ public:
         unsigned fc, unsigned exFuncCtrl,
         SFID tf_id, bool eot,
         bool head_present,
-        bool isRead,
-        bool isWrite,
+        SendAccess access,
         G4_Operand *bti, G4_Operand *sti,
         unsigned option,
         bool is_sendc);

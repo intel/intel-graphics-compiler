@@ -574,8 +574,7 @@ void SendFusion::simplifyMsg(INST_LIST_ITER SendIter)
         descImm,
         desc->getExtendedDesc(),
         desc->extMessageLength(),
-        desc->isDataPortRead(),
-        desc->isDataPortWrite(),
+        desc->getAccess(),
         desc->getBti());
     Send->setMsgDesc(newDesc);
 
@@ -1475,8 +1474,7 @@ void SendFusion::doFusion(
             false,
             msgLen,
             desc->getExtFuncCtrl(),
-            desc->isDataPortRead(),
-            desc->isDataPortWrite(),
+            desc->getAccess(),
             bti);
 
         G4_SrcRegRegion* s0 = I0->getOperand(Opnd_src0)->asSrcRegRegion();
@@ -1526,8 +1524,7 @@ void SendFusion::doFusion(
         false,
         newExtMsgLen,
         desc->getExtFuncCtrl(),
-        desc->isDataPortRead(),
-        desc->isDataPortWrite(),
+        desc->getAccess(),
         bti);
 
     // First, create fused send.

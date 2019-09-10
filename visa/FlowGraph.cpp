@@ -3851,7 +3851,7 @@ void G4_BB::addEOTSend(G4_INST* lastInst)
 
     G4_DstRegRegion *sendDst = builder->createNullDst(Type_UD);
 
-    auto msgDesc = builder->createGeneralMsgDesc(desc, exdesc, false, true);
+    auto msgDesc = builder->createGeneralMsgDesc(desc, exdesc, SendAccess::WRITE_ONLY);
     G4_INST* sendInst = builder->createSendInst(
         NULL,
         G4_send,

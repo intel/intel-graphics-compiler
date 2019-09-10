@@ -229,6 +229,13 @@ typedef std::list<USE_DEF_NODE, USE_DEF_ALLOCATOR >::iterator DEF_EDGE_LIST_ITER
 
 namespace vISA
 {
+
+    enum class SendAccess
+    {
+        READ_ONLY,
+        WRITE_ONLY,
+        READ_WRITE
+    };
 class G4_SendMsgDescriptor
 {
 private:
@@ -275,11 +282,7 @@ private:
         ExtendedMsgDescLayout layout;
     } extDesc;
 
-    /// Whether is a dataport read message.
-    bool readMsg;
-
-    /// Whether is a dataport write message.
-    bool writeMsg;
+    SendAccess accessType;
 
     /// Whether funcCtrl is valid
     bool funcCtrlValid;
@@ -296,16 +299,14 @@ public:
 
     G4_SendMsgDescriptor(uint32_t fCtrl, uint32_t regs2rcv, uint32_t regs2snd,
         uint32_t fID, bool isEot, uint16_t extMsgLength, uint32_t extFCtrl,
-        bool isRead, bool isWrite, G4_Operand *bti, G4_Operand *sti, IR_Builder& builder);
+        SendAccess access, G4_Operand *bti, G4_Operand *sti, IR_Builder& builder);
 
     /// Construct a object with descriptor and extended descriptor values.
-    /// used in IR_Builder::createSendMsgDesc(uint32_t desc, uint32_t extDesc, bool isRead, bool isWrite)
-    G4_SendMsgDescriptor(uint32_t desc, uint32_t extDesc,
-                        bool isRead,
-                        bool isWrite,
-                        G4_Operand *bti,
-                        G4_Operand *sti,
-                        bool isValidFuncCtrl);
+    /// used in IR_Builder::createSendMsgDesc(uint32_t desc, uint32_t extDesc, SendAccess access)
+    G4_SendMsgDescriptor(uint32_t desc, uint32_t extDesc, SendAccess access,
+        G4_Operand* bti,
+        G4_Operand* sti,
+        bool isValidFuncCtrl);
 
     /// Preferred constructor takes an explicit SFID and src1 length
     G4_SendMsgDescriptor(
@@ -313,8 +314,7 @@ public:
         uint32_t desc,
         uint32_t extDesc,
         int src1Len,
-        bool isRead,
-        bool isWrite,
+        SendAccess access,
         G4_Operand *bti,
         bool isValidFuncCtrl);
 
@@ -383,8 +383,9 @@ public:
     uint16_t extMessageLength() const { return (uint16_t)src1Len; }
 
     bool isCPSEnabled() const {return extDesc.layout.cps != 0;}
-    bool isDataPortRead() const { return readMsg; }
-    bool isDataPortWrite() const { return writeMsg; }
+    bool isDataPortRead() const { return accessType != SendAccess::WRITE_ONLY; }
+    bool isDataPortWrite() const { return accessType != SendAccess::READ_ONLY; }
+    SendAccess getAccess() const { return accessType; }
     bool isValidFuncCtrl() const { return funcCtrlValid;  }
     bool isSampler() const {return getFuncId() == SFID::SAMPLER;}
     bool isHDC() const

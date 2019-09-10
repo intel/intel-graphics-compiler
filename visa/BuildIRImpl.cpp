@@ -120,13 +120,12 @@ RegionDesc* RegionPool::createRegion(uint16_t vstride, uint16_t width, uint16_t 
 G4_SendMsgDescriptor* IR_Builder::createGeneralMsgDesc(
     uint32_t desc,
     uint32_t extDesc,
-    bool isRead,
-    bool isWrite,
+    SendAccess access,
     G4_Operand* bti,
     G4_Operand* sti,
     bool isValidFuncCtrl)
 {
-    return new (mem) G4_SendMsgDescriptor(desc, extDesc, isRead, isWrite, bti, sti, isValidFuncCtrl);
+    return new (mem) G4_SendMsgDescriptor(desc, extDesc, access, bti, sti, isValidFuncCtrl);
 }
 
 G4_SendMsgDescriptor* IR_Builder::createSendMsgDesc(
@@ -134,12 +133,11 @@ G4_SendMsgDescriptor* IR_Builder::createSendMsgDesc(
     uint32_t desc,
     uint32_t extDesc,
     int src1Len,
-    bool isRead,
-    bool isWrite,
+    SendAccess access,
     G4_Operand *bti,
     bool isValidFuncCtrl)
 {
-    return new (mem) G4_SendMsgDescriptor(sfid, desc, extDesc, src1Len, isRead, isWrite, bti, isValidFuncCtrl);
+    return new (mem) G4_SendMsgDescriptor(sfid, desc, extDesc, src1Len, access, bti, isValidFuncCtrl);
 }
 
 G4_SendMsgDescriptor* IR_Builder::createSendMsgDesc(
@@ -150,14 +148,13 @@ G4_SendMsgDescriptor* IR_Builder::createSendMsgDesc(
     bool eot,
     unsigned extMsgLength,
     uint16_t extFuncCtrl,
-    bool isRead,
-    bool isWrite,
+    SendAccess access,
     G4_Operand *bti,
     G4_Operand *sti)
 {
     G4_SendMsgDescriptor* msgDesc = new (mem) G4_SendMsgDescriptor(
         funcCtrl, regs2rcv, regs2snd, SFIDtoInt(funcID), eot, (uint16_t) extMsgLength,
-        extFuncCtrl, isRead, isWrite, bti, sti, *this);
+        extFuncCtrl, access, bti, sti, *this);
     return msgDesc;
 }
 
@@ -169,7 +166,7 @@ G4_SendMsgDescriptor* IR_Builder::createReadMsgDesc(SFID sfid,
 {
     //ToDo: move extDesc into SendMsgDesc ctor
     uint32_t extDesc = G4_SendMsgDescriptor::createExtDesc(sfid);
-    return new (mem) G4_SendMsgDescriptor(sfid, desc, extDesc, 0, true, false, bti, true);
+    return new (mem) G4_SendMsgDescriptor(sfid, desc, extDesc, 0, SendAccess::READ_ONLY, bti, true);
 }
 
 G4_SendMsgDescriptor* IR_Builder::createWriteMsgDesc(SFID sfid,
@@ -179,14 +176,14 @@ G4_SendMsgDescriptor* IR_Builder::createWriteMsgDesc(SFID sfid,
 {
     //ToDo: move extDesc into SendMsgDesc ctor
     uint32_t extDesc = G4_SendMsgDescriptor::createExtDesc(sfid, false, src1Len);
-    return new (mem) G4_SendMsgDescriptor(sfid, desc, extDesc, src1Len, false, true, bti, true);
+    return new (mem) G4_SendMsgDescriptor(sfid, desc, extDesc, src1Len, SendAccess::WRITE_ONLY, bti, true);
 }
 
 G4_SendMsgDescriptor* IR_Builder::createSyncMsgDesc(SFID sfid, uint32_t desc)
 {
     //ToDo: move extDesc into SendMsgDesc ctor
     uint32_t extDesc = G4_SendMsgDescriptor::createExtDesc(sfid);
-    return new (mem) G4_SendMsgDescriptor(sfid, desc, extDesc, 0, true, true, nullptr, true);
+    return new (mem) G4_SendMsgDescriptor(sfid, desc, extDesc, 0, SendAccess::READ_WRITE, nullptr, true);
 }
 
 G4_SendMsgDescriptor* IR_Builder::createSampleMsgDesc(
@@ -203,7 +200,7 @@ G4_SendMsgDescriptor* IR_Builder::createSampleMsgDesc(
     {
         extDesc |= 1 << CPS_LOD_COMPENSATION_ENABLE;
     }
-    return new (mem) G4_SendMsgDescriptor(desc, extDesc, true, false, bti, sti, true);
+    return new (mem) G4_SendMsgDescriptor(desc, extDesc, SendAccess::READ_ONLY, bti, sti, true);
 }
 
 G4_Operand* IR_Builder::emitSampleIndexGE16(
@@ -820,8 +817,7 @@ G4_InstSend* IR_Builder::Create_Send_Inst_For_CISA(
     SFID tf_id,
     bool eot,
     bool header_present,
-    bool isRead,
-    bool isWrite,
+    SendAccess access,
     G4_Operand* bti,
     G4_Operand* sti,
     unsigned int option,
@@ -829,7 +825,7 @@ G4_InstSend* IR_Builder::Create_Send_Inst_For_CISA(
 {
     G4_SendMsgDescriptor* msgDesc =
         createSendMsgDesc(fc, regs2rcv, regs2snd, tf_id,
-                          eot, 0, 0, isRead, isWrite, bti, sti);
+                          eot, 0, 0, access, bti, sti);
 
     msgDesc->setHeaderPresent(header_present);
 
@@ -990,8 +986,7 @@ G4_InstSend* IR_Builder::Create_SplitSend_Inst_For_CISA(
     SFID tf_id,
     bool eot,
     bool header_present,
-    bool isRead,
-    bool isWrite,
+    SendAccess access,
     G4_Operand* bti,
     G4_Operand* sti,
     unsigned int option,
@@ -999,7 +994,7 @@ G4_InstSend* IR_Builder::Create_SplitSend_Inst_For_CISA(
 {
     G4_SendMsgDescriptor *msgDesc =
         createSendMsgDesc(fc, regs2rcv, regs2snd1, tf_id, eot, regs2snd2,
-                          (uint16_t)exFuncCtrl, isRead, isWrite, bti, sti);
+                          (uint16_t)exFuncCtrl, access, bti, sti);
 
     msgDesc->setHeaderPresent(header_present);
 
