@@ -1155,7 +1155,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
             constexpr unsigned maxSimdSize = 32;
             if (clusterSize == maxSimdSize)
             {
-                // TODO: do the same for SIMD8 and SIM16 if possible.
+                // TODO: do the same for SIMD8 and SIMD16 if possible.
                 return WIAnalysis::UNIFORM;
             }
         }

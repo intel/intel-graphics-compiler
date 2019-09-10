@@ -10725,9 +10725,11 @@ void EmitPass::emitReductionClustered(const e_opcode op, const uint64_t identity
                 VISA_Type tmpType = type;
                 CVariable* tmpSrc = src;
                 CVariable* tmpDst = dst;
+                uint64_t tmpIdentityValue = identityValue;
                 if (type == VISA_Type::ISA_TYPE_B || type == VISA_Type::ISA_TYPE_UB)
                 {
-                    tmpType = type == VISA_Type::ISA_TYPE_B ? VISA_Type::ISA_TYPE_W : VISA_Type::ISA_TYPE_UW;
+                    const bool isSigned = type == VISA_Type::ISA_TYPE_B;
+                    tmpType = isSigned ? VISA_Type::ISA_TYPE_W : VISA_Type::ISA_TYPE_UW;
                     tmpSrc = m_currShader->GetNewVariable(
                         src->GetNumberElement(),
                         tmpType,
@@ -10742,9 +10744,25 @@ void EmitPass::emitReductionClustered(const e_opcode op, const uint64_t identity
                         tmpType,
                         IGC::EALIGN_DWORD,
                         false);
+                    switch (op)
+                    {
+                    case EOPCODE_MAX:
+                        tmpIdentityValue = isSigned ? std::numeric_limits<int16_t>::min() :
+                            std::numeric_limits<uint16_t>::min();
+                        break;
+                    case EOPCODE_MIN:
+                        tmpIdentityValue = isSigned ? std::numeric_limits<int16_t>::max() :
+                            std::numeric_limits<uint16_t>::max();
+                        break;
+                    case EOPCODE_AND:
+                        tmpIdentityValue = 0xFFFF;
+                        break;
+                    default:
+                        break;
+                    }
                 }
 
-                CVariable* temp = ScanReducePrepareSrc(tmpType, identityValue, negate, secondHalf, tmpSrc, nullptr);
+                CVariable* temp = ScanReducePrepareSrc(tmpType, tmpIdentityValue, negate, secondHalf, tmpSrc, nullptr);
 
                 SIMDMode simd = secondHalf ? SIMDMode::SIMD16 : m_currShader->m_SIMDSize;
 
