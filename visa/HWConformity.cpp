@@ -2882,7 +2882,8 @@ void HWConformity::fix64bInst( INST_LIST_ITER iter, G4_BB* bb )
     for (int i = 0, size = G4_Inst_Table[inst->opcode()].n_srcs; !uses64BitType && i < size; i++)
     {
         G4_Operand* src = inst->getSrc(i);
-        if (src != NULL && G4_Type_Table[src->getType()].byteSize == 8)
+
+        if (src && G4_Type_Table[src->getType()].byteSize == 8)
         {
             uses64BitType = true;
         }
@@ -2897,12 +2898,42 @@ void HWConformity::fix64bInst( INST_LIST_ITER iter, G4_BB* bb )
 
     if (uses64BitType)
     {
-#if 0
-//#ifdef DEBUG_VERBOSE_ON
-        std::cout << "CHV 64b fix for:\n";
-        inst->emit(std::cout);
-        std::cout << "\n";
-#endif
+
+        if (builder.no64bitType() && inst->opcode() == G4_mov)
+        {
+            // while input should not have any ALU inst with 64b type, we may still end up
+            // with 64b moves generated when preparing send payload (e.g., 64b atomics,
+            // A64 messages). We fix such moves here by breaking them into 2 32b moves
+            // For now only handle copy moves.
+            auto dst = inst->getDst();
+            auto src0 = inst->getSrc(0);
+            assert(getTypeSize(dst->getType()) == 8 &&
+                getTypeSize(src0->getType()) == 8 && "must be copy moves");
+            assert(src0->isSrcRegRegion() &&
+                (src0->asSrcRegRegion()->isScalar() ||
+                    src0->asSrcRegRegion()->getRegion()->isContiguous(inst->getExecSize())) &&
+                "expect src0 to be scalar or contiguous");
+            auto src0RR = src0->asSrcRegRegion();
+            assert(inst->isRawMov() && dst->getHorzStride() == 1 && "expect only copy moves");
+
+            // 1st half
+            auto newDst = builder.createDstRegRegion(Direct, dst->getBase(), dst->getRegOff(), dst->getSubRegOff() * 2,
+                2, Type_UD);
+            auto newSrc = builder.createSrcRegRegion(Mod_src_undef, Direct, src0RR->getBase(), src0RR->getRegOff(),
+                src0RR->getSubRegOff() * 2, src0RR->isScalar() ? builder.getRegionScalar() : builder.getRegionStride2(), Type_UD);
+            auto newInst = builder.createInst(nullptr, G4_mov, nullptr, false, inst->getExecSize(), newDst, newSrc, nullptr, inst->getOption());
+            bb->insert(iter, newInst);
+
+            // second half
+            newDst = builder.createDstRegRegion(Direct, dst->getBase(), dst->getRegOff(), dst->getSubRegOff() * 2 + 1,
+                2, Type_UD);
+            newSrc = builder.createSrcRegRegion(Mod_src_undef, Direct, src0RR->getBase(), src0RR->getRegOff(),
+                src0RR->getSubRegOff() * 2 + 1, src0RR->isScalar() ? builder.getRegionScalar() : builder.getRegionStride2(), Type_UD);
+            newInst = builder.createInst(nullptr, G4_mov, nullptr, false, inst->getExecSize(), newDst, newSrc, nullptr, inst->getOption());
+            *iter = newInst;
+            return;
+        }
+
         int numSrc = G4_Inst_Table[inst->opcode()].n_srcs;
 
         // handle indirect sources first
