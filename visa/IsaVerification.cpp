@@ -1473,6 +1473,7 @@ static void verifyInstructionArith(
         case ISA_SAD2ADD:
             /// dst must be w or uw
             REPORT_INSTRUCTION(options,dstType == ISA_TYPE_W || dstType == ISA_TYPE_UW, "sad2/sad2add only supports W/UW dst type.");
+            REPORT_INSTRUCTION(options, getPlatformGeneration(getGenxPlatform()) != PlatformGen::GEN12, "sad2/sad2add is not supported on gen12.");
             break;
         case ISA_ADDC:
         case ISA_SUBB:

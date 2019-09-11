@@ -230,6 +230,9 @@ HANDLE_INST( sends, 4, 1, InstTypeMisc, GENX_SKL, ATTR_NONE )
 HANDLE_INST( sendsc, 4, 1, InstTypeMisc, GENX_SKL, ATTR_NONE )
 HANDLE_INST( nop, 0, 0, InstTypeMisc, GENX_BDW, ATTR_NONE )
 
+HANDLE_INST( sync_nop, 1, 0, InstTypeMisc, GENX_TGLLP, ATTR_NONE )
+HANDLE_INST( sync_allrd, 1, 0, InstTypeMisc, GENX_TGLLP, ATTR_NONE )
+HANDLE_INST( sync_allwr, 1, 0, InstTypeMisc, GENX_TGLLP, ATTR_NONE )
 
   //
   // Following are pseudo instructions

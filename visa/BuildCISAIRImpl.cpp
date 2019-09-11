@@ -255,6 +255,13 @@ void CISA_IR_Builder::InitVisaWaTable(TARGET_PLATFORM platform, Stepping step)
         case GENX_ICL:
             VISA_WA_ENABLE(m_pWaTable, Wa_1406950495);
             break;
+        case GENX_TGLLP:
+            VISA_WA_ENABLE(m_pWaTable, Wa_1406950495);
+            if (step == Step_A)
+            {
+                VISA_WA_ENABLE(m_pWaTable, Wa_1606931601);
+            }
+            break;
         default:
             break;
     }

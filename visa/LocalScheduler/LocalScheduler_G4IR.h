@@ -273,6 +273,7 @@ public:
     void moveDeps(Node *fromNode, Node *toNode);
     void pairTypedWriteOrURBWriteNodes(G4_BB *bb);
 
+    bool hasReadSuppression(G4_INST *curInst, G4_INST *nextInst, BitSet &liveDst, BitSet &liveSrc);
 
     DDD(Mem_Manager& m, G4_BB* bb, const LatencyTable& lt, G4_Kernel* k);
     ~DDD()

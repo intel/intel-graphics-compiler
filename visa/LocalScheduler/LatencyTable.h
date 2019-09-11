@@ -17,6 +17,8 @@ private:
     uint16_t getLatencyLegacy(G4_INST* Inst) const;
     uint16_t getOccupancyLegacy(G4_INST* Inst) const;
 
+    uint16_t getLatencyG12(G4_INST* Inst) const;
+    uint16_t getOccupancyG12(G4_INST* Inst) const;
 
     const IR_Builder* m_builder;
 };

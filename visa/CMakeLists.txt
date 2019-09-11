@@ -141,12 +141,14 @@ set_source_files_properties( CISA.tab.cpp lex.CISA.cpp PROPERTIES LANGUAGE CXX )
     LocalScheduler/G4_Sched.cpp
     LocalScheduler/LatencyTable.cpp
     LocalScheduler/LocalScheduler_G4IR.cpp
+    LocalScheduler/SWSB_G4IR.cpp
     )
 
   set(LocalScheduler_HEADERS
     LocalScheduler/Dependencies_G4IR.h
     LocalScheduler/LatencyTable.h
     LocalScheduler/LocalScheduler_G4IR.h
+    LocalScheduler/SWSB_G4IR.h
     )
 
 # Set up some common source files used in all the projects so they only need to be defined once

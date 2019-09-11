@@ -568,6 +568,87 @@ protected:
 
     const IR_Builder& builder;  // link to builder to access the various compilation options
 
+public:
+    enum SWSBTokenType {
+        TOKEN_NONE,
+        AFTER_READ,
+        AFTER_WRITE,
+        READ_ALL,
+        WRITE_ALL
+    };
+
+
+protected:
+    int ALUID = -1;
+    unsigned char depDistance = 0;
+    unsigned short SBToken = -1;
+    bool operandTypeIndicated = true;
+
+    struct DepToken {
+        unsigned short token;
+        SWSBTokenType type;
+    };
+    std::vector <DepToken> depTokens;
+
+public:
+    void setDistance(unsigned char dep_distance) {depDistance = dep_distance;}
+    void setOperandTypeIndicated(bool indicated) { operandTypeIndicated = indicated; }
+    void setToken(unsigned short token) {SBToken = token;}
+
+    void setDepToken(unsigned short token, SWSBTokenType type)
+    {
+        for (size_t i = 0, size = depTokens.size(); i < size; i++)
+        {
+            DepToken &depToken = depTokens[i];
+            if (depToken.token == token)
+            {
+                if (depToken.type == AFTER_WRITE)
+                {
+                    return;
+                }
+                if (type == AFTER_WRITE)
+                {
+                    depToken.type = type;
+                }
+                return;
+            }
+        }
+
+        struct DepToken dt;
+        dt.token = token;
+        dt.type = type;
+        depTokens.push_back(dt);
+    }
+    void eraseDepToken(unsigned i)
+    {
+        depTokens.erase(depTokens.begin() + i);
+    }
+
+    bool isOperandTypeIndicated() {return operandTypeIndicated;}
+    unsigned char getDistance() { return depDistance; }
+    unsigned short getToken() { return SBToken; }
+
+    size_t getDepTokenNum() { return depTokens.size(); }
+    unsigned short getDepToken(unsigned int i, SWSBTokenType &type) const
+    {
+        type = depTokens[i].type;
+        return depTokens[i].token;
+    }
+
+    bool distanceHonourInstruction() const
+    {
+        if (isSend() || op == G4_nop || isWait() || isMath())
+        {
+            return false;
+        }
+        return true;
+    }
+
+    bool tokenHonourInstruction() const { return isSend() || isMath(); }
+
+    void setALUID(int i) { ALUID = i; }
+    int getALUID() const { return ALUID; }
+
 
 public:
     G4_INST(const IR_Builder& builder,
@@ -666,6 +747,10 @@ public:
     bool isPartialWrite() const
     {
         return (predicate != NULL && op != G4_sel) || op == G4_smov;
+    }
+    bool isSWSBSync() const
+    {
+        return op == G4_sync_nop || op == G4_sync_allrd || op == G4_sync_allwr;
     }
 
     bool isPseudoLogic() const
@@ -1361,6 +1446,11 @@ public:
     void emit_send(std::ostream& output, bool dotStyle = false);
     void emit_send_desc(std::ostream& output);
 
+    void setSerialize()
+    {
+        option = option | InstOpt_Serialize;
+    }
+    bool isSerializedInst() const { return (option & InstOpt_Serialize) ? true : false; }
 
 };
 

@@ -45,6 +45,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "iga/IGALibrary/IR/Instruction.hpp"
 #include "BinaryEncodingIGA.h"
 #include "IsaDisassembly.h"
+#include "LocalScheduler/SWSB_G4IR.h"
 
 #if defined( _DEBUG ) && ( defined( _WIN32 ) || defined( _WIN64 ) )
 #include <windows.h>
@@ -430,6 +431,27 @@ void* VISAKernelImpl::compilePostOptimize(unsigned int& binarySize)
         bb->removeIntrinsics(Intrinsic::MemFence);
     }
 
+    if (getOptions()->getOption(vISA_SoftwareScoreBoard))
+    {
+        SWSB swsb(*m_kernel, *m_kernelMem);
+        swsb.SWSBGenerator();
+    }
+
+    if (getOptions()->getuInt32Option(vISA_SWSBTokenBarrier) != 0)
+    {
+        singleInstStallSWSB(m_kernel, getOptions()->getuInt32Option(vISA_SWSBTokenBarrier), 0, true);
+    }
+
+    if (getOptions()->getuInt32Option(vISA_SWSBInstStall) != 0)
+    {
+        singleInstStallSWSB(m_kernel, getOptions()->getuInt32Option(vISA_SWSBInstStall), getOptions()->getuInt32Option(vISA_SWSBInstStallEnd), false);
+    }
+
+    if (getOptions()->getOption(vISA_forceDebugSWSB))
+    {
+        forceDebugSWSB(m_kernel);
+    }
+
 
     m_kernel->evalAddrExp();
 
@@ -464,6 +486,7 @@ void* VISAKernelImpl::compilePostOptimize(unsigned int& binarySize)
 
     startTimer(TIMER_ENCODE_AND_EMIT);
     if (m_options->getOption(vISA_IGAEncoder)
+        || m_builder->hasSWSB()
         )
     {
 
@@ -537,6 +560,47 @@ void* VISAKernelImpl::compilePostOptimize(unsigned int& binarySize)
     m_kernel->doRelocation(binary, binarySize);
 
 
+    // Update instruction offset in register access maps.
+    if (m_builder->hasSWSB() &&
+        (isFCCallableKernel() || isFCCallerKernel() || isFCComposableKernel())) {
+      auto FCPI = m_builder->getFCPatchInfo();
+      auto &FirstAccess = FCPI->RegFirstAccessList;
+      auto &LastAccess = FCPI->RegLastAccessList;
+#if defined(DEBUG_VERBOSE_ON)
+      std::cerr << "FirstAccess:\n";
+#endif
+      for (auto MI = FirstAccess.begin(),
+                ME = FirstAccess.end(); MI != ME; ++MI) {
+        auto Inst = MI->Inst;
+        MI->Offset = unsigned(Inst->getGenOffset());
+#if defined(DEBUG_VERBOSE_ON)
+        fprintf(stderr, "r%03u.%s", MI->first,
+                (MI->Type == FCPatchingInfo::RegAccessType::Fully_Def ? "def" :
+                 "use"));
+        if (MI->Token != (unsigned short)(-1))
+          fprintf(stderr, ", $%u", MI->Token);
+        fprintf(stderr, ":");
+        MI->Inst->dump();
+#endif
+      }
+#if defined(DEBUG_VERBOSE_ON)
+      std::cerr << "LastAccess:\n";
+#endif
+      for (auto MI = LastAccess.begin(),
+                ME = LastAccess.end(); MI != ME; ++MI) {
+        auto Inst = MI->Inst;
+        MI->Offset = unsigned(Inst->getGenOffset());
+#if defined(DEBUG_VERBOSE_ON)
+        fprintf(stderr, "r%03u.%s", MI->first,
+                (MI->Type == FCPatchingInfo::RegAccessType::Fully_Def ? "def" :
+                 "use"));
+        if (MI->Token != (unsigned short)(-1))
+          fprintf(stderr, ", $%u", MI->Token);
+        fprintf(stderr, ":");
+        MI->Inst->dump();
+#endif
+      }
+    }
 
     if (m_options->getOption(vISA_PrintASMCount))
     {
@@ -569,6 +633,22 @@ void* VISAKernelImpl::compilePostOptimize(unsigned int& binarySize)
         krnlOutput.close();
     }
 
+    if (m_options->getOption(vISA_SoftwareScoreBoard) &&
+        getPlatformGeneration(getGenxPlatform()) < PlatformGen::GEN12)
+    {
+        std::ofstream krnlDepOutput;
+
+        char asmFileName[MAX_OPTION_STR_LENGTH];
+        SNPRINTF( asmFileName, MAX_OPTION_STR_LENGTH, "%s_0x%08x.dep", m_asmName.c_str(), (unsigned int)m_kernel->getKernelID());
+        krnlDepOutput.open( asmFileName );
+        if (!krnlDepOutput)
+        {
+            cerr << "Fail to open " << asmFileName << std::endl;
+        }
+
+        m_kernel->emit_dep(krnlDepOutput);
+        krnlDepOutput.close();
+    }
 
     if( m_builder->getJitInfo() != NULL )
     {

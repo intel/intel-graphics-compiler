@@ -32,7 +32,7 @@
 
     bool no64bitType() const
     {
-        return getGenxPlatform() == GENX_ICLLP;
+        return getGenxPlatform() == GENX_ICLLP || isGen12LP();
     }
 
     bool doPlane() const
@@ -42,7 +42,7 @@
 
     bool favorFloatMov() const
     {
-        return getGenxPlatform() >= GENX_ICL;
+        return getPlatformGeneration(getGenxPlatform()) == PlatformGen::GEN11 || isGen12LP();
     }
 
     bool noScalarJmp() const
@@ -57,7 +57,7 @@
 
     bool encodeUnitStrideTernary() const
     {
-        return false;
+        return getPlatformGeneration(getGenxPlatform()) >= PlatformGen::GEN12;
     }
 
     bool hasMacl() const
@@ -83,7 +83,7 @@
     bool no64bitRegioning() const
     {
         return getGenxPlatform() == GENX_CHV || getGenxPlatform() == GENX_BXT ||
-               getGenxPlatform() == GENX_ICLLP;
+               getGenxPlatform() == GENX_ICLLP || isGen12LP();
     }
 
     bool noSrc1Byte() const
@@ -140,12 +140,17 @@
 
     bool lowHighBundle() const
     {
-        return true;
+        return getPlatformGeneration(getGenxPlatform()) <= PlatformGen::GEN11;
+    }
+
+    bool hasCrossInstructionConflict() const
+    {
+        return isGen12LP();
     }
 
     bool hasBankCollision() const
     {
-        return true;
+        return getPlatformGeneration(getGenxPlatform()) <= PlatformGen::GEN11 || getOption(vISA_enableBCR);
     }
 
     bool hasSendShootdown() const
@@ -220,7 +225,7 @@
 
     bool hasMadm() const
     {
-        return getGenxPlatform() != GENX_ICLLP;
+        return getGenxPlatform() != GENX_ICLLP && !isGen12LP();
     }
 
     int getBarrierMask(bool enableBarrierInstCounterBits) const
@@ -249,7 +254,7 @@
 
     bool hasFdivPow() const
     {
-        return true;
+        return getPlatformGeneration(getGenxPlatform()) < PlatformGen::GEN12;
     }
 
     bool hasFdivPowWA() const
@@ -259,23 +264,28 @@
 
     bool hasCondModForTernary() const
     {
-        return true;
+        return getPlatformGeneration(getGenxPlatform()) < PlatformGen::GEN12;
+    }
+
+    bool hasSWSB() const
+    {
+        return getGenxPlatform() >= GENX_TGLLP;
     }
 
     bool hasPartialMixMode() const
     {
-        return false;
+        return getGenxPlatform() >= GENX_TGLLP;
     }
 
     // whether EOT sources need to be assigned r112-r127
     bool hasEOTGRFBinding() const
     {
-        return getOptions()->getuInt32Option(vISA_TotalGRFNum) == 128;
+        return true;
     }
 
     bool hasSmov() const
     {
-        return true;
+        return getGenxPlatform() < GENX_TGLLP;
     }
 
     bool doAccSub() const
@@ -285,7 +295,7 @@
 
     bool hasNFType() const
     {
-        return getGenxPlatform() >= GENX_ICL;
+        return getGenxPlatform() == GENX_ICL || getGenxPlatform() == GENX_ICLLP;
     }
 
     void getSSIDBits(uint32_t& width, uint32_t& start) const
@@ -295,10 +305,15 @@
             width = 2;
             start = 12; //[12:13]
         }
-        else
+        else if (getGenxPlatform() == GENX_CNL || getGenxPlatform() == GENX_ICL)
         {
             width = 2;
             start = 8; //[8:9]    
+        }
+        else
+        {
+            width = 3;
+            start = 8;//[8:10]
         }
     }
 
@@ -320,12 +335,12 @@
 
     bool avoidWAWSubRegHazard() const 
     {
-        return getOption(vISA_WAWSubregHazardAvoidance);
+        return (getGenxPlatform() < GENX_TGLLP) && getOption(vISA_WAWSubregHazardAvoidance);
     }
 
     bool newTernaryStride() const
     {
-        return false;
+        return getGenxPlatform() >= GENX_TGLLP;
     }
 
     bool doNotRewriteContiguousRegion() const
@@ -340,7 +355,7 @@
 
     bool relaxedACCRestrictions2() const
     {
-        return false;
+        return getGenxPlatform() >= GENX_TGLLP;
     }
 
     // 1 means one SIMD16 float accumulator
@@ -351,7 +366,7 @@
 
     bool fuseURBMessage() const
     {
-        return false;
+        return isGen12LP();
     }
 
     bool loadThreadPayload() const
@@ -361,22 +376,22 @@
 
     bool supportSrcModforMul() const
     {
-        return true;
+        return getPlatformGeneration(getGenxPlatform()) != PlatformGen::GEN12;
     }
 
     bool doMultiAccSub() const
     {
-        return false;
+        return getPlatformGeneration(getGenxPlatform()) >= PlatformGen::GEN12;
     }
 
     bool canMadHaveSrc0Acc() const
     {
-        return false;
+        return getPlatformGeneration(getGenxPlatform()) >= PlatformGen::GEN12;
     }
 
     bool accDstforIndirectSrc() const
     {
-        return true;
+        return getPlatformGeneration(getGenxPlatform()) != PlatformGen::GEN12;
     }
 
     bool needFenceBeforeEOT() const
@@ -386,7 +401,17 @@
 
     bool favorFpMad() const
     {
-        return true;
+        return getGenxPlatform() < GENX_CNL;
+    }
+
+    bool hasReadSuppression() const
+    {
+        return getGenxPlatform() == GENX_TGLLP;
+    }
+
+    bool hasSrc0ReadSuppression() const
+    {
+        return false;
     }
 
     bool needToClearScratchWrites() const
@@ -506,4 +531,15 @@
     {
         return false;
     }
+
+    bool isGen12LP() const
+    {
+        return getGenxPlatform() == GENX_TGLLP;
+    }
+
+    bool noL3Flush() const
+    {
+        return getGenxPlatform() >= GENX_TGLLP;
+    }
+
     // end HW capabilities

@@ -93,6 +93,11 @@ int SetPlatform( const char * str ) {
         visaPlatform = GENX_ICLLP;
         retVal = CM_SUCCESS;
     }
+    else if (platform == "TGLLP" || platform == "gen12lp")
+    {
+        visaPlatform = GENX_TGLLP;
+        retVal = CM_SUCCESS;
+    }
 
     return retVal;
 }
@@ -126,6 +131,8 @@ PlatformGen getPlatformGeneration(TARGET_PLATFORM platform)
     case GENX_ICL:
     case GENX_ICLLP:
         return PlatformGen::GEN11;
+    case GENX_TGLLP:
+        return PlatformGen::GEN12;
     default:
         assert(false && "unsupported platform");
         return PlatformGen::GEN_UNKNOWN;
@@ -167,6 +174,8 @@ int getGenxPlatformEncoding()
         return 8;
     case GENX_ICLLP:
         return 10;
+    case GENX_TGLLP:
+        return 12;
     default:
         assert(false && "unsupported platform");
         return -1;

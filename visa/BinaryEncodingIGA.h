@@ -55,6 +55,7 @@ public:
         delete IGAKernel;
     }
 
+    void SetSWSB(G4_INST * inst, iga::SWSB & sw);
 
     void DoAll();
     void FixInst();

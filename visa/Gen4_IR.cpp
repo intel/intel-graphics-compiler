@@ -82,6 +82,7 @@ G4_InstOptInfo InstOptInfo[] =
     {InstOpt_NoCompact, "NoCompact" },
     {InstOpt_NoSrcDepSet, "NoSrcDepSet"},
     {InstOpt_NoPreempt, "NoPreempt"},
+    {InstOpt_Serialize, "Serialize"},
     {InstOpt_END, "END"}
 };
 

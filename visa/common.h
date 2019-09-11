@@ -240,6 +240,7 @@ extern const char* steppingNames[];
 // -- "CNL" --> GENX_CNL
 // -- "ICL" --> GENX_ICL
 // -- "ICLLP" --> GENX_ICLLP
+// -- "TGLLP" --> GENX_TGLLP
 extern "C" int SetPlatform(const char* s);
 extern "C" int SetVisaPlatform(TARGET_PLATFORM vPlatform);
 
@@ -254,6 +255,7 @@ enum class PlatformGen
     GEN9 = 9,
     GEN10 = 10,
     GEN11 = 11,
+    GEN12 = 12,
 };
 
 unsigned char getGRFSize();

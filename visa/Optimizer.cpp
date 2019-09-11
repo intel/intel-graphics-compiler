@@ -6333,6 +6333,108 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
     }
 
 
+/*
+ *  Three sources only
+ */
+bool Optimizer::hasGen12LPBundleConflict(G4_INST *inst)
+{
+    int regs[3] = {-1};
+    int bundles[3] = {-1};
+
+    //Three source only
+    if (inst->getNumSrc() != 3 || inst->isSend())
+    {
+        return false;
+    }
+
+    //SIMD16
+    if(inst->getExecSize() < 16)
+    {
+        return false;
+    }
+
+    //Source 0 is scalar
+    G4_Operand* srcOpnd = inst->getSrc(0);
+    if (!srcOpnd || !srcOpnd->isSrcRegRegion() || !srcOpnd->asSrcRegRegion()->isScalar())
+    {
+        return false;
+    }
+
+    for (unsigned i = 1; i < G4_Inst_Table[inst->opcode()].n_srcs; i++)
+    {
+        srcOpnd = inst->getSrc(i);
+        if (srcOpnd)
+        {
+            if (srcOpnd->isSrcRegRegion() &&
+                srcOpnd->asSrcRegRegion()->getBase() &&
+                srcOpnd->asSrcRegRegion()->getBase()->isRegVar())
+            {
+                G4_RegVar* baseVar = static_cast<G4_RegVar*>(srcOpnd->asSrcRegRegion()->getBase());
+                if (baseVar->isGreg()) {
+                    uint32_t byteAddress = srcOpnd->getLinearizedStart();
+                    regs[i] = byteAddress / GENX_GRF_REG_SIZ;
+                    bundles[i] =  (regs[i] % 16) /2;
+                }
+            }
+        }
+    }
+
+    if (bundles[1] == bundles[2] && bundles[1] != -1)
+    {
+        return true;
+    }
+
+    return false;
+}
+
+
+void Optimizer::swapSrc1(G4_INST *inst)
+{
+    G4_Operand* src1Opnd = inst->getSrc(1);
+
+    if (inst->getExecSize() < 2)
+    {
+        return;
+    }
+
+    if (!src1Opnd ||
+         !src1Opnd->isSrcRegRegion()  ||
+        !src1Opnd->asSrcRegRegion()->isScalar())
+    {
+        return;
+    }
+
+    if (inst->isMixedMode())
+    {
+        return;
+    }
+
+    G4_Operand* src02Opnd = nullptr;
+
+    if (inst->opcode() == G4_mad)
+    {
+        src02Opnd = inst->getSrc(2);
+        if (src1Opnd->getType() == src02Opnd->getType())
+        {
+            inst->setSrc(src1Opnd, 2);
+            inst->setSrc(src02Opnd, 1);
+        }
+    }
+
+    if (inst->opcode() == G4_add ||
+        inst->opcode() == G4_mul)
+    {
+        src02Opnd = inst->getSrc(0);
+        if (src1Opnd->getType() == src02Opnd->getType())
+        {
+            inst->setSrc(src1Opnd, 0);
+            inst->setSrc(src02Opnd, 1);
+        }
+    }
+
+    return;
+}
+
 G4_SrcRegRegion* IR_Builder::createSubSrcOperand( G4_SrcRegRegion* src, uint16_t start, uint8_t size, uint16_t newVs, uint16_t newWd)
 {
     RegionDesc *rd = NULL;
@@ -6761,6 +6863,21 @@ void Optimizer::evenlySplitInst(INST_LIST_ITER iter, G4_BB* bb)
                     }
                 }
 
+                if(getGenxPlatform() == GENX_TGLLP && VISA_WA_CHECK(builder.getPWaTable(), Wa_1606931601) )
+                {
+                    INST_LIST_ITER nextIter = ii;
+                    if (hasGen12LPBundleConflict(inst))
+                    {
+                        nextIter++;
+                        evenlySplitInst(ii, bb);
+                        ii = nextIter;
+                        continue;
+                    }
+                }
+                if(getGenxPlatform() == GENX_TGLLP && VISA_WA_CHECK(builder.getPWaTable(), WaSwapForSrc1Replicate) )
+                {
+                    swapSrc1(inst);
+                }
 
                 if (inst->isCall() || inst->isFCall())
                 {

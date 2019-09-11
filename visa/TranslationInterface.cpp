@@ -8585,6 +8585,10 @@ static uint8_t getUPosition(VISASampler3DSubOpCode opcode)
 
 static void setUniformSampler(G4_InstSend* sendInst, bool uniformSampler)
 {
+    if (!uniformSampler)
+    {
+        sendInst->setSerialize();
+    }
 }
 
 /*

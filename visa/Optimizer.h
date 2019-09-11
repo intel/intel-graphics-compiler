@@ -202,6 +202,8 @@ class Optimizer
 
     void accSubPostSchedule();
     
+    bool hasGen12LPBundleConflict(G4_INST *inst);
+    void swapSrc1(G4_INST * inst);
 
 private:
     /* below member functions are used for message header opt */

@@ -148,6 +148,21 @@ DEF_VISA_OPTION(vISA_UnifiedSendCycle,  ET_INT32, "-unifiedSendCycle",      "USA
 DEF_VISA_OPTION(vISA_HWThreadNumberPerEU, ET_INT32, "-HWThreadNumberPerEU", "USAGE: -HWThreadNumberPerEU <num>\n",  0)
 DEF_VISA_OPTION(vISA_NoAtomicSend, ET_BOOL, "-noAtomicSend", UNUSED, false)
 
+//=== SWSB options ===
+DEF_VISA_OPTION(vISA_USEL3HIT,      ET_BOOL,  "-SBIDL3Hit",    UNUSED, false)
+DEF_VISA_OPTION(vISA_EnableIGASWSB,      ET_BOOL,  "-IGASWSB",    UNUSED, false)
+DEF_VISA_OPTION(vISA_SoftwareScoreBoard,  ET_BOOL,  "-SWSB",              UNUSED, false)
+DEF_VISA_OPTION(vISA_SWSBDepReduction,    ET_BOOL,  "-SWSBDepReduction",  UNUSED, false)
+DEF_VISA_OPTION(vISA_forceDebugSWSB,      ET_BOOL,  "-forceDebugSWSB",    UNUSED, false)
+DEF_VISA_OPTION(vISA_SWSBInstStall,       ET_INT32, "-SWSBInstStall",     UNUSED, 0)
+DEF_VISA_OPTION(vISA_SWSBInstStallEnd,    ET_INT32, "-SWSBInstStallEnd",  UNUSED, 0)
+DEF_VISA_OPTION(vISA_SWSBTokenBarrier,    ET_INT32, "-SWSBTokenBarrier",  UNUSED, 0)
+DEF_VISA_OPTION(vISA_EnableSwitch,      ET_BOOL,  "-enableSwitch",    UNUSED, false)
+DEF_VISA_OPTION(vISA_EnableISBIDBUNDLE,      ET_BOOL,  "-SBIDBundle",    UNUSED, false)
+DEF_VISA_OPTION(vISA_EnableGroupScheduleForBC,      ET_BOOL,  "-groupScheduleForBC",    UNUSED, true)
+DEF_VISA_OPTION(vISA_SWSBTokenNum,        ET_INT32, "-SWSBTokenNum",      "USAGE: -SWSBTokenNum <tokenNum>\n", 16)
+DEF_VISA_OPTION(vISA_EnableSendTokenReduction,      ET_BOOL,  "-SendTokenReduction",    UNUSED, false)
+
 
 //=== binary emission options ===
 DEF_VISA_OPTION(vISA_Compaction,          ET_BOOL,  "-nocompaction",    UNUSED, true)

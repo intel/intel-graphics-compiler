@@ -436,6 +436,8 @@ public:
     void emitInstructionInfo(std::ostream& output, INST_LIST_ITER &it);
     void emitBankConflict(std::ostream& output, G4_INST *inst);
 
+    uint32_t emitBankConflictGen12lp(std::ostream & os_output, G4_INST * inst, int * suppressRegs, int * lastRegs, int & sameConflictTimes, int & twoSrcConflicts, int & simd16RS);
+    uint32_t countReadModifyWrite(std::ostream& os_output, G4_INST *inst);
     void emitDepInfo(std::ostream& output, G4_INST *inst, int offset);
 
     bool isEndWithCall() const { return getLastOpcode() == G4_call; }
@@ -737,6 +739,30 @@ public:
         }
     } BCStats;
 
+    struct Gen12BankConflictStatistics
+    {
+        unsigned simd8 = 0;    //The number of simd8 instructions, one simd16 is treated as two simd8 if it's not HF
+        unsigned BCNum = 0;  //The number of band conflict.
+        int sameBankConflicts = 0;
+        int simd16ReadSuppression = 0;
+        int twoSrcBC = 0;
+
+        void clear()
+        {
+            simd8 = 0;
+            BCNum = 0;
+            sameBankConflicts = 0;
+            simd16ReadSuppression = 0;
+            twoSrcBC = 0;
+        }
+        void addBC(unsigned num) { BCNum += num; }
+        void addSameBankBC(unsigned num) { sameBankConflicts += num; }
+        void addSimd16RSBC(unsigned num) { simd16ReadSuppression += num; }
+        void add2SrcBC(unsigned num) { twoSrcBC += num; }
+        void addSIMD8() { ++simd8; }
+
+    } G12BCStats;
+    unsigned numRMWs = 0;    // counting the number of read-modify-write
 public:
 
     // forwarding functions to the BBs list

@@ -56,6 +56,9 @@ Platform BinaryEncodingIGA::getIGAInternalPlatform(TARGET_PLATFORM genxPlatform)
     case GENX_ICLLP:
         platform = Platform::GEN11;
         break;
+    case GENX_TGLLP:
+        platform = Platform::GEN12P1;
+        break;
     default:
         break;
     }
@@ -112,6 +115,10 @@ iga::InstOptSet BinaryEncodingIGA::getIGAInstOptSet(G4_INST* inst) const
         {
             options.add(iga::InstOpt::NOSRCDEPSET);
         }
+        if (inst->asSendInst()->isSerializedInst())
+        {
+            options.add(iga::InstOpt::SERIALIZE);
+        }
     }
     if (inst->isNoCompactedInst())
     {
@@ -144,6 +151,63 @@ void BinaryEncodingIGA::FixInst()
     }
 }
 
+iga::Op BinaryEncodingIGA::getIGAOpFromSFIDForSend(G4_opcode op, G4_INST *inst) const
+{
+    ASSERT_USER(inst->isSend(), "Only send has SFID");
+
+    iga::Op igaOp = iga::Op::INVALID;
+
+    G4_SendMsgDescriptor *msgDesc = inst->getMsgDesc();
+    auto funcID = msgDesc->getFuncId();
+
+    switch (funcID)
+    {
+    case vISA::SFID::NULL_SFID:
+        igaOp = (op == G4_send) ? iga::Op::SEND_NULL : iga::Op::SENDC_NULL;
+        break;
+    case vISA::SFID::SAMPLER:
+        igaOp = (op == G4_send) ? iga::Op::SEND_SMPL : iga::Op::SENDC_SMPL;
+        break;
+    case vISA::SFID::GATEWAY:
+        igaOp = (op == G4_send) ? iga::Op::SEND_GTWY : iga::Op::SENDC_GTWY;
+        break;
+    case vISA::SFID::DP_DC2:
+        igaOp = (op == G4_send) ? iga::Op::SEND_DC2 : iga::Op::SENDC_DC2;
+        break;
+    case vISA::SFID::DP_WRITE:
+        igaOp = (op == G4_send) ? iga::Op::SEND_RC : iga::Op::SENDC_RC;
+        break;
+    case vISA::SFID::URB:
+        igaOp = (op == G4_send) ? iga::Op::SEND_URB : iga::Op::SENDC_URB;
+        break;
+    case vISA::SFID::SPAWNER:
+        igaOp = (op == G4_send) ? iga::Op::SEND_TS : iga::Op::SENDC_TS;
+        break;
+    case vISA::SFID::VME:
+        igaOp = (op == G4_send) ? iga::Op::SEND_VME : iga::Op::SENDC_VME;
+        break;
+    case vISA::SFID::DP_CC:
+        igaOp = (op == G4_send) ? iga::Op::SEND_DCRO : iga::Op::SENDC_DCRO;
+        break;
+    case vISA::SFID::DP_DC:
+        igaOp = (op == G4_send) ? iga::Op::SEND_DC0 : iga::Op::SENDC_DC0;
+        break;
+    case vISA::SFID::DP_PI:
+        igaOp = (op == G4_send) ? iga::Op::SEND_PIXI : iga::Op::SENDC_PIXI;
+        break;
+    case vISA::SFID::DP_DC1:
+        igaOp = (op == G4_send) ? iga::Op::SEND_DC1 : iga::Op::SENDC_DC1;
+        break;
+    case vISA::SFID::CRE:
+        igaOp = (op == G4_send) ? iga::Op::SEND_CRE : iga::Op::SENDC_CRE;
+        break;
+    default:
+        ASSERT_USER(false, "Unknow SFID generated from vISA");
+        break;
+    }
+
+    return igaOp;
+}
 
 
 iga::Op BinaryEncodingIGA::getIGAOp(G4_opcode op, G4_INST *inst) const
@@ -258,26 +322,51 @@ iga::Op BinaryEncodingIGA::getIGAOp(G4_opcode op, G4_INST *inst) const
         igaOp = iga::Op::JOIN;
         break;
     case G4_wait:
+        if (platformModel->platform >= iga::Platform::GEN12P1)
+        {
+            igaOp = iga::Op::SYNC_BAR;
+        }
+        else
         {
             igaOp = iga::Op::WAIT;
         }
         break;
     case G4_send:
+        if (platformModel->platform >= iga::Platform::GEN12P1)
+        {
+            igaOp = getIGAOpFromSFIDForSend(op, inst);
+        }
+        else
         {
             igaOp = iga::Op::SEND;
         }
         break;
     case G4_sendc:
+        if (platformModel->platform >= iga::Platform::GEN12P1)
+        {
+            igaOp = getIGAOpFromSFIDForSend(op, inst);
+        }
+        else
         {
             igaOp = iga::Op::SENDC;
         }
         break;
     case G4_sends:
+        if (platformModel->platform >= iga::Platform::GEN12P1)
+        {
+            igaOp = getIGAOpFromSFIDForSend(G4_send, inst);
+        }
+        else
         {
             igaOp = iga::Op::SENDS;
         }
         break;
     case G4_sendsc:
+        if (platformModel->platform >= iga::Platform::GEN12P1)
+        {
+            igaOp = getIGAOpFromSFIDForSend(G4_sendc, inst);
+        }
+        else
         {
             igaOp = iga::Op::SENDSC;
         }
@@ -437,6 +526,15 @@ iga::Op BinaryEncodingIGA::getIGAOp(G4_opcode op, G4_INST *inst) const
     case G4_intrinsic:
         ASSERT_USER(false, "G4_intrinsic not GEN ISA OPCODE.");
         break;
+    case G4_sync_nop:
+        igaOp = iga::Op::SYNC_NOP;
+        break;
+    case G4_sync_allrd:
+        igaOp = iga::Op::SYNC_ALLRD;
+        break;
+    case G4_sync_allwr:
+        igaOp = iga::Op::SYNC_ALLWR;
+        break;
     case G4_NUM_OPCODE:
         ASSERT_USER(false, "G4_NUM_OPCODE not GEN ISA OPCODE.");
         break;
@@ -448,6 +546,52 @@ iga::Op BinaryEncodingIGA::getIGAOp(G4_opcode op, G4_INST *inst) const
     return igaOp;
 }
 
+void BinaryEncodingIGA::SetSWSB(G4_INST *inst, iga::SWSB &sw)
+{
+    // Set token, e.g. $0
+    if (inst->tokenHonourInstruction() && (inst->getToken() != (unsigned short)-1))
+    {
+        sw.tokenType = SWSB::TokenType::SET;
+        sw.sbid = inst->getToken();
+    }
+
+    if ((unsigned)inst->getDistance())
+    {
+        {
+            // there is only one pipe on single-dist-pipe platform,
+            // must be REG_DIST
+            sw.distType = SWSB::DistType::REG_DIST;
+        }
+        sw.minDist = (uint32_t)inst->getDistance();
+    }
+
+    // Set token dependency, e.g. $1.src
+    if (inst->getDepTokenNum())
+    {
+        assert(sw.tokenType != SWSB::TokenType::SET &&
+               "unexpect SWSB dependence type");
+        assert(inst->getDepTokenNum() == 1 &&
+            "More than one token dependence in one instruction");
+
+        using SWSBTokenType = vISA::G4_INST::SWSBTokenType;
+
+        for (int i = 0; i < (int)inst->getDepTokenNum(); i++)
+        {
+            SWSBTokenType type = SWSBTokenType::TOKEN_NONE;
+            uint8_t token = (uint8_t)inst->getDepToken(i, type);
+            if (type == SWSBTokenType::AFTER_READ)
+            {
+                sw.tokenType = SWSB::TokenType::SRC;
+            }
+            else if (type == SWSBTokenType::AFTER_WRITE)
+            {
+                sw.tokenType = SWSB::TokenType::DST;
+            }
+            sw.sbid = token;
+        }
+    }
+    return;
+}
 
 void BinaryEncodingIGA::DoAll()
 {
@@ -688,6 +832,48 @@ void BinaryEncodingIGA::DoAll()
             {
                 // set source operands
                 int numSrcToEncode = inst->getNumSrc();
+                if (inst->isSend())
+                {
+                    // skip desc/exdesc as they are handled separately
+                    numSrcToEncode = inst->isSplitSend() ? 2 : 1;
+
+                    if (numSrcToEncode == 1 && platformModel->platform >= Platform::GEN12P1)
+                    {
+                        RegRef regTemp;
+                        regTemp.regNum = 0;
+                        regTemp.subRegNum = 0;
+                        Region rgnTemp;
+                        rgnTemp.set(Region::Vert::VT_0, Region::Width::WI_1, Region::Horz::HZ_0);
+
+                        igaInst->setDirectSource(
+                            SourceIndex::SRC1,
+                            SrcModifier::NONE,
+                            RegName::ARF_NULL,
+                            regTemp,
+                            rgnTemp,
+                            Type::INVALID);
+                    }
+                }
+                if (getGenxPlatform() >= GENX_CNL
+                    && inst->opcode() == G4_movi && numSrcToEncode == 1)
+                {
+                    // From CNL, 'movi' becomes a binary instruction with an
+                    // optional immediate operand, which needs encoding as null
+                    // or imm32. So far, within vISA jitter, 'movi' is still
+                    // modeled as unary instruction, setting src1 to null for
+                    // platforms >= CNL.
+                    RegRef regTemp;
+                    regTemp.regNum = 0;
+                    regTemp.subRegNum = 0;
+                    Region rgnTemp;
+                    rgnTemp.set(Region::Vert::VT_1, Region::Width::WI_1,
+                                Region::Horz::HZ_0);
+                    igaInst->setDirectSource(SourceIndex::SRC1,
+                                             SrcModifier::NONE,
+                                             RegName::ARF_NULL,
+                                             regTemp, rgnTemp,
+                                             Type::UB);
+                }
                 for (int i = 0; i < numSrcToEncode; i++)
                 {
                     SourceIndex opIx = (SourceIndex)((int)SourceIndex::SRC0 + i);
@@ -776,6 +962,23 @@ void BinaryEncodingIGA::DoAll()
             }
             igaInst->addInstOpts(getIGAInstOptSet(inst));
 
+            if (getPlatformGeneration(getGenxPlatform()) >= PlatformGen::GEN12) {
+                iga::SWSB sw;
+                SetSWSB(inst, sw);
+
+                SWSB::InstType inst_ty = SWSB::InstType::UNKNOWN;
+                if (inst->isMath())
+                    inst_ty = SWSB::InstType::MATH;
+                else if (inst->isSend())
+                    inst_ty = SWSB::InstType::SEND;
+                else
+                    inst_ty = SWSB::InstType::OTHERS;
+
+                // Verify if swsb is in encode-able dist and token combination
+                if(!sw.verify(getIGASWSBEncodeMode(*kernel.fg.builder), inst_ty))
+                    IGA_ASSERT_FALSE("Invalid swsb dist and token combination");
+                igaInst->setSWSB(sw);
+            }
 
 #if _DEBUG
             igaInst->validate();
@@ -818,6 +1021,13 @@ void BinaryEncodingIGA::DoAll()
     }
 
     KernelEncoder encoder(IGAKernel, autoCompact);
+    encoder.setSWSBEncodingMode(getIGASWSBEncodeMode(*kernel.fg.builder));
+
+    if (kernel.getOption(vISA_EnableIGASWSB))
+    {
+        encoder.enableIGAAutoDeps();
+    }
+
     encoder.encode();
 
     stopTimer(TIMER_IGA_ENCODER);
@@ -842,7 +1052,11 @@ void BinaryEncodingIGA::DoAll()
 }
 
 SWSB_ENCODE_MODE BinaryEncodingIGA::getIGASWSBEncodeMode(const IR_Builder& builder) {
+    if (getPlatformGeneration(getGenxPlatform()) < PlatformGen::GEN12)
         return SWSB_ENCODE_MODE::SWSBInvalidMode;
+
+
+    return SWSB_ENCODE_MODE::SingleDistPipe;
 }
 
 SendDescArg BinaryEncodingIGA::getIGASendDescArg(G4_INST* sendInst) const
@@ -879,6 +1093,22 @@ iga::SendDescArg BinaryEncodingIGA::getIGASendExDescArg(G4_INST* sendInst) const
         {
             exDescArg.type = SendDescArg::IMM;
             uint32_t tVal = (uint32_t)exDesc->asImm()->getImm();
+            //We must clear the funcID in the extended message for Gen12+
+            //It's because the explicit encoding is applied, no mapping anymore.
+            //ditto for the EOT bit which is moved out of extDesc
+            //The extended message format
+            //struct ExtendedMsgDescLayout {
+            //    uint32_t funcID : 4;       // bit 0:3 << not part of ExDesc
+            //    uint32_t unnamed1 : 1;     // bit 4
+            //    uint32_t eot : 1;          // bit 5 << not part of ExDesc
+            //    uint32_t extMsgLength : 5; // bit 6:10
+            //    uint32_t unnamed2 : 5;     // bit 11:15
+            //    uint32_t extFuncCtrl : 16; // bit 16:31
+            //};
+            if (getPlatformGeneration(getGenxPlatform()) >= PlatformGen::GEN12)
+            {
+                tVal &= 0xFFFFFFC0;
+            }
             exDescArg.imm = tVal;
         }
         else
@@ -899,6 +1129,11 @@ iga::SendDescArg BinaryEncodingIGA::getIGASendExDescArg(G4_INST* sendInst) const
         exDescArg.type = SendDescArg::IMM;
         uint32_t tVal = sendDesc->getExtendedDesc();
 
+        //We must clear the funcID in the extended message
+        if (getPlatformGeneration(getGenxPlatform()) >= PlatformGen::GEN12)
+        {
+            tVal = tVal & 0xFFFFFFF0;
+        }
         exDescArg.imm = tVal;
     }
 
