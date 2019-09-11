@@ -133,6 +133,10 @@ iga_gen_t GetIGAPlatform(const IGC::CPlatform* platform)
         {
             return IGA_GEN9;
         }
+    case IGFX_GEN10_CORE:
+        return IGA_GEN10;
+    case IGFX_GEN11_CORE:
+            return IGA_GEN11;
     default:
         assert(0 && "unsupported platform");
         break;
