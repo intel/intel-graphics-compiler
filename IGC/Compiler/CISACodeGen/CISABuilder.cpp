@@ -483,37 +483,37 @@ namespace IGC
     assert(m_encoderState.m_flag.var == nullptr && "predicate not supported");
     VISA_StateOpndHandle* pSurfStateOpndHandle = GetVISASurfaceOpnd(resource);
         VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
-    VISA_RawOpnd* pDst = GetRawDestination(dst);
-    VISA_RawOpnd* pElemOffset = GetRawSource(elem_offset);
-    VISA_RawOpnd* pSrc0 = GetRawSource(src0);
-    VISA_RawOpnd* pSrc1 = GetRawSource(src1);
+        VISA_RawOpnd* pDst = GetRawDestination(dst);
+        VISA_RawOpnd* pElemOffset = GetRawSource(elem_offset);
+        VISA_RawOpnd* pSrc0 = GetRawSource(src0);
+        VISA_RawOpnd* pSrc1 = GetRawSource(src1);
 
-    /*
-    So the problem is this - the message was added for SNB, and at the time it was implemented as
-    CMPXCHG : new = (old==src1) ? src0 : old
+        /*
+        So the problem is this - the message was added for SNB, and at the time it was implemented as
+        CMPXCHG : new = (old==src1) ? src0 : old
 
-    In IVB this becomes untyped atomic, and it's implemented as
-    AOP_CMPWR (src0 == old_dst) ? src1 : old_dst old_dst
+        In IVB this becomes untyped atomic, and it's implemented as
+        AOP_CMPWR (src0 == old_dst) ? src1 : old_dst old_dst
 
-    Note that the source is swapped.  Since we define CMPXCHG as the former in vISA, internally we
-    perform a swap for it.  So I guess for now you'll need to swap the two source to follow the vISA
-    semantics.  We may want to add a new vISA message to fix this issue.
-    */
-    if (atomic_op == EATOMIC_CMPXCHG) {
-        std::swap(pSrc0, pSrc1);
-    }
+        Note that the source is swapped.  Since we define CMPXCHG as the former in vISA, internally we
+        perform a swap for it.  So I guess for now you'll need to swap the two source to follow the vISA
+        semantics.  We may want to add a new vISA message to fix this issue.
+        */
+        if (atomic_op == EATOMIC_CMPXCHG) {
+            std::swap(pSrc0, pSrc1);
+        }
 
-    V(vKernel->AppendVISASurfAccessDwordAtomicInst(
-        predOpnd,
-        convertAtomicOpEnumToVisa(atomic_op),
-        is16Bit,
-        ConvertMaskToVisaType(m_encoderState.m_mask, m_encoderState.m_noMask),
-        visaExecSize(m_encoderState.m_simdSize),
-        pSurfStateOpndHandle,
-        pElemOffset,
-        pSrc0,
-        pSrc1,
-        pDst));
+        V(vKernel->AppendVISASurfAccessDwordAtomicInst(
+            predOpnd,
+            convertAtomicOpEnumToVisa(atomic_op),
+            is16Bit,
+            ConvertMaskToVisaType(m_encoderState.m_mask, m_encoderState.m_noMask),
+            visaExecSize(m_encoderState.m_simdSize),
+            pSurfStateOpndHandle,
+            pElemOffset,
+            pSrc0,
+            pSrc1,
+            pDst));
     }
 
     void CEncoder::Cmp(e_predicate p, CVariable* dst, CVariable* src0, CVariable* src1)
