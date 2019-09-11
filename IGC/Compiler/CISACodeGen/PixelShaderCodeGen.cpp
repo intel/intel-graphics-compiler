@@ -1111,6 +1111,11 @@ namespace IGC
         }
         if (simdMode == SIMDMode::SIMD16 && EP.m_ShaderMode == ShaderDispatchMode::NOT_APPLICABLE)
         {
+            if (IGC_IS_FLAG_ENABLED(ForcePSBestSIMD))
+            {
+                return true;
+            }
+
             if (forceSIMD16)
             {
                 return true;

@@ -706,6 +706,19 @@ namespace IGC
         COMPILER_TIME_END(ctx, TIME_CodeGen);
     }
 
+    // check based on performance measures.
+    inline bool SimdEarlyCheck(CodeGenContext* ctx)
+    {
+        if (ctx->m_sampler < 11 || ctx->m_inputCount < 16 || ctx->m_tempCount < 40 || ctx->m_dxbcCount < 280 || ctx->m_ConstantBufferCount < 500)
+        {
+            if (ctx->m_tempCount < 90 && ctx->m_ConstantBufferCount < 10000)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
     void PSCodeGen(PixelShaderContext* ctx, CShaderProgram::KernelShaderMap& shaders, PSSignature* pSignature = nullptr)
     {
     COMPILER_TIME_START(ctx, TIME_CodeGen);
@@ -724,29 +737,40 @@ namespace IGC
     bool earlyExit =
         ctx->getCompilerOption().pixelShaderDoNotAbortOnSpill ? false : true;
 
-
-    if (pixelShaderSIMDMode & FLAG_PS_SIMD_MODE_FORCE_SIMD8)
+    if (IGC_IS_FLAG_ENABLED(ForcePSBestSIMD))
     {
-        AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD8, false, ShaderDispatchMode::NOT_APPLICABLE, pSignature);
+        if (SimdEarlyCheck(ctx))
+        {
+            AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD16, true, ShaderDispatchMode::NOT_APPLICABLE, pSignature);
+        }
+        AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD8, !ctx->m_retryManager.IsLastTry(ctx), ShaderDispatchMode::NOT_APPLICABLE, pSignature);
         useRegKeySimd = true;
     }
-
-    if (pixelShaderSIMDMode & FLAG_PS_SIMD_MODE_FORCE_SIMD16)
+    else
     {
-        // if we forceSIMD16 or SIMD16_SIMD32 compilation modes then SIMD16 must compile and cannot abort on spill
-        AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD16,
-            (earlyExit &&
-            (pixelShaderSIMDMode & FLAG_PS_SIMD_MODE_FORCE_SIMD8)), ShaderDispatchMode::NOT_APPLICABLE, pSignature);
-        useRegKeySimd = true;
-    }
 
-    if (pixelShaderSIMDMode & FLAG_PS_SIMD_MODE_FORCE_SIMD32)
-    {
-        // if we forceSIMD32 compilation mode then SIMD32 must compile and cannot abort on spill
-        AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD32, (earlyExit && (pixelShaderSIMDMode & FLAG_PS_SIMD_MODE_FORCE_SIMD16)), ShaderDispatchMode::NOT_APPLICABLE, pSignature);
-        useRegKeySimd = true;
-    }
+        if (pixelShaderSIMDMode & FLAG_PS_SIMD_MODE_FORCE_SIMD8)
+        {
+            AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD8, false, ShaderDispatchMode::NOT_APPLICABLE, pSignature);
+            useRegKeySimd = true;
+        }
 
+        if (pixelShaderSIMDMode & FLAG_PS_SIMD_MODE_FORCE_SIMD16)
+        {
+            // if we forceSIMD16 or SIMD16_SIMD32 compilation modes then SIMD16 must compile and cannot abort on spill
+            AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD16,
+                (earlyExit &&
+                (pixelShaderSIMDMode & FLAG_PS_SIMD_MODE_FORCE_SIMD8)), ShaderDispatchMode::NOT_APPLICABLE, pSignature);
+            useRegKeySimd = true;
+        }
+
+        if (pixelShaderSIMDMode & FLAG_PS_SIMD_MODE_FORCE_SIMD32)
+        {
+            // if we forceSIMD32 compilation mode then SIMD32 must compile and cannot abort on spill
+            AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD32, (earlyExit && (pixelShaderSIMDMode & FLAG_PS_SIMD_MODE_FORCE_SIMD16)), ShaderDispatchMode::NOT_APPLICABLE, pSignature);
+            useRegKeySimd = true;
+        }
+    }
 
     if (!useRegKeySimd)
     {
@@ -757,12 +781,9 @@ namespace IGC
             enableSimd32 = true;
         }
         // heuristic based on performance measures.
-        else if (ctx->m_sampler < 11 || ctx->m_inputCount < 16 || ctx->m_tempCount < 40 || ctx->m_dxbcCount < 280 || ctx->m_ConstantBufferCount < 500)
+        else if (SimdEarlyCheck(ctx))
         {
-            if (ctx->m_tempCount < 90 && ctx->m_ConstantBufferCount < 10000)
-            {
-                enableSimd32 = true;
-            }
+            enableSimd32 = true;
         }
 
         // for versioned loop, in general SIMD16 with spill has better perf
