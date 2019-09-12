@@ -1355,7 +1355,6 @@ function(igc_custom_build_add configName copyConfigName)
   endif()
 endfunction()
 
-
 # Gets configuration path element corresponding to selected configuration.
 #
 # @param retValName Name of variable placeholder where result will be returned.
