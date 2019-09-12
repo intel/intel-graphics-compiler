@@ -388,8 +388,7 @@ void Optimizer::insertDummyCompactInst()
     auto src = builder.createSrcRegRegion(Mod_src_undef, Direct,
         dcl->getRegVar(), 0, 0, builder.getRegionScalar(), Type_F);
     auto dst = builder.createDstRegRegion(Direct, dcl->getRegVar(), 0, 0, 1, Type_F);
-    G4_INST *movInst = builder.createInternalInst(nullptr, G4_mov, nullptr, false,
-        1, dst, src, nullptr, InstOpt_WriteEnable);
+    G4_INST *movInst = builder.createMov(1, dst, src, InstOpt_WriteEnable, false);
 
     auto bb = fg.getEntryBB();
     for (auto it = bb->begin(), ie = bb->end(); it != ie; ++it)
@@ -4732,20 +4731,13 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         G4_Declare *srcDcl = source_send->getSrc(0)->getBase()->asRegVar()->getDeclare();
         G4_SrcRegRegion* newSrcOpnd = builder.Create_Src_Opnd_From_Dcl(srcDcl, builder.getRegionStride1());
 
-        G4_INST* mov_mrf = builder.createInternalInst(
-            NULL,
-            G4_mov,
-            NULL,
-            false,
+        G4_INST* mov_mrf = builder.createMov(
             m->getExecSize(),
-            builder.duplicateOperand( m->getDst() ),
-            newSrcOpnd, //builder.duplicateOperand( source->send->getSrc(0) ),
-            NULL,
-            m->getOption(), // to fix the SIMD control flow
-            inst->getLineNo(),
-            inst->getCISAOff(),
-            inst->getSrcFilename() );
-        bb->insert( pos, mov_mrf );
+            builder.duplicateOperand(m->getDst()),
+            newSrcOpnd,
+            m->getOption(),
+            false);
+        bb->insert(pos, mov_mrf);
 
         // maintain def-use.
         //
@@ -6144,7 +6136,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         // mov (1) null<1>:ud r0.0<0;1,0>:ud {Switch}
         G4_DstRegRegion* movDst = builder.createNullDst(Type_UD);
         G4_SrcRegRegion* movSrc = builder.Create_Src_Opnd_From_Dcl(builder.getBuiltinR0(), builder.getRegionScalar());
-        G4_INST* movInst = builder.createInternalInst(NULL, G4_mov, NULL, false, 1, movDst, movSrc, NULL, InstOpt_WriteEnable);
+        G4_INST* movInst = builder.createMov(1, movDst, movSrc, InstOpt_WriteEnable, false);
         movInst->setOptionOn(InstOpt_Switch);
         bb->insert(instIter, movInst);
     }
@@ -6290,7 +6282,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                             Direct, builder.phyregpool.getF0Reg(), 0, 0,
                             builder.getRegionScalar(), Type_UD);
                         G4_DstRegRegion* nullDst = builder.createNullDst(Type_UD);
-                        G4_INST* inst = builder.createInternalInst(NULL, G4_mov, NULL, false, 1, nullDst, flagSrc, NULL, InstOpt_WriteEnable);
+                        G4_INST* inst = builder.createMov(1, nullDst, flagSrc, InstOpt_WriteEnable, false);
                         bb->insert(instIter, inst);
                     }
                     if (unusedFlag[1])
@@ -6299,7 +6291,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                             Direct, builder.phyregpool.getF1Reg(), 0, 0,
                             builder.getRegionScalar(), Type_UD);
                         G4_DstRegRegion* nullDst = builder.createNullDst(Type_UD);
-                        G4_INST* inst = builder.createInternalInst(NULL, G4_mov, NULL, false, 1, nullDst, flagSrc, NULL, InstOpt_WriteEnable);
+                        G4_INST* inst = builder.createMov(1, nullDst, flagSrc, InstOpt_WriteEnable, false);
                         bb->insert(instIter, inst);
                     }
                 }
@@ -6858,7 +6850,7 @@ void Optimizer::evenlySplitInst(INST_LIST_ITER iter, G4_BB* bb)
                         G4_DstRegRegion* movDst = builder.createDstRegRegion(
                             Direct, builder.phyregpool.getNullReg(), 0, 0, 1, fenceDcl->getElemType());
                         G4_SrcRegRegion* movSrc = builder.Create_Src_Opnd_From_Dcl(fenceDcl, builder.createRegionDesc(8, 8, 1));
-                        G4_INST* movInst = builder.createInternalInst(NULL, G4_mov, NULL, false, 8, movDst, movSrc, NULL, InstOpt_WriteEnable);
+                        G4_INST* movInst = builder.createMov(8, movDst, movSrc, InstOpt_WriteEnable, false);
                         bb->insert(nextIter, movInst);
                     }
                 }
@@ -6986,8 +6978,7 @@ void Optimizer::evenlySplitInst(INST_LIST_ITER iter, G4_BB* bb)
                     G4_DstRegRegion* tdrDst = builder.createDstRegRegion(Direct, builder.phyregpool.getTDRReg(),
                         0, 0, 1, Type_UW);
                     G4_Imm* src = builder.createImm(0, Type_UW);
-                    G4_INST* movInst = builder.createInternalInst(nullptr, G4_mov, nullptr, false,
-                        8, tdrDst, src, nullptr, InstOpt_WriteEnable | InstOpt_Switch);
+                    G4_INST* movInst = builder.createMov(8, tdrDst, src, InstOpt_WriteEnable | InstOpt_Switch, false);
                     bb->insert(ii, movInst);
                 }
 
@@ -6998,8 +6989,8 @@ void Optimizer::evenlySplitInst(INST_LIST_ITER iter, G4_BB* bb)
                     // mov (1) n0.0 0x0 {Switch}
                     G4_DstRegRegion* n0Dst = builder.createDstRegRegion(Direct,
                         builder.phyregpool.getN0Reg(), 0, 0, 1, Type_UD);
-                    auto movInst = builder.createInternalInst(nullptr, G4_mov, nullptr, false, 1, n0Dst,
-                        builder.createImm(0, Type_UD), nullptr, InstOpt_WriteEnable | InstOpt_Switch);
+                    auto movInst = builder.createMov(1, n0Dst,
+                        builder.createImm(0, Type_UD), InstOpt_WriteEnable | InstOpt_Switch, false);
                     bb->insert(ii, movInst);
                 }
 
@@ -7933,15 +7924,7 @@ public:
         if (needSwitch)
             options |= InstOpt_Switch;
         G4_INST *movInst =
-            builder.createInternalInst(NULL,
-            G4_mov,
-            NULL,
-            false,
-            8,
-            R0CopyOpnd,
-            R0Opnd,
-            NULL,
-            options);
+            builder.createMov(8, R0CopyOpnd, R0Opnd, options, false);
 
         BB_LIST_ITER ib = kernel.fg.begin();
         G4_INST *inst = NULL;
@@ -8012,7 +7995,7 @@ public:
             G4_Declare* tempDcl = builder.createHardwiredDeclare(16, Type_UD, reg_init, 0);
             G4_DstRegRegion* dst = builder.createDstRegRegion(Direct, tempDcl->getRegVar(), 0, 0, 1, Type_UD);
             G4_Imm * src0 = builder.createImm(0, Type_UD);
-            G4_INST* initInst = builder.createInternalInst(NULL, G4_mov, NULL, false, 16, dst, src0, NULL, InstOpt_WriteEnable);
+            G4_INST* initInst = builder.createMov(16, dst, src0, InstOpt_WriteEnable, false);
             bb->insert(iter, initInst);
         }
 
@@ -8022,7 +8005,7 @@ public:
             G4_Declare* tempDcl = builder.createHardwiredDeclare(8, Type_UD, 128 - (num_reg_init % 2), 0);
             G4_DstRegRegion* dst = builder.createDstRegRegion(Direct, tempDcl->getRegVar(), 0, 0, 1, Type_UD);
             G4_Imm * src0 = builder.createImm(0, Type_UD);
-            G4_INST* spIncInst = builder.createInternalInst(NULL, G4_mov, NULL, false, 8, dst, src0, NULL, InstOpt_WriteEnable);
+            G4_INST* spIncInst = builder.createMov(8, dst, src0, InstOpt_WriteEnable, false);
             G4_BB* bb = kernel.fg.getEntryBB();
             bb->insert(iter, spIncInst);
         }
@@ -8042,7 +8025,7 @@ public:
                 G4_Declare* tempDclSrc = builder.createHardwiredDeclare(1, Type_UD, 126, 0);
                 G4_SrcRegRegion *src0 = builder.createSrcRegRegion(Mod_src_undef, Direct, tempDclSrc->getRegVar(), 0, 0, builder.getRegionScalar(), Type_UB);
 
-                G4_INST* initInst = builder.createInternalInst(NULL, G4_mov, NULL, false, (uint8_t)exec_size, dst, src0, NULL, InstOpt_WriteEnable);
+                G4_INST* initInst = builder.createMov((uint8_t)exec_size, dst, src0, InstOpt_WriteEnable, false);
                 bb->insert(iter, initInst);
             }
             //caluclates bytes that remain to be initialized
@@ -8058,9 +8041,7 @@ public:
             G4_Declare* tmpFlagDcl = builder.createTempFlag(2);
             tmpFlagDcl->getRegVar()->setPhyReg(builder.phyregpool.getFlagAreg(i), 0);
             G4_DstRegRegion *tempPredVar = builder.createDstRegRegion(Direct, tmpFlagDcl->getRegVar(), 0, 0, 1, Type_UD);
-            G4_INST *predInst = builder.createInternalInst(NULL, G4_mov, NULL, false, 1,
-                tempPredVar, builder.createImm(0, Type_UW), NULL,
-                InstOpt_WriteEnable, 0, 0, 0);
+            G4_INST *predInst = builder.createMov(1, tempPredVar, builder.createImm(0, Type_UW), InstOpt_WriteEnable, false);
             bb = kernel.fg.getEntryBB();
             bb->insert(iter, predInst);
         }
@@ -11479,9 +11460,7 @@ static G4_INST* emitRetiringMov(IR_Builder& builder, G4_BB* BB, G4_INST* SI,
     G4_SrcRegRegion* MovSrc = builder.createSrcRegRegion(
         Mod_src_undef, Direct, Dcl->getRegVar(), 0, 0,
         builder.getRegionStride1(), Type_F);
-    G4_INST* MovInst = builder.createInternalInst(
-        nullptr, G4_mov, nullptr, false, 8, MovDst, MovSrc, nullptr,
-        InstOpt_M0 | InstOpt_WriteEnable);
+    G4_INST* MovInst = builder.createMov(8, MovDst, MovSrc, InstOpt_M0 | InstOpt_WriteEnable, false);
     BB->insert(InsertBefore, MovInst);
     return MovInst;
 }

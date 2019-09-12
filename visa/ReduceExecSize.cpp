@@ -1037,9 +1037,8 @@ void HWConformity::splitInstruction(INST_LIST_ITER iter, G4_BB* bb, bool compOpt
         maskDcl = builder.createTempVar(instExSize, Type_UW, Eight_Word);
         G4_DstRegRegion * tmpMaskOpnd = builder.createDstRegRegion(Direct, maskDcl->getRegVar(), 0, 0, 1, Type_UW);
 
-        G4_INST* firstMov = builder.createInternalInst(NULL, G4_mov, NULL, false, instExSize,
-            tmpMaskOpnd, builder.createImm(0, Type_UW), NULL, inst->getOption(), inst->getLineNo(),
-            inst->getCISAOff(), inst->getSrcFilename());
+        G4_INST* firstMov = builder.createMov(instExSize,
+            tmpMaskOpnd, builder.createImm(0, Type_UW), inst->getOption(), false);
 
         G4_Predicate* pred = builder.duplicateOperand(inst->getPredicate());
         builder.createInternalInst(pred, G4_mov, NULL, false, instExSize,
@@ -1571,9 +1570,8 @@ void HWConformity::moveSrcToGRF( INST_LIST_ITER it, uint32_t srcNum, uint16_t nu
                         0,
                         hs,
                         dcl->getElemType());
-    G4_INST* newInst = builder.createInternalInst( NULL, G4_mov, NULL, false,
-        execSize, dstRegion, src, NULL, ( bb->isInSimdFlow() ? InstOpt_WriteEnable : 0),
-        inst->getLineNo(), inst->getCISAOff(), inst->getSrcFilename() );
+    G4_INST* newInst = builder.createMov(
+        execSize, dstRegion, src, (bb->isInSimdFlow() ? InstOpt_WriteEnable : InstOpt_NoOpt), false);
 
     if( bb->isInSimdFlow() )
     {
@@ -1624,9 +1622,7 @@ void HWConformity::saveDst( INST_LIST_ITER& it, uint8_t stride, G4_BB *bb )
 
     unsigned int new_option = inst->getOption();
 
-    G4_INST* newInst = builder.createInternalInst( NULL, G4_mov, NULL, false,
-        execSize, tmpDstOpnd, srcRegion, NULL, new_option, inst->getLineNo(), inst->getCISAOff(),
-        inst->getSrcFilename() );
+    G4_INST* newInst = builder.createMov(execSize, tmpDstOpnd, srcRegion, new_option, false);
     if( bb->isInSimdFlow() )
     {
         newInst->setOptions( ( inst->getOption() & ~InstOpt_Masks ) | InstOpt_WriteEnable );
@@ -1648,12 +1644,10 @@ void HWConformity::restoreDst( INST_LIST_ITER& it, G4_DstRegRegion *origDst, G4_
 
     unsigned int new_option = inst->getOption();
 
-    G4_INST* newInst = builder.createInternalInst( NULL, G4_mov, NULL, false,
-        execSize, origDst, srcRegion, NULL, new_option, inst->getLineNo(), inst->getCISAOff(),
-        inst->getSrcFilename() );
-    if( bb->isInSimdFlow() )
+    G4_INST* newInst = builder.createMov(execSize, origDst, srcRegion, new_option, false);
+    if (bb->isInSimdFlow())
     {
-        newInst->setOptions( ( inst->getOption() & ~InstOpt_Masks ) | InstOpt_WriteEnable );
+        newInst->setOptions((inst->getOption() & ~InstOpt_Masks) | InstOpt_WriteEnable);
     }
     INST_LIST_ITER iter = it;
     iter++;

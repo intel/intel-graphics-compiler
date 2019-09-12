@@ -356,6 +356,19 @@ G4_INST* IR_Builder::createInternalInst(G4_Predicate* prd,
     return ii;
 }
 
+G4_INST* IR_Builder::createMov(uint8_t execSize, G4_DstRegRegion* dst,
+    G4_Operand* src0, uint32_t option, bool appendToInstList)
+{
+    if (appendToInstList)
+    {
+        return createInst(nullptr, G4_mov, nullptr, false, execSize, dst, src0, nullptr, option);
+    }
+    else
+    {
+        return createInternalInst(nullptr, G4_mov, nullptr, false, execSize, dst, src0, nullptr, option);
+    }
+}
+
 G4_INST* IR_Builder::createIf(G4_Predicate* prd, uint8_t size, uint32_t option)
 {
     auto inst = createCFInst(prd, G4_if, size, nullptr, nullptr, option);
@@ -846,7 +859,7 @@ G4_SrcRegRegion* IR_Builder::createBindlessExDesc(uint32_t exdesc)
     G4_DstRegRegion* dst = Create_Dst_Opnd_From_Dcl(exDescDecl, 1);
     if (useNewExtDescFormat())
     {
-        createInst(nullptr, G4_mov, nullptr, false, 1, dst, T252, nullptr, InstOpt_WriteEnable);
+        createMov(1, dst, T252, InstOpt_WriteEnable, true);
     }
     else
     {
