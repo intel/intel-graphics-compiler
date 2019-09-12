@@ -130,7 +130,8 @@ void LocalRA::evenAlign()
 {
     if (kernel.getOptions()->getTarget() == VISA_3D && kernel.fg.size() > 2)
     {
-        if (kernel.getSimdSize() >= 16)
+        if ((GlobalRA::useGenericAugAlign() && kernel.getSimdSize() >= NUM_DWORDS_PER_GRF) ||
+            (!GlobalRA::useGenericAugAlign() && kernel.getSimdSize() > NUM_DWORDS_PER_GRF))
         {
             // Set alignment of all GRF candidates
             // to 2GRF except for NoMask variables

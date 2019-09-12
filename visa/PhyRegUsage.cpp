@@ -1007,6 +1007,14 @@ bool PhyRegUsage::assignRegs(bool  highInternalConflict,
     //
     unsigned i = 0;   // avail reg number
 
+    auto getAlignToUse = [](BankAlign align, BankAlign bankAlign)
+    {
+        if(GlobalRA::useGenericAugAlign())
+            return (align != BankAlign::Either ? align : bankAlign);
+        else
+            return (bankAlign != BankAlign::Either ? bankAlign : align);
+    };
+
     if (kind == G4_GRF) // general register file
     {
         //
@@ -1051,7 +1059,7 @@ bool PhyRegUsage::assignRegs(bool  highInternalConflict,
             }
 
             PhyRegUsage::PhyReg phyReg = findGRFSubReg(forbidden, varBasis->getCalleeSaveBias(),
-                varBasis->getCallerSaveBias(), bankAlign != BankAlign::Either ? bankAlign : align, subAlign,
+                varBasis->getCallerSaveBias(), getAlignToUse(align, bankAlign), subAlign,
                 numAllocUnit(decl->getNumElems(), decl->getElemType()));
             if (phyReg.reg != -1)
             {
@@ -1115,7 +1123,7 @@ bool PhyRegUsage::assignRegs(bool  highInternalConflict,
 
             unsigned short occupiedBundles = gra.getOccupiedBundle(decl);
             bool success = findContiguousGRF(availableGregs, forbidden, occupiedBundles, 
-                bankAlign != BankAlign::Either ? bankAlign : align, decl->getNumRows(), endGRFReg,
+                getAlignToUse(align, bankAlign), decl->getNumRows(), endGRFReg,
                 startGRFReg, i, varBasis->getCalleeSaveBias(), varBasis->getEOTSrc());
             if (success) {
                 varBasis->setPhyReg(regPool.getGreg(i), 0);
