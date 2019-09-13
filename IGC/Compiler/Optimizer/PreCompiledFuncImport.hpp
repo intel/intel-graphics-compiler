@@ -211,6 +211,11 @@ namespace IGC
 
         static const PreCompiledFuncInfo m_functionInfos[NUM_FUNCTION_IDS];
         static const LibraryModuleInfo m_libModInfos[NUM_LIBMODS];
+
+        unsigned m_roundingMode = 0;
+        unsigned m_flushDenorm = 0;
+        unsigned m_flushToZero = 0;
+
     };
 
 } // namespace IGC

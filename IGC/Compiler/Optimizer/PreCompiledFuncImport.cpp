@@ -346,6 +346,10 @@ bool PreCompiledFuncImport::runOnModule(Module& M)
     m_pModule = &M;
     m_changed = false;
 
+    m_roundingMode = m_pCtx->m_DriverInfo.DPEmulationRoundingMode();
+    m_flushDenorm = (m_pCtx->m_DriverInfo.DPEmulationFlushDenorm()) ? 1 : 0 ;
+    m_flushToZero = (m_pCtx->m_DriverInfo.DPEmulationFlushToZero()) ? 1 : 0 ;
+
     for (int i = 0; i < NUM_LIBMODS; ++i) {
         m_libModuleToBeImported[i] = false;
         m_libModuleAlreadyImported[i] = false;
@@ -737,9 +741,9 @@ void PreCompiledFuncImport::visitFPTruncInst(llvm::FPTruncInst& inst)
         Type* intTy = Type::getInt32Ty(m_pModule->getContext());
         Function* CurrFunc = inst.getParent()->getParent();
         args[0] = inst.getOperand(0);
-        args[1] = ConstantInt::get(intTy, 0);  // RN
-        args[2] = ConstantInt::get(intTy, 1);  // flush to zero
-        args[3] = args[2];                     // flush denorm
+        args[1] = ConstantInt::get(intTy, m_roundingMode); // rounding mode
+        args[2] = ConstantInt::get(intTy, m_flushToZero);  // flush to zero
+        args[3] = ConstantInt::get(intTy, m_flushDenorm);  // flush denorm
         args[4] = createFlagValue(CurrFunc);   // ignored
 
         CallInst* funcCall = CallInst::Create(newFunc, args, inst.getName(), &inst);
@@ -758,25 +762,64 @@ void PreCompiledFuncImport::visitFPTruncInst(llvm::FPTruncInst& inst)
 //   double (double, double, int, int, int, int*);
 void PreCompiledFuncImport::processFPBinaryOperator(Instruction& I, FunctionIDs FID)
 {
-    Function* newFunc = getOrCreateFunction(FID);
-    Value* args[6];
+    if (FID == FUNCTION_DP_SUB && isa<ConstantFP>(I.getOperand(0)))
+    {
+        auto constDouble = cast<ConstantFP>(I.getOperand(0));
+        if (constDouble->isZeroValue()) // turn the fsub into an and/xor/and/or operation
+        {
+            Type* intTy = Type::getInt32Ty(m_pModule->getContext());
+            Type* DoubleTy = Type::getDoubleTy(m_pModule->getContext());
+            VectorType* vec2Ty = VectorType::get(intTy, 2);
 
-    Type* intTy = Type::getInt32Ty(m_pModule->getContext());
-    Function* CurrFunc = I.getParent()->getParent();
-    args[0] = I.getOperand(0);
-    args[1] = I.getOperand(1);
-    args[2] = ConstantInt::get(intTy, 0);  // RN
-    args[3] = ConstantInt::get(intTy, 1);  // flush to zero
-    args[4] = args[3];                     // flush denorm
-    args[5] = createFlagValue(CurrFunc);   // FP flag, ignored
+            Instruction* twoI32 = CastInst::Create(
+                Instruction::BitCast, I.getOperand(1), vec2Ty, "", &I);
+            Instruction* topI32 = ExtractElementInst::Create(
+                twoI32, ConstantInt::get(intTy, 1), "", &I);
 
-    CallInst* funcCall = CallInst::Create(newFunc, args, I.getName(), &I);
-    funcCall->setDebugLoc(I.getDebugLoc());
+            //Isolate and flip sign bit
+            Instruction* Inst2 = BinaryOperator::CreateAnd(
+                topI32, ConstantInt::get(intTy, 0x80000000), "", &I);
+            Instruction* Inst3 = BinaryOperator::CreateXor(
+                Inst2, ConstantInt::get(intTy, 0x80000000), "", &I);
 
-    I.replaceAllUsesWith(funcCall);
-    I.eraseFromParent();
+            //Change sign bit and pack back new value
+            Instruction* Inst4 = BinaryOperator::CreateAnd(
+                topI32, ConstantInt::get(intTy, 0x7FFFFFFF), "", &I);
+            Instruction* newTopI32 = BinaryOperator::CreateOr(
+                Inst4, Inst3, "", &I);
+            Instruction* finalVal = InsertElementInst::Create(
+                twoI32, newTopI32, ConstantInt::get(intTy, 1), "", &I);
+            Instruction* finalValDouble = CastInst::Create(
+                Instruction::BitCast, finalVal, DoubleTy, "", &I);
 
-    m_changed = true;
+            I.replaceAllUsesWith(finalValDouble);
+            I.eraseFromParent();
+
+            m_changed = true;
+        }
+    }
+    else
+    {
+        Function* newFunc = getOrCreateFunction(FID);
+        Value* args[6];
+
+        Type* intTy = Type::getInt32Ty(m_pModule->getContext());
+        Function* CurrFunc = I.getParent()->getParent();
+        args[0] = I.getOperand(0);
+        args[1] = I.getOperand(1);
+        args[2] = ConstantInt::get(intTy, m_roundingMode);  // rounding mode
+        args[3] = ConstantInt::get(intTy, m_flushToZero);  // flush to zero
+        args[4] = ConstantInt::get(intTy, m_flushDenorm);  // flush denorm
+        args[5] = createFlagValue(CurrFunc);   // FP flag, ignored
+
+        CallInst* funcCall = CallInst::Create(newFunc, args, I.getName(), &I);
+        funcCall->setDebugLoc(I.getDebugLoc());
+
+        I.replaceAllUsesWith(funcCall);
+        I.eraseFromParent();
+
+        m_changed = true;
+    }
 }
 
 Function* PreCompiledFuncImport::getOrCreateFunction(FunctionIDs FID)
@@ -972,7 +1015,7 @@ void PreCompiledFuncImport::visitFPExtInst(llvm::FPExtInst& I)
         {
             args[0] = I.getOperand(0);
         }
-        args[1] = ConstantInt::get(intTy, 1);  // flush denorm
+        args[1] = ConstantInt::get(intTy, m_flushDenorm);  // flush denorm
         args[2] = createFlagValue(CurrFunc);   // FP flags, ignored
         CallInst* funcCall = CallInst::Create(newFunc, args, I.getName(), &I);
         funcCall->setDebugLoc(I.getDebugLoc());
@@ -1051,10 +1094,8 @@ void PreCompiledFuncImport::visitCastInst(llvm::CastInst& I)
     args.push_back(oprd0);
     if (opc == Instruction::FPToSI || opc == Instruction::FPToUI)
     {
-        Constant* COne = ConstantInt::get(intTy, 1);
-        Constant* RZ = ConstantInt::get(intTy, 3);
-        args.push_back(RZ);     // round mode = RZ
-        args.push_back(COne);   // flush denorm
+        args.push_back(ConstantInt::get(intTy, 3));  // rounding mode RZ
+        args.push_back(ConstantInt::get(intTy, m_flushDenorm));   // flush denorm
         args.push_back(createFlagValue(CurrFunc));  // FP flags, ignored
     }
 
@@ -1163,7 +1204,7 @@ void PreCompiledFuncImport::visitFCmpInst(FCmpInst& I)
     Value* args[3];
     args[0] = I.getOperand(0);
     args[1] = I.getOperand(1);
-    args[2] = ConstantInt::get(intTy, 1);  // flush denorm.
+    args[2] = ConstantInt::get(intTy, m_flushDenorm);  // flush denorm.
 
     CallInst* funcCall = CallInst::Create(newFunc, args, I.getName(), &I);
     funcCall->setDebugLoc(I.getDebugLoc());
@@ -1293,9 +1334,9 @@ void PreCompiledFuncImport::visitCallInst(llvm::CallInst& I)
         Function* CurrFunc = I.getParent()->getParent();
         Value* args[5];
         args[0] = I.getOperand(0);
-        args[1] = ConstantInt::get(intTy, 0); // RN
-        args[2] = ConstantInt::get(intTy, 1); // flush to zero
-        args[3] = args[2];                    // flush denorm
+        args[1] = ConstantInt::get(intTy, m_roundingMode); // rounding mode
+        args[2] = ConstantInt::get(intTy, m_flushToZero); // flush to zero
+        args[3] = ConstantInt::get(intTy, m_flushDenorm); // flush denorm
         args[4] = createFlagValue(CurrFunc);  // FP Flag, ignored
 
         Instruction* newVal = CallInst::Create(newFunc, args, I.getName(), &I);
@@ -1317,9 +1358,9 @@ void PreCompiledFuncImport::visitCallInst(llvm::CallInst& I)
         args[0] = I.getOperand(0);
         args[1] = I.getOperand(1);
         args[2] = I.getOperand(2);
-        args[3] = ConstantInt::get(intTy, 0); // RN
-        args[4] = ConstantInt::get(intTy, 1); // flush to zero
-        args[5] = args[4];                    // flush denorm
+        args[3] = ConstantInt::get(intTy, m_roundingMode); // rounding mode
+        args[4] = ConstantInt::get(intTy, m_flushToZero); // flush to zero
+        args[5] = ConstantInt::get(intTy, m_flushDenorm); // flush denorm
         args[6] = createFlagValue(CurrFunc);  // FP Flag, ignored
 
         Instruction* newVal = CallInst::Create(newFunc, args, I.getName(), &I);

@@ -255,6 +255,15 @@ namespace IGC
         /// Allow aggressive vector value aliasing
         virtual bool EnableVecAliasing() const { return false; }
 
+        /// Rounding mode used for DP emulated function, defaults to Round to nearest
+        virtual unsigned DPEmulationRoundingMode() const { return 0; }
+
+        /// Check for flushing denormals for DP emulated function
+        virtual bool DPEmulationFlushDenorm() const { return false; }
+
+        /// Check for flush to zero for DP emulated function
+        virtual bool DPEmulationFlushToZero() const { return false; }
+
 
 
     };
