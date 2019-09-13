@@ -25,7 +25,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 
 #include "common/LLVMWarningsPush.hpp"
-#include <llvm/Support/DynamicLibrary.h>
 #include <llvm/Support/ScaledNumber.h>
 #include <llvm/Support/CommandLine.h>
 #include "common/LLVMWarningsPop.hpp"
@@ -57,7 +56,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "AdaptorOCL/OCL/sp/gtpin_igc_ocl.h"
 #include "AdaptorOCL/igcmc.h"
-#include "RT_Jitter_Interface.h"
+#include "AdaptorOCL/cmc.h"
 
 #include <iStdLib/MemCopy.h>
 
@@ -1223,15 +1222,6 @@ TRANSLATION_BLOCK_API void Delete(
     CIGCTranslationBlock::Delete(pIGCTranslationBlock);
 }
 
-// CMC compilation implementation.
-// Convert an opaque pointer to a function pointer.
-template <typename func_ptr_type>
-inline func_ptr_type getFunctionType(void* ptr)
-{
-    intptr_t val = reinterpret_cast<intptr_t>(ptr);
-    return reinterpret_cast<func_ptr_type>(val);
-}
-
 // Generate compile options.
 static std::string getCommandLine(const STB_TranslateInputArgs* pInputArgs,
     TB_DATA_FORMAT inputDataFormatTemp,
@@ -1245,76 +1235,17 @@ static std::string getCommandLine(const STB_TranslateInputArgs* pInputArgs,
     else
         llvm_unreachable("not implemented yet");
 
-    // Set the HW platform
-    switch (IGCPlatform.GetPlatformFamily()) {
-    default:
-        llvm_unreachable("not implemented yet");
-        break;
-    case GFXCORE_FAMILY::IGFX_GEN9_CORE:
-        cmd.append(" -platform=GEN9");
-        break;
-    case GFXCORE_FAMILY::IGFX_GEN10_CORE:
-        cmd.append(" -platform=GEN10");
-        break;
-    case GFXCORE_FAMILY::IGFX_GEN10LP_CORE:
-        cmd.append(" -platform=GEN10LP");
-        break;
-    }
+    // Set the HW platform.
+    std::string platform = " -platform=";
+    platform += cmc::getPlatformStr(IGCPlatform.getPlatformInfo());
+    cmd.append(platform);
+
+    // Option to dump vISA
+    if (strstr(pInputArgs->pInternalOptions, "-dumpvisa") != nullptr)
+        cmd.append(" -dumpvisa");
+
     return move(cmd);
 }
-
-#if defined(_WIN64)
-#define CMC_LIBRARY_NAME "igcmc64.dll"
-#elif defined(_WIN32)
-#define CMC_LIBRARY_NAME "igcmc32.dll"
-#else
-#define CMC_LIBRARY_NAME "libigcmc.so"
-#endif
-
-// Utility class to load and compile a CMC program.
-struct CMCLibraryLoader {
-    using compileFnTy = std::add_pointer<decltype(cmc_load_and_compile)>::type;
-    using getErrorFnTy = std::add_pointer<decltype(cmc_get_error_string)>::type;
-    using freeJitInfoFnTy = std::add_pointer<decltype(cmc_free_jit_info)>::type;
-
-    using DL = llvm::sys::DynamicLibrary;
-    DL Dylib;
-    std::string ErrMsg;
-
-    compileFnTy compileFn = nullptr;
-    getErrorFnTy getErrorFn = nullptr;
-    freeJitInfoFnTy freeJitInfoFn = nullptr;
-
-    CMCLibraryLoader()
-    {
-        Dylib = DL::getPermanentLibrary(CMC_LIBRARY_NAME, &ErrMsg);
-        if (Dylib.isValid()) {
-            compileFn = getFunctionType<compileFnTy>(Dylib.getAddressOfSymbol("cmc_load_and_compile"));
-            getErrorFn = getFunctionType<getErrorFnTy>(Dylib.getAddressOfSymbol("cmc_get_error_string"));
-            freeJitInfoFn = getFunctionType<freeJitInfoFnTy>(Dylib.getAddressOfSymbol("cmc_free_jit_info"));
-        }
-    }
-
-    bool isValid()
-    {
-        if (!Dylib.isValid())
-            return false;
-
-        if (!compileFn) {
-            ErrMsg = "cannot load symbol cmc_load_and_compile";
-            return false;
-        }
-        if (!getErrorFn) {
-            ErrMsg = "cannot load symbol cmc_get_error_string";
-            return false;
-        }
-        if (!freeJitInfoFn) {
-            ErrMsg = "cannot load symbol cmc_free_jit_info";
-            return false;
-        }
-        return true;
-    }
-};
 
 // When an internal otion "-cmc" is present, compile the input as a CM program.
 static bool TranslateBuildCM(const STB_TranslateInputArgs* pInputArgs,
@@ -1323,34 +1254,35 @@ static bool TranslateBuildCM(const STB_TranslateInputArgs* pInputArgs,
     const IGC::CPlatform& IGCPlatform,
     float profilingTimerResolution)
 {
-    CMCLibraryLoader Loader;
+    cmc::CMCLibraryLoader Loader;
     if (!Loader.isValid()) {
         SetErrorMessage(Loader.ErrMsg, *pOutputArgs);
         return false;
     }
 
-    cmc_jit_info* output = nullptr;
+    cmc_compile_info* output = nullptr;
     const std::string cmd = getCommandLine(pInputArgs, inputDataFormatTemp, IGCPlatform);
-    cmc_error_t status = Loader.compileFn(pInputArgs->pInput, pInputArgs->InputSize, cmd.c_str(), &output);
-    if (status == cmc_error_t::CMC_SUCCESS) {
-        // TODO: We need to refactor binary packing code.
-        // Right now, the output is just Gen ASM, which should
-        // be replaced by an ELF binary file with patch tokens.
-        if (output) {
-            size_t ByteSize = output->binary_size;
-            char* Bin = new char[ByteSize];
-            memcpy_s(Bin, ByteSize, (char*)output->binary, ByteSize);
-            pOutputArgs->OutputSize = ByteSize;
-            pOutputArgs->pOutput = Bin;
+    int32_t status = Loader.compileFn(pInputArgs->pInput, pInputArgs->InputSize, cmd.c_str(), &output);
+    if (status == 0 && output) {
+        iOpenCL::CGen8CMProgram CMProgram(IGCPlatform.getPlatformInfo());
+        cmc::vISACompile(output, CMProgram);
 
-            // Free the resource allocated in the dll side.
-            Loader.freeJitInfoFn(output);
-        }
+        // Prepare and set program binary
+        Util::BinaryStream programBinary;
+        CMProgram.GetProgramBinary(programBinary, output->pointer_size_in_bytes);
+        size_t binarySize = static_cast<size_t>(programBinary.Size());
+        char* binaryOutput = new char[binarySize];
+        memcpy_s(binaryOutput, binarySize, (char*)programBinary.GetLinearPointer(), binarySize);
+        pOutputArgs->OutputSize = static_cast<uint32_t>(binarySize);
+        pOutputArgs->pOutput = binaryOutput;
+
+        // Free the resource allocated in the dll side.
+        Loader.freeFn(output);
         return true;
     }
 
     // Set the error message.
-    const char* Err = Loader.getErrorFn(status);
+    const char* Err = "compilation error";
     SetErrorMessage(Err, *pOutputArgs);
     return false;
 }

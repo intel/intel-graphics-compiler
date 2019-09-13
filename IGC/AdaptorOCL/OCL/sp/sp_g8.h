@@ -107,7 +107,7 @@ public:
         Util::BinaryStream& kernelDebugData);
 
     // Optional OpeneCL program context.
-    const IGC::OpenCLProgramContext *m_Context;
+    const IGC::OpenCLProgramContext *m_Context = nullptr;
 
     std::string m_oclStateDebugMessagePrintOut;
 

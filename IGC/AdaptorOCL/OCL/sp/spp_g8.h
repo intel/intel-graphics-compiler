@@ -26,6 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
+#include <memory>
 #include "../util/BinaryStream.h"
 #include "usc.h"
 #include "sp_g8.h"
@@ -34,6 +35,14 @@ namespace IGC
 {
     class OpenCLProgramContext;
     class CShaderProgram;
+    class COCLBTILayout;
+    struct SOpenCLProgramInfo;
+    struct SProgramOutput;
+};
+
+namespace cmc
+{
+    class CMKernel;
 };
 
 namespace iOpenCL
@@ -64,6 +73,8 @@ public:
 
     USC::SSystemThreadKernelOutput* m_pSystemThreadKernelOutput = nullptr;
 
+    PLATFORM getPlatform() const { return m_Platform; }
+
 protected:
     PLATFORM m_Platform;
     CGen8OpenCLStateProcessor m_StateProcessor;
@@ -86,4 +97,19 @@ private:
     IGC::OpenCLProgramContext* m_pContext = nullptr;
 };
 
+class CGen8CMProgram : public CGen8OpenCLProgramBase {
+public:
+    explicit CGen8CMProgram(PLATFORM platform);
+    ~CGen8CMProgram();
+
+    // Produce the final ELF binary with the given CM kernels
+    // in OpenCL format.
+    void CreateKernelBinaries();
+
+    // CM kernel list.
+    std::vector<cmc::CMKernel*> m_kernels;
+
+    // Data structure to create patch token based binaries.
+    std::unique_ptr<IGC::SOpenCLProgramInfo> m_programInfo;
+};
 }

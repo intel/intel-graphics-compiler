@@ -31,6 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../../common/Types.hpp"
 #include "../../../common/shaderOverride.hpp"
 #include "../../../Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
+#include "cmc.h"
 
 #include <iomanip>
 #include <fstream>
@@ -301,6 +302,40 @@ void CGen8OpenCLProgram::CreateKernelBinaries()
 
             m_KernelBinaries.push_back(data);
         }
+    }
+}
+
+// Implementation of CGen8CMProgram.
+CGen8CMProgram::CGen8CMProgram(PLATFORM platform)
+    : CGen8OpenCLProgramBase(platform)
+    , m_programInfo(new IGC::SOpenCLProgramInfo)
+{
+}
+
+CGen8CMProgram::~CGen8CMProgram()
+{
+    for (auto kernel : m_kernels)
+      delete kernel;
+}
+
+void CGen8CMProgram::CreateKernelBinaries()
+{
+    for (auto kernel : m_kernels) {
+        // Create the kernel binary streams.
+        KernelData data;
+        data.kernelBinary = new Util::BinaryStream;
+
+        m_StateProcessor.CreateKernelBinary(
+            (const char*)kernel->m_prog.m_programBin,
+            kernel->m_prog.m_programSize,
+            kernel->m_kernelInfo,
+            *m_programInfo,
+            kernel->m_btiLayout,
+            *(data.kernelBinary),
+            m_pSystemThreadKernelOutput,
+            kernel->m_prog.m_unpaddedProgramSize);
+
+        m_KernelBinaries.push_back(data);
     }
 }
 

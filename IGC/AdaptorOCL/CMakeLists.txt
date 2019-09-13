@@ -16,6 +16,7 @@ endif()
       "${CMAKE_CURRENT_SOURCE_DIR}/Upgrader/llvm${LLVM_VERSION_MAJOR}/BitcodeReader.cpp"
       "${CMAKE_CURRENT_SOURCE_DIR}/UnifyIROCL.cpp"
       "${CMAKE_CURRENT_SOURCE_DIR}/MoveStaticAllocas.cpp"
+      "${CMAKE_CURRENT_SOURCE_DIR}/cmc.cpp"
     )
 
 if(IGC_BUILD__SPIRV_ENABLED)
@@ -112,6 +113,8 @@ set(IGC_BUILD__HDR__AdaptorOCL
     "${CMAKE_CURRENT_SOURCE_DIR}/OCL/CommandStream/SamplerTypes.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/OCL/CommandStream/SurfaceTypes.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/DriverInfoOCL.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/igcmc.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmc.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/UnifyIROCL.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/MoveStaticAllocas.h"
 

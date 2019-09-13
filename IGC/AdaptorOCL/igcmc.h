@@ -1,7 +1,10 @@
 #ifndef _IGCMC_H_
 #define _IGCMC_H_
 
+#include <cstddef>
+#include <string>
 #include <stdint.h>
+#include <vector>
 
 #ifndef DLL_EXPORT
   #ifdef _WIN32
@@ -11,67 +14,107 @@
   #endif
 #endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+// Supported kernel argument attributes.
+struct cmc_resource_attibute {
+    static constexpr const char* ReadOnly  = "read_only";  // This resource is for read only.
+    static constexpr const char* WriteOnly = "write_only"; // This resource is for write only.
+    static constexpr const char* ReadWrite = "read_write"; // This resource is for read and write.
+    static constexpr const char* Buffer    = "buffer_t";   // This resource is a buffer.
+    static constexpr const char* SVM       = "svmptr_t";   // This resource is a SVM buffer.
+    static constexpr const char* Sampler   = "sampler_t";  // This resource is a sampler.
+    static constexpr const char* Image1d   = "image1d_t";  // This resource is a 1D surface.
+    static constexpr const char* Image2d   = "image2d_t";  // This resource is a 2D surface.
+    static constexpr const char* Image3d   = "image3d_t";  // This resource is a 3D surface.
+};
 
-typedef enum _cmc_error_t {
-  CMC_SUCCESS                  = 0,
-  CMC_ERROR                    = 1,
-  CMC_ERROR_READING_SPIRV      = 2,
-  CMC_ERROR_BROKEN_INPUT_IR    = 3,
-  CMC_ERROR_IN_LOADING_TARGET  = 4,
-  CMC_ERROR_IN_COMPILING_IR    = 5
-} cmc_error_t;
+// optional resource access kind
+enum class cmc_access_kind : int32_t {
+    undef,
+    read_only,
+    write_only,
+    read_write
+};
 
-typedef struct _cmc_kernel_info {
-  /// The kernel name.
-  const char *name;
+enum class cmc_arg_kind : int32_t {
+    General = 0,
+    Buffer,
+    SVM,
+    Sampler,
+    Image1d,
+    Image2d,
+    Image3d
+};
 
-  /// The number of kernel arguments with descriptors.
-  unsigned num_arg_desc;
+struct cmc_arg_info {
+    // The argument kind.
+    cmc_arg_kind kind = cmc_arg_kind::General;
 
-  /// The kernel argument descriptors.
-  const char **arg_desc;
+    // The argument index in this kernel.
+    int32_t index = 0;
 
-} cmc_kernel_info;
+    // the byte offset of this argument in payload
+    int32_t offset = 0;
 
-typedef struct _cmc_jit_info {
-  /// The vISA binary size in bytes.
-  size_t binary_size;
+    // The byte size of this argument in payload
+    int32_t sizeInBytes = 0;
 
-  /// The vISA binary data.
-  void *binary;
+    // The BTI for this resource, if applicable.
+    int32_t BTI = 0;
 
-  /// The vISA major version.
-  unsigned visa_major_version;
+    // the optional resource access kind, if applicable.
+    cmc_access_kind access = cmc_access_kind::undef;
+};
 
-  /// The vISA minor version.
-  unsigned visa_minor_version;
+// compilation interface bewteen cmc and igc
+struct cmc_kernel_info {
+    /// The kernel name.
+    std::string name;
 
-  /// The number of kernels in this binary.
-  unsigned num_kernels;
+    /// The kernel argument info.
+    std::vector<cmc_arg_info> arg_descs;
 
-  /// The kernel infomation for each kernel.
-  cmc_kernel_info *kernel_info;
+    // ThreadPayload
+    bool HasLocalIDx = false;
+    bool HasLocalIDy = false;
+    bool HasLocalIDz = false;
+    bool HasGroupID = false;
 
-  /// The context for this compilation. This opaque data holds all memory
-  /// allocations that will be freed in the end.
-  void *context;
+    // ExecutionEnivronment
+    uint32_t SLMSize = 0;
+    uint32_t NumGRFRequired = 128;
+    uint32_t GRFByteSize = 32;
+    bool HasBarriers = false;
+    bool HasReadWriteImages = false;
+};
 
-} cmc_jit_info;
+struct cmc_compile_info {
+    /// The vISA binary size in bytes.
+    uint64_t binary_size;
 
-__EXPORT__ cmc_error_t cmc_load_and_compile(const char *input,
-                                            size_t input_size,
-                                            const char *const options,
-                                            cmc_jit_info **output);
+    /// The vISA binary data.
+    void* binary;
 
-__EXPORT__ const char *cmc_get_error_string(cmc_error_t err);
+    uint32_t pointer_size_in_bytes;
 
-__EXPORT__ cmc_error_t cmc_free_jit_info(cmc_jit_info *output);
+    /// The vISA major version.
+    uint32_t visa_major_version;
 
-#ifdef __cplusplus
-}
-#endif
+    /// The vISA minor version.
+    uint32_t visa_minor_version;
+
+    /// The kernel infomation.
+    std::vector<cmc_kernel_info*> kernel_info;
+
+    /// The context for this compilation. This opaque data holds all memory
+    /// allocations that will be freed in the end.
+    void* context;
+};
+
+extern "C" __EXPORT__ int32_t cmc_load_and_compile(const char* input,
+                                                   size_t input_size,
+                                                   const char* const options,
+                                                   cmc_compile_info** output);
+
+extern "C" __EXPORT__ int32_t cmc_free_compile_info(cmc_compile_info* output);
 
 #endif // _IGCMC_H_
