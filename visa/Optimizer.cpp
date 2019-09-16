@@ -6347,7 +6347,7 @@ bool Optimizer::hasGen12LPBundleConflict(G4_INST *inst)
 
     //Source 0 is scalar
     G4_Operand* srcOpnd = inst->getSrc(0);
-    if (!srcOpnd->asSrcRegRegion()->isScalar())
+    if (!srcOpnd || !srcOpnd->isSrcRegRegion() || !srcOpnd->asSrcRegRegion()->isScalar())
     {
         return false;
     }
