@@ -1367,7 +1367,8 @@ namespace IGC
             }
 
             if (pContext->m_enableFunctionPointer &&
-                IGC_IS_FLAG_ENABLED(EnableIndirectCallOptimization))
+                IGC_IS_FLAG_ENABLED(EnableIndirectCallOptimization) &&
+                IGC_GET_FLAG_VALUE(FunctionControl) != FLAG_FCALL_FORCE_INDIRECTCALL)
             {
                 mpm.add(new IndirectCallOptimization());
             }

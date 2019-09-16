@@ -548,25 +548,28 @@ void GenXFunctionGroupAnalysis::addIndirectFuncsToKernelGroup(llvm::Module* pMod
     FunctionGroup* defaultFG = getGroupForHead(defaultKernel);
     assert(defaultFG && "default kernel group does not exist");
 
+    SmallVector<Function*, 8> indirectFuncs;
     // Add all externally linked functions into the default kernel group
     for (auto I = pModule->begin(), E = pModule->end(); I != E; ++I)
     {
         Function* F = &(*I);
-        if (F->isDeclaration() || isEntryFunc(pMdUtils, F)) continue;
-
         if (F->hasFnAttribute("IndirectlyCalled"))
         {
-            addToFunctionGroup(F, defaultFG, F);
+            if (!F->isDeclaration())
+                addToFunctionGroup(F, defaultFG, F);
             defaultFG->m_hasIndirectFuncs = true;
-
-            // Mark caller group if it calls or uses this function
-            for (auto U : F->users())
+            indirectFuncs.push_back(F);
+        }
+    }
+    for (auto F : indirectFuncs)
+    {
+        // Mark caller group if it directly calls an indirect function
+        for (auto U : F->users())
+        {
+            if (CallInst * CI = dyn_cast<CallInst>(U))
             {
-                if (CallInst * CI = dyn_cast<CallInst>(U))
-                {
-                    Function* Caller = CI->getParent()->getParent();
-                    getGroup(Caller)->m_hasExternFCall = true;
-                }
+                Function* Caller = CI->getParent()->getParent();
+                getGroup(Caller)->m_hasExternFCall = true;
             }
         }
     }

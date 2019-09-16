@@ -391,6 +391,12 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                     {
                         F->setLinkage(GlobalValue::ExternalLinkage);
                     }
+
+                    if (IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_FORCE_INDIRECTCALL)
+                    {
+                        F->removeFnAttr(llvm::Attribute::AlwaysInline);
+                        F->addFnAttr(llvm::Attribute::NoInline);
+                    }
                 }
             }
         }
