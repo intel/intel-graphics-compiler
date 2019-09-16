@@ -20,6 +20,7 @@ set(IGC_BUILD__SRC__Optimizer
     "${CMAKE_CURRENT_SOURCE_DIR}/CodeAssumption.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/MarkReadOnlyLoad.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/RectListOptimizationPass.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/IndirectCallOptimization.cpp"
   )
 
 set(IGC_BUILD__SRC__Compiler_Optimizer
@@ -44,6 +45,7 @@ set(IGC_BUILD__HDR__Optimizer
     "${CMAKE_CURRENT_SOURCE_DIR}/FixFastMathFlags.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/CodeAssumption.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/RectListOptimizationPass.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/IndirectCallOptimization.hpp"
   )
   
 

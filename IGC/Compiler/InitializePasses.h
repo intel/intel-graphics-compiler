@@ -108,6 +108,7 @@ void initializeSimd32ProfitabilityAnalysisPass(llvm::PassRegistry&);
 void initializeSetFastMathFlagsPass(llvm::PassRegistry&);
 void initializeSPIRMetaDataTranslationPass(llvm::PassRegistry&);
 void initializeSubGroupFuncsResolutionPass(llvm::PassRegistry&);
+void initializeIndirectCallOptimizationPass(llvm::PassRegistry&);
 void initializeVectorPreProcessPass(llvm::PassRegistry&);
 void initializeVectorProcessPass(llvm::PassRegistry&);
 void initializeVerificationPassPass(llvm::PassRegistry&);
