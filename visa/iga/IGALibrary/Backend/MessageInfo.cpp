@@ -1174,7 +1174,8 @@ void DescDecoder::tryDecodeDCRO() {
         setDoc("7084");
         break;
     default:
-        return error(14,5,"unsupported DCRO op");
+        error(14, 5, "unsupported DCRO op");
+        return;
     }
 }
 
@@ -1405,7 +1406,8 @@ void DescDecoder::tryDecodeDC0()
             decodeMDC_HR();
         } else {
            addField("MessageType", 14, 5, msgType, "???");
-           return error(14, 5, "unsupported dc0 op");
+           error(14, 5, "unsupported dc0 op");
+           return;
         }
     } // end switch legacy DC0
 }
@@ -1756,7 +1758,8 @@ void DescDecoder::tryDecodeDC1() {
         break;
     }
     default:
-        return error(14, 5, "unsupported DC1 op");
+        error(14, 5, "unsupported DC1 op");
+        return;
     } // DC1 switch
 }
 
@@ -2362,7 +2365,8 @@ void DescDecoder::tryDecode() {
         tryDecodeSampler();
         break;
     default:
-        return error(0,0,"unsupported sfid");
+        error(0, 0, "unsupported sfid");
+        return;
     }
 }
 

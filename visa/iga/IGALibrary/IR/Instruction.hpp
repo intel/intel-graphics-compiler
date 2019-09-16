@@ -228,6 +228,11 @@ namespace iga
         SWSB             getSWSB() const { return m_depInfo; }
         bool             isBranching() const { return getOpSpec().isBranching(); }
 
+        bool             isMovWithLabel() const
+        {
+            return (getOp() == Op::MOV && getSource(0).getKind() == Operand::Kind::LABEL);
+        }
+
         void             validate() const; // asserts on malformed IR
         std::string      str(Platform pltfm) const; // returns syntax of this instruction
     private:

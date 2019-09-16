@@ -37,17 +37,88 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <sstream>
 #include <vector>
 
+/// copy from string.h ///
+#pragma once
+#ifndef _MSC_VER
+
+#include <cstring>
+#include <errno.h>
+#include <string>
+
+inline int strcpy_s(char* dst, size_t dstSize, const char* src) {
+    if ((dst == nullptr) || (src == nullptr)) {
+        return -EINVAL;
+    }
+    size_t length = strlen(src);
+    if (dstSize <= length) {
+        return -ERANGE;
+    }
+
+    memcpy(dst, src, length);
+    dst[length] = '\0';
+
+    return 0;
+}
+
+inline int strncpy_s(char* dst, size_t numberOfElements, const char* src, size_t count) {
+    if ((dst == nullptr) || (src == nullptr)) {
+        return -EINVAL;
+    }
+    if (numberOfElements < count) {
+        return -ERANGE;
+    }
+
+    size_t length = strlen(src);
+    if (length > count) {
+        length = count;
+    }
+    memcpy(dst, src, length);
+
+    if (length < numberOfElements) {
+        numberOfElements = length;
+    }
+    dst[numberOfElements] = '\0';
+
+    return 0;
+}
+
+inline size_t strnlen_s(const char* str, size_t count) {
+    if (str == nullptr) {
+        return 0;
+    }
+
+    for (size_t i = 0; i < count; ++i) {
+        if (str[i] == '\0')
+            return i;
+    }
+
+    return count;
+}
+
+inline int memcpy_s(void* dst, size_t destSize, const void* src, size_t count) {
+    if ((dst == nullptr) || (src == nullptr)) {
+        return -EINVAL;
+    }
+    if (destSize < count) {
+        return -ERANGE;
+    }
+
+    memcpy(dst, src, count);
+
+    return 0;
+}
+
+#endif
+///// end copy from string.h ////
+
+
 #ifdef _MSC_VER
 #define strdup _strdup
 #endif
 
-#ifdef _MSC_VER
-// for MSVC only we use the _s version
-#  define MEMCPY(D,S,N) memcpy_s(D,N,S,N)
-#else
-// Linux, MinGW, the rest of the world are still sane
-#  define MEMCPY(D,S,N) memcpy(D,S,N)
-#endif
+
+#define MEMCPY(D,S,N) memcpy_s(D,N,S,N)
+
 #ifdef _MSC_VER
 // MSVC has different semantics with vsnprintf given NULL.
 #define VSCPRINTF(PAT,VA) \

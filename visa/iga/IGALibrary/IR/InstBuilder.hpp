@@ -501,7 +501,9 @@ public:
         m_pc += inst->hasInstOpt(InstOpt::COMPACTED) ? 8 : 16;
 
         // after any branching instruction or EOT, split the basic block
-        if (inst->isBranching() || inst->hasInstOpt(InstOpt::EOT)) {
+        // Also split when there is mov with label src
+        if (inst->isBranching() || inst->hasInstOpt(InstOpt::EOT) ||
+            inst->isMovWithLabel()) {
             BlockEnd(m_pc);
         }
     }

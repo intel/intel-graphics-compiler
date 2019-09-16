@@ -556,6 +556,7 @@ public:
                 }
             }
             if (!firstInst) {
+                delete k;
                 return IGA_ERROR; // should be unreachable
             }
             std::stringstream ss;

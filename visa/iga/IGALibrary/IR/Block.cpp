@@ -111,7 +111,7 @@ struct BlockInference
         for (Instruction *inst : insts) {
             instStarts.insert(inst->getPC());
             int32_t instLen = inst->hasInstOpt(InstOpt::COMPACTED) ? 8 : 16;
-            if (inst->getOpSpec().isBranching()) {
+            if (inst->getOpSpec().isBranching() || inst->isMovWithLabel()) {
                 // all branching instructions can redirect to next instruction
                 // start a new block after this one
                 (void)getBlock(pc + instLen);

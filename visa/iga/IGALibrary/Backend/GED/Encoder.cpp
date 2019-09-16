@@ -371,7 +371,7 @@ void EncoderBase::encodeInstruction(Instruction& inst)
         encodeOptions(inst);
 
         // setup for back patching on branching ops
-        if (os.isBranching() || os.op == Op::MOV) {
+        if (os.isBranching() || inst.isMovWithLabel()) {
             bool src0IsLabel = inst.getSource(0).isImm();
             bool src1IsLabel = inst.getSourceCount() > 1 && inst.getSource(1).isImm();
             if (src0IsLabel || src1IsLabel) {
@@ -1071,8 +1071,7 @@ void EncoderBase::encodeBasicSource(
         break;
     default:
         // support mov Label
-        if (inst.getOp() == Op::MOV && S == 0 &&
-            src.getKind() == Operand::Kind::LABEL) {
+        if (S == 0 && inst.isMovWithLabel()) {
             GED_ENCODE(Src0RegFile, GED_REG_FILE_IMM);
         } else {
             fatal("src%d: unsupported source operand kind (malformed IR)", (int)S);
@@ -1705,7 +1704,7 @@ void EncoderBase::patchJumpOffsets()
     {
         const Instruction *inst = jp.inst;
         IGA_ASSERT(
-            inst->getOpSpec().isBranching() || inst->getOp() == Op::MOV,
+            inst->getOpSpec().isBranching() || inst->isMovWithLabel(),
             "patching non-control-flow/non-mov instruction");
 
         // on some platforms jmpi os post-increment
@@ -1744,14 +1743,14 @@ void EncoderBase::patchJumpOffsets()
         // JIP and UIP are in QWORDS for most ops on PreBDW
         int32_t pcUnscale = arePcsInQWords(inst->getOpSpec()) ? 8 : 1;
 
-        if (inst->isBranching())
-            GED_ENCODE_TO(JIP, jip / pcUnscale, &jp.gedInst);
-        else {
+        if (inst->isMovWithLabel()) {
             // encode mov label
             GED_DATA_TYPE src0_ty = IGAToGEDTranslation::lowerDataType(inst->getSource(0).getType());
             GED_ENCODE_TO(Src0DataType, src0_ty, &jp.gedInst);
-            GED_ENCODE_TO(Imm, typeConvesionHelper(
-                inst->getSource(0).getImmediateValue(), inst->getSource(0).getType()), &jp.gedInst);
+            GED_ENCODE_TO(Imm, jip, &jp.gedInst);
+        } else {
+            // encode other branch instructions
+            GED_ENCODE_TO(JIP, jip / pcUnscale, &jp.gedInst);
         }
 
         if (inst->getSourceCount() == 2 &&
