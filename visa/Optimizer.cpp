@@ -2281,7 +2281,7 @@ void Optimizer::doSimplification(G4_INST *inst)
         unsigned SrcSizeInBytes = inst->getExecSize() *
                 getTypeSize(inst->getSrc(0)->getType());
         if (SrcSizeInBytes == G4_GRF_REG_NBYTES/2 ||
-            SrcSizeInBytes == G4_GRF_REG_NBYTES) 
+            SrcSizeInBytes == G4_GRF_REG_NBYTES)
         {
             G4_INST *LEA = getSingleDefInst(inst, Opnd_src0);
             if (LEA && LEA->opcode() == G4_add &&
@@ -2303,7 +2303,7 @@ void Optimizer::doSimplification(G4_INST *inst)
                     if (SrcSizeInBytes <= G4_GRF_REG_NBYTES/2u)
                         SubAlign = (G4_SubReg_Align)(NUM_WORDS_PER_GRF/2);
                     inst->setOpcode(G4_movi);
-                    if (!Dcl->isEvenAlign() && Dcl->getSubRegAlign() != GRFALIGN) 
+                    if (!Dcl->isEvenAlign() && Dcl->getSubRegAlign() != GRFALIGN)
                     {
                         Dcl->setSubRegAlign(SubAlign);
                     }
@@ -7008,6 +7008,19 @@ void Optimizer::evenlySplitInst(INST_LIST_ITER iter, G4_BB* bb)
         {
             clearSendDependencies();
         }
+
+        if (builder.getOption(vISA_resetA0AtBeginning))
+        {
+            // reset a0 to 0 at the beginning of a shader. TGL WA
+            resetA0();
+        }
+
+        if (builder.getOption(vISA_setA0toTdrForSendc))
+        {
+            // set A0 to tdr0 before sendc/sendsc. TGL WA
+            setA0toTdrForSendc();
+        }
+
     }
 
 class NSDS {
@@ -8217,6 +8230,65 @@ public:
                 }
 
                 builder.instList.clear();
+            }
+        }
+    }
+
+    // Reset A0 to 0 at the beginning of the shader if the shader use VxH a0
+    void Optimizer::resetA0()
+    {
+        // check all instructions to see if VxH a0 src is used
+        // only reset A0 when it's used
+        bool hasA0 = false;
+        for (auto bb : kernel.fg)
+        {
+            for (auto inst : *bb)
+            {
+                // VxH must be in src0
+                if (inst->getSrc(0) != nullptr &&
+                    inst->getSrc(0)->isSrcRegRegion() &&
+                    inst->getSrc(0)->asSrcRegRegion()->getBase()->isA0() &&
+                    inst->getSrc(0)->asSrcRegRegion()->getRegion()->isRegionWH())
+                {
+                    hasA0 = true;
+                    break;
+                }
+            }
+            if (hasA0)
+                break;
+        }
+
+        if (!hasA0)
+            return;
+
+        // insert "mov (16) a0.0:uw 0x0:uw" at the beginning of the shader
+        if (kernel.fg.begin() != kernel.fg.end()) {
+            G4_BB* bb = *kernel.fg.begin();
+            bb->insert(bb->begin(),
+                builder.createMov(16, builder.createDstRegRegion(Direct,
+                    builder.phyregpool.getAddrReg(), 0, 0, 1, Type_UW),
+                    builder.createImm(0, Type_UW), InstOpt_WriteEnable, false));
+        }
+    }
+
+    // Set a0 to tdr0 before snedc/sendsc
+    void Optimizer::setA0toTdrForSendc()
+    {
+        // check for the last inst of each BB, if it's sendc/sendsc, insert
+        // "(W) mov(8) a0.0:uw tdr0.0:uw" right before it
+        for (G4_BB* bb : kernel.fg)
+        {
+            if (bb->empty())
+                continue;
+            if (bb->back()->opcode() == G4_opcode::G4_sendc ||
+                bb->back()->opcode() == G4_opcode::G4_sendsc)
+            {
+                // "(W) mov(8) a0.0:uw tdr0.0:uw"
+                bb->insert(--bb->end(),builder.createMov(8,
+                    builder.createDstRegRegion(Direct, builder.phyregpool.getAddrReg(), 0, 0, 1, Type_UW),
+                    builder.createSrcRegRegion(Mod_src_undef, Direct, builder.phyregpool.getTDRReg(), 0,
+                                               0, builder.getRegionScalar(), Type_UW),
+                    InstOpt_WriteEnable, false));
             }
         }
     }

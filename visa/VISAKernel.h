@@ -362,7 +362,7 @@ public:
 
     CM_BUILDER_API int AppendVISACFRetInst(VISA_PredOpnd *pred, Common_VISA_EMask_Ctrl emask, Common_ISA_Exec_Size executionSize);
 
-    CM_BUILDER_API int AppendVISACFFunctionCallInst(VISA_PredOpnd *pred, Common_VISA_EMask_Ctrl emask, 
+    CM_BUILDER_API int AppendVISACFFunctionCallInst(VISA_PredOpnd *pred, Common_VISA_EMask_Ctrl emask,
         Common_ISA_Exec_Size executionSize, std::string funcName, unsigned char argSize, unsigned char returnSize);
 
     CM_BUILDER_API int AppendVISACFIndirectFuncCallInst(VISA_PredOpnd *pred,
@@ -855,6 +855,7 @@ private:
     // for call dst it'll use only r1.0-r1.1, so here we take r1.2 as add's dst
     typedef std::vector<vISA::G4_INST*> InstListType;
     void expandIndirectCallWithRegTarget();
+
     // create the instructions to calculate the jump target offset, return the G4_decl for the
     // jump target register
     void createInstsForCallTargetOffset(InstListType& insts, vISA::G4_INST* fcall);

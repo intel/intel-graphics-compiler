@@ -201,7 +201,7 @@ class Optimizer
     void dce();
 
     void accSubPostSchedule();
-    
+
     bool hasGen12LPBundleConflict(G4_INST *inst);
     void swapSrc1(G4_INST * inst);
 
@@ -246,6 +246,8 @@ private:
     void loadThreadPayload();
     void insertFenceBeforeEOT();
     void insertScratchReadBeforeEOT();
+    void resetA0();
+    void setA0toTdrForSendc();
 
     void insertHashMovs();
     void insertDummyCompactInst();

@@ -4017,6 +4017,16 @@ namespace IGC
         SaveOption(vISA_IGAEncoder, false);
     }
 
+    if (IGC_IS_FLAG_ENABLED(ResetA0AtBeginning))
+    {
+        SaveOption(vISA_resetA0AtBeginning, true);
+    }
+
+    if (IGC_IS_FLAG_ENABLED(SetA0toTdrForSendc))
+    {
+        SaveOption(vISA_setA0toTdrForSendc, true);
+    }
+
     if (IGC_IS_FLAG_ENABLED(EnableIGASWSB))
     {
         SaveOption(vISA_EnableIGASWSB, true);
