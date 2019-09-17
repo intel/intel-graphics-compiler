@@ -3524,9 +3524,8 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::createThreadLocal
     llvm::Function* pFunc = llvm::GenISAIntrinsic::getDeclaration(
         module,
         llvm::GenISAIntrinsic::GenISA_DCL_SystemValue,
-        this->getFloatTy());
-    return this->CreateBitCast(
-        this->CreateCall(pFunc, this->getInt32(IGC::THREAD_ID_IN_GROUP_X + dim)), this->getInt32Ty());
+        this->getInt32Ty());
+    return this->CreateCall(pFunc, this->getInt32(IGC::THREAD_ID_IN_GROUP_X + dim));
 }
 
 template<bool preserveNames, typename T, typename Inserter>
