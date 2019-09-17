@@ -58,6 +58,7 @@ namespace IGC
         uint         elementSize;       // size in bytes of the basic data element
         uint         chunkStart;        // offset of the first data element in chunk in units of elementSize
         uint         chunkSize;         // chunk size in elements
+        uint         loadOrder;
         llvm::Instruction* chunkIO;     // coalesced load
     };
 
@@ -84,6 +85,10 @@ namespace IGC
             std::vector<BufChunk*>& dircb_owlds,
             std::vector<BufChunk*>& indcb_owlds,
             std::vector<BufChunk*>& indcb_gathers);
+
+        void FindAllDirectCB(llvm::BasicBlock* blk,
+            std::vector<BufChunk*>& dircb_owloads);
+
         void ProcessFunction(llvm::Function* function);
 
         virtual bool runOnFunction(llvm::Function& func) override;
