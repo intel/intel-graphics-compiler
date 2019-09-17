@@ -1392,6 +1392,7 @@ namespace IGC
                 IGC_GET_FLAG_VALUE(FunctionControl) != FLAG_FCALL_FORCE_INDIRECTCALL)
             {
                 mpm.add(new IndirectCallOptimization());
+                mpm.add(createAlwaysInlinerLegacyPass());
             }
 
             // Note: call reassociation pass before IGCConstProp(EnableSimplifyGEP) to preserve the

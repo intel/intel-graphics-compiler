@@ -113,21 +113,65 @@ namespace IGC
 
         Function* currFunc = CI.getParent()->getParent();
         Module* pModule = currFunc->getParent();
-        auto* pMDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
         SmallVector<Function*, 8> CallableFuncs;
-        bool hasCompilerHint = false;
+        bool needFallbackToIndirect = false;
 
-        // Find all functions in module that match the call signature
-        for (auto& FI : *pModule)
+        // Compiler provides a hint for which group of functions can be called by this instruction,
+        // stored as a string of function names separated by "," in the "function_groups" metadata.
+        if (MDNode * funcgroups = CI.getMetadata("function_group"))
         {
-            if (FI.isDeclaration()) continue;
-            if (isEntryFunc(pMDUtils, &FI)) continue;
-            if (!FI.hasFnAttribute("IndirectlyCalled")) continue;
+            StringRef funcStr = cast<MDString>(funcgroups->getOperand(0))->getString();
+            SmallVector<StringRef, 8> funcNames;
+            funcStr.split(funcNames, ',');
 
-            if (CompareCallFuncSignature(&CI, &FI))
+            if (funcNames.size() == 0)
             {
-                CallableFuncs.push_back(&FI);
+                return false;
             }
+            else if (funcNames.size() == 1)
+            {
+                // Trivial case, replace with the direct call
+                Function* F = pModule->getFunction(funcNames.front());
+                if (F && F->hasFnAttribute("IndirectlyCalled") && CompareCallFuncSignature(&CI, F))
+                {
+                    SmallVector<Value*, 8> callArgs(CI.arg_begin(), CI.arg_end());
+                    IGCIRBuilder<> IRB(pModule->getContext());
+                    IRB.SetInsertPoint(&CI);
+                    CallInst* dirCall = IRB.CreateCall(F, callArgs);
+                    CI.replaceAllUsesWith(dirCall);
+                    return true;
+                }
+                return false;
+            }
+            else
+            {
+                for (auto fName : funcNames)
+                {
+                    Function* F = pModule->getFunction(fName);
+                    if (F && F->hasFnAttribute("IndirectlyCalled") && CompareCallFuncSignature(&CI, F))
+                    {
+                        CallableFuncs.push_back(F);
+                    }
+                    else
+                    {
+                        // If hint has a function not in current module, we should still fall back to indirect case
+                        needFallbackToIndirect = true;
+                    }
+                }
+            }
+        }
+        else
+        {
+            // Find all functions in module that match the call signature
+            for (auto& FI : *pModule)
+            {
+                if (FI.hasFnAttribute("IndirectlyCalled") && CompareCallFuncSignature(&CI, &FI))
+                {
+                    CallableFuncs.push_back(&FI);
+                }
+            }
+            // Always provide fallback option if hint not provided
+            needFallbackToIndirect = true;
         }
 
         if (CallableFuncs.empty())
@@ -193,9 +237,9 @@ namespace IGC
 
             if (i == (numFuncs - 1))
             {
-                if (hasCompilerHint)
+                if (!needFallbackToIndirect)
                 {
-                    // If compiler provides a hint for which functions can be called for this callsite, we don't need to fallback to indirect call
+                    // Should never reach this block. Dummy branch for code correctness
                     IRB.CreateBr(endBlock);
                 }
                 else
