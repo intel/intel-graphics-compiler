@@ -8162,32 +8162,7 @@ void EmitPass::emitPtrToInt(llvm::PtrToIntInst* P2I)
 void EmitPass::emitAddrSpaceCast(llvm::AddrSpaceCastInst* addrSpaceCast)
 {
     CVariable* srcV = GetSymbol(addrSpaceCast->getOperand(0));
-
-    // Tags are used to determine the address space of generic pointers
-    // casted from private, local or global pointers.
-    // Bit[60:63] are used for this purpose. bit[60] is reserved for future use.
-    // Address space tag on bit[61:63] can be:
-    // 001: private
-    // 010: local
-    // 000/111: global
-
-    if (addrSpaceCast->getDestAddressSpace() == ADDRESS_SPACE_GENERIC)
-    {
-        if (addrSpaceCast->getSrcAddressSpace() == ADDRESS_SPACE_PRIVATE)
-        {
-            m_encoder->Or(m_destination, srcV, m_currShader->ImmToVariable(1ULL << 61, ISA_TYPE_UQ));
-        }
-        else if (addrSpaceCast->getSrcAddressSpace() == ADDRESS_SPACE_LOCAL)
-        {
-            m_encoder->Or(m_destination, srcV, m_currShader->ImmToVariable(1ULL << 62, ISA_TYPE_UQ));
-        }
-        // else ADDRESS_SPACE_GLOBAL
-        // nop
-    }
-    else
-    {
-        m_encoder->Cast(m_destination, srcV);
-    }
+    m_encoder->Cast(m_destination, srcV);
     m_encoder->Push();
 }
 
