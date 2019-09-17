@@ -6850,6 +6850,19 @@ void EmitPass::emitCSSGV(GenIntrinsicInst* inst)
     }
 }
 
+// Store Coarse Pixel (Actual) size in the destination variable
+void EmitPass::getCoarsePixelSize(CVariable* destination, const uint component)
+{
+    assert(component < 2);
+
+    CPixelShader* const psProgram = static_cast<CPixelShader*>(m_currShader);
+    CVariable* const coarsePixelSize = m_currShader->BitCast(psProgram->GetR1(), ISA_TYPE_UB);
+    m_encoder->SetSrcRegion(0, 0, 1, 0);
+    m_encoder->SetSrcSubReg(0, (component == 0) ? 0 : 1);
+    m_encoder->Cast(destination, coarsePixelSize);
+    m_encoder->Push();
+}
+
 void EmitPass::emitPSSGV(GenIntrinsicInst* inst)
 {
     CPixelShader* psProgram = static_cast<CPixelShader*>(m_currShader);
@@ -6879,6 +6892,22 @@ void EmitPass::emitPSSGV(GenIntrinsicInst* inst)
                     m_currShader->GetNewVariable(numLanes(m_currShader->m_SIMDSize), ISA_TYPE_F, EALIGN_GRF);
                 m_encoder->Cast(floatPixelPosition, uintPixelPosition);
                 m_encoder->Push();
+
+                // Pixel location is center in all APIs that use CPS.
+                {
+                    CVariable* pixelCenter = m_currShader->ImmToVariable(0x3f000000, ISA_TYPE_F); // 0.5f
+                    if (psProgram->GetPhase() == PSPHASE_COARSE)
+                    {
+                        CVariable* const coarsePixelSize = m_currShader->GetNewVariable(
+                            numLanes(m_currShader->m_SIMDSize), ISA_TYPE_F, EALIGN_GRF);
+                        getCoarsePixelSize(coarsePixelSize, component);
+                        m_encoder->Mul(coarsePixelSize, coarsePixelSize, pixelCenter);
+                        m_encoder->Push();
+                        pixelCenter = coarsePixelSize;
+                    }
+                    m_encoder->Add(floatPixelPosition, floatPixelPosition, pixelCenter);
+                    m_encoder->Push();
+                }
 
                 CVariable* floatPixelPositionDelta = floatPixelPosition; //reuse the same variable for the final delta
 
@@ -7066,11 +7095,7 @@ void EmitPass::emitPSSGV(GenIntrinsicInst* inst)
     case ACTUAL_COARSE_SIZE_X:
     case ACTUAL_COARSE_SIZE_Y:
     {
-        CVariable* CPSize = m_currShader->BitCast(psProgram->GetR1(), ISA_TYPE_UB);
-        m_encoder->SetSrcRegion(0, 0, 1, 0);
-        m_encoder->SetSrcSubReg(0, usage == ACTUAL_COARSE_SIZE_X ? 0 : 1);
-        m_encoder->Cast(m_destination, CPSize);
-        m_encoder->Push();
+        getCoarsePixelSize(m_destination, (usage == ACTUAL_COARSE_SIZE_X ? 0 : 1));
     }
     break;
     case REQUESTED_COARSE_SIZE_X:
