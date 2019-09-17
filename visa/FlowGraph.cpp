@@ -128,7 +128,7 @@ G4_BB* G4_BB::fallThroughBB()
             // Instructions    Predicate-On    Predicate-Off    Num of Succ
             // Jmpi                Front                None               >=1
             // CALL             Front                None               >=2     considered the conditional call here
-            // while               Front                Front              2 // G4_while considered to fall trhu even without pred, since break jumps to while
+            // while               Front                Front              2 
             // if, else        Front                Front               2
             // break, cont      Front                None               1,2
             // return              Front                None               >=1
@@ -696,8 +696,7 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
                         addUniquePredSuccEdges(curr_BB, next_BB);
                     }
                 }    // if (i->opcode()
-                else if (i->opcode() == G4_if || i->opcode() == G4_while ||
-                    i->opcode() == G4_else)
+                else if (i->opcode() == G4_if || i->opcode() == G4_while || i->opcode() == G4_else)
                 {
                     hasSIMDCF = true;
                     if (i->asCFInst()->getJip()->isLabel())
@@ -2044,14 +2043,9 @@ void FlowGraph::removeRedundantLabels()
                                     // for G4_while, jump no matter predicate
                                     i->asCFInst()->setJip(succ_label);
                                 }
-                                // for G4_if , jump only when it has predictate; if no predicate, no jump
-                                // this rule changed in GT as below
-                                // [(<pred>)] if (<exec_size>) null null null <JIP>
-                                // if[.<cmod>] (<exec_size>) null <src0> <src1> <JIP>
-                                else if ((i->getPredicate() != NULL) ||
-                                    ((i->getCondMod() != NULL) &&
-                                    (i->getSrc(0) != NULL) &&
-                                        (i->getSrc(1) != NULL))) {
+                                // for G4_if, jump only when it has predictate; if no predicate, no jump
+                                else if (i->getPredicate()) 
+                                {
                                     i->asCFInst()->setJip(succ_label);
                                 }
                             }

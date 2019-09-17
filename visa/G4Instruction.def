@@ -158,18 +158,18 @@ HANDLE_INST( cmpn, 2, 1, InstTypeCompare, GENX_BDW, \
 //
 HANDLE_INST( jmpi, 1, 0, InstTypeFlow, GENX_BDW, ATTR_NONE )
 HANDLE_INST( brd, 1, 0, InstTypeFlow, GENX_BDW, ATTR_NONE )
-HANDLE_INST( if, 2, 0, InstTypeFlow, GENX_BDW, ATTR_NONE )
+HANDLE_INST( if, 0, 0, InstTypeFlow, GENX_BDW, ATTR_NONE )
 HANDLE_INST( brc, 2, 0, InstTypeFlow, GENX_BDW, ATTR_NONE )
 HANDLE_INST( else, 0, 0, InstTypeFlow, GENX_BDW, ATTR_NONE )
 HANDLE_INST( endif, 0, 0, InstTypeFlow, GENX_BDW, ATTR_NONE )
-HANDLE_INST( while, 2, 0, InstTypeFlow, GENX_BDW, ATTR_NONE )
+HANDLE_INST( while, 0, 0, InstTypeFlow, GENX_BDW, ATTR_NONE )
 HANDLE_INST( break, 0, 0, InstTypeFlow, GENX_BDW, ATTR_NONE )
 HANDLE_INST( cont, 0, 0, InstTypeFlow, GENX_BDW, ATTR_NONE )
 HANDLE_INST( halt, 0, 0, InstTypeFlow, GENX_BDW, ATTR_NONE )
 HANDLE_INST( call, 1, 1, InstTypeFlow, GENX_BDW, ATTR_NONE )
 HANDLE_INST( return, 1, 0, InstTypeFlow, GENX_BDW, ATTR_NONE )
-HANDLE_INST( goto, 2, 0, InstTypeFlow, GENX_BDW, ATTR_NONE )
-HANDLE_INST( join, 1, 0, InstTypeFlow, GENX_BDW, ATTR_NONE )
+HANDLE_INST( goto, 0, 0, InstTypeFlow, GENX_BDW, ATTR_NONE )
+HANDLE_INST( join, 0, 0, InstTypeFlow, GENX_BDW, ATTR_NONE )
   //
   // Following are pseudo instructions
   //
