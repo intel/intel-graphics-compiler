@@ -743,9 +743,9 @@ bool TranslateBuild(
     const IGC::CPlatform& IGCPlatform, 
     float profilingTimerResolution)
 {
-    if (pInputArgs->pInternalOptions) {
+    if (pInputArgs->pOptions) {
         static const char* CMC = "-cmc";
-        if (strstr(pInputArgs->pInternalOptions, CMC) != nullptr)
+        if (strstr(pInputArgs->pOptions, CMC) != nullptr)
             return TranslateBuildCM(pInputArgs,
                                     pOutputArgs,
                                     inputDataFormatTemp,
