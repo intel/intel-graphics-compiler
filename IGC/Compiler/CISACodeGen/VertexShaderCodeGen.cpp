@@ -85,6 +85,11 @@ namespace IGC
         // TODO: handle packed vertex attribute even if we pull
         bool packedInput = m_Platform->hasPackedVertexAttr() &&
             !isInputsPulled
+            // WA: Gen11+ HW has problems with doubles on vertex shader input, if the input has unused components
+            // and ElementComponentEnableMask is not full == packing occurs
+            // right now only OGL is affected, so there is special disableVertexComponentPacking flag set by GLSL FE
+            // if there is double on input to vertex shader
+            && !(m_Platform->getWATable().Wa_1604402567 && m_ModuleMetadata->compOpt.disableVertexComponentPacking)
             ;
 
         m_ElementComponentPackingEnabled = packedInput;

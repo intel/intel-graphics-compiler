@@ -178,6 +178,8 @@ void populateSIPKernelInfo(std::map< unsigned char, std::pair<void*, unsigned in
     SIPKernelInfo[GEN11_HP_SIP_CSR] = std::make_pair((void*)&Gen11HPSIPCSR, (int)sizeof(Gen11HPSIPCSR));
 
     SIPKernelInfo[GEN11_LKF_SIP_CSR] = std::make_pair((void*)&Gen11LKFSIPCSR, (int)sizeof(Gen11LKFSIPCSR));
+
+    SIPKernelInfo[GEN12_LP_CSR] = std::make_pair((void*)&Gen12LPSIPCSR, (int)sizeof(Gen12LPSIPCSR));
 }
 
 CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
@@ -282,6 +284,35 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
             )
             {
                 SIPIndex = GEN11_LKF_SIP_CSR;
+            }
+        }
+        else if (mode == (SYSTEM_THREAD_MODE_CSR | SYSTEM_THREAD_MODE_DEBUG))
+        {
+            SIPIndex = GEN10_SIP_CSR_DEBUG;
+        }
+        break;
+    }
+    case IGFX_GEN12_CORE:
+    case IGFX_GEN12LP_CORE:
+    {
+        if (bindlessMode)
+        {
+            if (mode == SYSTEM_THREAD_MODE_DEBUG)
+            {
+                SIPIndex =  GEN10_SIP_DEBUG_BINDLESS;
+            }
+            //Add the rest later for bindless mode for preemption
+        }
+        else if (mode == SYSTEM_THREAD_MODE_DEBUG)
+        {
+            SIPIndex = GEN10_SIP_DEBUG;
+        }
+        else if (mode == SYSTEM_THREAD_MODE_CSR)
+        {
+            if (platform.getPlatformInfo().eProductFamily == IGFX_TIGERLAKE_LP
+            )
+            {
+                SIPIndex = GEN12_LP_CSR;
             }
         }
         else if (mode == (SYSTEM_THREAD_MODE_CSR | SYSTEM_THREAD_MODE_DEBUG))

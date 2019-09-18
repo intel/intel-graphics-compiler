@@ -63,6 +63,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/SIPKernels/Gen11HPSIPCSR.h"
 #include "common/SIPKernels/Gen11SIPCSR.h"
 #include "common/SIPKernels/Gen11LKFSIPCSR.h"
+#include "common/SIPKernels/Gen12LPSIPCSR.h"
 
 
 namespace SIP 
@@ -85,6 +86,7 @@ namespace SIP
         GEN11_SIP_CSR,
         GEN11_HP_SIP_CSR,
         GEN11_LKF_SIP_CSR,
+        GEN12_LP_CSR,
         GEN_SIP_MAX_INDEX
     };
 

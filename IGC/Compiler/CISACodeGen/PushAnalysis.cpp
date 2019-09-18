@@ -1305,6 +1305,41 @@ namespace IGC
                 }
             }
         }
+        // WA: Gen11+ HW doesn't work correctly if doubles are on vertex shader input and the input has unused components,
+        // so ElementComponentEnableMask is not full => packing occurs
+        // Code below fills gaps in inputs, so the ElementComponentEnableMask if full even if we don't use all
+        // components in shader. This is needed, because in case of doubles there can be no URBRead if xy or zw
+        // components are not used.
+        // Right now only OGL is affected, so there is special disableVertexComponentPacking flag set by GLSL FE
+        // if there is double on input to vertex shader
+        if (!m_context->getModuleMetaData()->pushInfo.inputs.empty() &&
+            m_context->type == ShaderType::VERTEX_SHADER &&
+            m_context->platform.getWATable().Wa_1604402567 &&
+            m_context->getModuleMetaData()->compOpt.disableVertexComponentPacking)
+        {
+            PushInfo& pushInfo = m_context->getModuleMetaData()->pushInfo;
+            int maxIndex = pushInfo.inputs.rbegin()->first;
+            for (int i = 0; i < maxIndex; ++i)
+            {
+                if (pushInfo.inputs.find(i) == pushInfo.inputs.end())
+                {
+                    SInputDesc input;
+                    // if input is i1.xyzw, elementIndex = 1*4, extract->getIndexOperand() is the component
+                    input.index = i;
+                    input.interpolationMode = EINTERPOLATION_VERTEX;
+
+                    const bool uniformInput =
+                        AreUniformInputsBasedOnDispatchMode() ||
+                        (vsHasConstantBufferIndexedWithInstanceId &&
+                            vsUrbReadIndexForInstanceIdSGV == input.index) ||
+                        gsInstancingUsed;
+
+                    addArgumentAndMetadata(Type::getFloatTy(m_pFunction->getContext()), VALUE_NAME(std::string("urb_read_") + to_string(input.index)), uniformInput ? WIAnalysis::UNIFORM : WIAnalysis::RANDOM);
+                    input.argIndex = m_argIndex;
+                    pushInfo.inputs[input.index] = input;
+                }
+            }
+        }
 
         if (m_funcTypeChanged)
         {

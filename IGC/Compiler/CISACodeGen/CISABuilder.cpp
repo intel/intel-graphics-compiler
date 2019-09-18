@@ -2944,13 +2944,20 @@ namespace IGC
     case IGFX_GEN11_CORE:
         if (platform->getPlatformInfo().eProductFamily == IGFX_ICELAKE_LP ||
             platform->getPlatformInfo().eProductFamily == IGFX_LAKEFIELD
-           )
+            )
         {
             return GENX_ICLLP;
         }
         else
         {
             return GENX_ICL;
+        }
+    case IGFX_GEN12_CORE:
+    case IGFX_GEN12LP_CORE:
+        if (platform->getPlatformInfo().eProductFamily == IGFX_TIGERLAKE_LP
+        )
+        {
+            return GENX_TGLLP;
         }
     default:
         assert(0 && "unsupported platform");

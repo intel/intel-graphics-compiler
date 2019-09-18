@@ -137,6 +137,13 @@ iga_gen_t GetIGAPlatform(const IGC::CPlatform* platform)
         return IGA_GEN10;
     case IGFX_GEN11_CORE:
             return IGA_GEN11;
+    case IGFX_GEN12_CORE:
+    case IGFX_GEN12LP_CORE:
+        if (   platform->getPlatformInfo().eProductFamily == IGFX_TIGERLAKE_LP
+           )
+        {
+            return IGA_GEN12p1;
+        }
     default:
         assert(0 && "unsupported platform");
         break;
