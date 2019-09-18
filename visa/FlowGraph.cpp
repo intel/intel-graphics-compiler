@@ -3093,49 +3093,7 @@ void FlowGraph::addFrameSetupDeclares(IR_Builder& builder, PhyRegPool& regPool)
 //
 void FlowGraph::addSaveRestorePseudoDeclares(IR_Builder& builder)
 {
-    //
-    // VCA_SAVE (r1.0-r60.0) [r0 is reserved] - one required per stack call,
-    // but will be reused across cuts.
-    //
-    INST_LIST callSites;
-    for (auto bb : builder.kernel.fg)
-    {
-        if (bb->isEndWithFCall())
-        {
-            callSites.push_back(bb->back());
-        }
-    }
-    if (callSites.size() <= pseudoVCADclList.size())
-    {
-        std::vector<G4_Declare*>::iterator it = pseudoVCADclList.begin();
-        for (auto callsite : callSites)
-        {
-            (*it)->getRegVar()->setPhyReg(NULL, 0);
-            callsite->asCFInst()->setAssocPseudoVCA((*it)->getRegVar());
-            ++it;
-        }
-    }
-    else
-    {
-        INST_LIST_ITER it = callSites.begin();
-        INST_LIST_ITER itEnd = callSites.end();
-        for (auto pseudoVCADcl : pseudoVCADclList)
-        {
-            MUST_BE_TRUE(it != callSites.end(), "incorrect call sites");
-            pseudoVCADcl->getRegVar()->setPhyReg(NULL, 0);
-            (*it)->asCFInst()->setAssocPseudoVCA(pseudoVCADcl->getRegVar());
-            ++it;
-        }
-        for (unsigned id = (unsigned)pseudoVCADclList.size(); it != itEnd; ++it, ++id)
-        {
-            const char* nameBase = "VCA_SAVE";
-            const int maxIdLen = 3;
-            MUST_BE_TRUE(id < 1000, ERROR_FLOWGRAPH);
-            const char *name = builder.getNameString(mem, strlen(nameBase) + maxIdLen + 1, "%s_%d", nameBase, id);
-            pseudoVCADclList.push_back(builder.createDeclareNoLookup(name, G4_GRF, 8, 59, Type_UD));
-            (*it)->asCFInst()->setAssocPseudoVCA(pseudoVCADclList.back()->getRegVar());
-        }
-    }
+
     //
     // VCE_SAVE (r60.0-r125.0) [r125-127 is reserved]
     //
@@ -3150,31 +3108,33 @@ void FlowGraph::addSaveRestorePseudoDeclares(IR_Builder& builder)
     }
 
     //
-    // Insert caller save decls for A0
+    // Insert caller save decls for VCA/A0/Flag (one per call site)
+    // VCA_SAVE (r1.0-r60.0) [r0 is reserved] - one required per stack call,
+    // but will be reused across cuts.
     //
+    INST_LIST callSites;
+    for (auto bb : builder.kernel.fg)
+    {
+        if (bb->isEndWithFCall())
+        {
+            callSites.push_back(bb->back());
+        }
+    }
+
     unsigned int i = 0;
     for (auto callSite : callSites)
     {
-        const char* name = builder.getNameString(mem, 50, builder.getIsKernel() ? "k%d_SA0_%d" : "f%d_SA0_%d", builder.getCUnitId(), i);
-        G4_Declare* saveA0 = builder.createDeclareNoLookup(name, G4_ADDRESS, (unsigned short)getNumAddrRegisters(), 1, Type_UW);
-        pseudoA0DclList.push_back(saveA0);
-        callSite->asCFInst()->setAssocPseudoA0Save(saveA0->getRegVar());
+        const char* nameBase = "VCA_SAVE";
+        const int maxIdLen = 3;
+        const char* name = builder.getNameString(mem, strlen(nameBase) + maxIdLen + 1, "%s_%d", nameBase, i);
+        G4_Declare* VCA = builder.createDeclareNoLookup(name, G4_GRF, 8, 59, Type_UD);
+        name = builder.getNameString(mem, 50, builder.getIsKernel() ? "k%d_SA0_%d" : "f%d_SA0_%d", builder.getCUnitId(), i);
+        G4_Declare* saveA0 = builder.createDeclareNoLookup(name, G4_ADDRESS, (uint16_t)getNumAddrRegisters(), 1, Type_UW);
+        name = builder.getNameString(mem, 64, builder.getIsKernel() ? "k%d_SFLAG_%d" : "f%d_SFLAG_%d", builder.getCUnitId(), i);
+        G4_Declare* saveFLAG = builder.createDeclareNoLookup(name, G4_FLAG, (uint16_t) builder.getNumFlagRegisters(), 1, Type_UW);
+        fcallToPseudoDclMap[callSite->asCFInst()] = { VCA, saveA0, saveFLAG };
         i++;
     }
-
-    //
-    // Insert caller save decls for flag
-    //
-    unsigned int j = 0;
-    for (auto callSite : callSites)
-    {
-        const char *name = builder.getNameString(mem, 64, builder.getIsKernel() ? "k%d_SFLAG_%d" : "f%d_SFLAG_%d", builder.getCUnitId(), j);
-        G4_Declare* saveFLAG = builder.createDeclareNoLookup(name, G4_FLAG, (uint16_t)builder.getNumFlagRegisters(), 1, Type_UW);
-        pseudoFlagDclList.push_back(saveFLAG);
-        callSite->asCFInst()->setAssocPseudoFlagSave(saveFLAG->getRegVar());
-        j++;
-    }
-
 }
 
 //

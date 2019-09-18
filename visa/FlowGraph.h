@@ -710,11 +710,17 @@ public:
     G4_Declare *            framePtrDcl;
     G4_Declare *            stackPtrDcl;
     G4_Declare *            scratchRegDcl;
-    // ToDo: change to set if we have a lot of stack call sites
-    std::vector<G4_Declare *> pseudoVCADclList;
     G4_Declare *            pseudoVCEDcl;
-    std::vector<G4_Declare*> pseudoA0DclList;
-    std::vector<G4_Declare*> pseudoFlagDclList;
+
+    // pseudo declares used by RA to model the save/restore variables at each call site
+    struct PseudoDcls
+    {
+        G4_Declare* VCA;
+        G4_Declare* A0;
+        G4_Declare* Flag;
+    };
+
+    std::unordered_map<G4_InstCF*, struct PseudoDcls> fcallToPseudoDclMap;
 
     unsigned                    callerSaveAreaOffset = 0;
     unsigned                    calleeSaveAreaOffset = 0;
@@ -842,18 +848,39 @@ public:
     G4_Declare*& getStackPtrDcl()                   {return stackPtrDcl;}
     G4_Declare*& getScratchRegDcl()                 {return scratchRegDcl;}
 
+    bool isPseudoVCEDcl(G4_Declare* dcl) const { return dcl == pseudoVCEDcl; }
     bool isPseudoVCADcl(G4_Declare* dcl) const
     {
-        return std::find(pseudoVCADclList.begin(), pseudoVCADclList.end(), dcl) != std::end(pseudoVCADclList);
+        for (auto iter : fcallToPseudoDclMap)
+        {
+            if (iter.second.VCA == dcl)
+            {
+                return true;
+            }
+        }
+        return false;
     }
-    bool isPseudoVCEDcl(G4_Declare* dcl) const { return dcl == pseudoVCEDcl; }
     bool isPseudoA0Dcl(G4_Declare* dcl) const
     {
-        return std::find(pseudoA0DclList.begin(), pseudoA0DclList.end(), dcl) != std::end(pseudoA0DclList);
+        for (auto iter : fcallToPseudoDclMap)
+        {
+            if (iter.second.A0 == dcl)
+            {
+                return true;
+            }
+        }
+        return false;
     }
     bool isPseudoFlagDcl(G4_Declare* dcl) const
     {
-        return std::find(pseudoFlagDclList.begin(), pseudoFlagDclList.end(), dcl) != std::end(pseudoFlagDclList);
+        for (auto iter : fcallToPseudoDclMap)
+        {
+            if (iter.second.Flag == dcl)
+            {
+                return true;
+            }
+        }
+        return false;
     }
     bool isPseudoDcl(G4_Declare* dcl) const
     {
@@ -861,7 +888,18 @@ public:
         {
             return false;
         }
-        return isPseudoVCADcl(dcl) || isPseudoVCEDcl(dcl) || isPseudoA0Dcl(dcl) || isPseudoFlagDcl(dcl);
+        if (isPseudoVCEDcl(dcl))
+        {
+            return true;
+        }
+        for (auto iter : fcallToPseudoDclMap)
+        {
+            if (iter.second.A0 == dcl || iter.second.Flag == dcl || iter.second.VCA == dcl)
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     //

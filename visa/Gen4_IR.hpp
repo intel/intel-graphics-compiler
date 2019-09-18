@@ -1221,9 +1221,6 @@ class G4_InstCF : public G4_INST
 
     // for FCALL only
     std::string         calleeName = "";
-    G4_RegVar*          assocPseudoVCA;
-    G4_RegVar*          assocPseudoA0Save;
-    G4_RegVar*          assocPseudoFlagSave;
 
 public:
 
@@ -1238,8 +1235,7 @@ public:
         G4_Label* uipLabel,
         uint32_t instOpt) :
         G4_INST(builder, prd, op, nullptr, false, size, nullptr, nullptr, nullptr, instOpt),
-        jip(jipLabel), uip(uipLabel), isBackwardBr(false),
-        assocPseudoVCA(nullptr), assocPseudoA0Save(nullptr), assocPseudoFlagSave(nullptr)
+        jip(jipLabel), uip(uipLabel), isBackwardBr(false)
     {
 
     }
@@ -1256,8 +1252,7 @@ public:
         G4_Operand* s0,
         unsigned int opt) :
         G4_INST(builder, prd, o, m, sat, size, d, s0, nullptr, opt),
-        jip(NULL), uip(NULL), isBackwardBr(false),
-        assocPseudoVCA(nullptr), assocPseudoA0Save(nullptr), assocPseudoFlagSave(nullptr)
+        jip(NULL), uip(NULL), isBackwardBr(false)
     {
     }
 
@@ -1320,37 +1315,6 @@ public:
         {
             return nullptr;
         }
-    }
-
-    void setAssocPseudoVCA(G4_RegVar* var)
-    {
-        MUST_BE_TRUE(op == G4_pseudo_fcall, "Must be a FCALL");
-        assocPseudoVCA = var;
-    }
-    G4_RegVar* getAssocPseudoVCA() const
-    {
-        MUST_BE_TRUE(op == G4_pseudo_fcall, "Must be a FCALL");
-        return assocPseudoVCA;
-    }
-    void setAssocPseudoA0Save(G4_RegVar* var)
-    {
-        MUST_BE_TRUE(op == G4_pseudo_fcall, "Must be a FCALL");
-        assocPseudoA0Save = var;
-    }
-    G4_RegVar* getAssocPseudoA0Save() const
-    {
-        MUST_BE_TRUE(op == G4_pseudo_fcall, "Must be a FCALL");
-        return assocPseudoA0Save;
-    }
-    void setAssocPseudoFlagSave(G4_RegVar* var)
-    {
-        MUST_BE_TRUE(op == G4_pseudo_fcall, "Must be a FCALL");
-        assocPseudoFlagSave = var;
-    }
-    G4_RegVar* getAssocPseudoFlagSave() const
-    {
-        MUST_BE_TRUE(op == G4_pseudo_fcall, "Must be a FCALL");
-        return assocPseudoFlagSave;
     }
 };
 

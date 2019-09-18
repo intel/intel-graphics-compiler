@@ -1890,12 +1890,14 @@ void Interference::buildInterferenceWithinBB(G4_BB* bb, BitSet& live)
             else if (liveAnalysis->livenessClass(G4_ADDRESS))
             {
                 // assume callee will use A0
-                buildInterferenceWithLive(live, inst->asCFInst()->getAssocPseudoA0Save()->getId());
+                auto A0Dcl = kernel.fg.fcallToPseudoDclMap[inst->asCFInst()].A0;
+                buildInterferenceWithLive(live, A0Dcl->getRegVar()->getId());
             }
             else if (liveAnalysis->livenessClass(G4_FLAG))
             {
                 // assume callee will use both F0 and F1
-                buildInterferenceWithLive(live, inst->asCFInst()->getAssocPseudoFlagSave()->getId());
+                auto flagDcl = kernel.fg.fcallToPseudoDclMap[inst->asCFInst()].Flag;
+                buildInterferenceWithLive(live, flagDcl->getRegVar()->getId());
             }
         }
 
@@ -5516,8 +5518,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
                 {
                     return false;
                 }
-                else if (kernel.fg.isPseudoVCADcl(dcl) || kernel.fg.isPseudoVCEDcl(dcl) ||
-                    kernel.fg.isPseudoA0Dcl(dcl) || kernel.fg.isPseudoFlagDcl(dcl))
+                else if (kernel.fg.isPseudoDcl(dcl))
                 {
                     // these pseudo dcls are not (and cannot be) spilled, but instead save/restore code will
                     // be inserted in stack call prolog/epilog
@@ -6507,8 +6508,7 @@ void GraphColor::addCallerSaveRestoreCode()
             std::vector<bool> retRegs(callerSaveNumGRF, false);
             unsigned callerSaveRegCount = 0;
             G4_INST* callInst = (*it)->back();
-            /*callInst->getDst()->getTopDcl()->getRegVar()->setPhyReg(regPool.getGreg(1), 0);*/
-            unsigned pseudoVCAId = callInst->asCFInst()->getAssocPseudoVCA()->getId();
+            unsigned pseudoVCAId = builder.kernel.fg.fcallToPseudoDclMap[callInst->asCFInst()].VCA->getRegVar()->getId();
             ASSERT_USER((*it)->Succs.size() == 1, "fcall basic block cannot have more than 1 successor");
             G4_BB* afterFCallBB = (*it)->Succs.front();
 
@@ -6928,7 +6928,8 @@ void GraphColor::addA0SaveRestoreCode()
         if (bb->isEndWithFCall())
         {
             G4_BB* succ = bb->Succs.front();
-            G4_RegVar* assocPseudoA0 = bb->back()->asCFInst()->getAssocPseudoA0Save();
+            auto fcallInst = bb->back()->asCFInst();
+            G4_RegVar* assocPseudoA0 = bb->getParent().fcallToPseudoDclMap[fcallInst].A0->getRegVar();
 
             if (!assocPseudoA0->getPhyReg())
             {
@@ -6991,7 +6992,8 @@ void GraphColor::addFlagSaveRestoreCode()
         if (bb->isEndWithFCall())
         {
             G4_BB* succ = bb->Succs.front();
-            G4_RegVar* assocPseudoFlag = bb->back()->asCFInst()->getAssocPseudoFlagSave();
+            auto fcallInst = bb->back()->asCFInst();
+            G4_RegVar* assocPseudoFlag = bb->getParent().fcallToPseudoDclMap[fcallInst].Flag->getRegVar();
 
             if (!assocPseudoFlag->getPhyReg())
             {
@@ -7091,7 +7093,6 @@ void GraphColor::addSaveRestoreCode(unsigned localSpillAreaOwordSize)
 //
 void GlobalRA::addCallerSavePseudoCode()
 {
-    std::vector<G4_Declare*>::iterator pseudoVCADclIt = builder.kernel.fg.pseudoVCADclList.begin();
     unsigned int retID = 0;
 
     for (BB_LIST_ITER it = builder.kernel.fg.begin(); it != builder.kernel.fg.end(); it++)
@@ -7101,8 +7102,8 @@ void GlobalRA::addCallerSavePseudoCode()
         if (bb->isEndWithFCall())
         {
             // GRF caller save/restore
-            G4_Declare* pseudoVCADcl = *pseudoVCADclIt;
-            pseudoVCADclIt++;
+            auto fcallInst = bb->back()->asCFInst();
+            G4_Declare* pseudoVCADcl = bb->getParent().fcallToPseudoDclMap[fcallInst].VCA;
             G4_DstRegRegion* dst = builder.createDstRegRegion(Direct, pseudoVCADcl->getRegVar(), 0, 0, 1, Type_UD);
             G4_INST* saveInst = builder.createInternalInst(
                 NULL, G4_pseudo_caller_save, NULL, false, 1,
