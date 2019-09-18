@@ -539,7 +539,7 @@
 
     bool noL3Flush() const
     {
-        return getGenxPlatform() >= GENX_TGLLP;
+        return getGenxPlatform() == GENX_TGLLP;
     }
 
     // end HW capabilities
