@@ -5,7 +5,7 @@
     bool hasMixMode() const
     {
         return getOption(vISA_ForceMixMode) ||
-            (getGenxPlatform() > GENX_BDW && 
+            (getGenxPlatform() > GENX_BDW &&
             getPlatformGeneration(getGenxPlatform()) != PlatformGen::GEN11 && !getOption(vISA_DisableMixMode));
     }
 
@@ -15,7 +15,7 @@
             (getGenxPlatform() < GENX_ICL && m_options->getOption(vISA_enablePreemption));
     }
 
-    bool needsNoPreemptR2ForSend() const 
+    bool needsNoPreemptR2ForSend() const
     {
         return getPlatformGeneration(getGenxPlatform()) == PlatformGen::GEN11;
     }
@@ -117,7 +117,7 @@
     {
         return getGenxPlatform() < GENX_CNL;
     }
- 
+
     bool hasSLMFence() const
     {
         return getGenxPlatform() >= GENX_ICL;
@@ -127,7 +127,7 @@
     {
         return getGenxPlatform() < GENX_SKL;
     }
-    
+
     bool twoSourcesCollision() const
     {
         return getGenxPlatform() < GENX_CNL;
@@ -308,7 +308,7 @@
         else if (getGenxPlatform() == GENX_CNL || getGenxPlatform() == GENX_ICL)
         {
             width = 2;
-            start = 8; //[8:9]    
+            start = 8; //[8:9]
         }
         else
         {
@@ -324,7 +324,7 @@
 
     bool fuseTypedWrites() const
     {
-        return getOption(vISA_FuseTypedWrites) || 
+        return getOption(vISA_FuseTypedWrites) ||
                getPlatformGeneration(getGenxPlatform()) == PlatformGen::GEN11;
     }
 
@@ -333,7 +333,7 @@
         return false;
     }
 
-    bool avoidWAWSubRegHazard() const 
+    bool avoidWAWSubRegHazard() const
     {
         return (getGenxPlatform() < GENX_TGLLP) && getOption(vISA_WAWSubregHazardAvoidance);
     }
@@ -463,8 +463,8 @@
     {
         return Type_HF;
     }
-    
-    bool alignBindlessSampler() const 
+
+    bool alignBindlessSampler() const
     {
         return getGenxPlatform() == GENX_SKL && getOption(vISA_alignBindlessSampler);
     }
@@ -487,8 +487,8 @@
     }
 
     // each flag register is 16-bit
-    uint32_t getNumFlagRegisters(void) 
-    { 
+    uint32_t getNumFlagRegisters(void)
+    {
         return 4;
     }
 
@@ -526,7 +526,7 @@
     {
         return false;
     }
-    
+
     bool hasUnifiedBarrier() const
     {
         return false;
@@ -542,4 +542,8 @@
         return getGenxPlatform() == GENX_TGLLP;
     }
 
+    bool needResetA0forVxHA0() const
+    {
+        return getGenxPlatform() >= GENX_TGLLP;
+    }
     // end HW capabilities

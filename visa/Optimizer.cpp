@@ -7009,7 +7009,7 @@ void Optimizer::evenlySplitInst(INST_LIST_ITER iter, G4_BB* bb)
             clearSendDependencies();
         }
 
-        if (builder.getOption(vISA_resetA0AtBeginning))
+        if (builder.needResetA0forVxHA0())
         {
             // reset a0 to 0 at the beginning of a shader. TGL WA
             resetA0();
@@ -8284,7 +8284,7 @@ public:
                 bb->back()->opcode() == G4_opcode::G4_sendsc)
             {
                 // "(W) mov(8) a0.0:uw tdr0.0:uw"
-                bb->insert(--bb->end(),builder.createMov(8,
+                bb->insert(--bb->end(), builder.createMov(8,
                     builder.createDstRegRegion(Direct, builder.phyregpool.getAddrReg(), 0, 0, 1, Type_UW),
                     builder.createSrcRegRegion(Mod_src_undef, Direct, builder.phyregpool.getTDRReg(), 0,
                                                0, builder.getRegionScalar(), Type_UW),
