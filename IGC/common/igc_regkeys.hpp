@@ -68,9 +68,7 @@ struct SRegKeyVariableMetaData
 };
 
 #if defined ( __linux__ ) && !defined( _DEBUG ) && !defined( _INTERNAL )
-#define LINUX_RELEASE_MODE "releaseMode"
-#else
-#define LINUX_RELEASE_MODE false
+#define LINUX_RELEASE_MODE
 #endif
 
 /*****************************************************************************\
@@ -94,7 +92,7 @@ struct SRegKeyVariableMetaData_##regkeyName : public SRegKeyVariableMetaData \
     }                                               \
     bool IsReleaseMode() const                      \
     {                                               \
-        return LINUX_RELEASE_MODE;                  \
+        return releaseMode;                  \
     }                                               \
 } regkeyName
 
@@ -108,13 +106,23 @@ struct SRegKeysList
 #undef DECLARE_IGC_REGKEY
 bool CheckHashRange(const std::vector<HashRange>&);
 extern SRegKeysList g_RegKeyList;
+#if defined(LINUX_RELEASE_MODE)
 #define IGC_GET_FLAG_VALUE( name )                 \
-( ( CheckHashRange(g_RegKeyList.name.hashes) || g_RegKeyList.name.IsReleaseMode() ) ? g_RegKeyList.name.m_Value : g_RegKeyList.name.GetDefault())
+( ( CheckHashRange(g_RegKeyList.name.hashes) && g_RegKeyList.name.IsReleaseMode() ) ? g_RegKeyList.name.m_Value : g_RegKeyList.name.GetDefault())
 #define IGC_IS_FLAG_ENABLED( name )                ( IGC_GET_FLAG_VALUE(name) != 0 )
 #define IGC_IS_FLAG_DISABLED( name )               ( !IGC_IS_FLAG_ENABLED(name) )
 #define IGC_SET_FLAG_VALUE( name, regkeyValue )    ( g_RegKeyList.name.m_Value = regkeyValue )
 #define IGC_GET_REGKEYSTRING( name )               \
-( ( CheckHashRange(g_RegKeyList.name.hashes) || g_RegKeyList.name.IsReleaseMode() ) ? g_RegKeyList.name.m_string : "" )
+( ( CheckHashRange(g_RegKeyList.name.hashes) && g_RegKeyList.name.IsReleaseMode() ) ? g_RegKeyList.name.m_string : "" )
+#else
+#define IGC_GET_FLAG_VALUE( name )                 \
+( CheckHashRange(g_RegKeyList.name.hashes) ? g_RegKeyList.name.m_Value : g_RegKeyList.name.GetDefault())
+#define IGC_IS_FLAG_ENABLED( name )                ( IGC_GET_FLAG_VALUE(name) != 0 )
+#define IGC_IS_FLAG_DISABLED( name )               ( !IGC_IS_FLAG_ENABLED(name) )
+#define IGC_SET_FLAG_VALUE( name, regkeyValue )    ( g_RegKeyList.name.m_Value = regkeyValue )
+#define IGC_GET_REGKEYSTRING( name )               \
+( CheckHashRange(g_RegKeyList.name.hashes) ? g_RegKeyList.name.m_string : "" )
+#endif
 void DumpIGCRegistryKeyDefinitions();
 void LoadRegistryKeys();
 void SetCurrentDebugHash(unsigned long long hash);
