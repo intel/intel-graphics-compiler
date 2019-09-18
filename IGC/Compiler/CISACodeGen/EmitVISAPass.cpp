@@ -393,9 +393,6 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         }
     }
 
-    COMPILER_TIME_START(m_currShader->GetContext(), TIME_CG_vISAEmitPass);
-    COMPILER_TIME_START(m_currShader->GetContext(), TIME_vISAEmitInit);
-
     m_DL = &F.getParent()->getDataLayout();
     m_pattern = &getAnalysis<CodeGenPatternMatch>();
     m_deSSA = &getAnalysis<DeSSA>();
@@ -550,9 +547,6 @@ bool EmitPass::runOnFunction(llvm::Function& F)
 
     // We only invoke EndEncodingMark() to update last VISA id.
     IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->EndEncodingMark();)
-
-        COMPILER_TIME_END(m_currShader->GetContext(), TIME_vISAEmitInit);
-    COMPILER_TIME_START(m_currShader->GetContext(), TIME_vISAEmitLoop);
 
     phiMovToBB.clear();
     unsigned int lineNo = 0;
@@ -718,9 +712,6 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         delete llvmtoVISADump;
     }
 
-    COMPILER_TIME_END(m_currShader->GetContext(), TIME_vISAEmitLoop);
-    COMPILER_TIME_START(m_currShader->GetContext(), TIME_vISAEmitPayloadInputs);
-
     if (!m_FGA || m_FGA->isGroupHead(&F))
     {
         // Cache the arguments list into a vector for faster access
@@ -730,10 +721,6 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         // Allocate the thread payload
         m_currShader->AllocatePayload();
     }
-
-    COMPILER_TIME_END(m_currShader->GetContext(), TIME_vISAEmitPayloadInputs);
-
-    COMPILER_TIME_END(m_currShader->GetContext(), TIME_CG_vISAEmitPass);
 
     IF_DEBUG_INFO_IF(m_currShader->diData, m_currShader->diData->markOutput(F, m_currShader);)
         IF_DEBUG_INFO_IF(m_currShader->diData, m_currShader->diData->addVISAModule(&F, m_pDebugEmitter->GetVISAModule());)

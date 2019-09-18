@@ -220,6 +220,8 @@ namespace IGC
 
     inline void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
     {
+        COMPILER_TIME_START(&ctx, TIME_CG_Add_Analysis_Passes);
+
     bool isOptDisabled = ctx.getModuleMetaData()->compOpt.OptDisable;
     TODO("remove the following once all IGC passes are registered to PassRegistery in their constructor")
     initializeLoopInfoWrapperPassPass(*PassRegistry::getPassRegistry());
@@ -300,6 +302,7 @@ namespace IGC
 
     mpm.add(createTimeStatsCounterPass(&ctx, TIME_CG_Analysis, STATS_COUNTER_END));
 
+    COMPILER_TIME_END(&ctx, TIME_CG_Add_Analysis_Passes);
     }
 
     static void UpdateInstTypeHint(CodeGenContext& ctx)
@@ -323,6 +326,7 @@ namespace IGC
 
     inline void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm)
     {
+        COMPILER_TIME_START(&ctx, TIME_CG_Add_Legalization_Passes);
 
         mpm.add(createTimeStatsCounterPass(&ctx, TIME_CG_Legalization, STATS_COUNTER_START));
 
@@ -671,12 +675,16 @@ namespace IGC
     mpm.add(new WAFMinFMax());
 
     mpm.add(createTimeStatsCounterPass(&ctx, TIME_CG_Legalization, STATS_COUNTER_END));
+
+    COMPILER_TIME_END(&ctx, TIME_CG_Add_Legalization_Passes);
     }
 
     inline void AddCodeGenPasses(CodeGenContext& ctx, CShaderProgram::KernelShaderMap& shaders, IGCPassManager& Passes, SIMDMode simdMode, bool canAbortOnSpill, ShaderDispatchMode shaderMode = ShaderDispatchMode::NOT_APPLICABLE, PSSignature* pSignature = nullptr)
     {
-    // Generate CISA
-    Passes.add(new EmitPass(shaders, simdMode, canAbortOnSpill, shaderMode, pSignature));
+        // Generate CISA
+        COMPILER_TIME_START(&ctx, TIME_CG_Add_CodeGen_Passes);
+        Passes.add(new EmitPass(shaders, simdMode, canAbortOnSpill, shaderMode, pSignature));
+        COMPILER_TIME_END(&ctx, TIME_CG_Add_CodeGen_Passes);
     }
 
     template<typename ContextType>
@@ -686,6 +694,7 @@ namespace IGC
     void CodeGen(DomainShaderContext* ctx, CShaderProgram::KernelShaderMap& shaders)
     {
         COMPILER_TIME_START(ctx, TIME_CodeGen);
+        COMPILER_TIME_START(ctx, TIME_CG_Add_Passes);
 
     IGCPassManager Passes(ctx, "CG");
 
@@ -699,6 +708,8 @@ namespace IGC
     {
         AddCodeGenPasses(*ctx, shaders, Passes, SIMDMode::SIMD8, false, ShaderDispatchMode::DUAL_PATCH);
     }
+
+    COMPILER_TIME_END(ctx, TIME_CG_Add_Passes);
 
     Passes.run(*(ctx->getModule()));
     DumpLLVMIR(ctx, "codegen");
@@ -722,8 +733,8 @@ namespace IGC
     void PSCodeGen(PixelShaderContext* ctx, CShaderProgram::KernelShaderMap& shaders, PSSignature* pSignature = nullptr)
     {
     COMPILER_TIME_START(ctx, TIME_CodeGen);
-
     COMPILER_TIME_START(ctx, TIME_CG_Add_Passes);
+
     IGCPassManager PassMgr(ctx, "CG");
         const PixelShaderInfo& psInfo = ctx->getModuleMetaData()->psInfo;
 
@@ -797,9 +808,8 @@ namespace IGC
         }
     }
 
-    COMPILER_TIME_END(ctx, TIME_CG_Add_Passes);
-
     PassMgr.add(new DebugInfoPass(shaders));
+    COMPILER_TIME_END(ctx, TIME_CG_Add_Passes);
 
     PassMgr.run(*(ctx->getModule()));
 
@@ -812,6 +822,7 @@ namespace IGC
     void CodeGen(ComputeShaderContext* ctx, CShaderProgram::KernelShaderMap& shaders)
     {
     COMPILER_TIME_START(ctx, TIME_CodeGen);
+    COMPILER_TIME_START(ctx, TIME_CG_Add_Passes);
 
     bool setEarlyExit16Stat = false;
 
@@ -925,6 +936,9 @@ namespace IGC
             assert(false && "Unexpected SIMD mode");
         }
     }
+
+    COMPILER_TIME_END(ctx, TIME_CG_Add_Passes);
+
     PassMgr.run(*(ctx->getModule()));
 
     if (setEarlyExit16Stat)
@@ -939,17 +953,20 @@ namespace IGC
     void CodeGen(ContextType* ctx, CShaderProgram::KernelShaderMap& shaders)
     {
         COMPILER_TIME_START(ctx, TIME_CodeGen);
+        COMPILER_TIME_START(ctx, TIME_CG_Add_Passes);
 
-    IGCPassManager PassMgr(ctx, "CG");
+        IGCPassManager PassMgr(ctx, "CG");
 
-    AddLegalizationPasses(*ctx, PassMgr);
+        AddLegalizationPasses(*ctx, PassMgr);
 
-    AddAnalysisPasses(*ctx, PassMgr);
+        AddAnalysisPasses(*ctx, PassMgr);
 
-    AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD8, false);
+        AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD8, false);
 
-    PassMgr.run(*(ctx->getModule()));
-    DumpLLVMIR(ctx, "codegen");
+        COMPILER_TIME_END(ctx, TIME_CG_Add_Passes);
+
+        PassMgr.run(*(ctx->getModule()));
+        DumpLLVMIR(ctx, "codegen");
 
         COMPILER_TIME_END(ctx, TIME_CodeGen);
         MEM_SNAPSHOT(IGC::SMS_AFTER_CODEGEN);
@@ -960,6 +977,7 @@ namespace IGC
     void CodeGen(OpenCLProgramContext* ctx, CShaderProgram::KernelShaderMap& kernels)
     {
     COMPILER_TIME_START(ctx, TIME_CodeGen);
+    COMPILER_TIME_START(ctx, TIME_CG_Add_Passes);
 
     IGCPassManager Passes(ctx, "CG");
 
@@ -1003,6 +1021,7 @@ namespace IGC
         }
     }
     Passes.add(new DebugInfoPass(kernels));
+    COMPILER_TIME_END(ctx, TIME_CG_Add_Passes);
 
     Passes.run(*(ctx->getModule()));
     COMPILER_TIME_END(ctx, TIME_CodeGen);

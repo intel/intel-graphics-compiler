@@ -49,6 +49,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 extern "C" int64_t getTimerTicks(unsigned int idx);
 extern "C" double getTimerCounts(unsigned int idx);
 extern "C" void getTimerNames(char* timerName, unsigned int idx);
+extern "C" unsigned int getTimerHits(unsigned int idx);
 extern "C" unsigned int getTotalTimers();
 #endif
 
@@ -512,15 +513,12 @@ default: assert(0 && "unreachable"); break;
 
 bool isDashboardTimer( COMPILE_TIME_INTERVALS cti )
 {
-    if( IGC::Debug::GetDebugFlag(IGC::Debug::DebugFlag::TIME_STATS_DASHBOARD ) )
+    switch (cti)
     {
-        switch (cti)
-        {
-    #define DEFINE_TIME_STAT( enumName, stringName, parentEnum, isVISA, isUnacc, isCoarseTimer, isDashBoardTimer ) case enumName: return isDashBoardTimer;
-    #include "timeStats.def"
-    #undef DEFINE_TIME_STAT
-        default: assert( 0 && "unreachable" ); break;
-        }
+#define DEFINE_TIME_STAT( enumName, stringName, parentEnum, isVISA, isUnacc, isCoarseTimer, isDashBoardTimer ) case enumName: return isDashBoardTimer;
+#include "timeStats.def"
+#undef DEFINE_TIME_STAT
+    default: assert( 0 && "unreachable" ); break;
     }
 
     return true;
@@ -564,10 +562,11 @@ TimeStats::TimeStats()
 
 void TimeStats::recordVISATimers()
 {
-    // getTotalTimers() +1 because there is a unaccounted counter 
+    // getTotalTimers() +1 because there is a unaccounted counter
     for (unsigned int i = 0; i < getTotalTimers(); ++i)
     {
-        m_elapsedTime[TIME_VISA_Total+i] += getTimerTicks(i);
+        m_elapsedTime[TIME_VISA_TOTAL+i] += getTimerTicks(i);
+        m_hitCount[TIME_VISA_TOTAL + i] = getTimerHits(i);
     }
 }
 
@@ -626,25 +625,14 @@ void TimeStats::printSumTime() const
     TimeStats pp = postProcess();
 
     bool dumpCoarse = IGC::Debug::GetDebugFlag(IGC::Debug::DebugFlag::TIME_STATS_COARSE );
-    bool dumpDashBoard = IGC::Debug::GetDebugFlag(IGC::Debug::DebugFlag::TIME_STATS_DASHBOARD );
 
-    if( !dumpCoarse && !dumpDashBoard )
+    if ( dumpCoarse )
+    {
+        pp.printSumTimeCSV("c:\\Intel\\timeStatCoarseSum.csv");
+    }
+    else
     {
         pp.printSumTimeCSV("c:\\Intel\\timeStatSum.csv");
-    }
-
-    if( dumpCoarse )
-    {
-        IGC::Debug::SetDebugFlag(IGC::Debug::DebugFlag::TIME_STATS_DASHBOARD, false );
-        pp.printSumTimeCSV("c:\\Intel\\timeStatCoarseSum.csv");
-        IGC::Debug::SetDebugFlag(IGC::Debug::DebugFlag::TIME_STATS_DASHBOARD, dumpDashBoard );
-    }
-
-    if( dumpDashBoard )
-    {
-        IGC::Debug::SetDebugFlag(IGC::Debug::DebugFlag::TIME_STATS_COARSE, false );
-        pp.printSumTimeCSV("c:\\Intel\\timeStatDashboardSum.csv");
-        IGC::Debug::SetDebugFlag(IGC::Debug::DebugFlag::TIME_STATS_COARSE, dumpCoarse );
     }
 
     pp.printSumTimeTable( llvm::dbgs() );
@@ -657,7 +645,7 @@ bool TimeStats::skipTimer( int i ) const
     {
         return true;
     }
-    if( IGC::Debug::GetDebugFlag(IGC::Debug::DebugFlag::TIME_STATS_DASHBOARD ) && !isDashboardTimer( interval ) )
+    if( !isDashboardTimer( interval ) )
     {
         return true;
     }
@@ -707,8 +695,7 @@ void TimeStats::printSumTimeCSV(const char* outputFile) const
         }
         fprintf(fileName, "\n");
 
-        if( !IGC::Debug::GetDebugFlag(IGC::Debug::DebugFlag::TIME_STATS_COARSE ) &&
-            !IGC::Debug::GetDebugFlag(IGC::Debug::DebugFlag::TIME_STATS_DASHBOARD ) )
+        if( !IGC::Debug::GetDebugFlag(IGC::Debug::DebugFlag::TIME_STATS_COARSE ) )
         {
             // print secs
             fprintf(fileName, "seconds,," );
@@ -809,9 +796,7 @@ void TimeStats::printSumTimeTable( llvm::raw_ostream & OS ) const
                 FS.PadToColumn(ticksCol) << str((int)intervalTicks, colWidth);
                 FS.PadToColumn(secsCol) << str((int)intervalTicks / (double)frequency, colWidth, 4);
                 FS.PadToColumn(percCol) << str((int)intervalTicks / (double)getCompileTime(TIME_TOTAL) * 100.0, colWidth, 2);
-                FS.PadToColumn(hitCol) << ((isVISATimer(interval) || isUnaccounted(interval))
-                    ? ""
-                    : str((int)m_hitCount[i], colWidth));
+                FS.PadToColumn(percCol) << str((int)m_hitCount[i], colWidth);
                 FS << "\n";
             }
         }
@@ -878,6 +863,10 @@ TimeStats TimeStats::postProcess() const
     {
         const COMPILE_TIME_INTERVALS interval = static_cast<COMPILE_TIME_INTERVALS>(i);
         const COMPILE_TIME_INTERVALS parent = parentInterval( interval );
+
+        if (m_elapsedTime[interval] == 0) {
+            continue;
+        }
 
         if ( isUnaccounted(interval) == false )
         {

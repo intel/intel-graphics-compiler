@@ -101,6 +101,7 @@ struct Timer {
     const char* name;
     LONGLONG ticks;
     bool started;
+    unsigned int hits;
 };
 
 static _THREAD Timer timers[TIMER_NUM_TIMERS];
@@ -119,6 +120,7 @@ void initTimer() {
         timers[i].name = NULL;
         timers[i].ticks = 0;
         timers[i].started = false;
+        timers[i].hits = 0;
         createNewTimer( timerNames[i] );
     }
     QueryPerformanceFrequency(&proc_freq);
@@ -142,6 +144,7 @@ void resetPerKernel()
         timers[i].currentStart = 0;
         timers[i].ticks = 0;
         timers[i].started = false;
+        timers[i].hits = 0;
     }
 }
 
@@ -172,6 +175,7 @@ void startTimer(int timer)
         LARGE_INTEGER start;
         QueryPerformanceCounter(&start);
         timers[timer].currentStart= start.QuadPart;
+        timers[timer].hits++;
 #if defined(_DEBUG) && defined(CHECK_TIMER)
         timers[timer].started = true;
 #endif
@@ -223,6 +227,11 @@ extern "C" double getTimerCounts(unsigned int idx)
 extern "C" int64_t getTimerTicks(unsigned int idx)
 {
     return timers[idx].ticks;
+}
+
+extern "C" unsigned int getTimerHits(unsigned int idx)
+{
+    return timers[idx].hits;
 }
 
 double getTimerUS(unsigned int idx)

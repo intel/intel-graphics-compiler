@@ -4175,6 +4175,7 @@ namespace IGC
         InitBuildParams(params);
     }
 
+    COMPILER_TIME_START(m_program->GetContext(), TIME_CG_vISACompile);
     bool enableVISADump = IGC_IS_FLAG_ENABLED(EnableVISASlowpath) || IGC_IS_FLAG_ENABLED(ShaderDumpEnable);
     auto builderMode = m_hasInlineAsm ? vISA_ASM_WRITER : vISA_3D;
     auto builderOpt = (enableVISADump || m_hasInlineAsm) ? CM_CISA_BUILDER_BOTH : CM_CISA_BUILDER_GEN;
@@ -4616,8 +4617,6 @@ namespace IGC
 
     void CEncoder::Compile(bool hasSymbolTable)
     {
-    COMPILER_TIME_START(m_program->GetContext(), TIME_CG_vISAEmitPass);
-
     CodeGenContext* context = m_program->GetContext();
     SProgramOutput* pOutput = m_program->ProgramOutput();
 
@@ -4633,10 +4632,6 @@ namespace IGC
     {
             MEM_SNAPSHOT(IGC::SMS_AFTER_CISACreateDestroy_SIMD32);
     }
-
-    COMPILER_TIME_END(m_program->GetContext(), TIME_CG_vISAEmitPass);
-
-    COMPILER_TIME_START(m_program->GetContext(), TIME_CG_vISACompile);
 
     int vIsaCompile = 0;
     VISAKernel* pMainKernel = nullptr;
@@ -4751,8 +4746,6 @@ namespace IGC
 #endif
         return;
     }
-
-    COMPILER_TIME_START(m_program->GetContext(), TIME_CG_vISAEmitPass);
 
         if (m_program->m_dispatchSize == SIMDMode::SIMD8)
     {
@@ -4911,8 +4904,6 @@ namespace IGC
     pOutput->m_scratchSpaceUsedByGtpin = jitInfo->numBytesScratchGtpin;
 
     pOutput->m_offsetToSkipPerThreadDataLoad = jitInfo->offsetToSkipPerThreadDataLoad;
-
-    COMPILER_TIME_END(m_program->GetContext(), TIME_CG_vISAEmitPass);
     }
 
     void CEncoder::DestroyVISABuilder()
