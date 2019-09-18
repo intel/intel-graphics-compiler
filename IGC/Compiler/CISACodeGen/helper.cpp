@@ -397,8 +397,7 @@ namespace IGC
                     else if (isa<PHINode>(phiSrcPtr) && phiSrcPtr == baseValue)
                     {
                         // Found a loop in one of the phi paths. We can still trace as long as all the other paths match
-                        // Current logic is not patching the loop in phi paths correctly, hence bailing out for now
-                        return nullptr;
+                        continue;
                     }
                     else if (srcPtr == nullptr)
                     {
