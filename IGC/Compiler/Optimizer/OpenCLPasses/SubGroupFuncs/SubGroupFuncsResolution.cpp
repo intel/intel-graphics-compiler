@@ -569,6 +569,7 @@ void SubGroupFuncsResolution::visitCallInst(CallInst& CI)
         funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_READ_4_GBL_L) ||
         funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_READ_8_GBL_L))
     {
+        CheckSIMDSize(CI, "Block reads not supported in SIMD32");
         simdBlockRead(CI);
     }
     else if (funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_WRITE_1_GBL) ||
@@ -590,6 +591,7 @@ void SubGroupFuncsResolution::visitCallInst(CallInst& CI)
         funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_WRITE_4_GBL_L) ||
         funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_WRITE_8_GBL_L))
     {
+        CheckSIMDSize(CI, "Block writes not supported in SIMD32");
         simdBlockWrite(CI);
     }
     else if (funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_1) ||
