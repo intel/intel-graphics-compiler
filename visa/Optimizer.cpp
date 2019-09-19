@@ -3704,6 +3704,13 @@ bool Optimizer::foldCmpToCondMod(G4_BB* bb, INST_LIST_ITER& iter)
 
     auto cmpIter = std::find(iter, bb->end(), cmpInst);
 
+    // check if cmp instruction is close enough
+    constexpr int DISTANCE = 60;
+    if (std::distance(iter, cmpIter) > DISTANCE)
+    {
+        return false;
+    }
+
     auto isSupportedCondMod = [](G4_CondModifier mod)
     {
         return mod == Mod_g || mod == Mod_ge || mod == Mod_l || mod == Mod_le ||
