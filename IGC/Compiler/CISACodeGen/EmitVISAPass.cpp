@@ -8148,46 +8148,8 @@ void EmitPass::emitPtrToInt(llvm::PtrToIntInst* P2I)
 
 void EmitPass::emitAddrSpaceCast(llvm::AddrSpaceCastInst* addrSpaceCast)
 {
-    // Tags are used to determine the address space of generic pointers
-    // casted from private, local or global pointers.
-    // Bit[60:63] are used for this purpose. bit[60] is reserved for future use.
-    // Address space tag on bit[61:63] can be:
-    // 001: private
-    // 010: local
-    // 000/111: global
-
     CVariable* srcV = GetSymbol(addrSpaceCast->getOperand(0));
-    if (addrSpaceCast->getDestAddressSpace() == ADDRESS_SPACE_GENERIC)
-    {
-        if (addrSpaceCast->getSrcAddressSpace() == ADDRESS_SPACE_PRIVATE)
-        {
-            CVariable* pTempVar = m_currShader->GetNewVariable(
-                numLanes(m_currShader->m_SIMDSize),
-                ISA_TYPE_UQ,
-                m_currShader->getGRFAlignment(), m_destination->IsUniform());
-
-            m_encoder->Copy(pTempVar, m_currShader->ImmToVariable(1ULL << 61, ISA_TYPE_UQ));
-
-            m_encoder->Or(m_destination, srcV, pTempVar);
-        }
-        else if (addrSpaceCast->getSrcAddressSpace() == ADDRESS_SPACE_LOCAL)
-        {
-            CVariable* pTempVar = m_currShader->GetNewVariable(
-                numLanes(m_currShader->m_SIMDSize),
-                ISA_TYPE_UQ,
-                EALIGN_GRF, true);
-
-            m_encoder->Copy(pTempVar, m_currShader->ImmToVariable(1ULL << 62, ISA_TYPE_UQ));
-
-            m_encoder->Or(m_destination, srcV, pTempVar);
-        }
-        // else ADDRESS_SPACE_GLOBAL
-        // nop
-    }
-    else
-    {
-        m_encoder->Cast(m_destination, srcV);
-    }
+    m_encoder->Cast(m_destination, srcV);
     m_encoder->Push();
 }
 
