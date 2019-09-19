@@ -9010,7 +9010,8 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
         {
             // If the call is not uniform, we have to make a uniform call per lane
             // First get the execution mask for active lanes
-            CVariable* eMask = GetExecutionMask();
+            CVariable* eMaskVec = nullptr;
+            CVariable* eMask = GetExecutionMask(eMaskVec);
             // Create a label for the loop
             uint label = m_encoder->GetNewLabelID();
             m_encoder->Label(label);
@@ -9030,18 +9031,14 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
             m_encoder->Push();
 
             // Unset the bits in execution mask for lanes that were called
-            CVariable* tempMask = m_currShader->GetNewVariable(1, eMask->GetType(), EALIGN_DWORD, true);
-            m_encoder->SetNoMask();
-            m_encoder->Cast(tempMask, flag);
+            m_encoder->Xor(eMaskVec, eMaskVec, flag);
             m_encoder->Push();
-            m_encoder->Xor(eMask, eMask, tempMask);
+            m_encoder->SetNoMask();
+            m_encoder->Cast(eMask, eMaskVec);
             m_encoder->Push();
 
-            // Loop back for remaining func addresses as long as there are bits in the eMask still set
-            CVariable* needLoop = m_currShader->GetNewVariable(1, ISA_TYPE_BOOL, EALIGN_BYTE, true);
-            m_encoder->Cmp(EPREDICATE_NE, needLoop, eMask, m_currShader->ImmToVariable(0, eMask->GetType()));
-            m_encoder->Push();
-            m_encoder->Jump(needLoop, label);
+            // Loop while there are bits still left in the mask
+            m_encoder->Jump(eMaskVec, label);
             m_encoder->Push();
         }
     }
@@ -10038,7 +10035,7 @@ CVariable* EmitPass::BroadcastIfUniform(CVariable* pVar)
     return pVar;
 }
 
-CVariable* EmitPass::GetExecutionMask()
+CVariable* EmitPass::GetExecutionMask(CVariable*& vecMaskVar)
 {
     bool isSecondHalf = m_encoder->IsSecondHalf();
     bool isSubSpanDst = m_encoder->IsSubSpanDestination();
@@ -10058,6 +10055,7 @@ CVariable* EmitPass::GetExecutionMask()
     }
     m_encoder->SetSecondHalf(isSecondHalf);
     m_encoder->SetSubSpanDestination(isSubSpanDst);
+    vecMaskVar = flag;
 
     VISA_Type maskType = m_currShader->m_dispatchSize > SIMDMode::SIMD16 ? ISA_TYPE_UD : ISA_TYPE_UW;
     CVariable* eMask = m_currShader->GetNewVariable(1, maskType, EALIGN_DWORD, true);
@@ -10065,6 +10063,12 @@ CVariable* EmitPass::GetExecutionMask()
     m_encoder->Cast(eMask, flag);
     m_encoder->Push();
     return eMask;
+}
+
+CVariable* EmitPass::GetExecutionMask()
+{
+    CVariable* vecMask = nullptr;
+    return GetExecutionMask(vecMask);
 }
 
 /// UniformCopy - Copy a non-uniform source into a uniform variable by copying

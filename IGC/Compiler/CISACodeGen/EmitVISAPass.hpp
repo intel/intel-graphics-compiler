@@ -464,6 +464,7 @@ namespace IGC
         void emitPlnInterpolation(CVariable* bary, unsigned int delatIndex);
 
         CVariable* GetExecutionMask();
+        CVariable* GetExecutionMask(CVariable* &vecMaskVar);
         CVariable* GetDispatchMask();
         CVariable* UniformCopy(CVariable* var);
         CVariable* UniformCopy(CVariable* var, CVariable*& LaneOffset, CVariable* eMask = nullptr);
