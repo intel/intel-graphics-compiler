@@ -1553,10 +1553,30 @@ ANodeHG* CFGStructurizer::getEnclosingANodeHG(ANode *AN)
             }
 
             ANodeHG *hg = (ANodeHG *)pred->parent;
-            MUST_BE_TRUE(hg->ANStackIx >= 0, "ANodeHG's index is wrong");
-            if (ix > hg->ANStackIx)
+            if (hg)
             {
-                ix = hg->ANStackIx;
+                MUST_BE_TRUE(hg->ANStackIx >= 0, "ANodeHG's index is wrong");
+                if (ix > hg->ANStackIx)
+                {
+                    ix = hg->ANStackIx;
+                }
+            }
+            else
+            {
+                // Error message
+                G4_BB* predBB = pred->getBeginBB();
+                G4_INST* predGoto = getGotoInst(predBB);
+
+                // If predGoto is null, it means that a non-goto branching inst like jmpi jumps
+                // into a range of goto instrutions, such as the following:
+                //     jmp  A
+                //     goto B
+                //  A:
+                //     ...
+                //  B:
+                //
+                MUST_BE_TRUE(predGoto != nullptr, "Error: Non-goto (like jmp) and goto crossing !");
+                MUST_BE_TRUE(false, "Error: unknown control flow in the program.");
             }
         }
         // No need to check succs as forward goto will be handled later
