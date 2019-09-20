@@ -10387,6 +10387,9 @@ CVariable* EmitPass::ScanReducePrepareSrc(VISA_Type type, uint64_t identityValue
             dst->GetType() == type && dst->GetAlign() == IGC::EALIGN_GRF && !dst->IsUniform());
     }
 
+    const bool savedSecondHalf = m_encoder->IsSecondHalf();
+    m_encoder->SetSecondHalf(secondHalf);
+
     // Set the GRF to <identity> with no mask. This will set all the registers to <identity>
     CVariable* pIdentityValue = m_currShader->ImmToVariable(identityValue, type);
     m_encoder->SetNoMask();
@@ -10394,8 +10397,6 @@ CVariable* EmitPass::ScanReducePrepareSrc(VISA_Type type, uint64_t identityValue
     m_encoder->Push();
 
     // Now copy the src with a mask so the disabled lanes still keep their <identity>
-    const bool savedSecondHalf = m_encoder->IsSecondHalf();
-    m_encoder->SetSecondHalf(secondHalf);
     if (negate)
     {
         m_encoder->SetSrcModifier(0, EMOD_NEG);
@@ -10406,6 +10407,7 @@ CVariable* EmitPass::ScanReducePrepareSrc(VISA_Type type, uint64_t identityValue
     }
     m_encoder->Copy(dst, src);
     m_encoder->Push();
+    
     m_encoder->SetSecondHalf(savedSecondHalf);
 
     return dst;
