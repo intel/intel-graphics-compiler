@@ -244,6 +244,7 @@ private:
     void clearARFDependencies();
     void clearSendDependencies();
     void loadThreadPayload();
+    void addFFIDProlog();
     void insertFenceBeforeEOT();
     void insertScratchReadBeforeEOT();
     void resetA0();
@@ -337,6 +338,7 @@ public:
         PI_reassociateConst,
         PI_split4GRFVars,
         PI_loadThreadPayload,
+        PI_addFFIDProlog,
         PI_insertFenceBeforeEOT,
         PI_insertScratchReadBeforeEOT,
         PI_mapOrphans,

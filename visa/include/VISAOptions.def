@@ -208,6 +208,8 @@ DEF_VISA_OPTION(vISA_GetFreeGRFInfo,      ET_BOOL,  "-getfreegrfinfo",    UNUSED
 DEF_VISA_OPTION(vISA_clearScratchWritesBeforeEOT,   ET_BOOL,  NULLSTR, UNUSED, false)
 DEF_VISA_OPTION(vISA_clearHDCWritesBeforeEOT,       ET_BOOL,  NULLSTR, UNUSED, false)
 DEF_VISA_OPTION(vISA_setA0toTdrForSendc,            ET_BOOL,  "-setA0toTdrForSendc", UNUSED, false)
+DEF_VISA_OPTION(vISA_addFFIDProlog,                 ET_BOOL,  "-noFFIDProlog",       UNUSED, true)
+DEF_VISA_OPTION(vISA_setFFID,                       ET_INT32, "-setFFID", "USAGE: -setFFID <ffid>\n", FFID_INVALID)
 
 //=== HW debugging options ===
 DEF_VISA_OPTION(vISA_GenerateDebugInfo,   ET_BOOL,  "-generateDebugInfo", UNUSED, false)

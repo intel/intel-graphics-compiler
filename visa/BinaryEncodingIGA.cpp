@@ -610,13 +610,14 @@ void BinaryEncodingIGA::DoAll()
         return false;
     };
 
-    // Make the size of the first BB is multiple of 4 instructions, and do not compact
+    // Make the size of the first BB be multiple of 4 instructions, and do not compact
     // any instructions in it, so that the size of the first BB is multiple of 64 bytes
-    if (kernel.fg.builder->getHasPerThreadProlog())
+    if (kernel.fg.builder->getHasPerThreadProlog() ||
+        kernel.fg.builder->getHasComputeFFIDProlog())
     {
         G4_BB* first_bb = *kernel.fg.begin();
         size_t num_inst = first_bb->getInstList().size();
-        assert(num_inst != 0 && "ThreadProlog must not be empty");
+        assert(num_inst != 0 && "the first BB must not be empty");
         // label instructions don't count. Only the first instruction could be a label
         if (first_bb->getInstList().front()->isLabel())
             --num_inst;
@@ -1048,6 +1049,18 @@ void BinaryEncodingIGA::DoAll()
         auto iter = std::find_if(secondBB->begin(), secondBB->end(), [](G4_INST* inst) { return !inst->isLabel();});
         assert(iter != secondBB->end() && "execpt at least one non-label inst in second BB");
         kernel.fg.builder->getJitInfo()->offsetToSkipPerThreadDataLoad = (uint32_t)(*iter)->getGenOffset();
+    }
+    if (kernel.fg.builder->getHasComputeFFIDProlog())
+    {
+        // something weird will happen if both HasPerThreadProlog and HasComputeFFIDProlog
+        assert(!kernel.fg.builder->getHasPerThreadProlog());
+
+        // set offsetToSkipSetFFIDGP to the second entry's offset
+        // the first instruction in the second BB is the start of the sencond entry
+        assert(kernel.fg.getNumBB() > 1 && "expect at least one prolog BB");
+        auto secondBB = *(std::next(kernel.fg.begin()));
+        assert(!secondBB->empty() && !secondBB->front()->isLabel());
+        kernel.fg.builder->getJitInfo()->offsetToSkipSetFFIDGP = (uint32_t)secondBB->front()->getGenOffset();
     }
 }
 

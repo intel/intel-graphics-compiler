@@ -596,6 +596,7 @@ void Optimizer::initOptimizations()
     INITIALIZE_PASS(dce,                     vISA_EnableDCE,               TIMER_OPTIMIZER);
     INITIALIZE_PASS(reassociateConst,        vISA_reassociate,             TIMER_OPTIMIZER);
     INITIALIZE_PASS(split4GRFVars,           vISA_split4GRFVar,            TIMER_OPTIMIZER);
+    INITIALIZE_PASS(addFFIDProlog,           vISA_addFFIDProlog,           TIMER_MISC_OPTS);
     INITIALIZE_PASS(loadThreadPayload,       vISA_loadThreadPayload,       TIMER_MISC_OPTS);
     INITIALIZE_PASS(insertFenceBeforeEOT,    vISA_EnableAlways,            TIMER_MISC_OPTS);
     INITIALIZE_PASS(insertScratchReadBeforeEOT, vISA_clearScratchWritesBeforeEOT, TIMER_MISC_OPTS);
@@ -1190,6 +1191,8 @@ int Optimizer::optimization()
     runPass(PI_initializePayload);
 
     runPass(PI_loadThreadPayload);
+
+    runPass(PI_addFFIDProlog);
 
     // Insert a dummy compact instruction if requested for SKL+
     runPass(PI_insertDummyCompactInst);
@@ -8064,6 +8067,137 @@ public:
             G4_INST *predInst = builder.createMov(1, tempPredVar, builder.createImm(0, Type_UW), InstOpt_WriteEnable, false);
             bb = kernel.fg.getEntryBB();
             bb->insert(iter, predInst);
+        }
+    }
+
+    // create prolog to set sr0 to FFID. TGL WA.
+    // Do only when there is cr0 write inside the kernel
+    void Optimizer::addFFIDProlog()
+    {
+        if (!builder.getIsKernel())
+            return;
+
+        FFID ffid = static_cast<FFID>(builder.getOptions()->getuInt32Option(vISA_setFFID));
+        // return if FFID is not given
+        if (ffid == FFID_INVALID)
+            return;
+
+        // return if there is no cr0 write
+        bool has_cr0_dst = false;
+        for (auto bb : kernel.fg)
+        {
+            for (G4_INST* inst : *bb)
+            {
+                if (inst->getDst() != nullptr &&
+                    inst->getDst()->asDstRegRegion()->getBase()->isCrReg())
+                {
+                    has_cr0_dst = true;
+                    break;
+                }
+            }
+            if (has_cr0_dst)
+                break;
+        }
+        if (!has_cr0_dst)
+            return;
+
+        // get r127.0 decl
+        G4_Declare* rtail =
+            builder.createHardwiredDeclare(8, Type_UD, kernel.getNumRegTotal() - 1, 0);
+
+        // (W) and (1|M0)  r127.0 <1>:ud   sr0.0 <0;1,0>:ud  0xF0FFFFFF:ud
+        auto createAnd = [this, &rtail]()
+        {
+            auto src0 = builder.createSrcRegRegion(
+                Mod_src_undef, Direct, builder.phyregpool.getSr0Reg(), 0, 0,
+                builder.getRegionScalar(), Type_UD);
+            auto src1 = builder.createImm(0xF0FFFFFF, Type_UD);
+            auto dst = builder.createDstRegRegion(Direct, rtail->getRegVar(), 0, 0, 1, Type_UD);
+
+            return builder.createInternalInst(nullptr, G4_and, nullptr, false, 1,
+                dst, src0, src1, InstOpt_WriteEnable);
+        };
+
+        // (W) or  (1|M0)  sr0.0<1>:ud   127.0<0;1,0>:ud    imm:ud
+        auto createOr = [this, &rtail](uint32_t imm)
+        {
+            auto src0 = builder.createSrcRegRegion(
+                Mod_src_undef, Direct, rtail->getRegVar(), 0, 0,
+                builder.getRegionScalar(), Type_UD);
+            auto src1 = builder.createImm(imm, Type_UD);
+            auto dst = builder.createDstRegRegion(Direct,
+                builder.phyregpool.getSr0Reg(), 0, 0, 1, Type_UD);
+
+            return builder.createInternalInst(nullptr, G4_or, nullptr, false, 1,
+                dst, src0, src1, InstOpt_WriteEnable);
+        };
+
+        // (W) jmpi (1|M0) label
+        auto createJmpi = [this](G4_Label* label)
+        {
+            return builder.createInternalInst(nullptr, G4_jmpi, nullptr, false, 1,
+                nullptr, label, nullptr, InstOpt_WriteEnable);
+        };
+
+        auto createLabelInst = [this](G4_Label* label)
+        {
+            return kernel.fg.createNewLabelInst(label);
+        };
+
+        // for compute shader, create two entris
+        if (ffid == FFID_GP || ffid == FFID_GP1)
+        {
+            // Entry0: Set sr0 to FFID_GP (0x7)
+            //     (W) and (1|M0)  r127.0 <1>:ud   sr0.0 <0;1,0>:ud   0xF0FFFFFF:ud
+            //     (W) or  (1|M0)  sr0.0<1>:ud     127.0<0;1,0>:ud    0x07000000:ud
+            //     jmpi ffid_prolog_end
+            // Entry1: Set sr0 to FFID_GP1 (0x8)
+            //     (W) and (1|M0)  r127.0 <1>:ud   sr0.0 <0;1,0>:ud   0xF0FFFFFF:ud
+            //     (W) or  (1|M0)  sr0.0<1>:ud     127.0<0;1,0>:ud    0x08000000:ud
+            //     ffid_prolog_end:
+
+            // Put the entry0 block into a new BB, so that we can make it 64-bit
+            // aligned in BinaryEncodingIGA
+            G4_BB* entry_0_bb = kernel.fg.createNewBB();
+            entry_0_bb->push_back(createAnd());
+            entry_0_bb->push_back(createOr(0x07000000));
+
+            // get jmp target label. If the next bb has no label, create one and insert it
+            // at the beginning
+            G4_Label* jmp_label = nullptr;
+            assert(kernel.fg.begin() != kernel.fg.end());
+            G4_BB* next_bb = *kernel.fg.begin();
+            if (next_bb->front()->isLabel())
+            {
+                jmp_label = next_bb->front()->getSrc(0)->asLabel();
+            }
+            else
+            {
+                std::string label_name("ffid_prolog_end");
+                jmp_label = builder.createLabel(label_name, LABEL_BLOCK);
+                next_bb->insert(next_bb->begin(), createLabelInst(jmp_label));
+            }
+            entry_0_bb->push_back(createJmpi(jmp_label));
+
+            // Put the rest in another BB
+            G4_BB* entry_1_bb = kernel.fg.createNewBB();
+            entry_1_bb->push_back(createAnd());
+            entry_1_bb->push_back(createOr(0x08000000));
+
+            // add these two BB to be the first two in the shader
+            kernel.fg.addPrologBB(entry_1_bb);
+            kernel.fg.addPrologBB(entry_0_bb);
+            builder.setHasComputeFFIDProlog();
+        }
+        else
+        {
+            // for other shaders, set the FFID
+            //     (W) and (1|M0)  r127.0 <1>:ud   sr0.0 <0;1,0>:ud   0xF0FFFFFF:ud
+            //     (W) or  (1|M0)  sr0.0<1>:ud     127.0<0;1,0>:ud    (FFID << 24):ud
+            G4_BB* bb = kernel.fg.createNewBB();
+            bb->push_back(createAnd());
+            bb->push_back(createOr(ffid << 24));
+            kernel.fg.addPrologBB(bb);
         }
     }
 

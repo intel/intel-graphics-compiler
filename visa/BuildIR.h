@@ -511,6 +511,8 @@ public:
 
     int perThreadInputSize = 0;
     bool hasPerThreadProlog = false;
+    // Have inserted two entires prolog for setting FFID for compute shaders
+    bool hasComputeFFIDProlog = false;
 
 public:
     PreDefinedVars preDefVars;
@@ -615,6 +617,9 @@ public:
     void setPerThreadInputSize(uint32_t val) { perThreadInputSize = val; }
     bool getHasPerThreadProlog() const { return hasPerThreadProlog; }
     void setHasPerThreadProlog() { hasPerThreadProlog = true; }
+
+    bool getHasComputeFFIDProlog() const { return hasComputeFFIDProlog; }
+    void setHasComputeFFIDProlog() { hasComputeFFIDProlog = true; }
 
     bool isOpndAligned( G4_Operand *opnd, unsigned short &offset, int align_byte );
 
@@ -1099,7 +1104,7 @@ public:
         return inst;
     }
 
-    G4_INST* createSpill(G4_DstRegRegion* dst, G4_SrcRegRegion* header, G4_SrcRegRegion* payload, unsigned int execSize, 
+    G4_INST* createSpill(G4_DstRegRegion* dst, G4_SrcRegRegion* header, G4_SrcRegRegion* payload, unsigned int execSize,
         uint16_t numRows, uint32_t offset, G4_Declare* fp, G4_InstOption option, unsigned int lineno = 0, int CISAoff = -1,
         const char* srcFilename = nullptr)
     {
@@ -1119,7 +1124,7 @@ public:
         auto builtInR0 = getBuiltinR0();
         auto rd = getRegionStride1();
         auto srcRgnr0 = createSrcRegRegion(Mod_src_undef, Direct, builtInR0->getRegVar(), 0, 0, rd, Type_UD);
-        G4_INST* spill = createIntrinsicInst(nullptr, Intrinsic::Spill, execSize, dst, 
+        G4_INST* spill = createIntrinsicInst(nullptr, Intrinsic::Spill, execSize, dst,
             srcRgnr0, payload, nullptr, option, lineno);
         spill->asSpillIntrinsic()->setSrcFilename(srcFilename);
         spill->asSpillIntrinsic()->setCISAOff(CISAoff);
@@ -1129,7 +1134,7 @@ public:
         return spill;
     }
 
-    G4_INST* createFill(G4_SrcRegRegion* header, G4_DstRegRegion* dstData, unsigned int execSize, uint16_t numRows, uint32_t offset, 
+    G4_INST* createFill(G4_SrcRegRegion* header, G4_DstRegRegion* dstData, unsigned int execSize, uint16_t numRows, uint32_t offset,
         G4_Declare* fp, G4_InstOption option, unsigned int lineno = 0, int CISAoff = -1, const char* srcFilename = nullptr)
     {
         G4_INST* fill = createIntrinsicInst(nullptr, Intrinsic::Fill, execSize, dstData,
