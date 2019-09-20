@@ -61,7 +61,6 @@ public:
     // 1D/2D/3D Surface
     void  createImageAnnotation(unsigned argNo,
                                 unsigned BTI,
-                                unsigned payloadPosition,
                                 unsigned dim,
                                 bool isWriteable);
 
@@ -81,7 +80,7 @@ public:
     void createImplicitArgumentsAnnotation(unsigned payloadPosition);
 
     // Sampler
-    void createSamplerAnnotation(unsigned argNo, unsigned payloadPosition);
+    void createSamplerAnnotation(unsigned argNo);
 
     void RecomputeBTLayout(int numUAVs, int numResources);
 };

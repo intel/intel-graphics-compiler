@@ -74,7 +74,7 @@ void CMKernel::createConstArgumentAnnotation(unsigned argNo, unsigned sizeInByte
 }
 
 // TODO: this is incomplete.
-void CMKernel::createSamplerAnnotation(unsigned argNo, unsigned payloadPosition)
+void CMKernel::createSamplerAnnotation(unsigned argNo)
 {
     iOpenCL::SAMPLER_OBJECT_TYPE samplerType;
     samplerType = iOpenCL::SAMPLER_OBJECT_TEXTURE;
@@ -88,12 +88,12 @@ void CMKernel::createSamplerAnnotation(unsigned argNo, unsigned payloadPosition)
     samplerArg->LocationCount = 0;
     samplerArg->IsBindlessAccess = false;
     samplerArg->IsEmulationArgument = false;
-    samplerArg->PayloadPosition = payloadPosition;
+    samplerArg->PayloadPosition = 0;
 
     m_kernelInfo.m_samplerArgument.push_back(samplerArg);
 }
 
-void CMKernel::createImageAnnotation(unsigned argNo, unsigned BTI, unsigned payloadPosition, unsigned dim, bool isWriteable)
+void CMKernel::createImageAnnotation(unsigned argNo, unsigned BTI, unsigned dim, bool isWriteable)
 {
     iOpenCL::ImageArgumentAnnotation* imageInput = new iOpenCL::ImageArgumentAnnotation;
 
@@ -115,7 +115,7 @@ void CMKernel::createImageAnnotation(unsigned argNo, unsigned BTI, unsigned payl
     imageInput->AccessedByFloatCoords = false;
     imageInput->AccessedByIntCoords = false;
     imageInput->IsBindlessAccess = false;
-    imageInput->PayloadPosition = payloadPosition;
+    imageInput->PayloadPosition = 0;
     imageInput->Writeable = isWriteable;
     m_kernelInfo.m_imageInputAnnotations.push_back(imageInput);
 }
@@ -314,7 +314,8 @@ static void generatePatchTokens(const cmc_kernel_info *info, CMKernel& kernel)
     kernel.m_kernelInfo.m_argIndexMap.clear();
 
     for (auto &AI : info->arg_descs) {
-        maxArgEnd = std::max(AI.offset + AI.sizeInBytes, maxArgEnd);
+        if (AI.offset > 0)
+            maxArgEnd = std::max(AI.offset + AI.sizeInBytes, maxArgEnd);
         bool isWriteable = AI.access != cmc_access_kind::read_only;
 
         switch (AI.kind) {
@@ -332,19 +333,19 @@ static void generatePatchTokens(const cmc_kernel_info *info, CMKernel& kernel)
             kernel.createPointerGlobalAnnotation(AI.index, AI.sizeInBytes, AI.offset - constantPayloadStart, -1);
             break;
         case cmc_arg_kind::Sampler:
-            kernel.createSamplerAnnotation(AI.index, AI.offset - constantPayloadStart);
+            kernel.createSamplerAnnotation(AI.index);
             kernel.m_kernelInfo.m_argIndexMap[AI.index] = AI.BTI;
             break;
         case cmc_arg_kind::Image1d:
-            kernel.createImageAnnotation(AI.index, AI.BTI, AI.offset - constantPayloadStart, 1, isWriteable);
+            kernel.createImageAnnotation(AI.index, AI.BTI, 1, isWriteable);
             kernel.m_kernelInfo.m_argIndexMap[AI.index] = AI.BTI;
             break;
         case cmc_arg_kind::Image2d:
-            kernel.createImageAnnotation(AI.index, AI.BTI, AI.offset - constantPayloadStart, 2, isWriteable);
+            kernel.createImageAnnotation(AI.index, AI.BTI, 2, isWriteable);
             kernel.m_kernelInfo.m_argIndexMap[AI.index] = AI.BTI;
             break;
         case cmc_arg_kind::Image3d:
-            kernel.createImageAnnotation(AI.index, AI.BTI, AI.offset - constantPayloadStart, 3, isWriteable);
+            kernel.createImageAnnotation(AI.index, AI.BTI, 3, isWriteable);
             kernel.m_kernelInfo.m_argIndexMap[AI.index] = AI.BTI;
             break;
         }
