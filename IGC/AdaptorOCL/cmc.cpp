@@ -33,6 +33,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RT_Jitter_Interface.h"
 #include "inc/common/igfxfmid.h"
 #include "AdaptorOCL/OCL/sp/spp_g8.h"
+#include "common/secure_mem.h"
 
 #include <string>
 
@@ -386,7 +387,7 @@ static void populateKernelInfo(const cmc_kernel_info* info,
     size_t size = genBin.size();
     size_t padding = iSTD::GetAlignmentOffset(size, 64);
     void* kernelBin = IGC::aligned_malloc(size + padding, 16);
-    std::memcpy(kernelBin, genBin.data(), size);
+    memcpy_s(kernelBin, size + padding, genBin.data(), size);
     // pad out the rest with 0s
     std::memset(static_cast<char*>(kernelBin) + size, 0, padding);
 
