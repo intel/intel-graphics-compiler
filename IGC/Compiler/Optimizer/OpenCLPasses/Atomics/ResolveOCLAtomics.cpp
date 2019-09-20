@@ -95,8 +95,11 @@ void ResolveOCLAtomics::initOCLAtomicsMap()
 
 bool ResolveOCLAtomics::runOnModule(Module& M)
 {
-    m_pModule  = &M;
+    m_pModule  = (IGCLLVM::Module*)&M;
     m_Int32Ty = Type::getInt32Ty(m_pModule->getContext());
+
+    llvm::IGCIRBuilder<> builder(M.getContext());
+    m_builder = &builder;
 
     int pointerSize = M.getDataLayout().getPointerSizeInBits();
     assert(pointerSize == 64 || pointerSize == 32);
@@ -112,8 +115,11 @@ bool ResolveOCLAtomics::runOnModule(Module& M)
     
     m_changed = false;
 
-    // Visit all call instuctions in the function F.
+    // Visit all call instructions in the function F.
     visit(M);
+
+    // Initialize m_localLock with its init value in all related kernels
+    initilizeLocalLock();
 
     return m_changed;
 }
@@ -280,11 +286,10 @@ void ResolveOCLAtomics::processGetLocalLock(CallInst& callInst)
 {
     assert(callInst.getCalledFunction()->getName() == BUILTIN_GET_LOCAL_LOCK);
     if (m_localLock == nullptr) {
-        Module* M = callInst.getModule();
-        auto& C = M->getContext();
+        auto& C = m_pModule->getContext();
 
         m_localLock = new GlobalVariable(
-            *M,
+            *m_pModule,
             Type::getInt32Ty(C),
             false,
             GlobalVariable::ExternalLinkage,
@@ -298,5 +303,113 @@ void ResolveOCLAtomics::processGetLocalLock(CallInst& callInst)
     callInst.replaceAllUsesWith(m_localLock);
     callInst.eraseFromParent();
     m_changed = true;
+}
+
+void ResolveOCLAtomics::findLockUsers(Value* V)
+{
+    for (User* U : V->users())
+    {
+        if (Instruction * Inst = dyn_cast<Instruction>(U))
+        {
+            if (Function * F = Inst->getFunction())
+            {
+                if (F->getCallingConv() == CallingConv::SPIR_KERNEL)
+                {
+                    m_localLockUsers.insert(F);
+                }
+                else
+                {
+                    findLockUsers(F);
+                }
+            }
+        }
+    }
+}
+
+// This function generates code responsible for local lock variable initialization, at the beginning
+// of the kernel function passed as a parameter
+// entry:
+//     %0 = call i32 @__builtin_IB_get_local_id_x()
+//     %1 = call i32 @__builtin_IB_get_local_id_y()
+//     %2 = call i32 @__builtin_IB_get_local_id_z()
+//     %3 = or i32 %0, %1
+//     %4 = or i32 %3, %2
+//     %5 = icmp eq i32 %4, 0
+//     br i1 %5, label %init_spinlock_var.start, label %init_spinlock_var.end
+// 
+// init_spinlock_var.start:                          ; preds = %entry
+//     store i32 0, i32 addrspace(3)* @spinlock
+// br label %init_spinlock_var.end
+// 
+// init_spinlock_var.end:                            ; preds = %init_spinlock_var.start, %entry
+//     call void @llvm.genx.GenISA.memoryfence(i1 true, i1 false, i1 false, i1 false, i1 false, i1 false, i1 true)
+//     call void @llvm.genx.GenISA.threadgroupbarrier()
+void ResolveOCLAtomics::generateLockInitilization(Function* F)
+{
+    assert(m_localLock && "Local lock is not created!");
+    assert(F->getCallingConv() == CallingConv::SPIR_KERNEL && "SLM should be initialized only on the beginning of kernel function!");
+
+    auto& C = m_pModule->getContext();
+
+    BasicBlock* entryBB = &F->getEntryBlock();
+    m_builder->SetInsertPoint(entryBB, entryBB->getFirstInsertionPt());
+
+    // generate calls to __builtin_IB_get_local_id_x/y/z to
+    // execute SLM initialization only by first (0,0,0) work item in the work group
+    llvm::FunctionType* FTy = llvm::FunctionType::get(m_Int32Ty, false);
+    Function* getLocalIdX = cast<Function>(m_pModule->getOrInsertFunction("__builtin_IB_get_local_id_x", FTy));
+    Function* getLocalIdY = cast<Function>(m_pModule->getOrInsertFunction("__builtin_IB_get_local_id_y", FTy));
+    Function* getLocalIdZ = cast<Function>(m_pModule->getOrInsertFunction("__builtin_IB_get_local_id_z", FTy));
+    Instruction* getLocalIdXCall = m_builder->CreateCall(getLocalIdX);
+    Instruction* getLocalIdYCall = m_builder->CreateCall(getLocalIdY);
+    Instruction* getLocalIdZCall = m_builder->CreateCall(getLocalIdZ);
+    Value* getLocalId = m_builder->CreateOr(m_builder->CreateOr(getLocalIdXCall, getLocalIdYCall), getLocalIdZCall);
+    Value* isFirstWI = m_builder->CreateICmpEQ(getLocalId, ConstantInt::get(m_Int32Ty, 0));
+
+    BasicBlock* initSpinLockEndBB = entryBB->splitBasicBlock(m_builder->GetInsertPoint(), "init_spinlock_var.end");
+    BasicBlock* initSpinLockStartBB = BasicBlock::Create(C, "init_spinlock_var.start", F, initSpinLockEndBB);
+
+    // replace unconditional branch instruction (created while basic block splitting) with:
+    // br i1 %5, label %init_spinlock_var.start, label %init_spinlock_var.end
+    entryBB->back().eraseFromParent();
+    m_builder->SetInsertPoint(entryBB);
+    m_builder->CreateCondBr(isFirstWI, initSpinLockStartBB, initSpinLockEndBB);
+
+    // store init value into local lock variable, only one work item in the work group executes it
+    m_builder->SetInsertPoint(initSpinLockStartBB);
+    m_builder->CreateStore(m_localLock->getInitializer(), m_localLock);
+    m_builder->CreateBr(initSpinLockEndBB);
+
+    // insert call void @llvm.genx.GenISA.memoryfence(i1 true, i1 false, i1 false, i1 false, i1 false, i1 false, i1 true)
+    //        call void @llvm.genx.GenISA.threadgroupbarrier()
+    // to guarantee synchronization in accessing spin lock variable
+    Value* trueValue = m_builder->getTrue();
+    Value* falseValue = m_builder->getFalse();
+    Value* localMemFenceArgs[] =
+    {
+        trueValue,
+        falseValue,
+        falseValue,
+        falseValue,
+        falseValue,
+        falseValue,
+        trueValue,
+    };
+    m_builder->SetInsertPoint(initSpinLockEndBB, initSpinLockEndBB->getFirstInsertionPt());
+    Function* localMemFence = GenISAIntrinsic::getDeclaration(m_pModule, GenISAIntrinsic::GenISA_memoryfence);
+    m_builder->CreateCall(localMemFence, localMemFenceArgs, "");
+    Function* threadGroupBarrier = GenISAIntrinsic::getDeclaration(m_pModule, GenISAIntrinsic::GenISA_threadgroupbarrier);
+    m_builder->CreateCall(threadGroupBarrier);
+    m_changed = true;
+}
+
+void ResolveOCLAtomics::initilizeLocalLock()
+{
+    if (m_localLock)
+    {
+        findLockUsers(m_localLock);
+        for (auto K : m_localLockUsers)
+            generateLockInitilization(K);
+    }
 }
 

@@ -372,6 +372,10 @@ static void CommonOCLBasedPasses(
 
     mpm.add(CreateFoldKnownWorkGroupSizes());
 
+    // 64-bit atomics have to be resolved before AddImplicitArgs pass as it uses
+    // local ids for spin lock initialization
+    mpm.add(new ResolveOCLAtomics());
+
     // Run the AlignmentAnalysis pass before the passes which add implicit arguments, to ensure we do not lose load/store alignment information.
     // For example, ProgramScopeConstantResolution will relocate the buffer's base to an i8* typed pointer.
     mpm.add(new AlignmentAnalysis());
