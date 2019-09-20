@@ -291,7 +291,8 @@ namespace IGC
     //all the platforms which do not support 64 bit operations (int64 and double)
     bool hasNo64BitInst() const {
         return m_platformInfo.eProductFamily == IGFX_ICELAKE_LP ||
-            m_platformInfo.eProductFamily == IGFX_LAKEFIELD;
+               m_platformInfo.eProductFamily == IGFX_LAKEFIELD ||
+               m_platformInfo.eProductFamily == IGFX_ELKHARTLAKE;
     }
 
     //all the platforms which have correctly rounded macros (INVM, RSQRTM, MADM)
@@ -309,14 +310,16 @@ namespace IGC
         return (m_platformInfo.eProductFamily == IGFX_GEMINILAKE ||
             m_platformInfo.eProductFamily == IGFX_BROXTON ||
             m_platformInfo.eProductFamily == IGFX_ICELAKE_LP ||
-            m_platformInfo.eProductFamily == IGFX_LAKEFIELD);
+            m_platformInfo.eProductFamily == IGFX_LAKEFIELD ||
+            m_platformInfo.eProductFamily == IGFX_ELKHARTLAKE);
     }
 
     //all the platforms which do not support 64 bit float operations
     bool supportFP64() const {
         return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN7_CORE &&
             m_platformInfo.eProductFamily != IGFX_ICELAKE_LP &&
-            m_platformInfo.eProductFamily != IGFX_LAKEFIELD);
+            m_platformInfo.eProductFamily != IGFX_LAKEFIELD &&
+            m_platformInfo.eProductFamily != IGFX_ELKHARTLAKE);
     }
     bool has8DWA64ScatteredMessage() const { return true; }
     bool useOnlyEightPatchDispatchHS() const { return false; }

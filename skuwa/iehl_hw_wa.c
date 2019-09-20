@@ -28,13 +28,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //******************* Main Wa Initializer for Device Id ********************
 
-#define JSL_REV_ID_A0   SI_REV_ID(0,0)
-#define JSL_REV_ID_B0   SI_REV_ID(3,3)          //placeholder until stepping value is decided
-#define JSL_REV_ID_C0   SI_REV_ID(6,6)          //placeholder until stepping value is decided
+#define EHL_REV_ID_A0   SI_REV_ID(0,0)
+#define EHL_REV_ID_A1   SI_REV_ID(0,0)
+#define EHL_REV_ID_B0   SI_REV_ID(3,3)          //placeholder until stepping value is decided
+#define EHL_REV_ID_C0   SI_REV_ID(6,6)          //placeholder until stepping value is decided
 
-void InitJslHwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_PARAM pWaParam)
+void InitEhlHwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_PARAM pWaParam)
 {
-    int iStepId_JSL = (int)pWaParam->usRevId;
+    int iStepId_EHL = (int)pWaParam->usRevId;
 
     // Components affected: igc 
     SI_WA_ENABLE(
@@ -42,23 +43,47 @@ void InitJslHwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT
         "No Link provided",
         "No HWSightingLink provided",
         PLATFORM_ALL,
-        SI_WA_BETWEEN(iStepId_JSL, JSL_REV_ID_A0, FUTURE_PROJECT));
+        SI_WA_BETWEEN(iStepId_EHL, EHL_REV_ID_A0, FUTURE_PROJECT));
 
     // Components affected: igc 
     SI_WA_ENABLE(
-        Wa_1406306137,
+        Wa_2201039848,
         "No Link provided",
         "No HWSightingLink provided",
         PLATFORM_ALL,
-        SI_WA_BETWEEN(iStepId_JSL, JSL_REV_ID_A0, FUTURE_PROJECT));
+        SI_WA_BETWEEN(iStepId_EHL, EHL_REV_ID_A0, FUTURE_PROJECT));
 
-    // Components affected: igc visa 
+    // Components affected: visa 
     SI_WA_ENABLE(
-        Wa_1406950495,
+        Wa_1406614636,
         "No Link provided",
         "No HWSightingLink provided",
         PLATFORM_ALL,
-        SI_WA_BETWEEN(iStepId_JSL, JSL_REV_ID_A0, FUTURE_PROJECT));
+        SI_WA_BETWEEN(iStepId_EHL, EHL_REV_ID_A0, FUTURE_PROJECT));
+
+    // Components affected: igc
+    SI_WA_ENABLE(
+        Wa_1806230709,
+        "No Link provided",
+        "No HWSightingLink provided",
+        PLATFORM_ALL,
+        SI_WA_BETWEEN(iStepId_EHL, EHL_REV_ID_A0, EHL_REV_ID_B0));
+
+    // Components affected: igc 
+    SI_WA_ENABLE(
+        Wa_1306055483,
+        "No Link provided",
+        "No HWSightingLink provided",
+        PLATFORM_ALL,
+        SI_WA_BETWEEN(iStepId_EHL, EHL_REV_ID_A0, FUTURE_PROJECT));
+
+    // Components affected: igc 
+    SI_WA_ENABLE(
+        Wa_1604402567,
+        "No Link provided",
+        "No HWSightingLink provided",
+        PLATFORM_ALL,
+        SI_WA_BETWEEN(iStepId_EHL, EHL_REV_ID_A0, FUTURE_PROJECT));
 
     // Components affected: igc 
     SI_WA_ENABLE(
@@ -66,5 +91,5 @@ void InitJslHwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT
         "No Link provided",
         "No Link provided",
         PLATFORM_ALL,
-        SI_WA_BETWEEN(iStepId_JSL, JSL_REV_ID_A0, FUTURE_PROJECT));
+        SI_WA_BETWEEN(iStepId_EHL, EHL_REV_ID_A0, FUTURE_PROJECT));
 }

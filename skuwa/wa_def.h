@@ -288,11 +288,11 @@ void InitLkfSwWaTable(
         PWA_TABLE                       pWaTable,
         PSKU_FEATURE_TABLE              pSkuTable,
         PWA_INIT_PARAM                  pWaParam);
-void InitJslHwWaTable(
+void InitEhlHwWaTable(
         PWA_TABLE                       pWaTable,
         PSKU_FEATURE_TABLE              pSkuTable,
         PWA_INIT_PARAM                  pWaParam);
-void InitJslSwWaTable(
+void InitEhlSwWaTable(
         PWA_TABLE                       pWaTable,
         PSKU_FEATURE_TABLE              pSkuTable,
         PWA_INIT_PARAM                  pWaParam);
@@ -374,7 +374,7 @@ void InitLkfHASWaTable(
         PWA_TABLE                       pWaTable,
         PSKU_FEATURE_TABLE              pSkuTable,
         PWA_INIT_PARAM                  pWaParam);
-void InitJslHASWaTable(
+void InitEhlHASWaTable(
         PHW_DEVICE_EXTENSION                pKchContext,
         PWA_TABLE                           pWaTable,
         PSKU_FEATURE_TABLE                  pSkuTable,
