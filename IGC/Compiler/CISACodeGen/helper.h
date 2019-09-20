@@ -124,6 +124,13 @@ namespace IGC
         llvm::Instruction* insert_before,
         int vsize = 4);
 
+    llvm::Value* ConvertToFloat(llvm::IRBuilder<>& builder, llvm::Value* val);
+    void ConvertToFloat(llvm::IRBuilder<>& builder, llvm::SmallVectorImpl<llvm::Value*>& instList);
+    //scalarize aggregate into flattened members
+    void ScalarizeAggregateMembers(llvm::IRBuilder<>& builder, llvm::Value* val, llvm::SmallVectorImpl<llvm::Value*>& instList);
+    //scalarize aggregate into flattened member addresses
+    void ScalarizeAggregateMemberAddresses(llvm::IRBuilder<>& builder, llvm::Type* type, llvm::Value* val, llvm::SmallVectorImpl<llvm::Value*>& instList, llvm::SmallVector<llvm::Value*, 16> indices);
+
     /// return true if pLLVMInst is load from constant-buffer with immediate constant-buffer index
     bool IsLoadFromDirectCB(llvm::Instruction* pLLVMInst, uint& cbId, llvm::Value*& eltPtrVal);
     bool IsReadOnlyLoadDirectCB(llvm::Instruction* pLLVMInst, uint& cbId, llvm::Value*& eltPtrVal, BufferType& buftype);

@@ -1327,6 +1327,137 @@ namespace IGC
         }
         return vecValue;
     }
+    
+    llvm::Value* ConvertToFloat(llvm::IRBuilder<>& builder, llvm::Value* val)
+    {
+        llvm::Value* ret = val;
+        llvm::Type* type = val->getType();
+        switch (type->getTypeID())
+        {
+        case llvm::Type::FloatTyID:
+            break;
+        case llvm::Type::IntegerTyID:
+            //yes, we bitcast here and bitcast back later to use it. add another way, like cast logic, if you prefer.
+            ret = builder.CreateBitCast(val, builder.getFloatTy());
+            break;
+        case llvm::Type::DoubleTyID:
+        {
+            llvm::Type* vecType = llvm::VectorType::get(builder.getFloatTy(), 2);
+            ret = builder.CreateBitCast(val, vecType);
+        }
+            break;
+        default:
+            assert(!"unsupported data type!");
+            break;
+        }
+        return ret;
+    }
+
+    void ConvertToFloat(llvm::IRBuilder<>& builder, llvm::SmallVectorImpl<llvm::Value*>& instList)
+    {
+        for (size_t i=0; i<instList.size(); i++)
+        {
+            llvm::Value* val = ConvertToFloat(builder, instList[i]);
+            if (val->getType()->isVectorTy())
+            {
+                instList[i] = builder.CreateExtractElement(val, static_cast<uint64_t>(0));
+                size_t iOld = i;
+                for (unsigned j = 1; j < val->getType()->getVectorNumElements(); j++)
+                {                    
+                    instList.insert(instList.begin()+ iOld +j, builder.CreateExtractElement(val, j));
+                    i++;
+                }
+            }
+            else
+            {
+                instList[i] = val;
+            }
+        }
+    }
+
+    void ScalarizeAggregateMembers(llvm::IRBuilder<>& builder, llvm::Value* val, llvm::SmallVectorImpl<llvm::Value*> & instList)
+    {
+        llvm::Type* type = val->getType();
+        unsigned num = 0;
+        switch (type->getTypeID())
+        {
+        case llvm::Type::FloatTyID:
+        case llvm::Type::HalfTyID:
+        case llvm::Type::IntegerTyID:
+        case llvm::Type::DoubleTyID:
+            instList.push_back(val);
+            break;
+        case llvm::Type::StructTyID:
+            num = type->getStructNumElements();
+            for (unsigned i = 0; i < num; i++)
+            {
+                ScalarizeAggregateMembers(builder, builder.CreateExtractValue(val, i), instList);
+            }
+            break;
+        case llvm::Type::VectorTyID:
+            num = type->getVectorNumElements();
+            for (unsigned i = 0; i < num; i++)
+            {
+                ScalarizeAggregateMembers(builder, builder.CreateExtractElement(val, i), instList);
+            }
+            break;
+        case llvm::Type::ArrayTyID:
+            num = static_cast<uint32_t>(type->getArrayNumElements());
+            for (unsigned i = 0; i < num; i++)
+            {
+                ScalarizeAggregateMembers(builder, builder.CreateExtractValue(val, i), instList);
+            }
+            break;
+        default:
+            assert(!"Unsupported data type! Please enhance this function first.");
+            break;
+        }
+    }
+
+    void ScalarizeAggregateMemberAddresses(llvm::IRBuilder<>& builder, llvm::Type* type, llvm::Value* val, llvm::SmallVectorImpl<llvm::Value*> & instList, llvm::SmallVector<llvm::Value*, 16> indices)
+    {
+        unsigned num = 0;
+        switch (type->getTypeID())
+        {
+        case llvm::Type::FloatTyID:
+        case llvm::Type::HalfTyID:
+        case llvm::Type::IntegerTyID:
+        case llvm::Type::DoubleTyID:
+            instList.push_back(builder.CreateInBoundsGEP(val, makeArrayRef(indices)));
+            break;
+        case llvm::Type::StructTyID:
+            num = type->getStructNumElements();
+            for (unsigned i = 0; i < num; i++)
+            {
+                indices.push_back(builder.getInt32(i));
+                ScalarizeAggregateMemberAddresses(builder, type->getStructElementType(i), val, instList, indices);
+                indices.pop_back();
+            }
+            break;
+        case llvm::Type::VectorTyID:
+            num = type->getVectorNumElements();
+            for (unsigned i = 0; i < num; i++)
+            {
+                indices.push_back(builder.getInt32(i));
+                ScalarizeAggregateMemberAddresses(builder, type->getVectorElementType(), val, instList, indices);
+                indices.pop_back();
+            }
+            break;
+        case llvm::Type::ArrayTyID:
+            //fix this if one API could support an array with length > 2^32
+            num = static_cast<uint32_t>(type->getArrayNumElements());
+            for (unsigned i = 0; i < num; i++)
+            {
+                indices.push_back(builder.getInt32(i));
+                ScalarizeAggregateMemberAddresses(builder, type->getArrayElementType(), val, instList, indices);
+                indices.pop_back();
+            }
+            break;
+        default:
+            assert(!"Unsupported data type! Please enhance this function first.");
+            break;
+        }
+    }
 
     bool IsUnsignedCmp(const llvm::CmpInst::Predicate Pred)
     {
