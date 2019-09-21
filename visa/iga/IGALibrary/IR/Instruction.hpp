@@ -247,11 +247,10 @@ namespace iga
         ChannelOffset    m_chOff;
         Operand          m_dst;
         Operand          m_srcs[3];
-        union
-        {
-            FlagModifier        m_flagModifier; // conditional-modifier function
-            BranchCntrl         m_brnch;        // for certain branching instructions
-        };
+
+        FlagModifier     m_flagModifier; // conditional-modifier function
+        BranchCntrl      m_brnch;        // for certain branching instructions
+
         SendDescArg  m_exDesc;
         SendDescArg  m_desc;
 
