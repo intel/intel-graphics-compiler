@@ -73,8 +73,8 @@ public:
     // add a stateful buffer patch token.
     void createBufferStatefulAnnotation(unsigned argNo);
 
-    // LocalID{x,y,z}
-    void createLocalSizeAnnotation(unsigned payloadPosition);
+    // Local or global size
+    void createSizeAnnotation(unsigned payloadPosition, int32_t type);
 
     // Global work offset/local work size
     void createImplicitArgumentsAnnotation(unsigned payloadPosition);

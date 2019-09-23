@@ -174,14 +174,14 @@ void CMKernel::createBufferStatefulAnnotation(unsigned argNo)
     m_kernelInfo.m_constantInputAnnotation.push_back(constInput);
 }
 
-void CMKernel::createLocalSizeAnnotation(unsigned payloadPosition)
+void CMKernel::createSizeAnnotation(unsigned payloadPosition, int32_t Type)
 {
     for (int i = 0; i < 3; ++i) {
         iOpenCL::ConstantInputAnnotation* constInput = new iOpenCL::ConstantInputAnnotation;
         DWORD sizeInBytes = iOpenCL::DATA_PARAMETER_DATA_SIZE;
 
         constInput->AnnotationSize = sizeof(constInput);
-        constInput->ConstantType = iOpenCL::DATA_PARAMETER_ENQUEUED_LOCAL_WORK_SIZE;
+        constInput->ConstantType = Type;
         constInput->Offset = i * sizeInBytes;
         constInput->PayloadPosition = payloadPosition;
         constInput->PayloadSizeInBytes = sizeInBytes;
@@ -325,6 +325,12 @@ static void generatePatchTokens(const cmc_kernel_info *info, CMKernel& kernel)
         case cmc_arg_kind::General:
             kernel.createConstArgumentAnnotation(AI.index, AI.offset - constantPayloadStart, AI.sizeInBytes);
             break;
+        case cmc_arg_kind::LocalSize:
+            kernel.createSizeAnnotation(AI.offset - constantPayloadStart, iOpenCL::DATA_PARAMETER_ENQUEUED_LOCAL_WORK_SIZE);
+            break;
+        case cmc_arg_kind::GroupCount:
+            kernel.createSizeAnnotation(AI.offset - constantPayloadStart, iOpenCL::DATA_PARAMETER_NUM_WORK_GROUPS);
+            break;
         case cmc_arg_kind::Buffer:
             kernel.createPointerGlobalAnnotation(AI.index, AI.sizeInBytes, AI.offset - constantPayloadStart, AI.BTI);
             kernel.createBufferStatefulAnnotation(AI.index);
@@ -445,8 +451,11 @@ int cmc::vISACompile(cmc_compile_info* output, iOpenCL::CGen8CMProgram& CMProgra
         unsigned genBinarySize = 0;
         FINALIZER_INFO JITInfo;
         // TODO: take commond line options.
-        int numArgs = 0;
-        const char** args = nullptr;
+        const char* args[] = {
+            "-noschedule",
+            "-nopresched"
+        };
+        int numArgs = sizeof(args)/sizeof(args[0]);
         status = JITCompile(info->name.c_str(), output->binary, (unsigned)output->binary_size, genBinary,
             genBinarySize, platformStr, output->visa_major_version,
             output->visa_minor_version, numArgs, args, nullptr, &JITInfo);

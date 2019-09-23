@@ -36,9 +36,11 @@ enum class cmc_access_kind : int32_t {
 };
 
 enum class cmc_arg_kind : int32_t {
-    General = 0,
-    Buffer,
-    SVM,
+    General,
+    LocalSize,  // IMPLICIT_LOCAL_SIZE
+    GroupCount, // IMPLICIT_NUM_GROUPS
+    Buffer,     // 1D buffer
+    SVM,        // stateless global pointer
     Sampler,
     Image1d,
     Image2d,
