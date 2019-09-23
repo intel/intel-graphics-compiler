@@ -5987,8 +5987,9 @@ int IR_Builder::translateVISARawSendInst(G4_Predicate *predOpnd, Common_ISA_Exec
         desc = G4_SendMsgDescriptor::createDesc(0, false, numSrc, numDst);
         isValidFuncCtrl = false;
     }
-    G4_SendMsgDescriptor *sendMsgDesc = createGeneralMsgDesc(desc, exDesc, getSendAccessType(isRead, isWrite), 
-        nullptr, nullptr, isValidFuncCtrl);
+    // bit[0-3] of the exDesc (always imm) holds the SFID
+    G4_SendMsgDescriptor *sendMsgDesc = createSendMsgDesc(static_cast<SFID>(exDesc & 0xF), desc, exDesc, 0,
+        getSendAccessType(isRead, isWrite), nullptr, isValidFuncCtrl);
 
     // sanity check on srcLen/dstLen
     MUST_BE_TRUE(sendMsgDesc->MessageLength() <= numSrc, "message length mismatch for raw send");

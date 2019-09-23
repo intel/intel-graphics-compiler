@@ -1264,8 +1264,7 @@ public:
         uint32_t extDesc,
         SendAccess access,
         G4_Operand* bti = nullptr,
-        G4_Operand* sti = nullptr,
-        bool isValidFuncCtrl = true);
+        G4_Operand* sti = nullptr);
 
     G4_SendMsgDescriptor* createReadMsgDesc(
         SFID sfid,
