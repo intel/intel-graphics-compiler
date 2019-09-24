@@ -289,11 +289,13 @@ G4_SendMsgDescriptor::G4_SendMsgDescriptor(
     uint32_t descBits, uint32_t extDescBits,
     SendAccess access,
     G4_Operand *bti,
-    G4_Operand *sti)
-    : accessType(access), m_sti(sti), m_bti(bti), funcCtrlValid(true)
+    G4_Operand *sti,
+    bool isValidFuncCtrl)
+    : accessType(access), m_sti(sti), m_bti(bti), funcCtrlValid(isValidFuncCtrl)
 {
     desc.value = descBits;
     extDesc.value = extDescBits;
+// SEE the note above about clearing ExDesc[10:6]
     src1Len = (extDescBits >> 6) & 0x1F; // [10:6]
     eotAfterMessage = extDesc.layout.eot; // [5]
     sfid = intToSFID(extDescBits & 0xF); // [3:0]

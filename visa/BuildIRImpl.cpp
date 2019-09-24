@@ -122,9 +122,10 @@ G4_SendMsgDescriptor* IR_Builder::createGeneralMsgDesc(
     uint32_t extDesc,
     SendAccess access,
     G4_Operand* bti,
-    G4_Operand* sti)
+    G4_Operand* sti,
+    bool isValidFuncCtrl)
 {
-    return new (mem) G4_SendMsgDescriptor(desc, extDesc, access, bti, sti);
+    return new (mem) G4_SendMsgDescriptor(desc, extDesc, access, bti, sti, isValidFuncCtrl);
 }
 
 G4_SendMsgDescriptor* IR_Builder::createSendMsgDesc(
@@ -199,7 +200,7 @@ G4_SendMsgDescriptor* IR_Builder::createSampleMsgDesc(
     {
         extDesc |= 1 << CPS_LOD_COMPENSATION_ENABLE;
     }
-    return new (mem) G4_SendMsgDescriptor(desc, extDesc, SendAccess::READ_ONLY, bti, sti);
+    return new (mem) G4_SendMsgDescriptor(desc, extDesc, SendAccess::READ_ONLY, bti, sti, true);
 }
 
 G4_Operand* IR_Builder::emitSampleIndexGE16(
