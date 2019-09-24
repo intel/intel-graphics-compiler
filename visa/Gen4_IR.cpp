@@ -1469,7 +1469,7 @@ namespace {
     // but the content it is pointing to.
     struct def_less
     {
-        bool operator()(DEF_EDGE_LIST_ITER a, DEF_EDGE_LIST_ITER b)
+        bool operator()(DEF_EDGE_LIST_ITER a, DEF_EDGE_LIST_ITER b) const
         {
             if (a->first < b->first)
             {
