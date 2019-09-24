@@ -131,6 +131,7 @@ namespace IGC
         void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.addRequired<MetaDataUtilsWrapper>();
+            AU.addRequired<CodeGenContextWrapper>();
         }
 
         /// @brief  Main entry point.
@@ -140,6 +141,8 @@ namespace IGC
         static const llvm::StringRef OCL_GET_GLOBAL_OFFSET;
         static const llvm::StringRef OCL_GET_LOCAL_ID;
         static const llvm::StringRef OCL_GET_GROUP_ID;
+        static const llvm::StringRef OCL_GET_SUBGROUP_ID_SPIRV;
+        static const llvm::StringRef OCL_GET_SUBGROUP_ID;
     };
 
 } // namespace IGC
