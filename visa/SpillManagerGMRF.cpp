@@ -1601,10 +1601,6 @@ SpillManagerGMRF::createFillRangeSrcRegion (
             (regionDisp - segmentDisp) / filledRegion->getElemSize ();
         assert (
             (regionDisp - segmentDisp) % filledRegion->getElemSize () == 0);
-        assert ((filledRegion->getInst()->isSend() ? 0 : 
-                (subRegOff * filledRegion->getElemSize () +
-                getRegionByteSize (filledRegion, execSize))) <=
-                2u * REG_BYTE_SIZE);
 
         return builder_->createSrcRegRegion(
             filledRegion->getModifier (), Direct, fillRangeRegVar, REG_ORIGIN,
