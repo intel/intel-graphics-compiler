@@ -446,7 +446,8 @@ int cmc::vISACompile(cmc_compile_info* output, iOpenCL::CGen8CMProgram& CMProgra
     const char* platformStr = getPlatformStr(CMProgram.getPlatform());
 
     // JIT compile kernels in vISA
-    for (cmc_kernel_info* info : output->kernel_info) {
+    assert(output->kernel_info && "null kernel info");
+    for (cmc_kernel_info* info : *(output->kernel_info)) {
         void* genBinary = nullptr;
         unsigned genBinarySize = 0;
         FINALIZER_INFO JITInfo;

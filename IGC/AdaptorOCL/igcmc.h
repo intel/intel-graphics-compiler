@@ -105,7 +105,7 @@ struct cmc_compile_info {
     uint32_t visa_minor_version;
 
     /// The kernel infomation.
-    std::vector<cmc_kernel_info*> kernel_info;
+    std::vector<cmc_kernel_info *> *kernel_info;
 
     /// The context for this compilation. This opaque data holds all memory
     /// allocations that will be freed in the end.
