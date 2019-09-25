@@ -68,7 +68,7 @@ int GetSampleCResourceIdx(llvm::CallInst& I)
     int textLocation = -1;
     if (SampleIntrinsic * pSamplerLoadInst = dyn_cast<SampleIntrinsic>(&I))
     {
-        textLocation = pSamplerLoadInst->getSamplerIndex();
+        textLocation = pSamplerLoadInst->getTextureIndex();
         llvm::Value* pArgLocation = pSamplerLoadInst->getOperand(textLocation);
         if (pArgLocation->getType()->isPointerTy())
         {

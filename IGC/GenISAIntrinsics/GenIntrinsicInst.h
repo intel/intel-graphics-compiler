@@ -360,11 +360,7 @@ class SampleIntrinsic : public GenIntrinsicInst {
 public:
     inline Value* getSamplerValue() const
     {
-        unsigned int index = getNumOperands() - 5;
-        if(IsLODInst())
-        {
-            index = getNumOperands() - 2;
-        }
+        unsigned int index = getSamplerIndex();
         return getOperand(index);
     }
 
@@ -387,7 +383,11 @@ public:
 
     inline int getSamplerIndex() const
     {
-        int index = getNumOperands() - 6;
+        unsigned int index = getNumOperands() - 5;
+        if(IsLODInst())
+        {
+            index = getNumOperands() - 2;
+        }
         return index;
     }
 
