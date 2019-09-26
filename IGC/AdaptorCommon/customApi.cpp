@@ -37,6 +37,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/Stats.hpp"
 #include "common/igc_regkeys.hpp"
 #include "common/SysUtils.hpp"
+#include "common/secure_string.h" // strcpy_s()
 
 #if defined(IGC_DEBUG_VARIABLES)
 
@@ -182,7 +183,7 @@ namespace IGC
             {
 #define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, releaseMode) \
             case OptionFlag::OPTION_##regkeyName: \
-            strcpy(g_RegKeyList.regkeyName.m_string, s);   \
+            strcpy_s(g_RegKeyList.regkeyName.m_string, sizeof(debugString), s);   \
             break;                                
 #include "common/igc_regkeys.def"
 #undef DECLARE_IGC_REGKEY
@@ -248,7 +249,7 @@ namespace IGC
 
                 if (!strcmp(flagName, name))
                 {
-                    strcpy(pRegKeyVariable[i].m_string, s);
+                    strcpy_s(pRegKeyVariable[i].m_string,sizeof(debugString), s);
                     break;
                 }
             }
