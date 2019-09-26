@@ -32,15 +32,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "VISADefines.h"
 
-// FIXME: the following _s functions are copied from secure_mem.h and secure_string.h,
-// because I don't have access the gfxdev files in CMRT environment. They should be removed
-// when CMRT is checked into the driver.
 #ifndef _WIN32
-#include <cstring>
 #include <errno.h>
-
-using std::memcpy;
-using std::strncpy;
+#include "common/secure_string.h"
 
 typedef int errno_t;
 static errno_t memcpy_s(void* dst, size_t numberOfElements, const void* src, size_t count)
@@ -51,28 +45,12 @@ static errno_t memcpy_s(void* dst, size_t numberOfElements, const void* src, siz
     if (numberOfElements < count) {
         return ERANGE;
     }
-    memcpy(dst, src, count);
-    return 0;
-}
 
-static inline int
-strcpy_s(char* strDestination, size_t numberOfElements, const char* strSource)
-{
-    strncpy(strDestination, strSource, numberOfElements);
-    strDestination[numberOfElements - 1] = '\0';
-    return 0;
-}
-
-static inline int
-strncpy_s(char* strDestination, size_t numberOfElements, const char* strSource, size_t count)
-{
-    if (numberOfElements - 1 > count) {
-        strncpy(strDestination, strSource, count);
-        strDestination[count] = '\0';
-    } else {
-        strncpy(strDestination, strSource, numberOfElements - 1);
-        strDestination[numberOfElements - 1] = '\0';
+    for (auto c = 0; c != count; c++)
+    {
+        *(((char*)dst) + c) = *(((char*)src) + c);
     }
+
     return 0;
 }
 #endif
