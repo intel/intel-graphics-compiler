@@ -287,7 +287,10 @@ private:
     { \
         if( (pointer) && (pointer)->m_compilerTimeStats ) \
         { \
-            (pointer)->m_compilerTimeStats->recordTimerStart( compileTimeInterval );  \
+            if ( IGC::Debug::GetDebugFlag( IGC::Debug::DebugFlag::TIME_STATS_SUM ) ) \
+            { \
+                (pointer)->m_compilerTimeStats->recordTimerStart( compileTimeInterval );  \
+            } \
         } \
     } while (0)
 #define COMPILER_TIME_END( pointer, compileTimeInterval ) \
@@ -295,7 +298,10 @@ private:
     { \
         if( (pointer) && (pointer)->m_compilerTimeStats ) \
         { \
-            (pointer)->m_compilerTimeStats->recordTimerEnd( compileTimeInterval ); \
+            if ( IGC::Debug::GetDebugFlag( IGC::Debug::DebugFlag::TIME_STATS_SUM ) ) \
+            { \
+                (pointer)->m_compilerTimeStats->recordTimerEnd( compileTimeInterval ); \
+            } \
         } \
     } while (0)
 
