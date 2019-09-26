@@ -6992,21 +6992,6 @@ void Optimizer::evenlySplitInst(INST_LIST_ITER iter, G4_BB* bb)
                     bb->insert(ii, movInst);
                 }
 
-                if (inst->isEOT() && builder.needResetAcc0beforeEOT())
-                {
-                    // insert "(W) mov(16) acc0.0:f 0x0:f" before EOT
-                    G4_INST* movInst = builder.createMov(16,
-                        builder.createDstRegRegion(Direct, builder.phyregpool.getAcc0Reg(),0, 0, 1, Type_F),
-                        builder.createImm(0, Type_F), InstOpt_WriteEnable, false);
-                    // insert mov before send, in case that there are instruction combined set on continuous
-                    // two send
-                    INST_LIST_ITER insert_point = ii;
-                    for (; insert_point != bb->begin(); --insert_point)
-                        if (!(*insert_point)->isSend())
-                            break;
-
-                    bb->insert(insert_point, movInst);
-                }
 
                 if (VISA_WA_CHECK(builder.getPWaTable(), WaResetN0BeforeGatewayMessage) &&
                     inst->isSend() && inst->getMsgDesc()->isBarrierMsg())
@@ -7045,6 +7030,7 @@ void Optimizer::evenlySplitInst(INST_LIST_ITER iter, G4_BB* bb)
             // set A0 to tdr0 before sendc/sendsc. TGL WA
             setA0toTdrForSendc();
         }
+
     }
 
 class NSDS {
