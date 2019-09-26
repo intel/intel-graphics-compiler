@@ -70,10 +70,13 @@ struct cmc_arg_info {
 // compilation interface bewteen cmc and igc
 struct cmc_kernel_info {
     /// The kernel name.
-    std::string name;
+    const char *name;
+
+    /// The number of kernel arguments
+    unsigned num_args;
 
     /// The kernel argument info.
-    std::vector<cmc_arg_info> arg_descs;
+    cmc_arg_info *arg_descs;
 
     // ThreadPayload
     bool HasLocalIDx = false;
@@ -104,8 +107,11 @@ struct cmc_compile_info {
     /// The vISA minor version.
     uint32_t visa_minor_version;
 
+    /// The number of kernel.
+    unsigned num_kernels;
+
     /// The kernel infomation.
-    std::vector<cmc_kernel_info *> *kernel_info;
+    cmc_kernel_info *kernel_info;
 
     /// The context for this compilation. This opaque data holds all memory
     /// allocations that will be freed in the end.

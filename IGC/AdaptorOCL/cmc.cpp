@@ -314,7 +314,9 @@ static void generatePatchTokens(const cmc_kernel_info *info, CMKernel& kernel)
     // Setup argument to BTI mapping.
     kernel.m_kernelInfo.m_argIndexMap.clear();
 
-    for (auto &AI : info->arg_descs) {
+    for (unsigned i = 0; i < info->num_args; ++i) {
+        assert(info->arg_descs);
+        cmc_arg_info& AI = info->arg_descs[i];
         if (AI.offset > 0)
             maxArgEnd = std::max(AI.offset + AI.sizeInBytes, maxArgEnd);
         bool isWriteable = AI.access != cmc_access_kind::read_only;
@@ -421,7 +423,9 @@ static void populateKernelInfo(const cmc_kernel_info* info,
         return false;
     };
 
-    for (auto &AI : info->arg_descs) {
+    for (unsigned i = 0; i < info->num_args; ++i) {
+        assert(info->arg_descs);
+        cmc_arg_info& AI = info->arg_descs[i];
         if (isStatefulResource(AI.kind)) {
             if (AI.kind == cmc_arg_kind::Buffer)
                 numUAVs++;
@@ -447,7 +451,8 @@ int cmc::vISACompile(cmc_compile_info* output, iOpenCL::CGen8CMProgram& CMProgra
 
     // JIT compile kernels in vISA
     assert(output->kernel_info && "null kernel info");
-    for (cmc_kernel_info* info : *(output->kernel_info)) {
+    for (unsigned i = 0; i < output->num_kernels; ++i) {
+        cmc_kernel_info* info = output->kernel_info + i;
         void* genBinary = nullptr;
         unsigned genBinarySize = 0;
         FINALIZER_INFO JITInfo;
@@ -457,7 +462,7 @@ int cmc::vISACompile(cmc_compile_info* output, iOpenCL::CGen8CMProgram& CMProgra
             "-nopresched"
         };
         int numArgs = sizeof(args)/sizeof(args[0]);
-        status = JITCompile(info->name.c_str(), output->binary, (unsigned)output->binary_size, genBinary,
+        status = JITCompile(info->name, output->binary, (unsigned)output->binary_size, genBinary,
             genBinarySize, platformStr, output->visa_major_version,
             output->visa_minor_version, numArgs, args, nullptr, &JITInfo);
         if (status != 0)
