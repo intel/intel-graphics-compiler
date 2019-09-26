@@ -9439,6 +9439,47 @@ int IR_Builder::translateVISAGather3dInst(
     return CM_SUCCESS;
 }
 
+
+/// getSplitEMask() calculates the new mask after splitting from the current
+/// execution mask at the given execution size.
+/// It only works with masks covering whole GRF and thus won't generate/consume
+/// nibbles.
+static uint32_t getSplitEMask(unsigned execSize, uint32_t eMask, bool isLo) {
+    const uint32_t qhMasks = InstOpt_M0 | InstOpt_M8 |
+        InstOpt_M16 | InstOpt_M24;
+    uint32_t other = eMask & ~qhMasks;
+    uint32_t qh = eMask & qhMasks;
+
+    switch (execSize) {
+    case 16: // Split SIMD16 into SIMD8
+        switch (qh) {
+        case 0: // instOpt not specified, treat as 1H
+        case InstOpt_M0:
+            return (isLo ? InstOpt_M0 : InstOpt_M8) | other;
+        case InstOpt_M16:
+            return (isLo ? InstOpt_M16 : InstOpt_M24) | other;
+        }
+        break;
+    case 32: // Split SIMD32 into SIMD16.
+        switch (qh) {
+        case 0:
+            return (isLo ? InstOpt_M0 : InstOpt_M16) | other;
+        }
+        break;
+    }
+
+    ASSERT_USER(false, "Unhandled cases for EMask splitting!");
+    return ~0U;
+}
+
+static uint32_t getSplitLoEMask(unsigned execSize, uint32_t eMask) {
+    return getSplitEMask(execSize, eMask, true);
+}
+
+static uint32_t getSplitHiEMask(unsigned execSize, uint32_t eMask) {
+    return getSplitEMask(execSize, eMask, false);
+}
+
 ///
 /// Bits 31-29: Reserved
 /// Bits 28-25: Message Length: Total 256bit registers expected to be sent.
@@ -9924,6 +9965,26 @@ int IR_Builder::translateVISASVMAtomicInst(
 #endif
     return CM_SUCCESS;
 }
+
+G4_SrcRegRegion* IR_Builder::getSVMOffset(G4_Operand* globalOffset, G4_SrcRegRegion* offsets, uint16_t exSize, 
+    G4_Predicate* pred, uint32_t mask)
+{
+    G4_Declare* dcl = Create_MRF_Dcl(exSize, offsets->getType());
+    G4_DstRegRegion* tmp = Create_Dst_Opnd_From_Dcl(dcl, 1);
+    createInst(pred, G4_add, 0, false, 8, tmp, offsets, globalOffset, mask);
+    if (exSize == 16)
+    {
+        // do second half of the 64-bit add
+        int offset = (8 * sizeof(uint64_t)) / getGRFSize();
+        auto dst = createDstRegRegion(Direct, dcl->getRegVar(), offset, 0, 1, offsets->getType());
+        auto src = createSrcRegRegion(Mod_src_undef, Direct, offsets->getBase(),
+            offsets->getRegOff() + offset, offsets->getSubRegOff(), getRegionStride1(), offsets->getType());
+        createInst(duplicateOperand(pred), G4_add, 0, false, 8, dst, src,
+            duplicateOperand(globalOffset), getSplitHiEMask(16, mask));
+    }
+    return Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
+}
+
 int IR_Builder::translateSVMGather4Inst(Common_ISA_Exec_Size    execSize,
                                         Common_VISA_EMask_Ctrl  eMask,
                                         ChannelMask             chMask,
@@ -9946,11 +10007,9 @@ int IR_Builder::translateSVMGather4Inst(Common_ISA_Exec_Size    execSize,
 
     // In case non-zero global offset is specified, we need to recalculate
     // offsets.
-    if (!globalOffset->isImm() || globalOffset->asImm()->getImm() != 0) {
-        G4_Declare *dcl = Create_MRF_Dcl(exSize, offsets->getType());
-        G4_DstRegRegion *tmp = Create_Dst_Opnd_From_Dcl(dcl, 1);
-        createInst(pred, G4_add, 0, false, exSize, tmp, offsets, globalOffset, instOpt);
-        offsets = Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
+    if (!globalOffset->isImm() || globalOffset->asImm()->getImm() != 0)
+    {
+        offsets = getSVMOffset(globalOffset, offsets, exSize, pred, instOpt);
     }
 
     payloadSource sources[1]; // Maximal 1 sources, offsets
@@ -10027,11 +10086,9 @@ int IR_Builder::translateSVMScatter4Inst(Common_ISA_Exec_Size   execSize,
 
     // In case non-zero global offset is specified, we need to recalculate
     // offsets.
-    if (!globalOffset->isImm() || globalOffset->asImm()->getImm() != 0) {
-        G4_Declare *dcl = Create_MRF_Dcl(exSize, offsets->getType());
-        G4_DstRegRegion *tmp = Create_Dst_Opnd_From_Dcl(dcl, 1);
-        createInst(pred, G4_add, 0, false, exSize, tmp, offsets, globalOffset, instOpt);
-        offsets = Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
+    if (!globalOffset->isImm() || globalOffset->asImm()->getImm() != 0)
+    {
+        offsets = getSVMOffset(globalOffset, offsets, exSize, pred, instOpt);
     }
 
     payloadSource sources[2]; // Maximal 2 sources, offsets + src
@@ -10138,47 +10195,6 @@ int IR_Builder::translateVISALifetimeInst(uint8_t properties, G4_Operand* var)
     // from being live across entire loop/sub-routine.
 
     return CM_SUCCESS;
-}
-
-
-/// getSplitEMask() calculates the new mask after splitting from the current
-/// execution mask at the given execution size.
-/// It only works with masks covering whole GRF and thus won't generate/consume
-/// nibbles.
-static uint32_t getSplitEMask(unsigned execSize, uint32_t eMask, bool isLo) {
-    const uint32_t qhMasks = InstOpt_M0 | InstOpt_M8 |
-                             InstOpt_M16 | InstOpt_M24;
-    uint32_t other = eMask & ~qhMasks;
-    uint32_t qh = eMask & qhMasks;
-
-    switch (execSize) {
-    case 16: // Split SIMD16 into SIMD8
-        switch (qh) {
-        case 0: // instOpt not specified, treat as 1H
-        case InstOpt_M0:
-            return (isLo ? InstOpt_M0 : InstOpt_M8) | other;
-        case InstOpt_M16:
-            return (isLo ? InstOpt_M16 : InstOpt_M24) | other;
-        }
-        break;
-    case 32: // Split SIMD32 into SIMD16.
-        switch (qh) {
-        case 0:
-            return (isLo ? InstOpt_M0 : InstOpt_M16) | other;
-        }
-        break;
-    }
-
-    ASSERT_USER(false, "Unhandled cases for EMask splitting!");
-    return ~0U;
-}
-
-static uint32_t getSplitLoEMask(unsigned execSize, uint32_t eMask) {
-    return getSplitEMask(execSize, eMask, true);
-}
-
-static uint32_t getSplitHiEMask(unsigned execSize, uint32_t eMask) {
-    return getSplitEMask(execSize, eMask, false);
 }
 
 /// CopySrcToMsgPayload() performs a single batch of copy source into message

@@ -2693,6 +2693,13 @@ private:
         G4_SrcRegRegion ** params,
         bool uniformSampler = true);
 
+    // return globalOffset + offsets as a contiguous operand
+    G4_SrcRegRegion* getSVMOffset(G4_Operand* globalOffset,
+        G4_SrcRegRegion* offsets,
+        uint16_t exSize,
+        G4_Predicate* pred,
+        uint32_t mask);
+
 };
 }
 
