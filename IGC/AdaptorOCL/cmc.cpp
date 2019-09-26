@@ -377,6 +377,8 @@ static void populateKernelInfo(const cmc_kernel_info* info,
     kInfo.m_kernelName = info->name;
     // Fixed SIMD8.
     kInfo.m_executionEnivronment.CompiledSIMDSize = 8;
+    // SLM size in bytes, align to 1KB.
+    kInfo.m_executionEnivronment.SumFixedTGSMSizes = iSTD::Align(info->SLMSize, 1024);
     kInfo.m_executionEnivronment.HasBarriers = info->HasBarriers;
     kInfo.m_executionEnivronment.HasReadWriteImages = info->HasReadWriteImages;
     kInfo.m_executionEnivronment.SubgroupIndependentForwardProgressRequired = true;
