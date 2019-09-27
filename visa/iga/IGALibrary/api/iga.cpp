@@ -11,6 +11,8 @@
 #include "../IR/IRChecker.hpp"
 #include "../strings.hpp"
 #include "../version.hpp"
+#include "common/secure_string.h"
+#include "common/secure_mem.h"
 
 // external dependencies
 #include <algorithm>
@@ -365,7 +367,7 @@ public:
             delete kernel;
             return IGA_OUT_OF_MEM;
         }
-        MEMCPY(m_assemble_bits, *bits, *bitsLen32);
+        memcpy_s(m_assemble_bits, *bitsLen32, * bits, *bitsLen32);
         *bits = m_assemble_bits;
         delete kernel;
         return translateDiagnostics(errHandler);
@@ -644,7 +646,7 @@ iga_status_t  iga_context_create(
     if (opts->cb > sizeof(iga_context_options_t)) {
         return IGA_VERSION_ERROR;
     }
-    MEMCPY(&coptsInternal, opts, opts->cb);
+    memcpy_s(&coptsInternal, opts->cb, opts, opts->cb);
 
     iga::Platform p = ToPlatform(opts->gen);
     if (p == iga::Platform::INVALID) {
@@ -700,7 +702,7 @@ iga_status_t  iga_context_assemble(
         return IGA_VERSION_ERROR;
     }
     iga_assemble_options_t aoptsInternal = IGA_ASSEMBLE_OPTIONS_INIT();
-    MEMCPY(&aoptsInternal, aopts, aopts->cb);
+    memcpy_s(&aoptsInternal, aopts->cb, aopts, aopts->cb);
 
     CAST_CONTEXT(ctx_obj, ctx);
     return ctx_obj->assemble(
@@ -737,7 +739,7 @@ iga_status_t  iga_context_disassemble(
         return IGA_VERSION_ERROR;
     }
     iga_disassemble_options_t doptsInternal = IGA_DISASSEMBLE_OPTIONS_INIT();
-    MEMCPY(&doptsInternal, dopts, dopts->cb);
+    memcpy_s(&doptsInternal, dopts->cb, dopts, dopts->cb);
 
     CAST_CONTEXT(ctx_obj, ctx);
     return ctx_obj->disassemble(
@@ -789,7 +791,7 @@ iga_status_t  iga_context_disassemble_instruction(
     }
     iga_disassemble_options_t doptsInternal =
         IGA_DISASSEMBLE_OPTIONS_INIT_NUMERIC_LABELS();
-    MEMCPY(&doptsInternal, dopts, dopts->cb);
+    memcpy_s(&doptsInternal, dopts->cb, dopts, dopts->cb);
 
     CAST_CONTEXT(ctx_obj, ctx);
     return ctx_obj->disassembleInstruction(
@@ -945,7 +947,8 @@ iga_status_t iga_diagnostic_get_text_extent(
     do { \
         if ((DST) != nullptr) { \
             size_t _CPLEN = *(DST_LEN_PTR) < (SRC_LEN) ? *(DST_LEN_PTR) : (SRC_LEN); \
-            MEMCPY((DST), (SRC), _CPLEN * sizeof(*(DST))); \
+            memcpy_s(                                                          \
+                (DST), _CPLEN * sizeof(*(DST)), (SRC), _CPLEN * sizeof(*(DST))); \
         } \
         *(DST_LEN_PTR) = (SRC_LEN); \
     } while (0)
@@ -956,7 +959,8 @@ iga_status_t iga_diagnostic_get_text_extent(
         size_t SRC_LEN = strlen(SRC) + 1; \
         if ((DST) != nullptr) { \
             size_t _CPLEN = *(DST_LEN_PTR) < (SRC_LEN) ? *(DST_LEN_PTR) : (SRC_LEN); \
-            MEMCPY((DST), (SRC), _CPLEN * sizeof(*(DST))); \
+            memcpy_s(                                                          \
+                (DST), _CPLEN * sizeof(*(DST)), (SRC), _CPLEN * sizeof(*(DST))); \
             DST[_CPLEN - 1] = 0; \
         } \
         *(DST_LEN_PTR) = (SRC_LEN); \

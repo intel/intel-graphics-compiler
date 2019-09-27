@@ -223,7 +223,7 @@ bool decodeSendDescriptor(const Opts &opts)
                     off -= 32;
                     which = "ExDesc";
                 }
-                ss << "[";
+                ss << which << "[";
                 if (d.first.len > 1) {
                     ss << off + d.first.len - 1 << ":";
                 }

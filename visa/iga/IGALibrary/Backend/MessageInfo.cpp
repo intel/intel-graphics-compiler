@@ -402,8 +402,8 @@ struct DescDecoder {
         int simd = 0;
         const char *simdStr = "?";
         switch (bits) {
-        case 1: simd = 8; simdStr = "SIMD8"; break;
-        case 2: simd = 16; simdStr = "SIMD16"; break;
+        case 1: simd = 16; simdStr = "SIMD16"; break;
+        case 2: simd = 8;  simdStr = "SIMD8"; break;
         default: error(off,2,"invalid MDC_SM3"); break;
         }
         addField("SimdMode:MDC_SM3",off,2,bits,simdStr);
@@ -1104,27 +1104,40 @@ iga::MessageInfo iga::MessageInfo::tryDecode(
         *descDecodedField = dd.fields;
         //
         // make sure there aren't unmapped bits
-        // (as this decoder solidifies we can convert this to a warning)
-        // dd.warning("bit set in reserved field");
-        int len = dd.hasExDesc() ? 64 : 32;
-        for (int i = 0; i < len; i++) {
-            auto bit = i >= 32 ? (exDesc & (1<<(i-32))) : (desc & (1<<(i)));
-            if (bit) {
-                bool bitMapped = false;
-                for (const auto &fv : dd.fields) {
-                    const auto &f = std::get<0>(fv);
-                    if (i >= f.offset && i < f.offset + f.length) {
-                        bitMapped = true;
-                        break;
-                    }
+        // run through all 64 bits of [ExDesc:Desc] and find maximal spans
+        // that have no owner field (breaking between descriptors)
+        auto bitIsSet = [&](int i) {
+            return i >= 32 ?
+                (exDesc & (1<<(i-32))) : (desc & (1<<(i)));
+        };
+        auto fieldOwnsBit = [&](int i) {
+            for (const auto &fv : dd.fields) {
+                const auto &f = std::get<0>(fv);
+                if (i >= f.offset && i < f.offset + f.length) {
+                    return true;
                 }
-                if (!bitMapped) {
-                    // uncomment for debugging
-                    // std::stringstream ss;
-                    // ss << "[" << i << "] = 1 not mapped by field";
-                    // IGA_ASSERT_FALSE(ss.str().c_str());
-                    dd.warning(i, 1, "bits set in undefined field");
+            }
+            return false;
+        };
+        int len = dd.hasExDesc() ? 64 : 32; // 32 if a0
+        for (int i = 0; i < len;) {
+            if (bitIsSet(i) && !fieldOwnsBit(i)) {
+                // beginning of an undefined field
+                int undefLen = 1;
+                while ((i + undefLen) % 32 != 0 && bitIsSet(i + undefLen)) {
+                    // don't span undefined fields across ExDesc:Desc
+                    undefLen++;
                 }
+                //
+                dd.warning(i, undefLen, "bits set in undefined field");
+                i += undefLen;
+                //
+                // uncomment for linting bad descriptors
+                // std::stringstream ss;
+                // ss << "[" << i << "] = 1 not mapped by field";
+                // IGA_ASSERT_FALSE(ss.str().c_str());
+            } else {
+                i++;
             }
         }
     }
