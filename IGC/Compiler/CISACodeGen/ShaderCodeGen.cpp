@@ -840,7 +840,7 @@ namespace IGC
     {
         AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD32, false);
     }
-        else if (((IGC_IS_FLAG_ENABLED(ForceCSSIMD16)) && simdModeAllowed <= SIMDMode::SIMD16) || ctx->getModuleMetaData()->csInfo.forcedSIMDSize == 16 ||
+    else if (((IGC_IS_FLAG_ENABLED(ForceCSSIMD16) || ctx->getModuleMetaData()->csInfo.forcedSIMDSize == 16) && simdModeAllowed <= SIMDMode::SIMD16) ||
         waveSize == 16)
     {
         AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD16, false);
