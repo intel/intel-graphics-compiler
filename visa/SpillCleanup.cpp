@@ -1876,11 +1876,6 @@ void CoalesceSpillFills::removeRedundantWrites()
         {
             auto inst = (*instIt);
 
-            if (!inst->isSend())
-            {
-                continue;
-            }
-
             if (inst->isFillIntrinsic() ||
                 inst->isSpillIntrinsic())
             {
