@@ -213,7 +213,53 @@ uint EmitPass::DecideInstanceAndSlice(llvm::BasicBlock& blk, SDAG& sdag, bool& s
         }
     }
 
+    if (CallInst * callInst = dyn_cast<CallInst>(sdag.m_root))
+    {
+        // Disable slicing for function call
+        bool disableSlicing = false;
+        Function* F = dyn_cast<Function>(callInst->getCalledValue());
+        if (callInst->isInlineAsm())
+            disableSlicing = true;
+        else if (F == nullptr)
+            disableSlicing = true;
+        else if (F->hasFnAttribute("visaStackcall"))
+            disableSlicing = true;
+
+        if (disableSlicing)
+        {
+            numInstance = 1;
+            slicing = false;
+        }
+    }
     return numInstance;
+}
+
+bool EmitPass::canCompileCurrentShader(llvm::Function& F)
+{
+    CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+
+    // If uses subroutines, we can only compile a single SIMD mode
+    if (m_FGA && !m_FGA->getGroup(&F)->isSingle())
+    {
+        // default SIMD8
+        SIMDMode compiledSIMD = SIMDMode::SIMD8;
+
+        if (ctx->type == ShaderType::OPENCL_SHADER)
+        {
+            // If SIMD sized is forced by IGC flag, compile the forced mode
+            if (m_moduleMD->csInfo.forcedSIMDSize != 0)
+            {
+                compiledSIMD = lanesToSIMDMode((unsigned)m_moduleMD->csInfo.forcedSIMDSize);
+            }
+            // If max work group size is set, we need to compile the least allowed SIMD
+            else if (ctx->m_DriverInfo.sendMultipleSIMDModes() && m_moduleMD->csInfo.maxWorkGroupSize != 0)
+            {
+                compiledSIMD = getLeastSIMDAllowed(m_moduleMD->csInfo.maxWorkGroupSize, GetHwThreadsPerWG(ctx->platform));
+            }
+        }
+        return (m_SimdMode == compiledSIMD);
+    }
+    return true;
 }
 
 bool EmitPass::setCurrentShader(llvm::Function* F)
@@ -234,6 +280,9 @@ bool EmitPass::setCurrentShader(llvm::Function* F)
         // no analysis result avaliable.
         m_FGA = nullptr;
     }
+
+    if (!canCompileCurrentShader(*F))
+        return false;
 
     auto Iter = m_shaders.find(Kernel);
     if (Iter == m_shaders.end())
@@ -362,26 +411,6 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         return false;
     }
 
-    // If uses subroutines, we can only compile a single SIMD mode
-    if (m_FGA && !m_FGA->getGroup(&F)->isSingle())
-    {
-        // If max work group size is set, we need to compile the least allowed SIMD
-        if (ctx->m_DriverInfo.sendMultipleSIMDModes() &&
-            ctx->getModuleMetaData()->csInfo.maxWorkGroupSize != 0)
-        {
-            const SIMDMode leastSIMDMode = getLeastSIMDAllowed(ctx->getModuleMetaData()->csInfo.maxWorkGroupSize, GetHwThreadsPerWG(ctx->platform));
-            if (leastSIMDMode != m_SimdMode)
-            {
-                return false;
-            }
-        }
-        // Otherwise, only compile simd8 for subroutines
-        else if (m_SimdMode != SIMDMode::SIMD8)
-        {
-            return false;
-        }
-    }
-
     bool isCloned = false;
     if (DebugInfoData::hasDebugInfo(m_currShader))
     {
@@ -423,12 +452,6 @@ bool EmitPass::runOnFunction(llvm::Function& F)
     bool ptr64bits = (m_DL->getPointerSizeInBits(ADDRESS_SPACE_PRIVATE) == 64);
     if (!m_FGA || m_FGA->isGroupHead(&F))
     {
-        // "extern" functions are only compiled with SIMD8, so we want to make sure the
-        // the function calling it matches the SIMD width.
-        if (hasFunctionPointer && m_SimdMode != SIMDMode::SIMD8)
-        {
-            return false;
-        }
         m_currShader->InitEncoder(m_SimdMode, m_canAbortOnSpill, m_ShaderMode);
         // Pre-analysis pass to be executed before call to visa builder so we can pass scratch space offset
         m_currShader->PreAnalysisPass();
@@ -450,11 +473,6 @@ bool EmitPass::runOnFunction(llvm::Function& F)
     else
     {
         if (!m_currShader->CompileSIMDSize(m_SimdMode, *this, F))
-        {
-            return false;
-        }
-        // Only use SIMD8 for external functions for now
-        if (F.hasFnAttribute("IndirectlyCalled") && m_SimdMode != SIMDMode::SIMD8)
         {
             return false;
         }

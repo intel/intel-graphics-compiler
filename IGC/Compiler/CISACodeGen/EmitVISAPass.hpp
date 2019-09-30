@@ -490,6 +490,8 @@ namespace IGC
         /// return true if succeeds, false otherwise.
         bool setCurrentShader(llvm::Function* F);
 
+        bool canCompileCurrentShader(llvm::Function& F);
+
         // Arithmetic operations with constant folding
         // Src0 and Src1 are the input operands
         // DstPrototype is a prototype of the result of operation and may be used for cloning to a new variable
