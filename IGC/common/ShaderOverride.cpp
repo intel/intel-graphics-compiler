@@ -159,7 +159,11 @@ void appendToShaderOverrideLogFile(std::string &binFileName, const char * messag
     std::ofstream os(overridePath.c_str(), std::ios::app);
     if(os.is_open())
     {
-        os << message << binFileName.c_str() << std::endl;
+        auto now = std::chrono::system_clock::now();
+        auto now_time = std::chrono::system_clock::to_time_t(now);
+        auto c_time = ctime(&now_time);
+        c_time[strlen(c_time) - 1] = '\t';
+        os << c_time <<  message << binFileName.c_str() << std::endl;
     }
     os.close();
 }
