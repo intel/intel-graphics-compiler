@@ -764,7 +764,7 @@ void InitCflNonDisplayWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, 
         "No HWSightingLink provided",
         PLATFORM_ALL,
         SI_WA_FOR_EVER);
-	
+    
     SI_WA_ENABLE(
         WaRsForcewakeAddDelayForAck,
         "No HWBugLink provided",

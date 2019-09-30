@@ -90,14 +90,14 @@ typedef enum {
     IGFX_GEN11LP_CORE    = 16,  //Gen11 LP Family
     IGFX_GEN12_CORE      = 17,  //Gen12 Family
     IGFX_GEN12LP_CORE    = 18,  //Gen12 LP Family
-    IGFX_MAX_CORE,				//Max Family, for lookup table
+    IGFX_MAX_CORE,              //Max Family, for lookup table
 
     IGFX_GENNEXT_CORE          = 0x7ffffffe,  //GenNext
     GFXCORE_FAMILY_FORCE_ULONG = 0x7fffffff
 } GFXCORE_FAMILY;
 
 typedef enum {
-    IGFX_SKU_NONE		= 0,	
+    IGFX_SKU_NONE       = 0,
     IGFX_SKU_ULX        = 1,
     IGFX_SKU_ULT        = 2,
     IGFX_SKU_T          = 3,
@@ -198,7 +198,7 @@ typedef enum __CPUTYPE
     CPU_M3,
     CPU_M5,
     CPU_M7,
-	CPU_MEDIA_SERVER //Added for KBL
+    CPU_MEDIA_SERVER //Added for KBL
 }CPUTYPE, *PCPUTYPE;
 
 // the code below convert platform real revision number to pre-defined revision number, the revision will be set as follow
@@ -432,9 +432,9 @@ typedef enum __NATIVEGTTYPE
 #define ISKL_GT2_HALO_MOBL_DEVICE_F0_ID         0x191B 
 
 #define ISKL_GT4_HALO_MOBL_DEVICE_F0_ID         0x193B 
-#define ISKL_GT4_SERV_DEVICE_F0_ID				0x193A 
-#define ISKL_GT2_WRK_DEVICE_F0_ID				0x191D 
-#define ISKL_GT4_WRK_DEVICE_F0_ID				0x193D 
+#define ISKL_GT4_SERV_DEVICE_F0_ID              0x193A 
+#define ISKL_GT2_WRK_DEVICE_F0_ID               0x191D 
+#define ISKL_GT4_WRK_DEVICE_F0_ID               0x193D 
 
 
 #define ISKL_GT0_DESK_DEVICE_F0_ID              0x0900
@@ -446,13 +446,13 @@ typedef enum __NATIVEGTTYPE
 //SKL strings to be be deleted in future
 
 #define ISKL_GT1_HALO_MOBL_DEVICE_F0_ID         0x190B
-#define ISKL_GT1_SERV_DEVICE_F0_ID				0x190A
+#define ISKL_GT1_SERV_DEVICE_F0_ID              0x190A
 #define ISKL_GT1_5_ULX_DEVICE_F0_ID             0x1915
 #define ISKL_GT1_5_DT_DEVICE_F0_ID              0x1917
-#define ISKL_GT2_SERV_DEVICE_F0_ID				0x191A
+#define ISKL_GT2_SERV_DEVICE_F0_ID              0x191A
 #define ISKL_LP_DEVICE_F0_ID                    0x9905
 #define ISKL_GT3_HALO_MOBL_DEVICE_F0_ID         0x192B
-#define ISKL_GT3_SERV_DEVICE_F0_ID				0x192A
+#define ISKL_GT3_SERV_DEVICE_F0_ID              0x192A
 #define ISKL_GT0_MOBL_DEVICE_F0_ID              0xFFFF
 
 // KabyLake Device ids

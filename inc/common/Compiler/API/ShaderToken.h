@@ -285,17 +285,17 @@ STRUCT: Operator XOR for the writemask
 \*****************************************************************************/
 inline SShaderWriteMask operator ^ ( SShaderWriteMask writemaskA, SShaderWriteMask writemaskB )
 {
-	SShaderWriteMask resultWritemask = 
-	{
-		{
-				static_cast<unsigned char>(!( writemaskA[ SHADER_CHANNEL_X ] == writemaskB[ SHADER_CHANNEL_X ] )),
-				static_cast<unsigned char>(!( writemaskA[ SHADER_CHANNEL_Y ] == writemaskB[ SHADER_CHANNEL_Y ] )),
-				static_cast<unsigned char>(!( writemaskA[ SHADER_CHANNEL_Z ] == writemaskB[ SHADER_CHANNEL_Z ] )),
-				static_cast<unsigned char>(!( writemaskA[ SHADER_CHANNEL_W ] == writemaskB[ SHADER_CHANNEL_W ] ))
-		}
-	};
+    SShaderWriteMask resultWritemask = 
+    {
+        {
+                static_cast<unsigned char>(!( writemaskA[ SHADER_CHANNEL_X ] == writemaskB[ SHADER_CHANNEL_X ] )),
+                static_cast<unsigned char>(!( writemaskA[ SHADER_CHANNEL_Y ] == writemaskB[ SHADER_CHANNEL_Y ] )),
+                static_cast<unsigned char>(!( writemaskA[ SHADER_CHANNEL_Z ] == writemaskB[ SHADER_CHANNEL_Z ] )),
+                static_cast<unsigned char>(!( writemaskA[ SHADER_CHANNEL_W ] == writemaskB[ SHADER_CHANNEL_W ] ))
+        }
+    };
 
-	return resultWritemask;
+    return resultWritemask;
 }
 
 /*****************************************************************************\
@@ -545,7 +545,7 @@ union SShaderDestinationRegisterToken
 
     unsigned long long      Hash( void ) const;
 
-	void                        SetPrecision( SHADER_OPERAND_PRECISION precision )  { m_Precision = precision; }
+    void                        SetPrecision( SHADER_OPERAND_PRECISION precision )  { m_Precision = precision; }
     SHADER_OPERAND_PRECISION    GetPrecision( void ) const { return (SHADER_OPERAND_PRECISION)m_Precision; }
 
     void                    SetExactPrecision( bool exactPrecision ) { m_ExactPrecision = exactPrecision; }
@@ -581,7 +581,7 @@ union SShaderSourceRegisterToken
         unsigned int   m_IndirectOffset    : 1;                                                        // bool
         unsigned int   m_AccessRegister    : 1;                                                        // bool
         unsigned int   m_AccessOffset      : 1;                                                        // bool
-		unsigned int   m_Precision         : BITCOUNT(NUM_SHADER_OPERAND_PRECISIONS); 				   // NUM_SHADER_OPERAND_PRECISIONS
+        unsigned int   m_Precision         : BITCOUNT(NUM_SHADER_OPERAND_PRECISIONS);                  // NUM_SHADER_OPERAND_PRECISIONS
         unsigned int   m_NonUniformIndex   : 1;                                                        // bool
     };
     unsigned long long   Value;
@@ -616,7 +616,7 @@ union SShaderSourceRegisterToken
     void                    SetAccessOffsetEnable( bool enable )            { m_AccessOffset = enable; }
     bool                    GetAccessOffsetEnable( void ) const             { return (bool)m_AccessOffset; }
 
- 	void                        SetPrecision( SHADER_OPERAND_PRECISION precision )  { m_Precision = precision; }
+    void                        SetPrecision( SHADER_OPERAND_PRECISION precision )  { m_Precision = precision; }
     SHADER_OPERAND_PRECISION    GetPrecision( void ) const                          { return (SHADER_OPERAND_PRECISION)m_Precision; }
 
     void                    SetNonUniformIndex( bool nonUniform ) { m_NonUniformIndex = nonUniform; }

@@ -148,7 +148,7 @@ USC_PARAM()
 {
     GT_SYSTEM_INFO          sysInfo;
     SCompilerAilInfo        AilInfo;
-    SUscSkuFeatureTable		uscSkuFeatureTable; // This slimmed version of the full sku feature table ( in sku_wa.h )
+    SUscSkuFeatureTable     uscSkuFeatureTable; // This slimmed version of the full sku feature table ( in sku_wa.h )
     SKU_FEATURE_TABLE       skuFeatureTable;
 } SCompilerPlatformInfo;
 

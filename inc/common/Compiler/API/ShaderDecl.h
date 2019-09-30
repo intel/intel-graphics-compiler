@@ -116,7 +116,7 @@ public:
     virtual unsigned int   GetCount( void ) const;
     unsigned int    GetMaxRegisters( void ) const;
 
-    void			GetListOfDeclared( const unsigned int** listOfDeclared, unsigned int &listSize ) const;
+    void            GetListOfDeclared( const unsigned int** listOfDeclared, unsigned int &listSize ) const;
     bool            GetNextUndeclared( const unsigned int nextUndeclaredHint, unsigned int& nextUndeclared );
     void            GetDeclaredIndexList( const ShaderRegisterIndexType** declaredIndex, unsigned int &listSize ) const;
     
@@ -658,22 +658,22 @@ public:
     void    SetMaxIndexedOutputRegisterNum( const unsigned int number );
     void    SetMinIndexedOutputRegisterNum( const unsigned int number );
     void    SetNumIndexedOutputRegisters( const unsigned int number );
-	
+    
     unsigned int   GetMaxIndexedOutputRegisterNum( void ) const;
     unsigned int   GetMinIndexedOutputRegisterNum( void ) const;
     unsigned int   GetNumIndexedOutputRegisters( void ) const;
 
-	void    SetActualOutputRegistersCount( const unsigned int number );
-	void	SetAdditionalOutputsCount( const unsigned int number );
-	void	SetActualOutputIndexNumber( const unsigned int index, const unsigned int number );
-	void	SetAdditionalOutputIndexNumber( const unsigned int index, const unsigned int number );
+    void    SetActualOutputRegistersCount( const unsigned int number );
+    void    SetAdditionalOutputsCount( const unsigned int number );
+    void    SetActualOutputIndexNumber( const unsigned int index, const unsigned int number );
+    void    SetAdditionalOutputIndexNumber( const unsigned int index, const unsigned int number );
 
-	unsigned int   GetActualOutputRegistersCount( void ) const;
-	unsigned int   GetAdditionalOutputsCount( void ) const;
-	unsigned int   GetActualOutputIndexNumber( const unsigned int index ) const;
-	unsigned int   GetAdditionalOutputIndexNumber( const unsigned int index ) const;
+    unsigned int   GetActualOutputRegistersCount( void ) const;
+    unsigned int   GetAdditionalOutputsCount( void ) const;
+    unsigned int   GetActualOutputIndexNumber( const unsigned int index ) const;
+    unsigned int   GetAdditionalOutputIndexNumber( const unsigned int index ) const;
 
-	void GetListOfDeclared( const unsigned int** listOfDeclared, unsigned int &listSize, USC_CLIENT_TYPE clientType, unsigned char renderTargetPropagationMask ) const;
+    void GetListOfDeclared( const unsigned int** listOfDeclared, unsigned int &listSize, USC_CLIENT_TYPE clientType, unsigned char renderTargetPropagationMask ) const;
 
     virtual void    Compress( void );
 
@@ -688,8 +688,8 @@ public:
 
     inline bool HasPointSize( void ) const;
     inline const ShaderRegisterIndexType* GetTextureCoordinateToRegisterNumMap( void ) const;
-	inline const unsigned int* GetActualOutputsArray( void ) const;
-	inline const unsigned int* GetAdditionalOutputsArray( void ) const;
+    inline const unsigned int* GetActualOutputsArray( void ) const;
+    inline const unsigned int* GetAdditionalOutputsArray( void ) const;
     inline ShaderRegisterIndexType GetFogCoordinateOrFactorRegisterNum( void ) const;
     inline ShaderRegisterIndexType GetSecondaryColorRegisterNum( void ) const;
 
@@ -710,13 +710,13 @@ protected:
     unsigned int   m_MaxIndexedOutputRegisterNum;
     unsigned int   m_MinIndexedOutputRegisterNum;
     unsigned int   m_NumIndexedOutputRegisters;
-	
-	unsigned int   m_ActualOutputRegisters[ NUM_PSHADER_OUTPUT_REGISTERS ];
-	unsigned int   m_ActualOutputRegistersCount;
-	unsigned int   m_AdditionalOutputRegisters[ NUM_PSHADER_OUTPUT_COLOR_REGISTERS ];
-	unsigned int   m_AdditionalOutputsCount;
     
-	bool    m_HasPointSize;
+    unsigned int   m_ActualOutputRegisters[ NUM_PSHADER_OUTPUT_REGISTERS ];
+    unsigned int   m_ActualOutputRegistersCount;
+    unsigned int   m_AdditionalOutputRegisters[ NUM_PSHADER_OUTPUT_COLOR_REGISTERS ];
+    unsigned int   m_AdditionalOutputsCount;
+    
+    bool    m_HasPointSize;
     ShaderRegisterIndexType m_texCoordRegisterNum[ NUM_TEXTURE_COORDINATES ];
     ShaderRegisterIndexType m_fogCoordRegisterNum;
     ShaderRegisterIndexType m_secondaryColorRegisterNum;
@@ -773,12 +773,12 @@ inline const ShaderRegisterIndexType*  CShaderOutputDecl::GetTextureCoordinateTo
 
 inline const unsigned int* CShaderOutputDecl::GetActualOutputsArray( void ) const
 {
-	return m_ActualOutputRegisters;
+    return m_ActualOutputRegisters;
 }
 
 inline const unsigned int* CShaderOutputDecl::GetAdditionalOutputsArray( void ) const
 {
-	return m_AdditionalOutputRegisters;
+    return m_AdditionalOutputRegisters;
 }
 
 /*****************************************************************************\

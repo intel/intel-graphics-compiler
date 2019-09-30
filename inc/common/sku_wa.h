@@ -8283,7 +8283,7 @@ typedef struct _WA_TABLE
         WA_BUG_TYPE_FUNCTIONAL,
         WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_SOFTBIOS)
 
-		WA_DECLARE(
+        WA_DECLARE(
         WaHardHangonHotPlug,
         "Workaround",
         WA_BUG_TYPE_HANG,

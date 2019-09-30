@@ -140,12 +140,12 @@ struct SCompilerOutputPixelShader_Gen9 : public SCompilerOutputPixelShader_Gen8
 
     unsigned int m_FP16PayloadEnable;          // (bit 17)
     unsigned int m_CRastBinaryHeaderSize;
-	unsigned int m_SampleCmpToDiscardOptimizationSlot;
-	bool m_NeedsWAForSampleLInLoopPS;
-	bool m_SampleCmpToDiscardOptimizationPossible;
+    unsigned int m_SampleCmpToDiscardOptimizationSlot;
+    bool m_NeedsWAForSampleLInLoopPS;
+    bool m_SampleCmpToDiscardOptimizationPossible;
     bool m_NeedPSSync;
     PADDING_1_BYTE
-	PADDING_4_BYTES
+    PADDING_4_BYTES
 };
 
 /*****************************************************************************\

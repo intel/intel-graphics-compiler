@@ -576,18 +576,18 @@ struct SQualityMetricsActualIsa
 
 enum SHADER_MEMORY_ALLOCS_TYPE
 {
-	SMAT_TINY = 0,
-	SMAT_SMALL,
-	SMAT_MEDIUM,
-	SMAT_BIG,
-	SMAT_LARGE,
-	SMAT_NUM_OF_TYPES
+    SMAT_TINY = 0,
+    SMAT_SMALL,
+    SMAT_MEDIUM,
+    SMAT_BIG,
+    SMAT_LARGE,
+    SMAT_NUM_OF_TYPES
 };
 
 struct SShaderMemoryAllocsType
 {
     const char* Name;
-	size_t max_size;
+    size_t max_size;
 };
 
 /*****************************************************************************\

@@ -912,7 +912,7 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         SI_WA_NEVER);
 
     SI_WA_ENABLE(
-		WaKeepPG1ActiveDueToDMCIssue,
+        WaKeepPG1ActiveDueToDMCIssue,
         "No HWBugLink provided",
         "No Link Provided" ,
         PLATFORM_ALL,
@@ -1551,24 +1551,24 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
     SI_WA_ENABLE(
         WaPlaneSizeAlignmentFor180Rotation,
         "No Link Provided" ,
-		"No Link Provided" ,
+        "No Link Provided" ,
         PLATFORM_ALL,
         SI_WA_FOR_EVER
     );
 
-	SI_WA_ENABLE(
-		WaPruneModesHavingHfrontPorchBetween122To130,
-		"No Link Provided" ,
-		"Link",
-		PLATFORM_ALL,
-		SI_WA_FOR_EVER);
+    SI_WA_ENABLE(
+        WaPruneModesHavingHfrontPorchBetween122To130,
+        "No Link Provided" ,
+        "Link",
+        PLATFORM_ALL,
+        SI_WA_FOR_EVER);
 
-	SI_WA_ENABLE(
-		WaInitCDClkNewSeq,
-		"No HWBugLink provided",
-		"No HWSightingLink provided",
-		PLATFORM_ALL,
-		SI_WA_FOR_EVER);
+    SI_WA_ENABLE(
+        WaInitCDClkNewSeq,
+        "No HWBugLink provided",
+        "No HWSightingLink provided",
+        PLATFORM_ALL,
+        SI_WA_FOR_EVER);
 
     
     
@@ -2761,22 +2761,22 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         SIWA_FOREVER);
 
     
-	WA_ENABLE(
-		ulStepId_SKL,
+    WA_ENABLE(
+        ulStepId_SKL,
         WaHDMIVswingChickenBitOverride,
         "No SWSighting Link Provided",
         "No Link Provided" ,
         PLATFORM_ALL,
-		SIWA_FOREVER);
+        SIWA_FOREVER);
 
-	
-	WA_ENABLE(
-		ulStepId_SKL,
-		WaAudioSetEPSS,
-		"No Link Provided" ,
-		"No HWSightingLink provided",
-		PLATFORM_ALL,
-		SIWA_FOREVER);
+    
+    WA_ENABLE(
+        ulStepId_SKL,
+        WaAudioSetEPSS,
+        "No Link Provided" ,
+        "No HWSightingLink provided",
+        PLATFORM_ALL,
+        SIWA_FOREVER);
 
 }
 

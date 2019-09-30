@@ -507,14 +507,14 @@ void InitChvWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SIWA_FOREVER);
 
-	
-	WA_ENABLE(
-		ulStepId_CHV,
-		WaReadVcrDebugRegister,
-		"No HWBugLink provided",
-		"No HWSightingLink provided",
-		PLATFORM_ALL,
-		SIWA_FOREVER);
+    
+    WA_ENABLE(
+        ulStepId_CHV,
+        WaReadVcrDebugRegister,
+        "No HWBugLink provided",
+        "No HWSightingLink provided",
+        PLATFORM_ALL,
+        SIWA_FOREVER);
 
     WA_ENABLE(
         ulStepId_CHV,
@@ -1357,7 +1357,7 @@ void InitChvWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         SIWA_FOREVER);
 
     
-	
+    
     WA_ENABLE(
         ulStepId_CHV,
         WaDisableObjectLevelPreempt,
@@ -1431,7 +1431,7 @@ void InitChvWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SIWA_FOREVER);
 
-	WA_ENABLE(
+    WA_ENABLE(
         ulStepId_CHV,
         WaMIPIPhaseDelay,
         "No HWBugLink provided",
@@ -1642,11 +1642,11 @@ void InitChvWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         SIWA_UNTIL_CHV_A7);
 
     WA_ENABLE(
-		ulStepId_CHV,
-		WaSkipInvalidSubmitsFromOS,
+        ulStepId_CHV,
+        WaSkipInvalidSubmitsFromOS,
         "No HWBugLink provided",
         "No HWSightingLink provided",
-		PLATFORM_ALL,
+        PLATFORM_ALL,
         SIWA_FOREVER);
 
     WA_ENABLE(
@@ -1718,8 +1718,8 @@ void InitChvWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SIWA_FOREVER);
 
-	WA_ENABLE(
-		ulStepId_CHV,
+    WA_ENABLE(
+        ulStepId_CHV,
         WaHucStreamoutOnlyDisable,
         "No Link Provided" ,
         "No HWSightingLink provided",
@@ -1778,7 +1778,7 @@ void InitChvWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         "No Link Provided" ,
         "No Link Provided" ,
         PLATFORM_ALL,
-		SIWA_UNTIL_CHV_B7);
+        SIWA_UNTIL_CHV_B7);
 
     WA_ENABLE(
         ulStepId_CHV,
@@ -1908,7 +1908,7 @@ void InitChvWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SIWA_FOREVER);
 
-	WA_ENABLE(
+    WA_ENABLE(
         ulStepId_CHV,
         WaCur180BufAddressCalcForPipeA,
         "No HWBugLink provided",
@@ -1932,21 +1932,21 @@ void InitChvWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SIWA_UNTIL_CHV_B7);
 
-	WA_ENABLE(
-		ulStepId_CHV,
-		WaCHVMPO,
-		"No HWBugLink provided",
-		"No HWSightingLink provided",
-		PLATFORM_ALL,
-		SIWA_FOREVER);
+    WA_ENABLE(
+        ulStepId_CHV,
+        WaCHVMPO,
+        "No HWBugLink provided",
+        "No HWSightingLink provided",
+        PLATFORM_ALL,
+        SIWA_FOREVER);
 
-	WA_ENABLE(
-		ulStepId_CHV,
-		WaCHVDisableScalar,
-		"No HWBugLink provided",
-		"No HWSightingLink provided",
-		PLATFORM_ALL,
-		SIWA_FOREVER);
+    WA_ENABLE(
+        ulStepId_CHV,
+        WaCHVDisableScalar,
+        "No HWBugLink provided",
+        "No HWSightingLink provided",
+        PLATFORM_ALL,
+        SIWA_FOREVER);
 
     WA_ENABLE(
         ulStepId_CHV,
@@ -1956,7 +1956,7 @@ void InitChvWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SIWA_FOREVER);
 
-	WA_ENABLE(
+    WA_ENABLE(
         ulStepId_CHV,
         WaIndependentAlphaBlend,
         "No Link Provided" ,
@@ -1984,13 +1984,13 @@ void InitChvWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SIWA_FOREVER );
 
-	WA_ENABLE(
-		ulStepId_CHV,
-		WaReInitRingContextLriPostedWrite,
-		"No HWBugLink provided",
-		"No Link Provided" ,
-		PLATFORM_ALL,
-		SIWA_FOREVER);
+    WA_ENABLE(
+        ulStepId_CHV,
+        WaReInitRingContextLriPostedWrite,
+        "No HWBugLink provided",
+        "No Link Provided" ,
+        PLATFORM_ALL,
+        SIWA_FOREVER);
 
 #ifdef ANDROID
     WA_ENABLE(
@@ -2082,7 +2082,7 @@ void InitChvHASWaTable(PHW_DEVICE_EXTENSION pKchContext, PWA_TABLE pWaTable, PSK
 void InitChvSLEWaTable(PHW_DEVICE_EXTENSION pKchContext, PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_PARAM pWaParam)
 {
 
-	
+    
 
 }
 

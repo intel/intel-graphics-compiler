@@ -544,7 +544,7 @@ struct SCompilerOutputVertexShader_Gen7 : public SCompilerOutputCommon_Gen7
     unsigned int    m_UserClipDistancesMask;
     unsigned int    m_UserCullDistancesMask;
     unsigned int    m_AntiAliasTextureCoordinateId;
-    unsigned int	m_VsMaxNumInputRegisters;
+    unsigned int    m_VsMaxNumInputRegisters;
 
     int             m_DeclaresVPAIndex;
     int             m_DeclaresRTAIndex;
@@ -652,8 +652,8 @@ struct SCompilerOutputDomainShader_Gen7 : public SCompilerOutputCommon_Gen7
     unsigned int    m_URBEntryWriteLength;
     unsigned int    m_URBEntriesPerHandle;
 
-    unsigned int	m_UserClipDistancesMask;
-    unsigned int	m_UserCullDistancesMask;
+    unsigned int    m_UserClipDistancesMask;
+    unsigned int    m_UserCullDistancesMask;
 
     // ### 3DSTATE_TE related fields ###
     TESSELLATOR_DOMAIN_TYPE                m_Domain;
@@ -721,8 +721,8 @@ struct SCompilerOutputGeometryShader_Gen7 : public SCompilerOutputCommon_Gen7
     unsigned int    m_URBEntryWriteLength; 
     unsigned int    m_URBEntriesPerHandle;
 
-    unsigned int	m_UserClipDistancesMask;
-    unsigned int	m_UserCullDistancesMask;
+    unsigned int    m_UserClipDistancesMask;
+    unsigned int    m_UserCullDistancesMask;
     unsigned int    m_MaxOutputVertexCount;
 
     unsigned int    m_InstructionCount;

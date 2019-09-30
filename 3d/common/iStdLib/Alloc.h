@@ -55,22 +55,22 @@ inline void SafeDelete( Type &ptr )
 #if defined( _DEBUG ) && !defined( NO_EXCEPTION_HANDLING )
 #if defined( __GNUC__ )
         try
-		{
-			delete ptr;
-		}
-		catch (...)
-		{
-			ASSERT(0);
-		}
+        {
+            delete ptr;
+        }
+        catch (...)
+        {
+            ASSERT(0);
+        }
 #else  // defined( __GNUC__ )
         __try
-		{
-			delete ptr;
-		}
-		__except (1)
-		{
-			ASSERT(0);
-		}
+        {
+            delete ptr;
+        }
+        __except (1)
+        {
+            ASSERT(0);
+        }
 #endif // defined( __GNUC__ )
 #else  // defined( _DEBUG ) && !defined( NO_EXCEPTION_HANDLING )
         delete ptr;
@@ -102,22 +102,22 @@ inline void SafeDeleteArray( Type &ptr )
 #if defined( _DEBUG ) && !defined( NO_EXCEPTION_HANDLING )
 #if defined( __GNUC__ )
         try
-		{
-			delete[] ptr;
-		}
-		catch (int e)
-		{
-			ASSERT(0);
-		}
+        {
+            delete[] ptr;
+        }
+        catch (int e)
+        {
+            ASSERT(0);
+        }
 #else  // defined( __GNUC__ )
         __try
-		{
-			delete[] ptr;
-		}
-		__except (1)
-		{
-			ASSERT(0);
-		}
+        {
+            delete[] ptr;
+        }
+        __except (1)
+        {
+            ASSERT(0);
+        }
 #endif // defined( __GNUC__ )
 #else  // defined( _DEBUG ) && !defined( NO_EXCEPTION_HANDLING )
         delete[] ptr;

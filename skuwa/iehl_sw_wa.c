@@ -1,4 +1,4 @@
-﻿/*===================== begin_copyright_notice ==================================
+/*===================== begin_copyright_notice ==================================
 
 Copyright (c) 2017 Intel Corporation
 

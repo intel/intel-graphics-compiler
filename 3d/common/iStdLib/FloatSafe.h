@@ -785,12 +785,12 @@ Inline Function:
 Description:
     Computes src0 divided by src1
     Table for handling signed divide quotient and remainder:
-        IDIV	        SRC0    
-            SRC1	    +INT	        -INT	         0
-            +INT	    +INT	        -INT	         0
-            -INT	    -INT	        +INT	         0
-              0	    Q:0x7FFFFFFF	Q: 0x80000000	Q:0x7FFFFFFF
-                    R:0x7FFFFFFF	R: 0x80000000	R:0x7FFFFFFF
+        IDIV            SRC0    
+            SRC1        +INT            -INT             0
+            +INT        +INT            -INT             0
+            -INT        -INT            +INT             0
+              0     Q:0x7FFFFFFF    Q: 0x80000000   Q:0x7FFFFFFF
+                    R:0x7FFFFFFF    R: 0x80000000   R:0x7FFFFFFF
 \*****************************************************************************/
 inline signed long Signed32SafeDivideQuotient( 
     const signed long src0,
@@ -838,11 +838,11 @@ Inline Function:
 Description:
     Computes src0 divided by src1
        Table for handling unsigned divide quotient and remainder 
-          UDIV	        SRC0    
-              SRC1	    <>0             0
-              <>0	    UINT	        0
-                0	Q:0xFFFFFFFF    Q:0xFFFFFFFF
-                    R:0xFFFFFFFF	R:0xFFFFFFFF
+          UDIV          SRC0    
+              SRC1      <>0             0
+              <>0       UINT            0
+                0   Q:0xFFFFFFFF    Q:0xFFFFFFFF
+                    R:0xFFFFFFFF    R:0xFFFFFFFF
 \*****************************************************************************/
 inline DWORD Unsigned32SafeDivideQuotient( 
     const DWORD src0,

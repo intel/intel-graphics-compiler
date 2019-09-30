@@ -36,12 +36,12 @@ struct s_shader
     // version
     SHADER_VERSION_TYPE version;
     
-	// shader type
+    // shader type
     SHADER_TYPE shader_type;
 
     // hash code
     mutable unsigned long long hash_code;
-	
+    
     // input and output channel declarations
     struct common_decl_channel {
         char                           is_active;

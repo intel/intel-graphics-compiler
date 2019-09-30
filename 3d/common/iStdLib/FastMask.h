@@ -80,7 +80,7 @@ protected:
     unsigned int                m_CollapseIdx;
     unsigned int                m_SetListSize;
     unsigned int                m_Capacity;
-	bool	                    m_SortOnGet;
+    bool                        m_SortOnGet;
     bool                        m_CollapseUnsorted;
 };
 
@@ -102,7 +102,7 @@ CFastMaskSetType::CFastMask( unsigned int inSize )
 ,   m_CollapseIdx(0)
 ,   m_SetListSize(0)
 ,   m_Capacity(inSize)
-,	m_SortOnGet(false)
+,   m_SortOnGet(false)
 ,   m_CollapseUnsorted(false)
 {
     ASSERT(inSize > 0);
@@ -317,10 +317,10 @@ void CFastMaskSetType::SetBit( unsigned int index )
         m_Mask[index]               = m_SetListSize;
         m_SetList[m_SetListSize++]  = index;
 
-		if( OrderedList )
-		{
-			m_SortOnGet = true;
-		}
+        if( OrderedList )
+        {
+            m_SortOnGet = true;
+        }
     }
 }
 
@@ -399,11 +399,11 @@ void CFastMaskSetType::ClearBits( void )
         }
     }
 
-    m_SetListSize		= 0;
+    m_SetListSize       = 0;
     m_SortIdx           = 0;
     m_CollapseIdx       = 0;
-	m_SortOnGet			= false;
-	m_CollapseUnsorted	= false;
+    m_SortOnGet         = false;
+    m_CollapseUnsorted  = false;
 }
 
 /*****************************************************************************\

@@ -177,15 +177,15 @@ struct SVector3<float>
     bool operator == ( const SVector3<float>& vector ) const
     {
         return ( ( *(DWORD*)&X == *(DWORD*)&vector.X ) &&
-				 ( *(DWORD*)&Y == *(DWORD*)&vector.Y ) &&
-				 ( *(DWORD*)&Z == *(DWORD*)&vector.Z ) );
+                 ( *(DWORD*)&Y == *(DWORD*)&vector.Y ) &&
+                 ( *(DWORD*)&Z == *(DWORD*)&vector.Z ) );
     }
 
     bool operator != ( const SVector3& vector ) const
     {
         return ( ( *(DWORD*)&X != *(DWORD*)&vector.X ) ||
-				 ( *(DWORD*)&Y != *(DWORD*)&vector.Y ) ||
-				 ( *(DWORD*)&Z != *(DWORD*)&vector.Z ) );
+                 ( *(DWORD*)&Y != *(DWORD*)&vector.Y ) ||
+                 ( *(DWORD*)&Z != *(DWORD*)&vector.Z ) );
     }
 };
 

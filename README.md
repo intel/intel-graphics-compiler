@@ -1,11 +1,11 @@
-# Intel® Graphics Compiler for OpenCL™
+# Intel&reg; Graphics Compiler for OpenCL&trade;
 
 Linux (Ubuntu): [![Linux Build Status](https://travis-ci.com/intel/intel-graphics-compiler.svg?branch=master)](https://travis-ci.com/intel/intel-graphics-compiler)
 
 ## Introduction
 
-The Intel® Graphics Compiler for OpenCL™ is an LLVM based compiler for
-OpenCL™ targeting Intel Gen graphics hardware architecture.
+The Intel&reg; Graphics Compiler for OpenCL&trade; is an LLVM based compiler for
+OpenCL&trade; targeting Intel Gen graphics hardware architecture.
 
 Please refer to http://01.org/compute-runtime for additional details regarding
  Intel's motivation and intentions wrt OpenCL support in the open source.
@@ -13,7 +13,7 @@ Please refer to http://01.org/compute-runtime for additional details regarding
 
 ## License
 
-The Intel® Graphics Compute Runtime for OpenCL™ is distributed under the MIT License.
+The Intel&reg; Graphics Compute Runtime for OpenCL&trade; is distributed under the MIT License.
 
 You may obtain a copy of the License at:
 

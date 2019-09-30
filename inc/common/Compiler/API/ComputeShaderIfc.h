@@ -234,7 +234,7 @@ public:
     virtual void    SetIsApiShader( bool isApi ) = 0;
     virtual void    SetHashCode( const unsigned long long hash ) = 0;
     virtual void    SetClientString( const char* str ) = 0;
-	virtual void    SetShaderOrdinal( const unsigned int id ) = 0;
+    virtual void    SetShaderOrdinal( const unsigned int id ) = 0;
     virtual unsigned long long   GetHashCode( void ) const = 0;
 
     virtual const CShaderInterfaceDecl*      GetInterfaceDeclarations( void ) const = 0;

@@ -125,8 +125,8 @@ typedef struct GT_VDBOX_INFO
 
 typedef struct GT_SQIDI_INFO
 {
-	uint32_t        NumberofSQIDI;                        // Total no. of enabled SQIDIs
-	uint32_t        NumberofDoorbellPerSQIDI;             // Total no. of doorbells available per SQIDI unit
+    uint32_t        NumberofSQIDI;                        // Total no. of enabled SQIDIs
+    uint32_t        NumberofDoorbellPerSQIDI;             // Total no. of doorbells available per SQIDI unit
 }GT_SQIDI_INFO;
 
 typedef struct GT_SYSTEM_INFO
@@ -150,7 +150,7 @@ typedef struct GT_SYSTEM_INFO
     uint32_t        TotalGsThreads;                 // Total threads in GS
     uint32_t        TotalPsThreadsWindowerRange;    // Total threads in PS Windower Range
 
-    uint32_t        TotalVsThreads_Pocs;            // Total threads in VS for POCS	
+    uint32_t        TotalVsThreads_Pocs;            // Total threads in VS for POCS
 
     // Note: The CSR size requirement is not clear at this moment. Till then the driver will set
     // the maximum size that should be sufficient for all platform SKUs. 
@@ -186,12 +186,12 @@ typedef struct GT_SYSTEM_INFO
     GT_SLICE_INFO   SliceInfo[GT_MAX_SLICE];
     bool            IsDynamicallyPopulated;
 
-	//SqidiInfo provides the detailed information for number of SQIDIs supported in GT.
-	//It also provides total no. of doorbells available per SQIDI unit.
+    //SqidiInfo provides the detailed information for number of SQIDIs supported in GT.
+    //It also provides total no. of doorbells available per SQIDI unit.
     GT_SQIDI_INFO   SqidiInfo;
 
     uint32_t        ReservedCCSWays;                // Reserved CCS ways provides value of reserved L3 ways for CCS when CCS is enabled.
-	                                                // This is a hardcoded value as suggested by HW. No MMIO read is needed for same.
+                                                    // This is a hardcoded value as suggested by HW. No MMIO read is needed for same.
 
 } GT_SYSTEM_INFO, *PGT_SYSTEM_INFO;
 

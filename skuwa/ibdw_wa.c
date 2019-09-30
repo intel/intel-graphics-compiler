@@ -177,12 +177,12 @@ void InitBdwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
 
     WA_ENABLE(
         ulStepId_BDW,
-		WAInsertNOPBetweenMathPOWDIVAnd2RegInstr,
+        WAInsertNOPBetweenMathPOWDIVAnd2RegInstr,
         "No Link Provided" ,
         "No HWSightingLink provided",
         PLATFORM_ALL,
         SIWA_FOREVER);
-		
+        
     WA_ENABLE(
         ulStepId_BDW,
         WANOPBeetweenIndirectAdressingAndBranch,
@@ -308,14 +308,14 @@ void InitBdwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SIWA_FOREVER);
 
-	
-	WA_ENABLE(
-		ulStepId_BDW,
-		WaAvcCabacDistortionBasedMinQp,
-		"No Link Provided" ,
-		"No HWSightingLink provided",
-		PLATFORM_ALL,
-		SIWA_FOREVER);
+    
+    WA_ENABLE(
+        ulStepId_BDW,
+        WaAvcCabacDistortionBasedMinQp,
+        "No Link Provided" ,
+        "No HWSightingLink provided",
+        PLATFORM_ALL,
+        SIWA_FOREVER);
 
     
     WA_ENABLE(
@@ -1477,14 +1477,14 @@ void InitBdwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         "No HWSightingLink provided",
         PLATFORM_ALL,
         SIWA_FOREVER);
-	
-	WA_ENABLE(
-		ulStepId_BDW,
-		WaSyncSameMMIORegAccess,
-		"No HWBugLink provided",
-		"No Link Provided" ,
-		PLATFORM_ALL,
-		SIWA_FOREVER);
+    
+    WA_ENABLE(
+        ulStepId_BDW,
+        WaSyncSameMMIORegAccess,
+        "No HWBugLink provided",
+        "No Link Provided" ,
+        PLATFORM_ALL,
+        SIWA_FOREVER);
 
     WA_ENABLE(
         ulStepId_BDW,
@@ -1518,7 +1518,7 @@ void InitBdwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SIWA_FOREVER);
 
-	WA_ENABLE(
+    WA_ENABLE(
         ulStepId_BDW,
         WaUAVCoherency,
         "No Link Provided" ,

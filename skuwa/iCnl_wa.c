@@ -302,13 +302,13 @@ void InitCnlWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SIWA_FOREVER);
 
-	WA_ENABLE(
-		ulStepId_CNL,
-		WaFbcNukeOn3DBlt,
+    WA_ENABLE(
+        ulStepId_CNL,
+        WaFbcNukeOn3DBlt,
         "No Link Provided" ,
-		"No HWSightingLink provided",
-		PLATFORM_ALL,
-		SIWA_UNTIL_A0);
+        "No HWSightingLink provided",
+        PLATFORM_ALL,
+        SIWA_UNTIL_A0);
 
     WA_ENABLE(
         ulStepId_CNL,
@@ -337,18 +337,18 @@ void InitCnlWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
 
     WA_ENABLE(
         ulStepId_CNL,
-		WaFbcCdClkFreqTooLow,
-		"No Link Provided" ,
-		"No HWSightingLink provided",
-		PLATFORM_ALL,
-		SIWA_UNTIL_A0
-		);
+        WaFbcCdClkFreqTooLow,
+        "No Link Provided" ,
+        "No HWSightingLink provided",
+        PLATFORM_ALL,
+        SIWA_UNTIL_A0
+        );
 
     WA_ENABLE(
         ulStepId_CNL,
         WaFbcHighMemBwCorruptionAvoidance,
         "No Link Provided" ,
-		"No HWSightingLink provided",
+        "No HWSightingLink provided",
         PLATFORM_ALL,
         SIWA_UNTIL_A0
         );
@@ -381,9 +381,9 @@ void InitCnlWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
 
     WA_ENABLE(
         ulStepId_CNL,
-		WaFbcTurnOffFbcWhenHyperVisorIsUsed,
-		"No Link Provided" ,
-		"No HWSightingLink provided", 
+        WaFbcTurnOffFbcWhenHyperVisorIsUsed,
+        "No Link Provided" ,
+        "No HWSightingLink provided", 
         PLATFORM_ALL,
         SIWA_UNTIL_A0);
         
@@ -892,7 +892,7 @@ void InitCnlWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
 
     WA_ENABLE(
         ulStepId_CNL,
-		WaSuperSliceHeaderPacking,
+        WaSuperSliceHeaderPacking,
         "No HWBugLink provided",
         "No HWSightingLink provided",
         PLATFORM_ALL,
@@ -1097,7 +1097,7 @@ void InitCnlWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         SI_WA_FOR_EVER);
 
     SI_WA_ENABLE(
-		WaKeepPG1ActiveDueToDMCIssue,
+        WaKeepPG1ActiveDueToDMCIssue,
         "No HWBugLink provided",
         "No Link Provided" ,
         PLATFORM_ALL,
@@ -1155,13 +1155,13 @@ void InitCnlWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SIWA_FOREVER);
 
-	WA_ENABLE(
-		ulStepId_CNL,
-		WaRsDisableDecoupledMMIO,
-		"No Link Provided" ,
-		"No HWSightingLink provided",
-		PLATFORM_ALL,
-		SIWA_ONLY_CNL_A0);
+    WA_ENABLE(
+        ulStepId_CNL,
+        WaRsDisableDecoupledMMIO,
+        "No Link Provided" ,
+        "No HWSightingLink provided",
+        PLATFORM_ALL,
+        SIWA_ONLY_CNL_A0);
 
     
     WA_ENABLE(
@@ -1420,15 +1420,15 @@ void InitCnlWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SIWA_FOREVER);
 
-	if ((pWaParam->ePCHProductFamily == PCH_CNP_LP) || (pWaParam->ePCHProductFamily == PCH_CNP_H))
-	{
-		SI_WA_ENABLE(
-			WaHardHangonHotPlug,
-			"No Link Provided" ,
-			"No Link Provided" ,
-			PLATFORM_ALL,
-			SI_WA_FOR_EVER);
-	}
+    if ((pWaParam->ePCHProductFamily == PCH_CNP_LP) || (pWaParam->ePCHProductFamily == PCH_CNP_H))
+    {
+        SI_WA_ENABLE(
+            WaHardHangonHotPlug,
+            "No Link Provided" ,
+            "No Link Provided" ,
+            PLATFORM_ALL,
+            SI_WA_FOR_EVER);
+    }
 
     
 
@@ -1446,13 +1446,13 @@ void InitCnlWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         "No Link Provided" ,
         PLATFORM_ALL,
         SIWA_UNTIL_CNL_C0 );
-		
-	SI_WA_ENABLE(
-		WaPruneModesHavingHfrontPorchBetween122To130,
-		"No Link Provided" ,
-		"Link",
-		PLATFORM_ALL,
-		SI_WA_FOR_EVER);
+        
+    SI_WA_ENABLE(
+        WaPruneModesHavingHfrontPorchBetween122To130,
+        "No Link Provided" ,
+        "Link",
+        PLATFORM_ALL,
+        SI_WA_FOR_EVER);
 
     SI_WA_ENABLE(
         WaDisableDcStatesWhenPSR_3DLUTEnabled,

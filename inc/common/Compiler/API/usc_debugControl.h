@@ -730,11 +730,11 @@ struct SUSCRegistryVariables
     USC_RV_DeclareCompilerControl( bool,  PrintfExpansionEnable,                       false, "", "" );
     USC_RV_DeclareCompilerControl( bool,  TranslateVendorExtensionsEnable,             false, "", "" );
     USC_RV_DeclareCompilerControl( bool,  RemoveDeadOutputEnable,                      false, "", "" );
-    USC_RV_DeclareCompilerControl( dword, MaxLoopUnrollLength,                         0,	   "", "" );
-    USC_RV_DeclareCompilerControl( dword, MaxConstantBufferPairs,                      0,	   "", "" );
-    USC_RV_DeclareCompilerControl( dword, PartialUnrollFactor,                         0,	   "", "" );
+    USC_RV_DeclareCompilerControl( dword, MaxLoopUnrollLength,                         0,      "", "" );
+    USC_RV_DeclareCompilerControl( dword, MaxConstantBufferPairs,                      0,      "", "" );
+    USC_RV_DeclareCompilerControl( dword, PartialUnrollFactor,                         0,      "", "" );
     USC_RV_DeclareCompilerControl( bool,  ProcessDynamicResourceIndexingEnable,        true,    "", "" );
-    USC_RV_DeclareCompilerControl( dword, IfConversionLength,                          0,	   "", "" );
+    USC_RV_DeclareCompilerControl( dword, IfConversionLength,                          0,      "", "" );
 #undef USC_RV_SetGroup
 
 #define USC_RV_SetGroup "SShaderPatternMatchControls"
@@ -773,9 +773,9 @@ struct SUSCRegistryVariables
     USC_RV_DeclareCompilerControl( bool,    ImmediatesToConstantBufferEnable,     false, "", "" );
     USC_RV_DeclareCompilerControl( dword,   IndirectCBOptimizationMode,           0,     "", "" );
     USC_RV_DeclareCompilerControl( dword,   ImmediatesToConstantBufferMinImmediates, 5,  "", "" );
-    USC_RV_DeclareCompilerControl( dword,   MaxNumOfMulInstructionsPerPowUnwind,     3,	 "", "" );
-    USC_RV_DeclareCompilerControl( dword,   MulWeightOfSqrtInstructionInPowUnwind,   2,	 "", "" );
-    USC_RV_DeclareCompilerControl( dword,   MulWeightOfInvInstructionInPowUnwind,    2,	 "", "" );
+    USC_RV_DeclareCompilerControl( dword,   MaxNumOfMulInstructionsPerPowUnwind,     3,  "", "" );
+    USC_RV_DeclareCompilerControl( dword,   MulWeightOfSqrtInstructionInPowUnwind,   2,  "", "" );
+    USC_RV_DeclareCompilerControl( dword,   MulWeightOfInvInstructionInPowUnwind,    2,  "", "" );
     USC_RV_DeclareCompilerControl( bool,    OptimizeResourceLoadsEnable,          false, "", "" );
     USC_RV_DeclareCompilerControl( bool,    ISASchedulingEnable,                  false, "", "" );
     USC_RV_DeclareCompilerControl( bool,    Reduce64To32ALUBitEnable,             false, "", "" );    
@@ -894,11 +894,11 @@ const unsigned int NUM_REGISTRY_VARIABLES = sizeof(SUSCRegistryVariables) / size
 DEFINE: GHAL3D_OUTPUT_DIRECTORY and USC_ISA_INJECTION_DIRECTORY
 \*****************************************************************************/
 #if defined(_WIN32)  
-	#define GHAL3D_OUTPUT_DIRECTORY "\\Intel\\USC\\"
+    #define GHAL3D_OUTPUT_DIRECTORY "\\Intel\\USC\\"
 #elif defined(ANDROID)
     #define GHAL3D_OUTPUT_DIRECTORY "/sdcard/IntelUSC/"
-    #define USC_ISA_INJECTION_DIRECTORY	"/sdcard/IntelUSC/IsaInjection/"
+    #define USC_ISA_INJECTION_DIRECTORY "/sdcard/IntelUSC/IsaInjection/"
 #else
     #define GHAL3D_OUTPUT_DIRECTORY "/tmp/IntelUSC/"
-	#define USC_ISA_INJECTION_DIRECTORY	"/tmp/IntelUSC/IsaInjection/"	
+    #define USC_ISA_INJECTION_DIRECTORY "/tmp/IntelUSC/IsaInjection/"
 #endif

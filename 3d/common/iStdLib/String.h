@@ -25,8 +25,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 #pragma once
 #if defined _WIN32
-#	pragma warning( push )
-#	pragma warning( disable : 4996 )
+#   pragma warning( push )
+#   pragma warning( disable : 4996 )
 #endif
 
 #include "utility.h"
@@ -1451,5 +1451,5 @@ void CString<CAllocatorType>::DetachBuffer( void )
 
 } // iSTD
 #if defined _WIN32
-#	pragma warning ( pop )
+#   pragma warning ( pop )
 #endif

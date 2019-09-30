@@ -135,7 +135,7 @@ void InitKblNonDisplayWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, 
         SI_WA_FOR_EVER);
 
     SI_WA_ENABLE(
-		WaKeepPG1ActiveDueToDMCIssue,
+        WaKeepPG1ActiveDueToDMCIssue,
         "No HWBugLink provided",
         "No Link Provided" ,
         PLATFORM_ALL,
@@ -843,7 +843,7 @@ void InitKblNonDisplayWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, 
         PLATFORM_ALL,
         SI_WA_FOR_EVER);
 
-    SI_WA_ENABLE(		
+    SI_WA_ENABLE(        
         WaFbcTurnOffFbcWhenHyperVisorIsUsed,
         "No Link Provided" ,
         "No Link Provided" ,
@@ -1462,28 +1462,28 @@ void InitKblDisplayWaTable(
         "No HWSightingLink provided",
         PLATFORM_ALL,
         SI_WA_FOR_EVER);
-		
-	SI_WA_ENABLE(
-		WaPruneModesHavingHfrontPorchBetween122To130,
-		"No Link Provided" ,
-		"Link",
-		PLATFORM_ALL,
-		SI_WA_FOR_EVER);
-		
+        
+    SI_WA_ENABLE(
+        WaPruneModesHavingHfrontPorchBetween122To130,
+        "No Link Provided" ,
+        "Link",
+        PLATFORM_ALL,
+        SI_WA_FOR_EVER);
+        
 
     SI_WA_ENABLE(
         WaPlaneSizeAlignmentFor180Rotation,
         "No Link Provided" ,
-		"No Link Provided" ,
+        "No Link Provided" ,
         PLATFORM_ALL,
         SI_WA_FOR_EVER
     );
-	SI_WA_ENABLE(
-		WaInitCDClkNewSeq,
-		"No HWBugLink provided",
-		"No HWSightingLink provided",
-		PLATFORM_ALL,
-		SI_WA_FOR_EVER);
+    SI_WA_ENABLE(
+        WaInitCDClkNewSeq,
+        "No HWBugLink provided",
+        "No HWSightingLink provided",
+        PLATFORM_ALL,
+        SI_WA_FOR_EVER);
 
     SI_WA_ENABLE(
         DisableSpritePassThroughMode,

@@ -33,14 +33,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 struct IntelExtensionStruct
 {
-    uint   opcode; 	// opcode to execute
-    uint   rid;		// resource ID
-    uint   sid;		// sampler ID
+    uint   opcode;  // opcode to execute
+    uint   rid;     // resource ID
+    uint   sid;     // sampler ID
 
-    float4 src0f;	// float source operand  0
-    float4 src1f;	// float source operand  0
-    float4 src2f;	// float source operand  0
-    float4 dst0f;	// float destination operand 
+    float4 src0f;   // float source operand  0
+    float4 src1f;   // float source operand  0
+    float4 src2f;   // float source operand  0
+    float4 dst0f;   // float destination operand 
 
     uint4  src0u;
     uint4  src1u;

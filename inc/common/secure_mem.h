@@ -50,7 +50,7 @@ inline errno_t fopen_s( FILE** pFile, const char* filename, const char *mode )
 {   
     if( pFile == NULL )
     {
-        return 	EINVAL;
+        return EINVAL;
     }
     *pFile = fopen( filename, mode );
     if( *pFile == NULL )

@@ -190,17 +190,17 @@ inline void FileWrite( const void* pFile, const char * str, ... )
     {
         va_list args;
         
-		va_start( args, str );
-		const size_t length = _vscprintf( str, args );
-		va_end( args );
+        va_start( args, str );
+        const size_t length = _vscprintf( str, args );
+        va_end( args );
 
         char* temp = new char[ length + 1 ];
 
         if( temp )
         {
-			va_start( args, str );
+            va_start( args, str );
             VSNPRINTF( temp, length + 1, length+ 1, str, args );
-			va_end( args );
+            va_end( args );
 
             if( pFile )
             {
@@ -305,11 +305,11 @@ inline void LogToFile( const char* filename, const char * str, ... )
     if( str != NULL )
     {
         va_list args;
-		
+        
         va_start( args, str );
         const size_t length = _vscprintf( str, args );
-		va_end( args );
-		
+        va_end( args );
+        
         char* temp = new char[ length + 1 ];
         
         if( temp )
@@ -317,7 +317,7 @@ inline void LogToFile( const char* filename, const char * str, ... )
             va_start( args, str );
             VSNPRINTF( temp, length + 1, length + 1, str, args );
             va_end( args );
-			
+            
             FILE* file = fopen( filename, "a" );
             if( file )
             {
@@ -402,7 +402,7 @@ inline int CreateAppOutputDir(
     bool            addProcName,
     bool            pidEnabled )
 {
-	int ret = 0;
+    int ret = 0;
 
 #if defined(ISTDLIB_KMD)
     // TO DO: Currently only UMD is implemented
@@ -589,7 +589,7 @@ inline int CreateAppOutputDir(
             }
         }
     }
-	
+    
     struct stat statbuf;
     unsigned int i = 0;
 
@@ -722,5 +722,5 @@ return CreateAppOutputDir(pathBuf, sizeof(pathBuf), parentBuf, false, false, fal
 } // iSTD
 
 #if defined _WIN32
-#	pragma warning(pop)
+#   pragma warning(pop)
 #endif

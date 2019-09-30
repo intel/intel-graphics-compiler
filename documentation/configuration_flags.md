@@ -1,4 +1,4 @@
-# Intel® Graphics Compiler for OpenCL™
+# Intel&reg; Graphics Compiler for OpenCL&trade;
 
 ## Configuration flags for Linux Release
 

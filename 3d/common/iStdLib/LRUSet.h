@@ -293,7 +293,7 @@ bool LRUClassType::TouchItem(
 
     //couldn't find the key in the list, evict the LRU and add the new key+value
     bool wasItemEvicted = EvictAndAdd(touch_key, touch_value);
-	return wasItemEvicted;
+    return wasItemEvicted;
 }
 
 /*****************************************************************************\
@@ -349,7 +349,7 @@ bool LRUClassType::TouchItem(
         evict_value = m_pOldestItem->value;
     }
     bool wasItemEvicted = EvictAndAdd(touch_key, touch_value);
-	return wasItemEvicted;
+    return wasItemEvicted;
 }
 
 /*****************************************************************************\
@@ -388,7 +388,7 @@ bool LRUClassType::EvictAndAdd(
         m_pNewestItem = newItem;
         m_pOldestItem = newItem;
         m_count++;
-		return false;
+        return false;
     }
     //if the number of items stored is less than the capacity then don't evict
     //an element, instead insert it and push out the m_pNewestItem.
@@ -402,7 +402,7 @@ bool LRUClassType::EvictAndAdd(
         m_pNewestItem->pNextItem = newItem;
         m_pNewestItem = newItem;
         m_count++;
-		return false;
+        return false;
     }
     else //normal operation, evict the oldest and add the new item.
     {
@@ -428,7 +428,7 @@ bool LRUClassType::EvictAndAdd(
         m_pNewestItem = newNewest;
         m_pOldestItem = newOldest;
 
-		return true;
+        return true;
     }
 }
 

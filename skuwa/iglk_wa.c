@@ -680,7 +680,7 @@ void InitGlkWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SI_WA_FOR_EVER);
 
-	SI_WA_ENABLE(
+    SI_WA_ENABLE(
 
         WaHucStreamoutOnlyDisable,
         "No Link Provided" ,
@@ -827,7 +827,7 @@ void InitGlkWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SI_WA_FOR_EVER);
 
-	SI_WA_ENABLE(
+    SI_WA_ENABLE(
 
         WaSuperSliceHeaderPacking,
         "No HWBugLink provided",
@@ -912,7 +912,7 @@ void InitGlkWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SI_WA_FOR_EVER
         );
-		
+        
     SI_WA_ENABLE(
 
         WaWmMemoryReadLatency,
@@ -1031,20 +1031,20 @@ void InitGlkWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SI_WA_FOR_EVER
     );
-	
-	SI_WA_ENABLE(
-		WaPruneModesHavingHfrontPorchBetween122To130,
-		"No Link Provided" ,
-		"Link",
-		PLATFORM_ALL,
-		SI_WA_FOR_EVER);
+    
+    SI_WA_ENABLE(
+        WaPruneModesHavingHfrontPorchBetween122To130,
+        "No Link Provided" ,
+        "Link",
+        PLATFORM_ALL,
+        SI_WA_FOR_EVER);
 
-	SI_WA_ENABLE(
-		WaSkipPortRegisterAccess,
-		"No Link Provided" ,
-		"Link",
-		PLATFORM_ALL,
-		SI_WA_FOR_EVER);
+    SI_WA_ENABLE(
+        WaSkipPortRegisterAccess,
+        "No Link Provided" ,
+        "Link",
+        PLATFORM_ALL,
+        SI_WA_FOR_EVER);
         
     
     

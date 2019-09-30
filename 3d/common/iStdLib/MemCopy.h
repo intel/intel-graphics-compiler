@@ -246,9 +246,9 @@ Description:
 inline void MemCopy( void* dst, const void* src, const size_t bytes )
 {
 #if defined ( _MSC_VER )
-    UINT8*			pDst8 = reinterpret_cast<UINT8*>( dst );
-    const UINT8*	pSrc8 = reinterpret_cast<const UINT8*>( src );
-    size_t			bytesRemaining = bytes;
+    UINT8*          pDst8 = reinterpret_cast<UINT8*>( dst );
+    const UINT8*    pSrc8 = reinterpret_cast<const UINT8*>( src );
+    size_t          bytesRemaining = bytes;
 
     // handle invalid cases
     if( bytesRemaining == 0 )
@@ -282,13 +282,13 @@ inline void MemCopy( void* dst, const void* src, const size_t bytes )
         *reinterpret_cast<UINT32*>( pDst8 ) = *reinterpret_cast<const UINT32*>( pSrc8 );
         return;
     }
-	
+    
     // align destination to 4 byte boundary if size is > 8 bytes
     if( bytesRemaining > 8 && 
-		reinterpret_cast<UINT_PTR>( pDst8 ) & 0x3 )
+        reinterpret_cast<UINT_PTR>( pDst8 ) & 0x3 )
     {
         // check for shift by 1
-		if( reinterpret_cast<UINT_PTR>( pDst8 ) & 0x1 )
+        if( reinterpret_cast<UINT_PTR>( pDst8 ) & 0x1 )
         {
             *pDst8 = *pSrc8;
 
@@ -298,7 +298,7 @@ inline void MemCopy( void* dst, const void* src, const size_t bytes )
         }
 
         // check for shift by 2
-		if( reinterpret_cast<UINT_PTR>( pDst8 ) & 0x2 )
+        if( reinterpret_cast<UINT_PTR>( pDst8 ) & 0x2 )
         {
             *reinterpret_cast<UINT16*>( pDst8 ) = *reinterpret_cast<const UINT16*>( pSrc8 );
 
@@ -378,7 +378,7 @@ inline void MemCopy( void* dst, const void* src, const size_t bytes )
         __m128i xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7; // xmm registers
 
         // align the destination to 16 bytes if necessary
-		const size_t alignDst16 = reinterpret_cast<UINT_PTR>( pDst8 ) & TAIL_SIZE;
+        const size_t alignDst16 = reinterpret_cast<UINT_PTR>( pDst8 ) & TAIL_SIZE;
         if( alignDst16 != 0 )
         {
             const size_t alignSize = 0x10 - alignDst16;
@@ -465,7 +465,7 @@ inline void MemCopy( void* dst, const void* src, const size_t bytes )
         // size is less than 1/2 the largest cache, copy either fully aligned or partially aligned 
         else
         {
-			const size_t alignSrc16 = reinterpret_cast<UINT_PTR>( pSrc8 ) & 0xF;
+            const size_t alignSrc16 = reinterpret_cast<UINT_PTR>( pSrc8 ) & 0xF;
 
             // copy with source un-aligned
             if( alignSrc16 != 0 )
