@@ -71,13 +71,9 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
     LLVMContext& C = M.getContext();
     m_DL = &M.getDataLayout();
 
-    ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-    bool EnableGlobalRelocation = modMD->compOpt.EnableGlobalRelocation;
-
     for (Module::global_iterator I = M.global_begin(), E = M.global_end(); I != E; ++I)
     {
         GlobalVariable* globalVar = &(*I);
-        bool useGlobalRelocation = EnableGlobalRelocation && (globalVar->hasExternalLinkage() || globalVar->hasCommonLinkage());
 
         PointerType* ptrType = cast<PointerType>(globalVar->getType());
         assert(ptrType && "The type of a global variable must be a pointer type");
@@ -115,7 +111,7 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
         }
 
         // If this variable isn't used, don't add it to the buffer.
-        if (globalVar->use_empty() && !useGlobalRelocation)
+        if (globalVar->use_empty())
         {
             continue;
         }
@@ -171,17 +167,15 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
         // constant is used in the kernel; for example, a global buffer
         // may contain pointers that in turn point into the constant
         // address space).
-        // Don't add implicit arg if relocating the constant buffer address
-        if (!EnableGlobalRelocation)
+        for (auto& pFunc : M)
         {
-            for (auto& pFunc : M)
-            {
-                if (pFunc.isDeclaration()) continue;
+            if (pFunc.isDeclaration()) continue;
+            // Don't add implicit arg if doing relocation
+            if (pFunc.hasFnAttribute("IndirectlyCalled")) continue;
 
-                SmallVector<ImplicitArg::ArgType, 1> implicitArgs;
-                implicitArgs.push_back(ImplicitArg::CONSTANT_BASE);
-                ImplicitArgs::addImplicitArgs(pFunc, implicitArgs, mdUtils);
-            }
+            SmallVector<ImplicitArg::ArgType, 1> implicitArgs;
+            implicitArgs.push_back(ImplicitArg::CONSTANT_BASE);
+            ImplicitArgs::addImplicitArgs(pFunc, implicitArgs, mdUtils);
         }
         mdUtils->save(C);
     }
@@ -197,17 +191,15 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
         ilpsb.alignment = globalBufferAlignment;
         modMd->inlineGlobalBuffers.push_back(ilpsb);
 
-        // Don't add implicit arg if relocating the global buffer address
-        if (!EnableGlobalRelocation)
+        for (auto& pFunc : M)
         {
-            for (auto& pFunc : M)
-            {
-                if (pFunc.isDeclaration()) continue;
+            if (pFunc.isDeclaration()) continue;
+            // Don't add implicit arg if doing relocation
+            if (pFunc.hasFnAttribute("IndirectlyCalled")) continue;
 
-                SmallVector<ImplicitArg::ArgType, 1> implicitArgs;
-                implicitArgs.push_back(ImplicitArg::GLOBAL_BASE);
-                ImplicitArgs::addImplicitArgs(pFunc, implicitArgs, mdUtils);
-            }
+            SmallVector<ImplicitArg::ArgType, 1> implicitArgs;
+            implicitArgs.push_back(ImplicitArg::GLOBAL_BASE);
+            ImplicitArgs::addImplicitArgs(pFunc, implicitArgs, mdUtils);
         }
         mdUtils->save(C);
     }

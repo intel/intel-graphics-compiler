@@ -138,12 +138,6 @@ bool ProgramScopeConstantResolution::runOnModule(Module& M)
             continue;
         }
 
-        // If global variables are relocated it doesnt require implicit args
-        if (modMD->compOpt.EnableGlobalRelocation)
-        {
-            continue;
-        }
-
         // Get the offset of this constant from the base.
         int offset = -1;
 
@@ -177,6 +171,11 @@ bool ProgramScopeConstantResolution::runOnModule(Module& M)
             }
 
             Function* userFunc = user->getParent()->getParent();
+
+            // Require relocation if used inside an indirectly called function
+            if (userFunc->hasFnAttribute("IndirectlyCalled"))
+                continue;
+
             // Skip unused internal functions.
             if (mdUtils->findFunctionsInfoItem(userFunc) == mdUtils->end_FunctionsInfo())
             {

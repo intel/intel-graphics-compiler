@@ -467,23 +467,20 @@ bool EmitPass::runOnFunction(llvm::Function& F)
 
     if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer))
     {
-        SmallSet<Function*, 8> funcAddrSymbols;
         Module* pModule = F.getParent();
+        SmallSet<Function*, 8> funcAddrSymbols;
         for (auto& FI : pModule->getFunctionList())
         {
-            // Creates a mapping of the function symbol to a register.
-            // Any function called/used by this function, including function declarations,
-            // should have a register allocated to store it's physical address
+            // Create a relocation instruction for every "IndirectlyCalled" function being used in the current function
             if (FI.hasFnAttribute("IndirectlyCalled") && FI.getNumUses() > 0)
             {
                 for (auto it = FI.user_begin(), ie = FI.user_end(); it != ie; it++)
                 {
-                    if (Instruction * inst = dyn_cast<Instruction>(*it))
+                    Instruction* inst = dyn_cast<Instruction>(*it);
+                    if (inst && inst->getParent()->getParent() == &F)
                     {
-                        if (inst->getParent()->getParent() == &F)
-                        {
-                            funcAddrSymbols.insert(&FI);
-                        }
+                        funcAddrSymbols.insert(&FI);
+                        break;
                     }
                 }
             }
@@ -492,37 +489,33 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         {
             m_currShader->CreateFunctionSymbol(pFunc);
         }
-    }
 
-    if (m_moduleMD->compOpt.EnableGlobalRelocation)
-    {
-        SmallSet<GlobalVariable*, 8> globalAddrSymbols;
-        Module* pModule = F.getParent();
-        for (auto gi = pModule->global_begin(), ge = pModule->global_end(); gi != ge; gi++)
+        if (F.hasFnAttribute("IndirectlyCalled"))
         {
-            // Do the same relocation for global variables
-            GlobalVariable* pGlobal = dyn_cast<GlobalVariable>(gi);
-            if (pGlobal && pGlobal->getNumUses() > 0)
+            SmallSet<GlobalVariable*, 8> globalAddrSymbols;
+            for (auto gi = pModule->global_begin(), ge = pModule->global_end(); gi != ge; gi++)
             {
-                ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-                if (modMD->inlineProgramScopeOffsets.count(pGlobal) > 0)
+                // Create relocation instruction for global variables if they are used in an indirectly called function
+                GlobalVariable* pGlobal = dyn_cast<GlobalVariable>(gi);
+                if (pGlobal &&
+                    pGlobal->getNumUses() > 0 &&
+                    m_moduleMD->inlineProgramScopeOffsets.count(pGlobal) > 0)
                 {
                     for (auto it = pGlobal->user_begin(), ie = pGlobal->user_end(); it != ie; it++)
                     {
-                        if (Instruction * inst = dyn_cast<Instruction>(*it))
+                        Instruction* inst = dyn_cast<Instruction>(*it);
+                        if (inst && inst->getParent()->getParent() == &F)
                         {
-                            if (inst->getParent()->getParent() == &F)
-                            {
-                                globalAddrSymbols.insert(pGlobal);
-                            }
+                            globalAddrSymbols.insert(pGlobal);
+                            break;
                         }
                     }
                 }
             }
-        }
-        for (auto pGlobal : globalAddrSymbols)
-        {
-            m_currShader->CreateGlobalSymbol(pGlobal);
+            for (auto pGlobal : globalAddrSymbols)
+            {
+                m_currShader->CreateGlobalSymbol(pGlobal);
+            }
         }
     }
 

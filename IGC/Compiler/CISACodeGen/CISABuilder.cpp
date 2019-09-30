@@ -4515,105 +4515,87 @@ namespace IGC
 
     void CEncoder::CreateSymbolTable(void*& buffer, unsigned& bufferSize, unsigned& tableEntries)
     {
-    buffer = nullptr;
-    bufferSize = 0;
-    tableEntries = 0;
-    Module* pModule = m_program->GetContext()->getModule();
-    ModuleMetaData* modMD = m_program->GetContext()->getModuleMetaData();
+        Module* pModule = m_program->GetContext()->getModule();
+        ModuleMetaData* modMD = m_program->GetContext()->getModuleMetaData();
 
-    std::vector<Function*> funcsToExport;
+        std::vector<vISA::GenSymEntry> symbolTable;
 
-    if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer))
-    {
-            for (auto& F : pModule->getFunctionList())
+        for (auto& F : pModule->getFunctionList())
         {
             // Find all functions in the module we need to export as symbols
-            if (F.hasFnAttribute("IndirectlyCalled"))
+            if (F.hasFnAttribute("IndirectlyCalled") && (!F.isDeclaration() || F.getNumUses() > 0))
             {
-                if (!F.isDeclaration() || F.getNumUses() > 0)
-                    funcsToExport.push_back(&F);
-            }
-        }
-        tableEntries += funcsToExport.size();
-    }
-
-        if (modMD->compOpt.EnableGlobalRelocation)
-    {
-        tableEntries += modMD->inlineProgramScopeOffsets.size();
-    }
-
-    if (tableEntries > 0)
-    {
-        // Allocate buffer to store symbol table entries
-        bufferSize = sizeof(vISA::GenSymEntry) * tableEntries;
-            buffer = (void*)malloc(bufferSize);
-        assert(buffer && "Symbol Table not allocated");
-        vISA::GenSymEntry* entry_ptr = (vISA::GenSymEntry*) buffer;
-
-        if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer))
-        {
-            // Export function symbols
-            for (auto pFunc : funcsToExport)
-            {
-                assert(pFunc->getName().size() <= vISA::MAX_SYMBOL_NAME_LENGTH);
-                strcpy_s(entry_ptr->s_name, vISA::MAX_SYMBOL_NAME_LENGTH, pFunc->getName().str().c_str());
+                vISA::GenSymEntry fEntry;
+                assert(F.getName().size() <= vISA::MAX_SYMBOL_NAME_LENGTH);
+                strcpy_s(fEntry.s_name, vISA::MAX_SYMBOL_NAME_LENGTH, F.getName().str().c_str());
 
                 bool isTrue = false;
-                if (pFunc->isDeclaration() || isTrue)
+                if (F.isDeclaration() || isTrue)
                 {
                     // If the function is only declared, set as undefined type
-                    entry_ptr->s_type = vISA::GenSymType::S_UNDEF;
-                    entry_ptr->s_offset = 0;
-                    entry_ptr->s_size = 0;
+                    fEntry.s_type = vISA::GenSymType::S_UNDEF;
+                    fEntry.s_offset = 0;
+                    fEntry.s_size = 0;
                 }
                 else
                 {
-                    auto Iter = stackFuncMap.find(pFunc);
+                    auto Iter = stackFuncMap.find(&F);
                     assert(Iter != stackFuncMap.end() && "vISA function not found");
 
                     // Query vISA for the function's byte offset within the compiled module
                     VISAFunction* visaFunc = Iter->second;
-                    entry_ptr->s_type = vISA::GenSymType::S_FUNC;
-                    entry_ptr->s_offset = (uint32_t)visaFunc->getGenOffset();
-                    entry_ptr->s_size = (uint32_t)visaFunc->getGenSize();
+                    fEntry.s_type = vISA::GenSymType::S_FUNC;
+                    fEntry.s_offset = (uint32_t)visaFunc->getGenOffset();
+                    fEntry.s_size = (uint32_t)visaFunc->getGenSize();
                 }
-                entry_ptr++;
+                symbolTable.push_back(fEntry);
             }
         }
 
-            if (modMD->compOpt.EnableGlobalRelocation)
+        // Export global symbols
+        for (auto global : modMD->inlineProgramScopeOffsets)
         {
-            // Export global symbols
-            for (auto global : modMD->inlineProgramScopeOffsets)
+            GlobalVariable* pGlobal = global.first;
+            bool hasIndirectUsage = false;
+            for (auto ui = pGlobal->user_begin(), ue = pGlobal->user_end(); ui != ue; ui++)
             {
-                StringRef name = global.first->getName();
-                unsigned addrSpace = global.first->getType()->getAddressSpace();
-
+                // Check if used inside an indirect function
+                Instruction* inst = dyn_cast<Instruction>(*ui);
+                if (inst && inst->getParent()->getParent()->hasFnAttribute("IndirectlyCalled"))
+                {
+                    hasIndirectUsage = true;
+                    break;
+                }
+            }
+            if (hasIndirectUsage)
+            {
+                StringRef name = pGlobal->getName();
+                unsigned addrSpace = pGlobal->getType()->getAddressSpace();
                 assert(name.size() <= vISA::MAX_SYMBOL_NAME_LENGTH);
-                assert(addrSpace == ADDRESS_SPACE_GLOBAL || addrSpace == ADDRESS_SPACE_CONSTANT);
 
-                strcpy_s(entry_ptr->s_name, vISA::MAX_SYMBOL_NAME_LENGTH, name.str().c_str());
-                entry_ptr->s_type = (addrSpace == ADDRESS_SPACE_GLOBAL) ? vISA::GenSymType::S_GLOBAL_VAR : vISA::GenSymType::S_GLOBAL_VAR_CONST;
-                entry_ptr->s_offset = static_cast<uint32_t>(global.second);
-                entry_ptr->s_size = int_cast<uint32_t>(pModule->getDataLayout().getTypeAllocSize(global.first->getType()->getPointerElementType()));
-                entry_ptr++;
+                vISA::GenSymEntry sEntry;
+                strcpy_s(sEntry.s_name, vISA::MAX_SYMBOL_NAME_LENGTH, name.str().c_str());
+                sEntry.s_type = (addrSpace == ADDRESS_SPACE_GLOBAL) ? vISA::GenSymType::S_GLOBAL_VAR : vISA::GenSymType::S_GLOBAL_VAR_CONST;
+                sEntry.s_offset = static_cast<uint32_t>(global.second);
+                sEntry.s_size = int_cast<uint32_t>(pModule->getDataLayout().getTypeAllocSize(pGlobal->getType()->getPointerElementType()));
+                symbolTable.push_back(sEntry);
             }
         }
+        tableEntries = symbolTable.size();
+        bufferSize = tableEntries * sizeof(vISA::GenSymEntry);
+        buffer = (void*)malloc(bufferSize);
+        memcpy_s(buffer, bufferSize, symbolTable.data(), bufferSize);
     }
-    }
+
     void CEncoder::CreateRelocationTable(void*& buffer, unsigned& bufferSize, unsigned& tableEntries)
     {
-    buffer = nullptr;
-    bufferSize = 0;
-    tableEntries = 0;
-        ModuleMetaData* modMD = m_program->GetContext()->getModuleMetaData();
+        buffer = nullptr;
+        bufferSize = 0;
+        tableEntries = 0;
 
-        if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer) || modMD->compOpt.EnableGlobalRelocation)
-    {
         // vISA will directly return the buffer with GenRelocEntry layout
         V(vMainKernel->GetGenRelocEntryBuffer(buffer, bufferSize, tableEntries));
         assert(sizeof(vISA::GenRelocEntry) * tableEntries == bufferSize);
-    }
     }
 
     void CEncoder::Compile(bool hasSymbolTable)
@@ -4885,15 +4867,18 @@ namespace IGC
 
     pMainKernel->GetGTPinBuffer(pOutput->m_gtpinBuffer, pOutput->m_gtpinBufferSize);
 
-    if (hasSymbolTable)
+    if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer))
     {
-        CreateSymbolTable(pOutput->m_funcSymbolTable,
-            pOutput->m_funcSymbolTableSize,
-            pOutput->m_funcSymbolTableEntries);
+        if (hasSymbolTable)
+        {
+            CreateSymbolTable(pOutput->m_funcSymbolTable,
+                pOutput->m_funcSymbolTableSize,
+                pOutput->m_funcSymbolTableEntries);
+        }
+        CreateRelocationTable(pOutput->m_funcRelocationTable,
+            pOutput->m_funcRelocationTableSize,
+            pOutput->m_funcRelocationTableEntries);
     }
-    CreateRelocationTable(pOutput->m_funcRelocationTable,
-                          pOutput->m_funcRelocationTableSize,
-                          pOutput->m_funcRelocationTableEntries);
 
     if (jitInfo->isSpill == true)
     {
