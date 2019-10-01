@@ -66,7 +66,7 @@ with inputFile as file:
                 structureNames.append(words[1])
                 while line.find("};") == -1:
                     line = next(file, None)
-                    line = line.split("//")[0];
+                    line = line.split("//")[0]
                 line = next(file, None)
             if line.find("enum") != -1:
                 words = line.split()
@@ -115,8 +115,14 @@ def extractVars(line):
 
 def extractEnumVal(line):
     vars = line.split()
-    if (len(vars) !=0) and (line.find("{") == -1):
-        structDataMembers.append(vars[0])
+    if (len(vars) == 0) or (line.find("{") != -1):
+        return
+
+    val = vars[0]
+    if val[-1] == ',':
+        val = val[:-1]
+
+    structDataMembers.append(val)
 
 def printCalls(structName):
     output.write("    Metadata* v[] = \n")
@@ -136,8 +142,6 @@ def printEnumCalls(EnumName):
     output.write("    switch("+ EnumName+ "Var)\n")
     output.write("    {\n")
     for item in structDataMembers:
-        item = item[:-1]
-        p =  '"{}"'.format(item)
         output.write("        case IGC::"+ item + ":\n"  )
         output.write("            enumName = \"" + item + "\";\n" )
         output.write("            break;\n" )
@@ -161,156 +165,72 @@ def printEnumReadCalls(enumName):
     output.write("    StringRef s = cast<MDString>(node->getOperand(1))->getString();\n")
     output.write("    "+ enumName + "Var = StringSwitch<IGC::" + enumName + ">(s)\n")
     for item in structDataMembers:
-        item = item[:-1]
         output.write("        .Case(\""+ item + "\", IGC::"+ item + ")\n")
     output.write("        .Default((IGC::" + enumName + ")(0));\n")
 
+def emitCodeBlock(names, declType, fmtFn, extractFn, printFn):
+    for item in names:
+        foundStruct = False
+        insideStruct = False
+        findStructDecl = "{} {}".format(declType, item)
+        inputFile = open(__MDFrameWorkFile__, 'r')
+        with inputFile as file:
+            for line in file:
+                line = line.split("//")[0]
+                if line.find(findStructDecl) != -1:
+                    foundStruct = True
+                    output.write(fmtFn(item))
+                    output.write("{\n")
+                if foundStruct:
+                    line = line.split("//")[0]
+                    while line.find("{") == -1:
+                        line = next(file, None)
+                        line = line.split("//")[0]
+                    insideStruct = True
+                if insideStruct:
+                    line = line.split("//")[0]
+                    if line.find("};") != -1:
+                        inputFile.close()
+                        continue
+                    else:
+                        if not skipLine(line):
+                            line = line.split("//")[0]
+                            while line.find("};") == -1:
+                                extractFn(line)
+                                line = next(file, None)
+                                while skipLine(line):
+                                    line = next(file, None)
+                                line = line.split("//")[0]
+                            printFn(item)
+                            del structDataMembers[:]
+                            foundStruct = False
+                            insideStruct = False
+        output.write("}\n\n")
+
+def emitEnumCreateNode():
+    def fmtFn(item):
+        return "MDNode* CreateNode(IGC::" + item + " " + item + "Var" +", Module* module, StringRef name)\n"
+    emitCodeBlock(enumNames, "enum", fmtFn, extractEnumVal, printEnumCalls)
+
+def emitStructCreateNode():
+    def fmtFn(item):
+        return "MDNode* CreateNode(const IGC::" + item + "& " + item + "Var" +", Module* module, StringRef name)\n"
+    emitCodeBlock(structureNames, "struct", fmtFn, extractVars, printCalls)
+
+def emitEnumReadNode():
+    def fmtFn(item):
+        return "void readNode( IGC::" + item + " &" + item + "Var," + " MDNode* node)\n"
+    emitCodeBlock(enumNames, "enum", fmtFn, extractEnumVal, printEnumReadCalls)
+
+def emitStructReadNode():
+    def fmtFn(item):
+        return "void readNode( IGC::" + item + " &" + item + "Var," + " MDNode* node)\n"
+    emitCodeBlock(structureNames, "struct", fmtFn, extractVars, printReadCalls)
+
 def genCode():
-    for item in enumNames:
-        foundStruct = False
-        insideStruct = False
-        findStructDecl = "enum "+ item
-        inputFile = open(__MDFrameWorkFile__, 'r')
-        with inputFile as file:
-            for line in file:
-                line = line.split("//")[0]
-                if line.find(findStructDecl) != -1:
-                    foundStruct = True
-                    output.write("MDNode* CreateNode(IGC::" + item + " " + item + "Var" +", Module* module, StringRef name)\n")
-                    output.write("{\n")
-                if foundStruct:
-                    line = line.split("//")[0]
-                    while line.find("{") == -1:
-                        line = next(file, None)
-                        line = line.split("//")[0]
-                    insideStruct = True
-                if(insideStruct):
-                    line = line.split("//")[0]
-                    if line.find("};") != -1:
-                        inputFile.close()
-                        continue
-                    else:
-                        if line:
-                            line = line.split("//")[0]
-                            while line.find("};") == -1:
-                                extractEnumVal(line)
-                                line = next(file, None)
-                                line = line.split("//")[0]
-                            printEnumCalls(item)
-                            del structDataMembers[:]
-                            foundStruct = False
-                            insideStruct = False
-        output.write("}\n\n")
-
-    for item in structureNames:
-        foundStruct = False
-        insideStruct = False
-        findStructDecl = "struct "+ item
-        inputFile = open(__MDFrameWorkFile__, 'r')
-        with inputFile as file:
-            for line in file:
-                line = line.split("//")[0]
-                if line.find(findStructDecl) != -1:
-                    foundStruct = True
-                    output.write("MDNode* CreateNode(const IGC::" + item + "& " + item + "Var" +", Module* module, StringRef name)\n")
-                    output.write("{\n")
-                if foundStruct:
-                    line = line.split("//")[0]
-                    while line.find("{") == -1:
-                        line = next(file, None)
-                        line = line.split("//")[0]
-                    insideStruct = True
-                if(insideStruct):
-                    if line.find("};") != -1:
-                        inputFile.close()
-                        continue
-                    else:
-                        if skipLine(line) == False:
-                            line = line.split("//")[0]
-                            while line.find("};") == -1:
-                                extractVars(line)
-                                line = next(file, None)
-                                while skipLine(line) == True:
-                                    line = next(file, None)
-                                line = line.split("//")[0]
-                            printCalls(item)
-                            del structDataMembers[:]
-                            foundStruct = False
-                            insideStruct = False
-        output.write("}\n\n")
-
-    for item in enumNames:
-        foundStruct = False
-        insideStruct = False
-        findStructDecl = "enum "+ item
-        inputFile = open(__MDFrameWorkFile__, 'r')
-        with inputFile as file:
-            for line in file:
-                line = line.split("//")[0]
-                if line.find(findStructDecl) != -1:
-                    foundStruct = True
-                    output.write("void readNode( IGC::" + item + " &" + item + "Var," + " MDNode* node)\n")
-                    output.write("{\n")
-                if foundStruct:
-                    line = line.split("//")[0]
-                    while line.find("{") == -1:
-                        line = next(file, None)
-                        line = line.split("//")[0]
-                    insideStruct = True
-                if(insideStruct):
-                    line = line.split("//")[0]
-                    if line.find("};") != -1:
-                        inputFile.close()
-                        continue
-                    else:
-                        if line:
-                            line = line.split("//")[0]
-                            while line.find("};") == -1:
-                                extractEnumVal(line)
-                                line = next(file, None)
-                                line = line.split("//")[0]
-                            printEnumReadCalls(item)
-                            del structDataMembers[:]
-                            foundStruct = False
-                            insideStruct = False
-        output.write("}\n\n")
-
-    for item in structureNames:
-        foundStruct = False
-        insideStruct = False
-        findStructDecl = "struct "+ item
-        inputFile = open(__MDFrameWorkFile__, 'r')
-        with inputFile as file:
-            for line in file:
-                line = line.split("//")[0]
-                if line.find(findStructDecl) != -1:
-                    foundStruct = True
-                    output.write("void readNode( IGC::" + item + " &" + item + "Var," + " MDNode* node)\n")
-                    output.write("{\n")
-                if foundStruct:
-                    line = line.split("//")[0]
-                    while line.find("{") == -1:
-                        line = next(file, None)
-                        line = line.split("//")[0]
-                    insideStruct = True
-                if(insideStruct):
-                    line = line.split("//")[0]
-                    if line.find("};") != -1:
-                        inputFile.close()
-                        continue
-                    else:
-                        if skipLine(line) == False:
-                            line = line.split("//")[0]
-                            while line.find("};") == -1:
-                                extractVars(line)
-                                line = next(file, None)
-                                while skipLine(line) == True:
-                                    line = next(file, None)
-                                line = line.split("//")[0]
-                            printReadCalls(item)
-                            del structDataMembers[:]
-                            foundStruct = False
-                            insideStruct = False
-        output.write("}\n\n")
+    emitEnumCreateNode()
+    emitStructCreateNode()
+    emitEnumReadNode()
+    emitStructReadNode()
 
 genCode()
