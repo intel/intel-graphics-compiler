@@ -6333,7 +6333,7 @@ void EmitPass::emitSampleInstruction(SampleIntrinsic* inst)
     m_encoder->Sample(
         opCode, writeMask, immOffset, resource, sampler,
         numSources, dst, payload,
-        zeroLOD, cpsEnable, hasMaskResponse, !sampler.m_sampler->IsUniform());
+        zeroLOD, cpsEnable, hasMaskResponse, needLoop);
     m_encoder->Push();
 
     if (m_currShader->hasReadWriteImage(*(inst->getParent()->getParent())))
