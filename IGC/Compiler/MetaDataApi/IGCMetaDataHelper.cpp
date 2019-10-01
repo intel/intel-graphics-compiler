@@ -38,6 +38,29 @@ void IGCMetaDataHelper::addFunction(MetaDataUtils& mdUtils, llvm::Function* pFun
     mdUtils.save(pFunc->getContext());
 }
 
+void IGCMetaDataHelper::moveFunction(
+    MetaDataUtils& mdUtils,
+    ModuleMetaData& MD,
+    llvm::Function* OldFunc, llvm::Function* NewFunc)
+{
+    auto oldFuncIter = mdUtils.findFunctionsInfoItem(OldFunc);
+    if (oldFuncIter != mdUtils.end_FunctionsInfo())
+    {
+        mdUtils.setFunctionsInfoItem(NewFunc, oldFuncIter->second);
+        mdUtils.eraseFunctionsInfoItem(oldFuncIter);
+    }
+
+    auto& FuncMD = MD.FuncMD;
+    auto loc = FuncMD.find(OldFunc);
+    if (loc != FuncMD.end())
+    {
+        auto funcInfo = loc->second;
+        FuncMD.erase(OldFunc);
+        FuncMD[NewFunc] = funcInfo;
+    }
+
+}
+
 uint32_t IGCMetaDataHelper::getThreadGroupSizeHint(MetaDataUtils& mdUtils, llvm::Function* pKernelFunc)
 {
     FunctionInfoMetaDataHandle finfo = mdUtils.getFunctionsInfoItem(pKernelFunc);

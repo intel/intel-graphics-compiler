@@ -98,9 +98,9 @@ namespace IGCLLVM
                 NoAliasTag);
         }
 
-        inline llvm::AllocaInst *CreateAlloca(llvm::Type *Ty, llvm::Value *ArraySize = nullptr, const llvm::Twine &Name = "")
+        inline llvm::AllocaInst *CreateAlloca(llvm::Type *Ty, llvm::Value *ArraySize = nullptr, const llvm::Twine &Name = "", unsigned AddrSpace = 0)
         {
-            return llvm::IRBuilder<T, Inserter>::CreateAlloca(Ty, 0/*for IGC addrSpace in alloca is always 0*/, ArraySize, Name);
+            return llvm::IRBuilder<T, Inserter>::CreateAlloca(Ty, AddrSpace, ArraySize, Name);
         }
     };
 #endif
