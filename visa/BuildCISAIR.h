@@ -114,6 +114,7 @@ public:
     CM_BUILDER_API std::stringstream& GetAsmTextStream() { return m_ssIsaAsm; }
     CM_BUILDER_API std::stringstream& GetAsmTextHeaderStream() { return m_ssIsaAsmHeader; }
     CM_BUILDER_API virtual VISAKernel* GetVISAKernel();
+    CM_BUILDER_API virtual int ClearAsmTextStreams();
 
     /**************END VISA BUILDER API*************************/
 

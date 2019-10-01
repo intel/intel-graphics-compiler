@@ -373,6 +373,22 @@ VISAKernel* CISA_IR_Builder::GetVISAKernel()
     return static_cast<VISAKernel*>(m_kernel);
 }
 
+int CISA_IR_Builder::ClearAsmTextStreams()
+{
+    if (m_options.getOption(vISA_IsaAssembly))
+    {
+        m_ssIsaAsmHeader.str(std::string());
+        m_ssIsaAsmHeader.clear();
+        m_ssIsaAsm.str(std::string());
+        m_ssIsaAsm.clear();
+
+        return CM_SUCCESS;
+    }
+
+    assert(0 && "Should clear streams only in asm text writer mode!");
+    return CM_FAILURE;
+}
+
 int CISA_IR_Builder::AddKernel(VISAKernel *& kernel, const char* kernelName)
 {
 
@@ -394,6 +410,11 @@ int CISA_IR_Builder::AddKernel(VISAKernel *& kernel, const char* kernelName)
     m_kernel->InitializeKernel(kernelName);
     m_kernel->SetGTPinInit(getGtpinInit());
     this->m_kernel_count++;
+
+    if (m_options.getOption(vISA_IsaAssembly))
+    {
+        ClearAsmTextStreams();
+    }
 
     return CM_SUCCESS;
 }
