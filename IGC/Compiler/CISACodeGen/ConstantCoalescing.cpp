@@ -45,7 +45,7 @@ using namespace IGC;
 
 // Register pass to igc-opt
 #define PASS_FLAG "igc-constant-coalescing"
-#define PASS_DESCRIPTION "Constant Coalescing merges multiple constant loads into one load of larger quantity"
+#define PASS_DESCRIPTION "Constant Coalescing"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
 IGC_INITIALIZE_PASS_BEGIN(ConstantCoalescing, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)

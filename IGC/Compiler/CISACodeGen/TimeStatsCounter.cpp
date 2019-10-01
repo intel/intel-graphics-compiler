@@ -37,8 +37,10 @@ using namespace IGC;
 namespace {
     class TimeStatsCounter : public FunctionPass {
         CodeGenContext* ctx;
-        COMPILE_TIME_INTERVALS type;
-        TimeStatsCounterMode mode;
+        COMPILE_TIME_INTERVALS interval;
+        TimeStatsCounterStartEndMode mode;
+        std::string igcPass;
+        TimeStatsCounterType type;
 
     public:
         static char ID;
@@ -47,11 +49,20 @@ namespace {
             initializeTimeStatsCounterPass(*PassRegistry::getPassRegistry());
         }
 
-        TimeStatsCounter(CodeGenContext* _ctx, COMPILE_TIME_INTERVALS _type, TimeStatsCounterMode _mode) : FunctionPass(ID) {
+        TimeStatsCounter(CodeGenContext* _ctx, COMPILE_TIME_INTERVALS _interval, TimeStatsCounterStartEndMode _mode) : FunctionPass(ID) {
             initializeTimeStatsCounterPass(*PassRegistry::getPassRegistry());
             ctx = _ctx;
-            type = _type;
+            interval = _interval;
             mode = _mode;
+            type = STATS_COUNTER_ENUM_TYPE;
+        }
+
+        TimeStatsCounter(CodeGenContext* _ctx, std::string _igcPass, TimeStatsCounterStartEndMode _mode) : FunctionPass(ID) {
+            initializeTimeStatsCounterPass(*PassRegistry::getPassRegistry());
+            ctx = _ctx;
+            mode = _mode;
+            igcPass = _igcPass;
+            type = STATS_COUNTER_LLVM_PASS;
         }
 
         bool runOnFunction(Function&) override;
@@ -61,14 +72,19 @@ namespace {
     };
 } // End anonymous namespace
 
-FunctionPass* IGC::createTimeStatsCounterPass(CodeGenContext* _ctx, COMPILE_TIME_INTERVALS _type, TimeStatsCounterMode _mode) {
-    return new TimeStatsCounter(_ctx, _type, _mode);
+FunctionPass* IGC::createTimeStatsCounterPass(CodeGenContext* _ctx, COMPILE_TIME_INTERVALS _interval, TimeStatsCounterStartEndMode _mode) {
+    return new TimeStatsCounter(_ctx, _interval, _mode);
+}
+
+FunctionPass* IGC::createTimeStatsIGCPass(CodeGenContext* _ctx, std::string _igcPass, TimeStatsCounterStartEndMode _mode)
+{
+    return new TimeStatsCounter(_ctx, _igcPass, _mode);
 }
 
 char TimeStatsCounter::ID = 0;
 
 #define PASS_FLAG     "time-stats-counter"
-#define PASS_DESC     "Utility to start and stop timestats counter"
+#define PASS_DESC     "TimeStatsCounter Start/Stop"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
 namespace IGC {
@@ -77,15 +93,28 @@ namespace IGC {
 }
 
 bool TimeStatsCounter::runOnFunction(Function& F) {
-    if (mode == STATS_COUNTER_START)
+    if (type == STATS_COUNTER_ENUM_TYPE)
     {
-        COMPILER_TIME_START(ctx, type);
+        if (mode == STATS_COUNTER_START)
+        {
+            COMPILER_TIME_START(ctx, interval);
+        }
+        else
+        {
+            COMPILER_TIME_END(ctx, interval);
+        }
     }
     else
     {
-        COMPILER_TIME_END(ctx, type);
+        if (mode == STATS_COUNTER_START)
+        {
+            COMPILER_TIME_PASS_START(ctx, igcPass);
+        }
+        else
+        {
+            COMPILER_TIME_PASS_END(ctx, igcPass);
+        }
     }
-
     return true;
 }
 

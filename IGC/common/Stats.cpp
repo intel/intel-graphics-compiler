@@ -553,11 +553,19 @@ int parentIntervalDepth( COMPILE_TIME_INTERVALS cti )
 TimeStats::TimeStats()
     : m_isPostProcessed(false)
     , m_totalShaderCount(0)
+    , m_PassTotalTicks (0)
 {
     std::fill(std::begin(m_wallclockStart), std::end(m_wallclockStart), 0);
     std::fill(std::begin(m_elapsedTime),    std::end(m_elapsedTime),    0);
     std::fill(std::begin(m_hitCount),       std::end(m_hitCount),       0);
     m_freq = iSTD::GetTimestampFrequency();
+
+    m_PassTimeStatsMap.clear();
+}
+
+TimeStats::~TimeStats()
+{
+    m_PassTimeStatsMap.clear();
 }
 
 void TimeStats::recordVISATimers()
@@ -605,6 +613,40 @@ void TimeStats::sumWith( const TimeStats* pOther )
     }
 
     m_totalShaderCount++;
+
+    m_PassTotalTicks += pOther->m_PassTotalTicks;
+
+    if (IGC::Debug::GetDebugFlag(IGC::Debug::DebugFlag::TIME_STATS_PER_PASS))
+    {
+        if (m_PassTimeStatsMap.empty())
+        {
+            m_PassTimeStatsMap.insert(pOther->m_PassTimeStatsMap.begin(), pOther->m_PassTimeStatsMap.end());
+        }
+        else
+        {
+            std::map<std::string, PerPassTimeStat>::const_iterator fromIter;
+            std::map<std::string, PerPassTimeStat>::iterator toIter;
+
+            for (fromIter = pOther->m_PassTimeStatsMap.begin(); fromIter != pOther->m_PassTimeStatsMap.end(); fromIter++)
+            {
+                toIter = m_PassTimeStatsMap.find(fromIter->first);
+                if (toIter != m_PassTimeStatsMap.end())
+                {
+                    // If the pass is already included in the combined list, add the numbers
+                    toIter->second.PassHitCount += fromIter->second.PassHitCount;
+                    toIter->second.PassElapsedTime += fromIter->second.PassElapsedTime;
+                }
+                else
+                {
+                    // Add new pass from this run to the combined list
+                    PerPassTimeStat stat;
+                    stat.PassElapsedTime = fromIter->second.PassElapsedTime;
+                    stat.PassHitCount = fromIter->second.PassHitCount;
+                    m_PassTimeStatsMap.insert(std::pair<std::string, PerPassTimeStat>(fromIter->first, stat));
+                }
+            }
+        }
+    }
 }
 
 void TimeStats::printTime( ShaderType type, ShaderHash hash ) const
@@ -618,6 +660,9 @@ void TimeStats::printTime( ShaderType type, ShaderHash hash ) const
     }
 
     pp.printTimeCSV( shaderName );
+
+    // Skip printing PerPass info to CSV for now
+    //pp.printPerPassTimeCSV( shaderName );
 }
 
 void TimeStats::printSumTime() const
@@ -628,14 +673,20 @@ void TimeStats::printSumTime() const
 
     if ( dumpCoarse )
     {
-        pp.printSumTimeCSV("c:\\Intel\\timeStatCoarseSum.csv");
+        pp.printSumTimeCSV("c:\\Intel\\TimeStatCoarseSum.csv");
     }
     else
     {
-        pp.printSumTimeCSV("c:\\Intel\\timeStatSum.csv");
+        pp.printSumTimeCSV("c:\\Intel\\TimeStatSum.csv");
     }
 
-    pp.printSumTimeTable( llvm::dbgs() );
+    if (IGC::Debug::GetDebugFlag(IGC::Debug::DebugFlag::TIME_STATS_PER_PASS))
+    {
+        pp.printPerPassSumTime(llvm::dbgs());
+        pp.printPerPassSumTimeCSV("c:\\Intel\\TimeStatPerPassSum.csv");
+    }
+
+    pp.printSumTimeTable(llvm::dbgs());
 }
 
 bool TimeStats::skipTimer( int i ) const
@@ -654,7 +705,6 @@ bool TimeStats::skipTimer( int i ) const
 void TimeStats::printSumTimeCSV(const char* outputFile) const
 {
     assert( m_isPostProcessed && "Print functions should only be called on a Post-Processed TimeStats object" );
-    uint64_t frequency = iSTD::GetTimestampFrequency();
 
     bool fileExist = 0;
 
@@ -669,7 +719,7 @@ void TimeStats::printSumTimeCSV(const char* outputFile) const
 
     if( !fileExist && fileName )
     {
-        fprintf(fileName, "Frequency,%ju\n\n", frequency );
+        fprintf(fileName, "Frequency,%ju\n\n", m_freq);
         fprintf(fileName, "corpus name,shader count,");
         for (int i=0;i<MAX_COMPILE_TIME_INTERVALS;i++)
         {
@@ -701,7 +751,7 @@ void TimeStats::printSumTimeCSV(const char* outputFile) const
             fprintf(fileName, "seconds,," );
             for (int i=0;i<MAX_COMPILE_TIME_INTERVALS;i++)
             {
-                fprintf(fileName, "%f,", (double)getCompileTime(static_cast<COMPILE_TIME_INTERVALS>(i))/(double)frequency );
+                fprintf(fileName, "%f,", (double)getCompileTime(static_cast<COMPILE_TIME_INTERVALS>(i))/(double)m_freq);
             }
             fprintf(fileName, "\n");
 
@@ -723,6 +773,94 @@ void TimeStats::printSumTimeCSV(const char* outputFile) const
         }
 
         fclose(fileName);
+    }
+}
+
+void TimeStats::printPerPassSumTimeCSV(const char* outputFile) const
+{
+    assert(m_isPostProcessed && "Print functions should only be called on a Post-Processed TimeStats object");
+
+    if (m_PassTimeStatsMap.empty())
+    {
+        return;
+    }
+
+    bool fileExist = 0;
+
+    FILE* fp = fopen(outputFile, "r");
+    if (fp)
+    {
+        fileExist = 1;
+        fclose(fp);
+    }
+
+    FILE* fileName = fopen(outputFile, "a");
+    std::map<std::string, PerPassTimeStat>::const_iterator iter;
+
+    if (!fileExist && fileName)
+    {
+        fprintf(fileName, "Frequency,%ju\n\n", m_freq);
+        fprintf(fileName, "corpus name,passes count,Total,");
+
+        for (iter = m_PassTimeStatsMap.begin(); iter != m_PassTimeStatsMap.end(); iter++)
+        {
+            fprintf(fileName, "%s,", iter->first.c_str());
+        }
+        fprintf(fileName, "\n");
+    }
+
+    if (fileName)
+    {
+        fprintf(fileName, "%s,%d,%ju,", IGC::Debug::GetShaderCorpusName(), (int)m_PassTimeStatsMap.size(), m_PassTotalTicks);
+
+        for (iter = m_PassTimeStatsMap.begin(); iter != m_PassTimeStatsMap.end(); iter++)
+        {
+            fprintf(fileName, "%jd,", iter->second.PassElapsedTime);
+        }
+
+        fprintf(fileName, "\n");
+        fclose(fileName);
+    }
+}
+
+void TimeStats::recordPerPassTimerStart(std::string PassName)
+{
+    assert(!PassName.empty());
+
+    std::map<std::string, PerPassTimeStat>::iterator iter = m_PassTimeStatsMap.find(PassName);
+    if (iter == m_PassTimeStatsMap.end())
+    {
+        PerPassTimeStat stat;
+        stat.PassElapsedTime = 0;
+        stat.PassHitCount = 0;
+        stat.PassClockStart = iSTD::GetTimestampCounter();
+
+        m_PassTimeStatsMap.insert(std::pair<std::string, PerPassTimeStat>(PassName, stat));
+    }
+    else
+    {
+        iter->second.PassClockStart = iSTD::GetTimestampCounter();
+    }
+}
+
+void TimeStats::recordPerPassTimerEnd(std::string PassName)
+{
+    assert(!PassName.empty());
+
+    std::map<std::string, PerPassTimeStat>::iterator iter = m_PassTimeStatsMap.find(PassName);
+
+    if (iter == m_PassTimeStatsMap.end())
+    {
+        std::cerr << "Invalid Pass " << PassName << std::endl;
+    }
+    else
+    {
+        uint64_t start = iter->second.PassClockStart;
+        uint64_t elapsed = iSTD::GetTimestampCounter() - start;
+
+        iter->second.PassHitCount += 1;
+        iter->second.PassElapsedTime += elapsed;
+        m_PassTotalTicks += elapsed;
     }
 }
 
@@ -753,14 +891,13 @@ namespace {
 void TimeStats::printSumTimeTable( llvm::raw_ostream & OS ) const
 {
     assert( m_isPostProcessed && "Print functions should only be called on a Post-Processed TimeStats object" );
-    uint64_t frequency = iSTD::GetTimestampFrequency();
 
     llvm::formatted_raw_ostream FS(OS);
 
     FS << "\n";
     FS << "ShaderCount:  "  << m_totalShaderCount << " shaders\n";
     FS << "CorpusName:   \"" << IGC::Debug::GetShaderCorpusName() << "\"\n";
-    FS << "Frequency:    "  << frequency << " ticks/sec\n";
+    FS << "Frequency:    "  << m_freq << " ticks/sec\n";
 
     const unsigned colWidth =  8;                        //<! Width of each of the data columns
     const unsigned startCol =  4;                        //<! Spacing to the left of the whole table
@@ -773,7 +910,7 @@ void TimeStats::printSumTimeTable( llvm::raw_ostream & OS ) const
     FS.PadToColumn(ticksCol) << "ticks";
     FS.PadToColumn( secsCol) << "seconds";
     FS.PadToColumn( percCol) << "percent";
-    FS.PadToColumn(  hitCol) << "hit";
+    FS.PadToColumn(  hitCol) << "hits";
     FS << "\n";
     const std::string bar(colWidth+1,'-');
     FS.PadToColumn(ticksCol) << bar;
@@ -794,13 +931,66 @@ void TimeStats::printSumTimeTable( llvm::raw_ostream & OS ) const
                 FS.PadToColumn(startCol).indent(2 * parentIntervalDepth(interval))
                     << g_cCompTimeIntervals[interval];
                 FS.PadToColumn(ticksCol) << str((int)intervalTicks, colWidth);
-                FS.PadToColumn(secsCol) << str((int)intervalTicks / (double)frequency, colWidth, 4);
+                FS.PadToColumn(secsCol) << str((int)intervalTicks / (double)m_freq, colWidth, 4);
                 FS.PadToColumn(percCol) << str((int)intervalTicks / (double)getCompileTime(TIME_TOTAL) * 100.0, colWidth, 2);
                 FS.PadToColumn(percCol) << str((int)m_hitCount[i], colWidth);
                 FS << "\n";
             }
         }
     }
+    FS << "\n";
+
+    FS.flush();
+    OS.flush();
+}
+
+void TimeStats::printPerPassSumTime(llvm::raw_ostream& OS) const
+{
+    if (m_PassTimeStatsMap.empty())
+    {
+        return;
+    }
+
+    llvm::formatted_raw_ostream FS(OS);
+
+    FS << "\n";
+    FS << "PassesCount:  " << m_PassTimeStatsMap.size() << " IGC/LLVM passes\n";
+    FS << "Total Ticks:  " << m_PassTotalTicks << " ticks\n";
+
+    const unsigned colWidth = 8;                      //<! Width of each of the data columns
+    const unsigned startCol = 6;                      //<! Spacing to the left of the whole table
+    const unsigned ticksCol = 50;                     //<! Location of the first character of the ticks column
+    const unsigned percCol = ticksCol + colWidth + 2; //<! Location of the first character of the percent column
+    const unsigned hitCol = percCol + colWidth + 2;   //<! Location of the first character of the hit column
+
+    // table header
+    FS.PadToColumn(ticksCol) << "ticks";
+    FS.PadToColumn(percCol)  << "percent";
+    FS.PadToColumn(hitCol)   << "hits";
+    FS << "\n";
+    const std::string bar(colWidth + 1, '-');
+    FS.PadToColumn(ticksCol) << bar;
+    FS.PadToColumn(percCol) << bar;
+    FS.PadToColumn(hitCol) << bar;
+    FS << "\n";
+
+    PerPassTimeStat stat;
+    uint64_t ticks;
+    std::map<std::string, PerPassTimeStat>::const_iterator iter;
+
+    for (iter = m_PassTimeStatsMap.begin(); iter != m_PassTimeStatsMap.end(); iter++)
+    {
+        stat = iter->second;
+        ticks = stat.PassElapsedTime;
+
+        // pass ticks % hit
+        FS.PadToColumn(startCol) << iter->first.substr(0, ticksCol - startCol - 1);
+        FS.PadToColumn(ticksCol) << str((int)ticks, colWidth);
+        FS.PadToColumn(percCol) << str((int)ticks / (double)m_PassTotalTicks * 100.0, colWidth, 2);
+        FS.PadToColumn(percCol) << str((int)stat.PassHitCount, colWidth);
+        FS << "\n";
+    }
+
     FS << "\n";
     FS.flush();
     OS.flush();
@@ -809,7 +999,6 @@ void TimeStats::printSumTimeTable( llvm::raw_ostream & OS ) const
 void TimeStats::printTimeCSV( std::string const& corpusName ) const
 {
     assert( m_isPostProcessed && "Print functions should only be called on a Post-Processed TimeStats object" );
-    uint64_t frequency = iSTD::GetTimestampFrequency();
 
     const std::string outputFilePath = std::string("c:\\Intel\\") + "TimeStat_" + IGC::Debug::GetShaderCorpusName() + ".csv";
     const char *outputFile = outputFilePath.c_str();
@@ -827,7 +1016,7 @@ void TimeStats::printTimeCSV( std::string const& corpusName ) const
 
     if( !fileExist )
     {
-        fprintf(fileName, "Frequency:%ju,", frequency );
+        fprintf(fileName, "Frequency:%ju,", m_freq);
         for (int i=0;i<MAX_COMPILE_TIME_INTERVALS;i++)
         {
             if( !skipTimer(i) )
@@ -846,6 +1035,53 @@ void TimeStats::printTimeCSV( std::string const& corpusName ) const
             const COMPILE_TIME_INTERVALS interval = static_cast<COMPILE_TIME_INTERVALS>(i);
             fprintf(fileName, "%jd,", getCompileTime( interval ) );
         }
+    }
+
+    fprintf(fileName, "\n");
+    fclose(fileName);
+}
+
+void TimeStats::printPerPassTimeCSV(std::string const& corpusName) const
+{
+    assert(m_isPostProcessed && "Print functions should only be called on a Post-Processed TimeStats object");
+
+    if (m_PassTimeStatsMap.empty())
+    {
+        return;
+    }
+
+    const std::string outputFilePath = std::string("c:\\Intel\\") + "TimeStatPerPass_" + IGC::Debug::GetShaderCorpusName() + ".csv";
+    const char* outputFile = outputFilePath.c_str();
+    bool fileExist = 0;
+
+    FILE* fp = fopen(outputFile, "r");
+    if (fp)
+    {
+        fileExist = 1;
+        fclose(fp);
+    }
+
+    FILE* fileName = fopen(outputFile, "a");
+
+    if (!fileExist)
+    {
+        fprintf(fileName, "Frequency:%ju,", m_freq);
+
+        std::map<std::string, PerPassTimeStat>::const_iterator iter;
+        fprintf(fileName, "Passes Count,Total,");
+        for (iter = m_PassTimeStatsMap.begin(); iter != m_PassTimeStatsMap.end(); iter++)
+        {
+            fprintf(fileName, "%s,", iter->first.c_str());
+        }
+        fprintf(fileName, "\n");
+    }
+
+    fprintf(fileName, "%s.isa,%d,%ju,", corpusName.c_str(), (int)m_PassTimeStatsMap.size(), m_PassTotalTicks);
+    std::map<std::string, PerPassTimeStat>::const_iterator iter;
+
+    for (iter = m_PassTimeStatsMap.begin(); iter != m_PassTimeStatsMap.end(); iter++)
+    {
+        fprintf(fileName, "%jd,", iter->second.PassElapsedTime);
     }
 
     fprintf(fileName, "\n");

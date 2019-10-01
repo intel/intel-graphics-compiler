@@ -31,14 +31,22 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/CodeGenPublic.h"
 #include "common/Stats.hpp"
+#include <string>
 
 namespace IGC {
-    enum TimeStatsCounterMode
+    enum TimeStatsCounterStartEndMode
     {
         STATS_COUNTER_START,
         STATS_COUNTER_END
     };
 
-    llvm::FunctionPass* createTimeStatsCounterPass(CodeGenContext* _ctx, COMPILE_TIME_INTERVALS _type, TimeStatsCounterMode _mode);
+    enum TimeStatsCounterType
+    {
+        STATS_COUNTER_LLVM_PASS,
+        STATS_COUNTER_ENUM_TYPE
+    };
+
+    llvm::FunctionPass* createTimeStatsCounterPass(CodeGenContext* _ctx, COMPILE_TIME_INTERVALS _interval, TimeStatsCounterStartEndMode _mode);
+    llvm::FunctionPass* createTimeStatsIGCPass(CodeGenContext* _ctx, std::string _igcPass, TimeStatsCounterStartEndMode _mode);
     void initializeTimeStatsCounterPass(llvm::PassRegistry&);
 } // End namespace IGC

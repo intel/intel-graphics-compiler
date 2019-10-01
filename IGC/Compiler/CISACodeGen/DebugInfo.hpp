@@ -86,7 +86,7 @@ namespace IGC
     {
     public:
         DebugInfoPass(CShaderProgram::KernelShaderMap&);
-
+        virtual llvm::StringRef getPassName() const  override { return "DebugInfoPass"; }
         virtual ~DebugInfoPass();
 
     private:

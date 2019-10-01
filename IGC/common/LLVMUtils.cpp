@@ -25,6 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/CISACodeGen/PassTimer.hpp"
+#include "Compiler/CISACodeGen/TimeStatsCounter.h"
 #include "common/Stats.hpp"
 #include "common/debug/Dump.hpp"
 #include "common/shaderOverride.hpp"
@@ -89,7 +90,19 @@ void IGCPassManager::add(Pass *P)
                << "' (threshold: " << IGC_GET_FLAG_VALUE(ShaderDisableOptPassesAfter) << ").\n";
         return;
     }
+
+    if (IGC::Debug::GetDebugFlag(IGC::Debug::DebugFlag::TIME_STATS_PER_PASS))
+    {
+        PassManager::add(createTimeStatsIGCPass(m_pContext, m_name + '_' + std::string(P->getPassName()), STATS_COUNTER_START));
+    }
+
     PassManager::add(P);
+
+    if (IGC::Debug::GetDebugFlag(IGC::Debug::DebugFlag::TIME_STATS_PER_PASS))
+    {
+        PassManager::add(createTimeStatsIGCPass(m_pContext, m_name + '_' + std::string(P->getPassName()), STATS_COUNTER_END));
+    }
+
     if(IGC_IS_FLAG_ENABLED(ShaderDumpEnableAll))
     {
         std::string passName = m_name + '_' + std::string(P->getPassName());

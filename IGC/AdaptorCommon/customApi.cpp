@@ -121,6 +121,7 @@ namespace IGC
                 CASE(TIME_STATS_SUM);
                 CASE(TIME_STATS_PER_SHADER);
                 CASE(TIME_STATS_COARSE);
+                CASE(TIME_STATS_PER_PASS);
                 CASE(MEM_STATS);
                 CASE(MEM_STATS_DETAIL);
                 CASE(SHADER_QUALITY_METRICS);

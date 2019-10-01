@@ -44,6 +44,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <3d/common/iStdLib/utility.h>
 
 #include <string>
+#include <map>
 
 namespace llvm
 {
@@ -216,10 +217,18 @@ int parentIntervalDepth( COMPILE_TIME_INTERVALS cti );
 
 #if GET_TIME_STATS
 
+struct PerPassTimeStat
+{
+    uint64_t PassClockStart;
+    uint64_t PassElapsedTime;
+    int PassHitCount;
+};
+
 class TimeStats
 {
 public:
     TimeStats();
+    ~TimeStats();
 
     /// Capture the VISA timer values for the most recent call to VISABuilder::compile()
     void recordVISATimers();
@@ -238,6 +247,8 @@ public:
     void printTime( ShaderType type, ShaderHash hash ) const;
     /// Print the aggregated times for multiple shaders
     void printSumTime() const;
+    /// Print the times for all passes
+    void printPerPassSumTime( llvm::raw_ostream& OS ) const;
 
     /// Add other's statistics to this
     void sumWith( const TimeStats* pOther );
@@ -256,6 +267,9 @@ public:
                 (double)m_freq * 1000.0;
     }
 
+    void recordPerPassTimerStart(std::string PassName);
+    void recordPerPassTimerEnd(std::string PassName);
+
 private:
     /// \deprecated Print aggregate times for multiple shaders in csv format
     void printSumTimeCSV( const char* fileName ) const;
@@ -266,6 +280,8 @@ private:
 
     /// \deprecated Print the currently accumulated times in csv format
     void printTimeCSV( std::string const& corpusName ) const;
+    void printPerPassTimeCSV( std::string const& corpusName ) const;
+    void printPerPassSumTimeCSV(const char* fileName) const;
 
     // Return a copy of *this, with Unaccounted timer values filled in
     TimeStats postProcess() const;
@@ -276,6 +292,10 @@ private:
     uint64_t m_elapsedTime[MAX_COMPILE_TIME_INTERVALS];      //!< Running total of time measured by the timer
     uint64_t m_hitCount[MAX_COMPILE_TIME_INTERVALS];         //!< Number of times a timer was started
     uint64_t m_freq;
+
+    // Per Pass timestats
+    uint64_t m_PassTotalTicks;
+    std::map<std::string, PerPassTimeStat> m_PassTimeStatsMap;
 };
 
 #define COMPILER_TIME_GETNS(pointer, timerName) \
@@ -287,10 +307,7 @@ private:
     { \
         if( (pointer) && (pointer)->m_compilerTimeStats ) \
         { \
-            if ( IGC::Debug::GetDebugFlag( IGC::Debug::DebugFlag::TIME_STATS_SUM ) ) \
-            { \
                 (pointer)->m_compilerTimeStats->recordTimerStart( compileTimeInterval );  \
-            } \
         } \
     } while (0)
 #define COMPILER_TIME_END( pointer, compileTimeInterval ) \
@@ -298,10 +315,24 @@ private:
     { \
         if( (pointer) && (pointer)->m_compilerTimeStats ) \
         { \
-            if ( IGC::Debug::GetDebugFlag( IGC::Debug::DebugFlag::TIME_STATS_SUM ) ) \
-            { \
                 (pointer)->m_compilerTimeStats->recordTimerEnd( compileTimeInterval ); \
-            } \
+        } \
+    } while (0)
+
+#define COMPILER_TIME_PASS_START( pointer, name ) \
+    do \
+    { \
+        if( (pointer) && (pointer)->m_compilerTimeStats ) \
+        { \
+                (pointer)->m_compilerTimeStats->recordPerPassTimerStart( name );  \
+        } \
+    } while (0)
+#define COMPILER_TIME_PASS_END( pointer, name ) \
+    do \
+    { \
+        if( (pointer) && (pointer)->m_compilerTimeStats ) \
+        { \
+                (pointer)->m_compilerTimeStats->recordPerPassTimerEnd( name ); \
         } \
     } while (0)
 

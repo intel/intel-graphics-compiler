@@ -209,7 +209,8 @@ namespace IGC
 
         virtual llvm::StringRef getPassName() const override
         {
-            return "specialized const-prop with shader-const replacement";
+            // specialized const-prop with shader-const replacement
+            return "const-prop with shader-const replacement";
         }
     private:
         llvm::Module* module;

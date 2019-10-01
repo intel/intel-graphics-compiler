@@ -77,6 +77,7 @@ namespace IGC
             TIME_STATS_SUM,             //!< Timing of translation, code generation, finalizer, etc
             TIME_STATS_PER_SHADER,      //!< Like TIME_STATS_SUM, but one stat measurement per shader (instead of summed up times)
             TIME_STATS_COARSE,          //!< Only collect/dump coarse level time stats, i.e. skip opt detail timer for now >
+            TIME_STATS_PER_PASS,        //!< Collect Timing of IGC/LLVM passes
             MEM_STATS,                  //!< Measurements related to allocations and deallocations
             MEM_STATS_DETAIL,           //!< dump detail memstats
             SHADER_QUALITY_METRICS,     //!< ISA quality measurements (i.e. count of instructions generated)

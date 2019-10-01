@@ -37,7 +37,7 @@ namespace IGC
 {
 
 #define PASS_FLAG "igc-pixel-shader-addmask"
-#define PASS_DESCRIPTION "This is the pixel shader lowering pass"
+#define PASS_DESCRIPTION "Pixel shader lowering pass"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS true
     IGC_INITIALIZE_PASS_BEGIN(PixelShaderAddMask, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
