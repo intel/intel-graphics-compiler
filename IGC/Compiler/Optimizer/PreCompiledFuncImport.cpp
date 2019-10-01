@@ -762,41 +762,43 @@ void PreCompiledFuncImport::visitFPTruncInst(llvm::FPTruncInst& inst)
 //   double (double, double, int, int, int, int*);
 void PreCompiledFuncImport::processFPBinaryOperator(Instruction& I, FunctionIDs FID)
 {
+    ConstantFP* constDouble = nullptr;
     if (FID == FUNCTION_DP_SUB && isa<ConstantFP>(I.getOperand(0)))
     {
-        auto constDouble = cast<ConstantFP>(I.getOperand(0));
-        if (constDouble->isZeroValue()) // turn the fsub into an and/xor/and/or operation
-        {
-            Type* intTy = Type::getInt32Ty(m_pModule->getContext());
-            Type* DoubleTy = Type::getDoubleTy(m_pModule->getContext());
-            VectorType* vec2Ty = VectorType::get(intTy, 2);
+        constDouble = cast<ConstantFP>(I.getOperand(0));
+    }
+        
+    if (constDouble && constDouble->isZeroValue()) // turn the fsub into an and/xor/and/or operation
+    {
+        Type* intTy = Type::getInt32Ty(m_pModule->getContext());
+        Type* DoubleTy = Type::getDoubleTy(m_pModule->getContext());
+        VectorType* vec2Ty = VectorType::get(intTy, 2);
 
-            Instruction* twoI32 = CastInst::Create(
-                Instruction::BitCast, I.getOperand(1), vec2Ty, "", &I);
-            Instruction* topI32 = ExtractElementInst::Create(
-                twoI32, ConstantInt::get(intTy, 1), "", &I);
+        Instruction* twoI32 = CastInst::Create(
+            Instruction::BitCast, I.getOperand(1), vec2Ty, "", &I);
+        Instruction* topI32 = ExtractElementInst::Create(
+            twoI32, ConstantInt::get(intTy, 1), "", &I);
 
-            //Isolate and flip sign bit
-            Instruction* Inst2 = BinaryOperator::CreateAnd(
-                topI32, ConstantInt::get(intTy, 0x80000000), "", &I);
-            Instruction* Inst3 = BinaryOperator::CreateXor(
-                Inst2, ConstantInt::get(intTy, 0x80000000), "", &I);
+        //Isolate and flip sign bit
+        Instruction* Inst2 = BinaryOperator::CreateAnd(
+            topI32, ConstantInt::get(intTy, 0x80000000), "", &I);
+        Instruction* Inst3 = BinaryOperator::CreateXor(
+            Inst2, ConstantInt::get(intTy, 0x80000000), "", &I);
 
-            //Change sign bit and pack back new value
-            Instruction* Inst4 = BinaryOperator::CreateAnd(
-                topI32, ConstantInt::get(intTy, 0x7FFFFFFF), "", &I);
-            Instruction* newTopI32 = BinaryOperator::CreateOr(
-                Inst4, Inst3, "", &I);
-            Instruction* finalVal = InsertElementInst::Create(
-                twoI32, newTopI32, ConstantInt::get(intTy, 1), "", &I);
-            Instruction* finalValDouble = CastInst::Create(
-                Instruction::BitCast, finalVal, DoubleTy, "", &I);
+        //Change sign bit and pack back new value
+        Instruction* Inst4 = BinaryOperator::CreateAnd(
+            topI32, ConstantInt::get(intTy, 0x7FFFFFFF), "", &I);
+        Instruction* newTopI32 = BinaryOperator::CreateOr(
+            Inst4, Inst3, "", &I);
+        Instruction* finalVal = InsertElementInst::Create(
+            twoI32, newTopI32, ConstantInt::get(intTy, 1), "", &I);
+        Instruction* finalValDouble = CastInst::Create(
+            Instruction::BitCast, finalVal, DoubleTy, "", &I);
 
-            I.replaceAllUsesWith(finalValDouble);
-            I.eraseFromParent();
+        I.replaceAllUsesWith(finalValDouble);
+        I.eraseFromParent();
 
-            m_changed = true;
-        }
+        m_changed = true;
     }
     else
     {
