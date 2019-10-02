@@ -75,9 +75,11 @@ set(IGC_BUILD__SRC__Compiler
     ${IGC_BUILD__SRC__Compiler_Optimizer}
   )
 
-list(APPEND IGC_BUILD__SRC__Compiler 
+list(APPEND IGC_BUILD__SRC__Compiler
         "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/iehl_hw_wa.c"
-        "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/iehl_sw_wa.c")
+        "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/iehl_sw_wa.c"
+        "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/ijsl_hw_wa.c"
+        "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/ijsl_sw_wa.c")
 
 if(NOT ANDROID)
   set(IGC_BUILD__SRC_Win_Lin_Dar__Compiler

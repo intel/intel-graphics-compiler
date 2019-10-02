@@ -282,6 +282,7 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
             }
             if ((platform.getPlatformInfo().eProductFamily == IGFX_LAKEFIELD)
              || (platform.getPlatformInfo().eProductFamily == IGFX_ELKHARTLAKE)
+             || (platform.getPlatformInfo().eProductFamily == IGFX_JASPERLAKE)
             )
             {
                 SIPIndex = GEN11_LKF_SIP_CSR;

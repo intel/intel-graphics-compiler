@@ -41,6 +41,7 @@ typedef enum {
     IGFX_ICELAKE_LP,
     IGFX_LAKEFIELD,
     IGFX_ELKHARTLAKE,
+    IGFX_JASPERLAKE,
     IGFX_TIGERLAKE_LP,
     IGFX_MAX_PRODUCT,
 
@@ -575,5 +576,8 @@ typedef enum __NATIVEGTTYPE
 #define IEHL_1x4x4_DEVICE_A0_ID                 0x4551
 #define IEHL_1x4x8_DEVICE_A0_ID                 0x4571
 #define IEHL_VAL_0x0x0_DEVICE_A0_ID             0x4569
+
+//JSL
+#define IJSL_1x4x8_DEVICE_A0_ID                 0x4500
 
 #endif
