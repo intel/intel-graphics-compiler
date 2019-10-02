@@ -1332,24 +1332,24 @@ namespace IGC
     {
         llvm::Value* ret = val;
         llvm::Type* type = val->getType();
-        switch (type->getTypeID())
-        {
-        case llvm::Type::FloatTyID:
-            break;
-        case llvm::Type::IntegerTyID:
-            //yes, we bitcast here and bitcast back later to use it. add another way, like cast logic, if you prefer.
+        assert(type->isSingleValueType() && !type->isVectorTy() && "Only scalar data is supported here!");
+        assert(type->getTypeID() == Type::FloatTyID ||
+            type->getTypeID() == Type::HalfTyID ||
+            type->getTypeID() == Type::IntegerTyID ||
+            type->getTypeID() == Type::DoubleTyID);
+
+        unsigned dataSize = type->getScalarSizeInBits();
+        if (16 == dataSize){
+            ret = builder.CreateFPExt(builder.CreateBitCast(val, builder.getHalfTy()), builder.getFloatTy());
+        }else if (32 == dataSize){
             ret = builder.CreateBitCast(val, builder.getFloatTy());
-            break;
-        case llvm::Type::DoubleTyID:
-        {
+        }else if (64 == dataSize){
             llvm::Type* vecType = llvm::VectorType::get(builder.getFloatTy(), 2);
             ret = builder.CreateBitCast(val, vecType);
+        }else{
+            llvm_unreachable("Unsupported type in ConvertToFloat of helper.");
         }
-            break;
-        default:
-            assert(!"unsupported data type!");
-            break;
-        }
+
         return ret;
     }
 
@@ -1409,7 +1409,7 @@ namespace IGC
             }
             break;
         default:
-            assert(!"Unsupported data type! Please enhance this function first.");
+            llvm_unreachable("Unsupported type in ScalarizeAggregateMembers of helper! Please enhance this function first.");
             break;
         }
     }
@@ -1454,7 +1454,7 @@ namespace IGC
             }
             break;
         default:
-            assert(!"Unsupported data type! Please enhance this function first.");
+            llvm_unreachable("Unsupported type in ScalarizeAggregateMemberAddresses of helper! Please enhance this function first.");
             break;
         }
     }
