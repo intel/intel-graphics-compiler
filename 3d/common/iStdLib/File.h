@@ -630,7 +630,7 @@ inline int CreateAppOutputDir(
     {
         unsigned int length = (unsigned int)strlen(path);
         length = (bufSize-1 < length) ? bufSize-1 : length;
-        strncpy(pathBuf, path, length);
+        memcpy(pathBuf, path, length);
         pathBuf[length] = 0;
     } else {
         pathBuf[0] = '\0';
