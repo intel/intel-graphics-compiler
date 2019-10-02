@@ -59,6 +59,7 @@ namespace IGC
         uint         chunkStart;        // offset of the first data element in chunk in units of elementSize
         uint         chunkSize;         // chunk size in elements
         llvm::Instruction* chunkIO;     // coalesced load
+        uint         loadOrder;         // direct CB used order.
     };
 
     class ConstantCoalescing : public llvm::FunctionPass
@@ -85,6 +86,9 @@ namespace IGC
             std::vector<BufChunk*>& indcb_owlds,
             std::vector<BufChunk*>& indcb_gathers);
         void ProcessFunction(llvm::Function* function);
+
+        void FindAllDirectCB(llvm::BasicBlock* blk,
+            std::vector<BufChunk*>& dircb_owloads);
 
         virtual bool runOnFunction(llvm::Function& func) override;
     private:

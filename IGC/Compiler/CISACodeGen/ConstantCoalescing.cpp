@@ -114,6 +114,15 @@ void ConstantCoalescing::ProcessFunction(Function* function)
     std::vector<BufChunk*> dircb_owloads;
     std::vector<BufChunk*> indcb_owloads;
     std::vector<BufChunk*> indcb_gathers;
+
+    for (df_iterator<DomTreeNode*> dom_it = df_begin(dom_tree.getRootNode()),
+        dom_end = df_end(dom_tree.getRootNode()); dom_it != dom_end; ++dom_it)
+    {
+        BasicBlock* cur_blk = dom_it->getBlock();
+        FindAllDirectCB(cur_blk, dircb_owloads);
+        dircb_owloads.clear();
+    }
+
     for (df_iterator<DomTreeNode*> dom_it = df_begin(dom_tree.getRootNode()),
         dom_end = df_end(dom_tree.getRootNode()); dom_it != dom_end; ++dom_it)
     {
@@ -549,6 +558,152 @@ void ConstantCoalescing::ProcessBlock(
     } // loop over inst in block
 }
 
+// sort the CB loads with index order
+bool sortFunction(BufChunk* buf1, BufChunk* buf2)
+{
+    return (buf1->addrSpace < buf2->addrSpace ||
+        (buf1->addrSpace == buf2->addrSpace && buf1->chunkStart < buf2->chunkStart));
+}
+
+// find all direct CB, check which ones should be merged together, and move the smallest indexed one to the first used location.
+void ConstantCoalescing::FindAllDirectCB(
+    BasicBlock* blk,
+    std::vector<BufChunk*>& dircb_owloads)
+{
+    int loadOrder = 0;
+    // get work-item analysis, need to update uniformness information
+    for (BasicBlock::iterator BBI = blk->begin(), BBE = blk->end();
+        BBI != BBE; ++BBI)
+    {
+        // skip dead instructions
+        if (BBI->use_empty())
+        {
+            continue;
+        }
+        // bindless case
+        if (LdRawIntrinsic * ldRaw = dyn_cast<LdRawIntrinsic>(BBI))
+        {
+            continue;
+        }
+        LoadInst* inst = dyn_cast<LoadInst>(BBI);
+        // skip load on struct or array type
+        if (!inst || inst->getType()->isAggregateType() ||
+            inst->getPointerAddressSpace() == ADDRESS_SPACE_CONSTANT)
+        {
+            continue;
+        }
+
+        const uint alignment = GetAlignment(inst);
+        Type* loadType = inst->getType();
+        Type* elemType = loadType->getScalarType();
+        // right now, only work on load with dword element-type
+        if (elemType->getPrimitiveSizeInBits() != SIZE_DWORD * 8 || loadType->isVectorTy() || alignment == 0)
+        {
+            continue;
+        }
+
+        // skip stateless path
+        uint bufId = 0;
+        Value* elt_ptrv = nullptr;
+        BufferType bufType = BUFFER_TYPE_UNKNOWN;
+        bool is_cbload = IsReadOnlyLoadDirectCB(inst, bufId, elt_ptrv, bufType);
+        if (is_cbload)
+        {
+            uint addrSpace = inst->getPointerAddressSpace();
+            uint maxEltPlus = 1;
+            const uint scalarSizeInBytes = inst->getType()->getScalarSizeInBits() / 8;
+            uint offsetInBytes = 0;
+
+            if (isa<ConstantPointerNull>(elt_ptrv))
+            {
+            }
+            else if (isa<IntToPtrInst>(elt_ptrv))
+            {
+                Value* elt_idxv = cast<Instruction>(elt_ptrv)->getOperand(0);
+                ConstantInt* offsetConstant = dyn_cast<ConstantInt>(elt_idxv);
+                if (offsetConstant)
+                {   // direct access
+                    offsetInBytes = (uint)offsetConstant->getZExtValue();
+                    if ((int32_t)offsetInBytes < 0)
+                    {
+                        continue;
+                    }
+                }
+                else
+                {
+                    continue;
+                }
+            }
+            const uint eltid = offsetInBytes / scalarSizeInBytes;
+
+            BufChunk* cov_chunk = nullptr;
+
+            cov_chunk = new BufChunk();
+            cov_chunk->bufIdxV = nullptr;
+            cov_chunk->addrSpace = addrSpace;
+            cov_chunk->baseIdxV = nullptr;
+            cov_chunk->elementSize = scalarSizeInBytes;
+            cov_chunk->chunkStart = eltid;
+            cov_chunk->chunkSize = maxEltPlus;
+            cov_chunk->chunkIO = inst;
+            cov_chunk->loadOrder = loadOrder++;
+            //const uint chunkAlignment = std::max<uint>(alignment, 4);
+            //cov_chunk->chunkIO = CreateChunkLoad(inst, cov_chunk, eltid, chunkAlignment);
+            dircb_owloads.push_back(cov_chunk);
+        }  // end of if gfx cbload handling
+    } // loop over inst in block
+
+    if (dircb_owloads.size() <= 1)
+    {
+        return;
+    }
+
+    std::sort(dircb_owloads.begin(), dircb_owloads.end(), sortFunction);
+    std::vector<BufChunk*>::iterator iter = dircb_owloads.begin();
+    BufChunk* firstBufInChunk = *iter;
+    uint firstCBLoadEle = (*iter)->loadOrder;
+    llvm::Instruction* firstCBLoad = (*iter)->chunkIO;
+    llvm::Instruction* MoveToLocation = (*iter)->chunkIO;
+    iter++;
+    while (iter != dircb_owloads.end())
+    {
+        const uint scalarSizeInBytes = (*iter)->elementSize;
+        const uint eltid = (*iter)->chunkStart;
+        uint chunkSize = (*iter)->chunkStart + scalarSizeInBytes - firstBufInChunk->chunkStart;
+        static_assert(MAX_VECTOR_NUM_ELEMENTS >= SIZE_OWORD, "Code below may need an update");
+        if (firstBufInChunk->addrSpace == (*iter)->addrSpace &&
+            (chunkSize * scalarSizeInBytes) <= MAX_OWLOAD_SIZE &&
+            chunkSize <= MAX_VECTOR_NUM_ELEMENTS &&
+            ((scalarSizeInBytes * eltid) % 4) == 0)
+        {
+            if ((*iter)->loadOrder < firstCBLoadEle)
+            {
+                firstCBLoadEle = (*iter)->loadOrder;
+                MoveToLocation = (*iter)->chunkIO;
+            }
+            iter++;
+            continue;
+        }
+        else
+        {
+            // move the CB with the smallest index to before the 1st used CB with the same to-be-merged CBs.
+            if (firstCBLoad != MoveToLocation)
+            {
+                if (Instruction * temp = dyn_cast<Instruction>(firstCBLoad->getOperand(0)))
+                {
+                    firstCBLoad->moveBefore(MoveToLocation);
+                    temp->moveBefore(firstCBLoad);
+                }
+            }
+            firstCBLoadEle = (*iter)->loadOrder;
+            firstBufInChunk = *iter;
+            MoveToLocation = (*iter)->chunkIO;
+            firstCBLoad = (*iter)->chunkIO;
+            iter++;
+        }
+    }
+}
+
 /// check if two access have the same buffer-base
 bool ConstantCoalescing::CompareBufferBase(Value* bufIdxV1, uint addrSpace1, Value* bufIdxV2, uint addrSpace2)
 {
@@ -889,8 +1044,7 @@ void ConstantCoalescing::MergeUniformLoad(Instruction* load,
     const bool isDwordAligned = ((offsetInBytes % 4) == 0 && (eltIdxV == nullptr || alignment >= 4));
 
     BufChunk* cov_chunk = nullptr;
-    for (std::vector<BufChunk*>::reverse_iterator rit = chunk_vec.rbegin(),
-        rie = chunk_vec.rend(); rit != rie; ++rit)
+    for (std::vector<BufChunk*>::iterator rit = chunk_vec.begin(); rit != chunk_vec.end(); rit++)
     {
         BufChunk* cur_chunk = *rit;
         if (CompareBufferBase(cur_chunk->bufIdxV, cur_chunk->addrSpace, bufIdxV, addrSpace) &&
