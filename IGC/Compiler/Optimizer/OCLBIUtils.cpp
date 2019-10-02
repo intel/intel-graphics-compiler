@@ -1677,7 +1677,6 @@ CBuiltinsResolver::CBuiltinsResolver(CImagesBI::ParamMap* paramMap, CImagesBI::I
     m_CommandMap["__builtin_IB_read_cycle_counter"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_cycleCounter, false);
     m_CommandMap["__builtin_IB_source_value"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_source_value, false);
     m_CommandMap["__builtin_IB_set_dbg_register"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_SetDebugReg, false);
-    m_CommandMap["__builtin_IB_movreg"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_movreg, false);
     m_CommandMap["__builtin_IB_movflag"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_movflag, false);
     m_CommandMap["__builtin_IB_movcr"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_movcr, false);
     m_CommandMap["__builtin_IB_hw_thread_id"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_hw_thread_id, false);

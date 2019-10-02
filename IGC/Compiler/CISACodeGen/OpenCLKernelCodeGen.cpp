@@ -1143,7 +1143,6 @@ namespace IGC
             }
         }
         break;
-
         case KernelArg::ArgType::R1:
             m_kernelInfo.m_threadPayload.UnusedPerThreadConstantPresent = true;
             break;

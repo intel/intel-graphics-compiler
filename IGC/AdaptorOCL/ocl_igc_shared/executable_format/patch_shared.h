@@ -177,7 +177,7 @@ struct SPatchThreadPayload :
 };
 
 // Update CURRENT_ICBE_VERSION when modifying the patch list
-static_assert( sizeof( SPatchThreadPayload ) == ( 56 + sizeof( SPatchItemHeader ) ) , "The size of SPatchThreadPayload is not what is expected" );
+static_assert(sizeof(SPatchThreadPayload) == (56 + sizeof(SPatchItemHeader)), "The size of SPatchThreadPayload is not what is expected");
 
 /*****************************************************************************\
 STRUCT: SPatchExecutionEnvironment

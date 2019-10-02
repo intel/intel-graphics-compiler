@@ -92,9 +92,14 @@ CIF_DEFINE_INTERFACE_VER(GTSystemInfo, 1){
   virtual void SetIsDynamicallyPopulated(bool v);
 };
 
+CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(GTSystemInfo, 2, 1) {
+  CIF_INHERIT_CONSTRUCTOR();
+
+};
+
 CIF_GENERATE_VERSIONS_LIST(GTSystemInfo);
 CIF_MARK_LATEST_VERSION(GTSystemInfoLatest, GTSystemInfo);
-using GTSystemInfoTagOCL = GTSystemInfoLatest; // Note : can tag with different version for
+using GTSystemInfoTagOCL = GTSystemInfo<1>;    // Note : can tag with different version for
                                                //        transition periods
 
 }

@@ -7627,7 +7627,14 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_readsurfaceinfoptr:
         emitSurfaceInfo(inst);
         break;
-
+    case GenISAIntrinsic::GenISA_mov_identity: {
+      // Use Or instead of a Copy, as VISA will remove redundant movs.
+      auto Var = GetSymbol(inst->getOperand(0));
+      CVariable* Zero = m_currShader->ImmToVariable(0, ISA_TYPE_UD);
+      m_encoder->Or(Var, Var, Zero);
+      m_encoder->Push();
+      break;
+    }
     case GenISAIntrinsic::GenISA_source_value: {
         m_encoder->Copy(m_currShader->GetNULL(), GetSymbol(inst->getOperand(0)));
         m_encoder->Push();

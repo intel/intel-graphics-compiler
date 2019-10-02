@@ -33,7 +33,6 @@ Abstract:   Contains common patch structure definitions
 
 namespace iOpenCL
 {
-
 const uint32_t CURRENT_ICBE_VERSION = 1060;
 
 const uint32_t MAGIC_CL = 0x494E5443;      // 'I', 'N', 'T', 'C'
@@ -264,7 +263,7 @@ enum DATA_PARAMETER_TOKEN
 };
 
 // Update CURRENT_ICBE_VERSION when modifying the patch list
-static_assert( NUM_DATA_PARAMETER_TOKENS == 44, "NUM_DATA_PARAMETER_TOKENS has invalid value");
+static_assert(NUM_DATA_PARAMETER_TOKENS == 44, "NUM_DATA_PARAMETER_TOKENS has invalid value");
 
 /*****************************************************************************\
 ENUM: CONSTANT_BUFFER_TYPE

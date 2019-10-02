@@ -57,7 +57,7 @@ inline void PopulateInterfaceWith(IGC::Platform<Ver> &dst,
 namespace GtSysInfoHelper {
 template <CIF::Version_t Ver, typename SrcStructT>
 inline void PopulateInterfaceWith(IGC::GTSystemInfo<Ver> &dst,
-                                   const SrcStructT &src) {
+                                  const SrcStructT &src) {
   COPY_VAL_EXACT(EUCount);
   COPY_VAL_EXACT(ThreadCount);
   COPY_VAL_EXACT(SliceCount);
@@ -86,12 +86,19 @@ inline void PopulateInterfaceWith(IGC::GTSystemInfo<Ver> &dst,
 
   COPY_VAL_EXACT(IsDynamicallyPopulated);
 }
+
+template <typename SrcStructT>
+inline void PopulateInterfaceWith(IGC::GTSystemInfo<2>& dst,
+                                  const SrcStructT& src) {
+  PopulateInterfaceWith<1>(dst, src);
+}
+
 }
 
 namespace IgcPlatformFeaturesHelper {
 template <CIF::Version_t Ver, typename SrcStructT>
 inline void PopulateInterfaceWith(IGC::IgcFeaturesAndWorkarounds<Ver> &dst,
-                                   const SrcStructT &src) {
+                                  const SrcStructT &src) {
   COPY_VAL_EXACT(FtrDesktop);
   COPY_VAL_EXACT(FtrChannelSwizzlingXOREnabled);
 

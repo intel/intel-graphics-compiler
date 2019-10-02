@@ -223,7 +223,7 @@ Imported_Intrinsics = \
     "GenISA_vmeSendSIC": ["void",["int","int","int","int","int","int"],"None"],
     "GenISA_vmeSendSIC2": ["int4",["int4","int","int","int"],"None"],
     "GenISA_source_value": ["void",["int"],"None"],
-    "GenISA_movreg": ["int",["int"],"None"],
+    "GenISA_mov_identity": ["void",["int"],"None"],
     "GenISA_movflag": ["int",["int"],"None"],
     "GenISA_movcr": ["int",["int"],"None"],
     "GenISA_hw_thread_id": ["int",[],"NoMem"],
