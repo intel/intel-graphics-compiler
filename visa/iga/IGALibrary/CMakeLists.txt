@@ -12,6 +12,10 @@ else()
 endif()
 include_directories(${GED_INCLUDE} "../GEDLibrary/${GED_BRANCH}/Source/common")
 
+if(NOT IGC_BUILD)
+    include_directories("../../../inc")
+endif(NOT IGC_BUILD)
+
 # Add subdirectories with all the various IGA sources
 add_subdirectory(api)
 add_subdirectory(Backend)
