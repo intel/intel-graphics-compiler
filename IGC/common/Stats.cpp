@@ -706,12 +706,12 @@ void TimeStats::printSumTimeCSV(const char* outputFile) const
 {
     assert( m_isPostProcessed && "Print functions should only be called on a Post-Processed TimeStats object" );
 
-    bool fileExist = 0;
+    bool fileExist = false;
 
     FILE* fp = fopen(outputFile, "r");
     if( fp )
     {
-        fileExist = 1;
+        fileExist = true;
         fclose(fp);
     }
 
@@ -785,12 +785,12 @@ void TimeStats::printPerPassSumTimeCSV(const char* outputFile) const
         return;
     }
 
-    bool fileExist = 0;
+    bool fileExist = false;
 
     FILE* fp = fopen(outputFile, "r");
     if (fp)
     {
-        fileExist = 1;
+        fileExist = true;
         fclose(fp);
     }
 
@@ -975,7 +975,7 @@ void TimeStats::printPerPassSumTime(llvm::raw_ostream& OS) const
     FS << "\n";
 
     PerPassTimeStat stat;
-    uint64_t ticks;
+    uint64_t ticks = 0;
     std::map<std::string, PerPassTimeStat>::const_iterator iter;
 
     for (iter = m_PassTimeStatsMap.begin(); iter != m_PassTimeStatsMap.end(); iter++)
@@ -1003,18 +1003,18 @@ void TimeStats::printTimeCSV( std::string const& corpusName ) const
     const std::string outputFilePath = std::string("c:\\Intel\\") + "TimeStat_" + IGC::Debug::GetShaderCorpusName() + ".csv";
     const char *outputFile = outputFilePath.c_str();
 
-    bool fileExist = 0;
+    bool fileExist = false;
 
     FILE* fp = fopen(outputFile, "r");
     if( fp )
     {
-        fileExist = 1;
+        fileExist = true;
         fclose(fp);
     }
 
     FILE* fileName = fopen(outputFile, "a");
 
-    if( !fileExist )
+    if( !fileExist && fileName)
     {
         fprintf(fileName, "Frequency:%ju,", m_freq);
         for (int i=0;i<MAX_COMPILE_TIME_INTERVALS;i++)
@@ -1027,18 +1027,22 @@ void TimeStats::printTimeCSV( std::string const& corpusName ) const
         fprintf(fileName, "\n");
     }
 
-    fprintf(fileName, "%s.isa,", corpusName.c_str() );
-    for (int i=0;i<MAX_COMPILE_TIME_INTERVALS;i++)
+    if (fileName)
     {
-        if( !skipTimer(i) )
+        fprintf(fileName, "%s.isa,", corpusName.c_str());
+        for (int i = 0; i < MAX_COMPILE_TIME_INTERVALS; i++)
         {
-            const COMPILE_TIME_INTERVALS interval = static_cast<COMPILE_TIME_INTERVALS>(i);
-            fprintf(fileName, "%jd,", getCompileTime( interval ) );
+            if (!skipTimer(i))
+            {
+                const COMPILE_TIME_INTERVALS interval = static_cast<COMPILE_TIME_INTERVALS>(i);
+                fprintf(fileName, "%jd,", getCompileTime(interval));
+            }
         }
+
+        fprintf(fileName, "\n");
+        fclose(fileName);
     }
 
-    fprintf(fileName, "\n");
-    fclose(fileName);
 }
 
 void TimeStats::printPerPassTimeCSV(std::string const& corpusName) const
@@ -1052,18 +1056,18 @@ void TimeStats::printPerPassTimeCSV(std::string const& corpusName) const
 
     const std::string outputFilePath = std::string("c:\\Intel\\") + "TimeStatPerPass_" + IGC::Debug::GetShaderCorpusName() + ".csv";
     const char* outputFile = outputFilePath.c_str();
-    bool fileExist = 0;
+    bool fileExist = false;
 
     FILE* fp = fopen(outputFile, "r");
     if (fp)
     {
-        fileExist = 1;
+        fileExist = true;
         fclose(fp);
     }
 
     FILE* fileName = fopen(outputFile, "a");
 
-    if (!fileExist)
+    if (!fileExist && fileName)
     {
         fprintf(fileName, "Frequency:%ju,", m_freq);
 
@@ -1076,16 +1080,19 @@ void TimeStats::printPerPassTimeCSV(std::string const& corpusName) const
         fprintf(fileName, "\n");
     }
 
-    fprintf(fileName, "%s.isa,%d,%ju,", corpusName.c_str(), (int)m_PassTimeStatsMap.size(), m_PassTotalTicks);
-    std::map<std::string, PerPassTimeStat>::const_iterator iter;
-
-    for (iter = m_PassTimeStatsMap.begin(); iter != m_PassTimeStatsMap.end(); iter++)
+    if (fileName)
     {
-        fprintf(fileName, "%jd,", iter->second.PassElapsedTime);
-    }
+        fprintf(fileName, "%s.isa,%d,%ju,", corpusName.c_str(), (int)m_PassTimeStatsMap.size(), m_PassTotalTicks);
+        std::map<std::string, PerPassTimeStat>::const_iterator iter;
 
-    fprintf(fileName, "\n");
-    fclose(fileName);
+        for (iter = m_PassTimeStatsMap.begin(); iter != m_PassTimeStatsMap.end(); iter++)
+        {
+            fprintf(fileName, "%jd,", iter->second.PassElapsedTime);
+        }
+
+        fprintf(fileName, "\n");
+        fclose(fileName);
+    }
 }
 
 TimeStats TimeStats::postProcess() const

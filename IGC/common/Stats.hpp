@@ -219,9 +219,9 @@ int parentIntervalDepth( COMPILE_TIME_INTERVALS cti );
 
 struct PerPassTimeStat
 {
-    uint64_t PassClockStart;
-    uint64_t PassElapsedTime;
-    int PassHitCount;
+    uint64_t PassClockStart = 0;
+    uint64_t PassElapsedTime = 0;
+    int PassHitCount = 0;
 };
 
 class TimeStats
