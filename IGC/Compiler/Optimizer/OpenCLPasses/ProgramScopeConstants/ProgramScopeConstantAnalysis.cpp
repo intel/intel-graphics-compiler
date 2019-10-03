@@ -418,7 +418,7 @@ void ProgramScopeConstantAnalysis::addData(Constant* initializer,
     else if (ConstantExpr * ce = dyn_cast<ConstantExpr>(initializer))
     {
         // Constant expressions are evil. We only handle a subset that we expect.
-        // Right now, this means a bitcast, or a ptrtoint/inttoptr pair. 
+        // Right now, this means a bitcast, or a ptrtoint/inttoptr pair.
         // Handle it by adding the source of the cast.
         if (ce->getOpcode() == Instruction::BitCast ||
             ce->getOpcode() == Instruction::AddrSpaceCast)
@@ -453,7 +453,7 @@ void ProgramScopeConstantAnalysis::addData(Constant* initializer,
         inlineProgramScopeBuffer.insert(inlineProgramScopeBuffer.end(), zeroSize, 0);
     }
     // If this is an sequential type which is not a CDS or zero, have to collect the values
-    // element by element. Note that this is not exclusive with the two cases above, so the 
+    // element by element. Note that this is not exclusive with the two cases above, so the
     // order of ifs is meaningful.
     else if (dyn_cast<CompositeType>(initializer->getType()))
     {

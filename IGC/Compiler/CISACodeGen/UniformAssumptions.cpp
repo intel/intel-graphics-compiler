@@ -118,12 +118,12 @@ namespace IGC {
             }
         }
 
-        // This is very conservative simplification of rules implemented in Uniform Analysis (WIANalysis pass). 
-        // Uniform Analysis additionally tries to prove some instructions to be uniform even if they do not 
+        // This is very conservative simplification of rules implemented in Uniform Analysis (WIANalysis pass).
+        // Uniform Analysis additionally tries to prove some instructions to be uniform even if they do not
         // have all uniform operands. Here, we simply assume that:
         // - CallInst, AllocaInst, VAArgInst and PHINode that were marked by UA as non-uniform remain non-uniform.
         // - Other instructions marked by UA as non-uniform can only be assumed uniform if all of its operands can be assumed uniform.
-        // In the future, it would be better to reuse Uniform Analysis logic here - it would be more reliable 
+        // In the future, it would be better to reuse Uniform Analysis logic here - it would be more reliable
         // and would also optimize more cases.
         if (llvm::isa<llvm::CallInst>(V) ||
             llvm::isa<llvm::AllocaInst>(V) ||

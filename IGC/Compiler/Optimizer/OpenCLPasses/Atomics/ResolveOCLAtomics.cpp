@@ -64,7 +64,7 @@ OCLAtomicAttrs ResolveOCLAtomics::genAtomicAttrs(AtomicOp   op,
     //                 |
     //       not used  V   op
     //       |-------|---|---|
-    //    0 x 0 0 0 0 0 0 0 0 
+    //    0 x 0 0 0 0 0 0 0 0
     return op | (bufType << ATTR_BUFFER_TYPE_SHIFT);
 }
 
@@ -112,7 +112,7 @@ bool ResolveOCLAtomics::runOnModule(Module& M)
     {
         m_64bitPointer = false;
     }
-    
+
     m_changed = false;
 
     // Visit all call instructions in the function F.
@@ -269,7 +269,7 @@ CallInst* ResolveOCLAtomics::genGetBufferPtr(CallInst& callInst, BufferType bufT
     }
     Type* ptrType = PointerType::get(m_Int32Ty, addressSpace);
     Function* getBufferPtr = GenISAIntrinsic::getDeclaration(m_pModule, GenISAIntrinsic::GenISA_GetBufferPtr, ptrType);
-    
+
     // Generate a call to GenISA.GetBufferPtr intrinsic:
     //   %base_ptr = call float* @llvm.GenISA.GetBufferPtr(i32 %bufIdx, i32 %type)
     llvm::SmallVector<Value*, 2> getBufferPtrArgs;
@@ -279,7 +279,7 @@ CallInst* ResolveOCLAtomics::genGetBufferPtr(CallInst& callInst, BufferType bufT
     return CallInst::Create(getBufferPtr, getBufferPtrArgs, callInst.getName(), &callInst);
 }
 
-// i64 local atomics use a spinlock for emulation. 
+// i64 local atomics use a spinlock for emulation.
 // This spinlock needs to be inserted at llvm-ir level, as OpenCL doesn't allow
 // local variables in program scope.
 void ResolveOCLAtomics::processGetLocalLock(CallInst& callInst)
@@ -336,11 +336,11 @@ void ResolveOCLAtomics::findLockUsers(Value* V)
 //     %4 = or i32 %3, %2
 //     %5 = icmp eq i32 %4, 0
 //     br i1 %5, label %init_spinlock_var.start, label %init_spinlock_var.end
-// 
+//
 // init_spinlock_var.start:                          ; preds = %entry
 //     store i32 0, i32 addrspace(3)* @spinlock
 // br label %init_spinlock_var.end
-// 
+//
 // init_spinlock_var.end:                            ; preds = %init_spinlock_var.start, %entry
 //     call void @llvm.genx.GenISA.memoryfence(i1 true, i1 false, i1 false, i1 false, i1 false, i1 false, i1 true)
 //     call void @llvm.genx.GenISA.threadgroupbarrier()

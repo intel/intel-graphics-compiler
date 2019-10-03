@@ -131,8 +131,8 @@ struct SMediaStateInterfaceDescriptorData
     {
         struct _All
         {
-            DWORD       ConstantURBEntryReadOffset          : BITFIELD_RANGE(  0, 15 );  
-            DWORD       ConstantURBEntryReadLength          : BITFIELD_RANGE(  16, 31 ); 
+            DWORD       ConstantURBEntryReadOffset          : BITFIELD_RANGE(  0, 15 );
+            DWORD       ConstantURBEntryReadLength          : BITFIELD_RANGE(  16, 31 );
         } All;
 
         struct _Gen8
@@ -149,7 +149,7 @@ struct SMediaStateInterfaceDescriptorData
     union _DW5
     {
         struct _All
-        {   
+        {
             DWORD       BarrierId                           : BITFIELD_RANGE( 0, 3 );
             DWORD       _Unused                             : BITFIELD_RANGE( 4, 31);
         } All;
@@ -166,8 +166,8 @@ struct SMediaStateInterfaceDescriptorData
 
         struct _Gen8
         {
-            DWORD       ConstantURBEntryReadOffset          : BITFIELD_RANGE(  0, 15 );  
-            DWORD       ConstantURBEntryReadLength          : BITFIELD_RANGE(  16, 31 ); 
+            DWORD       ConstantURBEntryReadOffset          : BITFIELD_RANGE(  0, 15 );
+            DWORD       ConstantURBEntryReadLength          : BITFIELD_RANGE(  16, 31 );
         } Gen8;
 
         DWORD   Value;
@@ -178,7 +178,7 @@ struct SMediaStateInterfaceDescriptorData
     {
         struct _Gen7_5
         {
-            DWORD       CrossThreadConstantDataReadLength   : BITFIELD_RANGE(  0, 7  ); // U8      
+            DWORD       CrossThreadConstantDataReadLength   : BITFIELD_RANGE(  0, 7  ); // U8
             DWORD       _Unused                             : BITFIELD_RANGE(  8, 31 );
         } Gen7_5;
 
@@ -201,7 +201,7 @@ struct SMediaStateInterfaceDescriptorData
     {
         struct _Gen8
         {
-            DWORD       CrossThreadConstantDataReadLength   : BITFIELD_RANGE(  0, 7  ); // U8      
+            DWORD       CrossThreadConstantDataReadLength   : BITFIELD_RANGE(  0, 7  ); // U8
             DWORD       _Unused                             : BITFIELD_RANGE(  8, 31 ); // Reserved
         } Gen8;
 
@@ -241,8 +241,8 @@ struct SMediaStateMediaInterfaceDescriptorLoad
     {
         struct _All
         {
-            DWORD       InterfaceDescriptorTotalLength      : BITFIELD_RANGE( 0, 16 );  
-            DWORD       _Unused                             : BITFIELD_RANGE( 17, 31 ); 
+            DWORD       InterfaceDescriptorTotalLength      : BITFIELD_RANGE( 0, 16 );
+            DWORD       _Unused                             : BITFIELD_RANGE( 17, 31 );
         } All;
 
         DWORD   Value;
@@ -253,11 +253,11 @@ struct SMediaStateMediaInterfaceDescriptorLoad
     {
         struct _All
         {
-            DWORD       InterfaceDescriptorDataStartAddress : BITFIELD_RANGE( 0, 31 );              
+            DWORD       InterfaceDescriptorDataStartAddress : BITFIELD_RANGE( 0, 31 );
         } All;
 
         DWORD   Value;
-    } DW3;   
+    } DW3;
 };
 
 C_ASSERT( SIZE32( SMediaStateMediaInterfaceDescriptorLoad ) == 4 );
@@ -384,8 +384,8 @@ struct SMediaStateMediaVFEState
 
         struct _Gen10
         {
-            DWORD       SliceDisable                        : BITFIELD_RANGE(  0,  1 ); 
-            DWORD       FlushOnBarriers                     : BITFIELD_RANGE(  2,  3 ); 
+            DWORD       SliceDisable                        : BITFIELD_RANGE(  0,  1 );
+            DWORD       FlushOnBarriers                     : BITFIELD_RANGE(  2,  3 );
             DWORD       _Unused                             : BITFIELD_RANGE(  4,  7 ); // reserved
             DWORD       ObjectID                            : BITFIELD_RANGE(  8, 31 );
         } Gen10;
@@ -589,7 +589,7 @@ struct SMediaStateMediaStateFlush
         } Gen7;
 
         DWORD   Value;
-    } DW1;  
+    } DW1;
 };
 
 C_ASSERT( SIZE32( SMediaStateMediaStateFlush ) == 2 );
@@ -636,7 +636,7 @@ struct SMediaStateGPGPUWalker
     {
         struct _All
         {
-            DWORD       ThreadWidthCounterMaximum           : BITFIELD_RANGE(  0,  5 );      
+            DWORD       ThreadWidthCounterMaximum           : BITFIELD_RANGE(  0,  5 );
             DWORD       _Unused1                            : BITFIELD_RANGE(  6,  7 );
             DWORD       ThreadHeightCounterMaximum          : BITFIELD_RANGE(  8, 13 );
             DWORD       _Unused2                            : BITFIELD_RANGE( 14, 15 );
@@ -680,7 +680,7 @@ struct SMediaStateGPGPUWalker
 
         struct _Gen8
         {
-            DWORD       ThreadWidthCounterMaximum           : BITFIELD_RANGE(  0,  5 );      
+            DWORD       ThreadWidthCounterMaximum           : BITFIELD_RANGE(  0,  5 );
             DWORD       _Unused1                            : BITFIELD_RANGE(  6,  7 ); // Reserved
             DWORD       ThreadHeightCounterMaximum          : BITFIELD_RANGE(  8, 13 );
             DWORD       _Unused2                            : BITFIELD_RANGE( 14, 15 ); // Reserved

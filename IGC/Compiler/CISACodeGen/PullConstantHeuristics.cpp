@@ -62,7 +62,7 @@ static bool isSendMessage(GenIntrinsicInst* inst)
     return false;
 }
 
-//approximating EU insts count - TODO: need a better way to do this 
+//approximating EU insts count - TODO: need a better way to do this
 static unsigned getEUInstEstimate(Instruction* inst)
 {
     //handle ALU, Logical, and load-store insts

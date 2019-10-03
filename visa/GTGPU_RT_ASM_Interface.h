@@ -27,7 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //
-// if GTGPU is defined, the definitions of the two routines are 
+// if GTGPU is defined, the definitions of the two routines are
 // in GTGPU runtime
 //
 extern "C" void* allocCodeBlock(size_t sz);

@@ -28,7 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "spirv.h"
 
 // Functions have been moved to IGILBiF_Intrinsics_Impl.cl since they had intrinsics call.
- 
+
 
 
 

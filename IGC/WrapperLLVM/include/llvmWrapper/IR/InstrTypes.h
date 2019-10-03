@@ -39,7 +39,7 @@ namespace IGCLLVM
     using llvm::BinaryOperator;
 #elif LLVM_VERSION_MAJOR >= 8
     using TerminatorInst = llvm::Instruction;
-    
+
     class BinaryOperator : public llvm::BinaryOperator
     {
     public:

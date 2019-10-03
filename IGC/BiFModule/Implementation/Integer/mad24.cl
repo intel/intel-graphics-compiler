@@ -28,7 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Headers/spirv.h"
 
 
- 
+
 
 INLINE
 int2 __builtin_spirv_OpenCL_s_mad24_v2i32_v2i32_v2i32( int2 x,

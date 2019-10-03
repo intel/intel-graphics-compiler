@@ -40,47 +40,47 @@ namespace CLElfLib
  Class:         CElfReader
 
  Description:   Class to provide simpler interaction with the ELF standard
-                binary object.  SElf64Header defines the ELF header type and 
+                binary object.  SElf64Header defines the ELF header type and
                 SElf64SectionHeader defines the section header type.
 
 \******************************************************************************/
 class CElfReader
 {
 public:
-    static CElfReader* ELF_CALL Create( 
+    static CElfReader* ELF_CALL Create(
         const char* pElfBinary,
         const size_t elfBinarySize );
 
-    static void ELF_CALL Delete( 
+    static void ELF_CALL Delete(
         CElfReader* &pElfObject );
 
-    static bool ELF_CALL IsValidElf64( 
-        const void* pBinary, 
+    static bool ELF_CALL IsValidElf64(
+        const void* pBinary,
         const size_t binarySize );
 
     const SElf64Header* ELF_CALL GetElfHeader();
 
-    const SElf64SectionHeader* ELF_CALL GetSectionHeader( 
+    const SElf64SectionHeader* ELF_CALL GetSectionHeader(
         unsigned int sectionIndex );
 
-    const char* ELF_CALL GetSectionName( 
+    const char* ELF_CALL GetSectionName(
         unsigned int sectionIndex );
 
-    E_RETVAL ELF_CALL GetSectionData( 
-        const unsigned int sectionIndex, 
-        char* &pData, 
+    E_RETVAL ELF_CALL GetSectionData(
+        const unsigned int sectionIndex,
+        char* &pData,
         size_t &dataSize );
 
-    E_RETVAL ELF_CALL GetSectionData( 
-        const char* sectionName, 
-        char* &pData, 
+    E_RETVAL ELF_CALL GetSectionData(
+        const char* sectionName,
+        char* &pData,
         size_t &dataSize );
 
 protected:
-    ELF_CALL CElfReader( 
-        const char* pElfBinary, 
+    ELF_CALL CElfReader(
+        const char* pElfBinary,
         const size_t elfBinarySize );
-    
+
     ELF_CALL ~CElfReader();
 
     SElf64Header*  m_pElfHeader;    // pointer to the ELF header

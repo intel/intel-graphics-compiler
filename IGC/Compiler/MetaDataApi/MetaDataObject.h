@@ -104,7 +104,7 @@ namespace IGC
         {
             if (NULL == pNode)
             {
-                // optional node 
+                // optional node
                 return NULL;
             }
 

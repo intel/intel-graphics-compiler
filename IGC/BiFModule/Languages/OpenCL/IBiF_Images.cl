@@ -46,11 +46,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ///////////////////////////////
 extern __constant int __EnableSWSrgbWrites;
 
-#ifdef cl_khr_gl_msaa_sharing                                            
-#pragma OPENCL EXTENSION cl_khr_gl_msaa_sharing : enable                 
-#endif //cl_khr_gl_msaa_sharing         
+#ifdef cl_khr_gl_msaa_sharing
+#pragma OPENCL EXTENSION cl_khr_gl_msaa_sharing : enable
+#endif //cl_khr_gl_msaa_sharing
 
-// get_image_srgb_channel_order() 
+// get_image_srgb_channel_order()
 // Note : this is to optimize deternimation of SRGB image formats
 #define DECL_GET_IMAGE_CHANNEL_ORDER(NAME, TYPE)\
   INLINE int OVERLOADABLE NAME(write_only TYPE image) {\
@@ -77,7 +77,7 @@ DECL_GET_IMAGE_CHANNEL_ORDER_ALL_TYPES(get_image_srgb_channel_order)
 #undef DECL_GET_IMAGE_CHANNEL_ORDER_ALL_TYPES
 #undef DECL_GET_IMAGE_CHANNEL_ORDER
 
-// Note : this function makes an assumption that the result is being 
+// Note : this function makes an assumption that the result is being
 //        clampled to (0, 1) by the caller
 INLINE static float OVERLOADABLE __intel_rgb_to_srgb( float c )
 {
@@ -127,10 +127,10 @@ DEF_IMAGE_IS_SRGB(image2d_array_t)
          return color;\
       }\
   }
-  
+
 #define DEF_IMAGE_CONV_RGB_TO_OUT_ALL_ELLS(IMAGE_T)\
   DEF_IMAGE_CONV_RGB_TO_OUT(IMAGE_T, float4)
-  
+
 DEF_IMAGE_CONV_RGB_TO_OUT_ALL_ELLS(image1d_t)
 DEF_IMAGE_CONV_RGB_TO_OUT_ALL_ELLS(image2d_t)
 DEF_IMAGE_CONV_RGB_TO_OUT_ALL_ELLS(image3d_t)
@@ -141,7 +141,7 @@ DEF_IMAGE_CONV_RGB_TO_OUT_ALL_ELLS(image2d_array_t)
 #undef DEF_IMAGE_CONV_RGB_TO_OUT_ALL_ELLS
 #undef DEF_IMAGE_CONV_RGB_TO_OUT
 
- 
+
 ///////////////////////////////
 //
 // read_image*()

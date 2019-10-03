@@ -105,7 +105,7 @@ bool VariableReuseAnalysis::runOnFunction(Function& F)
         m_pCtx->platform.GetPlatformFamily() >= IGFX_GEN9_CORE)
     {
         // Setup ArgDeSSARoot (for subroutine, it might be conservative,
-        // but it should work.). 
+        // but it should work.).
         m_ArgDeSSARoot.clear();
         for (auto II = F.arg_begin(), IE = F.arg_end(); II != IE; ++II)
         {

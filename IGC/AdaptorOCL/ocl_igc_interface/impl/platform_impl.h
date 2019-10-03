@@ -37,9 +37,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace IGC {
 
 CIF_DECLARE_INTERFACE_PIMPL(Platform) : CIF::PimplBase {
-  CIF_PIMPL_DECLARE_CONSTRUCTOR() 
-  { 
-      memset(&p, 0, sizeof(p)); 
+  CIF_PIMPL_DECLARE_CONSTRUCTOR()
+  {
+      memset(&p, 0, sizeof(p));
   }
 
   PLATFORM p;

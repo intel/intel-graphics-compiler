@@ -108,20 +108,20 @@ public:
     unsigned getNumGRFSpill() const { return numGRFSpill; }
     unsigned getNumGRFFill() const { return numGRFFill; }
     unsigned getNumGRFMove() const { return numGRFMove; }
-    // return the next cumulative logical offset. This does not non-spilled stuff like 
+    // return the next cumulative logical offset. This does not non-spilled stuff like
     // private variables placed by IGC (marked by spill_mem_offset)
     // this should only be called after insertSpillFillCode()
     uint32_t getNextOffset() const { return nextSpillOffset_; }
-    // return the cumulative scratch space offset for the next spilled variable. 
+    // return the cumulative scratch space offset for the next spilled variable.
     // This adjusts for scratch space reserved for file scope vars and IGC/GT-pin
-    uint32_t getNextScratchOffset() const 
+    uint32_t getNextScratchOffset() const
     {
         int offset = nextSpillOffset_;
         getSpillOffset(offset);
         return offset;
     }
 
-    // convert zero-based logical offset into the scratch space offset. 
+    // convert zero-based logical offset into the scratch space offset.
     void getSpillOffset(int& logicalOffset) const
     {
         logicalOffset += globalScratchOffset;
@@ -137,7 +137,7 @@ private:
 
     bool handleAddrTakenSpills( G4_Kernel * kernel, PointsToAnalysis& pointsToAnalysis );
     void insertAddrTakenSpillFill( G4_Kernel * kernel, PointsToAnalysis& pointsToAnalysis );
-    void insertAddrTakenSpillAndFillCode( G4_Kernel* kernel, G4_BB* bb, INST_LIST::iterator inst_it, 
+    void insertAddrTakenSpillAndFillCode( G4_Kernel* kernel, G4_BB* bb, INST_LIST::iterator inst_it,
         G4_Operand* opnd, PointsToAnalysis& pointsToAnalysis, bool spill, unsigned int bbid);
     void prunePointsTo( G4_Kernel* kernel, PointsToAnalysis& pointsToAnalysis );
 

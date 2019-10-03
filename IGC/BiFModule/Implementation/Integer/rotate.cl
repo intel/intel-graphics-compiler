@@ -40,7 +40,7 @@ INLINE
 uchar2 __builtin_spirv_OpenCL_rotate_v2i8_v2i8( uchar2 v,
                                          uchar2 i )
 {
-    uchar2 temp; 
+    uchar2 temp;
     temp.s0 = __builtin_spirv_OpenCL_rotate_i8_i8(v.s0, i.s0);
     temp.s1 = __builtin_spirv_OpenCL_rotate_i8_i8(v.s1, i.s1);
     return temp;
@@ -50,7 +50,7 @@ INLINE
 uchar3 __builtin_spirv_OpenCL_rotate_v3i8_v3i8( uchar3 v,
                                          uchar3 i )
 {
-    uchar3 temp; 
+    uchar3 temp;
     temp.s0 = __builtin_spirv_OpenCL_rotate_i8_i8(v.s0, i.s0);
     temp.s1 = __builtin_spirv_OpenCL_rotate_i8_i8(v.s1, i.s1);
     temp.s2 = __builtin_spirv_OpenCL_rotate_i8_i8(v.s2, i.s2);
@@ -61,7 +61,7 @@ INLINE
 uchar4 __builtin_spirv_OpenCL_rotate_v4i8_v4i8( uchar4 v,
                                          uchar4 i )
 {
-    uchar4 temp; 
+    uchar4 temp;
     temp.s0 = __builtin_spirv_OpenCL_rotate_i8_i8(v.s0, i.s0);
     temp.s1 = __builtin_spirv_OpenCL_rotate_i8_i8(v.s1, i.s1);
     temp.s2 = __builtin_spirv_OpenCL_rotate_i8_i8(v.s2, i.s2);
@@ -73,7 +73,7 @@ INLINE
 uchar8 __builtin_spirv_OpenCL_rotate_v8i8_v8i8( uchar8 v,
                                          uchar8 i )
 {
-    uchar8 temp; 
+    uchar8 temp;
     temp.s0 = __builtin_spirv_OpenCL_rotate_i8_i8(v.s0, i.s0);
     temp.s1 = __builtin_spirv_OpenCL_rotate_i8_i8(v.s1, i.s1);
     temp.s2 = __builtin_spirv_OpenCL_rotate_i8_i8(v.s2, i.s2);
@@ -89,7 +89,7 @@ INLINE
 uchar16 __builtin_spirv_OpenCL_rotate_v16i8_v16i8( uchar16 v,
                                             uchar16 i )
 {
-    uchar16 temp; 
+    uchar16 temp;
     temp.s0 = __builtin_spirv_OpenCL_rotate_i8_i8(v.s0, i.s0);
     temp.s1 = __builtin_spirv_OpenCL_rotate_i8_i8(v.s1, i.s1);
     temp.s2 = __builtin_spirv_OpenCL_rotate_i8_i8(v.s2, i.s2);
@@ -121,7 +121,7 @@ INLINE
 ushort2 __builtin_spirv_OpenCL_rotate_v2i16_v2i16( ushort2 v,
                                             ushort2 i )
 {
-    ushort2 temp; 
+    ushort2 temp;
     temp.s0 = __builtin_spirv_OpenCL_rotate_i16_i16(v.s0, i.s0);
     temp.s1 = __builtin_spirv_OpenCL_rotate_i16_i16(v.s1, i.s1);
     return temp;
@@ -131,7 +131,7 @@ INLINE
 ushort3 __builtin_spirv_OpenCL_rotate_v3i16_v3i16( ushort3 v,
                                             ushort3 i )
 {
-    ushort3 temp; 
+    ushort3 temp;
     temp.s0 = __builtin_spirv_OpenCL_rotate_i16_i16(v.s0, i.s0);
     temp.s1 = __builtin_spirv_OpenCL_rotate_i16_i16(v.s1, i.s1);
     temp.s2 = __builtin_spirv_OpenCL_rotate_i16_i16(v.s2, i.s2);
@@ -142,7 +142,7 @@ INLINE
 ushort4 __builtin_spirv_OpenCL_rotate_v4i16_v4i16( ushort4 v,
                                             ushort4 i )
 {
-    ushort4 temp; 
+    ushort4 temp;
     temp.s0 = __builtin_spirv_OpenCL_rotate_i16_i16(v.s0, i.s0);
     temp.s1 = __builtin_spirv_OpenCL_rotate_i16_i16(v.s1, i.s1);
     temp.s2 = __builtin_spirv_OpenCL_rotate_i16_i16(v.s2, i.s2);
@@ -154,7 +154,7 @@ INLINE
 ushort8 __builtin_spirv_OpenCL_rotate_v8i16_v8i16( ushort8 v,
                                             ushort8 i )
 {
-    ushort8 temp; 
+    ushort8 temp;
     temp.s0 = __builtin_spirv_OpenCL_rotate_i16_i16(v.s0, i.s0);
     temp.s1 = __builtin_spirv_OpenCL_rotate_i16_i16(v.s1, i.s1);
     temp.s2 = __builtin_spirv_OpenCL_rotate_i16_i16(v.s2, i.s2);
@@ -170,7 +170,7 @@ INLINE
 ushort16 __builtin_spirv_OpenCL_rotate_v16i16_v16i16( ushort16 v,
                                                ushort16 i )
 {
-    ushort16 temp; 
+    ushort16 temp;
     temp.s0 = __builtin_spirv_OpenCL_rotate_i16_i16(v.s0, i.s0);
     temp.s1 = __builtin_spirv_OpenCL_rotate_i16_i16(v.s1, i.s1);
     temp.s2 = __builtin_spirv_OpenCL_rotate_i16_i16(v.s2, i.s2);
@@ -202,7 +202,7 @@ INLINE
 uint2 __builtin_spirv_OpenCL_rotate_v2i32_v2i32( uint2 v,
                                           uint2 i )
 {
-    uint2 temp; 
+    uint2 temp;
     temp.s0 = __builtin_spirv_OpenCL_rotate_i32_i32(v.s0, i.s0);
     temp.s1 = __builtin_spirv_OpenCL_rotate_i32_i32(v.s1, i.s1);
     return temp;
@@ -212,7 +212,7 @@ INLINE
 uint3 __builtin_spirv_OpenCL_rotate_v3i32_v3i32( uint3 v,
                                           uint3 i )
 {
-    uint3 temp; 
+    uint3 temp;
     temp.s0 = __builtin_spirv_OpenCL_rotate_i32_i32(v.s0, i.s0);
     temp.s1 = __builtin_spirv_OpenCL_rotate_i32_i32(v.s1, i.s1);
     temp.s2 = __builtin_spirv_OpenCL_rotate_i32_i32(v.s2, i.s2);
@@ -223,7 +223,7 @@ INLINE
 uint4 __builtin_spirv_OpenCL_rotate_v4i32_v4i32( uint4 v,
                                           uint4 i )
 {
-    uint4 temp; 
+    uint4 temp;
     temp.s0 = __builtin_spirv_OpenCL_rotate_i32_i32(v.s0, i.s0);
     temp.s1 = __builtin_spirv_OpenCL_rotate_i32_i32(v.s1, i.s1);
     temp.s2 = __builtin_spirv_OpenCL_rotate_i32_i32(v.s2, i.s2);
@@ -235,7 +235,7 @@ INLINE
 uint8 __builtin_spirv_OpenCL_rotate_v8i32_v8i32( uint8 v,
                                           uint8 i )
 {
-    uint8 temp; 
+    uint8 temp;
     temp.s0 = __builtin_spirv_OpenCL_rotate_i32_i32(v.s0, i.s0);
     temp.s1 = __builtin_spirv_OpenCL_rotate_i32_i32(v.s1, i.s1);
     temp.s2 = __builtin_spirv_OpenCL_rotate_i32_i32(v.s2, i.s2);
@@ -251,7 +251,7 @@ INLINE
 uint16 __builtin_spirv_OpenCL_rotate_v16i32_v16i32( uint16 v,
                                              uint16 i )
 {
-    uint16 temp; 
+    uint16 temp;
     temp.s0 = __builtin_spirv_OpenCL_rotate_i32_i32(v.s0, i.s0);
     temp.s1 = __builtin_spirv_OpenCL_rotate_i32_i32(v.s1, i.s1);
     temp.s2 = __builtin_spirv_OpenCL_rotate_i32_i32(v.s2, i.s2);
@@ -283,7 +283,7 @@ INLINE
 ulong2 __builtin_spirv_OpenCL_rotate_v2i64_v2i64( ulong2 v,
                                            ulong2 i )
 {
-    ulong2 temp; 
+    ulong2 temp;
     temp.s0 = __builtin_spirv_OpenCL_rotate_i64_i64(v.s0, i.s0);
     temp.s1 = __builtin_spirv_OpenCL_rotate_i64_i64(v.s1, i.s1);
     return temp;
@@ -293,7 +293,7 @@ INLINE
 ulong3 __builtin_spirv_OpenCL_rotate_v3i64_v3i64( ulong3 v,
                                            ulong3 i )
 {
-    ulong3 temp; 
+    ulong3 temp;
     temp.s0 = __builtin_spirv_OpenCL_rotate_i64_i64(v.s0, i.s0);
     temp.s1 = __builtin_spirv_OpenCL_rotate_i64_i64(v.s1, i.s1);
     temp.s2 = __builtin_spirv_OpenCL_rotate_i64_i64(v.s2, i.s2);
@@ -304,7 +304,7 @@ INLINE
 ulong4 __builtin_spirv_OpenCL_rotate_v4i64_v4i64( ulong4 v,
                                            ulong4 i )
 {
-    ulong4 temp; 
+    ulong4 temp;
     temp.s0 = __builtin_spirv_OpenCL_rotate_i64_i64(v.s0, i.s0);
     temp.s1 = __builtin_spirv_OpenCL_rotate_i64_i64(v.s1, i.s1);
     temp.s2 = __builtin_spirv_OpenCL_rotate_i64_i64(v.s2, i.s2);
@@ -316,7 +316,7 @@ INLINE
 ulong8 __builtin_spirv_OpenCL_rotate_v8i64_v8i64( ulong8 v,
                                            ulong8 i )
 {
-    ulong8 temp; 
+    ulong8 temp;
     temp.s0 = __builtin_spirv_OpenCL_rotate_i64_i64(v.s0, i.s0);
     temp.s1 = __builtin_spirv_OpenCL_rotate_i64_i64(v.s1, i.s1);
     temp.s2 = __builtin_spirv_OpenCL_rotate_i64_i64(v.s2, i.s2);
@@ -332,7 +332,7 @@ INLINE
 ulong16 __builtin_spirv_OpenCL_rotate_v16i64_v16i64( ulong16 v,
                                               ulong16 i )
 {
-    ulong16 temp; 
+    ulong16 temp;
     temp.s0 = __builtin_spirv_OpenCL_rotate_i64_i64(v.s0, i.s0);
     temp.s1 = __builtin_spirv_OpenCL_rotate_i64_i64(v.s1, i.s1);
     temp.s2 = __builtin_spirv_OpenCL_rotate_i64_i64(v.s2, i.s2);

@@ -182,7 +182,7 @@ int PayloadMapping::GetLeftReservedOffset_RTWrite(const Instruction* inst, SIMDM
     return offset;
 }
 
-/// 
+///
 int PayloadMapping::GetRightReservedOffset(const Instruction* inst, SIMDMode simdMode)
 {
     const GenIntrinsicInst* intrinsicInst = dyn_cast<GenIntrinsicInst>(inst);
@@ -332,7 +332,7 @@ uint PayloadMapping::GetNumPayloadElements_LDMS(const GenIntrinsicInst* inst)
 {
     const uint numOperands = inst->getNumOperands();
 
-    //Subtract the offsets, and texture resource, lod to get 
+    //Subtract the offsets, and texture resource, lod to get
     //the number of texture coordinates and index to texture source
     uint numSources = numOperands - 5;
 
@@ -438,7 +438,7 @@ uint PayloadMapping::GetNonAdjustedNumPayloadElements_Sample(const SampleIntrins
 
     if (inst->IsLODInst())
     {
-        //Subtract resource and sampler sources to get 
+        //Subtract resource and sampler sources to get
         //the number of texture coordinates and index to texture source
         numSources = numOperands - 3;
     }
@@ -508,7 +508,7 @@ uint PayloadMapping::GetNumPayloadElements_URBWrite(const GenIntrinsicInst* inst
     }
     else
     {
-        // All 4 elements will be send - we don't know which are masked out. 
+        // All 4 elements will be send - we don't know which are masked out.
         size = 4;
     }
 

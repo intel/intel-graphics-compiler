@@ -119,32 +119,32 @@ private:
         SStateProcessorContextGen8_0& context,
         Util::BinaryStream& membuf);
 
-    RETVAL CreateKernelHeap( 
+    RETVAL CreateKernelHeap(
         const IGC::SOpenCLKernelInfo& annotations,
         const char* kernelBinary,
         unsigned int kernelBinarySize,
         USC::SSystemThreadKernelOutput* pSystemThreadKernelOutput,
         SStateProcessorContextGen8_0& context,
         Util::BinaryStream& membuf );
-    
-    RETVAL CreateSurfaceStateHeap( 
+
+    RETVAL CreateSurfaceStateHeap(
         const IGC::SOpenCLKernelInfo& annotations,
         const IGC::CBTILayout& layout,
         const bool gtpinEnabled,
         SStateProcessorContextGen8_0& context,
         Util::BinaryStream& );
 
-    RETVAL CreateDynamicStateHeap( 
+    RETVAL CreateDynamicStateHeap(
         const IGC::SOpenCLKernelInfo& annotations,
         SStateProcessorContextGen8_0& context,
         Util::BinaryStream& );
 
-    RETVAL CreateGeneralStateHeap( 
+    RETVAL CreateGeneralStateHeap(
         const IGC::SOpenCLKernelInfo& annotations,
         SStateProcessorContextGen8_0& context,
         Util::BinaryStream& );
 
-    RETVAL CreatePatchList( 
+    RETVAL CreatePatchList(
         const IGC::SOpenCLKernelInfo& annotations,
         const IGC::SOpenCLProgramInfo& programInfo,
         const IGC::CBTILayout& layout,
@@ -163,9 +163,9 @@ private:
         unsigned int unpaddedBinarySize,
         Util::BinaryStream& kernelBinary );
 
-    template<class PatchType> 
-    RETVAL AddPatchItem( 
-        PatchType& patch, 
+    template<class PatchType>
+    RETVAL AddPatchItem(
+        PatchType& patch,
         Util::BinaryStream& membuf )
     {
         RETVAL retValue = g_cInitRetValue;
@@ -214,9 +214,9 @@ private:
         const IGC::SOpenCLKernelInfo& annotations,
         Util::BinaryStream& membuf );
 
-    RETVAL AddStringPatchItem( 
-        const std::string& str, 
-        Util::BinaryStream& membuf, 
+    RETVAL AddStringPatchItem(
+        const std::string& str,
+        Util::BinaryStream& membuf,
         uint32_t& bytesWritten ) const;
 
     inline DWORD GetSamplerStateSizeMultiplier(
@@ -238,7 +238,7 @@ inline DWORD CGen8OpenCLStateProcessor::GetSamplerStateSizeMultiplier(
     const SAMPLER_OBJECT_TYPE samplerType ) const
 {
     DWORD multiplier = 0;
-    
+
     switch( samplerType )
     {
     case SAMPLER_OBJECT_TEXTURE:                    multiplier =   1; break;

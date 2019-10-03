@@ -34,7 +34,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace IGC {
     namespace IGCMD
     {
-        //typedefs and forward declarations                   
+        //typedefs and forward declarations
         class ArgInfoMetaData;
         typedef MetaObjectHandle<ArgInfoMetaData> ArgInfoMetaDataHandle;
 
@@ -990,11 +990,11 @@ namespace IGC {
         class MetaDataUtils
         {
         public:
-            // typedefs for the data members types                   
+            // typedefs for the data members types
             typedef NamedMetaDataMap<llvm::Function, FunctionInfoMetaDataHandle> FunctionsInfoMap;
 
         public:
-            // If using this constructor, setting the llvm module by the setModule 
+            // If using this constructor, setting the llvm module by the setModule
             // function is needed for correct operation.
             MetaDataUtils() {}
             MetaDataUtils(llvm::Module* pModule) :

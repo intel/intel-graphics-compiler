@@ -30,7 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 float __builtin_spirv_OpenCL_logb_f32( float x )
 {
     float result = 0.0f;
-    
+
     if( __intel_relaxed_isnormal( x ) )
     {
         result = ( (as_int(x) & FLOAT_EXPONENT_MASK ) >> FLOAT_MANTISSA_BITS) - FLOAT_BIAS;

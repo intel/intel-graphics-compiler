@@ -40,7 +40,7 @@ const SGfxPipelineSelect g_cInitGfxPipelineSelect =
         GFXPIPELINE_3D,                                     // PipelineSelect
         GFXSUBOP_PIPELINE_SELECT,                           // InstructionSubOpcode
         GFXOP_NONPIPELINED,                                 // InstructionOpcode
-        PIPE_SINGLE_DWORD,                                  // InstructionSubType 
+        PIPE_SINGLE_DWORD,                                  // InstructionSubType
         INSTRUCTION_GFX                                     // InstructionType
     }
 };
@@ -49,13 +49,13 @@ const SGfxPipelineSelect g_cInitGfxPipelineSelect =
 CONST: g_cInitGfxPipelineSelectGen9
 \*****************************************************************************/
 const SGfxPipelineSelect::_DW0::_Gen9 g_cInitGfxPipelineSelectGen9 =
-{    
+{
     GFXPIPELINE_GPGPU,                                  // PipelineSelect
     GFXPIPELINE_SELECT_ENABLE,                          // PipelineSelectMask
     GFXSUBOP_PIPELINE_SELECT,                           // InstructionSubOpcode
     GFXOP_NONPIPELINED,                                 // InstructionOpcode
-    PIPE_SINGLE_DWORD,                                  // InstructionSubType 
-    INSTRUCTION_GFX                                     // InstructionType    
+    PIPE_SINGLE_DWORD,                                  // InstructionSubType
+    INSTRUCTION_GFX                                     // InstructionType
 };
 
 /*****************************************************************************\
@@ -68,7 +68,7 @@ const SGfxIndirectStateBaseAddress g_cInitGfxIndirectStateBaseAddress =
         OP_LENGTH( SIZE32( SGfxIndirectStateBaseAddress ) ),// Length
         GFXSUBOP_STATE_BASE_ADDRESS,                        // InstructionSubOpcode
         GFXOP_NONPIPELINED,                                 // InstructionOpcode
-        PIPE_COMMON,                                        // InstructionSubType 
+        PIPE_COMMON,                                        // InstructionSubType
         INSTRUCTION_GFX                                     // InstructionType
     },
 
@@ -131,7 +131,7 @@ const SGfxIndirectStateBaseAddress g_cInitGfxIndirectStateBaseAddress =
         true,                                               // DynamicStateAccessUpperBoundModify
         0                                                   // DynamicStateAccessUpperBound
     },
-    
+
     // DWORD 8
     {
         true,                                               // IndirectObjectStateAccessUpperBoundModify
@@ -163,12 +163,12 @@ CONST: g_cInitGfxIndirectStateBaseAddressDW6Gen8
 \*****************************************************************************/
 const SGfxIndirectStateBaseAddress::_DW6::_Gen8 g_cInitGfxIndirectStateBaseAddressDW6Gen8 =
 {
-    true,                                               
-    GFXSTATE_SOURCE_AGE_CONTROL_POOR_HIT_CHANCE,        
-    false,                                              
-    GFXSTATE_TARGET_CACHE_ELLC_ONLY,                    
-    GFXSTATE_CACHEABILITY_CONTROL_USE_GTT_ENTRY,        
-    0                                                   
+    true,
+    GFXSTATE_SOURCE_AGE_CONTROL_POOR_HIT_CHANCE,
+    false,
+    GFXSTATE_TARGET_CACHE_ELLC_ONLY,
+    GFXSTATE_CACHEABILITY_CONTROL_USE_GTT_ENTRY,
+    0
 };
 
 /*****************************************************************************\
@@ -176,12 +176,12 @@ CONST: g_cInitGfxIndirectStateBaseAddressDW8Gen8
 \*****************************************************************************/
 const SGfxIndirectStateBaseAddress::_DW8::_Gen8 g_cInitGfxIndirectStateBaseAddressDW8Gen8 =
 {
-    true,                                               
-    GFXSTATE_SOURCE_AGE_CONTROL_POOR_HIT_CHANCE,        
-    false,                                              
-    GFXSTATE_TARGET_CACHE_ELLC_ONLY,                    
-    GFXSTATE_CACHEABILITY_CONTROL_USE_GTT_ENTRY,        
-    0                                                   
+    true,
+    GFXSTATE_SOURCE_AGE_CONTROL_POOR_HIT_CHANCE,
+    false,
+    GFXSTATE_TARGET_CACHE_ELLC_ONLY,
+    GFXSTATE_CACHEABILITY_CONTROL_USE_GTT_ENTRY,
+    0
 };
 
 /*****************************************************************************\
@@ -189,12 +189,12 @@ CONST: g_cInitGfxIndirectStateBaseAddressDW10Gen8
 \*****************************************************************************/
 const SGfxIndirectStateBaseAddress::_DW10::_Gen8 g_cInitGfxIndirectStateBaseAddressDW10Gen8 =
 {
-    true,                                               
-    GFXSTATE_SOURCE_AGE_CONTROL_POOR_HIT_CHANCE,        
-    false,                                              
-    GFXSTATE_TARGET_CACHE_ELLC_ONLY,                    
-    GFXSTATE_CACHEABILITY_CONTROL_USE_GTT_ENTRY,        
-    0                                                   
+    true,
+    GFXSTATE_SOURCE_AGE_CONTROL_POOR_HIT_CHANCE,
+    false,
+    GFXSTATE_TARGET_CACHE_ELLC_ONLY,
+    GFXSTATE_CACHEABILITY_CONTROL_USE_GTT_ENTRY,
+    0
 };
 
 /*****************************************************************************\
@@ -202,8 +202,8 @@ CONST: g_cInitGfxIndirectStateBaseAddressDW12Gen8
 \*****************************************************************************/
 const SGfxIndirectStateBaseAddress::_DW12::_Gen8 g_cInitGfxIndirectStateBaseAddressDW12Gen8 =
 {
-    true,                                               
-    0                                                   
+    true,
+    0
 };
 
 /*****************************************************************************\
@@ -211,8 +211,8 @@ CONST: g_cInitGfxIndirectStateBaseAddressDW13Gen8
 \*****************************************************************************/
 const SGfxIndirectStateBaseAddress::_DW13::_Gen8 g_cInitGfxIndirectStateBaseAddressDW13Gen8 =
 {
-    true,                                               
-    0                                                   
+    true,
+    0
 };
 
 /*****************************************************************************\
@@ -220,8 +220,8 @@ CONST: g_cInitGfxIndirectStateBaseAddressDW14Gen8
 \*****************************************************************************/
 const SGfxIndirectStateBaseAddress::_DW14::_Gen8 g_cInitGfxIndirectStateBaseAddressDW14Gen8 =
 {
-    true,                                               
-    0                                                   
+    true,
+    0
 };
 
 /*****************************************************************************\
@@ -229,8 +229,8 @@ CONST: g_cInitGfxIndirectStateBaseAddressDW15Gen8
 \*****************************************************************************/
 const SGfxIndirectStateBaseAddress::_DW15::_Gen8 g_cInitGfxIndirectStateBaseAddressDW15Gen8 =
 {
-    true,                                               
-    0                                                   
+    true,
+    0
 };
 
 /*****************************************************************************\
@@ -245,7 +245,7 @@ const SGfxStatePointerInvalidate g_cInitGfxStatePointerInvalidate =
         false,                                              // PipelinedStatePointersInvalidate
         GFXSUBOP_STATE_POINTER_INVALIDATE,                  // InstructionSubOpcode
         GFXOP_PIPELINED,                                    // InstructionOpcode
-        PIPE_SINGLE_DWORD,                                  // InstructionSubType 
+        PIPE_SINGLE_DWORD,                                  // InstructionSubType
         INSTRUCTION_GFX                                     // InstructionType
     }
 };
@@ -260,7 +260,7 @@ const SGfxStatePrefetch g_cInitGfxStatePrefetch =
         OP_LENGTH( SIZE32( SGfxStatePrefetch ) ),           // Length
         GFXSUBOP_STATE_PREFETCH,                            // InstructionSubOpcode
         GFXOP_PIPELINED,                                    // InstructionOpcode
-        PIPE_COMMON,                                        // InstructionSubType 
+        PIPE_COMMON,                                        // InstructionSubType
         INSTRUCTION_GFX                                     // InstructionType
     },
 
@@ -281,7 +281,7 @@ const SGfxSystemInstructionPointer g_cInitGfxSystemInstructionPointer =
         OP_LENGTH( SIZE32( SGfxSystemInstructionPointer ) ),// Length
         GFXSUBOP_STATE_SIP,                                 // InstructionSubOpcode
         GFXOP_NONPIPELINED,                                 // InstructionOpcode
-        PIPE_COMMON,                                        // InstructionSubType 
+        PIPE_COMMON,                                        // InstructionSubType
         INSTRUCTION_GFX                                     // InstructionType
     },
 

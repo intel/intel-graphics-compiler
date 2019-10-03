@@ -151,10 +151,10 @@ namespace IGC
     private:
         LexicalScope* Parent;                          // Parent to this scope.
         const llvm::DILocalScope* Desc;                // Debug info descriptor.
-        const llvm::DILocation* InlinedAtLocation;   // Location at which this 
+        const llvm::DILocation* InlinedAtLocation;   // Location at which this
         // scope is inlined.
         bool AbstractScope;                            // Abstract Scope
-        llvm::SmallVector<LexicalScope*, 4> Children;       // Scopes defined in scope.  
+        llvm::SmallVector<LexicalScope*, 4> Children;       // Scopes defined in scope.
         // Contents not owned.
         llvm::SmallVector<InsnRange, 4> Ranges;
 
@@ -183,7 +183,7 @@ namespace IGC
         /// empty - Return true if there is any lexical scope information available.
         bool empty() { return CurrentFnLexicalScope == NULL; }
 
-        /// isCurrentFunctionScope - Return true if given lexical scope represents 
+        /// isCurrentFunctionScope - Return true if given lexical scope represents
         /// current function.
         bool isCurrentFunctionScope(const LexicalScope* LS)
         {

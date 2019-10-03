@@ -59,7 +59,7 @@ public:
 
     void visitCallInst(llvm::CallInst& I);
 
-    /// Returns geometry shader properties object that stores information about 
+    /// Returns geometry shader properties object that stores information about
     /// the configuration of the Geometry Shader object.
     const IGC::GeometryShaderProperties& GetProperties() const {
         return m_gsProps;

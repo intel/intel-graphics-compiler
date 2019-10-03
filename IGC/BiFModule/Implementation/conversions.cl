@@ -256,7 +256,7 @@ long  __builtin_spirv_OpConvertFToS_i64_f32(float FloatValue)
     float abs_value = __builtin_spirv_OpenCL_fabs_f32(FloatValue);
     if (abs_value < 1.0f) //for small numbers and denormals
     {
-        return (long)0; 
+        return (long)0;
     }
     uint sign = as_uint(as_int(FloatValue) >> 31);
     float FC0 = __builtin_spirv_OpenCL_ldexp_f32_i32(1.0f, -32);
@@ -269,7 +269,7 @@ long  __builtin_spirv_OpConvertFToS_i64_f32(float FloatValue)
     if (sign == -1 && Lo == -1)
     {
         Hi = Hi + 1;
-    } 
+    }
     return as_long(((ulong)Hi << 32) | (ulong)Lo_new);
 }
 
@@ -3313,7 +3313,7 @@ float convertUItoFP32(ulong value, char roundingMode, bool s)
 
     //For rtn and rtp we need to switch the rounding mode if
     //the sign bit is negative in order get the correct magnitude
-       
+
     if (roundingMode == 1 && s )
     {
         roundingMode = 2;
@@ -3322,7 +3322,7 @@ float convertUItoFP32(ulong value, char roundingMode, bool s)
     {
         roundingMode = 1;
     }
-        
+
     if (Hi != 0)
     {
         uint InnerResHi = Hi;
@@ -3335,15 +3335,15 @@ float convertUItoFP32(ulong value, char roundingMode, bool s)
             InnerResHi = H;
             InnerResLo = L;
         }
-        
+
         switch(roundingMode)
-        { 
+        {
             case 0: //rte (same as default)
                 Res_Rounded = InnerResLo ? (float)(InnerResHi | 1) : (float)InnerResHi;
                 break;
             case 1: //rtp
                 if (InnerResLo != 0)
-                    Res_Rounded = __builtin_spirv_OpConvertUToF_RTP_f32_i32(InnerResHi | 1); 
+                    Res_Rounded = __builtin_spirv_OpConvertUToF_RTP_f32_i32(InnerResHi | 1);
                 else
                     Res_Rounded = __builtin_spirv_OpConvertUToF_RTP_f32_i32(InnerResHi);
                 break;
@@ -3359,7 +3359,7 @@ float convertUItoFP32(ulong value, char roundingMode, bool s)
     {
         if (roundingMode == 1) //rtp
             Res_Rounded = __builtin_spirv_OpConvertUToF_RTP_f32_i32(Lo);
-        else if (roundingMode > 1)  //rtn and rtz 
+        else if (roundingMode > 1)  //rtn and rtz
             Res_Rounded = __builtin_spirv_OpConvertUToF_RTZ_f32_i32(Lo);
         else
             Res_Rounded = (float)Lo;
@@ -3377,7 +3377,7 @@ float convertSItoFP32(long value, char roundingMode)
     uint Lo = (uint)(value & 0x00000000FFFFFFFF);
     uint sign_bit = as_uint(as_int(Hi) >> 31);
     float NewValue;
-    Lo = Lo ^ sign_bit; 
+    Lo = Lo ^ sign_bit;
     uint Hi_add = Hi ^ sign_bit;
 
     uint Lo_new = Lo - sign_bit;
@@ -3390,7 +3390,7 @@ float convertSItoFP32(long value, char roundingMode)
         NewValue = convertUItoFP32(combined, roundingMode, false );
     }
     else
-    { 
+    {
         NewValue = convertUItoFP32(combined, roundingMode, true );
     }
 

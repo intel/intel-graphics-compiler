@@ -500,7 +500,7 @@ SPIRVModuleImpl::getEntry(SPIRVId Id) const {
 
 void
 SPIRVModuleImpl::addUnknownStructField(
-    SPIRVTypeStruct* pStruct, unsigned idx, SPIRVId id) 
+    SPIRVTypeStruct* pStruct, unsigned idx, SPIRVId id)
 {
     UnknownStructFieldMap[pStruct].push_back(std::make_pair(idx, id));
 }

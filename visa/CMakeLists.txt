@@ -339,12 +339,12 @@ if (UNIX OR WIN32)
   set_target_properties(GenX_IR_Exe PROPERTIES
           COMPILE_DEFINITIONS "${GenX_IR_Exe_DEFINITIONS}"
           FOLDER CM_JITTER_EXE)
-      
+
   if (MSVC)
   #set up standard defines from the common WDK path.
   bs_set_wdk(GenX_IR_Exe)
   endif()
-  
+
   if(UNIX)
     install(TARGETS GenX_IR_Exe RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR} COMPONENT igc-media)
   endif(UNIX)
@@ -386,9 +386,9 @@ if(WIN32)
   add_definitions(-D_HAS_EXCEPTIONS=0)
 endif()
 
-  add_library(GenX_IR STATIC 
-       ${GenX_IR_DLL_SOURCES} 
-       ${GenX_IR_DLL_UTILITY} 
+  add_library(GenX_IR STATIC
+       ${GenX_IR_DLL_SOURCES}
+       ${GenX_IR_DLL_UTILITY}
        ${GenX_IR_DLL_HEADERS}
        ${BISON_CISAParser_OUTPUTS}
        ${FLEX_CISAScanner_OUTPUTS}

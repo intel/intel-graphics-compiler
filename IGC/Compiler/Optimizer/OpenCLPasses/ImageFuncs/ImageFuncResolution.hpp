@@ -145,7 +145,7 @@ namespace IGC
         llvm::Value* getSamplerSnapWARequired(llvm::CallInst& CI);
 
         /// @brief  Returns the appropriate implicit argument of the function
-        ///         containing the given call instruction, based on the given implicit image 
+        ///         containing the given call instruction, based on the given implicit image
         ///         argument type
         /// @param  CI       The call instruction.
         /// @param  argType  The implicit image argument type.

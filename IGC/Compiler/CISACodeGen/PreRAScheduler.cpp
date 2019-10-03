@@ -95,7 +95,7 @@ namespace IGC {
         public:
             bool operator()(Node* A, Node* B) const
             {
-                //if (a.latency > b.latency)   a > b; else if (a is sampler and b is alu)   a > b; 
+                //if (a.latency > b.latency)   a > b; else if (a is sampler and b is alu)   a > b;
                 //else if (a.numSuccs >  b.numSuccs)   a > b; else if (a.origOrder > b.origOrder)   a > b; else   a <= b;
                 if (A->nodeDelay < B->nodeDelay)
                 {
@@ -291,7 +291,7 @@ void PreRAScheduler::addNodesToSortedReadyList(Node* readyNode, uint32_t current
     {
         if (isSampleLoadGather4InfoInstruction(readyNode->instruction))
         {
-            // push the node in 2 queues. 
+            // push the node in 2 queues.
             longLatencyDelaySortedReadyQueue.push(readyNode);
 
             if (IGC_IS_FLAG_ENABLED(EnablePreRASampleCluster))
@@ -366,7 +366,7 @@ PreRAScheduler::Node* PreRAScheduler::FindFirstUnscheduledNodeInLatencyQueue(Nod
         }
     }
 
-    // now find out which queue we want to schedule from, 
+    // now find out which queue we want to schedule from,
     // if top element in longLatencyDelaySortedReadyQueue has higher nodeDelay than top element in shortLatencySortedReadyQueue, schedule that node
     if (!longLatencyDelaySortedReadyQueue.empty() && !shortLatencySortedReadyQueue.empty())
     {
@@ -410,7 +410,7 @@ PreRAScheduler::Node* PreRAScheduler::FindFirstUnscheduledNodeInLatencyQueueFrom
 
     if (!readyNodeHoldQueue.empty())
     {
-        // next determine the cycle number of the top of the the readyNodeHoldQueue. 
+        // next determine the cycle number of the top of the the readyNodeHoldQueue.
         Node* earliestCycleNode = readyNodeHoldQueue.top();
 
         // next move all the elements with the same cycle number from readyNodeHoldQueue to latencySortedReadyQueue
@@ -491,7 +491,7 @@ void PreRAScheduler::handleMemoryReadWriteInstructions(
     std::list<Node*>& lastLoadNodes,
     Node*& lastStoreNode)
 {
-    // Edge information only added for instructions associated with each other due to alias-ing. 
+    // Edge information only added for instructions associated with each other due to alias-ing.
     // No edge information added for other instructions connected by use-def chain
     if (currInstNode->instruction->mayReadOrWriteMemory())
     {
@@ -641,7 +641,7 @@ void PreRAScheduler::buildBasicBlockDDG(
                 // ignore users from other BB's as we are doing local list scheduling
                 if (useInst->getParent() == BB)
                 {
-                    // Edge information only added for instructions associated with each other due to alias-ing. 
+                    // Edge information only added for instructions associated with each other due to alias-ing.
                  // No edge information added for other instructions connected by use-def chain
                  // first create a node for the user instruction if it does not already exist
                     struct Node* useInstNode = nullptr;
@@ -751,7 +751,7 @@ bool PreRAScheduler::ScheduleReadyNodes(
             }
         }
 
-        // Edge information only added for instructions associated with each other due to alias-ing. 
+        // Edge information only added for instructions associated with each other due to alias-ing.
         // No edge information added for other instructions connected by use-def chain
         for (auto schNodeUserBegin = scheduleNode->instruction->user_begin(), schNodeUserEnd = scheduleNode->instruction->user_end();
             schNodeUserBegin != schNodeUserEnd;
@@ -799,7 +799,7 @@ bool PreRAScheduler::ScheduleReadyNodes(
         // bump up the current_cycle count
         current_cycle++;
 
-        // we may have scheduled current instruction by moving it from hold_queue to ready_queue, 
+        // we may have scheduled current instruction by moving it from hold_queue to ready_queue,
         // in that case set current_cycle to the scheduleNode->earliestCycle
         if (current_cycle < scheduleNode->earliestCycle)
         {

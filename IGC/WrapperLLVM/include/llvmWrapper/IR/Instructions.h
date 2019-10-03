@@ -42,7 +42,7 @@ namespace IGCLLVM
     }
 
     template<class T = llvm::Instruction>
-    inline 
+    inline
 #if LLVM_VERSION_MAJOR == 4
         llvm::SynchronizationScope
 #elif LLVM_VERSION_MAJOR >= 7

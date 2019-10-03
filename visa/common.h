@@ -116,7 +116,7 @@ extern std::stringstream errorMsgs;
 
 #define COUT_ERROR      std::cout
 
-#if defined(_DEBUG) && !defined(DLL_MODE) 
+#if defined(_DEBUG) && !defined(DLL_MODE)
 
 //#define DEBUG_VERBOSE_ON
 
@@ -145,7 +145,7 @@ extern std::stringstream errorMsgs;
 
 #endif  // #ifdef _DEBUG
 
-#if !defined(DLL_MODE) 
+#if !defined(DLL_MODE)
 //important messages that we should relay to the user
 //(things like if RA is spilling, etc.)
 // this is only enabled in offline vISA executable
@@ -164,14 +164,14 @@ extern std::stringstream errorMsgs;
     errorMsgs << "Error in Common ISA file:" << errormsg << std::endl; \
     assert(false); \
 }    \
-}   
+}
 
 #define ASSERT_USER_LOC(x, errormsg, line, file ) { if (!(x))   \
 {           \
     errorMsgs << "Error in Common ISA file(" << file << ":" << line << "): " << errormsg << std::endl; \
     assert(false); \
 }    \
-}   
+}
 
 
 #define MUST_BE_TRUE2(x, errormsg, inst)  { if (!(x))   \
@@ -181,21 +181,21 @@ extern std::stringstream errorMsgs;
                                         std::cerr << std::endl; \
                                         assert(false); \
                                     }    \
-                                  }   
+                                  }
 
 #define MUST_BE_TRUE(x,errormsg)  { if (!(x))   \
                                     {           \
                                     std::cerr << __FILE__ << ":" << __LINE__ << " " << errormsg << std::endl; \
                                     assert(false); \
                                     }    \
-                                  }   
+                                  }
 
 #define MUST_BE_TRUE1(x, lineno, errormsg)  {   if (!(x))   \
                                     {           \
                                         std::cerr << "(Source Line "<<lineno<<") " << errormsg << std::endl;  \
                                         assert(false);  \
                                     }    \
-                                  }     
+                                  }
 #else
 #define ASSERT_USER(x, errormsg)
 #define ASSERT_USER_LOC(x, errormsg, line, file )

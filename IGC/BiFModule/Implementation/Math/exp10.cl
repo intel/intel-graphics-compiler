@@ -121,12 +121,12 @@ INLINE double __builtin_spirv_OpenCL_exp10_f64( double x )
         err1 += err2_1;
 
         double f = sum3 + err1;
-      
+
         double w2 = __builtin_spirv_OpenCL_exp2_f64( w );   // calculation with the whole part
         double f2 = __builtin_spirv_OpenCL_exp2_f64( f );   // calculation with the fractional part
 
         double res = w2 * f2;
-         
+
         res = ( x < as_double( 0xC0912C0000000000UL ) )  ? as_double( 0x0000000000000000UL ) : res;
         res = ( x >= as_double( 0x4090040000000000UL ) ) ? as_double( 0x7FF0000000000000UL ) : res;
 

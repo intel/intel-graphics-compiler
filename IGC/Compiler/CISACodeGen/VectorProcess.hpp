@@ -59,12 +59,12 @@ namespace IGC
         //   VectorPreProcess splits larger vectors. After that, the
         //   max vector would be <8 x i32>, which would be 8 insts at
         //   most (when it is unaligned) using byte scattered messages.
-        //   Therefore, using 16 would be enough. 
+        //   Therefore, using 16 would be enough.
         enum
         {
             VECMESSAGEINFO_MAX_LEN = 16,
 
-            // SKL+ 
+            // SKL+
             // Exception
             //    BDW : use A64_BYTE_SCATTERED_MAX_BYTES_8B
             A32_UNTYPED_MAX_BYTES = 16,

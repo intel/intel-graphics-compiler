@@ -50,14 +50,14 @@ extern bool ProcessElfInput(
   STB_TranslateOutputArgs &OutputArgs,
   IGC::OpenCLProgramContext &Context,
   PLATFORM &platform, bool isOutputLlvmBinary);
-  
+
 extern bool ParseInput(
   llvm::Module*& pKernelModule,
   const STB_TranslateInputArgs* pInputArgs,
   STB_TranslateOutputArgs* pOutputArgs,
   IGC::OpenCLProgramContext &oclContext,
   TB_DATA_FORMAT inputDataFormatTemp);
-    
+
 bool TranslateBuild(
   const STB_TranslateInputArgs* pInputArgs,
   STB_TranslateOutputArgs* pOutputArgs,
@@ -90,7 +90,7 @@ inline TC::TB_DATA_FORMAT toLegacyFormat(CodeType::CodeType_t format){
 
 CIF_DECLARE_INTERFACE_PIMPL(IgcOclTranslationCtx) : CIF::PimplBase
 {
-    CIF_PIMPL_DECLARE_CONSTRUCTOR(CIF::Version_t version, CIF_PIMPL(IgcOclDeviceCtx) *globalState, 
+    CIF_PIMPL_DECLARE_CONSTRUCTOR(CIF::Version_t version, CIF_PIMPL(IgcOclDeviceCtx) *globalState,
                                   CodeType::CodeType_t inType, CodeType::CodeType_t outType)
         : globalState(CIF::Sanity::ToReferenceOrAbort(globalState)), inType(inType), outType(outType)
     {
@@ -147,7 +147,7 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclTranslationCtx) : CIF::PimplBase
         return success;
     }
 
-    OclTranslationOutputBase *Translate(CIF::Version_t outVersion, 
+    OclTranslationOutputBase *Translate(CIF::Version_t outVersion,
                                         CIF::Builtins::BufferSimple *src,
                                         CIF::Builtins::BufferSimple *specConstantsIds,
                                         CIF::Builtins::BufferSimple *specConstantsValues,
@@ -194,7 +194,7 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclTranslationCtx) : CIF::PimplBase
             inputArgs.pSpecConstantsValues = specConstantsValues->GetMemory<uint64_t>();
         }
         inputArgs.GTPinInput = gtPinInput;
-     
+
         IGC::CPlatform igcPlatform = this->globalState.GetIgcCPlatform();
         CIF::Sanity::NotNullOrAbort(this->globalState.GetPlatformImpl());
         auto platform = this->globalState.GetPlatformImpl()->p;
@@ -214,7 +214,7 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclTranslationCtx) : CIF::PimplBase
             // clLinkLibrary(). There are two possible scenarios, link input
             // to form a new library (BC module) or link input to form an
             // executable.
-            
+
             // First, link input modules together
             CDriverInfo dummyDriverInfo;
             IGC::OpenCLProgramContext oclContextTemp(oclLayout, igcPlatform, &inputArgs, dummyDriverInfo, nullptr, false);
@@ -228,10 +228,10 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclTranslationCtx) : CIF::PimplBase
             {
                 TC::TB_DATA_FORMAT inFormatLegacy = toLegacyFormat(this->inType);
                 success = TC::TranslateBuild(
-                    &inputArgs, 
-                    &output, 
-                    inFormatLegacy, 
-                    igcPlatform, 
+                    &inputArgs,
+                    &output,
+                    inFormatLegacy,
+                    igcPlatform,
                     this->globalState.MiscOptions.ProfilingTimerResolution);
             }
             else
@@ -260,7 +260,7 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclTranslationCtx) : CIF::PimplBase
 
         return outputInterface.release();
     }
-    
+
 protected:
     CIF_PIMPL(IgcOclDeviceCtx) &globalState;
     CodeType::CodeType_t inType;

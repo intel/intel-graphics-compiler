@@ -33,5 +33,5 @@ namespace llvm
 
 
 /// This pass promote global variable to stack allocation (Alloca)
-/// After all the functions are inlined 
+/// After all the functions are inlined
 llvm::Pass* createGlobalToLocalPass();

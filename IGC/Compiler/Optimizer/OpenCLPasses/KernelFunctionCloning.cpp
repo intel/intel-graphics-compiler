@@ -53,7 +53,7 @@ using namespace IGC::IGCMD;
 // void bar(...) {
 //   ...
 // }
-//  
+//
 // __kernel __attribute__((reqd_work_group_size(32, 1, 1)))
 // void foo(...) {
 //   ...

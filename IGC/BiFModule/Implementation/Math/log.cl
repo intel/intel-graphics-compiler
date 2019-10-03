@@ -46,8 +46,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 float __builtin_spirv_OpenCL_log_f32( float x )
 {
 #if 0
-    // This version is ever so slightly faster (<1%) than the version below, 
-    // however it is almost a full ULP less precise in some cases, so we'll 
+    // This version is ever so slightly faster (<1%) than the version below,
+    // however it is almost a full ULP less precise in some cases, so we'll
     // stick with the full expansion for now.
     return __builtin_spirv_OpenCL_log2_f32(x) * M_LN2_F;
 #else
@@ -75,7 +75,7 @@ float __builtin_spirv_OpenCL_log_f32( float x )
         const int   magic = 0x3f2aaaab;
         int iX = as_int(x) - magic;
         int iR = ( iX & FLOAT_MANTISSA_MASK ) + magic;
-        
+
         e += iX >> FLOAT_MANTISSA_BITS;
 
         float sR = as_float(iR) - 1.0f;

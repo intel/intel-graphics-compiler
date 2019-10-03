@@ -50,7 +50,7 @@ set(IGC_BUILD__HDR__FCL
       "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/ocl_igc_interface/ocl_translation_output.h"
       )
 
-set(IGC_BUILD__SRC__FCL ${IGC_BUILD__SRC__FCL} PARENT_SCOPE) 
+set(IGC_BUILD__SRC__FCL ${IGC_BUILD__SRC__FCL} PARENT_SCOPE)
 set(IGC_BUILD__HDR__FCL ${IGC_BUILD__HDR__FCL} PARENT_SCOPE)
 
 if(LLVM_ON_UNIX)
@@ -60,7 +60,7 @@ endif()
 
 set(IGC_BUILD__RES__FCL
   "${CMAKE_CURRENT_SOURCE_DIR}/igd_fcl_mcl/resources/ClangResource.rc"
-  )  
+  )
 set(IGC_BUILD__RES__FCL ${IGC_BUILD__RES__FCL} PARENT_SCOPE)
 
 source_group(External

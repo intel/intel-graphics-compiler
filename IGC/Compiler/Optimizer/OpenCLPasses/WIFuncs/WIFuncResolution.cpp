@@ -229,9 +229,9 @@ Value* WIFuncResolution::getGroupId(CallInst& CI)
     // %groupId = extractelement <8 x i32> %r0, i32 %offsetR0
 
     // The cmp select insts are present because:
-    // if dim = 0 then we need to access R0.1 
-    // if dim = 1 then we need to access R0.6 
-    // if dim = 2 then we need to access R0.7 
+    // if dim = 0 then we need to access R0.1
+    // if dim = 1 then we need to access R0.6
+    // if dim = 2 then we need to access R0.7
 
     Argument* arg = getImplicitArg(CI, ImplicitArg::R0);
 

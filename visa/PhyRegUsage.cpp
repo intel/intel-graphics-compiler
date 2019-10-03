@@ -500,8 +500,8 @@ bool PhyRegUsage::findContiguousNoWrapGRF(bool availRegs[],
             ((i & 0x1) == 0 && align == BankAlign::Odd)) // i is even but intv needs to be odd aligned
         {
             i++;
-        } 
-        else 
+        }
+        else
         {
             if (align == BankAlign::Even2GRF)
             {
@@ -570,7 +570,7 @@ bool PhyRegUsage::findContiguousNoWrapAddrFlag(bool availRegs[],
         // some register assignments need special alignment, we check
         // whether the alignment criteria is met.
         //
-        if (subAlign == Sixteen_Word && i != 0)    
+        if (subAlign == Sixteen_Word && i != 0)
         {    // Sixteen_Word sub-align should have i=0
             return false;
         } else if ((subAlign == Eight_Word && i % 8 != 0) ||    // 8_Word align, i must be divided by 8
@@ -1122,7 +1122,7 @@ bool PhyRegUsage::assignRegs(bool  highInternalConflict,
             }
 
             unsigned short occupiedBundles = gra.getOccupiedBundle(decl);
-            bool success = findContiguousGRF(availableGregs, forbidden, occupiedBundles, 
+            bool success = findContiguousGRF(availableGregs, forbidden, occupiedBundles,
                 getAlignToUse(align, bankAlign), decl->getNumRows(), endGRFReg,
                 startGRFReg, i, varBasis->getCalleeSaveBias(), varBasis->getEOTSrc());
             if (success) {

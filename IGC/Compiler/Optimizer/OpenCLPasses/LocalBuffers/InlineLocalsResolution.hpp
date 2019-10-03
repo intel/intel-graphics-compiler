@@ -74,7 +74,7 @@ namespace IGC
             AU.addRequired<llvm::CallGraphWrapperPass>();
         }
 
-        // It is convenient to represent the null pointer as the zero 
+        // It is convenient to represent the null pointer as the zero
         // bit-pattern. However, SLM address 0 is legal, and we want to be able
         // to use it.
         // To go around this, we use the fact only the low 16 bits ("low nibble")

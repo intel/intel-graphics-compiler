@@ -51,7 +51,7 @@ define i32 @foo(i32 %img, i32 %imageHeigt, i32 %imageWidth) nounwind {
 !6 = !{i32 21, !5}
 
 ; CHECK:         %res = add i32 %imageWidth, %imageHeigt
-    
+
 ; CHECK-NOT:     call i32 @__builtin_IB_get_image_width(i32 %img)
 ; CHECK-NOT:     call i32 @__builtin_IB_get_image_height(i32 %img)
 

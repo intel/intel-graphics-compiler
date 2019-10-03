@@ -82,9 +82,9 @@ __attribute__((always_inline))
 int _TestIntI (int a)
 
 {
-  
+
     int iRes = (a & 1) ? 1 : 2;
-  
+
     return iRes;
 
 }

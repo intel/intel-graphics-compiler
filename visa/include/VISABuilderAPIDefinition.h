@@ -319,7 +319,7 @@ public:
     /// [pred] fcall (emask, execSize) function
     /// argSize must be [0, sizeof(Arg)]
     /// returnSize must be [0, sizeof(RetVal)]
-    CM_BUILDER_API virtual int AppendVISACFFunctionCallInst(VISA_PredOpnd *pred, Common_VISA_EMask_Ctrl emask, 
+    CM_BUILDER_API virtual int AppendVISACFFunctionCallInst(VISA_PredOpnd *pred, Common_VISA_EMask_Ctrl emask,
         Common_ISA_Exec_Size executionSize, std::string funcName, unsigned char argSize, unsigned char returnSize) = 0;
 
     /// AppendVISACFIndirectFuncCallInst -- append an indirect function call to this kernel

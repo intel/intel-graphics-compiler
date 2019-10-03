@@ -51,7 +51,7 @@ CIF_DECLARE_INTERFACE_PIMPL(Buffer) : CIF::PimplBase {
     }
 
   /// Copies given element to the end of the buffer
-  /// Note : If (packed == false), then this function will automatically align current underlying buffer 
+  /// Note : If (packed == false), then this function will automatically align current underlying buffer
   ///        pointer to alignof(ElementT)
   template<typename ElementT>
   bool PushBackRawCopy(const ElementT &newEl, bool packed = true){
@@ -84,7 +84,7 @@ CIF_DECLARE_INTERFACE_PIMPL(Buffer) : CIF::PimplBase {
         this->reallocator = reallocator;
     }
 
-    /// Sets underlying buffer storage and its deallocator 
+    /// Sets underlying buffer storage and its deallocator
     /// Note : will destroy current underlying buffer (if any)
     void SetUnderlyingStorage(void *memory, size_t size, DeallocatorT deallocator){
         Deallocate();
@@ -95,7 +95,7 @@ CIF_DECLARE_INTERFACE_PIMPL(Buffer) : CIF::PimplBase {
         this->tempDeallocator = deallocator;
     }
 
-    /// Sets underlying constant buffer storage and its deallocator 
+    /// Sets underlying constant buffer storage and its deallocator
     /// Note : will destroy current underlying buffer (if any)
     /// Note : will allocate new memory if this const memory will be accessed in non-const manners
     void SetUnderlyingStorage(const void *memory, size_t size){
@@ -109,7 +109,7 @@ CIF_DECLARE_INTERFACE_PIMPL(Buffer) : CIF::PimplBase {
         this->capacity = size;
         this->tempDeallocator = nullptr;
     }
-   
+
     /// Detaches and returns current allocation leaving this buffer's underlying buffer empty
     void *DetachAllocation(){
         void *mem = memory;
@@ -125,7 +125,7 @@ CIF_DECLARE_INTERFACE_PIMPL(Buffer) : CIF::PimplBase {
     const void *GetMemoryRaw() const{
         return memory;
     }
-   
+
     /// Returns writeable access to underlyng buffer
     /// Note : for constant buffer this will cause reallocation (copy!) to writeable memory
     void *GetMemoryRawWriteable(){
@@ -136,32 +136,32 @@ CIF_DECLARE_INTERFACE_PIMPL(Buffer) : CIF::PimplBase {
         }
         return memory;
     }
-   
+
     /// Returns size in bytes of underlying buffer
     size_t GetSizeRaw() const{
         return size;
     }
-   
+
     /// Returns capacity in bytes of underlying buffer
     size_t GetCapacityRaw() const{
         return capacity;
     }
-   
+
     /// Resizes (may reallocate) underlying buffer's size
     bool Resize(size_t newSize) {
         return this->Reallocate(newSize, std::max(this->capacity, newSize));
     }
-   
+
     /// Resizes (may reallocate) the underlying buffer's capacity
     bool Reserve(size_t newCapacity){
         return this->Reallocate(this->size, newCapacity);
     }
-   
+
     /// Sets the size to 0
     void Clear(){
         this->size = 0;
     }
-   
+
     /// Sets the size to 0 and deallocates underlying buffer
     void Deallocate(){
         if(isConst){
@@ -185,14 +185,14 @@ CIF_DECLARE_INTERFACE_PIMPL(Buffer) : CIF::PimplBase {
             this->capacity = 0;
         }
     }
-   
+
     /// Aligns up current size to meet required alignment
     bool AlignUp(uint32_t alignment){
         size_t misalligned = alignment - (this->size % alignment);
         size_t newSize = this->size + misalligned;
         return Reallocate(newSize, newSize);
     }
-   
+
     /// Pushes new raw element to buffer
     bool PushBackRawBytes(const void *newData, size_t size){
         if(size == 0){

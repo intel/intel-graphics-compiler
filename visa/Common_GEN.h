@@ -57,7 +57,7 @@ typedef enum {
     DC1_A64_UNTYPED_FLOAT_ATOMIC = 0x1D,
 } DATA_CACHE1_MESSAGES;
 
-typedef enum 
+typedef enum
 {
     A64_BLOCK_MSG_OWORD_RW = 0x0,
     A64_BLOCK_MSG_OWORD_UNALIGNED_READ = 0x1
@@ -81,7 +81,7 @@ typedef enum {
     DC1_HWORD_ALIGNED_BLOCK_WRITE     = 0x9
 } HWORD_DATA_CACHE1_MESSAGES;
 
-typedef enum 
+typedef enum
 {
     URB_WRITE_HWORD = 0,
     URB_WRITE_OWORD = 1,

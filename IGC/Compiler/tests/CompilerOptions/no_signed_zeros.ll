@@ -23,7 +23,7 @@
 
 
 ;======================= end_copyright_notice ==================================
-; RUN: igc_opt -igc-set-fast-math-flags -S %s -o %t.ll 
+; RUN: igc_opt -igc-set-fast-math-flags -S %s -o %t.ll
 ; RUN: FileCheck %s --input-file=%t.ll
 
 define void @testnsz1(float %a, float %b) {
@@ -68,11 +68,11 @@ define void @testnsz3(float %a, float %b) {
 }
 
 ; CHECK: testnsz3
-; CHECK: fadd nnan nsz 
-; CHECK: fsub nnan nsz 
-; CHECK: fmul nnan nsz 
-; CHECK: fdiv nnan nsz 
-; CHECK: frem nnan nsz 
+; CHECK: fadd nnan nsz
+; CHECK: fsub nnan nsz
+; CHECK: fmul nnan nsz
+; CHECK: fdiv nnan nsz
+; CHECK: frem nnan nsz
 
 !IGCMetadata = !{!0}
 

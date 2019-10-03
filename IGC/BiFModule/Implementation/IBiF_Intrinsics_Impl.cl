@@ -671,7 +671,7 @@ half __builtin_spirv_OpenCL_fma_f16_f16_f16( half a,
     return __builtin_IB_fmah(a, b, c);
 }
 
-INLINE 
+INLINE
 float __builtin_spirv_OpenCL_fma_f32_f32_f32( float a,
                                       float b,
                                       float c )
@@ -679,7 +679,7 @@ float __builtin_spirv_OpenCL_fma_f32_f32_f32( float a,
     return __builtin_fmaf(a, b, c);
 }
 
-INLINE 
+INLINE
 double __builtin_spirv_OpenCL_fma_f64_f64_f64( double a,
                                       double b,
                                       double c )
@@ -792,8 +792,8 @@ double __builtin_spirv_OpenCL_fabs_f64(double x ){
 
 INLINE
 double __builtin_spirv_OpenCL_floor_f64(double x ){
-    //First part of the algorithm performs rounding towards zero by truncating bits in 
-    //the fractional part of the number.This is done by finding out the position of the 
+    //First part of the algorithm performs rounding towards zero by truncating bits in
+    //the fractional part of the number.This is done by finding out the position of the
     //fractional bits of the mantissa and masking them out with zeros.
 
     double roundedToZeroVal = __builtin_spirv_OpenCL_trunc_f64(x);

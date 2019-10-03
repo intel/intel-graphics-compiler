@@ -91,7 +91,7 @@ namespace IGC
         /// Adds a new URB Write instruction to the instruction list
         /// \param offset - indicates the offset in URB at which the write will be performed
         /// \param mask   - 8-bit bitfield indicating which dwords of parameter data should be written
-        ///                 0x01 means data[0] only, 0x0F means dwords data[0]..data[3], 
+        ///                 0x01 means data[0] only, 0x0F means dwords data[0]..data[3],
         ///                 0xFF means data[0]..data[7]
         /// \param data   - array of 8 values that are data to be written to URB
         /// \param prev   - new urb write instruction will be added to instruction list before prev.
@@ -111,7 +111,7 @@ namespace IGC
         static const unsigned int MaxNumOfUserInputs = 32; // in 4*DWORD units
 
         // Maximum number of inputs including SGVs. SGVs can be located in URB past
-        // the number of available vertex elements. 
+        // the number of available vertex elements.
         // Currently additional 2 inputs is enough for all SGVs.
         static const unsigned int MaxNumOfInputs = 34; // in 4*DWORD units
 

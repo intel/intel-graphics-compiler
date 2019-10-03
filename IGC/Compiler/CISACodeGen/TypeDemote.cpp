@@ -286,7 +286,7 @@ bool TypeDemote::demoteOnBasicBlock(BasicBlock* BB) const {
         // j.0163 = phi i16 [ 0, %._crit_edge155 ], [ %337, %..lr.ph_crit_edge ]
         // %57 = zext i16 %j.0163 to i64
         // %58 = extractelement <32 x i16> <i16 3, ..., i16 44, i16 50>, i64 %57
-        // 
+        //
         if (auto EEI = dyn_cast<ExtractElementInst>(I)) {
             Value* Index = EEI->getIndexOperand();
             CastInst* CI = dyn_cast<CastInst>(Index);

@@ -23,9 +23,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
- 
+
 // This file contains a set of macros that may be used for built-in functions.
- 
+
 #ifndef _IBIF_MACROS_
 #define _IBIF_MACROS_
 
@@ -955,7 +955,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                                 __func##_rtn(x.se),                         \
                                 __func##_rtn(x.sf) );                       \
     }
-    
+
 #define GENERATE_CONVERSIONS_FUNCTIONS_SAT( __func, __rettype, __argtype )  \
     __rettype##2 OVERLOADABLE __func##2##_sat( __argtype##2 x ) {           \
         return (__rettype##2)( __func##_sat(x.s0),                          \

@@ -140,7 +140,7 @@ bool SampleCmpToDiscard::processBlock(BasicBlock* BB)
 
 bool SampleCmpToDiscard::canFoldValue(Instruction* inst, std::map<Value*, APFloat>& instToValMap)
 {
-    // currently we are handling the following type of cases 
+    // currently we are handling the following type of cases
     /*
     * %92 = call <4 x half> @llvm.genx.GenISA.sampleCptr.v4f16.f16.p196609v4f32.p524289i32(
         half %91, half %89, half %90, half %91, half %87, half 0xH0000, <4 x float> addrspace(196609)* null,

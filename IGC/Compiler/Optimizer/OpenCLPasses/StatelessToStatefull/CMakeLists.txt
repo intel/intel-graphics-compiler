@@ -7,7 +7,7 @@ set(IGC_BUILD__SRC__StatelessToStatefull
 set(IGC_BUILD__SRC__OpenCLPasses_StatelessToStatefull ${IGC_BUILD__SRC__StatelessToStatefull} PARENT_SCOPE)
 
 set(IGC_BUILD__HDR__StatelessToStatefull
-    "${CMAKE_CURRENT_SOURCE_DIR}/StatelessToStatefull.hpp" 
+    "${CMAKE_CURRENT_SOURCE_DIR}/StatelessToStatefull.hpp"
   )
 set(IGC_BUILD__HDR__OpenCLPasses_StatelessToStatefull ${IGC_BUILD__HDR__StatelessToStatefull} PARENT_SCOPE)
 

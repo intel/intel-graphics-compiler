@@ -43,7 +43,7 @@ namespace llvm
 
 namespace IGC
 {
-    /// @brief  ImplicitArg is used for representing the implict information that is passed from the 
+    /// @brief  ImplicitArg is used for representing the implict information that is passed from the
     ///         OpenCL runtime to IGC, charecterize it and allow IGC to use it.
     /// @Author Marina Yatsina
     class ImplicitArg {
@@ -126,7 +126,7 @@ namespace IGC
             NUM_IMPLICIT_ARGS
         };
 
-        /// @brief This set type is used to contain function arguments 
+        /// @brief This set type is used to contain function arguments
         typedef std::set<int> ArgValSet;
 
         /// @brief This map type is used to map implicit argument types to
@@ -219,17 +219,17 @@ namespace IGC
         /// @return The implicit argument's index for a given argument type
         unsigned int getArgIndex(ImplicitArg::ArgType argType);
 
-        /// @brief  Returns the index of the appropriate implicit image or sampler argument 
+        /// @brief  Returns the index of the appropriate implicit image or sampler argument
         ///         based on the given argument type and the associated image argument
-        /// @param  argType         The implicit argument type 
+        /// @param  argType         The implicit argument type
         ///                         (height/width/depth for images, normalized/address/snapwa for samplers)
         /// @param  image           The associated image/sampler argument
         /// @return The implicit argument's index for a given argument type
         unsigned int getImageArgIndex(ImplicitArg::ArgType argType, const llvm::Argument* image);
 
-        /// @brief  Returns the index of the appropriate implicit argument 
+        /// @brief  Returns the index of the appropriate implicit argument
         ///         based on the given argument type and the argument number
-        /// @param  argType         The implicit argument type 
+        /// @param  argType         The implicit argument type
         ///                         (height/width/depth for images, normalized/address/snapwa for samplers)
         /// @param  argNum          The explicit argument number of the type
         /// @return The implicit argument's index for a given argument type
@@ -250,7 +250,7 @@ namespace IGC
         /// @return The structure offset of the given implicit argument index
         int32_t getStructArgOffset(uint index) const;
 
-        /// @brief  Creates implict arguments metadata for the give function based on the given implicit arguments 
+        /// @brief  Creates implict arguments metadata for the give function based on the given implicit arguments
         ///         it should receive. If implicit metadata exists, it adds to it.
         /// @param  F               The function for which to create the implicit argument's metadata
         /// @param  implicitArgs    The implicit argument that are required by the given function
@@ -268,7 +268,7 @@ namespace IGC
 
         static void addStructArgs(llvm::Function& F, const llvm::Argument* A, const ImplicitArg::StructArgList& S, IGCMD::MetaDataUtils* pMdUtils);
 
-        /// @brief  Creates implict arguments metadata for the give function based on the given implicit arguments 
+        /// @brief  Creates implict arguments metadata for the give function based on the given implicit arguments
         ///         it should receive. If implicit metadata exists, it adds to it.
         /// @param  F               The function for which to create the implicit argument's metadata
         /// @param  argMap          A map of implict argument types to the set of numbers of arguments
@@ -286,7 +286,7 @@ namespace IGC
         /// @param  argType         The type of the implict argument that should be returned
         /// @return The (implicit) function argument associated with the given argument type
         llvm::Argument* getArgInFunc(llvm::Function& F, ImplicitArg::ArgType argType);
-        
+
         /// @brief  Check if the given implicit argument type exist in the(implicit) function argument associated
         /// @param  argType         The type of the implict argument that should be checked
         /// @return true if the argument exist, false otherwise.

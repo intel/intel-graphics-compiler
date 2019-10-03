@@ -66,7 +66,7 @@ namespace vISA
         IR_Builder& builder;
         PhyRegsLocalRA* pregs = nullptr;
         LLR_USE_MAP LLRUseMap;
-        unsigned int numRegLRA = 0;   
+        unsigned int numRegLRA = 0;
         unsigned int globalLRSize = 0;
         bool doSplitLLR = false;
         Mem_Manager& mem;
@@ -102,7 +102,7 @@ namespace vISA
         void printInputLiveIntervals();
         bool countLiveIntervals();
         void clearStaleLiveRanges();
-        
+
         // scratch fields used for parameter passing
         G4_BB* curBB = nullptr;
 
@@ -348,7 +348,7 @@ public:
     void setGRFUnavailable( int which ) { grfAvialable[which] = false; }
     bool isGRFAvailable(int which) const
     {
-       
+
         if (simpleGRFAvailable)
         {
             if (which > 1)
@@ -375,7 +375,7 @@ public:
             return (grfAvialable[which] == true);
         }
     }
-    
+
     bool isGRFAvailable( int which, int howmany) const
     {
         if (simpleGRFAvailable)
@@ -408,7 +408,7 @@ public:
                 }
             }
         }
-        
+
         return true;
     }
 
@@ -430,7 +430,7 @@ public:
     bool findFreeMultipleRegsBackward(int regIdx, BankAlign align, int &regnum, int nrows, int lastRowSize, int endReg, int instID, bool isHybridAlloc);
     bool findFreeSingleReg( int regIdx, G4_SubReg_Align subalign, int &regnum, int &subregnum, int size);
     bool findFreeSingleReg(int regIdx, int size, BankAlign align, G4_SubReg_Align subalign, int &regnum, int &subregnum, int endReg, int instID, bool isHybridAlloc, bool forward);
-    
+
 };
 
 class PhyRegsManager

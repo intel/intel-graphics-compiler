@@ -178,7 +178,7 @@ void LinkMultiRateShader::Link(Function* pixelPhase, Function* samplePhase, Modu
     builder.SetInsertPoint(&(*pixelPhase->getEntryBlock().begin()));
     Value* loopCounterPtr = builder.CreateAlloca(builder.getInt32Ty());
 
-    // Initialize the loop counter in the loop header 
+    // Initialize the loop counter in the loop header
     builder.SetInsertPoint(loopHeader);
     unsigned int addrSpaceRsc = IGC::EncodeAS4GFXResource(*builder.getInt32(0), RENDER_TARGET, 0);
     PointerType* ptrTy = llvm::PointerType::get(builder.getInt32Ty(), addrSpaceRsc);

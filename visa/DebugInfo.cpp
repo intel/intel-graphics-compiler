@@ -667,7 +667,7 @@ void KernelDebugInfo::generateByteOffsetMapping(std::list<G4_BB*>& stackCallEntr
             if (inst->getGenOffset() != UNDEFINED_GEN_OFFSET)
             {
                 int cisaByteIndex = inst->getCISAOff();
-                maxGenIsaOffset = (uint64_t)inst->getGenOffset() + 
+                maxGenIsaOffset = (uint64_t)inst->getGenOffset() +
                                     (inst->isCompactedInst() ? 8 : 16);
                 if(cisaByteIndex == -1)
                 {

@@ -402,7 +402,7 @@ namespace //Anonymous
         virtual ~ConstantStructValue() override {}
     };
 
-    /// Handles struct value given as pointer to alloca, followed by getelementptr, store 
+    /// Handles struct value given as pointer to alloca, followed by getelementptr, store
     ///
     ///     %1 = alloca <{ i8*, i32, i32, i8*, %struct.__block_descriptor*, ... }>
     ///     %17 = getelementptr inbounds <{ i8*, i32, i32, i8*, %struct.__block_descriptor*, ... }>* %1, i32 0, i32 3
@@ -1502,9 +1502,9 @@ namespace //Anonymous
 
         // Clang might insert a kernel wrapper around invoke function, details and motivation can be found
         // here: https://reviews.llvm.org/D38134
-        // As we want to generate our own enqueue kernel with possibly different arguments, 
-        // we need to treat this kernel as a regular invoke function. 
-        // To achieve this, we need to: 
+        // As we want to generate our own enqueue kernel with possibly different arguments,
+        // we need to treat this kernel as a regular invoke function.
+        // To achieve this, we need to:
         // 1. Inline the inner invoke function called by this kernel - analyzeInvokeFunction assumes that.
         // 2. Remove the metadata related to this kernel, so that codegen does not treat it as a regular kernel.
         bool HandleIvokeKernelWrappers(llvm::Module& M, DataContext& dataContext, IGC::ModuleMetaData* modMD)
@@ -1718,7 +1718,7 @@ namespace //Anonymous
         //link dispatchMd to dispatch kernel
         IGC::IGCMD::FunctionInfoMetaDataHandle dispatchMd = _pMdUtils->getOrInsertFunctionsInfoItem(const_cast<llvm::Function*>(kernelFunc));
 
-        auto funcMD = &modMD->FuncMD[const_cast<llvm::Function*>(kernelFunc)];//insert if not present 
+        auto funcMD = &modMD->FuncMD[const_cast<llvm::Function*>(kernelFunc)];//insert if not present
 
         //set function type for dispatch
         dispatchMd->setType(FunctionTypeMD::KernelFunction);
@@ -1765,7 +1765,7 @@ namespace //Anonymous
     //  KindQuery implementation
     /////////////////////////////////////////////////////////////////////////////////////////////////
 
-    // check if arg is sampler. 
+    // check if arg is sampler.
     bool KindQuery::isSamplerArg(const llvm::Argument* arg) const
     {
         // Currently we support sampler types being represented as contant pointers or integer types
@@ -1782,7 +1782,7 @@ namespace //Anonymous
         return false;
     }
 
-    // check if dispatcher's argument is sampler. 
+    // check if dispatcher's argument is sampler.
     bool KindQuery::isSampleCaptured(const llvm::Function* dispatchFunc, unsigned captureNum) const
     {
         auto dispatcher = _dataContext.getDispatcherForDispatchFunc(dispatchFunc);
@@ -2236,7 +2236,7 @@ namespace //Anonymous
                                 {
                                     if (gepInstr->getNumIndices() == 2)
                                     {
-                                        //store index 
+                                        //store index
                                         auto gepIndexValue = cast<llvm::ConstantInt>(gepInstr->getOperand(2));
                                         auto gepIndex = (GEPIndex)gepIndexValue->getZExtValue();
                                         _captureIndicies.push_back(gepIndex);
@@ -2440,7 +2440,7 @@ namespace //Anonymous
         if (!_paramStruct) report_fatal_error("Enqueue param is not a struct");
 
         if (_dataContext.getKindQuery().isBlockStructType(_paramStruct->getType())) {
-            /// ObjectiveC block value passed to OCL "device execution" call. 
+            /// ObjectiveC block value passed to OCL "device execution" call.
             // On SPIR-V path it can be null - invoke function is taken from call arguments.
             _block_invokeFunction = dyn_cast_or_null<llvm::Function>(_paramStruct->getValueStoredAtIndex(BLOCK_INDEX_INVOKE_FUNC));
 

@@ -2080,10 +2080,10 @@ double __builtin_spirv_OpenCL_remquo_f64_f64_p1i32( double        xx,
                                              __global int* quo )
 {
     double result;
-    
-    if( __intel_relaxed_isnan(xx) | 
-        __intel_relaxed_isnan(yy) | 
-        __intel_relaxed_isinf(xx) | 
+
+    if( __intel_relaxed_isnan(xx) |
+        __intel_relaxed_isnan(yy) |
+        __intel_relaxed_isinf(xx) |
         yy == 0.0 )
     {
         *quo = 0;
@@ -2122,7 +2122,7 @@ double __builtin_spirv_OpenCL_remquo_f64_f64_p1i32( double        xx,
               for(i = ex - ey; i > 0; i--)
               {
                 q = q << 1;
-                if(xr >= yr) 
+                if(xr >= yr)
                 {
                     xr = xr - yr;
                     q = q + 1;
@@ -2150,9 +2150,9 @@ double __builtin_spirv_OpenCL_remquo_f64_f64_p1i32( double        xx,
         {
             xr = __builtin_spirv_OpenCL_ldexp_f64_i32(xr, ey);
         }
-        
+
         uint qout = q & 0x7f;
-        
+
         if( signn < 0)
         {
             qout = -qout;
@@ -2161,11 +2161,11 @@ double __builtin_spirv_OpenCL_remquo_f64_f64_p1i32( double        xx,
         {
             xr = -xr;
         }
-        
+
         *quo = qout;
         result = xr;
     }
-    
+
     return result;
 }
 
@@ -2376,10 +2376,10 @@ double __builtin_spirv_OpenCL_remquo_f64_f64_p0i32( double         xx,
                                              __private int* quo )
 {
     double result;
-    
-    if( __intel_relaxed_isnan(xx) | 
-        __intel_relaxed_isnan(yy) | 
-        __intel_relaxed_isinf(xx) | 
+
+    if( __intel_relaxed_isnan(xx) |
+        __intel_relaxed_isnan(yy) |
+        __intel_relaxed_isinf(xx) |
         yy == 0.0 )
     {
         *quo = 0;
@@ -2418,7 +2418,7 @@ double __builtin_spirv_OpenCL_remquo_f64_f64_p0i32( double         xx,
               for(i = ex - ey; i > 0; i--)
               {
                 q = q << 1;
-                if(xr >= yr) 
+                if(xr >= yr)
                 {
                     xr = xr - yr;
                     q = q + 1;
@@ -2446,9 +2446,9 @@ double __builtin_spirv_OpenCL_remquo_f64_f64_p0i32( double         xx,
         {
             xr = __builtin_spirv_OpenCL_ldexp_f64_i32(xr, ey);
         }
-        
+
         int qout = q & 0x7f;
-        
+
         if( signn < 0)
         {
             qout = -qout;
@@ -2457,11 +2457,11 @@ double __builtin_spirv_OpenCL_remquo_f64_f64_p0i32( double         xx,
         {
             xr = -xr;
         }
-        
+
         *quo = qout;
         result = xr;
     }
-    
+
     return result;
 }
 
@@ -2672,10 +2672,10 @@ double __builtin_spirv_OpenCL_remquo_f64_f64_p3i32( double       xx,
                                              __local int* quo )
 {
     double result;
-    
-    if( __intel_relaxed_isnan(xx) | 
-        __intel_relaxed_isnan(yy) | 
-        __intel_relaxed_isinf(xx) | 
+
+    if( __intel_relaxed_isnan(xx) |
+        __intel_relaxed_isnan(yy) |
+        __intel_relaxed_isinf(xx) |
         yy == 0.0 )
     {
         *quo = 0;
@@ -2714,7 +2714,7 @@ double __builtin_spirv_OpenCL_remquo_f64_f64_p3i32( double       xx,
               for(i = ex - ey; i > 0; i--)
               {
                 q = q << 1;
-                if(xr >= yr) 
+                if(xr >= yr)
                 {
                     xr = xr - yr;
                     q = q + 1;
@@ -2742,9 +2742,9 @@ double __builtin_spirv_OpenCL_remquo_f64_f64_p3i32( double       xx,
         {
             xr = __builtin_spirv_OpenCL_ldexp_f64_i32(xr, ey);
         }
-        
+
         int qout = q & 0x7f;
-        
+
         if( signn < 0)
         {
             qout = -qout;
@@ -2753,11 +2753,11 @@ double __builtin_spirv_OpenCL_remquo_f64_f64_p3i32( double       xx,
         {
             xr = -xr;
         }
-        
+
         *quo = qout;
         result = xr;
     }
-    
+
     return result;
 }
 
@@ -2970,10 +2970,10 @@ double __builtin_spirv_OpenCL_remquo_f64_f64_p4i32( double         xx,
                                              __generic int* quo )
 {
     double result;
-    
-    if( __intel_relaxed_isnan(xx) | 
-        __intel_relaxed_isnan(yy) | 
-        __intel_relaxed_isinf(xx) | 
+
+    if( __intel_relaxed_isnan(xx) |
+        __intel_relaxed_isnan(yy) |
+        __intel_relaxed_isinf(xx) |
         yy == 0.0 )
     {
         *quo = 0;
@@ -3012,7 +3012,7 @@ double __builtin_spirv_OpenCL_remquo_f64_f64_p4i32( double         xx,
               for(i = ex - ey; i > 0; i--)
               {
                 q = q << 1;
-                if(xr >= yr) 
+                if(xr >= yr)
                 {
                     xr = xr - yr;
                     q = q + 1;
@@ -3040,9 +3040,9 @@ double __builtin_spirv_OpenCL_remquo_f64_f64_p4i32( double         xx,
         {
             xr = __builtin_spirv_OpenCL_ldexp_f64_i32(xr, ey);
         }
-        
+
         int qout = q & 0x7f;
-        
+
         if( signn < 0)
         {
             qout = -qout;
@@ -3051,11 +3051,11 @@ double __builtin_spirv_OpenCL_remquo_f64_f64_p4i32( double         xx,
         {
             xr = -xr;
         }
-        
+
         *quo = qout;
         result = xr;
     }
-    
+
     return result;
 }
 

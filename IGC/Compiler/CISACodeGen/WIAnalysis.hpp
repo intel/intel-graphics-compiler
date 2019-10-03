@@ -190,7 +190,7 @@ namespace IGC
 
         /// @brief do the trivial checking WI-dep
         /// @param I instruction to check
-        /// @return Dependency type. Returns Uniform if all operands are 
+        /// @return Dependency type. Returns Uniform if all operands are
         ///         Uniform, Random otherwise
         WIBaseClass::WIDependancy calculate_dep_simple(const llvm::Instruction* I);
 
@@ -250,9 +250,9 @@ namespace IGC
 
         /// The WIAnalysis follows pointer arithmetic
         ///  and Index arithmetic when calculating dependency
-        ///  properties. If a part of the index is lost due to 
+        ///  properties. If a part of the index is lost due to
         ///  a transformation, it is acceptable.
-        ///  This constant decides how many bits need to be 
+        ///  This constant decides how many bits need to be
         ///  preserved before we give up on the analysis.
         static const unsigned int MinIndexBitwidthToPreserve;
 
@@ -264,7 +264,7 @@ namespace IGC
         /// the other holds the new changed values from the current iteration.
         std::vector<const llvm::Value*> m_changed1;
         std::vector<const llvm::Value*> m_changed2;
-        /// ptr to m_changed1, m_changed2 
+        /// ptr to m_changed1, m_changed2
         std::vector<const llvm::Value*>* m_pChangedOld;
         std::vector<const llvm::Value*>* m_pChangedNew;
 

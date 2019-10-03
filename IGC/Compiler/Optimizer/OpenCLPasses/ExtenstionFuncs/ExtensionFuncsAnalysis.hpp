@@ -35,8 +35,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace IGC
 {
-    /// @brief  ExtensionFuncsAnalysis pass used for analyzing if VME functions are used in the 
-    ///         different functions in the module and creating metadata that represents 
+    /// @brief  ExtensionFuncsAnalysis pass used for analyzing if VME functions are used in the
+    ///         different functions in the module and creating metadata that represents
     ///         the implicit information needed by each function for resolving these function calls
 
     class ExtensionFuncsAnalysis : public llvm::ModulePass, public llvm::InstVisitor<ExtensionFuncsAnalysis>
@@ -70,8 +70,8 @@ namespace IGC
         virtual bool runOnModule(llvm::Module& M) override;
 
         /// @brief  Function entry point.
-        ///         Finds all VME function calls in this function, analyzes them and creates 
-        ///         metadata that represents the implicit information needed by this function 
+        ///         Finds all VME function calls in this function, analyzes them and creates
+        ///         metadata that represents the implicit information needed by this function
         ///         for resolving these function calls
         /// @param  F The destination function.
         bool runOnFunction(llvm::Function& F);

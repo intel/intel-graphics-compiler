@@ -2282,7 +2282,7 @@ bool GlobalRA::evenAlignNeeded(G4_Declare* dcl)
             }
         }
     }
-    
+
     return false;
 }
 
@@ -2498,7 +2498,7 @@ bool Augmentation::updateDstMaskForScatter(G4_INST* inst, unsigned char* mask)
         }
         return true;
     }
-        
+
     break;
 
     default: return false;
@@ -5489,8 +5489,8 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
                 BankAlign align = evenAlignNeeded ? BankAlign::Even : BankAlign::Either;
                 if (allocFromBanks)
                 {
-                    
-                    if (!isHybrid && oneGRFBankDivision && 
+
+                    if (!isHybrid && oneGRFBankDivision &&
                         (!evenAlignNeeded || getPlatformGeneration(getGenxPlatform()) == PlatformGen::GEN9))
                     {
                         gra.getBankAlignment(lr, align);
@@ -10511,7 +10511,7 @@ void GlobalRA::fixAlignment()
             if (dst && dst->getTopDcl())
             {
                 G4_RegVar* var = dst->getBase()->asRegVar();
-                if (inst->isSend() && dst->getRegAccess() == Direct) 
+                if (inst->isSend() && dst->getRegAccess() == Direct)
                 {
                     if (!var->isPhyRegAssigned())
                     {
@@ -10800,9 +10800,9 @@ void VerifyAugmentation::verify()
 
             return str;
         };
-        
+
         std::cerr << dcl->getName() << " - " << getMaskStr(dclMask);
-        
+
         verifyAlign(dcl);
 
         for (auto it = active.begin(); it != active.end();)

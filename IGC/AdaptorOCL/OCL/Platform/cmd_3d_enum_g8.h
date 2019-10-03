@@ -59,9 +59,9 @@ enum GFX3DCONTROL_SUBOPCODE
 };
 
 /*****************************************************************************\
-ENUM: GFX3DCONTROL_OPERATION 
+ENUM: GFX3DCONTROL_OPERATION
 \*****************************************************************************/
-enum GFX3DCONTROL_OPERATION 
+enum GFX3DCONTROL_OPERATION
 {
     GFX3DCONTROLOP_NOWRITE          = 0x00,
     GFX3DCONTROLOP_WRITEIMMEDIATE   = 0x01,

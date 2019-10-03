@@ -313,7 +313,7 @@ void WorkaroundAnalysis::visitCallInst(llvm::CallInst& I)
         break;
         case llvm::GenISAIntrinsic::GenISA_RenderTargetReadSampleFreq:
         {
-            //Render target read should return 0 when the sample is outside primitive processed. 
+            //Render target read should return 0 when the sample is outside primitive processed.
             //    R0.xyzw = RTRead(RTi, SampleIndex);
             //    R1 = 1<<SamplexIndex
             //    R2 = R1 & InputCoverage

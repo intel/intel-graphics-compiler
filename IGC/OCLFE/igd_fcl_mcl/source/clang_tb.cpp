@@ -851,7 +851,7 @@ namespace TC
   Returns true if CommonClang used on current OS has VME types defined.
 
   \*****************************************************************************/
-  bool AreVMETypesDefined() 
+  bool AreVMETypesDefined()
   {
 #ifdef VME_TYPES_DEFINED
 #if VME_TYPES_DEFINED
@@ -992,7 +992,7 @@ namespace TC
     std::string GetListOfExtensionsFromInternalOptions(const std::string& internalOptions) {
     size_t start_pos = 0, end_pos = 0;
     std::string clextString = "";
-    
+
     while ((start_pos = internalOptions.find("-cl-ext=", end_pos)) != std::string::npos) {
       end_pos = internalOptions.find(" ", start_pos);
       clextString += internalOptions.substr(start_pos, end_pos - start_pos) + " ";
@@ -1218,7 +1218,7 @@ namespace TC
                         // If "spir" does not follow the -x option, we must fail
                         if ((strcmp(pParam, "spir") && strcmp(pParam, "spir64")))
                         {
-                            // Invalid option - break out of the loop and return 
+                            // Invalid option - break out of the loop and return
                             // CL_INVALID_BUILD_OPTIONS
                             retVal = -43;
                             std::string invalidOption(pParam);
@@ -1264,13 +1264,13 @@ namespace TC
                             (strncmp(pParam, "-dump-opt-llvm", 14) == 0) ||
                             (strcmp(pParam, "-cl-no-subgroup-ifp") == 0);
 
-           
-                    
+
+
 
 
                         if (isCommonOption)
                         {
-                            // check to see if they used a space immediately after 
+                            // check to see if they used a space immediately after
                             // the define/include. If they did...
                             if ((strcmp(pParam, "-D") == 0) ||
                                 (strcmp(pParam, "-I") == 0))
@@ -1289,7 +1289,7 @@ namespace TC
                             }
                         }
                         // Check for Intel OpenCL CPU options
-                        // OCL Kernel Profiler requires "-g" to create debug information for instrumented kernels. 
+                        // OCL Kernel Profiler requires "-g" to create debug information for instrumented kernels.
                         // Without those information OCL Profiler is unable to associate OpenC code with IL instructions.
                         else if ((strcmp(pParam, "-g") == 0) ||
                             (strcmp(pParam, "-profiler") == 0) ||
@@ -1303,7 +1303,7 @@ namespace TC
                         }
                         else
                         {
-                            // Invalid option - break out of the loop and return 
+                            // Invalid option - break out of the loop and return
                             // CL_INVALID_BUILD_OPTIONS
                             retVal = -43;
                             std::string invalidOption(pParam);
@@ -1404,7 +1404,7 @@ namespace TC
 
         // get additional -D flags from internal options
         optionsEx += " " + GetCDefinesFromInternalOptions(pInternalOptions);
-        
+
         if (extensions.find("cl_intel_subgroups_short") != std::string::npos)
         {
           optionsEx += " -Dcl_intel_subgroups_short";
@@ -1456,7 +1456,7 @@ namespace TC
         if (0 != BuildOptionsAreValid(options.c_str(), exceptString)) res = -43;
 
         Utils::FillOutputArgs(pResultPtr, pOutputArgs, exceptString);
-        if (!exceptString.empty()) // str != "" => there was an exception. skip further code and return. 
+        if (!exceptString.empty()) // str != "" => there was an exception. skip further code and return.
         {
             return false;
         }

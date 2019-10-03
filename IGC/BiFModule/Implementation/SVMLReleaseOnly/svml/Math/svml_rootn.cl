@@ -39,7 +39,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #if defined(cl_khr_fp64)
 # include "../MathDouble/rf_rootn_d_1_g.cl"
 #endif
-    
+
 __attribute__((always_inline))
 int __ocl_svml_srootn_cout_rare (private const float *a, private const int *b, private float *r)
 {
@@ -84,7 +84,7 @@ int __ocl_svml_srootn_cout_rare (private const float *a, private const int *b, p
   int iXisINF = (!((((as_uint(flAi) >> 23) & 0xFF) != 0xFF))) & ((iIsSigZeroX));
   int iYisOdd = (*b) & 1;
   int iYisEven = iYisOdd ^ 1;
-  
+
   uint resMask = ~0;
   uint testMask = 0;
   uint rUI = 0;
@@ -93,9 +93,9 @@ int __ocl_svml_srootn_cout_rare (private const float *a, private const int *b, p
      testMask = (MASK)&resMask;\
      rUI = (testMask & (VAL)) | ((~testMask) & rUI);\
      resMask = resMask & (~testMask);
-     
+
   #define TO_MASK(X) -(unsigned int)(X)
-  
+
   uint YisZeroMask = TO_MASK(iYisZero);
   uint XisZeroMask = TO_MASK(iXisZero);
   uint YisEvenMask = TO_MASK(iYisEven);
@@ -119,7 +119,7 @@ int __ocl_svml_srootn_cout_rare (private const float *a, private const int *b, p
       uint rootnHATab370Div370UI = as_uint(rootnHATab370Div370);
       uint rootnHATab371DivAUI   = as_uint(rootnHATab371DivA);
       uint aUI = as_uint(*a);
-  
+
       TEST_AND_SET(YisZeroMask, rootnHATab370DivUI);
 
       TEST_AND_SET(XisZeroMask & YisEvenMask & SignYMask, rootnHATab371Div370UI);
@@ -146,18 +146,18 @@ int __ocl_svml_srootn_cout_rare (private const float *a, private const int *b, p
 
   iYIsInt = _TestInt (flBi);
   uint YIsIntMask = TO_MASK(iYIsInt);
-  
+
   flVTmp1 = flAi + flBi;
   iSign   = (as_uint(flVTmp1) >> 31);
   flVTmp2 = rootnHATab371;
   flVTmp2 = as_float((as_uint(flVTmp2) & 0x7FFFFFFF) | ((uint) (iSign) << 31));
   flVTmp2 = flVTmp2 * flVTmp2;
   uint abSumUI = as_uint(flVTmp2*fResSign);
-  
+
   iXIsFinite = (((as_uint(flAi) >> 23) & 0xFF) != 0xFF);
   uint XIsFiniteMask = TO_MASK(iXIsFinite);
   uint YIsFiniteMask = TO_MASK(iYIsFinite);
- 
+
   uint tempMask =  (~SignXMask & TO_MASK(iEXB == 0x7F) & IsSigZeroXMask) | (TO_MASK(iEYB == 0) & IsSigZeroYMask);
   TEST_AND_SET(tempMask, abSumUI);
 
@@ -167,20 +167,20 @@ int __ocl_svml_srootn_cout_rare (private const float *a, private const int *b, p
   {
       tempMask = ~((XIsFiniteMask | IsSigZeroXMask) & (YIsFiniteMask | IsSigZeroYMask));
       TEST_AND_SET(tempMask, as_uint((*a + *b)*fResSign));
-      
+
       flTmp1 = flAi * flAi*fResSign;
       TEST_AND_SET(isRootnHATab370Mask & ~SignYMask, as_uint(((__constant float *) _vmlsRootnHATab)[371 +(iYIsInt & iSignX)] * flTmp1));
       tempMask = isRootnHATab370Mask & SignYMask;
       nRet = (tempMask & resMask) & 1;
       TEST_AND_SET(tempMask, as_uint(((__constant float *) _vmlsRootnHATab)[371 + (iYIsInt & iSignX)] / flTmp1));
-      
+
       tempMask = TO_MASK(isRootnHATab372Mask) & (YIsIntMask | ~YIsFiniteMask);
       TEST_AND_SET(tempMask, as_uint(((__constant float *) _vmlsRootnHATab)[371 + (iYIsInt & 1)]));
   }
-  
-  #undef TO_MASK          
+
+  #undef TO_MASK
   #undef TEST_AND_SET
-  
+
   *r = as_float(rUI);
 
   if (resMask)

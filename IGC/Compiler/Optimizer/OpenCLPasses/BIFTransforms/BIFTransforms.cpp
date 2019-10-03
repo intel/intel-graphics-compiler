@@ -133,7 +133,7 @@ bool BIFTransforms::replaceBIF(Function& F)
 bool BIFTransforms::runOnModule(Module& M)
 {
     // OCL builtin uses SPIR name mangling (Itanium C++ ABI + extension)
-    //  mangledName (n) = _Z<lengthof(n)><n><type> 
+    //  mangledName (n) = _Z<lengthof(n)><n><type>
     bool changed = false;
     for (Function& F : M)
     {

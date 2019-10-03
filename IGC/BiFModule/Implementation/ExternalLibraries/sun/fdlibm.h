@@ -57,7 +57,7 @@ but these catch some common cases. */
 * (one may replace the following line by "#include <values.h>")
 */
 
-#define X_TLOSS        1.41484755040568800000e+16 
+#define X_TLOSS        1.41484755040568800000e+16
 
 #define    DOMAIN        1
 #define    SING        2

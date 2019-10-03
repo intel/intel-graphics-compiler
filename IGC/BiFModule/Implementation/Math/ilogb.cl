@@ -35,7 +35,7 @@ int __builtin_spirv_OpenCL_ilogb_f32( float x )
     {
         result = ( (as_int(x) & FLOAT_EXPONENT_MASK ) >> FLOAT_MANTISSA_BITS) - FLOAT_BIAS;
     }
-    else if( __intel_relaxed_isnan( x ) | 
+    else if( __intel_relaxed_isnan( x ) |
              __intel_relaxed_isinf( x ) )
     {
         result = FP_ILOGBNAN;
@@ -52,7 +52,7 @@ int __builtin_spirv_OpenCL_ilogb_f32( float x )
 
     return result;
 }
- 
+
 GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_ilogb, int, float, f32 )
 
 #if defined(cl_khr_fp64)

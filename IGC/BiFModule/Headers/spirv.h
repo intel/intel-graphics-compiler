@@ -4031,7 +4031,7 @@ void __builtin_spirv_OpAtomicFlagClear_p4i32_i32_i32(volatile generic uint *Poin
 void __builtin_spirv_OpControlBarrier_i32_i32_i32(Scope_t Execution, Scope_t Memory, uint Semantics);
 void __builtin_spirv_OpMemoryBarrier_i32_i32(Scope_t Memory, uint Semantics);
 
-typedef struct 
+typedef struct
 {
     int count;
     int orig_count;

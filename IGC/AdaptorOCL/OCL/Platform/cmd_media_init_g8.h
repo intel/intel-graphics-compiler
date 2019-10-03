@@ -194,20 +194,20 @@ static const SMediaStateMediaInterfaceDescriptorLoad g_cInitMediaStateMediaInter
             OP_LENGTH( SIZE32( SMediaStateMediaInterfaceDescriptorLoad ) ),  // Length
             GFXSUBOP_MEDIA_INTERFACE_DESCRIPTOR_LOAD,                        // InstructionSubOpcode
             GFXOP_MEDIA,                                                     // InstructionOpcode
-            PIPE_MEDIA,                                                      // InstructionSubType 
+            PIPE_MEDIA,                                                      // InstructionSubType
             INSTRUCTION_GFX                                                  // InstructionType
         }
     },
 
     // DW1
     {
-        0                                               // Reserved                                                  
+        0                                               // Reserved
     },
 
     // DW2
     {
         {
-            0,                                              // InterfaceDescriptorTotalLength        
+            0,                                              // InterfaceDescriptorTotalLength
             0                                               // _Unused
         }
     },
@@ -215,10 +215,10 @@ static const SMediaStateMediaInterfaceDescriptorLoad g_cInitMediaStateMediaInter
     // DW3
     {
         {
-            0                                               // InterfaceDescriptorDataStartAddress        
+            0                                               // InterfaceDescriptorDataStartAddress
         }
     }
-  
+
 };
 
 
@@ -233,7 +233,7 @@ static const SMediaStateMediaVFEState g_cInitMediaStateMediaVFEState =
             OP_LENGTH( SIZE32( SMediaStateMediaVFEState ) ),// Length
             GFXSUBOP_MEDIA_VFE_STATE,                       // InstructionSubOpcode
             GFXOP_MEDIA,                                    // InstructionOpcode
-            PIPE_MEDIA,                                     // InstructionSubType 
+            PIPE_MEDIA,                                     // InstructionSubType
             INSTRUCTION_GFX                                 // InstructionType
         }
     },
@@ -333,7 +333,7 @@ static const SMediaStateMediaVFEState g_cInitMediaStateMediaVFEState =
 /*****************************************************************************\
 CONST: g_cInitMediaStateMediaVFEStateDW2Gen7
 \*****************************************************************************/
-static const SMediaStateMediaVFEState::_DW2::_Gen7 g_cInitMediaStateMediaVFEStateDW2Gen7 =    
+static const SMediaStateMediaVFEState::_DW2::_Gen7 g_cInitMediaStateMediaVFEStateDW2Gen7 =
 {
     GFXMEDIASTATE_DEBUG_COUNTER_FREE_RUNNING,   // DebugCounterControl
     GFXMEDIASTATE_GPGPU_MODE_GPGPU,             // GPGPUMode
@@ -348,7 +348,7 @@ static const SMediaStateMediaVFEState::_DW2::_Gen7 g_cInitMediaStateMediaVFEStat
 /*****************************************************************************\
 CONST: g_cInitMediaStateMediaVFEStateDW3Gen9
 \*****************************************************************************/
-static const SMediaStateMediaVFEState::_DW3::_Gen9 g_cInitMediaStateMediaVFEStateDW3Gen9 =    
+static const SMediaStateMediaVFEState::_DW3::_Gen9 g_cInitMediaStateMediaVFEStateDW3Gen9 =
 {
     GFXMEDIASTATE_DEBUG_COUNTER_FREE_RUNNING,           // DebugCounterControl
     GFXMEDIASTATE_SLM_GRANULARITY_4K,                   // GFXMEDIASTATE_SLM_GRANULARITY
@@ -358,7 +358,7 @@ static const SMediaStateMediaVFEState::_DW3::_Gen9 g_cInitMediaStateMediaVFEStat
     false,                                              // ResetGatewayTimer
     0,                                                  // NumberOfURBEntries
     0                                                   // MaximumNumberOfThreads
-}; 
+};
 
 /*****************************************************************************\
 CONST: g_cInitMediaStateMediaCURBELoad
@@ -371,7 +371,7 @@ static const SMediaStateMediaCURBELoad g_cInitMediaStateMediaCURBELoad =
             OP_LENGTH( SIZE32( SMediaStateMediaCURBELoad ) ),           // Length
             GFXSUBOP_MEDIA_CURBE_LOAD,                                  // InstructionSubOpcode
             GFXOP_MEDIA,                                                // InstructionOpcode
-            PIPE_MEDIA,                                                 // InstructionSubType 
+            PIPE_MEDIA,                                                 // InstructionSubType
             INSTRUCTION_GFX                                             // InstructionType
         }
     },
@@ -382,7 +382,7 @@ static const SMediaStateMediaCURBELoad g_cInitMediaStateMediaCURBELoad =
     },
 
     // DW2
-    {   
+    {
         {
             0,                                                          // CURBETotalDataLength
             0                                                           // _Unused
@@ -408,7 +408,7 @@ static const SMediaStateMediaStateFlush g_cInitMediaStateMediaStateFlush =
             OP_LENGTH( SIZE32( SMediaStateMediaStateFlush ) ),          // Length
             GFXSUBOP_MEDIA_STATE_FLUSH,                                 // InstructionSubOpcode
             GFXOP_MEDIA,                                                // InstructionOpcode
-            PIPE_MEDIA,                                                 // InstructionSubType 
+            PIPE_MEDIA,                                                 // InstructionSubType
             INSTRUCTION_GFX                                             // InstructionType
         }
     },
@@ -449,7 +449,7 @@ static const SMediaStateGPGPUWalker g_cInitMediaStateGPGPUWalker =
             0,                                                          // _Unused2
             GFXSUBOP_MEDIA_GPGPU_WALKER,                                // InstructionSubOpcode
             GFXOP_NONPIPELINED,                                         // InstructionOpcode
-            PIPE_MEDIA,                                                 // InstructionSubType 
+            PIPE_MEDIA,                                                 // InstructionSubType
             INSTRUCTION_GFX                                             // InstructionType
         }
     },
@@ -461,7 +461,7 @@ static const SMediaStateGPGPUWalker g_cInitMediaStateGPGPUWalker =
             0,                                                          // _Unused
             0                                                           // ObjectId
         }
-    }, 
+    },
 
     // DW2
     {
@@ -474,56 +474,56 @@ static const SMediaStateGPGPUWalker g_cInitMediaStateGPGPUWalker =
             0,                                                          // _Unused3
             GFXMEDIASTATE_GPGPU_WALKER_SIMD16                                                           // SIMDSize
         }
-    }, 
+    },
 
     // DW3
     {
         {
             0                                                           // ThreadGroupIdStartingX
         }
-    }, 
+    },
 
     // DW4
     {
         {
             0                                                           // ThreadGroupIdDimensionX
         }
-    }, 
+    },
 
     // DW5
     {
         {
             0                                                           // ThreadGroupIdStartingY
         }
-    }, 
+    },
 
     // DW6
     {
         {
             0                                                           // ThreadGroupIdDimensionY
         }
-    }, 
+    },
 
     // DW7
     {
         {
             0                                                           // ThreadGroupIdStartingZ
         }
-    }, 
+    },
 
     // DW8
     {
         {
             0                                                           // ThreadGroupIdDimensionZ
         }
-    }, 
+    },
 
     // DW9
     {
         {
             0                                                           // RightExecutionMask
         }
-    }, 
+    },
 
     // DW10
     {

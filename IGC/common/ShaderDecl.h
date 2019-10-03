@@ -89,7 +89,7 @@ protected:
     template<typename TOpType>
     ErrorCode  ValidateOperation( const CShaderDecl& src, unsigned char*& pStream );
 
-    
+
     unsigned int   m_MaxNumber;
     unsigned int   m_MinNumber;
 };
@@ -106,7 +106,7 @@ class USC_API CShaderFiniteDecl :
     public CShaderDecl
 {
 public:
-    static ErrorCode   Create( 
+    static ErrorCode   Create(
                         const unsigned int maxRegisters,
                         CShaderFiniteDecl*& pShaderDecl );
     static void     Delete( CShaderFiniteDecl*& pShaderDecl );
@@ -120,7 +120,7 @@ public:
     void            GetListOfDeclared( const unsigned int** listOfDeclared, unsigned int &listSize ) const;
     bool            GetNextUndeclared( const unsigned int nextUndeclaredHint, unsigned int& nextUndeclared );
     void            GetDeclaredIndexList( const ShaderRegisterIndexType** declaredIndex, unsigned int &listSize ) const;
-    
+
     const unsigned int* GetListOfDeclared( void ) const;
     const ShaderRegisterIndexType* GetDeclaredIndexList( void ) const;
 
@@ -130,7 +130,7 @@ public:
     ErrorCode  Process( const CShaderDecl& src, unsigned char*& pStream, unsigned int& size );
 
 protected:
-    CShaderFiniteDecl( 
+    CShaderFiniteDecl(
         const bool allowResizing,
         const unsigned int maxRegisters );
     virtual ~CShaderFiniteDecl( void );
@@ -141,7 +141,7 @@ protected:
     const bool                  m_cAllowResizing;
 
     ShaderRegisterIndexType*    m_pDeclaredIndex;  // for each register holds SHADER_REGISTER_INDEX_NONE
-                                                   // if not declared or its declared index otherwise 
+                                                   // if not declared or its declared index otherwise
     unsigned int* m_pDeclaredList;
     unsigned int  m_MaxRegisters;
     unsigned int  m_Count;
@@ -316,8 +316,8 @@ class USC_API CShaderInputDecl :
     public CShaderFiniteDecl
 {
 public:
-    static ErrorCode   Create( 
-                        const unsigned int maxRegisters, 
+    static ErrorCode   Create(
+                        const unsigned int maxRegisters,
                         CShaderInputDecl*& pShaderDecl );
     static void     Delete( CShaderInputDecl*& pShaderDecl );
 
@@ -366,16 +366,16 @@ public:
 
     void    SetMaxIndexedInputRegisterNum( const unsigned int number );
     void    SetMinIndexedInputRegisterNum( const unsigned int number );
-    void    SetNumIndexedInputRegisters( const unsigned int number ); 
+    void    SetNumIndexedInputRegisters( const unsigned int number );
 
     unsigned int   GetMinIndexedInputRegisterNum( void ) const;
-    unsigned int   GetMaxIndexedInputRegisterNum( void ) const; 
-    unsigned int   GetNumIndexedInputRegisters( void ) const; 
+    unsigned int   GetMaxIndexedInputRegisterNum( void ) const;
+    unsigned int   GetNumIndexedInputRegisters( void ) const;
 
     inline ShaderRegisterIndexType GetInstanceIDRegisterNum( void ) const;
     inline ShaderRegisterIndexType GetVertexIDRegisterNum( void ) const;
 
-    virtual void    Compress( void ); 
+    virtual void    Compress( void );
 
     SShaderInputDeclType GetInputDeclElement( const unsigned int index ) const;
 
@@ -487,8 +487,8 @@ class CShaderOutputDecl :
     public CShaderFiniteDecl
 {
 public:
-    static ErrorCode   Create( 
-                        const unsigned int maxRegisters, 
+    static ErrorCode   Create(
+                        const unsigned int maxRegisters,
                         CShaderOutputDecl*& pShaderDecl );
     static void     Delete( CShaderOutputDecl*& pShaderDecl );
 
@@ -527,7 +527,7 @@ public:
     void    SetMaxIndexedOutputRegisterNum( const unsigned int number );
     void    SetMinIndexedOutputRegisterNum( const unsigned int number );
     void    SetNumIndexedOutputRegisters( const unsigned int number );
-    
+
     unsigned int   GetMaxIndexedOutputRegisterNum( void ) const;
     unsigned int   GetMinIndexedOutputRegisterNum( void ) const;
     unsigned int   GetNumIndexedOutputRegisters( void ) const;
@@ -579,12 +579,12 @@ protected:
     unsigned int   m_MaxIndexedOutputRegisterNum;
     unsigned int   m_MinIndexedOutputRegisterNum;
     unsigned int   m_NumIndexedOutputRegisters;
-    
+
     unsigned int   m_ActualOutputRegisters[ NUM_PSHADER_OUTPUT_REGISTERS ];
     unsigned int   m_ActualOutputRegistersCount;
     unsigned int   m_AdditionalOutputRegisters[ NUM_PSHADER_OUTPUT_COLOR_REGISTERS ];
     unsigned int   m_AdditionalOutputsCount;
-    
+
     bool    m_HasPointSize;
     ShaderRegisterIndexType m_texCoordRegisterNum[ NUM_TEXTURE_COORDINATES ];
     ShaderRegisterIndexType m_fogCoordRegisterNum;
@@ -704,8 +704,8 @@ class CShaderIndexedTemporaryArrayDecl :
     public CShaderFiniteDecl
 {
 public:
-    static ErrorCode   Create( 
-                        const unsigned int maxRegisters, 
+    static ErrorCode   Create(
+                        const unsigned int maxRegisters,
                         CShaderIndexedTemporaryArrayDecl*& pShaderDecl );
     static void     Delete( CShaderIndexedTemporaryArrayDecl*& pShaderDecl );
 
@@ -728,7 +728,7 @@ public:
                          const unsigned int number ) const;
     bool             IsCached(
                          const unsigned int number,
-                         const SIMD_MODE simdMode ) const;    
+                         const SIMD_MODE simdMode ) const;
     bool             HasCachedTemps( void ) const;
     SShaderWriteMask GetReadChannels(
                          const unsigned int number ) const;
@@ -737,7 +737,7 @@ public:
     SHADER_CHANNEL   GetFirstReadChannel(
                          const unsigned int number ) const;
     bool             HasIndirectRegisterWrites(
-                         const unsigned int number ) const;    
+                         const unsigned int number ) const;
 
     virtual void    Compress( void );
 
@@ -781,8 +781,8 @@ class CShaderInterfaceDecl :
     public CShaderFiniteDecl
 {
 public:
-    static ErrorCode   Create( 
-                        const unsigned int maxRegisters, 
+    static ErrorCode   Create(
+                        const unsigned int maxRegisters,
                         CShaderInterfaceDecl*& pShaderDecl );
 
     static void     Delete( CShaderInterfaceDecl*& pShaderDecl );
@@ -815,7 +815,7 @@ protected:
 
     virtual ErrorCode  Initialize( void );
 
-    iSTD::CArray<SShaderInterfaceDeclType,IGC::CAllocator>* m_pIfaceDecls;    
+    iSTD::CArray<SShaderInterfaceDeclType,IGC::CAllocator>* m_pIfaceDecls;
 };
 
 /*****************************************************************************\
@@ -830,8 +830,8 @@ class CShaderFunctionTableDecl :
     public CShaderFiniteDecl
 {
 public:
-    static ErrorCode   Create( 
-                        const unsigned int maxRegisters, 
+    static ErrorCode   Create(
+                        const unsigned int maxRegisters,
                         CShaderFunctionTableDecl*& pShaderDecl );
 
     static void     Delete( CShaderFunctionTableDecl*& pShaderDecl );
@@ -886,8 +886,8 @@ class CShaderFunctionBodyDecl :
     public CShaderFiniteDecl
 {
 public:
-    static ErrorCode   Create( 
-                        const unsigned int maxRegisters, 
+    static ErrorCode   Create(
+                        const unsigned int maxRegisters,
                         CShaderFunctionBodyDecl*& pShaderDecl );
 
     static void     Delete( CShaderFunctionBodyDecl*& pShaderDecl );

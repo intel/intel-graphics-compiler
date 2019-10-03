@@ -119,7 +119,7 @@ void UpgradeResourceAccess::ChangeIntrinsic(CallInst& C, GenISAIntrinsic::ID ID)
     case GenISAIntrinsic::GenISA_sampleCptr:
     case GenISAIntrinsic::GenISA_sampleBCptr:
     case GenISAIntrinsic::GenISA_sampleLptr:
-    case GenISAIntrinsic::GenISA_sampleDptr: 
+    case GenISAIntrinsic::GenISA_sampleDptr:
     case GenISAIntrinsic::GenISA_sampleKillPix: {
         types.push_back(C.getType());
         types.push_back(C.getOperand(0)->getType());
@@ -176,7 +176,7 @@ void UpgradeResourceAccess::visitCallInst(CallInst& C)
         return;
     }
 
-    //Note : This upgrader pass is handling legacy intrinsics as well, 
+    //Note : This upgrader pass is handling legacy intrinsics as well,
     // hence we might be dealing with intrinsics starting with @genx.
     if(C.getCalledFunction()->getName().contains("genx.GenISA.sample."))
     {
@@ -206,7 +206,7 @@ void UpgradeResourceAccess::visitCallInst(CallInst& C)
     {
         ChangeIntrinsic(C, GenISAIntrinsic::GenISA_ldmsptr);
     }
-    else if(C.getCalledFunction()->getName().equals("llvm.genx.GenISA.ldmcs") || 
+    else if(C.getCalledFunction()->getName().equals("llvm.genx.GenISA.ldmcs") ||
         C.getCalledFunction()->getName().equals("genx.GenISA.ldmcs"))
     {
         ChangeIntrinsic(C, GenISAIntrinsic::GenISA_ldmcsptr);
@@ -232,7 +232,7 @@ class UpgradeGenIntrinsicPrefix : public ModulePass, public InstVisitor<UpgradeG
 {
 public:
     UpgradeGenIntrinsicPrefix() : ModulePass(ID) {}
-    
+
     static char ID;
     void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
     {
@@ -263,7 +263,7 @@ bool UpgradeGenIntrinsicPrefix::runOnModule(llvm::Module &M)
 }
 
 
-namespace IGC 
+namespace IGC
 {
 Pass* CreateUpgradeResourceIntrinsic()
 {

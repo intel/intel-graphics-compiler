@@ -156,7 +156,7 @@ void ImageFuncsAnalysis::visitCallInst(CallInst& CI)
         return;
     }
 
-    // Extract the arg num and add it to the appropriate data structure    
+    // Extract the arg num and add it to the appropriate data structure
     assert(CI.getNumArgOperands() == 1 && "Supported image/sampler functions are expected\
                                            to have only one argument");
 
@@ -164,7 +164,7 @@ void ImageFuncsAnalysis::visitCallInst(CallInst& CI)
     // don't require extra kernel parameters.
     Value* callArg = CImagesBI::CImagesUtils::traceImageOrSamplerArgument(&CI, 0, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(), getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
 
-    // TODO: For now assume that we may not trace a sampler/texture for indirect access. 
+    // TODO: For now assume that we may not trace a sampler/texture for indirect access.
     // In this case we provide no WA support for indirect case and all WAs will return 0.
     // These WAs need to be reworked to support indirect case in the future.
     if (callArg)

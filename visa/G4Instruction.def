@@ -194,30 +194,30 @@ HANDLE_INST( pseudo_fc_ret, 1, 0, InstTypeFlow, GENX_BDW, ATTR_NONE )
 // InstTypeVector
 //
 HANDLE_INST( sad2, 2, 1,  InstTypeVector, GENX_BDW, \
-             ATTR_NONE )             
+             ATTR_NONE )
 HANDLE_INST( sada2, 2, 1,  InstTypeVector, GENX_BDW, \
-             ATTR_NONE )             
+             ATTR_NONE )
 HANDLE_INST( dp4, 2, 1,  InstTypeVector, GENX_BDW, \
-             ATTR_FLOAT_SRC_ONLY )             
+             ATTR_FLOAT_SRC_ONLY )
 HANDLE_INST( dph, 2, 1,  InstTypeVector, GENX_BDW, \
-             ATTR_FLOAT_SRC_ONLY )             
+             ATTR_FLOAT_SRC_ONLY )
 HANDLE_INST( dp3, 2, 1,  InstTypeVector, GENX_BDW, \
-             ATTR_FLOAT_SRC_ONLY )             
+             ATTR_FLOAT_SRC_ONLY )
 HANDLE_INST( dp2, 2, 1,  InstTypeVector, GENX_BDW, \
-             ATTR_FLOAT_SRC_ONLY )             
+             ATTR_FLOAT_SRC_ONLY )
 HANDLE_INST( line, 2, 1,  InstTypeVector, GENX_BDW, \
-             ATTR_FLOAT_SRC_ONLY )             
+             ATTR_FLOAT_SRC_ONLY )
 HANDLE_INST( pln, 2, 1,  InstTypeVector, GENX_BDW, \
-             ATTR_FLOAT_SRC_ONLY )             
+             ATTR_FLOAT_SRC_ONLY )
 HANDLE_INST( mad, 3, 1,  InstTypeVector, GENX_BDW, \
-             ATTR_NONE )             
+             ATTR_NONE )
 HANDLE_INST( lrp, 3, 1,  InstTypeVector, GENX_BDW, \
-             ATTR_FLOAT_SRC_ONLY )             
+             ATTR_FLOAT_SRC_ONLY )
   //
   // Following are pseudo instructions
   //
 HANDLE_INST( pseudo_mad, 3, 1,  InstTypeVector, GENX_BDW, \
-             ATTR_NONE )             
+             ATTR_NONE )
 HANDLE_INST( pseudo_sada2, 3, 1,  InstTypeVector, GENX_BDW, ATTR_NONE )
 
 //

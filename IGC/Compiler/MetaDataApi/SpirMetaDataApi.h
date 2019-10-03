@@ -1062,7 +1062,7 @@ namespace IGC {
             typedef NamedMDNodeList<VersionMetaDataHandle> OpenCLVersionsList;
 
         public:
-            // If using this constructor, setting the llvm module by the setModule 
+            // If using this constructor, setting the llvm module by the setModule
             // function is needed for correct operation.
             SpirMetaDataUtils() {}
 

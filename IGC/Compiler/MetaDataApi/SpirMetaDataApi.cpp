@@ -1202,7 +1202,7 @@ namespace IGC {
         // dtor
         //SpirMetaDataUtils::~SpirMetaDataUtils()
         //{
-           // 
+           //
         //}
 
         static bool isNamedNode(const llvm::Metadata* pNode, const char* name)

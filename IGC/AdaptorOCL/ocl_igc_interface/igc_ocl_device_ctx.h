@@ -82,7 +82,7 @@ protected:
 
 CIF_GENERATE_VERSIONS_LIST_AND_DECLARE_INTERFACE_DEPENDENCIES(IgcOclDeviceCtx, IGC::Platform, IGC::GTSystemInfo,
                                                                                IGC::OclGenBinary,
-                                                                               IGC::IgcFeaturesAndWorkarounds, 
+                                                                               IGC::IgcFeaturesAndWorkarounds,
                                                                                IGC::IgcOclTranslationCtx
                                                              );
 CIF_MARK_LATEST_VERSION(IgcOclDeviceCtxLatest, IgcOclDeviceCtx);

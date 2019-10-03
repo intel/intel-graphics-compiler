@@ -142,7 +142,7 @@ namespace {
         ///  publisher = {ACM},
         ///  address = {New York, NY, USA},
         ///  keywords = {compilers, dominance, jit-compilation, liveness analysis, ssa form},
-        /// } 
+        /// }
         /// Different from the origin paper without assumption of CFG reducibility,
         /// the algorithm here assumes the reducibility of CFG to simplify the liveness
         /// checking further by the simplied loop nesting forest.

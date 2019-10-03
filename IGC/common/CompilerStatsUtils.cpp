@@ -81,7 +81,7 @@ namespace IGC
                 }
                 // Copy from vISACompilerStats to compilerStats
                 compilerStats.MergeStats(vISACompilerStats, simdsize);
-    
+
                 compilerStats.SetF64("TimeVISACompile",
                                      context->m_compilerTimeStats->getCompileTimeMS(TIME_CG_vISACompile), simdsize);
                 // CompileTimeStats adds up the timings for simd8+simd16 in simd16 and timings for simd8+simd16+simd32 in simd32.

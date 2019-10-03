@@ -23,9 +23,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
- 
+
 //===-  IBiF_Reduce_Scan.cl -=================================================//
-// 
+//
 // This file defines versions of the Scan and Reduction work group and
 // sub groups functions.
 //

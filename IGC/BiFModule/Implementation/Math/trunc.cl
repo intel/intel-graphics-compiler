@@ -33,11 +33,11 @@ INLINE
 double __builtin_spirv_OpenCL_trunc_f64(double x )
 {
     //Algorithm performs rounding towards zero by truncating bits in the fractional part
-    // of the number.This is done by finding out the position of the fractional bits of  
+    // of the number.This is done by finding out the position of the fractional bits of
     //the mantissa and masking them out with zeros.
 
     signed high32Bit = (int)(as_long( x ) >> 32);
-    //int physicalexp = (int)__builtin_IB_ubfe( 11,20,high32bit ); 
+    //int physicalexp = (int)__builtin_IB_ubfe( 11,20,high32bit );
     uint physicalExp = ( high32Bit & 0x7fffffff ) >> 20;             // Extract the physical exponent.
     int  logicalExp = (int)physicalExp - DOUBLE_BIAS;                // Extract the logical exponent.
 

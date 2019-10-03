@@ -731,7 +731,7 @@ bool SLMConstProp::find_PATTERN_REPEAT_WITH_STRIDE(PatternInfo& aPattern)
 
         // Now, found two consecutive constants at ix_1stConst && ix_2ndConst
         // Check if the stride is a factor of basePtr. If so, we know that
-        // only those stores in this pattern (if present, need to check if 
+        // only those stores in this pattern (if present, need to check if
         // the pattern exists in the following code) can write to those
         // locations. This is a condition to make sure that if other work-items
         // write to the location written by the current work-item, they must
@@ -1004,12 +1004,12 @@ bool SLMConstProp::runOnFunction(Function& F)
     m_F = &F;
 
 
-    // Idea:  
+    // Idea:
     //   1. Handle the case that all writes to SLM is done before a barrier
     //      AND all reads to SLM is done after the barrier; AND all addresses
     //      will be based on local ids so their access pattern is known. Also,
     //      all addresses are off by a constant so that we don't need to check
-    //      aliases among different stores. And    
+    //      aliases among different stores. And
     //   2. the same constant is written to the SLM location in a clear pattern
     //      For now,  we will check the pattern:
     //        PATTERN_REPEAT_WITH_STRIDE (see PatternType)

@@ -69,7 +69,7 @@ namespace vISA
         const GlobalRA& gra;
         const LivenessAnalysis* liveAnalysis = nullptr;
         std::unordered_map<G4_INST*, unsigned int> rp;
-        double regPressure = 0; 
+        double regPressure = 0;
         uint32_t maxRP = 0;
         const Options* options;
         BitSet live;

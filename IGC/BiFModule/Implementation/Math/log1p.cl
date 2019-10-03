@@ -30,7 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     #include "../ExternalLibraries/libclc/log1p.cl"
     #if defined(cl_khr_fp64)
         #include "../ExternalLibraries/libclc/doubles.cl"
-    #endif // defined(cl_khr_fp64) 
+    #endif // defined(cl_khr_fp64)
 
 
 INLINE float __builtin_spirv_OpenCL_log1p_f32( float x )

@@ -35,7 +35,7 @@ INLINE float __builtin_spirv_OpenCL_powr_f32_f32( float x, float y )
     {
         // Undefined for x < 0.
         // Undefined for x = 0 and y = 0.
-        // For x >= 0, derived implementations implement this as 
+        // For x >= 0, derived implementations implement this as
         //    exp2(y * log2(x)).
         //
         // This expansion is technically undefined when x == 0, since
@@ -47,7 +47,7 @@ INLINE float __builtin_spirv_OpenCL_powr_f32_f32( float x, float y )
         float   pr = x;
 
         // TBD: Which is faster?
-        // Note that USC has a pattern match optimization to turn 
+        // Note that USC has a pattern match optimization to turn
         // log-mul-exp into pow.  Additionally, there are some specific
         // LLVM optimizations for pow.  So, preferring pow for now.
 #if 0

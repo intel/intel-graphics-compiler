@@ -54,7 +54,7 @@ void readNode(T &t, MDNode* node, StringRef name);
 
 //including auto-generated functions
 #include "MDNodeFunctions.gen"
-namespace IGC 
+namespace IGC
 {
     bool operator < (const ConstantAddress &a, const ConstantAddress &b)
     {
@@ -130,7 +130,7 @@ MDNode* CreateNode(float f, Module* module, StringRef name)
         MDString::get(module->getContext(), name),
         ValueAsMetadata::get(ConstantFP::get(Type::getFloatTy(module->getContext()), f)),
     };
-   
+
     MDNode* node = MDNode::get(module->getContext(), v);
     return node;
 }
@@ -154,7 +154,7 @@ MDNode* CreateNode(const std::vector<val> &vec, Module* module, StringRef name)
     nodes.push_back(MDString::get(module->getContext(), name));
     int i = 0;
     for (auto it = vec.begin(); it != vec.end(); ++it)
-    {       
+    {
         nodes.push_back(CreateNode(*(it), module, name.str() + "Vec[" + std::to_string(i++) + "]"));
     }
     MDNode* node = MDNode::get(module->getContext(), nodes);
@@ -216,21 +216,21 @@ void readNode(char &b, MDNode* node)
 
 
 void readNode(bool &b, MDNode* node)
-{   
+{
     ValueAsMetadata* pVal = cast<ValueAsMetadata>(node->getOperand(1));
     b = ((int)cast<ConstantInt>(pVal->getValue())->getZExtValue()) ? true : false;
-    return;  
+    return;
 }
 
 void readNode(float &x, MDNode* node)
-{    
+{
     ValueAsMetadata* pVal = cast<ValueAsMetadata>(node->getOperand(1));
     x = (float)cast<ConstantFP>(pVal->getValue())->getValueAPF().convertToFloat();
-    return;       
+    return;
 }
 
 void readNode(int &x, MDNode* node)
-{    
+{
     ValueAsMetadata* pVal = cast<ValueAsMetadata>(node->getOperand(1));
     x = (int)cast<ConstantInt>(pVal->getValue())->getZExtValue();
     return;
@@ -244,7 +244,7 @@ void readNode(std::string &s, MDNode* node)
 }
 
 void readNode(unsigned &x, MDNode* node)
-{    
+{
     ValueAsMetadata* pVal = cast<ValueAsMetadata>(node->getOperand(1));
     x = (unsigned)cast<ConstantInt>(pVal->getValue())->getZExtValue();
     return;
@@ -264,7 +264,7 @@ void readNode(Value* &val, MDNode* node)
 
 template<typename T>
 void readNode(std::vector<T> &vec, MDNode* node)
-{    
+{
     for (unsigned k = 1; k < node->getNumOperands(); k++)
     {
         T vecEle;
@@ -287,7 +287,7 @@ void readNode(std::array<T, s> &arr, MDNode* node)
 }
 
 void readNode(Function* &funcPtr, MDNode* node)
-{   
+{
     ValueAsMetadata* pVal = cast<ValueAsMetadata>(node->getOperand(1));
     Value* v = pVal->getValue();
     funcPtr = cast<Function>(v);
@@ -315,7 +315,7 @@ void readNode(std::map<Key, Value> &keyMD, MDNode* node)
 
 template<typename T>
 void readNode(T &t, MDNode* node, StringRef name)
-{    
+{
     for (unsigned i = 1; i < node->getNumOperands(); i++)
     {
         MDNode* temp = cast<MDNode>(node->getOperand(i));

@@ -62,29 +62,29 @@ static const SSharedStateSamplerState g_cInitSharedStateSamplerState =
     {
         {
             GFXSHAREDSTATE_PREFILTER_ALWAYS,                // ShadowFunction
-            0,                                              // TextureLODBias          
-            GFXSHAREDSTATE_MAPFILTER_NEAREST,               // MinModeFilter           
+            0,                                              // TextureLODBias
+            GFXSHAREDSTATE_MAPFILTER_NEAREST,               // MinModeFilter
             GFXSHAREDSTATE_MAPFILTER_NEAREST,               // MagModeFilter
-            GFXSHAREDSTATE_MIPFILTER_NONE,                  // MipModeFilter           
+            GFXSHAREDSTATE_MIPFILTER_NONE,                  // MipModeFilter
             0,                                              // BaseMipLevel
             0,                                              // _Unused1
             false,                                          // LODPreClampEnable
             GFXSHAREDSTATE_DEFAULTCOLOR_R32G32B32A32_FLOAT, // TextureBorderColorMode
             0,                                              // _Unused2
-            true                                            // SamplerDisable          
+            true                                            // SamplerDisable
         }
     },
 
     // DWORD 1
     {
         {
-            GFXSHAREDSTATE_TEXCOORDMODE_WRAP,               // TCZAddressControlMode 
-            GFXSHAREDSTATE_TEXCOORDMODE_WRAP,               // TCYAddressControlMode 
+            GFXSHAREDSTATE_TEXCOORDMODE_WRAP,               // TCZAddressControlMode
+            GFXSHAREDSTATE_TEXCOORDMODE_WRAP,               // TCYAddressControlMode
             GFXSHAREDSTATE_TEXCOORDMODE_WRAP,               // TCXAddressControlMode
             GFXSHAREDSTATE_CUBESURFACECONTROLMODE_OVERRIDE, // CubeSurfaceControlMode
             0,                                              // _Unused
             0,                                              // MaxLOD
-            0                                               // MinLOD                     
+            0                                               // MinLOD
         }
     },
 
@@ -107,10 +107,10 @@ static const SSharedStateSamplerState g_cInitSharedStateSamplerState =
             false,                                          // VAddressMagFilterAddressRoundingEnable
             false,                                          // UAddressMinFilterAddressRoundingEnable
             false,                                          // UAddressMagFilterAddressRoundingEnable
-            GFXSHAREDSTATE_ANISORATIO_2,                    // MaximumAnisotropy     
-            GFXSHAREDSTATE_CHROMAKEY_KILL_ON_ANY_MATCH,     // ChromaKeyMode         
-            0,                                              // ChromaKeyIndex        
-            false,                                          // ChromaKeyEnable                   
+            GFXSHAREDSTATE_ANISORATIO_2,                    // MaximumAnisotropy
+            GFXSHAREDSTATE_CHROMAKEY_KILL_ON_ANY_MATCH,     // ChromaKeyMode
+            0,                                              // ChromaKeyIndex
+            false,                                          // ChromaKeyEnable
             0                                               // _Unused2
         }
     }
@@ -129,7 +129,7 @@ static const SSharedStateSamplerState::_DW0::_Gen7 g_cInitSharedStateSamplerStat
     0,                                                  // BaseMipLevel
     0,                                                  // _Unused2
     false,                                              // LODPreClampEnable
-    GFXSHAREDSTATE_DEFAULTCOLOR_R32G32B32A32_FLOAT,     // TextureBorderColorMode     
+    GFXSHAREDSTATE_DEFAULTCOLOR_R32G32B32A32_FLOAT,     // TextureBorderColorMode
     0,                                                  // _Unused3
     true                                                // SamplerDisable
 };
@@ -147,7 +147,7 @@ static const SSharedStateSamplerState::_DW0::_Gen9 g_cInitSharedStateSamplerStat
     0,                                                  // CoarseLODQualityMode
     0,                                                  // _Unused1
     false,                                              // LODPreClampEnable
-    GFXSHAREDSTATE_DEFAULTCOLOR_R32G32B32A32_FLOAT,     // TextureBorderColorMode     
+    GFXSHAREDSTATE_DEFAULTCOLOR_R32G32B32A32_FLOAT,     // TextureBorderColorMode
     0,                                                  // _Unused2
     true                                                // SamplerDisable
 };
@@ -155,7 +155,7 @@ static const SSharedStateSamplerState::_DW0::_Gen9 g_cInitSharedStateSamplerStat
 /*****************************************************************************\
 CONST: g_cInitSamplerStateDW1Gen7
 \*****************************************************************************/
-static const SSharedStateSamplerState::_DW1::_Gen7 g_cInitSharedStateSamplerStateDW1Gen7 =   
+static const SSharedStateSamplerState::_DW1::_Gen7 g_cInitSharedStateSamplerStateDW1Gen7 =
 {
     GFXSHAREDSTATE_CUBESURFACECONTROLMODE_OVERRIDE,     // CubeSurfaceControlMode
     GFXSHAREDSTATE_PREFILTER_ALWAYS,                    // ShadowFunction
@@ -169,8 +169,8 @@ CONST: g_cInitSamplerStateDW3Gen7
 \*****************************************************************************/
 static const SSharedStateSamplerState::_DW3::_Gen7 g_cInitSharedStateSamplerStateDW3Gen7 =
 {
-    GFXSHAREDSTATE_TEXCOORDMODE_WRAP,                   // TCZAddressControlMode 
-    GFXSHAREDSTATE_TEXCOORDMODE_WRAP,                   // TCYAddressControlMode 
+    GFXSHAREDSTATE_TEXCOORDMODE_WRAP,                   // TCZAddressControlMode
+    GFXSHAREDSTATE_TEXCOORDMODE_WRAP,                   // TCYAddressControlMode
     GFXSHAREDSTATE_TEXCOORDMODE_WRAP,                   // TCXAddressControlMode
     0,                                                  // _Unused1
     false,                                              // NonnormalizedCoordinateEnable
@@ -193,8 +193,8 @@ CONST: g_cInitSamplerStateDW3Gen9
 \*****************************************************************************/
 static const SSharedStateSamplerState::_DW3::_Gen9 g_cInitSharedStateSamplerStateDW3Gen9 =
 {
-    GFXSHAREDSTATE_TEXCOORDMODE_WRAP,                       // TCZAddressControlMode 
-    GFXSHAREDSTATE_TEXCOORDMODE_WRAP,                       // TCYAddressControlMode 
+    GFXSHAREDSTATE_TEXCOORDMODE_WRAP,                       // TCZAddressControlMode
+    GFXSHAREDSTATE_TEXCOORDMODE_WRAP,                       // TCYAddressControlMode
     GFXSHAREDSTATE_TEXCOORDMODE_WRAP,                       // TCXAddressControlMode
     false,                                                  // ReductionTypeEnable
     false,                                                  // NonNormalizedCoordinateEnable
@@ -207,7 +207,7 @@ static const SSharedStateSamplerState::_DW3::_Gen9 g_cInitSharedStateSamplerStat
     false,                                                  // UAddressMagFilterAddressRoundingEnable
     GFXSHAREDSTATE_ANISORATIO_2,                            // MaximumAnisotropy
     GFXSHAREDSTATE_STD_FILTER,                              // ReductionType
-    0                                                       // NonSeparableFilterFootprintMask    
+    0                                                       // NonSeparableFilterFootprintMask
 };
 
 /*****************************************************************************\
@@ -249,13 +249,13 @@ static const SSharedStateSurfaceState   g_cInitSharedStateSurfaceState =
             GFXSHAREDSTATE_RENDER_CACHE_WRITE_ONLY_ON_MISS, // RenderCacheReadWriteMode
             GFXSHAREDSTATE_CUBECORNERMODE_REPLICATE,        // CubeMapCornerMode
             GFXSHAREDSTATE_SURFACE_MIPMAPLAYOUT_BELOW,      // MipMapLayoutMode
-            0,                                              // VerticalLineStrideOffset         
-            0,                                              // VerticalLineStride               
+            0,                                              // VerticalLineStrideOffset
+            0,                                              // VerticalLineStride
             0,                                              // _Unused1
-            GFXSHAREDSTATE_SURFACEFORMAT_R8G8B8A8_UNORM,    // SurfaceFormat  
+            GFXSHAREDSTATE_SURFACEFORMAT_R8G8B8A8_UNORM,    // SurfaceFormat
             GFXSHAREDSTATE_SURFACERETURNFORMAT_FLOAT32,     // DataReturnFormat
             0,                                              // _Unused2
-            GFXSHAREDSTATE_SURFACETYPE_NULL                 // SurfaceType                      
+            GFXSHAREDSTATE_SURFACETYPE_NULL                 // SurfaceType
         }
     },
 
@@ -279,10 +279,10 @@ static const SSharedStateSurfaceState   g_cInitSharedStateSurfaceState =
     // DWORD 3
     {
         {
-            GFXSHAREDSTATE_TILEWALK_YMAJOR,                 // TileWalk         
-            false,                                          // TiledSurface     
+            GFXSHAREDSTATE_TILEWALK_YMAJOR,                 // TileWalk
+            false,                                          // TiledSurface
             0,                                              // _Unused1
-            0,                                              // SurfacePitch     
+            0,                                              // SurfacePitch
             0,                                              // _Unused2
             0                                               // Depth
         }
@@ -306,7 +306,7 @@ static const SSharedStateSurfaceState   g_cInitSharedStateSurfaceState =
         {
             0,                                              // _Unused
             GFXSHAREDSTATE_CACHEABILITY_CONTROL_USE_GTT_ENTRY,  // SurfaceCacheabilityControl
-            GFXSHAREDSTATE_GRAPHICS_DATATYPE_SOURCE_GTT,    // SurfaceGraphicsDataType 
+            GFXSHAREDSTATE_GRAPHICS_DATATYPE_SOURCE_GTT,    // SurfaceGraphicsDataType
             false,                                          // SurfaceEncryptedDataEnable
             0,                                              // YOffset
             GFXSHAREDSTATE_SURFACE_VERTICAL_ALIGNMENT_2,    // SurfaceVerticalAlignment
@@ -400,15 +400,15 @@ static const SSharedStateSurfaceState::_DW0::_Gen7   g_cInitSharedStateSurfaceSt
     GFXSHAREDSTATE_RENDER_CACHE_WRITE_ONLY_ON_MISS,     // RenderCacheReadWriteMode
     0,                                                  // _Unused1
     GFXSHAREDSTATE_SURFACE_ARRAY_SPACING_FULL,          // SurfaceArraySpacing
-    0,                                                  // VerticalLineStrideOffset         
-    0,                                                  // VerticalLineStride               
+    0,                                                  // VerticalLineStrideOffset
+    0,                                                  // VerticalLineStride
     GFXSHAREDSTATE_TILEWALK_YMAJOR,                     // TileWalk
     false,                                              // TiledSurface
     0,                                                  // _Unused2
     GFXSHAREDSTATE_SURFACEFORMAT_R8G8B8A8_UNORM,        // SurfaceFormat
     0,                                                  // _Unused3
     false,                                              // SurfaceArray
-    GFXSHAREDSTATE_SURFACETYPE_NULL                     // SurfaceType                     
+    GFXSHAREDSTATE_SURFACETYPE_NULL                     // SurfaceType
 };
 
 /*****************************************************************************\
@@ -425,15 +425,15 @@ static const SSharedStateSurfaceState::_DW0::_Gen8   g_cInitSharedStateSurfaceSt
     GFXSHAREDSTATE_MEDIA_BOUNDARY_PIXEL_NORMAL,         // MediaBoundaryPixelMode
     GFXSHAREDSTATE_RENDER_CACHE_WRITE_ONLY_ON_MISS,     // RenderCacheReadWriteMode
     0,                                                  // SurfaceArraySpace
-    0,                                                  // VerticalLineStrideOffset         
-    0,                                                  // VerticalLineStride               
+    0,                                                  // VerticalLineStrideOffset
+    0,                                                  // VerticalLineStride
     GFXSHAREDSTATE_TILEMODE_YMAJOR,                     // TileMode
     GFXSHAREDSTATE_SURFACE_HORIZONTAL_ALIGNMENT_16,     // SurfaceHorizontalAlignment
     GFXSHAREDSTATE_SURFACE_VERTICAL_ALIGNMENT_16,       // SurfaceVerticalAlignment
     GFXSHAREDSTATE_SURFACEFORMAT_R8G8B8A8_UNORM,        // SurfaceFormat
     0,                                                  // _Unused
     false,                                              // SurfaceArray
-    GFXSHAREDSTATE_SURFACETYPE_NULL                     // SurfaceType                     
+    GFXSHAREDSTATE_SURFACETYPE_NULL                     // SurfaceType
 };
 
 /*****************************************************************************\
@@ -450,15 +450,15 @@ static const SSharedStateSurfaceState::_DW0::_Gen9   g_cInitSharedStateSurfaceSt
     GFXSHAREDSTATE_MEDIA_BOUNDARY_PIXEL_NORMAL,         // MediaBoundaryPixelMode
     GFXSHAREDSTATE_RENDER_CACHE_WRITE_ONLY_ON_MISS,     // RenderCacheReadWriteMode
     0,                                                  // SurfaceArraySpace
-    0,                                                  // VerticalLineStrideOffset         
-    0,                                                  // VerticalLineStride               
+    0,                                                  // VerticalLineStrideOffset
+    0,                                                  // VerticalLineStride
     GFXSHAREDSTATE_TILEMODE_YMAJOR,                     // TileMode
     GFXSHAREDSTATE_SURFACE_HORIZONTAL_ALIGNMENT_16,     // SurfaceHorizontalAlignment
     GFXSHAREDSTATE_SURFACE_VERTICAL_ALIGNMENT_16,       // SurfaceVerticalAlignment
     GFXSHAREDSTATE_SURFACEFORMAT_R8G8B8A8_UNORM,        // SurfaceFormat
     false,                                              // ASTCEnable
     false,                                              // SurfaceArray
-    GFXSHAREDSTATE_SURFACETYPE_NULL                     // SurfaceType                     
+    GFXSHAREDSTATE_SURFACETYPE_NULL                     // SurfaceType
 };
 
 /*****************************************************************************\
@@ -478,7 +478,7 @@ static const SSharedStateSurfaceState::_DW1::_Gen8   g_cInitSharedStateSurfaceSt
 /*****************************************************************************\
 CONST: g_cInitSharedStateSurfaceStateDW2Gen7
 \*****************************************************************************/
-static const SSharedStateSurfaceState::_DW2::_Gen7   g_cInitSharedStateSurfaceStateDW2Gen7 =  
+static const SSharedStateSurfaceState::_DW2::_Gen7   g_cInitSharedStateSurfaceStateDW2Gen7 =
 {
     0,                                                  // Width
     0,                                                  // _Unused1
@@ -505,7 +505,7 @@ static const SSharedStateSurfaceState::_DW2::_Gen7_Media g_cInitSharedStateSurfa
 /*****************************************************************************\
 CONST: g_cInitSharedStateSurfaceStateDW3Gen7
 \*****************************************************************************/
-static const SSharedStateSurfaceState::_DW3::_Gen7   g_cInitSharedStateSurfaceStateDW3Gen7 =    
+static const SSharedStateSurfaceState::_DW3::_Gen7   g_cInitSharedStateSurfaceStateDW3Gen7 =
 {
     0,                                                  // SurfacePitch
     0,                                                  // _Unused
@@ -515,7 +515,7 @@ static const SSharedStateSurfaceState::_DW3::_Gen7   g_cInitSharedStateSurfaceSt
 /*****************************************************************************\
 CONST: g_cInitSharedStateSurfaceStateDW4Gen7
 \*****************************************************************************/
-static const SSharedStateSurfaceState::_DW4::_Gen7   g_cInitSharedStateSurfaceStateDW4Gen7 = 
+static const SSharedStateSurfaceState::_DW4::_Gen7   g_cInitSharedStateSurfaceStateDW4Gen7 =
 {
     {
         0,                                                  // MultisamplePositionPaletteIndex
@@ -531,14 +531,14 @@ static const SSharedStateSurfaceState::_DW4::_Gen7   g_cInitSharedStateSurfaceSt
 /*****************************************************************************\
 CONST: g_cInitSharedStateSurfaceStateDW5Gen7
 \*****************************************************************************/
-static const SSharedStateSurfaceState::_DW5::_Gen7   g_cInitSharedStateSurfaceStateDW5Gen7 = 
+static const SSharedStateSurfaceState::_DW5::_Gen7   g_cInitSharedStateSurfaceStateDW5Gen7 =
 {
     0,                                                  // MIPCountLOD
     0,                                                  // SurfaceMinLOD
     0,                                                  // _Unused1
     GFXSHAREDSTATE_L3_CACHEABILITY_CONTROL_NOT_CACHEABLE,// CacheabilityControlL3
     GFXSHAREDSTATE_LLC_CACHEABILITY_CONTROL_USE_GTT_ENTRY,// CacheabilityControlLLC
-    GFXSTATE_GFDT_SOURCE_GTT,                           // SurfaceGraphicsDataType 
+    GFXSTATE_GFDT_SOURCE_GTT,                           // SurfaceGraphicsDataType
     false,                                              // SurfaceEncryptedDataEnable
     0,                                                  // YOffset
     0,                                                  // _Unused2
@@ -548,7 +548,7 @@ static const SSharedStateSurfaceState::_DW5::_Gen7   g_cInitSharedStateSurfaceSt
 /*****************************************************************************\
 CONST: g_cInitSharedStateSurfaceStateDW5Gen8
 \*****************************************************************************/
-static const SSharedStateSurfaceState::_DW5::_Gen8   g_cInitSharedStateSurfaceStateDW5Gen8 = 
+static const SSharedStateSurfaceState::_DW5::_Gen8   g_cInitSharedStateSurfaceStateDW5Gen8 =
 {
     0,                                                  // MIPCountLOD
     0,                                                  // SurfaceMinLOD
@@ -561,15 +561,15 @@ static const SSharedStateSurfaceState::_DW5::_Gen8   g_cInitSharedStateSurfaceSt
 /*****************************************************************************\
 CONST: g_cInitSharedStateSurfaceStateDW5Gen9
 \*****************************************************************************/
-static const SSharedStateSurfaceState::_DW5::_Gen9   g_cInitSharedStateSurfaceStateDW5Gen9 = 
+static const SSharedStateSurfaceState::_DW5::_Gen9   g_cInitSharedStateSurfaceStateDW5Gen9 =
 {
     0,                                                      // MIPCountLOD
     0,                                                      // SurfaceMinLOD
     0,                                                      // MipTailStartLOD
     0,                                                      // _Unused1
     GFXSHAREDSTATE_NON_COHERENT,                            // GFXSHAREDSTATE_COHERENCY_TYPE
-    GFXSHAREDSTATE_TILED_RESOURCE_VERTICAL_ALIGNMENT_64,    // GFXSHAREDSTATE_TILED_RESOURCE_VERTICAL_ALIGNMENT  
-    GFXSHAREDSTATE_TILED_RESOURCE_HORIZONTAL_ALIGNMENT_64,  // GFXSHAREDSTATE_TILED_RESOURCE_HORIZONTAL_ALIGNMENT    
+    GFXSHAREDSTATE_TILED_RESOURCE_VERTICAL_ALIGNMENT_64,    // GFXSHAREDSTATE_TILED_RESOURCE_VERTICAL_ALIGNMENT
+    GFXSHAREDSTATE_TILED_RESOURCE_HORIZONTAL_ALIGNMENT_64,  // GFXSHAREDSTATE_TILED_RESOURCE_HORIZONTAL_ALIGNMENT
     false,                                                  // TiledResourceEnable
     0,                                                      // _Unused2
     0,                                                      // YOffset
@@ -580,8 +580,8 @@ static const SSharedStateSurfaceState::_DW5::_Gen9   g_cInitSharedStateSurfaceSt
 /*****************************************************************************\
 CONST: g_cInitSharedStateSurfaceStateDW6MCSGen7
 \*****************************************************************************/
-static const SSharedStateSurfaceState::_DW6::_Gen7::_SurfaceMCS 
-    g_cInitSharedStateSurfaceStateDW6MCSGen7 = 
+static const SSharedStateSurfaceState::_DW6::_Gen7::_SurfaceMCS
+    g_cInitSharedStateSurfaceStateDW6MCSGen7 =
 {
     false,                                              // MCSEnable
     0,                                                  // _Unused
@@ -592,8 +592,8 @@ static const SSharedStateSurfaceState::_DW6::_Gen7::_SurfaceMCS
 /*****************************************************************************\
 CONST: g_cInitSharedStateSurfaceStateDW6AppendCounterGen7
 \*****************************************************************************/
-static const SSharedStateSurfaceState::_DW6::_Gen7::_SurfaceAppendCounter 
-    g_cInitSharedStateSurfaceStateDW6AppendCounterGen7 = 
+static const SSharedStateSurfaceState::_DW6::_Gen7::_SurfaceAppendCounter
+    g_cInitSharedStateSurfaceStateDW6AppendCounterGen7 =
 {
     false,                                              // AppendCounterEnable
     0,                                                  // _Unused
@@ -604,9 +604,9 @@ static const SSharedStateSurfaceState::_DW6::_Gen7::_SurfaceAppendCounter
 CONST: g_cInitSharedStateSurfaceStateDW6SurfacePlanarGen9
 \*****************************************************************************/
 static const SSharedStateSurfaceState::_DW6::_Gen9::_SurfacePlanar
-    g_cInitSharedStateSurfaceStateDW6SurfacePlanarGen9 = 
+    g_cInitSharedStateSurfaceStateDW6SurfacePlanarGen9 =
 {
-    0,                                                  // YOffset    
+    0,                                                  // YOffset
     0,                                                  // _Unused1
     0,                                                  // XOffset
     0                                                   // _Unused2
@@ -616,7 +616,7 @@ static const SSharedStateSurfaceState::_DW6::_Gen9::_SurfacePlanar
 CONST: g_cInitSharedStateSurfaceStateDW6SurfaceOtherGen9
 \*****************************************************************************/
 static const SSharedStateSurfaceState::_DW6::_Gen9::_SurfaceOther
-    g_cInitSharedStateSurfaceStateDW6SurfaceOtherGen9 = 
+    g_cInitSharedStateSurfaceStateDW6SurfaceOtherGen9 =
 {
     GFXSHAREDSTATE_AUX_NONE,                            // GFXSHAREDSTATE_AUXILIARY_SURFACE_MODE
     false,                                              // RenderTargetCompressionEnable
@@ -630,7 +630,7 @@ static const SSharedStateSurfaceState::_DW6::_Gen9::_SurfaceOther
 /*****************************************************************************\
 CONST: g_cInitSharedStateSurfaceStateDW7Gen7
 \*****************************************************************************/
-static const SSharedStateSurfaceState::_DW7::_Gen7   g_cInitSharedStateSurfaceStateDW7Gen7 = 
+static const SSharedStateSurfaceState::_DW7::_Gen7   g_cInitSharedStateSurfaceStateDW7Gen7 =
 {
     0,                                                  // ResourceMinLOD
     0,                                                  // _Unused
@@ -643,7 +643,7 @@ static const SSharedStateSurfaceState::_DW7::_Gen7   g_cInitSharedStateSurfaceSt
 /*****************************************************************************\
 CONST: g_cInitSharedStateSurfaceStateDW7Gen7
 \*****************************************************************************/
-static const SSharedStateSurfaceState::_DW7::_Gen7_5    g_cInitSharedStateSurfaceStateDW7Gen7_5 = 
+static const SSharedStateSurfaceState::_DW7::_Gen7_5    g_cInitSharedStateSurfaceStateDW7Gen7_5 =
 {
     0,                                                  // ResourceMinLOD
     0,                                                  // _Unused
@@ -660,21 +660,21 @@ static const SSharedStateSurfaceState::_DW7::_Gen7_5    g_cInitSharedStateSurfac
 /*****************************************************************************\
 CONST: g_cInitSharedStateSurfaceStateDW7Gen9
 \*****************************************************************************/
-static const SSharedStateSurfaceState::_DW7::_Gen9    g_cInitSharedStateSurfaceStateDW7Gen9 = 
+static const SSharedStateSurfaceState::_DW7::_Gen9    g_cInitSharedStateSurfaceStateDW7Gen9 =
 {
     0,                                                  // ResourceMinLOD
     0,                                                  // _Unused1
     GFXSHAREDSTATE_SHADERCHANNELSELECT_ALPHA,           // ShaderChannelSelectA
     GFXSHAREDSTATE_SHADERCHANNELSELECT_BLUE,            // ShaderChannelSelectB
     GFXSHAREDSTATE_SHADERCHANNELSELECT_GREEN,           // ShaderChannelSelectG
-    GFXSHAREDSTATE_SHADERCHANNELSELECT_RED,             // ShaderChannelSelectR    
+    GFXSHAREDSTATE_SHADERCHANNELSELECT_RED,             // ShaderChannelSelectR
     0                                                   // _Unused2
 };
 
 /*****************************************************************************\
 CONST: g_cInitSharedStateSurfaceStateDW8Gen8
 \*****************************************************************************/
-static const SSharedStateSurfaceState::_DW8::_Gen8    g_cInitSharedStateSurfaceStateDW8Gen8 = 
+static const SSharedStateSurfaceState::_DW8::_Gen8    g_cInitSharedStateSurfaceStateDW8Gen8 =
 {
     0                                                   // SurfaceBaseAddress
 };
@@ -682,7 +682,7 @@ static const SSharedStateSurfaceState::_DW8::_Gen8    g_cInitSharedStateSurfaceS
 /*****************************************************************************\
 CONST: g_cInitSharedStateSurfaceStateDW9Gen8
 \*****************************************************************************/
-static const SSharedStateSurfaceState::_DW9::_Gen8    g_cInitSharedStateSurfaceStateDW9Gen8 = 
+static const SSharedStateSurfaceState::_DW9::_Gen8    g_cInitSharedStateSurfaceStateDW9Gen8 =
 {
     0,                                                  // Surface64bitBaseAddress
     0                                                   // _Unused
@@ -691,7 +691,7 @@ static const SSharedStateSurfaceState::_DW9::_Gen8    g_cInitSharedStateSurfaceS
 /*****************************************************************************\
 CONST: g_cInitSharedStateSurfaceStateDW10Gen8
 \*****************************************************************************/
-static const SSharedStateSurfaceState::_DW10::_Gen8    g_cInitSharedStateSurfaceStateDW10Gen8 = 
+static const SSharedStateSurfaceState::_DW10::_Gen8    g_cInitSharedStateSurfaceStateDW10Gen8 =
 {
     0                                                   // AuxiliarySurfaceBaseAddress
 };
@@ -699,14 +699,14 @@ static const SSharedStateSurfaceState::_DW10::_Gen8    g_cInitSharedStateSurface
 /*****************************************************************************\
 CONST: g_cInitSharedStateSurfaceStateDW10Gen8
 \*****************************************************************************/
-static const SSharedStateSurfaceState::_DW10::_Gen9::_SurfaceOther    g_cInitSharedStateSurfaceStateDW10SurfaceOtherGen9 = 
+static const SSharedStateSurfaceState::_DW10::_Gen9::_SurfaceOther    g_cInitSharedStateSurfaceStateDW10SurfaceOtherGen9 =
 {
     0,                                                  // QuiltWidth
     0,                                                  // QuiltHeight
     0,                                                  // _Unused
     0                                                   // AuxiliarySurfaceBaseAddress
 };
-static const SSharedStateSurfaceState::_DW10::_Gen9::_SurfacePlanar    g_cInitSharedStateSurfaceStateDW10SurfacePlanarGen9 = 
+static const SSharedStateSurfaceState::_DW10::_Gen9::_SurfacePlanar    g_cInitSharedStateSurfaceStateDW10SurfacePlanarGen9 =
 {
     0,                                                  // QuiltWidth
     0,                                                  // QuiltHeight
@@ -716,7 +716,7 @@ static const SSharedStateSurfaceState::_DW10::_Gen9::_SurfacePlanar    g_cInitSh
 /*****************************************************************************\
 CONST: g_cInitSharedStateSurfaceStateDW11Gen8
 \*****************************************************************************/
-static const SSharedStateSurfaceState::_DW11::_Gen8    g_cInitSharedStateSurfaceStateDW11Gen8 = 
+static const SSharedStateSurfaceState::_DW11::_Gen8    g_cInitSharedStateSurfaceStateDW11Gen8 =
 {
     0,                                                  // Auxiliary64bitBaseAddress
     0                                                   // _Unused
@@ -725,7 +725,7 @@ static const SSharedStateSurfaceState::_DW11::_Gen8    g_cInitSharedStateSurface
 /*****************************************************************************\
 CONST: g_cInitSharedStateSurfaceStateDW12Gen8
 \*****************************************************************************/
-static const SSharedStateSurfaceState::_DW12::_Gen8    g_cInitSharedStateSurfaceStateDW12Gen8 = 
+static const SSharedStateSurfaceState::_DW12::_Gen8    g_cInitSharedStateSurfaceStateDW12Gen8 =
 {
     0                                                   // HierarchicalDepthClearValue
 };
@@ -733,7 +733,7 @@ static const SSharedStateSurfaceState::_DW12::_Gen8    g_cInitSharedStateSurface
 /*****************************************************************************\
 CONST: g_cInitSharedStateSurfaceStateDW12Gen9
 \*****************************************************************************/
-static const SSharedStateSurfaceState::_DW12::_Gen9    g_cInitSharedStateSurfaceStateDW12Gen9 = 
+static const SSharedStateSurfaceState::_DW12::_Gen9    g_cInitSharedStateSurfaceStateDW12Gen9 =
 {
     GFXSHAREDSTATE_CLEARCOLOR_ZERO                     // RedClearColor
 };
@@ -741,7 +741,7 @@ static const SSharedStateSurfaceState::_DW12::_Gen9    g_cInitSharedStateSurface
 /*****************************************************************************\
 CONST: g_cInitSharedStateSurfaceStateDW13Gen9
 \*****************************************************************************/
-static const SSharedStateSurfaceState::_DW13::_Gen9    g_cInitSharedStateSurfaceStateDW13Gen9 = 
+static const SSharedStateSurfaceState::_DW13::_Gen9    g_cInitSharedStateSurfaceStateDW13Gen9 =
 {
     GFXSHAREDSTATE_CLEARCOLOR_ZERO                     // GreenClearColor
 };
@@ -749,7 +749,7 @@ static const SSharedStateSurfaceState::_DW13::_Gen9    g_cInitSharedStateSurface
 /*****************************************************************************\
 CONST: g_cInitSharedStateSurfaceStateDW14Gen9
 \*****************************************************************************/
-static const SSharedStateSurfaceState::_DW14::_Gen9    g_cInitSharedStateSurfaceStateDW14Gen9 = 
+static const SSharedStateSurfaceState::_DW14::_Gen9    g_cInitSharedStateSurfaceStateDW14Gen9 =
 {
     GFXSHAREDSTATE_CLEARCOLOR_ZERO                     // BlueClearColor;
 };
@@ -757,7 +757,7 @@ static const SSharedStateSurfaceState::_DW14::_Gen9    g_cInitSharedStateSurface
 /*****************************************************************************\
 CONST: g_cInitSharedStateSurfaceStateDW15Gen9
 \*****************************************************************************/
-static const SSharedStateSurfaceState::_DW15::_Gen9    g_cInitSharedStateSurfaceStateDW15Gen9 = 
+static const SSharedStateSurfaceState::_DW15::_Gen9    g_cInitSharedStateSurfaceStateDW15Gen9 =
 {
     GFXSHAREDSTATE_CLEARCOLOR_ZERO                     // AlphaClearColor
 };
@@ -765,7 +765,7 @@ static const SSharedStateSurfaceState::_DW15::_Gen9    g_cInitSharedStateSurface
 /*****************************************************************************\
 CONST: g_cInitSSurfaceStateBufferLength
 \*****************************************************************************/
-static const SSurfaceStateBufferLength g_cInitSurfaceStateBufferLength = 
+static const SSurfaceStateBufferLength g_cInitSurfaceStateBufferLength =
 {
     //DWORD 0
     {

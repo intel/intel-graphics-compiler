@@ -286,7 +286,7 @@ void RegisterComputeErrHandlers(LLVMContext &C)
     C.setDiagnosticHandler(ComputeFatalErrorHandler);
 #elif LLVM_VERSION_MAJOR >= 7
     C.setDiagnosticHandlerCallBack(ComputeFatalErrorHandler);
-#endif    
+#endif
 }
 
 void ReleaseErrHandlers()

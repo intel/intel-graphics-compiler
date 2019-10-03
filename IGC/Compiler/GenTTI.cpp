@@ -295,7 +295,7 @@ namespace llvm {
             ((TripCount != 0 && TripCount <= 40 && instCount < 40) ||
                 hasBlockReadWrite(L->getHeader())) &&
             // FIXME: WA for cases where the compiler is running with a smaller stack size
-            // we run into stack overflow in 
+            // we run into stack overflow in
             !ctx->m_DriverInfo.HasSmallStack())
         {
             return;
@@ -415,7 +415,7 @@ namespace llvm {
             // FIXME: We need to collect the cost following calling graph. However,
             // as LLVM's ininer only support bottom-up inlining currently. That's
             // not a big issue so far.
-            // 
+            //
             // FIXME: We also need to consider the case where sub-routine call is
             // enabled.
             unsigned FuncSize = countTotalInstructions(F, false);

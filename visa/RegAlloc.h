@@ -411,7 +411,7 @@ class LivenessAnalysis
         BitSet& use_in,
         BitSet& use_gen,
         BitSet& use_kill);
-    
+
     bool contextSensitiveBackwardDataAnalyze(G4_BB* bb,
                                              std::vector<BitSet>& data_in,
                                              std::vector<BitSet>& data_out,
@@ -488,7 +488,7 @@ public:
 
     void hierarchicalIPA(const BitSet& kernelInput, const BitSet& kernelOutput);
     void useAnalysis(FuncInfo* subroutine);
-    void useAnalysisWithArgRetVal(FuncInfo* subroutine, 
+    void useAnalysisWithArgRetVal(FuncInfo* subroutine,
         const std::vector<BitSet>& args, const std::vector<BitSet>& retVal);
     void defAnalysis(FuncInfo* subroutine);
     void maydefAnalysis();
@@ -497,7 +497,7 @@ public:
 
     bool performIPA() const
     {
-        return fg.builder->getOption(vISA_IPA) && livenessClass(G4_GRF) && 
+        return fg.builder->getOption(vISA_IPA) && livenessClass(G4_GRF) &&
             fg.getNumCalls() > 0;
     }
 };

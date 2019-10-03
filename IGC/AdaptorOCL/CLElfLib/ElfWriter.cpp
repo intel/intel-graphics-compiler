@@ -95,7 +95,7 @@ CElfWriter* CElfWriter::Create(
 /******************************************************************************\
  Member Function: CElfWriter::Delete
 \******************************************************************************/
-void CElfWriter::Delete( 
+void CElfWriter::Delete(
     CElfWriter* &pWriter )
 {
     if( pWriter )
@@ -200,8 +200,8 @@ E_RETVAL CElfWriter::ResolveBinary(
     char* pStringTable = NULL;
     char* pCurString = NULL;
 
-    m_totalBinarySize = 
-        sizeof( SElf64Header ) + 
+    m_totalBinarySize =
+        sizeof( SElf64Header ) +
         ( ( m_numSections + 1 ) * sizeof( SElf64SectionHeader ) ) + // +1 to account for string table entry
         m_dataSize +
         m_stringTableSize;
@@ -213,12 +213,12 @@ E_RETVAL CElfWriter::ResolveBinary(
 
         // get a pointer to the data
         pData = pBinary +
-            sizeof( SElf64Header ) + 
+            sizeof( SElf64Header ) +
             ( ( m_numSections + 1 ) * sizeof( SElf64SectionHeader ) ); // +1 to account for string table entry
 
 
         // get a pointer to the string table
-        pStringTable = pBinary + sizeof( SElf64Header ) + 
+        pStringTable = pBinary + sizeof( SElf64Header ) +
             ( ( m_numSections + 1 ) * sizeof( SElf64SectionHeader ) ) + // +1 to account for string table entry
             m_dataSize ;
 
@@ -240,7 +240,7 @@ E_RETVAL CElfWriter::ResolveBinary(
                 pCurSectionHeader->DataSize = pNode->DataSize;
                 pCurSectionHeader->DataOffset = pData - pBinary;
                 pCurSectionHeader->Name = (Elf64_Word)( pCurString - pStringTable );
-                pCurSectionHeader = (SElf64SectionHeader*)( 
+                pCurSectionHeader = (SElf64SectionHeader*)(
                     (unsigned char*)pCurSectionHeader + sizeof( SElf64SectionHeader ) );
 
                 // copy the data, move the data pointer
@@ -278,7 +278,7 @@ E_RETVAL CElfWriter::ResolveBinary(
         stringSectionHeader.Name = 0;
 
         // Copy into the last section header
-        memcpy_s( pCurSectionHeader, sizeof( SElf64SectionHeader ), 
+        memcpy_s( pCurSectionHeader, sizeof( SElf64SectionHeader ),
             &stringSectionHeader, sizeof( SElf64SectionHeader ) );
 
         // Add to our section number

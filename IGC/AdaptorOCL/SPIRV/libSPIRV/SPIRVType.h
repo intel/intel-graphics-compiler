@@ -592,7 +592,7 @@ public:
      AccessQualifier(SPIRVAccessQualifierKind::AccessQualifierReadOnly){}
 
   SPIRVAccessQualifierKind getAccessQualifier() const {
-      return AccessQualifier; 
+      return AccessQualifier;
   }
   void setPipeAcessQualifier(SPIRVAccessQualifierKind AccessQual) {
     AccessQualifier = AccessQual;

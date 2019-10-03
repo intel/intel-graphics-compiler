@@ -48,7 +48,7 @@ MACRO: ICBE_DPF_STR
 #ifndef ICBE_DPF_STR
     #if defined(_DEBUG) || defined(_INTERNAL) || defined(_RELEASE_INTERNAL)
         #define ICBE_DPF_STR iOpenCL::DebugMessageStr
-    #else   
+    #else
         #if defined(ICBE_LHDM) || defined(_WIN32)
             #define ICBE_DPF_STR(output, format, args, ...)
         #else
@@ -61,13 +61,13 @@ MACRO: ICBE_DPF_STR
 MACRO: ICBE_DPF
 \*****************************************************************************/
 #ifndef ICBE_DPF
-    #if defined(_DEBUG)   
+    #if defined(_DEBUG)
         #if defined(ICBE_LHDM) || defined(_WIN32)
             #define ICBE_DPF iOpenCL::DebugMessage
         #else
             #define ICBE_DPF(lvl, fmt, args...) fprintf(stderr, fmt, ## args)
         #endif
-    #else  
+    #else
         #if defined(ICBE_LHDM) || defined(_WIN32)
             #define ICBE_DPF(format, args, ...)
         #else

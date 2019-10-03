@@ -66,7 +66,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/SIPKernels/Gen12LPSIPCSR.h"
 
 
-namespace SIP 
+namespace SIP
 {
     enum SIP_ID {
         GEN9_SIP_DEBUG = 0,
@@ -97,7 +97,7 @@ namespace SIP
             const IGC::CPlatform &platform,
             const USC::SYSTEM_THREAD_MODE mode,
             USC::SSystemThreadKernelOutput* &pSystemThread,
-            bool bindlessmode = false); 
+            bool bindlessmode = false);
 
         static void   DeleteSystemThreadKernel(
             USC::SSystemThreadKernelOutput* &pSystemThread );
@@ -107,7 +107,7 @@ namespace SIP
     };
 
 
-    class CGenSystemInstructionKernelProgram 
+    class CGenSystemInstructionKernelProgram
     {
     public:
         CGenSystemInstructionKernelProgram* Create(

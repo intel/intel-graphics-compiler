@@ -39,7 +39,7 @@ float __builtin_spirv_OpenCL_nextafter_f32_f32( float x, float y )
     // - Convert each incoming float from sign-magnitude to twos-complement
     //   encoded, so we can use usual comparison and math operations on them.
     // - Based on the twos complement encoding of the integer representation
-    //   of each float, either add or subtract one from the twos-complement 
+    //   of each float, either add or subtract one from the twos-complement
     //   encoding of the integer representation of x.  This gives a twos-
     //   complement encoding of the result.
     // - Convert from the twos-complement encoding of the result back
@@ -58,7 +58,7 @@ float __builtin_spirv_OpenCL_nextafter_f32_f32( float x, float y )
     int smiy = as_int(y);
     int ny = maxneg - smiy;
     int tciy = ( smiy < 0 ) ? ny : smiy;
-        
+
     int delta = ( tcix < tciy ) ? 1 : -1;
 
     int tcir = tcix + delta;
@@ -92,7 +92,7 @@ double __builtin_spirv_OpenCL_nextafter_f64_f64( double x, double y )
     long smiy = as_long(y);
     long ny = maxneg - smiy;
     long tciy = ( smiy < 0 ) ? ny : smiy;
-        
+
     long delta = ( tcix < tciy ) ? 1 : -1;
 
     long tcir = tcix + delta;
@@ -128,7 +128,7 @@ half __builtin_spirv_OpenCL_nextafter_f16_f16( half x, half y )
     short smiy = as_short(y);
     short ny = maxneg - smiy;
     short tciy = ( smiy < 0 ) ? ny : smiy;
-        
+
     short delta = ( tcix < tciy ) ? 1 : -1;
 
     short tcir = tcix + delta;

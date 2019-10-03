@@ -111,7 +111,7 @@ struct IITDescriptor {
 
 /// getIntrinsicInfoTableEntries - Return the IIT table descriptor for the
 /// specified intrinsic into an array of IITDescriptors.
-/// 
+///
 void getIntrinsicInfoTableEntries(ID id, SmallVectorImpl<IITDescriptor> &T, ArrayRef<Type*> Tys);
 ID lookupGenIntrinsicID(const char *Name, unsigned int Len);
 }
@@ -440,7 +440,7 @@ static std::string getMangledTypeStr(Type* Ty) {
     if (FT->isVarArg())
       Result += "vararg";
     // Ensure nested function types are distinguishable.
-    Result += "f"; 
+    Result += "f";
   }
   else if (isa<VectorType>(Ty))
     Result += "v" + utostr(Ty->getVectorNumElements()) +
@@ -516,9 +516,9 @@ Function *GenISAIntrinsic::getDeclaration(Module *Module, GenISAIntrinsic::ID id
     // because intrinsics must be a specific type.
     IGCLLVM::Module* M = (IGCLLVM::Module*)Module;
 
-    Function *F = 
+    Function *F =
         cast<Function>(M->getOrInsertFunction(getName((GenISAIntrinsic::ID)(id-Intrinsic::num_intrinsics), Tys),
-                       getType(M->getContext(), 
+                       getType(M->getContext(),
                        (GenISAIntrinsic::ID)(id-Intrinsic::num_intrinsics), Tys),
                        getAttributes(M->getContext(),(GenISAIntrinsic::ID)(id-1))));
 
@@ -565,7 +565,7 @@ void GenISAIntrinsic::getIntrinsicInfoTableEntries(GenISAIntrinsic::ID id,
 GenISAIntrinsic::ID GenISAIntrinsic::getIntrinsicID(const Function *F) {
     IGC::LLVMContextWrapper::SafeIntrinsicIDCacheTy* safeIntrinsicIDCache =
         &(static_cast<IGC::LLVMContextWrapper*>(&F->getContext())->m_SafeIntrinsicIDCache);
-    
+
     //If you do not find the function ptr as key corresponding to the GenISAIntrinsic::ID add the new key
     auto it = (*safeIntrinsicIDCache).find(F);
     if (it == (*safeIntrinsicIDCache).end()) {
@@ -582,7 +582,7 @@ GenISAIntrinsic::ID GenISAIntrinsic::getIntrinsicID(const Function *F) {
     {
         // If you have an entry for the function ptr corresponding to the GenISAIntrinsic::ID return it back,
         //instead of going through a lengthy look-up.
-        return (static_cast<GenISAIntrinsic::ID>(it->second)); 
+        return (static_cast<GenISAIntrinsic::ID>(it->second));
     }
 }
 

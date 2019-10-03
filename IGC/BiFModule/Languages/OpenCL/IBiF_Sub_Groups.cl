@@ -449,7 +449,7 @@ TYPE##LEN __builtin_spirv_intel_sub_group_media_block_read_             \
 {                                                                       \
     return __builtin_IB_media_block_read_##TYPE##LEN(                   \
         image, src_offset, width, height);                              \
-} 
+}
 
 #if SUPPORT_ACCESS_QUAL_OVERLOAD
 #define DEFN_MEDIA_BLOCK_READ_RW(TYPE, TYPE_POSTFIX, TYPE_ABBR, LEN)    \
@@ -463,7 +463,7 @@ TYPE##LEN intel_sub_group_media_block_read_##TYPE_POSTFIX##LEN(         \
     int id = (int)__builtin_astype(image, global void*);                \
     return __builtin_IB_media_block_read_##TYPE##LEN(                   \
         id, src_offset, width, height);                                 \
-} 
+}
 #endif
 
 
@@ -486,7 +486,7 @@ void __builtin_spirv_intel_sub_group_media_block_write_                     \
 {                                                                           \
     __builtin_IB_media_block_write_##TYPE##LEN(                             \
         image, src_offset, width, height, pixels);                          \
-} 
+}
 
 #if SUPPORT_ACCESS_QUAL_OVERLOAD
 #define DEFN_MEDIA_BLOCK_WRITE_RW(TYPE, TYPE_POSTFIX, TYPE_ABBR, LEN)   \
@@ -525,7 +525,7 @@ DEFN_MEDIA_BLOCK(WRITE_RW, uchar,  uc, i8)
 DEFN_MEDIA_BLOCK(WRITE_RW, ushort, us, i16)
 #endif
 
-// Integer block read/writes don't have 16 element version. 
+// Integer block read/writes don't have 16 element version.
 #undef MEDIA_IO_HAS16
 #define MEDIA_IO_HAS16(x)
 DEFN_MEDIA_BLOCK(READ_RO,  uint, ui, i32)
@@ -548,7 +548,7 @@ INLINE TYPE OVERLOADABLE  FUNC_NAME( image2d_t image, int2 coord )              
 TYPE __builtin_spirv_##FUNC_NAME##_i64_v2i32(ulong image, int2 coord)                   \
 {                                                                                       \
     return INTERNAL_FUNC(image, coord);                                                 \
-}                                                                                       
+}
 
 #if SUPPORT_ACCESS_QUAL_OVERLOAD
 #define  DEFN_INTEL_SUB_GROUP_BLOCK_READ_IMAGE_RW(FUNC_NAME, TYPE, INTERNAL_FUNC)       \
@@ -556,7 +556,7 @@ INLINE TYPE OVERLOADABLE  FUNC_NAME( read_write image2d_t image, int2 coord )   
 {                                                                                       \
     int id = (int)__builtin_astype(image, __global void*);                              \
     return INTERNAL_FUNC(id, coord);                                                    \
-}                                                                                       
+}
 #else
 #define  DEFN_INTEL_SUB_GROUP_BLOCK_READ_IMAGE_RW(FUNC_NAME, TYPE, INTERNAL_FUNC)
 #endif // SUPPORT_ACCESS_QUAL_OVERLOAD
@@ -759,7 +759,7 @@ TYPE __builtin_spirv_##FUNC_NAME##_##TYPE_ABBR##_##TYPE_ABBR##_i32(TYPE x, TYPE 
     DEFN_SPIRV_INTEL_SUBGROUP_2PARAMS(intel_sub_group_shuffle, TYPE_ABBR, TYPE)         \
     DEFN_SPIRV_INTEL_SUBGROUP_2PARAMS(intel_sub_group_shuffle_xor, TYPE_ABBR, TYPE)     \
     DEFN_SPIRV_INTEL_SUBGROUP_3PARAMS(intel_sub_group_shuffle_down, TYPE_ABBR, TYPE)    \
-    DEFN_SPIRV_INTEL_SUBGROUP_3PARAMS(intel_sub_group_shuffle_up, TYPE_ABBR, TYPE)    
+    DEFN_SPIRV_INTEL_SUBGROUP_3PARAMS(intel_sub_group_shuffle_up, TYPE_ABBR, TYPE)
 
 DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(i32, uint)
 DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(i8, uchar)

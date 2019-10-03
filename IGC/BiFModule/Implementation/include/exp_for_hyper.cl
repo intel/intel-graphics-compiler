@@ -41,7 +41,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // These versions of exp are only used for hyperbolic functions:
 //      sinh, cosh and tanh.
 
-// There are two main differences between them and the regular old 
+// There are two main differences between them and the regular old
 // version of exp:
 //  - This version uses a polynomial approximation for the
 //    fractional part of 2^x, vs. the native version.  As such
@@ -123,7 +123,7 @@ float __intel_exp_for_tanh(float x, float scale)
     f = __builtin_spirv_OpenCL_fma_f32_f32_f32( w, -C2, f );
 
     // Do a polynomial approximation for 2^fractional.
-    float tf = 
+    float tf =
         ((((( 1.9875691500E-4f  * f
             + 1.3981999507E-3f) * f
             + 8.3334519073E-3f) * f

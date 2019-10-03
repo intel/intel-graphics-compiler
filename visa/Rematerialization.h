@@ -150,7 +150,7 @@ namespace vISA
                 auto numUses = (*opIt).second.numUses;
                 if(numUses > 0)
                     (*opIt).second.numUses = numUses - 1;
-                
+
                 if(numUses == 1)
                 {
                     for (auto ref : (*opIt).second.def)
@@ -161,7 +161,7 @@ namespace vISA
                 }
             }
 
-            
+
         }
 
         unsigned int getNumUses(G4_Declare* dcl)
@@ -191,7 +191,7 @@ namespace vISA
 
         bool isRematCandidateOp(G4_INST* inst)
         {
-            if (inst->isFlowControl() || inst->isWait() || 
+            if (inst->isFlowControl() || inst->isWait() ||
                 (inst->isSend() && inst->asSendInst()->isFence()) ||
                 inst->isLifeTimeEnd() || inst->isAccDstInst() || inst->isAccSrcInst() ||
                 inst->getImplAccDst() || inst->getImplAccSrc())

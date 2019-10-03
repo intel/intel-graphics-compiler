@@ -308,7 +308,7 @@ namespace IGC
     bool isNoOpInst(llvm::Instruction* I, CodeGenContext* Ctx);
 
     // CxtI is the instruction at which V is checked whether
-    // it is positive or not. 
+    // it is positive or not.
     bool valueIsPositive(
         llvm::Value* V,
         const llvm::DataLayout* DL,
@@ -358,7 +358,7 @@ namespace IGC
     {
         if (hwThreadPerWorkgroup == 0)
         {
-            hwThreadPerWorkgroup = 42; //On GT1 HW, there are 7 threads/EU and 6 EU/subslice, 42 is the minimum threads/workgroup any HW can support 
+            hwThreadPerWorkgroup = 42; //On GT1 HW, there are 7 threads/EU and 6 EU/subslice, 42 is the minimum threads/workgroup any HW can support
         }
         if ((threadGroupSize <= hwThreadPerWorkgroup * 8) &&
             threadGroupSize <= 512)

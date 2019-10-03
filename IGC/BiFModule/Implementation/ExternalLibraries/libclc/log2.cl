@@ -48,8 +48,8 @@
    Now, range of Y is: 0.5 <= Y < 1
 
    F = 0x80 + (first 7 mantissa bits) + (8th mantissa bit)
-   Now, range of F is: 128 <= F <= 256 
-   F = F / 256 
+   Now, range of F is: 128 <= F <= 256
+   F = F / 256
    Now, range of F is: 0.5 <= F <= 1
 
    f = -(Y-F), with (f <= 2^(-9))
@@ -74,7 +74,7 @@
    ensure faster convergence.
 
    log(x) = log((1+s)/(1-s)) = 2*s + (2/3)*s^3 + (2/5)*s^5 + (2/7)*s^7
-   x = ((1+s)/(1-s)) 
+   x = ((1+s)/(1-s))
    x = 1 + r
    s = r/(2+r)
 

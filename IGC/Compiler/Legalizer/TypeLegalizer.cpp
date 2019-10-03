@@ -629,8 +629,8 @@ bool TypeLegalizer::populatePromotedPHI(PHINode* PN) {
 bool TypeLegalizer::populateExpandedPHI(PHINode* PN) {
     ValueSeq* Expanded;
     std::tie(Expanded, std::ignore) = getLegalizedValues(PN);
-    // we should get copy of Expanded here, as next getLegalizedValues call may grow ValueMap object 
-    // when inserting new pair with ValueMap.insert(e.g.when ValueMap.NumBuckets grows from 64 to 128) 
+    // we should get copy of Expanded here, as next getLegalizedValues call may grow ValueMap object
+    // when inserting new pair with ValueMap.insert(e.g.when ValueMap.NumBuckets grows from 64 to 128)
     // and previously received ValueSeq objects will become invalid.
     ValueSeq ExpandedCopy(*Expanded);
 

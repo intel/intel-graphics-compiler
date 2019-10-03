@@ -80,8 +80,8 @@ bool PrivateMemoryUsageAnalysis::runOnFunction(Function& F)
 
     visit(F);
 
-    // Struct types always use private memory unless regtomem can 
-    // promote them.  Check the function signature to see if any 
+    // Struct types always use private memory unless regtomem can
+    // promote them.  Check the function signature to see if any
     // structs are passesed as arguments.
     if (!m_hasPrivateMem)
     {

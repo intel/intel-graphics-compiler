@@ -76,7 +76,7 @@ bool AddImplicitArgs::runOnModule(Module &M)
     m_pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
-    // Update function signatures 
+    // Update function signatures
     // Create new functions with implicit args
     for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I)
     {
@@ -146,7 +146,7 @@ bool AddImplicitArgs::runOnModule(Module &M)
         // Loop over the argument list, transferring uses of the old arguments over to
         // the new arguments
         updateNewFuncArgs(pFunc, pNewFunc, &implicitArgs);
-        
+
         // Map old func to new func
         funcsMapping[pFunc] = pNewFunc;
 
@@ -168,7 +168,7 @@ bool AddImplicitArgs::runOnModule(Module &M)
     // Function declarations are changing, this needs to be reflected in the metadata.
     MetadataBuilder mbuilder(&M);
     auto &FuncMD = ctx->getModuleMetaData()->FuncMD;
-    for (auto i : funcsMapping) 
+    for (auto i : funcsMapping)
     {
         auto oldFuncIter = m_pMdUtils->findFunctionsInfoItem(i.first);
         m_pMdUtils->setFunctionsInfoItem(i.second, oldFuncIter->second);
@@ -183,7 +183,7 @@ bool AddImplicitArgs::runOnModule(Module &M)
         }
     }
     m_pMdUtils->save(M.getContext());
-    
+
     //Return if any error
     if (!(getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->oclErrorMessage.empty()))
     {
@@ -209,7 +209,7 @@ bool AddImplicitArgs::runOnModule(Module &M)
     return true;
 }
 
-FunctionType* AddImplicitArgs::getNewFuncType(Function* pFunc, const ImplicitArgs* pImplicitArgs) 
+FunctionType* AddImplicitArgs::getNewFuncType(Function* pFunc, const ImplicitArgs* pImplicitArgs)
 {
     // Add all explicit parameters
     FunctionType* pFuncType = pFunc->getFunctionType();
@@ -220,12 +220,12 @@ FunctionType* AddImplicitArgs::getNewFuncType(Function* pFunc, const ImplicitArg
     {
         newParamTypes.push_back((*pImplicitArgs)[i].getLLVMType(pFunc->getContext()));
     }
-    
+
     // Create new function type with explicit and implicit parameter types
     return FunctionType::get( pFunc->getReturnType(),newParamTypes, pFunc->isVarArg());
 }
 
-void AddImplicitArgs::updateNewFuncArgs(llvm::Function* pFunc, llvm::Function* pNewFunc, const ImplicitArgs* pImplicitArgs) 
+void AddImplicitArgs::updateNewFuncArgs(llvm::Function* pFunc, llvm::Function* pNewFunc, const ImplicitArgs* pImplicitArgs)
 {
     // Loop over the argument list, transferring uses of the old arguments over to
     // the new arguments, also transferring over the names as well.
@@ -279,7 +279,7 @@ void AddImplicitArgs::updateNewFuncArgs(llvm::Function* pFunc, llvm::Function* p
         llvm::Value* newArg = &(*currArg);
         if ((*I).getType() != currArg->getType())
         {
-            // fix opague type mismatch on %opencl.image... 
+            // fix opague type mismatch on %opencl.image...
             std::string str0;
             llvm::raw_string_ostream s(str0);
             currArg->getType()->print(s);
@@ -420,7 +420,7 @@ void AddImplicitArgs::replaceAllUsesWithNewOCLBuiltinFunction(CodeGenContext* ct
             llvm::Value* arg = cInst->getOperand(i);
             if (arg->getType() != new_arg_iter->getType())
             {
-                // fix opague type mismatch on %opencl... 
+                // fix opague type mismatch on %opencl...
                 std::string str0;
                 llvm::raw_string_ostream s(str0);
                 arg->getType()->print(s);
@@ -660,7 +660,7 @@ void BuiltinCallGraphAnalysis::traveseCallGraphSCC(const std::vector<CallGraphNo
         if (!f || f->isDeclaration())
             continue;
         // Fail on variadic functions.
-        if (f->isVarArg()) 
+        if (f->isVarArg())
         {
             std::string Msg = "Invalid user defined function being processed: ";
             Msg += f->getName();

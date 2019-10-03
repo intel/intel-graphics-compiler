@@ -1089,7 +1089,7 @@ unsigned SWSB::getDepDelay(SBNode *curNode)
 #define LOOP_FACTOR_FOR_TOAKE_REUSE  5
 //The algorithm for reuse selectoin: The live range which causes the least stall delay of current live range.
 //Fixme: for global variable, it's not accurate. Because the AFTER_SOURCE and AFTER_WRITE may in different branches.
-//Try not reuse the tokens set in adjacent instructions. 
+//Try not reuse the tokens set in adjacent instructions.
 SBNode * SWSB::reuseTokenSelection(SBNode *node)
 {
     int delay = TOKEN_AFTER_WRITE_SEND_SAMPLER_CYCLE;
@@ -3340,7 +3340,7 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
         {
             node->setDistance(1);
             node->setDistOneAReg();
-            
+
         }
 
 

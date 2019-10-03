@@ -180,7 +180,7 @@ void CollectGeometryShaderProperties::HandleSystemInput(llvm::GenIntrinsicInst& 
     unsigned int sgvIndex = I.getIntrinsicID() == llvm::GenISAIntrinsic::GenISA_DCL_GSsystemValue ? 1 : 0;
     SGVUsage usage = static_cast<SGVUsage>
         (llvm::cast<llvm::ConstantInt>(I.getOperand(sgvIndex))->getZExtValue());
-    // If input usage contains clip distances, we need a bigger 
+    // If input usage contains clip distances, we need a bigger
     // vertex header to accommodate for these values.
     switch (usage)
     {
@@ -214,7 +214,7 @@ void CollectGeometryShaderProperties::HandleOutputWrite(llvm::GenIntrinsicInst& 
     case SHADER_OUTPUT_TYPE_CLIPDISTANCE_LO:
     case SHADER_OUTPUT_TYPE_CLIPDISTANCE_HI:
         // shader has output clip or cull distances
-        // this should have been recognized already by global variable extraction 
+        // this should have been recognized already by global variable extraction
         // that deals with clip or cull distance masks
         assert(m_gsProps.Output().PerVertex().HasClipDistances() ||
             m_gsProps.Output().PerVertex().HasCullDistances());
@@ -252,7 +252,7 @@ void CollectGeometryShaderProperties::HandleCutOrStreamHeader(llvm::GenIntrinsic
     // if the emitCount is not a constant int, we have runtime value of vertex count
     m_gsProps.Output().HasNonstaticVertexCount(pVertexCount == nullptr);
 
-    // for static number of vertices, we get the actual value, 
+    // for static number of vertices, we get the actual value,
     // for dynamic, declaration-derived upper bound (for safety)
     const unsigned int numVertices = (pVertexCount != nullptr) ?
         int_cast<unsigned int>(pVertexCount->getZExtValue()) : m_gsProps.Output().MaxVertexCount();

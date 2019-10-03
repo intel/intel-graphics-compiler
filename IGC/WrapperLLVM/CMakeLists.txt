@@ -34,8 +34,8 @@ set(IGC_WrapperLLVM_HDR
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/Attributes.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/Argument.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/IRBuilder.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/DIBuilder.h"    
-    "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/DebugInfoMetadata.h"    
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/DIBuilder.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/DebugInfoMetadata.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/Instructions.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/Function.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/GlobalValue.h"
@@ -71,8 +71,8 @@ include_directories(
 igc_sg_register(
     IGC__WrapperLLVM
     "WrapperLLVM"
-    FILES      
+    FILES
       ${IGC_WrapperLLVM_HDR}
   )
-  
+
 set(IGC_WrapperLLVM_HDR ${IGC_WrapperLLVM_HDR} PARENT_SCOPE)

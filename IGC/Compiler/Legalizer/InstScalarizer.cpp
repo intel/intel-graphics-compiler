@@ -75,8 +75,8 @@ bool InstScalarizer::visitTerminatorInst(IGCLLVM::TerminatorInst& I) {
 bool InstScalarizer::visitBinaryOperator(BinaryOperator& I) {
     ValueSeq* Ops0, * Ops1;
     std::tie(Ops0, std::ignore) = TL->getLegalizedValues(I.getOperand(0));
-    // we should get copy of Ops0 here, as next getLegalizedValues call may grow ValueMap object 
-    // when inserting new pair with ValueMap.insert(e.g.when ValueMap.NumBuckets grows from 64 to 128) 
+    // we should get copy of Ops0 here, as next getLegalizedValues call may grow ValueMap object
+    // when inserting new pair with ValueMap.insert(e.g.when ValueMap.NumBuckets grows from 64 to 128)
     // and previously received ValueSeq objects will become invalid.
     ValueSeq Ops0Copy(*Ops0);
 
@@ -487,8 +487,8 @@ bool InstScalarizer::visitInsertElementInst(InsertElementInst& I) {
     ValueSeq* VecSeq;
     std::tie(VecSeq, std::ignore) =
         TL->getLegalizedValues(I.getOperand(0));
-    // we should get copy of VecSeq here, as next getLegalizedValues call may grow ValueMap object 
-    // when inserting new pair with ValueMap.insert(e.g.when ValueMap.NumBuckets grows from 64 to 128) 
+    // we should get copy of VecSeq here, as next getLegalizedValues call may grow ValueMap object
+    // when inserting new pair with ValueMap.insert(e.g.when ValueMap.NumBuckets grows from 64 to 128)
     // and previously received ValueSeq objects will become invalid.
     ValueSeq VecSeqCopy(*VecSeq);
 

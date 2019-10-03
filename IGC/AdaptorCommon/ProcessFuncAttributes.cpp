@@ -201,7 +201,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
     {
         if (gv_fastMath->getInitializer()->isOneValue())
         {
-            // Find the functions which __FastRelaxedMath belongs to.... 
+            // Find the functions which __FastRelaxedMath belongs to....
             for (Value::user_iterator U = gv_fastMath->user_begin(), UE = gv_fastMath->user_end(); U != UE; ++U)
             {
                 Instruction* user = dyn_cast<Instruction>(*U);
@@ -232,7 +232,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
             // It is not a defined function
             continue;
         }
-        
+
         // If EnableOCLNoInlineAttr is on and F does have
         // NoInline, do not reset it.
         if (IGC_IS_FLAG_ENABLED(EnableOCLNoInlineAttr) &&
@@ -316,7 +316,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                     }
                 }
 
-                // SPIR-V image functions don't contain opaque types for images, 
+                // SPIR-V image functions don't contain opaque types for images,
                 // they use i64 values instead.
                 // We need to detect them based on function name.
                 if (F->getName().startswith(spv::kLLVMName::builtinPrefix) &&
@@ -351,7 +351,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
 
                 if ((forceSubroutine || forceStackCall) && (istrue == false))
                 {
-                    // add the following line in order to stress-test 
+                    // add the following line in order to stress-test
                     // subroutine call or stack call
                     F->removeFnAttr(llvm::Attribute::AlwaysInline);
                     F->addFnAttr(llvm::Attribute::NoInline);
@@ -380,7 +380,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                 }
 
                 if (isExtern || isIndirect)
-                {                    
+                {
                     pCtx->m_enableFunctionPointer = true;
                     F->addFnAttr("IndirectlyCalled");
 

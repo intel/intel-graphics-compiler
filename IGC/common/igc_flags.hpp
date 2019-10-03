@@ -44,7 +44,7 @@ enum {
 
     // Function-call-handling control
     FLAG_FCALL_DEFAULT = 0,    // default, compiler best-effort
-    FLAG_FCALL_FORCE_INLINE = 1,          
+    FLAG_FCALL_FORCE_INLINE = 1,
     FLAG_FCALL_FORCE_SUBROUTINE = 2,
     FLAG_FCALL_FORCE_STACKCALL = 3,
     FLAG_FCALL_FORCE_INDIRECTCALL = 4,

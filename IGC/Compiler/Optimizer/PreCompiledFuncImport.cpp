@@ -143,7 +143,7 @@ const PreCompiledFuncInfo PreCompiledFuncImport::m_functionInfos[NUM_FUNCTION_ID
     { "__igcbuiltin_dp_to_uint32",  LIBMOD_DP_CONV_I32 },
     { "__igcbuiltin_int32_to_dp",   LIBMOD_DP_CONV_I32 },
     { "__igcbuiltin_uint32_to_dp",  LIBMOD_DP_CONV_I32 },
-    { "__igcbuiltin_dp_to_sp",      LIBMOD_DP_CONV_SP },  
+    { "__igcbuiltin_dp_to_sp",      LIBMOD_DP_CONV_SP },
     { "__igcbuiltin_sp_to_dp",      LIBMOD_DP_CONV_SP },
     { "__igcbuiltin_dp_sqrt",       LIBMOD_DP_SQRT },
     { "__igcbuiltin_sp_div",        LIBMOD_SP_DIV }
@@ -175,7 +175,7 @@ const LibraryModuleInfo PreCompiledFuncImport::m_libModInfos[NUM_LIBMODS] =
 //         2:   y = zext i32 x to i64; z = uitofp i64 y to double
 //              --> z = uitofp i32 x to double
 //         3:   y = fptoui double x to i64;  z = trunc i64 y to i32
-//              --> z = fptoui double to i32           
+//              --> z = fptoui double to i32
 //              Note that this is just a "WA", which isn't correct in general
 //              (It works for OCL so far).
 //         Once we have convertion functions b/w double and i64, the "3" shall
@@ -207,7 +207,7 @@ bool PreCompiledFuncImport::preProcessDouble()
                     TI->replaceAllUsesWith(newinst);
                     toBeDeleted.push_back(TI);
                 }
-            }          
+            }
             else if (UIToFPInst * UFI = dyn_cast<UIToFPInst>(Inst))
             {
                 Value* oprd = UFI->getOperand(0);
@@ -269,7 +269,7 @@ bool PreCompiledFuncImport::preProcessDouble()
                         // z = max/min(x,y) sementics:
                         //     If either operand is NaN, return the other one (both are NaN,
                         //     return NaN); otherwise, return normal max/min.
-                        // 
+                        //
                         // Convert it to:
                         //   cond =  x >= y [x < y]  || x&y is unordered   (fcmp_uge|fcmp_ult)
                         //   t = cond ? x : y
@@ -292,7 +292,7 @@ bool PreCompiledFuncImport::preProcessDouble()
                     CallI->replaceAllUsesWith(res);
                     toBeDeleted.push_back(CallI);
                 }
-                else  if (resTy->isDoubleTy() &&                  
+                else  if (resTy->isDoubleTy() &&
                           GII && (GII->getIntrinsicID() == GenISAIntrinsic::GenISA_fsat))
                 {
                     // y = fsat(x) :  1. y = 0.0 if x is NaN or x < 0.0;
@@ -302,7 +302,7 @@ bool PreCompiledFuncImport::preProcessDouble()
                     Constant* FC0 = ConstantFP::get(resTy, 0.0);
                     Constant* FC1 = ConstantFP::get(resTy, 1.0);
                     Instruction* cond = FCmpInst::Create(
-                        Instruction::FCmp, 
+                        Instruction::FCmp,
                         hasNoNaN ? FCmpInst::FCMP_OLT : FCmpInst::FCMP_ULT,
                         Oprd0, FC0, "", CallI);
                     cond->setDebugLoc(CallI->getDebugLoc());
@@ -320,7 +320,7 @@ bool PreCompiledFuncImport::preProcessDouble()
                     toBeDeleted.push_back(CallI);
                 }
             }
-        }  
+        }
     }
 
     for (int i = 0, e = (int)toBeDeleted.size(); i < e; ++i)
@@ -369,7 +369,7 @@ bool PreCompiledFuncImport::runOnModule(Module& M)
     {
         m_changed = true;
     }
- 
+
     unsigned int count = 0;
     while (count < 2)
     {
@@ -421,7 +421,7 @@ bool PreCompiledFuncImport::runOnModule(Module& M)
                 m_pBuiltinModule = nullptr;
             }
         }
-        for (int i = 0; i < NUM_LIBMODS; ++i) 
+        for (int i = 0; i < NUM_LIBMODS; ++i)
         {
             m_libModuleToBeImported[i] = false;
         }
@@ -614,7 +614,7 @@ void PreCompiledFuncImport::visitBinaryOperator(BinaryOperator& I)
 }
 
 
-//64 bit emulation for divide 
+//64 bit emulation for divide
 void PreCompiledFuncImport::processDivide(BinaryOperator& inst, EmulatedFunctions function)
 {
     unsigned int numElements = 1;
@@ -767,7 +767,7 @@ void PreCompiledFuncImport::processFPBinaryOperator(Instruction& I, FunctionIDs 
     {
         constDouble = cast<ConstantFP>(I.getOperand(0));
     }
-        
+
     if (constDouble && constDouble->isZeroValue()) // turn the fsub into an and/xor/and/or operation
     {
         Type* intTy = Type::getInt32Ty(m_pModule->getContext());
@@ -1215,7 +1215,7 @@ void PreCompiledFuncImport::visitFCmpInst(FCmpInst& I)
     // 'mask' indicates that if any of bits is set, the condition is true.
     // 'bitVal' is the bit that is set by this emulation function, which is
     // calculated by  1 << funcCall.
-    //   Given the fcmp 
+    //   Given the fcmp
     //       i1 cond = fcmp (Pred) x,  y
     //   it is translated into
     //       c1 = dp_cmp(x, y, 1)
@@ -1251,7 +1251,7 @@ void PreCompiledFuncImport::visitCallInst(llvm::CallInst& I)
         // is the same as its emulated function.
         //
         // extern int __igcbuildin_dp_to_int32(double, int, int, int*);
-        // 
+        //
         // void kernel test_db2si32(global int* dst, global double *src)
         // {
         //    int flag = 0;
@@ -1268,14 +1268,14 @@ void PreCompiledFuncImport::visitCallInst(llvm::CallInst& I)
         //    dst[2 * ix] = r0;
         //    dst[2 * ix + 1] = r1;
         // }
-        // 
+        //
         // With the host application invoking this kernel, it will check if the emulated
         // function matches the hardware instruction.
-        // 
+        //
         // Note that when using this functionality, ForceDPEmulation must be 0 AND it must
         // be on the platform that supports the hardware instrutions for those emulated
         // operations.
-        // 
+        //
         Function* func = I.getCalledFunction();
         if (func)
         {
@@ -1395,7 +1395,7 @@ void PreCompiledFuncImport::visitCallInst(llvm::CallInst& I)
         Instruction* fabsVal = CastInst::Create(
             Instruction::BitCast, val, resTy, "DPEmuFabs", &I);
         fabsVal->setDebugLoc(I.getDebugLoc());
- 
+
         I.replaceAllUsesWith(fabsVal);
         I.eraseFromParent();
 

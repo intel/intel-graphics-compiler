@@ -27,7 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../include/BiF_Definitions.cl"
 
 // Functions have been moved to IGILBiF_Intrinsics_Impl.cl since they had intrinsics call.
- 
+
 
 
 

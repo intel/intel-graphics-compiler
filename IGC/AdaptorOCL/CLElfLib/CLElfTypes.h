@@ -38,7 +38,7 @@ Abstract:  Defines the types used for ELF headers/sections.  This uses
     #include <inttypes.h>
 #endif
 
-#if defined(__linux__) 
+#if defined(__linux__)
     #include "elf.h"
 #endif
 

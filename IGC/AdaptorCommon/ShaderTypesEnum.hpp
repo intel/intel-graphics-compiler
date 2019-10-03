@@ -390,7 +390,7 @@ enum SHADER_OPCODE
     SHADER_OPCODE_UTOUS,
     SHADER_OPCODE_UTOB,
     SHADER_OPCODE_UTOUB,
-    
+
     SHADER_OPCODE_STOF,
     SHADER_OPCODE_STOI,
     SHADER_OPCODE_STOU,
@@ -500,7 +500,7 @@ enum SHADER_OPCODE
     SHADER_OPCODE_SUBROUTINE_RET,
 
     // Resource Access Instructions
-    // don't change the order, make sure the order is matched to 
+    // don't change the order, make sure the order is matched to
     // GEN6 sampler CSIL instructions order in kpo_inst_g4_cs.h
     SHADER_OPCODE_LOAD,
     SHADER_OPCODE_SAMPLE,
@@ -551,7 +551,7 @@ enum SHADER_OPCODE
     SHADER_OPCODE_VME_MB_MULTI_BIDIR_CHECK_16x16,
     SHADER_OPCODE_VME_MB_MULTI_CHECK_8x8,
     SHADER_OPCODE_VME_MB_MULTI_BIDIR_CHECK_8x8,
-    
+
     SHADER_OPCODE_MCE_SET_MV_COST_FUNCTION,
     SHADER_OPCODE_MCE_SET_INTRA_LUMA_MODE_COST_FUNCTION,
     SHADER_OPCODE_MCE_SET_INTRA_CHROMA_MODE_COST_FUNCTION,
@@ -576,7 +576,7 @@ enum SHADER_OPCODE
     SHADER_OPCODE_MCE_GET_INTER_REFERENCE_IDS,
     SHADER_OPCODE_MCE_GET_INTER_MOTION_VECTOR_COUNT,
     SHADER_OPCODE_MCE_GET_8x8_TRANSFORM_RECOMMENDATION,
-    
+
     SHADER_OPCODE_IME_INITIALIZE,
     SHADER_OPCODE_IME_SET_SINGLE_REF,
     SHADER_OPCODE_IME_SET_MULTI_REF,
@@ -674,7 +674,7 @@ enum SHADER_OPCODE
     SHADER_OPCODE_IMM_ATOMIC_IMAX,
     SHADER_OPCODE_IMM_ATOMIC_IMIN,
     SHADER_OPCODE_IMM_ATOMIC_UMAX,
-    SHADER_OPCODE_IMM_ATOMIC_UMIN,   
+    SHADER_OPCODE_IMM_ATOMIC_UMIN,
     SHADER_OPCODE_GATHER4_C,
     SHADER_OPCODE_GATHER4_PO,
     SHADER_OPCODE_GATHER4_PO_C,
@@ -688,7 +688,7 @@ enum SHADER_OPCODE
     SHADER_OPCODE_EVAL_SAMPLEINDEX,
     SHADER_OPCODE_EVAL_CENTROID,
 
-    // OGL4.2 MSAA LD/STORE UAV Instructions 
+    // OGL4.2 MSAA LD/STORE UAV Instructions
     SHADER_OPCODE_RESINFO_UINT_MSAA,
     SHADER_OPCODE_LD_UAV_TYPED_MSAA,
     SHADER_OPCODE_STORE_UAV_TYPED_MSAA,
@@ -818,12 +818,12 @@ enum SHADER_OPCODE
     SHADER_OPCODE_PTR_IMM_ATOMIC_AND,
     SHADER_OPCODE_PTR_IMM_ATOMIC_OR,
     SHADER_OPCODE_PTR_IMM_ATOMIC_XOR,
-   
-    //Gen 9 atomic instructions 
+
+    //Gen 9 atomic instructions
     SHADER_OPCODE_PTR_IMM_ATOMIC_FMIN,
     SHADER_OPCODE_PTR_IMM_ATOMIC_FMAX,
     SHADER_OPCODE_PTR_IMM_ATOMIC_FCMP_XCHG,
-    
+
     // Printf Instruction
     SHADER_OPCODE_PRINTF,
 
@@ -831,7 +831,7 @@ enum SHADER_OPCODE
     SHADER_OPCODE_SIMD_SIZE,
     SHADER_OPCODE_SIMD_ID,
     SHADER_OPCODE_SIMD_ANY,
-    
+
     SHADER_OPCODE_SIMD_SHUFFLE,
     SHADER_OPCODE_SIMD_SHUFFLE_DOWN,
     SHADER_OPCODE_SSIMD_SHUFFLE,
@@ -847,7 +847,7 @@ enum SHADER_OPCODE
     SHADER_OPCODE_SIMD_MEDIA_BLOCK_WRITE_8,
     SHADER_OPCODE_SIMD_BLOCK_WRITE_4,
     SHADER_OPCODE_SIMD_BLOCK_WRITE_8,
- 
+
     SHADER_OPCODE_SSIMD_MEDIA_BLOCK_READ_4,
     SHADER_OPCODE_SSIMD_MEDIA_BLOCK_READ_8,
     SHADER_OPCODE_SSIMD_BLOCK_READ_4,
@@ -861,7 +861,7 @@ enum SHADER_OPCODE
     SHADER_OPCODE_SIMD_V2HMUL,
     SHADER_OPCODE_SIMD_V2HMAD,
     SHADER_OPCODE_SIMD_V2HCMP,
-    
+
     SHADER_OPCODE_BSIMD_MEDIA_BLOCK_READ_DIM_4,
     SHADER_OPCODE_BSIMD_MEDIA_BLOCK_READ_DIM_8,
     SHADER_OPCODE_BSIMD_MEDIA_BLOCK_READ_DIM_16,
@@ -920,9 +920,9 @@ enum SHADER_OPCODE
     SHADER_OPCODE_CHECK_ACCESS_FULLY_MAPPED,
 
     // Address Space Qualifiers
-    SHADER_OPCODE_IS_UAV, 
-    SHADER_OPCODE_IS_TGSM, 
-    SHADER_OPCODE_IS_TPM, 
+    SHADER_OPCODE_IS_UAV,
+    SHADER_OPCODE_IS_TGSM,
+    SHADER_OPCODE_IS_TPM,
 
     // Internal / Debug Instruction
     SHADER_OPCODE_ACTIVECHANNELMASK,
@@ -996,7 +996,7 @@ inline SHADER_CHANNEL operator ++(SHADER_CHANNEL& rChannel,int)
 
 /*****************************************************************************\
 ENUM: EXT_TEXTURE_SWIZZLE
-    Extended swizzle augmented by the possibility of setting a channel 
+    Extended swizzle augmented by the possibility of setting a channel
     to either zero or one.
     Used for texture swizzling (cf. OpenGL GL_EXT_texture_swizzle extension).
 \*****************************************************************************/
@@ -1054,7 +1054,7 @@ enum SHADER_COMPARISON
 {                           // < = >
     SHADER_COMPARISON_NONE, // 0 0 0
     SHADER_COMPARISON_GT,   // 0 0 1
-    SHADER_COMPARISON_EQ,   // 0 1 0 
+    SHADER_COMPARISON_EQ,   // 0 1 0
     SHADER_COMPARISON_GE,   // 0 1 1
     SHADER_COMPARISON_LT,   // 1 0 0
     SHADER_COMPARISON_NE,   // 1 0 1
@@ -1090,7 +1090,7 @@ enum SHADER_QTR_CTRL
 /*****************************************************************************\
 CONST:
     const unsigned int numberOfShaderSyncBits
-    
+
     Determines number of bits used for SHADER_SYNC
 
 \*****************************************************************************/
@@ -1103,16 +1103,16 @@ union SHADER_SYNC
 {
     struct _BasicType
     {
-       unsigned int COMPUTE_SHADER_SYNC_THREADS_IN_GROUP : 1; // Thread group sync                                                      
-       unsigned int COMPUTE_SHADER_SYNC_THREAD_GROUP_SHARED_MEMORY : 1; // g# (Thread Group Shared Memory) fence                        
-       unsigned int COMPUTE_SHADER_SYNC_UNORDERED_ACCESS_VIEW_MEMORY_GROUP : 1; // Thread group scope u# (UAV) memory fence             
-       unsigned int SHADER_SYNC_UNORDERED_ACCESS_VIEW_MEMORY_GLOBAL : 1; // Global u# (UAV) memory fence (the only onle allowed in PS)  
+       unsigned int COMPUTE_SHADER_SYNC_THREADS_IN_GROUP : 1; // Thread group sync
+       unsigned int COMPUTE_SHADER_SYNC_THREAD_GROUP_SHARED_MEMORY : 1; // g# (Thread Group Shared Memory) fence
+       unsigned int COMPUTE_SHADER_SYNC_UNORDERED_ACCESS_VIEW_MEMORY_GROUP : 1; // Thread group scope u# (UAV) memory fence
+       unsigned int SHADER_SYNC_UNORDERED_ACCESS_VIEW_MEMORY_GLOBAL : 1; // Global u# (UAV) memory fence (the only onle allowed in PS)
        unsigned int PIXEL_SHADER_SYNC_PIXEL_BARRIER : 1;
        unsigned int COMPUTE_SHADER_SYNC_IMAGE : 1;
     } ShaderSyncFields;
 
     int unsigned AllShaderSyncFields : cNumberOfShaderSyncBits;
-    
+
     bool operator == ( const SHADER_SYNC& toCheck ) const
     {
         return ( AllShaderSyncFields == toCheck.AllShaderSyncFields );
@@ -1158,7 +1158,7 @@ const SHADER_SYNC COMPUTE_SHADER_SHADER_SYNC_UGLOBAL_G_T =                  { { 
 const SHADER_SYNC PIXEL_SHADER_SYNC_PIXEL_BARRIER =                         { { 0, 0, 0, 0, 1, 0 } };
 const SHADER_SYNC COMPUTE_SHADER_SYNC_COUNT_ANY =                           { { 1, 0, 1, 1, 0, 0 } };
 const SHADER_SYNC COMPUTE_SHADER_SYNC_COUNT_ALL =                           { { 0, 1, 1, 1, 0, 0 } };
-const SHADER_SYNC COMPUTE_SHADER_SYNC_IMAGE =                               { { 0, 0, 0, 0, 0, 1 } }; 
+const SHADER_SYNC COMPUTE_SHADER_SYNC_IMAGE =                               { { 0, 0, 0, 0, 0, 1 } };
 
 const SHADER_SYNC NUM_SHADER_SYNCS_INIT =                                   { { 1, 1, 1, 1, 1, 1 } };
 const unsigned int NUM_SHADER_SYNCS = NUM_SHADER_SYNCS_INIT.AllShaderSyncFields + 1;
@@ -1190,7 +1190,7 @@ enum SHADER_REGISTER_FILE
     SHADER_REGFILE_UAV,                 // u#
     SHADER_REGFILE_TGSM,                // g#
     SHADER_REGFILE_TPM,                 // m#
-    SHADER_REGFILE_GENERIC_MG,          // mg, 
+    SHADER_REGFILE_GENERIC_MG,          // mg,
     SHADER_REGFILE_GENERIC_UMG,         // umg
     SHADER_REGFILE_GENERIC_UG,          // ug
     SHADER_REGFILE_GENERIC_UM,          // um
@@ -1436,7 +1436,7 @@ enum USC_BLEND_EQUATION_ADVANCED_MODE
     USC_BLEND_EQUATION_ADVANCED_HSL_SATURATION,
     USC_BLEND_EQUATION_ADVANCED_HSL_COLOR,
     USC_BLEND_EQUATION_ADVANCED_HSL_LUMINOSITY,
-        
+
     USC_NUM_BLEND_EQUATION_ADVANCED_MODES
 };
 

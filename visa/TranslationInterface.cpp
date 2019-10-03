@@ -1908,7 +1908,7 @@ void IR_Builder::generateBarrierSend()
 void IR_Builder::generateBarrierWait()
 {
     // wait n0.0<0;1,0>:ud
-    G4_Operand* waitSrc = hasUnifiedBarrier() ? static_cast<G4_Operand*>(createImm(0, Type_UD)) : 
+    G4_Operand* waitSrc = hasUnifiedBarrier() ? static_cast<G4_Operand*>(createImm(0, Type_UD)) :
         createSrcRegRegion(Mod_src_undef, Direct, phyregpool.getN0Reg(),
             0, 0, getRegionScalar(), Type_UD);
     createInst(nullptr, G4_wait, nullptr, false, 1, nullptr, waitSrc, nullptr,
@@ -3496,8 +3496,8 @@ int IR_Builder::translateVISAGatherInst(
             tf_id, false, true,
             SendAccess::READ_ONLY,
             surface, NULL, instOpt, false);
-    } 
-    else 
+    }
+    else
     {
         Create_Send_Inst_For_CISA(
             pred,
@@ -9966,7 +9966,7 @@ int IR_Builder::translateVISASVMAtomicInst(
     return CM_SUCCESS;
 }
 
-G4_SrcRegRegion* IR_Builder::getSVMOffset(G4_Operand* globalOffset, G4_SrcRegRegion* offsets, uint16_t exSize, 
+G4_SrcRegRegion* IR_Builder::getSVMOffset(G4_Operand* globalOffset, G4_SrcRegRegion* offsets, uint16_t exSize,
     G4_Predicate* pred, uint32_t mask)
 {
     G4_Declare* dcl = Create_MRF_Dcl(exSize, offsets->getType());

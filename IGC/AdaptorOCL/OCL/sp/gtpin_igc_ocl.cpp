@@ -33,7 +33,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // We need to make the following functions that will be replaced by GT-Pin at runtime
 // a little more complex to prevent the compiler from optimizing them (apparently,
 // the compiler did perform some link-time optimization on these functions).
-// 
+//
 static volatile bool gtpinIsEnabled = false;
 
 MY_EXTERN_C MY_DLLEXPORT bool MY_CALLINGSTD GTPIN_IGC_OCL_IsEnabled()
@@ -53,7 +53,7 @@ MY_EXTERN_C MY_DLLEXPORT int MY_CALLINGSTD GTPIN_IGC_OCL_NumberOfSurfaces()
     {
         assert(0);
         return 1;
-    } 
+    }
     else
     {
         return 0;
@@ -61,7 +61,7 @@ MY_EXTERN_C MY_DLLEXPORT int MY_CALLINGSTD GTPIN_IGC_OCL_NumberOfSurfaces()
 }
 
 MY_EXTERN_C MY_DLLEXPORT int MY_CALLINGSTD GTPIN_IGC_OCL_UpdateKernelInfo(const unsigned kernelBinarySize,
-                                                                          const int scratchSurfBti, 
+                                                                          const int scratchSurfBti,
                                                                           const int pBufBti )
 {
     // This function body will be replaced by Pin at runtime if GT-Pin is used.
@@ -111,7 +111,7 @@ MY_EXTERN_C MY_DLLEXPORT int MY_CALLINGSTD GTPIN_IGC_OCL_GetSurfaceKernelArgNo( 
     {
         assert(0);
         return 5;
-    } 
+    }
     else
     {
         return 0;
@@ -125,7 +125,7 @@ MY_EXTERN_C MY_DLLEXPORT int MY_CALLINGSTD GTPIN_IGC_OCL_CompilerReservedRegs( c
     {
         assert(0);
         return 6;
-    } 
+    }
     else
     {
         return 0;
@@ -139,7 +139,7 @@ MY_EXTERN_C MY_DLLEXPORT char*  MY_CALLINGSTD GTPIN_IGC_OCL_GetCommandLine()
     {
         assert(0);
         return (char*)7;
-    } 
+    }
     else
     {
         return 0;
@@ -153,7 +153,7 @@ MY_EXTERN_C MY_DLLEXPORT GTPIN_INVOKE_STRUCT* MY_CALLINGSTD GTPIN_IGC_OCL_GetInv
     {
         assert(0);
         return (GTPIN_INVOKE_STRUCT*)8;
-    } 
+    }
     else
     {
         return 0;
@@ -166,7 +166,7 @@ MY_EXTERN_C MY_DLLEXPORT int MY_CALLINGSTD GTPIN_IGC_OCL_FillAllKernelsInfo()
     if (GTPIN_IGC_OCL_IsEnabled())
     {
         assert(0);
-        return 9;       
+        return 9;
     }
     else
     {
@@ -178,7 +178,7 @@ MY_EXTERN_C MY_DLLEXPORT int MY_CALLINGSTD GTPIN_IGC_OCL_FillAllKernelsInfo()
 MY_EXTERN_C MY_DLLEXPORT GEN_ISA_TYPE MY_CALLINGSTD GTPIN_IGC_OCL_GetGenIsaFromPlatform(
     PLATFORM platform )
 {
-    switch ( platform.eRenderCoreFamily ) 
+    switch ( platform.eRenderCoreFamily )
     {
     case IGFX_GEN7_CORE:
         return GEN_ISA_TYPE_GEN7;
@@ -193,7 +193,7 @@ MY_EXTERN_C MY_DLLEXPORT GEN_ISA_TYPE MY_CALLINGSTD GTPIN_IGC_OCL_GetGenIsaFromP
     default:
         assert(0);
         return GEN_ISA_TYPE_INVALID;
-    }      
+    }
 }
 
 MY_EXTERN_C MY_DLLEXPORT int MY_CALLINGSTD GTPIN_IGC_OCL_Instrument(
@@ -214,7 +214,7 @@ MY_EXTERN_C MY_DLLEXPORT int MY_CALLINGSTD GTPIN_IGC_OCL_Instrument(
     {
         funInvokingGTPin = (INVOKE_GTPIN_PROC) gtpinInvokeStruct->_args[ GTPIN_INVOKE_STRUCT_ARG_POS_FUNPTR ];
 
-        const int res = GTPIN_IGC_OCL_FillAllKernelsInfo(); 
+        const int res = GTPIN_IGC_OCL_FillAllKernelsInfo();
         // use the result of GTPIN_IGC_OCL_FillAllKernelsInfo() to make sure that the compiler won't optimize this call away
         success = ( res == 0 );
     }
@@ -234,7 +234,7 @@ MY_EXTERN_C MY_DLLEXPORT int MY_CALLINGSTD GTPIN_IGC_OCL_Instrument(
         gtpinInvokeStruct->_args[ GTPIN_INVOKE_STRUCT_ARG_POS_OCLDEBUGSIZE ] = reinterpret_cast< void * >(0); // no debug data for now with IGC
 
         char* gtpinCommandLine = GTPIN_IGC_OCL_GetCommandLine();
-        char* resultMsg = 0;    
+        char* resultMsg = 0;
 
         // Invoke the GT-Pin binary rewriter
         success = funInvokingGTPin(
@@ -242,7 +242,7 @@ MY_EXTERN_C MY_DLLEXPORT int MY_CALLINGSTD GTPIN_IGC_OCL_Instrument(
             originalBinaryOutput,
             originalBinarySize,
             gtpinCommandLine,
-            gtpinInvokeStruct, 
+            gtpinInvokeStruct,
             -1, // not used
             -1, // not used
             -1, // not used

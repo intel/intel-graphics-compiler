@@ -52,7 +52,7 @@ define void @GenIRLowering_test(float addrspace(1)* %src1, float addrspace(1)* %
   %14 = select i1 %13, float 5.000000e+00, float %12, !dbg !7
   store float %14, float addrspace(1)* %dst, align 4
   ret void
-  
+
 ; CHECK: [[inst1:%[a-zA-Z0-9]+]] = ptrtoint float addrspace(1)* %src1 to i32, !dbg !2
 ; CHECK: [[inst2:%[a-zA-Z0-9]+]] = add i32 [[inst1]], 12, !dbg !2
 ; CHECK: [[inst3:%[a-zA-Z0-9]+]] = inttoptr i32 [[inst2]] to float addrspace(1)*, !dbg !2

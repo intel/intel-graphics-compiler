@@ -139,7 +139,7 @@ enum class PreDefinedVarsInternal_3_4
 PreDefinedVarsInternal mapExternalToInternalPreDefVar(int id)
 {
     PreDefinedVarsInternal newIndex = PreDefinedVarsInternal::VAR_LAST;
- 
+
     if (id <= static_cast<int>(PreDefinedVarsInternal_3_4::VAR_LAST))
         {
             PreDefinedVarsInternal_3_4 internalIndex = static_cast<PreDefinedVarsInternal_3_4>(id);

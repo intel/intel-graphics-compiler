@@ -83,7 +83,7 @@ typedef struct _VISA_WA_TABLE
         WaSIMD16SIMD32CallDstAlign,
         "SIMD16/SIMD32 call destiantion must have .0 offset for SKL SteppingA.",
         WA_BUG_TYPE_UNKNOWN)
-        
+
     VISA_WA_DECLARE(
         WaThreadSwitchAfterCall,
         "BDW, CHV, SKL, BXT: Follow every call by a dummy non-JEU and non-send instruction with a switch for both cases whether a subroutine is taken or not.",
@@ -198,7 +198,7 @@ typedef struct _VISA_WA_TABLE
     Wa_1606931601,
     "Split simd16 to two simd8 if src0 is scalar and src1 and src2 have bundle conflict.",
     VISA_WA_BUG_TYPE_UNKNOWN)
-    
+
     VISA_WA_DECLARE(
     WaSwapForSrc1Replicate,
     "swap src1 with src2 or src0 when src1 is replicate, there is no scalar mux in src1.",

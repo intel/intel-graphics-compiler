@@ -40,7 +40,7 @@ namespace G11HDL
         DSTTYPE_Q = 0x7,   // signed Quadword integer
         DSTTYPE_HF = 0x8,   // Half Float (16-bit)
         DSTTYPE_F = 0x9,   // single precision Float (32-bit)
-        DSTTYPE_DF = 0xA,  // Double precision Float (64-bit) 
+        DSTTYPE_DF = 0xA,  // Double precision Float (64-bit)
     } DSTTYPE;
 
     typedef enum tagSRCTYPE {
@@ -54,7 +54,7 @@ namespace G11HDL
         SRCTYPE_Q = 0x7,   // signed Quadword integer
         SRCTYPE_HF = 0x8,   // Half Float (16-bit)
         SRCTYPE_F = 0x9,   // single precision Float (32-bit)
-        SRCTYPE_DF = 0xA,  // Double precision Float (64-bit) 
+        SRCTYPE_DF = 0xA,  // Double precision Float (64-bit)
     } SRCTYPE;
 
     typedef enum tagSRCIMMTYPE {
@@ -68,7 +68,7 @@ namespace G11HDL
         SRCIMMTYPE_Q = 0x7,   // signed Quadword integer
         SRCIMMTYPE_HF = 0x8,   // Half Float (16-bit)
         SRCIMMTYPE_F = 0x9,   // single precision Float (32-bit)
-        SRCIMMTYPE_DF = 0xA,  // Double precision Float (64-bit) 
+        SRCIMMTYPE_DF = 0xA,  // Double precision Float (64-bit)
         SRCIMMTYPE_VF = 0xB,   // Packed Restricted Float Vector, 4 x 8-Bit Restricted Precision Floating-Point Number
     } SRCIMMTYPE;
 }

@@ -164,7 +164,7 @@ namespace IGC
 
             if (m_pMdUtils->findFunctionsInfoItem(F) != m_pMdUtils->end_FunctionsInfo())
             {
-                // TODO: when doing codegen for cps shader.  We will run CodeGen twice, 
+                // TODO: when doing codegen for cps shader.  We will run CodeGen twice,
                 // first for coarse_phase, then pixel_phase, see CodeGen().
                 // While the pushinfo metadata is not stored using function as index.
                 // So when doing codege for pixel_phase, we need to clear legacy

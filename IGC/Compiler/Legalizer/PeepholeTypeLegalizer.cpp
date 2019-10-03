@@ -118,7 +118,7 @@ void PeepholeTypeLegalizer::visitInstruction(Instruction& I) {
 
     m_builder->SetInsertPoint(&I);
 
-    //Depending on the phase of legalization pass, call appropriate function 
+    //Depending on the phase of legalization pass, call appropriate function
     if (!NonBitcastInstructionsLegalized) { // LEGALIZE ALUs first
         if (dyn_cast<PHINode>(&I)) {
             legalizePhiInstruction(I);  // phi nodes and all incoming values
@@ -800,7 +800,7 @@ void PeepholeTypeLegalizer::cleanupZExtInst(Instruction& I) {
                 Changed = true;
             }
         }
-        else { // (promoteToInt*quotient != Src1width) case            
+        else { // (promoteToInt*quotient != Src1width) case
                // No support yet
         }
     }

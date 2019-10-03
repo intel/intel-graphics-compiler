@@ -25,7 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 
 #pragma once
-// PatchList.h will be removed after change propagation to Metal. Please make 
+// PatchList.h will be removed after change propagation to Metal. Please make
 // all changes in ocl_igc_interface/executable_format/patch_list.h
 #include "ocl_igc_shared/executable_format/patch_list.h"
 

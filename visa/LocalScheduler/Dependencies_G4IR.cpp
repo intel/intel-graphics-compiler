@@ -197,7 +197,7 @@ static DepType DoMemoryInterfereScratchSend(G4_INST *send1, G4_INST *send2, retD
     }
 }
 
-DepType vISA::getDepSend(G4_INST *curInst, G4_INST *liveInst, const Options *m_options, 
+DepType vISA::getDepSend(G4_INST *curInst, G4_INST *liveInst, const Options *m_options,
     bool BTIIsRestrict)
 {
     for (auto RDEP : { RET_RAW, RET_WAR, RET_WAW })

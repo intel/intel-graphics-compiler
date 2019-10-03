@@ -294,10 +294,10 @@ bool HWConformity::checkSrcCrossGRF( INST_LIST_ITER& iter, G4_BB* bb )
                     return true;
                 }
             }
-            else if (builder.getOptions()->isTargetCM() && builder.no64bitRegioning() && 
+            else if (builder.getOptions()->isTargetCM() && builder.no64bitRegioning() &&
                 getTypeSize(src->getType()) == 8)
             {
-                // for CM, split non-scalar, non-contiguous source that cross GRF as HW conformity 
+                // for CM, split non-scalar, non-contiguous source that cross GRF as HW conformity
                 // may be not equipped to deal with them later
                 RegionDesc* region = src->getRegion();
                 if (!region->isScalar() && !region->isContiguous(inst->getExecSize()) &&
@@ -407,7 +407,7 @@ bool HWConformity::reduceExecSize( INST_LIST_ITER iter, G4_BB* bb )
     bool evenSplitDst;
 
     // separate the checks for BDW to make it more maintainable
-    // For CM use pre-BDW region rules due to HW bugs.  
+    // For CM use pre-BDW region rules due to HW bugs.
     if (!builder.getOptions()->isTargetCM() && (genX == GENX_BDW || genX == GENX_CHV))
     {
         // for BDW we check the following rules:
@@ -552,10 +552,10 @@ bool HWConformity::reduceExecSize( INST_LIST_ITER iter, G4_BB* bb )
     {
         // pre-BDW checks
 
-        // Check if the instruction will use int ACC later. if yes, compressed instruction 
+        // Check if the instruction will use int ACC later. if yes, compressed instruction
         // is split into 2 one-GRF instructions.
 
-        bool mayUseIntAcc = op == G4_pseudo_sada2 || 
+        bool mayUseIntAcc = op == G4_pseudo_sada2 ||
         ( op == G4_mul && IS_DTYPE( inst->getSrc(0)->getType() ) && IS_DTYPE( inst->getSrc(1)->getType() ) );
 
         if( crossGRFDst )
@@ -998,7 +998,7 @@ void HWConformity::splitSIMD32Inst( INST_LIST_ITER iter, G4_BB* bb )
     }
 }
 
-void HWConformity::splitInstruction(INST_LIST_ITER iter, G4_BB* bb, bool compOpt, uint8_t numInFirstMov, 
+void HWConformity::splitInstruction(INST_LIST_ITER iter, G4_BB* bb, bool compOpt, uint8_t numInFirstMov,
     bool rule4_11, bool canSrcCrossGRF)
 {
     G4_INST *inst = *iter;

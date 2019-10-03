@@ -226,15 +226,15 @@ GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( __builtin_spirv_OpFMod, float, float, f
 double __builtin_spirv_OpenCL_fmod_f64_f64( double xx, double yy )
 {
     double result;
-    
-    if( __builtin_spirv_OpIsNan_f64(xx) | 
-        __builtin_spirv_OpIsNan_f64(yy) | 
-        __builtin_spirv_OpIsInf_f64(xx) | 
+
+    if( __builtin_spirv_OpIsNan_f64(xx) |
+        __builtin_spirv_OpIsNan_f64(yy) |
+        __builtin_spirv_OpIsInf_f64(xx) |
         yy == 0.0)
     {
         result = __builtin_spirv_OpenCL_nan_i64((ulong)0);
     }
-    else if( __builtin_spirv_OpIsInf_f64(yy) | 
+    else if( __builtin_spirv_OpIsInf_f64(yy) |
              (xx == 0.0) )
     {
         result = xx;
@@ -251,17 +251,17 @@ double __builtin_spirv_OpenCL_fmod_f64_f64( double xx, double yy )
     {
         double x = __builtin_spirv_OpenCL_fabs_f64(xx);
         double y = __builtin_spirv_OpenCL_fabs_f64(yy);
-        int ex = __builtin_spirv_OpenCL_ilogb_f64( x ); 
+        int ex = __builtin_spirv_OpenCL_ilogb_f64( x );
         int ey = __builtin_spirv_OpenCL_ilogb_f64( y );
-        double xr = x; 
+        double xr = x;
         double yr = y;
-        
-        if(ex-ey >= 0) 
+
+        if(ex-ey >= 0)
         {
             yr = __builtin_spirv_OpenCL_ldexp_f64_i32( y, -ey );
             xr = __builtin_spirv_OpenCL_ldexp_f64_i32( x, -ex );
-            
-            for(int i = ex-ey; i > 0; i--) 
+
+            for(int i = ex-ey; i > 0; i--)
             {
                 double s = xr - yr;
                 xr = ( xr >= yr ) ? s : xr;
@@ -272,10 +272,10 @@ double __builtin_spirv_OpenCL_fmod_f64_f64( double xx, double yy )
 
             xr = __builtin_spirv_OpenCL_ldexp_f64_i32(xr, ey);
         }
-        
+
         double m = -xr;
         xr = ( xx < 0.0 ) ? m : xr;
-        
+
         result = xr;
     }
 

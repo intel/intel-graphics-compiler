@@ -356,7 +356,7 @@ namespace IGC
                 pData[fixup.getOffset() + i] = uint8_t(value >> (i * 8));
             }
         }
-#elif LLVM_VERSION_MAJOR >= 7    
+#elif LLVM_VERSION_MAJOR >= 7
         void applyFixup(const MCAssembler & Asm, const MCFixup & fixup,
             const MCValue & Target, MutableArrayRef<char> Data,
             uint64_t value, bool IsResolved,

@@ -47,15 +47,15 @@ enum GFX_MEDIA_NONPIPELINED_SUBOPCODE
 {
     GFXSUBOP_MEDIA_OBJECT                       = 0x0,
     GFXSUBOP_MEDIA_OBJECT_PRT                   = 0x2,
-    GFXSUBOP_MEDIA_OBJECT_WALKER                = 0x3   
+    GFXSUBOP_MEDIA_OBJECT_WALKER                = 0x3
 };
 
 /*****************************************************************************\
 ENUM: GFX_MEDIA_NONPIPELINED_SUBOPCODE_A
 \*****************************************************************************/
 enum GFX_MEDIA_NONPIPELINED_SUBOPCODE_A
-{    
-    GFXSUBOP_MEDIA_GPGPU_WALKER                 = 0x5   
+{
+    GFXSUBOP_MEDIA_GPGPU_WALKER                 = 0x5
 };
 
 /*****************************************************************************\
@@ -134,7 +134,7 @@ ENUM: GFXMEDIASTATE_SCOREBOARD_TYPE
 enum GFXMEDIASTATE_SCOREBOARD_TYPE
 {
     GFXMEDIASTATE_STALLING_SCOREBOARD               = 0x0,
-    GFXMEDIASTATE_NONSTALLING_SCOREBOARD            = 0x1   
+    GFXMEDIASTATE_NONSTALLING_SCOREBOARD            = 0x1
 };
 
 /*****************************************************************************\
@@ -143,7 +143,7 @@ ENUM: GFXMEDIASTATE_THREAD_SYNCHRONIZATION
 enum GFXMEDIASTATE_THREAD_SYNCHRONIZATION
 {
     GFXMEDIASTATE_NO_THREAD_SYNCHRONIZATION           = 0x0,
-    GFXMEDIASTATE_THREAD_DISPATCH_SYNCHRONIZED        = 0x1   
+    GFXMEDIASTATE_THREAD_DISPATCH_SYNCHRONIZED        = 0x1
 };
 
 /*****************************************************************************\
@@ -152,7 +152,7 @@ ENUM: GFXMEDIASTATE_PRT_FENCE_TYPE
 enum GFXMEDIASTATE_PRT_FENCE_TYPE
 {
     GFXMEDIASTATE_ROOT_THREAD_QUEUE                   = 0x0,
-    GFXMEDIASTATE_VFE_STATE_FLUSH                     = 0x1   
+    GFXMEDIASTATE_VFE_STATE_FLUSH                     = 0x1
 };
 
 /*****************************************************************************\

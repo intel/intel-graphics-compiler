@@ -48,7 +48,7 @@ CIF_DEFINE_INTERFACE_VER(IgcOclTranslationCtx, 1) {
   CIF_INHERIT_CONSTRUCTOR();
 
   template <typename OclTranslationOutputInterface = OclTranslationOutputTagOCL>
-  CIF::RAII::UPtr_t<OclTranslationOutputInterface> Translate(CIF::Builtins::BufferSimple *src, 
+  CIF::RAII::UPtr_t<OclTranslationOutputInterface> Translate(CIF::Builtins::BufferSimple *src,
                                                              CIF::Builtins::BufferSimple *options,
                                                              CIF::Builtins::BufferSimple *internalOptions,
                                                              CIF::Builtins::BufferSimple *tracingOptions,
@@ -58,8 +58,8 @@ CIF_DEFINE_INTERFACE_VER(IgcOclTranslationCtx, 1) {
   }
 
 protected:
-  virtual OclTranslationOutputBase *TranslateImpl(CIF::Version_t outVersion, 
-                                                  CIF::Builtins::BufferSimple *src, 
+  virtual OclTranslationOutputBase *TranslateImpl(CIF::Version_t outVersion,
+                                                  CIF::Builtins::BufferSimple *src,
                                                   CIF::Builtins::BufferSimple *options,
                                                   CIF::Builtins::BufferSimple *internalOptions,
                                                   CIF::Builtins::BufferSimple *tracingOptions,

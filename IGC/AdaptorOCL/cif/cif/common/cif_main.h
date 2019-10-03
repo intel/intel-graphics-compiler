@@ -46,7 +46,7 @@ struct CIFMain : public ICIF {
   InterfaceId_t FindIncompatible(const std::vector<InterfaceId_t> *interfacesToIgnore = nullptr) {
       CompatibilityEncoder encoder;
       auto encoded = encoder.Encode<InterfaceEntryPoint>(interfacesToIgnore);
-      return FindIncompatibleImpl(InterfaceEntryPoint<BaseVersion>::GetInterfaceId(), encoded); 
+      return FindIncompatibleImpl(InterfaceEntryPoint<BaseVersion>::GetInterfaceId(), encoded);
   }
 
   template <template <Version_t> class InterfaceEntryPoint>
@@ -55,7 +55,7 @@ struct CIFMain : public ICIF {
   }
 
   // get latest version of builtin that matches interface class
-  template <typename BuiltinT> 
+  template <typename BuiltinT>
   RAII::UPtr_t<BuiltinT> CreateBuiltin() {
       return CreateInterface<BuiltinT>();
   }

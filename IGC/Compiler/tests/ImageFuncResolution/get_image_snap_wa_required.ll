@@ -47,6 +47,6 @@ define i32 @foo(i32 %sampler, i32 %smpSnapWA) nounwind {
 !5 = !{!"explicit_arg_num", i32 0}
 
 ; CHECK:         ret i32 %smpSnapWA
-    
+
 ; CHECK-NOT:     call i32 @__builtin_IB_get_snap_wa_reqd(i32 %sampler)
 

@@ -43,8 +43,8 @@ TypesLegalizationPass::TypesLegalizationPass()
 }
 
 TypesLegalizationPass::TypesLegalizationPass(bool legalizePhi, bool legalizeExtractValue, bool legalizeStore)
-  : FunctionPass( TypesLegalizationPass::ID ), 
-    m_LegalizePhi(legalizePhi), 
+  : FunctionPass( TypesLegalizationPass::ID ),
+    m_LegalizePhi(legalizePhi),
     m_LegalizeExtractValue(legalizeExtractValue),
     m_LegalizeStore(legalizeStore) {
   initializeTypesLegalizationPassPass( *PassRegistry::getPassRegistry() );
@@ -76,7 +76,7 @@ void TypesLegalizationPass::visitPHINode( PHINode &phi ) {
   if(m_LegalizePhi)
   {
     Type *type = phi.getType();
-    
+
     if((type != NULL) && type->isAggregateType()) {
       m_PhiNodes.push_back( &phi );
     }
@@ -147,10 +147,10 @@ void TypesLegalizationPass::ResolvePhiNode( PHINode *phi ) {
 }
 
 ///////////////////////////////////////////////////////////////////////
-/// @brief Resolves the use of composite types (i.e. structures or 
-/// arrays of vectors) in store and PHI nodes. 
+/// @brief Resolves the use of composite types (i.e. structures or
+/// arrays of vectors) in store and PHI nodes.
 /// PHI node are resolved to alloca store and loads. Store instructions
-/// of composite values are resolved to GEP + store of individual 
+/// of composite values are resolved to GEP + store of individual
 /// elements of composite type.
 bool TypesLegalizationPass::LegalizeTypes() {
   bool modified = false;
@@ -252,7 +252,7 @@ TypesLegalizationPass::ResolveValue( Instruction *ip,Value *val,SmallVector<unsi
       }
   }
   else if ((isa<Argument>(val) || isa<CallInst>(val)) &&
-    val->getType()->isStructTy()) { 
+    val->getType()->isStructTy()) {
     // Handle struct arguments and structs returned by function calls.
     IRBuilder<> builder(ip);
     return builder.CreateExtractValue(val, indices);
@@ -292,12 +292,12 @@ TypesLegalizationPass::ResolveValue( Instruction *ip,Value *val,SmallVector<unsi
 }
 
 ///////////////////////////////////////////////////////////////////////
-/// @brief Resolves extract value instructions of composite types into 
+/// @brief Resolves extract value instructions of composite types into
 /// sequences of GEP + load
 /// @param  evInst instruction being resolved
-/// @param  type    Type* type of current strucuter field or array 
+/// @param  type    Type* type of current strucuter field or array
 /// element being resolved
-/// @param  indices leading to current structure filed or array element 
+/// @param  indices leading to current structure filed or array element
 void TypesLegalizationPass::ResolveExtractValue( ExtractValueInst* evInst )
 {
   IRBuilder<>  builder( evInst );
@@ -313,12 +313,12 @@ void TypesLegalizationPass::ResolveExtractValue( ExtractValueInst* evInst )
 }
 
 ///////////////////////////////////////////////////////////////////////
-/// @brief Resolves store instructions of composite types into 
+/// @brief Resolves store instructions of composite types into
 /// sequences of GEP + store
 /// @param  storeInst instruction to be resolved
-/// @param  type    Type* type of current strucuter field or array 
+/// @param  type    Type* type of current strucuter field or array
 /// element being resolved
-/// @param  indices leading to current structure filed or array element 
+/// @param  indices leading to current structure filed or array element
 void TypesLegalizationPass::ResolveStoreInst(
   StoreInst *storeInst,Type *type,
   SmallVector<unsigned,8> &indices ) {
@@ -347,7 +347,7 @@ void TypesLegalizationPass::ResolveStoreInst(
 }
 
 ///////////////////////////////////////////////////////////////////////
-/// @brief Resolves store instructions of composite types into 
+/// @brief Resolves store instructions of composite types into
 /// sequences of GEP + store
 /// @param  storeInst instruction to be resolved
 void TypesLegalizationPass::ResolveStoreInst( StoreInst *storeInst ) {

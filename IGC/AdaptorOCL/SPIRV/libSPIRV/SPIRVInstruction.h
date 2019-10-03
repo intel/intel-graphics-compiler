@@ -987,7 +987,7 @@ public:
           Func(Literals, static_cast<SPIRVBasicBlock *>(BB));
       }
   }
-  
+
   void setWordCount(SPIRVWord TheWordCount) {
     SPIRVEntry::setWordCount(TheWordCount);
     Pairs.resize(TheWordCount - FixedWordCount);
@@ -1217,7 +1217,7 @@ public:
     assert(Module && "Invalid module");
     ExtSetKind = Module->getBuiltinSet(ExtSetId);
     assert((ExtSetKind == SPIRVEIS_OpenCL ||
-        ExtSetKind == SPIRVEIS_DebugInfo) && 
+        ExtSetKind == SPIRVEIS_DebugInfo) &&
         "not supported");
   }
   void decode(std::istream &I) {

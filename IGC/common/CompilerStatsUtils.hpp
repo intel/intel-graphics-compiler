@@ -33,7 +33,7 @@ namespace IGC
     namespace CompilerStatsUtils
     {
         void RecordCompileTimeStats(IGC::CodeGenContext *context);
-        void RecordCodeGenCompilerStats(IGC::CodeGenContext *context, 
+        void RecordCodeGenCompilerStats(IGC::CodeGenContext *context,
                                         SIMDMode dispatchSize,
                                         CompilerStats &vISACompilerStats,
                                         FINALIZER_INFO *jitInfo);

@@ -62,7 +62,7 @@ namespace IGC
         }
 
         /// @brief  Main entry point.
-        ///         Runs on all GlobalVariables in this module, finds the constants, and 
+        ///         Runs on all GlobalVariables in this module, finds the constants, and
         ///         generates annotations for them.
         /// @param  M The destination module.
         virtual bool runOnModule(llvm::Module& M) override;

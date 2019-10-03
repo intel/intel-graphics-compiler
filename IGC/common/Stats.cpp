@@ -39,7 +39,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "common/secure_string.h"
 #include <fstream>
-#include <algorithm> 
+#include <algorithm>
 #include <iomanip>
 #include <sstream>
 #include <iostream>
@@ -192,7 +192,7 @@ void ShaderStats::printShaderStats( ShaderHash hash, ShaderType shaderType, cons
     }
 
     std::string asmFileName;
-    
+
         asmFileName =
             IGC::Debug::DumpName(IGC::Debug::GetShaderOutputName())
             .Type(shaderType)
@@ -203,7 +203,7 @@ void ShaderStats::printShaderStats( ShaderHash hash, ShaderType shaderType, cons
         {
             asmFileName = asmFileName.substr(asmFileName.find_last_of("\\") + 1, asmFileName.size());
         }
-    
+
 
     fprintf(fileName, "%s,", asmFileName.c_str());
     for (int i = 0; i<STATS_MAX_SHADER_STATS_ITEMS; i++)
@@ -259,7 +259,7 @@ void ShaderStats::printOpcodeStats(ShaderHash hash, ShaderType shaderType, const
         }
     }
 
-    
+
     fprintf(opcodeFileName, "%s","");
     fclose(opcodeFileName);
 
@@ -273,7 +273,7 @@ void ShaderStats::printOpcodeStats(ShaderHash hash, ShaderType shaderType, const
 
 void ShaderStats::parseIsaShader( ShaderHash hash, ShaderType shaderType, SIMDMode simd )
 {
-    
+
     std::string line, instStr;
 
     std::string asmFileName =
@@ -1142,19 +1142,19 @@ void CMemoryReport::CreateMemStatsFiles()
     if( IGC::Debug::GetDebugFlag(IGC::Debug::DebugFlag::MEM_STATS ) )
     {
         sprintf_s(g_MemoryReport.m_CsvNameUsageSum, sizeof(m_CsvNameUsageSum),
-            "c:\\Intel\\MemoryStatsSum.csv" ); 
+            "c:\\Intel\\MemoryStatsSum.csv" );
 
         sprintf_s(g_MemoryReport.m_CsvNameUsage, sizeof(m_CsvNameUsage),
             "c:\\Intel\\%sMemoryStatsUsage.csv",
-            IGC::Debug::GetShaderCorpusName() ); 
+            IGC::Debug::GetShaderCorpusName() );
 
         sprintf_s(g_MemoryReport.m_CsvNameAllocs, sizeof(m_CsvNameAllocs),
             "c:\\Intel\\%sMemoryStatsAllocs.csv",
-            IGC::Debug::GetShaderCorpusName() ); 
+            IGC::Debug::GetShaderCorpusName() );
 
         sprintf_s(g_MemoryReport.m_CsvNameAllocsSubset, sizeof(m_CsvNameAllocsSubset),
             "c:\\Intel\\%sMemoryStatsAllocsSubset.csv",
-            IGC::Debug::GetShaderCorpusName() ); 
+            IGC::Debug::GetShaderCorpusName() );
 
         FILE* outputFileUsage           = (FILE*)iSTD::FileOpen( (const char*)g_MemoryReport.m_CsvNameUsage, "w" );
         FILE* outputFileAllocs          = (FILE*)iSTD::FileOpen( (const char*)g_MemoryReport.m_CsvNameAllocs, "w" );
@@ -1295,7 +1295,7 @@ CMemoryReport::CMemoryReport()
     for( int sumI = 0; sumI<MAX_MEMORY_SUMMARY_ITEM; sumI++ )
     {
         m_SummaryDump[sumI].clear();
-    }    
+    }
 }
 
 /*****************************************************************************\
@@ -1481,7 +1481,7 @@ void CMemoryReport::CopyToSummary()
     {
         m_SummaryDump[ i + SMSUM_SnapHeapUsedAbsolutePeak ].push_back( m_Snapshots[ i ].SnapHeapUsedAbsolutePeak/1024 );
         m_SummaryDump[ i + SMSUM_NumSnapAllocations ].push_back( m_Snapshots[ i ].NumSnapAllocations );
-    }    
+    }
 }
 
 const char* CMemoryReport::ShaderTypeText()
@@ -1549,7 +1549,7 @@ void CMemoryReport::DumpSummaryStats()
         for( int i = 0; i < SMSUM_NumAllocations; i++ )
         {
             m_SummaryDump[ i ].sort();
-        }    
+        }
 
         fprintf(csvSummary, "%s,max,", IGC::Debug::GetShaderCorpusName());
         for (int i = 0; i < SMSUM_NumAllocations; i++)
@@ -1580,7 +1580,7 @@ void CMemoryReport::DumpSummaryStats()
             }
             fprintf( csvSummary, "%.02f,", (float)tempSum/shaderCount );
 
-            // find median 
+            // find median
             // for( int i=0;i<shaderCount/2;i++ )
             // {
             //     iter++;
@@ -1594,7 +1594,7 @@ void CMemoryReport::DumpSummaryStats()
         for( int i = 0; i < SMSUM_NumAllocations; i++ )
         {
             iter = m_SummaryDump[i].begin();
-            // find median 
+            // find median
             for( int i=0;i<shaderCount/2;i++ )
             {
                 iter++;
@@ -1607,7 +1607,7 @@ void CMemoryReport::DumpSummaryStats()
         for( int i = SMSUM_NumAllocations; i < MAX_MEMORY_SUMMARY_ITEM; i++ )
         {
             unsigned totalAllocs = 0;
-        
+
             for( iter = m_SummaryDump[i].begin(); iter != m_SummaryDump[i].end(); iter++ )
             {
                 totalAllocs += *iter;

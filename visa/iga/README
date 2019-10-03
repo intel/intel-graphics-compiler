@@ -7,7 +7,7 @@ Prerequisite:
 
 Build:
     In Developer Command Prompt for VS, run
-    %build_all.bat 
+    %build_all.bat
 
 [Build On Linux]
 Prerequisite:

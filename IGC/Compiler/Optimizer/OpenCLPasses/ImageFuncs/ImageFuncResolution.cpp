@@ -228,7 +228,7 @@ Value* ImageFuncResolution::getSamplerNormalizedCoords(CallInst& CI)
     Value* sampler = CImagesBI::CImagesUtils::traceImageOrSamplerArgument(&CI, 0, pMdUtils, modMD);
     if (sampler == nullptr)
     {
-        // TODO: For now disable WA if unable to trace sampler argument. 
+        // TODO: For now disable WA if unable to trace sampler argument.
         // Will need to rework WA to add support for indirect sampler case.
         return ConstantInt::get(CI.getType(), 0);
     }
@@ -270,7 +270,7 @@ Value* ImageFuncResolution::getSamplerSnapWARequired(CallInst& CI)
     Value* sampler = CImagesBI::CImagesUtils::traceImageOrSamplerArgument(&CI, 0, pMdUtils, modMD);
     if (sampler == nullptr)
     {
-        // TODO: For now disable WA if unable to trace sampler argument. 
+        // TODO: For now disable WA if unable to trace sampler argument.
         // Will need to rework WA to add support for indirect sampler case.
         return ConstantInt::get(CI.getType(), 0);
     }

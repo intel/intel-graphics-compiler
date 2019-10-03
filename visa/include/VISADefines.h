@@ -57,7 +57,7 @@ extern "C"
 #define _PACKED
 #else
 #ifdef ANDROID
-#define _THREAD 
+#define _THREAD
 #else
 #define _THREAD __thread
 #endif
@@ -79,7 +79,7 @@ extern "C"
         #define CM_BUILDER_API __attribute__((visibility("default")))
     #endif
 #else
-#define CM_BUILDER_API 
+#define CM_BUILDER_API
 #endif
 
 #ifndef CM_INLINE

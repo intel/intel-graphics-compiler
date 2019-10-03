@@ -129,7 +129,7 @@ Description:
 struct STB_CreateArgs
 {
     //INFO keep two first fields in this order ! for version ICBE 1003 compatibility
-    STB_TranslationCode TranslationCode;    
+    STB_TranslationCode TranslationCode;
     void*               pCreateData;
 
     STB_CreateArgs()
@@ -244,7 +244,7 @@ struct STB_TranslateOutputArgs
 struct TranslationBlockVersion
 {
     static const uint32_t VersioningIsUnsupported = (uint32_t)-1;
-    uint32_t TBVersion;   // STB_VERSION version of this translation block 
+    uint32_t TBVersion;   // STB_VERSION version of this translation block
     uint32_t BuildId;     // build ID (for CI builds) of this translation block
 };
 

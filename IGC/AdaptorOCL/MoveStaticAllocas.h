@@ -39,7 +39,7 @@ namespace IGC
 {
     /*
     This pass searches for "static" alloca instructions in function that are not
-    in the entry block and moves them. This prevents llvm from inserting 
+    in the entry block and moves them. This prevents llvm from inserting
     @llvm.stacksave and @llvm.stackrestore that are not handled by IGC.
     */
     class MoveStaticAllocas : public llvm::FunctionPass
@@ -53,12 +53,12 @@ namespace IGC
 
         virtual llvm::StringRef getPassName() const override
         {
-            return "MoveStaticAllocasPass"; 
+            return "MoveStaticAllocasPass";
         }
 
         virtual bool runOnFunction(llvm::Function &F) override;
 
-  
+
     };
 
 } // namespace IGC

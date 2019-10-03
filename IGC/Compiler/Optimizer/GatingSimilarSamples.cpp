@@ -287,7 +287,7 @@ bool GatingSimilarSamples::setOrCmpGatingValue(Value*& gatingValueToCmp1, Instru
 }
 
 //This function makes sure that all similar sample insts calculate cords such that they use same gating value motion.xy
-//Outside the loop, we're looking at this: 
+//Outside the loop, we're looking at this:
 //          motion.xy = (motion.xy - 0.5) * vec2(0.0666667, .125);
 //          motion.xy *= texel.a;
 //Check that inside the loop, we're looking at something like this:
@@ -304,7 +304,7 @@ bool GatingSimilarSamples::findAndSetCommonGatingValue()
         Instruction* secondOp = dyn_cast<Instruction>(texelSampleInstInLoop->getOperand(1)); //tc.2
         if (!(firstOp && secondOp)) return false;
         if (firstOp->getOpcode() == Instruction::FSub || firstOp->getOpcode() == Instruction::FAdd)
-        {//i.e. (texcoord0 (+/-) something) 
+        {//i.e. (texcoord0 (+/-) something)
             Instruction* mayBeMulInst = dyn_cast<Instruction>(firstOp->getOperand(1));
             if (!mayBeMulInst) return false;
             //that "texcoord0 - something" might be "texcoord0 - FMul" OR it might be "tc - (0 - -FMul)"
@@ -314,7 +314,7 @@ bool GatingSimilarSamples::findAndSetCommonGatingValue()
                     return false;
             }
             else if (mayBeMulInst->getOpcode() == Instruction::FSub || mayBeMulInst->getOpcode() == Instruction::FAdd)
-            {//that means we have this "tc - (0 - -FMul)"            
+            {//that means we have this "tc - (0 - -FMul)"
                 Instruction* realMulInst = dyn_cast<Instruction>(mayBeMulInst->getOperand(1));
                 if (!realMulInst) return false;
                 if (ConstantFP * mustBeZero = dyn_cast<ConstantFP>(mayBeMulInst->getOperand(0)))
@@ -340,7 +340,7 @@ bool GatingSimilarSamples::findAndSetCommonGatingValue()
         }
         if (secondOp->getOpcode() == Instruction::FSub || secondOp->getOpcode() == Instruction::FAdd)
         {
-            //i.e. (out_texcoord0 (+/-) something) 
+            //i.e. (out_texcoord0 (+/-) something)
             Instruction* mayBeMulInst = dyn_cast<Instruction>(secondOp->getOperand(1));
             if (!mayBeMulInst) return false;
             //that "tc - something" might be "tc - FMul" OR it might be "tc - (0 - -FMul)"
@@ -350,7 +350,7 @@ bool GatingSimilarSamples::findAndSetCommonGatingValue()
                     return false;
             }
             else if (mayBeMulInst->getOpcode() == Instruction::FSub || mayBeMulInst->getOpcode() == Instruction::FAdd)
-            {//that means we have this "tc - (0 - -FMul)"            
+            {//that means we have this "tc - (0 - -FMul)"
                 Instruction* realMulInst = dyn_cast<Instruction>(mayBeMulInst->getOperand(1));
                 if (!realMulInst) return false;
                 if (ConstantFP * mustBeZero = dyn_cast<ConstantFP>(mayBeMulInst->getOperand(0)))
@@ -375,7 +375,7 @@ bool GatingSimilarSamples::findAndSetCommonGatingValue()
             return false;
         }
     }
-    return true; //a common gating value was found and set 
+    return true; //a common gating value was found and set
 }
 
 //check if 2 sample insts sample from the same texture
@@ -446,7 +446,7 @@ bool GatingSimilarSamples::runOnFunction(llvm::Function& F)
     if (resultInst == nullptr)
         return false;
 
-    //extract original texel.xyz and averaged color.xyz values for creating 3 PHI nodes 
+    //extract original texel.xyz and averaged color.xyz values for creating 3 PHI nodes
     BasicBlock::iterator temp = texelSample->getIterator();
     temp++;
     Value* texel_x = &*temp;

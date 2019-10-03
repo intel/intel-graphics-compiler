@@ -31,15 +31,15 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace IGCLLVM
 {
-class GlobalValue : public llvm::GlobalValue 
-{    
+class GlobalValue : public llvm::GlobalValue
+{
 public:
     static inline llvm::StringRef getRealLinkageName(llvm::StringRef Name)
     {
 #if LLVM_VERSION_MAJOR == 4
         return llvm::GlobalValue::getRealLinkageName(Name);
-#elif LLVM_VERSION_MAJOR >= 7    
-        return llvm::GlobalValue::dropLLVMManglingEscape(Name);        
+#elif LLVM_VERSION_MAJOR >= 7
+        return llvm::GlobalValue::dropLLVMManglingEscape(Name);
 #endif
     }
 };

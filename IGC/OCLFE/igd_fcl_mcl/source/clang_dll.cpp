@@ -45,7 +45,7 @@ TRANSLATION_BLOCK_API void Register(
     STB_RegisterArgs* pRegisterArgs )
 {
     pRegisterArgs->Version = TC::STB_VERSION;
-    uint32_t maxNumTranslationCodes = 
+    uint32_t maxNumTranslationCodes =
         sizeof(g_cClangTranslationCodes) /
         sizeof(STB_TranslationCode);
 
@@ -63,7 +63,7 @@ TRANSLATION_BLOCK_API void Register(
     }
 }
 
-TRANSLATION_BLOCK_API CTranslationBlock* Create( 
+TRANSLATION_BLOCK_API CTranslationBlock* Create(
     STB_CreateArgs* pCreateArgs )
 {
     CClangTranslationBlock*  pClangTranslationBlock;

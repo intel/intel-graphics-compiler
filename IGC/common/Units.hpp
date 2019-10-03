@@ -41,7 +41,7 @@ private:
 
     typedef T       myT;
     typedef TUnder  myTUnder;
-    
+
 public:
 
     /// Default constructor initializes the unit to value zero.
@@ -55,7 +55,7 @@ public:
         : m_value(value * T::ratio)
     {
     }
-    
+
     // Copy constructor
     template<typename R>
     Unit(Unit<R, TUnder> const& other)
@@ -63,7 +63,7 @@ public:
         // TODO: copy assertion from inside this operator to here to make things more clear
         this->operator=(other);
     }
-        
+
     /// Assignment operator.
     template<typename R>
     Unit<T, TUnder> operator =(Unit<R, TUnder> other)
@@ -73,7 +73,7 @@ public:
         this->m_value = other.m_value;
         return *this;
     }
-    
+
     /// Multiplication by a scalar from the right hand side.
     Unit<T, TUnder> operator * (TUnder multiplier) const
     {
@@ -88,7 +88,7 @@ public:
         this->m_value += T::ratio;
         return *this;
     }
-    
+
     /// Increment operator increases the value of the unit by one.
     Unit<T, TUnder> operator ++(int)
     {
@@ -96,14 +96,14 @@ public:
         this->operator++();
         return copy;
     }
-    
+
     /// Decrement operator decreases the value of the unit by one.
     Unit<T, TUnder> operator --()
     {
         this->m_value -= T::ratio;
         return *this;
     }
-    
+
     /// Decrement operator decreases the value of the unit by one.
     Unit<T, TUnder> operator --(int)
     {
@@ -111,14 +111,14 @@ public:
         this->operator--();
         return copy;
     }
-    
+
     /// Operator equals returns true when the values of both units are the same.
     template<typename R>
     bool operator ==(Unit<R, TUnder> other) const
     {
         return this->m_value == other.m_value;
     }
-    
+
     template<typename R>
     bool operator !=(Unit<R, TUnder> other) const
     {
@@ -136,7 +136,7 @@ public:
     {
         return !(*this == other) && !(*this < other);
     }
-    
+
     /// Returns the underlying value of the unit.
     TUnder Count() const
     {
@@ -150,7 +150,7 @@ public:
             return 0;
         }
     }
-    
+
     /// Addition operator creates a new value that corresponds to the sum of arguments.
     ///
     /// When adding two object of different units, we want to return a new
@@ -159,14 +159,14 @@ public:
     /// Unit<ByteUnit> a;
     /// Unit<WordUnit> b;
     /// then a + b and b + a should have type Unit<ByteUnit> since only then
-    /// all values can be represented when converting between units. 
+    /// all values can be represented when converting between units.
     /// To achieve this variability of the return type, enable_if is employed
     /// in the two template methods below. Thanks to SFINAE, one of them will be
     /// instantiated, precisely the one with the smaller return type.
     /// If (T::ratio < R::ratio) is true, type T is a smaller unit and we want it
     /// to be the return type. Otherwise, Unit<R> will be the return type.
     template <typename R>
-    Unit< typename std::enable_if<(T::ratio < R::ratio), T>::type, TUnder> 
+    Unit< typename std::enable_if<(T::ratio < R::ratio), T>::type, TUnder>
         operator +(const Unit<R,TUnder> & other) const
     {
         return add(other);
@@ -177,7 +177,7 @@ public:
     /// This is the complementary variant that will get instantiated when
     /// unit size of R is larger than or equal to T.
     template <typename R>
-    Unit< typename std::enable_if<!(T::ratio < R::ratio), R>::type, TUnder> 
+    Unit< typename std::enable_if<!(T::ratio < R::ratio), R>::type, TUnder>
         operator +(const Unit<R,TUnder> & other) const
     {
         // Switch the order of arguments so that the larger is on rhs and call add.
@@ -188,7 +188,7 @@ public:
     ///
     /// This template will be instantiated when unit size of T is smaller than of R.
     template <typename R>
-    Unit< typename std::enable_if<(T::ratio < R::ratio), T>::type, TUnder> 
+    Unit< typename std::enable_if<(T::ratio < R::ratio), T>::type, TUnder>
         operator -(const Unit<R,TUnder> & other) const
     {
         return subtract(other);
@@ -199,7 +199,7 @@ public:
     /// This is the complementary variant that will get instantiated when
     /// unit size of R is larger than or equal to T.
     template <typename R>
-    Unit< typename std::enable_if<!(T::ratio < R::ratio), R>::type, TUnder> 
+    Unit< typename std::enable_if<!(T::ratio < R::ratio), R>::type, TUnder>
         operator -(const Unit<R,TUnder> & other) const
     {
         // Switch the order of arguments so that the larger is on rhs and call subtract.
@@ -215,11 +215,11 @@ private:
     template<typename R>
     Unit<T, TUnder> add(const Unit<R, TUnder> & other) const
     {
-        static_assert( T::ratio <= R::ratio && (R::ratio % T::ratio == 0), 
+        static_assert( T::ratio <= R::ratio && (R::ratio % T::ratio == 0),
             "Size of the unit on the right hand side of operator + must be equal to"
             "or a multiple of the left-hand unit size.");
 
-        assert( (other.m_value % T::ratio == 0) && 
+        assert( (other.m_value % T::ratio == 0) &&
             "Invalid addition: resulting count is not a whole number" );
         Unit<T, TUnder> res;
         res.m_value = this->m_value + other.m_value;
@@ -232,11 +232,11 @@ private:
     template<typename R>
     Unit<T, TUnder> subtract(const Unit<R, TUnder> & other) const
     {
-        static_assert( T::ratio <= R::ratio && (R::ratio % T::ratio == 0), 
+        static_assert( T::ratio <= R::ratio && (R::ratio % T::ratio == 0),
             "Size of the unit on the right hand side of operator- must be equal to"
             "or a multiple of the left-hand unit size.");
 
-        assert( (other.m_value % T::ratio == 0) && 
+        assert( (other.m_value % T::ratio == 0) &&
             "Invalid subtraction: resulting count is not a whole number" );
         Unit<T, TUnder> res;
         res.m_value = this->m_value - other.m_value;
@@ -249,11 +249,11 @@ private:
     template<typename R>
     Unit<T, TUnder> subtractFrom(const Unit<R, TUnder> & other) const
     {
-        static_assert( T::ratio <= R::ratio && (R::ratio % T::ratio == 0), 
+        static_assert( T::ratio <= R::ratio && (R::ratio % T::ratio == 0),
             "Size of the unit on the right hand side of operator- must be equal to"
             "or a multiple of the left-hand unit size.");
 
-        assert( (other.m_value % T::ratio == 0) && 
+        assert( (other.m_value % T::ratio == 0) &&
             "Invalid subtraction: resulting count is not a whole number" );
         Unit<T, TUnder> res;
         res.m_value = other.m_value - this->m_value;
@@ -262,7 +262,7 @@ private:
 
     template<typename R_, typename RUnder_, int TRatio_>
     friend class Unit;
-    
+
     // Declarations of friendship for free function templates operating on units.
     template<typename TDst_, typename TSrcUnit>
     friend Unit<TDst_, typename TSrcUnit::myTUnder, TDst_::ratio> round_down(TSrcUnit other);
@@ -278,7 +278,7 @@ private:
 /// Converts the unit from the smaller source unit to a larger destination unit.
 /// If the smaller unit value is not an integral multiple of the larger unit size,
 /// the value gets rounded down.
-/// For example, if source unit = m, destination unit = km then 
+/// For example, if source unit = m, destination unit = km then
 /// round_down 1700 m = 1 km
 template<typename TDst, typename TSrcUnit>
 Unit<TDst, typename TSrcUnit::myTUnder, TDst::ratio> round_down(TSrcUnit other)
@@ -293,7 +293,7 @@ Unit<TDst, typename TSrcUnit::myTUnder, TDst::ratio> round_down(TSrcUnit other)
 /// Converts the unit from the smaller source unit to a larger destination unit.
 /// If the smaller unit value is not an integral multiple of the larger unit size,
 /// the value gets rounded up.
-/// For example, if source unit = m, destination unit = km then 
+/// For example, if source unit = m, destination unit = km then
 /// round_up 1700 m = 2 km
 template<typename TDst, typename TSrcUnit>
 Unit<TDst, typename TSrcUnit::myTUnder, TDst::ratio> round_up(TSrcUnit other)

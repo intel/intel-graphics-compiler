@@ -189,7 +189,7 @@ namespace vISA
             {
                 curFootprint2Ptr = liveFootprint;
                 while (curFootprint2Ptr)
-                {  
+                {
                     if (fType == curFootprint2Ptr->fType &&
                         ((curFootprintPtr->LeftB  / G4_GRF_REG_NBYTES) <= (curFootprint2Ptr->RightB  / G4_GRF_REG_NBYTES)) &&
                         ((curFootprintPtr->RightB  / G4_GRF_REG_NBYTES) >= (curFootprint2Ptr->LeftB  / G4_GRF_REG_NBYTES)))
@@ -812,7 +812,7 @@ namespace vISA
         int entryBBID = -1 ;
         int endBBID = -1;
     } SWSB_LOOP;
-    
+
     class G4_BB_SB {
     private:
         IR_Builder& builder;
@@ -821,7 +821,7 @@ namespace vISA
         G4_Label*         BBLabel;
         int nodeID;
         int ALUID;
-        
+
 
         int totalGRFNum;
 
@@ -860,7 +860,7 @@ namespace vISA
         //BB local data dependence analysis
         G4_BB_SB(IR_Builder& b, Mem_Manager &m, G4_BB *block, SBNODE_VECT *SBNodes, SBNODE_LIST *SBSendNodes,
             SBBUCKET_VECTOR *globalSendOpndList,  SWSB_INDEXES *indexes, uint32_t &globalSendNum, LiveGRFBuckets *lb,
-            LiveGRFBuckets *globalLB, PointsToAnalysis& p, 
+            LiveGRFBuckets *globalLB, PointsToAnalysis& p,
             std::map<G4_Label*, G4_BB_SB*> *LabelToBlockMap) : builder(b), mem(m), bb(block),
             first_node(-1), last_node(-1), send_start(-1), send_end(-1),
             send_live_in(nullptr), send_live_out(nullptr), send_may_kill(nullptr), send_live_in_scalar(nullptr), send_live_out_scalar(nullptr), send_kill_scalar(nullptr), send_WAW_may_kill(nullptr),
@@ -985,7 +985,7 @@ namespace vISA
     typedef BB_SWSB_VECTOR::iterator BB_SWSB_VECTOR_ITER;
     typedef std::vector<SWSB_LOOP> LOOP_SWSB_VECTOR;
     typedef LOOP_SWSB_VECTOR::iterator LOOP_SWSB_VECTOR_ITER;
-        
+
     class SWSB {
         G4_Kernel &kernel;
         FlowGraph&  fg;

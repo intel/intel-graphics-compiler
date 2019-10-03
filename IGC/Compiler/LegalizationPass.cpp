@@ -92,7 +92,7 @@ bool Legalization::runOnFunction(Function& F)
     }
     llvm::IRBuilder<> builder(F.getContext());
     m_builder = &builder;
-    // Emit pass doesn't support constant expressions, therefore we do not expect to run into them in this pass    
+    // Emit pass doesn't support constant expressions, therefore we do not expect to run into them in this pass
     for (auto I = inst_begin(F), E = inst_end(F); I != E; ++I)
     {
         for (auto OI = I->op_begin(), OE = I->op_end(); OI != OE; ++OI)
@@ -653,7 +653,7 @@ void Legalization::visitBitCastInst(llvm::BitCastInst& I)
         // %z = bitcast i48 %y to <3 x half>
         // ==>
         // %y = bitcast i64 %x to <4 x half>
-        // %z = shufflevector <4 x half> %y, <4 x half> undef, <3 x i32> <i32 0, i32 1, i32 2> 
+        // %z = shufflevector <4 x half> %y, <4 x half> undef, <3 x i32> <i32 0, i32 1, i32 2>
 
         auto* pZ = &I;
 
@@ -863,7 +863,7 @@ Value* Legalization::addFCmpWithORD(FCmpInst& FC)
 {
     m_builder->SetInsertPoint(&FC);
 
-    //Are both sources Not NaN's ? 
+    //Are both sources Not NaN's ?
     // %c = fcmp ord %a %b
     // =>
     // %1 = fcmp oeq %a %a
@@ -926,7 +926,7 @@ void Legalization::visitFCmpInstUndorderedPredicate(FCmpInst& FC)
         // =>
         // %1 = fcmp ord %a %b
         // %2 = fcmp une %a %b
-        // %c = and %1 %2 
+        // %c = and %1 %2
         Value* sourcesOrdered = addFCmpWithORD(FC);
         Value* fcmpNotEqual =
             FCmpInst::Create(
@@ -973,7 +973,7 @@ void Legalization::visitFCmpInstUndorderedPredicate(FCmpInst& FC)
     case CmpInst::FCMP_ULE:
     case CmpInst::FCMP_ULT:
     {
-        //To handle Unordered predicates, convert them to inverted ordered 
+        //To handle Unordered predicates, convert them to inverted ordered
         //and than not the result
         // e.g. %c = fcmp uge %a %b
         //      =>
@@ -1412,7 +1412,7 @@ void Legalization::visitShuffleVectorInst(ShuffleVectorInst& I)
 
     for (unsigned int dstIndex = 0; dstIndex < resType->getNumElements(); ++dstIndex)
     {
-        // The mask value can be either an integer or undef. 
+        // The mask value can be either an integer or undef.
         // If it's undef, do nothing.
         // Otherwise, create an insert with the appropriate value.
         ConstantInt* index = dyn_cast<ConstantInt>(mask->getAggregateElement(dstIndex));
@@ -1475,7 +1475,7 @@ void Legalization::visitShuffleVectorInst(ShuffleVectorInst& I)
 
 llvm::Value* Legalization::findInsert(llvm::Value* vector, unsigned int index)
 {
-    // If the vector was constructed by a chain of inserts, 
+    // If the vector was constructed by a chain of inserts,
     // walk up the chain until we find the correct value.
     InsertElementInst* IE = dyn_cast<InsertElementInst>(vector);
     while (IE)
@@ -1861,7 +1861,7 @@ void Legalization::visitAddrSpaceCastInst(llvm::AddrSpaceCastInst& I) {
     }
 
     //Check for null pointer casting
-    //Currently check is only handling specific scnario 
+    //Currently check is only handling specific scnario
     //%n = addrspacecast i32 addrspace(3)* null to i32 addrspace(4)*
     //this will be replaced with "null", and the %n where is used will be replaced with null
     //This issue was exposed with LLVM 4.0 because of a patch

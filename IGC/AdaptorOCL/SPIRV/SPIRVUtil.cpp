@@ -287,8 +287,8 @@ getSPIRVBuiltinName(Op OC, SPIRVInstruction *BI, std::vector<Type*> ArgTypes, st
       }
     }
     name = tmpName.str();
-  } 
-  else 
+  }
+  else
   {
     name = OCLSPIRVBuiltinMap::map(OC);
   }

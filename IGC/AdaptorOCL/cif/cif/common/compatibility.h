@@ -96,7 +96,7 @@ struct EncHeader{
         return 2;
     }
 
-    static void Encode(EncodingBaseType * out, EncodingBaseType magic, 
+    static void Encode(EncodingBaseType * out, EncodingBaseType magic,
                        EncodingBaseType version, EncodingBaseType encodedInterfacesNum){
         auto * header = out;
         header[GetMagicIdx()] = magic;
@@ -105,7 +105,7 @@ struct EncHeader{
                                encodedInterfacesNum * EncInterface<EncodingBaseType>::GetDescriptorSizeInBytes();
     }
 
-    static const EncodingBaseType *Decode(CompatibilityDataHandle handle, EncodingBaseType magic, EncodingBaseType version, 
+    static const EncodingBaseType *Decode(CompatibilityDataHandle handle, EncodingBaseType magic, EncodingBaseType version,
                                           EncodingBaseType & encodedInterfacesNumRet, EncodingBaseType & encodedEncoderVersionRet){
         uint64_t invalidHeader[GetHeaderSizeInEncodingBaseType()];
         invalidHeader[GetMagicIdx()] = InvalidInterface;
@@ -123,7 +123,7 @@ struct EncHeader{
 
         if(header[GetVersionIdx()] != version){
             // incompatible encoder/decoders
-            // we require strict compatibility (no backwards compatibility), 
+            // we require strict compatibility (no backwards compatibility),
             // but this encoder should not change very often (hardly ever)
             return nullptr;
         }
@@ -177,7 +177,7 @@ struct CompatibilityNode{
     }
 
     /// Decodes the compatibility data into a tree of nodes
-    /// First node in the returned vector is the root node 
+    /// First node in the returned vector is the root node
     template<typename EncodingBaseType, template <Version_t> class EntryPointInterface>
     static std::vector<CompatibilityNode> BuildTree(const EncodingBaseType* enc, uint64_t encWordsCount){
         if((enc == nullptr) || (encWordsCount%EncInterface<EncodingBaseType>::GetDescriptorSizeInEncodingBaseType() != 0)){
@@ -202,7 +202,7 @@ protected:
     /// Helper forwarder struct - see PatchSupportedVersionFwd::Call for details
    struct PatchSupportedVersionFwd
     {
-        /// Recursive worker for patching compatibility tree with data 
+        /// Recursive worker for patching compatibility tree with data
         /// of interface versions supported by server
         template<template <Version_t> class Interface>
         static void Call(CompatibilityNode & parentNode){
@@ -247,7 +247,7 @@ protected:
 /// First value is InterfaceId of CompatibilityEncoder
 /// Second value is version of CompatibilityEncoder that was used for encoding the data.
 /// Third value is the size (in bytes) of the whole encoding (including id, version and this size).
-/// Next, are encoded requirements of all interfaces that were used for encoding. 
+/// Next, are encoded requirements of all interfaces that were used for encoding.
 /// Encoding is based on DFS and has following layout:
 ///   | uint64_t CurrentInterfaceId | uint64_t VersionOfCurrentInterface | uint64_t NumChildInterfacesOfCurrent | ENCODING OF CHILD INTERFACES | uint64_t NextInterfaceId ...
 struct CompatibilityEncoder {
@@ -274,7 +274,7 @@ struct CompatibilityEncoder {
                                      +
                                      (Helpers::EncInterface<EncodingBaseType>::GetDescriptorSizeInEncodingBaseType()
                                       * 2); // *2 - potential overestimate
-        
+
         encodedData.clear();
         encodedData.reserve(sizeToReserve);
 
@@ -287,9 +287,9 @@ struct CompatibilityEncoder {
         EncodeFwd::Call<EntryPointInterface>(encodedData, interfacesToIgnore);
 
         // encode header
-        const size_t encodedInterfacesNum = (encodedData.size() - Helpers::EncHeader<EncodingBaseType>::GetHeaderSizeInEncodingBaseType()) 
+        const size_t encodedInterfacesNum = (encodedData.size() - Helpers::EncHeader<EncodingBaseType>::GetHeaderSizeInEncodingBaseType())
                                                         / Helpers::EncInterface<EncodingBaseType>::GetDescriptorSizeInEncodingBaseType();
-        Helpers::EncHeader<EncodingBaseType>::Encode(encodedData.data(), GetIntefaceId(), CompatibilityEncoderVersion, 
+        Helpers::EncHeader<EncodingBaseType>::Encode(encodedData.data(), GetIntefaceId(), CompatibilityEncoderVersion,
                                                      encodedInterfacesNum);
         return encodedData.data();
     }
@@ -298,7 +298,7 @@ struct CompatibilityEncoder {
     static bool GetFirstIncompatible(CompatibilityDataHandle externalEncoding, IncompatibilityData & ret){
         uint64_t encodedInterfacesNum = 0;
         uint64_t encodedEncoderVersion = InvalidVersion;
-        const EncodingBaseType* encodedInterfaces = 
+        const EncodingBaseType* encodedInterfaces =
                             Helpers::EncHeader<EncodingBaseType>::Decode(externalEncoding, GetIntefaceId(), CompatibilityEncoderVersion,
                                                                 encodedInterfacesNum, encodedEncoderVersion);
 
@@ -333,7 +333,7 @@ struct CompatibilityEncoder {
         ret = *incomp.begin();
         return true;
     }
-    
+
     static bool AreIdentical(CompatibilityDataHandle a, CompatibilityDataHandle b){
         if(a == b){
             return true;
@@ -368,7 +368,7 @@ protected:
             auto requestedVersion = Interface<CIF::TraitsSpecialVersion>::GetLatestSupportedVersion();
             if(nullptr != interfacesToIgnore){
                 if(std::find(interfacesToIgnore->begin(), interfacesToIgnore->end(), requestedInterface) != interfacesToIgnore->end()){
-                    requestedVersion = AnyVersion; 
+                    requestedVersion = AnyVersion;
                 }
             }
 
@@ -400,7 +400,7 @@ protected:
             id.MinVersionSupported = nd.MinSupportedVersion;
             ret.push_back(std::move(id));
         }
-        
+
         return ret;
     }
 

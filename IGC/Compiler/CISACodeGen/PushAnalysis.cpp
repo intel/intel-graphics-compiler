@@ -68,7 +68,7 @@ namespace IGC
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS true
 
-    //undef macros to avoid redefinition warnings 
+    //undef macros to avoid redefinition warnings
 #undef PASS_FLAG
 #undef PASS_DESCRIPTION
 #undef PASS_ANALYSIS
@@ -340,15 +340,15 @@ namespace IGC
     //   %2 = add i32 %1, 24
     //   %fromGBP45 = inttoptr i32 %2 to float addrspace(65536)* // BTI = 0
     //   %ldrawidx46 = load float, float addrspace(65536)* %fromGBP45, align 4
-    // 
+    //
     // For the above example the the function will:
-    //  - check if uniform buffer with bti=0 has its dynamic offset in 
+    //  - check if uniform buffer with bti=0 has its dynamic offset in
     //    runtime value 1
     //  - return relativeOffsetInBytes = 24
     // This method will return true if the input UBO is a dynamic uniform buffer
-    // and the input offset value is a sum of buffer's dynamic offset and an 
+    // and the input offset value is a sum of buffer's dynamic offset and an
     // immediate constant value.
-    // 
+    //
     bool PushAnalysis::GetConstantOffsetForDynamicUniformBuffer(
         uint   bufferId, // buffer id (BTI)
         Value* offsetValue, // total buffer offset i.e. starting from 0
@@ -1247,7 +1247,7 @@ namespace IGC
                 {
                     continue;
                 }
-                // TODO: we can find a better heuristic to figure out which constant we want to push            
+                // TODO: we can find a better heuristic to figure out which constant we want to push
                 if (m_context->type == ShaderType::DOMAIN_SHADER)
                 {
                     if (dyn_cast<GenIntrinsicInst>(inst) &&

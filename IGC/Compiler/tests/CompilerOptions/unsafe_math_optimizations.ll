@@ -23,7 +23,7 @@
 
 
 ;======================= end_copyright_notice ==================================
-; RUN: igc_opt -igc-set-fast-math-flags -S %s -o %t.ll 
+; RUN: igc_opt -igc-set-fast-math-flags -S %s -o %t.ll
 ; RUN: FileCheck %s --input-file=%t.ll
 
 define void @testunsafe1(float %a, float %b) {
@@ -51,11 +51,11 @@ define void @testunsafe2(float %a, float %b) {
   ret void
 }
 ; CHECK: testunsafe2
-; CHECK: fadd nsz arcp 
-; CHECK: fsub nsz arcp 
-; CHECK: fmul nsz arcp 
-; CHECK: fdiv nsz arcp 
-; CHECK: frem nsz arcp 
+; CHECK: fadd nsz arcp
+; CHECK: fsub nsz arcp
+; CHECK: fmul nsz arcp
+; CHECK: fdiv nsz arcp
+; CHECK: frem nsz arcp
 
 define void @testunsafe3(float %a, float %b) {
   %1 = fadd ninf float %a, %b
@@ -67,7 +67,7 @@ define void @testunsafe3(float %a, float %b) {
 }
 
 ; CHECK: testunsafe3
-; CHECK: fadd ninf nsz 
+; CHECK: fadd ninf nsz
 ; CHECK: fsub ninf nsz
 ; CHECK: fmul ninf nsz
 ; CHECK: fdiv ninf nsz

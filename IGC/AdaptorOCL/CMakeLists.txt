@@ -69,10 +69,10 @@ endif(IGC_BUILD__SPIRV_ENABLED)
   set(IGC_BUILD__SRC__IGC_AdaptorOCL
       "${CMAKE_CURRENT_SOURCE_DIR}/dllInterfaceCompute.cpp"
     )
-    
+
   set(IGC_BUILD__HDR__IGC_AdaptorOCL "")
-    
-    list(APPEND IGC_BUILD__SRC__IGC_AdaptorOCL 
+
+    list(APPEND IGC_BUILD__SRC__IGC_AdaptorOCL
          "${CMAKE_CURRENT_SOURCE_DIR}/ocl_igc_interface/impl/igc_features_and_workarounds_impl.cpp"
          "${CMAKE_CURRENT_SOURCE_DIR}/ocl_igc_interface/impl/igc_ocl_device_ctx_impl.cpp"
          "${CMAKE_CURRENT_SOURCE_DIR}/ocl_igc_interface/impl/igc_ocl_translation_ctx_impl.cpp"
@@ -81,7 +81,7 @@ endif(IGC_BUILD__SPIRV_ENABLED)
          "${CMAKE_CURRENT_SOURCE_DIR}/ocl_igc_interface/impl/gt_system_info_impl.cpp"
          "${CMAKE_CURRENT_SOURCE_DIR}/ocl_igc_interface/impl/platform_impl.cpp"
          ${CIF_SOURCES_EXPORT_ABSOLUTE_PATH})
-    list(APPEND IGC_BUILD__HDR__IGC_AdaptorOCL 
+    list(APPEND IGC_BUILD__HDR__IGC_AdaptorOCL
          "${CMAKE_CURRENT_SOURCE_DIR}/ocl_igc_interface/impl/igc_features_and_workarounds_impl.h"
          "${CMAKE_CURRENT_SOURCE_DIR}/ocl_igc_interface/impl/igc_ocl_device_ctx_impl.h"
          "${CMAKE_CURRENT_SOURCE_DIR}/ocl_igc_interface/impl/igc_ocl_translation_ctx_impl.h"
@@ -89,7 +89,7 @@ endif(IGC_BUILD__SPIRV_ENABLED)
          "${CMAKE_CURRENT_SOURCE_DIR}/ocl_igc_interface/impl/ocl_translation_output_impl.h"
          "${CMAKE_CURRENT_SOURCE_DIR}/ocl_igc_interface/impl/gt_system_info_impl.h"
          "${CMAKE_CURRENT_SOURCE_DIR}/ocl_igc_interface/impl/platform_impl.h"
-         
+
          "${CMAKE_CURRENT_SOURCE_DIR}/ocl_igc_interface/igc_features_and_workarounds.h"
          "${CMAKE_CURRENT_SOURCE_DIR}/ocl_igc_interface/igc_ocl_device_ctx.h"
          "${CMAKE_CURRENT_SOURCE_DIR}/ocl_igc_interface/igc_ocl_translation_ctx.h"
@@ -98,7 +98,7 @@ endif(IGC_BUILD__SPIRV_ENABLED)
          "${CMAKE_CURRENT_SOURCE_DIR}/ocl_igc_interface/gt_system_info.h"
          "${CMAKE_CURRENT_SOURCE_DIR}/ocl_igc_interface/platform.h"
          ${CIF_HEADERS_ABSOLUTE_PATH})
-    
+
   set(IGC_BUILD__SRC__IGC_AdaptorOCL ${IGC_BUILD__SRC__IGC_AdaptorOCL} PARENT_SCOPE) # set directly
   set(IGC_BUILD__HDR__IGC_AdaptorOCL ${IGC_BUILD__HDR__IGC_AdaptorOCL} PARENT_SCOPE)
 

@@ -97,7 +97,7 @@ struct CIFMainImplStatic : ICIFImpl<CIF::CIFMain> {
     }
     return EntryPointInterfacesList::template forwardToOne<Helpers::ForwardFindSupportedVersions, bool>(entryPointInterface, false, interfaceToFind, verMin, verMax);
   }
-  
+
   InterfaceId_t FindIncompatibleImpl(InterfaceId_t entryPointInterface, CIF::CompatibilityDataHandle handle) const override {
     if(CIF::Builtins::IsBuiltin(entryPointInterface)){
         return CIF::Builtins::FindIncompatible(entryPointInterface, handle);
@@ -155,7 +155,7 @@ struct CIFMainImplRegistry : ICIFImpl<CIF::CIFMain> {
 
     return entryPointInfo->FindSupportedVersions(interfaceToFind, verMin, verMax);
   }
-  
+
   InterfaceId_t FindIncompatibleImpl(InterfaceId_t entryPointInterface, CIF::CompatibilityDataHandle handle) const override {
     if(CIF::Builtins::IsBuiltin(entryPointInterface)){
         return CIF::Builtins::FindIncompatible(entryPointInterface, handle);

@@ -39,7 +39,7 @@ namespace llvm
     };
 
     // This implementation allows us to define our own costs for the GenIntrinsics
-    // Did not use BasicTTIImplBase because the overloaded constructors have TragetMachine as an argument, 
+    // Did not use BasicTTIImplBase because the overloaded constructors have TragetMachine as an argument,
     // so I inherited from its parent which has only DL as its arguments
     class GenIntrinsicsTTIImpl : public TargetTransformInfoImplCRTPBase<GenIntrinsicsTTIImpl>
     {

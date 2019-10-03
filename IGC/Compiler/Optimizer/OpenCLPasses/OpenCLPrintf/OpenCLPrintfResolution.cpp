@@ -127,7 +127,7 @@ const unsigned int  PrintfBufferSize = 4 * MB;
 
 
 // Looks for a GlobalVariable related with given value.
-// Returns nullptr if on the way to the global variable 
+// Returns nullptr if on the way to the global variable
 // found anything that is not :
 // * a CastInst
 // * a GEP with non-zero indices
@@ -484,7 +484,7 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst& printfCall, Function& F)
             writeOffsetPtr->setDebugLoc(m_DL);
             genStoreInternal(argTypeVal, writeOffsetPtr, bblockTrue, m_DL);
 
-            // write_offset += 4            
+            // write_offset += 4
             writeOffset = BinaryOperator::CreateAdd(writeOffset, constVal4, "write_offset", bblockTrue);
             writeOffset->setDebugLoc(m_DL);
 
@@ -496,7 +496,7 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst& printfCall, Function& F)
                 writeOffsetPtr->setDebugLoc(m_DL);
                 genStoreInternal(vecSizeVal, writeOffsetPtr, bblockTrue, m_DL);
 
-                // write_offset += 4            
+                // write_offset += 4
                 writeOffset = BinaryOperator::CreateAdd(writeOffset, constVal4, "write_offset", bblockTrue);
                 writeOffset->setDebugLoc(m_DL);
             }
@@ -531,7 +531,7 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst& printfCall, Function& F)
         bblockFalse);
     cmp2->setDebugLoc(m_DL);
     // Here, we generate code that checks if the error string index can be
-    // written into the output buffer. 
+    // written into the output buffer.
     BasicBlock* bblockErrorString = BasicBlock::Create(*m_context, "write_error_string", &F, bblockJoin);
     BasicBlock* bblockFalseJoin = BasicBlock::Create(*m_context, "bblockFalseJoin", &F, bblockJoin);
 

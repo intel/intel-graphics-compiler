@@ -89,7 +89,7 @@ bool GlobalToLocal::runOnFunction(llvm::Function& F)
         if (!global->use_empty())
         {
             // removes constant expressions which may be added by one of the LLVM optimization passes
-            // If these constant expressions are not removed it causes issues when replaceAllUsesWith() 
+            // If these constant expressions are not removed it causes issues when replaceAllUsesWith()
             // is called on the Global
             global->removeDeadConstantUsers();
 

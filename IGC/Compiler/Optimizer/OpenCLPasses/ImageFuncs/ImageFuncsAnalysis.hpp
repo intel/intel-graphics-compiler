@@ -36,8 +36,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace IGC
 {
     /// @brief  ImageFuncsAnalysis pass used for analyzing which OpenCL image dimension functions
-    ///         (height, width, depth) are used in the different functions in the module and creating 
-    ///         metadata that represents  the implicit image information needded by each function for 
+    ///         (height, width, depth) are used in the different functions in the module and creating
+    ///         metadata that represents  the implicit image information needded by each function for
     ///         resolving these function calls
 
     class ImageFuncsAnalysis : public llvm::ModulePass, public llvm::InstVisitor<ImageFuncsAnalysis>
@@ -72,8 +72,8 @@ namespace IGC
         virtual bool runOnModule(llvm::Module& M) override;
 
         /// @brief  Function entry point.
-        ///         Finds all OpenCL relevant image dimension function calls in this function, analyzes them 
-        ///          and creates metadata that represents the implicit image information needded by this function 
+        ///         Finds all OpenCL relevant image dimension function calls in this function, analyzes them
+        ///          and creates metadata that represents the implicit image information needded by this function
         ///         for resolving these function calls
         /// @param  F The destination function.
         bool runOnFunction(llvm::Function& F);

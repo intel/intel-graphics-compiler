@@ -142,9 +142,9 @@ bool RectListOptimizationPass::isGSOutputVertValid(Function& F)
 }
 
 
-//We are looking for all GenISA.OUTPUTGS instructions. These instructions are clubbed together for each output 
+//We are looking for all GenISA.OUTPUTGS instructions. These instructions are clubbed together for each output
 //vertex. This function is trying to create that map for further analysis
-//Map we are creating below is 
+//Map we are creating below is
 // Vertex ID [0-4]--->
 //                    Attribute 0 ---> OutputGS Inst 0
 //                    Attribute 1 ---> OutputGS Inst 1
@@ -226,7 +226,7 @@ bool RectListOptimizationPass::isRectCoords(
     // V1=(X1,Y1)            V2=(X2,Y1)
     // ------------------------
     // |                      |
-    // |                      | 
+    // |                      |
     // |                      |
     // |                      |
     // ------------------------
@@ -303,8 +303,8 @@ bool RectListOptimizationPass::isConstantCoords(
 
 void RectListOptimizationPass::analyzeForRectList(Function& F, GeometryShaderContext* pgsctx)
 {
-    //Now we expand each attribute to Map 
-    //1. each Value to correspoding list of vertices (0-4) 
+    //Now we expand each attribute to Map
+    //1. each Value to correspoding list of vertices (0-4)
     //2. Each channel (X,Y,Z,W) to list of Values
     for (vertex_idx vid = 0; vid < m_NUM_OUTPUT_VERT_FOR_RECTLIST; vid++) {
         for (attributeInstMap::iterator it = m_gsouputM[vid].begin(); it != m_gsouputM[vid].end(); it++) {

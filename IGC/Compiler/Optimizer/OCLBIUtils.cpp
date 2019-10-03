@@ -143,7 +143,7 @@ void CImagesBI::prepareColor(Value* Color)
     Value* TmpColor;
     if (Color->getType()->getScalarType() != m_pFloatType)
     {
-        // GenISA_typedwrite intrinsic expect to get the color as float, 
+        // GenISA_typedwrite intrinsic expect to get the color as float,
         // therefore we do bitcast that should disappear in the final code.
         Instruction* tmp = BitCastInst::Create(
             Instruction::BitCast,

@@ -66,12 +66,12 @@ if not symRe.match(symName) or symName.endswith('_size'):
 
 try:
     openedFiles = list()
-    
+
     try:
         inFile = open(sys.argv[1], 'rb')
     except EnvironmentError as ex:
         sys.stderr.write('ERROR: Cannot open input file "{0}".\n       {1}.\n'.format(sys.argv[1], ex.strerror))
-        exit(1)        
+        exit(1)
     openedFiles.append(inFile)
 
 

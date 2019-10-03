@@ -534,7 +534,7 @@ bool GenUpdateCB::runOnFunction(Function& F)
                 const_cast<char*>(bitcodeSS.str().data()),
                 bufferSize);
 
-            // return 
+            // return
             m_ctx->m_ConstantBufferReplaceShaderPatterns = CBPatterns;
             m_ctx->m_ConstantBufferReplaceShaderPatternsSize = bufferSize;
             m_ctx->m_ConstantBufferUsageMask = m_ConstantBufferUsageMask;

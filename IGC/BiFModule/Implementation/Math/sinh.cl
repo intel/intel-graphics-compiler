@@ -40,7 +40,7 @@ float __builtin_spirv_OpenCL_sinh_f32( float x )
 
     if(__FastRelaxedMath && (!__APIRS))
     {
-        // For most inputs, we'll use the expansion 
+        // For most inputs, we'll use the expansion
         //  sinh(x) = 0.5f * ( e^x - e^-x ):
         float pexp = __builtin_spirv_OpenCL_exp_f32(  x );
         float nexp = __builtin_spirv_OpenCL_exp_f32( -x );

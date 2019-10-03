@@ -159,7 +159,7 @@ bool LoopDeadCodeElimination::processLoop(Loop* L) {
 
             auto SI = dyn_cast<SelectInst>(U);
 
-            //Check that 'select' instruction is within the loop and also that the 
+            //Check that 'select' instruction is within the loop and also that the
             //Branch condition is used as the select's condition and not as the select's
             //true or false value
             if (!SI || !L->contains(SI->getParent()) || SI->getCondition() != Cond)

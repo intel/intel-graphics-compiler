@@ -111,7 +111,7 @@ dumpLLVM(Module *M, const std::string &FName) {
   if (!FS.has_error()) {
     FS << *M;
   }
-  FS.close();  
+  FS.close();
 }
 
 static MDNode*
@@ -383,7 +383,7 @@ public:
       auto line = typeEnum.getLine();
       auto size = typeEnum.getSize();
       auto type = createType(BM->get<SPIRVExtInst>(typeEnum.getType()));
-      
+
       SmallVector<Metadata*,6> elements;
 
       for (unsigned int i = 0; i != typeEnum.getNumItems(); i++)
@@ -457,8 +457,8 @@ public:
       DICompositeType* newNode = nullptr;
       if (tag == SPIRVDebug::CompositeTypeTag::Structure)
       {
-          newNode = addMDNode(inst, Builder.createStructType(scope, name, 
-              file, line, size, 0, (llvm::DINode::DIFlags)flagRaw, 
+          newNode = addMDNode(inst, Builder.createStructType(scope, name,
+              file, line, size, 0, (llvm::DINode::DIFlags)flagRaw,
               derivedFrom, DINodeArray()));
       }
       else if (tag == SPIRVDebug::CompositeTypeTag::Union)
@@ -468,8 +468,8 @@ public:
       }
       else if (tag == SPIRVDebug::CompositeTypeTag::Class)
       {
-          newNode = addMDNode(inst, Builder.createClassType(scope, name, 
-              file, line, size, 0, 0, (llvm::DINode::DIFlags)flagRaw, 
+          newNode = addMDNode(inst, Builder.createClassType(scope, name,
+              file, line, size, 0, 0, (llvm::DINode::DIFlags)flagRaw,
               derivedFrom, DINodeArray()));
       }
 
@@ -585,7 +585,7 @@ public:
       for (unsigned int i = 0; i != typeTemplate.getNumParms(); i++)
       {
           auto parm = BM->get<SPIRVExtInst>(typeTemplate.getParm(i));
-          
+
           Elts.push_back(createTemplateParm(parm));
       }
       DINodeArray TParams = Builder.getOrCreateArray(Elts);
@@ -691,7 +691,7 @@ public:
           return addMDNode(inst, Builder.createMethod(scope, name, linkageName, file, line, type,
               true, true));
       else
-        return addMDNode(inst, Builder.createTempFunctionFwdDecl(scope, name, linkageName, file, (unsigned int)line, type, 
+        return addMDNode(inst, Builder.createTempFunctionFwdDecl(scope, name, linkageName, file, (unsigned int)line, type,
           true, true, (unsigned int)line));
   }
 
@@ -766,7 +766,7 @@ public:
       }
       else
       {
-          diSP = Builder.createFunction(scope, name, linkageName, file, sp.getLine(), spType, isLocal, isDefinition, 
+          diSP = Builder.createFunction(scope, name, linkageName, file, sp.getLine(), spType, isLocal, isDefinition,
               sp.getScopeLine(), flags, isOptimized, TParamsArray);
       }
       FuncIDToDISP[funcSPIRVId] = diSP;
@@ -823,7 +823,7 @@ public:
 
       return addMDNode(inst, createLocation(line, 0, scope, iat));
   }
-  
+
   DIScope* createScope(SPIRVExtInst* inst)
   {
       if (!inst)
@@ -939,15 +939,15 @@ public:
       // Format
       // 8  12   <id>  Result Type  Result <id>  <id> Set  28  <id> Local Variable <id> Variable  <id> Expression
       OpDebugDeclare dbgDcl(inst);
-      
+
       auto scope = createScope(inst->getDIScope());
       auto iat = getInlinedAtFromScope(inst->getDIScope());
       if (!scope)
           return nullptr;
-      auto dbgDclInst = Builder.insertDeclare(localVar, 
+      auto dbgDclInst = Builder.insertDeclare(localVar,
           createLocalVar(BM->get<SPIRVExtInst>(dbgDcl.getVar())),
           createExpression(BM->get<SPIRVExtInst>(dbgDcl.getExpression())),
-          createLocation(inst->getLine()->getLine(), inst->getLine()->getColumn(), scope, iat), 
+          createLocation(inst->getLine()->getLine(), inst->getLine()->getColumn(), scope, iat),
           insertAtEnd);
       return dbgDclInst;
   }
@@ -1310,7 +1310,7 @@ SPIRVToLLVM::setAttrByCalledFunc(CallInst *Call) {
   Call->setAttributes(F->getAttributes());
 }
 
-SPIRAddressSpace 
+SPIRAddressSpace
 getOCLOpaqueTypeAddrSpace(Op OpCode)
 {
     switch (OpCode)
@@ -1598,7 +1598,7 @@ SPIRVToLLVM::transType(SPIRVType *T) {
   case OpTypeSampler:
      //ulong __builtin_spirv_OpTypeSampler
      return mapType(T, Type::getInt64Ty(*Context));
-  case OpTypeSampledImage: 
+  case OpTypeSampledImage:
   case OpTypeVmeImageINTEL: {
      //ulong3 __builtin_spirv_OpSampledImage
      return mapType(T, VectorType::get(Type::getInt64Ty(*Context), 3));
@@ -1613,12 +1613,12 @@ SPIRVToLLVM::transType(SPIRVType *T) {
 
     pStructTy->setBody(MT, ST->isPacked());
     return pStructTy;
-    } 
+    }
   case OpTypePipeStorage:
   {
       return mapType(T, Type::getInt8PtrTy(*Context, SPIRAS_Global));
   }
-  case OpTypeNamedBarrier: 
+  case OpTypeNamedBarrier:
   {
     return mapType(T, getNamedBarrierType());
   }
@@ -1627,8 +1627,8 @@ SPIRVToLLVM::transType(SPIRVType *T) {
     if (isOpaqueGenericTypeOpCode(OC) ||
         isSubgroupAvcINTELTypeOpCode(OC))
     {
-        auto name = isSubgroupAvcINTELTypeOpCode(OC) ? 
-            OCLSubgroupINTELTypeOpCodeMap::rmap(OC) : 
+        auto name = isSubgroupAvcINTELTypeOpCode(OC) ?
+            OCLSubgroupINTELTypeOpCodeMap::rmap(OC) :
             BuiltinOpaqueGenericTypeOpCodeMap::rmap(OC);
         auto *pST = M->getTypeByName(name);
         pST = pST ? pST : StructType::create(*Context, name);
@@ -1877,7 +1877,7 @@ SPIRVToLLVM::transCmpInst(SPIRVValue* BV, BasicBlock* BB, Function* F) {
   assert(BB && "Invalid BB");
   SPIRVType* BT = BC->getOperand(0)->getType();
   Instruction* Inst = nullptr;
-  if (BT->isTypeVectorOrScalarInt() 
+  if (BT->isTypeVectorOrScalarInt()
    || BT->isTypePointer()
    || BT->isTypeQueue()
    || BT->isTypeBool())
@@ -1892,7 +1892,7 @@ SPIRVToLLVM::transCmpInst(SPIRVValue* BV, BasicBlock* BB, Function* F) {
   return Inst;
 }
 
-void 
+void
 SPIRVToLLVM::findNamedBarrierKernel(Function* F, llvm::SmallPtrSet<Function*,4> &kernel_set)
 {
     for (auto U : F->users())
@@ -1958,7 +1958,7 @@ SPIRVToLLVM::postProcessOCL() {
 
 bool
 SPIRVToLLVM::postProcessFunctionsReturnStruct(Function *F) {
-  
+
   if (!F->getReturnType()->isStructTy())
     return false;
 
@@ -2033,7 +2033,7 @@ SPIRVToLLVM::postProcessFunctionsWithAggregateArguments(Function* F) {
       auto T = I->getType();
       if (!T->isAggregateType())
         continue;
-      
+
       if (auto constVal = dyn_cast<Constant>(I)) {
         I = new GlobalVariable(*M, T, true, GlobalValue::InternalLinkage, constVal);
       } else {
@@ -2091,7 +2091,7 @@ Value *SPIRVToLLVM::promoteBool(Value *pVal, BasicBlock *BB)
 
     if (auto *C = dyn_cast<Constant>(pVal))
         return ConstantExpr::getZExtOrBitCast(C, PromoType);
-    
+
     if (BB == nullptr)
         return pVal;
 
@@ -2133,7 +2133,7 @@ Value *SPIRVToLLVM::truncBool(Value *pVal, BasicBlock *BB)
 
     if (auto *C = dyn_cast<Constant>(pVal))
         return ConstantExpr::getTruncOrBitCast(C, TruncType);
-    
+
     if (BB == nullptr)
         return pVal;
 
@@ -2246,7 +2246,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
   // as a OpConstantTrue (default spec constant value)
   case OpConstantTrue:
     return mapValue(BV, ConstantInt::getTrue(*Context));
-  
+
   case OpSpecConstantFalse:
     if (BV->hasDecorate(DecorationSpecId)) {
       SPIRVWord specid = *BV->getDecorate(DecorationSpecId).begin();
@@ -2431,7 +2431,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
     auto LVar = new GlobalVariable(*M, Ty, IsConst, LinkageTy, Initializer,
         BV->getName(), 0, GlobalVariable::NotThreadLocal, AddrSpace);
     GlobalVariable::UnnamedAddr addrType = (IsConst && Ty->isArrayTy() &&
-        Ty->getArrayElementType()->isIntegerTy(8)) ? GlobalVariable::UnnamedAddr::Global : 
+        Ty->getArrayElementType()->isIntegerTy(8)) ? GlobalVariable::UnnamedAddr::Global :
         GlobalVariable::UnnamedAddr::None;
     LVar->setUnnamedAddr(addrType);
     SPIRVBuiltinVariableKind BVKind = BuiltInCount;
@@ -2645,7 +2645,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
         static_cast<SPIRVBitcast *>(BC->getSource())->getOperand(0);
       if (Source->isVariable()) {
         auto *Init = static_cast<SPIRVVariable *>(Source)->getInitializer();
-        
+
         if (Init && Init->getOpCode() == OpConstantNull) {
           SPIRVType *Ty = static_cast<SPIRVConstantNull *>(Init)->getType();
           if (Ty->isTypeArray()) {
@@ -2739,7 +2739,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
     auto Type = CE->getComposite()->getType();
     assert(BB && "Invalid BB");
     assert(CE->getIndices().size() == 1 && "Invalid index");
-    if (Type->isTypeVector()) 
+    if (Type->isTypeVector())
     {
         return mapValue(BV, ExtractElementInst::Create(
             transValue(CE->getComposite(), F, BB),
@@ -2771,7 +2771,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
     auto Type = CI->getComposite()->getType();
     assert(BB && "Invalid BB");
     assert(CI->getIndices().size() == 1 && "Invalid index");
-    if (Type->isTypeVector()) 
+    if (Type->isTypeVector())
     {
         return mapValue(BV, InsertElementInst::Create(
             transValue(CI->getComposite(), F, BB),
@@ -2965,9 +2965,9 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
       // %out = srem %a, %b
       auto *out = BinaryOperator::CreateSRem(a, b, "", BB);
       // %sha = ashr %a, 31
-      auto *sha = BinaryOperator::CreateAShr(a, ShiftOp, "", BB); 
+      auto *sha = BinaryOperator::CreateAShr(a, ShiftOp, "", BB);
       // %shb = ashr %b, 31
-      auto *shb = BinaryOperator::CreateAShr(b, ShiftOp, "", BB); 
+      auto *shb = BinaryOperator::CreateAShr(b, ShiftOp, "", BB);
       // %cmp1 = icmp ne %sha, %shb
       auto *cmp1 = CmpInst::Create(Instruction::ICmp, llvm::CmpInst::ICMP_NE,
           sha, shb, "", BB);
@@ -2977,7 +2977,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
       // %and  = and %cmp1, %cmp2
       auto *and1 = BinaryOperator::CreateAnd(cmp1, cmp2, "", BB);
       // %add  = add %out, %b
-      auto *add = BinaryOperator::CreateAdd(out, b, "", BB); 
+      auto *add = BinaryOperator::CreateAdd(out, b, "", BB);
       // %sel  = select %and, %add, %out
       auto *sel = SelectInst::Create(and1, add, out, "", BB);
 
@@ -3215,9 +3215,9 @@ SPIRVToLLVM::transSPIRVBuiltinFromInst(SPIRVInstruction *BI, BasicBlock *BB) {
                   break;
               default:
                   break;
-          } 
+          }
       }
-      suffix += rounding_string;  
+      suffix += rounding_string;
   }
 
   std::vector<Type*> ArgTys;
@@ -3323,7 +3323,7 @@ SPIRVToLLVM::transSPIRVBuiltinFromInst(SPIRVInstruction *BI, BasicBlock *BB) {
       RetTy = BI->getType()->isTypeBool() ?
           truncBoolType(BI->getType(), pTrans) :
           pTrans;
-    
+
   }
 
   if (hasReturnTypeInTypeList)
@@ -3365,7 +3365,7 @@ SPIRVToLLVM::transSPIRVBuiltinFromInst(SPIRVInstruction *BI, BasicBlock *BB) {
   }
 
   auto Call = CallInst::Create(Func, operands, "", BB);
-     
+
   Call->setName(BI->getName());
   setAttrByCalledFunc(Call);
   return Call;
@@ -3382,7 +3382,7 @@ void SPIRVToLLVM::addNamedBarrierArray()
       GlobalVariable::ThreadLocalMode::NotThreadLocal,
       SPIRAS_Local);
   m_named_barrier_id = new GlobalVariable(*M, Type::getInt32Ty(*Context), false,
-      GlobalVariable::InternalLinkage, 
+      GlobalVariable::InternalLinkage,
       ConstantInt::get(Type::getInt32Ty(*Context), 0),
       "NamedBarrierID", nullptr,
       GlobalVariable::ThreadLocalMode::NotThreadLocal,
@@ -3401,7 +3401,7 @@ SPIRVToLLVM::translate() {
     return false;
 
   compileUnit = DbgTran.createCompileUnit();
-  addNamedBarrierArray(); 
+  addNamedBarrierArray();
 
   for (unsigned I = 0, E = BM->getNumVariables(); I != E; ++I) {
     auto BV = BM->getVariable(I);
@@ -4002,7 +4002,7 @@ bool ReadSPIRV(LLVMContext &C, std::istream &IS, Module *&M,
 #if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
   if (DbgSaveTmpLLVM)
     dumpLLVM(M, DbgTmpLLVMFileName);
-#endif    
+#endif
   if (!Succeed) {
     delete M;
     M = nullptr;

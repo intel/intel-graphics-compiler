@@ -75,7 +75,7 @@ bool AlignmentAnalysis::runOnFunction(Function& F)
         inList.insert(&*inst);
     }
 
-    // It is more efficient to handle the earlier instructions first, 
+    // It is more efficient to handle the earlier instructions first,
     // so we pop from the front.
     while (!inList.empty())
     {
@@ -115,7 +115,7 @@ bool AlignmentAnalysis::processInstruction(llvm::Instruction* I)
     // Get the currently known alignment of I.
     unsigned int currAlign = getAlignValue(I);
 
-    // Compute the instruction's alignment 
+    // Compute the instruction's alignment
     // using the alignment of the arguments.
     unsigned int newAlign = 0;
     if (I->getType()->isPointerTy())
@@ -253,7 +253,7 @@ unsigned int AlignmentAnalysis::visitAdd(BinaryOperator& I)
 
 unsigned int AlignmentAnalysis::visitMul(BinaryOperator& I)
 {
-    // Because we are dealing with powers of 2, 
+    // Because we are dealing with powers of 2,
     // align(x * y) = align(x) * align(y)
     Value* op0 = I.getOperand(0);
     Value* op1 = I.getOperand(1);
@@ -318,7 +318,7 @@ unsigned int AlignmentAnalysis::visitGetElementPtrInst(GetElementPtrInst& I)
 
         // It's possible offset is not a power of 2, because struct fields
         // may be aligned on all sorts of weird values. So we can not just
-        // take the minimum between newAlign and offset, we need the 
+        // take the minimum between newAlign and offset, we need the
         // highest power of 2 that divides both.
 
         // x | y has trailing 0s exactly where both x and y have trailing 0s.
@@ -471,7 +471,7 @@ unsigned int AlignmentAnalysis::getAlignValue(Value* V) const
         auto iter = m_alignmentMap.find(V);
         if (iter == m_alignmentMap.end())
         {
-            // Instructions are initialize to maximum alignment 
+            // Instructions are initialize to maximum alignment
             // (this is the "top" value)
             return Value::MaximumAlignment;
         }

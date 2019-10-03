@@ -82,26 +82,26 @@ entry:
   %ptr1 = inttoptr i32 %add1 to i8*
 ; CHECK: align 1
   %val1 = load i8, i8* %ptr1
-  
+
   %add4 = add i32 %int, 4
   %ptr4 = inttoptr i32 %add4 to i8*
 ; CHECK: align 4
   %val4 = load i8, i8* %ptr4
-  
+
   %add17 = add i32 %int, 17
   %ptr17 = inttoptr i32 %add17 to i8*
 ; CHECK: align 1
   %val17 = load i8, i8* %ptr17
-  
+
   %add256 = add i32 %int, 256
   %ptr256 = inttoptr i32 %add256 to i8*
 ; CHECK: align 16
-  %val256 = load i8, i8* %ptr256  
-  
+  %val256 = load i8, i8* %ptr256
+
   %addunk = add i32 %int, %unknown
   %ptrunk = inttoptr i32 %addunk to i8*
 ; CHECK: align 1
-  %valunk = load i8, i8* %ptrunk   
+  %valunk = load i8, i8* %ptrunk
   ret void
 }
 
@@ -113,7 +113,7 @@ entry:
   %ptr1 = inttoptr i32 %mul1 to i8*
 ; CHECK: align 4
   %val1 = load i8, i8* %ptr1
-  
+
   %mul4 = mul i32 %int, 4
   %ptr4 = inttoptr i32 %mul4 to i8*
 ; CHECK: align 16
@@ -122,18 +122,18 @@ entry:
   %mul17 = mul i32 %int, 17
   %ptr17 = inttoptr i32 %mul17 to i8*
 ; CHECK: align 4
-  %val17 = load i8, i8* %ptr17  
-  
+  %val17 = load i8, i8* %ptr17
+
   %mul108 = mul i32 %int, 108
   %ptr108 = inttoptr i32 %mul108 to i8*
 ; CHECK: align 16
-  %val108 = load i8, i8* %ptr108  
-  
+  %val108 = load i8, i8* %ptr108
+
   %mulunk = mul i32 %int, %unknown
   %ptrunk = inttoptr i32 %mulunk to i8*
 ; CHECK: align 4
-  %valunk = load i8, i8* %ptrunk 
-  
+  %valunk = load i8, i8* %ptrunk
+
   ret void
 }
 
@@ -156,17 +156,17 @@ entry:
   %ptr1 = inttoptr i32 %shl1 to i8*
 ; CHECK: align 4
   %val1 = load i8, i8* %ptr1
-  
+
   %shl2 = shl i32 %int, 2
   %ptr4 = inttoptr i32 %shl2 to i8*
 ; CHECK: align 16
   %val4 = load i8, i8* %ptr4
-  
+
   %shlunk = shl i32 %int, %unknown
   %ptrunk = inttoptr i32 %shlunk to i8*
 ; CHECK: align 4
-  %valunk = load i8, i8* %ptrunk 
-  
+  %valunk = load i8, i8* %ptrunk
+
   ret void
 }
 
@@ -176,15 +176,15 @@ entry:
   ; ~0x03
   %and3 = and i32 %int, 4294967292
   %ptr3 = inttoptr i32 %and3 to <16 x i8>*
-; CHECK: align 4  
+; CHECK: align 4
   %val3 = load <16 x i8>, <16 x i8>* %ptr3
-  
+
   %andsilly = and i32 %int, 255
   %ptrsilly = inttoptr i32 %andsilly to <16 x i8>*
 ; CHECK: align 1
-  %valsilly = load <16 x i8>, <16 x i8>* %ptrsilly  
-  
-  ret void  
+  %valsilly = load <16 x i8>, <16 x i8>* %ptrsilly
+
+  ret void
 }
 
 define void @select(<4 x i8>* %char4ptr, <16 x i8>* %char16ptr, i1 %flag) #0 {
@@ -201,7 +201,7 @@ define void @loadval(<4 x i8>* %src, i32* %offset) #0 {
   %int = ptrtoint <4 x i8>* %src to i32
   %add = add i32 %int, %off
   %ptr = inttoptr i32 %add to <4 x i8>*
-; CHECK: align 1  
+; CHECK: align 1
   %val = load <4 x i8>, <4 x i8>* %ptr
   ret void
 }
@@ -210,36 +210,36 @@ define void @loadval(<4 x i8>* %src, i32* %offset) #0 {
 define void @simplephi(<16 x i8>* %src, i1 %flag) #0 {
   %int = ptrtoint <16 x i8>* %src to i32
   br i1 %flag, label %true, label %false
-  
+
 true:
   %add4 = add i32 %int, 4
   %ptr4 = inttoptr i32 %add4 to i8*
 ; CHECK: align 4
-  %val4 = load i8, i8* %ptr4  
+  %val4 = load i8, i8* %ptr4
   br label %end
-  
+
 false:
   %add16 = add i32 %int, 16
   %ptr16 = inttoptr i32 %add16 to i8*
 ; CHECK: align 16
   %val16 = load i8, i8* %ptr16
   br label %end
-  
+
 end:
   %p = phi i8* [ %ptr4, %true], [ %ptr16, %false]
 ; CHECK: align 4
   store i8 0, i8* %p
-  ret void  
+  ret void
 }
 
 define void @loop(<4 x i8>* %src, i1 %flag) #0 {
-entry:  
+entry:
   br label %body
-  
+
 body:
   %reduced = phi <4 x i8>* [ %src, %entry ], [ %addptr, %body ]
   %improved = phi <4 x i8>* [ %src, %entry ], [ %mulptr, %body ]
-; CHECK: align 1  
+; CHECK: align 1
   %valreduced = load <4 x i8>, <4 x i8>* %reduced
 ; CHECK: align 4
   %valimproved = load <4 x i8>, <4 x i8>* %improved
@@ -249,9 +249,9 @@ body:
   %mul = mul i32 %int, 32
   %mulptr = inttoptr i32 %mul to <4 x i8>*
   br i1 %flag, label %body, label %end
-  
-end:  
-  ret void  
+
+end:
+  ret void
 }
 
 define void @gep1(<4 x i8>* %src, i32 %offset) {
@@ -280,7 +280,7 @@ define void @gep3(<4 x i8>* %src) {
 @globalarr = addrspace(3) global [10 x i32] [i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 8, i32 9], align 16
 define void @globalgep() {
   %start = getelementptr [10 x i32], [10 x i32] addrspace(3)* @globalarr, i32 0, i32 0
-; CHECK: align 16  
+; CHECK: align 16
   %val = load i32, i32 addrspace(3)* %start
   ret void
 }

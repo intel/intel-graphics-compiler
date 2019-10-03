@@ -834,9 +834,9 @@ void LivenessAnalysis::computeLiveness()
     {
         G4_BB * bb = *it;
         unsigned id = bb->getId();
-        
+
         computeGenKillandPseudoKill((*it), def_out[id], use_in[id], use_gen[id], use_kill[id]);
-        
+
         //
         // exit block: mark output parameters live
         //

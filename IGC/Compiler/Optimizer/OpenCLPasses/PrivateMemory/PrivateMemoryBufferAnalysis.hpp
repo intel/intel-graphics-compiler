@@ -68,7 +68,7 @@ namespace IGC
         bool runOnModule(llvm::Module& M) override;
 
         /// @brief  Alloca instructions visitor.
-        ///         Checks for private memory allocation, determins the size and offset of each allocation, 
+        ///         Checks for private memory allocation, determins the size and offset of each allocation,
         ///         helps calculate the total amount of private memory needed by each wotk item.
         /// @param  AI The alloca instruction.
         void visitAllocaInst(llvm::AllocaInst& AI);

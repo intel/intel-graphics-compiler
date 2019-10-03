@@ -322,7 +322,7 @@ inline void CAllocator::Free(void* ptr)
 locally visible new & delete for Linux
 \*****************************************************************************/
 #if defined ( _DEBUG ) || defined ( _INTERNAL )
-#if defined __GNUC__ 
+#if defined __GNUC__
 
 #if !defined __clang__
 /*
@@ -384,7 +384,7 @@ inline void operator delete[](void* ptr)
 #endif //defined ( _DEBUG ) || defined ( _INTERNAL )
 
 #ifndef __GNUC__
-#define __NOTAGNUC__ 
+#define __NOTAGNUC__
 #endif // __GNUC__
 
 #if ( ( defined ( _DEBUG ) || defined ( _INTERNAL ) ) && (defined __NOTAGNUC__ ) )

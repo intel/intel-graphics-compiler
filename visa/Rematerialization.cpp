@@ -407,8 +407,8 @@ namespace vISA
                         auto srcDcl = srcRegion->getTopDcl();
                         unsigned int srcLb = srcRegion->getLeftBound(), srcRb = srcRegion->getRightBound();
 
-                        if (dstDcl == srcDcl && 
-                            curRb >= srcLb && 
+                        if (dstDcl == srcDcl &&
+                            curRb >= srcLb &&
                             curLb <= srcRb)
                         {
                             return false;
@@ -551,7 +551,7 @@ namespace vISA
             {
                 // When op1 is outside loop and op2 is indside loop,
                 // allow remat if op1 dst dcl is marked spilled.
-                // Because that means a load will  be inserted in the 
+                // Because that means a load will  be inserted in the
                 // loop and remat might be more efficient here.
                 if (!srcDclSpilled)
                 {
@@ -588,7 +588,7 @@ namespace vISA
 
             if (srcOpnd->isSrcRegRegion())
             {
-                // If src operand base is non-regvar (eg, architecture 
+                // If src operand base is non-regvar (eg, architecture
                 // register) then dont remat. Moving around such
                 // registers could be dangerous.
                 if (!srcOpnd->getBase()->isRegVar())
@@ -604,8 +604,8 @@ namespace vISA
                 }
 
                 auto pointsToSet = liveness.getPointsToAnalysis().getIndrUseVectorPtrForBB(bb->getId());
-                if (srcOpndTopDcl->getAddressed() && 
-                    ((uniqueDefBB != bb) || 
+                if (srcOpndTopDcl->getAddressed() &&
+                    ((uniqueDefBB != bb) ||
                       std::find(pointsToSet->begin(), pointsToSet->end(), srcOpndTopDcl->getRegVar()) != pointsToSet->end()))
                 {
                     // Indirectly addressed src opnd should not be extended
@@ -713,7 +713,7 @@ namespace vISA
                                 if (src->isImm())
                                     continue;
 
-                                if (src->isSrcRegRegion() && 
+                                if (src->isSrcRegRegion() &&
                                     (src->asSrcRegRegion()->getTopDcl() == kernel.fg.builder->getBuiltinSamplerHeader() ||
                                         src->asSrcRegRegion()->getTopDcl() == kernel.fg.builder->getBuiltinR0()))
                                     continue;
@@ -932,8 +932,8 @@ namespace vISA
                 0, 1, samplerDst->getElemType());
 
             auto dstMsgDesc = dstInst->getMsgDesc();
-            auto newMsgDesc = kernel.fg.builder->createGeneralMsgDesc(dstMsgDesc->getDesc(), 
-                dstMsgDesc->getExtendedDesc(), dstMsgDesc->getAccess(), 
+            auto newMsgDesc = kernel.fg.builder->createGeneralMsgDesc(dstMsgDesc->getDesc(),
+                dstMsgDesc->getExtendedDesc(), dstMsgDesc->getAccess(),
                 kernel.fg.builder->duplicateOperand(dstMsgDesc->getBti()),
                 kernel.fg.builder->duplicateOperand(dstMsgDesc->getSti()));
 

@@ -96,13 +96,13 @@ namespace TC
     CCModuleStruct m_CCModule;
 #endif
 
-    
+
   public:
       static bool     Create(
                           const STB_CreateArgs* pCreateArgs,
                           CClangTranslationBlock* &pTranslationBlock );
 
-      static void     Delete( 
+      static void     Delete(
                           CClangTranslationBlock* &pTranslationBlock );
 
       virtual bool    Translate(
@@ -142,31 +142,31 @@ namespace TC
 
       // Read OCL version from internal options
       std::string GetOclApiVersion( const char* pInternalOptions ) const;
-      
+
       bool TranslateClang( const TranslateClangArgs* pInputArgs,
                            STB_TranslateOutputArgs* pOutputArgs,
                            std::string& exceptString,
                            const char* pInternalOptions);
-      
+
       bool TranslateElf( const STB_TranslateInputArgs* pInputArgs,
                          STB_TranslateOutputArgs* pOutputArgs,
                          std::string& exceptString);
-          
+
       void GetTranslateClangArgs( char* pInput,
                                   uint32_t    uiInputSize,
                                   const char* pOptions,
                                   const char* pInternalOptions,
                                   TranslateClangArgs* pClangArgs,
                                   std::string& exceptString);
-      
+
       void GetTranslateClangArgs( CLElfLib::CElfReader* pElfReader,
                                   const char* pOptions,
                                   const char* pInternalOptions,
                                   TranslateClangArgs* pClangArgs,
                                   std::string& exceptString);
-      
+
       void EnsureProperPCH( TranslateClangArgs* pArgs, const char* pInternalOptions, std::string& exceptString);
-      
+
       bool ReturnSuppliedIR( const STB_TranslateInputArgs* pInputArgs,
                            STB_TranslateOutputArgs* pOutputArgs );
 

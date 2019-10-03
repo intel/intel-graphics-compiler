@@ -105,7 +105,7 @@ if(CCLANG_FROM_SYSTEM)
   message(STATUS "[IGC\\BiFModule] : opencl-clang will be taken from system")
 
   find_library(SYSTEM_COMMON_CLANG ${COMMON_CLANG_LIBRARY_NAME})
-  
+
   add_library(opencl-clang-lib SHARED IMPORTED GLOBAL)
   set_property(TARGET opencl-clang-lib PROPERTY "IMPORTED_LOCATION" "${SYSTEM_COMMON_CLANG}")
   find_program(CLANG_GE7 clang-${LLVM_VERSION_MAJOR})
@@ -180,12 +180,12 @@ if(UNIX)
   if (NOT CCLANG_FROM_SYSTEM)
     install(FILES $<TARGET_FILE:opencl-clang-lib> DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR} COMPONENT igc-opencl)
     install(FILES $<TARGET_SONAME_FILE:opencl-clang-lib> DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR} COMPONENT igc-opencl)
-    
+
     install(FILES $<TARGET_FILE:clang-tool> DESTINATION ${CMAKE_INSTALL_FULL_BINDIR} COMPONENT igc-opencl-devel)
     if(NOT ${CCLANG_BUILD_INTREE_LLVM})
       install(FILES $<TARGET_FILE:clang-tool>-${LLVM_VERSION_MAJOR} DESTINATION ${CMAKE_INSTALL_FULL_BINDIR} COMPONENT igc-opencl-devel)
     endif()
-    
+
     # Get header opencl-c.h directory
     get_filename_component(opencl-headers-dir ${opencl-header} DIRECTORY)
 
@@ -669,10 +669,10 @@ function(igc_bif_build_bc)
     get_filename_component(_srcFileNameWoExt "${_srcFilePath}" NAME_WE)
     set(_bcIntFilePath  "${_outBcFilePath}_${_srcFileNameWoExt}__cl__${_bcFileId}.bc")
     set(_bcTempFilePath "${_bcIntFilePath}.tmp")
-    
+
     file(TO_CMAKE_PATH "${_bcIntFilePath}" _bcIntFilePath)
     file(TO_CMAKE_PATH "${_bcTempFilePath}" _bcTempFilePath)
-    
+
     math(EXPR _bcFileId "${_bcFileId} + 1")
 
     # OpenCL source compilation is triggered by CLANG change, change of source files, change of precompiled header, change of
@@ -834,7 +834,7 @@ igc_bif_build_pch(
     DEFINES "__32bit__=1" "cl_khr_fp64"
     OPTIONS ${PCH_OPTIONS}
   )
-  
+
 igc_bif_build_pch(
     OUTPUT  "${IGC_BUILD__BIF_RS_PCH64}"
     TRIPLE  spir64
@@ -899,7 +899,7 @@ set(IGC_BUILD__BIF_SPIRV_COMMON_INC_DIRS
     "${IGC_OPTION__BIF_SRC_OCL_DIR}/Headers"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/ocl_igc_interface/device_enqueue"
   )
-  
+
 file(GLOB_RECURSE _MATH_SRC_BC      "${IGC_OPTION__BIF_SRC_OCL_DIR}/*.bc")
 
 file(GLOB_RECURSE SVML_FILES "${IGC_OPTION__BIF_SRC_OCL_DIR}/Implementation/BinaryReleaseOnly/*.cl" )
@@ -1017,7 +1017,7 @@ endif()
 #Currently, not sure where exactly the .bc will be placed. But ones we have all
 # the info, we need to make sure all the dependencies are handled. Like for example if any
 # file uses svml files, we need to prototype the headers and during linking it gets resolved.
-  
+
 if ("${_PRE_RELEASE_CL}" STREQUAL "" AND ( NOT "${_MATH_SRC_BC}" STREQUAL "" ) )
   igc_bif_build_bc(
     OUTPUT               "${IGC_BUILD__BIF_DIR}/OCLBiFImpl.bc"

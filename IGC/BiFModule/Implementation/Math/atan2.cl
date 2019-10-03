@@ -57,8 +57,8 @@ float __builtin_spirv_OpenCL_atan2_f32_f32( float y, float x )
     if(__FastRelaxedMath && (!__APIRS))
     {
         // Implemented as:
-        //  atan(y/x) for x > 0, 
-        //  atan(y/x) + M_PI_F for x < 0 and y > 0, and 
+        //  atan(y/x) for x > 0,
+        //  atan(y/x) + M_PI_F for x < 0 and y > 0, and
         //  atan(y/x) -M_PI_F for x < 0 and y < 0.
         float px = __builtin_spirv_OpenCL_atan_f32( y / x );
         float py = px + M_PI_F;

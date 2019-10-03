@@ -37,7 +37,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace CIF {
 
-template <typename BaseClass = ICIF> 
+template <typename BaseClass = ICIF>
 class ICIFImpl : public BaseClass {
   static_assert(std::is_base_of<ICIF, BaseClass>::value, "Invalid BaseClass");
 

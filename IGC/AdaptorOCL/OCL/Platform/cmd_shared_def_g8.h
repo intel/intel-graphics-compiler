@@ -118,10 +118,10 @@ struct SSharedStateSamplerState
             DWORD       _Unused3                            : BITFIELD_BIT(      30 );
             DWORD       SamplerDisable                      : BITFIELD_BIT(      31 );  // bool
         } Gen7;
-        
+
         struct _Gen9
         {
-            DWORD       AnisotropicAlgorithm                : BITFIELD_BIT(      0  );  // 
+            DWORD       AnisotropicAlgorithm                : BITFIELD_BIT(      0  );  //
             DWORD       TextureLODBias                      : BITFIELD_RANGE(  1,13 );  // S4.2 2's comp
             DWORD       MinModeFilter                       : BITFIELD_RANGE( 14,16 );  // GFXSHAREDSTATE_MAPFILTER
             DWORD       MagModeFilter                       : BITFIELD_RANGE( 17,19 );  // GFXSHAREDSTATE_MAPFILTER
@@ -136,7 +136,7 @@ struct SSharedStateSamplerState
 
         struct _Gen10
         {
-            DWORD       AnisotropicAlgorithm                : BITFIELD_BIT(      0  );  // 
+            DWORD       AnisotropicAlgorithm                : BITFIELD_BIT(      0  );  //
             DWORD       TextureLODBias                      : BITFIELD_RANGE(  1,13 );  // S4.2 2's comp
             DWORD       MinModeFilter                       : BITFIELD_RANGE( 14,16 );  // GFXSHAREDSTATE_MAPFILTER
             DWORD       MagModeFilter                       : BITFIELD_RANGE( 17,19 );  // GFXSHAREDSTATE_MAPFILTER
@@ -163,7 +163,7 @@ struct SSharedStateSamplerState
             DWORD       _Unused                             : BITFIELD_RANGE( 10,11 );
             DWORD       MaxLOD                              : BITFIELD_RANGE( 12,21 );  // U4.6 in LOD units [0.0,13.0]
             DWORD       MinLOD                              : BITFIELD_RANGE( 22,31 );  // U4.6 in LOD units [0.0,13.0]
-        } All;  
+        } All;
 
         struct _Gen7
         {
@@ -227,7 +227,7 @@ struct SSharedStateSamplerState
         {
             DWORD       LODClampMagnificationMode           : BITFIELD_BIT(       0 );  // U1
             DWORD       _Unused                             : BITFIELD_RANGE(  1,4  );
-            DWORD       ForceGather4                        : BITFIELD_BIT(       5 );  // 
+            DWORD       ForceGather4                        : BITFIELD_BIT(       5 );  //
             DWORD       IndirectStatePointer                : BITFIELD_RANGE(  6,23 );  // DynamicStateOffset[23:6]
             DWORD       _Unused2                            : BITFIELD_RANGE( 24,31 );
         } Gen10;
@@ -253,7 +253,7 @@ struct SSharedStateSamplerState
             DWORD       ChromaKeyIndex                          : BITFIELD_RANGE( 23,24 );  // U2
             DWORD       ChromaKeyEnable                         : BITFIELD_BIT(      25 );  // bool
             DWORD       _Unused2                                : BITFIELD_RANGE( 26,31 );  // Reserved
-        } All;   
+        } All;
 
         struct _Gen7
         {
@@ -280,7 +280,7 @@ struct SSharedStateSamplerState
         {
             DWORD       _Unused                                 : BITFIELD_RANGE( 22,23 );  // Reserved
             DWORD       NonSeparableFilterFootprintMask         : BITFIELD_RANGE( 24,31 );  // Mask
-            
+
         } Gen8;
 
         struct _Gen9
@@ -297,8 +297,8 @@ struct SSharedStateSamplerState
             DWORD       VAddressMagFilterAddressRoundingEnable  : BITFIELD_BIT(      16 );  // bool
             DWORD       UAddressMinFilterAddressRoundingEnable  : BITFIELD_BIT(      17 );  // bool
             DWORD       UAddressMagFilterAddressRoundingEnable  : BITFIELD_BIT(      18 );  // bool
-            DWORD       MaximumAnisotropy                       : BITFIELD_RANGE( 19,21 );  // GFXSHAREDSTATE_ANISORATIO           
-            DWORD       ReductionType                           : BITFIELD_RANGE( 22,23 );  // GFXSHAREDSTATE_REDUCTION_TYPE 
+            DWORD       MaximumAnisotropy                       : BITFIELD_RANGE( 19,21 );  // GFXSHAREDSTATE_ANISORATIO
+            DWORD       ReductionType                           : BITFIELD_RANGE( 22,23 );  // GFXSHAREDSTATE_REDUCTION_TYPE
             DWORD       NonSeparableFilterFootprintMask         : BITFIELD_RANGE( 24,31 );  // Mask
         } Gen9;
 
@@ -318,8 +318,8 @@ struct SSharedStateSamplerState
                 DWORD       VAddressMagFilterAddressRoundingEnable  : BITFIELD_BIT(      16 );  // bool
                 DWORD       UAddressMinFilterAddressRoundingEnable  : BITFIELD_BIT(      17 );  // bool
                 DWORD       UAddressMagFilterAddressRoundingEnable  : BITFIELD_BIT(      18 );  // bool
-                DWORD       MaximumAnisotropy                       : BITFIELD_RANGE( 19,21 );  // GFXSHAREDSTATE_ANISORATIO           
-                DWORD       ReductionType                           : BITFIELD_RANGE( 22,23 );  // GFXSHAREDSTATE_REDUCTION_TYPE 
+                DWORD       MaximumAnisotropy                       : BITFIELD_RANGE( 19,21 );  // GFXSHAREDSTATE_ANISORATIO
+                DWORD       ReductionType                           : BITFIELD_RANGE( 22,23 );  // GFXSHAREDSTATE_REDUCTION_TYPE
                 DWORD       NonSeparableFilterFootprintMask         : BITFIELD_RANGE( 24,31 );  // Mask
             } ALL;
 
@@ -354,7 +354,7 @@ struct SSharedStateSearchPathLUTState
             DWORD   SearchPathLocation_X_3  : 4;
             DWORD   SearchPathLocation_Y_3  : 4;
         } BitField;
-        
+
         struct _Byte
         {
             BYTE    Byte0;
@@ -632,7 +632,7 @@ struct SSharedStateSurfaceState
         {
             DWORD       SurfaceQPitch                       : BITFIELD_RANGE(  0,14 );  // QPitch[16:2]
             DWORD       _Unused1                            : BITFIELD_RANGE( 15,18 );  // Reserved
-            DWORD       BaseMipLevel                        : BITFIELD_RANGE( 19,23 );  // 
+            DWORD       BaseMipLevel                        : BITFIELD_RANGE( 19,23 );  //
             DWORD       EncryptedDataEnable                 : BITFIELD_BIT(      24 );  // Reserved
             DWORD       MOCSTablesIndex                     : BITFIELD_RANGE( 25,30 );  // define the L3 and system cache memory properties
             DWORD       _Unused2                            : BITFIELD_BIT(      31 );  // Reserved
@@ -642,7 +642,7 @@ struct SSharedStateSurfaceState
         {
             DWORD       SurfaceQPitch                       : BITFIELD_RANGE(  0,14 );  // QPitch[16:2]
             DWORD       _Unused1                            : BITFIELD_RANGE( 15,18 );  // Reserved
-            DWORD       BaseMipLevel                        : BITFIELD_RANGE( 19,23 );  // 
+            DWORD       BaseMipLevel                        : BITFIELD_RANGE( 19,23 );  //
             DWORD       EncryptedDataEnable                 : BITFIELD_BIT(      24 );  // Reserved
             DWORD       MOCSTablesIndex                     : BITFIELD_RANGE( 25,30 );  // define the L3 and system cache memory properties
             DWORD       _Unused2                            : BITFIELD_BIT(      31 );  // Reserved
@@ -652,8 +652,8 @@ struct SSharedStateSurfaceState
         {
             DWORD       UVPixelOffsetVDirection             : BITFIELD_RANGE(  0, 1 );  // U0.2
             DWORD       PictureStructure                    : BITFIELD_RANGE(  2, 3 );  // ?
-            DWORD       Width                               : BITFIELD_RANGE(  4,17 );  // U14 //width except if format is structure buffer :reading the Data base Structure buffer (or) Test Vector Structure Buffer (or) Index Table. 
-            DWORD       Height                              : BITFIELD_RANGE( 18,31 );  // U14 //height except if format is structure buffer :reading the Data base Structure buffer (or) Test Vector Structure Buffer (or) Index Table. 
+            DWORD       Width                               : BITFIELD_RANGE(  4,17 );  // U14 //width except if format is structure buffer :reading the Data base Structure buffer (or) Test Vector Structure Buffer (or) Index Table.
+            DWORD       Height                              : BITFIELD_RANGE( 18,31 );  // U14 //height except if format is structure buffer :reading the Data base Structure buffer (or) Test Vector Structure Buffer (or) Index Table.
         } Gen10Media;
 
         DWORD   Value;
@@ -675,7 +675,7 @@ struct SSharedStateSurfaceState
             DWORD       Width                               : BITFIELD_RANGE(  0,13 );  // U14
             DWORD       _Unused1                            : BITFIELD_RANGE( 14,15 );  // U2
             DWORD       Height                              : BITFIELD_RANGE( 16,29 );  // U14
-            DWORD       _Unused2                            : BITFIELD_RANGE( 30,31 );  
+            DWORD       _Unused2                            : BITFIELD_RANGE( 30,31 );
         } Gen7;
 
         struct _Gen7_Media
@@ -812,7 +812,7 @@ struct SSharedStateSurfaceState
                 DWORD   RenderTargetViewExtent              : BITFIELD_RANGE(  7,17 );  // U11
                 DWORD   MinimumArrayElement                 : BITFIELD_RANGE( 18,28 );  // U11
                 DWORD   RenderTargetRotation                : BITFIELD_RANGE( 29,30 );  // U4 in LOD units
-                DWORD   ForceNonComparisonReductionType     : BITFIELD_BIT(      31 );  
+                DWORD   ForceNonComparisonReductionType     : BITFIELD_BIT(      31 );
             } SurfaceAll;
 
             struct _SurfaceStrBuf
@@ -836,7 +836,7 @@ struct SSharedStateSurfaceState
             DWORD       YOffset                             : BITFIELD_RANGE( 20,23 );  // U9
             DWORD       SurfaceVerticalAlignment            : BITFIELD_BIT(      24 );  // GFXSHAREDSTATE_SURFACE_VERTICAL_ALIGNMENT
             DWORD       XOffset                             : BITFIELD_RANGE( 25,31 );  // U4 in LOD units
-        } All;   
+        } All;
 
         struct _Gen7
         {
@@ -879,7 +879,7 @@ struct SSharedStateSurfaceState
             DWORD       VerticalLineStrideOffset            : BITFIELD_BIT(      30 );
             DWORD       VerticalLineStride                  : BITFIELD_BIT(      31 );
         } Gen8Media;
-    
+
         struct _Gen9
         {
             DWORD       MipCountLOD                         : BITFIELD_RANGE(  0,3  );  // U4
@@ -887,7 +887,7 @@ struct SSharedStateSurfaceState
             DWORD       MipTailStartLOD                     : BITFIELD_RANGE( 8, 11 );  // MipTailStartLOD
             DWORD       _Unused1                            : BITFIELD_RANGE( 12, 13 ); // reserved
             DWORD       CoherencyType                       : BITFIELD_BIT( 14 );   // Coherency Type (Gen8+)
-            DWORD       TiledResourceVerticalAlignment      : BITFIELD_RANGE( 15, 16 ); // 
+            DWORD       TiledResourceVerticalAlignment      : BITFIELD_RANGE( 15, 16 ); //
             DWORD       TiledResourceHorizontalAlignment    : BITFIELD_RANGE( 17, 18 ); //
             DWORD       TiledResourceEnable                 : BITFIELD_BIT( 19 );       // bool
             DWORD       _Unused2                            : BITFIELD_BIT( 20 );       // Reserved
@@ -916,7 +916,7 @@ struct SSharedStateSurfaceState
             DWORD       VerticalLineStrideOffset            : BITFIELD_BIT(      30 );
             DWORD       VerticalLineStride                  : BITFIELD_BIT(      31 );
         } Gen10Media;
-    
+
 
         DWORD   Value;
     } DW5;
@@ -951,7 +951,7 @@ struct SSharedStateSurfaceState
         {
             DWORD       SurfaceBaseAddress                  : BITFIELD_RANGE( 0, 31 );
         } Gen8Media;
-        
+
         union _Gen9
         {
             struct _SurfacePlanar
@@ -959,19 +959,19 @@ struct SSharedStateSurfaceState
                 DWORD   YOffset                             : BITFIELD_RANGE( 0,  13 );  // U14
                 DWORD   _Unused1                            : BITFIELD_RANGE( 14, 15 );  // reserved
                 DWORD   XOffset                             : BITFIELD_RANGE( 16, 29 );  // U14
-                DWORD   _Unused2                            : BITFIELD_RANGE( 30, 31 );  // reserved   
+                DWORD   _Unused2                            : BITFIELD_RANGE( 30, 31 );  // reserved
             } SurfacePlanar;
 
             struct _SurfaceOther
             {
-                DWORD   AuxiliarySurfaceMode                : BITFIELD_RANGE( 0, 1   );   // 
-                DWORD   RenderTargetCompressionEnable       : BITFIELD_BIT(   2      );   // 
+                DWORD   AuxiliarySurfaceMode                : BITFIELD_RANGE( 0, 1   );   //
+                DWORD   RenderTargetCompressionEnable       : BITFIELD_BIT(   2      );   //
                 DWORD   AuxiliarySurfacePitch               : BITFIELD_RANGE( 3,  11 );   // U9
                 DWORD   _Unused1                            : BITFIELD_RANGE( 12, 15 );   // reserved
-                DWORD   AuxilarySurfaceQPitch               : BITFIELD_RANGE( 16, 30 );   //    
+                DWORD   AuxilarySurfaceQPitch               : BITFIELD_RANGE( 16, 30 );   //
                 DWORD   _Unused2                            : BITFIELD_BIT(   31     );   // reserved
             } SurfaceOther;
-        } Gen9;          
+        } Gen9;
 
         DWORD   Value;
     } DW6;
@@ -1022,7 +1022,7 @@ struct SSharedStateSurfaceState
             DWORD       ShaderChannelSelectBlue             : BITFIELD_RANGE( 19,21 );  // GFXSHAREDSTATE_SHADERCHANNELSELECT
             DWORD       ShaderChannelSelectGreen            : BITFIELD_RANGE( 22,24 );  // GFXSHAREDSTATE_SHADERCHANNELSELECT
             DWORD       ShaderChannelSelectRed              : BITFIELD_RANGE( 25,27 );  // GFXSHAREDSTATE_SHADERCHANNELSELECT
-            DWORD       _Unused2                            : BITFIELD_RANGE( 28,31 );  // reserved            
+            DWORD       _Unused2                            : BITFIELD_RANGE( 28,31 );  // reserved
         } Gen9;
 
         DWORD   Value;
@@ -1139,12 +1139,12 @@ struct SSharedStateSurfaceState
             DWORD       RedClearColor                       : BITFIELD_RANGE(  0,31 );  // float
         } Gen9;
 
-        union _Gen10 
+        union _Gen10
         {
             struct _ClearValueAddressEnable
             {
                 DWORD       _Unused                            : BITFIELD_RANGE(  0, 5 );  // Reserved
-                DWORD       ClearColorAddress                : BITFIELD_RANGE(  6,31 );  // GraphicsAddress[31:6] 
+                DWORD       ClearColorAddress                : BITFIELD_RANGE(  6,31 );  // GraphicsAddress[31:6]
             } ClearValueAddressEnable;
 
             struct _ClearValueAddressDisble
@@ -1173,7 +1173,7 @@ struct SSharedStateSurfaceState
             struct _ClearValueAddressEnable
             {
                 DWORD       _Unused                            : BITFIELD_RANGE(  0, 15 );  // Reserved
-                DWORD       ClearColorAddressHigh            : BITFIELD_RANGE(  16,31 );  // GraphicsAddress 
+                DWORD       ClearColorAddressHigh            : BITFIELD_RANGE(  16,31 );  // GraphicsAddress
             } ClearValueAddressEnable;
 
             struct _ClearValueAddressDisble

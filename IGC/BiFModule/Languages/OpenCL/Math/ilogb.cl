@@ -31,7 +31,7 @@ int OVERLOADABLE ilogb( float x )
 {
     return __builtin_spirv_OpenCL_ilogb_f32( x );
 }
- 
+
 GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( ilogb, int, float )
 
 #if defined(cl_khr_fp64)

@@ -138,15 +138,15 @@ IGC_INITIALIZE_PASS_END(StatelessToStatefull, PASS_FLAG, PASS_DESCRIPTION, PASS_
 //  - This transformation cannot be done if a pointer is stored to or loaded from memory
 //    In general, if an address of load/store cannot be resolevd to the kernel argument, the load/store
 //    will still use stateless access. Note that the mix of stateless and statefull accesses is okay
-//    in terms of correctness, and it is true even though cachability is set. 
+//    in terms of correctness, and it is true even though cachability is set.
 //  - Need to watch out for a final address that less than the address of kenrel argument:
 //     example: kernelArg[-2]
 //
-// 
+//
 // Possible Todos:
-//  - Fancier back tracing to a kernel argument  
+//  - Fancier back tracing to a kernel argument
 //  - Handle > 2 operand GetElementPtr instructions // DONE!
-// 
+//
 
 char StatelessToStatefull::ID = 0;
 
@@ -241,7 +241,7 @@ bool StatelessToStatefull::getOffsetFromGEP(
 
     Value* PointerValue;
     // When SToSProducesPositivePointer is set, BUFFER_OFFSET are assumed to be zero,
-    // so is that for any implicit argument 
+    // so is that for any implicit argument
     if (m_hasBufferOffsetArg && !isImplicitArg &&
         IGC_IS_FLAG_DISABLED(SToSProducesPositivePointer))
     {
@@ -372,7 +372,7 @@ bool StatelessToStatefull::pointerIsPositiveOffsetFromKernelArgument(
             // If m_hasBufferOffsetArg is true, the offset argument is added to
             // the final offset, and the final offset must be positive. Thus
             // skip checking if an offset is positive.
-            // 
+            //
             // Note that offset should be positive for any implicit ptr argument
             if (!arg->isImplicitArg() &&
                 (!m_hasBufferOffsetArg || m_hasOptionalBufferOffsetArg) &&
@@ -615,7 +615,7 @@ void StatelessToStatefull::setPointerSizeTo32bit(int32_t AddrSpace, Module* M)
     }
     else
     {
-        // this is a new addrspace, it should not be in the 
+        // this is a new addrspace, it should not be in the
         // existing DataLayout, but if it exists, just return.
         // We don't want to change any existing one!
         sprintf_s(data, sizeof(data), "p%d:", AddrSpace);

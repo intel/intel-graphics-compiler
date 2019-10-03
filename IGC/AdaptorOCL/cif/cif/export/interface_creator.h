@@ -48,7 +48,7 @@ protected:
 
     template <bool TooOld, Version_t CurrVer, typename... ArgsT>
     static typename std::enable_if<false == TooOld, Interface<CIF::BaseVersion>*>::type CreateInterfaceVerHelper(Version_t ver, ArgsT &&... args) {
-      if ((ver <= Interface<CurrVer>::GetVersion()) && 
+      if ((ver <= Interface<CurrVer>::GetVersion()) &&
           (ver >= Interface<CurrVer>::GetBackwardsCompatibilityVersion())) {
         return new ICIFImpl<Interface<CurrVer>>(ver, std::forward<ArgsT>(args)...);
       } else {
@@ -61,8 +61,8 @@ public:
       constexpr Version_t latestVer = Interface<CIF::TraitsSpecialVersion>::GetLatestSupportedVersion();
       constexpr Version_t oldestVer = Interface<CIF::TraitsSpecialVersion>::GetOldestSupportedVersion();
       if ((ver <= latestVer) && (ver >= oldestVer)) {
-         
-         return CreateInterfaceVerHelper<false, latestVer, 
+
+         return CreateInterfaceVerHelper<false, latestVer,
                                           ArgsT...>(ver, std::forward<ArgsT>(args)...);
       }
 

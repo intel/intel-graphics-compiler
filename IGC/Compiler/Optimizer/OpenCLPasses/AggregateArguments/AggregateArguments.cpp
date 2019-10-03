@@ -78,7 +78,7 @@ AggregateArgumentsAnalysis::AggregateArgumentsAnalysis() : FunctionPass(ID)
 }
 
 //
-// This pass "flattens" aggregate (struct and array, non pointer) kernel 
+// This pass "flattens" aggregate (struct and array, non pointer) kernel
 // arguments into multiple implicit basic type arguments.  This pass
 // must be run after function inlining.
 //
@@ -162,7 +162,7 @@ void AggregateArgumentsAnalysis::addImplictArgs(Type* type, uint64_t baseAllocaO
         Type* elementType = seqType->getElementType();
         uint64_t elementSize = m_pDL->getTypeStoreSize(elementType);
 
-        // build the implicit arguments forwards for all elements of the 
+        // build the implicit arguments forwards for all elements of the
         // array.  If this happens to be an array of struct, the elements
         // of the struct will be handled in the recursive step.
         for (unsigned int i = 0; i < numElements; ++i)

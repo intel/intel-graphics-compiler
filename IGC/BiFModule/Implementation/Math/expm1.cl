@@ -28,10 +28,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Headers/spirv.h"
 
     #include "../ExternalLibraries/libclc/expm1.cl"
-    
+
     #if defined(cl_khr_fp64)
         #include "../ExternalLibraries/libclc/doubles.cl"
-    #endif // defined(cl_khr_fp64) 
+    #endif // defined(cl_khr_fp64)
 
 
 

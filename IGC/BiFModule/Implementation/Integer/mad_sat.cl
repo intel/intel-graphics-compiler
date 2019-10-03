@@ -524,7 +524,7 @@ long __builtin_spirv_OpenCL_s_mad_sat_i64_i64_i64( long a,
     }
     return  (hi == 0)  ?    result_lo    :
             (hi <  0)  ?    LONG_MIN :
-                            LONG_MAX;               
+                            LONG_MAX;
 }
 
 INLINE

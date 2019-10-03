@@ -42,7 +42,7 @@ namespace IGC {
     ///
     /// (1) GenXFunctionGroupAnalysis object, which stores information needed for vISA
     ///     emission. E.g, each non-empty function belongs to a uniquely defined
-    ///     function group with a kernel function as the head. 
+    ///     function group with a kernel function as the head.
     ///
     /// (2) The module itself. All functions reachable from different function
     ///     groups will be cloned if necessary; they will be ordered such that each
@@ -72,7 +72,7 @@ namespace IGC {
     class FunctionGroup {
     public:
         friend class GenXFunctionGroupAnalysis;
-        /// \brief use 2-d vector of Functions to represent FunctionGroup. 
+        /// \brief use 2-d vector of Functions to represent FunctionGroup.
         /// Each sub-vector is a subgroup led by a kernel or a stack-call function.
         /// Element [0][0] is the group head. Element[i][0] is the sub-group head.
         llvm::SmallVector<llvm::SmallVector<llvm::AssertingVH<llvm::Function>, 8>*, 4> Functions;
@@ -171,7 +171,7 @@ namespace IGC {
             assert(FG);
             return FG->getHead();
         }
-        /// \brief Get the subgroup head for the subgroup to which F belongs 
+        /// \brief Get the subgroup head for the subgroup to which F belongs
         llvm::Function* getSubGroupMap(llvm::Function* F) {
             auto I = SubGroupMap.find(F);
             if (I == SubGroupMap.end())

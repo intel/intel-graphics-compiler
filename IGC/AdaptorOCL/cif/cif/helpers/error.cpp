@@ -29,9 +29,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <cstdlib>
 
 namespace CIF {
-    
+
 void AbortImpl(){
     std::abort();
 }
-    
+
 }

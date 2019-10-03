@@ -47,7 +47,7 @@ set(IGC_BUILD__HDR__Optimizer
     "${CMAKE_CURRENT_SOURCE_DIR}/RectListOptimizationPass.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/IndirectCallOptimization.hpp"
   )
-  
+
 
 set(IGC_BUILD__HDR__Compiler_Optimizer
     ${IGC_BUILD__HDR__Optimizer}

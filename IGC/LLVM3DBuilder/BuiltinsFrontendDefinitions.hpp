@@ -755,11 +755,11 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::Create_cmpxchgato
 
 template<bool preserveNames, typename T, typename Inserter>
 inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::Create_TypedAtomic(
-    llvm::Value* resource, 
-    llvm::Value* addressU, 
-    llvm::Value* addressV, 
-    llvm::Value* addressR, 
-    llvm::Value* data, 
+    llvm::Value* resource,
+    llvm::Value* addressU,
+    llvm::Value* addressV,
+    llvm::Value* addressR,
+    llvm::Value* data,
     IGC::AtomicOp opcode)
 {
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
@@ -902,13 +902,13 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SamplePos(
     llvm::Value* int32_selIndex = this->CreateSelect(int1_one, m_int0, int32_sel);
 
     /*
-        %tempY = extractelement <32 x f32> <f32 0.0, f32 0.0, f32 4.0 / 16.0, f32 -4.0 / 16.0, f32 -6.0 / 16.0, 
-                                            f32 -2.0 / 16.0, f32 2.0 / 16.0, f32 6.0 / 16.0, f32 -3.0 / 16.0, 
-                                            f32 3.0 / 16.0, f32 1.0 / 16.0, f32 -5.0 / 16.0, f32 5.0 / 16.0, 
-                                            f32 -1.0 / 16.0, f32 7.0 / 16.0, f32 -7.0 / 16.0, f32 1.0 / 16.0, 
-                                            f32 -3.0 / 16.0, f32 2.0 / 16.0, f32 -1.0 / 16.0, f32 -2.0 / 16.0, 
-                                            f32 5.0 / 16.0, f32 3.0 / 16.0, f32 -5.0 / 16.0, f32 6.0 / 16.0, 
-                                            f32 -7.0 / 16.0, f32 -6.0 / 16.0, f32 4.0 / 16.0, f32 0.0, 
+        %tempY = extractelement <32 x f32> <f32 0.0, f32 0.0, f32 4.0 / 16.0, f32 -4.0 / 16.0, f32 -6.0 / 16.0,
+                                            f32 -2.0 / 16.0, f32 2.0 / 16.0, f32 6.0 / 16.0, f32 -3.0 / 16.0,
+                                            f32 3.0 / 16.0, f32 1.0 / 16.0, f32 -5.0 / 16.0, f32 5.0 / 16.0,
+                                            f32 -1.0 / 16.0, f32 7.0 / 16.0, f32 -7.0 / 16.0, f32 1.0 / 16.0,
+                                            f32 -3.0 / 16.0, f32 2.0 / 16.0, f32 -1.0 / 16.0, f32 -2.0 / 16.0,
+                                            f32 5.0 / 16.0, f32 3.0 / 16.0, f32 -5.0 / 16.0, f32 6.0 / 16.0,
+                                            f32 -7.0 / 16.0, f32 -6.0 / 16.0, f32 4.0 / 16.0, f32 0.0,
                                             f32 -4.0 / 16.0, f32 7.0 / 16.0, f32 -8.0 / 16.0>, i32 %selIndex
     */
     llvm::Value* float_y = nullptr;
@@ -950,13 +950,13 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SamplePos(
     }
 
     /*
-        %tempX = extractelement <32 x f32> <f32 0.0, f32 0.0, f32 4.0 / 16.0, f32 -4.0 / 16.0, f32 -2.0 / 16.0, 
-                                            f32 6.0 / 16.0, f32 -6.0 / 16.0, f32 2.0 / 16.0, f32 1.0 / 16.0, 
-                                            f32 -1.0 / 16.0, f32 5.0 / 16.0, f32 -3.0 / 16.0, f32 -5.0 / 16.0, 
-                                            f32 -7.0 / 16.0, f32 3.0 / 16.0, f32 7.0 / 16.0, f32 1.0 / 16.0, 
-                                            f32 -1.0 / 16.0, f32 -3.0 / 16.0, f32 4.0 / 16.0, f32 -5.0 / 16.0, 
-                                            f32 2.0 / 16.0, f32 5.0 / 16.0, f32 3.0 / 16.0, f32 -2.0 / 16.0, 
-                                            f32 0.0 / 16.0, f32 -4.0 / 16.0, f32 -6.0 / 16.0, f32 -8.0 / 16.0, 
+        %tempX = extractelement <32 x f32> <f32 0.0, f32 0.0, f32 4.0 / 16.0, f32 -4.0 / 16.0, f32 -2.0 / 16.0,
+                                            f32 6.0 / 16.0, f32 -6.0 / 16.0, f32 2.0 / 16.0, f32 1.0 / 16.0,
+                                            f32 -1.0 / 16.0, f32 5.0 / 16.0, f32 -3.0 / 16.0, f32 -5.0 / 16.0,
+                                            f32 -7.0 / 16.0, f32 3.0 / 16.0, f32 7.0 / 16.0, f32 1.0 / 16.0,
+                                            f32 -1.0 / 16.0, f32 -3.0 / 16.0, f32 4.0 / 16.0, f32 -5.0 / 16.0,
+                                            f32 2.0 / 16.0, f32 5.0 / 16.0, f32 3.0 / 16.0, f32 -2.0 / 16.0,
+                                            f32 0.0 / 16.0, f32 -4.0 / 16.0, f32 -6.0 / 16.0, f32 -8.0 / 16.0,
                                             f32 7.0 / 16.0, f32 6.0 / 16.0, f32 -7.0 / 16.0>, i32 %selIndex
     */
     llvm::Value* float_x = nullptr;
@@ -996,7 +996,7 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SamplePos(
         temp = this->CreateInsertElement(temp, this->getFloat(-7.0f / 16.0f), this->getInt32(31));
         float_x = this->CreateExtractElement(temp, int32_selIndex);
     }
-    
+
     llvm::Value* packed_ret_value = llvm::UndefValue::get(llvm::VectorType::get(this->getFloatTy(), 4));
     packed_ret_value = this->CreateInsertElement(packed_ret_value, float_x, this->getInt32(0));
     packed_ret_value = this->CreateInsertElement(packed_ret_value, float_y, this->getInt32(1));
@@ -1021,8 +1021,8 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLE(
     bool feedback_enabled,
     llvm::Type* returnType)
 {
-    if (minlod == nullptr) 
-    { 
+    if (minlod == nullptr)
+    {
         minlod = llvm::ConstantFP::get(coordinate_u->getType(), 0.0);
     }
 
@@ -1040,7 +1040,7 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLE(
     };
 
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
- 
+
     llvm::Type* dstType = ( returnType != nullptr ) ? returnType : this->getFloatTy();
     llvm::Type* types[] = { llvm::VectorType::get(dstType, 4), coordinate_u->getType(), ptr_textureIdx->getType(), ptr_sampler->getType() };
     if (feedback_enabled)
@@ -1068,7 +1068,7 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLEC
     llvm::Value* minlod,
     bool feedback_enabled,
     llvm::Type* returnType)
-{    
+{
     if (minlod == nullptr)
     {
         minlod = llvm::ConstantFP::get(float_address_0->getType(), 0.0);
@@ -1089,7 +1089,7 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLEC
     };
 
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
-  
+
     llvm::Type* dstType = ( returnType != nullptr ) ? returnType : this->getFloatTy();
     llvm::Type* types[] = { llvm::VectorType::get(dstType, 4), float_reference_0->getType(), int32_textureIdx->getType(), int32_sampler->getType() };
     if (feedback_enabled)
@@ -1177,7 +1177,7 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLEC
     if (feedback_enabled)
     {
         types[0] = llvm::VectorType::get(dstType, 5);
-    }    
+    }
     llvm::Function* func_llvm_GenISA_sampleLCptr_v4f32_f32 = llvm::GenISAIntrinsic::getDeclaration
         (module, llvm::GenISAIntrinsic::GenISA_sampleLCptr, llvm::ArrayRef<llvm::Type*>(types, 4));
     llvm::CallInst* packed_tex_call = this->CreateCall(func_llvm_GenISA_sampleLCptr_v4f32_f32, packed_tex_params);
@@ -1220,7 +1220,7 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_gather4
     if (feedback_enabled)
     {
         types[0] = llvm::VectorType::get(dstType, 5);
-    }    
+    }
     llvm::Function* func_llvm_GenISA_gather4Cptr_v4f32_f32 = llvm::GenISAIntrinsic::getDeclaration
         (module, llvm::GenISAIntrinsic::GenISA_gather4Cptr, llvm::ArrayRef<llvm::Type*>(types, 4));
     llvm::CallInst* packed_tex_call = this->CreateCall(func_llvm_GenISA_gather4Cptr_v4f32_f32, packed_tex_params);
@@ -1503,7 +1503,7 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLEL
     if (feedback_enabled)
     {
         types[0] = llvm::VectorType::get(dstType, 5);
-    }    
+    }
     llvm::Function* func_llvm_GenISA_sampleL_v4f32_f32 = llvm::GenISAIntrinsic::getDeclaration
         (module, llvm::GenISAIntrinsic::GenISA_sampleLptr, llvm::ArrayRef<llvm::Type*>(types, 4));
 
@@ -1819,14 +1819,14 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_ldms(
         int32_offsetV,
         int32_offsetR
     };
-    
+
     llvm::Type* dstType = ( returnType != nullptr ) ? returnType : this->getFloatTy();
     llvm::Type* types_ldms[] = { llvm::VectorType::get(dstType, 4), int32_textureIdx->getType()};
     if (feedback_enabled)
     {
         types_ldms[0] = llvm::VectorType::get(dstType, 5);
     }
-    
+
     llvm::Function* func_llvm_GenISA_ldmsptr_v4f32_f32 = llvm::GenISAIntrinsic::getDeclaration
         (module, llvm::GenISAIntrinsic::GenISA_ldmsptr, llvm::ArrayRef<llvm::Type*>(types_ldms, 2));
 
@@ -1859,15 +1859,15 @@ inline SampleParamsFromCube LLVM3DBuilder<preserveNames, T, Inserter>::Prepare_S
     //(-1,1)          (1,1)
     //Thus each un-normalized coordiate (x,y) needs to be normalized between <-1,1>
     //Below is the Math to normalize between <-1,1>
-    //u = (u * 2 + 1)/width - 1 
-    //v = (v * 2 + 1)/height - 1 
+    //u = (u * 2 + 1)/width - 1
+    //v = (v * 2 + 1)/height - 1
 
     //Using resinfo extract width and height of the buffer
     //Using resinfo extract width and height of the buffer
     llvm::Value *resinfo = this->Create_resinfo(int32_lod, int32_textureIdx);
     llvm::Value *width = this->CreateExtractElement(resinfo, m_int0);
     llvm::Value *height = this->CreateExtractElement(resinfo, m_int1);
-    
+
     //convert u, v, width and height to float
     llvm::Value *float_u = this->CreateUIToFP(int32_u, this->getFloatTy());
     llvm::Value *float_v = this->CreateUIToFP(int32_v, this->getFloatTy());
@@ -1876,14 +1876,14 @@ inline SampleParamsFromCube LLVM3DBuilder<preserveNames, T, Inserter>::Prepare_S
     //define some constants
     llvm::Value* float_minus1 = this->getFloat(-1.0);
     llvm::Value* float_2 = this->getFloat(2.0);
-    
+
     //u and v represent the coordinates of a texel for a given face
     //Now normalize u in the range [-1,1] using following equation
     //u = (2*u + 1)/width -1
     float_u = this->CreateFAdd(this->CreateFMul(float_u, float_2), m_float1);
     float_u = this->CreateFSub(this->CreateFDiv(float_u, width), m_float1);
     //Now normalize v in the range [-1,1] using following equation
-    //v = (v * 2 + 1)/height - 1 
+    //v = (v * 2 + 1)/height - 1
     float_v = this->CreateFAdd(this->CreateFMul(float_v, float_2), m_float1);
     float_v = this->CreateFSub(this->CreateFDiv(float_v, height), m_float1);
 
@@ -1898,9 +1898,9 @@ inline SampleParamsFromCube LLVM3DBuilder<preserveNames, T, Inserter>::Prepare_S
     //+x->face 0, -x->face 1, +y -> face 2, -y -> face 3, +z -> face 4, -z -> face 5
     //Now for each face we need to transform the normalized coordinates as follows
     //face 0(+X) = (-v, -u), face 1(-X) = (-v, u), face 2(+Y) = (u, v)
-    //face 3(-Y) = (u, -v) , face 4(+Z) = (u, -v), face 5(+Z) = (-u, -v) 
+    //face 3(-Y) = (u, -v) , face 4(+Z) = (u, -v), face 5(+Z) = (-u, -v)
     //Refer to https://en.wikipedia.org/wiki/Cube_mapping for details
-    llvm::Value *cubeCoordMap[6][3] = { 
+    llvm::Value *cubeCoordMap[6][3] = {
         { m_float1     ,    minus_floatv,   minus_floatu    }, //+x = face0
         { float_minus1 ,    minus_floatv,   float_u         }, //-x = face1
         { float_u ,         m_float1    ,   float_v         }, //+y = face2
@@ -1922,7 +1922,7 @@ inline SampleParamsFromCube LLVM3DBuilder<preserveNames, T, Inserter>::Prepare_S
         }
     }
 
-    //Now pick the one the row indexed by int32_faceid 
+    //Now pick the one the row indexed by int32_faceid
     llvm::Value *finalCoords[3];
     indexList[1] = int32_faceid;
     row = this->CreateGEP(float_array_6_3, llvm::ArrayRef<llvm::Value*>(indexList, 2));
@@ -2090,7 +2090,7 @@ inline SampleD_DC_FromCubeParams LLVM3DBuilder<preserveNames, T, Inserter>::Prep
     {
         llvm::BasicBlock* currentBlock = this->GetInsertBlock();
         bool shouldSplitBB = this->GetInsertPoint() != currentBlock->end();
-        
+
         // Create basic blocks.
         llvm::BasicBlock* block_final = llvm::BasicBlock::Create(this->getContext(), VALUE_NAME("cubefinal_block"));
 
@@ -2532,7 +2532,7 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::Create_UBFE(
     llvm::Value* int32_offset,
     llvm::Value* int32_source)
 {
-    //   %res = call i32 @llvm.GenISA.ubfe(i32 %src0_s, i32 %src1_s, i32 %src2_s) 
+    //   %res = call i32 @llvm.GenISA.ubfe(i32 %src0_s, i32 %src1_s, i32 %src2_s)
     llvm::Value * packed_params[] = {
         int32_width,
         int32_offset,
@@ -2548,7 +2548,7 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::Create_IBFE(
     llvm::Value* int32_offset,
     llvm::Value* int32_source)
 {
-    //   %res = call i32 @llvm.GenISA.ibfe(i32 %int32_width, i32 %int32_offset, i32 %int32_source) 
+    //   %res = call i32 @llvm.GenISA.ibfe(i32 %int32_width, i32 %int32_offset, i32 %int32_source)
     llvm::Value * packed_params[] = {
         int32_width,
         int32_offset,
@@ -2619,7 +2619,7 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::Create_FirstBitSh
     return int32_res;
 }
 
-// This method is obsolete and will be removed once GLSL and Vulkan frontends 
+// This method is obsolete and will be removed once GLSL and Vulkan frontends
 // start using the new method CreateImageDataConversion()
 template<bool preserveNames, typename T, typename Inserter>
 inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::Create_LdUAVTypedFormatConversion(
@@ -2883,7 +2883,7 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateGen9PlusIma
         // Half-floats are always non-negative, so to save space sign bit
         // is not stored and assumed to be zero.
         // Only 11 or 10 most significant bits (not counting sign bit)
-        // of the 16 bits of IEEE 754 float16 are stored. 
+        // of the 16 bits of IEEE 754 float16 are stored.
         // The least significant bits of the mantissa are assumed to be zero.
         // First value is stored in bits 0--10.     (r)
         // Second value is stored in bits 11 - 22   (g)
@@ -3210,7 +3210,7 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateGen9PlusIma
         // Store component 1 in output vector (pTempVec4[0]).
         pOutVec4 = this->CreateInsertElement(pOutVec4, pTempFloat, this->getInt32(1));
 
-        // Store 0.0f, 1.0f in the remaining components of the output vector 
+        // Store 0.0f, 1.0f in the remaining components of the output vector
         pOutVec4 = this->CreateInsertElement(pOutVec4, getFloat(0.0f), this->getInt32(2));
         pOutVec4 = this->CreateInsertElement(pOutVec4, getFloat(1.0f), this->getInt32(3));
         pFormatConvertedLLVMLdUAVTypedResult = pOutVec4;
@@ -3440,7 +3440,7 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateGen9PlusIma
         // Store component 0 in output vector (pTempVec4[0]).
         pOutVec4 = this->CreateInsertElement(pOutVec4, pTempFloat, this->getInt32(0));
 
-        // Store 0.0f, 0.0f, 1.0f in the remaining components of the output vector 
+        // Store 0.0f, 0.0f, 1.0f in the remaining components of the output vector
         pOutVec4 = this->CreateInsertElement(pOutVec4, pFpZero, this->getInt32(1));
         pOutVec4 = this->CreateInsertElement(pOutVec4, pFpZero, this->getInt32(2));
         pOutVec4 = this->CreateInsertElement(pOutVec4, getFloat(1.0f), this->getInt32(3));
@@ -4038,7 +4038,7 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateCtpop(llvm::Value 
         llvm::Intrinsic::getDeclaration(module, llvm::Intrinsic::ctpop, V->getType());
     return this->CreateCall(ctpop, V);
 }
-    
+
 template<bool preserveNames, typename T, typename Inserter>
 llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::getHalf(float f)
 {
@@ -4309,8 +4309,8 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::create_inputVecF3
 {
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
     llvm::Function* pFunc = llvm::GenISAIntrinsic::getDeclaration(
-     module, 
-     llvm::GenISAIntrinsic::GenISA_DCL_inputVec, 
+     module,
+     llvm::GenISAIntrinsic::GenISA_DCL_inputVec,
      this->getFloatTy());
     return this->CreateCall2(pFunc, inputIndex, interpolationMode);
 }
@@ -4345,7 +4345,7 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::create_countbi
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
     llvm::Function* pFunc = llvm::Intrinsic::getDeclaration(
         module,
-        llvm::Intrinsic::ctpop, 
+        llvm::Intrinsic::ctpop,
         this->getInt32Ty());
     return this->CreateCall(pFunc, src);
 }
@@ -4410,7 +4410,7 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::create_wavePrefix
     return this->CreateCall4(pFunc, src, type, this->getInt1(inclusive), Mask);
 }
 
-    // We currently use the combination of 'convergent' and 
+    // We currently use the combination of 'convergent' and
     // 'inaccessiblememonly' to prevent code motion of
     // wave intrinsics.  Removing 'readnone' from a callsite
     // is not sufficient to stop LICM from looking back up to the
@@ -4629,7 +4629,7 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::readFirstLane(llv
 {
     llvm::Value* firstLaneID = this->getFirstLaneID();
     return this->create_waveshuffleIndex(src, firstLaneID);
-}   
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Internal helper method which fills in all emulation related info
@@ -4776,19 +4776,19 @@ void LLVM3DBuilder<preserveNames, T, Inserter>::GetGen8ImageFormatInfo(
 ///
 ///     Gen HW has supports only limited number of surface formats through data
 /// port data cache typed read messages. Complete lists of formats supported
-/// for read is available in Programmer's Reference Manual. 
-/// Some of the unsupported formats are  mandatory in Vulkan and OGL. 
-/// In order to support these formats the driver and the compiler implement the 
+/// for read is available in Programmer's Reference Manual.
+/// Some of the unsupported formats are  mandatory in Vulkan and OGL.
+/// In order to support these formats the driver and the compiler implement the
 /// following emulation:
 ///
 /// GEN8:
-///     Gen8 HW doesn't return any usable data when reading from unsupported 
+///     Gen8 HW doesn't return any usable data when reading from unsupported
 /// surface format. SW maps the same image (resource) to an additional surface
 /// state which uses one of the supported formats. Frontends use this emulated,
-/// additional resource for all typed reads. Data returned by typed read 
-/// messages from the emulated resource needs to be converted to original, 
-/// unsupported image format. Frontends perform this conversion using 
-/// CreateImageDataConversion() method. Surface format of the additional 
+/// additional resource for all typed reads. Data returned by typed read
+/// messages from the emulated resource needs to be converted to original,
+/// unsupported image format. Frontends perform this conversion using
+/// CreateImageDataConversion() method. Surface format of the additional
 /// resource MUST match the surface format returned by this method. The second
 /// output parameter "requiresDoubleUSize" when set to true informs the driver
 /// that the "U" size of the image should be doubled. This is used in emulation
@@ -4796,7 +4796,7 @@ void LLVM3DBuilder<preserveNames, T, Inserter>::GetGen8ImageFormatInfo(
 /// state. Also when RequiresDoubleUSize() returns true then frontends need to
 /// adjust the U coordinate and read 2 chunks of data from 2*U and 2*U+1.
 /// Frontends can query the need for additional surface state by calling
-/// this method. If returned and input surface formats are different a new 
+/// this method. If returned and input surface formats are different a new
 /// surface state is required.
 ///
 /// GEN9+:
@@ -4827,7 +4827,7 @@ IGC::SURFACE_FORMAT LLVM3DBuilder<preserveNames, T, Inserter>::GetSubstituteImag
 
 
 ///////////////////////////////////////////////////////////////////////////////
-/// @brief Returns true when 128 bit format emulation requires to double the 
+/// @brief Returns true when 128 bit format emulation requires to double the
 ///     U size of the additional resource.
 ///
 /// Gen8 HW doesn't support any of the 128bit formats. For all required 128bit
@@ -4882,7 +4882,7 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateImageDataConversio
     {
         struct LLVM3DBuilder<preserveNames, T, Inserter>::ImageFormatInfo info;
         this->GetGen8ImageFormatInfo(format, info);
-        
+
         if (!info.m_RequiresConversion)
         {
             assert(dataHi == nullptr);
@@ -5203,7 +5203,7 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateGen8ImageDataConve
 
 
 ///////////////////////////////////////////////////////////////////////////////
-/// @brief Creates data conversion for typed image reads for 128 bit formats 
+/// @brief Creates data conversion for typed image reads for 128 bit formats
 ///        on Gen8 HW
 /// @see Description of GetSubstituteImageFormat() method.
 /// @param format Surface format of the typed image (original i.e. from shader)
@@ -5215,7 +5215,7 @@ template<bool preserveNames, typename T, typename Inserter>
 inline
 llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateGen8ImageDataConversion(
     IGC::SURFACE_FORMAT format,
-    llvm::Value* rawDataRGVec, 
+    llvm::Value* rawDataRGVec,
     llvm::Value* rawDataBAVec)
 {
     if (rawDataBAVec == nullptr || rawDataRGVec == nullptr)
@@ -5278,7 +5278,7 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateCPSRqstCoar
             vec,
             sizeY,
             this->getInt32(1));
-       
+
 }
 
 template<bool preserveNames, typename T, typename Inserter>
@@ -5300,7 +5300,7 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateCPSActualCo
             vec,
             sizeY,
             this->getInt32(1));
-       
+
 }
 
 

@@ -1327,7 +1327,7 @@ namespace IGC
         }
         return vecValue;
     }
-    
+
     llvm::Value* ConvertToFloat(llvm::IRBuilder<>& builder, llvm::Value* val)
     {
         llvm::Value* ret = val;
@@ -1363,7 +1363,7 @@ namespace IGC
                 instList[i] = builder.CreateExtractElement(val, static_cast<uint64_t>(0));
                 size_t iOld = i;
                 for (unsigned j = 1; j < val->getType()->getVectorNumElements(); j++)
-                {                    
+                {
                     instList.insert(instList.begin()+ iOld +j, builder.CreateExtractElement(val, j));
                     i++;
                 }

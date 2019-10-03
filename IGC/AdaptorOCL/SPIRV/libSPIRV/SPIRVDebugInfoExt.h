@@ -698,7 +698,7 @@ namespace spv {
         SPIRVWord getFlags() { return arg<SPIRVWord>(SPIRVDebug::Operand::TypeEnum::FlagsIdx); }
         std::pair<SPIRVString*, uint64_t> getItem(unsigned int idx)
         {
-            return std::make_pair(str((idx * 2) + SPIRVDebug::Operand::TypeEnum::FirstEnumeratorIdx+1), 
+            return std::make_pair(str((idx * 2) + SPIRVDebug::Operand::TypeEnum::FirstEnumeratorIdx+1),
                 const_val((idx * 2) + SPIRVDebug::Operand::TypeEnum::FirstEnumeratorIdx));
         }
         unsigned int getNumItems() { return (getNumArgs() - SPIRVDebug::Operand::TypeEnum::FirstEnumeratorIdx)/2; }

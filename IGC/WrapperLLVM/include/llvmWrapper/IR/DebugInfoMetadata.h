@@ -37,7 +37,7 @@ namespace IGCLLVM
     class DISubprogram : public llvm::DISubprogram
     {
     public:
-        inline llvm::DINodeArray getVariables() 
+        inline llvm::DINodeArray getVariables()
         {
             return llvm::DISubprogram::getRetainedNodes();
         }

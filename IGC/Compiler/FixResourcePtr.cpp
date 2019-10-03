@@ -364,13 +364,13 @@ Value* FixResourcePtr::CreateStoreIntrinsic(StoreInst* inst, Instruction* bufPtr
     return st;
 }
 
-/// 
-/// @brief Resolves the buffer index argument of GetBufferPtr intrinsic. 
-/// 
-/// This method looks for a ConstInt value of the buffer index. It handles 
-/// cases where the input buffer index is an extracted element of a vector, 
+///
+/// @brief Resolves the buffer index argument of GetBufferPtr intrinsic.
+///
+/// This method looks for a ConstInt value of the buffer index. It handles
+/// cases where the input buffer index is an extracted element of a vector,
 /// e.g.
-/// 
+///
 ///  %17 = extractelement <2 x i32> zeroinitializer, i32 0
 ///  %19 = insertelement  <4 x i32> undef, i32 %17, i32 0
 ///  %20 = insertelement  <4 x i32> %19, i32 %15, i32 1
@@ -381,11 +381,11 @@ Value* FixResourcePtr::CreateStoreIntrinsic(StoreInst* inst, Instruction* bufPtr
 ///  %24 = extractelement <4 x i32> %Temp-47.i, i32 2
 ///  %25 = extractelement <4 x i32> %Temp-47.i, i32 3
 ///  %26 = call i32 addrspace(1179648)* @llvm.genx.GenISA.GetBufferPtr.p1179648i32(i32 %22, i32 1)
-/// 
+///
 /// @param bufferIndex Buffer index value to resolve
 /// @param vectorIndex Index inside of a vector where the buffer index is stored
 /// @returns Value* ConstantInt buffer index if resolved or the input bufferIndex
-/// 
+///
 Value* FixResourcePtr::ResolveBufferIndex(Value* bufferIndex, Value* vectorIndex)
 {
     if (Constant * c = dyn_cast<Constant>(bufferIndex))
@@ -403,7 +403,7 @@ Value* FixResourcePtr::ResolveBufferIndex(Value* bufferIndex, Value* vectorIndex
     else if (ExtractElementInst * ee = dyn_cast<ExtractElementInst>(bufferIndex))
     {
         return ResolveBufferIndex(
-            ee->getOperand(0),  // vector argument to extract from 
+            ee->getOperand(0),  // vector argument to extract from
             ee->getOperand(1)); // element index in vector
     }
     else if (InsertElementInst * ie = dyn_cast<InsertElementInst>(bufferIndex))

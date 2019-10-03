@@ -45,7 +45,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 // This class computes live variables using a sparse implementation based on
 // the llvm-ir SSA form.  This class uses the dominance properties of SSA form
-// to efficiently compute live variables for virtual registers. Also Note that 
+// to efficiently compute live variables for virtual registers. Also Note that
 // there is no physical register at llvm-ir level.
 //
 //===----------------------------------------------------------------------===//

@@ -142,7 +142,7 @@ namespace IGC
         /// @param vectorVal Vector being checked
         void obtainVectorValueWhichMightBeScalarizedImpl(llvm::Value* vectorVal);
 
-        /// @brief obtaining vector values that are needed after scalarizaion by invoking 
+        /// @brief obtaining vector values that are needed after scalarizaion by invoking
         ///  obtainVectorValueWhichMightBeScalarizedImpl over m_usedVectors
         void resolveVectorValues();
 
@@ -181,7 +181,7 @@ namespace IGC
         /// @param scalarValues array of values to place in SCMEntry
         /// @param origValue Value which is the key of the SCMEntry
         /// @param isOrigValueRemoved True if original (vector) value was erased during scalarization
-        /// @param matchDbgLoc True if we want to match debug loc of the scalar value to orig Value.    
+        /// @param matchDbgLoc True if we want to match debug loc of the scalar value to orig Value.
         void updateSCMEntryWithValues(SCMEntry* entry, llvm::Value* scalarValues[],
             const llvm::Value* origValue, bool isOrigValueRemoved,
             bool matchDbgLoc = true);

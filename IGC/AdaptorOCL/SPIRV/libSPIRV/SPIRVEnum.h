@@ -244,7 +244,7 @@ inline bool isValidSPIRVMemSemanticsMask(SPIRVWord MemMask) {
   return MemMask < 1 << ((unsigned)MemorySemanticsImageMemoryShift + 1);
 }
 
-//enum SPIRVSamplerAddressingModeKind 
+//enum SPIRVSamplerAddressingModeKind
 typedef spv::SamplerAddressingMode SPIRVSamplerAddressingModeKind;
 
 //enum SPIRVSamplerFilterModeKind

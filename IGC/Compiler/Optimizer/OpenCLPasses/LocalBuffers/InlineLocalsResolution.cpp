@@ -341,7 +341,7 @@ void InlineLocalsResolution::collectInfoOnSharedLocalMem(Module& M)
         // For each SLM buffer, set section to avoid alignment changing by llvm.
         globalVar->setSection("SLMbuffer");
 
-        // Find the functions which this globalVar belongs to.... 
+        // Find the functions which this globalVar belongs to....
         for (Value::user_iterator U = globalVar->user_begin(), UE = globalVar->user_end(); U != UE; ++U)
         {
             Instruction* user = dyn_cast<Instruction>(*U);
@@ -380,7 +380,7 @@ void InlineLocalsResolution::computeOffsetList(Module& M, std::map<Function*, un
         return;
     }
 
-    // let's travese the CallGraph to calculate the local 
+    // let's travese the CallGraph to calculate the local
     // variables of kernel from all user functions.
     m_chkSet.clear();
     for (auto& N : CG)
@@ -425,7 +425,7 @@ void InlineLocalsResolution::computeOffsetList(Module& M, std::map<Function*, un
     // Ok, we've collected the information, now write it into the MD.
     for (auto iter = sizeMap.begin(), end = sizeMap.end(); iter != end; ++iter)
     {
-        // ignore non-entry functions. 
+        // ignore non-entry functions.
         if (!isEntryFunc(pMdUtils, iter->first))
         {
             continue;
@@ -496,7 +496,7 @@ void InlineLocalsResolution::traveseCGN(llvm::CallGraphNode& CGN)
             // this sub-function has automatic storage
             if (m_FuncToMemPoolSizeMap.find(f) != m_FuncToMemPoolSizeMap.end())
             {
-                // caller has its own memory pool size, choose the max  
+                // caller has its own memory pool size, choose the max
                 m_FuncToMemPoolSizeMap[f] = std::max(m_FuncToMemPoolSizeMap[f], m_FuncToMemPoolSizeMap[sub]);
             }
             else

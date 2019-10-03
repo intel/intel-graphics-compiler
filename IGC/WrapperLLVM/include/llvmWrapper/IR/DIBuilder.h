@@ -88,7 +88,7 @@ namespace IGCLLVM
                 Scope, Name, LinkageName, File, LineNo, Ty, isLocalToUnit, isDefinition,
                 ScopeLine, Flags, isOptimized, TParams, Decl, ThrownTypes);
 #elif LLVM_VERSION_MAJOR >= 8
-                Scope, Name, LinkageName, File, LineNo, Ty, isLocalToUnit, Flags, 
+                Scope, Name, LinkageName, File, LineNo, Ty, isLocalToUnit, Flags,
                 llvm::DISubprogram::SPFlagDefinition, TParams, Decl, ThrownTypes);
 #endif
         }

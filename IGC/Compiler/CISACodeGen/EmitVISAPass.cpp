@@ -10425,7 +10425,7 @@ CVariable* EmitPass::ScanReducePrepareSrc(VISA_Type type, uint64_t identityValue
     }
     m_encoder->Copy(dst, src);
     m_encoder->Push();
-    
+
     m_encoder->SetSecondHalf(savedSecondHalf);
 
     return dst;

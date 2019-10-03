@@ -84,7 +84,7 @@ namespace IGC
         ~AddImplicitArgs() {}
 
         /// @brief  Provides name of pass
-        virtual llvm::StringRef getPassName() const override 
+        virtual llvm::StringRef getPassName() const override
         {
             return "AddImplictArgs";
         }
@@ -103,11 +103,11 @@ namespace IGC
         virtual bool runOnModule(llvm::Module &M) override;
 
     private:
-        /// @brief  Create the type of the new function, 
+        /// @brief  Create the type of the new function,
         ///         including all explicit and needed impliict parameters
         /// @param  pFunc           The old function
         /// @param  pImplicitArgs   The impliict arguments needed by this function
-        /// @returns    The new functuin type 
+        /// @returns    The new functuin type
         llvm::FunctionType* getNewFuncType(llvm::Function* pFunc, const ImplicitArgs* pImplicitArgs);
 
         /// @brief  Transfers uses of old arguments to new arguments, sets names of all arguments

@@ -66,7 +66,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 using namespace IGC;
-using namespace IGC::IGCMD; 
+using namespace IGC::IGCMD;
 using namespace IGC::Debug;
 
 namespace iOpenCL
@@ -93,7 +93,7 @@ template <class Type>
 __forceinline Type FloatToFixed(
     float value,
     const int whole,
-    const int fractional, 
+    const int fractional,
     const int round = 0 )
 {
     ICBE_ASSERT( fractional + whole <= 32 );
@@ -107,7 +107,7 @@ __forceinline Type FloatToFixed(
 
 #ifdef _DEBUG
     DWORD mask = 0xffffffff << ( whole + fractional );
-    ICBE_ASSERT( 
+    ICBE_ASSERT(
         (( fixed >= 0 ) && (( fixed & mask ) == 0 )) ||
         (( fixed <  0 ) && (( fixed & mask ) == mask )) );
 #endif
@@ -130,7 +130,7 @@ c -= a; c -= b; c ^= (b>>15);  \
 
 inline QWORD Hash( const DWORD *data, DWORD count )
 {
-    DWORD   a = 0x428a2f98, hi = 0x71374491, lo = 0xb5c0fbcf; 
+    DWORD   a = 0x428a2f98, hi = 0x71374491, lo = 0xb5c0fbcf;
     while( count-- )
     {
         a ^= *(data++);
@@ -265,9 +265,9 @@ void CGen8OpenCLStateProcessor::CreateKernelBinary(
 
     if( retValue.Success )
     {
-        retValue = CreateKernelHeap( 
+        retValue = CreateKernelHeap(
             annotations,
-            rawIsaBinary, 
+            rawIsaBinary,
             rawIsaBinarySize,
             pSystemThreadKernelOutput,
             kernelContext,
@@ -276,7 +276,7 @@ void CGen8OpenCLStateProcessor::CreateKernelBinary(
 
     if( retValue.Success )
     {
-        retValue = CreateSurfaceStateHeap( 
+        retValue = CreateSurfaceStateHeap(
             annotations,
             layout,
             gtpinEnabled,
@@ -286,7 +286,7 @@ void CGen8OpenCLStateProcessor::CreateKernelBinary(
 
     if( retValue.Success )
     {
-        retValue = CreateDynamicStateHeap( 
+        retValue = CreateDynamicStateHeap(
             annotations,
             kernelContext,
             dynamicStateHeap );
@@ -294,8 +294,8 @@ void CGen8OpenCLStateProcessor::CreateKernelBinary(
 
     if( retValue.Success )
     {
-        retValue = CreatePatchList( 
-            annotations, 
+        retValue = CreatePatchList(
+            annotations,
             programInfo,
             layout,
             kernelContext,
@@ -358,7 +358,7 @@ void CGen8OpenCLStateProcessor::CreateProgramScopePatchStream(const IGC::SOpenCL
             membuf );
 
         // And now write the actual data
-        membuf.Write((char*)iter->InlineData.data(), 
+        membuf.Write((char*)iter->InlineData.data(),
                      iter->InlineData.size());
     }
 
@@ -378,7 +378,7 @@ void CGen8OpenCLStateProcessor::CreateProgramScopePatchStream(const IGC::SOpenCL
             membuf );
 
         // And now write the actual data
-        membuf.Write((char*)iter->InlineData.data(), 
+        membuf.Write((char*)iter->InlineData.data(),
                      iter->InlineData.size());
     }
 
@@ -539,8 +539,8 @@ RETVAL CGen8OpenCLStateProcessor::AddSystemKernel(
     return retValue;
 }
 
-RETVAL CGen8OpenCLStateProcessor::CreateKernelHeap( 
-    const IGC::SOpenCLKernelInfo& annotations, 
+RETVAL CGen8OpenCLStateProcessor::CreateKernelHeap(
+    const IGC::SOpenCLKernelInfo& annotations,
     const char* kernelBinary,
     unsigned int kernelBinarySize,
     USC::SSystemThreadKernelOutput* pSystemThreadKernelOutput,
@@ -580,8 +580,8 @@ RETVAL CGen8OpenCLStateProcessor::CreateKernelHeap(
     return retValue;
 }
 
-RETVAL CGen8OpenCLStateProcessor::CreateSurfaceStateHeap( 
-    const IGC::SOpenCLKernelInfo& annotations, 
+RETVAL CGen8OpenCLStateProcessor::CreateSurfaceStateHeap(
+    const IGC::SOpenCLKernelInfo& annotations,
     const IGC::CBTILayout& layout,
     const bool gtpinEnabled,
     SStateProcessorContextGen8_0& context,
@@ -628,7 +628,7 @@ RETVAL CGen8OpenCLStateProcessor::CreateSurfaceStateHeap(
 
         SurfaceStates.insert(
             std::make_pair(
-                bti, 
+                bti,
                 SurfaceState(
                     SURFACE_BUFFER,
                     SURFACE_FORMAT_RAW,
@@ -644,7 +644,7 @@ RETVAL CGen8OpenCLStateProcessor::CreateSurfaceStateHeap(
 
         SurfaceStates.insert(
             std::make_pair(
-                bti, 
+                bti,
                 SurfaceState(
                     SURFACE_BUFFER,
                     SURFACE_FORMAT_UNKNOWN,
@@ -663,7 +663,7 @@ RETVAL CGen8OpenCLStateProcessor::CreateSurfaceStateHeap(
 
             SURFACE_TYPE surfaceType = SURFACE_UNKNOWN;
 
-            switch( annotation->ImageType ) 
+            switch( annotation->ImageType )
             {
             case iOpenCL::IMAGE_MEMORY_OBJECT_BUFFER:
                 surfaceType = SURFACE_BUFFER;
@@ -728,7 +728,7 @@ RETVAL CGen8OpenCLStateProcessor::CreateSurfaceStateHeap(
 
             SurfaceStates.insert(
                   std::make_pair(
-                      bti, 
+                      bti,
                       SurfaceState(
                           surfaceType,
                           SURFACE_FORMAT_UNKNOWN,
@@ -829,7 +829,7 @@ RETVAL CGen8OpenCLStateProcessor::CreateSurfaceStateHeap(
         const DWORD alignment = HWCaps().BindingTableStatePointerAlignSize;
         membuf.Align( alignment );
 
-        context.Surface.BindingTableOffset = (DWORD)membuf.Size();        
+        context.Surface.BindingTableOffset = (DWORD)membuf.Size();
 
         for( DWORD i = 0; i < btiCount; i++ )
         {
@@ -859,8 +859,8 @@ RETVAL CGen8OpenCLStateProcessor::CreateSurfaceStateHeap(
     return retValue;
 }
 
-RETVAL CGen8OpenCLStateProcessor::CreateDynamicStateHeap( 
-    const IGC::SOpenCLKernelInfo& annotations, 
+RETVAL CGen8OpenCLStateProcessor::CreateDynamicStateHeap(
+    const IGC::SOpenCLKernelInfo& annotations,
     SStateProcessorContextGen8_0& context,
     Util::BinaryStream& membuf )
 {
@@ -870,7 +870,7 @@ RETVAL CGen8OpenCLStateProcessor::CreateDynamicStateHeap(
     const DWORD numInlineSamplers = (DWORD)annotations.m_samplerInput.size();
     const DWORD numSamplers = numArgumentSamplers + numInlineSamplers;
 
-    // Driver may assume that sampler states are in consecutive locations, so 
+    // Driver may assume that sampler states are in consecutive locations, so
     // allocate border color states first, so the layout will be:
     // |BC0|BC1|BC2|...|SS0|SS1|SS2|...
     // (instead of |BC0|SS0|BC1|SS1|...)
@@ -910,7 +910,7 @@ RETVAL CGen8OpenCLStateProcessor::CreateDynamicStateHeap(
         }
         else
         {
-            // If border color is not programmable, we can create only one that will be shared 
+            // If border color is not programmable, we can create only one that will be shared
             // among all sampler states used in a kernel.
             DWORD borderColorOffset = AllocateSamplerIndirectState(G6HWC::g_cInitGfxSamplerIndirectState, membuf);
             borderColorOffsets[0] = borderColorOffset;
@@ -931,8 +931,8 @@ RETVAL CGen8OpenCLStateProcessor::CreateDynamicStateHeap(
         DWORD borderColorStep = (m_Context && m_Context->m_DriverInfo.ProgrammableBorderColorInCompute()) ? 1 : 0;
 
         // First handle the sampler arguments
-        for (auto i = annotations.m_samplerArgument.begin(); 
-            i != annotations.m_samplerArgument.end(); 
+        for (auto i = annotations.m_samplerArgument.begin();
+            i != annotations.m_samplerArgument.end();
             ++i, borderColorIndex += borderColorStep)
         {
             const SamplerArgumentAnnotation* samplerAnnotation = *i;
@@ -980,7 +980,7 @@ RETVAL CGen8OpenCLStateProcessor::CreateDynamicStateHeap(
             {
                 // Texture SAMPLER_STATE is located in the dynamic heap by
                 // multiply the sampler index by 4 DWORDS.  This is not true
-                // for VA samplers because they are longer in length.  This 
+                // for VA samplers because they are longer in length.  This
                 // means sampler index 4, for example, can point to multiple
                 // locations in the dynamic heap depending on if a SAMPLE
                 // or VA_SAMPLE instruction is used.  We currently don't check
@@ -997,8 +997,8 @@ RETVAL CGen8OpenCLStateProcessor::CreateDynamicStateHeap(
             assert(!(m_Context && m_Context->m_DriverInfo.ProgrammableBorderColorInCompute()) || borderColorIndex == numArgumentSamplers);
 
             // And then the inline samplers
-            for (auto i = annotations.m_samplerInput.begin(); 
-                i != annotations.m_samplerInput.end(); 
+            for (auto i = annotations.m_samplerInput.begin();
+                i != annotations.m_samplerInput.end();
                 ++i, borderColorIndex += borderColorStep)
             {
                 const SamplerInputAnnotation* samplerAnnotation = *i;
@@ -1060,37 +1060,37 @@ RETVAL CGen8OpenCLStateProcessor::CreateDynamicStateHeap(
             ifdd.DW4.Gen8 = G6HWC::g_cInitMediaStateInterfaceDescriptorDataDW4Gen8;
             ifdd.DW5.Gen8 = G6HWC::g_cInitMediaStateInterfaceDescriptorDataDW5Gen8;
 
-            ifdd.DW0.All.KernelStartPointer = 
+            ifdd.DW0.All.KernelStartPointer =
                 context.Kernel.KernelOffset /
                 HWCaps().KernelPointerAlignSize;
 
             ifdd.DW2.Gen8.SoftwareExceptionEnable = false;
             ifdd.DW2.Gen8.MaskStackExceptionEnable = false;
             ifdd.DW2.Gen8.IllegalOpcodeExceptionEnable = false;
-            ifdd.DW2.Gen8.FloatingPointMode = 
+            ifdd.DW2.Gen8.FloatingPointMode =
                 G6HWC::GFXMEDIASTATE_FLOATING_POINT_IEEE_754;
-            ifdd.DW2.Gen8.ThreadPriority = 
+            ifdd.DW2.Gen8.ThreadPriority =
                 G6HWC::GFXMEDIASTATE_THREAD_PRIORITY_NORMAL;
 
-            ifdd.DW2.Gen8.SingleProgramFlow = 
+            ifdd.DW2.Gen8.SingleProgramFlow =
                 annotations.m_executionEnivronment.IsSingleProgramFlow;
 
-            ifdd.DW3.Gen8.SamplerCount = 
+            ifdd.DW3.Gen8.SamplerCount =
                 context.Dynamic.SamplerCount;
             ifdd.DW3.Gen8.SamplerStatePointer =
                 context.Dynamic.SamplerArrayOffset /
                 HWCaps().SamplerStatePointerAlignSize;
 
-            ifdd.DW4.Gen8.BindingTableEntryCount = 
+            ifdd.DW4.Gen8.BindingTableEntryCount =
                 context.Surface.SurfaceCount;
             ifdd.DW4.Gen8.BindingTablePointer    =
                 context.Surface.BindingTableOffset /
-                HWCaps().BindingTableStatePointerAlignSize;              
+                HWCaps().BindingTableStatePointerAlignSize;
 
             ifdd.DW5.Gen8.ConstantURBEntryReadOffset = 0;
             ifdd.DW5.Gen8.ConstantURBEntryReadLength = 0;
 
-            ifdd.DW7.Gen8.CrossThreadConstantDataReadLength = 
+            ifdd.DW7.Gen8.CrossThreadConstantDataReadLength =
                 annotations.m_kernelProgram.ConstantBufferLength;
 
             if( membuf.Write( ifdd ) == false )
@@ -1140,7 +1140,7 @@ DWORD CGen8OpenCLStateProcessor::AllocateSamplerIndirectState(
 }
 
 RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
-    const IGC::SOpenCLKernelInfo& annotations, 
+    const IGC::SOpenCLKernelInfo& annotations,
     const IGC::SOpenCLProgramInfo& programInfo,
     const IGC::CBTILayout& layout,
     const SStateProcessorContextGen8_0& context,
@@ -1189,10 +1189,10 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
 
             patch.Token = iOpenCL::PATCH_TOKEN_MEDIA_VFE_STATE;
             patch.Size = sizeof( patch );
-            patch.ScratchSpaceOffset = 0; 
+            patch.ScratchSpaceOffset = 0;
 
-            patch.PerThreadScratchSpace = 
-                iSTD::RoundPower2( 
+            patch.PerThreadScratchSpace =
+                iSTD::RoundPower2(
                     iSTD::Max(perThreadScratchSpaceSizeInBytes,
                                static_cast<DWORD>( sizeof(KILOBYTE) ) ) );
 
@@ -1268,7 +1268,7 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
 
         DWORD   count = context.Dynamic.SamplerCount;
         DWORD   offset = context.Dynamic.SamplerArrayOffset;
-        DWORD   borderColorOffset = 
+        DWORD   borderColorOffset =
             context.Dynamic.SamplerBorderColorStateOffset;
 
         iOpenCL::SPatchSamplerStateArray    patch;
@@ -1288,8 +1288,8 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
 
         if( retValue.Success )
         {
-            for( SamplerArgumentIterator i = annotations.m_samplerArgument.begin(); 
-                 i != annotations.m_samplerArgument.end(); 
+            for( SamplerArgumentIterator i = annotations.m_samplerArgument.begin();
+                 i != annotations.m_samplerArgument.end();
                  ++i )
             {
                 SamplerArgumentAnnotation* samplerAnnotation = *i;
@@ -1366,10 +1366,10 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
     // Patch for SRVs & UAVs
     if( retValue.Success )
     {
-        bool transformable = InlineSamplersAllow3DImageTransformation(annotations); 
-        
+        bool transformable = InlineSamplersAllow3DImageTransformation(annotations);
+
         for (ImageArgumentIterator i = annotations.m_imageInputAnnotations.begin();
-            i != annotations.m_imageInputAnnotations.end(); 
+            i != annotations.m_imageInputAnnotations.end();
             ++i )
         {
             ImageArgumentAnnotation* imageInput = *i;
@@ -1421,14 +1421,14 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
 
             patch.Token = iOpenCL::PATCH_TOKEN_ALLOCATE_LOCAL_SURFACE;
             patch.Size = sizeof( patch );
-            patch.TotalInlineLocalMemorySize = 
+            patch.TotalInlineLocalMemorySize =
                 annotations.m_executionEnivronment.SumFixedTGSMSizes;
 
             retValue = AddPatchItem(
                 patch,
-                membuf );  
+                membuf );
         }
-    }     
+    }
 
     // Patch for Private Memory
 
@@ -1458,8 +1458,8 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
     // Patch information for variable TGSM data parameters:
     if( retValue.Success )
     {
-        for( LocalArgumentIterator i = annotations.m_localPointerArgument.begin(); 
-            i != annotations.m_localPointerArgument.end(); 
+        for( LocalArgumentIterator i = annotations.m_localPointerArgument.begin();
+            i != annotations.m_localPointerArgument.end();
             ++i )
         {
             LocalArgumentAnnotation* localArg = *i;
@@ -1476,8 +1476,8 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
             patch.Offset = localArg->PayloadPosition;
             patch.Type =  iOpenCL::DATA_PARAMETER_SUM_OF_LOCAL_MEMORY_OBJECT_ARGUMENT_SIZES;
 
-            dataParameterStreamSize = std::max( 
-                dataParameterStreamSize, 
+            dataParameterStreamSize = std::max(
+                dataParameterStreamSize,
                 localArg->PayloadPosition + localArg->PayloadSizeInBytes );
 
             if( retValue.Success )
@@ -1492,8 +1492,8 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
     //     Constant Input Parameters
     if( retValue.Success )
     {
-        for( ConstantInputIterator i = annotations.m_constantInputAnnotation.begin(); 
-            i != annotations.m_constantInputAnnotation.end(); 
+        for( ConstantInputIterator i = annotations.m_constantInputAnnotation.begin();
+            i != annotations.m_constantInputAnnotation.end();
             ++i )
         {
             ConstantInputAnnotation* constInput = *i;
@@ -1516,8 +1516,8 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
             patch.LocationIndex = constInput->LocationIndex;
             patch.LocationIndex2 = constInput->LocationCount;
 
-            dataParameterStreamSize = std::max( 
-                dataParameterStreamSize, 
+            dataParameterStreamSize = std::max(
+                dataParameterStreamSize,
                 constInput->PayloadPosition + constInput->PayloadSizeInBytes );
 
             if( retValue.Success )
@@ -1528,12 +1528,12 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
             }
         }
     }
-    
+
     //     Pointer Kernel Arguments
     if( retValue.Success )
     {
-        for( PointerArgumentIterator i = annotations.m_pointerArgument.begin(); 
-            i != annotations.m_pointerArgument.end(); 
+        for( PointerArgumentIterator i = annotations.m_pointerArgument.begin();
+            i != annotations.m_pointerArgument.end();
             ++i )
         {
             PointerArgumentAnnotation* ptrArg = *i;
@@ -1541,12 +1541,12 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
             if( ptrArg->IsStateless == true || ptrArg->IsBindlessAccess)
             {
                 if( ptrArg->AddressSpace == KERNEL_ARGUMENT_ADDRESS_SPACE_GLOBAL )
-                {                    
+                {
                     iOpenCL::SPatchStatelessGlobalMemoryObjectKernelArgument patch;
 
                     memset( &patch, 0, sizeof( patch ) );
 
-                    unsigned int bti = annotations.m_argIndexMap.at(ptrArg->ArgumentNumber);        
+                    unsigned int bti = annotations.m_argIndexMap.at(ptrArg->ArgumentNumber);
                     patch.Token = iOpenCL::PATCH_TOKEN_STATELESS_GLOBAL_MEMORY_OBJECT_KERNEL_ARGUMENT;
                     patch.Size = sizeof( patch );
                     patch.ArgumentNumber = ptrArg->ArgumentNumber;
@@ -1557,8 +1557,8 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
                     patch.LocationIndex2 = ptrArg->LocationCount;
                     patch.IsEmulationArgument = ptrArg->IsEmulationArgument;
 
-                    dataParameterStreamSize = std::max( 
-                        dataParameterStreamSize, 
+                    dataParameterStreamSize = std::max(
+                        dataParameterStreamSize,
                         ptrArg->PayloadPosition + ptrArg->PayloadSizeInBytes );
 
                     retValue = AddPatchItem(
@@ -1571,7 +1571,7 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
 
                     memset( &patch, 0, sizeof( patch ) );
 
-                    unsigned int bti = annotations.m_argIndexMap.at(ptrArg->ArgumentNumber);  
+                    unsigned int bti = annotations.m_argIndexMap.at(ptrArg->ArgumentNumber);
                     patch.Token = iOpenCL::PATCH_TOKEN_STATELESS_CONSTANT_MEMORY_OBJECT_KERNEL_ARGUMENT;
                     patch.Size = sizeof( patch );
                     patch.ArgumentNumber = ptrArg->ArgumentNumber;
@@ -1582,8 +1582,8 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
                     patch.LocationIndex2 = ptrArg->LocationCount;
                     patch.IsEmulationArgument = ptrArg->IsEmulationArgument;
 
-                    dataParameterStreamSize = std::max( 
-                        dataParameterStreamSize, 
+                    dataParameterStreamSize = std::max(
+                        dataParameterStreamSize,
                         ptrArg->PayloadPosition + ptrArg->PayloadSizeInBytes );
 
                     retValue = AddPatchItem(
@@ -1662,15 +1662,15 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
     // Pointer inputs with initializer
     if( retValue.Success )
     {
-        for( PointerInputIterator i = annotations.m_pointerInput.begin(); 
-            i != annotations.m_pointerInput.end(); 
+        for( PointerInputIterator i = annotations.m_pointerInput.begin();
+            i != annotations.m_pointerInput.end();
             ++i )
         {
             PointerInputAnnotation* ptrArg = *i;
 
             if( ptrArg->IsStateless == true )
             {
-                if(ptrArg->AddressSpace == iOpenCL::KERNEL_ARGUMENT_ADDRESS_SPACE_CONSTANT) 
+                if(ptrArg->AddressSpace == iOpenCL::KERNEL_ARGUMENT_ADDRESS_SPACE_CONSTANT)
                 {
                     iOpenCL::SPatchAllocateStatelessConstantMemorySurfaceWithInitialization patch;
                     memset( &patch, 0, sizeof( patch ) );
@@ -1683,15 +1683,15 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
                     patch.DataParamSize = ptrArg->PayloadSizeInBytes;
                     patch.ConstantBufferIndex = DEFAULT_CONSTANT_BUFFER_INDEX;
 
-                    dataParameterStreamSize = std::max( 
-                        dataParameterStreamSize, 
+                    dataParameterStreamSize = std::max(
+                        dataParameterStreamSize,
                         ptrArg->PayloadPosition + ptrArg->PayloadSizeInBytes );
 
                     retValue = AddPatchItem(
                         patch,
                         membuf );
                 }
-                else if(ptrArg->AddressSpace == iOpenCL::KERNEL_ARGUMENT_ADDRESS_SPACE_GLOBAL) 
+                else if(ptrArg->AddressSpace == iOpenCL::KERNEL_ARGUMENT_ADDRESS_SPACE_GLOBAL)
                 {
                     iOpenCL::SPatchAllocateStatelessGlobalMemorySurfaceWithInitialization patch;
                     memset( &patch, 0, sizeof( patch ) );
@@ -1704,22 +1704,22 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
                     patch.DataParamSize = ptrArg->PayloadSizeInBytes;
                     patch.GlobalBufferIndex = 0;
 
-                    dataParameterStreamSize = std::max( 
-                        dataParameterStreamSize, 
+                    dataParameterStreamSize = std::max(
+                        dataParameterStreamSize,
                         ptrArg->PayloadPosition + ptrArg->PayloadSizeInBytes );
 
                     retValue = AddPatchItem(
                         patch,
                         membuf );
                 }
-                else if(ptrArg->AddressSpace == iOpenCL::KERNEL_ARGUMENT_ADDRESS_SPACE_PRIVATE) 
+                else if(ptrArg->AddressSpace == iOpenCL::KERNEL_ARGUMENT_ADDRESS_SPACE_PRIVATE)
                 {
 
                     iOpenCL::SPatchAllocateStatelessPrivateSurface patch;
                     memset( &patch, 0, sizeof( patch ) );
 
                     PrivateInputAnnotation* ptrArg = static_cast<PrivateInputAnnotation*>(*i);
-                    unsigned int bti = annotations.m_argIndexMap.at(ptrArg->ArgumentNumber);        
+                    unsigned int bti = annotations.m_argIndexMap.at(ptrArg->ArgumentNumber);
                     patch.Token = iOpenCL::PATCH_TOKEN_ALLOCATE_STATELESS_PRIVATE_MEMORY;
                     patch.Size = sizeof( patch );
                     patch.SurfaceStateHeapOffset = context.Surface.SurfaceOffset[ bti ];
@@ -1729,8 +1729,8 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
                     patch.DataParamOffset = ptrArg->PayloadPosition;
                     patch.DataParamSize = ptrArg->PayloadSizeInBytes;
 
-                    dataParameterStreamSize = std::max( 
-                        dataParameterStreamSize, 
+                    dataParameterStreamSize = std::max(
+                        dataParameterStreamSize,
                         ptrArg->PayloadPosition + ptrArg->PayloadSizeInBytes );
 
                     retValue = AddPatchItem(
@@ -1802,8 +1802,8 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
     // Constant Arguments
     if( retValue.Success )
     {
-        for( ConstantArgumentIterator i = annotations.m_constantArgumentAnnotation.begin(); 
-            i != annotations.m_constantArgumentAnnotation.end(); 
+        for( ConstantArgumentIterator i = annotations.m_constantArgumentAnnotation.begin();
+            i != annotations.m_constantArgumentAnnotation.end();
             ++i )
         {
             ConstantArgumentAnnotation* constInput = *i;
@@ -1824,8 +1824,8 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
             patch.LocationIndex2 = constInput->LocationCount;
             patch.IsEmulationArgument = constInput->IsEmulationArgument;
 
-            dataParameterStreamSize = std::max( 
-                dataParameterStreamSize, 
+            dataParameterStreamSize = std::max(
+                dataParameterStreamSize,
                 constInput->PayloadPosition + constInput->PayloadSizeInBytes );
 
             if( retValue.Success )
@@ -1848,7 +1848,7 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
         patch.Type = iOpenCL::DATA_PARAMETER_LOCAL_MEMORY_STATELESS_WINDOW_START_ADDRESS;
         patch.Offset = startGAS->Offset;
         patch.DataSize = startGAS->gpuPointerSizeInBytes;
-                 
+
         dataParameterStreamSize = std::max(
             dataParameterStreamSize,
             startGAS->Offset + startGAS->gpuPointerSizeInBytes);
@@ -1914,7 +1914,7 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
 
     // Patch for Thread Payload
     if( retValue.Success )
-    {   
+    {
         iOpenCL::SPatchThreadPayload    patch;
 
         memset( &patch, 0, sizeof( patch ) );
@@ -1945,7 +1945,7 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
 
     // Patch for Execution Enivronment
     if( retValue.Success )
-    {   
+    {
         iOpenCL::SPatchExecutionEnvironment patch;
 
         memset( &patch, 0, sizeof( patch ) );
@@ -2019,8 +2019,8 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
     // Patch for String Annotations
     if( retValue.Success )
     {
-        for( PrintfStringIterator i = annotations.m_printfStringAnnotations.begin(); 
-                                  i != annotations.m_printfStringAnnotations.end(); 
+        for( PrintfStringIterator i = annotations.m_printfStringAnnotations.begin();
+                                  i != annotations.m_printfStringAnnotations.end();
                                   i++ )
         {
             PrintfStringAnnotation *stringAnn = *i;
@@ -2031,7 +2031,7 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
             uint32_t  alignedStringSize = 0;
 
             patch.Token = iOpenCL::PATCH_TOKEN_STRING;
-            patch.Size  = sizeof( patch ); 
+            patch.Size  = sizeof( patch );
             patch.Index = stringAnn->Index;
 
             std::streamsize tokenStart = membuf.Size();
@@ -2044,7 +2044,7 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
 
             if( retValue.Success )
             {
-                retValue = AddStringPatchItem( 
+                retValue = AddStringPatchItem(
                     stringAnn->StringData,
                     membuf,
                     alignedStringSize );
@@ -2084,13 +2084,13 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
             }
         }
     }
-    
+
     // Patch for GTPin output structure
     if (retValue.Success)
     {
         iOpenCL::SPatchItemHeader patch;
         memset(&patch, 0, sizeof(patch));
-        
+
         patch.Token = PATCH_TOKEN_GTPIN_INFO;
         unsigned int size = 0;
         void* buffer = nullptr;
@@ -2110,13 +2110,13 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
             buffer = program->simd32.m_gtpinBuffer;
             size = program->simd32.m_gtpinBufferSize;
         }
-        
+
         if (size > 0)
         {
             patch.Size = sizeof(patch) + size;
-            
+
             retValue = AddPatchItem(patch, membuf);
-            
+
             if (!membuf.Write((const char*)buffer, size))
             {
                 retValue.Success = false;
@@ -2221,9 +2221,9 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
     return retValue;
 }
 
-inline RETVAL CGen8OpenCLStateProcessor::AddStringPatchItem( 
-    const std::string& str, 
-    Util::BinaryStream& membuf, 
+inline RETVAL CGen8OpenCLStateProcessor::AddStringPatchItem(
+    const std::string& str,
+    Util::BinaryStream& membuf,
     uint32_t& bytesWritten ) const
 {
     RETVAL  retValue = g_cInitRetValue;
@@ -2275,7 +2275,7 @@ RETVAL CGen8OpenCLStateProcessor::AddKernelAttributePatchItems(
     {
         std::istringstream buf(annotations.m_kernelAttributeInfo);
         std::istream_iterator< std::string > beg(buf), end;
-    
+
         std::vector<std::string> tokens(beg, end);
 
         std::string filteredAttributes;
@@ -2297,11 +2297,11 @@ RETVAL CGen8OpenCLStateProcessor::AddKernelAttributePatchItems(
             }
         }
 
-        retValue = AddStringPatchItem( 
+        retValue = AddStringPatchItem(
             filteredAttributes,
             membuf,
             patch.AttributesSize );
-                
+
         patch.Size += patch.AttributesSize;
     }
 
@@ -2348,18 +2348,18 @@ RETVAL CGen8OpenCLStateProcessor::AddKernelArgumentPatchItems(
 
         if( retValue.Success )
         {
-            retValue = AddStringPatchItem( 
+            retValue = AddStringPatchItem(
                 argInfo->AddressQualifier,
                 membuf,
                 patch.AddressQualifierSize );
-                
+
             patch.Size += patch.AddressQualifierSize;
 
         }
 
         if( retValue.Success )
         {
-            retValue = AddStringPatchItem( 
+            retValue = AddStringPatchItem(
                 argInfo->AccessQualifier,
                 membuf,
                 patch.AccessQualifierSize );
@@ -2369,7 +2369,7 @@ RETVAL CGen8OpenCLStateProcessor::AddKernelArgumentPatchItems(
 
         if( retValue.Success )
         {
-            retValue = AddStringPatchItem( 
+            retValue = AddStringPatchItem(
                 argInfo->ArgumentName,
                 membuf,
                 patch.ArgumentNameSize );
@@ -2379,7 +2379,7 @@ RETVAL CGen8OpenCLStateProcessor::AddKernelArgumentPatchItems(
 
         if( retValue.Success )
         {
-            retValue = AddStringPatchItem( 
+            retValue = AddStringPatchItem(
                 argInfo->TypeName,
                 membuf,
                 patch.TypeNameSize );
@@ -2390,8 +2390,8 @@ RETVAL CGen8OpenCLStateProcessor::AddKernelArgumentPatchItems(
         if( retValue.Success )
         {
             retValue = AddStringPatchItem(
-                argInfo->TypeQualifier, 
-                membuf, 
+                argInfo->TypeQualifier,
+                membuf,
                 patch.TypeQualifierSize );
 
             patch.Size += patch.TypeQualifierSize;
@@ -2423,7 +2423,7 @@ RETVAL CGen8OpenCLStateProcessor::CombineKernelBinary(
     unsigned int unpaddedBinarySize,
     Util::BinaryStream& kernelBinary )
 {
-    RETVAL retValue = g_cInitRetValue;    
+    RETVAL retValue = g_cInitRetValue;
 
     iOpenCL::SKernelBinaryHeaderGen7    header;
 
@@ -2467,8 +2467,8 @@ RETVAL CGen8OpenCLStateProcessor::CombineKernelBinary(
     kernelBinary.WriteAt( header, 0 );
 
 #if defined(_DEBUG)
-    DWORD   combinedBinarySize = 
-        header.KernelNameSize + 
+    DWORD   combinedBinarySize =
+        header.KernelNameSize +
         header.KernelHeapSize +
         header.GeneralStateHeapSize +
         header.DynamicStateHeapSize +
@@ -2477,7 +2477,7 @@ RETVAL CGen8OpenCLStateProcessor::CombineKernelBinary(
 
     ICBE_ASSERT( combinedBinarySize == checkSumSize );
 
-    const iOpenCL::SKernelBinaryHeaderGen7* pHeaderCheck = 
+    const iOpenCL::SKernelBinaryHeaderGen7* pHeaderCheck =
         (const iOpenCL::SKernelBinaryHeaderGen7*)kernelBinary.GetLinearPointer();
 
     ICBE_ASSERT( pHeaderCheck->CheckSum == ( hash & 0xFFFFFFFF ) );
@@ -2487,7 +2487,7 @@ RETVAL CGen8OpenCLStateProcessor::CombineKernelBinary(
     if (IGC_IS_FLAG_ENABLED(DumpOCLProgramInfo))
     {
         DebugKernelBinaryHeader_Gen7(
-            &header, 
+            &header,
             m_oclStateDebugMessagePrintOut);
     }
 
@@ -2525,7 +2525,7 @@ RETVAL CGen8OpenCLStateProcessor::AddSamplerState(
 
     if( retValue.Success )
     {
-        G6HWC::SSharedStateSamplerState samplerState = 
+        G6HWC::SSharedStateSamplerState samplerState =
             G6HWC::g_cInitSharedStateSamplerState;
 
         samplerState.DW0.Gen7 = G6HWC::g_cInitSharedStateSamplerStateDW0Gen7;
@@ -2543,7 +2543,7 @@ RETVAL CGen8OpenCLStateProcessor::AddSamplerState(
             samplerState.DW1.Gen7.MinLOD = 0;
             samplerState.DW1.Gen7.MaxLOD = FloatToFixed<unsigned>( HWCaps().SampleLOD.Max, 4, 8 );
 
-            samplerState.DW2.Gen8.All.IndirectStatePointer = 
+            samplerState.DW2.Gen8.All.IndirectStatePointer =
                 borderColorOffset /
                 HWCaps().DefaultColorPointerAlignSize;
 
@@ -2607,7 +2607,7 @@ RETVAL CGen8OpenCLStateProcessor::AddSurfaceState(
 
     if( retValue.Success )
     {
-        G6HWC::SSharedStateSurfaceState surf = 
+        G6HWC::SSharedStateSurfaceState surf =
             G6HWC::g_cInitSharedStateSurfaceState;
 
         surf.DW0.Gen8 = G6HWC::g_cInitSharedStateSurfaceStateDW0Gen8;
@@ -2633,7 +2633,7 @@ RETVAL CGen8OpenCLStateProcessor::AddSurfaceState(
 
             if( type == SURFACE_BUFFER )
             {
-                G6HWC::SSurfaceStateBufferLength ssbl = 
+                G6HWC::SSurfaceStateBufferLength ssbl =
                     G6HWC::g_cInitSurfaceStateBufferLength;
                 ssbl.Length = bufferLength - 1;
 
@@ -2643,7 +2643,7 @@ RETVAL CGen8OpenCLStateProcessor::AddSurfaceState(
                 surf.DW2.Gen7.Height = ssbl.All.Height;
                 surf.DW2.Gen7.Width  = ssbl.All.Width;
                 surf.DW3.Gen7.Depth  = ssbl.All.Depth;
-            }            
+            }
             else if( ( type == SURFACE_1D_ARRAY ) ||
                 ( type == SURFACE_2D_ARRAY ) )
             {
@@ -2651,7 +2651,7 @@ RETVAL CGen8OpenCLStateProcessor::AddSurfaceState(
             }
 
             surf.DW4.Gen7.SurfaceAll.MultisampledSurfaceStorageFormat = isMultiSampleImage;
-        }     
+        }
 
         G6HWC::DebugSurfaceStateCommand(
             &surf,

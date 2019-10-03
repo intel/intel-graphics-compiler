@@ -93,7 +93,7 @@ CIF_DECLARE_INTERFACE_PIMPL(OclTranslationOutput) : CIF::PimplBase
     bool SetError(TranslationErrorType::ErrorCode_t e, const char * errString = nullptr)
     {
         this->Error = e;
-       
+
         if(errString == nullptr){
             return true;
         }

@@ -41,7 +41,7 @@ namespace llvm
 
 namespace IGC
 {
-    /// @brief  This pass breaks constant expressions appearing 
+    /// @brief  This pass breaks constant expressions appearing
     ///         in instructions into instruction sequences.
     class BreakConstantExpr : public llvm::FunctionPass
     {
@@ -81,7 +81,7 @@ namespace IGC
 
         /// @brief  Break up constant expressions in a ConstantVector elements by creating instructions
         ///         for each sub-expression.
-        ///         The newly created instructions are placed before the user, and replace all constant 
+        ///         The newly created instructions are placed before the user, and replace all constant
         ///         expressions and the constant vector.
         /// @param  cvec          Constant vector with expressions to break up.
         /// @param  operandIndex  Index of the constant vector operand in the parent instruction

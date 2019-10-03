@@ -82,7 +82,7 @@ namespace IGC
 
     private:
         /// @brief  Function entry point.
-        ///         Finds all alloca instructions in this function, analyzes them and adds 
+        ///         Finds all alloca instructions in this function, analyzes them and adds
         ///         private base implicit argument if needed.
         /// @param  F The destination function.
         bool runOnFunction(llvm::Function& F);

@@ -197,7 +197,7 @@ void MCSOptimization::visitCallInst(llvm::CallInst& I)
             }
 
             //iterate over useBlocks.
-            //For each useBlock, collect all the ldms insts present within the use block corresponding to this EEI 
+            //For each useBlock, collect all the ldms insts present within the use block corresponding to this EEI
             for (auto BB : useBlocks)
             {
                 std::vector<LdmsInstrinsic*> ldmsInstsToMove;
@@ -223,7 +223,7 @@ void MCSOptimization::visitCallInst(llvm::CallInst& I)
                 while (!allInstsWillBeMoved)
                 {
                     std::vector<LdmsInstrinsic*> ldmsInstsToClub;
-                    //Threshold is more than # of insts that are to be moved. So move all. 
+                    //Threshold is more than # of insts that are to be moved. So move all.
                     if (instClubThreshold >= static_cast<int>(ldmsInstsToMove.size()))
                     {
                         ldmsInstsToClub = ldmsInstsToMove;
@@ -239,7 +239,7 @@ void MCSOptimization::visitCallInst(llvm::CallInst& I)
                         ldmsInstsToMove.erase(ldmsInstsToMove.begin(), ldmsInstsToMove.begin() + instClubThreshold);
                     }
 
-                    //split the block into a new then block 
+                    //split the block into a new then block
                     BasicBlock* ldmsUseBB = nullptr; //second entry to the phi node
                     BasicBlock* thenBlock = nullptr;
                     IGCLLVM::TerminatorInst* thenBlockTerminator = nullptr;
@@ -266,7 +266,7 @@ void MCSOptimization::visitCallInst(llvm::CallInst& I)
                         thenBlock = thenBlockTerminator->getParent();
                     }
 
-                    //Move the collected ldms insts into the then block and insert their phi nodes in the successor of the then block        
+                    //Move the collected ldms insts into the then block and insert their phi nodes in the successor of the then block
                     if (thenBlockTerminator)
                     {
                         for (auto instToMove : ldmsInstsToClub)

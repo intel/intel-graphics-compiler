@@ -88,7 +88,7 @@ bool FindInterestingConstants::FoldsToConst(Instruction* inst, Instruction* use,
 void FindInterestingConstants::FoldsToConstPropagate(llvm::Instruction* I)
 {
     bool propagate = false;
-    // if instruction count that can be folded to zero reached threshold, dont loop through 
+    // if instruction count that can be folded to zero reached threshold, dont loop through
     for (auto UI = I->user_begin(), UE = I->user_end(); (UI != UE); ++UI)
     {
         if ((m_constFoldBranch) ||

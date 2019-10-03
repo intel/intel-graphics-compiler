@@ -91,7 +91,7 @@ void BitSet::create( unsigned size )
 }
 
 void BitSet::setAll( void )
-{ 
+{
     if( m_BitSetArray )
     {
         unsigned index;

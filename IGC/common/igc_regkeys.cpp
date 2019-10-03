@@ -104,19 +104,19 @@ static bool ReadIGCRegistry(
     HKEY uscKey;
 
     success = RegOpenKeyExA(
-        HKEY_LOCAL_MACHINE, 
+        HKEY_LOCAL_MACHINE,
         IGC_REGISTRY_KEY,
-        0, 
-        KEY_READ, 
+        0,
+        KEY_READ,
         &uscKey );
 
     if( ERROR_SUCCESS == success )
     {
-        DWORD dwSize = size;   
+        DWORD dwSize = size;
         success = RegQueryValueExA(
-            uscKey, 
+            uscKey,
             pName,
-            NULL, 
+            NULL,
             NULL,
             (LPBYTE)pValue,
             &dwSize );
@@ -166,14 +166,14 @@ static const char* ConvertType(const char* flagType)
         ConvertType(#dataType),                                                                               \
         "HKLM\\" IGC_REGISTRY_KEY,                                                              \
         "",                                                                                     \
-        descriptionText);     
+        descriptionText);
 #define DECLARE_IGC_GROUP( groupName ) \
     if(!firstGroup)                    \
     {                                  \
         fprintf(fp, "  </Group>\n");   \
     }                                  \
     firstGroup = false;                \
-    fprintf(fp, "  <Group name=\"%s\">\n", groupName); 
+    fprintf(fp, "  <Group name=\"%s\">\n", groupName);
 void DumpIGCRegistryKeyDefinitions()
 {
 #ifdef _WIN32
@@ -194,7 +194,7 @@ void DumpIGCRegistryKeyDefinitions()
     // Generate the XML
     fprintf(fp, "<RegistryKeys>\n");
 #include "igc_regkeys.def"
-    fprintf(fp, "  </Group>\n");   
+    fprintf(fp, "  </Group>\n");
     fprintf(fp, "</RegistryKeys>\n");
 
     fclose(fp);
@@ -342,7 +342,7 @@ static void ParseHashRange(std::string line, std::vector<HashRange>& ranges)
         range.end = std::stoull(end, nullptr, 16);
         ranges.push_back(range);
     }
-    
+
 }
 
 static void declareIGCKey(std::string& line, const char* dataType, const char* regkeyName, std::vector<HashRange>& hashes, SRegKeyVariableMetaData* regKey)

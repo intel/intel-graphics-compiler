@@ -78,8 +78,8 @@ typedef size_t uintptr_t;
 #pragma OPENCL EXTENSION cl_khr_fp64 : enable
 #endif
 
-#ifdef cl_khr_gl_msaa_sharing                                            
-#pragma OPENCL EXTENSION cl_khr_gl_msaa_sharing : enable                 
+#ifdef cl_khr_gl_msaa_sharing
+#pragma OPENCL EXTENSION cl_khr_gl_msaa_sharing : enable
 #endif //cl_khr_gl_msaa_sharing
 
 #if defined(cl_khr_fp64)
@@ -369,7 +369,7 @@ event_t __attribute__((overloadable)) async_work_group_strided_copy(__global flo
 */
 void __attribute__((overloadable)) prefetch(const __global void *p, size_t num_elements);
 
-// 
+//
 //Maximum supported size of a program scope global variable
 //
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
@@ -1018,7 +1018,7 @@ void __attribute__((overloadable)) write_imageui(write_only image3d_t image, int
   float4 __attribute__((overloadable)) read_imagef(read_only image1d_t image, sampler_t sampler, float coord);
 
   /**
-   * Use the coordinate (coord.y) to index into the 
+   * Use the coordinate (coord.y) to index into the
    * 1D image array object specified by image_array
    * and (coord.x) to do an element lookup in
    * the 1D image object specified by image.
@@ -1052,7 +1052,7 @@ void __attribute__((overloadable)) write_imageui(write_only image3d_t image, int
   float4 __attribute__((overloadable)) read_imagef(read_only image1d_array_t image_array, sampler_t sampler, float2 coord);
 
 /**
-   * Use the coordinate (coord.z) to index into the 
+   * Use the coordinate (coord.z) to index into the
    * 2D image array object specified by image_array
    * and (coord.x, coord.y) to do an element lookup in
    * the 2D image object specified by image.
@@ -1132,7 +1132,7 @@ void __attribute__((overloadable)) write_imageui(write_only image3d_t image, int
 
   /**
    * Use the coordinate (coord.y) to index into the
-   * 1D image array object and (coord.x) to do an 
+   * 1D image array object and (coord.x) to do an
    * element lookup in the 1D image object specified.
    * read_imagei and read_imageui return
    * unnormalized signed integer and unsigned integer
@@ -1178,7 +1178,7 @@ void __attribute__((overloadable)) write_imageui(write_only image3d_t image, int
 
   /**
    * Use the coordinate (coord.z) to index into the
-   * 2D image array object and (coord.x, coord.y) to do an 
+   * 2D image array object and (coord.x, coord.y) to do an
    * element lookup in the 2D image object specified.
    * read_imagei and read_imageui return
    * unnormalized signed integer and unsigned integer
@@ -1263,10 +1263,10 @@ void __attribute__((overloadable)) write_imageui(write_only image3d_t image, int
 
   /**
    * Write color value to location specified by coordinate
-   * (x) in the 1D image buffer object specified by image 
-   * buffer. Appropriate data format conversion to the 
-   * specified image buffer format is done before writing 
-   * the color value.x is considered to be unnormalized 
+   * (x) in the 1D image buffer object specified by image
+   * buffer. Appropriate data format conversion to the
+   * specified image buffer format is done before writing
+   * the color value.x is considered to be unnormalized
    * coordinates and must be in the range 0 ... image width - 1.
    * write_imagef can only be used with image buffer objects
    * created with image_channel_data_type set to one of
@@ -1348,8 +1348,8 @@ void __attribute__((overloadable)) write_imageui(write_only image3d_t image, int
    * (coord.z) of the 2D image array object image_array.
    * Appropriate data format conversion to the specified
    * image format is done before writing the color value.
-   * (coord.x, coord.y) are considered to be unnormalized 
-   * coordinates and must be in the range 0 ... image width 
+   * (coord.x, coord.y) are considered to be unnormalized
+   * coordinates and must be in the range 0 ... image width
    * - 1. write_imagef can only be used with image objects
    * created with image_channel_data_type set to one of
    * the pre-defined packed formats or set to
@@ -1454,7 +1454,7 @@ void __attribute__((overloadable)) write_imageui(write_only image3d_t image, int
   float __attribute__((overloadable)) read_imagef(read_only image2d_array_msaa_depth_t image, int4 coord, int sample);
 #endif
   /**
-   * Use coord.xy to do an element lookup in the 
+   * Use coord.xy to do an element lookup in the
    * 2D depth image identified by index coord.z in the 2D
    * image array specified by image.
    * read_imagef returns floating-point values in the
@@ -1486,15 +1486,15 @@ void __attribute__((overloadable)) write_imageui(write_only image3d_t image, int
   float __attribute__((overloadable)) read_imagef(read_only image2d_array_depth_t image, sampler_t sampler, float4 coord);
   float __attribute__((overloadable)) read_imagef(read_only image2d_array_depth_t image, sampler_t sampler, int4 coord);
   float __attribute__((overloadable)) read_imagef(read_only image2d_array_depth_t image, int4 coord);
-  
+
   /**
    * Write color value to location specified by coordinate
-   * (coord.x, coord.y) in the 2D image object specified by 
+   * (coord.x, coord.y) in the 2D image object specified by
    * image.
    * Appropriate data format conversion to the specified
    * image format is done before writing the color value.
-   * (coord.x, coord.y) are considered to be unnormalized 
-   * coordinates and must be in the range 0 ... image width 
+   * (coord.x, coord.y) are considered to be unnormalized
+   * coordinates and must be in the range 0 ... image width
    * - 1. write_imagef can only be used with image objects
    * created with image_channel_data_type set to one of
    * the pre-defined packed formats or set to
@@ -1638,7 +1638,7 @@ void __attribute__((overloadable)) write_imageui(write_only image3d_t image, int
   int2 __attribute__((overloadable)) get_image_dim(image2d_array_msaa_depth_t image);
 #endif
 
-  /** 
+  /**
   * Sampler-less Image Access
   */
 
@@ -1822,11 +1822,11 @@ void __attribute__((overloadable)) write_imageui(write_only image3d_t image, int
 #endif
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
-   
+
   /**
    * Use the coordinate (x) to do an element lookup in
-   * the mip-level specified by the Level-of-Detail (lod) 
-   * in the 1D image object specified by image. 
+   * the mip-level specified by the Level-of-Detail (lod)
+   * in the 1D image object specified by image.
    * read_imagef returns floating-point values in the
    * range [0.0 ... 1.0] for image objects created with
    * image_channel_data_type set to one of the predefined
@@ -1856,8 +1856,8 @@ void __attribute__((overloadable)) write_imageui(write_only image3d_t image, int
 
   /**
    * Use the coordinate (x) to do an element lookup in
-   * the mip-level specified by the Level-of-Detail (lod) 
-   * in the 1D image object specified by image. 
+   * the mip-level specified by the Level-of-Detail (lod)
+   * in the 1D image object specified by image.
    * read_imagei and read_imageui return
    * unnormalized signed integer and unsigned integer
    * values respectively. Each channel will be stored in a
@@ -1898,10 +1898,10 @@ void __attribute__((overloadable)) write_imageui(write_only image3d_t image, int
   uint4 __attribute__((overloadable)) read_imageui(read_only image1d_t image, sampler_t sampler, float coord, float lod);
 
   /**
-   * Use the coordinate (coord.y) to index into the 
+   * Use the coordinate (coord.y) to index into the
    * 1D image array object specified by image_array
-   * and (coord.x) and mip-level specified by lod 
-   * to do an element lookup in the 1D image array 
+   * and (coord.x) and mip-level specified by lod
+   * to do an element lookup in the 1D image array
    * specified by image.
    * read_imagef returns floating-point values in the
    * range [0.0 ... 1.0] for image objects created with
@@ -1933,8 +1933,8 @@ void __attribute__((overloadable)) write_imageui(write_only image3d_t image, int
 
   /**
    * Use the coordinate (coord.y) to index into the
-   * 1D image array object and (coord.x) and mip-level 
-   * specified by lod to do an element lookup in the 
+   * 1D image array object and (coord.x) and mip-level
+   * specified by lod to do an element lookup in the
    * 1D image array specified by image.
    * read_imagei and read_imageui return
    * unnormalized signed integer and unsigned integer
@@ -1973,7 +1973,7 @@ void __attribute__((overloadable)) write_imageui(write_only image3d_t image, int
    */
 
   //1D image arrays
-  
+
   int4 __attribute__((overloadable)) read_imagei(read_only image1d_array_t image_array, sampler_t sampler, float2 coord, float lod);
   uint4 __attribute__((overloadable)) read_imageui(read_only image1d_array_t image_array, sampler_t sampler, float2 coord, float lod);
 
@@ -2010,7 +2010,7 @@ void __attribute__((overloadable)) write_imageui(write_only image3d_t image, int
 
   /**
    * Use the coordinate (x, y) to do an element lookup in
-   * the mip-level specified by lod in the 
+   * the mip-level specified by lod in the
    * 2D image object specified by image.
    * read_imagei and read_imageui return
    * unnormalized signed integer and unsigned integer
@@ -2083,7 +2083,7 @@ void __attribute__((overloadable)) write_imageui(write_only image3d_t image, int
 
 /**
    * Use the coordinate (coord.z) and the mip-level
-   * specified by lod to index into the 2D image 
+   * specified by lod to index into the 2D image
    * array object specified by image_array
    * and (coord.x, coord.y) to do an element lookup in
    * the 2D image object specified by image.
@@ -2117,7 +2117,7 @@ void __attribute__((overloadable)) write_imageui(write_only image3d_t image, int
 
   /**
    * Use the coordinate (coord.z) and the mip-level
-   * specified by lod to index into the 2D image 
+   * specified by lod to index into the 2D image
    * array object specified by image_array
    * and (coord.x, coord.y) to do an element lookup in
    * the 2D image object specified by image.
@@ -2163,7 +2163,7 @@ void __attribute__((overloadable)) write_imageui(write_only image3d_t image, int
 
     /**
     * Use the coordinate (coord.z) and the mip-level
-   * specified by lod to index into the 2D image 
+   * specified by lod to index into the 2D image
    * array object specified by image_array
    * and (coord.x, coord.y) to do an element lookup in
    * the 2D image object specified by image.
@@ -2272,17 +2272,17 @@ void __attribute__((overloadable)) write_imageui(write_only image3d_t image, int
   uint4 __attribute__((overloadable)) read_imageui(read_only image3d_t image, sampler_t sampler, float4 coord, float lod);
 
 
- /** 
-   * Read Image support for mipmaps using gradients for 
-   * LOD computation 
+ /**
+   * Read Image support for mipmaps using gradients for
+   * LOD computation
    */
 
  /**
    * Use gradients to compute the LOD Read Image support
-   * for mipmaps using gradients for LOD computation 
+   * for mipmaps using gradients for LOD computation
    * and coordinate (x) to do an element lookup in
-   * the mip-level specified by the lod 
-   * in the 1D image object specified by image. 
+   * the mip-level specified by the lod
+   * in the 1D image object specified by image.
    * read_imagef returns floating-point values in the
    * range [0.0 ... 1.0] for image objects created with
    * image_channel_data_type set to one of the predefined
@@ -2311,10 +2311,10 @@ void __attribute__((overloadable)) write_imageui(write_only image3d_t image, int
   float4 __attribute__((overloadable)) read_imagef(read_only image1d_t image, sampler_t sampler, float coord, float gradientX, float gradientY);
 
   /**
-   * Use gradients to compute the LOD 
+   * Use gradients to compute the LOD
    * and coordinate (x) to do an element lookup in
-   * the mip-level specified by the lod 
-   * in the 1D image object specified by image. 
+   * the mip-level specified by the lod
+   * in the 1D image object specified by image.
    * read_imagei and read_imageui return
    * unnormalized signed integer and unsigned integer
    * values respectively. Each channel will be stored in a
@@ -2355,11 +2355,11 @@ void __attribute__((overloadable)) write_imageui(write_only image3d_t image, int
   uint4 __attribute__((overloadable)) read_imageui(read_only image1d_t image, sampler_t sampler, float coord, float gradientX, float gradientY);
 
   /**
-   * Use gradients to compute the LOD  
-   * and the coordinate (coord.y) to index into the 
+   * Use gradients to compute the LOD
+   * and the coordinate (coord.y) to index into the
    * 1D image array object specified by image_array
-   * and (coord.x) and mip-level specified by lod 
-   * to do an element lookup in the 1D image array 
+   * and (coord.x) and mip-level specified by lod
+   * to do an element lookup in the 1D image array
    * specified by image.
    * read_imagef returns floating-point values in the
    * range [0.0 ... 1.0] for image objects created with
@@ -2390,10 +2390,10 @@ void __attribute__((overloadable)) write_imageui(write_only image3d_t image, int
   float4 __attribute__((overloadable)) read_imagef(read_only image1d_array_t image_array, sampler_t sampler, float2 coord, float gradientX, float gradientY);
 
   /**
-   * Use gradients to compute the LOD  
+   * Use gradients to compute the LOD
    * and the coordinate (coord.y) to index into the
-   * 1D image array object and (coord.x) and mip-level 
-   * specified by lod to do an element lookup in the 
+   * 1D image array object and (coord.x) and mip-level
+   * specified by lod to do an element lookup in the
    * 1D image array specified by image.
    * read_imagei and read_imageui return
    * unnormalized signed integer and unsigned integer
@@ -2432,12 +2432,12 @@ void __attribute__((overloadable)) write_imageui(write_only image3d_t image, int
    */
 
   //1D image arrays
-  
+
   int4 __attribute__((overloadable)) read_imagei(read_only image1d_array_t image_array, sampler_t sampler, float2 coord, float gradientX, float gradientY);
   uint4 __attribute__((overloadable)) read_imageui(read_only image1d_array_t image_array, sampler_t sampler, float2 coord, float gradientX, float gradientY);
 
   /**
-   * Use gradients to compute the LOD  
+   * Use gradients to compute the LOD
    * and use the coordinate (x, y) to do an element lookup in
    * in the mip-level specified by lod in the
    * 2D image object specified by image.
@@ -2469,9 +2469,9 @@ void __attribute__((overloadable)) write_imageui(write_only image3d_t image, int
   float4 __attribute__((overloadable)) read_imagef(read_only image2d_t image, sampler_t sampler, float2 coord, float2 gradientX, float2 gradientY);
 
   /**
-   * Use gradients to compute the LOD  
+   * Use gradients to compute the LOD
    * and use the coordinate (x, y) to do an element lookup in
-   * the mip-level specified by lod in the 
+   * the mip-level specified by lod in the
    * 2D image object specified by image.
    * read_imagei and read_imageui return
    * unnormalized signed integer and unsigned integer
@@ -2513,7 +2513,7 @@ void __attribute__((overloadable)) write_imageui(write_only image3d_t image, int
   uint4 __attribute__((overloadable)) read_imageui(read_only image2d_t image, sampler_t sampler, float2 coord, float2 gradientX, float2 gradientY);
 
   /**
-   * Use gradients to compute the LOD  
+   * Use gradients to compute the LOD
    * and use the coordinate (cood.xy) to do an element
    * lookup in the mip-level specified by lod in
    * the 2D depth image specified by image.
@@ -2545,9 +2545,9 @@ void __attribute__((overloadable)) write_imageui(write_only image3d_t image, int
   float __attribute__((overloadable)) read_imagef(read_only image2d_depth_t image, sampler_t sampler, float2 coord, float2 gradientX, float2 gradientY);
 
  /**
-   * Use gradients to compute the LOD  
+   * Use gradients to compute the LOD
    * and use the coordinate (coord.z) and the mip-level
-   * specified by lod to index into the 2D image 
+   * specified by lod to index into the 2D image
    * array object specified by image_array
    * and (coord.x, coord.y) to do an element lookup in
    * the 2D image object specified by image.
@@ -2580,9 +2580,9 @@ void __attribute__((overloadable)) write_imageui(write_only image3d_t image, int
   float4 __attribute__((overloadable)) read_imagef(read_only image2d_array_t image_array, sampler_t sampler, float4 coord, float2 gradientX, float2 gradientY);
 
   /**
-   * Use gradients to compute the LOD  
+   * Use gradients to compute the LOD
    * and use the coordinate (coord.z) and the mip-level
-   * specified by lod to index into the 2D image 
+   * specified by lod to index into the 2D image
    * array object specified by image_array
    * and (coord.x, coord.y) to do an element lookup in
    * the 2D image object specified by image.
@@ -2627,9 +2627,9 @@ void __attribute__((overloadable)) write_imageui(write_only image3d_t image, int
   uint4 __attribute__((overloadable)) read_imageui(read_only image2d_array_t image_array, sampler_t sampler, float4 coord, float2 gradientX, float2 gradientY);
 
   /**
-   * Use gradients to compute the LOD  
+   * Use gradients to compute the LOD
    * and use the coordinate (coord.z) and the mip-level
-   * specified by lod to index into the 2D image 
+   * specified by lod to index into the 2D image
    * array object specified by image_array
    * and (coord.x, coord.y) to do an element lookup in
    * the 2D image object specified by image.
@@ -2662,7 +2662,7 @@ void __attribute__((overloadable)) write_imageui(write_only image3d_t image, int
   float __attribute__((overloadable)) read_imagef(read_only image2d_array_depth_t image, sampler_t sampler, float4 coord, float2 gradientX, float2 gradientY);
 
   /**
-   * Use gradients to compute the LOD  
+   * Use gradients to compute the LOD
    * and use the coordinate (coord.x, coord.y, coord.z) to do
    * an element lookup in thein the mip-level specified by lod in the
    * 3D image object specified
@@ -2695,7 +2695,7 @@ void __attribute__((overloadable)) write_imageui(write_only image3d_t image, int
   float4 __attribute__((overloadable)) read_imagef(read_only image3d_t image, sampler_t sampler, float4 coord, float4 gradientX, float4 gradientY);
 
   /**
-   * Use gradients to compute the LOD  
+   * Use gradients to compute the LOD
    * and use the coordinate (coord.x, coord.y, coord.z) to do
    * an element lookup in thein the mip-level specified by lod in the
    * 3D image object specified
@@ -2739,15 +2739,15 @@ void __attribute__((overloadable)) write_imageui(write_only image3d_t image, int
   int4 __attribute__((overloadable)) read_imagei(read_only image3d_t image, sampler_t sampler, float4 coord, float4 gradientX, float4 gradientY);
   uint4 __attribute__((overloadable)) read_imageui(read_only image3d_t image, sampler_t sampler, float4 coord, float4 gradientX, float4 gradientY);
 
-  
- /** 
-   * Read Image support for mipmaps using specified LOD 
+
+ /**
+   * Read Image support for mipmaps using specified LOD
    */
 
  /**
    * Use coordinate (x) to do an element lookup in
-   * the mip-level specified by the lod 
-   * in the 1D image object specified by image. 
+   * the mip-level specified by the lod
+   * in the 1D image object specified by image.
    * read_imagef returns floating-point values in the
    * range [0.0 ... 1.0] for image objects created with
    * image_channel_data_type set to one of the predefined
@@ -2777,8 +2777,8 @@ void __attribute__((overloadable)) write_imageui(write_only image3d_t image, int
 
   /**
    * Use coordinate (x) to do an element lookup in
-   * the mip-level specified by the lod 
-   * in the 1D image object specified by image. 
+   * the mip-level specified by the lod
+   * in the 1D image object specified by image.
    * read_imagei and read_imageui return
    * unnormalized signed integer and unsigned integer
    * values respectively. Each channel will be stored in a
@@ -2819,10 +2819,10 @@ void __attribute__((overloadable)) write_imageui(write_only image3d_t image, int
   uint4 __attribute__((overloadable)) read_imageui(read_only image1d_t image, sampler_t sampler, float coord, float lod);
 
   /**
-   * Use coordinate (coord.y) to index into the 
+   * Use coordinate (coord.y) to index into the
    * 1D image array object specified by image_array
-   * and (coord.x) and mip-level specified by lod 
-   * to do an element lookup in the 1D image array 
+   * and (coord.x) and mip-level specified by lod
+   * to do an element lookup in the 1D image array
    * specified by image.
    * read_imagef returns floating-point values in the
    * range [0.0 ... 1.0] for image objects created with
@@ -2854,8 +2854,8 @@ void __attribute__((overloadable)) write_imageui(write_only image3d_t image, int
 
   /**
    * Use the coordinate (coord.y) to index into the
-   * 1D image array object and (coord.x) and mip-level 
-   * specified by lod to do an element lookup in the 
+   * 1D image array object and (coord.x) and mip-level
+   * specified by lod to do an element lookup in the
    * 1D image array specified by image.
    * read_imagei and read_imageui return
    * unnormalized signed integer and unsigned integer
@@ -2894,7 +2894,7 @@ void __attribute__((overloadable)) write_imageui(write_only image3d_t image, int
    */
 
   //1D image arrays
-  
+
   int4 __attribute__((overloadable)) read_imagei(read_only image1d_array_t image_array, sampler_t sampler, float2 coord, float lod);
   uint4 __attribute__((overloadable)) read_imageui(read_only image1d_array_t image_array, sampler_t sampler, float2 coord, float lod);
 
@@ -2931,7 +2931,7 @@ void __attribute__((overloadable)) write_imageui(write_only image3d_t image, int
 
   /**
    * Use the coordinate (x, y) to do an element lookup in
-   * the mip-level specified by lod in the 
+   * the mip-level specified by lod in the
    * 2D image object specified by image.
    * read_imagei and read_imageui return
    * unnormalized signed integer and unsigned integer
@@ -3005,7 +3005,7 @@ void __attribute__((overloadable)) write_imageui(write_only image3d_t image, int
 
  /**
    * Use the coordinate (coord.z) and the mip-level
-   * specified by lod to index into the 2D image 
+   * specified by lod to index into the 2D image
    * array object specified by image_array
    * and (coord.x, coord.y) to do an element lookup in
    * the 2D image object specified by image.
@@ -3039,7 +3039,7 @@ void __attribute__((overloadable)) write_imageui(write_only image3d_t image, int
 
   /**
    * Use the coordinate (coord.z) and the mip-level
-   * specified by lod to index into the 2D image 
+   * specified by lod to index into the 2D image
    * array object specified by image_array
    * and (coord.x, coord.y) to do an element lookup in
    * the 2D image object specified by image.
@@ -3084,9 +3084,9 @@ void __attribute__((overloadable)) write_imageui(write_only image3d_t image, int
   uint4 __attribute__((overloadable)) read_imageui(read_only image2d_array_t image_array, sampler_t sampler, float4 coord, float lod);
 
   /**
-   * Use gradients to compute the LOD  
+   * Use gradients to compute the LOD
    * and use the coordinate (coord.z) and the mip-level
-   * specified by lod to index into the 2D image 
+   * specified by lod to index into the 2D image
    * array object specified by image_array
    * and (coord.x, coord.y) to do an element lookup in
    * the 2D image object specified by image.
@@ -3119,7 +3119,7 @@ void __attribute__((overloadable)) write_imageui(write_only image3d_t image, int
   float __attribute__((overloadable)) read_imagef(read_only image2d_array_depth_t image, sampler_t sampler, float4 coord, float lod);
 
   /**
-   * Use gradients to compute the LOD  
+   * Use gradients to compute the LOD
    * and use the coordinate (coord.x, coord.y, coord.z) to do
    * an element lookup in thein the mip-level specified by lod in the
    * 3D image object specified
@@ -3152,7 +3152,7 @@ void __attribute__((overloadable)) write_imageui(write_only image3d_t image, int
   float4 __attribute__((overloadable)) read_imagef(read_only image3d_t image, sampler_t sampler, float4 coord, float lod);
 
   /**
-   * Use gradients to compute the LOD  
+   * Use gradients to compute the LOD
    * and use the coordinate (coord.x, coord.y, coord.z) to do
    * an element lookup in thein the mip-level specified by lod in the
    * 3D image object specified
@@ -3197,17 +3197,17 @@ void __attribute__((overloadable)) write_imageui(write_only image3d_t image, int
   uint4 __attribute__((overloadable)) read_imageui(read_only image3d_t image, sampler_t sampler, float4 coord, float lod);
 
 
-  // Write Image Funtions 
- 
-  // 1D writes with mipmap support 
+  // Write Image Funtions
+
+  // 1D writes with mipmap support
   /**
    * Write color value to location specified by coordinate
-   * (x) in the mip-level specified by lod 2D image 
+   * (x) in the mip-level specified by lod 2D image
    * object specified by image.
    * Appropriate data format conversion to the specified
    * image format is done before writing the color value.
    * x & y are considered to be unnormalized coordinates
-   * and must be in the range 0 ... image width 
+   * and must be in the range 0 ... image width
    * of mip-level specified by lod - 1, and 0
    * ... image height of mip-level specified lod - 1.
    * write_imagef can only be used with image objects
@@ -3285,15 +3285,15 @@ void __attribute__((overloadable)) write_imageui(write_only image3d_t image, int
   void __attribute__((overloadable)) write_imagei(write_only image1d_array_t image_array, int2 coord, int lod, int4 color);
   void __attribute__((overloadable)) write_imageui(write_only image1d_array_t image_array, int2 coord, int lod, uint4 color);
 
-  // 2D writes with mipmap support 
+  // 2D writes with mipmap support
   /**
    * Write color value to location specified by coordinate
-   * (x, y) in the mip-level specified by lod 2D image 
+   * (x, y) in the mip-level specified by lod 2D image
    * object specified by image.
    * Appropriate data format conversion to the specified
    * image format is done before writing the color value.
    * x & y are considered to be unnormalized coordinates
-   * and must be in the range 0 ... image width 
+   * and must be in the range 0 ... image width
    * of mip-level specified by lod - 1, and 0
    * ... image height of mip-level specified lod - 1.
    * write_imagef can only be used with image objects
@@ -3330,12 +3330,12 @@ void __attribute__((overloadable)) write_imageui(write_only image3d_t image, int
 
   /**
    * Write color value to location specified by coordinate
-   * (x, y) in the mip-level specified by lod 2D image 
+   * (x, y) in the mip-level specified by lod 2D image
    * object specified by image.
    * Appropriate data format conversion to the specified
    * image format is done before writing the color value.
    * x & y are considered to be unnormalized coordinates
-   * and must be in the range 0 ... image width 
+   * and must be in the range 0 ... image width
    * of mip-level specified by lod - 1, and 0
    * ... image height of mip-level specified lod - 1.
    * write_imagef can only be used with image objects
@@ -3374,12 +3374,12 @@ void __attribute__((overloadable)) write_imageui(write_only image3d_t image, int
 
   /**
    * Write color value to location specified by coordinate
-   * (x, y) in the mip-level specified by lod 2D image 
+   * (x, y) in the mip-level specified by lod 2D image
    * object specified by image.
    * Appropriate data format conversion to the specified
    * image format is done before writing the color value.
    * x & y are considered to be unnormalized coordinates
-   * and must be in the range 0 ... image width 
+   * and must be in the range 0 ... image width
    * of mip-level specified by lod - 1, and 0
    * ... image height of mip-level specified lod - 1.
    * write_imagef can only be used with image objects
@@ -3416,12 +3416,12 @@ void __attribute__((overloadable)) write_imageui(write_only image3d_t image, int
   // 3D image write support with mipmaps
   /**
    * Write color value to location specified by coordinate
-   * (x, y, z) in the mip-level specified by lod 3D image 
+   * (x, y, z) in the mip-level specified by lod 3D image
    * object specified by image.
    * Appropriate data format conversion to the specified
    * image format is done before writing the color value.
    * x & y are considered to be unnormalized coordinates
-   * and must be in the range 0 ... image width 
+   * and must be in the range 0 ... image width
    * of mip-level specified by lod - 1, and 0
    * ... image height of mip-level specified lod - 1.
    * write_imagef can only be used with image objects
@@ -6507,7 +6507,7 @@ short2 __attribute__((overloadable)) intel_sub_group_half2_islessequal( uint a, 
 
 #ifdef cl_intel_device_side_vme_enable
 // VME and VME Accelerators
-// 
+//
 // This is sufficient to improve the runtime's toolchain for the VME
 // built-in kernel, however it is not sufficient to expose a general-purpose
 // device-side VME built-in function extension.  The main issues are:
@@ -6522,41 +6522,41 @@ short2 __attribute__((overloadable)) intel_sub_group_half2_islessequal( uint a, 
 //    to enforce this.
 //  - Need to spec how a VME accelerator declaration impacts the number
 //    or type of samplers or other accelerators.
-uint __attribute__((overloadable)) intel_get_accelerator_mb_block_type( 
+uint __attribute__((overloadable)) intel_get_accelerator_mb_block_type(
     sampler_t a );
-uint __attribute__((overloadable)) intel_get_accelerator_mb_sad_sdjust_mode( 
+uint __attribute__((overloadable)) intel_get_accelerator_mb_sad_sdjust_mode(
     sampler_t a );
-uint __attribute__((overloadable)) intel_get_accelerator_mb_sub_pixel_mode( 
+uint __attribute__((overloadable)) intel_get_accelerator_mb_sub_pixel_mode(
     sampler_t a );
-uint __attribute__((overloadable)) intel_get_accelerator_mb_search_path_type( 
+uint __attribute__((overloadable)) intel_get_accelerator_mb_search_path_type(
     sampler_t a );
-void __attribute__((overloadable)) intel_work_group_vme_mb_query( 
-    __local uint* dst, 
-    int2 srcCoord, 
-    int2 refCoord, 
-    image2d_t srcImage, 
-    image2d_t refImage, 
+void __attribute__((overloadable)) intel_work_group_vme_mb_query(
+    __local uint* dst,
+    int2 srcCoord,
+    int2 refCoord,
+    image2d_t srcImage,
+    image2d_t refImage,
     sampler_t a );
 #endif
 
 // added to fix build issue with clang separation. TODO: figure out why this did not carry over from OpenCL/Frontend/Languages in the first place
 #ifdef cl_intel_device_side_advanced_vme_enable
 // Advanced VME and VME Accelerators extension
-uint __attribute__((overloadable)) intel_get_accelerator_mb_search_block_type( 
+uint __attribute__((overloadable)) intel_get_accelerator_mb_search_block_type(
     sampler_t a );
 
-uint __attribute__((overloadable)) intel_get_accelerator_mb_skip_block_type( 
+uint __attribute__((overloadable)) intel_get_accelerator_mb_skip_block_type(
     sampler_t a );
 
-void __attribute__((overloadable)) intel_work_group_vme_mb_multi_query_8( 
+void __attribute__((overloadable)) intel_work_group_vme_mb_multi_query_8(
     __local uint* dst,
     uint countWGRefCoords,
     uint searchCostPenalty,
     uint2 searchCostTable,
-    int2 srcCoord, 
+    int2 srcCoord,
     int2 refCoord,
-    image2d_t srcImage, 
-    image2d_t refImage, 
+    image2d_t srcImage,
+    image2d_t refImage,
     sampler_t a );
 
 void __attribute__((overloadable)) intel_work_group_vme_mb_multi_query_4(
@@ -6570,16 +6570,16 @@ void __attribute__((overloadable)) intel_work_group_vme_mb_multi_query_4(
     image2d_t refImage,
     sampler_t a);
 
-void __attribute__((overloadable)) intel_work_group_vme_mb_multi_check_16x16( 
+void __attribute__((overloadable)) intel_work_group_vme_mb_multi_check_16x16(
     __local uint* dst,
     uint countWGSkipCoords,
     uint computeIntra,
     uint edgesIntra,
-    int2 srcCoord, 
+    int2 srcCoord,
     int  skipCoord,
-    image2d_t srcImage, 
+    image2d_t srcImage,
     image2d_t refImage,
-    image2d_t edgeSrcImage, 
+    image2d_t edgeSrcImage,
     sampler_t a );
 
 void __attribute__((overloadable)) intel_work_group_vme_mb_multi_bidir_check_16x16(
@@ -6597,15 +6597,15 @@ void __attribute__((overloadable)) intel_work_group_vme_mb_multi_bidir_check_16x
     image2d_t edgeSrcImage,
     sampler_t vmeAccelerator);
 
-void __attribute__((overloadable)) intel_work_group_vme_mb_multi_check_8x8( 
+void __attribute__((overloadable)) intel_work_group_vme_mb_multi_check_8x8(
     __local uint* dst,
     uint countWGSkipCoords,
     uint computeIntra,
     uint edgesIntra,
-    int2 srcCoord, 
+    int2 srcCoord,
     int4 skipCoord,
-    image2d_t srcImage, 
-    image2d_t refImage, 
+    image2d_t srcImage,
+    image2d_t refImage,
     image2d_t edgeSrcImage,
     sampler_t a );
 

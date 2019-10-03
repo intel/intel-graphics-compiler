@@ -87,8 +87,8 @@ CIF_DECLARE_INTERFACE_PIMPL(FclOclTranslationCtx) : CIF::PimplBase
         return false;
     }
 
-    OclTranslationOutputBase *Translate(CIF::Version_t outVersion, 
-                                        CIF::Builtins::BufferSimple *src, 
+    OclTranslationOutputBase *Translate(CIF::Version_t outVersion,
+                                        CIF::Builtins::BufferSimple *src,
                                         CIF::Builtins::BufferSimple *options,
                                         CIF::Builtins::BufferSimple *internalOptions,
                                         CIF::Builtins::BufferSimple *tracingOptions,
@@ -140,7 +140,7 @@ CIF_DECLARE_INTERFACE_PIMPL(FclOclTranslationCtx) : CIF::PimplBase
 
         return outputInterface.release();
     }
-    
+
 protected:
     static TC::CClangTranslationBlock *CreateLegacyInterface(CodeType::CodeType_t inType, CodeType::CodeType_t outType){
         if(SupportsTranslation(inType, outType) == false){

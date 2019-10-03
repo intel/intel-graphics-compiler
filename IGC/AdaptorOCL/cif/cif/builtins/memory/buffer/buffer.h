@@ -79,7 +79,7 @@ CIF_DEFINE_INTERFACE_VER(Buffer, 1){
   }
 
   /// Copies given element to the end of the buffer
-  /// Note : If (packed == false), then this function will automatically align current underlying buffer 
+  /// Note : If (packed == false), then this function will automatically align current underlying buffer
   ///        pointer to alignof(ElementT)
   template<typename ElementT>
   bool PushBackRawCopy(const ElementT &newEl, bool packed = true){
@@ -100,12 +100,12 @@ CIF_DEFINE_INTERFACE_VER(Buffer, 1){
   /// Note : reallocator is optional and can be nullptr
   virtual void SetAllocator(AllocatorT allocator, DeallocatorT deallocator, ReallocatorT reallocator);
 
-  /// Sets underlying buffer storage and its deallocator 
+  /// Sets underlying buffer storage and its deallocator
   /// Note : will destroy current underlying buffer (if any)
   /// Note : if size of given memory becomes too small, will fallback to allocating new memory
   virtual void SetUnderlyingStorage(void *memory, size_t size, DeallocatorT deallocator);
 
-  /// Sets underlying constant buffer storage and its deallocator 
+  /// Sets underlying constant buffer storage and its deallocator
   /// Note : will destroy current underlying buffer (if any)
   /// Note : will allocate new memory if this const memory will be accessed in non-const manners
   /// Note : since given pointer is treated as const, memory pointed ty by it will never be freed
@@ -151,7 +151,7 @@ CIF_DEFINE_INTERFACE_VER(Buffer, 1){
 };
 
 CIF_GENERATE_VERSIONS_LIST(Buffer);
-CIF_MARK_LATEST_VERSION(BufferLatest, Buffer); 
+CIF_MARK_LATEST_VERSION(BufferLatest, Buffer);
 using BufferSimple = Buffer<1>; /// tag the most common version
 
 template<typename BufferInterface = BufferLatest>
@@ -191,7 +191,7 @@ CIF::RAII::UPtr_t<BufferInterface> CreateBufferFromPtr(CIF::CIFMain *provider, v
     }
 
     buff->SetUnderlyingStorage(ptr, size, ptrDeallocator);
-    
+
     return buff;
 }
 

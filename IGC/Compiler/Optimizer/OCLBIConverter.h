@@ -59,7 +59,7 @@ namespace IGC
             AU.addRequired<CodeGenContextWrapper>();
         }
 
-        // @brief iterate on all the functions in the module and replace calls from __builtin_IB_* to the match 
+        // @brief iterate on all the functions in the module and replace calls from __builtin_IB_* to the match
         //        GenISA intrinsics
         virtual bool runOnFunction(llvm::Function& F) override;
         void visitCallInst(llvm::CallInst& CI);

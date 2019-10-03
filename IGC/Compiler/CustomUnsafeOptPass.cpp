@@ -1417,8 +1417,8 @@ bool CustomUnsafeOptPass::visitExchangeCB(llvm::BinaryOperator& I)
     //    =>
     // e = b x ( CB0 + CB1 )
 
-    // CB can be constant buffer load or immediate constant. 
-    // The goal is to put loop invariant calculations together and hoist it out of a loop. 
+    // CB can be constant buffer load or immediate constant.
+    // The goal is to put loop invariant calculations together and hoist it out of a loop.
 
     Instruction* inst0 = dyn_cast<Instruction>(I.getOperand(0));
     Instruction* inst1 = dyn_cast<Instruction>(I.getOperand(1));
@@ -1885,8 +1885,8 @@ bool CustomUnsafeOptPass::visitFMulFCmpOp(FCmpInst& FC)
                 if (i == 0)
                 {
                     //handling case:
-                    //    %mul = fmul float %x, -5.000000e-01     ->   (x * constant) 
-                    //    %sub = fsub float 0.000000e+00, %mul   ->  -(x * constant) 
+                    //    %mul = fmul float %x, -5.000000e-01     ->   (x * constant)
+                    //    %sub = fsub float 0.000000e+00, %mul   ->  -(x * constant)
                     //    %cmp = fcmp <cmpOp> float %sub, %mul
                     // into:
                     //    %cmp = fcmp <cmpOp> float %x, 0  [since (constant<0)]
@@ -1897,8 +1897,8 @@ bool CustomUnsafeOptPass::visitFMulFCmpOp(FCmpInst& FC)
                 else
                 {
                     //handling case:
-                    //    %mul = fmul float %x, -5.000000e-01     ->   (x * constant) 
-                    //    %sub = fsub float 0.000000e+00, %mul   ->  -(x * constant) 
+                    //    %mul = fmul float %x, -5.000000e-01     ->   (x * constant)
+                    //    %sub = fsub float 0.000000e+00, %mul   ->  -(x * constant)
                     //    %cmp = fcmp <cmpOp> float %mul, %sub
                     // into:
                     //    %cmp = fcmp <cmpOp> float 0, %x  [since (constant<0)]
@@ -2403,7 +2403,7 @@ void CustomUnsafeOptPass::reassociateMulAdd(Function& F)
 // result = a * expensive_operation();
 //
 // after:
-// 
+//
 // a = some value;
 // if (a == 0)
 //   result = 0;
@@ -2411,7 +2411,7 @@ void CustomUnsafeOptPass::reassociateMulAdd(Function& F)
 //   result = a * expensive_operation();
 //
 // Currently this is used to target d3d workloads
-// 
+//
 class EarlyOutPatterns : public FunctionPass
 {
 public:
@@ -2858,7 +2858,7 @@ bool EarlyOutPatterns::canOptimizeNdotL(SmallVector<Instruction*, 4> & Values, F
     // if so, we might benefit from checking the dot(N, L) > 0 before calculating the color
 
     // LLVM example:
-    // %319 = from dp3 
+    // %319 = from dp3
     // %res_s231 = fcmp fast ogt float %319, 0.000000e+00    -> function input parameter FC
     // %selResi32_s232 = sext i1 %res_s231 to i32
     // %res_s246 = and i32 % 339, %selResi32_s232
@@ -3180,7 +3180,7 @@ bool EarlyOutPatterns::canOptimizeDirectOutput(SmallVector<Instruction*, 4> & Va
 
         // look for cases with output comes from sample and up to 3 levels of fmul
         // Also the sample srcs are either constant or inputVec.
-        // We can then add an earlyOut condition to check the sample output. 
+        // We can then add an earlyOut condition to check the sample output.
         // If the sample result = 0, skip all the instructions contribute to the other src of mul.
         while (findex < fmulVec.size() && findex < MAX_FMUL_VEC_SIZE)
         {
@@ -3722,7 +3722,7 @@ HoistFMulInLoopPass::MulNode* HoistFMulInLoopPass::visitFMul(
     return ret;
 }
 
-// 
+//
 // There is a special case:
 //     %82 = fmul %81, %inv
 //   %83 = fmul %82, %inv

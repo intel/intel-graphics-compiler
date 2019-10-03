@@ -107,7 +107,7 @@ class SPIRVExtInst;
 #define _SPIRV_IMP_DEC4(Ty,x,y,z,u)                                                      \
     void Ty::decode(std::istream &I) { getDecoder(I) >> x >> y >> z >> u;}
 #define _SPIRV_IMP_DEC5(Ty,x,y,z,u,v)                                                    \
-    void Ty::decode(std::istream &I) { getDecoder(I) >> x >> y >> z >> u >> v;}           
+    void Ty::decode(std::istream &I) { getDecoder(I) >> x >> y >> z >> u >> v;}
 #define _SPIRV_IMP_DEC6(Ty,x,y,z,u,v,w)                                                  \
     void Ty::decode(std::istream &I) { getDecoder(I) >> x >> y >> z >> u >> v >> w;}
 #define _SPIRV_IMP_DEC7(Ty,x,y,z,u,v,w,r)                                                \

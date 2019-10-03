@@ -53,7 +53,7 @@ void DebugProgramBinaryHeader(
 }
 
 void DebugKernelBinaryHeader_Gen7(
-    const iOpenCL::SKernelBinaryHeaderGen7* pHeader, 
+    const iOpenCL::SKernelBinaryHeaderGen7* pHeader,
     std::string& output )
 {
     ICBE_DPF_STR( output, GFXDBG_HARDWARE, "Gen7 Kernel Binary Header:\n" );
@@ -94,7 +94,7 @@ void DebugPatchList(
                 const iOpenCL::SPatchGlobalMemoryObjectKernelArgument* pPatchItem =
                     (const iOpenCL::SPatchGlobalMemoryObjectKernelArgument*)pHeader;
 
-                ICBE_DPF_STR( output, GFXDBG_HARDWARE, 
+                ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "PATCH_TOKEN_GLOBAL_MEMORY_OBJECT_KERNEL_ARGUMENT (%08X) (size = %d)\n",
                     pPatchItem->Token,
                     pPatchItem->Size );
@@ -173,7 +173,7 @@ void DebugPatchList(
                     break;
                 };
 
-                ICBE_DPF_STR( output, GFXDBG_HARDWARE, 
+                ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "PATCH_TOKEN_IMAGE_MEMORY_OBJECT_KERNEL_ARGUMENT (%08X) (size = %d)\n",
                     pPatchItem->Token,
                     pPatchItem->Size );
@@ -215,7 +215,7 @@ void DebugPatchList(
                 const iOpenCL::SPatchConstantMemoryObjectKernelArgument* pPatchItem =
                     (const iOpenCL::SPatchConstantMemoryObjectKernelArgument*)pHeader;
 
-                ICBE_DPF_STR( output, GFXDBG_HARDWARE, 
+                ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "PATCH_TOKEN_CONSTANT_MEMORY_OBJECT_KERNEL_ARGUMENT (%08X) (size = %d)\n",
                     pPatchItem->Token,
                     pPatchItem->Size );
@@ -239,7 +239,7 @@ void DebugPatchList(
                 const iOpenCL::SPatchAllocateGlobalMemorySurfaceWithInitialization* pPatchItem =
                     (const iOpenCL::SPatchAllocateGlobalMemorySurfaceWithInitialization*)pHeader;
 
-                ICBE_DPF_STR( output, GFXDBG_HARDWARE, 
+                ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "PATCH_TOKEN_ALLOCATE_GLOBAL_MEMORY_SURFACE_WITH_INITIALIZATION (%08X) (size = %d)\n",
                     pPatchItem->Token,
                     pPatchItem->Size );
@@ -257,7 +257,7 @@ void DebugPatchList(
                 const iOpenCL::SPatchAllocateConstantMemorySurfaceWithInitialization* pPatchItem =
                         (const iOpenCL::SPatchAllocateConstantMemorySurfaceWithInitialization*)pHeader;
 
-                ICBE_DPF_STR( output, GFXDBG_HARDWARE, 
+                ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                         "PATCH_TOKEN_ALLOCATE_CONSTANT_MEMORY_SURFACE_WITH_INITIALIZATION (%08X) (size = %d)\n",
                         pPatchItem->Token,
                         pPatchItem->Size );
@@ -319,7 +319,7 @@ void DebugPatchList(
                     break;
                 };
 
-                ICBE_DPF_STR( output, GFXDBG_HARDWARE, 
+                ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "PATCH_TOKEN_SAMPLER_KERNEL_ARGUMENT (%08X) (size = %d)\n",
                     pPatchItem->Token,
                     pPatchItem->Size );
@@ -356,7 +356,7 @@ void DebugPatchList(
                 const iOpenCL::SPatchDataParameterBuffer* pPatchItem =
                     (const iOpenCL::SPatchDataParameterBuffer*)pHeader;
 
-                    ICBE_DPF_STR( output, GFXDBG_HARDWARE, 
+                    ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                         "PATCH_TOKEN_DATA_PARAMETER_BUFFER (%08X) (size = %d)\n",
                         pPatchItem->Token,
                         pPatchItem->Size );
@@ -492,8 +492,8 @@ void DebugPatchList(
                             "\tType = LOCAL_MEMORY_STATELESS_WINDOW_SIZE\n" );
                         break;
                     case iOpenCL::DATA_PARAMETER_PRIVATE_MEMORY_STATELESS_SIZE:
-                        ICBE_DPF_STR( output, GFXDBG_HARDWARE, 
-                            "\tType = PRIVATE_MEMORY_STATELESS_SIZE\n" ); 
+                        ICBE_DPF_STR( output, GFXDBG_HARDWARE,
+                            "\tType = PRIVATE_MEMORY_STATELESS_SIZE\n" );
                         break;
                     case iOpenCL::DATA_PARAMETER_OBJECT_ID:
                         ICBE_DPF_STR(output, GFXDBG_HARDWARE,
@@ -560,7 +560,7 @@ void DebugPatchList(
                 const iOpenCL::SPatchAllocateLocalSurface*  pPatchItem =
                     ( const iOpenCL::SPatchAllocateLocalSurface* )pHeader;
 
-                ICBE_DPF_STR( output, GFXDBG_HARDWARE, 
+                ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "PATCH_TOKEN_ALLOCATE_LOCAL_SURFACE (%08X) (size = %d)\n",
                     pPatchItem->Token,
                     pPatchItem->Size );
@@ -578,7 +578,7 @@ void DebugPatchList(
                 const iOpenCL::SPatchAllocateScratchSurface*  pPatchItem =
                     ( const iOpenCL::SPatchAllocateScratchSurface* )pHeader;
 
-                ICBE_DPF_STR( output, GFXDBG_HARDWARE, 
+                ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "PATCH_TOKEN_ALLOCATE_SCRATCH_SURFACE (%08X) (size = %d)\n",
                     pPatchItem->Token,
                     pPatchItem->Size );
@@ -596,7 +596,7 @@ void DebugPatchList(
                 const iOpenCL::SPatchAllocatePrivateMemorySurface*  pPatchItem =
                     ( const iOpenCL::SPatchAllocatePrivateMemorySurface* )pHeader;
 
-                ICBE_DPF_STR( output, GFXDBG_HARDWARE, 
+                ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "PATCH_TOKEN_ALLOCATE_PRIVATE_MEMORY (%08X) (size = %d)\n",
                     pPatchItem->Token,
                     pPatchItem->Size );
@@ -636,7 +636,7 @@ void DebugPatchList(
                 const iOpenCL::SPatchStateSIP* pPatchItem =
                     (const iOpenCL::SPatchStateSIP*)pHeader;
 
-                ICBE_DPF_STR( output, GFXDBG_HARDWARE, 
+                ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "PATCH_TOKEN_STATE_SIP (%08X) (size = %d)\n",
                     pPatchItem->Token,
                     pPatchItem->Size );
@@ -651,7 +651,7 @@ void DebugPatchList(
                 const iOpenCL::SPatchSamplerStateArray* pPatchItem =
                     (const iOpenCL::SPatchSamplerStateArray*)pHeader;
 
-                ICBE_DPF_STR( output, GFXDBG_HARDWARE, 
+                ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "PATCH_TOKEN_SAMPLER_STATE_ARRAY (%08X) (size = %d)\n",
                     pPatchItem->Token,
                     pPatchItem->Size );
@@ -672,7 +672,7 @@ void DebugPatchList(
                 const iOpenCL::SPatchBindingTableState* pPatchItem =
                     (const iOpenCL::SPatchBindingTableState*)pHeader;
 
-                ICBE_DPF_STR( output, GFXDBG_HARDWARE, 
+                ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "PATCH_TOKEN_BINDING_TABLE_STATE (%08X) (size = %d)\n",
                     pPatchItem->Token,
                     pPatchItem->Size );
@@ -694,7 +694,7 @@ void DebugPatchList(
                 const iOpenCL::SPatchMediaVFEState* pPatchItem =
                     (const iOpenCL::SPatchMediaVFEState*)pHeader;
 
-                ICBE_DPF_STR( output, GFXDBG_HARDWARE, 
+                ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "PATCH_TOKEN_MEDIA_VFE_STATE (%08X) (size = %d)\n",
                     pPatchItem->Token,
                     pPatchItem->Size );
@@ -730,7 +730,7 @@ void DebugPatchList(
                 const iOpenCL::SPatchMediaInterfaceDescriptorLoad* pPatchItem =
                     (const iOpenCL::SPatchMediaInterfaceDescriptorLoad*)pHeader;
 
-                ICBE_DPF_STR( output, GFXDBG_HARDWARE, 
+                ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "PATCH_TOKEN_MEDIA_INTERFACE_DESCRIPTOR_LOAD (%08X) (size = %d)\n",
                     pPatchItem->Token,
                     pPatchItem->Size );
@@ -745,7 +745,7 @@ void DebugPatchList(
                 const iOpenCL::SPatchInterfaceDescriptorData* pPatchItem =
                     (const iOpenCL::SPatchInterfaceDescriptorData*)pHeader;
 
-                ICBE_DPF_STR( output, GFXDBG_HARDWARE, 
+                ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "PATCH_TOKEN_INTERFACE_DESCRIPTOR_DATA (%08X) (size = %d)\n",
                     pPatchItem->Token,
                     pPatchItem->Size );
@@ -769,7 +769,7 @@ void DebugPatchList(
                 const iOpenCL::SPatchThreadPayload* pPatchItem =
                     (const iOpenCL::SPatchThreadPayload*)pHeader;
 
-                ICBE_DPF_STR( output, GFXDBG_HARDWARE, 
+                ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "PATCH_TOKEN_THREAD_PAYLOAD (%08X) (size = %d)\n",
                     pPatchItem->Token,
                     pPatchItem->Size );
@@ -823,7 +823,7 @@ void DebugPatchList(
                 const iOpenCL::SPatchExecutionEnvironment* pPatchItem =
                     (const iOpenCL::SPatchExecutionEnvironment*)pHeader;
 
-                ICBE_DPF_STR( output, GFXDBG_HARDWARE, 
+                ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "PATCH_TOKEN_EXECUTION_ENVIRONMENT (%08X) (size = %d)\n",
                     pPatchItem->Token,
                     pPatchItem->Size );
@@ -890,10 +890,10 @@ void DebugPatchList(
 
         case iOpenCL::PATCH_TOKEN_DATA_PARAMETER_STREAM:
             {
-                const iOpenCL::SPatchDataParameterStream* pPatchItem = 
+                const iOpenCL::SPatchDataParameterStream* pPatchItem =
                     (const iOpenCL::SPatchDataParameterStream*)pHeader;
 
-                ICBE_DPF_STR( output, GFXDBG_HARDWARE, 
+                ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "PATCH_TOKEN_DATA_PARAMETER_STREAM (%08X) (size = %d)\n",
                     pPatchItem->Token,
                     pPatchItem->Size );
@@ -905,12 +905,12 @@ void DebugPatchList(
 
         case iOpenCL::PATCH_TOKEN_KERNEL_ATTRIBUTES_INFO:
             {
-                const iOpenCL::SPatchKernelAttributesInfo* pPatchItem = 
+                const iOpenCL::SPatchKernelAttributesInfo* pPatchItem =
                     (const iOpenCL::SPatchKernelAttributesInfo*)pHeader;
 
                 char* pStr = (char*)pHeader + sizeof(iOpenCL::SPatchKernelAttributesInfo);
 
-                ICBE_DPF_STR( output, GFXDBG_HARDWARE, 
+                ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "PATCH_TOKEN_KERNEL_ATTRIBUTES_INFO (%08X) (size = %d)\n",
                     pPatchItem->Token,
                     pPatchItem->Size );
@@ -923,12 +923,12 @@ void DebugPatchList(
 
         case iOpenCL::PATCH_TOKEN_KERNEL_ARGUMENT_INFO:
             {
-                const iOpenCL::SPatchKernelArgumentInfo* pPatchItem = 
+                const iOpenCL::SPatchKernelArgumentInfo* pPatchItem =
                     (const iOpenCL::SPatchKernelArgumentInfo*)pHeader;
-                
+
                 char* pStr = (char*)pHeader + sizeof(iOpenCL::SPatchKernelArgumentInfo);
 
-                ICBE_DPF_STR( output, GFXDBG_HARDWARE, 
+                ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "PATCH_TOKEN_KERNEL_ARGUMENT_INFO (%08X) (size = %d)\n",
                     pPatchItem->Token,
                     pPatchItem->Size );
@@ -970,7 +970,7 @@ void DebugPatchList(
 
                 char* pStr = (char*)pHeader + sizeof(iOpenCL::SPatchString);
 
-                ICBE_DPF_STR( output, GFXDBG_HARDWARE, 
+                ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "PATCH_TOKEN_STRING (%08X) (size = %d)\n",
                     pPatchItem->Token,
                     pPatchItem->Size );
@@ -989,7 +989,7 @@ void DebugPatchList(
                 const iOpenCL::SPatchAllocatePrintfSurface*  pPatchItem =
                     ( const iOpenCL::SPatchAllocatePrintfSurface* )pHeader;
 
-                ICBE_DPF_STR( output, GFXDBG_HARDWARE, 
+                ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "PATCH_TOKEN_ALLOCATE_PRINTF_SURFACE (%08X) (size = %d)\n",
                     pPatchItem->Token,
                     pPatchItem->Size );
@@ -1008,7 +1008,7 @@ void DebugPatchList(
                 const iOpenCL::SPatchStatelessGlobalMemoryObjectKernelArgument*  pPatchItem =
                     (const iOpenCL::SPatchStatelessGlobalMemoryObjectKernelArgument*)pHeader;
 
-                ICBE_DPF_STR( output, GFXDBG_HARDWARE, 
+                ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "PATCH_TOKEN_STATELESS_GLOBAL_MEMORY_OBJECT_KERNEL_ARGUMENT (%08X) (size = %d)\n",
                     pPatchItem->Token,
                     pPatchItem->Size );
@@ -1041,7 +1041,7 @@ void DebugPatchList(
                 const iOpenCL::SPatchStatelessConstantMemoryObjectKernelArgument*  pPatchItem =
                     (const iOpenCL::SPatchStatelessConstantMemoryObjectKernelArgument*)pHeader;
 
-                ICBE_DPF_STR( output, GFXDBG_HARDWARE, 
+                ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "PATCH_TOKEN_STATELESS_CONSTANT_MEMORY_OBJECT_KERNEL_ARGUMENT (%08X) (size = %d)\n",
                     pPatchItem->Token,
                     pPatchItem->Size );
@@ -1068,7 +1068,7 @@ void DebugPatchList(
                 const iOpenCL::SPatchAllocateStatelessGlobalMemorySurfaceWithInitialization* pPatchItem =
                     (const iOpenCL::SPatchAllocateStatelessGlobalMemorySurfaceWithInitialization*)pHeader;
 
-                ICBE_DPF_STR( output, GFXDBG_HARDWARE, 
+                ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "PATCH_TOKEN_ALLOCATE_STATELESS_GLOBAL_MEMORY_SURFACE_WITH_INITIALIZATION (%08X) (size = %d)\n",
                     pPatchItem->Token,
                     pPatchItem->Size );
@@ -1092,7 +1092,7 @@ void DebugPatchList(
                 const iOpenCL::SPatchAllocateStatelessConstantMemorySurfaceWithInitialization* pPatchItem =
                     (const iOpenCL::SPatchAllocateStatelessConstantMemorySurfaceWithInitialization*)pHeader;
 
-                ICBE_DPF_STR( output, GFXDBG_HARDWARE, 
+                ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "PATCH_TOKEN_ALLOCATE_STATELESS_CONSTANT_MEMORY_SURFACE_WITH_INITIALIZATION (%08X) (size = %d)\n",
                     pPatchItem->Token,
                     pPatchItem->Size );
@@ -1116,7 +1116,7 @@ void DebugPatchList(
                 const iOpenCL::SPatchAllocateStatelessPrintfSurface*  pPatchItem =
                     (const iOpenCL::SPatchAllocateStatelessPrintfSurface*)pHeader;
 
-                 ICBE_DPF_STR( output, GFXDBG_HARDWARE, 
+                 ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "PATCH_TOKEN_ALLOCATE_STATELESS_PRINTF_SURFACE (%08X) (size = %d)\n",
                     pPatchItem->Token,
                     pPatchItem->Size );
@@ -1135,27 +1135,27 @@ void DebugPatchList(
             }
             break;
 
-        case iOpenCL::PATCH_TOKEN_ALLOCATE_STATELESS_PRIVATE_MEMORY: 
-            { 
-                const iOpenCL::SPatchAllocateStatelessPrivateSurface* pPatchItem = 
-                    (const iOpenCL::SPatchAllocateStatelessPrivateSurface*)pHeader; 
+        case iOpenCL::PATCH_TOKEN_ALLOCATE_STATELESS_PRIVATE_MEMORY:
+            {
+                const iOpenCL::SPatchAllocateStatelessPrivateSurface* pPatchItem =
+                    (const iOpenCL::SPatchAllocateStatelessPrivateSurface*)pHeader;
 
-                ICBE_DPF_STR( output, GFXDBG_HARDWARE, 
+                ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "PATCH_TOKEN_ALLOCATE_STATELESS_PRIVATE_MEMORY (%08X) (size = %d )\n",
-                    pPatchItem->Token, 
-                    pPatchItem->Size ); 
-                ICBE_DPF_STR( output, GFXDBG_HARDWARE, 
-                    "\tSurfaceHeapOffset = %d\n", 
-                    pPatchItem->SurfaceStateHeapOffset ); 
-                ICBE_DPF_STR( output, GFXDBG_HARDWARE, 
-                    "\tDataParamOffset = %d\n", 
+                    pPatchItem->Token,
+                    pPatchItem->Size );
+                ICBE_DPF_STR( output, GFXDBG_HARDWARE,
+                    "\tSurfaceHeapOffset = %d\n",
+                    pPatchItem->SurfaceStateHeapOffset );
+                ICBE_DPF_STR( output, GFXDBG_HARDWARE,
+                    "\tDataParamOffset = %d\n",
                     pPatchItem->DataParamOffset );
-                ICBE_DPF_STR( output, GFXDBG_HARDWARE, 
-                    "\tDataParamSize = %d\n", 
-                    pPatchItem->DataParamSize ); 
-                ICBE_DPF_STR( output, GFXDBG_HARDWARE, 
-                    "\tPerThreadPrivateMemorySize= %d\n", 
-                    pPatchItem->PerThreadPrivateMemorySize ); 
+                ICBE_DPF_STR( output, GFXDBG_HARDWARE,
+                    "\tDataParamSize = %d\n",
+                    pPatchItem->DataParamSize );
+                ICBE_DPF_STR( output, GFXDBG_HARDWARE,
+                    "\tPerThreadPrivateMemorySize= %d\n",
+                    pPatchItem->PerThreadPrivateMemorySize );
             }
             break;
 
@@ -1164,7 +1164,7 @@ void DebugPatchList(
                 const iOpenCL::SPatchConstantBufferMapping*  pPatchItem =
                     ( const iOpenCL::SPatchConstantBufferMapping* )pHeader;
 
-                ICBE_DPF_STR( output, GFXDBG_HARDWARE, 
+                ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "PATCH_TOKEN_CB_MAPPING (%08X) (size = %d)\n",
                     pPatchItem->Token,
                     pPatchItem->Size );
@@ -1189,12 +1189,12 @@ void DebugPatchList(
                 const iOpenCL::SPatchCB2CRGatherTable*  pPatchItem =
                     ( const iOpenCL::SPatchCB2CRGatherTable* )pHeader;
 
-                const USC::SConstantGatherEntry* pTable = 
+                const USC::SConstantGatherEntry* pTable =
                     ( const USC::SConstantGatherEntry* )( pPatchItem + 1 );
 
                 DWORD i = 0;
 
-                ICBE_DPF_STR( output, GFXDBG_HARDWARE, 
+                ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "PATCH_TOKEN_CB2CR_GATHER_TABLE (%08X) (size = %d)\n",
                     pPatchItem->Token,
                     pPatchItem->Size );
@@ -1229,7 +1229,7 @@ void DebugPatchList(
                 const iOpenCL::SPatchAllocateStatelessEventPoolSurface*  pPatchItem =
                     ( const iOpenCL::SPatchAllocateStatelessEventPoolSurface* )pHeader;
 
-                ICBE_DPF_STR( output, GFXDBG_HARDWARE, 
+                ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "PATCH_TOKEN_ALLOCATE_STATELESS_EVENT_POOL_SURFACE (%08X) (size = %d)\n",
                     pPatchItem->Token,
                     pPatchItem->Size );
@@ -1303,7 +1303,7 @@ void DebugPatchList(
                 const iOpenCL::SPatchNullSurfaceLocation*  pPatchItem =
                     ( const iOpenCL::SPatchNullSurfaceLocation* )pHeader;
 
-                ICBE_DPF_STR( output, GFXDBG_HARDWARE, 
+                ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "PATCH_TOKEN_NULL_SURFACE_LOCATION (%08X) (size = %d)\n",
                     pPatchItem->Token,
                     pPatchItem->Size );
@@ -1318,7 +1318,7 @@ void DebugPatchList(
                 const iOpenCL::SPatchKernelTypeProgramBinaryInfo* pPatchItem =
                     (const iOpenCL::SPatchKernelTypeProgramBinaryInfo*)pHeader;
 
-                ICBE_DPF_STR( output, GFXDBG_HARDWARE, 
+                ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "PATCH_TOKEN_CONSTRUCTOR_DESTRUCTOR_KERNEL_PROGRAM_BINARY_INFO (%08X) (size = %d)\n",
                     pPatchItem->Token,
                     pPatchItem->Size );
@@ -1340,7 +1340,7 @@ void DebugPatchList(
                 const iOpenCL::SPatchAllocateConstantMemorySurfaceProgramBinaryInfo* pPatchItem =
                     (const iOpenCL::SPatchAllocateConstantMemorySurfaceProgramBinaryInfo*)pHeader;
 
-                ICBE_DPF_STR( output, GFXDBG_HARDWARE, 
+                ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "PATCH_TOKEN_ALLOCATE_CONSTANT_MEMORY_SURFACE_PROGRAM_BINARY_INFO (%08X) (size = %d)\n",
                     pPatchItem->Token,
                     pPatchItem->Size );
@@ -1352,13 +1352,13 @@ void DebugPatchList(
                     pPatchItem->InlineDataSize );
             }
             break;
-        
+
         case iOpenCL::PATCH_TOKEN_ALLOCATE_GLOBAL_MEMORY_SURFACE_PROGRAM_BINARY_INFO:
             {
                 const iOpenCL::SPatchAllocateGlobalMemorySurfaceProgramBinaryInfo* pPatchItem =
                     (const iOpenCL::SPatchAllocateGlobalMemorySurfaceProgramBinaryInfo*)pHeader;
 
-                ICBE_DPF_STR( output, GFXDBG_HARDWARE, 
+                ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "PATCH_TOKEN_ALLOCATE_GLOBAL_MEMORY_SURFACE_PROGRAM_BINARY_INFO (%08X) (size = %d)\n",
                     pPatchItem->Token,
                     pPatchItem->Size );
@@ -1379,7 +1379,7 @@ void DebugPatchList(
                 const iOpenCL::SPatchGlobalPointerProgramBinaryInfo* pPatchItem =
                     (const iOpenCL::SPatchGlobalPointerProgramBinaryInfo*)pHeader;
 
-                ICBE_DPF_STR( output, GFXDBG_HARDWARE, 
+                ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "PATCH_TOKEN_GLOBAL_POINTER_PROGRAM_BINARY_INFO (%08X) (size = %d)\n",
                     pPatchItem->Token,
                     pPatchItem->Size );
@@ -1403,7 +1403,7 @@ void DebugPatchList(
                 const iOpenCL::SPatchConstantPointerProgramBinaryInfo* pPatchItem =
                     (const iOpenCL::SPatchConstantPointerProgramBinaryInfo*)pHeader;
 
-                ICBE_DPF_STR( output, GFXDBG_HARDWARE, 
+                ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "PATCH_TOKEN_CONSTANT_POINTER_PROGRAM_BINARY_INFO (%08X) (size = %d)\n",
                     pPatchItem->Token,
                     pPatchItem->Size );
@@ -1427,7 +1427,7 @@ void DebugPatchList(
                 const iOpenCL::SPatchInlineVMESamplerInfo*  pPatchItem =
                     ( const iOpenCL::SPatchInlineVMESamplerInfo* )pHeader;
 
-                ICBE_DPF_STR( output, GFXDBG_HARDWARE, 
+                ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "PATCH_TOKEN_INLINE_VME_SAMPLER_INFO (%08X) (size = %d)\n",
                     pPatchItem->Token,
                     pPatchItem->Size );
@@ -1496,7 +1496,7 @@ void DebugPatchList(
             {
                 ICBE_ASSERT( 0 );
 
-                ICBE_DPF_STR( output, GFXDBG_HARDWARE, 
+                ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "*** UNKNOWN TOKEN %08X (size = %d)***\n",
                     pHeader->Token,
                     pHeader->Size );

@@ -85,7 +85,7 @@ TYPE_ARG(half,   f16)
 TYPE_ARG(float,  f32)
 #if defined(cl_khr_fp64)
 TYPE_ARG(double, f64)
-#endif 
+#endif
 
 #undef TYPE_ARG
 #undef ELEM_ARG

@@ -157,7 +157,7 @@ KernelArg::ArgType KernelArg::calcArgType(const Argument* arg, const StringRef t
                 type->getPointerElementType()->isStructTy())
             {
                 // Pass by value structs will show up as private pointer
-                // arguments in the function signiture.  
+                // arguments in the function signiture.
                 return KernelArg::ArgType::STRUCT;
             }
             else
@@ -188,7 +188,7 @@ KernelArg::ArgType KernelArg::calcArgType(const Argument* arg, const StringRef t
         default:
 #if 0
             // Need to disable this assertion for two-phase-inlining, i.e.
-            // kernel arguments will be used for subroutines, which may 
+            // kernel arguments will be used for subroutines, which may
             // have arguments from other address spaces. It is unfortunate
             // that we cannot run ResourceAllocator only on kernels since
             // BuiltinsConverter checks caller's resource allocation info.
@@ -1134,8 +1134,8 @@ KernelArgs::const_iterator KernelArgs::end()
 void KernelArgs::checkForZeroPerThreadData()
 {
 
-    // On SKL, when we use Indirect thread payload, Spec says: 
-    // if Cross-Thread Constant Data Read Length for Indirect is greater than 0, 
+    // On SKL, when we use Indirect thread payload, Spec says:
+    // if Cross-Thread Constant Data Read Length for Indirect is greater than 0,
     // then Per thread data field must also be greater than 0.
     // In that case we allocate one blank payload grf for Per thread constant.
 

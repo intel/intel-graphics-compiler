@@ -27,7 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 #include "common/LLVMWarningsPush.hpp"
-#include <llvm/IR/LLVMContext.h> 
+#include <llvm/IR/LLVMContext.h>
 #include "common/LLVMWarningsPop.hpp"
 
 /*
@@ -58,7 +58,7 @@ typedef int INT; */
 #define UINT unsigned int
 #else
 #define DWORD uint32_t
-#define INT64 int64_t 
+#define INT64 int64_t
 #define UINT64 uint64_t
 #define ULONG uint32_t
 #define BOOLEAN uint8_t
@@ -68,7 +68,7 @@ typedef int INT; */
 
 #define HANDLE void*
 
-#define C_ASSERT(e) 
+#define C_ASSERT(e)
 
 #include "GlobalData.h"
 

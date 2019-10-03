@@ -52,7 +52,7 @@ using namespace IGCombiner;
 #define DEBUG_TYPE "instcombine"
 
 
-/// Commented out since the inluced .inc file was generated from .td file, 
+/// Commented out since the inluced .inc file was generated from .td file,
 /// that contained only AMDGPU realted code.
 // namespace {
 //

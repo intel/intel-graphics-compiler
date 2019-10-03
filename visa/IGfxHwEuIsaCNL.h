@@ -96,7 +96,7 @@ typedef enum tagEU_OPCODE {
     EU_OPCODE_DPH     = 0x55,
     EU_OPCODE_DP3     = 0x56,
     EU_OPCODE_DP2     = 0x57,
-    EU_OPCODE_DP4A    = 0x58, 
+    EU_OPCODE_DP4A    = 0x58,
     EU_OPCODE_LINE    = 0x59,
     EU_OPCODE_PLN     = 0x5A,
     EU_OPCODE_MAD     = 0x5B,

@@ -29,7 +29,7 @@ float __builtin_spirv_OpenCL_length_f32(float p) {
 
 float __builtin_spirv_OpenCL_length_v2f32(float2 p) {
   float l2 = __builtin_spirv_OpDot_v2f32_v2f32(p, p);
-  /*Currently we are not optimizing away the 
+  /*Currently we are not optimizing away the
     underflow case when fast-relaxed-math is enabled*/
   if (l2 < FLT_MIN) {
     p *= 0x1.0p+86F;
@@ -37,7 +37,7 @@ float __builtin_spirv_OpenCL_length_v2f32(float2 p) {
   } else if (__intel_relaxed_isinf(l2)) {
     p *= 0x1.0p-65F;
     return __builtin_spirv_OpenCL_sqrt_f32(__builtin_spirv_OpDot_v2f32_v2f32(p, p)) * 0x1.0p+65F;
-  }                          
+  }
   return __builtin_spirv_OpenCL_sqrt_f32(l2);
 }
 
@@ -49,7 +49,7 @@ float __builtin_spirv_OpenCL_length_v3f32(float3 p) {
   } else if (__intel_relaxed_isinf(l2)) {
     p *= 0x1.0p-65F;
     return __builtin_spirv_OpenCL_sqrt_f32(__builtin_spirv_OpDot_v3f32_v3f32(p, p)) * 0x1.0p+65F;
-  }                          
+  }
   return __builtin_spirv_OpenCL_sqrt_f32(l2);
 }
 
@@ -61,7 +61,7 @@ float __builtin_spirv_OpenCL_length_v4f32(float4 p) {
   } else if (__intel_relaxed_isinf(l2)) {
     p *= 0x1.0p-65F;
     return __builtin_spirv_OpenCL_sqrt_f32(__builtin_spirv_OpDot_v4f32_v4f32(p, p)) * 0x1.0p+65F;
-  }                          
+  }
   return __builtin_spirv_OpenCL_sqrt_f32(l2);
 }
 

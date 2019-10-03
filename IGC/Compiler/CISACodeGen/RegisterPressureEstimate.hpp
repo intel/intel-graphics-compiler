@@ -57,7 +57,7 @@ namespace IGC
             m_pLiveRangePool.clear();
             return false;
         }
-        /// \brief Describe a value is live at Begin and dead right after End. 
+        /// \brief Describe a value is live at Begin and dead right after End.
         struct Segment
         {
             unsigned Begin;
@@ -94,7 +94,7 @@ namespace IGC
                 }
             }
 
-            /// \brief Sort segments and merge them. 
+            /// \brief Sort segments and merge them.
             void sortAndMerge();
 
             /// \brief Check whether N is contained in this live range.

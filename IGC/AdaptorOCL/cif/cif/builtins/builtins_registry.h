@@ -39,7 +39,7 @@ bool IsBuiltin(InterfaceId_t intId);
 ICIF *Create(InterfaceId_t entryPointInterface, Version_t version, ICIF *parentInterface);
 
 bool GetSupportedVersions(InterfaceId_t entryPointInterface, Version_t &verMin, Version_t &verMax);
-  
+
 InterfaceId_t FindIncompatible(InterfaceId_t entryPointInterface, CIF::CompatibilityDataHandle handle);
 
 }

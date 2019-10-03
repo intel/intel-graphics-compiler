@@ -50,7 +50,7 @@ static INLINE float __intel_tan_f32( float x, bool doFast )
             result = as_float(0x3F73F75D);
         }
         else
-        { 
+        {
                 result = libclc_tan_f32(x);
         }
     }

@@ -1847,8 +1847,8 @@ public:
         // Following executed only if G4_Declare doesnt have an alias
         return spillFlag;
     }
-   
-    bool isEvenAlign() const; 
+
+    bool isEvenAlign() const;
     G4_SubReg_Align getSubRegAlign() const;
     void        setEvenAlign();
     void        setSubRegAlign(G4_SubReg_Align subAl);

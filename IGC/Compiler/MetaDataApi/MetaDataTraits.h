@@ -163,7 +163,7 @@ namespace IGC
             return false;
         }
 
-        // Take val by value, not by reference as in other specializations, 
+        // Take val by value, not by reference as in other specializations,
         // as we use vector<bool> in MetaData templates, which has a specialization in STL,
         // that prevents us from taking bool& here.
         static void discardChanges(value_type val)

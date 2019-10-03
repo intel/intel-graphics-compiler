@@ -37,13 +37,13 @@ float __builtin_spirv_OpenCL_hypot_f32_f32( float x, float y )
     // 4) Else, return sqrt( x * x, y * y )
 
     float result;
-    
-    if( __intel_relaxed_isinf( x ) | 
+
+    if( __intel_relaxed_isinf( x ) |
         __intel_relaxed_isinf( y ) )
     {
         result = INFINITY;
     }
-    else if( __intel_relaxed_isnan( x ) | 
+    else if( __intel_relaxed_isnan( x ) |
              __intel_relaxed_isnan( y ) )
     {
         result = __builtin_spirv_OpenCL_nan_i32(0u);

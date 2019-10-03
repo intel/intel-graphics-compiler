@@ -47,7 +47,7 @@ public:
     {
         m_mod = module;
     }
-    
+
     void SetShadingRate(llvm::Function* F, IGC::PixelShaderPhaseType rate)
     {
         // TODO: move to the Metadata API

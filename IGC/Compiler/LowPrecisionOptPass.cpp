@@ -220,7 +220,7 @@ bool LowPrecisionOpt::propagateSamplerType(llvm::GenIntrinsicInst& I)
             }
             auto isUpperBitClear = [this](User* U)
             {
-                // match the pattern 
+                // match the pattern
                 // %scalar59 = extractelement <4 x i32> % 83, i32 3
                 // % 84 = and i32 %scalar59, 65535
                 if (U->getType() != m_builder->getInt32Ty())

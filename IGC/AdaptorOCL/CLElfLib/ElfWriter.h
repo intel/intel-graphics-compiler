@@ -69,7 +69,7 @@ struct SSectionNode
  Class:         CElfWriter
 
  Description:   Class to provide simpler interaction with the ELF standard
-                binary object.  SElf64Header defines the ELF header type and 
+                binary object.  SElf64Header defines the ELF header type and
                 SElf64SectionHeader defines the section header type.
 
 \******************************************************************************/
@@ -86,7 +86,7 @@ public:
     E_RETVAL ELF_CALL AddSection(
         SSectionNode* pSectionNode );
 
-    E_RETVAL ELF_CALL ResolveBinary( 
+    E_RETVAL ELF_CALL ResolveBinary(
         char* const pBinary,
         size_t& dataSize );
 

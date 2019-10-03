@@ -112,12 +112,12 @@ float2 __builtin_spirv_OpenCL_normalize_v2f32(float2 p) {
 
   float l2 = __builtin_spirv_OpDot_v2f32_v2f32(p, p);
 
-  /*Currently we are not optimizing away the 
+  /*Currently we are not optimizing away the
     underflow case when fast-relaxed-math is enabled*/
   if (l2 < FLT_MIN) {
     p *= 0x1.0p+86F;
     l2 = __builtin_spirv_OpDot_v2f32_v2f32(p, p);
-  } else if (__intel_relaxed_isinf(l2)) { 
+  } else if (__intel_relaxed_isinf(l2)) {
     p *= 0x1.0p-65f;
     l2 = __builtin_spirv_OpDot_v2f32_v2f32(p, p);
     if (l2 == INFINITY) {

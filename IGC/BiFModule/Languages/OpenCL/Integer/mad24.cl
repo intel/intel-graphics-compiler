@@ -28,7 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "spirv.h"
 
 
- 
+
 
 INLINE
 int2 OVERLOADABLE mad24( int2 x,

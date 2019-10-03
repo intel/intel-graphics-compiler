@@ -43,7 +43,7 @@ struct SMIARBCheck
         {
             DWORD       _Unused                             : BITFIELD_RANGE(0,22);
             DWORD       InstructionOpcode                   : BITFIELD_RANGE(23,28);    // MI_OPCODE
-            DWORD       InstructionType                     : BITFIELD_RANGE(29,31);    // INSTRUCTION_TYPE 
+            DWORD       InstructionType                     : BITFIELD_RANGE(29,31);    // INSTRUCTION_TYPE
         } All;
         DWORD       Value;
     } DW0;
@@ -63,7 +63,7 @@ struct SMIARBOnOff
             DWORD       ArbitrationEnable                   : BITFIELD_BIT(0);          // bool
             DWORD       _Unused                             : BITFIELD_RANGE(1,22);
             DWORD       InstructionOpcode                   : BITFIELD_RANGE(23,28);    // MI_OPCODE
-            DWORD       InstructionType                     : BITFIELD_RANGE(29,31);    // INSTRUCTION_TYPE 
+            DWORD       InstructionType                     : BITFIELD_RANGE(29,31);    // INSTRUCTION_TYPE
         } All;
         DWORD       Value;
     } DW0;
@@ -82,7 +82,7 @@ struct SMIBatchBufferEnd
         {
             DWORD       _Unused                             : BITFIELD_RANGE(0,22);
             DWORD       InstructionOpcode                   : BITFIELD_RANGE(23,28);    // MI_OPCODE
-            DWORD       InstructionType                     : BITFIELD_RANGE(29,31);    // INSTRUCTION_TYPE 
+            DWORD       InstructionType                     : BITFIELD_RANGE(29,31);    // INSTRUCTION_TYPE
         } All;
         DWORD       Value;
     } DW0;
@@ -101,14 +101,14 @@ struct SMIBatchBufferStart
         struct _All
         {
             DWORD       Length                              : BITFIELD_RANGE(0,5);      // OP_LENGTH
-            DWORD       _Unused1                            : BITFIELD_RANGE(6,7);      //            
+            DWORD       _Unused1                            : BITFIELD_RANGE(6,7);      //
             DWORD       BufferSecurityIndicator             : BITFIELD_BIT(8);          // MI_BUFFER_SECURITY_INDICATOR
-            DWORD       _Unused2                            : BITFIELD_RANGE(9,22);     
+            DWORD       _Unused2                            : BITFIELD_RANGE(9,22);
             //DWORD       CommandArbitrationControl           : BITFIELD_RANGE(9,10);     // MI_COMMAND_ARBITRATION_CONTROL
             //DWORD       ClearCommandBufferEnable            : BITFIELD_BIT(11);         // bool
             //DWORD       _Unused3                          : BITFIELD_RANGE(12,22);    //
             DWORD       InstructionOpcode                   : BITFIELD_RANGE(23,28);    // MI_OPCODE
-            DWORD       InstructionType                     : BITFIELD_RANGE(29,31);    // INSTRUCTION_TYPE 
+            DWORD       InstructionType                     : BITFIELD_RANGE(29,31);    // INSTRUCTION_TYPE
         } All;
         DWORD       Value;
     } DW0;
@@ -143,7 +143,7 @@ struct SMIDisplayFlip
             DWORD       DisplayPlaneSelect                  : BITFIELD_RANGE(20,21);    // MI_DISPLAY_PLANE_SELECT
             DWORD       AsynchronousFlip                    : BITFIELD_BIT(22);         // MI_ASYNCHRONOUS_FLIP
             DWORD       InstructionOpcode                   : BITFIELD_RANGE(23,28);    // MI_OPCODE
-            DWORD       InstructionType                     : BITFIELD_RANGE(29,31);    // INSTRUCTION_TYPE 
+            DWORD       InstructionType                     : BITFIELD_RANGE(29,31);    // INSTRUCTION_TYPE
         } All;
         DWORD       Value;
     } DW0;
@@ -157,7 +157,7 @@ struct SMIDisplayFlip
             DWORD       DisplayBufferPitch                  : BITFIELD_RANGE(3,14);     // U12
             DWORD       _Unused2                            : BITFIELD_RANGE(15,28);
             DWORD       FlipQueueSelect                     : BITFIELD_BIT(29);         // MI_FLIP_QUEUE_SELECT
-            DWORD       _Unused3                            : BITFIELD_RANGE(30,31);    
+            DWORD       _Unused3                            : BITFIELD_RANGE(30,31);
         } All;
         DWORD       Value;
     } DW1;
@@ -182,7 +182,7 @@ struct SMIDisplayFlip
             DWORD       PipeVerticalSourceImageResize       : BITFIELD_RANGE(0,11);     // U32 TODO: TODO: TODO: ?ok? really u32... how?
             DWORD       _Unused1                            : BITFIELD_RANGE(12,15);    // U32 TODO: TODO: TODO: ?ok? really u32... how?
             DWORD       PipeHorizontalSourceImageSize       : BITFIELD_RANGE(16,27);
-            DWORD       _Unused2                            : BITFIELD_RANGE(28,29);         
+            DWORD       _Unused2                            : BITFIELD_RANGE(28,29);
             DWORD       PanelFitterSelect                   : BITFIELD_BIT(30);         // MI_PANEL_FITTER
             DWORD       EnablePanelFitter                   : BITFIELD_BIT(31);         // bool
         } All;
@@ -211,7 +211,7 @@ struct SMIFlush
             DWORD       ProtectedMemoryEnable               : BITFIELD_BIT(6);          // bool
             DWORD       _Unused2                            : BITFIELD_RANGE(7,22);
             DWORD       InstructionOpcode                   : BITFIELD_RANGE(23,28);    // MI_OPCODE
-            DWORD       InstructionType                     : BITFIELD_RANGE(29,31);    // INSTRUCTION_TYPE 
+            DWORD       InstructionType                     : BITFIELD_RANGE(29,31);    // INSTRUCTION_TYPE
         } All;
         DWORD       Value;
     } DW0;
@@ -237,7 +237,7 @@ struct SMILoadRegisterImmediate
             DWORD       Byte3WriteDisable                   : BITFIELD_BIT(11);         // bool
             DWORD       _Unused2                            : BITFIELD_RANGE(12,22);
             DWORD       InstructionOpcode                   : BITFIELD_RANGE(23,28);    // MI_OPCODE
-            DWORD       InstructionType                     : BITFIELD_RANGE(29,31);    // INSTRUCTION_TYPE 
+            DWORD       InstructionType                     : BITFIELD_RANGE(29,31);    // INSTRUCTION_TYPE
         } All;
         DWORD       Value;
     } DW0;
@@ -281,7 +281,7 @@ struct SMILoadScanLinesExclusive
             DWORD       DisplayPipeSelect                   : BITFIELD_RANGE(20,21);    // MI_DISPLAY_PIPE_SELECT
             DWORD       _Unused2                            : BITFIELD_BIT(22);
             DWORD       InstructionOpcode                   : BITFIELD_RANGE(23,28);    // MI_OPCODE
-            DWORD       InstructionType                     : BITFIELD_RANGE(29,31);    // INSTRUCTION_TYPE 
+            DWORD       InstructionType                     : BITFIELD_RANGE(29,31);    // INSTRUCTION_TYPE
         } All;
         DWORD       Value;
     } DW0;
@@ -315,7 +315,7 @@ struct SMILoadScanLinesInclusive
             DWORD       DisplayPipeSelect                   : BITFIELD_RANGE(20,21);    // MI_DISPLAY_PIPE_SELECT
             DWORD       _Unused2                            : BITFIELD_BIT(22);
             DWORD       InstructionOpcode                   : BITFIELD_RANGE(23,28);    // MI_OPCODE
-            DWORD       InstructionType                     : BITFIELD_RANGE(29,31);    // INSTRUCTION_TYPE 
+            DWORD       InstructionType                     : BITFIELD_RANGE(29,31);    // INSTRUCTION_TYPE
         } All;
         DWORD       Value;
     } DW0;
@@ -344,10 +344,10 @@ struct SMINoop
     {
         struct _All
         {
-            DWORD       IdentificationNumber                    : BITFIELD_RANGE(0,21);     // DWORD 
+            DWORD       IdentificationNumber                    : BITFIELD_RANGE(0,21);     // DWORD
             DWORD       IdentificationNumberRegisterWriteEnable : BITFIELD_BIT(22);         // bool
             DWORD       InstructionOpcode                       : BITFIELD_RANGE(23,28);    // MI_OPCODE
-            DWORD       InstructionType                         : BITFIELD_RANGE(29,31);    // INSTRUCTION_TYPE 
+            DWORD       InstructionType                         : BITFIELD_RANGE(29,31);    // INSTRUCTION_TYPE
         } All;
         DWORD       Value;
     } DW0;
@@ -369,7 +369,7 @@ struct SMIOverlayFlip
             DWORD       _Unused                                     : BITFIELD_RANGE(6,20);
             DWORD       ModeFlags                                   : BITFIELD_RANGE(21,22);    // MI_MODE_FLAGS
             DWORD       InstructionOpcode                           : BITFIELD_RANGE(23,28);    // MI_OPCODE
-            DWORD       InstructionType                             : BITFIELD_RANGE(29,31);    // INSTRUCTION_TYPE 
+            DWORD       InstructionType                             : BITFIELD_RANGE(29,31);    // INSTRUCTION_TYPE
         } All;
         DWORD       Value;
     } DW0;
@@ -402,7 +402,7 @@ struct SMIProbeHeader
             DWORD       Length                                      : BITFIELD_RANGE(0,9);      // OP_LENGTH
             DWORD       _Unused                                     : BITFIELD_RANGE(10,22);
             DWORD       InstructionOpcode                           : BITFIELD_RANGE(23,28);    // MI_OPCODE
-            DWORD       InstructionType                             : BITFIELD_RANGE(29,31);    // INSTRUCTION_TYPE 
+            DWORD       InstructionType                             : BITFIELD_RANGE(29,31);    // INSTRUCTION_TYPE
         } All;
         DWORD       Value;
     } DW0;
@@ -449,7 +449,7 @@ struct SMIReportHead
         {
             DWORD       _Unused                             : BITFIELD_RANGE(0,22);
             DWORD       InstructionOpcode                   : BITFIELD_RANGE(23,28);    // MI_OPCODE
-            DWORD       InstructionType                     : BITFIELD_RANGE(29,31);    // INSTRUCTION_TYPE 
+            DWORD       InstructionType                     : BITFIELD_RANGE(29,31);    // INSTRUCTION_TYPE
         } All;
         DWORD       Value;
     } DW0;
@@ -470,7 +470,7 @@ struct SMIReportNonCE
             DWORD       Length                              : BITFIELD_RANGE(0,5);      // OP_LENGTH
             DWORD       _Unused                             : BITFIELD_RANGE(6,22);
             DWORD       InstructionOpcode                   : BITFIELD_RANGE(23,28);    // MI_OPCODE
-            DWORD       InstructionType                     : BITFIELD_RANGE(29,31);    // INSTRUCTION_TYPE 
+            DWORD       InstructionType                     : BITFIELD_RANGE(29,31);    // INSTRUCTION_TYPE
         } All;
         DWORD       Value;
     } DW0;
@@ -499,13 +499,13 @@ struct SMISemaphoreMBox
         struct _All
         {
             DWORD       Length                              : BITFIELD_RANGE(0,5);      // OP_LENGTH
-            DWORD       _Unused                             : BITFIELD_RANGE(6,18);      
+            DWORD       _Unused                             : BITFIELD_RANGE(6,18);
             DWORD       CommandBufferTerminateEnable        : BITFIELD_BIT(19);         // bool
             DWORD       CompareSemaphore                    : BITFIELD_BIT(20);         // bool
             DWORD       UpdateSemaphore                     : BITFIELD_BIT(21);         // bool
             DWORD       UseGlobalGTT                        : BITFIELD_BIT(22);         // MI_MEMORY_USE_GLOBAL_GTT
             DWORD       InstructionOpcode                   : BITFIELD_RANGE(23,28);    // MI_OPCODE
-            DWORD       InstructionType                     : BITFIELD_RANGE(29,31);    // INSTRUCTION_TYPE 
+            DWORD       InstructionType                     : BITFIELD_RANGE(29,31);    // INSTRUCTION_TYPE
         } All;
         DWORD       Value;
     } DW0;
@@ -525,7 +525,7 @@ struct SMISemaphoreMBox
     {
         struct _All
         {
-            DWORD       _Unused                                     : BITFIELD_RANGE(0,1);  
+            DWORD       _Unused                                     : BITFIELD_RANGE(0,1);
             DWORD       PointerBitFieldName                         : BITFIELD_RANGE(2,31);    // GTT[31:13]
         } All;
         DWORD       Value;
@@ -547,7 +547,7 @@ struct SMISetContext
             DWORD       Length                              : BITFIELD_RANGE(0,5);      // OP_LENGTH
             DWORD       _Unused                             : BITFIELD_RANGE(6,22);
             DWORD       InstructionOpcode                   : BITFIELD_RANGE(23,28);    // MI_OPCODE
-            DWORD       InstructionType                     : BITFIELD_RANGE(29,31);    // INSTRUCTION_TYPE 
+            DWORD       InstructionType                     : BITFIELD_RANGE(29,31);    // INSTRUCTION_TYPE
         } All;
         DWORD       Value;
     } DW0;
@@ -588,7 +588,7 @@ struct SMIStoreDataImmediate
             DWORD       _Unused                             : BITFIELD_RANGE(6,21);
             DWORD       UseGlobalGTT                        : BITFIELD_BIT(22);         // MI_MEMORY_USE_GLOBAL_GTT
             DWORD       InstructionOpcode                   : BITFIELD_RANGE(23,28);    // MI_OPCODE
-            DWORD       InstructionType                     : BITFIELD_RANGE(29,31);    // INSTRUCTION_TYPE 
+            DWORD       InstructionType                     : BITFIELD_RANGE(29,31);    // INSTRUCTION_TYPE
         } All;
         DWORD       Value;
     } DW0;
@@ -663,9 +663,9 @@ struct SMIStoreDataIndexed
             DWORD       Length                              : BITFIELD_RANGE(0,5);      // OP_LENGTH
             DWORD       _Unused1                            : BITFIELD_RANGE(6,20);
             DWORD       UsePerProcessHardwareStatusPage     : BITFIELD_BIT(21);         // bool
-            DWORD       _Unused2                            : BITFIELD_BIT(22);         //      
+            DWORD       _Unused2                            : BITFIELD_BIT(22);         //
             DWORD       InstructionOpcode                   : BITFIELD_RANGE(23,28);    // MI_OPCODE
-            DWORD       InstructionType                     : BITFIELD_RANGE(29,31);    // INSTRUCTION_TYPE 
+            DWORD       InstructionType                     : BITFIELD_RANGE(29,31);    // INSTRUCTION_TYPE
         } All;
         DWORD       Value;
     } DW0;
@@ -689,7 +689,7 @@ struct SMIStoreDataIndexed
         {
             QWORD       Data;
         } All;
- 
+
         // DWORD 2
         struct _DW2
         {
@@ -721,7 +721,7 @@ struct SMIStoreRegisterMemory
             DWORD       _Unused                             : BITFIELD_RANGE(6,21);
             DWORD       UseGlobalGTT                        : BITFIELD_BIT(22);         // MI_MEMORY_USE_GLOBAL_GTT
             DWORD       InstructionOpcode                   : BITFIELD_RANGE(23,28);    // MI_OPCODE
-            DWORD       InstructionType                     : BITFIELD_RANGE(29,31);    // INSTRUCTION_TYPE 
+            DWORD       InstructionType                     : BITFIELD_RANGE(29,31);    // INSTRUCTION_TYPE
         } All;
         DWORD       Value;
     } DW0;
@@ -767,7 +767,7 @@ struct SMIUpdateGTTHeader
             DWORD       _Unused                             : BITFIELD_RANGE(6,21);
             DWORD       EntryType                           : BITFIELD_BIT(22);         // MI_MEMORY_UPDATE_GTT_ENTRY
             DWORD       InstructionOpcode                   : BITFIELD_RANGE(23,28);    // MI_OPCODE
-            DWORD       InstructionType                     : BITFIELD_RANGE(29,31);    // INSTRUCTION_TYPE 
+            DWORD       InstructionType                     : BITFIELD_RANGE(29,31);    // INSTRUCTION_TYPE
         } All;
         DWORD       Value;
     } DW0;
@@ -826,7 +826,7 @@ struct SMIUnProbe
             DWORD       SlotNumber                                  : BITFIELD_RANGE(0,9);      // ProbeSlotIndex
             DWORD       _Unused                                     : BITFIELD_RANGE(10,22);
             DWORD       InstructionOpcode                           : BITFIELD_RANGE(23,28);    // MI_OPCODE
-            DWORD       InstructionType                             : BITFIELD_RANGE(29,31);    // INSTRUCTION_TYPE 
+            DWORD       InstructionType                             : BITFIELD_RANGE(29,31);    // INSTRUCTION_TYPE
         } All;
         DWORD       Value;
     } DW0;
@@ -845,7 +845,7 @@ struct SMIUserInterrupt
         {
             DWORD       _Unused                             : BITFIELD_RANGE(0,22);
             DWORD       InstructionOpcode                   : BITFIELD_RANGE(23,28);    // MI_OPCODE
-            DWORD       InstructionType                     : BITFIELD_RANGE(29,31);    // INSTRUCTION_TYPE 
+            DWORD       InstructionType                     : BITFIELD_RANGE(29,31);    // INSTRUCTION_TYPE
         } All;
         DWORD       Value;
     } DW0;
@@ -881,7 +881,7 @@ struct SMIWaitForEvent
             DWORD       DisplayPipeBStartVBlankWaitEnable       : BITFIELD_BIT(18);         // bool
             DWORD       _Unused2                                : BITFIELD_RANGE(19,22);
             DWORD       InstructionOpcode                       : BITFIELD_RANGE(23,28);    // MI_OPCODE
-            DWORD       InstructionType                         : BITFIELD_RANGE(29,31);    // INSTRUCTION_TYPE 
+            DWORD       InstructionType                         : BITFIELD_RANGE(29,31);    // INSTRUCTION_TYPE
         } All;
         DWORD       Value;
     } DW0;

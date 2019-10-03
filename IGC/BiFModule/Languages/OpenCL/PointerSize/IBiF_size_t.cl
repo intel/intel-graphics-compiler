@@ -36,8 +36,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //*****************************************************************************/
 // Enable msaa_sharing functionality
 //*****************************************************************************/
-#ifdef cl_khr_gl_msaa_sharing                                            
-#pragma OPENCL EXTENSION cl_khr_gl_msaa_sharing : enable                 
+#ifdef cl_khr_gl_msaa_sharing
+#pragma OPENCL EXTENSION cl_khr_gl_msaa_sharing : enable
 #endif //cl_khr_gl_msaa_sharing
 
 //*****************************************************************************/
@@ -354,67 +354,67 @@ INLINE event_t OVERLOADABLE async_work_group_strided_copy(__local long16 *dst, c
 // uchar
 INLINE event_t OVERLOADABLE async_work_group_copy(__local unsigned char *dst, const __global unsigned char *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p3i8_p1i8);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__local unsigned char *dst, const __global unsigned char *src, size_t num_elements, size_t src_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, src_stride, evt, _p3i8_p1i8);
-  
+
 }
 
 // uchar2
 INLINE event_t OVERLOADABLE async_work_group_copy(__local uchar2 *dst, const __global uchar2 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p3v2i8_p1v2i8);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__local uchar2 *dst, const __global uchar2 *src, size_t num_elements, size_t src_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, src_stride, evt, _p3v2i8_p1v2i8);
-  
+
 }
 
 // uchar3
 INLINE event_t OVERLOADABLE async_work_group_copy(__local uchar3 *dst, const __global uchar3 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p3v3i8_p1v3i8);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__local uchar3 *dst, const __global uchar3 *src, size_t num_elements, size_t src_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, src_stride, evt, _p3v3i8_p1v3i8);
-  
+
 }
 
 // uchar4
 INLINE event_t OVERLOADABLE async_work_group_copy(__local uchar4 *dst, const __global uchar4 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p3v4i8_p1v4i8);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__local uchar4 *dst, const __global uchar4 *src, size_t num_elements, size_t src_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, src_stride, evt, _p3v4i8_p1v4i8);
-  
+
 }
 
 // uchar8
 INLINE event_t OVERLOADABLE async_work_group_copy(__local uchar8 *dst, const __global uchar8 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p3v8i8_p1v8i8);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__local uchar8 *dst, const __global uchar8 *src, size_t num_elements, size_t src_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, src_stride, evt, _p3v8i8_p1v8i8);
-  
+
 }
 
 // uchar16
 INLINE event_t OVERLOADABLE async_work_group_copy(__local uchar16 *dst, const __global uchar16 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p3v16i8_p1v16i8);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__local uchar16 *dst, const __global uchar16 *src, size_t num_elements, size_t src_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, src_stride, evt, _p3v16i8_p1v16i8);
-  
+
 }
 
 
@@ -423,199 +423,199 @@ INLINE event_t OVERLOADABLE async_work_group_strided_copy(__local uchar16 *dst, 
 // ushort
 INLINE event_t OVERLOADABLE async_work_group_copy(__local ushort *dst, const __global ushort *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p3i16_p1i16);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__local ushort *dst, const __global ushort *src, size_t num_elements, size_t src_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, src_stride, evt, _p3i16_p1i16);
-  
+
 }
 
 // ushort2
 INLINE event_t OVERLOADABLE async_work_group_copy(__local ushort2 *dst, const __global ushort2 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p3v2i16_p1v2i16);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__local ushort2 *dst, const __global ushort2 *src, size_t num_elements, size_t src_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, src_stride, evt, _p3v2i16_p1v2i16);
-  
+
 }
 
 // ushort3
 INLINE event_t OVERLOADABLE async_work_group_copy(__local ushort3 *dst, const __global ushort3 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p3v3i16_p1v3i16);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__local ushort3 *dst, const __global ushort3 *src, size_t num_elements, size_t src_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, src_stride, evt, _p3v3i16_p1v3i16);
-  
+
 }
 
 // ushort4
 INLINE event_t OVERLOADABLE async_work_group_copy(__local ushort4 *dst, const __global ushort4 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p3v4i16_p1v4i16);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__local ushort4 *dst, const __global ushort4 *src, size_t num_elements, size_t src_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, src_stride, evt, _p3v4i16_p1v4i16);
-  
+
 }
 
 // ushort8
 INLINE event_t OVERLOADABLE async_work_group_copy(__local ushort8 *dst, const __global ushort8 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p3v8i16_p1v8i16);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__local ushort8 *dst, const __global ushort8 *src, size_t num_elements, size_t src_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, src_stride, evt, _p3v8i16_p1v8i16);
-  
+
 }
 
 // ushort16
 INLINE event_t OVERLOADABLE async_work_group_copy(__local ushort16 *dst, const __global ushort16 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p3v16i16_p1v16i16);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__local ushort16 *dst, const __global ushort16 *src, size_t num_elements, size_t src_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, src_stride, evt, _p3v16i16_p1v16i16);
-  
+
 }
 
 // uint
 INLINE event_t OVERLOADABLE async_work_group_copy(__local unsigned int *dst, const __global unsigned int *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p3i32_p1i32);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__local unsigned int *dst, const __global unsigned int *src, size_t num_elements, size_t src_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, src_stride, evt, _p3i32_p1i32);
-  
+
 }
 
 // uint2
 INLINE event_t OVERLOADABLE async_work_group_copy(__local uint2 *dst, const __global uint2 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p3v2i32_p1v2i32);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__local uint2 *dst, const __global uint2 *src, size_t num_elements, size_t src_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, src_stride, evt, _p3v2i32_p1v2i32);
-  
+
 }
 
 // uint3
 INLINE event_t OVERLOADABLE async_work_group_copy(__local uint3 *dst, const __global uint3 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p3v3i32_p1v3i32);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__local uint3 *dst, const __global uint3 *src, size_t num_elements, size_t src_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, src_stride, evt, _p3v3i32_p1v3i32);
-  
+
 }
 
 // uint4
 INLINE event_t OVERLOADABLE async_work_group_copy(__local uint4 *dst, const __global uint4 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p3v4i32_p1v4i32);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__local uint4 *dst, const __global uint4 *src, size_t num_elements, size_t src_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, src_stride, evt, _p3v4i32_p1v4i32);
-  
+
 }
 
 // uint8
 INLINE event_t OVERLOADABLE async_work_group_copy(__local uint8 *dst, const __global uint8 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p3v8i32_p1v8i32);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__local uint8 *dst, const __global uint8 *src, size_t num_elements, size_t src_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, src_stride, evt, _p3v8i32_p1v8i32);
-  
+
 }
 
 // uint16
 INLINE event_t OVERLOADABLE async_work_group_copy(__local uint16 *dst, const __global uint16 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p3v16i32_p1v16i32);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__local uint16 *dst, const __global uint16 *src, size_t num_elements, size_t src_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, src_stride, evt, _p3v16i32_p1v16i32);
-  
+
 }
 
 // ulong
 INLINE event_t OVERLOADABLE async_work_group_copy(__local unsigned long *dst, const __global unsigned long *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p3i64_p1i64);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__local unsigned long *dst, const __global unsigned long *src, size_t num_elements, size_t src_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, src_stride, evt, _p3i64_p1i64);
-  
+
 }
 
 // ulong2
 INLINE event_t OVERLOADABLE async_work_group_copy(__local ulong2 *dst, const __global ulong2 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p3v2i64_p1v2i64);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__local ulong2 *dst, const __global ulong2 *src, size_t num_elements, size_t src_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, src_stride, evt, _p3v2i64_p1v2i64);
-  
+
 }
 
 // ulong3
 INLINE event_t OVERLOADABLE async_work_group_copy(__local ulong3 *dst, const __global ulong3 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p3v3i64_p1v3i64);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__local ulong3 *dst, const __global ulong3 *src, size_t num_elements, size_t src_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, src_stride, evt, _p3v3i64_p1v3i64);
-  
+
 }
 
 // ulong4
 INLINE event_t OVERLOADABLE async_work_group_copy(__local ulong4 *dst, const __global ulong4 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p3v4i64_p1v4i64);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__local ulong4 *dst, const __global ulong4 *src, size_t num_elements, size_t src_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, src_stride, evt, _p3v4i64_p1v4i64);
-  
+
 }
 
 // ulong8
 INLINE event_t OVERLOADABLE async_work_group_copy(__local ulong8 *dst, const __global ulong8 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p3v8i64_p1v8i64);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__local ulong8 *dst, const __global ulong8 *src, size_t num_elements, size_t src_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, src_stride, evt, _p3v8i64_p1v8i64);
-  
+
 }
 
 // ulong16
 INLINE event_t OVERLOADABLE async_work_group_copy(__local ulong16 *dst, const __global ulong16 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p3v16i64_p1v16i64);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__local ulong16 *dst, const __global ulong16 *src, size_t num_elements, size_t src_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, src_stride, evt, _p3v16i64_p1v16i64);
-  
+
 }
 
 
@@ -623,67 +623,67 @@ INLINE event_t OVERLOADABLE async_work_group_strided_copy(__local ulong16 *dst, 
 // float
 INLINE event_t OVERLOADABLE async_work_group_copy(__local float *dst, const __global float *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p3f32_p1f32);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__local float *dst, const __global float *src, size_t num_elements, size_t src_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, src_stride, evt, _p3f32_p1f32);
-  
+
 }
 
 // float2
 INLINE event_t OVERLOADABLE async_work_group_copy(__local float2 *dst, const __global float2 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p3v2f32_p1v2f32);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__local float2 *dst, const __global float2 *src, size_t num_elements, size_t src_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, src_stride, evt, _p3v2f32_p1v2f32);
-  
+
 }
 
 // float3
 INLINE event_t OVERLOADABLE async_work_group_copy(__local float3 *dst, const __global float3 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p3v3f32_p1v3f32);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__local float3 *dst, const __global float3 *src, size_t num_elements, size_t src_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, src_stride, evt, _p3v3f32_p1v3f32);
-  
+
 }
 
 // float4
 INLINE event_t OVERLOADABLE async_work_group_copy(__local float4 *dst, const __global float4 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p3v4f32_p1v4f32);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__local float4 *dst, const __global float4 *src, size_t num_elements, size_t src_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, src_stride, evt, _p3v4f32_p1v4f32);
-  
+
 }
 
 // float8
 INLINE event_t OVERLOADABLE async_work_group_copy(__local float8 *dst, const __global float8 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p3v8f32_p1v8f32);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__local float8 *dst, const __global float8 *src, size_t num_elements, size_t src_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, src_stride, evt, _p3v8f32_p1v8f32);
-  
+
 }
 
 // float16
 INLINE event_t OVERLOADABLE async_work_group_copy(__local float16 *dst, const __global float16 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p3v16f32_p1v16f32);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__local float16 *dst, const __global float16 *src, size_t num_elements, size_t src_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, src_stride, evt, _p3v16f32_p1v16f32);
-  
+
 }
 
 #if defined(cl_khr_fp16)
@@ -691,67 +691,67 @@ INLINE event_t OVERLOADABLE async_work_group_strided_copy(__local float16 *dst, 
 // half
 INLINE event_t OVERLOADABLE async_work_group_copy(__local half *dst, const __global half *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p3f16_p1f16);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__local half *dst, const __global half *src, size_t num_elements, size_t src_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, src_stride, evt, _p3f16_p1f16);
-  
+
 }
 
 // half2
 INLINE event_t OVERLOADABLE async_work_group_copy(__local half2 *dst, const __global half2 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p3v2f16_p1v2f16);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__local half2 *dst, const __global half2 *src, size_t num_elements, size_t src_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, src_stride, evt, _p3v2f16_p1v2f16);
-  
+
 }
 
 // half3
 INLINE event_t OVERLOADABLE async_work_group_copy(__local half3 *dst, const __global half3 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p3v3f16_p1v3f16);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__local half3 *dst, const __global half3 *src, size_t num_elements, size_t src_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, src_stride, evt, _p3v3f16_p1v3f16);
-  
+
 }
 
 // half4
 INLINE event_t OVERLOADABLE async_work_group_copy(__local half4 *dst, const __global half4 *src, size_t num_elements, event_t evt) {
-  ASYNC_COPY(dst, src, num_elements, evt, _p3v4f16_p1v4f16);  
+  ASYNC_COPY(dst, src, num_elements, evt, _p3v4f16_p1v4f16);
 
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__local half4 *dst, const __global half4 *src, size_t num_elements, size_t src_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, src_stride, evt, _p3v4f16_p1v4f16);
-  
+
 }
 
 // half8
 INLINE event_t OVERLOADABLE async_work_group_copy(__local half8 *dst, const __global half8 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p3v8f16_p1v8f16);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__local half8 *dst, const __global half8 *src, size_t num_elements, size_t src_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, src_stride, evt, _p3v8f16_p1v8f16);
-  
+
 }
 
 // half16
 INLINE event_t OVERLOADABLE async_work_group_copy(__local half16 *dst, const __global half16 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p3v16f16_p1v16f16);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__local half16 *dst, const __global half16 *src, size_t num_elements, size_t src_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, src_stride, evt, _p3v16f16_p1v16f16);
-  
+
 }
 
 #endif // defined(cl_khr_fp16)
@@ -761,67 +761,67 @@ INLINE event_t OVERLOADABLE async_work_group_strided_copy(__local half16 *dst, c
 // double
 INLINE event_t OVERLOADABLE async_work_group_copy(__local double *dst, const __global double *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p3f64_p1f64);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__local double *dst, const __global double *src, size_t num_elements, size_t src_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, src_stride, evt, _p3f64_p1f64);
-  
+
 }
 
 // double2
 INLINE event_t OVERLOADABLE async_work_group_copy(__local double2 *dst, const __global double2 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p3v2f64_p1v2f64);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__local double2 *dst, const __global double2 *src, size_t num_elements, size_t src_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, src_stride, evt, _p3v2f64_p1v2f64);
-  
+
 }
 
 // double3
 INLINE event_t OVERLOADABLE async_work_group_copy(__local double3 *dst, const __global double3 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p3v3f64_p1v3f64);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__local double3 *dst, const __global double3 *src, size_t num_elements, size_t src_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, src_stride, evt, _p3v3f64_p1v3f64);
-  
+
 }
 
 // double4
 INLINE event_t OVERLOADABLE async_work_group_copy(__local double4 *dst, const __global double4 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p3v4f64_p1v4f64);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__local double4 *dst, const __global double4 *src, size_t num_elements, size_t src_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, src_stride, evt, _p3v4f64_p1v4f64);
-  
+
 }
 
 // double8
 INLINE event_t OVERLOADABLE async_work_group_copy(__local double8 *dst, const __global double8 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p3v8f64_p1v8f64);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__local double8 *dst, const __global double8 *src, size_t num_elements, size_t src_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, src_stride, evt, _p3v8f64_p1v8f64);
-  
+
 }
 
 // double16
 INLINE event_t OVERLOADABLE async_work_group_copy(__local double16 *dst, const __global double16 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p3v16f64_p1v16f64);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__local double16 *dst, const __global double16 *src, size_t num_elements, size_t src_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, src_stride, evt, _p3v16f64_p1v16f64);
-  
+
 }
 
 #endif // defined(cl_khr_fp64)
@@ -1050,67 +1050,67 @@ INLINE event_t OVERLOADABLE async_work_group_strided_copy(__global long16 *dst, 
 // uchar
 INLINE event_t OVERLOADABLE async_work_group_copy(__global unsigned char *dst, const __local unsigned char *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p1i8_p3i8);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__global unsigned char *dst, const __local unsigned char *src, size_t num_elements, size_t dst_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, dst_stride, evt, _p1i8_p3i8);
-  
+
 }
 
 // uchar2
 INLINE event_t OVERLOADABLE async_work_group_copy(__global uchar2 *dst, const __local uchar2 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p1v2i8_p3v2i8);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__global uchar2 *dst, const __local uchar2 *src, size_t num_elements, size_t dst_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, dst_stride, evt, _p1v2i8_p3v2i8);
-  
+
 }
 
 // uchar3
 INLINE event_t OVERLOADABLE async_work_group_copy(__global uchar3 *dst, const __local uchar3 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p1v3i8_p3v3i8);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__global uchar3 *dst, const __local uchar3 *src, size_t num_elements, size_t dst_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, dst_stride, evt, _p1v3i8_p3v3i8);
-  
+
 }
 
 // uchar4
 INLINE event_t OVERLOADABLE async_work_group_copy(__global uchar4 *dst, const __local uchar4 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p1v4i8_p3v4i8);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__global uchar4 *dst, const __local uchar4 *src, size_t num_elements, size_t dst_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, dst_stride, evt, _p1v4i8_p3v4i8);
-  
+
 }
 
 // uchar8
 INLINE event_t OVERLOADABLE async_work_group_copy(__global uchar8 *dst, const __local uchar8 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p1v8i8_p3v8i8);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__global uchar8 *dst, const __local uchar8 *src, size_t num_elements, size_t dst_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, dst_stride, evt, _p1v8i8_p3v8i8);
-  
+
 }
 
 // uchar16
 INLINE event_t OVERLOADABLE async_work_group_copy(__global uchar16 *dst, const __local uchar16 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p1v16i8_p3v16i8);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__global uchar16 *dst, const __local uchar16 *src, size_t num_elements, size_t dst_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, dst_stride, evt, _p1v16i8_p3v16i8);
-  
+
 }
 
 
@@ -1119,266 +1119,266 @@ INLINE event_t OVERLOADABLE async_work_group_strided_copy(__global uchar16 *dst,
 // ushort
 INLINE event_t OVERLOADABLE async_work_group_copy(__global ushort *dst, const __local ushort *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p1i16_p3i16);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__global ushort *dst, const __local ushort *src, size_t num_elements, size_t dst_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, dst_stride, evt, _p1i16_p3i16);
-  
+
 }
 
 // ushort2
 INLINE event_t OVERLOADABLE async_work_group_copy(__global ushort2 *dst, const __local ushort2 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p1v2i16_p3v2i16);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__global ushort2 *dst, const __local ushort2 *src, size_t num_elements, size_t dst_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, dst_stride, evt, _p1v2i16_p3v2i16);
-  
+
 }
 
 // ushort3
 INLINE event_t OVERLOADABLE async_work_group_copy(__global ushort3 *dst, const __local ushort3 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p1v3i16_p3v3i16);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__global ushort3 *dst, const __local ushort3 *src, size_t num_elements, size_t dst_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, dst_stride, evt, _p1v3i16_p3v3i16);
-  
+
 }
 
 // ushort4
 INLINE event_t OVERLOADABLE async_work_group_copy(__global ushort4 *dst, const __local ushort4 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p1v4i16_p3v4i16);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__global ushort4 *dst, const __local ushort4 *src, size_t num_elements, size_t dst_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, dst_stride, evt, _p1v4i16_p3v4i16);
-  
+
 }
 
 // ushort8
 INLINE event_t OVERLOADABLE async_work_group_copy(__global ushort8 *dst, const __local ushort8 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p1v8i16_p3v8i16);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__global ushort8 *dst, const __local ushort8 *src, size_t num_elements, size_t dst_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, dst_stride, evt, _p1v8i16_p3v8i16);
-  
+
 }
 
 // ushort16
 INLINE event_t OVERLOADABLE async_work_group_copy(__global ushort16 *dst, const __local ushort16 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p1v16i16_p3v16i16);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__global ushort16 *dst, const __local ushort16 *src, size_t num_elements, size_t dst_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, dst_stride, evt, _p1v16i16_p3v16i16);
-  
+
 }
 
 // uint
 INLINE event_t OVERLOADABLE async_work_group_copy(__global unsigned int *dst, const __local unsigned int *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p1i32_p3i32);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__global unsigned int *dst, const __local unsigned int *src, size_t num_elements, size_t dst_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, dst_stride, evt, _p1i32_p3i32);
-  
+
 }
 
 // uint2
 INLINE event_t OVERLOADABLE async_work_group_copy(__global uint2 *dst, const __local uint2 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p1v2i32_p3v2i32);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__global uint2 *dst, const __local uint2 *src, size_t num_elements, size_t dst_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, dst_stride, evt, _p1v2i32_p3v2i32);
-  
+
 }
 
 // uint3
 INLINE event_t OVERLOADABLE async_work_group_copy(__global uint3 *dst, const __local uint3 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p1v3i32_p3v3i32);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__global uint3 *dst, const __local uint3 *src, size_t num_elements, size_t dst_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, dst_stride, evt, _p1v3i32_p3v3i32);
-  
+
 }
 
 // uint4
 INLINE event_t OVERLOADABLE async_work_group_copy(__global uint4 *dst, const __local uint4 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p1v4i32_p3v4i32);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__global uint4 *dst, const __local uint4 *src, size_t num_elements, size_t dst_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, dst_stride, evt, _p1v4i32_p3v4i32);
-  
+
 }
 
 // uint8
 INLINE event_t OVERLOADABLE async_work_group_copy(__global uint8 *dst, const __local uint8 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p1v8i32_p3v8i32);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__global uint8 *dst, const __local uint8 *src, size_t num_elements, size_t dst_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, dst_stride, evt, _p1v8i32_p3v8i32);
-  
+
 }
 
 // uint16
 INLINE event_t OVERLOADABLE async_work_group_copy(__global uint16 *dst, const __local uint16 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p1v16i32_p3v16i32);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__global uint16 *dst, const __local uint16 *src, size_t num_elements, size_t dst_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, dst_stride, evt, _p1v16i32_p3v16i32);
-  
+
 }
 
 // ulong
 INLINE event_t OVERLOADABLE async_work_group_copy(__global unsigned long *dst, const __local unsigned long *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p1i64_p3i64);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__global unsigned long *dst, const __local unsigned long *src, size_t num_elements, size_t dst_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, dst_stride, evt, _p1i64_p3i64);
-  
+
 }
 
 // ulong2
 INLINE event_t OVERLOADABLE async_work_group_copy(__global ulong2 *dst, const __local ulong2 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p1v2i64_p3v2i64);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__global ulong2 *dst, const __local ulong2 *src, size_t num_elements, size_t dst_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, dst_stride, evt, _p1v2i64_p3v2i64);
-  
+
 }
 
 // ulong3
 INLINE event_t OVERLOADABLE async_work_group_copy(__global ulong3 *dst, const __local ulong3 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p1v3i64_p3v3i64);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__global ulong3 *dst, const __local ulong3 *src, size_t num_elements, size_t dst_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, dst_stride, evt, _p1v3i64_p3v3i64);
-  
+
 }
 
 // ulong4
 INLINE event_t OVERLOADABLE async_work_group_copy(__global ulong4 *dst, const __local ulong4 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p1v4i64_p3v4i64);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__global ulong4 *dst, const __local ulong4 *src, size_t num_elements, size_t dst_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, dst_stride, evt, _p1v4i64_p3v4i64);
-  
+
 }
 
 // ulong8
 INLINE event_t OVERLOADABLE async_work_group_copy(__global ulong8 *dst, const __local ulong8 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p1v8i64_p3v8i64);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__global ulong8 *dst, const __local ulong8 *src, size_t num_elements, size_t dst_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, dst_stride, evt, _p1v8i64_p3v8i64);
-  
+
 }
 
 // ulong16
 INLINE event_t OVERLOADABLE async_work_group_copy(__global ulong16 *dst, const __local ulong16 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p1v16i64_p3v16i64);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__global ulong16 *dst, const __local ulong16 *src, size_t num_elements, size_t dst_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, dst_stride, evt, _p1v16i64_p3v16i64);
-  
+
 }
 
 
 // float
 INLINE event_t OVERLOADABLE async_work_group_copy(__global float *dst, const __local float *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p1f32_p3f32);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__global float *dst, const __local float *src, size_t num_elements, size_t dst_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, dst_stride, evt, _p1f32_p3f32);
-  
+
 }
 
 // float2
 INLINE event_t OVERLOADABLE async_work_group_copy(__global float2 *dst, const __local float2 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p1v2f32_p3v2f32);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__global float2 *dst, const __local float2 *src, size_t num_elements, size_t dst_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, dst_stride, evt, _p1v2f32_p3v2f32);
-  
+
 }
 
 // float3
 INLINE event_t OVERLOADABLE async_work_group_copy(__global float3 *dst, const __local float3 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p1v3f32_p3v3f32);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__global float3 *dst, const __local float3 *src, size_t num_elements, size_t dst_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, dst_stride, evt, _p1v3f32_p3v3f32);
-  
+
 }
 
 // float4
 INLINE event_t OVERLOADABLE async_work_group_copy(__global float4 *dst, const __local float4 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p1v4f32_p3v4f32);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__global float4 *dst, const __local float4 *src, size_t num_elements, size_t dst_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, dst_stride, evt, _p1v4f32_p3v4f32);
-  
+
 }
 
 // float8
 INLINE event_t OVERLOADABLE async_work_group_copy(__global float8 *dst, const __local float8 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p1v8f32_p3v8f32);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__global float8 *dst, const __local float8 *src, size_t num_elements, size_t dst_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, dst_stride, evt, _p1v8f32_p3v8f32);
-  
+
 }
 
 // float16
 INLINE event_t OVERLOADABLE async_work_group_copy(__global float16 *dst, const __local float16 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p1v16f32_p3v16f32);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__global float16 *dst, const __local float16 *src, size_t num_elements, size_t dst_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, dst_stride, evt, _p1v16f32_p3v16f32);
-  
+
 }
 
 #if defined(cl_khr_fp16)
@@ -1386,67 +1386,67 @@ INLINE event_t OVERLOADABLE async_work_group_strided_copy(__global float16 *dst,
 // half
 INLINE event_t OVERLOADABLE async_work_group_copy(__global half *dst, const __local half *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p1f16_p3f16);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__global half *dst, const __local half *src, size_t num_elements, size_t dst_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, dst_stride, evt, _p1f16_p3f16);
-  
+
 }
 
 // half2
 INLINE event_t OVERLOADABLE async_work_group_copy(__global half2 *dst, const __local half2 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p1v2f16_p3v2f16);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__global half2 *dst, const __local half2 *src, size_t num_elements, size_t dst_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, dst_stride, evt, _p1v2f16_p3v2f16);
-  
+
 }
 
 // half3
 INLINE event_t OVERLOADABLE async_work_group_copy(__global half3 *dst, const __local half3 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p1v3f16_p3v3f16);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__global half3 *dst, const __local half3 *src, size_t num_elements, size_t dst_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, dst_stride, evt, _p1v3f16_p3v3f16);
-  
+
 }
 
 // half4
 INLINE event_t OVERLOADABLE async_work_group_copy(__global half4 *dst, const __local half4 *src, size_t num_elements, event_t evt) {
-  ASYNC_COPY(dst, src, num_elements, evt, _p1v4f16_p3v4f16);  
+  ASYNC_COPY(dst, src, num_elements, evt, _p1v4f16_p3v4f16);
 
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__global half4 *dst, const __local half4 *src, size_t num_elements, size_t dst_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, dst_stride, evt, _p1v4f16_p3v4f16);
-  
+
 }
 
 // half8
 INLINE event_t OVERLOADABLE async_work_group_copy(__global half8 *dst, const __local half8 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p1v8f16_p3v8f16);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__global half8 *dst, const __local half8 *src, size_t num_elements, size_t dst_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, dst_stride, evt, _p1v8f16_p3v8f16);
-  
+
 }
 
 // half16
 INLINE event_t OVERLOADABLE async_work_group_copy(__global half16 *dst, const __local half16 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p1v16f16_p3v16f16);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__global half16 *dst, const __local half16 *src, size_t num_elements, size_t dst_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, dst_stride, evt, _p1v16f16_p3v16f16);
-  
+
 }
 
 #endif // defined(cl_khr_fp16)
@@ -1456,67 +1456,67 @@ INLINE event_t OVERLOADABLE async_work_group_strided_copy(__global half16 *dst, 
 // double
 INLINE event_t OVERLOADABLE async_work_group_copy(__global double *dst, const __local double *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p1f64_p3f64);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__global double *dst, const __local double *src, size_t num_elements, size_t dst_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, dst_stride, evt, _p1f64_p3f64);
-  
+
 }
 
 // double2
 INLINE event_t OVERLOADABLE async_work_group_copy(__global double2 *dst, const __local double2 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p1v2f64_p3v2f64);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__global double2 *dst, const __local double2 *src, size_t num_elements, size_t dst_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, dst_stride, evt, _p1v2f64_p3v2f64);
-  
+
 }
 
 // double3
 INLINE event_t OVERLOADABLE async_work_group_copy(__global double3 *dst, const __local double3 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p1v3f64_p3v3f64);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__global double3 *dst, const __local double3 *src, size_t num_elements, size_t dst_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, dst_stride, evt, _p1v3f64_p3v3f64);
-  
+
 }
 
 // double4
 INLINE event_t OVERLOADABLE async_work_group_copy(__global double4 *dst, const __local double4 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p1v4f64_p3v4f64);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__global double4 *dst, const __local double4 *src, size_t num_elements, size_t dst_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, dst_stride, evt, _p1v4f64_p3v4f64);
-  
+
 }
 
 // double8
 INLINE event_t OVERLOADABLE async_work_group_copy(__global double8 *dst, const __local double8 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p1v8f64_p3v8f64);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__global double8 *dst, const __local double8 *src, size_t num_elements, size_t dst_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, dst_stride, evt, _p1v8f64_p3v8f64);
-  
+
 }
 
 // double16
 INLINE event_t OVERLOADABLE async_work_group_copy(__global double16 *dst, const __local double16 *src, size_t num_elements, event_t evt) {
   ASYNC_COPY(dst, src, num_elements, evt, _p1v16f64_p3v16f64);
-  
+
 }
 
 INLINE event_t OVERLOADABLE async_work_group_strided_copy(__global double16 *dst, const __local double16 *src, size_t num_elements, size_t dst_stride, event_t evt) {
   ASYNC_COPY_S(dst, src, num_elements, dst_stride, evt, _p1v16f64_p3v16f64);
-  
+
 }
 
 #endif // defined(cl_khr_fp64)
@@ -1827,7 +1827,7 @@ INLINE void OVERLOADABLE prefetch(const __global double16 *p, size_t num_element
 #endif
 
 
-// This vload function is added because of the clang 4.0 itanium mangling update 
+// This vload function is added because of the clang 4.0 itanium mangling update
 // See http://llvm.org/viewvc/llvm-project?view=revision&revision=262414
 
 INLINE char16 _Z7vload16jPKU3AS1h(size_t offset, const __global char *p)

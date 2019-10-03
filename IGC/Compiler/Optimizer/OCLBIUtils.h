@@ -43,27 +43,27 @@ namespace IGC
     class CCommand
     {
     public:
-        /// @brief  gets llvm function declaration for GenISA_ISA Intrinsic 
+        /// @brief  gets llvm function declaration for GenISA_ISA Intrinsic
         /// @param  Id          the wanted GenISA_ISA intrinsic
         /// @param  ptrTy       for intrinsic with overloaded types.
-        /// @returns    llvm Function 
+        /// @returns    llvm Function
         llvm::Function* getFunctionDeclaration(llvm::GenISAIntrinsic::ID id, llvm::ArrayRef<llvm::Type*> Tys = llvm::None);
 
-        /// @brief  gets llvm function declaration for LLVM Intrinsic 
+        /// @brief  gets llvm function declaration for LLVM Intrinsic
         /// @param  Id          the wanted LLVM intrinsic
         /// @param  ptrTy       for intrinsic with overloaded types.
-        /// @returns    llvm Function 
+        /// @returns    llvm Function
         llvm::Function* getFunctionDeclaration(llvm::Intrinsic::ID id, llvm::ArrayRef<llvm::Type*> Tys = llvm::None);
 
         /// @brief  Creates llvm function call for LLVM Intrinsic and replace the
-        ///         current instruction with the new function call. 
+        ///         current instruction with the new function call.
         /// @param  Id          the wanted LLVM intrinsic
         /// @param  ptrTy       for intrinsic with overloaded types.
         void replaceCallInst(llvm::Intrinsic::ID intrinsicName, llvm::ArrayRef<llvm::Type*> Tys = llvm::None);
 
 
         /// @brief  Creates llvm function call for GenISA_ISA Intrinsic and replace the
-        ///         current instruction with the new function call. 
+        ///         current instruction with the new function call.
         /// @param  Id          the wanted GenISA_ISA intrinsic
         /// @param  ptrTy       for intrinsic with overloaded types.
         void replaceGenISACallInst(llvm::GenISAIntrinsic::ID intrinsicName, llvm::ArrayRef<llvm::Type*> Tys = llvm::None);
@@ -182,11 +182,11 @@ namespace IGC
 
             /// @brief  find the BTI of the image argumant
             /// @param  paramIndex  the index of the image paramtere in the call isntruciton
-            /// @returns  the image index 
+            /// @returns  the image index
             static llvm::ConstantInt* getImageIndex(ParamMap* pParamMap, llvm::CallInst* pCallInst, unsigned int paramIndex, llvm::Argument*& imageParam);
 
             /// @brief  find the type (UAV/RESOURCE) of the image argumant
-            /// @returns  the image type 
+            /// @returns  the image type
             static BufferType getImageType(ParamMap* pParamMap, llvm::CallInst* pCallInst, unsigned int paramIndex);
 
             /// @brief  find the image argument associated with the given bufType and idx
@@ -213,7 +213,7 @@ namespace IGC
         void prepareColor(llvm::Value* Color);
 
         /// @brief  set LOD to Zero and push the function argument list
-        /// @param  Coord       the type of zero (int or float) 
+        /// @param  Coord       the type of zero (int or float)
         void prepareLOD(CoordType Coord);
 
 
@@ -263,7 +263,7 @@ namespace IGC
         ~CBuiltinsResolver(void) {}
 
         // resolve __builtin_IB_* calls.
-        // return values: 
+        // return values:
         //              true - when CallInst was __builtin_IB_* and successfully repleced
         //              false - when CallInst wasn't __builtin_IB*
         bool resolveBI(llvm::CallInst* Inst);

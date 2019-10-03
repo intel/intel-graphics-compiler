@@ -45,7 +45,7 @@ using namespace llvm;
 char* llvm::LoadCharBufferFromResource(unsigned int ResNumber,
     const char *pResType, long unsigned int& m_buffSize)
 {
-    
+
     // Symbol Name is <type>_<number>
     char name[73];      // 64 + 9 for prefix
     char size_name[78]; // 64 + 9 for prefix + 5 for suffix
@@ -103,7 +103,7 @@ char* llvm::LoadCharBufferFromResource(unsigned int ResNumber,
                 char *m_buff = (char *)LockResource(hBytes);
                 if (m_buff != NULL) {
                     // Get the buffer size
-                    m_buffSize = SizeofResource(hMod, hRes);                   
+                    m_buffSize = SizeofResource(hMod, hRes);
                     if (m_buffSize != 0) {
                         return m_buff;
                     }

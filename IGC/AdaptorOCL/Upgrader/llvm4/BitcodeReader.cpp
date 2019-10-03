@@ -766,7 +766,7 @@ std::error_code llvm::errorToErrorCodeAndEmitErrors(LLVMContext &Ctx,
   }
   return std::error_code();
 }
-#endif 
+#endif
 
 BitcodeReader::BitcodeReader(BitstreamCursor Stream,
                              StringRef ProducerIdentification,

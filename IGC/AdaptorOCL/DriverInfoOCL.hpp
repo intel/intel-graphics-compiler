@@ -47,7 +47,7 @@ namespace TC
         bool HasMemoryIntrinsics() const override { return true; }
 
         bool HasNonNativeLoadStore() const override { return true; }
-        
+
         bool NeedLoweringInlinedConstants() const override { return true; }
         bool benefitFromTypeDemotion() const override { return true; }
         bool benefitFromPreRARematFlag() const override { return true; }

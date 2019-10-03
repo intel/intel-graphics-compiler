@@ -40,10 +40,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // This file implements the LiveVariables analysis pass. It originates from
 // the same function in llvm3.0/codegen, however works on llvm-ir instead of
 // the code-gen-level ir.
-// 
+//
 // This class computes live variables using a sparse implementation based on
 // the llvm-ir SSA form.  This class uses the dominance properties of SSA form
-// to efficiently compute live variables for virtual registers. Also Note that 
+// to efficiently compute live variables for virtual registers. Also Note that
 // there is no physical register at llvm-ir level.
 //
 //===----------------------------------------------------------------------===//
@@ -313,8 +313,8 @@ void LiveVars::HandleVirtRegUse(Value* VL, BasicBlock* MBB,
     // - When we establish live-info for the first time, the uses are scanned in bottom-up fashion
     //   for every basic block, the kill for the current block is appended to
     //   the end of the kill-list, therefore we only need to check the last kill on the kill-list.
-    // - When we update the live-info later on in top-down fashion, for example, when coalescing InsertElements 
-    //   in DeSSA, the existing kill for this block may be anywhere on the list, then we need to 
+    // - When we update the live-info later on in top-down fashion, for example, when coalescing InsertElements
+    //   in DeSSA, the existing kill for this block may be anywhere on the list, then we need to
     //   scan all the kills in order to replace the right one.
     if (ScanAllKills) {
         for (unsigned i = 0, e = VRInfo.Kills.size(); i != e; ++i) {
@@ -758,7 +758,7 @@ void LiveVars::mergeUseFrom(Value* V, Value* fromV)
     // Special case. fromV is used in the phi.
     //
     //    If a value is defined in BB and its last use is in
-    //    a PHI in succ(BB), both its AliveBlocks and Kills 
+    //    a PHI in succ(BB), both its AliveBlocks and Kills
     //    are empty (see LiveVars.hpp)
     // For example:
     //       BB:

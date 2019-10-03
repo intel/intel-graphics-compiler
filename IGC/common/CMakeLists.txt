@@ -18,7 +18,7 @@ set(IGC_BUILD__SRC__common
 
     "${CMAKE_CURRENT_SOURCE_DIR}/SystemThread.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/MDFrameWork.cpp"
-    
+
     "${CMAKE_CURRENT_SOURCE_DIR}/FunctionUpgrader.cpp"
   )
 
@@ -26,7 +26,7 @@ set(IGC_BUILD__SRC__common
 list(APPEND IGC_BUILD__SRC__common
     "${IGC_CODEGEN_DIR}/MDNodeFunctions.gen" # Needed by MDFrameWork.cpp
 )
-  
+
 
     list(APPEND IGC_BUILD__SRC__common
       "${CMAKE_CURRENT_SOURCE_DIR}/allocator.cpp"
@@ -60,7 +60,7 @@ set(IGC_BUILD__HDR__common
     "${CMAKE_CURRENT_SOURCE_DIR}/debug/DebugMacros.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/debug/Dump.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/debug/TeeOutputStream.hpp"
-    
+
     "${CMAKE_CURRENT_SOURCE_DIR}/FunctionUpgrader.h"
   )
 if(LLVM_ON_WIN32)

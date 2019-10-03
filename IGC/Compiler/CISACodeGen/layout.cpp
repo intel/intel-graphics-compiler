@@ -176,12 +176,12 @@ BasicBlock* Layout::selectSucc(
     //   B1 : ....
     //   B2 : ....
     //    ......
-    //   Bn : 
+    //   Bn :
     //      (ELSE, B1, B2, ..., Bn) has END as single exit
     //   THEN: goto END:
     //   END :
     //       PHI...
-    // 
+    //
     // where ELSE and THEN are empty BBs, and END has phi in it.
     // In this case, THEN and ELSE might have phi moves as the result
     // DeSSA when emitting visa. For example, suppose  d0 = s0 will
@@ -276,7 +276,7 @@ void Layout::LayoutBlocks(Function& func, LoopInfo& LI)
                 auto hd = curLoop->getHeader();
                 if (blk != hd)
                 {
-                    // move the block to the beginning of the loop 
+                    // move the block to the beginning of the loop
                     auto insp = InsPos[hd];
                     assert(insp);
                     if (blk != insp)
@@ -391,7 +391,7 @@ void Layout::LayoutBlocks(Function& func)
 {
     std::vector<llvm::BasicBlock*> visitVec;
     std::set<llvm::BasicBlock*> visitSet;
-    // Reorder basic block to allow more fall-through 
+    // Reorder basic block to allow more fall-through
     llvm::BasicBlock* entry = &(func.getEntryBlock());
     visitVec.push_back(entry);
 
@@ -408,11 +408,11 @@ void Layout::LayoutBlocks(Function& func)
     while (!visitVec.empty())
     {
         llvm::BasicBlock* blk = visitVec.back();
-        // push in the empty successor 
+        // push in the empty successor
         PUSHSUCC(blk, SUCCANYLOOP, SUCCNOINST);
         if (blk != visitVec.back())
             continue;
-        // push in all the same-loop successors 
+        // push in all the same-loop successors
         PUSHSUCC(blk, SUCCANYLOOP, SUCCSZANY);
         // pop
         if (blk == visitVec.back())

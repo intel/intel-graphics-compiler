@@ -81,7 +81,7 @@ struct S3DPipeControl
             DWORD       StoreDataIndexEnable                : BITFIELD_BIT(       21 );  // bool
             DWORD       ProtectedMemoryEnable               : BITFIELD_BIT(       22 );  // bool
             DWORD       _Unused3                            : BITFIELD_RANGE( 23, 31 );
-        } All;     
+        } All;
 
         struct _Gen7
         {
@@ -99,7 +99,7 @@ struct S3DPipeControl
 
         struct _Gen8
         {
-            DWORD       ProtectedModeDisable                : BITFIELD_BIT(       27 );  // bool 
+            DWORD       ProtectedModeDisable                : BITFIELD_BIT(       27 );  // bool
         } Gen8;
 
         DWORD       Value;

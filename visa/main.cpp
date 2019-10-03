@@ -267,7 +267,7 @@ DLL_EXPORT int JITCompile(const char* kernelName,
     // JITCompile will invoke the other JITCompile API that supports relocation.
     // Via this path, relocs will be NULL. This way we can share a single
     // implementation of JITCompile.
-    
+
     return JITCompileAllOptions(kernelName, kernelIsa, kernelIsaSize, genBinary, genBinarySize,
         platform, majorVersion, minorVersion, numArgs, args, errorMsg, jitInfo, nullptr);
 }

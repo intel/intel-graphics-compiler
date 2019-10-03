@@ -551,10 +551,10 @@ INLINE ulong getVMESampler( VMEImage_t VMEImage )
     return VMEImage.z;
 }
 
-VMEImage_t __builtin_spirv_OpVmeImageINTEL_i64_i64_i64(ulong image, ulong imageType, ulong sampler) 
+VMEImage_t __builtin_spirv_OpVmeImageINTEL_i64_i64_i64(ulong image, ulong imageType, ulong sampler)
 {
-  VMEImage_t vme_image = { image, imageType, sampler }; 
-  return vme_image; 
+  VMEImage_t vme_image = { image, imageType, sampler };
+  return vme_image;
 }
 
 
@@ -562,7 +562,7 @@ VMEImage_t __builtin_spirv_OpVmeImageINTEL_i64_i64_i64(ulong image, ulong imageT
 
 /////////////////////// User visible functions ///////////////////////
 
-uint2 __builtin_spirv_intel_sub_group_avc_mce_get_default_high_penalty_cost_table( ) 
+uint2 __builtin_spirv_intel_sub_group_avc_mce_get_default_high_penalty_cost_table( )
 {
     uint2 costTable;
     costTable.s0 = 0x4E483D1D;
@@ -576,7 +576,7 @@ intel_sub_group_avc_mce_get_default_high_penalty_cost_table(void)
     return __builtin_spirv_intel_sub_group_avc_mce_get_default_high_penalty_cost_table();
 }
 
-uint2 __builtin_spirv_intel_sub_group_avc_mce_get_default_medium_penalty_cost_table( ) 
+uint2 __builtin_spirv_intel_sub_group_avc_mce_get_default_medium_penalty_cost_table( )
 {
    uint2 costTable;
    costTable.s0 = 0x2B1D1A05;
@@ -590,7 +590,7 @@ intel_sub_group_avc_mce_get_default_medium_penalty_cost_table(void)
     return __builtin_spirv_intel_sub_group_avc_mce_get_default_medium_penalty_cost_table();
 }
 
-uint2 __builtin_spirv_intel_sub_group_avc_mce_get_default_low_penalty_cost_table( ) 
+uint2 __builtin_spirv_intel_sub_group_avc_mce_get_default_low_penalty_cost_table( )
 {
    uint2 costTable;
    costTable.s0 = 0x09050401;
@@ -622,7 +622,7 @@ intel_sub_group_avc_mce_payload_t __builtin_spirv_intel_sub_group_avc_mce_set_mo
     ulong packed_cost_center_delta,
     uint2 packed_cost_table,
     uchar cost_precision,
-    intel_sub_group_avc_mce_payload_t payload ) 
+    intel_sub_group_avc_mce_payload_t payload )
 {
   uint4 handle = __builtin_IB_vme_helper_get_handle_avc_mce_payload_t(payload);
 
@@ -663,7 +663,7 @@ intel_sub_group_avc_mce_set_motion_vector_cost_function(
 
 uint2 __builtin_spirv_intel_sub_group_avc_mce_get_default_inter_motion_vector_cost_table_i8_i8(
     uchar slice_type,
-    uchar qp ) 
+    uchar qp )
 {
     uint2 penalty = 0;
     if( slice_type ==  CLK_AVC_ME_SLICE_TYPE_PRED_INTEL )
@@ -730,7 +730,7 @@ Description:
 
 \*****************************************************************************/
 intel_sub_group_avc_mce_payload_t __builtin_spirv_intel_sub_group_avc_mce_set_ac_only_haar_intel_sub_group_avc_mce_payload_t(
-    intel_sub_group_avc_mce_payload_t payload ) 
+    intel_sub_group_avc_mce_payload_t payload )
 {
     uint4 handle = __builtin_IB_vme_helper_get_handle_avc_mce_payload_t(payload);
 
@@ -758,7 +758,7 @@ Description:
 \*****************************************************************************/
 intel_sub_group_avc_mce_payload_t __builtin_spirv_intel_sub_group_avc_mce_set_source_interlaced_field_polarity_i8_intel_sub_group_avc_mce_payload_t(
     uchar src_field_polarity,
-    intel_sub_group_avc_mce_payload_t payload ) 
+    intel_sub_group_avc_mce_payload_t payload )
 {
     uint4 handle = __builtin_IB_vme_helper_get_handle_avc_mce_payload_t(payload);
 
@@ -793,7 +793,7 @@ Description:
 \*****************************************************************************/
 intel_sub_group_avc_mce_payload_t __builtin_spirv_intel_sub_group_avc_mce_set_single_reference_interlaced_field_polarity_i8_intel_sub_group_avc_mce_payload_t(
     uchar ref_field_polarity,
-    intel_sub_group_avc_mce_payload_t payload ) 
+    intel_sub_group_avc_mce_payload_t payload )
 {
     ref_field_polarity |= ( ref_field_polarity << 1 );
     ref_field_polarity |= ( ref_field_polarity << 2 );
@@ -818,7 +818,7 @@ intel_sub_group_avc_mce_set_single_reference_interlaced_field_polarity(
 intel_sub_group_avc_mce_payload_t __builtin_spirv_intel_sub_group_avc_mce_set_dual_reference_interlaced_field_polarities_i8_i8_intel_sub_group_avc_mce_payload_t(
     uchar fwd_ref_field_polarity,
     uchar bwd_ref_field_polarity,
-    intel_sub_group_avc_mce_payload_t payload ) 
+    intel_sub_group_avc_mce_payload_t payload )
 {
     fwd_ref_field_polarity |= ( fwd_ref_field_polarity << 1 );
     fwd_ref_field_polarity |= ( fwd_ref_field_polarity << 2 );
@@ -853,7 +853,7 @@ Description:
 
 \*****************************************************************************/
 ulong __builtin_spirv_intel_sub_group_avc_mce_get_motion_vectors_intel_sub_group_avc_mce_result_t(
-    intel_sub_group_avc_mce_result_t result ) 
+    intel_sub_group_avc_mce_result_t result )
 {
     uint4 r = __builtin_IB_vme_helper_get_handle_avc_mce_result_t(result);
     const ulong MVb = intel_simd_get_message_phase_uq(r, 1, 4);
@@ -874,7 +874,7 @@ Description:
 
 \*****************************************************************************/
 ushort __builtin_spirv_intel_sub_group_avc_mce_get_inter_distortions_intel_sub_group_avc_mce_result_t(
-    intel_sub_group_avc_mce_result_t result ) 
+    intel_sub_group_avc_mce_result_t result )
 {
     return intel_simd_get_message_phase_uw(__builtin_IB_vme_helper_get_handle_avc_mce_result_t(result), 5, 1);
 }
@@ -893,7 +893,7 @@ Description:
 
 \*****************************************************************************/
 ushort __builtin_spirv_intel_sub_group_avc_mce_get_best_inter_distortion_intel_sub_group_avc_mce_result_t(
-    intel_sub_group_avc_mce_result_t result ) 
+    intel_sub_group_avc_mce_result_t result )
 {
     return intel_get_message_phase_uw(__builtin_IB_vme_helper_get_handle_avc_mce_result_t(result), 0, 2*2);
 }
@@ -912,7 +912,7 @@ Description:
 
 \*****************************************************************************/
 uchar __builtin_spirv_intel_sub_group_avc_mce_get_inter_major_shape_intel_sub_group_avc_mce_result_t(
-    intel_sub_group_avc_mce_result_t result ) 
+    intel_sub_group_avc_mce_result_t result )
 {
     const uchar InterMbMode = intel_get_message_phase_ub(__builtin_IB_vme_helper_get_handle_avc_mce_result_t(result), 0, 0) & 0x3;
     return InterMbMode;
@@ -932,7 +932,7 @@ Description:
 
 \*****************************************************************************/
 uchar __builtin_spirv_intel_sub_group_avc_mce_get_inter_minor_shapes_intel_sub_group_avc_mce_result_t(
-    intel_sub_group_avc_mce_result_t result ) 
+    intel_sub_group_avc_mce_result_t result )
 {
     const uchar SubMbShape = intel_get_message_phase_ub(__builtin_IB_vme_helper_get_handle_avc_mce_result_t(result), 0, 6*4+1);
     return SubMbShape;
@@ -952,7 +952,7 @@ Description:
 
 \*****************************************************************************/
 uchar __builtin_spirv_intel_sub_group_avc_mce_get_inter_directions_intel_sub_group_avc_mce_result_t(
-    intel_sub_group_avc_mce_result_t result ) 
+    intel_sub_group_avc_mce_result_t result )
 {
     const uchar SubMbPredMode = intel_get_message_phase_ub(__builtin_IB_vme_helper_get_handle_avc_mce_result_t(result), 0, 6*4+2);
     return SubMbPredMode;
@@ -972,7 +972,7 @@ Description:
 
 \*****************************************************************************/
 uchar __builtin_spirv_intel_sub_group_avc_mce_get_inter_motion_vector_count_intel_sub_group_avc_mce_result_t(
-    intel_sub_group_avc_mce_result_t result ) 
+    intel_sub_group_avc_mce_result_t result )
 {
     return intel_get_message_phase_ub(__builtin_IB_vme_helper_get_handle_avc_mce_result_t(result), 0, 0*4+3) & 0x1F;
 }
@@ -988,7 +988,7 @@ intel_sub_group_avc_mce_get_inter_motion_vector_count(
 
 ushort2 __builtin_spirv_intel_sub_group_ime_ref_window_size_i8_i8(
     uchar search_window_config,
-    char dual_ref ) 
+    char dual_ref )
 {
     ushort2 ref_window_size = 0;
 
@@ -1028,7 +1028,7 @@ ushort2 __builtin_spirv_intel_sub_group_ime_ref_window_size_i8_i8(
 // Add this alias, to support fixed version as well.
 ushort2 __builtin_spirv_intel_sub_group_avc_ime_ref_window_size_i8_i8(
     uchar search_window_config,
-    char dual_ref ) 
+    char dual_ref )
 {
     return __builtin_spirv_intel_sub_group_ime_ref_window_size_i8_i8(search_window_config, dual_ref);
 }
@@ -1045,7 +1045,7 @@ short2 __builtin_spirv_intel_sub_group_avc_ime_adjust_ref_offset_v2i16_v2i16_v2i
     short2 ref_offset,
     ushort2 src_coord_us,
     ushort2 ref_window_size_us,
-    ushort2 frame_size_us ) 
+    ushort2 frame_size_us )
 {
     short2 src_coord = as_short2( src_coord_us );
     short2 ref_window_size = as_short2( ref_window_size_us );
@@ -1093,7 +1093,7 @@ Initialize IME payload M0:
 intel_sub_group_avc_ime_payload_t __builtin_spirv_intel_sub_group_avc_ime_initialize_v2i16_i8_i8(
     ushort2 src_coord,
     uchar partition_mask,
-    uchar sad_adjustment ) 
+    uchar sad_adjustment )
 {
     // Create and initialize IME payload
     uint4 payload = __builtin_IB_create_message_phases_uint4(UNIVERSAL_INPUT_MESSAGE_NUM_GRFS+4);
@@ -1138,7 +1138,7 @@ intel_sub_group_avc_ime_payload_t __builtin_spirv_avc_ime_set_reference_v2i16_v2
     short2 bwd_ref_offset,
     uchar search_window_config,
     bool multiRef,
-    intel_sub_group_avc_ime_payload_t payload ) 
+    intel_sub_group_avc_ime_payload_t payload )
 {
     uint4 handle = __builtin_IB_vme_helper_get_handle_avc_ime_payload_t(payload);
 
@@ -1396,7 +1396,7 @@ avc_ime_set_reference(
 intel_sub_group_avc_ime_payload_t __builtin_spirv_intel_sub_group_avc_ime_set_single_reference_v2i16_i8_intel_sub_group_avc_ime_payload_t(
     short2 ref_offset,
     uchar search_window_config,
-    intel_sub_group_avc_ime_payload_t payload ) 
+    intel_sub_group_avc_ime_payload_t payload )
 {
     return avc_ime_set_reference(ref_offset, (short2)(0), search_window_config, false, payload);
 }
@@ -1414,7 +1414,7 @@ intel_sub_group_avc_ime_payload_t __builtin_spirv_intel_sub_group_avc_ime_set_du
     short2 fwd_ref_offset,
     short2 bwd_ref_offset,
     uchar search_window_config,
-    intel_sub_group_avc_ime_payload_t payload ) 
+    intel_sub_group_avc_ime_payload_t payload )
 {
     return avc_ime_set_reference(fwd_ref_offset, bwd_ref_offset, search_window_config, true, payload);
 }
@@ -1437,7 +1437,7 @@ Description:
 \*****************************************************************************/
 intel_sub_group_avc_ime_payload_t __builtin_spirv_intel_sub_group_avc_ime_set_max_motion_vector_count_i8_intel_sub_group_avc_ime_payload_t(
     uchar max_motion_vector_count,
-    intel_sub_group_avc_ime_payload_t payload ) 
+    intel_sub_group_avc_ime_payload_t payload )
 {
     uint4 handle = __builtin_IB_vme_helper_get_handle_avc_ime_payload_t(payload);
     uchar curr = intel_get_message_phase_ub(handle, 1, 1*4);
@@ -1457,7 +1457,7 @@ intel_sub_group_avc_ime_set_max_motion_vector_count(
 }
 
 intel_sub_group_avc_mce_payload_t __builtin_spirv_intel_sub_group_avc_ime_convert_to_mce_payload_intel_sub_group_avc_ime_payload_t(
-    intel_sub_group_avc_ime_payload_t payload ) 
+    intel_sub_group_avc_ime_payload_t payload )
 {
     uint4 handle = __builtin_IB_vme_helper_get_handle_avc_ime_payload_t(payload);
     return __builtin_IB_vme_helper_get_as_avc_mce_payload_t(handle);
@@ -1471,7 +1471,7 @@ intel_sub_group_avc_ime_convert_to_mce_payload(
 }
 
 intel_sub_group_avc_ime_payload_t __builtin_spirv_intel_sub_group_avc_mce_convert_to_ime_payload_intel_sub_group_avc_mce_payload_t(
-    intel_sub_group_avc_mce_payload_t payload ) 
+    intel_sub_group_avc_mce_payload_t payload )
 {
     uint4 handle = __builtin_IB_vme_helper_get_handle_avc_mce_payload_t(payload);
     return __builtin_IB_vme_helper_get_as_avc_ime_payload_t(handle);
@@ -1498,7 +1498,7 @@ intel_sub_group_avc_ime_result_t __builtin_spirv_intel_sub_group_avc_ime_evaluat
     VMEImage_t src_image_vme,
     VMEImage_t fwd_ref_image_vme,
     VMEImage_t bwd_ref_image_vme,
-    intel_sub_group_avc_ime_payload_t payload ) 
+    intel_sub_group_avc_ime_payload_t payload )
 {
     long src_image = getVMEImage(src_image_vme);
     long fwd_ref_image = getVMEImage(fwd_ref_image_vme);
@@ -1535,7 +1535,7 @@ intel_sub_group_avc_ime_evaluate_with_dual_reference(
 intel_sub_group_avc_ime_result_t __builtin_spirv_intel_sub_group_avc_ime_evaluate_with_single_reference_v3i64_v3i64_intel_sub_group_avc_ime_payload_t(
     VMEImage_t src_image_vme,
     VMEImage_t ref_image_vme,
-    intel_sub_group_avc_ime_payload_t payload ) 
+    intel_sub_group_avc_ime_payload_t payload )
 {
     long src_image = getVMEImage(src_image_vme);
     long ref_image = getVMEImage(ref_image_vme);
@@ -1568,7 +1568,7 @@ intel_sub_group_avc_ime_evaluate_with_single_reference(
 intel_sub_group_avc_ime_result_single_reference_streamout_t __builtin_spirv_intel_sub_group_avc_ime_evaluate_with_single_reference_streamout_v3i64_v3i64_intel_sub_group_avc_ime_payload_t(
     VMEImage_t src_image_vme,
     VMEImage_t ref_image_vme,
-    intel_sub_group_avc_ime_payload_t payload ) 
+    intel_sub_group_avc_ime_payload_t payload )
 {
     long src_image = getVMEImage(src_image_vme);
     long ref_image = getVMEImage(ref_image_vme);
@@ -1602,7 +1602,7 @@ intel_sub_group_avc_ime_result_dual_reference_streamout_t __builtin_spirv_intel_
     VMEImage_t src_image_vme,
     VMEImage_t fwd_ref_image_vme,
     VMEImage_t bwd_ref_image_vme,
-    intel_sub_group_avc_ime_payload_t payload ) 
+    intel_sub_group_avc_ime_payload_t payload )
 {
     long src_image = getVMEImage(src_image_vme);
     long fwd_ref_image = getVMEImage(fwd_ref_image_vme);
@@ -1640,7 +1640,7 @@ intel_sub_group_avc_ime_result_t __builtin_spirv_intel_sub_group_avc_ime_evaluat
     VMEImage_t src_image_vme,
     VMEImage_t ref_image_vme,
     intel_sub_group_avc_ime_payload_t payload,
-    intel_sub_group_avc_ime_single_reference_streamin_t streamin ) 
+    intel_sub_group_avc_ime_single_reference_streamin_t streamin )
 {
     long src_image = getVMEImage(src_image_vme);
     long ref_image = getVMEImage(ref_image_vme);
@@ -1682,7 +1682,7 @@ intel_sub_group_avc_ime_result_t __builtin_spirv_intel_sub_group_avc_ime_evaluat
     VMEImage_t fwd_ref_image_vme,
     VMEImage_t bwd_ref_image_vme,
     intel_sub_group_avc_ime_payload_t payload,
-    intel_sub_group_avc_ime_dual_reference_streamin_t streamin ) 
+    intel_sub_group_avc_ime_dual_reference_streamin_t streamin )
 {
     long src_image = getVMEImage(src_image_vme);
     long fwd_ref_image = getVMEImage(fwd_ref_image_vme);
@@ -1736,7 +1736,7 @@ intel_sub_group_avc_ime_result_single_reference_streamout_t __builtin_spirv_inte
     VMEImage_t src_image_vme,
     VMEImage_t ref_image_vme,
     intel_sub_group_avc_ime_payload_t payload,
-    intel_sub_group_avc_ime_single_reference_streamin_t streamin ) 
+    intel_sub_group_avc_ime_single_reference_streamin_t streamin )
 {
     long src_image = getVMEImage(src_image_vme);
     long ref_image = getVMEImage(ref_image_vme);
@@ -1777,7 +1777,7 @@ intel_sub_group_avc_ime_result_dual_reference_streamout_t __builtin_spirv_intel_
     VMEImage_t fwd_ref_image_vme,
     VMEImage_t bwd_ref_image_vme,
     intel_sub_group_avc_ime_payload_t payload,
-    intel_sub_group_avc_ime_dual_reference_streamin_t streamin ) 
+    intel_sub_group_avc_ime_dual_reference_streamin_t streamin )
 {
     long src_image = getVMEImage(src_image_vme);
     long fwd_ref_image = getVMEImage(fwd_ref_image_vme);
@@ -1829,7 +1829,7 @@ intel_sub_group_avc_ime_evaluate_with_dual_reference_streaminout(
 }
 
 intel_sub_group_avc_ime_single_reference_streamin_t __builtin_spirv_intel_sub_group_avc_ime_get_single_reference_streamin_intel_sub_group_avc_ime_result_single_reference_streamout_t(
-    intel_sub_group_avc_ime_result_single_reference_streamout_t result ) 
+    intel_sub_group_avc_ime_result_single_reference_streamout_t result )
 {
     uint handle = __builtin_IB_create_message_phases_no_init(2);
     uint8 handle_r = __builtin_IB_vme_helper_get_handle_avc_ime_result_single_reference_streamout_t(result);
@@ -1850,7 +1850,7 @@ intel_sub_group_avc_ime_get_single_reference_streamin(
 }
 
 intel_sub_group_avc_ime_dual_reference_streamin_t __builtin_spirv_intel_sub_group_avc_ime_get_dual_reference_streamin_intel_sub_group_avc_ime_result_dual_reference_streamout_t(
-    intel_sub_group_avc_ime_result_dual_reference_streamout_t result ) 
+    intel_sub_group_avc_ime_result_dual_reference_streamout_t result )
 {
     uint2 handle  = __builtin_IB_create_message_phases_no_init_uint2(4);
     uint8 handle_r = __builtin_IB_vme_helper_get_handle_avc_ime_result_dual_reference_streamout_t(result);
@@ -1871,7 +1871,7 @@ intel_sub_group_avc_ime_get_dual_reference_streamin(
 }
 
 intel_sub_group_avc_ime_result_t __builtin_spirv_intel_sub_group_avc_ime_strip_single_reference_streamout_intel_sub_group_avc_ime_result_single_reference_streamout_t(
-    intel_sub_group_avc_ime_result_single_reference_streamout_t result ) 
+    intel_sub_group_avc_ime_result_single_reference_streamout_t result )
 {
     uint4 res = __builtin_IB_create_message_phases_no_init_uint4(RETURN_MESSAGE_NUM_GRFS+1);
     uint8 handle_r = __builtin_IB_vme_helper_get_handle_avc_ime_result_single_reference_streamout_t(result);
@@ -1892,7 +1892,7 @@ intel_sub_group_avc_ime_strip_single_reference_streamout(
 }
 
 intel_sub_group_avc_ime_result_t __builtin_spirv_intel_sub_group_avc_ime_strip_dual_reference_streamout_intel_sub_group_avc_ime_result_dual_reference_streamout_t(
-    intel_sub_group_avc_ime_result_dual_reference_streamout_t result ) 
+    intel_sub_group_avc_ime_result_dual_reference_streamout_t result )
 {
     uint4 res = __builtin_IB_create_message_phases_no_init_uint4(RETURN_MESSAGE_NUM_GRFS + 1);
     uint8 handle_r = __builtin_IB_vme_helper_get_handle_avc_ime_result_dual_reference_streamout_t(result);
@@ -1922,7 +1922,7 @@ Description:
 uint __builtin_spirv_intel_sub_group_avc_ime_get_streamout_major_shape_motion_vectors_intel_sub_group_avc_ime_result_dual_reference_streamout_t_i8_i8(
     intel_sub_group_avc_ime_result_dual_reference_streamout_t result,
     uchar shape,
-    uchar direction ) 
+    uchar direction )
 {
     uint retValue = 0;
     // IME Streamout follows the same format as the IME Streamin message phases (IME2-IME5).
@@ -1965,7 +1965,7 @@ intel_sub_group_avc_ime_get_streamout_major_shape_motion_vectors(
 
 uint __builtin_spirv_intel_sub_group_avc_ime_get_streamout_major_shape_motion_vectors_intel_sub_group_avc_ime_result_single_reference_streamout_t_i8(
     intel_sub_group_avc_ime_result_single_reference_streamout_t result,
-    uchar major_shape ) 
+    uchar major_shape )
 {
     uint8 handle = __builtin_IB_vme_helper_get_handle_avc_ime_result_single_reference_streamout_t(result);
     intel_sub_group_avc_ime_result_dual_reference_streamout_t nresult = __builtin_IB_vme_helper_get_as_avc_ime_result_dual_reference_streamout_t(handle);
@@ -1990,7 +1990,7 @@ Description:
 ushort __builtin_spirv_intel_sub_group_avc_ime_get_streamout_major_shape_distortions_intel_sub_group_avc_ime_result_dual_reference_streamout_t_i8_i8(
     intel_sub_group_avc_ime_result_dual_reference_streamout_t result,
     uchar shape,
-    uchar direction ) 
+    uchar direction )
 {
     ushort retValue = 0;
     uint8 handle = __builtin_IB_vme_helper_get_handle_avc_ime_result_dual_reference_streamout_t(result);
@@ -2034,7 +2034,7 @@ intel_sub_group_avc_ime_get_streamout_major_shape_distortions(
 
 ushort __builtin_spirv_intel_sub_group_avc_ime_get_streamout_major_shape_distortions_intel_sub_group_avc_ime_result_single_reference_streamout_t_i8(
     intel_sub_group_avc_ime_result_single_reference_streamout_t result,
-    uchar major_shape ) 
+    uchar major_shape )
 {
     uint8 handle = __builtin_IB_vme_helper_get_handle_avc_ime_result_single_reference_streamout_t(result);
     intel_sub_group_avc_ime_result_dual_reference_streamout_t nresult = __builtin_IB_vme_helper_get_as_avc_ime_result_dual_reference_streamout_t(handle);
@@ -2050,7 +2050,7 @@ intel_sub_group_avc_ime_get_streamout_major_shape_distortions(
 }
 
 intel_sub_group_avc_mce_result_t __builtin_spirv_intel_sub_group_avc_ime_convert_to_mce_result_intel_sub_group_avc_ime_result_t(
-    intel_sub_group_avc_ime_result_t result ) 
+    intel_sub_group_avc_ime_result_t result )
 {
     uint4 handle = __builtin_IB_vme_helper_get_handle_avc_ime_result_t(result);
     return __builtin_IB_vme_helper_get_as_avc_mce_result_t(handle);
@@ -2064,7 +2064,7 @@ intel_sub_group_avc_ime_convert_to_mce_result(
 }
 
 intel_sub_group_avc_ime_result_t __builtin_spirv_intel_sub_group_avc_mce_convert_to_ime_result_intel_sub_group_avc_mce_result_t(
-    intel_sub_group_avc_mce_result_t result ) 
+    intel_sub_group_avc_mce_result_t result )
 {
     uint4 handle = __builtin_IB_vme_helper_get_handle_avc_mce_result_t(result);
     return __builtin_IB_vme_helper_get_as_avc_ime_result_t(handle);
@@ -2084,7 +2084,7 @@ Description:
 
 \*****************************************************************************/
 intel_sub_group_avc_ime_payload_t __builtin_spirv_intel_sub_group_avc_ime_set_unidirectional_mix_disable_intel_sub_group_avc_ime_payload_t(
-    intel_sub_group_avc_ime_payload_t payload ) 
+    intel_sub_group_avc_ime_payload_t payload )
 {
     uint4 handle = __builtin_IB_vme_helper_get_handle_avc_ime_payload_t(payload);
     const uint UniMixDis = intel_get_message_phase_dw(handle, 1, 1) | (1<<28);
@@ -2110,7 +2110,7 @@ Description:
 \*****************************************************************************/
 intel_sub_group_avc_ime_payload_t __builtin_spirv_intel_sub_group_avc_ime_set_early_search_termination_threshold_i8_intel_sub_group_avc_ime_payload_t(
     uchar threshold,
-    intel_sub_group_avc_ime_payload_t payload ) 
+    intel_sub_group_avc_ime_payload_t payload )
 {
     uint4 handle = __builtin_IB_vme_helper_get_handle_avc_ime_payload_t(payload);
     uchar newval = intel_get_message_phase_ub(handle, 1, 0*4) | (1 << 5);
@@ -2130,9 +2130,9 @@ intel_sub_group_avc_ime_set_early_search_termination_threshold(
 
 // Note: This function is not present in the VME specification, but our tests use it.
 // TODO: a ticket to validation team has been submitted to remove the calls in tests. Remove this function when it is fixed.
-// As Clang's spir-v generator doesn't recognize this function, it passses the call "as is". 
+// As Clang's spir-v generator doesn't recognize this function, it passses the call "as is".
 // VME types are built-in in Clang 5.0, so the mangling changed from 4.0 version. Below mangled definiton is to workaround the mangling change for this function.
-INLINE intel_sub_group_avc_ime_payload_t 
+INLINE intel_sub_group_avc_ime_payload_t
 _Z77intel_sub_group_avc_ime_set_early_unidirectional_search_termination_thresholdh37ocl_intel_sub_group_avc_ime_payload_t(
     uchar threshold,
     intel_sub_group_avc_ime_payload_t payload )
@@ -2143,7 +2143,7 @@ _Z77intel_sub_group_avc_ime_set_early_unidirectional_search_termination_threshol
 
 intel_sub_group_avc_ime_payload_t __builtin_spirv_intel_sub_group_avc_ime_set_early_unidirectional_search_termination_threshold_i8_intel_sub_group_avc_ime_payload_t(
     uchar threshold,
-    intel_sub_group_avc_ime_payload_t payload ) 
+    intel_sub_group_avc_ime_payload_t payload )
 {
     return intel_sub_group_avc_ime_set_early_search_termination_threshold(threshold, payload);
 }
@@ -2155,7 +2155,7 @@ Description:
 
 \*****************************************************************************/
 uchar __builtin_spirv_intel_sub_group_avc_ime_get_unidirectional_early_search_termination_intel_sub_group_avc_ime_result_t(
-    intel_sub_group_avc_ime_result_t result ) 
+    intel_sub_group_avc_ime_result_t result )
 {
     uint4 handle = __builtin_IB_vme_helper_get_handle_avc_ime_result_t(result);
     return intel_get_message_phase_ub(handle, 0, 6*4+3) & 0x1;
@@ -2175,7 +2175,7 @@ Description:
 
 \*****************************************************************************/
 uchar __builtin_spirv_intel_sub_group_avc_ime_get_truncated_search_indication_intel_sub_group_avc_ime_result_t(
-    intel_sub_group_avc_ime_result_t result ) 
+    intel_sub_group_avc_ime_result_t result )
 {
     uint4 handle = __builtin_IB_vme_helper_get_handle_avc_ime_result_t(result);
     return (intel_get_message_phase_ub(handle, 0, 6*4+3) & (0x1 << 1)) >> 1;
@@ -2197,7 +2197,7 @@ Description:
 \*****************************************************************************/
 intel_sub_group_avc_ime_payload_t __builtin_spirv_intel_sub_group_avc_ime_set_weighted_sad_i32_intel_sub_group_avc_ime_payload_t(
     uint packed_sad_weights,
-    intel_sub_group_avc_ime_payload_t payload ) 
+    intel_sub_group_avc_ime_payload_t payload )
 {
     uint4 handle = __builtin_IB_vme_helper_get_handle_avc_ime_payload_t(payload);
     // Set WeightedSADHAAR M1.7[20:20]
@@ -2226,7 +2226,7 @@ Description:
 
 \*****************************************************************************/
 uint __builtin_spirv_intel_sub_group_avc_ime_get_weighting_pattern_minimum_motion_vector_intel_sub_group_avc_ime_result_t(
-    intel_sub_group_avc_ime_result_t result ) 
+    intel_sub_group_avc_ime_result_t result )
 {
     uint4 handle = __builtin_IB_vme_helper_get_handle_avc_ime_result_t(result);
     return intel_get_message_phase_dw(handle, 1, 0);
@@ -2246,7 +2246,7 @@ Description:
 
 \*****************************************************************************/
 ushort __builtin_spirv_intel_sub_group_avc_ime_get_weighting_pattern_minimum_distortion_intel_sub_group_avc_ime_result_t(
-    intel_sub_group_avc_ime_result_t result ) 
+    intel_sub_group_avc_ime_result_t result )
 {
     uint4 handle = __builtin_IB_vme_helper_get_handle_avc_ime_result_t(result);
     return intel_get_message_phase_uw(handle, 5, 0);
@@ -2267,7 +2267,7 @@ Description:
 \*****************************************************************************/
 uchar __builtin_spirv_intel_sub_group_avc_ime_get_border_reached_i8_intel_sub_group_avc_ime_result_t(
     uchar frame_select,
-    intel_sub_group_avc_ime_result_t result ) 
+    intel_sub_group_avc_ime_result_t result )
 {
     uint4 handle = __builtin_IB_vme_helper_get_handle_avc_ime_result_t(result);
     uchar boarder_reached = intel_get_message_phase_ub(handle, 0, 1*4);
@@ -2320,7 +2320,7 @@ intel_sub_group_avc_ref_payload_t __builtin_spirv_avc_me_initialize_v2i16_i64_i8
     uchar pixel_resolution,
     uchar bidirectional_weight,
     uchar sad_adjustment,
-    bool is_bme ) 
+    bool is_bme )
 {
     uint4 payload = __builtin_IB_create_message_phases_uint4(UNIVERSAL_INPUT_MESSAGE_NUM_GRFS+INPUT_MESSAGE_SIC_NUM_GRFS);
 
@@ -2381,7 +2381,7 @@ intel_sub_group_avc_ref_payload_t __builtin_spirv_intel_sub_group_avc_bme_initia
     uchar directions,
     uchar pixel_resolution,
     uchar bidirectional_weight,
-    uchar sad_adjustment ) 
+    uchar sad_adjustment )
 {
     return avc_me_initialize(src_coord, motion_vectors, major_shape,
                              minor_shapes, directions, pixel_resolution,
@@ -2409,7 +2409,7 @@ intel_sub_group_avc_ref_payload_t __builtin_spirv_intel_sub_group_avc_fme_initia
     uchar minor_shapes,
     uchar directions,
     uchar pixel_resolution,
-    uchar sad_adjustment ) 
+    uchar sad_adjustment )
 {
     return avc_me_initialize(src_coord, motion_vectors, major_shape,
                              minor_shapes, directions, pixel_resolution,
@@ -2430,7 +2430,7 @@ intel_sub_group_avc_fme_initialize(
 }
 
 intel_sub_group_avc_mce_payload_t __builtin_spirv_intel_sub_group_avc_ref_convert_to_mce_payload_intel_sub_group_avc_ref_payload_t(
-    intel_sub_group_avc_ref_payload_t payload ) 
+    intel_sub_group_avc_ref_payload_t payload )
 {
     uint4 handle = __builtin_IB_vme_helper_get_handle_avc_ref_payload_t(payload);
     return __builtin_IB_vme_helper_get_as_avc_mce_payload_t(handle);
@@ -2444,7 +2444,7 @@ intel_sub_group_avc_ref_convert_to_mce_payload(
 }
 
 intel_sub_group_avc_ref_payload_t __builtin_spirv_intel_sub_group_avc_mce_convert_to_ref_payload_intel_sub_group_avc_mce_payload_t(
-    intel_sub_group_avc_mce_payload_t payload ) 
+    intel_sub_group_avc_mce_payload_t payload )
 {
     uint4 handle = __builtin_IB_vme_helper_get_handle_avc_mce_payload_t(payload);
     return __builtin_IB_vme_helper_get_as_avc_ref_payload_t(handle);
@@ -2464,7 +2464,7 @@ Description:
 
 \*****************************************************************************/
 intel_sub_group_avc_ref_payload_t __builtin_spirv_intel_sub_group_avc_ref_set_bidirectional_mix_disable_intel_sub_group_avc_ref_payload_t(
-    intel_sub_group_avc_ref_payload_t payload ) 
+    intel_sub_group_avc_ref_payload_t payload )
 {
     uint4 handle = __builtin_IB_vme_helper_get_handle_avc_ref_payload_t(payload);
     const uint BiMixDis = intel_get_message_phase_dw(handle, 1, 0) | (1<<2);
@@ -2488,7 +2488,7 @@ Description:
 
 \*****************************************************************************/
 intel_sub_group_avc_ref_payload_t __builtin_spirv_intel_sub_group_avc_ref_set_bilinear_filter_enable_intel_sub_group_avc_ref_payload_t(
-    intel_sub_group_avc_ref_payload_t payload ) 
+    intel_sub_group_avc_ref_payload_t payload )
 {
     uint4 handle = __builtin_IB_vme_helper_get_handle_avc_ref_payload_t(payload);
     const uint BilinearEnable = intel_get_message_phase_dw(handle, 1, 7) | (1<<18);
@@ -2516,7 +2516,7 @@ intel_sub_group_avc_ref_result_t __builtin_spirv_intel_sub_group_avc_ref_evaluat
     VMEImage_t src_image_vme,
     VMEImage_t fwd_ref_image_vme,
     VMEImage_t bwd_ref_image_vme,
-    intel_sub_group_avc_ref_payload_t payload ) 
+    intel_sub_group_avc_ref_payload_t payload )
 {
     long src_image = getVMEImage(src_image_vme);
     long fwd_ref_image = getVMEImage(fwd_ref_image_vme);
@@ -2554,7 +2554,7 @@ intel_sub_group_avc_ref_evaluate_with_dual_reference(
 intel_sub_group_avc_ref_result_t __builtin_spirv_intel_sub_group_avc_ref_evaluate_with_single_reference_v3i64_v3i64_intel_sub_group_avc_ref_payload_t(
     VMEImage_t src_image_vme,
     VMEImage_t ref_image_vme,
-    intel_sub_group_avc_ref_payload_t payload ) 
+    intel_sub_group_avc_ref_payload_t payload )
 {
     long src_image = getVMEImage(src_image_vme);
     long ref_image = getVMEImage(ref_image_vme);
@@ -2586,7 +2586,7 @@ intel_sub_group_avc_ref_evaluate_with_single_reference(
 }
 
 intel_sub_group_avc_mce_result_t __builtin_spirv_intel_sub_group_avc_ref_convert_to_mce_result_intel_sub_group_avc_ref_result_t(
-    intel_sub_group_avc_ref_result_t result ) 
+    intel_sub_group_avc_ref_result_t result )
 {
     uint4 handle = __builtin_IB_vme_helper_get_handle_avc_ref_result_t(result);
     return __builtin_IB_vme_helper_get_as_avc_mce_result_t(handle);
@@ -2600,7 +2600,7 @@ intel_sub_group_avc_ref_convert_to_mce_result(
 }
 
 intel_sub_group_avc_ref_result_t __builtin_spirv_intel_sub_group_avc_mce_convert_to_ref_result_intel_sub_group_avc_mce_result_t(
-    intel_sub_group_avc_mce_result_t result ) 
+    intel_sub_group_avc_mce_result_t result )
 {
     uint4 handle = __builtin_IB_vme_helper_get_handle_avc_mce_result_t(result);
     return __builtin_IB_vme_helper_get_as_avc_ref_result_t(handle);
@@ -2623,7 +2623,7 @@ Description:
 
 \*****************************************************************************/
 intel_sub_group_avc_sic_payload_t __builtin_spirv_intel_sub_group_avc_sic_initialize_v2i16(
-    ushort2 src_coord ) 
+    ushort2 src_coord )
 {
     // Create and initialize SIC payload
     uint4 payload = __builtin_IB_create_message_phases_uint4(UNIVERSAL_INPUT_MESSAGE_NUM_GRFS+INPUT_MESSAGE_SIC_NUM_GRFS);
@@ -2644,7 +2644,7 @@ intel_sub_group_avc_sic_initialize(
 
 uint __builtin_spirv_intel_sub_group_avc_sic_get_motion_vector_mask_i32_i8(
     uint skip_block_partition_type,
-    uchar direction ) 
+    uchar direction )
 {
     uint mask =
         ( skip_block_partition_type == CLK_AVC_ME_SKIP_BLOCK_PARTITION_16x16_INTEL ) ?
@@ -2681,7 +2681,7 @@ intel_sub_group_avc_sic_payload_t __builtin_spirv_intel_sub_group_avc_sic_config
     ulong motion_vectors,
     uchar bidirectional_weight,
     uchar skip_sad_adjustment,
-    intel_sub_group_avc_sic_payload_t payload ) 
+    intel_sub_group_avc_sic_payload_t payload )
 {
     uint4 handle = __builtin_IB_vme_helper_get_handle_avc_sic_payload_t(payload);
 
@@ -2748,7 +2748,7 @@ intel_sub_group_avc_sic_payload_t __builtin_spirv_intel_sub_group_avc_sic_config
     uchar upper_edge_pixels,
     uchar upper_right_edge_pixels,
     uchar intra_sad_adjustment,
-    intel_sub_group_avc_sic_payload_t sic_payload ) 
+    intel_sub_group_avc_sic_payload_t sic_payload )
 {
     uint4 payload = __builtin_IB_vme_helper_get_handle_avc_sic_payload_t(sic_payload);
 
@@ -2822,7 +2822,7 @@ intel_sub_group_avc_sic_payload_t __builtin_spirv_intel_sub_group_avc_sic_config
     ushort upper_left_corner_chroma_pixel,
     ushort upper_edge_chroma_pixels,
     uchar intra_sad_adjustment,
-    intel_sub_group_avc_sic_payload_t sic_payload ) 
+    intel_sub_group_avc_sic_payload_t sic_payload )
 {
     uint4 payload = __builtin_IB_vme_helper_get_handle_avc_sic_payload_t(sic_payload);
 
@@ -2882,7 +2882,7 @@ intel_sub_group_avc_sic_configure_ipe(
 }
 
 intel_sub_group_avc_mce_payload_t __builtin_spirv_intel_sub_group_avc_sic_convert_to_mce_payload_intel_sub_group_avc_sic_payload_t(
-    intel_sub_group_avc_sic_payload_t payload ) 
+    intel_sub_group_avc_sic_payload_t payload )
 {
     uint4 handle = __builtin_IB_vme_helper_get_handle_avc_sic_payload_t(payload);
     return __builtin_IB_vme_helper_get_as_avc_mce_payload_t(handle);
@@ -2896,7 +2896,7 @@ intel_sub_group_avc_sic_convert_to_mce_payload(
 }
 
 intel_sub_group_avc_sic_payload_t __builtin_spirv_intel_sub_group_avc_mce_convert_to_sic_payload_intel_sub_group_avc_mce_payload_t(
-    intel_sub_group_avc_mce_payload_t payload ) 
+    intel_sub_group_avc_mce_payload_t payload )
 {
     uint4 handle = __builtin_IB_vme_helper_get_handle_avc_mce_payload_t(payload);
     return __builtin_IB_vme_helper_get_as_avc_sic_payload_t(handle);
@@ -2916,7 +2916,7 @@ Description:
 
 \*****************************************************************************/
 intel_sub_group_avc_sic_payload_t __builtin_spirv_intel_sub_group_avc_sic_set_skc_bilinear_filter_enable_intel_sub_group_avc_sic_payload_t(
-    intel_sub_group_avc_sic_payload_t payload ) 
+    intel_sub_group_avc_sic_payload_t payload )
 {
     uint4 handle = __builtin_IB_vme_helper_get_handle_avc_sic_payload_t(payload);
     const uint BilinearEnable = intel_get_message_phase_dw(handle, 1, 7) | (1<<18);
@@ -2941,7 +2941,7 @@ Description:
 \*****************************************************************************/
 intel_sub_group_avc_sic_payload_t __builtin_spirv_intel_sub_group_avc_sic_set_skc_forward_transform_enable_i64_intel_sub_group_avc_sic_payload_t(
     ulong packed_sad_coefficients,
-    intel_sub_group_avc_sic_payload_t payload ) 
+    intel_sub_group_avc_sic_payload_t payload )
 {
     uint4 handle = __builtin_IB_vme_helper_get_handle_avc_sic_payload_t(payload);
     // Set FTEnable: M0.3[17:17]
@@ -2972,7 +2972,7 @@ Description:
 \*****************************************************************************/
 intel_sub_group_avc_sic_payload_t __builtin_spirv_intel_sub_group_avc_sic_set_block_based_raw_skip_sad_i8_intel_sub_group_avc_sic_payload_t(
     uchar block_based_skip_block_type,
-    intel_sub_group_avc_sic_payload_t payload ) 
+    intel_sub_group_avc_sic_payload_t payload )
 {
     uint4 handle = __builtin_IB_vme_helper_get_handle_avc_sic_payload_t(payload);
     uint dw = intel_get_message_phase_dw(handle, 0, 3) | (0x1 << 19);
@@ -2996,7 +2996,7 @@ intel_sub_group_avc_sic_set_block_based_raw_skip_sad(
 
 intel_sub_group_avc_sic_result_t __builtin_spirv_intel_sub_group_avc_sic_evaluate_ipe_v3i64_intel_sub_group_avc_sic_payload_t(
     VMEImage_t src_image_vme,
-    intel_sub_group_avc_sic_payload_t payload ) 
+    intel_sub_group_avc_sic_payload_t payload )
 {
     long src_image = getVMEImage(src_image_vme);
     long vme_accelerator = getVMESampler(src_image_vme);
@@ -3024,7 +3024,7 @@ intel_sub_group_avc_sic_evaluate_ipe(
 intel_sub_group_avc_sic_result_t __builtin_spirv_intel_sub_group_avc_sic_evaluate_with_single_reference_v3i64_v3i64_intel_sub_group_avc_sic_payload_t(
     VMEImage_t src_image_vme,
     VMEImage_t ref_image_vme,
-    intel_sub_group_avc_sic_payload_t payload ) 
+    intel_sub_group_avc_sic_payload_t payload )
 {
     long src_image = getVMEImage(src_image_vme);
     long ref_image = getVMEImage(ref_image_vme);
@@ -3058,7 +3058,7 @@ intel_sub_group_avc_sic_result_t __builtin_spirv_intel_sub_group_avc_sic_evaluat
     VMEImage_t src_image_vme,
     VMEImage_t fwd_ref_image_vme,
     VMEImage_t bwd_ref_image_vme,
-    intel_sub_group_avc_sic_payload_t payload ) 
+    intel_sub_group_avc_sic_payload_t payload )
 {
     long src_image = getVMEImage(src_image_vme);
     long fwd_ref_image = getVMEImage(fwd_ref_image_vme);
@@ -3093,7 +3093,7 @@ intel_sub_group_avc_sic_evaluate_with_dual_reference(
 }
 
 intel_sub_group_avc_mce_result_t __builtin_spirv_intel_sub_group_avc_sic_convert_to_mce_result_intel_sub_group_avc_sic_result_t(
-    intel_sub_group_avc_sic_result_t result ) 
+    intel_sub_group_avc_sic_result_t result )
 {
     uint4 handle = __builtin_IB_vme_helper_get_handle_avc_sic_result_t(result);
     return __builtin_IB_vme_helper_get_as_avc_mce_result_t(handle);
@@ -3107,7 +3107,7 @@ intel_sub_group_avc_sic_convert_to_mce_result(
 }
 
 intel_sub_group_avc_sic_result_t __builtin_spirv_intel_sub_group_avc_mce_convert_to_sic_result_intel_sub_group_avc_mce_result_t(
-    intel_sub_group_avc_mce_result_t result ) 
+    intel_sub_group_avc_mce_result_t result )
 {
     uint4 handle = __builtin_IB_vme_helper_get_handle_avc_mce_result_t(result);
     return __builtin_IB_vme_helper_get_as_avc_sic_result_t(handle);
@@ -3127,7 +3127,7 @@ Description:
 
 \*****************************************************************************/
 uchar __builtin_spirv_intel_sub_group_avc_sic_get_ipe_luma_shape_intel_sub_group_avc_sic_result_t(
-    intel_sub_group_avc_sic_result_t result ) 
+    intel_sub_group_avc_sic_result_t result )
 {
     uint4 handle = __builtin_IB_vme_helper_get_handle_avc_sic_result_t(result);
     const uchar IntraMbMode = intel_get_message_phase_ub(handle, 0, 0);
@@ -3148,7 +3148,7 @@ Description:
 
 \*****************************************************************************/
 ushort __builtin_spirv_intel_sub_group_avc_sic_get_best_ipe_luma_distortion_intel_sub_group_avc_sic_result_t(
-    intel_sub_group_avc_sic_result_t result ) 
+    intel_sub_group_avc_sic_result_t result )
 {
     uint4 handle = __builtin_IB_vme_helper_get_handle_avc_sic_result_t(result);
     return intel_get_message_phase_uw(handle, 0, 3*2);
@@ -3168,7 +3168,7 @@ Description:
 
 \*****************************************************************************/
 ushort __builtin_spirv_intel_sub_group_avc_sic_get_best_ipe_chroma_distortion_intel_sub_group_avc_sic_result_t(
-    intel_sub_group_avc_sic_result_t result ) 
+    intel_sub_group_avc_sic_result_t result )
 {
     uint4 handle = __builtin_IB_vme_helper_get_handle_avc_sic_result_t(result);
     return intel_get_message_phase_uw(handle, 0, 3*2+1);
@@ -3188,7 +3188,7 @@ Description:
 
 \*****************************************************************************/
 ulong __builtin_spirv_intel_sub_group_avc_sic_get_packed_ipe_luma_modes_intel_sub_group_avc_sic_result_t(
-    intel_sub_group_avc_sic_result_t result ) 
+    intel_sub_group_avc_sic_result_t result )
 {
     uint4 handle = __builtin_IB_vme_helper_get_handle_avc_sic_result_t(result);
     return intel_get_message_phase_uq(handle, 0, 4/2);
@@ -3208,7 +3208,7 @@ Description:
 
 \*****************************************************************************/
 uchar __builtin_spirv_intel_sub_group_avc_sic_get_ipe_chroma_mode_intel_sub_group_avc_sic_result_t(
-    intel_sub_group_avc_sic_result_t result ) 
+    intel_sub_group_avc_sic_result_t result )
 {
     uint4 handle = __builtin_IB_vme_helper_get_handle_avc_sic_result_t(result);
     const uchar MbIntraStruct = intel_get_message_phase_ub(handle, 0, 6*4);
@@ -3229,7 +3229,7 @@ Description:
 
 \*****************************************************************************/
 uint __builtin_spirv_intel_sub_group_avc_sic_get_packed_skc_luma_count_threshold_intel_sub_group_avc_sic_result_t(
-    intel_sub_group_avc_sic_result_t result ) 
+    intel_sub_group_avc_sic_result_t result )
 {
     uint4 handle = __builtin_IB_vme_helper_get_handle_avc_sic_result_t(result);
     return intel_get_message_phase_dw(handle, 6, 1);
@@ -3249,7 +3249,7 @@ Description:
 
 \*****************************************************************************/
 ulong __builtin_spirv_intel_sub_group_avc_sic_get_packed_skc_luma_sum_threshold_intel_sub_group_avc_sic_result_t(
-    intel_sub_group_avc_sic_result_t result ) 
+    intel_sub_group_avc_sic_result_t result )
 {
     uint4 handle = __builtin_IB_vme_helper_get_handle_avc_sic_result_t(result);
     return intel_get_message_phase_uq(handle, 6, 2/2);
@@ -3269,7 +3269,7 @@ Description:
 
 \*****************************************************************************/
 ushort __builtin_spirv_intel_sub_group_avc_sic_get_inter_raw_sads_intel_sub_group_avc_sic_result_t(
-    intel_sub_group_avc_sic_result_t result ) 
+    intel_sub_group_avc_sic_result_t result )
 {
     uint4 handle = __builtin_IB_vme_helper_get_handle_avc_sic_result_t(result);
     return intel_get_message_phase_uw(handle, 0, 2*2+1);
@@ -3288,7 +3288,7 @@ intel_sub_group_avc_ime_payload_t __builtin_spirv_intel_sub_group_avc_ime_set_mo
     ulong packed_cost_center_delta,
     uint2 packed_cost_table,
     uchar cost_precision,
-    intel_sub_group_avc_ime_payload_t payload ) 
+    intel_sub_group_avc_ime_payload_t payload )
 {
       intel_sub_group_avc_mce_payload_t mpayload =
           intel_sub_group_avc_ime_convert_to_mce_payload( payload );
@@ -3315,7 +3315,7 @@ intel_sub_group_avc_ref_payload_t __builtin_spirv_intel_sub_group_avc_ref_set_mo
     ulong packed_cost_center_delta,
     uint2 packed_cost_table,
     uchar cost_precision,
-    intel_sub_group_avc_ref_payload_t payload ) 
+    intel_sub_group_avc_ref_payload_t payload )
 {
       intel_sub_group_avc_mce_payload_t mpayload =
           intel_sub_group_avc_ref_convert_to_mce_payload( payload );
@@ -3342,7 +3342,7 @@ intel_sub_group_avc_sic_payload_t __builtin_spirv_intel_sub_group_avc_sic_set_mo
     ulong packed_cost_center_delta,
     uint2 packed_cost_table,
     uchar cost_precision,
-    intel_sub_group_avc_sic_payload_t payload ) 
+    intel_sub_group_avc_sic_payload_t payload )
 {
       intel_sub_group_avc_mce_payload_t mpayload =
           intel_sub_group_avc_sic_convert_to_mce_payload( payload );
@@ -3366,7 +3366,7 @@ intel_sub_group_avc_sic_set_motion_vector_cost_function(
 }
 
 intel_sub_group_avc_ime_payload_t __builtin_spirv_intel_sub_group_avc_ime_set_ac_only_haar_intel_sub_group_avc_ime_payload_t(
-    intel_sub_group_avc_ime_payload_t payload ) 
+    intel_sub_group_avc_ime_payload_t payload )
 {
     intel_sub_group_avc_mce_payload_t mpayload =
         intel_sub_group_avc_ime_convert_to_mce_payload( payload );
@@ -3383,7 +3383,7 @@ intel_sub_group_avc_ime_set_ac_only_haar(
 }
 
 intel_sub_group_avc_ref_payload_t __builtin_spirv_intel_sub_group_avc_ref_set_ac_only_haar_intel_sub_group_avc_ref_payload_t(
-    intel_sub_group_avc_ref_payload_t payload ) 
+    intel_sub_group_avc_ref_payload_t payload )
 {
   intel_sub_group_avc_mce_payload_t mpayload =
         intel_sub_group_avc_ref_convert_to_mce_payload( payload );
@@ -3400,7 +3400,7 @@ intel_sub_group_avc_ref_set_ac_only_haar(
 }
 
 intel_sub_group_avc_sic_payload_t __builtin_spirv_intel_sub_group_avc_sic_set_ac_only_haar_intel_sub_group_avc_sic_payload_t(
-    intel_sub_group_avc_sic_payload_t payload ) 
+    intel_sub_group_avc_sic_payload_t payload )
 {
     intel_sub_group_avc_mce_payload_t mpayload =
         intel_sub_group_avc_sic_convert_to_mce_payload( payload );
@@ -3417,7 +3417,7 @@ intel_sub_group_avc_sic_set_ac_only_haar(
 }
 
 ulong __builtin_spirv_intel_sub_group_avc_ime_get_motion_vectors_intel_sub_group_avc_ime_result_t(
-    intel_sub_group_avc_ime_result_t result ) 
+    intel_sub_group_avc_ime_result_t result )
 {
     intel_sub_group_avc_mce_result_t mresult =
       intel_sub_group_avc_ime_convert_to_mce_result( result );
@@ -3432,7 +3432,7 @@ intel_sub_group_avc_ime_get_motion_vectors(
 }
 
 ulong __builtin_spirv_intel_sub_group_avc_ref_get_motion_vectors_intel_sub_group_avc_ref_result_t(
-    intel_sub_group_avc_ref_result_t result ) 
+    intel_sub_group_avc_ref_result_t result )
 {
     intel_sub_group_avc_mce_result_t mresult =
       intel_sub_group_avc_ref_convert_to_mce_result( result );
@@ -3447,7 +3447,7 @@ intel_sub_group_avc_ref_get_motion_vectors(
 }
 
 ushort __builtin_spirv_intel_sub_group_avc_ime_get_inter_distortions_intel_sub_group_avc_ime_result_t(
-    intel_sub_group_avc_ime_result_t result ) 
+    intel_sub_group_avc_ime_result_t result )
 {
     intel_sub_group_avc_mce_result_t mresult =
       intel_sub_group_avc_ime_convert_to_mce_result( result );
@@ -3462,7 +3462,7 @@ intel_sub_group_avc_ime_get_inter_distortions(
 }
 
 ushort __builtin_spirv_intel_sub_group_avc_ref_get_inter_distortions_intel_sub_group_avc_ref_result_t(
-    intel_sub_group_avc_ref_result_t result ) 
+    intel_sub_group_avc_ref_result_t result )
 {
     intel_sub_group_avc_mce_result_t mresult =
       intel_sub_group_avc_ref_convert_to_mce_result( result );
@@ -3477,7 +3477,7 @@ intel_sub_group_avc_ref_get_inter_distortions(
 }
 
 ushort __builtin_spirv_intel_sub_group_avc_sic_get_inter_distortions_intel_sub_group_avc_sic_result_t(
-    intel_sub_group_avc_sic_result_t result ) 
+    intel_sub_group_avc_sic_result_t result )
 {
     intel_sub_group_avc_mce_result_t mresult =
       intel_sub_group_avc_sic_convert_to_mce_result( result );
@@ -3492,7 +3492,7 @@ intel_sub_group_avc_sic_get_inter_distortions(
 }
 
 ushort __builtin_spirv_intel_sub_group_avc_ime_get_best_inter_distortion_intel_sub_group_avc_ime_result_t(
-    intel_sub_group_avc_ime_result_t result ) 
+    intel_sub_group_avc_ime_result_t result )
 {
     intel_sub_group_avc_mce_result_t mresult =
       intel_sub_group_avc_ime_convert_to_mce_result( result );
@@ -3507,7 +3507,7 @@ intel_sub_group_avc_ime_get_best_inter_distortion(
 }
 
 ushort __builtin_spirv_intel_sub_group_avc_ref_get_best_inter_distortion_intel_sub_group_avc_ref_result_t(
-    intel_sub_group_avc_ref_result_t result ) 
+    intel_sub_group_avc_ref_result_t result )
 {
     intel_sub_group_avc_mce_result_t mresult =
       intel_sub_group_avc_ref_convert_to_mce_result( result );
@@ -3522,7 +3522,7 @@ intel_sub_group_avc_ref_get_best_inter_distortion(
 }
 
 uchar __builtin_spirv_intel_sub_group_avc_ime_get_inter_major_shape_intel_sub_group_avc_ime_result_t(
-    intel_sub_group_avc_ime_result_t result ) 
+    intel_sub_group_avc_ime_result_t result )
 {
     intel_sub_group_avc_mce_result_t mresult =
       intel_sub_group_avc_ime_convert_to_mce_result( result );
@@ -3537,7 +3537,7 @@ intel_sub_group_avc_ime_get_inter_major_shape(
 }
 
 uchar __builtin_spirv_intel_sub_group_avc_ref_get_inter_major_shape_intel_sub_group_avc_ref_result_t(
-    intel_sub_group_avc_ref_result_t result ) 
+    intel_sub_group_avc_ref_result_t result )
 {
     intel_sub_group_avc_mce_result_t mresult =
       intel_sub_group_avc_ref_convert_to_mce_result( result );
@@ -3552,7 +3552,7 @@ intel_sub_group_avc_ref_get_inter_major_shape(
 }
 
 uchar __builtin_spirv_intel_sub_group_avc_ime_get_inter_minor_shapes_intel_sub_group_avc_ime_result_t(
-    intel_sub_group_avc_ime_result_t result ) 
+    intel_sub_group_avc_ime_result_t result )
 {
     intel_sub_group_avc_mce_result_t mresult =
       intel_sub_group_avc_ime_convert_to_mce_result( result );
@@ -3567,7 +3567,7 @@ intel_sub_group_avc_ime_get_inter_minor_shapes(
 }
 
 uchar __builtin_spirv_intel_sub_group_avc_ref_get_inter_minor_shapes_intel_sub_group_avc_ref_result_t(
-    intel_sub_group_avc_ref_result_t result ) 
+    intel_sub_group_avc_ref_result_t result )
 {
     intel_sub_group_avc_mce_result_t mresult =
       intel_sub_group_avc_ref_convert_to_mce_result( result );
@@ -3582,7 +3582,7 @@ intel_sub_group_avc_ref_get_inter_minor_shapes(
 }
 
 uchar __builtin_spirv_intel_sub_group_avc_ime_get_inter_directions_intel_sub_group_avc_ime_result_t(
-    intel_sub_group_avc_ime_result_t result ) 
+    intel_sub_group_avc_ime_result_t result )
 {
     intel_sub_group_avc_mce_result_t mresult =
       intel_sub_group_avc_ime_convert_to_mce_result( result );
@@ -3597,7 +3597,7 @@ intel_sub_group_avc_ime_get_inter_directions(
 }
 
 uchar __builtin_spirv_intel_sub_group_avc_ref_get_inter_directions_intel_sub_group_avc_ref_result_t(
-    intel_sub_group_avc_ref_result_t result ) 
+    intel_sub_group_avc_ref_result_t result )
 {
     intel_sub_group_avc_mce_result_t mresult =
       intel_sub_group_avc_ref_convert_to_mce_result( result );
@@ -3612,7 +3612,7 @@ intel_sub_group_avc_ref_get_inter_directions(
 }
 
 uchar __builtin_spirv_intel_sub_group_avc_ime_get_inter_motion_vector_count_intel_sub_group_avc_ime_result_t(
-    intel_sub_group_avc_ime_result_t result ) 
+    intel_sub_group_avc_ime_result_t result )
 {
     intel_sub_group_avc_mce_result_t mresult =
       intel_sub_group_avc_ime_convert_to_mce_result( result );
@@ -3627,7 +3627,7 @@ intel_sub_group_avc_ime_get_inter_motion_vector_count(
 }
 
 uchar __builtin_spirv_intel_sub_group_avc_ref_get_inter_motion_vector_count_intel_sub_group_avc_ref_result_t(
-    intel_sub_group_avc_ref_result_t result ) 
+    intel_sub_group_avc_ref_result_t result )
 {
     intel_sub_group_avc_mce_result_t mresult =
       intel_sub_group_avc_ref_convert_to_mce_result( result );
@@ -3643,7 +3643,7 @@ intel_sub_group_avc_ref_get_inter_motion_vector_count(
 
 uchar __builtin_spirv_intel_sub_group_avc_mce_get_default_inter_base_multi_reference_penalty_i8_i8(
     uchar slice_type,
-    uchar qp ) 
+    uchar qp )
 {
     uchar penalty = 0;
     if( slice_type ==  CLK_AVC_ME_SLICE_TYPE_PRED_INTEL ||
@@ -3684,7 +3684,7 @@ Description:
 
 intel_sub_group_avc_mce_payload_t __builtin_spirv_intel_sub_group_avc_mce_set_inter_base_multi_reference_penalty_i8_intel_sub_group_avc_mce_payload_t(
     uchar reference_base_penalty,
-    intel_sub_group_avc_mce_payload_t payload ) 
+    intel_sub_group_avc_mce_payload_t payload )
 {
     uint4 handle = __builtin_IB_vme_helper_get_handle_avc_mce_payload_t(payload);
 
@@ -3709,7 +3709,7 @@ intel_sub_group_avc_mce_set_inter_base_multi_reference_penalty(
 
 ulong __builtin_spirv_intel_sub_group_avc_mce_get_default_inter_shape_penalty_i8_i8(
     uchar slice_type,
-    uchar qp ) 
+    uchar qp )
 {
     ulong packed_penalty = 0;
 
@@ -3757,7 +3757,7 @@ Description:
 \*****************************************************************************/
 intel_sub_group_avc_mce_payload_t __builtin_spirv_intel_sub_group_avc_mce_set_inter_shape_penalty_i64_intel_sub_group_avc_mce_payload_t(
     ulong packed_shape_penalty,
-    intel_sub_group_avc_mce_payload_t payload ) 
+    intel_sub_group_avc_mce_payload_t payload )
 {
     uint4 handle = __builtin_IB_vme_helper_get_handle_avc_mce_payload_t(payload);
 
@@ -3783,7 +3783,7 @@ intel_sub_group_avc_mce_set_inter_shape_penalty(
 
 uchar __builtin_spirv_intel_sub_group_avc_mce_get_default_inter_direction_penalty_i8_i8(
     uchar slice_type,
-    uchar qp ) 
+    uchar qp )
 {
     uchar penalty = 0;
     if( slice_type ==  CLK_AVC_ME_SLICE_TYPE_BPRED_INTEL ) {
@@ -3822,7 +3822,7 @@ Description:
 
 intel_sub_group_avc_mce_payload_t __builtin_spirv_intel_sub_group_avc_mce_set_inter_direction_penalty_i8_intel_sub_group_avc_mce_payload_t(
     uchar direction_cost,
-    intel_sub_group_avc_mce_payload_t payload ) 
+    intel_sub_group_avc_mce_payload_t payload )
 {
     uint4 handle = __builtin_IB_vme_helper_get_handle_avc_mce_payload_t(payload);
 
@@ -3847,7 +3847,7 @@ intel_sub_group_avc_mce_set_inter_direction_penalty(
 
 uint __builtin_spirv_intel_sub_group_avc_mce_get_default_intra_luma_shape_penalty_i8_i8(
     uchar slice_type,
-    uchar qp ) 
+    uchar qp )
 {
     uint packed_penalty = 0;
 
@@ -3901,7 +3901,7 @@ Description:
 
 intel_sub_group_avc_mce_payload_t __builtin_spirv_intel_sub_group_avc_mce_set_intra_luma_shape_penalty_i32_intel_sub_group_avc_mce_payload_t(
     uint packed_shape_cost,
-    intel_sub_group_avc_mce_payload_t payload ) 
+    intel_sub_group_avc_mce_payload_t payload )
 {
     uint4 handle = __builtin_IB_vme_helper_get_handle_avc_mce_payload_t(payload);
 
@@ -3927,7 +3927,7 @@ intel_sub_group_avc_mce_set_intra_luma_shape_penalty(
 
 uchar __builtin_spirv_intel_sub_group_avc_mce_get_default_intra_luma_mode_penalty_i8_i8(
     uchar slice_type,
-    uchar qp ) 
+    uchar qp )
 {
     uchar penalty = 0;
     if( slice_type == CLK_AVC_ME_SLICE_TYPE_PRED_INTEL ||
@@ -3961,7 +3961,7 @@ intel_sub_group_avc_mce_get_default_intra_luma_mode_penalty(
     return __builtin_spirv_intel_sub_group_avc_mce_get_default_intra_luma_mode_penalty_i8_i8(slice_type, qp);
 }
 
-uint __builtin_spirv_intel_sub_group_avc_mce_get_default_non_dc_luma_intra_penalty( ) 
+uint __builtin_spirv_intel_sub_group_avc_mce_get_default_non_dc_luma_intra_penalty( )
 {
     union {
         struct {
@@ -4000,7 +4000,7 @@ intel_sub_group_avc_mce_payload_t __builtin_spirv_intel_sub_group_avc_mce_set_in
     uchar luma_mode_penalty,
     uint luma_packed_neighbor_modes,
     uint luma_packed_non_dc_penalty,
-    intel_sub_group_avc_mce_payload_t payload ) 
+    intel_sub_group_avc_mce_payload_t payload )
 {
     uint4 handle = __builtin_IB_vme_helper_get_handle_avc_mce_payload_t(payload);
 
@@ -4027,7 +4027,7 @@ intel_sub_group_avc_mce_set_intra_luma_mode_cost_function(
     return __builtin_spirv_intel_sub_group_avc_mce_set_intra_luma_mode_cost_function_i8_i32_i32_intel_sub_group_avc_mce_payload_t(luma_mode_penalty, luma_packed_neighbor_modes, luma_packed_non_dc_penalty, payload);
 }
 
-uchar __builtin_spirv_intel_sub_group_avc_mce_get_default_intra_chroma_mode_base_penalty( ) 
+uchar __builtin_spirv_intel_sub_group_avc_mce_get_default_intra_chroma_mode_base_penalty( )
 {
     return 0;
 }
@@ -4049,7 +4049,7 @@ Description:
 
 intel_sub_group_avc_mce_payload_t __builtin_spirv_intel_sub_group_avc_mce_set_intra_chroma_mode_cost_function_i8_intel_sub_group_avc_mce_payload_t(
     uchar chroma_mode_base_penalty,
-    intel_sub_group_avc_mce_payload_t payload ) 
+    intel_sub_group_avc_mce_payload_t payload )
 {
     uint4 handle = __builtin_IB_vme_helper_get_handle_avc_mce_payload_t(payload);
 
@@ -4076,7 +4076,7 @@ Description:
 \*****************************************************************************/
 
 uint __builtin_spirv_intel_sub_group_avc_mce_get_inter_reference_ids_intel_sub_group_avc_mce_result_t(
-    intel_sub_group_avc_mce_result_t result ) 
+    intel_sub_group_avc_mce_result_t result )
 {
     uint4 handle = __builtin_IB_vme_helper_get_handle_avc_mce_result_t(result);
     return intel_get_message_phase_dw(handle, 6, 0);
@@ -4092,7 +4092,7 @@ intel_sub_group_avc_mce_get_inter_reference_ids(
 uchar __builtin_spirv_intel_sub_group_avc_mce_get_inter_reference_interlaced_field_polarities_i32_i32_intel_sub_group_avc_mce_result_t(
     uint packed_reference_ids,
     uint packed_reference_parameter_field_polarities,
-    intel_sub_group_avc_mce_result_t result ) 
+    intel_sub_group_avc_mce_result_t result )
 {
     uchar fwd_polarity = 0;
 
@@ -4130,7 +4130,7 @@ intel_sub_group_avc_mce_get_inter_reference_interlaced_field_polarities(
 
 intel_sub_group_avc_ime_payload_t __builtin_spirv_intel_sub_group_avc_ime_set_inter_base_multi_reference_penalty_i8_intel_sub_group_avc_ime_payload_t(
     uchar reference_base_penalty,
-    intel_sub_group_avc_ime_payload_t payload ) 
+    intel_sub_group_avc_ime_payload_t payload )
 {
     intel_sub_group_avc_mce_payload_t mpayload =
         intel_sub_group_avc_ime_convert_to_mce_payload( payload );
@@ -4151,7 +4151,7 @@ intel_sub_group_avc_ime_set_inter_base_multi_reference_penalty(
 
 intel_sub_group_avc_ime_payload_t __builtin_spirv_intel_sub_group_avc_ime_set_inter_shape_penalty_i64_intel_sub_group_avc_ime_payload_t(
     ulong packed_shape_cost,
-    intel_sub_group_avc_ime_payload_t payload ) 
+    intel_sub_group_avc_ime_payload_t payload )
 {
     intel_sub_group_avc_mce_payload_t mpayload =
         intel_sub_group_avc_ime_convert_to_mce_payload( payload );
@@ -4172,7 +4172,7 @@ intel_sub_group_avc_ime_set_inter_shape_penalty(
 
 intel_sub_group_avc_ime_payload_t __builtin_spirv_intel_sub_group_avc_ime_set_inter_direction_penalty_i8_intel_sub_group_avc_ime_payload_t(
     uchar direction_cost,
-    intel_sub_group_avc_ime_payload_t payload ) 
+    intel_sub_group_avc_ime_payload_t payload )
 {
     intel_sub_group_avc_mce_payload_t mpayload =
         intel_sub_group_avc_ime_convert_to_mce_payload( payload );
@@ -4192,7 +4192,7 @@ intel_sub_group_avc_ime_set_inter_direction_penalty(
 }
 
 uint __builtin_spirv_intel_sub_group_avc_ime_get_inter_reference_ids_intel_sub_group_avc_ime_result_t(
-    intel_sub_group_avc_ime_result_t result ) 
+    intel_sub_group_avc_ime_result_t result )
 {
     intel_sub_group_avc_mce_result_t mresult =
       intel_sub_group_avc_ime_convert_to_mce_result( result );
@@ -4208,7 +4208,7 @@ intel_sub_group_avc_ime_get_inter_reference_ids(
 
 intel_sub_group_avc_ref_payload_t __builtin_spirv_intel_sub_group_avc_ref_set_inter_base_multi_reference_penalty_i8_intel_sub_group_avc_ref_payload_t(
     uchar reference_base_penalty,
-    intel_sub_group_avc_ref_payload_t payload ) 
+    intel_sub_group_avc_ref_payload_t payload )
 {
     intel_sub_group_avc_mce_payload_t mpayload =
         intel_sub_group_avc_ref_convert_to_mce_payload( payload );
@@ -4229,7 +4229,7 @@ intel_sub_group_avc_ref_set_inter_base_multi_reference_penalty(
 
 intel_sub_group_avc_ref_payload_t __builtin_spirv_intel_sub_group_avc_ref_set_inter_shape_penalty_i64_intel_sub_group_avc_ref_payload_t(
     ulong packed_shape_cost,
-    intel_sub_group_avc_ref_payload_t payload ) 
+    intel_sub_group_avc_ref_payload_t payload )
 {
     intel_sub_group_avc_mce_payload_t mpayload =
         intel_sub_group_avc_ref_convert_to_mce_payload( payload );
@@ -4250,7 +4250,7 @@ intel_sub_group_avc_ref_set_inter_shape_penalty(
 
 intel_sub_group_avc_ref_payload_t __builtin_spirv_intel_sub_group_avc_ref_set_inter_direction_penalty_i8_intel_sub_group_avc_ref_payload_t(
     uchar direction_cost,
-    intel_sub_group_avc_ref_payload_t payload ) 
+    intel_sub_group_avc_ref_payload_t payload )
 {
     intel_sub_group_avc_mce_payload_t mpayload =
         intel_sub_group_avc_ref_convert_to_mce_payload( payload );
@@ -4272,7 +4272,7 @@ intel_sub_group_avc_ref_set_inter_direction_penalty(
 intel_sub_group_avc_ref_result_t __builtin_spirv_intel_sub_group_avc_ref_evaluate_with_multi_reference_v3i64_i32_intel_sub_group_avc_ref_payload_t(
     VMEImage_t src_image_vme,
     uint packed_reference_ids,
-    intel_sub_group_avc_ref_payload_t payload ) 
+    intel_sub_group_avc_ref_payload_t payload )
 {
     long src_image = getVMEImage(src_image_vme);
     long vme_accelerator = getVMESampler(src_image_vme);
@@ -4304,7 +4304,7 @@ intel_sub_group_avc_ref_result_t __builtin_spirv_intel_sub_group_avc_ref_evaluat
     VMEImage_t src_image_vme,
     uint packed_reference_ids,
     uchar packed_reference_field_polarities,
-    intel_sub_group_avc_ref_payload_t payload ) 
+    intel_sub_group_avc_ref_payload_t payload )
 {
     long src_image = getVMEImage(src_image_vme);
     long vme_accelerator = getVMESampler(src_image_vme);
@@ -4339,7 +4339,7 @@ intel_sub_group_avc_ref_evaluate_with_multi_reference(
 }
 
 uint __builtin_spirv_intel_sub_group_avc_ref_get_inter_reference_ids_intel_sub_group_avc_ref_result_t(
-    intel_sub_group_avc_ref_result_t result ) 
+    intel_sub_group_avc_ref_result_t result )
 {
     intel_sub_group_avc_mce_result_t mresult =
       intel_sub_group_avc_ref_convert_to_mce_result( result );
@@ -4356,7 +4356,7 @@ intel_sub_group_avc_ref_get_inter_reference_ids(
 uchar __builtin_spirv_intel_sub_group_avc_ime_get_inter_reference_interlaced_field_polarities_i32_i32_intel_sub_group_avc_ime_result_t(
     uint packed_reference_ids,
     uint packed_reference_parameter_field_polarities,
-    intel_sub_group_avc_ime_result_t result ) 
+    intel_sub_group_avc_ime_result_t result )
 {
     intel_sub_group_avc_mce_result_t mresult =
       intel_sub_group_avc_ime_convert_to_mce_result( result );
@@ -4375,7 +4375,7 @@ intel_sub_group_avc_ime_get_inter_reference_interlaced_field_polarities(
 uchar __builtin_spirv_intel_sub_group_avc_ref_get_inter_reference_interlaced_field_polarities_i32_i32_intel_sub_group_avc_ref_result_t(
     uint packed_reference_ids,
     uint packed_reference_parameter_field_polarities,
-    intel_sub_group_avc_ref_result_t result ) 
+    intel_sub_group_avc_ref_result_t result )
 {
     intel_sub_group_avc_mce_result_t mresult =
       intel_sub_group_avc_ref_convert_to_mce_result( result );
@@ -4393,7 +4393,7 @@ intel_sub_group_avc_ref_get_inter_reference_interlaced_field_polarities(
 
 intel_sub_group_avc_sic_payload_t __builtin_spirv_intel_sub_group_avc_sic_set_inter_base_multi_reference_penalty_i8_intel_sub_group_avc_sic_payload_t(
     uchar reference_base_penalty,
-    intel_sub_group_avc_sic_payload_t payload ) 
+    intel_sub_group_avc_sic_payload_t payload )
 {
     intel_sub_group_avc_mce_payload_t mpayload =
         intel_sub_group_avc_sic_convert_to_mce_payload( payload );
@@ -4414,7 +4414,7 @@ intel_sub_group_avc_sic_set_inter_base_multi_reference_penalty(
 
 intel_sub_group_avc_sic_payload_t __builtin_spirv_intel_sub_group_avc_sic_set_inter_shape_penalty_i64_intel_sub_group_avc_sic_payload_t(
     ulong packed_shape_cost,
-    intel_sub_group_avc_sic_payload_t payload ) 
+    intel_sub_group_avc_sic_payload_t payload )
 {
     intel_sub_group_avc_mce_payload_t mpayload =
         intel_sub_group_avc_sic_convert_to_mce_payload( payload );
@@ -4435,7 +4435,7 @@ intel_sub_group_avc_sic_set_inter_shape_penalty(
 
 intel_sub_group_avc_sic_payload_t __builtin_spirv_intel_sub_group_avc_sic_set_inter_direction_penalty_i8_intel_sub_group_avc_sic_payload_t(
     uchar direction_cost,
-    intel_sub_group_avc_sic_payload_t payload ) 
+    intel_sub_group_avc_sic_payload_t payload )
 {
     intel_sub_group_avc_mce_payload_t mpayload =
         intel_sub_group_avc_sic_convert_to_mce_payload( payload );
@@ -4456,7 +4456,7 @@ intel_sub_group_avc_sic_set_inter_direction_penalty(
 
 intel_sub_group_avc_sic_payload_t __builtin_spirv_intel_sub_group_avc_sic_set_intra_luma_shape_penalty_i32_intel_sub_group_avc_sic_payload_t(
     uint packed_shape_cost,
-    intel_sub_group_avc_sic_payload_t payload ) 
+    intel_sub_group_avc_sic_payload_t payload )
 {
     intel_sub_group_avc_mce_payload_t mpayload =
         intel_sub_group_avc_sic_convert_to_mce_payload( payload );
@@ -4479,7 +4479,7 @@ intel_sub_group_avc_sic_payload_t __builtin_spirv_intel_sub_group_avc_sic_set_in
     uchar luma_mode_penalty,
     uint luma_packed_neighbor_modes,
     uint luma_packed_non_dc_penalty,
-    intel_sub_group_avc_sic_payload_t payload ) 
+    intel_sub_group_avc_sic_payload_t payload )
 {
     intel_sub_group_avc_mce_payload_t mpayload =
         intel_sub_group_avc_sic_convert_to_mce_payload( payload );
@@ -4504,7 +4504,7 @@ intel_sub_group_avc_sic_set_intra_luma_mode_cost_function(
 
 intel_sub_group_avc_sic_payload_t __builtin_spirv_intel_sub_group_avc_sic_set_intra_chroma_mode_cost_function_i8_intel_sub_group_avc_sic_payload_t(
     uchar chroma_mode_penalty,
-    intel_sub_group_avc_sic_payload_t payload ) 
+    intel_sub_group_avc_sic_payload_t payload )
 {
     intel_sub_group_avc_mce_payload_t mpayload =
         intel_sub_group_avc_sic_convert_to_mce_payload( payload );
@@ -4527,7 +4527,7 @@ intel_sub_group_avc_sic_set_intra_chroma_mode_cost_function(
 
 intel_sub_group_avc_ime_payload_t __builtin_spirv_intel_sub_group_avc_ime_set_source_interlaced_field_polarity_i8_intel_sub_group_avc_ime_payload_t(
     uchar src_field_polarity,
-    intel_sub_group_avc_ime_payload_t payload ) 
+    intel_sub_group_avc_ime_payload_t payload )
 {
       intel_sub_group_avc_mce_payload_t mpayload =
           intel_sub_group_avc_ime_convert_to_mce_payload( payload );
@@ -4548,7 +4548,7 @@ intel_sub_group_avc_ime_set_source_interlaced_field_polarity(
 
 intel_sub_group_avc_ref_payload_t __builtin_spirv_intel_sub_group_avc_ref_set_source_interlaced_field_polarity_i8_intel_sub_group_avc_ref_payload_t(
     uchar src_field_polarity,
-    intel_sub_group_avc_ref_payload_t payload ) 
+    intel_sub_group_avc_ref_payload_t payload )
 {
       intel_sub_group_avc_mce_payload_t mpayload =
           intel_sub_group_avc_ref_convert_to_mce_payload( payload );
@@ -4569,7 +4569,7 @@ intel_sub_group_avc_ref_set_source_interlaced_field_polarity(
 
 intel_sub_group_avc_sic_payload_t __builtin_spirv_intel_sub_group_avc_sic_set_source_interlaced_field_polarity_i8_intel_sub_group_avc_sic_payload_t(
     uchar src_field_polarity,
-    intel_sub_group_avc_sic_payload_t payload ) 
+    intel_sub_group_avc_sic_payload_t payload )
 {
       intel_sub_group_avc_mce_payload_t mpayload =
           intel_sub_group_avc_sic_convert_to_mce_payload( payload );
@@ -4590,7 +4590,7 @@ intel_sub_group_avc_sic_set_source_interlaced_field_polarity(
 
 intel_sub_group_avc_ime_payload_t __builtin_spirv_intel_sub_group_avc_ime_set_single_reference_interlaced_field_polarity_i8_intel_sub_group_avc_ime_payload_t(
     uchar ref_field_polarity,
-    intel_sub_group_avc_ime_payload_t payload ) 
+    intel_sub_group_avc_ime_payload_t payload )
 {
       intel_sub_group_avc_mce_payload_t mpayload =
           intel_sub_group_avc_ime_convert_to_mce_payload( payload );
@@ -4611,7 +4611,7 @@ intel_sub_group_avc_ime_set_single_reference_interlaced_field_polarity(
 
 intel_sub_group_avc_ref_payload_t __builtin_spirv_intel_sub_group_avc_ref_set_single_reference_interlaced_field_polarity_i8_intel_sub_group_avc_ref_payload_t(
     uchar ref_field_polarity,
-    intel_sub_group_avc_ref_payload_t payload ) 
+    intel_sub_group_avc_ref_payload_t payload )
 {
       intel_sub_group_avc_mce_payload_t mpayload =
           intel_sub_group_avc_ref_convert_to_mce_payload( payload );
@@ -4632,7 +4632,7 @@ intel_sub_group_avc_ref_set_single_reference_interlaced_field_polarity(
 
 intel_sub_group_avc_sic_payload_t __builtin_spirv_intel_sub_group_avc_sic_set_single_reference_interlaced_field_polarity_i8_intel_sub_group_avc_sic_payload_t(
     uchar ref_field_polarity,
-    intel_sub_group_avc_sic_payload_t payload ) 
+    intel_sub_group_avc_sic_payload_t payload )
 {
       intel_sub_group_avc_mce_payload_t mpayload =
           intel_sub_group_avc_sic_convert_to_mce_payload( payload );
@@ -4654,7 +4654,7 @@ intel_sub_group_avc_sic_set_single_reference_interlaced_field_polarity(
 intel_sub_group_avc_ime_payload_t __builtin_spirv_intel_sub_group_avc_ime_set_dual_reference_interlaced_field_polarities_i8_i8_intel_sub_group_avc_ime_payload_t(
     uchar fwd_ref_field_polarity,
     uchar bwd_ref_field_polarity,
-    intel_sub_group_avc_ime_payload_t payload ) 
+    intel_sub_group_avc_ime_payload_t payload )
 {
       intel_sub_group_avc_mce_payload_t mpayload =
           intel_sub_group_avc_ime_convert_to_mce_payload( payload );
@@ -4677,7 +4677,7 @@ intel_sub_group_avc_ime_set_dual_reference_interlaced_field_polarities(
 intel_sub_group_avc_ref_payload_t __builtin_spirv_intel_sub_group_avc_ref_set_dual_reference_interlaced_field_polarities_i8_i8_intel_sub_group_avc_ref_payload_t(
     uchar fwd_ref_field_polarity,
     uchar bwd_ref_field_polarity,
-    intel_sub_group_avc_ref_payload_t payload ) 
+    intel_sub_group_avc_ref_payload_t payload )
 {
       intel_sub_group_avc_mce_payload_t mpayload =
           intel_sub_group_avc_ref_convert_to_mce_payload( payload );
@@ -4700,7 +4700,7 @@ intel_sub_group_avc_ref_set_dual_reference_interlaced_field_polarities(
 intel_sub_group_avc_sic_payload_t __builtin_spirv_intel_sub_group_avc_sic_set_dual_reference_interlaced_field_polarities_i8_i8_intel_sub_group_avc_sic_payload_t(
     uchar fwd_ref_field_polarity,
     uchar bwd_ref_field_polarity,
-    intel_sub_group_avc_sic_payload_t payload ) 
+    intel_sub_group_avc_sic_payload_t payload )
 {
       intel_sub_group_avc_mce_payload_t mpayload =
           intel_sub_group_avc_sic_convert_to_mce_payload( payload );
@@ -4725,7 +4725,7 @@ intel_sub_group_avc_sic_set_dual_reference_interlaced_field_polarities(
 intel_sub_group_avc_sic_result_t __builtin_spirv_intel_sub_group_avc_sic_evaluate_with_multi_reference_v3i64_i32_intel_sub_group_avc_sic_payload_t(
     VMEImage_t src_image_vme,
     uint packed_reference_ids,
-    intel_sub_group_avc_sic_payload_t payload ) 
+    intel_sub_group_avc_sic_payload_t payload )
 {
     long src_image = getVMEImage(src_image_vme);
     long vme_accelerator = getVMESampler(src_image_vme);
@@ -4757,7 +4757,7 @@ intel_sub_group_avc_sic_result_t __builtin_spirv_intel_sub_group_avc_sic_evaluat
     VMEImage_t src_image_vme,
     uint packed_reference_ids,
     uchar packed_reference_field_polarities,
-    intel_sub_group_avc_sic_payload_t payload ) 
+    intel_sub_group_avc_sic_payload_t payload )
 {
     long src_image = getVMEImage(src_image_vme);
     long vme_accelerator = getVMESampler(src_image_vme);
@@ -4795,7 +4795,7 @@ intel_sub_group_avc_sic_evaluate_with_multi_reference(
 uchar __builtin_spirv_intel_sub_group_avc_ime_get_streamout_major_shape_reference_ids_intel_sub_group_avc_ime_result_dual_reference_streamout_t_i8_i8(
     intel_sub_group_avc_ime_result_dual_reference_streamout_t result,
     uchar major_shape,
-    uchar direction ) 
+    uchar direction )
 {
     uchar retValue = 0;
     // IME Streamout follows the same format as the IME Streamin message phases (IME2-IME5).
@@ -4859,7 +4859,7 @@ intel_sub_group_avc_ime_get_streamout_major_shape_reference_ids(
 
 uchar __builtin_spirv_intel_sub_group_avc_ime_get_streamout_major_shape_reference_ids_intel_sub_group_avc_ime_result_single_reference_streamout_t_i8(
     intel_sub_group_avc_ime_result_single_reference_streamout_t result,
-    uchar major_shape ) 
+    uchar major_shape )
 {
     uint8 handle = __builtin_IB_vme_helper_get_handle_avc_ime_result_single_reference_streamout_t(result);
     intel_sub_group_avc_ime_result_dual_reference_streamout_t nresult = __builtin_IB_vme_helper_get_as_avc_ime_result_dual_reference_streamout_t(handle);

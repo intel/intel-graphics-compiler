@@ -181,7 +181,7 @@ namespace IGC
             return TEnum::END;
         }
 
-        // Handle both bool and int using the same function. For boolean, 
+        // Handle both bool and int using the same function. For boolean,
         // true is converted to int 1 and false is converted to int 0.
         void IGC_DEBUG_API_CALL SetCompilerOption(OptionFlag flag, int value);
         void IGC_DEBUG_API_CALL SetCompilerOption(OptionFlag flag, debugString s);

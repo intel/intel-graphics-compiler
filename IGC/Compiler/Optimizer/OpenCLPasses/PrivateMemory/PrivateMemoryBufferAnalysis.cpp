@@ -78,7 +78,7 @@ void PrivateMemoryBufferAnalysis::runOnFunction(llvm::Function& F)
 
     visit(F);
 
-    // Align total size for the next WI 
+    // Align total size for the next WI
     m_currentOffset = iSTD::Align(m_currentOffset, m_maxAlignment);
 
     // Map total private buffer size to current function

@@ -31,7 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // corresponding float counterparts.
 //
 // All unnecessary conversions get cleaned up before code gen.
-// 
+//
 //===----------------------------------------------------------------------===//
 
 

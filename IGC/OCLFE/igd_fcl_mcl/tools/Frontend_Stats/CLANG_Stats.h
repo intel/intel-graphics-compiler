@@ -54,15 +54,15 @@ namespace LLVM{
         MAX_LLVM_TIMING_COUNTER
 
     };
-  
+
 #if defined(_DEBUG) || defined (RELEASE_INTERNAL) || defined(_INTERNAL)
- 
+
     struct StatNames{
         char * name;
         char * description;
 
     };
-    
+
     StatNames generic_names [] ={
 
         {"Optimization 1", "Opt 1"},
@@ -71,7 +71,7 @@ namespace LLVM{
     };
 
     StatNames timing_names []={
-        
+
         //CLANG Statistics
         {"CLANG Time", "Takes clang's total time to run"}, // Do not remove or reorder
         {"CLANG Placeholder", "Holds the size of the clang stats"},
@@ -83,7 +83,7 @@ namespace LLVM{
 
     struct SOptStats{
         DWORD OptCounter[MAX_OPTIMIZATION_COUNTER_TYPE];
-        DWORD FailedOptCounter[MAX_OPTIMIZATION_COUNTER_TYPE]; 
+        DWORD FailedOptCounter[MAX_OPTIMIZATION_COUNTER_TYPE];
     };
 
     struct STimingStats{
@@ -97,7 +97,7 @@ namespace LLVM{
         unsigned int TimeStatsEnable: 1;
     };
 
-    SDebugVariables g_DebugVariables = 
+    SDebugVariables g_DebugVariables =
     {
         1, // OptStatsEnable
         1 // TimeStatsEnable
@@ -109,7 +109,7 @@ namespace LLVM{
 
         for(int i = MAX_CLANG_TIMING_COUNTER+1; i < MAX_LLVM_TIMING_COUNTER; i++){
             htmlcontent += "<td class='first-odd'>";
-             
+
             htmlcontent += std::to_string(timing->TotalTime[i]);
 
             htmlcontent += "</td>";
@@ -119,7 +119,7 @@ namespace LLVM{
 
         return htmlcontent;
     }
-    
+
     std::string clang_stats_html (SOptStats * stats){
 
         std::string htmlcontent = "";
@@ -150,7 +150,7 @@ namespace LLVM{
 
             contents += std::to_string(stats->OptCounter[i]);
 
-            if(i != MAX_OPTIMIZATION_COUNTER_TYPE - 1) 
+            if(i != MAX_OPTIMIZATION_COUNTER_TYPE - 1)
                 contents += ",";
         }
 
@@ -165,8 +165,8 @@ namespace LLVM{
         stats_html << htmlcontent;
         stats_html.close();
     }
-    
-    
+
+
     void printLLVMTiming(STimingStats * timing, CTimer * timer){
 
         std::ofstream ofile("..\\..\\..\\reports\\LLVM_Timing_Info.csv", std::ios::app);
@@ -180,7 +180,7 @@ namespace LLVM{
             contents += ",";
             contents += std::to_string(timer->GetTimeInSec(timing->TotalTime[i])/ 100.0);
 
-            if(i != MAX_LLVM_TIMING_COUNTER - 1) 
+            if(i != MAX_LLVM_TIMING_COUNTER - 1)
                 contents += ",";
         }
 
@@ -194,18 +194,18 @@ namespace LLVM{
         std::string htmlcontent = llvm_timing_html(timing);
         frontend_html << htmlcontent;
         frontend_html.close();
-        
+
     }
-    
-    
-    
+
+
+
     std::string clang_timing_html(STimingStats * timing){
 
         std::string htmlcontent = "";
 
         for(int i = 0; i < MAX_CLANG_TIMING_COUNTER; i++){
             htmlcontent += "<td class='first-odd'>";
-             
+
             htmlcontent += std::to_string(timing->TotalTime[i]);
 
             htmlcontent += "</td>";
@@ -217,7 +217,7 @@ namespace LLVM{
     }
 
     void printCLANGTiming(STimingStats * timing, CTimer * timer){
-    
+
         std::ofstream ofile("..\\..\\..\\reports\\CLANG_Timing_Info.csv", std::ios::app);
 
         std::string contents = "";
@@ -227,9 +227,9 @@ namespace LLVM{
             contents += std::to_string(timing->TotalTime[i]);
             contents += ",";
             contents += std::to_string(timer->GetTimeInSec(timing->TotalTime[i])/ 100.0);
-                
 
-            if(i != MAX_CLANG_TIMING_COUNTER - 1) 
+
+            if(i != MAX_CLANG_TIMING_COUNTER - 1)
                 contents += ",";
         }
 
@@ -248,9 +248,9 @@ namespace LLVM{
 
 
 #define PRINT_CLANG_TIMING_STATS(timing) \
-    LLVM::printCLANGTiming(timing, timer); 
+    LLVM::printCLANGTiming(timing, timer);
 
-    
+
 #define PRINT_LLVM_TIMING_STATS(timing) \
     LLVM::printLLVMTiming(timing, timer); \
 
@@ -279,7 +279,7 @@ namespace LLVM{
 
 #define CREATE_STATS_OBJECT\
     LLVM::SOptStats * stats = new LLVM::SOptStats();
-    
+
 #define CREATE_TIMING_OBJECT\
     LLVM::STimingStats * timing = new LLVM::STimingStats(); \
     CTimer * timer = new CTimer();
@@ -290,9 +290,9 @@ namespace LLVM{
 
 #define DELETE_STATS_OBJECT\
     delete stats;
- 
 
-#else 
+
+#else
 #define PRINT_LLVM_TIMING_STATS(timing)
 #define PRINT_CLANG_TIMING_STATS(timing)
 #define CLANG_OPTIMIZATION_STAT_INCREMENT(pointer,stat,value)

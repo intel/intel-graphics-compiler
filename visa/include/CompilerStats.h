@@ -47,7 +47,7 @@ class CompilerStats {
             type_int64,
             type_double
         };
-        
+
         // Supported simd sizes:
         enum SimdType
         {
@@ -57,7 +57,7 @@ class CompilerStats {
             SIMD_32 = 3,
             NUM_SIMD_TYPES
         };
-        
+
         // Store every type as 64-bit value.
         union Value
         {
@@ -66,40 +66,40 @@ class CompilerStats {
             int64_t     int64_value;
             double      double_value;
         };
-        
+
         // Helper function to convert from SimdType enum to integer represenation (8/16/32). Returns 0 for generic simd.
         inline static int type_to_simd(SimdType simd_type);
-        
+
         // Helper function to convert from integer;
         inline static SimdType simd_to_type(int simd);
-        
+
         // Get stat value for simd size expressed as integer. Pass 0 to access generic.
         inline Value& operator[](int simd);
         inline const Value& operator[](int simd) const;
-        
+
         // Members:
         Type    type;
         Value   values[NUM_SIMD_TYPES];
     };
-    
+
 #if COMPILER_STATS_ENABLE
     // Create empty statistic if does not exist, return existing if it does.
     inline Statistic& PrivateInit(const std::string& name, Statistic::Type type, int simd);
-    
+
     // Try to find statistic. Return empty one if it does not exist.
     inline const Statistic& PrivateGet(const std::string& name, int simd) const;
-    
+
     inline bool IsEnabled() const { return m_pState != nullptr; }
-    
+
     struct State {
         std::unordered_map<std::string, Statistic> m_Stats;
         bool m_CollectOnlyInitialized = true;
     };
-    
+
     std::shared_ptr<State> m_pState;
     Statistic m_ZeroStat;
 #endif // COMPILER_STATS_ENABLE
-    
+
 public:
     static constexpr Statistic::Type type_bool     = Statistic::Type::type_bool;
     static constexpr Statistic::Type type_int64    = Statistic::Type::type_int64;
@@ -107,28 +107,28 @@ public:
 
     // Statistic collection is disabled by default.
     inline void Enable(bool collectOnlyInitialized);
-    
+
     // Link statistics to the one from the provided object.
     inline void Link(CompilerStats& sharedData);
 
     // Merge the given Compiler Stats
     inline void MergeStats(CompilerStats& from, int simd);
-    
+
     // Create statistic with value set to zero/false.
     inline void Init(const std::string& name, Statistic::Type type, int simd=0);
-    
+
     // Set value to zero/false.
     inline void Reset(const std::string& name, int simd=0);
-    
+
     // Set flag statistic to true.
     inline void SetFlag(const std::string& name, int simd=0);
-    
+
     // Set value of integer statistic.
     inline void SetI64(const std::string& name, int64_t value, int simd=0);
-    
+
     // Set value of floating point statistic.
     inline void SetF64(const std::string& name, double value, int simd=0);
-    
+
     // Increase value of integer statistic.
     inline void IncreaseI64(const std::string& name, int64_t value, int simd=0);
 
@@ -137,13 +137,13 @@ public:
 
     // Get value of a flag. Returns false if not found.
     inline bool GetFlag(const std::string& name, int simd=0) const;
-    
+
     // Get value of an integer. Returns 0 if not found.
     inline int64_t GetI64(const std::string& name, int simd=0) const;
-    
+
     // Get value of a floating point. Returns 0.0 if not found.
     inline double GetF64(const std::string& name, int simd=0) const;
-    
+
     // Dump stats to csv format string.
     inline std::string ToCsv() const;
 };
@@ -400,7 +400,7 @@ std::string CompilerStats::ToCsv() const
 #if COMPILER_STATS_ENABLE
     if (IsEnabled() == false)
         return "";
-        
+
     std::stringstream ss;
     ss << "Name,Generic,Simd8,Simd16,Simd32,\n";
     std::map<std::string, Statistic> ordered(m_pState->m_Stats.begin(), m_pState->m_Stats.end());

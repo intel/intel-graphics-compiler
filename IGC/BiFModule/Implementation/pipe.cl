@@ -28,7 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // it but that should probably be fixed at some point.
 
  #include "../Headers/spirv.h"
- 
+
  #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 // Pipe Instructions
 

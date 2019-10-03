@@ -41,7 +41,7 @@ static const S3DPipeControl g_cInit3DPipeControl =
         0,                                              // _Unused
         GFX3DSUBOP_3DCONTROL,                           // InstructionSubOpcode
         GFX3DOP_PIPECONTROL,                            // InstructionOpcode
-        PIPE_3D,                                        // InstructionSubType 
+        PIPE_3D,                                        // InstructionSubType
         INSTRUCTION_GFX                                 // InstructionType
     },
 

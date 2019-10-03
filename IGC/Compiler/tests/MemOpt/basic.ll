@@ -48,8 +48,8 @@ entry:
  ; CHECK: %2 = bitcast i32* %dst to <3 x i32>*
  ; CHECK: store <3 x i32> %1, <3 x i32>* %2, align 4
  ; CHECK: ret void
- 
- 
+
+
  define void @f1(i32* %dst, i32* %src) {
  entry:
    %0 = load i32, i32* %src, align 4
@@ -64,10 +64,10 @@ entry:
    store i32 %2, i32* %arrayidx5, align 4
    ret void
  }
- 
+
  ; Without 'noalias' attribute, '%dst' may be alias to '%src'. Hence, we cannot
  ; merge loads/stores interleaved.
- 
+
  ; CHECK-LABEL: define void @f1
  ; CHECK: %0 = load i32, i32* %src, align 4
  ; CHECK: store i32 %0, i32* %dst, align 4
@@ -80,8 +80,8 @@ entry:
  ; CHECK: %arrayidx5 = getelementptr inbounds i32, i32* %dst, i32 2
  ; CHECK: store i32 %2, i32* %arrayidx5, align 4
  ; CHECK: ret void
- 
- 
+
+
  define void @f2(i32* noalias %dst, i32* noalias %src) {
  entry:
    %0 = load i32, i32* %src, align 4
@@ -96,15 +96,15 @@ entry:
    store i32 %2, i32* %arrayidx5, align 4
    ret void
  }
- 
+
  ; CHECK-LABEL: define void @f2
  ; CHECK: %0 = bitcast i32* %src to <3 x i32>*
  ; CHECK: %1 = load <3 x i32>, <3 x i32>* %0, align 4
  ; CHECK: %2 = bitcast i32* %dst to <3 x i32>*
  ; CHECK: store <3 x i32> %1, <3 x i32>* %2, align 4
  ; CHECK: ret void
- 
- 
+
+
  define void @f3(i32 %i, i32 %j, i32* noalias %dst, i32* noalias %src) {
  entry:
    %mul = mul nsw i32 %j, %i
@@ -133,7 +133,7 @@ entry:
    store i32 %2, i32* %arrayidx20, align 4
    ret void
  }
- 
+
  ; CHECK-LABEL: define void @f3
  ; CHECK: %mul = mul nsw i32 %j, %i
  ; CHECK: %arrayidx = getelementptr inbounds i32, i32* %src, i32 %mul
@@ -144,8 +144,8 @@ entry:
  ; CHECK: %2 = bitcast i32* %arrayidx4 to <3 x i32>*
  ; CHECK: store <3 x i32> %1, <3 x i32>* %2, align 4
  ; CHECK: ret void
- 
- 
+
+
  define void @f4(i32 %i, i32 %j, i32* noalias %dst, i32* noalias %src) {
  entry:
    %mul = mul nsw i32 %j, %i
@@ -175,10 +175,10 @@ entry:
    store i32 %2, i32* %arrayidx20, align 4
    ret void
  }
- 
+
  ; As the fence is placed after the first pair of load/store, only the last 2
  ; consecutive loads/stores could be merged.
- 
+
  ; CHECK-LABEL: define void @f4
  ; CHECK: %mul = mul nsw i32 %j, %i
  ; CHECK: %arrayidx = getelementptr inbounds i32, i32* %src, i32 %mul
@@ -196,8 +196,8 @@ entry:
  ; CHECK: %3 = bitcast i32* %arrayidx12 to i64*
  ; CHECK: store i64 %2, i64* %3, align 4
  ; CHECK: ret void
- 
- 
+
+
  define void @f5(i32* noalias %dst, i32* noalias %src) {
  entry:
    %0 = load i32, i32* %src, align 4
@@ -216,7 +216,7 @@ entry:
    store i32 %3, i32* %dst, align 4
    ret void
  }
- 
+
  ; CHECK-LABEL: define void @f5
  ; CHECK: %0 = bitcast i32* %src to <4 x i32>*
  ; CHECK: %1 = load <4 x i32>, <4 x i32>* %0, align 4

@@ -47,7 +47,7 @@ public:
                         const STB_CreateArgs* pCreateArgs,
                         CIGCTranslationBlock* &pTranslationBlock );
 
-    static void     Delete( 
+    static void     Delete(
                         CIGCTranslationBlock* &pTranslationBlock );
 
     virtual bool    Translate(
@@ -62,7 +62,7 @@ protected:
 
     virtual ~CIGCTranslationBlock( void );
 
-    bool            Initialize( 
+    bool            Initialize(
                         const STB_CreateArgs* pCreateArgs );
 
     bool ProcessElfInput(

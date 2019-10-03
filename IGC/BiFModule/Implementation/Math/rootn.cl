@@ -35,7 +35,7 @@ float __builtin_spirv_OpenCL_rootn_f32_i32( float x, int n )
 
     if(__FastRelaxedMath && (!__APIRS))
     {
-        // Defined for x > 0 and n is nonzero.  Derived 
+        // Defined for x > 0 and n is nonzero.  Derived
         // implementations implement this as:
         //   exp2(log2( x) / n) for x > 0.
         // Defined for x < 0 and n is odd.  Derived
@@ -47,7 +47,7 @@ float __builtin_spirv_OpenCL_rootn_f32_i32( float x, int n )
         float   pr = x;
 
         // TBD: Which is faster?
-        // Note that USC has a pattern match optimization to turn 
+        // Note that USC has a pattern match optimization to turn
         // log-mul-exp into pow.  Additionally, there are some specific
         // LLVM optimizations for pow.  So, preferring pow for now.
 #if 0

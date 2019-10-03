@@ -110,7 +110,7 @@ const SMIDisplayFlip g_cInitMIDisplayFlip =
         INSTRUCTION_MI                                      // InstructionType
     },
 
-    // DWORD 1  
+    // DWORD 1
     {
         0,                                                  // _Unused1
         0,                                                  // DisplayBufferPitch
@@ -457,8 +457,8 @@ const SMIUpdateGTTHeader g_cInitMIUpdateGTTHeader =
 {
     // DWORD 0
     {
-        OP_LENGTH( SIZE32( SMIUpdateGTTHeader ) 
-                 + SIZE32(SMIUpdateGTTState) 
+        OP_LENGTH( SIZE32( SMIUpdateGTTHeader )
+                 + SIZE32(SMIUpdateGTTState)
                  * g_cNumGTTUpdateEntries),                 // Length
         0,                                                  // _Unused
         MI_MEMORY_GGTT_ENTRY_UPDATE,                        // EntryType

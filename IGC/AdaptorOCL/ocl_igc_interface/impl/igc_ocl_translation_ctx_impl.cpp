@@ -32,8 +32,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace IGC {
 
 OclTranslationOutputBase *CIF_GET_INTERFACE_CLASS(IgcOclTranslationCtx, 1)::TranslateImpl(
-                                                 CIF::Version_t outVersion, 
-                                                 CIF::Builtins::BufferSimple *src, 
+                                                 CIF::Version_t outVersion,
+                                                 CIF::Builtins::BufferSimple *src,
                                                  CIF::Builtins::BufferSimple *options,
                                                  CIF::Builtins::BufferSimple *internalOptions,
                                                  CIF::Builtins::BufferSimple *tracingOptions,

@@ -71,7 +71,7 @@ enum INSTRUCTION_SUBTYPE
 ENUM: GFX_OPCODE
 \*****************************************************************************/
 enum GFX_OPCODE
-{    
+{
     GFXOP_MEDIA         = 0x0,
     GFXOP_PIPELINED     = 0x0,
     GFXOP_NONPIPELINED  = 0x1,

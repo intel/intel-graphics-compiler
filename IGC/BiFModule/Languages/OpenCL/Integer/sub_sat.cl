@@ -28,7 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "spirv.h"
 
 
- 
+
 
 INLINE
 char2 OVERLOADABLE sub_sat( char2 x,

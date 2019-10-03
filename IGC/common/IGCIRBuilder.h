@@ -121,7 +121,7 @@ namespace llvm {
             if(vec == nullptr || idx == nullptr) return nullptr;
             Value* srcVec = vec;
 
-            // Traverse ir that created source vector, looking for 
+            // Traverse ir that created source vector, looking for
             // insertelement with the index we are interested in
             while(auto* IE = dyn_cast<InsertElementInst>(srcVec))
             {
@@ -150,7 +150,7 @@ namespace llvm {
                     srcVec = IE->getOperand(0);
                 }
             }
-            
+
             // We cannot find value to propagate propagate, add extractelement
             return this->CreateExtractElement(vec, idx, name);
         }

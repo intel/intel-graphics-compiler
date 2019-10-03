@@ -657,7 +657,7 @@ int OVERLOADABLE enqueue_marker(
 
 INLINE ndrange_t OVERLOADABLE IGIL_CreateNDRangeT(void);
 
-INLINE ndrange_t OVERLOADABLE ndrange_1D( 
+INLINE ndrange_t OVERLOADABLE ndrange_1D(
     size_t global_work_size )
 {
     ndrange_t range = IGIL_CreateNDRangeT();
@@ -668,7 +668,7 @@ INLINE ndrange_t OVERLOADABLE ndrange_1D(
     return range;
 }
 
-INLINE ndrange_t OVERLOADABLE ndrange_1D( 
+INLINE ndrange_t OVERLOADABLE ndrange_1D(
     size_t global_work_size,
     size_t local_work_size )
 {
@@ -681,7 +681,7 @@ INLINE ndrange_t OVERLOADABLE ndrange_1D(
     return range;
 }
 
-INLINE ndrange_t OVERLOADABLE ndrange_1D( 
+INLINE ndrange_t OVERLOADABLE ndrange_1D(
     size_t global_work_offset,
     size_t global_work_size,
     size_t local_work_size )
@@ -696,7 +696,7 @@ INLINE ndrange_t OVERLOADABLE ndrange_1D(
     return range;
 }
 
-INLINE ndrange_t OVERLOADABLE ndrange_2D( 
+INLINE ndrange_t OVERLOADABLE ndrange_2D(
     const size_t global_work_size[2] )
 {
     ndrange_t range = IGIL_CreateNDRangeT();
@@ -708,7 +708,7 @@ INLINE ndrange_t OVERLOADABLE ndrange_2D(
     return range;
 }
 
-INLINE ndrange_t OVERLOADABLE ndrange_2D( 
+INLINE ndrange_t OVERLOADABLE ndrange_2D(
     const size_t global_work_size[2],
     const size_t local_work_size[2] )
 {
@@ -723,7 +723,7 @@ INLINE ndrange_t OVERLOADABLE ndrange_2D(
     return range;
 }
 
-INLINE ndrange_t OVERLOADABLE ndrange_2D( 
+INLINE ndrange_t OVERLOADABLE ndrange_2D(
     const size_t global_work_offset[2],
     const size_t global_work_size[2],
     const size_t local_work_size[2] )
@@ -741,7 +741,7 @@ INLINE ndrange_t OVERLOADABLE ndrange_2D(
     return range;
 }
 
-INLINE ndrange_t OVERLOADABLE ndrange_3D( 
+INLINE ndrange_t OVERLOADABLE ndrange_3D(
     const size_t global_work_size[3] )
 {
     ndrange_t range = IGIL_CreateNDRangeT();
@@ -754,7 +754,7 @@ INLINE ndrange_t OVERLOADABLE ndrange_3D(
     return range;
 }
 
-INLINE ndrange_t OVERLOADABLE ndrange_3D( 
+INLINE ndrange_t OVERLOADABLE ndrange_3D(
     const size_t global_work_size[3],
     const size_t local_work_size[3] )
 {
@@ -771,7 +771,7 @@ INLINE ndrange_t OVERLOADABLE ndrange_3D(
     return range;
 }
 
-INLINE ndrange_t OVERLOADABLE ndrange_3D( 
+INLINE ndrange_t OVERLOADABLE ndrange_3D(
     const size_t global_work_offset[3],
     const size_t global_work_size[3],
     const size_t local_work_size[3] )

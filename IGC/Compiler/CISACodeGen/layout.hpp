@@ -37,7 +37,7 @@ namespace IGC
 
     /// @brief sort basic blocks into topological order
     /// Arbitrary reverse postorder is not sufficient.
-    /// Whenever it is possible, we want to layout blocks in such way 
+    /// Whenever it is possible, we want to layout blocks in such way
     /// that the vIsa Jitter can recognize the control-flow structures
     class Layout : public llvm::FunctionPass
     {

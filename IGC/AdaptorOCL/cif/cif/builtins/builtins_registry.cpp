@@ -48,7 +48,7 @@ ICIF *Create(InterfaceId_t entryPointInterface, Version_t version, ICIF *parentI
 bool GetSupportedVersions(InterfaceId_t entryPointInterface, Version_t &verMin, Version_t &verMax){
     return AllBuiltinsListT::template forwardToOne<Helpers::ForwardGetSupportedVersions, bool>(entryPointInterface, false, verMin, verMax);
 }
-  
+
 InterfaceId_t FindIncompatible(InterfaceId_t entryPointInterface, CIF::CompatibilityDataHandle handle){
     return AllBuiltinsListT::template forwardToOne<Helpers::ForwardGetFirstIncompatible, InterfaceId_t>(entryPointInterface, entryPointInterface, handle);
 }

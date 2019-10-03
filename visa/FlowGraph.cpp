@@ -128,7 +128,7 @@ G4_BB* G4_BB::fallThroughBB()
             // Instructions    Predicate-On    Predicate-Off    Num of Succ
             // Jmpi                Front                None               >=1
             // CALL             Front                None               >=2     considered the conditional call here
-            // while               Front                Front              2 
+            // while               Front                Front              2
             // if, else        Front                Front               2
             // break, cont      Front                None               1,2
             // return              Front                None               >=1
@@ -2044,7 +2044,7 @@ void FlowGraph::removeRedundantLabels()
                                     i->asCFInst()->setJip(succ_label);
                                 }
                                 // for G4_if, jump only when it has predictate; if no predicate, no jump
-                                else if (i->getPredicate()) 
+                                else if (i->getPredicate())
                                 {
                                     i->asCFInst()->setJip(succ_label);
                                 }
@@ -4827,7 +4827,7 @@ void G4_Kernel::computeChannelSlicing()
         for (auto inst : bb->getInstList())
         {
             auto dst = inst->getDst();
-            if (!dst || !dst->isDstRegRegion() || !dst->getTopDcl() || 
+            if (!dst || !dst->isDstRegRegion() || !dst->getTopDcl() ||
                 skipSendDcls.find(dst->getTopDcl()) != skipSendDcls.end() ||
                 dst->asDstRegRegion()->getHorzStride() != 1)
                 continue;

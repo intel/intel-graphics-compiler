@@ -41,6 +41,6 @@ using llvm::parseAssemblyInto;
     }
 #endif
 
-}               
+}
 
 #endif

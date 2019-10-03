@@ -20,7 +20,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
- 
+
 #include "../../include/BiF_Definitions.cl"
 #include "../../../Headers/spirv.h"
 #include "math.h"
@@ -499,7 +499,7 @@ INLINE double libclc_acospi_f64(double x) {
     double ud = __builtin_spirv_OpenCL_fma_f64_f64_f64(r,
                     __builtin_spirv_OpenCL_fma_f64_f64_f64(r,
                         __builtin_spirv_OpenCL_fma_f64_f64_f64(r,
-                            __builtin_spirv_OpenCL_fma_f64_f64_f64(r, 0.105869422087204370341222318533, 
+                            __builtin_spirv_OpenCL_fma_f64_f64_f64(r, 0.105869422087204370341222318533,
                                    -0.943639137032492685763471240072),
                             2.76568859157270989520376345954),
                         -3.28431505720958658909889444194),
@@ -1232,7 +1232,7 @@ INLINE double libclc_cbrt_f64(double x) {
     double F_h = tv.s0;
     double F_t = tv.s1;
 
-    double b_h = F_h * Rem_h; 
+    double b_h = F_h * Rem_h;
     double b_t = __builtin_spirv_OpenCL_fma_f64_f64_f64(Rem_t, F_h, __builtin_spirv_OpenCL_fma_f64_f64_f64(F_t, Rem_h, F_t*Rem_t));
 
     double ans = __builtin_spirv_OpenCL_fma_f64_f64_f64(z, b_h, __builtin_spirv_OpenCL_fma_f64_f64_f64(z, b_t, b_t)) + b_h;
@@ -1289,7 +1289,7 @@ INLINE double libclc_cosh_f64(double x) {
 
     double y = __builtin_spirv_OpenCL_fabs_f64(x);
 
-    // In this range we find the integer part y0 of y 
+    // In this range we find the integer part y0 of y
     // and the increment dy = y - y0. We then compute
     // z = cosh(y) = cosh(y0)cosh(dy) + sinh(y0)sinh(dy)
     // where sinh(y0) and cosh(y0) are tabulated above.
@@ -1422,7 +1422,7 @@ INLINE double libclc_exp2_f64(double x) {
     const double R_1_BY_64 = 1.0 / 64.0;
 
     int n = (int)(x * 64.0);
-    double r = R_LN2 * __builtin_spirv_OpenCL_fma_f64_f64_f64(-R_1_BY_64, (double)n, x); 
+    double r = R_LN2 * __builtin_spirv_OpenCL_fma_f64_f64_f64(-R_1_BY_64, (double)n, x);
     return __clc_exp_helper(x, -1074.0, 1024.0, r, n);
 }
 
@@ -1530,7 +1530,7 @@ INLINE double libclc_log_f64(double x)
     const double log2_tail = 5.76999904754328540596e-08; /* 0x3e6efa39ef35793c */
 
     // log_thresh1 = 9.39412117004394531250e-1 = 0x3fee0faa00000000
-    // log_thresh2 = 1.06449508666992187500 = 0x3ff1082c00000000 
+    // log_thresh2 = 1.06449508666992187500 = 0x3ff1082c00000000
     const double log_thresh1 = 0x1.e0faap-1;
     const double log_thresh2 = 0x1.1082cp+0;
 

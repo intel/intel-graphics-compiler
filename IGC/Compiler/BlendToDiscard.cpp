@@ -121,7 +121,7 @@ bool BlendToDiscard::runOnFunction(Function& F)
     }
 
 
-    // Skip non-kernel function.                                                  
+    // Skip non-kernel function.
     IGCMD::MetaDataUtils* mdu =
         getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     auto FII = mdu->findFunctionsInfoItem(&F);

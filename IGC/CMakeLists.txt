@@ -23,7 +23,7 @@
 
 
 #======================= end_copyright_notice ==================================
- 
+
 
 # CMake settings:
 #  - IGC_OPTION__LIBRARY_NAME
@@ -2616,7 +2616,7 @@ foreach(_compilerFlagName IN ITEMS "CMAKE_CXX_FLAGS" "CMAKE_C_FLAGS")
   # Change some generic settings of compiler.
   # NOTE: Debug info generation is enabled for all build configuration, because it is separate on Windows
   #       and we will use "strip" command on Linux and Android (to separate it).
-  
+
   if(IGC_OPTION__UNIVERSAL_DRIVER)
     igc_config_flag_apply_settings(
           CompilerOptions
@@ -2637,7 +2637,7 @@ foreach(_compilerFlagName IN ITEMS "CMAKE_CXX_FLAGS" "CMAKE_C_FLAGS")
           ALL_PATTERN ""
           SET
             CompileAsDefault
-            
+
             DisableSpecificWarnings
             ExceptionsDisabled
             MultiProcessorCompilation
@@ -2682,7 +2682,7 @@ foreach(_compilerFlagName IN ITEMS "CMAKE_CXX_FLAGS" "CMAKE_C_FLAGS")
         ControlFlowGuard
     )
 
-    
+
   # Adding needed settings specific to MSVC.
   if(MSVC)
   # Adding needed settings specific to GCC.
@@ -3045,7 +3045,7 @@ endif()
 # +  _CRT_SECURE_NO_WARNINGS
 # +  _DEBUG                   if cfg:Debug
 # +  _IGC_
-# +  _INTERNAL                if cfg:ReleaseInternal 
+# +  _INTERNAL                if cfg:ReleaseInternal
 # *  _LIB                     if build:static library
 # +  _SCL_SECURE_NO_WARNINGS
 # +* DEBUG                    if cfg:Debug
@@ -3057,7 +3057,7 @@ endif()
 # +* INSIDE_PLUGIN
 # M  iSTD=USC_iSTD            if IGCStanalone
 # +  ISTDLIB_UMD              ?
-# +  NDEBUG                   if !cfg:Debug 
+# +  NDEBUG                   if !cfg:Debug
 # +  NOMINMAX
 # M* RIIGC                    if IGCStanalone
 # +  USC_DXX                  if cfg:Debug
@@ -3204,7 +3204,7 @@ endif()
 set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS_RELEASE
     NDEBUG
   )
-  
+
 if(DEFINED ENV{TEST_P4_CHANGELIST})
   set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS
     TB_BUILD_ID=$ENV{TEST_P4_CHANGELIST}
@@ -3240,7 +3240,7 @@ else()
     if(NOT IGC_PREFERRED_LLVM_VERSION)
         set(IGC_PREFERRED_LLVM_VERSION "7.0.0")
     endif()
-    
+
     # Look for LLVM sources.
     if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../../llvm_patches)
       set(IGC_LLVM_HOME_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../llvm_patches)
@@ -3259,7 +3259,7 @@ else()
           add_subdirectory(${IGC_LLVM_HOME_DIR} ${CMAKE_CURRENT_BINARY_DIR}/llvm/build)
       endif()
     else()
-        find_package(LLVM ${IGC_PREFERRED_LLVM_VERSION})  
+        find_package(LLVM ${IGC_PREFERRED_LLVM_VERSION})
         if(LLVM_FOUND)
           message(STATUS "[IGC] Using system LLVM ${LLVM_PACKAGE_VERSION}")
           set(IGC_BUILD__USING_SYSTEM_LLVM TRUE)
@@ -3359,9 +3359,9 @@ include_directories(
     "${IGC_BUILD__COMMON_COMPILER_DIR}/API"
 
     "${IGC_BUILD__VISA_DIR}/include"
-    
+
     "${IGC_OPTION__OUTPUT_DIR}"
-    
+
     "${IGC_BUILD__IGC_SRC_DIR}/AdaptorOCL/ocl_igc_shared/executable_format"
     "${IGC_BUILD__IGC_SRC_DIR}/AdaptorOCL"
   )
@@ -3515,7 +3515,7 @@ set(IGC_BUILD__SRC__IGC__igc_dll
 set(IGC_BUILD__SRC__IGC__fcl_dll
     ${IGC_BUILD__SRC__FCL}
   )
-  
+
 set(IGC_BUILD__SRC__IGC__igc_lib
     ${IGC_BUILD__SRC__IGC__igc_dll})
 
@@ -3530,16 +3530,16 @@ set(IGC_BUILD__HDR__IGC__igc_dll
     ${IGC_BUILD__HDR__IGC_DriverInterface__igc_dll}
     ${IGC_WrapperLLVM_HDR}
   )
-  
+
 #FCL
 set(IGC_BUILD__HDR__IGC__fcl_dll
     ${IGC_BUILD__HDR__FCL}
   )
-  
+
 set(IGC_BUILD__HDR__IGC__igc_lib
     ${IGC_BUILD__HDR__IGC__igc_dll}
   )
-  
+
 #FCL
 set(IGC_BUILD__RES__IGC__fcl_dll
     ${IGC_BUILD__RES__FCL}
@@ -3551,7 +3551,7 @@ add_library("${IGC_BUILD__PROJ__igc_dll}" SHARED
     ${IGC_BUILD__HDR__IGC__igc_dll}
     ${IGC_BUILD__RES__IGC__igc_dll}
   )
-  
+
 #FCL
   add_library("${IGC_BUILD__PROJ__fcl_dll}" SHARED
     ${IGC_BUILD__SRC__IGC__fcl_dll}
@@ -3562,7 +3562,7 @@ add_library("${IGC_BUILD__PROJ__igc_dll}" SHARED
 add_dependencies("${IGC_BUILD__PROJ__fcl_dll}" opencl-clang-lib)
 
 add_dependencies("${IGC_BUILD__PROJ__igc_dll}" "${IGC_BUILD__PROJ_NAME_PREFIX}ElfPackager")
-  
+
 target_include_directories(${IGC_BUILD__PROJ__igc_dll} INTERFACE
   "${CMAKE_CURRENT_SOURCE_DIR}/AdaptorOCL/ocl_igc_shared"
   "${CMAKE_CURRENT_SOURCE_DIR}/AdaptorOCL/ocl_igc_shared/device_enqueue"
@@ -3678,7 +3678,7 @@ set_property(TARGET "GenX_IR" PROPERTY PROJECT_LABEL "${IGC_BUILD__PROJ_LABEL__G
 foreach(_libBuildSuffix ${IGC_BUILD__MAIN_IGC_LIB_SUFFIXES})
   add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"     "${IGC_BUILD__PROJ__GenISAIntrinsics}")
   add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"     MDAutogen)
-  
+
   if(MSVC AND IGC_OPTION__BIF_LINK_BC)
     add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"   "${IGC_BUILD__PROJ__BiFModule_OCL}")
     add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"   "${IGC_BUILD__PROJ__ElfPackager}")
@@ -3744,7 +3744,7 @@ foreach(_libBuildSuffix ${IGC_BUILD__MAIN_IGC_LIB_SUFFIXES})
     )
   endif()
 
-  
+
   list(APPEND _targetLinkLine
       "${IGC_BUILD__PROJ__Compiler}"
       "${IGC_BUILD__PROJ__GenISAIntrinsics}"
@@ -3808,7 +3808,7 @@ endforeach()
         "${IGC_BUILD__PROJ${_libBuildSuffix}}"
       )
   endif()
-  
+
   # Generated link line for IGC/IGC RS static library allows to properly use it in other projects.
   if(_targetIsStatic)
     list(APPEND _targetLinkLine
@@ -3823,7 +3823,7 @@ endforeach()
           "${IGC_BUILD__NO_WHOLE_ARCHIVE}"
         )
     endif()
-  
+
   list(APPEND _targetLinkLine
       "${IGC_BUILD__START_GROUP}"
       ${IGC_BUILD__LLVM_LIBS_TO_LINK}
@@ -3858,7 +3858,7 @@ if(_targetIsStatic)
         "${IGC_BUILD__PROJ__fcl_dll}"
       )
   endif()
-  
+
 unset(_targetIsStatic)
 unset(_targetLinkLine)
 
@@ -3866,7 +3866,7 @@ if(LLVM_ON_WIN32 AND IGC_BUILD__VULKAN_FRONTEND_ENABLED)
   add_subdirectory(VulkanFrontend/ULT)
   igc_sg_define(IGC__VulkanFrontendULT)
 endif()
-  
+
 
 win_static_runtime()
 

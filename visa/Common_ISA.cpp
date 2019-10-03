@@ -454,7 +454,7 @@ int processCommonISAHeader(
     }
 
     for (int i = 0; i < cisaHdr.num_functions; i++) {
-        // field is deprecated 
+        // field is deprecated
         READ_FIELD_FROM_BUF(cisaHdr.functions[i].linkage, uint8_t);
 
         READ_FIELD_FROM_BUF(cisaHdr.functions[i].name_len, uint8_t);
@@ -469,7 +469,7 @@ int processCommonISAHeader(
 
             READ_FIELD_FROM_BUF(
                 cisaHdr.functions[i].variable_reloc_symtab.num_syms,
-                uint16_t);           
+                uint16_t);
             assert(cisaHdr.functions[i].variable_reloc_symtab.num_syms == 0 && "variable relocation not supported");
             cisaHdr.functions[i].variable_reloc_symtab.reloc_syms = nullptr;
 

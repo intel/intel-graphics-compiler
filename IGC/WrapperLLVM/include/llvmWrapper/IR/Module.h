@@ -42,7 +42,7 @@ namespace IGCLLVM
             : llvm::Module(ModuleID, C)
         { }
 
-		inline llvm::Value* getOrInsertFunction(llvm::StringRef Name, llvm::FunctionType *Ty) 
+		inline llvm::Value* getOrInsertFunction(llvm::StringRef Name, llvm::FunctionType *Ty)
 		{
             return llvm::Module::getOrInsertFunction(Name, Ty).getCallee();
 		}

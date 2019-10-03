@@ -39,9 +39,9 @@ INLINE float __builtin_spirv_OpenCL_pow_f32_f32( float x, float y )
     if(__FastRelaxedMath && (!__APIRS))
     {
         // Undefined for x = 0 and y = 0.
-        // Undefined for x < 0 and noninteger y. 
+        // Undefined for x < 0 and noninteger y.
         // For x >= 0, or x < 0 and even y, derived implementations implement this as:
-        //    exp2(y * log2(x)).  
+        //    exp2(y * log2(x)).
         // For x < 0 and odd y, derived implementations implement this as:
         //    -exp2(y * log2(fabs(x)).
         //
@@ -53,7 +53,7 @@ INLINE float __builtin_spirv_OpenCL_pow_f32_f32( float x, float y )
         float   pr = __builtin_spirv_OpenCL_fabs_f32( x );
 
         // TBD: Which is faster?
-        // Note that USC has a pattern match optimization to turn 
+        // Note that USC has a pattern match optimization to turn
         // log-mul-exp into pow.  Additionally, there are some specific
         // LLVM optimizations for pow.  So, preferring pow for now.
 #if 0

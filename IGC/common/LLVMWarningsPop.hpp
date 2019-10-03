@@ -52,7 +52,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endif
 #define LLVM_WARNINGS_POP
 #undef LLVM_WARNINGS_PUSH
- 
+
  // Do the actual pop
 #ifdef _MSC_VER
 #   pragma  warning( pop )

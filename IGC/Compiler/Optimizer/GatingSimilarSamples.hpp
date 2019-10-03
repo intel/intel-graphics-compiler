@@ -41,11 +41,11 @@ namespace IGC
 {
     //===----------------------------------------------------------------------===//
     //
-    // Optimization pass. 
+    // Optimization pass.
     //
-    // It detects sample instructions in a BB, that differ only by coordinates 
+    // It detects sample instructions in a BB, that differ only by coordinates
     // argument from a sample instruction used at the beginning of the BB.
-    // In that case those similar sample instructions can be "gated": surrounded by if-then, where they 
+    // In that case those similar sample instructions can be "gated": surrounded by if-then, where they
     // are placed in the "if-then" block, and skipped otherwise.
     //
     //===----------------------------------------------------------------------===//

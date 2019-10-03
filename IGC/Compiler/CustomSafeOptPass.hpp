@@ -100,7 +100,7 @@ namespace IGC
         bool psHasSideEffect;
     };
 
-#if LLVM_VERSION_MAJOR >= 7 
+#if LLVM_VERSION_MAJOR >= 7
     class TrivialLocalMemoryOpsElimination : public llvm::FunctionPass, public llvm::InstVisitor<TrivialLocalMemoryOpsElimination>
     {
     public:

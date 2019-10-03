@@ -71,7 +71,7 @@ bool BinaryStream::Write( const BinaryStream& in )
     std::streamsize prevSize = Size();
 
     m_membuf << in.m_membuf.str();
-    
+
     if( ( Size() - prevSize ) == in.Size() )
     {
         retValue = true;

@@ -58,7 +58,7 @@ LocalRA::LocalRA(BankConflictPass& b, GlobalRA& g) :
 
 BankAlign LocalRA::getBankAlignForUniqueAssign(G4_Declare *dcl)
 {
-    // FIXME: this code is rather suspicious (we return even alignment 
+    // FIXME: this code is rather suspicious (we return even alignment
     // for first_half_odd???), should revisit
     switch (gra.getBankConflict(dcl))
     {
@@ -68,7 +68,7 @@ BankAlign LocalRA::getBankAlignForUniqueAssign(G4_Declare *dcl)
     case BANK_CONFLICT_SECOND_HALF_EVEN:
     case BANK_CONFLICT_SECOND_HALF_ODD:
         return builder.oneGRFBankDivision() ? BankAlign::Odd : BankAlign::Odd2GRF;
-    default: 
+    default:
         return BankAlign::Either;
     }
 }
@@ -803,12 +803,12 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign)
             {
                 unsigned short occupiedBundles = gra.getOccupiedBundle(dcl);
 
-                nrows = phyRegMgr.findFreeRegs(sizeInWords, (bankAlign != BankAlign::Either) ? bankAlign : align, 
+                nrows = phyRegMgr.findFreeRegs(sizeInWords, (bankAlign != BankAlign::Either) ? bankAlign : align,
                     subAlign, regNum, subregNum, 0, numRegLRA - 1, occupiedBundles, 0, false);
             }
             else
             {
-                nrows = phyRegMgr.findFreeRegs(sizeInWords, (bankAlign != BankAlign::Either) ? bankAlign : align, 
+                nrows = phyRegMgr.findFreeRegs(sizeInWords, (bankAlign != BankAlign::Either) ? bankAlign : align,
                     subAlign, regNum, subregNum, numRegLRA - 1, 0, 0, 0, false);
             }
 
@@ -2268,7 +2268,7 @@ bool PhyRegsLocalRA::findFreeSingleReg(int regIdx, G4_SubReg_Align subalign, int
             }
         }
     }
-    else 
+    else
     {
         ASSERT_USER(false, "Dont know how to allocate this sub-alignment");
     }
@@ -2830,7 +2830,7 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder
                                     dst = builder.Create_Dst_Opnd_From_Dcl(newDcl, 1);
                                     src = builder.Create_Src_Opnd_From_Dcl(splitDcl, builder.getRegionStride1());
                                     G4_INST* movInst = builder.createMov(
-                                        (uint8_t) (splitDcl->getTotalElems() > 16 ? 16 : splitDcl->getTotalElems()), 
+                                        (uint8_t) (splitDcl->getTotalElems() > 16 ? 16 : splitDcl->getTotalElems()),
                                         dst, src, InstOpt_WriteEnable, false);
                                     bb->insert(iter, movInst);
 

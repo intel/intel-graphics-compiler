@@ -46,10 +46,10 @@ ulong __builtin_spirv_OpBitReverse_i64(ulong Base)
     return (__builtin_IB_bfrev((uint)Base) << 32) | __builtin_IB_bfrev((Base >> 32));
 }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpBitReverse, uchar, uchar, i8 ) 
-GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpBitReverse, ushort, ushort, i16 ) 
-GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpBitReverse, uint, uint, i32 ) 
-GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpBitReverse, ulong, ulong, i64 ) 
+GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpBitReverse, uchar, uchar, i8 )
+GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpBitReverse, ushort, ushort, i16 )
+GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpBitReverse, uint, uint, i32 )
+GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpBitReverse, ulong, ulong, i64 )
 
 
 uchar __builtin_spirv_OpBitCount_i8(uchar Base)
@@ -72,8 +72,8 @@ ulong __builtin_spirv_OpBitCount_i64(ulong Base)
     return __builtin_spirv_OpBitCount_i32(Base >> 32) + __builtin_spirv_OpBitCount_i32((uint)Base);
 }
 
-GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpBitCount, uchar, uchar, i8 ) 
-GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpBitCount, ushort, ushort, i16 ) 
-GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpBitCount, uint, uint, i32 ) 
-GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpBitCount, ulong, ulong, i64 ) 
+GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpBitCount, uchar, uchar, i8 )
+GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpBitCount, ushort, ushort, i16 )
+GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpBitCount, uint, uint, i32 )
+GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpBitCount, ulong, ulong, i64 )
 

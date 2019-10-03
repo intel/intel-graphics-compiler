@@ -63,13 +63,13 @@ namespace IGC
         /// Replaces calls to OUTPUT with appropriately computed URBWrites.
         void lowerOutput(GenIntrinsicInst* inst, std::vector<llvm::Instruction*>& offsetInst);
 
-        /// Returns the offset in URB of the attribute with attribute index 
+        /// Returns the offset in URB of the attribute with attribute index
         /// and output type defined by the parameters.
         QuadEltUnit GetURBOffset(ShaderOutputType outputType, uint attrIdx);
 
 
-        /// Inserts new URBWrite instruction with given mask and arguments before 
-        /// instuction 'prev'. 
+        /// Inserts new URBWrite instruction with given mask and arguments before
+        /// instuction 'prev'.
         /// TODO: This should be a common function for all Lowering passes.
         void LowerToInputVecOrURBReadIntrinsic(Value* index, Value* offset, Instruction* prev);
         void AddInputVec(Instruction* prev, uint32_t currentElementIndex);
@@ -574,8 +574,8 @@ namespace IGC
         return QuadEltUnit(0);
     }
 
-    /// Inserts new URBWrite instruction with given mask and arguments before 
-    /// instuction 'prev'. 
+    /// Inserts new URBWrite instruction with given mask and arguments before
+    /// instuction 'prev'.
     /// TODO: This should be a common function for all Lowering passes.
     void DomainShaderLowering::AddURBWrite(
         llvm::Value* offset,
@@ -617,11 +617,11 @@ namespace IGC
         /// +------------+
         /// |  reserved  |  <--offset = 0
         /// +------------+
-        /// |            |  <--offset = 1 
+        /// |            |  <--offset = 1
         /// +------------+
-        /// |            |  <--offset = 2 
+        /// |            |  <--offset = 2
         /// +------------+
-        /// | POINTWIDTH |  <--offset = 3 
+        /// | POINTWIDTH |  <--offset = 3
         /// +------------+
 
         const ShaderOutputType usage = static_cast<ShaderOutputType>(

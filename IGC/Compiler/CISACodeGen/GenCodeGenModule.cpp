@@ -291,7 +291,7 @@ void GenXCodeGenModule::processSCC(std::vector<llvm::CallGraphNode*>* SCCNodes)
                 CloneMap.insert(std::make_pair(F, FCloned));
             }
             Modified = true;
-            // update the call-edges for every function in SCC, 
+            // update the call-edges for every function in SCC,
             // move edges to the cloned SCC, including the recursion edge
             for (CallGraphNode* Node : (*SCCNodes))
             {
@@ -579,7 +579,7 @@ bool GenXFunctionGroupAnalysis::rebuild(llvm::Module* Mod) {
     clear();
     auto pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
 
-    // Build and verify function list layout. 
+    // Build and verify function list layout.
     // Given a list of functions, [K1, A, B, K2, C, K3, D, E, F], we build groups
     // [K1, A, B], [K2, C], [K3, D, E, F] and verify that none of CallInst escapes
     // from its group. It is rather cheap to build and verify when there is no

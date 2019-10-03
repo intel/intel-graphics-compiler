@@ -44,7 +44,7 @@ namespace IGC
     //                 |
     //       not used  V   op
     //       |-------|---|---|
-    //    0 x 0 0 0 0 0 0 0 0 
+    //    0 x 0 0 0 0 0 0 0 0
     //
     typedef unsigned int OCLAtomicAttrs;
 
@@ -118,7 +118,7 @@ namespace IGC
         /// @param    bufType    corresponding buffer type.
         /// @returns  call instruction to generated GenISA_GetBufferPtr.
         llvm::CallInst* genGetBufferPtr(llvm::CallInst& callInst, BufferType bufType);
-        
+
         /// @brief  Replace the "__builtin_IB_get_local_lock" call with a pointer to a local memory variable.
         /// @param    callInst  call to "__builtin_IB_get_local_lock*" function.
         void           processGetLocalLock(llvm::CallInst& callInst);
@@ -139,7 +139,7 @@ namespace IGC
 
         /// @brief  Stores all the kernel functions using local lock variable
         std::unordered_set<llvm::Function*> m_localLockUsers;
-        
+
         /// @brief  Indicates if the pass changed the processed function
         bool m_changed = false;
     };

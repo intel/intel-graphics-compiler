@@ -93,8 +93,8 @@ struct S3DKernelHardwareCapabilities
     DWORD   URBRowsPerSetupWrite;
 
     DWORD   EUCount;
-    SRange<DWORD>   EUCountPerSubSlice; 
-    DWORD   SubSliceCount; 
+    SRange<DWORD>   EUCountPerSubSlice;
+    DWORD   SubSliceCount;
     DWORD   EUIDCount;
     DWORD   EUThreadsPerEU;
     DWORD   EUReservedGrfRegister;
@@ -126,7 +126,7 @@ struct S3DKernelHardwareCapabilities
     DWORD           MaxAssignableBindingTableIndex;
 
     DWORD           StatelessModelBindingTableIndex;
-    
+
     bool            HasSharedLocalMemory;
     DWORD           SharedLocalMemoryBindingTableIndex;
 

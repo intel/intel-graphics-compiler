@@ -44,7 +44,7 @@ namespace IGC
 
         ~MetaDataUtilsWrapperInitializer() {}
 
-        // Will use the module to initialize the MetaDataUtils instance from the 
+        // Will use the module to initialize the MetaDataUtils instance from the
         // MetaDataUtilsWrapper pass
         bool runOnModule(llvm::Module& M) override;
 

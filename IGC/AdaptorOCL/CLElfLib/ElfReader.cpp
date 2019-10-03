@@ -48,7 +48,7 @@ RAIIElf::~RAIIElf() {
 /******************************************************************************\
  Constructor: CElfReader::CElfReader
 \******************************************************************************/
-CElfReader::CElfReader( 
+CElfReader::CElfReader(
     const char* pElfBinary,
     const size_t elfBinarySize )
 {
@@ -60,8 +60,8 @@ CElfReader::CElfReader(
     // get a pointer to the string table
     if( m_pElfHeader )
     {
-        GetSectionData( 
-            m_pElfHeader->SectionNameTableIndex, 
+        GetSectionData(
+            m_pElfHeader->SectionNameTableIndex,
             m_pNameTable, m_nameTableSize );
     }
 }
@@ -76,7 +76,7 @@ CElfReader::~CElfReader()
 /******************************************************************************\
  Member Function: CElfReader::Create
 \******************************************************************************/
-CElfReader* CElfReader::Create( 
+CElfReader* CElfReader::Create(
     const char* pElfBinary,
     const size_t elfBinarySize )
 {
@@ -93,7 +93,7 @@ CElfReader* CElfReader::Create(
 /******************************************************************************\
  Member Function: CElfReader::Delete
 \******************************************************************************/
-void CElfReader::Delete( 
+void CElfReader::Delete(
     CElfReader* &pElfReader )
 {
     if( pElfReader )
@@ -108,7 +108,7 @@ void CElfReader::Delete(
  Description:     Determines if a binary is in the ELF64 format checks for
                   invalid offsets.
 \******************************************************************************/
-bool CElfReader::IsValidElf64( 
+bool CElfReader::IsValidElf64(
     const void* pBinary,
     const size_t binarySize )
 {
@@ -146,11 +146,11 @@ bool CElfReader::IsValidElf64(
         entrySize = pElf64Header->SectionHeaderEntrySize;
 
         // get an offset to the name table
-        if( pElf64Header->SectionNameTableIndex < 
+        if( pElf64Header->SectionNameTableIndex <
             pElf64Header->NumSectionHeaderEntries )
         {
-            indexedSectionHeaderOffset = 
-                (size_t)pElf64Header->SectionHeadersOffset + 
+            indexedSectionHeaderOffset =
+                (size_t)pElf64Header->SectionHeadersOffset +
                 ( pElf64Header->SectionNameTableIndex * entrySize );
 
             if( ( (char*)pBinary + indexedSectionHeaderOffset ) <= pEnd )
@@ -161,7 +161,7 @@ bool CElfReader::IsValidElf64(
 
         for( unsigned int i = 0; i < pElf64Header->NumSectionHeaderEntries; i++ )
         {
-            indexedSectionHeaderOffset = (size_t)pElf64Header->SectionHeadersOffset + 
+            indexedSectionHeaderOffset = (size_t)pElf64Header->SectionHeadersOffset +
                 ( i * entrySize );
 
             // check section header offset
@@ -171,7 +171,7 @@ bool CElfReader::IsValidElf64(
                 break;
             }
 
-            pSectionHeader = (SElf64SectionHeader*)( 
+            pSectionHeader = (SElf64SectionHeader*)(
                 (char*)pBinary + indexedSectionHeaderOffset );
 
             // check section data
@@ -215,7 +215,7 @@ const SElf64Header* CElfReader::GetElfHeader()
  Member Function: GetSectionHeader
  Description:     Returns a pointer to the requested section header
 \******************************************************************************/
-const SElf64SectionHeader* CElfReader::GetSectionHeader( 
+const SElf64SectionHeader* CElfReader::GetSectionHeader(
     unsigned int sectionIndex )
 {
     SElf64SectionHeader* pSectionHeader = NULL;
@@ -224,10 +224,10 @@ const SElf64SectionHeader* CElfReader::GetSectionHeader(
 
     if( sectionIndex < m_pElfHeader->NumSectionHeaderEntries )
     {
-        indexedSectionHeaderOffset = (size_t)m_pElfHeader->SectionHeadersOffset + 
+        indexedSectionHeaderOffset = (size_t)m_pElfHeader->SectionHeadersOffset +
             ( sectionIndex * entrySize );
 
-        pSectionHeader = (SElf64SectionHeader*)( 
+        pSectionHeader = (SElf64SectionHeader*)(
                 (char*)m_pElfHeader + indexedSectionHeaderOffset );
     }
 
@@ -236,12 +236,12 @@ const SElf64SectionHeader* CElfReader::GetSectionHeader(
 
 /******************************************************************************\
  Member Function: GetSectionData
- Description:     Returns a pointer to and size of the requested section's 
+ Description:     Returns a pointer to and size of the requested section's
                   data
 \******************************************************************************/
-E_RETVAL CElfReader::GetSectionData( 
-    const unsigned int sectionIndex, 
-    char* &pData, 
+E_RETVAL CElfReader::GetSectionData(
+    const unsigned int sectionIndex,
+    char* &pData,
     size_t &dataSize )
 {
     E_RETVAL retVal = FAILURE;
@@ -259,12 +259,12 @@ E_RETVAL CElfReader::GetSectionData(
 
 /******************************************************************************\
  Member Function: GetSectionData
- Description:     Returns a pointer to and size of the requested section's 
+ Description:     Returns a pointer to and size of the requested section's
                   data
 \******************************************************************************/
-E_RETVAL CElfReader::GetSectionData( 
-    const char* pName, 
-    char* &pData, 
+E_RETVAL CElfReader::GetSectionData(
+    const char* pName,
+    char* &pData,
     size_t &dataSize )
 {
     E_RETVAL retVal = FAILURE;
@@ -289,7 +289,7 @@ E_RETVAL CElfReader::GetSectionData(
  Member Function: GetSectionName
  Description:     Returns a pointer to a NULL terminated string
 \******************************************************************************/
-const char* CElfReader::GetSectionName( 
+const char* CElfReader::GetSectionName(
     unsigned int sectionIndex )
 {
     char* pName = NULL;

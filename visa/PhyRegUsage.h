@@ -325,7 +325,7 @@ private:
 
     // find contiguous free words in a registers
     int findContiguousWords(uint32_t words, G4_SubReg_Align alignment, int numWord) const;
-    bool findContiguousGRF(bool availRegs[], const bool forbidden[], unsigned occupiedBundles, BankAlign align, 
+    bool findContiguousGRF(bool availRegs[], const bool forbidden[], unsigned occupiedBundles, BankAlign align,
         unsigned numRegNeeded, unsigned maxRegs, unsigned & startPos, unsigned & idx, bool isCalleeSaveBias, bool isEOTSrc);
 };
 }

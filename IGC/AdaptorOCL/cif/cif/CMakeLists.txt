@@ -56,7 +56,7 @@ MACRO(SET_CIF_FILTERS_SINGLE FILES_RELATIVE BASE_DIR FILTER_BASE)
 ENDMACRO(SET_CIF_FILTERS_SINGLE)
 
 MACRO(SET_CIF_FILTERS SRC_CIF_SOURCES_RELATIVE SRC_CIF_HEADERS_RELATIVE BASE_DIR)
-    SET_CIF_FILTERS_SINGLE("${SRC_CIF_SOURCES_RELATIVE}" "${BASE_DIR}" "cif\\\\sources\\\\") 
+    SET_CIF_FILTERS_SINGLE("${SRC_CIF_SOURCES_RELATIVE}" "${BASE_DIR}" "cif\\\\sources\\\\")
     SET_CIF_FILTERS_SINGLE("${SRC_CIF_HEADERS_RELATIVE}" "${BASE_DIR}" "cif\\\\headers\\\\")
 ENDMACRO(SET_CIF_FILTERS)
 
@@ -78,7 +78,7 @@ MACRO(GET_CIF_FILES_RELATIVE DST_CIF_SOURCES_EXPORT DST_CIF_SOURCES_IMPORT DST_C
 ENDMACRO(GET_CIF_FILES_RELATIVE)
 
 SET(CIF_BUILTINS_SOURCES cif/builtins/memory/buffer/impl/buffer_impl.cpp
-                         
+
    )
 
 SET(CIF_SOURCES_EXPORT "${CIF_BUILTINS_SOURCES}"
@@ -87,12 +87,12 @@ SET(CIF_SOURCES_EXPORT "${CIF_BUILTINS_SOURCES}"
                        cif/export/registry.cpp
                        cif/helpers/error.cpp
     )
-                       
+
 SET(CIF_SOURCES_IMPORT cif/import/cif_main.cpp
                        cif/os/${OS}/${OS}_library_handle.cpp
                        cif/helpers/error.cpp
     )
-    
+
 SET(CIF_SOURCES "${CIF_SOURCES_IMPORT};${CIF_SOURCES_EXPORT}")
 
 MAKE_ABSOLUTE_PATHS("${CMAKE_CURRENT_SOURCE_DIR}/.." "${CIF_SOURCES_EXPORT}" CIF_SOURCES_EXPORT_ABSOLUTE_PATH)

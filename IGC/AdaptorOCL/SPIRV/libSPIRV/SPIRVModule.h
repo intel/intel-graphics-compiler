@@ -217,7 +217,7 @@ public:
     std::vector<SPIRVWord> LoopControlParameters, SPIRVBasicBlock *BB) = 0;
 
   virtual void addCapability(SPIRVCapabilityKind) = 0;
-  
+
   virtual SPIRVExtInst* getCompilationUnit() const = 0;
   virtual std::vector<SPIRVExtInst*> getGlobalVars() = 0;
   virtual std::vector<SPIRVValue*> parseSpecConstants() = 0;

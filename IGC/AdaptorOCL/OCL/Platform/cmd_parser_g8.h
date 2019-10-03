@@ -92,14 +92,14 @@ void    DebugInterfaceDescriptorDataCommand(
             const void* pLinearAddress,
             const PLATFORM productID,
             std::string &output );
- 
+
 void    DebugKernelProgram(
             const void* pLinearAddress,
             const DWORD size,
             std::string &output );
 
 void    DebugSurfaceStateBufferLengthCommand(
-            const void* pLinearAddress,    
+            const void* pLinearAddress,
             const PLATFORM productID,
             std::string &output );
 

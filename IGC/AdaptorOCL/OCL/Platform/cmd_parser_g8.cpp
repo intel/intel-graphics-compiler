@@ -549,13 +549,13 @@ void DebugInterfaceDescriptorDataCommand(
             pInterfaceDescriptorData->DW1.All.IllegalOpcodeExceptionEnable );
 
         ICBE_DPF_STR( output, GFXDBG_HARDWARE, "\tFloatingPointMode =                : %x\n",
-            pInterfaceDescriptorData->DW1.All.FloatingPointMode ); 
+            pInterfaceDescriptorData->DW1.All.FloatingPointMode );
 
         ICBE_DPF_STR( output, GFXDBG_HARDWARE, "\tThreadPriority =                   : %x\n",
             pInterfaceDescriptorData->DW1.All.ThreadPriority );
 
         ICBE_DPF_STR( output, GFXDBG_HARDWARE, "\tSingleProgramFlow =                : %x\n",
-            pInterfaceDescriptorData->DW1.All.SingleProgramFlow );    
+            pInterfaceDescriptorData->DW1.All.SingleProgramFlow );
 
         // DWORD 2
         ICBE_DPF_STR( output, GFXDBG_HARDWARE, "\tSamplerCount =                     : %u\n",
@@ -586,7 +586,7 @@ void DebugInterfaceDescriptorDataCommand(
                 pInterfaceDescriptorData->DW5.Gen7.NumberOfThreadsInThreadGroup );
 
             ICBE_DPF_STR( output, GFXDBG_HARDWARE, "\tSharedLocalMemorySize =            : %u\n",
-                pInterfaceDescriptorData->DW5.Gen7.SharedLocalMemorySize );        
+                pInterfaceDescriptorData->DW5.Gen7.SharedLocalMemorySize );
 
             ICBE_DPF_STR( output, GFXDBG_HARDWARE, "\tBarrierEnable =                    : %x\n",
                 pInterfaceDescriptorData->DW5.Gen7.BarrierEnable );
@@ -621,7 +621,7 @@ void DebugInterfaceDescriptorDataCommand(
             pInterfaceDescriptorData->DW2.Gen8.IllegalOpcodeExceptionEnable );
 
         ICBE_DPF_STR( output, GFXDBG_HARDWARE, "\tFloatingPointMode =                : %x\n",
-            pInterfaceDescriptorData->DW2.Gen8.FloatingPointMode ); 
+            pInterfaceDescriptorData->DW2.Gen8.FloatingPointMode );
 
         ICBE_DPF_STR( output, GFXDBG_HARDWARE, "\tThreadPriority =                   : %x\n",
             pInterfaceDescriptorData->DW2.Gen8.ThreadPriority );
@@ -731,7 +731,7 @@ void DebugSamplerStateCommand(
 
     ICBE_DPF_STR( output, GFXDBG_HARDWARE, "\tLODPreClampEnable                       : %x\n",
         p3DStateSamplerState->DW0.All.LODPreClampEnable );
- 
+
     ICBE_DPF_STR( output, GFXDBG_HARDWARE, "\tMipModeFilter                           : %x\n",
         p3DStateSamplerState->DW0.All.MipModeFilter );
 
@@ -754,7 +754,7 @@ void DebugSamplerStateCommand(
             p3DStateSamplerState->DW0.Gen9.AnisotropicAlgorithm );
 
         ICBE_DPF_STR( output, GFXDBG_HARDWARE, "\tCoarseLODQualityMode                    : %f\n",
-            FixedToFloat<unsigned>( p3DStateSamplerState->DW0.Gen9.CoarseLODQualityMode, 5, 5) );            
+            FixedToFloat<unsigned>( p3DStateSamplerState->DW0.Gen9.CoarseLODQualityMode, 5, 5) );
     }
     else
     {
@@ -766,7 +766,7 @@ void DebugSamplerStateCommand(
         FixedToFloat<unsigned>( p3DStateSamplerState->DW1.All.MinLOD, 4, 6 ) );
 
     ICBE_DPF_STR( output, GFXDBG_HARDWARE, "\tMaxLOD                                  : %f\n",
-        FixedToFloat<unsigned>( p3DStateSamplerState->DW1.All.MaxLOD, 4, 6 ) );    
+        FixedToFloat<unsigned>( p3DStateSamplerState->DW1.All.MaxLOD, 4, 6 ) );
 
     if( productID.eRenderCoreFamily >= IGFX_GEN7_CORE &&
         IsPlatformValid( productID ) )
@@ -939,9 +939,9 @@ void DebugBindingTableStateCommand(
 #if ( defined( _DEBUG ) || defined( _INTERNAL ) || defined( _RELEASE_INTERNAL ) )
     SSharedStateBindingTableState* pBindingTableState =
         (SSharedStateBindingTableState*)pLinearAddress;
-    
+
     ICBE_DPF_STR( output, GFXDBG_HARDWARE, "BINDING_TABLE_STATE\n" );
-    
+
     for( DWORD i = 0; i < numBindingTableEntries; ++i )
     {
         ICBE_DPF_STR( output, GFXDBG_HARDWARE, "\tEntry[ %3d ]        : %08x (%x)\n",

@@ -56,7 +56,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_cos, float, float, f
 
 INLINE double __builtin_spirv_OpenCL_cos_f64( double x )
 {
-    return __ocl_svml_rf_cos1(x); 
+    return __ocl_svml_rf_cos1(x);
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_cos, double, double, f64 )

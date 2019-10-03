@@ -312,7 +312,7 @@ float16 __builtin_spirv_divide_cr_v16f32_v16f32( float16 a,
 #if defined(cl_khr_fp64)
 double __builtin_spirv_divide_cr_f64_f64( double a,
                                           double b )
-{ 
+{
     return FDIV_IEEE_DOUBLE(a, b);
 }
 

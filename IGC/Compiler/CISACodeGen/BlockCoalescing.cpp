@@ -84,7 +84,7 @@ namespace IGC
                             if (block.bb->getSinglePredecessor() == nullptr)
                             {
                                 // do not remove this BB that goes backward, otherwise
-                                // one back edge becomes two back edges, and the 
+                                // one back edge becomes two back edges, and the
                                 // control-flow reconverge point changes.
                                 continue;
                             }

@@ -107,7 +107,7 @@ namespace IGC
         unsigned int getAlignValue(llvm::Value* V) const;
 
         /// @brief Returns the alignment of a constant integer.
-        ///        This is normally 1 << ctz(C) (the highest power of 2 that divides C), 
+        ///        This is normally 1 << ctz(C) (the highest power of 2 that divides C),
         ///        except when C is 0, when it is the max alignment
         unsigned int getConstantAlignment(uint64_t C) const;
 

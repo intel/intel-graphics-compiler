@@ -1026,9 +1026,9 @@ void CustomSafeOptPass::visitExtractElementInst(ExtractElementInst& I)
     }
 }
 
-#if LLVM_VERSION_MAJOR >= 7 
+#if LLVM_VERSION_MAJOR >= 7
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// This pass removes dead local memory loads and stores. If we remove all such loads and stores, we also 
+// This pass removes dead local memory loads and stores. If we remove all such loads and stores, we also
 // remove all local memory fences together with barriers that follow.
 //
 IGC_INITIALIZE_PASS_BEGIN(TrivialLocalMemoryOpsElimination, "TrivialLocalMemoryOpsElimination", "TrivialLocalMemoryOpsElimination", false, false)
@@ -1163,7 +1163,7 @@ void TrivialLocalMemoryOpsElimination::visitCallInst(CallInst& I)
 {
     // detect only: llvm.genx.GenISA.memoryfence(i1 true, i1 false, i1 false, i1 false, i1 false, i1 false, i1 true)
     // (note: the first and last arguments are true)
-    // and add them with immediately following barriers to m_LocalFencesBariersToRemove  
+    // and add them with immediately following barriers to m_LocalFencesBariersToRemove
     anyCallInstUseLocalMemory(I);
 
     if (isa<GenIntrinsicInst>(I))
@@ -2766,7 +2766,7 @@ bool IGCConstProp::runOnFunction(Function& F)
 
             if (0 /* isa<ConstantPointerNull>(C)*/) // disable optimization generating invalid IR until it gets re-written
             {
-                // if we are changing function calls/ genisa intrinsics, then we need 
+                // if we are changing function calls/ genisa intrinsics, then we need
                 // to fix the function declarations to account for the change in pointer address type
                 for (Value::user_iterator UI = C->user_begin(), UE = C->user_end();
                     UI != UE; ++UI)

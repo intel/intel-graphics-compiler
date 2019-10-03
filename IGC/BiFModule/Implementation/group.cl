@@ -912,7 +912,7 @@ Event_t __builtin_spirv_OpGroupAsyncCopy_i32_p3v3f64_p1v3f64_i32_i32_i64(uint Ex
 }
 
 Event_t __builtin_spirv_OpGroupAsyncCopy_i32_p3v4f64_p1v4f64_i64_i64_i64(uint Execution, local double4 *Destination, const global double4 *Source, ulong NumElements, ulong Stride, Event_t Event)
-{ 
+{
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
 }
 
@@ -955,7 +955,7 @@ void __builtin_spirv_OpGroupWaitEvents_i32_i32_p0i64(uint Execution, uint NumEve
     {
         // This is a no op for now
     }
-    
+
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
@@ -995,7 +995,7 @@ bool __builtin_spirv_OpGroupAll_i32_i1(uint Execution, bool Predicate)
     else
     {
          return 0;
-    }   
+    }
 }
 
 bool __builtin_spirv_OpGroupAny_i32_i1(uint Execution, bool Predicate)
@@ -1009,7 +1009,7 @@ bool __builtin_spirv_OpGroupAny_i32_i1(uint Execution, bool Predicate)
         __builtin_spirv_OpControlBarrier_i32_i32_i32(Execution, 0, AcquireRelease | WorkgroupMemory);
         return *tmp; // Return true if any of them passed the test
     }
-    else if (Execution == Subgroup) 
+    else if (Execution == Subgroup)
     {
             int value = ( Predicate != 0 ) ? 1 : 0;
             value = __builtin_spirv_OpGroupIAdd_i32_i32_i32(Subgroup, GroupOperationReduce, as_uint(value) );
@@ -1018,13 +1018,13 @@ bool __builtin_spirv_OpGroupAny_i32_i1(uint Execution, bool Predicate)
     else
     {
          return 0;
-    } 
+    }
 }
 
 //Broadcast Functions
 
 // ***Note that technically the spec allows for 64 bit local Id's but currently our hardware cannot support
-// this in which case we cast all ulong local Id's to uint's at this time.  
+// this in which case we cast all ulong local Id's to uint's at this time.
 
 
 #define BROADCAST_WORKGROUP(type)                                                       \
@@ -1040,15 +1040,15 @@ bool __builtin_spirv_OpGroupAny_i32_i1(uint Execution, bool Predicate)
     type ret = *tmp;                                                                    \
     __builtin_spirv_OpControlBarrier_i32_i32_i32(Execution, 0, AcquireRelease | WorkgroupMemory);        \
     return ret;                                                                         \
-}                           
+}
 
 ushort __builtin_spirv_OpGroupBroadcast_i32_i16_v3i32(uint Execution, ushort Value, uint3 LocalId)
 {
-    if (Execution == Workgroup)  
+    if (Execution == Workgroup)
     {
         BROADCAST_WORKGROUP(ushort)
     }
-    else if (Execution == Subgroup) 
+    else if (Execution == Subgroup)
     {
         return as_ushort(__builtin_IB_simd_shuffle_h(as_half(Value), LocalId.s0));
     }
@@ -1060,11 +1060,11 @@ ushort __builtin_spirv_OpGroupBroadcast_i32_i16_v3i32(uint Execution, ushort Val
 
 ushort __builtin_spirv_OpGroupBroadcast_i32_i16_v3i64(uint Execution, ushort Value, ulong3 LocalId)
 {
-    if (Execution == Workgroup)  
+    if (Execution == Workgroup)
     {
         BROADCAST_WORKGROUP(ushort)
     }
-    else if (Execution == Subgroup) 
+    else if (Execution == Subgroup)
     {
         return as_ushort(__builtin_IB_simd_shuffle_h(as_half(Value), (uint)LocalId.s0));
     }
@@ -1076,11 +1076,11 @@ ushort __builtin_spirv_OpGroupBroadcast_i32_i16_v3i64(uint Execution, ushort Val
 
 uint __builtin_spirv_OpGroupBroadcast_i32_i32_v3i32(uint Execution, uint Value, uint3 LocalId)
 {
-    if (Execution == Workgroup)  
+    if (Execution == Workgroup)
     {
         BROADCAST_WORKGROUP(uint)
     }
-    else if (Execution == Subgroup) 
+    else if (Execution == Subgroup)
     {
         return __builtin_IB_simd_shuffle(Value, LocalId.s0);
     }
@@ -1092,11 +1092,11 @@ uint __builtin_spirv_OpGroupBroadcast_i32_i32_v3i32(uint Execution, uint Value, 
 
 uint __builtin_spirv_OpGroupBroadcast_i32_i32_v3i64(uint Execution, uint Value, ulong3 LocalId)
 {
-    if (Execution == Workgroup)  
+    if (Execution == Workgroup)
     {
         BROADCAST_WORKGROUP(uint)
     }
-    else if (Execution == Subgroup) 
+    else if (Execution == Subgroup)
     {
         return __builtin_IB_simd_shuffle(Value, (uint)LocalId.s0);
     }
@@ -1108,11 +1108,11 @@ uint __builtin_spirv_OpGroupBroadcast_i32_i32_v3i64(uint Execution, uint Value, 
 
 ulong __builtin_spirv_OpGroupBroadcast_i32_i64_v3i32(uint Execution, ulong Value, uint3 LocalId)
 {
-    if (Execution == Workgroup)  
+    if (Execution == Workgroup)
     {
         BROADCAST_WORKGROUP(ulong)
     }
-    else if (Execution == Subgroup) 
+    else if (Execution == Subgroup)
     {
         return ((((ulong)__builtin_IB_simd_shuffle(Value >> 32, LocalId.s0)) << 32 ) | __builtin_IB_simd_shuffle((uint)Value, LocalId.s0));
     }
@@ -1124,11 +1124,11 @@ ulong __builtin_spirv_OpGroupBroadcast_i32_i64_v3i32(uint Execution, ulong Value
 
 ulong __builtin_spirv_OpGroupBroadcast_i32_i64_v3i64(uint Execution, ulong Value, ulong3 LocalId)
 {
-    if (Execution == Workgroup)  
+    if (Execution == Workgroup)
     {
         BROADCAST_WORKGROUP(ulong)
     }
-    else if (Execution == Subgroup) 
+    else if (Execution == Subgroup)
     {
         return ((((ulong)__builtin_IB_simd_shuffle(Value >> 32, (uint)LocalId.s0)) << 32 ) | __builtin_IB_simd_shuffle((uint)Value, (uint)LocalId.s0));
     }
@@ -1140,11 +1140,11 @@ ulong __builtin_spirv_OpGroupBroadcast_i32_i64_v3i64(uint Execution, ulong Value
 
 half __builtin_spirv_OpGroupBroadcast_i32_f16_v3i32(uint Execution, half Value, uint3 LocalId)
 {
-    if (Execution == Workgroup)  
+    if (Execution == Workgroup)
     {
         BROADCAST_WORKGROUP(half)
     }
-    else if (Execution == Subgroup) 
+    else if (Execution == Subgroup)
     {
         return __builtin_IB_simd_shuffle_h( Value, (uint)LocalId.s0 );
     }
@@ -1156,11 +1156,11 @@ half __builtin_spirv_OpGroupBroadcast_i32_f16_v3i32(uint Execution, half Value, 
 
 half __builtin_spirv_OpGroupBroadcast_i32_f16_v3i64(uint Execution, half Value, ulong3 LocalId)
 {
-    if (Execution == Workgroup)  
+    if (Execution == Workgroup)
     {
         BROADCAST_WORKGROUP(half)
     }
-    else if (Execution == Subgroup) 
+    else if (Execution == Subgroup)
     {
         return as_half2(__builtin_IB_simd_shuffle( (uint)(as_short(Value)), (uint)LocalId.s0 )).x;
     }
@@ -1172,11 +1172,11 @@ half __builtin_spirv_OpGroupBroadcast_i32_f16_v3i64(uint Execution, half Value, 
 
 float __builtin_spirv_OpGroupBroadcast_i32_f32_v3i32(uint Execution, float Value, uint3 LocalId)
 {
-    if (Execution == Workgroup)  
+    if (Execution == Workgroup)
     {
         BROADCAST_WORKGROUP(float)
     }
-    else if (Execution == Subgroup) 
+    else if (Execution == Subgroup)
     {
         return __builtin_IB_simd_shuffle_f( Value, LocalId.s0 );
     }
@@ -1188,11 +1188,11 @@ float __builtin_spirv_OpGroupBroadcast_i32_f32_v3i32(uint Execution, float Value
 
 float __builtin_spirv_OpGroupBroadcast_i32_f32_v3i64(uint Execution, float Value, ulong3 LocalId)
 {
-    if (Execution == Workgroup)  
+    if (Execution == Workgroup)
     {
         BROADCAST_WORKGROUP(float)
     }
-    else if (Execution == Subgroup) 
+    else if (Execution == Subgroup)
     {
         return __builtin_IB_simd_shuffle_f( Value, (uint)LocalId.s0 );
     }
@@ -1206,11 +1206,11 @@ float __builtin_spirv_OpGroupBroadcast_i32_f32_v3i64(uint Execution, float Value
 
 double __builtin_spirv_OpGroupBroadcast_i32_f64_v3i32(uint Execution, double Value, uint3 LocalId)
 {
-    if (Execution == Workgroup)  
+    if (Execution == Workgroup)
     {
         BROADCAST_WORKGROUP(double)
     }
-    else if (Execution == Subgroup) 
+    else if (Execution == Subgroup)
     {
         return __builtin_IB_simd_shuffle_df( Value, LocalId.s0 );
     }
@@ -1223,11 +1223,11 @@ double __builtin_spirv_OpGroupBroadcast_i32_f64_v3i32(uint Execution, double Val
 
 double __builtin_spirv_OpGroupBroadcast_i32_f64_v3i64(uint Execution, double Value, ulong3 LocalId)
 {
-    if (Execution == Workgroup)  
+    if (Execution == Workgroup)
     {
         BROADCAST_WORKGROUP(double)
     }
-    else if (Execution == Subgroup) 
+    else if (Execution == Subgroup)
     {
         return __builtin_IB_simd_shuffle_df( Value, (uint) LocalId.s0 );
     }
@@ -1266,7 +1266,7 @@ half __builtin_spirv_OpGroupBroadcast_i32_f16_v2i32(uint Execution, half Value, 
 
 half __builtin_spirv_OpGroupBroadcast_i32_f16_v2i64(uint Execution, half Value, ulong2 LocalId)
 {
-   return __builtin_spirv_OpGroupBroadcast_i32_f16_v3i64(Execution,Value,(ulong3)(LocalId.s0,LocalId.s1,0)); 
+   return __builtin_spirv_OpGroupBroadcast_i32_f16_v3i64(Execution,Value,(ulong3)(LocalId.s0,LocalId.s1,0));
 }
 
 float __builtin_spirv_OpGroupBroadcast_i32_f32_v2i32(uint Execution, float Value, uint2 LocalId)
@@ -1320,7 +1320,7 @@ half __builtin_spirv_OpGroupBroadcast_i32_f16_i32(uint Execution, half Value, ui
 
 half __builtin_spirv_OpGroupBroadcast_i32_f16_i64(uint Execution, half Value, ulong LocalId)
 {
-   return __builtin_spirv_OpGroupBroadcast_i32_f16_v3i64(Execution,Value,(ulong3)(LocalId,0,0)); 
+   return __builtin_spirv_OpGroupBroadcast_i32_f16_v3i64(Execution,Value,(ulong3)(LocalId,0,0));
 }
 
 float __builtin_spirv_OpGroupBroadcast_i32_f32_i32(uint Execution, float Value, uint LocalId)
@@ -1377,7 +1377,7 @@ static double   OVERLOADABLE __intel_add(double lhs, double rhs) { return lhs + 
     type ret = data[0];                                                                  \
     __builtin_spirv_OpControlBarrier_i32_i32_i32(Workgroup, 0, AcquireRelease | WorkgroupMemory);         \
     return ret;                                                                           \
-}                                                                           
+}
 
 
 #define DEFN_WORK_GROUP_SCAN_INCL(type, op, identity, X)                                   \
@@ -1512,7 +1512,7 @@ static double   OVERLOADABLE __intel_add(double lhs, double rhs) { return lhs + 
     uint3 vec3;                                                                              \
     vec3.s0 = 0;                                                                           \
     return __builtin_spirv_OpGroupBroadcast_i32_##type_abbr##_v3i32(Subgroup, X, vec3 ); \
-}          
+}
 
 
 #define DEFN_SUB_GROUP_SCAN_INCL(type, type_abbr, op, identity, X)                        \
@@ -1595,17 +1595,17 @@ type  __builtin_spirv_##func##_i32_i32_##type_abbr(uint Execution, uint Operatio
             }                                                                                         \
             else if (Operation == GroupOperationInclusiveScan)                                         \
             {                                                                                         \
-                return op(X, __builtin_IB_sub_group_scan_##func##_##type_abbr(X));                     \    
+                return op(X, __builtin_IB_sub_group_scan_##func##_##type_abbr(X));                     \
             }                                                                                         \
             else if (Operation == GroupOperationExclusiveScan)                                         \
             {                                                                                         \
-                return __builtin_IB_sub_group_scan_##func##_##type_abbr(X);                           \    
+                return __builtin_IB_sub_group_scan_##func##_##type_abbr(X);                           \
             }                                                                                         \
         }                                                                                         \
         else {                                                                                     \
             SUB_GROUP_SWITCH(type, type_abbr, op, identity, X, Operation)                         \
         }                                                                                         \
-        return 0;                                                                                 \        
+        return 0;                                                                                 \
     }                                                                                            \
     else                                                                                         \
     {                                                                                            \

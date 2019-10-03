@@ -77,14 +77,14 @@ struct RETVAL
     DWORD       OutOfSystemMemory   : 1;    // System memory allocation failed
     DWORD       Busy                : 1;    // Compilation not done yet
     DWORD       _Unused             : 28;   // Reserved // For GCC 4.7 bug (do not allow to static initialize anonymous members)
-    
+
     RETVAL& operator = (const ErrorCode&);
     operator ErrorCode();                   // convertion operator to ErrorCode API type
 };
 
 C_ASSERT( sizeof( RETVAL ) == sizeof( ErrorCode ) );
-   
-    
+
+
 inline RETVAL& RETVAL::operator = (const ErrorCode& errorCode)
 {
     Success            = errorCode.Success;
@@ -110,7 +110,7 @@ const RETVAL g_cInitRetVal =
     false,  // OutOfSystemMemory
     false,  // Busy
 };
-    
+
 C_ASSERT(sizeof(g_cInitRetVal) == sizeof(g_cInitErrorCode));
 
 #endif

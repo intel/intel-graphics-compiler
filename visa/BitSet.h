@@ -135,7 +135,7 @@ public:
         MUST_BE_TRUE(startIndex <= endIndex, "Invalid bitSet Index");
         MUST_BE_TRUE(startIndex < m_Size, "Invalid bitSet Index");
         MUST_BE_TRUE(endIndex < m_Size, "Invalid bitSet Index");
-        
+
         unsigned start = startIndex / NUM_BITS_PER_ELT;
         unsigned end = endIndex / NUM_BITS_PER_ELT;
 
@@ -150,7 +150,7 @@ public:
             }
             return true;
         }
-        
+
         unsigned index;
         unsigned numBitsBefore = startIndex % NUM_BITS_PER_ELT;
         if (numBitsBefore)
@@ -190,7 +190,7 @@ public:
         MUST_BE_TRUE(startIndex <= endIndex, "Invalid bitSet Index");
         MUST_BE_TRUE(startIndex < m_Size, "Invalid bitSet Index");
         MUST_BE_TRUE(endIndex < m_Size, "Invalid bitSet Index");
-        
+
         unsigned start = startIndex / NUM_BITS_PER_ELT;
         unsigned end = endIndex / NUM_BITS_PER_ELT;
 
@@ -246,7 +246,7 @@ public:
         return m_BitSetArray[eltIndex];
     }
 
-    void setElt(unsigned eltIndex, BITSET_ARRAY_TYPE value) 
+    void setElt(unsigned eltIndex, BITSET_ARRAY_TYPE value)
     {
         unsigned bound = (eltIndex + 1) * NUM_BITS_PER_ELT;
         if (bound > m_Size)

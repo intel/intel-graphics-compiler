@@ -29,7 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 MACRO: TODO
 Use for code changes that need to happen, but are not in place now.
 \*****************************************************************************/
-#define TODO(x) 
+#define TODO(x)
 
 
 /*****************************************************************************\

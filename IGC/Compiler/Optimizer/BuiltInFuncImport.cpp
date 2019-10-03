@@ -301,7 +301,7 @@ static bool materialized_use_empty(const Value* v)
 void BIImport::WriteElfHeaderToMap(DenseMap<StringRef, int>& Map, char* pData, size_t dataSize)
 {
     //Data from pData is layed out as follows.....
-    //First two bytes are the string size 
+    //First two bytes are the string size
     //Next byte is the start of the function name
     //Last two bytes are the index of function in the elf file
 
@@ -907,7 +907,7 @@ bool PreBIImportAnalysis::runOnModule(Module& M)
                 {
                     if (visited.find(f) == visited.end())
                     {
-                        // this function is not visited before, 
+                        // this function is not visited before,
                         // insert it into queue
                         functQueue.push(f);
                     }

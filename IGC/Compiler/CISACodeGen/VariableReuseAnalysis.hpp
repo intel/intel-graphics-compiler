@@ -276,7 +276,7 @@ namespace IGC {
         //   is null, return itself.
         llvm::Value* getRootValue(llvm::Value* V);
         // getAliasRootValue()
-        //   return alias root value if it exists, itself otherwise.   
+        //   return alias root value if it exists, itself otherwise.
         llvm::Value* getAliasRootValue(llvm::Value* V);  // to be deleted
 
         /// printAlias - print value aliasing info in human readable form

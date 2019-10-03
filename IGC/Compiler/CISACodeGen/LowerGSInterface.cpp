@@ -207,7 +207,7 @@ namespace IGC
         }
     }
 
-    /// Creates and initializes variables that are used to keep cut bitmask. 
+    /// Creates and initializes variables that are used to keep cut bitmask.
     void LowerGSInterface::createCutVariables(llvm::Function& F, unsigned int maxOutputVertexCount)
     {
         // we use one bit per vertex, so max index is ceil(max vertex count divided by 32 bits in dword)
@@ -244,9 +244,9 @@ namespace IGC
     /// We translate EndPrimitive to a sequence of instructions that update cut variables.
     /// The idea is as follows: we want to index within an array of cut variables.
     /// However, when EndPrimitive appears before any emits (so emitCount is still zero), we don't want
-    /// to do anything. 
+    /// to do anything.
     /// So first we compare emitCount with zero, and based on the result we either use bit '1' or '0'
-    /// as the value that will be or-ed to the appropriate bit within the cut vector. 
+    /// as the value that will be or-ed to the appropriate bit within the cut vector.
     /// Pseudocode:
     ///     isNonZeroCount = emitCount == 0 ? 0 : 1
     ///     safeEmitCount = (emitCount == 0) ? 0 : emitCount-1  // not to index outside of the vector
@@ -320,7 +320,7 @@ namespace IGC
         // %cutOr = or %dynExt, %orVal
         Value* theNewOne = b.CreateOr(dynExt, orVal, VALUE_NAME("cutOr"));
 
-        // %updatedCutVec = insertelement %tempVector, 
+        // %updatedCutVec = insertelement %tempVector,
         tempVector = b.CreateInsertElement(tempVector, theNewOne, index, VALUE_NAME("updatedCutVec"));
 
         // Store the values back into the cut bit memory variables
@@ -336,8 +336,8 @@ namespace IGC
     } //update cut variables
 
     /// Translates SetStream(%stramID, %emitCount) to the sequence of instructions that update streamID
-    /// bits. 
-    /// 
+    /// bits.
+    ///
     void LowerGSInterface::updateStreamVariables(llvm::GenIntrinsicInst& I)
     {
         //setting of streamID bits makes sense only when having many streams

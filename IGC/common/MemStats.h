@@ -43,7 +43,7 @@ struct SShaderMemoryAllocsType
     size_t max_size;
 };
 
-static const SShaderMemoryAllocsType g_cShaderMemoryAllocsType[] = 
+static const SShaderMemoryAllocsType g_cShaderMemoryAllocsType[] =
 {
     {"Size < 4B", 4},
     {"Size < 32B", 32},
@@ -55,9 +55,9 @@ static const SShaderMemoryAllocsType g_cShaderMemoryAllocsType[] =
 enum SHADER_MEMORY_SNAPSHOT
 {
     SMS_COMPILE_START = 0,
-    SMS_AFTER_ASMTOLLVMIR,    
+    SMS_AFTER_ASMTOLLVMIR,
     SMS_AFTER_UNIFICATION,
-    SMS_AFTER_OPTIMIZER,    
+    SMS_AFTER_OPTIMIZER,
 
     SMS_AFTER_LAYOUTPASS, // end of analysis passes
     SMS_AFTER_CISACreateDestroy_SIMD8,
@@ -84,7 +84,7 @@ struct SShaderMemorySnapshotInfo
 g_cShaderMemorySnapshot
 Memory snapshot information.
 \*****************************************************************************/
-static const SShaderMemorySnapshotInfo g_cShaderMemorySnapshot[] = 
+static const SShaderMemorySnapshotInfo g_cShaderMemorySnapshot[] =
 {
     { "COMPILE_START", true },
     { "AFTER_ASMTOLLVMIR", true },

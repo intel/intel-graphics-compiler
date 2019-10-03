@@ -32,7 +32,7 @@ namespace G6HWC
 CONST: Caps
 \*****************************************************************************/
 const DWORD g_cNumProbes            = 1024;
-const DWORD g_cNumGTTUpdateEntries  = 16;   
+const DWORD g_cNumGTTUpdateEntries  = 16;
 
 /*****************************************************************************\
 ENUM: MI_OPCODE
@@ -73,7 +73,7 @@ ENUM: MI_ASYNCHRONOUS_FLIP
 \*****************************************************************************/
 enum MI_ASYNCHRONOUS_FLIP
 {
-    MI_SYNCHRONOUS_FLIP                 = 0x0, 
+    MI_SYNCHRONOUS_FLIP                 = 0x0,
     MI_ASYNCHRONOUS_FLIP                = 0x1
 };
 
@@ -82,7 +82,7 @@ ENUM: MI_BUFFER_SECURITY_INDICATOR
 \*****************************************************************************/
 enum MI_BUFFER_SECURITY_INDICATOR
 {
-    MI_BUFFER_SECURE                    = 0x0, 
+    MI_BUFFER_SECURE                    = 0x0,
     MI_BUFFER_NONSECURE                 = 0x1
 };
 
@@ -91,9 +91,9 @@ ENUM: MI_COMMAND_ARBITRATION_CONTROL
 \*****************************************************************************/
 enum MI_COMMAND_ARBITRATION_CONTROL
 {
-    MI_ARBITRATE_AT_CHAIN_POINTS        = 0x0, 
+    MI_ARBITRATE_AT_CHAIN_POINTS        = 0x0,
     MI_ARBITRATE_BETWEEN_INSTS          = 0x1,
-    MI_NO_ARBITRATION                   = 0x3 
+    MI_NO_ARBITRATION                   = 0x3
 };
 
 /*****************************************************************************\
@@ -123,7 +123,7 @@ ENUM: MI_DISPLAY_PLANE_SELECT
 \*****************************************************************************/
 enum MI_DISPLAY_PLANE_SELECT
 {
-    MI_DISPLAY_PLANE_A                  = 0x0, 
+    MI_DISPLAY_PLANE_A                  = 0x0,
     MI_DISPLAY_PLANE_B                  = 0x1,
     MI_DISPLAY_PLANE_C                  = 0x2
 };
@@ -162,9 +162,9 @@ ENUM: MI_MEMORY_SPACE_SELECT
 \*****************************************************************************/
 enum MI_MEMORY_SPACE_SELECT
 {
-    MI_BUFFER_MEMORY_MAIN               = 0x0, 
+    MI_BUFFER_MEMORY_MAIN               = 0x0,
     MI_BUFFER_MEMORY_GTT                = 0x2,
-    MI_BUFFER_MEMORY_PER_PROCESS_GTT    = 0x3 
+    MI_BUFFER_MEMORY_PER_PROCESS_GTT    = 0x3
 };
 
 /*****************************************************************************\
@@ -172,7 +172,7 @@ ENUM: MI_MEMORY_UPDATE_GTT
 \*****************************************************************************/
 enum MI_MEMORY_UPDATE_GTT_ENTRY
 {
-    MI_MEMORY_GGTT_ENTRY_UPDATE   = 0x0, 
+    MI_MEMORY_GGTT_ENTRY_UPDATE   = 0x0,
     MI_MEMORY_PGTT_ENTRY_UPDATE   = 0x1
 };
 
@@ -181,7 +181,7 @@ ENUM: MI_MEMORY_USE_GLOBAL_GTT
 \*****************************************************************************/
 enum MI_MEMORY_USE_GLOBAL_GTT
 {
-    MI_MEMORY_PER_PROCESS_GRAPHICS_ADDRESS  = 0x0, 
+    MI_MEMORY_PER_PROCESS_GRAPHICS_ADDRESS  = 0x0,
     MI_MEMORY_GLOBAL_GRAPHICS_ADDRESS       = 0x1
 };
 

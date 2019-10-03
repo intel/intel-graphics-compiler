@@ -672,8 +672,8 @@ bool GenIRLowering::lowerGetElementPtrInst(GetElementPtrInst* GEP,
 
                 if (BinaryOperator * binaryOp = dyn_cast<BinaryOperator>(NewIdx))
                 {
-                    // detect the pattern 
-                    // GEP base, a + b 
+                    // detect the pattern
+                    // GEP base, a + b
                     // where base and a are both loop invariant (but not b), so we could rearrange the lowered code into
                     // (base + (a << shftAmt)) + (b << shftAmt)
                     // For now we only look at one level

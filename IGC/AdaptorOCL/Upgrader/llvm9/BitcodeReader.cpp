@@ -1354,7 +1354,7 @@ static uint64_t getRawAttributeMask(Attribute::AttrKind Val) {
   default:
       llvm_unreachable("Unsupported attribute type");
       //return 0;
-  }  
+  }
 }
 
 static void addRawAttributeValue(AttrBuilder &B, uint64_t Val) {

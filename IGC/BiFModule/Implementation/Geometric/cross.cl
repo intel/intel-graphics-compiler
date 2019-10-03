@@ -58,9 +58,9 @@ INLINE double3 __builtin_spirv_OpenCL_cross_v3f64_v3f64(double3 p0, double3 p1 )
 INLINE double4 __builtin_spirv_OpenCL_cross_v4f64_v4f64(double4 p0, double4 p1 ){
     double4 result;
     result.xyz = __builtin_spirv_OpenCL_cross_v3f64_v3f64( p0.xyz, p1.xyz );
-    
+
     result.w = (half) 0.0;
-    
+
     return result;
 }
 
@@ -77,7 +77,7 @@ INLINE half4 __builtin_spirv_OpenCL_cross_v4f16_v4f16(half4 p0, half4 p1 ){
     half4 result;
     result.xyz = __builtin_spirv_OpenCL_cross_v3f16_v3f16( p0.xyz, p1.xyz );
     result.w = (half)0.0f;
-    
+
     return result;
 }
 

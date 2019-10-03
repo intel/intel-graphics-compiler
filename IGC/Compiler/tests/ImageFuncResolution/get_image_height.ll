@@ -47,6 +47,6 @@ define i32 @foo(i32 %img, i32 %imageHeigt) nounwind {
 !5 = !{!"explicit_arg_num", i32 0}
 
 ; CHECK:         ret i32 %imageHeigt
-    
+
 ; CHECK-NOT:     call i32 @__builtin_IB_get_image_height(i32 %img)
 

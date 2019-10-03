@@ -109,7 +109,7 @@ typedef struct
 } IGIL_EventPool;
 
 // internal device enqueue command representation
-typedef struct 
+typedef struct
 {
     uint   m_commandSize;           // size in bytes, including variable part and padding to 64bytes and sizeof(IGIL_CommandHeader)
     ulong  m_magic;                 // 'I' 'N' 'T' 'C' 'G' 'P' 'U' canary
@@ -125,13 +125,13 @@ typedef struct
     uint   m_commandState;          // command state , may not be needed.
     IGIL_kernel_enqueue_flags_t m_enqueueFlags;    // flags that were used during enqueue
     uint   m_numGlobalArguments;    //total number of global arguments passed as kernel arguments, excluding global pointers.
-    uint   m_data[1];  
+    uint   m_data[1];
     // variable length part starts here
     //   Event Data: # number of events of size sizeof(clk_event_t) store events IDS ( m_numDependencies )
     //   Scalar Captured Variable Data: # number of scalar kernel arguments with values ( m_numScalarArguments )
     //   Global UAV Argument Data: arg number associated with each of the global memory pointer
     //                             size of each argument is 2B. size: m_numGlobalCapturedBuffer * 2
-    //   Global UAV Address Data: address of global mem surfaces: uav address(64 bit). 
+    //   Global UAV Address Data: address of global mem surfaces: uav address(64 bit).
     //                        size: m_numGlobalCapturedBuffer * 8
     //   Local: # number of local surfaces sizes ( DWORD each )
     //   Global arguments data : arn number associated with each of the global memory argument
@@ -187,7 +187,7 @@ typedef struct
 } IGIL_ExecutionControls;
 
 // internal device command queue representation
-typedef struct 
+typedef struct
 {
     uint m_magic;            // 'I' 'N' 'T' C'
     uint m_head;             // next free location in the queue
@@ -244,7 +244,7 @@ typedef struct
     ulong                  m_numberOfKernels; //number of kernels.
     uint                   m_ParentImageDataOffset;
     uint                   m_ParentKernelImageCount;
-    uint                   m_ParentSamplerParamsOffset;                 
+    uint                   m_ParentSamplerParamsOffset;
     uint                   m_ParentSamplerCount;
     IGIL_KernelAddressData m_data[1]; //offsets for n x kernel data.
 } IGIL_KernelDataHeader;
@@ -271,12 +271,12 @@ typedef struct
 
 typedef struct
 {
-    uint                   m_ObjectID;                  // Sampler Object id 
+    uint                   m_ObjectID;                  // Sampler Object id
 
-    uint                   m_AddressingMode;            
+    uint                   m_AddressingMode;
     uint                   NormalizedCoords;
     uint                   CoordinateSnapRequired;
-} IGIL_ParentSamplerParams;                             // Parent's Sampler Curbe data 
+} IGIL_ParentSamplerParams;                             // Parent's Sampler Curbe data
 
 
 

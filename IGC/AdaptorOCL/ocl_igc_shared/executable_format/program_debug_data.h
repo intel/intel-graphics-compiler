@@ -157,7 +157,7 @@ STRUCT: SProgramDebugDataHeader
 \*****************************************************************************/
 typedef struct _SProgramDebugDataHeader
 {
-    uint32_t         Magic; 
+    uint32_t         Magic;
     uint32_t         Version;
     uint32_t         Size;
     uint32_t         StringTableSize;
@@ -190,7 +190,7 @@ typedef struct _SProgramDebugDataFileTableHeader
 STRUCT: SProgramDebugDataFileTableEntry
 \*****************************************************************************/
 typedef struct _SProgramDebugDataFileTableEntry
-{    
+{
     uint32_t         DirIndex;
 } SProgramDebugDataFileTableEntry;
 
@@ -198,7 +198,7 @@ typedef struct _SProgramDebugDataFileTableEntry
 STRUCT: SKernelDebugDataHeader
 \*****************************************************************************/
 typedef struct _SKernelDebugDataHeader
-{     
+{
     uint32_t         KernelIndex;
     uint32_t         CodeOffset;
     uint32_t         Size;

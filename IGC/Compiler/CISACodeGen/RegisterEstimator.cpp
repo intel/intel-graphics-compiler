@@ -339,8 +339,8 @@ bool RegisterEstimator::runOnFunction(Function& F)
     m_ValueRegUses.resize(nVals);
 
     // 1. Pre-compute register needed for each values.
-    // 2. The max possible registers needed, assume all values are live, 
-    RegUsage estNumRegs;  // RPE assuming all values are live 
+    // 2. The max possible registers needed, assume all values are live,
+    RegUsage estNumRegs;  // RPE assuming all values are live
     ValueToIntMap::iterator VI, VE;
     for (VI = m_LVA->ValueIds.begin(), VE = m_LVA->ValueIds.end(); VI != VE; ++VI)
     {
@@ -356,7 +356,7 @@ bool RegisterEstimator::runOnFunction(Function& F)
     m_noGRFPressure = isGRFPressureLow(16, estNumRegs);
 
     // Note that runOnFunction does not do RPE calculation unless ForceRPE
-    // is enabled (for debugging).  The RPE is calcualted for users to call 
+    // is enabled (for debugging).  The RPE is calcualted for users to call
     // calculate() explicitly.
     if (IGC_IS_FLAG_ENABLED(ForceRPE))
     {

@@ -164,7 +164,7 @@ Function* FunctionUpgrader::UpgradeFunctionWithNewArgs()
     auto fName = m_pFunction->getName();
     auto fLinkage = m_pFunction->getLinkage();
 
-    // Create a new function 
+    // Create a new function
     Function* pNewFunc =
         Function::Create(
             fType,
@@ -198,7 +198,7 @@ Function* FunctionUpgrader::UpgradeFunctionWithNewArgs()
 #endif
         //add to map pointer of the new argument
         m_pNewArguments[it->first] = arg_it;
-        
+
         m_pNewArguments[it->first]->takeName(it->first);
 
         ++i_arg_new;
@@ -216,7 +216,7 @@ void FunctionUpgrader::CleanPlaceHoldersArgs()
         // Remove all place holder stuff from new func
         LoadInst* pPlaceHolderArg = it->first;
         AllocaInst* pPlaceHolderArgAlloc = cast<AllocaInst>(pPlaceHolderArg->getPointerOperand());
-        
+
         pPlaceHolderArg->eraseFromParent();
         pPlaceHolderArgAlloc->eraseFromParent();
     }

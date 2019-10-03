@@ -337,7 +337,7 @@ bool GeometryShaderProperties::OutputProperties::HasRenderTargetArrayIndex() con
 }
 
 /// Returns whether GS needs to write to URB control data header data.
-/// Conditions: 
+/// Conditions:
 ///  - When we emit to more than one stream, we need the header to keep stream ID bits
 ///  - When cuts have appeared and output topology type is different than point list.
 bool GeometryShaderProperties::OutputProperties::ControlDataHeaderRequired() const

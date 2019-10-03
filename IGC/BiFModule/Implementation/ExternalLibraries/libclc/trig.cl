@@ -455,7 +455,7 @@ INLINE float libclc_cospi_f32(float x)
 }
 
 INLINE float libclc_sin_f32(float x)
-{ 
+{
     int ix = as_int(x);
     int ax = ix & 0x7fffffff;
     float dx = as_float(ax);
@@ -523,7 +523,7 @@ INLINE float libclc_sinpi_f32(float x)
 }
 
 INLINE float libclc_tan_f32(float x)
-{ 
+{
     int ix = as_int(x);
     int ax = ix & 0x7fffffff;
     float dx = as_float(ax);

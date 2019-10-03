@@ -1244,7 +1244,7 @@ void LatencyQueue::init()
 {
     G4_BB* BB = ddd.getBB();
 
-    // Scan block forward and group instructions, without causing 
+    // Scan block forward and group instructions, without causing
     // excessive pressure increase. First collect the register
     // pressure trace in this block.
     std::vector<unsigned> RPtrace;

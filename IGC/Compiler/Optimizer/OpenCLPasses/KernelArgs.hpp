@@ -191,7 +191,7 @@ namespace IGC
         /// @param  qualStr     The OpenCL access qualifier information for the kernel this argument belongs to
         /// @param  location_index The location_index for buffer
         /// @param  location_count The location_count for buffer
-        /// @param  needBindlessHandle   The presence of bindless resources in the shader 
+        /// @param  needBindlessHandle   The presence of bindless resources in the shader
         /// @param  isEmulationArgument  The information, whether this is an emulation argument (IAB)
         KernelArg(const llvm::Argument* arg, const llvm::DataLayout* DL, const llvm::StringRef typeStr, const llvm::StringRef qualstr, int location_index, int location_count, bool needBindlessHandle, bool isEmulationArgument);
 
@@ -241,7 +241,7 @@ namespace IGC
         /// @brief  Checks whether the given argument is an image
         /// @param  arg           The kernel argument
         /// @param  typeStr       The OpenCL type information for the kernel this argument belongs to
-        /// @param  imageArgType  If this is an image, the argtype of this image 
+        /// @param  imageArgType  If this is an image, the argtype of this image
         /// @return true is the given argument is an image, false otherwise
         static bool isImage(const llvm::Argument* arg, const llvm::StringRef typeStr, ArgType& imageArgType);
         static bool isSampler(const llvm::Argument* arg, const llvm::StringRef typeStr);
@@ -309,7 +309,7 @@ namespace IGC
         ///         Must be declared after m_argType and m_allocateSize!
         ///         (Order of initialization)
         size_t                          m_align;
-        /// @brief  Indicates whether the argument is used in calculating the constant buffer length 
+        /// @brief  Indicates whether the argument is used in calculating the constant buffer length
         bool                            m_isConstantBuf;
         /// @brief  The LLVM argument that represents this kernel argument
         const llvm::Argument* m_arg;
@@ -350,7 +350,7 @@ namespace IGC
         static const std::map<KernelArg::ArgType, iOpenCL::DATA_PARAMETER_TOKEN> argTypeTokenMap;
     };
 
-    /// @brief  KernelArgsOrder class is used to define an order in which CISA variables are mapped to 
+    /// @brief  KernelArgsOrder class is used to define an order in which CISA variables are mapped to
     ///         a physical grf "payload" locations
 
     class KernelArgsOrder {
@@ -394,7 +394,7 @@ namespace IGC
         /// @param  type    One of the predefined grf layouts
         explicit KernelArgsOrder(InputType type);
 
-        /// @brief  Returns true if the first argument is considered to go before the second in the 
+        /// @brief  Returns true if the first argument is considered to go before the second in the
         //          strict weak ordering it defines, and false otherwise
         /// @param  lhs
         /// @param  rhs
@@ -462,7 +462,7 @@ namespace IGC
         /// @return A constant iterator to the end of the kernel arguments
         const_iterator end();
 
-        /// #brief Check if we need to insert dummy per-thread data for OpenCL 
+        /// #brief Check if we need to insert dummy per-thread data for OpenCL
         ///
         void checkForZeroPerThreadData();
 
@@ -487,7 +487,7 @@ namespace IGC
         /// @return The metadata node associated with F and index
         llvm::MDNode* getKernelMD(const llvm::Function& F, int index);
 
-        // Members 
+        // Members
     private:
         /// @brief  Order function which defines a payload layout being used
         KernelArgsOrder m_KernelArgsOrder;

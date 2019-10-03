@@ -78,7 +78,7 @@ RETVAL CGen8OpenCLProgramBase::GetProgramBinary(
     header.NumberOfKernels = m_KernelBinaries.size();
     header.SteppingId = m_Platform.usRevId;
     header.PatchListSize = int_cast<DWORD>(m_ProgramScopePatchStream->Size());
-    
+
     if (IGC_IS_FLAG_ENABLED(DumpOCLProgramInfo))
     {
         DebugProgramBinaryHeader(&header, m_StateProcessor.m_oclStateDebugMessagePrintOut);

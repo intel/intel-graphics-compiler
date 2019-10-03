@@ -43,7 +43,7 @@ GenISA_sampleDC,,
 ,anyfloat,coordinates ref
 ,1,coordinates u
 ,1,gradient du from dx
-,1,gradient du from dy 
+,1,gradient du from dy
 ,1,coordinates v
 ,1,gradient dv from dx
 ,1,gradient dv from dy
@@ -71,15 +71,15 @@ GenISA_simdMediaRegionCopy,,
 ,void,
 ,int,destination
 ,int,destination byte offset
-,int,destination hstride 
+,int,destination hstride
 ,int,destination num elements
 ,int,source
 ,int,source byte offset
-,int,source vertical stride 
+,int,source vertical stride
 ,int,source width
 ,int,source hstride
 ,int,type size (for dst and src)
-,int,execution size 
+,int,execution size
 ,int,source num elemtns
 GenISA_ibfe,,
 ,int,result
@@ -96,7 +96,7 @@ GenISA_PullSnappedBarys,,
 GenISA_storeraw_indexed,,
 ,void,
 ,anyptr,dst buffer
-,int,byte offset in buffer 
+,int,byte offset in buffer
 ,anyfloat,value to be stored
 ,int,required alignment
 GenISA_GetPixelMask,,get live pixel mask from dmask
@@ -148,7 +148,7 @@ GenISA_extractMVAndSAD,,
 ,void,result
 ,int,Min MV loaded into from result
 ,int,Min SAD loaded into from result
-,int,result from IME 
+,int,result from IME
 ,int,MB block type
 GenISA_imulH,,
 ,anyint,result
@@ -158,7 +158,7 @@ GenISA_HSURBPatchHeaderRead,,
 ,float8,result
 GenISA_ldui,,
 ,int4,result
-,int,coordinates x 
+,int,coordinates x
 ,int,coordinates y
 ,int,lod
 ,int,coordinates z
@@ -185,7 +185,7 @@ GenISA_ldmcsptr,,
 ,int,coordinates y
 ,int,coordinates z
 ,int,lod
-,anyptr,resource 
+,anyptr,resource
 ,int,immediate offset u
 ,int,immediate offset v
 ,int,immediate offset w
@@ -224,14 +224,14 @@ GenISA_sampleDCptr,,
 ,1,coordinates u
 ,1,gradient du from dx
 ,1,gradient du from dy
-,1,coordinates v 
+,1,coordinates v
 ,1,gradient dv from dx
 ,1,gradient dv from dy
 ,1,coordinates r
 ,1,gradient dr form dx
 ,1,gradient dr form dy
 ,1,coordinates ai
-,anyptr,resource 
+,anyptr,resource
 ,anyptr,sampler
 ,int,immediate offset u
 ,int,immediate offset v
@@ -239,7 +239,7 @@ GenISA_sampleDCptr,,
 GenISA_gather4PO,,
 ,anyvector,result
 ,anyfloat,coordinates u
-,1,coordinates v 
+,1,coordinates v
 ,int,coordinates offu
 ,int,coordinates offv
 ,1,coordinates r
@@ -252,7 +252,7 @@ GenISA_gather4PO,,
 GenISA_sample,,
 ,anyvector,result
 ,anyfloat,coordinates u
-,1,coordinates v 
+,1,coordinates v
 ,1,coordinates r
 ,1,coordinates ai
 ,1,minlod
@@ -264,7 +264,7 @@ GenISA_sample,,
 GenISA_sampleKillPix,,
 ,anyvector,result
 ,anyfloat,coordinates u
-,1,coordinates v 
+,1,coordinates v
 ,1,coordinates r
 ,int,texture index
 ,int,sampler
@@ -340,7 +340,7 @@ GenISA_sampleBptr,,
 ,int,immediate offset w
 GenISA_getMessagePhaseXV,,
 ,anyint,result
-,anyvector,message phases reference 
+,anyvector,message phases reference
 ,int,id of message phase
 ,int,id of DW of the message phase
 GenISA_EndPrimitive,,
@@ -356,7 +356,7 @@ GenISA_floatatomicstructured,,
 GenISA_ldraw_indexed,,
 ,float,result0
 ,anyptr,src buffer
-,int,byte offset in buffer 
+,int,byte offset in buffer
 GenISA_rsq,,
 ,anyfloat,result
 ,0,source
@@ -546,15 +546,15 @@ GenISA_sampleDptr,,
 ,anyfloat,coordinates u
 ,1,gradient du from dx
 ,1,gradient du from dy
-,1,coordinates v 
-,1,gradient dv from dx 
+,1,coordinates v
+,1,gradient dv from dx
 ,1,gradient dv from dy
 ,1,coordinates r
 ,1,gradient dr from dx
 ,1,gradient dr from dy
 ,1,coordinates ai
 ,1,minlod
-,anyptr,resource 
+,anyptr,resource
 ,anyptr,sampler
 ,int,immediate offset u
 ,int,immediate offset v
@@ -582,7 +582,7 @@ GenISA_sampleL,,
 ,anyvector,result
 ,anyfloat,lod
 ,1,coordinates u
-,1,coordinates v 
+,1,coordinates v
 ,1,coordinates r
 ,1,coordinates ai
 ,int,texture index
@@ -594,7 +594,7 @@ GenISA_sampleB,,
 ,anyvector,result
 ,anyfloat,bias
 ,1,coordinates u
-,1,coordinates v 
+,1,coordinates v
 ,1,coordinates r
 ,1,coordinates ai
 ,1,minlod
@@ -607,7 +607,7 @@ GenISA_sampleC,,
 ,anyvector,result
 ,anyfloat,coordinates ref
 ,1,coordinates u
-,1,coordinates v 
+,1,coordinates v
 ,1,coordinates r
 ,1,coordinates ai
 ,1,minlod
@@ -618,7 +618,7 @@ GenISA_sampleC,,
 ,int,immediate offset w
 GenISA_broadcastMessagePhaseV,,
 ,anyint,result
-,anyvector,message phases reference 
+,anyvector,message phases reference
 ,int,id of message phase
 ,int,id of DW of the message phase
 ,int,width
@@ -655,7 +655,7 @@ GenISA_intatomicraw,,
 GenISA_gather4ptr,,
 ,anyvector,result
 ,anyfloat,coordinates u
-,1,coordinates v 
+,1,coordinates v
 ,1,coordinates r
 ,1,coordinates ai
 ,anyptr,src buffer
@@ -700,7 +700,7 @@ GenISA_sampleBC,,
 ,anyfloat,coordinates ref
 ,1,coordinates bias
 ,1,coordinates u
-,1,coordinates v 
+,1,coordinates v
 ,1,coordinates r
 ,1,coordinates ai
 ,int,texture index
@@ -753,7 +753,7 @@ GenISA_gather4POC,,
 ,anyvector,result
 ,anyfloat,coordinates ref
 ,1,coordinates u
-,1,coordinates v 
+,1,coordinates v
 ,int,coordinates offu
 ,int,coordinates offv
 ,1,coordinates r
@@ -776,7 +776,7 @@ GenISA_PHASE_INPUT,,
 ,int,index
 GenISA_vmeSendSIC2,,
 ,int4,result
-,int4,header input 
+,int4,header input
 ,int,src image bti
 ,int,fwd ref image bti
 ,int,bwd ref image bti
@@ -816,7 +816,7 @@ GenISA_simdMediaBlockRead,,
 ,int,
 GenISA_vaBoolCentroid,,
 ,void,result
-,ptr_local,output buffer 
+,ptr_local,output buffer
 ,float2,coordinates
 ,int2,size
 ,int,src image bti
@@ -830,7 +830,7 @@ GenISA_uavSerializeOnResID,,
 GenISA_vaConvolve,,
 ,void,result
 ,ptr_local,output buffer
-,float2,coordinates 
+,float2,coordinates
 ,int,src image bti
 ,int,sampler (accelerator) id
 GenISA_intatomictyped,,
@@ -843,7 +843,7 @@ GenISA_intatomictyped,,
 ,int,"Instruction type (add, or, xor etc)"
 GenISA_MediaBlockWrite,,
 ,void,
-,int,image id 
+,int,image id
 ,int,x offset
 ,int,y offset
 ,int,isUAV
@@ -864,7 +864,7 @@ GenISA_sampleLC,,
 ,anyfloat,coordinates ref
 ,1,coordinates lod
 ,1,coordinates u
-,1,coordinates v 
+,1,coordinates v
 ,1,coordinates r
 ,1,coordinates ai
 ,int,texture index
@@ -881,7 +881,7 @@ TODO: anyint should be changed to anytype when support has been backported from 
 GenISA_gather4,,
 ,anyvector,result
 ,anyfloat,coordinates u
-,1,coordinates v 
+,1,coordinates v
 ,1,coordinates r
 ,1,coordinates ai
 ,int,texture index
@@ -908,7 +908,7 @@ GenISA_storestructured4,,
 ,void,
 ,anyptr,dst buffer
 ,int,array index
-,int,byte offset in structure 
+,int,byte offset in structure
 ,float,src0 value to be stored
 ,float,src1 value to be stored
 ,float,src2 value to be stored
@@ -917,7 +917,7 @@ GenISA_storestructured3,,
 ,void,
 ,anyptr,dst buffer
 ,int,array index
-,int,byte offset in structure 
+,int,byte offset in structure
 ,float,src0 value to be stored
 ,float,src1 value to be stored
 ,float,src2 value to be stored
@@ -925,14 +925,14 @@ GenISA_storestructured2,,
 ,void,
 ,anyptr,dst buffer
 ,int,array index
-,int,byte offset in structure 
+,int,byte offset in structure
 ,float,src0 value to be stored
 ,float,src1 value to be stored
 GenISA_storestructured1,,
 ,void,
 ,anyptr,dst buffer
 ,int,array index
-,int,byte offset in structure 
+,int,byte offset in structure
 ,float,src0 value to be stored
 GenISA_PixelPositionX,,
 ,short,
@@ -1010,7 +1010,7 @@ GenISA_pair_to_ptr,,
 GenISA_lod,,
 ,anyvector,result
 ,anyfloat,coordinates u
-,1,coordinates v 
+,1,coordinates v
 ,1,coordinates r
 ,1,coordinates ai
 ,int,texture index
@@ -1035,7 +1035,7 @@ GenISA_gather4C,,
 ,anyvector,result
 ,anyfloat,coordinates ref
 ,1,coordinates u
-,1,coordinates v 
+,1,coordinates v
 ,1,coordinates r
 ,1,coordinates ai
 ,int,texture index
@@ -1085,7 +1085,7 @@ GenISA_vmeSendSIC,,
 ,void,result
 ,int,ouput buffer
 ,int,universal header input
-,int,sic header input 
+,int,sic header input
 ,int,src image bti
 ,int,ref0 image bti
 ,int,ref1 image bti
@@ -1113,7 +1113,7 @@ GenISA_sampleLCptr,,
 ,anyfloat,coordinates ref
 ,1,coordinates lod
 ,1,coordinates u
-,1,coordinates v 
+,1,coordinates v
 ,1,coordinates r
 ,1,coordinates ai
 ,anyptr,resource
@@ -1149,7 +1149,7 @@ GenISA_bfi,,
 ,int,src3
 GenISA_vaCentroid,,
 ,void,result
-,ptr_local,output buffer 
+,ptr_local,output buffer
 ,float2,coordinates
 ,int2,size
 ,int,src image bti
@@ -1158,7 +1158,7 @@ GenISA_cmpxchgatomicstructured,,
 ,int,
 ,anyptr,Dst Buffer
 ,int,array index
-,int,byte offset in structure 
+,int,byte offset in structure
 ,int,src0
 ,int,src1
 GenISA_MediaBlockRead,,
@@ -1219,13 +1219,13 @@ GenISA_icmpxchgatomictyped,,
 ,anyint,
 ,anyptr,Dst Buffer
 ,int,coordinates u
-,int,coordinates v 
+,int,coordinates v
 ,int,coordinates r
 ,0,src0
 ,0,src1
 GenISA_vmeSendIME,,
 ,void,result
-,int,output buffer 
+,int,output buffer
 ,int,universal header input
 ,int,ime header input
 ,int,src image bti
@@ -1285,7 +1285,7 @@ GenISA_GradientXfine,,
 GenISA_lodptr,,
 ,anyvector,result
 ,anyfloat,coordinates u
-,1,coordinates v 
+,1,coordinates v
 ,1,coordinates r
 ,1,coordinates ai
 ,anyptr,resource
@@ -1307,7 +1307,7 @@ GenISA_fcmpxchgatomicstructured,,
 ,float,
 ,anyptr,Dst Buffer
 ,int,array index
-,int,byte offset in structure 
+,int,byte offset in structure
 ,float,src0
 ,float,src1
 GenISA_RenderTargetRead,,
@@ -1372,7 +1372,7 @@ GenISA_gather4Cptr,,
 ,anyvector,result
 ,anyfloat,coordinates ref
 ,1,coordinates u
-,1,coordinates v 
+,1,coordinates v
 ,1,coordinates r
 ,1,coordinates ai
 ,anyptr,src buffer
@@ -1403,7 +1403,7 @@ GenISA_dwordatomicstructured,,
 ,int,
 ,anyptr,Dst Buffer
 ,int,array index
-,int,byte offset in structure 
+,int,byte offset in structure
 ,int,src0
 ,int,"Instruction type (add, or, xor etc)"
 GenISA_DCL_DSPatchConstInputVec,,
@@ -1414,7 +1414,7 @@ GenISA_sampleBCptr,,
 ,anyfloat,coordinates ref
 ,1,coordinates bias
 ,1,coordinates u
-,1,coordinates v 
+,1,coordinates v
 ,1,coordinates r
 ,1,coordinates ai
 ,anyptr,src buffer
@@ -1427,7 +1427,7 @@ GenISA_createMessagePhasesV,,
 ,int,num message phases to allocate and initialize with 0
 GenISA_vaBoolSum,,
 ,void,result
-,ptr_local,output buffer 
+,ptr_local,output buffer
 ,float2,coordinates
 ,int2,size
 ,int,src image bti
@@ -1436,7 +1436,7 @@ GenISA_sampleLptr,,
 ,anyvector,result
 ,anyfloat,lod
 ,1,coordinates u
-,1,coordinates v 
+,1,coordinates v
 ,1,coordinates r
 ,1,coordinates ai
 ,anyptr,resource
@@ -1449,7 +1449,7 @@ GenISA_simdBlockReadGlobal,,
 ,anyptr,
 GenISA_broadcastMessagePhase,,
 ,anyint,result
-,int,message phases reference 
+,int,message phases reference
 ,int,id of message phase
 ,int,id of DW of the message phase
 ,int,width
@@ -1459,7 +1459,7 @@ GenISA_simdShuffle,,
 ,int,channel
 GenISA_vmeSendFBR,,
 ,void,result
-,int,output buffer 
+,int,output buffer
 ,int,universal header input
 ,int,fbr header input
 ,int,src image bti
@@ -1488,14 +1488,14 @@ GenISA_GsCutControlHeader,,
 ,int,emitCount
 GenISA_getMessagePhaseX,,
 ,anyint,result
-,int,message phases reference 
+,int,message phases reference
 ,int,id of message phase
 ,int,id of DW of the message phase
 GenISA_typedread,,
 ,float4,Return type
 ,anyptr,Src Buffer
 ,int,coordinates u
-,int,coordinates v 
+,int,coordinates v
 ,int,coordinates r
 ,int,LOD
 GenISA_ldui_ptr,,

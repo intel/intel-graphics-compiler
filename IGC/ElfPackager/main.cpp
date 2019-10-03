@@ -116,7 +116,7 @@ std::unique_ptr<IGCLLVM::Module> LocalCloneModule(
     New->setTargetTriple("");
     New->setModuleInlineAsm(M->getModuleInlineAsm());
 
-    
+
     auto mapGlobal = [&](const GlobalVariable *I)
     {
         if (VMap.find(&*I) == VMap.end())
@@ -137,7 +137,7 @@ std::unique_ptr<IGCLLVM::Module> LocalCloneModule(
         }
     };
 
-    auto mapFunction = [&](const Function *I) 
+    auto mapFunction = [&](const Function *I)
     {
 
         Function *NF = cast<Function>(New.get()->getOrInsertFunction(
@@ -149,7 +149,7 @@ std::unique_ptr<IGCLLVM::Module> LocalCloneModule(
 
         VMap[&*I] = NF;
         Function *F = cast<Function>(VMap[&*I]);
-        
+
         for (auto UI = I->begin(), UE = I->end(); UI != UE; ++UI)
         {
             auto BB = &*UI;
@@ -201,7 +201,7 @@ std::unique_ptr<IGCLLVM::Module> LocalCloneModule(
     };
 
 
-    
+
     for (auto iterator : ExtractValues)
     {
         if (auto func = dyn_cast<Function>(iterator))
@@ -212,7 +212,7 @@ std::unique_ptr<IGCLLVM::Module> LocalCloneModule(
         {
             mapGlobal(global);
         }
-        else 
+        else
         {
             continue;
         }
@@ -229,7 +229,7 @@ std::unique_ptr<IGCLLVM::Module> LocalCloneModule(
 
     return New;
 }
-    
+
 int main(int argc, char *argv[])
 {
     LLVMContext Context;
@@ -329,7 +329,7 @@ int main(int argc, char *argv[])
             }
         };
 
-        for (auto Users : iterator3.users()) 
+        for (auto Users : iterator3.users())
         {
             findUsers(Users);
         }
@@ -337,7 +337,7 @@ int main(int argc, char *argv[])
     }
 
     Map["other"] = NotFound;
-        
+
     //At this point we have the bins and the functions that go inside each bin
 
     std::map<std::string, std::string> ElfMap;
@@ -365,7 +365,7 @@ int main(int argc, char *argv[])
         ElfMap[map_iterator.first] = OS.str().str();
     }
 
-    for (auto map_iterator : Map) 
+    for (auto map_iterator : Map)
     {
         std::vector<GlobalValue*> ExtractValue = map_iterator.second;
         for (size_t i = 0, e = ExtractValue.size(); i != e; ++i)
@@ -392,7 +392,7 @@ int main(int argc, char *argv[])
         #else
             sizetPath = InputBCFilename.substr(0, InputBCFilename.find_last_of("/"));
         #endif
-        
+
         std::unique_ptr<Module> M_sizet_32 =
             getLazyIRFileModule(sizetPath + "//IGCsize_t_32.bc", Err, Context, true);
         if (!M_sizet_32) {
@@ -407,7 +407,7 @@ int main(int argc, char *argv[])
 
         SmallVector<char, 0> headerVector_sizet_32;
         SmallVector<char, 0> headerVector_sizet_64;
-            
+
         for (auto &iterator1 : M_sizet_32->getFunctionList())
         {
             auto Func = iterator1.getName();
@@ -433,7 +433,7 @@ int main(int argc, char *argv[])
         {
             Err.print("Unable to Parse bitcode", errs());
         }
-        
+
         legacy::PassManager Passes1;
         SmallVector<char, 0> Buffer_sizet32;
         raw_svector_ostream OS_sizet32(Buffer_sizet32);
@@ -445,20 +445,20 @@ int main(int argc, char *argv[])
         raw_svector_ostream OS_sizet64(Buffer_sizet64);
         Passes2.add(createBitcodeWriterPass(OS_sizet64, true));
         Passes2.run(*M_sizet_64.get());
-        
+
         //Inserting the header files for size_t and the .bc files for size_t
         CreateElfSection(pWriter,
             sectionNode,
             "Header_sizet_32",
             const_cast<char*>(OS_sizet_32.str().data()),
             OS_sizet_32.str().size());
-        
+
         CreateElfSection(pWriter,
             sectionNode,
             "Header_sizet_64",
             const_cast<char*>(OS_sizet_64.str().data()),
             OS_sizet_64.str().size());
-        
+
         CreateElfSection(pWriter,
             sectionNode,
             "IGCsize_t_32",
@@ -471,9 +471,9 @@ int main(int argc, char *argv[])
             const_cast<char*>(OS_sizet64.str().data()),
             OS_sizet64.str().size());
     }
-    
+
     //Now to add all of the sections in the file
-    for (auto elf_iterator : ElfMap) 
+    for (auto elf_iterator : ElfMap)
     {
         CreateElfSection(pWriter,
             sectionNode,
@@ -503,7 +503,7 @@ int main(int argc, char *argv[])
     }
     ofs.close();
     CLElfLib::CElfWriter::Delete(pWriter);
-    
+
   return 0;
 }
 

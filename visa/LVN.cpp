@@ -220,7 +220,7 @@ bool LVN::canReplaceUses(INST_LIST_ITER inst_it, UseList& uses, G4_INST* lvnInst
             canReplace = false;
             break;
         }
-        
+
         if (bb->isInSimdFlow())
         {
             auto defCoversUseEmask = defInst->getMaskOffset() <= useInst->getMaskOffset() &&
@@ -322,7 +322,7 @@ bool LVN::canReplaceUses(INST_LIST_ITER inst_it, UseList& uses, G4_INST* lvnInst
             {
                 //
                 // negate's meaning can change based on type
-                // 
+                //
                 canReplace = false;
                 break;
             }
@@ -546,7 +546,7 @@ void LVN::replaceAllUses(G4_INST* defInst, bool negate, UseList& uses, G4_INST* 
             int offset = regOff * GENX_GRF_REG_SIZ + subRegOff * getTypeSize(lvnInst->getDst()->getType()) + offsetFromOrigDst;
             short newRegOff = offset / GENX_GRF_REG_SIZ;
             short newSubRegOff = (offset % GENX_GRF_REG_SIZ) / typeSize;
-           
+
             srcRgn = builder.createSrcRegRegion(srcMod, Direct, lvnInst->getDst()->getBase()->asRegVar(),
                 newRegOff, newSubRegOff, srcToReplace->getRegion(), srcToReplace->getType());
         }
@@ -1880,9 +1880,9 @@ void LVN::doLVN()
             if (lvnItem)
             {
                 // ToDo: can we move this to a separate pass or at least not nested with rest of LVN?
-                // it'll make the code easier to read. 
+                // it'll make the code easier to read.
                 // Also don't we have other passes (cleanMessageHeader, cleanupBindless) doing
-                // essentially the same thing? 
+                // essentially the same thing?
                 bool removeInst = isRedundantMovToSelf(lvnItem, inst);
 
                 if (removeInst)

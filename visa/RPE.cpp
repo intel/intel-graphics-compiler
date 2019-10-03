@@ -95,20 +95,20 @@ namespace vISA
                 }
                 else if ((LLR = gra.getLocalLR(topdcl)) && LLR->getAssigned())
                 {
-                    uint32_t firstRefIdx; 
-                    if (LLR->getFirstRef(firstRefIdx) == inst || 
+                    uint32_t firstRefIdx;
+                    if (LLR->getFirstRef(firstRefIdx) == inst ||
                         liveAnalysis->writeWholeRegion(bb, inst, dst, options))
                     {
                         updateLivenessForLLR(LLR, false);
                     }
                 }
             }
-            
+
             for (unsigned int i = 0; i < G4_MAX_SRCS; i++)
             {
                 auto src = inst->getSrc(i);
                 G4_RegVar* regVar = nullptr;
-                
+
                 if (!src)
                     continue;
 
@@ -156,7 +156,7 @@ namespace vISA
         live.clear();
         live = liveAnalysis->use_out[bb->getId()];
         live &= liveAnalysis->def_out[bb->getId()];
-    
+
         // Iterate over all live variables and add up numRows required
         // for each. For scalar variables, add them up separately.
         regPressure = 0;
@@ -194,7 +194,7 @@ namespace vISA
         auto change = before^after;
         if (change)
         {
-            double delta = vars[id]->getDeclare()->getByteSize() < 32 ? 
+            double delta = vars[id]->getDeclare()->getByteSize() < 32 ?
                 vars[id]->getDeclare()->getByteSize() / 32.0 : (double) vars[id]->getDeclare()->getNumRows();
             if (before & change)
             {

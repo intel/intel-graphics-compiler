@@ -32,7 +32,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     #include "../ExternalLibraries/libclc/doubles.cl"
 
 #endif // defined(cl_khr_fp64)
-        
+
 float __builtin_spirv_OpenCL_exp_f32(float x)
 {
     if (__FastRelaxedMath)

@@ -52,7 +52,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
   if( ( (Semantics) & ( SEMANTICS_PRE_OP_NEED_FENCE ) ) > 0 )                     \
   {                                                                               \
       __builtin_spirv_OpMemoryBarrier_i32_i32( (Scope), (Semantics) );            \
-  }                                                                               
+  }
 
 #define FENCE_POST_OP(Scope, Semantics) \
   if( ( (Semantics) & ( SEMANTICS_POST_OP_NEEDS_FENCE ) ) > 0 )                   \
@@ -61,12 +61,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
   }
 
 // This fencing scheme allows us to obey the memory model when coherency is
-// enabled or disabled.  Because the L3$ has 2 pipelines (cohereny&atomics and 
+// enabled or disabled.  Because the L3$ has 2 pipelines (cohereny&atomics and
 // non-coherant) the fences guarentee the memory model is followed when coherency
-// is disabled.  
+// is disabled.
 //
 // When coherency is enabled, though, all HDC traffic uses the same L3$ pipe so
-// these fences would not be needed.  The compiler is agnostic to coherency 
+// these fences would not be needed.  The compiler is agnostic to coherency
 // being enabled or disbled so we asume the worst case.
 
 
@@ -111,7 +111,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 }
 
 
-// Atomic loads/stores must be implemented with an atomic operation - While our HDC has an in-order 
+// Atomic loads/stores must be implemented with an atomic operation - While our HDC has an in-order
 // pipeline the L3$ has 2 pipelines - coherant and non-coherant.  Even when coherency is disabled atomics
 // will still go down the coherant pipeline.  The 2 L3$ pipes do not guarentee order of operations between
 // themselves.
@@ -1001,7 +1001,7 @@ ulong __builtin_spirv_OpAtomicISub_p3i64_i32_i32_i64( volatile __local ulong *Po
     *Pointer -= Value;
     SPINLOCK_END
     FENCE_POST_OP(Scope, Semantics)
-    return orig;    
+    return orig;
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
@@ -1241,7 +1241,7 @@ long __builtin_spirv_OpAtomicSMax_p3i64_i32_i32_i64( volatile __local ulong *Poi
     *Pointer = ( orig > Value ) ? orig : Value;
     SPINLOCK_END
     FENCE_POST_OP(Scope, Semantics)
-    return orig;    
+    return orig;
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)

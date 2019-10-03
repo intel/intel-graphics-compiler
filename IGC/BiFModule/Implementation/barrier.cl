@@ -77,7 +77,7 @@ void __builtin_spirv_OpMemoryBarrier_i32_i32(Scope_t Memory, uint Semantics)
 }
 
 
-// Named Barrier 
+// Named Barrier
 
 void __intel_getInitializedNamedBarrierArray(local uint* id)
 {
@@ -95,7 +95,7 @@ local __namedBarrier* __builtin_spirv_OpNamedBarrierInitialize_i32_p3__namedBarr
     NB->inc = 0;
     __builtin_spirv_OpControlBarrier_i32_i32_i32( Workgroup, 0, SequentiallyConsistent | WorkgroupMemory );
     if (__intel_is_first_work_group_item())
-    {        
+    {
         (*id)++;
     }
     __builtin_spirv_OpControlBarrier_i32_i32_i32( Workgroup, 0, SequentiallyConsistent | WorkgroupMemory );
@@ -182,12 +182,12 @@ void __builtin_spirv_OpMemoryNamedBarrier_p3__namedBarrier_i32_i32(local __named
 
     while(AtomicLoad(&NB->count, Workgroup, AtomSema) > 0);
     MemoryBarrier(Memory, Semantics);
-    uint inc = SubgroupAtomicInc(&NB->inc, Workgroup, AtomSema); 
+    uint inc = SubgroupAtomicInc(&NB->inc, Workgroup, AtomSema);
     if(inc == ((NB->orig_count) - 1))
     {
         AtomicStore(&NB->inc, Workgroup, AtomSema, 0);
         AtomicStore(&NB->count, Workgroup, AtomSema, NB->orig_count);
-    }    
+    }
 }
 
 

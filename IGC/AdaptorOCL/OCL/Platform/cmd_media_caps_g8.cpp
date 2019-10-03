@@ -81,7 +81,7 @@ const SMediaHardwareCapabilities g_cGen8HwCaps_GT4 =
         1,                      // Min
         63                      // Max
     },
-    31,                         // MaxURBPayloadStartRegister 
+    31,                         // MaxURBPayloadStartRegister
     {                           // URBEntriesSize
         4,                      // Min
         256                     // Max
@@ -92,51 +92,51 @@ const SMediaHardwareCapabilities g_cGen8HwCaps_GT4 =
     0,                          // URBAllocationGranularitySize ( Used for L3 Allocation Gen7 )
     64 * sizeof(BYTE),          // L2CacheLineSize
     128 * sizeof(BYTE),         // InstructionCachePrefetchSize
-    32 * sizeof(BYTE),          // SurfaceStatePointerAlignSize 
-    32 * sizeof(BYTE),          // BindingTableStatePointerAlignSize 
-    32 * sizeof(BYTE),          // SamplerStatePointerAlignSize 
-    64 * sizeof(BYTE),          // KernelPointerAlignSize 
-     1 * sizeof(KILOBYTE),      // ScratchPointerAlignSize 
+    32 * sizeof(BYTE),          // SurfaceStatePointerAlignSize
+    32 * sizeof(BYTE),          // BindingTableStatePointerAlignSize
+    32 * sizeof(BYTE),          // SamplerStatePointerAlignSize
+    64 * sizeof(BYTE),          // KernelPointerAlignSize
+     1 * sizeof(KILOBYTE),      // ScratchPointerAlignSize
     64 * sizeof(BYTE),          // DefaultColorPointerAlignSize
     32 * sizeof(BYTE),          // ConstantBufferPointerAlignSize
     64 * sizeof(BYTE),          // InterfaceDescriptorDataAlignSize
-    4 * sizeof(KILOBYTE),       // GeneralStateBaseAddressAlignSize 
+    4 * sizeof(KILOBYTE),       // GeneralStateBaseAddressAlignSize
     4 * sizeof(KILOBYTE),       // SurfaceStateBaseAddressAlignSize
     4 * sizeof(KILOBYTE),       // DynamicStateBaseAddressAlignSize
     4 * sizeof(KILOBYTE),       // IndirectObjectBaseAddressAlignSize
     4 * sizeof(KILOBYTE),       // InstructionBaseAddressAlignSize
-    16 * sizeof(BYTE),          // SIPPointerAlignSize 
+    16 * sizeof(BYTE),          // SIPPointerAlignSize
     {                           // KernelHardwareCapabilities
         8,                          // NumUserClipPlanes
 
-        7 * 128,                    // NumHardwareGRFRegisters 
+        7 * 128,                    // NumHardwareGRFRegisters
         128,                        // NumSoftwareGRFRegisters
-        //GT has fixed 128 GRFs per thread, and the allocation granularity 
+        //GT has fixed 128 GRFs per thread, and the allocation granularity
         //should also be 128 instead of 16.
         128,                        // NumGRFRegistersPerBlock
         0,                          // NumMRFRegisters; // MRF registers not used since gen7
         2,                          // NumFlagRegisters
 
         3,                          // URBRowsPerSetupWrite
-       
+
         71,                         // EUCount;
         {                           // EUCountPerSubSlice
-            7,                          // Min 
-            8                           // Max 
+            7,                          // Min
+            8                           // Max
         },
         9,                          // SubSliceCount
         0,                          // EUIDCount; // Not used on gen8
 
-        7,                          // EUThreadsPerEU 
-        0,                          // EUReservedGrfRegister    
-        4,                          // EUReservedGrfSubRegister 
+        7,                          // EUThreadsPerEU
+        0,                          // EUReservedGrfRegister
+        4,                          // EUReservedGrfSubRegister
         0,                          // EUGrfMrfRegisterSizeInBytes; // Not used on gen8
         0x01000000,                 // EUIStackUnderflowException
         0x02000000,                 // EUIStackOverflowException
         0x04000000,                 // EULStackUnderflowException
         0x08000000,                 // EULStackOverflowException
         0x10000000,                 // EUIllegalOpcodeException
-      
+
         0x20000000,                 // EUSoftwareExceptionControl
         14,                         // EUMaxSoftwareStackValue
         15,                         // EUMaxHardwareStackValue
@@ -152,14 +152,14 @@ const SMediaHardwareCapabilities g_cGen8HwCaps_GT4 =
             -32768,                     // Min
             32767                       // Max
         },
-        {                           // MediaScratchSpacePerThread 
+        {                           // MediaScratchSpacePerThread
             sizeof(KILOBYTE),           // Min
             2 * sizeof(MEGABYTE)        // Max
         },
         48 * sizeof(KILOBYTE),      // InstructionCacheSize
         16 * sizeof(KILOBYTE),      // RenderCacheSize
         64 * sizeof(BYTE),          // KernelPointerAlignSize
-        252,                        // MaxAssignableBindingTableIndex;    
+        252,                        // MaxAssignableBindingTableIndex;
         255,                        // StatelessModelBindingTableIndex;
         true,                       // HasSharedLocalMemory
         254,                        // SharedLocalMemoryBindingTableIndex
@@ -188,7 +188,7 @@ const SMediaHardwareCapabilities g_cGen8HwCaps_GT4 =
 
 void InitializeCapsGen8(
     SMediaHardwareCapabilities* pCaps )
-{   
+{
     memcpy_s(
         pCaps,
         sizeof(SMediaHardwareCapabilities),

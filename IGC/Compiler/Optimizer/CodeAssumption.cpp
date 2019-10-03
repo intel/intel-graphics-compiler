@@ -331,7 +331,7 @@ bool CodeAssumption::IsSGIdUniform(MetaDataUtils* pMDU, ModuleMetaData* modMD, F
 
     // WO (Walk Order): it is a triple (d0, d1, d2), where each d0/d1/d2 are 0|1|2.
     // This WO indicates that the work-items are dispatched along d0 first, then d1,
-    // at last d2. For example, given work group size (8, 2, 1). With WO(0,1,2), 
+    // at last d2. For example, given work group size (8, 2, 1). With WO(0,1,2),
     // the work-items are dispatched in the linear order like the following:
     // (note that each triple is local id triple, assuming SIMD8)
     //   1st thread of simd8: (0, 0, 0) (1, 0, 0), (2, 0, 0), ......, (7, 0, 0)

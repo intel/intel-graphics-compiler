@@ -90,15 +90,15 @@ namespace {
         /// with corresponding URBWrite instructions.
         void LowerControlHeader(llvm::Instruction* pInst);
 
-        /// Adds URBWrite instruction that writes up to eight 'data' dwords at given 'offset' 
-        /// that have corresponding bits in 'mask' set to one. 
+        /// Adds URBWrite instruction that writes up to eight 'data' dwords at given 'offset'
+        /// that have corresponding bits in 'mask' set to one.
         void AddURBWrite(
             llvm::Value* offset,
             unsigned int mask,
             llvm::Value* data[8],
             llvm::Instruction* prev);
 
-        /// Creates URBRead instruction that reads data with from 'attribIndex' attribute of 
+        /// Creates URBRead instruction that reads data with from 'attribIndex' attribute of
         /// vertex given by 'vertexIndex'. It corresponds to GSinputVec instruction given in 'inst'.
         void AddURBRead(
             llvm::Value* vertexIndex,
@@ -153,10 +153,10 @@ namespace {
         CollectGeometryShaderProperties* m_gsProps;
     };
 
-} // end of unnamed namespace 
+} // end of unnamed namespace
 
 
-/// Constructor 
+/// Constructor
 GeometryShaderLowering::GeometryShaderLowering()
     : FunctionPass(ID)
     , m_pModule(nullptr)
@@ -228,8 +228,8 @@ bool GeometryShaderLowering::runOnFunction(llvm::Function& function)
         } // for
     } // for
 
-    // need to add instructions clearing vertex headers 
-    // TODO: looks like this could be done more efficiently 
+    // need to add instructions clearing vertex headers
+    // TODO: looks like this could be done more efficiently
     if (pCtx->m_DriverInfo.NeedClearVertexHeader())
     {
         AddVertexURBHeaders(function, offsetInst);
@@ -279,7 +279,7 @@ Value* GeometryShaderLowering::GetAttributeOffsetWithinVertex(
     else
     {
         // attribute index is a runtime value
-        // need to issue addition instruction 
+        // need to issue addition instruction
         Value* pInVertexHeaderSize = builder.getInt32(inputVertexHeaderSize.Count());
         return builder.CreateAdd(pAtrIdx, pInVertexHeaderSize);
     }
@@ -388,7 +388,7 @@ void GeometryShaderLowering::lowerOutputGS(
             offsetVal = ConstantInt::get(Type::getInt32Ty(m_pModule->getContext()), offset.Count());
 
             //For URB padding to 32 byte offset
-            //Being conservative and doing it only when vertex index 
+            //Being conservative and doing it only when vertex index
             //and attribute index are immediates
             offsetInst[offset.Count()] = inst;
             immediateAccess = true;
@@ -414,7 +414,7 @@ void GeometryShaderLowering::lowerOutputGS(
         }
         else
         {
-            // Attribute index is a runtime value. 
+            // Attribute index is a runtime value.
             // Vertex index may be static or runtime value.
 
             // Attribute index is a runtime value due to output indexing via register.
@@ -453,8 +453,8 @@ void GeometryShaderLowering::lowerOutputGS(
     m_instructionToRemove.push_back(inst);
 }
 
-/// Inserts new URBWrite instruction with given mask and arguments before 
-/// instruction 'prev'. 
+/// Inserts new URBWrite instruction with given mask and arguments before
+/// instruction 'prev'.
 /// TODO: This should be a common function for all Lowering passes.
 void GeometryShaderLowering::AddURBWrite(
     llvm::Value* offset,
@@ -484,9 +484,9 @@ void GeometryShaderLowering::AddURBRead(
     llvm::Value* attribOffset,
     llvm::Instruction* inst)
 {
-    // TODO: This method should be a common method for all geometric stages 
+    // TODO: This method should be a common method for all geometric stages
     // TODO: implemented in a common parent class!
-    // TODO: Merge VertexShaderLowering::AddURBRead, HullShaderLowering::AddURBRead, 
+    // TODO: Merge VertexShaderLowering::AddURBRead, HullShaderLowering::AddURBRead,
     // TODO: DomainShaderLowering::AddURBRead and this into one method.
 
     Value* arguments[] = { vertexIndex, attribOffset };
@@ -550,7 +550,7 @@ QuadEltUnit GeometryShaderLowering::GetURBReadOffset(SGVUsage usage)
     case POINT_WIDTH:
         return QuadEltUnit(0);
 
-        // Explicit fall-through for all POSITION_X/Y/Z/W cases. 
+        // Explicit fall-through for all POSITION_X/Y/Z/W cases.
         // All these 4 will be read from the same QuadElement offset.
     case POSITION_X:
     case POSITION_Y:
@@ -650,11 +650,11 @@ void GeometryShaderLowering::SetMaskAndData(
     /// +------------+
     /// |  reserved  |  <--offset = 0
     /// +------------+
-    /// |  RTAI      |  <--offset = 1 
+    /// |  RTAI      |  <--offset = 1
     /// +------------+
-    /// |  VAI       |  <--offset = 2 
+    /// |  VAI       |  <--offset = 2
     /// +------------+
-    /// | POINTWIDTH |  <--offset = 3 
+    /// | POINTWIDTH |  <--offset = 3
     /// +------------+
 
     const ShaderOutputType usage = static_cast<ShaderOutputType>(
@@ -692,7 +692,7 @@ void GeometryShaderLowering::LowerControlHeader(llvm::Instruction* inst)
     const int emitCountPos = inst->getNumOperands() - 2;
     auto pConstVertexIndex = llvm::dyn_cast<ConstantInt>(inst->getOperand(emitCountPos));
     QuadEltUnit offset(0); /// offsets in URB are counted in 4 dwords
-    // Add write to vertex count field for non-static number of output vertices 
+    // Add write to vertex count field for non-static number of output vertices
     IRBuilder<> irb(inst);
     Value* undef = llvm::UndefValue::get(Type::getFloatTy(m_pModule->getContext()));
     if (pConstVertexIndex == nullptr)
@@ -732,7 +732,7 @@ void GeometryShaderLowering::LowerControlHeader(llvm::Instruction* inst)
         {
             llvm::Value* data[maxWriteSize];
 
-            // TODO: for the last write, the size can be smaller in static case 
+            // TODO: for the last write, the size can be smaller in static case
             // depending on the number of vertices.
             const uint writeSize = maxWriteSize;
 

@@ -42,5 +42,5 @@ define i32 @foo(i32 %dim, <8 x i32> %r0, <8 x i32> %payloadHeader) nounwind {
 !5 = !{i32 1}
 
 ; CHECK:         %globalOffset = extractelement <8 x i32> %payloadHeader, i32 %dim
-    
+
 ; CHECK-NOT:     call i32 @__builtin_IB_get_global_offset(i32 0)

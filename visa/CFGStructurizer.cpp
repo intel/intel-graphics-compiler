@@ -189,7 +189,7 @@ namespace {
         //     label0:                        label_new:
         //                                      endif (join)
         //                                    label0:
-        //    
+        //
         bool isJmpiTarget;
 
         explicit ANodeBB() : ANode(AN_BB), bb(nullptr), type(ANODEBB_NORMAL), isJmpiTarget(false) {}
@@ -908,7 +908,7 @@ ANode *ANode::getChildANode(ANode *parent)
 //          goto L
 //     to
 //           goto L0
-//       L0: 
+//       L0:
 //       L1:
 //           goto L1
 void CFGStructurizer::preProcess()
@@ -1264,7 +1264,7 @@ bool CFGStructurizer::getCGBegin(G4_BB *bb, CGList &cgs)
 
     // If bb's goto is backward to a BB prior to bb, this bb cannot
     // be a loop candidate.  For example,
-    // 
+    //
     //       B0:
     //          ......
     //       bb: ..
@@ -1477,7 +1477,7 @@ void CFGStructurizer::extendNode(ANode *Node, ControlGraph *CG)
         exit = end;
         end = begin;
     }
-        
+
     getNewRange(end, exit, Node->getEndBB(), Node->getExitBB());
     Node->setEndBB(end);
     Node->setExitBB(exit);
@@ -2477,7 +2477,7 @@ void CFGStructurizer::reConstructDoWhileforBreak(ANodeHG *whileNode)
 //   All the nodes in the final ACFG is the actually top-level nodes of the PST.
 //   (In another word, ACFG will always refect the control flow among the
 //    outmost parent nodes of all ANodeBBs.)
-//   
+//
 //   ACFG's control-flow edges : represented by ANode's preds & succs.
 //
 //   Note that ACFG edges within any ANodeHG via preds & succs should be still
@@ -2558,7 +2558,7 @@ void CFGStructurizer::constructPST(BB_LIST_ITER IB, BB_LIST_ITER IE)
 
             // For backward cg, we will only create ANodeHG if the backward cg
             // is a loop candidate. If it is not candidate, extend the current
-            // node with this cg. 
+            // node with this cg.
             for (uint32_t i = (uint32_t) cgs.size() - 1; i > 0; --i)
             {
                 // This must be non-innermost backward goto, don't add ndbb to

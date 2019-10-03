@@ -41,19 +41,19 @@ public:
 
     bool Write( const BinaryStream& in );
 
-    template< class T > 
+    template< class T >
     bool Write( const T& in );
 
     bool WriteAt( const char* s, std::streamsize n, std::streamsize loc );
 
-    template< class T > 
+    template< class T >
     bool WriteAt( const T& in, std::streamsize loc ) { return WriteAt( (const char*)&in, sizeof(T), loc ); }
 
     bool Align( std::streamsize alignment );
     bool AddPadding( std::streamsize padding );
 
     const char* GetLinearPointer();
-    
+
     std::streamsize Size() const;
     std::streamsize Size();
 
@@ -66,7 +66,7 @@ private:
 template< class T >
 bool BinaryStream::Write(const T& in )
 {
-    return Write( (const char*)&in, sizeof(T) ); 
+    return Write( (const char*)&in, sizeof(T) );
 }
 
 }

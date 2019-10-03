@@ -97,7 +97,7 @@ typedef struct
 }
 sPow_Table_Type;
 
-__constant sPow_Table_Type __ocl_svml_spow_data = 
+__constant sPow_Table_Type __ocl_svml_spow_data =
 {
 
     (VUINT32) (0xFFFFF000u),
@@ -338,7 +338,7 @@ __constant sPow_Table_Type __ocl_svml_spow_data =
 
 };
 
-__constant VUINT32 _vmlsPowHATab[380] = 
+__constant VUINT32 _vmlsPowHATab[380] =
 {
 
     0x3F800000,

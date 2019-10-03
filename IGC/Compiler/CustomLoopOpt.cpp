@@ -98,7 +98,7 @@ bool CustomLoopVersioning::isCBLoad(Value* val, unsigned& bufId, unsigned& offse
 
 bool CustomLoopVersioning::runOnFunction(Function& F)
 {
-    // Skip non-kernel function.                                                  
+    // Skip non-kernel function.
     IGCMD::MetaDataUtils* mdu = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     auto FII = mdu->findFunctionsInfoItem(&F);
     if (FII == mdu->end_FunctionsInfo())
@@ -163,8 +163,8 @@ bool CustomLoopVersioning::runOnFunction(Function& F)
 //   %258 = load float, float addrspace(65538)* ...
 //   %res_s588 = fmul float %nextT, %258
 //   br label %loop_entry
-//   
-// 
+//
+//
 bool CustomLoopVersioning::detectLoop(Loop* loop,
     Value*& var_range_x, Value*& var_range_y,
     LoadInst*& var_CBLoad_preHdr,

@@ -86,7 +86,7 @@ set(IGC_BUILD__SRC__CISACodeGen_Common
   )
 
 
-set(IGC_BUILD__SRC__Compiler_CISACodeGen 
+set(IGC_BUILD__SRC__Compiler_CISACodeGen
     ${IGC_BUILD__SRC__CISACodeGen_Common}
     PARENT_SCOPE
     )
@@ -176,7 +176,7 @@ set(IGC_BUILD__HDR__CISACodeGen_Common
   )
 
 
-set(IGC_BUILD__HDR__Compiler_CISACodeGen 
+set(IGC_BUILD__HDR__Compiler_CISACodeGen
     ${IGC_BUILD__HDR__CISACodeGen_Common}
     PARENT_SCOPE
     )

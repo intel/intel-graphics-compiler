@@ -29,7 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
     #include "../SVMLReleaseOnly/svml/Math/svml_pown.cl"
     #if defined(cl_khr_fp64)
-        #include "../ExternalLibraries/sun/sun_pow.cl" 
+        #include "../ExternalLibraries/sun/sun_pow.cl"
     #endif // defined(cl_khr_fp64)
 
 INLINE float __builtin_spirv_OpenCL_pown_f32_i32( float x, int y )
@@ -50,7 +50,7 @@ INLINE float __builtin_spirv_OpenCL_pown_f32_i32( float x, int y )
         float   pr = __builtin_spirv_OpenCL_fabs_f32( x );
 
         // TBD: Which is faster?
-        // Note that USC has a pattern match optimization to turn 
+        // Note that USC has a pattern match optimization to turn
         // log-mul-exp into pow.  Additionally, there are some specific
         // LLVM optimizations for pow.  So, preferring pow for now.
 #if 0

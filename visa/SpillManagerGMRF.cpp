@@ -2424,7 +2424,7 @@ SpillManagerGMRF::createSendInst(
 {
     // ToDo: create exDesc in createSendMsgDesc()
     uint32_t exDesc = G4_SendMsgDescriptor::createExtDesc(funcID);
-    auto msgDesc = builder_->createSendMsgDesc(funcID, (uint32_t)desc->getInt(), exDesc, 0, 
+    auto msgDesc = builder_->createSendMsgDesc(funcID, (uint32_t)desc->getInt(), exDesc, 0,
         isWrite ? SendAccess::WRITE_ONLY : SendAccess::READ_ONLY, nullptr);
     auto sendInst = builder_->createSendInst(
         NULL, G4_send, execSize, postDst,
@@ -2439,7 +2439,7 @@ SpillManagerGMRF::createSendInst(
 
 static int getNextSize(int height, bool useHWordMsg)
 {
-    
+
     bool has8GRFMessage = useHWordMsg && getGenxPlatform() >= GENX_SKL &&
         getGRFSize() == 32;
     if (has8GRFMessage && height >= 8)
@@ -2688,7 +2688,7 @@ SpillManagerGMRF::createSpillSendInstr (
         auto off = G4_SpillIntrinsic::InvalidOffset;
         if (useScratchMsg_)
             off = (messageDescImm->getInt() & 0xfff);
-        sendInst = builder_->createSpill(postDst, headerOpnd, srcOpnd, execSize, height, off, nullptr, 
+        sendInst = builder_->createSpill(postDst, headerOpnd, srcOpnd, execSize, height, off, nullptr,
             InstOpt_WriteEnable, curInst->getLineNo(), curInst->getCISAOff(), curInst->getSrcFilename());
     }
     else
@@ -2738,8 +2738,8 @@ SpillManagerGMRF::createSpillSendInstr (
         auto off = G4_SpillIntrinsic::InvalidOffset;
         if (useScratchMsg_)
             off = (messageDescImm->getInt() & 0xfff);
-        sendInst = builder_->createSpill(postDst, headerOpnd, srcOpnd, execSize, (uint16_t)extMsgLength, 
-            off, nullptr, static_cast<G4_InstOption>(option), curInst->getLineNo(), 
+        sendInst = builder_->createSpill(postDst, headerOpnd, srcOpnd, execSize, (uint16_t)extMsgLength,
+            off, nullptr, static_cast<G4_InstOption>(option), curInst->getLineNo(),
             curInst->getCISAOff(), curInst->getSrcFilename());
     }
     else
@@ -2880,7 +2880,7 @@ SpillManagerGMRF::createFillSendMsgDesc (
 
 
 // size -- number of GRFs to read
-// offset -- in bytes 
+// offset -- in bytes
 G4_Imm* SpillManagerGMRF::createFillSendMsgDesc(
     int size,
     int offset)
@@ -4374,7 +4374,7 @@ void GlobalRA::expandSpillIntrinsic(G4_BB* bb)
                     G4_opcode op = G4_mov;
                     G4_Declare* scratchRegDcl = builder->kernel.fg.scratchRegDcl;
                     G4_Declare* framePtr = inst->asSpillIntrinsic()->getFP();
-                    
+
                     // convert hword to oword offset
                     auto numRowsOword = numRows * 2;
                     auto offsetOword = offset * 2;
@@ -4389,8 +4389,8 @@ void GlobalRA::expandSpillIntrinsic(G4_BB* bb)
                             auto sendSrc0 = builder->createSrcRegRegion(Mod_src_undef, Direct, scratchRegDcl->getRegVar(),
                                 0, 0, builder->rgnpool.createRegion(8, 8, 1), Type_UD);
                             unsigned messageLength = owordSize / 2;
-                            G4_Imm* descImm = createMsgDesc(owordSize, true, true);      
-                            auto msgDesc = builder->createWriteMsgDesc(SFID::DP_DC, (uint32_t)descImm->getInt(), messageLength);      
+                            G4_Imm* descImm = createMsgDesc(owordSize, true, true);
+                            auto msgDesc = builder->createWriteMsgDesc(SFID::DP_DC, (uint32_t)descImm->getInt(), messageLength);
                             G4_Imm* msgDescImm = builder->createImm(msgDesc->getDesc(), Type_UD);
                             G4_Imm* extDesc = builder->createImm(msgDesc->getExtendedDesc(), Type_UD);
                             auto sendInst = builder->createInternalSplitSendInst(nullptr, G4_sends, execSize, dst, sendSrc0, payloadToUse,
@@ -4583,7 +4583,7 @@ void GlobalRA::expandFillIntrinsic(G4_BB* bb)
                         rowOffsetOword += respSizeInOwords;
                     }
                 }
-                
+
             }
             instIt = bb->erase(fillIt);
             continue;

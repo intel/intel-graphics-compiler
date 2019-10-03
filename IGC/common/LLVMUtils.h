@@ -44,13 +44,13 @@ namespace IGC
     {
     public:
         ~IGCPassManager();
-        IGCPassManager(CodeGenContext* ctx, char* name = nullptr) 
-        { 
+        IGCPassManager(CodeGenContext* ctx, char* name = nullptr)
+        {
             if(name)
             {
                 m_name = std::string(name);
             }
-            m_pContext = ctx; 
+            m_pContext = ctx;
         }
         void add(llvm::Pass *P);
     private:

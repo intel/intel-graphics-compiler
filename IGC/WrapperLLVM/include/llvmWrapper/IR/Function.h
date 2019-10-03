@@ -38,7 +38,7 @@ namespace IGCLLVM
 #elif LLVM_VERSION_MAJOR >= 7
         return F->arg_size();
 #endif
-    }    
+    }
 
     inline size_t GetFuncArgSize(const llvm::Function* F)
     {

@@ -44,15 +44,15 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 // Algorithm and References:
 //
-// This pass consider how to eliminates PHI instructions by aggressively 
-// coalescing the copies that would otherwise be inserted by a naive algorithm 
-// and only inserting the copies that are necessary. The coalescing technique 
+// This pass consider how to eliminates PHI instructions by aggressively
+// coalescing the copies that would otherwise be inserted by a naive algorithm
+// and only inserting the copies that are necessary. The coalescing technique
 // initially assumes that all registers appearing in a PHI instruction do not
 // interfere. It then eliminates proven interferences, using dominators to only
-// perform a linear number of interference tests instead of the quadratic number 
-// of interference tests that this would naively require. 
+// perform a linear number of interference tests instead of the quadratic number
+// of interference tests that this would naively require.
 // This is a technique derived from:
-// 
+//
 //    Budimlic, et al. Fast copy coalescing and live-range identification.
 //    In Proceedings of the ACM SIGPLAN 2002 Conference on Programming Language
 //    Design and Implementation (Berlin, Germany, June 17 - 19, 2002).
@@ -385,7 +385,7 @@ bool DeSSA::runOnFunction(Function& MF)
         //      aliasers have the same values as its aliasee (single-valued, like SSA);
         //      while InsElt has multiple-valued values. This difference does not matter
         //      in dessa, but it would matter when handling sub-vector aliasing later.
-        //      
+        //
         //      We could remove InsEltMap by adding each value into DeSSA node. To do
         //      so, dessa traversal needs to be modified to have def of those values
         //      in PhiSrcDefs. This will generally have a larger CC, which means more
@@ -446,7 +446,7 @@ bool DeSSA::runOnFunction(Function& MF)
   //
   //  Note that isolating a value introduce additional copy, thus a threshold
   //  is used here as a heuristic to try to make sure that a benefit is more
-  //  than the cost. 
+  //  than the cost.
     enum { PHI_SRC_USE_THRESHOLD = 3 };  // arbitrary number
     DenseMap<Value*, int> PHILoopPreHeaderSrcs;
 
@@ -711,7 +711,7 @@ void DeSSA::splitNode(Node* ND)
     ND->prev = ND;
     ND->rank = 0;
 
-    // If leader is removed, need to have a new leader. 
+    // If leader is removed, need to have a new leader.
     if (Leader == ND) {
         // P will be the new leader. Also swap ND's color with P's
         // so that the original congruent class still have the original
@@ -773,7 +773,7 @@ void DeSSA::splitNode(Node* ND)
 /// we need to use a stack of past choices of the current dominating variable
 /// and pop from this stack until we find a variable whose definition actually
 /// dominates the current block.
-/// 
+///
 /// There will be one push on this stack for each variable that has become the
 /// current dominating variable, so instead of using an explicit stack we can
 /// simply associate the previous choice for a current dominating variable with
@@ -817,9 +817,9 @@ DeSSA::SplitInterferencesForBasicBlock(
                 // we have added the another condition because the domination-test
                 // does not work between two phi-node. See the following comments
                 // from the DT::dominates:
-                // " It is not possible to determine dominance between two PHI nodes 
+                // " It is not possible to determine dominance between two PHI nodes
                 //   based on their ordering
-                //  if (isa<PHINode>(A) && isa<PHINode>(B)) 
+                //  if (isa<PHINode>(A) && isa<PHINode>(B))
                 //    return false;"
                 if (isa<Argument>(NewParent)) {
                     break;
@@ -1227,7 +1227,7 @@ void DeSSA::CoalesceAliasInstForBasicBlock(BasicBlock* Blk)
                     //     V1 = InsElt V0, S1, 1
                     //     ...
                     //     Vn = InsElt Vn-1, Sn, n
-                    //   
+                    //
                     //  AliasMap has the following:
                     //     alias(V0, V0)
                     //     alias(V1, V0)

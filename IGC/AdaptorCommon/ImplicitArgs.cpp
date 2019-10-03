@@ -75,7 +75,7 @@ Type* ImplicitArg::getLLVMType(LLVMContext& context) const
     // the allocation size, but not to determine the LLVM type, because every
     // work-item sees a scalar.
     Type* baseType = nullptr;
-    switch(m_valType) 
+    switch(m_valType)
     {
     case BYTE:
         baseType = Type::getInt8Ty(context);
@@ -116,14 +116,14 @@ Type* ImplicitArg::getLLVMType(LLVMContext& context) const
     }
 }
 
-unsigned int ImplicitArg::getNumberElements() const 
+unsigned int ImplicitArg::getNumberElements() const
 {
     return m_nbElement;
 }
 
 VISA_Type ImplicitArg::getVISAType(const DataLayout& DL) const
 {
-    switch(m_valType) 
+    switch(m_valType)
     {
     case BYTE:
         return VISA_Type::ISA_TYPE_B;
@@ -150,7 +150,7 @@ VISA_Type ImplicitArg::getVISAType(const DataLayout& DL) const
 
     return VISA_Type::ISA_TYPE_UD;
 }
- 
+
 unsigned int ImplicitArg::getPointerSize(const DataLayout& DL) const {
   switch (m_valType) {
   case CONSTPTR:    return DL.getPointerSize(ADDRESS_SPACE_CONSTANT);
@@ -191,11 +191,11 @@ WIAnalysis::WIDependancy ImplicitArg::getDependency() const {
     return m_dependency;
 }
 
-unsigned int ImplicitArg::getAllocateSize(const DataLayout& DL) const 
+unsigned int ImplicitArg::getAllocateSize(const DataLayout& DL) const
 {
     unsigned int elemSize = 0;
 
-    switch(m_valType) 
+    switch(m_valType)
     {
     case BYTE:
         elemSize = 1;
@@ -234,7 +234,7 @@ bool ImplicitArg::isLocalIDs() const {
                  m_argType == ImplicitArg::LOCAL_ID_Z);
 }
 
-ImplicitArgs::ImplicitArgs(const llvm::Function& func , const MetaDataUtils* pMdUtils) 
+ImplicitArgs::ImplicitArgs(const llvm::Function& func , const MetaDataUtils* pMdUtils)
 {
     if (IMPLICIT_ARGS.size() == 0)
     {
@@ -327,14 +327,14 @@ const ImplicitArg& ImplicitArgs::operator[](unsigned int i) const {
 
 unsigned int ImplicitArgs::getArgIndex(ImplicitArg::ArgType argType) {
     assert(this->size() > 0 && "There are no implicit arguments!");
-    
+
     // Find the first appearance of the given implicit arg type
     unsigned int implicitArgIndex = 0;
-    for (implicitArgIndex = 0; implicitArgIndex < this->size(); ++implicitArgIndex) 
+    for (implicitArgIndex = 0; implicitArgIndex < this->size(); ++implicitArgIndex)
     {
         ImplicitArg::ArgType type = getArgType(implicitArgIndex);
-        if (type == argType) 
-        { 
+        if (type == argType)
+        {
             break;
         }
     }
@@ -418,8 +418,8 @@ void ImplicitArgs::addImplicitArgs(llvm::Function& F, SmallVectorImpl<ImplicitAr
     pMdUtils->save(F.getParent()->getContext());
 }
 
-void ImplicitArgs::addImageArgs(llvm::Function& F, ImplicitArg::ArgMap& argMap, MetaDataUtils* pMdUtils) 
-{    
+void ImplicitArgs::addImageArgs(llvm::Function& F, ImplicitArg::ArgMap& argMap, MetaDataUtils* pMdUtils)
+{
     FunctionInfoMetaDataHandle funcInfo = pMdUtils->getFunctionsInfoItem(&F);
     for (int i = 0; i < numImageArgTypes; ++i)
     {
@@ -471,16 +471,16 @@ void ImplicitArgs::addNumberedArgs(llvm::Function& F, ImplicitArg::ArgMap& argMa
   pMdUtils->save(F.getParent()->getContext());
 }
 
-// Add one implicit argument for each pointer argument to global or constant buffer. 
+// Add one implicit argument for each pointer argument to global or constant buffer.
 // Note that F is the original input function (ie, without implicit arguments).
 void ImplicitArgs::addBufferOffsetArgs(llvm::Function& F, IGCMD::MetaDataUtils* pMdUtils, IGC::ModuleMetaData *modMD)
 {
     ImplicitArg::ArgMap OffsetArgs;
     FunctionInfoMetaDataHandle funcInfoMD =
         pMdUtils->getFunctionsInfoItem(const_cast<Function*>(&F));
-    
+
     assert(modMD->FuncMD.find(&F) != modMD->FuncMD.end());
-    
+
     FunctionMetaData* funcMD = &modMD->FuncMD.find(&F)->second;
     for (auto& Arg : F.args() )
     {
@@ -494,7 +494,7 @@ void ImplicitArgs::addBufferOffsetArgs(llvm::Function& F, IGCMD::MetaDataUtils* 
         }
 
         int argNo = Arg.getArgNo();
-        
+
         std::string argbaseType = "";
         if (funcMD->m_OpenCLArgBaseTypes.size() > (unsigned)argNo)
             argbaseType = funcMD->m_OpenCLArgBaseTypes[argNo];
@@ -516,17 +516,17 @@ void ImplicitArgs::addBufferOffsetArgs(llvm::Function& F, IGCMD::MetaDataUtils* 
     }
 }
 
-unsigned int ImplicitArgs::size() const { 
+unsigned int ImplicitArgs::size() const {
     return m_funcInfoMD->size_ImplicitArgInfoList();
 }
 
-bool ImplicitArgs::isImplicitImage(ImplicitArg::ArgType argType) 
-{ 
+bool ImplicitArgs::isImplicitImage(ImplicitArg::ArgType argType)
+{
     return (argType >= ImplicitArg::IMAGES_START) && (argType <= ImplicitArg::IMAGES_END);
 }
 
-bool ImplicitArgs::isImplicitStruct(ImplicitArg::ArgType argType) 
-{ 
+bool ImplicitArgs::isImplicitStruct(ImplicitArg::ArgType argType)
+{
     return (argType >= ImplicitArg::STRUCT_START) && (argType <= ImplicitArg::STRUCT_END);
 }
 
@@ -564,7 +564,7 @@ int32_t ImplicitArgs::getStructArgOffset(unsigned int index) const
 TODO("Refactor code to avoid code triplication for getArgInFunc(), getImplicitArg() and WIFuncResolution::getImplicitArg()")
 Argument* ImplicitArgs::getArgInFunc(llvm::Function& F, ImplicitArg::ArgType argType) {
     assert(IGCLLVM::GetFuncArgSize(F) >= size() && "Invalid number of argumnents in the function!");
-    
+
     unsigned int argIndex       =  getArgIndex(argType);
     unsigned int argIndexInFunc = IGCLLVM::GetFuncArgSize(F) - size() + argIndex;
     Function::arg_iterator arg  = F.arg_begin();
@@ -591,7 +591,7 @@ Argument* ImplicitArgs::getImplicitArg(llvm::Function& F, ImplicitArg::ArgType a
 Argument* ImplicitArgs::getNumberedImplicitArg(llvm::Function& F, ImplicitArg::ArgType argType, int argNum)
 {
     assert(IGCLLVM::GetFuncArgSize(F) >= size() && "Invalid number of arguments in the function!");
-    
+
     unsigned int numImplicitArgs = size();
     unsigned int implicitArgIndex = this->getNumberedArgIndex(argType, argNum);
     if (implicitArgIndex == numImplicitArgs)

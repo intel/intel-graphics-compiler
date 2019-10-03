@@ -28,11 +28,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //===----------------------------------------------------------------------===//
 //
 // The purpose of this pass is to fill in missing fast math flags for APIs
-// that are using old LLVM IR and are lacking AllowContract and ApproxFunc 
+// that are using old LLVM IR and are lacking AllowContract and ApproxFunc
 // flags.
 // Policy is to set those flags when AllowReassoc (former AllowUnsafeAlgebra)
 // is enabled on opcode.
-// 
+//
 //===----------------------------------------------------------------------===//
 
 

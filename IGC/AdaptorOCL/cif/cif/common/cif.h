@@ -41,7 +41,7 @@ namespace CIF {
 constexpr Version_t CifFrameworkVersion = 2;
 
 namespace RAII {
-template <typename T> 
+template <typename T>
 struct ReleaseHelper {
     void operator() (T *handle) const {
         assert(handle != nullptr);
@@ -108,7 +108,7 @@ struct ICIF {
   }
 
   // get latest version of interface that matches interface class
-  template <typename InterfaceT> 
+  template <typename InterfaceT>
   RAII::UPtr_t<InterfaceT> CreateInterface() {
     uint64_t minVerSupported = 0;
     uint64_t maxVerSupported = 0;
@@ -182,7 +182,7 @@ public:
     static constexpr bool GetValue(){ return decltype(Evaluate<Interface>(0))::value; }
 };
 
-template <template <Version_t> class Interface> 
+template <template <Version_t> class Interface>
 struct FindVersion {
   template <Version_t CurrVersion>
   static constexpr Version_t GetVersion() {
@@ -267,7 +267,7 @@ struct SupportedVersions {
 
     static constexpr Version_t GetNumSupportedVersions()
     {
-        return static_cast<Version_t>((GetLatestSupportedVersion() == CIF::BaseVersion) ? 0 : 
+        return static_cast<Version_t>((GetLatestSupportedVersion() == CIF::BaseVersion) ? 0 :
                                                                                         ((GetLatestSupportedVersion() - GetOldestSupportedVersion()) + 1)
                                      );
     }

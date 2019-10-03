@@ -43,7 +43,7 @@ extern __constant int __DashGSpecified;
 // float passed as int
 extern __constant int __ProfilingTimerResolution;
 INLINE float __intel__getProfilingTimerResolution()
-{ 
+{
     return as_float(__ProfilingTimerResolution);
 }
 
