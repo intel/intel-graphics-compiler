@@ -3671,7 +3671,7 @@ namespace IGC
         QWORD NosHash = { 0 };
         NosHash = context->hash.getNosHash();
         QWORD PsoHash = { 0 };
-        PsoHash = context->hash.getNosHash();
+        PsoHash = context->hash.getPsoHash();
         QWORD hashToUse = NosHash != 0 ? NosHash : PsoHash;
         if (hashToUse)
         {
