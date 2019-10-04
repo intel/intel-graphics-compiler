@@ -7385,11 +7385,7 @@ void HWConformity::fixMixedHFInst(G4_BB* bb)
         if (getGenxPlatform() >= GENX_CHV)
         {
             // no SIMD16 mix mode instruction
-            dst = inst->getDst();
-            bool isDstPackedHForF =
-                (dst->getType() == builder.getMixModeType() && dst->getHorzStride() == 1) ||
-                dst->getType() == Type_F;
-            if (inst->getExecSize() > 8 && isDstPackedHForF)
+            if (inst->getExecSize() > builder.getNativeExecSize() && inst->isMixedMode())
             {
                 evenlySplitInst(instIter, bb, false);
                 //instruction was split, and new instruction inserted before
