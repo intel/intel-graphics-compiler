@@ -683,7 +683,7 @@ float __builtin_IB_sub_group_scan_OpGroupFMin_f32(float x) __attribute__((const)
 double __builtin_IB_sub_group_scan_OpGroupFAdd_f64(double x) __attribute__((const));
 double __builtin_IB_sub_group_scan_OpGroupFMax_f64(double x) __attribute__((const));
 double __builtin_IB_sub_group_scan_OpGroupFMin_f64(double x) __attribute__((const));
- 
+
 // The following mul/fma with rtz is used internally for int div/rem emulation
 // x * y, using round-to-zero
 double __builtin_IB_mul_rtz_f64(double x, double y) __attribute__((const));
