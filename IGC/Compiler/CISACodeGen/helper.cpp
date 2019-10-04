@@ -344,13 +344,15 @@ namespace IGC
                 instList.push_back(baseValue);
             }
 
-            unsigned bufId = 0;
-            IGC::BufferType bufTy = BUFFER_TYPE_UNKNOWN;
-            IGC::BufferAccessType accessTy = BUFFER_ACCESS_TYPE_UNKNOWN;
-            if (GetResourcePointerInfo(baseValue, bufId, bufTy, accessTy))
+            if (GenIntrinsicInst * inst = dyn_cast<GenIntrinsicInst>(baseValue))
             {
-                srcPtr = baseValue;
-                break;
+                // For bindless pointers
+                if ((inst->getIntrinsicID() == GenISAIntrinsic::GenISA_RuntimeValue) ||
+                    (inst->getIntrinsicID() == GenISAIntrinsic::GenISA_GetBufferPtr))
+                {
+                    srcPtr = baseValue;
+                    break;
+                }
             }
             else if (isa<Argument>(baseValue))
             {
@@ -534,6 +536,106 @@ namespace IGC
                     accessTy = getDefaultAccessType(resTy);
                     return true;
                 }
+            }
+        }
+        return false;
+    }
+
+    // Get GRF offset from GenISA_RuntimeValue intrinsic call
+    bool GetGRFOffsetFromRTV(Value* pointerSrc, unsigned& GRFOffset)
+    {
+        if (GenIntrinsicInst * inst = dyn_cast<GenIntrinsicInst>(pointerSrc))
+        {
+            // For bindless pointers with encoded metadata
+            if (inst->getIntrinsicID() == GenISAIntrinsic::GenISA_RuntimeValue)
+            {
+                GRFOffset = (unsigned)llvm::cast<llvm::ConstantInt>(inst->getOperand(0))->getZExtValue();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool GetStatelessBufferInfo(Value* pointer, unsigned& bufIdOrGRFOffset,
+            BufferType & bufferTy, Value*& bufferSrcPtr, bool& isDirectBuf)
+    {
+        isDirectBuf = false;
+        // If the buffer info is not encoded in the address space, we can still find it by
+        // tracing the pointer to where it's created.
+        Value * src = IGC::TracePointerSource(pointer);
+        BufferAccessType accType;
+        if (!src)   return false;
+        if (IGC::GetResourcePointerInfo(src, bufIdOrGRFOffset, bufferTy, accType))
+        {
+            bufferSrcPtr = src;
+            isDirectBuf = true;
+            return true;
+        }
+        else if (GetGRFOffsetFromRTV(src, bufIdOrGRFOffset))
+        {
+            bufferSrcPtr = src;
+            bufferTy = BUFFER_TYPE_UNKNOWN;
+            return true;
+        }
+        return false;
+    }
+
+    bool EvalConstantAddress(Value* address, unsigned int& offset, const llvm::DataLayout* pDL, Value* ptrSrc)
+    {
+        if ((ptrSrc == nullptr && isa<ConstantPointerNull>(address)) ||
+            (ptrSrc == address))
+        {
+            offset = 0;
+            return true;
+        }
+        else if (Instruction * ptrExpr = dyn_cast<Instruction>(address))
+        {
+            if (ptrExpr->getOpcode() == Instruction::BitCast ||
+                ptrExpr->getOpcode() == Instruction::AddrSpaceCast)
+            {
+                return EvalConstantAddress(ptrExpr->getOperand(0), offset, pDL, ptrSrc);
+            }
+            if (ptrExpr->getOpcode() == Instruction::IntToPtr)
+            {
+                Value * eltIdxVal = ptrExpr->getOperand(0);
+                ConstantInt * eltIdx = dyn_cast<ConstantInt>(eltIdxVal);
+                if (!eltIdx)
+                    return false;
+                offset = int_cast<unsigned>(eltIdx->getZExtValue());
+                return true;
+            }
+            else if (ptrExpr->getOpcode() == Instruction::GetElementPtr)
+            {
+                offset = 0;
+                if (!EvalConstantAddress(ptrExpr->getOperand(0), offset, pDL, ptrSrc))
+                {
+                    return false;
+                }
+                Type * Ty = ptrExpr->getType();
+                gep_type_iterator GTI = gep_type_begin(ptrExpr);
+                for (auto OI = ptrExpr->op_begin() + 1, E = ptrExpr->op_end(); OI != E; ++OI, ++GTI) {
+                    Value * Idx = *OI;
+                    if (StructType * StTy = GTI.getStructTypeOrNull()) {
+                        unsigned Field = int_cast<unsigned>(cast<ConstantInt>(Idx)->getZExtValue());
+                        if (Field) {
+                            offset += int_cast<unsigned int>(pDL->getStructLayout(StTy)->getElementOffset(Field));
+                        }
+                        Ty = StTy->getElementType(Field);
+                    }
+                    else {
+                        Ty = GTI.getIndexedType();
+                        if (const ConstantInt * CI = dyn_cast<ConstantInt>(Idx)) {
+                            offset += int_cast<unsigned int>(
+                            pDL->getTypeAllocSize(Ty) * CI->getSExtValue());
+
+                        }
+                        else
+                        {
+                            return false;
+                        }
+                    }
+                }
+                return true;
             }
         }
         return false;

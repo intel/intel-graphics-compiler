@@ -2096,107 +2096,81 @@ static Constant* GetConstantValue(Type* type, char* rawData)
     return nullptr;
 }
 
-bool IGCConstProp::EvalConstantAddress(Value* address, unsigned int& offset, Value* ptrSrc)
+Constant* IGCConstProp::ReplaceFromDynConstants(unsigned bufId, unsigned eltId, unsigned int size_in_bytes, LoadInst* inst)
 {
-    if ((ptrSrc == nullptr && isa<ConstantPointerNull>(address)) ||
-        (ptrSrc == address))
-    {
-        offset = 0;
-        return true;
-    }
-    else if (Instruction * ptrExpr = dyn_cast<Instruction>(address))
-    {
-        if (ptrExpr->getOpcode() == Instruction::BitCast ||
-            ptrExpr->getOpcode() == Instruction::AddrSpaceCast)
-        {
-            return EvalConstantAddress(ptrExpr->getOperand(0), offset, ptrSrc);
-        }
-        if (ptrExpr->getOpcode() == Instruction::IntToPtr)
-        {
-            Value* eltIdxVal = ptrExpr->getOperand(0);
-            ConstantInt* eltIdx = dyn_cast<ConstantInt>(eltIdxVal);
-            if (!eltIdx)
-                return false;
-            offset = int_cast<unsigned>(eltIdx->getZExtValue());
-            return true;
-        }
-        else if (ptrExpr->getOpcode() == Instruction::GetElementPtr)
-        {
-            offset = 0;
-            if (!EvalConstantAddress(ptrExpr->getOperand(0), offset, ptrSrc))
-            {
-                return false;
-            }
-            Type* Ty = ptrExpr->getType();
-            gep_type_iterator GTI = gep_type_begin(ptrExpr);
-            for (auto OI = ptrExpr->op_begin() + 1, E = ptrExpr->op_end(); OI != E; ++OI, ++GTI) {
-                Value* Idx = *OI;
-                if (StructType * StTy = GTI.getStructTypeOrNull()) {
-                    unsigned Field = int_cast<unsigned>(cast<ConstantInt>(Idx)->getZExtValue());
-                    if (Field) {
-                        offset += int_cast<unsigned int>(m_TD->getStructLayout(StTy)->getElementOffset(Field));
-                    }
-                    Ty = StTy->getElementType(Field);
-                }
-                else {
-                    Ty = GTI.getIndexedType();
-                    if (const ConstantInt * CI = dyn_cast<ConstantInt>(Idx)) {
-                        offset += int_cast<unsigned int>(
-                            m_TD->getTypeAllocSize(Ty) * CI->getSExtValue());
-                    }
-                    else
-                    {
-                        return false;
-                    }
-                }
-            }
-            return true;
-        }
-    }
-    return false;
-}
-
-bool GetStatelessBufferInfo(Value* pointer, unsigned& bufferId,
-    BufferType& bufferTy, Value*& bufferSrcPtr)
-{
-    // If the buffer info is not encoded in the address space, we can still find it by
-    // tracing the pointer to where it's created.
-    Value* src = IGC::TracePointerSource(pointer);
-    BufferAccessType accType;
-    if (src && IGC::GetResourcePointerInfo(src, bufferId, bufferTy, accType))
-    {
-        bufferSrcPtr = src;
-        return true;
-    }
-    return false;
-}
-
-Constant* IGCConstProp::ReplaceFromDynConstants(unsigned bufId, unsigned eltId, unsigned int size_in_bytes, Type* type)
-{
-    ConstantAddress cl;
-    char* pConstVal;
-    cl.bufId = bufId;
-    cl.eltId = eltId;
-    cl.size = size_in_bytes;
+    Type* type = inst->getType();
 
     CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     ModuleMetaData* modMD = ctx->getModuleMetaData();
 
-    auto it = modMD->inlineDynConstants.find(cl);
-    if ((it != modMD->inlineDynConstants.end()) && (it->first.size == cl.size))
+    // Handling for base types (Integer/FloatingPoint)
+    if (!(type->isVectorTy()))
     {
-        // For constant buffer accesses of size <= 32bit.
-        if (size_in_bytes <= 4)
+        ConstantAddress cl;
+        cl.bufId = bufId;
+        cl.eltId = eltId;
+        cl.size = size_in_bytes;
+
+        // Inline the constants for constant buffer accesses of size <= 32bit only.
+        if (size_in_bytes > 4)
+            return nullptr;
+
+        auto it = modMD->inlineDynConstants.find(cl);
+        if (it != modMD->inlineDynConstants.end() && (it->first.size == cl.size))
         {
             // This constant is
             //          found in the Dynamic inline constants list, and
-            //          sizes match (find only looking for bufId and eltId, so need to look for size explicitly)
-            if (!(type->isVectorTy()))
+            //          sizes match (find only looking for bufId and eltId, so need to compare size field explicitly)
+            char* pConstVal;
+            pConstVal = (char*)(&(it->second));
+            return GetConstantValue(type, pConstVal);
+        }
+    }
+    else
+    {
+        Type * srcEltTy = type->getVectorElementType();
+        uint32_t srcNElts = type->getVectorNumElements();
+        uint32_t eltSize_in_bytes = srcEltTy->getPrimitiveSizeInBits() / 8;
+        std::vector<uint32_t> constValVec;
+
+        if (eltSize_in_bytes > 4)
+            return nullptr;
+
+        // First make sure all elements of vector are available in the dynamic inline constants
+        //    If not, we cannot inline the vector
+        for (uint i = 0; i < srcNElts; i++)
+        {
+            ConstantAddress cl;
+            cl.bufId = bufId;
+            cl.eltId = eltId + (i * eltSize_in_bytes);
+            cl.size = eltSize_in_bytes;
+
+            auto it = modMD->inlineDynConstants.find(cl);
+            if (it != modMD->inlineDynConstants.end() && (it->first.size == cl.size))
             {
-                // Handling for base types (Integer/FloatingPoint)
-                pConstVal = (char*)(&(it->second));
-                return GetConstantValue(type, pConstVal);
+                constValVec.push_back(it->second);
             }
+            else
+            {
+                // All elements of the vector has to be available for inlining,
+                //     otherwise we cannot replace the load instruction, hence return nullptr
+                return nullptr;
+            }
+        }
+        if (constValVec.size() == srcNElts)
+        {
+            IRBuilder<> builder(inst);
+            Value * vectorValue = UndefValue::get(inst->getType());
+            for (uint i = 0; i < srcNElts; i++)
+            {
+                char* pConstVal;
+                pConstVal = (char*)(&(constValVec[i]));
+                vectorValue = builder.CreateInsertElement(
+                vectorValue,
+                GetConstantValue(srcEltTy, pConstVal),
+                builder.getInt32(i));
+            }
+            return dyn_cast<Constant>(vectorValue);
         }
     }
     return nullptr;
@@ -2206,7 +2180,8 @@ Constant* IGCConstProp::replaceShaderConstant(LoadInst* inst)
 {
     unsigned as = inst->getPointerAddressSpace();
     bool directBuf = false;
-    unsigned bufId = 0;
+    bool statelessBuf = false;
+    unsigned bufIdOrGRFOffset = 0;
     unsigned int size_in_bytes = 0;
     CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     ModuleMetaData* modMD = ctx->getModuleMetaData();
@@ -2216,24 +2191,38 @@ Constant* IGCConstProp::replaceShaderConstant(LoadInst* inst)
 
     if (as == ADDRESS_SPACE_CONSTANT)
     {
-        if (!GetStatelessBufferInfo(inst->getPointerOperand(), bufId, bufType, pointerSrc))
+        if (!GetStatelessBufferInfo(inst->getPointerOperand(), bufIdOrGRFOffset, bufType, pointerSrc, directBuf))
         {
             return nullptr;
         }
-        directBuf = true;
+        if (!directBuf)
+        {
+            // Make sure constant folding is safe by looking up in pushableAddresses
+            CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+            PushInfo& pushInfo = ctx->getModuleMetaData()->pushInfo;
+
+            for (auto it : pushInfo.pushableAddresses)
+            {
+                if (bufIdOrGRFOffset * 4 == it.addressOffset && it.isStatic)
+                {
+                    statelessBuf = true;
+                    break;
+                }
+            }
+        }
     }
     else
     {
-        bufType = IGC::DecodeAS4GFXResource(as, directBuf, bufId);
+        bufType = IGC::DecodeAS4GFXResource(as, directBuf, bufIdOrGRFOffset);
     }
 
-    if (bufType == CONSTANT_BUFFER &&
-        directBuf && modMD)
+    // If it is statelessBuf, we made sure it is a constant buffer by finding it in pushableAddresses
+    if (modMD && ((directBuf && (bufType == CONSTANT_BUFFER)) || statelessBuf))
     {
         Value* ptrVal = inst->getPointerOperand();
         unsigned eltId = 0;
         size_in_bytes = inst->getType()->getPrimitiveSizeInBits() / 8;
-        if (!EvalConstantAddress(ptrVal, eltId, pointerSrc))
+        if (!EvalConstantAddress(ptrVal, eltId, m_TD, pointerSrc))
         {
             return nullptr;
         }
@@ -2241,7 +2230,8 @@ Constant* IGCConstProp::replaceShaderConstant(LoadInst* inst)
         if (size_in_bytes)
         {
             if (modMD->immConstant.data.size() &&
-                (bufId == modMD->pushInfo.inlineConstantBufferSlot))
+                ((statelessBuf && (bufIdOrGRFOffset == modMD->pushInfo.inlineConstantBufferGRFOffset))||
+                (directBuf && (bufIdOrGRFOffset == modMD->pushInfo.inlineConstantBufferSlot))))
             {
                 char* offset = &(modMD->immConstant.data[0]);
                 if (inst->getType()->isVectorTy())
@@ -2267,7 +2257,7 @@ Constant* IGCConstProp::replaceShaderConstant(LoadInst* inst)
             }
             else if ((!IGC_IS_FLAG_ENABLED(DisableDynamicConstantFolding)) && (modMD->inlineDynConstants.size() > 0))
             {
-                return ReplaceFromDynConstants(bufId, eltId, size_in_bytes, inst->getType());
+                return ReplaceFromDynConstants(bufIdOrGRFOffset, eltId, size_in_bytes, inst);
             }
         }
     }

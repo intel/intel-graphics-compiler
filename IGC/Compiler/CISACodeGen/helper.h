@@ -152,8 +152,12 @@ namespace IGC
     llvm::Value* TracePointerSource(llvm::Value* resourcePtr);
     llvm::Value* TracePointerSource(llvm::Value* resourcePtr, bool hasBranching, bool fillList, std::vector<llvm::Value*>& instList);
     llvm::Value* TracePointerSource(llvm::Value* resourcePtr, bool hasBranching, bool fillList, std::vector<llvm::Value*>& instList, llvm::SmallSet<llvm::PHINode*, 8> & visitedPHIs);
-    bool GetResourcePointerInfo(llvm::Value* srcPtr, unsigned& resID,
-        IGC::BufferType& resTy, IGC::BufferAccessType& accessTy);
+    bool GetResourcePointerInfo(llvm::Value* srcPtr, unsigned& resID, IGC::BufferType& resTy, IGC::BufferAccessType& accessTy);
+    bool GetGRFOffsetFromRTV(llvm::Value* pointerSrc, unsigned& GRFOffset);
+    bool GetStatelessBufferInfo(llvm::Value* pointer, unsigned& bufIdOrGRFOffset, IGC::BufferType& bufferTy, llvm::Value*& bufferSrcPtr, bool& isDirectBuf);
+    // try to evaluate the address if it is constant.
+    bool EvalConstantAddress(llvm::Value* address, unsigned int& offset, const llvm::DataLayout* pDL, llvm::Value* ptrSrc = nullptr);
+
 
     bool isSampleLoadGather4InfoInstruction(llvm::Instruction* inst);
     bool isSampleInstruction(llvm::Instruction* inst);

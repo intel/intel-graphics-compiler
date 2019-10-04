@@ -193,47 +193,51 @@ void FindInterestingConstants::FoldsToSourcePropagate(llvm::Instruction* I)
 }
 
 // Get constant address from load instruction
-bool FindInterestingConstants::getConstantAddress(llvm::LoadInst& I, unsigned& bufId, unsigned& eltId, int& size_in_bytes)
+bool FindInterestingConstants::getConstantAddress(llvm::LoadInst& I, unsigned& bufIdOrGRFOffset, unsigned& eltId, int& size_in_bytes)
 {
     // Check if the load instruction is with constant buffer address
     unsigned as = I.getPointerAddressSpace();
-    bool directBuf;
+    bool directBuf = false;
+    bool statelessBuf = false;
     size_in_bytes = 0;
-    BufferType bufType = IGC::DecodeAS4GFXResource(as, directBuf, bufId);
+    BufferType bufType;
+    Value * pointerSrc = nullptr;
 
-    if (bufType == CONSTANT_BUFFER && directBuf)
+    if (as == ADDRESS_SPACE_CONSTANT)
+    {
+        // If the buffer info is not encoded in the address space, we can still find it by
+        // tracing the pointer to where it's created.
+        if (!GetStatelessBufferInfo(I.getPointerOperand(), bufIdOrGRFOffset, bufType, pointerSrc, directBuf))
+        {
+            return false;
+        }
+        if (!directBuf)
+        {
+            // Make sure constant folding is safe by looking up in pushableAddresses
+            CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+            PushInfo& pushInfo = ctx->getModuleMetaData()->pushInfo;
+
+            for (auto it : pushInfo.pushableAddresses)
+            {
+                if (bufIdOrGRFOffset * 4 == it.addressOffset && it.isStatic)
+                {
+                    statelessBuf = true;
+                    break;
+                }
+            }
+        }
+    }
+    else
+    {
+        bufType = IGC::DecodeAS4GFXResource(as, directBuf, bufIdOrGRFOffset);
+    }
+    // If it is statelessBuf, we made sure it is a constant buffer by finding it in pushableAddresses
+    if ((directBuf && (bufType == CONSTANT_BUFFER)) || statelessBuf)
     {
         Value* ptrVal = I.getPointerOperand();
         eltId = 0;
 
-        if (isa<ConstantPointerNull>(ptrVal))
-        {
-            eltId = 0;
-        }
-        else if (ConstantExpr * ptrExpr = dyn_cast<ConstantExpr>(ptrVal))
-        {
-            if (ptrExpr->getOpcode() == Instruction::IntToPtr)
-            {
-                Value* eltIdxVal = ptrExpr->getOperand(0);
-                ConstantInt* eltIdx = dyn_cast<ConstantInt>(eltIdxVal);
-                if (!eltIdx)
-                    return false;
-                eltId = int_cast<unsigned>(eltIdx->getZExtValue());
-            }
-            else
-            {
-                return false;
-            }
-        }
-        else if (IntToPtrInst * i2p = dyn_cast<IntToPtrInst>(ptrVal))
-        {
-            Value* eltIdxVal = i2p->getOperand(0);
-            ConstantInt* eltIdx = dyn_cast<ConstantInt>(eltIdxVal);
-            if (!eltIdx)
-                return false;
-            eltId = int_cast<unsigned>(eltIdx->getZExtValue());
-        }
-        else
+        if (!EvalConstantAddress(ptrVal, eltId, m_DL, pointerSrc))
         {
             return false;
         }
@@ -246,26 +250,51 @@ bool FindInterestingConstants::getConstantAddress(llvm::LoadInst& I, unsigned& b
     return true;
 }
 
-void FindInterestingConstants::addInterestingConstant(CodeGenContext* ctx, unsigned bufId, unsigned eltId, int size_in_bytes, bool anyValue, uint32_t value = 0)
+void FindInterestingConstants::addInterestingConstant(CodeGenContext* ctx, llvm::Type* loadTy, unsigned bufIdOrGRFOffset, unsigned eltId, int size_in_bytes, bool anyValue, uint32_t value = 0)
 {
     // For constant buffer accesses of size <= 32bit.
-    if (size_in_bytes <= 4)
+    if (!loadTy->isVectorTy())
     {
-        SConstantAddrValue cl;
-        cl.ca.bufId = bufId;
-        cl.ca.eltId = eltId;
-        cl.ca.size = size_in_bytes;
-        cl.anyValue = anyValue;
-        cl.value = value;
+        if (size_in_bytes <= 4)
+        {
+            SConstantAddrValue cl;
+            cl.ca.bufId = bufIdOrGRFOffset;
+            cl.ca.eltId = eltId;
+            cl.ca.size = size_in_bytes;
+            cl.anyValue = anyValue;
+            cl.value = value;
 
-        m_InterestingConstants.push_back(cl);
+            m_InterestingConstants.push_back(cl);
+        }
+    }
+    else
+    {
+        // Vectors case
+        //  For now we can only detect anyValue=1 cases in vector type loads
+        if (anyValue)
+        {
+            Type * srcEltTy = loadTy->getVectorElementType();
+            unsigned srcNElts = loadTy->getVectorNumElements();
+            unsigned eltSize_in_bytes = srcEltTy->getPrimitiveSizeInBits() / 8;
+            for (unsigned i = 0; i < srcNElts; i++)
+            {
+                SConstantAddrValue cl;
+                cl.ca.bufId = bufIdOrGRFOffset;
+                cl.ca.eltId = eltId + (i * eltSize_in_bytes);
+                cl.ca.size = eltSize_in_bytes;
+                cl.anyValue = anyValue;
+                cl.value = value;
+
+                m_InterestingConstants.push_back(cl);
+            }
+        }
     }
 }
 
 void FindInterestingConstants::visitLoadInst(llvm::LoadInst& I)
 {
     CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    unsigned bufId;
+    unsigned bufIdOrGRFOffset;
     unsigned eltId;
     int size_in_bytes;
 
@@ -273,7 +302,7 @@ void FindInterestingConstants::visitLoadInst(llvm::LoadInst& I)
     m_foldsToConst = 0;
     m_foldsToSource = 0;
     m_constFoldBranch = false;
-    if (getConstantAddress(I, bufId, eltId, size_in_bytes))
+    if (getConstantAddress(I, bufIdOrGRFOffset, eltId, size_in_bytes))
     {
         /*
         This Constant is interesting, if the use instruction:
@@ -287,7 +316,7 @@ void FindInterestingConstants::visitLoadInst(llvm::LoadInst& I)
         if ((m_constFoldBranch) || (m_foldsToConst >= IGC_GET_FLAG_VALUE(FoldsToConstPropThreshold)))
         {
             // Get the ConstantAddress from LoadInst and log it in interesting constants
-            addInterestingConstant(ctx, bufId, eltId, size_in_bytes, true);
+            addInterestingConstant(ctx, I.getType(), bufIdOrGRFOffset, eltId, size_in_bytes, true);
         }
         else
         {
@@ -299,7 +328,7 @@ void FindInterestingConstants::visitLoadInst(llvm::LoadInst& I)
             {
                 // Zero value for this constant is interesting
                 // Get the ConstantAddress from LoadInst and log it in interesting constants
-                addInterestingConstant(ctx, bufId, eltId, size_in_bytes, false, 0);
+                addInterestingConstant(ctx, I.getType(), bufIdOrGRFOffset, eltId, size_in_bytes, false, 0);
                 // Continue finding if ONE_VALUE is beneficial for this constant
             }
 
@@ -310,14 +339,14 @@ void FindInterestingConstants::visitLoadInst(llvm::LoadInst& I)
                 // Get the ConstantAddress from LoadInst and log it in interesting constants
                 if (I.getType()->isIntegerTy())
                 {
-                    addInterestingConstant(ctx, bufId, eltId, size_in_bytes, false, 1);
+                    addInterestingConstant(ctx, I.getType(), bufIdOrGRFOffset, eltId, size_in_bytes, false, 1);
                 }
                 else if (I.getType()->isFloatTy())
                 {
                     uint32_t value;
                     float floatValue = 1.0;
                     memcpy_s(&value, sizeof(uint32_t), &floatValue, sizeof(float));
-                    addInterestingConstant(ctx, bufId, eltId, size_in_bytes, false, value);
+                    addInterestingConstant(ctx, I.getType(), bufIdOrGRFOffset, eltId, size_in_bytes, false, value);
                 }
             }
         }
@@ -372,6 +401,7 @@ bool FindInterestingConstants::doFinalization(llvm::Module& M)
 
 bool FindInterestingConstants::runOnFunction(Function& F)
 {
+    m_DL = &F.getParent()->getDataLayout();
     visit(F);
     return false;
 }

@@ -72,16 +72,17 @@ namespace IGC
         unsigned int m_foldsToSource;
         bool m_constFoldBranch;
         std::vector<SConstantAddrValue> m_InterestingConstants;
+        const llvm::DataLayout* m_DL;
 
         // Helper functions
-        bool getConstantAddress(llvm::LoadInst& I, unsigned& bufId, unsigned& eltId, int& size_in_bytes);
+        bool getConstantAddress(llvm::LoadInst& I, unsigned& bufIdOrGRFOffset, unsigned& eltId, int& size_in_bytes);
         bool FoldsToConst(llvm::Instruction* inst, llvm::Instruction* use, bool& propagate);
         bool FoldsToZero(llvm::Instruction* inst, llvm::Instruction* use);
         bool FoldsToSource(llvm::Instruction* inst, llvm::Instruction* use);
         void FoldsToConstPropagate(llvm::Instruction* I);
         void FoldsToZeroPropagate(llvm::Instruction* I);
         void FoldsToSourcePropagate(llvm::Instruction* I);
-        void addInterestingConstant(CodeGenContext* ctx, unsigned bufId, unsigned eltId, int size_in_bytes, bool anyValue, uint32_t value);
+        void addInterestingConstant(CodeGenContext* ctx, llvm::Type* loadTy, unsigned bufIdOrGRFOffset, unsigned eltId, int size_in_bytes, bool anyValue, uint32_t value);
         template<typename ContextT>
         void copyInterestingConstants(ContextT* pShaderCtx);
     };

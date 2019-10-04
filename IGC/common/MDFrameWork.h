@@ -276,6 +276,7 @@ namespace IGC
 
         unsigned int inlineConstantBufferSlot = INVALID_CONSTANT_BUFFER_INVALID_ADDR; // slot of the inlined constant buffer
         unsigned int inlineConstantBufferOffset = INVALID_CONSTANT_BUFFER_INVALID_ADDR;    // offset of the inlined constant buffer
+        unsigned int inlineConstantBufferGRFOffset = INVALID_CONSTANT_BUFFER_INVALID_ADDR;
 
         std::map<ConstantAddress, int> constants;
         std::map<unsigned int, SInputDesc> inputs;

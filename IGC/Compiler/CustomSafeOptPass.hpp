@@ -214,15 +214,13 @@ namespace IGC
         }
     private:
         llvm::Module* module;
-        llvm::Constant* ReplaceFromDynConstants(unsigned bufId, unsigned eltId, unsigned int size_in_bytes, llvm::Type* type);
+        llvm::Constant* ReplaceFromDynConstants(unsigned bufId, unsigned eltId, unsigned int size_in_bytes, llvm::LoadInst* inst);
         llvm::Constant* replaceShaderConstant(llvm::LoadInst* inst);
         llvm::Constant* ConstantFoldCallInstruction(llvm::CallInst* inst);
         llvm::Constant* ConstantFoldCmpInst(llvm::CmpInst* inst);
         llvm::Constant* ConstantFoldExtractElement(llvm::ExtractElementInst* inst);
         bool simplifyAdd(llvm::BinaryOperator* BO);
         bool simplifyGEP(llvm::GetElementPtrInst* GEP);
-        // try to evaluate the address if it is constant.
-        bool EvalConstantAddress(llvm::Value* address, unsigned int& offset, llvm::Value* ptrSrc = nullptr);
         bool m_enableMathConstProp;
         bool m_enableSimplifyGEP;
         const llvm::DataLayout* m_TD;
