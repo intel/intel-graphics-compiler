@@ -430,35 +430,44 @@ void Optimizer::insertHashMovs()
                 // We have to insert new instructions after EOT.
                 // Lexically, EOT could even be in the middle
                 // of the program.
-                G4_INST* lo;
-                G4_INST* hi;
-                uint64_t hashVal = builder.getOptions()->getuInt64Option(vISA_HashVal);
-                lo = kernel.fg.builder->createInternalInst(
-                    NULL,
-                    G4_mov,
-                    NULL,
-                    false,
-                    16,
-                    kernel.fg.builder->createNullDst(Type_UD),
-                    kernel.fg.builder->createImm((unsigned int)(hashVal & 0xffffffff), Type_UD),
-                    NULL,
-                    NULL,
-                    InstOpt_WriteEnable);
+                auto insertHashMovInsts = [&](uint64_t hashVal)
+                {
+                    if (hashVal == 0)
+                        return;
 
-                hi = kernel.fg.builder->createInternalInst(
-                    NULL,
-                    G4_mov,
-                    NULL,
-                    false,
-                    16,
-                    kernel.fg.builder->createNullDst(Type_UD),
-                    kernel.fg.builder->createImm((unsigned int)((hashVal >> 32) & 0xffffffff), Type_UD),
-                    NULL,
-                    NULL,
-                    InstOpt_WriteEnable);
+                    G4_INST* lo;
+                    G4_INST* hi;
+                    lo = kernel.fg.builder->createInternalInst(
+                        NULL,
+                        G4_mov,
+                        NULL,
+                        false,
+                        16,
+                        kernel.fg.builder->createNullDst(Type_UD),
+                        kernel.fg.builder->createImm((unsigned int)(hashVal & 0xffffffff), Type_UD),
+                        NULL,
+                        NULL,
+                        InstOpt_WriteEnable);
 
-                bb->push_back(lo);
-                bb->push_back(hi);
+                    hi = kernel.fg.builder->createInternalInst(
+                        NULL,
+                        G4_mov,
+                        NULL,
+                        false,
+                        16,
+                        kernel.fg.builder->createNullDst(Type_UD),
+                        kernel.fg.builder->createImm((unsigned int)((hashVal >> 32) & 0xffffffff), Type_UD),
+                        NULL,
+                        NULL,
+                        InstOpt_WriteEnable);
+
+                    bb->push_back(lo);
+                    bb->push_back(hi);
+                };
+                uint64_t hashVal1 = builder.getOptions()->getuInt64Option(vISA_HashVal);
+                uint64_t hashVal2 = builder.getOptions()->getuInt64Option(vISA_HashVal1);
+                insertHashMovInsts(hashVal1);
+                insertHashMovInsts(hashVal2);
                 break;
             }
         }

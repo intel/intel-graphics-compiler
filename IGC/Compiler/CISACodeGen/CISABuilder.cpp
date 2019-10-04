@@ -3667,6 +3667,20 @@ namespace IGC
         std::string High = std::to_string((DWORD)(AssemblyHash >> 32));
         params.push_back(_strdup(Low.c_str()));
         params.push_back(_strdup(High.c_str()));
+
+        QWORD NosHash = { 0 };
+        NosHash = context->hash.getNosHash();
+        QWORD PsoHash = { 0 };
+        PsoHash = context->hash.getNosHash();
+        QWORD hashToUse = NosHash != 0 ? NosHash : PsoHash;
+        if (hashToUse)
+        {
+            params.push_back("-hashmovs1");
+            std::string Low = std::to_string((DWORD)hashToUse);
+            std::string High = std::to_string((DWORD)(hashToUse >> 32));
+            params.push_back(_strdup(Low.c_str()));
+            params.push_back(_strdup(High.c_str()));
+        }
     }
     }
     void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbortOnSpill, bool hasStackCall)
