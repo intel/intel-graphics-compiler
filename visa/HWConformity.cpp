@@ -7345,7 +7345,6 @@ void HWConformity::fixMixedHFInst(G4_BB* bb)
 
 
         // The execution size must be no more than 8 when half-floats are used in source or destination operand.
-        // This is true even for pure-HF instructions
         // ToDO: move this to fixmathinst
         if (inst->getExecSize() > builder.getNativeExecSize())
         {
@@ -7386,12 +7385,17 @@ void HWConformity::fixMixedHFInst(G4_BB* bb)
         if (getGenxPlatform() >= GENX_CHV)
         {
             // no SIMD16 mix mode instruction
-            if (inst->getExecSize() > builder.getNativeExecSize() && inst->isMixedMode())
+            dst = inst->getDst();
+            bool isDstPackedHForF =
+                (dst->getType() == builder.getMixModeType() && dst->getHorzStride() == 1) ||
+                dst->getType() == Type_F;
+            if (inst->getExecSize() > 8 && isDstPackedHForF)
             {
                 evenlySplitInst(instIter, bb, false);
                 //instruction was split, and new instruction inserted before
                 //going back to previous instruction to double check it still confirms.
-                inst = *(std::prev(instIter));
+                --instIter;
+                inst = *instIter;
             }
         }
 
@@ -7411,9 +7415,8 @@ void HWConformity::fixMixedHFInst(G4_BB* bb)
             }
         }
 
-        // ToDo: this should be done elsewhere (RA?)
-        if (inst->getDst()->getBase()->isRegVar() &&
-            inst->getDst()->getType() == Type_HF &&
+        if (inst->getDst()->getBase()->isRegVar()                   &&
+            inst->getDst()->getType() == Type_HF                    &&
             inst->getDst()->getHorzStride() == 1)
         {
             inst->getDst()->getBase()->asRegVar()->getDeclare()->setSubRegAlign(Eight_Word);
