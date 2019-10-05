@@ -166,6 +166,7 @@ DECLARE_IGC_REGKEY(bool, EnableLogicalAndToBranch, true,
     "Enable convert logical AND to conditional branch", false)
 DECLARE_IGC_REGKEY(bool, DisableMovingInstanceIDIndexOfVS,  false,   "Disable moving index of InstanceID in VS to last location.", false)
 DECLARE_IGC_REGKEY(bool, EnableSplitUnalignedVector,    true,    "Enable Splitting of unaligned vectors for loads and stores", false)
+DECLARE_IGC_REGKEY(bool, DisableFDivReassociation,      false,   "Disable reassociation for Fdiv operations to avoid precision difference", false)
 
 DECLARE_IGC_GROUP("Shader debugging")
 DECLARE_IGC_REGKEY(bool, ShaderDebugHashCodeInKernel,   false, "Append hash code to the binary", false)
