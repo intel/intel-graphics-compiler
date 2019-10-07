@@ -290,11 +290,9 @@ bool LVN::canReplaceUses(INST_LIST_ITER inst_it, UseList& uses, G4_INST* lvnInst
 
         if (negMatch)
         {
-            if (useInst->isSend())
+            if (!useInst->canSupportSrcModifier())
             {
-                // send src opnd doesnt support negate modifier.
-                // So if LVN found a pattern that requires the
-                // modifier then this optimization is invalid.
+                // LVN is invalid if instruction does not support negatve modifier
                 canReplace = false;
                 break;
             }

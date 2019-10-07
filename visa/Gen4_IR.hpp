@@ -1119,6 +1119,7 @@ public:
     bool canSupportCondMod() const;
     bool canSwapSource() const;
     bool canSupportSaturate() const;
+    bool canSupportSrcModifier() const;
 
     bool usesFlag() const
     {

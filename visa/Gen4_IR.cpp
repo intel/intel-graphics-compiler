@@ -7423,6 +7423,11 @@ bool G4_INST::canSupportCondMod() const
         (op == G4_xor));
 }
 
+bool G4_INST::canSupportSrcModifier() const
+{
+    return !isSend();
+}
+
 // convert (execsize, offset) into emask option
 // if no such mask option exists, return InstOpt_NoOpt
 G4_InstOption G4_INST::offsetToMask(int execSize, int offset, bool nibOk)
