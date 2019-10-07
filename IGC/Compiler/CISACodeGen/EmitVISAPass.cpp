@@ -7789,10 +7789,10 @@ bool EmitPass::validateInlineAsmConstraints(llvm::CallInst* inst, SmallVector<St
     StringRef constraintStr(IA->getConstraintString());
 
     //lambda for checking constraint types
-    auto CheckConstraintTypes = [this](StringRef str)->bool
+    auto CheckConstraintTypes = [this](StringRef str, CVariable* cv)->bool
     {
         // TODO: Only "rw" (raw register operand) constraint allowed for now. Add more checks as needed
-        if (str.equals("=rw"))
+        if (str.equals("=rw") && cv == m_destination)
         {
             return true;
         }
@@ -7805,6 +7805,14 @@ bool EmitPass::validateInlineAsmConstraints(llvm::CallInst* inst, SmallVector<St
             // Also allows matching input reg to output reg. We only support one output reg for now,
             // and since output reg is always first, only match with '0'
             return true;
+        }
+        else if (str.equals("i"))
+        {
+            return cv->IsImmediate();
+        }
+        else if (str.equals("rw.u"))
+        {
+            return cv->IsUniform();
         }
         else
         {
@@ -7819,31 +7827,19 @@ bool EmitPass::validateInlineAsmConstraints(llvm::CallInst* inst, SmallVector<St
     bool success = true;
 
     // Check the output constraint tokens
-    unsigned index = 0;
-    while (index < constraints.size() && constraints[index].startswith("="))
+    if (m_destination)
     {
-        success &= CheckConstraintTypes(constraints[index++]);
+        success &= CheckConstraintTypes(constraints[0], m_destination);
     }
 
     if (success)
     {
         // Check the input constraint tokens
-        for (unsigned i = 0; i < inst->getNumArgOperands(); i++)
+        unsigned index = m_destination ? 1 : 0;
+        for (unsigned i = 0; i < inst->getNumArgOperands(); i++, index++)
         {
-            StringRef tstr = constraints[index++];
             CVariable* cv = GetSymbol(inst->getArgOperand(i));
-
-            if (tstr.endswith(".u"))
-            {
-                // Check if var is uniform
-                if (!cv->IsUniform())
-                {
-                    assert(0 && "Compiler cannot prove variable is uniform");
-                    return false;
-                }
-                tstr = tstr.substr(0, tstr.size() - 2);
-            }
-            success &= CheckConstraintTypes(tstr);
+            success &= CheckConstraintTypes(constraints[index], cv);
         }
     }
     return success;
@@ -7855,37 +7851,22 @@ void EmitPass::EmitInlineAsm(llvm::CallInst* inst)
 {
     std::stringstream& str = m_encoder->GetVISABuilder()->GetAsmTextStream();
     InlineAsm* IA = cast<InlineAsm>(inst->getCalledValue());
-    const char* asmStr = IA->getAsmString().c_str();
-    const char* lastEmitted = asmStr;
+    string asmStr = IA->getAsmString();
     smallvector<CVariable*, 8> opnds;
     SmallVector<StringRef, 8> constraints;
+
+    if (asmStr.empty())
+        return;
+
     if (!validateInlineAsmConstraints(inst, constraints))
     {
         assert(0 && "Constraints for inline assembly cannot be validated");
+        return;
     }
 
     if (m_destination)
     {
-        // Check if dest operand is also an input
-        // If so, push the input operand as the destination
-        bool hasReadWriteReg = false;
-        unsigned opNum = 0;
-        for (StringRef str : constraints)
-        {
-            if (str.startswith("="))
-                continue;
-            else if (str.equals("0"))
-            {
-                opnds.push_back(GetSymbol(inst->getArgOperand(opNum)));
-                hasReadWriteReg = true;
-                break;
-            }
-            opNum++;
-        }
-        if (!hasReadWriteReg)
-        {
-            opnds.push_back(m_destination);
-        }
+        opnds.push_back(m_destination);
     }
     for (unsigned i = 0; i < inst->getNumArgOperands(); i++)
     {
@@ -7893,57 +7874,65 @@ void EmitPass::EmitInlineAsm(llvm::CallInst* inst)
         opnds.push_back(cv);
     }
 
-    str << endl << "/// Inlined ASM" << endl;
-    while (*lastEmitted)
+    // Check for read/write registers
+    if (m_destination)
     {
-        switch (*lastEmitted)
+        for (unsigned i = 1; i < constraints.size(); i++)
         {
-        default:
-        {
-            const char* literalEnd = lastEmitted + 1;
-            while (*literalEnd && *literalEnd != '{' && *literalEnd != '|' &&
-                *literalEnd != '}' && *literalEnd != '$' && *literalEnd != '\n')
+            if (constraints[i].equals("0"))
             {
-                ++literalEnd;
+                assert(i < opnds.size());
+                CVariable* cv = opnds[i];
+                if (!cv->IsImmediate())
+                {
+                    // Replace dest reg with src reg
+                    opnds[0] = cv;
+                }
+                else
+                {
+                    // If src is immediate, dest may not be initialized, so initialize it
+                    m_encoder->Copy(m_destination, cv);
+                    m_encoder->Push();
+                }
+                break;
             }
-            str.write(lastEmitted, literalEnd - lastEmitted);
-            lastEmitted = literalEnd;
-            break;
-        }
-        case '\n':
-        {
-            ++lastEmitted;
-            str << '\n';
-            break;
-        }
-        case '$':
-        {
-            ++lastEmitted;
-            const char* idStart = lastEmitted;
-            const char* idEnd = idStart;
-            while (*idEnd >= '0' && *idEnd <= '9')
-                ++idEnd;
-
-            unsigned val = 0;
-            if (StringRef(idStart, idEnd - idStart).getAsInteger(10, val))
-            {
-                assert(0 && "Invalid operand format");
-                return;
-            }
-            lastEmitted = idEnd;
-
-            if (val >= opnds.size())
-            {
-                assert(0 && "Invalid operand index");
-                return;
-            }
-
-            str << m_encoder->GetVariableName(opnds[val]);
-            break;
-        }
         }
     }
-    if (str.str().back() != '\n') str << endl;
+
+    str << endl << "/// Inlined ASM" << endl;
+    // Look for variables to replace with the VISA variable
+    size_t startPos = 0;
+    while (startPos < asmStr.size())
+    {
+        size_t varPos = asmStr.find('$', startPos);
+        if (varPos == string::npos)
+            break;
+
+        // Find the operand number
+        const char* idStart = &(asmStr[varPos + 1]);
+        const char* idEnd = idStart;
+        while (*idEnd >= '0' && *idEnd <= '9')
+            ++idEnd;
+
+        unsigned val = 0;
+        if (StringRef(idStart, idEnd - idStart).getAsInteger(10, val))
+        {
+            assert(0 && "Invalid operand format");
+            return;
+        }
+        if (val >= opnds.size())
+        {
+            assert(0 && "Invalid operand index");
+            return;
+        }
+        string varName = m_encoder->GetVariableName(opnds[val]);
+        asmStr.replace(varPos, (idEnd - idStart + 1), varName);
+
+        startPos = varPos + varName.size();
+    }
+
+    str << asmStr;
+    if (asmStr.back() != '\n') str << endl;
     str << "/// End Inlined ASM" << endl << endl;
 }
 
