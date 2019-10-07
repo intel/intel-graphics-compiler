@@ -1314,7 +1314,6 @@ namespace IGC
         // if there is double on input to vertex shader
         if (!m_context->getModuleMetaData()->pushInfo.inputs.empty() &&
             m_context->type == ShaderType::VERTEX_SHADER &&
-            m_context->platform.getWATable().Wa_1604402567 &&
             m_context->getModuleMetaData()->compOpt.disableVertexComponentPacking)
         {
             PushInfo& pushInfo = m_context->getModuleMetaData()->pushInfo;
