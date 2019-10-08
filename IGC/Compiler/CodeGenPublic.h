@@ -110,6 +110,7 @@ namespace IGC
         unsigned int    m_funcRelocationTableSize;
         unsigned int    m_funcRelocationTableEntries;
         unsigned int    m_offsetToSkipPerThreadDataLoad = 0;
+        uint32_t        m_offsetToSkipSetFFIDGP = 0;
         //true means we separate pvtmem and spillfill. pvtmem could go into stateless.
         //false means all of them are together
         bool            m_separatePvtSpill = false;

@@ -450,6 +450,11 @@ namespace IGC
         return m_WaTable.Wa_1805992985 != 0;
     }
 
+    bool WaOverwriteFFID() const
+    {
+        return m_WaTable.Wa_1409460247 != 0;
+    }
+
     bool alignBindlessSampler() const
     {
         return IGC_IS_FLAG_ENABLED(Use16ByteBindlessSampler) &&

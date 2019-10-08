@@ -3725,6 +3725,21 @@ namespace IGC
         SaveOption(vISA_DumpCompilerStats, true);
     }
 
+    if (IGC_IS_FLAG_ENABLED(ForceFFIDOverwrite) && m_program->m_Platform->WaOverwriteFFID())
+    {
+        static const unsigned int ffid[unsigned(ShaderType::END)] = {
+            0,
+            FFID_VS,
+            FFID_HS,
+            FFID_DS,
+            FFID_GS,
+            FFID_PS,
+            FFID_GP,
+            FFID_GP
+        };
+        SaveOption(vISA_setFFID, ffid[unsigned(context->type)]);
+    }
+
     if (context->type == ShaderType::OPENCL_SHADER && context->m_floatDenormMode32 == FLOAT_DENORM_RETAIN &&
         context->m_floatDenormMode64 == FLOAT_DENORM_RETAIN)
     {
@@ -4906,6 +4921,8 @@ namespace IGC
     pOutput->m_scratchSpaceUsedByGtpin = jitInfo->numBytesScratchGtpin;
 
     pOutput->m_offsetToSkipPerThreadDataLoad = jitInfo->offsetToSkipPerThreadDataLoad;
+
+    pOutput->m_offsetToSkipSetFFIDGP = jitInfo->offsetToSkipSetFFIDGP;
     }
 
     void CEncoder::DestroyVISABuilder()
