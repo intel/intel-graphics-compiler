@@ -2816,14 +2816,16 @@ foreach(_compilerFlagName IN ITEMS "CMAKE_CXX_FLAGS" "CMAKE_C_FLAGS")
       )
       endif()
       if(NOT _igc_compiler_is_clang)
+        set(flags -funswitch-loops -Wno-maybe-uninitialized)
+        if(NOT ANDROID)
+          list(APPEND flags -lrt)
+        endif()
     igc_config_flag_apply_settings(
         CompilerOptions
         "${_compilerFlagName}"
         ALL_PATTERN ""
         SET_RAW
-          -funswitch-loops
-          -Wno-maybe-uninitialized
-          -lrt
+          ${flags}
       )
       endif()
   elseif(_igc_compiler_is_clang)
@@ -4051,4 +4053,3 @@ if(UNIX)
 
   include (CPack)
 endif(UNIX)
-

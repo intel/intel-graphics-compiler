@@ -331,7 +331,10 @@ if (UNIX OR WIN32)
   target_link_libraries(GenX_IR_Exe IGA_SLIB IGA_ENC_LIB)
 
   if (UNIX)
-    target_link_libraries(GenX_IR_Exe rt dl)
+    target_link_libraries(GenX_IR_Exe dl)
+    if(NOT ANDROID)
+      target_link_libraries(GenX_IR_Exe rt)
+    endif()
   endif(UNIX)
 
      set(GenX_IR_Exe_DEFINITIONS STANDALONE_MODE)
