@@ -107,6 +107,10 @@ namespace iga
         void run();
 
     private:
+        // postProcess - last step of "run"
+        void postProcess();
+
+    private:
         // activeSBID: input list that the sbid this dep has dependency on will be added into. This list
         // will later on be pass to processActiveSBID to set the swsb id dependency to inst accordingly
         // needSyncForShootDownInst: if the sync to the sbid on the instruction is required. If the instruction
@@ -139,6 +143,7 @@ namespace iga
 
         // get number of dist pipe according to SWSB_ENCODE_MODE
         uint32_t getNumOfDistPipe();
+
 
     private:
         // m_InstIdCounter - record the current instruction state
