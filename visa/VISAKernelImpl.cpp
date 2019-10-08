@@ -260,26 +260,26 @@ void VISAKernelImpl::createInstForJmpiSequence(InstListType& insts, G4_INST* fca
         // In case we overwrite the mask set by IGC for non-uniform call handling
 
         // mov r1.1 fcall_pred
-        insts.push_back(m_builder->createInternalInst(
-            nullptr, G4_mov, nullptr, false, 1,
+        insts.push_back(m_builder->createMov(
+            1,
             m_builder->Create_Dst_Opnd_From_Dcl(r1_1_decl, 1),
             m_builder->Create_Src_Opnd_From_Dcl(
                 fcall->getPredicate()->getTopDcl(), m_builder->getRegionScalar()),
-            nullptr, InstOpt_WriteEnable));
+            InstOpt_WriteEnable, false));
 
     } else {
         // mov  f0.0   0
-        insts.push_back(m_builder->createInternalInst(
-            nullptr, G4_mov, nullptr, false, 1,
+        insts.push_back(m_builder->createMov(
+            1,
             m_builder->createDstRegRegion(Direct, m_phyRegPool->getF0Reg(), 0, 0, 1, Type_UD),
-            m_builder->createImm(0, Type_UD), nullptr, InstOpt_WriteEnable));
+            m_builder->createImm(0, Type_UD), InstOpt_WriteEnable, false));
 
         // mov  r1.1   0
-        insts.push_back(m_builder->createInternalInst(
-            nullptr, G4_mov, nullptr, false, 1,
+        insts.push_back(m_builder->createMov(
+            1,
             m_builder->Create_Dst_Opnd_From_Dcl(r1_1_decl, 1),
             m_builder->createImm(0, Type_UD),
-            nullptr, InstOpt_WriteEnable));
+            InstOpt_WriteEnable, false));
 
         // cmp  f0.0   r1.1  0
         insts.push_back(m_builder->createInternalInst(
@@ -289,13 +289,13 @@ void VISAKernelImpl::createInstForJmpiSequence(InstListType& insts, G4_INST* fca
             m_builder->createImm(0, Type_UD), InstOpt_NoOpt));
 
         // mov  r1.1   f0.0
-        insts.push_back(m_builder->createInternalInst(
-            nullptr, G4_mov, nullptr, false, 1,
+        insts.push_back(m_builder->createMov(
+            1,
             m_builder->Create_Dst_Opnd_From_Dcl(r1_1_decl, 1),
             m_builder->createSrcRegRegion(
                 Mod_src_undef, Direct, m_phyRegPool->getF0Reg(), 0, 0,
                 m_builder->getRegionScalar(), Type_UD),
-            nullptr, InstOpt_WriteEnable));
+            InstOpt_WriteEnable, false));
     }
 
     // add  r1.0   IP   64

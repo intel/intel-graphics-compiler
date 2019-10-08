@@ -2626,7 +2626,7 @@ void SpillManagerGMRF::preloadSpillRange (
             REG_ORIGIN, spilledRangeRegion->getSubRegOff(),
             rDesc, spilledRangeRegion->getType ());
         // Attach preloadRegion to dummy mov so getLeftBound/getRightBound won't crash when called from crossGRF in createFillSendMsgDesc
-        builder_->createInternalInst(NULL, G4_mov, NULL, false, execSize, builder_->createNullDst(Type_UD), preloadRegion, NULL, 0);
+        builder_->createMov(execSize, builder_->createNullDst(Type_UD), preloadRegion, InstOpt_NoOpt, false);
         numGRFFill++;
         createFillInstr(spillRangeDcl, mRangeDcl, preloadRegion, execSize);
     }
@@ -3598,8 +3598,7 @@ void SpillManagerGMRF::insertAddrTakenSpillAndFillCode( G4_Kernel* kernel, G4_BB
 
                         G4_DstRegRegion* dstRex = kernel->fg.builder->createDstRegRegion(Direct, temp->getRegVar(), (short)i, 0, 1, Type_F);
 
-                        inst = kernel->fg.builder->createInternalInst( NULL, G4_mov, NULL, false, curExSize,
-                                dstRex, srcRex, NULL, InstOpt_WriteEnable, curInst->getLineNo(), curInst->getCISAOff(), curInst->getSrcFilename() );
+                        inst = kernel->fg.builder->createMov(curExSize, dstRex, srcRex, InstOpt_WriteEnable, false);
 
                         bb->insert( inst_it, inst );
 
@@ -3610,8 +3609,8 @@ void SpillManagerGMRF::insertAddrTakenSpillAndFillCode( G4_Kernel* kernel, G4_BB
 
                             G4_DstRegRegion* dstRex = kernel->fg.builder->createDstRegRegion(Direct, lr->getVar(), (short)i, 0, 1, Type_F);
 
-                            inst = kernel->fg.builder->createInternalInst( NULL, G4_mov, NULL, false, curExSize,
-                                    dstRex, srcRex, NULL, InstOpt_WriteEnable, curInst->getLineNo(), curInst->getCISAOff(), curInst->getSrcFilename() );
+                            inst = kernel->fg.builder->createMov(curExSize,
+                                    dstRex, srcRex, InstOpt_WriteEnable, false);
 
                             bb->insert( next_inst_it, inst );
                         }
@@ -3670,8 +3669,8 @@ void SpillManagerGMRF::insertAddrTakenSpillAndFillCode( G4_Kernel* kernel, G4_BB
 
                     G4_DstRegRegion* dstRex = kernel->fg.builder->createDstRegRegion(Direct, temp->getRegVar(), 0, off, 1, type);
 
-                    inst = kernel->fg.builder->createInternalInst( NULL, G4_mov, NULL, false, curExSize,
-                            dstRex, srcRex, NULL, InstOpt_WriteEnable, curInst->getLineNo(), curInst->getCISAOff(), curInst->getSrcFilename() );
+                    inst = kernel->fg.builder->createMov( curExSize,
+                            dstRex, srcRex, InstOpt_WriteEnable, false );
 
                     bb->insert( inst_it, inst );
 
@@ -3682,8 +3681,8 @@ void SpillManagerGMRF::insertAddrTakenSpillAndFillCode( G4_Kernel* kernel, G4_BB
 
                         G4_DstRegRegion* dstRex = kernel->fg.builder->createDstRegRegion(Direct, lr->getVar(), 0, off, 1, type);
 
-                        inst = kernel->fg.builder->createInternalInst( NULL, G4_mov, NULL, false, curExSize,
-                                dstRex, srcRex, NULL, InstOpt_WriteEnable, curInst->getLineNo(), curInst->getCISAOff(), curInst->getSrcFilename() );
+                        inst = kernel->fg.builder->createMov( curExSize,
+                                dstRex, srcRex, InstOpt_WriteEnable, false );
 
                         bb->insert( next_inst_it, inst );
                     }
@@ -4123,8 +4122,8 @@ SpillManagerGMRF::fixSpillFillCode (
                             createMHeaderInputDstRegion (mRangeDcl->getRegVar ());
                         G4_SrcRegRegion * inputPayload = createInputPayloadSrcRegion ();
 
-                        G4_INST * movInst = builder_->createInternalInst( NULL, G4_mov, NULL, false, REG_DWORD_SIZE,
-                            mHeaderInputDstRegion, inputPayload, NULL, InstOpt_WriteEnable, inst->getLineNo(), inst->getCISAOff(), inst->getSrcFilename() );
+                        G4_INST * movInst = builder_->createMov( REG_DWORD_SIZE,
+                            mHeaderInputDstRegion, inputPayload, InstOpt_WriteEnable, false);
                         (*it)->insert( jt, movInst );
 
                         curDst = createMHeaderInputDstRegion (mRangeDcl->getRegVar ());
@@ -4144,8 +4143,8 @@ SpillManagerGMRF::fixSpillFillCode (
                     G4_DstRegRegion * mHeaderOffsetDstRegion =
                         createMHeaderBlockOffsetDstRegion (mRangeDcl->getRegVar ());
 
-                    G4_INST* mov_inst = builder_->createInternalInst (NULL, G4_mov, NULL, false, SCALAR_EXEC_SIZE, mHeaderOffsetDstRegion,
-                        offsetImm, NULL, InstOpt_WriteEnable, inst->getLineNo(), inst->getCISAOff(), inst->getSrcFilename());
+                    G4_INST* mov_inst = builder_->createMov (SCALAR_EXEC_SIZE, mHeaderOffsetDstRegion,
+                        offsetImm, InstOpt_WriteEnable, false);
                     (*it)->insert( jt, mov_inst );
 
                     unsigned segmentByteSize = inst->getMsgDesc()->ResponseLength() * REG_BYTE_SIZE;
@@ -4187,8 +4186,8 @@ SpillManagerGMRF::fixSpillFillCode (
                     G4_DstRegRegion * mHeaderOffsetDstRegion =
                         createMHeaderBlockOffsetDstRegion (mRangeDcl->getRegVar ());
 
-                    G4_INST* mov_inst = builder_->createInternalInst (NULL, G4_mov, NULL, false, SCALAR_EXEC_SIZE, mHeaderOffsetDstRegion,
-                        offsetImm, NULL, InstOpt_WriteEnable, inst->getLineNo(), inst->getCISAOff(), inst->getSrcFilename());
+                    G4_INST* mov_inst = builder_->createMov (SCALAR_EXEC_SIZE, mHeaderOffsetDstRegion,
+                        offsetImm, InstOpt_WriteEnable, false);
                     (*it)->insert( jt, mov_inst );
 
                     unsigned segmentByteSize = (inst->getMsgDesc()->MessageLength() - SCRATCH_PAYLOAD_HEADER_MAX_HEIGHT) * REG_BYTE_SIZE;

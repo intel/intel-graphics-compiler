@@ -132,8 +132,8 @@ void CoalesceSpillFills::copyToOldFills(G4_DstRegRegion* coalescedFillDst, std::
             G4_SrcRegRegion* src = kernel.fg.builder->createSrcRegRegion(Mod_src_undef, Direct,
                 coalescedFillDst->getBase(), (short)REGISTER_ROW(offToUse), 0, kernel.fg.builder->getRegionStride1(), Type_UD);
 
-            G4_INST* copy = kernel.fg.builder->createInternalInst(nullptr, G4_mov, nullptr, false, (unsigned char)simdSize,
-                movDst, src, nullptr, InstOpt_WriteEnable);
+            G4_INST* copy = kernel.fg.builder->createMov((unsigned char)simdSize,
+                movDst, src, InstOpt_WriteEnable, false);
             copy->setCISAOff(srcCISAOff);
 
             bb->insert(f, copy);
@@ -1348,8 +1348,7 @@ void CoalesceSpillFills::fixSendsSrcOverlap()
                             kernel.fg.builder->getRegionStride1(), Type_UD);
                         G4_DstRegRegion* dstRgn = kernel.fg.builder->createDstRegRegion(
                             Direct, copyDcl->getRegVar(), REGISTER_ROW(row), 0, 1, Type_UD);
-                        G4_INST* copyInst = kernel.fg.builder->createInternalInst(nullptr,
-                            G4_mov, nullptr, false, 8, dstRgn, srcRgn, nullptr, InstOpt_WriteEnable);
+                        G4_INST* copyInst = kernel.fg.builder->createMov(8, dstRgn, srcRgn, InstOpt_WriteEnable, false);
                         copyInst->setCISAOff(inst->getCISAOff());
                         bb->insert(instIt, copyInst);
                         elems -= 8;
@@ -1770,8 +1769,8 @@ void CoalesceSpillFills::spillFillCleanup()
                         src1Write->getBase(), REGISTER_ROW(diff) + src1Write->getRegOff(), 0,
                         kernel.fg.builder->getRegionStride1(), Type_UD);
 
-                    G4_INST* mov = kernel.fg.builder->createInternalInst(nullptr, G4_mov, nullptr, false, (unsigned char)execSize,
-                        nDst, nSrc, nullptr, InstOpt_WriteEnable);
+                    G4_INST* mov = kernel.fg.builder->createMov((unsigned char)execSize,
+                        nDst, nSrc, InstOpt_WriteEnable, false);
                     bb->insert(instIt, mov);
                     mov->setCISAOff(inst->getCISAOff());
 

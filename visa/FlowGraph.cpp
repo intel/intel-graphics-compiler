@@ -275,8 +275,7 @@ int64_t FlowGraph::insertDummyUUIDMov()
             G4_DstRegRegion* nullDst = builder->createNullDst(Type_UD);
             int64_t uuID = (int64_t)mt_rand();
             G4_Operand* randImm = (G4_Operand*)builder->createImm(uuID, Type_UD);
-            G4_INST* movInst = builder->createInternalInst(nullptr, G4_mov, nullptr, false, 1,
-                nullDst, randImm, nullptr, 0);
+            G4_INST* movInst = builder->createMov(1, nullDst, randImm, InstOpt_NoOpt, false);
 
             auto instItEnd = bb->end();
             for (auto it = bb->begin();
@@ -982,8 +981,8 @@ void IR_Builder::materializeGlobalImm(G4_BB* entryBB)
     {
         auto&& immVal = immPool.getImmVal(i);
         auto dcl = immPool.getImmDcl(i);
-        G4_INST* inst = createInternalInst(nullptr, G4_mov, nullptr, false, immVal.numElt,
-            Create_Dst_Opnd_From_Dcl(dcl, 1), immVal.imm, nullptr, InstOpt_WriteEnable);
+        G4_INST* inst = createMov(immVal.numElt,
+            Create_Dst_Opnd_From_Dcl(dcl, 1), immVal.imm, InstOpt_WriteEnable, false);
         auto iter = std::find_if(entryBB->begin(), entryBB->end(),
             [](G4_INST* inst) { return !inst->isLabel(); });
         entryBB->insert(iter, inst);
@@ -3012,9 +3011,8 @@ void FlowGraph::processGoto(bool HasSIMDCF)
                         uint8_t execSize = lastInst->getExecSize() > 16 ? 2 : 1;
                         G4_Declare* tmpFlagDcl = builder->createTempFlag(execSize);
                         G4_DstRegRegion* newPredDef = builder->createDstRegRegion(Direct, tmpFlagDcl->getRegVar(), 0, 0, 1, execSize == 2 ? Type_UD : Type_UW);
-                        G4_INST *predInst = builder->createInternalInst(NULL, G4_mov, NULL, false, 1,
-                            newPredDef, builder->createImm(0, Type_UW), NULL,
-                            InstOpt_WriteEnable, lastInst->getLineNo(), lastInst->getCISAOff(), lastInst->getSrcFilename());
+                        G4_INST *predInst = builder->createMov(1, newPredDef, builder->createImm(0, Type_UW),
+                            InstOpt_WriteEnable, false);
                         INST_LIST_ITER iter = bb->end();
                         iter--;
                         bb->insert(iter, predInst);
@@ -3808,8 +3806,7 @@ void G4_BB::addEOTSend(G4_INST* lastInst)
     G4_DstRegRegion* movDst = builder->Create_Dst_Opnd_From_Dcl(dcl, 1);
     G4_SrcRegRegion* r0Src = builder->Create_Src_Opnd_From_Dcl(
         builder->getBuiltinR0(), builder->getRegionStride1());
-    G4_INST *movInst = builder->createInternalInst(NULL, G4_mov, NULL, false, NUM_DWORDS_PER_GRF,
-        movDst, r0Src, NULL, InstOpt_WriteEnable, 0, lastInst ? lastInst->getCISAOff() : -1, 0);
+    G4_INST *movInst = builder->createMov(NUM_DWORDS_PER_GRF, movDst, r0Src, InstOpt_WriteEnable, false);
     if (lastInst)
     {
         movInst->setLocation(lastInst->getLocation());

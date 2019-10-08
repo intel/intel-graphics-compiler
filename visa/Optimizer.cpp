@@ -437,29 +437,17 @@ void Optimizer::insertHashMovs()
 
                     G4_INST* lo;
                     G4_INST* hi;
-                    lo = kernel.fg.builder->createInternalInst(
-                        NULL,
-                        G4_mov,
-                        NULL,
-                        false,
+                    lo = kernel.fg.builder->createMov(
                         16,
                         kernel.fg.builder->createNullDst(Type_UD),
                         kernel.fg.builder->createImm((unsigned int)(hashVal & 0xffffffff), Type_UD),
-                        NULL,
-                        NULL,
-                        InstOpt_WriteEnable);
+                        InstOpt_WriteEnable, false);
 
-                    hi = kernel.fg.builder->createInternalInst(
-                        NULL,
-                        G4_mov,
-                        NULL,
-                        false,
+                    hi = kernel.fg.builder->createMov(
                         16,
                         kernel.fg.builder->createNullDst(Type_UD),
                         kernel.fg.builder->createImm((unsigned int)((hashVal >> 32) & 0xffffffff), Type_UD),
-                        NULL,
-                        NULL,
-                        InstOpt_WriteEnable);
+                        InstOpt_WriteEnable, false);
 
                     bb->push_back(lo);
                     bb->push_back(hi);

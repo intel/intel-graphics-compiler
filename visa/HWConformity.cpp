@@ -7256,7 +7256,7 @@ void HWConformity::helperGenerateTempDst(
     G4_SrcRegRegion *srcRegion = builder.Create_Src_Opnd_From_Dcl(dcl, region);
 
     //creating a mov from temp dst to final destination using original options of fixed instruction
-    G4_INST* movInst = builder.createInst( NULL, G4_mov, NULL, false, execSize, dst, srcRegion, NULL, inst->getMaskOption() );
+    G4_INST* movInst = builder.createMov(execSize, dst, srcRegion, inst->getMaskOption(), false);
 
     ++instIter;
     //inserting mov after fixed instruction

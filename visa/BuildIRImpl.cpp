@@ -1206,17 +1206,12 @@ void IR_Builder::Create_MOVR0_Inst( G4_Declare* dcl, short regOff, short subregO
     // create r0 src
     G4_SrcRegRegion* r0_src_opnd = Create_Src_Opnd_From_Dcl(builtinR0, getRegionStride1());
     // create inst
-    createInst(
-        NULL,
-        G4_mov,
-        NULL,
-        false,
+    createMov(
         GENX_DATAPORT_IO_SZ,
         dst1_opnd,
         r0_src_opnd,
-        NULL,
         ( use_nomask ? InstOpt_WriteEnable : 0 ),
-        0 );
+        true );
 }
 
 void IR_Builder::Create_ADD_Inst(G4_Declare* dcl, short regOff, short subregOff, uint8_t execsize,
@@ -1422,18 +1417,12 @@ void IR_Builder::Create_MOV_Send_Src_Inst(
                 dst_dcl->getElemType());
         }
 
-        // create inst
-        createInst(
-            NULL,
-            G4_mov,
-            NULL,
-            false,
+        createMov(
             execsize,
             dst,
             src,
-            NULL,
             option,
-            0 );
+            true );
 
         // update offset in decl
         if( remained_dword >= execsize ){
@@ -1895,10 +1884,10 @@ void IR_Builder::initBuiltinSLMSpillAddr(int perThreadSLMSize)
     // (W) add (16) SLMSpillAddr:ud perThreadSLMStart<0;1,0>:ud immVec<8;8,1>:uw
     G4_Imm* vec = createImm(0x76543210, Type_UV);
     G4_DstRegRegion* dst = Create_Dst_Opnd_From_Dcl(builtinImmVector4, 1);
-    instBuffer.push_back(createInternalInst(nullptr, G4_mov, nullptr, false, 8, dst, vec, nullptr, InstOpt_WriteEnable));
+    instBuffer.push_back(createMov(8, dst, vec, InstOpt_WriteEnable, false));
     vec = createImm(0xFEDCBA98, Type_UV);
     dst = createDstRegRegion(Direct, builtinImmVector4->getRegVar(), 0, 8, 1, Type_UW);
-    instBuffer.push_back(createInternalInst(nullptr, G4_mov, nullptr, false, 8, dst, vec, nullptr, InstOpt_WriteEnable));
+    instBuffer.push_back(createMov(8, dst, vec, InstOpt_WriteEnable, false));
     G4_SrcRegRegion* mulSrc = Create_Src_Opnd_From_Dcl(builtinImmVector4, getRegionStride1());
     dst = Create_Dst_Opnd_From_Dcl(builtinImmVector4, 1);
     instBuffer.push_back(createInst(nullptr, G4_mul, nullptr, false, 16, dst, mulSrc, createImm(4, Type_UW), InstOpt_WriteEnable));

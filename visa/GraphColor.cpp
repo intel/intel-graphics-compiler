@@ -7784,9 +7784,8 @@ void VarSplit::insertMovesFromTemp(G4_Kernel& kernel, G4_Declare* oldDcl, int in
                     0,
                     kernel.fg.builder->getRegionStride1(),
                     oldSrc->getType());
-                G4_INST* movInst = kernel.fg.builder->createInternalInst(nullptr, G4_mov, nullptr, false,
-                    (unsigned char)subDcl->getTotalElems(), dst, src, nullptr, InstOpt_WriteEnable,
-                    inst->getLineNo(), inst->getCISAOff(), inst->getSrcFilename());
+                G4_INST* movInst = kernel.fg.builder->createMov(
+                    (unsigned char)subDcl->getTotalElems(), dst, src, InstOpt_WriteEnable, false);
                 bb->insert(instIter, movInst);
             }
         }

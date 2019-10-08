@@ -3478,12 +3478,10 @@ void CFGStructurizer::generateGotoJoin(G4_BB *gotoBB, G4_BB *jibBB, G4_BB *joinB
             G4_Declare* tmpFlagDcl = CFG->builder->createTempFlag(numFlags);
             G4_DstRegRegion* newPredDef = CFG->builder->createDstRegRegion(Direct, tmpFlagDcl->getRegVar(), 0, 0, 1,
                 numFlags == 2 ? Type_UD : Type_UW);
-            G4_INST *predInst = CFG->builder->createInternalInst(
-                NULL, G4_mov, NULL, false, 1,
+            G4_INST *predInst = CFG->builder->createMov(1,
                 newPredDef,
-                CFG->builder->createImm(0, Type_UW), NULL,
-                InstOpt_WriteEnable, gotoInst->getLineNo(),
-                gotoInst->getCISAOff(), gotoInst->getSrcFilename());
+                CFG->builder->createImm(0, Type_UW),
+                InstOpt_WriteEnable, false);
             INST_LIST_ITER iter = gotoBB->end();
             iter--;
             gotoBB->insert(iter, predInst);

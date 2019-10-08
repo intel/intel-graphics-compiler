@@ -197,17 +197,12 @@ int IR_Builder::translateVISAAddrInst(ISA_Opcode opcode, Common_ISA_Exec_Size ex
     if( src0Opnd->isAddrExp() &&
         src1Opnd == NULL  )
     {
-        createInst(
-            NULL,
-            G4_mov,
-            NULL,
-            false,
+        createMov(
             exsize,
             dstOpnd,
             src0Opnd,
-            NULL,
             instOpt,
-            0);
+            true);
     }
     else
     {
@@ -410,17 +405,12 @@ int IR_Builder::translateVISAArithmeticInst(ISA_Opcode opcode, Common_ISA_Exec_S
                 getRegionStride1(),
                 dstOpnd->getType());
 
-            createInst(
-                NULL,
-                G4_mov,
-                NULL,
-                false,
+            createMov(
                 exsize,
                 carryBorrow,
                 accSrcOpnd,
-                NULL,
                 instOpt,
-                inst->getLineNo());
+                true);
         }
 
     }
@@ -1837,7 +1827,7 @@ int IR_Builder::translateVISAWaitInst(G4_Operand* mask)
         // mov (1) f0.0<1>:uw <TDR_bits>:ub {NoMask}
         G4_Declare* tmpFlagDcl = createTempFlag(1);
         G4_DstRegRegion* newPredDef = Create_Dst_Opnd_From_Dcl(tmpFlagDcl, 1);
-        createInst( NULL, G4_mov, NULL, false, 1, newPredDef, mask, NULL, InstOpt_WriteEnable, 0);
+        createMov( 1, newPredDef, mask, InstOpt_WriteEnable, true);
 
         // (f0.0) and (8) tdr0.0<1>:uw tdr0.0<8;8,1>:uw 0x7FFF:uw {NoMask}
         G4_Predicate* predOpnd = createPredicate(PredState_Plus, tmpFlagDcl->getRegVar(), 0, PRED_DEFAULT);
@@ -3102,7 +3092,7 @@ int IR_Builder::translateVISAMediaLoadInst(
 
                 G4_DstRegRegion *tmp_dst_opnd = createDstRegRegion( tmp_dst );
 
-                createInst( NULL, G4_mov, NULL, false, curr_exec_size, tmp_dst_opnd, tmp_src_opnd, NULL, InstOpt_WriteEnable );
+                createMov( curr_exec_size, tmp_dst_opnd, tmp_src_opnd, InstOpt_WriteEnable, true );
                 curr_offset += curr_exec_size;
                 remained_ele -= curr_exec_size;
             }
@@ -3447,8 +3437,8 @@ int IR_Builder::translateVISAGatherInst(
             /* mov (1)     VX(0,2)<1>,   P  */
             Create_MOV_Inst(header, 0, 2, 1, NULL, NULL, gOffOpnd, true);
             /* mov  (numElt)    VX(1,0)<1>,  E */
-            createInst( NULL, G4_mov, NULL, false, numElt, dst1_opnd,
-                eltOffOpnd, NULL, instOpt);
+            createMov( numElt, dst1_opnd,
+                eltOffOpnd, instOpt, true);
         }
 
         // Create a <8;8,1> src region for the send payload
@@ -3626,7 +3616,7 @@ int IR_Builder::translateVISAScatterInst(
         }
         else
         {
-            createInst( NULL, G4_mov, NULL, false, numElt, tmpDstOpnd, eltOffOpnd, NULL, instOpt);
+            createMov( numElt, tmpDstOpnd, eltOffOpnd, instOpt, true);
         }
 
         Create_MOV_Send_Src_Inst( dcl, effectiveNumElt/8, 0, numElt, srcOpnd, instOpt );
@@ -3682,8 +3672,8 @@ int IR_Builder::translateVISAScatterInst(
             /* mov (1)     VX(0,2)<1>,   P  */
             Create_MOV_Inst( dcl, 0, 2, 1, NULL, NULL, gOffOpnd, true );
             /* mov  (numElt)    VX(1,0)<1>,  E */
-            createInst( NULL, G4_mov, NULL, false, numElt, dst1_opnd,
-                eltOffOpnd, NULL, instOpt);
+            createMov( numElt, dst1_opnd,
+                eltOffOpnd, instOpt, true);
         }
 
         /* mov  (numElt)    VX(numElt/8+1,0)<1>,  V */
@@ -3847,7 +3837,7 @@ int IR_Builder::translateVISAGather4Inst(
         }
         else
         {
-            createInst( NULL, G4_mov, NULL, false, numElt, dst1_opnd, src2_opnd, NULL, instOpt );
+            createMov( numElt, dst1_opnd, src2_opnd, instOpt, true );
         }
     }
     else
@@ -4064,7 +4054,7 @@ int IR_Builder::translateVISAScatter4Inst(
         }
         else
         {
-            createInst( NULL, G4_mov, NULL, false, numElt, dst1_opnd, src2_opnd, NULL, instOpt );
+            createMov( numElt, dst1_opnd, src2_opnd, instOpt, true );
         }
     }
     else
@@ -5812,16 +5802,12 @@ int IR_Builder::translateVISAVmeFbrInst(
         Type_UB);
     G4_DstRegRegion *tmp_dst1_opnd = createDstRegRegion( tmp_dst1 );
 
-    createInst(
-        NULL,
-        G4_mov,
-        NULL,
-        false,
+    createMov(
         1,
         tmp_dst1_opnd,
         fbrMbModOpnd,
-        NULL,
-        InstOpt_WriteEnable);
+        InstOpt_WriteEnable,
+        true);
 
     // mov  (1)     VX(2,21)<1>, FBRSubMbShape
     G4_DstRegRegion tmp_dst2(
@@ -5833,17 +5819,12 @@ int IR_Builder::translateVISAVmeFbrInst(
         Type_UB);
     G4_DstRegRegion *tmp_dst2_opnd = createDstRegRegion( tmp_dst2 );
 
-    createInst(
-        NULL,
-        G4_mov,
-        NULL,
-        false,
+    createMov(
         1,
         tmp_dst2_opnd,
         fbrSubMbShapeOpnd,
-        NULL,
-        InstOpt_WriteEnable);
-
+        InstOpt_WriteEnable,
+        true);
 
     //  mov  (1)     VX(2,22)<1>, FBRSubPredMode
     G4_DstRegRegion tmp_dst3(
@@ -5855,16 +5836,12 @@ int IR_Builder::translateVISAVmeFbrInst(
         Type_UB);
     G4_DstRegRegion *tmp_dst3_opnd = createDstRegRegion( tmp_dst3 );
 
-    createInst(
-        NULL,
-        G4_mov,
-        NULL,
-        false,
+    createMov(
         1,
         tmp_dst3_opnd,
         fbrSubPredModeOpnd,
-        NULL,
-        InstOpt_WriteEnable);
+        InstOpt_WriteEnable,
+        true);
 
     // send's operands preparation
     // create a currDst for VX
@@ -5971,7 +5948,7 @@ int IR_Builder::translateVISARawSendInst(G4_Predicate *predOpnd, Common_ISA_Exec
     {
         // mov (1) a0.0<1>:ud src<0;1,0>:ud {NoMask}
         G4_DstRegRegion *dstOpnd = Create_Dst_Opnd_From_Dcl( builtinA0, 1);
-        createInst( NULL, G4_mov, NULL, false, 1, dstOpnd, msgDescOpnd, NULL, InstOpt_WriteEnable, 0 );
+        createMov( 1, dstOpnd, msgDescOpnd, InstOpt_WriteEnable, true );
         msgDescOpnd = Create_Src_Opnd_From_Dcl( builtinA0, getRegionScalar() );
     }
 
@@ -6026,7 +6003,7 @@ int IR_Builder::translateVISARawSendsInst(G4_Predicate *predOpnd, Common_ISA_Exe
     {
         // mov (1) a0.0<1>:ud src<0;1,0>:ud {NoMask}
         G4_DstRegRegion *dstOpnd = Create_Dst_Opnd_From_Dcl( builtinA0, 1);
-        createInst( NULL, G4_mov, NULL, false, 1, dstOpnd, msgDescOpnd, NULL, InstOpt_WriteEnable, 0 );
+        createMov( 1, dstOpnd, msgDescOpnd, InstOpt_WriteEnable, true );
         msgDescOpnd = Create_Src_Opnd_From_Dcl( builtinA0, getRegionScalar() );
     }
 
@@ -6044,7 +6021,7 @@ int IR_Builder::translateVISARawSendsInst(G4_Predicate *predOpnd, Common_ISA_Exe
         // mov (1) a0.2<1>:ud src<0;1,0>:ud {NoMask} ;
         // to hold the dynamic ext msg descriptor
         G4_DstRegRegion* exDescDst = Create_Dst_Opnd_From_Dcl(getBuiltinA0Dot2(), 1);
-        createInst( NULL, G4_mov, NULL, false, 1, exDescDst, ex, NULL, InstOpt_WriteEnable, 0 );
+        createMov( 1, exDescDst, ex, InstOpt_WriteEnable, true );
         temp_exdesc_src = Create_Src_Opnd_From_Dcl(getBuiltinA0Dot2(), getRegionScalar());
 
         if (exDescVal == 0)
@@ -7473,7 +7450,7 @@ int IR_Builder::translateVISAResInfoInst(
         G4_DstRegRegion payloadDst( Direct, msg->getRegVar(), 0, 2, 1, Type_UD );
         G4_DstRegRegion* payloadDstRgn = createDstRegRegion( payloadDst );
 
-        G4_INST* movInst = createInst( NULL, G4_mov, NULL, false, 1, payloadDstRgn, immOpndSecondDword, NULL, 0, 0 );
+        G4_INST* movInst = createMov( 1, payloadDstRgn, immOpndSecondDword, InstOpt_NoOpt, true);
         movInst->setOptionOn( InstOpt_WriteEnable );
     }
 
@@ -7671,7 +7648,7 @@ int IR_Builder::translateVISAURBWrite3DInst(
 
             G4_SrcRegRegion* vertexSrcRegRgnRowi = createSrcRegRegion(Mod_src_undef, Direct, vertexDataDcl->getRegVar(), startSrcRow++, 0, getRegionStride1(), Type_F);
 
-            G4_INST* vertexDataMovInst = createInst( NULL, G4_mov, NULL, false, 8, payloadTypedRegRowRgni, vertexSrcRegRgnRowi, NULL, 0 );
+            G4_INST* vertexDataMovInst = createMov( 8, payloadTypedRegRowRgni, vertexSrcRegRgnRowi, InstOpt_NoOpt, true );
             vertexDataMovInst->setOptionOn( instOpt );
         }
     }
@@ -10523,9 +10500,8 @@ G4_SrcRegRegion *IR_Builder::coalescePayload(
                               srcDcl->getRegVar(), 0, 0,
                               rd110,
                               type);
-                      createInst(
-                          nullptr, G4_mov, nullptr, false, MAX_SIMD,
-                          dstRegion, srcRegion, nullptr, nullptr, instOpt, 0);
+                      createMov(MAX_SIMD,
+                          dstRegion, srcRegion, instOpt, true);
                   }
 
                   // copy the tail (not a multiple of MAX_SIMD)
@@ -10561,9 +10537,8 @@ G4_SrcRegRegion *IR_Builder::coalescePayload(
                               srcDcl->getRegVar(), 0, 0,
                               rd110,
                               copyType);
-                      createInst(
-                          nullptr, G4_mov, nullptr, false, MAX_SIMD,
-                          dstRegion, srcRegion, nullptr, nullptr, instOpt, 0);
+                      createMov(MAX_SIMD,
+                          dstRegion, srcRegion, instOpt, true);
 
                       tailElements -= execSize;
                   }
@@ -10796,7 +10771,7 @@ void IR_Builder::Copy_SrcRegRegion_To_Payload( G4_Declare* payload, unsigned int
 
     G4_SrcRegRegion* srcRgn = createSrcRegRegion( *src );
     srcRgn->setType( payload->getElemType() );
-    G4_INST* refCopy = createInst( NULL, G4_mov, NULL, false, exec_size, payloadDstRgn, srcRgn, NULL, NULL, 0, 0, true );
+    G4_INST* refCopy = createMov(exec_size, payloadDstRgn, srcRgn, InstOpt_NoOpt, true );
     refCopy->setOptionOn(emask);
     if (G4_Type_Table[payload->getElemType()].byteSize == 2)
     {
