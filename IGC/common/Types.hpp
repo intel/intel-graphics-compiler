@@ -31,8 +31,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/debug/Debug.hpp"
 
 // Forward declarations
-class AsmHash;
-class NosHash;
 class ShaderHash;
 namespace USC
 {
@@ -40,53 +38,22 @@ namespace USC
 }
 
 
-class AsmHash
-{
-public:
-    AsmHash()
-        : value(0)
-    {}
-    QWORD value;
-};
-
-class NosHash
-{
-public:
-    NosHash()
-        : value(0)
-    {}
-    QWORD value;
-};
-
-class PsoHash
-{
-public:
-    PsoHash()
-        : value(0)
-    {}
-
-    PsoHash(QWORD hash)
-        : value(hash)
-    {}
-
-    QWORD value;
-};
 
 class ShaderHash
 {
 public:
     ShaderHash()
-        : asmHash()
-        , nosHash()
-        , psoHash()
+        : asmHash(0)
+        , nosHash(0)
+        , psoHash(0)
     {}
-    QWORD getAsmHash() const { return asmHash.value; }
-    QWORD getNosHash() const { return nosHash.value; }
-    QWORD getPsoHash() const { return psoHash.value; }
+    QWORD getAsmHash() const { return asmHash; }
+    QWORD getNosHash() const { return nosHash; }
+    QWORD getPsoHash() const { return psoHash; }
 
-    AsmHash asmHash;
-    NosHash nosHash;
-    PsoHash psoHash;
+    QWORD asmHash;
+    QWORD nosHash;
+    QWORD psoHash;
 };
 
 enum class SIMDMode : unsigned char

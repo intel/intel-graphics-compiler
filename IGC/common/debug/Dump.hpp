@@ -174,11 +174,8 @@ inline FILE* OpenDumpFile(
     return fp;
 }
 
-AsmHash AsmHashOCL(const UINT* pShaderCode, size_t size);
 ShaderHash ShaderHashOCL(const UINT* pShaderCode, size_t size);
 
-AsmHash    AsmHashOGL(QWORD hash);
-NosHash    NosHashOGL(QWORD hash);
 ShaderHash ShaderHashOGL(QWORD glslHash, QWORD nosHash);
 
 } // namespace Debug

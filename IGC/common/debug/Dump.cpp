@@ -228,13 +228,13 @@ std::string DumpName::AbsolutePath(OutputFolderName folder) const
     {
 
         if (m_type.hasValue() && IGC_IS_FLAG_ENABLED(EnableShaderNumbering)) {
-            bool increment = shaderHashMap.insert({ m_hash->asmHash.value, shaderNum }).second;
+            bool increment = shaderHashMap.insert({ m_hash->asmHash, shaderNum }).second;
             //Need to serialize access to the shaderNum counter in case different threads need to dump the same shader at once.
             hashMapLock.lock();
             if (increment) shaderNum++;
             hashMapLock.unlock();
             ss << "_"
-               << shaderHashMap[m_hash->asmHash.value]
+               << shaderHashMap[m_hash->asmHash]
                << "_";
         }
 
@@ -242,31 +242,31 @@ std::string DumpName::AbsolutePath(OutputFolderName folder) const
             << "asm"
             << std::hex
             << std::setfill('0')
-            << std::setw(sizeof(m_hash->asmHash.value) * CHAR_BIT / 4)
-            << m_hash->asmHash.value
+            << std::setw(sizeof(m_hash->asmHash) * CHAR_BIT / 4)
+            << m_hash->asmHash
             << std::dec
             << std::setfill(' ');
 
-        if (m_hash->nosHash.value != 0)
+        if (m_hash->nosHash != 0)
         {
             ss << "_"
                << "nos"
                << std::hex
                << std::setfill('0')
-               << std::setw(sizeof(m_hash->nosHash.value) * CHAR_BIT / 4)
-               << m_hash->nosHash.value
+               << std::setw(sizeof(m_hash->nosHash) * CHAR_BIT / 4)
+               << m_hash->nosHash
                << std::dec
                << std::setfill(' ');
         }
 
-        if (m_hash->psoHash.value != 0)
+        if (m_hash->psoHash != 0)
         {
             ss << "_"
                 << "pso"
                 << std::hex
                 << std::setfill('0')
-                << std::setw(sizeof(m_hash->psoHash.value) * CHAR_BIT / 4)
-                << m_hash->psoHash.value
+                << std::setw(sizeof(m_hash->psoHash) * CHAR_BIT / 4)
+                << m_hash->psoHash
                 << std::dec
                 << std::setfill(' ');
         }
@@ -614,41 +614,19 @@ void PrintDebugMsg(
 #endif
 }
 
-
-AsmHash AsmHashOCL(const UINT* pShaderCode, size_t size)
-{
-    AsmHash hash;
-    hash.value = iSTD::Hash(reinterpret_cast<const DWORD*>(pShaderCode), int_cast<DWORD>(size));
-    return hash;
-}
-
 ShaderHash ShaderHashOCL(const UINT* pShaderCode, size_t size)
 {
     ShaderHash hash;
-    hash.asmHash = AsmHashOCL(pShaderCode, size);
-    hash.nosHash = NosHash();
+    hash.asmHash = iSTD::Hash(reinterpret_cast<const DWORD*>(pShaderCode), int_cast<DWORD>(size));
+    hash.nosHash = 0;
     return hash;
-}
-
-AsmHash AsmHashOGL(QWORD hash)
-{
-    AsmHash asmHash;
-    asmHash.value = hash;
-    return asmHash;
-}
-
-NosHash NosHashOGL(QWORD hash)
-{
-    NosHash nosHash;
-    nosHash.value = hash;
-    return nosHash;
 }
 
 ShaderHash ShaderHashOGL(QWORD glslHash, QWORD nosHash)
 {
     ShaderHash shaderHash;
-    shaderHash.asmHash = AsmHashOGL(glslHash);
-    shaderHash.nosHash = NosHashOGL(nosHash);
+    shaderHash.asmHash = glslHash;
+    shaderHash.nosHash = nosHash;
     return shaderHash;
 }
 
