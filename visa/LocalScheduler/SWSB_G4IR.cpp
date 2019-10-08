@@ -2314,11 +2314,10 @@ void SWSB::insertTest()
 
             bool fusedSync = false;
             //HW W/A
-            //For fused URB sends, in HW, the dependence info of the second send instruction cannot be decoded
+            //For fused URB sends, or typed write, in HW, the dependence info of the second send instruction cannot be decoded
             //Software will check and promoted them before the first instruction.
             //If the second one is EOT instruction, syncAll is required.
             if (inst->isSend() &&
-                inst->getMsgDesc()->getFuncId() == SFID::URB &&
                 inst->isAtomicInst())
             {
                 INST_LIST_ITER tmp_it = inst_it;
@@ -2327,7 +2326,7 @@ void SWSB::insertTest()
                 {
                     G4_INST *nextInst = *tmp_it;
 
-                    if (nextInst->isSend() && nextInst->getMsgDesc()->getFuncId() == SFID::URB)
+                    if (nextInst->isSend())
                     {
                         G4_INST *synInst = nullptr;
                         if (nextInst->isEOT())
@@ -3273,6 +3272,25 @@ void G4_BB_SB::setDistance(SBFootprint * footprint, SBNode *node, SBNode *liveNo
         auto dist = node->getALUID() - liveNode->getALUID();
         assert(dist <= liveNode->getMaxDepDistance() && "dist should not exceed the max dep distance");
         node->setDistance(dist);
+    }
+
+    return;
+}
+
+
+//The merged footprint is ordered from back to front instructions in the macro
+//As a result if killed, is the back instruction killed, which means front instructions are killed as well.
+void G4_BB_SB::footprintMerge(SBNode *node, SBNode *nextNode)
+{
+    for (Gen4_Operand_Number opndNum
+        : {Opnd_src0, Opnd_src1, Opnd_src2, Opnd_dst})
+    {
+        SBFootprint *nextfp = nextNode->getFootprint(opndNum);
+
+        if (nextfp != nullptr)
+        {
+            node->setFootprint(nextfp, opndNum);
+        }
     }
 
     return;

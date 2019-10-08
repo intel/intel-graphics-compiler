@@ -1451,7 +1451,9 @@ void DDD::pairTypedWriteOrURBWriteNodes(G4_BB *bb) {
             assert(firstNode->getInstructions()->size() == 1);
             firstNode->addPairInstr(*secondNode->getInstructions()->begin());
             if (!kernel->fg.builder->getOption(vISA_NoAtomicSend) &&
-                firstInstr->isSend() && firstInstr->getMsgDesc()->getFuncId() == SFID::URB)
+                firstInstr->isSend() && (firstInstr->getMsgDesc()->getFuncId() == SFID::URB ||
+                isTypedWritePart(firstInstr, 0) ||
+                isTypedWritePart(firstInstr, 2)))
             {
                 firstInstr->setOptionOn(InstOpt_Atomic);
             }
