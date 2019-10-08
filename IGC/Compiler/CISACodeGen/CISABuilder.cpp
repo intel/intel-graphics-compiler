@@ -3996,6 +3996,8 @@ namespace IGC
 
     SaveOption(vISA_TotalGRFNum, context->getNumGRFPerThread());
 
+
+
     if (IGC_IS_FLAG_ENABLED(SystemThreadEnable))
     {
         /* Some tools only use 32bits hash, to maintain compatibility

@@ -1287,6 +1287,11 @@ namespace TC
                             {
                                 checkBinaryType = true;
                             }
+                            else if (strcmp(pParam, "-cl-intel-num-thread-per-eu") == 0)
+                            {
+                                // Next token is N, so ignore it
+                                ignoreNextToken = true;
+                            }
                         }
                         // Check for Intel OpenCL CPU options
                         // OCL Kernel Profiler requires "-g" to create debug information for instrumented kernels.

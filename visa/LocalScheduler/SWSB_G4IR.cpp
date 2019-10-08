@@ -2780,7 +2780,7 @@ void G4_BB_SB::getLiveOutToken(unsigned allSendNum,
         return;
     }
 
-    uint32_t totalTokenNum = builder.getOptions()->getuInt32Option(vISA_SWSBTokenNum);
+    uint32_t totalTokenNum = builder.kernel.getNumSWSBTokens();
     unsigned *liveNodeID = (unsigned *)mem.alloc(sizeof(unsigned) * totalTokenNum);
 
     if (tokeNodesMap == nullptr)

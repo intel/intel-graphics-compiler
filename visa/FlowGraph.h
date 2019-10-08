@@ -1359,10 +1359,14 @@ public:
 class G4_Kernel
 {
     const char* name;
-    unsigned numRegTotal;
+    unsigned int numRegTotal;
+    unsigned int numThreads;
+    unsigned int numSWSBTokens;
+    unsigned int numAcc;
     unsigned int simdSize;
     bool channelSliced = true;
     bool hasAddrTaken;
+    bool sharedRegisters;
     Options *m_options;
 
     RA_Type RAType;
@@ -1421,16 +1425,8 @@ public:
             major < COMMON_ISA_MAJOR_VER ||
                 (major == COMMON_ISA_MAJOR_VER && minor <= COMMON_ISA_MINOR_VER),
             "CISA version not supported by this JIT-compiler");
-        unsigned totalGRFs = options->getuInt32Option(vISA_TotalGRFNum);
-        unsigned Val = options->getuInt32Option(vISA_GRFNumToUse);
-        if (Val > 0)
-        {
-            numRegTotal = std::min(Val, totalGRFs);
-        }
-        else
-        {
-            numRegTotal = totalGRFs;
-        }
+
+        setKernelParameters();
 
         name = NULL;
         simdSize = 0;
@@ -1445,8 +1441,6 @@ public:
         {
             gtPinInfo = nullptr;
         }
-
-        callerSaveLastGRF = ((totalGRFs - 8) / 2) - 1;
     }
 
     ~G4_Kernel();
@@ -1457,6 +1451,17 @@ public:
     {
         fg.setBuilder(pBuilder);
     }
+
+    bool hasSharedRegisters() const { return sharedRegisters; }
+
+    void setNumThreads(int nThreads) { numThreads = nThreads; }
+    uint32_t getNumThreads() const { return numThreads; }
+
+    void setNumSWSBTokens(int nSWSBs) { numSWSBTokens = nSWSBs; }
+    uint32_t getNumSWSBTokens() const { return numSWSBTokens; }
+
+    void setNumAcc(int nAcc) { numAcc = nAcc; }
+    uint32_t getNumAcc() const { return numAcc; }
 
     void setAsmCount(int count) { asmInstCount = count; }
     uint32_t getAsmCount() const { return asmInstCount; }
@@ -1523,6 +1528,7 @@ public:
     void emit_asm(std::ostream& output, bool beforeRegAlloc, void * binary, uint32_t binarySize);
     void emit_dep(std::ostream& output);
 
+    void setKernelParameters(void);
     void evalAddrExp(void);
     void dumpDotFile(const char* appendix);
 

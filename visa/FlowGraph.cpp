@@ -3047,6 +3047,76 @@ void G4_Kernel::evalAddrExp()
     }
 }
 
+void G4_Kernel::setKernelParameters()
+{
+    unsigned numThreads = m_options->getuInt32Option(vISA_HWThreadNumberPerEU);
+
+    // Set the number of GRFs
+    unsigned overrideGRFNum = m_options->getuInt32Option(vISA_TotalGRFNum);
+    if (overrideGRFNum > 0)
+    {
+        // User-provided number of GRFs
+        unsigned Val = m_options->getuInt32Option(vISA_GRFNumToUse);
+        if (Val > 0)
+        {
+            numRegTotal = std::min(Val, overrideGRFNum);
+        }
+        else
+        {
+            numRegTotal = overrideGRFNum;
+        }
+        callerSaveLastGRF = ((overrideGRFNum - 8) / 2) - 1;
+    }
+    else
+    {
+        // Default value for all other platforms
+        numRegTotal = 128;
+        callerSaveLastGRF = ((numRegTotal - 8) / 2) - 1;
+    }
+    // For safety update TotalGRFNum, there may be some uses for this vISA option
+    m_options->setOption(vISA_TotalGRFNum, numRegTotal);
+
+    // Set the number of SWSB tokens
+    unsigned overrideNumSWSB = m_options->getuInt32Option(vISA_SWSBTokenNum);
+    if (overrideNumSWSB > 0)
+    {
+        // User-provided number of SWSB tokens
+        numSWSBTokens = overrideNumSWSB;
+    }
+    else
+    {
+        // Default value based on platform
+        switch (getGenxPlatform())
+        {
+        default:
+            numSWSBTokens = 16;
+        }
+    }
+
+
+    // Set the number of Acc
+    unsigned overrideNumAcc = m_options->getuInt32Option(vISA_numGeneralAcc);
+    if (overrideNumAcc > 0)
+    {
+        // User-provided number of Acc
+        numAcc = overrideNumAcc;
+    }
+    else
+    {
+        // Default value based on platform
+        switch (getGenxPlatform())
+        {
+        default:
+            numAcc = 2;
+        }
+
+        if (numRegTotal == 256)
+        {
+            numAcc *= 2;
+        }
+    }
+}
+
 //
 // Add declares for the stack and frame pointers.
 //

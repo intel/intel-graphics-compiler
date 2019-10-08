@@ -825,6 +825,7 @@ namespace IGC
         void EmitError(const char* errorstr);
         CompOptions& getCompilerOption();
         virtual void resetOnRetry();
+        virtual uint32_t getNumThreadsPerEU() const;
         virtual uint32_t getNumGRFPerThread() const;
         bool isPOSH() const;
 
@@ -1137,6 +1138,7 @@ namespace IGC
         void setAsSPIRV();
         float getProfilingTimerResolution();
         uint32_t getNumGRFPerThread() const;
+        uint32_t getNumThreadsPerEU() const;
     private:
         llvm::DenseMap<llvm::Function*, std::string> m_hashes_per_kernel;
     };

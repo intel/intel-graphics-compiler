@@ -5908,7 +5908,7 @@ bool GraphColor::regAlloc(bool doBankConflictReduction,
         bool hasStackCall = kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc();
 
         bool willSpill = kernel.getOptions()->getTarget() == VISA_3D &&
-            rpe->getMaxRP() >= kernel.getOptions()->getuInt32Option(vISA_TotalGRFNum) + 24;
+            rpe->getMaxRP() >= kernel.getNumRegTotal() + 24;
         if (willSpill)
         {
             // go straight to first_fit to save compile time since we are definitely spilling
@@ -8553,7 +8553,7 @@ bool GlobalRA::hybridRA(bool doBankConflictReduction, bool highInternalConflict,
         rpe.run();
 
         bool spillLikely = kernel.getOptions()->getTarget() == VISA_3D &&
-            rpe.getMaxRP() >= kernel.getOptions()->getuInt32Option(vISA_TotalGRFNum) - 16;
+            rpe.getMaxRP() >= kernel.getNumRegTotal() - 16;
         if (spillLikely)
         {
             if (builder.getOption(vISA_RATrace))

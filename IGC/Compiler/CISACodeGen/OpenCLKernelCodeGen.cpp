@@ -1611,7 +1611,6 @@ namespace IGC
             m_Context->getModuleMetaData()->compOpt.SubgroupIndependentForwardProgressRequired;
         m_kernelInfo.m_executionEnivronment.CompiledForGreaterThan4GBBuffers =
             m_Context->getModuleMetaData()->compOpt.GreaterThan4GBBufferRequired;
-
         assert(gatherMap.size() == 0);
         m_kernelInfo.m_kernelProgram.gatherMapSize = 0;
         m_kernelInfo.m_kernelProgram.bindingTableEntryCount = 0;

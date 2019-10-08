@@ -498,6 +498,11 @@ namespace IGC
         return m_ProfilingTimerResolution;
     }
 
+    uint32_t OpenCLProgramContext::getNumThreadsPerEU() const
+    {
+        return 0;
+    }
+
     uint32_t OpenCLProgramContext::getNumGRFPerThread() const
     {
         return CodeGenContext::getNumGRFPerThread();
@@ -648,6 +653,11 @@ namespace IGC
     void CodeGenContext::resetOnRetry()
     {
         m_tempCount = 0;
+    }
+
+    uint32_t CodeGenContext::getNumThreadsPerEU() const
+    {
+        return 0;
     }
 
     uint32_t CodeGenContext::getNumGRFPerThread() const

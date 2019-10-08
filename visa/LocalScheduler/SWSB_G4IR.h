@@ -887,7 +887,7 @@ namespace vISA
 
             if (tokeNodesMap != nullptr)
             {
-                for (uint32_t i = 0; i < builder.getOptions()->getuInt32Option(vISA_SWSBTokenNum); i++)
+                for (uint32_t i = 0; i < builder.kernel.getNumSWSBTokens(); i++)
                 {
                     tokeNodesMap[i]->~BitSet();
                 }
@@ -1087,7 +1087,7 @@ namespace vISA
             topIndex = -1;
 
             allTokenNodesMap = nullptr;
-            totalTokenNum = fg.builder->getOptions()->getuInt32Option(vISA_SWSBTokenNum);
+            totalTokenNum = fg.builder->kernel.getNumSWSBTokens();
         }
         ~SWSB()
         {
@@ -1108,7 +1108,7 @@ namespace vISA
             }
             if (allTokenNodesMap != nullptr)
             {
-                for (size_t i = 0; i < fg.builder->getOptions()->getuInt32Option(vISA_SWSBTokenNum); i++)
+                for (size_t i = 0; i < fg.builder->kernel.getNumSWSBTokens(); i++)
                 {
                     allTokenNodesMap[i]->~BitSet();
                 }

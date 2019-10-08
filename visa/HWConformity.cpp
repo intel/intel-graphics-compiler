@@ -4572,7 +4572,7 @@ struct AccAssignment
 
     AccAssignment(int numGeneralAcc, IR_Builder& m_builder) : builder (m_builder)
     {
-        freeAccs.resize(numGeneralAcc * 2, true);
+        freeAccs.resize(numGeneralAcc, true);
     }
 
     // expire all intervals that end before the given interval
