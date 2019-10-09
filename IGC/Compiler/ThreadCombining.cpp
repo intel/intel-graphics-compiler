@@ -31,6 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/LLVMWarningsPop.hpp"
 #include "common/LLVMUtils.h"
 
+
 char IGC::ThreadCombining::ID = 0;
 
 using namespace llvm;
@@ -610,7 +611,11 @@ bool ThreadCombining::runOnModule(llvm::Module& M)
     // This value tells us what is the minimum acceptable threadgroup size
     // to make sure that we are not too aggressive with thread combining.
     // Current Heurstic is to have no less than 8 H/W threads per WG.
-    unsigned int minTGSizeHeuristic = 0;
+    /*
+    Initializing the default value to a value greater than THREAD_GROUP_MAX_THREADS_PER_GROUP
+    Value sensitive to couple of workloads. Unsure for the default heuristic value for SIMD 16 or 32.
+    */
+    unsigned int minTGSizeHeuristic = 1025;
 
     SIMDMode simdMode = csCtx->GetLeastSIMDModeAllowed();
     // If SIMD8 is legal then, heuristics are SIMD8 selection if spill is
