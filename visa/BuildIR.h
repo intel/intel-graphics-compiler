@@ -43,7 +43,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "visa_wa.h"
 #include "PreDefinedVars.h"
 #include "CompilerStats.h"
-
+#include "BinaryEncodingIGA.h"
 
 #define MAX_DWORD_VALUE  0x7fffffff
 #define MIN_DWORD_VALUE  0x80000000
@@ -361,7 +361,7 @@ private:
         int curSize = 0;
         IR_Builder& builder;
 
-public:
+    public:
         GlobalImmPool(IR_Builder& b) : builder(b), immArray(), dclArray() {}
 
         G4_Declare* addImmVal(G4_Imm* imm, int numElt)
@@ -514,6 +514,8 @@ public:
     // Have inserted two entires prolog for setting FFID for compute shaders
     bool hasComputeFFIDProlog = false;
 
+    const iga::Model* igaModel;
+
 public:
     PreDefinedVars preDefVars;
     Mem_Manager&        mem;        // memory for all operands and insts
@@ -612,6 +614,8 @@ public:
     {
         return dcl == getFE_SP() || dcl == getFE_FP();
     }
+
+    const iga::Model* getIGAModel() const { return igaModel; }
 
     uint32_t getPerThreadInputSize() const { return perThreadInputSize; }
     void setPerThreadInputSize(uint32_t val) { perThreadInputSize = val; }
@@ -895,9 +899,10 @@ public:
 
         fcPatchInfo = NULL;
 
-
-
         createPreDefinedVars();
+
+        igaModel = iga::Model::LookupModel(
+            BinaryEncodingIGA::getIGAInternalPlatform(getGenxPlatform()));
     }
 
     ~IR_Builder()

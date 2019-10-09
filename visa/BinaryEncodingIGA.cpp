@@ -151,7 +151,7 @@ void BinaryEncodingIGA::FixInst()
     }
 }
 
-iga::Op BinaryEncodingIGA::getIGAOpFromSFIDForSend(G4_opcode op, G4_INST *inst) const
+iga::Op BinaryEncodingIGA::getIGAOpFromSFIDForSend(G4_opcode op, const G4_INST *inst)
 {
     ASSERT_USER(inst->isSend(), "Only send has SFID");
 
@@ -210,7 +210,7 @@ iga::Op BinaryEncodingIGA::getIGAOpFromSFIDForSend(G4_opcode op, G4_INST *inst) 
 }
 
 
-iga::Op BinaryEncodingIGA::getIGAOp(G4_opcode op, G4_INST *inst) const
+iga::Op BinaryEncodingIGA::getIGAOp(G4_opcode op, const G4_INST *inst, Platform iga_platform)
 {
     iga::Op igaOp = iga::Op::INVALID;
 
@@ -322,7 +322,7 @@ iga::Op BinaryEncodingIGA::getIGAOp(G4_opcode op, G4_INST *inst) const
         igaOp = iga::Op::JOIN;
         break;
     case G4_wait:
-        if (platformModel->platform >= iga::Platform::GEN12P1)
+        if (iga_platform >= iga::Platform::GEN12P1)
         {
             igaOp = iga::Op::SYNC_BAR;
         }
@@ -332,7 +332,7 @@ iga::Op BinaryEncodingIGA::getIGAOp(G4_opcode op, G4_INST *inst) const
         }
         break;
     case G4_send:
-        if (platformModel->platform >= iga::Platform::GEN12P1)
+        if (iga_platform >= iga::Platform::GEN12P1)
         {
             igaOp = getIGAOpFromSFIDForSend(op, inst);
         }
@@ -342,7 +342,7 @@ iga::Op BinaryEncodingIGA::getIGAOp(G4_opcode op, G4_INST *inst) const
         }
         break;
     case G4_sendc:
-        if (platformModel->platform >= iga::Platform::GEN12P1)
+        if (iga_platform >= iga::Platform::GEN12P1)
         {
             igaOp = getIGAOpFromSFIDForSend(op, inst);
         }
@@ -352,7 +352,7 @@ iga::Op BinaryEncodingIGA::getIGAOp(G4_opcode op, G4_INST *inst) const
         }
         break;
     case G4_sends:
-        if (platformModel->platform >= iga::Platform::GEN12P1)
+        if (iga_platform >= iga::Platform::GEN12P1)
         {
             igaOp = getIGAOpFromSFIDForSend(G4_send, inst);
         }
@@ -362,7 +362,7 @@ iga::Op BinaryEncodingIGA::getIGAOp(G4_opcode op, G4_INST *inst) const
         }
         break;
     case G4_sendsc:
-        if (platformModel->platform >= iga::Platform::GEN12P1)
+        if (iga_platform >= iga::Platform::GEN12P1)
         {
             igaOp = getIGAOpFromSFIDForSend(G4_sendc, inst);
         }
@@ -659,7 +659,7 @@ void BinaryEncodingIGA::DoAll()
                 continue;
             }
             Instruction  *igaInst = nullptr;
-            auto igaOpcode = getIGAOp(inst->opcode(), inst);
+            auto igaOpcode = getIGAOp(inst->opcode(), inst, platformModel->platform);
             // common fields: op, predicate, flag reg, exec size, exec mask offset, mask ctrl, conditional modifier
             const OpSpec* opSpec = &(platformModel->lookupOpSpec(igaOpcode));
 
