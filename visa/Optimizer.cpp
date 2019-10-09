@@ -8095,25 +8095,6 @@ public:
         if (ffid == FFID_INVALID)
             return;
 
-        // return if there is no cr0 write
-        bool has_cr0_dst = false;
-        for (auto bb : kernel.fg)
-        {
-            for (G4_INST* inst : *bb)
-            {
-                if (inst->getDst() != nullptr &&
-                    inst->getDst()->asDstRegRegion()->getBase()->isCrReg())
-                {
-                    has_cr0_dst = true;
-                    break;
-                }
-            }
-            if (has_cr0_dst)
-                break;
-        }
-        if (!has_cr0_dst)
-            return;
-
         // get r127.0 decl
         G4_Declare* rtail =
             builder.createHardwiredDeclare(8, Type_UD, kernel.getNumRegTotal() - 1, 0);
