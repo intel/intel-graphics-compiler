@@ -1545,6 +1545,7 @@ namespace IGC
         }
 
         m_kernelInfo.m_threadPayload.OffsetToSkipPerThreadDataLoad = 0;
+        m_kernelInfo.m_threadPayload.OffsetToSkipSetFFIDGP = 0;
         m_kernelInfo.m_threadPayload.PassInlineData = false;
 
         m_ConstantBufferLength = iSTD::Align(m_ConstantBufferLength, getGRFSize());
@@ -1669,6 +1670,7 @@ namespace IGC
 
         m_kernelInfo.m_executionEnivronment.HasGlobalAtomics = GetHasGlobalAtomics();
         m_kernelInfo.m_threadPayload.OffsetToSkipPerThreadDataLoad = ProgramOutput()->m_offsetToSkipPerThreadDataLoad;
+        m_kernelInfo.m_threadPayload.OffsetToSkipSetFFIDGP = ProgramOutput()->m_offsetToSkipSetFFIDGP;
 
     }
 

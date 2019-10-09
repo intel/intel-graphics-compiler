@@ -272,6 +272,7 @@ struct ThreadPayload
     bool  HasStageInGridSize = false;
     bool  PassInlineData = false;
     uint32_t OffsetToSkipPerThreadDataLoad = 0;
+    uint32_t OffsetToSkipSetFFIDGP = 0;
 };
 
 struct ExecutionEnivronment
