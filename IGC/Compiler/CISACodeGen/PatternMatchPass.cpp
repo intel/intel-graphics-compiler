@@ -98,7 +98,6 @@ namespace IGC
         CodeGenBlock(bb);
     }
 
-
     bool CodeGenPatternMatch::runOnFunction(llvm::Function& F)
     {
         m_blockMap.clear();
@@ -1310,7 +1309,15 @@ namespace IGC
     void CodeGenPatternMatch::visitExtractValueInst(ExtractValueInst& I) {
         bool Match = false;
 
-        Match = matchAddPair(&I) ||
+        // Ignore the extract value instruction. Handled in the call inst.
+        bool isExtractFromInlineAsm = false;
+        if (CallInst * call = dyn_cast<CallInst>(I.getOperand(0)))
+        {
+            isExtractFromInlineAsm = call->isInlineAsm() && call->getType()->isStructTy();
+        }
+
+        Match = isExtractFromInlineAsm ||
+            matchAddPair(&I) ||
             matchSubPair(&I) ||
             matchMulPair(&I) ||
             matchPtrToPair(&I);
@@ -2845,7 +2852,6 @@ namespace IGC
         }
         return false;
     }
-
 
     bool CodeGenPatternMatch::MatchModifier(llvm::Instruction& I, bool SupportSrc0Mod)
     {

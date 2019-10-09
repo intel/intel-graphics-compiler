@@ -119,14 +119,26 @@ uint EmitPass::DecideInstanceAndSlice(llvm::BasicBlock& blk, SDAG& sdag, bool& s
 
     slicing = (m_SimdMode == SIMDMode::SIMD32);  // set to false if we don't want slicing
 
-    if (sdag.m_root->getType()->getTypeID() != llvm::Type::VoidTyID)
+    bool hasValidDestination = (sdag.m_root->getType()->getTypeID() != llvm::Type::VoidTyID);
+
+    // Special case for inline asm with multiple outputs, we will not be able to handle a struct type destination
+    if (CallInst * call = dyn_cast<CallInst>(sdag.m_root))
+    {
+        if (call->isInlineAsm() && call->getType()->isStructTy())
+        {
+            hasValidDestination = false;
+        }
+    }
+
+    if (hasValidDestination)
     {
         m_destination = GetSymbol(sdag.m_root);
+        numInstance = m_destination->GetNumberInstance();
+
         if (m_pattern->IsSubspanUse(sdag.m_root))
         {
             m_encoder->SetSubSpanDestination(true);
         }
-        numInstance = m_destination->GetNumberInstance();
 
         if (isa<CmpInst>(sdag.m_root))
         {
@@ -215,17 +227,9 @@ uint EmitPass::DecideInstanceAndSlice(llvm::BasicBlock& blk, SDAG& sdag, bool& s
 
     if (CallInst * callInst = dyn_cast<CallInst>(sdag.m_root))
     {
-        // Disable slicing for function call
-        bool disableSlicing = false;
+        // Disable slicing for function calls
         Function* F = dyn_cast<Function>(callInst->getCalledValue());
-        if (callInst->isInlineAsm())
-            disableSlicing = true;
-        else if (F == nullptr)
-            disableSlicing = true;
-        else if (F->hasFnAttribute("visaStackcall"))
-            disableSlicing = true;
-
-        if (disableSlicing)
+        if (!F || F->hasFnAttribute("visaStackcall"))
         {
             numInstance = 1;
             slicing = false;
@@ -7787,12 +7791,13 @@ bool EmitPass::validateInlineAsmConstraints(llvm::CallInst* inst, SmallVector<St
     assert(inst->isInlineAsm());
     InlineAsm* IA = cast<InlineAsm>(inst->getCalledValue());
     StringRef constraintStr(IA->getConstraintString());
+    if (constraintStr.empty()) return true;
 
     //lambda for checking constraint types
-    auto CheckConstraintTypes = [this](StringRef str, CVariable* cv)->bool
+    auto CheckConstraintTypes = [this](StringRef str, CVariable* cv = nullptr)->bool
     {
-        // TODO: Only "rw" (raw register operand) constraint allowed for now. Add more checks as needed
-        if (str.equals("=rw") && cv == m_destination)
+        unsigned matchVal;
+        if (str.equals("=rw"))
         {
             return true;
         }
@@ -7800,19 +7805,18 @@ bool EmitPass::validateInlineAsmConstraints(llvm::CallInst* inst, SmallVector<St
         {
             return true;
         }
-        else if (str.equals("0"))
+        else if (str.getAsInteger(10, matchVal) == 0)
         {
-            // Also allows matching input reg to output reg. We only support one output reg for now,
-            // and since output reg is always first, only match with '0'
+            // Also allows matching input reg to output reg
             return true;
         }
         else if (str.equals("i"))
         {
-            return cv->IsImmediate();
+            return cv && cv->IsImmediate();
         }
         else if (str.equals("rw.u"))
         {
-            return cv->IsUniform();
+            return cv && cv->IsUniform();
         }
         else
         {
@@ -7826,16 +7830,24 @@ bool EmitPass::validateInlineAsmConstraints(llvm::CallInst* inst, SmallVector<St
 
     bool success = true;
 
-    // Check the output constraint tokens
-    if (m_destination)
-    {
-        success &= CheckConstraintTypes(constraints[0], m_destination);
-    }
+    unsigned index = 0;
 
+    // Check the output constraint tokens
+    for (; index < constraints.size(); index++)
+    {
+        StringRef &str = constraints[index];
+        if (str.startswith("="))
+        {
+            success &= CheckConstraintTypes(str);
+        }
+        else
+        {
+            break;
+        }
+    }
     if (success)
     {
         // Check the input constraint tokens
-        unsigned index = m_destination ? 1 : 0;
         for (unsigned i = 0; i < inst->getNumArgOperands(); i++, index++)
         {
             CVariable* cv = GetSymbol(inst->getArgOperand(i));
@@ -7864,7 +7876,25 @@ void EmitPass::EmitInlineAsm(llvm::CallInst* inst)
         return;
     }
 
-    if (m_destination)
+    if (inst->getType()->isStructTy())
+    {
+        // Handle multiple outputs
+        unsigned numOutputs = inst->getType()->getStructNumElements();
+        std::vector<CVariable*> outputs(numOutputs);
+        for (auto var : outputs) var = nullptr;
+
+        for (auto user : inst->users())
+        {
+            ExtractValueInst* ex = dyn_cast<ExtractValueInst>(user);
+            assert(ex && "Invalid user of inline asm call");
+            unsigned id = *ex->idx_begin();
+            assert(id < numOutputs);
+            assert(outputs[id] == nullptr);
+            outputs[id] = GetSymbol(ex);
+        }
+        for (auto var : outputs) opnds.push_back(var);
+    }
+    else if (m_destination)
     {
         opnds.push_back(m_destination);
     }
@@ -7875,26 +7905,21 @@ void EmitPass::EmitInlineAsm(llvm::CallInst* inst)
     }
 
     // Check for read/write registers
-    if (m_destination)
+    if (!inst->getType()->isVoidTy())
     {
-        for (unsigned i = 1; i < constraints.size(); i++)
+        for (unsigned i = 0; i < constraints.size(); i++)
         {
-            if (constraints[i].equals("0"))
+            unsigned destID;
+            if (constraints[i].getAsInteger(10, destID) == 0)
             {
-                assert(i < opnds.size());
+                // If input is linked to output reg, move the input value into the output
                 CVariable* cv = opnds[i];
-                if (!cv->IsImmediate())
+                CVariable* dest = opnds[destID];
+                if (cv && dest)
                 {
-                    // Replace dest reg with src reg
-                    opnds[0] = cv;
-                }
-                else
-                {
-                    // If src is immediate, dest may not be initialized, so initialize it
-                    m_encoder->Copy(m_destination, cv);
+                    m_encoder->Copy(dest, cv);
                     m_encoder->Push();
                 }
-                break;
             }
         }
     }
