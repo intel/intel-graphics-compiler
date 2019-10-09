@@ -31,7 +31,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "iga.h"
 #include "iga_bxml_ops.hpp"
-#include "common/secure_mem.h"
 
 #include <exception>
 #include <iomanip>
@@ -236,6 +235,11 @@ public:
 // The API user shouldn't have to directly interact with this code.  It might
 // prove helpful in debugging, but our hope is that you can treat this as
 // an abstraction.
+#ifdef _WIN32
+#define IGA_MEMCPY(D,S,N) memcpy_s(D, N, S, N);
+#else
+#define IGA_MEMCPY(D,S,N) memcpy(D, S, N);
+#endif
 
 #define IGA_CHECKED_CALL(API, ...)           \
     do {                                     \
@@ -325,7 +329,7 @@ inline AsmResult Context::assembleFromString(
     // copy out the bits
     if (bitsLen > 0) {
         result.value.resize(bitsLen);
-        memcpy_s(result.value.data(), bitsLen, bits, bitsLen);
+        IGA_MEMCPY(result.value.data(), bits, bitsLen);
     }
 
     return result;

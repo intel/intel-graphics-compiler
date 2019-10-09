@@ -609,12 +609,6 @@ void SWSBAnalyzer::advanceInorderInstCounter(DEP_PIPE dep_pipe)
 
 }
 
-
-void SWSBAnalyzer::postProcess()
-{
-    // TODO: revisit all instructions to remove redundant swsb or sync.nop
-}
-
 void SWSBAnalyzer::run()
 {
     m_initPoint = true;
@@ -677,7 +671,6 @@ void SWSBAnalyzer::run()
                 output = m_DB->createDstDepSet(*inst, m_InstIdCounter, m_swsbMode);
             input->setCompanion(output);
             output->setCompanion(input);
-
 
             SWSB distanceDependency;
 
@@ -912,6 +905,5 @@ void SWSBAnalyzer::run()
         lastBB->getInstList().push_back(syncInst);
     }
 
-    postProcess();
     return;
 }
