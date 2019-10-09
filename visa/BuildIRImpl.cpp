@@ -1177,12 +1177,12 @@ G4_InstSend *IR_Builder::Create_SplitSend_Inst_For_RTWrite(G4_Predicate *pred,
         option, msgDesc, extDescOpnd);
 }
 
-// create a dcl for MRF, size in UD is given
-G4_Declare* IR_Builder::Create_MRF_Dcl( unsigned num_elt, G4_Type type )
+// create a declare for send payload
+G4_Declare* IR_Builder::createSendPayloadDcl( unsigned num_elt, G4_Type type )
 {
     const char* name = getNameString(mem, 16, "M%u", ++num_general_dcl);
-    unsigned short numRow = ( num_elt * G4_Type_Table[type].byteSize - 1 ) / GENX_MRF_REG_SIZ + 1;
-    unsigned short numElt = ( numRow == 1 ) ? num_elt : (GENX_MRF_REG_SIZ/G4_Type_Table[type].byteSize);
+    unsigned short numRow = ( num_elt * G4_Type_Table[type].byteSize - 1 ) / GENX_GRF_REG_SIZ + 1;
+    unsigned short numElt = ( numRow == 1 ) ? num_elt : (GENX_GRF_REG_SIZ/G4_Type_Table[type].byteSize);
     G4_Declare *dcl = createDeclareNoLookup(
         name,
         G4_GRF,
@@ -1191,7 +1191,7 @@ G4_Declare* IR_Builder::Create_MRF_Dcl( unsigned num_elt, G4_Type type )
         type);
     return dcl;
 }
-// create mov(8) mrf, r0
+
 void IR_Builder::Create_MOVR0_Inst( G4_Declare* dcl, short regOff, short subregOff, bool use_nomask )
 {
     G4_DstRegRegion dst1(
@@ -1273,8 +1273,8 @@ void IR_Builder::Create_MOV_Inst(
         0 );
 }
 
-// create multiple MOV inst for send src --> MRF if there are more than 64 byte data in src.
-// dcl: decl for MRF
+// send payload preparation.
+// dcl: decl for send payload
 // num_dword: number of DW to send
 // src_opnd: send src, its size may be several GRFs
 void IR_Builder::Create_MOV_Send_Src_Inst(
@@ -1303,7 +1303,7 @@ void IR_Builder::Create_MOV_Send_Src_Inst(
     if( scalar_src && src_opnd->getType() != Type_UD ){
         // change the type of dst dcl to src type
         remained_dword = num_dword * ( G4_Type_Table[Type_UD].byteSize/G4_Type_Table[src_opnd->getType()].byteSize );
-        dst_dcl = Create_MRF_Dcl(remained_dword, src_opnd->getType());
+        dst_dcl = createSendPayloadDcl(remained_dword, src_opnd->getType());
         dst_dcl->setAliasDeclare( dcl, regoff * G4_GRF_REG_NBYTES + subregoff * G4_Type_Table[Type_UD].byteSize );
         dst_regoff = 0;
         dst_subregoff = 0;
@@ -1343,7 +1343,6 @@ void IR_Builder::Create_MOV_Send_Src_Inst(
         {
             if( remained_dword >= 32 )
             {
-                // mov(16) mrf src
                 execsize = 32;
             }
             else if( remained_dword >= 16 )
@@ -1369,7 +1368,6 @@ void IR_Builder::Create_MOV_Send_Src_Inst(
         {
             if( remained_dword >= 16 )
             {
-                // mov(16) mrf src
                 execsize = 16;
             }
             else if( remained_dword >= 8 )
@@ -1425,30 +1423,31 @@ void IR_Builder::Create_MOV_Send_Src_Inst(
             true );
 
         // update offset in decl
-        if( remained_dword >= execsize ){
+        if (remained_dword >= execsize) {
             remained_dword -= execsize;
-            if( execsize * dst_dcl->getElemSize() == 2 * G4_GRF_REG_NBYTES ){
-                // mov(16) mrf src
+            if (execsize * dst_dcl->getElemSize() == 2 * G4_GRF_REG_NBYTES) {
                 dst_regoff += 2;
-                if( !scalar_src ){
+                if (!scalar_src) {
                     src_regoff += 2;
                 }
-            }else if( execsize * dst_dcl->getElemSize() == G4_GRF_REG_NBYTES ){
+            }
+            else if (execsize * dst_dcl->getElemSize() == G4_GRF_REG_NBYTES) {
                 dst_regoff += 1;
-                if( !scalar_src ){
+                if (!scalar_src) {
                     src_regoff += 1;
                 }
-            }else{
+            }
+            else {
                 dst_subregoff += execsize;
-                if( dst_subregoff > (G4_GRF_REG_NBYTES/dst_dcl->getElemSize()) ){
+                if (dst_subregoff > (G4_GRF_REG_NBYTES / dst_dcl->getElemSize())) {
                     dst_regoff++;
-                    dst_subregoff -= G4_GRF_REG_NBYTES/dst_dcl->getElemSize();
+                    dst_subregoff -= G4_GRF_REG_NBYTES / dst_dcl->getElemSize();
                 }
-                if( !scalar_src ){
+                if (!scalar_src) {
                     src_subregoff += execsize;
-                    if( src_subregoff > (short)(G4_GRF_REG_NBYTES/G4_Type_Table[Type_UD].byteSize) ){
+                    if (src_subregoff > (short)(G4_GRF_REG_NBYTES / G4_Type_Table[Type_UD].byteSize)) {
                         src_regoff++;
-                        src_subregoff -= G4_GRF_REG_NBYTES/G4_Type_Table[Type_UD].byteSize;
+                        src_subregoff -= G4_GRF_REG_NBYTES / G4_Type_Table[Type_UD].byteSize;
                     }
                 }
             }

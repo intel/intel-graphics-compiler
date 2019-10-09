@@ -58,7 +58,7 @@ struct RegionDesc;
 // Class definitions
 namespace vISA
 {
-class SpillManagerGMRF
+class SpillManagerGRF
 {
 public:
 
@@ -76,7 +76,7 @@ public:
 
     // Methods
 
-    SpillManagerGMRF (
+    SpillManagerGRF (
         GlobalRA&                g,
         unsigned                 spillAreaOffset,
         unsigned                 varIdCount,
@@ -93,7 +93,7 @@ public:
         bool                     useScratchMsg
     );
 
-    ~SpillManagerGMRF () {}
+    ~SpillManagerGRF () {}
 
     bool
     insertSpillFillCode    (
@@ -439,7 +439,7 @@ private:
     );
 
     G4_Declare *
-    createMRFFillRangeDeclare (
+    createSendFillRangeDeclare (
         G4_SrcRegRegion * filledRegion,
         G4_INST *         sendInst
     );
@@ -500,20 +500,20 @@ private:
 
     G4_DstRegRegion *
     createMPayloadBlockWriteDstRegion (
-        G4_RegVar *       mrfRange,
+        G4_RegVar *       grfRange,
         unsigned          regOff = 0,
         unsigned          subregOff = 0
     );
 
     G4_DstRegRegion *
     createMHeaderInputDstRegion (
-        G4_RegVar *       mrfRange,
+        G4_RegVar *       grfRange,
         unsigned          subregOff = 0
     );
 
     G4_DstRegRegion *
     createMHeaderBlockOffsetDstRegion (
-        G4_RegVar *          mrfRange
+        G4_RegVar *          grfRange
     );
 
 
@@ -742,7 +742,7 @@ private:
     );
 
     INST_LIST::iterator
-    insertFillMRFRangeCode (
+    insertSendFillRangeCode (
         G4_SrcRegRegion *   filledRegion,
         INST_LIST::iterator filledInstIter,
         G4_BB* bb
@@ -760,8 +760,8 @@ private:
         unsigned size
     ) const;
 
-    SpillManagerGMRF (
-        const SpillManagerGMRF & other
+    SpillManagerGRF (
+        const SpillManagerGRF & other
     );
 
     bool useSplitSend() const;

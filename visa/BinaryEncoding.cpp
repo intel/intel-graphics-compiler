@@ -42,7 +42,6 @@ using namespace vISA;
 // should never invoke the jitter twice with different platform strings.
 unsigned long bitsFlagSubRegNum[] = {128, 128};
 unsigned long bitsNibCtrl[] = {128, 128};
-unsigned long bitsMrfRegNumHWord[] = {128, 128};
 unsigned long bits3SrcFlagSubRegNum[] = {128, 128};
 unsigned long bits3SrcSrcType[] = {128, 128};
 unsigned long bits3SrcDstType[] = {128, 128};
@@ -2565,14 +2564,6 @@ inline BinaryEncoding::Status BinaryEncoding::EncodeOperandSrc2(G4_INST* inst)
     }
 
     return SUCCESS;
-}
-
-void SetMrfRegNumHWord(BinInst *mybin, uint32_t value)
-{
-    if( mybin->GetIs3Src() )
-        return;
-    else
-        mybin->SetBits(bitsMrfRegNumHWord[0], bitsMrfRegNumHWord[1], value);
 }
 
 void SetExtMsgDescr(G4_INST *inst, BinInst *mybin, uint32_t value)

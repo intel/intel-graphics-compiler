@@ -28,7 +28,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "FlowGraph.h"
 #include "GraphColor.h"
 #include "SpillCode.h"
-#include "SpillManagerGMRF.h"
 #include <list>
 #include <iostream>
 #include <sstream>
@@ -4970,7 +4969,7 @@ void GraphColor::computeSpillCosts(bool useSplitLLRHeuristic)
         // Also ARF live ranges with exclusively sequential references within the code are
         // assigned an infinite spill cost as spilling them will not lower the register
         // pressure in the region they are referenced. This does not necessarily hold for
-        // GRF/MRF live ranges are these are potentially large in size but the portions
+        // GRF live ranges are these are potentially large in size but the portions
         // accessed by each sequential use are limited to 2 registers for general instructions
         // and 8 registers for SEND instructions.
         //
@@ -5901,8 +5900,8 @@ bool GraphColor::regAlloc(bool doBankConflictReduction,
         }
     }
     //
-    // assign registers for GRFs/MRFs, GRFs are first attempted to be assigned using round-robin and if it fails
-    // then we retry using a first-fit heuristic; for MRFs we always use the round-robin heuristic
+    // assign registers for GRFs, GRFs are first attempted to be assigned using round-robin and if it fails
+    // then we retry using a first-fit heuristic.
     //
     if (liveAnalysis.livenessClass(G4_GRF))
     {
@@ -8695,7 +8694,7 @@ int GlobalRA::coloringRegAlloc()
     unsigned maxRAIterations = 10;
     unsigned iterationNo = 0;
 
-    std::vector<SpillManagerGMRF::EDGE> prevIntfEdges;
+    std::vector<SpillManagerGRF::EDGE> prevIntfEdges;
 
     int globalScratchOffset = builder.getOptions()->getuInt32Option(vISA_SpillMemOffset);
     bool useScratchMsgForSpill = globalScratchOffset < (int) (SCRATCH_MSG_LIMIT * 0.6) && !hasStackCall;
@@ -8932,7 +8931,7 @@ int GlobalRA::coloringRegAlloc()
                 }
 
                 startTimer(TIMER_SPILL);
-                SpillManagerGMRF spillGMRF(*this,
+                SpillManagerGRF spillGRF(*this,
                     nextSpillOffset,
                     liveAnalysis.getNumSelectedVar(),
                     &liveAnalysis,
@@ -8946,8 +8945,8 @@ int GlobalRA::coloringRegAlloc()
                     enableSpillSpaceCompression,
                     useScratchMsgForSpill);
 
-                bool success = spillGMRF.insertSpillFillCode(&kernel, pointsToAnalysis);
-                nextSpillOffset = spillGMRF.getNextOffset();
+                bool success = spillGRF.insertSpillFillCode(&kernel, pointsToAnalysis);
+                nextSpillOffset = spillGRF.getNextOffset();
 
                 if (builder.getOption(vISA_RATrace))
                 {
@@ -8966,11 +8965,11 @@ int GlobalRA::coloringRegAlloc()
                     kernel.dumpDotFile("Spill_GRF");
                 }
 
-                scratchOffset = std::max(scratchOffset, spillGMRF.getNextScratchOffset());
+                scratchOffset = std::max(scratchOffset, spillGRF.getNextScratchOffset());
 #ifdef FIX_SCRATCH_SPILL_MESSAGE
                 if (scratchOffset >= SCRATCH_MSG_LIMIT && useScratchMsgForSpill)
                 {
-                    spillGMRF.fixSpillFillCode(&kernel);
+                    spillGRF.fixSpillFillCode(&kernel);
                 }
 #endif
                 bool disableSpillCoalecse = builder.getOption(vISA_DisableSpillCoalescing) ||
@@ -8978,7 +8977,7 @@ int GlobalRA::coloringRegAlloc()
                 if (!reserveSpillReg && !disableSpillCoalecse && builder.useSends() &&
                     !kernel.fg.getHasStackCalls() && !kernel.fg.getIsStackCallFunc())
                 {
-                    CoalesceSpillFills c(kernel, liveAnalysis, coloring, spillGMRF, iterationNo, rpe, *this);
+                    CoalesceSpillFills c(kernel, liveAnalysis, coloring, spillGRF, iterationNo, rpe, *this);
                     c.run();
                 }
 

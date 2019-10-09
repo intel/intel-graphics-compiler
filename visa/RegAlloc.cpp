@@ -752,7 +752,7 @@ void LivenessAnalysis::detectNeverDefinedVarRows()
 
 //
 // compute liveness of reg vars
-// In gen4, each reg var indicates a region within the register file. As such, the case in which two consecutive defs
+// Each reg var indicates a region within the register file. As such, the case in which two consecutive defs
 // of a reg region without any use in between does not mean the second def overwrites the first one because the two defs
 // may write different parts of the region. Def vectors are used to track which definitions of reg vars reach
 // the entry and the end of a basic block, which tell us the first definitions of reg vars. Use vectors track which

@@ -1808,7 +1808,7 @@ public:
         bool is_sendc);
 
     // helper functions
-    G4_Declare *Create_MRF_Dcl( unsigned num_elt, G4_Type type );
+    G4_Declare *createSendPayloadDcl( unsigned num_elt, G4_Type type );
     void Create_MOVR0_Inst(
                         G4_Declare* dcl,
                         short refOff,

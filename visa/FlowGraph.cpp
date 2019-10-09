@@ -363,22 +363,6 @@ bool FlowGraph::matchBranch(int &sn, INST_LIST& instlist, INST_LIST_ITER &it)
             }
             else if (inst->opcode() == G4_endif)
             {
-                // For GT, if/else/endif are different from Gen4:
-                // (1). if - endif
-                //          if endif_label
-                //          ...
-                //          endif_label:
-                //          endif
-                // (2). if - else - endif
-                //          if else_label
-                //          ...
-                //          else endif_label
-                //          else_label:
-                //          ...
-                //          endif_label:     // this is different from Gen4
-                //          endif
-                //
-
                 if (elseCount == 0)                 // if-endif case
                 {
                     // insert endif label
@@ -784,8 +768,7 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
                 }
                 else
                 {
-                    MUST_BE_TRUE1(false, i->getLineNo(),
-                        ERROR_INVALID_G4INST); // not yet handled
+                    assert(false && "should not reach here");
                 }
             } // need edge
             curr_BB = next_BB;
@@ -3802,7 +3785,7 @@ void G4_BB::addEOTSend(G4_INST* lastInst)
     // mov (8) r1.0<1>:ud r0.0<8;8,1>:ud {NoMask}
     // send (8) null r1 0x27 desc
     IR_Builder* builder = parent->builder;
-    G4_Declare *dcl = builder->Create_MRF_Dcl(NUM_DWORDS_PER_GRF, Type_UD);
+    G4_Declare *dcl = builder->createSendPayloadDcl(NUM_DWORDS_PER_GRF, Type_UD);
     G4_DstRegRegion* movDst = builder->Create_Dst_Opnd_From_Dcl(dcl, 1);
     G4_SrcRegRegion* r0Src = builder->Create_Src_Opnd_From_Dcl(
         builder->getBuiltinR0(), builder->getRegionStride1());

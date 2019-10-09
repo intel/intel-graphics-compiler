@@ -26,7 +26,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "FlowGraph.h"
 #include "GraphColor.h"
-#include "SpillManagerGMRF.h"
 #include <list>
 #include "SpillCleanup.h"
 

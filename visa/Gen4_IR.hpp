@@ -1529,7 +1529,7 @@ public:
     void setTmpFlagStart(int startFlag) { tmpFlagStart = startFlag; }
 };
 }
-// see Gen4 Spec
+
 // RegionWH and RegionV are special for the different modes of source register indirect addressing
 // RegionWH = <width, horzStride>, we set vertStride to UNDEFINED_SHORT
 // RegionV = <horzStride>, we set both vertStride and width to UNDEFINED_SHORT
@@ -3042,11 +3042,7 @@ enum ChannelEnable {
 
 namespace vISA
 {
-//
-// look up Gen4 ISA summary
-// <DstReg><DstRegion><WriteMask><DstType>
-// for both direct and indirect dst regions
-//
+
 class G4_DstRegRegion final : public G4_Operand
 {
     friend class IR_Builder;

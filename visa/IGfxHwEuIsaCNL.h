@@ -5058,7 +5058,7 @@ typedef union tagEU_INSTRUCTION_OPERAND_SEND_MSG {
         DWORD MessageDescriptor_ResponseLength  : BITFIELD_RANGE( 20, 24); //
 
         /*****************************************************************************\
-        This field specifies the number of 256-bit MRF registers starting from &lt;curr_dest&gt; to be sent out on the request message payload. Valid value ranges from 1 to 15. A value of 0 is considered erroneous.
+        This field specifies the number of 256-bit registers starting from &lt;curr_dest&gt; to be sent out on the request message payload. Valid value ranges from 1 to 15. A value of 0 is considered erroneous.
         \*****************************************************************************/
         DWORD MessageDescriptor_MessageLength   : BITFIELD_RANGE( 25, 28); //
         DWORD __CODEGEN_UNIQUE(Overridden)      : BITFIELD_RANGE( 29, 31); // Override

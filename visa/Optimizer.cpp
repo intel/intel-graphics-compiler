@@ -158,7 +158,7 @@ void Optimizer::insertFallThroughJump()
 }
 
 //
-// Check if any GRF/MRF is out-of-boundary
+// Check if any GRF is out-of-boundary
 //
 void Optimizer::chkRegBoundary()
 {
@@ -183,8 +183,8 @@ void Optimizer::chkRegBoundary()
 }
 
 //
-// Check if GRF/MRF (if we know the phy reg num) is out-of-boundary
-// If the operand is not GRF/MRF, we return "true" without any check
+// Check if GRF (if we know the phy reg num) is out-of-boundary
+// If the operand is not GRF, we return "true" without any check
 //
 bool Optimizer::chkOpndBoundary(G4_INST *inst, G4_Operand *opnd)
 {
@@ -1126,7 +1126,7 @@ int Optimizer::optimization()
     runPass(PI_FoldAddrImmediate);
 
     //
-    // Check if any GRF/MRF is out-of-boundary
+    // Check if any GRF is out-of-boundary
     // FIXME: Now we can only check part of the out-of-boundary cases. We can not find out-of-boundary errors in:
     // (1). <post_dst>/<curr_dst> in send inst; (2). cross 256-bit bar case in compressed instruction
     //
@@ -4677,7 +4677,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
     /***  The beginning of message header optimization  ***/
 
     /*
-    * reuse the previous mrf which can save the redundant definitions.
+    * reuse the previous header which can save the redundant definitions.
     */
     void MSGTable::reusePreviousHeader(G4_INST *dest,
         G4_INST *source,
@@ -4698,13 +4698,13 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
     }
 
     /*
-    * insert a mov, from the previous mrf to current mrf
+    * insert a mov, from the previous header to current header
     * this is only required for the instruction,
     * whose payload size >1 so that we can't directly reuse
-    * the previous mrf. keep a copy from the previous mrf,
+    * the previous header. keep a copy from the previous header,
     * so that we only need to update the fields that need to be changed.
     */
-    void MSGTable::insertMovMRFInst(G4_INST *source_send,
+    void MSGTable::insertHeaderMovInst(G4_INST *source_send,
         IR_Builder& builder,
         G4_BB *bb)
     {
@@ -4713,24 +4713,24 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
 
         switch (first)
         {
-        case MRF_FULL_REGISTER:
+        case HEADER_FULL_REGISTER:
             inst = m;
             pos  = m_it;
             break;
-        case MRF_X:
+        case HEADER_X:
             inst = mDot0;
             pos  = mDot0_it;
             break;
-        case MRF_Y:
+        case HEADER_Y:
             inst = mDot1;
             pos  = mDot1_it;
             break;
-        case MRF_SIZE:
+        case HEADER_SIZE:
             inst = mDot2;
             pos  = mDot2_it;
             break;
         default:
-            MUST_BE_TRUE(false, "did not catch the first MRF def instruction correctly");
+            MUST_BE_TRUE(false, "did not catch the first def instruction correctly");
             return;
         }
 
@@ -4738,18 +4738,18 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         G4_Declare *srcDcl = source_send->getSrc(0)->getBase()->asRegVar()->getDeclare();
         G4_SrcRegRegion* newSrcOpnd = builder.Create_Src_Opnd_From_Dcl(srcDcl, builder.getRegionStride1());
 
-        G4_INST* mov_mrf = builder.createMov(
+        G4_INST* mov = builder.createMov(
             m->getExecSize(),
             builder.duplicateOperand(m->getDst()),
             newSrcOpnd,
             m->getOption(),
             false);
-        bb->insert(pos, mov_mrf);
+        bb->insert(pos, mov);
 
         // maintain def-use.
         //
         // (1) Uses. m is ready to be deleted.
-        m->transferUse(mov_mrf);
+        m->transferUse(mov);
 
         // (2) Defs
         // The defs should be from definitions for source->send's src(0).
@@ -4763,7 +4763,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         // send (8) null<1>:ud V244(0,0)<8;8,1>:ud a0.0<0;1,0>:ud {Align1, NoMask}  <- source_send
         // mov (8) V89(0,0)<1>:d V34_histogram(1,0)<8;8,1>:d {Align1, Q1}
         // mov (8) V246(1,0)<1>:ud V89(0,0)<8;8,1>:ud {Align1, NoMask}
-        // mov (8) V246(0,0)<1>:ud V244(0,0)<8;8,1>:ud {Align1, NoMask} <-- mov_mrf
+        // mov (8) V246(0,0)<1>:ud V244(0,0)<8;8,1>:ud {Align1, NoMask} <-- mov
         // mov (8) V246(0,0)<1>:ud r0.0<8;8,1>:ud {Align1, NoMask}      <-- m
         //
         // There are more than one defs here.
@@ -4772,9 +4772,9 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         //
         // mov (8) V244(1,0)<1>:ud V88(0,0)<8;8,1>:ud {Align1, NoMask}
         //
-        // is a definition of send but not for mov_mrf. We enable checked
+        // is a definition of send but not for mov. We enable checked
         // while copying defs.
-        source_send->copyDef(mov_mrf, Opnd_src0, Opnd_src0, /*checked*/true);
+        source_send->copyDef(mov, Opnd_src0, Opnd_src0, /*checked*/true);
     }
 
     /*
@@ -5303,7 +5303,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
     /*
     * compare the two send and their defs
     * determine whether to remove the redundant mov inst
-    * or reuse the previous MRF
+    * or reuse the previous header
     *
     * 1    mov (8) V152(0,0)<1>:ud r0.0<8;8,1>:ud {Align1, NoMask}
     * 2    mov (1) V152(0,2)<1>:ud 0x7000f:ud {Align1, NoMask}
@@ -5408,12 +5408,12 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             return; // don't delete if redunant insts >=THRESHold
         };
 
-        if ( payLoadSize > 1                    &&
-            !(redundancyCount ==3              &&
-            dest->send->getSrc(0)->compareOperand(source->send->getSrc(0))
-            == Rel_eq ) )
+        if (payLoadSize > 1 &&
+            !(redundancyCount == 3 &&
+                dest->send->getSrc(0)->compareOperand(source->send->getSrc(0))
+                == Rel_eq))
         {
-            dest->insertMovMRFInst(source->send, builder, bb);
+            dest->insertHeaderMovInst(source->send, builder, bb);
             replaceOldHeader = true;
         }
 
@@ -5656,7 +5656,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             2,
             builder.getRegionScalar(),
             Type_UD);
-        G4_DstRegRegion *mrf_dst1_opnd = builder.createDstRegRegion(
+        G4_DstRegRegion *dst1_opnd = builder.createDstRegRegion(
             Direct,
             dcl->getRegVar(),
             0,
@@ -5684,7 +5684,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 NULL,
                 false,
                 8,
-                mrf_dst1_opnd,
+                dst1_opnd,
                 r0_src_opnd,
                 g4Imm,
                 InstOpt_WriteEnable,
@@ -5920,8 +5920,8 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                         src->asSrcRegRegion()->getRegOff() == 0             &&
                         src->asSrcRegRegion()->getSubRegOff() == 0 )
                     {
-                        if (item->first == MRF_UNDEF)
-                            item->first = MRF_FULL_REGISTER;
+                        if (item->first == HEADER_UNDEF)
+                            item->first = HEADER_FULL_REGISTER;
                         item->m = inst;
                         item->m_it = ii;
                     }
@@ -5929,8 +5929,8 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     else if(dst->getSubRegOff() == 0  &&
                         inst->getExecSize() == 1                        )
                     {
-                        if (item->first == MRF_UNDEF)
-                            item->first = MRF_X;
+                        if (item->first == HEADER_UNDEF)
+                            item->first = HEADER_X;
                         item->mDot0 = inst;
                         item->mDot0_it = ii;
                     }
@@ -5938,8 +5938,8 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     else if(dst->getSubRegOff() == 1  &&
                         inst->getExecSize() == 1                        )
                     {
-                        if (item->first == MRF_UNDEF)
-                            item->first = MRF_Y;
+                        if (item->first == HEADER_UNDEF)
+                            item->first = HEADER_Y;
                         item->mDot1 = inst;
                         item->mDot1_it = ii;
                     }
@@ -5947,8 +5947,8 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     else if(dst->getSubRegOff() == 2  &&
                         inst->getExecSize() == 1                        )
                     {
-                        if (item->first == MRF_UNDEF)
-                            item->first = MRF_SIZE;
+                        if (item->first == HEADER_UNDEF)
+                            item->first = HEADER_SIZE;
                         item->mDot2 = inst;
                         item->mDot2_it = ii;
                     }
@@ -6009,7 +6009,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             MSGTable *newItem   = (MSGTable *)mem.alloc(sizeof(MSGTable));
             toDelete.push(newItem);
             memset(newItem, 0, sizeof(MSGTable));
-            newItem->first      = MRF_UNDEF;
+            newItem->first      = HEADER_UNDEF;
 
             msgList.push_front(newItem);
             G4_BB* bb = (*ib);
@@ -6046,7 +6046,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                         MSGTable * item = (MSGTable *)mem.alloc(sizeof(MSGTable));
                         toDelete.push(item);
                         memset(item, 0, sizeof(MSGTable));
-                        item->first  = MRF_UNDEF;
+                        item->first  = HEADER_UNDEF;
                         msgList.push_front(item);
                     }
                 }

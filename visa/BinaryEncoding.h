@@ -636,7 +636,6 @@ typedef union _EncExtMsgDescriptor_
 // these will be set dynamically once
 extern unsigned long bitsFlagSubRegNum[2];
 extern unsigned long bitsNibCtrl[2];
-extern unsigned long bitsMrfRegNumHWord[2];
 extern unsigned long bits3SrcFlagSubRegNum[2];
 extern unsigned long bits3SrcSrcType[2];
 extern unsigned long bits3SrcDstType[2];
@@ -762,7 +761,6 @@ namespace vISA
             SET_BIT_RANGE(bitsFlagRegNum, 33, 33);
             SET_BIT_RANGE(bitsFlagSubRegNum, 32, 32);
             SET_BIT_RANGE(bitsNibCtrl, 11, 11);
-            SET_BIT_RANGE(bitsMrfRegNumHWord, 76, 69);   // MRF is not used
             SET_BIT_RANGE(bits3SrcFlagSubRegNum, 32, 32);
             SET_BIT_RANGE(bits3SrcFlagRegNum, 33, 33);
             SET_BIT_RANGE(bits3SrcSrcType, 45, 43);

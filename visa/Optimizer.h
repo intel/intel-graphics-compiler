@@ -48,11 +48,11 @@ typedef struct{
  */
 typedef enum _HEADER_ORDER_
 {
-    MRF_UNDEF         = 0,
-    MRF_FULL_REGISTER = 1,
-    MRF_X             = 2,
-    MRF_Y             = 3,
-    MRF_SIZE          = 4
+    HEADER_UNDEF         = 0,
+    HEADER_FULL_REGISTER = 1,
+    HEADER_X             = 2,
+    HEADER_Y             = 3,
+    HEADER_SIZE          = 4
 } HEADER_ORDER;
 
 namespace vISA
@@ -85,7 +85,7 @@ public:
     bool isR0Dot0Redef; // r0.0 is used to define m
     HEADER_ORDER first;
 
-    void insertMovMRFInst(G4_INST *, IR_Builder&, G4_BB *);
+    void insertHeaderMovInst(G4_INST *, IR_Builder&, G4_BB *);
     void reusePreviousHeader(G4_INST *, G4_INST *, G4_INST *, IR_Builder&);
 
     ~MSGTable() {};

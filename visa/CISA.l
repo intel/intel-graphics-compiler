@@ -890,7 +890,7 @@ V0 {
         return FENCE_OPTIONS;
     }
 
-[ \n\t]+"\\"\n {TRACE("\n** Multiple instructions in a line");}   //gen4 define macro use "\n" to allow multiple instr in a line
+[ \n\t]+"\\"\n {TRACE("\n** Multiple instructions in a line");}
 
 '<EOF>' {
         TRACE("\n** End Of File");

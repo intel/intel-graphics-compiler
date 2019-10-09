@@ -1852,7 +1852,7 @@ void IR_Builder::generateBarrierSend()
     int desc = (0x1 << 25) + 0x4;
 
     //get barrier id
-    G4_Declare *dcl = Create_MRF_Dcl(GENX_DATAPORT_IO_SZ, Type_UD);
+    G4_Declare *dcl = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_UD);
 
     G4_SrcRegRegion* r0_src_opnd = createSrcRegRegion(
         Mod_src_undef,
@@ -1863,7 +1863,7 @@ void IR_Builder::generateBarrierSend()
         getRegionScalar(),
         Type_UD);
 
-    G4_DstRegRegion *mrf_dst1_opnd = Create_Dst_Opnd_From_Dcl(dcl, 1);
+    G4_DstRegRegion *dst1_opnd = Create_Dst_Opnd_From_Dcl(dcl, 1);
 
     bool enableBarrierInstCounterBits = kernel.getOption(VISA_EnableBarrierInstCounterBits);
     int mask = getBarrierMask(enableBarrierInstCounterBits);
@@ -1875,7 +1875,7 @@ void IR_Builder::generateBarrierSend()
         NULL,
         false,
         8,
-        mrf_dst1_opnd,
+        dst1_opnd,
         r0_src_opnd,
         g4Imm,
         InstOpt_WriteEnable,
@@ -2637,7 +2637,7 @@ int IR_Builder::translateVISAOwordLoadInst(
     bool unaligned = (opcode == ISA_OWORD_LD_UNALIGNED);
 
     // create dcl for VX
-    G4_Declare *dcl = Create_MRF_Dcl( GENX_DATAPORT_IO_SZ, Type_UD );
+    G4_Declare *dcl = createSendPayloadDcl( GENX_DATAPORT_IO_SZ, Type_UD );
 
     if (IsStatelessSurface(surface))
     {
@@ -2810,7 +2810,7 @@ int IR_Builder::translateVISAOwordStoreInst(
     bool forceSplitSend = ForceSplitSend(*this, surface);
     if (forceSplitSend || useSends())
     {
-        G4_Declare *headerDcl = Create_MRF_Dcl(GENX_DATAPORT_IO_SZ, Type_UD);
+        G4_Declare *headerDcl = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_UD);
 
         if (IsStatelessSurface(surface))
         {
@@ -2841,11 +2841,9 @@ int IR_Builder::translateVISAOwordStoreInst(
     else
     {
 
-        /* Size of whole mrf opnd in UINT elements */
         uint32_t temp =  obj_size/G4_Type_Table[Type_UD].byteSize + GENX_DATAPORT_IO_SZ;
 
-        // decl for mrfs
-        G4_Declare *dcl = Create_MRF_Dcl(temp, Type_UD);
+        G4_Declare *dcl = createSendPayloadDcl(temp, Type_UD);
 
         /* mov  (c*r)    VX(1,0)<1>,  V */
         temp =  obj_size/G4_Type_Table[Type_UD].byteSize;
@@ -2941,7 +2939,7 @@ int IR_Builder::translateVISAMediaLoadInst(
 
     /* mov (8)      VX(0,0)<1>,  r0:ud  */
     // add dcl for VX
-    G4_Declare *dcl = Create_MRF_Dcl( GENX_DATAPORT_IO_SZ, Type_UD );
+    G4_Declare *dcl = createSendPayloadDcl( GENX_DATAPORT_IO_SZ, Type_UD );
 
     // create MOV inst
     Create_MOVR0_Inst( dcl, 0, 0, true );
@@ -3168,7 +3166,7 @@ int IR_Builder::translateVISAMediaStoreInst(
     if (forceSplitSend || useSends())
     {
         // use split send
-        G4_Declare *headerDcl = Create_MRF_Dcl(GENX_DATAPORT_IO_SZ, Type_UD);
+        G4_Declare *headerDcl = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_UD);
         Create_MOVR0_Inst( headerDcl, 0, 0, true );
         /* mov (1)      VX(0,2)<1>,    CONST[R,C]  */
         uint32_t temp = (blockHeight - 1) << 16 | (blockWidth - 1);
@@ -3200,11 +3198,9 @@ int IR_Builder::translateVISAMediaStoreInst(
     }
     else
     {
-        /* Size of whole mrf opnd in UINT elements */
         uint32_t temp =  new_obj_size/G4_Type_Table[Type_UD].byteSize + GENX_DATAPORT_IO_SZ;
 
-        // decl for mrfs
-        G4_Declare *dcl = Create_MRF_Dcl(temp, Type_UD);
+        G4_Declare *dcl = createSendPayloadDcl(temp, Type_UD);
 
         /* mov  (c*r)    VX(1,0)<1>,  M */
         /* decl for data to write */
@@ -3212,7 +3208,6 @@ int IR_Builder::translateVISAMediaStoreInst(
 
         Create_MOV_Send_Src_Inst( dcl, 1, 0, temp, srcOpnd, InstOpt_WriteEnable );
 
-        // Decl for i/o MRF
         Create_MOVR0_Inst( dcl, 0, 0, true );
 
         /* mov (1)      VX(0,2)<1>,    CONST[R,C]  */
@@ -3337,7 +3332,7 @@ int IR_Builder::translateVISAGatherInst(
     {
         // From SKL, SLM messages forbid message header. Recalculate offset by
         // adding global offset and force headerLess.
-        G4_Declare *dcl = Create_MRF_Dcl(numElt, eltOffOpnd->getType());
+        G4_Declare *dcl = createSendPayloadDcl(numElt, eltOffOpnd->getType());
         dcl->setSubRegAlign(GRFALIGN);
         G4_DstRegRegion *newEltOffOpnd = Create_Dst_Opnd_From_Dcl(dcl, 1);
         createInst(NULL, G4_add, NULL, false, numElt, newEltOffOpnd, eltOffOpnd, gOffOpnd, instOpt);
@@ -3353,19 +3348,19 @@ int IR_Builder::translateVISAGatherInst(
         useSplitSend = false;
 
     G4_Declare *header = 0;
-    G4_Declare *offset = Create_MRF_Dcl(numElt, Type_UD);
+    G4_Declare *offset = createSendPayloadDcl(numElt, Type_UD);
     offset->setSubRegAlign(GRFALIGN);
 
     if (useSplitSend)
     {
         ASSERT_USER(!headerLess, "SplitSend should not be used when header is not required!");
         // Without header, it's unnecessary to split the message.
-        header = Create_MRF_Dcl(GENX_DATAPORT_IO_SZ, Type_UD);
+        header = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_UD);
     }
     else if (!headerLess)
     {
-        header = Create_MRF_Dcl(GENX_DATAPORT_IO_SZ + effectiveNumElt, Type_UD);
-        offset->setAliasDeclare(header, GENX_MRF_REG_SIZ);
+        header = createSendPayloadDcl(GENX_DATAPORT_IO_SZ + effectiveNumElt, Type_UD);
+        offset->setAliasDeclare(header, GENX_GRF_REG_SIZ);
     }
 
     G4_SrcRegRegion* msgSrcOpnd = NULL;
@@ -3588,7 +3583,7 @@ int IR_Builder::translateVISAScatterInst(
     if (!headerLess && noSLMMsgHeader() && IsSLMSurface(surface)) {
         // From SKL, SLM messages forbid message header. Recalculate offset by
         // adding global offset and force headerLess.
-        G4_Declare *dcl = Create_MRF_Dcl(numElt, eltOffOpnd->getType());
+        G4_Declare *dcl = createSendPayloadDcl(numElt, eltOffOpnd->getType());
         G4_DstRegRegion *newEltOffOpnd = Create_Dst_Opnd_From_Dcl(dcl, 1);
         createInst(NULL, G4_add, NULL, false, numElt, newEltOffOpnd, eltOffOpnd, gOffOpnd, instOpt);
         eltOffOpnd = Create_Src_Opnd_From_Dcl(dcl, numElt == 1 ? getRegionScalar() : getRegionStride1());
@@ -3598,7 +3593,7 @@ int IR_Builder::translateVISAScatterInst(
     if( headerLess )
     {
         // header size = 2 * #elt
-        G4_Declare *dcl = Create_MRF_Dcl( effectiveNumElt * 2, Type_UD );
+        G4_Declare *dcl = createSendPayloadDcl( effectiveNumElt * 2, Type_UD );
         G4_DstRegRegion* tmpDstOpnd = Create_Dst_Opnd_From_Dcl( dcl, 1);
         if (eltSize == GATHER_SCATTER_WORD ||
             (eltSize != GATHER_SCATTER_BYTE && IsSLMSurface(surface)))
@@ -3626,7 +3621,7 @@ int IR_Builder::translateVISAScatterInst(
     {
         // mov (8)      VX(0,0)<1>,  r0:ud
         // add dcl for VX
-        G4_Declare *dcl = Create_MRF_Dcl( GENX_DATAPORT_IO_SZ + effectiveNumElt * 2, Type_UD );
+        G4_Declare *dcl = createSendPayloadDcl( GENX_DATAPORT_IO_SZ + effectiveNumElt * 2, Type_UD );
 
         if (IsStatelessSurface(surface)) {
             // Build stateless surface message header.
@@ -3785,17 +3780,17 @@ int IR_Builder::translateVISAGather4Inst(
     bool useSplitSend = useSends();
 
     G4_Declare *header = 0;
-    G4_Declare *offset = Create_MRF_Dcl(numElt, Type_UD);
+    G4_Declare *offset = createSendPayloadDcl(numElt, Type_UD);
 
     if (surface && IsStatelessSurface(surface) && needsA32MsgHeader())
     {
         // Header is required to work around a HW issue on pre-SKL devices.
         hdrSize = GENX_DATAPORT_IO_SZ;
         if (useSplitSend) {
-            header = Create_MRF_Dcl(GENX_DATAPORT_IO_SZ, Type_UD);
+            header = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_UD);
         } else {
-            header = Create_MRF_Dcl(GENX_DATAPORT_IO_SZ + numElt, Type_UD);
-            offset->setAliasDeclare(header, GENX_MRF_REG_SIZ);
+            header = createSendPayloadDcl(GENX_DATAPORT_IO_SZ + numElt, Type_UD);
+            offset->setAliasDeclare(header, GENX_GRF_REG_SIZ);
         }
     } else {
         // When the surface is not stateless one, header is not used and therefore
@@ -3980,32 +3975,32 @@ int IR_Builder::translateVISAScatter4Inst(
 
     G4_Declare *header = 0;
     G4_Declare *offset = 0;
-    G4_Declare *data = Create_MRF_Dcl(data_size, Type_UD);
+    G4_Declare *data = createSendPayloadDcl(data_size, Type_UD);
 
     if (surface && IsStatelessSurface(surface) && needsA32MsgHeader())
     {
         // Header is required to work around a HW issue on pre-SKL devices.
         hdrSize = GENX_DATAPORT_IO_SZ;
-        offset = Create_MRF_Dcl(numElt, Type_UD);
+        offset = createSendPayloadDcl(numElt, Type_UD);
         if (useSplitSend) {
             // When header is required, we split the message as
             // (header, offset + data) if split-send is supported.
-            header = Create_MRF_Dcl(GENX_DATAPORT_IO_SZ, Type_UD);
-            offset = Create_MRF_Dcl(payload_size, Type_UD);
-            data->setAliasDeclare(offset, (numElt/8) * GENX_MRF_REG_SIZ);
+            header = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_UD);
+            offset = createSendPayloadDcl(payload_size, Type_UD);
+            data->setAliasDeclare(offset, (numElt/8) * GENX_GRF_REG_SIZ);
         } else {
-            header = Create_MRF_Dcl(GENX_DATAPORT_IO_SZ + payload_size, Type_UD);
-            offset->setAliasDeclare(header, GENX_MRF_REG_SIZ);
-            data->setAliasDeclare(header, GENX_MRF_REG_SIZ * ((numElt/8) + 1));
+            header = createSendPayloadDcl(GENX_DATAPORT_IO_SZ + payload_size, Type_UD);
+            offset->setAliasDeclare(header, GENX_GRF_REG_SIZ);
+            data->setAliasDeclare(header, GENX_GRF_REG_SIZ * ((numElt/8) + 1));
         }
     } else {
         if (useSplitSend) {
             // When header is not required, we split the message as (offset, data)
             // if split-send is supported.
-            offset = Create_MRF_Dcl(numElt, Type_UD);
+            offset = createSendPayloadDcl(numElt, Type_UD);
         } else {
-            offset = Create_MRF_Dcl(payload_size, Type_UD);
-            data->setAliasDeclare(offset, (numElt/8) * GENX_MRF_REG_SIZ);
+            offset = createSendPayloadDcl(payload_size, Type_UD);
+            data->setAliasDeclare(offset, (numElt/8) * GENX_GRF_REG_SIZ);
         }
     }
 
@@ -4206,7 +4201,7 @@ int IR_Builder::translateVISADwordAtomicInst(VISAAtomicOps atomicOp,
 
     bool useHeader = needsA32MsgHeader() && surface && IsStatelessSurface(surface);
     if (useHeader) {
-        G4_Declare *dcl = Create_MRF_Dcl(GENX_DATAPORT_IO_SZ, Type_UD);
+        G4_Declare *dcl = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_UD);
 
         BuildMH1_A32_PSM(this, dcl);
 
@@ -4406,7 +4401,7 @@ int IR_Builder::translateVISAGather4TypedInst(G4_Predicate           *pred,
     if (hasHeader)
     {
         // Build header
-        G4_Declare *dcl = Create_MRF_Dcl(GENX_DATAPORT_IO_SZ, Type_UD);
+        G4_Declare *dcl = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_UD);
         BuildMH1_BTS_PSM(this, dcl);
 
         // Append header
@@ -4497,7 +4492,7 @@ int IR_Builder::translateVISAScatter4TypedInst(G4_Predicate           *pred,
     if (hasHeader)
     {
         // Build header
-        G4_Declare *dcl = Create_MRF_Dcl(GENX_DATAPORT_IO_SZ, Type_UD);
+        G4_Declare *dcl = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_UD);
         BuildMH1_BTS_PSM(this, dcl);
 
         // Append header
@@ -4883,7 +4878,7 @@ int IR_Builder::translateGather4Inst(G4_Predicate           *pred,
     // In case non-zero global offset is specified, we need to recalculate
     // offsets.
     if (!globalOffset->isImm() || globalOffset->asImm()->getImm() != 0) {
-        G4_Declare *dcl = Create_MRF_Dcl(exSize, offsets->getType());
+        G4_Declare *dcl = createSendPayloadDcl(exSize, offsets->getType());
         G4_DstRegRegion *tmp = Create_Dst_Opnd_From_Dcl(dcl, 1);
         createInst(pred, G4_add, 0, false, instExSize, tmp, offsets, globalOffset, instOpt);
         offsets = Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
@@ -4893,7 +4888,7 @@ int IR_Builder::translateGather4Inst(G4_Predicate           *pred,
     unsigned len = 0;
 
     if (useHeader) {
-        G4_Declare *dcl = Create_MRF_Dcl(GENX_DATAPORT_IO_SZ, Type_UD);
+        G4_Declare *dcl = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_UD);
 
         BuildMH1_A32_PSM(this, dcl);
 
@@ -4985,7 +4980,7 @@ int IR_Builder::translateScatter4Inst(G4_Predicate           *pred,
     // In case non-zero global offset is specified, we need to recalculate
     // offsets.
     if (!globalOffset->isImm() || globalOffset->asImm()->getImm() != 0) {
-        G4_Declare *dcl = Create_MRF_Dcl(exSize, offsets->getType());
+        G4_Declare *dcl = createSendPayloadDcl(exSize, offsets->getType());
         G4_DstRegRegion *tmp = Create_Dst_Opnd_From_Dcl(dcl, 1);
         createInst(pred, G4_add, 0, false, instExSize, tmp, offsets, globalOffset, instOpt);
         offsets = Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
@@ -4995,7 +4990,7 @@ int IR_Builder::translateScatter4Inst(G4_Predicate           *pred,
     unsigned len = 0;
 
     if (useHeader) {
-        G4_Declare *dcl = Create_MRF_Dcl(GENX_DATAPORT_IO_SZ, Type_UD);
+        G4_Declare *dcl = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_UD);
 
         // TODO: Get PSM supported on demand.
         BuildMH1_A32_PSM(this, dcl);
@@ -5248,7 +5243,7 @@ int IR_Builder::translateByteGatherInst(G4_Predicate *pred,
     //       offset by adjusting offsets will simplify the header generation.
     if (!globalOffset->isImm() || globalOffset->asImm()->getImm() != 0)
     {
-        G4_Declare *dcl = Create_MRF_Dcl(exSize, offsets->getType());
+        G4_Declare *dcl = createSendPayloadDcl(exSize, offsets->getType());
         G4_DstRegRegion *tmp = Create_Dst_Opnd_From_Dcl(dcl, 1);
         createInst(nullptr, G4_add, 0, false, instExSize, tmp, offsets, globalOffset, instOpt);
         offsets = Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
@@ -5258,7 +5253,7 @@ int IR_Builder::translateByteGatherInst(G4_Predicate *pred,
     unsigned len = 0;
 
     if (useHeader) {
-        G4_Declare *dcl = Create_MRF_Dcl(GENX_DATAPORT_IO_SZ, Type_UD);
+        G4_Declare *dcl = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_UD);
 
         // TODO: Get BTS supported on demand.
         BuildMH_A32_GO(this, dcl);
@@ -5361,7 +5356,7 @@ int IR_Builder::translateByteScatterInst(G4_Predicate *pred,
     //       offset by adjusting offsets will simplify the header generation.
     if (!globalOffset->isImm() || globalOffset->asImm()->getImm() != 0)
     {
-        G4_Declare *dcl = Create_MRF_Dcl(exSize, offsets->getType());
+        G4_Declare *dcl = createSendPayloadDcl(exSize, offsets->getType());
         G4_DstRegRegion *tmp = Create_Dst_Opnd_From_Dcl(dcl, 1);
         createInst(nullptr, G4_add, 0, false, instExSize, tmp, offsets, globalOffset, instOpt);
         offsets = Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
@@ -5371,7 +5366,7 @@ int IR_Builder::translateByteScatterInst(G4_Predicate *pred,
     unsigned len = 0;
 
     if (useHeader) {
-        G4_Declare *dcl = Create_MRF_Dcl(GENX_DATAPORT_IO_SZ, Type_UD);
+        G4_Declare *dcl = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_UD);
 
         // TODO: Get BTS supported on demand.
         BuildMH_A32_GO(this, dcl);
@@ -5594,7 +5589,7 @@ int IR_Builder::translateVISAVmeImeInst(
         input_size_dw = (uni_input_size + 4)*32/G4_Type_Table[Type_UD].byteSize;
     }
 
-    G4_Declare *dcl = Create_MRF_Dcl( input_size_dw, Type_UD );
+    G4_Declare *dcl = createSendPayloadDcl( input_size_dw, Type_UD );
 
     // mov  (96)    VX(0,0)<1>,  UNIInput
     Create_MOV_Send_Src_Inst( dcl, 0, 0, uni_input_size*32/G4_Type_Table[Type_UD].byteSize, uniInputOpnd, InstOpt_WriteEnable );
@@ -5725,7 +5720,7 @@ int IR_Builder::translateVISAVmeSicInst(
     }
     else
     {
-        dcl = Create_MRF_Dcl( input_size_dw, Type_UD );
+        dcl = createSendPayloadDcl( input_size_dw, Type_UD );
         // mov  (96)    VX(0,0)<1>,  UNIInput
         Create_MOV_Send_Src_Inst( dcl, 0, 0, uni_input_size*32/G4_Type_Table[Type_UD].byteSize, uniInputOpnd, InstOpt_WriteEnable );
         // mov  (128)   VX(3,0)<1>,  SICInput
@@ -5784,7 +5779,7 @@ int IR_Builder::translateVISAVmeFbrInst(
     // add dcl for VX
     unsigned input_size_dw = (uni_input_size + 4)*32/G4_Type_Table[Type_UD].byteSize;
 
-    G4_Declare *dcl = Create_MRF_Dcl( input_size_dw, Type_UD );
+    G4_Declare *dcl = createSendPayloadDcl( input_size_dw, Type_UD );
 
     // mov  (96)    VX(0,0)<1>,  UNIInput
     Create_MOV_Send_Src_Inst( dcl, 0, 0, uni_input_size*32/G4_Type_Table[Type_UD].byteSize, unitInputOpnd, InstOpt_WriteEnable );
@@ -5892,7 +5887,7 @@ int IR_Builder::translateVISAVmeIdmInst(
     // add dcl for VX
     unsigned input_size_dw = (uni_input_size + 1)*32/G4_Type_Table[Type_UD].byteSize;
 
-    G4_Declare *dcl = Create_MRF_Dcl( input_size_dw, Type_UD );
+    G4_Declare *dcl = createSendPayloadDcl( input_size_dw, Type_UD );
 
     // mov  (128)    VX(0,0)<1>,  UNIInput
     Create_MOV_Send_Src_Inst( dcl, 0, 0, uni_input_size*32/G4_Type_Table[Type_UD].byteSize, unitInputOpnd, InstOpt_WriteEnable );
@@ -6085,11 +6080,11 @@ int IR_Builder::translateVISASamplerVAGenericInst(
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    G4_Declare* dcl  = Create_MRF_Dcl( 2 * GENX_SAMPLER_IO_SZ , Type_UD );
-    G4_Declare *dcl1 = Create_MRF_Dcl( 8                      , Type_UD );
-    G4_Declare *dclF = Create_MRF_Dcl( 8                      , Type_F  );
-    dcl1->setAliasDeclare ( dcl, GENX_MRF_REG_SIZ );
-    dclF->setAliasDeclare ( dcl, GENX_MRF_REG_SIZ );
+    G4_Declare* dcl  = createSendPayloadDcl( 2 * GENX_SAMPLER_IO_SZ , Type_UD );
+    G4_Declare *dcl1 = createSendPayloadDcl( 8                      , Type_UD );
+    G4_Declare *dclF = createSendPayloadDcl( 8                      , Type_F  );
+    dcl1->setAliasDeclare ( dcl, GENX_GRF_REG_SIZ );
+    dclF->setAliasDeclare ( dcl, GENX_GRF_REG_SIZ );
 
     /// Message Sequence Setup:
     /// When Functionality is MINMAX/BoolCentroid/Centroid, value is binary 1x.
@@ -6318,7 +6313,7 @@ int IR_Builder::translateVISAAvsInst(
         unsigned obj_size = number_elements_returned*numEnabledChannels*G4_Type_Table[output_type].byteSize;
         // mov (8)      VX(0,0)<1>,  r0:ud
         // add dcl for VX
-        G4_Declare *dcl = Create_MRF_Dcl( 2 * GENX_SAMPLER_IO_SZ, Type_UD );
+        G4_Declare *dcl = createSendPayloadDcl( 2 * GENX_SAMPLER_IO_SZ, Type_UD );
 
         // mov  VX(0,0)<1>, r0
         Create_MOVR0_Inst( dcl, 0, 0, true );
@@ -6327,15 +6322,15 @@ int IR_Builder::translateVISAAvsInst(
         cmask += cntrl<<18;
         Create_MOV_Inst( dcl, 0, 2, 1, NULL, NULL, createImm( cmask, Type_UD ), true );
 
-        G4_Declare *dcl1 = Create_MRF_Dcl( GENX_DATAPORT_IO_SZ, Type_F );
-        dcl1->setAliasDeclare(dcl, GENX_MRF_REG_SIZ);
+        G4_Declare *dcl1 = createSendPayloadDcl( GENX_DATAPORT_IO_SZ, Type_F );
+        dcl1->setAliasDeclare(dcl, GENX_GRF_REG_SIZ);
 
         /*
         Keeping destination type as UD, otherwise w-->f conversion happens,
         which affects the results.
         */
-        G4_Declare *dcl1_ud = Create_MRF_Dcl( GENX_DATAPORT_IO_SZ, Type_UD );
-        dcl1_ud->setAliasDeclare(dcl, GENX_MRF_REG_SIZ);
+        G4_Declare *dcl1_ud = createSendPayloadDcl( GENX_DATAPORT_IO_SZ, Type_UD );
+        dcl1_ud->setAliasDeclare(dcl, GENX_GRF_REG_SIZ);
 
         // mov  (1)     VA(0,0)<1>,  v2d
         Create_MOV_Inst(dcl1, 0, 0, 1, NULL, NULL, v2dOpnd, true);
@@ -6634,8 +6629,8 @@ int IR_Builder::translateVISASamplerInst(
 #endif
     // mov (8)      VX(0,0)<1>,  r0:ud
     // add dcl for VX
-    unsigned num_payload_elt = simdMode/2 * GENX_MRF_REG_SIZ/G4_Type_Table[Type_UD].byteSize;
-    G4_Declare *dcl = Create_MRF_Dcl( num_payload_elt + GENX_SAMPLER_IO_SZ, Type_UD );
+    unsigned num_payload_elt = simdMode/2 * GENX_GRF_REG_SIZ/G4_Type_Table[Type_UD].byteSize;
+    G4_Declare *dcl = createSendPayloadDcl( num_payload_elt + GENX_SAMPLER_IO_SZ, Type_UD );
 
     // mov  VX(0,0)<1>, r0
     Create_MOVR0_Inst( dcl, 0, 0 );
@@ -6645,8 +6640,8 @@ int IR_Builder::translateVISASamplerInst(
 
     // set up the message payload
     // lod is always uninitialized for us as we don't support it.
-    G4_Declare *dcl1 = Create_MRF_Dcl( num_payload_elt, Type_UD );
-    dcl1->setAliasDeclare(dcl, GENX_MRF_REG_SIZ);
+    G4_Declare *dcl1 = createSendPayloadDcl( num_payload_elt, Type_UD );
+    dcl1->setAliasDeclare(dcl, GENX_GRF_REG_SIZ);
     /* mov  (sample_mode)    VX(0,0)<1>,  u */
     Create_MOV_Send_Src_Inst( dcl1, 0, 0, simdMode, uOffOpnd, 0 );
     if( sampler == NULL )
@@ -6790,22 +6785,22 @@ int IR_Builder::translateVISAVaSklPlusGeneralInst(
     if((sub_opcode == VA_OP_CODE_1PIXEL_CONVOLVE && mode == CM_CONV_16x1) ||
         sub_opcode == ISA_HDC_1PIXELCONV)
     {
-        dcl = Create_MRF_Dcl( 4 * GENX_SAMPLER_IO_SZ , Type_UD );
+        dcl = createSendPayloadDcl( 4 * GENX_SAMPLER_IO_SZ , Type_UD );
         //16 pairs of x,y coordinates
-        dcl_offsets = Create_MRF_Dcl( 32                      , Type_W  );
-        dcl_offsets->setAliasDeclare( dcl, GENX_MRF_REG_SIZ * 2 );
+        dcl_offsets = createSendPayloadDcl( 32                      , Type_W  );
+        dcl_offsets->setAliasDeclare( dcl, GENX_GRF_REG_SIZ * 2 );
         reg_to_send = 4;
     }
     else
-        dcl = Create_MRF_Dcl( 2 * GENX_SAMPLER_IO_SZ , Type_UD );
+        dcl = createSendPayloadDcl( 2 * GENX_SAMPLER_IO_SZ , Type_UD );
 
-    G4_Declare *dcl_payload_UD = Create_MRF_Dcl(  GENX_DATAPORT_IO_SZ                      , Type_UD );
-    G4_Declare *dcl_payload_F = Create_MRF_Dcl(  GENX_DATAPORT_IO_SZ                      , Type_F  );
-    G4_Declare *dcl_payload_UW = Create_MRF_Dcl(  GENX_DATAPORT_IO_SZ * 2                      , Type_UW  );
+    G4_Declare *dcl_payload_UD = createSendPayloadDcl(  GENX_DATAPORT_IO_SZ                      , Type_UD );
+    G4_Declare *dcl_payload_F = createSendPayloadDcl(  GENX_DATAPORT_IO_SZ                      , Type_F  );
+    G4_Declare *dcl_payload_UW = createSendPayloadDcl(  GENX_DATAPORT_IO_SZ * 2                      , Type_UW  );
 
-    dcl_payload_UD->setAliasDeclare ( dcl,  GENX_MRF_REG_SIZ );
-    dcl_payload_F->setAliasDeclare ( dcl, GENX_MRF_REG_SIZ );
-    dcl_payload_UW->setAliasDeclare ( dcl, GENX_MRF_REG_SIZ );
+    dcl_payload_UD->setAliasDeclare ( dcl,  GENX_GRF_REG_SIZ );
+    dcl_payload_F->setAliasDeclare ( dcl, GENX_GRF_REG_SIZ );
+    dcl_payload_UW->setAliasDeclare ( dcl, GENX_GRF_REG_SIZ );
 
     /// Message Header Setup
     /// 19:18 output control format | 15 Alpha Write Channel Mask ARGB = 1101 = 0xD for sampler8x8
@@ -7207,7 +7202,7 @@ int IR_Builder::translateVISASamplerNormInst(
 #endif
     // mov (8)      VX(0,0)<1>,  r0:ud
     // add dcl for VX
-    G4_Declare *dcl = Create_MRF_Dcl( 2 * GENX_SAMPLER_IO_SZ, Type_UD );
+    G4_Declare *dcl = createSendPayloadDcl( 2 * GENX_SAMPLER_IO_SZ, Type_UD );
 
     // mov  VX(0,0)<1>, r0
     Create_MOVR0_Inst( dcl, 0, 0 );
@@ -7215,8 +7210,8 @@ int IR_Builder::translateVISASamplerNormInst(
     unsigned cmask = channel.getHWEncoding() << 12;
     Create_MOV_Inst( dcl, 0, 2, 1, NULL, NULL, createImm( cmask, Type_UD ) );
 
-    G4_Declare *dcl1 = Create_MRF_Dcl(  GENX_DATAPORT_IO_SZ, Type_F );
-    dcl1->setAliasDeclare(dcl, GENX_MRF_REG_SIZ);
+    G4_Declare *dcl1 = createSendPayloadDcl(  GENX_DATAPORT_IO_SZ, Type_F );
+    dcl1->setAliasDeclare(dcl, GENX_GRF_REG_SIZ);
 
     // mov  (1)     VX(1,4)<1>,  deltaU
     Create_MOV_Inst( dcl1, 0, 4, 1, NULL, NULL, deltaUOpnd );
@@ -7269,7 +7264,6 @@ int IR_Builder::translateVISASimdInst(ISA_Opcode opcode, G4_Predicate *predOpnd,
     uint8_t exsize = (uint8_t) Get_Common_ISA_Exec_Size(executionSize);
     unsigned int instOpt = Get_Gen4_Emask(emask, exsize);
 
-    // create Gen4 Inst
     G4_Operand *src0 = NULL, *src1 = NULL;
     G4_CondMod *condmod = NULL;
 
@@ -7423,14 +7417,14 @@ int IR_Builder::translateVISAResInfoInst(
         }
         unsigned int numElts = numRows * GENX_GRF_REG_SIZ/G4_Type_Table[Type_F].byteSize;
         msg = getSamplerHeader(false /*isBindlessSampler*/, false /*samperIndexGE16*/);
-        payloadUD = Create_MRF_Dcl(numElts, Type_UD);
+        payloadUD = createSendPayloadDcl(numElts, Type_UD);
     }
     else
     {
         unsigned int numElts = numRows * GENX_GRF_REG_SIZ/G4_Type_Table[Type_F].byteSize;
-        msg = Create_MRF_Dcl(numElts, Type_UD);
-        payloadUD = Create_MRF_Dcl(numElts - (useHeader ? GENX_SAMPLER_IO_SZ : 0), Type_UD);
-        payloadUD->setAliasDeclare(msg, useHeader ? GENX_MRF_REG_SIZ : 0);
+        msg = createSendPayloadDcl(numElts, Type_UD);
+        payloadUD = createSendPayloadDcl(numElts - (useHeader ? GENX_SAMPLER_IO_SZ : 0), Type_UD);
+        payloadUD->setAliasDeclare(msg, useHeader ? GENX_GRF_REG_SIZ : 0);
 
         if (useHeader)
         {
@@ -7586,10 +7580,10 @@ int IR_Builder::translateVISAURBWrite3DInst(
         {
             unsigned int numElts = numRows * GENX_GRF_REG_SIZ/G4_Type_Table[Type_F].byteSize;
             // we can use the urb handle directly since URB write will not modify its header
-            //msg = Create_MRF_Dcl(GENX_SAMPLER_IO_SZ, Type_UD);
-            payloadUD = Create_MRF_Dcl(numElts, Type_UD);
-            payloadF = Create_MRF_Dcl(numElts, Type_F);
-            payloadD = Create_MRF_Dcl(numElts, Type_D);
+            //msg = createSendPayloadDcl(GENX_SAMPLER_IO_SZ, Type_UD);
+            payloadUD = createSendPayloadDcl(numElts, Type_UD);
+            payloadF = createSendPayloadDcl(numElts, Type_F);
+            payloadD = createSendPayloadDcl(numElts, Type_D);
             payloadF->setAliasDeclare(payloadUD, 0);
             payloadD->setAliasDeclare(payloadUD, 0);
         }
@@ -7597,15 +7591,15 @@ int IR_Builder::translateVISAURBWrite3DInst(
     else
     {
         unsigned int numElts = numRows * GENX_GRF_REG_SIZ/G4_Type_Table[Type_F].byteSize;
-        msg = Create_MRF_Dcl(numElts, Type_UD);
+        msg = createSendPayloadDcl(numElts, Type_UD);
         if (numRows > 1)
         {
-            payloadUD = Create_MRF_Dcl(numElts - (useHeader ? GENX_SAMPLER_IO_SZ : 0), Type_UD);
-            payloadF = Create_MRF_Dcl(numElts - (useHeader ? GENX_SAMPLER_IO_SZ : 0), Type_F);
-            payloadD = Create_MRF_Dcl(numElts - (useHeader ? GENX_SAMPLER_IO_SZ : 0), Type_D);
-            payloadUD->setAliasDeclare(msg, useHeader ? GENX_MRF_REG_SIZ : 0);
-            payloadF->setAliasDeclare(msg, useHeader ? GENX_MRF_REG_SIZ : 0);
-            payloadD->setAliasDeclare(msg, useHeader ? GENX_MRF_REG_SIZ : 0);
+            payloadUD = createSendPayloadDcl(numElts - (useHeader ? GENX_SAMPLER_IO_SZ : 0), Type_UD);
+            payloadF = createSendPayloadDcl(numElts - (useHeader ? GENX_SAMPLER_IO_SZ : 0), Type_F);
+            payloadD = createSendPayloadDcl(numElts - (useHeader ? GENX_SAMPLER_IO_SZ : 0), Type_D);
+            payloadUD->setAliasDeclare(msg, useHeader ? GENX_GRF_REG_SIZ : 0);
+            payloadF->setAliasDeclare(msg, useHeader ? GENX_GRF_REG_SIZ : 0);
+            payloadD->setAliasDeclare(msg, useHeader ? GENX_GRF_REG_SIZ : 0);
         }
     }
 
@@ -7857,16 +7851,16 @@ int IR_Builder::translateVISARTWrite3DInst(
             //subtracting Header
             numRows -= RT_HEADER_SIZE;
             //creating header
-            msg = Create_MRF_Dcl(GENX_SAMPLER_IO_SZ * RT_HEADER_SIZE, Type_UD);
-            msgF = Create_MRF_Dcl(GENX_SAMPLER_IO_SZ * RT_HEADER_SIZE, Type_F);
+            msg = createSendPayloadDcl(GENX_SAMPLER_IO_SZ * RT_HEADER_SIZE, Type_UD);
+            msgF = createSendPayloadDcl(GENX_SAMPLER_IO_SZ * RT_HEADER_SIZE, Type_F);
             msgF->setAliasDeclare(msg, 0);
         }
         //creating payload
         unsigned int numElts = numRows * GENX_GRF_REG_SIZ / G4_Type_Table[Type_F].byteSize;
-        payloadUD = Create_MRF_Dcl(numElts, Type_UD);
-        payloadFOrHF = Create_MRF_Dcl(numElts, FP16Data ? Type_HF : Type_F);
-        payloadUW = Create_MRF_Dcl(numElts, Type_UW);
-        payloadF = Create_MRF_Dcl(numElts, Type_F);
+        payloadUD = createSendPayloadDcl(numElts, Type_UD);
+        payloadFOrHF = createSendPayloadDcl(numElts, FP16Data ? Type_HF : Type_F);
+        payloadUW = createSendPayloadDcl(numElts, Type_UW);
+        payloadF = createSendPayloadDcl(numElts, Type_F);
 
         payloadFOrHF->setAliasDeclare(payloadUD, 0);
         payloadUW->setAliasDeclare(payloadUD, 0);
@@ -7876,15 +7870,15 @@ int IR_Builder::translateVISARTWrite3DInst(
     {
         unsigned int numElts = numRows * GENX_GRF_REG_SIZ/G4_Type_Table[Type_F].byteSize;
         //creating enough space for header + payload
-        msg = Create_MRF_Dcl(numElts, Type_UD);
-        msgF = Create_MRF_Dcl(GENX_SAMPLER_IO_SZ * 2, Type_F);
+        msg = createSendPayloadDcl(numElts, Type_UD);
+        msgF = createSendPayloadDcl(GENX_SAMPLER_IO_SZ * 2, Type_F);
         msgF->setAliasDeclare(msg, 0);
 
         //creating payload declarations.
-        payloadUD = Create_MRF_Dcl(numElts - (useHeader ? HEADER_SIZE : 0), Type_UD);
-        payloadFOrHF = Create_MRF_Dcl(numElts - (useHeader ? HEADER_SIZE : 0), FP16Data ? Type_HF : Type_F);
-        payloadUW = Create_MRF_Dcl(numElts - (useHeader ? HEADER_SIZE : 0), Type_UW);
-        payloadF = Create_MRF_Dcl(numElts, Type_F);
+        payloadUD = createSendPayloadDcl(numElts - (useHeader ? HEADER_SIZE : 0), Type_UD);
+        payloadFOrHF = createSendPayloadDcl(numElts - (useHeader ? HEADER_SIZE : 0), FP16Data ? Type_HF : Type_F);
+        payloadUW = createSendPayloadDcl(numElts - (useHeader ? HEADER_SIZE : 0), Type_UW);
+        payloadF = createSendPayloadDcl(numElts, Type_F);
 
         //setting them to alias a top level decl with offset past the header
         payloadUD->setAliasDeclare(msg, useHeader ? HEADER_OFFSET : 0);
@@ -8597,7 +8591,7 @@ int IR_Builder::splitSampleInst(VISASampler3DSubOpCode actualop,
     G4_SrcRegRegion* temp = NULL;
     uint8_t execSize = 8;
     uint16_t numElts = numRows * GENX_GRF_REG_SIZ/G4_Type_Table[Type_F].byteSize;
-    G4_Declare* payloadF = Create_MRF_Dcl( numElts, Type_F );
+    G4_Declare* payloadF = createSendPayloadDcl( numElts, Type_F );
     G4_Declare* payloadUD = createTempVar( numElts, Type_UD, GRFALIGN );
     payloadUD->setAliasDeclare( payloadF, 0 );
     G4_SrcRegRegion* srcToUse = createSrcRegRegion(Mod_src_undef, Direct, payloadUD->getRegVar(), 0, 0, getRegionStride1(), Type_UD);
@@ -8763,7 +8757,7 @@ int IR_Builder::splitSampleInst(VISASampler3DSubOpCode actualop,
     {
         /**************** SECOND HALF OF THE SEND *********************/
         // re-create payload declare so the two sends may be issued independently
-        G4_Declare* payloadF = Create_MRF_Dcl(numElts, Type_F);
+        G4_Declare* payloadF = createSendPayloadDcl(numElts, Type_F);
         G4_Declare* payloadUD = createTempVar(numElts, Type_UD, GRFALIGN);
         payloadUD->setAliasDeclare(payloadF, 0);
 
@@ -8976,7 +8970,7 @@ G4_Declare* IR_Builder::getSamplerHeader(bool isBindlessSampler, bool samplerInd
             // createSamplerHeader() message overwrites the sampler states
             // pointer in the header -> cannot use the cached value in this
             // case.
-            dcl = Create_MRF_Dcl(GENX_DATAPORT_IO_SZ, Type_UD);
+            dcl = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_UD);
             dcl->setCapableOfReuse();
             G4_SrcRegRegion* src = createSrcRegRegion(Mod_src_undef, Direct, builtinSamplerHeader->getRegVar(), 0, 0, getRegionStride1(), Type_UD);
             Create_MOV_Inst(dcl, 0, 0, 8, NULL, NULL, src);
@@ -8984,7 +8978,7 @@ G4_Declare* IR_Builder::getSamplerHeader(bool isBindlessSampler, bool samplerInd
     }
     else
     {
-        dcl = Create_MRF_Dcl(GENX_DATAPORT_IO_SZ, Type_UD);
+        dcl = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_UD);
         dcl->setCapableOfReuse();
         Create_MOVR0_Inst(dcl, 0, 0, true);
         if (hasBindlessSampler() && !isBindlessSampler)
@@ -9478,7 +9472,7 @@ int IR_Builder::translateVISASVMBlockReadInst(
 #endif
 
     unsigned numOword = Get_Common_ISA_Oword_Num(size);
-    G4_Declare* dcl = Create_MRF_Dcl(GENX_DATAPORT_IO_SZ, Type_UD);
+    G4_Declare* dcl = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_UD);
     if (no64bitType())
     {
         G4_SrcRegRegion *region = address->asSrcRegRegion();
@@ -9500,7 +9494,7 @@ int IR_Builder::translateVISASVMBlockReadInst(
     }
     else
     {
-        G4_Declare* dclAsUQ = Create_MRF_Dcl(GENX_DATAPORT_IO_SZ / 2, Type_UQ);
+        G4_Declare* dclAsUQ = createSendPayloadDcl(GENX_DATAPORT_IO_SZ / 2, Type_UQ);
         dclAsUQ->setAliasDeclare(dcl, 0);
         Create_MOV_Inst(dclAsUQ, 0, 0, 1, NULL, NULL, address, true );
     }
@@ -9547,7 +9541,7 @@ int IR_Builder::translateVISASVMBlockWriteInst(
         sendExecSize = 8;
     }
 
-    G4_Declare* dcl = Create_MRF_Dcl(GENX_DATAPORT_IO_SZ, Type_UD);
+    G4_Declare* dcl = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_UD);
     if (no64bitType())
     {
         G4_SrcRegRegion *region = address->asSrcRegRegion();
@@ -9567,7 +9561,7 @@ int IR_Builder::translateVISASVMBlockWriteInst(
                                  region->getRegion(), Type_UD);
         Create_MOV_Inst(dcl, 0, 1, 1, NULL, NULL, tmp, true );
     } else {
-        G4_Declare* dclAsUQ = Create_MRF_Dcl(GENX_DATAPORT_IO_SZ / 2, Type_UQ);
+        G4_Declare* dclAsUQ = createSendPayloadDcl(GENX_DATAPORT_IO_SZ / 2, Type_UQ);
         dclAsUQ->setAliasDeclare(dcl, 0);
         Create_MOV_Inst(dclAsUQ, 0, 0, 1, NULL, NULL, address, true );
     }
@@ -9946,7 +9940,7 @@ int IR_Builder::translateVISASVMAtomicInst(
 G4_SrcRegRegion* IR_Builder::getSVMOffset(G4_Operand* globalOffset, G4_SrcRegRegion* offsets, uint16_t exSize,
     G4_Predicate* pred, uint32_t mask)
 {
-    G4_Declare* dcl = Create_MRF_Dcl(exSize, offsets->getType());
+    G4_Declare* dcl = createSendPayloadDcl(exSize, offsets->getType());
     G4_DstRegRegion* tmp = Create_Dst_Opnd_From_Dcl(dcl, 1);
     createInst(pred, G4_add, 0, false, 8, tmp, offsets, globalOffset, mask);
     if (exSize == 16)
@@ -10356,8 +10350,8 @@ void IR_Builder::preparePayload(G4_SrcRegRegion *msgs[2],
         // regions.
         msgs[0] = srcs[0].opnd;
         msgs[1] = (splitPos == 0) ? 0 : srcs[splitPos].opnd;
-        sizes[0] = msgSizes[0] / GENX_MRF_REG_SIZ;
-        sizes[1] = msgSizes[1] / GENX_MRF_REG_SIZ;
+        sizes[0] = msgSizes[0] / GENX_GRF_REG_SIZ;
+        sizes[1] = msgSizes[1] / GENX_GRF_REG_SIZ;
 
         return;
     }
@@ -10378,7 +10372,7 @@ void IR_Builder::preparePayload(G4_SrcRegRegion *msgs[2],
 
     // Allocate a new large enough GPR to copy in the payload.
     G4_Declare *msg =
-        Create_MRF_Dcl(msgSizes[current]/G4_Type_Table[Type_UD].byteSize, Type_UD);
+        createSendPayloadDcl(msgSizes[current]/G4_Type_Table[Type_UD].byteSize, Type_UD);
 
     // Copy sources.
     unsigned regOff = 0;
@@ -10391,11 +10385,11 @@ void IR_Builder::preparePayload(G4_SrcRegRegion *msgs[2],
     i = 0;
     if (current > 0) {
         msgs[i] = srcs[0].opnd;
-        sizes[i] = msgSizes[0] / GENX_MRF_REG_SIZ;
+        sizes[i] = msgSizes[0] / GENX_GRF_REG_SIZ;
         ++i;
     }
     msgs[i] = Create_Src_Opnd_From_Dcl(msg, getRegionStride1());
-    sizes[i] = msgSizes[current] / GENX_MRF_REG_SIZ;
+    sizes[i] = msgSizes[current] / GENX_GRF_REG_SIZ;
 }
 
 G4_SrcRegRegion *IR_Builder::coalescePayload(
@@ -10469,8 +10463,8 @@ G4_SrcRegRegion *IR_Builder::coalescePayload(
     // }
     totalRegionSize = alignTo(payloadAlignment, totalRegionSize);
 
-    G4_Declare *payloadDeclUB = Create_MRF_Dcl(totalRegionSize, Type_UB);
-    G4_Declare *payloadDeclUD = Create_MRF_Dcl(totalRegionSize/4, Type_UD);
+    G4_Declare *payloadDeclUB = createSendPayloadDcl(totalRegionSize, Type_UB);
+    G4_Declare *payloadDeclUD = createSendPayloadDcl(totalRegionSize/4, Type_UD);
     payloadDeclUD->setAliasDeclare(payloadDeclUB,0);
 
     RegionDesc *rd110 = createRegionDesc(1, 1, 0);
