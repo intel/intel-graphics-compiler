@@ -10478,25 +10478,34 @@ void EmitPass::ReductionExpandHelper(e_opcode op, VISA_Type type, CVariable* src
     }
 }
 
-// Reduction clustered: rearrange src
+// Reduction clustered: rearrange src by copying src data elements from even subregisters
+// to adjacent subregisters of a new variable. Then do the same for odd src subregisters.
+// Rearranged src is a pair of the new variables.
+// Notes:
+// * numLanes refers to the number of elements of each of new variables (same as dst variable used for reduction)
+// * numInst cannot be deduced from numLanes and type
+// * second half setting is not preserved by this function
 void EmitPass::ReductionClusteredSrcHelper(CVariable* (&pSrc)[2], CVariable* src, uint16_t numLanes,
     VISA_Type type, uint numInst, bool secondHalf)
 {
     const bool is64bitType = type == ISA_TYPE_Q || type == ISA_TYPE_UQ || type == ISA_TYPE_DF;
     const auto alignment = is64bitType ? IGC::EALIGN_QWORD : IGC::EALIGN_DWORD;
 
-    // Rearrange src
     pSrc[0] = m_currShader->GetNewVariable(
-        numLanes, // simd size after reduction
+        numLanes,
         type,
         alignment,
         false);
     pSrc[1] = m_currShader->GetNewVariable(pSrc[0]);
+    assert(pSrc[0] && pSrc[1]);
+
+    CVariable* srcTmp = src;
+    CVariable* pSrcTmp[2] = { pSrc[0], pSrc[1] };
+
     m_encoder->SetSecondHalf(secondHalf);
     for (uint i = 0; i < numInst; ++i)
     {
-        const e_mask mask = secondHalf ? (i == 1 ? EMASK_Q4 : EMASK_Q3) :
-            (i == 1 ? EMASK_Q2 : EMASK_Q1);
+        const e_mask mask = secondHalf ? (i == 1 ? EMASK_Q4 : EMASK_Q3) : (i == 1 ? EMASK_Q2 : EMASK_Q1);
 
         for (uint j = 0; j < 2; ++j)
         {
@@ -10507,12 +10516,11 @@ void EmitPass::ReductionClusteredSrcHelper(CVariable* (&pSrc)[2], CVariable* src
             m_encoder->SetSrcSubReg(0, j);
             m_encoder->SetSrcSubVar(0, 2 * i);
             m_encoder->SetDstSubVar(i);
-            m_encoder->Copy(pSrc[j], src);
+            m_encoder->Copy(pSrcTmp[j], srcTmp);
             m_encoder->Push();
         }
     }
     m_encoder->SetSecondHalf(false);
-    assert(pSrc[0] && pSrc[1]);
 }
 
 // Reduction clustered reduce helper: dst_lane{k} = src_lane{2k} OP src_lane{2k+1}, k = 0..(simd-1)
@@ -10527,11 +10535,15 @@ CVariable* EmitPass::ReductionClusteredReduceHelper(e_opcode op, VISA_Type type,
     const bool is64bitType = type == ISA_TYPE_Q || type == ISA_TYPE_UQ || type == ISA_TYPE_DF;
     const bool isInt64Mul = (op == EOPCODE_MUL && CEncoder::IsIntegerType(type) &&
         CEncoder::GetCISADataTypeSize(type) == 8);
-    // For SIMD16 (before reduction) and 64-bit type, when 2 grf boundary is crossed
+    // The 2 grf boundary is crossed for SIMD16 (before reduction) and 64-bit type
     const uint numInst = is64bitType && simd == SIMDMode::SIMD8 ? 2 : 1;
 
     assert(simd == SIMDMode::SIMD2 || simd == SIMDMode::SIMD4 || simd == SIMDMode::SIMD8);
 
+    // The op is performed on pairs of adjacent src data elements.
+    // In certain cases it is mandatory or might be beneficial for performance reasons
+    // to ensure that for each such pair the src data elements are in separate GRFs
+    // and that their regioning patterns match.
     bool isRearrangementRequired = isInt64Mul;
     if (isRearrangementRequired)
     {
@@ -10561,8 +10573,7 @@ CVariable* EmitPass::ReductionClusteredReduceHelper(e_opcode op, VISA_Type type,
         {
             m_encoder->SetSimdSize(lanesToSIMDMode(numLanes(simd) / numInst));
             m_encoder->SetNoMask();
-            const e_mask mask = secondHalf ? (i == 1 ? EMASK_Q4 : EMASK_Q3) :
-                (i == 1 ? EMASK_Q2 : EMASK_Q1);
+            const e_mask mask = secondHalf ? (i == 1 ? EMASK_Q4 : EMASK_Q3) : (i == 1 ? EMASK_Q2 : EMASK_Q1);
             m_encoder->SetMask(mask);
             m_encoder->SetSrcRegion(0, 2, 1, 0);
             m_encoder->SetSrcSubVar(0, 2 * i);
@@ -10593,16 +10604,17 @@ void EmitPass::ReductionClusteredExpandHelper(e_opcode op, VISA_Type type, SIMDM
     const bool is64bitType = type == ISA_TYPE_Q || type == ISA_TYPE_UQ || type == ISA_TYPE_DF;
     const bool isInt64Mul = (op == EOPCODE_MUL && CEncoder::IsIntegerType(type) &&
         CEncoder::GetCISADataTypeSize(type) == 8);
-    // Final reduction and expansion for SIMD16 and 64-bit type, when 2 grf boundary may be crossed
+    // The grf boundary is crossed in final reduction and expansion for SIMD16 and 64-bit type.
     const uint numInst = is64bitType && simd == SIMDMode::SIMD16 ? 2 : 1;
     assert(clusterSize == 2 || clusterSize == 4 || clusterSize == 8 || (clusterSize == 16 && !is64bitType));
 
+    // For information on rearrangement see EmitPass::ReductionClusteredReduceHelper()
     bool isRearrangementRequired = isInt64Mul;
     if (isRearrangementRequired)
     {
         // Rearrange src
         CVariable* pSrc[2] = {};
-        // For src the grf boundary may be crossed for smallest cluster only.
+        // For src the 2 grf boundary may be crossed for 2-clusters only in SIMD16 for 64-bit types.
         const uint srcNumInst = clusterSize == 2 ? numInst : 1;
         ReductionClusteredSrcHelper(pSrc, src, numLanes(simd) / clusterSize, type, srcNumInst, secondHalf);
 
@@ -10623,24 +10635,67 @@ void EmitPass::ReductionClusteredExpandHelper(e_opcode op, VISA_Type type, SIMDM
         }
         m_encoder->SetSecondHalf(false);
 
+        // In certain cases a 64-bit move may need to be split into two 32-bit uint moves
+        const bool use32BitMov = false;
+
         // Broadcast to clusters
+        // Example for a 4-clusters of QWORDs:
+        // * with 64-bit MOVs:
+        // mov (8|M8)               r11.0<1>:uq   r21.2<1;4,0>:uq
+        // mov (8|M0)               r35.0<1>:uq   r21.0<1;4,0>:uq
+        // * with 32-bit MOVs:
+        // mov (8|M8)               r33.0<2>:ud   r21.4<2;4,0>:ud
+        // mov (8|M8)               r33.1<2>:ud   r21.5<2;4,0>:ud
+        // mov (8|M0)               r31.0<2>:ud   r21.0<2;4,0>:ud
+        // mov (8|M0)               r31.1<2>:ud   r21.1<2;4,0>:ud
         m_encoder->SetSecondHalf(secondHalf);
         for (uint i = numInst; i-- != 0;)
         {
-            const uint step = 8 / clusterSize; // 64-bit in SIMD16: distance between src halves, in QW units
-            const uint srcSubVar = i * (step / 4);
-            const uint srcSubReg = i * (step % 4);
-            const e_mask mask = secondHalf ? (i == 1 ? EMASK_Q4 : EMASK_Q3) :
-                (i == 1 ? EMASK_Q2 : EMASK_Q1);
+            const uint numMovPerElement = int_cast<uint>(use32BitMov ? 2 : 1);
+            for (uint j = 0; j < numMovPerElement; ++j)
+            {
+                // Outer loop is for 64-bit types in SIMD16 only (cluster size is always <= 8)
+                // to broadcast data to upper dst's half which crosses 2-grf boundary.
+                // The inner is for movement splitting: one 64-bit to a pair of 32-bit.
+                uint srcSubVar = 0;
+                uint srcSubReg = 0;
+                switch (clusterSize)
+                {
+                case 2:
+                    srcSubVar = i;
+                    srcSubReg = j;
+                    break;
+                case 4:
+                    srcSubVar = 0;
+                    srcSubReg = 2 * i * numMovPerElement + j;
+                    break;
+                case 8:
+                    srcSubVar = 0;
+                    srcSubReg = i * numMovPerElement + j;
+                    break;
+                };
 
-            m_encoder->SetSimdSize(lanesToSIMDMode(numLanes(simd) / numInst));
-            m_encoder->SetMask(mask);
-            m_encoder->SetSrcRegion(0, 1, clusterSize, 0);
-            m_encoder->SetSrcSubReg(0, srcSubReg);
-            m_encoder->SetSrcSubVar(0, srcSubVar);
-            m_encoder->SetDstSubVar(2 * i);
-            m_encoder->Copy(dst, tempDst);
-            m_encoder->Push();
+                const e_mask mask = (secondHalf ? (i == 1 ? EMASK_Q4 : EMASK_Q3) : (i == 1 ? EMASK_Q2 : EMASK_Q1));
+
+                m_encoder->SetSimdSize(lanesToSIMDMode(numLanes(simd) / numInst));
+                m_encoder->SetMask(mask);
+                m_encoder->SetSrcRegion(0, numMovPerElement, clusterSize, 0);
+                m_encoder->SetSrcSubReg(0, srcSubReg);
+                m_encoder->SetSrcSubVar(0, srcSubVar);
+                m_encoder->SetDstRegion(numMovPerElement);
+                m_encoder->SetDstSubReg(j);
+                m_encoder->SetDstSubVar(2 * i);
+
+                CVariable* broadcastSrc = tempDst;
+                CVariable* broadcastDst = dst;
+                if (use32BitMov)
+                {
+                    broadcastSrc = m_currShader->GetNewAlias(broadcastSrc, VISA_Type::ISA_TYPE_UD, 0, 0);
+                    broadcastDst = m_currShader->GetNewAlias(broadcastDst, VISA_Type::ISA_TYPE_UD, 0, 0);
+                }
+                m_encoder->Copy(broadcastDst, broadcastSrc);
+                m_encoder->Push();
+            }
         }
         m_encoder->SetSecondHalf(false);
     }
@@ -10654,8 +10709,7 @@ void EmitPass::ReductionClusteredExpandHelper(e_opcode op, VISA_Type type, SIMDM
 
             m_encoder->SetSimdSize(lanesToSIMDMode(numLanes(simd) / numInst));
             m_encoder->SetNoMask();
-            const e_mask mask = secondHalf ? (i == 1 ? EMASK_Q4 : EMASK_Q3) :
-                (i == 1 ? EMASK_Q2 : EMASK_Q1);
+            const e_mask mask = secondHalf ? (i == 1 ? EMASK_Q4 : EMASK_Q3) : (i == 1 ? EMASK_Q2 : EMASK_Q1);
             m_encoder->SetMask(mask);
             m_encoder->SetSrcRegion(0, 2, clusterSize, 0);
             m_encoder->SetSrcSubReg(0, srcSubReg);
