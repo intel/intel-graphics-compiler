@@ -67,6 +67,7 @@ namespace IGC
         void visitLoadInst(llvm::LoadInst& I);
 
     private:
+        CodeGenContext* m_context;
         unsigned int m_foldsToZero;
         unsigned int m_foldsToConst;
         unsigned int m_foldsToSource;
@@ -82,7 +83,7 @@ namespace IGC
         void FoldsToConstPropagate(llvm::Instruction* I);
         void FoldsToZeroPropagate(llvm::Instruction* I);
         void FoldsToSourcePropagate(llvm::Instruction* I);
-        void addInterestingConstant(CodeGenContext* ctx, llvm::Type* loadTy, unsigned bufIdOrGRFOffset, unsigned eltId, int size_in_bytes, bool anyValue, uint32_t value);
+        void addInterestingConstant(llvm::Type* loadTy, unsigned bufIdOrGRFOffset, unsigned eltId, int size_in_bytes, bool anyValue, uint32_t value);
         template<typename ContextT>
         void copyInterestingConstants(ContextT* pShaderCtx);
     };

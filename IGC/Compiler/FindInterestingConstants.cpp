@@ -214,8 +214,7 @@ bool FindInterestingConstants::getConstantAddress(llvm::LoadInst& I, unsigned& b
         if (!directBuf)
         {
             // Make sure constant folding is safe by looking up in pushableAddresses
-            CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-            PushInfo& pushInfo = ctx->getModuleMetaData()->pushInfo;
+            PushInfo& pushInfo = m_context->getModuleMetaData()->pushInfo;
 
             for (auto it : pushInfo.pushableAddresses)
             {
@@ -250,7 +249,7 @@ bool FindInterestingConstants::getConstantAddress(llvm::LoadInst& I, unsigned& b
     return true;
 }
 
-void FindInterestingConstants::addInterestingConstant(CodeGenContext* ctx, llvm::Type* loadTy, unsigned bufIdOrGRFOffset, unsigned eltId, int size_in_bytes, bool anyValue, uint32_t value = 0)
+void FindInterestingConstants::addInterestingConstant(llvm::Type* loadTy, unsigned bufIdOrGRFOffset, unsigned eltId, int size_in_bytes, bool anyValue, uint32_t value = 0)
 {
     // For constant buffer accesses of size <= 32bit.
     if (!loadTy->isVectorTy())
@@ -293,7 +292,6 @@ void FindInterestingConstants::addInterestingConstant(CodeGenContext* ctx, llvm:
 
 void FindInterestingConstants::visitLoadInst(llvm::LoadInst& I)
 {
-    CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     unsigned bufIdOrGRFOffset;
     unsigned eltId;
     int size_in_bytes;
@@ -316,7 +314,7 @@ void FindInterestingConstants::visitLoadInst(llvm::LoadInst& I)
         if ((m_constFoldBranch) || (m_foldsToConst >= IGC_GET_FLAG_VALUE(FoldsToConstPropThreshold)))
         {
             // Get the ConstantAddress from LoadInst and log it in interesting constants
-            addInterestingConstant(ctx, I.getType(), bufIdOrGRFOffset, eltId, size_in_bytes, true);
+            addInterestingConstant(I.getType(), bufIdOrGRFOffset, eltId, size_in_bytes, true);
         }
         else
         {
@@ -328,7 +326,7 @@ void FindInterestingConstants::visitLoadInst(llvm::LoadInst& I)
             {
                 // Zero value for this constant is interesting
                 // Get the ConstantAddress from LoadInst and log it in interesting constants
-                addInterestingConstant(ctx, I.getType(), bufIdOrGRFOffset, eltId, size_in_bytes, false, 0);
+                addInterestingConstant(I.getType(), bufIdOrGRFOffset, eltId, size_in_bytes, false, 0);
                 // Continue finding if ONE_VALUE is beneficial for this constant
             }
 
@@ -339,14 +337,14 @@ void FindInterestingConstants::visitLoadInst(llvm::LoadInst& I)
                 // Get the ConstantAddress from LoadInst and log it in interesting constants
                 if (I.getType()->isIntegerTy())
                 {
-                    addInterestingConstant(ctx, I.getType(), bufIdOrGRFOffset, eltId, size_in_bytes, false, 1);
+                    addInterestingConstant(I.getType(), bufIdOrGRFOffset, eltId, size_in_bytes, false, 1);
                 }
                 else if (I.getType()->isFloatTy())
                 {
                     uint32_t value;
                     float floatValue = 1.0;
                     memcpy_s(&value, sizeof(uint32_t), &floatValue, sizeof(float));
-                    addInterestingConstant(ctx, I.getType(), bufIdOrGRFOffset, eltId, size_in_bytes, false, value);
+                    addInterestingConstant(I.getType(), bufIdOrGRFOffset, eltId, size_in_bytes, false, value);
                 }
             }
         }
@@ -363,36 +361,35 @@ bool FindInterestingConstants::doFinalization(llvm::Module& M)
 {
     if (m_InterestingConstants.size() != 0)
     {
-        CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
-        if (ctx->type == ShaderType::PIXEL_SHADER)
+        if (m_context->type == ShaderType::PIXEL_SHADER)
         {
-            PixelShaderContext* pShaderCtx = static_cast <PixelShaderContext*>(ctx);
+            PixelShaderContext* pShaderCtx = static_cast <PixelShaderContext*>(m_context);
             copyInterestingConstants(pShaderCtx);
         }
-        else if (ctx->type == ShaderType::VERTEX_SHADER)
+        else if (m_context->type == ShaderType::VERTEX_SHADER)
         {
-            VertexShaderContext* pShaderCtx = static_cast <VertexShaderContext*>(ctx);
+            VertexShaderContext* pShaderCtx = static_cast <VertexShaderContext*>(m_context);
             copyInterestingConstants(pShaderCtx);
         }
-        else if (ctx->type == ShaderType::GEOMETRY_SHADER)
+        else if (m_context->type == ShaderType::GEOMETRY_SHADER)
         {
-            GeometryShaderContext* pShaderCtx = static_cast <GeometryShaderContext*>(ctx);
+            GeometryShaderContext* pShaderCtx = static_cast <GeometryShaderContext*>(m_context);
             copyInterestingConstants(pShaderCtx);
         }
-        else if (ctx->type == ShaderType::HULL_SHADER)
+        else if (m_context->type == ShaderType::HULL_SHADER)
         {
-            HullShaderContext* pShaderCtx = static_cast <HullShaderContext*>(ctx);
+            HullShaderContext* pShaderCtx = static_cast <HullShaderContext*>(m_context);
             copyInterestingConstants(pShaderCtx);
         }
-        else if (ctx->type == ShaderType::DOMAIN_SHADER)
+        else if (m_context->type == ShaderType::DOMAIN_SHADER)
         {
-            DomainShaderContext* pShaderCtx = static_cast <DomainShaderContext*>(ctx);
+            DomainShaderContext* pShaderCtx = static_cast <DomainShaderContext*>(m_context);
             copyInterestingConstants(pShaderCtx);
         }
-        else if (ctx->type == ShaderType::COMPUTE_SHADER)
+        else if (m_context->type == ShaderType::COMPUTE_SHADER)
         {
-            ComputeShaderContext* pShaderCtx = static_cast <ComputeShaderContext*>(ctx);
+            ComputeShaderContext* pShaderCtx = static_cast <ComputeShaderContext*>(m_context);
             copyInterestingConstants(pShaderCtx);
         }
     }
@@ -402,6 +399,7 @@ bool FindInterestingConstants::doFinalization(llvm::Module& M)
 bool FindInterestingConstants::runOnFunction(Function& F)
 {
     m_DL = &F.getParent()->getDataLayout();
+    m_context = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     visit(F);
     return false;
 }
