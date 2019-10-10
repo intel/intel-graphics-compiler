@@ -291,7 +291,7 @@ struct ExecutionEnivronment
     //new design:   hold private memory used by shader if non-ZERO
     DWORD  SumFixedTGSMSizes                          = 0;
     bool   HasDeviceEnqueue                           = false;
-    bool   HasBarriers                                = false;
+    uint32_t HasBarriers                              = 0;
     bool   IsSingleProgramFlow                        = false;
     //DWORD  PerSIMDLanePrivateMemorySize               = 0;
     bool   HasFixedWorkGroupSize                      = false;

@@ -88,7 +88,7 @@ struct cmc_kernel_info {
     uint32_t SLMSize = 0;
     uint32_t NumGRFRequired = 128;
     uint32_t GRFByteSize = 32;
-    bool HasBarriers = false;
+    uint32_t HasBarriers = 0;
     bool HasReadWriteImages = false;
 };
 
