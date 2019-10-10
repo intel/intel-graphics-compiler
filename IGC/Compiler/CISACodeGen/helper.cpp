@@ -351,8 +351,8 @@ namespace IGC
                     (inst->getIntrinsicID() == GenISAIntrinsic::GenISA_GetBufferPtr))
                 {
                     srcPtr = baseValue;
-                    break;
                 }
+                break;
             }
             else if (isa<Argument>(baseValue))
             {
