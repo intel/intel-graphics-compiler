@@ -4546,6 +4546,10 @@ namespace IGC
 
     void CEncoder::CreateSymbolTable(void*& buffer, unsigned& bufferSize, unsigned& tableEntries)
     {
+        buffer = nullptr;
+        bufferSize = 0;
+        tableEntries = 0;
+
         Module* pModule = m_program->GetContext()->getModule();
         ModuleMetaData* modMD = m_program->GetContext()->getModuleMetaData();
 
@@ -4612,10 +4616,15 @@ namespace IGC
                 symbolTable.push_back(sEntry);
             }
         }
-        tableEntries = symbolTable.size();
-        bufferSize = tableEntries * sizeof(vISA::GenSymEntry);
-        buffer = (void*)malloc(bufferSize);
-        memcpy_s(buffer, bufferSize, symbolTable.data(), bufferSize);
+
+        if (!symbolTable.empty())
+        {
+            tableEntries = symbolTable.size();
+            bufferSize = tableEntries * sizeof(vISA::GenSymEntry);
+            buffer = (void*)malloc(bufferSize);
+            assert(buffer && "Symbol table cannot be allocated");
+            memcpy_s(buffer, bufferSize, symbolTable.data(), bufferSize);
+        }
     }
 
     void CEncoder::CreateRelocationTable(void*& buffer, unsigned& bufferSize, unsigned& tableEntries)

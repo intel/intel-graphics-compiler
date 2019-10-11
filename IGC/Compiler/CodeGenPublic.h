@@ -101,14 +101,14 @@ namespace IGC
         void* m_debugDataGenISA;          //<! GenISA debug data (VISA -> GenISA)
         unsigned int    m_debugDataGenISASize;      //<! Number of bytes of GenISA debug data
         unsigned int    m_InstructionCount;
-        void* m_gtpinBuffer;              // Will be populated by VISA only when special switch is passed by gtpin
-        unsigned int    m_gtpinBufferSize;
-        void* m_funcSymbolTable;
-        unsigned int    m_funcSymbolTableSize;
-        unsigned int    m_funcSymbolTableEntries;
-        void* m_funcRelocationTable;
-        unsigned int    m_funcRelocationTableSize;
-        unsigned int    m_funcRelocationTableEntries;
+        void* m_gtpinBuffer = nullptr;              // Will be populated by VISA only when special switch is passed by gtpin
+        unsigned int    m_gtpinBufferSize = 0;
+        void* m_funcSymbolTable = nullptr;
+        unsigned int    m_funcSymbolTableSize = 0;
+        unsigned int    m_funcSymbolTableEntries = 0;
+        void* m_funcRelocationTable = nullptr;
+        unsigned int    m_funcRelocationTableSize = 0;
+        unsigned int    m_funcRelocationTableEntries = 0;
         unsigned int    m_offsetToSkipPerThreadDataLoad = 0;
         uint32_t        m_offsetToSkipSetFFIDGP = 0;
         //true means we separate pvtmem and spillfill. pvtmem could go into stateless.
