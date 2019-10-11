@@ -3729,7 +3729,7 @@ namespace IGC
     {
         static const unsigned int ffid[unsigned(ShaderType::END)] = {
             0,
-            FFID_VS,
+            context->isPOSH() ? FFID_VSR : FFID_VS,
             FFID_HS,
             FFID_DS,
             FFID_GS,
