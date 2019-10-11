@@ -46,9 +46,12 @@ G4_SrcRegRegion* CoalesceSpillFills::generateCoalescedSpill(unsigned int scratch
         (short)REGISTER_ROW(row), 0, kernel.fg.builder->getRegionStride1(), Type_UD);
 
     // Create send instruction with payloadSize starting at scratch offset min
+    G4_Declare* fp = nullptr;
+    if (kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc())
+        fp = kernel.fg.getFramePtrDcl();
     unsigned int option = useNoMask ? InstOpt_WriteEnable : 0;
     auto spillInst = kernel.fg.builder->createSpill(kernel.fg.builder->createNullDst(Type_UW), header, spillSrcPayload, 16, payloadSize,
-        scratchOffset, nullptr, static_cast<G4_InstOption>(option), 0, srcCISAOff);
+        scratchOffset, fp, static_cast<G4_InstOption>(option), 0, srcCISAOff);
 
     if (!useNoMask)
     {
@@ -88,7 +91,11 @@ G4_DstRegRegion* CoalesceSpillFills::generateCoalescedFill(unsigned int scratchO
         kernel.fg.builder->getBuiltinR0()->getRegVar(), 0, 0,
         kernel.fg.builder->getRegionStride1(), Type_UD);
 
-    kernel.fg.builder->createFill(header, fillDst, 16, payloadSize, scratchOffset, nullptr,
+    G4_Declare* fp = nullptr;
+    if (kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc())
+        fp = kernel.fg.getFramePtrDcl();
+
+    kernel.fg.builder->createFill(header, fillDst, 16, payloadSize, scratchOffset, fp,
         InstOpt_WriteEnable, 0, srcCISAOff);
 
 #if 0
