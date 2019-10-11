@@ -73,7 +73,7 @@ static bool isResInfo(GenIntrinsicInst* inst, unsigned& texId, unsigned& lod, bo
         bool directIndexing = false; //default
 
         bufType = DecodeAS4GFXResource(as, directIndexing, bufIdx);
-        if (!directIndexing || bufType != RESOURCE || bufType != UAV)
+        if( !directIndexing || ( bufType != RESOURCE && bufType != UAV ) )
             return false;
 
         texId = bufIdx;
