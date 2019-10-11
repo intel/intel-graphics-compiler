@@ -32,6 +32,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/ged_string_utils.h"
 #include "xcoder/ged_ins.h"
 
+#include "common/secure_mem.h"
+
 using std::setw;
 using std::setfill;
 using std::hex;
@@ -46,14 +48,6 @@ using std::dec;
 using std::left;
 using std::stringstream;
 #endif
-
-#ifdef _WIN32
-# define MEMCPY(D,S,N) memcpy_s(D,N,S,N)
-#else
-using std::memcpy;
-# define MEMCPY(D,S,N) memcpy(D,S,N)
-#endif
-
 
 /*************************************************************************************************
  * class GEDIns static data members
@@ -242,7 +236,7 @@ GED_RETURN_VALUE GEDIns::Encode(const GED_INS_TYPE insType, unsigned char* rawBy
         GEDASSERT(IsCompactValid());
         if (NULL != rawBytes)
         {
-            MEMCPY(rawBytes, _compactBytes, GED_COMPACT_INS_SIZE); // copy the compact instruction bytes
+            memcpy_s(rawBytes, GED_COMPACT_INS_SIZE, _compactBytes, GED_COMPACT_INS_SIZE); // copy the compact instruction bytes
         }
     }
     else // retrieve the native instruction bytes
@@ -261,7 +255,7 @@ GED_RETURN_VALUE GEDIns::Encode(const GED_INS_TYPE insType, unsigned char* rawBy
         GEDASSERT(IsNativeValid());
         if (NULL != rawBytes)
         {
-            MEMCPY(rawBytes, _nativeBytes, GED_NATIVE_INS_SIZE); // copy the native instruction bytes
+            memcpy_s(rawBytes, GED_NATIVE_INS_SIZE, _nativeBytes, GED_NATIVE_INS_SIZE); // copy the native instruction bytes
         }
     }
     return ret;
@@ -530,7 +524,7 @@ void GEDIns::SetInstructionBytes(unsigned char* dst, const unsigned char* src, u
     {
         size = maxSize; // given buffer is too large, ignore the rest of the bytes.
     }
-    MEMCPY(dst, src, size);
+    memcpy_s(dst, size, src, size);
 }
 
 
@@ -1102,7 +1096,7 @@ bool GEDIns::BuildAllCompactedFormats(unsigned char* compactBytesArray, const un
     return true;
 
     // Set an arbitrary valid encoding into the instruction's compact bytes.
-    MEMCPY(_compactBytes, compactBytesArray, GED_COMPACT_INS_SIZE);
+    memcpy_s(_compactBytes, GED_COMPACT_INS_SIZE, compactBytesArray, GED_COMPACT_INS_SIZE);
     SetCompactValid();
     return true;
 }

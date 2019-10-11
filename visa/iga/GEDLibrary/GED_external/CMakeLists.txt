@@ -15,6 +15,9 @@ else()
   set(GED_TARGET TARGET_INTEL64)
 endif()
 
+if(NOT IGC_BUILD)
+    include_directories("../../../../inc")
+endif(NOT IGC_BUILD)
 
 # Add the directories that the particular build is going to consider
 add_subdirectory(Source/ged/xcoder)

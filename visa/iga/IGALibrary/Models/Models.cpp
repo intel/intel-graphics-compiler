@@ -594,6 +594,8 @@ const Model *Model::LookupModel(Platform p)
         return &MODEL_GEN10;
     case Platform::GEN11:
         return &MODEL_GEN11;
+    case Platform::GEN12P1:
+        return &MODEL_GEN12P1;
     default:
         return nullptr;
     }
