@@ -1389,18 +1389,19 @@ void GenSpecificPattern::createBitcastExtractInsertPattern(BinaryOperator& I, Va
     auto zeroextorNot = [&](Value* Op, unsigned num) -> Value *
     {
         Value* elem = nullptr;
-        if (isa<ZExtInst>(Op))
+        if (auto ZextInst = dyn_cast<ZExtInst>(Op))
         {
-            if (Op->getType() == builder.getInt32Ty())
+            if (ZextInst->getDestTy() == builder.getInt64Ty() && ZextInst->getSrcTy() == builder.getInt32Ty())
             {
-                elem = cast<ZExtInst>(Op)->getOperand(0);
+                elem = ZextInst->getOperand(0);
             }
         }
-        else if (isa<InsertElementInst>(Op))
+        else if (auto IEIInst = dyn_cast<InsertElementInst>(Op))
         {
-            if (Op->getType() == builder.getInt32Ty())
+            auto opType = IEIInst->getType();
+            if (opType->isVectorTy() && opType->getVectorElementType()->isIntegerTy(32) && opType->getVectorNumElements() == 2)
             {
-                elem = cast<InsertElementInst>(Op)->getOperand(1);
+                elem = IEIInst->getOperand(1);
             }
         }
         else
