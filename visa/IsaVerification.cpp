@@ -1617,6 +1617,17 @@ static void verifyInstructionArith(
         }
     }
 
+    // check for IEEE macros support
+    auto platform = getGenxPlatform();
+    // !hasMadm() check
+    if (platform == GENX_ICLLP || platform == GENX_TGLLP)
+    {
+        bool fOpcodeIEEE = (opcode == ISA_DIVM) || (opcode == ISA_SQRTM);
+        bool dfOpcodeIEEE = fOpcodeIEEE || (opcode == ISA_INV) || (opcode == ISA_DIV) || (opcode == ISA_SQRT);
+        REPORT_INSTRUCTION(options, !(dstType == ISA_TYPE_DF && dfOpcodeIEEE) && !(dstType == ISA_TYPE_F && fOpcodeIEEE),
+            "IEEE instruction %s is not supported on %s platform", ISA_Inst_Table[opcode].str, platformString[platform]);
+    }
+
     // instruction specific checks
     if (opcode == ISA_LRP)
     {
