@@ -324,8 +324,7 @@
 
     bool fuseTypedWrites() const
     {
-        return getOption(vISA_FuseTypedWrites) ||
-               getPlatformGeneration(getGenxPlatform()) == PlatformGen::GEN11;
+        return getOption(vISA_FuseTypedWrites);
     }
 
     bool hasSIMD16TypedRW() const
