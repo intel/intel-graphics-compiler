@@ -1302,7 +1302,7 @@ namespace vISA
 
         void localSplit(IR_Builder& builder, G4_BB* bb);
         void globalSplit(IR_Builder& builder, G4_Kernel &kernel);
-        bool canDoGlobalSplit(IR_Builder& builder, G4_Kernel &kernel, uint32_t instNum, uint32_t spillRefCount, uint32_t sendSpillRefCount);
+        bool canDoGlobalSplit(IR_Builder& builder, G4_Kernel &kernel, uint32_t sendSpillRefCount);
 
         VarSplit(GlobalRA& g) : kernel(g.kernel), gra(g)
         {

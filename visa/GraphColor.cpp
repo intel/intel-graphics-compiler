@@ -7821,7 +7821,7 @@ void VarSplit::insertMovesFromTemp(G4_Kernel& kernel, G4_Declare* oldDcl, int in
     return;
 }
 
-bool VarSplit::canDoGlobalSplit(IR_Builder& builder, G4_Kernel &kernel, uint32_t instNum, uint32_t spillRefCount, uint32_t sendSpillRefCount)
+bool VarSplit::canDoGlobalSplit(IR_Builder& builder, G4_Kernel &kernel, uint32_t sendSpillRefCount)
 {
     if (!builder.getOption(vISA_GlobalSendVarSplit))
     {
@@ -7830,10 +7830,7 @@ bool VarSplit::canDoGlobalSplit(IR_Builder& builder, G4_Kernel &kernel, uint32_t
 
     if (!builder.getOption(vISA_Debug) &&               //Not work in debug mode
         kernel.getOptions()->getTarget() == VISA_3D &&      //Only works for 3D/OCL/OGL
-        kernel.getSimdSize() < 16 &&                        //Only works for simd8, FIXME:can work for SIMD16 also
-        sendSpillRefCount &&              //There is spills/fills are due to the interference with send related varaibles.
-        (float)spillRefCount / sendSpillRefCount < 2.0 && //Most spilled varaibles interference with splittable send instructions.
-        (float)instNum / sendSpillRefCount < 20.0) //The percentage of the spill instructions is high enough.
+        sendSpillRefCount)
     {
         return true;
     }
@@ -8704,7 +8701,6 @@ int GlobalRA::coloringRegAlloc()
     uint32_t scratchOffset = 0;
 
     uint32_t GRFSpillFillCount = 0;
-    uint32_t beforeSplitGRFSpillFillCount = 0;
     uint32_t sendAssociatedGRFSpillFillCount = 0;
     unsigned failSafeRAIteration = builder.getOption(vISA_FastSpill) ? 1 : FAIL_SAFE_RA_LIMIT;
 
@@ -8843,7 +8839,6 @@ int GlobalRA::coloringRegAlloc()
                 //Calculate the spill caused by send to decide if global splitting is required or not
                 for (auto spilled : coloring.getSpilledLiveRanges())
                 {
-                    beforeSplitGRFSpillFillCount += spilled->getRefCount();
                     auto spillDcl = spilled->getDcl();
                     if (spillDcl->getIsRefInSendDcl() && spillDcl->getNumRows() > 1)
                     {
@@ -8859,7 +8854,7 @@ int GlobalRA::coloringRegAlloc()
 
                 if (iterationNo == 0 &&                             //Only works when first iteration of Global RA failed.
                     !splitPass.didGlobalSplit &&                      //Do only one time.
-                    splitPass.canDoGlobalSplit(builder, kernel, instNum, beforeSplitGRFSpillFillCount, sendAssociatedGRFSpillFillCount))
+                    splitPass.canDoGlobalSplit(builder, kernel, sendAssociatedGRFSpillFillCount))
                 {
                     if (builder.getOption(vISA_RATrace))
                     {
