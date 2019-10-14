@@ -26,21 +26,22 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _FATAL_HPP_
 #define _FATAL_HPP_
 
-#include <stdio.h>
-#include "common/secure_string.h"
-
-#ifndef _MSC_VER
-#define _vscprintf(PAT, VA) \
-    _vsnprintf_s(NULL, 0, 0, PAT, VA)
-#define vsprintf_s(B,BLEN,...) \
-    sprintf_s(B,BLEN,__VA_ARGS__)
-#endif
-
 #ifdef WIN32
 #include <Windows.h>
 #include <malloc.h>
 #else
 #include <alloca.h>
+#endif
+#ifdef _MSC_VER
+#define VSCPRINTF(PAT,VA) \
+    _vscprintf(PAT,VA)
+#define VSNPRINTF(B,BLEN,...) \
+    vsprintf_s(B, BLEN, __VA_ARGS__)
+#else
+#define VSCPRINTF(PAT,VA) \
+    vsnprintf(NULL, 0, PAT, VA)
+#define VSNPRINTF(B,BLEN,...) \
+    vsprintf(B,__VA_ARGS__)
 #endif
 
 #include <cstdarg>
@@ -102,11 +103,11 @@ static void NORETURN_ATTRIBUTE fatalExitWithMessage(const char *pat, ...)
 {
     va_list ap;
     va_start(ap, pat);
-    int ebuflen = _vscprintf(pat, ap) + 1;
+    size_t ebuflen = VSCPRINTF(pat, ap) + 1;
     va_end(ap);
     char *buf = (char *)alloca(ebuflen);
     va_start(ap, pat);
-    vsprintf_s(buf, ebuflen, pat, ap);
+    VSNPRINTF(buf, ebuflen, pat, ap);
     va_end(ap);
     buf[ebuflen - 1] = 0;
 

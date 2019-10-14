@@ -41,6 +41,28 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define strdup _strdup
 #endif
 
+#ifdef _MSC_VER
+// MSVC has different semantics with vsnprintf given NULL.
+#define VSCPRINTF(PAT,VA) \
+    _vscprintf(PAT,VA)
+#else
+// The rest of the world can use this form of vsnprintf
+#define VSCPRINTF(PAT,VA) \
+    vsnprintf(NULL, 0, PAT, VA)
+#endif
+#ifdef _MSC_VER
+#define VSPRINTF(B,BLEN,...) \
+       vsprintf_s(B, BLEN, __VA_ARGS__)
+#else
+// Linux, MinGW, and the rest of the world choose this.
+// Warning, although MinGW also has vsprintf_s, it's signature is
+// inconsistent with the MSVC version (has extra param).
+// Thankfully, they don't whine about bogus security issues and we
+// can use the old version.
+#define VSPRINTF(B,BLEN,...) \
+       vsnprintf(B, BLEN, __VA_ARGS__)
+#endif
+
 namespace iga {
     // takes a printf-style pattern and converts it to a string
     std::string format(const char *pat, ...);

@@ -32,15 +32,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <sstream>
 #include <iomanip>
 
-#include "common/secure_string.h"
-
-#ifndef _MSC_VER
-#define _vscprintf(PAT, VA) \
-    _vsnprintf_s(NULL, 0, 0, PAT, VA)
-#define vsprintf_s(B,BLEN,...) \
-    sprintf_s(B,BLEN,__VA_ARGS__)
-#endif
-
 using namespace iga;
 
 #ifdef _WIN32
@@ -64,12 +55,11 @@ std::string iga::formatv(const char *pat, va_list &va)
 {
     va_list copy;
     va_copy(copy, va);
-
-    int ebuflen = _vscprintf(pat, copy) + 1;
+    size_t ebuflen = VSCPRINTF(pat, copy) + 1;
     va_end(copy);
 
     char *buf = (char *)alloca(ebuflen);
-    vsprintf_s(buf, ebuflen, pat, va);
+    VSPRINTF(buf, ebuflen, pat, va);
     buf[ebuflen - 1] = 0;
 
     return buf;
@@ -90,11 +80,11 @@ size_t iga::formatvTo(std::ostream &out, const char *pat, va_list &va)
 {
     va_list copy;
     va_copy(copy, va);
-    int ebuflen = _vscprintf(pat, copy) + 1;
+    size_t ebuflen = VSCPRINTF(pat, copy) + 1;
     va_end(copy);
 
     char *buf = (char *)alloca(ebuflen);
-    vsprintf_s(buf, ebuflen, pat, va);
+    VSPRINTF(buf, ebuflen, pat, va);
     buf[ebuflen - 1] = 0;
 
     size_t initOff = (size_t)out.tellp();
@@ -116,7 +106,7 @@ size_t iga::formatTo(char *buf, size_t bufLen, const char *pat, ...)
 
 size_t iga::formatvTo(char *buf, size_t bufLen, const char *pat, va_list &va)
 {
-    return vsprintf_s(buf, bufLen, pat, va);
+    return VSPRINTF(buf, bufLen, pat, va);
 }
 
 
