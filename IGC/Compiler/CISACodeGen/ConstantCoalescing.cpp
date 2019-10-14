@@ -120,7 +120,13 @@ void ConstantCoalescing::ProcessFunction(Function* function)
     {
         BasicBlock* cur_blk = dom_it->getBlock();
         FindAllDirectCB(cur_blk, dircb_owloads);
-        dircb_owloads.clear();
+
+        while (!dircb_owloads.empty())
+        {
+            BufChunk* top_chunk = dircb_owloads.back();
+            dircb_owloads.pop_back();
+            delete top_chunk;
+        }
     }
 
     for (df_iterator<DomTreeNode*> dom_it = df_begin(dom_tree.getRootNode()),
