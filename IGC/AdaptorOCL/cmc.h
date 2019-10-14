@@ -100,7 +100,10 @@ struct CMCLibraryLoader {
     bool isValid();
 };
 
-extern int vISACompile(cmc_compile_info* output, iOpenCL::CGen8CMProgram& CMProgram);
+extern int vISACompile(cmc_compile_info *output,
+                       iOpenCL::CGen8CMProgram &CMProgram,
+                       std::vector<const char*> &opts);
+
 extern const char* getPlatformStr(PLATFORM platform);
 
 } // namespace cmc

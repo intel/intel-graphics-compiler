@@ -1222,7 +1222,7 @@ TRANSLATION_BLOCK_API void Delete(
     CIGCTranslationBlock::Delete(pIGCTranslationBlock);
 }
 
-// Generate compile options.
+// Generate cmc compile options.
 static std::string getCommandLine(const STB_TranslateInputArgs* pInputArgs,
     TB_DATA_FORMAT inputDataFormatTemp,
     const IGC::CPlatform& IGCPlatform)
@@ -1247,6 +1247,58 @@ static std::string getCommandLine(const STB_TranslateInputArgs* pInputArgs,
     return move(cmd);
 }
 
+// Generate vISA compile options from the input option string
+//
+// -visaopts='-dumpcommonisa,-noschedule'
+//
+static void getvISACompileOpts(const STB_TranslateInputArgs *pInputArgs,
+                                std::vector<std::string> &optstrings,
+                                std::vector<const char*> &opts)
+{
+    llvm::StringRef Opts(pInputArgs->pOptions, pInputArgs->OptionsSize);
+    size_t pos = Opts.find_first_of("-visaopts");
+    if (pos == llvm::StringRef::npos)
+        return;
+
+    size_t beginPos = Opts.find_first_of("'", pos);
+    if (beginPos == llvm::StringRef::npos)
+        return;
+    ++beginPos;
+    size_t endPos = Opts.find_first_of("'", beginPos);
+    if (endPos == llvm::StringRef::npos)
+        return;
+
+    // vISA options are in a form '-dumpcommonisa,-noschedule'
+    llvm::StringRef vISAOpts = Opts.substr(beginPos, endPos - beginPos);
+    const char* delim = ",";
+
+    // vISA crashes on illegal options.
+    size_t curPos = 0, nextPos = 0;
+    do {
+        nextPos = vISAOpts.find_first_of(delim, curPos);
+        if (nextPos == llvm::StringRef::npos) {
+            // last argument
+            llvm::StringRef O = vISAOpts.substr(curPos);
+            O = O.trim();
+            if (!O.empty())
+                optstrings.push_back(O);
+            break;
+        } else {
+            llvm::StringRef O = vISAOpts.substr(curPos, nextPos - curPos);
+            O = O.trim();
+            if (!O.empty())
+                optstrings.push_back(O);
+            curPos = nextPos + 1;
+        }
+    } while (curPos != llvm::StringRef::npos);
+
+    for (auto& s : optstrings) {
+        // Make sure this s.data() can be used as a c-string.
+        s.push_back('\0');
+        opts.push_back(s.data());
+    }
+}
+
 // When an internal otion "-cmc" is present, compile the input as a CM program.
 static bool TranslateBuildCM(const STB_TranslateInputArgs* pInputArgs,
     STB_TranslateOutputArgs* pOutputArgs,
@@ -1265,7 +1317,10 @@ static bool TranslateBuildCM(const STB_TranslateInputArgs* pInputArgs,
     int32_t status = Loader.compileFn(pInputArgs->pInput, pInputArgs->InputSize, cmd.c_str(), &output);
     if (status == 0 && output) {
         iOpenCL::CGen8CMProgram CMProgram(IGCPlatform.getPlatformInfo());
-        cmc::vISACompile(output, CMProgram);
+        std::vector<std::string> optstrings;
+        std::vector<const char*> opts;
+        getvISACompileOpts(pInputArgs, optstrings, opts);
+        cmc::vISACompile(output, CMProgram, opts);
 
         // Prepare and set program binary
         Util::BinaryStream programBinary;

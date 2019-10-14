@@ -446,7 +446,8 @@ static void populateKernelInfo(const cmc_kernel_info* info,
     generatePatchTokens(info, kernel);
 }
 
-int cmc::vISACompile(cmc_compile_info* output, iOpenCL::CGen8CMProgram& CMProgram)
+int cmc::vISACompile(cmc_compile_info* output, iOpenCL::CGen8CMProgram& CMProgram,
+                     std::vector<const char*> &opts)
 {
     int status = 0;
     const char* platformStr = getPlatformStr(CMProgram.getPlatform());
@@ -458,15 +459,11 @@ int cmc::vISACompile(cmc_compile_info* output, iOpenCL::CGen8CMProgram& CMProgra
         void* genBinary = nullptr;
         unsigned genBinarySize = 0;
         FINALIZER_INFO JITInfo;
-        // TODO: take commond line options.
-        const char* args[] = {
-            "-noschedule",
-            "-nopresched"
-        };
-        int numArgs = sizeof(args)/sizeof(args[0]);
-        status = JITCompile(info->name, output->binary, (unsigned)output->binary_size, genBinary,
-            genBinarySize, platformStr, output->visa_major_version,
-            output->visa_minor_version, numArgs, args, nullptr, &JITInfo);
+        status = JITCompile(
+            info->name, output->binary, (unsigned)output->binary_size,
+            genBinary, genBinarySize, platformStr, output->visa_major_version,
+            output->visa_minor_version, (unsigned)opts.size(), opts.data(),
+            nullptr, &JITInfo);
         if (status != 0)
             return status;
 
