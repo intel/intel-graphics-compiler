@@ -5929,6 +5929,13 @@ int IR_Builder::translateVISAVmeIdmInst(
     return CM_SUCCESS;
 }
 
+// on legacy platforms EOT bit is encode in bit[5] of the exdesc.
+// used by the rawSend/rawSends instructions
+static bool isExDescEOT(uint32_t val)
+{
+    return val & 0x20;
+}
+
 int IR_Builder::translateVISARawSendInst(G4_Predicate *predOpnd, Common_ISA_Exec_Size executionSize,
                                          Common_VISA_EMask_Ctrl emask, uint8_t modifiers, unsigned int exDesc, uint8_t numSrc,
                                          uint8_t numDst, G4_Operand* msgDescOpnd, G4_SrcRegRegion* msgOpnd, G4_DstRegRegion* dstOpnd)
@@ -5959,8 +5966,13 @@ int IR_Builder::translateVISARawSendInst(G4_Predicate *predOpnd, Common_ISA_Exec
         desc = G4_SendMsgDescriptor::createDesc(0, false, numSrc, numDst);
         isValidFuncCtrl = false;
     }
-    G4_SendMsgDescriptor *sendMsgDesc = createGeneralMsgDesc(desc, exDesc, getSendAccessType(isRead, isWrite), 
+    G4_SendMsgDescriptor *sendMsgDesc = createGeneralMsgDesc(desc, exDesc, getSendAccessType(isRead, isWrite),
         nullptr, nullptr, isValidFuncCtrl);
+
+    if (isExDescEOT(exDesc))
+    {
+        sendMsgDesc->setEOT();
+    }
 
     // sanity check on srcLen/dstLen
     MUST_BE_TRUE(sendMsgDesc->MessageLength() <= numSrc, "message length mismatch for raw send");
@@ -5993,17 +6005,17 @@ int IR_Builder::translateVISARawSendsInst(G4_Predicate *predOpnd, Common_ISA_Exe
     uint8_t exsize = (uint8_t) Get_Common_ISA_Exec_Size(executionSize);
     unsigned int inst_opt = Get_Gen4_Emask(emask, exsize);
 
-    if(msgDescOpnd->isSrcRegRegion())
+    if (msgDescOpnd->isSrcRegRegion())
     {
         // mov (1) a0.0<1>:ud src<0;1,0>:ud {NoMask}
-        G4_DstRegRegion *dstOpnd = Create_Dst_Opnd_From_Dcl( builtinA0, 1);
-        createMov( 1, dstOpnd, msgDescOpnd, InstOpt_WriteEnable, true );
-        msgDescOpnd = Create_Src_Opnd_From_Dcl( builtinA0, getRegionScalar() );
+        G4_DstRegRegion* dstOpnd = Create_Dst_Opnd_From_Dcl(builtinA0, 1);
+        createMov(1, dstOpnd, msgDescOpnd, InstOpt_WriteEnable, true);
+        msgDescOpnd = Create_Src_Opnd_From_Dcl(builtinA0, getRegionScalar());
     }
 
     uint32_t exDescVal = 0;
-    G4_SrcRegRegion *temp_exdesc_src = NULL;
-    if ( ex->isImm() )
+    G4_SrcRegRegion *temp_exdesc_src = nullptr;
+    if (ex->isImm())
     {
         exDescVal = (unsigned)ex->asImm()->getInt();
     }
@@ -6012,7 +6024,7 @@ int IR_Builder::translateVISARawSendsInst(G4_Predicate *predOpnd, Common_ISA_Exe
     uint32_t extLength = (exDescVal >> 6) & 0x1F;
     if (ex->isSrcRegRegion() || extLength >= 16)
     {
-        // mov (1) a0.2<1>:ud src<0;1,0>:ud {NoMask} ;
+        // mov (1) a0.2<1>:ud src<0;1,0>:ud {NoMask}
         // to hold the dynamic ext msg descriptor
         G4_DstRegRegion* exDescDst = Create_Dst_Opnd_From_Dcl(getBuiltinA0Dot2(), 1);
         createMov( 1, exDescDst, ex, InstOpt_WriteEnable, true );
@@ -6039,6 +6051,12 @@ int IR_Builder::translateVISARawSendsInst(G4_Predicate *predOpnd, Common_ISA_Exe
     G4_SendMsgDescriptor *sendMsgDesc = createSendMsgDesc(
         intToSFID(ffid), descVal, exDescVal, numSrc1,
         SendAccess::READ_WRITE, nullptr, isValidFuncCtrl);
+
+    if (ex->isImm() && isExDescEOT(exDescVal))
+    {
+        // ToDo: add an EOT parameter for the case of indirect exdesc
+        sendMsgDesc->setEOT();
+    }
 
     MUST_BE_TRUE(sendMsgDesc->MessageLength() == numSrc0, "message length mismatch for raw sends");
     if (!dstOpnd->isNullReg()) {
