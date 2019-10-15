@@ -1546,7 +1546,6 @@ namespace IGC
 
         m_kernelInfo.m_threadPayload.OffsetToSkipPerThreadDataLoad = 0;
         m_kernelInfo.m_threadPayload.OffsetToSkipSetFFIDGP = 0;
-        m_kernelInfo.m_threadPayload.PassInlineData = false;
 
         m_ConstantBufferLength = iSTD::Align(m_ConstantBufferLength, getGRFSize());
 
@@ -1559,6 +1558,7 @@ namespace IGC
         // Create annotations for printf string.
         CreatePrintfStringAnnotations();
     }
+
 
     unsigned int COpenCLKernel::GetGlobalMappingValue(llvm::Value* c)
     {
