@@ -512,12 +512,12 @@ bool EmitPass::runOnFunction(llvm::Function& F)
             m_currShader->CreateFunctionSymbol(pFunc);
         }
 
-        if (F.hasFnAttribute("IndirectlyCalled"))
+        if (F.hasFnAttribute("EnableGlobalRelocation"))
         {
             SmallSet<GlobalVariable*, 8> globalAddrSymbols;
             for (auto gi = pModule->global_begin(), ge = pModule->global_end(); gi != ge; gi++)
             {
-                // Create relocation instruction for global variables if they are used in an indirectly called function
+                // Create relocation instruction for global variables
                 GlobalVariable* pGlobal = dyn_cast<GlobalVariable>(gi);
                 if (pGlobal &&
                     pGlobal->getNumUses() > 0 &&

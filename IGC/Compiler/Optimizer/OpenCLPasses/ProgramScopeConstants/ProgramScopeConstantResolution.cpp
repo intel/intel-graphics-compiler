@@ -172,8 +172,8 @@ bool ProgramScopeConstantResolution::runOnModule(Module& M)
 
             Function* userFunc = user->getParent()->getParent();
 
-            // Require relocation if used inside an indirectly called function
-            if (userFunc->hasFnAttribute("IndirectlyCalled"))
+            // Don't have implicit arg if doing relocation
+            if (userFunc->hasFnAttribute("EnableGlobalRelocation"))
                 continue;
 
             // Skip unused internal functions.

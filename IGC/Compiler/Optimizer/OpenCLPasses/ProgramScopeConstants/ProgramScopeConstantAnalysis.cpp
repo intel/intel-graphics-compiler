@@ -171,7 +171,7 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
         {
             if (pFunc.isDeclaration()) continue;
             // Don't add implicit arg if doing relocation
-            if (pFunc.hasFnAttribute("IndirectlyCalled")) continue;
+            if (pFunc.hasFnAttribute("EnableGlobalRelocation")) continue;
 
             SmallVector<ImplicitArg::ArgType, 1> implicitArgs;
             implicitArgs.push_back(ImplicitArg::CONSTANT_BASE);
@@ -195,7 +195,7 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
         {
             if (pFunc.isDeclaration()) continue;
             // Don't add implicit arg if doing relocation
-            if (pFunc.hasFnAttribute("IndirectlyCalled")) continue;
+            if (pFunc.hasFnAttribute("EnableGlobalRelocation")) continue;
 
             SmallVector<ImplicitArg::ArgType, 1> implicitArgs;
             implicitArgs.push_back(ImplicitArg::GLOBAL_BASE);

@@ -383,6 +383,8 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                 {
                     pCtx->m_enableFunctionPointer = true;
                     F->addFnAttr("IndirectlyCalled");
+                    // Require global relocation if any global values are used in indirect functions, since we cannot pass implicit args
+                    F->addFnAttr("EnableGlobalRelocation");
 
                     if(istrue == false)
                         F->addFnAttr("visaStackCall");

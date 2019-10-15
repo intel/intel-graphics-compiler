@@ -196,6 +196,7 @@ namespace IGC
         {
             return 4000;
         }
+
         // ----------------------------------------------------------------------
         // Below are workaround for bugs in front end or IGC will be removed once
         // the bugs are fixed

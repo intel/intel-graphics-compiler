@@ -61,11 +61,6 @@ PromoteResourceToDirectAS::PromoteResourceToDirectAS()
 
 bool PromoteResourceToDirectAS::runOnFunction(Function& F)
 {
-    if (IGC_IS_FLAG_ENABLED(DisablePromoteToDirectAS))
-    {
-        return false;
-    }
-
     m_pCodeGenContext = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     m_pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     visit(F);
@@ -267,6 +262,19 @@ void PromoteResourceToDirectAS::PromoteSamplerTextureToDirectAS(GenIntrinsicInst
                         bufTy = BufferType::SAMPLER;
                         canPromote = true;
                     }
+                }
+            }
+        }
+        else if (GlobalVariable * pGlobal = dyn_cast<GlobalVariable>(srcPtr))
+        {
+            // Can still promote if we traced to an inline sampler with samplerID metadata attached
+            if (MDNode * md = pGlobal->getMetadata("ConstSampler"))
+            {
+                if (ConstantInt * C = mdconst::extract<ConstantInt>(md->getOperand(0)))
+                {
+                    bufID = (unsigned)C->getZExtValue();
+                    bufTy = BufferType::SAMPLER;
+                    canPromote = true;
                 }
             }
         }

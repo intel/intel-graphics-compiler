@@ -430,8 +430,13 @@ namespace IGC
 
     mpm.add(new ReplaceUnsupportedIntrinsics());
 
-    // Promotes indirect resource access to direct
-    mpm.add(new PromoteResourceToDirectAS());
+    if (IGC_IS_FLAG_DISABLED(DisablePromoteToDirectAS))
+    {
+        // Promotes indirect resource access to direct
+        mpm.add(new BreakConstantExpr());
+        mpm.add(new PromoteResourceToDirectAS());
+    }
+
     if (ctx.m_instrTypes.hasReadOnlyArray)
     {
         mpm.add(createDeadCodeEliminationPass());

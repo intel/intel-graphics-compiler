@@ -360,6 +360,12 @@ namespace IGC
                 srcPtr = baseValue;
                 break;
             }
+            else if (isa<GlobalVariable>(baseValue))
+            {
+                // Can be an inline sampler/constant buffer
+                srcPtr = baseValue;
+                break;
+            }
             else if (auto allocaInst = dyn_cast<AllocaInst>(baseValue))
             {
                 if (allocaInst->getMetadata("igc.read_only_array"))

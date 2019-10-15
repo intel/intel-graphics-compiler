@@ -4591,18 +4591,18 @@ namespace IGC
         for (auto global : modMD->inlineProgramScopeOffsets)
         {
             GlobalVariable* pGlobal = global.first;
-            bool hasIndirectUsage = false;
+            bool needRelocation = false;
             for (auto ui = pGlobal->user_begin(), ue = pGlobal->user_end(); ui != ue; ui++)
             {
-                // Check if used inside an indirect function
+                // Check if need relocation
                 Instruction* inst = dyn_cast<Instruction>(*ui);
-                if (inst && inst->getParent()->getParent()->hasFnAttribute("IndirectlyCalled"))
+                if (inst && inst->getParent()->getParent()->hasFnAttribute("EnableGlobalRelocation"))
                 {
-                    hasIndirectUsage = true;
+                    needRelocation = true;
                     break;
                 }
             }
-            if (hasIndirectUsage)
+            if (needRelocation)
             {
                 StringRef name = pGlobal->getName();
                 unsigned addrSpace = pGlobal->getType()->getAddressSpace();
@@ -4610,9 +4610,20 @@ namespace IGC
 
                 vISA::GenSymEntry sEntry;
                 strcpy_s(sEntry.s_name, vISA::MAX_SYMBOL_NAME_LENGTH, name.str().c_str());
-                sEntry.s_type = (addrSpace == ADDRESS_SPACE_GLOBAL) ? vISA::GenSymType::S_GLOBAL_VAR : vISA::GenSymType::S_GLOBAL_VAR_CONST;
-                sEntry.s_offset = static_cast<uint32_t>(global.second);
-                sEntry.s_size = int_cast<uint32_t>(pModule->getDataLayout().getTypeAllocSize(pGlobal->getType()->getPointerElementType()));
+                MDNode* md = pGlobal->getMetadata("ConstSampler");
+                if (md)
+                {
+                    // Constant Sampler: s_offset contains the sampler ID
+                    sEntry.s_type = vISA::GenSymType::S_CONST_SAMPLER;
+                    sEntry.s_size = 0;
+                    sEntry.s_offset = static_cast<uint32_t>(global.second);
+                }
+                else
+                {
+                    sEntry.s_type = (addrSpace == ADDRESS_SPACE_GLOBAL) ? vISA::GenSymType::S_GLOBAL_VAR : vISA::GenSymType::S_GLOBAL_VAR_CONST;
+                    sEntry.s_size = int_cast<uint32_t>(pModule->getDataLayout().getTypeAllocSize(pGlobal->getType()->getPointerElementType()));
+                    sEntry.s_offset = static_cast<uint32_t>(global.second);
+                }
                 symbolTable.push_back(sEntry);
             }
         }
