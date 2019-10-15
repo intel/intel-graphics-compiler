@@ -292,6 +292,20 @@ void FindInterestingConstants::addInterestingConstant(llvm::Type* loadTy, unsign
 
 void FindInterestingConstants::visitLoadInst(llvm::LoadInst& I)
 {
+
+    switch (IGC_GET_FLAG_VALUE(ConstantLoadTypeCheck))
+    {
+    case 1:
+        if (!I.getType()->isIntOrIntVectorTy())  return;
+        break;
+    case 2:
+        if (!I.getType()->isFPOrFPVectorTy())  return;
+        break;
+    case 0:
+    default:
+        break;
+    }
+
     unsigned bufIdOrGRFOffset;
     unsigned eltId;
     int size_in_bytes;
