@@ -2649,11 +2649,16 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
         if (Init && Init->getOpCode() == OpConstantNull) {
           SPIRVType *Ty = static_cast<SPIRVConstantNull *>(Init)->getType();
           if (Ty->isTypeArray()) {
-            SPIRVTypeArray *AT = static_cast<SPIRVTypeArray *>(Ty);
-            Type *SrcTy = transType(AT->getArrayElementType());
-            assert(SrcTy->isIntegerTy(8));
-            llvm::Value *Src = ConstantInt::get(SrcTy, 0);
-            CI = Builder.CreateMemSet(Dst, Src, Size, Align, IsVolatile);
+              Type* Int8Ty = Type::getInt8Ty(Dst->getContext());
+              llvm::Value* Src = ConstantInt::get(Int8Ty, 0);
+              llvm::Value* newDst = Dst;
+              if (!Dst->getType()->getPointerElementType()->isIntegerTy(8)) {
+                  Type* Int8PointerTy = Type::getInt8PtrTy(Dst->getContext(),
+                      Dst->getType()->getPointerAddressSpace());
+                  newDst = llvm::BitCastInst::CreatePointerCast(Dst,
+                      Int8PointerTy, "", BB);
+              }
+              CI = Builder.CreateMemSet(newDst, Src, Size, Align, IsVolatile);
           }
         }
       }
