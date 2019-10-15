@@ -1575,7 +1575,7 @@ namespace IGC
             mpm.add(new PurgeMetaDataUtils());
         }
 
-        if (!IGC_IS_FLAG_ENABLED(DisableDynamicConstantFolding))
+        if (!IGC_IS_FLAG_ENABLED(DisableDynamicConstantFolding) && pContext->getModuleMetaData()->inlineDynConstants.empty())
         {
             mpm.add(new FindInterestingConstants());
         }
