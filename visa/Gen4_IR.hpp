@@ -304,9 +304,7 @@ public:
     /// Construct a object with descriptor and extended descriptor values.
     /// used in IR_Builder::createSendMsgDesc(uint32_t desc, uint32_t extDesc, SendAccess access)
     G4_SendMsgDescriptor(uint32_t desc, uint32_t extDesc, SendAccess access,
-        G4_Operand* bti,
-        G4_Operand* sti,
-        bool isValidFuncCtrl);
+        G4_Operand* bti, G4_Operand* sti);
 
     /// Preferred constructor takes an explicit SFID and src1 length
     G4_SendMsgDescriptor(
