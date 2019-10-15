@@ -176,7 +176,8 @@ void DepSet::setInputsSrcDep()
     uint32_t execSize = static_cast<uint32_t>(m_instruction->getExecSize());
 
     // mac/mach has implicitly read to acc0
-    if (m_instruction->getOp() == Op::MAC || m_instruction->getOp() == Op::MACH) {
+    if (m_instruction->getOp() == Op::MAC || m_instruction->getOp() == Op::MACH
+        ) {
         setSrcRegion(
             RegName::ARF_ACC,
             MakeRegRef(0, 0),
@@ -362,7 +363,6 @@ void DepSet::setInputsSrcDep()
             break;
         }
     }
-    // TODO: ops which implicitly read the accumulator? e.g. mach, mac, ...
 }
 
 void DepSet::setOutputsFlagDep()
@@ -403,7 +403,11 @@ void DepSet::setOutputsDstcDep()
     auto tType = op.getType();
     auto typeSizeBits = TypeSizeInBitsWithDefault(tType, 32);
 
-    if (m_instruction->hasInstOpt(InstOpt::ACCWREN)/* || m_instruction->getDestination().getDirRegName() == RegName::ARF_ACC*/) { // AccWrEn
+    // Instructions having implicit write to acc
+    if (m_instruction->hasInstOpt(InstOpt::ACCWREN) ||
+        m_instruction->getOp() == Op::SUBB ||
+        m_instruction->getOp() == Op::ADDC ||
+        m_instruction->getOp() == Op::MACH) {
         auto elemsPerAccReg = 8 * m_DB.getARF_ACC_BYTES_PER_REG() / typeSizeBits; // e.g. 8 subreg elems for :f
         RegRef ar;
         ar.regNum = (uint8_t)(execOff / elemsPerAccReg);

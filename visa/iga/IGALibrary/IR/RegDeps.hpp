@@ -186,9 +186,12 @@ private:
     void setOutputsDstcDep();
     void setMathWAOutputsDstcDep();
 
-    typedef std::pair<uint32_t, uint32_t> RegRangeTy;
-    typedef std::vector<RegRangeTy> SrcRegRangeType;
-    typedef RegRangeTy DstRegRangeType;
+    typedef std::pair<uint32_t, uint32_t> RegRangeType;
+    typedef std::vector<RegRangeType> RegRangeListType;
+
+    // Set the bits to this DepSet with the given reg_range
+    void addDependency(const RegRangeType& reg_range);
+    void addDependency(const RegRangeListType& reg_range);
 
 
 private:
@@ -244,10 +247,10 @@ public:
 
 public:
     // DepSet creater
-    /// createSrcDepSet: create DepSet for src operands of instruction i
+    /// createSrcDepSet - create DepSet for src operands of instruction i
     DepSet* createSrcDepSet(const Instruction &i, const InstIDs& inst_id_counter,
         SWSB_ENCODE_MODE enc_mode);
-    /// createDstDepSet: create DepSet for dst operands of instruction i
+    /// createDstDepSet - create DepSet for dst operands of instruction i
     DepSet* createDstDepSet(const Instruction &i, const InstIDs& inst_id_counter,
         SWSB_ENCODE_MODE enc_mode);
 
