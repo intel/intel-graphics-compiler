@@ -4182,6 +4182,11 @@ namespace IGC
     {
         SaveOption(vISA_alignBindlessSampler, true);
     }
+
+    if (m_program->m_Platform->getWATable().Wa_14010017096 != 0)
+    {
+        SaveOption(vISA_clearAccBeforeEOT, true);
+    }
     }
 
     void CEncoder::InitEncoder(bool canAbortOnSpill, bool hasStackCall)

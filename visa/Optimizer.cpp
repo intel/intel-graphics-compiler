@@ -6989,7 +6989,7 @@ void Optimizer::evenlySplitInst(INST_LIST_ITER iter, G4_BB* bb)
                     bb->insert(ii, movInst);
                 }
 
-                if (inst->isEOT() && builder.needResetAcc0beforeEOT())
+                if (inst->isEOT() && builder.getOption(vISA_clearAccBeforeEOT))
                 {
                     // insert "(W) mov(16) acc0.0:f 0x0:f" before EOT
                     G4_INST* movInst = builder.createMov(16,

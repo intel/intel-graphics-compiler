@@ -545,9 +545,4 @@
     {
         return getGenxPlatform() >= GENX_TGLLP;
     }
-
-    bool needResetAcc0beforeEOT() const
-    {
-        return getGenxPlatform() == GENX_TGLLP;
-    }
     // end HW capabilities
