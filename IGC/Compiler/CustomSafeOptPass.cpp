@@ -1364,67 +1364,6 @@ void GenSpecificPattern::matchReverse(BinaryOperator& I)
     }
 }
 
-/* Transforms pattern1 or pattern2 to a bitcast,extract,insert,insert,bitcast
-
-    From:
-        %5 = zext i32 %a to i64 <--- optional
-        %6 = shl i64 %5, 32
-        or
-        %6 = and i64 %5, 0xFFFFFFFF00000000
-    To:
-        %BC = bitcast i64 %5 to <2 x i32> <---- not needed when %5 is zext
-        %6 = extractelement <2 x i32> %BC, i32 0/1 <---- not needed when %5 is zext
-        %7 = insertelement <2 x i32> %vec, i32 0, i32 0
-        %8 = insertelement <2 x i32> %vec, %6, i32 1
-        %9 = bitcast <2 x i32> %8 to i64
- */
-void GenSpecificPattern::createBitcastExtractInsertPattern(BinaryOperator& I, Value* OpLow, Value* OpHi, unsigned extractNum1, unsigned extractNum2)
-{
-    llvm::IRBuilder<> builder(&I);
-    auto vec2 = VectorType::get(builder.getInt32Ty(), 2);
-    Value* vec = UndefValue::get(vec2);
-    Value* elemLow = nullptr;
-    Value* elemHi = nullptr;
-
-    auto zeroextorNot = [&](Value* Op, unsigned num) -> Value *
-    {
-        Value* elem = nullptr;
-        if (auto ZextInst = dyn_cast<ZExtInst>(Op))
-        {
-            if (ZextInst->getDestTy() == builder.getInt64Ty() && ZextInst->getSrcTy() == builder.getInt32Ty())
-            {
-                elem = ZextInst->getOperand(0);
-            }
-        }
-        else if (auto IEIInst = dyn_cast<InsertElementInst>(Op))
-        {
-            auto opType = IEIInst->getType();
-            if (opType->isVectorTy() && opType->getVectorElementType()->isIntegerTy(32) && opType->getVectorNumElements() == 2)
-            {
-                elem = IEIInst->getOperand(1);
-            }
-        }
-        else
-        {
-            Value* BC = builder.CreateBitCast(Op, vec2);
-            elem = builder.CreateExtractElement(BC, builder.getInt32(num));
-        }
-        return elem;
-    };
-
-    elemLow = (OpLow == nullptr) ? builder.getInt32(0) : zeroextorNot(OpLow, extractNum1);
-    elemHi = (OpHi == nullptr) ? builder.getInt32(0) : zeroextorNot(OpHi, extractNum2);
-
-    if (elemHi == nullptr || elemLow == nullptr)
-        return;
-
-    vec = builder.CreateInsertElement(vec, elemLow, builder.getInt32(0));
-    vec = builder.CreateInsertElement(vec, elemHi, builder.getInt32(1));
-    vec = builder.CreateBitCast(vec, builder.getInt64Ty());
-    I.replaceAllUsesWith(vec);
-    I.eraseFromParent();
-}
-
 void GenSpecificPattern::visitBinaryOperator(BinaryOperator& I)
 {
     if (I.getOpcode() == Instruction::Or)
@@ -1472,9 +1411,24 @@ void GenSpecificPattern::visitBinaryOperator(BinaryOperator& I)
             m_And(m_Value(AndOp2), m_SpecificInt(0xFFFFFFFF)),
             m_BitCast(m_InsertElement(m_Value(VecOp), m_Value(EltOp2), m_SpecificInt(1))));
 #endif // LLVM_VERSION_MAJOR >= 7
+        // Transforms pattern1 or pattern2 to a bitcast,extract,insert,insert,bitcast
+        auto transformPattern = [=](BinaryOperator& I, Value* Op1, Value* Op2)
+        {
+            llvm::IRBuilder<> builder(&I);
+            VectorType* vec2 = VectorType::get(builder.getInt32Ty(), 2);
+            Value* vec_undef = UndefValue::get(vec2);
+            Value* BC = builder.CreateBitCast(Op1, vec2);
+            Value* EE = builder.CreateExtractElement(BC, builder.getInt32(0));
+            Value* vec = builder.CreateInsertElement(vec_undef, EE, builder.getInt32(0));
+            vec = builder.CreateInsertElement(vec, Op2, builder.getInt32(1));
+            vec = builder.CreateBitCast(vec, builder.getInt64Ty());
+            I.replaceAllUsesWith(vec);
+            I.eraseFromParent();
+        };
+
         if (match(&I, pattern1) && AndOp1->getType()->isIntegerTy(64))
         {
-            createBitcastExtractInsertPattern(I, AndOp1, EltOp1, 0, 1);
+            transformPattern(I, AndOp1, EltOp1);
         }
 #if LLVM_VERSION_MAJOR >= 7
         else if (match(&I, pattern2) && AndOp2->getType()->isIntegerTy(64))
@@ -1487,8 +1441,7 @@ void GenSpecificPattern::visitBinaryOperator(BinaryOperator& I)
                 vector_type->getElementType()->isIntegerTy(32) &&
                 vector_type->getNumElements() == 2)
             {
-                auto InsertOp = cast<BitCastInst>(I.getOperand(1))->getOperand(0);
-                createBitcastExtractInsertPattern(I, AndOp2, InsertOp, 0, 1);
+                transformPattern(I, AndOp2, EltOp2);
             }
         }
 #endif // LLVM_VERSION_MAJOR >= 7
@@ -1563,58 +1516,26 @@ void GenSpecificPattern::visitBinaryOperator(BinaryOperator& I)
     }
     else if (I.getOpcode() == Instruction::Shl)
     {
-        /*
-        From:
-            %5 = zext i32 %a to i64 <--- optional
-            %6 = shl i64 %5, 32
-            or
-            %6 = and i64 %5, 0xFFFFFFFF00000000 (-4294967296)
-
-        To:
-            %BC = bitcast i64 %5 to <2 x i32> <---- not needed when %5 is zext
-            %6 = extractelement <2 x i32> %BC, i32 0/1 <---- not needed when %5 is zext
-            %7 = insertelement <2 x i32> %vec, i32 0, i32 0
-            %8 = insertelement <2 x i32> %vec, %6, i32 1
-            %9 = bitcast <2 x i32> %8 to i64
-        */
-        auto constant = llvm::dyn_cast<llvm::ConstantInt>(I.getOperand(1));
-        if (constant &&
-            I.getType()->isIntegerTy(64))
+       auto op0 = dyn_cast<ZExtInst>(I.getOperand(0));
+        auto offset = llvm::dyn_cast<llvm::ConstantInt>(I.getOperand(1));
+        if (op0 &&
+            op0->getType()->isIntegerTy(64) &&
+            op0->getOperand(0)->getType()->isIntegerTy(32) &&
+            offset &&
+            offset->getZExtValue() == 32)
         {
-            auto constant_val = constant->getZExtValue();
-            if (I.getOpcode() == Instruction::Shl && constant_val == 32)
-            {
-                createBitcastExtractInsertPattern(I, nullptr, I.getOperand(0), 0, 0);
-            }
+            llvm::IRBuilder<> builder(&I);
+            auto vec2 = VectorType::get(builder.getInt32Ty(), 2);
+            Value* vec = UndefValue::get(vec2);
+            vec = builder.CreateInsertElement(vec, builder.getInt32(0), builder.getInt32(0));
+            vec = builder.CreateInsertElement(vec, op0->getOperand(0), builder.getInt32(1));
+            vec = builder.CreateBitCast(vec, builder.getInt64Ty());
+            I.replaceAllUsesWith(vec);
+            I.eraseFromParent();
         }
     }
     else if (I.getOpcode() == Instruction::And)
     {
-        /*
-        From:
-            %5 = zext i32 %a to i64 <--- optional
-            %6 = shl i64 %5, 32
-            or
-            %6 = and i64 %5, 0xFFFFFFFF00000000 (-4294967296)
-
-        To:
-            %BC = bitcast i64 %5 to <2 x i32> <---- not needed when %5 is zext
-            %6 = extractelement <2 x i32> %BC, i32 0/1 <---- not needed when %5 is zext
-            %7 = insertelement <2 x i32> %vec, i32 0, i32 0
-            %8 = insertelement <2 x i32> %vec, %6, i32 1
-            %9 = bitcast <2 x i32> %8 to i64
-        */
-        auto constant = llvm::dyn_cast<llvm::ConstantInt>(I.getOperand(1));
-        if (constant &&
-            I.getType()->isIntegerTy(64))
-        {
-            auto constant_val = constant->getZExtValue();
-            if (I.getOpcode() == Instruction::And && constant_val == 0xFFFFFFFF00000000)
-            {
-                createBitcastExtractInsertPattern(I, nullptr, I.getOperand(0), 0, 1);
-            }
-        }
-
         /*  This `and` is basically fabs() done on high part of int representation.
             For float instructions minus operand can end as SrcMod, but since we cast it
             from double to int it will end as additional mov, and we can ignore this m_FNeg

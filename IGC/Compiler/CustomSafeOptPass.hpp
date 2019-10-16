@@ -167,8 +167,6 @@ namespace IGC
         void visitBitCastInst(llvm::BitCastInst& I);
 
         template <typename MaskType> void matchReverse(llvm::BinaryOperator& I);
-        void createBitcastExtractInsertPattern(llvm::BinaryOperator& I,
-            llvm::Value* Op1, llvm::Value* Op2, unsigned extractNum1, unsigned extractNum2);
     };
 
     class FCmpPaternMatch : public llvm::FunctionPass, public llvm::InstVisitor<FCmpPaternMatch>
