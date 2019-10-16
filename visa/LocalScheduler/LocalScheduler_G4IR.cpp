@@ -2041,10 +2041,11 @@ void DDD::DumpDotFile(const char *name, const char* appendix){
 
             std::string dotStr(os.str());
             //TODO: dot doesn't like '<', '>', '{', or '}' this code below is a hack. need to replace with delimiters.
-            std::replace_if(dotStr.begin(), dotStr.end(), bind2nd(equal_to<char>(), '<'), '[');
-            std::replace_if(dotStr.begin(), dotStr.end(), bind2nd(equal_to<char>(), '>'), ']');
-            std::replace_if(dotStr.begin(), dotStr.end(), bind2nd(equal_to<char>(), '{'), '[');
-            std::replace_if(dotStr.begin(), dotStr.end(), bind2nd(equal_to<char>(), '}'), ']');
+            std::replace_if(dotStr.begin(), dotStr.end(), bind(equal_to<char>(), placeholders::_1,'<'), '[');
+            std::replace_if(dotStr.begin(), dotStr.end(), bind(equal_to<char>(), placeholders::_1, '>'), ']');
+            std::replace_if(dotStr.begin(), dotStr.end(), bind(equal_to<char>(), placeholders::_1,'{'), '[');
+            std::replace_if(dotStr.begin(), dotStr.end(), bind(equal_to<char>(), placeholders::_1,'}'), ']');
+
             ofile << dotStr;
             ofile << "\\l";
             ofile << "} \"];" << std::endl;
