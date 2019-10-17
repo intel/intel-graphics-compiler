@@ -146,7 +146,7 @@ DECLARE_IGC_REGKEY(bool, EnableHighestSIMDForNoSpill,   false,   "When there is 
 DECLARE_IGC_REGKEY(DWORD,FoldsToZeroPropThreshold,      1,     "Set the threshold for finding interesting constant. This is for the number of instructions that gets folded to zero when propagating a dynamic constant value", false)
 DECLARE_IGC_REGKEY(DWORD,FoldsToConstPropThreshold,     1,     "Set the threshold for finding interesting constant. This is for the number of instructions that gets folded to constant or gets simplified incase of select instruction, when propagating a dynamic constant value", false)
 DECLARE_IGC_REGKEY(DWORD,FoldsToSourceThreshold,        1,     "Set the threshold for finding interesting constant. This is for the number of instructions that translate to a mov. i.e., Multiplication or Division by 1", false)
-DECLARE_IGC_REGKEY(bool, ConstantLoadTypeCheck,         0,     "Checks the type of the load instruction for finding interesting constant; 0 for skip type check, 1 for Integer and 2 for Float", false)
+DECLARE_IGC_REGKEY(DWORD, ConstantLoadTypeCheck,        0,     "Checks the type of the load instruction for finding interesting constant; 0 for skip type check, 1 for Integer and 2 for Float", false)
 DECLARE_IGC_REGKEY(bool, DisableDynamicConstantFolding, false,  "Disable Dynamic Constant Folding", false)
 DECLARE_IGC_REGKEY(bool, DisableDynamicTextureFolding,  false,  "Disable Dynamic Texture Folding", false)
 DECLARE_IGC_REGKEY(bool, DisableRectListOpt,            false, "Disable Rect List optimization", false)
