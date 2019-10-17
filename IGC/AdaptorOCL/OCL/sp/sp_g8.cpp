@@ -758,6 +758,21 @@ RETVAL CGen8OpenCLStateProcessor::CreateSurfaceStateHeap(
                     false)));
     }
 
+    if (annotations.m_syncBufferAnnotation != NULL)
+    {
+        unsigned int bti = annotations.m_argIndexMap.at(annotations.m_syncBufferAnnotation->ArgumentNumber);
+        context.Surface.SurfaceOffset[bti] = (DWORD)membuf.Size();
+
+        SurfaceStates.insert(
+            std::make_pair(
+                bti,
+                SurfaceState(
+                    SURFACE_BUFFER,
+                    SURFACE_FORMAT_RAW,
+                    0,
+                    false)));
+    }
+
     // If GT-Pin is enabled, assign btis to GT-Pin's surfaces
     if (gtpinEnabled)
     {
@@ -1654,6 +1669,32 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
             dataParameterStreamSize = std::max(
                 dataParameterStreamSize,
                 printfBufAnn->PayloadPosition + printfBufAnn->DataSize );
+
+            retValue = AddPatchItem(patch, membuf);
+        }
+    }
+
+    // Patch for Sync Buffer Offset
+    if (retValue.Success)
+    {
+        if (annotations.m_syncBufferAnnotation != nullptr)
+        {
+            iOpenCL::SyncBufferAnnotation* syncBufAnn = annotations.m_syncBufferAnnotation;
+
+            iOpenCL::SPatchAllocateSyncBuffer  patch;
+            memset(&patch, 0, sizeof(patch));
+
+            unsigned int bti = annotations.m_argIndexMap.at(syncBufAnn->ArgumentNumber);
+
+            patch.Token = iOpenCL::PATCH_TOKEN_ALLOCATE_SYNC_BUFFER;
+            patch.Size = sizeof(patch);
+            patch.SurfaceStateHeapOffset = context.Surface.SurfaceOffset[bti];
+            patch.DataParamOffset = syncBufAnn->PayloadPosition;
+            patch.DataParamSize = syncBufAnn->DataSize;
+
+            dataParameterStreamSize = std::max(
+                dataParameterStreamSize,
+                syncBufAnn->PayloadPosition + syncBufAnn->DataSize);
 
             retValue = AddPatchItem(patch, membuf);
         }

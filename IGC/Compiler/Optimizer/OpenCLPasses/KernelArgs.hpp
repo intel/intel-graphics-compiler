@@ -75,6 +75,7 @@ namespace IGC
             IMPLICIT_PRIVATE_BASE,
 
             IMPLICIT_PRINTF_BUFFER,
+            IMPLICIT_SYNC_BUFFER,
 
             IMPLICIT_BUFFER_OFFSET,
 

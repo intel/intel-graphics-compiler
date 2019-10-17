@@ -1005,6 +1005,27 @@ void DebugPatchList(
             }
             break;
 
+        case iOpenCL::PATCH_TOKEN_ALLOCATE_SYNC_BUFFER:
+            {
+                const iOpenCL::SPatchAllocateSyncBuffer* pPatchItem =
+                    (const iOpenCL::SPatchAllocateSyncBuffer*)pHeader;
+
+                ICBE_DPF_STR(output, GFXDBG_HARDWARE,
+                    "PATCH_TOKEN_ALLOCATE_SYNC_BUFFER (%08X) (size = %d)\n",
+                    pPatchItem->Token,
+                    pPatchItem->Size);
+                ICBE_DPF_STR(output, GFXDBG_HARDWARE,
+                    "\tSurfaceStateHeapOffset = %d\n",
+                    pPatchItem->SurfaceStateHeapOffset);
+                ICBE_DPF_STR(output, GFXDBG_HARDWARE,
+                    "\tDataParamOffset = %d\n",
+                    pPatchItem->DataParamOffset);
+                ICBE_DPF_STR(output, GFXDBG_HARDWARE,
+                    "\tDataParamSize = %d\n",
+                    pPatchItem->DataParamSize);
+            }
+            break;
+
         // Stateless Tokens
         case iOpenCL::PATCH_TOKEN_STATELESS_GLOBAL_MEMORY_OBJECT_KERNEL_ARGUMENT:
             {

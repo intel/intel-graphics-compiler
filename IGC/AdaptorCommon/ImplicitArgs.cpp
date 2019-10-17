@@ -300,6 +300,7 @@ ImplicitArgs::ImplicitArgs(const llvm::Function& func , const MetaDataUtils* pMd
         IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::STAGE_IN_GRID_ORIGIN, "stageInGridOrigin", ImplicitArg::INT, WIAnalysis::UNIFORM, 3, ImplicitArg::ALIGN_GRF, true));
         IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::STAGE_IN_GRID_SIZE, "stageInGridSize", ImplicitArg::INT, WIAnalysis::UNIFORM, 3, ImplicitArg::ALIGN_GRF, true));
 
+        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::SYNC_BUFFER, "syncBuffer", ImplicitArg::GLOBALPTR, WIAnalysis::UNIFORM, 1, ImplicitArg::ALIGN_PTR, false));
 
         assert(IMPLICIT_ARGS.size() == ImplicitArg::NUM_IMPLICIT_ARGS && "Mismatch in NUM_IMPLICIT_ARGS and IMPLICIT_ARGS vector");
 

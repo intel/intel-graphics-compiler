@@ -86,6 +86,7 @@ namespace IGC
         static const llvm::StringRef GET_ENQUEUED_LOCAL_SIZE;
         static const llvm::StringRef GET_STAGE_IN_GRID_ORIGIN;
         static const llvm::StringRef GET_STAGE_IN_GRID_SIZE;
+        static const llvm::StringRef GET_SYNC_BUFFER;
 
     private:
         /// @brief  Function entry point.
@@ -112,6 +113,8 @@ namespace IGC
         bool m_hasStageInGridOrigin;
         /// @brief  Marks whether stage_in_grid_size is needed by the current function
         bool m_hasStageInGridSize;
+        /// @brief  Marks whether sync buffer is needed by the current function
+        bool m_hasSyncBuffer;
     };
 
 } // namespace IGC
