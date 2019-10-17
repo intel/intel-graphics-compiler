@@ -2937,8 +2937,32 @@ void verifyKernelHeader(const common_isa_header& isaHeader,
         }
     }
 
+    // [Begin, end) is an interval for each input. We check two things
+    // - no overlap
+    // - do not overflow i.e. end < 32 * (256 - 1)
     for (unsigned i = 0; i < header->getInputCount(); i++)
     {
+        {
+            auto pi = header->getInput(i);
+            unsigned Begin = pi->offset;
+            unsigned End = Begin + pi->size;
+            if (End >= 32 * (256 - 1))
+            {
+                REPORT_HEADER(options, false, "Input V%d is out of bound [%d, %d)", pi->index, Begin, End);
+            }
+            for (unsigned j = 0; j < i; ++j)
+            {
+                auto pj = header->getInput(j);
+                unsigned Begin1 = pj->offset, End1 = pj->offset + pj->size;
+                if ((Begin >= Begin1 && Begin < End1) ||
+                    (Begin1 >= Begin && Begin1 < End))
+                {
+                    REPORT_HEADER(options, false, "Input V%d = [%d, %d) intersects with V%d = [%d, %d)",
+                        pi->index, Begin, End, pj->index, Begin1, End1);
+                }
+            }
+        }
+
         if (i >= implicitIndex)
         {
             REPORT_HEADER(
