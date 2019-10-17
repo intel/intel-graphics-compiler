@@ -122,7 +122,6 @@ namespace IGC
             STAGE_IN_GRID_ORIGIN,
             STAGE_IN_GRID_SIZE,
 
-            SYNC_BUFFER,
 
             NUM_IMPLICIT_ARGS
         };

@@ -513,7 +513,6 @@ namespace IGC
         SOpenCLKernelInfo()
         {
             m_printfBufferAnnotation = nullptr;
-            m_syncBufferAnnotation = nullptr;
             m_startGAS = nullptr;
             m_WindowSizeGAS = nullptr;
             m_PrivateMemSize = nullptr;
@@ -538,7 +537,6 @@ namespace IGC
         std::vector<iOpenCL::PrintfStringAnnotation*>       m_printfStringAnnotations;
 
         iOpenCL::PrintfBufferAnnotation* m_printfBufferAnnotation;
-        iOpenCL::SyncBufferAnnotation* m_syncBufferAnnotation;
         iOpenCL::StartGASAnnotation* m_startGAS = NULL;
         iOpenCL::WindowSizeGASAnnotation* m_WindowSizeGAS = NULL;
         iOpenCL::PrivateMemSizeAnnotation* m_PrivateMemSize = NULL;

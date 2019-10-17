@@ -244,8 +244,6 @@ KernelArg::ArgType KernelArg::calcArgType(const ImplicitArg& arg) const
         return KernelArg::ArgType::IMPLICIT_CONSTANT_BASE;
     case ImplicitArg::PRINTF_BUFFER:
         return KernelArg::ArgType::IMPLICIT_PRINTF_BUFFER;
-    case ImplicitArg::SYNC_BUFFER:
-        return KernelArg::ArgType::IMPLICIT_SYNC_BUFFER;
     case ImplicitArg::BUFFER_OFFSET:
         return KernelArg::ArgType::IMPLICIT_BUFFER_OFFSET;
     case ImplicitArg::GLOBAL_BASE:
@@ -765,7 +763,6 @@ KernelArgsOrder::KernelArgsOrder(InputType layout)
             KernelArg::ArgType::IMPLICIT_GLOBAL_BASE,
             KernelArg::ArgType::IMPLICIT_PRIVATE_BASE,
             KernelArg::ArgType::IMPLICIT_PRINTF_BUFFER,
-            KernelArg::ArgType::IMPLICIT_SYNC_BUFFER,
             KernelArg::ArgType::IMPLICIT_BUFFER_OFFSET,
             KernelArg::ArgType::IMPLICIT_WORK_DIM,
             KernelArg::ArgType::IMPLICIT_NUM_GROUPS,
@@ -876,7 +873,6 @@ KernelArgsOrder::KernelArgsOrder(InputType layout)
             KernelArg::ArgType::IMPLICIT_GLOBAL_BASE,
             KernelArg::ArgType::IMPLICIT_PRIVATE_BASE,
             KernelArg::ArgType::IMPLICIT_PRINTF_BUFFER,
-            KernelArg::ArgType::IMPLICIT_SYNC_BUFFER,
             KernelArg::ArgType::IMPLICIT_BUFFER_OFFSET,
             KernelArg::ArgType::IMPLICIT_WORK_DIM,
             KernelArg::ArgType::IMPLICIT_NUM_GROUPS,

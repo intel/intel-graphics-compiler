@@ -158,10 +158,6 @@ void WIFuncResolution::visitCallInst(CallInst& CI)
     {
         wiRes = getStageInGridSize(CI);
     }
-    else if (funcName.equals(WIFuncsAnalysis::GET_SYNC_BUFFER))
-    {
-        wiRes = getSyncBufferPtr(CI);
-    }
     else
     {
         // Non WI function, do nothing
@@ -380,19 +376,6 @@ Value* WIFuncResolution::getStageInGridSize(CallInst& CI)
     updateDebugLoc(&CI, globalSize);
 
     return globalSize;
-}
-
-Value* WIFuncResolution::getSyncBufferPtr(CallInst& CI)
-{
-    // Receives:
-    // call i8 addrspace(1)* @__builtin_IB_get_sync_buffer()
-
-    // Creates:
-    // i8 addrspace(1)* %syncBuffer
-
-    Argument* syncBuffer = getImplicitArg(CI, ImplicitArg::SYNC_BUFFER);
-
-    return syncBuffer;
 }
 
 Argument* WIFuncResolution::getImplicitArg(CallInst& CI, ImplicitArg::ArgType argType)

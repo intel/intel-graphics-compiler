@@ -444,17 +444,6 @@ struct SPatchAllocateStatelessPrintfSurface :
 // Update CURRENT_ICBE_VERSION when modifying the patch list
 static_assert( sizeof( SPatchAllocateStatelessPrintfSurface ) == ( 16 + sizeof( SPatchItemHeader ) ) , "The size of SPatchAllocateStatelessPrintfSurface is not what is expected" );
 
-struct SPatchAllocateSyncBuffer :
-       SPatchItemHeader
-{
-    uint32_t   SurfaceStateHeapOffset;
-    uint32_t   DataParamOffset;
-    uint32_t   DataParamSize;
-};
-
-// Update CURRENT_ICBE_VERSION when modifying the patch list
-static_assert( sizeof( SPatchAllocateSyncBuffer ) == ( 12 + sizeof( SPatchItemHeader ) ), "The size of SPatchAllocateSyncBuffer is not what is expected" );
-
 /*****************************************************************************\
 STRUCT: SPatchAllocateStatelessPrivateSurface
 \*****************************************************************************/

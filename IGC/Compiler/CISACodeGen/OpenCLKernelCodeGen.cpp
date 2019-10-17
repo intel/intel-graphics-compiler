@@ -194,13 +194,6 @@ namespace IGC
             m_kernelInfo.m_printfBufferAnnotation = nullptr;
         }
 
-        // Sync Buffer Annotation
-        if (m_kernelInfo.m_syncBufferAnnotation != nullptr)
-        {
-            delete m_kernelInfo.m_syncBufferAnnotation;
-            m_kernelInfo.m_syncBufferAnnotation = nullptr;
-        }
-
         // StartGASAnnotationAnnotation
         if (m_kernelInfo.m_startGAS != nullptr)
         {
@@ -1154,23 +1147,6 @@ namespace IGC
             m_kernelInfo.m_threadPayload.UnusedPerThreadConstantPresent = true;
             break;
 
-        case KernelArg::ArgType::IMPLICIT_SYNC_BUFFER:
-        {
-            int argNo = kernelArg->getAssociatedArgNo();
-            SOpenCLKernelInfo::SResourceInfo resInfo = getResourceInfo(argNo);
-            m_kernelInfo.m_argIndexMap[argNo] = getBTI(resInfo);
-
-            iOpenCL::SyncBufferAnnotation* syncBuffer = new iOpenCL::SyncBufferAnnotation();
-
-            syncBuffer->AnnotationSize = sizeof(syncBuffer);
-            syncBuffer->ArgumentNumber = argNo;
-            syncBuffer->PayloadPosition = payloadPosition;
-            syncBuffer->DataSize = kernelArg->getAllocateSize();
-
-            m_kernelInfo.m_syncBufferAnnotation = syncBuffer;
-        }
-        break;
-
         case KernelArg::ArgType::IMPLICIT_PRINTF_BUFFER:
         {
             int argNo = kernelArg->getAssociatedArgNo();
@@ -1432,7 +1408,6 @@ namespace IGC
         m_kernelInfo.m_threadPayload.HasLocalID = false;
         m_kernelInfo.m_threadPayload.UnusedPerThreadConstantPresent = false;
         m_kernelInfo.m_printfBufferAnnotation = nullptr;
-        m_kernelInfo.m_syncBufferAnnotation = nullptr;
         m_kernelInfo.m_threadPayload.HasStageInGridOrigin = false;
         m_kernelInfo.m_threadPayload.HasStageInGridSize = false;
 
