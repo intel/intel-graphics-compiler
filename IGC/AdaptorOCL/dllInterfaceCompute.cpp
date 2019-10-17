@@ -1270,7 +1270,7 @@ static void getvISACompileOpts(const STB_TranslateInputArgs *pInputArgs,
 
     // vISA options are in a form '-dumpcommonisa,-noschedule'
     llvm::StringRef vISAOpts = Opts.substr(beginPos, endPos - beginPos);
-    const char* delim = ",";
+    const char* delim = ", ";
 
     // vISA crashes on illegal options.
     size_t curPos = 0, nextPos = 0;
