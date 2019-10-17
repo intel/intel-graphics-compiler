@@ -937,6 +937,18 @@ std::string VISAKernelImpl::getVarName(VISA_SamplerVar* decl) const
     return ss.str();
 }
 
+std::string VISAKernelImpl::getVectorOperandName(VISA_VectorOpnd* opnd, bool showRegion) const
+{
+    VISAKernel_format_provider fmt(this);
+    return printVectorOperand(&fmt, opnd->_opnd.v_opnd, m_options, showRegion);
+}
+
+std::string VISAKernelImpl::getPredicateOperandName(VISA_PredOpnd* opnd) const
+{
+    VISAKernel_format_provider fmt(this);
+    return printVectorOperand(&fmt, opnd->_opnd.v_opnd, m_options, false);
+}
+
 int VISAKernelImpl::CreateVISAGenVar(VISA_GenVar *& decl, const char *varName, int numberElements, VISA_Type dataType,
                                      VISA_Align varAlign, VISA_GenVar *parentDecl, int aliasOffset)
 {

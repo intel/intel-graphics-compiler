@@ -778,6 +778,9 @@ public:
     CM_BUILDER_API virtual std::string getVarName(VISA_SurfaceVar* decl) const = 0;
     CM_BUILDER_API virtual std::string getVarName(VISA_SamplerVar* decl) const = 0;
 
+    //Gets the VISA string format for the operand
+    CM_BUILDER_API virtual std::string getVectorOperandName(VISA_VectorOpnd* opnd, bool showRegion) const = 0;
+    CM_BUILDER_API virtual std::string getPredicateOperandName(VISA_PredOpnd* opnd) const = 0;
 };
 
 class VISAFunction : public VISAKernel

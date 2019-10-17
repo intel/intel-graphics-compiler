@@ -686,6 +686,10 @@ public:
     CM_BUILDER_API std::string getVarName(VISA_SurfaceVar* decl) const;
     CM_BUILDER_API std::string getVarName(VISA_SamplerVar* decl) const;
 
+    //Gets the VISA string format for the operand
+    CM_BUILDER_API std::string getVectorOperandName(VISA_VectorOpnd *opnd, bool showRegion) const;
+    CM_BUILDER_API std::string getPredicateOperandName(VISA_PredOpnd* opnd) const;
+
     /********** MISC APIs END *************************/
     int CreateVISAPredicateSrcOperand(VISA_VectorOpnd *& opnd, VISA_PredVar *decl, unsigned int size);
 
