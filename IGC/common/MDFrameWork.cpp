@@ -238,8 +238,7 @@ void readNode(int &x, MDNode* node)
 
 void readNode(std::string &s, MDNode* node)
 {
-    ValueAsMetadata* pVal = cast<ValueAsMetadata>(node->getOperand(1));
-    s = cast<llvm::MDString>(pVal)->getString();
+    s = cast<MDString>(node->getOperand(1))->getString();
     return;
 }
 
