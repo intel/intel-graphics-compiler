@@ -4922,6 +4922,7 @@ namespace IGC
     pOutput->m_debugDataGenISA = dbgInfo;
     pOutput->m_debugDataGenISASize = dbgSize;
     pOutput->m_InstructionCount = jitInfo->numAsmCount;
+    pOutput->m_BasicBlockCount = jitInfo->BBNum;
 
     pMainKernel->GetGTPinBuffer(pOutput->m_gtpinBuffer, pOutput->m_gtpinBufferSize);
 

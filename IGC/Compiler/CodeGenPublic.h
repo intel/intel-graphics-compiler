@@ -101,6 +101,7 @@ namespace IGC
         void* m_debugDataGenISA;          //<! GenISA debug data (VISA -> GenISA)
         unsigned int    m_debugDataGenISASize;      //<! Number of bytes of GenISA debug data
         unsigned int    m_InstructionCount;
+        unsigned int    m_BasicBlockCount;
         void* m_gtpinBuffer = nullptr;              // Will be populated by VISA only when special switch is passed by gtpin
         unsigned int    m_gtpinBufferSize = 0;
         void* m_funcSymbolTable = nullptr;
