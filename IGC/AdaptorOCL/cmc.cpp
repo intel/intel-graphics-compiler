@@ -325,7 +325,7 @@ static void generatePatchTokens(const cmc_kernel_info *info, CMKernel& kernel)
         default:
             break;
         case cmc_arg_kind::General:
-            kernel.createConstArgumentAnnotation(AI.index, AI.offset - constantPayloadStart, AI.sizeInBytes);
+            kernel.createConstArgumentAnnotation(AI.index, AI.sizeInBytes, AI.offset - constantPayloadStart);
             break;
         case cmc_arg_kind::LocalSize:
             kernel.createSizeAnnotation(AI.offset - constantPayloadStart, iOpenCL::DATA_PARAMETER_ENQUEUED_LOCAL_WORK_SIZE);
