@@ -1251,46 +1251,48 @@ static std::string getCommandLine(const STB_TranslateInputArgs* pInputArgs,
 //
 // -visaopts='-dumpcommonisa,-noschedule'
 //
-static void getvISACompileOpts(const STB_TranslateInputArgs *pInputArgs,
-                                std::vector<std::string> &optstrings,
-                                std::vector<const char*> &opts)
+static void getvISACompileOpts(const STB_TranslateInputArgs* pInputArgs,
+    std::vector<std::string>& optstrings,
+    std::vector<const char*>& opts)
 {
-    llvm::StringRef Opts(pInputArgs->pOptions, pInputArgs->OptionsSize);
-    size_t pos = Opts.find_first_of("-visaopts");
-    if (pos == llvm::StringRef::npos)
-        return;
-
-    size_t beginPos = Opts.find_first_of("'", pos);
-    if (beginPos == llvm::StringRef::npos)
-        return;
-    ++beginPos;
-    size_t endPos = Opts.find_first_of("'", beginPos);
-    if (endPos == llvm::StringRef::npos)
-        return;
-
-    // vISA options are in a form '-dumpcommonisa,-noschedule'
-    llvm::StringRef vISAOpts = Opts.substr(beginPos, endPos - beginPos);
-    const char* delim = ", ";
-
-    // vISA crashes on illegal options.
-    size_t curPos = 0, nextPos = 0;
     do {
-        nextPos = vISAOpts.find_first_of(delim, curPos);
-        if (nextPos == llvm::StringRef::npos) {
-            // last argument
-            llvm::StringRef O = vISAOpts.substr(curPos);
-            O = O.trim();
-            if (!O.empty())
-                optstrings.push_back(O);
+        llvm::StringRef Opts(pInputArgs->pOptions, pInputArgs->OptionsSize);
+        size_t pos = Opts.find_first_of("-visaopts");
+        if (pos == llvm::StringRef::npos)
             break;
-        } else {
-            llvm::StringRef O = vISAOpts.substr(curPos, nextPos - curPos);
-            O = O.trim();
-            if (!O.empty())
-                optstrings.push_back(O);
-            curPos = nextPos + 1;
-        }
-    } while (curPos != llvm::StringRef::npos);
+
+        size_t beginPos = Opts.find_first_of("'", pos);
+        if (beginPos == llvm::StringRef::npos)
+            break;
+        ++beginPos;
+        size_t endPos = Opts.find_first_of("'", beginPos);
+        if (endPos == llvm::StringRef::npos)
+            break;
+
+        // vISA options are in a form '-dumpcommonisa,-noschedule'
+        llvm::StringRef vISAOpts = Opts.substr(beginPos, endPos - beginPos);
+        const char* delim = ", ";
+
+        // vISA crashes on illegal options.
+        size_t curPos = 0, nextPos = 0;
+        do {
+            nextPos = vISAOpts.find_first_of(delim, curPos);
+            if (nextPos == llvm::StringRef::npos) {
+                // last argument
+                llvm::StringRef O = vISAOpts.substr(curPos);
+                O = O.trim();
+                if (!O.empty())
+                    optstrings.push_back(O);
+                break;
+            } else {
+                llvm::StringRef O = vISAOpts.substr(curPos, nextPos - curPos);
+                O = O.trim();
+                if (!O.empty())
+                    optstrings.push_back(O);
+                curPos = nextPos + 1;
+            }
+        } while (curPos != llvm::StringRef::npos);
+    } while (false /* dummy loop to allow break inside */);
 
     for (auto& s : optstrings) {
         // Make sure this s.data() can be used as a c-string.
