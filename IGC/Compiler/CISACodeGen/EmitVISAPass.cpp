@@ -13974,8 +13974,11 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
             if (useOWAligned)
             {
                 // Offset needs to be in OW!
-                m_encoder->Shr(eOffset, eOffset, m_currShader->ImmToVariable(4, ISA_TYPE_UD));
+                // Need to create a new cvar as eOffset could be used by others.
+                CVariable* tmp = m_currShader->GetNewVariable(eOffset);
+                m_encoder->Shr(tmp, eOffset, m_currShader->ImmToVariable(4, ISA_TYPE_UD));
                 m_encoder->Push();
+                eOffset = tmp;
             }
             eOffset = ReAlignUniformVariable(eOffset, EALIGN_GRF);
             if (needTemp)
