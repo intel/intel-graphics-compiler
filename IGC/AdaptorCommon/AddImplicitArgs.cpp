@@ -76,6 +76,30 @@ bool AddImplicitArgs::runOnModule(Module &M)
     m_pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
+    // Check if any indirect functions uses GAS, if so we have to add the implicit arg to all indirect functions
+    // Lazy Method. Can be removed once we can support GAS without using implicit args
+    bool hasGASInIndirectFunc = false;
+    if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer) && ctx->m_instrTypes.hasGenericAddressSpacePointers)
+    {
+        for (auto& F : M)
+        {
+            Function* pFunc = &F;
+            if (pFunc->isDeclaration()) continue;
+            if (m_pMdUtils->findFunctionsInfoItem(pFunc) == m_pMdUtils->end_FunctionsInfo()) continue;
+            if (pFunc->hasFnAttribute("IndirectlyCalled"))
+            {
+                ImplicitArgs implicitArgs(*pFunc, m_pMdUtils);
+                if (implicitArgs.isImplicitArgExist(ImplicitArg::LOCAL_MEMORY_STATELESS_WINDOW_START_ADDRESS) &&
+                    implicitArgs.isImplicitArgExist(ImplicitArg::LOCAL_MEMORY_STATELESS_WINDOW_SIZE) &&
+                    implicitArgs.isImplicitArgExist(ImplicitArg::PRIVATE_MEMORY_STATELESS_SIZE))
+                {
+                    assert(implicitArgs.size() == 6);
+                    hasGASInIndirectFunc = true;
+                }
+            }
+        }
+    }
+
     // Update function signatures
     // Create new functions with implicit args
     for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I)
@@ -102,32 +126,38 @@ bool AddImplicitArgs::runOnModule(Module &M)
         {
             if (pFunc->hasFnAttribute("IndirectlyCalled"))
             {
-                bool success = true;
                 unsigned numArgs = 3;
                 // Must have R0, payload_header, and private_base
                 if (!implicitArgs.isImplicitArgExist(ImplicitArg::R0) ||
                     !implicitArgs.isImplicitArgExist(ImplicitArg::PAYLOAD_HEADER) ||
                     !implicitArgs.isImplicitArgExist(ImplicitArg::PRIVATE_BASE))
                 {
-                    success = false;
+                    assert(0 && "Missing basic implicit args for indirect functions");
                 }
                 // Check for GAS usage
-                if (success && ctx->m_instrTypes.hasGenericAddressSpacePointers)
+                if (ctx->m_instrTypes.hasGenericAddressSpacePointers)
                 {
-                    numArgs += 3;
-                    if (!implicitArgs.isImplicitArgExist(ImplicitArg::LOCAL_MEMORY_STATELESS_WINDOW_START_ADDRESS) ||
-                        !implicitArgs.isImplicitArgExist(ImplicitArg::LOCAL_MEMORY_STATELESS_WINDOW_SIZE) ||
-                        !implicitArgs.isImplicitArgExist(ImplicitArg::PRIVATE_MEMORY_STATELESS_SIZE))
+                    // If any indirect functions uses GAS, add it to every indirect func
+                    if (hasGASInIndirectFunc)
                     {
-                        success = false;
+                        numArgs += 3;
+                        if (!implicitArgs.isImplicitArgExist(ImplicitArg::LOCAL_MEMORY_STATELESS_WINDOW_START_ADDRESS) &&
+                            !implicitArgs.isImplicitArgExist(ImplicitArg::LOCAL_MEMORY_STATELESS_WINDOW_SIZE) &&
+                            !implicitArgs.isImplicitArgExist(ImplicitArg::PRIVATE_MEMORY_STATELESS_SIZE))
+                        {
+                            SmallVector<ImplicitArg::ArgType, 3> args;
+                            args.push_back(ImplicitArg::LOCAL_MEMORY_STATELESS_WINDOW_START_ADDRESS);
+                            args.push_back(ImplicitArg::LOCAL_MEMORY_STATELESS_WINDOW_SIZE);
+                            args.push_back(ImplicitArg::PRIVATE_MEMORY_STATELESS_SIZE);
+                            implicitArgs.addImplicitArgs(*pFunc, args, m_pMdUtils);
+                        }
                     }
                 }
-                if (success && implicitArgs.size() != numArgs)
+                if (implicitArgs.size() != numArgs)
                 {
-                    success = false;
+                    assert(0 && "Implicit args for indirect functions not supported");
                 }
                 ctx->m_numIndirectImplicitArgs = numArgs;
-                assert(success && "Unhandled implicit args for indirect function calls");
             }
         }
 
