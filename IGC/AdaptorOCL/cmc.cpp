@@ -339,7 +339,8 @@ static void generatePatchTokens(const cmc_kernel_info *info, CMKernel& kernel)
             kernel.m_kernelInfo.m_argIndexMap[AI.index] = AI.BTI;
             break;
         case cmc_arg_kind::SVM:
-            kernel.createPointerGlobalAnnotation(AI.index, AI.sizeInBytes, AI.offset - constantPayloadStart, -1);
+            kernel.createPointerGlobalAnnotation(AI.index, AI.sizeInBytes, AI.offset - constantPayloadStart, AI.BTI);
+            kernel.m_kernelInfo.m_argIndexMap[AI.index] = AI.BTI;
             break;
         case cmc_arg_kind::Sampler:
             kernel.createSamplerAnnotation(AI.index);
@@ -412,12 +413,13 @@ static void populateKernelInfo(const cmc_kernel_info* info,
     int numUAVs = 0;
     int numResources = 0;
 
-    auto isStatefulResource = [](cmc_arg_kind kind) {
+    auto isResource = [](cmc_arg_kind kind) {
         switch (kind) {
         case cmc_arg_kind::Buffer:
         case cmc_arg_kind::Image1d:
         case cmc_arg_kind::Image2d:
         case cmc_arg_kind::Image3d:
+        case cmc_arg_kind::SVM:
             return true;
         default:
             break;
@@ -428,8 +430,8 @@ static void populateKernelInfo(const cmc_kernel_info* info,
     for (unsigned i = 0; i < info->num_args; ++i) {
         assert(info->arg_descs);
         cmc_arg_info& AI = info->arg_descs[i];
-        if (isStatefulResource(AI.kind)) {
-            if (AI.kind == cmc_arg_kind::Buffer)
+        if (isResource(AI.kind)) {
+            if (AI.kind == cmc_arg_kind::Buffer || AI.kind == cmc_arg_kind::SVM)
                 numUAVs++;
             else if (AI.access == cmc_access_kind::write_only ||
                      AI.access == cmc_access_kind::read_write)
