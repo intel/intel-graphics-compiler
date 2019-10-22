@@ -481,6 +481,10 @@ namespace IGC
         CreateConstantBufferOutput(pKernelProgram);
 
         pKernelProgram->ConstantBufferLoaded = m_constantBufferLoaded;
+        pKernelProgram->UavLoaded = m_uavLoaded;
+        pKernelProgram->ShaderResourceLoaded = m_shaderResourceLoaded;
+        pKernelProgram->RenderTargetLoaded = m_renderTargetLoaded;
+
         pKernelProgram->hasControlFlow = m_numBlocks > 1 ? true : false;
 
         pKernelProgram->MaxNumberOfThreads = m_Platform->getMaxGPGPUShaderThreads();

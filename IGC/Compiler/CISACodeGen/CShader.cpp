@@ -65,6 +65,9 @@ CShader::CShader(Function* pFunc, CShaderProgram* pProgram)
     m_shaderStats = nullptr;
     m_constantBufferMask = 0;
     m_constantBufferLoaded = 0;
+    m_uavLoaded = 0;
+    m_shaderResourceLoaded = 0;
+    m_renderTargetLoaded = 0;
     isInputsPulled = false;
     m_cbSlot = -1;
     m_statelessCBPushedSize = 0;
@@ -3096,9 +3099,24 @@ void CShader::SampleHeader(CVariable* payload, uint offset, uint writeMask, uint
     encoder.Push();
 }
 
+void CShader::UavAccesed(uint index)
+{
+    m_uavLoaded |= BIT(index);
+}
+
 void CShader::ConstantBufferAccesed(uint index)
 {
     m_constantBufferLoaded |= BIT(index);
+}
+
+void CShader::ShaderResourceAccesed(uint index)
+{
+    m_shaderResourceLoaded |= BIT(index);
+}
+
+void CShader::RenderTargetAccesed(uint index)
+{
+    m_renderTargetLoaded |= BIT(index);
 }
 
 // Helper function to copy raw register

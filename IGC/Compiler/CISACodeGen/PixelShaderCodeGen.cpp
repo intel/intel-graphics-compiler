@@ -713,6 +713,10 @@ namespace IGC
         pKernelProgram->hasSampleOffset = m_SampleOffsetX || m_SampleOffsetY;
         pKernelProgram->hasZWDelta = m_ZWDelta;
         pKernelProgram->ConstantBufferLoaded = m_constantBufferLoaded;
+        pKernelProgram->UavLoaded = m_uavLoaded;
+        pKernelProgram->ShaderResourceLoaded = m_shaderResourceLoaded;
+        pKernelProgram->RenderTargetLoaded = m_renderTargetLoaded;
+
         pKernelProgram->hasControlFlow = m_numBlocks > 1 ? true : false;
         pKernelProgram->MaxNumberOfThreads = m_Platform->getMaxPixelShaderThreads();
         pKernelProgram->needPerspectiveBary = m_PerspectivePixel ? true : false;

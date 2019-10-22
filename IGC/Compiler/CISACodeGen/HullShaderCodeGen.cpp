@@ -277,6 +277,10 @@ namespace IGC
         CreateConstantBufferOutput(pKernelProgram);
 
         pKernelProgram->ConstantBufferLoaded = m_constantBufferLoaded;
+        pKernelProgram->UavLoaded = m_uavLoaded;
+        pKernelProgram->ShaderResourceLoaded = m_shaderResourceLoaded;
+        pKernelProgram->RenderTargetLoaded = m_renderTargetLoaded;
+
         pKernelProgram->NOSBufferSize = m_NOSBufferSize / getGRFSize(); // in 256 bits
 
         pKernelProgram->MaxNumberOfThreads = m_Platform->getMaxHullShaderThreads();

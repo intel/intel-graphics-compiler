@@ -276,6 +276,10 @@ namespace IGC
         pKernelProgram->VertexURBEntryReadOffset = OctEltUnit(0);
         pKernelProgram->VertexURBEntryOutputReadOffset = GetURBHeaderSize();
         pKernelProgram->ConstantBufferLoaded = m_constantBufferLoaded;
+        pKernelProgram->UavLoaded = m_uavLoaded;
+        pKernelProgram->ShaderResourceLoaded = m_shaderResourceLoaded;
+        pKernelProgram->RenderTargetLoaded = m_renderTargetLoaded;
+
         pKernelProgram->DeclaresRTAIndex = m_properties.m_isRTAIndexDeclared;
         pKernelProgram->DeclaresVPAIndex = m_properties.m_isVPAIndexDeclared;
         pKernelProgram->HasClipCullAsOutput = m_properties.m_hasClipDistance;

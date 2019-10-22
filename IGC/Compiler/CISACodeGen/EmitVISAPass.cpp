@@ -4328,6 +4328,7 @@ void EmitPass::emitRenderTargetWrite(llvm::RTWritIntrinsic* inst, bool fromRet)
     if (RTIndex != -1)
     {
         bindingTableIndex = m_currShader->m_pBtiLayout->GetRenderTargetIndex(RTIndex);
+        m_currShader->RenderTargetAccesed(RTIndex);
     }
     else
     {
@@ -15198,6 +15199,7 @@ ResourceDescriptor EmitPass::GetResourceVariable(Value* resourcePtr)
             {
             case UAV:
                 bti = m_currShader->m_pBtiLayout->GetUavIndex(bufferIndex);
+                m_currShader->UavAccesed(bufferIndex);  // return to driver
                 break;
             case CONSTANT_BUFFER:
                 bti = m_currShader->m_pBtiLayout->GetConstantBufferIndex(bufferIndex);
@@ -15205,10 +15207,12 @@ ResourceDescriptor EmitPass::GetResourceVariable(Value* resourcePtr)
                 break;
             case RESOURCE:
                 bti = m_currShader->m_pBtiLayout->GetTextureIndex(bufferIndex);
+                m_currShader->ShaderResourceAccesed(bufferIndex);  // return to driver
                 break;
             case RENDER_TARGET:
                 assert(m_currShader->GetShaderType() == ShaderType::PIXEL_SHADER);
                 bti = m_currShader->m_pBtiLayout->GetRenderTargetIndex(bufferIndex);
+                m_currShader->RenderTargetAccesed(bufferIndex);  // return to driver
                 break;
             case SLM:
                 bti = 254;  // \todo, remove hard-coding

@@ -206,6 +206,9 @@ namespace IGC
         ShaderType  GetShaderType() const { return GetContext()->type; }
         bool        IsValueCoalesced(llvm::Value* v);
         void        ConstantBufferAccesed(uint index);
+        void        UavAccesed(uint index);
+        void        ShaderResourceAccesed(uint index);
+        void        RenderTargetAccesed(uint index);
 
         void        SampleHeader(CVariable* payload, uint offset, uint writeMask, uint rti);
 
@@ -456,6 +459,10 @@ namespace IGC
         uint m_ConstantBufferLength;
         uint m_constantBufferMask;
         uint m_constantBufferLoaded;
+        uint m_uavLoaded;
+        uint m_shaderResourceLoaded;
+        uint m_renderTargetLoaded;
+
         int  m_cbSlot;
         uint m_statelessCBPushedSize;
         uint m_NOSBufferSize;

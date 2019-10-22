@@ -262,6 +262,10 @@ namespace IGC
 
         unsigned int NOSBufferSize;
         unsigned int ConstantBufferLoaded;
+        unsigned int UavLoaded;
+        unsigned int ShaderResourceLoaded;
+        unsigned int RenderTargetLoaded;
+
         bool         hasControlFlow;
         unsigned int bufferSlot;
         unsigned int statelessCBPushedSize;
