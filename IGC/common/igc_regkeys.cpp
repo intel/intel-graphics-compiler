@@ -476,6 +476,7 @@ void LoadRegistryKeys( void )
             IGC_SET_FLAG_VALUE(DisableScalarAtomics, true);
         }
 
+
         if(IGC_IS_FLAG_ENABLED(ShaderDumpEnableAll))
         {
             IGC_SET_FLAG_VALUE(ShaderDumpEnable, true);

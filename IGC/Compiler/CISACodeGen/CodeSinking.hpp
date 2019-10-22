@@ -38,6 +38,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Analysis/PostDominators.h>
+#include <llvm/Analysis/LoopInfo.h>
 #include "common/LLVMWarningsPop.hpp"
 
 namespace IGC {
