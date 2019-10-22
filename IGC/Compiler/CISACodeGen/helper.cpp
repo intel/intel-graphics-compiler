@@ -588,13 +588,26 @@ namespace IGC
 
     bool EvalConstantAddress(Value* address, unsigned int& offset, const llvm::DataLayout* pDL, Value* ptrSrc)
     {
+
         if ((ptrSrc == nullptr && isa<ConstantPointerNull>(address)) ||
             (ptrSrc == address))
         {
             offset = 0;
             return true;
         }
-        else if (Instruction * ptrExpr = dyn_cast<Instruction>(address))
+        else if (ConstantExpr * ptrExpr = dyn_cast<ConstantExpr>(address))
+        {
+            if (ptrExpr->getOpcode() == Instruction::IntToPtr)
+            {
+                Value* eltIdxVal = ptrExpr->getOperand(0);
+                ConstantInt* eltIdx = dyn_cast<ConstantInt>(eltIdxVal);
+                if (!eltIdx)
+                    return false;
+                offset = int_cast<unsigned>(eltIdx->getZExtValue());
+                return true;
+            }
+        }
+        else if (Instruction* ptrExpr = dyn_cast<Instruction>(address))
         {
             if (ptrExpr->getOpcode() == Instruction::BitCast ||
                 ptrExpr->getOpcode() == Instruction::AddrSpaceCast)
