@@ -520,18 +520,18 @@ bool ParseInput(
     // Parse the module we want to compile
     llvm::SMDiagnostic err;
     // For text IR, we don't need the null terminator
-    unsigned int inputSize = pInputArgs->InputSize;
+    size_t inputSize = pInputArgs->InputSize;
 
     if (inputDataFormatTemp == TB_DATA_FORMAT_LLVM_TEXT)
     {
-        inputSize = strlen(pInputArgs->pInput);
+        const char* input_ptr = pInputArgs->pInput; //shortcut
+        inputSize = std::find(input_ptr, input_ptr + inputSize, 0) - input_ptr;
     }
-
     llvm::StringRef strInput = llvm::StringRef(pInputArgs->pInput, inputSize);
 
     // IGC does not handle legacy ocl binary for now (legacy ocl binary
     // is the binary that contains text LLVM IR (2.7 or 3.0).
-    if (inputSize > 1 && !(pInputArgs->pInput[0] == 'B' && pInputArgs->pInput[1] == 'C'))
+    if (strInput.size() > 1 && !(strInput[0] == 'B' && strInput[1] == 'C'))
     {
         bool isLLVM27IR = false, isLLVM30IR = false;
 
@@ -598,9 +598,12 @@ bool ParseInput(
     }
     else
     {
-        // the MemoryBuffer becomes owned by the module and does not need to be managed
-        std::unique_ptr<llvm::MemoryBuffer> pMemBuf = llvm::MemoryBuffer::getMemBuffer(strInput, "", false);
-        pKernelModule = llvm::parseIR(pMemBuf->getMemBufferRef(), err, oclContext).release();
+        // NOTE:
+        //  llvm::parseIR routine expects input buffer to be zero-terminated,
+        //  otherwise we trigger an assert during parseAssemblyInto (from MemoryBuffer::init)
+        //  (see llvm/src/lib/Support/MemoryBuffer.cpp).
+        pKernelModule = llvm::parseIR({ std::string(strInput.begin(), strInput.size()), "" },
+                                      err, oclContext).release();
     };
     if (pKernelModule == nullptr)
     {
