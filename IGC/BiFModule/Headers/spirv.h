@@ -3476,6 +3476,82 @@ TwoOp_v16i64 __builtin_spirv_OpSMulExtended_v16i64_v16i64(long16 Operand1, long1
 
 // Bit Instructions
 
+uchar __builtin_spirv_OpBitFieldInsert_i8_i8_i32_i32(uchar Base, uchar Insert, uint Offset, uint Count);
+uchar2 __builtin_spirv_OpBitFieldInsert_v2i8_v2i8_v2i32_v2i32(uchar2 Base, uchar2 Insert, uint2 Offset, uint2 Count);
+uchar3 __builtin_spirv_OpBitFieldInsert_v3i8_v3i8_v3i32_v3i32(uchar3 Base, uchar3 Insert, uint3 Offset, uint3 Count);
+uchar4 __builtin_spirv_OpBitFieldInsert_v4i8_v4i8_v4i32_v4i32(uchar4 Base, uchar4 Insert, uint4 Offset, uint4 Count);
+uchar8 __builtin_spirv_OpBitFieldInsert_v8i8_v8i8_v8i32_v8i32(uchar8 Base, uchar8 Insert, uint8 Offset, uint8 Count);
+uchar16 __builtin_spirv_OpBitFieldInsert_v16i8_v16i8_v16i32_v16i32(uchar16 Base, uchar16 Insert, uint16 Offset, uint16 Count);
+ushort __builtin_spirv_OpBitFieldInsert_i16_i16_i32_i32(ushort Base, ushort Insert, uint Offset, uint Count);
+ushort2 __builtin_spirv_OpBitFieldInsert_v2i16_v2i16_v2i32_v2i32(ushort2 Base, ushort2 Insert, uint2 Offset, uint2 Count);
+ushort3 __builtin_spirv_OpBitFieldInsert_v3i16_v3i16_v3i32_v3i32(ushort3 Base, ushort3 Insert, uint3 Offset, uint3 Count);
+ushort4 __builtin_spirv_OpBitFieldInsert_v4i16_v4i16_v4i32_v4i32(ushort4 Base, ushort4 Insert, uint4 Offset, uint4 Count);
+ushort8 __builtin_spirv_OpBitFieldInsert_v8i16_v8i16_v8i32_v8i32(ushort8 Base, ushort8 Insert, uint8 Offset, uint8 Count);
+ushort16 __builtin_spirv_OpBitFieldInsert_v16i16_v16i16_v16i32_v16i32(ushort16 Base, ushort16 Insert, uint16 Offset, uint16 Count);
+uint __builtin_spirv_OpBitFieldInsert_i32_i32_i32_i32(uint Base, uint Insert, uint Offset, uint Count);
+uint2 __builtin_spirv_OpBitFieldInsert_v2i32_v2i32_v2i32_v2i32(uint2 Base, uint2 Insert, uint2 Offset, uint2 Count);
+uint3 __builtin_spirv_OpBitFieldInsert_v3i32_v3i32_v3i32_v3i32(uint3 Base, uint3 Insert, uint3 Offset, uint3 Count);
+uint4 __builtin_spirv_OpBitFieldInsert_v4i32_v4i32_v4i32_v4i32(uint4 Base, uint4 Insert, uint4 Offset, uint4 Count);
+uint8 __builtin_spirv_OpBitFieldInsert_v8i32_v8i32_v8i32_v8i32(uint8 Base, uint8 Insert, uint8 Offset, uint8 Count);
+uint16 __builtin_spirv_OpBitFieldInsert_v16i32_v16i32_v16i32_v16i32(uint16 Base, uint16 Insert, uint16 Offset, uint16 Count);
+ulong __builtin_spirv_OpBitFieldInsert_i64_i64_i32_i32(ulong Base, ulong Insert, uint Offset, uint Count);
+ulong2 __builtin_spirv_OpBitFieldInsert_v2i64_v2i64_v2i32_v2i32(ulong2 Base, ulong2 Insert, uint2 Offset, uint2 Count);
+ulong3 __builtin_spirv_OpBitFieldInsert_v3i64_v3i64_v3i32_v3i32(ulong3 Base, ulong3 Insert, uint3 Offset, uint3 Count);
+ulong4 __builtin_spirv_OpBitFieldInsert_v4i64_v4i64_v4i32_v4i32(ulong4 Base, ulong4 Insert, uint4 Offset, uint4 Count);
+ulong8 __builtin_spirv_OpBitFieldInsert_v8i64_v8i64_v8i32_v8i32(ulong8 Base, ulong8 Insert, uint8 Offset, uint8 Count);
+ulong16 __builtin_spirv_OpBitFieldInsert_v16i64_v16i64_v16i32_v16i32(ulong16 Base, ulong16 Insert, uint16 Offset, uint16 Count);
+
+char __builtin_spirv_OpBitFieldSExtract_i8_i32_i32(char Base, uint Offset, uint Count);
+char2 __builtin_spirv_OpBitFieldSExtract_v2i8_v2i32_v2i32(char2 Base, uint2 Offset, uint2 Count);
+char3 __builtin_spirv_OpBitFieldSExtract_v3i8_v3i32_v3i32(char3 Base, uint3 Offset, uint3 Count);
+char4 __builtin_spirv_OpBitFieldSExtract_v4i8_v4i32_v4i32(char4 Base, uint4 Offset, uint4 Count);
+char8 __builtin_spirv_OpBitFieldSExtract_v8i8_v8i32_v8i32(char8 Base, uint8 Offset, uint8 Count);
+char16 __builtin_spirv_OpBitFieldSExtract_v16i8_v16i32_v16i32(char16 Base, uint16 Offset, uint16 Count);
+short __builtin_spirv_OpBitFieldSExtract_i16_i32_i32(short Base, uint Offset, uint Count);
+short2 __builtin_spirv_OpBitFieldSExtract_v2i16_v2i32_v2i32(short2 Base, uint2 Offset, uint2 Count);
+short3 __builtin_spirv_OpBitFieldSExtract_v3i16_v3i32_v3i32(short3 Base, uint3 Offset, uint3 Count);
+short4 __builtin_spirv_OpBitFieldSExtract_v4i16_v4i32_v4i32(short4 Base, uint4 Offset, uint4 Count);
+short8 __builtin_spirv_OpBitFieldSExtract_v8i16_v8i32_v8i32(short8 Base, uint8 Offset, uint8 Count);
+short16 __builtin_spirv_OpBitFieldSExtract_v16i16_v16i32_v16i32(short16 Base, uint16 Offset, uint16 Count);
+int __builtin_spirv_OpBitFieldSExtract_i32_i32_i32(int Base, uint Offset, uint Count);
+int2 __builtin_spirv_OpBitFieldSExtract_v2i32_v2i32_v2i32(int2 Base, uint2 Offset, uint2 Count);
+int3 __builtin_spirv_OpBitFieldSExtract_v3i32_v3i32_v3i32(int3 Base, uint3 Offset, uint3 Count);
+int4 __builtin_spirv_OpBitFieldSExtract_v4i32_v4i32_v4i32(int4 Base, uint4 Offset, uint4 Count);
+int8 __builtin_spirv_OpBitFieldSExtract_v8i32_v8i32_v8i32(int8 Base, uint8 Offset, uint8 Count);
+int16 __builtin_spirv_OpBitFieldSExtract_v16i32_v16i32_v16i32(int16 Base, uint16 Offset, uint16 Count);
+long __builtin_spirv_OpBitFieldSExtract_i64_i32_i32(long Base, uint Offset, uint Count);
+long2 __builtin_spirv_OpBitFieldSExtract_v2i64_v2i32_v2i32(long2 Base, uint2 Offset, uint2 Count);
+long3 __builtin_spirv_OpBitFieldSExtract_v3i64_v3i32_v3i32(long3 Base, uint3 Offset, uint3 Count);
+long4 __builtin_spirv_OpBitFieldSExtract_v4i64_v4i32_v4i32(long4 Base, uint4 Offset, uint4 Count);
+long8 __builtin_spirv_OpBitFieldSExtract_v8i64_v8i32_v8i32(long8 Base, uint8 Offset, uint8 Count);
+long16 __builtin_spirv_OpBitFieldSExtract_v16i64_v16i32_v16i32(long16 Base, uint16 Offset, uint16 Count);
+
+uchar __builtin_spirv_OpBitFieldUExtract_i8_i32_i32(uchar Base, uint Offset, uint Count);
+uchar2 __builtin_spirv_OpBitFieldUExtract_v2i8_v2i32_v2i32(uchar2 Base, uint2 Offset, uint2 Count);
+uchar3 __builtin_spirv_OpBitFieldUExtract_v3i8_v3i32_v3i32(uchar3 Base, uint3 Offset, uint3 Count);
+uchar4 __builtin_spirv_OpBitFieldUExtract_v4i8_v4i32_v4i32(uchar4 Base, uint4 Offset, uint4 Count);
+uchar8 __builtin_spirv_OpBitFieldUExtract_v8i8_v8i32_v8i32(uchar8 Base, uint8 Offset, uint8 Count);
+uchar16 __builtin_spirv_OpBitFieldUExtract_v16i8_v16i32_v16i32(uchar16 Base, uint16 Offset, uint16 Count);
+ushort __builtin_spirv_OpBitFieldUExtract_i16_i32_i32(ushort Base, uint Offset, uint Count);
+ushort2 __builtin_spirv_OpBitFieldUExtract_v2i16_v2i32_v2i32(ushort2 Base, uint2 Offset, uint2 Count);
+ushort3 __builtin_spirv_OpBitFieldUExtract_v3i16_v3i32_v3i32(ushort3 Base, uint3 Offset, uint3 Count);
+ushort4 __builtin_spirv_OpBitFieldUExtract_v4i16_v4i32_v4i32(ushort4 Base, uint4 Offset, uint4 Count);
+ushort8 __builtin_spirv_OpBitFieldUExtract_v8i16_v8i32_v8i32(ushort8 Base, uint8 Offset, uint8 Count);
+ushort16 __builtin_spirv_OpBitFieldUExtract_v16i16_v16i32_v16i32(ushort16 Base, uint16 Offset, uint16 Count);
+uint __builtin_spirv_OpBitFieldUExtract_i32_i32_i32(uint Base, uint Offset, uint Count);
+uint2 __builtin_spirv_OpBitFieldUExtract_v2i32_v2i32_v2i32(uint2 Base, uint2 Offset, uint2 Count);
+uint3 __builtin_spirv_OpBitFieldUExtract_v3i32_v3i32_v3i32(uint3 Base, uint3 Offset, uint3 Count);
+uint4 __builtin_spirv_OpBitFieldUExtract_v4i32_v4i32_v4i32(uint4 Base, uint4 Offset, uint4 Count);
+uint8 __builtin_spirv_OpBitFieldUExtract_v8i32_v8i32_v8i32(uint8 Base, uint8 Offset, uint8 Count);
+uint16 __builtin_spirv_OpBitFieldUExtract_v16i32_v16i32_v16i32(uint16 Base, uint16 Offset, uint16 Count);
+ulong __builtin_spirv_OpBitFieldUExtract_i64_i32_i32(ulong Base, uint Offset, uint Count);
+ulong2 __builtin_spirv_OpBitFieldUExtract_v2i64_v2i32_v2i32(ulong2 Base, uint2 Offset, uint2 Count);
+ulong3 __builtin_spirv_OpBitFieldUExtract_v3i64_v3i32_v3i32(ulong3 Base, uint3 Offset, uint3 Count);
+ulong4 __builtin_spirv_OpBitFieldUExtract_v4i64_v4i32_v4i32(ulong4 Base, uint4 Offset, uint4 Count);
+ulong8 __builtin_spirv_OpBitFieldUExtract_v8i64_v8i32_v8i32(ulong8 Base, uint8 Offset, uint8 Count);
+ulong16 __builtin_spirv_OpBitFieldUExtract_v16i64_v16i32_v16i32(ulong16 Base, uint16 Offset, uint16 Count);
+
+
 uchar __builtin_spirv_OpBitReverse_i8(uchar Base);
 uchar2 __builtin_spirv_OpBitReverse_v2i8(uchar2 Base);
 uchar3 __builtin_spirv_OpBitReverse_v3i8(uchar3 Base);

@@ -366,8 +366,11 @@ _SPIRV_OP(OpGetMaxPipePackets)
 _SPIRV_OP(OpUMulExtended)
 _SPIRV_OP(OpSMulExtended)
 // Bit Instructions
-_SPIRV_OP(OpBitCount)
+_SPIRV_OP(OpBitFieldInsert)
+_SPIRV_OP(OpBitFieldSExtract)
+_SPIRV_OP(OpBitFieldUExtract)
 _SPIRV_OP(OpBitReverse)
+_SPIRV_OP(OpBitCount)
 // CL 2.0 workgroup/subgroup builtins
 _SPIRV_OP(OpGroupAll)
 _SPIRV_OP(OpGroupAny)

@@ -1708,6 +1708,9 @@ CBuiltinsResolver::CBuiltinsResolver(CImagesBI::ParamMap* paramMap, CImagesBI::I
     m_CommandMap["__builtin_IB_native_powrf"] = CSimpleIntrinMapping::create(Intrinsic::pow);
     m_CommandMap["__builtin_IB_fma"] = CSimpleIntrinMapping::create(Intrinsic::fma);
     m_CommandMap["__builtin_IB_fmah"] = CSimpleIntrinMapping::create(Intrinsic::fma);
+    m_CommandMap["__builtin_IB_bfi"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_bfi, false);
+    m_CommandMap["__builtin_IB_ibfe"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_ibfe, false);
+    m_CommandMap["__builtin_IB_ubfe"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_ubfe, false);
     m_CommandMap["__builtin_IB_bfrev"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_bfrev, false);
     m_CommandMap["__builtin_IB_fmax"] = CSimpleIntrinMapping::create(Intrinsic::maxnum);
     m_CommandMap["__builtin_IB_fmin"] = CSimpleIntrinMapping::create(Intrinsic::minnum);

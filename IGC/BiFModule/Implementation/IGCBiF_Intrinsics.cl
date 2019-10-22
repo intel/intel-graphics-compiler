@@ -176,7 +176,11 @@ double __builtin_IB_uitofp64_rtz(ulong);
 #endif
 
 // Native integer operations
+uint     __builtin_IB_bfi(uint, uint, uint, uint) __attribute__((const));
+uint     __builtin_IB_ibfe(uint, uint, uint) __attribute__((const));
+uint     __builtin_IB_ubfe(uint, uint, uint) __attribute__((const));
 uint     __builtin_IB_bfrev(uint) __attribute__((const));
+
 char     __builtin_IB_popcount_1u8(char) __attribute__((const));
 short    __builtin_IB_popcount_1u16(short) __attribute__((const));
 int      __builtin_IB_popcount_1u32(int) __attribute__((const));
