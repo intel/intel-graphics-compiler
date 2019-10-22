@@ -262,7 +262,6 @@ G4_SendMsgDescriptor::G4_SendMsgDescriptor(
     accessType = access;
     funcCtrlValid = true;
 
-
     m_bti = bti;
     m_sti = sti;
 
