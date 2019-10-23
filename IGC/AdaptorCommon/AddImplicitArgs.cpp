@@ -399,6 +399,7 @@ void AddImplicitArgs::replaceAllUsesWithNewOCLBuiltinFunction(CodeGenContext* ct
     FunctionInfoMetaDataHandle subFuncInfo = m_pMdUtils->getFunctionsInfoItem(old_func);
 
     std::vector<Instruction*> list_delete;
+    old_func->removeDeadConstantUsers();
     std::vector<Value*> functionUserList(old_func->user_begin(), old_func->user_end());
     for (auto U : functionUserList)
     {
