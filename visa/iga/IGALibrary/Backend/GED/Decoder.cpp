@@ -1404,12 +1404,13 @@ Instruction *DecoderBase::decodeSyncInstruction(Kernel &kernel)
             decodeMaskCtrl(),
             fri.modifier);
     GED_REG_FILE regFile = decodeSrcRegFile<SourceIndex::SRC0>();
+
     if (regFile == GED_REG_FILE_ARF) {
         // e.g.
         //   sync.nop     null
         //   sync.allrd   null
         //   ...
-        inst->setSource(SourceIndex::SRC0, Operand::SRC_REG_NULL_UB);
+            inst->setSource(SourceIndex::SRC0, Operand::SRC_REG_NULL_UB);
     } else {
         // e.g.
         //   sync.allrd   0x15

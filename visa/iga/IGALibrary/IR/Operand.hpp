@@ -187,6 +187,12 @@ public:
     void setRegion(const Region &rgn) { m_regOpRgn = rgn; }
     // sets the operand type
     void setType(Type type) { m_type = type; }
+    // set the operand reg RegRef directly
+    void setRegRef(const RegRef& regRef)
+    {
+        m_regOpReg.regNum = regRef.regNum;
+        m_regOpReg.subRegNum = regRef.subRegNum;
+    }
 
   private:
     Operand::Kind m_kind;
