@@ -846,22 +846,6 @@ private:
     int globalScratchOffset;
 
     bool useScratchMsg_;
-
-    bool headerNeeded()
-    {
-        bool needed = true;
-
-        if (useScratchMsg_ && getGenxPlatform() >= GENX_SKL)
-            needed = false;
-
-        if (builder_->kernel.fg.getHasStackCalls() ||
-            builder_->kernel.fg.getIsStackCallFunc())
-            needed = false;
-
-        return needed;
-    }
-
-    void saveRestoreA0(G4_BB*);
 };
 }
 bool isDisContRegion (
