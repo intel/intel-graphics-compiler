@@ -301,12 +301,19 @@ const char* cmc::getPlatformStr(PLATFORM platform)
 static void generatePatchTokens(const cmc_kernel_info *info, CMKernel& kernel)
 {
     // This is the starting constant thread payload
-    unsigned constantPayloadStart = info->GRFByteSize * 4; // r0-r3 are reserved.
+    // r0-r3 are reserved for SIMD8 dispatch.
+    unsigned constantPayloadStart = info->GRFByteSize * 4;
+    // r0-r1 are reserved for SIMD1 dispatch
+    if (info->CompiledSIMDSize == 1)
+        constantPayloadStart = info->GRFByteSize * 2;
+
     unsigned payloadPos = constantPayloadStart;
 
-    // Allocate GLOBAL_WORK_OFFSET and LOCAL_WORK_SIZE
-    kernel.createImplicitArgumentsAnnotation(0);
-    payloadPos += info->GRFByteSize;
+    // Allocate GLOBAL_WORK_OFFSET and LOCAL_WORK_SIZE, SIMD8 dispatch only.
+    if (info->CompiledSIMDSize == 8) {
+        kernel.createImplicitArgumentsAnnotation(0);
+        payloadPos += info->GRFByteSize;
+    }
 
     // Now all arguments from cmc. We keep track of the maximal offset.
     int32_t maxArgEnd = payloadPos;
@@ -377,7 +384,7 @@ static void populateKernelInfo(const cmc_kernel_info* info,
     auto& kInfo = kernel.m_kernelInfo;
     kInfo.m_kernelName = info->name;
     // Fixed SIMD8.
-    kInfo.m_executionEnivronment.CompiledSIMDSize = 8;
+    kInfo.m_executionEnivronment.CompiledSIMDSize = info->CompiledSIMDSize;
     // SLM size in bytes, align to 1KB.
     kInfo.m_executionEnivronment.SumFixedTGSMSizes = iSTD::Align(info->SLMSize, 1024);
     kInfo.m_executionEnivronment.HasBarriers = info->HasBarriers;
