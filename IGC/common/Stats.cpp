@@ -876,13 +876,13 @@ namespace {
         return numStr;
     }
 
-    std::string str( int num, unsigned width )
+    std::string str( uint64_t num, unsigned width )
     {
         char numStr[32];
 #if defined( WIN32 ) || defined( _WIN64 )
-        sprintf_s(numStr,                "%*d", width, num);
+        sprintf_s(numStr,                "%*llu", width, num);
 #else
-        snprintf(numStr, sizeof(numStr), "%*d", width, num);
+        snprintf(numStr, sizeof(numStr), "%*llu", width, (long long unsigned int)num);
 #endif
         return numStr;
     }
@@ -920,21 +920,56 @@ void TimeStats::printSumTimeTable( llvm::raw_ostream & OS ) const
     FS << "\n";
 
     // table body
-    for (int i=0;i<MAX_COMPILE_TIME_INTERVALS;i++)
+    if (IGC::Debug::GetDebugFlag(IGC::Debug::DebugFlag::TIME_STATS_COARSE))
     {
-        const COMPILE_TIME_INTERVALS interval = static_cast<COMPILE_TIME_INTERVALS>(i);
-        if (!skipTimer(i))
+        uint64_t timeNotInCoarse = getCompileTime(TIME_TOTAL);
+        for (int i = 0; i < MAX_COMPILE_TIME_INTERVALS; i++)
         {
-            const uint64_t intervalTicks = getCompileTime(interval);
-            if (intervalTicks)
+            const COMPILE_TIME_INTERVALS interval = static_cast<COMPILE_TIME_INTERVALS>(i);
+            if (!skipTimer(i))
             {
-                FS.PadToColumn(startCol).indent(2 * parentIntervalDepth(interval))
-                    << g_cCompTimeIntervals[interval];
-                FS.PadToColumn(ticksCol) << str((int)intervalTicks, colWidth);
-                FS.PadToColumn(secsCol) << str((int)intervalTicks / (double)m_freq, colWidth, 4);
-                FS.PadToColumn(percCol) << str((int)intervalTicks / (double)getCompileTime(TIME_TOTAL) * 100.0, colWidth, 2);
-                FS.PadToColumn(percCol) << str((int)m_hitCount[i], colWidth);
-                FS << "\n";
+                const uint64_t intervalTicks = getCompileTime(interval);
+                if (intervalTicks)
+                {
+                    if (interval != TIME_TOTAL)
+                    {
+                        timeNotInCoarse -= intervalTicks;
+                    }
+                    FS.PadToColumn(startCol) << g_cCompTimeIntervals[interval];
+                    FS.PadToColumn(ticksCol) << str(intervalTicks, colWidth);
+                    FS.PadToColumn(secsCol) << str(intervalTicks / (double)m_freq, colWidth, 4);
+                    FS.PadToColumn(percCol) << str(intervalTicks / (double)getCompileTime(TIME_TOTAL) * 100.0, colWidth, 2);
+                    FS.PadToColumn(percCol) << str(m_hitCount[i], colWidth);
+                    FS << "\n";
+                }
+            }
+        }
+        // print the "others" for coarse
+        FS.PadToColumn(startCol) << "Others";
+        FS.PadToColumn(ticksCol) << str(timeNotInCoarse, colWidth);
+        FS.PadToColumn(secsCol) << str(timeNotInCoarse / (double)m_freq, colWidth, 4);
+        FS.PadToColumn(percCol) << str(timeNotInCoarse / (double)getCompileTime(TIME_TOTAL) * 100.0, colWidth, 2);
+        FS.PadToColumn(percCol) << str(0, colWidth);
+        FS << "\n";
+    }
+    else
+    {
+        for (int i = 0; i < MAX_COMPILE_TIME_INTERVALS; i++)
+        {
+            const COMPILE_TIME_INTERVALS interval = static_cast<COMPILE_TIME_INTERVALS>(i);
+            if (!skipTimer(i))
+            {
+                const uint64_t intervalTicks = getCompileTime(interval);
+                if (intervalTicks)
+                {
+                    FS.PadToColumn(startCol).indent(2 * parentIntervalDepth(interval))
+                        << g_cCompTimeIntervals[interval];
+                    FS.PadToColumn(ticksCol) << str(intervalTicks, colWidth);
+                    FS.PadToColumn(secsCol) << str(intervalTicks / (double)m_freq, colWidth, 4);
+                    FS.PadToColumn(percCol) << str(intervalTicks / (double)getCompileTime(TIME_TOTAL) * 100.0, colWidth, 2);
+                    FS.PadToColumn(percCol) << str(m_hitCount[i], colWidth);
+                    FS << "\n";
+                }
             }
         }
     }
@@ -985,9 +1020,9 @@ void TimeStats::printPerPassSumTime(llvm::raw_ostream& OS) const
 
         // pass ticks % hit
         FS.PadToColumn(startCol) << iter->first.substr(0, ticksCol - startCol - 1);
-        FS.PadToColumn(ticksCol) << str((int)ticks, colWidth);
-        FS.PadToColumn(percCol) << str((int)ticks / (double)m_PassTotalTicks * 100.0, colWidth, 2);
-        FS.PadToColumn(percCol) << str((int)stat.PassHitCount, colWidth);
+        FS.PadToColumn(ticksCol) << str(ticks, colWidth);
+        FS.PadToColumn(percCol) << str(ticks / (double)m_PassTotalTicks * 100.0, colWidth, 2);
+        FS.PadToColumn(percCol) << str(stat.PassHitCount, colWidth);
         FS << "\n";
     }
 
