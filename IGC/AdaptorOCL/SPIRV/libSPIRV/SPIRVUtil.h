@@ -310,6 +310,37 @@ getSizeInWords(const std::string& Str) {
   return static_cast<unsigned>(Str.length()/4 + 1);
 }
 
+inline std::string getString(std::vector<uint32_t>::const_iterator Begin,
+  std::vector<uint32_t>::const_iterator End) {
+  std::string Str = std::string();
+  for (auto I = Begin; I != End; ++I) {
+    uint32_t Word = *I;
+    for (unsigned J = 0u; J < 32u; J += 8u) {
+      char Char = (char)((Word >> J) & 0xff);
+      if (Char == '\0')
+        return Str;
+      Str += Char;
+    }
+  }
+  return Str;
+}
+
+inline std::string getString(const std::vector<uint32_t> &V) {
+  return getString(V.cbegin(), V.cend());
+}
+
+// if vector of Literals is expected to contain more than one Literal String
+inline std::vector<std::string> getVecString(const std::vector<uint32_t> &V) {
+  std::vector<std::string> Result;
+  std::string Str;
+  for (auto It = V.cbegin(); It < V.cend(); It += getSizeInWords(Str)) {
+    Str.clear();
+    Str = getString(It, V.cend());
+    Result.push_back(Str);
+  }
+  return Result;
+}
+
 template<typename T>
 inline std::vector<T>
 getVec(T Op1) {

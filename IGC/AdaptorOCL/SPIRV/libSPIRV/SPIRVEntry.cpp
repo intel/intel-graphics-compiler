@@ -311,6 +311,20 @@ SPIRVEntry::getDecorate(Decoration Kind, size_t Index) const {
   return Value;
 }
 
+std::vector<std::string>
+SPIRVEntry::getDecorationStringLiteral(Decoration Kind) const {
+  auto Loc = Decorates.equal_range(Kind);
+  if (Loc.first == Decorates.end())
+    return {};
+
+  std::vector<std::string> DecorationStrings;
+  for (auto it = Loc.first; it != Loc.second; ++it) {
+    auto v = getVecString(it->second->getVecLiteral());
+    DecorationStrings.insert(DecorationStrings.end(), v.begin(), v.end());
+  }
+  return DecorationStrings;
+}
+
 bool
 SPIRVEntry::hasLinkageType() const {
   return OpCode == OpFunction || OpCode == OpVariable;

@@ -157,6 +157,8 @@ namespace IGC
         int privateMemoryPerWI = 0;
         bool globalIDPresent = false;
 
+        std::vector<std::string> UserAnnotations;
+
         std::vector<int32_t> m_OpenCLArgAddressSpaces;
         std::vector<std::string> m_OpenCLArgAccessQualifiers;
         std::vector<std::string> m_OpenCLArgTypes;

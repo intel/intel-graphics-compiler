@@ -162,8 +162,8 @@ bool SPIRMetaDataTranslation::runOnModule(Module& M)
     for (; ki != ke; ++ki)
     {
         IGCMD::FunctionInfoMetaDataHandle fHandle = IGCMD::FunctionInfoMetaDataHandle(IGCMD::FunctionInfoMetaData::get());
-        IGC::FunctionMetaData funcMD;
         SPIRMD::KernelMetaDataHandle spirKernel = *ki;
+        IGC::FunctionMetaData& funcMD = modMD->FuncMD[spirKernel->getFunction()];
         fHandle->setType(FunctionTypeMD::KernelFunction);
 
         // Handling Thread Group Size
@@ -290,7 +290,6 @@ bool SPIRMetaDataTranslation::runOnModule(Module& M)
         }
 
         pIgcMDUtils->setFunctionsInfoItem(spirKernel->getFunction(), fHandle);
-        modMD->FuncMD[spirKernel->getFunction()] = funcMD;
     }
 
     // Handling Compiler Options

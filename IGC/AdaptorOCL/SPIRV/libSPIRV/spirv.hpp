@@ -403,6 +403,7 @@ enum Decoration {
     DecorationNoSignedWrap = 4469,
     DecorationNoUnsignedWrap = 4470,
     DecorationReferencedIndirectlyINTEL = 5602,
+    DecorationUserSemantic = 5635,
 };
 
 enum BuiltIn {

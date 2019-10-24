@@ -98,6 +98,10 @@ SPIRVDecorateGeneric::getLiteral(size_t i) const {
   return Literals[i];
 }
 
+std::vector<SPIRVWord> SPIRVDecorateGeneric::getVecLiteral() const {
+  return Literals;
+}
+
 size_t
 SPIRVDecorateGeneric::getLiteralCount() const {
   return Literals.size();

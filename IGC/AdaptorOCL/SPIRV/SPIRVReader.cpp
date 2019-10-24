@@ -3739,6 +3739,12 @@ SPIRVToLLVM::transKernelMetadata()
             }
         }
 
+        // __attribute__((annotate("some_user_annotation"))) are passed via
+        // UserSemantic decoration on functions.
+        if (BF->hasDecorate(DecorationUserSemantic)) {
+          funcInfo.UserAnnotations = BF->getDecorationStringLiteral(DecorationUserSemantic);
+        }
+
         llvm::MDNode *Node = MDNode::get(*Context, KernelMD);
         KernelMDs->addOperand(Node);
     }

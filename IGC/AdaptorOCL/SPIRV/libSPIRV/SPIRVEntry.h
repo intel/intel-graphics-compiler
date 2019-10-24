@@ -238,6 +238,7 @@ public:
   bool hasDecorate(Decoration Kind, size_t Index = 0,
       SPIRVWord *Result=0)const;
   std::set<SPIRVWord> getDecorate(Decoration Kind, size_t Index = 0)const;
+  std::vector<std::string> getDecorationStringLiteral(Decoration Kind) const;
   bool hasId() const { return !(Attrib & SPIRVEA_NOID);}
   bool hasLine() const { return Line != nullptr;}
   bool hasLinkageType() const;

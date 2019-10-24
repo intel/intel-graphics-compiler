@@ -82,6 +82,7 @@ public:
   SPIRVDecorateGeneric(Op OC);
 
   SPIRVWord getLiteral(size_t) const;
+  std::vector<SPIRVWord> getVecLiteral() const;
   Decoration getDecorateKind() const;
   size_t getLiteralCount() const;
   /// Compare for kind and literal only.
