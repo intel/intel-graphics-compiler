@@ -33,7 +33,7 @@ matrix:
   include:
     - os: linux
       dist: xenial # Ubuntu 16.04 w/ llvm8
-      env: LLVM_VER=8 BUILD_TYPE=Release
+      env: LLVM_VER=8 BUILD_TYPE=Release COMPILER=gcc
       before_install:
           - git clone -b ocl-open-80 https://github.com/intel/opencl-clang opencl-clang
       addons:
@@ -45,7 +45,7 @@ matrix:
       install: *v8install
     - os: linux
       dist: bionic # Ubuntu 18.04 w/ llvm8
-      env: LLVM_VER=8 BUILD_TYPE=Release
+      env: LLVM_VER=8 BUILD_TYPE=Release COMPILER=gcc
       before_install:
           - git clone -b ocl-open-80 https://github.com/intel/opencl-clang opencl-clang
       addons:
@@ -57,7 +57,7 @@ matrix:
       install: *v8install
     - os: linux
       dist: xenial # Ubuntu 16.04 w/ llvm9
-      env: LLVM_VER=9 BUILD_TYPE=Release
+      env: LLVM_VER=9 BUILD_TYPE=Release COMPILER=gcc
       before_install:
           - git clone -b ocl-open-90 https://github.com/intel/opencl-clang opencl-clang
       addons:
@@ -69,7 +69,7 @@ matrix:
       install: *v9install
     - os: linux
       dist: bionic # Ubuntu 18.04 w/ llvm9
-      env: LLVM_VER=9 BUILD_TYPE=Release
+      env: LLVM_VER=9 BUILD_TYPE=Release COMPILER=gcc
       before_install:
           - git clone -b ocl-open-90 https://github.com/intel/opencl-clang opencl-clang
       addons:
@@ -79,16 +79,61 @@ matrix:
               key_url: 'https://apt.llvm.org/llvm-snapshot.gpg.key'
           packages: *v9
       install: *v9install
-      
+    - os: linux
+      dist: xenial # Ubuntu 16.04 w/ llvm8
+      env: LLVM_VER=8 BUILD_TYPE=Release COMPILER=clang
+      before_install:
+          - git clone -b ocl-open-80 https://github.com/intel/opencl-clang opencl-clang
+      addons:
+        apt:
+          sources:
+            - sourceline: 'deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-8 main'
+              key_url: 'https://apt.llvm.org/llvm-snapshot.gpg.key'
+          packages: *v8
+      install: *v8install
+    - os: linux
+      dist: bionic # Ubuntu 18.04 w/ llvm8
+      env: LLVM_VER=8 BUILD_TYPE=Release COMPILER=clang
+      before_install:
+          - git clone -b ocl-open-80 https://github.com/intel/opencl-clang opencl-clang
+      addons:
+        apt:
+          sources:
+            - sourceline: 'deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-8 main'
+              key_url: 'https://apt.llvm.org/llvm-snapshot.gpg.key'
+          packages: *v8
+      install: *v8install
+    - os: linux
+      dist: xenial # Ubuntu 16.04 w/ llvm9
+      env: LLVM_VER=9 BUILD_TYPE=Release COMPILER=clang
+      before_install:
+          - git clone -b ocl-open-90 https://github.com/intel/opencl-clang opencl-clang
+      addons:
+        apt:
+          sources:
+            - sourceline: 'deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-9 main'
+              key_url: 'https://apt.llvm.org/llvm-snapshot.gpg.key'
+          packages: *v9
+      install: *v9install
+    - os: linux
+      dist: bionic # Ubuntu 18.04 w/ llvm9
+      env: LLVM_VER=9 BUILD_TYPE=Release COMPILER=clang
+      before_install:
+          - git clone -b ocl-open-90 https://github.com/intel/opencl-clang opencl-clang
+      addons:
+        apt:
+          sources:
+            - sourceline: 'deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-9 main'
+              key_url: 'https://apt.llvm.org/llvm-snapshot.gpg.key'
+          packages: *v9
+      install: *v9install
+
 git:
   depth: 1
 
 branches:
   only:
     - master
-    
-compiler:
-  - gcc
 
 script:
   - if [ "${LLVM_VER}" == "9" ]; then sudo touch /usr/lib/llvm-9/bin/lit-cpuid; fi #Cmake fix
