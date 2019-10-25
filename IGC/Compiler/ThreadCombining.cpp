@@ -628,6 +628,8 @@ bool ThreadCombining::runOnModule(llvm::Module& M)
             minTGSizeHeuristic = 128; // => 8 h/w threads per WG
         }
     }
+    else
+        return false;
 
     float currentThreadOccupancy = csCtx->GetThreadOccupancy(simdMode);
     unsigned x = (threadGroupSize_X % 2 == 0) ? threadGroupSize_X / 2 : threadGroupSize_X;
