@@ -316,27 +316,8 @@ void ThreadCombining::FindRegistersAliveAcrossBarriers(llvm::Function* m_kernel,
                             }
                             if (!canMoveInstructionToEntryBlock)
                             {
-                                if (I->getType()->isIntegerTy() && I->getType()->getIntegerBitWidth() == 1)
-                                {
-                                    llvm::IRBuilder<>  builder(M.getContext());
-                                    llvm::Instruction* aliveInst_clone = I->clone();
-                                    aliveInst_clone->insertBefore(I->getNextNode());
-                                    builder.SetInsertPoint(aliveInst_clone->getNextNode());
-                                    llvm::Value* aliveInst_i8 = builder.CreateZExt(aliveInst_clone, builder.getInt8Ty());
-
-                                    builder.SetInsertPoint((*barrierInst)->getNextNode());
-                                    llvm::Value* aliveInst_i1 = builder.CreateICmpEQ(aliveInst_i8, builder.getInt8(1));
-
-                                    I->replaceAllUsesWith(aliveInst_i1);
-                                    I->eraseFromParent();
-                                    m_LiveRegistersPerBarrier[*barrierInst].insert(dyn_cast<Instruction>(aliveInst_i8));
-                                    m_aliveAcrossBarrier.insert(dyn_cast<Instruction>(aliveInst_i8));
-                                }
-                                else
-                                {
-                                    m_LiveRegistersPerBarrier[*barrierInst].insert(I); // Insert the instruction as one that has to be stored and then restored
-                                    m_aliveAcrossBarrier.insert(I);
-                                }
+                                m_LiveRegistersPerBarrier[*barrierInst].insert(I); // Insert the instruction as one that has to be stored and then restored
+                                m_aliveAcrossBarrier.insert(I);
                             }
                         }
                     }

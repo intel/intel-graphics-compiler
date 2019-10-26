@@ -9672,9 +9672,6 @@ void EmitPass::emitStore3DInner(Value* pllValToStore, Value* pllDstPtr, Value* p
     ResourceDescriptor resource = GetResourceVariable(pllDstPtr);
 
     uint sizeInBits = pllValToStore->getType()->getPrimitiveSizeInBits();
-    if (0 == sizeInBits && pllValToStore->getType()->isPointerTy()){
-        sizeInBits = m_currShader->GetContext()->getRegisterPointerSizeInBits(pllValToStore->getType()->getPointerAddressSpace());
-    }
 
     assert((sizeInBits == 8 ||
         sizeInBits == 16 ||
