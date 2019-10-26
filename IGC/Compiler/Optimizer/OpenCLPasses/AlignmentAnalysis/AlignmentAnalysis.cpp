@@ -50,6 +50,8 @@ IGC_INITIALIZE_PASS_END(AlignmentAnalysis, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG
 
 char AlignmentAnalysis::ID = 0;
 
+const unsigned int AlignmentAnalysis::MinimumAlignment;
+
 AlignmentAnalysis::AlignmentAnalysis() : FunctionPass(ID)
 {
     initializeAlignmentAnalysisPass(*PassRegistry::getPassRegistry());
@@ -204,15 +206,15 @@ void AlignmentAnalysis::SetInstAlignment(llvm::Instruction& I)
     {
         SetInstAlignment(cast<StoreInst>(I));
     }
-    if (isa<MemSetInst>(I))
+    else if (isa<MemSetInst>(I))
     {
         SetInstAlignment(cast<MemSetInst>(I));
     }
-    if (isa<MemCpyInst>(I))
+    else if (isa<MemCpyInst>(I))
     {
         SetInstAlignment(cast<MemCpyInst>(I));
     }
-    if (isa<MemMoveInst>(I))
+    else if (isa<MemMoveInst>(I))
     {
         SetInstAlignment(cast<MemMoveInst>(I));
     }
@@ -370,6 +372,8 @@ unsigned int AlignmentAnalysis::visitCallInst(CallInst& I)
         // return value does not matter
         return MinimumAlignment;
 
+// deprecated code. TODO: remove?
+#if LLVM_VERSION_MAJOR < 7
     StringRef calleeName = callee->getName();
     IntrinsicInst* Intri = dyn_cast<IntrinsicInst>(&I);
     llvm::Intrinsic::ID ID = llvm::Intrinsic::ID::not_intrinsic;
@@ -421,8 +425,29 @@ unsigned int AlignmentAnalysis::visitCallInst(CallInst& I)
         // return value does not matter
         return MinimumAlignment;
     }
-
     return MinimumAlignment;
+#elif LLVM_VERSION_MAJOR >= 7
+
+    MemIntrinsic* memIntr = dyn_cast<MemIntrinsic>(&I);
+    if (!memIntr)
+        return MinimumAlignment;
+
+    unsigned int alignment = MinimumAlignment;
+    llvm::Intrinsic::ID ID = memIntr->getIntrinsicID();
+
+    if (ID == Intrinsic::memcpy) {
+        MemCpyInst* memCpy = dyn_cast<MemCpyInst>(&I);
+        assert(memCpy);
+        if (memCpy) {
+            alignment = std::min(memCpy->getDestAlignment(), memCpy->getSourceAlignment());
+        }
+    } else if (ID == Intrinsic::memset) {
+        alignment = std::max(memIntr->getDestAlignment(), MinimumAlignment);
+    }
+
+    return alignment;
+
+#endif
 }
 
 void AlignmentAnalysis::SetInstAlignment(MemSetInst& I)
