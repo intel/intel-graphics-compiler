@@ -46,17 +46,14 @@ public:
         : asmHash(0)
         , nosHash(0)
         , psoHash(0)
-        , perStagePsoHash(0)
     {}
     QWORD getAsmHash() const { return asmHash; }
     QWORD getNosHash() const { return nosHash; }
     QWORD getPsoHash() const { return psoHash; }
-    QWORD getPerStagePsoHash() const { return perStagePsoHash; }
 
     QWORD asmHash;
     QWORD nosHash;
     QWORD psoHash;
-    QWORD perStagePsoHash;
 };
 
 enum class SIMDMode : unsigned char
