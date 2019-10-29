@@ -144,6 +144,12 @@ namespace IGC
         /// @return A value representing the stage in grid size
         llvm::Value* getStageInGridSize(llvm::CallInst& CI);
 
+        /// @brief  Resolves get_sync_buffer().
+        ///         Adds the appropriate sequence of code before the given call instruction
+        /// @param  CI The call instruction.
+        /// @return A value representing the sync buffer
+        llvm::Value* getSyncBufferPtr(llvm::CallInst& CI);
+
         /// @brief  get vector of work group size if reqd_work_group_size is set.
         /// @param  F the function to check
         /// @return A vector with work group size (e.g., <i32 16, i32 1, i32 1>)
