@@ -334,18 +334,15 @@ void ThreadCombining::FindRegistersAliveAcrossBarriers(llvm::Function* m_kernel,
                                 if (I->getType()->isIntegerTy() && I->getType()->getIntegerBitWidth() == 1)
                                 {
                                     llvm::IRBuilder<>  builder(M.getContext());
-                                    llvm::Instruction* aliveInst_clone = I->clone();
-                                    aliveInst_clone->insertBefore(I->getNextNode());
-                                    builder.SetInsertPoint(aliveInst_clone->getNextNode());
-                                    llvm::Value* aliveInst_i8 = builder.CreateZExt(aliveInst_clone, builder.getInt8Ty());
+                                    builder.SetInsertPoint(I->getNextNode());
+                                    llvm::Value* I_i8 = builder.CreateZExt(I, builder.getInt8Ty());
 
-                                    builder.SetInsertPoint((*barrierInst)->getNextNode());
-                                    llvm::Value* aliveInst_i1 = builder.CreateICmpEQ(aliveInst_i8, builder.getInt8(1));
+                                    builder.SetInsertPoint(inst);
+                                    llvm::Value* I_new = builder.CreateICmpEQ(I_i8, builder.getInt8(1));
+                                    inst->setOperand(i, I_new);
 
-                                    I->replaceAllUsesWith(aliveInst_i1);
-                                    I->eraseFromParent();
-                                    m_LiveRegistersPerBarrier[*barrierInst].insert(dyn_cast<Instruction>(aliveInst_i8));
-                                    m_aliveAcrossBarrier.insert(dyn_cast<Instruction>(aliveInst_i8));
+                                    m_LiveRegistersPerBarrier[*barrierInst].insert(dyn_cast<Instruction>(I_i8));
+                                    m_aliveAcrossBarrier.insert(dyn_cast<Instruction>(I_i8));
                                 }
                                 else
                                 {
