@@ -284,7 +284,7 @@ public:
     void setFunctionsVisaGenxBinarySize(int i, unsigned short size){ m_header.functions[i].binary_size = size; }
 
     void patchKernel(int index, unsigned int genxBufferSize, void * buffer, int platform);
-    void patchFunction(int index, unsigned genxBufferSize);
+    void patchFunction(int index);
 
     Options *getOptions(){ return m_options; }
 

@@ -2365,7 +2365,7 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
                     {
                         // All bytes of dst written at this point, so this is a good place to insert
                         // pseudo kill inst
-                        pseudoKills.emplace_back(topdcl, nextIt);
+                        pseudoKills.emplace_back(topdcl, rit);
                     }
 
                     // Reset gen
