@@ -101,6 +101,7 @@ namespace IGC
             llvm::Function* newFunc);
 
         bool canDoOptimization(llvm::Function* m_kernel, llvm::Module& M);
+        void PreAnalysis(llvm::Function* m_kernel, llvm::Module& M, std::vector<llvm::Instruction*>& barriers);
         void FindRegistersAliveAcrossBarriers(llvm::Function* m_kernel, llvm::Module& M);
     };
 }
