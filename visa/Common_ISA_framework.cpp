@@ -412,11 +412,14 @@ void CisaBinary::patchKernel(int index, unsigned int genxBufferSize, void * buff
     this->genxBinariesSize+= genxBufferSize;
 }
 
-void CisaBinary::patchFunction(int index)
+void CisaBinary::patchFunction(int index, unsigned genxBufferSize)
 {
     m_header.functions[index].offset += genxBinariesSize;
     size_t copySize = sizeof(m_header.functions[index].offset);
     memcpy_s(&m_header_buffer[this->m_functionOffsetLocationsArray[index]], copySize, &m_header.functions[index].offset, copySize);
+
+    m_header.functions[index].binary_size = genxBufferSize;
+    this->genxBinariesSize += genxBufferSize;
 }
 
 void CisaBinary::isaDumpVerify(
