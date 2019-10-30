@@ -36,6 +36,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/secure_mem.h"
 #include "Simd32Profitability.hpp"
 #include "EmitVISAPass.hpp"
+#include "AdaptorCommon/API/igc.h"
 
 /***********************************************************************************
 This file contains the code specific to pixel shader
@@ -1094,6 +1095,13 @@ namespace IGC
             (ctx->getCompilerOption().forcePixelShaderSIMDMode &
                 FLAG_PS_SIMD_MODE_FORCE_SIMD16) != 0;
 
+        // For staged compilation, we try to avoid duplicated compilation for the same SIMD mode
+        if ((simdMode == SIMDMode::SIMD8  && AvoidDupStage2(8 , ctx->m_CgFlag, ctx->m_StagingCtx)) ||
+            (simdMode == SIMDMode::SIMD16 && AvoidDupStage2(16, ctx->m_CgFlag, ctx->m_StagingCtx)))
+        {
+            return false;
+        }
+
         if (m_HasoStencil && simdMode != SIMDMode::SIMD8)
         {
             return false;
@@ -1115,7 +1123,7 @@ namespace IGC
         }
         if (simdMode == SIMDMode::SIMD16 && EP.m_ShaderMode == ShaderDispatchMode::NOT_APPLICABLE)
         {
-            if (IGC_IS_FLAG_ENABLED(ForcePSBestSIMD))
+            if (IGC_IS_FLAG_ENABLED(ForcePSBestSIMD) || ctx->m_CgFlag == FLAG_CG_STAGE1_BEST_PERF)
             {
                 return true;
             }

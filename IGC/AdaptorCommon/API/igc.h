@@ -55,5 +55,72 @@ enum {
     FLAG_PS_SIMD_MODE_FORCE_SIMD32 = 4,            // Force SIMD32 compilation
 };
 
+enum {
+    BIT_CG_SIMD8   = 0b00000001,
+    BIT_CG_SIMD16  = 0b00000010,
+    BIT_CG_SIMD32  = 0b00000100,
+    BIT_CG_SPILL8  = 0b00001000,
+    BIT_CG_SPILL16 = 0b00010000,
+    BIT_CG_SPILL32 = 0b00100000,
+    BIT_CG_RETRY   = 0b01000000,
+};
+
+typedef char CG_CTX_t;
+
+#define IsRetry(ctx)               (ctx & (BIT_CG_RETRY))
+#define HasSimd(MODE, ctx)         (ctx & (BIT_CG_SIMD##MODE))
+#define HasSimdSpill(MODE, ctx)   ((ctx & (BIT_CG_SIMD##MODE)) &&  (ctx & (BIT_CG_SPILL##MODE)))
+#define HasSimdNoSpill(MODE, ctx) ((ctx & (BIT_CG_SIMD##MODE)) && !(ctx & (BIT_CG_SPILL##MODE)))
+#define SetRetry(ctx)              (ctx = (ctx | (BIT_CG_RETRY)))
+#define SetSimdSpill(MODE, ctx)    (ctx = (ctx | (BIT_CG_SIMD##MODE) |  (BIT_CG_SPILL##MODE)))
+#define SetSimdNoSpill(MODE, ctx)  (ctx = (ctx | (BIT_CG_SIMD##MODE) & ~(BIT_CG_SPILL##MODE)))
+
+typedef enum {
+    FLAG_CG_ALL_SIMDS = 0,
+    FLAG_CG_STAGE1_FAST_COMPILE = 1,
+    FLAG_CG_STAGE1_BEST_PERF = 2,
+    FLAG_CG_STAGE2_REST_SIMDS = 3,
+} CG_FLAG_t;
+
+#define UnsetStagingCtx(ctx) (ctx = 0)
+#define IsStage2Available(ctx) (ctx != 0)
+
+// We don't need compile continuation if no staged compilation enabled denoted by RegKeys.
+// If the staged compilation enabled, we don't need compile continuation when SIMD8 is spilled.
+#define HasCompileContinuation(flag, ctx) ( \
+    IGC_IS_FLAG_ENABLED(StagedCompilation) && \
+    ((flag == FLAG_CG_STAGE1_FAST_COMPILE) || \
+     ((flag == FLAG_CG_STAGE1_BEST_PERF) && \
+      !HasSimdSpill(8, ctx))) \
+    )
+
+// Return true when simd MODE has been generated previously
+#define AvoidDupStage2(MODE, flag, prev_ctx)  (flag == FLAG_CG_STAGE2_REST_SIMDS && HasSimd(MODE, prev_ctx))
+
+// Fast CG always returns simd 8
+#define ValidFastModes(flag, ctx)       (flag == FLAG_CG_STAGE1_FAST_COMPILE && HasSimd(8, ctx) && !HasSimd(16, ctx) && !HasSimd(32, ctx))
+// Best CG returns simd 8 or 16
+#define ValidBestModes(flag, ctx)       (flag == FLAG_CG_STAGE1_BEST_PERF && (HasSimd(8, ctx) || HasSimd(16, ctx)) && !HasSimd(32, ctx))
+// ALL_SIMDS CG must have simd 8 in any case
+#define ValidAllSimdsModes(flag, ctx)   (flag == FLAG_CG_ALL_SIMDS && HasSimd(8, ctx))
+// Remaining Stage2 CG must have simd 8 in any case
+#define ValidFullStage2Modes(flag, ctx) (flag == FLAG_CG_STAGE2_REST_SIMDS && HasSimd(8, ctx))
+
+// Rest Stage2 CG would not generate duplicated simd 32 mode, and
+// simd 8 and simd 16 must be generated either from Stage1 or Stage2
+#define ValidStage2Modes(flag, prev_ctx, ctx) ( \
+    flag == FLAG_CG_STAGE2_REST_SIMDS && \
+    (!HasSimd(32, prev_ctx) || !HasSimd(32, ctx)) && \
+    (HasSimd(8,  prev_ctx) ^ HasSimd(8,  ctx)) && \
+    (HasSimd(16, prev_ctx) ^ HasSimd(16, ctx)) \
+    )
+
+#define ValidGeneratedModes(flag, prev_ctx, ctx) ( \
+    ValidFastModes(flag, ctx) || \
+    ValidBestModes(flag, ctx) || \
+    ValidAllSimdsModes(flag, ctx) || \
+    ValidStage2Modes(flag, prev_ctx, ctx) \
+    )
+
 #endif // __IGC_H
 

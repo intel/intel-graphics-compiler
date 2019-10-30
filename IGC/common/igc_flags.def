@@ -330,6 +330,7 @@ DECLARE_IGC_REGKEY(bool, EnableInsertElementScalarCoalescing, false,  "Enable co
 DECLARE_IGC_REGKEY(bool, EnableMixIntOperands,          true,  "Enable generating mix-sized operands for int ALU", false)
 DECLARE_IGC_REGKEY(bool, PixelShaderDoNotAbortOnSpill, false,  "Do not abort on a spill", false)
 DECLARE_IGC_REGKEY(DWORD, ForcePixelShaderSIMDMode,  0, "Setting it to values def in igc.h will force SIMD mode compilation for pixel shaders. Note that only SIMD8 is compiled unless other ForcePixelShaderSIMD* are also selected", false)
+DECLARE_IGC_REGKEY(bool, StagedCompilation,             false,  "Enable staged compilation", false)
 DECLARE_IGC_REGKEY(bool, ForcePSBestSIMD, false,  "Force Pixel shader to return the best SIMD, either SIMD16 or SIMD8", false)
 DECLARE_IGC_REGKEY(bool, SkipTREarlyExitCheck, false, "Skip SIMD16 early exit check in ShaderCodeGen", false)
 DECLARE_IGC_REGKEY(bool, EnableTCSHWBarriers, false,  "Enable TCS pass with HW barriers support. Default TCS pass is TCS pass with multiple continuation functions.", false)
