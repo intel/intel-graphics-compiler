@@ -62,9 +62,11 @@ namespace IGC
     private:
         void PromoteSamplerTextureToDirectAS(llvm::GenIntrinsicInst*& pIntr, llvm::Value* resourcePtr);
         void PromoteBufferToDirectAS(llvm::Instruction* inst, llvm::Value* resourcePtr);
+        llvm::Value* getOffsetValue(llvm::Value* srcPtr, int& bufferoffset);
 
         CodeGenContext* m_pCodeGenContext;
         IGCMD::MetaDataUtils* m_pMdUtils;
+        std::unordered_map<llvm::Value*, llvm::Value*> m_SrcPtrToBufferOffsetMap;
     };
 
 } // namespace IGC

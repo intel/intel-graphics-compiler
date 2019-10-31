@@ -200,6 +200,7 @@ void PromoteResourceToDirectAS::PromoteSamplerTextureToDirectAS(GenIntrinsicInst
     unsigned bufID = 0;
     BufferType bufTy;
     BufferAccessType accTy;
+    bool needBufferOffset;  // Unused
     bool canPromote = false;
     Value* arrayIndex = nullptr;
 
@@ -229,7 +230,7 @@ void PromoteResourceToDirectAS::PromoteSamplerTextureToDirectAS(GenIntrinsicInst
         // If we can find it, we can promote the indirect access to direct access
         // by encoding the BTI as a direct addrspace
         if (srcPtr->getType()->isPointerTy() &&
-            IGC::GetResourcePointerInfo(srcPtr, bufID, bufTy, accTy))
+            IGC::GetResourcePointerInfo(srcPtr, bufID, bufTy, accTy, needBufferOffset))
         {
             canPromote = true;
         }
@@ -495,6 +496,35 @@ bool PatchInstructionAddressSpace(const std::vector<Value*>& instList, Type* dst
     return success;
 }
 
+Value* PromoteResourceToDirectAS::getOffsetValue(Value* srcPtr, int& bufferOffsetHandle)
+{
+    auto offsetEntry = m_SrcPtrToBufferOffsetMap.find(srcPtr);
+    if (offsetEntry != m_SrcPtrToBufferOffsetMap.end())
+    {
+        GenIntrinsicInst* runtimevalue = dyn_cast<GenIntrinsicInst>(offsetEntry->second);
+        assert(runtimevalue && "Buffer offset must be a runtime value");
+        bufferOffsetHandle = (int)llvm::cast<llvm::ConstantInt>(runtimevalue->getOperand(0))->getZExtValue();
+        return offsetEntry->second;
+    }
+    else
+    {
+        Instruction* srcPtrInst;
+        srcPtrInst = dyn_cast<Instruction>(srcPtr);
+        assert(srcPtrInst && "source pointer must have been an instruction");
+        IGCIRBuilder<> builder(srcPtrInst);
+
+        Instruction* bufferOffset;
+        ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+        // Create runtime value for buffer offset
+        Function* pFunc = GenISAIntrinsic::getDeclaration(srcPtrInst->getParent()->getParent()->getParent(), GenISAIntrinsic::GenISA_RuntimeValue, builder.getInt32Ty());
+        bufferOffset = builder.CreateCall(pFunc, builder.getInt32(modMD->MinNOSPushConstantSize));
+        bufferOffsetHandle = modMD->MinNOSPushConstantSize;
+        modMD->MinNOSPushConstantSize++;
+        m_SrcPtrToBufferOffsetMap[srcPtr] = bufferOffset;
+        return bufferOffset;
+    }
+}
+
 void PromoteResourceToDirectAS::PromoteBufferToDirectAS(Instruction* inst, Value* resourcePtr)
 {
     IGCIRBuilder<> builder(inst);
@@ -528,7 +558,8 @@ void PromoteResourceToDirectAS::PromoteBufferToDirectAS(Instruction* inst, Value
     unsigned bufferID;
     BufferType bufType;
     BufferAccessType accType;
-    if (!IGC::GetResourcePointerInfo(srcPtr, bufferID, bufType, accType))
+    bool needBufferOffset;
+    if (!IGC::GetResourcePointerInfo(srcPtr, bufferID, bufType, accType, needBufferOffset))
     {
         // Can't promote if we don't know the explicit buffer ID and type
         return;
@@ -546,19 +577,30 @@ void PromoteResourceToDirectAS::PromoteBufferToDirectAS(Instruction* inst, Value
         return;
     }
 
+    // If needBufferOffset set, we need to adjust stateful buffer accesses with the buffer offset from payload
+    Value* pointerValue;
+    int bufferOffsetHandle = -1;
+    if (needBufferOffset)
+    {
+        pointerValue = builder.CreatePtrToInt(pBuffer, builder.getInt32Ty());
+        pointerValue = builder.CreateAdd(pointerValue, getOffsetValue(srcPtr, bufferOffsetHandle));
+        pBuffer = builder.CreateIntToPtr(pointerValue, pBuffer->getType());
+    }
+
+    bool canpromote = false;
     if (LoadInst * load = dyn_cast<LoadInst>(inst))
     {
         LoadInst* newload = IGC::cloneLoad(load, pBuffer);
         load->replaceAllUsesWith(newload);
         load->eraseFromParent();
-        m_pCodeGenContext->m_buffersPromotedToDirectAS.insert(bufferID);
+        canpromote = true;
     }
     else if (StoreInst * store = dyn_cast<StoreInst>(inst))
     {
         StoreInst* newstore = IGC::cloneStore(store, store->getOperand(0), pBuffer);
         store->replaceAllUsesWith(newstore);
         store->eraseFromParent();
-        m_pCodeGenContext->m_buffersPromotedToDirectAS.insert(bufferID);
+        canpromote = true;
     }
     else if (GenIntrinsicInst * pIntr = dyn_cast<GenIntrinsicInst>(inst))
     {
@@ -687,7 +729,20 @@ void PromoteResourceToDirectAS::PromoteBufferToDirectAS(Instruction* inst, Value
             }
             oldInst->replaceAllUsesWith(newInst);
             oldInst->eraseFromParent();
-            m_pCodeGenContext->m_buffersPromotedToDirectAS.insert(bufferID);
+            canpromote = true;
+        }
+    }
+    if (canpromote)
+    {
+        int handle = needBufferOffset ? bufferOffsetHandle : -1;
+        if ((m_pCodeGenContext->m_buffersPromotedToDirectAS.find(bufferID) == m_pCodeGenContext->m_buffersPromotedToDirectAS.end()) ||
+            (m_pCodeGenContext->m_buffersPromotedToDirectAS[bufferID] == -1))
+        {
+            m_pCodeGenContext->m_buffersPromotedToDirectAS[bufferID] = handle;
+        }
+        else
+        {
+            assert((m_pCodeGenContext->m_buffersPromotedToDirectAS[bufferID] == handle));
         }
     }
 }

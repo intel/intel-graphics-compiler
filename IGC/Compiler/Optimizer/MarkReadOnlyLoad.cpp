@@ -115,9 +115,10 @@ void MarkReadOnlyLoad::visitLoadInst(LoadInst& LI)
         unsigned bufId;
         BufferType bufTy;
         BufferAccessType accTy;
+        bool needBufferOffset; // Unused
 
         // check whether we are doing read only access on buffer (e.g. on UAV)
-        if (GetResourcePointerInfo(srcPtr, bufId, bufTy, accTy))
+        if (GetResourcePointerInfo(srcPtr, bufId, bufTy, accTy, needBufferOffset))
         {
             if (accTy == BufferAccessType::ACCESS_READ)
             {

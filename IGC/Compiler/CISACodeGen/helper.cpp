@@ -504,9 +504,10 @@ namespace IGC
         }
     }
 
-    bool GetResourcePointerInfo(Value* srcPtr, unsigned& resID, IGC::BufferType& resTy, BufferAccessType& accessTy)
+    bool GetResourcePointerInfo(Value* srcPtr, unsigned& resID, IGC::BufferType& resTy, BufferAccessType& accessTy, bool& needBufferOffset)
     {
         accessTy = BufferAccessType::ACCESS_READWRITE;
+        needBufferOffset = false;
         if (GenIntrinsicInst * inst = dyn_cast<GenIntrinsicInst>(srcPtr))
         {
             // For bindless pointers with encoded metadata
@@ -517,6 +518,7 @@ namespace IGC
                     auto resIDBundle = inst->getOperandBundle("resID");
                     auto resTyBundle = inst->getOperandBundle("resTy");
                     auto accessTyBundle = inst->getOperandBundle("accessTy");
+                    auto needBufferOffsetBundle = inst->getOperandBundle("needBufferOffset");
                     if (resIDBundle && resTyBundle)
                     {
                         resID = (unsigned)(cast<ConstantInt>(resIDBundle->Inputs.front()))->getZExtValue();
@@ -526,6 +528,10 @@ namespace IGC
                             accessTy = (BufferAccessType)(cast<ConstantInt>(accessTyBundle->Inputs.front()))->getZExtValue();
                         else
                             accessTy = getDefaultAccessType(resTy);
+
+                        if(needBufferOffsetBundle)
+                            needBufferOffset = (bool)(cast<ConstantInt>(needBufferOffsetBundle->Inputs.front()))->getZExtValue();
+
                         return true;
                     }
                 }
@@ -570,8 +576,9 @@ namespace IGC
         // tracing the pointer to where it's created.
         Value * src = IGC::TracePointerSource(pointer);
         BufferAccessType accType;
+        bool needBufferOffset;  // Unused
         if (!src)   return false;
-        if (IGC::GetResourcePointerInfo(src, bufIdOrGRFOffset, bufferTy, accType))
+        if (IGC::GetResourcePointerInfo(src, bufIdOrGRFOffset, bufferTy, accType, needBufferOffset))
         {
             bufferSrcPtr = src;
             isDirectBuf = true;

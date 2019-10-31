@@ -716,7 +716,8 @@ namespace IGC
         TimeStats* m_compilerTimeStats = nullptr;
         ShaderStats* m_sumShaderStats = nullptr;
         /// output: list of buffer IDs which are promoted to direct AS
-        std::unordered_set<unsigned> m_buffersPromotedToDirectAS;
+        // Map of promoted buffer ids with their respective buffer offsets if needed. Buffer offset will be -1 if no need of buffer offset
+        std::map<unsigned, int> m_buffersPromotedToDirectAS;
         // float 16, float32 and float64 denorm mode
         Float_DenormMode    m_floatDenormMode16 = FLOAT_DENORM_FLUSH_TO_ZERO;
         Float_DenormMode    m_floatDenormMode32 = FLOAT_DENORM_FLUSH_TO_ZERO;
