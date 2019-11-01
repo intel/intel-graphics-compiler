@@ -1034,7 +1034,7 @@ namespace vISA
         //Assign Token
         void assignToken(SBNode *node, unsigned short token, uint32_t &tokenReuseCount, uint32_t &AWTokenReuseCount, uint32_t &ARTokenReuseCount, uint32_t &AATokenReuseCount);
         void assignDepToken(SBNode *node);
-        void insertSyncToken(G4_BB *bb, SBNode *node, G4_INST *inst, INST_LIST_ITER inst_it, int newInstID, BitSet *dstTokens, BitSet *srcTokens, bool removeAllTokens);
+        bool insertSyncToken(G4_BB *bb, SBNode *node, G4_INST *inst, INST_LIST_ITER inst_it, int newInstID, BitSet *dstTokens, BitSet *srcTokens, bool removeAllTokens);
         void insertSync(G4_BB *bb, SBNode *node, G4_INST *inst, INST_LIST_ITER inst_it, int newInstID, BitSet *dstTokens, BitSet *srcTokens, bool hasDistOneAreg);
         void insertTest();
 
