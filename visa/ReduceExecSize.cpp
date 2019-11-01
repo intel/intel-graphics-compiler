@@ -1292,17 +1292,18 @@ void HWConformity::splitInstruction(INST_LIST_ITER iter, G4_BB* bb, bool compOpt
 
 // evenly split an inst into two instructions with half execution size.
 // this is used to split a simd16 math into two simd8 before other reducing exeuction size actions
-void HWConformity::evenlySplitInst( INST_LIST_ITER iter, G4_BB* bb, bool checkOverlap )
+bool HWConformity::evenlySplitInst( INST_LIST_ITER iter, G4_BB* bb, bool checkOverlap)
 {
     G4_INST *inst = *iter;
     G4_opcode op = inst->opcode();
     G4_Operand *srcs[3];
     int origMaskOffset = inst->getMaskOffset();
+    bool extraMov = false;
 
     // check dst/src dependency
-    if( checkOverlap )
+    if(checkOverlap)
     {
-        checkSrcDstOverlap( iter, bb, false );
+        extraMov = checkSrcDstOverlap( iter, bb, false );
     }
 
     bool use_arc_reg = false;
@@ -1456,6 +1457,8 @@ void HWConformity::evenlySplitInst( INST_LIST_ITER iter, G4_BB* bb, bool checkOv
             std::cout << std::endl;
         }
     }
+
+    return extraMov;
 }
 
 // this is specifically for math instruction
@@ -1473,11 +1476,12 @@ bool HWConformity::reduceExecSizeForMath( INST_LIST_ITER iter, G4_BB* bb )
 // check overlap between src and dst
 // if overlap exists, insert to MOV to eliminate it
 // how about replicate regions?<0;4,1>
-void HWConformity::checkSrcDstOverlap( INST_LIST_ITER iter, G4_BB* bb, bool compOpt )
+bool HWConformity::checkSrcDstOverlap( INST_LIST_ITER iter, G4_BB* bb, bool compOpt )
 {
     G4_INST *inst = *iter;
     G4_opcode op = inst->opcode();
     G4_Operand *srcs[3];
+    bool hasOverlap = false;
 
     for( int i = 0; i < G4_Inst_Table[op].n_srcs; i++ )
     {
@@ -1513,10 +1517,14 @@ void HWConformity::checkSrcDstOverlap( INST_LIST_ITER iter, G4_BB* bb, bool comp
                 INST_LIST_ITER newMovIter = iter;
                 newMovIter--;
                 reduceExecSize( newMovIter, bb );
+                hasOverlap = true;
             }
         }
     }
+
+    return hasOverlap;
 }
+
 // move source operand to one or two GRF
 // tmp dst use the same type as source.
 // this MOV does not need further resucing execsize
