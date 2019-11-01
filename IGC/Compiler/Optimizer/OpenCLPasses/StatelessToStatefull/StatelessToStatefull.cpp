@@ -337,20 +337,6 @@ bool StatelessToStatefull::getOffsetFromGEP(
 bool StatelessToStatefull::pointerIsPositiveOffsetFromKernelArgument(
     Function* F, Value* V, Value*& offset, unsigned int& argNumber)
 {
-    auto getPointeeAlign = [](const DataLayout* DL, Value* ptrVal)-> unsigned {
-        if (PointerType* PTy = dyn_cast<PointerType>(ptrVal->getType()))
-        {
-            Type* pointeeTy = PTy->getElementType();
-            if (!pointeeTy->isSized()) {
-                return 0;
-            }
-            return DL->getABITypeAlignment(pointeeTy);
-        }
-        return 0;
-    };
-
-    const DataLayout* DL = &F->getParent()->getDataLayout();
-
     AssumptionCache* AC = getAC(F);
 
     PointerType* ptrType = dyn_cast<PointerType>(V->getType());
@@ -383,34 +369,18 @@ bool StatelessToStatefull::pointerIsPositiveOffsetFromKernelArgument(
             argNumber = arg->getAssociatedArgNo();
             bool gepProducesPositivePointer = true;
 
-            // An address needs to be DW-aligned in order to be a base
-            // in a surface state.  In another word, a unaligned argument
-            // cannot be used as a surface base unless buffer_offset is
-            // used, in which "argument + buffer_offset" is instead used
-            // as a surface base.
-            //
-            // Note that implicit arg is always aligned.
-            bool isAlignedPointee =
-                arg->isImplicitArg() ? true : (getPointeeAlign(DL, base) >= 4);
-
             // If m_hasBufferOffsetArg is true, the offset argument is added to
-            // the final offset to make it definitely positive. Thus skip checking
-            // if an offset is positive.
+            // the final offset, and the final offset must be positive. Thus
+            // skip checking if an offset is positive.
             //
-            // Howerver, if m_hasoptionalBufferOffsetArg is true, the buffer offset
-            // is not generated if all offsets can be proven positive (this has
-            // performance benefit as adding buffer offset is an additional add).
-            // Also, if an argument is unaligned, buffer offset must be ON and used;
-            // otherwise, no stateful conversion for the argument can be carried out.
-            //
-            // Note that offset should be positive for any implicit ptr argument,
-            // so no need to prove it!
+            // Note that offset should be positive for any implicit ptr argument
             if (!arg->isImplicitArg() &&
-                isAlignedPointee &&
                 (!m_hasBufferOffsetArg || m_hasOptionalBufferOffsetArg) &&
                 IGC_IS_FLAG_DISABLED(SToSProducesPositivePointer))
             {
-                // This is for proving that the offset is positive.
+                // [This is conservative path]
+                // Need to verify if there is a negative offset,
+                // If so, no stateful message is generated.
                 for (int i = 0, sz = GEPs.size(); i < sz; ++i)
                 {
                     GetElementPtrInst* tgep = GEPs[i];
@@ -427,8 +397,7 @@ bool StatelessToStatefull::pointerIsPositiveOffsetFromKernelArgument(
                     updateArgInfo(arg, gepProducesPositivePointer);
                 }
             }
-            if ((m_hasBufferOffsetArg ||
-                 (gepProducesPositivePointer && isAlignedPointee)) &&
+            if ((gepProducesPositivePointer || m_hasBufferOffsetArg) &&
                 getOffsetFromGEP(F, GEPs, argNumber, arg->isImplicitArg(), offset))
             {
                 return true;
