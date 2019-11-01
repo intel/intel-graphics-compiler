@@ -2011,10 +2011,16 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
         patch.CompiledSIMD16 = ( annotations.m_executionEnivronment.CompiledSIMDSize == 16 );
         patch.CompiledSIMD8  = ( annotations.m_executionEnivronment.CompiledSIMDSize == 8 );
 
-        patch.LargestCompiledSIMDSize = 8;
-        patch.LargestCompiledSIMDSize = patch.CompiledSIMD16 ? 16 : patch.LargestCompiledSIMDSize;
-        patch.LargestCompiledSIMDSize = patch.CompiledSIMD32 ? 32 : patch.LargestCompiledSIMDSize;
-
+        if (annotations.m_executionEnivronment.CompiledSIMDSize == 1)
+        {
+            patch.LargestCompiledSIMDSize = 1;
+        }
+        else
+        {
+            patch.LargestCompiledSIMDSize = 8;
+            patch.LargestCompiledSIMDSize = patch.CompiledSIMD16 ? 16 : patch.LargestCompiledSIMDSize;
+            patch.LargestCompiledSIMDSize = patch.CompiledSIMD32 ? 32 : patch.LargestCompiledSIMDSize;
+        }
 
         patch.HasBarriers                       = annotations.m_executionEnivronment.HasBarriers;
         patch.DisableMidThreadPreemption        = annotations.m_executionEnivronment.DisableMidThreadPreemption;
