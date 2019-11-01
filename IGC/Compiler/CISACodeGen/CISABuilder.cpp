@@ -3727,7 +3727,7 @@ namespace IGC
 
     if (IGC_IS_FLAG_ENABLED(ForceFFIDOverwrite) && m_program->m_Platform->WaOverwriteFFID())
     {
-        static const unsigned int ffid[unsigned(ShaderType::END)] = {
+        unsigned int ffid[unsigned(ShaderType::END)] = {
             0,
             context->isPOSH() ? FFID_VSR : FFID_VS,
             FFID_HS,
