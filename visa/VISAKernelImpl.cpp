@@ -247,7 +247,7 @@ void VISAKernelImpl::createInstForJmpiSequence(InstListType& insts, G4_INST* fca
 {
     // SKL workaround for indirect call
     // r1.0 is the return IP (the instruction right after jmpi)
-    // r1.1 it the return mask
+    // r1.1 is the return mask (which let ret correctly restore the mask)
 
     // calculate the reserved register's num from fcall's dst register (shoud be r1)
     assert(fcall->getDst()->isGreg());
@@ -255,47 +255,64 @@ void VISAKernelImpl::createInstForJmpiSequence(InstListType& insts, G4_INST* fca
     G4_Declare* r1_1_decl =
         m_builder->createHardwiredDeclare(1, fcall->getDst()->getType(), reg_num, 1);
 
+    G4_Declare* r1_4_decl =
+        m_builder->createHardwiredDeclare(1, fcall->getDst()->getType(), reg_num, 4);
     if (fcall->getPredicate() != nullptr) {
-        // skip the calculation of global mask if the given call has make already
-        // In case we overwrite the mask set by IGC for non-uniform call handling
+        // preserve the call's pred in case it's f0.0 and we overwrite it
+        // using r1.4 as the tmp register
 
-        // mov r1.1 fcall_pred
+        // mov r1.4 call_pred
         insts.push_back(m_builder->createMov(
             1,
-            m_builder->Create_Dst_Opnd_From_Dcl(r1_1_decl, 1),
+            m_builder->Create_Dst_Opnd_From_Dcl(r1_4_decl, 1),
             m_builder->Create_Src_Opnd_From_Dcl(
                 fcall->getPredicate()->getTopDcl(), m_builder->getRegionScalar()),
             InstOpt_WriteEnable, false));
+    }
 
-    } else {
-        // mov  f0.0   0
-        insts.push_back(m_builder->createMov(
-            1,
-            m_builder->createDstRegRegion(Direct, m_phyRegPool->getF0Reg(), 0, 0, 1, Type_UD),
-            m_builder->createImm(0, Type_UD), InstOpt_WriteEnable, false));
+    // mov  f0.0   0
+    insts.push_back(m_builder->createMov(
+        1,
+        m_builder->createDstRegRegion(Direct, m_phyRegPool->getF0Reg(), 0, 0, 1, Type_UD),
+        m_builder->createImm(0, Type_UD), InstOpt_WriteEnable, false));
 
-        // mov  r1.1   0
-        insts.push_back(m_builder->createMov(
-            1,
-            m_builder->Create_Dst_Opnd_From_Dcl(r1_1_decl, 1),
-            m_builder->createImm(0, Type_UD),
-            InstOpt_WriteEnable, false));
+    // mov  r1.1   0
+    insts.push_back(m_builder->createMov(
+        1,
+        m_builder->Create_Dst_Opnd_From_Dcl(r1_1_decl, 1),
+        m_builder->createImm(0, Type_UD),
+        InstOpt_WriteEnable, false));
 
-        // cmp  f0.0   r1.1  0
+    // cmp  f0.0   r1.1  0
+    insts.push_back(m_builder->createInternalInst(
+        nullptr, G4_cmp, nullptr, false, 1,
+        m_builder->createDstRegRegion(Direct, m_phyRegPool->getF0Reg(), 0, 0, 1, Type_UD),
+        m_builder->Create_Src_Opnd_From_Dcl(r1_1_decl, m_builder->getRegionScalar()),
+        m_builder->createImm(0, Type_UD), InstOpt_NoOpt));
+
+    // mov  r1.1   f0.0
+    insts.push_back(m_builder->createMov(
+        1,
+        m_builder->Create_Dst_Opnd_From_Dcl(r1_1_decl, 1),
+        m_builder->createSrcRegRegion(
+            Mod_src_undef, Direct, m_phyRegPool->getF0Reg(), 0, 0,
+            m_builder->getRegionScalar(), Type_UD),
+        InstOpt_WriteEnable, false));
+
+    if (fcall->getPredicate() != nullptr) {
+        // If there is non-uniform call, we need to preserve the pred set on the call
+        // which here we have to set it to global mask. No need to reset it after jmpi
+        // since the "ret r1.0" instruction in the target function should've handled it
+
+        // and sr0 f0.0 r1.4
         insts.push_back(m_builder->createInternalInst(
-            nullptr, G4_cmp, nullptr, false, 1,
-            m_builder->createDstRegRegion(Direct, m_phyRegPool->getF0Reg(), 0, 0, 1, Type_UD),
-            m_builder->Create_Src_Opnd_From_Dcl(r1_1_decl, m_builder->getRegionScalar()),
-            m_builder->createImm(0, Type_UD), InstOpt_NoOpt));
-
-        // mov  r1.1   f0.0
-        insts.push_back(m_builder->createMov(
-            1,
-            m_builder->Create_Dst_Opnd_From_Dcl(r1_1_decl, 1),
+            nullptr, G4_and, nullptr, false, 1,
+            m_builder->createDstRegRegion(Direct, m_phyRegPool->getSr0Reg(), 0, 0, 1, Type_UD),
             m_builder->createSrcRegRegion(
                 Mod_src_undef, Direct, m_phyRegPool->getF0Reg(), 0, 0,
                 m_builder->getRegionScalar(), Type_UD),
-            InstOpt_WriteEnable, false));
+            m_builder->Create_Src_Opnd_From_Dcl(r1_4_decl, m_builder->getRegionScalar()),
+            InstOpt_WriteEnable));
     }
 
     // add  r1.0   IP   64
@@ -372,10 +389,16 @@ void VISAKernelImpl::expandIndirectCallWithRegTarget()
                 // From:
                 //       call r1.0 call_target
                 // To:
+                //       if (call has predicate) {
+                //           mov r1.4   call_pred // in case we overwirte call_pred at f0.0
+                //       }
                 //       mov  f0.0   0
                 //       mov  r1.1   0
                 //       cmp  f0.0   r1.1   0
                 //       mov  r1.1   f0.0
+                //       if (call has predicate) {
+                //           and  sr0    f0.0   r1.4      // no need to restore sr0,
+                //       }                                // which should be done by ret instruction
                 //       add  r1.0   IP     64
                 //       add  r1.2   -IP    call_target
                 //       add  r1.2   r1.2   -48
