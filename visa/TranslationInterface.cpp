@@ -2281,19 +2281,18 @@ int IR_Builder::translateVISACFFCallInst(Common_ISA_Exec_Size execsize, Common_V
     auto fcall = createInst(
         predOpnd,
         G4_pseudo_fcall,
-        NULL,
+        nullptr,
         false,
         exsize,
-        NULL,
-        NULL,
-        NULL,
+        nullptr,
+        createLabel(funcName, LABEL_FUNCTION),  //src0 is a fake label containing callee's name
+        nullptr,
         0,
         0);
 
     m_fcallInfo[fcall] = new (mem) G4_FCALL(argSize, returnSize);
 
     funcCallees.emplace(funcName);
-    fcall->asCFInst()->setCallee(funcName);
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif

@@ -579,7 +579,7 @@ static void Stitch_Compiled_Units(G4_Kernel* kernel, std::map<std::string, G4_Ke
 
             if (!fcall->asCFInst()->isIndirectCall())
             {
-                std::string funcName = fcall->asCFInst()->getCallee();
+                std::string funcName = fcall->getSrc(0)->asLabel()->getLabel();
 
                 auto iter = compilation_units.find(funcName);
                 assert(iter != compilation_units.end() && "can't find function with given name");

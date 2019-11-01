@@ -1218,9 +1218,6 @@ class G4_InstCF : public G4_INST
     // Ture if this is a backward branch.
     bool isBackwardBr;
 
-    // for FCALL only
-    std::string         calleeName = "";
-
 public:
 
     static const uint32_t unknownCallee = 0xFFFF;
@@ -1286,21 +1283,7 @@ public:
 
     bool isUniformGoto(unsigned KernelSimdSize) const;
 
-    void setCallee(const std::string& funcName)
-    {
-        MUST_BE_TRUE(op == G4_pseudo_fcall, "Must be a FCALL");
-        calleeName = funcName;
-    }
-    std::string getCallee() const
-    {
-        MUST_BE_TRUE(op == G4_pseudo_fcall, "Must be a FCALL");
-        return calleeName;
-    }
-
-    bool isIndirectCall() const
-    {
-        return op == G4_pseudo_fcall && calleeName == "";
-    }
+    bool isIndirectCall() const;
 
     // for direct call, this is null till after the compilation units are stitched together
     // for indirect call, this is src0
@@ -3876,6 +3859,11 @@ inline const char* G4_InstCF::getUipLabelStr() const
 {
     MUST_BE_TRUE(uip != NULL && uip->isLabel(), ERROR_UNKNOWN);
     return uip->asLabel()->getLabel();
+}
+
+inline bool G4_InstCF::isIndirectCall() const
+{
+    return op == G4_pseudo_fcall && !getSrc(0)->isLabel();
 }
 
 static void computeSpillFillOperandBound(G4_Operand* opnd, unsigned int LB, int numReg)
