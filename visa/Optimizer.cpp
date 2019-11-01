@@ -11073,6 +11073,14 @@ void Optimizer::changeMoveType()
             // sat/conditional modifier as well as src modifier
             // ToDo: we should probably change isRawMov() to include mov UD D
             auto src0 = inst->getSrc(0);
+
+            // FIXME: This is a quick WA to bypass RelocImm, so that it won't create a new src0 and
+            // overwrite the original RelocImm
+            // While this optimization should still be able to apply to RelocImm. Once we turn on this optimization
+            // for RelocImm, we should update assert in VISAKernelImpl::GetGenRelocEntryBuffer to allow float type
+            if (src0->isRelocImm())
+                continue;
+
             G4_Type dstTy = inst->getDst()->getType();
             G4_Type src0Ty = src0->getType();
             bool hasNoModifier = !inst->getSaturate() && !inst->getCondMod() &&
