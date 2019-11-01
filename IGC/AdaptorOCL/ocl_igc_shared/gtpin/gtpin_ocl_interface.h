@@ -28,15 +28,21 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define _GPTIN_OCL_INTERFACE_
 
 #include <stdint.h>
-#include "gtpin_driver_common.h"
+#include "gtpin_driver_common_bti.h"
 
 namespace gtpin
 {
 namespace ocl
 {
-
+/*!
+* GTPin <-> OpenCL Driver Interface Changelog:
+* 2. File reordering
+* 1. IGC info added
+* 0. Official release of OpenCL support
+*/
 // GTPin <-> OpenCL driver interface version
-static const uint16_t GTPIN_OCL_INTERFACE_VERSION = 1;
+static const uint8_t GTPIN_OCL_INTERNAL_INTERFACE_VERSION = 2; /// GTPIN INTERNAL VALUE
+static const uint16_t GTPIN_OCL_INTERFACE_VERSION = GENERATE_SPECIFIC_VERSION(GTPIN_OCL_INTERNAL_INTERFACE_VERSION);
 
 /************************************************************************/
 /* General Comments:
@@ -63,7 +69,7 @@ Params:
 (in)  platform_info - information about the platform
 (out) igc_init      - IGC's initialization data
 */
-typedef void(*OnContextCreateFPTR)(context_handle_t context, platform_info_t* platform_info, igc_init_t** igc_init);
+typedef void(*OnContextCreateFPTR)(device_handle_t handle, platform_info_t* platform_info, igc_init_t** igc_init);
 
 /**
 Called up on a destruction of the device
@@ -71,7 +77,7 @@ Called up on a destruction of the device
 Params:
 (in) context - The context been destroyed.
 **/
-typedef void(*OnContextDestroyFPTR)(context_handle_t context);
+typedef void(*OnContextDestroyFPTR)(device_handle_t handle);
 
 /**
 Called on up the creation of a new shader by the application
@@ -81,7 +87,7 @@ Params:
 (in)  params_in     -  All instrumentation parameters needed for GTPin's instrumentation
 (out) params_out    -  GTPin's instrumentation artifacts
 **/
-typedef void(*OnKernelCreateFPTR)(context_handle_t context, const instrument_params_in_t* params_in, instrument_params_out_t* params_out);
+typedef void(*OnKernelCreateFPTR)(device_handle_t handle, const instrument_params_in_t* params_in, instrument_params_out_t* params_out);
 
 /**
 Called up on applications call to the EnqueueNDRange API.
@@ -103,7 +109,7 @@ Params:
 (in) context -  The handle of the context
 (in) cb      -  Driver's internal command buffer handle
 **/
-typedef void(*OnCommandBufferCreateFPTR)(context_handle_t context, command_buffer_handle_t cb);
+typedef void(*OnCommandBufferCreateFPTR)(device_handle_t handle, command_buffer_handle_t cb);
 
 /**
 Called up on the submissions for execution driver's internal command buffer
