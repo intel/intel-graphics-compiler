@@ -2081,7 +2081,7 @@ G4_INST* SWSB::insertSyncAllWRInstruction(G4_BB* bb, unsigned int SBIDs, INST_LI
     return syncInst;
 }
 
-bool SWSB::insertSyncToken(G4_BB *bb, SBNode *node, G4_INST *inst, INST_LIST_ITER inst_it, int newInstID, BitSet *dstTokens, BitSet *srcTokens, bool removeAllToken)
+void SWSB::insertSyncToken(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_ITER inst_it, int newInstID, BitSet* dstTokens, BitSet* srcTokens, bool removeAllToken)
 {
     //Non-test instruction can only have
     // 1. non-send: one Dst Token with distance, or
@@ -2097,8 +2097,6 @@ bool SWSB::insertSyncToken(G4_BB *bb, SBNode *node, G4_INST *inst, INST_LIST_ITE
     unsigned short dstToken = (unsigned short)-1;
     unsigned short srcToken = (unsigned short)-1;
     SWSBTokenType type = G4_INST::SWSBTokenType::TOKEN_NONE;
-    bool insertedSync = false;
-
     for (unsigned int i = 0; i < node->GetInstruction()->getDepTokenNum();)
     {
         G4_INST* synAllInst = nullptr;
@@ -2214,7 +2212,6 @@ bool SWSB::insertSyncToken(G4_BB *bb, SBNode *node, G4_INST *inst, INST_LIST_ITE
             synInst->setDepToken(dstToken, SWSBTokenType::AFTER_WRITE);
         }
         synInst->setLexicalId(newInstID);
-        insertedSync = true;
     }
 
     if (src)
@@ -2233,31 +2230,23 @@ bool SWSB::insertSyncToken(G4_BB *bb, SBNode *node, G4_INST *inst, INST_LIST_ITE
             synInst->setDepToken(srcToken, SWSBTokenType::AFTER_READ);
         }
         synInst->setLexicalId(newInstID);
-        insertedSync = true;
     }
 
-    return insertedSync;
+    return;
 }
 
 
 void SWSB::insertSync(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_ITER inst_it, int newInstID, BitSet* dstTokens, BitSet* srcTokens, bool hasDistOneAreg)
 {
-    bool insertedSync = false;
-    INST_LIST_ITER prevIt = inst_it;
+    G4_INST* syncInst = nullptr;
     if (hasDistOneAreg)
     {
-        prevIt--;
-    }
-
-    {
-        insertedSync = insertSyncToken(bb, node, inst, inst_it, newInstID, dstTokens, srcTokens, false);
-    }
-
-    if (hasDistOneAreg && insertedSync)
-    {
-        G4_INST* syncInst = nullptr;
-        syncInst = insertSyncInstructionAfter(bb, prevIt, inst->getCISAOff(), inst->getLineNo());
+        syncInst = insertSyncInstructionAfter(bb, inst_it, inst->getCISAOff(), inst->getLineNo());
         syncInst->setDistance(1);
+    }
+
+    {
+        insertSyncToken(bb, node, inst, inst_it, newInstID, dstTokens, srcTokens, false);
     }
 }
 
