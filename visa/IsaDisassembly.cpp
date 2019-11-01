@@ -2343,13 +2343,17 @@ static std::string printInstructionDataport(
         {
             Common_ISA_SVM_Block_Num numBlocks;
 
+            // block size : ignored
+            (void)getPrimitiveOperand<uint8_t>(inst, i++);
+
             numBlocks = static_cast<Common_ISA_SVM_Block_Num>(getPrimitiveOperand<uint8_t>(inst, i++));
-            // ignore scale (MBZ)
-            (void) getPrimitiveOperand<uint8_t>(inst, i++);
 
             sstr << "." << Get_Common_ISA_SVM_Block_Num(numBlocks);
 
             sstr << " " << printExecutionSize(inst->opcode, inst->execsize);
+
+            // scale (MBZ) : ignored
+            (void)getPrimitiveOperand<uint8_t>(inst, i++);
 
             /// surface
             surface = getPrimitiveOperand<uint8_t>(inst, i++);
