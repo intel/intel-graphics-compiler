@@ -705,10 +705,18 @@ int VISAKernelImpl::InitializeFastPath()
     }
     m_jitInfo = (FINALIZER_INFO*)m_mem.alloc(sizeof(FINALIZER_INFO));
 
-    int value = 32;
-    if (!getIntKernelAttributeValue("FESPSize", value))
+    int feSPSize = 32;
+    if (!getIntKernelAttributeValue("FESPSize", feSPSize))
     {
-        value = 32;
+        feSPSize = 32;
+    }
+    int spillMemOffset = 0;
+    if (getIntKernelAttributeValue("SpillMemOffset", spillMemOffset))
+    {
+        if (spillMemOffset > 0)
+        {
+            getOptions()->setOption(vISA_SpillMemOffset, (uint32_t)spillMemOffset);
+        }
     }
 
     void* addr = m_kernelMem->alloc(sizeof(class IR_Builder));
@@ -717,7 +725,7 @@ int VISAKernelImpl::InitializeFastPath()
         *m_kernel,
         *m_kernelMem,
         m_options,
-        (value == 64),
+        (feSPSize == 64),
         m_jitInfo,
         m_pWaTable
         );
@@ -1425,7 +1433,7 @@ int VISAKernelImpl::AddKernelAttribute(const char* attrName, int size, const voi
     attr->size  = (uint8_t)size;
     attr->isInt = size != 0 && (!strcmp(attrName, "SLMSize") ||
         !strcmp(attrName, "SurfaceUsage") ||
-        !strcmp(attrName, "StackSize") ||
+        !strcmp(attrName, "SpillMemOffset") ||
         !strcmp(attrName, "Scope") ||
         !strcmp(attrName, "Target") ||
         !strcmp(attrName, "ArgSize") ||
