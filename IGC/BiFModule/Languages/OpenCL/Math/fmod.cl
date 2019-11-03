@@ -66,7 +66,7 @@ float4 OVERLOADABLE fast_fmod( float4 xx, float4 yy )
 }
 
 
-#if cl_khr_fp16
+#if defined(cl_khr_fp16)
 INLINE
 half OVERLOADABLE fast_fmod( half xx, half yy )
 {

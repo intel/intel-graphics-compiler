@@ -66,7 +66,7 @@ float4 __builtin_spirv_OpenCL_fast_fmod_v4f32_v4f32( float4 xx, float4 yy )
 }
 
 
-#if cl_khr_fp16
+#if defined(cl_khr_fp16)
 INLINE
 half __builtin_spirv_OpenCL_fast_fmod_f16_f16( half xx, half yy )
 {

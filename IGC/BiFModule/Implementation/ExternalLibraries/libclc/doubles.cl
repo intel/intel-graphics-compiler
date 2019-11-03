@@ -36,7 +36,7 @@
 #define bytealign(src0, src1, src2) \
   ((uint) (((((long)(src0)) << 32) | (long)(src1)) >> (((src2) & 3)*8)))
 
-double __clc_exp_helper(double x, double x_min, double x_max, double r, int n) {
+INLINE double __clc_exp_helper(double x, double x_min, double x_max, double r, int n) {
 
     int j = n & 0x3f;
     int m = n >> 6;
