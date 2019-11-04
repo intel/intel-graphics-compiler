@@ -285,7 +285,6 @@ namespace {
                 break;
             case InstTypeCompare:
             case InstTypeFlow:
-            case InstTypeMask:
             case InstTypeMisc:
                 // TODO: G4_send, G4_sendc, G4_sends, and G4_sendsc need
                 // investigating whether they are profitable to be predicated.

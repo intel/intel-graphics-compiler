@@ -1378,7 +1378,7 @@ void Optimizer::reverseOffsetProp(
                     inst->setDest( builder.createDstRegRegion(*newDst) );
                 }
             }
-            for (unsigned i = 0; i < G4_Inst_Table[inst->opcode()].n_srcs; i++)
+            for (int i = 0; i < inst->getNumSrc(); i++)
             {
                 inst_src = inst->getSrc(i);
                 if( inst_src && inst_src->isSrcRegRegion() &&
@@ -1459,7 +1459,7 @@ void Optimizer::FoldAddrImmediate()
             {
                 continue;
             }
-            num_srcs = G4_Inst_Table[inst->opcode()].n_srcs;
+            num_srcs = inst->getNumSrc();
             dst = inst->getDst();
             if (dst)
             {
@@ -4581,7 +4581,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 curr_inst->setPredicate(builder.duplicateOperand(new_pred));
             }
 
-            for (int k = 0; k < G4_Inst_Table[curr_inst->opcode()].n_srcs; k++)
+            for (int k = 0; k < curr_inst->getNumSrc(); k++)
             {
                 G4_Operand *curr_src = curr_inst->getSrc(k);
                 if (curr_src->isSrcRegRegion() && !(curr_inst->isMath() && k == 1 && curr_src->isNullReg()))
@@ -4635,7 +4635,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 curr_inst->setPredicate(builder.duplicateOperand(new_pred));
             }
 
-            for (int k = 0; k < G4_Inst_Table[curr_inst->opcode()].n_srcs; k++)
+            for (int k = 0; k < curr_inst->getNumSrc(); k++)
             {
                 G4_Operand *curr_src = curr_inst->getSrc(k);
                 if (curr_src->isSrcRegRegion() && !(curr_inst->isMath() && k == 1 && curr_src->isNullReg()))
@@ -6359,7 +6359,7 @@ bool Optimizer::hasGen12LPBundleConflict(G4_INST *inst)
         return false;
     }
 
-    for (unsigned i = 1; i < G4_Inst_Table[inst->opcode()].n_srcs; i++)
+    for (int i = 1; i < inst->getNumSrc(); i++)
     {
         srcOpnd = inst->getSrc(i);
         if (srcOpnd)
@@ -6646,7 +6646,7 @@ G4_INST *IR_Builder::makeSplittingInst(G4_INST *inst, uint8_t ExSize)
         newInst->setCISAOff(inst->getCISAOff());
         newInst->setSrcFilename(inst->getSrcFilename());
     }
-    else if (G4_Inst_Table[op].n_srcs < 3)
+    else if (inst->getNumSrc() < 3)
     {
         newInst = createInternalInst(
             NULL, op, NULL, inst->getSaturate(), ExSize, NULL, NULL, NULL,
@@ -6674,7 +6674,7 @@ void Optimizer::evenlySplitInst(INST_LIST_ITER iter, G4_BB* bb)
     int origMaskOffset = inst->getMaskOffset();
 
     bool use_arc_reg = false;
-    for (int i = 0; i < G4_Inst_Table[op].n_srcs; i++)
+    for (int i = 0; i < inst->getNumSrc(); i++)
     {
         srcs[i] = inst->getSrc(i);
     }
@@ -6765,7 +6765,7 @@ void Optimizer::evenlySplitInst(INST_LIST_ITER iter, G4_BB* bb)
             }
         }
 
-        for (int j = 0; j < G4_Inst_Table[op].n_srcs; j++)
+        for (int j = 0; j < inst->getNumSrc(); j++)
         {
             if (srcs[j])
             {

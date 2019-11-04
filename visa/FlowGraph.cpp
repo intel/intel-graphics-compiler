@@ -3976,7 +3976,7 @@ void G4_BB::emitBankConflict(std::ostream& output, G4_INST *inst)
 
     if (inst->getNumSrc() == 3 && !inst->isSend())
     {
-        for (unsigned i = 0; i < G4_Inst_Table[inst->opcode()].n_srcs; i++)
+        for (unsigned i = 0; i < 3; i++)
         {
             G4_Operand * srcOpnd = inst->getSrc(i);
             regNum[1][i] = -1;
@@ -4361,8 +4361,7 @@ uint32_t G4_BB::emitBankConflictGen12lp(std::ostream& os_output, G4_INST *inst, 
         }
     }
 
-    //Get src
-    for (unsigned i = 0; i < G4_Inst_Table[inst->opcode()].n_srcs; i++)
+    for (int i = 0; i < inst->getNumSrc(); i++)
     {
         setInValidReg(currInstRegs[0][i]);
         setInValidReg(currInstRegs[1][i]);

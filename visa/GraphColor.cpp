@@ -5733,7 +5733,7 @@ void GlobalRA::determineSpillRegSize(unsigned& spillRegSize, unsigned& indrSpill
                 unsigned srcFillRegSize = 0;
                 unsigned indirSrcFillRegSize = 0;
                 // Scan srcs
-                for (int i = 0, srcNum = G4_Inst_Table[curInst->opcode()].n_srcs; i < srcNum; i++)
+                for (int i = 0, srcNum = curInst->getNumSrc(); i < srcNum; i++)
                 {
                     G4_Operand* src = curInst->getSrc(i);
 
@@ -10397,7 +10397,7 @@ void GlobalRA::computePhyReg()
                 }
             }
 
-            for (unsigned j = 0, size = G4_Inst_Table[inst->opcode()].n_srcs; j < size; j++)
+            for (unsigned j = 0, size = inst->getNumSrc(); j < size; j++)
             {
                 G4_Operand *curr_src = inst->getSrc(j);
                 if (!curr_src || curr_src->isImm() || (inst->opcode() == G4_math && j == 1 && curr_src->isNullReg()) || curr_src->isLabel())

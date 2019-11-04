@@ -1197,7 +1197,7 @@ void LocalRA::markReferencesInInst(INST_LIST_ITER inst_it)
     }
 
     // Scan srcs
-    for (int i = 0, nSrcs = G4_Inst_Table[inst->opcode()].n_srcs; i < nSrcs; i++)
+    for (int i = 0, nSrcs = inst->getNumSrc(); i < nSrcs; i++)
     {
         G4_Operand* src = inst->getSrc(i);
 
@@ -1346,7 +1346,7 @@ void LocalRA::calculateInputIntervals()
             }
 
             // Scan src operands
-            for (int i = 0, nSrcs = G4_Inst_Table[curInst->opcode()].n_srcs; i < nSrcs; i++)
+            for (int i = 0, nSrcs = curInst->getNumSrc(); i < nSrcs; i++)
             {
                 G4_Operand* src = curInst->getSrc(i);
 
@@ -1472,7 +1472,7 @@ void LocalRA::calculateLiveIntervals(G4_BB* bb, std::vector<LocalLiveRange*>& li
         }
 
         // Scan srcs
-        for (int i = 0, nSrcs = G4_Inst_Table[curInst->opcode()].n_srcs; i < nSrcs; i++)
+        for (int i = 0, nSrcs = curInst->getNumSrc(); i < nSrcs; i++)
         {
             G4_Operand* src = curInst->getSrc(i);
 

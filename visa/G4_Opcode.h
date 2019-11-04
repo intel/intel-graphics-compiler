@@ -241,7 +241,6 @@ enum G4_InstType
     InstTypeLogic,            // not, and, or, xor, ...
     InstTypeCompare,        // cmp, cmpn
     InstTypeFlow,            // if, iff, do, while, break, ...
-    InstTypeMask,            // msave, mrest, push, pop
     InstTypeArith,            // add, mul, frc, mac , ...
     InstTypeVector,            // sad, sad2, dp4, dp3, dp2, ..
     InstTypeMisc,            // send, wait, nop, illegal
@@ -334,7 +333,8 @@ typedef struct _G4_Inst_Info
     int         attributes;
 } G4_Inst_Info;
 
-extern G4_Inst_Info G4_Inst_Table[G4_NUM_OPCODE];
+// ToDo: make this into G4_INST so that not everyone and their grandma are directly reading it
+extern const G4_Inst_Info G4_Inst_Table[G4_NUM_OPCODE];
 
 // Relation between two regions. The comparison is based on memory locations
 // regions reference, which are described by the left-bound, the right bound,

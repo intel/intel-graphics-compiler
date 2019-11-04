@@ -1618,8 +1618,7 @@ namespace vISA
     {
         BinInst *mybin = inst->getBinInst();
 
-        if (G4_Inst_Table[inst->opcode()].n_srcs == 3 &&
-            !inst->isSend())
+        if (inst->getNumSrc() == 3 && !inst->isSend())
         {
             mybin->SetIs3Src(true);
         }

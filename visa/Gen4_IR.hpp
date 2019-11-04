@@ -719,7 +719,6 @@ public:
     {
         return G4_Inst_Table[op].instType == InstTypeVector;
     }
-    bool isMask() const { return G4_Inst_Table[op].instType == InstTypeMask; }
     bool isLabel() const { return op == G4_label; }
     bool isCall() const { return op == G4_call; }
     bool isFCall() const { return op == G4_pseudo_fcall; }
@@ -1087,7 +1086,7 @@ public:
     bool canHoist(bool simdBB, const Options *opt) const;
     bool isCommutative() const;
     bool canUseACCOpt(bool handleComprInst, bool checkRegion,
-        uint16_t &hs, bool allow3Src, bool allowTypeDemotion, bool insertMov = false);
+        uint16_t &hs, bool allowTypeDemotion, bool insertMov = false);
 
     bool hasNULLDst() const;
     bool goodTwoGRFDst(bool& evenSplitDst);

@@ -93,7 +93,7 @@ G4_InstOptInfo InstOptInfo[] =
     { G4_##op, name, nsrc, ndst, type, plat, \
       attr },
 
-G4_Inst_Info G4_Inst_Table[] = {
+const G4_Inst_Info G4_Inst_Table[] = {
 #include "G4Instruction.def"
 };
 
@@ -2804,7 +2804,7 @@ bool G4_INST::isCommutative() const
 // 5. acc src can not use modifier in LOGIC inst
 
 // There are many cases that use simd16 Float, split these instructions enables more opportimizations.
-bool G4_INST::canUseACCOpt( bool handleComprInst, bool checkRegion, uint16_t &hs, bool allow3Src, bool allowTypeDemotion, bool insertMov )
+bool G4_INST::canUseACCOpt( bool handleComprInst, bool checkRegion, uint16_t &hs, bool allowTypeDemotion, bool insertMov )
 {
     hs = 0;
 
@@ -2817,9 +2817,7 @@ bool G4_INST::canUseACCOpt( bool handleComprInst, bool checkRegion, uint16_t &hs
     }
 
     // opcode related checks (why is this necessary? shouldn't inst always be pseudo_mad???)
-    if (op == G4_math || op == G4_shl ||
-        (!allow3Src && G4_Inst_Table[op].n_srcs > 2 ) ||
-        (predicate && op != G4_sel))
+    if (op == G4_math || op == G4_shl || (predicate && op != G4_sel))
     {
         return false;
     }
@@ -2856,7 +2854,7 @@ bool G4_INST::canUseACCOpt( bool handleComprInst, bool checkRegion, uint16_t &hs
 
     if (useInst->isSend() ||
         useOp == G4_math || useOp == G4_mac || useOp == G4_mach || useOp == G4_sada2 ||
-        G4_Inst_Table[useOp].n_srcs > 2 ||
+        useInst->getNumSrc() > 2 ||
         (G4_Inst_Table[useOp].instType == InstTypeLogic && use->getModifier() != Mod_src_undef))
     {
         return false;
@@ -2890,7 +2888,7 @@ bool G4_INST::canUseACCOpt( bool handleComprInst, bool checkRegion, uint16_t &hs
     {
         // recompute exec type
         useExecType = Type_W;
-        for (unsigned i = 0; i < G4_Inst_Table[useInst->opcode()].n_srcs; i++)
+        for (int i = 0; i < useInst->getNumSrc(); i++)
         {
             if( useInst->getSrc(i) == use )
             {
@@ -3390,9 +3388,9 @@ bool G4_INST::isOptBarrier() const
         }
     }
 
-    for (int i = 0; i < G4_Inst_Table[op].n_srcs; i++)
+    for (int i = 0; i < getNumSrc(); i++)
     {
-        if (srcs[i] != NULL)
+        if (srcs[i])
         {
             if (srcs[i]->isAreg())
             {
@@ -3657,19 +3655,8 @@ void G4_INST::emit_inst(std::ostream& output, bool symbol_dst, bool *symbol_srcs
             output << ' ';
         }
 
-        auto getNumSrcOpnds = [this]()
-        {
-            G4_opcode op = this->opcode();
-            unsigned int numOpnds = G4_Inst_Table[op].n_srcs;
-
-            if (op == G4_opcode::G4_intrinsic)
-                numOpnds = G4_Intrinsics[(int)this->asIntrinsicInst()->getIntrinsicId()].numSrc;
-
-            return numOpnds;
-        };
-
-        auto numSrcOpnds = getNumSrcOpnds();
-        for (unsigned i = 0; i < numSrcOpnds; i++)
+        auto numSrcOpnds = getNumSrc();
+        for (int i = 0; i < numSrcOpnds; i++)
         {
             if (srcs[i])
             {
@@ -3880,7 +3867,7 @@ bool G4_INST::isMixedMode() const
     {
         return false;
     }
-    for (int i = 0; i < G4_Inst_Table[opcode()].n_srcs; ++i)
+    for (int i = 0; i < getNumSrc(); ++i)
     {
         G4_Operand *tOpnd = getSrc(i);
         if(!tOpnd)

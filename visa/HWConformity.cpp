@@ -410,39 +410,37 @@ void HWConformity::fixPackedSource(INST_LIST_ITER it, G4_BB *bb, G4_Type extype)
 
     bool nonTypeWFound = false, nonTypeFFound = false, incompatibleTypeFound = false;
 
-    for( int i = 0; i < G4_Inst_Table[inst->opcode()].n_srcs; i++ )
+    for (int i = 0; i < inst->getNumSrc(); i++)
     {
-        G4_Operand *src = inst->getSrc(i);
-        if( !src || !(IS_VTYPE(src->getType())))
+        G4_Operand* src = inst->getSrc(i);
+        if (!src || !(IS_VTYPE(src->getType())))
         {
             // Make sure other src operands are of word type only as this is a HW requirement
-            if( src &&
-                ( src->getType() != Type_W &&
-                src->getType() != Type_UW ) )
+            if (src &&
+                (src->getType() != Type_W &&
+                    src->getType() != Type_UW))
             {
                 nonTypeWFound = true;
             }
-            if( src &&
-                ( src->getType() != Type_F ) )
+            if (src &&
+                (src->getType() != Type_F))
             {
                 nonTypeFFound = true;
             }
-
-
             continue;
         }
         G4_Type target_type = Type_W;
-        if( src->getType() == Type_VF )
+        if (src->getType() == Type_VF)
         {
             target_type = Type_F;
         }
 
-        if( target_type == Type_W && nonTypeWFound == true )
+        if (target_type == Type_W && nonTypeWFound == true)
         {
             // non-word type src is not allowed to co-exist with :v src
             incompatibleTypeFound = true;
         }
-        else if( target_type == Type_F && nonTypeFFound == true )
+        else if (target_type == Type_F && nonTypeFFound == true)
         {
             // non-float type src is not allowed to co-exist with :vf src
             incompatibleTypeFound = true;
@@ -450,10 +448,10 @@ void HWConformity::fixPackedSource(INST_LIST_ITER it, G4_BB *bb, G4_Type extype)
 
         // Insert a move only if immediate operand is not
         // last src operand
-        if( i != G4_Inst_Table[inst->opcode()].n_srcs - 1 ||
-            incompatibleTypeFound == true )
+        if (i != inst->getNumSrc() - 1 ||
+            incompatibleTypeFound == true)
         {
-            inst->setSrc( insertMovBefore( it, i, target_type, bb), i );
+            inst->setSrc(insertMovBefore(it, i, target_type, bb), i);
         }
     }
 }
@@ -712,7 +710,7 @@ void HWConformity::fixImmAndARFSrc(INST_LIST_ITER it, G4_BB *bb)
     src2 = inst->getSrc(2);
 
     /* Check for usage of two constants in binary operations */
-    if (src0 != NULL && (src0->isImm() || src0->isAddrExp()) && G4_Inst_Table[inst->opcode()].n_srcs == 2)
+    if (src0 != NULL && (src0->isImm() || src0->isAddrExp()) && inst->getNumSrc() == 2)
     {
         if (INST_COMMUTATIVE(inst->opcode()) && !src1->isImm())
         {
@@ -875,7 +873,7 @@ void HWConformity::fixImmAndARFSrc(INST_LIST_ITER it, G4_BB *bb)
     src2 = inst->getSrc(2);
 
     // check for non-mad 3src inst
-    if (G4_Inst_Table[inst->opcode()].n_srcs == 3 && src1->isImm())
+    if (inst->getNumSrc() == 3 && src1->isImm())
     {
         inst->setSrc(insertMovBefore(it, 1, INST_FLOAT_SRC_ONLY(inst->opcode()) ? Type_F : src1->getType(), bb), 1);
     }
@@ -2868,7 +2866,7 @@ void HWConformity::fix64bInst( INST_LIST_ITER iter, G4_BB* bb )
     {
         uses64BitType = true;
     }
-    for (int i = 0, size = G4_Inst_Table[inst->opcode()].n_srcs; !uses64BitType && i < size; i++)
+    for (int i = 0, size = inst->getNumSrc(); !uses64BitType && i < size; i++)
     {
         G4_Operand* src = inst->getSrc(i);
 
@@ -2923,7 +2921,7 @@ void HWConformity::fix64bInst( INST_LIST_ITER iter, G4_BB* bb )
             return;
         }
 
-        int numSrc = G4_Inst_Table[inst->opcode()].n_srcs;
+        int numSrc = inst->getNumSrc();
 
         // handle indirect sources first
         for (int i = 0; i < numSrc; ++i)
@@ -5022,7 +5020,7 @@ bool HWConformity::convertMAD2MAC( INST_LIST_ITER iter, std::vector<G4_INST*> &m
             }
 
             uint16_t movDist, hs;
-            if( lastMad->canUseACCOpt( false, true, hs, true, true, true ) && hs == 1 &&
+            if( lastMad->canUseACCOpt( false, true, hs, true, true ) && hs == 1 &&
                 findHoistLocation( useIter, movTarget, movDist, lastMad ) &&
                 (*movTarget) == lastMad )
             {
@@ -6127,7 +6125,7 @@ bool HWConformity::hasBadRegion( G4_INST *inst )
     if( inst->getImplAccDst() || inst->getImplAccSrc() )
         return false;
     bool badRegion = false;
-    for( unsigned int srcNum = 0, n_srcs = G4_Inst_Table[inst->opcode()].n_srcs; srcNum < n_srcs; srcNum++ )
+    for( unsigned int srcNum = 0, n_srcs = inst->getNumSrc(); srcNum < n_srcs; srcNum++ )
     {
         if( !(inst->getSrc(srcNum)->isSrcRegRegion()) )
         {
@@ -6393,7 +6391,7 @@ G4_INST* HWConformity::splitInstWithByteDst( G4_INST *expand_op )
         expand_sec_half_op->setDest( expand_op->getDst() );
     }
 
-    for( int k = 0, n_srcs = G4_Inst_Table[expand_op->opcode()].n_srcs; k < n_srcs; k++ )
+    for( int k = 0, n_srcs = expand_op->getNumSrc(); k < n_srcs; k++ )
     {
         G4_Operand *expand_src = expand_op->getSrc(k);
 
@@ -6778,7 +6776,7 @@ void HWConformity::fixDataLayout( )
                 }
             }
 
-            for (int i = 0; i < G4_Inst_Table[inst->opcode()].n_srcs; i++)
+            for (int i = 0; i < inst->getNumSrc(); i++)
             {
                 G4_Operand* src = inst->getSrc(i);
 
@@ -7108,7 +7106,7 @@ void HWConformity::fixImm64 ( INST_LIST_ITER i,
                               G4_BB* bb )
 {
     G4_INST *inst = *i;
-    for( int j = 0, n_srcs = G4_Inst_Table[inst->opcode()].n_srcs; j < n_srcs; j++ )
+    for( int j = 0, n_srcs = inst->getNumSrc(); j < n_srcs; j++ )
     {
         G4_Operand *src = inst->getSrc(j);
         if( !src                                    ||
