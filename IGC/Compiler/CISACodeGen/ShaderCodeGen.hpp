@@ -465,7 +465,7 @@ namespace IGC
 
         int  m_cbSlot;
         uint m_statelessCBPushedSize;
-        uint m_NOSBufferSize;
+        uint m_NOSBufferSize = 0;
 
         /// holds max number of inputs that can be pushed for this shader unit
         static const uint32_t m_pMaxNumOfPushedInputs;

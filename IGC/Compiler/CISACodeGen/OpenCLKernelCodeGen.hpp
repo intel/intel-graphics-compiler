@@ -41,13 +41,13 @@ namespace IGC
         COpenCLKernel(const OpenCLProgramContext* ctx, llvm::Function*, CShaderProgram* pProgram);
         ~COpenCLKernel();
 
-        virtual void PreCompile();
-        virtual void AllocatePayload();
-        virtual void ParseShaderSpecificOpcode(llvm::Instruction* inst);
-        virtual void ExtractGlobalVariables() {}
+        void PreCompile() override;
+        void AllocatePayload() override;
+        void ParseShaderSpecificOpcode(llvm::Instruction* inst) override;
+        void ExtractGlobalVariables() override {}
 
-        bool        hasReadWriteImage(llvm::Function& F);
-        bool        CompileSIMDSize(SIMDMode simdMode, EmitPass& EP, llvm::Function& F);
+        bool        hasReadWriteImage(llvm::Function& F) override;
+        bool        CompileSIMDSize(SIMDMode simdMode, EmitPass& EP, llvm::Function& F) override;
         SIMDStatus  checkSIMDCompileConds(SIMDMode simdMode, EmitPass& EP, llvm::Function& F);
 
         void        FillKernel();
@@ -61,13 +61,13 @@ namespace IGC
         // Set m_HasGlobalSize to true if TID functions were found
         void SetHasGlobalSize();
 
-        bool HasFullDispatchMask();
+        bool HasFullDispatchMask() override;
 
         // Returns the immediate value mapped to GlobalVariable c.
         // (GlobalVariables represent the pointer to the global,
         // which is a compile-time constant)
-        virtual unsigned int GetGlobalMappingValue(llvm::Value* c);
-        virtual CVariable* GetGlobalMapping(llvm::Value* c);
+        unsigned int GetGlobalMappingValue(llvm::Value* c) override;
+        CVariable* GetGlobalMapping(llvm::Value* c) override;
 
         const SOpenCLKernelInfo& getKernelInfo() const { return m_kernelInfo; }
 
