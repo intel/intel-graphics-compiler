@@ -3057,7 +3057,7 @@ int IR_Builder::translateVISAMediaLoadInst(
         unsigned char curr_offset = 0;
 
         G4_Type dstType = original_dst->getType();
-        while( curr_exec_size >= 1 )
+        while( remained_ele >= 1 )
         {
             short dst_regoff = original_dst->asDstRegRegion()->getRegOff();
             short dst_subregoff = original_dst->asDstRegRegion()->getSubRegOff();
