@@ -347,7 +347,7 @@ if (UNIX OR WIN32)
 
   # Install GENX_IR binary or not
   # -DINSTALL_GENX_IR=ON could be used to turn this option on.
-  option(INSTALL_GENX_IR "install GENX_IR or not" OFF)
+  option(INSTALL_GENX_IR "install GENX_IR or not" ON)
   if (INSTALL_GENX_IR)
       install(TARGETS GenX_IR_Exe RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR} COMPONENT igc-media)
   endif (INSTALL_GENX_IR)
