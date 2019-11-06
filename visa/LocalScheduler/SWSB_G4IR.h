@@ -119,12 +119,13 @@ namespace vISA
         unsigned short LeftB;
         unsigned short RightB;
         unsigned short offset;
+        G4_INST*       inst;
         struct SBFootprint *next;             //The ranges linked together to represent the possible registser ranges may be occupied by an operand.
                                          //For indirect access, non-contigious ranges exist.
 
-        SBFootprint(void) : fType(GRF_T), type (Type_UNDEF), LeftB(0), RightB(0), offset(0), next(nullptr) { ; }
-        SBFootprint(FOOTPRINT_TYPE ft, G4_Type t, unsigned short LB, unsigned short RB)
-            : fType(ft), type(t), LeftB(LB), RightB(RB), offset(0), next(nullptr) {
+        SBFootprint(void) : fType(GRF_T), type (Type_UNDEF), LeftB(0), RightB(0), offset(0), inst(nullptr), next(nullptr) { ; }
+        SBFootprint(FOOTPRINT_TYPE ft, G4_Type t, unsigned short LB, unsigned short RB, G4_INST *i)
+            : fType(ft), type(t), LeftB(LB), RightB(RB), offset(0), inst(i), next(nullptr) {
             ;
         }
         ~SBFootprint()
@@ -468,10 +469,11 @@ namespace vISA
     struct SBBucketDescr {
         int bucket;
         Gen4_Operand_Number opndNum;
-        SBNode *node;
+        SBNode*  node;
+        G4_INST* inst;
 
-        SBBucketDescr(int Bucket, Gen4_Operand_Number opnd_num, SBNode *sNode)
-            : bucket(Bucket), opndNum(opnd_num), node(sNode) {
+        SBBucketDescr(int Bucket, Gen4_Operand_Number opnd_num, SBNode *sNode, G4_INST *i)
+            : bucket(Bucket), opndNum(opnd_num), inst(i), node(sNode) {
             ;
         }
     };
@@ -482,9 +484,10 @@ namespace vISA
         SBNode*             node;
         Gen4_Operand_Number opndNum;
         int                 sendID;
+        G4_INST*            inst;
 
-        SBBucketNode(SBNode *node1, Gen4_Operand_Number opndNum1)
-            : node(node1), opndNum(opndNum1), sendID(-1)
+        SBBucketNode(SBNode *node1, Gen4_Operand_Number opndNum1, G4_INST *i)
+            : node(node1), opndNum(opndNum1), sendID(-1), inst(i)
         {
         }
 
@@ -669,13 +672,16 @@ namespace vISA
                     endBucket = endBucket + aregOffset;
                 }
 
-                for (unsigned int i = startBucket; (i < endBucket + 1) && (i < nodeBucketsArray.size()); i++)
+                if (footprint->inst == bucketNode->inst)
                 {
-                    if (i == bn_it.bucket)
+                    for (unsigned int i = startBucket; (i < endBucket + 1) && (i < nodeBucketsArray.size()); i++)
                     {
-                        continue;
+                        if (i == bn_it.bucket)
+                        {
+                            continue;
+                        }
+                        bucketKill(i, bucketNode->node, bucketNode->opndNum);
                     }
-                    bucketKill(i, bucketNode->node, bucketNode->opndNum);
                 }
                 footprint = footprint->next;
             }

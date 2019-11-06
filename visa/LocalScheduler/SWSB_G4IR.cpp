@@ -262,7 +262,7 @@ SBFootprint* G4_BB_SB::getFootprintForGRF(G4_Operand* opnd,
         RB = ((RB / G4_GRF_REG_NBYTES) + 1) * G4_GRF_REG_NBYTES - 1;
     }
 
-    footprint = new(allocedMem)SBFootprint(GRF_T, type, LB, RB);
+    footprint = new(allocedMem)SBFootprint(GRF_T, type, LB, RB, inst);
 
     return footprint;
 }
@@ -303,7 +303,7 @@ SBFootprint* G4_BB_SB::getFootprintForACC(G4_Operand* opnd,
     void* allocedMem = mem.alloc(sizeof(SBFootprint));
     SBFootprint* footprint = nullptr;
 
-    footprint = new(allocedMem)SBFootprint(ACC_T, type, LB, RB);
+    footprint = new(allocedMem)SBFootprint(ACC_T, type, LB, RB, inst);
 
     return footprint;
 }
@@ -331,7 +331,7 @@ SBFootprint* G4_BB_SB::getFootprintForFlag(G4_Operand* opnd,
     void* allocedMem = mem.alloc(sizeof(SBFootprint));
     SBFootprint* footprint = nullptr;
 
-    footprint = new(allocedMem)SBFootprint(FLAG_T, type, LB, RB);
+    footprint = new(allocedMem)SBFootprint(FLAG_T, type, LB, RB, inst);
 
     return footprint;
 }
@@ -3104,7 +3104,7 @@ void G4_BB_SB::getGRFFootprintForIndirect(SBNode* node,
         }
 
         void* allocedMem = mem.alloc(sizeof(SBFootprint));
-        footprint = new(allocedMem)SBFootprint(GRF_T, type, (unsigned short)linearizedStart, (unsigned short)linearizedEnd);
+        footprint = new(allocedMem)SBFootprint(GRF_T, type, (unsigned short)linearizedStart, (unsigned short)linearizedEnd, node->GetInstruction());
         node->setFootprint(footprint, opnd_num);
 #ifdef DEBUG_VERBOSE_ON
         int startingBucket = linearizedStart / G4_GRF_REG_NBYTES;
@@ -3140,7 +3140,7 @@ void G4_BB_SB::getGRFBuckets(SBNode* node,
         for (int j = startingBucket;
             j < (startingBucket + numBuckets); j++)
         {
-            BDvec.push_back(SBBucketDescr(j, opndNum, node));
+            BDvec.push_back(SBBucketDescr(j, opndNum, node, curFootprint->inst));
         }
         curFootprint = curFootprint->next;
     }
@@ -3646,7 +3646,7 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
                 if (bucketNodes[BD.opndNum] == nullptr)
                 {
                     void* allocedMem = mem.alloc(sizeof(SBBucketNode));
-                    SBBucketNode* newNode = new(allocedMem)SBBucketNode(node, BD.opndNum);
+                    SBBucketNode* newNode = new(allocedMem)SBBucketNode(node, BD.opndNum, BD.inst);
                     bucketNodes[BD.opndNum] = newNode;
                 }
 
@@ -3660,7 +3660,7 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
                 if (bucketNodes[BD.opndNum] == nullptr)
                 {
                     void* allocedMem = mem.alloc(sizeof(SBBucketNode));
-                    SBBucketNode* newNode = new(allocedMem)SBBucketNode(node, BD.opndNum);
+                    SBBucketNode* newNode = new(allocedMem)SBBucketNode(node, BD.opndNum, BD.inst);
                     bucketNodes[BD.opndNum] = newNode;
                 }
 
