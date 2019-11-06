@@ -274,6 +274,7 @@ public:
     void pairTypedWriteOrURBWriteNodes(G4_BB *bb);
 
     bool hasReadSuppression(G4_INST *curInst, G4_INST *nextInst, BitSet &liveDst, BitSet &liveSrc);
+    bool hasReadSuppression(G4_INST* prevInst, G4_INST* nextInst);
 
     DDD(Mem_Manager& m, G4_BB* bb, const LatencyTable& lt, G4_Kernel* k);
     ~DDD()

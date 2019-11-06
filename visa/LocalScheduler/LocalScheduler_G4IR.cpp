@@ -945,8 +945,221 @@ bool DDD::hasReadSuppression(G4_INST *prevInst, G4_INST *nextInst, BitSet &liveD
     }
 
     //If there is read suppresion for src1
+    //for src1 2 GRF suppression is supported.
     if (currInstRegs[0][1] == nextInstRegs[0][1] && currInstRegs[0][1] != -1 &&
         (( curInstSimd8 && nextInstSimd8) || ( !curInstSimd8 && !nextInstSimd8)))
+    {
+        //No scalar supperssion
+        if (!isCurrScalar[1] && !isNextScalar[1])
+        {
+            return true;
+        }
+    }
+
+    if (currInstRegs[0][2] == nextInstRegs[0][2] && currInstRegs[0][2] != -1 && curInstSimd8 && nextInstSimd8)
+    {
+        //No scalar supperssion
+        if (!isCurrScalar[2] && !isNextScalar[2])
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool DDD::hasReadSuppression(G4_INST* prevInst, G4_INST* nextInst)
+{
+    //Not three source
+    if (nextInst->getNumSrc() != 3 || nextInst->isSend())
+    {
+        return false;
+    }
+
+    //Different opcode
+    if (prevInst->opcode() != nextInst->opcode())
+    {
+        return false;
+    }
+
+    /*
+    * No special registers except acc and GRF
+    */
+    for (Gen4_Operand_Number opndNum
+        : { Opnd_src3,
+        Opnd_pred, Opnd_condMod, Opnd_implAccSrc, Opnd_implAccDst})
+    {
+        G4_Operand* opnd = prevInst->getOperand(opndNum);
+        // Skip if no operand or the operand is not touched by the instruction
+        if (opnd) {
+            return false;
+        }
+    }
+
+    //Only support GRF and ACC registers in operands
+    for (Gen4_Operand_Number opndNum
+        : { Opnd_dst, Opnd_src0, Opnd_src1, Opnd_src2 })
+    {
+        G4_Operand* opnd = prevInst->getOperand(opndNum);
+
+        // Skip if no operand or the operand is not touched by the instruction
+        if (!opnd->isGreg() && !opnd->isImm()) {
+            return false;
+        }
+    }
+
+    int currInstRegs[2][G4_MAX_SRCS];
+    int nextInstRegs[2][G4_MAX_SRCS];
+    bool isCurrScalar[G4_MAX_SRCS] = { false, false, false, false };
+    bool isNextScalar[G4_MAX_SRCS] = { false, false, false, false };
+    int execSize = 0;
+
+    //Get the sources of previous instruction
+    for (unsigned i = 0; i < 3; i++)
+    {
+        currInstRegs[0][i] = -1;
+        currInstRegs[1][i] = -1;
+        G4_Operand* srcOpnd = prevInst->getSrc(i);
+        if (srcOpnd)
+        {
+            if (srcOpnd->isSrcRegRegion() &&
+                srcOpnd->asSrcRegRegion()->getBase() &&
+                !srcOpnd->asSrcRegRegion()->isIndirect() &&
+                srcOpnd->asSrcRegRegion()->getBase()->isRegVar())
+            {
+                G4_RegVar* baseVar = static_cast<G4_RegVar*>(srcOpnd->asSrcRegRegion()->getBase());
+                execSize = srcOpnd->getLinearizedEnd() - srcOpnd->getLinearizedStart() + 1;
+                if (baseVar->isGreg()) {
+                    uint32_t byteAddress = srcOpnd->getLinearizedStart();
+                    currInstRegs[0][i] = byteAddress / GENX_GRF_REG_SIZ;
+
+                    if (execSize > 32)
+                    {
+                        currInstRegs[1][i] = currInstRegs[0][i] + (execSize + GENX_GRF_REG_SIZ - 1) / GENX_GRF_REG_SIZ - 1;
+                    }
+                    else if (srcOpnd->asSrcRegRegion()->isScalar()) //No Read suppression for SIMD 16/scalar src
+                    {
+                        isCurrScalar[i] = true;
+                        currInstRegs[1][i] = currInstRegs[0][i];
+                    }
+                }
+            }
+        }
+    }
+
+    //Get the source of the next instruction
+    for (unsigned i = 0; i < 3; i++)
+    {
+        nextInstRegs[0][i] = -1;
+        nextInstRegs[1][i] = -1;
+        G4_Operand* srcOpnd = nextInst->getSrc(i);
+        if (srcOpnd)
+        {
+            if (srcOpnd->isSrcRegRegion() &&
+                srcOpnd->asSrcRegRegion()->getBase() &&
+                !srcOpnd->asSrcRegRegion()->isIndirect() &&
+                srcOpnd->asSrcRegRegion()->getBase()->isRegVar())
+            {
+                G4_RegVar* baseVar = static_cast<G4_RegVar*>(srcOpnd->asSrcRegRegion()->getBase());
+                execSize = srcOpnd->getLinearizedEnd() - srcOpnd->getLinearizedStart() + 1;
+                if (baseVar->isGreg()) {
+                    uint32_t byteAddress = srcOpnd->getLinearizedStart();
+                    nextInstRegs[0][i] = byteAddress / GENX_GRF_REG_SIZ;
+
+                    if (execSize > 32)
+                    {
+                        int reg = nextInstRegs[0][i] + (execSize + GENX_GRF_REG_SIZ - 1) / GENX_GRF_REG_SIZ - 1;
+                        nextInstRegs[1][i] = reg;
+                    }
+                    if (srcOpnd->asSrcRegRegion()->isScalar()) //No Read suppression for SIMD 16/scalar src
+                    {
+                        isNextScalar[i] = true;
+                        nextInstRegs[1][i] = nextInstRegs[0][i];
+                    }
+                }
+            }
+        }
+    }
+
+    bool curInstSimd8 = false;
+    bool nextInstSimd8 = false;
+    int dstReg0 = -1;
+    int dstReg1 = -1;
+
+
+    //Get Dst of the next instruction
+    G4_DstRegRegion* nextDstOpnd = nextInst->getDst();
+
+    if (nextDstOpnd &&
+        !nextDstOpnd->isIndirect() &&
+        nextDstOpnd->isGreg())
+    {
+        execSize = nextDstOpnd->getLinearizedEnd() - nextDstOpnd->getLinearizedStart() + 1;
+        uint32_t byteAddress = nextDstOpnd->getLinearizedStart();
+        dstReg0 = byteAddress / GENX_GRF_REG_SIZ;
+        if (execSize <= 32)
+        {
+            nextInstSimd8 = true;
+        }
+        else
+        {
+            dstReg1 = dstReg0 + (execSize + GENX_GRF_REG_SIZ - 1) / GENX_GRF_REG_SIZ - 1;
+        }
+    }
+
+    //Get Dst of previous instruction
+    G4_DstRegRegion* dstOpnd = prevInst->getDst();
+    dstReg0 = -1;
+    dstReg1 = -1;
+
+    if (dstOpnd &&
+        !dstOpnd->isIndirect() &&
+        dstOpnd->isGreg())
+    {
+        execSize = dstOpnd->getLinearizedEnd() - dstOpnd->getLinearizedStart() + 1;
+        uint32_t byteAddress = dstOpnd->getLinearizedStart();
+        dstReg0 = byteAddress / GENX_GRF_REG_SIZ;
+
+        if (execSize <= 32)
+        {
+            curInstSimd8 = true;
+        }
+        else
+        {
+            dstReg1 = dstReg0 + (execSize + GENX_GRF_REG_SIZ - 1) / GENX_GRF_REG_SIZ - 1;
+        }
+    }
+
+    //Kill the suppression if the register is defined in the same instruction
+    for (unsigned i = 0; i < 3; i++)
+    {
+        if ((dstReg1 != -1 && dstReg1 == currInstRegs[0][i]) || (dstReg0 != -1 && dstReg0 == currInstRegs[0][i]))
+        {
+            currInstRegs[0][i] = -1;
+        }
+        if ((dstReg1 != -1 && dstReg1 == currInstRegs[1][i]) || (dstReg0 != -1 && dstReg0 == currInstRegs[1][i]))
+        {
+            currInstRegs[1][i] = -1;
+        }
+    }
+
+    //For TGL, src0 support read suppresion as well
+    if (kernel->fg.builder->hasSrc0ReadSuppression())
+    {
+        if (currInstRegs[0][0] == nextInstRegs[0][0] && currInstRegs[0][0] != -1 && curInstSimd8 && nextInstSimd8)
+        {
+            //No scalar supperssion
+            if (!isCurrScalar[0] && !isNextScalar[0])
+            {
+                return true;
+            }
+        }
+    }
+
+    //If there is read suppresion for src1
+    //for src1 2 GRF suppression is supported.
+    if (currInstRegs[0][1] == nextInstRegs[0][1] && currInstRegs[0][1] != -1 &&
+        ((curInstSimd8 && nextInstSimd8) || (!curInstSimd8 && !nextInstSimd8)))
     {
         //No scalar supperssion
         if (!isCurrScalar[1] && !isNextScalar[1])

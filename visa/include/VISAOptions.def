@@ -147,6 +147,7 @@ DEF_VISA_OPTION(vISA_SchedulerWindowSize,         ET_INT32, "-schedulerwindow", 
 DEF_VISA_OPTION(vISA_UnifiedSendCycle,  ET_INT32, "-unifiedSendCycle",      "USAGE: -unifiedSendCycle <cycle>\n", 0)
 DEF_VISA_OPTION(vISA_HWThreadNumberPerEU, ET_INT32, "-HWThreadNumberPerEU", "USAGE: -HWThreadNumberPerEU <num>\n",  0)
 DEF_VISA_OPTION(vISA_NoAtomicSend, ET_BOOL, "-noAtomicSend", UNUSED, false)
+DEF_VISA_OPTION(vISA_ReadSuppressionDepth, ET_INT32, "-readSuppressionDepth", UNUSED, 0)
 
 //=== SWSB options ===
 DEF_VISA_OPTION(vISA_USEL3HIT,      ET_BOOL,  "-SBIDL3Hit",    UNUSED, false)
