@@ -318,7 +318,7 @@ bool LiveNode::alignedWithChannelMask(
     bool IsContinguous = false;
     if (UseOpnd->isSrcRegRegion()) {
         G4_SrcRegRegion* UseReg = UseOpnd->asSrcRegRegion();
-        RegionDesc* UseRegDesc = UseReg->getRegion();
+        const RegionDesc* UseRegDesc = UseReg->getRegion();
         IsContinguous = UseRegDesc->isContiguous(UseInst->getExecSize());
     }
 

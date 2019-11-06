@@ -242,7 +242,7 @@ bool HWConformity::checkSrcCrossGRF( INST_LIST_ITER& iter, G4_BB* bb )
         {
             G4_SrcRegRegion *src = inst->getSrc(i)->asSrcRegRegion();
             bool widthCrossingGRF = false;
-            RegionDesc* srcRegion = src->getRegion();
+            const RegionDesc* srcRegion = src->getRegion();
             uint16_t vs = srcRegion->vertStride, wd = srcRegion->width, hs = srcRegion->horzStride;
             uint8_t exSize = inst->getExecSize();
             if (src->getRegAccess() == Direct && src->crossGRF())
@@ -299,7 +299,7 @@ bool HWConformity::checkSrcCrossGRF( INST_LIST_ITER& iter, G4_BB* bb )
             {
                 // for CM, split non-scalar, non-contiguous source that cross GRF as HW conformity
                 // may be not equipped to deal with them later
-                RegionDesc* region = src->getRegion();
+                const RegionDesc* region = src->getRegion();
                 if (!region->isScalar() && !region->isContiguous(inst->getExecSize()) &&
                     src->crossGRF())
                 {
@@ -491,7 +491,7 @@ bool HWConformity::reduceExecSize( INST_LIST_ITER iter, G4_BB* bb )
                                 evenTwoGRFSrc[i] = srcs[i]->asSrcRegRegion()->evenlySplitCrossGRF(
                                     execSize, sameSubregOff, vertCrossGRF, contRegion, eleInFirstGRF[i] );
                                 bool coverTwoGRF = srcs[i]->asSrcRegRegion()->coverTwoGRF();
-                                RegionDesc *rd = srcs[i]->asSrcRegRegion()->getRegion();
+                                const RegionDesc *rd = srcs[i]->asSrcRegRegion()->getRegion();
                                 uint16_t stride = 0;
                                 fullTwoGRFSrc[i] = coverTwoGRF && rd->isSingleStride(inst->getExecSize(), stride) && (stride == 1);
 
@@ -604,7 +604,7 @@ bool HWConformity::reduceExecSize( INST_LIST_ITER iter, G4_BB* bb )
                     evenTwoGRFSrc[i] = srcs[i]->asSrcRegRegion()->evenlySplitCrossGRF(
                         execSize, sameSubregOff, vertCrossGRF, contRegion, eleInFirstGRF[i] );
                     bool coverTwoGRF = srcs[i]->asSrcRegRegion()->coverTwoGRF();
-                    RegionDesc *rd = srcs[i]->asSrcRegRegion()->getRegion();
+                    const RegionDesc *rd = srcs[i]->asSrcRegRegion()->getRegion();
                     uint16_t stride = 0;
                     fullTwoGRFSrc[i] = coverTwoGRF && rd->isSingleStride(inst->getExecSize(), stride) && (stride == 1);
 
@@ -1541,7 +1541,7 @@ void HWConformity::moveSrcToGRF( INST_LIST_ITER it, uint32_t srcNum, uint16_t nu
     uint16_t hs = dclSize / execSize;
     uint16_t wd = execSize;
     uint16_t vs = hs * wd;
-    RegionDesc* region = builder.createRegionDesc(vs, wd, hs);
+    const RegionDesc* region = builder.createRegionDesc(vs, wd, hs);
 
     // look up in MOV table to see if there is already inserted MOV for this source.
     G4_INST* def_inst = NULL;
@@ -1624,9 +1624,9 @@ void HWConformity::saveDst( INST_LIST_ITER& it, uint8_t stride, G4_BB *bb )
     G4_Declare* dcl = builder.createTempVar( numElt, dstType, subAlign );
 
     uint16_t hs = dst->getHorzStride();
-    RegionDesc *region = builder.createRegionDesc( hs * execSize, execSize, hs );
+    const RegionDesc *region = builder.createRegionDesc( hs * execSize, execSize, hs );
     G4_SrcRegRegion *srcRegion = builder.createSrcRegRegion(Mod_src_undef, Direct, dst->getBase(), dst->getRegOff(),
-        dst->getSubRegOff(), region, dstType );
+        dst->getSubRegOff(), region, dstType);
 
     G4_DstRegRegion *tmpDstOpnd = builder.Create_Dst_Opnd_From_Dcl( dcl, stride );
 
@@ -1648,7 +1648,7 @@ void HWConformity::restoreDst( INST_LIST_ITER& it, G4_DstRegRegion *origDst, G4_
     uint8_t execSize = inst->getExecSize();
 
     uint16_t hs = dst->getHorzStride();
-    RegionDesc *region = builder.createRegionDesc( hs * execSize, execSize, hs );
+    const RegionDesc *region = builder.createRegionDesc( hs * execSize, execSize, hs );
     G4_SrcRegRegion *srcRegion = builder.createSrcRegRegion(Mod_src_undef, Direct, dst->getBase(), dst->getRegOff(),
         dst->getSubRegOff(), region, dst->getType() );
 
@@ -1688,7 +1688,7 @@ void HWConformity::insertMovAfter( INST_LIST_ITER& it, uint16_t stride, G4_BB* b
 
     G4_Declare* dcl = builder.createTempVar( execSize * stride, dstType, subAlign );
 
-    RegionDesc* region = builder.createRegionDesc(stride, 1, 0 );
+    const RegionDesc* region = builder.createRegionDesc(stride, 1, 0 );
     G4_SrcRegRegion *srcRegion = builder.Create_Src_Opnd_From_Dcl( dcl, region);
     G4_DstRegRegion *tmpDstOpnd = builder.Create_Dst_Opnd_From_Dcl( dcl, stride );
 

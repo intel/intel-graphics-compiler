@@ -321,9 +321,7 @@ bool isDisContRegion (
     unsigned          execSize
 )
 {
-    RegionDesc * regionDesc = region->getRegion ();
-
-    return regionDesc->isContiguous(execSize);
+    return region->getRegion()->isContiguous(execSize);
 }
 
 // Get an hexal word mask with the lower 5 bits zeroed.
@@ -1570,7 +1568,7 @@ SpillManagerGRF::createTemporaryRangeSrcRegion (
 {
     uint16_t horzStride = spilledRegion->getHorzStride();
     // A scalar region is returned when execsize is 1.
-    RegionDesc *rDesc = builder_->createRegionDesc(execSize, horzStride, 1, 0);
+    const RegionDesc *rDesc = builder_->createRegionDesc(execSize, horzStride, 1, 0);
 
     return builder_->createSrcRegRegion(
         Mod_src_undef, Direct, tmpRangeRegVar, (short) regOff, SUBREG_ORIGIN,
@@ -1632,7 +1630,7 @@ SpillManagerGRF::createBlockSpillRangeSrcRegion (
 )
 {
     assert (getByteSize (spillRangeRegVar) % DWORD_BYTE_SIZE == 0);
-    RegionDesc * rDesc =
+    const RegionDesc * rDesc =
         builder_->rgnpool.createRegion (DWORD_BYTE_SIZE, DWORD_BYTE_SIZE, 1);
     return builder_->createSrcRegRegion(
         Mod_src_undef, Direct, spillRangeRegVar, (short) regOff, (short) subregOff,
@@ -1850,7 +1848,7 @@ inline G4_SrcRegRegion *
 SpillManagerGRF::createInputPayloadSrcRegion ()
 {
     G4_RegVar * inputPayloadDirectReg = builder_->getBuiltinR0()->getRegVar();
-    RegionDesc * rDesc =
+    const RegionDesc * rDesc =
         builder_->rgnpool.createRegion (
             REG_DWORD_SIZE, REG_DWORD_SIZE, DEF_HORIZ_STRIDE);
     return builder_->createSrcRegRegion(
@@ -2372,7 +2370,7 @@ SpillManagerGRF::createAddFPInst (
     G4_Predicate *    predicate
 )
 {
-    RegionDesc* rDesc = builder_->getRegionScalar();
+    const RegionDesc* rDesc = builder_->getRegionScalar();
     G4_Operand* fp = builder_->createSrcRegRegion(
         Mod_src_undef, Direct, builder_->kernel.fg.framePtrDcl->getRegVar(),
         0, 0, rDesc, Type_UD);
@@ -2527,7 +2525,7 @@ SpillManagerGRF::copyOut256BitWideRegVar (
     int numCopies = dstRegDcl->getNumRows () - dstOff;
 
     for (int i = 0; i < numCopies; i++) {
-        RegionDesc * rDesc =
+        const RegionDesc * rDesc =
             builder_->rgnpool.createRegion (REG_DWORD_SIZE, REG_DWORD_SIZE, 1);
         G4_SrcRegRegion * srcRegRegion =
             builder_->createSrcRegRegion(
@@ -2599,7 +2597,7 @@ void SpillManagerGRF::preloadSpillRange (
     // Use a uniform region descriptor <stride; 1, 0>. Note that stride could
     // be 0 when execsize is 1.
     uint16_t hstride = spilledRangeRegion->getHorzStride();
-    RegionDesc *rDesc = builder_->createRegionDesc(execSize, hstride, 1, 0);
+    const RegionDesc *rDesc = builder_->createRegionDesc(execSize, hstride, 1, 0);
 
     if( useScratchMsg_)
     {
@@ -2679,7 +2677,7 @@ SpillManagerGRF::createSpillSendInstr (
     G4_INST* sendInst = NULL;
     if (useSplitSend())
     {
-        RegionDesc* region = builder_->getRegionStride1();
+        const RegionDesc* region = builder_->getRegionStride1();
         G4_SrcRegRegion* headerOpnd = builder_->Create_Src_Opnd_From_Dcl(mRangeDcl, region);
         G4_SrcRegRegion* srcOpnd = createBlockSpillRangeSrcRegion(spillRangeDcl->getRegVar (), regOff);
 
@@ -2729,7 +2727,7 @@ SpillManagerGRF::createSpillSendInstr (
     if (useSplitSend())
     {
         unsigned extMsgLength = spillRangeDcl->getNumRows();
-        RegionDesc* region = builder_->getRegionStride1();
+        const RegionDesc* region = builder_->getRegionStride1();
         G4_SrcRegRegion* headerOpnd = builder_->Create_Src_Opnd_From_Dcl(mRangeDcl, region);
         G4_SrcRegRegion* srcOpnd = builder_->Create_Src_Opnd_From_Dcl(spillRangeDcl, region);
 
@@ -3586,7 +3584,7 @@ void SpillManagerGRF::insertAddrTakenSpillAndFillCode( G4_Kernel* kernel, G4_BB*
                     for( unsigned int i = 0; i < numrows; i++ )
                     {
                         G4_INST* inst;
-                        RegionDesc* rd = kernel->fg.builder->getRegionStride1();
+                        const RegionDesc* rd = kernel->fg.builder->getRegionStride1();
                         unsigned char curExSize = 8;
 
                         if( (i + 1 ) < numrows )
@@ -3661,7 +3659,7 @@ void SpillManagerGRF::insertAddrTakenSpillAndFillCode( G4_Kernel* kernel, G4_BB*
                         curExSize = 0;
                     }
 
-                    RegionDesc* rd = kernel->fg.builder->getRegionStride1();
+                    const RegionDesc* rd = kernel->fg.builder->getRegionStride1();
 
                     G4_SrcRegRegion* srcRex = kernel->fg.builder->createSrcRegRegion(Mod_src_undef, Direct, lr->getVar(), 0, off, rd, type);
 
@@ -3699,7 +3697,7 @@ void SpillManagerGRF::insertAddrTakenSpillAndFillCode( G4_Kernel* kernel, G4_BB*
                 // filled variable live through the indirect access.
                 // Not required for spill because for spill we will
                 // anyway insert a ues of the variable to emit store.
-                RegionDesc* rd = kernel->fg.builder->getRegionScalar();
+                const RegionDesc* rd = kernel->fg.builder->getRegionScalar();
 
                 G4_SrcRegRegion* pseudoUseSrc = kernel->fg.builder->createSrcRegRegion(Mod_src_undef, Direct, temp->getRegVar(),
                     0, 0, rd, Type_F);
@@ -4333,7 +4331,7 @@ void GlobalRA::expandSpillIntrinsic(G4_BB* bb)
                             auto payloadToUse = builder->createSrcRegRegion(*payload);
                             payloadToUse->setRegOff(rowOffset);
 
-                            RegionDesc* region = builder->getRegionStride1();
+                            const RegionDesc* region = builder->getRegionStride1();
 
                             uint32_t spillMsgDesc = computeSpillMsgDesc(getPayloadSizeGRF(numRows), offset);
                             G4_SendMsgDescriptor* msgDesc = kernel.fg.builder->createSendMsgDesc(spillMsgDesc & 0x000FFFFFu,
@@ -4482,7 +4480,7 @@ void GlobalRA::expandFillIntrinsic(G4_BB* bb)
                             auto fillDst = builder->createDstRegRegion(Direct, resultRgn->getBase(), rowOffset,
                                 0, resultRgn->getHorzStride(), resultRgn->getType());
 
-                            RegionDesc* region = builder->getRegionStride1();
+                            const RegionDesc* region = builder->getRegionStride1();
                             G4_SrcRegRegion* headerOpnd = builder->Create_Src_Opnd_From_Dcl(builder->getBuiltinR0(), region);
 
                             uint32_t fillMsgDesc = computeFillMsgDesc(getPayloadSizeGRF(numRows), offset);

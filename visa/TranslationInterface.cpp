@@ -471,8 +471,8 @@ int IR_Builder::translateVISAArithmeticDoubleInst(ISA_Opcode opcode, Common_ISA_
     G4_INST* inst;
     uint8_t instExecSize = (uint8_t) Get_Common_ISA_Exec_Size(executionSize);
     uint8_t exsize = 4;
-    RegionDesc *srcRegionDesc = getRegionStride1();
-    RegionDesc *rdAlign16 = getRegionStride1();
+    const RegionDesc *srcRegionDesc = getRegionStride1();
+    const RegionDesc *rdAlign16 = getRegionStride1();
     uint8_t element_size;       // element_size is set according to instExecSize
     unsigned int loopCount;
 
@@ -872,7 +872,7 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(ISA_Opcode opcode, C
     unsigned int loopCount = 1;
     instOpt |= Get_Gen4_Emask(emask, 8); // for those execution size: element_size before the loop
     madmInstOpt |= Get_Gen4_Emask(emask, 8); // only used in the loop
-    RegionDesc *srcRegionDesc = getRegionStride1();
+    const RegionDesc *srcRegionDesc = getRegionStride1();
 
     G4_INST* lastInst = instList.empty() ? nullptr : instList.back();
 
@@ -1172,7 +1172,7 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(ISA_Opcode opcode, Com
     const uint8_t exsize = 8; // // exsize is a constant and never changed
     unsigned int loopCount = 1;
     instOpt |= Get_Gen4_Emask(emask, 8); // for those insts of execution size of element_size
-    RegionDesc *srcRegionDesc = getRegionStride1();
+    const RegionDesc *srcRegionDesc = getRegionStride1();
     G4_INST* lastInst = instList.empty() ? nullptr : instList.back();
 
     int line_no = lastInst ? lastInst->getLineNo() : 0;
@@ -1443,7 +1443,8 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(ISA_Opcode opcode, Com
     return CM_SUCCESS;
 }
 
-int IR_Builder::translateVISAArithmeticDoubleSQRTInst(ISA_Opcode opcode, Common_ISA_Exec_Size executionSize,
+int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
+    ISA_Opcode opcode, Common_ISA_Exec_Size executionSize,
     Common_VISA_EMask_Ctrl emask, G4_Predicate *predOpnd,
     bool saturate, G4_CondMod* condMod, G4_DstRegRegion *dstOpnd, G4_Operand *src0Opnd)
 {
@@ -1455,8 +1456,8 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(ISA_Opcode opcode, Common_
     uint8_t instExecSize = (uint8_t)Get_Common_ISA_Exec_Size(executionSize);
     uint8_t exsize = 4;
 
-    RegionDesc *srcRegionDesc = getRegionStride1();
-    RegionDesc *rdAlign16 = getRegionStride1();
+    const RegionDesc *srcRegionDesc = getRegionStride1();
+    const RegionDesc *rdAlign16 = getRegionStride1();
     unsigned int loopCount;
     uint8_t element_size;   // element_size is set according to instExecSize
 
@@ -7011,7 +7012,7 @@ int IR_Builder::translateVISAVaSklPlusGeneralInst(
     if( (sub_opcode == VA_OP_CODE_1PIXEL_CONVOLVE  && mode == CM_CONV_16x1) ||
         originalSubOpcode == ISA_HDC_1PIXELCONV)
     {
-        RegionDesc *rd = getRegionStride1();
+        const RegionDesc *rd = getRegionStride1();
         G4_Operand *offsets_opnd_temp = createSrcRegRegion(
             Mod_src_undef,
             Direct,
@@ -10452,7 +10453,7 @@ G4_SrcRegRegion *IR_Builder::coalescePayload(
 
     // Otherwise, we have to do some copying
     auto alignTo = [] (size_t a, size_t n) {
-        return (n + a - 1) - ((n + a -1)%a);
+        return (n + a - 1) - ((n + a - 1)%a);
     };
 
     // precompute the necessary region size
@@ -10485,7 +10486,7 @@ G4_SrcRegRegion *IR_Builder::coalescePayload(
     G4_Declare *payloadDeclUD = createSendPayloadDcl(totalRegionSize/4, Type_UD);
     payloadDeclUD->setAliasDeclare(payloadDeclUB,0);
 
-    RegionDesc *rd110 = createRegionDesc(1, 1, 0);
+    const RegionDesc *rd110 = createRegionDesc(1, 1, 0);
     unsigned row = 0, offset = 0;
     for (G4_SrcRegRegion *src : srcs) {
         if (src && !src->isNullReg()) {

@@ -1069,12 +1069,13 @@ public:
     //////////////////////////////////////////////////////////////////////////
     /// \brief Template based field encoder for Src[SrcNum].Width
     ///
-    static bool EncodeSrcWidth(G4_INST *inst, T *mybin, RegionDesc *rd, G4_Operand *src)
+    static bool EncodeSrcWidth(
+        G4_INST *inst, T *mybin, const RegionDesc *rd, G4_Operand *src)
     {
         bool WidthValid = false;
-        if ( inst->isAligned16Inst() ) return false;
+        if (inst->isAligned16Inst()) return false;
 
-        if(rd)
+        if (rd)
         {
             if (rd->width != UNDEFINED_SHORT)
             {
@@ -1084,19 +1085,19 @@ public:
             switch(rd->width)
             {
             case 1:
-                SrcOperandEncoder<T, SrcNum>::SetSourceWidth( mybin, G9HDL::WIDTH_1_ELEMENTS );
+                SrcOperandEncoder<T, SrcNum>::SetSourceWidth( mybin, G9HDL::WIDTH_1_ELEMENTS);
                 break;
             case 2:
-                SrcOperandEncoder<T, SrcNum>::SetSourceWidth( mybin, G9HDL::WIDTH_2_ELEMENTS );
+                SrcOperandEncoder<T, SrcNum>::SetSourceWidth( mybin, G9HDL::WIDTH_2_ELEMENTS);
                 break;
             case 4:
-                SrcOperandEncoder<T, SrcNum>::SetSourceWidth( mybin, G9HDL::WIDTH_4_ELEMENTS );
+                SrcOperandEncoder<T, SrcNum>::SetSourceWidth( mybin, G9HDL::WIDTH_4_ELEMENTS);
                 break;
             case 8:
-                SrcOperandEncoder<T, SrcNum>::SetSourceWidth( mybin, G9HDL::WIDTH_8_ELEMENTS );
+                SrcOperandEncoder<T, SrcNum>::SetSourceWidth( mybin, G9HDL::WIDTH_8_ELEMENTS);
                 break;
             case 16:
-                SrcOperandEncoder<T, SrcNum>::SetSourceWidth( mybin, G9HDL::WIDTH_16_ELEMENTS );
+                SrcOperandEncoder<T, SrcNum>::SetSourceWidth( mybin, G9HDL::WIDTH_16_ELEMENTS);
                 break;
             case UNDEFINED_SHORT: break;
             default: MUST_BE_TRUE(false, "wrong width for src0!"); break;
@@ -1105,31 +1106,31 @@ public:
         }
 
         // apply default width
-        if ( !WidthValid )
+        if (!WidthValid)
         {
-            if ( EncodingHelper::isSrcSubRegNumValid(src) )
+            if (EncodingHelper::isSrcSubRegNumValid(src))
             {
-                SrcOperandEncoder<T, SrcNum>::SetSourceWidth( mybin, G9HDL::WIDTH_1_ELEMENTS );
+                SrcOperandEncoder<T, SrcNum>::SetSourceWidth( mybin, G9HDL::WIDTH_1_ELEMENTS);
             }
             else
             {
                 switch(GetEncodeExecSize(inst))
                 {
                 case ES_1_CHANNEL:
-                    SrcOperandEncoder<T, SrcNum>::SetSourceWidth( mybin, G9HDL::WIDTH_1_ELEMENTS );
+                    SrcOperandEncoder<T, SrcNum>::SetSourceWidth( mybin, G9HDL::WIDTH_1_ELEMENTS);
                     break;
                 case ES_2_CHANNELS:
-                    SrcOperandEncoder<T, SrcNum>::SetSourceWidth( mybin, G9HDL::WIDTH_2_ELEMENTS );
+                    SrcOperandEncoder<T, SrcNum>::SetSourceWidth( mybin, G9HDL::WIDTH_2_ELEMENTS);
                     break;
                 case ES_4_CHANNELS:
-                    SrcOperandEncoder<T, SrcNum>::SetSourceWidth( mybin, G9HDL::WIDTH_4_ELEMENTS );
+                    SrcOperandEncoder<T, SrcNum>::SetSourceWidth( mybin, G9HDL::WIDTH_4_ELEMENTS);
                     break;
                 case ES_8_CHANNELS:
                 case ES_16_CHANNELS:
-                    SrcOperandEncoder<T, SrcNum>::SetSourceWidth( mybin, G9HDL::WIDTH_8_ELEMENTS );
+                    SrcOperandEncoder<T, SrcNum>::SetSourceWidth( mybin, G9HDL::WIDTH_8_ELEMENTS);
                     break;
                 case ES_32_CHANNELS:
-                    SrcOperandEncoder<T, SrcNum>::SetSourceWidth( mybin, G9HDL::WIDTH_16_ELEMENTS );
+                    SrcOperandEncoder<T, SrcNum>::SetSourceWidth( mybin, G9HDL::WIDTH_16_ELEMENTS);
                     break;
                 }
             }
@@ -1141,7 +1142,8 @@ public:
     //////////////////////////////////////////////////////////////////////////
     /// \brief Template based field encoder for Src[SrcNum].HorzStride
     ///
-    static bool EncodeSrcHorzStride(G4_INST *inst, T *mybin, RegionDesc *rd, G4_Operand *src0)
+    static bool EncodeSrcHorzStride(
+        G4_INST *inst, T *mybin, const RegionDesc *rd, G4_Operand *src0)
     {
         // For Align16 instruction (SIMD4), treat <HorzStride> as <VertStride>
         // For Align16 source operand disable HorzStride
@@ -1156,16 +1158,16 @@ public:
             switch(rd->horzStride)
             {
             case 0:
-                SrcOperandEncoder<T, SrcNum>::SetSourceHorizontalStride(mybin, G9HDL::HORZSTRIDE_0_ELEMENTS );
+                SrcOperandEncoder<T, SrcNum>::SetSourceHorizontalStride(mybin, G9HDL::HORZSTRIDE_0_ELEMENTS);
                 break;
             case 1:
-                SrcOperandEncoder<T, SrcNum>::SetSourceHorizontalStride(mybin, G9HDL::HORZSTRIDE_1_ELEMENTS );
+                SrcOperandEncoder<T, SrcNum>::SetSourceHorizontalStride(mybin, G9HDL::HORZSTRIDE_1_ELEMENTS);
                 break;
             case 2:
-                SrcOperandEncoder<T, SrcNum>::SetSourceHorizontalStride(mybin, G9HDL::HORZSTRIDE_2_ELEMENTS );
+                SrcOperandEncoder<T, SrcNum>::SetSourceHorizontalStride(mybin, G9HDL::HORZSTRIDE_2_ELEMENTS);
                 break;
             case 4:
-                SrcOperandEncoder<T, SrcNum>::SetSourceHorizontalStride(mybin, G9HDL::HORZSTRIDE_4_ELEMENTS );
+                SrcOperandEncoder<T, SrcNum>::SetSourceHorizontalStride(mybin, G9HDL::HORZSTRIDE_4_ELEMENTS);
                 break;
             case UNDEFINED_SHORT: break;
             default: MUST_BE_TRUE(false, "wrong horizontal stride for src0!"); break;
@@ -1175,19 +1177,19 @@ public:
         if ( !HorzStrideValid )
         {
             if ( EncodingHelper::isSrcSubRegNumValid(src0) )
-                SrcOperandEncoder<T, SrcNum>::SetSourceHorizontalStride(mybin, G9HDL::HORZSTRIDE_0_ELEMENTS );
+                SrcOperandEncoder<T, SrcNum>::SetSourceHorizontalStride(mybin, G9HDL::HORZSTRIDE_0_ELEMENTS);
             else {
                 switch(GetEncodeExecSize(inst))
                 {
                 case ES_1_CHANNEL:
-                    SrcOperandEncoder<T, SrcNum>::SetSourceHorizontalStride(mybin, G9HDL::HORZSTRIDE_0_ELEMENTS );
+                    SrcOperandEncoder<T, SrcNum>::SetSourceHorizontalStride(mybin, G9HDL::HORZSTRIDE_0_ELEMENTS);
                     break;
                 case ES_2_CHANNELS:
                 case ES_4_CHANNELS:
                 case ES_8_CHANNELS:
                 case ES_16_CHANNELS:
                 case ES_32_CHANNELS:
-                    SrcOperandEncoder<T, SrcNum>::SetSourceHorizontalStride(mybin, G9HDL::HORZSTRIDE_1_ELEMENTS );
+                    SrcOperandEncoder<T, SrcNum>::SetSourceHorizontalStride(mybin, G9HDL::HORZSTRIDE_1_ELEMENTS);
                     break;
                 }
             }
@@ -1198,9 +1200,10 @@ public:
     //////////////////////////////////////////////////////////////////////////
     /// \brief Template based field encoder for Src[SrcNum].VertStride
     ///
-    static void EncodeSrcVertStride( G4_INST *inst,
+    static void EncodeSrcVertStride(
+        G4_INST *inst,
         T *mybin,
-        RegionDesc *rd,
+        const RegionDesc *rd,
         G4_Operand *src0,
         const bool WidthValid,
         const bool HorzStrideValid)
@@ -1220,25 +1223,25 @@ public:
             switch( VertStrideValue)
             {
             case 0:
-                SrcOperandEncoder<T, SrcNum>::SetSourceVerticalStride(mybin, G9HDL::VERTSTRIDE_0_ELEMENTS );
+                SrcOperandEncoder<T, SrcNum>::SetSourceVerticalStride(mybin, G9HDL::VERTSTRIDE_0_ELEMENTS);
                 break;
             case 1:
-                SrcOperandEncoder<T, SrcNum>::SetSourceVerticalStride(mybin, G9HDL::VERTSTRIDE_1_ELEMENT );
+                SrcOperandEncoder<T, SrcNum>::SetSourceVerticalStride(mybin, G9HDL::VERTSTRIDE_1_ELEMENT);
                 break;
             case 2:
-                SrcOperandEncoder<T, SrcNum>::SetSourceVerticalStride(mybin, G9HDL::VERTSTRIDE_2_ELEMENTS );
+                SrcOperandEncoder<T, SrcNum>::SetSourceVerticalStride(mybin, G9HDL::VERTSTRIDE_2_ELEMENTS);
                 break;
             case 4:
-                SrcOperandEncoder<T, SrcNum>::SetSourceVerticalStride(mybin, G9HDL::VERTSTRIDE_4_ELEMENTS );
+                SrcOperandEncoder<T, SrcNum>::SetSourceVerticalStride(mybin, G9HDL::VERTSTRIDE_4_ELEMENTS);
                 break;
             case 8:
-                SrcOperandEncoder<T, SrcNum>::SetSourceVerticalStride(mybin, G9HDL::VERTSTRIDE_8_ELEMENTS );
+                SrcOperandEncoder<T, SrcNum>::SetSourceVerticalStride(mybin, G9HDL::VERTSTRIDE_8_ELEMENTS);
                 break;
             case 16:
-                SrcOperandEncoder<T, SrcNum>::SetSourceVerticalStride(mybin, G9HDL::VERTSTRIDE_16_ELEMENTS );
+                SrcOperandEncoder<T, SrcNum>::SetSourceVerticalStride(mybin, G9HDL::VERTSTRIDE_16_ELEMENTS);
                 break;
             case 32:
-                SrcOperandEncoder<T, SrcNum>::SetSourceVerticalStride(mybin, G9HDL::VERTSTRIDE_32_ELEMENTS );
+                SrcOperandEncoder<T, SrcNum>::SetSourceVerticalStride(mybin, G9HDL::VERTSTRIDE_32_ELEMENTS);
                 break;
             case UNDEFINED_SHORT: break;
             default: MUST_BE_TRUE(false, "wrong vertical stride for src0!"); break;
@@ -1255,7 +1258,7 @@ public:
             VertStrideValid = true;
             if ( EncodingHelper::isSrcSubRegNumValid(src0) )
             {
-                SrcOperandEncoder<T, SrcNum>::SetSourceVerticalStride(mybin, G9HDL::VERTSTRIDE_0_ELEMENTS );
+                SrcOperandEncoder<T, SrcNum>::SetSourceVerticalStride(mybin, G9HDL::VERTSTRIDE_0_ELEMENTS);
             }
             else
             {
@@ -1264,26 +1267,26 @@ public:
                     switch(GetEncodeExecSize(inst))
                     {
                     case ES_1_CHANNEL:
-                        SrcOperandEncoder<T, SrcNum>::SetSourceVerticalStride(mybin, G9HDL::VERTSTRIDE_0_ELEMENTS );
+                        SrcOperandEncoder<T, SrcNum>::SetSourceVerticalStride(mybin, G9HDL::VERTSTRIDE_0_ELEMENTS);
                         break;
                     case ES_2_CHANNELS:
-                        SrcOperandEncoder<T, SrcNum>::SetSourceVerticalStride(mybin, G9HDL::VERTSTRIDE_2_ELEMENTS );
+                        SrcOperandEncoder<T, SrcNum>::SetSourceVerticalStride(mybin, G9HDL::VERTSTRIDE_2_ELEMENTS);
                         break;
                     case ES_4_CHANNELS:
-                        SrcOperandEncoder<T, SrcNum>::SetSourceVerticalStride(mybin, G9HDL::VERTSTRIDE_4_ELEMENTS );
+                        SrcOperandEncoder<T, SrcNum>::SetSourceVerticalStride(mybin, G9HDL::VERTSTRIDE_4_ELEMENTS);
                         break;
                     case ES_8_CHANNELS:
                     case ES_16_CHANNELS:
-                        SrcOperandEncoder<T, SrcNum>::SetSourceVerticalStride(mybin, G9HDL::VERTSTRIDE_8_ELEMENTS );
+                        SrcOperandEncoder<T, SrcNum>::SetSourceVerticalStride(mybin, G9HDL::VERTSTRIDE_8_ELEMENTS);
                         break;
                     case ES_32_CHANNELS:
-                        SrcOperandEncoder<T, SrcNum>::SetSourceVerticalStride(mybin, G9HDL::VERTSTRIDE_16_ELEMENTS );
+                        SrcOperandEncoder<T, SrcNum>::SetSourceVerticalStride(mybin, G9HDL::VERTSTRIDE_16_ELEMENTS);
                         break;
                     }
                 }
                 else
                 {
-                    SrcOperandEncoder<T, SrcNum>::SetSourceVerticalStride(mybin, G9HDL::VERTSTRIDE_4_ELEMENTS );
+                    SrcOperandEncoder<T, SrcNum>::SetSourceVerticalStride(mybin, G9HDL::VERTSTRIDE_4_ELEMENTS);
                 }
             }
         }
@@ -1296,15 +1299,15 @@ public:
             //we cannot be setting horz stride in align16 instructions!!!
             if (HorzStrideValid  && HorzStrideValue == 0)
             {
-                SrcOperandEncoder<T, SrcNum>::SetSourceVerticalStride(mybin, G9HDL::VERTSTRIDE_0_ELEMENTS );
+                SrcOperandEncoder<T, SrcNum>::SetSourceVerticalStride(mybin, G9HDL::VERTSTRIDE_0_ELEMENTS);
             }
             else if (HorzStrideValid  && HorzStrideValue == 4)
             {
-                SrcOperandEncoder<T, SrcNum>::SetSourceVerticalStride(mybin, G9HDL::VERTSTRIDE_4_ELEMENTS );
+                SrcOperandEncoder<T, SrcNum>::SetSourceVerticalStride(mybin, G9HDL::VERTSTRIDE_4_ELEMENTS);
             }
         }
         else if (EncodingHelper::GetSrcAddrMode(src0) == ADDR_MODE_INDIR) { //indirect
-            SrcOperandEncoder<T, SrcNum>::SetSourceVerticalStride(mybin, G9HDL::VERTSTRIDE_VXH_OR_VX1_MODE );
+            SrcOperandEncoder<T, SrcNum>::SetSourceVerticalStride(mybin, G9HDL::VERTSTRIDE_VXH_OR_VX1_MODE);
         }
     }
 
@@ -1334,7 +1337,7 @@ public:
                 // 9876543210
                 // regn|subre
 
-                SrcOperandEncoder<T, SrcNum>::SetSourceRegisterNumber (&sourcesReg, byteAddress >> 5 );
+                SrcOperandEncoder<T, SrcNum>::SetSourceRegisterNumber (&sourcesReg, byteAddress >> 5);
                 if (getGenxPlatform() > GENX_CNL && src0->isAccRegValid())
                 {
                     MUST_BE_TRUE((byteAddress & 0x1F) == 0, "subreg must be 0 for source with special accumulator");
@@ -1342,7 +1345,7 @@ public:
                 }
                 else
                 {
-                    SrcOperandEncoder<T, SrcNum>::SetSourceSubRegisterNumber (&sourcesReg, byteAddress & 0x1F );
+                    SrcOperandEncoder<T, SrcNum>::SetSourceSubRegisterNumber (&sourcesReg, byteAddress & 0x1F);
                 }
             } else { //align 16
                 //register number: 256 bit (32 byte) aligned part of an address
@@ -1351,7 +1354,7 @@ public:
                 // regn|x0000
 
                 SrcOperandEncoder<T, SrcNum>::SetSourceRegisterNumber (&sourcesReg, byteAddress >> 5 );
-                SrcOperandEncoder<T, SrcNum>::SetSourceSubregisterNumber44 (&sourcesReg, (byteAddress >> 4) & 0x1 );
+                SrcOperandEncoder<T, SrcNum>::SetSourceSubregisterNumber44 (&sourcesReg, (byteAddress >> 4) & 0x1);
             }
         }
     }
@@ -1368,8 +1371,8 @@ public:
         G4_SrcRegRegion *src,
         T& sourcesReg)
     {
-        if ( EncodingHelper::GetSrcRegFile(src) == REG_FILE_A  &&
-             EncodingHelper::GetSrcAddrMode(src) == ADDR_MODE_IMMED )
+        if (EncodingHelper::GetSrcRegFile(src) == REG_FILE_A  &&
+             EncodingHelper::GetSrcAddrMode(src) == ADDR_MODE_IMMED)
         {
             if ( EncodingHelper::GetSrcArchRegType(src) != ARCH_REG_FILE_NULL )
             {
@@ -1400,7 +1403,7 @@ public:
                     //sub-register number: first/second 16 byte part of 32 byte address. Encoded with 1 bit.
                     // 9876543210
                     // regn|x0000
-                    SrcOperandEncoder<T, SrcNum>::SetSourceSubregisterNumber44 (&sourcesReg, (regOffset >> 4) & 0x1  );
+                    SrcOperandEncoder<T, SrcNum>::SetSourceSubregisterNumber44 (&sourcesReg, (regOffset >> 4) & 0x1);
                 }
             }
         }
@@ -1415,9 +1418,9 @@ public:
         G4_SrcRegRegion *src,
         T& sourcesReg)
     {
-        if ( EncodingHelper::GetSrcRegFile(src)==REG_FILE_R )
+        if (EncodingHelper::GetSrcRegFile(src)==REG_FILE_R)
         {
-            if ( EncodingHelper::GetSrcAddrMode(src) == ADDR_MODE_INDIR )
+            if (EncodingHelper::GetSrcAddrMode(src) == ADDR_MODE_INDIR)
             { // Indirect
                 bool subValid;
                 unsigned short IndAddrRegSubNumValue = 0;
@@ -1428,16 +1431,16 @@ public:
 
                 //SetSrc0IdxRegNum(mybin, IndAddrRegSubNumValue);
                 //the same is for align16
-                SrcOperandEncoder<T, SrcNum>::SetAddressSubregisterNumber( &sourcesReg, IndAddrRegSubNumValue );
+                SrcOperandEncoder<T, SrcNum>::SetAddressSubregisterNumber(&sourcesReg, IndAddrRegSubNumValue);
 
                 /* Set the indirect address immediate value. */
                 if (inst->isAligned1Inst())
                 {
                     //bits [0-8]
-                    SrcOperandEncoder<T, SrcNum>::SetSourceAddressImmediate90( &sourcesReg, IndAddrImmedValue );
+                    SrcOperandEncoder<T, SrcNum>::SetSourceAddressImmediate90(&sourcesReg, IndAddrImmedValue);
                 }  else  { //here we are setting align16
                     //bits [4-8]
-                    SrcOperandEncoder<T, SrcNum>::SetSourceAddressImmediate84( &sourcesReg, IndAddrImmedValue / BYTES_PER_OWORD );
+                    SrcOperandEncoder<T, SrcNum>::SetSourceAddressImmediate84(&sourcesReg, IndAddrImmedValue / BYTES_PER_OWORD);
                 }
             }
         }
@@ -1452,10 +1455,10 @@ public:
         G4_Operand *src,
         T& sourcesReg)
     {
-        if ( src->isSrcRegRegion() )
+        if (src->isSrcRegRegion())
         {
             G4_SrcRegRegion *srcRegion = src->asSrcRegRegion();
-            RegionDesc *rd = srcRegion->getRegion();
+            const RegionDesc *rd = srcRegion->getRegion();
 
             SrcBuilder<T, SrcNum>::EncodeSrcAddrMode(&sourcesReg, inst, src);
             if (inst->isAligned16Inst())

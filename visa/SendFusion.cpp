@@ -1092,7 +1092,7 @@ void SendFusion::unpackPayload(
     G4_VarBase* Dst1 = getVarBase(Send1->getDst()->getBase(), Ty);
     int16_t Off0 = Send0->getDst()->getRegOff();
     int16_t Off1 = Send1->getDst()->getRegOff();
-    RegionDesc *stride1 = Builder->getRegionStride1();
+    const RegionDesc *stride1 = Builder->getRegionStride1();
 
     G4_SrcRegRegion* S;
     G4_DstRegRegion* D;
@@ -1207,8 +1207,7 @@ void SendFusion::createFlagPerBB(G4_BB* bb, INST_LIST_ITER InsertBeforePos)
     // FlagPerBB is saved for use later.
     G4_Declare* flagDecl = Builder->createTempFlag(1, "FlagPerBB");
     G4_VarBase* FlagPerBB = flagDecl->getRegVar();
-    RegionDesc* scalar = Builder->getRegionScalar();
-
+    const RegionDesc* scalar = Builder->getRegionScalar();
 
     G4_Declare* tmpDecl = Builder->createTempVar(1, Type_UD, Any, "Flag");
     G4_INST* Inst0;
@@ -1520,7 +1519,7 @@ void SendFusion::doFusion(
         bti);
 
     // First, create fused send.
-    RegionDesc* region = Builder->getRegionStride1();
+    const RegionDesc* region = Builder->getRegionStride1();
     G4_Type P0Ty = I0->getOperand(Opnd_src0)->getType();
     if (G4_Type_Table[P0Ty].byteSize != 4)
     {

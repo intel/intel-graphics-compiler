@@ -93,10 +93,11 @@ G4_Label* OperandHashTable::createLabel(const char* lab)
 //
 // create the region <vstride; width, hstride> if not yet created
 //
-RegionDesc* RegionPool::createRegion(uint16_t vstride, uint16_t width, uint16_t hstride)
+const RegionDesc* RegionPool::createRegion(
+    uint16_t vstride, uint16_t width, uint16_t hstride)
 {
 
-    for (unsigned i = 0, size = (unsigned) rgnlist.size(); i < size; i++)
+    for (unsigned i = 0, size = (unsigned)rgnlist.size(); i < size; i++)
     {
         RegionDesc* region = rgnlist[i];
         if (region->vertStride == vstride &&
@@ -725,7 +726,8 @@ G4_INST* IR_Builder::createInternalMathInst(G4_Predicate* prd,
     return ii;
 }
 
-G4_INST* IR_Builder::createIntrinsicInst(G4_Predicate* prd, Intrinsic intrinId,
+G4_INST* IR_Builder::createIntrinsicInst(
+    G4_Predicate* prd, Intrinsic intrinId,
     uint8_t size, G4_DstRegRegion* dst,
     G4_Operand* src0, G4_Operand* src1, G4_Operand* src2,
     unsigned int option, int lineno, bool addToInstList)
@@ -1294,7 +1296,7 @@ void IR_Builder::Create_MOV_Send_Src_Inst(
     G4_DstRegRegion* dst = NULL;
     //G4_SrcRegRegion* src = NULL;
     G4_Operand* src = NULL;
-    RegionDesc *rd = NULL;
+    const RegionDesc *rd = NULL;
     G4_Declare *dst_dcl = dcl;
     short src_regoff = 0, src_subregoff = 0;
     bool non_ud_scalar = false;
@@ -1465,7 +1467,8 @@ G4_DstRegRegion* IR_Builder::Create_Dst_Opnd_From_Dcl( G4_Declare* dcl, unsigned
         dcl->getElemType());
 }
 // create an opnd without regpoff and subregoff
-G4_SrcRegRegion* IR_Builder::Create_Src_Opnd_From_Dcl( G4_Declare* dcl, RegionDesc* rd )
+G4_SrcRegRegion* IR_Builder::Create_Src_Opnd_From_Dcl(
+    G4_Declare* dcl, const RegionDesc* rd)
 {
     return createSrcRegRegion(
         Mod_src_undef,
@@ -1477,7 +1480,7 @@ G4_SrcRegRegion* IR_Builder::Create_Src_Opnd_From_Dcl( G4_Declare* dcl, RegionDe
         dcl->getElemType());
 }
 
-G4_DstRegRegion* IR_Builder::createNullDst( G4_Type dstType )
+G4_DstRegRegion* IR_Builder::createNullDst(G4_Type dstType)
 {
     return createDstRegRegion( Direct,
         phyregpool.getNullReg(),

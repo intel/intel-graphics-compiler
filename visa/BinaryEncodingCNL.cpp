@@ -1379,7 +1379,7 @@ inline void BinaryEncodingCNL::EncodeThreeSrcInstAlign1(G4_INST* inst, G9HDL::EU
 
     if (src0->isSrcRegRegion())
     {
-        RegionDesc *regdesc0 = src0->asSrcRegRegion()->getRegion();
+        const RegionDesc *regdesc0 = src0->asSrcRegRegion()->getRegion();
         MUST_BE_TRUE(regdesc0, "Align1 ternary encoder: src0 region desc for ternary instruction is null!");
 
         //look for <N;N,1> contiguous region
@@ -1496,7 +1496,7 @@ inline void BinaryEncodingCNL::EncodeThreeSrcInstAlign1(G4_INST* inst, G9HDL::EU
         threeSrc.SetSource1RegisterNumber_SourceRegisterNumber(EncodedRegNum);
     }
 
-    RegionDesc *regdesc1 = src1->asSrcRegRegion()->getRegion();
+    const RegionDesc *regdesc1 = src1->asSrcRegRegion()->getRegion();
     MUST_BE_TRUE(regdesc1,
       "Align1 ternary encoder: src1 region desc for ternary instruction is null!");
 
@@ -1546,7 +1546,7 @@ inline void BinaryEncodingCNL::EncodeThreeSrcInstAlign1(G4_INST* inst, G9HDL::EU
 
     if (src2->isSrcRegRegion())
     {
-        RegionDesc *regdesc2 = src2->asSrcRegRegion()->getRegion();
+        const RegionDesc *regdesc2 = src2->asSrcRegRegion()->getRegion();
         MUST_BE_TRUE(regdesc2,
          "Align1 ternary instruction: src2 region desc for instruction is null!");
         MUST_BE_TRUE(EncodingHelper::GetSrcRegFile(src2) != REG_FILE_I,

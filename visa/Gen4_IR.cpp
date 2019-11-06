@@ -2352,7 +2352,8 @@ bool G4_INST::canPropagateTo(G4_INST *useInst, Gen4_Operand_Number opndNum, MovT
     unsigned srcElSize = G4_Type_Table[propType].byteSize;
     unsigned useElSize = G4_Type_Table[useType].byteSize;
 
-    RegionDesc *rd = !src->isSrcRegRegion() ? NULL : src->asSrcRegRegion()->getRegion();
+    const RegionDesc *rd =
+        src->isSrcRegRegion() ? src->asSrcRegRegion()->getRegion() : nullptr;
     unsigned char new_exec_size = useInst->getExecSize();
     if (useElSize != dstElSize &&
         (!src->isSrcRegRegion()
@@ -2374,7 +2375,8 @@ bool G4_INST::canPropagateTo(G4_INST *useInst, Gen4_Operand_Number opndNum, MovT
     // Check repeat region
     bool sameDefUseELSize = (dstElSize == useElSize);
     bool sameExecSize = (execSize == new_exec_size);
-    RegionDesc *useRd = use->isSrcRegRegion() ? use->asSrcRegRegion()->getRegion() : nullptr;
+    const RegionDesc *useRd =
+        use->isSrcRegRegion() ? use->asSrcRegRegion()->getRegion() : nullptr;
     bool repeatUseRegion = useRd && useRd->isRepeatRegion(new_exec_size);
     bool scalarUse = useRd && useRd->isScalar();
     bool repeatSrcRegion = (rd && rd->isRepeatRegion(execSize));
@@ -2722,7 +2724,7 @@ bool G4_INST::canHoistTo(const G4_INST *defInst, bool simdBB) const
 
     uint16_t dstHS = dst->getHorzStride();
     uint16_t srcHS = 0;
-    RegionDesc *srcRd = srcs[0]->asSrcRegRegion()->getRegion();
+    const RegionDesc *srcRd = srcs[0]->asSrcRegRegion()->getRegion();
     if (!srcRd->isSingleStride(execSize, srcHS))
     {
         return false;
@@ -3243,7 +3245,7 @@ G4_INST::isComprInvariantSrcRegion(G4_SrcRegRegion* src, int srcPos)
          return true;
     }
 
-    RegionDesc* region = src->getRegion();
+    const RegionDesc* region = src->getRegion();
 
     if (opcode() == G4_line && srcPos == 0)
     {

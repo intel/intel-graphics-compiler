@@ -236,7 +236,7 @@ void BinaryEncodingBase::FixAlign16Inst(G4_INST* inst)
         {
             MUST_BE_TRUE(inst->getSrc(i)->isSrcRegRegion(), "source must have a region");
             G4_SrcRegRegion* src = inst->getSrc(i)->asSrcRegRegion();
-            RegionDesc *rd = src->getRegion();
+            const RegionDesc *rd = src->getRegion();
             if (src->isScalar() ||
                 (rd->width == 2 && rd->horzStride == 0 && rd->vertStride == 2))
             {
@@ -260,7 +260,7 @@ void BinaryEncodingBase::FixMathInst(G4_INST* inst)
         if (src && src->isSrcRegRegion())
         {
             G4_SrcRegRegion* srcRegion = src->asSrcRegRegion();
-            RegionDesc* region = srcRegion->getRegion();
+            const RegionDesc* region = srcRegion->getRegion();
             if (inst->getExecSize() > 1 &&
                 region->vertStride == 1 && region->width == 1 && region->horzStride == 0)
             {

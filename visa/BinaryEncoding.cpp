@@ -1154,12 +1154,13 @@ static const uint32_t EXEC_CHANNELS[6] =
      WIDTH_16
 };
 
-inline bool EncodeSrc0Width(G4_INST *inst, BinInst *mybin, RegionDesc *rd, G4_Operand *src0)
+inline bool EncodeSrc0Width(
+    G4_INST *inst, BinInst *mybin, const RegionDesc *rd, G4_Operand *src0)
 {
     bool WidthValid = false;
-    if ( inst->isAligned16Inst() ) return false;
+    if (inst->isAligned16Inst()) return false;
 
-    if(rd)
+    if (rd)
     {
         if (rd->width != UNDEFINED_SHORT)
         {
@@ -1179,9 +1180,9 @@ inline bool EncodeSrc0Width(G4_INST *inst, BinInst *mybin, RegionDesc *rd, G4_Op
     }
 
     // apply default width
-    if ( !WidthValid )
+    if (!WidthValid)
     {
-        if ( EncodingHelper::isSrcSubRegNumValid(src0) )
+        if (EncodingHelper::isSrcSubRegNumValid(src0))
         {
             SetSrc0Width(mybin, WIDTH_1);
         }
@@ -1207,19 +1208,20 @@ static const unsigned HORIZONTAL_STRIDE[6] =
     (unsigned)HORZ_STRIDE_1,
 };
 
-inline bool EncodeSrc0HorzStride(G4_INST *inst, BinInst *mybin, RegionDesc *rd, G4_Operand *src0)
+inline bool EncodeSrc0HorzStride(
+    G4_INST *inst, BinInst *mybin, const RegionDesc *rd, G4_Operand *src0)
 {
     // For Align16 instruction (SIMD4), treat <HorzStride> as <VertStride>
     // For Align16 source operand disable HorzStride
     bool HorzStrideValid = false;  // undef
     if (inst->isAligned16Inst()) return false;
 
-    if(rd)  {
-        if ( rd->horzStride != UNDEFINED_SHORT)
+    if (rd)  {
+        if (rd->horzStride != UNDEFINED_SHORT)
         {
             HorzStrideValid = true;
         }
-        switch(rd->horzStride)
+        switch (rd->horzStride)
         {
             case 0: SetSrc0HorzStride(mybin, HORZ_STRIDE_0); break;
             case 1: SetSrc0HorzStride(mybin, HORZ_STRIDE_1); break;
@@ -1230,9 +1232,9 @@ inline bool EncodeSrc0HorzStride(G4_INST *inst, BinInst *mybin, RegionDesc *rd, 
         }
     }
     // apply default horizontal stride
-    if ( !HorzStrideValid )
+    if (!HorzStrideValid)
     {
-        if ( EncodingHelper::isSrcSubRegNumValid(src0) )
+        if (EncodingHelper::isSrcSubRegNumValid(src0))
              SetSrc0HorzStride(mybin, HORZ_STRIDE_0);
         else
         {
@@ -1254,25 +1256,26 @@ static const unsigned VERTICAL_STRIDE[6] =
      (unsigned)VERT_STRIDE_16
 };
 
-inline void EncodeSrc0VertStride( G4_INST *inst,
-                                  BinInst *mybin,
-                                  RegionDesc *rd,
-                                  G4_Operand *src0,
-                                  bool WidthValid,
-                                  bool HorzStrideValid)
+inline void EncodeSrc0VertStride(
+    G4_INST *inst,
+    BinInst *mybin,
+    const RegionDesc *rd,
+    G4_Operand *src0,
+    bool WidthValid,
+    bool HorzStrideValid)
 {
     bool VertStrideValid = false; // undef
     unsigned short VertStrideValue = UNDEFINED_SHORT, HorzStrideValue = 0;
 
-    if(rd)
+    if (rd)
     {
         VertStrideValue = rd->vertStride;
         HorzStrideValue = rd->horzStride;
-        if( VertStrideValue != UNDEFINED_SHORT)
+        if (VertStrideValue != UNDEFINED_SHORT)
         {
             VertStrideValid = true;
         }
-        switch( VertStrideValue)
+        switch (VertStrideValue)
         {
             case 0:   SetSrc0VertStride(mybin, VERT_STRIDE_0); break;
             case 1:   SetSrc0VertStride(mybin, VERT_STRIDE_1); break;
@@ -1284,23 +1287,22 @@ inline void EncodeSrc0VertStride( G4_INST *inst,
             case UNDEFINED_SHORT: break;
             default: MUST_BE_TRUE(false, "wrong vertical stride for src0!"); break;
         }
-
     }
 
     //apply default vertical stride below
-    if ( !WidthValid             &&
-         !HorzStrideValid        &&
-         !VertStrideValid        &&
-         src0 )
+    if (!WidthValid             &&
+        !HorzStrideValid        &&
+        !VertStrideValid        &&
+        src0)
     {
         VertStrideValid = true;
-        if ( EncodingHelper::isSrcSubRegNumValid(src0) )
+        if (EncodingHelper::isSrcSubRegNumValid(src0))
         {
             SetSrc0VertStride(mybin, VERT_STRIDE_0);
         }
         else
         {
-            if ( inst->isAligned1Inst() )
+            if (inst->isAligned1Inst())
             {
                 uint32_t value = GetEncodeExecSize(inst);
                 MUST_BE_TRUE(value <= (uint32_t)ES_32_CHANNELS,
@@ -1314,8 +1316,8 @@ inline void EncodeSrc0VertStride( G4_INST *inst,
         }
     }
 
-    if ( VertStrideValid ) {}
-    else if ( inst->isAligned16Inst() )
+    if (VertStrideValid) { }
+    else if (inst->isAligned16Inst())
     {
         if (HorzStrideValid  && HorzStrideValue == 0)
         {
@@ -1595,7 +1597,7 @@ inline BinaryEncoding::Status BinaryEncoding::EncodeOperandSrc0(G4_INST* inst)
         EncodeSrc0RepCtrl(mybin, src0Region);
         EncodeSrc0Modifier(mybin, src0, src0Region);
 
-        RegionDesc *rd = src0Region->getRegion();
+        const RegionDesc *rd = src0Region->getRegion();
         bool WidthValid = EncodeSrc0Width(inst, mybin, rd, src0);
         bool HorzStrideValid = EncodeSrc0HorzStride(inst, mybin, rd, src0);
         EncodeSrc0VertStride(inst, mybin, rd, src0, WidthValid, HorzStrideValid);
@@ -1898,12 +1900,13 @@ inline void EncodeSrc1Modifier(BinInst *mybin, G4_SrcRegRegion *srcRegion)
     SetSrc1SrcMod(mybin, GetSrcMod(srcRegion));
 }
 
-inline bool EncodeSrc1Width(G4_INST *inst, BinInst *mybin, RegionDesc *rd, G4_Operand *src1)
+inline bool EncodeSrc1Width(
+    G4_INST *inst, BinInst *mybin, const RegionDesc *rd, G4_Operand *src1)
 {
     bool WidthValid = false;
-    if ( inst->isAligned16Inst() ) return false;
+    if (inst->isAligned16Inst()) return false;
 
-    if(rd)
+    if (rd)
     {
         if (rd->width != UNDEFINED_SHORT)
         {
@@ -1922,9 +1925,9 @@ inline bool EncodeSrc1Width(G4_INST *inst, BinInst *mybin, RegionDesc *rd, G4_Op
     }
 
     // apply default width
-    if ( !WidthValid )
+    if (!WidthValid)
     {
-        if ( EncodingHelper::isSrcSubRegNumValid(src1) )
+        if (EncodingHelper::isSrcSubRegNumValid(src1))
         {
             SetSrc1Width(mybin, WIDTH_1);
         }
@@ -1941,7 +1944,8 @@ inline bool EncodeSrc1Width(G4_INST *inst, BinInst *mybin, RegionDesc *rd, G4_Op
     return WidthValid;
  }
 
-inline bool EncodeSrc1HorzStride(G4_INST *inst, BinInst *mybin, RegionDesc *rd, G4_Operand *src1)
+inline bool EncodeSrc1HorzStride(
+    G4_INST *inst, BinInst *mybin, const RegionDesc *rd, G4_Operand *src1)
 {
     // For Align16 instruction (SIMD4), treat <HorzStride> as <VertStride>
     // For Align16 source operand disable HorzStride
@@ -1984,12 +1988,12 @@ inline bool EncodeSrc1HorzStride(G4_INST *inst, BinInst *mybin, RegionDesc *rd, 
     return HorzStrideValid;
 }
 
-inline void EncodeSrc1VertStride( G4_INST *inst,
-                                  BinInst *mybin,
-                                  RegionDesc *rd,
-                                  G4_Operand *src1,
-                                  bool WidthValid,
-                                  bool HorzStrideValid)
+inline void EncodeSrc1VertStride(G4_INST *inst,
+                                 BinInst *mybin,
+                                 const RegionDesc *rd,
+                                 G4_Operand *src1,
+                                 bool WidthValid,
+                                 bool HorzStrideValid)
 {
     bool VertStrideValid = false;
     unsigned short VertStrideValue= UNDEFINED_SHORT;
@@ -2295,7 +2299,7 @@ BinaryEncoding::Status BinaryEncoding::EncodeIndirectCallTarget(G4_INST* inst)
         EncodeSrc1RepCtrl(mybin, srcRegion);
         EncodeSrc1Modifier(mybin, srcRegion);
         EncodeSrc1ChanSelect(inst, mybin, srcRegion);
-        RegionDesc *rd = srcRegion->getRegion();
+        const RegionDesc *rd = srcRegion->getRegion();
         bool WidthValid = EncodeSrc1Width(inst, mybin, rd, srcRegion);
         bool HorzStrideValid = EncodeSrc1HorzStride(inst, mybin, rd, srcRegion);
         EncodeSrc1VertStride(inst, mybin, rd, srcRegion, WidthValid, HorzStrideValid);
@@ -2362,7 +2366,7 @@ BinaryEncoding::Status BinaryEncoding::EncodeOperandSrc1(G4_INST* inst)
         EncodeSrc1RepCtrl(mybin, srcRegion);
         EncodeSrc1Modifier(mybin, srcRegion);
         EncodeSrc1ChanSelect(inst, mybin, srcRegion);
-        RegionDesc *rd = srcRegion->getRegion();
+        const RegionDesc *rd = srcRegion->getRegion();
         bool WidthValid = EncodeSrc1Width(inst, mybin, rd, src1);
         bool HorzStrideValid = EncodeSrc1HorzStride(inst, mybin, rd, src1);
         EncodeSrc1VertStride(inst, mybin, rd, src1, WidthValid, HorzStrideValid);

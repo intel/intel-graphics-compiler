@@ -946,7 +946,7 @@ void FlowGraph::normalizeRegionDescriptors()
                     continue;
 
                 G4_SrcRegRegion *srcRegion = src->asSrcRegRegion();
-                RegionDesc *desc = srcRegion->getRegion();
+                const RegionDesc *desc = srcRegion->getRegion();
                 auto normDesc = builder->getNormalizedRegion(execSize, desc);
                 if (normDesc && normDesc != desc)
                 {
@@ -2185,7 +2185,7 @@ void FlowGraph::removeRedundMov()
                             dst->getLinearizedEnd() == srcRgn->getLinearizedEnd())
                         {
                             uint16_t stride = 0;
-                            RegionDesc *rd = srcRgn->getRegion();
+                            const RegionDesc *rd = srcRgn->getRegion();
                             unsigned ExSize = inst->getExecSize();
                             if (ExSize == 1 ||
                                 (rd->isSingleStride(ExSize, stride) &&

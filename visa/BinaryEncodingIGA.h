@@ -272,7 +272,7 @@ private:
     iga::Region getIGARegion(G4_SrcRegRegion* srcRegion, int srcPos) const
     {
         iga::Region igaRegion;
-        RegionDesc* region = srcRegion->getRegion();
+        const RegionDesc* region = srcRegion->getRegion();
         if ((srcRegion->getInst()->getNumSrc() == 3 && !srcRegion->getInst()->isSend()))
         {
             // special handling for 3src instructions

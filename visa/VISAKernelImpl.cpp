@@ -1838,7 +1838,7 @@ int VISAKernelImpl::CreateVISAAddressOperand(VISA_VectorOpnd *&cisa_opnd, VISA_A
         {
             // FIXME: This does not adhere to the vISA spec, which allows <0;N,1> regions where
             // N is < exec size
-            RegionDesc* rd = width > 1 ? m_builder->getRegionStride1() : m_builder->getRegionScalar();
+            const RegionDesc* rd = width > 1 ? m_builder->getRegionStride1() : m_builder->getRegionScalar();
             cisa_opnd->g4opnd = m_builder->createSrcRegRegion(
                 Mod_src_undef,
                 Direct,
@@ -1998,7 +1998,7 @@ int VISAKernelImpl::CreateVISAIndirectGeneralOperand(VISA_VectorOpnd *& cisa_opn
             if(verticalStride == MAX_UWORD_VALUE)
                 verticalStride = UNDEFINED_SHORT;
 
-            RegionDesc *rd = m_builder->createRegionDesc( verticalStride, width, horizontalStride );
+            const RegionDesc *rd = m_builder->createRegionDesc( verticalStride, width, horizontalStride );
             G4_SrcModifier g4_mod = Get_G4_SrcMod_From_Common_ISA_Mod(mod);
             G4_SrcRegRegion* src = m_builder->createIndirectSrc(
                 g4_mod,
@@ -2081,13 +2081,12 @@ int VISAKernelImpl::CreateVISAPredicateSrcOperand(VISA_VectorOpnd *& opnd, VISA_
 
     opnd = (VISA_VectorOpnd *)getOpndFromPool();
 
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         G4_Declare *dcl = decl->predVar.dcl;
-        RegionDesc *rd;
+        const RegionDesc *rd = m_builder->getRegionScalar();
 
         G4_Type type = Type_UW;
-            rd = m_builder->getRegionScalar();
 
         if(size == 32)
             type = Type_UD;
@@ -2101,7 +2100,7 @@ int VISAKernelImpl::CreateVISAPredicateSrcOperand(VISA_VectorOpnd *& opnd, VISA_
             rd,
             type );
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         status = CreateVISAPredicateOperandvISA((VISA_PredOpnd *&)opnd, decl, PredState_NO_INVERSE, PRED_CTRL_NON);
     }
@@ -2214,7 +2213,7 @@ int VISAKernelImpl::CreateVISASrcOperand(VISA_VectorOpnd *& cisa_opnd, VISA_GenV
             //create reg region
             G4_Declare *dcl = cisa_decl->genVar.dcl;
 
-            RegionDesc *rd = m_builder->createRegionDesc(vStride, width, hStride);
+            const RegionDesc *rd = m_builder->createRegionDesc(vStride, width, hStride);
             G4_SrcModifier g4_mod = Get_G4_SrcMod_From_Common_ISA_Mod(mod);
 
             cisa_opnd->g4opnd = m_builder->createSrcRegRegion(g4_mod, Direct, dcl->getRegVar(), rowOffset, colOffset, rd, dcl->getElemType());
@@ -2493,7 +2492,7 @@ int VISAKernelImpl::CreateGenRawSrcOperand(VISA_RawOpnd *& cisa_opnd)
 
     G4_Declare *dcl = cisa_opnd->decl->genVar.dcl;
 
-    RegionDesc *rd = m_builder->getRegionStride1();
+    const RegionDesc *rd = m_builder->getRegionStride1();
     G4_Type type = dcl->getElemType();
     short row_offset = offset / G4_GRF_REG_NBYTES;
     short col_offset = (offset%G4_GRF_REG_NBYTES) / G4_Type_Table[type].byteSize;
@@ -8259,10 +8258,11 @@ VISA_opnd* VISAKernelImpl::getOpndFromPool()
     return newOp;
 }
 
-G4_Operand* VISAKernelImpl::CommonISABuildPreDefinedSrc(int index, uint16_t vStride, uint16_t width,
-                                                        uint16_t hStride, uint8_t rowOffset, uint8_t colOffset, VISA_Modifier modifier)
+G4_Operand* VISAKernelImpl::CommonISABuildPreDefinedSrc(
+    int index, uint16_t vStride, uint16_t width,
+    uint16_t hStride, uint8_t rowOffset, uint8_t colOffset, VISA_Modifier modifier)
 {
-    RegionDesc *rd = m_builder->createRegionDesc( vStride, width, hStride );
+    const RegionDesc *rd = m_builder->createRegionDesc( vStride, width, hStride );
     G4_Operand* tmpsrc = NULL;
     PreDefinedVarsInternal internalIndex = mapExternalToInternalPreDefVar(index);
     switch (internalIndex)

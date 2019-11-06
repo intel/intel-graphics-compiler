@@ -175,7 +175,7 @@ G4_DstRegRegion* HWConformity::insertMovAfter( INST_LIST_ITER& it, G4_DstRegRegi
         subAlign = dstAlign;
     }
 
-    RegionDesc* region = newExecSize > 1 ? builder.createRegionDesc(scale, 1, 0) : builder.getRegionScalar();
+    const RegionDesc* region = newExecSize > 1 ? builder.createRegionDesc(scale, 1, 0) : builder.getRegionScalar();
 
     G4_Declare* dcl = builder.createTempVar( newExecSize == 1 ? 1 : newExecSize * scale, type, subAlign );
 
@@ -255,7 +255,7 @@ void HWConformity::broadcast(
 
      bb->insert(it, newInst);
 
-     RegionDesc* srcRegion = builder.getRegionStride1();
+     const RegionDesc* srcRegion = builder.getRegionStride1();
      G4_SrcRegRegion* newSrc = builder.Create_Src_Opnd_From_Dcl(dcl, srcRegion);
      inst->setSrc(newSrc, srcPos);
      newInst->addDefUse(inst, inst->getSrcOperandNum(srcPos));
@@ -310,7 +310,7 @@ G4_Operand* HWConformity::insertMovBefore(
 {
     G4_INST* inst = *it;
     G4_SubReg_Align subAlign;
-    RegionDesc* region = NULL;
+    const RegionDesc* region = NULL;
     unsigned short vs = 0, hs = 0, wd = 1;
     unsigned char exec_size = inst->getExecSize();
     G4_Operand *src = inst->getSrc( srcNum );
@@ -524,7 +524,7 @@ bool HWConformity::fixMathInst(INST_LIST_ITER it, G4_BB *bb)
         else if (src->isSrcRegRegion())
         {
             G4_SrcRegRegion *srcRegion = src->asSrcRegRegion();
-            RegionDesc *rd = srcRegion->getRegion();
+            const RegionDesc *rd = srcRegion->getRegion();
             if (srcRegion->getModifier() != Mod_src_undef && isIntDivide)
             {
                 // no source modifer for int divide
@@ -913,7 +913,7 @@ bool HWConformity::fixLine(INST_LIST_ITER it, G4_BB *bb)
         // assumption: there are 4 elements in src0
         if (src0->isSrcRegRegion())
         {
-            RegionDesc *rd = src0->asSrcRegRegion()->getRegion();
+            const RegionDesc *rd = src0->asSrcRegRegion()->getRegion();
             badRegion = (rd->vertStride != 0 || rd->width != 4 || rd->horzStride != 1);
         }
         if (!IS_FTYPE(src0->getType()) || src0->isImm() || badRegion ||
@@ -929,7 +929,7 @@ bool HWConformity::fixLine(INST_LIST_ITER it, G4_BB *bb)
             src0_dcl = builder.createTempVar(mov_size, Type_F, Eight_Word);
             /* Create temporary variable */
             // Actully we set region to be <0;4,1> directly here.
-            RegionDesc *rd = builder.createRegionDesc(0, 4, 1);
+            const RegionDesc *rd = builder.createRegionDesc(0, 4, 1);
             new_src0_opnd = builder.Create_Src_Opnd_From_Dcl(src0_dcl, rd);
             new_dst_opnd = builder.Create_Dst_Opnd_From_Dcl(src0_dcl, 1);
 
@@ -1367,7 +1367,7 @@ static bool canReplaceMovSrcType(IR_Builder& builder, G4_INST* inst, uint32_t ex
     uint32_t numElt = src0->isScalar() ? 1 : inst->getExecSize() * typeSizeRatio;
     G4_Declare* newDcl = builder.createTempVar(numElt, dst->getType(), Any);
     newDcl->setAliasDeclare(src0->getBase()->asRegVar()->getDeclare(), 0);
-    RegionDesc* region = src0->isScalar() ? builder.getRegionScalar() :
+    const RegionDesc* region = src0->isScalar() ? builder.getRegionScalar() :
         builder.createRegionDesc((uint16_t)inst->getExecSize(), (uint16_t)inst->getExecSize() * typeSizeRatio,
         inst->getExecSize(),
         (uint16_t)typeSizeRatio);
@@ -2123,7 +2123,7 @@ bool HWConformity::fixMULInst( INST_LIST_ITER &i, G4_BB *bb )
             doNativeMul = (getTypeSize(dst->getType()) * dst->getHorzStride() == 8);
             auto isQWordStride = [inst, this](G4_SrcRegRegion* src)
             {
-                RegionDesc* region = src->getRegion();
+                const RegionDesc* region = src->getRegion();
                 if (!region->isScalar())
                 {
                     uint16_t stride = 0;
@@ -2264,7 +2264,7 @@ bool HWConformity::fixMULInst( INST_LIST_ITER &i, G4_BB *bb )
             }
 
             // set implicit source/dst for MACH
-            RegionDesc *rd = exec_size == 1 ? builder.getRegionScalar() : builder.getRegionStride1();
+            const RegionDesc *rd = exec_size == 1 ? builder.getRegionScalar() : builder.getRegionStride1();
             G4_SrcRegRegion *acc_src_opnd = builder.createSrcRegRegion(Mod_src_undef, Direct, builder.phyregpool.getAcc0Reg(), 0, 0, rd, tmp_type);
             next_inst->setImplAccSrc(acc_src_opnd);
             next_inst->setImplAccDst(builder.createDstRegRegion(*acc_dst_opnd));
@@ -2368,7 +2368,7 @@ bool HWConformity::fixMULInst( INST_LIST_ITER &i, G4_BB *bb )
     inst->addDefUse(newInst, Opnd_implAccSrc);
 
     // create an implicit source for MACH
-    RegionDesc *rd = NULL;
+    const RegionDesc *rd = NULL;
     unsigned short vs = 0, wd = exec_size, hs = 0;
     if (exec_size > 1){
         if (isCompressed){
@@ -2675,7 +2675,7 @@ void HWConformity::fixMULHInst( INST_LIST_ITER &i, G4_BB *bb )
     }
 
     //set implicit src/dst for mach
-    RegionDesc *rd = exec_size > 1 ? builder.getRegionStride1() : builder.getRegionScalar();
+    const RegionDesc *rd = exec_size > 1 ? builder.getRegionStride1() : builder.getRegionScalar();
     G4_SrcRegRegion *acc_src_opnd = builder.createSrcRegRegion(Mod_src_undef, Direct, builder.phyregpool.getAcc0Reg(), 0, 0, rd, tmp_type);
     inst->setImplAccSrc( acc_src_opnd );
     inst->setImplAccDst( builder.createDstRegRegion( *acc_dst_opnd ) );
@@ -2930,7 +2930,7 @@ void HWConformity::fix64bInst( INST_LIST_ITER iter, G4_BB* bb )
             if (src != nullptr && src->isSrcRegRegion() && src->asSrcRegRegion()->getRegAccess() == IndirGRF)
             {
                 G4_SrcRegRegion* srcAsRegion = src->asSrcRegRegion();
-                RegionDesc* region = srcAsRegion->getRegion();
+                const RegionDesc* region = srcAsRegion->getRegion();
                 int byteSize = G4_Type_Table[srcAsRegion->getType()].byteSize;
                 if (byteSize == 8)
                 {
@@ -2959,7 +2959,7 @@ void HWConformity::fix64bInst( INST_LIST_ITER iter, G4_BB* bb )
                     numDwords = Round_Up_Pow2(numDwords);
                     G4_Declare* tmpSrc = builder.createTempVar(numDwords / 2, src->getType(), GRFALIGN);
                     // new source's region varies depending on whether it's VxH or 1x1
-                    RegionDesc* newRegion = region->isRegionWH() ? builder.getRegionStride1() : region;
+                    const RegionDesc* newRegion = region->isRegionWH() ? builder.getRegionStride1() : region;
                     copyDwordsIndirect(tmpSrc, srcAsRegion, numDwords, bb, iter);
                     G4_SrcRegRegion* tmpSrcOpnd = builder.createSrcRegRegion(srcAsRegion->getModifier(),
                         Direct, tmpSrc->getRegVar(), 0, 0, newRegion, tmpSrc->getElemType());
@@ -2984,7 +2984,7 @@ void HWConformity::fix64bInst( INST_LIST_ITER iter, G4_BB* bb )
             if (src != NULL && src->isSrcRegRegion())
             {
                 G4_SrcRegRegion* srcAsRegion = src->asSrcRegRegion();
-                RegionDesc* region = srcAsRegion->getRegion();
+                const RegionDesc* region = srcAsRegion->getRegion();
                 int byteSize = G4_Type_Table[srcAsRegion->getType()].byteSize;
 
                 if (!isDWMultiply && !region->isScalar() &&
@@ -3072,7 +3072,7 @@ void HWConformity::fix64bInst( INST_LIST_ITER iter, G4_BB* bb )
             if (src != nullptr && src->isSrcRegRegion())
             {
                 G4_SrcRegRegion* srcAsRegion = src->asSrcRegRegion();
-                RegionDesc* region = srcAsRegion->getRegion();
+                const RegionDesc* region = srcAsRegion->getRegion();
                 if (!region->isRegionWH() && region->vertStride != region->horzStride * region->width)
                 {
                     // see if we can fix the region to satisfy VS = W * HS
@@ -3177,7 +3177,7 @@ void HWConformity::fix64bInst( INST_LIST_ITER iter, G4_BB* bb )
                         G4_SrcRegRegion* src = movInst->getSrc(0)->asSrcRegRegion();
                         G4_Declare* tmpAsUD = builder.createTempVar(tmpDstDcl->getNumElems() * 2, Type_UD, Any);
                         tmpAsUD->setAliasDeclare(tmpDstDcl, 0);
-                        RegionDesc* newRegion = src->getRegion()->isScalar() ?
+                        const RegionDesc* newRegion = src->getRegion()->isScalar() ?
                             builder.createRegionDesc(0, 2, 1) : builder.getRegionStride1();
                         G4_SrcRegRegion* srcAsUD = builder.createSrcRegRegion(src->getModifier(),
                             src->getRegAccess(), tmpAsUD->getRegVar(), src->getRegOff(),
@@ -3247,7 +3247,7 @@ void HWConformity::fixMulSrc1( INST_LIST_ITER i, G4_BB* bb )
     {
         assert(src1->isSrcRegRegion() && "region expected");
         G4_SrcRegRegion *srcRegion = src1->asSrcRegRegion();
-        RegionDesc *rd = srcRegion->getRegion();
+        const RegionDesc *rd = srcRegion->getRegion();
         if (rd->horzStride >= 4)
         {
             G4_Operand* new_src1 = insertMovBefore(i, 1, Type_UW, bb);
@@ -3259,7 +3259,7 @@ void HWConformity::fixMulSrc1( INST_LIST_ITER i, G4_BB* bb )
             unsigned short scale = G4_Type_Table[Type_D].byteSize / G4_Type_Table[Type_UW].byteSize;
             unsigned short newHS = rd->horzStride * scale;
             unsigned short newVS = rd->vertStride * scale;
-            RegionDesc *new_rd = builder.createRegionDesc(newVS, rd->width, newHS);
+            const RegionDesc *new_rd = builder.createRegionDesc(newVS, rd->width, newHS);
             short subRegOff = srcRegion->getSubRegOff();
             if (srcRegion->getRegAccess() == Direct)
             {
@@ -3463,7 +3463,7 @@ bool HWConformity::isGoodAlign1TernarySrc(G4_INST* inst, int srcPos, bool canBeI
 
         auto checkSingleStrideRegion = [](G4_SrcRegRegion* src, int stride, uint8_t execSize, IR_Builder& builder)
         {
-            RegionDesc* srcRegion = src->getRegion();
+            const RegionDesc* srcRegion = src->getRegion();
 
             if (stride > 4)
             {
@@ -3492,7 +3492,7 @@ bool HWConformity::isGoodAlign1TernarySrc(G4_INST* inst, int srcPos, bool canBeI
         // <N;N,0>
         // <0;1,0>
         // <W*H;W,H>
-        RegionDesc* srcRegion = src->asSrcRegRegion()->getRegion();
+        const RegionDesc* srcRegion = src->asSrcRegRegion()->getRegion();
         if (srcRegion->isScalar())
         {
             return true;
@@ -3589,7 +3589,7 @@ bool HWConformity::isGoodAlign16Src(G4_INST* inst, int srcPos)
     // Constants are not allowed as MAD opnds.
     if (src->isSrcRegRegion())
     {
-        RegionDesc* region = src->asSrcRegRegion()->getRegion();
+        const RegionDesc* region = src->asSrcRegRegion()->getRegion();
         G4_RegAccess regAcc = src->asSrcRegRegion()->getRegAccess();
 
         if (regAcc != Direct)
@@ -5096,7 +5096,7 @@ bool HWConformity::convertMAD2MAC( INST_LIST_ITER iter, std::vector<G4_INST*> &m
         }
         uint32_t dstByteStride = curInst->getDst()->getExecTypeSize();
         uint16_t stride = (uint16_t) (dstByteStride > accTypeSize ? dstByteStride / accTypeSize : 1);
-        RegionDesc* region = builder.createRegionDesc(stride, 1, 0);
+        const RegionDesc* region = builder.createRegionDesc(stride, 1, 0);
 
         G4_SrcRegRegion *accSrcOpnd = builder.createSrcRegRegion(
             Mod_src_undef, Direct, builder.phyregpool.getAcc0Reg(),
@@ -5159,20 +5159,22 @@ void HWConformity::convertComprInstSrcRegion( G4_INST *inst )
 
         if( inst->getExecSize() < w )
         {
-            RegionDesc *rd = builder.createRegionDesc( (uint16_t) (vs/2), (uint16_t) (w/2), (uint16_t) (hs/2) );
+            const RegionDesc *rd =
+                builder.createRegionDesc((uint16_t) (vs/2), (uint16_t) (w/2), (uint16_t) (hs/2));
             src->asSrcRegRegion()->setRegion( rd );
         }
     }
 }
 
 // replace src/dst with ACC
-void HWConformity::addACCOpnd(G4_INST *curInst, bool needACCSrc, int dstStride, G4_Type accTy)
+void HWConformity::addACCOpnd(
+    G4_INST *curInst, bool needACCSrc, int dstStride, G4_Type accTy)
 {
 
     if (needACCSrc)
     {
         // change src2 to implicit ACC src.
-        RegionDesc* region = nullptr;
+        const RegionDesc* region = nullptr;
         switch (dstStride)
         {
         case 1:
@@ -5500,7 +5502,7 @@ void HWConformity::fixSADA2Inst(G4_BB* bb)
             srcVertStride = srcWidth;
 
             // opnd 0 for add is the new temp we've just created
-            RegionDesc *rd = builder.createRegionDesc( srcVertStride, srcWidth, srcHorzStride );
+            const RegionDesc *rd = builder.createRegionDesc( srcVertStride, srcWidth, srcHorzStride );
             G4_Operand* addSrc0Opnd = builder.createSrcRegRegion(Mod_src_undef, Direct, sad2Dst->getBase(),
                 0, 0, rd, sad2Dst->getType() );
 
@@ -5624,7 +5626,7 @@ void HWConformity::fixSendInst(G4_BB* bb)
 
             MUST_BE_TRUE(G4_Type_Table[type].byteSize == 4, "Invalid src0 opnd type for send.");
 
-            RegionDesc* region = builder.getRegionStride1();
+            const RegionDesc* region = builder.getRegionStride1();
             G4_VarBase *base = src0->asSrcRegRegion()->getBase();
             short baseOff = src0->asSrcRegRegion()->getRegOff();
             short baseSubOff = src0->asSrcRegRegion()->getSubRegOff();
@@ -5661,7 +5663,7 @@ void HWConformity::fixSendInst(G4_BB* bb)
 
                 MUST_BE_TRUE(G4_Type_Table[type].byteSize == 4, "Invalid src1 opnd type for send.");
 
-                RegionDesc* region = builder.getRegionStride1();
+                const RegionDesc* region = builder.getRegionStride1();
                 G4_VarBase *base = src1->asSrcRegRegion()->getBase();
                 short baseOff = src1->asSrcRegRegion()->getRegOff();
                 short baseSubOff = src1->asSrcRegRegion()->getSubRegOff();
@@ -6131,7 +6133,7 @@ bool HWConformity::hasBadRegion( G4_INST *inst )
         {
             continue;
         }
-        RegionDesc *rd = inst->getSrc(srcNum)->asSrcRegRegion()->getRegion();
+        const RegionDesc *rd = inst->getSrc(srcNum)->asSrcRegRegion()->getRegion();
         if( rd->isRegionWH() )
         {
             badRegion = true;
@@ -6145,7 +6147,7 @@ bool HWConformity::hasBadRegion( G4_INST *inst )
         G4_SrcRegRegion *expandSrcRegion = inst->getSrc(srcNum)->asSrcRegRegion();
         if( expandSrcRegion->getRegAccess() != Direct )
         {
-            RegionDesc* origRegion = expandSrcRegion->getRegion();
+            const RegionDesc* origRegion = expandSrcRegion->getRegion();
             short secondSubRegOffDiff = 0, secondAddrImmedDiff = 0;
 
             if( origRegion->width == 1 )
@@ -6409,20 +6411,21 @@ G4_INST* HWConformity::splitInstWithByteDst( G4_INST *expand_op )
             } else {
                 short secondSubRegOffDiff = 0, secondAddrImmedDiff = 0;
 
-                RegionDesc* origRegion = expandSrcRegion->getRegion();
-                RegionDesc* newRegion = NULL;
+                const RegionDesc* origRegion = expandSrcRegion->getRegion();
+                const RegionDesc* newRegion = NULL;
 
                 if( origRegion->width == 1 )
                 {
-                    newRegion = builder.createRegionDesc( origRegion->vertStride * 2, origRegion->width, origRegion->horzStride );
+                    newRegion = builder.createRegionDesc(origRegion->vertStride * 2, origRegion->width, origRegion->horzStride);
                     secondSubRegOffDiff = origRegion->vertStride;
                 }
                 else
                 {
                     unsigned short newWD = origRegion->width/2;
                     secondSubRegOffDiff = origRegion->horzStride;
-                    newRegion = builder.createRegionDesc( (newWD == 1 && newExecSize == 1) ? 0 : origRegion->vertStride,
-                        newWD, (newWD== 1) ? 0 : origRegion->horzStride * 2 );
+                    newRegion = builder.createRegionDesc(
+                        (newWD == 1 && newExecSize == 1) ? 0 : origRegion->vertStride,
+                        newWD, (newWD== 1) ? 0 : origRegion->horzStride * 2);
                 }
                 secondAddrImmedDiff = (short) (secondSubRegOffDiff * G4_Type_Table[expand_src->getType()].byteSize);
                 expandSrcRegion->setRegion( newRegion );
@@ -6430,7 +6433,8 @@ G4_INST* HWConformity::splitInstWithByteDst( G4_INST *expand_op )
                 bool directSrc = ( expandSrcRegion->getRegAccess() == Direct );
                 if( secondAddrImmedDiff >= GENX_GRF_REG_SIZ )
                 {
-                    secondSubRegOffDiff = (short) (( secondAddrImmedDiff - GENX_GRF_REG_SIZ ) / G4_Type_Table[expand_src->getType()].byteSize);
+                    secondSubRegOffDiff =
+                        (short)((secondAddrImmedDiff - GENX_GRF_REG_SIZ ) / G4_Type_Table[expand_src->getType()].byteSize);
                 }
                 G4_SrcRegRegion *secondSrcOpnd = builder.createSrcRegRegion(
                     expandSrcRegion->getModifier(),
@@ -6505,8 +6509,8 @@ void HWConformity::fixSrcRegion( G4_INST *inst )
         if (inst->getSrc(i) && inst->getSrc(i)->isSrcRegRegion() && !inst->getSrc(i)->isNullReg())
         {
             G4_SrcRegRegion *src = inst->getSrc(i)->asSrcRegRegion();
-            RegionDesc* srcRegion = src->getRegion();
-            if( srcRegion->isRegionWH() || srcRegion->isRegionV() || srcRegion->isRegionSW() )
+            const RegionDesc* srcRegion = src->getRegion();
+            if (srcRegion->isRegionWH() || srcRegion->isRegionV() || srcRegion->isRegionSW() )
                 continue;
             uint16_t vs = srcRegion->vertStride, wd = srcRegion->width, hs = srcRegion->horzStride;
             uint8_t exSize = inst->getExecSize();
@@ -6739,7 +6743,7 @@ G4_Operand* HWConformity::fixPackedByteReference(IR_Builder& builder, G4_Operand
             src_regoff = off / G4_GRF_REG_NBYTES;
             src_subregoff = off % G4_GRF_REG_NBYTES;
 
-            RegionDesc *rd = builder.getRegionStride2();
+            const RegionDesc *rd = builder.getRegionStride2();
             G4_SrcRegRegion* newSrcOpnd = builder.createSrcRegRegion(opnd->asSrcRegRegion()->getModifier(),
                 Direct,
                 opnd->getBase()->asRegVar(),
@@ -7010,7 +7014,7 @@ bool HWConformity::fixPlaneInst(INST_LIST_ITER it, G4_BB* bb)
                 1,
                 Type_F);
 
-            RegionDesc* rd = builder.createRegionDesc(4, 4, 1);
+            const RegionDesc* rd = builder.createRegionDesc(4, 4, 1);
             G4_SrcRegRegion* srcRgn = builder.createSrcRegRegion(
                 src0->asSrcRegRegion()->getModifier(),
                 Direct,
@@ -7067,7 +7071,7 @@ bool HWConformity::fixPlaneInst(INST_LIST_ITER it, G4_BB* bb)
                     1,
                     Type_F);
 
-                RegionDesc* rd = builder.createRegionDesc(8, 8, 1);
+                const RegionDesc* rd = builder.createRegionDesc(8, 8, 1);
                 G4_SrcRegRegion* srcRgn = builder.createSrcRegRegion(
                     src1->asSrcRegRegion()->getModifier(),
                     Direct,
@@ -7250,11 +7254,15 @@ void HWConformity::helperGenerateTempDst(
     G4_DstRegRegion *dstRegion = builder.Create_Dst_Opnd_From_Dcl(dcl, hStride);
     inst->setDest(dstRegion);
 
-    RegionDesc* region = execSize == 1 ? builder.getRegionScalar() : builder.createRegionDesc(execSize*hStride, execSize, hStride);
+    const RegionDesc* region =
+        execSize == 1 ?
+            builder.getRegionScalar() :
+            builder.createRegionDesc(execSize*hStride, execSize, hStride);
     G4_SrcRegRegion *srcRegion = builder.Create_Src_Opnd_From_Dcl(dcl, region);
 
     //creating a mov from temp dst to final destination using original options of fixed instruction
-    G4_INST* movInst = builder.createMov(execSize, dst, srcRegion, inst->getMaskOption(), false);
+    G4_INST* movInst = builder.createMov(
+        execSize, dst, srcRegion, inst->getMaskOption(), false);
 
     ++instIter;
     //inserting mov after fixed instruction
@@ -7516,7 +7524,7 @@ void HWConformity::fixVxHFloat64b(INST_LIST_ITER it, G4_BB* bb)
         {
             int numDwords = inst->getExecSize() * 2;
             G4_Declare* tmpSrc = builder.createTempVar(numDwords / 2, src0->getType(), Any);
-            RegionDesc* newRegion = builder.getRegionStride1();
+            const RegionDesc* newRegion = builder.getRegionStride1();
             copyDwordsIndirect(tmpSrc, src0, numDwords, bb, it);
             G4_SrcRegRegion* tmpSrcOpnd = builder.createSrcRegRegion(src0->getModifier(),
                 Direct, tmpSrc->getRegVar(), 0, 0, newRegion, tmpSrc->getElemType());

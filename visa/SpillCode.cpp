@@ -163,7 +163,7 @@ void SpillManager::genRegMov(G4_BB* bb,
                 Flag registers should always be scalar regions
             */
             G4_Type type = Type_W;
-            RegionDesc* srcRgn = NULL;
+            const RegionDesc* srcRgn = NULL;
             unsigned execSize = i;
             if(src->isFlag() || dst->isFlag())
             {

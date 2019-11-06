@@ -36,7 +36,7 @@ using namespace vISA;
 #define DUMMY_HSTRIDE_8_8_0     0xc000
 #define DUMMY_HSTRIDE_16_16_0   0x2000
 
-bool isSpecialRegion(RegionDesc* desc, uint16_t& hstride)
+bool isSpecialRegion(const RegionDesc* desc, uint16_t& hstride)
 {
     bool isSpecial = false;
 
@@ -77,7 +77,7 @@ bool isSpecialRegion(RegionDesc* desc, uint16_t& hstride)
 // disconnected regions are not expected in LVN.
 uint16_t getActualHStride(G4_SrcRegRegion* srcRgn)
 {
-    RegionDesc* desc = srcRgn->getRegion();
+    const RegionDesc* desc = srcRgn->getRegion();
     uint32_t execSize = srcRgn->getInst()->getExecSize();
     uint16_t stride = desc->horzStride;
     bool isSpecialRgn = isSpecialRegion(desc, stride);
@@ -238,7 +238,7 @@ bool LVN::canReplaceUses(INST_LIST_ITER inst_it, UseList& uses, G4_INST* lvnInst
         unsigned int use_hs = 0;
         {
             uint16_t stride = 0;
-            RegionDesc *rd = use->asSrcRegRegion()->getRegion();
+            const RegionDesc *rd = use->asSrcRegRegion()->getRegion();
             if (rd->isSingleStride(useInst->getExecSize(), stride))
             {
                 use_hs = stride;

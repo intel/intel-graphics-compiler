@@ -232,7 +232,8 @@ class RegionPool
     std::vector<RegionDesc*> rgnlist;
 public:
     RegionPool(Mem_Manager& m) : mem(m) {}
-    RegionDesc* createRegion(uint16_t vstride, uint16_t width, uint16_t hstride);
+    const RegionDesc* createRegion(
+        uint16_t vstride, uint16_t width, uint16_t hstride);
 };
 
 //
@@ -1109,9 +1110,11 @@ public:
         return inst;
     }
 
-    G4_INST* createSpill(G4_DstRegRegion* dst, G4_SrcRegRegion* header, G4_SrcRegRegion* payload, unsigned int execSize,
-        uint16_t numRows, uint32_t offset, G4_Declare* fp, G4_InstOption option, unsigned int lineno = 0, int CISAoff = -1,
-        const char* srcFilename = nullptr)
+    G4_INST* createSpill(
+        G4_DstRegRegion* dst, G4_SrcRegRegion* header, G4_SrcRegRegion* payload,
+        unsigned int execSize,
+        uint16_t numRows, uint32_t offset, G4_Declare* fp, G4_InstOption option,
+        unsigned int lineno = 0, int CISAoff = -1, const char* srcFilename = nullptr)
     {
         G4_INST* spill = createIntrinsicInst(nullptr, Intrinsic::Spill, execSize, dst,
             header, payload, nullptr, option, lineno);
@@ -1123,8 +1126,12 @@ public:
         return spill;
     }
 
-    G4_INST* createSpill(G4_DstRegRegion* dst, G4_SrcRegRegion* payload, unsigned int execSize, uint16_t numRows, uint32_t offset,
-        G4_Declare* fp, G4_InstOption option, unsigned int lineno = 0, int CISAoff = -1, const char* srcFilename = nullptr)
+    G4_INST* createSpill(
+        G4_DstRegRegion* dst, G4_SrcRegRegion* payload,
+        unsigned int execSize, uint16_t numRows, uint32_t offset,
+        G4_Declare* fp, G4_InstOption option,
+        unsigned int lineno = 0, int CISAoff = -1,
+        const char* srcFilename = nullptr)
     {
         auto builtInR0 = getBuiltinR0();
         auto rd = getRegionStride1();
@@ -1220,7 +1227,8 @@ public:
     //
     // PLEASE use getRegion* interface to get regions if possible!
     // This function will be mostly used for external regions.
-    RegionDesc* createRegionDesc(uint16_t vstride,
+    const RegionDesc* createRegionDesc(
+        uint16_t vstride,
         uint16_t width,
         uint16_t hstride)
     {
@@ -1232,40 +1240,37 @@ public:
     //
     // PLEASE use getRegion* interface to get regions if possible!
     // This function will be mostly used for external regions.
-    RegionDesc *createRegionDesc(uint16_t size, uint16_t vstride,
+    const RegionDesc *createRegionDesc(
+        uint16_t size, uint16_t vstride,
         uint16_t width, uint16_t hstride)
     {
         // Performs normalization for commonly used regions.
         switch (RegionDesc::getRegionDescKind(size, vstride, width, hstride)) {
-        default:
-            break;
-        case RegionDesc::RK_Stride0:
-            return getRegionScalar();
-        case RegionDesc::RK_Stride1:
-            return getRegionStride1();
-        case RegionDesc::RK_Stride2:
-            return getRegionStride2();
-        case RegionDesc::RK_Stride4:
-            return getRegionStride4();
+        case RegionDesc::RK_Stride0: return getRegionScalar();
+        case RegionDesc::RK_Stride1: return getRegionStride1();
+        case RegionDesc::RK_Stride2: return getRegionStride2();
+        case RegionDesc::RK_Stride4: return getRegionStride4();
+        default: break;
         }
         return rgnpool.createRegion(vstride, width, hstride);
     }
 
     /// Helper to normalize an existing region descriptor.
-    RegionDesc *getNormalizedRegion(uint16_t size, RegionDesc *rd)
+    const RegionDesc *getNormalizedRegion(uint16_t size, const RegionDesc *rd)
     {
         return createRegionDesc(size, rd->vertStride, rd->width, rd->horzStride);
     }
 
     /// Get the predefined region descriptors.
-    RegionDesc *getRegionScalar()  { return &CanonicalRegionStride0; }
-    RegionDesc *getRegionStride1() { return &CanonicalRegionStride1; }
-    RegionDesc *getRegionStride2() { return &CanonicalRegionStride2; }
-    RegionDesc *getRegionStride4() { return &CanonicalRegionStride4; }
+    const RegionDesc *getRegionScalar()  const { return &CanonicalRegionStride0; }
+    const RegionDesc *getRegionStride1() const { return &CanonicalRegionStride1; }
+    const RegionDesc *getRegionStride2() const { return &CanonicalRegionStride2; }
+    const RegionDesc *getRegionStride4() const { return &CanonicalRegionStride4; }
 
     // ToDo: get rid of this version and use the message type specific ones below instead,
     // so we can avoid having to explicitly create extDesc bits
-    G4_SendMsgDescriptor* createGeneralMsgDesc(uint32_t desc,
+    G4_SendMsgDescriptor* createGeneralMsgDesc(
+        uint32_t desc,
         uint32_t extDesc,
         SendAccess access,
         G4_Operand* bti = nullptr,
@@ -1327,12 +1332,13 @@ public:
     }
 
     // Create a new srcregregion allocated in mem
-    G4_SrcRegRegion* createSrcRegRegion(G4_SrcModifier m,
+    G4_SrcRegRegion* createSrcRegRegion(
+        G4_SrcModifier m,
         G4_RegAccess   a,
         G4_VarBase*    b,
         short roff,
         short sroff,
-        RegionDesc*    rd,
+        const RegionDesc *rd,
         G4_Type        ty,
         G4_AccRegSel regSel = ACC_UNDEFINED)
     {
@@ -1344,7 +1350,7 @@ public:
         G4_VarBase*    b,
         short roff,
         short sroff,
-        RegionDesc*    rd,
+        const RegionDesc* rd,
         G4_Type        ty,
         short immAddrOff)
     {
@@ -1815,29 +1821,29 @@ public:
     // helper functions
     G4_Declare *createSendPayloadDcl( unsigned num_elt, G4_Type type );
     void Create_MOVR0_Inst(
-                        G4_Declare* dcl,
-                        short refOff,
-                        short subregOff,
-                        bool use_nomask = false );
+        G4_Declare* dcl,
+        short refOff,
+        short subregOff,
+        bool use_nomask = false);
     void Create_MOV_Inst(
-                        G4_Declare* dcl,
-                        short refOff,
-                        short subregOff,
-                        unsigned execsize,
-                        G4_Predicate* pred,
-                        G4_CondMod* condMod,
-                        G4_Operand* src_opnd,
-                        bool use_nomask = false );
+        G4_Declare* dcl,
+        short refOff,
+        short subregOff,
+        unsigned execsize,
+        G4_Predicate* pred,
+        G4_CondMod* condMod,
+        G4_Operand* src_opnd,
+        bool use_nomask = false);
     void Create_ADD_Inst(
-                        G4_Declare* dcl,
-                        short         regOff,
-                        short         subregOff,
-                        uint8_t      execsize,
-                        G4_Predicate* pred,
-                        G4_CondMod*   condMod,
-                        G4_Operand*   src0_opnd,
-                        G4_Operand*   src1_opnd,
-                        G4_InstOption options);
+        G4_Declare* dcl,
+        short         regOff,
+        short         subregOff,
+        uint8_t      execsize,
+        G4_Predicate* pred,
+        G4_CondMod*   condMod,
+        G4_Operand*   src0_opnd,
+        G4_Operand*   src1_opnd,
+        G4_InstOption options);
     void Create_MOV_Send_Src_Inst(
         G4_Declare* dcl,
         short refOff,
@@ -1846,27 +1852,28 @@ public:
         G4_Operand* src_opnd,
         unsigned int option );
 
-    G4_INST* createFenceInstruction( uint8_t flushParam, bool commitEnable, bool globalMemFence, bool isSendc);
+    G4_INST* createFenceInstruction(
+        uint8_t flushParam, bool commitEnable, bool globalMemFence, bool isSendc);
 
     // short hand for creating a dstRegRegion
-    G4_DstRegRegion* Create_Dst_Opnd_From_Dcl( G4_Declare* dcl, unsigned short hstride );
-    G4_SrcRegRegion* Create_Src_Opnd_From_Dcl( G4_Declare* dcl, RegionDesc* rd );
+    G4_DstRegRegion* Create_Dst_Opnd_From_Dcl(G4_Declare* dcl, unsigned short hstride);
+    G4_SrcRegRegion* Create_Src_Opnd_From_Dcl(G4_Declare* dcl, const RegionDesc* rd);
 
     // Create a null dst with scalar region and the given type
-    G4_DstRegRegion* createNullDst( G4_Type dstType );
+    G4_DstRegRegion* createNullDst(G4_Type dstType);
 
     // Create a null src with scalar region and the given type
-    G4_SrcRegRegion* createNullSrc( G4_Type dstType );
+    G4_SrcRegRegion* createNullSrc(G4_Type dstType);
 
-    G4_DstRegRegion* Check_Send_Dst( G4_DstRegRegion *dst_opnd );
+    G4_DstRegRegion* Check_Send_Dst(G4_DstRegRegion *dst_opnd);
 
     unsigned int getByteOffsetSrcRegion(
-        G4_SrcRegRegion* srcRegion );
+        G4_SrcRegRegion* srcRegion);
 
     bool checkIfRegionsAreConsecutive(
         G4_SrcRegRegion* first,
         G4_SrcRegRegion* second,
-        unsigned int exec_size );
+        unsigned int exec_size);
 
     bool checkIfRegionsAreConsecutive(
         G4_SrcRegRegion* first,
@@ -1880,7 +1887,7 @@ public:
         unsigned int& regOff,
         G4_SrcRegRegion* src,
         unsigned int exec_size,
-        uint32_t emask );
+        uint32_t emask);
 
     // functions translating vISA inst to G4_INST
     int translateVISAGather3dInst(
@@ -1895,7 +1902,7 @@ public:
         G4_Operand* surface,
         G4_DstRegRegion* dst,
         unsigned int numOpnds,
-        G4_SrcRegRegion ** opndArray );
+        G4_SrcRegRegion ** opndArray);
 
     int translateVISALoad3DInst(
         VISASampler3DSubOpCode actualop,
@@ -1910,61 +1917,67 @@ public:
         uint8_t numOpnds,
         G4_SrcRegRegion ** opndArray);
 
-    int translateVISAAddrInst(ISA_Opcode opcode,
-                        Common_ISA_Exec_Size execSize,
-                        Common_VISA_EMask_Ctrl emask,
-                        G4_DstRegRegion *dst_opnd,
-                        G4_Operand *src0_opnd,
-                        G4_Operand *src1_opnd);
+    int translateVISAAddrInst(
+        ISA_Opcode opcode,
+        Common_ISA_Exec_Size execSize,
+        Common_VISA_EMask_Ctrl emask,
+        G4_DstRegRegion *dst_opnd,
+        G4_Operand *src0_opnd,
+        G4_Operand *src1_opnd);
 
-    int translateVISAArithmeticInst(ISA_Opcode opcode,
-                        Common_ISA_Exec_Size execSize,
-                        Common_VISA_EMask_Ctrl emask,
-                        G4_Predicate *predOpnd,
-                        bool saturate,
-                        G4_CondMod* condMod,
-                        G4_DstRegRegion *dstOpnd,
-                        G4_Operand *src0Opnd,
-                        G4_Operand *src1Opnd,
-                        G4_Operand *src2Opnd,
-                        G4_DstRegRegion *carryBorrow);
+    int translateVISAArithmeticInst(
+        ISA_Opcode opcode,
+        Common_ISA_Exec_Size execSize,
+        Common_VISA_EMask_Ctrl emask,
+        G4_Predicate *predOpnd,
+        bool saturate,
+        G4_CondMod* condMod,
+        G4_DstRegRegion *dstOpnd,
+        G4_Operand *src0Opnd,
+        G4_Operand *src1Opnd,
+        G4_Operand *src2Opnd,
+        G4_DstRegRegion *carryBorrow);
 
-    int translateVISAArithmeticDoubleInst(ISA_Opcode opcode,
-                        Common_ISA_Exec_Size execSize,
-                        Common_VISA_EMask_Ctrl emask,
-                        G4_Predicate *predOpnd,
-                        bool saturate,
-                        G4_DstRegRegion *dstOpnd,
-                        G4_Operand *src0Opnd,
-                        G4_Operand *src1Opnd);
+    int translateVISAArithmeticDoubleInst(
+        ISA_Opcode opcode,
+        Common_ISA_Exec_Size execSize,
+        Common_VISA_EMask_Ctrl emask,
+        G4_Predicate *predOpnd,
+        bool saturate,
+        G4_DstRegRegion *dstOpnd,
+        G4_Operand *src0Opnd,
+        G4_Operand *src1Opnd);
 
-    int translateVISAArithmeticSingleDivideIEEEInst(ISA_Opcode opcode,
-                        Common_ISA_Exec_Size execSize,
-                        Common_VISA_EMask_Ctrl emask,
-                        G4_Predicate *predOpnd,
-                        bool saturate,
-                        G4_CondMod* condMod,
-                        G4_DstRegRegion *dstOpnd,
-                        G4_Operand *src0Opnd,
-                        G4_Operand *src1Opnd);
+    int translateVISAArithmeticSingleDivideIEEEInst(
+        ISA_Opcode opcode,
+        Common_ISA_Exec_Size execSize,
+        Common_VISA_EMask_Ctrl emask,
+        G4_Predicate *predOpnd,
+        bool saturate,
+        G4_CondMod* condMod,
+        G4_DstRegRegion *dstOpnd,
+        G4_Operand *src0Opnd,
+        G4_Operand *src1Opnd);
 
-    int translateVISAArithmeticSingleSQRTIEEEInst(ISA_Opcode opcode,
-                        Common_ISA_Exec_Size execSize,
-                        Common_VISA_EMask_Ctrl emask,
-                        G4_Predicate *predOpnd,
-                        bool saturate,
-                        G4_CondMod* condMod,
-                        G4_DstRegRegion *dstOpnd,
-                        G4_Operand *src0Opnd );
+    int translateVISAArithmeticSingleSQRTIEEEInst(
+        ISA_Opcode opcode,
+        Common_ISA_Exec_Size execSize,
+        Common_VISA_EMask_Ctrl emask,
+        G4_Predicate *predOpnd,
+        bool saturate,
+        G4_CondMod* condMod,
+        G4_DstRegRegion *dstOpnd,
+        G4_Operand *src0Opnd);
 
-    int translateVISAArithmeticDoubleSQRTInst(ISA_Opcode opcode,
-                        Common_ISA_Exec_Size execSize,
-                        Common_VISA_EMask_Ctrl emask,
-                        G4_Predicate *predOpnd,
-                        bool saturate,
-                        G4_CondMod* condMod,
-                        G4_DstRegRegion *dstOpnd,
-                        G4_Operand *src0Opnd);
+    int translateVISAArithmeticDoubleSQRTInst(
+        ISA_Opcode opcode,
+        Common_ISA_Exec_Size execSize,
+        Common_VISA_EMask_Ctrl emask,
+        G4_Predicate *predOpnd,
+        bool saturate,
+        G4_CondMod* condMod,
+        G4_DstRegRegion *dstOpnd,
+        G4_Operand *src0Opnd);
 
     int translateVISASyncInst(ISA_Opcode opcode, unsigned int mask);
 
@@ -1975,75 +1988,84 @@ public:
     void generateBarrierSend();
     void generateBarrierWait();
 
-    int translateVISACompareInst(ISA_Opcode opcode,
-                        Common_ISA_Exec_Size execSize,
-                        Common_VISA_EMask_Ctrl emask,
-                        Common_ISA_Cond_Mod relOp,
-                        G4_Declare* predDst,
-                        G4_Operand *src0_opnd,
-                        G4_Operand *src1_opnd);
+    int translateVISACompareInst(
+        ISA_Opcode opcode,
+        Common_ISA_Exec_Size execSize,
+        Common_VISA_EMask_Ctrl emask,
+        Common_ISA_Cond_Mod relOp,
+        G4_Declare* predDst,
+        G4_Operand *src0_opnd,
+        G4_Operand *src1_opnd);
 
-    int translateVISACompareInst(ISA_Opcode opcode,
-                        Common_ISA_Exec_Size execSize,
-                        Common_VISA_EMask_Ctrl emask,
-                        Common_ISA_Cond_Mod relOp,
-                        G4_DstRegRegion *dstOpnd,
-                        G4_Operand *src0Opnd,
-                        G4_Operand *src1Opnd);
+    int translateVISACompareInst(
+        ISA_Opcode opcode,
+        Common_ISA_Exec_Size execSize,
+        Common_VISA_EMask_Ctrl emask,
+        Common_ISA_Cond_Mod relOp,
+        G4_DstRegRegion *dstOpnd,
+        G4_Operand *src0Opnd,
+        G4_Operand *src1Opnd);
 
     int translateVISACFSwitchInst(
-                        G4_Operand *indexOpnd,
-                        uint8_t numLabels,
-                        G4_Label** lab );
+        G4_Operand *indexOpnd,
+        uint8_t numLabels,
+        G4_Label** lab);
 
     int translateVISACFLabelInst(G4_Label* lab);
 
-    int translateVISACFCallInst(Common_ISA_Exec_Size execsize,
-                        Common_VISA_EMask_Ctrl emask,
-                        G4_Predicate *predOpnd,
-                        G4_Label* lab);
+    int translateVISACFCallInst(
+        Common_ISA_Exec_Size execsize,
+        Common_VISA_EMask_Ctrl emask,
+        G4_Predicate *predOpnd,
+        G4_Label* lab);
 
-    int translateVISACFJumpInst(G4_Predicate *predOpnd,
-                        G4_Label* lab);
+    int translateVISACFJumpInst(
+        G4_Predicate *predOpnd,
+        G4_Label* lab);
 
-    int translateVISACFFCallInst(Common_ISA_Exec_Size execsize,
-                        Common_VISA_EMask_Ctrl emask,
-                        G4_Predicate *predOpnd,
-                        std::string funcName,
-                        uint8_t argSize,
-                        uint8_t returnSize);
+    int translateVISACFFCallInst(
+        Common_ISA_Exec_Size execsize,
+        Common_VISA_EMask_Ctrl emask,
+        G4_Predicate *predOpnd,
+        std::string funcName,
+        uint8_t argSize,
+        uint8_t returnSize);
 
-    int translateVISACFIFCallInst(Common_ISA_Exec_Size execsize,
+    int translateVISACFIFCallInst(
+        Common_ISA_Exec_Size execsize,
         Common_VISA_EMask_Ctrl emask,
         G4_Predicate *predOpnd,
         G4_Operand* funcAddr,
         uint8_t argSize,
         uint8_t returnSize);
 
-    int translateVISACFSymbolInst(const std::string& symbolName,
-                        G4_DstRegRegion* dst);
+    int translateVISACFSymbolInst(
+        const std::string& symbolName,
+        G4_DstRegRegion* dst);
 
-    int translateVISACFFretInst(Common_ISA_Exec_Size execsize,
-                        Common_VISA_EMask_Ctrl emask,
-                        G4_Predicate *predOpnd);
+    int translateVISACFFretInst(
+        Common_ISA_Exec_Size execsize,
+        Common_VISA_EMask_Ctrl emask,
+        G4_Predicate *predOpnd);
 
-    int translateVISACFRetInst(Common_ISA_Exec_Size execsize,
-                        Common_VISA_EMask_Ctrl emask,
-                        G4_Predicate *predOpnd);
+    int translateVISACFRetInst(
+        Common_ISA_Exec_Size execsize,
+        Common_VISA_EMask_Ctrl emask,
+        G4_Predicate *predOpnd);
 
     int translateVISAOwordLoadInst(
-                        ISA_Opcode opcode,
-                        bool modified,
-                        G4_Operand* surface,
-                        Common_ISA_Oword_Num size,
-                        G4_Operand* offOpnd,
-                        G4_DstRegRegion* dstOpnd );
+        ISA_Opcode opcode,
+        bool modified,
+        G4_Operand* surface,
+        Common_ISA_Oword_Num size,
+        G4_Operand* offOpnd,
+        G4_DstRegRegion* dstOpnd);
 
     int translateVISAOwordStoreInst(
-                        G4_Operand* surface,
-                        Common_ISA_Oword_Num size,
-                        G4_Operand* offOpnd,
-                        G4_SrcRegRegion* srcOpnd );
+        G4_Operand* surface,
+        Common_ISA_Oword_Num size,
+        G4_Operand* offOpnd,
+        G4_SrcRegRegion* srcOpnd);
 
     int translateVISAMediaLoadInst(
                         MEDIA_LD_mod mod,
@@ -2053,7 +2075,7 @@ public:
                         unsigned blockHeight,
                         G4_Operand* xOffOpnd,
                         G4_Operand* yOffOpnd,
-                        G4_DstRegRegion* dst_opnd );
+                        G4_DstRegRegion* dst_opnd);
 
     int translateVISAMediaStoreInst(
                         MEDIA_ST_mod mod,

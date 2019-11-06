@@ -1549,7 +1549,7 @@ struct RegionDesc
     bool isRegionV() const {return vertStride == UNDEFINED_SHORT && width == UNDEFINED_SHORT;}
     bool isScalar() const { return ( vertStride == 0 && horzStride == 0 ) || ( width == 1 && vertStride == 0 ); }        // to support decompression
     bool isRegionSW() const {return vertStride != UNDEFINED_SHORT && width == UNDEFINED_SHORT && horzStride == UNDEFINED_SHORT;}
-    bool isEqual(RegionDesc *r) { return vertStride == r->vertStride && width == r->width && horzStride == r->horzStride; }        // to support re-compression
+    bool isEqual(const RegionDesc *r) const { return vertStride == r->vertStride && width == r->width && horzStride == r->horzStride; }        // to support re-compression
     void emit(std::ostream& output) const;
     bool isPackedRegion() const { return ( ( horzStride == 0 && vertStride <= 1 ) || ( horzStride == 1 && vertStride <= width ) ); }
     bool isFlatRegion() const { return ( isScalar() || vertStride == horzStride * width ); }
@@ -2824,7 +2824,7 @@ namespace vISA
 
         G4_SrcModifier mod;
         G4_RegAccess   acc;            // direct, indirect GenReg or indirect MsgReg
-        RegionDesc*    desc;
+        const RegionDesc *desc;
         short          regOff;        // base+regOff is the starting register of the region
         short          subRegOff;    // sub reg offset related to the regVar in "base"
         short          immAddrOff;    // imm addr offset
@@ -2834,7 +2834,7 @@ namespace vISA
             G4_VarBase*    b,
             short roff,
             short sroff,
-            RegionDesc*    rd,
+            const RegionDesc* rd,
             G4_Type        ty,
             G4_AccRegSel regSel = ACC_UNDEFINED) :
             G4_Operand(G4_Operand::srcRegRegion, ty, b), mod(m), acc(a), desc(rd),
@@ -2893,7 +2893,6 @@ namespace vISA
         G4_SrcModifier    getModifier() const  { return mod; }
         bool              hasModifier() const  { return mod != Mod_src_undef; }
         const RegionDesc* getRegion() const  { return desc; }
-              RegionDesc* getRegion()        { return desc; }
         G4_RegAccess      getRegAccess() const { return acc; }
         short             getAddrImm()  const { return immAddrOff; }
         unsigned short    getElemSize() const { return (unsigned short)G4_Type_Table[type].byteSize; }
@@ -2964,7 +2963,7 @@ namespace vISA
             }
         }
 
-        void setRegion(RegionDesc* rd, bool isInvariant = false)
+        void setRegion(const RegionDesc* rd, bool isInvariant = false)
         {
             if (!isInvariant && !desc->isEqual(rd))
             {

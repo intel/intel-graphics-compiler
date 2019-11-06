@@ -1940,7 +1940,7 @@ static G4_DstRegRegion *buildNewDstOperand(FlowGraph &fg, G4_INST *inst, G4_INST
             unsigned defDstLB = defDstRegion->getLeftBound();
 
             unsigned srcLB = src->getLeftBound();
-            RegionDesc *srcRegionDesc = src->asSrcRegRegion()->getRegion();
+            const RegionDesc *srcRegionDesc = src->asSrcRegRegion()->getRegion();
             bool contRegion = srcRegionDesc->isContiguous(inst->getExecSize());
 
             uint32_t dist = defDstLB - srcLB, dstDist = 0, tempLen = 0;
@@ -2307,7 +2307,7 @@ void Optimizer::doSimplification(G4_INST *inst)
                     {
                         Dcl->setSubRegAlign(SubAlign);
                     }
-                    RegionDesc *rd = builder.getRegionStride1();
+                    const RegionDesc *rd = builder.getRegionStride1();
                     inst->getSrc(0)->asSrcRegRegion()->setRegion(rd);
                     // Set subreg alignment for the address variable.
                     Dcl =
@@ -2965,15 +2965,16 @@ void Optimizer::newLocalCopyPropagation()
 
                     unsigned use_elsize = G4_Type_Table[use->getType()].byteSize;
                     unsigned dstElSize = G4_Type_Table[inst->getDst()->getType()].byteSize;
-                    RegionDesc *rd = src->asSrcRegRegion()->getRegion();
+                    const RegionDesc *rd = src->asSrcRegRegion()->getRegion();
                     G4_Operand *new_src_opnd = NULL;
                     bool new_src = false;
                     unsigned char scale = 1, newExecSize = useInst->getExecSize();
 
                     // Compute the composed region if exists.
-                    auto getComposedRegion = [=](unsigned dStride, unsigned ex1,
-                                                 RegionDesc *rd1, unsigned ex2,
-                                                 RegionDesc *rd2) -> RegionDesc *
+                    auto getComposedRegion = [=](
+                        unsigned dStride, unsigned ex1,
+                        const RegionDesc *rd1, unsigned ex2,
+                        const RegionDesc *rd2) -> const RegionDesc *
                     {
                         // Easy cases.
                         if (rd1->isScalar())
@@ -3017,7 +3018,7 @@ void Optimizer::newLocalCopyPropagation()
                         unsigned typeSizeRatio = G4_Type_Table[src0->getType()].byteSize / G4_Type_Table[dst->getType()].byteSize;
                         unsigned numElt = src0->isScalar() ? 1 : inst->getExecSize() * typeSizeRatio;
                         // src0 region is guaranteed to be scalar/contiguous due to canPropagate() check earlier
-                        RegionDesc* region = src0->isScalar() ?
+                        const RegionDesc* region = src0->isScalar() ?
                             builder.getRegionScalar() :
                             builder.createRegionDesc(useInst->getExecSize(), (uint16_t)inst->getExecSize()
                             * typeSizeRatio, inst->getExecSize(),
@@ -3067,7 +3068,7 @@ void Optimizer::newLocalCopyPropagation()
                                rd && use->isSrcRegRegion())
                     {
                         unsigned dStride = inst->getDst()->getHorzStride();
-                        RegionDesc *rd2 = use->asSrcRegRegion()->getRegion();
+                        const RegionDesc *rd2 = use->asSrcRegRegion()->getRegion();
                         if (auto compRd = getComposedRegion(dStride, inst->getExecSize(),
                                                             rd, newExecSize, rd2))
                         {
@@ -3509,7 +3510,7 @@ static void expandPseudoLogic(IR_Builder& builder,
                 inst->transferDef(newSel, opNum, Gen4_Operand_Number::Opnd_pred);
                 bb->insert(newIter, newSel);
                 SI = newSel;
-                RegionDesc *rd = (tmpSize == 1) ? builder.getRegionScalar() : builder.getRegionStride1();
+                const RegionDesc *rd = (tmpSize == 1) ? builder.getRegionScalar() : builder.getRegionStride1();
                 return builder.Create_Src_Opnd_From_Dcl(newDcl, rd);
             }
             return Opnd;
@@ -6163,7 +6164,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         if (inst->opcode() == G4_line || inst->opcode() == G4_pln)
         {
             G4_Operand *src = inst->getSrc(0);
-            RegionDesc *rd = src->isSrcRegRegion() ? src->asSrcRegRegion()->getRegion() : NULL;
+            const RegionDesc *rd = src->isSrcRegRegion() ? src->asSrcRegRegion()->getRegion() : NULL;
             MUST_BE_TRUE( rd != NULL, " Src0 of line inst is not regregion. " );
             if (rd->isScalar())
             {
@@ -6173,7 +6174,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 "Unexpected region for the first line operand." );
 
             // create a new rd for src0
-            RegionDesc *new_rd = builder.getRegionScalar();
+            const RegionDesc *new_rd = builder.getRegionScalar();
             src->asSrcRegRegion()->setRegion( new_rd );
         }
     }
@@ -6313,7 +6314,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
     {
         if (inst->isSend() && inst->getSrc(0) != NULL)
         {
-            RegionDesc* newDesc = NULL;
+            const RegionDesc* newDesc = NULL;
             uint8_t execSize = inst->getExecSize();
             if (execSize == 1)
             {
@@ -6434,9 +6435,10 @@ void Optimizer::swapSrc1(G4_INST *inst)
     return;
 }
 
-G4_SrcRegRegion* IR_Builder::createSubSrcOperand( G4_SrcRegRegion* src, uint16_t start, uint8_t size, uint16_t newVs, uint16_t newWd)
+G4_SrcRegRegion* IR_Builder::createSubSrcOperand(
+    G4_SrcRegRegion* src, uint16_t start, uint8_t size, uint16_t newVs, uint16_t newWd)
 {
-    RegionDesc *rd = NULL;
+    const RegionDesc *rd = NULL;
     uint16_t vs = src->getRegion()->vertStride, hs = src->getRegion()->horzStride, wd = src->getRegion()->width;
     if (!src->getRegion()->isRegionWH())
     {
@@ -7889,7 +7891,7 @@ public:
 
             G4_SendMsgDescriptor* desc = kernel.fg.builder->createSendMsgDesc(
                 msgDescImm, 0, 1, funcID, false, msgSize, extFuncCtrl, SendAccess::WRITE_ONLY);
-            RegionDesc* region = kernel.fg.builder->getRegionStride1();
+            const RegionDesc* region = kernel.fg.builder->getRegionStride1();
             G4_SrcRegRegion* headerOpnd = kernel.fg.builder->Create_Src_Opnd_From_Dcl(kernel.fg.builder->getBuiltinR0(), region);
             G4_Declare* tempDcl = builder.createHardwiredDeclare(msgSize * 8, Type_UD, i, 0);
             G4_SrcRegRegion* srcOpnd = kernel.fg.builder->Create_Src_Opnd_From_Dcl(tempDcl, region);
@@ -8776,8 +8778,7 @@ public:
                     G4_Operand *useSrc = useInst->getSrc(0);
                     unsigned char execSize = useInst->getExecSize();
                     unsigned short dstHS = dst->getHorzStride();
-                    RegionDesc *newSrcRd;
-
+                    const RegionDesc *newSrcRd;
 
                     if( useSrc->asSrcRegRegion()->isScalar() )
                     {
@@ -8788,7 +8789,7 @@ public:
                         unsigned tExecSize = (execSize > 8) ? 8 : execSize;
                         if (RegionDesc::isLegal(tExecSize * dstHS, execSize, dstHS))
                         {
-                            newSrcRd = builder.createRegionDesc( (uint16_t)tExecSize*dstHS, execSize, dstHS );
+                            newSrcRd = builder.createRegionDesc((uint16_t)tExecSize*dstHS, execSize, dstHS);
                         }
                         else
                         {
@@ -8812,7 +8813,7 @@ public:
                     }
 
                     useInst->getSrc(0)->~G4_Operand();
-                    useInst->setSrc( newSrcOpnd, 0 );
+                    useInst->setSrc(newSrcOpnd, 0);
 
                     // Maintain def-use for this change:
                     // - remove this use from defInst
@@ -10476,7 +10477,7 @@ void MadSequenceInfo::processCandidates()
 
         while (true)
         {
-            RegionDesc *rd = builder.getRegionStride1();
+            const RegionDesc *rd = builder.getRegionStride1();
             auto mod = useInst->getOperand(opndNum)->asSrcRegRegion()->getModifier();
             G4_SrcRegRegion *accSrcOpnd = builder.createSrcRegRegion(
                 mod, Direct, builder.phyregpool.getAcc0Reg(), 0, 0, rd, AdjustedType);
@@ -10504,7 +10505,7 @@ void MadSequenceInfo::processCandidates()
         G4_INST *inst = *I;
         ASSERT_USER(isMad(inst), "not a mad");
 
-        RegionDesc *rd = builder.getRegionStride1();
+        const RegionDesc *rd = builder.getRegionStride1();
         G4_SrcRegRegion *accSrcOpnd = builder.createSrcRegRegion(
             Mod_src_undef, Direct, builder.phyregpool.getAcc0Reg(), 0, 0, rd,
             AdjustedType);

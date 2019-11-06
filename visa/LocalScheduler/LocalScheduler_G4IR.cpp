@@ -314,7 +314,7 @@ static Mask getMaskForOp(G4_Operand * opnd, Gen4_Operand_Number opnd_num,
             LB = (unsigned short)opnd->getLinearizedStart();
             RB = (unsigned short)opnd->getLinearizedEnd();
             G4_SrcRegRegion *srcOpnd = opnd->asSrcRegRegion();
-            RegionDesc *rd = srcOpnd->getRegion();
+            const RegionDesc *rd = srcOpnd->getRegion();
             nonContiguousStride = !rd->isContiguous(execSize);
         }
         break;
