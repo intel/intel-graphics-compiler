@@ -181,11 +181,6 @@ if(UNIX)
     install(FILES $<TARGET_FILE:opencl-clang-lib> DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR} COMPONENT igc-opencl)
     install(FILES $<TARGET_SONAME_FILE:opencl-clang-lib> DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR} COMPONENT igc-opencl)
 
-    install(FILES $<TARGET_FILE:clang-tool> DESTINATION ${CMAKE_INSTALL_FULL_BINDIR} COMPONENT igc-opencl-devel)
-    if(NOT ${CCLANG_BUILD_INTREE_LLVM})
-      install(FILES $<TARGET_FILE:clang-tool>-${LLVM_VERSION_MAJOR} DESTINATION ${CMAKE_INSTALL_FULL_BINDIR} COMPONENT igc-opencl-devel)
-    endif()
-
     # Get header opencl-c.h directory
     get_filename_component(opencl-headers-dir ${opencl-header} DIRECTORY)
 
