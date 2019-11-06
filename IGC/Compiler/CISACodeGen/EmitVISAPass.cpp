@@ -3885,6 +3885,12 @@ void EmitPass::emitLdInstruction(llvm::Instruction* inst)
         {
             CVariable* flag = m_currShader->GetNewVariable(numLanes(m_currShader->m_dispatchSize), ISA_TYPE_BOOL, EALIGN_BYTE);
             uint subvar = numLanes(simdSize) / (getGRFSize() >> 2) * 4;
+
+            if (needPacking)
+            {
+                subvar /= 2;
+            }
+
             m_encoder->SetSrcSubVar(0, subvar);
             m_encoder->SetSrcRegion(0, 0, 1, 0);
             CVariable* newdestination = m_currShader->BitCast(dst, ISA_TYPE_UD);
@@ -6678,6 +6684,12 @@ void EmitPass::emitGather4Instruction(SamplerGatherIntrinsic* inst)
         {
             CVariable* flag = m_currShader->GetNewVariable(numLanes(m_currShader->m_dispatchSize), ISA_TYPE_BOOL, EALIGN_BYTE);
             uint subvar = numLanes(m_currShader->m_SIMDSize) / (getGRFSize() >> 2) * 4;
+
+            if (simd8HFRet)
+            {
+                subvar /= 2;
+            }
+
             m_encoder->SetSrcSubVar(0, subvar);
             m_encoder->SetSrcRegion(0, 0, 1, 0);
             CVariable* newdestination = m_currShader->BitCast(m_destination, ISA_TYPE_UD);
@@ -6767,6 +6779,12 @@ void EmitPass::emitLdmsInstruction(llvm::Instruction* inst)
     {
         CVariable* flag = m_currShader->GetNewVariable(numLanes(m_currShader->m_dispatchSize), ISA_TYPE_BOOL, EALIGN_BYTE);
         uint subvar = numLanes(m_currShader->m_SIMDSize) / (getGRFSize() >> 2) * 4;
+
+        if (simd8HFRet)
+        {
+            subvar /= 2;
+        }
+
         m_encoder->SetSrcSubVar(0, subvar);
         m_encoder->SetSrcRegion(0, 0, 1, 0);
         CVariable* newdestination = m_currShader->BitCast(m_destination, ISA_TYPE_UD);
