@@ -63,8 +63,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  unsigned short Create_CISA_Region(unsigned short vstride, unsigned short width, unsigned short hstride);
  unsigned Round_Up_Pow2(unsigned n);
  unsigned Round_Down_Pow2(unsigned n);
- G4_Predicate_Control Get_Pred_Ctrl( unsigned short predicate, int size);
- G4_Predicate_Control vISAPredicateToG4Predicate( VISA_PREDICATE_CONTROL control, int size);
  G4_opcode Get_Pseudo_Opcode(ISA_Opcode op);
  Common_VISA_EMask_Ctrl Get_Next_EMask(Common_VISA_EMask_Ctrl currEMask, int execSize);
  unsigned int Get_Gen4_Emask( Common_VISA_EMask_Ctrl cisa_emask, int exec_size );

@@ -1901,3 +1901,66 @@ void IR_Builder::initBuiltinSLMSpillAddr(int perThreadSLMSize)
     }
     entryBB->insert(insertIter, instBuffer.begin(), instBuffer.end());
 }
+
+G4_Predicate_Control IR_Builder::vISAPredicateToG4Predicate(VISA_PREDICATE_CONTROL control, int size)
+{
+    switch (control)
+    {
+    case PRED_CTRL_NON:
+        return PRED_DEFAULT;
+    case PRED_CTRL_ANY:
+    {
+        if (!predCtrlHasWidth())
+        {
+            return PRED_ANY_WHOLE;
+        }
+        switch (size)
+        {
+        case 1:
+            return PRED_DEFAULT;
+        case 2:
+            return PRED_ANY2H;
+        case 4:
+            return PRED_ANY4H;
+        case 8:
+            return PRED_ANY8H;
+        case 16:
+            return PRED_ANY16H;
+        case 32:
+            return PRED_ANY32H;
+        default:
+            MUST_BE_TRUE(0, "Invalid predicate control group size.");
+            return PRED_DEFAULT;
+        }
+    }
+    case PRED_CTRL_ALL:
+    {
+        if (!predCtrlHasWidth())
+        {
+            return PRED_ALL_WHOLE;
+        }
+        switch (size)
+        {
+        case 1:
+            return PRED_DEFAULT;
+        case 2:
+            return PRED_ALL2H;
+        case 4:
+            return PRED_ALL4H;
+        case 8:
+            return PRED_ALL8H;
+        case 16:
+            return PRED_ALL16H;
+        case 32:
+            return PRED_ALL32H;
+        default:
+            MUST_BE_TRUE(0, "Invalid predicate control group size.");
+            return PRED_DEFAULT;
+        }
+    }
+    default:
+        MUST_BE_TRUE(0, "Invalid predicate control.");
+        return PRED_DEFAULT;
+    }
+}
+

@@ -5778,6 +5778,8 @@ void HWConformity::conformBB(G4_BB* bb)
 
         fixSelCsel(i, bb);
 
+        fixPredCtrl(i, bb);
+
         if (inst->getExecSize() > builder.getNativeExecSize())
         {
             if (inst->opcode() == G4_math               &&
@@ -7538,5 +7540,59 @@ bool HWConformity::fixIntToHFMove(G4_BB* bb)
         }
     }
     return changed;
+}
+
+void HWConformity::fixPredCtrl(INST_LIST_ITER it, G4_BB* bb)
+{
+    G4_INST* inst = *it;
+    G4_Predicate* pred = inst->getPredicate();
+    if (pred && (pred->getControl() == PRED_ANY_WHOLE || pred->getControl() == PRED_ALL_WHOLE))
+    {
+        // we need WA if pred's size is greater than inst's exec size
+        // and the platform does not support predctrl group size (indicated by the fact we
+        // have PRED_ANY_WHOLE and PRED_ALL_WHOLE)
+        // The case where pred size is less than inst's exec size is already undefined
+        // even with predCtrl group size..
+        G4_Declare* flagDcl = pred->getTopDcl();
+        if (flagDcl->getNumberFlagElements() > inst->getExecSize())
+        {
+            // convert
+            // (f0.any32h) sel (1) ...
+            // into
+            // cmp (1) [ne] f1 f0 0
+            // (f1) sel (1) ...
+            // and
+            // (f0.all32h) sel (1) ...
+            // into
+            // cmp (1) [e] f1 f0 0xFFFFFFFF
+            //
+            // if f0 happens to be < 16 elements we have to clear upper bits as well in case it has garbage values
+            assert(!inst->getCondMod() && "currently don't handle an instruction with conditional modifier");
+            assert((inst->isWriteEnableInst() || !bb->isInSimdFlow()) && "don't handle instruction in SIMD CF for now");
+            G4_Declare* tmpFlag = builder.createTempFlag(1);
+            G4_Type flagType = flagDcl->getNumberFlagElements() == 32 ? Type_UD : Type_UW;
+            uint32_t allOneMask = (uint32_t) ((1ULL << flagDcl->getNumberFlagElements()) - 1);
+            G4_Declare* cmpSrc0Flag = flagDcl;
+            if (flagDcl->getNumberFlagElements() < 16)
+            {
+                // clear the upper bit of the flag
+                auto andInst = builder.createInst(nullptr, G4_and, nullptr, false, 1, builder.Create_Dst_Opnd_From_Dcl(tmpFlag, 1),
+                    builder.Create_Src_Opnd_From_Dcl(flagDcl, builder.getRegionScalar()),
+                    builder.createImm(allOneMask, Type_UW), InstOpt_WriteEnable);
+                bb->insert(it, andInst);
+                cmpSrc0Flag = tmpFlag;
+            }
+            G4_CondMod* condMod = builder.createCondMod(pred->getControl() == PRED_ANY_WHOLE ? Mod_ne : Mod_e,
+                tmpFlag->getRegVar(), 0);
+
+            G4_Imm* immVal = builder.createImm(pred->getControl() == PRED_ANY_WHOLE ? 0 : allOneMask, flagType);
+            // cmp needs to be as wide as the original inst but is uniform and NoMask otherwise
+            auto cmpInst = builder.createInst(nullptr, G4_cmp, condMod, false, inst->getExecSize(), builder.createNullDst(flagType),
+                builder.createSrcRegRegion(Mod_src_undef, Direct, cmpSrc0Flag->getRegVar(), 0, 0, builder.getRegionScalar(), flagType),
+                immVal, InstOpt_WriteEnable);
+            bb->insert(it, cmpInst);
+            inst->setPredicate(builder.createPredicate(pred->getState(), tmpFlag->getRegVar(), 0));
+        }
+    }
 }
 

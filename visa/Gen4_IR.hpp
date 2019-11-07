@@ -3203,7 +3203,9 @@ typedef enum
     PRED_ALL16H,
     PRED_ALL32H,
     PRED_ANYV,
-    PRED_ALLV
+    PRED_ALLV,
+    PRED_ANY_WHOLE,   // any of the flag-bits
+    PRED_ALL_WHOLE    // all of the flag-bits
 } G4_Predicate_Control;
 
 typedef enum

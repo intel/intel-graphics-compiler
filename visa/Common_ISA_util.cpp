@@ -749,65 +749,6 @@ unsigned Round_Up_Pow2(unsigned n)
     return i;
 }
 
-G4_Predicate_Control vISAPredicateToG4Predicate(VISA_PREDICATE_CONTROL control, int size)
-{
-    switch(control)
-    {
-    case PRED_CTRL_NON:
-        return PRED_DEFAULT;
-    case PRED_CTRL_ANY:
-        {
-            switch(size)
-            {
-            case 1:
-                return PRED_DEFAULT;
-            case 2:
-                return PRED_ANY2H;
-            case 4:
-                return PRED_ANY4H;
-            case 8:
-                return PRED_ANY8H;
-            case 16:
-                return PRED_ANY16H;
-            case 32:
-                return PRED_ANY32H;
-            default:
-                MUST_BE_TRUE( 0, "Invalid predicate control group size." );
-                return PRED_DEFAULT;
-            }
-        }
-    case PRED_CTRL_ALL:
-        {
-            switch(size)
-            {
-            case 1:
-                return PRED_DEFAULT;
-            case 2:
-                return PRED_ALL2H;
-            case 4:
-                return PRED_ALL4H;
-            case 8:
-                return PRED_ALL8H;
-            case 16:
-                return PRED_ALL16H;
-            case 32:
-                return PRED_ALL32H;
-            default:
-                MUST_BE_TRUE( 0, "Invalid predicate control group size." );
-                return PRED_DEFAULT;
-            }
-        }
-    default:
-        MUST_BE_TRUE( 0, "Invalid predicate control." );
-        return PRED_DEFAULT;
-    }
-}
-G4_Predicate_Control Get_Pred_Ctrl(unsigned short predicate, int size)
-{
-    VISA_PREDICATE_CONTROL control = (VISA_PREDICATE_CONTROL)((predicate & 0x6000) >> 13);
-    return vISAPredicateToG4Predicate(control, size);
-}
-
 G4_opcode Get_Pseudo_Opcode(ISA_Opcode op)
 {
     switch( op ){

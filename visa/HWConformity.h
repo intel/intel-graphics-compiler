@@ -204,6 +204,8 @@ namespace vISA
 
         void fixVxHFloat64b(INST_LIST_ITER it, G4_BB* bb);
 
+        void fixPredCtrl(INST_LIST_ITER it, G4_BB* bb);
+
     public:
         HWConformity(IR_Builder& b, G4_Kernel &k, vISA::Mem_Manager& m) :
             builder(b), kernel(k), mem(m)

@@ -545,4 +545,9 @@
     {
         return getGenxPlatform() >= GENX_TGLLP;
     }
+
+    bool predCtrlHasWidth() const
+    {
+        return true;
+    }
     // end HW capabilities

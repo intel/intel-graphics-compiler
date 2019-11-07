@@ -684,8 +684,7 @@ public:
 #endif
     }
 
-
-
+    G4_Predicate_Control vISAPredicateToG4Predicate(VISA_PREDICATE_CONTROL control, int size);
 
     G4_FCALL* getFcallInfo(G4_INST* inst) {
         std::map<G4_INST *, G4_FCALL *>::iterator it;
