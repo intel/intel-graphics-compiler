@@ -518,9 +518,11 @@ VISAVariableLocation VISAModule::GetVariableLocation(const llvm::Instruction* pI
     Type* pType = pValue->getType();
     if (isDbgDclInst)
     {
-        assert(pType->isPointerTy() && "DBG declare intrinsic must point to an address");
+        if (!pType->isPointerTy()) {
+            assert(0 && "DBG declare intrinsic must point to an address");
+            return VISAVariableLocation();
+        }
         pType = pType->getPointerElementType();
-
     }
 
     bool isInSurface = false;
