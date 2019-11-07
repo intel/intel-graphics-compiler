@@ -710,7 +710,7 @@ void HWConformity::fixImmAndARFSrc(INST_LIST_ITER it, G4_BB *bb)
     src2 = inst->getSrc(2);
 
     /* Check for usage of two constants in binary operations */
-    if (src0 != NULL && (src0->isImm() || src0->isAddrExp()) && inst->getNumSrc() == 2)
+    if (src0 && (src0->isImm() || src0->isAddrExp()) && inst->getNumSrc() == 2)
     {
         if (INST_COMMUTATIVE(inst->opcode()) && !src1->isImm())
         {
@@ -753,26 +753,18 @@ void HWConformity::fixImmAndARFSrc(INST_LIST_ITER it, G4_BB *bb)
         */
         else if (inst->opcode() == G4_sel && !src1->isImm())
         {
-            bool SwapOpnd = false;
             G4_CondMod *cond = inst->getCondMod();
-            if (cond != NULL)
+            if (cond)
             {
                 switch (cond->getMod())
                 {
                 case Mod_ne:
-                {
                     inst->setCondMod(builder.createCondMod(Mod_e, cond->getBase(), 0));
-                    SwapOpnd = true;
                     break;
-                }
                 case Mod_e:
-                {
                     inst->setCondMod(builder.createCondMod(Mod_ne, cond->getBase(), 0));
-                    SwapOpnd = true;
                     break;
-                }
                 default:
-                    SwapOpnd = true;
                     break;
                 }
             }
@@ -783,21 +775,10 @@ void HWConformity::fixImmAndARFSrc(INST_LIST_ITER it, G4_BB *bb)
                 G4_PredState reverse = pred->getState() == PredState_Minus ? PredState_Plus : PredState_Minus;
                 inst->setPredicate(builder.createPredicate(
                     reverse, pred->getBase(), pred->getSubRegOff(), pred->getControl()));
-                SwapOpnd = true;
             }
-
-            if (SwapOpnd)
-            {
-                inst->setSrc(src1, 0);
-                inst->setSrc(src0, 1);
-                inst->swapDefUse();
-            }
-            else
-            {
-                G4_Type tmpType = getNonVectorType(src0->getType());
-                G4_Operand* newSrc0 = insertMovBefore(it, 0, tmpType, bb);
-                inst->setSrc(newSrc0, 0);
-            }
+            inst->setSrc(src1, 0);
+            inst->setSrc(src0, 1);
+            inst->swapDefUse();
         }
         else if (!inst->isMath())
         {
@@ -824,6 +805,7 @@ void HWConformity::fixImmAndARFSrc(INST_LIST_ITER it, G4_BB *bb)
                         newSrc = builder.createImmWithLowerType(res, resultType);
 
                         // change instruction into a MOV
+                        // change instruction into a MOV
                         inst->setOpcode(G4_mov);
                         inst->setSrc(newSrc, 0);
                         inst->setSrc(NULL, 1);
@@ -841,7 +823,9 @@ void HWConformity::fixImmAndARFSrc(INST_LIST_ITER it, G4_BB *bb)
                 inst->swapDefUse();
                 src0 = inst->getSrc(0);
                 src1 = inst->getSrc(1);
+                // this needs to fall through as we still need move for src0
             }
+
             if (INST_COMMUTATIVE(inst->opcode()) && src0->isAddrExp() && src1->isImm())
             {
                 // The original IR has both addr expr and immediate
@@ -862,7 +846,8 @@ void HWConformity::fixImmAndARFSrc(INST_LIST_ITER it, G4_BB *bb)
             }
             else
             {
-                G4_Type newSrcType = inst->needsDWType() ? (IS_UNSIGNED_INT(src0->getType()) ? Type_UD : Type_D) : src0->getType();
+                G4_Type newSrcType = inst->needsDWType() ? (IS_UNSIGNED_INT(src0->getType()) ? Type_UD : Type_D) :
+                    getNonVectorType(src0->getType());
                 inst->setSrc(insertMovBefore(it, 0, newSrcType, bb), 0);
             }
         }
