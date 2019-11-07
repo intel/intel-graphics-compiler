@@ -119,28 +119,39 @@ PointsToAnalysis::~PointsToAnalysis()
 //  It's performed only once at the beginning of RA, at the point where all variables
 //  are virtual and no spill code (either for address or GRF) has been inserted.
 //
-void PointsToAnalysis::doPointsToAnalysis(FlowGraph & fg)
+void PointsToAnalysis::doPointsToAnalysis(FlowGraph& fg)
 {
-
-    if( numAddrs == 0 )
+    if (numAddrs == 0)
     {
         return;
     }
 
     // keep a list of address taken variables
+    std::list<G4_RegVar*> addrTakenDsts;
+    std::map<G4_RegVar*, G4_RegVar*> addrTakenMapping;
     std::vector<G4_RegVar*> addrTakenVariables;
+
     for (BB_LIST_ITER it = fg.begin(), itend = fg.end(); it != itend; ++it)
     {
         G4_BB* bb = (*it);
         for (INST_LIST_ITER iter = bb->begin(), iterEnd = bb->end(); iter != iterEnd; ++iter)
         {
             G4_INST* inst = (*iter);
-            for (int i = 0; i < G4_MAX_SRCS; i++)
+
+            G4_DstRegRegion* dst = inst->getDst();
+            if (dst != NULL && dst->getRegAccess() == Direct && dst->getType() != Type_UD)
             {
-                G4_Operand* src = inst->getSrc(i);
-                if (src != NULL && src->isAddrExp())
+                G4_VarBase* ptr = dst->getBase();
+
+                for (int i = 0; i < G4_MAX_SRCS; i++)
                 {
-                    addrTakenVariables.push_back(src->asAddrExp()->getRegVar());
+                    G4_Operand* src = inst->getSrc(i);
+                    if (src != NULL && src->isAddrExp())
+                    {
+                        addrTakenMapping[ptr->asRegVar()] = src->asAddrExp()->getRegVar();
+                        addrTakenDsts.push_back(ptr->asRegVar());
+                        addrTakenVariables.push_back(src->asAddrExp()->getRegVar());
+                    }
                 }
             }
         }
@@ -154,7 +165,7 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph & fg)
         {
             G4_INST* inst = (*iter);
 
-            if(inst->isPseudoKill() || inst->isLifeTimeEnd())
+            if (inst->isPseudoKill() || inst->isLifeTimeEnd())
             {
                 // No need to consider these lifetime placeholders for points2analysis
                 continue;
@@ -169,16 +180,16 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph & fg)
                 {
 
                     // dst is an address variable.  ExDesc A0 may be ignored since they are never used in indirect access
-                    if( inst->isMov() )
+                    if (inst->isMov())
                     {
                         G4_Operand* src = inst->getSrc(0);
-                        if( src->isAddrExp() )
+                        if (src->isAddrExp())
                         {
-                             // case 1:  mov A0 &GRF
+                            // case 1:  mov A0 &GRF
                             G4_RegVar* addrTaken = src->asAddrExp()->getRegVar();
                             if (addrTaken != NULL)
                             {
-                                addToPointsToSet( ptr->asRegVar(), addrTaken );
+                                addToPointsToSet(ptr->asRegVar(), addrTaken);
                             }
                         }
                         else
@@ -190,50 +201,59 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph & fg)
                             {
                                 // case 2:  mov A0 A1
                                 // merge the two addr's points-to set together
-                                if( ptr->asRegVar()->getId() != srcPtr->asRegVar()->getId() )
+                                if (ptr->asRegVar()->getId() != srcPtr->asRegVar()->getId())
                                 {
-                                    mergePointsToSet( srcPtr->asRegVar(), ptr->asRegVar() );
+                                    mergePointsToSet(srcPtr->asRegVar(), ptr->asRegVar());
                                 }
                             }
                             else
                             {
-                                // case 3:  mov A0 V2
-                                // conservatively assume address can point to anything
-                                DEBUG_MSG("unexpected addr move for pointer analysis:\n");
-                                DEBUG_EMIT(inst);
-                                DEBUG_MSG("\n")
-                                for (int i = 0, size = (int)addrTakenVariables.size(); i < size; i++)
+                                if (srcPtr &&
+                                    srcPtr->isRegVar() &&
+                                    addrTakenMapping[srcPtr->asRegVar()] != nullptr)
                                 {
-                                    addToPointsToSet( ptr->asRegVar(), addrTakenVariables[i] );
+                                    addToPointsToSet(ptr->asRegVar(), addrTakenMapping[srcPtr->asRegVar()]);
+                                }
+                                else
+                                {
+                                    // case 3:  mov A0 V2
+                                    // conservatively assume address can point to anything
+                                    DEBUG_MSG("unexpected addr move for pointer analysis:\n");
+                                    DEBUG_EMIT(inst);
+                                    DEBUG_MSG("\n")
+                                        for (int i = 0, size = (int)addrTakenVariables.size(); i < size; i++)
+                                        {
+                                            addToPointsToSet(ptr->asRegVar(), addrTakenVariables[i]);
+                                        }
                                 }
                             }
                         }
                     }
-                    else if( inst->isArithmetic() )
+                    else if (inst->isArithmetic())
                     {
                         G4_Operand* src0 = inst->getSrc(0);
                         G4_Operand* src1 = inst->getSrc(1);
                         bool src0addr = false;
-                        if( src0->isAddrExp() )
+                        if (src0->isAddrExp())
                         {
                             src0addr = true;
                         }
-                        else if( src0->isSrcRegRegion() && src0->getRegAccess() == Direct )
+                        else if (src0->isSrcRegRegion() && src0->getRegAccess() == Direct)
                         {
-                            if( src0->isAddress() )
+                            if (src0->isAddress())
                             {
                                 src0addr = true;
                             }
                         }
 
                         bool src1addr = false;
-                        if( src1->isAddrExp() )
+                        if (src1->isAddrExp())
                         {
                             src1addr = true;
                         }
-                        else if( src1->isSrcRegRegion() && src1->getRegAccess() == Direct )
+                        else if (src1->isSrcRegRegion() && src1->getRegAccess() == Direct)
                         {
-                            if( src1->isAddress() )
+                            if (src1->isAddress())
                             {
                                 src1addr = true;
                             }
@@ -243,26 +263,26 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph & fg)
                         {
                             G4_Operand* src = src0addr ? src0 : src1;
 
-                            if( src->isAddrExp() )
+                            if (src->isAddrExp())
                             {
                                 // case 4:  add/mul A0 &GRF src1
                                 G4_RegVar* addrTaken = src->asAddrExp()->getRegVar();
-                                addToPointsToSet( ptr->asRegVar(), addrTaken );
+                                addToPointsToSet(ptr->asRegVar(), addrTaken);
                             }
                             else
                             {
                                 G4_VarBase* srcPtr = src->isSrcRegRegion() ? src->asSrcRegRegion()->getBase() : nullptr;
                                 // case 5:  add/mul A0 A1 src1
                                 // merge the two addr's points-to set together
-                                if (srcPtr && (ptr->asRegVar()->getId() != srcPtr->asRegVar()->getId()) )
+                                if (srcPtr && (ptr->asRegVar()->getId() != srcPtr->asRegVar()->getId()))
                                 {
-                                    mergePointsToSet( srcPtr->asRegVar(), ptr->asRegVar() );
+                                    mergePointsToSet(srcPtr->asRegVar(), ptr->asRegVar());
                                 }
                             }
                         }
                         else if (ptr->isRegVar() && ptr->asRegVar()->isPhyRegAssigned())
                         {
-                           // OK, using builtin a0 or a0.2 directly.
+                            // OK, using builtin a0 or a0.2 directly.
                         }
                         else
                         {
@@ -270,10 +290,10 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph & fg)
                             DEBUG_MSG("unexpected addr add/mul for pointer analysis:\n");
                             DEBUG_EMIT(inst);
                             DEBUG_MSG("\n")
-                            for (int i = 0, size = (int)addrTakenVariables.size(); i < size; i++)
-                            {
-                                addToPointsToSet( ptr->asRegVar(), addrTakenVariables[i] );
-                            }
+                                for (int i = 0, size = (int)addrTakenVariables.size(); i < size; i++)
+                                {
+                                    addToPointsToSet(ptr->asRegVar(), addrTakenVariables[i]);
+                                }
                         }
                     }
                     else
@@ -284,7 +304,24 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph & fg)
                         DEBUG_MSG("\n");
                         for (int i = 0, size = (int)addrTakenVariables.size(); i < size; i++)
                         {
-                            addToPointsToSet( ptr->asRegVar(), addrTakenVariables[i] );
+                            addToPointsToSet(ptr->asRegVar(), addrTakenVariables[i]);
+                        }
+                    }
+                }
+                else if (ptr->isRegVar() && !ptr->asRegVar()->getDeclare()->isMsgDesc())
+                {
+                    for (int i = 0; i < G4_MAX_SRCS; i++)
+                    {
+                        G4_Operand* src = inst->getSrc(i);
+                        G4_VarBase* srcPtr = (src && src->isSrcRegRegion()) ? src->asSrcRegRegion()->getBase() : nullptr;
+                        if (srcPtr != nullptr && srcPtr->isRegVar())
+                        {
+                            std::list<G4_RegVar*>::iterator addrDst = std::find(addrTakenDsts.begin(), addrTakenDsts.end(), srcPtr->asRegVar());
+                            if (addrDst != addrTakenDsts.end())
+                            {
+                                addrTakenDsts.push_back(ptr->asRegVar());
+                                addrTakenMapping[ptr->asRegVar()] = addrTakenMapping[srcPtr->asRegVar()];
+                            }
                         }
                     }
                 }
@@ -294,11 +331,11 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph & fg)
 
 #ifdef DEBUG_VERBOSE_ON
     DEBUG_VERBOSE("Results of points-to analysis:\n");
-    for( unsigned int i = 0; i < numAddrs; i++ )
+    for (unsigned int i = 0; i < numAddrs; i++)
     {
         DEBUG_VERBOSE("Addr " << i);
         REGVAR_VECTOR grfVec = pointsToSets[addrPointsToSetIndex[i]];
-        for( unsigned int j = 0; j < grfVec.size(); j++ )
+        for (unsigned int j = 0; j < grfVec.size(); j++)
         {
             DEBUG_EMIT(grfVec[j]);
             DEBUG_VERBOSE("\t");
@@ -316,16 +353,16 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph & fg)
             G4_INST* inst = (*iter);
             G4_DstRegRegion* dst = inst->getDst();
 
-            if( dst != NULL &&
-                dst->getRegAccess() == IndirGRF )
+            if (dst != NULL &&
+                dst->getRegAccess() == IndirGRF)
             {
                 G4_VarBase* dstptr = dst->getBase();
-                MUST_BE_TRUE( dstptr->isRegVar() && dstptr->asRegVar()->getDeclare()->getRegFile() == G4_ADDRESS,
-                    "base must be address" );
-                addPointsToSetToBB( bb->getId(), dstptr->asRegVar() );
+                MUST_BE_TRUE(dstptr->isRegVar() && dstptr->asRegVar()->getDeclare()->getRegFile() == G4_ADDRESS,
+                    "base must be address");
+                addPointsToSetToBB(bb->getId(), dstptr->asRegVar());
             }
 
-            for( unsigned j = 0; j < G4_MAX_SRCS; j++ )
+            for (unsigned j = 0; j < G4_MAX_SRCS; j++)
             {
                 //
                 // look for indirect reg access r[ptr] which refers addrTaken reg var
@@ -336,25 +373,25 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph & fg)
 
                 G4_SrcRegRegion* src = inst->getSrc(j)->asSrcRegRegion();
 
-                if( src->getRegAccess() == IndirGRF )
+                if (src->getRegAccess() == IndirGRF)
                 {
                     G4_VarBase* srcptr = src->getBase();
-                    MUST_BE_TRUE( srcptr->isRegVar() && srcptr->asRegVar()->getDeclare()->getRegFile() == G4_ADDRESS,
-                        "base must be address" );
-                    addPointsToSetToBB( bb->getId(), srcptr->asRegVar() );
+                    MUST_BE_TRUE(srcptr->isRegVar() && srcptr->asRegVar()->getDeclare()->getRegFile() == G4_ADDRESS,
+                        "base must be address");
+                    addPointsToSetToBB(bb->getId(), srcptr->asRegVar());
                 }
             }
         }
     }
 
 #ifdef DEBUG_VERBOSE_ON
-    for( unsigned int i = 0; i < numBBs; i++ )
+    for (unsigned int i = 0; i < numBBs; i++)
     {
         DEBUG_VERBOSE("Indirect uses for BB" << i << "\t");
-        REGVAR_VECTOR grfVec = getIndrUseVectorForBB( i );
-        for( unsigned int j = 0; j < grfVec.size(); j++ )
+        REGVAR_VECTOR grfVec = getIndrUseVectorForBB(i);
+        for (unsigned int j = 0; j < grfVec.size(); j++)
         {
-            DEBUG_EMIT( grfVec[j] );
+            DEBUG_EMIT(grfVec[j]);
             DEBUG_VERBOSE("\t");
         }
         DEBUG_VERBOSE("\n");
