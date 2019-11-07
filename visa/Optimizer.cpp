@@ -1132,11 +1132,11 @@ int Optimizer::optimization()
     //
     runPass(PI_chkRegBoundary);
 
-    runPass(PI_changeMoveType);
-
     runPass(PI_localSchedule);
 
     runPass(PI_accSubPostSchedule);
+
+    runPass(PI_changeMoveType);
 
     // NoDD optimization
     runPass(PI_NoDD);
