@@ -5998,7 +5998,7 @@ int IR_Builder::translateVISARawSendInst(G4_Predicate *predOpnd, Common_ISA_Exec
 
 int IR_Builder::translateVISARawSendsInst(G4_Predicate *predOpnd, Common_ISA_Exec_Size executionSize,
                                          Common_VISA_EMask_Ctrl emask, uint8_t modifiers, G4_Operand* ex, uint8_t numSrc0, uint8_t numSrc1,
-                                         uint8_t numDst, G4_Operand* msgDescOpnd, G4_Operand* src0, G4_Operand* src1, G4_DstRegRegion* dstOpnd, unsigned ffid)
+                                         uint8_t numDst, G4_Operand* msgDescOpnd, G4_Operand* src0, G4_Operand* src1, G4_DstRegRegion* dstOpnd, unsigned ffid, bool hasEOT)
 {
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
@@ -6054,9 +6054,8 @@ int IR_Builder::translateVISARawSendsInst(G4_Predicate *predOpnd, Common_ISA_Exe
         intToSFID(ffid), descVal, exDescVal, numSrc1,
         SendAccess::READ_WRITE, nullptr, isValidFuncCtrl);
 
-    if (ex->isImm() && isExDescEOT(exDescVal))
+    if (hasEOT)
     {
-        // ToDo: add an EOT parameter for the case of indirect exdesc
         sendMsgDesc->setEOT();
     }
 

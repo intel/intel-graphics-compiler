@@ -1239,6 +1239,7 @@ static void readInstructionMisc(unsigned& bytePos, const char* buf, ISA_Opcode o
     case ISA_RAW_SENDS:
         {
             uint8_t modifier = readPrimitiveOperandNG<uint8_t>( bytePos, buf);
+            bool hasEOT = modifier & 0x2;
 
             Common_VISA_EMask_Ctrl emask = vISA_EMASK_M1;
             Common_ISA_Exec_Size  esize = EXEC_SIZE_ILLEGAL;
@@ -1262,7 +1263,7 @@ static void readInstructionMisc(unsigned& bytePos, const char* buf, ISA_Opcode o
             VISA_RawOpnd*     src1 = readRawOperandNG   (bytePos, buf, container);
             VISA_RawOpnd*     dst = readRawOperandNG   (bytePos, buf, container);
 
-            kernelBuilder->AppendVISAMiscRawSends(pred, emask, esize, modifier, ffid, exMsgDesc, numSrc0, numSrc1, numDst, desc, src0, src1, dst);
+            kernelBuilder->AppendVISAMiscRawSends(pred, emask, esize, modifier, ffid, exMsgDesc, numSrc0, numSrc1, numDst, desc, src0, src1, dst, hasEOT);
             break;
 
         }

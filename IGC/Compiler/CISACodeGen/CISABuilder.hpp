@@ -164,7 +164,7 @@ namespace IGC
         void URBWrite(CVariable* src, const int payloadElementOffset, CVariable* offset, CVariable* urbHandle, CVariable* dynamicMask);
         void Send(CVariable* dst, CVariable* src, uint exDesc, CVariable* messDescriptor, bool isSendc = false);
         void Send(CVariable* dst, CVariable* src, uint ffid, CVariable* exDesc, CVariable* messDescriptor, bool isSendc = false);
-        void Sends(CVariable* dst, CVariable* src0, CVariable* src1, uint ffid, CVariable* exDesc, CVariable* messDescriptor, bool isSendc = false);
+        void Sends(CVariable* dst, CVariable* src0, CVariable* src1, uint ffid, CVariable* exDesc, CVariable* messDescriptor, bool isSendc = false, bool hasEOT = false);
         void RenderTargetWrite(CVariable* var[],
             bool isUndefined[],
             bool lastRenderTarget,

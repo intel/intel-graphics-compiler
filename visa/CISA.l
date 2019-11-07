@@ -524,11 +524,24 @@ raw_sends {
         return RAW_SENDS_STRING;
     }
 
+raw_sends_eot {
+        TRACE("\n** RAW_SENDS_EOT ");
+        CISAlval.opcode = ISA_RAW_SENDS;
+        return RAW_SENDS_EOT_STRING;
+    }
+
 raw_sendsc {
         TRACE("\n** RAW_SENDSC ");
         CISAlval.opcode = ISA_RAW_SENDS;
         return RAW_SENDSC_STRING;
     }
+
+raw_sendsc_eot {
+        TRACE("\n** RAW_SENDSC_EOT ");
+        CISAlval.opcode = ISA_RAW_SENDS;
+        return RAW_SENDSC_EOT_STRING;
+    }
+
 
 avs {
         TRACE("\n** AVS INST ");

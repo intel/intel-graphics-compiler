@@ -1114,7 +1114,7 @@ static std::string printInstructionMisc(
             uint8_t numSrc0    = getPrimitiveOperand<uint8_t>(inst, i++);
             uint8_t numSrc1    = getPrimitiveOperand<uint8_t>(inst, i++);
             uint8_t numDst     = getPrimitiveOperand<uint8_t>(inst, i++);
-            std::string opstring = modifiers == 1? "raw_sendsc." : "raw_sends.";
+            std::string opstring = (modifiers & 0x1) == 1? "raw_sendsc." : "raw_sends.";
 
             sstr << printPredicate(inst->opcode, inst->pred)
                  << opstring.c_str();
@@ -1122,6 +1122,11 @@ static std::string printInstructionMisc(
             uint8_t ffid = getPrimitiveOperand<uint8_t>(inst, i++);
             sstr << (unsigned)ffid
                 << ".";
+
+            if (modifiers & 0x2)
+            {
+                sstr << "eot.";
+            }
 
             sstr << (unsigned)numSrc0
                  << "."

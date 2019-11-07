@@ -278,7 +278,9 @@ VISA_RawOpnd* rawOperandArray[16];
 %token RAW_SEND_STRING      /* raw_send */
 %token RAW_SENDC_STRING     /* raw_sendc */
 %token RAW_SENDS_STRING     /* raw_sends */
+%token RAW_SENDS_EOT_STRING     /* raw_sends_eot */
 %token RAW_SENDSC_STRING    /* raw_sendsc */
+%token RAW_SENDSC_EOT_STRING    /* raw_sendsc_eot */
 
 %token <atomic_op> ATOMIC_SUB_OP
 %token <var_name> PHYSICAL_REGISTER
@@ -1278,15 +1280,27 @@ LifetimeEndInst:  LIFETIME_END_OP            VAR
         //              1             2           3        4       5      6          7              8                  9               10         11        12
 RawSendsInstruction: Predicate RAW_SENDS_STRING ElemNum ElemNum  ElemNum ElemNum ExecSize VecSrcOperand_G_IMM   VecSrcOperand_G_IMM RawOperand RawOperand RawOperand
         {
-            pCisaBuilder->CISA_create_raw_sends_instruction(ISA_RAW_SENDS, false, $7.emask, $7.exec_size, $1.cisa_gen_opnd, $8.cisa_gen_opnd, (unsigned char)$3, (unsigned char)$4,
+            pCisaBuilder->CISA_create_raw_sends_instruction(ISA_RAW_SENDS, false, false, $7.emask, $7.exec_size, $1.cisa_gen_opnd, $8.cisa_gen_opnd, (unsigned char)$3, (unsigned char)$4,
+                (unsigned char)$5, (unsigned char)$6, $9.cisa_gen_opnd, $10.cisa_gen_opnd, $11.cisa_gen_opnd, $12.cisa_gen_opnd, CISAlineno);
+        };
+        //    1             2               3        4       5      6          7              8                  9               10         11        12
+        | Predicate RAW_SENDS_EOT_STRING ElemNum ElemNum  ElemNum ElemNum ExecSize VecSrcOperand_G_IMM   VecSrcOperand_G_IMM RawOperand RawOperand RawOperand
+        {
+            pCisaBuilder->CISA_create_raw_sends_instruction(ISA_RAW_SENDS, false, true, $7.emask, $7.exec_size, $1.cisa_gen_opnd, $8.cisa_gen_opnd, (unsigned char)$3, (unsigned char)$4,
                 (unsigned char)$5, (unsigned char)$6, $9.cisa_gen_opnd, $10.cisa_gen_opnd, $11.cisa_gen_opnd, $12.cisa_gen_opnd, CISAlineno);
         };
         //    1             2              3       4       5        6        7                         8             9          10        11
         | Predicate  RAW_SENDSC_STRING  ElemNum ElemNum ElemNum ExecSize VecSrcOperand_G_IMM VecSrcOperand_G_IMM RawOperand RawOperand RawOperand
         {
-            pCisaBuilder->CISA_create_raw_sends_instruction(ISA_RAW_SENDS, true, $6.emask, $6.exec_size, $1.cisa_gen_opnd, $7.cisa_gen_opnd, 0, (unsigned char)$3,
+            pCisaBuilder->CISA_create_raw_sends_instruction(ISA_RAW_SENDS, true, false, $6.emask, $6.exec_size, $1.cisa_gen_opnd, $7.cisa_gen_opnd, 0, (unsigned char)$3,
                 (unsigned char)$4, (unsigned char)$5, $8.cisa_gen_opnd, $9.cisa_gen_opnd, $10.cisa_gen_opnd, $11.cisa_gen_opnd, CISAlineno);
-        }
+        };
+        //    1             2                  3       4       5        6        7                         8             9          10        11
+        | Predicate  RAW_SENDSC_EOT_STRING  ElemNum ElemNum ElemNum ExecSize VecSrcOperand_G_IMM VecSrcOperand_G_IMM RawOperand RawOperand RawOperand
+        {
+            pCisaBuilder->CISA_create_raw_sends_instruction(ISA_RAW_SENDS, true, true, $6.emask, $6.exec_size, $1.cisa_gen_opnd, $7.cisa_gen_opnd, 0, (unsigned char)$3,
+                (unsigned char)$4, (unsigned char)$5, $8.cisa_gen_opnd, $9.cisa_gen_opnd, $10.cisa_gen_opnd, $11.cisa_gen_opnd, CISAlineno);
+        };
 
 NO_OPND_INST: CACHE_FLUSH_OP
              {

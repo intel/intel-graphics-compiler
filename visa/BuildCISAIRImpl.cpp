@@ -2593,6 +2593,7 @@ bool CISA_IR_Builder::CISA_create_lifetime_inst(unsigned char startOrEnd,
 
 bool CISA_IR_Builder::CISA_create_raw_sends_instruction(ISA_Opcode opcode,
                                                        unsigned char modifier,
+                                                       bool hasEOT,
                                                        Common_VISA_EMask_Ctrl emask,
                                                        unsigned exec_size,
                                                        VISA_opnd *pred_opnd,
@@ -2609,7 +2610,7 @@ bool CISA_IR_Builder::CISA_create_raw_sends_instruction(ISA_Opcode opcode,
 {
     Common_ISA_Exec_Size executionSize = Get_Common_ISA_Exec_Size_From_Raw_Size(exec_size);
     m_kernel->AppendVISAMiscRawSends((VISA_PredOpnd *) pred_opnd, emask, executionSize, modifier, ffid, (VISA_VectorOpnd *)exMsgDesc, src0Size, src1Size, dstSize,
-        (VISA_VectorOpnd *)Desc, (VISA_RawOpnd *)Src0, (VISA_RawOpnd *)Src1, (VISA_RawOpnd *)Dst);
+        (VISA_VectorOpnd *)Desc, (VISA_RawOpnd *)Src0, (VISA_RawOpnd *)Src1, (VISA_RawOpnd *)Dst, hasEOT);
     return true;
 }
 /*

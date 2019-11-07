@@ -484,7 +484,7 @@ public:
         VISA_RawOpnd *src, VISA_RawOpnd *dst);
     CM_BUILDER_API int AppendVISAMiscRawSends(VISA_PredOpnd *pred, Common_VISA_EMask_Ctrl emask, Common_ISA_Exec_Size executionSize, unsigned char modifiers,
         unsigned ffid, VISA_VectorOpnd *exMsgDesc, unsigned char src0Size, unsigned char src1Size, unsigned char dstSize, VISA_VectorOpnd *desc,
-        VISA_RawOpnd *src0, VISA_RawOpnd *src1, VISA_RawOpnd *dst);
+        VISA_RawOpnd *src0, VISA_RawOpnd *src1, VISA_RawOpnd *dst, bool hasEOT);
 
     CM_BUILDER_API int AppendVISAMiscVME_FBR(VISA_StateOpndHandle *surface, VISA_RawOpnd *UNIInput, VISA_RawOpnd *FBRInput, VISA_VectorOpnd* FBRMbMode, VISA_VectorOpnd *FBRSubMbShape,
         VISA_VectorOpnd *FBRSubPredMode, VISA_RawOpnd *output);

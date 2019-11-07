@@ -509,9 +509,10 @@ public:
     /// AppendVISAMiscRawSend -- create a GEN split send instruction
     /// [pred] sends/sendsc (esize) <dst> <src0> <src1> <exMsgDesc> <desc> {emask}
     /// bit 0 of modifiers controls whether it's sends (0) or sendsc (1)
+    //  bit 1 of modifiers has EOT flag for raw sends
     CM_BUILDER_API virtual int AppendVISAMiscRawSends(VISA_PredOpnd *pred, Common_VISA_EMask_Ctrl emask, Common_ISA_Exec_Size executionSize, unsigned char modifiers,
                                        unsigned ffid, VISA_VectorOpnd *exMsgDesc, unsigned char src0Size, unsigned char src1Size, unsigned char dstSize, VISA_VectorOpnd *desc,
-                                      VISA_RawOpnd *src0, VISA_RawOpnd *src1, VISA_RawOpnd *dst) = 0;
+                                      VISA_RawOpnd *src0, VISA_RawOpnd *src1, VISA_RawOpnd *dst, bool hasEOT) = 0;
 
     CM_BUILDER_API virtual int AppendVISALifetime(VISAVarLifetime startOrEnd, VISA_VectorOpnd *varId) = 0;
 

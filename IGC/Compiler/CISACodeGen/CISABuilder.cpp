@@ -2231,28 +2231,28 @@ namespace IGC
     void CEncoder::Send(CVariable* dst, CVariable* src, uint exDesc, CVariable* messDescriptor, bool isSendc)
     {
         if (dst && dst->IsUniform())
-    {
-        m_encoderState.m_simdSize = m_encoderState.m_uniformSIMDSize;
-    }
-    unsigned char sendc = isSendc ? 1 : 0;
+        {
+            m_encoderState.m_simdSize = m_encoderState.m_uniformSIMDSize;
+        }
+        unsigned char sendc = isSendc ? 1 : 0;
         unsigned char srcSize = src->GetSize() / getGRFSize();
         unsigned char dstSize = dst ? dst->GetSize() / getGRFSize() : 0;
-    VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
+        VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
         VISA_RawOpnd* srcOpnd0 = GetRawSource(src);
         VISA_RawOpnd* dstOpnd = GetRawDestination(dst);
         VISA_VectorOpnd* desc = GetUniformSource(messDescriptor);
 
-    V(vKernel->AppendVISAMiscRawSend(
-        predOpnd,
-        GetAluEMask(dst),
-        visaExecSize(m_encoderState.m_simdSize),
-        sendc,
-        exDesc,
-        srcSize,
-        dstSize,
-        desc,
-        srcOpnd0,
-        dstOpnd));
+        V(vKernel->AppendVISAMiscRawSend(
+            predOpnd,
+            GetAluEMask(dst),
+            visaExecSize(m_encoderState.m_simdSize),
+            sendc,
+            exDesc,
+            srcSize,
+            dstSize,
+            desc,
+            srcOpnd0,
+            dstOpnd));
     }
 
     void CEncoder::Send(CVariable* dst, CVariable* src, uint ffid, CVariable* exDesc, CVariable* messDescriptor, bool isSendc)
@@ -2260,42 +2260,43 @@ namespace IGC
     Sends(dst, src, nullptr, ffid, exDesc, messDescriptor, isSendc);
     }
 
-    void CEncoder::Sends(CVariable* dst, CVariable* src0, CVariable* src1, uint ffid, CVariable* exDesc, CVariable* messDescriptor, bool isSendc)
+    void CEncoder::Sends(CVariable* dst, CVariable* src0, CVariable* src1, uint ffid, CVariable* exDesc, CVariable* messDescriptor, bool isSendc, bool hasEOT)
     {
         if (exDesc->IsImmediate() && src1 == nullptr)
         {
-        Send(dst, src0, (uint)exDesc->GetImmediateValue(), messDescriptor, isSendc);
-        return;
-    }
+            Send(dst, src0, (uint)exDesc->GetImmediateValue(), messDescriptor, isSendc);
+            return;
+        }
         if (dst && dst->IsUniform())
-    {
-        m_encoderState.m_simdSize = m_encoderState.m_uniformSIMDSize;
-    }
-    unsigned char sendc = isSendc ? 1 : 0;
+        {
+            m_encoderState.m_simdSize = m_encoderState.m_uniformSIMDSize;
+        }
+        unsigned char sendc = isSendc ? 1 : 0;
         unsigned char src0Size = src0->GetSize() / getGRFSize();
-    unsigned char src1Size = src1 ? src1->GetSize() / getGRFSize() : 0;
+        unsigned char src1Size = src1 ? src1->GetSize() / getGRFSize() : 0;
         unsigned char dstSize = dst ? dst->GetSize() / getGRFSize() : 0;
-    VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
+        VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
         VISA_RawOpnd* srcOpnd0 = GetRawSource(src0);
         VISA_RawOpnd* srcOpnd1 = GetRawSource(src1);
         VISA_RawOpnd* dstOpnd = GetRawDestination(dst);
         VISA_VectorOpnd* exMessDesc = GetUniformSource(exDesc);
         VISA_VectorOpnd* desc = GetUniformSource(messDescriptor);
 
-    V(vKernel->AppendVISAMiscRawSends(
-        predOpnd,
-        GetAluEMask(dst),
-        visaExecSize(m_encoderState.m_simdSize),
-        sendc,
-        ffid,
-        exMessDesc,
-        src0Size,
-        src1Size, // right now only one source
-        dstSize,
-        desc,
-        srcOpnd0,
-        srcOpnd1,
-        dstOpnd));
+        V(vKernel->AppendVISAMiscRawSends(
+            predOpnd,
+            GetAluEMask(dst),
+            visaExecSize(m_encoderState.m_simdSize),
+            sendc,
+            ffid,
+            exMessDesc,
+            src0Size,
+            src1Size, // right now only one source
+            dstSize,
+            desc,
+            srcOpnd0,
+            srcOpnd1,
+            dstOpnd,
+            hasEOT));
     }
 
     VISA_StateOpndHandle* CEncoder::GetBTIOperand(uint bindingTableIndex)

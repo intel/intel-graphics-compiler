@@ -2311,7 +2311,8 @@ public:
                         G4_Operand* msgOpnd0,
                         G4_Operand* msgOpnd1,
                         G4_DstRegRegion* dstOpnd,
-                        unsigned ffid);
+                        unsigned ffid,
+                        bool hasEOT = false);
 
     int translateVISASamplerVAGenericInst(
                         G4_Operand*   surface,
