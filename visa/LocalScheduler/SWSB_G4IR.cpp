@@ -325,8 +325,8 @@ SBFootprint* G4_BB_SB::getFootprintForFlag(G4_Operand* opnd,
     LB = (unsigned short)(opnd->getLeftBound() + subRegOff * 16) * bitToBytes;
     RB = (unsigned short)(opnd->getRightBound() + subRegOff * 16) * bitToBytes;
 
-    LB += (builder.kernel.getNumRegTotal() + builder.getNumACC()) * G4_GRF_REG_NBYTES;
-    RB += (builder.kernel.getNumRegTotal() + builder.getNumACC()) * G4_GRF_REG_NBYTES;
+    LB += (builder.kernel.getNumRegTotal() + builder.kernel.getNumAcc()) * G4_GRF_REG_NBYTES;
+    RB += (builder.kernel.getNumRegTotal() + builder.kernel.getNumAcc()) * G4_GRF_REG_NBYTES;
 
     void* allocedMem = mem.alloc(sizeof(SBFootprint));
     SBFootprint* footprint = nullptr;
@@ -1008,8 +1008,8 @@ void SWSB::SWSBGenerator()
     }
 
     //Note that getNumFlagRegisters() treat each 16 bits as a flag register
-    LiveGRFBuckets LB(mem, kernel.getNumRegTotal() + fg.builder->getNumACC() + fg.builder->getNumFlagRegisters(), kernel);
-    LiveGRFBuckets globalSendsLB(mem, kernel.getNumRegTotal() + fg.builder->getNumACC() + fg.builder->getNumFlagRegisters(), kernel);
+    LiveGRFBuckets LB(mem, kernel.getNumRegTotal() + kernel.getNumAcc() + fg.builder->getNumFlagRegisters(), kernel);
+    LiveGRFBuckets globalSendsLB(mem, kernel.getNumRegTotal() + kernel.getNumAcc() + fg.builder->getNumFlagRegisters(), kernel);
 
     SWSBDepDistanceGenerator(p, LB, globalSendsLB);
 
@@ -4110,8 +4110,8 @@ void G4_BB_SB::getLiveBucketsFromFootprint(SBFootprint* firstFootprint, SBBucket
         }
         else if (footprint->fType == FLAG_T)
         {
-            startBucket = footprint->LeftB + aregOffset + builder.getNumACC();
-            endBucket = footprint->RightB + aregOffset + builder.getNumACC();
+            startBucket = footprint->LeftB + aregOffset + builder.kernel.getNumAcc();
+            endBucket = footprint->RightB + aregOffset + builder.kernel.getNumAcc();
         }
 
         for (int j = startBucket; j < endBucket + 1; j++)

@@ -3094,7 +3094,7 @@ void G4_Kernel::setKernelParameters()
     }
 
 
-    // Set the number of Acc
+    // Set the number of Acc. They are in the unit of GRFs (i.e., 1 accumulator is the same size as 1 GRF)
     unsigned overrideNumAcc = m_options->getuInt32Option(vISA_numGeneralAcc);
     if (overrideNumAcc > 0)
     {
@@ -3110,10 +3110,7 @@ void G4_Kernel::setKernelParameters()
             numAcc = 2;
         }
 
-        if (numRegTotal == 256)
-        {
-            numAcc *= 2;
-        }
+
     }
 }
 

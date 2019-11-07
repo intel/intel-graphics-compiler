@@ -357,12 +357,6 @@
         return getGenxPlatform() >= GENX_TGLLP;
     }
 
-    // 1 means one SIMD16 float accumulator
-    uint32_t getNumACC() const
-    {
-        return 1;
-    }
-
     bool fuseURBMessage() const
     {
         return isGen12LP();

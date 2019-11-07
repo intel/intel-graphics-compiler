@@ -4657,7 +4657,7 @@ struct AccAssignment
 
 void HWConformity::multiAccSubstitution(G4_BB* bb)
 {
-    int numGeneralAcc = builder.getNumACC();
+    int numGeneralAcc = kernel.getNumAcc();
 
     std::vector<AccInterval*> intervals;
 

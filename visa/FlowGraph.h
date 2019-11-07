@@ -1471,7 +1471,6 @@ public:
     void setNumSWSBTokens(int nSWSBs) { numSWSBTokens = nSWSBs; }
     uint32_t getNumSWSBTokens() const { return numSWSBTokens; }
 
-    void setNumAcc(int nAcc) { numAcc = nAcc; }
     uint32_t getNumAcc() const { return numAcc; }
 
     void setAsmCount(int count) { asmInstCount = count; }
