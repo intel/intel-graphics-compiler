@@ -1230,7 +1230,6 @@ namespace vISA
         void addCallerSavePseudoCode();
         void addCalleeSavePseudoCode();
         void addStoreRestoreForFP();
-        void setABIForStackCallFunctionCalls();
         void markGraphBlockLocalVars();
         void verifyRA(LivenessAnalysis & liveAnalysis);
         void resetGlobalRAStates();

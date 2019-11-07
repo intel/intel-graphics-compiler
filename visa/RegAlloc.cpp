@@ -2997,7 +2997,7 @@ void GlobalRA::markGraphBlockLocalVars()
 //
 // Pre-assign phy regs to stack call function return variable as per ABI.
 //
-void GlobalRA::setABIForStackCallFunctionCalls()
+void FlowGraph::setABIForStackCallFunctionCalls()
 {
     // For each G4_pseudo_fcall inst, create dst of GRF type
     // with physical register 1.0 pre-assigned to it.
@@ -3006,47 +3006,44 @@ void GlobalRA::setABIForStackCallFunctionCalls()
     // Each will use 2 dwords of r1.0.
     int call_id = 0, ret_id = 0;
 
-    for( BB_LIST_ITER it = kernel.fg.begin();
-        it != kernel.fg.end();
-        it++ )
+    for (auto bb : *this)
     {
-        G4_BB* bb = (*it);
-        if( bb->isEndWithFCall() )
+        if (bb->isEndWithFCall())
         {
-            const char* n = kernel.fg.builder->getNameString(kernel.fg.mem, 25,
-                kernel.fg.builder->getIsKernel() ? "FCALL_RET_LOC_k_%d" : "FCALL_RET_LOC_f%d_%d",
-                kernel.fg.builder->getCUnitId(), call_id++);
+            const char* n = builder->getNameString(mem, 25,
+                builder->getIsKernel() ? "FCALL_RET_LOC_k_%d" : "FCALL_RET_LOC_f%d_%d",
+                builder->getCUnitId(), call_id++);
 
             G4_INST* fcall = bb->back();
             // Set call dst to r1.0, here reserve 8 dwords in r1.0 for the use of call dst
             // The call dst requires only 2 dword, so in VISAKernelImpl::expandIndirectCallWithRegTarget
             // we take r1.2, r1.3 as the tmp register for calculating the call target offset, if required.
             // That function assumes r1.0 is reserved here and r1.2, r1.3 won't be used
-            G4_Declare* r1_dst = kernel.fg.builder->createDeclareNoLookup(n, G4_GRF, 8, 1, Type_UD);
-            r1_dst->getRegVar()->setPhyReg(regPool.getGreg(1), 0);
-            G4_DstRegRegion* dstRgn = kernel.fg.builder->createDstRegRegion(Direct, r1_dst->getRegVar(), 0, 0, 1, Type_UD);
+            G4_Declare* r1_dst = builder->createDeclareNoLookup(n, G4_GRF, 8, 1, Type_UD);
+            r1_dst->getRegVar()->setPhyReg(builder->phyregpool.getGreg(1), 0);
+            G4_DstRegRegion* dstRgn = builder->createDstRegRegion(Direct, r1_dst->getRegVar(), 0, 0, 1, Type_UD);
             fcall->setDest(dstRgn);
         }
 
-        if( bb->isEndWithFRet() )
+        if (bb->isEndWithFRet())
         {
-            const char* n = kernel.fg.builder->getNameString(kernel.fg.mem, 25,
-                kernel.fg.builder->getIsKernel() ? "FRET_RET_LOC_k_%d" : "FRET_RET_LOC_f%d_%d",
-                kernel.fg.builder->getCUnitId(), ret_id++);
+            const char* n = builder->getNameString(mem, 25,
+                builder->getIsKernel() ? "FRET_RET_LOC_k_%d" : "FRET_RET_LOC_f%d_%d",
+                builder->getCUnitId(), ret_id++);
             G4_INST* fret = bb->back();
-            const RegionDesc* rd = kernel.fg.builder->createRegionDesc(2, 2, 1);
-            G4_Declare* r1_src = kernel.fg.builder->createDeclareNoLookup(n, G4_INPUT, 8, 1, Type_UD);
-            r1_src->getRegVar()->setPhyReg(regPool.getGreg(1), 0);
-            G4_Operand* srcRgn = kernel.fg.builder->createSrcRegRegion(Mod_src_undef, Direct, r1_src->getRegVar(), 0, 0, rd, Type_UD);
+            const RegionDesc* rd = builder->createRegionDesc(2, 2, 1);
+            G4_Declare* r1_src = builder->createDeclareNoLookup(n, G4_INPUT, 8, 1, Type_UD);
+            r1_src->getRegVar()->setPhyReg(builder->phyregpool.getGreg(1), 0);
+            G4_Operand* srcRgn = builder->createSrcRegRegion(Mod_src_undef, Direct, r1_src->getRegVar(), 0, 0, rd, Type_UD);
             fret->setSrc(srcRgn, 0);
             if (fret->getExecSize() == 1)
             {
                 //due to <2;2,1> regioning we must update exec size as well
                 fret->setExecSize(2);
             }
-            if (kernel.getOption(vISA_GenerateDebugInfo))
+            if (builder->getOption(vISA_GenerateDebugInfo))
             {
-                kernel.getKernelDebugInfo()->setFretVar(GetTopDclFromRegRegion(fret->getSrc(0)));
+                pKernel->getKernelDebugInfo()->setFretVar(GetTopDclFromRegRegion(fret->getSrc(0)));
             }
         }
     }
@@ -3704,6 +3701,14 @@ int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
     kernel.fg.callerSaveAreaOffset = kernel.fg.calleeSaveAreaOffset = kernel.fg.paramOverflowAreaOffset =
         kernel.fg.paramOverflowAreaSize = 0;
 
+    // This must be done before Points-to analysis as it may modify CFG and add new BB!
+    if (kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc())
+    {
+        kernel.fg.setABIForStackCallFunctionCalls();
+        kernel.fg.addFrameSetupDeclares(builder, regPool);
+        kernel.fg.NormalizeFlowGraph();
+    }
+
     //
     // Perform flow-insensitive points-to-analysis.
     //
@@ -3716,15 +3721,6 @@ int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
     // can assign registers to hold the return addresses
     //
     gra.assignLocForReturnAddr();
-
-    if (kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc())
-    {
-
-        gra.setABIForStackCallFunctionCalls();
-        kernel.fg.addFrameSetupDeclares(builder, regPool);
-
-        kernel.fg.NormalizeFlowGraph();
-    }
 
     //FIXME: here is a temp WA
     if (kernel.fg.funcInfoTable.size() > 0 &&

@@ -1168,6 +1168,8 @@ public:
         return lastBB->isEndWithGoto();
     }
 
+    void setABIForStackCallFunctionCalls();
+
 private:
     //
     // Flow group traversal routines
