@@ -150,7 +150,7 @@
 
     bool hasBankCollision() const
     {
-        return getPlatformGeneration(getGenxPlatform()) <= PlatformGen::GEN11 || getOption(vISA_enableBCR);
+        return getPlatformGeneration(getGenxPlatform()) <= PlatformGen::GEN11 || (getOption(vISA_enableBCR) && !(getGenxPlatform() == GENX_TGLLP && GetStepping() == Step_A));
     }
 
     bool hasSendShootdown() const

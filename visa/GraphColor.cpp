@@ -807,6 +807,174 @@ void BankConflictPass::setupBankConflictsforTwoGRFs(G4_INST* inst)
     return;
 }
 
+bool BankConflictPass::isOddOffset(unsigned int offset)
+{
+    if (gra.kernel.fg.builder->oneGRFBankDivision())
+    {
+        return (offset % 2);
+    }
+    else
+    {
+        return ((offset % 4) / 2);
+    }
+}
+
+
+void BankConflictPass::setupBankConflictsforMad(G4_INST* inst)
+{
+    BankConflict srcBC[3];
+    unsigned int offset[3];
+    G4_Declare * dcls[3];
+    G4_Declare * opndDcls[3];
+    BankConflict assignedBank = BANK_CONFLICT_NONE; //Flip for next
+
+    for (int i = 0; i < 3; i += 1)
+    {
+        dcls[i] = nullptr;
+        opndDcls[i] = nullptr;
+
+        G4_Operand* src = inst->getSrc(i);
+        if (!src || !src->isSrcRegRegion() || src->isAccReg())
+        {
+            // bank conflict not possible
+            return;
+        }
+
+        dcls[i] = GetTopDclFromRegRegion(src);
+        opndDcls[i] = src->getBase()->asRegVar()->getDeclare();
+        offset[i] = (opndDcls[i]->getOffsetFromBase() + src->getLeftBound()) / G4_GRF_REG_NBYTES;
+        srcBC[i] = gra.getBankConflict(dcls[i]);
+
+        if (srcBC[i] != BANK_CONFLICT_NONE)
+        {
+            if (isOddOffset(offset[i]))
+            {
+                if (srcBC[i] == BANK_CONFLICT_FIRST_HALF_EVEN)
+                {
+                    srcBC[i] = BANK_CONFLICT_SECOND_HALF_ODD;
+                }
+                else
+                {
+                    srcBC[i] = BANK_CONFLICT_FIRST_HALF_EVEN;
+                }
+            }
+            if (assignedBank != BANK_CONFLICT_SECOND_HALF_EVEN)
+            {
+                if (assignedBank == BANK_CONFLICT_NONE)
+                {
+                    assignedBank = srcBC[i];
+                }
+                else if (assignedBank != srcBC[i])
+                {
+                    assignedBank = BANK_CONFLICT_SECOND_HALF_EVEN;  //BANK_CONFLICT_SECOND_HALF_EVEN is used to represent all banks are assigned
+                }
+            }
+        }
+    }
+
+    for (int k = 0; k < 2; k++)
+    {
+        for (int i = 2; i != -1; i--)
+        {
+            if (!dcls[i])
+            {
+                continue;
+            }
+
+            LocalLiveRange* lr = gra.getLocalLR(dcls[i]);
+            if (k == 0  && !lr->isLiveRangeLocal())
+            {
+                continue;
+            }
+
+            if (k == 1 && lr->isLiveRangeLocal())
+            {
+                continue;
+            }
+
+            if (assignedBank == BANK_CONFLICT_SECOND_HALF_EVEN)
+            {
+                continue;
+            }
+
+            srcBC[i] = gra.getBankConflict(dcls[i]);
+            if (srcBC[i] != BANK_CONFLICT_NONE)
+            {
+                if (isOddOffset(offset[i]))
+                {
+                    if (srcBC[i] == BANK_CONFLICT_FIRST_HALF_EVEN)
+                    {
+                        srcBC[i] = BANK_CONFLICT_SECOND_HALF_ODD;
+                    }
+                    else
+                    {
+                        srcBC[i] = BANK_CONFLICT_FIRST_HALF_EVEN;
+                    }
+                }
+
+                if (assignedBank == BANK_CONFLICT_NONE)
+                {
+                    assignedBank = srcBC[i];
+                }
+                else if (srcBC[i] != assignedBank)
+                {
+                    assignedBank = BANK_CONFLICT_SECOND_HALF_EVEN;
+                }
+
+                continue;
+            }
+
+            if (assignedBank == BANK_CONFLICT_NONE)
+            {
+                srcBC[i] = BANK_CONFLICT_FIRST_HALF_EVEN;
+                assignedBank = srcBC[i];
+                if (isOddOffset(offset[i]))
+                {
+                    srcBC[i] = (srcBC[i] == BANK_CONFLICT_FIRST_HALF_EVEN) ? BANK_CONFLICT_SECOND_HALF_ODD : BANK_CONFLICT_FIRST_HALF_EVEN;
+                }
+                gra.setBankConflict(dcls[i], srcBC[i]);
+            }
+            else
+            {
+                srcBC[i] = (assignedBank == BANK_CONFLICT_FIRST_HALF_EVEN) ? BANK_CONFLICT_SECOND_HALF_ODD : BANK_CONFLICT_FIRST_HALF_EVEN;
+                if (isOddOffset(offset[i]))
+                {
+                    srcBC[i] = (srcBC[i] == BANK_CONFLICT_FIRST_HALF_EVEN) ? BANK_CONFLICT_SECOND_HALF_ODD : BANK_CONFLICT_FIRST_HALF_EVEN;
+                }
+                gra.setBankConflict(dcls[i], srcBC[i]);
+                assignedBank = BANK_CONFLICT_SECOND_HALF_EVEN;
+            }
+        }
+    }
+
+#ifdef DEBUG_VERBOSE_ON
+    printf("$%d:\n", inst->getCISAOff());
+    for (int i = 0; i < 3; i++)
+    {
+        if (dcls[i])
+        {
+            printf("%s, ", dcls[i]->getName());
+
+            if (gra.getBankConflict(dcls[i]) == BANK_CONFLICT_FIRST_HALF_EVEN)
+            {
+                printf("%s\n", "EVEN");
+            }
+            else if (gra.getBankConflict(dcls[i]) == BANK_CONFLICT_SECOND_HALF_ODD)
+            {
+                printf("%s\n", "ODD");
+            }
+            else
+            {
+                printf("%s\n", "NONE");
+            }
+        }
+    }
+    printf("\n");
+#endif
+
+    return;
+}
+
 
 void BankConflictPass::setupBankConflictsForBB(G4_BB* bb,
     unsigned int &threeSourceInstNum,
@@ -854,7 +1022,7 @@ void BankConflictPass::setupBankConflictsForBB(G4_BB* bb,
 
     if ((float)threeSourceInstNum / bb->size() > 0.1)
     {
-        if (!gra.kernel.fg.builder->lowHighBundle())
+        if (!gra.kernel.fg.builder->lowHighBundle() && gra.kernel.fg.builder->hasCrossInstructionConflict() && GetStepping() == Step_A)
         {
             for (std::list<G4_INST*>::iterator i = bb->begin(), iend = bb->end();
                 i != iend;

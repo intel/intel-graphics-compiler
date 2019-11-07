@@ -438,6 +438,7 @@ public:
 
     uint32_t emitBankConflictGen12lp(std::ostream & os_output, G4_INST * inst, int * suppressRegs, int * lastRegs, int & sameConflictTimes, int & twoSrcConflicts, int & simd16RS);
     uint32_t countReadModifyWrite(std::ostream& os_output, G4_INST *inst);
+    uint32_t emitBankConflictGen12(std::ostream & os_output, G4_INST * inst, int * suppressRegs, int & sameConflictTimes, int & twoSrcConflicts, int & simd16RS, bool zeroOne, bool isTGLLP);
     void emitDepInfo(std::ostream& output, G4_INST *inst, int offset);
 
     bool isEndWithCall() const { return getLastOpcode() == G4_call; }

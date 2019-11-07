@@ -4280,6 +4280,361 @@ static int getConflictTimesForTGLLP(std::ostream& output, int *firstRegCandidate
     return conflictTimes;
 }
 
+static int getConflictTimesForTGL(std::ostream& output, int *firstRegCandidate, int &sameBankConflicts, bool zeroOne, bool isTGLLP)
+{
+    int conflictTimes = 0;
+    int bundles[2][16];
+    int bankSrcs[2];
+
+    for (int i = 0; i < 2; i++)
+    {
+        for (int j = 0; j < 16; j++)
+        {
+            bundles[i][j] = -1;
+        }
+        bankSrcs[i] = 0;
+    }
+
+    output << "{";
+    for (int i = 0; i < G4_MAX_SRCS; i++)
+    {
+        bool same_register = false;
+
+        if (isValidReg(firstRegCandidate[i]))
+        {
+            for (int j = 0; j < i; j++)
+            {
+                if (isValidReg(firstRegCandidate[j]) && j != i)
+                {
+                    if (firstRegCandidate[j] == firstRegCandidate[i])
+                    {
+                        same_register = true;
+                        break;
+                    }
+                }
+            }
+
+            if (same_register)
+            {
+                continue;
+            }
+
+            int bundleID = (firstRegCandidate[i] % 64) / 4;
+            if (isTGLLP)
+            {
+                bundleID = (firstRegCandidate[i] % 16) / 2;
+            }
+
+            int bankID = (firstRegCandidate[i] % 4) / 2;
+            if (zeroOne)
+            {
+                bankID = (firstRegCandidate[i]) % 2;
+            }
+
+            //Same bank and same bundle
+            if (bundles[bankID][bundleID] != -1)  //Same bank and same bundle
+            {
+                conflictTimes++;
+            }
+
+            bundles[bankID][bundleID] = i;
+            bankSrcs[bankID]++;
+            if (bankID == 0)
+            {
+                output << "E:";
+            }
+            else
+            {
+                output << "O:";
+            }
+            output << bundleID << ",";
+        }
+    }
+
+    //Same bank but different bundles
+    if (conflictTimes == 0 &&
+        (bankSrcs[0] > 2 ||
+            bankSrcs[1] > 2))
+    {
+        conflictTimes++;
+        sameBankConflicts++;
+    }
+    else if (bankSrcs[0] > 2 ||
+        bankSrcs[1] > 2)
+    {
+        sameBankConflicts++;
+    }
+
+    output << "}, ";
+
+    return conflictTimes;
+}
+
+/*
+ * Gen12 BC evaluation
+ * In Gen12, there are 8 bundles and 2 banks per HW thread.
+ * Banks are divided according to EVEN/ODD of register index: 0101010101010101
+ * There are 8 bundles per 16 registers:  0011223344556677
+ * For two adjacent instructions: inst1 and inst2,  inst1_src1(, inst1_src2) and inst2_src0 will be read in same cycle
+ * Considered HW swap and read suppresion mechanisms
+ * HW swap:
+ *     The origional GRF register reading sequence for a three source instruction is: src0 in cycle0 and src1 and src2 in cycle2.
+ *     HW swap mechanism detects the conflict between src1 and src2, if there is a conflict,  HW will read src1 in cycle0 and src0 and src2 in cycle1.
+ *     Note that:
+ *     1. for SIMD16, HW swap only happens when detecting conflicts in first simd8's registers. conflict in second simd8 will not trigger swap.
+ *     2. for SIMD16, when swapping happens, the src1 and src0 of both simd8 instructions will be swapped.
+ * Read suppression between instructions:
+ *     The read suppression mechanism is used to save the GRF register reading operations with a register cache in HW. The suppression we talked here
+ *     is the suppression between instructions. For each source operand slot, HW provide a GRF cache. With the cache, if the same GRF will be read in
+ *     the instruction, the read will not happen, the cached value will be used directly.
+ *     Note that:
+ *     1. The cache will only buffer the latest GRF which was read
+ *     2. The cache will be flushed if the buffered register is used as destination operand.
+ *     3. For SIMD16, if one source is scalar, the read suppression doen't happen, no matter within the SIMD16 instruction or with the following instruction.
+ *     4. The read suppression between instructions only happens in src1 and src2
+ *     5. 2 GRFs read suppression for src1 and 1 GRF read suppression for src0 and src2.
+ * Read suppression within a instruction:
+ *     1. Works for all source operands.
+ *
+ * suppressRegs is used as the read suppression buffer
+ * lastDst is used to keep dst register of last instruction. It's used to clear read suppression buffer. Once a register is defined, it's not buffered anymore
+ * lastRegs is used to keep the src1 and src2 of last instruction, in case there is conflict with current instruction GRF read
+ */
+uint32_t G4_BB::emitBankConflictGen12(std::ostream& os_output, G4_INST *inst, int *suppressRegs, int &sameConflictTimes, int &twoSrcConflicts, int &simd16RS, bool zeroOne, bool isTGLLP)
+{
+    std::stringstream output;
+
+    parent->G12BCStats.addSIMD8();
+
+    if (inst->isSend() || inst->isMath() ||
+        inst->isSWSBSync() ||
+        inst->isWait() ||
+        inst->isReturn() || inst->isCall())
+    { //Flush
+        for (int i = 0; i < 4; i++)
+        {
+            setInValidReg(suppressRegs[i]);
+        }
+        return 0;
+    }
+
+    int currInstRegs[2][G4_MAX_SRCS];
+    int currInstExecSize[G4_MAX_SRCS] = {0};
+    int firstRegCandidate[G4_MAX_SRCS];
+    int secondRegCandidate[G4_MAX_SRCS];
+    bool isScalar[G4_MAX_SRCS];
+    int candidateNum = 0;
+    int dstExecSize = 0;
+    int dstRegs[2];
+
+    for (int i = 0; i < G4_MAX_SRCS; i++)
+    {
+        setInValidReg(firstRegCandidate[i]);
+        setInValidReg(secondRegCandidate[i]);
+        setInValidReg(currInstRegs[0][i]);
+        setInValidReg(currInstRegs[1][i]);
+        isScalar[i] = false;
+    }
+    setInValidReg(dstRegs[0]);
+    setInValidReg(dstRegs[1]);
+
+    bool instSplit = false;
+
+    //Get Dst
+    G4_DstRegRegion* dstOpnd = inst->getDst();
+    if (dstOpnd &&
+        !dstOpnd->isIndirect() &&
+        dstOpnd->isGreg())
+    {
+        dstExecSize = dstOpnd->getLinearizedEnd() - dstOpnd->getLinearizedStart() + 1;
+        uint32_t byteAddress = dstOpnd->getLinearizedStart();
+        dstRegs[0] = byteAddress / GENX_GRF_REG_SIZ;
+        if (dstExecSize > 32)
+        {
+            dstRegs[1] = dstRegs[0] + (dstExecSize + GENX_GRF_REG_SIZ - 1) / GENX_GRF_REG_SIZ - 1;
+            instSplit = true;
+        }
+    }
+
+    //Get src
+    for (int i = 0; i < inst->getNumSrc(); i++)
+    {
+        setInValidReg(currInstRegs[0][i]);
+        setInValidReg(currInstRegs[1][i]);
+        G4_Operand * srcOpnd = inst->getSrc(i);
+        if (srcOpnd)
+        {
+            if (srcOpnd->isSrcRegRegion() &&
+                srcOpnd->asSrcRegRegion()->getBase() &&
+                srcOpnd->asSrcRegRegion()->getBase()->isRegVar())
+            {
+                G4_RegVar* baseVar = static_cast<G4_RegVar*>(srcOpnd->asSrcRegRegion()->getBase());
+                currInstExecSize[i] = srcOpnd->getLinearizedEnd() - srcOpnd->getLinearizedStart() + 1;
+                if (baseVar->isGreg()) {
+                    uint32_t byteAddress = srcOpnd->getLinearizedStart();
+                    currInstRegs[0][i] = byteAddress / GENX_GRF_REG_SIZ;
+
+                    if (currInstExecSize[i] > 32)
+                    {
+                        currInstRegs[1][i] = currInstRegs[0][i] + 1;// (currInstExecSize[i] + GENX_GRF_REG_SIZ - 1) / GENX_GRF_REG_SIZ - 1;
+                        instSplit = true;
+                    }
+                    else if (srcOpnd->asSrcRegRegion()->isScalar()) //No Read suppression for SIMD 16/scalar src
+                    {
+                        currInstRegs[1][i] = currInstRegs[0][i];
+                        isScalar[i] = true;
+                    }
+                    else
+                    {
+                        setInValidReg(currInstRegs[1][i]);
+                    }
+                }
+            }
+        }
+    }
+
+    if (instSplit)
+    {
+        parent->G12BCStats.addSIMD8();
+    }
+
+    bool lastInstSplit = suppressRegs[4] == 1;
+
+    if (instSplit != lastInstSplit)
+    {
+        for (int i = 0; i < 4; i++)
+        {
+            setInValidReg(suppressRegs[i]);
+        }
+    }
+    else
+    {
+        //Read Suppression for current instruction
+        output << " R{";
+        for (int i = 0; i < 3; i++)
+        {
+            if (instSplit && i != 1)
+            {
+                continue;
+            }
+
+            if (!instSplit && i == 1)
+            {
+                continue;
+            }
+
+            if (isValidReg(suppressRegs[i]) &&
+                currInstRegs[0][i] == suppressRegs[i] && !isScalar[i])
+            {
+                setInValidReg(currInstRegs[0][i]);
+                setInValidReg(currInstRegs[1][i]);
+                output << "r" << suppressRegs[i] << ",";
+            }
+        }
+        output << "}";
+    }
+
+    if (instSplit)
+    {
+        suppressRegs[4] = 1;
+    }
+    else
+    {
+        suppressRegs[4] = 0;
+    }
+
+    //Kill all previous read suppression candiadte if it wrote in DST
+    if (isValidReg(dstRegs[0]))
+    {
+        for (int i = 0; i < 4; i++)
+        {
+            if (suppressRegs[i] == dstRegs[0])
+            {
+                setInValidReg(suppressRegs[i]);
+            }
+        }
+    }
+
+    //No suppression, update the suppressRegs[0] for gen12lp
+    //suppressRegs[1], suppressRegs[2] will be updated with next instruction
+    int conflictTimes = 0;
+    for (int i = 0; i < 3; i++)
+    {
+        if (isValidReg(currInstRegs[0][i]))
+        {
+            firstRegCandidate[candidateNum] = currInstRegs[0][i];
+            candidateNum++;
+        }
+    }
+
+    if (candidateNum > 1)
+    {
+        conflictTimes = getConflictTimesForTGL(output, firstRegCandidate, sameConflictTimes, zeroOne, isTGLLP);
+        if (candidateNum == 2)
+        {
+            twoSrcConflicts += conflictTimes;
+        }
+    }
+
+    if (instSplit)
+    {
+        if (isValidReg(dstRegs[1]))
+        {
+            for (int i = 0; i < 4; i++)
+            {
+                if (suppressRegs[i] == dstRegs[1])
+                {
+                    setInValidReg(suppressRegs[i]);
+                }
+            }
+        }
+
+        candidateNum = 0;
+        //For SIMD8, if any GRF0 of src1 or src2 of inst1 is GRF register
+        for (int i = 0; i < 3; i++)
+        {
+            if (isValidReg(currInstRegs[1][i]))
+            {
+                secondRegCandidate[candidateNum] = currInstRegs[1][i];
+                candidateNum++;
+            }
+        }
+
+        if (candidateNum > 1)
+        {
+            int c = 0;
+            c = getConflictTimesForTGL(output, secondRegCandidate, sameConflictTimes, zeroOne, isTGLLP);
+            conflictTimes += c;
+            if (candidateNum == 2)
+            {
+                twoSrcConflicts += c;
+            }
+            if (currInstExecSize[0] <= 16 || currInstExecSize[1] <= 16 || currInstExecSize[2] <= 16)
+            {
+                simd16RS += c;
+            }
+        }
+    }
+
+    for (int i = 0; i < 3; i++)
+    {
+        if (isValidReg(currInstRegs[0][i]))
+        {
+            suppressRegs[i] = currInstRegs[0][i];
+        }
+    }
+
+    if (conflictTimes != 0)
+    {
+        output << " {";
+        output << "BC=";
+        output << conflictTimes;
+        output << "}";
+        os_output  << output.str();
+    }
+
+    return conflictTimes;
+}
 
 uint32_t G4_BB::emitBankConflictGen12lp(std::ostream& os_output, G4_INST *inst, int *suppressRegs, int *lastRegs, int &sameConflictTimes, int &twoSrcConflicts, int &simd16RS)
 {
@@ -4617,7 +4972,14 @@ void G4_BB::emitBasicInstructionIga(char* instSyntax, std::ostream& output, INST
             int twoSrcConflicts = 0;
             int simd16SuppressionConflicts = 0;
             unsigned BCNum = 0;
-            BCNum = emitBankConflictGen12lp(output, inst, suppressRegs, lastRegs, sameBankConflicts, twoSrcConflicts, simd16SuppressionConflicts);
+            if (getGenxPlatform() == GENX_TGLLP && GetStepping() == Step_A)
+            {
+                BCNum = emitBankConflictGen12lp(output, inst, suppressRegs, lastRegs, sameBankConflicts, twoSrcConflicts, simd16SuppressionConflicts);
+            }
+            else
+            {
+                BCNum = emitBankConflictGen12(output, inst, suppressRegs, sameBankConflicts, twoSrcConflicts, simd16SuppressionConflicts, false, true);
+            }
             parent->G12BCStats.addBC(BCNum);
             parent->G12BCStats.addSameBankBC(sameBankConflicts);
             parent->G12BCStats.add2SrcBC(twoSrcConflicts);
