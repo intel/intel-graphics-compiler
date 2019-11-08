@@ -852,8 +852,10 @@ void ConstantCoalescing::MergeScatterLoad(Instruction* load,
 
 Value* ConstantCoalescing::FormChunkAddress(BufChunk* chunk)
 {
-    assert(chunk->bufIdxV);
-    WIAnalysis::WIDependancy uniformness = wiAns->whichDepend(chunk->bufIdxV);
+    assert((chunk->bufIdxV || chunk->baseIdxV) && "at least one!");
+    WIAnalysis::WIDependancy uniformness = chunk->bufIdxV ?
+        wiAns->whichDepend(chunk->bufIdxV) :
+        wiAns->whichDepend(chunk->baseIdxV);
     Value* eac = chunk->baseIdxV;
     if (chunk->chunkStart && chunk->baseIdxV)
     {
@@ -866,8 +868,10 @@ Value* ConstantCoalescing::FormChunkAddress(BufChunk* chunk)
             uniformness = WIAnalysis::RANDOM;
         }
     }
-    Value* bufsrc = chunk->bufIdxV;
-    if (chunk->bufIdxV->getType()->isPointerTy())
+    Value* bufsrc = chunk->bufIdxV ?
+        chunk->bufIdxV :
+        ConstantInt::get(chunk->baseIdxV->getType(), 0);
+    if (bufsrc->getType()->isPointerTy())
     {
         Type* ptrIntTy = dataLayout->getIntPtrType(cast<PointerType>(chunk->bufIdxV->getType()));
         bufsrc = irBuilder->CreatePtrToInt(chunk->bufIdxV, ptrIntTy);
