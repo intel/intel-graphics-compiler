@@ -8063,7 +8063,7 @@ public:
     // ToDo: add fence only when the writes can reach EOT without a fence in between
     void Optimizer::insertFenceBeforeEOT()
     {
-        if (!builder.getOption(vISA_clearHDCWritesBeforeEOT))
+        if (!builder.needFenceBeforeEOT() || !builder.getOption(vISA_clearHDCWritesBeforeEOT))
         {
             return;
         }

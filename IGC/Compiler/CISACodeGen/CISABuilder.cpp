@@ -3812,13 +3812,7 @@ namespace IGC
         SaveOption(vISA_clearScratchWritesBeforeEOT, true);
     }
 
-    bool clearHDCWritesBeforeEOT = m_program->m_DriverInfo->UsesSparseAliasedResidency() &&
-        context->platform.WaInsertHDCFenceBeforeEOTWhenSparseAliasedResources();
-    clearHDCWritesBeforeEOT |= context->type == ShaderType::PIXEL_SHADER &&
-        context->platform.NeedsHDCFenceBeforeEOTInPixelShader();
-    clearHDCWritesBeforeEOT |= IGC_IS_FLAG_ENABLED(ForceMemoryFenceBeforeEOT);
-
-    if (clearHDCWritesBeforeEOT)
+    if (context->type == ShaderType::PIXEL_SHADER)
     {
         SaveOption(vISA_clearHDCWritesBeforeEOT, true);
     }
