@@ -73,7 +73,7 @@ else()
       set(IGC_API_PATCH_VERSION 1)
 endif()
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 
 # ======================================================================================================
@@ -2372,7 +2372,7 @@ if(MSVC)
       ALIAS CompileAsDefault           CompileAs REMOVE_GROUP
       ALIAS DebugInfoDisabled          DebugInfoFormat REMOVE_GROUP
       ALIAS DebugInfoProgramDatabase   "/Zi"
-      ALIAS DisableSpecificWarnings    "/wd4267" "/wd4273" "/wd4091"
+      ALIAS DisableSpecificWarnings    "/wd4267" "/wd4273" "/wd4091" "/wd4996"
       ALIAS ExceptionsDisabled         Exceptions REMOVE_GROUP
       ALIAS ExceptionsEnabled          "/EHsc"
       ALIAS FaviorSize                 "/Os"
