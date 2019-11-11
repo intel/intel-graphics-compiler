@@ -126,6 +126,7 @@ namespace IGC
 
         FuncInfoToImpArgMap     m_FuncInfoToImpArgMap;
         FuncImpToExpNumMap      m_FuncImpToExpNumMap;
+        std::vector<ImplicitArg::ArgType> m_IndirectImplicitArgs;
     };
 
 } // namespace IGC

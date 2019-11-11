@@ -1131,34 +1131,29 @@ namespace IGC
             }
             assert(match && "no pattern found for GenISA intrinsic");
         }
-        else if (Function * Callee = I.getCalledFunction())
+        else
         {
-            // Only match direct calls and skip declarations.
-            if (!Callee->isDeclaration())
-            {
-                match = MatchSingleInstruction(I);
-            }
-        }
-        else if (!I.getCalledFunction())
-        {
-            // Match inline asm or indirect call
+            Function* Callee = I.getCalledFunction();
+
+            // Match inline asm
             if (I.isInlineAsm())
             {
                 if (getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->m_DriverInfo.SupportInlineAssembly())
                 {
                     match = MatchSingleInstruction(I);
                 }
-                else
-                {
-                    return;
-                }
             }
-            else if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer))
+            // Match indirect call, support declarations for indirect funcs
+            else if (!Callee || Callee->hasFnAttribute("IndirectlyCalled"))
+            {
+                match = MatchSingleInstruction(I);
+            }
+            // Match direct call, skip declarations
+            else if (!Callee->isDeclaration())
             {
                 match = MatchSingleInstruction(I);
             }
         }
-
         assert(match && "no match for this call");
     }
 

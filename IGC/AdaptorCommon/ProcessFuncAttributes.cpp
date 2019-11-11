@@ -215,6 +215,21 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         }
     }
 
+    // lambda for setting indirect function attributes
+    auto SetIndirectFuncAttributes = [this](Function* F)->void
+    {
+        F->addFnAttr("IndirectlyCalled");
+        F->addFnAttr("visaStackCall");
+        // Require global relocation if any global values are used in indirect functions, since we cannot pass implicit args
+        F->addFnAttr("EnableGlobalRelocation");
+
+        if (IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_FORCE_INDIRECTCALL)
+        {
+            F->removeFnAttr(llvm::Attribute::AlwaysInline);
+            F->addFnAttr(llvm::Attribute::NoInline);
+        }
+    };
+
     // 1. Set function's linkage type to InternalLinkage (C's static) so that
     //    LLVM can remove the dead functions asap, which saves compiling time.
     //    Only non-kernel function with function bodies are set.
@@ -229,6 +244,12 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         {
             if (F->getName() == "__translate_sampler_initializer")
                 F->addFnAttr(llvm::Attribute::ReadOnly);
+            if (F->hasFnAttribute("referenced-indirectly"))
+            {
+                pCtx->m_enableFunctionPointer = true;
+                SetIndirectFuncAttributes(F);
+            }
+
             // It is not a defined function
             continue;
         }
@@ -382,22 +403,14 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                 if (isExtern || isIndirect)
                 {
                     pCtx->m_enableFunctionPointer = true;
-                    F->addFnAttr("IndirectlyCalled");
-                    // Require global relocation if any global values are used in indirect functions, since we cannot pass implicit args
-                    F->addFnAttr("EnableGlobalRelocation");
+                    SetIndirectFuncAttributes(F);
 
-                    if(istrue == false)
-                        F->addFnAttr("visaStackCall");
+                    if(istrue)
+                        F->removeFnAttr("visaStackCall");
 
                     if (isExtern)
                     {
                         F->setLinkage(GlobalValue::ExternalLinkage);
-                    }
-
-                    if (IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_FORCE_INDIRECTCALL)
-                    {
-                        F->removeFnAttr(llvm::Attribute::AlwaysInline);
-                        F->addFnAttr(llvm::Attribute::NoInline);
                     }
                 }
             }

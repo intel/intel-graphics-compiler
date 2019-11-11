@@ -107,9 +107,6 @@ static bool ExistUndefinedReferencesInModule(Module& module, std::string& errorM
             {
                 if (F.hasFnAttribute("referenced-indirectly"))
                 {
-                    F.addFnAttr("visaStackCall");
-                    F.addFnAttr("IndirectlyCalled");
-                    F.setLinkage(GlobalValue::ExternalLinkage);
                     continue;
                 }
                 strStream << msg << funcName << "()'\n";

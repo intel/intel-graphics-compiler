@@ -563,12 +563,12 @@ void GenXFunctionGroupAnalysis::addIndirectFuncsToKernelGroup(llvm::Module* pMod
     }
     for (auto F : indirectFuncs)
     {
-        // Mark caller group if it directly calls an indirect function
+        // Mark caller group if it uses an indirect function
         for (auto U : F->users())
         {
-            if (CallInst * CI = dyn_cast<CallInst>(U))
+            if (Instruction * I = dyn_cast<Instruction>(U))
             {
-                Function* Caller = CI->getParent()->getParent();
+                Function* Caller = I->getParent()->getParent();
                 getGroup(Caller)->m_hasExternFCall = true;
             }
         }

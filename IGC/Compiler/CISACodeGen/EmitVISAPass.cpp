@@ -243,7 +243,7 @@ bool EmitPass::canCompileCurrentShader(llvm::Function& F)
     CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
     // If uses subroutines, we can only compile a single SIMD mode
-    if (m_FGA && !m_FGA->getGroup(&F)->isSingle())
+    if (m_FGA && (!m_FGA->getGroup(&F)->isSingle() || m_FGA->getGroup(&F)->hasExternFCall()))
     {
         // default SIMD8
         SIMDMode compiledSIMD = SIMDMode::SIMD8;
@@ -8698,13 +8698,13 @@ void EmitPass::emitStackAlloca(GenIntrinsicInst* GII)
 void EmitPass::emitCall(llvm::CallInst* inst)
 {
     llvm::Function* F = inst->getCalledFunction();
-    if (F) assert(!F->empty() && "unexpanded builtin?");
-
-    if (!F || (m_FGA && m_FGA->useStackCall(F)))
+    if (!F || F->hasFnAttribute("IndirectlyCalled") || (m_FGA && m_FGA->useStackCall(F)))
     {
         emitStackCall(inst);
         return;
     }
+
+    assert(!F->empty() && "unexpanded builtin?");
 
     unsigned i = 0;
     for (auto& Arg : F->args())
@@ -8834,7 +8834,6 @@ uint EmitPass::stackCallArgumentAlignment(CVariable* argv)
 void EmitPass::emitStackCall(llvm::CallInst* inst)
 {
     llvm::Function* F = inst->getCalledFunction();
-    if (F) assert(!F->empty() && "unexpanded builtin?");
 
     CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     bool isIndirectFCall = !F || F->hasFnAttribute("IndirectlyCalled");
@@ -9040,8 +9039,8 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
 
         if (funcAddr->IsUniform())
         {
-            CVariable* truncAddr = TruncatePointer(funcAddr);
-            m_encoder->IndirectStackCall(nullptr, truncAddr, argSizeInGRF, retSizeInGRF);
+            funcAddr = TruncatePointer(funcAddr);
+            m_encoder->IndirectStackCall(nullptr, funcAddr, argSizeInGRF, retSizeInGRF);
             m_encoder->Push();
         }
         else
@@ -9057,6 +9056,7 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
 
             // Get the first active lane's function address
             CVariable* offset = nullptr;
+            funcAddr = TruncatePointer(funcAddr);
             CVariable* uniformAddr = UniformCopy(funcAddr, offset, eMask);
             // Set the predicate to true for all lanes with the same address
             CVariable* flag = m_currShader->ImmToVariable(0, ISA_TYPE_BOOL);
@@ -9064,8 +9064,7 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
             m_encoder->Push();
 
             // Indirect call for all lanes set by the flag
-            CVariable* truncAddr = TruncatePointer(uniformAddr);
-            m_encoder->IndirectStackCall(flag, truncAddr, argSizeInGRF, retSizeInGRF);
+            m_encoder->IndirectStackCall(flag, uniformAddr, argSizeInGRF, retSizeInGRF);
             m_encoder->Push();
 
             // Unset the bits in execution mask for lanes that were called
