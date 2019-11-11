@@ -2149,6 +2149,7 @@ static bool isLegalImmType(G4_Type type)
 // 4. byte src to if/while instructions
 // 5. src with modifier to logic inst on BDW
 // 6. When useinst is lifetime.end
+// 7. use inst does not have dst
 bool G4_INST::canPropagateTo(G4_INST *useInst, Gen4_Operand_Number opndNum, MovType MT, bool inSimdFlow)
 {
     G4_Operand *src = srcs[0];
@@ -2174,6 +2175,10 @@ bool G4_INST::canPropagateTo(G4_INST *useInst, Gen4_Operand_Number opndNum, MovT
     {
         return false;
     }
+
+    // skip the instruction has no dst. e.g. G4_pseudo_fcall
+    if (useInst->getDst() == nullptr)
+        return false;
 
     if (isMixedMode())
     {
