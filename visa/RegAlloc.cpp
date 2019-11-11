@@ -1834,6 +1834,9 @@ bool LivenessAnalysis::writeWholeRegion(G4_BB* bb,
         return false;
     }
 
+    if (inst->isFCall())
+        return true;
+
     // Flags may be partially written when used as the destination
     // e.g., setp (M5_NM, 16) P11 V97(8,0)<0;1,0>
     // It can be only considered as a complete kill
