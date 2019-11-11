@@ -437,19 +437,22 @@ int CISA_IR_Builder::AddFunction(VISAFunction *& function, const char* functionN
 // default size of the physical reg pool mem manager in bytes
 #define PHY_REG_MEM_SIZE   (16*1024)
 
-typedef struct fcallState
+struct FCallState
 {
     G4_INST* fcallInst;
     G4_Operand* opnd0;
     G4_Operand* opnd1;
     G4_BB* retBlock;
     unsigned int execSize;
-} fcallState;
+};
 
-typedef std::vector<std::pair<G4_Kernel*, fcallState>> savedFCallStates;
-typedef savedFCallStates::iterator savedFCallStatesIter;
+struct SavedFCallStates
+{
+    std::vector<std::pair<G4_Kernel*, FCallState>> states;
+    std::vector<G4_BB*> retbbs;
+};
 
-void saveFCallState(G4_Kernel* kernel, savedFCallStates& savedFCallState)
+void saveFCallState(G4_Kernel* kernel, SavedFCallStates& savedFCallState)
 {
     // Iterate over all BBs in kernel.
     // For each fcall seen, store its opnd0, opnd1, retBlock.
@@ -457,6 +460,7 @@ void saveFCallState(G4_Kernel* kernel, savedFCallStates& savedFCallState)
     // the IR can be reused for another kernel rather than
     // recompiling.
     // kernel points to a stackcall function.
+    std::set<G4_BB*> calledFrets;
     for (auto curBB : kernel->fg)
     {
         if( curBB->size() > 0 && curBB->isEndWithFCall() )
@@ -464,7 +468,7 @@ void saveFCallState(G4_Kernel* kernel, savedFCallStates& savedFCallState)
             // Save state for this fcall
             G4_INST* fcallInst = curBB->back();
 
-            fcallState currFCallState;
+            FCallState currFCallState;
 
             currFCallState.fcallInst = fcallInst;
             currFCallState.opnd0 = fcallInst->getSrc(0);
@@ -472,12 +476,17 @@ void saveFCallState(G4_Kernel* kernel, savedFCallStates& savedFCallState)
             currFCallState.retBlock = curBB->Succs.front();
             currFCallState.execSize = fcallInst->getExecSize();
 
-            savedFCallState.push_back( std::make_pair( kernel, currFCallState ) );
+            savedFCallState.states.push_back( std::make_pair( kernel, currFCallState ) );
+            calledFrets.insert(currFCallState.retBlock);
+        }
+        if (curBB->size() > 0 && curBB->isEndWithFRet() && !calledFrets.count(curBB))
+        {
+            savedFCallState.retbbs.push_back(curBB);
         }
     }
 }
 
-void restoreFCallState(G4_Kernel* kernel, savedFCallStates& savedFCallState)
+void restoreFCallState(G4_Kernel* kernel, SavedFCallStates savedFCallState)
 {
     // Iterate over all BBs in kernel and fix all fcalls converted
     // to calls by reconverting them to fcall. This is required
@@ -486,7 +495,7 @@ void restoreFCallState(G4_Kernel* kernel, savedFCallStates& savedFCallState)
     // start, end iterators denote boundaries in vector that correspond
     // to current kernel. This assumes that entries for different
     // functions are not interspersed.
-    savedFCallStatesIter start = savedFCallState.begin(), end = savedFCallState.end();
+    auto start = savedFCallState.states.begin(), end = savedFCallState.states.end();
 
     for( BB_LIST_ITER bb_it = kernel->fg.begin();
         bb_it != kernel->fg.end();
@@ -498,7 +507,7 @@ void restoreFCallState(G4_Kernel* kernel, savedFCallStates& savedFCallState)
             curBB->back()->isCall() )
         {
             // Check whether this call is a convert from fcall
-            for( savedFCallStatesIter state_it = start;
+            for( auto state_it = start;
                 state_it != end;
                 state_it++ )
             {
@@ -539,6 +548,15 @@ void restoreFCallState(G4_Kernel* kernel, savedFCallStates& savedFCallState)
                 }
             }
         }
+    }
+
+    for (G4_BB* retBB : savedFCallState.retbbs)
+    {
+        G4_INST* retToReplace = retBB->back();
+
+        retToReplace->setOpcode(G4_pseudo_fret);
+        retToReplace->setDest(NULL);
+
     }
 
     // Remove all in-edges to stack call function. These may have been added
@@ -899,7 +917,7 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
             }
         }
 
-        savedFCallStates savedFCallState;
+        SavedFCallStates savedFCallState;
 
         for(std::list<VISAKernelImpl*>::iterator kernel_it = kernels.begin(), kend = kernels.end();
             kernel_it != kend;
