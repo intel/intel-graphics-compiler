@@ -2081,7 +2081,7 @@ G4_INST* SWSB::insertSyncAllWRInstruction(G4_BB* bb, unsigned int SBIDs, INST_LI
     return syncInst;
 }
 
-void SWSB::insertSyncToken(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_ITER inst_it, int newInstID, BitSet* dstTokens, BitSet* srcTokens, bool removeAllToken)
+bool SWSB::insertSyncToken(G4_BB *bb, SBNode *node, G4_INST *inst, INST_LIST_ITER inst_it, int newInstID, BitSet *dstTokens, BitSet *srcTokens, bool removeAllToken)
 {
     //Non-test instruction can only have
     // 1. non-send: one Dst Token with distance, or
@@ -2097,6 +2097,8 @@ void SWSB::insertSyncToken(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_ITE
     unsigned short dstToken = (unsigned short)-1;
     unsigned short srcToken = (unsigned short)-1;
     SWSBTokenType type = G4_INST::SWSBTokenType::TOKEN_NONE;
+    bool insertedSync = false;
+
     for (unsigned int i = 0; i < node->GetInstruction()->getDepTokenNum();)
     {
         G4_INST* synAllInst = nullptr;
@@ -2212,6 +2214,7 @@ void SWSB::insertSyncToken(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_ITE
             synInst->setDepToken(dstToken, SWSBTokenType::AFTER_WRITE);
         }
         synInst->setLexicalId(newInstID);
+        insertedSync = true;
     }
 
     if (src)
@@ -2230,23 +2233,58 @@ void SWSB::insertSyncToken(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_ITE
             synInst->setDepToken(srcToken, SWSBTokenType::AFTER_READ);
         }
         synInst->setLexicalId(newInstID);
+        insertedSync = true;
     }
 
-    return;
+    return insertedSync;
 }
 
 
-void SWSB::insertSync(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_ITER inst_it, int newInstID, BitSet* dstTokens, BitSet* srcTokens, bool hasDistOneAreg)
+void SWSB::insertSync(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_ITER inst_it, int newInstID, BitSet* dstTokens, BitSet* srcTokens)
 {
-    G4_INST* syncInst = nullptr;
-    if (hasDistOneAreg)
+    //The inst after arch register instruction.
+    bool insertedSync = false;
+    INST_LIST_ITER prevIt = inst_it;
+    if (node->followDistOneAreg())
     {
-        syncInst = insertSyncInstructionAfter(bb, inst_it, inst->getCISAOff(), inst->getLineNo());
-        syncInst->setDistance(1);
+        prevIt--;
+    }
+
+    //Architecture register instruction
+    bool hasValidNextInst = false;
+    if (node->hasDistOneAreg())
+    {
+        INST_LIST_ITER nextIt = inst_it;
+        nextIt++;
+        if (nextIt != bb->getInstList().end())
+        {
+            G4_INST *nextInst = *nextIt;
+            if (tokenHonourInstruction(nextInst) ||
+                distanceHonourInstruction(nextInst))
+            {
+                hasValidNextInst = true;
+            }
+        }
     }
 
     {
-        insertSyncToken(bb, node, inst, inst_it, newInstID, dstTokens, srcTokens, false);
+        insertedSync = insertSyncToken(bb, node, inst, inst_it, newInstID, dstTokens, srcTokens, false);
+    }
+
+    if (node->followDistOneAreg() && insertedSync)
+    {
+        G4_INST* syncInst = nullptr;
+
+        syncInst = insertSyncInstructionAfter(bb, prevIt, inst->getCISAOff(), inst->getLineNo());
+        syncInst->setDistance(1);
+    }
+
+    if (node->hasDistOneAreg() && !hasValidNextInst)
+    {
+        G4_INST* syncInst = nullptr;
+
+        syncInst = insertSyncInstructionAfter(bb, inst_it, inst->getCISAOff(), inst->getLineNo());
+        syncInst->setDistance(1);
     }
 }
 
@@ -2349,7 +2387,7 @@ void SWSB::insertTest()
             }
             if (fusedSync)
             {
-                insertSync(bb, node, inst, inst_it, newInstID, &dstTokens, &srcTokens, node->hasDistOneAreg());
+                insertSync(bb, node, inst, inst_it, newInstID, &dstTokens, &srcTokens);
                 inst->setLexicalId(newInstID);
                 newInstID++;
 
@@ -2365,7 +2403,7 @@ void SWSB::insertTest()
                     srcTokens.set(inst->getToken(), false);
                 }
                 //tmp_it keeps the postion to insert new generated instructions.
-                insertSync(bb, node, inst, tmp_it, newInstID, &dstTokens, &srcTokens, false);
+                insertSync(bb, node, inst, tmp_it, newInstID, &dstTokens, &srcTokens);
                 unsigned short token = inst->getToken();
                 if (token != (unsigned short)UNKNOWN_TOKEN)
                 {
@@ -2376,7 +2414,7 @@ void SWSB::insertTest()
             }
             else
             {
-                insertSync(bb, node, inst, inst_it, newInstID, &dstTokens, &srcTokens, node->hasDistOneAreg());
+                insertSync(bb, node, inst, inst_it, newInstID, &dstTokens, &srcTokens);
             }
 
             if (inst->getToken() != (unsigned short)UNKNOWN_TOKEN)
@@ -3348,6 +3386,7 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
         if (hasFollowDistOneAReg)
         {
             node->setDistance(1);
+            node->setFollowDistOneAReg();
             hasFollowDistOneAReg = false;
         }
 
@@ -3358,7 +3397,6 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
         {
             node->setDistance(1);
             node->setDistOneAReg();
-
         }
 
 

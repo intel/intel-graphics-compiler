@@ -255,6 +255,7 @@ namespace vISA
         bool          hasAW;          // Used for global analysis, if has AW (RAW or WAW) dependencies from the node
         bool          hasAR;          // Used for global analysis, if has AR (WAR) dependencies from the node
         bool          hasFollowDistOneAReg;
+        bool          followDistOneAReg;
 
     public:
         std::vector<G4_INST *> instVec;
@@ -384,10 +385,15 @@ namespace vISA
         {
             hasFollowDistOneAReg = true;
         }
+        void setFollowDistOneAReg()
+        {
+            followDistOneAReg = true;
+        }
 
         bool hasAWDep() { return hasAW; }
         bool hasARDep() { return hasAR; }
         bool hasDistOneAreg() { return hasFollowDistOneAReg; }
+        bool followDistOneAreg() { return followDistOneAReg; }
 
         void setFootprint(SBFootprint *footprint, Gen4_Operand_Number opndNum)
         {
@@ -1040,8 +1046,8 @@ namespace vISA
         //Assign Token
         void assignToken(SBNode *node, unsigned short token, uint32_t &tokenReuseCount, uint32_t &AWTokenReuseCount, uint32_t &ARTokenReuseCount, uint32_t &AATokenReuseCount);
         void assignDepToken(SBNode *node);
-        void insertSyncToken(G4_BB *bb, SBNode *node, G4_INST *inst, INST_LIST_ITER inst_it, int newInstID, BitSet *dstTokens, BitSet *srcTokens, bool removeAllTokens);
-        void insertSync(G4_BB *bb, SBNode *node, G4_INST *inst, INST_LIST_ITER inst_it, int newInstID, BitSet *dstTokens, BitSet *srcTokens, bool hasDistOneAreg);
+        bool insertSyncToken(G4_BB *bb, SBNode *node, G4_INST *inst, INST_LIST_ITER inst_it, int newInstID, BitSet *dstTokens, BitSet *srcTokens, bool removeAllTokens);
+        void insertSync(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_ITER inst_it, int newInstID, BitSet* dstTokens, BitSet* srcTokens);
         void insertTest();
 
         //Insert sync instructions
