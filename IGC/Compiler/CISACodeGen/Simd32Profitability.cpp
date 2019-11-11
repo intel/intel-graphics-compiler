@@ -222,7 +222,8 @@ countOperands(Value* V, Value* LHS, Value* RHS) {
     if (!BO ||
         (BO->getOpcode() != Instruction::Add &&
             BO->getOpcode() != Instruction::Sub &&
-            BO->getOpcode() != Instruction::Shl))
+            BO->getOpcode() != Instruction::Shl &&
+            BO->getOpcode() != Instruction::Xor))
         return std::make_tuple(0, 0);
 
     if (BO->getOpcode() == Instruction::Shl) {
@@ -234,6 +235,16 @@ countOperands(Value* V, Value* LHS, Value* RHS) {
         uint64_t ShAmt = CI->getZExtValue();
         return std::make_tuple((L << ShAmt), (R << ShAmt));
     }
+
+    if (BO->getOpcode() == Instruction::Xor) {
+        ConstantInt* CI = dyn_cast<ConstantInt>(BO->getOperand(1));
+        if (!CI || CI->getSExtValue() != -1)
+            return std::make_tuple(0, 0);
+        int L, R;
+        std::tie(L, R) = countOperands(BO->getOperand(0), LHS, RHS);
+        return std::make_tuple(-L, -R);
+    }
+
 
     assert(BO->getOpcode() == Instruction::Add ||
         BO->getOpcode() == Instruction::Sub);
