@@ -2658,6 +2658,15 @@ void HWConformity::fixMULHInst( INST_LIST_ITER &i, G4_BB *bb )
         G4_Imm *newImm = builder.createImm(oldImm->getInt(), src0->getType());
         inst->setSrc(newImm, 1);
     }
+    else if (!IS_DTYPE(src1->getType()))
+    {
+        // this can happen due to vISA opt, convert them to src0 type which should be D/UD
+        // We use D as the tmp type to make sure we can represent all src1 values
+        auto isSrc1NonScalar = inst->getSrc(1)->isSrcRegRegion() && !inst->getSrc(1)->asSrcRegRegion()->isScalar();
+        auto newSrc = insertMovBefore(i, 1, Type_D, bb);
+        inst->setSrc(builder.createSrcRegRegion(Mod_src_undef, Direct, newSrc->getTopDcl()->getRegVar(), 0, 0,
+            isSrc1NonScalar ? builder.getRegionStride1() : builder.getRegionScalar(), src0->getType()), 1);
+    }
 
     //set implicit src/dst for mach
     const RegionDesc *rd = exec_size > 1 ? builder.getRegionStride1() : builder.getRegionScalar();
