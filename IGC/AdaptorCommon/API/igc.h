@@ -107,12 +107,13 @@ typedef enum {
 #define ValidFullStage2Modes(flag, ctx) (flag == FLAG_CG_STAGE2_REST_SIMDS && HasSimd(8, ctx))
 
 // Rest Stage2 CG would not generate duplicated simd 32 mode, and
-// simd 8 and simd 16 must be generated either from Stage1 or Stage2
+// simd 8 must be generated either from Stage1 or Stage2
+// When retry happends at simd 8 generation, we may not have simd 16
 #define ValidStage2Modes(flag, prev_ctx, ctx) ( \
     flag == FLAG_CG_STAGE2_REST_SIMDS && \
     (!HasSimd(32, prev_ctx) || !HasSimd(32, ctx)) && \
     (HasSimd(8,  prev_ctx) ^ HasSimd(8,  ctx)) && \
-    (HasSimd(16, prev_ctx) ^ HasSimd(16, ctx)) \
+    (IsRetry(prev_ctx) || (HasSimd(16, prev_ctx) ^ HasSimd(16, ctx))) \
     )
 
 #define ValidGeneratedModes(flag, prev_ctx, ctx) ( \

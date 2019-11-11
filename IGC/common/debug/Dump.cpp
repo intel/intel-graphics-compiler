@@ -114,6 +114,13 @@ DumpName DumpName::Extension(std::string const& extension) const
     return copy;
 }
 
+DumpName DumpName::StagedInfo(CG_FLAG_t cgFlag) const
+{
+    DumpName copy(*this);
+    copy.m_cgFlag = cgFlag;
+    return copy;
+}
+
 DumpName DumpName::SIMDSize(SIMDMode width) const
 {
     DumpName copy(*this);
@@ -299,6 +306,24 @@ std::string DumpName::AbsolutePath(OutputFolderName folder) const
         ss << (underscore ? "_" : "")
             << "simd"
             << numLanes(m_simdWidth.getValue());
+        underscore = true;
+    }
+    if (m_cgFlag.hasValue() && m_cgFlag.getValue() != FLAG_CG_ALL_SIMDS)
+    {
+        ss << (underscore ? "_" : "");
+        if (m_cgFlag.getValue() == FLAG_CG_STAGE1_FAST_COMPILE)
+        {
+            ss << "FastStage1";
+        }
+        else if (m_cgFlag.getValue() == FLAG_CG_STAGE1_BEST_PERF)
+        {
+            ss << "BestStage1";
+        }
+        else
+        {
+            assert(m_cgFlag.getValue() == FLAG_CG_STAGE2_REST_SIMDS);
+            ss << "RestStage2";
+        }
         underscore = true;
     }
     if(m_ShaderMode.hasValue())
@@ -661,6 +686,7 @@ DumpName GetDumpNameObj(IGC::CShader* pProgram, const char* ext)
     }
     dumpName = dumpName.DispatchMode(pProgram->m_ShaderDispatchMode);
     dumpName = dumpName.SIMDSize(pProgram->m_dispatchSize).Retry(context->m_retryManager.GetRetryId()).Extension(ext);
+    dumpName = dumpName.StagedInfo(context->m_CgFlag);
     return dumpName;
 }
 

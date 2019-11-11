@@ -37,6 +37,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/IR/Module.h>
 #include <llvm/ADT/Optional.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "AdaptorCommon/API/igc.h"
 
 #include <string>
 #include <vector>
@@ -78,6 +79,7 @@ public:
     DumpName ShaderName(std::string const& name) const;
     DumpName Type(ShaderType type) const;
     DumpName Extension(std::string const& extension) const;
+    DumpName StagedInfo(CG_FLAG_t cgFlag) const;
     DumpName SIMDSize(SIMDMode width) const;
     DumpName DispatchMode(ShaderDispatchMode mode) const;
     DumpName Hash(ShaderHash hash) const;
@@ -104,6 +106,7 @@ private:
     llvm::Optional<PixelShaderPhaseType> m_psPhase;
     llvm::Optional<std::string>         m_extension;
     llvm::Optional<SIMDMode>            m_simdWidth;
+    llvm::Optional<CG_FLAG_t>           m_cgFlag;
     llvm::Optional<ShaderDispatchMode>  m_ShaderMode;
     llvm::Optional<ShaderHash>          m_hash;
     llvm::Optional<std::string>         m_postfixStr;

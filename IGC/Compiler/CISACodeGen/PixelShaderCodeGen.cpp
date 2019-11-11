@@ -1146,11 +1146,17 @@ namespace IGC
             }
 
             CShader* simd16Program = m_parent->GetShader(SIMDMode::SIMD16);
-            if ((simd16Program == nullptr ||
-                simd16Program->ProgramOutput()->m_programBin == 0 ||
-                simd16Program->ProgramOutput()->m_scratchSpaceUsedBySpills > 0))
+            // We don't check simd16 if we have it in Stage1
+            // 1. The check of simd16 here is to disable simd32 if simd16 failed to be generated or spilled.
+            // 2. If we have simd16 in stage1, we are sure that simd16 has no spill so we won't need this check.
+            if (!HasSimd(16, ctx->m_StagingCtx))
             {
-                return false;
+                if ((simd16Program == nullptr ||
+                    simd16Program->ProgramOutput()->m_programBin == 0 ||
+                    simd16Program->ProgramOutput()->m_scratchSpaceUsedBySpills > 0))
+                {
+                    return false;
+                }
             }
 
             const PixelShaderInfo& psInfo = ctx->getModuleMetaData()->psInfo;
