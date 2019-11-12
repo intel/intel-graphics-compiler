@@ -41,6 +41,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/ADT/SmallVector.h>
+#include <llvm/Transforms/Utils/Local.h>
 #include "common/LLVMWarningsPop.hpp"
 
 #define MAX_ALLOCA_PROMOTE_GRF_NUM      48
@@ -72,6 +73,7 @@ namespace IGC {
             AU.addRequired<MetaDataUtilsWrapper>();
             AU.addRequired<CodeGenContextWrapper>();
             AU.addRequired<WIAnalysis>();
+            AU.addRequired<DominatorTreeWrapperPass>();
             AU.setPreservesCFG();
         }
 
@@ -95,14 +97,15 @@ namespace IGC {
         static char ID;
 
     private:
-        const llvm::DataLayout* m_pDL;
-        CodeGenContext* m_ctx;
-        std::vector<llvm::AllocaInst*>                       m_allocasToPrivMem;
-        RegisterPressureEstimate* m_pRegisterPressureEstimate;
-        llvm::Function* m_pFunc;
+        const llvm::DataLayout* m_pDL = nullptr;
+        CodeGenContext* m_ctx = nullptr;
+        DominatorTree* m_DT = nullptr;
+        std::vector<llvm::AllocaInst*> m_allocasToPrivMem;
+        RegisterPressureEstimate* m_pRegisterPressureEstimate = nullptr;
+        llvm::Function* m_pFunc = nullptr;
 
         /// Keep track of each BB affected by promoting MemtoReg and the current pressure at that block
-        llvm::DenseMap<llvm::BasicBlock*, unsigned>         m_pBBPressure;
+        llvm::DenseMap<llvm::BasicBlock*, unsigned> m_pBBPressure;
 
         struct PromotedLiverange
         {
@@ -157,6 +160,7 @@ bool LowerGEPForPrivMem::runOnFunction(llvm::Function& F)
     m_pFunc = &F;
     CodeGenContextWrapper* pCtxWrapper = &getAnalysis<CodeGenContextWrapper>();
     m_ctx = pCtxWrapper->getCodeGenContext();
+    m_DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
 
     MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     if (pMdUtils->findFunctionsInfoItem(&F) == pMdUtils->end_FunctionsInfo())
@@ -531,6 +535,10 @@ void LowerGEPForPrivMem::handleAllocaInst(llvm::AllocaInst* pAlloca)
     TransposeHelperPromote helper(pVecAlloca);
     helper.HandleAllocaSources(pAlloca, idx);
     helper.EraseDeadCode();
+    if (pAlloca->use_empty()) {
+      assert(m_DT);
+      replaceAllDbgUsesWith(*pAlloca, *pVecAlloca, *pVecAlloca, *m_DT);
+    }
 }
 
 void TransposeHelper::handleLifetimeMark(IntrinsicInst* inst)
