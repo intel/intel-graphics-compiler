@@ -854,16 +854,13 @@ private:
     // The indirect call with src0 is a register, the register must be a
     // ip-based address of the call target. We need to insert the add before call to
     // calculate the relative offset from call to the target
-    // ** Note that the ret IP r1.0 is reserved by convention at
-    // GlobalRA::setABIForStackCallFunctionCalls, the entire r1.0 is reserved, while
-    // for call dst it'll use only r1.0-r1.1, so here we take r1.2 as add's dst
     typedef std::vector<vISA::G4_INST*> InstListType;
     void expandIndirectCallWithRegTarget();
 
-    // create the instructions to calculate the jump target offset, return the G4_decl for the
-    // jump target register
-    void createInstsForCallTargetOffset(InstListType& insts, vISA::G4_INST* fcall);
-    void createInstForJmpiSequence(InstListType& insts, vISA::G4_INST* fcall);
+    // create the instructions to calculate the jump target offset, return G4_Declare of the
+    // new created jmp target
+    G4_Declare* createInstsForCallTargetOffset(InstListType& insts, vISA::G4_INST* fcall, int64_t adjust_off);
+    void createInstForJmpiSequence(InstListType& insts, G4_INST* fcall);
 
     void getHeightWidth(G4_Type type, unsigned int numberElements, unsigned short &dclWidth, unsigned short &dclHeight, int &totalByteSize);
     CisaFramework::CisaInst* AppendVISASvmGeneralScatterInst(VISA_PredOpnd* pred,

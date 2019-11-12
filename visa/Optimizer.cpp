@@ -7046,6 +7046,13 @@ void Optimizer::evenlySplitInst(INST_LIST_ITER iter, G4_BB* bb)
             // set A0 to tdr0 before sendc/sendsc. TGL WA
             setA0toTdrForSendc();
         }
+
+        if (getGenxPlatform() == GENX_SKL && kernel.getIsExternFunc())
+        {
+            // replace ret in the external functions with jmpi. That we will
+            // also return the call with jmpi in VISAKernelImpl::compilePostOptimize
+            replaceRetWithJmpi();
+        }
     }
 
 class NSDS {
@@ -8406,6 +8413,71 @@ public:
                     builder.phyregpool.getAddrReg(), 0, 0, 1, Type_UW),
                     builder.createImm(0, Type_UW), InstOpt_WriteEnable, false));
         }
+    }
+
+    // Replace ret with jmpi, must be single return
+    void Optimizer::replaceRetWithJmpi()
+    {
+        size_t num_ret = 0;
+
+        for (G4_BB* bb : kernel.fg)
+        {
+            if (bb->empty())
+                continue;
+            if (bb->isEndWithFRet())
+            {
+                ++num_ret;
+                G4_INST* ret_inst = bb->back();
+
+                // ret dst's decl
+                G4_Declare* r_1_0 = ret_inst->getSrc(0)->getTopDcl();
+
+                // calculate the jmpi target offset
+                // expand the original ret from:
+                //     ret r1.0
+                // To:
+                //     add   r1.0  -ip   r1.0
+                //     add   r1.0  r1.0  -48
+                //     jmpi  r1.0
+
+                // add   r1.0  -ip   r1.0
+                G4_INST* add0 = builder.createInternalInst(
+                    nullptr, G4_add, nullptr, false, 1,
+                    builder.Create_Dst_Opnd_From_Dcl(r_1_0, 1),
+                    builder.createSrcRegRegion(
+                        Mod_Minus, Direct, builder.phyregpool.getIpReg(), 0, 0,
+                        builder.getRegionScalar(), Type_UD),
+                    builder.Create_Src_Opnd_From_Dcl(r_1_0, builder.getRegionScalar()),
+                    InstOpt_WriteEnable | InstOpt_NoCompact);
+
+                // add   r1.0  r1.0  -48
+                G4_INST* add1 = builder.createInternalInst(
+                    nullptr, G4_add, nullptr, false, 1,
+                    builder.Create_Dst_Opnd_From_Dcl(r_1_0, 1),
+                    builder.Create_Src_Opnd_From_Dcl(r_1_0, builder.getRegionScalar()),
+                    builder.createImm(-48, Type_D), InstOpt_WriteEnable | InstOpt_NoCompact);
+
+                // jmpi r1.0
+                G4_SrcRegRegion* jmpi_target = builder.Create_Src_Opnd_From_Dcl(
+                    r_1_0, builder.getRegionScalar());
+                jmpi_target->setType(Type_D);
+                G4_INST* jmpi = builder.createInternalInst(
+                    nullptr, G4_jmpi, nullptr, false, 1, nullptr, jmpi_target,
+                    nullptr, InstOpt_NoCompact);
+
+                // remove the ret
+                bb->pop_back();
+                // add the ret
+                bb->push_back(add0);
+                bb->push_back(add1);
+                bb->push_back(jmpi);
+            }
+        }
+
+        // there should be exactly one ret in a external function. We did not try
+        // to restore the CallMask. We rely on single return of a function to make
+        // sure the CallMask before and after calling this function is the same.
+        assert(num_ret == 1);
     }
 
     // Set a0 to tdr0 before snedc/sendsc

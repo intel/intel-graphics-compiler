@@ -249,6 +249,7 @@ private:
     void insertScratchReadBeforeEOT();
     void resetA0();
     void setA0toTdrForSendc();
+    void replaceRetWithJmpi();
 
     void insertHashMovs();
     void insertDummyCompactInst();
