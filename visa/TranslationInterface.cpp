@@ -1898,10 +1898,18 @@ void IR_Builder::generateBarrierSend()
 
 void IR_Builder::generateBarrierWait()
 {
-    // wait n0.0<0;1,0>:ud
-    G4_Operand* waitSrc = hasUnifiedBarrier() ? static_cast<G4_Operand*>(createImm(0, Type_UD)) :
-        createSrcRegRegion(Mod_src_undef, Direct, phyregpool.getN0Reg(),
-            0, 0, getRegionScalar(), Type_UD);
+    G4_Operand* waitSrc = nullptr;
+    if (!hasUnifiedBarrier()) {
+
+        if (getGenxPlatform() < GENX_TGLLP) {
+            // before gen12: wait n0.0<0;1,0>:ud
+            waitSrc = createSrcRegRegion(Mod_src_undef, Direct, phyregpool.getN0Reg(),
+                0, 0, getRegionScalar(), Type_UD);
+        } else {
+            // gen12: sync.bar null
+            waitSrc = createNullSrc(Type_UD);
+        }
+    }
     createInst(nullptr, G4_wait, nullptr, false, 1, nullptr, waitSrc, nullptr,
         InstOpt_WriteEnable);
 }
