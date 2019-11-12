@@ -299,24 +299,24 @@ void ThreadCombining::FindRegistersAliveAcrossBarriers(llvm::Function* m_kernel,
                 m_LiveRegistersPerBarrier.insert(std::pair<llvm::Instruction*, std::set<llvm::Instruction*>>(inst, empty));
             }
 
-            for (auto barrierInst = m_barriers.begin(); barrierInst != m_barriers.end(); ++barrierInst)
+            for (unsigned int i = 0; i < inst->getNumOperands(); ++i)
             {
-                for (unsigned int i = 0; i < inst->getNumOperands(); ++i)
+                if (Instruction* instToCheck  = dyn_cast<Instruction>(inst->getOperand(i))) // If the last barrier does not dominate the instruction then we need to store and restore
                 {
-                    if (Instruction * I = dyn_cast<Instruction>(inst->getOperand(i))) // If the last barrier does not dominate the instruction then we need to store and restore
+                    for (auto barrierInst = m_barriers.begin(); barrierInst != m_barriers.end(); ++barrierInst)
                     {
-                        if (!DT->getDomTree().dominates(*barrierInst, I))
+                        if (!DT->getDomTree().dominates(*barrierInst, instToCheck))
                         {
                             // Optimization: check if the live register can be moved to the entry block,
                             // this way we skip the store and restore across barriers
                             bool canMoveInstructionToEntryBlock = false;
-                            if (!I->mayReadOrWriteMemory())
+                            if (!instToCheck->mayReadOrWriteMemory())
                             {
                                 canMoveInstructionToEntryBlock = true;
 
-                                for (unsigned int j = 0; j < I->getNumOperands(); j++)
+                                for (unsigned int j = 0; j < instToCheck->getNumOperands(); j++)
                                 {
-                                    if (isa<Instruction>(I->getOperand(j)))
+                                    if (isa<Instruction>(instToCheck->getOperand(j)))
                                     {
                                         canMoveInstructionToEntryBlock = false;
                                         break;
@@ -326,29 +326,25 @@ void ThreadCombining::FindRegistersAliveAcrossBarriers(llvm::Function* m_kernel,
                                 //Move them later in the entry block of new function
                                 if (canMoveInstructionToEntryBlock)
                                 {
-                                    m_instructionsToMove.insert(I);
+                                    m_instructionsToMove.insert(instToCheck);
                                 }
                             }
                             if (!canMoveInstructionToEntryBlock)
                             {
-                                if (I->getType()->isIntegerTy() && I->getType()->getIntegerBitWidth() == 1)
+                                if (instToCheck->getType()->isIntegerTy() && instToCheck->getType()->getIntegerBitWidth() == 1)
                                 {
                                     llvm::IRBuilder<>  builder(M.getContext());
-                                    builder.SetInsertPoint(I->getNextNode());
-                                    llvm::Value* I_i8 = builder.CreateZExt(I, builder.getInt8Ty());
+                                    builder.SetInsertPoint(instToCheck->getNextNode());
+                                    llvm::Value* I_i8 = builder.CreateZExt(instToCheck, builder.getInt8Ty());
+                                    assert(isa<Instruction>(I_i8));
+                                    instToCheck = cast<Instruction>(I_i8);
 
                                     builder.SetInsertPoint(inst);
-                                    llvm::Value* I_new = builder.CreateICmpEQ(I_i8, builder.getInt8(1));
+                                    llvm::Value* I_new = builder.CreateICmpEQ(instToCheck, builder.getInt8(1));
                                     inst->setOperand(i, I_new);
-
-                                    m_LiveRegistersPerBarrier[*barrierInst].insert(dyn_cast<Instruction>(I_i8));
-                                    m_aliveAcrossBarrier.insert(dyn_cast<Instruction>(I_i8));
                                 }
-                                else
-                                {
-                                    m_LiveRegistersPerBarrier[*barrierInst].insert(I); // Insert the instruction as one that has to be stored and then restored
-                                    m_aliveAcrossBarrier.insert(I);
-                                }
+                                m_LiveRegistersPerBarrier[*barrierInst].insert(instToCheck); // Insert the instruction as one that has to be stored and then restored
+                                m_aliveAcrossBarrier.insert(instToCheck);
                             }
                         }
                     }
