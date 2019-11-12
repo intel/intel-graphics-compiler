@@ -3575,7 +3575,7 @@ SPIRVToLLVM::transKernelMetadata()
         SPIRVFunction *BF = BM->getFunction(I);
         Function *F = static_cast<Function *>(getTranslatedValue(BF));
         assert(F && "Invalid translated function");
-        if (F->getCallingConv() != CallingConv::SPIR_KERNEL)
+        if (F->getCallingConv() != CallingConv::SPIR_KERNEL || F->isDeclaration())
             continue;
         std::vector<llvm::Metadata*> KernelMD;
         KernelMD.push_back(ValueAsMetadata::get(F));
