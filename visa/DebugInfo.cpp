@@ -1297,7 +1297,8 @@ void emitDataCallerSave(VISAKernelImpl* visaKernel, T& t)
     // Compute total caller save entries to emit
     for (auto bbs : kernel->fg)
     {
-        if (kernel->getKernelDebugInfo()->isFcallWithSaveRestore(bbs->back()))
+        if (bbs->getInstList().size() > 0 &&
+            kernel->getKernelDebugInfo()->isFcallWithSaveRestore(bbs->back()))
         {
             auto& callerSaveInsts = kernel->getKernelDebugInfo()->getCallerSaveInsts(bbs->back());
             auto& callerRestoreInsts = kernel->getKernelDebugInfo()->getCallerRestoreInsts(bbs->back());
@@ -1334,7 +1335,8 @@ void emitDataCallerSave(VISAKernelImpl* visaKernel, T& t)
     {
         for (auto bbs : kernel->fg)
         {
-            if (kernel->getKernelDebugInfo()->isFcallWithSaveRestore(bbs->back()))
+            if (bbs->getInstList().size() > 0 &&
+                kernel->getKernelDebugInfo()->isFcallWithSaveRestore(bbs->back()))
             {
                 auto& callerSaveInsts = kernel->getKernelDebugInfo()->getCallerSaveInsts(bbs->back());
                 auto& callerRestoreInsts = kernel->getKernelDebugInfo()->getCallerRestoreInsts(bbs->back());
@@ -2475,7 +2477,8 @@ void emitCallerSaveInfo(VISAKernelImpl* visaKernel)
 
     for (auto bbs : kernel->fg)
     {
-        if (kernel->getKernelDebugInfo()->isFcallWithSaveRestore(bbs->back()))
+        if (bbs->getInstList().size() > 0 &&
+            kernel->getKernelDebugInfo()->isFcallWithSaveRestore(bbs->back()))
         {
             auto& callerSaveInsts = kernel->getKernelDebugInfo()->getCallerSaveInsts(bbs->back());
             auto& callerRestoreInsts = kernel->getKernelDebugInfo()->getCallerRestoreInsts(bbs->back());
