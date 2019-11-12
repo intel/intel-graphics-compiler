@@ -315,17 +315,21 @@ std::string DumpName::AbsolutePath(OutputFolderName folder) const
         {
             ss << "FastStage1";
         }
-        else if (m_cgFlag.getValue() == FLAG_CG_STAGE1_BEST_PERF)
-        {
-            ss << "BestStage1";
-        }
         else
         {
-            assert(m_cgFlag.getValue() == FLAG_CG_STAGE2_REST_SIMDS);
-            ss << "RestStage2";
+            assert(m_cgFlag.getValue() == FLAG_CG_STAGE1_BEST_PERF);
+            ss << "BestStage1";
         }
+
         underscore = true;
     }
+    else if (!m_cgFlag.hasValue())
+    {
+        ss << (underscore ? "_" : "");
+        ss << "RestStage2";
+        underscore = true;
+    }
+
     if(m_ShaderMode.hasValue())
     {
         if(m_ShaderMode.getValue() == ShaderDispatchMode::SINGLE_PATCH)
@@ -686,7 +690,10 @@ DumpName GetDumpNameObj(IGC::CShader* pProgram, const char* ext)
     }
     dumpName = dumpName.DispatchMode(pProgram->m_ShaderDispatchMode);
     dumpName = dumpName.SIMDSize(pProgram->m_dispatchSize).Retry(context->m_retryManager.GetRetryId()).Extension(ext);
-    dumpName = dumpName.StagedInfo(context->m_CgFlag);
+    if (!IsStage2RestSIMDs(context->m_StagingCtx))
+    {
+        dumpName = dumpName.StagedInfo(context->m_CgFlag);
+    }
     return dumpName;
 }
 

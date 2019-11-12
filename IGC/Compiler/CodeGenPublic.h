@@ -775,7 +775,7 @@ namespace IGC
         // Flag for staged compilation
         CG_FLAG_t m_CgFlag = FLAG_CG_ALL_SIMDS;
         // Staging context passing from Stage 1 for compile continuation
-        CG_CTX_t m_StagingCtx = 0;
+        CG_CTX_t* m_StagingCtx = nullptr;
 
     protected:
         // Objects pointed to by these pointers are owned by this class.

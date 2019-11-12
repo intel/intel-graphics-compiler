@@ -1123,7 +1123,7 @@ namespace IGC
         }
         if (simdMode == SIMDMode::SIMD16 && EP.m_ShaderMode == ShaderDispatchMode::NOT_APPLICABLE)
         {
-            if (IGC_IS_FLAG_ENABLED(ForcePSBestSIMD) || ctx->m_CgFlag == FLAG_CG_STAGE1_BEST_PERF)
+            if (IGC_IS_FLAG_ENABLED(ForcePSBestSIMD) || IsStage1BestPerf(ctx->m_CgFlag, ctx->m_StagingCtx))
             {
                 return true;
             }
@@ -1149,7 +1149,7 @@ namespace IGC
             // We don't check simd16 if we have it in Stage1
             // 1. The check of simd16 here is to disable simd32 if simd16 failed to be generated or spilled.
             // 2. If we have simd16 in stage1, we are sure that simd16 has no spill so we won't need this check.
-            if (!HasSimd(16, ctx->m_StagingCtx))
+            if (ctx->m_StagingCtx && !HasSimd(16, ctx->m_StagingCtx->m_stats))
             {
                 if ((simd16Program == nullptr ||
                     simd16Program->ProgramOutput()->m_programBin == 0 ||

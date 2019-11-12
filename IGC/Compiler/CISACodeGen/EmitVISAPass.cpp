@@ -394,7 +394,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
 
     m_FGA = getAnalysisIfAvailable<GenXFunctionGroupAnalysis>();
 
-    if ((IGC_IS_FLAG_ENABLED(ForcePSBestSIMD) || ctx->m_CgFlag == FLAG_CG_STAGE1_BEST_PERF) && m_SimdMode == SIMDMode::SIMD8)
+    if ((IGC_IS_FLAG_ENABLED(ForcePSBestSIMD) || IsStage1BestPerf(ctx->m_CgFlag, ctx->m_StagingCtx)) && m_SimdMode == SIMDMode::SIMD8)
     {
         /* Don't do SIMD8 if SIMD16 has no spill */
         auto Iter = m_shaders.find(&F);

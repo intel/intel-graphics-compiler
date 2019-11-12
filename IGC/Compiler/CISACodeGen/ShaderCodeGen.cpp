@@ -753,7 +753,7 @@ namespace IGC
     bool earlyExit =
         ctx->getCompilerOption().pixelShaderDoNotAbortOnSpill ? false : true;
 
-    if (IGC_IS_FLAG_ENABLED(ForcePSBestSIMD) || ctx->m_CgFlag == FLAG_CG_STAGE1_BEST_PERF)
+    if (IGC_IS_FLAG_ENABLED(ForcePSBestSIMD) || IsStage1BestPerf(ctx->m_CgFlag, ctx->m_StagingCtx))
     {
         if (SimdEarlyCheck(ctx))
         {
@@ -762,7 +762,7 @@ namespace IGC
         AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD8, !ctx->m_retryManager.IsLastTry(ctx), ShaderDispatchMode::NOT_APPLICABLE, pSignature);
         useRegKeySimd = true;
     }
-    else if (ctx->m_CgFlag == FLAG_CG_STAGE1_FAST_COMPILE)
+    else if (IsStage1FastCompile(ctx->m_CgFlag, ctx->m_StagingCtx))
     {
         AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD8, !ctx->m_retryManager.IsLastTry(ctx), ShaderDispatchMode::NOT_APPLICABLE, pSignature);
         useRegKeySimd = true;
