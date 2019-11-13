@@ -1569,7 +1569,6 @@ void SWSB::assignDepToken(SBNode* node)
 
 void SWSB::assignToken(SBNode* node,
     unsigned short assignedToken,
-    uint32_t& tokenReuseCount,
     uint32_t& AWtokenReuseCount,
     uint32_t& ARtokenReuseCount,
     uint32_t& AAtokenReuseCount)
@@ -1587,7 +1586,7 @@ void SWSB::assignToken(SBNode* node,
             freeTokenList[token] = node; //Cannot be moved after setTopTokenIndex();
             setTopTokenIndex();
 #ifdef DEBUG_VERBOSE_ON
-            printf("Free token: %d, QUEUE SIZE: %d\n", token, linearScanLiveNodes.size());
+            printf("Use free token: %d, QUEUE SIZE: %d\n", token, linearScanLiveNodes.size());
 #endif
         }
         else
@@ -1955,7 +1954,6 @@ void SWSB::tokenAllocation()
         //If token reuse happened, and the live range of old node is longer than current one,
         //we will keep the old one in the active list.
         assignToken(node, assignedToken,
-            tokenReuseCount,
             AWTokenReuseCount,
             ARTokenReuseCount,
             AATokenReuseCount);
@@ -1972,12 +1970,15 @@ void SWSB::tokenAllocation()
         for (size_t i = 0; i < BBVector.size(); i++)
         {
             BBVector[i]->getLiveOutToken(unsigned(SBSendNodes.size()), &SBNodes);
-#ifdef DEBUG_VERBOSE_ON
-            BBVector[i]->dumpTokenLiveInfo(&SBSendNodes);
-#endif
         }
-
+#ifdef DEBUG_VERBOSE_ON
+        dumpTokenLiveInfo();
+#endif
         SWSBGlobalTokenAnalysis();
+
+#ifdef DEBUG_VERBOSE_ON
+        dumpTokenLiveInfo();
+#endif
 
         for (size_t i = 0; i < BBVector.size(); i++)
         {
@@ -2052,11 +2053,13 @@ G4_INST* SWSB::insertSyncAllRDInstruction(G4_BB* bb, unsigned int SBIDs, INST_LI
     {
         G4_Imm* src0 = fg.builder->createImm(SBIDs, Type_UD);
         syncInst = fg.builder->createInternalInst(NULL, G4_sync_allrd, NULL, false, 1, NULL, src0, NULL, 0, lineNo, CISAOff, NULL);
+        ARSyncInstCount++;
     }
     else
     {
         G4_SrcRegRegion* src0 = fg.builder->createNullSrc(Type_UD);
         syncInst = fg.builder->createInternalInst(NULL, G4_sync_allrd, NULL, false, 1, NULL, src0, NULL, 0, lineNo, CISAOff, NULL);
+        ARSyncAllCount++;
     }
     bb->insert(nextIter, syncInst);
 
@@ -2070,11 +2073,13 @@ G4_INST* SWSB::insertSyncAllWRInstruction(G4_BB* bb, unsigned int SBIDs, INST_LI
     {
         G4_Imm* src0 = fg.builder->createImm(SBIDs, Type_UD);
         syncInst = fg.builder->createInternalInst(NULL, G4_sync_allwr, NULL, false, 1, NULL, src0, NULL, 0, lineNo, CISAOff, NULL);
+        AWSyncInstCount++;
     }
     else
     {
         G4_SrcRegRegion* src0 = fg.builder->createNullSrc(Type_UD);
         syncInst = fg.builder->createInternalInst(NULL, G4_sync_allwr, NULL, false, 1, NULL, src0, NULL, 0, lineNo, CISAOff, NULL);
+        AWSyncAllCount++;
     }
     bb->insert(nextIter, syncInst);
 
@@ -2446,7 +2451,9 @@ void SWSB::insertTest()
     kernel.setMathReuseCount(mathReuseCount);
     kernel.setAWSyncInstCount(AWSyncInstCount);
     kernel.setARSyncInstCount(ARSyncInstCount);
-}
+    kernel.setAWSyncAllCount(AWSyncAllCount);
+    kernel.setARSyncAllCount(ARSyncAllCount);
+    kernel.setTokenReuseCount(tokenReuseCount); }
 
 void SWSB::dumpDepInfo()
 {
@@ -2861,7 +2868,6 @@ void G4_BB_SB::getLiveOutToken(unsigned allSendNum,
             {
                 continue;
             }
-
 
             //If there is a .dst dependence, kill all nodes with same token
             if (tokenHonourInstruction(predNode->getLastInstruction()) && (type == RAW || type == WAW))
@@ -3709,6 +3715,11 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
         // Record token sensitive nodes.
         if (tokenHonourInstruction(curInst))
         {
+            if (first_send_node == -1)
+            {
+                first_send_node = SBSendNodes->size();
+            }
+            last_send_node = SBSendNodes->size();
             node->setSendID(int(SBSendNodes->size()));
             SBSendNodes->push_back(node);
         }
@@ -3990,65 +4001,85 @@ void G4_BB_SB::dumpLiveInfo(SBBUCKET_VECTOR* globalSendOpndList, unsigned global
 }
 //#endif
 
-void G4_BB_SB::dumpTokenLiveInfo(SBNODE_LIST* SBSendNodes)
+void SWSB::dumpTokenLiveInfo()
 {
-    std::cerr << "\nBB" << bb->getId() << ":" << first_node << "-" << last_node << ", succ<";
-    for (std::list<G4_BB*>::iterator sit = bb->Succs.begin(); sit != bb->Succs.end(); ++sit)
+    for (size_t i = 0; i < BBVector.size(); i++)
     {
-        std::cerr << (*sit)->getId() << ",";
-    }
-    std::cerr << "> pred<";
-    for (std::list<G4_BB*>::iterator pit = bb->Preds.begin(); pit != bb->Preds.end(); ++pit)
-    {
-        std::cerr << (*pit)->getId() << ",";
-    }
+        G4_BB* bb = BBVector[i]->getBB();
 
-    std::cerr << "> JIPSucc <";
-    for (std::list<G4_BB_SB*>::iterator pit = Succs.begin(); pit != Succs.end(); ++pit)
-    {
-        std::cerr << (*pit)->getBB()->getId() << ",";
-    }
-    std::cerr << "> JIPPred <";
-    for (std::list<G4_BB_SB*>::iterator pit = Preds.begin(); pit != Preds.end(); ++pit)
-    {
-        std::cerr << (*pit)->getBB()->getId() << ",";
-    }
-    std::cerr << ">";
-    if (bb->getBBType() & G4_BB_CALL_TYPE)
-    {
-        std::cerr << ":CALL";
-    }
-    if (bb->getBBType() & G4_BB_INIT_TYPE)
-    {
-        std::cerr << ":INIT";
-    }
-    if (bb->getBBType() & G4_BB_EXIT_TYPE)
-    {
-        std::cerr << ":EXIT";
-    }
-    if (bb->getBBType() & G4_BB_RETURN_TYPE)
-    {
-        std::cerr << ":RETURN";
-    }
-    std::cerr << std::endl;
-
-    std::cerr << "Live Out After Global Dependence Reduction: ";
-    std::cerr << std::endl;
-    if (liveOutTokenNodes != nullptr)
-    {
-        for (SBNODE_LIST_ITER node_it = SBSendNodes->begin();
-            node_it != SBSendNodes->end();
-            node_it++)
+        std::cerr << "\nBB" << bb->getId() << ":" << BBVector[i]->first_node << "-" << BBVector[i]->last_node << ", succ<";
+        for (std::list<G4_BB*>::iterator sit = bb->Succs.begin(); sit != bb->Succs.end(); ++sit)
         {
-            SBNode* node = (*node_it);
-            if (liveOutTokenNodes->isSet(node->sendID))
+            std::cerr << (*sit)->getId() << ",";
+        }
+        std::cerr << "> pred<";
+        for (std::list<G4_BB*>::iterator pit = bb->Preds.begin(); pit != bb->Preds.end(); ++pit)
+        {
+            std::cerr << (*pit)->getId() << ",";
+        }
+
+        std::cerr << "> JIPSucc <";
+        for (std::list<G4_BB_SB*>::iterator pit = BBVector[i]->Succs.begin(); pit != BBVector[i]->Succs.end(); ++pit)
+        {
+            std::cerr << (*pit)->getBB()->getId() << ",";
+        }
+        std::cerr << "> JIPPred <";
+        for (std::list<G4_BB_SB*>::iterator pit = BBVector[i]->Preds.begin(); pit != BBVector[i]->Preds.end(); ++pit)
+        {
+            std::cerr << (*pit)->getBB()->getId() << ",";
+        }
+        std::cerr << ">";
+        if (bb->getBBType() & G4_BB_CALL_TYPE)
+        {
+            std::cerr << ":CALL";
+        }
+        if (bb->getBBType() & G4_BB_INIT_TYPE)
+        {
+            std::cerr << ":INIT";
+        }
+        if (bb->getBBType() & G4_BB_EXIT_TYPE)
+        {
+            std::cerr << ":EXIT";
+        }
+        if (bb->getBBType() & G4_BB_RETURN_TYPE)
+        {
+            std::cerr << ":RETURN";
+        }
+        std::cerr << std::endl;
+
+        std::cerr << "Live Out: ";
+        std::cerr << std::endl;
+        if (BBVector[i]->liveOutTokenNodes != nullptr)
+        {
+            for (SBNODE_LIST_ITER node_it = SBSendNodes.begin();
+                node_it != SBSendNodes.end();
+                node_it++)
             {
-                std::cerr << " #" << node->getNodeID() << ":" << node->sendID;
+                SBNode* node = (*node_it);
+                if (BBVector[i]->liveOutTokenNodes->isSet(node->sendID))
+                {
+                    std::cerr << " #" << node->getNodeID() << ":" << node->sendID << ":" << node->GetInstruction()->getToken();
+                }
+            }
+            std::cerr << std::endl;
+        }
+
+        std::cerr << "Killed Tokens: ";
+        std::cerr << std::endl;
+        if (BBVector[i]->killedTokens != nullptr)
+        {
+            uint32_t totalTokenNum = kernel.getOptions()->getuInt32Option(vISA_SWSBTokenNum);
+            for (uint32_t k = 0; k < totalTokenNum; k++)
+            {
+                if (BBVector[i]->killedTokens->isSet(k))
+                {
+                    std::cerr << " #" << k << ", ";
+                }
             }
         }
         std::cerr << std::endl;
+
     }
-    std::cerr << std::endl;
 
     return;
 }
@@ -4096,7 +4127,7 @@ void SWSB::addGlobalDependence(unsigned globalSendNum, SBBUCKET_VECTOR* globalSe
         send_kill &= *(BBVector[i]->send_may_kill);
 
 #ifdef DEBUG_VERBOSE_ON
-        dumpLiveInfo(globalSendOpndList, globalSendNum, &send_kill);
+        BBVector[i]->dumpLiveInfo(globalSendOpndList, globalSendNum, &send_kill);
 #endif
         //Change the global send operands into live bucket for liveness scan
         //Instruction level liveness kill:

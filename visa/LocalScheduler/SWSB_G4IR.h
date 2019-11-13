@@ -240,6 +240,92 @@ namespace vISA
 
     typedef std::vector<vISA::SBFootprint*>::iterator SBMASK_VECT_ITER;
 
+    // Bit set which is used for global dependence analysis for SBID.
+    // Since dependencies may come from dst and src and there may be dependence kill between dst and src depencencies,
+    // we use internal bit set to track the live of dst and src seperately.
+    // Each bit map to one global SBID node according to the node's global ID.
+    struct SBBitSets {
+        BitSet dst;
+        BitSet src;
+
+        SBBitSets(vISA::Mem_Manager& mem, unsigned size) : dst(size, false), src(size, false)
+        {
+        }
+
+        ~SBBitSets()
+        {
+        }
+
+        void setDst(int ID, bool value)
+        {
+            dst.set(ID, value);
+        }
+        void setSrc(int ID, bool value)
+        {
+            src.set(ID, value);
+        }
+
+        bool isEmpty()
+        {
+            return dst.isEmpty() && src.isEmpty();
+        }
+
+        bool isDstEmpty()
+        {
+            return dst.isEmpty();
+        }
+
+        bool isSrcEmpty()
+        {
+            return src.isEmpty();
+        }
+
+        bool isDstSet(unsigned i)
+        {
+            return dst.isSet(i);
+        }
+
+        bool isSrcSet(unsigned i)
+        {
+            return src.isSet(i);
+        }
+
+        SBBitSets& operator= (const SBBitSets& other)
+        {
+            dst = other.dst;
+            src = other.src;
+            return *this;
+        }
+
+        SBBitSets& operator|= (const SBBitSets& other)
+        {
+            dst |= other.dst;
+            src |= other.src;
+            return *this;
+        }
+
+        SBBitSets& operator&= (const SBBitSets& other)
+        {
+            dst &= other.dst;
+            src &= other.src;
+            return *this;
+        }
+
+        SBBitSets& operator-= (const SBBitSets& other)
+        {
+            dst -= other.dst;
+            src -= other.src;
+            return *this;
+        }
+
+        bool operator!= (const SBBitSets& other)
+        {
+            return (dst != other.dst) || (src != other.src);
+        }
+
+        void* operator new(size_t sz, vISA::Mem_Manager& m) { return m.alloc(sz); }
+    };
+
     class SBNode {
     private:
         std::vector<SBFootprint*>  footprints;  // The coarse grained footprint of operands
@@ -726,92 +812,6 @@ namespace vISA
         }
     };
 
-    // Bit set which is used for global dependence analysis for SBID.
-    // Since dependencies may come from dst and src and there may be dependence kill between dst and src depencencies,
-    // we use internal bit set to track the live of dst and src seperately.
-    // Each bit map to one global SBID node according to the node's global ID.
-    struct SBBitSets {
-        BitSet dst;
-        BitSet src;
-
-        SBBitSets(vISA::Mem_Manager& mem, unsigned size) : dst(size, false), src(size, false)
-        {
-        }
-
-        ~SBBitSets()
-        {
-        }
-
-        void setDst(int ID, bool value)
-        {
-            dst.set(ID, value);
-        }
-        void setSrc(int ID, bool value)
-        {
-            src.set(ID, value);
-        }
-
-        bool isEmpty()
-        {
-            return dst.isEmpty() && src.isEmpty();
-        }
-
-        bool isDstEmpty()
-        {
-            return dst.isEmpty();
-        }
-
-        bool isSrcEmpty()
-        {
-            return src.isEmpty();
-        }
-
-        bool isDstSet(unsigned i)
-        {
-            return dst.isSet(i);
-        }
-
-        bool isSrcSet(unsigned i)
-        {
-            return src.isSet(i);
-        }
-
-        SBBitSets& operator= (const SBBitSets &other)
-        {
-            dst = other.dst;
-            src = other.src;
-            return *this;
-        }
-
-        SBBitSets& operator|= (const SBBitSets &other)
-        {
-            dst |= other.dst;
-            src |= other.src;
-            return *this;
-        }
-
-        SBBitSets& operator&= (const SBBitSets &other)
-        {
-            dst &= other.dst;
-            src &= other.src;
-            return *this;
-        }
-
-        SBBitSets& operator-= (const SBBitSets &other)
-        {
-            dst -= other.dst;
-            src -= other.src;
-            return *this;
-        }
-
-        bool operator!= (const SBBitSets &other)
-        {
-            return (dst != other.dst) || (src != other.src);
-        }
-
-        void *operator new(size_t sz, vISA::Mem_Manager& m) { return m.alloc(sz); }
-    };
-
     typedef std::list<G4_BB_SB *> BB_SWSB_LIST;
     typedef BB_SWSB_LIST::iterator BB_SWSB_LIST_ITER;
 
@@ -845,6 +845,9 @@ namespace vISA
         int first_node;
         int last_node;
 
+        int first_send_node;
+        int last_send_node;
+
         int send_start;
         int send_end;
 
@@ -870,7 +873,7 @@ namespace vISA
         BitSet   **tokeNodesMap;
 
         //BB local data dependence analysis
-        G4_BB_SB(IR_Builder& b, Mem_Manager &m, G4_BB *block, SBNODE_VECT *SBNodes, SBNODE_LIST *SBSendNodes,
+        G4_BB_SB(IR_Builder& b, Mem_Manager &m, G4_BB *block, SBNODE_VECT *SBNodes, SBNODE_LIST* SBSendNodes,
             SBBUCKET_VECTOR *globalSendOpndList,  SWSB_INDEXES *indexes, uint32_t &globalSendNum, LiveGRFBuckets *lb,
             LiveGRFBuckets *globalLB, PointsToAnalysis& p,
             std::map<G4_Label*, G4_BB_SB*> *LabelToBlockMap) : builder(b), mem(m), bb(block),
@@ -879,6 +882,8 @@ namespace vISA
             liveInTokenNodes(nullptr), liveOutTokenNodes(nullptr), killedTokens(nullptr), tokeNodesMap(nullptr), loopStartBBID(-1), loopEndBBID(-1),
             send_def_out(nullptr)
         {
+            first_send_node = -1;
+            last_send_node = -1;
             totalGRFNum = block->getKernel().getNumRegTotal();
             SBDDD(bb, lb, globalLB, SBNodes, SBSendNodes, globalSendOpndList,  indexes, globalSendNum, p, LabelToBlockMap);
         }
@@ -1017,6 +1022,9 @@ namespace vISA
         uint32_t AWSyncInstCount;
         uint32_t ARSyncInstCount;
         uint32_t mathReuseCount;
+        uint32_t ARSyncAllCount;
+        uint32_t AWSyncAllCount;
+        uint32_t tokenReuseCount;
 
         //Linear scan data structures for token allocation
         SBNODE_LIST linearScanLiveNodes;
@@ -1029,9 +1037,11 @@ namespace vISA
         BitSet   **allTokenNodesMap;
 
         //Global dependence analysis
-        bool globalDependenceDefReachAnalysis(G4_BB * bb);
-        bool globalDependenceUseReachAnalysis(G4_BB * bb);
+        bool globalDependenceDefReachAnalysis(G4_BB* bb);
+        bool globalDependenceUseReachAnalysis(G4_BB* bb);
         void addGlobalDependence(unsigned globalSendNum, SBBUCKET_VECTOR *globalSendOpndList, SBNODE_VECT *SBNodes, PointsToAnalysis &p, bool afterWrite);
+        void tokenEdgePrune(unsigned& prunedEdgeNum, unsigned& prunedGlobalEdgeNum, unsigned& prunedDiffBBEdgeNum, unsigned& prunedDiffBBSameTokenEdgeNum);
+        void dumpTokenLiveInfo();
 
         void removePredsEdges(SBNode * node, SBNode * pred);
 
@@ -1044,7 +1054,7 @@ namespace vISA
         void addToLiveList(SBNode *node);
 
         //Assign Token
-        void assignToken(SBNode *node, unsigned short token, uint32_t &tokenReuseCount, uint32_t &AWTokenReuseCount, uint32_t &ARTokenReuseCount, uint32_t &AATokenReuseCount);
+        void assignToken(SBNode *node, unsigned short token, uint32_t &AWTokenReuseCount, uint32_t &ARTokenReuseCount, uint32_t &AATokenReuseCount);
         void assignDepToken(SBNode *node);
         bool insertSyncToken(G4_BB *bb, SBNode *node, G4_INST *inst, INST_LIST_ITER inst_it, int newInstID, BitSet *dstTokens, BitSet *srcTokens, bool removeAllTokens);
         void insertSync(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_ITER inst_it, int newInstID, BitSet* dstTokens, BitSet* srcTokens);
@@ -1094,6 +1104,9 @@ namespace vISA
             mathReuseCount = 0;
             ARSyncInstCount = 0;
             AWSyncInstCount = 0;
+            ARSyncAllCount = 0;
+            AWSyncAllCount = 0;
+            tokenReuseCount = 0;
             indexes.instIndex = 0;
             indexes.ALUIndex = 0;
             topIndex = -1;
