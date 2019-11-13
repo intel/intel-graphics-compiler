@@ -347,10 +347,13 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
 
     if (LI)
     {
-        Value* V = Builder.CreateAlignedLoad(newPtr,
+        LoadInst* load = Builder.CreateAlignedLoad(newPtr,
             LI->getAlignment(),
             LI->isVolatile(),
             "vCastload");
+        load->copyMetadata(*LI);
+
+        Value* V = load;
 
         if (eTy->isPointerTy())
         {
@@ -444,9 +447,10 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
             {
                 V = Builder.CreateBitCast(StoreVal, newVTy);
             }
-            (void)Builder.CreateAlignedStore(V, newPtr,
+            StoreInst* store = Builder.CreateAlignedStore(V, newPtr,
                 SI->getAlignment(),
                 SI->isVolatile());
+            store->copyMetadata(*SI);
             SI->eraseFromParent();
         }
         else if (II->getIntrinsicID() == GenISAIntrinsic::GenISA_ldrawvector_indexed)
