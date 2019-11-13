@@ -2663,7 +2663,8 @@ public:
 
     int generateDebugInfoPlaceholder();
 
-#include "HWCapsOpen.inc"
+
+#include "HWCaps.inc"
 
 private:
     G4_SrcRegRegion* createBindlessExDesc(uint32_t exdesc);
