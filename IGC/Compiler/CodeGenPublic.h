@@ -859,9 +859,9 @@ namespace IGC
             const CDriverInfo& driverInfo,
             const bool          createResourceDimTypes = true,
             LLVMContextWrapper* llvmCtxWrapper = nullptr) ///< LLVM context to use, if null a new one will be created
-            : CodeGenContext(ShaderType::VERTEX_SHADER, btiLayout, platform, driverInfo, createResourceDimTypes, llvmCtxWrapper)
+            : CodeGenContext(ShaderType::VERTEX_SHADER, btiLayout, platform, driverInfo, createResourceDimTypes, llvmCtxWrapper),
+            programOutput()
         {
-            memset(&programOutput, 0, sizeof(SVertexShaderKernelProgram));
         }
 
         ~VertexShaderContext()
@@ -882,9 +882,9 @@ namespace IGC
             const CDriverInfo& driverInfo,
             const bool          createResourceDimTypes = true,
             LLVMContextWrapper* llvmCtxWrapper = nullptr) ///< LLVM context to use, if null a new one will be created
-            : CodeGenContext(ShaderType::PIXEL_SHADER, btiLayout, platform, driverInfo, createResourceDimTypes, llvmCtxWrapper)
+            : CodeGenContext(ShaderType::PIXEL_SHADER, btiLayout, platform, driverInfo, createResourceDimTypes, llvmCtxWrapper),
+            programOutput()
         {
-            memset(&programOutput, 0, sizeof(SPixelShaderKernelProgram));
         }
 
         ~PixelShaderContext()
@@ -905,9 +905,9 @@ namespace IGC
             const CDriverInfo& driverInfo,
             const bool          createResourceDimTypes = true,
             LLVMContextWrapper* llvmCtxWrapper = nullptr) ///< LLVM context to use, if null a new one will be created
-            : CodeGenContext(ShaderType::GEOMETRY_SHADER, btiLayout, platform, driverInfo, createResourceDimTypes, llvmCtxWrapper)
+            : CodeGenContext(ShaderType::GEOMETRY_SHADER, btiLayout, platform, driverInfo, createResourceDimTypes, llvmCtxWrapper),
+            programOutput()
         {
-            memset(&programOutput, 0, sizeof(SGeometryShaderKernelProgram));
         }
 
         ~GeometryShaderContext()
@@ -950,9 +950,9 @@ namespace IGC
             const CDriverInfo& driverInfo,
             const bool          createResourceDimTypes = true,
             LLVMContextWrapper* llvmCtxWrapper = nullptr) ///< LLVM context to use, if null a new one will be created
-            : CodeGenContext(ShaderType::COMPUTE_SHADER, btiLayout, platform, driverInfo, createResourceDimTypes, llvmCtxWrapper)
+            : CodeGenContext(ShaderType::COMPUTE_SHADER, btiLayout, platform, driverInfo, createResourceDimTypes, llvmCtxWrapper),
+            programOutput()
         {
-            memset(&programOutput, 0, sizeof(SComputeShaderKernelProgram));
             isSecondCompile = false;
             m_IsPingPongSecond = false;
             m_slmSize = 0;
@@ -987,9 +987,9 @@ namespace IGC
             const CDriverInfo& driverInfo,
             const bool          createResourceDimTypes = true,
             LLVMContextWrapper* llvmCtxWrapper = nullptr) ///< LLVM context to use, if null a new one will be created
-            : CodeGenContext(ShaderType::HULL_SHADER, btiLayout, platform, driverInfo, createResourceDimTypes, llvmCtxWrapper)
+            : CodeGenContext(ShaderType::HULL_SHADER, btiLayout, platform, driverInfo, createResourceDimTypes, llvmCtxWrapper),
+            programOutput()
         {
-            memset(&programOutput, 0, sizeof(SHullShaderKernelProgram));
         }
 
         ~HullShaderContext()
@@ -1010,9 +1010,9 @@ namespace IGC
             const CDriverInfo& driverInfo,
             const bool          createResourceDimTypes = true,
             LLVMContextWrapper* llvmCtxWrapper = nullptr) ///< LLVM context to use, if null a new one will be created
-            : CodeGenContext(ShaderType::DOMAIN_SHADER, btiLayout, platform, driverInfo, createResourceDimTypes, llvmCtxWrapper)
+            : CodeGenContext(ShaderType::DOMAIN_SHADER, btiLayout, platform, driverInfo, createResourceDimTypes, llvmCtxWrapper),
+            programOutput()
         {
-            memset(&programOutput, 0, sizeof(SDomainShaderKernelProgram));
         }
 
         ~DomainShaderContext()
