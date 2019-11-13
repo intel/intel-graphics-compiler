@@ -331,7 +331,7 @@ namespace IGC
         PixelShaderInfo psInfo;
         ComputeShaderInfo csInfo;
         std::map<ConstantAddress, uint32_t>   inlineDynConstants;
-        std::map<uint32_t, uint32_t>          inlineDynTextures;
+        std::map<uint32_t, std::array<uint32_t, 4>> inlineDynTextures;
         ImmConstantInfo immConstant;
         std::vector<InlineProgramScopeBuffer> inlineConstantBuffers;
         std::vector<InlineProgramScopeBuffer> inlineGlobalBuffers;

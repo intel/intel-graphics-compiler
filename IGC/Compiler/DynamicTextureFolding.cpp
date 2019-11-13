@@ -73,13 +73,22 @@ void DynamicTextureFolding::FoldSingleTextureValue(CallInst& I)
     auto it = modMD->inlineDynTextures.find(textureIndex);
     if (it != modMD->inlineDynTextures.end())
     {
-        if ((&I)->getType()->isIntOrIntVectorTy())
+        for (auto iter = I.user_begin(); iter != I.user_end(); iter++)
         {
-            (&I)->replaceAllUsesWith(ConstantInt::get((&I)->getType(), it->second));
-        }
-        else
-        {
-            (&I)->replaceAllUsesWith(ConstantFP::get((&I)->getType(), *(float*) & (it->second)));
+            if (llvm::ExtractElementInst * pExtract = llvm::dyn_cast<llvm::ExtractElementInst>(*iter))
+            {
+                if (llvm::ConstantInt * pIdx = llvm::dyn_cast<llvm::ConstantInt>(pExtract->getIndexOperand()))
+                {
+                    if ((&I)->getType()->isIntOrIntVectorTy())
+                    {
+                        pExtract->replaceAllUsesWith(ConstantInt::get((pExtract)->getType(), (it->second[(uint32_t)(pIdx->getZExtValue())])));
+                    }
+                    else if ((&I)->getType()->isFPOrFPVectorTy())
+                    {
+                        pExtract->replaceAllUsesWith(ConstantFP::get((pExtract)->getType(), *(float*) & (it->second[(uint32_t)(pIdx->getZExtValue())])));
+                    }
+                }
+            }
         }
     }
 }
