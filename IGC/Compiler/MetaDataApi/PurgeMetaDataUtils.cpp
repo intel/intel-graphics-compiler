@@ -60,7 +60,7 @@ bool PurgeMetaDataUtils::runOnModule(Module& M)
     CodeGenContext* pContext = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     IGCMD::MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
 
-    auto toBeDeleted = [=](llvm::Module* M, void* ptr)
+    auto shouldRemoveFunction = [=](llvm::Module* M, void* ptr)
     {
         llvm::Function* F = nullptr;
 
@@ -98,14 +98,21 @@ bool PurgeMetaDataUtils::runOnModule(Module& M)
     };
 
     // Collect all functions for which metadata will be removed.
-    SmallVector<llvm::Function*, 8> ToBeDeleted;
-    for (auto i = pMdUtils->begin_FunctionsInfo(), e = pMdUtils->end_FunctionsInfo(); i != e; ++i)
-    {
-        if (toBeDeleted(pContext->getModule(), i->first))
+    SmallSet<llvm::Function*, 8> ToBeDeleted;
+
+    auto checkFuncRange = [&](auto beginIt, auto endIt) {
+        for (auto it = beginIt, e = endIt; it != e; ++it)
         {
-            ToBeDeleted.push_back(i->first);
+            if (shouldRemoveFunction(pContext->getModule(), it->first))
+            {
+                ToBeDeleted.insert(it->first);
+            }
         }
-    }
+    };
+
+    auto& FuncMD = pContext->getModuleMetaData()->FuncMD;
+    checkFuncRange(pMdUtils->begin_FunctionsInfo(), pMdUtils->end_FunctionsInfo());
+    checkFuncRange(FuncMD.begin(), FuncMD.end());
 
     // Remove them.
     for (auto F : ToBeDeleted)
@@ -116,9 +123,9 @@ bool PurgeMetaDataUtils::runOnModule(Module& M)
             pMdUtils->eraseFunctionsInfoItem(Iter);
         }
 
-        if (pContext->getModuleMetaData()->FuncMD.find(F) != pContext->getModuleMetaData()->FuncMD.end())
+        if (FuncMD.find(F) != FuncMD.end())
         {
-            pContext->getModuleMetaData()->FuncMD.erase(F);
+            FuncMD.erase(F);
         }
     }
 
