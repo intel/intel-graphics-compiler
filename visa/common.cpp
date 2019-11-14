@@ -48,6 +48,7 @@ const char* platformString[ALL] =
     "CNL",
     "ICL",
     "ICLLP",
+    "TGLLP",
 };
 
 #define CM_SUCCESS                                  0

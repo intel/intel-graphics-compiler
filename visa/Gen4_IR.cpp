@@ -350,6 +350,14 @@ static bool isHdcIntAtomicMessage(SFID funcID, uint16_t msgType)
         if (msgType == DC1_TYPED_ATOMIC)
             return true;
     }
+    if (getPlatformGeneration(getGenxPlatform()) >= PlatformGen::GEN12)
+    {
+        if (msgType == DC1_TYPED_HALF_INTEGER_ATOMIC ||
+            msgType == DC1_TYPED_HALF_COUNTER_ATOMIC ||
+            msgType == DC1_UNTYPED_HALF_INTEGER_ATOMIC ||
+            msgType == DC1_A64_UNTYPED_HALF_INTEGER_ATOMIC)
+            return true;
+    }
     return false;
 }
 
@@ -362,6 +370,12 @@ static bool isHdcFloatAtomicMessage(SFID funcID, uint16_t msgType)
     {
         if (msgType == DC1_UNTYPED_FLOAT_ATOMIC ||
             msgType == DC1_A64_UNTYPED_FLOAT_ATOMIC)
+            return true;
+    }
+    if (getPlatformGeneration(getGenxPlatform()) >= PlatformGen::GEN12)
+    {
+        if (msgType == DC1_UNTYPED_HALF_FLOAT_ATOMIC ||
+            msgType == DC1_A64_UNTYPED_HALF_FLOAT_ATOMIC)
             return true;
     }
     return false;
@@ -499,6 +513,8 @@ bool G4_SendMsgDescriptor::isA64Message() const
         case DC1_A64_UNTYPED_SURFACE_WRITE:
         case DC1_A64_SCATTERED_WRITE:
         case DC1_A64_UNTYPED_FLOAT_ATOMIC:
+        case DC1_A64_UNTYPED_HALF_INTEGER_ATOMIC:
+        case DC1_A64_UNTYPED_HALF_FLOAT_ATOMIC:
             return true;
         }
         break;

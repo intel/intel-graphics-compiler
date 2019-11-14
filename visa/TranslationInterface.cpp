@@ -4252,13 +4252,15 @@ int IR_Builder::translateVISADwordAtomicInst(VISAAtomicOps atomicOp,
     MD |= (execSize == EXEC_SIZE_8 ? MDC_SM2R_SIMD8 : MDC_SM2R_SIMD16) << 12;
     if (is16Bit)
     {
-        assert(false && "Unsupported atomic operations!");
+        MD |= (IsFloatOp ? static_cast<unsigned>(DC1_UNTYPED_HALF_FLOAT_ATOMIC)
+            : static_cast<unsigned>(DC1_UNTYPED_HALF_INTEGER_ATOMIC))
+            << 14;
     }
     else
     {
         MD |= (IsFloatOp ? static_cast<unsigned>(DC1_UNTYPED_FLOAT_ATOMIC)
-                         : static_cast<unsigned>(DC1_UNTYPED_ATOMIC))
-              << 14;
+            : static_cast<unsigned>(DC1_UNTYPED_ATOMIC))
+            << 14;
     }
     MD |= (hasRet ? 1 : 0) << 13;
     MD |= subOpc << 8;
@@ -4642,7 +4644,7 @@ int IR_Builder::translateVISATypedAtomicInst(
 
     if (is16Bit)
     {
-        assert(false && "Unsupported atomic operations!");
+        msgDesc |= DC1_TYPED_HALF_INTEGER_ATOMIC << 14;
     }
     else
     {
@@ -9844,7 +9846,14 @@ static void FillSVMAtomicMsgDesc(bool is16Bit, bool isFloatOp, uint32_t &msgDesc
 {
     if (is16Bit)
     {
-        assert(false && "Unsupported atomic operations!");
+        if (isFloatOp)
+        {
+            msgDesc |= DC1_A64_UNTYPED_HALF_FLOAT_ATOMIC << 14;
+        }
+        else
+        {
+            msgDesc |= DC1_A64_UNTYPED_HALF_INTEGER_ATOMIC << 14;
+        }
     }
     else
     {

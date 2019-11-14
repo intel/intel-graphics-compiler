@@ -270,6 +270,53 @@ long     __builtin_IB_atomic_cmpxchg_global_i64(__global long*, long, long);
 double   __builtin_IB_atomic_cmpxchg_global_f64(__global double*, double, double);
 #endif // defined(cl_intel_64bit_global_atomics_placeholder)
 
+// Atomic operations
+short    __builtin_IB_atomic_add_global_i16(__global short*, short);
+short    __builtin_IB_atomic_add_local_i16(__local short*, short);
+short    __builtin_IB_atomic_sub_global_i16(__global short*, short);
+short    __builtin_IB_atomic_sub_local_i16(__local short*, short);
+short    __builtin_IB_atomic_xchg_global_i16(__global short*, short);
+short    __builtin_IB_atomic_xchg_local_i16(__local short*, short);
+short    __builtin_IB_atomic_min_global_i16(__global short*, short);
+ushort   __builtin_IB_atomic_min_global_u16(__global ushort*, ushort);
+half     __builtin_IB_atomic_min_global_f16(__global half*, half);
+short    __builtin_IB_atomic_min_local_i16(__local short*, short);
+ushort   __builtin_IB_atomic_min_local_u16(__local ushort*, ushort);
+half     __builtin_IB_atomic_min_local_f16(__local half*, half);
+short    __builtin_IB_atomic_max_global_i16(__global short*, short);
+ushort   __builtin_IB_atomic_max_global_u16(__global ushort*, ushort);
+half     __builtin_IB_atomic_max_global_f16(__global half*, half);
+short    __builtin_IB_atomic_max_local_i16(__local short*, short);
+ushort   __builtin_IB_atomic_max_local_u16(__local ushort*, ushort);
+half     __builtin_IB_atomic_max_local_f16(__local half*, half);
+short    __builtin_IB_atomic_and_global_i16(__global short*, short);
+short    __builtin_IB_atomic_and_local_i16(__local short*, short);
+short    __builtin_IB_atomic_or_global_i16(__global short*, short);
+short    __builtin_IB_atomic_or_local_i16(__local short*, short);
+short    __builtin_IB_atomic_xor_global_i16(__global short*, short);
+short    __builtin_IB_atomic_xor_local_i16(__local short*, short);
+short    __builtin_IB_atomic_inc_global_i16(__global short*);
+short    __builtin_IB_atomic_inc_local_i16(__local short*);
+short    __builtin_IB_atomic_dec_global_i16(__global short*);
+short    __builtin_IB_atomic_dec_local_i16(__local short*);
+short    __builtin_IB_atomic_cmpxchg_global_i16(__global short*, short, short);
+half     __builtin_IB_atomic_cmpxchg_global_f16(__global half*, half, half);
+short    __builtin_IB_atomic_cmpxchg_local_i16(__local short*, short, short);
+half     __builtin_IB_atomic_cmpxchg_local_f16(__local half*, half, half);
+
+short    __builtin_IB_image_atomic_add_i16(int, int4, short);
+short    __builtin_IB_image_atomic_sub_i16(int, int4, short);
+short    __builtin_IB_image_atomic_xchg_i16(int, int4, short);
+short    __builtin_IB_image_atomic_min_i16(int, int4, short);
+ushort   __builtin_IB_image_atomic_min_u16(int, int4, ushort);
+short    __builtin_IB_image_atomic_max_i16(int, int4, short);
+ushort   __builtin_IB_image_atomic_max_u16(int, int4, ushort);
+short    __builtin_IB_image_atomic_and_i16(int, int4, short);
+short    __builtin_IB_image_atomic_or_i16(int, int4, short);
+short    __builtin_IB_image_atomic_xor_i16(int, int4, short);
+short    __builtin_IB_image_atomic_inc_i16(int, int4);
+short    __builtin_IB_image_atomic_cmpxchg_i16(int, int4, short, short);
+
 
 void __builtin_IB_kmp_acquire_lock(__global int *);
 void __builtin_IB_kmp_release_lock(__global int *);
