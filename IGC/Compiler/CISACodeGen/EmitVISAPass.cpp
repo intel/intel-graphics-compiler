@@ -9047,8 +9047,7 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
         {
             // If the call is not uniform, we have to make a uniform call per lane
             // First get the execution mask for active lanes
-            CVariable* eMaskVec = nullptr;
-            CVariable* eMask = GetExecutionMask(eMaskVec);
+            CVariable* eMask = GetExecutionMask();
             // Create a label for the loop
             uint label = m_encoder->GetNewLabelID();
             m_encoder->Label(label);
@@ -9059,23 +9058,36 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
             funcAddr = TruncatePointer(funcAddr);
             CVariable* uniformAddr = UniformCopy(funcAddr, offset, eMask);
             // Set the predicate to true for all lanes with the same address
-            CVariable* flag = m_currShader->ImmToVariable(0, ISA_TYPE_BOOL);
-            m_encoder->Cmp(EPREDICATE_EQ, flag, uniformAddr, funcAddr);
+            CVariable* callPred = m_currShader->ImmToVariable(0, ISA_TYPE_BOOL);
+            m_encoder->Cmp(EPREDICATE_EQ, callPred, uniformAddr, funcAddr);
+            m_encoder->Push();
+
+            uint callLabel = m_encoder->GetNewLabelID();
+            m_encoder->SetInversePredicate(true);
+            m_encoder->Jump(callPred, callLabel);
             m_encoder->Push();
 
             // Indirect call for all lanes set by the flag
-            m_encoder->IndirectStackCall(flag, uniformAddr, argSizeInGRF, retSizeInGRF);
+            m_encoder->IndirectStackCall(nullptr, uniformAddr, argSizeInGRF, retSizeInGRF);
+            m_encoder->Copy(eMask, eMask);
+            m_encoder->Push();
+
+            // Label for lanes that skipped the call
+            m_encoder->Label(callLabel);
             m_encoder->Push();
 
             // Unset the bits in execution mask for lanes that were called
-            m_encoder->Xor(eMaskVec, eMaskVec, flag);
+            CVariable* callMask = m_currShader->GetNewVariable(1, eMask->GetType(), eMask->GetAlign(), true);
+            CVariable* loopPred = m_currShader->ImmToVariable(0, ISA_TYPE_BOOL);
+            m_encoder->Cast(callMask, callPred);
+            m_encoder->Not(callMask, callMask);
+            m_encoder->And(eMask, eMask, callMask);
             m_encoder->Push();
-            m_encoder->SetNoMask();
-            m_encoder->Cast(eMask, eMaskVec);
+            m_encoder->SetP(loopPred, eMask);
             m_encoder->Push();
 
             // Loop while there are bits still left in the mask
-            m_encoder->Jump(eMaskVec, label);
+            m_encoder->Jump(loopPred, label);
             m_encoder->Push();
         }
     }
