@@ -873,7 +873,7 @@ namespace vISA
         BitSet   **tokeNodesMap;
 
         //BB local data dependence analysis
-        G4_BB_SB(IR_Builder& b, Mem_Manager &m, G4_BB *block, SBNODE_VECT *SBNodes, SBNODE_LIST* SBSendNodes,
+        G4_BB_SB(IR_Builder& b, Mem_Manager &m, G4_BB *block, SBNODE_VECT *SBNodes, SBNODE_VECT* SBSendNodes,
             SBBUCKET_VECTOR *globalSendOpndList,  SWSB_INDEXES *indexes, uint32_t &globalSendNum, LiveGRFBuckets *lb,
             LiveGRFBuckets *globalLB, PointsToAnalysis& p,
             std::map<G4_Label*, G4_BB_SB*> *LabelToBlockMap) : builder(b), mem(m), bb(block),
@@ -967,7 +967,7 @@ namespace vISA
             LiveGRFBuckets* &LB,
             LiveGRFBuckets* &globalSendsLB,
             SBNODE_VECT *SBNodes,
-            SBNODE_LIST *SBSendNodes,
+            SBNODE_VECT *SBSendNodes,
             SBBUCKET_VECTOR *globalSendOpndList,
             SWSB_INDEXES *indexes,
             uint32_t &globalSendNum,
@@ -976,7 +976,7 @@ namespace vISA
 
         //Global SBID dependence analysis
         void setSendOpndMayKilled(LiveGRFBuckets *globalSendsLB, SBNODE_VECT *SBNodes, PointsToAnalysis &p);
-        void dumpTokenLiveInfo(SBNODE_LIST * SBSendNodes);
+        void dumpTokenLiveInfo(SBNODE_VECT * SBSendNodes);
         void getLiveBucketsFromFootprint(SBFootprint *firstFootprint, SBBucketNode* sBucketNode, LiveGRFBuckets *send_use_kills);
         void addGlobalDependence(unsigned globalSendNum, SBBUCKET_VECTOR *globalSendOpndList, SBNODE_VECT *SBNodes, PointsToAnalysis &p, bool afterWrite);
         void clearKilledBucketNodeGen12LP(LiveGRFBuckets * LB, int ALUID);
@@ -1011,7 +1011,7 @@ namespace vISA
         BB_SWSB_VECTOR BBVector;    // The basic block vector, ordered with ID of the BB
         LOOP_SWSB_VECTOR loopVector;
         SBNODE_VECT SBNodes;        // All instruction nodes
-        SBNODE_LIST SBSendNodes;    // All out-of-order instruction nodes
+        SBNODE_VECT SBSendNodes;    // All out-of-order instruction nodes
         SWSB_INDEXES indexes;         // To pass ALU ID  from previous BB to current.
         uint32_t  globalSendNum;    // The number of out-of-order instructions which generate global dependencies.
         SBBUCKET_VECTOR globalSendOpndList;  //All send operands which live out their instructions' BBs. No redundant.

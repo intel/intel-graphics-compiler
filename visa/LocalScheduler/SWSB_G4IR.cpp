@@ -2498,7 +2498,7 @@ void SWSB::dumpDepInfo()
 void SWSB::dumpLiveIntervals()
 {
     std::cerr << "Internal:" << "\n";
-    for (SBNODE_LIST_ITER node_it = SBSendNodes.begin();
+    for (SBNODE_VECT_ITER node_it = SBSendNodes.begin();
         node_it != SBSendNodes.end();
         node_it++)
     {
@@ -2514,7 +2514,7 @@ void SWSB::dumpLiveIntervals()
 void SWSB::dumpTokeAssignResult()
 {
     std::cerr << "Internal:" << "\n";
-    for (SBNODE_LIST_ITER node_it = SBSendNodes.begin();
+    for (SBNODE_VECT_ITER node_it = SBSendNodes.begin();
         node_it != SBSendNodes.end();
         node_it++)
     {
@@ -2538,11 +2538,11 @@ void SWSB::buildLiveIntervals()
 {
     // For all send nodes
     // Set the live ranges according to dependence edges
-    for (SBNODE_LIST_ITER node_it = SBSendNodes.begin();
+    for (SBNODE_VECT_ITER node_it = SBSendNodes.begin();
         node_it != SBSendNodes.end();)
     {
         SBNode* node = *node_it;
-        SBNODE_LIST_ITER succ_it = node_it;
+        SBNODE_VECT_ITER succ_it = node_it;
         succ_it++;
 
         node->setLiveEarliesID(node->getNodeID(), node->getBBID());
@@ -2632,7 +2632,7 @@ void SWSB::buildLiveIntervals()
     }
 
     //Sort the live ranges
-    SBSendNodes.sort(compareInterval);
+    std::sort(SBSendNodes.begin(), SBSendNodes.end(), compareInterval);
 
 #ifdef DEBUG_VERBOSE_ON
     dumpLiveIntervals();
@@ -3345,7 +3345,7 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
     LiveGRFBuckets*& LB,
     LiveGRFBuckets*& globalSendsLB,
     SBNODE_VECT* SBNodes,
-    SBNODE_LIST* SBSendNodes,
+    SBNODE_VECT* SBSendNodes,
     SBBUCKET_VECTOR* globalSendOpndList,
     SWSB_INDEXES* indexes,
     uint32_t& globalSendNum,
@@ -4051,7 +4051,7 @@ void SWSB::dumpTokenLiveInfo()
         std::cerr << std::endl;
         if (BBVector[i]->liveOutTokenNodes != nullptr)
         {
-            for (SBNODE_LIST_ITER node_it = SBSendNodes.begin();
+            for (SBNODE_VECT_ITER node_it = SBSendNodes.begin();
                 node_it != SBSendNodes.end();
                 node_it++)
             {
