@@ -598,26 +598,54 @@ bool __builtin_spirv_OpIsValidReserveId_i64( ReserveId_t ReserveId )
     return ( rtos(ReserveId) & INTEL_PIPE_RESERVE_ID_VALID_BIT ) != 0;
 }
 
+uint __get_pipe_num_packets_ro(pipe int pipe_, uint bytes, uint alignment)
+{
+  __global pipe_control_intel_t* p = ptoc_ro(pipe_);
+
+  // load from tail shouldn't be moved before load from head so acquire head first then relaxively load tail
+  uint head = read_head( p );
+  uint tail = read_tail( p );
+
+  return __builtin_spirv_OpenCL_select_i32_i32_i32(
+    p->pipe_max_packets - head + tail,
+    tail - head,
+    (uint)(head <= tail) );
+}
+
+uint __get_pipe_num_packets_wo(__write_only pipe int pipe_, uint bytes, uint alignment)
+{
+  __global pipe_control_intel_t* p = ptoc_wo(pipe_);
+
+  // load from tail shouldn't be moved before load from head so acquire head first then relaxively load tail
+  uint head = read_head( p );
+  uint tail = read_tail( p );
+
+  return __builtin_spirv_OpenCL_select_i32_i32_i32(
+    p->pipe_max_packets - head + tail,
+    tail - head,
+    (uint)(head <= tail) );
+}
 
 uint __builtin_spirv_OpGetNumPipePackets_i64_i32( Pipe_t Pipe, uint PacketSize/*, uint PacketAlignment */)
 {
-    __global pipe_control_intel_t* p = ptoc_ro(Pipe);
-
-    // load from tail shouldn't be moved before load from head so acquire head first then relaxively load tail
-    uint head = read_head( p );
-    uint tail = read_tail( p );
-
-    return __builtin_spirv_OpenCL_select_i32_i32_i32(
-            p->pipe_max_packets - head + tail,
-            tail - head,
-            (uint)(head <= tail) );
+  return __get_pipe_num_packets_ro(Pipe, PacketSize, 0);
 }
 
+uint __get_pipe_max_packets_ro(pipe int pipe_, uint bytes, uint alignment)
+{
+  __global pipe_control_intel_t* p = ptoc_ro(pipe_);
+  return p->pipe_max_packets - 1;
+}
+
+uint __get_pipe_max_packets_wo(__write_only pipe int pipe_, uint bytes, uint alignment)
+{
+  __global pipe_control_intel_t* p = ptoc_wo(pipe_);
+  return p->pipe_max_packets - 1;
+}
 
 uint __builtin_spirv_OpGetMaxPipePackets_i64_i32( Pipe_t Pipe, uint PacketSize/*, uint PacketAlignment */)
 {
-  __global pipe_control_intel_t* p = ptoc_ro(Pipe);
-  return p->pipe_max_packets - 1;
+  return __get_pipe_max_packets_ro(Pipe, PacketSize, 0);
 }
 
 static uint __intel_pipe_broadcast(uint val)
