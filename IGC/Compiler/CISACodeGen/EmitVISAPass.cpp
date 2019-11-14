@@ -242,8 +242,8 @@ bool EmitPass::canCompileCurrentShader(llvm::Function& F)
 {
     CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
-    // If uses subroutines, we can only compile a single SIMD mode
-    if (m_FGA && (!m_FGA->getGroup(&F)->isSingle() || m_FGA->getGroup(&F)->hasExternFCall()))
+    // If uses subroutines/stackcall, we can only compile a single SIMD mode
+    if (m_FGA && (!m_FGA->getGroup(&F)->isSingle() || m_FGA->getGroup(&F)->hasStackCall()))
     {
         // default SIMD8
         SIMDMode compiledSIMD = SIMDMode::SIMD8;
@@ -354,7 +354,7 @@ void EmitPass::CreateKernelShaderMap(CodeGenContext* ctx, MetaDataUtils* pMdUtil
             {
                 // Single PS
                 // Assuming single shader information in metadata
-                Function* pFunc = getUniqueEntryFunc(pMdUtils);
+                Function* pFunc = getUniqueEntryFunc(pMdUtils, ctx->getModuleMetaData());
 
                 CShaderProgram* pProgram = new CShaderProgram(ctx, pFunc);
                 m_shaders[pFunc] = pProgram;
@@ -452,7 +452,6 @@ bool EmitPass::runOnFunction(llvm::Function& F)
     }
 
     bool hasStackCall = m_FGA && m_FGA->getGroup(&F)->hasStackCall();
-    bool hasFunctionPointer = ctx->m_instrTypes.hasIndirectCall || (m_FGA && m_FGA->getGroup(&F)->hasExternFCall());
     bool ptr64bits = (m_DL->getPointerSizeInBits(ADDRESS_SPACE_PRIVATE) == 64);
     if (!m_FGA || m_FGA->isGroupHead(&F))
     {
@@ -468,7 +467,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         m_roundingMode = m_encoder->getEncoderRoundingMode(
             static_cast<Float_RoundingMode>(ctx->getModuleMetaData()->compOpt.FloatRoundingMode));
         m_currShader->PreCompile();
-        if (hasStackCall || hasFunctionPointer)
+        if (hasStackCall)
         {
             m_currShader->InitKernelStack(ptr64bits);
         }
@@ -740,19 +739,21 @@ bool EmitPass::runOnFunction(llvm::Function& F)
     IF_DEBUG_INFO_IF(m_currShader->diData, m_currShader->diData->markOutput(F, m_currShader);)
         IF_DEBUG_INFO_IF(m_currShader->diData, m_currShader->diData->addVISAModule(&F, m_pDebugEmitter->GetVISAModule());)
 
-        // Compile only when this is the last function for this kernel.
-        bool finalize = (!m_FGA || m_FGA->isGroupTail(&F));
+    // Compile only when this is the last function for this kernel.
+    bool finalize = (!m_FGA || m_FGA->isGroupTail(&F));
     bool destroyVISABuilder = false;
     if (finalize)
     {
         destroyVISABuilder = true;
-        // We only need one symbol table per module. If there are multiple kernels, only create a symbol
-        // table for the one with indirectly called functions attached.
-        bool compileWithSymbolTable = !m_FGA || (m_FGA->getGroup(&F)->hasIndirectFuncs());
+        // We only need one symbol table per module. If there are multiple entry functions, only create a symbol
+        // table for the unique entry function
+        Function* uniqueEntry = getUniqueEntryFunc(pMdUtils, m_moduleMD);
+        Function* currHead = m_FGA ? m_FGA->getGroupHead(&F) : &F;
+        bool compileWithSymbolTable = (currHead == uniqueEntry);
         m_encoder->Compile(compileWithSymbolTable);
         // if we are doing stack-call, do the following:
         // - Hard-code a large scratch-space for visa
-        if (hasStackCall || hasFunctionPointer)
+        if (hasStackCall)
         {
             if (m_currShader->ProgramOutput()->m_scratchSpaceUsedBySpills == 0)
             {

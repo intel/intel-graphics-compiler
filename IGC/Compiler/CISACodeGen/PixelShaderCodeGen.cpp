@@ -1334,7 +1334,7 @@ namespace IGC
             // Single PS
             CodeGen(ctx, shaders);
             // Assuming single shader information in metadata
-            Function* pFunc = getUniqueEntryFunc(pMdUtils);
+            Function* pFunc = getUniqueEntryFunc(pMdUtils, ctx->getModuleMetaData());
             // gather data to send back to the driver
             shaders[pFunc]->FillProgram(&ctx->programOutput);
             COMPILER_SHADER_STATS_PRINT(shaders[pFunc]->m_shaderStats, ShaderType::PIXEL_SHADER, ctx->hash, "");

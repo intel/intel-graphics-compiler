@@ -156,6 +156,7 @@ namespace IGC
         bool groupIDPresent = false;
         int privateMemoryPerWI = 0;
         bool globalIDPresent = false;
+        bool isUniqueEntry = false;
 
         std::vector<std::string> UserAnnotations;
 
