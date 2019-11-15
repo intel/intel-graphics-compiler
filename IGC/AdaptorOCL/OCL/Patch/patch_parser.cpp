@@ -523,6 +523,22 @@ void DebugPatchList(
                         ICBE_DPF_STR(output, GFXDBG_HARDWARE,
                             "\tType = BUFFER_STATEFUL\n");
                         break;
+                    case iOpenCL::DATA_PARAMETER_FLAT_IMAGE_BASEOFFSET:
+                        ICBE_DPF_STR(output, GFXDBG_HARDWARE,
+                            "\tType = FLAT_IMAGE_BASEOFFSET\n");
+                        break;
+                    case iOpenCL::DATA_PARAMETER_FLAT_IMAGE_HEIGHT:
+                        ICBE_DPF_STR(output, GFXDBG_HARDWARE,
+                            "\tType = FLAT_IMAGE_HEIGHT\n");
+                        break;
+                    case iOpenCL::DATA_PARAMETER_FLAT_IMAGE_WIDTH:
+                        ICBE_DPF_STR(output, GFXDBG_HARDWARE,
+                            "\tType = FLAT_IMAGE_WIDTH\n");
+                        break;
+                    case iOpenCL::DATA_PARAMETER_FLAT_IMAGE_PITCH:
+                        ICBE_DPF_STR(output, GFXDBG_HARDWARE,
+                            "\tType = FLAT_IMAGE_PITCH\n");
+                        break;
                     default:
                         ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                             "\tType = UNKNOWN_TYPE\n" );

@@ -44,6 +44,10 @@ int    __builtin_IB_get_image_srgb_channel_order(int) __attribute__((const));
 int    __builtin_IB_get_image_channel_order(int) __attribute__((const));
 int    __builtin_IB_get_image_num_samples(int) __attribute__((const));
 int    __builtin_IB_get_image_num_mip_levels(int) __attribute__((const));
+long   __builtin_IB_get_flat_image_baseoffset(int) __attribute__((const));
+int    __builtin_IB_get_flat_image_width(int) __attribute__((const));
+int    __builtin_IB_get_flat_image_height(int) __attribute__((const));
+int    __builtin_IB_get_flat_image_pitch(int) __attribute__((const));
 
 // Image sampling and loads
 float4 __builtin_IB_OCL_1d_sample_l(int, int, float,  float);

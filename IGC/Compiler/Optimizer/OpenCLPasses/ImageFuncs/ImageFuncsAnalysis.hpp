@@ -97,6 +97,10 @@ namespace IGC
         static const llvm::StringRef GET_SAMPLER_ADDRESS_MODE;
         static const llvm::StringRef GET_SAMPLER_NORMALIZED_COORDS;
         static const llvm::StringRef GET_SAMPLER_SNAP_WA_REQUIRED;
+        static const llvm::StringRef GET_FLAT_IMAGE_BASEOFFSET;
+        static const llvm::StringRef GET_FLAT_IMAGE_HEIGHT;
+        static const llvm::StringRef GET_FLAT_IMAGE_WIDTH;
+        static const llvm::StringRef GET_FLAT_IMAGE_PITCH;
     private:
 
         /// @brief Maps each implicit argument type to a set. This set contains

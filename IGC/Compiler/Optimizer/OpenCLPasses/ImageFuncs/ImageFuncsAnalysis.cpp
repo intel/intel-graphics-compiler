@@ -62,6 +62,10 @@ const llvm::StringRef ImageFuncsAnalysis::GET_IMAGE_NUM_SAMPLES = "__builtin_IB_
 const llvm::StringRef ImageFuncsAnalysis::GET_SAMPLER_ADDRESS_MODE = "__builtin_IB_get_address_mode";
 const llvm::StringRef ImageFuncsAnalysis::GET_SAMPLER_NORMALIZED_COORDS = "__builtin_IB_is_normalized_coords";
 const llvm::StringRef ImageFuncsAnalysis::GET_SAMPLER_SNAP_WA_REQUIRED = "__builtin_IB_get_snap_wa_reqd";
+const llvm::StringRef ImageFuncsAnalysis::GET_FLAT_IMAGE_BASEOFFSET = "__builtin_IB_get_flat_image_baseoffset";
+const llvm::StringRef ImageFuncsAnalysis::GET_FLAT_IMAGE_HEIGHT = "__builtin_IB_get_flat_image_height";
+const llvm::StringRef ImageFuncsAnalysis::GET_FLAT_IMAGE_WIDTH = "__builtin_IB_get_flat_image_width";
+const llvm::StringRef ImageFuncsAnalysis::GET_FLAT_IMAGE_PITCH = "__builtin_IB_get_flat_image_pitch";
 
 bool ImageFuncsAnalysis::runOnModule(Module& M) {
     bool changed = false;
@@ -149,6 +153,22 @@ void ImageFuncsAnalysis::visitCallInst(CallInst& CI)
     else if (funcName == GET_SAMPLER_SNAP_WA_REQUIRED)
     {
         imageFunc = &m_argMap[ImplicitArg::SAMPLER_SNAP_WA];
+    }
+    else if (funcName == GET_FLAT_IMAGE_BASEOFFSET)
+    {
+        imageFunc = &m_argMap[ImplicitArg::FLAT_IMAGE_BASEOFFSET];
+    }
+    else if (funcName == GET_FLAT_IMAGE_HEIGHT)
+    {
+        imageFunc = &m_argMap[ImplicitArg::FLAT_IMAGE_HEIGHT];
+    }
+    else if (funcName == GET_FLAT_IMAGE_WIDTH)
+    {
+        imageFunc = &m_argMap[ImplicitArg::FLAT_IMAGE_WIDTH];
+    }
+    else if (funcName == GET_FLAT_IMAGE_PITCH)
+    {
+        imageFunc = &m_argMap[ImplicitArg::FLAT_IMAGE_PITCH];
     }
     else
     {

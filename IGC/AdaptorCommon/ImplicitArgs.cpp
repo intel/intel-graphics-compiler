@@ -278,7 +278,10 @@ ImplicitArgs::ImplicitArgs(const llvm::Function& func , const MetaDataUtils* pMd
         IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::SAMPLER_ADDRESS, "smpAddress", ImplicitArg::INT, WIAnalysis::UNIFORM, 1, ImplicitArg::ALIGN_DWORD, true));
         IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::SAMPLER_NORMALIZED, "smpNormalized", ImplicitArg::INT, WIAnalysis::UNIFORM, 1, ImplicitArg::ALIGN_DWORD, true));
         IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::SAMPLER_SNAP_WA, "smpSnapWA", ImplicitArg::INT, WIAnalysis::UNIFORM, 1, ImplicitArg::ALIGN_DWORD, true));
-
+        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::FLAT_IMAGE_BASEOFFSET, "flatImageBaseoffset", ImplicitArg::LONG, WIAnalysis::UNIFORM, 1, ImplicitArg::ALIGN_QWORD, true));
+        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::FLAT_IMAGE_HEIGHT, "flatImageHeight", ImplicitArg::INT, WIAnalysis::UNIFORM, 1, ImplicitArg::ALIGN_DWORD, true));
+        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::FLAT_IMAGE_WIDTH, "flatImageWidth", ImplicitArg::INT, WIAnalysis::UNIFORM, 1, ImplicitArg::ALIGN_DWORD, true));
+        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::FLAT_IMAGE_PITCH, "flatImagePitch", ImplicitArg::INT, WIAnalysis::UNIFORM, 1, ImplicitArg::ALIGN_DWORD, true));
 
         IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::VME_MB_BLOCK_TYPE, "vmeMbBlockType", ImplicitArg::INT, WIAnalysis::UNIFORM, 1, ImplicitArg::ALIGN_DWORD, true));
         IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::VME_SUBPIXEL_MODE, "vmeSubpixelMode", ImplicitArg::INT, WIAnalysis::UNIFORM, 1, ImplicitArg::ALIGN_DWORD, true));

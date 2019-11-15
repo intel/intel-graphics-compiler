@@ -912,6 +912,10 @@ namespace IGC
         case KernelArg::ArgType::IMPLICIT_SAMPLER_ADDRESS:
         case KernelArg::ArgType::IMPLICIT_SAMPLER_NORMALIZED:
         case KernelArg::ArgType::IMPLICIT_SAMPLER_SNAP_WA:
+        case KernelArg::ArgType::IMPLICIT_FLAT_IMAGE_BASEOFFSET:
+        case KernelArg::ArgType::IMPLICIT_FLAT_IMAGE_HEIGHT:
+        case KernelArg::ArgType::IMPLICIT_FLAT_IMAGE_WIDTH:
+        case KernelArg::ArgType::IMPLICIT_FLAT_IMAGE_PITCH:
         case KernelArg::ArgType::IMPLICIT_DEVICE_ENQUEUE_DATA_PARAMETER_OBJECT_ID:
         case KernelArg::ArgType::IMPLICIT_DEVICE_ENQUEUE_DISPATCHER_SIMD_SIZE:
         case KernelArg::ArgType::IMPLICIT_BUFFER_OFFSET:

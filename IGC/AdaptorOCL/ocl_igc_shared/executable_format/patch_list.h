@@ -33,7 +33,7 @@ Abstract:   Contains common patch structure definitions
 
 namespace iOpenCL
 {
-const uint32_t CURRENT_ICBE_VERSION = 1062;
+const uint32_t CURRENT_ICBE_VERSION = 1063;
 
 const uint32_t MAGIC_CL = 0x494E5443;      // 'I', 'N', 'T', 'C'
 const uint32_t INVALID_INDEX = 0xFFFFFFFF;
@@ -260,11 +260,15 @@ enum DATA_PARAMETER_TOKEN
     DATA_PARAMETER_STAGE_IN_GRID_SIZE,                              // 41
     DATA_PARAMETER_BUFFER_OFFSET,                                   // 42
     DATA_PARAMETER_BUFFER_STATEFUL,                                 // 43
+    DATA_PARAMETER_FLAT_IMAGE_BASEOFFSET,                           // 44
+    DATA_PARAMETER_FLAT_IMAGE_WIDTH,                                // 45
+    DATA_PARAMETER_FLAT_IMAGE_HEIGHT,                               // 46
+    DATA_PARAMETER_FLAT_IMAGE_PITCH,                                // 47
     NUM_DATA_PARAMETER_TOKENS
 };
 
 // Update CURRENT_ICBE_VERSION when modifying the patch list
-static_assert(NUM_DATA_PARAMETER_TOKENS == 44, "NUM_DATA_PARAMETER_TOKENS has invalid value");
+static_assert(NUM_DATA_PARAMETER_TOKENS == 48, "NUM_DATA_PARAMETER_TOKENS has invalid value");
 
 /*****************************************************************************\
 ENUM: CONSTANT_BUFFER_TYPE

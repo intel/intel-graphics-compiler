@@ -305,6 +305,14 @@ KernelArg::ArgType KernelArg::calcArgType(const ImplicitArg& arg) const
         return KernelArg::ArgType::IMPLICIT_SAMPLER_NORMALIZED;
     case ImplicitArg::SAMPLER_SNAP_WA:
         return KernelArg::ArgType::IMPLICIT_SAMPLER_SNAP_WA;
+    case ImplicitArg::FLAT_IMAGE_BASEOFFSET:
+        return KernelArg::ArgType::IMPLICIT_FLAT_IMAGE_BASEOFFSET;
+    case ImplicitArg::FLAT_IMAGE_HEIGHT:
+        return KernelArg::ArgType::IMPLICIT_FLAT_IMAGE_HEIGHT;
+    case ImplicitArg::FLAT_IMAGE_WIDTH:
+        return KernelArg::ArgType::IMPLICIT_FLAT_IMAGE_WIDTH;
+    case ImplicitArg::FLAT_IMAGE_PITCH:
+        return KernelArg::ArgType::IMPLICIT_FLAT_IMAGE_PITCH;
 
     case ImplicitArg::VME_MB_BLOCK_TYPE:
         return KernelArg::ArgType::IMPLICIT_VME_MB_BLOCK_TYPE;
@@ -686,6 +694,10 @@ std::map<KernelArg::ArgType, iOpenCL::DATA_PARAMETER_TOKEN> initArgTypeTokenMap(
        { KernelArg::ArgType::IMPLICIT_SAMPLER_ADDRESS, iOpenCL::DATA_PARAMETER_SAMPLER_ADDRESS_MODE },
        { KernelArg::ArgType::IMPLICIT_SAMPLER_NORMALIZED, iOpenCL::DATA_PARAMETER_SAMPLER_NORMALIZED_COORDS },
        { KernelArg::ArgType::IMPLICIT_SAMPLER_SNAP_WA, iOpenCL::DATA_PARAMETER_SAMPLER_COORDINATE_SNAP_WA_REQUIRED },
+       { KernelArg::ArgType::IMPLICIT_FLAT_IMAGE_BASEOFFSET, iOpenCL::DATA_PARAMETER_FLAT_IMAGE_BASEOFFSET },
+       { KernelArg::ArgType::IMPLICIT_FLAT_IMAGE_HEIGHT, iOpenCL::DATA_PARAMETER_FLAT_IMAGE_HEIGHT },
+       { KernelArg::ArgType::IMPLICIT_FLAT_IMAGE_WIDTH, iOpenCL::DATA_PARAMETER_FLAT_IMAGE_WIDTH },
+       { KernelArg::ArgType::IMPLICIT_FLAT_IMAGE_PITCH, iOpenCL::DATA_PARAMETER_FLAT_IMAGE_PITCH },
 
        { KernelArg::ArgType::IMPLICIT_VME_MB_BLOCK_TYPE, iOpenCL::DATA_PARAMETER_VME_MB_BLOCK_TYPE },
        { KernelArg::ArgType::IMPLICIT_VME_SUBPIXEL_MODE, iOpenCL::DATA_PARAMETER_VME_SUBPIXEL_MODE },
@@ -787,6 +799,10 @@ KernelArgsOrder::KernelArgsOrder(InputType layout)
             KernelArg::ArgType::IMPLICIT_SAMPLER_ADDRESS,
             KernelArg::ArgType::IMPLICIT_SAMPLER_NORMALIZED,
             KernelArg::ArgType::IMPLICIT_SAMPLER_SNAP_WA,
+            KernelArg::ArgType::IMPLICIT_FLAT_IMAGE_BASEOFFSET,
+            KernelArg::ArgType::IMPLICIT_FLAT_IMAGE_HEIGHT,
+            KernelArg::ArgType::IMPLICIT_FLAT_IMAGE_WIDTH,
+            KernelArg::ArgType::IMPLICIT_FLAT_IMAGE_PITCH,
 
             KernelArg::ArgType::IMPLICIT_VME_MB_BLOCK_TYPE,
             KernelArg::ArgType::IMPLICIT_VME_SUBPIXEL_MODE,
@@ -898,6 +914,10 @@ KernelArgsOrder::KernelArgsOrder(InputType layout)
             KernelArg::ArgType::IMPLICIT_SAMPLER_ADDRESS,
             KernelArg::ArgType::IMPLICIT_SAMPLER_NORMALIZED,
             KernelArg::ArgType::IMPLICIT_SAMPLER_SNAP_WA,
+            KernelArg::ArgType::IMPLICIT_FLAT_IMAGE_BASEOFFSET,
+            KernelArg::ArgType::IMPLICIT_FLAT_IMAGE_HEIGHT,
+            KernelArg::ArgType::IMPLICIT_FLAT_IMAGE_WIDTH,
+            KernelArg::ArgType::IMPLICIT_FLAT_IMAGE_PITCH,
 
             KernelArg::ArgType::IMPLICIT_VME_MB_BLOCK_TYPE,
             KernelArg::ArgType::IMPLICIT_VME_SUBPIXEL_MODE,

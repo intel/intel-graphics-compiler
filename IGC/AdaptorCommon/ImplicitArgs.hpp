@@ -97,7 +97,11 @@ namespace IGC
             SAMPLER_ADDRESS,
             SAMPLER_NORMALIZED,
             SAMPLER_SNAP_WA,
-            IMAGES_END = SAMPLER_SNAP_WA,
+            FLAT_IMAGE_BASEOFFSET,
+            FLAT_IMAGE_HEIGHT,
+            FLAT_IMAGE_WIDTH,
+            FLAT_IMAGE_PITCH,
+            IMAGES_END = FLAT_IMAGE_PITCH,
 
             // VME
             VME_MB_BLOCK_TYPE,
