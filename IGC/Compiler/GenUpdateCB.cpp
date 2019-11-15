@@ -58,10 +58,8 @@ IGC_INITIALIZE_PASS_END(GenUpdateCB, "GenUpdateCB", "GenUpdateCB", false, false)
 
 static bool isResInfo(GenIntrinsicInst* inst, unsigned& texId, unsigned& lod, bool& isUAV)
 {
-    if (inst)
+    if (inst && inst->getIntrinsicID() == GenISAIntrinsic::GenISA_resinfoptr)
     {
-        assert(inst->getIntrinsicID() == GenISAIntrinsic::GenISA_resinfoptr);
-
         ConstantInt* vlod = dyn_cast<ConstantInt>(inst->getOperand(1));
         if (!vlod)
             return false;
