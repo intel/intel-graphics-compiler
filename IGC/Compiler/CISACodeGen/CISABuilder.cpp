@@ -3885,7 +3885,7 @@ namespace IGC
     }
 
     if (IGC_IS_FLAG_DISABLED(EnableVISAStructurizer) ||
-        m_program->m_Platform->getWATable().Wa_1407528679 != 0)
+        (IGC_IS_FLAG_ENABLED(EnableSCFWA) && m_program->m_Platform->getWATable().Wa_1407528679 != 0))
     {
         SaveOption(vISA_EnableStructurizer, false);
     }
