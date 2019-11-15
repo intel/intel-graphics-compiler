@@ -180,6 +180,15 @@ INLINE type OVERLOADABLE intel_sub_group_reduce_##op_name(type x)               
     return __builtin_spirv_##new_name##_i32_i32_##abbr_type(Subgroup,GroupOperationReduce,x);\
 }
 
+// 8bit
+#if defined(cl_intel_subgroups_char)
+DEFN_INTEL_SUB_GROUP_REDUCE(char,  max, OpGroupSMax, i8)
+DEFN_INTEL_SUB_GROUP_REDUCE(char,  min, OpGroupSMin, i8)
+DEFN_INTEL_SUB_GROUP_REDUCE(uchar, add, OpGroupIAdd, i8)
+DEFN_INTEL_SUB_GROUP_REDUCE(uchar, max, OpGroupUMax, i8)
+DEFN_INTEL_SUB_GROUP_REDUCE(uchar, min, OpGroupUMin, i8)
+DEFN_INTEL_SUB_GROUP_REDUCE_S_ADD(char, i8)
+#endif // defined(cl_intel_subgroups_char)
 // 16bit
 #if defined(cl_intel_subgroups_short)
 DEFN_INTEL_SUB_GROUP_REDUCE(short,  max, OpGroupSMax, i16)
@@ -243,6 +252,15 @@ INLINE type OVERLOADABLE intel_sub_group_scan_inclusive_##op_name(type x)       
     return __builtin_spirv_##new_name##_i32_i32_##abbr_type(Subgroup,GroupOperationInclusiveScan,x);\
 }
 
+// 8bit
+#if defined(cl_intel_subgroups_char)
+DEFN_INTEL_SUB_GROUP_SCAN_INCL(char,  max, OpGroupSMax, i8)
+DEFN_INTEL_SUB_GROUP_SCAN_INCL(char,  min, OpGroupSMin, i8)
+DEFN_INTEL_SUB_GROUP_SCAN_INCL(uchar, add, OpGroupIAdd, i8)
+DEFN_INTEL_SUB_GROUP_SCAN_INCL(uchar, max, OpGroupUMax, i8)
+DEFN_INTEL_SUB_GROUP_SCAN_INCL(uchar, min, OpGroupUMin, i8)
+DEFN_INTEL_SUB_GROUP_SCAN_INCL_S_ADD(char, i8)
+#endif // defined(cl_intel_subgroups_char)
 // 16bit
 #if defined(cl_intel_subgroups_short)
 DEFN_INTEL_SUB_GROUP_SCAN_INCL(short,  max, OpGroupSMax, i16)
@@ -306,6 +324,15 @@ INLINE type OVERLOADABLE intel_sub_group_scan_exclusive_##op_name(type x)       
     return __builtin_spirv_##new_name##_i32_i32_##abbr_type(Subgroup,GroupOperationExclusiveScan,x);\
 }
 
+// 8bit
+#if defined(cl_intel_subgroups_char)
+DEFN_INTEL_SUB_GROUP_SCAN_EXCL(char,  max, OpGroupSMax, i8)
+DEFN_INTEL_SUB_GROUP_SCAN_EXCL(char,  min, OpGroupSMin, i8)
+DEFN_INTEL_SUB_GROUP_SCAN_EXCL(uchar, add, OpGroupIAdd, i8)
+DEFN_INTEL_SUB_GROUP_SCAN_EXCL(uchar, max, OpGroupUMax, i8)
+DEFN_INTEL_SUB_GROUP_SCAN_EXCL(uchar, min, OpGroupUMin, i8)
+DEFN_INTEL_SUB_GROUP_SCAN_EXCL_S_ADD(char, i8)
+#endif // defined(cl_intel_subgroups_char)
 // 16bit
 #if defined(cl_intel_subgroups_short)
 DEFN_INTEL_SUB_GROUP_SCAN_EXCL(short,  max, OpGroupSMax, i16)

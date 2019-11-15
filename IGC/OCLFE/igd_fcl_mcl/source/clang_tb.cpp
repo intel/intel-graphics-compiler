@@ -1414,6 +1414,14 @@ namespace TC
         {
           optionsEx += " -Dcl_intel_subgroups_short";
         }
+        if (extensions.find("cl_intel_subgroups_char") != std::string::npos)
+        {
+            optionsEx += " -Dcl_intel_subgroups_char";
+        }
+        if (extensions.find("cl_intel_subgroups_long") != std::string::npos)
+        {
+            optionsEx += " -Dcl_intel_subgroups_long";
+        }
         if (extensions.find("cl_intel_media_block_io") != std::string::npos)
         {
           optionsEx += " -Dcl_intel_media_block_io";
