@@ -491,5 +491,4 @@ namespace iga
 {
     typedef EncoderBase Encoder;
 }
-
 #endif

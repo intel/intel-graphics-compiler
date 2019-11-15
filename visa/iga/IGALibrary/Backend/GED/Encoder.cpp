@@ -77,6 +77,10 @@ EncoderBase::EncoderBase(
     , m_numberInstructionsEncoded(0)
     , m_mem(nullptr)
 {
+    // derive the swsb encoding mode from platform if not set
+    if (opts.swsbEncodeMode == SWSB_ENCODE_MODE::SWSBInvalidMode) {
+        m_opts.swsbEncodeMode = model.getSWSBEncodeMode();
+    }
 }
 
 void EncoderBase::encodeKernelPreProcess(Kernel &k)
@@ -86,6 +90,10 @@ void EncoderBase::encodeKernelPreProcess(Kernel &k)
 
 void EncoderBase::doEncodeKernelPreProcess(Kernel &k)
 {
+    if (m_opts.autoDepSet && m_model.platform >= Platform::GEN12P1) {
+        SWSBAnalyzer swsb_analyzer(k, errorHandler(), m_opts.swsbEncodeMode);
+        swsb_analyzer.run();
+    }
 }
 
 double EncoderBase::getElapsedTimeMicros(unsigned int idx)
@@ -249,7 +257,13 @@ int32_t EncoderBase::getEncodedPC(const Instruction *inst) const
 
 void EncoderBase::encodeFC(const OpSpec &os)
 {
-    if (os.isMathSubFunc()) {
+    if (os.format == OpSpec::SYNC_UNARY &&
+        m_model.platform >= Platform::GEN12P1) // && wait is also SYNC_UNARY
+    {
+        GED_SYNC_FC wfc = IGAToGEDTranslation::lowerSyncFC(m_opcode);
+        GED_ENCODE(SyncFC, wfc);
+    }
+    else if (os.isMathSubFunc()) {
         GED_MATH_FC mfc = IGAToGEDTranslation::lowerMathFC(m_opcode);
         GED_ENCODE(MathFC, mfc);
     }
@@ -734,6 +748,9 @@ void EncoderBase::encodeBranchingInstructionSimplified(const Instruction& inst)
 
 void EncoderBase::encodeSendInstructionProcessSFID(const OpSpec& os)
 {
+    if (m_model.platform >= Platform::GEN12P1) {
+        GED_ENCODE(SFID, IGAToGEDTranslation::lowerSFID(os.op));
+    }
 }
 
 void EncoderBase::encodeSendInstruction(const Instruction& inst)
@@ -1160,21 +1177,32 @@ void EncoderBase::encodeBasicSource(
 
 void EncoderBase::encodeSendDirectDestination(const Operand& dst)
 {
-    auto t = dst.getType() == Type::INVALID ? Type::UD : dst.getType();
-    GED_ENCODE(DstDataType, IGAToGEDTranslation::lowerDataType(t));
-
-    //GED_ENCODE(Saturate, lowerSaturate(dst->getDstModifier()));
-    if (m_opcode != Op::SENDS && m_opcode != Op::SENDSC) {
-        GED_ENCODE(DstHorzStride, static_cast<uint32_t>(dst.getRegion().getHz())); // not used for sends
+    if (m_model.platform >= Platform::GEN12P1) {
+        //auto t = dst.getType() == Type::INVALID ? Type::UD : dst.getType();
+        //GED_ENCODE(DstDataType, lowerDataType(t));
+        GED_ENCODE(DstRegNum, dst.getDirRegRef().regNum);
     }
+    else {
+        auto t = dst.getType() == Type::INVALID ? Type::UD : dst.getType();
+        GED_ENCODE(DstDataType, IGAToGEDTranslation::lowerDataType(t));
 
-    GED_ENCODE(DstRegNum, dst.getDirRegRef().regNum);
-    // GED_ENCODE(DstSubRegNum,
-    //    SubRegToBytesOffset(dst.getDirRegRef().subRegNum, RegName::GRF_R, dst.getType()));
+        //GED_ENCODE(Saturate, lowerSaturate(dst->getDstModifier()));
+        if (m_opcode != Op::SENDS && m_opcode != Op::SENDSC) {
+            GED_ENCODE(DstHorzStride, static_cast<uint32_t>(dst.getRegion().getHz())); // not used for sends
+        }
+
+        GED_ENCODE(DstRegNum, dst.getDirRegRef().regNum);
+        // GED_ENCODE(DstSubRegNum,
+        //    SubRegToBytesOffset(dst.getDirRegRef().subRegNum, RegName::GRF_R, dst.getType()));
+    }
 }
 
 void EncoderBase::encodeSendDestinationDataType(const Operand& dst)
 {
+
+    if (m_model.platform >= Platform::GEN12P1)
+        return;
+
     auto t = dst.getType() == Type::INVALID ? Type::UD : dst.getType();
     GED_ENCODE(DstDataType, IGAToGEDTranslation::lowerDataType(t));
 }
