@@ -1980,10 +1980,15 @@ void SWSB::tokenAllocation()
         dumpTokenLiveInfo();
 #endif
 
-        for (size_t i = 0; i < BBVector.size(); i++)
-        {
-            BBVector[i]->tokenEdgePrune(int(SBSendNodes.size()), allTokenNodesMap, &SBNodes);
-        }
+        unsigned prunedEdgeNum = 0;
+        unsigned prunedGlobalEdgeNum = 0;
+        unsigned prunedDiffBBEdgeNum = 0;
+        unsigned prunedDiffBBSameTokenEdgeNum = 0;
+        tokenEdgePrune(prunedEdgeNum, prunedGlobalEdgeNum, prunedDiffBBEdgeNum, prunedDiffBBSameTokenEdgeNum);
+        kernel.setPrunedEdgeNum(prunedEdgeNum);
+        kernel.setPrunedGlobalEdgeNum(prunedGlobalEdgeNum);
+        kernel.setPrunedDiffBBEdgeNum(prunedDiffBBEdgeNum);
+        kernel.setPrunedDiffBBSameTokenEdgeNum(prunedDiffBBSameTokenEdgeNum);
     }
 
     for (auto node_it = SBSendNodes.begin();
@@ -2735,82 +2740,120 @@ bool SWSB::globalDependenceUseReachAnalysis(G4_BB* bb)
 }
 
 
-void G4_BB_SB::tokenEdgePrune(int allSendNum,
-    BitSet** allTokenNodesMap,
-    SBNODE_VECT* SBNodes)
+void SWSB::tokenEdgePrune(unsigned& prunedEdgeNum,
+    unsigned& prunedGlobalEdgeNum,
+    unsigned& prunedDiffBBEdgeNum,
+    unsigned& prunedDiffBBSameTokenEdgeNum)
 {
-    if (first_node == -1)
+    for (size_t i = 0; i < BBVector.size(); i++)
     {
-        return;
-    }
-
-    BitSet activateLiveIn(allSendNum, false);
-    activateLiveIn |= *liveInTokenNodes;
-
-    //Scan the instruction nodes of current BB
-    for (int i = first_node; i <= last_node; i++)
-    {
-        SBNode* node = (*SBNodes)[i];
-
-        //scan the incoming dependence edges of current node
-        for (auto node_it = node->preds.begin();
-            node_it != node->preds.end();
-            node_it++)
+        if (BBVector[i]->first_node == -1)
         {
-            SBDEP_ITEM& curPred = (*node_it);
-            DepType type = curPred.type;
-            SBNode* predNode = curPred.node;
+            continue;
+        }
 
-            //If the predecessor node is a token instruction node.
-            if (tokenHonourInstruction(predNode->GetInstruction()))
+        BitSet activateLiveIn(SBSendNodes.size(), false);
+        activateLiveIn |= *BBVector[i]->liveInTokenNodes;
+
+        //Scan the instruction nodes of current BB
+        for (int j = BBVector[i]->first_node; j <= BBVector[i]->last_node; j++)
+        {
+            SBNode* node = SBNodes[j];
+            BitSet killedToken(totalTokenNum, false); //Track the token killed by current instruction.
+
+            //scan the incoming dependence edges of current node
+            for (auto node_it = node->preds.begin();
+                node_it != node->preds.end();
+                node_it++)
             {
-                if (!activateLiveIn.isSet(predNode->sendID))
+                SBDEP_ITEM& curPred = (*node_it);
+                DepType type = curPred.type;
+                SBNode* predNode = curPred.node;
+
+                //If the predecessor node is a token instruction node.
+                if (tokenHonourInstruction(predNode->GetInstruction()))
                 {
-                    // If not in the live set of current instruction,
-                    // (The live in set will be changed during instruction scan)
-                    // remove the dependence from success list of previous node
-                    // The dependence SBID assignment only depends on the succ nodes.
-                    for (auto succ_it = predNode->succs.begin();
-                        succ_it != predNode->succs.end();
-                        succ_it++)
+                    if (!activateLiveIn.isSet(predNode->sendID))
                     {
-                        SBDEP_ITEM& currSucc = (*succ_it);
-                        if (currSucc.node == node)
+                        // If not in the live set of current instruction,
+                        // (The live in set will be changed during instruction scan)
+                        // remove the dependence from success list of previous node
+                        // The dependence SBID assignment only depends on the succ nodes.
+                        for (auto succ_it = predNode->succs.begin();
+                            succ_it != predNode->succs.end();
+                            succ_it++)
                         {
-                            //Don't do remove previous edge here.
-                            //1. conflict with outer loop
-                            //2. There is no preds info required any more in following handling
-                            predNode->succs.erase(succ_it);
-                            break;
+                            SBDEP_ITEM& currSucc = (*succ_it);
+                            if (currSucc.node == node)
+                            {
+                                //Don't do remove previous edge here.
+                                //1. conflict with outer loop
+                                //2. There is no preds info required any more in following handling
+                                predNode->succs.erase(succ_it);
+                                prunedEdgeNum++;
+                                if (predNode->globalID != -1)
+                                {
+                                    if (predNode->getBBID() != node->getBBID() &&
+                                        !killedToken.isSet(predNode->getLastInstruction()->getToken()))
+                                    {
+                                        prunedDiffBBEdgeNum++;
+#ifdef DEBUG_VERBOSE_ON
+                                        std::cerr << "Diff BB Token: " << predNode->getLastInstruction()->getToken() << " <Pred: " << predNode->getNodeID() << ", Succ: " << node->getNodeID() << ">" << std::endl;;
+#endif
+                                    }
+                                    else if (predNode->getBBID() != node->getBBID())
+                                    {
+                                        prunedDiffBBSameTokenEdgeNum++;
+#ifdef DEBUG_VERBOSE_ON
+                                        std::cerr << "Diff BB Same Token: " << predNode->getLastInstruction()->getToken() << " <Pred: " << predNode->getNodeID() << ", Succ: " << node->getNodeID() << ">" << std::endl;;
+#endif
+                                    }
+                                    else
+                                    {
+                                        prunedGlobalEdgeNum++;
+#ifdef DEBUG_VERBOSE_ON
+                                        std::cerr << "Global Token: " << predNode->getLastInstruction()->getToken() << " <Pred: " << predNode->getNodeID() << ", Succ: " << node->getNodeID() << ">" << std::endl;;
+#endif
+                                    }
+                                }
+#ifdef DEBUG_VERBOSE_ON
+                                else
+                                {
+                                    std::cerr << "Local Token: " << predNode->getLastInstruction()->getToken() << " <Pred: " << predNode->getNodeID() << ", Succ: " << node->getNodeID() << ">" << std::endl;;
+                                }
+#endif
+                                break;
+                            }
                         }
                     }
-                }
-                else //In live in set
-                {
-                    // Kill the dependence if it's a AW dependence
-                    // What about WAR?
-                    if (type == RAW || type == WAW)
+                    else //In live in set
                     {
-                        int token = predNode->getLastInstruction()->getToken();
-                        if (token != (unsigned short)UNKNOWN_TOKEN)
+                        // Kill the dependence if it's a AW dependence
+                        // What about WAR?
+                        if (type == RAW || type == WAW)
                         {
-                            activateLiveIn -= *allTokenNodesMap[token];
+                            int token = predNode->getLastInstruction()->getToken();
+                            if (token != (unsigned short)UNKNOWN_TOKEN)
+                            {
+                                activateLiveIn -= *allTokenNodesMap[token];
+                                killedToken.set(token, true);
+                            }
                         }
                     }
                 }
             }
-        }
 
-        // Current instruction is marked as alive
-        // How to kill the old one? Especially the WAR?
-        // Token reuse will kill all previous nodes with same token? yes
-        if (tokenHonourInstruction(node->GetInstruction()) && !node->GetInstruction()->isEOT())
-        {
-            int token = node->getLastInstruction()->getToken();
-            if (token != (unsigned short)UNKNOWN_TOKEN)
+            // Current instruction is marked as alive
+            // How to kill the old one? Especially the WAR?
+            // Token reuse will kill all previous nodes with same token? yes
+            if (tokenHonourInstruction(node->GetInstruction()) && !node->GetInstruction()->isEOT())
             {
-                activateLiveIn -= *allTokenNodesMap[token];
-                activateLiveIn.set(node->sendID, true);
+                int token = node->getLastInstruction()->getToken();
+                if (token != (unsigned short)UNKNOWN_TOKEN)
+                {
+                    activateLiveIn -= *allTokenNodesMap[token];
+                    activateLiveIn.set(node->sendID, true);
+                }
             }
         }
     }
