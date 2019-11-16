@@ -252,36 +252,36 @@ namespace IGC
         SProgramOutput simd8;
         SProgramOutput simd16;
         SProgramOutput simd32;
-        unsigned int bindingTableEntryCount;
+        unsigned int bindingTableEntryCount = 0;
 
-        char* gatherMap;
-        unsigned int gatherMapSize;
-        unsigned int ConstantBufferLength;
-        unsigned int ConstantBufferMask;
-        unsigned int MaxNumberOfThreads;
-        bool         isMessageTargetDataCacheDataPort;
+        char* gatherMap = nullptr;
+        unsigned int gatherMapSize = 0;
+        unsigned int ConstantBufferLength = 0;
+        unsigned int ConstantBufferMask   = 0;
+        unsigned int MaxNumberOfThreads   = 0;
+        bool         isMessageTargetDataCacheDataPort = false;
 
-        unsigned int NOSBufferSize;
-        unsigned int ConstantBufferLoaded;
-        unsigned int UavLoaded;
-        unsigned int ShaderResourceLoaded;
-        unsigned int RenderTargetLoaded;
+        unsigned int NOSBufferSize = 0;
+        unsigned int ConstantBufferLoaded = 0;
+        unsigned int UavLoaded = 0;
+        unsigned int ShaderResourceLoaded = 0;
+        unsigned int RenderTargetLoaded = 0;
 
-        bool         hasControlFlow;
-        unsigned int bufferSlot;
-        unsigned int statelessCBPushedSize;
+        bool         hasControlFlow = false;
+        unsigned int bufferSlot = 0;
+        unsigned int statelessCBPushedSize = 0;
 
         // GenUpdateCB outputs
-        void*       m_ConstantBufferReplaceShaderPatterns;
-        uint        m_ConstantBufferReplaceShaderPatternsSize;
-        uint        m_ConstantBufferUsageMask;
-        uint        m_ConstantBufferReplaceSize;
+        void*       m_ConstantBufferReplaceShaderPatterns = nullptr;
+        uint        m_ConstantBufferReplaceShaderPatternsSize = 0;
+        uint        m_ConstantBufferUsageMask = 0;
+        uint        m_ConstantBufferReplaceSize = 0;
 
         SSimplePushInfo simplePushInfoArr[g_c_maxNumberOfBufferPushed];
 
         // Interesting constants for dynamic constant folding
-        SConstantAddrValue* m_pInterestingConstants;
-        uint                m_InterestingConstantsSize;
+        SConstantAddrValue* m_pInterestingConstants = nullptr;
+        uint                m_InterestingConstantsSize = 0;
     };
 
     struct SPixelShaderKernelProgram : SKernelProgram
