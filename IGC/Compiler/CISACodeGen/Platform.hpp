@@ -291,15 +291,17 @@ namespace IGC
     //all the platforms which do not support 64 bit operations (int64 and double)
     bool hasNo64BitInst() const {
         return m_platformInfo.eProductFamily == IGFX_ICELAKE_LP ||
-               m_platformInfo.eProductFamily == IGFX_LAKEFIELD ||
-               m_platformInfo.eProductFamily == IGFX_ELKHARTLAKE ||
-               m_platformInfo.eProductFamily == IGFX_JASPERLAKE;
+            m_platformInfo.eProductFamily == IGFX_LAKEFIELD ||
+            m_platformInfo.eProductFamily == IGFX_ELKHARTLAKE ||
+            m_platformInfo.eProductFamily == IGFX_JASPERLAKE ||
+            m_platformInfo.eProductFamily == IGFX_TIGERLAKE_LP;
     }
 
     //all the platforms which have correctly rounded macros (INVM, RSQRTM, MADM)
     bool hasCorrectlyRoundedMacros() const {
         return m_platformInfo.eProductFamily != IGFX_ICELAKE_LP &&
-            m_platformInfo.eProductFamily != IGFX_LAKEFIELD;
+            m_platformInfo.eProductFamily != IGFX_LAKEFIELD &&
+            m_platformInfo.eProductFamily != IGFX_TIGERLAKE_LP;
     }
 
     //all the platforms which do not support 64 bit operations and
@@ -313,7 +315,8 @@ namespace IGC
             m_platformInfo.eProductFamily == IGFX_ICELAKE_LP ||
             m_platformInfo.eProductFamily == IGFX_LAKEFIELD ||
             m_platformInfo.eProductFamily == IGFX_ELKHARTLAKE ||
-            m_platformInfo.eProductFamily == IGFX_JASPERLAKE);
+            m_platformInfo.eProductFamily == IGFX_JASPERLAKE ||
+            m_platformInfo.eProductFamily == IGFX_TIGERLAKE_LP);
     }
 
     //all the platforms which do not support 64 bit float operations
@@ -322,7 +325,8 @@ namespace IGC
             m_platformInfo.eProductFamily != IGFX_ICELAKE_LP &&
             m_platformInfo.eProductFamily != IGFX_LAKEFIELD &&
             m_platformInfo.eProductFamily != IGFX_ELKHARTLAKE &&
-            m_platformInfo.eProductFamily != IGFX_JASPERLAKE);
+            m_platformInfo.eProductFamily != IGFX_JASPERLAKE &&
+            m_platformInfo.eProductFamily != IGFX_TIGERLAKE_LP);
     }
     bool has8DWA64ScatteredMessage() const { return true; }
     bool useOnlyEightPatchDispatchHS() const { return false; }

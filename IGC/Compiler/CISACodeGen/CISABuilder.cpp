@@ -5001,8 +5001,8 @@ namespace IGC
 
     void CEncoder::GatherA64(CVariable* dst,
         CVariable* offset,
-                         unsigned elemSize,
-                         unsigned numElems) {
+        unsigned elemSize,
+        unsigned numElems) {
     assert((elemSize == 8 || elemSize == 32 || elemSize == 64) &&
            "Only B/DW/QW-sized elements are supported!");
     assert((numElems == 1 || numElems == 2 || numElems == 4 ||
