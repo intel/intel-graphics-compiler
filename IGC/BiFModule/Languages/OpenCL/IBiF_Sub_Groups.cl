@@ -415,17 +415,12 @@ DEFN_INTEL_SUB_GROUP_BROADCAST(uchar, i8)
 
 INLINE int OVERLOADABLE sub_group_all( int predicate )
 {
-    int value = ( predicate == 0 ) ? 1 : 0;
-    value = sub_group_reduce_add( value );
-    value = ( value == 0 ) ? 1 : 0;
-    return value;
+    return __builtin_spirv_OpGroupAll_i32_i1(Subgroup, predicate);
 }
 
 INLINE int OVERLOADABLE sub_group_any( int predicate )
 {
-    int value = ( predicate != 0 ) ? 1 : 0;
-    value = sub_group_reduce_add( value );
-    return value;
+    return __builtin_spirv_OpGroupAny_i32_i1(Subgroup, predicate);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
