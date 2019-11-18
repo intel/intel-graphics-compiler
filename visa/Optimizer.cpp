@@ -6333,481 +6333,338 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
     }
 
 
-/*
- *  Three sources only
- */
-bool Optimizer::hasGen12LPBundleConflict(G4_INST *inst)
-{
-    int regs[3] = {-1};
-    int bundles[3] = {-1};
-
-    //Three source only
-    if (inst->getNumSrc() != 3 || inst->isSend())
+    /*
+     *  Three sources only
+     */
+    bool Optimizer::hasGen12LPBundleConflict(G4_INST* inst)
     {
-        return false;
-    }
+        int regs[3] = { -1 };
+        int bundles[3] = { -1 };
 
-    //SIMD16
-    if(inst->getExecSize() < 16)
-    {
-        return false;
-    }
-
-    //Source 0 is scalar
-    G4_Operand* srcOpnd = inst->getSrc(0);
-    if (!srcOpnd || !srcOpnd->isSrcRegRegion() || !srcOpnd->asSrcRegRegion()->isScalar())
-    {
-        return false;
-    }
-
-    for (int i = 1; i < inst->getNumSrc(); i++)
-    {
-        srcOpnd = inst->getSrc(i);
-        if (srcOpnd)
+        //Three source only
+        if (inst->getNumSrc() != 3 || inst->isSend())
         {
-            if (srcOpnd->isSrcRegRegion() &&
-                srcOpnd->asSrcRegRegion()->getBase() &&
-                srcOpnd->asSrcRegRegion()->getBase()->isRegVar())
+            return false;
+        }
+
+        //SIMD16
+        if (inst->getExecSize() < 16)
+        {
+            return false;
+        }
+
+        //Source 0 is scalar
+        G4_Operand* srcOpnd = inst->getSrc(0);
+        if (!srcOpnd || !srcOpnd->isSrcRegRegion() || !srcOpnd->asSrcRegRegion()->isScalar())
+        {
+            return false;
+        }
+
+        for (int i = 1; i < inst->getNumSrc(); i++)
+        {
+            srcOpnd = inst->getSrc(i);
+            if (srcOpnd)
             {
-                G4_RegVar* baseVar = static_cast<G4_RegVar*>(srcOpnd->asSrcRegRegion()->getBase());
-                if (baseVar->isGreg()) {
-                    uint32_t byteAddress = srcOpnd->getLinearizedStart();
-                    regs[i] = byteAddress / GENX_GRF_REG_SIZ;
-                    bundles[i] =  (regs[i] % 16) /2;
+                if (srcOpnd->isSrcRegRegion() &&
+                    srcOpnd->asSrcRegRegion()->getBase() &&
+                    srcOpnd->asSrcRegRegion()->getBase()->isRegVar())
+                {
+                    G4_RegVar* baseVar = static_cast<G4_RegVar*>(srcOpnd->asSrcRegRegion()->getBase());
+                    if (baseVar->isGreg()) {
+                        uint32_t byteAddress = srcOpnd->getLinearizedStart();
+                        regs[i] = byteAddress / GENX_GRF_REG_SIZ;
+                        bundles[i] = (regs[i] % 16) / 2;
+                    }
                 }
             }
         }
-    }
 
-    if (bundles[1] == bundles[2] && bundles[1] != -1)
-    {
-        return true;
-    }
-
-    return false;
-}
-
-
-void Optimizer::swapSrc1(G4_INST *inst)
-{
-    G4_Operand* src1Opnd = inst->getSrc(1);
-
-    if (inst->getExecSize() < 2)
-    {
-        return;
-    }
-
-    if (!src1Opnd ||
-         !src1Opnd->isSrcRegRegion()  ||
-        !src1Opnd->asSrcRegRegion()->isScalar())
-    {
-        return;
-    }
-
-    if (inst->isMixedMode())
-    {
-        return;
-    }
-
-    G4_Operand* src02Opnd = nullptr;
-
-    if (inst->opcode() == G4_mad)
-    {
-        src02Opnd = inst->getSrc(2);
-        if (src1Opnd->getType() == src02Opnd->getType())
+        if (bundles[1] == bundles[2] && bundles[1] != -1)
         {
-            inst->setSrc(src1Opnd, 2);
-            inst->setSrc(src02Opnd, 1);
+            return true;
         }
+
+        return false;
     }
 
-    if (inst->opcode() == G4_add ||
-        inst->opcode() == G4_mul)
+
+    void Optimizer::swapSrc1(G4_INST* inst)
     {
-        src02Opnd = inst->getSrc(0);
-        if (src1Opnd->getType() == src02Opnd->getType())
+        G4_Operand* src1Opnd = inst->getSrc(1);
+
+        if (inst->getExecSize() < 2)
         {
-            inst->setSrc(src1Opnd, 0);
-            inst->setSrc(src02Opnd, 1);
+            return;
         }
-    }
 
-    return;
-}
-
-G4_SrcRegRegion* IR_Builder::createSubSrcOperand(
-    G4_SrcRegRegion* src, uint16_t start, uint8_t size, uint16_t newVs, uint16_t newWd)
-{
-    const RegionDesc *rd = NULL;
-    uint16_t vs = src->getRegion()->vertStride, hs = src->getRegion()->horzStride, wd = src->getRegion()->width;
-    if (!src->getRegion()->isRegionWH())
-    {
-        // r[a0.0,0]<4;2,1> and size is 4 or 1
-        if (size < newWd)
+        if (!src1Opnd ||
+            !src1Opnd->isSrcRegRegion() ||
+            !src1Opnd->asSrcRegRegion()->isScalar())
         {
-            newWd = size;
+            return;
         }
-        rd = size == 1 ? getRegionScalar() :
-            createRegionDesc(size == newWd ? newWd * hs : newVs, newWd, hs);
-        rd = getNormalizedRegion(size, rd);
-    }
 
-    if( src->getRegAccess() != Direct )
-    {
-        if( src->getRegion()->isRegionWH() )
+        if (inst->isMixedMode())
         {
-            // just handle <1,0>
-            if( start > 0 )
+            return;
+        }
+
+        G4_Operand* src02Opnd = nullptr;
+
+        if (inst->opcode() == G4_mad)
+        {
+            src02Opnd = inst->getSrc(2);
+            if (src1Opnd->getType() == src02Opnd->getType())
             {
-                // just change immediate offset
-                uint16_t subRegOff = src->getSubRegOff() + start;
-                G4_SrcRegRegion* newSrc = createSrcRegRegion(src->getModifier(), src->getRegAccess(), src->getBase(),
-                    src->getRegOff(), subRegOff, src->getRegion(), src->getType(), src->getAccRegSel());
-                newSrc->setImmAddrOff(src->getAddrImm());
-                return newSrc;
-            }
-            else
-            {
-                G4_SrcRegRegion *newSrc = duplicateOperand(src);
-                return newSrc;
+                inst->setSrc(src1Opnd, 2);
+                inst->setSrc(src02Opnd, 1);
             }
         }
 
-        if( start > 0 )
+        if (inst->opcode() == G4_add ||
+            inst->opcode() == G4_mul)
         {
-            short numRows = start / wd;
-            short numCols = start % wd;
-            short newOff = (numRows * vs + numCols * hs) * G4_Type_Table[src->getType()].byteSize;
-
-            G4_SrcRegRegion* newSrc = createSrcRegRegion(src->getModifier(), src->getRegAccess(), src->getBase(),
-                src->getRegOff(), src->getSubRegOff(), rd, src->getType(), src->getAccRegSel());
-            newSrc->setImmAddrOff(src->getAddrImm() + newOff);
-            return newSrc;
-
+            src02Opnd = inst->getSrc(0);
+            if (src1Opnd->getType() == src02Opnd->getType())
+            {
+                inst->setSrc(src1Opnd, 0);
+                inst->setSrc(src02Opnd, 1);
+            }
         }
-        else
-        {
-            G4_SrcRegRegion *newSrc = duplicateOperand( src );
-            newSrc->setRegion( rd );
-            return newSrc;
-        }
+
+        return;
     }
 
-    // direct access oprand
-    uint16_t regOff, subRegOff;
-    if( start > 0 )
+    G4_SrcRegRegion* IR_Builder::createSubSrcOperand(
+        G4_SrcRegRegion* src, uint16_t start, uint8_t size, uint16_t newVs, uint16_t newWd)
     {
-        G4_Type srcType = src->getType();
-        uint16_t newEleOff;
+        const RegionDesc* rd = NULL;
         uint16_t vs = src->getRegion()->vertStride, hs = src->getRegion()->horzStride, wd = src->getRegion()->width;
-
-        if (src->isAccReg())
+        if (!src->getRegion()->isRegionWH())
         {
-            switch (srcType)
+            // r[a0.0,0]<4;2,1> and size is 4 or 1
+            if (size < newWd)
             {
-            case Type_F:
-                // must be acc1.0 as result of simd16 -> 8 split
-                assert(size == 8 && "only support simd16->simd8 for now");
-                return createSrcRegRegion(src->getModifier(), Direct, phyregpool.getAcc1Reg(), 0, 0, src->getRegion(), srcType);
-            case Type_HF:
+                newWd = size;
+            }
+            rd = size == 1 ? getRegionScalar() :
+                createRegionDesc(size == newWd ? newWd * hs : newVs, newWd, hs);
+            rd = getNormalizedRegion(size, rd);
+        }
+
+        if (src->getRegAccess() != Direct)
+        {
+            if (src->getRegion()->isRegionWH())
             {
-                // can be one of acc0.8, acc1.0, acc1.8
-                if (src->getBase()->asAreg()->getArchRegType() == AREG_ACC1)
+                // just handle <1,0>
+                if (start > 0)
                 {
-                    start += 16;
-                }
-                G4_Areg* accReg = start >= 16 ? phyregpool.getAcc1Reg() : phyregpool.getAcc0Reg();
-                return createSrcRegRegion(src->getModifier(), Direct, accReg, 0, start % 16, src->getRegion(), srcType);
-
-            }
-            default:
-                // Keep using acc0 for other types.
-                return duplicateOperand(src);
-            }
-        }
-
-        newEleOff = start * hs +
-            (start >= wd && vs != wd * hs ? (start / wd * (vs - wd * hs)) : 0);
-
-        uint16_t newSubRegOff = src->getSubRegOff() + newEleOff;
-        bool crossGRF = newSubRegOff * G4_Type_Table[srcType].byteSize >= G4_GRF_REG_NBYTES;
-        if (crossGRF)
-        {
-            regOff = src->getRegOff() + 1;
-            subRegOff = newSubRegOff - G4_GRF_REG_NBYTES / G4_Type_Table[srcType].byteSize;
-        }
-        else
-        {
-            regOff = src->getRegOff();
-            subRegOff = newSubRegOff;
-        }
-
-        // create a new one
-        return createSrcRegRegion(src->getModifier(), Direct, src->getBase(), regOff, subRegOff, rd,
-            srcType, src->getAccRegSel());
-    }
-    else
-    {
-        G4_SrcRegRegion *newSrc = duplicateOperand( src );
-        newSrc->setRegion( rd );
-        return newSrc;
-    }
-}
-
-G4_DstRegRegion* IR_Builder::createSubDstOperand(G4_DstRegRegion* dst, uint16_t start, uint8_t size)
-{
-    if (dst->getRegAccess() != Direct)
-    {
-        if (start > 0)
-        {
-            // just change immediate offset
-            uint16_t newOff = start * G4_Type_Table[dst->getType()].byteSize * dst->getHorzStride();
-            G4_DstRegRegion* newDst = duplicateOperand(dst);
-            newDst->setImmAddrOff(dst->getAddrImm() + newOff);
-            return newDst;
-        }
-        else
-        {
-            return duplicateOperand(dst);
-        }
-    }
-
-    uint16_t regOff, subRegOff;
-    if (start > 0)
-    {
-        G4_Type dstType = dst->getType();
-        uint16_t hs = dst->getHorzStride();
-        if (dst->isAccReg())
-        {
-            switch (dstType)
-            {
-            case Type_F:
-                // must be acc1.0 as result of simd16 -> 8 split
-                assert(size == 8 && "only support simd16->simd8 for now");
-                return createDstRegRegion(
-                    Direct,
-                    phyregpool.getAcc1Reg(),
-                    0,
-                    0,
-                    hs,
-                    dstType);
-            case Type_HF:
-            {
-                // can be one of acc0.8, acc1.0, acc1.8
-                if (dst->getBase()->asAreg()->getArchRegType() == AREG_ACC1)
-                {
-                    start += 16;
-                }
-                G4_Areg* accReg = start >= 16 ? phyregpool.getAcc1Reg() : phyregpool.getAcc0Reg();
-                return createDstRegRegion(
-                    Direct, accReg, 0, start % 16, hs, dstType);
-            }
-            default:
-
-                // other types do not support acc1, we have to continue to use acc0
-                // whoever doing the split must fix the dependencies later by shuffling instructions
-                // so that acc0 does not get overwritten
-                return createDstRegRegion(*dst);
-            }
-        }
-
-        uint16_t newSubRegOff = dst->getSubRegOff() + start * hs;
-        bool crossGRF = newSubRegOff * G4_Type_Table[dstType].byteSize >= G4_GRF_REG_NBYTES;
-        if (crossGRF)
-        {
-            regOff = dst->getRegOff() + 1;
-            subRegOff = newSubRegOff - G4_GRF_REG_NBYTES / G4_Type_Table[dstType].byteSize;
-        }
-        else
-        {
-            regOff = dst->getRegOff();
-            subRegOff = newSubRegOff;
-        }
-        // create a new one
-        return createDstRegRegion(Direct, dst->getBase(), regOff, subRegOff, hs, dst->getType(),
-            dst->getAccRegSel());
-    }
-    else
-    {
-        G4_DstRegRegion *newDst = duplicateOperand(dst);
-        return newDst;
-    }
-}
-
-G4_INST *IR_Builder::makeSplittingInst(G4_INST *inst, uint8_t ExSize)
-{
-    // Instruction's option is reused. Call sites should reset this field
-    // properly. FIXME: fix all call sites.
-    G4_INST *newInst = NULL;
-    G4_opcode op = inst->opcode();
-    if (inst->isMath())
-    {
-        newInst = createMathInst(NULL, inst->getSaturate(), ExSize,
-            NULL, NULL, NULL, inst->asMathInst()->getMathCtrl(),
-            inst->getOption(), inst->getLineNo());
-        newInst->setCISAOff(inst->getCISAOff());
-        newInst->setSrcFilename(inst->getSrcFilename());
-    }
-    else if (inst->getNumSrc() < 3)
-    {
-        newInst = createInternalInst(
-            NULL, op, NULL, inst->getSaturate(), ExSize, NULL, NULL, NULL,
-            inst->getOption(), inst->getLineNo(), inst->getCISAOff(),
-            inst->getSrcFilename());
-    }
-    else
-    {
-        newInst = createInternalInst(
-            NULL, op, NULL, inst->getSaturate(), ExSize, NULL, NULL, NULL,
-            NULL, inst->getOption(), inst->getLineNo(), inst->getCISAOff(),
-            inst->getSrcFilename());
-    }
-
-    return newInst;
-}
-
-// evenly split an inst into two instructions with half execution size.
-// this is used to split a simd16 mad into two simd8 before other reducing exeuction size actions
-void Optimizer::evenlySplitInst(INST_LIST_ITER iter, G4_BB* bb)
-{
-    G4_INST *inst = *iter;
-    G4_opcode op = inst->opcode();
-    G4_Operand *srcs[3];
-    int origMaskOffset = inst->getMaskOffset();
-
-    bool use_arc_reg = false;
-    for (int i = 0; i < inst->getNumSrc(); i++)
-    {
-        srcs[i] = inst->getSrc(i);
-    }
-
-    // compute max exeuction size.
-    // boundary is GRF-boundary and HS change, but for Dst, elements should be symetric
-    // if half-GRF boundary is crossed.
-
-    G4_DstRegRegion *dst = inst->getDst();
-    bool nullDst = dst && inst->hasNULLDst();
-    uint8_t instExSize = inst->getExecSize(), currExSize = instExSize >> 1;
-
-    G4_Predicate *newPred = NULL;
-    if (inst->getPredicate())
-    {
-        newPred = inst->getPredicate();
-        newPred->splitPred();
-    }
-
-    G4_CondMod *newCond = NULL;
-    if (inst->getCondMod())
-    {
-        newCond = inst->getCondMod();
-        newCond->splitCondMod();
-    }
-
-    G4_SrcRegRegion *accSrcRegion = NULL;
-    if (inst->getImplAccSrc())
-    {
-        accSrcRegion = inst->getImplAccSrc()->asSrcRegRegion();
-    }
-
-    G4_DstRegRegion *accDstRegion = NULL;
-    if (inst->getImplAccDst())
-    {
-        accDstRegion = inst->getImplAccDst();
-    }
-    if (accSrcRegion || accDstRegion || newPred || newCond)
-    {
-        use_arc_reg = true;
-    }
-
-    for (int i = 0; i < instExSize; i += currExSize)
-    {
-        // create new Oprands.
-        G4_DstRegRegion *newDst;
-        if (!nullDst)
-        {
-            newDst = builder.createSubDstOperand(dst, (uint16_t)i, currExSize);
-        }
-        else
-        {
-            newDst = dst;
-        }
-        // generate new inst
-        G4_INST* newInst;
-        if ((i + currExSize) < instExSize)
-        {
-            newInst = builder.makeSplittingInst(inst, currExSize);
-            newInst->setImplAccDst(builder.duplicateOperand(accDstRegion));
-            newInst->setImplAccSrc(builder.duplicateOperand(accSrcRegion));
-            newInst->setDest(newDst);
-            newInst->setPredicate(builder.duplicateOperand(newPred));
-            newInst->setCondMod(builder.duplicateOperand(newCond));
-            bb->insert(iter, newInst);
-        }
-        else
-        {
-            // reuse the original inst
-            newInst = inst;
-            newInst->setExecSize(currExSize);
-            newInst->setDest(newDst);
-            if (newPred)
-            {
-                inst->setPredicate(builder.duplicateOperand(newPred));
-            }
-            if (newCond)
-            {
-                inst->setCondMod(builder.duplicateOperand(newCond));
-            }
-            if (accSrcRegion)
-            {
-                newInst->setImplAccSrc(builder.createSrcRegRegion(*accSrcRegion));
-            }
-            if (accDstRegion)
-            {
-                newInst->setImplAccDst(builder.createDstRegRegion(*accDstRegion));
-            }
-        }
-
-        for (int j = 0; j < inst->getNumSrc(); j++)
-        {
-            if (srcs[j])
-            {
-                if (srcs[j]->isImm())
-                {
-                    newInst->setSrc(srcs[j], j);
-                }
-                else if (srcs[j]->asSrcRegRegion()->isScalar() || (j == 0 && op == G4_line))
-                {
-                    newInst->setSrc(builder.duplicateOperand(srcs[j]), j);
+                    // just change immediate offset
+                    uint16_t subRegOff = src->getSubRegOff() + start;
+                    G4_SrcRegRegion* newSrc = createSrcRegRegion(src->getModifier(), src->getRegAccess(), src->getBase(),
+                        src->getRegOff(), subRegOff, src->getRegion(), src->getType(), src->getAccRegSel());
+                    newSrc->setImmAddrOff(src->getAddrImm());
+                    return newSrc;
                 }
                 else
                 {
-                    newInst->setSrc(builder.createSubSrcOperand(srcs[j]->asSrcRegRegion(), (uint16_t)i,
-                        currExSize, (uint8_t)(srcs[j]->asSrcRegRegion()->getRegion()->vertStride),
-                        (uint8_t)(srcs[j]->asSrcRegRegion()->getRegion()->width)), j);
+                    G4_SrcRegRegion* newSrc = duplicateOperand(src);
+                    return newSrc;
                 }
             }
-        }
 
-        // set mask
-        if (!inst->isWriteEnableInst() || use_arc_reg)
-        {
-            int newMaskOffset = origMaskOffset + (i == 0 ? 0 : currExSize);
-            bool nibOk = G4_Type_Table[inst->getDst()->getType()].byteSize == 8 ||
-                G4_Type_Table[inst->getExecType()].byteSize == 8;
-            G4_InstOption newMask = G4_INST::offsetToMask(currExSize, newMaskOffset, nibOk);
-            if (newMask == InstOpt_NoOpt)
+            if (start > 0)
             {
-                bool useMask = inst->getPredicate() || inst->getCondMod() || (bb->isInSimdFlow() && !inst->isWriteEnableInst());
-                MUST_BE_TRUE(!useMask, "no legal emask found for the split instruction");
+                short numRows = start / wd;
+                short numCols = start % wd;
+                short newOff = (numRows * vs + numCols * hs) * G4_Type_Table[src->getType()].byteSize;
+
+                G4_SrcRegRegion* newSrc = createSrcRegRegion(src->getModifier(), src->getRegAccess(), src->getBase(),
+                    src->getRegOff(), src->getSubRegOff(), rd, src->getType(), src->getAccRegSel());
+                newSrc->setImmAddrOff(src->getAddrImm() + newOff);
+                return newSrc;
+
             }
             else
             {
-                newInst->setMaskOption(newMask);
+                G4_SrcRegRegion* newSrc = duplicateOperand(src);
+                newSrc->setRegion(rd);
+                return newSrc;
             }
         }
-    }
-}
 
+        // direct access oprand
+        uint16_t regOff, subRegOff;
+        if (start > 0)
+        {
+            G4_Type srcType = src->getType();
+            uint16_t newEleOff;
+            uint16_t vs = src->getRegion()->vertStride, hs = src->getRegion()->horzStride, wd = src->getRegion()->width;
+
+            if (src->isAccReg())
+            {
+                switch (srcType)
+                {
+                case Type_F:
+                    // must be acc1.0 as result of simd16 -> 8 split
+                    assert(size == 8 && "only support simd16->simd8 for now");
+                    return createSrcRegRegion(src->getModifier(), Direct, phyregpool.getAcc1Reg(), 0, 0, src->getRegion(), srcType);
+                case Type_HF:
+                {
+                    // can be one of acc0.8, acc1.0, acc1.8
+                    if (src->getBase()->asAreg()->getArchRegType() == AREG_ACC1)
+                    {
+                        start += 16;
+                    }
+                    G4_Areg* accReg = start >= 16 ? phyregpool.getAcc1Reg() : phyregpool.getAcc0Reg();
+                    return createSrcRegRegion(src->getModifier(), Direct, accReg, 0, start % 16, src->getRegion(), srcType);
+
+                }
+                default:
+                    // Keep using acc0 for other types.
+                    return duplicateOperand(src);
+                }
+            }
+
+            newEleOff = start * hs +
+                (start >= wd && vs != wd * hs ? (start / wd * (vs - wd * hs)) : 0);
+
+            uint16_t newSubRegOff = src->getSubRegOff() + newEleOff;
+            bool crossGRF = newSubRegOff * G4_Type_Table[srcType].byteSize >= G4_GRF_REG_NBYTES;
+            if (crossGRF)
+            {
+                regOff = src->getRegOff() + 1;
+                subRegOff = newSubRegOff - G4_GRF_REG_NBYTES / G4_Type_Table[srcType].byteSize;
+            }
+            else
+            {
+                regOff = src->getRegOff();
+                subRegOff = newSubRegOff;
+            }
+
+            // create a new one
+            return createSrcRegRegion(src->getModifier(), Direct, src->getBase(), regOff, subRegOff, rd,
+                srcType, src->getAccRegSel());
+        }
+        else
+        {
+            G4_SrcRegRegion* newSrc = duplicateOperand(src);
+            newSrc->setRegion(rd);
+            return newSrc;
+        }
+    }
+
+    G4_DstRegRegion* IR_Builder::createSubDstOperand(G4_DstRegRegion* dst, uint16_t start, uint8_t size)
+    {
+        if (dst->getRegAccess() != Direct)
+        {
+            if (start > 0)
+            {
+                // just change immediate offset
+                uint16_t newOff = start * G4_Type_Table[dst->getType()].byteSize * dst->getHorzStride();
+                G4_DstRegRegion* newDst = duplicateOperand(dst);
+                newDst->setImmAddrOff(dst->getAddrImm() + newOff);
+                return newDst;
+            }
+            else
+            {
+                return duplicateOperand(dst);
+            }
+        }
+
+        uint16_t regOff, subRegOff;
+        if (start > 0)
+        {
+            G4_Type dstType = dst->getType();
+            uint16_t hs = dst->getHorzStride();
+            if (dst->isAccReg())
+            {
+                switch (dstType)
+                {
+                case Type_F:
+                    // must be acc1.0 as result of simd16 -> 8 split
+                    assert(size == 8 && "only support simd16->simd8 for now");
+                    return createDstRegRegion(
+                        Direct,
+                        phyregpool.getAcc1Reg(),
+                        0,
+                        0,
+                        hs,
+                        dstType);
+                case Type_HF:
+                {
+                    // can be one of acc0.8, acc1.0, acc1.8
+                    if (dst->getBase()->asAreg()->getArchRegType() == AREG_ACC1)
+                    {
+                        start += 16;
+                    }
+                    G4_Areg* accReg = start >= 16 ? phyregpool.getAcc1Reg() : phyregpool.getAcc0Reg();
+                    return createDstRegRegion(
+                        Direct, accReg, 0, start % 16, hs, dstType);
+                }
+                default:
+
+                    // other types do not support acc1, we have to continue to use acc0
+                    // whoever doing the split must fix the dependencies later by shuffling instructions
+                    // so that acc0 does not get overwritten
+                    return createDstRegRegion(*dst);
+                }
+            }
+
+            uint16_t newSubRegOff = dst->getSubRegOff() + start * hs;
+            bool crossGRF = newSubRegOff * G4_Type_Table[dstType].byteSize >= G4_GRF_REG_NBYTES;
+            if (crossGRF)
+            {
+                regOff = dst->getRegOff() + 1;
+                subRegOff = newSubRegOff - G4_GRF_REG_NBYTES / G4_Type_Table[dstType].byteSize;
+            }
+            else
+            {
+                regOff = dst->getRegOff();
+                subRegOff = newSubRegOff;
+            }
+            // create a new one
+            return createDstRegRegion(Direct, dst->getBase(), regOff, subRegOff, hs, dst->getType(),
+                dst->getAccRegSel());
+        }
+        else
+        {
+            G4_DstRegRegion* newDst = duplicateOperand(dst);
+            return newDst;
+        }
+    }
+
+    G4_INST* IR_Builder::makeSplittingInst(G4_INST* inst, uint8_t ExSize)
+    {
+        // Instruction's option is reused. Call sites should reset this field
+        // properly. FIXME: fix all call sites.
+        G4_INST* newInst = NULL;
+        G4_opcode op = inst->opcode();
+        if (inst->isMath())
+        {
+            newInst = createMathInst(NULL, inst->getSaturate(), ExSize,
+                NULL, NULL, NULL, inst->asMathInst()->getMathCtrl(),
+                inst->getOption(), inst->getLineNo());
+            newInst->setCISAOff(inst->getCISAOff());
+            newInst->setSrcFilename(inst->getSrcFilename());
+        }
+        else if (inst->getNumSrc() < 3)
+        {
+            newInst = createInternalInst(
+                NULL, op, NULL, inst->getSaturate(), ExSize, NULL, NULL, NULL,
+                inst->getOption(), inst->getLineNo(), inst->getCISAOff(),
+                inst->getSrcFilename());
+        }
+        else
+        {
+            newInst = createInternalInst(
+                NULL, op, NULL, inst->getSaturate(), ExSize, NULL, NULL, NULL,
+                NULL, inst->getOption(), inst->getLineNo(), inst->getCISAOff(),
+                inst->getSrcFilename());
+        }
+
+        return newInst;
+    }
 
     /*
     some workaround for HW restrictions.  We apply them here so as not to affect optimizations, RA, and scheduling
@@ -6864,18 +6721,7 @@ void Optimizer::evenlySplitInst(INST_LIST_ITER iter, G4_BB* bb)
                     }
                 }
 
-                if(getGenxPlatform() == GENX_TGLLP && VISA_WA_CHECK(builder.getPWaTable(), Wa_1606931601) )
-                {
-                    INST_LIST_ITER nextIter = ii;
-                    if (hasGen12LPBundleConflict(inst))
-                    {
-                        nextIter++;
-                        evenlySplitInst(ii, bb);
-                        ii = nextIter;
-                        continue;
-                    }
-                }
-                if(getGenxPlatform() == GENX_TGLLP && VISA_WA_CHECK(builder.getPWaTable(), WaSwapForSrc1Replicate) )
+                if (getGenxPlatform() == GENX_TGLLP && VISA_WA_CHECK(builder.getPWaTable(), WaSwapForSrc1Replicate))
                 {
                     swapSrc1(inst);
                 }

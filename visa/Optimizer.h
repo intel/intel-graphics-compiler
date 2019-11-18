@@ -172,7 +172,6 @@ class Optimizer
 
     void insertInstLabels();
     void mergeScalarInst();
-    void evenlySplitInst(INST_LIST_ITER iter, G4_BB* bb);
     void HWConformityChk() { ::HWConformityChk(builder, kernel, mem); }
     void removeRedundMov() { fg.removeRedundMov(); }
     void removeEmptyBlocks() { fg.removeEmptyBlocks(); }
