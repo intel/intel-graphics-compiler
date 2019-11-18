@@ -280,8 +280,7 @@ namespace IGC
         SSimplePushInfo simplePushInfoArr[g_c_maxNumberOfBufferPushed];
 
         // Interesting constants for dynamic constant folding
-        SConstantAddrValue* m_pInterestingConstants = nullptr;
-        uint                m_InterestingConstantsSize = 0;
+        std::vector<SConstantAddrValue> m_pInterestingConstants;
     };
 
     struct SPixelShaderKernelProgram : SKernelProgram
@@ -864,11 +863,6 @@ namespace IGC
         {
         }
 
-        ~VertexShaderContext()
-        {
-            delete[] programOutput.gatherMap;
-            delete[] programOutput.m_pInterestingConstants;
-        }
     };
 
     class PixelShaderContext : public CodeGenContext
@@ -886,12 +880,6 @@ namespace IGC
             programOutput()
         {
         }
-
-        ~PixelShaderContext()
-        {
-            delete[] programOutput.gatherMap;
-            delete[] programOutput.m_pInterestingConstants;
-        }
     };
 
     class GeometryShaderContext : public CodeGenContext
@@ -908,12 +896,6 @@ namespace IGC
             : CodeGenContext(ShaderType::GEOMETRY_SHADER, btiLayout, platform, driverInfo, createResourceDimTypes, llvmCtxWrapper),
             programOutput()
         {
-        }
-
-        ~GeometryShaderContext()
-        {
-            delete[] programOutput.gatherMap;
-            delete[] programOutput.m_pInterestingConstants;
         }
     };
 
@@ -958,12 +940,6 @@ namespace IGC
             m_slmSize = 0;
         }
 
-        ~ComputeShaderContext()
-        {
-            delete[] programOutput.gatherMap;
-            delete[] programOutput.m_pInterestingConstants;
-        }
-
         /** get shader's thread group size */
         unsigned GetThreadGroupSize();
         unsigned GetSlmSizePerSubslice();
@@ -991,12 +967,6 @@ namespace IGC
             programOutput()
         {
         }
-
-        ~HullShaderContext()
-        {
-            delete[] programOutput.gatherMap;
-            delete[] programOutput.m_pInterestingConstants;
-        }
     };
 
     class DomainShaderContext : public CodeGenContext
@@ -1013,12 +983,6 @@ namespace IGC
             : CodeGenContext(ShaderType::DOMAIN_SHADER, btiLayout, platform, driverInfo, createResourceDimTypes, llvmCtxWrapper),
             programOutput()
         {
-        }
-
-        ~DomainShaderContext()
-        {
-            delete[] programOutput.gatherMap;
-            delete[] programOutput.m_pInterestingConstants;
         }
     };
     class OpenCLProgramContext : public CodeGenContext
