@@ -86,10 +86,12 @@ namespace vISA {
             node = SBNode;
             type = Type;
             attr = Attr;
+            exclusiveNodes.clear();
         }
         SBNode* node;
         DepType type;
         SBDependenceAttr attr;
+        std::vector<vISA::SBNode*> exclusiveNodes;
     };
 
 
@@ -349,7 +351,11 @@ namespace vISA
         SBDEP_VECTOR   preds;          // A list of node's predecessors in dependence graph
         int            globalID;      // ID of global send instructions
         int            sendID;
+        int            sendUseID;
         SBNode *       tokenReusedNode;  // For global token reuse optimization, the node whose token is reused by current one.
+        SBBitSets* reachingSends;
+        SBBitSets* reachedUses;
+        unsigned reuseOverhead;
 
         /* Constructor */
         SBNode(uint32_t id, int ALUId, uint32_t BBId, G4_INST *i)
@@ -358,8 +364,12 @@ namespace vISA
         {
 
             sendID = -1;
+            sendUseID = -1;
             instVec.push_back(i);
             tokenReusedNode = nullptr;
+            reachingSends = nullptr;
+            reachedUses = nullptr;
+            reuseOverhead = 0;
         }
 
         ~SBNode()
@@ -378,11 +388,21 @@ namespace vISA
             return;
         }
 
+        void setSendUseID(int ID)
+        {
+            sendUseID = ID;
+            return;
+        }
+
         int getSendID()
         {
             return sendID;
         }
 
+        int getSendUseID()
+        {
+            return sendUseID;
+        }
 
         /* Member functions */
         G4_INST*  GetInstruction(void) const { return instVec.front(); }
@@ -426,6 +446,19 @@ namespace vISA
                 liveEndID = id;
                 liveEndBBID = endBBID;
             }
+            return;
+        }
+
+        void setLiveEarliesID(unsigned id)
+        {
+            liveStartID = id;
+            return;
+        }
+
+        void setLiveLatestID(unsigned id)
+        {
+            liveEndID = id;
+
             return;
         }
 
@@ -829,7 +862,7 @@ namespace vISA
     private:
         IR_Builder& builder;
         vISA::Mem_Manager &mem;
-        G4_BB              *bb;
+        G4_BB             *bb;
         G4_Label*         BBLabel;
         int nodeID;
         int ALUID;
@@ -842,11 +875,16 @@ namespace vISA
         BB_SWSB_LIST      Preds;
         BB_SWSB_LIST      Succs;
 
+        BB_SWSB_LIST      domPreds;
+        BB_SWSB_LIST      domSuccs;
+
         int first_node;
         int last_node;
 
         int first_send_node;
         int last_send_node;
+
+        bool tokenAssigned;
 
         int send_start;
         int send_end;
@@ -865,12 +903,16 @@ namespace vISA
         SBBitSets *send_kill_scalar;
         BitSet* send_WAW_may_kill;
 
+        BitSet* dominators;
 
         //For token reduction
         BitSet   *liveInTokenNodes;
         BitSet   *liveOutTokenNodes;
         BitSet   *killedTokens;
         BitSet   **tokeNodesMap;
+        unsigned    *tokenLiveInDist;
+        unsigned    *tokenLiveOutDist;
+        SBBitSets* localReachingSends;
 
         //BB local data dependence analysis
         G4_BB_SB(IR_Builder& b, Mem_Manager &m, G4_BB *block, SBNODE_VECT *SBNodes, SBNODE_VECT* SBSendNodes,
@@ -880,7 +922,7 @@ namespace vISA
             first_node(-1), last_node(-1), send_start(-1), send_end(-1),
             send_live_in(nullptr), send_live_out(nullptr), send_may_kill(nullptr), send_live_in_scalar(nullptr), send_live_out_scalar(nullptr), send_kill_scalar(nullptr), send_WAW_may_kill(nullptr),
             liveInTokenNodes(nullptr), liveOutTokenNodes(nullptr), killedTokens(nullptr), tokeNodesMap(nullptr), loopStartBBID(-1), loopEndBBID(-1),
-            send_def_out(nullptr)
+            send_def_out(nullptr), tokenAssigned(false), localReachingSends(nullptr)
         {
             first_send_node = -1;
             last_send_node = -1;
@@ -983,7 +1025,6 @@ namespace vISA
 
 
 
-        void tokenEdgePrune(int allSendNum, BitSet **allTokenNodesMap, SBNODE_VECT *SBNodes);
         void getLiveOutToken(unsigned allSendNum, SBNODE_VECT *SBNodes);
 
 
@@ -1003,6 +1044,36 @@ namespace vISA
     typedef std::vector<SWSB_LOOP> LOOP_SWSB_VECTOR;
     typedef LOOP_SWSB_VECTOR::iterator LOOP_SWSB_VECTOR_ITER;
 
+    class Dom
+    {
+    public:
+        std::vector<G4_BB*> iDoms;
+        Dom(G4_Kernel& k, vISA::Mem_Manager& m) : kernel(k), mem(m)
+        {
+        }
+
+        ~Dom()
+        {
+        };
+
+        std::unordered_set<G4_BB*>& getDom(G4_BB*);
+        std::vector<G4_BB*>& getImmDom(G4_BB*);
+        G4_BB* getCommonImmDom(std::unordered_set<G4_BB*>& bbs);
+        void runDOM();
+        G4_BB* InterSect(G4_BB* bb, int i, int k);
+        void runIDOM();
+        void dumpImmDom();
+
+    private:
+        vISA::Mem_Manager& mem;
+        G4_Kernel& kernel;
+        G4_BB* entryBB = nullptr;
+        std::vector<std::unordered_set<G4_BB*>> Doms;
+        std::vector<std::vector<G4_BB*>> immDoms;
+
+        void updateImmDom();
+    };
+
     class SWSB {
         G4_Kernel &kernel;
         FlowGraph&  fg;
@@ -1012,6 +1083,10 @@ namespace vISA
         LOOP_SWSB_VECTOR loopVector;
         SBNODE_VECT SBNodes;        // All instruction nodes
         SBNODE_VECT SBSendNodes;    // All out-of-order instruction nodes
+        SBNODE_VECT SBSendUses;    // All out-of-order instruction nodes
+#ifdef DEBUG_VERBOSE_ON
+        SBNODE_VECT globalSBNodes;        // All instruction nodes
+#endif
         SWSB_INDEXES indexes;         // To pass ALU ID  from previous BB to current.
         uint32_t  globalSendNum;    // The number of out-of-order instructions which generate global dependencies.
         SBBUCKET_VECTOR globalSendOpndList;  //All send operands which live out their instructions' BBs. No redundant.
@@ -1030,6 +1105,11 @@ namespace vISA
         SBNODE_LIST linearScanLiveNodes;
 
         std::vector<SBNode *> freeTokenList;
+
+        std::vector<SBNODE_VECT *> reachTokenArray;
+        std::vector<SBNODE_VECT *> reachUseArray;
+        SBNODE_VECT localTokenUsage;
+
         SBNODE_LIST sameTokenNodes[32];
         int topIndex;
 
@@ -1045,6 +1125,8 @@ namespace vISA
 
         void removePredsEdges(SBNode * node, SBNode * pred);
 
+        void dumpImmDom(Dom* dom);
+
         void setDefaultDistanceAtFirstInstruction();
 
         //Token allocation
@@ -1052,6 +1134,25 @@ namespace vISA
         void buildLiveIntervals();
         void expireIntervals(unsigned startID);
         void addToLiveList(SBNode *node);
+
+        unsigned short reuseTokenSelectionGlobal(SBNode* node, G4_BB* bb, SBNode*& candidateNode, bool& fromUse);
+        void addReachingDefineSet(SBNode* node, SBBitSets* globalLiveSet, SBBitSets* localLiveSet);
+        void addReachingUseSet(SBNode* node, SBNode* use);
+        void addGlobalDependenceWithReachingDef(unsigned globalSendNum, SBBUCKET_VECTOR* globalSendOpndList, SBNODE_VECT* SBNodes, PointsToAnalysis& p, bool afterWrite);
+        void expireLocalIntervals(unsigned startID, unsigned BBID);
+        void assignTokenToPred(SBNode* node, SBNode* pred, G4_BB* bb);
+        void assignTokenToSucc(SBNode* node, G4_BB* bb);
+        bool assignTokenWithPred(SBNode* node, G4_BB* bb);
+        void allocateToken(G4_BB* bb);
+        void tokenAllocationBB(G4_BB* bb);
+        void buildExclusiveForCoalescing();
+        void tokenAllocationGlobalWithPropogation();
+        void tokenAllocationGlobal();
+        bool propogateDist(G4_BB* bb);
+        void tokenAllocationWithDistPropogationPerBB(G4_BB* bb);
+        void tokenAllocationWithDistPropogation();
+        void calculateDist();
+
 
         //Assign Token
         void assignToken(SBNode *node, unsigned short token, uint32_t &AWTokenReuseCount, uint32_t &ARTokenReuseCount, uint32_t &AATokenReuseCount);
@@ -1064,7 +1165,7 @@ namespace vISA
         G4_INST *insertTestInstruction(G4_BB *bb, INST_LIST_ITER nextIter, int CISAOff, int lineNo, bool countSyns);  //FIXME: Please remove it when meta is not needed anymore
         G4_INST *insertSyncInstruction(G4_BB *bb, INST_LIST_ITER nextIter, int CISAOff, int lineNo);
         G4_INST * insertSyncInstructionAfter(G4_BB * bb, INST_LIST_ITER nextIter, int CISAOff, int lineNo);
-        G4_INST *insertSyncAllRDInstruction(G4_BB *bb, unsigned int SBIDs, INST_LIST_ITER nextIter, int CISAOff, int lineNo);
+        G4_INST* insertSyncAllRDInstruction(G4_BB *bb, unsigned int SBIDs, INST_LIST_ITER nextIter, int CISAOff, int lineNo);
         G4_INST *insertSyncAllWRInstruction(G4_BB *bb, unsigned int SBIDs, INST_LIST_ITER nextIter, int CISAOff, int lineNo);
 
         void SWSBDepDistanceGenerator(PointsToAnalysis& p, LiveGRFBuckets &LB, LiveGRFBuckets &globalSendsLB);
@@ -1094,6 +1195,9 @@ namespace vISA
 
         // Fast-composite support.
         void genSWSBPatchInfo();
+
+        void getDominators(Dom* dom);
+
 
     public:
         SWSB(G4_Kernel &k, vISA::Mem_Manager& m)
