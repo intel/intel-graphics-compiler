@@ -5509,7 +5509,9 @@ void EmitPass::emitSimdMediaBlockRead(llvm::Instruction* inst)
         else
         {
             m_encoder->Add(pTempVar0, pTempVar0, m_currShader->ImmToVariable(blockWidth, ISA_TYPE_UD));
-            dstSubReg = dstSubReg + scale * blockHeight;
+            uint32_t subOffset = maxWidth * scale * blockHeight;
+            subOffset /= getGRFSize();
+            dstSubReg = dstSubReg + subOffset;
         }
         m_encoder->Push();
 
@@ -5548,6 +5550,8 @@ void EmitPass::emitSimdMediaBlockRead(llvm::Instruction* inst)
     {
         dstSubReg = 0;
 
+        uint32_t srcSubReg = 0;
+
         // Join data obtained from pass 0 and pass 1 to make
         // xOffset contiguous from 0 to 63 bytes (making SIMD 16)
         // mov (8) r20.0<1>:ud r28.0<8;8,1>:ud {Align1, Q1}
@@ -5559,16 +5563,63 @@ void EmitPass::emitSimdMediaBlockRead(llvm::Instruction* inst)
         // mov (8) r26.0<1>:ud r31.0<8;8,1>:ud {Align1, Q1}
         // mov (8) r27.0<1>:ud r35.0<8;8,1>:ud {Align1, Q2}
 
-        for (uint32_t i = 0; i < blockHeight; i++)
+
+        //For 64 bytes GRF, 32 bytes will be extended to
+        //.....
+        //  A0....A1
+        //  B0....B1
+        //  C0....C1
+        //  D0....D1
+        //  E0....E1
+        //  F0....F1
+        //  G0....G1
+        //  H0....H1
+        //
+        //  r20....A0....B0........r30....A1....B1
+        //  r21....C0....D0........r31....C1....D1
+        //  r22....E0....F0........r32....E1....F1
+        //  r23....G0....H0........r33....G1....H1
+        //
+        //  r40<--r20,....r30
+        //  r41<--r20.8,r30.8
+        //  r42<--r21,....r31
+        //  r43<--r21.8,r31.8
+        //  r44<--r22,....r32
+        //  r45<--r22.8,r32.8
+        //  r46<--r23,....r33
+        //  r47<--r23.8,r33.8
+        //
+        //mov (8) r40.0<1>:ud       r20.0<8;8,1>:ud {Align1, Q1}
+        //mov (8) r40.8<1>:ud       r30.0<8;8,1>:ud {Align1, Q1}
+        //mov (8) r41<1>:ud         r20.8<8;8,1>:ud {Align1, Q1}
+        //mov (8) r41.8<1>:ud       r30.8<8;8,1>:ud {Align1, Q1}
+
+        for (uint32_t i = 0; i < blockHeight; i++) //Height
         {
-            for (uint32_t pass = 0; pass < numPasses; pass++)
+            uint32_t dstSubRegOffset = 0;
+            uint32_t srcSubRegOffset = 0;
+
+            for (uint32_t pass = 0; pass < numPasses; pass++) //Width
             {
                 SIMDMode mode = typeSizeInBytes == 8 && blockWidth != 64 ? SIMDMode::SIMD4 : SIMDMode::SIMD8;
                 m_encoder->SetSimdSize(mode);
                 m_encoder->SetNoMask();
-                m_encoder->SetSrcSubVar(0, scale * (i + (blockHeight * pass)));
+
+                srcSubReg = (scale * (i + (blockHeight * pass)) * maxWidth) / getGRFSize();
+                srcSubRegOffset = (i * maxWidth) % getGRFSize();
+
+                m_encoder->SetSrcSubVar(0, srcSubReg);
+                m_encoder->SetSrcSubReg(0, srcSubRegOffset / typeSizeInBytes);
+
                 m_encoder->SetDstSubVar(dstSubReg);
-                dstSubReg += scale;
+                m_encoder->SetDstSubReg(dstSubRegOffset / typeSizeInBytes);
+
+                dstSubRegOffset = ((pass + 1) * maxWidth) % getGRFSize();
+                if (dstSubRegOffset == 0)
+                {
+                    dstSubReg += scale;
+                }
+
                 m_encoder->Copy(m_destination, pTempDest);
                 m_encoder->Push();
             }
@@ -5641,8 +5692,10 @@ void EmitPass::emitSimdMediaBlockWrite(llvm::Instruction* inst)
     int scale = (blockWidth == 64) ? 2 : 1;
     for (pass = 0; pass < numPasses; pass++)
     {
-        uint32_t srcSubVar = pass * scale;
+        uint32_t srcSubVar = pass * scale * maxWidth / getGRFSize();
         uint32_t dstSubVar = 0;
+        uint32_t srcSubRegOffset = (pass * maxWidth) % getGRFSize();
+        uint32_t dstSubRegOffset = 0;
 
         CVariable* tempdst = nullptr;
         tempdst = m_currShader->GetNewVariable(
@@ -5655,6 +5708,30 @@ void EmitPass::emitSimdMediaBlockWrite(llvm::Instruction* inst)
         // mov (8) r23.0<1>:d r16.0<8;8,1>:d {Align1, Q1, Compacted}
         // mov (8) r24.0<1>:d r18.0<8;8,1>:d {Align1, Q1, Compacted}
         // mov (8) r25.0<1>:d r20.0<8;8,1>:d {Align1, Q1, Compacted}
+
+        //FOR 64 bytes GRF:
+        //    A0....A1....A2....A3........r60....r60.8....r61....r61.8
+        //    B0....B1....B2....B3........r62....r62.8....r63....r63.8
+        //    C0....C1....C2....C3........r64....r64.8....r65....r65.8
+        //    D0....D1....D2....D3........r66....r66.8....r67....r67.8
+        //    E0....E1....E2....E3........r68....r68.8....r69....r69.8
+        //    F0....F1....F2....F3........r70....r70.8....r71....r71.8
+        //    G0....G1....G2....G3........r72....r72.8....r73....r73.8
+        //    H0....H1....H2....H3........r74....r74.8....r75....r75.8
+        //
+        // block 0
+        // mov (8) r20.0<1>:d r60.0<8;8,1>:d {Align1, Q1, Compacted}
+        // mov (8) r20.8<1>:d r62.0<8;8,1>:d {Align1, Q1, Compacted}
+        // mov (8) r21.0<1>:d r64.0<8;8,1>:d {Align1, Q1, Compacted}
+        // mov (8) r21.8<1>:d rr66.0<8;8,1>:d {Align1, Q1, Compacted}
+        // ...
+        //block 1
+        // mov (8) r30.0<1>:d r60.8<8;8,1>:d {Align1, Q1, Compacted}
+        // mov (8) r30.8<1>:d r62.8<8;8,1>:d {Align1, Q1, Compacted}
+        // mov (8) r31.0<1>:d r64.8<8;8,1>:d {Align1, Q1, Compacted}
+        // mov (8) r31.8<1>:d rr66.8<8;8,1>:d {Align1, Q1, Compacted}
+        //...
+
         if (numPasses > 1)
         {
             for (uint i = 0; i < nbElements; ++i)
@@ -5662,10 +5739,21 @@ void EmitPass::emitSimdMediaBlockWrite(llvm::Instruction* inst)
                 SIMDMode mode = (typeSizeInBytes == 8 && blockWidth != 64) ? SIMDMode::SIMD4 : SIMDMode::SIMD8;
                 m_encoder->SetSimdSize(mode);
                 m_encoder->SetNoMask();
+
+                //Src
                 m_encoder->SetSrcSubVar(0, srcSubVar);
+                m_encoder->SetSrcSubReg(0, srcSubRegOffset / typeSizeInBytes);
+                //Dst
                 m_encoder->SetDstSubVar(dstSubVar);
-                dstSubVar += scale;
-                srcSubVar = srcSubVar + scale * numPasses;
+                m_encoder->SetDstSubReg(dstSubRegOffset / typeSizeInBytes);
+                //Strides for dst and src
+                dstSubRegOffset = ((i + 1) * maxWidth) % getGRFSize();
+                if (dstSubRegOffset == 0)
+                {
+                    dstSubVar += scale;
+                }
+                srcSubVar = srcSubVar + (scale * numPasses * blockWidth / getGRFSize());
+
                 m_encoder->Copy(tempdst, data);
                 m_encoder->Push();
             }
