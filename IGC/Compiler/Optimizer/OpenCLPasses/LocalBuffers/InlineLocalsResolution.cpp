@@ -120,7 +120,6 @@ bool InlineLocalsResolution::runOnModule(Module& M)
     computeOffsetList(M, sizeMap);
 
     LLVMContext& C = M.getContext();
-    const auto pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
     for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I)
     {
@@ -168,7 +167,7 @@ bool InlineLocalsResolution::runOnModule(Module& M)
 
             bool UseAsPointerOnly = useAsPointerOnly(arg);
             unsigned Offset = totalSize;
-            if (!UseAsPointerOnly && pCtx->platform.supportSLMTagging())
+            if (!UseAsPointerOnly)
                 Offset |= VALID_LOCAL_HIGH_BITS;
 
             if (IsFirstSLMArgument) {
@@ -384,8 +383,6 @@ void InlineLocalsResolution::computeOffsetList(Module& M, std::map<Function*, un
         return;
     }
 
-    const auto pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-
     // let's travese the CallGraph to calculate the local
     // variables of kernel from all user functions.
     m_chkSet.clear();
@@ -457,7 +454,7 @@ void InlineLocalsResolution::computeOffsetList(Module& M, std::map<Function*, un
         for (auto offsetIter = offsetMap[iter->first].begin(), offsetEnd = offsetMap[iter->first].end(); offsetIter != offsetEnd; ++offsetIter)
         {
             unsigned Offset = offsetIter->second;
-            if (!useAsPointerOnly(offsetIter->first) && pCtx->platform.supportSLMTagging())
+            if (!useAsPointerOnly(offsetIter->first))
                 Offset |= VALID_LOCAL_HIGH_BITS;
 
             LocalOffsetMD localOffset;

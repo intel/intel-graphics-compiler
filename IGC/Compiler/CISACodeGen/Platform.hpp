@@ -373,10 +373,6 @@ namespace IGC
         return true;
     }
 
-    bool supportSLMTagging() const
-    {
-        return true;
-    }
     // ***** Below go accessor methods for testing WA data from WA_TABLE *****
 
     bool WaDoNotPushConstantsForAllPulledGSTopologies() const
