@@ -1308,7 +1308,7 @@ bool HWConformity::evenlySplitInst( INST_LIST_ITER iter, G4_BB* bb, bool checkOv
         extraMov = checkSrcDstOverlap(iter, bb, false);
     }
 
-    bool use_arc_reg = false;
+    bool useARF = false;
     for (int i = 0; i < numSrc; i++)
     {
         srcs[i] = inst->getSrc(i);
@@ -1343,13 +1343,14 @@ bool HWConformity::evenlySplitInst( INST_LIST_ITER iter, G4_BB* bb, bool checkOv
     }
 
     G4_DstRegRegion *accDstRegion = NULL;
-    if( inst->getImplAccDst() )
+    if (inst->getImplAccDst())
     {
         accDstRegion = inst->getImplAccDst();
     }
-    if( accSrcRegion || accDstRegion || newPred || newCond )
+
+    if (accSrcRegion || accDstRegion || newPred || newCond)
     {
-        use_arc_reg = true;
+        useARF = true;
     }
 
     for( int i = 0; i < instExSize; i += currExSize )
@@ -1425,11 +1426,12 @@ bool HWConformity::evenlySplitInst( INST_LIST_ITER iter, G4_BB* bb, bool checkOv
         }
 
         // set mask
-        if (!inst->isWriteEnableInst() || use_arc_reg)
+        bool needsMaskOffset = useARF || (bb->isInSimdFlow() && !inst->isWriteEnableInst());
+        if (needsMaskOffset)
         {
             int newMaskOffset = origMaskOffset + (i == 0 ? 0 : currExSize);
-            bool nibOk = G4_Type_Table[inst->getDst()->getType()].byteSize == 8 ||
-                G4_Type_Table[inst->getExecType()].byteSize == 8;
+            bool nibOk = builder.hasNibCtrl() &&
+                (getTypeSize(inst->getDst()->getType()) == 8 || getTypeSize(inst->getExecType()) == 8);
             G4_InstOption newMask = G4_INST::offsetToMask(currExSize, newMaskOffset, nibOk);
             if (newMask == InstOpt_NoOpt)
             {

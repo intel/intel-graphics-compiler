@@ -568,4 +568,10 @@
         return true;
     }
 
+    bool hasNibCtrl() const
+    {
+        return true;
+    }
+
+
     // end HW capabilities
