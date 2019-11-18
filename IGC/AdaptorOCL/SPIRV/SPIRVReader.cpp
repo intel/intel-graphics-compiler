@@ -3575,6 +3575,14 @@ SPIRVToLLVM::transKernelMetadata()
         SPIRVFunction *BF = BM->getFunction(I);
         Function *F = static_cast<Function *>(getTranslatedValue(BF));
         assert(F && "Invalid translated function");
+
+        // __attribute__((annotate("some_user_annotation"))) are passed via
+        // UserSemantic decoration on functions.
+        if (BF->hasDecorate(DecorationUserSemantic)) {
+          auto &funcInfo = MD.FuncMD[F];
+          funcInfo.UserAnnotations = BF->getDecorationStringLiteral(DecorationUserSemantic);
+        }
+
         if (F->getCallingConv() != CallingConv::SPIR_KERNEL || F->isDeclaration())
             continue;
         std::vector<llvm::Metadata*> KernelMD;
@@ -3737,12 +3745,6 @@ SPIRVToLLVM::transKernelMetadata()
                     funcInfo.maxByteOffsets.push_back(val);
                 });
             }
-        }
-
-        // __attribute__((annotate("some_user_annotation"))) are passed via
-        // UserSemantic decoration on functions.
-        if (BF->hasDecorate(DecorationUserSemantic)) {
-          funcInfo.UserAnnotations = BF->getDecorationStringLiteral(DecorationUserSemantic);
         }
 
         llvm::MDNode *Node = MDNode::get(*Context, KernelMD);
