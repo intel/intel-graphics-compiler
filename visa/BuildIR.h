@@ -1527,15 +1527,6 @@ public:
     //
     G4_Label* createLabel(std::string& lab, VISA_Label_Kind kind)
     {
-        // Create new lab string with name of compilation unit
-        // to ensure unique label names across compilation units.
-        if (getOptions()->isTargetCM() && kind != LABEL_FC)
-        {
-            lab += std::string("_") + kernel.getName();
-#if _DEBUG
-            lab = sanitizeLabelString(lab);
-#endif
-        }
         auto labStr = lab.c_str();
 
         G4_Label* l = hashtable.lookupLabel(labStr);
