@@ -511,21 +511,10 @@ namespace IGC
             int Index;
         };
 
-        SOpenCLKernelInfo()
-        {
-            m_printfBufferAnnotation = nullptr;
-            m_syncBufferAnnotation = nullptr;
-            m_startGAS = nullptr;
-            m_WindowSizeGAS = nullptr;
-            m_PrivateMemSize = nullptr;
+        SOpenCLKernelInfo() {};
 
-            memset(&m_threadPayload, 0, sizeof(m_threadPayload));
-            memset(&m_executionEnivronment, 0, sizeof(m_executionEnivronment));
-            memset(&m_kernelProgram, 0, sizeof(m_kernelProgram));
-        };
-
-        std::string m_kernelName;
-        QWORD       m_ShaderHashCode;
+        std::string m_kernelName = {};
+        QWORD       m_ShaderHashCode = {};
 
         std::vector<iOpenCL::PointerInputAnnotation*>       m_pointerInput;
         std::vector<iOpenCL::PointerArgumentAnnotation*>    m_pointerArgument;
@@ -538,26 +527,26 @@ namespace IGC
         std::vector<iOpenCL::KernelArgumentInfoAnnotation*> m_kernelArgInfo;
         std::vector<iOpenCL::PrintfStringAnnotation*>       m_printfStringAnnotations;
 
-        iOpenCL::PrintfBufferAnnotation* m_printfBufferAnnotation;
-        iOpenCL::SyncBufferAnnotation* m_syncBufferAnnotation;
-        iOpenCL::StartGASAnnotation* m_startGAS = NULL;
-        iOpenCL::WindowSizeGASAnnotation* m_WindowSizeGAS = NULL;
-        iOpenCL::PrivateMemSizeAnnotation* m_PrivateMemSize = NULL;
-        std::string                                         m_kernelAttributeInfo;
+        iOpenCL::PrintfBufferAnnotation*   m_printfBufferAnnotation = nullptr;
+        iOpenCL::SyncBufferAnnotation*     m_syncBufferAnnotation   = nullptr;
+        iOpenCL::StartGASAnnotation*       m_startGAS               = nullptr;
+        iOpenCL::WindowSizeGASAnnotation*  m_WindowSizeGAS          = nullptr;
+        iOpenCL::PrivateMemSizeAnnotation* m_PrivateMemSize         = nullptr;
+        std::string                                         m_kernelAttributeInfo = {};
 
         bool                                                m_HasInlineVmeSamplers = false;
 
         // This maps argument numbers to BTI and sampler indices
         // (e.g. kernel argument 3, which is is an image_2d, may be mapped to BTI 6)
-        std::map<DWORD, unsigned int> m_argIndexMap;
+        std::map<DWORD, unsigned int> m_argIndexMap = {};
 
-        iOpenCL::ThreadPayload        m_threadPayload;
+        iOpenCL::ThreadPayload        m_threadPayload = {};
 
-        iOpenCL::ExecutionEnivronment m_executionEnivronment;
+        iOpenCL::ExecutionEnivronment m_executionEnivronment = {};
 
-        iOpenCL::KernelTypeProgramBinaryInfo m_kernelTypeInfo;
+        iOpenCL::KernelTypeProgramBinaryInfo m_kernelTypeInfo = {};
 
-        SKernelProgram                m_kernelProgram;
+        SKernelProgram                m_kernelProgram = {};
     };
 
 

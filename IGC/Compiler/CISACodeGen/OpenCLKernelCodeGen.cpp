@@ -73,9 +73,6 @@ namespace IGC
         m_pBtiLayout = &(ctx->btiLayout);
         m_Platform = &(ctx->platform);
         m_DriverInfo = &(ctx->m_DriverInfo);
-
-        // Prefer to not memset a struct - initializers are safer!
-        memset(&m_kernelInfo.m_kernelProgram, 0, sizeof(SKernelProgram));
     }
 
     COpenCLKernel::~COpenCLKernel()

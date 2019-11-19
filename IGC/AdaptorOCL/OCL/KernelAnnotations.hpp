@@ -308,9 +308,9 @@ struct ExecutionEnivronment
     bool   IsFinalizer                                = false;
     bool   SubgroupIndependentForwardProgressRequired = false;
     bool   CompiledForGreaterThan4GBBuffers           = false;
-    DWORD  FixedWorkgroupSize[3];
-    DWORD  NumGRFRequired;
-    DWORD  WorkgroupWalkOrder[3] = { 3, 3, 3 };
+    DWORD  FixedWorkgroupSize[3]                      = {};
+    DWORD  NumGRFRequired                             = 0;
+    DWORD  WorkgroupWalkOrder[3]                      = {};
     bool   HasGlobalAtomics                           = false;
 };
 
