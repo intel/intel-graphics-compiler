@@ -56,9 +56,19 @@ CIF_DECLARE_INTERFACE_PIMPL(FclOclTranslationCtx) : CIF::PimplBase
     CIF_PIMPL_DECLARE_CONSTRUCTOR(CIF::Version_t version, CIF_PIMPL(FclOclDeviceCtx) *globalState,
                                   CodeType::CodeType_t inType, CodeType::CodeType_t outType)
         : globalState(CIF::Sanity::ToReferenceOrAbort(globalState)), inType(inType), outType(outType){
-        this->legacyInterface = CreateLegacyInterface(inType, outType);
+        this->legacyInterface = CreateLegacyInterface(inType, outType, err);
         CIF::Sanity::NotNullOrAbort(this->legacyInterface);
         this->legacyInterface->SetOclApiVersion(globalState->MiscOptions.OclApiVersion);
+    }
+
+    CIF_PIMPL_DECLARE_CONSTRUCTOR(CIF::Version_t version, CIF_PIMPL(FclOclDeviceCtx)* globalState,
+                                  CodeType::CodeType_t inType, CodeType::CodeType_t outType, CIF::Builtins::BufferSimple* err)
+        : globalState(CIF::Sanity::ToReferenceOrAbort(globalState)), inType(inType), outType(outType), err(err) {
+        this->legacyInterface = CreateLegacyInterface(inType, outType, err);
+        if (this->legacyInterface)
+        {
+            this->legacyInterface->SetOclApiVersion(globalState->MiscOptions.OclApiVersion);
+        }
     }
 
     CIF_PIMPL_DECLARE_DESTRUCTOR() override{
@@ -142,26 +152,33 @@ CIF_DECLARE_INTERFACE_PIMPL(FclOclTranslationCtx) : CIF::PimplBase
     }
 
 protected:
-    static TC::CClangTranslationBlock *CreateLegacyInterface(CodeType::CodeType_t inType, CodeType::CodeType_t outType){
-        if(SupportsTranslation(inType, outType) == false){
+    static TC::CClangTranslationBlock* CreateLegacyInterface(CodeType::CodeType_t inType, CodeType::CodeType_t outType, CIF::Builtins::BufferSimple* err) {
+        if (SupportsTranslation(inType, outType) == false) {
             return nullptr;
         }
 
         TC::STB_CreateArgs createArgs;
         createArgs.TranslationCode.Type.Input = TC::TB_DATA_FORMAT_OCL_TEXT;
-        if(inType == CodeType::elf){
+        if (inType == CodeType::elf) {
             createArgs.TranslationCode.Type.Input = TC::TB_DATA_FORMAT_ELF;
         }
         createArgs.TranslationCode.Type.Output = TC::TB_DATA_FORMAT_LLVM_BINARY;
-        if(outType == CodeType::llvmLl){
+        if (outType == CodeType::llvmLl) {
             createArgs.TranslationCode.Type.Output = TC::TB_DATA_FORMAT_LLVM_TEXT;
-        }else if(outType == CodeType::spirV) {
+        }else if (outType == CodeType::spirV) {
             createArgs.TranslationCode.Type.Output = TC::TB_DATA_FORMAT_SPIR_V;
         }
 
-        TC::CClangTranslationBlock *legacyInterface = nullptr;
-        TC::CClangTranslationBlock::Create(&createArgs, legacyInterface);
-        if(legacyInterface == nullptr){
+        TC::CClangTranslationBlock* legacyInterface = nullptr;
+        TC::STB_TranslateOutputArgs outputArgs;
+        bool success;
+        success = TC::CClangTranslationBlock::Create(&createArgs,&outputArgs, legacyInterface);
+        if (!success && err != nullptr) {
+            const char* pErrorMsg = outputArgs.pErrorString;
+            uint32_t pErrorMsgSize = outputArgs.ErrorStringSize;
+            err->PushBackRawBytes(pErrorMsg, pErrorMsgSize);
+        }
+        if (legacyInterface == nullptr) {
             return nullptr;
         }
 
@@ -171,6 +188,7 @@ protected:
     CIF_PIMPL(FclOclDeviceCtx) &globalState;
     CodeType::CodeType_t inType = CodeType::undefined;
     CodeType::CodeType_t outType = CodeType::undefined;
+    CIF::Builtins::BufferSimple* err = nullptr;
     TC::CClangTranslationBlock *legacyInterface = nullptr;
 };
 

@@ -67,9 +67,25 @@ CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(FclOclDeviceCtx, 2, 1) {
   virtual CodeType::CodeType_t GetPreferredIntermediateRepresentation();
 };
 
+CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(FclOclDeviceCtx, 3, 2) {
+    CIF_INHERIT_CONSTRUCTOR();
+
+    using FclOclDeviceCtx<1>::CreateTranslationCtx;
+    template <typename FclOclTranslationCtxInterface = FclOclTranslationCtxTagOCL>
+    CIF::RAII::UPtr_t<FclOclTranslationCtxInterface> CreateTranslationCtx(CodeType::CodeType_t inType, CodeType::CodeType_t outType, CIF::Builtins::BufferSimple* err) {
+        return CIF::RAII::Pack<FclOclTranslationCtxInterface>(CreateTranslationCtxImpl(FclOclTranslationCtxInterface::GetVersion(), inType, outType, err));
+    }
+
+protected:
+    virtual FclOclTranslationCtxBase* CreateTranslationCtxImpl(CIF::Version_t ver,
+                                                              CodeType::CodeType_t inType,
+                                                              CodeType::CodeType_t outType,
+                                                              CIF::Builtins::BufferSimple* err);
+};
+
 CIF_GENERATE_VERSIONS_LIST_AND_DECLARE_INTERFACE_DEPENDENCIES(FclOclDeviceCtx, IGC::FclOclTranslationCtx);
 CIF_MARK_LATEST_VERSION(FclOclDeviceCtxLatest, FclOclDeviceCtx);
-using FclOclDeviceCtxTagOCL = FclOclDeviceCtxLatest; // Note : can tag with different version for
+using FclOclDeviceCtxTagOCL = FclOclDeviceCtx<2>; // Note : can tag with different version for
                                                      //        transition periods
 }
 

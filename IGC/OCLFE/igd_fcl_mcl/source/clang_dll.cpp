@@ -67,9 +67,11 @@ TRANSLATION_BLOCK_API CTranslationBlock* Create(
     STB_CreateArgs* pCreateArgs )
 {
     CClangTranslationBlock*  pClangTranslationBlock;
+    STB_TranslateOutputArgs pOutputArgs;
 
     CClangTranslationBlock::Create(
         pCreateArgs,
+        &pOutputArgs,
         pClangTranslationBlock );
 
     return pClangTranslationBlock;

@@ -100,6 +100,7 @@ namespace TC
   public:
       static bool     Create(
                           const STB_CreateArgs* pCreateArgs,
+                          STB_TranslateOutputArgs* pOutputArgs,
                           CClangTranslationBlock* &pTranslationBlock );
 
       static void     Delete(
@@ -132,7 +133,7 @@ namespace TC
     // Using auto pointer to get CTH MemoryBuffer from LoadBuffer
     char *m_cthBuffer;
 
-    void SetErrorString( const char *pErrorString, STB_TranslateOutputArgs* pOutputArgs );
+    static void SetErrorString( const char *pErrorString, STB_TranslateOutputArgs* pOutputArgs );
 
   protected:
       CClangTranslationBlock( void );

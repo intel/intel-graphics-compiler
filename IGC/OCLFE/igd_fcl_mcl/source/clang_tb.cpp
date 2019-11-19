@@ -585,6 +585,7 @@ namespace TC
     \*****************************************************************************/
     bool CClangTranslationBlock::Create(
         const STB_CreateArgs* pCreateArgs,
+        STB_TranslateOutputArgs* pOutputArgs,
         CClangTranslationBlock* &pTranslationBlock)
     {
         bool    success = true;
@@ -617,6 +618,7 @@ namespace TC
                 }
                 else
                 {
+                    SetErrorString("Error: Opencl-clang library not found.", pOutputArgs);
                     success = false;
                 }
             }

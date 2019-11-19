@@ -60,6 +60,21 @@ FclOclTranslationCtxBase *CIF_PIMPL(FclOclDeviceCtx)::CreateTranslationCtx(CIF::
     return CIF::InterfaceCreator<FclOclTranslationCtx>::CreateInterfaceVer(version, version, this, inType, outType);
 }
 
+FclOclTranslationCtxBase* CIF_GET_INTERFACE_CLASS(FclOclDeviceCtx, 3)::CreateTranslationCtxImpl(CIF::Version_t ver,
+                                                                                                  CodeType::CodeType_t inType,
+                                                                                                  CodeType::CodeType_t outType,
+                                                                                                  CIF::Builtins::BufferSimple* err) {
+    return CIF_GET_PIMPL()->CreateTranslationCtx(ver, inType, outType, err);
+}
+
+FclOclTranslationCtxBase* CIF_PIMPL(FclOclDeviceCtx)::CreateTranslationCtx(CIF::Version_t version, CodeType::CodeType_t inType, CodeType::CodeType_t outType, CIF::Builtins::BufferSimple* err)
+{
+    if (false == CIF_PIMPL(FclOclTranslationCtx)::SupportsTranslation(inType, outType)) {
+        return nullptr;
+    }
+    return CIF::InterfaceCreator<FclOclTranslationCtx>::CreateInterfaceVer(version, version, this, inType, outType, err);
+}
+
 }
 
 CIF_EXPORT_ENTRY_POINTS_STATIC(IGC::FclOclDeviceCtx);

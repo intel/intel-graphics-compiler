@@ -49,6 +49,7 @@ CIF_DECLARE_INTERFACE_PIMPL(FclOclDeviceCtx) : CIF::PimplBase
     }
 
     FclOclTranslationCtxBase * CreateTranslationCtx(CIF::Version_t version, CodeType::CodeType_t inType, CodeType::CodeType_t outType);
+    FclOclTranslationCtxBase * CreateTranslationCtx(CIF::Version_t version, CodeType::CodeType_t inType, CodeType::CodeType_t outType, CIF::Builtins::BufferSimple* err);
 
     struct MiscOptions
     {
