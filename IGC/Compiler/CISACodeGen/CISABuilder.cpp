@@ -2738,37 +2738,46 @@ namespace IGC
     V(vKernel->AppendVISACFRetInst(predOpnd, vISA_EMASK_M1, EXEC_SIZE_1));
     }
 
-    void CEncoder::SetFloatDenormMode(VISAKernel* vKernel, Float_DenormMode mode16,
-                                  Float_DenormMode mode32, Float_DenormMode mode64)
+    // Init Control register for denorm modes, rounding modes, etc.
+    void CEncoder::initCR(VISAKernel* vKernel)
     {
-    VISA_VectorOpnd* src0_Opnd = nullptr;
-    VISA_VectorOpnd* src1_Opnd = nullptr;
-    VISA_VectorOpnd* dst_Opnd = nullptr;
-    VISA_GenVar* cr0_var = nullptr;
-    uint imm_data = 0;
-    if (mode16 == FLOAT_DENORM_RETAIN)
-        imm_data |= 0x400;
-    if (mode32 == FLOAT_DENORM_RETAIN)
-        imm_data |= 0x80;
-    if (mode64 == FLOAT_DENORM_RETAIN)
-        imm_data |= 0x40;
-    // If we are in the default mode no need to set the CR
+        // Those bits must be zero'ed on entry to kernel/shader.
+        // (If not, this function needs to be changed accordingly.)
+        VISA_VectorOpnd* src0_Opnd = nullptr;
+        VISA_VectorOpnd* src1_Opnd = nullptr;
+        VISA_VectorOpnd* dst_Opnd = nullptr;
+        VISA_GenVar* cr0_var = nullptr;
+        uint imm_data = 0;
+
+        CodeGenContext* pCtx = m_program->GetContext();
+        if (pCtx->m_floatDenormMode16 == FLOAT_DENORM_RETAIN)
+            imm_data |= 0x400;
+        if (pCtx->m_floatDenormMode32 == FLOAT_DENORM_RETAIN)
+            imm_data |= 0x80;
+        if (pCtx->m_floatDenormMode64 == FLOAT_DENORM_RETAIN)
+            imm_data |= 0x40;
+
+        uint RM_bits = getEncoderRoundingMode(
+            static_cast<Float_RoundingMode>(pCtx->getModuleMetaData()->compOpt.FloatRoundingMode));
+        imm_data |= RM_bits;
+
+        // If we are in the default mode no need to set the CR
         if (imm_data != 0)
-    {
-        V(vKernel->GetPredefinedVar(cr0_var, PREDEFINED_CR0));
-        V(vKernel->CreateVISASrcOperand(src0_Opnd, cr0_var, MODIFIER_NONE, 0, 1, 0, 0, 0));
-        V(vKernel->CreateVISAImmediate(src1_Opnd, &imm_data, ISA_TYPE_UD));
-        V(vKernel->CreateVISADstOperand(dst_Opnd, cr0_var, 1, 0, 0));
-        V(vKernel->AppendVISAArithmeticInst(
-            ISA_OR,
-            nullptr,
-            false,
-            vISA_EMASK_M1_NM,
-            EXEC_SIZE_1,
-            dst_Opnd,
-            src0_Opnd,
-            src1_Opnd));
-    }
+        {
+            V(vKernel->GetPredefinedVar(cr0_var, PREDEFINED_CR0));
+            V(vKernel->CreateVISASrcOperand(src0_Opnd, cr0_var, MODIFIER_NONE, 0, 1, 0, 0, 0));
+            V(vKernel->CreateVISAImmediate(src1_Opnd, &imm_data, ISA_TYPE_UD));
+            V(vKernel->CreateVISADstOperand(dst_Opnd, cr0_var, 1, 0, 0));
+            V(vKernel->AppendVISAArithmeticInst(
+                ISA_OR,
+                nullptr,
+                false,
+                vISA_EMASK_M1_NM,
+                EXEC_SIZE_1,
+                dst_Opnd,
+                src0_Opnd,
+                src1_Opnd));
+        }
     }
 
     void CEncoder::SetVectorMask(bool VMask)
@@ -4192,126 +4201,119 @@ namespace IGC
 
     void CEncoder::InitEncoder(bool canAbortOnSpill, bool hasStackCall)
     {
-    m_aliasesMap.clear();
-    m_encoderState.m_SubSpanDestination = false;
-    CodeGenContext* context = m_program->GetContext();
-    m_encoderState.m_secondHalf = false;
-    m_enableVISAdump = false;
-    labelMap.clear();
-    labelMap.resize(m_program->entry->size(), nullptr);
-    labelCounter = 0;
-    m_hasInlineAsm = context->m_DriverInfo.SupportInlineAssembly() && context->m_instrTypes.hasInlineAsm;
+        m_aliasesMap.clear();
+        m_encoderState.m_SubSpanDestination = false;
+        CodeGenContext* context = m_program->GetContext();
+        m_encoderState.m_secondHalf = false;
+        m_enableVISAdump = false;
+        labelMap.clear();
+        labelMap.resize(m_program->entry->size(), nullptr);
+        labelCounter = 0;
+        m_hasInlineAsm = context->m_DriverInfo.SupportInlineAssembly() && context->m_instrTypes.hasInlineAsm;
 
-    vbuilder = nullptr;
-    vAsmTextBuilder = nullptr;
-    TARGET_PLATFORM VISAPlatform = GetVISAPlatform(&(context->platform));
+        vbuilder = nullptr;
+        vAsmTextBuilder = nullptr;
+        TARGET_PLATFORM VISAPlatform = GetVISAPlatform(&(context->platform));
 
-    SetVISAWaTable(m_program->m_Platform->getWATable());
+        SetVISAWaTable(m_program->m_Platform->getWATable());
 
-    llvm::SmallVector<const char*, 10> params;
-    if (!m_hasInlineAsm)
-    {
-        // Asm text writer mode doesnt need dump params
-        InitBuildParams(params);
-    }
-
-    COMPILER_TIME_START(m_program->GetContext(), TIME_CG_vISACompile);
-    bool enableVISADump = IGC_IS_FLAG_ENABLED(EnableVISASlowpath) || IGC_IS_FLAG_ENABLED(ShaderDumpEnable);
-    auto builderMode = m_hasInlineAsm ? vISA_ASM_WRITER : vISA_3D;
-    auto builderOpt = (enableVISADump || m_hasInlineAsm) ? CM_CISA_BUILDER_BOTH : CM_CISA_BUILDER_GEN;
-    V(CreateVISABuilder(vbuilder, builderMode, builderOpt, VISAPlatform, params.size(), params.data(), &m_WaTable));
-
-    InitVISABuilderOptions(VISAPlatform, canAbortOnSpill, hasStackCall);
-
-    // Pass all build options to builder
-    SetBuilderOptions(vbuilder);
-
-    vKernel = nullptr;
-
-    std::string kernelName = m_program->entry->getName();
-    if (context->m_instrTypes.hasDebugInfo)
-    {
-        // This metadata node is added by TransformBlocks pass for device side
-        // enqueue feature of OCL2.0+.
-        // The problem is that for device side enqueue, kernel name used in
-        // IGC differs the one used to create JIT kernel. This leads to different
-        // kernel names in .elf file and .dbg file. So dbgmerge tool cannot
-        // merge the two together. With this metadata node we create a mapping
-        // between the two names and when debug info is enabled, make JIT use
-        // same name as IGC.
-        // Names earlier -
-        // ParentKernel_dispatch_0 in dbg and
-        // __ParentKernel_block_invoke in elf
-        // when kernel name is ParentKernel
-        //
-        auto md = m_program->entry->getParent()->getNamedMetadata("igc.device.enqueue");
-        if (md)
+        llvm::SmallVector<const char*, 10> params;
+        if (!m_hasInlineAsm)
         {
-            for (unsigned int i = 0; i < md->getNumOperands(); i++)
+            // Asm text writer mode doesnt need dump params
+            InitBuildParams(params);
+        }
+
+        COMPILER_TIME_START(m_program->GetContext(), TIME_CG_vISACompile);
+        bool enableVISADump = IGC_IS_FLAG_ENABLED(EnableVISASlowpath) || IGC_IS_FLAG_ENABLED(ShaderDumpEnable);
+        auto builderMode = m_hasInlineAsm ? vISA_ASM_WRITER : vISA_3D;
+        auto builderOpt = (enableVISADump || m_hasInlineAsm) ? CM_CISA_BUILDER_BOTH : CM_CISA_BUILDER_GEN;
+        V(CreateVISABuilder(vbuilder, builderMode, builderOpt, VISAPlatform, params.size(), params.data(), &m_WaTable));
+
+        InitVISABuilderOptions(VISAPlatform, canAbortOnSpill, hasStackCall);
+
+        // Pass all build options to builder
+        SetBuilderOptions(vbuilder);
+
+        vKernel = nullptr;
+
+        std::string kernelName = m_program->entry->getName();
+        if (context->m_instrTypes.hasDebugInfo)
+        {
+            // This metadata node is added by TransformBlocks pass for device side
+            // enqueue feature of OCL2.0+.
+            // The problem is that for device side enqueue, kernel name used in
+            // IGC differs the one used to create JIT kernel. This leads to different
+            // kernel names in .elf file and .dbg file. So dbgmerge tool cannot
+            // merge the two together. With this metadata node we create a mapping
+            // between the two names and when debug info is enabled, make JIT use
+            // same name as IGC.
+            // Names earlier -
+            // ParentKernel_dispatch_0 in dbg and
+            // __ParentKernel_block_invoke in elf
+            // when kernel name is ParentKernel
+            //
+            auto md = m_program->entry->getParent()->getNamedMetadata("igc.device.enqueue");
+            if (md)
             {
-                auto mdOpnd = md->getOperand(i);
-                auto first = dyn_cast_or_null<MDString>(mdOpnd->getOperand(1));
-                if (first &&
-                    first->getString().equals(kernelName))
+                for (unsigned int i = 0; i < md->getNumOperands(); i++)
                 {
-                    auto second = dyn_cast_or_null<MDString>(mdOpnd->getOperand(0));
-                    if (second)
+                    auto mdOpnd = md->getOperand(i);
+                    auto first = dyn_cast_or_null<MDString>(mdOpnd->getOperand(1));
+                    if (first &&
+                        first->getString().equals(kernelName))
                     {
-                        kernelName = second->getString();
+                        auto second = dyn_cast_or_null<MDString>(mdOpnd->getOperand(0));
+                        if (second)
+                        {
+                            kernelName = second->getString();
+                        }
                     }
                 }
             }
         }
-    }
 
-    std::string asmName;
-    if (m_enableVISAdump || context->m_instrTypes.hasDebugInfo)
-    {
-        // vISA does not support string of length >= 255. Truncate if this exceeds
-        // the limit. Note that vISA may append an extension, so relax it to a
-        // random number 240 here.
-        const int MAX_VISA_STRING_LENGTH = 240;
-        if (kernelName.size() >= MAX_VISA_STRING_LENGTH)
+        std::string asmName;
+        if (m_enableVISAdump || context->m_instrTypes.hasDebugInfo)
         {
-            kernelName.resize(MAX_VISA_STRING_LENGTH);
+            // vISA does not support string of length >= 255. Truncate if this exceeds
+            // the limit. Note that vISA may append an extension, so relax it to a
+            // random number 240 here.
+            const int MAX_VISA_STRING_LENGTH = 240;
+            if (kernelName.size() >= MAX_VISA_STRING_LENGTH)
+            {
+                kernelName.resize(MAX_VISA_STRING_LENGTH);
+            }
+            asmName = GetDumpFileName("asm");
         }
-        asmName = GetDumpFileName("asm");
-    }
-    else
-    {
-        kernelName = "kernel";
-        asmName = "kernel.asm";
-    }
+        else
+        {
+            kernelName = "kernel";
+            asmName = "kernel.asm";
+        }
 
-    V(vbuilder->AddKernel(vKernel, kernelName.c_str()));
-    V(vKernel->AddKernelAttribute("OutputAsmPath", asmName.length(), asmName.c_str()));
+        V(vbuilder->AddKernel(vKernel, kernelName.c_str()));
+        V(vKernel->AddKernelAttribute("OutputAsmPath", asmName.length(), asmName.c_str()));
 
-    vMainKernel = vKernel;
+        vMainKernel = vKernel;
 
-    auto gtpin_init = context->gtpin_init;
-    if (gtpin_init)
-    {
-        vKernel->SetGTPinInit(gtpin_init);
-    }
+        auto gtpin_init = context->gtpin_init;
+        if (gtpin_init)
+        {
+            vKernel->SetGTPinInit(gtpin_init);
+        }
 
-    // Right now only 1 main function in the kernel
+        // Right now only 1 main function in the kernel
         VISA_LabelOpnd* functionLabel = nullptr;
-    V(vKernel->CreateVISALabelVar(functionLabel, "main", LABEL_SUBROUTINE));
-    V(vKernel->AppendVISACFLabelInst(functionLabel));
+        V(vKernel->CreateVISALabelVar(functionLabel, "main", LABEL_SUBROUTINE));
+        V(vKernel->AppendVISACFLabelInst(functionLabel));
 
-    V(vKernel->CreateVISASurfaceVar(dummySurface, "", 1));
+        V(vKernel->CreateVISASurfaceVar(dummySurface, "", 1));
 
-    V(vKernel->CreateVISASamplerVar(samplervar, "", 1));
+        V(vKernel->CreateVISASamplerVar(samplervar, "", 1));
 
-    CEncoder::SetFloatDenormMode(vKernel, context->m_floatDenormMode16,
-                                          context->m_floatDenormMode32,
-                                          context->m_floatDenormMode64);
-
-    // The instruction is generated only if mode != FLOAT_ROUND_TO_NEAREST_EVEN
-    CEncoder::SetFloatRoundingMode(
-        getEncoderRoundingMode(FLOAT_ROUND_TO_NEAREST_EVEN),
-        getEncoderRoundingMode(static_cast<Float_RoundingMode>(
-            context->getModuleMetaData()->compOpt.FloatRoundingMode)));
+        // Set float denorm modes and rounding modes as default
+        initCR(vKernel);
     }
 
     void CEncoder::SetKernelStackPointer64()

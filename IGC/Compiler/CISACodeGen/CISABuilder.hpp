@@ -353,8 +353,7 @@ namespace IGC
         void Init();
         void Push();
 
-        void SetFloatDenormMode(VISAKernel* vKernel, Float_DenormMode mode16,
-            Float_DenormMode mode32, Float_DenormMode mode64);
+        void initCR(VISAKernel* vKernel);
         void SetVectorMask(bool vMask);
         // RM bits in CR0.0.
         //    float RM bits: [5:4];
