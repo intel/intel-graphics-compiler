@@ -3530,11 +3530,6 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
                 G4_INST* liveInst = liveNode->getLastInstruction();
 
                 bool hasOverlap = curFootprint->hasOverlap(liveFootprint, internalOffset);
-                if (!hasOverlap)
-                {
-                    ++bn_it;
-                    continue;
-                }
 
                 //RAW:                     R kill W    R-->live       explict dependence
                 //WAW: same pipeline and inorder   W2 kill W1  W2-->live      implicit dependence
@@ -3560,6 +3555,12 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
                     (!hasSamePredicator(liveInst, curInst)))
                 {
                     hasOverlap = curFootprint->hasGRFGrainOverlap(liveFootprint);
+                }
+
+                if (!hasOverlap)
+                {
+                    ++bn_it;
+                    continue;
                 }
 
                 if (tokenHonourInstruction(liveInst))
