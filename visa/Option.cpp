@@ -281,6 +281,18 @@ bool Options::parseOptions(int argc, const char* argv[])
         m_vISAOptions.setBool(vISA_DisableSpillCoalescing, true);
     }
 
+    if (getPlatformGeneration(getGenxPlatform()) >= PlatformGen::GEN12)
+    {
+        m_vISAOptions.setBool(vISA_SoftwareScoreBoard, true);
+
+        if (m_vISAOptions.isArgSetByUser(vISA_forceDebugSWSB))
+        {
+            m_vISAOptions.setBool(vISA_SoftwareScoreBoard, false);
+            m_vISAOptions.setUint32(vISA_SWSBInstStall, 0);
+            m_vISAOptions.setUint32(vISA_SWSBTokenBarrier, 0);
+        }
+    }
+
     #if (defined(_DEBUG) || defined(_INTERNAL))
     // Dump all vISA options
     if (m_vISAOptions.getBool(vISA_dumpVISAOptionsAll)) {
