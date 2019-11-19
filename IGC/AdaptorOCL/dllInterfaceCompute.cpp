@@ -921,6 +921,8 @@ bool TranslateBuild(
             // Load the builtin module -  Generic BC
             // Load the builtin module -  Generic BC
             {
+                COMPILER_TIME_START(&oclContext, TIME_OCL_LazyBiFLoading);
+
                 char Resource[5] = { '-' };
                 _snprintf(Resource, sizeof(Resource), "#%d", OCL_BC);
 
@@ -952,6 +954,7 @@ bool TranslateBuild(
                     SetErrorMessage("Error loading the Generic builtin module from buffer", *pOutputArgs);
                     return false;
                 }
+                COMPILER_TIME_END(&oclContext, TIME_OCL_LazyBiFLoading);
             }
 
             // Load the builtin module -  pointer depended
