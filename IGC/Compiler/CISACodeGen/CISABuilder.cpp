@@ -4071,42 +4071,26 @@ namespace IGC
         SaveOption(vISA_EnableIGASWSB, true);
     }
 
-    if (IGC_IS_FLAG_ENABLED(EnableSWSB))
+    if (IGC_IS_FLAG_ENABLED(EnableForceDebugSWSB) ||
+        IGC_IS_FLAG_ENABLED(EnableSWSBInstStall) ||
+        IGC_IS_FLAG_ENABLED(EnableSWSBTokenBarrier))
     {
-        SaveOption(vISA_SoftwareScoreBoard, true);
-        SaveOption(vISA_IGAEncoder, true);
-
-        if (IGC_IS_FLAG_ENABLED(EnableForceDebugSWSB) ||
-            IGC_IS_FLAG_ENABLED(EnableSWSBInstStall) ||
-            IGC_IS_FLAG_ENABLED(EnableSWSBTokenBarrier))
+        if (IGC_IS_FLAG_ENABLED(EnableSWSBInstStall))
         {
-            if (IGC_IS_FLAG_ENABLED(EnableSWSBInstStall))
-            {
-                SaveOption(vISA_SoftwareScoreBoard, true);
-                SaveOption(vISA_SWSBInstStall, IGC_GET_FLAG_VALUE(EnableSWSBInstStall));
-                SaveOption(vISA_SWSBInstStallEnd, IGC_GET_FLAG_VALUE(EnableSWSBInstStallEnd));
-            }
-
-            if (IGC_IS_FLAG_ENABLED(EnableSWSBTokenBarrier))
-            {
-                SaveOption(vISA_SoftwareScoreBoard, true);
-                SaveOption(vISA_SWSBTokenBarrier, IGC_GET_FLAG_VALUE(EnableSWSBTokenBarrier));
-            }
-
-            if (IGC_IS_FLAG_ENABLED(EnableForceDebugSWSB))
-            {
-                SaveOption(vISA_forceDebugSWSB, true);
-                SaveOption(vISA_SoftwareScoreBoard, false);
-                SaveOption(vISA_SWSBInstStall, (uint32_t)0);
-                SaveOption(vISA_SWSBTokenBarrier, (uint32_t)0);
-            }
-            SaveOption(vISA_Compaction, false);
+            SaveOption(vISA_SWSBInstStall, IGC_GET_FLAG_VALUE(EnableSWSBInstStall));
+            SaveOption(vISA_SWSBInstStallEnd, IGC_GET_FLAG_VALUE(EnableSWSBInstStallEnd));
         }
-    }
 
-    if (IGC_IS_FLAG_ENABLED(DisableSWSB))
-    {
-        SaveOption(vISA_SoftwareScoreBoard, false);
+        if (IGC_IS_FLAG_ENABLED(EnableSWSBTokenBarrier))
+        {
+            SaveOption(vISA_SWSBTokenBarrier, IGC_GET_FLAG_VALUE(EnableSWSBTokenBarrier));
+        }
+
+        if (IGC_IS_FLAG_ENABLED(EnableForceDebugSWSB))
+        {
+            SaveOption(vISA_forceDebugSWSB, true);
+        }
+        SaveOption(vISA_Compaction, false);
     }
 
     if (IGC_IS_FLAG_ENABLED(EnableGroupScheduleForBC))

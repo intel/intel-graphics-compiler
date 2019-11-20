@@ -58,8 +58,6 @@ DECLARE_IGC_REGKEY(DWORD,ReservedRegisterNum,           0,     "Reserve regsiter
 DECLARE_IGC_REGKEY(DWORD, GRFNumToUse,                  0,     "Set the number of general registers to use (64 to totalGRFNum)", false)
 DECLARE_IGC_REGKEY(bool, ExpandPlane,                   0,     "Enable pln to mad macro expansion.", false)
 DECLARE_IGC_REGKEY(bool, EnableBCR,                     false,  "Enable bank conflict reduction.", false)
-DECLARE_IGC_REGKEY(bool, EnableSWSB,                    0,     "Enable software scoreboard generation", true)
-DECLARE_IGC_REGKEY(bool, DisableSWSB,                   0,     "Disable software scoreboard generation", true)
 DECLARE_IGC_REGKEY(bool, EnableForceDebugSWSB,          0,     "Enable force debugging functionality for software scoreboard generation", true)
 DECLARE_IGC_REGKEY(DWORD,EnableSWSBInstStall,           0,     "Enable force stall to specific(start) instruction start for software scoreboard generation", true)
 DECLARE_IGC_REGKEY(DWORD,EnableSWSBInstStallEnd,        0,     "Enable force stall to end instruction for software scoreboard generation", true)

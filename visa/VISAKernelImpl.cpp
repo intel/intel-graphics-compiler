@@ -379,10 +379,17 @@ void* VISAKernelImpl::compilePostOptimize(unsigned int& binarySize)
         bb->removeIntrinsics(Intrinsic::MemFence);
     }
 
-    if (getOptions()->getOption(vISA_SoftwareScoreBoard))
+    if (m_builder->hasSWSB())
     {
-        SWSB swsb(*m_kernel, *m_kernelMem);
-        swsb.SWSBGenerator();
+        if (!getOptions()->getOption(vISA_forceDebugSWSB))
+        {
+            SWSB swsb(*m_kernel, *m_kernelMem);
+            swsb.SWSBGenerator();
+        }
+        else
+        {
+            forceDebugSWSB(m_kernel);
+        }
     }
 
     if (getOptions()->getuInt32Option(vISA_SWSBTokenBarrier) != 0)
@@ -393,11 +400,6 @@ void* VISAKernelImpl::compilePostOptimize(unsigned int& binarySize)
     if (getOptions()->getuInt32Option(vISA_SWSBInstStall) != 0)
     {
         singleInstStallSWSB(m_kernel, getOptions()->getuInt32Option(vISA_SWSBInstStall), getOptions()->getuInt32Option(vISA_SWSBInstStallEnd), false);
-    }
-
-    if (getOptions()->getOption(vISA_forceDebugSWSB))
-    {
-        forceDebugSWSB(m_kernel);
     }
 
 
@@ -433,9 +435,7 @@ void* VISAKernelImpl::compilePostOptimize(unsigned int& binarySize)
     //
 
     startTimer(TIMER_ENCODE_AND_EMIT);
-    if (m_options->getOption(vISA_IGAEncoder)
-        || m_builder->hasSWSB()
-        )
+    if (m_builder->useIGAEncoder())
     {
 
         // ToDo: add support for debug info/FastComposite
@@ -581,24 +581,7 @@ void* VISAKernelImpl::compilePostOptimize(unsigned int& binarySize)
         krnlOutput.close();
     }
 
-    if (m_options->getOption(vISA_SoftwareScoreBoard) &&
-        getPlatformGeneration(getGenxPlatform()) < PlatformGen::GEN12)
-    {
-        std::ofstream krnlDepOutput;
-
-        char asmFileName[MAX_OPTION_STR_LENGTH];
-        SNPRINTF( asmFileName, MAX_OPTION_STR_LENGTH, "%s_0x%08x.dep", m_asmName.c_str(), (unsigned int)m_kernel->getKernelID());
-        krnlDepOutput.open( asmFileName );
-        if (!krnlDepOutput)
-        {
-            cerr << "Fail to open " << asmFileName << std::endl;
-        }
-
-        m_kernel->emit_dep(krnlDepOutput);
-        krnlDepOutput.close();
-    }
-
-    if( m_builder->getJitInfo() != NULL )
+    if (m_builder->getJitInfo())
     {
         m_builder->getJitInfo()->numAsmCount = m_kernel->getAsmCount();
     }

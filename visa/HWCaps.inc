@@ -256,7 +256,7 @@
 
     bool hasSWSB() const
     {
-        return getPlatformGeneration(getGenxPlatform()) == PlatformGen::GEN12;
+        return getPlatformGeneration(getGenxPlatform()) >= PlatformGen::GEN12;
     }
 
     bool hasPartialMixMode() const
@@ -403,6 +403,11 @@
 #endif
 
         return getOptions()->getOption(vISA_useMultiThreadedLatencies);
+    }
+
+    bool useIGAEncoder() const
+    {
+        return getOption(vISA_IGAEncoder) || getPlatformGeneration(getGenxPlatform()) >= PlatformGen::GEN12;
     }
 
     bool no64bitType() const
