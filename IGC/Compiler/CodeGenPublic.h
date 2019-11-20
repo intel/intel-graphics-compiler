@@ -1164,7 +1164,6 @@ namespace IGC
     void CodeGen(OpenCLProgramContext* ctx);
 
     void OptimizeIR(CodeGenContext* ctx);
-    void UnifyIROGL(CodeGenContext* ctx);
 
     /**
      * Fold derived constants.  Load CB data from CBptr with index & offset,
@@ -1173,24 +1172,4 @@ namespace IGC
      */
     void FoldDerivedConstant(char* bitcode, uint bitcodeSize, void* CBptr[15],
         std::function<void(uint[4], uint, uint, bool)> getResInfoCB, uint* pNewCB);
-
-    // Apply link optimization to shader programs.
-    void LinkOptIR(CodeGenContext* ctxs[], bool usesStreamOutput);
-
-    class LTOPSAction {
-    public:
-        virtual void operator()(llvm::GenIntrinsicInst* inst) = 0;
-        virtual ~LTOPSAction() { }
-    };
-    typedef std::vector<std::unique_ptr<LTOPSAction> > LTOPSActions;
-
-    // Apply link optimization to shader program, record and return
-    // actions performed on PS.
-    void LinkOptIRGetPSActions(CodeGenContext* ctxs[],
-        bool usesStreamOutput, LTOPSActions& psActions);
-
-    // Replay previous LTO actions on PS, used for PS retry. So we don't need
-    // to go through the whole LTO process again.
-    void LinkOptReplayPSActions(PixelShaderContext* psCtx,
-        const LTOPSActions& psActions);
 } // end IGC namespace

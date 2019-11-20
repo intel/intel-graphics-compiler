@@ -112,6 +112,8 @@ namespace IGC
 
     BufferType GetBufferType(uint addrSpace);
 
+    uint getImmValueU32(const llvm::Value* value);
+
     void VectorToElement(
         llvm::Value* inst,
         llvm::Value* elem[],

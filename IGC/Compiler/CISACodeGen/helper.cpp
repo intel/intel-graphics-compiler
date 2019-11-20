@@ -1378,6 +1378,15 @@ namespace IGC
         return false;
     }
 
+    uint getImmValueU32(const llvm::Value* value)
+    {
+        const llvm::ConstantInt* cval = llvm::cast<llvm::ConstantInt>(value);
+        assert(cval->getBitWidth() == 32);
+
+        uint ival = int_cast<uint>(cval->getZExtValue());
+        return ival;
+    }
+
     llvm::Value* ExtractElementFromInsertChain(llvm::Value* inst, int pos)
     {
 
