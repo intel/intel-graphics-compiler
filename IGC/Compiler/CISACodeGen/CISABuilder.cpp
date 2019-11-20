@@ -4818,7 +4818,11 @@ namespace IGC
         else if (vIsaCompile == -3) // CM early terminates on spill
     {
 #if (GET_SHADER_STATS)
-        if (m_program->m_dispatchSize == SIMDMode::SIMD16)
+        if( m_program->m_dispatchSize == SIMDMode::SIMD8 )
+        {
+            COMPILER_SHADER_STATS_SET( m_program->m_shaderStats, STATS_ISA_EARLYEXIT8, 1 );
+        }
+        else if (m_program->m_dispatchSize == SIMDMode::SIMD16)
         {
             COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_EARLYEXIT16, 1);
         }

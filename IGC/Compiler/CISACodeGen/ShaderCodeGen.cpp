@@ -755,7 +755,8 @@ namespace IGC
 
     if (IGC_IS_FLAG_ENABLED(ForcePSBestSIMD) || IsStage1BestPerf(ctx->m_CgFlag, ctx->m_StagingCtx))
     {
-        if (SimdEarlyCheck(ctx))
+        // don't retry SIMD16 for ForcePSBestSIMD
+        if( SimdEarlyCheck( ctx ) && ( !ctx->m_retryManager.IsLastTry( ctx ) ) )
         {
             AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD16, true, ShaderDispatchMode::NOT_APPLICABLE, pSignature);
         }
