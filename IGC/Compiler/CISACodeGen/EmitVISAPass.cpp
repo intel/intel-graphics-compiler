@@ -14183,7 +14183,7 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
         // Use width of 8 always, and only the value of the first lane is
         // used. Need to set noMask in order to have the valid value in
         // the first lane.
-        uint32_t width8 = getGRFSize() / 4;
+        uint32_t width8 = 8;
         for (uint32_t i = 0; i < VecMessInfo.numInsts; ++i)
         {
             // raw operand, eltOffBytes is in bytes.
@@ -14192,7 +14192,7 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
             uint32_t numBlks = VecMessInfo.insts[i].numBlks;
 
             uint32_t eltOff = eltOffBytes / eltBytes;  // in unit of element
-            uint32_t blkBits = (getGRFSize() / 4) * blkInBytes;
+            uint32_t blkBits = 8 * blkInBytes;
             uint32_t instTotalBytes = blkInBytes * numBlks;
             uint32_t instElts = instTotalBytes / eltBytes;
             uint32_t nbelts = instElts * width8;
