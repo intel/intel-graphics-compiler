@@ -4339,7 +4339,6 @@ void EmitPass::emitRenderTargetWrite(llvm::RTWritIntrinsic* inst, bool fromRet)
     if (RTIndex != -1)
     {
         bindingTableIndex = m_currShader->m_pBtiLayout->GetRenderTargetIndex(RTIndex);
-        m_currShader->RenderTargetAccesed(RTIndex);
     }
     else
     {
@@ -4351,7 +4350,7 @@ void EmitPass::emitRenderTargetWrite(llvm::RTWritIntrinsic* inst, bool fromRet)
     }
 
     bool directIdx = inst->isImmRTIndex();
-    m_currShader->SetBindingTableEntryCountAndBitmap(directIdx, bindingTableIndex);
+    m_currShader->SetBindingTableEntryCountAndBitmap(directIdx, RENDER_TARGET, RTIndex, bindingTableIndex);
 
     if (EOT)
     {
@@ -5254,7 +5253,7 @@ void EmitPass::emitMediaBlockIO(const llvm::GenIntrinsicInst* inst, bool isRead)
         m_currShader->m_pBtiLayout->GetTextureIndex(ImgArgIndex);
 
     bool directIdx = (llvm::dyn_cast<llvm::ConstantInt>(inst->getOperand(0))) ? true : false;
-    m_currShader->SetBindingTableEntryCountAndBitmap(directIdx, BTI);
+    m_currShader->SetBindingTableEntryCountAndBitmap(directIdx, isImageTypeUAV ? UAV : RESOURCE, ImgArgIndex, BTI);
 
     CVariable* pImgBTI = m_currShader->ImmToVariable(BTI, ISA_TYPE_UD);
 
@@ -5372,7 +5371,7 @@ void EmitPass::emitMediaBlockRectangleRead(llvm::Instruction* inst)
         m_currShader->m_pBtiLayout->GetTextureIndex(SrcImgBTI);
 
     bool directIdx = (llvm::dyn_cast<llvm::ConstantInt>(inst->getOperand(0))) ? true : false;
-    m_currShader->SetBindingTableEntryCountAndBitmap(directIdx, bindingTableIndex);
+    m_currShader->SetBindingTableEntryCountAndBitmap(directIdx, isImageTypeUAV ? UAV : RESOURCE, SrcImgBTI, bindingTableIndex);
 
     CVariable* srcbti = m_currShader->ImmToVariable(bindingTableIndex, ISA_TYPE_UD);
 
@@ -5434,7 +5433,7 @@ void EmitPass::emitSimdMediaBlockRead(llvm::Instruction* inst)
         bindingTableIndex = m_currShader->m_pBtiLayout->GetTextureIndex(SrcImgBTI);
     }
 
-    m_currShader->SetBindingTableEntryCountAndBitmap(true, bindingTableIndex);
+    m_currShader->SetBindingTableEntryCountAndBitmap(true, isImageTypeUAV ? UAV : RESOURCE, SrcImgBTI, bindingTableIndex);
 
     CVariable* srcbti = m_currShader->ImmToVariable(bindingTableIndex, ISA_TYPE_UD);
     uint32_t maxWidth = 32;
@@ -5670,7 +5669,7 @@ void EmitPass::emitSimdMediaBlockWrite(llvm::Instruction* inst)
         bindingTableIndex = m_currShader->m_pBtiLayout->GetTextureIndex(SrcImgBTI);
     }
 
-    m_currShader->SetBindingTableEntryCountAndBitmap(true, bindingTableIndex);
+    m_currShader->SetBindingTableEntryCountAndBitmap(true, isImageTypeUAV ? UAV : RESOURCE, SrcImgBTI, bindingTableIndex);
 
     CVariable* srcbti = m_currShader->ImmToVariable(bindingTableIndex, ISA_TYPE_UD);
     uint32_t maxWidth = 32;
@@ -5847,7 +5846,7 @@ void EmitPass::emitDualBlendRT(llvm::RTDualBlendSourceIntrinsic* inst, bool from
 
     uint bindingTableIndex = m_currShader->m_pBtiLayout->GetRenderTargetIndex(RTIndex);
     bool directIdx = (llvm::dyn_cast<llvm::ConstantInt>(inst->getRTIndex())) ? true : false;
-    m_currShader->SetBindingTableEntryCountAndBitmap(directIdx, bindingTableIndex);
+    m_currShader->SetBindingTableEntryCountAndBitmap(directIdx, RENDER_TARGET, RTIndex, bindingTableIndex);
 
     CVariable* pMaskOpnd = nullptr;
 
@@ -11887,7 +11886,7 @@ void EmitPass::emitAtomicStructured(llvm::Instruction* pInsn)
     if (bufType == UAV)
     {
         btiIndex = m_currShader->m_pBtiLayout->GetUavIndex(bufferIndex);
-        m_currShader->SetBindingTableEntryCountAndBitmap(directIdx, btiIndex);
+        m_currShader->SetBindingTableEntryCountAndBitmap(directIdx, UAV, bufferIndex, btiIndex);
     }
     else
     {
@@ -12196,7 +12195,7 @@ void EmitPass::emitLdStructured(llvm::Instruction* pInsn)
     {
         assert(0 && "Resource type isn't implemented");
     }
-    m_currShader->SetBindingTableEntryCountAndBitmap(directIdx, btiIndex);
+    m_currShader->SetBindingTableEntryCountAndBitmap(directIdx, bufType, bufferIndex, btiIndex);
 
     if (m_currShader->GetIsUniform(pInsn))
     {
@@ -12322,7 +12321,7 @@ void EmitPass::emitStoreStructured(llvm::Instruction* pInsn)
     {
         assert(0 && "Resource type isn't implemented");
     }
-    m_currShader->SetBindingTableEntryCountAndBitmap(directIdx, btiIndex);
+    m_currShader->SetBindingTableEntryCountAndBitmap(directIdx, bufType, bufferIndex, btiIndex);
 
     if (m_currShader->GetIsUniform(pInsn))
     {
@@ -13147,7 +13146,7 @@ void EmitPass::emitRenderTargetRead(llvm::GenIntrinsicInst* inst)
     }
 
     uint bindingTableIndex = m_currShader->m_pBtiLayout->GetRenderTargetIndex(RTIndex);
-    m_currShader->SetBindingTableEntryCountAndBitmap(isRTIndexConstant, bindingTableIndex);
+    m_currShader->SetBindingTableEntryCountAndBitmap(isRTIndexConstant, RENDER_TARGET, RTIndex, bindingTableIndex);
     CVariable* pSampleIndexR0 = nullptr;
 
     uint hasSampleIndex = (inst->getIntrinsicID() == GenISAIntrinsic::GenISA_RenderTargetReadSampleFreq);
@@ -15148,7 +15147,7 @@ void EmitPass::emitGetBufferPtr(GenIntrinsicInst* inst)
 
     // Set BTI; BTI equal zero is also a valid value.
     bool directIdx = (llvm::dyn_cast<llvm::ConstantInt>(inst->getOperand(0))) ? true : false;
-    m_currShader->SetBindingTableEntryCountAndBitmap(directIdx, bti);
+    m_currShader->SetBindingTableEntryCountAndBitmap(directIdx, bufType, 0, bti);
 }
 
 ResourceDescriptor EmitPass::GetResourceVariable(Value* resourcePtr)
@@ -15209,7 +15208,7 @@ ResourceDescriptor EmitPass::GetResourceVariable(Value* resourcePtr)
 
             if (!directIndexing)
             {
-                m_currShader->SetBindingTableEntryCountAndBitmap(false);
+                m_currShader->SetBindingTableEntryCountAndBitmap(false, bufType, 0, 0);
             }
         }
         else
@@ -15219,20 +15218,16 @@ ResourceDescriptor EmitPass::GetResourceVariable(Value* resourcePtr)
             {
             case UAV:
                 bti = m_currShader->m_pBtiLayout->GetUavIndex(bufferIndex);
-                m_currShader->UavAccesed(bufferIndex);  // return to driver
                 break;
             case CONSTANT_BUFFER:
                 bti = m_currShader->m_pBtiLayout->GetConstantBufferIndex(bufferIndex);
-                m_currShader->ConstantBufferAccesed(bufferIndex);  // return to driver
                 break;
             case RESOURCE:
                 bti = m_currShader->m_pBtiLayout->GetTextureIndex(bufferIndex);
-                m_currShader->ShaderResourceAccesed(bufferIndex);  // return to driver
                 break;
             case RENDER_TARGET:
                 assert(m_currShader->GetShaderType() == ShaderType::PIXEL_SHADER);
                 bti = m_currShader->m_pBtiLayout->GetRenderTargetIndex(bufferIndex);
-                m_currShader->RenderTargetAccesed(bufferIndex);  // return to driver
                 break;
             case SLM:
                 bti = 254;  // \todo, remove hard-coding
@@ -15242,7 +15237,7 @@ ResourceDescriptor EmitPass::GetResourceVariable(Value* resourcePtr)
                 break;
             }
             resource.m_resource = m_currShader->ImmToVariable(bti, ISA_TYPE_UD);
-            m_currShader->SetBindingTableEntryCountAndBitmap(directIndexing, bti);
+            m_currShader->SetBindingTableEntryCountAndBitmap(directIndexing, bufType, bufferIndex, bti);
         }
     }
 

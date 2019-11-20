@@ -264,7 +264,7 @@ namespace IGC
         unsigned int NOSBufferSize = 0;
         unsigned int ConstantBufferLoaded = 0;
         unsigned int UavLoaded = 0;
-        unsigned int ShaderResourceLoaded = 0;
+        uint64_t ShaderResourceLoaded = 0;
         unsigned int RenderTargetLoaded = 0;
 
         bool         hasControlFlow = false;
@@ -579,6 +579,10 @@ namespace IGC
         unsigned int GetUavIndex(unsigned int index) const;
         unsigned int GetRenderTargetIndex(unsigned int index) const;
         unsigned int GetConstantBufferIndex(unsigned int index) const;
+        unsigned int GetTextureIndexSize() const { return m_pLayout->maxResourceIdx - m_pLayout->minResourceIdx; }
+        unsigned int GetUavIndexSize() const { return m_pLayout->maxUAVIdx - m_pLayout->minUAVIdx; }
+        unsigned int GetRenderTargetIndexSize() const { return m_pLayout->maxColorBufferIdx - m_pLayout->minColorBufferIdx; }
+        unsigned int GetConstantBufferIndexSize() const { return m_pLayout->maxConstantBufferIdx - m_pLayout->minConstantBufferIdx; }
         unsigned int GetNullSurfaceIdx() const;
         unsigned int GetTGSMIndex() const;
         unsigned int GetScratchSurfaceBindingTableIndex() const;

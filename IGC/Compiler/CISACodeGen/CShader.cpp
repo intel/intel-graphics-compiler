@@ -209,7 +209,8 @@ void CShader::EOTRenderTarget()
         msgControl,
         m_pBtiLayout->GetNullSurfaceIdx());
 
-    this->SetBindingTableEntryCountAndBitmap(true, m_pBtiLayout->GetNullSurfaceIdx());
+    // we don't want to update the usage mask for null surface, so set the buffer type to be unknown.
+    this->SetBindingTableEntryCountAndBitmap(true, BUFFER_TYPE_UNKNOWN, 0, m_pBtiLayout->GetNullSurfaceIdx());
 
     constexpr uint nullRenderTargetBit = BIT(20);
     constexpr uint exDesc = EU_MESSAGE_TARGET_DATA_PORT_WRITE | cMessageExtendedDescriptorEOTBit | nullRenderTargetBit;
@@ -3130,26 +3131,6 @@ void CShader::SampleHeader(CVariable* payload, uint offset, uint writeMask, uint
     //encoder.or(immoffset, immoffset, temp);
     encoder.Copy(payload, temp);
     encoder.Push();
-}
-
-void CShader::UavAccesed(uint index)
-{
-    m_uavLoaded |= BIT(index);
-}
-
-void CShader::ConstantBufferAccesed(uint index)
-{
-    m_constantBufferLoaded |= BIT(index);
-}
-
-void CShader::ShaderResourceAccesed(uint index)
-{
-    m_shaderResourceLoaded |= BIT(index);
-}
-
-void CShader::RenderTargetAccesed(uint index)
-{
-    m_renderTargetLoaded |= BIT(index);
 }
 
 // Helper function to copy raw register
