@@ -159,7 +159,11 @@ uint EmitPass::DecideInstanceAndSlice(llvm::BasicBlock& blk, SDAG& sdag, bool& s
             numInstance = 1;
             slicing = false;
         }
-
+        else if (getGRFSize() != 32 && IsSIMDBlockIntrinsic(sdag.m_root))
+        {
+            numInstance = 1;
+            slicing = false;
+        }
         else if (IsSubGroupIntrinsicWithSimd32Implementation(GetOpCode(sdag.m_root)))
         {
             numInstance = 1;
@@ -5691,6 +5695,7 @@ void EmitPass::emitSimdMediaBlockWrite(llvm::Instruction* inst)
     uint32_t dstSubReg = 0;
 
     int scale = (blockWidth == 64) ? 2 : 1;
+    auto instWidth = SIMDMode::SIMD8;
     for (pass = 0; pass < numPasses; pass++)
     {
         uint32_t srcSubVar = pass * scale * maxWidth / getGRFSize();
@@ -5700,7 +5705,7 @@ void EmitPass::emitSimdMediaBlockWrite(llvm::Instruction* inst)
 
         CVariable* tempdst = nullptr;
         tempdst = m_currShader->GetNewVariable(
-            (nbElements * numLanes(SIMDMode::SIMD8)),
+            nbElements * numLanes(instWidth),
             data->GetType(),
             m_currShader->getGRFAlignment());
 
@@ -10085,38 +10090,20 @@ void EmitPass::SplitSIMD(llvm::Instruction* inst, uint numSources, uint headerSi
 }
 
 template<size_t N>
-void EmitPass::JoinSIMD(CVariable* (&tempdst)[N], uint responseLength)
+void EmitPass::JoinSIMD(CVariable* (&tempdst)[N], uint responseLength, SIMDMode mode)
 {
-    uint iterationCount = numLanes(m_currShader->m_SIMDSize) / numLanes(SIMDMode::SIMD8);
+    auto origMode = mode == SIMDMode::SIMD8 ? SIMDMode::SIMD16 : SIMDMode::SIMD32;
+    uint iterationCount = numLanes(m_currShader->m_SIMDSize) / numLanes(mode);
     for (uint half = 0; half < iterationCount; half++)
     {
         for (uint i = 0; i < responseLength; ++i)
         {
-            m_encoder->SetSimdSize(SIMDMode::SIMD8);
-            uint subVarIdx = numLanes(SIMDMode::SIMD16) / (getGRFSize() >> 2) * i;
+            m_encoder->SetSimdSize(mode);
+            uint subVarIdx = numLanes(origMode) / (getGRFSize() >> 2) * i;
             m_encoder->SetSrcSubVar(0, i);
             m_encoder->SetDstSubVar(subVarIdx + half);
-            m_encoder->SetMask(half == 0 ? EMASK_Q1 : EMASK_Q2);
-            assert(half < ARRAY_COUNT(tempdst));
-            m_encoder->Copy(m_destination, tempdst[half]);
-            m_encoder->Push();
-        }
-    }
-}
-
-template<size_t N>
-void EmitPass::JoinSIMD32(CVariable* (&tempdst)[N], uint responseLength)
-{
-    uint iterationCount = numLanes(m_currShader->m_SIMDSize) / numLanes(SIMDMode::SIMD16);
-    for (uint half = 0; half < iterationCount; half++)
-    {
-        for (uint i = 0; i < responseLength; ++i)
-        {
-            m_encoder->SetSimdSize(SIMDMode::SIMD16);
-            uint subVarIdx = numLanes(SIMDMode::SIMD32) / (getGRFSize() >> 2) * i;
-            m_encoder->SetSrcSubVar(0, i);
-            m_encoder->SetDstSubVar(subVarIdx + half);
-            m_encoder->SetMask(half == 0 ? EMASK_H1 : EMASK_H2);
+            m_encoder->SetMask(half == 0 ? (mode == SIMDMode::SIMD8 ? EMASK_Q1 : EMASK_H1) :
+                (mode == SIMDMode::SIMD8 ? EMASK_Q2 : EMASK_H2));
             assert(half < ARRAY_COUNT(tempdst));
             m_encoder->Copy(m_destination, tempdst[half]);
             m_encoder->Push();
@@ -12493,6 +12480,7 @@ void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
         bool needsSplit = m_currShader->m_SIMDSize == SIMDMode::SIMD16
             && !m_currShader->m_Platform->supportsSIMD16TypedRW();
 
+        auto instWidth = SIMDMode::SIMD8;
 
         if (!needsSplit)
         {
@@ -12503,11 +12491,10 @@ void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
         }
         else
         {
-            uint splitInstCount = 0;
-            splitInstCount = numLanes(m_currShader->m_SIMDSize) / numLanes(SIMDMode::SIMD8);
+            uint splitInstCount = numLanes(m_currShader->m_SIMDSize) / numLanes(instWidth);
             for (uint i = 0; i < splitInstCount; ++i)
             {
-                tempdst[i] = m_currShader->GetNewVariable(numChannels * numLanes(SIMDMode::SIMD8),
+                tempdst[i] = m_currShader->GetNewVariable(numChannels * numLanes(instWidth),
                     ISA_TYPE_F,
                     EALIGN_GRF);
 
@@ -12521,11 +12508,10 @@ void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
             }
         }
         ResourceLoop(needLoop, flag, label);
+
+        if (m_currShader->m_SIMDSize != instWidth)
         {
-            if (m_currShader->m_SIMDSize != SIMDMode::SIMD8)
-            {
-                JoinSIMD(tempdst, numChannels);
-            }
+            JoinSIMD(tempdst, numChannels, instWidth);
         }
     }
     m_currShader->isMessageTargetDataCacheDataPort = true;
@@ -12574,7 +12560,7 @@ void EmitPass::emitTypedWrite(llvm::Instruction* pInsn)
 
         bool needsSplit = m_currShader->m_SIMDSize == SIMDMode::SIMD16
             && !m_currShader->m_Platform->supportsSIMD16TypedRW();
-
+        auto instWidth = SIMDMode::SIMD8;
 
         if (!needsSplit)
         {
@@ -12599,7 +12585,7 @@ void EmitPass::emitTypedWrite(llvm::Instruction* pInsn)
                 CVariable* pPayload = nullptr;
 
                 pPayload = m_currShader->GetNewVariable(
-                    parameterLength * numLanes(SIMDMode::SIMD8),
+                    parameterLength * numLanes(instWidth),
                     ISA_TYPE_F,
                     IGC::EALIGN_GRF);
                 setSIMDSizeMask(m_encoder, m_currShader, i);
@@ -12768,14 +12754,15 @@ void EmitPass::emitMemoryFence(llvm::Instruction* inst)
         }
     }
 
-        m_encoder->Fence(CommitEnable,
-            L3_Flush_RW_Data,
-            L3_Flush_Constant_Data,
-            L3_Flush_Texture_Data,
-            L3_Flush_Instructions,
-            Global_Mem_Fence,
-            L1_Invalidate,
-            !EmitFence);
+
+    m_encoder->Fence(CommitEnable,
+        L3_Flush_RW_Data,
+        L3_Flush_Constant_Data,
+        L3_Flush_Texture_Data,
+        L3_Flush_Instructions,
+        Global_Mem_Fence,
+        L1_Invalidate,
+        !EmitFence);
 
     m_encoder->Push();
 }

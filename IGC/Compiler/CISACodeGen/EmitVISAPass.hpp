@@ -424,9 +424,7 @@ namespace IGC
         //helper function
         void SplitSIMD(llvm::Instruction* inst, uint numSources, uint headerSize, CVariable* payload, SIMDMode mode, uint half);
         template<size_t N>
-        void JoinSIMD(CVariable* (&tempdst)[N], uint responseLength);
-        template<size_t N>
-        void JoinSIMD32(CVariable* (&tempdst)[N], uint responseLength);
+        void JoinSIMD(CVariable* (&tempdst)[N], uint responseLength, SIMDMode mode);
         CVariable* BroadcastIfUniform(CVariable* pVar);
         uint DecideInstanceAndSlice(llvm::BasicBlock& blk, SDAG& sdag, bool& slicing);
         inline bool isUndefOrConstInt0(llvm::Value* val)
