@@ -310,58 +310,44 @@ G4_Operand* HWConformity::insertMovBefore(
 {
     G4_INST* inst = *it;
     G4_SubReg_Align subAlign;
-    const RegionDesc* region = NULL;
-    unsigned short vs = 0, hs = 0, wd = 1;
+    const RegionDesc* region = nullptr;
     unsigned char exec_size = inst->getExecSize();
     G4_Operand *src = inst->getSrc( srcNum );
-    unsigned short scale = IS_BTYPE( src->getType() ) && src->getType() == type ? 2 : 1;
+    unsigned short scale = IS_BTYPE(src->getType()) && src->getType() == type ? 2 : 1;
 
-    uint8_t newExecSize = ((src->isImm() && !IS_VTYPE(src->getType())) ||
-                        (src->isSrcRegRegion() && src->asSrcRegRegion()->isScalar()))
-                        ? 1 : exec_size;
+    uint8_t newExecSize = (src->isImm() && !IS_VTYPE(src->getType())) ||
+        (src->isSrcRegRegion() && src->asSrcRegRegion()->isScalar())
+        ? 1 : exec_size;
 
-    if( newExecSize > 1 )
+    if (newExecSize > 1)
     {
         if (scale == 1 && !IS_VTYPE(src->getType()))
         {
-            scale = (unsigned short) (G4_Type_Table[src->getType()].byteSize / G4_Type_Table[type].byteSize);
+            scale = (uint16_t)(getTypeSize(src->getType()) / getTypeSize(type));
         }
-        if( scale == 0 )
-        {
-            scale = 1;
-        }
-        hs = scale;
-        if( isCompressedInst(inst) || G4_Type_Table[type].byteSize * exec_size * hs > G4_GRF_REG_NBYTES )
-        {
-                wd = exec_size / 2;
-        }
-        else
-        {
-            wd = exec_size;
-        }
-        vs = wd * hs;
-    }
-    else
-    {
-        vs = 0;
-        wd = 1;
-        hs = 0;
-        scale = (unsigned short)(G4_Type_Table[src->getType()].byteSize / G4_Type_Table[type].byteSize);
         if (scale == 0)
         {
             scale = 1;
         }
+        region = builder.createRegionDesc(scale, 1, 0);
+    }
+    else
+    {
+        scale = (uint16_t)(getTypeSize(src->getType()) / getTypeSize(type));
+        if (scale == 0)
+        {
+            scale = 1;
+        }
+        region = builder.getRegionScalar();
     }
 
-    region = builder.createRegionDesc(vs, wd, hs);
-
     int opExecWidthBytes = IS_VINTTYPE(src->getType()) ?
-                            G4_GRF_REG_NBYTES/2 * ( exec_size > 8 ? exec_size/8 : 1 ) :
-                            ( src->getType() == Type_VF ?
-                            G4_GRF_REG_NBYTES/2 * ( exec_size > 4 ? exec_size/4 : 1 ) :
-                            newExecSize * G4_Type_Table[type].byteSize * scale );
+        G4_GRF_REG_NBYTES / 2 * (exec_size > 8 ? exec_size / 8 : 1) :
+        (src->getType() == Type_VF ?
+            G4_GRF_REG_NBYTES / 2 * (exec_size > 4 ? exec_size / 4 : 1) :
+            newExecSize * getTypeSize(type) * scale);
 
-    subAlign = getDclAlignment( opExecWidthBytes, inst, newExecSize == 1);
+    subAlign = getDclAlignment(opExecWidthBytes, inst, newExecSize == 1);
 
     if (subAlign < tmpAlign)
     {

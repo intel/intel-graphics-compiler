@@ -1522,7 +1522,10 @@ struct RegionDesc
     const uint16_t width;
     const uint16_t horzStride;
 
-    RegionDesc(uint16_t vs, uint16_t w, uint16_t hs) : vertStride(vs), width(w), horzStride(hs) {}
+    RegionDesc(uint16_t vs, uint16_t w, uint16_t hs) : vertStride(vs), width(w), horzStride(hs)
+    {
+        assert(isLegal() && "illegal region desc");
+    }
     void* operator new(size_t sz, vISA::Mem_Manager& m) {return m.alloc(sz);}
 
     // The legal values for Width are {1, 2, 4, 8, 16}.
