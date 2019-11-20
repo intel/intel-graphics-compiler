@@ -76,6 +76,31 @@ static bool hasSameFunctionID(G4_INST* inst1, G4_INST* inst2)
     }
 }
 
+static bool isSLMMsg(G4_INST* inst)
+{
+    assert(inst->isSend());
+    G4_SendMsgDescriptor* msgDesc = inst->getMsgDesc();
+    if (msgDesc->isSLMMessage())
+    {
+        return true;
+    }
+    return false;
+}
+
+static bool isFence(G4_INST* inst)
+{
+    assert(inst->isSend());
+    G4_SendMsgDescriptor* msgDesc = inst->getMsgDesc();
+    if (msgDesc->isFence())
+    {
+        return true;
+    }
+    return false;
+}
+
+
+
+
 static bool hasSamePredicator(G4_INST* inst1, G4_INST* inst2)
 {
     G4_Predicate* pred1 = inst1->getPredicate();
@@ -4528,6 +4553,7 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
                     continue;
                 }
 
+
                 if (tokenHonourInstruction(liveInst))
                 {
                     if (dep == RAW || dep == WAW) {
@@ -5221,6 +5247,7 @@ void SWSB::addGlobalDependence(unsigned globalSendNum, SBBUCKET_VECTOR* globalSe
                     DepType dep = DEPTYPE_MAX;
                     dep = getDepForOpnd(liveOpnd, curOpnd);
 
+
                     //RAW:                     R kill W    R-->live       explict dependence
                     //WAW:                     W2 kill W1  W2-->live      explict dependence
                     //WAW: same pipeline/inorder W2 kill W1  W2-->live      implicit dependence
@@ -5520,6 +5547,7 @@ void SWSB::addGlobalDependenceWithReachingDef(unsigned globalSendNum, SBBUCKET_V
                     //Find DEP type
                     DepType dep = DEPTYPE_MAX;
                     dep = getDepForOpnd(liveOpnd, curOpnd);
+
 
                     //RAW:                     R kill W    R-->live       explict dependence
                     //WAW:                     W2 kill W1  W2-->live      explict dependence
