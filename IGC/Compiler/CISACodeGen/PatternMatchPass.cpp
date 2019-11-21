@@ -963,6 +963,7 @@ namespace IGC
         case Instruction::FSub:
             match = MatchFrc(I) ||
                 MatchLrp(I) ||
+                MatchPredAdd(I) ||
                 MatchMad(I) ||
                 MatchAbsNeg(I) ||
                 MatchModifier(I);
@@ -1703,8 +1704,7 @@ namespace IGC
             }
         }
 
-        // FSub is not supported currently due to addional instruction requirement
-        assert(I.getOpcode() == Instruction::FAdd);
+        assert(I.getOpcode() == Instruction::FAdd || I.getOpcode() == Instruction::FSub);
         for (uint iAdd = 0; iAdd < 2 && !found; iAdd++)
         {
             Value* src = I.getOperand(iAdd);
@@ -1744,17 +1744,32 @@ namespace IGC
                             continue;
                         }
 
+                        //   % 97 = select i1 %res_s48, float 1.000000e+00, float 0.000000e+00
+                        //   %102 = fmul fast float %97 %98
+
+                        // case 1 (add)
                         // Before match
-                        // % 97 = select i1 %res_s48, float 1.000000e+00, float 0.000000e+00
-                        // %102 = fmul fast float %97 %98
-                        // %105 = fadd %102 %103
-
+                        //   %105 = fadd %102 %103
                         // After match
-                        //            %105 = %103
-                        // (%res_s48) %105 = fadd %103 %98
+                        //              %105 = %103
+                        //   (%res_s48) %105 = fadd %105 %98
 
-                        // sources[0]: add operand (i.e. %103 above)
-                        // sources[1]: mul operand (i.e. %98 above)
+                        // case 2 (fsub match @ iAdd = 0)
+                        // Before match
+                        //   %105 = fsub %102 %103
+                        // After match
+                        //              %105 = -%103
+                        //   (%res_s48) %105 = fadd %105 %98
+
+                        // case 3 (fsub match @ iAdd = 1)
+                        // Before match
+                        //   %105 = fsub %103 %102
+                        // After match
+                        //              %105 = %103
+                        //   (%res_s48) %98 = fadd %105 -%98
+
+                        // sources[0]: store add operand (i.e. %103 above)
+                        // sources[1]: store mul operand (i.e. %98 above)
 
                         sources[0] = I.getOperand(1 ^ iAdd);
                         sources[1] = mul->getOperand(1 ^ iMul);
@@ -1763,6 +1778,11 @@ namespace IGC
                         GetModifier(*sources[0], src_mod[0], sources[0]);
                         GetModifier(*sources[1], src_mod[1], sources[1]);
                         GetModifier(*pred, pred_mod, pred);
+
+                        if (I.getOpcode() == Instruction::FSub)
+                        {
+                            src_mod[iAdd] = CombineModifier(EMOD_NEG, src_mod[iAdd]);
+                        }
 
                         found = true;
                         break;
