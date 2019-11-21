@@ -1345,6 +1345,48 @@ public:
         return rgn;
     }
 
+    G4_SrcRegRegion* createSrcWithNewRegOff(G4_SrcRegRegion* old, short newRegOff)
+    {
+        if (old->getRegAccess() == Direct)
+        {
+            return createSrcRegRegion(old->getModifier(), Direct, old->getBase(), newRegOff,
+                old->getSubRegOff(), old->getRegion(), old->getType(), old->getAccRegSel());
+        }
+        else
+        {
+            return createIndirectSrc(old->getModifier(), old->getBase(), newRegOff, old->getSubRegOff(),
+                old->getRegion(), old->getType(), old->getAddrImm());
+        }
+    }
+
+    G4_SrcRegRegion* createSrcWithNewSubRegOff(G4_SrcRegRegion* old, short newSubRegOff)
+    {
+        if (old->getRegAccess() == Direct)
+        {
+            return createSrcRegRegion(old->getModifier(), old->getRegAccess(), old->getBase(), old->getRegOff(),
+                newSubRegOff, old->getRegion(), old->getType(), old->getAccRegSel());
+        }
+        else
+        {
+            return createIndirectSrc(old->getModifier(), old->getBase(), old->getRegOff(), newSubRegOff,
+                old->getRegion(), old->getType(), old->getAddrImm());
+        }
+    }
+
+    G4_SrcRegRegion* createSrcWithNewBase(G4_SrcRegRegion* old, G4_VarBase* newBase)
+    {
+        if (old->getRegAccess() == Direct)
+        {
+            return createSrcRegRegion(old->getModifier(), Direct, newBase, old->getRegOff(),
+                old->getSubRegOff(), old->getRegion(), old->getType(), old->getAccRegSel());
+        }
+        else
+        {
+            return createIndirectSrc(old->getModifier(), newBase, old->getRegOff(), old->getSubRegOff(),
+                old->getRegion(), old->getType(), old->getAddrImm());
+        }
+    }
+
     G4_SrcRegRegion* createIndirectSrc(G4_SrcModifier m,
         G4_VarBase*    b,
         short roff,
