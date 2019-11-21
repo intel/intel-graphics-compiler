@@ -3872,6 +3872,11 @@ namespace IGC
         SaveOption(vISA_preRA_Schedule, false);
     }
 
+    if (IGC_IS_FLAG_ENABLED(ReplaceIndirectCallWithJmpi))
+    {
+        SaveOption(vISA_replaceIndirectCallWithJmpi, true);
+    }
+
     if (IGC_IS_FLAG_ENABLED(FastSpill))
     {
         SaveOption(vISA_FastSpill, true);

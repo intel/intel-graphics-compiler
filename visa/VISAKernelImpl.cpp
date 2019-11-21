@@ -323,7 +323,7 @@ void VISAKernelImpl::expandIndirectCallWithRegTarget()
                 //       jmpi r2.0
 
                 InstListType expanded_insts;
-                if (getGenxPlatform() == GENX_SKL) {
+                if (m_builder->needReplaceIndirectCallWithJmpi()) {
                     createInstForJmpiSequence(expanded_insts, fcall);
                 } else {
                     G4_Declare* jmp_target_decl =
@@ -342,8 +342,8 @@ void VISAKernelImpl::expandIndirectCallWithRegTarget()
                     inst_to_add->setCISAOff(fcall->getCISAOff());
                 }
 
-                // remove call from the instlist for SKL WA
-                if (getGenxPlatform() == GENX_SKL)
+                // remove call from the instlist for Jmpi WA
+                if (m_builder->needReplaceIndirectCallWithJmpi())
                     bb->getInstList().erase(--bb->end());
             }
         }

@@ -6893,7 +6893,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             setA0toTdrForSendc();
         }
 
-        if (getGenxPlatform() == GENX_SKL && kernel.getIsExternFunc())
+        if (builder.needReplaceIndirectCallWithJmpi() && kernel.getIsExternFunc())
         {
             // replace ret in the external functions with jmpi. That we will
             // also return the call with jmpi in VISAKernelImpl::compilePostOptimize

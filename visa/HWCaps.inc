@@ -410,6 +410,11 @@
         return getOption(vISA_IGAEncoder) || getPlatformGeneration(getGenxPlatform()) >= PlatformGen::GEN12;
     }
 
+    bool needReplaceIndirectCallWithJmpi() const
+    {
+        return getGenxPlatform() == GENX_SKL ||
+               getOption(vISA_replaceIndirectCallWithJmpi);
+    }
     bool no64bitType() const
     {
         return getGenxPlatform() == GENX_ICLLP || isGen12LP();
