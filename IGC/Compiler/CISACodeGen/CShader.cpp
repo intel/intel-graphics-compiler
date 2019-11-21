@@ -251,7 +251,7 @@ CVariable* CShader::CreateSP(bool ptr64bits)
 }
 
 /// initial stack-pointer at the beginning of the kernel
-void CShader::InitKernelStack(bool ptr64bits)
+void CShader::InitKernelStack(CVariable*& stackBase, CVariable*& stackAllocSize, bool ptr64bits)
 {
     CreateSP(ptr64bits);
     ImplicitArgs implicitArgs(*entry, m_pMdUtils);
@@ -297,9 +297,9 @@ void CShader::InitKernelStack(bool ptr64bits)
 
     // modify private-memory size to a large setting
     m_ModuleMetadata->FuncMD[entry].privateMemoryPerWI = 8192;
-    CVariable* pBase = GetSymbol(kerArg);
-    encoder.Add(m_SP, pBase, pTemp);
-    encoder.Push();
+
+    stackBase = GetSymbol(kerArg);
+    stackAllocSize = pTemp;
 }
 
 /// save stack-pointer when entering a stack-call function

@@ -155,7 +155,7 @@ namespace IGC
         CVariable* GetRETV();
         CVariable* CreateSP(bool ptr64bits);
         /// init stack-pointer at the beginning of the kernel
-        void InitKernelStack(bool ptr64bits);
+        void InitKernelStack(CVariable*& stackBase, CVariable*& stackAllocSize, bool ptr64bits);
         /// save the stack-pointer when entering a stack-call function
         void SaveSP();
         /// restore the stack-pointer when exiting a stack-call function

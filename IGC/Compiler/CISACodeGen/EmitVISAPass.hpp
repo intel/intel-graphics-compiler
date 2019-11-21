@@ -402,6 +402,7 @@ namespace IGC
             uint32_t DstSubRegOffset = 0, uint32_t SrcSubRegOffset = 0);
         void emitCopyAll(CVariable* Dst, CVariable* Src, llvm::Type* Ty);
 
+        void emitAddSP(CVariable* Dst, CVariable* Src, CVariable* offset);
         void emitAddPairWithImm(CVariable* Dst, CVariable* Src, CVariable* Imm);
 
         void emitSqrt(llvm::Instruction* inst);
