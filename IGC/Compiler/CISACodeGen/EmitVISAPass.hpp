@@ -345,16 +345,13 @@ namespace IGC
         void emitHSTessFactors(llvm::Instruction* pInst);
         void emitHSSGV(llvm::GenIntrinsicInst* inst);
         void emitf32tof16_rtz(llvm::GenIntrinsicInst* inst);
-        void emititof(llvm::GenIntrinsicInst* inst);
+        void emitfitof(llvm::GenIntrinsicInst* inst);
         void emitFPOrtz(llvm::GenIntrinsicInst* inst);
-        void emitfptrunc(llvm::GenIntrinsicInst* inst);
-        CEncoder::RoundingMode GetRoundingMode(llvm::GenIntrinsicInst* inst);
-        void ResetRoundingMode(llvm::GenIntrinsicInst* inst);
+        void emitftoi(llvm::GenIntrinsicInst* inst);
+        void emitCtlz(const SSource& source);
 
         void emitDSInput(llvm::Instruction* pInst);
         void emitDSSGV(llvm::GenIntrinsicInst* inst);
-
-        void emitCtlz(const SSource& source);
 
         // VME
         void emitVMESendIME(llvm::GenIntrinsicInst* inst);
@@ -504,6 +501,7 @@ namespace IGC
         CVariable* GetSrcVariable(const SSource& source, bool fromConstPool = false);
         void SetSourceModifiers(unsigned int sourceIndex, const SSource& source);
 
+        CodeGenContext* m_pCtx;
         CVariable* m_destination;
         GenXFunctionGroupAnalysis* m_FGA;
         CodeGenPatternMatch* m_pattern;
@@ -518,10 +516,7 @@ namespace IGC
         CoalescingEngine* m_CE;
         VariableReuseAnalysis* m_VRA;
         ModuleMetaData* m_moduleMD;
-
         bool m_canAbortOnSpill;
-
-        CEncoder::RoundingMode m_roundingMode;
         PSSignature* m_pSignature;
 
         // Debug info emitter
@@ -532,6 +527,36 @@ namespace IGC
 
     private:
         uint m_labelForDMaskJmp;
+
+        // Current rounding Mode
+        //   As RM of FPCvtInt and FP could be different, there
+        //   are two fields to keep track of their current values.
+        //
+        // Default rounding modes:
+        //   the rounding modes that are pre-defined by each API or
+        //   shaders/kernels.
+        //
+        //   Not all combinations of FP's RM and FPCvtInt's RM can be
+        //   used as default. Currently, the default RMs have the
+        //   following restrictions:
+        //      1. If FPCvtInt's RM = ROUND_TO_ZERO, FP's RM can be any;
+        //      2. Otherwise, FPCvtInt's RM must be the same as FP's RM
+        //
+        //   The default remains unchanged throughout the entire
+        //   shaders/kernels. Dynamically setting a different default
+        //   rounding mode in the middle of a shader/kernel is not
+        //   supported for now. And the default remains unchanged
+        //   throughout the entire shaders/kernels.
+        //
+        //   However, each instruction's RM can be set dynamically,
+        //   such as via intrinsics. If an instruction needs setting RMs,
+        //   its RMs must follow the above restrictions. So far, an
+        //   instruction either relies on FP's RM or FPCvtInt's RM, but
+        //   not both, thus setting an instruction's RM dynamically
+        //   cannot violate the above restrictions.
+        //
+        ERoundingMode m_roundingMode_FP;
+        ERoundingMode m_roundingMode_FPCvtInt;
 
         // Used to relocate phi-mov to different BB. phiMovToBB is the map from "fromBB"
         // to "toBB" (meaning to move phi-mov from "fromBB" to "toBB"). See MovPhiSources.
@@ -589,13 +614,19 @@ namespace IGC
             return sampler;
         }
 
-        // returns true if the instruction does not care about the rounding mode settings
-        //
-        bool ignoreRoundingMode(llvm::Instruction* inst) const;
-
         CVariable* UnpackOrBroadcastIfUniform(CVariable* pVar);
 
         int getGRFSize() const { return m_currShader->getGRFSize(); }
+
+        void initDefaultRoundingMode();
+        ERoundingMode GetRoundingMode_FPCvtInt(llvm::Instruction* pInst);
+        ERoundingMode GetRoundingMode_FP(llvm::Instruction* inst);
+        void SetRoundingMode_FP(ERoundingMode RM_FP);
+        void SetRoundingMode_FPCvtInt(ERoundingMode RM_FPCvtInt);
+        bool setRMExplicitly(llvm::Instruction* inst);
+        void ResetRoundingMode(llvm::Instruction* inst);
+        // returns true if the instruction does not care about the rounding mode settings
+        bool ignoreRoundingMode(llvm::Instruction* inst) const;
     };
 
 } // namespace IGC

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Compiler/CodeGenPublicEnums.h"
+
 #include <string>
 #include <map>
 #include <vector>
@@ -185,7 +187,11 @@ namespace IGC
         bool OptDisable                                 = false;
         bool MadEnable                                  = false;
         bool NoSignedZeros                              = false;
-        unsigned FloatRoundingMode                      = 0; // default mode: IGC::Float_RoundingMode::FLOAT_ROUND_TO_NEAREST_EVEN
+
+        // default rounding modes
+        unsigned FloatRoundingMode                      = IGC::ROUND_TO_NEAREST_EVEN;
+        unsigned FloatCvtIntRoundingMode                = IGC::ROUND_TO_ZERO;
+
         bool UnsafeMathOptimizations                    = false;
         bool FiniteMathOnly                             = false;
         bool FastRelaxedMath                            = false;

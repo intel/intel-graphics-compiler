@@ -355,30 +355,10 @@ namespace IGC
 
         void initCR(VISAKernel* vKernel);
         void SetVectorMask(bool vMask);
-        // RM bits in CR0.0.
-        //    float RM bits: [5:4];
-        //    int RM (float -> int): Bit 12: 0 -> rtz; 1 -> using Float RM
-        enum RoundingMode {
-            // float rounding mode
-            RoundToNearestEven = 0x00,
-            RoundToPositive = 0x10,
-            RoundToNegative = 0x20,
-            RoundToZero = 0x30,
-            // int rounding mode, use FP RM for all rounding modes but rtz.
-            RoundToNearestEven_int = 0x1000,
-            RoundToPositive_int = 0x1010,
-            RoundToNegative_int = 0x1020,
-            RoundToZero_int = 0x1030,
 
-            IntAndFPRoundingModeMask = 0x1030
-        };
-
-        // Switches from actualMode to newMode
-        void SetFloatRoundingMode(RoundingMode actualMode, RoundingMode newMode);
-        // Switches from actualMode to default rounding mode
-        void SetFloatRoundingModeDefault(RoundingMode actualMode);
-        // Get rounding mode of encoder
-        RoundingMode getEncoderRoundingMode(Float_RoundingMode FP_RM);
+        // Switches from actualRM to newRM
+        void SetRoundingMode_FP(ERoundingMode actualRM, ERoundingMode newRM);
+        void SetRoundingMode_FPCvtInt(ERoundingMode actualRM, ERoundingMode newRM);
 
         static uint GetCISADataTypeSize(VISA_Type type);
         static e_alignment GetCISADataTypeAlignment(VISA_Type type);
@@ -501,6 +481,33 @@ namespace IGC
         {
             return ExecSize == EXEC_SIZE_16;
         }
+
+        // Note that GEN can set both fpCvtInt_rtz and any of FP rounding modes
+        // at the same time. If fpCvtInt uses a rounding mode other than rtz,
+        // they both uses FP rounding bits.
+        //
+        // RM bits in CR0.0.
+        //    float RM bits: [5:4];
+        //    int RM (float -> int): Bit 12: 0 -> rtz; 1 -> using Float RM
+        enum RMEncoding {
+            // float rounding mode (fp operations, cvt to fp)
+            RoundToNearestEven = 0x00,
+            RoundToPositive = 0x10,
+            RoundToNegative = 0x20,
+            RoundToZero = 0x30,
+            // int rounding mode (fp cvt int only), use FP RM for all rounding modes but rtz.
+            RoundToNearestEven_int = 0x1000,
+            RoundToPositive_int = 0x1010,
+            RoundToNegative_int = 0x1020,
+            RoundToZero_int_unused = 0x1030,
+            RoundToZero_int = 0x0000,    // use this for rtz, bit 12 = 0
+
+            IntAndFPRoundingModeMask = 0x1030
+        };
+        void SetRoundingMode(RMEncoding actualRM, RMEncoding newRM);
+        // Get Encoding bit values for rounding mode
+        RMEncoding getEncoderRoundingMode_FP(ERoundingMode FP_RM);
+        RMEncoding getEncoderRoundingMode_FPCvtInt(ERoundingMode FCvtI_RM);
 
         unsigned GetRawOpndSplitOffset(Common_ISA_Exec_Size fromExecSize,
             Common_ISA_Exec_Size toExecSize,

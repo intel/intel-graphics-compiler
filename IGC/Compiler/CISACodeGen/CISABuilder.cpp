@@ -2757,8 +2757,20 @@ namespace IGC
         if (pCtx->m_floatDenormMode64 == FLOAT_DENORM_RETAIN)
             imm_data |= 0x40;
 
-        uint RM_bits = getEncoderRoundingMode(
-            static_cast<Float_RoundingMode>(pCtx->getModuleMetaData()->compOpt.FloatRoundingMode));
+        uint RM_bits = 0;
+        ERoundingMode RM_FPCvtInt = static_cast<ERoundingMode>(pCtx->getModuleMetaData()->compOpt.FloatCvtIntRoundingMode);
+        ERoundingMode RM_FP = static_cast<ERoundingMode>(pCtx->getModuleMetaData()->compOpt.FloatRoundingMode);
+        if (RM_FPCvtInt == ERoundingMode::ROUND_TO_ZERO) {
+            // No need to set FPCvtInt, just need to set FP RM.
+            RM_bits = getEncoderRoundingMode_FP(RM_FP);
+        }
+        else if (RM_FPCvtInt == RM_FP) {
+            // Setting FPCvtInt will set both FPCvtInt and FP
+            RM_bits = getEncoderRoundingMode_FPCvtInt(RM_FPCvtInt);
+        }
+        else {
+            assert(false && "Unsupport combination of default rounding mode (FP and FPCvtInt)!");
+        }
         imm_data |= RM_bits;
 
         // If we are in the default mode no need to set the CR
@@ -2806,15 +2818,39 @@ namespace IGC
         src1_Opnd));
     }
 
-    void CEncoder::SetFloatRoundingMode(RoundingMode actualMode, RoundingMode newMode)
+    void CEncoder::SetRoundingMode_FP(ERoundingMode actualRM, ERoundingMode newRM)
     {
-    if (actualMode != newMode)
+        assert(newRM != ERoundingMode::ROUND_TO_ANY && "Invalid rounding mode");
+        if (actualRM != newRM)
+        {
+            RMEncoding actualRM_en = getEncoderRoundingMode_FP(actualRM);
+            RMEncoding newRM_en = getEncoderRoundingMode_FP(newRM);
+            SetRoundingMode(actualRM_en, newRM_en);
+        }
+    }
+
+    void CEncoder::SetRoundingMode_FPCvtInt(ERoundingMode actualRM, ERoundingMode newRM)
     {
+        assert(newRM != ERoundingMode::ROUND_TO_ANY && "Invalid rounding mode");
+        if (actualRM != newRM)
+        {
+            RMEncoding actualRM_en = getEncoderRoundingMode_FPCvtInt(actualRM);
+            RMEncoding newRM_en = getEncoderRoundingMode_FPCvtInt(newRM);
+            SetRoundingMode(actualRM_en, newRM_en);
+        }
+    }
+
+    // Set rounding mode based on given encoding.
+    void CEncoder::SetRoundingMode(RMEncoding actualRM, RMEncoding newRM)
+    {
+        assert(actualRM != newRM &&
+               "Only setting RM if the new RM is different from the current RM!");
+
         VISA_VectorOpnd* src0_Opnd = nullptr;
         VISA_VectorOpnd* src1_Opnd = nullptr;
         VISA_VectorOpnd* dst_Opnd = nullptr;
         VISA_GenVar* cr0_var;
-        uint roundingMode = actualMode ^ newMode;
+        uint roundingMode = actualRM ^ newRM;
         V(vKernel->GetPredefinedVar(cr0_var, PREDEFINED_CR0));
         V(vKernel->CreateVISASrcOperand(src0_Opnd, cr0_var, MODIFIER_NONE, 0, 1, 0, 0, 0));
         V(vKernel->CreateVISAImmediate(src1_Opnd, &roundingMode, ISA_TYPE_UD));
@@ -2829,29 +2865,35 @@ namespace IGC
             src0_Opnd,
             src1_Opnd));
     }
-    }
 
-    void CEncoder::SetFloatRoundingModeDefault(RoundingMode actualMode)
+    CEncoder::RMEncoding CEncoder::getEncoderRoundingMode_FP(ERoundingMode FP_RM)
     {
-    const RoundingMode defaultRoundingMode = getEncoderRoundingMode(static_cast<Float_RoundingMode>(
-        m_program->GetContext()->getModuleMetaData()->compOpt.FloatRoundingMode));
-
-    SetFloatRoundingMode(actualMode, defaultRoundingMode);
+        switch (FP_RM) {
+        default:
+            break;
+        case ROUND_TO_POSITIVE:
+            return RMEncoding::RoundToPositive;
+        case ROUND_TO_NEGATIVE:
+            return RMEncoding::RoundToNegative;
+        case ROUND_TO_ZERO:
+            return RMEncoding::RoundToZero;
+        }
+        return RMEncoding::RoundToNearestEven;
     }
 
-    CEncoder::RoundingMode CEncoder::getEncoderRoundingMode(Float_RoundingMode FP_RM)
+    CEncoder::RMEncoding CEncoder::getEncoderRoundingMode_FPCvtInt(ERoundingMode FCvtI_RM)
     {
-    switch (FP_RM) {
-    default:
-        break;
-    case FLOAT_ROUND_TO_POSITIVE:
-        return RoundingMode::RoundToPositive;
-    case FLOAT_ROUND_TO_NEGATIVE:
-        return RoundingMode::RoundToNegative;
-    case FLOAT_ROUND_TO_ZERO:
-        return RoundingMode::RoundToZero;
-    }
-    return RoundToNearestEven;
+        switch (FCvtI_RM) {
+        default:
+            break;
+        case ROUND_TO_NEAREST_EVEN:
+            return RMEncoding::RoundToNearestEven_int;
+        case ROUND_TO_POSITIVE:
+            return RMEncoding::RoundToPositive_int;
+        case ROUND_TO_NEGATIVE:
+            return RMEncoding::RoundToNegative_int;
+        }
+        return RMEncoding::RoundToZero_int;
     }
 
     VISA_LabelOpnd* CEncoder::GetLabel(uint label)

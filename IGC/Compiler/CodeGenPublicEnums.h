@@ -240,12 +240,14 @@ namespace IGC
         FLOAT_DENORM_RETAIN,
     };
 
-    enum Float_RoundingMode
+    enum ERoundingMode
     {
-        FLOAT_ROUND_TO_NEAREST_EVEN = 0,
-        FLOAT_ROUND_TO_POSITIVE = 1,
-        FLOAT_ROUND_TO_NEGATIVE = 2,
-        FLOAT_ROUND_TO_ZERO = 3
+        ROUND_TO_NEAREST_EVEN,
+        ROUND_TO_POSITIVE,
+        ROUND_TO_NEGATIVE,
+        ROUND_TO_ZERO,
+
+        ROUND_TO_ANY   // dont care
     };
 
     //
