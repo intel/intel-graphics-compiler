@@ -289,7 +289,10 @@ namespace IGC
 
         pKernelProgram->ConstantBufferLoaded = m_constantBufferLoaded;
         pKernelProgram->UavLoaded = m_uavLoaded;
-        pKernelProgram->ShaderResourceLoaded = m_shaderResourceLoaded;
+        for (int i = 0; i < 4; i++)
+        {
+            pKernelProgram->ShaderResourceLoaded[i] = m_shaderResourceLoaded[i];
+        }
         pKernelProgram->RenderTargetLoaded = m_renderTargetLoaded;
 
         pKernelProgram->hasControlFlow = m_numBlocks > 1 ? true : false;

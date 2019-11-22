@@ -174,7 +174,10 @@ namespace IGC
         pKernelProgram->MaxNumberOfThreads = m_Platform->getMaxVertexShaderThreads(isPositionOnlyShader);
         pKernelProgram->ConstantBufferLoaded = m_constantBufferLoaded;
         pKernelProgram->UavLoaded = m_uavLoaded;
-        pKernelProgram->ShaderResourceLoaded = m_shaderResourceLoaded;
+        for (unsigned int i = 0; i < 4; i++)
+        {
+            pKernelProgram->ShaderResourceLoaded[i] = m_shaderResourceLoaded[i];
+        }
         pKernelProgram->RenderTargetLoaded = m_renderTargetLoaded;
 
         pKernelProgram->hasVertexID = m_properties.m_HasVertexID;
