@@ -1938,7 +1938,7 @@ DoubleFloat :   DOUBLEFLOAT
 
 FloatPoint :    NUMBER DOT NUMBER
                 {   char floatstring[256];
-                    sprintf(floatstring, "%" PRId64 ".%" PRId64, $1, $3);
+                    sprintf_s(floatstring, sizeof(floatstring), "%" PRId64 ".%" PRId64, $1, $3);
                     $$ = atof(floatstring);
                 }
               | FLOATINGPOINT

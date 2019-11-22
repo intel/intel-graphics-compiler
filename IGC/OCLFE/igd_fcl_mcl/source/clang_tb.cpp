@@ -132,7 +132,7 @@ namespace FCL
                 }
 
                 // Just return the string
-                strncpy((char*)pValue, envVal, size);
+                strncpy_s((char*)pValue, size, envVal, size);
 
                 return true;
             }
