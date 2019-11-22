@@ -1000,11 +1000,18 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
                     m_cisaBinary->patchKernel(kernelCount, genxBufferSize, genxBuffer, getGenxPlatformEncoding());
                     kernelCount++;
                 }
-                else
-                {
-                    m_cisaBinary->patchFunction(functionCount);
-                    functionCount++;
-                }
+            }
+            iter = m_kernels.begin();
+            for (int i = 0; iter != end; iter++, i++)
+            {
+              VISAKernelImpl * kTemp = *iter;
+              unsigned int genxBufferSize = 0;
+              if (!kTemp->getIsKernel())
+              {
+                genxBufferSize = kTemp->getGenxBinarySize();
+                m_cisaBinary->patchFunction(functionCount, genxBufferSize);
+                functionCount++;
+              }
             }
         }
 
