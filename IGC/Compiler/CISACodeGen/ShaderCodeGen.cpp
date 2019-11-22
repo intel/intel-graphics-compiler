@@ -92,6 +92,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/Optimizer/RectListOptimizationPass.hpp"
 #include "Compiler/Optimizer/GatingSimilarSamples.hpp"
 #include "Compiler/Optimizer/IndirectCallOptimization.hpp"
+#include "Compiler/Optimizer/IntDivConstantReduction.hpp"
 #include "Compiler/MetaDataApi/PurgeMetaDataUtils.hpp"
 
 #include "Compiler/HandleLoadStoreInstructions.hpp"
@@ -400,6 +401,12 @@ namespace IGC
         // resolver.
         mpm.add(new BreakConstantExpr());
         mpm.add(new ProgramScopeConstantResolution());
+    }
+
+    if (IGC_IS_FLAG_ENABLED(EnableConstIntDivReduction)) {
+        // reduce division/remainder with a constant divisors/moduli to
+        // more efficient sequences of multiplies, shifts, and adds
+        mpm.add(createIntDivConstantReductionPass());
     }
 
     bool needDPEmu = (IGC_IS_FLAG_ENABLED(ForceDPEmulation) ||

@@ -262,6 +262,7 @@ DECLARE_IGC_REGKEY(bool, EnableReasso,                  false, "Enable reassocia
 DECLARE_IGC_REGKEY(bool, EnableOCLScratchPrivateMemory, true,  "Enable the use of scratch space for private memory [OCL only]", false)
 DECLARE_IGC_REGKEY(bool, Enable64BitEmulation,          false, "Enable 64-bit emulation", false)
 DECLARE_IGC_REGKEY(bool, Enable64BitEmulationOnSelectedPlatform, true, "Enable 64-bit emulation on selected platforms", false)
+DECLARE_IGC_REGKEY(DWORD, EnableConstIntDivReduction,  1,  "Enables strength reduction on integer division/remainder with constant divisors/moduli", true)
 DECLARE_IGC_REGKEY(bool, EnableRecursionOpenCL,         false, "Enable recursion with OpenCL user functions", false)
 DECLARE_IGC_REGKEY(bool, DisableBufferToResPromotionAir,true, "Disable promoting beffers to resources", false)
 DECLARE_IGC_REGKEY(bool, ForceDPEmulation,              false, "Force double emulation for testing purpose", false)

@@ -2217,6 +2217,15 @@ bool G4_INST::canPropagateTo(G4_INST *useInst, Gen4_Operand_Number opndNum, MovT
             return false;
         }
     }
+    else if (srcType != useType && useInst->opcode() == G4_mulh)
+    {
+        // don't propagate widening ops into a mul/mach
+        //   mov  T:d  SRC:w
+        //   ...
+        //   mach ... T:d ...
+        // mach requires 32b types only
+        return false;
+    }
 
 
     // special checks for message desc/extended desc, which must be either a0 or imm

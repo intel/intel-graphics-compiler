@@ -9,21 +9,22 @@ add_subdirectory(IGCInstCombiner)
 
 set(IGC_BUILD__SRC__Optimizer
     "${CMAKE_CURRENT_SOURCE_DIR}/BuiltInFuncImport.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/CodeAssumption.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/FixFastMathFlags.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/GatingSimilarSamples.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/IndirectCallOptimization.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/InfiniteLoopRemoval.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/IntDivConstantReduction.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/LinkMultiRateShaders.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/MCSOptimization.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/GatingSimilarSamples.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/MarkReadOnlyLoad.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/OCLBIConverter.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/OCLBIUtils.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/PreCompiledFuncImport.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/PreCompiledFuncLibrary.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/RectListOptimizationPass.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Scalarizer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/SetMathPrecisionForPositionOutput.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/FixFastMathFlags.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/CodeAssumption.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/MarkReadOnlyLoad.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/RectListOptimizationPass.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/IndirectCallOptimization.cpp"
   )
 
 set(IGC_BUILD__SRC__Compiler_Optimizer
@@ -35,19 +36,20 @@ set(IGC_BUILD__SRC__Compiler_Optimizer
 
 set(IGC_BUILD__HDR__Optimizer
     "${CMAKE_CURRENT_SOURCE_DIR}/BuiltInFuncImport.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/CodeAssumption.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/FixFastMathFlags.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/GatingSimilarSamples.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/IndirectCallOptimization.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/InfiniteLoopRemoval.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/IntDivConstantReduction.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/LinkMultiRateShaders.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/MCSOptimization.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/OCLBIConverter.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/OCLBIUtils.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/MCSOptimization.hpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/GatingSimilarSamples.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/PreCompiledFuncImport.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/RectListOptimizationPass.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Scalarizer.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/SetMathPrecisionForPositionOutput.hpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/FixFastMathFlags.hpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/CodeAssumption.hpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/RectListOptimizationPass.hpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/IndirectCallOptimization.hpp"
   )
 
 
