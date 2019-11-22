@@ -503,6 +503,7 @@ namespace vISA
         void markInterferenceForSend(G4_BB* bb, G4_INST* inst, G4_DstRegRegion* dst);
 
         void dumpInterference() const;
+        bool dumpIntf(const char*) const;
         void interferenceVerificationForSplit() const;
 
         void buildInterferenceWithLocalRA(G4_BB* bb);

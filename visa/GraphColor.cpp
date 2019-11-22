@@ -10519,7 +10519,7 @@ void GlobalRA::insertPhyRegDecls()
         if (grfUsed[i] == true)
         {
             const char* dclName = builder.getNameString(builder.mem, 10, "r%d", i);
-            G4_Declare* phyRegDcl = builder.createDeclareNoLookup(dclName, G4_GRF, 8, 1, Type_D, Regular, NULL, NULL, 0);
+            G4_Declare* phyRegDcl = builder.createDeclareNoLookup(dclName, G4_GRF, NUM_DWORDS_PER_GRF, 1, Type_D, Regular, NULL, NULL, 0);
             G4_Greg* phyReg = builder.phyregpool.getGreg(i);
             phyRegDcl->getRegVar()->setPhyReg(phyReg, 0);
             GRFDclsForHRA[i] = phyRegDcl;
@@ -11860,4 +11860,65 @@ unsigned GraphColor::edgeWeightARF(LiveRange* lr1, LiveRange* lr2)
     }
     MUST_BE_TRUE(false, "Found unsupported ARF reg type in register allocation!");
     return 0;
+}
+
+bool dump(const char* s, LiveRange** lrs, unsigned int size)
+{
+    // Utility function to dump lr from name.
+    // Returns true if lr name found.
+    std::string name = s;
+    for (unsigned int i = 0; i != size; i++)
+    {
+        auto lr = lrs[i];
+        if (lr && name.compare(lr->getVar()->getName()) == 0)
+        {
+            lr->dump();
+            return true;
+        }
+    }
+    return false;
+}
+
+bool dump(const char* s, G4_Kernel* kernel)
+{
+    // Utility function to dump dcl for given variable name.
+    // Returns true if variable found.
+    std::string name = s;
+    for (auto dcl : kernel->Declares)
+    {
+        if (name.compare(dcl->getName()) == 0)
+        {
+            dcl->emit(std::cerr, false, false);
+            return true;
+        }
+    }
+    return false;
+}
+
+bool Interference::dumpIntf(const char* s) const
+{
+    // Utility function to dump intf for given variable based on name.
+    // Returns true if variable found.
+    std::cout << "\n\n **** Interference Table ****\n";
+    for (unsigned i = 0; i < maxId; i++)
+    {
+        std::string name = lrs[i]->getVar()->getName();
+        if (name.compare(s) == 0)
+        {
+            std::cout << "(" << i << ") ";
+            lrs[i]->dump();
+            std::cout << "\n";
+            for (unsigned j = 0; j < maxId; j++)
+            {
+                if (interfereBetween(i, j))
+                {
+                    std::cout << "\t";
+                    lrs[j]->getVar()->emit(std::cout);
+                }
+            }
+            std::cout << "\n";
+            return true;
+        }
+    }
+    return false;
 }
