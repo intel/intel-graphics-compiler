@@ -3351,9 +3351,9 @@ void Optimizer::cselPeepHoleOpt()
                     useInst->setCondMod(builder.duplicateOperand(mod));
                     useInst->setPredicate(NULL);
 
-                    G4_SrcRegRegion* opnd2 = useInst->getSrc(2)->asSrcRegRegion();
+                    G4_SrcRegRegion * opnd2 = useInst->getSrc(2)->asSrcRegRegion();
 
-                    if (!opnd2->isScalar() && inst->getExecSize() > useInst->getExecSize())
+                    if(!opnd2->isScalar() && inst->getExecSize() > useInst->getExecSize())
                     {
                         //earlier check establishes that useInst mask is equivalent or subset
                         //sel instruction
@@ -3362,18 +3362,16 @@ void Optimizer::cselPeepHoleOpt()
                             cmp (16)
                             sel (8)
                         */
-                        if (useInst->getMaskOffset() != inst->getMaskOffset())
+                        if(useInst->getMaskOffset() != inst->getMaskOffset())
                         {
-                            //check elsewhere guarantees this is float.
+                            //check elsewhere gurantees this is float.
                             G4_Type type = opnd2->getType();
-                            unsigned short typeSize = (unsigned short)G4_Type_Table[type].byteSize;
-                            unsigned offset = opnd2->getRegOff() * G4_GRF_REG_NBYTES + opnd2->getSubRegOff() * typeSize;
+                            unsigned short typeSize = (unsigned short) G4_Type_Table[type].byteSize;
+                            unsigned offset = opnd2->getRegOff()* G4_GRF_REG_NBYTES + opnd2->getSubRegOff()*typeSize;
                             offset += useInst->getExecSize() * src0Stride * typeSize;
 
-                            auto newSrc2 = builder.createSrcRegRegion(opnd2->getModifier(), Direct, opnd2->getBase(),
-                                offset / G4_GRF_REG_NBYTES, (offset % G4_GRF_REG_NBYTES) / typeSize, opnd2->getRegion(),
-                                opnd2->getType());
-                            useInst->setSrc(newSrc2, 2);
+                            opnd2->setRegOff(offset % G4_GRF_REG_NBYTES);
+                            opnd2->setSubRegOff(offset / G4_GRF_REG_NBYTES);
                         }
                     }
                     //
@@ -3459,14 +3457,12 @@ static void expandPseudoLogic(IR_Builder& builder,
             // we have to use the upper flag bits (.1) instead
             MUST_BE_TRUE(inst->getSrc(0)->isSrcRegRegion() && inst->getSrc(0)->isFlag(),
                 "expect src0 to be flag");
-            auto newSrc0 = builder.createSrcWithNewSubRegOff(inst->getSrc(0)->asSrcRegRegion(), 1);
-            inst->setSrc(newSrc0, 0);
+            inst->getSrc(0)->asSrcRegRegion()->setSubRegOff(1);
             if (inst->getSrc(1) != nullptr)
             {
                 MUST_BE_TRUE(inst->getSrc(1)->isSrcRegRegion() && inst->getSrc(1)->isFlag(),
                     "expect src1 to be flag");
-                auto newSrc1 = builder.createSrcWithNewSubRegOff(inst->getSrc(1)->asSrcRegRegion(), 1);
-                inst->setSrc(newSrc1, 1);
+                inst->getSrc(1)->asSrcRegRegion()->setSubRegOff(1);
             }
             inst->getDst()->setSubRegOff(1);
         }
@@ -4084,8 +4080,7 @@ bool Optimizer::foldPseudoNot(G4_BB* bb, INST_LIST_ITER& iter)
         {
             // Fold upper bits
             assert(notInst->getExecSize() == 16);
-            origUse = builder.createSrcWithNewSubRegOff(origUse, 1);
-            notInst->setSrc(origUse, 0);
+            origUse->setSubRegOff(1);
         }
         for (auto uses = notInst->use_begin(), uend = notInst->use_end(); uses != uend; ++uses)
         {
