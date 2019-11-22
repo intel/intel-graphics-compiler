@@ -2669,8 +2669,8 @@ namespace IGC
     //          mul(16 | M0)   r14.0<1>:d  r14.0<8;8,1>:d  r12.0<8;8,1>:d )
     //
     //     after:
-    //     --> %11:d = mul %8.1<16;8,2>:uw 65535:uw
-    //         ( mul (16|M0)  r14.0<1>:d   r12.1<2;1,0>:uw   r12.0<2;1,0>:uw )
+    //     --> %11:d = mul %8.1<16;8,2>:uw %8.0<16;8,2>:uw
+    //         ( mul (16|M0)  r14.0<1>:d   r12.1<2;1,0>:w   r12.0<2;1,0>:w )
     //
     bool CodeGenPatternMatch::MatchMulAdd16(Instruction& I) {
         using namespace llvm::PatternMatch;
