@@ -278,10 +278,7 @@ namespace IGC
 
         pKernelProgram->ConstantBufferLoaded = m_constantBufferLoaded;
         pKernelProgram->UavLoaded = m_uavLoaded;
-        for (int i = 0; i < 4; i++)
-        {
-            pKernelProgram->ShaderResourceLoaded[i] = m_shaderResourceLoaded[i];
-        }
+        pKernelProgram->ShaderResourceLoaded = m_shaderResourceLoaded;
         pKernelProgram->RenderTargetLoaded = m_renderTargetLoaded;
 
         pKernelProgram->NOSBufferSize = m_NOSBufferSize / getGRFSize(); // in 256 bits

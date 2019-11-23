@@ -66,10 +66,7 @@ CShader::CShader(Function* pFunc, CShaderProgram* pProgram)
     m_constantBufferMask = 0;
     m_constantBufferLoaded = 0;
     m_uavLoaded = 0;
-    for (int i = 0; i < 4; i++)
-    {
-        m_shaderResourceLoaded[i] = 0;
-    }
+    m_shaderResourceLoaded = 0;
     m_renderTargetLoaded = 0;
     isInputsPulled = false;
     m_cbSlot = -1;

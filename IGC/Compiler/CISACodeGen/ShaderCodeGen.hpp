@@ -337,7 +337,7 @@ namespace IGC
 
                     if (bufType == RESOURCE)
                     {
-                        m_shaderResourceLoaded[typeBti / 32] |= BIT(typeBti % 32);
+                        m_shaderResourceLoaded |= (uint64_t)1 << typeBti;
                     }
                     else if (bufType == CONSTANT_BUFFER)
                     {
@@ -360,16 +360,7 @@ namespace IGC
 
                     if (bufType == RESOURCE)
                     {
-                        unsigned int MaxArray = m_pBtiLayout->GetTextureIndexSize() / 32;
-                        for (unsigned int i = 0; i < MaxArray; i++)
-                        {
-                            m_shaderResourceLoaded[i] = 0xffffffff;
-                        }
-
-                        for (unsigned int i = MaxArray*32; i < m_pBtiLayout->GetTextureIndexSize(); i++)
-                        {
-                            m_shaderResourceLoaded[i] = BIT(i%32);
-                        }
+                        m_shaderResourceLoaded |= QWBITMASK_RANGE(0, m_pBtiLayout->GetTextureIndexSize());
                     }
                     else if (bufType == CONSTANT_BUFFER)
                     {
@@ -499,7 +490,7 @@ namespace IGC
         uint m_constantBufferMask;
         uint m_constantBufferLoaded;
         uint m_uavLoaded;
-        uint m_shaderResourceLoaded[4];
+        uint64_t m_shaderResourceLoaded;
         uint m_renderTargetLoaded;
 
         int  m_cbSlot;
