@@ -531,18 +531,9 @@ bool GenXFunctionGroupAnalysis::useStackCall(llvm::Function* F)
 void GenXFunctionGroupAnalysis::addIndirectFuncsToKernelGroup(llvm::Module* pModule)
 {
     auto pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    auto modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
 
-    Function* defaultKernel = nullptr;
-    // Set the first kernel as the default
-    for (auto I = pModule->begin(), E = pModule->end(); I != E; ++I)
-    {
-        Function* F = &(*I);
-        if (isEntryFunc(pMdUtils, F))
-        {
-            defaultKernel = F;
-            break;
-        }
-    }
+    Function* defaultKernel = getUniqueEntryFunc(pMdUtils, modMD);
     assert(defaultKernel && "kernel does not exist in this group");
 
     FunctionGroup* defaultFG = getGroupForHead(defaultKernel);

@@ -359,7 +359,7 @@ void EmitPass::CreateKernelShaderMap(CodeGenContext* ctx, MetaDataUtils* pMdUtil
             {
                 // Single PS
                 // Assuming single shader information in metadata
-                Function* pFunc = getUniqueEntryFunc(pMdUtils);
+                Function* pFunc = getUniqueEntryFunc(pMdUtils, ctx->getModuleMetaData());
 
                 CShaderProgram* pProgram = new CShaderProgram(ctx, pFunc);
                 m_shaders[pFunc] = pProgram;
@@ -747,15 +747,17 @@ bool EmitPass::runOnFunction(llvm::Function& F)
     IF_DEBUG_INFO_IF(m_currShader->diData, m_currShader->diData->markOutput(F, m_currShader);)
         IF_DEBUG_INFO_IF(m_currShader->diData, m_currShader->diData->addVISAModule(&F, m_pDebugEmitter->GetVISAModule());)
 
-        // Compile only when this is the last function for this kernel.
-        bool finalize = (!m_FGA || m_FGA->isGroupTail(&F));
+    // Compile only when this is the last function for this kernel.
+    bool finalize = (!m_FGA || m_FGA->isGroupTail(&F));
     bool destroyVISABuilder = false;
     if (finalize)
     {
         destroyVISABuilder = true;
-        // We only need one symbol table per module. If there are multiple kernels, only create a symbol
-        // table for the one with indirectly called functions attached.
-        bool compileWithSymbolTable = !m_FGA || (m_FGA->getGroup(&F)->hasIndirectFuncs());
+        // We only need one symbol table per module. If there are multiple entry functions, only create a symbol
+        // table for the unique entry function
+        Function* uniqueEntry = getUniqueEntryFunc(pMdUtils, m_moduleMD);
+        Function* currHead = m_FGA ? m_FGA->getGroupHead(&F) : &F;
+        bool compileWithSymbolTable = (currHead == uniqueEntry);
         m_encoder->Compile(compileWithSymbolTable);
         // if we are doing stack-call, do the following:
         // - Hard-code a large scratch-space for visa
