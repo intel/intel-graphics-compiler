@@ -7896,8 +7896,8 @@ void VarSplit::insertMovesToTemp(IR_Builder& builder, G4_Declare* oldDcl, G4_Ope
         {
             unsigned maskFlag = (inst->getOption() & 0xFFF010C);
             G4_DstRegRegion* dst = builder.Create_Dst_Opnd_From_Dcl(subDcl, 1);
-            G4_SrcRegRegion* src = builder.Create_Src_Opnd_From_Dcl(oldDcl, builder.getRegionStride1());
-            src->setRegOff((gra.getSubOffset(subDcl)) / G4_GRF_REG_NBYTES);
+            auto src = builder.createSrcRegRegion(Mod_src_undef, Direct, oldDcl->getRegVar(),
+                (gra.getSubOffset(subDcl)) / G4_GRF_REG_NBYTES, 0, builder.getRegionStride1(), oldDcl->getElemType());
             G4_INST* splitInst = builder.createMov((uint8_t)subDcl->getTotalElems(), dst, src, maskFlag, false);
             bb->insert(iter, splitInst);
         }
@@ -7956,10 +7956,8 @@ void VarSplit::insertMovesFromTemp(G4_Kernel& kernel, G4_Declare* oldDcl, int in
                 bb->insert(instIter, movInst);
             }
         }
-        G4_SrcRegRegion* newSrc = kernel.fg.builder->Create_Src_Opnd_From_Dcl(newDcl, oldSrc->getRegion());
-        newSrc->setRegOff(0);
-        newSrc->setSubRegOff(oldSrc->getSubRegOff());
-        newSrc->setModifier(oldSrc->getModifier());
+        auto newSrc = kernel.fg.builder->createSrcRegRegion(oldSrc->getModifier(), Direct, newDcl->getRegVar(),
+            0, oldSrc->getSubRegOff(), oldSrc->getRegion(), newDcl->getElemType());
         inst->setSrc(newSrc, pos);
     }
     else
