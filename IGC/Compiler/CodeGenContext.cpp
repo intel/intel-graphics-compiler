@@ -675,6 +675,15 @@ namespace IGC
             "IGC::PositionOnlyVertexShader") != nullptr;
     }
 
+    void CodeGenContext::setFlagsPerCtx()
+    {
+        if (m_DriverInfo.DessaAliasLevel() != -1) {
+            if ((int)IGC_GET_FLAG_VALUE(EnableDeSSAAlias) > m_DriverInfo.DessaAliasLevel())
+            {
+                IGC_SET_FLAG_VALUE(EnableDeSSAAlias, m_DriverInfo.DessaAliasLevel());
+            }
+        }
+    }
 
 
 }

@@ -259,6 +259,9 @@ namespace IGC
         /// Allow aggressive vector value aliasing
         virtual bool EnableVecAliasing() const { return false; }
 
+        /// Restrict dessa aliasing level. -1 : no restriction; max level otherwise.
+        virtual int DessaAliasLevel() const { return -1; }
+
         /// Rounding mode used for DP emulated function, defaults to Round to nearest
         virtual unsigned DPEmulationRoundingMode() const { return 0; }
 

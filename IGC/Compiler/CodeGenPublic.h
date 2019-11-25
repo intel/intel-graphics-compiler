@@ -777,6 +777,8 @@ namespace IGC
         /// input: IGC MetaData Utils
         IGC::IGCMD::MetaDataUtils* m_pMdUtils = nullptr;
         IGC::ModuleMetaData* modMD = nullptr;
+
+        virtual void setFlagsPerCtx();
     public:
         CodeGenContext(
             ShaderType          _type,      ///< shader type
@@ -805,6 +807,9 @@ namespace IGC
                     instrStat[i][j] = 0;
                 }
             }
+
+            // Per context flag adjustment
+            setFlagsPerCtx();
         }
 
         CodeGenContext(CodeGenContext&) = delete;
