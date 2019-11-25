@@ -218,9 +218,8 @@ namespace IGC
     }
 
     // Return a unique entry function.
-    // If more than one entry exists, return the first and and set it as unique.
-    // All subsequent calls to this function will get the entry set by the first call.
-    llvm::Function* getUniqueEntryFunc(const IGCMD::MetaDataUtils* pM, IGC::ModuleMetaData* pModMD);
+    // Assert if more than one entry function exists.
+    llvm::Function* getUniqueEntryFunc(const IGCMD::MetaDataUtils* pM);
 
     // \brief Get next instruction, returning null if it's the last of the BB.
     // This is the replacement of Instruction::getNextNode(), since getNextNode()

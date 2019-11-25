@@ -110,10 +110,8 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
             continue;
         }
 
-        // If this variable isn't used and not exposed externally, don't add it to the buffer.
-        if (globalVar->use_empty() &&
-            globalVar->getLinkage() != GlobalValue::CommonLinkage &&
-            globalVar->getLinkage() != GlobalValue::ExternalLinkage)
+        // If this variable isn't used, don't add it to the buffer.
+        if (globalVar->use_empty())
         {
             continue;
         }

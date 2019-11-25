@@ -1779,10 +1779,9 @@ namespace IGC
             IGC_IS_FLAG_DISABLED(DisableDSDualPatch);
     }
 
-    Function* getUniqueEntryFunc(const IGCMD::MetaDataUtils* pM, IGC::ModuleMetaData* pModMD)
+    Function* getUniqueEntryFunc(const IGCMD::MetaDataUtils* pM)
     {
         Function* entryFunc = nullptr;
-        auto& FuncMD = pModMD->FuncMD;
         for (auto i = pM->begin_FunctionsInfo(), e = pM->end_FunctionsInfo(); i != e; ++i)
         {
             IGCMD::FunctionInfoMetaDataHandle Info = i->second;
@@ -1791,23 +1790,17 @@ namespace IGC
                 continue;
             }
 
-            Function* F = i->first;
+            const Function* F = i->first;
             if (!entryFunc)
             {
-                entryFunc = F;
+                entryFunc = const_cast<Function*>(F);
             }
-
-            auto fi = FuncMD.find(F);
-            assert(fi != FuncMD.end());
-            if (fi->second.isUniqueEntry)
+            else
             {
-                return F;
+                assert(false && "Not a single entry func!");
             }
         }
         assert(entryFunc && "No entry func!");
-        auto ei = FuncMD.find(entryFunc);
-        assert(ei != FuncMD.end());
-        ei->second.isUniqueEntry = true;
         return entryFunc;
     }
 
