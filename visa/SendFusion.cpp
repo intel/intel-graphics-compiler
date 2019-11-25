@@ -1196,7 +1196,7 @@ void SendFusion::createDMask(G4_BB* bb, INST_LIST_ITER InsertBeforePos)
 //
 //     (W) and (1|M0) r11.0<1>:ud ce0.0<0;1,0>:ud DMaskUD
 //     (W) mov (2|M0) r12.0<1>:ub r11.0<0;1,0>:ub
-//     (W) mov (1|M0) f0.0<1>:uw 0:ud r12.0<1>:uw
+//     (W) mov (1|M0) f0.0<1>:uw  r12.0<1>:uw
 //
 // where DMaskUD is computed in createDMask. Note that those instructions are
 // right before the location of first send fusion, not in the begining of BB
@@ -1221,9 +1221,6 @@ void SendFusion::createFlagPerBB(G4_BB* bb, INST_LIST_ITER InsertBeforePos)
         G4_DstRegRegion* flag = Builder->createDstRegRegion(
             Direct, flagVar, 0, 0, 1, Type_UW);
 
-        // (W) mov (1|M0) WAce0:uw, 0
-        // cmp (16|M5) (eq)WAce0 r0:uw r0:uw
-        // (W) mov(1|M0) dstPixelMaskRgn:uw  WAce0:uw
         G4_INST* I0 = Builder->createMov(1, flag,
             Builder->createImm(0, Type_UW), InstOpt_WriteEnable, false);
         bb->insert(InsertBeforePos, I0);
