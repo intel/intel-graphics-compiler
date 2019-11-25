@@ -373,6 +373,10 @@ namespace IGC
         return true;
     }
 
+    bool NeedsHDCFenceBeforeEOTInPixelShader() const
+    {
+        return false;
+    }
     // ***** Below go accessor methods for testing WA data from WA_TABLE *****
 
     bool WaDoNotPushConstantsForAllPulledGSTopologies() const
@@ -473,6 +477,11 @@ namespace IGC
             (m_SkuTable.FtrWddm2Svm != 0 || m_platformInfo.eRenderCoreFamily == IGFX_GEN10_CORE ||
                 m_platformInfo.eRenderCoreFamily == IGFX_GEN11_CORE);
 
+    }
+
+    bool WaInsertHDCFenceBeforeEOTWhenSparseAliasedResources() const
+    {
+        return IGFX_GEN11_CORE >= m_platformInfo.eRenderCoreFamily;
     }
 
         const SCompilerHwCaps& GetCaps() { return m_caps; }
