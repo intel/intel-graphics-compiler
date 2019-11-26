@@ -35,7 +35,7 @@ using namespace llvm;
 using namespace IGC;
 
 namespace {
-    class TimeStatsCounter : public FunctionPass {
+    class TimeStatsCounter : public ModulePass {
         CodeGenContext* ctx;
         COMPILE_TIME_INTERVALS interval;
         TimeStatsCounterStartEndMode mode;
@@ -45,11 +45,11 @@ namespace {
     public:
         static char ID;
 
-        TimeStatsCounter() : FunctionPass(ID) {
+        TimeStatsCounter() : ModulePass(ID) {
             initializeTimeStatsCounterPass(*PassRegistry::getPassRegistry());
         }
 
-        TimeStatsCounter(CodeGenContext* _ctx, COMPILE_TIME_INTERVALS _interval, TimeStatsCounterStartEndMode _mode) : FunctionPass(ID) {
+        TimeStatsCounter(CodeGenContext* _ctx, COMPILE_TIME_INTERVALS _interval, TimeStatsCounterStartEndMode _mode) : ModulePass(ID) {
             initializeTimeStatsCounterPass(*PassRegistry::getPassRegistry());
             ctx = _ctx;
             interval = _interval;
@@ -57,7 +57,7 @@ namespace {
             type = STATS_COUNTER_ENUM_TYPE;
         }
 
-        TimeStatsCounter(CodeGenContext* _ctx, std::string _igcPass, TimeStatsCounterStartEndMode _mode) : FunctionPass(ID) {
+        TimeStatsCounter(CodeGenContext* _ctx, std::string _igcPass, TimeStatsCounterStartEndMode _mode) : ModulePass(ID) {
             initializeTimeStatsCounterPass(*PassRegistry::getPassRegistry());
             ctx = _ctx;
             mode = _mode;
@@ -65,18 +65,18 @@ namespace {
             type = STATS_COUNTER_LLVM_PASS;
         }
 
-        bool runOnFunction(Function&) override;
+        bool runOnModule(Module&) override;
 
     private:
 
     };
 } // End anonymous namespace
 
-FunctionPass* IGC::createTimeStatsCounterPass(CodeGenContext* _ctx, COMPILE_TIME_INTERVALS _interval, TimeStatsCounterStartEndMode _mode) {
+ModulePass* IGC::createTimeStatsCounterPass(CodeGenContext* _ctx, COMPILE_TIME_INTERVALS _interval, TimeStatsCounterStartEndMode _mode) {
     return new TimeStatsCounter(_ctx, _interval, _mode);
 }
 
-FunctionPass* IGC::createTimeStatsIGCPass(CodeGenContext* _ctx, std::string _igcPass, TimeStatsCounterStartEndMode _mode)
+ModulePass* IGC::createTimeStatsIGCPass(CodeGenContext* _ctx, std::string _igcPass, TimeStatsCounterStartEndMode _mode)
 {
     return new TimeStatsCounter(_ctx, _igcPass, _mode);
 }
@@ -92,7 +92,7 @@ namespace IGC {
         IGC_INITIALIZE_PASS_END(TimeStatsCounter, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
 }
 
-bool TimeStatsCounter::runOnFunction(Function& F) {
+bool TimeStatsCounter::runOnModule(Module& F) {
     if (type == STATS_COUNTER_ENUM_TYPE)
     {
         if (mode == STATS_COUNTER_START)

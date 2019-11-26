@@ -46,7 +46,7 @@ namespace IGC {
         STATS_COUNTER_ENUM_TYPE
     };
 
-    llvm::FunctionPass* createTimeStatsCounterPass(CodeGenContext* _ctx, COMPILE_TIME_INTERVALS _interval, TimeStatsCounterStartEndMode _mode);
-    llvm::FunctionPass* createTimeStatsIGCPass(CodeGenContext* _ctx, std::string _igcPass, TimeStatsCounterStartEndMode _mode);
+    llvm::ModulePass* createTimeStatsCounterPass(CodeGenContext* _ctx, COMPILE_TIME_INTERVALS _interval, TimeStatsCounterStartEndMode _mode);
+    llvm::ModulePass* createTimeStatsIGCPass(CodeGenContext* _ctx, std::string _igcPass, TimeStatsCounterStartEndMode _mode);
     void initializeTimeStatsCounterPass(llvm::PassRegistry&);
 } // End namespace IGC

@@ -14,6 +14,7 @@ DEFINE_TIME_STAT(  TIME_TOTAL,                                   "Total",       
 DEFINE_TIME_STAT(    TIME_ASMToLLVMIR,                           "ASMToLLVMIR",                            TIME_TOTAL,                         false,         false,          true,           true )
 DEFINE_TIME_STAT(    TIME_OCL_LazyBiFLoading,                    "OCL LazyBiFLoading",                     TIME_TOTAL,                         false,         false,          true,           true )
 DEFINE_TIME_STAT(    TIME_UnificationPasses,                     "UnificationPasses",                      TIME_TOTAL,                         false,         false,          true,           true )
+DEFINE_TIME_STAT(      TIME_Unify_BuiltinImport,                 "UnifyBuiltinImport",                     TIME_UnificationPasses,             false,         false,          false,          true )
 DEFINE_TIME_STAT(    TIME_OptimizationPasses,                    "OptimizationPasses",                     TIME_TOTAL,                         false,         false,          true,           true )
 DEFINE_TIME_STAT(    TIME_CodeGen,                               "CodeGen",                                TIME_TOTAL,                         false,         false,          false,          true )
 DEFINE_TIME_STAT(      TIME_CG_Add_Passes,                       "CodeGen Add Passes",                     TIME_CodeGen,                       false,         false,          false,          true )

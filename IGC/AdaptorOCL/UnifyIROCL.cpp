@@ -124,6 +124,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Compiler/DebugInfo/VISADebugEmitter.hpp"
 #include "Compiler/CISACodeGen/DebugInfo.hpp"
+#include "Compiler/CISACodeGen/TimeStatsCounter.h"
 
 #include <string>
 #include <algorithm>
@@ -305,7 +306,9 @@ static void CommonOCLBasedPasses(
     }
 
     mpm.add(new PreBIImportAnalysis());
+    mpm.add(createTimeStatsCounterPass(pContext, TIME_Unify_BuiltinImport, STATS_COUNTER_START));
     mpm.add(createBuiltInImportPass(std::move(BuiltinGenericModule), std::move(BuiltinSizeModule)));
+    mpm.add(createTimeStatsCounterPass(pContext, TIME_Unify_BuiltinImport, STATS_COUNTER_END));
     mpm.add(new UndefinedReferencesPass());
 
     // Estimate maximal function size in the module and disable subroutine if not profitable.
