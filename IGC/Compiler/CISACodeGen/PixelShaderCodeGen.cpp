@@ -1123,7 +1123,7 @@ namespace IGC
         }
         if (simdMode == SIMDMode::SIMD16 && EP.m_ShaderMode == ShaderDispatchMode::NOT_APPLICABLE)
         {
-            if (IGC_IS_FLAG_ENABLED(ForcePSBestSIMD) || IsStage1BestPerf(ctx->m_CgFlag, ctx->m_StagingCtx))
+            if (IsStage1BestPerf(ctx->m_CgFlag, ctx->m_StagingCtx))
             {
                 return true;
             }
