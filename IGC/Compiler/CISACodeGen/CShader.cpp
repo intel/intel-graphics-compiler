@@ -1786,12 +1786,19 @@ static e_alignment GetPreferredAlignmentOnUse(llvm::Value* V, WIAnalysis* WIA,
 {
     auto getAlign = [](Value* aV, WIAnalysis* aWIA, CodeGenContext* pCtx) -> e_alignment
     {
-        // If uniform variables are once used by uniform loads, stores, or atomic
-        // ops, they need being GRF aligned.
+        // Once uniform variables are used by uniform loads, stores, or atomic
+        // ops, they need being GRF aligned, except that for block read/write
+        // or vector load/store with > 1 elements.  The block read/write's address
+        // is just a field in its header payload so no need to grf-aligned; Vector
+        // load/store with > 1 elements needs to create a new cvar anyway to hold
+        // scatter load/store address [see detail in vector load/store].
         for (auto UI = aV->user_begin(), UE = aV->user_end(); UI != UE; ++UI) {
-            if (LoadInst* ST = dyn_cast<LoadInst>(*UI)) {
-                Value* Ptr = ST->getPointerOperand();
-                if (aWIA->whichDepend(Ptr) == WIAnalysis::UNIFORM) {
+            if (LoadInst* LI = dyn_cast<LoadInst>(*UI)) {
+                Value* Ptr = LI->getPointerOperand();
+                // If Ptr is uniform and loads a scalar, need [2]grf-alignment.
+                VectorType* vTy = dyn_cast<VectorType>(LI->getType());
+                if (aWIA->whichDepend(Ptr) == WIAnalysis::UNIFORM &&
+                    !(vTy && vTy->getNumElements() > 1)) {
                     if (IGC::isA64Ptr(cast<PointerType>(Ptr->getType()), pCtx))
                         return EALIGN_2GRF;
                     return EALIGN_GRF;
@@ -1799,7 +1806,10 @@ static e_alignment GetPreferredAlignmentOnUse(llvm::Value* V, WIAnalysis* WIA,
             }
             if (StoreInst* ST = dyn_cast<StoreInst>(*UI)) {
                 Value* Ptr = ST->getPointerOperand();
-                if (aWIA->whichDepend(Ptr) == WIAnalysis::UNIFORM) {
+                VectorType* vTy = dyn_cast<VectorType>(ST->getValueOperand()->getType());
+                // If Ptr is uniform and stores a scalar, need [2]grf-alignment.
+                if (aWIA->whichDepend(Ptr) == WIAnalysis::UNIFORM &&
+                    !(vTy && vTy->getNumElements() > 1)) {
                     if (IGC::isA64Ptr(cast<PointerType>(Ptr->getType()), pCtx))
                         return EALIGN_2GRF;
                     return EALIGN_GRF;
