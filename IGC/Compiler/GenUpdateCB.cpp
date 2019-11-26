@@ -96,12 +96,11 @@ bool GenUpdateCB::isConstantBufferLoad(LoadInst* inst, unsigned& bufId)
     {
         if (IntToPtrInst * itop = dyn_cast<IntToPtrInst>(inst->getOperand(0)))
         {
-            if (!dyn_cast<Constant>(itop->getOperand(0)))
+            if (isa<Constant>(itop->getOperand(0)))
             {
-                return false;
+                return true;
             }
         }
-        return true;
     }
     return false;
 }
