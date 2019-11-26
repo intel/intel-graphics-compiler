@@ -70,8 +70,7 @@ typedef char CG_CTX_STATS_t;
 
 typedef struct {
     CG_CTX_STATS_t  m_stats;              // record what simd has been generated
-    char*           m_genx_binary_buffer; // GenX binary
-    unsigned long   m_genx_binary_size;   // Size of GenX binary
+    void*           m_pixelShaderGen;     // Generated pixel shader output
 } CG_CTX_t;
 
 #define IsRetry(stats)               (stats & (BIT_CG_RETRY))
