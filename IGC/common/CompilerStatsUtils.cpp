@@ -126,6 +126,7 @@ namespace IGC
                     IGC::Debug::DumpName(IGC::Debug::GetShaderOutputName())
                     .Type(shaderType)
                     .Hash(hash)
+                    .StagedInfo(context)
                     .RelativePath();
                 FILE* cStatsFile = fopen(cStatsFileName.c_str(), "wb+");
                 if (cStatsFile != NULL)
