@@ -802,6 +802,12 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         }
     }
 
+    if (m_SimdMode == SIMDMode::SIMD16 &&
+        IsStage1BestPerf(m_pCtx->m_CgFlag, m_pCtx->m_StagingCtx))
+    {
+        m_pCtx->m_doSimd32Stage2 = m_currShader->CompileSIMDSize(SIMDMode::SIMD32, *this, F);
+    }
+
     return false;
 }
 

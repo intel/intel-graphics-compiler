@@ -768,6 +768,10 @@ namespace IGC
         CG_FLAG_t m_CgFlag = FLAG_CG_ALL_SIMDS;
         // Staging context passing from Stage 1 for compile continuation
         CG_CTX_t* m_StagingCtx = nullptr;
+        // We determine whether generating SIMD32 based on SIMD16's result
+        // For staged compilation, we record if SIMD32 will be generated in Stage1, and
+        // pass it to Stage2.
+        bool m_doSimd32Stage2 = false;
 
     protected:
         // Objects pointed to by these pointers are owned by this class.
