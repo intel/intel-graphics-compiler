@@ -772,7 +772,7 @@ namespace IGC
     }
     else if (IsStage1FastCompile(ctx->m_CgFlag, ctx->m_StagingCtx))
     {
-        AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD8, !ctx->m_retryManager.IsLastTry(ctx), ShaderDispatchMode::NOT_APPLICABLE, pSignature);
+        AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD8, false, ShaderDispatchMode::NOT_APPLICABLE, pSignature);
         useRegKeySimd = true;
     }
     else

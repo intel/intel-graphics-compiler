@@ -693,13 +693,16 @@ namespace IGC
             }
         }
         {
-            if (simd8Shader)
+            if (simd8Shader && simd8Shader->m_simdProgram.m_programSize > 0)
             {
                 pKernelProgram->simd8 = *simd8Shader->ProgramOutput();
                 pShader = simd8Shader;
             }
         }
-        pShader->FillProgram(pKernelProgram);
+        if (pShader)
+        {
+            pShader->FillProgram(pKernelProgram);
+        }
     }
 
     void CPixelShader::FillProgram(SPixelShaderKernelProgram* pKernelProgram)
