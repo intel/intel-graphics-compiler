@@ -290,6 +290,7 @@ void DebugEmitter::Finalize(void*& pBuffer, unsigned int& size, bool finalize)
                 }
             }
 
+            bool emptyLoc = true;
             if (instIt != VISAIndexToInst.end())
             {
                 auto loc = (*instIt).second->getDebugLoc();
@@ -309,7 +310,15 @@ void DebugEmitter::Finalize(void*& pBuffer, unsigned int& size, bool finalize)
                     }
 
                     prevSrcLoc = loc;
+                    emptyLoc = false;
                 }
+            }
+
+            if (emptyLoc)
+            {
+                // Emit 0 as line# for unattributed lines
+                m_pStreamEmitter->EmitDwarfLocDirective(0, 0, 0, 0, 0, 0, "");
+                prevSrcLoc = DebugLoc();
             }
         }
 
