@@ -104,7 +104,8 @@ typedef enum {
     IGC_IS_FLAG_ENABLED(StagedCompilation) && \
     ((IsStage1FastCompile(flag, prev_ctx_ptr)) || \
      ((IsStage1BestPerf(flag, prev_ctx_ptr)) && \
-      !HasSimdSpill(8, stats))) \
+      ( IGC_IS_FLAG_ENABLED(ExtraRetrySIMD16) && !HasSimdSpill(8, stats)) || \
+      (!IGC_IS_FLAG_ENABLED(ExtraRetrySIMD16) && !HasSimd(8, stats)))) \
     )
 
 // Return true when simd MODE has been generated previously
