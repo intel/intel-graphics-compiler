@@ -617,8 +617,8 @@ namespace IGC
 
         case ShaderType::PIXEL_SHADER:
         {
-            NamedMDNode* coarseNode = m_pFunction->getParent()->getNamedMetadata("coarse_phase");
-            NamedMDNode* pixelNode = m_pFunction->getParent()->getNamedMetadata("pixel_phase");
+            NamedMDNode* coarseNode = m_pFunction->getParent()->getNamedMetadata(NAMED_METADATA_COARSE_PHASE);
+            NamedMDNode* pixelNode = m_pFunction->getParent()->getNamedMetadata(NAMED_METADATA_PIXEL_PHASE);
             if (coarseNode && pixelNode)
             {
                 Function* pixelPhase = llvm::mdconst::dyn_extract<Function>(pixelNode->getOperand(0)->getOperand(0));

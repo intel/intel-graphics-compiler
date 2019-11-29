@@ -119,7 +119,7 @@ bool LinkMultiRateShader::runOnModule(llvm::Module& M)
     MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     pMdUtils->clearFunctionsInfo();
     IGCMetaDataHelper::addFunction(*pMdUtils, pixelPhase);
-    NamedMDNode* coarseNode = M.getNamedMetadata("coarse_phase");
+    NamedMDNode* coarseNode = M.getNamedMetadata(NAMED_METADATA_COARSE_PHASE);
     if (coarseNode != nullptr)
     {
         Function* coarsePhase =

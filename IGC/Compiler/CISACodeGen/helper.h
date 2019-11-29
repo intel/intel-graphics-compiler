@@ -35,6 +35,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/IR/IntrinsicInst.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/DataLayout.h>
+#include <llvm/IR/Metadata.h>
 #include <llvm/IR/Operator.h>
 #include <llvm/IR/CFG.h>
 #include <llvm/IR/IRBuilder.h>
@@ -215,6 +216,23 @@ namespace IGC
         IGCMD::FunctionInfoMetaDataHandle Info = pM->getFunctionsInfoItem(F);
         assert(Info->isTypeHasValue() && "FunctionInfoMetaData missing type!");
         return Info->getType() == FunctionTypeMD::KernelFunction;
+    }
+
+    inline bool isPixelShaderPhaseFunction(const llvm::Function *CF) {
+        const llvm::Module* M = CF->getParent();
+        static const char* const phases[] = { NAMED_METADATA_COARSE_PHASE,
+                                              NAMED_METADATA_PIXEL_PHASE };
+        for (auto phase : phases) {
+            if (auto MD = M->getNamedMetadata(phase)) {
+                if (MD->getOperand(0) && MD->getOperand(0)->getOperand(0)) {
+                    auto Func = llvm::mdconst::dyn_extract<llvm::Function>(
+                        MD->getOperand(0)->getOperand(0));
+                    if (Func == CF)
+                        return true;
+                }
+            }
+        }
+        return false;
     }
 
     // Return a unique entry function.

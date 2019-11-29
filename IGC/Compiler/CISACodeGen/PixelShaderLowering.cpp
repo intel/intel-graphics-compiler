@@ -280,8 +280,8 @@ namespace IGC
 
         Function* pixelPhase = nullptr;
         Function* coarsePhase = nullptr;
-        NamedMDNode* coarseNode = F.getParent()->getNamedMetadata("coarse_phase");
-        NamedMDNode* pixelNode = F.getParent()->getNamedMetadata("pixel_phase");
+        NamedMDNode* coarseNode = F.getParent()->getNamedMetadata(NAMED_METADATA_COARSE_PHASE);
+        NamedMDNode* pixelNode = F.getParent()->getNamedMetadata(NAMED_METADATA_PIXEL_PHASE);
         bool cfgChanged = false;
         if (coarseNode)
         {

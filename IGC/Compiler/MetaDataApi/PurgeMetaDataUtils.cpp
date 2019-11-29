@@ -89,6 +89,14 @@ bool PurgeMetaDataUtils::runOnModule(Module& M)
                 // However if it's only used internally, and we somehow resolve the indirect call, we can remove it.
                 return false;
             }
+
+            if (isPixelShaderPhaseFunction(F)) {
+                // In some cases pixel shader codegen splits the compilation
+                // to phases, removing entry functions from metadata, but assumes they
+                // will be available in the next pass. Leave such functions in the module.
+                return false;
+            }
+
             F->eraseFromParent();
             return true;
         }

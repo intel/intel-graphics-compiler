@@ -332,8 +332,8 @@ void EmitPass::CreateKernelShaderMap(CodeGenContext* ctx, MetaDataUtils* pMdUtil
         {
             Function* coarsePhase = nullptr;
             Function* pixelPhase = nullptr;
-            NamedMDNode* coarseNode = ctx->getModule()->getNamedMetadata("coarse_phase");
-            NamedMDNode* pixelNode = ctx->getModule()->getNamedMetadata("pixel_phase");
+            NamedMDNode* coarseNode = ctx->getModule()->getNamedMetadata(NAMED_METADATA_COARSE_PHASE);
+            NamedMDNode* pixelNode = ctx->getModule()->getNamedMetadata(NAMED_METADATA_PIXEL_PHASE);
             if (coarseNode)
             {
                 coarsePhase = mdconst::dyn_extract<Function>(coarseNode->getOperand(0)->getOperand(0));

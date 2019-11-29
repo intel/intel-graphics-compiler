@@ -587,8 +587,8 @@ namespace IGC
 
         Function* coarsePhase = nullptr;
         Function* pixelPhase = nullptr;
-        NamedMDNode* coarseNode = pFunc->getParent()->getNamedMetadata("coarse_phase");
-        NamedMDNode* pixelNode = pFunc->getParent()->getNamedMetadata("pixel_phase");
+        NamedMDNode* coarseNode = pFunc->getParent()->getNamedMetadata(NAMED_METADATA_COARSE_PHASE);
+        NamedMDNode* pixelNode = pFunc->getParent()->getNamedMetadata(NAMED_METADATA_PIXEL_PHASE);
         if (coarseNode)
         {
             coarsePhase = llvm::mdconst::dyn_extract<Function>(coarseNode->getOperand(0)->getOperand(0));
@@ -1264,8 +1264,8 @@ namespace IGC
     {
         Function* coarsePhase = nullptr;
         Function* pixelPhase = nullptr;
-        NamedMDNode* coarseNode = ctx->getModule()->getNamedMetadata("coarse_phase");
-        NamedMDNode* pixelNode = ctx->getModule()->getNamedMetadata("pixel_phase");
+        NamedMDNode* coarseNode = ctx->getModule()->getNamedMetadata(NAMED_METADATA_COARSE_PHASE);
+        NamedMDNode* pixelNode = ctx->getModule()->getNamedMetadata(NAMED_METADATA_PIXEL_PHASE);
         if (coarseNode)
         {
             coarsePhase = mdconst::dyn_extract<Function>(coarseNode->getOperand(0)->getOperand(0));
@@ -1301,17 +1301,13 @@ namespace IGC
                 CodeGen(ctx, shaders, &signature);
 
                 // Read the phase function from metadata again as it could be changed in the PushAnalysis pass
-                coarseNode = ctx->getModule()->getNamedMetadata("coarse_phase");
-                pixelNode = ctx->getModule()->getNamedMetadata("pixel_phase");
-                if (coarseNode)
-                {
-                    coarsePhase = mdconst::dyn_extract<Function>(coarseNode->getOperand(0)->getOperand(0));
-                }
-                if (pixelNode)
-                {
-                    pixelPhase = mdconst::dyn_extract<Function>(pixelNode->getOperand(0)->getOperand(0));
-                }
-                phaseFunc = (i == 0) ? coarsePhase : pixelPhase;
+                coarseNode = ctx->getModule()->getNamedMetadata(NAMED_METADATA_COARSE_PHASE);
+                pixelNode = ctx->getModule()->getNamedMetadata(NAMED_METADATA_PIXEL_PHASE);
+
+                phaseFunc = ( i == 0) ?
+                  mdconst::dyn_extract<Function>(coarseNode->getOperand(0)->getOperand(0)) :
+                  mdconst::dyn_extract<Function>(pixelNode->getOperand(0)->getOperand(0));
+
                 shaders[phaseFunc]->FillProgram(&outputs[i]);
                 COMPILER_SHADER_STATS_PRINT(shaders[phaseFunc]->m_shaderStats, ShaderType::PIXEL_SHADER, ctx->hash, "");
                 COMPILER_SHADER_STATS_SUM(ctx->m_sumShaderStats, shaders[phaseFunc]->m_shaderStats, ShaderType::PIXEL_SHADER);
