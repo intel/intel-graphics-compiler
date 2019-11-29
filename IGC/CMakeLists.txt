@@ -3404,7 +3404,8 @@ igc_sg_define(IGC__Common_CLElfLib)
 
 add_subdirectory(GenISAIntrinsics)
 
-if(LLVM_ON_WIN32 AND (("${BUILD_TYPE}" STREQUAL "debug") OR ("${BUILD_TYPE}" STREQUAL "release-internal")))
+# SPIRV-Tools are only inlcuded in Windows Debug and ReleaseInternal builds.
+if(LLVM_ON_WIN32 AND (CMAKE_CONFIGURATION_TYPES OR ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug") OR ("${CMAKE_BUILD_TYPE}" STREQUAL "ReleaseInternal")))
     set(IGC_BUILD__SPIRV-Tools ON)
 endif()
 
@@ -3429,10 +3430,8 @@ if(IGC_BUILD__SPIRV-Tools)
     message(STATUS "Option SPIRV_SKIP_EXECUTABLES: ${SPIRV_SKIP_EXECUTABLES}")
     message(STATUS "Option SPIRV_HEADERS_SKIP_INSTALL: ${SPIRV_HEADERS_SKIP_INSTALL}")
     message(STATUS "Option SPIRV_HEADERS_SKIP_EXAMPLES: ${SPIRV_HEADERS_SKIP_EXAMPLES}")
-    # add_subdirectory("${IGC_BUILD__SPIRV-Headers_DIR}" "${IGC_BUILD__SPIRV-Headers_OUTPUT_DIR}")
-    add_subdirectory("${IGC_BUILD__SPIRV-Tools_DIR}" "${IGC_BUILD__SPIRV-Tools_OUTPUT_DIR}")
+    add_subdirectory("${IGC_BUILD__SPIRV-Tools_DIR}" "${IGC_BUILD__SPIRV-Tools_OUTPUT_DIR}" EXCLUDE_FROM_ALL)
     set(IGC_BUILD__PROJ__SPIRV-Tools "SPIRV-Tools")
-    set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS IGC_BUILD_SPIRV_TOOLS)
     unset(IGC_BUILD__SPIRV-Headers_OUTPUT_DIR)
     unset(IGC_BUILD__SPIRV-Tools_OUTPUT_DIR)
     unset(SPIRV-Headers_SOURCE_DIR)
@@ -3697,53 +3696,55 @@ foreach(_libBuildSuffix ${IGC_BUILD__MAIN_IGC_LIB_SUFFIXES})
   endif()
   unset(_targetType)
 
-
-  set(_targetLinkLine)
+  # list of libraries linked in all configurations
+  set(_targetLinkLineCommon)
+  # list of libraries additionally linked in Debug and ReleaseInternal configurations
+  set(_targetLinkLineDebugAndReleaseInternalOnly)
 
   # Generated link line for IGC static library allows to properly use it in other projects.
   if(_targetIsStatic)
-    list(APPEND _targetLinkLine
+    list(APPEND _targetLinkLineCommon
         "${IGC_BUILD__PROJ${_libBuildSuffix}}"
       )
   endif()
 
   if(LLVM_ON_WIN32)
-    list(APPEND _targetLinkLine
+    list(APPEND _targetLinkLineCommon
         "${IGC_BUILD__PROJ__AdaptorOCL}"
     )
 
     if(IGC_OPTION__USCLAUNCHER_TOOL)
-      list(APPEND _targetLinkLine
+      list(APPEND _targetLinkLineCommon
           "${IGC_BUILD__PROJ__ILAdapter}")
     endif()
 
   endif()
 
-  list(APPEND _targetLinkLine
+  list(APPEND _targetLinkLineCommon
       "${IGC_BUILD__PROJ__AdaptorOGL}"
   )
 
   if(IGC_BUILD__SPIRV-Tools)
-    list(APPEND _targetLinkLine
-      "${IGC_BUILD__PROJ__SPIRV-Tools}"
+    list(APPEND _targetLinkLineDebugAndReleaseInternalOnly
+        "${IGC_BUILD__PROJ__SPIRV-Tools}"
     )
   endif()
 
   if(IGC_BUILD__VULKAN_FRONTEND_ENABLED)
-    list(APPEND _targetLinkLine
+    list(APPEND _targetLinkLineCommon
       "${IGC_BUILD__PROJ__VulkanFrontend}"
     )
   endif()
 
 
-  list(APPEND _targetLinkLine
+  list(APPEND _targetLinkLineCommon
       "${IGC_BUILD__PROJ__Compiler}"
       "${IGC_BUILD__PROJ__GenISAIntrinsics}"
       GenX_IR
     )
 
   if(LLVM_ON_UNIX AND IGC_OPTION__BIF_LINK_BC)
-    list(APPEND _targetLinkLine
+    list(APPEND _targetLinkLineCommon
         "${IGC_BUILD__WHOLE_ARCHIVE}"
         "${IGC_BUILD__PROJ__BiFLib_OCL}"
         "${IGC_BUILD__NO_WHOLE_ARCHIVE}"
@@ -3752,12 +3753,12 @@ foreach(_libBuildSuffix ${IGC_BUILD__MAIN_IGC_LIB_SUFFIXES})
 
   # Generated link line for IGC static library allows to properly use it in other projects.
   if(_targetIsStatic)
-    list(APPEND _targetLinkLine
+    list(APPEND _targetLinkLineCommon
         "${IGC_BUILD__PROJ${_libBuildSuffix}}"
       )
   endif()
 
-  list(APPEND _targetLinkLine
+  list(APPEND _targetLinkLineCommon
       "${IGC_BUILD__START_GROUP}"
       ${IGC_BUILD__LLVM_LIBS_TO_LINK}
       "${IGC_BUILD__END_GROUP}"
@@ -3765,12 +3766,17 @@ foreach(_libBuildSuffix ${IGC_BUILD__MAIN_IGC_LIB_SUFFIXES})
 
   if(_targetIsStatic)
     # Link line for projects that use IGC as static library (allows to resolve multi-circular dependencies between libraries).
-    set("IGC_BUILD__LINK_LINE${_libBuildSuffix}"
-        ${_targetLinkLine}
+    set("IGC_BUILD__LINK_LINE_RELEASE${_libBuildSuffix}"
+        ${_targetLinkLineCommon}
+      )
+    set("IGC_BUILD__LINK_LINE_RELEASEINTERNAL_AND_DEBUG${_libBuildSuffix}"
+        ${_targetLinkLineCommon}
+        ${_targetLinkLineDebugAndReleaseInternalOnly}
       )
   else()
     target_link_libraries("${IGC_BUILD__PROJ${_libBuildSuffix}}" PRIVATE
-        ${_targetLinkLine}
+        ${_targetLinkLineCommon}
+        $<$<NOT:$<CONFIG:Release>>:${_targetLinkLineDebugAndReleaseInternalOnly}>
         ${CMAKE_DL_LIBS}
       )
     # Link line for shared / dynamic library requires only library project (all static libs are linked inside).
@@ -3780,6 +3786,11 @@ foreach(_libBuildSuffix ${IGC_BUILD__MAIN_IGC_LIB_SUFFIXES})
       )
   endif()
 endforeach()
+
+if(IGC_BUILD__SPIRV-Tools)
+    # Build only in Debug and ReleaseInternal
+    set_property(TARGET ${IGC_BUILD__PROJ__SPIRV-Tools} PROPERTY EXCLUDE_FROM_DEFAULT_BUILD_RELEASE TRUE)
+endif()
 
 #FCL
   get_property(_targetType TARGET "${IGC_BUILD__PROJ__fcl_dll}" PROPERTY TYPE)

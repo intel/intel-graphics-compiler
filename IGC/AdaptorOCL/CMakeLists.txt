@@ -5,10 +5,6 @@ set(IGC_BUILD__PROJ_LABEL__AdaptorOCL "AdaptorOCL")
 
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
 
-if(IGC_BUILD__SPIRV-Tools)
-    include_directories("${IGC_BUILD__SPIRV-Tools_DIR}/include")
-endif()
-
 #include_directories("${CMAKE_CURRENT_SOURCE_DIR}/ocl_igc_shared/executable_format")
 
   set(IGC_BUILD__SRC__AdaptorOCL
@@ -145,7 +141,8 @@ add_library("${IGC_BUILD__PROJ__AdaptorOCL}" STATIC
 
 add_dependencies("${IGC_BUILD__PROJ__AdaptorOCL}" "${IGC_BUILD__PROJ__GenISAIntrinsics}")
 if(IGC_BUILD__SPIRV-Tools)
-    add_dependencies("${IGC_BUILD__PROJ__AdaptorOCL}" "${IGC_BUILD__PROJ__SPIRV-Tools}")
+    target_compile_definitions("${IGC_BUILD__PROJ__AdaptorOCL}" PRIVATE $<$<NOT:$<CONFIG:Release>>:IGC_BUILD_SPIRV_TOOLS>)
+    target_include_directories("${IGC_BUILD__PROJ__AdaptorOCL}" PRIVATE $<$<NOT:$<CONFIG:Release>>:${IGC_BUILD__SPIRV-Tools_DIR}/include>)
 endif()
 set_property(TARGET "${IGC_BUILD__PROJ__AdaptorOCL}" PROPERTY PROJECT_LABEL "${IGC_BUILD__PROJ_LABEL__AdaptorOCL}")
 
