@@ -314,10 +314,14 @@ void DebugEmitter::Finalize(void*& pBuffer, unsigned int& size, bool finalize)
                 }
             }
 
-            if (emptyLoc)
+            if (emptyLoc && prevSrcLoc)
             {
+                auto scope = prevSrcLoc->getScope();
+
+                auto src = m_pDwarfDebug->getOrCreateSourceID(scope->getFilename(), scope->getDirectory(), m_pStreamEmitter->GetDwarfCompileUnitID());
+
                 // Emit 0 as line# for unattributed lines
-                m_pStreamEmitter->EmitDwarfLocDirective(0, 0, 0, 0, 0, 0, "");
+                m_pStreamEmitter->EmitDwarfLocDirective(src, 0, 0, 0, 0, 0, scope->getFilename());
                 prevSrcLoc = DebugLoc();
             }
         }
