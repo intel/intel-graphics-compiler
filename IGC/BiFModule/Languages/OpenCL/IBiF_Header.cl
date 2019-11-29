@@ -39,6 +39,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifdef cl_khr_fp64
 #pragma OPENCL EXTENSION cl_khr_fp64 : enable
 #endif
+#ifdef cl_khr_int64_base_atomics
+#pragma OPENCL EXTENSION cl_khr_int64_base_atomics : enable
+#endif
+#ifdef cl_khr_int64_extended_atomics
+#pragma OPENCL EXTENSION cl_khr_int64_extended_atomics : enable
+#endif
 
 #include "../../Implementation/IGCBiF_Intrinsics.cl"
 
