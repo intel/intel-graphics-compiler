@@ -49,6 +49,7 @@ void initializeCorrectlyRoundedDivSqrtPass(llvm::PassRegistry&);
 void initializeCustomSafeOptPassPass(llvm::PassRegistry&);
 void initializeCustomUnsafeOptPassPass(llvm::PassRegistry&);
 void initializeHoistFMulInLoopPassPass(llvm::PassRegistry&);
+void initializeHandleFRemInstructionsPass(llvm::PassRegistry&);
 void initializeDeSSAPass(llvm::PassRegistry&);
 void initializeDynamicTextureFoldingPass(llvm::PassRegistry&);
 void initializeExtensionArgAnalysisPass(llvm::PassRegistry&);

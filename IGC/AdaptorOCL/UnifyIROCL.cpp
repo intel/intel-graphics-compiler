@@ -58,6 +58,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/SimplifyConstant.h"
 #include "Compiler/CISACodeGen/FoldKnownWorkGroupSizes.h"
 
+#include "Compiler/HandleFRemInstructions.hpp"
 #include "Compiler/Optimizer/BuiltInFuncImport.h"
 #include "Compiler/Optimizer/CodeAssumption.hpp"
 #include "Compiler/Optimizer/Scalarizer.h"
@@ -303,6 +304,11 @@ static void CommonOCLBasedPasses(
     if (IGC_IS_FLAG_ENABLED(EnableCodeAssumption))
     {
         mpm.add(new CodeAssumption());
+    }
+
+    if (pContext->m_instrTypes.hasFRem)
+    {
+        mpm.add(new HandleFRemInstructions());
     }
 
     mpm.add(new PreBIImportAnalysis());

@@ -77,6 +77,7 @@ CheckInstrTypes::CheckInstrTypes(IGC::SInstrTypes* instrList) : FunctionPass(ID)
     instrList->hasNonPrimitiveAlloca = false;
     instrList->hasReadOnlyArray = false;
     instrList->hasBuiltin = false;
+    instrList->hasFRem = false;
     instrList->psHasSideEffect = false;
     instrList->hasDebugInfo = false;
     instrList->hasAtomics = false;
@@ -130,6 +131,11 @@ void CheckInstrTypes::visitInstruction(llvm::Instruction& I)
     if (!llvm::isa<llvm::DbgInfoIntrinsic>(&I))
     {
         g_InstrTypes->numInsts++;
+    }
+
+    if (I.getOpcode() == Instruction::FRem)
+    {
+        g_InstrTypes->hasFRem = true;
     }
 
     auto PT = dyn_cast<PointerType>(I.getType());
