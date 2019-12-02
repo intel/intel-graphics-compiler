@@ -313,6 +313,22 @@ std::unordered_map<uint32_t, uint64_t> UnpackSpecConstants(
     return outSpecConstantsMap;
 }
 
+void GenerateCompilerOptionsMD(llvm::LLVMContext &C, llvm::Module &M, llvm::StringRef options)
+{
+    llvm::SmallVector<llvm::StringRef, 8> flags;
+    llvm::StringRef sep(" ");
+    options.split(flags, sep);
+
+    std::vector<llvm::Metadata*> ValueVec;
+    for (auto flag : flags) {
+        flag = flag.trim();
+        if (!flag.empty())
+            ValueVec.push_back(llvm::MDString::get(C, flag));
+    }
+    llvm::NamedMDNode* NamedMD = M.getOrInsertNamedMetadata("opencl.compiler.options");
+    NamedMD->addOperand(llvm::MDNode::get(C, ValueVec));
+}
+
 bool ProcessElfInput(
   STB_TranslateInputArgs &InputArgs,
   STB_TranslateOutputArgs &OutputArgs,
@@ -372,15 +388,16 @@ bool ProcessElfInput(
               Context.setAsSPIRV();
               std::istringstream IS(buf);
               std::string stringErrMsg;
-              llvm::StringRef options;
-              if(InputArgs.OptionsSize > 0){
-                  options = llvm::StringRef(InputArgs.pOptions, InputArgs.OptionsSize - 1);
-              }
               std::unordered_map<uint32_t, uint64_t> specIDToSpecValueMap = UnpackSpecConstants(
                                                                                   InputArgs.pSpecConstantsIds,
                                                                                   InputArgs.pSpecConstantsValues,
                                                                                   InputArgs.SpecConstantsSize);
-              bool success = spv::ReadSPIRV(*Context.getLLVMContext(), IS, pKernelModule, options, stringErrMsg, &specIDToSpecValueMap);
+              bool success = spv::ReadSPIRV(*Context.getLLVMContext(), IS, pKernelModule, stringErrMsg, &specIDToSpecValueMap);
+              // handle OpenCL Compiler Options
+              GenerateCompilerOptionsMD(
+                  *Context.getLLVMContext(),
+                  *pKernelModule,
+                  llvm::StringRef(InputArgs.pOptions, InputArgs.OptionsSize));
 #else
               std::string stringErrMsg{ "SPIRV consumption not enabled for the TARGET." };
               bool success = false;
@@ -578,15 +595,16 @@ bool ParseInput(
         //convert SPIR-V binary to LLVM module
         std::istringstream IS(strInput);
         std::string stringErrMsg;
-        llvm::StringRef options;
-        if(pInputArgs->OptionsSize > 0){
-            options = llvm::StringRef(pInputArgs->pOptions, pInputArgs->OptionsSize);
-        }
         std::unordered_map<uint32_t, uint64_t> specIDToSpecValueMap = UnpackSpecConstants(
                                                                             pInputArgs->pSpecConstantsIds,
                                                                             pInputArgs->pSpecConstantsValues,
                                                                             pInputArgs->SpecConstantsSize);
-        bool success = spv::ReadSPIRV(oclContext, IS, pKernelModule, options, stringErrMsg, &specIDToSpecValueMap);
+        bool success = spv::ReadSPIRV(oclContext, IS, pKernelModule, stringErrMsg, &specIDToSpecValueMap);
+        // handle OpenCL Compiler Options
+        GenerateCompilerOptionsMD(
+            oclContext,
+            *pKernelModule,
+            llvm::StringRef(pInputArgs->pOptions, pInputArgs->OptionsSize));
 #else
         std::string stringErrMsg{"SPIRV consumption not enabled for the TARGET."};
         bool success = false;

@@ -1083,7 +1083,6 @@ public:
   bool transKernelMetadata();
   bool transSourceLanguage();
   bool transSourceExtension();
-  bool transCompilerOption();
   void addNamedBarrierArray();
   void findNamedBarrierKernel(Function* F, llvm::SmallPtrSet<Function*, 4> &kernel_set);
   Type *getNamedBarrierType();
@@ -3431,8 +3430,6 @@ SPIRVToLLVM::translate() {
     return false;
   if (!transSourceExtension())
     return false;
-  if (!transCompilerOption())
-    return false;
   if (!transOCLBuiltinsFromVariables())
     return false;
   if (!postProcessOCL())
@@ -3962,24 +3959,6 @@ SPIRVToLLVM::transSourceExtension() {
   return true;
 }
 
-bool
-SPIRVToLLVM::transCompilerOption() {
-  llvm::StringRef flagString = BM->getCompileFlag();
-  SmallVector<StringRef, 8> flags;
-  StringRef sep(" ");
-  flagString.split(flags, sep);
-
-  std::vector<Metadata *> ValueVec;
-  for (auto flag : flags) {
-    flag = flag.trim();
-    if (!flag.empty())
-      ValueVec.push_back(MDString::get(*Context, flag));
-  }
-  NamedMDNode *NamedMD = M->getOrInsertNamedMetadata(SPIR_MD_COMPILER_OPTIONS);
-  NamedMD->addOperand(MDNode::get(*Context, ValueVec));
-  return true;
-}
-
 __attr_unused static void dumpSPIRVBC(const char* fname, const char* data, unsigned int size)
 {
     FILE* fp;
@@ -3991,11 +3970,9 @@ __attr_unused static void dumpSPIRVBC(const char* fname, const char* data, unsig
 }
 
 bool ReadSPIRV(LLVMContext &C, std::istream &IS, Module *&M,
-    StringRef options,
     std::string &ErrMsg,
     std::unordered_map<uint32_t, uint64_t> *specConstants) {
   std::unique_ptr<SPIRVModule> BM( SPIRVModule::createSPIRVModule() );
-  BM->setCompileFlag( options );
   BM->setSpecConstantMap(specConstants);
   IS >> *BM;
   BM->resolveUnknownStructFields();

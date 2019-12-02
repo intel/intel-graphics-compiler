@@ -143,12 +143,9 @@ public:
   virtual SPIRVAddressingModelKind getAddressingModel() = 0;
   virtual const SPIRVCapSet &getCapability() const = 0;
   virtual SPIRVExtInstSetKind getBuiltinSet(SPIRVId) const = 0;
-  virtual std::string &getCompileFlag() = 0;
-  virtual void setCompileFlag(const std::string &options) = 0;
   virtual bool isSpecConstant(SPIRVWord) const = 0;
   virtual uint64_t getSpecConstant(SPIRVWord) = 0;
   virtual void setSpecConstantMap(SPIRVSpecConstantMap *) = 0;
-  virtual const std::string &getCompileFlag() const = 0;
   virtual SPIRVFunction *getEntryPoint(SPIRVExecutionModelKind, unsigned) const = 0;
   virtual std::set<std::string> &getExtension() = 0;
   virtual SPIRVFunction *getFunction(unsigned) const = 0;

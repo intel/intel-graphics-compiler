@@ -114,9 +114,6 @@ public:
   SPIRVAddressingModelKind getAddressingModel() override { return AddrModel;}
   SPIRVExtInstSetKind getBuiltinSet(SPIRVId SetId) const override;
   const SPIRVCapSet &getCapability() const override { return CapSet;}
-  const std::string &getCompileFlag() const override { return CompileFlag;}
-  std::string &getCompileFlag() override { return CompileFlag;}
-  void setCompileFlag(const std::string &options) override { CompileFlag = options; }
   bool isSpecConstant(SPIRVWord spec_id) const override {
     if(SCMap)
       return SCMap->find(spec_id) != SCMap->end();
@@ -292,7 +289,6 @@ private:
   SPIRVWord SrcLangVer;
   std::set<std::string> SrcExtension;
   std::set<std::string> SPIRVExt;
-  std::string CompileFlag;
   SPIRVAddressingModelKind AddrModel;
   SPIRVMemoryModelKind MemoryModel;
   std::string ModuleProcessed;
