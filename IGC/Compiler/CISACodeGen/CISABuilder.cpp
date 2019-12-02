@@ -3984,6 +3984,11 @@ namespace IGC
         SaveOption(vISA_EnableScalarJmp, false);
     }
 
+    if (IGC_IS_FLAG_ENABLED(ForceNoMaskToAnyhWA)) {
+        SaveOption(vISA_forceNoMaskToAnyhWA, true);
+    }
+    SaveOption(vISA_noMaskToAnyhWA, IGC_GET_FLAG_VALUE(NoMaskToAnyhWA));
+
     if (IGC_IS_FLAG_ENABLED(DisableCSEL))
     {
         SaveOption(vISA_enableCSEL, false);

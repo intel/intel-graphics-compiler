@@ -539,6 +539,7 @@ public:
 
     const Options* getOptions() const { return m_options; }
     bool getOption(vISAOptions opt) const {return m_options->getOption(opt); }
+    uint32_t getuint32Option(vISAOptions opt) const { return m_options->getuInt32Option(opt); }
     void getOption(vISAOptions opt, const char *&str) const {return m_options->getOption(opt, str); }
     void addInputArg(input_info_t * inpt);
     input_info_t * getInputArg(unsigned int index);

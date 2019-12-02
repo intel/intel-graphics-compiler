@@ -31,6 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Timer.h"
 #include "G4Verifier.h"
 #include <map>
+#include <algorithm>
 #include "LVN.h"
 #include "ifcvt.h"
 #include <random>
@@ -550,14 +551,15 @@ void Optimizer::initOptimizations()
     // is necessary, then TIMER_NUM_TIMERS can be used.
     //
     INITIALIZE_PASS(cleanMessageHeader,      vISA_LocalCleanMessageHeader, TIMER_OPTIMIZER);
+    INITIALIZE_PASS(sendFusion,              vISA_EnableSendFusion,        TIMER_OPTIMIZER);
     INITIALIZE_PASS(renameRegister,          vISA_LocalRenameRegister,     TIMER_OPTIMIZER);
     INITIALIZE_PASS(newLocalDefHoisting,     vISA_LocalDefHoist,           TIMER_OPTIMIZER);
     INITIALIZE_PASS(newLocalCopyPropagation, vISA_LocalCopyProp,           TIMER_OPTIMIZER);
-    INITIALIZE_PASS(sendFusion,              vISA_EnableSendFusion,        TIMER_OPTIMIZER);
     INITIALIZE_PASS(cselPeepHoleOpt,         vISA_enableCSEL,              TIMER_OPTIMIZER);
     INITIALIZE_PASS(optimizeLogicOperation,  vISA_EnableAlways,            TIMER_OPTIMIZER);
     INITIALIZE_PASS(HWConformityChk,         vISA_EnableAlways,            TIMER_HW_CONFORMITY);
     INITIALIZE_PASS(preRA_Schedule,          vISA_preRA_Schedule,          TIMER_PRERA_SCHEDULING);
+    INITIALIZE_PASS(preRA_HWWorkaround,      vISA_EnableAlways,            TIMER_MISC_OPTS);
     INITIALIZE_PASS(regAlloc,                vISA_EnableAlways,            TIMER_TOTAL_RA);
     INITIALIZE_PASS(removeLifetimeOps,       vISA_EnableAlways,            TIMER_MISC_OPTS);
     INITIALIZE_PASS(countBankConflicts,      vISA_OptReport,               TIMER_MISC_OPTS);
@@ -1084,6 +1086,9 @@ int Optimizer::optimization()
 
     // PreRA scheduling
     runPass(PI_preRA_Schedule);
+
+    // HW workaround before RA (assume no pseudo inst)
+    runPass(PI_preRA_HWWorkaround);
 
     // perform register allocation
     runPass(PI_regAlloc);
@@ -6671,6 +6676,27 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         return newInst;
     }
 
+    // HW WAs that are done before RA.
+    void Optimizer::preRA_HWWorkaround()
+    {
+        // -forceNoMaskToAnyWA : to force running this WA pass.
+        // By default, it is only on for TGL
+        // noMaskToAnyhWA:
+        //     bit[2]:  0 - simple insertion of flag. A new flag is added
+        //                  each time it is needed by reading ce0.0
+        //     bit[2]:  1 - optimized. May use the exisiting flag register
+        //                  or read ce0 once per each BB
+        //   bit[1:0]:  0 - off
+        //              1 - on, replacing nomask in divergent BB (conservative)
+        //              2 - on, replacing nomask in nested divergent BB(aggressive)
+        //
+        if ((builder.getuint32Option(vISA_noMaskToAnyhWA) & 0x3) > 0 &&
+            (getGenxPlatform() == GENX_TGLLP || builder.getOption(vISA_forceNoMaskToAnyhWA)))
+        {
+            replaceNoMaskWithAnyhWA();
+        }
+    }
+
     /*
     some workaround for HW restrictions.  We apply them here so as not to affect optimizations, RA, and scheduling
     [DevBDW:A]: A goto instruction must not be followed by any instruction requiring register indirect access on source operands.
@@ -11689,6 +11715,277 @@ void Optimizer::clearSendDependencies()
             if (LastInst->isFlowControl())
                 InsertBefore = std::prev(InsertBefore);
             emitRetiringMov(builder, BB, SI, InsertBefore);
+        }
+    }
+}
+
+void Optimizer::replaceNoMaskWithAnyhWA()
+{
+    if (builder.kernel.getOptions()->getTarget() == VISA_CM)
+        return;
+
+    // Return true if a NoMask inst is either send or global
+    auto isCandidateInst = [](G4_INST* Inst, FlowGraph& cfg) -> bool {
+        // pseudo should be gone at this time [skip all pseudo].
+        if (!Inst->isWriteEnableInst() ||
+            Inst->getPredicate() != nullptr ||
+            Inst->isPseudoLogic() ||
+            Inst->isPseudoKill())
+        {
+            return false;
+        }
+
+        G4_DstRegRegion* dst = Inst->getDst();
+        if (!Inst->isSend() && !(dst && cfg.globalOpndHT.isOpndGlobal(dst)))
+        {
+            return false;
+        }
+        return true;
+    };
+
+    uint32_t simdsize = builder.kernel.getSimdSize();
+    for (auto BI : fg)
+    {
+        G4_BB* BB = BI;
+        if (!BB->isInNestedDivergentBranch()) {
+            continue;
+        }
+
+        if ((builder.getuint32Option(vISA_noMaskToAnyhWA) & 0x4) == 0)
+        {
+            // simple flag insertion: every time a flag is needed, read it from ce0
+            for (auto II = BB->begin(), IE = BB->end(); II != IE; ++II)
+            {
+                G4_INST* I = *II;
+                if (!isCandidateInst(I, fg))
+                {
+                    continue;
+                }
+
+                uint32_t anylen = std::max((uint32_t)I->getExecSize(), simdsize);
+                G4_Declare* tmpFlagDecl = builder.createTempFlag(
+                    (anylen == 32) ? 2 : 1, "tFlag");
+                G4_RegVar* tmpVar = tmpFlagDecl->getRegVar();
+                G4_Type Ty = (anylen == 32) ? Type_UD : Type_UW;
+
+                G4_SrcRegRegion* ce0Src = builder.createSrcRegRegion(
+                    Mod_src_undef, Direct, builder.phyregpool.getMask0Reg(), 0, 0,
+                    builder.getRegionScalar(), Ty);
+                uint32_t mask = (anylen == 32 ? 0xFFFFFFFF : (anylen == 16 ? 0xFFFF : 0xFF));
+                G4_Imm* CMask = builder.createImm(mask, Ty);
+                G4_DstRegRegion* tmpDst = builder.createDstRegRegion(
+                    Direct, tmpVar, 0, 0, 1, Ty);
+                G4_INST* tmpInst = builder.createInternalInst(
+                    nullptr, G4_and, nullptr, false, 1, tmpDst, ce0Src, CMask,
+                    InstOpt_WriteEnable);
+                BB->insert(II, tmpInst);
+
+                G4_Predicate_Control anyh = builder.vISAPredicateToG4Predicate(
+                    PRED_CTRL_ANY, anylen);
+                G4_Predicate* newPred = builder.createPredicate(
+                    PredState_Plus, tmpVar, 0, anyh);
+                I->setPredicate(newPred);
+
+                // update defUse
+                tmpInst->addDefUse(I, Opnd_pred);
+            }
+            continue;
+        }
+
+        // Now, builder.getuint32Option(vISA_noMaskToAnyhWA) & 0x4) != 0
+        // (optimized version)
+        //
+        // How to replace NoMask:
+        //   Given the following:
+        //     [(f0.0)] goto (16||M0)  targetBB
+        //     FallThruBB:
+        //       (W) inst0   -->   (1) (~f0.0.any16h) inst0
+        //                         (2) (W) mov (1|M0) f1.0<1>:ud  ce0.0<0;1,0>:ud
+        //                             (f1.0.any16h)  inst0
+        //       ......
+        //     TargetBB:
+        //       (W) inst1   -->   (1) (f0.0.any16h) inst1
+        //                         (2) (W) mov (1|M0) f1.0<1>:ud  ce0.0<0;1,0>:ud
+        //                             (f1.0.any16h)  inst1
+        // The algo tries to use (1) if doing so has lower chance to increase flag
+        // register pressure; otherwise, it uses (2).
+
+        // 1. Check if an existing flag can be used
+        //    If BB's predecessor ends with a conditional goto instruction,
+        //    the flag of that conditional goto might be used directly
+        //    instead of reading ce0!
+        G4_Predicate* prevPred = nullptr;
+        G4_BB* predTargetBB = nullptr;
+        if (BB->Preds.size() == 1 && BB->Preds.back()->isEndWithGoto()) {
+            G4_BB* predBB = BB->Preds.back();
+            G4_INST* gotoInst = predBB->back();
+            assert(gotoInst->opcode() == G4_goto && "Last inst should be goto!");
+            G4_Predicate* pred = gotoInst->getPredicate();
+            if (predBB->Succs.size() == 2 &&
+                pred && pred->getControl() == PRED_DEFAULT) {
+                prevPred = pred;
+                predTargetBB = predBB->Succs.back();
+            }
+        }
+        bool usePrevFlag = (prevPred != nullptr);
+
+        // 2. Advance to the first candidate NoMask inst and
+        //    check if the existing flag, if any, can be used.
+        auto II = BB->begin(), IE = BB->end();
+        for (; II != IE; ++II)
+        {
+            G4_INST* I = *II;
+            if ( usePrevFlag &&
+                (I->getPredicate() != nullptr || I->getCondMod() != nullptr))
+            {
+                // If a flag is used before the first candidate NoMask inst,
+                // using prevPred would increase flag register pressure as
+                // prevPred overlaps with this flag. To be safe, don't use prevPred.
+                usePrevFlag = false;
+            }
+
+            if (isCandidateInst(I, fg))
+            {
+                // found the 1st candidate
+                break;
+            }
+        }
+        if (II == IE) {
+            // No candidate in this BB, go on to the next BB
+            continue;
+        }
+
+        // 3. Either use the prevPred or create a new flag, and replace all
+        //    remaining NoMask inst with this flag.
+        G4_RegVar* flagVarForBB = nullptr;
+        G4_INST* flagDefInst = nullptr;
+        G4_PredState state = PredState_Plus;
+        unsigned int sroff = 0;
+
+        if (usePrevFlag)
+        {
+            assert(prevPred && "prevPred should not be null here!");
+            assert(predTargetBB && "predTargetBB should not be null here");
+
+            // First, make Pred global
+            if (!fg.globalOpndHT.isOpndGlobal(prevPred))
+            {
+                fg.globalOpndHT.addGlobalOpnd(prevPred);
+            }
+            flagVarForBB = prevPred->getBase()->asRegVar();
+
+            if ((predTargetBB == BB && prevPred->getState() == PredState_Minus) ||
+                (predTargetBB != BB && prevPred->getState() == PredState_Plus))
+            {
+                state = PredState_Minus;
+            }
+            sroff = prevPred->getSubRegOff();
+        }
+        else
+        {
+            // Create a flag var for this BB by reading ce0, also zero
+            // the upper bits that are beyond the simd width.
+            G4_Declare* flagDecl = builder.createTempFlag(
+                simdsize > 16 ? 2 : 1, "flagPerBBWA");
+            flagVarForBB = flagDecl->getRegVar();
+            G4_Type Ty = simdsize > 16 ? Type_UD : Type_UW;
+
+            // insert inst to read ce0
+            G4_SrcRegRegion* ce0Src = builder.createSrcRegRegion(
+                Mod_src_undef, Direct, builder.phyregpool.getMask0Reg(), 0, 0,
+                builder.getRegionScalar(), Ty);
+            G4_DstRegRegion* tmpDst = builder.createDstRegRegion(
+                Direct, flagVarForBB, 0, 0, 1, Ty);
+            if (simdsize == 8)
+            {
+                G4_Imm* C0xFF = builder.createImm((uint16_t)0xFF, Ty);
+                flagDefInst = builder.createInternalInst(
+                    nullptr, G4_and, nullptr, false, 1, tmpDst, ce0Src, C0xFF,
+                    InstOpt_WriteEnable);
+            }
+            else
+            {
+                flagDefInst = builder.createMov(
+                    1, tmpDst, ce0Src, InstOpt_WriteEnable, false);
+            }
+            BB->insert(II, flagDefInst);
+        }
+
+        for (; II != IE; ++II)
+        {
+            G4_INST* I = *II;
+            if (!isCandidateInst(I, fg))
+            {
+                continue;
+            }
+            uint32_t execsize = I->getExecSize();
+            if (execsize > simdsize)
+            {
+                //
+                // [rare case]
+                // For making sure that additional bits beyond simdsize are zero,
+                // need a new flag for two cases (f1.0 is the flag for this BB):
+                //     (1) execsize == 32
+                //         (W) and (2|M0)  f1.0<1>:uw  simdsize=8 ? 0xff : 0xffff
+                //     (2) execsise == 16 && usePrevFlag (simdsize == 8)
+                //         (W) and (1|M0)  f1.0<1>:uw  0xff:uw
+                //
+                G4_RegVar* flagVar = flagVarForBB;
+                G4_INST* tmpInst = flagDefInst;
+                if (execsize == 32 ||                 // simdsize = 8|16
+                    (execsize == 16 && usePrevFlag))  // simdsize = 8
+                {
+                    // Need a new temp flag
+                    G4_Declare* newFlagDecl = builder.createTempFlag(
+                        (execsize == 32) ? 2 : 1, "tFlag");
+                    flagVar = newFlagDecl->getRegVar();
+
+                    G4_SrcRegRegion* flagSrc = builder.createSrcRegRegion(
+                        Mod_src_undef, Direct, flagVarForBB, 0, sroff,
+                        builder.getRegionScalar(), Type_UW);
+                    G4_DstRegRegion* tmpDst = builder.createDstRegRegion(
+                        Direct, flagVar, 0, 0, 1, Type_UW);
+                    G4_Imm* IMM = builder.createImm(
+                        (simdsize == 8) ? 0xFF : 0xFFFF, Type_UW);
+                    tmpInst = builder.createInternalInst(
+                        nullptr, G4_and, nullptr, false,
+                        (execsize == 32) ? 2 : 1, tmpDst, flagSrc, IMM,
+                        InstOpt_WriteEnable);
+                    BB->insert(II, tmpInst);
+
+                    // update defUse
+                    if (!usePrevFlag) {
+                        flagDefInst->addDefUse(tmpInst, Opnd_src0);
+                    }
+                }
+
+                G4_Predicate_Control anyh = builder.vISAPredicateToG4Predicate(
+                    PRED_CTRL_ANY, execsize);
+                G4_Predicate* newPred = builder.createPredicate(state, flagVar, 0, anyh);
+                I->setPredicate(newPred);
+
+                // update defUse
+                if (flagVar != flagVarForBB ||  // new tmp flag
+                    !usePrevFlag)               // flag per BB
+                {
+                    assert(tmpInst && "tmp flag def inst should not be nullptr!");
+                    tmpInst->addDefUse(I, Opnd_pred);
+                }
+            }
+            else
+            {
+                // Common case
+                G4_Predicate_Control anyh = builder.vISAPredicateToG4Predicate(
+                    PRED_CTRL_ANY, simdsize);
+                G4_Predicate* newPred = builder.createPredicate(state, flagVarForBB, sroff, anyh);
+                I->setPredicate(newPred);
+
+                // update defUse
+                if (!usePrevFlag) {
+                    assert(flagDefInst && "flag def inst should not be nullptr!");
+                    flagDefInst->addDefUse(I, Opnd_pred);
+                }
+            }
         }
     }
 }

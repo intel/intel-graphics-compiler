@@ -162,6 +162,7 @@ class Optimizer
     bool createSmov(G4_BB *bb, G4_INST* flagMove, G4_INST* nextInst);
     bool foldCmpToCondMod(G4_BB* BB, INST_LIST_ITER& iter);
     void HWWorkaround();
+    void preRA_HWWorkaround();
     void NoSrcDepSet();
     void normalizeRegion();
     void NoDD();
@@ -249,6 +250,7 @@ private:
     void resetA0();
     void setA0toTdrForSendc();
     void replaceRetWithJmpi();
+    void replaceNoMaskWithAnyhWA();
 
     void insertHashMovs();
     void insertDummyCompactInst();
@@ -301,6 +303,7 @@ public:
         PI_cselPeepHoleOpt,
         PI_optimizeLogicOperation,
         PI_HWConformityChk,            // always
+        PI_preRA_HWWorkaround,         // always, each WA under specific control
         PI_preRA_Schedule,
         PI_regAlloc,                   // always
         PI_NoDD,

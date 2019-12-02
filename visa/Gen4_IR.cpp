@@ -3309,6 +3309,22 @@ G4_INST::isComprInvariantSrcRegion(G4_SrcRegRegion* src, int srcPos)
     }
 }
 
+bool G4_INST::isPartialWrite() const
+{
+    G4_Predicate* aPred = predicate;
+    if (aPred && G4_Predicate::isAnyH(aPred->getControl()) &&
+        builder.kernel.getOptions()->getTarget() != VISA_CM)
+    {
+        // Only for code from IGC. HW WA related.
+        if (aPred->getPredCtrlGroupSize() >= builder.kernel.getSimdSize())
+        {
+            // This is equivalent to NoMask
+            aPred = nullptr;
+        }
+    }
+    return (aPred != NULL && op != G4_sel) || op == G4_smov;
+}
+
 bool G4_INST::isAccSrcInst() const
 {
     if (srcs[0] && srcs[0]->isSrcRegRegion() && srcs[0]->asSrcRegRegion()->getBase()->isAccReg())

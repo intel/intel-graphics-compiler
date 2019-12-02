@@ -284,6 +284,21 @@ class G4_BB
     // if the block is under simd flow control
     bool inSimdFlow;
 
+    // [HW WA]
+    // If the block does not post-dominate the entry, it is considered
+    // as divergent BB. Within a divergent BB, a further divergence is
+    // considered as nested divergent.
+    //
+    // [Formal def] define root_1_divergentBB (level 1 divergent root)
+    // to be BBs that
+    //     1.  not pdom(BB, entry); and
+    //     2.  There exists P, so that idom(P, BB) && pdom(P, entry)
+    // A BB is in a nested divergent branch if  there is a root_1_divergentBB,
+    // say B1,  such that dom(B1, BB) && not pdom(BB, B1).
+    //
+    // This is set in processGoto().
+    bool inNestedDivergentBranch;
+
     // the physical pred/succ for this block (i.e., the pred/succ for this block in the BB list)
     // Note that some transformations may rearrange BB layout, so for safety it's best to recompute
     // this
@@ -369,7 +384,8 @@ public:
         traversal(0), idom(NULL), beforeCall(NULL),
         afterCall(NULL), calleeInfo(NULL), BBType(G4_BB_NONE_TYPE),
         inNaturalLoop(false), hasSendInBB(false), loopNestLevel(0), scopeID(0),
-        inSimdFlow(false), physicalPred(NULL), physicalSucc(NULL), parent(fg),
+        inSimdFlow(false), inNestedDivergentBranch(false),
+        physicalPred(NULL), physicalSucc(NULL), parent(fg),
         instList(alloc)
     {
     }
@@ -414,6 +430,9 @@ public:
 
     void     setSendInBB(bool val)        { hasSendInBB = val; }
     bool     isSendInBB()                { return hasSendInBB; }
+
+    void     setInNestedDivergentBranch(bool val) { inNestedDivergentBranch = val; }
+    bool     isInNestedDivergentBranch() const    { return inNestedDivergentBranch; }
 
     void     setNestLevel()                   {loopNestLevel ++;}
     unsigned char getNestLevel()              {return loopNestLevel;}
