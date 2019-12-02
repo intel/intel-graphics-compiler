@@ -69,8 +69,9 @@ CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(FclOclDeviceCtx, 2, 1) {
 
 CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(FclOclDeviceCtx, 3, 2) {
     CIF_INHERIT_CONSTRUCTOR();
-
+    using FclOclDeviceCtx<1>::CreateTranslationCtxImpl;
     using FclOclDeviceCtx<1>::CreateTranslationCtx;
+
     template <typename FclOclTranslationCtxInterface = FclOclTranslationCtxTagOCL>
     CIF::RAII::UPtr_t<FclOclTranslationCtxInterface> CreateTranslationCtx(CodeType::CodeType_t inType, CodeType::CodeType_t outType, CIF::Builtins::BufferSimple* err) {
         return CIF::RAII::Pack<FclOclTranslationCtxInterface>(CreateTranslationCtxImpl(FclOclTranslationCtxInterface::GetVersion(), inType, outType, err));
