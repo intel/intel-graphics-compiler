@@ -835,6 +835,10 @@ void ConstantCoalescing::MergeScatterLoad(Instruction* load,
         if (start_adj == 0 && size_adj == 0)
         {
             splitter = FindOrAddChunkExtract(cov_chunk, eltid);
+            if (!splitter)
+            {
+                return;
+            }
         }
         else if (start_adj > 0)
         {
@@ -1128,6 +1132,10 @@ void ConstantCoalescing::MergeUniformLoad(Instruction* load,
         if (start_adj == 0 && size_adj == 0)
         {
             splitter = FindOrAddChunkExtract(cov_chunk, eltid);
+            if (!splitter)
+            {
+                return;
+            }
         }
         else if (start_adj > 0)
         {
@@ -1499,6 +1507,10 @@ Instruction* ConstantCoalescing::FindOrAddChunkExtract(BufChunk* cov_chunk, uint
         Instruction* usei = dyn_cast<Instruction>(*use_it);
         assert(usei && isa<ExtractElementInst>(usei));
         ConstantInt* e_idx = dyn_cast<ConstantInt>(usei->getOperand(1));
+        if (!e_idx)
+        {   //todo: temp fix, enhance later
+            return nullptr;
+        }
         assert(e_idx);
         uint val = (uint)e_idx->getZExtValue();
         if (val == eltid - cov_chunk->chunkStart)
