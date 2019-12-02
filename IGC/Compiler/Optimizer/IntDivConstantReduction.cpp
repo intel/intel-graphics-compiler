@@ -64,7 +64,14 @@ using namespace llvm;
 // here just in case this pass gets moved around.
 struct IntDivConstantReduction : public FunctionPass
 {
+    // for 64b this enables a compare and 32b path
+    // enable this if we expect dividends to be small in pratice
+    // (e.g. get_global_id(X) is often 32b if multiple dimensions are used)
+    static const bool DYNAMIC64b_AS_32b = true;
+
     static char ID;
+
+    BinaryOperator *currDivRem = nullptr;
 
     IntDivConstantReduction();
 
@@ -106,18 +113,20 @@ struct IntDivConstantReduction : public FunctionPass
         }
 
         for (BinaryOperator *BO : divRems) {
+            currDivRem = BO;
             expandDivModByConst(F, BO, cast<ConstantInt>(BO->getOperand(1)));
         }
+        currDivRem = nullptr;
 
         return !divRems.empty();
     } // runOnFunction
 
     void expandDivModByConst(
-        Function& F,
+        Function &F,
         BinaryOperator *divRem,
         ConstantInt *divisor)
     {
-        IRBuilder<> Builder(divRem);
+        IRBuilder<> B(divRem);
 
         Value *dividend = divRem->getOperand(0);
 
@@ -133,8 +142,8 @@ struct IntDivConstantReduction : public FunctionPass
 
         Value *result = nullptr;
         Value *zero = isSigned ?
-            getConstantSInt(Builder, divisorValue.getBitWidth(), 0) :
-            getConstantUInt(Builder, divisorValue.getBitWidth(), 0);
+            getConstantSInt(B, divisorValue.getBitWidth(), 0) :
+            getConstantUInt(B, divisorValue.getBitWidth(), 0);
 
         if (uVal == 1) {
             // all bit sizes x signed and unsigned
@@ -146,18 +155,18 @@ struct IntDivConstantReduction : public FunctionPass
             if (isMod) // X%-1 == 0
                 result = zero;
             else // X/-1 == -X
-                result = Builder.CreateNeg(dividend);
+                result = B.CreateNeg(dividend);
         } else if (isSigned && isSignedPosNegPowerOf2(divisorValue)) {
             // signed power of two (positive/negative); includes minval
             result = expandPowerOf2Signed(
-                Builder, isMod, divRem, dividend, divisorValue);
+                B, isMod, divRem, dividend, divisorValue);
         } else if (!isSigned && divisorValue.isPowerOf2()) {
             result = expandPowerOf2Unsigned(
-                Builder, dividend, divisorValue, isMod);
+                B, dividend, divisorValue, isMod);
         } else {
             // non-power of twos require multiplication by a shifted reciprocal
             result = expandNonPowerOf2(
-                F, Builder, dividend, divisor, isSigned, isMod);
+                F, divRem, B, dividend, divisor, isSigned, isMod);
         }
 
         divRem->replaceAllUsesWith(result);
@@ -166,7 +175,7 @@ struct IntDivConstantReduction : public FunctionPass
     }
 
     Value *expandPowerOf2Unsigned(
-        IRBuilder<> &Builder,
+        IRBuilder<> &B,
         Value *dividend,
         const APInt &divisor,
         bool isMod)
@@ -179,10 +188,10 @@ struct IntDivConstantReduction : public FunctionPass
             if (shiftAmt == bitSize) { // X % MAX_VAL = X
                 result = dividend;
             } else { // X % 2^K = (X & ((1<<K)-1))
-                result = Builder.CreateAnd(dividend, ((1ull << shiftAmt)-1));
+                result = B.CreateAnd(dividend, ((1ull << shiftAmt)-1));
             }
         } else {
-            result = Builder.CreateLShr(dividend, shiftAmt);
+            result = B.CreateLShr(dividend, shiftAmt);
         }
         return result;
     }
@@ -190,7 +199,7 @@ struct IntDivConstantReduction : public FunctionPass
     ///////////////////////////////////////////////////////////////////////////
     // Support for powers of two (unsigned is handled in the main case)
     Value *expandPowerOf2Signed(
-        IRBuilder<> &Builder,
+        IRBuilder<> &B,
         bool isMod,
         BinaryOperator *divRem,
         Value *dividend,
@@ -224,28 +233,31 @@ struct IntDivConstantReduction : public FunctionPass
         ///////////////////////////////////////////////////////////////////////
         // Compute 2^k - 1 (to fixup negative dividends)
         Value *result = getPowerOf2SignedFixupDividend(
-            divRem, Builder, dividend, shiftAmt, twoToTheKminus1, isMod);
+            B, dividend, shiftAmt, twoToTheKminus1, isMod);
         if (isMod) {
             // C.f. Hacker's Delight 10-2
             // faster than using the re-multiply quotient and subtract
-            result = Builder.CreateAnd(result, -(1LL << shiftAmt));
-            result = Builder.CreateSub(dividend, result, "rem");
+            result = B.CreateAnd(result, -(1LL << shiftAmt));
+            result = B.CreateSub(dividend, result, "rem");
         } else {
             if (divisor.isNegative()) {
-                result = Builder.CreateAShr(result, shiftAmt, "neg_qot");
-                result = Builder.CreateNeg(result, "qot");
+                result = B.CreateAShr(result, shiftAmt, "neg_qot");
+                result = B.CreateNeg(result, "qot");
             } else {
-                result = Builder.CreateAShr(result, shiftAmt, "qot");
+                result = B.CreateAShr(result, shiftAmt, "qot");
             }
         }
 
         return result;
     }
 
-    // get's the fixed up signed dividend
+    // gets the fixed up signed dividend for power of two
+    // this selects between different methods of doing that.
+    // The value of EnableConstIntDivReduction controls this
+    //   either via shifts (3), compare and select (2),
+    //   or a via a predicated add (1 or anything else)
     Value *getPowerOf2SignedFixupDividend(
-        BinaryOperator *divRem,
-        IRBuilder<> &Builder,
+        IRBuilder<> &B,
         Value *dividend,
         int shiftAmt,
         int64_t twoToTheKminus1,
@@ -259,36 +271,13 @@ struct IntDivConstantReduction : public FunctionPass
             //   %t1 = %lshr  %t0, BIT_SIZE-K
             //   %d2 = add %dividend, %t1
             //   ... as before ...
-            Value *t0 = Builder.CreateAShr(dividend, shiftAmt - 1);
-            Value *t1 = Builder.CreateLShr(t0, bitSize - shiftAmt);
-            return Builder.CreateAdd(t1, dividend);
-        } else if (algorithm == 2) {
-            // the select() approach
-            //   %pr = icmp %n, 0
-            //   %t1 = select %pr, (2^k-1), 0
-            //   %d2 = add %dividend, %t1
-            //   ... as before ...
-            Value *twoToTheKMinusOne =
-                getConstantSInt(Builder, bitSize, twoToTheKminus1);
-            Value *zero = getConstantSInt(Builder, bitSize, 0);
-            Value *p = Builder.CreateICmpSLT(dividend, zero);
-            Value *t1 = Builder.CreateSelect(p, twoToTheKMinusOne, zero);
-            return Builder.CreateAdd(t1, dividend);
+            Value *t0 = B.CreateAShr(dividend, shiftAmt - 1);
+            Value *t1 = B.CreateLShr(t0, bitSize - shiftAmt);
+            return B.CreateAdd(t1, dividend);
         } else {
-            // a conditional add version (the default approach)
+            // this handles both the conditional add and select version.
             //
-            // since we don't have an intrinsic to conditionally add, we must
-            // emulate with a short branch (which will get simplified later)
-            //
-            //   %neg = icmp %dividend, 0
-            //   br %neg, %fix-dividend %dividend-fixed
-            //
-            //   fix-dividend:
-            //   %fixed-divisor = add %dividend, (2^K-1)
-            //
-            //   dividend-fixed:
-            //   %fixed_dividend = phi [], []
-            //   ashr ...
+            // (1) a conditional add version (the default approach)
             //
             // NOTE: we rely on the later phase to simplify to GEN ISA:
             //          cmp  (f0.0)lt  null:d num:d       0:d
@@ -296,49 +285,42 @@ struct IntDivConstantReduction : public FunctionPass
             //          asr ...
             // otherwise this is probably a losing strategy and select
             // is better
-            BasicBlock *originalBlock = Builder.GetInsertBlock();
-            Value *zero = getConstantSInt(Builder, bitSize, 0);
-            Value *isNegative = Builder.CreateICmpSLT(dividend, zero, "neg");
             //
-            auto *t = SplitBlockAndInsertIfThen(isNegative, divRem, false);
-            BasicBlock *pow2NegDividend = t->getParent();
-            pow2NegDividend->setName(
-                isMod ? "srem_power_of_2_negative" : "sdiv_power_of_2_negative");
-            BasicBlock *afterFixed = t->getSuccessor(0);
-            afterFixed->setName(isMod ? "srem_power_of_2" : "sdiv_power_of_2");
-            // resets the builder to just before the next block
-            // if (afterFixed->empty())
-            //     Builder.SetInsertPoint(afterFixed);
-            // else
-            //    Builder.SetInsertPoint(&afterFixed->front());
-            //
-            IRBuilder<> addBuilder(t);
-            addBuilder.SetInstDebugLocation(divRem);
-            Value *twoKM1 = getConstantSInt(Builder, bitSize, twoToTheKminus1);
-            Value *fixedDivisor = addBuilder.CreateAdd(
-                dividend, twoKM1, "fixed_dividend");
-            //
-            Builder.SetInsertPoint(divRem);
-            PHINode *phi =
-                Builder.CreatePHI(dividend->getType(), 2, "fixed_dividend");
-            phi->addIncoming(dividend, originalBlock);
-            phi->addIncoming(fixedDivisor, pow2NegDividend);
-            //
-            return phi;
+            // (2) using a select
+            //          cmp    (f0.0)lt  null:d num:d       0:d
+            //          sel.f0.0         rounding:d   (2^K-1):d   0:d
+            //          add              num:d   num:d  rounding:d
+            Value *zero = getConstantSInt(B, bitSize, 0);
+            Value *isNegative = B.CreateICmpSLT(dividend, zero, "is-neg");
+            ConstantInt *twoKm1 = getConstantSInt(B, bitSize, twoToTheKminus1);
+            return CreatePredicatedAdd(
+                bitSize, B, currDivRem, isNegative, dividend, twoKm1);
         }
     }
+
 
     ///////////////////////////////////////////////////////////////////////////
     // Support for non-powers of two
     Value *expandNonPowerOf2(
         Function &F,
-        IRBuilder<> &Builder,
+        BinaryOperator *divRem,
+        IRBuilder<> &B,
         Value *dividend,
         ConstantInt *divisor,
         bool isSigned,
         bool isMod)
     {
-        APInt divisorValue = divisor->getValue();
+        const APInt divisorValue = divisor->getValue();
+        if (DYNAMIC64b_AS_32b &&
+            divisorValue.getBitWidth() == 64 &&
+            valueFitsIn32b(divisorValue, isSigned))
+        {
+            // if the value is 64b and the divisor is small enough to
+            // fit into 32b, then we can possibly use 32b division
+            // (if the dividend fits in 32b)
+            return expand64bNonPowerOf2(
+                F, divRem, B, dividend, divisor, isSigned, isMod);
+        }
 
         Value *result;
         if (divisorValue.getBitWidth() < 32) {
@@ -346,54 +328,152 @@ struct IntDivConstantReduction : public FunctionPass
             // pseudo-inverse as 32b.
             //
             // NOTE: we could apply the same gimmick as with 32-64 bit,
-            // if it were important enough.  One just has to compute the
-            // magic value table etc...
+            // if it were important enough.  We just have to implement
+            // mulh for 16b
             Value *dividend32;
             ConstantInt *divisor32;
             if (isSigned) {
-                dividend32 = Builder.CreateSExt(
-                    dividend, Builder.getInt32Ty(), "dividend32");
-                divisor32 = Builder.getInt32(
+                dividend32 = B.CreateSExt(
+                    dividend, B.getInt32Ty(), "dividend32");
+                divisor32 = B.getInt32(
                     (uint32_t)divisorValue.getSExtValue());
             } else {
-                dividend32 = Builder.CreateZExt(
-                    dividend, Builder.getInt32Ty(), "dividend32");
-                divisor32 = Builder.getInt32(
+                dividend32 = B.CreateZExt(
+                    dividend, B.getInt32Ty(), "dividend32");
+                divisor32 = B.getInt32(
                     (uint32_t)divisorValue.getZExtValue());
             }
             //
             result = expandNonPowerOf2Divide(
-                F, Builder, dividend32, divisor32, isSigned);
-            result = Builder.CreateTrunc(result, dividend->getType(), "quot");
+                F, B, currDivRem, dividend32, divisor32, isSigned);
+            result = B.CreateTrunc(result, dividend->getType(), "quot");
         } else {
-            // either 32b or 64b
+            // 32b or 64b
             result = expandNonPowerOf2Divide(
-                F, Builder, dividend, divisor, isSigned);
+                F, B, currDivRem, dividend, divisor, isSigned);
         }
 
+        // if we want the remainder, we use multiplication to get it
+        // r = n - q/d
         if (isMod)
-            result = expandModFromQuotient(Builder, dividend, divisor, result);
+            result = expandModFromQuotient(B, dividend, divisor, result);
 
         return result;
     }
 
+    bool valueFitsIn32b(const APInt &value, bool isSigned) const {
+        return isSigned ?
+            (value.getSExtValue() >= std::numeric_limits<int32_t>::min() &&
+                value.getSExtValue() <= std::numeric_limits<int32_t>::max()) :
+            value.getZExtValue() <= std::numeric_limits<uint32_t>::max();
+    }
+
+    // this does a conditional check to use 32b if the value is small enough
+    Value *expand64bNonPowerOf2(
+        Function &F,
+        BinaryOperator *divRem,
+        IRBuilder<> &B,
+        Value *dividend,
+        ConstantInt *divisor,
+        bool isSigned,
+        bool isMod)
+    {
+        Value *is32b;
+        if (isSigned) {
+            ConstantInt *min32 =
+                B.getInt64((uint64_t)std::numeric_limits<int32_t>::min());
+            Value *isGteMin = B.CreateICmpSGE(dividend, min32);
+            ConstantInt *max32 =
+                B.getInt64((uint64_t)std::numeric_limits<int32_t>::max());
+            Value *isLteMax = B.CreateICmpSLE(dividend, max32);
+            is32b = B.CreateAnd(isGteMin, isLteMax);
+        } else {
+            Value *max32 = B.getInt64(
+                (uint64_t)std::numeric_limits<uint32_t>::max());
+            is32b = B.CreateICmpULE(dividend, max32);
+        }
+
+#if LLVM_VERSION_MAJOR <= 7
+        // LLVM 7 and lower have the TerminatorInst
+        // later versions simplify this to Instruction
+        using TermInst = TerminatorInst;
+#else
+        using TermInst = Instruction;
+#endif
+        TermInst *thenT = nullptr, *elseT = nullptr;
+        SplitBlockAndInsertIfThenElse(is32b, divRem, &thenT, &elseT);
+
+        ///////////////////////////////////////////////////////////////////////
+        // narrow to 32b
+        thenT->getParent()->setName(
+            isSigned ? "sdiv_pow2_64b_as_32b" : "udiv_pow2_64b_as_32b");
+        //
+        IRBuilder<> B32(thenT);
+        B32.SetCurrentDebugLocation(currDivRem->getDebugLoc());
+        Value *dividend32 = B32.CreateTrunc(dividend, B32.getInt32Ty());
+        ConstantInt *divisor32 =
+            B32.getInt32((uint32_t)divisor->getValue().getZExtValue());
+        Value *result32 =
+            expandNonPowerOf2Divide(
+                F,
+                B32,
+                thenT,
+                dividend32,
+                divisor32,
+                isSigned);
+        if (isMod) {
+            // if we're after a 64b mod and things fit in 32b, then we can
+            // use the expand-from-mod as 32b before widening back
+            result32 =
+                expandModFromQuotient(B32, dividend32, divisor32, result32);
+        }
+        // widen back to 64b
+        Value *result32_64 = isSigned ?
+            B32.CreateSExt(result32, B32.getInt64Ty()) :
+            B32.CreateZExt(result32, B32.getInt64Ty());
+
+        ///////////////////////////////////////////////////////////////////////
+        // regular 64b path
+        elseT->getParent()->setName(
+            isSigned ? "sdiv_pow2_64b" : "udiv_pow2_64b");
+        //
+        IRBuilder<> B64(elseT);
+        B64.SetCurrentDebugLocation(currDivRem->getDebugLoc());
+        Value *result64 =
+            expandNonPowerOf2Divide(F, B64, elseT, dividend, divisor, isSigned);
+        if (isMod) {
+            result64 =
+                expandModFromQuotient(B64, dividend, divisor, result64);
+        }
+
+        ///////////////////////////////////////////////////////////////////////
+        B.SetInsertPoint(divRem);
+        PHINode *phi = B.CreatePHI(dividend->getType(), 2);
+        phi->addIncoming(result32_64, thenT->getParent());
+        phi->addIncoming(result64, elseT->getParent());
+
+        return phi;
+    }
+
     Value *expandNonPowerOf2Divide(
         Function &F,
-        IRBuilder<> &Builder,
+        IRBuilder<> &B,
+        Instruction *end,
         Value *dividend,
         ConstantInt *divisor,
         bool isSigned)
     {
         return isSigned ?
             expandNonPowerOf2SignedDivide(
-                F, Builder, dividend, divisor->getValue()) :
+                F, B, end, dividend, divisor->getValue()) :
             expandNonPowerOf2UnsignedDivide(
-                F, Builder, dividend, divisor->getValue());
+                F, B,      dividend, divisor->getValue());
     }
 
     Value *expandNonPowerOf2SignedDivide(
         Function &F,
-        IRBuilder<> &Builder,
+        IRBuilder<> &B,
+        Instruction *end,
         Value *dividend,
         const APInt &divisor)
     {
@@ -410,7 +490,7 @@ struct IntDivConstantReduction : public FunctionPass
         // [positive divisor]
         //   %sgnBit = lshr %n,     31       -- add 1 if n negative
         // [negative divisor]
-        //   %sgnBit = lshr %qApx2, 31       -- add 1 if q negative (N positive)
+        //   %sgnBit = lshr %qApx2, 31       -- add 1 if q negative (N pos.)
         // %q = add  %qApx2, %sgnBit
         //
         const int bitSize = dividend->getType()->getIntegerBitWidth();
@@ -418,33 +498,39 @@ struct IntDivConstantReduction : public FunctionPass
         APInt::ms appxRecip = divisor.magic();
         //
         ConstantInt *appxRcp = getConstantSInt(
-            Builder, bitSize, appxRecip.m.getSExtValue());
+            B, bitSize, appxRecip.m.getSExtValue());
         Value *appxQ =
-            CreateMulh(F, Builder, true, dividend, appxRcp);
+            CreateMulh(F, B, true, dividend, appxRcp);
         if (divisor.isStrictlyPositive() && appxRecip.m.isNegative()) {
-            appxQ = Builder.CreateAdd(appxQ, dividend, "q_appx");
+            appxQ = B.CreateAdd(appxQ, dividend, "q_appx");
         }
         if (divisor.isNegative() && appxRecip.m.isStrictlyPositive()) {
-            appxQ = Builder.CreateSub(appxQ, dividend, "q_appx");
+            appxQ = B.CreateSub(appxQ, dividend, "q_appx");
         }
         if (appxRecip.s > 0) {
-            ConstantInt *shift =
-                getConstantSInt(Builder, bitSize, appxRecip.s);
-            appxQ = Builder.CreateAShr(appxQ, shift, "q_appx");
+            ConstantInt *shift = getConstantSInt(B, bitSize, appxRecip.s);
+            appxQ = B.CreateAShr(appxQ, shift, "q_appx");
         }
         //
         // Extract the sign bit and add it to the quotient
-        ConstantInt *shiftSignBit =
-            getConstantSInt(Builder, bitSize, bitSize - 1);
-        Value *sign = Builder.CreateLShr(appxQ, shiftSignBit, "q_sign");
-        appxQ = Builder.CreateAdd(appxQ, sign, "q");
-        //
+        if (IGC_GET_FLAG_VALUE(EnableConstIntDivReduction) == 3) {
+            ConstantInt *shiftSignBit =
+                getConstantSInt(B, bitSize, bitSize - 1);
+            Value *sign = B.CreateLShr(appxQ, shiftSignBit, "q_sign");
+            appxQ = B.CreateAdd(appxQ, sign, "q");
+        } else {
+            ConstantInt *zero = getConstantSInt(B, bitSize, 0);
+            ConstantInt *one = getConstantSInt(B, bitSize, 1);
+            Value *negative = B.CreateICmpSLT(appxQ, zero);
+            appxQ =
+                CreatePredicatedAdd(bitSize, B, end, negative, appxQ, one);
+        }
         return appxQ;
     }
 
     Value *expandNonPowerOf2UnsignedDivide(
         Function &F,
-        IRBuilder<> &Builder,
+        IRBuilder<> &B,
         Value *dividend,
         const APInt &divisor)
     {
@@ -459,24 +545,24 @@ struct IntDivConstantReduction : public FunctionPass
         Value *shiftedDividend = dividend;
         if (appxRecip.a && !divisor[0]) {
             unsigned s = divisor.countTrailingZeros();
-            shiftedDividend = Builder.CreateLShr(shiftedDividend, s);
+            shiftedDividend = B.CreateLShr(shiftedDividend, s);
             appxRecip = divisor.lshr(s).magicu(s);
             assert(!appxRecip.a && "expected to subtract now");
             assert(appxRecip.s < divisor.getBitWidth() && "undefined shift");
         }
         //
         ConstantInt *appxRcp = getConstantUInt(
-            Builder, bitSize, appxRecip.m.getZExtValue());
+            B, bitSize, appxRecip.m.getZExtValue());
         Value *appxQ =
-            CreateMulh(F, Builder, false, shiftedDividend, appxRcp);
+            CreateMulh(F, B, false, shiftedDividend, appxRcp);
         //
         if (!appxRecip.a) {
-            appxQ = Builder.CreateLShr(appxQ, appxRecip.s, "q_appx");
+            appxQ = B.CreateLShr(appxQ, appxRecip.s, "q_appx");
         } else {
-            Value *fixup = Builder.CreateSub(dividend, appxQ, "q_appx");
-            fixup = Builder.CreateLShr(fixup, 1);
-            appxQ = Builder.CreateAdd(fixup, appxQ, "q_appx");
-            appxQ = Builder.CreateLShr(appxQ, appxRecip.s - 1, "q_appx");
+            Value *fixup = B.CreateSub(dividend, appxQ, "q_appx");
+            fixup = B.CreateLShr(fixup, 1);
+            appxQ = B.CreateAdd(fixup, appxQ, "q_appx");
+            appxQ = B.CreateLShr(appxQ, appxRecip.s - 1, "q_appx");
         }
         return appxQ;
     }
@@ -494,9 +580,64 @@ struct IntDivConstantReduction : public FunctionPass
         return Builder.CreateSub(dividend, qd, "rem");
     }
 
+    ///////////////////////////////////////////////////////////////////////////
+    // various builder helpers
+    ///////////////////////////////////////////////////////////////////////////
+
+    // a conditional add via either a short branch (predicated add in GEN ISA)
+    // or via a select (select in GEN ISA)
+    //
+    // %x1 = cadd TYPE %p, %x, %addend
+    // %x1 is %x if not %p else (%x + %addend)
+    Value *CreatePredicatedAdd(
+        int bitSize,
+        IRBuilder<> &B, // current insert location
+        Instruction *end, // join point (a TerminatorInst or the DivRem op)
+        Value *pred, Value *x, Value *addend) const
+    {
+        if (IGC_GET_FLAG_VALUE(EnableConstIntDivReduction) == 2) {
+            // use a select:
+            //   %addend1 = select %p, %addend, 0
+            //   add %x, %addend1
+            Value *zero = getConstantSInt(B, bitSize, 0);
+            Value *addend1 = B.CreateSelect(pred, addend, zero);
+            return B.CreateAdd(x, addend1);
+        } else {
+            // create a short block:
+            //   parent:
+            //     ...
+            //     %x = ...
+            //     %p = icmp ...
+            //     br %p, label %cadd, label %done
+            //   cadd:
+            //     %x1 = add %x, %addend
+            //   done:
+            //     %r = phi [top,%x], [cadd,%x1]
+            //
+            // We are counting on this boiling down to
+            //  (f0.0)   add ... x, addend
+            BasicBlock *parent = B.GetInsertBlock();
+            auto *t = SplitBlockAndInsertIfThen(pred, end, false);
+            t->getParent()->setName("cond-add");
+            BasicBlock *join = t->getSuccessor(0);
+            join->setName("cond-add-join");
+            //
+            IRBuilder<> BA(t);
+            BA.SetInstDebugLocation(currDivRem);
+            Value *x1 = BA.CreateAdd(x, addend, x->getName());
+            //
+            B.SetInsertPoint(end); // restore the builder's position
+            PHINode *phi = B.CreatePHI(x->getType(), 2, x->getName());
+            phi->addIncoming(x, parent);
+            phi->addIncoming(x1, t->getParent());
+            //
+            return phi;
+        }
+    }
+
     Value *CreateMulh(
         Function &F,
-        IRBuilder<> &Builder,
+        IRBuilder<> &B,
         bool isSigned,
         Value *u,
         Value *v)
@@ -514,13 +655,13 @@ struct IntDivConstantReduction : public FunctionPass
                 F.getParent(),
                 intrinsic,
                 v->getType());
-            return Builder.CreateCall(iMulhDecl, imulhArgs, "q_appx");
+            return B.CreateCall(iMulhDecl, imulhArgs, "q_appx");
         } else if (bitWidth == 64) {
             // emulate via 64b arithmetic
             if (isSigned) {
-                return CreateMulhS64(Builder, u, v);
+                return CreateMulhS64(B, u, v);
             } else {
-                return CreateMulhU64(Builder, u, v);
+                return CreateMulhU64(B, u, v);
             }
         } else {
             assert(0 && "CreateMulH must be 32 or 64");
@@ -528,73 +669,73 @@ struct IntDivConstantReduction : public FunctionPass
         }
     }
 
-    Value *CreateMulhS64(IRBuilder<> &Builder, Value *u, Value *v) const {
+    Value *CreateMulhS64(IRBuilder<> &B, Value *u, Value *v) const {
         // This comes from Hacker's Delight 8-2.
         // Think of this as elementry schoole multiplication, but base 2^32.
-        ConstantInt *loMask = getConstantSInt(Builder, 64, 0xFFFFFFFFll);
-        ConstantInt *hiShift = getConstantSInt(Builder, 64, 32);
+        ConstantInt *loMask = getConstantSInt(B, 64, 0xFFFFFFFFll);
+        ConstantInt *hiShift = getConstantSInt(B, 64, 32);
         //
         // u64 u0 = u & 0xFFFFFFFF; s64 u1 = u >> 32;
         // u64 v0 = v & 0xFFFFFFFF; s64 v1 = v >> 32;
-        Value *u0 = Builder.CreateAnd(u, loMask, "u.lo32");
-        Value *u1 = Builder.CreateAShr(u, hiShift, "u.hi32");
-        Value *v0 = Builder.CreateAnd(v,  loMask, "v.lo32");
-        Value *v1 = Builder.CreateAShr(v, hiShift, "v.hi32");
+        Value *u0 = B.CreateAnd(u, loMask, "u.lo32");
+        Value *u1 = B.CreateAShr(u, hiShift, "u.hi32");
+        Value *v0 = B.CreateAnd(v,  loMask, "v.lo32");
+        Value *v1 = B.CreateAShr(v, hiShift, "v.hi32");
         //
         // w = u0*v0
-        Value *w0 = Builder.CreateMul(u0, v0, "w0");
+        Value *w0 = B.CreateMul(u0, v0, "w0");
         //
         // t = u1*v0 + (w0 >> 32)
-        Value *tLHS = Builder.CreateMul(u1, v0);
-        Value *tRHS = Builder.CreateLShr(w0, hiShift, "w0.lo32");
-        Value *t = Builder.CreateAdd(tLHS, tRHS, "t");
+        Value *tLHS = B.CreateMul(u1, v0);
+        Value *tRHS = B.CreateLShr(w0, hiShift, "w0.lo32");
+        Value *t = B.CreateAdd(tLHS, tRHS, "t");
         //
         // w1 = u0*v0 + (t >> 32)
-        Value *u0v1 = Builder.CreateMul(u0, v1);
-        Value *tLO32 = Builder.CreateAnd(t, loMask, "t.lo32");
-        Value *w1 = Builder.CreateAdd(u0v1, tLO32, "w1");
+        Value *u0v1 = B.CreateMul(u0, v1);
+        Value *tLO32 = B.CreateAnd(t, loMask, "t.lo32");
+        Value *w1 = B.CreateAdd(u0v1, tLO32, "w1");
         //
         // return u0*v1 + (t >> 32) + (w1 >> 32)
-        Value *u1v1 = Builder.CreateMul(u1, v1);
-        Value *tHI32 = Builder.CreateAShr(t, hiShift, "t.hi32");
-        Value *rLHS = Builder.CreateAdd(u1v1, tHI32);
-        Value *rRHS = Builder.CreateAShr(w1, hiShift, "w1.lo32");
-        Value *r = Builder.CreateAdd(rLHS, rRHS, "uv");
+        Value *u1v1 = B.CreateMul(u1, v1);
+        Value *tHI32 = B.CreateAShr(t, hiShift, "t.hi32");
+        Value *rLHS = B.CreateAdd(u1v1, tHI32);
+        Value *rRHS = B.CreateAShr(w1, hiShift, "w1.lo32");
+        Value *r = B.CreateAdd(rLHS, rRHS, "uv");
         //
         return r;
     }
 
-    Value *CreateMulhU64(IRBuilder<> &Builder, Value *u, Value *v) const {
+    Value *CreateMulhU64(IRBuilder<> &B, Value *u, Value *v) const {
         // This is the same as CreateMulhS64, but with all logical shifts.
-        ConstantInt *loMask = getConstantUInt(Builder, 64, 0xFFFFFFFFull);
-        ConstantInt *hiShift = getConstantUInt(Builder, 64, 32);
+        ConstantInt *loMask = getConstantUInt(B, 64, 0xFFFFFFFFull);
+        ConstantInt *hiShift = getConstantUInt(B, 64, 32);
         //
         // u64 u0 = u & 0xFFFFFFFF, u1 = u >> 32;
         // u64 v0 = v & 0xFFFFFFFF, v1 = v >> 32;
-        Value *u0 = Builder.CreateAnd(u, loMask, "u.lo32");
-        Value *u1 = Builder.CreateLShr(u, hiShift, "u.hi32");
-        Value *v0 = Builder.CreateAnd(v, loMask, "v.lo32");
-        Value *v1 = Builder.CreateLShr(v, hiShift, "v.hi32");
+        Value *u0 = B.CreateAnd(u, loMask, "u.lo32");
+        Value *u1 = B.CreateLShr(u, hiShift, "u.hi32");
+        Value *v0 = B.CreateAnd(v, loMask, "v.lo32");
+        Value *v1 = B.CreateLShr(v, hiShift, "v.hi32");
         //
         // w0 = u0*v0
-        Value *w0 = Builder.CreateMul(u0, v0, "w0");
+        Value *w0 = B.CreateMul(u0, v0, "w0");
         //
         // t = u1*v0 + (w0 >> 32)
-        Value *tLHS = Builder.CreateMul(u1, v0);
-        Value *tRHS = Builder.CreateLShr(w0, hiShift, "w0.lo32");
-        Value *t = Builder.CreateAdd(tLHS, tRHS, "t");
+        Value *tLHS = B.CreateMul(u1, v0);
+        Value *tRHS = B.CreateLShr(w0, hiShift, "w0.lo32");
+        Value *t = B.CreateAdd(tLHS, tRHS, "t");
         //
         // w1 = u0*v0 + (t >> 32)
-        Value *u0v1 = Builder.CreateMul(u0, v1);
-        Value *tLO32 = Builder.CreateAnd(t, loMask, "t.lo32");
-        Value *w1 = Builder.CreateAdd(u0v1, tLO32, "w1");
+        Value *u0v1 = B.CreateMul(u0, v1);
+        Value *tLO32 = B.CreateAnd(t, loMask, "t.lo32");
+        Value *w1 = B.CreateAdd(u0v1, tLO32, "w1");
         //
         // w1 = u0*v1 + (t >> 32) + (w1 >> 32)
-        Value *u1v1 = Builder.CreateMul(u1, v1);
-        Value *tHI32 = Builder.CreateLShr(t, hiShift, "t.hi32");
-        Value *rLHS = Builder.CreateAdd(u1v1, tHI32);
-        Value *rRHS = Builder.CreateLShr(w1, hiShift, "w1.lo32");
-        Value *r = Builder.CreateAdd(rLHS, rRHS, "uv");
+        Value *u1v1 = B.CreateMul(u1, v1);
+        Value *tHI32 = B.CreateLShr(t, hiShift, "t.hi32");
+        Value *rLHS = B.CreateAdd(u1v1, tHI32);
+        Value *rRHS = B.CreateLShr(w1, hiShift, "w1.lo32");
+        Value *r = B.CreateAdd(rLHS, rRHS, "uv");
         //
         return r;
     }
