@@ -1840,112 +1840,135 @@ namespace IGC
     }
 
 
+    // We allow H1 to be nullptr for the common case of adding 64-bit variable with 32-bit imm
     void CEncoder::AddPair(CVariable* Lo, CVariable* Hi, CVariable* L0, CVariable* H0, CVariable* L1, CVariable* H1) {
-    assert(m_encoderState.m_dstOperand.mod == EMOD_NONE && "addPair doesn't support saturate");
+        assert(m_encoderState.m_dstOperand.mod == EMOD_NONE && "addPair doesn't support saturate");
 
-    if (Hi == nullptr) {
-        // When Hi part is ignored, reduce 64-bit subtraction into 32-bit.
-        GenericAlu(EOPCODE_ADD, Lo, L0, L1);
-        return;
-    }
+        if (Hi == nullptr) {
+            // When Hi part is ignored, reduce 64-bit subtraction into 32-bit.
+            GenericAlu(EOPCODE_ADD, Lo, L0, L1);
+            return;
+        }
 
-    if (Lo == nullptr) {
-        // We cannot reduce the strength if only Lo is ignored.
-        Lo = m_program->GetNewVariable(Hi->GetNumberElement(), Hi->GetType(), Hi->GetAlign(), Hi->IsUniform());
-    }
+        if (Lo == nullptr) {
+            // We cannot reduce the strength if only Lo is ignored.
+            Lo = m_program->GetNewVariable(Hi->GetNumberElement(), Hi->GetType(), Hi->GetAlign(), Hi->IsUniform());
+        }
 
-    // Use `UD` only.
-    if (Lo->GetType() != ISA_TYPE_UD && Lo->GetType() != ISA_TYPE_UV) Lo = m_program->BitCast(Lo, ISA_TYPE_UD);
-    if (Hi->GetType() != ISA_TYPE_UD && Hi->GetType() != ISA_TYPE_UV) Hi = m_program->BitCast(Hi, ISA_TYPE_UD);
-    if (L0->GetType() != ISA_TYPE_UD && L0->GetType() != ISA_TYPE_UV) L0 = m_program->BitCast(L0, ISA_TYPE_UD);
-    if (H0->GetType() != ISA_TYPE_UD && H0->GetType() != ISA_TYPE_UV) H0 = m_program->BitCast(H0, ISA_TYPE_UD);
-    if (L1->GetType() != ISA_TYPE_UD && L1->GetType() != ISA_TYPE_UV) L1 = m_program->BitCast(L1, ISA_TYPE_UD);
-    if (H1->GetType() != ISA_TYPE_UD && H1->GetType() != ISA_TYPE_UV) H1 = m_program->BitCast(H1, ISA_TYPE_UD);
+        // Use `UD` only.
+        if (Lo->GetType() != ISA_TYPE_UD && Lo->GetType() != ISA_TYPE_UV) Lo = m_program->BitCast(Lo, ISA_TYPE_UD);
+        if (Hi->GetType() != ISA_TYPE_UD && Hi->GetType() != ISA_TYPE_UV) Hi = m_program->BitCast(Hi, ISA_TYPE_UD);
+        if (L0->GetType() != ISA_TYPE_UD && L0->GetType() != ISA_TYPE_UV) L0 = m_program->BitCast(L0, ISA_TYPE_UD);
+        if (H0->GetType() != ISA_TYPE_UD && H0->GetType() != ISA_TYPE_UV) H0 = m_program->BitCast(H0, ISA_TYPE_UD);
+        if (L1->GetType() != ISA_TYPE_UD && L1->GetType() != ISA_TYPE_UV) L1 = m_program->BitCast(L1, ISA_TYPE_UD);
+        if (H1 && H1->GetType() != ISA_TYPE_UD && H1->GetType() != ISA_TYPE_UV) H1 = m_program->BitCast(H1, ISA_TYPE_UD);
 
-    Common_ISA_Exec_Size ExecSize = GetAluExecSize(Lo);
-    assert(ExecSize == EXEC_SIZE_32 || ExecSize == EXEC_SIZE_16 || ExecSize == EXEC_SIZE_8 ||
-           ExecSize == EXEC_SIZE_4 || ExecSize == EXEC_SIZE_2 ||
-           ExecSize == EXEC_SIZE_1);
+        Common_ISA_Exec_Size ExecSize = GetAluExecSize(Lo);
+        assert(ExecSize == EXEC_SIZE_32 || ExecSize == EXEC_SIZE_16 || ExecSize == EXEC_SIZE_8 ||
+            ExecSize == EXEC_SIZE_4 || ExecSize == EXEC_SIZE_2 ||
+            ExecSize == EXEC_SIZE_1);
 
-    if (needsSplitting(ExecSize))
-    {
-        // Have to split it because `acc0` has only 8 elements for 32-bit
-        // integer types.
-        unsigned NumParts = 2;
-        Common_VISA_EMask_Ctrl ExecMask = GetAluEMask(Lo);
-        Common_ISA_Exec_Size FromExecSize = GetAluExecSize(Lo);
-        Common_ISA_Exec_Size ToExecSize = SplitExecSize(FromExecSize, NumParts);
+        if (needsSplitting(ExecSize))
+        {
+            // Have to split it because `acc0` has only 8 elements for 32-bit
+            // integer types.
+            unsigned NumParts = 2;
+            Common_VISA_EMask_Ctrl ExecMask = GetAluEMask(Lo);
+            Common_ISA_Exec_Size FromExecSize = GetAluExecSize(Lo);
+            Common_ISA_Exec_Size ToExecSize = SplitExecSize(FromExecSize, NumParts);
 
             VISA_PredOpnd* Pred = GetFlagOperand(m_encoderState.m_flag);
-        for (unsigned ThePart = 0; ThePart != NumParts; ++ThePart) {
-            SModifier NewDstMod = SplitVariable(FromExecSize, ToExecSize, ThePart, Lo, m_encoderState.m_dstOperand);
-            SModifier NewS0LMod = SplitVariable(FromExecSize, ToExecSize, ThePart, L0, m_encoderState.m_srcOperand[0], true);
-            SModifier NewS0HMod = SplitVariable(FromExecSize, ToExecSize, ThePart, H0, m_encoderState.m_srcOperand[1], true);
-            SModifier NewS1LMod = SplitVariable(FromExecSize, ToExecSize, ThePart, L1, m_encoderState.m_srcOperand[2], true);
-            SModifier NewS1HMod = SplitVariable(FromExecSize, ToExecSize, ThePart, H1, m_encoderState.m_srcOperand[3], true);
+            for (unsigned ThePart = 0; ThePart != NumParts; ++ThePart) {
+                SModifier NewDstMod = SplitVariable(FromExecSize, ToExecSize, ThePart, Lo, m_encoderState.m_dstOperand);
+                SModifier NewS0LMod = SplitVariable(FromExecSize, ToExecSize, ThePart, L0, m_encoderState.m_srcOperand[0], true);
+                SModifier NewS0HMod = SplitVariable(FromExecSize, ToExecSize, ThePart, H0, m_encoderState.m_srcOperand[1], true);
+                SModifier NewS1LMod = SplitVariable(FromExecSize, ToExecSize, ThePart, L1, m_encoderState.m_srcOperand[2], true);
+
                 VISA_VectorOpnd* S0L = GetSourceOperand(L0, NewS0LMod);
                 VISA_VectorOpnd* S0H = GetSourceOperand(H0, NewS0HMod);
                 VISA_VectorOpnd* S1L = GetSourceOperand(L1, NewS1LMod);
-                VISA_VectorOpnd* S1H = GetSourceOperand(H1, NewS1HMod);
                 VISA_VectorOpnd* L = GetDestinationOperand(Lo, NewDstMod);
                 VISA_VectorOpnd* H = GetDestinationOperand(Hi, NewDstMod);
                 VISA_VectorOpnd* HIn = GetSourceOperand(Hi, NewDstMod);
 
-            unsigned NumElems = 8;
+                unsigned NumElems = 8;
                 CVariable* Carry = m_program->GetNewVariable((uint16_t)NumElems, Lo->GetType(), Lo->GetAlign(), Lo->IsUniform());
                 VISA_VectorOpnd* AccOut = GetDestinationOperand(Carry, m_encoderState.m_dstOperand);
                 VISA_VectorOpnd* AccIn = GetSourceOperand(Carry, m_encoderState.m_dstOperand);
 
-            Common_VISA_EMask_Ctrl EMask = SplitEMask(FromExecSize, ToExecSize, ThePart, ExecMask);
-            V(vKernel->AppendVISAArithmeticInst(
-                ISA_ADDC, Pred, EMask, ToExecSize,
-                L, AccOut, S0L, S1L));
-            V(vKernel->AppendVISAArithmeticInst(
-                ISA_ADD, Pred, false, EMask, ToExecSize,
-                H, S0H, S1H));
-            H = GetDestinationOperand(Hi, NewDstMod);
-            V(vKernel->AppendVISAArithmeticInst(
-                ISA_ADD, Pred, false, EMask, ToExecSize,
-                H, AccIn, HIn));
-        }
+                Common_VISA_EMask_Ctrl EMask = SplitEMask(FromExecSize, ToExecSize, ThePart, ExecMask);
+                V(vKernel->AppendVISAArithmeticInst(
+                    ISA_ADDC, Pred, EMask, ToExecSize,
+                    L, AccOut, S0L, S1L));
+
+                if (H1)
+                {
+                    SModifier NewS1HMod = SplitVariable(FromExecSize, ToExecSize, ThePart, H1, m_encoderState.m_srcOperand[3], true);
+                    VISA_VectorOpnd* S1H = GetSourceOperand(H1, NewS1HMod);
+                    V(vKernel->AppendVISAArithmeticInst(
+                        ISA_ADD, Pred, false, EMask, ToExecSize,
+                        H, S0H, S1H));
+                    H = GetDestinationOperand(Hi, NewDstMod);
+                    V(vKernel->AppendVISAArithmeticInst(
+                        ISA_ADD, Pred, false, EMask, ToExecSize,
+                        H, AccIn, HIn));
+                }
+                else
+                {
+                    V(vKernel->AppendVISAArithmeticInst(
+                        ISA_ADD, Pred, false, EMask, ToExecSize,
+                        H, AccIn, S0H));
+                }
+
+            }
         }
         else {
             VISA_VectorOpnd* S0L = GetSourceOperand(L0, m_encoderState.m_srcOperand[0]);
             VISA_VectorOpnd* S0H = GetSourceOperand(H0, m_encoderState.m_srcOperand[1]);
             VISA_VectorOpnd* S1L = GetSourceOperand(L1, m_encoderState.m_srcOperand[2]);
-            VISA_VectorOpnd* S1H = GetSourceOperand(H1, m_encoderState.m_srcOperand[3]);
             VISA_VectorOpnd* L = GetDestinationOperand(Lo, m_encoderState.m_dstOperand);
             VISA_VectorOpnd* H = GetDestinationOperand(Hi, m_encoderState.m_dstOperand);
             VISA_PredOpnd* Pred = GetFlagOperand(m_encoderState.m_flag);
 
-        unsigned short NumElems = (ExecSize == EXEC_SIZE_1) ? 1 :
-                            (ExecSize == EXEC_SIZE_2) ? 2 :
-                            (ExecSize == EXEC_SIZE_4) ? 4 : 8;
+            unsigned short NumElems = (ExecSize == EXEC_SIZE_1) ? 1 :
+                (ExecSize == EXEC_SIZE_2) ? 2 :
+                (ExecSize == EXEC_SIZE_4) ? 4 : 8;
             CVariable* Carry = m_program->GetNewVariable(NumElems, Lo->GetType(), Lo->GetAlign(), Lo->IsUniform());
             VISA_VectorOpnd* AccOut = GetDestinationOperand(Carry, m_encoderState.m_dstOperand);
 
-        SModifier MidMod = m_encoderState.m_dstOperand;
-        if (Lo->IsUniform() && NumElems != 1) {
-            MidMod.region[0] = 1;
-            MidMod.region[1] = 1;
-            MidMod.region[2] = 0;
-            MidMod.specialRegion = true;
-        }
+            SModifier MidMod = m_encoderState.m_dstOperand;
+            if (Lo->IsUniform() && NumElems != 1) {
+                MidMod.region[0] = 1;
+                MidMod.region[1] = 1;
+                MidMod.region[2] = 0;
+                MidMod.specialRegion = true;
+            }
             VISA_VectorOpnd* HIn = GetSourceOperand(Hi, MidMod);
             VISA_VectorOpnd* AccIn = GetSourceOperand(Carry, MidMod);
 
-        Common_VISA_EMask_Ctrl ExecMask = GetAluEMask(Lo);
-        V(vKernel->AppendVISAArithmeticInst(
-            ISA_ADDC, Pred, ExecMask, ExecSize,
-            L, AccOut, S0L, S1L));
-        V(vKernel->AppendVISAArithmeticInst(
-            ISA_ADD, Pred, false, ExecMask, ExecSize,
-            H, S0H, S1H));
-        H = GetDestinationOperand(Hi, m_encoderState.m_dstOperand);
-        V(vKernel->AppendVISAArithmeticInst(
-            ISA_ADD, Pred, false, ExecMask, ExecSize,
-            H, AccIn, HIn));
-    }
+            Common_VISA_EMask_Ctrl ExecMask = GetAluEMask(Lo);
+            V(vKernel->AppendVISAArithmeticInst(
+                ISA_ADDC, Pred, ExecMask, ExecSize,
+                L, AccOut, S0L, S1L));
+
+            if (H1)
+            {
+                VISA_VectorOpnd* S1H = GetSourceOperand(H1, m_encoderState.m_srcOperand[3]);
+                V(vKernel->AppendVISAArithmeticInst(
+                    ISA_ADD, Pred, false, ExecMask, ExecSize,
+                    H, S0H, S1H));
+                H = GetDestinationOperand(Hi, m_encoderState.m_dstOperand);
+                V(vKernel->AppendVISAArithmeticInst(
+                    ISA_ADD, Pred, false, ExecMask, ExecSize,
+                    H, AccIn, HIn));
+            }
+            else
+            {
+                V(vKernel->AppendVISAArithmeticInst(
+                    ISA_ADD, Pred, false, ExecMask, ExecSize,
+                    H, AccIn, S0H));
+            }
+        }
     }
 
     void CEncoder::SubPair(CVariable* Lo, CVariable* Hi, CVariable* L0, CVariable* H0, CVariable* L1, CVariable* H1) {

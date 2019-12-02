@@ -14908,7 +14908,6 @@ void EmitPass::emitAddPairWithImm(CVariable* Dst, CVariable* Src,
 
     CVariable* Lo = m_currShader->GetNewVariable(NumElts, NewType, EALIGN_GRF, IsUniformDst);
     CVariable* Hi = m_currShader->GetNewVariable(NumElts, NewType, EALIGN_GRF, IsUniformDst);
-    CVariable* Zero = m_currShader->ImmToVariable(0, ISA_TYPE_UV);
     // (Lo, Hi) := AddPair(L0, H0, ImmLo, ImmHi);
     if (IsUniformDst) {
         m_encoder->SetNoMask();
@@ -14916,7 +14915,7 @@ void EmitPass::emitAddPairWithImm(CVariable* Dst, CVariable* Src,
         m_encoder->SetSrcRegion(0, 1, 1, 0);
         m_encoder->SetSrcRegion(1, 1, 1, 0);
     }
-    m_encoder->AddPair(Lo, Hi, L0, H0, Imm, Zero);
+    m_encoder->AddPair(Lo, Hi, L0, H0, Imm);
     m_encoder->Push();
 
     CVariable* DstAlias = m_currShader->GetNewAlias(Dst, NewType, 0, 0);

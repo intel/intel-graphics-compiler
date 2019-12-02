@@ -284,7 +284,7 @@ namespace IGC
         inline void USubB(CVariable* dst, CVariable* src0, CVariable* src1);
         inline void IEEESqrt(CVariable* dst, CVariable* src0);
         inline void IEEEDivide(CVariable* dst, CVariable* src0, CVariable* src1);
-        void AddPair(CVariable* Lo, CVariable* Hi, CVariable* L0, CVariable* H0, CVariable* L1, CVariable* H1);
+        void AddPair(CVariable* Lo, CVariable* Hi, CVariable* L0, CVariable* H0, CVariable* L1, CVariable* H1 = nullptr);
         void SubPair(CVariable* Lo, CVariable* Hi, CVariable* L0, CVariable* H0, CVariable* L1, CVariable* H1);
         inline void dp4a(CVariable* dst, CVariable* src0, CVariable* src1, CVariable* src2);
         void Lifetime(VISAVarLifetime StartOrEnd, CVariable* dst);
