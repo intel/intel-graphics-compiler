@@ -4411,8 +4411,7 @@ void GlobalRA::expandSpillNonStackcall(uint32_t& numRows, uint32_t& offset, shor
     {
         while (numRows >= 1)
         {
-            auto payloadToUse = builder->createSrcRegRegion(*payload);
-            payloadToUse->setRegOff(rowOffset);
+            auto payloadToUse = builder->createSrcWithNewRegOff(payload, rowOffset);
 
             auto region = builder->getRegionStride1();
 
@@ -4484,8 +4483,7 @@ void GlobalRA::expandSpillStackcall(uint32_t& numRows, uint32_t& offset, short& 
 
         auto payloadSizeInOwords = getPayloadSizeOword(numRowsOword);
 
-        auto payloadToUse = builder->createSrcRegRegion(*payload);
-        payloadToUse->setRegOff(rowOffsetOword / 2);
+        auto payloadToUse = builder->createSrcWithNewRegOff(payload, rowOffsetOword / 2);
 
         G4_DstRegRegion* dst = builder->createDstRegRegion(Direct, scratchRegDcl->getRegVar(), 0, 2, 1, Type_UD);
 

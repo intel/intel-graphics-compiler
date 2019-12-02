@@ -371,8 +371,7 @@ void SpillManager::replaceSpilledSrc(G4_BB* bb,
             }
             else
             {
-                G4_SrcRegRegion rgn(*ss, spDcl->getRegVar()); // using spDcl as new base
-                s = builder.createSrcRegRegion(rgn);
+                s = builder.createSrcWithNewBase(ss, spDcl->getRegVar()); // using spDcl as new base
             }
             inst->setSrc(s,i);
         }
@@ -389,7 +388,7 @@ void SpillManager::replaceSpilledSrc(G4_BB* bb,
 
             uint16_t num_reg = 1;
             //if access is VxH copy number of addresses based on execution size of instruction
-            if(ss->getRegion()->isRegionWH())
+            if (ss->getRegion()->isRegionWH())
             {
                 num_reg = inst->getExecSize();
             }
@@ -397,19 +396,19 @@ void SpillManager::replaceSpilledSrc(G4_BB* bb,
             G4_Declare* tmpDcl = NULL;
             bool match_found = false;
 
-            for(unsigned int j = 0; j < i; j++)
+            for (unsigned int j = 0; j < i; j++)
             {
-                G4_SrcRegRegion* analyzed_src = (G4_SrcRegRegion*) operands_analyzed[j];
-                if( analyzed_src != NULL &&
+                G4_SrcRegRegion* analyzed_src = (G4_SrcRegRegion*)operands_analyzed[j];
+                if (analyzed_src != NULL &&
                     analyzed_src->getBase()->asRegVar()->getDeclare() == ss->getBase()->asRegVar()->getDeclare() &&
-                    analyzed_src->getSubRegOff() == ss->getSubRegOff() )
+                    analyzed_src->getSubRegOff() == ss->getSubRegOff())
                 {
                     tmpDcl = declares_created[j];
                     match_found = true;
                 }
             }
 
-            if( !match_found )
+            if (!match_found)
             {
                 tmpDcl = createNewTempAddrDeclare(spDcl, num_reg);
                 operands_analyzed[i] = ss;
@@ -424,13 +423,13 @@ void SpillManager::replaceSpilledSrc(G4_BB* bb,
                     tmpDcl->getNumElems(), getGenxPlatform() >= GENX_CNL ? false : true);
             }
 
-            G4_SrcRegRegion rgn(*ss, tmpDcl->getRegVar()); // using tmpDcl as new base
-            G4_SrcRegRegion* s = builder.createSrcRegRegion(rgn);
-            s->setSubRegOff(0);
-            inst->setSrc(s,i);
-            if( !match_found )
+            // create new src from the temp address variable, with offset 0
+            auto s = builder.createIndirectSrc(ss->getModifier(), tmpDcl->getRegVar(), ss->getRegOff(), 0,
+                ss->getRegion(), ss->getType(), ss->getAddrImm());
+            inst->setSrc(s, i);
+            if (!match_found)
             {
-                pointsToAnalysis.insertAndMergeFilledAddr( ss->getBase()->asRegVar(), tmpDcl->getRegVar() );
+                pointsToAnalysis.insertAndMergeFilledAddr(ss->getBase()->asRegVar(), tmpDcl->getRegVar());
             }
         }
         else

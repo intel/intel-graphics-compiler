@@ -2812,8 +2812,7 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder
                                     if (totalElems == 32)
                                     {
                                         G4_DstRegRegion* dst = builder.createDstRegRegion(Direct, splitDcl->getRegVar(), 2, 0, 1, oldDcl->getElemType());
-                                        G4_SrcRegRegion* src = builder.Create_Src_Opnd_From_Dcl(oldDcl, builder.getRegionStride1());
-                                        src->setRegOff(2);
+                                        auto src = builder.createSrcRegRegion(Mod_src_undef, Direct, oldDcl->getRegVar(), 2, 0, builder.getRegionStride1(), oldDcl->getElemType());
                                         G4_INST* splitInst2 = builder.createMov(16, dst, src, InstOpt_WriteEnable, false);
                                         bb->insert(iter, splitInst2);
                                     }
@@ -2843,8 +2842,7 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder
                                     if (totalElems == 32)
                                     {
                                         G4_DstRegRegion* dst = builder.createDstRegRegion(Direct, newDcl->getRegVar(), 2, 0, 1, splitDcl->getElemType());
-                                        G4_SrcRegRegion* src = builder.Create_Src_Opnd_From_Dcl(splitDcl, builder.getRegionStride1());
-                                        src->setRegOff(2);
+                                        auto src = builder.createSrcRegRegion(Mod_src_undef, Direct, splitDcl->getRegVar(), 2, 0, builder.getRegionStride1(), splitDcl->getElemType());
                                         G4_INST* movInst2 = builder.createMov(16, dst, src, InstOpt_WriteEnable, false);
                                         bb->insert(iter, movInst2);
                                     }
@@ -2861,11 +2859,8 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder
                                         newSrcDcl->copyAlign(oldSrcDcl);
                                         newSrcDcl->setAliasDeclare(aliasOldSrcDcl, oldSrcDcl->getAliasOffset());
                                     }
-                                    G4_SrcRegRegion* newSrc = builder.Create_Src_Opnd_From_Dcl(newSrcDcl, oldSrc->getRegion());
-                                    newSrc->setRegOff(oldSrc->getRegOff());
-                                    newSrc->setSubRegOff(oldSrc->getSubRegOff());
-                                    newSrc->setModifier(oldSrc->getModifier());
-                                    newSrc->setType(oldSrc->getType());
+                                    auto newSrc = builder.createSrcRegRegion(oldSrc->getModifier(), Direct, newSrcDcl->getRegVar(),
+                                        oldSrc->getRegOff(), oldSrc->getSubRegOff(), oldSrc->getRegion(), oldSrc->getType());
                                     useInst->setSrc(newSrc, pos);
                                     while (aliasOldSrcDcl && aliasOldSrcDcl != oldDcl)
                                     {
@@ -2894,11 +2889,8 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder
                                         newSrcDcl->copyAlign(oldSrcDcl);
                                         newSrcDcl->setAliasDeclare(aliasOldSrcDcl, oldSrcDcl->getAliasOffset());
                                     }
-                                    G4_SrcRegRegion* newSrc = builder.Create_Src_Opnd_From_Dcl(newSrcDcl, oldSrc->getRegion());
-                                    newSrc->setRegOff(oldSrc->getRegOff());
-                                    newSrc->setSubRegOff(oldSrc->getSubRegOff());
-                                    newSrc->setModifier(oldSrc->getModifier());
-                                    newSrc->setType(oldSrc->getType());
+                                    auto newSrc = builder.createSrcRegRegion(oldSrc->getModifier(), Direct, newSrcDcl->getRegVar(),
+                                        oldSrc->getRegOff(), oldSrc->getSubRegOff(), oldSrc->getRegion(), oldSrc->getType());;
                                     useInst->setSrc(newSrc, pos);
                                     while (aliasOldSrcDcl && aliasOldSrcDcl != oldDcl)
                                     {
