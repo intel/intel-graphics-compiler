@@ -414,6 +414,17 @@ void AddImplicitArgs::replaceAllUsesWithNewOCLBuiltinFunction(CodeGenContext* ct
                     Value* fncast = builder.CreateBitCast(new_func, old_func->getType());
                     userInst->replaceUsesOfWith(old_func, fncast);
                     continue;
+                } else if (ConstantExpr *OldExpr = dyn_cast<ConstantExpr>(U)) {
+                    Constant* fncast = ConstantExpr::getBitCast(new_func, old_func->getType());
+                    SmallVector<Constant*, 8> NewOps;
+                    for (auto Op : OldExpr->operand_values()) {
+                        (Op == old_func) ?
+                            NewOps.push_back(fncast) :
+                            NewOps.push_back(cast<Constant>(Op));
+                    }
+                    auto NewExpr = OldExpr->getWithOperands(NewOps);
+                    OldExpr->replaceAllUsesWith(NewExpr);
+                    continue;
                 }
             }
         }
