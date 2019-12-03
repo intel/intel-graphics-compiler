@@ -111,6 +111,8 @@ namespace {
 
         bool runOnFunction(Function& F) override;
 
+        StringRef getPassName() const override { return "Emu64Ops"; }
+
     private:
         void getAnalysisUsage(AnalysisUsage& AU) const override {
             AU.addRequired<CodeGenContextWrapper>();
@@ -151,6 +153,11 @@ namespace {
             return Align;
         }
 
+        void copyKnownMetadata(Instruction* NewI, Instruction* OldI) const
+        {
+            // Nothing needed yet
+        }
+
         void dupMemoryAttribute(LoadInst* NewLD, LoadInst* RefLD, unsigned Off) const {
             unsigned Align = getAlignment(RefLD);
 
@@ -158,6 +165,7 @@ namespace {
             NewLD->setAlignment(unsigned(MinAlign(Align, Off)));
             NewLD->setOrdering(RefLD->getOrdering());
             IGCLLVM::CopySyncScopeID(NewLD, RefLD);
+            copyKnownMetadata(NewLD, RefLD);
         }
 
         void dupMemoryAttribute(StoreInst* NewST, StoreInst* RefST, unsigned Off) const {
@@ -167,6 +175,7 @@ namespace {
             NewST->setAlignment(unsigned(MinAlign(Align, Off)));
             NewST->setOrdering(RefST->getOrdering());
             IGCLLVM::CopySyncScopeID(NewST, RefST);
+            copyKnownMetadata(NewST, RefST);
         }
 
         bool expandArguments(Function& F);

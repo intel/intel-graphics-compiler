@@ -38,6 +38,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace IGC {
 
     llvm::FunctionPass* createGenIRLowerPass();
+    llvm::FunctionPass* createGEPLoweringPass();
 
 } // End namespace IGC
 

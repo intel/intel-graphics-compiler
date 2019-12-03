@@ -550,7 +550,18 @@ namespace IGC
     if (ctx.m_instrTypes.hasLocalLoadStore) {
         mpm.add(new BreakConstantExpr());
     }
+
+    bool KeepGEPs = false;
     mpm.add(createGenIRLowerPass());
+
+    if (KeepGEPs)
+    {
+        mpm.add(createSeparateConstOffsetFromGEPPass());
+    }
+    else
+    {
+        mpm.add(createGEPLoweringPass());
+    }
 
     mpm.add(new WorkaroundAnalysis());
     if (!isOptDisabled)
@@ -640,6 +651,11 @@ namespace IGC
         // that i128 uses are expanded to i64. This is why we need to run PeepholeTypeLegalizer
         // beforehand.
         mpm.add(new Legalizer::PeepholeTypeLegalizer());
+        // Lower all GEPs now as Emu64 doesn't know how to handle them.
+        if (KeepGEPs)
+        {
+            mpm.add(createGEPLoweringPass());
+        }
         mpm.add(createEmu64OpsPass());
     }
 

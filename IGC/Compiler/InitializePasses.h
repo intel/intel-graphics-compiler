@@ -58,6 +58,7 @@ void initializeFindInterestingConstantsPass(llvm::PassRegistry&);
 void initializeGenericAddressAnalysisPass(llvm::PassRegistry&);
 void initializeGenericAddressDynamicResolutionPass(llvm::PassRegistry&);
 void initializeGenIRLoweringPass(llvm::PassRegistry&);
+void initializeGEPLoweringPass(llvm::PassRegistry&);
 void initializeGenSpecificPatternPass(llvm::PassRegistry&);
 void initializeGreedyLiveRangeReductionPass(llvm::PassRegistry&);
 void initializeIGCIndirectICBPropagaionPass(llvm::PassRegistry&);

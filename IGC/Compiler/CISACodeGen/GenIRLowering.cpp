@@ -51,29 +51,21 @@ using namespace IGC;
 using namespace IGC::IGCMD;
 
 namespace {
-    // This pass lowers GEP into primitive ones (i.e. addition and/or
-    // multiplication, converted to shift if applicable) to expose address
-    // calculation to LLVM optimizations, such as CSE, LICM, and etc.
-    //
     class GenIRLowering : public FunctionPass {
-        const DataLayout* DL;
-        CodeGenContext* m_ctx;
-        typedef IGCIRBuilder<TargetFolder> BuilderTy;
-        BuilderTy* Builder;
-        llvm::LoopInfo* m_LI;
-
+        using BuilderTy = IGCIRBuilder<TargetFolder>;
+        BuilderTy* Builder = nullptr;
     public:
         static char ID;
 
-        GenIRLowering() : FunctionPass(ID), DL(nullptr), Builder(nullptr) {
+        GenIRLowering() : FunctionPass(ID) {
             initializeGenIRLoweringPass(*PassRegistry::getPassRegistry());
         }
 
-        virtual llvm::StringRef getPassName() const { return "GenIR Lowering"; }
+        StringRef getPassName() const override { return "GenIR Lowering"; }
 
-        virtual bool runOnFunction(Function& F);
+        bool runOnFunction(Function& F) override;
 
-        virtual void getAnalysisUsage(AnalysisUsage& AU) const {
+        void getAnalysisUsage(AnalysisUsage& AU) const override {
             AU.setPreservesCFG();
             AU.addRequired<CodeGenContextWrapper>();
             AU.addRequired<MetaDataUtilsWrapper>();
@@ -82,12 +74,6 @@ namespace {
 
     private:
         // Helpers
-        Value* getSExtOrTrunc(Value*, Type*) const;
-        Value* truncExpr(Value*, Type*) const;
-
-        bool lowerGetElementPtrInst(GetElementPtrInst* GEP,
-            BasicBlock::iterator& BBI) const;
-
         Value* rearrangeAdd(Value*, Loop*) const;
 
         bool combineFMaxFMin(CallInst* GII, BasicBlock::iterator& BBI) const;
@@ -248,27 +234,61 @@ namespace {
         return ClampWithConstants_match<OpTy, ConstTy>(Op, Min, Max);
     }
 
+    // This pass lowers GEP into primitive ones (i.e. addition and/or
+    // multiplication, converted to shift if applicable) to expose address
+    // calculation to LLVM optimizations, such as CSE, LICM, and etc.
+    //
+    class GEPLowering : public FunctionPass {
+        const DataLayout* DL = nullptr;
+        CodeGenContext* m_ctx = nullptr;
+        using BuilderTy = IGCIRBuilder<TargetFolder>;
+        BuilderTy* Builder = nullptr;
+        llvm::LoopInfo* m_LI = nullptr;
+        ModuleMetaData* modMD = nullptr;
+    public:
+        static char ID;
+
+        GEPLowering() : FunctionPass(ID) {
+            initializeGEPLoweringPass(*PassRegistry::getPassRegistry());
+        }
+
+        StringRef getPassName() const override { return "GEP Lowering"; }
+
+        bool runOnFunction(Function& F) override;
+
+        void getAnalysisUsage(AnalysisUsage& AU) const override {
+            AU.setPreservesCFG();
+            AU.addRequired<CodeGenContextWrapper>();
+            AU.addRequired<MetaDataUtilsWrapper>();
+            AU.addRequired<LoopInfoWrapperPass>();
+        }
+
+    private:
+        // Helpers
+        Value* getSExtOrTrunc(Value*, Type*) const;
+        Value* truncExpr(Value*, Type*) const;
+
+        bool lowerGetElementPtrInst(GetElementPtrInst* GEP) const;
+    };
+
+    char GEPLowering::ID = 0;
+
 } // End anonymous namespace
 
 bool GenIRLowering::runOnFunction(Function& F) {
     // Skip non-kernel function.
     MetaDataUtils* MDU = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-    m_LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
     auto FII = MDU->findFunctionsInfoItem(&F);
     if (FII == MDU->end_FunctionsInfo())
         return false;
 
     CodeGenContextWrapper* pCtxWrapper = &getAnalysis<CodeGenContextWrapper>();
-    m_ctx = pCtxWrapper->getCodeGenContext();
+    CodeGenContext* ctx = pCtxWrapper->getCodeGenContext();
 
-    DL = &F.getParent()->getDataLayout();
-    // If we don't have DL, we don't know how to calculate addresses
-    // efficiently.
-    if (!DL)
-        return false;
+    auto &DL = F.getParent()->getDataLayout();
 
-    BuilderTy TheBuilder(F.getContext(), TargetFolder(*DL));
+    BuilderTy TheBuilder(F.getContext(), TargetFolder(DL));
     Builder = &TheBuilder;
 
     bool Changed = false;
@@ -352,7 +372,6 @@ bool GenIRLowering::runOnFunction(Function& F) {
         }
     }
 
-    // Low GEP into gen.gep{32|64} in the 1st pass.
     for (auto& BB : F) {
         for (auto BI = BB.begin(), BE = BB.end(); BI != BE;) {
             Instruction* Inst = &(*BI++);
@@ -375,14 +394,11 @@ bool GenIRLowering::runOnFunction(Function& F) {
                 break;
             case Instruction::Select:
                 // Enable the pattern match only when NaNs can be ignored.
-                if (m_ctx->m_DriverInfo.IgnoreNan() ||
+                if (ctx->m_DriverInfo.IgnoreNan() ||
                     modMD->compOpt.FiniteMathOnly)
                 {
                     Changed |= combineSelectInst(cast<SelectInst>(Inst), BI);
                 }
-                break;
-            case Instruction::GetElementPtr:
-                Changed |= lowerGetElementPtrInst(cast<GetElementPtrInst>(Inst), BI);
                 break;
             }
         }
@@ -393,7 +409,47 @@ bool GenIRLowering::runOnFunction(Function& F) {
     return Changed;
 }
 
-Value* GenIRLowering::getSExtOrTrunc(Value* Val, Type* NewTy) const {
+bool GEPLowering::runOnFunction(Function& F) {
+    // Skip non-kernel function.
+    modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+    m_LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
+    MetaDataUtils* MDU = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    auto FII = MDU->findFunctionsInfoItem(&F);
+    if (FII == MDU->end_FunctionsInfo())
+        return false;
+
+    CodeGenContextWrapper* pCtxWrapper = &getAnalysis<CodeGenContextWrapper>();
+    m_ctx = pCtxWrapper->getCodeGenContext();
+
+    DL = &F.getParent()->getDataLayout();
+
+    BuilderTy TheBuilder(F.getContext(), TargetFolder(*DL));
+    Builder = &TheBuilder;
+
+    bool Changed = false;
+
+    for (auto& BB : F) {
+        for (auto BI = BB.begin(), BE = BB.end(); BI != BE;) {
+            Instruction* Inst = &(*BI++);
+            Builder->SetInsertPoint(Inst);
+
+            switch (Inst->getOpcode()) {
+            default: // By default, DO NOTHING
+                break;
+            // Lower GEPs to inttoptr/ptrtoint with offsets.
+            case Instruction::GetElementPtr:
+                Changed |=
+                    lowerGetElementPtrInst(cast<GetElementPtrInst>(Inst));
+                break;
+            }
+        }
+    }
+
+    return Changed;
+}
+
+
+Value* GEPLowering::getSExtOrTrunc(Value* Val, Type* NewTy) const {
     Type* OldTy = Val->getType();
     unsigned OldWidth = OldTy->getIntegerBitWidth();
     unsigned NewWidth = NewTy->getIntegerBitWidth();
@@ -409,7 +465,7 @@ Value* GenIRLowering::getSExtOrTrunc(Value* Val, Type* NewTy) const {
     return Val;
 }
 
-Value* GenIRLowering::truncExpr(Value* Val, Type* NewTy) const {
+Value* GEPLowering::truncExpr(Value* Val, Type* NewTy) const {
     // Truncation on Gen could be as cheap as NOP by creating the proper region.
     // Instead of truncating the value itself, try to truncate how it's
     // calculated.
@@ -519,9 +575,8 @@ Value* GenIRLowering::rearrangeAdd(Value* val, Loop* loop) const
     }
 }
 
-bool GenIRLowering::lowerGetElementPtrInst(GetElementPtrInst* GEP,
-    BasicBlock::iterator& BBI) const {
-    ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+bool GEPLowering::lowerGetElementPtrInst(GetElementPtrInst* GEP) const
+{
     Value* PtrOp = GEP->getPointerOperand();
     PointerType* PtrTy = dyn_cast<PointerType>(PtrOp->getType());
 
@@ -769,11 +824,6 @@ bool GenIRLowering::lowerGetElementPtrInst(GetElementPtrInst* GEP,
     GEP->replaceAllUsesWith(PointerValue);
     GEP->eraseFromParent();
 
-    if (Instruction * I = dyn_cast<Instruction>(PointerValue)) {
-        BBI = BasicBlock::iterator(I);
-        ++BBI;
-    }
-
     return true;
 }
 
@@ -903,7 +953,9 @@ bool GenIRLowering::combineSelectInst(SelectInst* Sel,
     return false;
 }
 
-FunctionPass* IGC::createGenIRLowerPass() { return new GenIRLowering(); }
+FunctionPass* IGC::createGenIRLowerPass() {
+    return new GenIRLowering();
+}
 
 // Register pass to igc-opt
 #define PASS_FLAG "igc-gen-ir-lowering"
@@ -916,3 +968,20 @@ IGC_INITIALIZE_PASS_BEGIN(GenIRLowering, PASS_FLAG, PASS_DESCRIPTION,
     IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
     IGC_INITIALIZE_PASS_END(GenIRLowering, PASS_FLAG, PASS_DESCRIPTION,
         PASS_CFG_ONLY, PASS_ANALYSIS)
+
+FunctionPass* IGC::createGEPLoweringPass() {
+    return new GEPLowering();
+}
+
+// Register pass to igc-opt
+#define PASS_FLAG2 "igc-gep-lowering"
+#define PASS_DESCRIPTION2 "Lowers GEP into primitive ones"
+#define PASS_CFG_ONLY2 false
+#define PASS_ANALYSIS2 false
+IGC_INITIALIZE_PASS_BEGIN(GEPLowering, PASS_FLAG2, PASS_DESCRIPTION2,
+    PASS_CFG_ONLY2, PASS_ANALYSIS2)
+    IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
+    IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
+    IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
+    IGC_INITIALIZE_PASS_END(GEPLowering, PASS_FLAG2, PASS_DESCRIPTION2,
+        PASS_CFG_ONLY2, PASS_ANALYSIS2)
