@@ -268,10 +268,10 @@ namespace IGC
         uint runtimeval0 = (uint)llvm::cast<llvm::ConstantInt>(pRuntimeVal->getOperand(0))->getZExtValue();
         PushInfo& pushInfo = m_context->getModuleMetaData()->pushInfo;
 
-        // then check for static root descriptor so that we can do push safely
+        // then check for static flag so that we can do push safely
         for (auto it : pushInfo.pushableAddresses)
         {
-            if (runtimeval0 * 4 == it.addressOffset && it.isStatic)
+            if ((runtimeval0 * 4 == it.addressOffset) && (IGC_IS_FLAG_ENABLED(DisableStaticCheck) || it.isStatic))
             {
                 GRFOffset = runtimeval0;
                 return true;

@@ -2269,7 +2269,7 @@ Constant* IGCConstProp::replaceShaderConstant(LoadInst* inst)
 
             for (auto it : pushInfo.pushableAddresses)
             {
-                if (bufIdOrGRFOffset * 4 == it.addressOffset && it.isStatic)
+                if ((bufIdOrGRFOffset * 4 == it.addressOffset) && (IGC_IS_FLAG_ENABLED(DisableStaticCheck) || it.isStatic))
                 {
                     statelessBuf = true;
                     break;
