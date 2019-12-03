@@ -4205,7 +4205,7 @@ namespace IGC
         SaveOption(vISA_GlobalSendVarSplit, true);
     }
 
-    if (IGC_IS_FLAG_ENABLED(FuseTypedWrite))
+    if (m_program->m_Platform->canFuseTypedWrite())
     {
         SaveOption(vISA_FuseTypedWrites, true);
     }

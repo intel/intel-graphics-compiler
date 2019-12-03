@@ -377,6 +377,11 @@ namespace IGC
     {
         return false;
     }
+
+    bool canFuseTypedWrite() const
+    {
+        return IGC_IS_FLAG_ENABLED(FuseTypedWrite);
+    }
     // ***** Below go accessor methods for testing WA data from WA_TABLE *****
 
     bool WaDoNotPushConstantsForAllPulledGSTopologies() const
