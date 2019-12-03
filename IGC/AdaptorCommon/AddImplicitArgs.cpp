@@ -424,6 +424,7 @@ void AddImplicitArgs::replaceAllUsesWithNewOCLBuiltinFunction(CodeGenContext* ct
                     }
                     auto NewExpr = OldExpr->getWithOperands(NewOps);
                     OldExpr->replaceAllUsesWith(NewExpr);
+                    OldExpr->destroyConstant();
                     continue;
                 }
             }
