@@ -114,15 +114,16 @@ DumpName DumpName::Extension(std::string const& extension) const
     return copy;
 }
 
-DumpName DumpName::StagedInfo(IGC::CodeGenContext const* context) const
+DumpName DumpName::StagedInfo(void const* context) const
 {
     DumpName copy(*this);
-    if (!IsStage2RestSIMDs(context->m_StagingCtx) &&
-        context->m_CgFlag != FLAG_CG_ALL_SIMDS)
+    IGC::CodeGenContext const* ctx = (IGC::CodeGenContext const*) context;
+    if (!IsStage2RestSIMDs(ctx->m_StagingCtx) &&
+        ctx->m_CgFlag != FLAG_CG_ALL_SIMDS)
     {
-        copy.m_cgFlag = context->m_CgFlag;
+        copy.m_cgFlag = ctx->m_CgFlag;
     }
-    else if (IsStage2RestSIMDs(context->m_StagingCtx))
+    else if (IsStage2RestSIMDs(ctx->m_StagingCtx))
     {
         copy.m_cgFlag = FLAG_CG_ALL_SIMDS;
     }

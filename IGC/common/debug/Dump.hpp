@@ -79,7 +79,7 @@ public:
     DumpName ShaderName(std::string const& name) const;
     DumpName Type(ShaderType type) const;
     DumpName Extension(std::string const& extension) const;
-    DumpName StagedInfo(IGC::CodeGenContext const* context) const;
+    DumpName StagedInfo(void const* context) const;
     DumpName SIMDSize(SIMDMode width) const;
     DumpName DispatchMode(ShaderDispatchMode mode) const;
     DumpName Hash(ShaderHash hash) const;

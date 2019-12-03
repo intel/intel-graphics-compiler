@@ -244,6 +244,7 @@ public:
     uint64_t getCompileHit( COMPILE_TIME_INTERVALS compileInterval ) const;
 
     /// Print the accumulated times for a single shader
+    void printTime( ShaderType type, ShaderHash hash, void* context) const;
     void printTime( ShaderType type, ShaderHash hash ) const;
     /// Print the aggregated times for multiple shaders
     void printSumTime() const;
@@ -392,7 +393,7 @@ private:
         (pointer)->statName = nullptr; \
     } while (0)
 
-#define COMPILER_TIME_PRINT( pointer, shaderType, shaderHash ) \
+#define COMPILER_TIME_PRINT( pointer, ...) \
     do \
     { \
         if( (pointer) && (pointer)->m_compilerTimeStats ) \
@@ -400,7 +401,7 @@ private:
             if ( IGC::Debug::GetDebugFlag( IGC::Debug::DebugFlag::TIME_STATS_PER_SHADER ) ) \
             { \
                 (pointer)->m_compilerTimeStats->printTime( \
-                    shaderType, shaderHash ); \
+                    __VA_ARGS__ ); \
             } \
         } \
     } while (0)

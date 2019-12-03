@@ -649,11 +649,16 @@ void TimeStats::sumWith( const TimeStats* pOther )
     }
 }
 
-void TimeStats::printTime( ShaderType type, ShaderHash hash ) const
+void TimeStats::printTime( ShaderType type, ShaderHash hash) const
+{
+    printTime(type, hash, nullptr);
+}
+
+void TimeStats::printTime( ShaderType type, ShaderHash hash, void* context ) const
 {
     TimeStats pp = postProcess();
 
-    std::string shaderName = IGC::Debug::DumpName(IGC::Debug::GetShaderOutputName()).Type(type).Hash(hash).str().c_str();
+    std::string shaderName = IGC::Debug::DumpName(IGC::Debug::GetShaderOutputName()).Type(type).Hash(hash).StagedInfo(context).str().c_str();
     if (shaderName.find_last_of("\\") != std::string::npos)
     {
         shaderName = shaderName.substr(shaderName.find_last_of("\\") + 1, shaderName.size());
