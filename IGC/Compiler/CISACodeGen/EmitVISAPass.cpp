@@ -247,8 +247,8 @@ bool EmitPass::canCompileCurrentShader(llvm::Function& F)
 {
     CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
-    // If uses subroutines, we can only compile a single SIMD mode
-    if (m_FGA && (!m_FGA->getGroup(&F)->isSingle() || m_FGA->getGroup(&F)->hasExternFCall()))
+    // If uses subroutines/stackcall, we can only compile a single SIMD mode
+    if (m_FGA && (!m_FGA->getGroup(&F)->isSingle() || m_FGA->getGroup(&F)->hasStackCall()))
     {
         // default SIMD8
         SIMDMode compiledSIMD = SIMDMode::SIMD8;
@@ -457,7 +457,6 @@ bool EmitPass::runOnFunction(llvm::Function& F)
     }
 
     bool hasStackCall = m_FGA && m_FGA->getGroup(&F)->hasStackCall();
-    bool hasFunctionPointer = m_pCtx->m_instrTypes.hasIndirectCall || (m_FGA && m_FGA->getGroup(&F)->hasExternFCall());
     bool ptr64bits = (m_DL->getPointerSizeInBits(ADDRESS_SPACE_PRIVATE) == 64);
     if (!m_FGA || m_FGA->isGroupHead(&F))
     {
@@ -472,7 +471,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         m_encoder->InitEncoder(m_canAbortOnSpill, hasStackCall);
         initDefaultRoundingMode();
         m_currShader->PreCompile();
-        if (hasStackCall || hasFunctionPointer)
+        if (hasStackCall)
         {
             CVariable* pStackBase = nullptr;
             CVariable* pStackSize = nullptr;
@@ -761,7 +760,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         m_encoder->Compile(compileWithSymbolTable);
         // if we are doing stack-call, do the following:
         // - Hard-code a large scratch-space for visa
-        if (hasStackCall || hasFunctionPointer)
+        if (hasStackCall)
         {
             if (m_currShader->ProgramOutput()->m_scratchSpaceUsedBySpills == 0)
             {

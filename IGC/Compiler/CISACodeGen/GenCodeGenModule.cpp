@@ -412,6 +412,9 @@ bool GenXCodeGenModule::runOnModule(Module& M)
         delete SCCNodes;
     }
 
+    // Before adding indirect functions to groups, check and set stack call for each group
+    FGA->setGroupStackCall();
+
     // Add all indirect functions to the default kernel group
     FGA->addIndirectFuncsToKernelGroup(&M);
 
@@ -539,28 +542,39 @@ void GenXFunctionGroupAnalysis::addIndirectFuncsToKernelGroup(llvm::Module* pMod
     FunctionGroup* defaultFG = getGroupForHead(defaultKernel);
     assert(defaultFG && "default kernel group does not exist");
 
-    SmallVector<Function*, 8> indirectFuncs;
     // Add all externally linked functions into the default kernel group
     for (auto I = pModule->begin(), E = pModule->end(); I != E; ++I)
     {
         Function* F = &(*I);
+        if (isEntryFunc(pMdUtils, F)) continue;
+
         if (F->hasFnAttribute("IndirectlyCalled"))
         {
             if (!F->isDeclaration())
                 addToFunctionGroup(F, defaultFG, F);
-            defaultFG->m_hasIndirectFuncs = true;
-            indirectFuncs.push_back(F);
         }
     }
-    for (auto F : indirectFuncs)
+
+    // Indirect call is treated as a stackcall
+    // Even if there are no functions attached to this group, we still need to check if has an indirect call for stack alloca
+    for (auto I = pModule->begin(), E = pModule->end(); I != E; ++I)
     {
-        // Mark caller group if it uses an indirect function
-        for (auto U : F->users())
+        Function* F = &(*I);
+        auto FG = getGroup(F);
+        if (FG && !FG->m_hasStackCall)
         {
-            if (Instruction * I = dyn_cast<Instruction>(U))
+            for (auto ii = inst_begin(F), ei = inst_end(F); ii != ei; ii++)
             {
-                Function* Caller = I->getParent()->getParent();
-                getGroup(Caller)->m_hasExternFCall = true;
+                if (CallInst* call = dyn_cast<CallInst>(&*ii))
+                {
+                    Function* calledF = call->getCalledFunction();
+                    if ((!call->isInlineAsm() && !calledF) ||
+                        calledF->hasFnAttribute("IndirectlyCalled"))
+                    {
+                        FG->m_hasStackCall = true;
+                        break;
+                    }
+                }
             }
         }
     }
@@ -608,6 +622,9 @@ bool GenXFunctionGroupAnalysis::rebuild(llvm::Module* Mod) {
             }
         }
     }
+
+    // Reset stack call flag
+    setGroupStackCall();
 
     // Re-add all indirect functions to the default kernel group
     addIndirectFuncsToKernelGroup(Mod);

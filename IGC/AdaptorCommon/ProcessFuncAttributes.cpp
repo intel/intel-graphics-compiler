@@ -220,13 +220,17 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
     {
         F->addFnAttr("IndirectlyCalled");
         F->addFnAttr("visaStackCall");
-        // Require global relocation if any global values are used in indirect functions, since we cannot pass implicit args
-        F->addFnAttr("EnableGlobalRelocation");
 
-        if (IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_FORCE_INDIRECTCALL)
+        if (!F->isDeclaration())
         {
-            F->removeFnAttr(llvm::Attribute::AlwaysInline);
-            F->addFnAttr(llvm::Attribute::NoInline);
+            // Require global relocation if any global values are used in indirect functions, since we cannot pass implicit args
+            F->addFnAttr("EnableGlobalRelocation");
+
+            if (IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_FORCE_INDIRECTCALL)
+            {
+                F->removeFnAttr(llvm::Attribute::AlwaysInline);
+                F->addFnAttr(llvm::Attribute::NoInline);
+            }
         }
     };
 

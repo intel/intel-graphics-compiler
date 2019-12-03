@@ -94,14 +94,10 @@ namespace IGC {
         bool isSingle() {
             return (Functions.size() == 1 && Functions.front()->size() == 1);
         }
+        /// \brief Function group has a stack call (including indirect calls)
         bool hasStackCall() {
-            return (Functions.size() > 1);
+            return m_hasStackCall;
         }
-        /// \brief Indicate if any function in this group directly calls an externally linked function
-        bool hasExternFCall() { return m_hasExternFCall; }
-
-        /// \brief Indicate if there are indirectly functions attached to this group
-        bool hasIndirectFuncs() { return m_hasIndirectFuncs; }
 
         void replaceGroupHead(llvm::Function* OH, llvm::Function* NH) {
             auto headSG = Functions[0];
@@ -111,8 +107,7 @@ namespace IGC {
         }
 
     private:
-        bool m_hasExternFCall = false;
-        bool m_hasIndirectFuncs = false;
+        bool m_hasStackCall = false;
     };
 
     class GenXFunctionGroupAnalysis : public llvm::ImmutablePass {
@@ -181,6 +176,12 @@ namespace IGC {
 
         void setSubGroupMap(llvm::Function* F, llvm::Function* SubGroupHead) {
             SubGroupMap[F] = SubGroupHead;
+        }
+
+        void setGroupStackCall() {
+            for (auto FG : Groups) {
+                FG->m_hasStackCall = (FG->Functions.size() > 1);
+            }
         }
 
         /// \brief Check whether this is a group header.
