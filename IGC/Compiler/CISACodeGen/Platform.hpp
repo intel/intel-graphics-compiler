@@ -382,6 +382,12 @@ namespace IGC
     {
         return IGC_IS_FLAG_ENABLED(FuseTypedWrite);
     }
+
+    bool HasUniformSubGroupIntrinsic() const
+    {
+        return IGC_IS_FLAG_DISABLED(NonUniformSubGroupIntrinsic) &&
+            m_platformInfo.eProductFamily != IGFX_TIGERLAKE_LP;
+    }
     // ***** Below go accessor methods for testing WA data from WA_TABLE *****
 
     bool WaDoNotPushConstantsForAllPulledGSTopologies() const
