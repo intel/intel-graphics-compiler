@@ -3957,9 +3957,12 @@ void G4_Areg::emit(std::ostream& output, bool symbolreg)
 // initial all values idential to rgn's
 //
 G4_SrcRegRegion::G4_SrcRegRegion(G4_SrcRegRegion &rgn)
-    : G4_Operand(G4_Operand::srcRegRegion), acc(rgn.acc), regOff(rgn.regOff), subRegOff(rgn.subRegOff)
+    : G4_Operand(G4_Operand::srcRegRegion)
 {
     base = rgn.base;
+    acc = rgn.acc;
+    regOff = rgn.regOff;
+    subRegOff = rgn.subRegOff;
     mod = rgn.mod;
     immAddrOff = rgn.immAddrOff;
     desc = rgn.desc;
@@ -3970,7 +3973,6 @@ G4_SrcRegRegion::G4_SrcRegRegion(G4_SrcRegRegion &rgn)
     *sw1 = *sw2;
     accRegSel = rgn.accRegSel;
 
-    // FIXME: it's rather suspicious that we are copying internal fields this way
     bitVec[0] = rgn.bitVec[0];
     bitVec[1] = rgn.bitVec[1];
 
@@ -3980,7 +3982,31 @@ G4_SrcRegRegion::G4_SrcRegRegion(G4_SrcRegRegion &rgn)
     byteOffset = rgn.byteOffset;
     rightBoundSet = rgn.rightBoundSet;
 }
+//
+// Initialize all values idential to rgn's, except for the base operand.
+// Caller is responsible for allocating base operand and making sure it doesn't
+// mess up the operands' hash table.
+//
+G4_SrcRegRegion::G4_SrcRegRegion(G4_SrcRegRegion &rgn, G4_VarBase *new_base)
+    : G4_Operand(G4_Operand::srcRegRegion)
+{
+    acc = rgn.acc;
+    regOff = rgn.regOff;
+    subRegOff = rgn.subRegOff;
+    mod = rgn.mod;
+    immAddrOff = rgn.immAddrOff;
+    desc = rgn.desc;
+    type = rgn.type;
+    // copy swizzle value
+    char *sw1 = swizzle, *sw2 = rgn.swizzle;
+    while (*sw2) *sw1++ = *sw2++;
+    *sw1 = *sw2;
 
+    base = new_base;
+
+    computeLeftBound();
+    rightBoundSet = false;
+}
 //
 // return true if rng and this have the same reg region
 //
