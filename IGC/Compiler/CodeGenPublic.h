@@ -264,7 +264,7 @@ namespace IGC
         unsigned int NOSBufferSize = 0;
         unsigned int ConstantBufferLoaded = 0;
         unsigned int UavLoaded = 0;
-        uint64_t ShaderResourceLoaded = 0;
+        unsigned int ShaderResourceLoaded[4];
         unsigned int RenderTargetLoaded = 0;
 
         bool         hasControlFlow = false;
