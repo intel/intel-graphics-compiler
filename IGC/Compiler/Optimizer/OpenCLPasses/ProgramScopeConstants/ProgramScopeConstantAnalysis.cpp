@@ -71,6 +71,12 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
     LLVMContext& C = M.getContext();
     m_DL = &M.getDataLayout();
 
+    bool changed = false;
+
+    // Externaly linked global vars needs to be exposed to the runtime even when not used.
+    // No need to generate implicit args, just copy the data at the end.
+    SmallVector<std::pair<GlobalVariable*, unsigned>, 8> UnusedExternGlobals;
+
     for (Module::global_iterator I = M.global_begin(), E = M.global_end(); I != E; ++I)
     {
         GlobalVariable* globalVar = &(*I);
@@ -113,6 +119,12 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
         // If this variable isn't used, don't add it to the buffer.
         if (globalVar->use_empty())
         {
+            // Check if a global symbol entry is required, even if it isn't used
+            if (!globalVar->hasAtLeastLocalUnnamedAddr() &&
+                (globalVar->hasExternalLinkage() || globalVar->hasCommonLinkage()))
+            {
+                UnusedExternGlobals.push_back(std::make_pair(globalVar, AS));
+            }
             continue;
         }
 
@@ -151,15 +163,6 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
 
     if (inlineConstantBuffer.size() > 0)
     {
-        // If we found something, add everything to the metadata.
-        InlineProgramScopeBuffer ilpsb;
-        for (unsigned char v : inlineConstantBuffer)
-        {
-            ilpsb.Buffer.push_back(v);
-        }
-        ilpsb.alignment = constantBufferAlignment;
-        modMd->inlineConstantBuffers.push_back(ilpsb);
-
         // Just add the implicit argument to each function if a constant
         // buffer has been created.  This will technically burn a patch
         // token on kernels that don't actually use the buffer but it saves
@@ -177,20 +180,10 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
             implicitArgs.push_back(ImplicitArg::CONSTANT_BASE);
             ImplicitArgs::addImplicitArgs(pFunc, implicitArgs, mdUtils);
         }
-        mdUtils->save(C);
     }
 
     if (inlineGlobalBuffer.size() > 0)
     {
-        // If we found something, add everything to the metadata.
-        InlineProgramScopeBuffer ilpsb;
-        for (unsigned char v : inlineGlobalBuffer)
-        {
-            ilpsb.Buffer.push_back(v);
-        }
-        ilpsb.alignment = globalBufferAlignment;
-        modMd->inlineGlobalBuffers.push_back(ilpsb);
-
         for (auto& pFunc : M)
         {
             if (pFunc.isDeclaration()) continue;
@@ -201,7 +194,6 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
             implicitArgs.push_back(ImplicitArg::GLOBAL_BASE);
             ImplicitArgs::addImplicitArgs(pFunc, implicitArgs, mdUtils);
         }
-        mdUtils->save(C);
     }
 
     // Setup the metadata for pointer patch info to be utilized during
@@ -237,14 +229,60 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
                 assert(0 && "trying to patch unsupported address space");
             }
         }
-
-        mdUtils->save(C);
+        changed = true;
     }
 
-    const bool changed = !inlineProgramScopeOffsets.empty();
-    for (auto offset : inlineProgramScopeOffsets)
+    // Add data for the unused globals to the end of the buffer
+    for (auto GI : UnusedExternGlobals)
     {
-        modMd->inlineProgramScopeOffsets[offset.first] = offset.second;
+        GlobalVariable* globalVar = GI.first;
+        unsigned AS = GI.second;
+        Constant* initializer = globalVar->getInitializer();
+
+        // No data to add
+        if (!initializer) continue;
+
+        DataVector& inlineProgramScopeBuffer = (AS == ADDRESS_SPACE_GLOBAL) ? inlineGlobalBuffer : inlineConstantBuffer;
+        if (!inlineProgramScopeBuffer.empty())
+            alignBuffer(inlineProgramScopeBuffer, m_DL->getPreferredAlignment(globalVar));
+
+        // Set the offset value
+        inlineProgramScopeOffsets[globalVar] = inlineProgramScopeBuffer.size();
+
+        // Add the data to the buffer
+        addData(initializer, inlineProgramScopeBuffer, pointerOffsetInfoList, inlineProgramScopeOffsets, AS);
+    }
+
+    // Copy all metadata for inline global and constant buffers
+    if (!inlineProgramScopeOffsets.empty())
+    {
+        for (auto offset : inlineProgramScopeOffsets)
+        {
+            modMd->inlineProgramScopeOffsets[offset.first] = offset.second;
+        }
+        changed = true;
+    }
+    if (inlineConstantBuffer.size() > 0)
+    {
+        InlineProgramScopeBuffer ilpsb;
+        for (unsigned char v : inlineConstantBuffer)
+        {
+            ilpsb.Buffer.push_back(v);
+        }
+        ilpsb.alignment = constantBufferAlignment;
+        modMd->inlineConstantBuffers.push_back(ilpsb);
+        changed = true;
+    }
+    if (inlineGlobalBuffer.size() > 0)
+    {
+        InlineProgramScopeBuffer ilpsb;
+        for (unsigned char v : inlineGlobalBuffer)
+        {
+            ilpsb.Buffer.push_back(v);
+        }
+        ilpsb.alignment = globalBufferAlignment;
+        modMd->inlineGlobalBuffers.push_back(ilpsb);
+        changed = true;
     }
 
     if (changed)
@@ -396,6 +434,11 @@ void ProgramScopeConstantAnalysis::addData(Constant* initializer,
                 for (auto& Op : GEP->operands())
                     if (Constant * C = dyn_cast<Constant>(&Op))
                         addData(C, inlineProgramScopeBuffer, pointerOffsetInfoList, inlineProgramScopeOffsets, addressSpace);
+            }
+            else if (ce->getOpcode() == Instruction::BitCast ||
+                ce->getOpcode() == Instruction::AddrSpaceCast)
+            {
+                addData(ce->getOperand(0), inlineProgramScopeBuffer, pointerOffsetInfoList, inlineProgramScopeOffsets, addressSpace);
             }
             else
             {
