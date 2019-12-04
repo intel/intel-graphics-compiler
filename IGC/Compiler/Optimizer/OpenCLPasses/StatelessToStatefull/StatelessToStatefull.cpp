@@ -412,8 +412,10 @@ void StatelessToStatefull::visitCallInst(CallInst& I)
 {
     if (auto Inst = dyn_cast<GenIntrinsicInst>(&I))
     {
-        if (Inst->getIntrinsicID() == GenISAIntrinsic::GenISA_simdBlockRead ||
-            Inst->getIntrinsicID() == GenISAIntrinsic::GenISA_simdBlockWrite)
+        GenISAIntrinsic::ID const intrinID = Inst->getIntrinsicID();
+
+        if (intrinID == GenISAIntrinsic::GenISA_simdBlockRead ||
+            intrinID == GenISAIntrinsic::GenISA_simdBlockWrite)
         {
             Module* M = Inst->getParent()->getParent()->getParent();
             Function* F = Inst->getParent()->getParent();
@@ -428,7 +430,7 @@ void StatelessToStatefull::visitCallInst(CallInst& I)
             }
 
             Value* offset = nullptr;
-            unsigned int baseArgNumber = 0;
+            unsigned int baseArgNumber  = 0;
             if (pointerIsPositiveOffsetFromKernelArgument(F, ptr, offset, baseArgNumber))
             {
                 ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
@@ -441,13 +443,13 @@ void StatelessToStatefull::visitCallInst(CallInst& I)
                 unsigned addrSpace = EncodeAS4GFXResource(*resourceNumber, BufferType::UAV, 0);
                 setPointerSizeTo32bit(addrSpace, I.getParent()->getParent()->getParent());
 
-                if (Inst->getIntrinsicID() == GenISAIntrinsic::GenISA_simdBlockRead)
+                if (intrinID == GenISAIntrinsic::GenISA_simdBlockRead)
                 {
                     PointerType* pTy = PointerType::get(Inst->getType(), addrSpace);
                     Instruction* pPtrToInt = IntToPtrInst::Create(Instruction::IntToPtr, offset, pTy, "", Inst);
                     Function* simdMediaBlockReadFunc = GenISAIntrinsic::getDeclaration(
                         M,
-                        GenISAIntrinsic::GenISA_simdBlockRead,
+                        intrinID,
                         { Inst->getType(),pTy });
                     Instruction* simdMediaBlockRead = CallInst::Create(simdMediaBlockReadFunc, { pPtrToInt }, "", Inst);
                     simdMediaBlockRead->setDebugLoc(DL);
@@ -461,13 +463,13 @@ void StatelessToStatefull::visitCallInst(CallInst& I)
                     SmallVector<Value*, 2> args;
                     args.push_back(pPtrToInt);
                     args.push_back(Inst->getOperand(1));
-                    Function* simdMediaBlockWriteFunc = GenISAIntrinsic::getDeclaration(
+                    Function* pFunc = GenISAIntrinsic::getDeclaration(
                         M,
-                        GenISAIntrinsic::GenISA_simdBlockWrite,
+                        intrinID,
                         { pTy,Inst->getOperand(1)->getType() });
-                    Instruction* simdMediaBlockWrite = CallInst::Create(simdMediaBlockWriteFunc, args, "", Inst);
-                    simdMediaBlockWrite->setDebugLoc(DL);
-                    Inst->replaceAllUsesWith(simdMediaBlockWrite);
+                    Instruction* pIntrinInst = CallInst::Create(pFunc, args, "", Inst);
+                    pIntrinInst->setDebugLoc(DL);
+                    Inst->replaceAllUsesWith(pIntrinInst);
                     Inst->eraseFromParent();
                 }
 
