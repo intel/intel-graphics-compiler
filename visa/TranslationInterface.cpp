@@ -8809,8 +8809,7 @@ int IR_Builder::splitSampleInst(VISASampler3DSubOpCode actualop,
             else if (G4_Type_Table[params[i]->getType()].byteSize == 2)
             {
                 // V1(0,8)<8;8,1>
-                secondHalf[i] = createSrcRegRegion(*(params[i]));
-                secondHalf[i]->setSubRegOff(8);
+                secondHalf[i] = createSrcWithNewSubRegOff(params[i], 8);
             }
             else
             {

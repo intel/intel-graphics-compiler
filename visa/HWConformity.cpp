@@ -6858,10 +6858,8 @@ static void expandPlaneMacro(IR_Builder& builder, INST_LIST_ITER it, G4_BB* bb, 
     G4_SrcRegRegion* srcR = builder.createSrcRegRegion(src0->getModifier(), Direct, src0->getBase(),
         src0->getRegOff(), src0->getSubRegOff() + 3, builder.getRegionScalar(), src0->getType());
 
-    G4_SrcRegRegion* u = builder.duplicateOperand(src1);
-    u->setRegOff(u->getRegOff() + (secondHalf ? 2 : 0));
-    G4_SrcRegRegion* v = builder.duplicateOperand(src1);
-    v->setRegOff(v->getRegOff() + (secondHalf ? 3 : 1));
+    auto u = builder.createSrcWithNewRegOff(src1, src1->getRegOff() + (secondHalf ? 2 : 0));
+    auto v = builder.createSrcWithNewRegOff(src1, src1->getRegOff() + (secondHalf ? 3 : 1));
 
     uint32_t options = inst->getOption();
     if (inst->getExecSize() == 16)

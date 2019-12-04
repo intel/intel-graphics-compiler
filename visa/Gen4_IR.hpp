@@ -2827,10 +2827,10 @@ namespace vISA
         char swizzle[max_swizzle];     // this should only be set in binary encoding
 
         G4_SrcModifier mod;
-        G4_RegAccess   acc;            // direct, indirect GenReg or indirect MsgReg
+        const G4_RegAccess acc;
         const RegionDesc *desc;
-        short          regOff;        // base+regOff is the starting register of the region
-        short          subRegOff;    // sub reg offset related to the regVar in "base"
+        const short    regOff;        // base+regOff is the starting register of the region
+        const short    subRegOff;    // sub reg offset related to the regVar in "base"
         short          immAddrOff;    // imm addr offset
 
         G4_SrcRegRegion(G4_SrcModifier m,
@@ -2852,9 +2852,10 @@ namespace vISA
             right_bound = 0;
         }
 
+        void setSrcBitVec(uint8_t exec_size);
+
     public:
         G4_SrcRegRegion(G4_SrcRegRegion& rgn);
-        G4_SrcRegRegion(G4_SrcRegRegion& rgn, G4_VarBase* new_base);
         void *operator new(size_t sz, Mem_Manager& m) {return m.alloc(sz);}
 
         bool operator==(const G4_SrcRegRegion &other)
@@ -2870,28 +2871,8 @@ namespace vISA
         }
 
         void computeLeftBound();
-        void setSrcBitVec(uint8_t exec_size);
         short getRegOff() const { return regOff; }
         short getSubRegOff() const { return subRegOff; }
-        void  setSubRegOff(short off)
-        {
-            if (subRegOff != off)
-            {
-                subRegOff = off;
-                computeLeftBound();
-                unsetRightBound();
-            }
-        }
-
-        void  setRegOff(short off)
-        {
-            if (regOff != off)
-            {
-                regOff = off;
-                unsetRightBound();
-                computeLeftBound();
-            }
-        }
 
         const char*       getSwizzle() const { return swizzle; }
         G4_SrcModifier    getModifier() const  { return mod; }
@@ -2945,6 +2926,7 @@ namespace vISA
 
         void setType(G4_Type ty)
         {
+            // FIXME: we should forbid setType() where ty has a different size than old type
             bool recomputeLeftBound = false;
 
             if (G4_Type_Table[type].byteSize != G4_Type_Table[ty].byteSize)
@@ -2958,12 +2940,6 @@ namespace vISA
             if (recomputeLeftBound)
             {
                 computeLeftBound();
-
-                if (getInst())
-                {
-                    getInst()->computeLeftBoundForImplAcc((G4_Operand*) getInst()->getImplAccDst());
-                    getInst()->computeLeftBoundForImplAcc(getInst()->getImplAccSrc());
-                }
             }
         }
 
