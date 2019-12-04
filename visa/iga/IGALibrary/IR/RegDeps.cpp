@@ -155,7 +155,9 @@ void DepSet::setInputsFlagDep()
         size_t execOff = 4 * (static_cast<size_t>(m_instruction->getChannelOffset()));
         fByteOff += execOff / 8; // move over by ARF offset
         size_t execSize = static_cast<size_t>(m_instruction->getExecSize());
-        addFBytes(fByteOff + (size_t)m_DB.getARF_F_START(), execSize / 8);
+        size_t addr = (size_t)m_DB.getARF_F_START() + fByteOff;
+        addFBytes(addr, execSize / 8);
+        m_bucketList.push_back(addr / m_DB.getBYTES_PER_BUCKET());
     }
 
     // immediate send descriptors
@@ -378,7 +380,9 @@ void DepSet::setOutputsFlagDep()
         int execOff = 4 * (static_cast<int>(m_instruction->getChannelOffset()));
         fByteOff += execOff / 8; // move over by ARF offset
         int execSize = static_cast<int>(m_instruction->getExecSize()); //1 << (static_cast<int>(m_instruction->getExecSize()) - 1);
-        addFBytes((size_t)m_DB.getARF_F_START() + fByteOff, execSize / 8);
+        size_t addr = (size_t)m_DB.getARF_F_START() + fByteOff;
+        addFBytes(addr, execSize / 8);
+        m_bucketList.push_back(addr / m_DB.getBYTES_PER_BUCKET());
     }
 }
 
@@ -691,10 +695,7 @@ void DepSet::setSrcRegion(
         }
     }
 
-    if (rn == RegName::GRF_R   ||
-        rn == RegName::ARF_A   ||
-        rn == RegName::ARF_ACC ||
-        isSpecial(rn))
+    if (isRegTracked(rn))
     {
         //size_t extentTouched = upperBound - lowBound;
         IGA_ASSERT(upperBound >= lowBound,
@@ -790,10 +791,7 @@ void DepSet::setDstRegion(
         }
     }
 
-    if (rn == RegName::GRF_R ||
-        rn == RegName::ARF_A ||
-        rn == RegName::ARF_ACC ||
-        isSpecial(rn))
+    if (isRegTracked(rn))
     {
         uint32_t startRegNum = lowBound / m_DB.getBYTES_PER_BUCKET();
         uint32_t upperRegNum = (upperBound - 1) / m_DB.getBYTES_PER_BUCKET();
@@ -849,6 +847,7 @@ bool DepSet::isRegTracked(RegName rnm)
     case RegName::GRF_R:
     case RegName::ARF_A:
     case RegName::ARF_ACC:
+    case RegName::ARF_F:
         return true;
     default:
         return false || isSpecial(rnm);

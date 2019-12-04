@@ -1,0 +1,1 @@
+const char* gedVersion = "VERSION=dev (699cfb7)";

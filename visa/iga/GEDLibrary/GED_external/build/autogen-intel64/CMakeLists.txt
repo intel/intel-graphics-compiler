@@ -25,6 +25,7 @@ set(GED_autogenintel64_cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_gen8_1.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_gen9.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_restrictions.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/version.cpp
   PARENT_SCOPE
 )
 # GED_external/build/autogen-intel64

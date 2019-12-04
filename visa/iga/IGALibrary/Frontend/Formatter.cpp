@@ -1020,7 +1020,7 @@ void Formatter::formatInstOpts(
         }
 
         if (di.hasBothDistAndToken())
-            emit(" ,");
+            emit(", ");
 
         switch (di.tokenType) {
         case SWSB::TokenType::DST:

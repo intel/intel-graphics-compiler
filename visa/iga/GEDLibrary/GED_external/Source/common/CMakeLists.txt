@@ -14,7 +14,6 @@ set(GED_common_cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_string_utils.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_types_internal.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_validation_utils.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/version.cpp
   PARENT_SCOPE
 )
 # GED_external/Source/common

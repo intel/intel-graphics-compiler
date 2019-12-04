@@ -280,19 +280,45 @@ void SWSBAnalyzer::calculateDependence(DepSet &currDep, SWSB &distanceDependency
                               prevDepType == DEP_TYPE::WRITE &&
                               prevDepClass == DEP_CLASS::OUT_OF_ORDER);
 
-                // Special case handling for acc dependency:
+                // Special case handling for acc/flag dependency:
                 // if the RAW dependency on acc and it's whithin the same pipe,
                 // HW can handle it that we don't need to set swsb
                 if (isRAW && currDepPipe == prevDepPipe) {
+                    auto check_dep_reg = [&](DepSet* in_dep, uint32_t reg_start, uint32_t reg_len) {
+                        return in_dep->getBitSet().intersects(currDep.getBitSet(),
+                            reg_start, reg_len);
+                    };
+                    auto has_grf_dep = [&](DepSet* in_dep) {
+                        return check_dep_reg(in_dep, m_DB->getGRF_START(), m_DB->getGRF_LEN());
+                    };
+                    auto has_arf_a_dep = [&](DepSet* in_dep) {
+                        return check_dep_reg(in_dep, m_DB->getARF_A_START(), m_DB->getARF_A_LEN());
+                    };
+                    auto has_acc_dep = [&](DepSet* in_dep) {
+                        return check_dep_reg(in_dep, m_DB->getARF_ACC_START(), m_DB->getARF_ACC_LEN());
+                    };
+                    auto has_flag_dep = [&](DepSet* in_dep) {
+                        return check_dep_reg(in_dep, m_DB->getARF_F_START(), m_DB->getARF_F_LEN());
+                    };
+                    auto has_sp_dep = [&](DepSet* in_dep) {
+                        return check_dep_reg(in_dep, m_DB->getARF_SPECIAL_START(), m_DB->getARF_SPECIAL_LEN());
+                    };
+
                     // is acc dependecy
-                    if (dep->getBitSet().intersects(currDep.getBitSet(),
-                            m_DB->getARF_ACC_START(), m_DB->getARF_ACC_LEN())) {
+                    if (has_acc_dep(dep)) {
                         // and no dependency on other registers
-                        if (!dep->getBitSet().intersects(currDep.getBitSet(),
-                            m_DB->getGRF_START(), m_DB->getARF_ACC_START() - m_DB->getGRF_START()) &&
-                            !dep->getBitSet().intersects(currDep.getBitSet(),
-                                m_DB->getARF_F_START(), m_DB->getTOTAL_END() - m_DB->getARF_F_START()))
+                        if (!(has_grf_dep(dep) || has_arf_a_dep(dep) || has_flag_dep(dep) || has_sp_dep(dep)))
                             isRAW = false;
+                    }
+                    // is flag dependency
+                    if (has_flag_dep(dep)) {
+                        // and no dependency on other registers
+                        if (!(has_grf_dep(dep) || has_arf_a_dep(dep) || has_acc_dep(dep) || has_sp_dep(dep)))
+                            isRAW = false;
+                        // flag and acc only
+                        if (has_acc_dep(dep))
+                            if (!(has_grf_dep(dep) || has_arf_a_dep(dep) || has_sp_dep(dep)))
+                                isRAW = false;
                     }
                 }
 
@@ -313,7 +339,7 @@ void SWSBAnalyzer::calculateDependence(DepSet &currDep, SWSB &distanceDependency
                     }
                     if (prevDepClass == DEP_CLASS::IN_ORDER)
                     {
-                        if (m_swsbMode == SWSB_ENCODE_MODE::SingleDistPipe) {
+                        if (getNumOfDistPipe() == 1) {
                             // FOR WAW if PREV is SHORT and curr is LONG then write will finish
                             // before current write, no need to set swsb
                             bool isWAWHazard = (prevDepPipe == DEP_PIPE::SHORT && currDepPipe == DEP_PIPE::LONG ||

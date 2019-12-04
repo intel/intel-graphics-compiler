@@ -473,7 +473,7 @@ GED_RETURN_VALUE GEDIns::SetRawBits(const uint8_t lowBit, const uint8_t highBit,
     GEDASSERT(IsNativeValid());
     const uint8_t lowDword = lowBit / GED_DWORD_BITS;
     const uint8_t highDword = highBit / GED_DWORD_BITS;
-    const unsigned int numberOfDwords = highDword - lowDword;
+    //const unsigned int numberOfDwords = highDword - lowDword;
     ged_ins_field_position_fragment_t pos;
     if (lowDword == highDword)
     {
