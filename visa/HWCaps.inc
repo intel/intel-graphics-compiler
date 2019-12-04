@@ -371,7 +371,7 @@
 
     bool alignBindlessSampler() const
     {
-        return getGenxPlatform() == GENX_SKL && getOption(vISA_alignBindlessSampler);
+        return getPlatformGeneration(getGenxPlatform()) == PlatformGen::GEN9 && getOption(vISA_alignBindlessSampler);
     }
 
     bool noL3Flush() const
