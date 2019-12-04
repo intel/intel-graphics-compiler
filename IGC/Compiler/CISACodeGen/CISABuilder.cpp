@@ -4663,43 +4663,53 @@ namespace IGC
         }
 
         // Export global symbols
-        for (auto global : modMD->inlineProgramScopeOffsets)
+        if (modMD->compOpt.EnableGlobalRelocation)
         {
-            GlobalVariable* pGlobal = global.first;
-            bool needRelocation = false;
-            for (auto ui = pGlobal->user_begin(), ue = pGlobal->user_end(); ui != ue; ui++)
+            for (auto global : modMD->inlineProgramScopeOffsets)
             {
-                // Check if need relocation
-                Instruction* inst = dyn_cast<Instruction>(*ui);
-                if (inst && inst->getParent()->getParent()->hasFnAttribute("EnableGlobalRelocation"))
-                {
-                    needRelocation = true;
-                    break;
-                }
-            }
-            if (needRelocation)
-            {
-                StringRef name = pGlobal->getName();
-                unsigned addrSpace = pGlobal->getType()->getAddressSpace();
-                assert(name.size() <= vISA::MAX_SYMBOL_NAME_LENGTH);
+                GlobalVariable* pGlobal = global.first;
 
-                vISA::GenSymEntry sEntry;
-                strcpy_s(sEntry.s_name, vISA::MAX_SYMBOL_NAME_LENGTH, name.str().c_str());
-                MDNode* md = pGlobal->getMetadata("ConstSampler");
-                if (md)
+                // Export the symbol if global is external/common linkage
+                bool needSymbol = pGlobal->hasCommonLinkage() || pGlobal->hasExternalLinkage();
+
+                // Otherwise check if relocation is required
+                if (!needSymbol)
                 {
-                    // Constant Sampler: s_offset contains the sampler ID
-                    sEntry.s_type = vISA::GenSymType::S_CONST_SAMPLER;
-                    sEntry.s_size = 0;
-                    sEntry.s_offset = static_cast<uint32_t>(global.second);
+                    for (auto ui = pGlobal->user_begin(), ue = pGlobal->user_end(); ui != ue; ui++)
+                    {
+                        Instruction* inst = dyn_cast<Instruction>(*ui);
+                        if (inst && inst->getParent()->getParent()->hasFnAttribute("EnableGlobalRelocation"))
+                        {
+                            needSymbol = true;
+                            break;
+                        }
+                    }
                 }
-                else
+
+                if (needSymbol)
                 {
-                    sEntry.s_type = (addrSpace == ADDRESS_SPACE_GLOBAL) ? vISA::GenSymType::S_GLOBAL_VAR : vISA::GenSymType::S_GLOBAL_VAR_CONST;
-                    sEntry.s_size = int_cast<uint32_t>(pModule->getDataLayout().getTypeAllocSize(pGlobal->getType()->getPointerElementType()));
-                    sEntry.s_offset = static_cast<uint32_t>(global.second);
+                    StringRef name = pGlobal->getName();
+                    unsigned addrSpace = pGlobal->getType()->getAddressSpace();
+                    assert(name.size() <= vISA::MAX_SYMBOL_NAME_LENGTH);
+
+                    vISA::GenSymEntry sEntry;
+                    strcpy_s(sEntry.s_name, vISA::MAX_SYMBOL_NAME_LENGTH, name.str().c_str());
+                    MDNode* md = pGlobal->getMetadata("ConstSampler");
+                    if (md)
+                    {
+                        // Constant Sampler: s_offset contains the sampler ID
+                        sEntry.s_type = vISA::GenSymType::S_CONST_SAMPLER;
+                        sEntry.s_size = 0;
+                        sEntry.s_offset = static_cast<uint32_t>(global.second);
+                    }
+                    else
+                    {
+                        sEntry.s_type = (addrSpace == ADDRESS_SPACE_GLOBAL) ? vISA::GenSymType::S_GLOBAL_VAR : vISA::GenSymType::S_GLOBAL_VAR_CONST;
+                        sEntry.s_size = int_cast<uint32_t>(pModule->getDataLayout().getTypeAllocSize(pGlobal->getType()->getPointerElementType()));
+                        sEntry.s_offset = static_cast<uint32_t>(global.second);
+                    }
+                    symbolTable.push_back(sEntry);
                 }
-                symbolTable.push_back(sEntry);
             }
         }
 

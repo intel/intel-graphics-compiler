@@ -2431,8 +2431,8 @@ CVariable* CShader::GetSymbol(llvm::Value* value, bool fromConstantPool)
                 value->getType()->getPointerElementType()->isFunctionTy();
             // Global Relocation
             bool isGlobalVar = IGC_IS_FLAG_ENABLED(EnableFunctionPointer) &&
-                isa<GlobalVariable>(value) &&
-                m_ModuleMetadata->inlineProgramScopeOffsets.count(cast<GlobalVariable>(value)) > 0;
+                m_ModuleMetadata->compOpt.EnableGlobalRelocation &&
+                isa<GlobalVariable>(value);
 
             if (isFunction || isGlobalVar)
             {

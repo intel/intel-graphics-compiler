@@ -224,7 +224,10 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         if (!F->isDeclaration())
         {
             // Require global relocation if any global values are used in indirect functions, since we cannot pass implicit args
-            F->addFnAttr("EnableGlobalRelocation");
+            if (getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData()->compOpt.EnableGlobalRelocation)
+            {
+                F->addFnAttr("EnableGlobalRelocation");
+            }
 
             if (IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_FORCE_INDIRECTCALL)
             {
