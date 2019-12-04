@@ -7023,9 +7023,9 @@ void G4_INST::computeRightBound(G4_Operand* opnd)
 {
     associateOpndWithInst(opnd, this);
 
-    if( opnd != NULL &&
+    if (opnd &&
         opnd->isImm() == false &&
-        opnd->isNullReg() == false )
+        opnd->isNullReg() == false)
     {
         bool done = false;
 

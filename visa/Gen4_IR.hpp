@@ -1993,6 +1993,7 @@ class G4_Operand
     friend class G4_FillIntrinsic;
     friend class G4_SpillIntrinsic;
 
+
 public:
     enum Kind {
         immediate,
