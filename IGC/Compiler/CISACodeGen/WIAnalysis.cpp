@@ -1131,45 +1131,32 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
             return WIAnalysis::UNIFORM;
         }
 
-        if (m_CGCtx->platform.HasUniformSubGroupIntrinsic())
+        if (intrinsic_name == llvm_waveShuffleIndex)
         {
-            if (intrinsic_name == llvm_waveShuffleIndex)
-            {
-                Value* op0 = inst->getArgOperand(0);
-                Value* op1 = inst->getArgOperand(1);
-                if (WIAnalysis::UNIFORM == getDependency(op0) ||
-                    WIAnalysis::UNIFORM == getDependency(op1))
-                {
-                    return WIAnalysis::UNIFORM;
-                }
-            }
-
-            if (intrinsic_name == llvm_waveBallot || intrinsic_name == llvm_waveAll)
+            Value* op0 = inst->getArgOperand(0);
+            Value* op1 = inst->getArgOperand(1);
+            if (WIAnalysis::UNIFORM == getDependency(op0) ||
+                WIAnalysis::UNIFORM == getDependency(op1))
             {
                 return WIAnalysis::UNIFORM;
             }
-
-            if (intrinsic_name == llvm_waveClustered)
-            {
-                const unsigned clusterSize = static_cast<unsigned>(
-                    cast<llvm::ConstantInt>(inst->getArgOperand(2))->getZExtValue());
-
-                constexpr unsigned maxSimdSize = 32;
-                if (clusterSize == maxSimdSize)
-                {
-                    // TODO: do the same for SIMD8 and SIMD16 if possible.
-                    return WIAnalysis::UNIFORM;
-                }
-            }
         }
-        else
+
+        if (intrinsic_name == llvm_waveBallot || intrinsic_name == llvm_waveAll)
         {
-            if (GII_id == GenISAIntrinsic::GenISA_getSR0 ||
-                GII_id == GenISAIntrinsic::GenISA_eu_id ||
-                GII_id == GenISAIntrinsic::GenISA_eu_thread_id)
+            return WIAnalysis::UNIFORM;
+        }
+
+        if (intrinsic_name == llvm_waveClustered)
+        {
+            const unsigned clusterSize = static_cast<unsigned>(
+                cast<llvm::ConstantInt>(inst->getArgOperand(2))->getZExtValue());
+
+            constexpr unsigned maxSimdSize = 32;
+            if (clusterSize == maxSimdSize)
             {
-                // do not assume these per-thread values are globally uniform
-                return WIAnalysis::RANDOM;
+                // TODO: do the same for SIMD8 and SIMD16 if possible.
+                return WIAnalysis::UNIFORM;
             }
         }
 
