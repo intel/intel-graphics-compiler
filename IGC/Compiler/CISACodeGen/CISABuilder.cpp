@@ -4666,23 +4666,18 @@ namespace IGC
         for (auto global : modMD->inlineProgramScopeOffsets)
         {
             GlobalVariable* pGlobal = global.first;
-            // Always create symbol for externally exposed globals
-            bool needSymbol = pGlobal->hasExternalLinkage() || pGlobal->hasCommonLinkage();
-            // Otherwise check if relocation is required
-            if (!needSymbol)
+            bool needRelocation = false;
+            for (auto ui = pGlobal->user_begin(), ue = pGlobal->user_end(); ui != ue; ui++)
             {
-                for (auto ui = pGlobal->user_begin(), ue = pGlobal->user_end(); ui != ue; ui++)
+                // Check if need relocation
+                Instruction* inst = dyn_cast<Instruction>(*ui);
+                if (inst && inst->getParent()->getParent()->hasFnAttribute("EnableGlobalRelocation"))
                 {
-                    // Check if need relocation
-                    Instruction* inst = dyn_cast<Instruction>(*ui);
-                    if (inst && inst->getParent()->getParent()->hasFnAttribute("EnableGlobalRelocation"))
-                    {
-                        needSymbol = true;
-                        break;
-                    }
+                    needRelocation = true;
+                    break;
                 }
             }
-            if (needSymbol)
+            if (needRelocation)
             {
                 StringRef name = pGlobal->getName();
                 unsigned addrSpace = pGlobal->getType()->getAddressSpace();
