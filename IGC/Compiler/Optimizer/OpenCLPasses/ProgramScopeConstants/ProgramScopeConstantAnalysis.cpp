@@ -71,9 +71,6 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
     LLVMContext& C = M.getContext();
     m_DL = &M.getDataLayout();
 
-    MetaDataUtils* mdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-    ModuleMetaData* modMd = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-
     for (Module::global_iterator I = M.global_begin(), E = M.global_end(); I != E; ++I)
     {
         GlobalVariable* globalVar = &(*I);
@@ -116,12 +113,7 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
         // If this variable isn't used, don't add it to the buffer.
         if (globalVar->use_empty())
         {
-            // If compiler requests global symbol for external/common linkage, add it reguardless if it is used
-            bool requireGlobalSymbol = modMd->compOpt.EnableGlobalRelocation &&
-                (globalVar->hasCommonLinkage() || globalVar->hasExternalLinkage());
-
-            if (!requireGlobalSymbol)
-                continue;
+            continue;
         }
 
         // Align the buffer.
@@ -153,6 +145,9 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
         ArrayRef<GlobalValue*> globalArray(gvec);
         IGC::appendToUsed(M, globalArray);
     }
+
+    MetaDataUtils* mdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    ModuleMetaData* modMd = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
 
     if (inlineConstantBuffer.size() > 0)
     {
