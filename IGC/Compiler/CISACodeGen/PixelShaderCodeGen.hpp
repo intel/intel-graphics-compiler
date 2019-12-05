@@ -163,6 +163,7 @@ namespace IGC
         bool       m_HasDouble;
         bool       m_VectorMask;
         uint       m_ConstantInterpolationMask = 0;
+        bool       m_HasEvalSampler = false;
 
         bool       m_HasDiscard;
 

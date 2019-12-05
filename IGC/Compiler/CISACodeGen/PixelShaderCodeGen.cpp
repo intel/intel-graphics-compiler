@@ -756,6 +756,7 @@ namespace IGC
         pKernelProgram->samplerCount = GetSamplerCount(m_samplerCount);
         pKernelProgram->renderTargetMask = m_RenderTargetMask;
         pKernelProgram->constantInterpolationEnableMask = m_ConstantInterpolationMask;
+        pKernelProgram->hasEvalSampler = m_HasEvalSampler;
         pKernelProgram->NOSBufferSize = m_NOSBufferSize / getGRFSize(); // in 256 bits
         pKernelProgram->isMessageTargetDataCacheDataPort = isMessageTargetDataCacheDataPort;
 
@@ -876,6 +877,9 @@ namespace IGC
             case GenISAIntrinsic::GenISA_PullSampleIndexBarys:
             case GenISAIntrinsic::GenISA_PullSnappedBarys:
                 m_HasPullBary = true;
+                break;
+            case GenISAIntrinsic::GenISA_evaluateSampler:
+                m_HasEvalSampler = true;
                 break;
             default:
                 break;

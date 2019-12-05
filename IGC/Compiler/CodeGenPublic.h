@@ -271,7 +271,6 @@ namespace IGC
         unsigned int bufferSlot = 0;
         unsigned int statelessCBPushedSize = 0;
 
-
         // GenUpdateCB outputs
         void*       m_ConstantBufferReplaceShaderPatterns = nullptr;
         uint        m_ConstantBufferReplaceShaderPatternsSize = 0;
@@ -324,6 +323,7 @@ namespace IGC
         bool posXYOffsetEnable;
         bool blendToFillEnabled;
         bool forceEarlyZ;
+        bool hasEvalSampler;
 
         bool sampleCmpToDiscardOptimizationPossible;
 
