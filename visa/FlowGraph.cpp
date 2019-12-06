@@ -2968,14 +2968,14 @@ void FlowGraph::processGoto(bool HasSIMDCF)
             if (activeJoinBlocks.size() > 1 ||
                 (activeJoinBlocks.size() == 1 && activeJoinBlocks.back().IsNestedJoin))
             {
-                bb->setInNestedDivergentBranch(true);
+                setInNestedDivergentBranch(bb);
             }
         }
         else if ((builder->getuint32Option(vISA_noMaskToAnyhWA) & 0x3) > 0)
         {
             if (activeJoinBlocks.size() > 0)
             {
-                bb->setInNestedDivergentBranch(true);
+                setInNestedDivergentBranch(bb);
             }
         }
 

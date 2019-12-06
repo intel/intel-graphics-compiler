@@ -3312,16 +3312,22 @@ G4_INST::isComprInvariantSrcRegion(G4_SrcRegRegion* src, int srcPos)
 bool G4_INST::isPartialWrite() const
 {
     G4_Predicate* aPred = predicate;
-    if (aPred && G4_Predicate::isAnyH(aPred->getControl()) &&
-        builder.kernel.getOptions()->getTarget() != VISA_CM)
+    if (builder.kernel.getOptions()->getTarget() != VISA_CM &&
+        (builder.getuint32Option(vISA_noMaskToAnyhWA) & 0x3) > 0 &&
+        (getGenxPlatform() == GENX_TGLLP ||
+            builder.getOption(vISA_forceNoMaskToAnyhWA)))
     {
         // Only for code from IGC. HW WA related.
-        if (aPred->getPredCtrlGroupSize() >= builder.kernel.getSimdSize())
+        if (aPred && G4_Predicate::isAnyH(aPred->getControl()))
         {
-            // This is equivalent to NoMask
-            aPred = nullptr;
+            if (aPred->getPredCtrlGroupSize() >= builder.kernel.getSimdSize())
+            {
+                // equivalent to NoMask without predicate [ie (w)]
+                aPred = nullptr;
+            }
         }
     }
+
     return (aPred != NULL && op != G4_sel) || op == G4_smov;
 }
 

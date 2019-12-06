@@ -11747,7 +11747,7 @@ void Optimizer::replaceNoMaskWithAnyhWA()
     for (auto BI : fg)
     {
         G4_BB* BB = BI;
-        if (!BB->isInNestedDivergentBranch()) {
+        if (fg.isInNestedDivergentBranch(BB)) {
             continue;
         }
 
@@ -11808,7 +11808,7 @@ void Optimizer::replaceNoMaskWithAnyhWA()
         //                         (2) (W) mov (1|M0) f1.0<1>:ud  ce0.0<0;1,0>:ud
         //                             (f1.0.any16h)  inst1
         // The algo tries to use (1) if doing so has lower chance to increase flag
-        // register pressure; otherwise, it uses (2).
+        // register pressure and if f0.0 is local; otherwise, it uses (2).
 
         // 1. Check if an existing flag can be used
         //    If BB's predecessor ends with a conditional goto instruction,
@@ -11822,7 +11822,9 @@ void Optimizer::replaceNoMaskWithAnyhWA()
             assert(gotoInst->opcode() == G4_goto && "Last inst should be goto!");
             G4_Predicate* pred = gotoInst->getPredicate();
             if (predBB->Succs.size() == 2 &&
-                pred && pred->getControl() == PRED_DEFAULT) {
+                pred && pred->getControl() == PRED_DEFAULT &&
+                !fg.globalOpndHT.isOpndGlobal(pred))
+            {
                 prevPred = pred;
                 predTargetBB = predBB->Succs.back();
             }
@@ -11868,12 +11870,9 @@ void Optimizer::replaceNoMaskWithAnyhWA()
             assert(predTargetBB && "predTargetBB should not be null here");
 
             // First, make Pred global
-            if (!fg.globalOpndHT.isOpndGlobal(prevPred))
-            {
-                fg.globalOpndHT.addGlobalOpnd(prevPred);
-            }
-            flagVarForBB = prevPred->getBase()->asRegVar();
+            fg.globalOpndHT.addGlobalOpnd(prevPred);
 
+            flagVarForBB = prevPred->getBase()->asRegVar();
             if ((predTargetBB == BB && prevPred->getState() == PredState_Minus) ||
                 (predTargetBB != BB && prevPred->getState() == PredState_Plus))
             {
