@@ -80,6 +80,7 @@ bool AddImplicitArgs::runOnModule(Module &M)
     {
         m_IndirectImplicitArgs.push_back(ImplicitArg::R0);
         m_IndirectImplicitArgs.push_back(ImplicitArg::PAYLOAD_HEADER);
+        m_IndirectImplicitArgs.push_back(ImplicitArg::PRIVATE_BASE);
 
         // Check if any indirect functions uses GAS, if so we have to add the implicit arg to all indirect functions
         // Lazy Method. Can be removed once we can support GAS without using implicit args
@@ -565,6 +566,7 @@ void AddImplicitArgs::FixIndirectCalls(Module& M)
             // HACK: manually set implicit arg types
             argTy.push_back(VectorType::get(Type::getInt32Ty(pFunc->getContext()), 8)); // R0
             argTy.push_back(VectorType::get(Type::getInt32Ty(pFunc->getContext()), 8)); // payload_header
+            argTy.push_back(Type::getInt8PtrTy(pFunc->getContext(), 0)); // private_base
 
             FunctionType* fTy = FunctionType::get(pFunc->getReturnType(), argTy, false);
             Function* pNewFunc = Function::Create(fTy, pFunc->getLinkage());

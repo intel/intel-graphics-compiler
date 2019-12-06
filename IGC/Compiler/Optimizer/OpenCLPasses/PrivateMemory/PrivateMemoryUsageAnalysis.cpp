@@ -64,9 +64,6 @@ bool PrivateMemoryUsageAnalysis::runOnModule(Module& M)
             continue;
         if (pMdUtils->findFunctionsInfoItem(pFunc) == pMdUtils->end_FunctionsInfo())
             continue;
-        // Don't need PRIVATE_BASE for stack call functions since private memory is saved on stack. Only needed for kernel.
-        if (pFunc->hasFnAttribute("visaStackCall"))
-            continue;
         if (runOnFunction(*pFunc))
         {
             changed = true;
@@ -107,6 +104,13 @@ bool PrivateMemoryUsageAnalysis::runOnFunction(Function& F)
             }
         }
     }
+    //Add private memory implicit arg
+    SmallVector<ImplicitArg::ArgType, ImplicitArg::NUM_IMPLICIT_ARGS> implicitArgs;
+    implicitArgs.push_back(ImplicitArg::R0);
+    if (F.hasFnAttribute("visaStackCall"))
+    {
+        m_hasPrivateMem = true;
+    }
 
     // For double emulation, need to add private base (conservative).
     if (!m_hasPrivateMem)
@@ -120,12 +124,9 @@ bool PrivateMemoryUsageAnalysis::runOnFunction(Function& F)
         }
     }
 
-    //Add private memory implicit arg
-    SmallVector<ImplicitArg::ArgType, ImplicitArg::NUM_IMPLICIT_ARGS> implicitArgs;
 
     if (m_hasPrivateMem)
     {
-        implicitArgs.push_back(ImplicitArg::R0);
         implicitArgs.push_back(ImplicitArg::PRIVATE_BASE);
     }
     ImplicitArgs::addImplicitArgs(F, implicitArgs, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils());
