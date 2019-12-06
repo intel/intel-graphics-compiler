@@ -6940,40 +6940,37 @@ void GraphColor::addCalleeSaveRestoreCode()
 //
 void GraphColor::addGenxMainStackSetupCode()
 {
+    uint32_t fpInitVal = builder.getOptions()->getuInt32Option(vISA_SpillMemOffset);
     unsigned frameSize = builder.kernel.fg.paramOverflowAreaOffset + builder.kernel.fg.paramOverflowAreaSize;
     G4_Declare* framePtr = builder.kernel.fg.framePtrDcl;
     G4_Declare* stackPtr = builder.kernel.fg.stackPtrDcl;
 
-    INST_LIST_ITER insertIt = builder.kernel.fg.getEntryBB()->begin();
-    for (; insertIt != builder.kernel.fg.getEntryBB()->end() && (*insertIt)->isLabel();
-        ++insertIt)
-        ; // empty body
+    auto entryBB = builder.kernel.fg.getEntryBB();
+    auto insertIt = std::find_if(entryBB->begin(), entryBB->end(), [](G4_INST* inst) { return !inst->isLabel(); });
     //
-    // FP = 0
+    // FP = spillMemOffset
     //
     {
         G4_DstRegRegion* dst = builder.createDstRegRegion(Direct, framePtr->getRegVar(), 0, 0, 1, Type_UD);
-        G4_Imm * src = builder.createImm(0, Type_UD);
+        G4_Imm * src = builder.createImm(fpInitVal, Type_UD);
         G4_INST* fpInst = builder.createMov(1, dst, src, InstOpt_WriteEnable, false);
-        insertIt = builder.kernel.fg.getEntryBB()->insert(insertIt, fpInst);
+        insertIt = entryBB->insert(insertIt, fpInst);
 
         if (builder.kernel.getOption(vISA_GenerateDebugInfo))
         {
             builder.kernel.getKernelDebugInfo()->setBEFPSetupInst(fpInst);
             builder.kernel.getKernelDebugInfo()->setFrameSize(frameSize * 16);
         }
-
     }
     //
-    // SP = FrameSize (overflow-area offset + overflow-area size)
+    // SP = FP + FrameSize (overflow-area offset + overflow-area size)
     //
     {
         G4_DstRegRegion* dst = builder.createDstRegRegion(Direct, stackPtr->getRegVar(), 0, 0, 1, Type_UD);
-        G4_Imm * src = builder.createImm(frameSize, Type_UD);
+        G4_Imm * src = builder.createImm(fpInitVal + frameSize, Type_UD);
         G4_INST* spIncInst = builder.createMov(1, dst, src, InstOpt_WriteEnable, false);
-        builder.kernel.fg.getEntryBB()->insert(++insertIt, spIncInst);
+        entryBB->insert(++insertIt, spIncInst);
     }
-    builder.instList.clear();
 
     if (m_options->getOption(vISA_OptReport))
     {
@@ -7229,11 +7226,10 @@ void GraphColor::addSaveRestoreCode(unsigned localSpillAreaOwordSize)
         gtpin->markInsts();
     }
 
-    if (builder.getIsKernel() == true)
+    if (builder.getIsKernel())
     {
-        unsigned int spillMemOffset = builder.getOptions()->getuInt32Option(vISA_SpillMemOffset);
-        builder.kernel.fg.callerSaveAreaOffset =
-            (spillMemOffset / 16) + localSpillAreaOwordSize;
+        // FIXME: why is this only computed for kernel? What about nested calls?
+        builder.kernel.fg.callerSaveAreaOffset = localSpillAreaOwordSize;
     }
     else
     {
