@@ -178,8 +178,10 @@ namespace IGC {
             AU.addRequired<RegisterEstimator>();
         }
 
+#if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
         void dumpDDGContents();
         void dumpPriorityQueueContents();
+#endif
 
         void clearDDG();
 
@@ -228,6 +230,7 @@ IGC_INITIALIZE_PASS_DEPENDENCY(RegisterEstimator)
 IGC_INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
 IGC_INITIALIZE_PASS_END(PreRAScheduler, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
 
+#if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
 void PreRAScheduler::dumpDDGContents()
 {
     IGC_SET_FLAG_VALUE(PrintToConsole, 1);
@@ -259,6 +262,7 @@ void PreRAScheduler::dumpDDGContents()
 
     IGC_SET_FLAG_VALUE(PrintToConsole, 0);
 }
+#endif
 
 void PreRAScheduler::clearDDG()
 {
@@ -841,6 +845,7 @@ bool PreRAScheduler::ScheduleReadyNodes(
     return Changed;
 }
 
+#if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
 void PreRAScheduler::dumpPriorityQueueContents()
 {
     llvm::PriorityQueue<Node*, std::vector<Node*>, PreRAScheduler::OrderByLatency> longLatencyQueueCopy = longLatencyDelaySortedReadyQueue;
@@ -912,6 +917,7 @@ void PreRAScheduler::dumpPriorityQueueContents()
 
     IGC_SET_FLAG_VALUE(PrintToConsole, 0);
 }
+#endif
 
 bool PreRAScheduler::runOnFunction(Function& F) {
     CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
