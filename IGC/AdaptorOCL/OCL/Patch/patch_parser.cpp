@@ -904,6 +904,9 @@ void DebugPatchList(
                 ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "\tHasGlobalAtomics = %s\n",
                     pPatchItem->HasGlobalAtomics ? "true" : "false");
+                ICBE_DPF_STR(output, GFXDBG_HARDWARE,
+                    "\tNumGRFRequired = %d\n",
+                    pPatchItem->NumGRFRequired);
             }
             break;
 
