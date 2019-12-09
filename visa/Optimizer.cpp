@@ -11743,11 +11743,65 @@ void Optimizer::replaceNoMaskWithAnyhWA()
         return true;
     };
 
+    // Create a flag based on ce0 and return that flag's G4_RegVar,
+    // flagDefInst is the inst that define this flag var.
+    auto createFlagFromCE0 = [&](G4_INST*& flagDefInst,
+        uint32_t flagBits, G4_BB* BB, INST_LIST_ITER& II) -> G4_RegVar*
+    {
+        G4_Declare* newFlagDecl = builder.createTempFlag(
+            (flagBits == 32) ? 2 : 1, "newFlag");
+        G4_RegVar* newVar = newFlagDecl->getRegVar();
+        G4_Type Ty = (flagBits == 32) ? Type_UD : Type_UW;
+        uint32_t mask = (flagBits == 32 ? 0xFFFFFFFF
+                                        : (flagBits == 16 ? 0xFFFF : 0xFF));
+        G4_Imm* CMask = builder.createImm(mask, Ty);
+        G4_DstRegRegion* flagDst = builder.createDstRegRegion(
+            Direct, newVar, 0, 0, 1, Ty);
+
+        // For 32-bit flag
+        //    (w) and f0.0<1>:ud ce0.0<0;1,0>:ud  0xFFFFFFFF:ud
+        // For 16-bit flag
+        //    (w) mov t:ud  ce0.0<0;1,0>:ud
+        //    (w) and f0.0<1>:uw t<0;1.0>:uw  0xFFFF/0xFF:uw
+        G4_SrcRegRegion* ce0Src0 = builder.createSrcRegRegion(
+            Mod_src_undef, Direct, builder.phyregpool.getMask0Reg(), 0, 0,
+            builder.getRegionScalar(), Type_UD);
+        if (flagBits == 32)
+        {
+            flagDefInst = builder.createInternalInst(
+                nullptr, G4_and, nullptr, false, 1, flagDst, ce0Src0, CMask,
+                InstOpt_WriteEnable);
+            BB->insert(II, flagDefInst);
+        }
+        else
+        {
+            G4_Declare* tmpDcl = builder.createTempVar(1, Type_UD, Any, "tce0");
+            G4_DstRegRegion* D = builder.createDstRegRegion(
+                Direct, tmpDcl->getRegVar(), 0, 0, 1, Type_UD);
+            G4_INST* movCE0 = builder.createMov(1, D, ce0Src0, InstOpt_WriteEnable, false);
+            BB->insert(II, movCE0);
+
+            G4_Declare* tmpDclUW = builder.createTempVar(2, Type_UW, Any, "tce0uw");
+            tmpDclUW->setAliasDeclare(tmpDcl, 0);
+            G4_SrcRegRegion* andSrc0 = builder.createSrcRegRegion(
+                Mod_src_undef, Direct, tmpDclUW->getRegVar(), 0, 0,
+                builder.getRegionScalar(), Type_UW);
+            flagDefInst = builder.createInternalInst(
+                nullptr, G4_and, nullptr, false, 1, flagDst, andSrc0, CMask,
+                InstOpt_WriteEnable);
+            BB->insert(II, flagDefInst);
+
+            // update defUse
+            movCE0->addDefUse(flagDefInst, Opnd_src0);
+        }
+        return newVar;
+    };
+
     uint32_t simdsize = builder.kernel.getSimdSize();
     for (auto BI : fg)
     {
         G4_BB* BB = BI;
-        if (fg.isInNestedDivergentBranch(BB)) {
+        if (!fg.isInNestedDivergentBranch(BB)) {
             continue;
         }
 
@@ -11763,31 +11817,17 @@ void Optimizer::replaceNoMaskWithAnyhWA()
                 }
 
                 uint32_t anylen = std::max((uint32_t)I->getExecSize(), simdsize);
-                G4_Declare* tmpFlagDecl = builder.createTempFlag(
-                    (anylen == 32) ? 2 : 1, "tFlag");
-                G4_RegVar* tmpVar = tmpFlagDecl->getRegVar();
-                G4_Type Ty = (anylen == 32) ? Type_UD : Type_UW;
-
-                G4_SrcRegRegion* ce0Src = builder.createSrcRegRegion(
-                    Mod_src_undef, Direct, builder.phyregpool.getMask0Reg(), 0, 0,
-                    builder.getRegionScalar(), Ty);
-                uint32_t mask = (anylen == 32 ? 0xFFFFFFFF : (anylen == 16 ? 0xFFFF : 0xFF));
-                G4_Imm* CMask = builder.createImm(mask, Ty);
-                G4_DstRegRegion* tmpDst = builder.createDstRegRegion(
-                    Direct, tmpVar, 0, 0, 1, Ty);
-                G4_INST* tmpInst = builder.createInternalInst(
-                    nullptr, G4_and, nullptr, false, 1, tmpDst, ce0Src, CMask,
-                    InstOpt_WriteEnable);
-                BB->insert(II, tmpInst);
+                G4_INST* flagDefInst = nullptr;
+                G4_RegVar* flagVar = createFlagFromCE0(flagDefInst, anylen, BB, II);
 
                 G4_Predicate_Control anyh = builder.vISAPredicateToG4Predicate(
                     PRED_CTRL_ANY, anylen);
                 G4_Predicate* newPred = builder.createPredicate(
-                    PredState_Plus, tmpVar, 0, anyh);
+                    PredState_Plus, flagVar, 0, anyh);
                 I->setPredicate(newPred);
 
                 // update defUse
-                tmpInst->addDefUse(I, Opnd_pred);
+                flagDefInst->addDefUse(I, Opnd_pred);
             }
             continue;
         }
@@ -11884,30 +11924,7 @@ void Optimizer::replaceNoMaskWithAnyhWA()
         {
             // Create a flag var for this BB by reading ce0, also zero
             // the upper bits that are beyond the simd width.
-            G4_Declare* flagDecl = builder.createTempFlag(
-                simdsize > 16 ? 2 : 1, "flagPerBBWA");
-            flagVarForBB = flagDecl->getRegVar();
-            G4_Type Ty = simdsize > 16 ? Type_UD : Type_UW;
-
-            // insert inst to read ce0
-            G4_SrcRegRegion* ce0Src = builder.createSrcRegRegion(
-                Mod_src_undef, Direct, builder.phyregpool.getMask0Reg(), 0, 0,
-                builder.getRegionScalar(), Ty);
-            G4_DstRegRegion* tmpDst = builder.createDstRegRegion(
-                Direct, flagVarForBB, 0, 0, 1, Ty);
-            if (simdsize == 8)
-            {
-                G4_Imm* C0xFF = builder.createImm((uint16_t)0xFF, Ty);
-                flagDefInst = builder.createInternalInst(
-                    nullptr, G4_and, nullptr, false, 1, tmpDst, ce0Src, C0xFF,
-                    InstOpt_WriteEnable);
-            }
-            else
-            {
-                flagDefInst = builder.createMov(
-                    1, tmpDst, ce0Src, InstOpt_WriteEnable, false);
-            }
-            BB->insert(II, flagDefInst);
+            flagVarForBB = createFlagFromCE0(flagDefInst, simdsize, BB, II);
         }
 
         for (; II != IE; ++II)
