@@ -4589,10 +4589,8 @@ int IR_Builder::translateVISATypedAtomicInst(
 {
 
     Common_ISA_Exec_Size instExecSize = execSize;
-    MUST_BE_TRUE(execSize == EXEC_SIZE_1 ||
-                 execSize == EXEC_SIZE_2 ||
-                 execSize == EXEC_SIZE_4 ||
-                 execSize == EXEC_SIZE_8, "send exec size must be 1, 2, 4 or 8 for typed atomic messages");
+    assert(execSize <= (getNativeExecSize() == 8 ? EXEC_SIZE_8 : EXEC_SIZE_16) &&
+        "send exec size must not exceed the platform's native execution size");
 
     unsigned op = Get_Atomic_Op(atomicOp);
 
