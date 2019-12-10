@@ -8285,7 +8285,9 @@ public:
         // insert "mov (16) a0.0:uw 0x0:uw" at the beginning of the shader
         if (kernel.fg.begin() != kernel.fg.end()) {
             G4_BB* bb = *kernel.fg.begin();
-            bb->insert(bb->begin(),
+            auto insertIt = std::find_if(bb->begin(), bb->end(),
+                [](G4_INST* inst) { return !inst->isLabel(); });
+            bb->insert(insertIt,
                 builder.createMov(16, builder.createDstRegRegion(Direct,
                     builder.phyregpool.getAddrReg(), 0, 0, 1, Type_UW),
                     builder.createImm(0, Type_UW), InstOpt_WriteEnable, false));
