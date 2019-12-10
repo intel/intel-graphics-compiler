@@ -71,8 +71,8 @@ namespace IGC
             WO_XYZ,
             WO_XZY,
             WO_YXZ,
-            WO_YZX,
             WO_ZXY,
+            WO_YZX,
             WO_ZYX
         };
         CShader* getSIMDEntry(CodeGenContext* ctx, SIMDMode simdMode)
