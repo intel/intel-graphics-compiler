@@ -117,6 +117,11 @@ DumpName DumpName::Extension(std::string const& extension) const
 DumpName DumpName::StagedInfo(void const* context) const
 {
     DumpName copy(*this);
+    if (!context)
+    {
+        return copy;
+    }
+
     IGC::CodeGenContext const* ctx = (IGC::CodeGenContext const*) context;
     if (!IsStage2RestSIMDs(ctx->m_StagingCtx) &&
         ctx->m_CgFlag != FLAG_CG_ALL_SIMDS)
