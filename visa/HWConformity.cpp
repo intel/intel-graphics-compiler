@@ -4000,14 +4000,14 @@ void HWConformity::fixMADInst( G4_BB* bb )
 
         tryEliminateMadSrcModifier(builder, inst);
 
-        G4_DstRegRegion *dst = inst->getDst();
-        int exec_size = inst->getExecSize( );
-        G4_Operand *src0 = inst->getSrc(0), *src1 = inst->getSrc(1), *src2 = inst->getSrc(2);
+        G4_DstRegRegion* dst = inst->getDst();
+        uint32_t exec_size = inst->getExecSize();
+        G4_Operand* src0 = inst->getSrc(0), * src1 = inst->getSrc(1), * src2 = inst->getSrc(2);
 
         bool conforming_genx_mad = true;
         bool generate_genx_mac;
 
-        if (exec_size == 32)
+        if (exec_size > builder.getNativeExecSize() * 2)
         {
             conforming_genx_mad = false;
         }
