@@ -11726,6 +11726,11 @@ void Optimizer::replaceNoMaskWithAnyhWA()
     if (builder.kernel.getOptions()->getTarget() == VISA_CM)
         return;
 
+    // Save dmask for the shader. Need to read them again
+    // whenever sr0.2 is modified in the shader.
+    G4_RegVar* dmaskVarUD = nullptr;
+    G4_RegVar* dmaskVarUW = nullptr;
+
     // Return true if a NoMask inst is either send or global
     auto isCandidateInst = [](G4_INST* Inst, FlowGraph& cfg) -> bool {
         // pseudo should be gone at this time [skip all pseudo].
@@ -11738,64 +11743,86 @@ void Optimizer::replaceNoMaskWithAnyhWA()
         }
 
         G4_DstRegRegion* dst = Inst->getDst();
+#if 0
+        if (!Inst->isSend() && !(dst && cfg.globalOpndHT.isOpndGlobal(dst)) &&
+            !(dst && dst->isAreg()))
+#else
         if (!Inst->isSend() && !(dst && cfg.globalOpndHT.isOpndGlobal(dst)))
+#endif
         {
             return false;
         }
         return true;
     };
 
-    // Create a flag based on ce0 and return that flag's G4_RegVar,
-    // flagDefInst is the inst that define this flag var.
+    // Create a inst (flagDefInst) that defines a flag using ce0 and dmask,
+    // return that flag's G4_RegVar. Note that flagDefInst will be inserted
+    // right before II in BB.
     auto createFlagFromCE0 = [&](G4_INST*& flagDefInst,
         uint32_t flagBits, G4_BB* BB, INST_LIST_ITER& II) -> G4_RegVar*
     {
-        G4_Declare* newFlagDecl = builder.createTempFlag(
-            (flagBits == 32) ? 2 : 1, "newFlag");
-        G4_RegVar* newVar = newFlagDecl->getRegVar();
-        G4_Type Ty = (flagBits == 32) ? Type_UD : Type_UW;
-        uint32_t mask = (flagBits == 32 ? 0xFFFFFFFF
-                                        : (flagBits == 16 ? 0xFFFF : 0xFF));
-        G4_Imm* CMask = builder.createImm(mask, Ty);
-        G4_DstRegRegion* flagDst = builder.createDstRegRegion(
-            Direct, newVar, 0, 0, 1, Ty);
+        //
+        // This create an inst definging flag:
+        //    (w) and  flag:Ty  ce0.0<0;1,0>:Ty  dmaskVar:Ty
+        //
+        // Note that dmaskVar shall be inserted at the end of
+        // entry BB here.
+        //
+        // If sr0.2 (dmask) is modified in this shader other than entry BB,
+        // dmaskVar must be updated right after the place where sr0.2 is
+        // set. This is done at the end of replaceNoMaskWithAnyhWA().
+        //
+        if (dmaskVarUD == nullptr)
+        {
+            // (W) mov (1|M0) r10.0<1>:ud sr0.2.0<0;1,0>:ud
+            G4_Declare* dmaskDecl = builder.createTempVar(1, Type_UD, Any, "DMaskUD");
+            dmaskVarUD = dmaskDecl->getRegVar();
+            G4_SrcRegRegion* Src = builder.createSrcRegRegion(
+                Mod_src_undef, Direct, builder.phyregpool.getSr0Reg(),
+                0, 2, builder.getRegionScalar(), Type_UD);
+            G4_DstRegRegion* Dst = builder.createDstRegRegion(
+                Direct, dmaskVarUD, 0, 0, 1, Type_UD);
+            G4_INST* dmaskInst = builder.createMov(1, Dst, Src, InstOpt_WriteEnable, false);
 
-        // For 32-bit flag
-        //    (w) and f0.0<1>:ud ce0.0<0;1,0>:ud  0xFFFFFFFF:ud
-        // For 16-bit flag
-        //    (w) mov t:ud  ce0.0<0;1,0>:ud
-        //    (w) and f0.0<1>:uw t<0;1.0>:uw  0xFFFF/0xFF:uw
+            G4_BB* entryBB = fg.getEntryBB();
+            assert(!fg.isInNestedDivergentBranch(entryBB) &&
+                "ICE: Entry BB should not be marked as divergent!");
+
+            INST_LIST_ITER beforePos = entryBB->end();
+            if (!entryBB->empty()) {
+                INST_LIST_ITER II = beforePos;
+                --II;
+                if ((*II)->isCFInst()) {
+                    beforePos = II;
+                }
+            }
+            entryBB->insert(beforePos, dmaskInst);
+
+            fg.globalOpndHT.addGlobalOpnd(Dst);
+
+            // Create UW dmaskVar
+            G4_Declare* dmaskDeclUW = builder.createTempVar(2, Type_UW, Any, "DMaskUW");
+            dmaskDeclUW->setAliasDeclare(dmaskDecl, 0);
+            dmaskVarUW = dmaskDeclUW->getRegVar();
+        }
+
+        G4_Type Ty = (flagBits == 32) ? Type_UD : Type_UW;
+        G4_RegVar* dmVar = (Ty == Type_UD) ? dmaskVarUD : dmaskVarUW;
+        G4_Declare* newFlagDecl = builder.createTempFlag(
+            (Ty == Type_UD) ? 2 : 1, "newFlag");
+        G4_RegVar* newVar = newFlagDecl->getRegVar();
         G4_SrcRegRegion* ce0Src0 = builder.createSrcRegRegion(
             Mod_src_undef, Direct, builder.phyregpool.getMask0Reg(), 0, 0,
-            builder.getRegionScalar(), Type_UD);
-        if (flagBits == 32)
-        {
-            flagDefInst = builder.createInternalInst(
-                nullptr, G4_and, nullptr, false, 1, flagDst, ce0Src0, CMask,
-                InstOpt_WriteEnable);
-            BB->insert(II, flagDefInst);
-        }
-        else
-        {
-            G4_Declare* tmpDcl = builder.createTempVar(1, Type_UD, Any, "tce0");
-            G4_DstRegRegion* D = builder.createDstRegRegion(
-                Direct, tmpDcl->getRegVar(), 0, 0, 1, Type_UD);
-            G4_INST* movCE0 = builder.createMov(1, D, ce0Src0, InstOpt_WriteEnable, false);
-            BB->insert(II, movCE0);
-
-            G4_Declare* tmpDclUW = builder.createTempVar(2, Type_UW, Any, "tce0uw");
-            tmpDclUW->setAliasDeclare(tmpDcl, 0);
-            G4_SrcRegRegion* andSrc0 = builder.createSrcRegRegion(
-                Mod_src_undef, Direct, tmpDclUW->getRegVar(), 0, 0,
-                builder.getRegionScalar(), Type_UW);
-            flagDefInst = builder.createInternalInst(
-                nullptr, G4_and, nullptr, false, 1, flagDst, andSrc0, CMask,
-                InstOpt_WriteEnable);
-            BB->insert(II, flagDefInst);
-
-            // update defUse
-            movCE0->addDefUse(flagDefInst, Opnd_src0);
-        }
+            builder.getRegionScalar(), Ty);
+        G4_SrcRegRegion* dmaskSrc1 = builder.createSrcRegRegion(
+            Mod_src_undef, Direct, dmVar, 0, 0,
+            builder.getRegionScalar(), Ty);
+        G4_DstRegRegion* flagDst = builder.createDstRegRegion(
+            Direct, newVar, 0, 0, 1, Ty);
+        flagDefInst = builder.createInternalInst(
+            nullptr, G4_and, nullptr, false, 1, flagDst, ce0Src0, dmaskSrc1,
+            InstOpt_WriteEnable);
+        BB->insert(II, flagDefInst);
         return newVar;
     };
 
@@ -11837,57 +11864,24 @@ void Optimizer::replaceNoMaskWithAnyhWA()
         // Now, builder.getuint32Option(vISA_noMaskToAnyhWA) & 0x4) != 0
         // (optimized version)
         //
-        // How to replace NoMask:
-        //   Given the following:
-        //     [(f0.0)] goto (16||M0)  targetBB
-        //     FallThruBB:
-        //       (W) inst0   -->   (1) (~f0.0.any16h) inst0
-        //                         (2) (W) mov (1|M0) f1.0<1>:ud  ce0.0<0;1,0>:ud
-        //                             (f1.0.any16h)  inst0
+        // For each BB that needs to modify NoMask, create a flag once right
+        // prior to the first NoMask inst to be modified like the following:
+        //
+        //    BB:
         //       ......
-        //     TargetBB:
-        //       (W) inst1   -->   (1) (f0.0.any16h) inst1
-        //                         (2) (W) mov (1|M0) f1.0<1>:ud  ce0.0<0;1,0>:ud
-        //                             (f1.0.any16h)  inst1
-        // The algo tries to use (1) if doing so has lower chance to increase flag
-        // register pressure and if f0.0 is local; otherwise, it uses (2).
+        //       (W) and  f0.0:Ty  ce0.0:Ty   dmask:Ty
+        //       (W&f0.0.any16h) inst0
+        //       ......
+        //       (W&f0.0.any16h) inst1
+        //       ...
 
-        // 1. Check if an existing flag can be used
-        //    If BB's predecessor ends with a conditional goto instruction,
-        //    the flag of that conditional goto might be used directly
-        //    instead of reading ce0!
-        G4_Predicate* prevPred = nullptr;
-        G4_BB* predTargetBB = nullptr;
-        if (BB->Preds.size() == 1 && BB->Preds.back()->isEndWithGoto()) {
-            G4_BB* predBB = BB->Preds.back();
-            G4_INST* gotoInst = predBB->back();
-            assert(gotoInst->opcode() == G4_goto && "Last inst should be goto!");
-            G4_Predicate* pred = gotoInst->getPredicate();
-            if (predBB->Succs.size() == 2 &&
-                pred && pred->getControl() == PRED_DEFAULT &&
-                !fg.globalOpndHT.isOpndGlobal(pred))
-            {
-                prevPred = pred;
-                predTargetBB = predBB->Succs.back();
-            }
-        }
-        bool usePrevFlag = (prevPred != nullptr);
 
-        // 2. Advance to the first candidate NoMask inst and
+        // 1. Advance to the first candidate NoMask inst and
         //    check if the existing flag, if any, can be used.
         auto II = BB->begin(), IE = BB->end();
         for (; II != IE; ++II)
         {
             G4_INST* I = *II;
-            if ( usePrevFlag &&
-                (I->getPredicate() != nullptr || I->getCondMod() != nullptr))
-            {
-                // If a flag is used before the first candidate NoMask inst,
-                // using prevPred would increase flag register pressure as
-                // prevPred overlaps with this flag. To be safe, don't use prevPred.
-                usePrevFlag = false;
-            }
-
             if (isCandidateInst(I, fg))
             {
                 // found the 1st candidate
@@ -11899,35 +11893,10 @@ void Optimizer::replaceNoMaskWithAnyhWA()
             continue;
         }
 
-        // 3. Either use the prevPred or create a new flag, and replace all
-        //    remaining NoMask inst with this flag.
-        G4_RegVar* flagVarForBB = nullptr;
+        // 2. Scan insts and change nomask to anyh.
         G4_INST* flagDefInst = nullptr;
-        G4_PredState state = PredState_Plus;
-        unsigned int sroff = 0;
+        G4_RegVar* flagVarForBB = createFlagFromCE0(flagDefInst, simdsize, BB, II);
 
-        if (usePrevFlag)
-        {
-            assert(prevPred && "prevPred should not be null here!");
-            assert(predTargetBB && "predTargetBB should not be null here");
-
-            // First, make Pred global
-            fg.globalOpndHT.addGlobalOpnd(prevPred);
-
-            flagVarForBB = prevPred->getBase()->asRegVar();
-            if ((predTargetBB == BB && prevPred->getState() == PredState_Minus) ||
-                (predTargetBB != BB && prevPred->getState() == PredState_Plus))
-            {
-                state = PredState_Minus;
-            }
-            sroff = prevPred->getSubRegOff();
-        }
-        else
-        {
-            // Create a flag var for this BB by reading ce0, also zero
-            // the upper bits that are beyond the simd width.
-            flagVarForBB = createFlagFromCE0(flagDefInst, simdsize, BB, II);
-        }
 
         for (; II != IE; ++II)
         {
@@ -11940,68 +11909,69 @@ void Optimizer::replaceNoMaskWithAnyhWA()
             if (execsize > simdsize)
             {
                 //
-                // [rare case]
-                // For making sure that additional bits beyond simdsize are zero,
-                // need a new flag for two cases (f1.0 is the flag for this BB):
-                //     (1) execsize == 32
-                //         (W) and (2|M0)  f1.0<1>:uw  simdsize=8 ? 0xff : 0xffff
-                //     (2) execsise == 16 && usePrevFlag (simdsize == 8)
-                //         (W) and (1|M0)  f1.0<1>:uw  0xff:uw
+                // [can this happen ?]
+                //   execsize == 32
+                //      (W) and (1|M0)  f1.0<1>:ud  ce0.0:ud  dmask:ud
+                //   execsize == 16 or 8
+                //      (W) and (1|M0)  f1.0<1>:uw  ce0.0:uw  dmask:uw
                 //
-                G4_RegVar* flagVar = flagVarForBB;
-                G4_INST* tmpInst = flagDefInst;
-                if (execsize == 32 ||                 // simdsize = 8|16
-                    (execsize == 16 && usePrevFlag))  // simdsize = 8
-                {
-                    // Need a new temp flag
-                    G4_Declare* newFlagDecl = builder.createTempFlag(
-                        (execsize == 32) ? 2 : 1, "tFlag");
-                    flagVar = newFlagDecl->getRegVar();
-
-                    G4_SrcRegRegion* flagSrc = builder.createSrcRegRegion(
-                        Mod_src_undef, Direct, flagVarForBB, 0, sroff,
-                        builder.getRegionScalar(), Type_UW);
-                    G4_DstRegRegion* tmpDst = builder.createDstRegRegion(
-                        Direct, flagVar, 0, 0, 1, Type_UW);
-                    G4_Imm* IMM = builder.createImm(
-                        (simdsize == 8) ? 0xFF : 0xFFFF, Type_UW);
-                    tmpInst = builder.createInternalInst(
-                        nullptr, G4_and, nullptr, false,
-                        (execsize == 32) ? 2 : 1, tmpDst, flagSrc, IMM,
-                        InstOpt_WriteEnable);
-                    BB->insert(II, tmpInst);
-
-                    // update defUse
-                    if (!usePrevFlag) {
-                        flagDefInst->addDefUse(tmpInst, Opnd_src0);
-                    }
-                }
+                G4_INST* tmpInst = nullptr;
+                G4_RegVar* tmpFlag = createFlagFromCE0(tmpInst, execsize, BB, II);
 
                 G4_Predicate_Control anyh = builder.vISAPredicateToG4Predicate(
                     PRED_CTRL_ANY, execsize);
-                G4_Predicate* newPred = builder.createPredicate(state, flagVar, 0, anyh);
+                G4_Predicate* newPred = builder.createPredicate(PredState_Plus, tmpFlag, 0, anyh);
                 I->setPredicate(newPred);
 
-                // update defUse
-                if (flagVar != flagVarForBB ||  // new tmp flag
-                    !usePrevFlag)               // flag per BB
-                {
-                    assert(tmpInst && "tmp flag def inst should not be nullptr!");
-                    tmpInst->addDefUse(I, Opnd_pred);
-                }
+                tmpInst->addDefUse(I, Opnd_pred);
             }
             else
             {
                 // Common case
                 G4_Predicate_Control anyh = builder.vISAPredicateToG4Predicate(
                     PRED_CTRL_ANY, simdsize);
-                G4_Predicate* newPred = builder.createPredicate(state, flagVarForBB, sroff, anyh);
+                G4_Predicate* newPred = builder.createPredicate(PredState_Plus, flagVarForBB, 0, anyh);
                 I->setPredicate(newPred);
 
                 // update defUse
-                if (!usePrevFlag) {
-                    assert(flagDefInst && "flag def inst should not be nullptr!");
-                    flagDefInst->addDefUse(I, Opnd_pred);
+                flagDefInst->addDefUse(I, Opnd_pred);
+            }
+        }
+    }
+
+    if (dmaskVarUD && !fg.Sr0DefBBs.empty())
+    {
+        // modification made. Make sure that if sr0.2 is updated, reread dmask
+        G4_BB* entryBB = fg.getEntryBB();
+        for (int i = 0, sz = (int)fg.Sr0DefBBs.size(); i < sz; ++i)
+        {
+            G4_BB* BB = fg.Sr0DefBBs[i];
+            if (BB == entryBB)
+            {
+                // Skip entryBB as dmask has been read at the end of entryBB!
+                continue;
+            }
+
+            auto NextI = BB->begin();
+            auto IE = BB->end();
+            for (auto II = NextI; II != IE; II = NextI)
+            {
+                ++NextI;
+                G4_INST* inst = *II;
+                G4_DstRegRegion* dst = inst->getDst();
+                // Check if sr0.2 (DW) is modified.
+                if (dst && dst->isAreg() && dst->isSrReg() &&
+                    ((dst->getLeftBound() <= 8 && dst->getRightBound() >= 8) ||
+                    (dst->getLeftBound() <= 11 && dst->getRightBound() >= 11)))
+                {
+                    G4_SrcRegRegion* Src = builder.createSrcRegRegion(
+                        Mod_src_undef, Direct, builder.phyregpool.getSr0Reg(),
+                        0, 2, builder.getRegionScalar(), Type_UD);
+                    G4_DstRegRegion* Dst = builder.createDstRegRegion(
+                        Direct, dmaskVarUD, 0, 0, 1, Type_UD);
+                    G4_INST* dmaskI = builder.createMov(1, Dst, Src, InstOpt_WriteEnable, false);
+
+                    BB->insert(NextI, dmaskI);
                 }
             }
         }

@@ -618,6 +618,12 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
             subroutineStartBB.push_back(curr_BB);
         }
 
+        G4_DstRegRegion* dst = i->getDst();
+        if (dst && dst->isAreg() && dst->isSrReg())
+        {
+            Sr0DefBBs.push_back(curr_BB);
+        }
+
         //
         // do and endif do not have predicate and jump-to label,so we treated them as non-control instruction
         // the labels around them will decides the beginning of a new BB

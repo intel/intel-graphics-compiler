@@ -784,6 +784,9 @@ public:
 
     } G12BCStats;
     unsigned numRMWs = 0;    // counting the number of read-modify-write
+
+    // Mostly empty, only a few case [CPS, etc] has sr0.2 defined inside kernel.
+    std::vector<G4_BB*> Sr0DefBBs;
 public:
 
     // forwarding functions to the BBs list
