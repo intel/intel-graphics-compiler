@@ -45,6 +45,12 @@ void InitTglLpSwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_IN
     //=================================================================================================================
 
     //TODO: Add WA as needed
+    SI_WA_ENABLE(
+        WaMixModeSelInstDstNotPacked,
+        "No Link Provided",
+        "No Link Provided",
+        PLATFORM_ALL,
+        SI_WA_FOR_EVER);
 
 }
 
