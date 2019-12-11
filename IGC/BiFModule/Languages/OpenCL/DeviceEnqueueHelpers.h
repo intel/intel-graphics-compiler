@@ -29,10 +29,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifdef __EXECUTION_MODEL_DEBUG
 #pragma pack( push )
 #pragma pack( 1 )
-#include "device_enqueue_internal_types.h"
+#include "DeviceEnqueueInternalTypes.h"
 #pragma pack( pop )
 #else
-#include "device_enqueue_internal_types.h"
+#include "DeviceEnqueueInternalTypes.h"
 #endif
 
 INLINE int __intel_ErrorCode(int code);
