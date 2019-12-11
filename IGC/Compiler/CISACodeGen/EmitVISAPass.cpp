@@ -251,7 +251,7 @@ bool EmitPass::canCompileCurrentShader(llvm::Function& F)
     if (m_FGA && (!m_FGA->getGroup(&F)->isSingle() || m_FGA->getGroup(&F)->hasStackCall()))
     {
         // default SIMD8
-        SIMDMode compiledSIMD = SIMDMode::UNKNOWN;
+        SIMDMode compiledSIMD = SIMDMode::SIMD8;
 
         if (ctx->type == ShaderType::OPENCL_SHADER)
         {
@@ -266,12 +266,7 @@ bool EmitPass::canCompileCurrentShader(llvm::Function& F)
                 compiledSIMD = getLeastSIMDAllowed(m_moduleMD->csInfo.maxWorkGroupSize, GetHwThreadsPerWG(ctx->platform));
             }
         }
-        if (compiledSIMD != SIMDMode::UNKNOWN)
-            return (m_SimdMode == compiledSIMD);
-        else
-        {
-            return (m_SimdMode == SIMDMode::SIMD8 || m_SimdMode == SIMDMode::SIMD16);
-        }
+        return (m_SimdMode == compiledSIMD);
     }
     return true;
 }
@@ -279,12 +274,9 @@ bool EmitPass::canCompileCurrentShader(llvm::Function& F)
 bool EmitPass::setCurrentShader(llvm::Function* F)
 {
     llvm::Function* Kernel = F;
-    if (m_FGA)
+    if (m_FGA && m_FGA->getModule())
     {
-        if (!m_FGA->getModule())
-        {
-            m_FGA->rebuild(F->getParent());
-        }
+        // subroutine enabled.
         auto FG = m_FGA->getGroup(F);
         if (!FG)
         {
