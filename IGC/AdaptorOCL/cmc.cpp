@@ -27,6 +27,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/ArrayRef.h>
 #include <llvm/ADT/StringSwitch.h>
+#include <llvm/Support/FileSystem.h>
+#include <llvm/Support/Path.h>
 #include "common/LLVMWarningsPop.hpp"
 
 #include "cmc.h"
@@ -43,6 +45,25 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define CMC_LIBRARY_NAME "igcmc32.dll"
 #else
 #define CMC_LIBRARY_NAME "libigcmc.so"
+#endif
+
+#ifdef _WIN32
+#include <Windows.h>
+EXTERN_C IMAGE_DOS_HEADER __ImageBase;
+
+// Return the current binary path. Windows only.
+static std::string getCurrentLibraryPath()
+{
+    char CurPath[1024] = {};
+    HINSTANCE Inst = reinterpret_cast<HINSTANCE>(&__ImageBase);
+    ::GetModuleFileName(Inst, CurPath, sizeof(CurPath));
+    return CurPath;
+}
+#else
+static std::string getCurrentLibraryPath()
+{
+    return {};
+}
 #endif
 
 using namespace cmc;
@@ -258,6 +279,17 @@ inline func_ptr_type getFunctionType(void* ptr)
 CMCLibraryLoader::CMCLibraryLoader()
 {
     Dylib = DL::getPermanentLibrary(CMC_LIBRARY_NAME, &ErrMsg);
+    if (!Dylib.isValid()) {
+        // Cannot locate CMC dll in PATH; try to locate it along with the current image.
+        std::string DLLPath = getCurrentLibraryPath();
+        if (!DLLPath.empty()) {
+            llvm::SmallVector<char, 1024> ParentPath(DLLPath.begin(), DLLPath.end());
+            llvm::sys::path::remove_filename(ParentPath);
+            DLLPath.assign(ParentPath.data(), ParentPath.data() + ParentPath.size());
+            DLLPath.append("\\").append(CMC_LIBRARY_NAME);
+            Dylib = DL::getPermanentLibrary(DLLPath.c_str(), &ErrMsg);
+        }
+    }
     if (Dylib.isValid()) {
         compileFn = getFunctionType<compileFnTy>(Dylib.getAddressOfSymbol("cmc_load_and_compile"));
         freeFn = getFunctionType<freeFnTy>(Dylib.getAddressOfSymbol("cmc_free_compile_info"));
