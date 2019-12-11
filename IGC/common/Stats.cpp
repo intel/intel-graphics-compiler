@@ -668,7 +668,8 @@ void TimeStats::printTime( ShaderType type, ShaderHash hash, void* context ) con
 
     // Skip printing PerPass info to CSV for now
     //pp.printPerPassTimeCSV( shaderName );
-    pp.printSumTimeTable(llvm::dbgs());
+    // Avoid printing the timestats for each shader to screen
+    // pp.printSumTimeTable(llvm::dbgs());
 }
 
 void TimeStats::printSumTime() const
