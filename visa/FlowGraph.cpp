@@ -621,7 +621,7 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
         G4_DstRegRegion* dst = i->getDst();
         if (dst && dst->isAreg() && dst->isSrReg())
         {
-            Sr0DefBBs.push_back(curr_BB);
+            setSR0Modified(true);
         }
 
         //

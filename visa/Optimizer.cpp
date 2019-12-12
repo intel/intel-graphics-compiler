@@ -11939,19 +11939,16 @@ void Optimizer::replaceNoMaskWithAnyhWA()
         }
     }
 
-    if (dmaskVarUD && !fg.Sr0DefBBs.empty())
+    if (dmaskVarUD && fg.getSR0Modified())
     {
         // modification made. Make sure that if sr0.2 is updated, reread dmask
-        G4_BB* entryBB = fg.getEntryBB();
-        for (int i = 0, sz = (int)fg.Sr0DefBBs.size(); i < sz; ++i)
+        // modification made. Make sure that if sr0.2 is updated, reread dmask
+        auto BI = fg.begin();
+        auto BE = fg.end();
+        ++BI; // skip entryBB
+        for (; BI != BE; ++BI)
         {
-            G4_BB* BB = fg.Sr0DefBBs[i];
-            if (BB == entryBB)
-            {
-                // Skip entryBB as dmask has been read at the end of entryBB!
-                continue;
-            }
-
+            G4_BB* BB = *BI;
             auto NextI = BB->begin();
             auto IE = BB->end();
             for (auto II = NextI; II != IE; II = NextI)

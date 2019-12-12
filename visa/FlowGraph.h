@@ -687,19 +687,34 @@ private:
     std::unordered_map<G4_Label*, std::vector<G4_BB*>> subroutines;
 
     // [HW WA]
-    // If the block does not post-dominate the entry, it is considered
-    // as divergent BB. Within a divergent BB, a further divergence is
-    // considered as nested divergent.
+    // Fused Mask cannot change from 01 to 00, therefore, EU will go through
+    // insts that it should skip, causing incorrect result if NoMask instructions
+    // that has side-effect (send, or modifying globals, etc) are executed.
+    // A WA is to change those NoMask instructions with anyh predicate using ce
+    // (ce would be correct (all 0) even though fused mask is wrong) and dmask.
     //
-    // [Formal def] define root_1_divergentBB (level 1 divergent root)
-    // to be BBs that
-    //     1.  not pdom(BB, entry); and
-    //     2.  There exists P, so that idom(P, BB) && pdom(P, entry)
-    // A BB is in a nested divergent branch if  there is a root_1_divergentBB,
-    // say B1,  such that dom(B1, BB) && not pdom(BB, B1).
+    // For a fused mask to be 01,  the control-flow must be divergent
+    // at that point. Furthermore, changing 01 to 00 happens only if a further
+    // divergence happens within a already-divergent path. This further
+    // divergence is called nested divergence here.
     //
-    // This is set in processGoto().
+    // How to identify nested divergent BBs:
+    //    If the block does not post-dominate the entry, it is considered
+    //    as divergent BB. Within a divergent BB, a further divergence is
+    //    considered as nested divergent.
+    //
+    //    [Formal def] define root_1_divergentBB (level 1 divergent root)
+    //    to be BBs that
+    //        1.  not pdom(BB, entry); and
+    //        2.  There exists P, so that idom(P, BB) && pdom(P, entry)
+    //    A BB is in a nested divergent branch if  there is a root_1_divergentBB,
+    //    say B1,  such that dom(B1, BB) && not pdom(BB, B1).
+    //
+    // This is set in processGoto() without using dom/pdom.
     std::unordered_map<G4_BB*, int> nestedDivergentBBs;
+
+    // If sr0 is modified within a shader, set it to true.
+    bool isSR0Modified;
 
 public:
     typedef std::pair<G4_BB*, G4_BB*> Edge;
@@ -784,9 +799,6 @@ public:
 
     } G12BCStats;
     unsigned numRMWs = 0;    // counting the number of read-modify-write
-
-    // Mostly empty, only a few case [CPS, etc] has sr0.2 defined inside kernel.
-    std::vector<G4_BB*> Sr0DefBBs;
 public:
 
     // forwarding functions to the BBs list
@@ -928,6 +940,8 @@ public:
     {
         return nestedDivergentBBs.count(B) > 0;
     }
+    void setSR0Modified(bool v) { isSR0Modified = v; }
+    bool getSR0Modified() const { return isSR0Modified; }
 
     //
     // Merge multiple returns into one, prepare for spill code insertion
@@ -976,8 +990,12 @@ public:
 
     void preprocess(INST_LIST& instlist);
 
+    FlowGraph() = delete;
+    FlowGraph(const FlowGraph&) = delete;
+    FlowGraph& operator=(const FlowGraph&) = delete;
+
     FlowGraph(INST_LIST_NODE_ALLOCATOR& alloc, G4_Kernel* kernel, Mem_Manager& m) :
-      traversalNum(0), numBBId(0), reducible(true),
+      isSR0Modified(false), traversalNum(0), numBBId(0), reducible(true),
       doIPA(false), hasStackCalls(false), isStackCallFunc(false), autoLabelId(0),
       pKernel(kernel), mem(m), instListAlloc(alloc),
       kernelInfo(NULL), builder(NULL), globalOpndHT(m), framePtrDcl(NULL),
