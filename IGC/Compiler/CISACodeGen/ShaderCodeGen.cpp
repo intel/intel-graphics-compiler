@@ -102,7 +102,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/GenUpdateCB.h"
 #include "Compiler/PromoteResourceToDirectAS.h"
 #include "Compiler/PromoteStatelessToBindless.h"
-#if defined( _DEBUG )
+#if defined( _DEBUG ) && !defined( ANDROID )
 #include "Compiler/VerificationPass.hpp"
 #endif
 #include "Compiler/LegalizationPass.hpp"
@@ -1265,7 +1265,7 @@ namespace IGC
         });
 
         mpm.add(new TargetTransformInfoWrapperPass(GenTTgetIIRAnalysis));
-#if defined( _DEBUG )
+#if defined( _DEBUG ) && !defined( ANDROID )
         // IGC IR Verification pass checks that we get a correct IR after the Unification.
         mpm.add(new VerificationPass());
 #endif

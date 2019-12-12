@@ -71,10 +71,12 @@ include_directories (
   ${IGC_SOURCE_DIR}/AdaptorOCL/CLElfLib/
 )
 
-add_custom_command(TARGET ${IGC_BUILD__PROJ__ElfPackager}
-                   POST_BUILD
-                   COMMAND $<TARGET_FILE:${IGC_BUILD__PROJ__ElfPackager}> -includeSizet -funcList ${CMAKE_CURRENT_SOURCE_DIR}/function_bin.txt ${IGC_BUILD__BIF_DIR}/OCLBiFImpl.bc ${IGC_BUILD__BIF_DIR}/igdclbif.bin
-                  )
+if(NOT ANDROID)
+  add_custom_command(TARGET ${IGC_BUILD__PROJ__ElfPackager}
+                     POST_BUILD
+                     COMMAND $<TARGET_FILE:${IGC_BUILD__PROJ__ElfPackager}> -includeSizet -funcList ${CMAKE_CURRENT_SOURCE_DIR}/function_bin.txt ${IGC_BUILD__BIF_DIR}/OCLBiFImpl.bc ${IGC_BUILD__BIF_DIR}/igdclbif.bin
+                    )
+endif()
 
 
 add_dependencies("${IGC_BUILD__PROJ__ElfPackager}" "${IGC_BUILD__PROJ__BiFModule_OCL}")
