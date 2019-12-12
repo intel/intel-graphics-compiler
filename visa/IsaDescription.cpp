@@ -1616,7 +1616,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
     },
 
     /// 128 (0x80)
-    { GENX_ICL, ISA_ROL, ISA_Inst_Logic, "rol", 5, SAME_DATA_TYPE,
+    { GENX_ICLLP, ISA_ROL, ISA_Inst_Logic, "rol", 5, SAME_DATA_TYPE,
     {
         { OPND_EXECSIZE, ISA_TYPE_UB, 0 },
         { OPND_PRED, ISA_TYPE_UW, 0 },
@@ -1627,7 +1627,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
     },
 
     /// 129 (0x81)
-    { GENX_ICL, ISA_ROR, ISA_Inst_Logic, "ror", 5, SAME_DATA_TYPE,
+    { GENX_ICLLP, ISA_ROR, ISA_Inst_Logic, "ror", 5, SAME_DATA_TYPE,
     {
         { OPND_EXECSIZE, ISA_TYPE_UB, 0 },
         { OPND_PRED, ISA_TYPE_UW, 0 },
@@ -1638,7 +1638,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
     },
 
     /// 130 (0x82)
-    { GENX_ICL, ISA_DP4A, ISA_Inst_Arith, "dp4a", 6, SAME_DATA_TYPE,
+    { GENX_TGLLP, ISA_DP4A, ISA_Inst_Arith, "dp4a", 6, SAME_DATA_TYPE,
     {
         { OPND_EXECSIZE, ISA_TYPE_UB, 0 },
         { OPND_PRED, ISA_TYPE_UW, 0 },
