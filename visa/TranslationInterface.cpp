@@ -721,10 +721,16 @@ int IR_Builder::translateVISAArithmeticDoubleInst(ISA_Opcode opcode, Common_ISA_
         G4_CondMod *condModOverflow = createCondMod(Mod_o, tmpFlag->getRegVar(), 0);
         inst->setCondMod(condModOverflow);
 
+        bool generateIf = true;
+
+        if (generateIf)
         {
             // if
             G4_Predicate *predicateFlagReg = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
             inst = createIf(predicateFlagReg, exsize, instOpt);
+        }
+        {
+
 
             // madm (4) r9.acc3 r0.noacc r6.noacc r8.acc2 {Align16, N1/N2}
             G4_SrcRegRegion *t0SrcOpnd = createSrcRegRegion(tsrc0);
@@ -817,23 +823,24 @@ int IR_Builder::translateVISAArithmeticDoubleInst(ISA_Opcode opcode, Common_ISA_
             t12SrcOpnd1->setAccRegSel(ACC2);
             inst = createInst(NULL, G4_madm, NULL, false, exsize, t8DstOpnd2, t9SrcOpnd1x1,
                 t11SrcOpnd1, t12SrcOpnd1, madmInstOpt, line_no);
+        }
 
-            if (!hasDefaultRoundDenorm)
-            {
-                // else (8) {Q1/Q2}
-                inst = createElse(exsize, instOpt);
+        if (generateIf && !hasDefaultRoundDenorm)
+        {
+            // else (8) {Q1/Q2}
+            inst = createElse(exsize, instOpt);
 
-                // restore cr0.0 {NoMask}
-                G4_DstRegRegion *cr0DstRegOpndForRestoreElseInst = createDstRegRegion(regDstCR0);
-                auto tmpSrcOpndForCR0OnElse = Create_Src_Opnd_From_Dcl(regCR0, getRegionScalar());
-                inst = createMov(1, cr0DstRegOpndForRestoreElseInst, tmpSrcOpndForCR0OnElse,
-                    InstOpt_WriteEnable, true);
-            }
+            // restore cr0.0 {NoMask}
+            G4_DstRegRegion *cr0DstRegOpndForRestoreElseInst = createDstRegRegion(regDstCR0);
+            auto tmpSrcOpndForCR0OnElse = Create_Src_Opnd_From_Dcl(regCR0, getRegionScalar());
+            inst = createMov(1, cr0DstRegOpndForRestoreElseInst, tmpSrcOpndForCR0OnElse,
+                InstOpt_WriteEnable, true);
+        }
 
-            {
-                // endif (8) {Q1/Q2}
-                inst = createEndif(exsize, instOpt);
-            }
+        if (generateIf)
+        {
+            // endif (8) {Q1/Q2}
+            inst = createEndif(exsize, instOpt);
         }
     }; //for loop
 
@@ -1611,11 +1618,16 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
         inst = createMathInst(NULL, false, exsize, dst0, src0, src1, MATH_RSQRTM, madmInstOpt, line_no);
         inst->setCondMod(condModOverflow);
 
+        bool generateIf = true;
+
+        if (generateIf)
         {
             // if
             G4_Predicate *predicateFlagReg = createPredicate(PredState_Minus, flagReg->getRegVar(), 0, predCtrlValue);
             inst = createIf(predicateFlagReg, exsize, instOpt);
+        }
 
+        {
             // madm (4) r9.acc3 r0.noacc r2(r8).noacc r7.acc2 {Align16, N1/N2}
             dst0 = createDstRegRegion(tdst9); dst0->setAccRegSel(ACC3);
             src0 = createSrcRegRegion(csrc0); src0->setAccRegSel(NOACC);
@@ -1736,17 +1748,23 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
             src2 = createSrcRegRegion(tsrc8); src2->setAccRegSel(ACC7);
             inst = createInst(NULL, G4_madm, NULL, false, exsize, dst0, src0, src1, src2, madmInstOpt, line_no);
 
-            if (!hasDefaultRoundDenorm)
-            {
-                // else (8) {Q1/Q2}
-                inst = createElse(exsize, instOpt);
+        }
 
-                // restore cr0.0 {NoMask}
-                dst0 = createDstRegRegion(regDstCR0);
-                src0 = Create_Src_Opnd_From_Dcl(tmpRegCR0, getRegionScalar());
-                // mov (1) cr0.0<0;1,0>:ud r108.0<1>:ud {NoMask}
-                inst = createMov(1, dst0, src0, InstOpt_WriteEnable, true);
-            }
+
+        if (generateIf && !hasDefaultRoundDenorm)
+        {
+            // else (8) {Q1/Q2}
+            inst = createElse(exsize, instOpt);
+
+            // restore cr0.0 {NoMask}
+            dst0 = createDstRegRegion(regDstCR0);
+            src0 = Create_Src_Opnd_From_Dcl(tmpRegCR0, getRegionScalar());
+            // mov (1) cr0.0<0;1,0>:ud r108.0<1>:ud {NoMask}
+            inst = createMov(1, dst0, src0, InstOpt_WriteEnable, true);
+        }
+
+        if (generateIf)
+        {
             // endif (8) {Q1/Q2}
             inst = createEndif(exsize, instOpt);
         }
