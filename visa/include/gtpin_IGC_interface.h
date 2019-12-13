@@ -44,7 +44,7 @@ namespace gtpin
         /*!
         * GTPin <-> IGC driver interface version
         */
-        static const uint32_t GTPIN_IGC_INTERFACE_VERSION = 1;
+        static const uint32_t GTPIN_IGC_INTERFACE_VERSION = 2;
 
 
         /*!
@@ -54,6 +54,7 @@ namespace gtpin
         {
             GTPIN_IGC_TOKEN_GRF_INFO,
             GTPIN_IGC_TOKEN_SCRATCH_AREA_INFO,
+            GTPIN_IGC_TOKEN_KERNEL_START_INFO,
             //TBD - more tokens
         } GTPIN_IGC_TOKEN;
 
@@ -83,7 +84,9 @@ namespace gtpin
             uint8_t     scratch_area_size;      // Number of bytes in the Scratch Space to be reserved for GTPin
         } igc_init_v1_t;
 
-        typedef struct igc_init_s : igc_init_v1_t {} igc_init_t;
+        typedef igc_init_v1_t igc_init_v2_t;
+
+        typedef struct igc_init_s : igc_init_v2_t {} igc_init_t;
 
         /*!
         * The information block passed by IGC to GTPin on kernel creation.
@@ -110,7 +113,14 @@ namespace gtpin
                                                     // igc_token_header_t token_list[];     // Contiguous block of memory containing patch items
         } igc_info_v1_t;
 
-        typedef struct igc_info_s : igc_info_v1_t {} igc_info_t;
+        typedef struct igc_info_v2_s
+        {
+            igc_init_v2_t       init_status;        // IGC-supported version and status of features requested by GTPin
+            uint32_t            num_tokens;         // Number of patch items in the information block
+            // igc_token_header_t token_list[];     // Contiguous block of memory containing patch items
+        } igc_info_v2_t;
+
+        typedef struct igc_info_s : igc_info_v2_t {} igc_info_t;
 
         /*!
         * Header of a patch item in the igc_info_t information block
@@ -178,6 +188,15 @@ namespace gtpin
             uint8_t     scratch_area_size;      // Actual number of bytes in the Scratch Space, reserved for GTPin
         } igc_token_scratch_area_info_t;
 
+        /*!
+         * Patch item detailing the sizes of per-thread and cross-thread dataload.
+         * Token ID = GTPIN_IGC_TOKEN_KERNEL_START_INFO
+         */
+        typedef struct igc_token_kernel_start_info_t : igc_token_header_t
+        {
+            uint32_t    per_thread_prolog_size;    // The size of Per-Thread DataLoad Prolog.
+            uint32_t    cross_thread_prolog_size;  // The size of Cross-Thread DataLoad Prolog.
+        } igc_token_kernel_start_info_t;
 
         // See comment at top of file regarding the commented pragma.
         //#pragma pack(pop)

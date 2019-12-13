@@ -1329,6 +1329,12 @@ public:
         return 0;
     }
 
+    void setPerThreadPayloadBB(G4_BB* bb) { perThreadPayloadBB = bb; }
+    void setCrossThreadPayloadBB(G4_BB* bb) { crossThreadPayloadBB = bb; }
+
+    unsigned int getCrossThreadNextOff();
+    unsigned int getPerThreadNextOff();
+
 private:
     G4_Kernel& kernel;
     std::set<G4_INST*> markedInsts;
@@ -1341,6 +1347,9 @@ private:
     unsigned int nextScratchFree = 0;
 
     gtpin::igc::igc_init_t* gtpin_init = nullptr;
+
+    G4_BB* perThreadPayloadBB = nullptr;
+    G4_BB* crossThreadPayloadBB = nullptr;
 };
 
 class RelocationEntry

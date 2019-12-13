@@ -6262,6 +6262,39 @@ void writeBuffer(std::vector<unsigned char>& buffer, unsigned int& bufferSize, c
     bufferSize += numBytes;
 }
 
+unsigned int getBinOffsetNextBB(G4_Kernel& kernel, G4_BB* bb)
+{
+    // Given bb, return binary offset of first
+    // non-label of lexically following bb.
+    G4_BB* nextBB = nullptr;
+    for (auto it = kernel.fg.begin(); it != kernel.fg.end(); it++)
+    {
+        auto curBB = (*it);
+        if (curBB == bb && it != kernel.fg.end())
+        {
+            it++;
+            nextBB = (*it);
+        }
+    }
+
+    if (!nextBB)
+        return 0;
+
+    auto iter = std::find_if(nextBB->begin(), nextBB->end(), [](G4_INST* inst) { return !inst->isLabel(); });
+    assert(iter != nextBB->end() && "execpt at least one non-label inst in second BB");
+    return (unsigned int)(*iter)->getGenOffset();
+}
+
+unsigned int gtPinData::getCrossThreadNextOff()
+{
+    return getBinOffsetNextBB(kernel, crossThreadPayloadBB);
+}
+
+unsigned int gtPinData::getPerThreadNextOff()
+{
+    return getBinOffsetNextBB(kernel, perThreadPayloadBB);
+}
+
 void* gtPinData::getGTPinInfoBuffer(unsigned int &bufferSize)
 {
     gtpin::igc::igc_init_t t;
@@ -6324,6 +6357,14 @@ void* gtPinData::getGTPinInfoBuffer(unsigned int &bufferSize)
 
         writeBuffer(buffer, bufferSize, &scratchSlotData, sizeof(scratchSlotData));
     }
+
+    // Write payload offsets
+    gtpin::igc::igc_token_kernel_start_info_t offsets;
+    offsets.token = gtpin::igc::GTPIN_IGC_TOKEN_KERNEL_START_INFO;
+    offsets.per_thread_prolog_size = getPerThreadNextOff();
+    offsets.cross_thread_prolog_size = getCrossThreadNextOff() - offsets.per_thread_prolog_size;
+    offsets.token_size = sizeof(offsets);
+    writeBuffer(buffer, bufferSize, &offsets, sizeof(offsets));
 
     void* gtpinBuffer = allocCodeBlock(bufferSize);
 
