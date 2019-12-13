@@ -241,17 +241,18 @@ void CISA_IR_Builder::InitVisaWaTable(TARGET_PLATFORM platform, Stepping step)
     }
 
     // WA for future platforms
-    if (platform == GENX_ICLLP)
+    if (platform == GENX_ICLLP || platform == GENX_ICL)
     {
         VISA_WA_ENABLE(m_pWaTable, Wa_1406306137);
     }
-    if (platform == GENX_ICLLP && (step == Step_A || step == Step_B))
+    if (platform == GENX_ICLLP  && (step == Step_A || step == Step_B))
     {
         VISA_WA_ENABLE(m_pWaTable, Wa_2201674230);
     }
     switch (platform)
     {
         case GENX_ICLLP:
+        case GENX_ICL:
             VISA_WA_ENABLE(m_pWaTable, Wa_1406950495);
             break;
         case GENX_TGLLP:
