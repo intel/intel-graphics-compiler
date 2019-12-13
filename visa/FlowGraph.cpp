@@ -2705,11 +2705,19 @@ struct SJoinInfo {
         BB(B), ExecSize(E), IsNestedJoin(Nested) {}
     G4_BB* BB;
     uint16_t ExecSize;
-    bool IsNestedJoin; // [HW WA] : join for a goto within a divergent BB.
+    // [HW WA] If IsNestedJoin is true, all BBs from the current to this 'BB'
+    // are considered as nested divergent, meaning they could be 00 fused mask
+    // that come out of fused mask 01.
+    bool IsNestedJoin;
 };
 
-static void addBBToActiveJoinList(std::list<SJoinInfo>& activeJoinBlocks, G4_BB* bb, int execSize)
+static void addBBToActiveJoinList(std::list<SJoinInfo>& activeJoinBlocks,
+    G4_BB* bb, int execSize, bool backwardGoto = false)
 {
+    // [HW WA] as backward goto never changes fuseMask 01 to 00, it is not
+    // considered as nested divergent. It inherits the nesting divergence
+    // from the next join entry.
+
     // add goto target to list of active blocks that need a join
     std::list<SJoinInfo>::iterator listIter;
     for (listIter = activeJoinBlocks.begin(); listIter != activeJoinBlocks.end(); ++listIter)
@@ -2724,19 +2732,38 @@ static void addBBToActiveJoinList(std::list<SJoinInfo>& activeJoinBlocks, G4_BB*
             {
                 jinfo.ExecSize = execSize;
             }
-            jinfo.IsNestedJoin = true;
+
+            if (!backwardGoto)
+            {
+                jinfo.IsNestedJoin = true;
+            }
             break;
         }
         else if (aBB->getId() > bb->getId())
         {
-            activeJoinBlocks.insert(listIter, SJoinInfo(bb, execSize, true));
+            bool nested = (backwardGoto ? jinfo.IsNestedJoin : true);
+            activeJoinBlocks.insert(listIter, SJoinInfo(bb, execSize, nested));
             break;
         }
     }
 
     if (listIter == activeJoinBlocks.end())
     {
-        bool nested = activeJoinBlocks.empty() ? false : true;
+        bool nested;
+        if (activeJoinBlocks.empty())
+        {
+            nested = false;
+        }
+        else if (backwardGoto)
+        {
+            SJoinInfo& ji = activeJoinBlocks.back();
+            nested = ji.IsNestedJoin;
+        }
+        else
+        {
+            nested = true;
+        }
+
         activeJoinBlocks.push_back(SJoinInfo(bb, execSize, nested));
     }
 }
@@ -2936,7 +2963,7 @@ void FlowGraph::processGoto(bool HasSIMDCF)
                     // (i.e., the loop has no breaks but only EOT sends)
                     if (loopExitBB != NULL)
                     {
-                        addBBToActiveJoinList(activeJoinBlocks, loopExitBB, lastInst->getExecSize());
+                        addBBToActiveJoinList(activeJoinBlocks, loopExitBB, lastInst->getExecSize(), true);
                     }
 
                 }
@@ -2952,7 +2979,7 @@ void FlowGraph::processGoto(bool HasSIMDCF)
                     // add join to the fall-thru BB
                     if (G4_BB* fallThruBB = predBB->getPhysicalSucc())
                     {
-                        addBBToActiveJoinList(activeJoinBlocks, fallThruBB, eSize);
+                        addBBToActiveJoinList(activeJoinBlocks, fallThruBB, eSize, true);
                         lastInst->asCFInst()->setJip(fallThruBB->getLabel());
                     }
                 }
@@ -2971,8 +2998,7 @@ void FlowGraph::processGoto(bool HasSIMDCF)
         //    2) Set it if there are at least two active joins or one nested join.
         if ((builder->getuint32Option(vISA_noMaskToAnyhWA) & 0x3) > 1)
         {
-            if (activeJoinBlocks.size() > 1 ||
-                (activeJoinBlocks.size() == 1 && activeJoinBlocks.back().IsNestedJoin))
+            if (activeJoinBlocks.size() > 0 && activeJoinBlocks.back().IsNestedJoin)
             {
                 setInNestedDivergentBranch(bb);
             }

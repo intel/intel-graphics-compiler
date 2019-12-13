@@ -11757,7 +11757,7 @@ void Optimizer::replaceNoMaskWithAnyhWA()
 
     // Create a inst (flagDefInst) that defines a flag using ce0 and dmask,
     // return that flag's G4_RegVar. Note that flagDefInst will be inserted
-    // right before II in BB.
+    // a few insts before II in BB, not right before II if possible.
     auto createFlagFromCE0 = [&](G4_INST*& flagDefInst,
         uint32_t flagBits, G4_BB* BB, INST_LIST_ITER& II) -> G4_RegVar*
     {
@@ -11822,7 +11822,26 @@ void Optimizer::replaceNoMaskWithAnyhWA()
         flagDefInst = builder.createInternalInst(
             nullptr, G4_and, nullptr, false, 1, flagDst, ce0Src0, dmaskSrc1,
             InstOpt_WriteEnable);
-        BB->insert(II, flagDefInst);
+
+        // Find a better place to insert flagDefInst within BB. Stop at
+        // the inst that modifies sr0/CFInst/Label, etc.  For now,
+        // at most 2 inst before II (to keep flag register pressure low).
+        // [necessary ? postRA would do this though.]
+        auto insertPos = II;
+        for (int i = 0; i < 2 && insertPos != BB->begin(); ++i) {
+            auto tII = insertPos;
+            --tII;
+            G4_INST* tI = *tII;
+            G4_DstRegRegion* dst = tI->getDst();
+            if (tI->isLabel() ||
+                tI->isCFInst() ||
+                (dst && dst->isAreg() && dst->isSrReg()))
+            {
+                break;
+            }
+            insertPos = tII;
+        }
+        BB->insert(insertPos, flagDefInst);
         return newVar;
     };
 
@@ -11941,7 +11960,6 @@ void Optimizer::replaceNoMaskWithAnyhWA()
 
     if (dmaskVarUD && fg.getSR0Modified())
     {
-        // modification made. Make sure that if sr0.2 is updated, reread dmask
         // modification made. Make sure that if sr0.2 is updated, reread dmask
         auto BI = fg.begin();
         auto BE = fg.end();

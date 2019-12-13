@@ -711,6 +711,12 @@ private:
     //    say B1,  such that dom(B1, BB) && not pdom(BB, B1).
     //
     // This is set in processGoto() without using dom/pdom.
+    //
+    // As changing from 01 to 00 never happens with backward goto, backward
+    // goto is treated as divergent, but not nested divergent for the purpose
+    // of this WA.
+    //
+    // This is set in processGoto().
     std::unordered_map<G4_BB*, int> nestedDivergentBBs;
 
     // If sr0 is modified within a shader, set it to true.
