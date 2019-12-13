@@ -11310,19 +11310,23 @@ bool GlobalRA::isSubRetLocConflict(G4_BB *bb, std::vector<unsigned> &usedLoc, un
         //
         usedLoc[stackTop] = curSubRetLoc;
         unsigned afterCallId = bb->BBAfterCall()->getId();
-        for (std::list<G4_BB*>::iterator it = bb->Succs.begin(), end = bb->Succs.end(); it != end; it++)
+
+        // call can have 1 or 2 successors
+        // If it has 1 then it is sub-entry block, if it has 2
+        // then call has to be predicated. In case of predication,
+        // 1st successor is physically following BB, 2nd is
+        // sub-entry.
+        if (lastInst->getPredicate())
         {
-            if ((*it)->getId() == afterCallId)
-            {
-                if (isSubRetLocConflict(bb->BBAfterCall(), usedLoc, stackTop))
-                    return true;
-            }
-            else
-            {
-                G4_BB* subEntry = (*it);
-                if (isSubRetLocConflict(subEntry, usedLoc, stackTop + 1))
-                    return true;
-            }
+            MUST_BE_TRUE(bb->Succs.size() == 2, "Expecting 2 successor BBs for predicated call");
+            if (isSubRetLocConflict(bb->Succs.back(), usedLoc, stackTop))
+                return true;
+        }
+
+        if (bb->BBAfterCall()->getId() == afterCallId)
+        {
+            if (isSubRetLocConflict(bb->BBAfterCall(), usedLoc, stackTop))
+                return true;
         }
     }
     else
@@ -11605,7 +11609,7 @@ void GlobalRA::assignLocForReturnAddr()
                     if (!bb->empty() && bb->front()->isLabel())
                     {
                         DEBUG_VERBOSE(((G4_Label*)bb->front()->getSrc(0))->getLabel()
-                            << " assigned location " << bb->getSubRetLoc() << std::endl);
+                            << " assigned location " << getSubRetLoc(bb) << std::endl);
                     }
                 }
             }
@@ -11626,18 +11630,13 @@ void GlobalRA::assignLocForReturnAddr()
                 fg.prepareTraversal();
 
                 usedLoc[stackTop] = getSubRetLoc(bb);
-                unsigned afterCallId = bb->BBAfterCall()->getId();
-                for (std::list<G4_BB*>::iterator it = bb->Succs.begin(); it != bb->Succs.end(); it++)
-                {
-                    G4_BB* subEntry = (*it);
-                    if (subEntry->getId() == afterCallId)
-                        continue;
 
-                    if (isSubRetLocConflict(subEntry, usedLoc, stackTop + 1))
-                    {
-                        MUST_BE_TRUE(false,
-                            "ERROR: Fail to assign call-return variables due to cycle in call graph!");
-                    }
+                G4_BB* subEntry = bb->Succs.back();
+
+                if (isSubRetLocConflict(subEntry, usedLoc, stackTop + 1))
+                {
+                    MUST_BE_TRUE(false,
+                        "ERROR: Fail to assign call-return variables due to cycle in call graph!");
                 }
             }
 

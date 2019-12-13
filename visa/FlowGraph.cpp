@@ -1308,6 +1308,38 @@ void FlowGraph::handleReturn(std::map<std::string, G4_BB*>& labelMap, FuncInfoHa
     }
 }
 
+#ifdef _DEBUG
+void dump(FlowGraph* fg)
+{
+    for (auto bbIt = fg->begin(); bbIt != fg->end(); bbIt++)
+    {
+        auto bb = (*bbIt);
+
+        printf("BB%d\n", bb->getId());
+        printf("Pred: ");
+        for (auto p : bb->Preds)
+        {
+            printf("%d, ", p->getId());
+        }
+        printf("\nSucc: ");
+        for (auto s : bb->Succs)
+        {
+            printf("%d, ", s->getId());
+        }
+        printf("\n");
+
+        if (bb->getInstList().size() > 0 &&
+            bb->front()->isLabel())
+            bb->front()->dump();
+
+        printf("\n...\n");
+        if (bb->getInstList().size() > 0)
+            bb->getInstList().back()->dump();
+
+        printf("\n-----\n");
+    }
+}
+#endif
 
 void FlowGraph::linkReturnAddr(G4_BB* entryBB, G4_BB* returnAddr)
 {
@@ -5454,8 +5486,11 @@ void FlowGraph::DFSTraverse(G4_BB* startBB, unsigned &preId, unsigned &postId, F
         if (bb->getBBType() & G4_BB_CALL_TYPE)
         {
             G4_BB* returnBB = bb->BBAfterCall();
-            MUST_BE_TRUE(bb->Succs.front()->getBBType() & G4_BB_INIT_TYPE, ERROR_FLOWGRAPH);
-            MUST_BE_TRUE(bb->Succs.size() == 1, ERROR_FLOWGRAPH);
+            // If call is predicated, first item in Succs is physically consecutive BB and second (or last)
+            // item is sub-routine entry BB.
+            MUST_BE_TRUE(bb->Succs.back()->getBBType() & G4_BB_INIT_TYPE, ERROR_FLOWGRAPH);
+            // bb->Succs size may be 2 if call is predicated.
+            MUST_BE_TRUE(bb->Succs.size() == 1 || bb->Succs.size() == 2, ERROR_FLOWGRAPH);
 
             {
                 bool found = false;
