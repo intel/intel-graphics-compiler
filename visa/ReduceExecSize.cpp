@@ -404,7 +404,7 @@ bool HWConformity::reduceExecSize( INST_LIST_ITER iter, G4_BB* bb )
         forceEvenSplit = ( execSize == 32 && inst->opcode() == G4_sel && inst->getCondMod() ) || packedByteDst;
     uint8_t numInFirstMov = 0;
     bool useFlag = inst->getPredicate() || inst->getCondMod() || ( bb->isInSimdFlow() && !inst->isWriteEnableInst() );
-    bool evenSplitDst;
+    bool evenSplitDst = false;
 
     // separate the checks for BDW to make it more maintainable
     if (genX == GENX_BDW || genX == GENX_CHV)
