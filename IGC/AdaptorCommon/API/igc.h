@@ -42,6 +42,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 # define IGC_DEBUG
 #endif
 
+#include <string>
 // TODO: add all external declarations so that external projects only need
 // to include this file only.
 
@@ -71,6 +72,8 @@ typedef char CG_CTX_STATS_t;
 typedef struct {
     CG_CTX_STATS_t  m_stats;              // record what simd has been generated
     void*           m_pixelShaderGen;     // Generated pixel shader output
+    std::string     m_savedBitcodeString; // Serialized Bitcode
+    void*           m_savedInstrTypes;
 } CG_CTX_t;
 
 #define IsRetry(stats)               (stats & (BIT_CG_RETRY))
@@ -95,6 +98,10 @@ typedef enum {
 #define IsStage1FastCompile(flag, prev_ctx_ptr) (!IsStage2RestSIMDs(prev_ctx_ptr) && flag == FLAG_CG_STAGE1_FAST_COMPILE)
 #define IsStage1BestPerf(flag, prev_ctx_ptr)    (!IsStage2RestSIMDs(prev_ctx_ptr) && flag == FLAG_CG_STAGE1_BEST_PERF)
 #define IsAllSIMDs(flag, prev_ctx_ptr)          (!IsStage2RestSIMDs(prev_ctx_ptr) && flag == FLAG_CG_ALL_SIMDS)
+#define IsStage1(pCtx)   (IsStage1BestPerf(pCtx->m_CgFlag, pCtx->m_StagingCtx) || \
+                          IsStage1FastCompile(pCtx->m_CgFlag, pCtx->m_StagingCtx))
+#define HasSavedIR(pCtx) (pCtx && IsStage2RestSIMDs(pCtx->m_StagingCtx) && \
+                          pCtx->m_StagingCtx->m_savedBitcodeString.size() > 0)
 
 #define DoSimd32Stage2(prev_ctx_ptr) (IsStage2RestSIMDs(prev_ctx_ptr) && DoSimd32(prev_ctx_ptr->m_stats))
 

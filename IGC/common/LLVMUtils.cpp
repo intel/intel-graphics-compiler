@@ -111,6 +111,7 @@ void IGCPassManager::add(Pass *P)
             .Type(m_pContext->type)
             .Hash(m_pContext->hash)
             .Pass(passName, m_pContext->m_numPasses++)
+            .StagedInfo(m_pContext)
             .Extension("ll");
         // The dump object needs to be on the Heap because it owns the stream, and the stream
         // is taken by reference into the printer pass. If the Dump object had been on the

@@ -170,6 +170,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "DebugInfo.hpp"
 
+#include <llvmWrapper/Bitcode/BitcodeWriter.h>
 #include "Compiler/CISACodeGen/HalfPromotion.h"
 
 /***********************************************************************************
@@ -1263,6 +1264,39 @@ namespace IGC
         }
         mpm.run(*pContext->getModule());
     }
+    }
+
+    void SaveIR(CodeGenContext* pContext)
+    {
+        // For debugging
+        DumpLLVMIR(pContext, "stage1SavedIR");
+        COMPILER_TIME_START(pContext, TIME_OptimizationPasses);
+
+        // Save MetaData
+        serialize(*(pContext->getModuleMetaData()), pContext->getModule());
+        // Serialize LLVM IR and save it to a string
+        llvm::raw_string_ostream OStream(pContext->m_savedBitcodeString);
+        llvm::WriteBitcodeToFile(*pContext->getModule(), OStream, true);
+        OStream.flush();
+
+        // Store the results and pass it to stage 2 if staged compilation happens
+        pContext->m_savedInstrTypes = pContext->m_instrTypes;
+        COMPILER_TIME_END(pContext, TIME_OptimizationPasses);
+    }
+
+    bool UnpackBitcode( const char *bitcode, unsigned int bitcodeSize, CodeGenContext& cisaContext, bool upgradeIR = true);
+
+    void RestoreIR(CodeGenContext* pContext)
+    {
+        COMPILER_TIME_START(pContext, TIME_OptimizationPasses);
+        pContext->m_instrTypes = (*(SInstrTypes *)pContext->m_StagingCtx->m_savedInstrTypes);
+        UnpackBitcode(pContext->m_StagingCtx->m_savedBitcodeString.c_str(),
+            pContext->m_StagingCtx->m_savedBitcodeString.size(), *pContext, false);
+        deserialize(*(pContext->getModuleMetaData()), pContext->getModule());
+
+        // For debugging
+        DumpLLVMIR(pContext, "stage2RestoredIR");
+        COMPILER_TIME_END(pContext, TIME_OptimizationPasses);
     }
 
     void OptimizeIR(CodeGenContext* pContext)
