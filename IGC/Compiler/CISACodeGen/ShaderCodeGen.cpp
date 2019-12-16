@@ -403,12 +403,6 @@ namespace IGC
         mpm.add(new ProgramScopeConstantResolution());
     }
 
-    if (IGC_IS_FLAG_ENABLED(EnableConstIntDivReduction)) {
-        // reduce division/remainder with a constant divisors/moduli to
-        // more efficient sequences of multiplies, shifts, and adds
-        mpm.add(createIntDivConstantReductionPass());
-    }
-
     bool needDPEmu = (IGC_IS_FLAG_ENABLED(ForceDPEmulation) ||
         (ctx.m_DriverInfo.NeedFP64() && !ctx.platform.supportFP64()));
     uint32_t theEmuKind = (needDPEmu ? EmuKind::EMU_DP : 0);
@@ -427,7 +421,13 @@ namespace IGC
 
         // Using DCE here as AlwaysInliner does not completely remove dead functions.
         // Once AlwaysInliner can delete all of them, this DCE is no longer needed.
-        mpm.add(createDeadCodeEliminationPass());
+        // mpm.add(createDeadCodeEliminationPass());
+        //
+        // DCE doesn't remove dead control flow; ADCE does (currently)
+        // otherwise you'd have to call createCFGSimplificationPass and DCE
+        // iteratively e.g..
+        mpm.add(llvm::createAggressiveDCEPass());
+        // TODO: we probably should be running other passes on the result
 
         if (IGC_GET_FLAG_VALUE(FunctionControl) != FLAG_FCALL_FORCE_INLINE)
         {
@@ -1591,6 +1591,12 @@ namespace IGC
         }
 
         mpm.add(llvm::createDeadCodeEliminationPass());
+
+        if (IGC_IS_FLAG_ENABLED(EnableConstIntDivReduction)) {
+            // reduce division/remainder with a constant divisors/moduli to
+            // more efficient sequences of multiplies, shifts, and adds
+            mpm.add(createIntDivConstantReductionPass());
+        }
 
         mpm.add(CreateMCSOptimization());
 
