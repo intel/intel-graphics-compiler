@@ -1065,6 +1065,10 @@ namespace IGC
                 {
                     PreferBindlessImages = true;
                 }
+                if (strstr(options, "-cl-intel-enable-global-relocation"))
+                {
+                    EnableTakeGlobalAddress = true;
+                }
             }
 
 
@@ -1080,6 +1084,7 @@ namespace IGC
             bool IntelEnablePreRAScheduling = true;
             bool PromoteStatelessToBindless = false;
             bool PreferBindlessImages = false;
+            bool EnableTakeGlobalAddress = false;
 
         };
 
