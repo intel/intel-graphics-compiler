@@ -234,7 +234,7 @@ uint EmitPass::DecideInstanceAndSlice(llvm::BasicBlock& blk, SDAG& sdag, bool& s
     {
         // Disable slicing for function calls
         Function* F = dyn_cast<Function>(callInst->getCalledValue());
-        if (!F || F->hasFnAttribute("visaStackcall"))
+        if (!F || F->hasFnAttribute("visaStackCall"))
         {
             numInstance = 1;
             slicing = false;
@@ -250,8 +250,7 @@ bool EmitPass::canCompileCurrentShader(llvm::Function& F)
     // If uses subroutines/stackcall, we can only compile a single SIMD mode
     if (m_FGA && (!m_FGA->getGroup(&F)->isSingle() || m_FGA->getGroup(&F)->hasStackCall()))
     {
-        // default SIMD8
-        SIMDMode compiledSIMD = SIMDMode::SIMD8;
+        SIMDMode compiledSIMD = SIMDMode::UNKNOWN;
 
         if (ctx->type == ShaderType::OPENCL_SHADER)
         {
@@ -266,7 +265,20 @@ bool EmitPass::canCompileCurrentShader(llvm::Function& F)
                 compiledSIMD = getLeastSIMDAllowed(m_moduleMD->csInfo.maxWorkGroupSize, GetHwThreadsPerWG(ctx->platform));
             }
         }
-        return (m_SimdMode == compiledSIMD);
+        if (compiledSIMD != SIMDMode::UNKNOWN)
+        {
+            return (m_SimdMode == compiledSIMD);
+        }
+        else if (ctx->m_enableFunctionPointer)
+        {
+            // Can compile SIMD8 and SIMD16 for function pointers
+            return (m_SimdMode == SIMDMode::SIMD8 || m_SimdMode == SIMDMode::SIMD16);
+        }
+        else
+        {
+            // Default SIMD8
+            return m_SimdMode == SIMDMode::SIMD8;
+        }
     }
     return true;
 }
@@ -274,9 +286,12 @@ bool EmitPass::canCompileCurrentShader(llvm::Function& F)
 bool EmitPass::setCurrentShader(llvm::Function* F)
 {
     llvm::Function* Kernel = F;
-    if (m_FGA && m_FGA->getModule())
+    if (m_FGA)
     {
-        // subroutine enabled.
+        if (!m_FGA->getModule())
+        {
+            m_FGA->rebuild(F->getParent());
+        }
         auto FG = m_FGA->getGroup(F);
         if (!FG)
         {

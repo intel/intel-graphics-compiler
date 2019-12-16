@@ -1019,6 +1019,49 @@ namespace IGC
 
     AddAnalysisPasses(*ctx, Passes);
 
+    SIMDMode mode;
+    if (ctx->m_enableFunctionPointer
+        && ctx->getModuleMetaData()->csInfo.forcedSIMDSize == 0)
+    {
+        // In order to support compiling multiple SIMD modes for function pointer calls,
+        // we require a separate pass manager per SIMD mode, due to interdependencies across
+        // function compilations.
+        // Only SIMD16 and SIMD8 are supported.
+        SIMDMode modePass2;
+        bool abortOnSpill, abortOnSpill2;
+        if (ctx->m_DriverInfo.sendMultipleSIMDModes())
+        {
+            mode = SIMDMode::SIMD8;
+            modePass2 = SIMDMode::SIMD16;
+            abortOnSpill = false;
+            abortOnSpill2 = true;
+        }
+        else
+        {
+            mode = SIMDMode::SIMD16;
+            modePass2 = SIMDMode::SIMD8;
+            abortOnSpill = true;
+            abortOnSpill2 = false;
+        }
+        // Run first pass
+        AddCodeGenPasses(*ctx, kernels, Passes, mode, abortOnSpill);
+        COMPILER_TIME_END(ctx, TIME_CG_Add_Passes);
+        Passes.run(*(ctx->getModule()));
+
+        // Create and run second pass
+        IGCPassManager Passes2(ctx, "CG2");
+        // Add required immutable passes
+        Passes2.add(new MetaDataUtilsWrapper(ctx->getMetaDataUtils(), ctx->getModuleMetaData()));
+        Passes2.add(new CodeGenContextWrapper(ctx));
+        Passes2.add(createGenXFunctionGroupAnalysisPass());
+        AddCodeGenPasses(*ctx, kernels, Passes2, modePass2, abortOnSpill2);
+        Passes2.run(*(ctx->getModule()));
+
+        COMPILER_TIME_END(ctx, TIME_CodeGen);
+        DumpLLVMIR(ctx, "codegen");
+        return;
+    }
+
     if (ctx->m_DriverInfo.sendMultipleSIMDModes())
     {
         unsigned int leastSIMD = 8;
