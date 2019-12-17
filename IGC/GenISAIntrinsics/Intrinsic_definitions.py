@@ -273,6 +273,11 @@ Imported_Intrinsics = \
     "GenISA_mul_pair": [["int","int"],["int","int","int","int"],"NoMem"],
     "GenISA_pair_to_ptr": ["anyptr",["int","int"],"NoMem"],
     "GenISA_ptr_to_pair": [["int","int"],["anyptr"],"NoMem"],
+    "GenISA_AUXupdate" :
+    ["void",        # nothing to return
+     ["anyptr",     # ptr
+      "int"],       # update operation (AUX_UPDATE_OP)
+      "None"],
     # Takes a boolean as input; return a bitfield with 1 for active lane with input true, 0 for the rest.
     # All lanes get the same value. Signature: (bool)->bitfield_int32
     "GenISA_WaveBallot": ["int",["bool"],"Convergent,InaccessibleMemOnly"],

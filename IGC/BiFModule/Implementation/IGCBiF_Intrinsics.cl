@@ -795,4 +795,10 @@ double __builtin_IB_add_rtz_f64(double x, double y) __attribute__((const));
 float __builtin_IB_add_rtz_f32(float x, float y) __attribute__((const));
 
 
+enum AUX_UPDATE_OP {
+    AUX_UPDATE_OP_CLEAR,
+    AUX_UPDATE_OP_UNCOMPRESS
+};
+void    __builtin_IB_aux_update(__global uchar *buf, enum AUX_UPDATE_OP updateOp);
+
 #endif // IGCBIF_INTRINSICS_CL
