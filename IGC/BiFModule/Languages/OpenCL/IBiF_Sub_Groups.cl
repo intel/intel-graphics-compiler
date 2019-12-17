@@ -566,6 +566,11 @@ TYPE __builtin_spirv_##FUNC_NAME##_p1##TYPE_ABBR(const __global ELEM_TYPE* p)   
     return INTERNAL_FUNC((__global void *)p);                                                               \
 }
 
+#define  DEFN_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(FUNC_NAME, TYPE, ELEM_TYPE, TYPE_ABBR, INTERNAL_FUNC)       \
+INLINE TYPE OVERLOADABLE  FUNC_NAME( const __local ELEM_TYPE* p )                                          \
+{                                                                                                          \
+    return INTERNAL_FUNC(p);                                                                               \
+}
 
 #if SUPPORT_ACCESS_QUAL_OVERLOAD
 #define  DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE_WO(FUNC_NAME, TYPE, TYPE_ABBR, INTERNAL_FUNC)   \
@@ -604,6 +609,11 @@ TYPE __builtin_spirv_##FUNC_NAME##_p1##PTR_TYPE##_##TYPE_ABBR(__global ELEM_TYPE
     INTERNAL_FUNC(p, data);                                                                                         \
 }
 
+#define  DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(FUNC_NAME, TYPE, ELEM_TYPE, PTR_TYPE, TYPE_ABBR, INTERNAL_FUNC)    \
+INLINE void OVERLOADABLE  FUNC_NAME( __local ELEM_TYPE* p, TYPE data )                                             \
+{                                                                                                                  \
+    INTERNAL_FUNC(p, data);                                                                                        \
+}
 
 DEFN_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(intel_sub_group_block_read,  uint,  __builtin_IB_simd_media_block_read_1)
 DEFN_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(intel_sub_group_block_read2, uint2, __builtin_IB_simd_media_block_read_2)
@@ -736,6 +746,57 @@ DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(intel_sub_group_block_write_ul8, ulong8,
 #endif // cl_intel_subgroups_long
 
 
+#ifdef cl_intel_subgroup_local_block_io
+//
+// SLM simd block read/write
+//
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(intel_sub_group_block_read,  uint,  uint, i32,   __builtin_IB_simd_block_read_1_local)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(intel_sub_group_block_read2, uint2, uint, v2i32, __builtin_IB_simd_block_read_2_local)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(intel_sub_group_block_read4, uint4, uint, v4i32, __builtin_IB_simd_block_read_4_local)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(intel_sub_group_block_read8, uint8, uint, v8i32, __builtin_IB_simd_block_read_8_local)
+
+DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(intel_sub_group_block_write,  uint,  uint, i32, i32,   __builtin_IB_simd_block_write_1_local)
+DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(intel_sub_group_block_write2, uint2, uint, i32, v2i32, __builtin_IB_simd_block_write_2_local)
+DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(intel_sub_group_block_write4, uint4, uint, i32, v4i32, __builtin_IB_simd_block_write_4_local)
+DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(intel_sub_group_block_write8, uint8, uint, i32, v8i32, __builtin_IB_simd_block_write_8_local)
+
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(intel_sub_group_block_read_us,  ushort,  ushort, i16,   __builtin_IB_simd_block_read_1_local_h)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(intel_sub_group_block_read_us2, ushort2, ushort, v2i16, __builtin_IB_simd_block_read_2_local_h)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(intel_sub_group_block_read_us4, ushort4, ushort, v4i16, __builtin_IB_simd_block_read_4_local_h)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(intel_sub_group_block_read_us8, ushort8, ushort, v8i16, __builtin_IB_simd_block_read_8_local_h)
+
+DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(intel_sub_group_block_write_us,  ushort,  ushort, i16, i16,   __builtin_IB_simd_block_write_1_local_h)
+DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(intel_sub_group_block_write_us2, ushort2, ushort, i16, v2i16, __builtin_IB_simd_block_write_2_local_h)
+DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(intel_sub_group_block_write_us4, ushort4, ushort, i16, v4i16, __builtin_IB_simd_block_write_4_local_h)
+DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(intel_sub_group_block_write_us8, ushort8, ushort, i16, v8i16, __builtin_IB_simd_block_write_8_local_h)
+
+#ifdef cl_intel_subgroups_char
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(intel_sub_group_block_read_uc,   uchar,   uchar, i8,    __builtin_IB_simd_block_read_1_local_b)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(intel_sub_group_block_read_uc2,  uchar2,  uchar, v2i8,  __builtin_IB_simd_block_read_2_local_b)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(intel_sub_group_block_read_uc4,  uchar4,  uchar, v4i8,  __builtin_IB_simd_block_read_4_local_b)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(intel_sub_group_block_read_uc8,  uchar8,  uchar, v8i8,  __builtin_IB_simd_block_read_8_local_b)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(intel_sub_group_block_read_uc16, uchar16, uchar, v16i8, __builtin_IB_simd_block_read_16_local_b)
+
+DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(intel_sub_group_block_write_uc,   uchar,   uchar, i8, i8,    __builtin_IB_simd_block_write_1_local_b)
+DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(intel_sub_group_block_write_uc2,  uchar2,  uchar, i8, v2i8,  __builtin_IB_simd_block_write_2_local_b)
+DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(intel_sub_group_block_write_uc4,  uchar4,  uchar, i8, v4i8,  __builtin_IB_simd_block_write_4_local_b)
+DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(intel_sub_group_block_write_uc8,  uchar8,  uchar, i8, v8i8,  __builtin_IB_simd_block_write_8_local_b)
+DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(intel_sub_group_block_write_uc16, uchar16, uchar, i8, v16i8, __builtin_IB_simd_block_write_16_local_b)
+#endif // cl_intel_subgroups_char
+
+#ifdef cl_intel_subgroups_long
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(intel_sub_group_block_read_ul,  ulong,  ulong, i64, __builtin_IB_simd_block_read_1_local_l)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(intel_sub_group_block_read_ul2, ulong2, ulong, i64, __builtin_IB_simd_block_read_2_local_l)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(intel_sub_group_block_read_ul4, ulong4, ulong, i64, __builtin_IB_simd_block_read_4_local_l)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(intel_sub_group_block_read_ul8, ulong8, ulong, i64, __builtin_IB_simd_block_read_8_local_l)
+
+DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(intel_sub_group_block_write_ul,  ulong,  ulong, i64, i64, __builtin_IB_simd_block_write_1_local_l)
+DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(intel_sub_group_block_write_ul2, ulong2, ulong, i64, v2i64, __builtin_IB_simd_block_write_2_local_l)
+DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(intel_sub_group_block_write_ul4, ulong4, ulong, i64, v4i64, __builtin_IB_simd_block_write_4_local_l)
+DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(intel_sub_group_block_write_ul8, ulong8, ulong, i64, v8i64, __builtin_IB_simd_block_write_8_local_l)
+#endif // cl_intel_subgroups_long
+
+#endif // cl_intel_subgroup_local_block_io
 
 // SPIR-V builtins implementation for intel_subgroups
 
