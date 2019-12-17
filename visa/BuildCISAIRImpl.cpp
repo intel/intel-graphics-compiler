@@ -579,6 +579,11 @@ static void Stitch_Compiled_Units(G4_Kernel* kernel, std::map<std::string, G4_Ke
     {
         G4_Kernel* callee = iter.second;
         kernel->fg.append(callee->fg);
+
+        // merge the relocation when append
+        if (!callee->getRelocationTable().empty())
+            kernel->getRelocationTable().insert(kernel->getRelocationTable().end(),
+                callee->getRelocationTable().begin(), callee->getRelocationTable().end());
     }
 
     kernel->fg.reassignBlockIDs();
