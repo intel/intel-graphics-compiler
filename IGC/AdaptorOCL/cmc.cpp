@@ -424,6 +424,11 @@ static void populateKernelInfo(const cmc_kernel_info* info,
     kInfo.m_executionEnivronment.SubgroupIndependentForwardProgressRequired = true;
     kInfo.m_executionEnivronment.NumGRFRequired = info->NumGRFRequired;
 
+    // Allocate spill-fill buffer
+    if (JITInfo.isSpill) {
+        kInfo.m_executionEnivronment.PerThreadScratchSpace += JITInfo.spillMemUsed;
+    }
+
     // ThreadPayload
     kInfo.m_threadPayload.HasLocalIDx = info->HasLocalIDx;
     kInfo.m_threadPayload.HasLocalIDy = info->HasLocalIDy;
