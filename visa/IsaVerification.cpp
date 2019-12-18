@@ -1201,12 +1201,47 @@ static void verifyInstructionMisc(
             uint8_t numDst = getPrimitiveOperand<uint8_t>(inst, i++);
             REPORT_INSTRUCTION(options,numDst <= 16, "Number of message destination GRFs must be between 0 and 16");
 
-            Common_ISA_Operand_Class operand_class_desc = getVectorOperand(inst, i++).getOperandClass();
-            REPORT_INSTRUCTION(options,operand_class_desc == OPERAND_GENERAL  ||
+            const vector_opnd& desc = getVectorOperand(inst, i++);
+            Common_ISA_Operand_Class operand_class_desc = desc.getOperandClass();
+            REPORT_INSTRUCTION(options, operand_class_desc == OPERAND_GENERAL ||
                               operand_class_desc == OPERAND_INDIRECT ||
                               operand_class_desc == OPERAND_IMMEDIATE,
                               "desc operand of CISA RAW_SEND instrution should "
                               "be either a general, indirect, or immediate operand.");
+
+            if (operand_class_desc == OPERAND_IMMEDIATE)
+            {
+                /// Structure describes a send message descriptor. Only expose
+                /// several data fields; others are unnamed.
+                struct MsgDescLayout {
+                    uint32_t funcCtrl : 19;     // Function control (bit 0:18)
+                    uint32_t headerPresent : 1; // Header present (bit 19)
+                    uint32_t rspLength : 5;     // Response length (bit 20:24)
+                    uint32_t msgLength : 4;     // Message length (bit 25:28)
+                    uint32_t simdMode2 : 1;     // 16-bit input (bit 29)
+                    uint32_t returnFormat : 1;  // 16-bit return (bit 30)
+                    uint32_t EOT : 1;           // EOT
+                };
+
+                /// View a message descriptor in two different ways:
+                /// - as a 32-bit unsigned integer
+                /// - as a structure
+                /// This simplifies the implementation of extracting subfields.
+                union DescData {
+                    uint32_t value;
+                    MsgDescLayout layout;
+                }udesc;
+
+                udesc.value = desc.opnd_val.const_opnd._val.ival;
+
+                REPORT_INSTRUCTION(options, numSrc >= udesc.layout.msgLength,
+                                  "message length mismatch for raw send: msgLength (%d) must be not greater than numSrc (%d)",
+                                  udesc.layout.msgLength, numSrc);
+                REPORT_INSTRUCTION(options, numDst >= udesc.layout.rspLength,
+                                  "response length mismatch for raw send: rspLength (%d) must be not greater than numDst (%d)",
+                                  udesc.layout.rspLength, numDst);
+            }
+
 
             /// src: todo
             /// dst: todo

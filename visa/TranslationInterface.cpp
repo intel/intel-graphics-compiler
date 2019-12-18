@@ -6002,9 +6002,7 @@ int IR_Builder::translateVISARawSendInst(G4_Predicate *predOpnd, Common_ISA_Exec
         sendMsgDesc->setEOT();
     }
 
-    // sanity check on srcLen/dstLen
-    MUST_BE_TRUE(sendMsgDesc->MessageLength() <= numSrc, "message length mismatch for raw send");
-    MUST_BE_TRUE(sendMsgDesc->ResponseLength() <= numDst, "response length mismatch for raw send");
+    // sanity check on srcLen/dstLen moved to ISA verifier
 
     createSendInst(
         predOpnd,
