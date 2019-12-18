@@ -11730,6 +11730,7 @@ void Optimizer::replaceNoMaskWithAnyhWA()
     // whenever sr0.2 is modified in the shader.
     G4_RegVar* dmaskVarUD = nullptr;
     G4_RegVar* dmaskVarUW = nullptr;
+    std::vector<INST_LIST_ITER> NoMaskCandidates;
 
     // Return true if a NoMask inst is either send or global
     auto isCandidateInst = [](G4_INST* Inst, FlowGraph& cfg) -> bool {
@@ -11807,45 +11808,40 @@ void Optimizer::replaceNoMaskWithAnyhWA()
         }
 
         G4_Type Ty = (flagBits == 32) ? Type_UD : Type_UW;
-        G4_RegVar* dmVar = (Ty == Type_UD) ? dmaskVarUD : dmaskVarUW;
         G4_Declare* newFlagDecl = builder.createTempFlag(
             (Ty == Type_UD) ? 2 : 1, "newFlag");
         G4_RegVar* newVar = newFlagDecl->getRegVar();
-        G4_SrcRegRegion* ce0Src0 = builder.createSrcRegRegion(
+        G4_SrcRegRegion* ceSrc0 = builder.createSrcRegRegion(
             Mod_src_undef, Direct, builder.phyregpool.getMask0Reg(), 0, 0,
             builder.getRegionScalar(), Ty);
         G4_SrcRegRegion* dmaskSrc1 = builder.createSrcRegRegion(
-            Mod_src_undef, Direct, dmVar, 0, 0,
+            Mod_src_undef, Direct, (Ty == Type_UD ? dmaskVarUD : dmaskVarUW), 0, 0,
             builder.getRegionScalar(), Ty);
-        G4_DstRegRegion* flagDst = builder.createDstRegRegion(
-            Direct, newVar, 0, 0, 1, Ty);
+        G4_DstRegRegion* tDst = builder.createNullDst(Ty);
+        G4_CondMod* condMod = builder.createCondMod(Mod_nz, newVar, 0);
         flagDefInst = builder.createInternalInst(
-            nullptr, G4_and, nullptr, false, 1, flagDst, ce0Src0, dmaskSrc1,
+            nullptr, G4_and, condMod, false,
+            (flagBits > 16 ? 16 : flagBits), tDst, ceSrc0, dmaskSrc1,
             InstOpt_WriteEnable);
+        BB->insert(II, flagDefInst);
 
-        // Find a better place to insert flagDefInst within BB. Stop at
-        // the inst that modifies sr0/CFInst/Label, etc.  For now,
-        // at most 2 inst before II (to keep flag register pressure low).
-        // [necessary ? postRA would do this though.]
-        auto insertPos = II;
-        for (int i = 0; i < 2 && insertPos != BB->begin(); ++i) {
-            auto tII = insertPos;
-            --tII;
-            G4_INST* tI = *tII;
-            G4_DstRegRegion* dst = tI->getDst();
-            if (tI->isLabel() ||
-                tI->isCFInst() ||
-                (dst && dst->isAreg() && dst->isSrReg()))
-            {
-                break;
-            }
-            insertPos = tII;
+        if (flagBits == 32)
+        {
+            G4_SrcRegRegion* flagSrc = builder.createSrcRegRegion(
+                Mod_src_undef, Direct, newVar, 0, 0,
+                builder.getRegionScalar(), Type_UW);
+            G4_DstRegRegion* flagDst = builder.createDstRegRegion(
+                Direct, newVar, 0, 0, 1, Type_UW);
+            G4_INST* tInst = builder.createMov(2, flagDst, flagSrc, InstOpt_WriteEnable, false);
+            BB->insert(II, tInst);
+
+            // update defuse
+            tInst->addDefUse(flagDefInst, Opnd_src0);
+            flagDefInst = tInst;
         }
-        BB->insert(insertPos, flagDefInst);
         return newVar;
     };
 
-    uint32_t simdsize = builder.kernel.getSimdSize();
     for (auto BI : fg)
     {
         G4_BB* BB = BI;
@@ -11864,15 +11860,21 @@ void Optimizer::replaceNoMaskWithAnyhWA()
                     continue;
                 }
 
-                uint32_t anylen = std::max((uint32_t)I->getExecSize(), simdsize);
+                uint32_t anylen = 16;
+                if ((I->getExecSize() + I->getMaskOffset()) > 16)
+                {
+                    anylen = 32;
+                }
+
                 G4_INST* flagDefInst = nullptr;
                 G4_RegVar* flagVar = createFlagFromCE0(flagDefInst, anylen, BB, II);
 
                 G4_Predicate_Control anyh = builder.vISAPredicateToG4Predicate(
-                    PRED_CTRL_ANY, anylen);
+                    PRED_CTRL_ANY, I->getExecSize());
                 G4_Predicate* newPred = builder.createPredicate(
                     PredState_Plus, flagVar, 0, anyh);
                 I->setPredicate(newPred);
+                newPred->setSameAsNoMask(true);
 
                 // update defUse
                 flagDefInst->addDefUse(I, Opnd_pred);
@@ -11888,74 +11890,58 @@ void Optimizer::replaceNoMaskWithAnyhWA()
         //
         //    BB:
         //       ......
-        //       (W) and  f0.0:Ty  ce0.0:Ty   dmask:Ty
+        //       (W) and (16|M0) (ne)f0.0  null<1>:Ty  ce0.0:ud   dmask:ud
+        //       ** If any nomask inst uses bits beyond 16, need the following**
+        //       (w)  mov (2|M0)  f0.0<1>:uw   f0.0<0;1,0>:uw
+        //
         //       (W&f0.0.any16h) inst0
         //       ......
         //       (W&f0.0.any16h) inst1
-        //       ...
+        //
 
-
-        // 1. Advance to the first candidate NoMask inst and
-        //    check if the existing flag, if any, can be used.
-        auto II = BB->begin(), IE = BB->end();
+        //  Collect all candidates and check if 32 bit flag is needed
+        bool need32BitFlag = false;
+        INST_LIST_ITER II = BB->begin(), IE = BB->end();
         for (; II != IE; ++II)
         {
             G4_INST* I = *II;
             if (isCandidateInst(I, fg))
             {
-                // found the 1st candidate
-                break;
+                NoMaskCandidates.push_back(II);
+                if ((I->getExecSize() + I->getMaskOffset()) > 16)
+                {
+                    need32BitFlag = true;
+                }
             }
         }
-        if (II == IE) {
-            // No candidate in this BB, go on to the next BB
+        if (NoMaskCandidates.empty())
+        {
             continue;
         }
 
-        // 2. Scan insts and change nomask to anyh.
+        // II0 is the insertion pos for per-BB flag insts.
+        INST_LIST_ITER& II0 = NoMaskCandidates[0];
+
+        // Now, add anyh predicate to those candidates.
         G4_INST* flagDefInst = nullptr;
-        G4_RegVar* flagVarForBB = createFlagFromCE0(flagDefInst, simdsize, BB, II);
-
-
-        for (; II != IE; ++II)
+        uint32_t flagBits = need32BitFlag ? 32 : 16;
+        G4_RegVar* flagVarForBB = createFlagFromCE0(flagDefInst, flagBits, BB, II0);
+        for (int i = 0, sz = (int)NoMaskCandidates.size(); i < sz; ++i)
         {
+            INST_LIST_ITER& II = NoMaskCandidates[i];
             G4_INST* I = *II;
-            if (!isCandidateInst(I, fg))
-            {
-                continue;
-            }
             uint32_t execsize = I->getExecSize();
-            if (execsize > simdsize)
-            {
-                //
-                // [can this happen ?]
-                //   execsize == 32
-                //      (W) and (1|M0)  f1.0<1>:ud  ce0.0:ud  dmask:ud
-                //   execsize == 16 or 8
-                //      (W) and (1|M0)  f1.0<1>:uw  ce0.0:uw  dmask:uw
-                //
-                G4_INST* tmpInst = nullptr;
-                G4_RegVar* tmpFlag = createFlagFromCE0(tmpInst, execsize, BB, II);
 
-                G4_Predicate_Control anyh = builder.vISAPredicateToG4Predicate(
-                    PRED_CTRL_ANY, execsize);
-                G4_Predicate* newPred = builder.createPredicate(PredState_Plus, tmpFlag, 0, anyh);
-                I->setPredicate(newPred);
+            G4_Predicate_Control anyh = builder.vISAPredicateToG4Predicate(
+                PRED_CTRL_ANY, execsize);
+            G4_Predicate* newPred = builder.createPredicate(PredState_Plus, flagVarForBB, 0, anyh);
+            I->setPredicate(newPred);
+            newPred->setSameAsNoMask(true);
 
-                tmpInst->addDefUse(I, Opnd_pred);
-            }
-            else
-            {
-                // Common case
-                G4_Predicate_Control anyh = builder.vISAPredicateToG4Predicate(
-                    PRED_CTRL_ANY, simdsize);
-                G4_Predicate* newPred = builder.createPredicate(PredState_Plus, flagVarForBB, 0, anyh);
-                I->setPredicate(newPred);
-
-                // update defUse
-                flagDefInst->addDefUse(I, Opnd_pred);
-            }
+            // update defUse
+            flagDefInst->addDefUse(I, Opnd_pred);
         }
+        NoMaskCandidates.clear();
     }
 
     if (dmaskVarUD && fg.getSR0Modified())

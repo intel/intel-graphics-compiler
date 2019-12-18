@@ -5928,6 +5928,7 @@ G4_Predicate::G4_Predicate(G4_Predicate &prd)
     bitVec[1] = prd.bitVec[1];
     byteOffset = prd.byteOffset;
     rightBoundSet = prd.rightBoundSet;
+    isPredicateSameAsNoMask = prd.isPredicateSameAsNoMask;
 }
 
 unsigned G4_Predicate::computeRightBound( uint8_t exec_size )

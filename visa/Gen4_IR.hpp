@@ -3215,10 +3215,14 @@ class G4_Predicate final : public G4_Operand
     // for which it's PRED_ALIGN16_X
     G4_Align16_Predicate_Control align16Control;
 
+    // Special predicate : it's equivalent to noMask and used for WA
+    bool isPredicateSameAsNoMask;
+
     G4_Predicate(G4_PredState s, G4_VarBase *flag, unsigned short srOff,
                  G4_Predicate_Control ctrl)
         : G4_Operand(G4_Operand::predicate, flag), state(s), subRegOff(srOff),
-          control(ctrl), align16Control(PRED_ALIGN16_DEFAULT)
+          control(ctrl), align16Control(PRED_ALIGN16_DEFAULT),
+          isPredicateSameAsNoMask(false)
     {
         top_dcl = getBase()->asRegVar()->getDeclare();
         MUST_BE_TRUE(flag->isFlag(), ERROR_INTERNAL_ARGUMENT);
@@ -3264,6 +3268,8 @@ public:
     unsigned computeRightBound(uint8_t exec_size) override;
     G4_CmpRelation compareOperand(G4_Operand *opnd) override;
     void splitPred();
+    void setSameAsNoMask(bool v) { isPredicateSameAsNoMask = v; };
+    bool isSameAsNoMask() const { return isPredicateSameAsNoMask; }
     unsigned getPredCtrlGroupSize() const
     {
         switch (control)
