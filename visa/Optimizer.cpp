@@ -11729,7 +11729,6 @@ void Optimizer::replaceNoMaskWithAnyhWA()
     // Save dmask for the shader. Need to read them again
     // whenever sr0.2 is modified in the shader.
     G4_RegVar* dmaskVarUD = nullptr;
-    G4_RegVar* dmaskVarUW = nullptr;
     std::vector<INST_LIST_ITER> NoMaskCandidates;
 
     // Return true if a NoMask inst is either send or global
@@ -11744,16 +11743,21 @@ void Optimizer::replaceNoMaskWithAnyhWA()
         }
 
         G4_DstRegRegion* dst = Inst->getDst();
+        G4_CondMod* condmod = Inst->getCondMod();
 #if 0
-        if (!Inst->isSend() && !(dst && cfg.globalOpndHT.isOpndGlobal(dst)) &&
-            !(dst && dst->isAreg()))
+        if (Inst->isSend() ||
+            (dst && cfg.globalOpndHT.isOpndGlobal(dst)) ||
+            (condmod && cfg.globalOpndHT.isOpndGlobal(condmod)) ||
+            (dst && dst->isAreg()))
 #else
-        if (!Inst->isSend() && !(dst && cfg.globalOpndHT.isOpndGlobal(dst)))
+        if (Inst->isSend() ||
+            (dst && cfg.globalOpndHT.isOpndGlobal(dst)) ||
+            (condmod && cfg.globalOpndHT.isOpndGlobal(condmod)))
 #endif
         {
-            return false;
+            return true;
         }
-        return true;
+        return false;
     };
 
     // Create a inst (flagDefInst) that defines a flag using ce0 and dmask,
@@ -11791,20 +11795,15 @@ void Optimizer::replaceNoMaskWithAnyhWA()
 
             INST_LIST_ITER beforePos = entryBB->end();
             if (!entryBB->empty()) {
-                INST_LIST_ITER II = beforePos;
-                --II;
-                if ((*II)->isCFInst()) {
-                    beforePos = II;
+                INST_LIST_ITER tII = beforePos;
+                --tII;
+                if ((*tII)->isCFInst()) {
+                    beforePos = tII;
                 }
             }
             entryBB->insert(beforePos, dmaskInst);
 
             fg.globalOpndHT.addGlobalOpnd(Dst);
-
-            // Create UW dmaskVar
-            G4_Declare* dmaskDeclUW = builder.createTempVar(2, Type_UW, Any, "DMaskUW");
-            dmaskDeclUW->setAliasDeclare(dmaskDecl, 0);
-            dmaskVarUW = dmaskDeclUW->getRegVar();
         }
 
         G4_Type Ty = (flagBits == 32) ? Type_UD : Type_UW;
@@ -11813,11 +11812,11 @@ void Optimizer::replaceNoMaskWithAnyhWA()
         G4_RegVar* newVar = newFlagDecl->getRegVar();
         G4_SrcRegRegion* ceSrc0 = builder.createSrcRegRegion(
             Mod_src_undef, Direct, builder.phyregpool.getMask0Reg(), 0, 0,
-            builder.getRegionScalar(), Ty);
+            builder.getRegionScalar(), Type_UD);
         G4_SrcRegRegion* dmaskSrc1 = builder.createSrcRegRegion(
-            Mod_src_undef, Direct, (Ty == Type_UD ? dmaskVarUD : dmaskVarUW), 0, 0,
-            builder.getRegionScalar(), Ty);
-        G4_DstRegRegion* tDst = builder.createNullDst(Ty);
+            Mod_src_undef, Direct, dmaskVarUD, 0, 0,
+            builder.getRegionScalar(), Type_UD);
+        G4_DstRegRegion* tDst = builder.createNullDst(Type_UD);
         G4_CondMod* condMod = builder.createCondMod(Mod_nz, newVar, 0);
         flagDefInst = builder.createInternalInst(
             nullptr, G4_and, condMod, false,
@@ -11890,7 +11889,7 @@ void Optimizer::replaceNoMaskWithAnyhWA()
         //
         //    BB:
         //       ......
-        //       (W) and (16|M0) (ne)f0.0  null<1>:Ty  ce0.0:ud   dmask:ud
+        //       (W) and (16|M0) (ne)f0.0  null<1>:ud  ce0.0:ud   dmask:ud
         //       ** If any nomask inst uses bits beyond 16, need the following**
         //       (w)  mov (2|M0)  f0.0<1>:uw   f0.0<0;1,0>:uw
         //
@@ -11901,8 +11900,7 @@ void Optimizer::replaceNoMaskWithAnyhWA()
 
         //  Collect all candidates and check if 32 bit flag is needed
         bool need32BitFlag = false;
-        INST_LIST_ITER II = BB->begin(), IE = BB->end();
-        for (; II != IE; ++II)
+        for (auto II = BB->begin(), IE = BB->end(); II != IE; ++II)
         {
             G4_INST* I = *II;
             if (isCandidateInst(I, fg))
@@ -11930,10 +11928,9 @@ void Optimizer::replaceNoMaskWithAnyhWA()
         {
             INST_LIST_ITER& II = NoMaskCandidates[i];
             G4_INST* I = *II;
-            uint32_t execsize = I->getExecSize();
 
             G4_Predicate_Control anyh = builder.vISAPredicateToG4Predicate(
-                PRED_CTRL_ANY, execsize);
+                PRED_CTRL_ANY, I->getExecSize());
             G4_Predicate* newPred = builder.createPredicate(PredState_Plus, flagVarForBB, 0, anyh);
             I->setPredicate(newPred);
             newPred->setSameAsNoMask(true);
@@ -11941,6 +11938,7 @@ void Optimizer::replaceNoMaskWithAnyhWA()
             // update defUse
             flagDefInst->addDefUse(I, Opnd_pred);
         }
+        // Clear it to prepare for the next BB
         NoMaskCandidates.clear();
     }
 
