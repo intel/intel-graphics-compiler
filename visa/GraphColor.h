@@ -1317,6 +1317,10 @@ namespace vISA
     //
     typedef struct _CLEAN_NUM_PROFILE
     {
+        _CLEAN_NUM_PROFILE() {
+            for (auto& I : spill_clean_num) I = 0;
+            for (auto& I : fill_clean_num) I = 0;
+        }
         unsigned spill_clean_num[10];
         unsigned fill_clean_num[10];
     } CLEAN_NUM_PROFILE;

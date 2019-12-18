@@ -8571,14 +8571,6 @@ void GlobalRA::flagRegAlloc()
                 {
                     CLEAN_NUM_PROFILE clean_num_profile;
 
-#ifdef DEBUG_VERBOSE_ON
-                    for (int i = 0; i < 3; i++)
-                    {
-                        clean_num_profile.spill_clean_num[i] = 0;
-                        clean_num_profile.fill_clean_num[i] = 0;
-                    }
-#endif
-
                     FlagSpillCleanup f(*this);
                     f.spillFillCodeCleanFlag(builder, kernel, &clean_num_profile);
 
