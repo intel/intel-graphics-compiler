@@ -52,7 +52,6 @@ Platform BinaryEncodingIGA::getIGAInternalPlatform(TARGET_PLATFORM genxPlatform)
     case GENX_CNL:
         platform = Platform::GEN10;
         break;
-    case GENX_ICL:
     case GENX_ICLLP:
         platform = Platform::GEN11;
         break;

@@ -2650,7 +2650,7 @@ static void verifyInstructionDataport(
              }
 
              surface = getPrimitiveOperand<uint8_t>(inst, i++);
-             if (getGenxPlatform() < GENX_ICL)
+             if (getGenxPlatform() < GENX_ICLLP)
              {
                  REPORT_INSTRUCTION(options, 0 != surface, "Surface T0 (the SLM surface) is not allowed for OWORD_LD*/OWORD_ST");
              }
