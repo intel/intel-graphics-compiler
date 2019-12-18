@@ -952,6 +952,18 @@ void Optimizer::accSubPostSchedule()
     kernel.fg.localDataFlowAnalysis();
 
     HWConformity hwConf(builder, kernel, mem);
+
+    if (builder.getOption(vISA_localizationForAccSub))
+    {
+        for (auto bb : kernel.fg)
+        {
+            hwConf.localizeForAcc(bb);
+        }
+
+        kernel.fg.resetLocalDataFlowData();
+        kernel.fg.localDataFlowAnalysis();
+    }
+
     for (auto bb : kernel.fg)
     {
         hwConf.accSubstitution(bb);

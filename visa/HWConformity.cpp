@@ -298,6 +298,47 @@ G4_SrcRegRegion* HWConformity::insertCopyBefore(INST_LIST_ITER it, uint32_t srcN
     return newSrc;
 }
 
+G4_SrcRegRegion* HWConformity::insertCopyAtBBEntry(G4_BB *bb, uint8_t execSize, G4_Operand *src)
+{
+    MUST_BE_TRUE(src != nullptr && src->isSrcRegRegion(), "source must be a SrcRegRegion");
+    G4_SrcRegRegion* origSrc = src->asSrcRegRegion();
+    auto lb = src->getLinearizedStart();
+    auto rb = src->getLinearizedEnd();
+
+    unsigned int regNum = lb / G4_GRF_REG_NBYTES;
+    unsigned int numRegs = (rb + G4_GRF_REG_NBYTES - 1 - lb) / G4_GRF_REG_NBYTES;
+    if (regNum == -1 || numRegs == 0)
+    {
+        return nullptr;
+    }
+
+    G4_Declare* dcl = builder.createTempVar(execSize, origSrc->getType(), GRFALIGN);
+    dcl->getRegVar()->setPhyReg(builder.phyregpool.getGreg(regNum), 0);
+    G4_SrcModifier modifier = origSrc->getModifier();
+    origSrc->setModifier(Mod_src_undef);
+    G4_DstRegRegion* dst = builder.Create_Dst_Opnd_From_Dcl(dcl, 1);
+    dst->computePReg();
+
+    G4_INST* movInst = builder.createMov(execSize, dst, origSrc, InstOpt_WriteEnable, false);
+
+    for (auto it = bb->begin();
+        it != bb->end();
+        it++)
+    {
+        if (!(*it)->isLabel())
+        {
+            bb->insert(it, movInst);
+            break;
+        }
+    }
+
+    G4_SrcRegRegion* newSrc = builder.createSrcRegRegion(modifier, Direct, dcl->getRegVar(),
+        0, 0, execSize == 1 ? builder.getRegionScalar() : builder.getRegionStride1(),
+        dcl->getElemType());
+    newSrc->asSrcRegRegion()->computePReg();
+    return newSrc;
+}
+
 /*
  *  create a new mov instruction
  *  mov (esize) tmp<1>:type src
@@ -4222,6 +4263,7 @@ struct AccInterval
     int assignedAcc = -1;
     int bundleConflictTimes = 0;
     int bankConflictTimes = 0;
+    int suppressionTimes = 0;
 
     AccInterval(G4_INST* inst_, int lastUse_, bool preAssigned = false) :
         inst(inst_), lastUse(lastUse_), isPreAssigned(preAssigned)
@@ -4543,6 +4585,31 @@ static bool replaceDstWithAcc(G4_INST* inst, int accNum, IR_Builder& builder)
     return true;
 }
 
+static bool isAccCandidate(G4_INST* inst, Gen4_Operand_Number opndNum, G4_Kernel& kernel)
+
+{
+    if (!kernel.fg.builder->canMadHaveSrc0Acc())
+    {
+        return false;
+    }
+
+    switch (opndNum)
+    {
+        case Opnd_src0:
+        case Opnd_src1:
+            break;
+        default:
+            return false;
+    }
+
+    if (!inst->canSrcBeAcc(opndNum))
+    {
+        return false;
+    }
+
+    return true;
+}
+
 struct AccAssignment
 {
     std::vector<bool> freeAccs;
@@ -4677,6 +4744,7 @@ void HWConformity::multiAccSubstitution(G4_BB* bb)
             bool mustBeAcc0 = false;
             int bundleBCTimes = 0;
             int bankBCTimes = 0;
+            int readSuppressionSrcs = 0;
             if (isAccCandidate(inst, kernel, lastUseId, mustBeAcc0))
             {
                 // this is a potential candidate for acc substitution
@@ -4684,6 +4752,7 @@ void HWConformity::multiAccSubstitution(G4_BB* bb)
                 newInterval->mustBeAcc0 = mustBeAcc0;
                 newInterval->bankConflictTimes = bankBCTimes;
                 newInterval->bundleConflictTimes = bundleBCTimes;
+                newInterval->suppressionTimes = readSuppressionSrcs;
 
                 intervals.push_back(newInterval);
             }
@@ -4788,7 +4857,126 @@ void HWConformity::multiAccSubstitution(G4_BB* bb)
     {
         delete intervals[i];
     }
+
+    return;
 }
+
+struct LiveNode
+{
+    G4_INST* Inst;
+    Gen4_Operand_Number OpNum;
+    LiveNode(G4_INST* Inst, Gen4_Operand_Number OpNum)
+        : Inst(Inst)
+        , OpNum(OpNum)
+    {
+    }
+};
+
+#define GLOBAL_USE_NUM 15
+
+static bool isSameOperand(G4_Operand *srcOpnd, struct LiveNode *ln)
+{
+    G4_Operand *opnd = ln->Inst->getOperand(ln->OpNum);
+
+    if (opnd->compareOperand(srcOpnd) == Rel_eq)
+    {
+        return true;
+    }
+
+    return false;
+}
+
+// substitute local operands with acc when possible
+void HWConformity::localizeForAcc(G4_BB* bb)
+{
+    std::map<const G4_Declare*, G4_Operand*> replacedOperand;
+    std::unordered_map<const G4_Declare*, vector<struct LiveNode>> useNodes;
+    std::vector<const G4_Declare*> erasedCandidates;
+
+    for (auto instIter = bb->begin(), instEnd = bb->end(); instIter != instEnd; ++instIter)
+    {
+        G4_INST* inst = *instIter;
+
+        //Not defined in current BB
+        G4_Operand* dst = inst->getOperand(Opnd_dst);
+        if (dst && dst->isGreg() && kernel.fg.globalOpndHT.isOpndGlobal(dst))
+        {
+            const G4_Declare *dcl = dst->getTopDcl();
+            if (useNodes.find(dcl) != useNodes.end())
+            {
+                useNodes.erase(dcl);
+                erasedCandidates.emplace_back(dcl);
+            }
+        }
+
+        //Source operand
+        for (auto OpNum :
+            { Gen4_Operand_Number::Opnd_src0, Gen4_Operand_Number::Opnd_src1,
+              Gen4_Operand_Number::Opnd_src2})
+        {
+            G4_Operand* src = inst->getOperand(OpNum);
+            if (src && src->isGreg() && kernel.fg.globalOpndHT.isOpndGlobal(src))
+            {
+                const G4_Declare* dcl = src->getTopDcl();
+                if ((OpNum != Opnd_src0 &&  //Acc can be used only for src0 and src1
+                    OpNum != Opnd_src1) ||
+                    !isAccCandidate(inst, OpNum, kernel)) //The operand is can be replaced with ACC
+                {
+                    auto dclIter = std::find(erasedCandidates.begin(), erasedCandidates.end(), dcl);
+                    if (dclIter == erasedCandidates.end())
+                    {
+                        erasedCandidates.emplace_back(dcl);
+                    }
+                }
+                else
+                {
+                    if (useNodes[dcl].empty() ||
+                        isSameOperand(src, &(useNodes[dcl][0])))
+                    {
+                        useNodes[dcl].emplace_back(inst, OpNum);
+                    }
+                }
+            }
+        }
+    }
+
+    for (auto& Nodes : useNodes)
+    {
+        const G4_Declare* dcl = Nodes.first;
+        auto dclIter = std::find(erasedCandidates.begin(), erasedCandidates.end(), dcl);
+        if (dclIter != erasedCandidates.end())
+        {
+            continue;
+        }
+        if (Nodes.second.size() >= GLOBAL_USE_NUM)
+        {
+            for (auto& LN : Nodes.second)
+            {
+                G4_INST* inst = LN.Inst;
+                Gen4_Operand_Number opNum = LN.OpNum;
+                int i = inst->getSrcNum(opNum);
+                G4_Operand* src = inst->getSrc(i);
+                G4_Operand* tmpOpnd = nullptr;
+
+                auto itR = replacedOperand.find(dcl);
+                if (itR != replacedOperand.end())
+                {
+                    tmpOpnd = builder.duplicateOperand(itR->second);
+                }
+                else
+                {
+                    tmpOpnd = insertCopyAtBBEntry(bb, inst->getExecSize(), src);
+                    replacedOperand[dcl] = tmpOpnd;
+                }
+                inst->setSrc(tmpOpnd, i);
+            }
+        }
+    }
+
+    return;
+}
+
+
 // substitute local operands with acc when possible
 void HWConformity::accSubstitution(G4_BB* bb)
 {
