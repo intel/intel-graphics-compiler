@@ -7872,25 +7872,9 @@ bool G4_INST::canExecSizeBeAcc(Gen4_Operand_Number opndNum) const
 {
     switch (dst->getType())
     {
-    case Type_HF:
-        if (builder.relaxedACCRestrictions())
-        {
-            if (!((isMixedMode() && getExecSize() == 8) ||
-                (getExecSize() == 16)))
-            {
-                return false;
-            }
-        }
-        else
-        {
-            if (getExecSize() != (builder.getNativeExecSize() * 2))
-            {
-                return false;
-            }
-        }
-        break;
     case Type_W:
     case Type_UW:
+    case Type_HF:
         if (getExecSize() != (builder.getNativeExecSize() * 2))
         {
             return false;
@@ -8048,14 +8032,6 @@ bool G4_INST::canSrcBeAcc(Gen4_Operand_Number opndNum) const
         // src1 acc does not support modifiers
         return false;
     }
-
-    if (builder.relaxedACCRestrictions() &&
-         isMixedMode() &&
-         isLowPrecisionFloatTy(src->getType()))
-    {
-        return false;
-    }
-
     if (!src->getRegion()->isContiguous(getExecSize()))
     {
         return false;
@@ -8081,20 +8057,8 @@ bool G4_INST::canSrcBeAcc(Gen4_Operand_Number opndNum) const
     else if (isLowPrecisionFloatTy(getDst()->getType()) && src->getType() == Type_F &&
         dstEltSize == 2)
     {
-        if (builder.relaxedACCRestrictions())
-        {
-            //When source is float or half float from accumulator register and destination is half float with a stride of 1,
-            //the source must register aligned. i.e., source must have offset zero.
-            if ((src->getLinearizedStart() % GENX_GRF_REG_SIZ) != 0)
-            {
-                return false;
-            }
-        }
-        else
-        {
-            // no acc for mix mode inst with packed HF dst
-            return false;
-        }
+        // no acc for mix mode inst with packed HF dst
+        return false;
     }
 
     if (opcode() == G4_mad && srcId == 0 &&
