@@ -703,12 +703,14 @@ int CISA_IR_Builder::ParseVISAText(const std::string& visaHeader, const std::str
             if (std::fputs(visaHeader.c_str(), dumpFile) == EOF)
             {
                 assert(0 && "Failed to write visa text to file");
+                fclose(dumpFile);
                 return CM_FAILURE;
             }
             // Write the declarations and instructions
             if (std::fputs(visaText.c_str(), dumpFile) == EOF)
             {
                 assert(0 && "Failed to write visa text to file");
+                fclose(dumpFile);
                 return CM_FAILURE;
             }
             fclose(dumpFile);
