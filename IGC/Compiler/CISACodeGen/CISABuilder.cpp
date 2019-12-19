@@ -5617,6 +5617,7 @@ namespace IGC
     }
 
     void CEncoder::AtomicRawA64(AtomicOp atomic_op,
+                            const ResourceDescriptor& resource,
                             CVariable* dst,
                             CVariable* offset,
                             CVariable* src0,

@@ -155,7 +155,7 @@ namespace IGC
             const ResourceDescriptor& bindingTableIndex,
             CVariable* dst, CVariable* elem_offset, CVariable* src0,
             CVariable* src1, bool is16Bit = false);
-        void AtomicRawA64(AtomicOp atomic_op, CVariable* dst,
+        void AtomicRawA64(AtomicOp atomic_op, const ResourceDescriptor& resource, CVariable* dst,
             CVariable* elem_offset, CVariable* src0, CVariable* src1,
             unsigned short bitwidth);
         void Cmp(e_predicate p, CVariable* dst, CVariable* src0, CVariable* src1);

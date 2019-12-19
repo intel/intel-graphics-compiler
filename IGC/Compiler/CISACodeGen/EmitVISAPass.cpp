@@ -11453,7 +11453,7 @@ void EmitPass::emitScalarAtomics(
 
         if (isA64)
         {
-            m_encoder->AtomicRawA64(uniformAtomicOp, pReturnVal, pDstAddr, pFinalAtomicSrcVal, nullptr, is16Bit ? 16 : 32);
+            m_encoder->AtomicRawA64(uniformAtomicOp, resource, pReturnVal, pDstAddr, pFinalAtomicSrcVal, nullptr, is16Bit ? 16 : 32);
         }
         else
         {
@@ -11665,13 +11665,13 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst* pInsn)
                     ISA_TYPE_UQ, EALIGN_GRF);
                 m_encoder->Cast(pDstAddr2, pDstAddr);
 
-                m_encoder->AtomicRawA64(atomic_op, pDst, pDstAddr2, pSrc0, pSrc1, bitwidth);
+                m_encoder->AtomicRawA64(atomic_op, resource, pDst, pDstAddr2, pSrc0, pSrc1, bitwidth);
 
                 m_encoder->Push();
             }
             else
             {
-                m_encoder->AtomicRawA64(atomic_op, pDst, pDstAddr, pSrc0, pSrc1, bitwidth);
+                m_encoder->AtomicRawA64(atomic_op, resource, pDst, pDstAddr, pSrc0, pSrc1, bitwidth);
                 m_encoder->Push();
             }
 
