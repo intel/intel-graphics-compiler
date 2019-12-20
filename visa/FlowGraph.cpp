@@ -6322,6 +6322,9 @@ void* gtPinData::getGTPinInfoBuffer(unsigned int &bufferSize)
         numTokens++;
     }
 
+    // For payload offsets
+    numTokens++;
+
     writeBuffer(buffer, bufferSize, &t, sizeof(t));
     writeBuffer(buffer, bufferSize, &numTokens, sizeof(uint32_t));
 
