@@ -948,6 +948,11 @@ public:
        return op == G4_mac || op == G4_mach || op == G4_sada2;
     }
 
+    bool hasImplicitAccDst() const
+    {
+        return op == G4_addc || op == G4_subb;
+    }
+
     bool mayExpandToAccMacro() const;
 
     Gen4_Operand_Number getSrcOperandNum(int srcPos) const

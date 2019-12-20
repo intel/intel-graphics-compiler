@@ -1782,7 +1782,7 @@ bool HWConformity::fixAcc(INST_LIST_ITER iter, G4_BB* bb)
 
     bool changed = false;
     auto dst = inst->getDst();
-    if ((dst != NULL && dst->isAccReg()) || inst->opcode() == G4_mach)
+    if ((dst && dst->isAccReg()) || inst->opcode() == G4_mach)
     {
         if (!builder.accDstforIndirectSrc())
         {
@@ -1794,7 +1794,8 @@ bool HWConformity::fixAcc(INST_LIST_ITER iter, G4_BB* bb)
         }
     }
 
-    bool useAcc = inst->hasImplicitAccSrc();
+    // implicit acc src/dst get its offset from dst
+    bool useAcc = inst->hasImplicitAccSrc() || inst->hasImplicitAccDst();
     if (!useAcc)
     {
         for (int i = 0; i < inst->getNumSrc(); ++i)
