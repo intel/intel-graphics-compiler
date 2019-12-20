@@ -50,7 +50,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/PassTimer.hpp"
 #include "Compiler/CISACodeGen/FixAddrSpaceCast.h"
 #include "Compiler/CISACodeGen/FixupExtractValuePair.h"
-#include "Compiler/CISACodeGen/GenNullPointerLowering.h"
 #include "Compiler/CISACodeGen/GenIRLowering.h"
 #include "Compiler/CISACodeGen/GenSimplification.h"
 #include "Compiler/CISACodeGen/LoopDCE.h"
