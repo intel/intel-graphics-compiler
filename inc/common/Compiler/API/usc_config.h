@@ -29,7 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #    define USC_AS_DLL
 #endif
 
-#ifdef USC_AS_DLL 
+#ifdef USC_AS_DLL
 #    ifdef USC_EXPORTS
 #        if defined(_WIN32) || defined(_WIN64)
 #            define USC_API __declspec(dllexport)
@@ -40,7 +40,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #        define USC_API __declspec(dllimport)
 #    endif
 #else // USC linked statically
-#    define USC_API 
+#    define USC_API
 #endif
 
 #if defined (_MSC_VER)
@@ -50,7 +50,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endif
 
 /*****************************************************************************\
-    Macros that are required to allow compilation by 
+    Macros that are required to allow compilation by
     multiple comilers (eg. gcc, msvc).
 \*****************************************************************************/
 #ifdef _MSC_VER
@@ -69,13 +69,4 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     #define ALIGN( size )   __attribute__((aligned(size)))
 
 #endif // __GNUC__
-
-/*****************************************************************************\
-MACRO: GENNEXT_TR
-\*****************************************************************************/
-#if ( defined( _DEBUG ) || defined( _INTERNAL ) || defined( _RELEASE_INTERNAL ) )
-#   define GENNEXT_TR       1
-#else
-#   define GENNEXT_TR       0
-#endif
 

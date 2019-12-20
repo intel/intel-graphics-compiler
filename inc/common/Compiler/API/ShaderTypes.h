@@ -45,7 +45,7 @@ MACRO: BITCOUNT
 #endif
 
 /*****************************************************************************\
-compile-time USC_API_C_ASSERT 
+compile-time USC_API_C_ASSERT
 \*****************************************************************************/
 #ifndef USC_API_C_ASSERT
 #define USC_API_C_ASSERT(e) typedef char __C_ASSERT__[(e)?1:-1]
@@ -76,23 +76,23 @@ ENUM: Needed for Shader serialization and DeepCopy of non trivial declarations.
 enum IL_DECL_TYPE
 {
     IL_DECL_FUNCTION_TABLE,
-    IL_DECL_INTERFACE    
+    IL_DECL_INTERFACE
 };
 
 /*****************************************************************************\
-ENUM: SHADER_OPERAND_PRECISION    
+ENUM: SHADER_OPERAND_PRECISION
 \*****************************************************************************/
 enum SHADER_OPERAND_PRECISION
 {
     SHADER_OPERAND_PRECISION_DEFAULT = 0,
     SHADER_OPERAND_PRECISION_16      = 1, // for floats and signed int
     SHADER_OPERAND_PRECISION_8       = 2, // for signed int
-    
+
     NUM_SHADER_OPERAND_PRECISIONS
 };
 
 /*****************************************************************************\
-operator: < for SHADER_OPERAND_PRECISION 
+operator: < for SHADER_OPERAND_PRECISION
 \*****************************************************************************/
 inline bool isOfLesserPrec( SHADER_OPERAND_PRECISION precLesser, SHADER_OPERAND_PRECISION precGreater )
 {
@@ -180,9 +180,6 @@ struct SShaderResourceDeclType
     unsigned int   LBound; // SHADER_VERSION_4_0
     unsigned int   UBound; // SHADER_VERSION_4_0
     unsigned int   Space;  // SHADER_VERSION_4_0
-#if GENNEXT_TR
-    unsigned int   IsProceduralTexture  : 1;
-#endif // GENNEXT_TR
 };
 
 /*****************************************************************************\
@@ -243,7 +240,6 @@ STRUCT: SShaderOpcodeCaps
 \*****************************************************************************/
 struct SShaderOpcodeCaps
 {
-        
     SHADER_OPCODE opcode;
     SHADER_VERSION_TYPE  Version;
     bool SupportsPredicate;
@@ -383,7 +379,7 @@ namespace iSTD
 template<typename T>
 struct IsArrayTypeSupported;
 
-template<> 
+template<>
 struct IsArrayTypeSupported< USC::SHADER_OPERAND_PRECISION > { enum { value = true }; };
 
 } // namespace iSTD

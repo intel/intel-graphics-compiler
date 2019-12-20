@@ -51,8 +51,8 @@ const unsigned int NUM_SHADER_RESOURCE_VIEW_SIZE   = ( INPUT_RESOURCE_SLOT_COUNT
 
 const unsigned int NUM_CONSTANT_REGISTER_SLOTS_OCL     = 96;
 const unsigned int NUM_CONSTANT_REGISTER_SLOTS_NONOCL  = 32;
-const unsigned int NUM_CONSTANT_REGISTER_SLOTS         = 
-    MAX( NUM_CONSTANT_REGISTER_SLOTS_OCL, 
+const unsigned int NUM_CONSTANT_REGISTER_SLOTS         =
+    MAX( NUM_CONSTANT_REGISTER_SLOTS_OCL,
          NUM_CONSTANT_REGISTER_SLOTS_NONOCL );
 
 const unsigned int NUM_SAMPLER_SLOTS_IN_DESCRIPTOR = 16;
@@ -95,13 +95,13 @@ const unsigned int NUM_PSHADER_INPUT_REGISTERS     = 32;
 
 // There are five possible kinds of input declarations in compute shader:
 // ThreadID
-// ThreadIDInGroup 
+// ThreadIDInGroup
 // ThreadIDInGroupFlattened (==ThreadIndex)
 // ThreadGroupID
-// ThreadGroupsCount - OpenGL 4.3 gl_NumWorkGroups built-in variable 
+// ThreadGroupsCount - OpenGL 4.3 gl_NumWorkGroups built-in variable
 const unsigned int NUM_CSHADER_INPUT_REGISTERS     = 5;
-const unsigned int MAX_NUM_SHADER_INPUT_REGISTERS  = 
-    MAX( MAX( MAX( MAX( MAX( NUM_VSHADER_INPUT_REGISTERS, 
+const unsigned int MAX_NUM_SHADER_INPUT_REGISTERS  =
+    MAX( MAX( MAX( MAX( MAX( NUM_VSHADER_INPUT_REGISTERS,
               NUM_GSHADER_INPUT_REGISTERS ),
               NUM_PSHADER_INPUT_REGISTERS ),
               NUM_HSHADER_INPUT_REGISTERS ),
@@ -117,7 +117,7 @@ const unsigned int NUM_HSHADER_OUTPUT_REGISTERS     = 32;
 const unsigned int NUM_DSHADER_OUTPUT_REGISTERS     = 32;
 const unsigned int NUM_GSHADER_OUTPUT_REGISTERS     = 32;
 const unsigned int NUM_GSHADER_BUFFERED_OUTPUT_REGISTERS_AND_HEADER = NUM_GSHADER_OUTPUT_REGISTERS + 2; // +2 is for DW0-DW7 of VUE
-const unsigned int NUM_GEN5_75_GSHADER_BUFFERED_OUTPUT_REGISTERS_AND_HEADER = 
+const unsigned int NUM_GEN5_75_GSHADER_BUFFERED_OUTPUT_REGISTERS_AND_HEADER =
     NUM_GSHADER_BUFFERED_OUTPUT_REGISTERS_AND_HEADER + 2; // +2 is for DW8-DW15 of VUE for ILK
 
 const unsigned int NUM_PSHADER_OUTPUT_COLOR_REGISTERS  = NUM_COLOR_BUFFER_SLOTS;
@@ -125,12 +125,12 @@ const unsigned int NUM_PSHADER_OUTPUT_DEPTH_REGISTERS  = 1;
 const unsigned int NUM_PSHADER_OUTPUT_OMASK_REGISTERS  = 1;
 
 const unsigned int NUM_PSHADER_OUTPUT_REGISTERS =
-    ( NUM_PSHADER_OUTPUT_COLOR_REGISTERS + 
-      NUM_PSHADER_OUTPUT_DEPTH_REGISTERS + 
+    ( NUM_PSHADER_OUTPUT_COLOR_REGISTERS +
+      NUM_PSHADER_OUTPUT_DEPTH_REGISTERS +
       NUM_PSHADER_OUTPUT_OMASK_REGISTERS );
 
-const unsigned int MAX_NUM_SHADER_OUTPUT_REGISTERS  = 
-    MAX( MAX( MAX( MAX( NUM_VSHADER_OUTPUT_REGISTERS, 
+const unsigned int MAX_NUM_SHADER_OUTPUT_REGISTERS  =
+    MAX( MAX( MAX( MAX( NUM_VSHADER_OUTPUT_REGISTERS,
               NUM_GSHADER_OUTPUT_REGISTERS ),
               NUM_PSHADER_OUTPUT_REGISTERS ),
               NUM_HSHADER_OUTPUT_REGISTERS ),
@@ -143,14 +143,14 @@ const unsigned int NUM_SHADER_INDEXED_TEMP_ARRAYS            = 4096;
 const unsigned int NUM_SHADER_CONSTANT_REGISTERS_1_0         = 32;
 const unsigned int NUM_SHADER_CONSTANT_REGISTERS_2_0_OCL     = 96;
 // Max number of entries in 3DSTATE_GATHER_CONSTANT_*S is 254,
-// so number of constant registers must be 63 -> (63*4 <= 254). 
+// so number of constant registers must be 63 -> (63*4 <= 254).
 const unsigned int NUM_SHADER_CONSTANT_REGISTERS_2_0_NONOCL  = 63;
-const unsigned int NUM_SHADER_CONSTANT_REGISTERS_2_0         = 
+const unsigned int NUM_SHADER_CONSTANT_REGISTERS_2_0 =
     MAX( NUM_SHADER_CONSTANT_REGISTERS_2_0_OCL,
          NUM_SHADER_CONSTANT_REGISTERS_2_0_NONOCL );
 
-const unsigned int NUM_SHADER_CONSTANT_REGISTERS      = 
-    MAX( NUM_SHADER_CONSTANT_REGISTERS_1_0, 
+const unsigned int NUM_SHADER_CONSTANT_REGISTERS =
+    MAX( NUM_SHADER_CONSTANT_REGISTERS_1_0,
          NUM_SHADER_CONSTANT_REGISTERS_2_0 );
 
 // Max number of constant buffers is 14 per Resource Binding HLD (for pre-Gen9)
@@ -297,10 +297,6 @@ const unsigned int PS_NOS_BUMP_MATRIX0_OFFSET         = PS_NOS_BUMP_MATRIX0_REG 
 
 const unsigned int VS_NOS_USERCLIPPLANES_OFFSET       = VS_NOS_USERCLIPPLANES_REG       * 32;
 const unsigned int VS_NOS_USERCLIPPLANES_MASK_OFFSET  = VS_NOS_USERCLIPPLANES_MASK_REG  * 32 + VS_NOS_USERCLIPPLANES_MASK_SUBREG * 4;
-
-#if GENNEXT_TR
-const unsigned int BINDLESS_BTI = 252;
-#endif // GENNEXT_TR
 
 /*****************************************************************************\
 CONST: Maximum number of vertex elements to be pushed into GRF in a Hull Shader
