@@ -2065,7 +2065,6 @@ namespace IGC
             return false;
 
 
-
         //If forced SIMD Mode (by driver or regkey), then:
         // 1. Compile only that SIMD mode and nothing else
         // 2. Compile that SIMD mode even if it is not profitable, i.e. even if compileThisSIMD() returns false for it.
@@ -2103,6 +2102,7 @@ namespace IGC
         }
         return simdStatus == SIMDStatus::SIMD_PASS;
     }
+
 
     SIMDStatus COpenCLKernel::checkSIMDCompileConds(SIMDMode simdMode, EmitPass& EP, llvm::Function& F)
     {
