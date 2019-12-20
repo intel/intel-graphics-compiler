@@ -5544,42 +5544,17 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
         doBankConflict, availableGregs, availableSubRegs, availableAddrs, availableFlags, weakEdgeUsage);
     bool noIndirForceSpills = builder.getOption(vISA_NoIndirectForceSpills);
 
-    auto& varSplitPass = *gra.getVarSplitPass();
-
-    auto assignColor = [&](LiveRange* lr)
+    // colorOrder is in reverse order (unconstrained at front)
+    for (auto iter = colorOrder.rbegin(), iterEnd = colorOrder.rend(); iter != iterEnd; ++iter)
     {
+        LiveRange* lr = *iter;
         auto lrVar = lr->getVar();
 
         //
-        // assign register to live ranges
+        // assign regiser to live ranges
         //
         if (lr->getPhyReg() == NULL && !lrVar->isSpilled() && !lr->getIsPartialDcl()) // no assigned register yet and not spilled
         {
-            G4_Declare* parentDcl = nullptr;
-            bool skipParentIntf = false;
-            if (lr->hasAllocHint())
-            {
-                parms.startGRFReg = lr->getAllocHint();
-                if (varSplitPass.isPartialDcl(lr->getDcl()))
-                {
-                    parentDcl = varSplitPass.getParentDcl(lr->getDcl());
-                    auto parentGRF = parentDcl->getRegVar()->getPhyReg();
-                    if (!parentGRF && parentDcl->getRegVar()->isRegAllocPartaker())
-                    {
-                        parentGRF = lrs[parentDcl->getRegVar()->getId()]->getPhyReg();
-                    }
-                    if (parentGRF)
-                    {
-                        auto siblingNum = varSplitPass.getSiblingNum(lr->getDcl());
-                        auto parentGRFNum = parentGRF->asGreg()->getRegNum();
-                        auto forbiddenStart = parentGRFNum + ((siblingNum + 1) * lr->getDcl()->getNumRows());
-                        auto forbiddenEnd = parentGRFNum + parentDcl->getNumRows();
-                        lr->markForbidden(forbiddenStart, forbiddenEnd - forbiddenStart);
-                        skipParentIntf = true;
-                    }
-                }
-            }
-
             unsigned lr_id = lrVar->getId();
             //
             // compute what registers are already assigned
@@ -5588,6 +5563,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
 
             std::vector<unsigned int>& intfs = intf.getSparseIntfForVar(lr_id);
             auto weakEdgeSet = intf.getCompatibleSparseIntf(lrVar->getDeclare()->getRootDeclare());
+
             for (auto it : intfs)
             {
                 LiveRange* lrTemp = lrs[it];
@@ -5597,9 +5573,6 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
                     {
                         continue;
                     }
-
-                    if (skipParentIntf && lrTemp->getDcl() == parentDcl)
-                        continue;
 
                     regUsage.updateRegUsage(lrTemp);
                 }
@@ -5656,6 +5629,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
 
             ColorHeuristic heuristic = colorHeuristicGRF;
 
+
             bool failed_alloc = false;
             G4_Declare* dcl = lrVar->getDeclare();
 
@@ -5680,7 +5654,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
                 // When evenAlignNeeded is true, it is binding for correctness
                 bool evenAlignNeeded = gra.isEvenAligned(lrVar->getDeclare());
                 BankAlign align = evenAlignNeeded ? BankAlign::Even : BankAlign::Either;
-                if (allocFromBanks && !lr->hasAllocHint())
+                if (allocFromBanks)
                 {
 
                     if (!isHybrid && oneGRFBankDivision &&
@@ -5694,8 +5668,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
                 else
                 {
                     failed_alloc |= !regUsage.assignRegs(highInternalConflict, lr, lr->getForbidden(),
-                        align, gra.getSubRegAlign(lrVar->getDeclare()), heuristic, lr->getSpillCost(),
-                        lr->hasAllocHint());
+                        align, gra.getSubRegAlign(lrVar->getDeclare()), heuristic, lr->getSpillCost());
                 }
             }
 
@@ -5723,52 +5696,11 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
                     spilledLRs.push_back(lr);
                 }
             }
-            else
-            {
-                // Allocation succeeded, set hint if this is a split/child dcl
-                if (varSplitPass.isSplitDcl(dcl) || varSplitPass.isPartialDcl(dcl))
-                {
-                    varSplitPass.writeHints(dcl, lrs);
-                }
-            }
         }
 #ifdef DEBUG_VERBOSE_ON
         lr->dump();
         COUT_ERROR << std::endl;
 #endif
-        return true;
-    };
-
-    // colorOrder is in reverse order (unconstrained at front)
-    for (auto iter = colorOrder.rbegin(), iterEnd = colorOrder.rend(); iter != iterEnd; ++iter)
-    {
-        auto lr = (*iter);
-        bool ret = assignColor(lr);
-
-        // early exit
-        if (!ret)
-            return false;
-
-        if (gra.getIterNo() == 0)
-        {
-            if(varSplitPass.isSplitDcl(lr->getDcl()))
-            {
-                // Try allocating children, out of order in hopes
-                // of getting a coalescable assignment
-                auto children = varSplitPass.getChildren(lr->getDcl());
-                for (auto child : *children)
-                {
-                    if (child->getRegVar()->isRegAllocPartaker())
-                    {
-                        auto childLR = lrs[child->getRegVar()->getId()];
-                        if (!childLR->getPhyReg())
-                        {
-                            assignColor(childLR);
-                        }
-                    }
-                }
-            }
-        }
     }
 
     // record RA type
@@ -8934,7 +8866,6 @@ int GlobalRA::coloringRegAlloc()
         {
             std::cout << "--GRF RA iteration " << iterationNo << "--\n";
         }
-        setIterNo(iterationNo);
 
         resetGlobalRAStates();
 

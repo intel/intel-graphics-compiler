@@ -700,7 +700,6 @@ public:
     G4_SpillIntrinsic* asSpillIntrinsic() const;
     bool isFillIntrinsic() const;
     G4_FillIntrinsic* asFillIntrinsic() const;
-    bool isSplitIntrinsic() const;
     bool isLifeTimeEnd() const { return op == G4_pseudo_lifetime_end; }
     bool isMov() const { return G4_Inst_Table[op].instType == InstTypeMov; }
     bool isLogic() const { return G4_Inst_Table[op].instType == InstTypeLogic; }
@@ -1432,7 +1431,6 @@ enum class Intrinsic
     PseudoKill,
     Spill,
     Fill,
-    Split,
     NumIntrinsics
 };
 
@@ -1470,8 +1468,7 @@ static const IntrinsicInfo G4_Intrinsics[(int)Intrinsic::NumIntrinsics] =
     {Intrinsic::MemFence,   "mem_fence",    0,      0,      Phase::BinaryEncoding,  { 0, 0, 0, false, false } },
     {Intrinsic::PseudoKill, "pseudo_kill",  1,      1,      Phase::RA,              { 0, 0, 0, false, false} },
     {Intrinsic::Spill,      "spill",        1,      2,      Phase::RA,              { 0, 0, 0, false, false } },
-    {Intrinsic::Fill,       "fill",         1,      1,      Phase::RA,              { 0, 0, 0, false, false } },
-    {Intrinsic::Split,      "split",        1,      1,      Phase::RA,              { 0, 0, 0, false, false } },
+    {Intrinsic::Fill,       "fill",         1,      1,      Phase::RA,              { 0, 0, 0, false, false } }
 };
 
 namespace vISA
@@ -3821,11 +3818,6 @@ inline G4_FillIntrinsic* G4_INST::asFillIntrinsic() const
 {
     MUST_BE_TRUE(isFillIntrinsic(), "not a fill intrinsic");
     return const_cast<G4_FillIntrinsic*>(reinterpret_cast<const G4_FillIntrinsic*>(this));
-}
-
-inline bool G4_INST::isSplitIntrinsic() const
-{
-    return isIntrinsic() && asIntrinsicInst()->getIntrinsicId() == Intrinsic::Split;
 }
 
 inline const char* G4_INST::getLabelStr() const
