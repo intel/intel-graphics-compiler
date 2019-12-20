@@ -993,7 +993,8 @@ bool PhyRegUsage::assignRegs(bool  highInternalConflict,
     BankAlign        align,
     G4_SubReg_Align subAlign,
     ColorHeuristic  heuristic,
-    float             spillCost)
+    float             spillCost,
+    bool hintSet)
 {
     colorHeuristic = heuristic;
 
@@ -1086,7 +1087,8 @@ bool PhyRegUsage::assignRegs(bool  highInternalConflict,
 
             if (!builder.getOptions()->getuInt32Option(vISA_ReservedGRFNum) &&
                 honorBankBias &&
-                varBasisBC != BANK_CONFLICT_NONE)
+                varBasisBC != BANK_CONFLICT_NONE &&
+                !hintSet)
             {
                 if (highInternalConflict)
                 {
