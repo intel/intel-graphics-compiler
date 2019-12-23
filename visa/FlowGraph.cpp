@@ -2749,6 +2749,8 @@ static void addBBToActiveJoinList(std::list<SJoinInfo>& activeJoinBlocks,
     // [HW WA] as backward goto never changes fuseMask 01 to 00, it is not
     // considered as nested divergent. It inherits the nesting divergence
     // from the next join entry.
+    //
+    // If a joinBB is nested, all active preceding joinBBs must be nested
 
     // add goto target to list of active blocks that need a join
     std::list<SJoinInfo>::iterator listIter;
@@ -2777,25 +2779,16 @@ static void addBBToActiveJoinList(std::list<SJoinInfo>& activeJoinBlocks,
             activeJoinBlocks.insert(listIter, SJoinInfo(bb, execSize, nested));
             break;
         }
+
+        if (!backwardGoto)
+        {   // Mark all preceding joinBB as nested.
+            jinfo.IsNestedJoin = true;
+        }
     }
 
     if (listIter == activeJoinBlocks.end())
     {
-        bool nested;
-        if (activeJoinBlocks.empty())
-        {
-            nested = false;
-        }
-        else if (backwardGoto)
-        {
-            SJoinInfo& ji = activeJoinBlocks.back();
-            nested = ji.IsNestedJoin;
-        }
-        else
-        {
-            nested = true;
-        }
-
+        bool nested = (backwardGoto || activeJoinBlocks.empty()) ? false : true;
         activeJoinBlocks.push_back(SJoinInfo(bb, execSize, nested));
     }
 }
@@ -3030,7 +3023,7 @@ void FlowGraph::processGoto(bool HasSIMDCF)
         //    2) Set it if there are at least two active joins or one nested join.
         if ((builder->getuint32Option(vISA_noMaskToAnyhWA) & 0x3) > 1)
         {
-            if (activeJoinBlocks.size() > 0 && activeJoinBlocks.back().IsNestedJoin)
+            if (activeJoinBlocks.size() > 0 && activeJoinBlocks.front().IsNestedJoin)
             {
                 setInNestedDivergentBranch(bb);
             }
