@@ -754,6 +754,7 @@ void VectorMessage::getInfo(Type* Ty, uint32_t Align, bool useA32,
 
         insts[i].startByte = (uint16_t)(TBytes - bytes);
         insts[i].kind = kind;
+        insts[i].blkType = dataType;
         insts[i].blkInBytes = (uint16_t)CEncoder::GetCISADataTypeSize(dataType);
         insts[i].numBlks = (uint16_t)bytes / insts[i].blkInBytes;
         ++i;
