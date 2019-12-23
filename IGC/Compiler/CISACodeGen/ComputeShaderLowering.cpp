@@ -93,7 +93,7 @@ void ComputeShaderLowering::shortenThreadID(GenIntrinsicInst& inst, Function& F)
     llvm::Value* vSGV = builder.getInt32(usage);
     llvm::Function* funcSGV = llvm::GenISAIntrinsic::getDeclaration(module, GenISAIntrinsic::GenISA_DCL_SystemValue, builder.getInt16Ty());
     llvm::Value* vSGVCreate = builder.CreateCall(funcSGV, vSGV);
-    vSGVCreate = builder.CreateZExtOrTrunc(vSGVCreate, builder.getIntNTy(inst.getType()->getPrimitiveSizeInBits()));
+    vSGVCreate = builder.CreateZExtOrTrunc(vSGVCreate, builder.getInt32Ty());
     vSGVCreate = builder.CreateBitCast(vSGVCreate, inst.getType());
     inst.replaceAllUsesWith(vSGVCreate);
 
