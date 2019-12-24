@@ -7316,6 +7316,16 @@ void G4_INST::setImplAccDst(G4_DstRegRegion* opnd)
     computeRightBound(opnd);
 }
 
+// get simd lane mask for this instruction. For example,
+//      add  (8|M8) ...
+// will have 0xFF00, which lane 8-15
+unsigned G4_INST::getExecLaneMask() const
+{
+    unsigned maskbits = (1 << getExecSize()) - 1;
+    unsigned chanOffset = getMaskOffset();
+    return (maskbits << chanOffset);
+}
+
 void G4_INST::dump() const
 {
 

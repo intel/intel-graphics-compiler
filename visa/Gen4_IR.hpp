@@ -898,6 +898,10 @@ public:
     bool isValidSymbolOperand(bool &dst_valid, bool *srcs_valid) const;
     const char *getLabelStr() const;
 
+    // get simd lane mask for this instruction. For example,
+    //      add  (8|M8) ...
+    // will have 0xFF00, which lane 8-15
+    unsigned getExecLaneMask() const;
     unsigned char  getExecSize() const {return execSize;}
     const G4_CondMod*    getCondMod() const {return mod;}
           G4_CondMod*    getCondMod()       {return mod;}
