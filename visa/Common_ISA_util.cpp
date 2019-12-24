@@ -1428,7 +1428,7 @@ int64_t typecastVals(const void *value, VISA_Type isaType)
         }
     default:
         {
-            CmAssert( 0 );
+            assert( 0 );
             return -1;
         }
     }

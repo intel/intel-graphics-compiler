@@ -55,10 +55,10 @@ using namespace std;
 using namespace vISA;
 extern "C" int64_t getTimerTicks(unsigned int idx);
 
-#define IS_GEN_PATH  (mBuildOption == CM_CISA_BUILDER_GEN)
-#define IS_BOTH_PATH  (mBuildOption == CM_CISA_BUILDER_BOTH)
-#define IS_GEN_BOTH_PATH  (mBuildOption == CM_CISA_BUILDER_GEN || mBuildOption ==  CM_CISA_BUILDER_BOTH)
-#define IS_VISA_BOTH_PATH  (mBuildOption == CM_CISA_BUILDER_CISA || mBuildOption ==  CM_CISA_BUILDER_BOTH)
+#define IS_GEN_PATH  (mBuildOption == VISA_BUILDER_GEN)
+#define IS_BOTH_PATH  (mBuildOption == VISA_BUILDER_BOTH)
+#define IS_GEN_BOTH_PATH  (mBuildOption == VISA_BUILDER_GEN || mBuildOption ==  VISA_BUILDER_BOTH)
+#define IS_VISA_BOTH_PATH  (mBuildOption == VISA_BUILDER_VISA || mBuildOption ==  VISA_BUILDER_BOTH)
 
 CISA_IR_Builder::~CISA_IR_Builder()
 {
@@ -267,7 +267,7 @@ void CISA_IR_Builder::InitVisaWaTable(TARGET_PLATFORM platform, Stepping step)
 int CISA_IR_Builder::CreateBuilder(
     CISA_IR_Builder *&builder,
     vISABuilderMode mode,
-    CM_VISA_BUILDER_OPTION buildOption,
+    VISA_BUILDER_OPTION buildOption,
     TARGET_PLATFORM platform,
     int numArgs,
     const char* flags[],
@@ -279,8 +279,8 @@ int CISA_IR_Builder::CreateBuilder(
 
     if (builder != NULL)
     {
-        CmAssert(0);
-        return CM_FAILURE;
+        assert(0);
+        return VISA_FAILURE;
     }
 
     startTimer(TIMER_TOTAL);
@@ -297,8 +297,8 @@ int CISA_IR_Builder::CreateBuilder(
     if (!builder->m_options.parseOptions(numArgs, flags))
     {
         delete builder;
-        CmAssert(0);
-        return CM_FAILURE;
+        assert(0);
+        return VISA_FAILURE;
     }
 
     auto targetMode = (mode == vISA_3D || mode == vISA_ASM_WRITER || mode == vISA_ASM_READER) ? VISA_3D : VISA_CM;
@@ -319,7 +319,7 @@ int CISA_IR_Builder::CreateBuilder(
             simulation mode. Again can be pased by FE, but don't want to deal
             with FE/BE miss match issues.
         */
-        if (buildOption != CM_CISA_BUILDER_CISA)
+        if (buildOption != VISA_BUILDER_VISA)
         {
             builder->m_options.setOptionInternally(vISA_outputToFile, true);
             builder->m_options.setOptionInternally(vISA_GenerateBinary, true);
@@ -339,7 +339,7 @@ int CISA_IR_Builder::CreateBuilder(
         builder->InitVisaWaTable(platform, GetStepping());
     }
 
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int CISA_IR_Builder::DestroyBuilder(CISA_IR_Builder *builder)
@@ -347,13 +347,13 @@ int CISA_IR_Builder::DestroyBuilder(CISA_IR_Builder *builder)
 
     if(builder == NULL)
     {
-        CmAssert(0);
-        return CM_FAILURE;
+        assert(0);
+        return VISA_FAILURE;
     }
 
     delete builder;
 
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 bool CISA_IR_Builder::CISA_IR_initialization(char *kernel_name,
@@ -377,11 +377,11 @@ int CISA_IR_Builder::ClearAsmTextStreams()
         m_ssIsaAsm.str(std::string());
         m_ssIsaAsm.clear();
 
-        return CM_SUCCESS;
+        return VISA_SUCCESS;
     }
 
     assert(0 && "Should clear streams only in asm text writer mode!");
-    return CM_FAILURE;
+    return VISA_FAILURE;
 }
 
 int CISA_IR_Builder::AddKernel(VISAKernel *& kernel, const char* kernelName)
@@ -389,8 +389,8 @@ int CISA_IR_Builder::AddKernel(VISAKernel *& kernel, const char* kernelName)
 
     if( kernel != NULL )
     {
-        CmAssert( 0 );
-        return CM_FAILURE;
+        assert( 0 );
+        return VISA_FAILURE;
     }
     m_executionSatarted = true;
 
@@ -411,15 +411,15 @@ int CISA_IR_Builder::AddKernel(VISAKernel *& kernel, const char* kernelName)
         ClearAsmTextStreams();
     }
 
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int CISA_IR_Builder::AddFunction(VISAFunction *& function, const char* functionName)
 {
     if( function != NULL )
     {
-        CmAssert( 0 );
-        return CM_FAILURE;
+        assert( 0 );
+        return VISA_FAILURE;
     }
 
     this->AddKernel((VISAKernel *&)function, functionName);
@@ -430,7 +430,7 @@ int CISA_IR_Builder::AddFunction(VISAFunction *& function, const char* functionN
     this->m_function_count++;
     ((VISAKernelImpl *)function)->setIsKernel(false);
     m_functionsVector.push_back(function);
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 // default size of the physical reg pool mem manager in bytes
@@ -672,9 +672,9 @@ int CISA_IR_Builder::WriteVISAHeader()
 
         VISAKernel_format_provider fmt(m_kernel);
         m_ssIsaAsmHeader << printKernelHeader(this->m_header, &fmt, m_kernel->getIsKernel(), funcId, &this->m_options) << endl;
-        return CM_SUCCESS;
+        return VISA_SUCCESS;
     }
-    return CM_FAILURE;
+    return VISA_FAILURE;
 }
 
 typedef struct yy_buffer_state * YY_BUFFER_STATE;
@@ -703,14 +703,14 @@ int CISA_IR_Builder::ParseVISAText(const std::string& visaHeader, const std::str
             {
                 assert(0 && "Failed to write visa text to file");
                 fclose(dumpFile);
-                return CM_FAILURE;
+                return VISA_FAILURE;
             }
             // Write the declarations and instructions
             if (std::fputs(visaText.c_str(), dumpFile) == EOF)
             {
                 assert(0 && "Failed to write visa text to file");
                 fclose(dumpFile);
-                return CM_FAILURE;
+                return VISA_FAILURE;
             }
             fclose(dumpFile);
         }
@@ -723,7 +723,7 @@ int CISA_IR_Builder::ParseVISAText(const std::string& visaHeader, const std::str
         if (CISAparse() != 0)
         {
             assert(0 && "Parsing header message failed");
-            return CM_FAILURE;
+            return VISA_FAILURE;
         }
         CISA_delete_buffer(headerBuf);
     }
@@ -735,7 +735,7 @@ int CISA_IR_Builder::ParseVISAText(const std::string& visaHeader, const std::str
         if (CISAparse() != 0)
         {
             assert(0 && "Parsing visa text failed");
-            return CM_FAILURE;
+            return VISA_FAILURE;
         }
         CISA_delete_buffer(visaBuf);
     }
@@ -745,10 +745,10 @@ int CISA_IR_Builder::ParseVISAText(const std::string& visaHeader, const std::str
         fclose(CISAout);
     }
 
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 #else
     assert(0 && "Asm parsing not supported on this platform");
-    return CM_FAILURE;
+    return VISA_FAILURE;
 #endif
 }
 
@@ -766,13 +766,13 @@ int CISA_IR_Builder::ParseVISAText(const std::string& visaFile)
     if (!CISAin)
     {
         assert(0 && "Failed to open file");
-        return CM_FAILURE;
+        return VISA_FAILURE;
     }
 
     if (CISAparse() != 0)
     {
         assert(0 && "Parsing visa text failed");
-        return CM_FAILURE;
+        return VISA_FAILURE;
     }
     fclose(CISAin);
 
@@ -780,10 +780,10 @@ int CISA_IR_Builder::ParseVISAText(const std::string& visaFile)
     {
         fclose(CISAout);
     }
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 #else
     assert(0 && "Asm parsing not supported on this platform");
-    return CM_FAILURE;
+    return VISA_FAILURE;
 #endif
 }
 
@@ -793,7 +793,7 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
 {
 
     stopTimer(TIMER_BUILDER);   // TIMER_BUILDER is started when builder is created
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
 
     std::string name = std::string(nameInput);
 
@@ -802,7 +802,7 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
         if (m_options.getOption(vISA_IsaAssembly))
         {
             assert(0 && "Should not be calling Compile() in asm text writter mode!");
-            return CM_FAILURE;
+            return VISA_FAILURE;
         }
 
         std::list< VISAKernelImpl *>::iterator iter = m_kernels.begin();
@@ -818,7 +818,7 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
         m_cisaBinary->setMinorVersion((unsigned char)this->m_header.minor_version);
         m_cisaBinary->setMagicNumber(COMMON_ISA_MAGIC_NUM);
 
-        int status = CM_SUCCESS;
+        int status = VISA_SUCCESS;
         for( ; iter != end; iter++, kernelIndex++ )
         {
             VISAKernelImpl * kTemp = *iter;
@@ -828,7 +828,7 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
         }
         m_cisaBinary->finalizeCisaBinary();
 
-        if (status != CM_SUCCESS)
+        if (status != VISA_SUCCESS)
         {
             return status;
         }
@@ -916,7 +916,7 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
             m_currentKernel = kernel;
 
             int status =  kernel->compileFastPath();
-            if (status != CM_SUCCESS)
+            if (status != VISA_SUCCESS)
             {
                 stopTimer(TIMER_TOTAL);
                 return status;
@@ -1139,11 +1139,11 @@ bool CISA_IR_Builder::CISA_implicit_input_directive(char * argName, char *varNam
         }
     }
 
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     CISA_GEN_VAR *temp = m_kernel->getDeclFromName(varName);
     MUST_BE_TRUE1(temp != NULL, line_no, "Var marked for input was not found!");
     status = m_kernel->CreateVISAImplicitInputVar((VISA_GenVar *)temp, offset, size, numVal);
-    if (status != CM_SUCCESS)
+    if (status != VISA_SUCCESS)
     {
         std::cerr << "Failed to create input Var. Line: " << line_no << std::endl;
         return false;
@@ -1153,11 +1153,11 @@ bool CISA_IR_Builder::CISA_implicit_input_directive(char * argName, char *varNam
 bool CISA_IR_Builder::CISA_input_directive(char* var_name, short offset, unsigned short size, int line_no)
 {
 
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     CISA_GEN_VAR *temp = m_kernel->getDeclFromName(var_name);
     MUST_BE_TRUE1(temp != NULL, line_no, "Var marked for input was not found!" );
     status = m_kernel->CreateVISAInputVar((VISA_GenVar *)temp,offset,size);
-    if(status != CM_SUCCESS)
+    if(status != VISA_SUCCESS)
     {
         std::cerr << "Failed to create input Var. Line: " <<line_no << "\n";
         return false;
@@ -1277,7 +1277,7 @@ bool CISA_IR_Builder::CISA_create_arith_instruction(VISA_opnd * pred,
     Common_ISA_Exec_Size executionSize =  Get_Common_ISA_Exec_Size_From_Raw_Size(exec_size);
     int status = m_kernel->AppendVISAArithmeticInst(opcode, (VISA_PredOpnd *)pred, sat, emask, executionSize,
         (VISA_VectorOpnd *)dst_cisa, (VISA_VectorOpnd *)src0_cisa, (VISA_VectorOpnd *)src1_cisa, (VISA_VectorOpnd *)src2_cisa);
-    MUST_BE_TRUE1(status == CM_SUCCESS, line_no, "Could not create CISA arithmetic instruction.");
+    MUST_BE_TRUE1(status == VISA_SUCCESS, line_no, "Could not create CISA arithmetic instruction.");
     return true;
 }
 
@@ -1295,7 +1295,7 @@ bool CISA_IR_Builder::CISA_create_arith_instruction2(VISA_opnd * pred,
     Common_ISA_Exec_Size executionSize =  Get_Common_ISA_Exec_Size_From_Raw_Size(exec_size);
     int status = m_kernel->AppendVISAArithmeticInst(opcode, (VISA_PredOpnd *)pred, emask, executionSize,
         (VISA_VectorOpnd *)dst_cisa, (VISA_VectorOpnd *)carry_borrow, (VISA_VectorOpnd *)src1_cisa, (VISA_VectorOpnd *)src2_cisa);
-    MUST_BE_TRUE1(status == CM_SUCCESS, line_no, "Could not create CISA arithmetic instruction.");
+    MUST_BE_TRUE1(status == VISA_SUCCESS, line_no, "Could not create CISA arithmetic instruction.");
     return true;
 }
 
@@ -1571,7 +1571,7 @@ CISA_IR_Builder::CISA_create_svm_gather4_scaled(VISA_opnd               *pred,
                                                    static_cast<VISA_RawOpnd *>(offsets),
                                                    static_cast<VISA_RawOpnd *>(dst));
 
-    return ret == CM_SUCCESS;
+    return ret == VISA_SUCCESS;
 }
 
 bool
@@ -1592,7 +1592,7 @@ CISA_IR_Builder::CISA_create_svm_scatter4_scaled(VISA_opnd              *pred,
                                                     static_cast<VISA_RawOpnd *>(offsets),
                                                     static_cast<VISA_RawOpnd *>(src));
 
-    return ret == CM_SUCCESS;
+    return ret == VISA_SUCCESS;
 }
 
 bool CISA_IR_Builder::CISA_create_svm_atomic_instruction(VISA_opnd* pred,
@@ -1844,7 +1844,7 @@ bool CISA_IR_Builder::CISA_create_scatter4_scaled_instruction(ISA_Opcode        
                 static_cast<VISA_RawOpnd *>(offsets),
                 static_cast<VISA_RawOpnd *>(dstSrc));
 
-    return ret == CM_SUCCESS;
+    return ret == VISA_SUCCESS;
 }
 
 bool CISA_IR_Builder::CISA_create_scatter_scaled_instruction(ISA_Opcode             opcode,
@@ -1874,7 +1874,7 @@ bool CISA_IR_Builder::CISA_create_scatter_scaled_instruction(ISA_Opcode         
                 static_cast<VISA_RawOpnd *>(offsets),
                 static_cast<VISA_RawOpnd *>(dstSrc));
 
-    return ret == CM_SUCCESS;
+    return ret == VISA_SUCCESS;
 }
 
 bool CISA_IR_Builder::CISA_create_sync_instruction(ISA_Opcode opcode)
@@ -1892,7 +1892,7 @@ bool CISA_IR_Builder::CISA_create_sync_instruction(ISA_Opcode opcode)
 bool CISA_IR_Builder::CISA_create_sbarrier_instruction(bool isSignal)
 {
     int ret = m_kernel->AppendVISASplitBarrierInst(isSignal);
-    return ret == CM_SUCCESS;
+    return ret == VISA_SUCCESS;
 }
 
 bool CISA_IR_Builder::CISA_create_FILE_instruction(ISA_Opcode opcode, char * file_name)
@@ -1983,7 +1983,7 @@ bool CISA_IR_Builder::CISA_create_dword_atomic_instruction(VISA_opnd *pred,
                 static_cast<VISA_RawOpnd *>(src1),
                 static_cast<VISA_RawOpnd *>(dst));
 
-    return ret == CM_SUCCESS;
+    return ret == VISA_SUCCESS;
 }
 
 bool CISA_IR_Builder::CISA_create_typed_atomic_instruction(VISA_opnd *pred,
@@ -2023,7 +2023,7 @@ bool CISA_IR_Builder::CISA_create_typed_atomic_instruction(VISA_opnd *pred,
         static_cast<VISA_RawOpnd *>(src1),
         static_cast<VISA_RawOpnd *>(dst));
 
-    return ret == CM_SUCCESS;
+    return ret == VISA_SUCCESS;
 }
 
 
@@ -2354,7 +2354,7 @@ bool CISA_IR_Builder::CISA_create_sample_instruction (ISA_Opcode opcode,
 
     m_kernel->CreateVISAStateOperandHandle(surface, surfaceVar);
 
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
 
     if (opcode == ISA_SAMPLE)
     {
@@ -2376,7 +2376,7 @@ bool CISA_IR_Builder::CISA_create_sample_instruction (ISA_Opcode opcode,
         return false;
     }
 
-    MUST_BE_TRUE1(status == CM_SUCCESS, line_no, "Failed to create SAMPLE or LOAD instruction.");
+    MUST_BE_TRUE1(status == VISA_SUCCESS, line_no, "Failed to create SAMPLE or LOAD instruction.");
     return true;
 }
 
@@ -2653,11 +2653,11 @@ VISA_opnd * CISA_IR_Builder::CISA_create_gen_src_operand(char* var_name, short v
                                                          unsigned char row_offset, unsigned char col_offset, VISA_Modifier mod, int line_no)
 {
     VISA_VectorOpnd *cisa_opnd = NULL;
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     auto *decl =  (VISA_GenVar*)m_kernel->getDeclFromName(var_name);
     MUST_BE_TRUE(decl, "undeclared variable");
     status = m_kernel->CreateVISASrcOperand(cisa_opnd, decl, mod, v_stride, width, h_stride, row_offset, col_offset);
-    MUST_BE_TRUE1(status == CM_SUCCESS, line_no, "Failed to create cisa src operand." );
+    MUST_BE_TRUE1(status == VISA_SUCCESS, line_no, "Failed to create cisa src operand." );
     return (VISA_opnd *)cisa_opnd;
 }
 
@@ -2667,20 +2667,20 @@ VISA_opnd * CISA_IR_Builder::CISA_dst_general_operand(char * var_name,
                                                       unsigned short hstride, int line_no)
 {
     VISA_VectorOpnd *cisa_opnd = NULL;
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     auto *decl = (VISA_GenVar *)m_kernel->getDeclFromName(var_name);
     MUST_BE_TRUE(decl, "undeclared variable");
     status = m_kernel->CreateVISADstOperand(cisa_opnd, decl, hstride, roff, sroff);
-    MUST_BE_TRUE1(status == CM_SUCCESS, line_no, "Failed to create cisa dst operand.");
+    MUST_BE_TRUE1(status == VISA_SUCCESS, line_no, "Failed to create cisa dst operand.");
     return (VISA_opnd *)cisa_opnd;
 }
 
 VISA_opnd * CISA_IR_Builder::CISA_create_immed(uint64_t value, VISA_Type type, int line_no)
 {
     VISA_VectorOpnd *cisa_opnd = NULL;
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     status =  m_kernel->CreateVISAImmediate(cisa_opnd, &value, type);
-    MUST_BE_TRUE1(status == CM_SUCCESS,line_no,"Could not create immediate.");
+    MUST_BE_TRUE1(status == VISA_SUCCESS,line_no,"Could not create immediate.");
     if (type == ISA_TYPE_Q || type == ISA_TYPE_UQ)
     {
         cisa_opnd->_opnd.v_opnd.opnd_val.const_opnd._val.lval = value;
@@ -2725,11 +2725,11 @@ VISA_opnd * CISA_IR_Builder::CISA_set_address_operand(CISA_GEN_VAR * cisa_decl, 
     cisa_opnd->size = Get_Size_Vector_Operand(&cisa_opnd->_opnd.v_opnd);
     */
     VISA_VectorOpnd *cisa_opnd = NULL;
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     status = m_kernel->CreateVISAAddressOperand(cisa_opnd, (VISA_AddrVar *)cisa_decl, offset, width, isDst);
-    if( status != CM_SUCCESS )
+    if( status != VISA_SUCCESS )
     {
-        CmAssert( 0 );
+        assert( 0 );
         return NULL;
     }
 
@@ -2785,7 +2785,7 @@ VISA_opnd * CISA_IR_Builder::CISA_create_state_operand(char * var_name, unsigned
 
     VISA_VectorOpnd * cisa_opnd = NULL;
 
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     switch(decl->type)
     {
     case SURFACE_VAR:
@@ -2804,7 +2804,7 @@ VISA_opnd * CISA_IR_Builder::CISA_create_state_operand(char * var_name, unsigned
         }
     }
 
-    MUST_BE_TRUE1(status == CM_SUCCESS, line_no, "Was not able to create State Operand.");
+    MUST_BE_TRUE1(status == VISA_SUCCESS, line_no, "Was not able to create State Operand.");
     return (VISA_opnd *)cisa_opnd;
 }
 
@@ -2822,9 +2822,9 @@ VISA_opnd * CISA_IR_Builder::CISA_create_predicate_operand(char * var_name, VISA
     }
     VISA_PredOpnd *cisa_opnd = NULL;
     CISA_GEN_VAR * decl = m_kernel->getDeclFromName(std::string(var_name));
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     m_kernel->CreateVISAPredicateOperand(cisa_opnd, (VISA_PredVar *)decl, state, control);
-    MUST_BE_TRUE1((status == CM_SUCCESS), line_no, "Failed to create predicate operand.");
+    MUST_BE_TRUE1((status == VISA_SUCCESS), line_no, "Failed to create predicate operand.");
     return (VISA_opnd *)cisa_opnd;
 }
 
@@ -2841,9 +2841,9 @@ VISA_opnd * CISA_IR_Builder::CISA_create_RAW_NULL_operand(int line_no)
     */
 
     VISA_RawOpnd *cisa_opnd = NULL;
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     status = m_kernel->CreateVISANullRawOperand(cisa_opnd, true);
-    MUST_BE_TRUE1(status == CM_SUCCESS, line_no, "Was not able to create NULL RAW operand.");
+    MUST_BE_TRUE1(status == VISA_SUCCESS, line_no, "Was not able to create NULL RAW operand.");
     return (VISA_opnd *)cisa_opnd;
 
 }
@@ -2854,7 +2854,7 @@ VISA_opnd * CISA_IR_Builder::CISA_create_RAW_operand(char * var_name, unsigned s
     auto *decl = (VISA_GenVar *)m_kernel->getDeclFromName(var_name);
     MUST_BE_TRUE(decl,"undeclared virtual register");
     int status = m_kernel->CreateVISARawOperand(cisa_opnd, decl, offset);
-    MUST_BE_TRUE1(status == CM_SUCCESS, line_no, "Was not able to create RAW operand.");
+    MUST_BE_TRUE1(status == VISA_SUCCESS, line_no, "Was not able to create RAW operand.");
     return (VISA_opnd *)cisa_opnd; //delay the decision of src or dst until translate stage
 }
 

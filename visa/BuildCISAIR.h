@@ -49,7 +49,7 @@ class CISA_IR_Builder : public VISABuilder
 {
 public:
 
-    CISA_IR_Builder(CM_VISA_BUILDER_OPTION buildOption, int majorVersion, int minorVersion, PVISA_WA_TABLE pWaTable) : m_mem(4096)
+    CISA_IR_Builder(VISA_BUILDER_OPTION buildOption, int majorVersion, int minorVersion, PVISA_WA_TABLE pWaTable) : m_mem(4096)
     {
         memset(&m_header, 0, sizeof(m_header));
 
@@ -92,29 +92,29 @@ public:
 
     static int CreateBuilder(CISA_IR_Builder *&builder,
         vISABuilderMode mode,
-        CM_VISA_BUILDER_OPTION buildOption,
+        VISA_BUILDER_OPTION buildOption,
         TARGET_PLATFORM platform,
         int numArgs,
         const char* flags[],
         PVISA_WA_TABLE pWaTable,
         bool initializeWA = false);
     static int DestroyBuilder(CISA_IR_Builder *builder);
-    CM_BUILDER_API virtual int AddKernel(VISAKernel *& kernel, const char* kernelName);
-    CM_BUILDER_API virtual int AddFunction(VISAFunction *& function, const char* functionName);
-    CM_BUILDER_API virtual int Compile(const char * isaFileNameint, std::ostream * os = nullptr, bool emit_visa_only = false);
+    VISA_BUILDER_API virtual int AddKernel(VISAKernel *& kernel, const char* kernelName);
+    VISA_BUILDER_API virtual int AddFunction(VISAFunction *& function, const char* functionName);
+    VISA_BUILDER_API virtual int Compile(const char * isaFileNameint, std::ostream * os = nullptr, bool emit_visa_only = false);
 
-    CM_BUILDER_API void SetOption(vISAOptions option, bool val) { m_options.setOption(option, val); }
-    CM_BUILDER_API void SetOption(vISAOptions option, uint32_t val) { m_options.setOption(option, val); }
-    CM_BUILDER_API void SetOption(vISAOptions option, const char *val) { m_options.setOption(option, val); }
+    VISA_BUILDER_API void SetOption(vISAOptions option, bool val) { m_options.setOption(option, val); }
+    VISA_BUILDER_API void SetOption(vISAOptions option, uint32_t val) { m_options.setOption(option, val); }
+    VISA_BUILDER_API void SetOption(vISAOptions option, const char *val) { m_options.setOption(option, val); }
 
     // Used for inline asm code generation
-    CM_BUILDER_API virtual int ParseVISAText(const std::string& visaHeader, const std::string& visaText, const std::string& visaTextFile);
-    CM_BUILDER_API virtual int ParseVISAText(const std::string& visaFile);
-    CM_BUILDER_API virtual int WriteVISAHeader();
-    CM_BUILDER_API std::stringstream& GetAsmTextStream() { return m_ssIsaAsm; }
-    CM_BUILDER_API std::stringstream& GetAsmTextHeaderStream() { return m_ssIsaAsmHeader; }
-    CM_BUILDER_API virtual VISAKernel* GetVISAKernel();
-    CM_BUILDER_API virtual int ClearAsmTextStreams();
+    VISA_BUILDER_API virtual int ParseVISAText(const std::string& visaHeader, const std::string& visaText, const std::string& visaTextFile);
+    VISA_BUILDER_API virtual int ParseVISAText(const std::string& visaFile);
+    VISA_BUILDER_API virtual int WriteVISAHeader();
+    VISA_BUILDER_API std::stringstream& GetAsmTextStream() { return m_ssIsaAsm; }
+    VISA_BUILDER_API std::stringstream& GetAsmTextHeaderStream() { return m_ssIsaAsmHeader; }
+    VISA_BUILDER_API virtual VISAKernel* GetVISAKernel();
+    VISA_BUILDER_API virtual int ClearAsmTextStreams();
 
     /**************END VISA BUILDER API*************************/
 
@@ -737,7 +737,7 @@ public:
 private:
 
     vISA::Mem_Manager m_mem;
-    CM_VISA_BUILDER_OPTION mBuildOption;
+    VISA_BUILDER_OPTION mBuildOption;
     bool m_executionSatarted;
 
     unsigned int m_kernel_count;

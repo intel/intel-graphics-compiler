@@ -221,7 +221,7 @@ int IR_Builder::translateVISAAddrInst(ISA_Opcode opcode, Common_ISA_Exec_Size ex
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 void IR_Builder::expandFdiv(uint8_t exsize, G4_Predicate *predOpnd, bool saturate,
@@ -417,7 +417,7 @@ int IR_Builder::translateVISAArithmeticInst(ISA_Opcode opcode, Common_ISA_Exec_S
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 //
@@ -859,7 +859,7 @@ int IR_Builder::translateVISAArithmeticDoubleInst(ISA_Opcode opcode, Common_ISA_
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(ISA_Opcode opcode, Common_ISA_Exec_Size executionSize,
@@ -1160,7 +1160,7 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(ISA_Opcode opcode, C
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(ISA_Opcode opcode, Common_ISA_Exec_Size executionSize,
@@ -1447,7 +1447,7 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(ISA_Opcode opcode, Com
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
@@ -1784,7 +1784,7 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 // create a fence instruction to the data cache
@@ -1860,7 +1860,7 @@ int IR_Builder::translateVISAWaitInst(G4_Operand* mask)
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 void IR_Builder::generateBarrierSend()
@@ -2030,12 +2030,12 @@ int IR_Builder::translateVISASyncInst(ISA_Opcode opcode, unsigned int mask)
         }
     default:
         RELEASE_MSG( "Unsupported ISA opcode");
-        return CM_FAILURE;
+        return VISA_FAILURE;
     }
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int IR_Builder::translateVISASplitBarrierInst(bool isSignal)
@@ -2055,7 +2055,7 @@ int IR_Builder::translateVISASplitBarrierInst(bool isSignal)
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 static bool needs32BitFlag(uint32_t opt)
@@ -2124,7 +2124,7 @@ int IR_Builder::translateVISACompareInst(ISA_Opcode opcode, Common_ISA_Exec_Size
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int IR_Builder::translateVISACompareInst(ISA_Opcode opcode, Common_ISA_Exec_Size execsize, Common_VISA_EMask_Ctrl emask, Common_ISA_Cond_Mod relOp,
@@ -2167,7 +2167,7 @@ int IR_Builder::translateVISACompareInst(ISA_Opcode opcode, Common_ISA_Exec_Size
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int IR_Builder::translateVISACFSwitchInst(G4_Operand *indexOpnd, uint8_t numLabels, G4_Label ** labels )
@@ -2201,7 +2201,7 @@ int IR_Builder::translateVISACFSwitchInst(G4_Operand *indexOpnd, uint8_t numLabe
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int IR_Builder::translateVISACFLabelInst(G4_Label* lab)
@@ -2218,7 +2218,7 @@ int IR_Builder::translateVISACFLabelInst(G4_Label* lab)
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int IR_Builder::translateVISACFCallInst(Common_ISA_Exec_Size execsize, Common_VISA_EMask_Ctrl emask, G4_Predicate *predOpnd, G4_Label* lab)
@@ -2261,7 +2261,7 @@ int IR_Builder::translateVISACFCallInst(Common_ISA_Exec_Size execsize, Common_VI
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int IR_Builder::translateVISACFJumpInst(G4_Predicate *predOpnd, G4_Label* lab)
@@ -2283,7 +2283,7 @@ int IR_Builder::translateVISACFJumpInst(G4_Predicate *predOpnd, G4_Label* lab)
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int IR_Builder::translateVISACFFCallInst(Common_ISA_Exec_Size execsize, Common_VISA_EMask_Ctrl emask, G4_Predicate *predOpnd, std::string funcName, uint8_t argSize, uint8_t returnSize)
@@ -2323,7 +2323,7 @@ int IR_Builder::translateVISACFFCallInst(Common_ISA_Exec_Size execsize, Common_V
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int IR_Builder::translateVISACFIFCallInst(Common_ISA_Exec_Size execsize, Common_VISA_EMask_Ctrl emask,
@@ -2377,7 +2377,7 @@ int IR_Builder::translateVISACFIFCallInst(Common_ISA_Exec_Size execsize, Common_
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int IR_Builder::translateVISACFSymbolInst(const std::string& symbolName, G4_DstRegRegion* dst)
@@ -2419,7 +2419,7 @@ int IR_Builder::translateVISACFSymbolInst(const std::string& symbolName, G4_DstR
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int IR_Builder::translateVISACFFretInst(Common_ISA_Exec_Size executionSize, Common_VISA_EMask_Ctrl emask, G4_Predicate *predOpnd)
@@ -2447,7 +2447,7 @@ int IR_Builder::translateVISACFFretInst(Common_ISA_Exec_Size executionSize, Comm
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int IR_Builder::translateVISACFRetInst(Common_ISA_Exec_Size executionSize, Common_VISA_EMask_Ctrl emask, G4_Predicate *predOpnd)
@@ -2513,7 +2513,7 @@ int IR_Builder::translateVISACFRetInst(Common_ISA_Exec_Size executionSize, Commo
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 
@@ -2777,7 +2777,7 @@ int IR_Builder::translateVISAOwordLoadInst(
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 /*
@@ -2914,7 +2914,7 @@ int IR_Builder::translateVISAOwordStoreInst(
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 /*
@@ -3127,7 +3127,7 @@ int IR_Builder::translateVISAMediaLoadInst(
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 /*
@@ -3276,7 +3276,7 @@ int IR_Builder::translateVISAMediaStoreInst(
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 /*
@@ -3531,7 +3531,7 @@ int IR_Builder::translateVISAGatherInst(
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 /*
@@ -3751,7 +3751,7 @@ int IR_Builder::translateVISAScatterInst(
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 /*
@@ -3938,7 +3938,7 @@ int IR_Builder::translateVISAGather4Inst(
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 /*
@@ -4161,7 +4161,7 @@ int IR_Builder::translateVISAScatter4Inst(
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 static void
@@ -4311,7 +4311,7 @@ int IR_Builder::translateVISADwordAtomicInst(VISAAtomicOps atomicOp,
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 static void
@@ -4484,7 +4484,7 @@ int IR_Builder::translateVISAGather4TypedInst(G4_Predicate           *pred,
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 // u must not be V0. v and r are allowed to be V0, in which case they will be
@@ -4587,7 +4587,7 @@ int IR_Builder::translateVISAScatter4TypedInst(G4_Predicate           *pred,
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int IR_Builder::translateVISATypedAtomicInst(
@@ -4691,7 +4691,7 @@ int IR_Builder::translateVISATypedAtomicInst(
             instOpt, false);
     }
 
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 static void
@@ -4842,7 +4842,7 @@ int IR_Builder::translateVISASLMUntypedScaledInst(
         sendMsgDesc,
         Create_Src_Opnd_From_Dcl(builtinA0, getRegionScalar()));
 
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int IR_Builder::translateVISAGather4ScaledInst(G4_Predicate           *pred,
@@ -4973,7 +4973,7 @@ int IR_Builder::translateGather4Inst(G4_Predicate           *pred,
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int IR_Builder::translateScatter4Inst(G4_Predicate           *pred,
@@ -5079,7 +5079,7 @@ int IR_Builder::translateScatter4Inst(G4_Predicate           *pred,
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 /// GetNumBatch() - return the number of batches required to copy the raw
@@ -5207,7 +5207,7 @@ int IR_Builder::translateVISASLMByteScaledInst(bool isRead,
         sendMsgDesc,
         Create_Src_Opnd_From_Dcl(builtinA0, getRegionScalar()));
 
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 static void
@@ -5337,7 +5337,7 @@ int IR_Builder::translateByteGatherInst(G4_Predicate *pred,
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int IR_Builder::translateByteScatterInst(G4_Predicate *pred,
@@ -5454,7 +5454,7 @@ int IR_Builder::translateByteScatterInst(G4_Predicate *pred,
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int IR_Builder::translateVISALogicInst(ISA_Opcode opcode, G4_Predicate *predOpnd, bool saturate, Common_ISA_Exec_Size executionSize,
@@ -5474,7 +5474,7 @@ int IR_Builder::translateVISALogicInst(ISA_Opcode opcode, G4_Predicate *predOpnd
         g4_op = Get_Pseudo_Opcode( opcode );
         if (g4_op == G4_illegal)
         {
-            return CM_FAILURE;
+            return VISA_FAILURE;
         }
     }
 
@@ -5581,7 +5581,7 @@ int IR_Builder::translateVISALogicInst(ISA_Opcode opcode, G4_Predicate *predOpnd
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int IR_Builder::translateVISAVmeImeInst(
@@ -5713,7 +5713,7 @@ int IR_Builder::translateVISAVmeImeInst(
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int IR_Builder::translateVISAVmeSicInst(
@@ -5783,7 +5783,7 @@ int IR_Builder::translateVISAVmeSicInst(
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int IR_Builder::translateVISAVmeFbrInst(
@@ -5894,7 +5894,7 @@ int IR_Builder::translateVISAVmeFbrInst(
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int IR_Builder::translateVISAVmeIdmInst(
@@ -5952,7 +5952,7 @@ int IR_Builder::translateVISAVmeIdmInst(
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 // on legacy platforms EOT bit is encode in bit[5] of the exdesc.
@@ -6017,7 +6017,7 @@ int IR_Builder::translateVISARawSendInst(G4_Predicate *predOpnd, Common_ISA_Exec
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int IR_Builder::translateVISARawSendsInst(G4_Predicate *predOpnd, Common_ISA_Exec_Size executionSize,
@@ -6106,7 +6106,7 @@ int IR_Builder::translateVISARawSendsInst(G4_Predicate *predOpnd, Common_ISA_Exe
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int IR_Builder::translateVISASamplerVAGenericInst(
@@ -6236,7 +6236,7 @@ int IR_Builder::translateVISASamplerVAGenericInst(
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 /*
@@ -6246,7 +6246,7 @@ int IR_Builder::translateVISASamplerVAGenericInst(
 * sample8x8AVS(matrix<unsigned short, N, 64> &M, samplerType,  channelMask, surfIndex, samplerIndex, u, v, deltaU, deltaV, u2d,
 OutputFormatControl=0, v2d, AVSExecMode, EIFbypass=false);
 *
-* Assuming: N = 4, channelMask=CM_ABGR_ENABLE, surfIndex = 0x21, samplerIndex = 0x4,
+* Assuming: N = 4, channelMask=ABGR_ENABLE, surfIndex = 0x21, samplerIndex = 0x4,
 *           then the generated code should look like the following for GT:
 *
 * .declare  VX Base=m ElementSize=4 Type=ud Total=16
@@ -6336,18 +6336,18 @@ int IR_Builder::translateVISAAvsInst(
             output_type = Type_UB;
 
 
-        if (execMode == CM_AVS_16x8)
+        if (execMode == AVS_16x8)
         {
             number_elements_returned = 128;
             numEnabledChannels *= 2;
         }
 
-        if (execMode == CM_AVS_8x4)
+        if (execMode == AVS_8x4)
         {
             number_elements_returned = 32;
         }
 
-        if (execMode == CM_AVS_4x4)
+        if (execMode == AVS_4x4)
         {
             number_elements_returned = 16;
         }
@@ -6473,7 +6473,7 @@ int IR_Builder::translateVISAAvsInst(
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int IR_Builder::translateVISADataMovementInst(ISA_Opcode opcode,
@@ -6583,7 +6583,7 @@ int IR_Builder::translateVISADataMovementInst(ISA_Opcode opcode,
         }
         else
         {
-            return CM_FAILURE;
+            return VISA_FAILURE;
         }
     }
     else
@@ -6619,13 +6619,13 @@ int IR_Builder::translateVISADataMovementInst(ISA_Opcode opcode,
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 /*
 * Translates Sampler intrinsic.
 *
-* Assuming: N = 4, channelMask=CM_ABGR_ENABLE, surfIndex = 0x21, samplerIndex = 0x4,
+* Assuming: N = 4, channelMask=ABGR_ENABLE, surfIndex = 0x21, samplerIndex = 0x4,
 *           then the generated code should look like the following for GT:
 *
 * .declare  VX Base=m ElementSize=4 Type=f Total=72
@@ -6786,7 +6786,7 @@ int IR_Builder::translateVISASamplerInst(
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int IR_Builder::translateVISAVaSklPlusGeneralInst(
@@ -6824,7 +6824,7 @@ int IR_Builder::translateVISAVaSklPlusGeneralInst(
 
     unsigned int reg_to_send = 2;
     //for offsets
-    if((sub_opcode == VA_OP_CODE_1PIXEL_CONVOLVE && mode == CM_CONV_16x1) ||
+    if((sub_opcode == VA_OP_CODE_1PIXEL_CONVOLVE && mode == VA_CONV_16x1) ||
         sub_opcode == ISA_HDC_1PIXELCONV)
     {
         dcl = createSendPayloadDcl( 4 * GENX_SAMPLER_IO_SZ , Type_UD );
@@ -7032,7 +7032,7 @@ int IR_Builder::translateVISAVaSklPlusGeneralInst(
         Create_MOV_Send_Src_Inst( dcl_payload_UD,0,2,5,pixelHMaskOpnd, 0 );
     }
 
-    if( (sub_opcode == VA_OP_CODE_1PIXEL_CONVOLVE  && mode == CM_CONV_16x1) ||
+    if( (sub_opcode == VA_OP_CODE_1PIXEL_CONVOLVE  && mode == VA_CONV_16x1) ||
         originalSubOpcode == ISA_HDC_1PIXELCONV)
     {
         const RegionDesc *rd = getRegionStride1();
@@ -7190,13 +7190,13 @@ int IR_Builder::translateVISAVaSklPlusGeneralInst(
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 /*
 * Translates Sampler Norm API intrinsic.
 *
-* Assuming: N = 4, channelMask=CM_ABGR_ENABLE, surfIndex = 0x21, samplerIndex = 0x4,
+* Assuming: N = 4, channelMask=ABGR_ENABLE, surfIndex = 0x21, samplerIndex = 0x4,
 *           then the generated code should look like the following for GT:
 *
 * .declare  VX Base=m ElementSize=4 Type=ud Total=16
@@ -7294,7 +7294,7 @@ int IR_Builder::translateVISASamplerNormInst(
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int IR_Builder::translateVISASimdInst(ISA_Opcode opcode, G4_Predicate *predOpnd,
@@ -7328,7 +7328,7 @@ int IR_Builder::translateVISASimdInst(ISA_Opcode opcode, G4_Predicate *predOpnd,
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int IR_Builder::translateVISASampleInfoInst(
@@ -7418,7 +7418,7 @@ int IR_Builder::translateVISASampleInfoInst(
             execSize, fc, SFID::SAMPLER, false, useHeader, SendAccess::READ_ONLY, surface, NULL, instOpt, false);
     }
 
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int IR_Builder::translateVISAResInfoInst(
@@ -7548,7 +7548,7 @@ int IR_Builder::translateVISAResInfoInst(
             execSize, fc, SFID::SAMPLER, false, useHeader, SendAccess::READ_ONLY, surface, NULL, instOpt, false );
     }
 
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 
@@ -7741,7 +7741,7 @@ int IR_Builder::translateVISAURBWrite3DInst(
         Create_Send_Inst_For_CISA( pred, createNullDst( Type_UD ), m, numRows, 0,
             execSize, fc, SFID::URB, false, useHeader, SendAccess::WRITE_ONLY, nullptr, nullptr, instOpt, false );
     }
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 /*****************************************************************************\
@@ -7809,7 +7809,7 @@ int IR_Builder::translateVISARTWrite3DInst(
     if(varOffset != numParms)
     {
         assert( 0 );
-        return CM_FAILURE;
+        return VISA_FAILURE;
     }
 
     bool FP16Data = R->getType() == Type_HF;
@@ -8420,7 +8420,7 @@ int IR_Builder::translateVISARTWrite3DInst(
          Create_Send_Inst_For_CISA( pred, createNullDst( Type_UD ), m, numRows, 0,
             execSize, fc, SFID::DP_WRITE, false, useHeader, SendAccess::WRITE_ONLY, surface, NULL, instOpt, true );
     }
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 
 }
 
@@ -8622,7 +8622,7 @@ int IR_Builder::splitSampleInst(VISASampler3DSubOpCode actualop,
     G4_SrcRegRegion ** params,
     bool uniformSampler)
 {
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     G4_SrcRegRegion *secondHalf[12];
 
     bool isHalfReturn = G4_Type_Table[dst->getType()].byteSize == 2;
@@ -9207,7 +9207,7 @@ int IR_Builder::translateVISASampler3DInst(
             execSize, msgDesc, instOpt, false);
     }
     setUniformSampler(sendInst, uniformSampler);
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int IR_Builder::translateVISALoad3DInst(
@@ -9328,7 +9328,7 @@ int IR_Builder::translateVISALoad3DInst(
             instOpt, false);
     }
 
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int IR_Builder::translateVISAGather3dInst(
@@ -9448,7 +9448,7 @@ int IR_Builder::translateVISAGather3dInst(
             instOpt, false);
     }
 
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 
@@ -9560,7 +9560,7 @@ int IR_Builder::translateVISASVMBlockReadInst(
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int IR_Builder::translateVISASVMBlockWriteInst(
@@ -9681,7 +9681,7 @@ int IR_Builder::translateVISASVMBlockWriteInst(
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int IR_Builder::translateVISASVMScatterReadInst(
@@ -9757,7 +9757,7 @@ int IR_Builder::translateVISASVMScatterReadInst(
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int IR_Builder::translateVISASVMScatterWriteInst(
@@ -9848,7 +9848,7 @@ int IR_Builder::translateVISASVMScatterWriteInst(
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 // is16Bit indicates if this is a 16bit atomic op. The input source (if
@@ -9982,7 +9982,7 @@ int IR_Builder::translateVISASVMAtomicInst(
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 G4_SrcRegRegion* IR_Builder::getSVMOffset(G4_Operand* globalOffset, G4_SrcRegRegion* offsets, uint16_t exSize,
@@ -10081,7 +10081,7 @@ int IR_Builder::translateSVMGather4Inst(Common_ISA_Exec_Size    execSize,
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int IR_Builder::translateSVMScatter4Inst(Common_ISA_Exec_Size   execSize,
@@ -10163,7 +10163,7 @@ int IR_Builder::translateSVMScatter4Inst(Common_ISA_Exec_Size   execSize,
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int IR_Builder::translateVISASVMGather4ScaledInst(Common_ISA_Exec_Size      execSize,
@@ -10213,7 +10213,7 @@ int IR_Builder::translateVISALifetimeInst(uint8_t properties, G4_Operand* var)
     // would prevent loop local variables/sub-rooutine local variables
     // from being live across entire loop/sub-routine.
 
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 /// CopySrcToMsgPayload() performs a single batch of copy source into message
@@ -10907,5 +10907,5 @@ bool IR_Builder::checkIfRegionsAreConsecutive( G4_SrcRegRegion* first, G4_SrcReg
 int IR_Builder::generateDebugInfoPlaceholder()
 {
     createInst(nullptr, G4_opcode::G4_DebugInfoPlaceholder, nullptr, false, 1, nullptr, nullptr, nullptr, G4_InstOption::InstOpt_WriteEnable);
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }

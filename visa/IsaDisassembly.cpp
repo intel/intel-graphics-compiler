@@ -1731,7 +1731,6 @@ static std::string printInstructionSampler(
                      else
                      {
                         sstr << printOperand(header, inst, i++, opt);
-                        /// User "CM_VAR_ENABLE" instead ???
                      }
 
                      /// dst

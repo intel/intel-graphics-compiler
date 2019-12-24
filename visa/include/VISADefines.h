@@ -74,20 +74,12 @@ extern "C"
 
 #if defined(DLL_MODE) && defined(vISA_LINK_DLL)
     #ifdef _WIN32
-        #define CM_BUILDER_API __declspec(dllexport)
+        #define VISA_BUILDER_API __declspec(dllexport)
     #else
-        #define CM_BUILDER_API __attribute__((visibility("default")))
+        #define VISA_BUILDER_API __attribute__((visibility("default")))
     #endif
 #else
-#define CM_BUILDER_API
-#endif
-
-#ifndef CM_INLINE
-#if !defined(__GNUC__)
-#define CM_INLINE __forceinline
-#else
-#define CM_INLINE inline __attribute__((always_inline))
-#endif
+#define VISA_BUILDER_API
 #endif
 
 #ifndef SNPRINTF

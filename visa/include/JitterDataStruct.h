@@ -24,25 +24,19 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-#ifndef _CM_JITTERDATASTRUCT_
-#define _CM_JITTERDATASTRUCT_
+#ifndef JITTERDATASTRUCT_
+#define JITTERDATASTRUCT_
 
 #include <stdint.h>
 
-typedef struct _CM_PROFILE_INFO {
-    int kind;
-    int index;
-    int value;
-} CM_PROFILE_INFO;
-
-typedef struct _CM_BB_INFO {
+typedef struct {
     int id;
     unsigned staticCycle;
     unsigned sendStallCycle;
     unsigned char loopNestLevel;
-} CM_BB_INFO;
+} VISA_BB_INFO;
 
-typedef struct _CM_JIT_INFO {
+typedef struct {
     // Common part
     bool isSpill;
     int numGRFUsed;
@@ -66,7 +60,7 @@ typedef struct _CM_JIT_INFO {
     bool usesBarrier;
 
     unsigned BBNum;
-    CM_BB_INFO* BBInfo;
+    VISA_BB_INFO* BBInfo;
 
     // number of spill/fill, weighted by loop
     unsigned int numGRFSpillFill;
@@ -83,4 +77,4 @@ typedef struct _CM_JIT_INFO {
     uint32_t offsetToSkipSetFFIDGP = 0;
 } FINALIZER_INFO;
 
-#endif // _CM_JITTERDATASTRUCT_
+#endif // JITTERDATASTRUCT_

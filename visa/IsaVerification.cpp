@@ -2097,7 +2097,7 @@ static void verifyInstructionSampler(const common_isa_header& isaHeader,
                      if (mmf.getOperandClass() == OPERAND_IMMEDIATE)
                      {
                          unsigned val = mmf.opnd_val.const_opnd._val.ival;
-                         ASSERT_USER(val <= CM_MIN_ENABLE, "MINMAX MMF Mode operand out of range.");
+                         ASSERT_USER(val <= VA_MIN_ENABLE, "MINMAX MMF Mode operand out of range.");
                      }
 
                      /// dst: TODO
@@ -2136,7 +2136,7 @@ static void verifyInstructionSampler(const common_isa_header& isaHeader,
                      if (mmf.getOperandClass() == OPERAND_IMMEDIATE)
                      {
                          unsigned val = mmf.opnd_val.const_opnd._val.ival;
-                         ASSERT_USER(val <= CM_MIN_ENABLE, "MINMAXFILTER MMF Mode operand out of range.");
+                         ASSERT_USER(val <= VA_MIN_ENABLE, "MINMAXFILTER MMF Mode operand out of range.");
                      }
 
                      /// dst

@@ -6,12 +6,11 @@
 #include <stdint.h>
 #include <vector>
 
-#ifndef DLL_EXPORT
-  #ifdef _WIN32
-    #define __EXPORT__ __declspec(dllexport)
-  #else
-    #define __EXPORT__ __attribute__((visibility("default")))
-  #endif
+
+#ifdef _WIN32
+#define __EXPORT__ __declspec(dllexport)
+#else
+#define __EXPORT__ __attribute__((visibility("default")))
 #endif
 
 // Supported kernel argument attributes.

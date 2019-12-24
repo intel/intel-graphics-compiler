@@ -8837,7 +8837,7 @@ int GlobalRA::coloringRegAlloc()
             // either local or hybrid RA succeeds
             assignRegForAliasDcl();
             computePhyReg();
-            return CM_SUCCESS;
+            return VISA_SUCCESS;
         }
     }
 
@@ -8960,7 +8960,7 @@ int GlobalRA::coloringRegAlloc()
                 if (isReRAPass())
                 {
                     // Dont modify program if reRA pass spills
-                    return CM_SPILL;
+                    return VISA_SPILL;
                 }
 
                 bool runRemat = kernel.getOptions()->getTarget() == VISA_CM ? true :
@@ -9059,7 +9059,7 @@ int GlobalRA::coloringRegAlloc()
                     // Early exit when -abortonspill is passed, instead of
                     // spending time inserting spill code and then aborting.
                     stopTimer(TIMER_GRF_GLOBAL_RA);
-                    return CM_SPILL;
+                    return VISA_SPILL;
                 }
 
                 if (iterationNo == 0 &&
@@ -9229,7 +9229,7 @@ int GlobalRA::coloringRegAlloc()
             << "The spilling virtual registers are as follows: "
             << spilledVars.str());
 
-        return CM_SPILL;
+        return VISA_SPILL;
     }
 
     // do not double count the spill mem offset
@@ -9263,7 +9263,7 @@ int GlobalRA::coloringRegAlloc()
         removeSplitDecl();
     }
 
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 /********************************************************************************************************************************************/

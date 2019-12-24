@@ -50,48 +50,48 @@ const char* platformString[ALL] =
     "TGLLP",
 };
 
-#define CM_SUCCESS                                  0
-#define CM_FAILURE                                  -1
+#define VISA_SUCCESS                                  0
+#define VISA_FAILURE                                  -1
 
 int SetPlatform( const char * str ) {
 
     std::string platform(str);
 
-    int retVal = CM_FAILURE;
+    int retVal = VISA_FAILURE;
     if (platform == "BDW" || platform == "gen8")
     {
         visaPlatform = GENX_BDW;
-        retVal = CM_SUCCESS;
+        retVal = VISA_SUCCESS;
     }
     else if (platform == "CHV" || platform == "gen8lp")
     {
         visaPlatform = GENX_CHV;
-        retVal = CM_SUCCESS;
+        retVal = VISA_SUCCESS;
     }
     else if (platform == "SKL" || platform == "gen9")
     {
         visaPlatform = GENX_SKL;
-        retVal = CM_SUCCESS;
+        retVal = VISA_SUCCESS;
     }
     else if (platform == "BXT" || platform == "gen9lp")
     {
         visaPlatform = GENX_BXT;
-        retVal = CM_SUCCESS;
+        retVal = VISA_SUCCESS;
     }
     else if (platform == "CNL" || platform == "gen10")
     {
         visaPlatform = GENX_CNL;
-        retVal = CM_SUCCESS;
+        retVal = VISA_SUCCESS;
     }
     else if (platform == "ICL" || platform == "gen11" || platform == "ICLLP" || platform == "gen11lp")
     {
         visaPlatform = GENX_ICLLP;
-        retVal = CM_SUCCESS;
+        retVal = VISA_SUCCESS;
     }
     else if (platform == "TGLLP" || platform == "gen12lp")
     {
         visaPlatform = GENX_TGLLP;
-        retVal = CM_SUCCESS;
+        retVal = VISA_SUCCESS;
     }
 
     return retVal;
@@ -103,7 +103,7 @@ int SetVisaPlatform( TARGET_PLATFORM vPlatform ) {
     assert(vPlatform >= GENX_BDW && "unsupported platform");
     visaPlatform = vPlatform;
 
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 TARGET_PLATFORM getGenxPlatform( void )
@@ -181,7 +181,7 @@ void InitStepping()
 
 int SetStepping( const char * str ) {
 
-    int retVal = CM_SUCCESS;
+    int retVal = VISA_SUCCESS;
     char upperchar = (char)std::toupper(*str);
 
     switch( upperchar )

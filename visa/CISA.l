@@ -634,13 +634,13 @@ lifetime"."end {
         return MEDIA_MODE;
     }
 
-CM_(16|8)_(FULL|DOWN_SAMPLE) {
+AVS_(16|8)_(FULL|DOWN_SAMPLE) {
       TRACE("\n** Output Format Control ");
       CISAlval.cntrl = avs_control(yytext);
       return CNTRL;
     }
 
-CM_AVS_(4|8|16)x(4|8) {
+AVS_(4|8|16)x(4|8) {
       TRACE("\n** AVS Exec Mode ");
       CISAlval.execMode = avsExecMode(yytext);
       return EXECMODE;
@@ -1044,7 +1044,7 @@ static OutputFormatControl avs_control(const char* str)
 
     YY_FATAL_ERROR("Invalid AVS Control");
 
-    return CM_16_FULL;
+    return AVS_16_FULL;
 }
 
 static AVSExecMode avsExecMode(const char* str)
@@ -1055,7 +1055,7 @@ static AVSExecMode avsExecMode(const char* str)
 
     YY_FATAL_ERROR("Invalid AVS Exec Mode");
 
-    return CM_AVS_16x4;
+    return AVS_16x4;
 }
 
 static unsigned char FENCEOptions(const char *str)

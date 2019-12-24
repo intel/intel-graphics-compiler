@@ -66,27 +66,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define DEBUG_PRINT_SIZE_INSTRUCTION(msg, inst ,value)
 #endif
 
-#ifdef _DEBUG
-#ifndef __GNUC__
-#define CmAssert(expr)    \
-    if(!(expr))           \
-    {                     \
-        __debugbreak();   \
-    }
-#else
-#define CmAssert(expr)    \
-    if(!(expr))           \
-    {                     \
-        __builtin_trap(); \
-    }
-#endif  // __GNUC__
-#define CmDebugMessage(arg) CmPrintMessage arg
-
-#else
-#define CmAssert(expr)
-#define CmDebugMessage(arg)
-#endif // _DEBUG
-
 struct attr_gen_struct {
     char* name;
     bool  isInt;

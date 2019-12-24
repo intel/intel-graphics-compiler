@@ -231,69 +231,69 @@ const char * va_sub_names[26] =
 
 const char * pixel_size_str[2] =
 {
-    "CM_Y16_FORMAT",
-    "CM_Y8_FORMAT"
+    "VA_Y16_FORMAT",
+    "VA_Y8_FORMAT"
 };
 
 const char * lbp_creation_mode[3] =
 {
-    "CM_5x5_mode",
-    "CM_3x3_mode",
-    "CM_BOTH_mode"
+    "VA_5x5_mode",
+    "VA_3x3_mode",
+    "VA_BOTH_mode"
 };
 
 const char * avs_control_str[4] =
-{   "CM_16_FULL",
-    "CM_16_DOWN_SAMPLE",
-    "CM_8_FULL",
-    "CM_8_DOWN_SAMPLE"
+{   "AVS_16_FULL",
+    "AVS_16_DOWN_SAMPLE",
+    "AVS_8_FULL",
+    "AVS_8_DOWN_SAMPLE"
 };
 
 const char * avs_exec_mode[3] =
-{   "CM_AVS_16x4",
-    "CM_AVS_INVALID",
-    "CM_AVS_16x8"
+{   "AVS_16x4",
+    "AVS_INVALID",
+    "AVS_16x8"
 };
 
 const char * mmf_exec_mode[4] =
-{   "CM_MMF_16x4",
-    "CM_MMF_INVALID",
-    "CM_MMF_16x1",
-    "CM_MMF_1x1"
+{   "VA_MMF_16x4",
+    "VA_MMF_INVALID",
+    "VA_MMF_16x1",
+    "VA_MMF_1x1"
 };
 
 const char * mmf_enable_mode[3] =
-{   "CM_MINMAX_ENABLE",
-    "CM_MAX_ENABLE",
-    "CM_MIN_ENABLE"
+{   "VA_MINMAX_ENABLE",
+    "VA_MAX_ENABLE",
+    "VA_MIN_ENABLE"
 };
 
 const char * ed_exec_mode[4] =
-{   "CM_ED_64x4",
-    "CM_ED_32x4",
-    "CM_ED_64x1",
-    "CM_ED_32x1"
+{   "VA_ED_64x4",
+    "VA_ED_32x4",
+    "VA_ED_64x1",
+    "VA_ED_32x1"
 };
 
 const char * conv_exec_mode[4] =
-{   "CM_CONV_16x4",
-    "CM_CONV_INVALID",
-    "CM_CONV_16x1",
-    "CM_CONV_1x1"
+{   "VA_CONV_16x4",
+    "VA_CONV_INVALID",
+    "VA_CONV_16x1",
+    "VA_CONV_1x1"
 };
 
 unsigned format_control_byteSize2[4] =
-{   4, /// CM_16_FULL
-    2, /// CM_16_DOWN_SAMPLE NOT VALID
-    2, /// CM_8_FULL
-    1  /// CM_8_DOWN_SAMPLE NOT VALID
+{   4, /// AVS_16_FULL
+    2, /// AVS_16_DOWN_SAMPLE NOT VALID
+    2, /// AVS_8_FULL
+    1  /// AVS_8_DOWN_SAMPLE NOT VALID
 };
 
 unsigned ed_exec_mode_byte_size[4] =
-{   64 * 4 / 8, /// CM_ED_64x4
-    32 * 4 / 8, /// CM_ED_32x4
-    64 * 1 / 8, /// CM_ED_64x1
-    32 * 1 / 8  /// CM_ED_32x1
+{   64 * 4 / 8, /// VA_ED_64x4
+    32 * 4 / 8, /// VA_ED_32x4
+    64 * 1 / 8, /// VA_ED_64x1
+    32 * 1 / 8  /// VA_ED_32x1
 };
 
 unsigned conv_exec_mode_size[4] =

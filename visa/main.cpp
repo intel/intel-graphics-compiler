@@ -133,8 +133,8 @@ void parse(const char *fileName, std::string testName, int argc, const char *arg
     fclose(isafile);
 
     TARGET_PLATFORM platform = getGenxPlatform();
-    CM_VISA_BUILDER_OPTION builderOption =
-        (platform == GENX_NONE) ? CM_CISA_BUILDER_CISA : CM_CISA_BUILDER_BOTH;
+    VISA_BUILDER_OPTION builderOption =
+        (platform == GENX_NONE) ? VISA_BUILDER_VISA : VISA_BUILDER_BOTH;
     CISA_IR_Builder* cisa_builder = NULL;
     VISA_WA_TABLE visaWaTable;
 
@@ -158,7 +158,7 @@ void parse(const char *fileName, std::string testName, int argc, const char *arg
 
     int result = cisa_builder->Compile((char*)binFileName.c_str());
     CISA_IR_Builder::DestroyBuilder(cisa_builder);
-    if (result != CM_SUCCESS)
+    if (result != VISA_SUCCESS)
     {
         exit(1);
     }
@@ -197,7 +197,7 @@ int JITCompileAllOptions(const char* kernelName,
     char* isafilebuf = (char*)kernelIsa;
     CISA_IR_Builder* cisa_builder = NULL;
     // HW mode: default: GEN path; if dump/verify: Both path
-    CM_VISA_BUILDER_OPTION builderOption = CM_CISA_BUILDER_GEN;
+    VISA_BUILDER_OPTION builderOption = VISA_BUILDER_GEN;
 
     VISA_WA_TABLE visaWaTable;
 
@@ -497,8 +497,8 @@ void parseWrapper(const char *fileName, int argc, const char *argv[], Options &o
 
     // isaasm path is vISA path only; input: .isaasm, output: .isa
     TARGET_PLATFORM platform = getGenxPlatform();
-    CM_VISA_BUILDER_OPTION builderOption =
-        (platform == GENX_NONE) ? CM_CISA_BUILDER_CISA : CM_CISA_BUILDER_BOTH;
+    VISA_BUILDER_OPTION builderOption =
+        (platform == GENX_NONE) ? VISA_BUILDER_VISA : VISA_BUILDER_BOTH;
     CISA_IR_Builder *cisa_builder = NULL;
     VISA_WA_TABLE visaWaTable;
 

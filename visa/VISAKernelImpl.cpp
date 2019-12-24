@@ -57,18 +57,18 @@ using namespace vISA;
 #define SIZE_VALUE m_kernel_data_size
 #define SIZE_VALUE_INST m_instruction_size
 
-#define IS_GEN_PATH  (mBuildOption == CM_CISA_BUILDER_GEN)
-#define IS_BOTH_PATH (mBuildOption == CM_CISA_BUILDER_BOTH)
-#define IS_GEN_BOTH_PATH  (mBuildOption == CM_CISA_BUILDER_GEN || mBuildOption ==  CM_CISA_BUILDER_BOTH)
-#define IS_VISA_BOTH_PATH (mBuildOption == CM_CISA_BUILDER_CISA || mBuildOption ==  CM_CISA_BUILDER_BOTH)
+#define IS_GEN_PATH  (mBuildOption == VISA_BUILDER_GEN)
+#define IS_BOTH_PATH (mBuildOption == VISA_BUILDER_BOTH)
+#define IS_GEN_BOTH_PATH  (mBuildOption == VISA_BUILDER_GEN || mBuildOption == VISA_BUILDER_BOTH)
+#define IS_VISA_BOTH_PATH (mBuildOption == VISA_BUILDER_VISA || mBuildOption == VISA_BUILDER_BOTH)
 
 
-static CM_INLINE void PACK_EXEC_SIZE( unsigned int &size, Common_VISA_EMask_Ctrl eMask )
+static void PACK_EXEC_SIZE( unsigned int &size, Common_VISA_EMask_Ctrl eMask )
 {
     size |= eMask << 4;
 }
 
-static CM_INLINE void ADD_OPND( int &num_operands, VISA_opnd **opnd, VISA_opnd * topnd )
+static void ADD_OPND( int &num_operands, VISA_opnd **opnd, VISA_opnd * topnd )
 {
     if( topnd != NULL )
     {
@@ -77,20 +77,20 @@ static CM_INLINE void ADD_OPND( int &num_operands, VISA_opnd **opnd, VISA_opnd *
 
 }
 
-#define CM_ERROR_PRINT( error_msg ) std::cerr<< error_msg <<std::endl;
-static CM_INLINE int  CHECK_NUM_OPNDS(VISA_INST_Desc *instDesc, int numOperands, int predOpnds)
+#define ERROR_PRINT( error_msg ) std::cerr << error_msg << "\n"
+static int CHECK_NUM_OPNDS(VISA_INST_Desc *instDesc, int numOperands, int predOpnds)
 {
     if((instDesc->opnd_num -predOpnds) != numOperands)
     {
-        CM_ERROR_PRINT("Number of parameters does not match");
+        ERROR_PRINT("Number of parameters does not match");
         std::cerr<<"LINE: "<<__LINE__<<std::endl;
         std::cerr<<"FUNCTION: "<<__FUNCTION__<<std::endl;
-        CmAssert( 0 );
-        return CM_FAILURE;
+        assert( 0 );
+        return VISA_FAILURE;
     }
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
-static CM_INLINE void GET_NUM_PRED_DESC_OPNDS(int &predOpnd, VISA_INST_Desc *inst_desc_temp )
+static void GET_NUM_PRED_DESC_OPNDS(int &predOpnd, VISA_INST_Desc *inst_desc_temp )
 {
     predOpnd = 0;
     for(int i = 0; i < inst_desc_temp->opnd_num; i++)
@@ -119,18 +119,18 @@ int VISAKernelImpl::calculateTotalInputSize()
             m_inputSize = temp->offset + temp->size;
         }
     }
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int VISAKernelImpl::compileFastPath()
 {
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     if (getIsKernel())
     {
         status = calculateTotalInputSize();
     }
 
-    if (status != CM_SUCCESS)
+    if (status != VISA_SUCCESS)
     {
         return status;
     }
@@ -644,13 +644,13 @@ int VISAKernelImpl::InitializeFastPath()
     m_builder->getcompilerStats().Link(m_compilerStats);
     initCompilerStats();
 
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int VISAKernelImpl::InitializeKernel(const char *kernel_name)
 {
 
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     m_num_pred_vars = Get_CISA_PreDefined_Var_Count();
     setName(kernel_name);
     if( IS_GEN_BOTH_PATH && m_isKernel)
@@ -777,7 +777,7 @@ int VISAKernelImpl::CISABuildPreDefinedDecls()
 
     createBindlessSampler();
 
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 void VISAKernelImpl::createBindlessSampler()
@@ -901,8 +901,8 @@ int VISAKernelImpl::CreateVISAGenVar(VISA_GenVar *& decl, const char *varName, i
 
     if(m_options->getOption(vISA_isParseMode) && !this->setNameIndexMap(std::string(varName), decl))
     {
-        CmAssert( 0 );
-        return CM_FAILURE;
+        assert( 0 );
+        return VISA_FAILURE;
     }
     setDefaultVariableName(decl->type, varName);
 
@@ -980,7 +980,7 @@ int VISAKernelImpl::CreateVISAGenVar(VISA_GenVar *& decl, const char *varName, i
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
     stopTimer(TIMER_VISA_BUILDER_CREATE_VAR);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int VISAKernelImpl::CreateVISAAddrVar(VISA_AddrVar *& decl, const char *varName, unsigned int numberElements)
@@ -994,8 +994,8 @@ int VISAKernelImpl::CreateVISAAddrVar(VISA_AddrVar *& decl, const char *varName,
 
     if (m_options->getOption(vISA_isParseMode) && !this->setNameIndexMap(std::string(varName), decl))
     {
-        CmAssert(0);
-        return CM_FAILURE;
+        assert(0);
+        return VISA_FAILURE;
     }
 
     addr_info_t * addr = &decl->addrVar;
@@ -1032,7 +1032,7 @@ int VISAKernelImpl::CreateVISAAddrVar(VISA_AddrVar *& decl, const char *varName,
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
     stopTimer(TIMER_VISA_BUILDER_CREATE_VAR);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int VISAKernelImpl::CreateVISAPredVar(VISA_PredVar *& decl, const char* varName, unsigned short numberElements)
@@ -1050,8 +1050,8 @@ int VISAKernelImpl::CreateVISAPredVar(VISA_PredVar *& decl, const char* varName,
 
     if (m_options->getOption(vISA_isParseMode) && !this->setNameIndexMap(std::string(varName), decl))
     {
-        CmAssert(0);
-        return CM_FAILURE;
+        assert(0);
+        return VISA_FAILURE;
     }
     setDefaultVariableName(decl->type, varName);
 
@@ -1082,7 +1082,7 @@ int VISAKernelImpl::CreateVISAPredVar(VISA_PredVar *& decl, const char* varName,
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
     stopTimer(TIMER_VISA_BUILDER_CREATE_VAR);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int VISAKernelImpl::CreateStateVar(CISA_GEN_VAR *&decl, Common_ISA_Var_Class type, const char* varName, unsigned int numberElements)
@@ -1096,8 +1096,8 @@ int VISAKernelImpl::CreateStateVar(CISA_GEN_VAR *&decl, Common_ISA_Var_Class typ
 
     if(m_options->getOption(vISA_isParseMode) && !this->setNameIndexMap(std::string(varName), decl))
     {
-        CmAssert( 0 );
-        return CM_FAILURE;
+        assert( 0 );
+        return VISA_FAILURE;
     }
     setDefaultVariableName(decl->type, varName);
 
@@ -1125,8 +1125,8 @@ int VISAKernelImpl::CreateStateVar(CISA_GEN_VAR *&decl, Common_ISA_Var_Class typ
         decl->index = this->m_surface_count++;
         break;
     default:
-        CmAssert(0);
-        return CM_FAILURE;
+        assert(0);
+        return VISA_FAILURE;
     }
 
     if(IS_VISA_BOTH_PATH || m_options->getOption(vISA_GenerateDebugInfo) || IsAsmWriterMode())
@@ -1156,15 +1156,15 @@ int VISAKernelImpl::CreateStateVar(CISA_GEN_VAR *&decl, Common_ISA_Var_Class typ
             break;
         }
         default:
-            CmAssert(0);
-            return CM_FAILURE;
+            assert(0);
+            return VISA_FAILURE;
         }
     }
 
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
     stopTimer(TIMER_VISA_BUILDER_CREATE_VAR);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int VISAKernelImpl::CreateVISASamplerVar(VISA_SamplerVar *&decl, const char* name, unsigned int numberElements)
@@ -1200,7 +1200,7 @@ int VISAKernelImpl::CreateDummyLabelOperand(VISA_LabelOpnd *& opnd, char * name,
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
     stopTimer(TIMER_VISA_BUILDER_CREATE_OPND);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int VISAKernelImpl::CreateVISALabelVar(VISA_LabelOpnd *& opnd, const char* name, VISA_Label_Kind kind)
@@ -1256,8 +1256,8 @@ int VISAKernelImpl::CreateVISALabelVar(VISA_LabelOpnd *& opnd, const char* name,
         {
             if(!this->setLabelNameIndexMap(std::string(name), opnd))
             {
-                CmAssert( 0 );
-                return CM_FAILURE;
+                assert( 0 );
+                return VISA_FAILURE;
             }else
             {
                 inst_desc = &CISA_INST_table[ISA_LABEL];
@@ -1272,8 +1272,8 @@ int VISAKernelImpl::CreateVISALabelVar(VISA_LabelOpnd *& opnd, const char* name,
                 opnd->tag = ISA_SUBROUTINE;
             }else
             {
-                CmAssert( 0 );
-                return CM_FAILURE;
+                assert( 0 );
+                return VISA_FAILURE;
             }
         }
 
@@ -1288,7 +1288,7 @@ int VISAKernelImpl::CreateVISALabelVar(VISA_LabelOpnd *& opnd, const char* name,
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
     stopTimer(TIMER_VISA_BUILDER_CREATE_VAR);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int VISAKernelImpl::AddKernelAttribute(const char* attrName, int size, const void *valueBuffer)
@@ -1451,7 +1451,7 @@ int VISAKernelImpl::AddKernelAttribute(const char* attrName, int size, const voi
     }
 
     addAttribute(attrName, attr);
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int VISAKernelImpl::AddAttributeToVarGeneric(CISA_GEN_VAR *decl, const char* varName, unsigned int size, void *val)
@@ -1538,13 +1538,13 @@ int VISAKernelImpl::AddAttributeToVarGeneric(CISA_GEN_VAR *decl, const char* var
             break;
         }
     default:
-        CmAssert(0);
-        return CM_FAILURE;
+        assert(0);
+        return VISA_FAILURE;
     }
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
     stopTimer(TIMER_VISA_BUILDER_CREATE_VAR);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int VISAKernelImpl::AddAttributeToVar(VISA_PredVar *decl, const char* name, unsigned int size, void *val)
@@ -1626,7 +1626,7 @@ int VISAKernelImpl::CreateVISAInputVar(CISA_GEN_VAR *decl,
     startTimer(TIMER_VISA_BUIDLER_CREATE_VAR);
 #endif
 
-    unsigned int status = CM_SUCCESS;
+    unsigned int status = VISA_SUCCESS;
     input_info_t * input = (input_info_t *)m_mem.alloc(sizeof(input_info_t));
     input->kind = GetInputClass(decl->type);
     input->kind |= implicitKind << 3;
@@ -1653,12 +1653,12 @@ int VISAKernelImpl::CreateVISAInputVar(CISA_GEN_VAR *decl,
             }
         default:
             {
-                status = CM_FAILURE;
+                status = VISA_FAILURE;
                 break;
             }
         }
 
-        if (status == CM_SUCCESS)
+        if (status == VISA_SUCCESS)
         {
             // decide the physical register number and sub register number
             unsigned int regNum = offset / GENX_GRF_REG_SIZ;
@@ -1679,7 +1679,7 @@ int VISAKernelImpl::CreateVISAInputVar(CISA_GEN_VAR *decl,
 
         if((input->kind & 0x3) == INPUT_UNKNOWN) {
             fprintf(stderr, "Wrong input variable is used");
-            status = CM_FAILURE;
+            status = VISA_FAILURE;
         }else
         {
             m_input_info_list.push_back(input);
@@ -1781,7 +1781,7 @@ int VISAKernelImpl::CreateVISAAddressOperand(VISA_VectorOpnd *&cisa_opnd, VISA_A
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
     stopTimer(TIMER_VISA_BUILDER_CREATE_OPND);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int VISAKernelImpl::CreateVISAAddressOfOperandGeneric(VISA_VectorOpnd *&cisa_opnd, CISA_GEN_VAR *decl, unsigned int offset)
@@ -1789,7 +1789,7 @@ int VISAKernelImpl::CreateVISAAddressOfOperandGeneric(VISA_VectorOpnd *&cisa_opn
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
     startTimer(TIMER_VISA_BUILDER_CREATE_OPND);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     cisa_opnd = (VISA_VectorOpnd*)getOpndFromPool();
 
     if(IS_GEN_BOTH_PATH)
@@ -1809,8 +1809,8 @@ int VISAKernelImpl::CreateVISAAddressOfOperandGeneric(VISA_VectorOpnd *&cisa_opn
                 break;
             }
         default:
-            CmAssert(0);
-            return CM_FAILURE;
+            assert(0);
+            return VISA_FAILURE;
         }
 
         // set up to the top level dcl to be addressed
@@ -1839,7 +1839,7 @@ int VISAKernelImpl::CreateVISAAddressOfOperandGeneric(VISA_VectorOpnd *&cisa_opn
                 cisa_opnd->_opnd.v_opnd.opnd_val.gen_opnd.row_offset = offset / G4_GRF_REG_NBYTES;
                 VISA_Type type = decl->genVar.getType();
                 unsigned int typeSize = G4_Type_Table[Get_G4_Type_From_Common_ISA_Type(type)].byteSize;
-                CmAssert((offset % typeSize) == 0);
+                assert((offset % typeSize) == 0);
                 cisa_opnd->_opnd.v_opnd.opnd_val.gen_opnd.col_offset = (offset % G4_GRF_REG_NBYTES)/typeSize;
 
 
@@ -1958,7 +1958,7 @@ int VISAKernelImpl::CreateVISAIndirectGeneralOperand(VISA_VectorOpnd *& cisa_opn
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
     stopTimer(TIMER_VISA_BUILDER_CREATE_OPND);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int VISAKernelImpl::CreateVISAIndirectSrcOperand(VISA_VectorOpnd *& cisa_opnd, VISA_AddrVar *cisa_decl, VISA_Modifier mod, unsigned int addrOffset, short immediateOffset,
@@ -1983,7 +1983,7 @@ int VISAKernelImpl::CreateVISAPredicateSrcOperand(VISA_VectorOpnd *& opnd, VISA_
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
     startTimer(TIMER_VISA_BUILDER_CREATE_OPND);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
 
     assert(decl->type == PREDICATE_VAR && "expect a predicate variable");
 
@@ -2023,7 +2023,7 @@ int VISAKernelImpl::CreateVISAPredicateDstOperand(VISA_VectorOpnd *& opnd, VISA_
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
     startTimer(TIMER_VISA_BUILDER_CREATE_OPND);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
 
     opnd = (VISA_VectorOpnd *)getOpndFromPool();
     if(IS_GEN_BOTH_PATH)
@@ -2050,7 +2050,7 @@ int VISAKernelImpl::CreateVISAPredicateDstOperand(VISA_VectorOpnd *& opnd, VISA_
 
 int VISAKernelImpl::CreateVISAPredicateOperandvISA(VISA_PredOpnd *& cisa_opnd, VISA_PredVar *decl, VISA_PREDICATE_STATE state, VISA_PREDICATE_CONTROL cntrl)
 {
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     cisa_opnd->opnd_type = CISA_OPND_VECTOR;
     cisa_opnd->tag = OPERAND_PREDICATE;
     cisa_opnd->_opnd.v_opnd.tag = OPERAND_PREDICATE;
@@ -2075,8 +2075,8 @@ int VISAKernelImpl::CreateVISAPredicateOperand(VISA_PredOpnd *& cisa_opnd, VISA_
 #if START_ASSERT_CHECK
         if(dcl == NULL)
         {
-            CmAssert( 0 );
-            return CM_FAILURE;
+            assert( 0 );
+            return VISA_FAILURE;
         }
 #endif
         //with bool size in bytes was incorrect, now that it's correct it returns "correct"
@@ -2098,7 +2098,7 @@ int VISAKernelImpl::CreateVISAPredicateOperand(VISA_PredOpnd *& cisa_opnd, VISA_
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
     stopTimer(TIMER_VISA_BUILDER_CREATE_OPND);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int VISAKernelImpl::CreateVISASrcOperand(VISA_VectorOpnd *& cisa_opnd, VISA_GenVar *cisa_decl, VISA_Modifier mod, unsigned short vStride, unsigned short width, unsigned short hStride,
@@ -2145,7 +2145,7 @@ int VISAKernelImpl::CreateVISASrcOperand(VISA_VectorOpnd *& cisa_opnd, VISA_GenV
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
     stopTimer(TIMER_VISA_BUILDER_CREATE_OPND);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int VISAKernelImpl::CreateVISADstOperand(VISA_VectorOpnd *&cisa_opnd, VISA_GenVar *cisa_decl, unsigned short hStride,
@@ -2180,7 +2180,7 @@ int VISAKernelImpl::CreateVISADstOperand(VISA_VectorOpnd *&cisa_opnd, VISA_GenVa
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
     stopTimer(TIMER_VISA_BUILDER_CREATE_OPND);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int VISAKernelImpl::CreateVISAImmediate(VISA_VectorOpnd *&cisa_opnd, const void *value, VISA_Type isaType)
@@ -2231,8 +2231,8 @@ int VISAKernelImpl::CreateVISAImmediate(VISA_VectorOpnd *&cisa_opnd, const void 
 
         if( size == 0 )
         {
-            CmAssert( 0 );
-            return CM_FAILURE;
+            assert( 0 );
+            return VISA_FAILURE;
         }
         if(isaType == ISA_TYPE_DF)
         {
@@ -2261,7 +2261,7 @@ int VISAKernelImpl::CreateVISAImmediate(VISA_VectorOpnd *&cisa_opnd, const void 
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
     stopTimer(TIMER_VISA_BUILDER_CREATE_OPND);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int VISAKernelImpl::CreateVISAStateOperand(VISA_VectorOpnd *&cisa_opnd, CISA_GEN_VAR *decl, Common_ISA_State_Opnd_Class opndClass, uint8_t size, unsigned char offset, bool useAsDst)
@@ -2336,7 +2336,7 @@ int VISAKernelImpl::CreateVISAStateOperand(VISA_VectorOpnd *&cisa_opnd, CISA_GEN
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
     stopTimer(TIMER_VISA_BUILDER_CREATE_OPND);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int VISAKernelImpl::CreateVISAStateOperand(VISA_VectorOpnd *&opnd, VISA_SurfaceVar *decl, uint8_t size, unsigned char offset, bool useAsDst)
@@ -2378,7 +2378,7 @@ int VISAKernelImpl::CreateVISARawOperand(VISA_RawOpnd *& cisa_opnd, VISA_GenVar 
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
     stopTimer(TIMER_VISA_BUILDER_CREATE_OPND);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 // size == 1 means we want scalar region
@@ -2417,7 +2417,7 @@ int VISAKernelImpl::CreateGenRawSrcOperand(VISA_RawOpnd *& cisa_opnd)
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
     stopTimer(TIMER_VISA_BUILDER_CREATE_OPND);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int VISAKernelImpl::CreateGenRawDstOperand(VISA_RawOpnd *& cisa_opnd)
@@ -2453,7 +2453,7 @@ int VISAKernelImpl::CreateGenRawDstOperand(VISA_RawOpnd *& cisa_opnd)
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
     stopTimer(TIMER_VISA_BUILDER_CREATE_OPND);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int VISAKernelImpl::CreateStateInstUse(VISA_StateOpndHandle *&cisa_opnd, unsigned int index)
@@ -2469,14 +2469,14 @@ int VISAKernelImpl::CreateStateInstUse(VISA_StateOpndHandle *&cisa_opnd, unsigne
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
     stopTimer(TIMER_VISA_BUILDER_CREATE_OPND);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 int VISAKernelImpl::CreateStateInstUseFastPath(VISA_StateOpndHandle *&cisa_opnd, CISA_GEN_VAR *decl)
 {
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
     startTimer(TIMER_VISA_BUILDER_CREATE_OPND);
 #endif
-    unsigned int status = CM_SUCCESS;
+    unsigned int status = VISA_SUCCESS;
     G4_Declare *dcl = decl->stateVar.dcl;
 
     Common_ISA_Var_Class type = decl->type;
@@ -2517,8 +2517,8 @@ int VISAKernelImpl::CreateStateInstUseFastPath(VISA_StateOpndHandle *&cisa_opnd,
     }
     default:
     {
-        CmAssert(0);
-        status = CM_FAILURE;
+        assert(0);
+        status = VISA_FAILURE;
         break;
     }
     }
@@ -2531,13 +2531,13 @@ int VISAKernelImpl::CreateStateInstUseFastPath(VISA_StateOpndHandle *&cisa_opnd,
 }
 int VISAKernelImpl::CreateVISAStateOperandHandle(VISA_StateOpndHandle *&opnd, VISA_SurfaceVar *decl)
 {
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     opnd = (VISA_StateOpndHandle *)getOpndFromPool();
     if(IS_GEN_BOTH_PATH )
     {
         status = CreateStateInstUseFastPath(opnd, (CISA_GEN_VAR *)decl);
     }
-    if(IS_VISA_BOTH_PATH && status == CM_SUCCESS)
+    if(IS_VISA_BOTH_PATH && status == VISA_SUCCESS)
     {
         status = CreateStateInstUse(opnd, decl->index);
     }
@@ -2546,13 +2546,13 @@ int VISAKernelImpl::CreateVISAStateOperandHandle(VISA_StateOpndHandle *&opnd, VI
 
 int VISAKernelImpl::CreateVISAStateOperandHandle(VISA_StateOpndHandle *&opnd, VISA_SamplerVar *decl)
 {
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     opnd = (VISA_StateOpndHandle *)getOpndFromPool();
     if(IS_GEN_BOTH_PATH)
     {
         status =  CreateStateInstUseFastPath(opnd, (CISA_GEN_VAR *)decl);
     }
-    if(IS_VISA_BOTH_PATH && status == CM_SUCCESS)
+    if(IS_VISA_BOTH_PATH && status == VISA_SUCCESS)
     {
         status =  CreateStateInstUse(opnd, decl->index);
     }
@@ -2604,26 +2604,26 @@ int VISAKernelImpl::CreateGenNullRawOperand(VISA_RawOpnd *& cisa_opnd, bool isDs
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
     stopTimer(TIMER_VISA_BUILDER_CREATE_OPND);
 #endif
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int VISAKernelImpl::GetPredefinedVar(VISA_GenVar *&predDcl, PreDefined_Vars varName)
 {
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     predDcl = (VISA_GenVar*)getGenVar(varName);
     return status;
 }
 
 int VISAKernelImpl::GetPredefinedSurface(VISA_SurfaceVar *&predDcl, PreDefined_Surface surfaceName)
 {
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     predDcl = (VISA_SurfaceVar*)(m_surface_info_list[surfaceName]);
     return status;
 }
 
 int VISAKernelImpl::GetBindlessSampler(VISA_SamplerVar *&samplerDcl)
 {
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     samplerDcl = m_bindlessSampler;
     return status;
 }
@@ -2637,7 +2637,7 @@ int VISAKernelImpl::AppendVISAArithmeticInst(ISA_Opcode opcode, VISA_PredOpnd *p
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     if(IS_GEN_BOTH_PATH)
     {
         G4_Predicate * g4Pred = (pred != NULL)? pred->g4opnd->asPredicate() : NULL;
@@ -2742,7 +2742,7 @@ int VISAKernelImpl::AppendVISAArithmeticInst(ISA_Opcode opcode, VISA_PredOpnd *p
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
 
     if(IS_GEN_BOTH_PATH)
     {
@@ -2763,9 +2763,9 @@ int VISAKernelImpl::AppendVISAArithmeticInst(ISA_Opcode opcode, VISA_PredOpnd *p
 
         if(opcode != ISA_ADDC && opcode != ISA_SUBB)
         {
-            CmAssert( 0 );
+            assert( 0 );
             std::cerr<<"ONLY ADDC AND SUBB are supported by this API"<<std::endl;
-            return CM_FAILURE;
+            return VISA_FAILURE;
         }
 
         ADD_OPND(num_operands, opnd, dst1);
@@ -2819,7 +2819,7 @@ int VISAKernelImpl::AppendVISALogicOrShiftInst(ISA_Opcode opcode, VISA_PredOpnd 
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
 
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
 
     if(IS_GEN_BOTH_PATH)
     {
@@ -2842,9 +2842,9 @@ int VISAKernelImpl::AppendVISALogicOrShiftInst(ISA_Opcode opcode, VISA_PredOpnd 
         {
             if(tmpDst == NULL)
             {
-                CM_ERROR_PRINT("Destination for Arithmetic Instruction is NULL");\
-                    CmAssert( 0 );
-                return CM_FAILURE;
+                ERROR_PRINT("Destination for Arithmetic Instruction is NULL");
+                assert(0);
+                return VISA_FAILURE;
             }
             mod = MODIFIER_SAT;
             dst = (VISA_opnd *)m_mem.alloc(sizeof(VISA_opnd));
@@ -2888,7 +2888,7 @@ int VISAKernelImpl::AppendVISAAddrAddInst(Common_VISA_EMask_Ctrl emask, Common_I
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     if(IS_GEN_BOTH_PATH)
     {
         status = m_builder->translateVISAAddrInst(ISA_ADDR_ADD, executionSize, emask, dst->g4opnd->asDstRegRegion(), src0->g4opnd, src1->g4opnd);
@@ -2912,11 +2912,11 @@ int VISAKernelImpl::AppendVISAAddrAddInst(Common_VISA_EMask_Ctrl emask, Common_I
 #if START_ASSERT_CHECK
         if((inst_desc->opnd_num -num_pred_desc_operands) != num_operands)
         {
-            CmAssert( 0 );
-            CM_ERROR_PRINT("Number of parameters does not match");
+            ERROR_PRINT("Number of parameters does not match");
             std::cerr<<"LINE: "<<__LINE__<<std::endl;
             std::cerr<<"FUNCTION: "<<__FUNCTION__<<std::endl;
-            return CM_FAILURE;
+            assert(0);
+            return VISA_FAILURE;
         }
 #endif
 
@@ -2942,7 +2942,7 @@ int VISAKernelImpl::AppendVISAMinMaxInst(CISA_MIN_MAX_SUB_OPCODE subOpcode, bool
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
 
     if(IS_GEN_BOTH_PATH)
     {
@@ -2964,9 +2964,9 @@ int VISAKernelImpl::AppendVISAMinMaxInst(CISA_MIN_MAX_SUB_OPCODE subOpcode, bool
         {
             if(tmpDst == NULL)
             {
-                CM_ERROR_PRINT("Destination for Arithmetic Instruction is NULL");
-                CmAssert( 0 );
-                return CM_FAILURE;
+                ERROR_PRINT("Destination for Arithmetic Instruction is NULL");
+                assert( 0 );
+                return VISA_FAILURE;
             }
             mod = MODIFIER_SAT;
             dst = (VISA_opnd *)m_mem.alloc(sizeof(VISA_opnd));
@@ -3025,7 +3025,7 @@ int VISAKernelImpl::AppendVISADataMovementInst(ISA_Opcode opcode, VISA_PredOpnd 
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
 
     if(IS_GEN_BOTH_PATH)
     {
@@ -3048,9 +3048,9 @@ int VISAKernelImpl::AppendVISADataMovementInst(ISA_Opcode opcode, VISA_PredOpnd 
         {
             if(tmpDst == NULL)
             {
-                CM_ERROR_PRINT("Destination for Arithmetic Instruction is NULL");\
-                    CmAssert( 0 );
-                return CM_FAILURE;
+                ERROR_PRINT("Destination for Arithmetic Instruction is NULL");
+                assert(0);
+                return VISA_FAILURE;
             }
             mod = MODIFIER_SAT;
             dst = (VISA_opnd *)m_mem.alloc(sizeof(VISA_opnd));
@@ -3089,7 +3089,7 @@ int VISAKernelImpl::AppendVISAComparisonInst(Common_ISA_Cond_Mod sub_op, Common_
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
     AppendVISAInstCommon();
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
 
     if(IS_GEN_BOTH_PATH)
     {
@@ -3137,7 +3137,7 @@ int VISAKernelImpl::AppendVISAComparisonInst(Common_ISA_Cond_Mod sub_op, Common_
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     uint32_t exSize = Get_Common_ISA_Exec_Size(executionSize);
     VISA_VectorOpnd *dst = NULL;
     CreateVISAPredicateDstOperand(dst, dstDcl, exSize);
@@ -3184,7 +3184,7 @@ int VISAKernelImpl::AppendVISACFSIMDInst(ISA_Opcode opcode, VISA_PredOpnd *pred,
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
 
     if(IS_GEN_BOTH_PATH)
     {
@@ -3203,8 +3203,8 @@ int VISAKernelImpl::AppendVISACFSIMDInst(ISA_Opcode opcode, VISA_PredOpnd *pred,
         if( (opcode == ISA_GOTO && label == NULL) ||
             (opcode != ISA_GOTO && label != NULL) )
         {
-            CmAssert( 0 );
-            return CM_FAILURE;
+            assert( 0 );
+            return VISA_FAILURE;
         }
 
         ADD_OPND(num_operands, opnd, label);
@@ -3233,7 +3233,7 @@ int VISAKernelImpl::AppendVISACFJmpInst(VISA_PredOpnd *pred, VISA_LabelOpnd *lab
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     if(IS_GEN_BOTH_PATH)
     {
         G4_Predicate * g4Pred = (pred != NULL)? pred->g4opnd->asPredicate() : NULL;
@@ -3248,8 +3248,8 @@ int VISAKernelImpl::AppendVISACFJmpInst(VISA_PredOpnd *pred, VISA_LabelOpnd *lab
 
         if( label == NULL )
         {
-            CmAssert( 0 );
-            return CM_FAILURE;
+            assert( 0 );
+            return VISA_FAILURE;
         }
         //pred id
         unsigned short pred_id = 0;
@@ -3277,7 +3277,7 @@ int VISAKernelImpl::AppendVISACFCallInst(VISA_PredOpnd *pred, Common_VISA_EMask_
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
 
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     if(IS_GEN_BOTH_PATH)
     {
         if(isFCCallerKernel())
@@ -3296,8 +3296,8 @@ int VISAKernelImpl::AppendVISACFCallInst(VISA_PredOpnd *pred, Common_VISA_EMask_
 
         if( label == NULL )
         {
-            CmAssert( 0 );
-            return CM_FAILURE;
+            assert( 0 );
+            return VISA_FAILURE;
         }
         //pred id
         unsigned short pred_id = 0;
@@ -3324,7 +3324,7 @@ int VISAKernelImpl::AppendVISACFRetInst(VISA_PredOpnd *pred, Common_VISA_EMask_C
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     if(IS_GEN_BOTH_PATH)
     {
         G4_Predicate * g4Pred = (pred != NULL)? pred->g4opnd->asPredicate() : NULL;
@@ -3363,7 +3363,7 @@ int VISAKernelImpl::AppendVISACFLabelInst(VISA_LabelOpnd *label)
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     if(IS_GEN_BOTH_PATH)
     {
         status = m_builder->translateVISACFLabelInst((G4_Label*)label->g4opnd);
@@ -3392,7 +3392,7 @@ int VISAKernelImpl::AppendVISACFFunctionCallInst(VISA_PredOpnd *pred, Common_VIS
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     if(IS_GEN_BOTH_PATH)
     {
         G4_Predicate * g4Pred = (pred != NULL)? pred->g4opnd->asPredicate() : NULL;
@@ -3447,7 +3447,7 @@ int VISAKernelImpl::AppendVISACFIndirectFuncCallInst(VISA_PredOpnd *pred, Common
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
     startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     if (IS_GEN_BOTH_PATH)
     {
         G4_Predicate * g4Pred = pred ? pred->g4opnd->asPredicate() : nullptr;
@@ -3496,7 +3496,7 @@ int VISAKernelImpl::AppendVISACFSymbolInst(std::string symbolName, VISA_VectorOp
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
     startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     if (IS_GEN_BOTH_PATH)
     {
         status = m_builder->translateVISACFSymbolInst(symbolName, (G4_DstRegRegion*)dst->g4opnd);
@@ -3531,7 +3531,7 @@ int VISAKernelImpl::AppendVISACFFunctionRetInst(VISA_PredOpnd *pred, Common_VISA
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     if(IS_GEN_BOTH_PATH)
     {
         G4_Predicate * g4Pred = (pred != NULL)? pred->g4opnd->asPredicate() : NULL;
@@ -3566,14 +3566,14 @@ int VISAKernelImpl::AppendVISACFSwitchJMPInst(VISA_VectorOpnd *index, unsigned c
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     if(IS_GEN_BOTH_PATH)
     {
         G4_Label* labelsArray[50];
         if(labelCount >= 50)
         {
-            CmAssert( 0 );
-            status = CM_FAILURE;
+            assert( 0 );
+            status = VISA_FAILURE;
         }else
         {
             for(int i = 0; i< labelCount; i++)
@@ -3581,8 +3581,8 @@ int VISAKernelImpl::AppendVISACFSwitchJMPInst(VISA_VectorOpnd *index, unsigned c
 #if START_ASSERT_CHECK
                 if(labels[i] == NULL || labels[i]->g4opnd == NULL)
                 {
-                    CmAssert( 0 );
-                    status = CM_FAILURE;
+                    assert( 0 );
+                    status = VISA_FAILURE;
                     break;
                 }
 #endif
@@ -3607,8 +3607,8 @@ int VISAKernelImpl::AppendVISACFSwitchJMPInst(VISA_VectorOpnd *index, unsigned c
 
         if(index == NULL || labelCount == 0 || labels == NULL)
         {
-            CmAssert( 0 );
-            return CM_FAILURE;
+            assert( 0 );
+            return VISA_FAILURE;
         }
 
         opnd[num_operands] = CreateOtherOpndHelper(num_pred_desc_operands, num_operands, inst_desc_temp, labelCount);
@@ -3652,7 +3652,7 @@ int VISAKernelImpl::AppendVISASurfAccessDwordAtomicInst(VISA_PredOpnd           
     startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
 
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
 
     if (IS_GEN_BOTH_PATH) {
         CreateGenRawSrcOperand(offsets);
@@ -3712,7 +3712,7 @@ int VISAKernelImpl::AppendVISASurfAccessGatherScatterInst(ISA_Opcode opcode, Com
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
 
     if(IS_GEN_BOTH_PATH)
     {
@@ -3812,7 +3812,7 @@ int VISAKernelImpl::AppendVISASurfAccessGather4Scatter4TypedInst(ISA_Opcode opco
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     ChannelMask chMask = ChannelMask::createFromAPI(_chMask);
 
     if(IS_GEN_BOTH_PATH)
@@ -3855,9 +3855,9 @@ int VISAKernelImpl::AppendVISASurfAccessGather4Scatter4TypedInst(ISA_Opcode opco
         PACK_EXEC_SIZE(size, emask);
 
         int status = inst->createCisaInstruction(opcode, (uint8_t)size, 0, predId, opnd, num_operands, inst_desc);
-        if( status != CM_SUCCESS )
+        if( status != VISA_SUCCESS )
         {
-            CmAssert( 0 );
+            assert( 0 );
             return status;
         }
         addInstructionToEnd(inst);
@@ -3881,7 +3881,7 @@ int VISAKernelImpl::AppendVISASurfAccessGather4Scatter4ScaledInst(ISA_Opcode    
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
     startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     ChannelMask chMask = ChannelMask::createFromAPI(channelMask);
 
     if (IS_GEN_BOTH_PATH) {
@@ -3965,7 +3965,7 @@ int VISAKernelImpl::AppendVISASurfAccessScatterScaledInst(ISA_Opcode            
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
     startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
 
     if (IS_GEN_BOTH_PATH) {
         ASSERT_USER(opcode == ISA_GATHER_SCALED ||
@@ -4043,7 +4043,7 @@ int VISAKernelImpl::AppendVISASurfAccessMediaLoadStoreInst(ISA_Opcode opcode, ME
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
 
     if(IS_GEN_BOTH_PATH)
     {
@@ -4174,7 +4174,7 @@ int VISAKernelImpl::AppendVISASvmBlockLoadInst(Common_ISA_Oword_Num size, bool u
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
 
     if (IS_GEN_BOTH_PATH)
     {
@@ -4198,7 +4198,7 @@ int VISAKernelImpl::AppendVISASvmBlockStoreInst(Common_ISA_Oword_Num size, bool 
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
 
     if(IS_GEN_BOTH_PATH)
     {
@@ -4229,7 +4229,7 @@ int VISAKernelImpl::AppendVISASvmGatherInst(VISA_PredOpnd *pred,
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     if(IS_GEN_BOTH_PATH)
     {
         CreateGenRawSrcOperand(address);
@@ -4261,7 +4261,7 @@ int VISAKernelImpl::AppendVISASvmScatterInst(VISA_PredOpnd *pred,
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     if(IS_GEN_BOTH_PATH)
     {
         CreateGenRawSrcOperand(address);
@@ -4296,7 +4296,7 @@ int VISAKernelImpl::AppendVISASvmAtomicInst(VISA_PredOpnd *pred,
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     if (IS_GEN_BOTH_PATH)
     {
         CreateGenRawSrcOperand(address);
@@ -4403,7 +4403,7 @@ int VISAKernelImpl::AppendVISASvmGather4ScaledInst(VISA_PredOpnd            *pre
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
     startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
 
     ChannelMask chMask = ChannelMask::createFromAPI(channelMask);
 
@@ -4445,7 +4445,7 @@ int VISAKernelImpl::AppendVISASvmScatter4ScaledInst(VISA_PredOpnd           *pre
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
     startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
 
     ChannelMask chMask = ChannelMask::createFromAPI(channelMask);
 
@@ -4481,7 +4481,7 @@ int VISAKernelImpl::AppendVISASurfAccessOwordLoadStoreInst(ISA_Opcode opcode, Co
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
 
     if(IS_GEN_BOTH_PATH)
     {
@@ -4543,7 +4543,7 @@ int VISAKernelImpl::AppendVISASILoad(VISA_StateOpndHandle *surface, VISAChannelM
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     ChannelMask channel = ChannelMask::createFromAPI(_channel);
 
     if(IS_GEN_BOTH_PATH)
@@ -4599,7 +4599,7 @@ int VISAKernelImpl::AppendVISASISample(Common_VISA_EMask_Ctrl emask, VISA_StateO
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     ChannelMask channel = ChannelMask::createFromAPI(_channel);
 
     if(IS_GEN_BOTH_PATH)
@@ -4653,7 +4653,7 @@ int VISAKernelImpl::AppendVISASISampleUnorm(VISA_StateOpndHandle *surface, VISA_
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     ChannelMask channel = ChannelMask::createFromAPI(_channel);
 
     if(IS_GEN_BOTH_PATH)
@@ -4701,7 +4701,7 @@ int VISAKernelImpl::AppendVISAWaitInst(VISA_VectorOpnd* mask)
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
 
     if (IS_GEN_BOTH_PATH)
     {
@@ -4744,7 +4744,7 @@ int VISAKernelImpl::AppendVISASyncInst(ISA_Opcode opcode, unsigned char mask)
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
 
     if(IS_GEN_BOTH_PATH)
     {
@@ -4784,7 +4784,7 @@ int VISAKernelImpl::AppendVISASplitBarrierInst(bool isSignal)
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
     startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
 
     if (IS_GEN_BOTH_PATH)
     {
@@ -4822,7 +4822,7 @@ int VISAKernelImpl::AppendVISAMiscFileInst(const char *fileName)
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
 
     if(IS_GEN_BOTH_PATH)
     {
@@ -4861,7 +4861,7 @@ int VISAKernelImpl::AppendVISADebugLinePlaceholder()
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
     startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
 
     if (IS_GEN_BOTH_PATH)
     {
@@ -4879,7 +4879,7 @@ int VISAKernelImpl::AppendVISAMiscLOC(unsigned int lineNumber)
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
 
     if(IS_GEN_BOTH_PATH)
     {
@@ -4917,7 +4917,7 @@ int VISAKernelImpl::AppendVISAMiscRawSend(VISA_PredOpnd *pred, Common_VISA_EMask
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
 
     if(IS_GEN_BOTH_PATH)
     {
@@ -4987,7 +4987,7 @@ int VISAKernelImpl::AppendVISAMiscRawSends(VISA_PredOpnd *pred, Common_VISA_EMas
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
 
     if(IS_GEN_BOTH_PATH)
     {
@@ -5067,7 +5067,7 @@ int VISAKernelImpl::AppendVISAMiscVME_FBR(VISA_StateOpndHandle *surface, VISA_Ra
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
 
     if(IS_GEN_BOTH_PATH)
     {
@@ -5122,7 +5122,7 @@ int VISAKernelImpl::AppendVISAMiscVME_IME(VISA_StateOpndHandle *surface, unsigne
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
 
     if(IS_GEN_BOTH_PATH)
     {
@@ -5183,7 +5183,7 @@ int VISAKernelImpl::AppendVISAMiscVME_SIC(VISA_StateOpndHandle *surface, VISA_Ra
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
 
     if(IS_GEN_BOTH_PATH)
     {
@@ -5227,7 +5227,7 @@ int VISAKernelImpl::AppendVISAMiscVME_IDM(VISA_StateOpndHandle *surface, VISA_Ra
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
 
     if(IS_GEN_BOTH_PATH)
     {
@@ -5273,7 +5273,7 @@ int VISAKernelImpl::AppendVISAMEAVS(VISA_StateOpndHandle *surface,  VISA_StateOp
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     ChannelMask chMask = ChannelMask::createFromAPI(_chMask);
     if(IS_GEN_BOTH_PATH)
     {
@@ -5345,7 +5345,7 @@ int VISAKernelImpl::AppendVISA3dSamplerMsgGeneric(ISA_Opcode opcode,
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     bool isLoad = (subOpcode == VISA_3D_LD_MSC || subOpcode == VISA_3D_LD ||
         subOpcode == VISA_3D_LD2DMS_W || subOpcode == VISA_3D_LD_LZ);
     bool isSample4 = (  subOpcode == VISA_3D_GATHER4    ||
@@ -5363,8 +5363,8 @@ int VISAKernelImpl::AppendVISA3dSamplerMsgGeneric(ISA_Opcode opcode,
 #if START_ASSERT_CHECK
             if(opndArray[i] == NULL)
             {
-                CmAssert( 0 );
-                return CM_FAILURE;
+                assert( 0 );
+                return VISA_FAILURE;
             }
 #endif
             CreateGenRawSrcOperand(opndArray[i]);
@@ -5448,8 +5448,8 @@ int VISAKernelImpl::AppendVISA3dSamplerMsgGeneric(ISA_Opcode opcode,
         {
             if(opndArray[i] == NULL)
             {
-                CmAssert( 0 );
-                return CM_FAILURE;
+                assert( 0 );
+                return VISA_FAILURE;
             }
             ADD_OPND(num_operands, opnd, opndArray[i]);
         }
@@ -5550,7 +5550,7 @@ int VISAKernelImpl::AppendVISA3dInfo(VISASampler3DSubOpCode subOpcode, Common_VI
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     ChannelMask channels = ChannelMask::createFromAPI(srcChannels);
     if(IS_GEN_BOTH_PATH)
     {
@@ -5573,8 +5573,8 @@ int VISAKernelImpl::AppendVISA3dInfo(VISASampler3DSubOpCode subOpcode, Common_VI
     {
         if( subOpcode != VISA_3D_RESINFO && subOpcode != VISA_3D_SAMPLEINFO )
         {
-            CmAssert( 0 );
-            return CM_FAILURE;
+            assert( 0 );
+            return VISA_FAILURE;
         }
 
         ISA_Opcode opcode = ISA_3D_INFO;
@@ -5638,7 +5638,7 @@ int VISAKernelImpl::AppendVISA3dRTWriteCPS(VISA_PredOpnd *pred, Common_VISA_EMas
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
 
     if(IS_GEN_BOTH_PATH)
     {
@@ -5647,8 +5647,8 @@ int VISAKernelImpl::AppendVISA3dRTWriteCPS(VISA_PredOpnd *pred, Common_VISA_EMas
 #if START_ASSERT_CHECK
         if(numMsgSpecificOpnds >= 32)
         {
-            CmAssert( 0 );
-            return CM_FAILURE;
+            assert( 0 );
+            return VISA_FAILURE;
         }
 #endif
         for(unsigned int i = 0; i< numMsgSpecificOpnds; ++i)
@@ -5656,8 +5656,8 @@ int VISAKernelImpl::AppendVISA3dRTWriteCPS(VISA_PredOpnd *pred, Common_VISA_EMas
 #if START_ASSERT_CHECK
             if(opndArray[i] == NULL)
             {
-                CmAssert( 0 );
-                return CM_FAILURE;
+                assert( 0 );
+                return VISA_FAILURE;
             }
 #endif
             CreateGenRawSrcOperand(opndArray[i]);
@@ -5667,8 +5667,8 @@ int VISAKernelImpl::AppendVISA3dRTWriteCPS(VISA_PredOpnd *pred, Common_VISA_EMas
 #if START_ASSERT_CHECK
         if(cPSCounter && !cPSCounter->g4opnd)
         {
-            CmAssert( 0 );
-            return CM_FAILURE;
+            assert( 0 );
+            return VISA_FAILURE;
         }
 #endif
         G4_SrcRegRegion *cPSCounterOpnd = (cPSCounter) ? cPSCounter->g4opnd->asSrcRegRegion(): NULL;
@@ -5729,8 +5729,8 @@ int VISAKernelImpl::AppendVISA3dRTWriteCPS(VISA_PredOpnd *pred, Common_VISA_EMas
         {
             if( opndArray[i] == NULL )
             {
-                CmAssert(0);
-                return CM_FAILURE;
+                assert(0);
+                return VISA_FAILURE;
             }
             opnd[num_operands] = opndArray[i];
         }
@@ -5766,7 +5766,7 @@ int VISAKernelImpl::AppendVISA3dURBWrite(VISA_PredOpnd *pred, Common_VISA_EMask_
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
 
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
 
     if(IS_GEN_BOTH_PATH)
     {
@@ -5837,7 +5837,7 @@ int VISAKernelImpl::AppendVISA3dTypedAtomic(
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
 
-        int status = CM_SUCCESS;
+        int status = VISA_SUCCESS;
 
     if(IS_GEN_BOTH_PATH)
     {
@@ -5917,7 +5917,7 @@ int VISAKernelImpl::AppendVISAVABooleanCentroid(VISA_StateOpndHandle *surface, V
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
 
     ISA_VA_Sub_Opcode subOp = BoolCentroid_FOPCODE;
     if(IS_GEN_BOTH_PATH)
@@ -5968,7 +5968,7 @@ int VISAKernelImpl::AppendVISAVACentroid(VISA_StateOpndHandle *surface, VISA_Vec
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
 
     ISA_VA_Sub_Opcode subOp = Centroid_FOPCODE;
     if(IS_GEN_BOTH_PATH)
@@ -6018,7 +6018,7 @@ int VISAKernelImpl::AppendVISAVAConvolve(VISA_StateOpndHandle *sampler, VISA_Sta
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
 
     ISA_VA_Sub_Opcode subOp = Convolve_FOPCODE;
     if(IS_GEN_BOTH_PATH)
@@ -6072,11 +6072,11 @@ int VISAKernelImpl::AppendVISAVAErodeDilate(EDMode mode, VISA_StateOpndHandle *s
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
 
     ISA_VA_Sub_Opcode subOp = ERODE_FOPCODE;
 
-    if(mode == CM_DILATE)
+    if (mode == VA_DILATE)
     {
         subOp = Dilate_FOPCODE;
     }
@@ -6131,7 +6131,7 @@ int VISAKernelImpl::AppendVISAVAMinMax(VISA_StateOpndHandle *surface, VISA_Vecto
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
 
     ISA_VA_Sub_Opcode subOp = MINMAX_FOPCODE;
 
@@ -6183,20 +6183,20 @@ int VISAKernelImpl::AppendVISAVAMinMaxFilter(VISA_StateOpndHandle *sampler, VISA
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     ISA_VA_Sub_Opcode subOp = MINMAXFILTER_FOPCODE;
 
-    if(cntrl != CM_16_FULL && cntrl != CM_8_FULL)
+    if(cntrl != AVS_16_FULL && cntrl != AVS_8_FULL)
     {
-        CmAssert(0);
-        return CM_FAILURE;
+        assert(0);
+        return VISA_FAILURE;
     }
 
     if(IS_GEN_BOTH_PATH)
     {
         CreateGenRawDstOperand(dst);
         G4_DstRegRegion *dstOpnd = dst->g4opnd->asDstRegRegion();
-        unsigned dstSize = (CM_MMF_1x1 == execMode) ? 4 : ( mmf_exec_mode_size[execMode] * format_control_byteSize2[cntrl] ) ;
+        unsigned dstSize = (VA_MMF_1x1 == execMode) ? 4 : ( mmf_exec_mode_size[execMode] * format_control_byteSize2[cntrl] ) ;
         status = m_builder->translateVISASamplerVAGenericInst(surface->g4opnd, sampler->g4opnd, uOffset->g4opnd,
             vOffset->g4opnd, NULL, NULL, mmfMode->g4opnd, cntrl, execMode, subOp,
             dstOpnd, dstOpnd->getType(), dstSize);
@@ -6247,7 +6247,7 @@ int VISAKernelImpl::AppendVISAVACorrelationSearch(VISA_StateOpndHandle *surface,
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     ISA_VA_Sub_Opcode subOp = VA_OP_CODE_CORRELATION_SEARCH;
 
     if(IS_GEN_BOTH_PATH)
@@ -6336,7 +6336,7 @@ int VISAKernelImpl::AppendVISAVAFloodFill(bool is8Connect, VISA_RawOpnd *pixelMa
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     ISA_VA_Sub_Opcode subOp = VA_OP_CODE_FLOOD_FILL;
 
     if(IS_GEN_BOTH_PATH)
@@ -6423,7 +6423,7 @@ int VISAKernelImpl::AppendVISAVALBPCorrelation(VISA_StateOpndHandle *surface, VI
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     ISA_VA_Sub_Opcode subOp = VA_OP_CODE_LBP_CORRELATION;
 
     if(IS_GEN_BOTH_PATH)
@@ -6510,7 +6510,7 @@ int VISAKernelImpl::AppendVISAVALBPCreation(VISA_StateOpndHandle *surface, VISA_
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     ISA_VA_Sub_Opcode subOp = VA_OP_CODE_LBP_CREATION;
 
     if(IS_GEN_BOTH_PATH)
@@ -6590,19 +6590,19 @@ int VISAKernelImpl::AppendVISAVALBPCreation(VISA_StateOpndHandle *surface, VISA_
 }
 
 int VISAKernelImpl::AppendVISAVAConvolve1D(VISA_StateOpndHandle *sampler, VISA_StateOpndHandle *surface, VISA_VectorOpnd * uOffset,
-                                                            VISA_VectorOpnd *vOffset, CONVExecMode mode, Convovle1DDirection direction, VISA_RawOpnd *dst)
+                                                            VISA_VectorOpnd *vOffset, CONVExecMode mode, Convolve1DDirection direction, VISA_RawOpnd *dst)
 {
     AppendVISAInstCommon();
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     ISA_VA_Sub_Opcode subOp = VA_OP_CODE_1D_CONVOLVE_VERTICAL;
 
-    if(direction == CM_H_DIRECTION)
+    if (direction == VA_H_DIRECTION)
         subOp = VA_OP_CODE_1D_CONVOLVE_HORIZONTAL;
 
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         uint8_t execMode = mode;
         uint8_t functionality = 0x3; /*reserved*/
@@ -6686,7 +6686,7 @@ int VISAKernelImpl::AppendVISAVAConvolve1Pixel(VISA_StateOpndHandle *sampler, VI
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     ISA_VA_Sub_Opcode subOp = VA_OP_CODE_1PIXEL_CONVOLVE;
 
     if(IS_GEN_BOTH_PATH)
@@ -6776,12 +6776,12 @@ int VISAKernelImpl::AppendVISAVAHDCConvolve(VISA_StateOpndHandle *sampler, VISA_
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     ISA_VA_Sub_Opcode subOp = ISA_HDC_CONV;
 
     if(IS_GEN_BOTH_PATH)
     {
-        uint8_t execMode = CM_CONV_16x4;
+        uint8_t execMode = VA_CONV_16x4;
         uint8_t functionality = regionSize; /*reserved*/
         uint8_t pixelSize = returnFormat;
 
@@ -6859,15 +6859,15 @@ int VISAKernelImpl::AppendVISAVAHDCErodeDilate(EDMode subOpED, VISA_StateOpndHan
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     ISA_VA_Sub_Opcode subOp = ISA_HDC_ERODE;
 
-    if(subOpED == CM_DILATE)
+    if(subOpED == VA_DILATE)
         subOp = ISA_HDC_DILATE;
 
     if(IS_GEN_BOTH_PATH)
     {
-        uint8_t execMode = CM_ED_64x4;
+        uint8_t execMode = VA_ED_64x4;
         uint8_t functionality = 0x3; /*reserved*/
         uint8_t pixelSize = 1;
 
@@ -6943,12 +6943,12 @@ int VISAKernelImpl::AppendVISAVAHDCMinMaxFilter(VISA_StateOpndHandle *sampler, V
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     ISA_VA_Sub_Opcode subOp = ISA_HDC_MMF;
 
     if(IS_GEN_BOTH_PATH)
     {
-        uint8_t execMode = CM_CONV_16x4;
+        uint8_t execMode = VA_CONV_16x4;
         uint8_t functionality = mmfMode; /*reserved*/
         uint8_t pixelSize = returnFormat;
 
@@ -7026,12 +7026,12 @@ int VISAKernelImpl::AppendVISAVAHDCLBPCorrelation(VISA_StateOpndHandle *surface,
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     ISA_VA_Sub_Opcode subOp = ISA_HDC_LBPCORRELATION;
 
     if(IS_GEN_BOTH_PATH)
     {
-        uint8_t execMode = CM_CONV_16x4;
+        uint8_t execMode = VA_CONV_16x4;
         uint8_t functionality = 0x3; /*reserved*/
         uint8_t pixelSize = 1;
 
@@ -7107,18 +7107,18 @@ int VISAKernelImpl::AppendVISAVAHDCLBPCreation(VISA_StateOpndHandle *surface, VI
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     ISA_VA_Sub_Opcode subOp = ISA_HDC_LBPCREATION;
 
-    if(mode == CM_3x3_AND_5x5)
+    if(mode == VA_3x3_AND_5x5)
     {
-        CmAssert(0);
-        return CM_FAILURE;
+        assert(0);
+        return VISA_FAILURE;
     }
 
     if(IS_GEN_BOTH_PATH)
     {
-        uint8_t execMode = CM_CONV_16x4;
+        uint8_t execMode = VA_CONV_16x4;
         uint8_t functionality = mode; /*reserved*/
         uint8_t pixelSize = 1;
 
@@ -7187,24 +7187,24 @@ int VISAKernelImpl::AppendVISAVAHDCLBPCreation(VISA_StateOpndHandle *surface, VI
 }
 
 int VISAKernelImpl::AppendVISAVAHDCConvolve1D(VISA_StateOpndHandle *sampler, VISA_StateOpndHandle *surface, VISA_VectorOpnd * uOffset,
-                                                            VISA_VectorOpnd *vOffset, HDCReturnFormat returnFormat, Convovle1DDirection direction,
+                                                            VISA_VectorOpnd *vOffset, HDCReturnFormat returnFormat, Convolve1DDirection direction,
                                                             VISA_StateOpndHandle *dstSurface, VISA_VectorOpnd *xOffset, VISA_VectorOpnd *yOffset)
 {
     AppendVISAInstCommon();
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     ISA_VA_Sub_Opcode subOp = ISA_HDC_1DCONV_H;
 
-    if( direction == CM_V_DIRECTION )
+    if (direction == VA_V_DIRECTION)
     {
         subOp = ISA_HDC_1DCONV_V;
     }
 
     if(IS_GEN_BOTH_PATH)
     {
-        uint8_t execMode = CM_CONV_16x4;
+        uint8_t execMode = VA_CONV_16x4;
         uint8_t functionality = 0x3; /*reserved*/
         uint8_t pixelSize = returnFormat;
 
@@ -7281,13 +7281,13 @@ int VISAKernelImpl::AppendVISAVAHDCConvolve1Pixel(VISA_StateOpndHandle *sampler,
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     ISA_VA_Sub_Opcode subOp = ISA_HDC_1PIXELCONV;
 
     if(IS_GEN_BOTH_PATH)
     {
         CreateGenRawSrcOperand(offsets);
-        uint8_t execMode = CM_CONV_16x4;
+        uint8_t execMode = VA_CONV_16x4;
         uint8_t functionality = 0x3; /*reserved*/
         uint8_t pixelSize = returnFormat;
 
@@ -7363,7 +7363,7 @@ int VISAKernelImpl::AppendVISALifetime(VISAVarLifetime startOrEnd, VISA_VectorOp
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     unsigned char properties = (unsigned char)startOrEnd;
 
     if(IS_GEN_BOTH_PATH)
@@ -7440,8 +7440,8 @@ int VISAKernelImpl::patchLastInst(VISA_LabelOpnd *label)
 
         if( iter == this->m_forward_label_pool.end() )
         {
-            CmAssert( 0 );
-            return CM_FAILURE;
+            assert( 0 );
+            return VISA_FAILURE;
         }
         if((ISA_Opcode)label->tag == ISA_SUBROUTINE)
         {
@@ -7451,7 +7451,7 @@ int VISAKernelImpl::patchLastInst(VISA_LabelOpnd *label)
             this->m_lastInst->setLabelInfo(iter->second, false, true);
         }
     }
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 uint32_t VISAKernelImpl::addStringPool(std::string str)
@@ -7991,7 +7991,7 @@ int VISAKernelImpl::GetGenxBinary(void *&buffer, int &size)
 {
     buffer = this->m_genx_binary_buffer;
     size = this->m_genx_binary_size;
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int VISAKernelImpl::GetGenRelocEntryBuffer(void *&buffer, unsigned int &byteSize, unsigned int &numEntries)
@@ -8001,13 +8001,13 @@ int VISAKernelImpl::GetGenRelocEntryBuffer(void *&buffer, unsigned int &byteSize
     byteSize = sizeof(GenRelocEntry) * numEntries;
 
     if (reloc_table.empty())
-        return CM_SUCCESS;
+        return VISA_SUCCESS;
 
     // allocate the buffer for relocation table
     buffer = allocCodeBlock(byteSize);
 
     if (buffer == nullptr)
-        return CM_FAILURE;
+        return VISA_FAILURE;
 
     GenRelocEntry* buffer_p = (GenRelocEntry*)buffer;
     for (auto reloc : reloc_table)
@@ -8029,7 +8029,7 @@ int VISAKernelImpl::GetGenRelocEntryBuffer(void *&buffer, unsigned int &byteSize
         ++buffer_p;
     }
 
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int VISAKernelImpl::GetGenxDebugInfo(void *&buffer, unsigned int &size, void*& mapGenISAOffsetToVISAIndex, unsigned int& mapNumElems)
@@ -8048,31 +8048,31 @@ int VISAKernelImpl::GetGenxDebugInfo(void *&buffer, unsigned int &size, void*& m
         i++;
     }
 
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int VISAKernelImpl::GetJitInfo(FINALIZER_INFO *&jitInfo)
 {
     jitInfo = this->m_jitInfo;
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int VISAKernelImpl::GetCompilerStats(CompilerStats &compilerStats)
 {
     compilerStats.Link(this->m_compilerStats);
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int VISAKernelImpl::GetErrorMessage(const char *&errorMsg) const
 {
     errorMsg = this->errorMessage;
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int VISAKernelImpl::GetFunctionId(unsigned int& id) const
 {
     id = m_functionId;
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int VISAKernelImpl::SetGTPinInit(void* buffer)
@@ -8086,7 +8086,7 @@ int VISAKernelImpl::SetGTPinInit(void* buffer)
         }
     }
 
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int VISAKernelImpl::GetGTPinBuffer(void*& buffer, unsigned int& size)
@@ -8103,7 +8103,7 @@ int VISAKernelImpl::GetGTPinBuffer(void*& buffer, unsigned int& size)
         }
     }
 
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int VISAKernelImpl::GetFreeGRFInfo(void*& buffer, unsigned int& size)
@@ -8119,7 +8119,7 @@ int VISAKernelImpl::GetFreeGRFInfo(void*& buffer, unsigned int& size)
             buffer = gtpin->getFreeGRFInfo(size);
         }
     }
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 // index
@@ -8281,13 +8281,13 @@ void VISAKernelImpl::setReturnSize( unsigned int size )
 int VISAKernelImpl::SetFunctionInputSize(unsigned int size)
 {
     setInputSize((uint8_t)size);
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 int VISAKernelImpl::SetFunctionReturnSize(unsigned int size)
 {
     setReturnSize(size);
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 // common tasks for AppendVISAInst* functions

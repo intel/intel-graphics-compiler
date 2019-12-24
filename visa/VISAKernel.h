@@ -57,7 +57,7 @@ class VISAKernelImpl : public VISAFunction
     friend class VISAKernel_format_provider;
 
 public:
-    VISAKernelImpl(CISA_IR_Builder* cisaBuilder, CM_VISA_BUILDER_OPTION buildOption, Options *option)
+    VISAKernelImpl(CISA_IR_Builder* cisaBuilder, VISA_BUILDER_OPTION buildOption, Options *option)
         : m_mem(4096), m_CISABuilder(cisaBuilder), m_options(option)
     {
         //CisaBinary* module = NULL;
@@ -231,160 +231,160 @@ public:
     int getVISAOffset() const;
 
     /***************** START EXPOSED APIS *************************/
-    CM_BUILDER_API int CreateVISAGenVar(VISA_GenVar *& decl, const char *varName, int numberElements, VISA_Type dataType,
+    VISA_BUILDER_API int CreateVISAGenVar(VISA_GenVar *& decl, const char *varName, int numberElements, VISA_Type dataType,
         VISA_Align varAlign, VISA_GenVar *parentDecl = NULL, int aliasOffset = 0);
 
-    CM_BUILDER_API int CreateVISAAddrVar(VISA_AddrVar *& decl, const char *varName, unsigned int numberElements);
+    VISA_BUILDER_API int CreateVISAAddrVar(VISA_AddrVar *& decl, const char *varName, unsigned int numberElements);
 
-    CM_BUILDER_API int AddKernelAttribute(const char* name, int size, const void *value);
+    VISA_BUILDER_API int AddKernelAttribute(const char* name, int size, const void *value);
 
-    CM_BUILDER_API int CreateVISAPredVar(VISA_PredVar *& decl, const char* varName, unsigned short numberElements);
+    VISA_BUILDER_API int CreateVISAPredVar(VISA_PredVar *& decl, const char* varName, unsigned short numberElements);
 
-    CM_BUILDER_API int AddAttributeToVar(VISA_PredVar *decl, const char* varName, unsigned int size, void *val);
+    VISA_BUILDER_API int AddAttributeToVar(VISA_PredVar *decl, const char* varName, unsigned int size, void *val);
 
-    CM_BUILDER_API int AddAttributeToVar(VISA_SurfaceVar *decl, const char* varName, unsigned int size, void *val);
+    VISA_BUILDER_API int AddAttributeToVar(VISA_SurfaceVar *decl, const char* varName, unsigned int size, void *val);
 
-    CM_BUILDER_API int AddAttributeToVar(VISA_GenVar *decl, const char* name, unsigned int size, void *val);
+    VISA_BUILDER_API int AddAttributeToVar(VISA_GenVar *decl, const char* name, unsigned int size, void *val);
 
-    CM_BUILDER_API int AddAttributeToVar(VISA_AddrVar *decl, const char* name, unsigned int size, void *val);
+    VISA_BUILDER_API int AddAttributeToVar(VISA_AddrVar *decl, const char* name, unsigned int size, void *val);
 
-    CM_BUILDER_API int CreateVISASamplerVar(VISA_SamplerVar *&decl, const char* name, unsigned int numberElements);
+    VISA_BUILDER_API int CreateVISASamplerVar(VISA_SamplerVar *&decl, const char* name, unsigned int numberElements);
 
-    CM_BUILDER_API int CreateVISASurfaceVar(VISA_SurfaceVar *&decl, const char* name, unsigned int numberElements);
+    VISA_BUILDER_API int CreateVISASurfaceVar(VISA_SurfaceVar *&decl, const char* name, unsigned int numberElements);
 
-    CM_BUILDER_API int CreateVISALabelVar(VISA_LabelOpnd *& opnd, const char* name, VISA_Label_Kind kind);
+    VISA_BUILDER_API int CreateVISALabelVar(VISA_LabelOpnd *& opnd, const char* name, VISA_Label_Kind kind);
 
-    CM_BUILDER_API int CreateVISAImplicitInputVar(VISA_GenVar *decl, unsigned short offset, unsigned short size, unsigned short kind);
+    VISA_BUILDER_API int CreateVISAImplicitInputVar(VISA_GenVar *decl, unsigned short offset, unsigned short size, unsigned short kind);
 
-    CM_BUILDER_API int CreateVISAInputVar(VISA_GenVar *decl, unsigned short offset, unsigned short size);
+    VISA_BUILDER_API int CreateVISAInputVar(VISA_GenVar *decl, unsigned short offset, unsigned short size);
 
-    CM_BUILDER_API int CreateVISAInputVar(VISA_SamplerVar *decl, unsigned short offset, unsigned short size);
+    VISA_BUILDER_API int CreateVISAInputVar(VISA_SamplerVar *decl, unsigned short offset, unsigned short size);
 
-    CM_BUILDER_API int CreateVISAInputVar(VISA_SurfaceVar *decl, unsigned short offset, unsigned short size);
+    VISA_BUILDER_API int CreateVISAInputVar(VISA_SurfaceVar *decl, unsigned short offset, unsigned short size);
 
-    CM_BUILDER_API int CreateVISAAddressSrcOperand(VISA_VectorOpnd *&opnd, VISA_AddrVar *decl, unsigned int offset, unsigned int width);
+    VISA_BUILDER_API int CreateVISAAddressSrcOperand(VISA_VectorOpnd *&opnd, VISA_AddrVar *decl, unsigned int offset, unsigned int width);
 
-    CM_BUILDER_API int CreateVISAAddressDstOperand(VISA_VectorOpnd *&opnd, VISA_AddrVar *decl, unsigned int offset);
+    VISA_BUILDER_API int CreateVISAAddressDstOperand(VISA_VectorOpnd *&opnd, VISA_AddrVar *decl, unsigned int offset);
 
-    CM_BUILDER_API int CreateVISAAddressOfOperand(VISA_VectorOpnd *&cisa_opnd, VISA_GenVar *decl, unsigned int offset);
+    VISA_BUILDER_API int CreateVISAAddressOfOperand(VISA_VectorOpnd *&cisa_opnd, VISA_GenVar *decl, unsigned int offset);
 
-    CM_BUILDER_API int CreateVISAAddressOfOperand(VISA_VectorOpnd *&cisa_opnd, VISA_SurfaceVar *decl, unsigned int offset);
+    VISA_BUILDER_API int CreateVISAAddressOfOperand(VISA_VectorOpnd *&cisa_opnd, VISA_SurfaceVar *decl, unsigned int offset);
 
-    CM_BUILDER_API int CreateVISAIndirectSrcOperand(VISA_VectorOpnd *& opnd, VISA_AddrVar *cisa_decl, VISA_Modifier mod, unsigned int addrOffset, short immediateOffset,
+    VISA_BUILDER_API int CreateVISAIndirectSrcOperand(VISA_VectorOpnd *& opnd, VISA_AddrVar *cisa_decl, VISA_Modifier mod, unsigned int addrOffset, short immediateOffset,
         unsigned short verticalStride, unsigned short width, unsigned short horizontalStride, VISA_Type type);
 
-    CM_BUILDER_API int CreateVISAIndirectDstOperand(VISA_VectorOpnd *& opnd, VISA_AddrVar *decl, unsigned int addrOffset, short immediateOffset,
+    VISA_BUILDER_API int CreateVISAIndirectDstOperand(VISA_VectorOpnd *& opnd, VISA_AddrVar *decl, unsigned int addrOffset, short immediateOffset,
         unsigned short horizontalStride, VISA_Type type);
 
-    CM_BUILDER_API int CreateVISAIndirectOperandVxH(VISA_VectorOpnd *& cisa_opnd, VISA_AddrVar *decl, unsigned int addrOffset, short immediateOffset, VISA_Type type);
+    VISA_BUILDER_API int CreateVISAIndirectOperandVxH(VISA_VectorOpnd *& cisa_opnd, VISA_AddrVar *decl, unsigned int addrOffset, short immediateOffset, VISA_Type type);
 
-    CM_BUILDER_API int CreateVISAPredicateOperand(VISA_PredOpnd *& opnd, VISA_PredVar *decl, VISA_PREDICATE_STATE state, VISA_PREDICATE_CONTROL cntrl);
+    VISA_BUILDER_API int CreateVISAPredicateOperand(VISA_PredOpnd *& opnd, VISA_PredVar *decl, VISA_PREDICATE_STATE state, VISA_PREDICATE_CONTROL cntrl);
 
-    CM_BUILDER_API int CreateVISASrcOperand(VISA_VectorOpnd *& opnd, VISA_GenVar *cisa_decl, VISA_Modifier mod, unsigned short vStride, unsigned short width, unsigned short hStride,
+    VISA_BUILDER_API int CreateVISASrcOperand(VISA_VectorOpnd *& opnd, VISA_GenVar *cisa_decl, VISA_Modifier mod, unsigned short vStride, unsigned short width, unsigned short hStride,
         unsigned char rowOffset, unsigned char colOffset);
 
-    CM_BUILDER_API int CreateVISADstOperand(VISA_VectorOpnd *&opnd, VISA_GenVar *decl, unsigned short hStride, unsigned char rowOffset, unsigned char colOffset);
+    VISA_BUILDER_API int CreateVISADstOperand(VISA_VectorOpnd *&opnd, VISA_GenVar *decl, unsigned short hStride, unsigned char rowOffset, unsigned char colOffset);
 
-    CM_BUILDER_API int CreateVISAImmediate(VISA_VectorOpnd *&opnd, const void *val, VISA_Type type);
+    VISA_BUILDER_API int CreateVISAImmediate(VISA_VectorOpnd *&opnd, const void *val, VISA_Type type);
 
-    CM_BUILDER_API int CreateVISAStateOperand(VISA_VectorOpnd *&opnd, VISA_SurfaceVar *decl, unsigned char offset, bool useAsDst);
+    VISA_BUILDER_API int CreateVISAStateOperand(VISA_VectorOpnd *&opnd, VISA_SurfaceVar *decl, unsigned char offset, bool useAsDst);
 
-    CM_BUILDER_API int CreateVISAStateOperand(VISA_VectorOpnd *&opnd, VISA_SurfaceVar *decl, uint8_t size, unsigned char offset, bool useAsDst);
+    VISA_BUILDER_API int CreateVISAStateOperand(VISA_VectorOpnd *&opnd, VISA_SurfaceVar *decl, uint8_t size, unsigned char offset, bool useAsDst);
 
-    CM_BUILDER_API int CreateVISAStateOperand(VISA_VectorOpnd *&opnd, VISA_SamplerVar *decl, unsigned char offset, bool useAsDst);
+    VISA_BUILDER_API int CreateVISAStateOperand(VISA_VectorOpnd *&opnd, VISA_SamplerVar *decl, unsigned char offset, bool useAsDst);
 
-    CM_BUILDER_API int CreateVISAStateOperand(VISA_VectorOpnd *&opnd, VISA_SamplerVar *decl, uint8_t size, unsigned char offset, bool useAsDst);
+    VISA_BUILDER_API int CreateVISAStateOperand(VISA_VectorOpnd *&opnd, VISA_SamplerVar *decl, uint8_t size, unsigned char offset, bool useAsDst);
 
-    CM_BUILDER_API int CreateVISAStateOperandHandle(VISA_StateOpndHandle *&opnd, VISA_SurfaceVar *decl);
+    VISA_BUILDER_API int CreateVISAStateOperandHandle(VISA_StateOpndHandle *&opnd, VISA_SurfaceVar *decl);
 
-    CM_BUILDER_API int CreateVISAStateOperandHandle(VISA_StateOpndHandle *&opnd, VISA_SamplerVar *decl);
+    VISA_BUILDER_API int CreateVISAStateOperandHandle(VISA_StateOpndHandle *&opnd, VISA_SamplerVar *decl);
 
-    CM_BUILDER_API int CreateVISARawOperand(VISA_RawOpnd *& opnd, VISA_GenVar *decl, unsigned short offset);
+    VISA_BUILDER_API int CreateVISARawOperand(VISA_RawOpnd *& opnd, VISA_GenVar *decl, unsigned short offset);
 
-    CM_BUILDER_API int CreateVISANullRawOperand(VISA_RawOpnd *& opnd, bool isDst);
+    VISA_BUILDER_API int CreateVISANullRawOperand(VISA_RawOpnd *& opnd, bool isDst);
 
-    CM_BUILDER_API int GetPredefinedVar(VISA_GenVar *&predDcl, PreDefined_Vars varName);
+    VISA_BUILDER_API int GetPredefinedVar(VISA_GenVar *&predDcl, PreDefined_Vars varName);
 
-    CM_BUILDER_API int GetPredefinedSurface(VISA_SurfaceVar *&surfDcl, PreDefined_Surface surfaceName);
+    VISA_BUILDER_API int GetPredefinedSurface(VISA_SurfaceVar *&surfDcl, PreDefined_Surface surfaceName);
 
-    CM_BUILDER_API int GetBindlessSampler(VISA_SamplerVar *&samplerDcl);
+    VISA_BUILDER_API int GetBindlessSampler(VISA_SamplerVar *&samplerDcl);
 
-    CM_BUILDER_API int SetFunctionInputSize(unsigned int size);
+    VISA_BUILDER_API int SetFunctionInputSize(unsigned int size);
 
-    CM_BUILDER_API int SetFunctionReturnSize(unsigned int size);
+    VISA_BUILDER_API int SetFunctionReturnSize(unsigned int size);
 
     /********** APPEND INSTRUCTION APIS START ******************/
-    CM_BUILDER_API int AppendVISAArithmeticInst(ISA_Opcode opcode, VISA_PredOpnd *pred, bool satMode, Common_VISA_EMask_Ctrl emask,
+    VISA_BUILDER_API int AppendVISAArithmeticInst(ISA_Opcode opcode, VISA_PredOpnd *pred, bool satMode, Common_VISA_EMask_Ctrl emask,
         Common_ISA_Exec_Size executionSize, VISA_VectorOpnd *tmpDst, VISA_VectorOpnd *src0);
 
-    CM_BUILDER_API int AppendVISAArithmeticInst(ISA_Opcode opcode, VISA_PredOpnd *pred, bool satMode, Common_VISA_EMask_Ctrl emask,
+    VISA_BUILDER_API int AppendVISAArithmeticInst(ISA_Opcode opcode, VISA_PredOpnd *pred, bool satMode, Common_VISA_EMask_Ctrl emask,
         Common_ISA_Exec_Size executionSize, VISA_VectorOpnd *tmpDst, VISA_VectorOpnd *src0, VISA_VectorOpnd *src1);
 
-    CM_BUILDER_API int AppendVISAArithmeticInst(ISA_Opcode opcode, VISA_PredOpnd *pred, bool satMode, Common_VISA_EMask_Ctrl emask,
+    VISA_BUILDER_API int AppendVISAArithmeticInst(ISA_Opcode opcode, VISA_PredOpnd *pred, bool satMode, Common_VISA_EMask_Ctrl emask,
         Common_ISA_Exec_Size executionSize, VISA_VectorOpnd *tmpDst, VISA_VectorOpnd *src0, VISA_VectorOpnd *src1, VISA_VectorOpnd *src2);
 
-    CM_BUILDER_API int AppendVISAArithmeticInst(ISA_Opcode opcode, VISA_PredOpnd *pred, Common_VISA_EMask_Ctrl emask,
+    VISA_BUILDER_API int AppendVISAArithmeticInst(ISA_Opcode opcode, VISA_PredOpnd *pred, Common_VISA_EMask_Ctrl emask,
         Common_ISA_Exec_Size executionSize, VISA_VectorOpnd *dst1, VISA_VectorOpnd *carry_borrow, VISA_VectorOpnd *src0, VISA_VectorOpnd *src1);
 
-    CM_BUILDER_API int AppendVISALogicOrShiftInst(ISA_Opcode opcode, VISA_PredOpnd *pred, bool satMode, Common_VISA_EMask_Ctrl emask,
+    VISA_BUILDER_API int AppendVISALogicOrShiftInst(ISA_Opcode opcode, VISA_PredOpnd *pred, bool satMode, Common_VISA_EMask_Ctrl emask,
         Common_ISA_Exec_Size executionSize, VISA_VectorOpnd *dst, VISA_VectorOpnd *src0, VISA_VectorOpnd *src1, VISA_VectorOpnd *src2 = NULL,
         VISA_VectorOpnd *src3 = NULL);
 
-    CM_BUILDER_API int AppendVISALogicOrShiftInst(ISA_Opcode opcode, Common_VISA_EMask_Ctrl emask,
+    VISA_BUILDER_API int AppendVISALogicOrShiftInst(ISA_Opcode opcode, Common_VISA_EMask_Ctrl emask,
         Common_ISA_Exec_Size executionSize, VISA_PredVar *dst, VISA_PredVar *src0, VISA_PredVar *src1);
 
-    CM_BUILDER_API int AppendVISAAddrAddInst(Common_VISA_EMask_Ctrl emask, Common_ISA_Exec_Size executionSize, VISA_VectorOpnd *dst, VISA_VectorOpnd *src0, VISA_VectorOpnd *src1);
+    VISA_BUILDER_API int AppendVISAAddrAddInst(Common_VISA_EMask_Ctrl emask, Common_ISA_Exec_Size executionSize, VISA_VectorOpnd *dst, VISA_VectorOpnd *src0, VISA_VectorOpnd *src1);
 
-    CM_BUILDER_API int AppendVISADataMovementInst(ISA_Opcode opcode, VISA_PredOpnd *pred, bool satMod, Common_VISA_EMask_Ctrl emask,
+    VISA_BUILDER_API int AppendVISADataMovementInst(ISA_Opcode opcode, VISA_PredOpnd *pred, bool satMod, Common_VISA_EMask_Ctrl emask,
         Common_ISA_Exec_Size executionSize, VISA_VectorOpnd *dst, VISA_VectorOpnd *src0);
 
-    CM_BUILDER_API int AppendVISADataMovementInst(ISA_Opcode opcode, VISA_PredOpnd *pred, bool satMod, Common_VISA_EMask_Ctrl emask,
+    VISA_BUILDER_API int AppendVISADataMovementInst(ISA_Opcode opcode, VISA_PredOpnd *pred, bool satMod, Common_VISA_EMask_Ctrl emask,
         Common_ISA_Exec_Size executionSize, VISA_VectorOpnd *dst, VISA_VectorOpnd *src0, VISA_VectorOpnd *src1);
 
-    CM_BUILDER_API int AppendVISAPredicateMove(VISA_VectorOpnd *dst, VISA_PredVar *src0);
+    VISA_BUILDER_API int AppendVISAPredicateMove(VISA_VectorOpnd *dst, VISA_PredVar *src0);
 
-    CM_BUILDER_API int AppendVISASetP(Common_VISA_EMask_Ctrl emask, Common_ISA_Exec_Size executionSize, VISA_PredVar *dst, VISA_VectorOpnd *src0);
+    VISA_BUILDER_API int AppendVISASetP(Common_VISA_EMask_Ctrl emask, Common_ISA_Exec_Size executionSize, VISA_PredVar *dst, VISA_VectorOpnd *src0);
 
-    CM_BUILDER_API int AppendVISAMinMaxInst(CISA_MIN_MAX_SUB_OPCODE subOpcode, bool satMod, Common_VISA_EMask_Ctrl emask,
+    VISA_BUILDER_API int AppendVISAMinMaxInst(CISA_MIN_MAX_SUB_OPCODE subOpcode, bool satMod, Common_VISA_EMask_Ctrl emask,
         Common_ISA_Exec_Size executionSize, VISA_VectorOpnd *dst, VISA_VectorOpnd *src0, VISA_VectorOpnd *src1);
 
-    CM_BUILDER_API int AppendVISAComparisonInst(Common_ISA_Cond_Mod sub_op, Common_VISA_EMask_Ctrl emask, Common_ISA_Exec_Size executionSize, VISA_PredVar *dst, VISA_VectorOpnd *src0, VISA_VectorOpnd *src1);
+    VISA_BUILDER_API int AppendVISAComparisonInst(Common_ISA_Cond_Mod sub_op, Common_VISA_EMask_Ctrl emask, Common_ISA_Exec_Size executionSize, VISA_PredVar *dst, VISA_VectorOpnd *src0, VISA_VectorOpnd *src1);
 
-    CM_BUILDER_API int AppendVISAComparisonInst(Common_ISA_Cond_Mod sub_op, Common_VISA_EMask_Ctrl emask, Common_ISA_Exec_Size executionSize, VISA_VectorOpnd *dst, VISA_VectorOpnd *src0, VISA_VectorOpnd *src1);
+    VISA_BUILDER_API int AppendVISAComparisonInst(Common_ISA_Cond_Mod sub_op, Common_VISA_EMask_Ctrl emask, Common_ISA_Exec_Size executionSize, VISA_VectorOpnd *dst, VISA_VectorOpnd *src0, VISA_VectorOpnd *src1);
 
-    CM_BUILDER_API int AppendVISACFSIMDInst(ISA_Opcode opcode, VISA_PredOpnd *pred, Common_VISA_EMask_Ctrl emask, Common_ISA_Exec_Size executionSize, VISA_LabelOpnd *label = NULL);
+    VISA_BUILDER_API int AppendVISACFSIMDInst(ISA_Opcode opcode, VISA_PredOpnd *pred, Common_VISA_EMask_Ctrl emask, Common_ISA_Exec_Size executionSize, VISA_LabelOpnd *label = NULL);
 
-    CM_BUILDER_API int AppendVISACFLabelInst(VISA_LabelOpnd *label);
+    VISA_BUILDER_API int AppendVISACFLabelInst(VISA_LabelOpnd *label);
 
-    CM_BUILDER_API int AppendVISACFJmpInst(VISA_PredOpnd *pred, VISA_LabelOpnd *label);
+    VISA_BUILDER_API int AppendVISACFJmpInst(VISA_PredOpnd *pred, VISA_LabelOpnd *label);
 
-    CM_BUILDER_API int AppendVISACFCallInst(VISA_PredOpnd *pred, Common_VISA_EMask_Ctrl emask, Common_ISA_Exec_Size executionSize, VISA_LabelOpnd *label);
+    VISA_BUILDER_API int AppendVISACFCallInst(VISA_PredOpnd *pred, Common_VISA_EMask_Ctrl emask, Common_ISA_Exec_Size executionSize, VISA_LabelOpnd *label);
 
-    CM_BUILDER_API int AppendVISACFRetInst(VISA_PredOpnd *pred, Common_VISA_EMask_Ctrl emask, Common_ISA_Exec_Size executionSize);
+    VISA_BUILDER_API int AppendVISACFRetInst(VISA_PredOpnd *pred, Common_VISA_EMask_Ctrl emask, Common_ISA_Exec_Size executionSize);
 
-    CM_BUILDER_API int AppendVISACFFunctionCallInst(VISA_PredOpnd *pred, Common_VISA_EMask_Ctrl emask,
+    VISA_BUILDER_API int AppendVISACFFunctionCallInst(VISA_PredOpnd *pred, Common_VISA_EMask_Ctrl emask,
         Common_ISA_Exec_Size executionSize, std::string funcName, unsigned char argSize, unsigned char returnSize);
 
-    CM_BUILDER_API int AppendVISACFIndirectFuncCallInst(VISA_PredOpnd *pred,
+    VISA_BUILDER_API int AppendVISACFIndirectFuncCallInst(VISA_PredOpnd *pred,
         Common_VISA_EMask_Ctrl emask, Common_ISA_Exec_Size executionSize,
         VISA_VectorOpnd* funcAddr, uint8_t argSize, uint8_t returnSize);
 
-    CM_BUILDER_API int AppendVISACFSymbolInst(std::string symbolName, VISA_VectorOpnd* dst);
+    VISA_BUILDER_API int AppendVISACFSymbolInst(std::string symbolName, VISA_VectorOpnd* dst);
 
-    CM_BUILDER_API int AppendVISACFFunctionRetInst(VISA_PredOpnd *pred, Common_VISA_EMask_Ctrl emask, Common_ISA_Exec_Size executionSize);
+    VISA_BUILDER_API int AppendVISACFFunctionRetInst(VISA_PredOpnd *pred, Common_VISA_EMask_Ctrl emask, Common_ISA_Exec_Size executionSize);
 
-    CM_BUILDER_API int AppendVISACFSwitchJMPInst(VISA_VectorOpnd *index, unsigned char labelCount, VISA_LabelOpnd **labels);
+    VISA_BUILDER_API int AppendVISACFSwitchJMPInst(VISA_VectorOpnd *index, unsigned char labelCount, VISA_LabelOpnd **labels);
 
-    CM_BUILDER_API int AppendVISASurfAccessDwordAtomicInst(
+    VISA_BUILDER_API int AppendVISASurfAccessDwordAtomicInst(
         VISA_PredOpnd *pred, VISAAtomicOps subOpc, bool is16Bit,
         Common_VISA_EMask_Ctrl eMask, Common_ISA_Exec_Size execSize,
         VISA_StateOpndHandle *surface, VISA_RawOpnd *offsets,
         VISA_RawOpnd *src0, VISA_RawOpnd *src1, VISA_RawOpnd *dst);
 
-    CM_BUILDER_API int AppendVISASurfAccessGatherScatterInst(ISA_Opcode opcode, Common_VISA_EMask_Ctrl emask, GATHER_SCATTER_ELEMENT_SIZE elementSize,
+    VISA_BUILDER_API int AppendVISASurfAccessGatherScatterInst(ISA_Opcode opcode, Common_VISA_EMask_Ctrl emask, GATHER_SCATTER_ELEMENT_SIZE elementSize,
         Common_ISA_Exec_Size executionSize, VISA_StateOpndHandle *surface, VISA_VectorOpnd *globalOffset, VISA_RawOpnd *elementOffset, VISA_RawOpnd *srcDst);
 
-    CM_BUILDER_API int AppendVISASurfAccessGather4Scatter4TypedInst(ISA_Opcode opcode,
+    VISA_BUILDER_API int AppendVISASurfAccessGather4Scatter4TypedInst(ISA_Opcode opcode,
         VISA_PredOpnd *pred,
         VISAChannelMask chMask,
         Common_VISA_EMask_Ctrl emask,
@@ -396,7 +396,7 @@ public:
         VISA_RawOpnd *lod,
         VISA_RawOpnd *dst);
 
-    CM_BUILDER_API int AppendVISASurfAccessGather4Scatter4ScaledInst(ISA_Opcode             opcode,
+    VISA_BUILDER_API int AppendVISASurfAccessGather4Scatter4ScaledInst(ISA_Opcode             opcode,
         VISA_PredOpnd          *pred,
         Common_VISA_EMask_Ctrl eMask,
         Common_ISA_Exec_Size   execSize,
@@ -406,7 +406,7 @@ public:
         VISA_RawOpnd           *offsets,
         VISA_RawOpnd           *dstSrc);
 
-    CM_BUILDER_API int AppendVISASurfAccessScatterScaledInst(ISA_Opcode                opcode,
+    VISA_BUILDER_API int AppendVISASurfAccessScatterScaledInst(ISA_Opcode                opcode,
         VISA_PredOpnd             *pred,
         Common_VISA_EMask_Ctrl    eMask,
         Common_ISA_Exec_Size      execSize,
@@ -416,34 +416,34 @@ public:
         VISA_RawOpnd              *offsets,
         VISA_RawOpnd              *dstSrc);
 
-    CM_BUILDER_API int AppendVISASurfAccessMediaLoadStoreInst(ISA_Opcode opcode, MEDIA_LD_mod modifier, VISA_StateOpndHandle *surface, unsigned char blockWidth,
+    VISA_BUILDER_API int AppendVISASurfAccessMediaLoadStoreInst(ISA_Opcode opcode, MEDIA_LD_mod modifier, VISA_StateOpndHandle *surface, unsigned char blockWidth,
         unsigned char blockHeight, VISA_VectorOpnd *xOffset, VISA_VectorOpnd *yOffset, VISA_RawOpnd *srcDst,
         CISA_PLANE_ID plane = CISA_PLANE_Y);
 
-    CM_BUILDER_API int AppendVISASurfAccessOwordLoadStoreInst(ISA_Opcode opcode, Common_VISA_EMask_Ctrl emask, VISA_StateOpndHandle *surface, Common_ISA_Oword_Num size, VISA_VectorOpnd *offset, VISA_RawOpnd *srcDst);
+    VISA_BUILDER_API int AppendVISASurfAccessOwordLoadStoreInst(ISA_Opcode opcode, Common_VISA_EMask_Ctrl emask, VISA_StateOpndHandle *surface, Common_ISA_Oword_Num size, VISA_VectorOpnd *offset, VISA_RawOpnd *srcDst);
 
-    CM_BUILDER_API int AppendVISASvmBlockStoreInst(Common_ISA_Oword_Num size, bool unaligned, VISA_VectorOpnd* address, VISA_RawOpnd *srcDst);
+    VISA_BUILDER_API int AppendVISASvmBlockStoreInst(Common_ISA_Oword_Num size, bool unaligned, VISA_VectorOpnd* address, VISA_RawOpnd *srcDst);
 
-    CM_BUILDER_API int AppendVISASvmBlockLoadInst(Common_ISA_Oword_Num size, bool unaligned, VISA_VectorOpnd* address, VISA_RawOpnd *srcDst);
+    VISA_BUILDER_API int AppendVISASvmBlockLoadInst(Common_ISA_Oword_Num size, bool unaligned, VISA_VectorOpnd* address, VISA_RawOpnd *srcDst);
 
-    CM_BUILDER_API int AppendVISASvmScatterInst(VISA_PredOpnd *pred,
+    VISA_BUILDER_API int AppendVISASvmScatterInst(VISA_PredOpnd *pred,
         Common_VISA_EMask_Ctrl emask, Common_ISA_Exec_Size executionSize,
         Common_ISA_SVM_Block_Type blockType, Common_ISA_SVM_Block_Num numBlocks,
         VISA_RawOpnd* address, VISA_RawOpnd *srcDst);
 
-    CM_BUILDER_API int AppendVISASvmGatherInst(VISA_PredOpnd *pred,
+    VISA_BUILDER_API int AppendVISASvmGatherInst(VISA_PredOpnd *pred,
         Common_VISA_EMask_Ctrl emask, Common_ISA_Exec_Size executionSize,
         Common_ISA_SVM_Block_Type blockType, Common_ISA_SVM_Block_Num numBlocks,
         VISA_RawOpnd* address, VISA_RawOpnd *srcDst);
 
-    CM_BUILDER_API int
+    VISA_BUILDER_API int
     AppendVISASvmAtomicInst(VISA_PredOpnd *pred, Common_VISA_EMask_Ctrl emask,
                             Common_ISA_Exec_Size executionSize,
                             VISAAtomicOps op, unsigned short bitwidth,
                             VISA_RawOpnd *addresses, VISA_RawOpnd *src0,
                             VISA_RawOpnd *src1, VISA_RawOpnd *dst);
 
-    CM_BUILDER_API int AppendVISASvmGather4ScaledInst(VISA_PredOpnd             *pred,
+    VISA_BUILDER_API int AppendVISASvmGather4ScaledInst(VISA_PredOpnd             *pred,
         Common_VISA_EMask_Ctrl    eMask,
         Common_ISA_Exec_Size      execSize,
         VISAChannelMask           channelMask,
@@ -451,7 +451,7 @@ public:
         VISA_RawOpnd              *offsets,
         VISA_RawOpnd              *dst);
 
-    CM_BUILDER_API int AppendVISASvmScatter4ScaledInst(VISA_PredOpnd            *pred,
+    VISA_BUILDER_API int AppendVISASvmScatter4ScaledInst(VISA_PredOpnd            *pred,
         Common_VISA_EMask_Ctrl   eMask,
         Common_ISA_Exec_Size     execSize,
         VISAChannelMask          channelMask,
@@ -459,125 +459,125 @@ public:
         VISA_RawOpnd             *offsets,
         VISA_RawOpnd             *src);
 
-    CM_BUILDER_API int AppendVISASILoad(VISA_StateOpndHandle *surface, VISAChannelMask channel, bool isSIMD16,
+    VISA_BUILDER_API int AppendVISASILoad(VISA_StateOpndHandle *surface, VISAChannelMask channel, bool isSIMD16,
         VISA_RawOpnd *uOffset, VISA_RawOpnd *vOffset, VISA_RawOpnd *rOffset, VISA_RawOpnd *dst);
 
-    CM_BUILDER_API int AppendVISASISample(Common_VISA_EMask_Ctrl emask, VISA_StateOpndHandle *surface, VISA_StateOpndHandle *sampler, VISAChannelMask channel, bool isSIMD16,
+    VISA_BUILDER_API int AppendVISASISample(Common_VISA_EMask_Ctrl emask, VISA_StateOpndHandle *surface, VISA_StateOpndHandle *sampler, VISAChannelMask channel, bool isSIMD16,
         VISA_RawOpnd *uOffset, VISA_RawOpnd *vOffset, VISA_RawOpnd *rOffset, VISA_RawOpnd *dst);
 
-    CM_BUILDER_API int AppendVISASISampleUnorm(VISA_StateOpndHandle *surface, VISA_StateOpndHandle *sampler, VISAChannelMask channel,
+    VISA_BUILDER_API int AppendVISASISampleUnorm(VISA_StateOpndHandle *surface, VISA_StateOpndHandle *sampler, VISAChannelMask channel,
         VISA_VectorOpnd *uOffset, VISA_VectorOpnd *vOffset, VISA_VectorOpnd *deltaU, VISA_VectorOpnd *deltaV, VISA_RawOpnd *dst, CHANNEL_OUTPUT_FORMAT out);
 
-    CM_BUILDER_API int AppendVISASyncInst(ISA_Opcode opcode, unsigned char mask = 0);
-    CM_BUILDER_API int AppendVISAWaitInst(VISA_VectorOpnd* mask);
+    VISA_BUILDER_API int AppendVISASyncInst(ISA_Opcode opcode, unsigned char mask = 0);
+    VISA_BUILDER_API int AppendVISAWaitInst(VISA_VectorOpnd* mask);
 
-    CM_BUILDER_API int AppendVISASplitBarrierInst(bool isSignal);
+    VISA_BUILDER_API int AppendVISASplitBarrierInst(bool isSignal);
 
-    CM_BUILDER_API int AppendVISAMiscFileInst(const char *fileName);
+    VISA_BUILDER_API int AppendVISAMiscFileInst(const char *fileName);
 
-    CM_BUILDER_API int AppendVISAMiscLOC(unsigned int lineNumber);
+    VISA_BUILDER_API int AppendVISAMiscLOC(unsigned int lineNumber);
 
-    CM_BUILDER_API int AppendVISADebugLinePlaceholder();
+    VISA_BUILDER_API int AppendVISADebugLinePlaceholder();
 
-    CM_BUILDER_API int AppendVISAMiscRawSend(VISA_PredOpnd *pred, Common_VISA_EMask_Ctrl emask, Common_ISA_Exec_Size executionSize, unsigned char modifiers,
+    VISA_BUILDER_API int AppendVISAMiscRawSend(VISA_PredOpnd *pred, Common_VISA_EMask_Ctrl emask, Common_ISA_Exec_Size executionSize, unsigned char modifiers,
         unsigned int exMsgDesc, unsigned char srcSize, unsigned char dstSize, VISA_VectorOpnd *desc,
         VISA_RawOpnd *src, VISA_RawOpnd *dst);
-    CM_BUILDER_API int AppendVISAMiscRawSends(VISA_PredOpnd *pred, Common_VISA_EMask_Ctrl emask, Common_ISA_Exec_Size executionSize, unsigned char modifiers,
+    VISA_BUILDER_API int AppendVISAMiscRawSends(VISA_PredOpnd *pred, Common_VISA_EMask_Ctrl emask, Common_ISA_Exec_Size executionSize, unsigned char modifiers,
         unsigned ffid, VISA_VectorOpnd *exMsgDesc, unsigned char src0Size, unsigned char src1Size, unsigned char dstSize, VISA_VectorOpnd *desc,
         VISA_RawOpnd *src0, VISA_RawOpnd *src1, VISA_RawOpnd *dst, bool hasEOT);
 
-    CM_BUILDER_API int AppendVISAMiscVME_FBR(VISA_StateOpndHandle *surface, VISA_RawOpnd *UNIInput, VISA_RawOpnd *FBRInput, VISA_VectorOpnd* FBRMbMode, VISA_VectorOpnd *FBRSubMbShape,
+    VISA_BUILDER_API int AppendVISAMiscVME_FBR(VISA_StateOpndHandle *surface, VISA_RawOpnd *UNIInput, VISA_RawOpnd *FBRInput, VISA_VectorOpnd* FBRMbMode, VISA_VectorOpnd *FBRSubMbShape,
         VISA_VectorOpnd *FBRSubPredMode, VISA_RawOpnd *output);
 
-    CM_BUILDER_API int AppendVISAMiscVME_IME(VISA_StateOpndHandle *surface, unsigned char streamMode, unsigned char searchControlMode, VISA_RawOpnd *UNIInput,
+    VISA_BUILDER_API int AppendVISAMiscVME_IME(VISA_StateOpndHandle *surface, unsigned char streamMode, unsigned char searchControlMode, VISA_RawOpnd *UNIInput,
         VISA_RawOpnd *IMEInput, VISA_RawOpnd *ref0, VISA_RawOpnd *ref1, VISA_RawOpnd *costCenter, VISA_RawOpnd *output);
 
-    CM_BUILDER_API int AppendVISAMiscVME_SIC(VISA_StateOpndHandle *surface, VISA_RawOpnd *UNIInput, VISA_RawOpnd *SICInput, VISA_RawOpnd *output);
+    VISA_BUILDER_API int AppendVISAMiscVME_SIC(VISA_StateOpndHandle *surface, VISA_RawOpnd *UNIInput, VISA_RawOpnd *SICInput, VISA_RawOpnd *output);
 
-    CM_BUILDER_API int AppendVISAMiscVME_IDM(VISA_StateOpndHandle *surface, VISA_RawOpnd *UNIInput, VISA_RawOpnd *IDMInput, VISA_RawOpnd *output);
+    VISA_BUILDER_API int AppendVISAMiscVME_IDM(VISA_StateOpndHandle *surface, VISA_RawOpnd *UNIInput, VISA_RawOpnd *IDMInput, VISA_RawOpnd *output);
 
-    CM_BUILDER_API int AppendVISAMEAVS(VISA_StateOpndHandle *surface, VISA_StateOpndHandle *sampler, VISAChannelMask channel, VISA_VectorOpnd *uOffset,
+    VISA_BUILDER_API int AppendVISAMEAVS(VISA_StateOpndHandle *surface, VISA_StateOpndHandle *sampler, VISAChannelMask channel, VISA_VectorOpnd *uOffset,
         VISA_VectorOpnd *vOffset, VISA_VectorOpnd *deltaU, VISA_VectorOpnd *deltaV, VISA_VectorOpnd *u2d,
         VISA_VectorOpnd *v2d, VISA_VectorOpnd *groupID, VISA_VectorOpnd *verticalBlockNumber, OutputFormatControl cntrl,
         AVSExecMode execMode, VISA_VectorOpnd *iefBypass, VISA_RawOpnd *dst);
 
-    CM_BUILDER_API int AppendVISAVABooleanCentroid(VISA_StateOpndHandle *surface, VISA_VectorOpnd * uOffset,
+    VISA_BUILDER_API int AppendVISAVABooleanCentroid(VISA_StateOpndHandle *surface, VISA_VectorOpnd * uOffset,
         VISA_VectorOpnd *vOffset, VISA_VectorOpnd *vSize, VISA_VectorOpnd *hSize, VISA_RawOpnd *dst);
-    CM_BUILDER_API int AppendVISAVACentroid(VISA_StateOpndHandle *surface, VISA_VectorOpnd * uOffset,
+    VISA_BUILDER_API int AppendVISAVACentroid(VISA_StateOpndHandle *surface, VISA_VectorOpnd * uOffset,
         VISA_VectorOpnd *vOffset, VISA_VectorOpnd *vSize, VISA_RawOpnd *dst);
 
-    CM_BUILDER_API int AppendVISAVAConvolve(VISA_StateOpndHandle *sampler, VISA_StateOpndHandle *surface, VISA_VectorOpnd * uOffset,
+    VISA_BUILDER_API int AppendVISAVAConvolve(VISA_StateOpndHandle *sampler, VISA_StateOpndHandle *surface, VISA_VectorOpnd * uOffset,
         VISA_VectorOpnd *vOffset, CONVExecMode execMode, bool isBigKernel, VISA_RawOpnd *dst);
 
-    CM_BUILDER_API int AppendVISAVAErodeDilate(EDMode subOp, VISA_StateOpndHandle *sampler, VISA_StateOpndHandle *surface, VISA_VectorOpnd * uOffset,
+    VISA_BUILDER_API int AppendVISAVAErodeDilate(EDMode subOp, VISA_StateOpndHandle *sampler, VISA_StateOpndHandle *surface, VISA_VectorOpnd * uOffset,
         VISA_VectorOpnd *vOffset, EDExecMode execMode, VISA_RawOpnd *dst);
 
-    CM_BUILDER_API int AppendVISAVAMinMax(VISA_StateOpndHandle *surface, VISA_VectorOpnd * uOffset,
+    VISA_BUILDER_API int AppendVISAVAMinMax(VISA_StateOpndHandle *surface, VISA_VectorOpnd * uOffset,
         VISA_VectorOpnd *vOffset, VISA_VectorOpnd *mmMode, VISA_RawOpnd *dst);
 
-    CM_BUILDER_API int AppendVISAVAMinMaxFilter(VISA_StateOpndHandle *sampler, VISA_StateOpndHandle *surface, VISA_VectorOpnd * uOffset,
+    VISA_BUILDER_API int AppendVISAVAMinMaxFilter(VISA_StateOpndHandle *sampler, VISA_StateOpndHandle *surface, VISA_VectorOpnd * uOffset,
         VISA_VectorOpnd *vOffset, OutputFormatControl cntrl, MMFExecMode execMode, VISA_VectorOpnd *mmfMode, VISA_RawOpnd *dst);
 
-    CM_BUILDER_API int AppendVISAVACorrelationSearch(VISA_StateOpndHandle *surface, VISA_VectorOpnd * uOffset,
+    VISA_BUILDER_API int AppendVISAVACorrelationSearch(VISA_StateOpndHandle *surface, VISA_VectorOpnd * uOffset,
         VISA_VectorOpnd *vOffset, VISA_VectorOpnd *vOrigin, VISA_VectorOpnd *hOrigin,
         VISA_VectorOpnd *xDirectionSize, VISA_VectorOpnd *yDirectionSize,
         VISA_VectorOpnd *xDirectionSearchSize, VISA_VectorOpnd *yDirectionSearchSize,
         VISA_RawOpnd *dst);
 
-    CM_BUILDER_API int AppendVISAVAFloodFill(bool is8Connect, VISA_RawOpnd *pixelMaskHDirection,
+    VISA_BUILDER_API int AppendVISAVAFloodFill(bool is8Connect, VISA_RawOpnd *pixelMaskHDirection,
         VISA_VectorOpnd *pixelMaskVDirectionLeft, VISA_VectorOpnd *pixelMaskVDirectionRight,
         VISA_VectorOpnd *loopCount, VISA_RawOpnd *dst);
 
-    CM_BUILDER_API int AppendVISAVALBPCorrelation(VISA_StateOpndHandle *surface, VISA_VectorOpnd * uOffset,
+    VISA_BUILDER_API int AppendVISAVALBPCorrelation(VISA_StateOpndHandle *surface, VISA_VectorOpnd * uOffset,
         VISA_VectorOpnd *vOffset, VISA_VectorOpnd *disparity,
         VISA_RawOpnd *dst);
 
-    CM_BUILDER_API int AppendVISAVALBPCreation(VISA_StateOpndHandle *surface, VISA_VectorOpnd * uOffset,
+    VISA_BUILDER_API int AppendVISAVALBPCreation(VISA_StateOpndHandle *surface, VISA_VectorOpnd * uOffset,
         VISA_VectorOpnd *vOffset, LBPCreationMode mode,
         VISA_RawOpnd *dst);
 
-    CM_BUILDER_API int AppendVISAVAConvolve1D(VISA_StateOpndHandle *sampler, VISA_StateOpndHandle *surface, VISA_VectorOpnd * uOffset,
-        VISA_VectorOpnd *vOffset, CONVExecMode mode, Convovle1DDirection direction, VISA_RawOpnd *dst);
+    VISA_BUILDER_API int AppendVISAVAConvolve1D(VISA_StateOpndHandle *sampler, VISA_StateOpndHandle *surface, VISA_VectorOpnd * uOffset,
+        VISA_VectorOpnd *vOffset, CONVExecMode mode, Convolve1DDirection direction, VISA_RawOpnd *dst);
 
-    CM_BUILDER_API int AppendVISAVAConvolve1Pixel(VISA_StateOpndHandle *sampler, VISA_StateOpndHandle *surface, VISA_VectorOpnd * uOffset,
+    VISA_BUILDER_API int AppendVISAVAConvolve1Pixel(VISA_StateOpndHandle *sampler, VISA_StateOpndHandle *surface, VISA_VectorOpnd * uOffset,
         VISA_VectorOpnd *vOffset, CONV1PixelExecMode mode, VISA_RawOpnd *offsets, VISA_RawOpnd *dst);
 
-    CM_BUILDER_API int AppendVISAVAHDCConvolve(VISA_StateOpndHandle *sampler, VISA_StateOpndHandle *surface, VISA_VectorOpnd * uOffset,
+    VISA_BUILDER_API int AppendVISAVAHDCConvolve(VISA_StateOpndHandle *sampler, VISA_StateOpndHandle *surface, VISA_VectorOpnd * uOffset,
         VISA_VectorOpnd *vOffset, HDCReturnFormat returnFormat, CONVHDCRegionSize regionSize,
         VISA_StateOpndHandle *dstSurface, VISA_VectorOpnd *xOffset, VISA_VectorOpnd *yOffset);
 
-    CM_BUILDER_API int AppendVISAVAHDCErodeDilate(EDMode subOp, VISA_StateOpndHandle *sampler, VISA_StateOpndHandle *surface, VISA_VectorOpnd * uOffset,
+    VISA_BUILDER_API int AppendVISAVAHDCErodeDilate(EDMode subOp, VISA_StateOpndHandle *sampler, VISA_StateOpndHandle *surface, VISA_VectorOpnd * uOffset,
         VISA_VectorOpnd *vOffset, VISA_StateOpndHandle *dstSurface, VISA_VectorOpnd *xOffset,
         VISA_VectorOpnd *yOffset);
 
-    CM_BUILDER_API int AppendVISAVAHDCMinMaxFilter(VISA_StateOpndHandle *sampler, VISA_StateOpndHandle *surface, VISA_VectorOpnd * uOffset,
+    VISA_BUILDER_API int AppendVISAVAHDCMinMaxFilter(VISA_StateOpndHandle *sampler, VISA_StateOpndHandle *surface, VISA_VectorOpnd * uOffset,
         VISA_VectorOpnd *vOffset, HDCReturnFormat returnFormat, MMFEnableMode mmfMode,
         VISA_StateOpndHandle *dstSurface, VISA_VectorOpnd *xOffset, VISA_VectorOpnd *yOffset);
 
-    CM_BUILDER_API int AppendVISAVAHDCLBPCorrelation(VISA_StateOpndHandle *surface, VISA_VectorOpnd * uOffset,
+    VISA_BUILDER_API int AppendVISAVAHDCLBPCorrelation(VISA_StateOpndHandle *surface, VISA_VectorOpnd * uOffset,
         VISA_VectorOpnd *vOffset, VISA_VectorOpnd *disparity,
         VISA_StateOpndHandle *dstSurface, VISA_VectorOpnd *xOffset, VISA_VectorOpnd *yOffset);
 
-    CM_BUILDER_API int AppendVISAVAHDCLBPCreation(VISA_StateOpndHandle *surface, VISA_VectorOpnd * uOffset,
+    VISA_BUILDER_API int AppendVISAVAHDCLBPCreation(VISA_StateOpndHandle *surface, VISA_VectorOpnd * uOffset,
         VISA_VectorOpnd *vOffset, LBPCreationMode mode,
         VISA_StateOpndHandle *dstSurface, VISA_VectorOpnd *xOffset, VISA_VectorOpnd *yOffset);
 
-    CM_BUILDER_API int AppendVISAVAHDCConvolve1D(VISA_StateOpndHandle *sampler, VISA_StateOpndHandle *surface, VISA_VectorOpnd * uOffset,
-        VISA_VectorOpnd *vOffset, HDCReturnFormat returnFormat, Convovle1DDirection direction,
+    VISA_BUILDER_API int AppendVISAVAHDCConvolve1D(VISA_StateOpndHandle *sampler, VISA_StateOpndHandle *surface, VISA_VectorOpnd * uOffset,
+        VISA_VectorOpnd *vOffset, HDCReturnFormat returnFormat, Convolve1DDirection direction,
         VISA_StateOpndHandle *dstSurface, VISA_VectorOpnd *xOffset, VISA_VectorOpnd *yOffset);
 
-    CM_BUILDER_API int AppendVISAVAHDCConvolve1Pixel(VISA_StateOpndHandle *sampler, VISA_StateOpndHandle *surface, VISA_VectorOpnd * uOffset,
+    VISA_BUILDER_API int AppendVISAVAHDCConvolve1Pixel(VISA_StateOpndHandle *sampler, VISA_StateOpndHandle *surface, VISA_VectorOpnd * uOffset,
         VISA_VectorOpnd *vOffset, HDCReturnFormat returnFormat, VISA_RawOpnd *offsets,
         VISA_StateOpndHandle *dstSurface, VISA_VectorOpnd *xOffset, VISA_VectorOpnd *yOffset);
 
-    CM_BUILDER_API int AppendVISALifetime(VISAVarLifetime startOrEnd, VISA_VectorOpnd *varId);
+    VISA_BUILDER_API int AppendVISALifetime(VISAVarLifetime startOrEnd, VISA_VectorOpnd *varId);
 
 
     /********** APPEND INSTRUCTION APIS END   ******************/
 
     /********** APPEND 3D Instructions START ******************/
 
-    CM_BUILDER_API int AppendVISA3dSampler(VISASampler3DSubOpCode subOpcode,
+    VISA_BUILDER_API int AppendVISA3dSampler(VISASampler3DSubOpCode subOpcode,
         bool pixelNullMask,
         bool cpsEnable,
         bool uniformSampler,
@@ -592,7 +592,7 @@ public:
         int numMsgSpecificOpnds,
         VISA_RawOpnd **opndArray);
 
-    CM_BUILDER_API int AppendVISA3dLoad(VISASampler3DSubOpCode subOpcode,
+    VISA_BUILDER_API int AppendVISA3dLoad(VISASampler3DSubOpCode subOpcode,
         bool pixelNullMask,
         VISA_PredOpnd *pred,
         Common_VISA_EMask_Ctrl emask,
@@ -604,7 +604,7 @@ public:
         int numMsgSpecificOpnds,
         VISA_RawOpnd ** opndArray);
 
-    CM_BUILDER_API int AppendVISA3dGather4(VISASampler3DSubOpCode subOpcode,
+    VISA_BUILDER_API int AppendVISA3dGather4(VISASampler3DSubOpCode subOpcode,
         bool pixelNullMask,
         VISA_PredOpnd *pred,
         Common_VISA_EMask_Ctrl emask,
@@ -617,22 +617,22 @@ public:
         int numMsgSpecificOpnds,
         VISA_RawOpnd ** opndArray);
 
-    CM_BUILDER_API int AppendVISA3dInfo(VISASampler3DSubOpCode subOpcode, Common_VISA_EMask_Ctrl emask, Common_ISA_Exec_Size executionSize, VISAChannelMask srcChannel, VISA_StateOpndHandle *surface, VISA_RawOpnd *lod, VISA_RawOpnd *dst);
+    VISA_BUILDER_API int AppendVISA3dInfo(VISASampler3DSubOpCode subOpcode, Common_VISA_EMask_Ctrl emask, Common_ISA_Exec_Size executionSize, VISAChannelMask srcChannel, VISA_StateOpndHandle *surface, VISA_RawOpnd *lod, VISA_RawOpnd *dst);
 
-    CM_BUILDER_API int AppendVISA3dRTWrite(VISA_PredOpnd *pred, Common_VISA_EMask_Ctrl emask, Common_ISA_Exec_Size executionSize, VISA_VectorOpnd* renderTargetIndex, vISA_RT_CONTROLS cntrls,
+    VISA_BUILDER_API int AppendVISA3dRTWrite(VISA_PredOpnd *pred, Common_VISA_EMask_Ctrl emask, Common_ISA_Exec_Size executionSize, VISA_VectorOpnd* renderTargetIndex, vISA_RT_CONTROLS cntrls,
         VISA_StateOpndHandle *surface, VISA_RawOpnd *r1HeaderOpnd, VISA_VectorOpnd *sampleIndex,
         uint8_t numMsgSpecificOpnds, VISA_RawOpnd **opndArray);
 
-    CM_BUILDER_API int AppendVISA3dRTWriteCPS(VISA_PredOpnd *pred, Common_VISA_EMask_Ctrl emask, Common_ISA_Exec_Size executionSize, VISA_VectorOpnd* renderTargetIndex, vISA_RT_CONTROLS cntrls,
+    VISA_BUILDER_API int AppendVISA3dRTWriteCPS(VISA_PredOpnd *pred, Common_VISA_EMask_Ctrl emask, Common_ISA_Exec_Size executionSize, VISA_VectorOpnd* renderTargetIndex, vISA_RT_CONTROLS cntrls,
         VISA_StateOpndHandle *surface, VISA_RawOpnd *r1HeaderOpnd, VISA_VectorOpnd *sampleIndex,
         VISA_VectorOpnd *cPSCounter, uint8_t numMsgSpecificOpnds, VISA_RawOpnd **opndArray);
 
-    CM_BUILDER_API int AppendVISA3dURBWrite(VISA_PredOpnd *pred, Common_VISA_EMask_Ctrl emask,
+    VISA_BUILDER_API int AppendVISA3dURBWrite(VISA_PredOpnd *pred, Common_VISA_EMask_Ctrl emask,
         Common_ISA_Exec_Size executionSize, unsigned char numberOutputParams,
         VISA_RawOpnd *channelMask, unsigned short globalOffset, VISA_RawOpnd *URBHandle,
         VISA_RawOpnd *perSLotOffset, VISA_RawOpnd *vertexData);
 
-    CM_BUILDER_API int AppendVISA3dTypedAtomic(
+    VISA_BUILDER_API int AppendVISA3dTypedAtomic(
         VISAAtomicOps subOp, bool is16Bit, VISA_PredOpnd *pred,
         Common_VISA_EMask_Ctrl emask, Common_ISA_Exec_Size executionSize,
         VISA_StateOpndHandle *surface, VISA_RawOpnd *u, VISA_RawOpnd *v,
@@ -642,53 +642,53 @@ public:
     /********** APPEND 3D Instructions END ******************/
 
     /********** MISC APIs START *************************/
-    CM_BUILDER_API int GetGenxBinary(void *&buffer, int &size);
-    CM_BUILDER_API int GetJitInfo(FINALIZER_INFO *&jitInfo);
-    CM_BUILDER_API int GetCompilerStats(CompilerStats &compilerStats);
-    CM_BUILDER_API int GetErrorMessage(const char *&errorMsg) const;
-    CM_BUILDER_API virtual int GetGenxDebugInfo(void *&buffer, unsigned int &size, void*&, unsigned int&);
+    VISA_BUILDER_API int GetGenxBinary(void *&buffer, int &size);
+    VISA_BUILDER_API int GetJitInfo(FINALIZER_INFO *&jitInfo);
+    VISA_BUILDER_API int GetCompilerStats(CompilerStats &compilerStats);
+    VISA_BUILDER_API int GetErrorMessage(const char *&errorMsg) const;
+    VISA_BUILDER_API virtual int GetGenxDebugInfo(void *&buffer, unsigned int &size, void*&, unsigned int&);
     /// GetGenRelocEntryBuffer -- allocate and return a buffer of all GenRelocEntry that are created by vISA
-    CM_BUILDER_API int GetGenRelocEntryBuffer(void *&buffer, unsigned int &byteSize, unsigned int &numEntries);
-    CM_BUILDER_API int GetGTPinBuffer(void*& buffer, unsigned int& size);
-    CM_BUILDER_API int SetGTPinInit(void* buffer);
-    CM_BUILDER_API int GetFreeGRFInfo(void*& buffer, unsigned int& size);
+    VISA_BUILDER_API int GetGenRelocEntryBuffer(void *&buffer, unsigned int &byteSize, unsigned int &numEntries);
+    VISA_BUILDER_API int GetGTPinBuffer(void*& buffer, unsigned int& size);
+    VISA_BUILDER_API int SetGTPinInit(void* buffer);
+    VISA_BUILDER_API int GetFreeGRFInfo(void*& buffer, unsigned int& size);
 
-    CM_BUILDER_API int GetFunctionId(unsigned int& id) const;
+    VISA_BUILDER_API int GetFunctionId(unsigned int& id) const;
 
     ///Gets declaration id GenVar
-    CM_BUILDER_API int getDeclarationID(VISA_GenVar *decl) const;
+    VISA_BUILDER_API int getDeclarationID(VISA_GenVar *decl) const;
 
     ///Gets declaration id VISA_AddrVar
-    CM_BUILDER_API int getDeclarationID(VISA_AddrVar *decl) const;
+    VISA_BUILDER_API int getDeclarationID(VISA_AddrVar *decl) const;
 
     ///Gets declaration id VISA_PredVar
-    CM_BUILDER_API int getDeclarationID(VISA_PredVar *decl) const;
+    VISA_BUILDER_API int getDeclarationID(VISA_PredVar *decl) const;
 
     ///Gets declaration id VISA_SamplerVar
-    CM_BUILDER_API int getDeclarationID(VISA_SamplerVar *decl) const;
+    VISA_BUILDER_API int getDeclarationID(VISA_SamplerVar *decl) const;
 
     ///Gets declaration id VISA_SurfaceVar
-    CM_BUILDER_API int getDeclarationID(VISA_SurfaceVar *decl) const;
+    VISA_BUILDER_API int getDeclarationID(VISA_SurfaceVar *decl) const;
 
     ///Gets declaration id VISA_LabelVar
-    CM_BUILDER_API int getDeclarationID(VISA_LabelVar *decl) const;
+    VISA_BUILDER_API int getDeclarationID(VISA_LabelVar *decl) const;
 
     ///Gets gen binary offset
-    CM_BUILDER_API int64_t getGenOffset() const;
+    VISA_BUILDER_API int64_t getGenOffset() const;
 
     ///Gets gen binary size within instruction heap
-    CM_BUILDER_API int64_t getGenSize() const;
+    VISA_BUILDER_API int64_t getGenSize() const;
 
     //Gets the VISA string format for the variable
-    CM_BUILDER_API std::string getVarName(VISA_GenVar* decl) const;
-    CM_BUILDER_API std::string getVarName(VISA_PredVar* decl) const;
-    CM_BUILDER_API std::string getVarName(VISA_AddrVar* decl) const;
-    CM_BUILDER_API std::string getVarName(VISA_SurfaceVar* decl) const;
-    CM_BUILDER_API std::string getVarName(VISA_SamplerVar* decl) const;
+    VISA_BUILDER_API std::string getVarName(VISA_GenVar* decl) const;
+    VISA_BUILDER_API std::string getVarName(VISA_PredVar* decl) const;
+    VISA_BUILDER_API std::string getVarName(VISA_AddrVar* decl) const;
+    VISA_BUILDER_API std::string getVarName(VISA_SurfaceVar* decl) const;
+    VISA_BUILDER_API std::string getVarName(VISA_SamplerVar* decl) const;
 
     //Gets the VISA string format for the operand
-    CM_BUILDER_API std::string getVectorOperandName(VISA_VectorOpnd *opnd, bool showRegion) const;
-    CM_BUILDER_API std::string getPredicateOperandName(VISA_PredOpnd* opnd) const;
+    VISA_BUILDER_API std::string getVectorOperandName(VISA_VectorOpnd *opnd, bool showRegion) const;
+    VISA_BUILDER_API std::string getPredicateOperandName(VISA_PredOpnd* opnd) const;
 
     /********** MISC APIs END *************************/
     int CreateVISAPredicateSrcOperand(VISA_VectorOpnd *& opnd, VISA_PredVar *decl, unsigned int size);
@@ -755,8 +755,8 @@ public:
     void setReturnSize(unsigned int size);
 
    bool getIsGenBothPath() {
-        return (mBuildOption == CM_CISA_BUILDER_GEN ||
-            mBuildOption == CM_CISA_BUILDER_BOTH);
+        return (mBuildOption == VISA_BUILDER_GEN ||
+            mBuildOption == VISA_BUILDER_BOTH);
     }
 
     // This member holds symbolic index of function when invoked via
@@ -978,7 +978,7 @@ private:
 
     char errorMessage[MAX_ERROR_MSG_LEN];
 
-    CM_VISA_BUILDER_OPTION mBuildOption;
+    VISA_BUILDER_OPTION mBuildOption;
     vISA::G4_Kernel* m_kernel;
     CISA_IR_Builder* m_CISABuilder;
     vISA::IR_Builder* m_builder;

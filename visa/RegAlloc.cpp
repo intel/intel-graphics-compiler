@@ -3664,7 +3664,7 @@ static void recordRAStats(IR_Builder& builder,
 #if COMPILER_STATS_ENABLE
     CompilerStats &Stats = builder.getcompilerStats();
     int SimdSize = kernel.getSimdSize();
-    if (RAStatus == CM_SUCCESS)
+    if (RAStatus == VISA_SUCCESS)
     {
         Stats.SetFlag("IsRAsuccessful", SimdSize);
         switch(kernel.getRAType())
@@ -3796,7 +3796,7 @@ int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
     int status = gra.coloringRegAlloc();
 
     recordRAStats(builder, kernel, status);
-    if (status != CM_SUCCESS)
+    if (status != VISA_SUCCESS)
     {
         return status;
     }

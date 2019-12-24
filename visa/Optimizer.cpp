@@ -219,7 +219,7 @@ void Optimizer::regAlloc()
     // assign registers
     //
     int status = ::regAlloc(builder, builder.phyregpool, kernel);
-    if (status != CM_SUCCESS)
+    if (status != VISA_SUCCESS)
     {
         RAFail = true;
     }
@@ -1094,7 +1094,7 @@ int Optimizer::optimization()
     runPass(PI_regAlloc);
     if (RAFail)
     {
-        return CM_SPILL;
+        return VISA_SPILL;
     }
 
     runPass(PI_removeLifetimeOps);
@@ -1201,7 +1201,7 @@ int Optimizer::optimization()
 
     runPass(PI_mapOrphans);
 
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 //  When constructing CFG we have the assumption that a label must be the first

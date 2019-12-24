@@ -149,7 +149,7 @@ int CBinaryCISAEmitter::Emit(VISAKernelImpl * cisa_kernel, unsigned int& binaryS
     std::list<CisaFramework::CisaInst *>::iterator inst_iter = cisa_kernel->getInstructionListBegin();
     std::list<CisaFramework::CisaInst *>::iterator inst_iter_end = cisa_kernel->getInstructionListEnd();
 
-    int status = CM_SUCCESS;
+    int status = VISA_SUCCESS;
     for(; inst_iter != inst_iter_end; inst_iter++)
     {
         CisaFramework::CisaInst * inst = *inst_iter;
@@ -157,7 +157,7 @@ int CBinaryCISAEmitter::Emit(VISAKernelImpl * cisa_kernel, unsigned int& binaryS
         CISA_INST * cisa_inst = inst->getCISAInst();
         const VISA_INST_Desc * inst_desc = inst->getCISAInstDesc();
         status = emitCisaInst(cisa_kernel, cisa_inst, inst_desc);
-        if( status != CM_SUCCESS )
+        if( status != VISA_SUCCESS )
         {
             break;
         }
@@ -183,8 +183,8 @@ int CBinaryCISAEmitter::emitCisaInst(
 
         if (inst->opnd_array != NULL && inst->opnd_array[currendOpndIndex] == NULL)
         {
-            CmAssert(0);
-            return CM_FAILURE;
+            assert(0);
+            return VISA_FAILURE;
         }
 
         if (!useSubDesc && desc->opnd_desc[i].opnd_type == OPND_SUBOPCODE)
@@ -222,7 +222,7 @@ int CBinaryCISAEmitter::emitCisaInst(
     }
 
     DEBUG_PRINT_SIZE_INSTRUCTION("size after instruction: ", desc->opcode, SIZE_VALUE_INST);
-    return CM_SUCCESS;
+    return VISA_SUCCESS;
 }
 
 void CBinaryCISAEmitter::emitVarInfo(VISAKernelImpl * cisa_kernel, var_info_t * var)
@@ -312,7 +312,7 @@ void CBinaryCISAEmitter::emitAttributeInfo(VISAKernelImpl *cisa_kernel, attribut
             case sizeof(int16_t): cisa_kernel->writeInToCisaBinaryBuffer((int16_t*)(&attr->value.intVal), attr->size); break;
             case sizeof(int32_t): cisa_kernel->writeInToCisaBinaryBuffer((int32_t*)(&attr->value.intVal), attr->size); break;
             default:
-                CmAssert(0);
+                assert(0);
                 break;
         }
     }

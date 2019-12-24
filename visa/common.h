@@ -106,10 +106,9 @@ union LARGE_INTEGER {
 #define IS_RELEASE_DLL
 #endif
 
-#define CM_SUCCESS                0
-#define CM_FAILURE               -1
-#define CM_USER_ERROR            -2
-#define CM_SPILL                 -3
+#define VISA_SUCCESS                0
+#define VISA_FAILURE               -1
+#define VISA_SPILL                 -3
 
 // stream for error messages
 extern std::stringstream errorMsgs;

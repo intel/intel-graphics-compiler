@@ -4281,7 +4281,7 @@ namespace IGC
         COMPILER_TIME_START(m_program->GetContext(), TIME_CG_vISACompile);
         bool enableVISADump = IGC_IS_FLAG_ENABLED(EnableVISASlowpath) || IGC_IS_FLAG_ENABLED(ShaderDumpEnable);
         auto builderMode = m_hasInlineAsm ? vISA_ASM_WRITER : vISA_3D;
-        auto builderOpt = (enableVISADump || m_hasInlineAsm) ? CM_CISA_BUILDER_BOTH : CM_CISA_BUILDER_GEN;
+        auto builderOpt = (enableVISADump || m_hasInlineAsm) ? VISA_BUILDER_BOTH : VISA_BUILDER_GEN;
         V(CreateVISABuilder(vbuilder, builderMode, builderOpt, VISAPlatform, params.size(), params.data(), &m_WaTable));
 
         InitVISABuilderOptions(VISAPlatform, canAbortOnSpill, hasStackCall);
@@ -4769,7 +4769,7 @@ namespace IGC
 
         // Create a new builder for parsing the visaasm
         TARGET_PLATFORM VISAPlatform = GetVISAPlatform(&(context->platform));
-        V(CreateVISABuilder(vAsmTextBuilder, vISA_ASM_READER, CM_CISA_BUILDER_BOTH, VISAPlatform, params.size(), params.data(), &m_WaTable));
+        V(CreateVISABuilder(vAsmTextBuilder, vISA_ASM_READER, VISA_BUILDER_BOTH, VISAPlatform, params.size(), params.data(), &m_WaTable));
         // Use the same build options as before
         SetBuilderOptions(vAsmTextBuilder);
 
@@ -5828,8 +5828,8 @@ namespace IGC
         VISA_StateOpndHandle* samplerHnd = GetSamplerOperand(sampler);
     VISA_VectorOpnd* mmModeOpnd = NULL;
 
-    EDMode erodeDilateMode = CM_DILATE;
-    EDExecMode execMode = CM_ED_64x4;
+    EDMode erodeDilateMode = VA_DILATE;
+    EDExecMode execMode = VA_ED_64x4;
     bool isBigKernel = true;
 
         if (m_program->m_Platform->GetPlatformFamily() == IGFX_GEN8_CORE)
@@ -5840,31 +5840,31 @@ namespace IGC
         switch (inst->getIntrinsicID())
     {
     case GenISAIntrinsic::GenISA_vaErode:
-        erodeDilateMode = CM_ERODE;
+        erodeDilateMode = VA_ERODE;
     case GenISAIntrinsic::GenISA_vaDilate:
-            V(vKernel->AppendVISAVAErodeDilate(erodeDilateMode, samplerHnd, surfaceOpnd, uOffset, vOffset, execMode, vaOutput));
+        V(vKernel->AppendVISAVAErodeDilate(erodeDilateMode, samplerHnd, surfaceOpnd, uOffset, vOffset, execMode, vaOutput));
         break;
     case GenISAIntrinsic::GenISA_vaMinMaxFilter:
-            V(vKernel->CreateVISAImmediate(mmModeOpnd, &mmfMode, ISA_TYPE_UD));
-            V(vKernel->AppendVISAVAMinMaxFilter(samplerHnd, surfaceOpnd, uOffset, vOffset, CM_16_FULL, CM_MMF_16x4, mmModeOpnd, vaOutput));
+        V(vKernel->CreateVISAImmediate(mmModeOpnd, &mmfMode, ISA_TYPE_UD));
+        V(vKernel->AppendVISAVAMinMaxFilter(samplerHnd, surfaceOpnd, uOffset, vOffset, AVS_16_FULL, VA_MMF_16x4, mmModeOpnd, vaOutput));
         break;
     case GenISAIntrinsic::GenISA_vaConvolveGRF_16x1:
-        V(vKernel->AppendVISAVAConvolve(samplerHnd, surfaceOpnd, uOffset, vOffset, CM_CONV_16x1, isBigKernel, vaOutput));
+        V(vKernel->AppendVISAVAConvolve(samplerHnd, surfaceOpnd, uOffset, vOffset, VA_CONV_16x1, isBigKernel, vaOutput));
         break;
     case GenISAIntrinsic::GenISA_vaConvolve:
     case GenISAIntrinsic::GenISA_vaConvolveGRF_16x4:
-        V(vKernel->AppendVISAVAConvolve(samplerHnd, surfaceOpnd, uOffset, vOffset, CM_CONV_16x4, isBigKernel, vaOutput));
+        V(vKernel->AppendVISAVAConvolve(samplerHnd, surfaceOpnd, uOffset, vOffset, VA_CONV_16x4, isBigKernel, vaOutput));
         break;
     case GenISAIntrinsic::GenISA_vaMinMax:
-            V(vKernel->CreateVISAImmediate(mmModeOpnd, &mmfMode, ISA_TYPE_UD));
-            V(vKernel->AppendVISAVAMinMax(surfaceOpnd, uOffset, vOffset, mmModeOpnd, vaOutput));
+        V(vKernel->CreateVISAImmediate(mmModeOpnd, &mmfMode, ISA_TYPE_UD));
+        V(vKernel->AppendVISAVAMinMax(surfaceOpnd, uOffset, vOffset, mmModeOpnd, vaOutput));
         break;
     case GenISAIntrinsic::GenISA_vaCentroid:
-            V(vKernel->AppendVISAVACentroid(surfaceOpnd, uOffset, vOffset, wSize, vaOutput));
+        V(vKernel->AppendVISAVACentroid(surfaceOpnd, uOffset, vOffset, wSize, vaOutput));
         break;
     case GenISAIntrinsic::GenISA_vaBoolCentroid:
     case GenISAIntrinsic::GenISA_vaBoolSum:
-            V(vKernel->AppendVISAVABooleanCentroid(surfaceOpnd, uOffset, vOffset, wSize, hSize, vaOutput));
+        V(vKernel->AppendVISAVABooleanCentroid(surfaceOpnd, uOffset, vOffset, wSize, hSize, vaOutput));
         break;
     default:
             assert(0 && "Trying to emit unrecognized video analytic instruction (listed above)");

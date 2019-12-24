@@ -44,8 +44,8 @@ void LocalScheduler::localScheduling()
     BB_LIST_ITER ib(fg.begin()), bend(fg.end());
     MUST_BE_TRUE(ib != bend, ERROR_SCHEDULER);
 
-    CM_BB_INFO* bbInfo = (CM_BB_INFO *)mem.alloc(fg.size() * sizeof(CM_BB_INFO));
-    memset(bbInfo, 0, fg.size() * sizeof(CM_BB_INFO));
+    VISA_BB_INFO* bbInfo = (VISA_BB_INFO *)mem.alloc(fg.size() * sizeof(VISA_BB_INFO));
+    memset(bbInfo, 0, fg.size() * sizeof(VISA_BB_INFO));
     int i = 0;
 
     const Options *m_options = fg.builder->getOptions();

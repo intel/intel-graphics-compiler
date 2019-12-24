@@ -168,7 +168,7 @@ inline void readVarBytes(uint8_t major, uint8_t minor, T& dst, uint32_t& bytePos
     }
 }
 
-CM_INLINE static Common_VISA_EMask_Ctrl transformMask(
+static Common_VISA_EMask_Ctrl transformMask(
     RoutineContainer& container, uint8_t maskVal)
 {
     Common_VISA_EMask_Ctrl mask = vISA_EMASK_M1;
@@ -765,7 +765,7 @@ static void readInstructionCommonNG(unsigned& bytePos, const char* buf, ISA_Opco
         }
     default:
         {
-            CmAssert(false && "Invalid common instruction type.");
+            assert(false && "Invalid common instruction type.");
         }
     }
 }
@@ -1851,7 +1851,7 @@ static void readInstructionSampler(unsigned& bytePos, const char* buf, ISA_Opcod
                 {
                     /// size for convolve, execMode for erode/dilate
                     EDExecMode execMode = (EDExecMode)readPrimitiveOperandNG<uint8_t>(bytePos, buf);
-                    EDMode mode = (subOpcode == Dilate_FOPCODE) ? CM_DILATE : CM_ERODE;
+                    EDMode mode = (subOpcode == Dilate_FOPCODE) ? VA_DILATE : VA_ERODE;
                     /// dst
                     VISA_RawOpnd *dst = readRawOperandNG(bytePos, buf, container);
                     kernelBuilder->AppendVISAVAErodeDilate(mode, samplerHnd, surfaceHnd, uOffset, vOffset, execMode, dst);
@@ -1959,10 +1959,10 @@ static void readInstructionSampler(unsigned& bytePos, const char* buf, ISA_Opcod
                                                         vOpnds[2], dst);
                 break;
             case VA_OP_CODE_1D_CONVOLVE_VERTICAL:
-                kernelBuilderImpl->AppendVISAVAConvolve1D(stateOpnds[0], stateOpnds[1], vOpnds[0], vOpnds[1], (CONVExecMode)miscOpnds[0], CM_V_DIRECTION, dst);
+                kernelBuilderImpl->AppendVISAVAConvolve1D(stateOpnds[0], stateOpnds[1], vOpnds[0], vOpnds[1], (CONVExecMode)miscOpnds[0], VA_V_DIRECTION, dst);
                 break;
             case VA_OP_CODE_1D_CONVOLVE_HORIZONTAL:
-                kernelBuilderImpl->AppendVISAVAConvolve1D(stateOpnds[0], stateOpnds[1], vOpnds[0], vOpnds[1], (CONVExecMode)miscOpnds[0], CM_H_DIRECTION, dst);
+                kernelBuilderImpl->AppendVISAVAConvolve1D(stateOpnds[0], stateOpnds[1], vOpnds[0], vOpnds[1], (CONVExecMode)miscOpnds[0], VA_H_DIRECTION, dst);
                 break;
             case VA_OP_CODE_1PIXEL_CONVOLVE:
                 kernelBuilderImpl->AppendVISAVAConvolve1Pixel(stateOpnds[0], stateOpnds[1], vOpnds[0], vOpnds[1], (CONV1PixelExecMode)miscOpnds[0], rawSrcs[0], dst);
@@ -1981,11 +1981,11 @@ static void readInstructionSampler(unsigned& bytePos, const char* buf, ISA_Opcod
                                                         dst);
                 break;
             case ISA_HDC_ERODE:
-                kernelBuilderImpl->AppendVISAVAHDCErodeDilate(CM_ERODE, stateOpnds[0], stateOpnds[1],
+                kernelBuilderImpl->AppendVISAVAHDCErodeDilate(VA_ERODE, stateOpnds[0], stateOpnds[1],
                                                         vOpnds[0], vOpnds[1], stateOpnds[2],vOpnds[2], vOpnds[3]);
                 break;
             case ISA_HDC_DILATE:
-                kernelBuilderImpl->AppendVISAVAHDCErodeDilate(CM_DILATE, stateOpnds[0], stateOpnds[1],
+                kernelBuilderImpl->AppendVISAVAHDCErodeDilate(VA_DILATE, stateOpnds[0], stateOpnds[1],
                                                         vOpnds[0], vOpnds[1], stateOpnds[2],vOpnds[2], vOpnds[3]);
                 break;
             case ISA_HDC_LBPCORRELATION:
@@ -2017,13 +2017,13 @@ static void readInstructionSampler(unsigned& bytePos, const char* buf, ISA_Opcod
                 break;
             case ISA_HDC_1DCONV_H:
                 kernelBuilderImpl->AppendVISAVAHDCConvolve1D(stateOpnds[0], stateOpnds[1], vOpnds[0],
-                                                        vOpnds[1], (HDCReturnFormat)miscOpnds[0], CM_H_DIRECTION,
-                                                        stateOpnds[2], vOpnds[2], vOpnds[3]);
+                    vOpnds[1], (HDCReturnFormat)miscOpnds[0], VA_H_DIRECTION,
+                    stateOpnds[2], vOpnds[2], vOpnds[3]);
                 break;
             case ISA_HDC_1DCONV_V:
                 kernelBuilderImpl->AppendVISAVAHDCConvolve1D(stateOpnds[0], stateOpnds[1], vOpnds[0],
-                                                        vOpnds[1], (HDCReturnFormat)miscOpnds[0], CM_V_DIRECTION,
-                                                        stateOpnds[2], vOpnds[2], vOpnds[3]);
+                    vOpnds[1], (HDCReturnFormat)miscOpnds[0], VA_V_DIRECTION,
+                    stateOpnds[2], vOpnds[2], vOpnds[3]);
                 break;
             default:
                 ASSERT_USER(false, "Invalid VA sub-opcode");
@@ -2195,7 +2195,7 @@ static void readRoutineNG(unsigned& bytePos, const char* buf, vISA::Mem_Manager&
         VISA_Type  varType  = (VISA_Type)  ((var->bit_properties     ) & 0xF);
         VISA_Align varAlign = (VISA_Align) ((var->bit_properties >> 4) & 0x7);
         uint8_t aliasScopeSpecifier = header.variables[declID].alias_scope_specifier;
-        int status = CM_SUCCESS;
+        int status = VISA_SUCCESS;
 
         assert(aliasScopeSpecifier == 0 && "file scope variables are no longer supported");
 
@@ -2208,7 +2208,7 @@ static void readRoutineNG(unsigned& bytePos, const char* buf, vISA::Mem_Manager&
                 if( aliasIndex < numPreDefinedVars )
                 {
                    status = kernelBuilderImpl->GetPredefinedVar(parentDecl, (PreDefined_Vars) aliasIndex);
-                   ASSERT_USER(status == CM_SUCCESS, "Invalid index for pre-defined variables");
+                   ASSERT_USER(status == VISA_SUCCESS, "Invalid index for pre-defined variables");
                 }
                 else
                 {
@@ -2220,7 +2220,7 @@ static void readRoutineNG(unsigned& bytePos, const char* buf, vISA::Mem_Manager&
             status = kernelBuilderImpl->CreateVISAGenVar(
                 decl, header.strings[var->name_index], var->num_elements, varType,
                 varAlign, parentDecl, aliasOffset);
-            ASSERT_USER(CM_SUCCESS == status,
+            ASSERT_USER(VISA_SUCCESS == status,
                 "Failed to add VISA general variable.");
         }
 
@@ -2253,7 +2253,7 @@ static void readRoutineNG(unsigned& bytePos, const char* buf, vISA::Mem_Manager&
         VISA_AddrVar* decl = NULL;
         int status = kernelBuilderImpl->CreateVISAAddrVar(
             decl, header.strings[var->name_index], var->num_elements);
-        ASSERT_USER(CM_SUCCESS == status,
+        ASSERT_USER(VISA_SUCCESS == status,
             "Failed to add VISA address variable.");
 
         for (unsigned ai = 0; ai < var->attribute_count; ai++)
@@ -2285,7 +2285,7 @@ static void readRoutineNG(unsigned& bytePos, const char* buf, vISA::Mem_Manager&
         VISA_PredVar* decl = NULL;
         int status = kernelBuilderImpl->CreateVISAPredVar(
             decl, header.strings[var->name_index], var->num_elements);
-        ASSERT_USER(CM_SUCCESS == status,
+        ASSERT_USER(VISA_SUCCESS == status,
             "Failed to add VISA predicate vairable.");
 
         for (unsigned ai = 0; ai < var->attribute_count; ai++)
@@ -2317,7 +2317,7 @@ static void readRoutineNG(unsigned& bytePos, const char* buf, vISA::Mem_Manager&
         int status = kernelBuilderImpl->CreateVISALabelVar(decl,
             getDeclLabelString("L", var->name_index, header, VISA_Label_Kind(var->kind)).c_str(),
             VISA_Label_Kind(var->kind));
-        ASSERT_USER(CM_SUCCESS == status,
+        ASSERT_USER(VISA_SUCCESS == status,
             "Failed to add VISA label variable.");
 
         for (unsigned ai = 0; ai < var->attribute_count; ai++)
@@ -2351,7 +2351,7 @@ static void readRoutineNG(unsigned& bytePos, const char* buf, vISA::Mem_Manager&
         VISA_SamplerVar* decl = NULL;
         int status = kernelBuilderImpl->CreateVISASamplerVar(
             decl, header.strings[var->name_index], var->num_elements);
-        ASSERT_USER(CM_SUCCESS == status,
+        ASSERT_USER(VISA_SUCCESS == status,
             "Failed to add VISA sampler variable.");
 
         for (unsigned ai = 0; ai < var->attribute_count; ai++)
@@ -2398,7 +2398,7 @@ static void readRoutineNG(unsigned& bytePos, const char* buf, vISA::Mem_Manager&
         VISA_SurfaceVar* decl = NULL;
         int status = kernelBuilderImpl->CreateVISASurfaceVar(
             decl, header.strings[var->name_index], var->num_elements);
-        ASSERT_USER(CM_SUCCESS == status,
+        ASSERT_USER(VISA_SUCCESS == status,
             "Failed to add VISA surface variable.");
 
         for (unsigned ai = 0; ai < var->attribute_count; ai++)
@@ -2452,7 +2452,7 @@ static void readRoutineNG(unsigned& bytePos, const char* buf, vISA::Mem_Manager&
             }
 
             int status = kernelBuilderImpl->CreateVISAInputVar(decl, var->offset, var->size, var->getImplicitKind());
-            ASSERT_USER(CM_SUCCESS == status, "Failed to add VISA input variable.");
+            ASSERT_USER(VISA_SUCCESS == status, "Failed to add VISA input variable.");
 
             container.inputVarDecls[i] = decl;
         }

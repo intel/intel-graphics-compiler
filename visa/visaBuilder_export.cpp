@@ -36,11 +36,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 extern "C"
-CM_BUILDER_API int CreateVISABuilder(VISABuilder* &builder, vISABuilderMode mode, CM_VISA_BUILDER_OPTION builderOption, TARGET_PLATFORM platform, int numArgs, const char* flags[], PVISA_WA_TABLE pWaTable)
+VISA_BUILDER_API int CreateVISABuilder(VISABuilder* &builder, vISABuilderMode mode, VISA_BUILDER_OPTION builderOption, TARGET_PLATFORM platform, int numArgs, const char* flags[], PVISA_WA_TABLE pWaTable)
 {
     if( builder != NULL )
     {
-        return CM_FAILURE;
+        return VISA_FAILURE;
     }
     CISA_IR_Builder *cisa_builder = NULL;
     int status = CISA_IR_Builder::CreateBuilder(cisa_builder, mode, builderOption, platform, numArgs, flags, pWaTable);
@@ -50,12 +50,12 @@ CM_BUILDER_API int CreateVISABuilder(VISABuilder* &builder, vISABuilderMode mode
 }
 
 extern "C"
-CM_BUILDER_API int DestroyVISABuilder(VISABuilder *&builder)
+VISA_BUILDER_API int DestroyVISABuilder(VISABuilder *&builder)
 {
     CISA_IR_Builder *cisa_builder = (CISA_IR_Builder *) builder;
     if( cisa_builder == NULL )
     {
-        return CM_FAILURE;
+        return VISA_FAILURE;
     }
 
     int status = CISA_IR_Builder::DestroyBuilder(cisa_builder);
