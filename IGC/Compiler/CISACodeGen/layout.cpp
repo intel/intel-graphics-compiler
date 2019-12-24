@@ -128,7 +128,7 @@ BasicBlock* Layout::getLastReturnBlock(Function& Func)
             return bb;
         }
     }
-    assert(false && "Function does not have a return block!");
+    // Function does not have a return block
     return nullptr;
 }
 
