@@ -17,6 +17,7 @@ set(LINK_AS_STATIC_LIB TRUE)
 
 
 set(GED_BRANCH GED_external)
+include_directories(include)
 add_subdirectory(GEDLibrary/${GED_BRANCH})
 add_subdirectory(IGALibrary)
 add_subdirectory(IGAExe)

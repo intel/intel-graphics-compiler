@@ -23,9 +23,41 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+#pragma once
 
-#ifndef _IGA_VERSION_HPP_
-#define _IGA_VERSION_HPP_
-#define IGA_VERSION_STRING "0.15.23"
+#if ((!defined _WIN32) && ( !defined __STDC_LIB_EXT1__ ))
 
-#endif // _IGA_VERSION_HPP_
+#include <errno.h>
+#include <string.h>
+#include <stdio.h>
+
+typedef int errno_t;
+inline errno_t memcpy_s( void *dst, size_t numberOfElements, const void *src, size_t count )
+{
+    if( ( dst == NULL ) || ( src == NULL ) )
+    {
+        return EINVAL;
+    }
+    if( numberOfElements < count )
+    {
+        return ERANGE;
+    }
+    memcpy( dst, src, count );
+    return 0;
+}
+
+inline errno_t fopen_s( FILE** pFile, const char* filename, const char *mode )
+{
+    if( pFile == NULL )
+    {
+        return EINVAL;
+    }
+    *pFile = fopen( filename, mode );
+    if( *pFile == NULL )
+    {
+        return errno;
+    }
+    return 0;
+}
+
+#endif

@@ -638,7 +638,53 @@ void SWSBAnalyzer::advanceInorderInstCounter(DEP_PIPE dep_pipe)
 
 void SWSBAnalyzer::postProcess()
 {
-    // TODO: revisit all instructions to remove redundant swsb or sync.nop
+    // revisit all instructions to remove redundant sync.nop
+    // sync.nop carry the sbid the same as the sbid set on the following instruction can be
+    // removed since it'll automatically be sync-ed when sbid is reused. For example:
+    // sync.nop        null                       {$0.dst} // can be removed
+    // math.exp(8|M0)  r12.0<1>:f  r10.0<8;8,1>:f {$0}
+    for (Block* bb : m_kernel.getBlockList())
+    {
+        InstList& instList = bb->getInstList();
+        if (instList.empty())
+            continue;
+        auto inst_it = instList.begin();
+        // skip the first instruction, which must not be sync
+        ++inst_it;
+        for (; inst_it != instList.end(); ++inst_it)
+        {
+            Instruction* inst = *inst_it;
+            if (inst->getOp() == Op::SYNC_NOP)
+                continue;
+            SWSB cur_swsb = inst->getSWSB();
+            if (cur_swsb.hasToken() && (cur_swsb.tokenType == SWSB::TokenType::SET)) {
+                // iterate through the previous sync
+                auto sync_it = inst_it;
+                --sync_it;
+                while (sync_it != instList.begin()) {
+                    Instruction* sync_inst = *sync_it;
+                    if (sync_inst->getOp() != Op::SYNC_NOP)
+                        break;
+                    SWSB sync_swsb = sync_inst->getSWSB();
+                    // if the sync has sbid set, it could be the reserved sbid for shoot down
+                    // instructions, we should keep it.
+                    if (sync_swsb.hasToken() && sync_swsb.tokenType != SWSB::TokenType::SET &&
+                        sync_swsb.sbid == cur_swsb.sbid) {
+                        // clean the swsb so that we can remove this instruction later
+                        sync_inst->setSWSB(SWSB());
+                    }
+                    --sync_it;
+                }
+            }
+        }
+        // remove the redundant sync.nop (sync.nop with no swsb)
+        instList.remove_if([](const Instruction* inst) {
+            if (inst->getOp() == Op::SYNC_NOP &&
+                (!inst->getSWSB().hasSWSB()))
+                return true;
+            return false;
+        });
+    }
 }
 
 void SWSBAnalyzer::run()

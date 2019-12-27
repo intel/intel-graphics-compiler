@@ -834,8 +834,8 @@ int32_t kv_get_source_region(const kv_t *kv, int32_t pc, uint32_t src_op, uint32
     }
     const Operand &src = inst->getSource(src_op);
     if(!(src.getKind() == Operand::Kind::DIRECT || src.getKind() == Operand::Kind::INDIRECT) ||
-        !(src.getDirRegName() == RegName::GRF_R || src.getDirRegName() == RegName::ARF_SR)
-        )
+        !(src.getDirRegName() == RegName::GRF_R || src.getDirRegName() == RegName::ARF_SR ||
+            src.getDirRegName() == RegName::ARF_ACC))
     {
         *vt = SrcRgnVt;
         *wi = SrcRgnWi;
