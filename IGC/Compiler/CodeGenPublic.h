@@ -763,6 +763,7 @@ namespace IGC
 
         void* gtpin_init = nullptr;
         bool m_hasLegacyDebugInfo = false;
+        bool m_hasEmu64BitInsts = false;
 
         CompilerStats m_Stats;
         // Flag for staged compilation

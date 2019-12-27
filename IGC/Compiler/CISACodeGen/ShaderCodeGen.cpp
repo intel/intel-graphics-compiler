@@ -657,6 +657,7 @@ namespace IGC
             mpm.add(createGEPLoweringPass());
         }
         mpm.add(createEmu64OpsPass());
+        ctx.m_hasEmu64BitInsts = true;
     }
 
     mpm.add(IGCLLVM::createInstSimplifyLegacyPass());

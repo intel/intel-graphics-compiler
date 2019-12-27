@@ -8324,9 +8324,249 @@ void EmitPass::emitPtrToInt(llvm::PtrToIntInst* P2I)
 
 void EmitPass::emitAddrSpaceCast(llvm::AddrSpaceCastInst* addrSpaceCast)
 {
+    // Tags are used to determine the address space of generic pointers
+    // casted from private, local or global pointers.
+    // Bit[60:63] are used for this purpose. bit[60] is reserved for future use.
+    // Address space tag on bit[61:63] can be:
+    // 001: private
+    // 010: local
+    // 000/111: global
+
+    // In platforms that don't support 64bit operations, 64bit pointers are emulated
+    // with pair{i32, i32}. So tags on generic pointers are added/removed by using:
+    // - 64bit Or/And operations directly in platforms with 64bit operation support.
+    // - 32bit Or/And operations on second element of the pair in platforms with no
+    //   64bit operation support.
+
     CVariable* srcV = GetSymbol(addrSpaceCast->getOperand(0));
-    m_encoder->Cast(m_destination, srcV);
-    m_encoder->Push();
+    unsigned sourceAddrSpace = addrSpaceCast->getSrcAddressSpace();
+    unsigned destAddrSpace = addrSpaceCast->getDestAddressSpace();
+
+    if (destAddrSpace == ADDRESS_SPACE_GENERIC)
+    {
+        // Address space cast is in the form of {private, local, global} -> generic
+        // A tag is added according to the address space of the source
+        if (sourceAddrSpace == ADDRESS_SPACE_PRIVATE)
+        {
+            if (m_pCtx->m_hasEmu64BitInsts && m_currShader->m_Platform->hasNo64BitInst())
+            {
+                if (m_currShader->GetContext()->getRegisterPointerSizeInBits(sourceAddrSpace) == 32)
+                {
+                    // Add tag to high part
+                    CVariable* dstAlias = m_currShader->BitCast(m_destination, ISA_TYPE_UD);
+                    // Low:
+                    m_encoder->SetDstRegion(2);
+                    m_encoder->Copy(dstAlias, srcV);
+                    m_encoder->Push();
+                    // High:
+                    m_encoder->SetDstSubReg(1);
+                    m_encoder->SetDstRegion(2);
+                    m_encoder->Copy(dstAlias, m_currShader->ImmToVariable(0x20000000, ISA_TYPE_UD));
+                    m_encoder->Push();
+                }
+                else
+                {
+                    // Src
+                    CVariable* srcAlias = m_currShader->GetNewAlias(srcV, ISA_TYPE_UD, 0, 0);
+                    CVariable* srcLow = m_currShader->GetNewVariable(numLanes(m_currShader->m_SIMDSize),
+                        ISA_TYPE_UD, EALIGN_GRF, m_destination->IsUniform());
+                    CVariable* srcHigh = m_currShader->GetNewVariable(numLanes(m_currShader->m_SIMDSize),
+                        ISA_TYPE_UD, EALIGN_GRF, m_destination->IsUniform());
+
+                    // Split Src into {Low, High}
+                    // Low:
+                    m_encoder->SetSrcSubReg(0, 0);
+                    m_encoder->SetSrcRegion(0, 2, 1, 0);
+                    m_encoder->Copy(srcLow, srcAlias);
+                    m_encoder->Push();
+                    // High:
+                    m_encoder->SetSrcSubReg(0, 1);
+                    m_encoder->SetSrcRegion(0, 2, 1, 0);
+                    m_encoder->Copy(srcHigh, srcAlias);
+                    m_encoder->Push();
+
+
+                    // Add tag to high part
+                    m_encoder->Or(srcHigh, srcHigh, m_currShader->ImmToVariable(0x20000000, ISA_TYPE_UD));
+                    m_encoder->Push();
+
+                    // Copy result to Dst
+                    CVariable* dstAlias = m_currShader->BitCast(m_destination, ISA_TYPE_UD);
+                    // Low:
+                    m_encoder->SetDstRegion(2);
+                    m_encoder->Copy(dstAlias, srcLow);
+                    m_encoder->Push();
+                    // High:
+                    m_encoder->SetDstSubReg(1);
+                    m_encoder->SetDstRegion(2);
+                    m_encoder->Copy(dstAlias, srcHigh);
+                    m_encoder->Push();
+                }
+            }
+            else
+            {
+                CVariable* pTempVar = m_currShader->GetNewVariable(
+                    numLanes(m_currShader->m_SIMDSize),
+                    ISA_TYPE_UQ, m_currShader->getGRFAlignment(), m_destination->IsUniform());
+                m_encoder->Or(pTempVar, srcV, m_currShader->ImmToVariable(1ULL << 61, ISA_TYPE_UQ));
+                m_encoder->Cast(m_destination, pTempVar);
+                m_encoder->Push();
+            }
+        }
+        else if (sourceAddrSpace == ADDRESS_SPACE_LOCAL)
+        {
+            if (m_pCtx->m_hasEmu64BitInsts && m_currShader->m_Platform->hasNo64BitInst())
+            {
+                if (m_currShader->GetContext()->getRegisterPointerSizeInBits(sourceAddrSpace) == 32)
+                {
+                    // Add tag to high part
+                    CVariable* dstAlias = m_currShader->BitCast(m_destination, ISA_TYPE_UD);
+                    // Low:
+                    m_encoder->SetDstRegion(2);
+                    m_encoder->Copy(dstAlias, srcV);
+                    m_encoder->Push();
+                    // High:
+                    m_encoder->SetDstSubReg(1);
+                    m_encoder->SetDstRegion(2);
+                    m_encoder->Copy(dstAlias, m_currShader->ImmToVariable(0x40000000, ISA_TYPE_UD));
+                    m_encoder->Push();
+                }
+                else
+                {
+                    // Src
+                    CVariable* srcAlias = m_currShader->GetNewAlias(srcV, ISA_TYPE_UD, 0, 0);
+                    CVariable* srcLow = m_currShader->GetNewVariable(numLanes(m_currShader->m_SIMDSize),
+                        ISA_TYPE_UD, EALIGN_GRF, m_destination->IsUniform());
+                    CVariable* srcHigh = m_currShader->GetNewVariable(numLanes(m_currShader->m_SIMDSize),
+                        ISA_TYPE_UD, EALIGN_GRF, m_destination->IsUniform());
+
+                    // Split Src into {Low, High}
+                    // Low:
+                    m_encoder->SetSrcSubReg(0, 0);
+                    m_encoder->SetSrcRegion(0, 2, 1, 0);
+                    m_encoder->Copy(srcLow, srcAlias);
+                    m_encoder->Push();
+                    // High:
+                    m_encoder->SetSrcSubReg(0, 1);
+                    m_encoder->SetSrcRegion(0, 2, 1, 0);
+                    m_encoder->Copy(srcHigh, srcAlias);
+                    m_encoder->Push();
+
+
+                    // Add tag to high part
+                    m_encoder->Or(srcHigh, srcHigh, m_currShader->ImmToVariable(0x40000000, ISA_TYPE_UD));
+                    m_encoder->Push();
+
+                    // Copy result to Dst
+                    CVariable* dstAlias = m_currShader->BitCast(m_destination, ISA_TYPE_UD);
+                    // Low:
+                    m_encoder->SetDstRegion(2);
+                    m_encoder->Copy(dstAlias, srcLow);
+                    m_encoder->Push();
+                    // High:
+                    m_encoder->SetDstSubReg(1);
+                    m_encoder->SetDstRegion(2);
+                    m_encoder->Copy(dstAlias, srcHigh);
+                    m_encoder->Push();
+                }
+            }
+            else
+            {
+                CVariable* pTempVar = m_currShader->GetNewVariable(
+                    numLanes(m_currShader->m_SIMDSize),
+                    ISA_TYPE_UQ, m_currShader->getGRFAlignment(), m_destination->IsUniform());
+                m_encoder->Or(pTempVar, srcV, m_currShader->ImmToVariable(1ULL << 62, ISA_TYPE_UQ));
+                m_encoder->Cast(m_destination, pTempVar);
+                m_encoder->Push();
+            }
+        }
+        else // ADDRESS_SPACE_GLOBAL
+        {
+            m_encoder->Cast(m_destination, srcV);
+            m_encoder->Push();
+        }
+    }
+    else // clear up the tag
+    {
+        // Address space cast is in the form of generic -> {private, local, global}
+        // Tag is removed according to the address space of the destination
+
+        if (destAddrSpace == ADDRESS_SPACE_PRIVATE || destAddrSpace == ADDRESS_SPACE_LOCAL)
+        {
+            if (m_pCtx->m_hasEmu64BitInsts && m_currShader->m_Platform->hasNo64BitInst())
+            {
+                if (m_currShader->GetContext()->getRegisterPointerSizeInBits(destAddrSpace) == 32)
+                {
+                    // Src
+                    CVariable* srcAlias = m_currShader->GetNewAlias(srcV, ISA_TYPE_UD, 0, 0);
+                    CVariable* srcLow = m_currShader->GetNewVariable(numLanes(m_currShader->m_SIMDSize),
+                        ISA_TYPE_UD, EALIGN_GRF, m_destination->IsUniform());
+
+                    // Get low part of srcV
+                    m_encoder->SetSrcSubReg(0, 0);
+                    m_encoder->SetSrcRegion(0, 2, 1, 0);
+                    m_encoder->Copy(srcLow, srcAlias);
+                    m_encoder->Push();
+
+                    // Copy result to Dst
+                    m_encoder->Cast(m_destination, srcLow);
+                    m_encoder->Push();
+
+                }
+                else
+                {
+                    // Src
+                    CVariable* srcAlias = m_currShader->GetNewAlias(srcV, ISA_TYPE_UD, 0, 0);
+                    CVariable* srcLow = m_currShader->GetNewVariable(numLanes(m_currShader->m_SIMDSize),
+                        ISA_TYPE_UD, EALIGN_GRF, m_destination->IsUniform());
+                    CVariable* srcHigh = m_currShader->GetNewVariable(numLanes(m_currShader->m_SIMDSize),
+                        ISA_TYPE_UD, EALIGN_GRF, m_destination->IsUniform());
+
+                    // Split Src into {Low, High}
+                    // Low:
+                    m_encoder->SetSrcSubReg(0, 0);
+                    m_encoder->SetSrcRegion(0, 2, 1, 0);
+                    m_encoder->Copy(srcLow, srcAlias);
+                    m_encoder->Push();
+                    // High:
+                    m_encoder->SetSrcSubReg(0, 1);
+                    m_encoder->SetSrcRegion(0, 2, 1, 0);
+                    m_encoder->Copy(srcHigh, srcAlias);
+                    m_encoder->Push();
+
+                    // Add tag to high part
+                    m_encoder->And(srcHigh, srcHigh, m_currShader->ImmToVariable(0xFFFFFFF, ISA_TYPE_UD));
+                    m_encoder->Push();
+
+                    // Copy to Dst
+                    CVariable* dstAlias = m_currShader->BitCast(m_destination, ISA_TYPE_UD);
+                    // Low:
+                    m_encoder->SetDstRegion(2);
+                    m_encoder->Copy(dstAlias, srcLow);
+                    m_encoder->Push();
+                    // High:
+                    m_encoder->SetDstSubReg(1);
+                    m_encoder->SetDstRegion(2);
+                    m_encoder->Copy(dstAlias, srcHigh);
+                    m_encoder->Push();
+                }
+            }
+            else
+            {
+                CVariable* pTempVar = m_currShader->GetNewVariable(
+                    numLanes(m_currShader->m_SIMDSize),
+                    ISA_TYPE_UQ, m_currShader->getGRFAlignment(), m_destination->IsUniform());
+                m_encoder->And(pTempVar, srcV, m_currShader->ImmToVariable(0xFFFFFFFFFFFFFFF, ISA_TYPE_UQ));
+                m_encoder->Cast(m_destination, pTempVar);
+                m_encoder->Push();
+            }
+        }
+        else // ADDRESS_SPACE_GLOBAL
+        {
+            m_encoder->Cast(m_destination, srcV);
+            m_encoder->Push();
+        }
+    }
 }
 
 void EmitPass::emitExtract(llvm::Instruction* inst)

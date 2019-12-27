@@ -92,12 +92,6 @@ bool GenericAddressAnalysis::runOnFunction(Function& F)
                 Ty = GEP->getPointerOperandType();
             auto PT = dyn_cast<PointerType>(Ty);
             if (PT && PT->getAddressSpace() == ADDRESS_SPACE_GENERIC) {
-                auto implicitArgs = ImplicitArgs(F, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils());
-                SmallVector<ImplicitArg::ArgType, 3> args;
-                args.push_back(ImplicitArg::LOCAL_MEMORY_STATELESS_WINDOW_START_ADDRESS);
-                args.push_back(ImplicitArg::LOCAL_MEMORY_STATELESS_WINDOW_SIZE);
-                args.push_back(ImplicitArg::PRIVATE_MEMORY_STATELESS_SIZE);
-                ImplicitArgs::addImplicitArgs(F, args, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils());
                 return true;
             }
         }
@@ -136,10 +130,8 @@ namespace {
         Module* getModule() { return m_module; }
 
     private:
-        Value* addIsAddrSpaceComparison(Value* pointer, Instruction* insertPoint, unsigned targetAS);
         Type* getPointerAsIntType(LLVMContext& Ctx, unsigned AS);
-        Value* getAddrSpaceWindowEndAddress(Instruction& insertPoint, unsigned targetAS);
-        void resolveGAS(Instruction& I, Value* pointerOperand, unsigned targetAS);
+        void resolveGAS(Instruction& I, Value* pointerOperand);
     };
 
 } // namespace
@@ -212,37 +204,6 @@ Type* GenericAddressDynamicResolution::getPointerAsIntType(LLVMContext& ctx, con
     return IntegerType::get(ctx, ptrBits);
 }
 
-Value* GenericAddressDynamicResolution::addIsAddrSpaceComparison(Value* pointer, Instruction* insertPoint, const unsigned targetAS)
-{
-    Function* func = insertPoint->getParent()->getParent();
-
-    ImplicitArgs implicitArgs = ImplicitArgs(*func, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils());
-    Value* windowStartPtr = targetAS == ADDRESS_SPACE_LOCAL
-        ? implicitArgs.getImplicitArg(*func, ImplicitArg::LOCAL_MEMORY_STATELESS_WINDOW_START_ADDRESS)
-        : implicitArgs.getImplicitArg(*func, ImplicitArg::PRIVATE_BASE);
-
-    Type* intPtrTy = getPointerAsIntType(pointer->getContext(), ADDRESS_SPACE_GENERIC);
-
-    // (ptr >= window_start) & [ptr < (window_start + window_size)]
-    Value* ptrAsInt = PtrToIntInst::Create(Instruction::PtrToInt, pointer, intPtrTy, "", insertPoint);
-    Value* windowStartAsInt = nullptr;
-
-    if (windowStartPtr) {
-        windowStartAsInt = PtrToIntInst::Create(Instruction::PtrToInt, windowStartPtr, intPtrTy, "", insertPoint);
-    }
-    else {
-        // Kernel might not have implicit argument for ImplicitArg::PRIVATE_BASE
-        windowStartAsInt = ConstantInt::get(intPtrTy, 0);
-    }
-
-    Value* windowEnd = getAddrSpaceWindowEndAddress(*insertPoint, targetAS);
-    Value* cmpLowerBound = CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_UGE, ptrAsInt, windowStartAsInt, "CmpWindowLowerBound", insertPoint);
-    Value* cmpUpperBound = CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_ULT, ptrAsInt, windowEnd, "CmpWindowUpperBound", insertPoint);
-    Value* isInWindow = BinaryOperator::CreateAnd(cmpLowerBound, cmpUpperBound, "isPtrInWindow", insertPoint);
-
-    return isInWindow;
-}
-
 bool GenericAddressDynamicResolution::visitLoadStoreInst(Instruction& I)
 {
     bool changed = false;
@@ -264,108 +225,108 @@ bool GenericAddressDynamicResolution::visitLoadStoreInst(Instruction& I)
 
     if (pointerAddressSpace == ADDRESS_SPACE_GENERIC) {
         // Add runtime check to see whether I is a load/store on local addrspace.
-        resolveGAS(I, pointerOperand, ADDRESS_SPACE_LOCAL);
+        resolveGAS(I, pointerOperand);
         changed = true;
     }
 
     return changed;
 }
 
-Value* GenericAddressDynamicResolution::getAddrSpaceWindowEndAddress(Instruction& insertPoint, const unsigned targetAS)
+void GenericAddressDynamicResolution::resolveGAS(Instruction& I, Value* pointerOperand)
 {
-    Function* pCurrentFunc = insertPoint.getParent()->getParent();
-    ImplicitArgs implicitArgs = ImplicitArgs(*pCurrentFunc, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils());
-    Argument* windowStart = nullptr, * windowSize = nullptr;
+    // Every time there is a load/store from/to a generic pointer, we have to resolve
+    // its corresponding address space by looking at its tag on bits[61:63].
+    // First, the generic pointer's tag is obtained to then perform the load/store
+    // with the corresponding address space.
 
-    if (targetAS == ADDRESS_SPACE_LOCAL) {
-        windowStart = implicitArgs.getImplicitArg(*pCurrentFunc, ImplicitArg::LOCAL_MEMORY_STATELESS_WINDOW_START_ADDRESS);
-        windowSize = implicitArgs.getImplicitArg(*pCurrentFunc, ImplicitArg::LOCAL_MEMORY_STATELESS_WINDOW_SIZE);
-    }
-    else if (targetAS == ADDRESS_SPACE_PRIVATE) {
-        windowStart = implicitArgs.getImplicitArg(*pCurrentFunc, ImplicitArg::PRIVATE_BASE);
-        windowSize = implicitArgs.getImplicitArg(*pCurrentFunc, ImplicitArg::PRIVATE_MEMORY_STATELESS_SIZE);
-    }
-    else
-        assert(false && "Unknown AddrSpace");
-
-    if ((windowStart != nullptr) && (windowSize != nullptr)) {
-        Type* intPtrTy = getPointerAsIntType(windowStart->getContext(), ADDRESS_SPACE_GENERIC);
-        Value* windowStartAsInt = PtrToIntInst::Create(Instruction::PtrToInt, windowStart, intPtrTy, "", &insertPoint);
-        Value* windowSizeAsInt = CastInst::CreateZExtOrBitCast(windowSize, intPtrTy, "", &insertPoint);
-        Value* windowEnd = BinaryOperator::CreateAdd(windowStartAsInt, windowSizeAsInt, "localWindowEnd", &insertPoint);
-        return windowEnd;
-    }
-    else if ((windowStart == nullptr) && (windowSize != nullptr)) {
-        // Assume start from 0 if windowStart is not defined.
-        Type* intPtrTy = getPointerAsIntType(pCurrentFunc->getContext(), ADDRESS_SPACE_GENERIC);
-        return CastInst::CreateZExtOrBitCast(windowSize, intPtrTy, "", &insertPoint);
-    }
-    else
-        assert(false && "AddrSpace without limit");
-
-    return ConstantInt::get(Type::getInt32Ty(insertPoint.getContext()), 0);
-}
-
-void GenericAddressDynamicResolution::resolveGAS(Instruction& I, Value* pointerOperand, const unsigned targetAS)
-{
-    Value* isPtrInLocalWindow = addIsAddrSpaceComparison(pointerOperand, &I, targetAS);
-    PointerType* pointerType = dyn_cast<PointerType>(pointerOperand->getType());
     IRBuilder<> builder(&I);
+    PointerType* pointerType = dyn_cast<PointerType>(pointerOperand->getType());
+    ConstantInt* privateTag = builder.getInt64(1); // tag 001
+    ConstantInt* localTag = builder.getInt64(2);   // tag 010
 
+    Type* intPtrTy = getPointerAsIntType(pointerOperand->getContext(), ADDRESS_SPACE_GENERIC);
+    Value* ptrAsInt = PtrToIntInst::Create(Instruction::PtrToInt, pointerOperand, intPtrTy, "", &I);
+    // Get actual tag
+    Value* tag = builder.CreateLShr(ptrAsInt, ConstantInt::get(ptrAsInt->getType(), 61));
+
+    // Three cases for private, local and global pointers
     BasicBlock* currentBlock = I.getParent();
     BasicBlock* convergeBlock = currentBlock->splitBasicBlock(&I);
-    BasicBlock* localLoadBlock = BasicBlock::Create(I.getContext(), "LocalLoadBlock", convergeBlock->getParent(), convergeBlock);
-    BasicBlock* nonLocalLoadBlock = BasicBlock::Create(I.getContext(), "GlobalPrivateLoadBlock", convergeBlock->getParent(), convergeBlock);
+    BasicBlock* privateBlock = BasicBlock::Create(I.getContext(), "PrivateBlock", convergeBlock->getParent(), convergeBlock);
+    BasicBlock* localBlock = BasicBlock::Create(I.getContext(), "LocalBlock", convergeBlock->getParent(), convergeBlock);
+    BasicBlock* globalBlock = BasicBlock::Create(I.getContext(), "GlobalBlock", convergeBlock->getParent(), convergeBlock);
+
 
     Value* localLoad = nullptr;
-    Value* nonLocalLoad = nullptr;
+    Value* privateLoad = nullptr;
+    Value* globalLoad = nullptr;
 
-    // if is_local(ptr)
+    // Private
     {
-        IRBuilder<> localBuilder(localLoadBlock);
-        PointerType* localPtrType = pointerType->getElementType()->getPointerTo(targetAS);
+        IRBuilder<> privateBuilder(privateBlock);
+        PointerType* ptrType = pointerType->getElementType()->getPointerTo(ADDRESS_SPACE_PRIVATE);
+        Value* privatePtr = privateBuilder.CreateAddrSpaceCast(pointerOperand, ptrType);
+
+        if (LoadInst* LI = dyn_cast<LoadInst>(&I))
+        {
+            privateLoad = privateBuilder.CreateAlignedLoad(privatePtr, LI->getAlignment(), LI->isVolatile(), "privateLoad");
+        }
+        else if (StoreInst* SI = dyn_cast<StoreInst>(&I))
+        {
+            privateBuilder.CreateAlignedStore(I.getOperand(0), privatePtr, SI->getAlignment(), SI->isVolatile());
+        }
+        privateBuilder.CreateBr(convergeBlock);
+    }
+
+    // Local
+    {
+        IRBuilder<> localBuilder(localBlock);
+        PointerType* localPtrType = pointerType->getElementType()->getPointerTo(ADDRESS_SPACE_LOCAL);
         Value* localPtr = localBuilder.CreateAddrSpaceCast(pointerOperand, localPtrType);
-        if (LoadInst * LI = dyn_cast<LoadInst>(&I)) {
+        if (LoadInst* LI = dyn_cast<LoadInst>(&I))
+        {
             localLoad = localBuilder.CreateAlignedLoad(localPtr, LI->getAlignment(), LI->isVolatile(), "localLoad");
         }
-        else if (StoreInst * SI = dyn_cast<StoreInst>(&I)) {
+        else if (StoreInst* SI = dyn_cast<StoreInst>(&I))
+        {
             localBuilder.CreateAlignedStore(I.getOperand(0), localPtr, SI->getAlignment(), SI->isVolatile());
-        }
-        else {
-            // Inst I is a to_local(pointerOperand) call, and we can use localPtr as I's result.
-            localLoad = localPtr;
         }
         localBuilder.CreateBr(convergeBlock);
     }
 
-    // else (is either global or private)
+    // Global
     {
-        IRBuilder<> nonLocalBuilder(nonLocalLoadBlock);
-        PointerType* ptrType = pointerType->getElementType()->getPointerTo(ADDRESS_SPACE_GLOBAL_OR_PRIVATE);
-        Value* nonLocalPtr = nonLocalBuilder.CreateAddrSpaceCast(pointerOperand, ptrType);
+        IRBuilder<> globalBuilder(globalBlock);
+        PointerType* ptrType = pointerType->getElementType()->getPointerTo(ADDRESS_SPACE_GLOBAL);
+        Value* globalPtr = globalBuilder.CreateAddrSpaceCast(pointerOperand, ptrType);
 
-        if (LoadInst * LI = dyn_cast<LoadInst>(&I)) {
-            nonLocalLoad = nonLocalBuilder.CreateAlignedLoad(nonLocalPtr, LI->getAlignment(), LI->isVolatile(), "globalOrPrivateLoad");
+        if (LoadInst* LI = dyn_cast<LoadInst>(&I))
+        {
+            globalLoad = globalBuilder.CreateAlignedLoad(globalPtr, LI->getAlignment(), LI->isVolatile(), "globalLoad");
         }
-        else if (StoreInst * SI = dyn_cast<StoreInst>(&I)) {
-            nonLocalBuilder.CreateAlignedStore(I.getOperand(0), nonLocalPtr, SI->getAlignment(), SI->isVolatile());
+        else if (StoreInst* SI = dyn_cast<StoreInst>(&I))
+        {
+            globalBuilder.CreateAlignedStore(I.getOperand(0), globalPtr, SI->getAlignment(), SI->isVolatile());
         }
-        else {
-            // Inst I is a to_local(pointerOperand) call, and we can use null as I's result.
-            nonLocalLoad = Constant::getNullValue(pointerType->getElementType()->getPointerTo(targetAS));
-        }
-        nonLocalBuilder.CreateBr(convergeBlock);
+        globalBuilder.CreateBr(convergeBlock);
     }
 
     currentBlock->getTerminator()->eraseFromParent();
     builder.SetInsertPoint(currentBlock);
-    builder.CreateCondBr(isPtrInLocalWindow, localLoadBlock, nonLocalLoadBlock);
 
-    if ((localLoad != nullptr) && (nonLocalLoad != nullptr)) {
+
+    SwitchInst* switchTag = builder.CreateSwitch(tag, globalBlock, 2);
+    // Based on tag there are two cases 000/111: private, 001: local, 010 global
+    switchTag->addCase(privateTag, privateBlock);
+    switchTag->addCase(localTag, localBlock);
+
+    if ((privateLoad != nullptr) && (localLoad != nullptr) && (globalLoad != nullptr))
+    {
         IRBuilder<> phiBuilder(&(*convergeBlock->begin()));
-        PHINode* phi = phiBuilder.CreatePHI(I.getType(), 2, I.getName());
-        phi->addIncoming(localLoad, localLoadBlock);
-        phi->addIncoming(nonLocalLoad, nonLocalLoadBlock);
+        PHINode* phi = phiBuilder.CreatePHI(I.getType(), 3, I.getName());
+        phi->addIncoming(privateLoad, privateBlock);
+        phi->addIncoming(localLoad, localBlock);
+        phi->addIncoming(globalLoad, globalBlock);
         I.replaceAllUsesWith(phi);
     }
 
@@ -375,48 +336,86 @@ void GenericAddressDynamicResolution::resolveGAS(Instruction& I, Value* pointerO
 bool GenericAddressDynamicResolution::visitIntrinsicCall(CallInst& I)
 {
     bool changed = false;
-    Function* pCurrentFunc = I.getParent()->getParent();
     Function* pCalledFunc = I.getCalledFunction();
-    if (pCalledFunc == nullptr) {
+    if (pCalledFunc == nullptr)
+    {
         // Indirect call
         return false;
     }
 
-    ImplicitArgs implicitArgs = ImplicitArgs(*pCurrentFunc, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils());
     StringRef funcName = pCalledFunc->getName();
 
-    if ((funcName == "__builtin_IB_to_local") || (funcName == "__builtin_IB_to_private")) {
+    if ((funcName == "__builtin_IB_to_private") || (funcName == "__builtin_IB_to_local")
+        || (funcName == "__builtin_IB_to_global"))
+    {
         assert(I.getNumArgOperands() == 1);
         Value* arg = I.getArgOperand(0);
+        PointerType* dstType = dyn_cast<PointerType>(I.getType());
         const unsigned targetAS = cast<PointerType>(I.getType())->getAddressSpace();
 
-        //
-        // First to check whether we can simplify trivial cases like addrspacecast from
-        // global/private to local, or from local to local.
-        //
-        if (AddrSpaceCastInst * AI = dyn_cast<AddrSpaceCastInst>(arg)) {
-            //    to_local(__global*)  -> null
-            //    to_local(__private*) -> null
-            PointerType* ptrType = cast<PointerType>(AI->getSrcTy());
-            if ((ptrType->getAddressSpace() != targetAS) && (ptrType->getAddressSpace() != ADDRESS_SPACE_GENERIC)) {
-                Constant* np = Constant::getNullValue(I.getType());
-                I.replaceAllUsesWith(np);
-                I.eraseFromParent();
-                changed = true;
-            }
-            else if (ptrType->getAddressSpace() == targetAS) {
-                //  to_local(__local*)  -> __local*
-                I.replaceAllUsesWith(AI->getOperand(0));
-                I.eraseFromParent();
-                changed = true;
-            }
+        IRBuilder<> builder(&I);
+        PointerType* pointerType = dyn_cast<PointerType>(arg->getType());
+        ConstantInt* globalTag = builder.getInt64(0);  // tag 000/111
+        ConstantInt* privateTag = builder.getInt64(1); // tag 001
+        ConstantInt* localTag = builder.getInt64(2);   // tag 010
+
+        Type* intPtrTy = getPointerAsIntType(arg->getContext(), ADDRESS_SPACE_GENERIC);
+        Value* ptrAsInt = PtrToIntInst::Create(Instruction::PtrToInt, arg, intPtrTy, "", &I);
+        // Get actual tag
+        Value* tag = builder.CreateLShr(ptrAsInt, ConstantInt::get(ptrAsInt->getType(), 61));
+
+        Value* newPtr = nullptr;
+        Value* newPtrNull = nullptr;
+        Value* cmpTag = nullptr;
+
+        // Tag was already obtained from GAS pointer, now we check its address space (AS)
+        // and the target AS for this intrinsic call
+        if (targetAS == ADDRESS_SPACE_PRIVATE)
+            cmpTag = builder.CreateICmpEQ(tag, privateTag, "cmpTag");
+        else if (targetAS == ADDRESS_SPACE_LOCAL)
+            cmpTag = builder.CreateICmpEQ(tag, localTag, "cmpTag");
+        else if (targetAS == ADDRESS_SPACE_GLOBAL)
+            cmpTag = builder.CreateICmpEQ(tag, globalTag, "cmpTag");
+
+        // Two cases:
+        // 1: Generic pointer's AS matches with instrinsic's target AS
+        //    So we create the address space cast
+        // 2: Generic pointer's AS does not match with instrinsic's target AS
+        //    So the instrinsic call returns NULL
+        BasicBlock* currentBlock = I.getParent();
+        BasicBlock* convergeBlock = currentBlock->splitBasicBlock(&I);
+        BasicBlock* ifBlock = BasicBlock::Create(I.getContext(), "IfBlock",
+            convergeBlock->getParent(), convergeBlock);
+        BasicBlock* elseBlock = BasicBlock::Create(I.getContext(), "ElseBlock",
+            convergeBlock->getParent(), convergeBlock);
+
+        // If Block
+        {
+            IRBuilder<> ifBuilder(ifBlock);
+            PointerType* ptrType = pointerType->getElementType()->getPointerTo(targetAS);
+            newPtr = ifBuilder.CreateAddrSpaceCast(arg, ptrType);
+            ifBuilder.CreateBr(convergeBlock);
         }
 
-        // Add runtime check to resolve GAS for non-trivial cases.
-        if (!changed) {
-            resolveGAS(I, arg, targetAS);
-            changed = true;
+        // Else Block
+        {
+            IRBuilder<> elseBuilder(elseBlock);
+            Value* ptrNull = Constant::getNullValue(I.getType());
+            newPtrNull = elseBuilder.CreatePointerCast(ptrNull, dstType, "");
+            elseBuilder.CreateBr(convergeBlock);
         }
+
+        currentBlock->getTerminator()->eraseFromParent();
+        builder.SetInsertPoint(currentBlock);
+        builder.CreateCondBr(cmpTag, ifBlock, elseBlock);
+
+        IRBuilder<> phiBuilder(&(*convergeBlock->begin()));
+        PHINode* phi = phiBuilder.CreatePHI(I.getType(), 2, I.getName());
+        phi->addIncoming(newPtr, ifBlock);
+        phi->addIncoming(newPtrNull, elseBlock);
+        I.replaceAllUsesWith(phi);
+        I.eraseFromParent();
+        changed = true;
     }
 
     return changed;
