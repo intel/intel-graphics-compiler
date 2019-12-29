@@ -824,6 +824,13 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         m_pCtx->m_doSimd32Stage2 = m_currShader->CompileSIMDSize(SIMDMode::SIMD32, *this, F);
     }
 
+    if (m_SimdMode == SIMDMode::SIMD8 &&
+        IsStage1FastCompile(m_pCtx->m_CgFlag, m_pCtx->m_StagingCtx))
+    {
+        m_pCtx->m_doSimd16Stage2 = m_currShader->CompileSIMDSize(SIMDMode::SIMD16, *this, F);
+        m_pCtx->m_doSimd32Stage2 = m_currShader->CompileSIMDSize(SIMDMode::SIMD32, *this, F);
+    }
+
     return false;
 }
 

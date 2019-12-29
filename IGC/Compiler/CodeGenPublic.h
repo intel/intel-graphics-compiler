@@ -773,6 +773,7 @@ namespace IGC
         // For staged compilation, we record if SIMD32 will be generated in Stage1, and
         // pass it to Stage2.
         bool m_doSimd32Stage2 = false;
+        bool m_doSimd16Stage2 = false;
         std::string m_savedBitcodeString;
         SInstrTypes m_savedInstrTypes;
 

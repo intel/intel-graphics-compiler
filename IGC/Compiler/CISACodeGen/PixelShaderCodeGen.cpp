@@ -1129,6 +1129,10 @@ namespace IGC
             {
                 return true;
             }
+            if (DoSimd16Stage2(ctx->m_StagingCtx))
+            {
+                return true;
+            }
 
             if (forceSIMD16)
             {
