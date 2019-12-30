@@ -3930,12 +3930,16 @@ bool G4_INST::isMixedMode() const
         }
 
         G4_Type srcType = tOpnd->getType();
+        G4_Type dstType = getDst()->getType();
 
-        // FIXME: this includes int <-> HF type conversion, which is probably not the intention of the function..
-        if ((getDst()->getType() == builder.getMixModeType() || srcType == builder.getMixModeType()) &&
-            getDst()->getType() != srcType)
+        if ((dstType == builder.getMixModeType() || srcType == builder.getMixModeType()) &&
+            dstType != srcType)
         {
-            return true;
+            // do not consider int<->float conversion as mixed type
+            if (!IS_TYPE_INT(dstType) && !IS_TYPE_INT(srcType))
+            {
+                return true;
+            }
         }
     }
 
