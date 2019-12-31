@@ -777,6 +777,16 @@ namespace IGC
         std::string m_savedBitcodeString;
         SInstrTypes m_savedInstrTypes;
 
+        std::vector<int> m_hsIdxMap;
+        std::vector<int> m_dsIdxMap;
+        std::vector<int> m_gsIdxMap;
+        std::vector<int> m_hsNoDefaultIdxMap;
+        std::vector<int> m_dsNoDefaultIdxMap;
+        std::vector<int> m_gsNoDefaultIdxMap;
+        std::vector<int> m_psIdxMap;
+        DWORD LtoUsedMask = 0;
+
+
     protected:
         // Objects pointed to by these pointers are owned by this class.
         LLVMContextWrapper* llvmCtxWrapper;
