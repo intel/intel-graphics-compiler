@@ -146,7 +146,7 @@ public:
     unsigned char        getOpcode       () const { return m_cisa_instruction.opcode;           }
     unsigned char        getModifier     () const { return m_cisa_instruction.modifier;         }
     unsigned             getOperandCount () const { return m_cisa_instruction.opnd_count;       }
-    Common_ISA_Exec_Size getExecSize     () const { return (Common_ISA_Exec_Size)
+    VISA_Exec_Size getExecSize     () const { return (VISA_Exec_Size)
                                                            (m_cisa_instruction.execsize & 0xF); }
 
     void *operator new(size_t sz, vISA::Mem_Manager& m){ return m.alloc(sz); }

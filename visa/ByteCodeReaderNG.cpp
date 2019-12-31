@@ -168,10 +168,10 @@ inline void readVarBytes(uint8_t major, uint8_t minor, T& dst, uint32_t& bytePos
     }
 }
 
-static Common_VISA_EMask_Ctrl transformMask(
+static VISA_EMask_Ctrl transformMask(
     RoutineContainer& container, uint8_t maskVal)
 {
-    Common_VISA_EMask_Ctrl mask = vISA_EMASK_M1;
+    VISA_EMask_Ctrl mask = vISA_EMASK_M1;
     if (container.majorVersion == 3 && container.minorVersion == 0)
     {
         Common_ISA_EMask_Ctrl_3_0 tMask = Common_ISA_EMask_Ctrl_3_0(maskVal);
@@ -232,12 +232,12 @@ static Common_VISA_EMask_Ctrl transformMask(
         }
     }else
     {
-        mask = Common_VISA_EMask_Ctrl(maskVal);
+        mask = VISA_EMask_Ctrl(maskVal);
     }
 
     return mask;
 }
-static void readExecSizeNG(unsigned& bytePos, const char* buf, Common_ISA_Exec_Size& size, Common_VISA_EMask_Ctrl& mask, RoutineContainer& container)
+static void readExecSizeNG(unsigned& bytePos, const char* buf, VISA_Exec_Size& size, VISA_EMask_Ctrl& mask, RoutineContainer& container)
 {
     uint8_t execSize = 0;
     READ_CISA_FIELD(execSize, uint8_t, bytePos, buf);
@@ -245,7 +245,7 @@ static void readExecSizeNG(unsigned& bytePos, const char* buf, Common_ISA_Exec_S
 
     mask = transformMask(container, maskVal);
 
-    size = (Common_ISA_Exec_Size )((execSize) & 0xF);
+    size = (VISA_Exec_Size )((execSize) & 0xF);
 }
 
 template <typename T> T readPrimitiveOperandNG(unsigned& bytePos, const char* buf)
@@ -401,7 +401,7 @@ static VISA_VectorOpnd* readVectorOperandNG(unsigned& bytePos, const char* buf, 
             else if(isAddressoff)
             {
                 VISA_Type vType = decl->genVar.getType();
-                G4_Type gType = Get_G4_Type_From_Common_ISA_Type(vType);
+                G4_Type gType = GetGenTypeFromVISAType(vType);
                 unsigned int offset  = colOffset * G4_Type_Table[gType].byteSize + rowOffset * G4_GRF_REG_NBYTES;
                 kernelBuilderImpl->CreateVISAAddressOfOperand(opnd, decl, offset);
             }
@@ -424,7 +424,7 @@ static VISA_VectorOpnd* readVectorOperandNG(unsigned& bytePos, const char* buf, 
 
             VISA_VectorOpnd* opnd = NULL;
             VISA_AddrVar*    decl = container.addressVarDecls[index];
-            kernelBuilderImpl->CreateVISAAddressOperand(opnd, decl, offset, Get_Common_ISA_Exec_Size((Common_ISA_Exec_Size)width), isDst);
+            kernelBuilderImpl->CreateVISAAddressOperand(opnd, decl, offset, Get_VISA_Exec_Size((VISA_Exec_Size)width), isDst);
 
             return opnd;
         }
@@ -589,8 +589,8 @@ static VISA_VectorOpnd * readVectorOperandNGAddressOf(unsigned& bytePos, const c
 
 static void readInstructionCommonNG(unsigned& bytePos, const char* buf, ISA_Opcode opcode, RoutineContainer& container)
 {
-    Common_VISA_EMask_Ctrl emask = vISA_EMASK_M1;
-    Common_ISA_Exec_Size  esize = EXEC_SIZE_ILLEGAL;
+    VISA_EMask_Ctrl emask = vISA_EMASK_M1;
+    VISA_Exec_Size  esize = EXEC_SIZE_ILLEGAL;
 
     VISA_INST_Desc* inst_desc = &CISA_INST_table[opcode];
     unsigned opnd_count = inst_desc->opnd_num;
@@ -630,7 +630,7 @@ static void readInstructionCommonNG(unsigned& bytePos, const char* buf, ISA_Opco
                 opnd_skip++;
             }
 
-            uint32_t exSize = Get_Common_ISA_Exec_Size(esize);
+            uint32_t exSize = Get_VISA_Exec_Size(esize);
             uint8_t tag = 0;
             VISA_PredVar* dstDcl = NULL;
             bool cmpHasDst = false;
@@ -652,7 +652,7 @@ static void readInstructionCommonNG(unsigned& bytePos, const char* buf, ISA_Opco
 
                         if( (tag & 0x7) == OPERAND_GENERAL )
                         {
-                            opnds[i] = readVectorOperandNG(bytePos, buf, tag, container, Get_Common_ISA_Exec_Size(esize), true);
+                            opnds[i] = readVectorOperandNG(bytePos, buf, tag, container, Get_VISA_Exec_Size(esize), true);
                             cmpHasDst = true;
 
                         }else
@@ -711,9 +711,9 @@ static void readInstructionCommonNG(unsigned& bytePos, const char* buf, ISA_Opco
                 break;
             case ISA_Inst_Compare:
                 if(dstDcl)
-                    kernelBuilder->AppendVISAComparisonInst((Common_ISA_Cond_Mod)(opSpec & 0x7), emask, esize, dstDcl, src0, src1);
+                    kernelBuilder->AppendVISAComparisonInst((VISA_Cond_Mod)(opSpec & 0x7), emask, esize, dstDcl, src0, src1);
                 else if(cmpHasDst)
-                    kernelBuilder->AppendVISAComparisonInst((Common_ISA_Cond_Mod)(opSpec & 0x7), emask, esize, dst, src0, src1);
+                    kernelBuilder->AppendVISAComparisonInst((VISA_Cond_Mod)(opSpec & 0x7), emask, esize, dst, src0, src1);
                 else
                     ASSERT_USER(true, "DST doesn't have valid GRF or FLAG dst.");
                 break;
@@ -725,10 +725,12 @@ static void readInstructionCommonNG(unsigned& bytePos, const char* buf, ISA_Opco
         }
     case ISA_Inst_SIMD_Flow:
         {
+            assert(opcode == ISA_GOTO && "expect goto instruction");
             readExecSizeNG(bytePos, buf, esize, emask, container);
-            VISA_PredOpnd* pred = hasPredicate(opcode) ? readPredicateOperandNG(bytePos, buf, container) : NULL;
-            VISA_LabelOpnd* label = opcode == ISA_GOTO ?  container.labelVarDecls[readPrimitiveOperandNG<uint16_t>(bytePos, buf)] : NULL;
-            kernelBuilder->AppendVISACFSIMDInst(opcode, pred, emask, esize, label);
+            VISA_PredOpnd* pred = hasPredicate(opcode) ? readPredicateOperandNG(bytePos, buf, container) : nullptr;
+            VISA_LabelOpnd* label = opcode == ISA_GOTO ?
+                container.labelVarDecls[readPrimitiveOperandNG<uint16_t>(bytePos, buf)] : nullptr;
+            kernelBuilder->AppendVISACFGotoInst(pred, emask, esize, label);
             break;
         }
     case ISA_Inst_Sync:
@@ -828,7 +830,7 @@ static void readInstructionDataportNG(unsigned& bytePos, const char* buf, ISA_Op
 
             VISA_StateOpndHandle* surfaceHnd = NULL;
             kernelBuilder->CreateVISAStateOperandHandle(surfaceHnd, container.surfaceVarDecls[surface]);
-            kernelBuilder->AppendVISASurfAccessOwordLoadStoreInst(opcode, vISA_EMASK_M1, surfaceHnd, (Common_ISA_Oword_Num)size, (VISA_VectorOpnd*)offset, msg);
+            kernelBuilder->AppendVISASurfAccessOwordLoadStoreInst(opcode, vISA_EMASK_M1, surfaceHnd, (VISA_Oword_Num)size, (VISA_VectorOpnd*)offset, msg);
 
             break;
         }
@@ -850,8 +852,8 @@ static void readInstructionDataportNG(unsigned& bytePos, const char* buf, ISA_Op
             VISA_StateOpndHandle* surfaceHnd = NULL;
             kernelBuilder->CreateVISAStateOperandHandle(surfaceHnd, container.surfaceVarDecls[surface]);
 
-            Common_VISA_EMask_Ctrl emask = vISA_EMASK_M1;
-            Common_ISA_Exec_Size  esize = EXEC_SIZE_ILLEGAL;
+            VISA_EMask_Ctrl emask = vISA_EMASK_M1;
+            VISA_Exec_Size  esize = EXEC_SIZE_ILLEGAL;
 
             /// TODO: Conversions like these make using vISA builder cumbersome.
             switch (num_elts & 0x3)
@@ -880,8 +882,8 @@ static void readInstructionDataportNG(unsigned& bytePos, const char* buf, ISA_Op
             if (getVersionAsInt(container.majorVersion, container.minorVersion) >=
                     getVersionAsInt(3, 2))
             {
-                Common_VISA_EMask_Ctrl emask = vISA_EMASK_M1;
-                Common_ISA_Exec_Size esize = EXEC_SIZE_ILLEGAL;
+                VISA_EMask_Ctrl emask = vISA_EMASK_M1;
+                VISA_Exec_Size esize = EXEC_SIZE_ILLEGAL;
                 readExecSizeNG(bytePos, buf, esize, emask, container);
 
                 VISA_PredOpnd* pred = readPredicateOperandNG(bytePos, buf, container);
@@ -902,8 +904,8 @@ static void readInstructionDataportNG(unsigned& bytePos, const char* buf, ISA_Op
             {
                 uint8_t ch_mask = readPrimitiveOperandNG<uint8_t>(bytePos, buf);
 
-                Common_VISA_EMask_Ctrl emask = vISA_EMASK_M1;
-                Common_ISA_Exec_Size  esize = EXEC_SIZE_ILLEGAL;
+                VISA_EMask_Ctrl emask = vISA_EMASK_M1;
+                VISA_Exec_Size  esize = EXEC_SIZE_ILLEGAL;
                 readExecSizeNG(bytePos, buf, esize, emask, container);
 
                 MUST_BE_TRUE(esize == 0, "Unsupported number of elements for ISA_SCATTER4_TYPED/ISA_GATHER4_TYPED.");
@@ -927,8 +929,8 @@ static void readInstructionDataportNG(unsigned& bytePos, const char* buf, ISA_Op
         }
     case ISA_3D_RT_WRITE:
         {
-            Common_VISA_EMask_Ctrl emask = vISA_EMASK_M1;
-            Common_ISA_Exec_Size  esize = EXEC_SIZE_ILLEGAL;
+            VISA_EMask_Ctrl emask = vISA_EMASK_M1;
+            VISA_Exec_Size  esize = EXEC_SIZE_ILLEGAL;
             readExecSizeNG(bytePos, buf, esize, emask, container);
 
             VISA_PredOpnd* pred = readPredicateOperandNG(bytePos, buf, container);
@@ -980,8 +982,8 @@ static void readInstructionDataportNG(unsigned& bytePos, const char* buf, ISA_Op
         }
     case ISA_GATHER4_SCALED:
     case ISA_SCATTER4_SCALED: {
-        Common_VISA_EMask_Ctrl eMask = vISA_EMASK_M1;
-        Common_ISA_Exec_Size exSize = EXEC_SIZE_ILLEGAL;
+        VISA_EMask_Ctrl eMask = vISA_EMASK_M1;
+        VISA_Exec_Size exSize = EXEC_SIZE_ILLEGAL;
         readExecSizeNG(bytePos, buf, exSize, eMask, container);
 
         VISA_PredOpnd* pred = readPredicateOperandNG(bytePos, buf, container);
@@ -1010,15 +1012,15 @@ static void readInstructionDataportNG(unsigned& bytePos, const char* buf, ISA_Op
     }
     case ISA_GATHER_SCALED:
     case ISA_SCATTER_SCALED: {
-        Common_VISA_EMask_Ctrl eMask = vISA_EMASK_M1;
-        Common_ISA_Exec_Size exSize = EXEC_SIZE_ILLEGAL;
+        VISA_EMask_Ctrl eMask = vISA_EMASK_M1;
+        VISA_Exec_Size exSize = EXEC_SIZE_ILLEGAL;
         readExecSizeNG(bytePos, buf, exSize, eMask, container);
 
         VISA_PredOpnd* pred = readPredicateOperandNG(bytePos, buf, container);
         // block size is ignored (MBZ)
         (void) readPrimitiveOperandNG<uint8_t>(bytePos, buf);
-        Common_ISA_SVM_Block_Num  numBlocks =
-            Common_ISA_SVM_Block_Num(readPrimitiveOperandNG<uint8_t>(bytePos, buf));
+        VISA_SVM_Block_Num  numBlocks =
+            VISA_SVM_Block_Num(readPrimitiveOperandNG<uint8_t>(bytePos, buf));
         // scale is ignored (MBZ)
         (void) readPrimitiveOperandNG<uint16_t>(bytePos, buf);
         uint8_t surface = readPrimitiveOperandNG<uint8_t>(bytePos, buf);
@@ -1045,8 +1047,8 @@ static void readInstructionDataportNG(unsigned& bytePos, const char* buf, ISA_Op
         unsigned short bitwidth;
         std::tie(subOpc, bitwidth) = getAtomicOpAndBitwidth(bytePos, buf);
 
-        Common_VISA_EMask_Ctrl eMask = vISA_EMASK_M1;
-        Common_ISA_Exec_Size exSize = EXEC_SIZE_ILLEGAL;
+        VISA_EMask_Ctrl eMask = vISA_EMASK_M1;
+        VISA_Exec_Size exSize = EXEC_SIZE_ILLEGAL;
         readExecSizeNG(bytePos, buf, exSize, eMask, container);
 
         VISA_PredOpnd* pred = readPredicateOperandNG(bytePos, buf, container);
@@ -1070,8 +1072,8 @@ static void readInstructionDataportNG(unsigned& bytePos, const char* buf, ISA_Op
         unsigned short bitwidth;
         std::tie(subOpc, bitwidth) = getAtomicOpAndBitwidth(bytePos, buf);
 
-        Common_VISA_EMask_Ctrl eMask = vISA_EMASK_M1;
-        Common_ISA_Exec_Size exSize = EXEC_SIZE_ILLEGAL;
+        VISA_EMask_Ctrl eMask = vISA_EMASK_M1;
+        VISA_Exec_Size exSize = EXEC_SIZE_ILLEGAL;
         readExecSizeNG(bytePos, buf, exSize, eMask, container);
 
         VISA_PredOpnd* pred = readPredicateOperandNG(bytePos, buf, container);
@@ -1103,8 +1105,8 @@ static void readInstructionControlFlow(unsigned& bytePos, const char* buf, ISA_O
 {
     VISAKernel* kernelBuilder = container.kernelBuilder;
 
-    Common_VISA_EMask_Ctrl emask = vISA_EMASK_M1;
-    Common_ISA_Exec_Size  esize = EXEC_SIZE_ILLEGAL;
+    VISA_EMask_Ctrl emask = vISA_EMASK_M1;
+    VISA_Exec_Size  esize = EXEC_SIZE_ILLEGAL;
 
     switch (opcode)
     {
@@ -1172,8 +1174,8 @@ static void readInstructionControlFlow(unsigned& bytePos, const char* buf, ISA_O
     }
     case ISA_SWITCHJMP:
         {
-            Common_VISA_EMask_Ctrl emask = vISA_EMASK_M1;
-            Common_ISA_Exec_Size  esize = EXEC_SIZE_ILLEGAL;
+            VISA_EMask_Ctrl emask = vISA_EMASK_M1;
+            VISA_Exec_Size  esize = EXEC_SIZE_ILLEGAL;
             readExecSizeNG(bytePos, buf, esize, emask, container);
 
             uint8_t numLabels = readPrimitiveOperandNG<uint8_t>(bytePos, buf);
@@ -1219,8 +1221,8 @@ static void readInstructionMisc(unsigned& bytePos, const char* buf, ISA_Opcode o
         {
             uint8_t modifier = readPrimitiveOperandNG<uint8_t>( bytePos, buf);
 
-            Common_VISA_EMask_Ctrl emask = vISA_EMASK_M1;
-            Common_ISA_Exec_Size  esize = EXEC_SIZE_ILLEGAL;
+            VISA_EMask_Ctrl emask = vISA_EMASK_M1;
+            VISA_Exec_Size  esize = EXEC_SIZE_ILLEGAL;
             readExecSizeNG(bytePos, buf, esize, emask, container);
 
             VISA_PredOpnd* pred = readPredicateOperandNG(bytePos, buf, container);
@@ -1241,8 +1243,8 @@ static void readInstructionMisc(unsigned& bytePos, const char* buf, ISA_Opcode o
             uint8_t modifier = readPrimitiveOperandNG<uint8_t>( bytePos, buf);
             bool hasEOT = modifier & 0x2;
 
-            Common_VISA_EMask_Ctrl emask = vISA_EMASK_M1;
-            Common_ISA_Exec_Size  esize = EXEC_SIZE_ILLEGAL;
+            VISA_EMask_Ctrl emask = vISA_EMASK_M1;
+            VISA_Exec_Size  esize = EXEC_SIZE_ILLEGAL;
             readExecSizeNG(bytePos, buf, esize, emask, container);
 
             VISA_PredOpnd* pred = readPredicateOperandNG(bytePos, buf, container);
@@ -1330,8 +1332,8 @@ static void readInstructionMisc(unsigned& bytePos, const char* buf, ISA_Opcode o
         }
     case ISA_3D_URB_WRITE:
         {
-            Common_VISA_EMask_Ctrl emask = vISA_EMASK_M1;
-            Common_ISA_Exec_Size  esize = EXEC_SIZE_ILLEGAL;
+            VISA_EMask_Ctrl emask = vISA_EMASK_M1;
+            VISA_Exec_Size  esize = EXEC_SIZE_ILLEGAL;
             readExecSizeNG(bytePos, buf, esize, emask, container);
 
             VISA_PredOpnd* pred = readPredicateOperandNG(bytePos, buf, container);
@@ -1413,8 +1415,8 @@ static void readInstructionMisc(unsigned& bytePos, const char* buf, ISA_Opcode o
 
 static void readInstructionSVM(unsigned& bytePos, const char* buf, ISA_Opcode opcode, RoutineContainer& container)
 {
-    Common_VISA_EMask_Ctrl emask = vISA_EMASK_M1;
-    Common_ISA_Exec_Size  esize = EXEC_SIZE_ILLEGAL;
+    VISA_EMask_Ctrl emask = vISA_EMASK_M1;
+    VISA_Exec_Size  esize = EXEC_SIZE_ILLEGAL;
 
     VISAKernel*     kernelBuilder     = container.kernelBuilder;
 
@@ -1432,11 +1434,11 @@ static void readInstructionSVM(unsigned& bytePos, const char* buf, ISA_Opcode op
 
             if (subOpcode == SVM_BLOCK_LD)
             {
-                kernelBuilder->AppendVISASvmBlockLoadInst(Common_ISA_Oword_Num(numOWords), unaligned, address, dst);
+                kernelBuilder->AppendVISASvmBlockLoadInst(VISA_Oword_Num(numOWords), unaligned, address, dst);
             }
             else
             {
-                kernelBuilder->AppendVISASvmBlockStoreInst(Common_ISA_Oword_Num(numOWords), unaligned, address, dst);
+                kernelBuilder->AppendVISASvmBlockStoreInst(VISA_Oword_Num(numOWords), unaligned, address, dst);
             }
             break;
         }
@@ -1446,8 +1448,8 @@ static void readInstructionSVM(unsigned& bytePos, const char* buf, ISA_Opcode op
             readExecSizeNG(bytePos, buf, esize, emask, container);
             VISA_PredOpnd* pred = readPredicateOperandNG(bytePos, buf, container);
 
-            Common_ISA_SVM_Block_Type blockSize = Common_ISA_SVM_Block_Type(readPrimitiveOperandNG<uint8_t>(bytePos, buf) & 0x3);
-            Common_ISA_SVM_Block_Num  numBlocks = Common_ISA_SVM_Block_Num(readPrimitiveOperandNG<uint8_t>(bytePos, buf) & 0x3);
+            VISA_SVM_Block_Type blockSize = VISA_SVM_Block_Type(readPrimitiveOperandNG<uint8_t>(bytePos, buf) & 0x3);
+            VISA_SVM_Block_Num  numBlocks = VISA_SVM_Block_Num(readPrimitiveOperandNG<uint8_t>(bytePos, buf) & 0x3);
             VISA_RawOpnd* addresses = readRawOperandNG(bytePos, buf, container);
             VISA_RawOpnd*       dst = readRawOperandNG(bytePos, buf, container);
 
@@ -1637,8 +1639,8 @@ static void readInstructionSampler(unsigned& bytePos, const char* buf, ISA_Opcod
             // <channels> <aoffimmi> <sampler> <surface> <dst> <numParams> <params>
             auto op = readSubOpcodeByteNG(bytePos, buf);
 
-            Common_VISA_EMask_Ctrl emask = vISA_EMASK_M1;
-            Common_ISA_Exec_Size  esize = EXEC_SIZE_ILLEGAL;
+            VISA_EMask_Ctrl emask = vISA_EMASK_M1;
+            VISA_Exec_Size  esize = EXEC_SIZE_ILLEGAL;
             readExecSizeNG(bytePos, buf, esize, emask, container);
 
             VISA_PredOpnd* pred = readPredicateOperandNG(bytePos, buf, container);
@@ -1673,8 +1675,8 @@ static void readInstructionSampler(unsigned& bytePos, const char* buf, ISA_Opcod
             // same as 3D_SAMPLE, except that sampler is missing.
             auto op = readSubOpcodeByteNG(bytePos, buf);
 
-            Common_VISA_EMask_Ctrl emask = vISA_EMASK_M1;
-            Common_ISA_Exec_Size  esize = EXEC_SIZE_ILLEGAL;
+            VISA_EMask_Ctrl emask = vISA_EMASK_M1;
+            VISA_Exec_Size  esize = EXEC_SIZE_ILLEGAL;
             readExecSizeNG(bytePos, buf, esize, emask, container);
 
             VISA_PredOpnd* pred = readPredicateOperandNG(bytePos, buf, container);
@@ -1703,8 +1705,8 @@ static void readInstructionSampler(unsigned& bytePos, const char* buf, ISA_Opcod
         {
             auto op = readSubOpcodeByteNG(bytePos, buf);
 
-            Common_VISA_EMask_Ctrl emask = vISA_EMASK_M1;
-            Common_ISA_Exec_Size  esize = EXEC_SIZE_ILLEGAL;
+            VISA_EMask_Ctrl emask = vISA_EMASK_M1;
+            VISA_Exec_Size  esize = EXEC_SIZE_ILLEGAL;
             readExecSizeNG(bytePos, buf, esize, emask, container);
 
             VISA_PredOpnd* pred = readPredicateOperandNG(bytePos, buf, container);
@@ -1737,8 +1739,8 @@ static void readInstructionSampler(unsigned& bytePos, const char* buf, ISA_Opcod
         {
             VISASampler3DSubOpCode subOpcode = (VISASampler3DSubOpCode)readPrimitiveOperandNG<uint8_t>(bytePos, buf);
 
-            Common_VISA_EMask_Ctrl emask = vISA_EMASK_M1;
-            Common_ISA_Exec_Size  esize = EXEC_SIZE_ILLEGAL;
+            VISA_EMask_Ctrl emask = vISA_EMASK_M1;
+            VISA_Exec_Size  esize = EXEC_SIZE_ILLEGAL;
             readExecSizeNG(bytePos, buf, esize, emask, container);
             uint8_t channelMask = 0xF;
             channelMask = readPrimitiveOperandNG<uint8_t>(bytePos, buf);

@@ -284,7 +284,7 @@ std::string printVectorOperand(
         {
             sstr << Common_ISA_Get_Modifier_Name(modifier) << "A" << opnd.opnd_val.addr_opnd.index
                  << "(" << (unsigned)opnd.opnd_val.addr_opnd.offset << ")<"
-                 << Get_Common_ISA_Exec_Size((Common_ISA_Exec_Size)(opnd.opnd_val.addr_opnd.width & 0xF)) << ">";
+                 << Get_VISA_Exec_Size((VISA_Exec_Size)(opnd.opnd_val.addr_opnd.width & 0xF)) << ">";
             break;
         }
         case OPERAND_PREDICATE:
@@ -615,7 +615,7 @@ static std::string printExecutionSize(
         sstr << "(";
         uint8_t emsk = ((execSize >> 0x4) & 0xF);
         sstr << emask_str[emsk] << ", ";
-        sstr << (unsigned) Get_Common_ISA_Exec_Size((Common_ISA_Exec_Size)(execSize & 0xF));
+        sstr << (unsigned) Get_VISA_Exec_Size((VISA_Exec_Size)(execSize & 0xF));
         sstr << ")";
     }
 
@@ -630,8 +630,8 @@ static std::string printExecutionSizeForScatterGather(uint8_t sizeAndMask)
 {
     std::stringstream sstr;
     sstr << "(";
-    Common_VISA_EMask_Ctrl emask =
-        (Common_VISA_EMask_Ctrl)((sizeAndMask >> 0x4) & 0xF);
+    VISA_EMask_Ctrl emask =
+        (VISA_EMask_Ctrl)((sizeAndMask >> 0x4) & 0xF);
     sstr << emask_str[emask] << ", ";
 
     unsigned execSize = 0;
@@ -721,8 +721,8 @@ static std::string printInstructionSVM(
              uint8_t properties = getPrimitiveOperand<uint8_t>(inst, i++);
              if (properties & 8)
                  sstr << ".unaligned";
-             Common_ISA_Oword_Num numOwords = (Common_ISA_Oword_Num) (properties & 0x7);
-             sstr << " (" << Get_Common_ISA_Oword_Num(numOwords) << ")";
+             VISA_Oword_Num numOwords = (VISA_Oword_Num) (properties & 0x7);
+             sstr << " (" << Get_VISA_Oword_Num(numOwords) << ")";
              break;
             }
         case SVM_GATHER:
@@ -731,8 +731,8 @@ static std::string printInstructionSVM(
              sstr << (subOpcode == SVM_GATHER ? "gather" : "scatter");
              uint8_t block_size = getPrimitiveOperand<uint8_t>(inst, i++);
              uint8_t num_blocks = getPrimitiveOperand<uint8_t>(inst, i++);
-             sstr << "." << Get_Common_ISA_SVM_Block_Size((Common_ISA_SVM_Block_Type)block_size);
-             sstr << "." << Get_Common_ISA_SVM_Block_Num((Common_ISA_SVM_Block_Num)num_blocks);
+             sstr << "." << Get_Common_ISA_SVM_Block_Size((VISA_SVM_Block_Type)block_size);
+             sstr << "." << Get_Common_ISA_SVM_Block_Num((VISA_SVM_Block_Num)num_blocks);
              sstr << " " << printExecutionSize(inst->opcode, inst->execsize, subOpcode);
              break;
         }
@@ -2203,7 +2203,7 @@ static std::string printInstructionDataport(
         {
             uint8_t size = getPrimitiveOperand<uint8_t>(inst, i++);
             size = size & 0x7;
-            unsigned num_oword = Get_Common_ISA_Oword_Num((Common_ISA_Oword_Num)size);
+            unsigned num_oword = Get_VISA_Oword_Num((VISA_Oword_Num)size);
 
             if (ISA_OWORD_ST != opcode)
             {
@@ -2345,12 +2345,12 @@ static std::string printInstructionDataport(
         case ISA_GATHER_SCALED:
         case ISA_SCATTER_SCALED:
         {
-            Common_ISA_SVM_Block_Num numBlocks;
+            VISA_SVM_Block_Num numBlocks;
 
             // block size : ignored
             (void)getPrimitiveOperand<uint8_t>(inst, i++);
 
-            numBlocks = static_cast<Common_ISA_SVM_Block_Num>(getPrimitiveOperand<uint8_t>(inst, i++));
+            numBlocks = static_cast<VISA_SVM_Block_Num>(getPrimitiveOperand<uint8_t>(inst, i++));
 
             sstr << "." << Get_Common_ISA_SVM_Block_Num(numBlocks);
 

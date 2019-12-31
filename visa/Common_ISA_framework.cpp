@@ -117,7 +117,7 @@ int CisaInst::createCisaInstruction(
         if (inst_desc->opnd_desc[i].opnd_type == OPND_EXECSIZE ||
             inst_desc->opnd_desc[i].opnd_type == OPND_PRED)
         {
-            m_size += static_cast<short>(Get_Common_ISA_Type_Size((VISA_Type)inst_desc->opnd_desc[i].data_type));
+            m_size += static_cast<short>(Get_VISA_Type_Size((VISA_Type)inst_desc->opnd_desc[i].data_type));
         }
     }
     if (hasSubOpcode)
@@ -128,7 +128,7 @@ int CisaInst::createCisaInstruction(
             OpndDesc desc = inst_desc->getSubInstDesc(subOpcode).opnd_desc[i];
             if (desc.opnd_type == OPND_EXECSIZE || desc.opnd_type == OPND_PRED)
             {
-                m_size += static_cast<short>(Get_Common_ISA_Type_Size((VISA_Type)desc.data_type));
+                m_size += static_cast<short>(Get_VISA_Type_Size((VISA_Type)desc.data_type));
             }
         }
     }

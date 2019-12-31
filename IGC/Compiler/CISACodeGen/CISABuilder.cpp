@@ -59,7 +59,7 @@ using namespace llvm;
 
 namespace IGC
 {
-    Common_ISA_Exec_Size getExecSize(SIMDMode width)
+    VISA_Exec_Size getExecSize(SIMDMode width)
     {
         switch (width)
         {
@@ -139,7 +139,7 @@ namespace IGC
     return ATOMIC_AND;
     }
 
-    inline Common_ISA_Exec_Size visaExecSize(SIMDMode width)
+    inline VISA_Exec_Size visaExecSize(SIMDMode width)
     {
         switch (width)
         {
@@ -177,33 +177,33 @@ namespace IGC
     return elementSize;
     }
 
-    static inline Common_ISA_SVM_Block_Type
+    static inline VISA_SVM_Block_Type
         visaBlockType(unsigned elemSize) {
-    switch (elemSize) {
-    case 8:  return SVM_BLOCK_TYPE_BYTE;
-    case 32: return SVM_BLOCK_TYPE_DWORD;
-    case 64: return SVM_BLOCK_TYPE_QWORD;
+        switch (elemSize) {
+        case 8:  return SVM_BLOCK_TYPE_BYTE;
+        case 32: return SVM_BLOCK_TYPE_DWORD;
+        case 64: return SVM_BLOCK_TYPE_QWORD;
+        }
+
+        assert(false && "Unknown block/element size. Expect 8-/32-/64-bit only!");
+        return static_cast<VISA_SVM_Block_Type>(~0U);
     }
 
-    assert(false && "Unknown block/element size. Expect 8-/32-/64-bit only!");
-    return static_cast<Common_ISA_SVM_Block_Type>(~0U);
-    }
-
-    static inline Common_ISA_SVM_Block_Num
+    static inline VISA_SVM_Block_Num
         visaBlockNum(unsigned numElems) {
-    switch (numElems) {
-    case 1: return SVM_BLOCK_NUM_1;
-    case 2: return SVM_BLOCK_NUM_2;
-    case 4: return SVM_BLOCK_NUM_4;
-    case 8: return SVM_BLOCK_NUM_8;
+        switch (numElems) {
+        case 1: return SVM_BLOCK_NUM_1;
+        case 2: return SVM_BLOCK_NUM_2;
+        case 4: return SVM_BLOCK_NUM_4;
+        case 8: return SVM_BLOCK_NUM_8;
+        }
+
+        assert(false &&
+            "Unknown number of blocks/elements. Expect 1, 2, 4, or 8 only!");
+        return static_cast<VISA_SVM_Block_Num>(~0U);
     }
 
-    assert(false &&
-           "Unknown number of blocks/elements. Expect 1, 2, 4, or 8 only!");
-    return static_cast<Common_ISA_SVM_Block_Num>(~0U);
-    }
-
-    constexpr unsigned visaNumLanes(Common_ISA_Exec_Size execSize)
+    constexpr unsigned visaNumLanes(VISA_Exec_Size execSize)
     {
         unsigned lanes = 0;
         switch (execSize)
@@ -226,7 +226,7 @@ namespace IGC
     // If special region attribute is not set, the regioning is <1; 1, 0> for src and <1> for dst.
     // Note that the assertions may hit in certain cases, which should be handled separately,
     // like uniform vars with operand with special region set.
-    constexpr unsigned GrfRegionSize(Common_ISA_Exec_Size execSize, unsigned elementSize,
+    constexpr unsigned GrfRegionSize(VISA_Exec_Size execSize, unsigned elementSize,
         const SModifier& mod, bool isSource, bool aligned = true)
     {
         constexpr unsigned grfSize = 32; // in bytes
@@ -267,7 +267,7 @@ namespace IGC
     // split a SIMD16 variable into two SIMD8 while satisfying vISA's raw operand alignment
     // return a tuple representing the vISA raw operand (var + offset) after split
     std::tuple<CVariable*, uint32_t> CEncoder::splitRawOperand(CVariable* var, bool isFirstHalf,
-    Common_VISA_EMask_Ctrl execMask)
+    VISA_EMask_Ctrl execMask)
     {
 
     if (!var || var->IsUniform() || isFirstHalf)
@@ -301,8 +301,8 @@ namespace IGC
     }
 
     unsigned
-        CEncoder::GetRawOpndSplitOffset(Common_ISA_Exec_Size fromExecSize,
-    Common_ISA_Exec_Size toExecSize,
+        CEncoder::GetRawOpndSplitOffset(VISA_Exec_Size fromExecSize,
+    VISA_Exec_Size toExecSize,
             unsigned thePart, CVariable* var) const
     {
     if (!var || var->IsUniform())
@@ -386,8 +386,8 @@ namespace IGC
     m_encoderState.m_flag.var = flag;
     VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
     // control flow instructions cannot be broken down into lower SIMD
-    Common_VISA_EMask_Ctrl emask = m_encoderState.m_noMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1;
-    Common_ISA_Exec_Size execSize = visaExecSize(m_program->m_dispatchSize);
+    VISA_EMask_Ctrl emask = m_encoderState.m_noMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1;
+    VISA_Exec_Size execSize = visaExecSize(m_program->m_dispatchSize);
     if (F->hasFnAttribute("KMPLOCK"))
     {
         emask = vISA_EMASK_M1_NM;
@@ -402,8 +402,8 @@ namespace IGC
     m_encoderState.m_flag.var = flag;
     VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
     // control flow instructions cannot be broken down into lower SIMD
-    Common_VISA_EMask_Ctrl emask = m_encoderState.m_noMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1;
-    Common_ISA_Exec_Size execSize = visaExecSize(m_program->m_dispatchSize);
+    VISA_EMask_Ctrl emask = m_encoderState.m_noMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1;
+    VISA_Exec_Size execSize = visaExecSize(m_program->m_dispatchSize);
     V(vKernel->AppendVISACFFunctionCallInst(predOpnd, emask, execSize, F->getName().data(), argSize, retSize));
     }
 
@@ -412,8 +412,8 @@ namespace IGC
     m_encoderState.m_flag.var = flag;
     VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
     // control flow instructions cannot be broken down into lower SIMD
-    Common_VISA_EMask_Ctrl emask = m_encoderState.m_noMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1;
-    Common_ISA_Exec_Size execSize = visaExecSize(m_program->m_dispatchSize);
+    VISA_EMask_Ctrl emask = m_encoderState.m_noMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1;
+    VISA_Exec_Size execSize = visaExecSize(m_program->m_dispatchSize);
     VISA_VectorOpnd* funcAddrOpnd = GetSourceOperandNoModifier(funcPtr);
     V(vKernel->AppendVISACFIndirectFuncCallInst(predOpnd, emask, execSize, funcAddrOpnd, argSize, retSize));
     }
@@ -423,8 +423,8 @@ namespace IGC
     m_encoderState.m_flag.var = flag;
     VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
     // control flow instructions cannot be broken down into lower SIMD
-    Common_VISA_EMask_Ctrl emask = m_encoderState.m_noMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1;
-    Common_ISA_Exec_Size execSize = visaExecSize(m_program->m_dispatchSize);
+    VISA_EMask_Ctrl emask = m_encoderState.m_noMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1;
+    VISA_Exec_Size execSize = visaExecSize(m_program->m_dispatchSize);
     if (F->hasFnAttribute("KMPLOCK"))
     {
         emask = vISA_EMASK_M1_NM;
@@ -438,37 +438,37 @@ namespace IGC
     m_encoderState.m_flag.var = flag;
     VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
     // control flow instructions cannot be broken down into lower SIMD
-    Common_VISA_EMask_Ctrl emask = m_encoderState.m_noMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1;
-    Common_ISA_Exec_Size execSize = visaExecSize(m_program->m_dispatchSize);
+    VISA_EMask_Ctrl emask = m_encoderState.m_noMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1;
+    VISA_Exec_Size execSize = visaExecSize(m_program->m_dispatchSize);
     V(vKernel->AppendVISACFFunctionRetInst(predOpnd, emask, execSize));
     }
 
     void CEncoder::Jump(CVariable* flag, uint label)
     {
-    VISA_LabelOpnd* visaLabel = GetLabel(label);
-    m_encoderState.m_flag.var = flag;
-    VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
-    // control flow instructions cannot be broken down into lower SIMD
-    Common_VISA_EMask_Ctrl emask = m_encoderState.m_noMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1;
-    Common_ISA_Exec_Size execSize = visaExecSize(m_program->m_dispatchSize);
-    if (flag == nullptr || flag->IsUniform())
-    {
-        execSize = EXEC_SIZE_1;
-    }
-    V(vKernel->AppendVISACFSIMDInst(ISA_GOTO, predOpnd, emask, execSize, visaLabel));
+        VISA_LabelOpnd* visaLabel = GetLabel(label);
+        m_encoderState.m_flag.var = flag;
+        VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
+        // control flow instructions cannot be broken down into lower SIMD
+        VISA_EMask_Ctrl emask = m_encoderState.m_noMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1;
+        VISA_Exec_Size execSize = visaExecSize(m_program->m_dispatchSize);
+        if (flag == nullptr || flag->IsUniform())
+        {
+            execSize = EXEC_SIZE_1;
+        }
+        V(vKernel->AppendVISACFGotoInst(predOpnd, emask, execSize, visaLabel));
     }
 
     void CEncoder::Label(uint label)
     {
-    VISA_LabelOpnd* visaLabel = GetLabel(label);
-    V(vKernel->AppendVISACFLabelInst(visaLabel));
+        VISA_LabelOpnd* visaLabel = GetLabel(label);
+        V(vKernel->AppendVISACFLabelInst(visaLabel));
     }
 
     uint CEncoder::GetNewLabelID()
     {
-    uint id = labelMap.size();
-    labelMap.push_back(nullptr);
-    return (id);
+        uint id = labelMap.size();
+        labelMap.push_back(nullptr);
+        return (id);
     }
 
     void CEncoder::DwordAtomicRaw(
@@ -518,7 +518,7 @@ namespace IGC
 
     void CEncoder::Cmp(e_predicate p, CVariable* dst, CVariable* src0, CVariable* src1)
     {
-    Common_ISA_Cond_Mod subOp = ConvertCondModToVisaType(p);
+    VISA_Cond_Mod subOp = ConvertCondModToVisaType(p);
 
     bool flagDst = 0;
         if (dst->GetType() == ISA_TYPE_BOOL)
@@ -546,9 +546,9 @@ namespace IGC
 
     if (bNeedSplitting)
     {
-        Common_VISA_EMask_Ctrl execMask = GetAluEMask(dst);
-        Common_ISA_Exec_Size fromExecSize = GetAluExecSize(dst);
-        Common_ISA_Exec_Size toExecSize = SplitExecSize(fromExecSize, numParts);
+        VISA_EMask_Ctrl execMask = GetAluEMask(dst);
+        VISA_Exec_Size fromExecSize = GetAluExecSize(dst);
+        VISA_Exec_Size toExecSize = SplitExecSize(fromExecSize, numParts);
 
         for (unsigned thePart = 0; thePart != numParts; ++thePart) {
             SModifier newSrc0Mod = SplitVariable(fromExecSize, toExecSize, thePart, src0, m_encoderState.m_srcOperand[0], true);
@@ -611,9 +611,9 @@ namespace IGC
         NeedSplitting(src0, m_encoderState.m_srcOperand[0], numParts, true) ||
         NeedSplitting(src1, m_encoderState.m_srcOperand[1], numParts, true)) {
 
-        Common_VISA_EMask_Ctrl execMask = GetAluEMask(dst);
-        Common_ISA_Exec_Size fromExecSize = GetAluExecSize(dst);
-        Common_ISA_Exec_Size toExecSize = SplitExecSize(fromExecSize, numParts);
+        VISA_EMask_Ctrl execMask = GetAluEMask(dst);
+        VISA_Exec_Size fromExecSize = GetAluExecSize(dst);
+        VISA_Exec_Size toExecSize = SplitExecSize(fromExecSize, numParts);
 
         for (unsigned thePart = 0; thePart != numParts; ++thePart) {
             SModifier newDstMod = SplitVariable(fromExecSize, toExecSize, thePart, dst, m_encoderState.m_dstOperand);
@@ -967,7 +967,7 @@ namespace IGC
     return operand;
     }
 
-    Common_ISA_Exec_Size CEncoder::GetAluExecSize(CVariable* dst) const
+    VISA_Exec_Size CEncoder::GetAluExecSize(CVariable* dst) const
     {
     SIMDMode simdSize = m_encoderState.m_simdSize;
 
@@ -996,7 +996,7 @@ namespace IGC
     return visaExecSize(simdSize);
     }
 
-    Common_VISA_EMask_Ctrl CEncoder::GetAluEMask(CVariable* dst)
+    VISA_EMask_Ctrl CEncoder::GetAluEMask(CVariable* dst)
     {
     e_mask mask = m_encoderState.m_mask;
     bool noMask = m_encoderState.m_noMask;
@@ -1039,9 +1039,9 @@ namespace IGC
         NeedSplitting(src0, m_encoderState.m_srcOperand[0], numParts, true) ||
         NeedSplitting(src1, m_encoderState.m_srcOperand[1], numParts, true)) {
 
-        Common_VISA_EMask_Ctrl execMask = GetAluEMask(dst);
-        Common_ISA_Exec_Size fromExecSize = GetAluExecSize(dst);
-        Common_ISA_Exec_Size toExecSize = SplitExecSize(fromExecSize, numParts);
+        VISA_EMask_Ctrl execMask = GetAluEMask(dst);
+        VISA_Exec_Size fromExecSize = GetAluExecSize(dst);
+        VISA_Exec_Size toExecSize = SplitExecSize(fromExecSize, numParts);
 
         for (unsigned thePart = 0; thePart != numParts; ++thePart) {
             SModifier newDstMod = SplitVariable(fromExecSize, toExecSize, thePart, dst, m_encoderState.m_dstOperand);
@@ -1093,7 +1093,7 @@ namespace IGC
 
     // Only handle SIMD16 now! We assume all data movements in SIMD8 will honor
     // the region rules.
-    Common_ISA_Exec_Size simdSize = GetAluExecSize(var);
+    VISA_Exec_Size simdSize = GetAluExecSize(var);
         const unsigned elemSize = var->GetElemSize();
 
         switch (simdSize)
@@ -1193,8 +1193,8 @@ namespace IGC
     }
 
     // SplitVariable - Split the variable to prevent accessing 2+ GRFs.
-    SModifier CEncoder::SplitVariable(Common_ISA_Exec_Size fromExecSize,
-                                  Common_ISA_Exec_Size toExecSize,
+    SModifier CEncoder::SplitVariable(VISA_Exec_Size fromExecSize,
+                                  VISA_Exec_Size toExecSize,
                                   unsigned thePart,
         CVariable* var, const SModifier& mod,
                                   bool isSource) const {
@@ -1276,8 +1276,8 @@ namespace IGC
     return newMod;
     }
 
-    Common_ISA_Exec_Size
-        CEncoder::SplitExecSize(Common_ISA_Exec_Size fromExecSize, unsigned numParts) const {
+    VISA_Exec_Size
+        CEncoder::SplitExecSize(VISA_Exec_Size fromExecSize, unsigned numParts) const {
     assert(numParts == 2 && "Only know splitting SIMD16 into SIMD8!");
 
     switch (fromExecSize) {
@@ -1289,13 +1289,13 @@ namespace IGC
         return EXEC_SIZE_8;
     }
     assert(false && "Unknown execution size to be split!");
-    return static_cast<Common_ISA_Exec_Size>(~0);
+    return static_cast<VISA_Exec_Size>(~0);
     }
 
-    Common_VISA_EMask_Ctrl
-        CEncoder::SplitEMask(Common_ISA_Exec_Size fromExecSize,
-                     Common_ISA_Exec_Size toExecSize,
-                     unsigned thePart, Common_VISA_EMask_Ctrl execMask) const {
+    VISA_EMask_Ctrl
+        CEncoder::SplitEMask(VISA_Exec_Size fromExecSize,
+                     VISA_Exec_Size toExecSize,
+                     unsigned thePart, VISA_EMask_Ctrl execMask) const {
     assert(((fromExecSize == EXEC_SIZE_16 && toExecSize == EXEC_SIZE_8) || (fromExecSize == EXEC_SIZE_32 && toExecSize == EXEC_SIZE_16)) &&
            "Only support splitting from exec-size 16 to exec-size 8, or from 32 to 16!");
     assert((thePart == 0 || thePart == 1) &&
@@ -1346,7 +1346,7 @@ namespace IGC
         break;
     }
     assert(false && "Unknown execution mask to be split into low part!");
-    return static_cast<Common_VISA_EMask_Ctrl>(~0);
+    return static_cast<VISA_EMask_Ctrl>(~0);
     }
 
     // Splitting SIMD16 Message Data Payload (MDP at offset = MDPOfst) for A64
@@ -1360,8 +1360,8 @@ namespace IGC
         VISA_VectorOpnd* movDst1 = nullptr;
         VISA_VectorOpnd* srcOpnd = nullptr;
         const uint32_t toSize = fromSize / 2;
-        const Common_ISA_Exec_Size fromESize = getExecSize(lanesToSIMDMode(fromSize));
-        const Common_ISA_Exec_Size toESize = getExecSize(lanesToSIMDMode(toSize));
+        const VISA_Exec_Size fromESize = getExecSize(lanesToSIMDMode(fromSize));
+        const VISA_Exec_Size toESize = getExecSize(lanesToSIMDMode(toSize));
     const uint32_t eltBytes = MDP->GetElemSize();
     assert(eltBytes == V0->GetElemSize() && eltBytes == V1->GetElemSize() &&
         "Element size should be the same among SIMD16 MDP and SIMD8 MDP!");
@@ -1373,7 +1373,7 @@ namespace IGC
 
         if (GRFElts > 0)
         {
-            Common_VISA_EMask_Ctrl execNM = ConvertMaskToVisaType(m_encoderState.m_mask, m_encoderState.m_noMask);
+            VISA_EMask_Ctrl execNM = ConvertMaskToVisaType(m_encoderState.m_mask, m_encoderState.m_noMask);
             uint32_t MDPStart = MDPOfst / eltBytes;
             for (uint32_t i = 0; i < NumBlks; ++i)
             {
@@ -1413,8 +1413,8 @@ namespace IGC
         VISA_VectorOpnd* movSrc0 = nullptr;
         VISA_VectorOpnd* movSrc1 = nullptr;
         const uint32_t fromSize = toSize / 2;
-        const Common_ISA_Exec_Size fromESize = getExecSize(lanesToSIMDMode(toSize));
-        const Common_ISA_Exec_Size toESize = getExecSize(lanesToSIMDMode(fromSize));
+        const VISA_Exec_Size fromESize = getExecSize(lanesToSIMDMode(toSize));
+        const VISA_Exec_Size toESize = getExecSize(lanesToSIMDMode(fromSize));
     const uint32_t eltBytes = MDP->GetElemSize();
     assert(eltBytes == V0->GetElemSize() && eltBytes == V1->GetElemSize() &&
            "Element size should be the same among SIMD16 MDP and SIMD8 MDP!");
@@ -1426,7 +1426,7 @@ namespace IGC
 
         if (GRFElts > 0)
         {
-            Common_VISA_EMask_Ctrl execNM = ConvertMaskToVisaType(m_encoderState.m_mask, m_encoderState.m_noMask);
+            VISA_EMask_Ctrl execNM = ConvertMaskToVisaType(m_encoderState.m_mask, m_encoderState.m_noMask);
             uint32_t MDPStart = MDPOfst / eltBytes;
             for (uint32_t i = 0; i < NumBlks; ++i)
             {
@@ -1555,9 +1555,9 @@ namespace IGC
         if (NeedSplitting(dst, m_encoderState.m_dstOperand, numParts) ||
             NeedSplitting(src, m_encoderState.m_srcOperand[0], numParts, true)) {
 
-            Common_VISA_EMask_Ctrl execMask = GetAluEMask(dst);
-            Common_ISA_Exec_Size fromExecSize = GetAluExecSize(dst);
-            Common_ISA_Exec_Size toExecSize = SplitExecSize(fromExecSize, numParts);
+            VISA_EMask_Ctrl execMask = GetAluEMask(dst);
+            VISA_Exec_Size fromExecSize = GetAluExecSize(dst);
+            VISA_Exec_Size toExecSize = SplitExecSize(fromExecSize, numParts);
 
             for (unsigned thePart = 0; thePart != numParts; ++thePart) {
                 SModifier newDstMod = SplitVariable(fromExecSize, toExecSize, thePart, dst, m_encoderState.m_dstOperand);
@@ -1747,9 +1747,9 @@ namespace IGC
             NeedSplitting(src2, m_encoderState.m_srcOperand[2], numParts, true) ||
             NeedSplitting(src3, m_encoderState.m_srcOperand[3], numParts, true)) {
 
-            Common_VISA_EMask_Ctrl execMask = GetAluEMask(dst);
-            Common_ISA_Exec_Size fromExecSize = GetAluExecSize(dst);
-            Common_ISA_Exec_Size toExecSize = SplitExecSize(fromExecSize, numParts);
+            VISA_EMask_Ctrl execMask = GetAluEMask(dst);
+            VISA_Exec_Size fromExecSize = GetAluExecSize(dst);
+            VISA_Exec_Size toExecSize = SplitExecSize(fromExecSize, numParts);
 
             for (unsigned thePart = 0; thePart != numParts; ++thePart) {
                 SModifier newDstMod = SplitVariable(fromExecSize, toExecSize, thePart, dst, m_encoderState.m_dstOperand);
@@ -1800,9 +1800,9 @@ namespace IGC
         NeedSplitting(src1, m_encoderState.m_srcOperand[1], numParts, true) ||
         NeedSplitting(src2, m_encoderState.m_srcOperand[2], numParts, true)) {
 
-        Common_VISA_EMask_Ctrl execMask = GetAluEMask(dst);
-        Common_ISA_Exec_Size fromExecSize = GetAluExecSize(dst);
-        Common_ISA_Exec_Size toExecSize = SplitExecSize(fromExecSize, numParts);
+        VISA_EMask_Ctrl execMask = GetAluEMask(dst);
+        VISA_Exec_Size fromExecSize = GetAluExecSize(dst);
+        VISA_Exec_Size toExecSize = SplitExecSize(fromExecSize, numParts);
 
         for (unsigned thePart = 0; thePart != numParts; ++thePart) {
             SModifier newDstMod = SplitVariable(fromExecSize, toExecSize, thePart, dst, m_encoderState.m_dstOperand);
@@ -1863,7 +1863,7 @@ namespace IGC
         if (L1->GetType() != ISA_TYPE_UD && L1->GetType() != ISA_TYPE_UV) L1 = m_program->BitCast(L1, ISA_TYPE_UD);
         if (H1 && H1->GetType() != ISA_TYPE_UD && H1->GetType() != ISA_TYPE_UV) H1 = m_program->BitCast(H1, ISA_TYPE_UD);
 
-        Common_ISA_Exec_Size ExecSize = GetAluExecSize(Lo);
+        VISA_Exec_Size ExecSize = GetAluExecSize(Lo);
         assert(ExecSize == EXEC_SIZE_32 || ExecSize == EXEC_SIZE_16 || ExecSize == EXEC_SIZE_8 ||
             ExecSize == EXEC_SIZE_4 || ExecSize == EXEC_SIZE_2 ||
             ExecSize == EXEC_SIZE_1);
@@ -1873,9 +1873,9 @@ namespace IGC
             // Have to split it because `acc0` has only 8 elements for 32-bit
             // integer types.
             unsigned NumParts = 2;
-            Common_VISA_EMask_Ctrl ExecMask = GetAluEMask(Lo);
-            Common_ISA_Exec_Size FromExecSize = GetAluExecSize(Lo);
-            Common_ISA_Exec_Size ToExecSize = SplitExecSize(FromExecSize, NumParts);
+            VISA_EMask_Ctrl ExecMask = GetAluEMask(Lo);
+            VISA_Exec_Size FromExecSize = GetAluExecSize(Lo);
+            VISA_Exec_Size ToExecSize = SplitExecSize(FromExecSize, NumParts);
 
             VISA_PredOpnd* Pred = GetFlagOperand(m_encoderState.m_flag);
             for (unsigned ThePart = 0; ThePart != NumParts; ++ThePart) {
@@ -1896,7 +1896,7 @@ namespace IGC
                 VISA_VectorOpnd* AccOut = GetDestinationOperand(Carry, m_encoderState.m_dstOperand);
                 VISA_VectorOpnd* AccIn = GetSourceOperand(Carry, m_encoderState.m_dstOperand);
 
-                Common_VISA_EMask_Ctrl EMask = SplitEMask(FromExecSize, ToExecSize, ThePart, ExecMask);
+                VISA_EMask_Ctrl EMask = SplitEMask(FromExecSize, ToExecSize, ThePart, ExecMask);
                 V(vKernel->AppendVISAArithmeticInst(
                     ISA_ADDC, Pred, EMask, ToExecSize,
                     L, AccOut, S0L, S1L));
@@ -1946,7 +1946,7 @@ namespace IGC
             VISA_VectorOpnd* HIn = GetSourceOperand(Hi, MidMod);
             VISA_VectorOpnd* AccIn = GetSourceOperand(Carry, MidMod);
 
-            Common_VISA_EMask_Ctrl ExecMask = GetAluEMask(Lo);
+            VISA_EMask_Ctrl ExecMask = GetAluEMask(Lo);
             V(vKernel->AppendVISAArithmeticInst(
                 ISA_ADDC, Pred, ExecMask, ExecSize,
                 L, AccOut, S0L, S1L));
@@ -1974,7 +1974,7 @@ namespace IGC
     void CEncoder::SubPair(CVariable* Lo, CVariable* Hi, CVariable* L0, CVariable* H0, CVariable* L1, CVariable* H1) {
     assert(m_encoderState.m_dstOperand.mod == EMOD_NONE && "subPair doesn't support saturate");
 
-    Common_ISA_Exec_Size ExecSize = GetAluExecSize(Lo);
+    VISA_Exec_Size ExecSize = GetAluExecSize(Lo);
     assert(ExecSize == EXEC_SIZE_32 || ExecSize == EXEC_SIZE_16 || ExecSize == EXEC_SIZE_8 || ExecSize == EXEC_SIZE_1);
 
     if (Hi == nullptr) {
@@ -2002,9 +2002,9 @@ namespace IGC
         // Have to split it because `acc0` has only 8 elements for 32-bit
         // integer types.
         unsigned NumParts = 2;
-        Common_VISA_EMask_Ctrl ExecMask = GetAluEMask(Lo);
-        Common_ISA_Exec_Size FromExecSize = GetAluExecSize(Lo);
-        Common_ISA_Exec_Size ToExecSize = SplitExecSize(FromExecSize, NumParts);
+        VISA_EMask_Ctrl ExecMask = GetAluEMask(Lo);
+        VISA_Exec_Size FromExecSize = GetAluExecSize(Lo);
+        VISA_Exec_Size ToExecSize = SplitExecSize(FromExecSize, NumParts);
 
         // Negative `S1H`
         SModifier S1HMod = m_encoderState.m_srcOperand[1];
@@ -2034,7 +2034,7 @@ namespace IGC
             AccMod.mod = EMOD_NEG;
                 VISA_VectorOpnd* AccIn = GetSourceOperand(Carry, AccMod);
 
-            Common_VISA_EMask_Ctrl EMask = SplitEMask(FromExecSize, ToExecSize, ThePart, ExecMask);
+            VISA_EMask_Ctrl EMask = SplitEMask(FromExecSize, ToExecSize, ThePart, ExecMask);
             V(vKernel->AppendVISAArithmeticInst(
                 ISA_SUBB, Pred, EMask, ToExecSize,
                 L, AccOut, S0L, S1L));
@@ -2078,7 +2078,7 @@ namespace IGC
         AccMod.mod = EMOD_NEG;
             VISA_VectorOpnd* AccIn = GetSourceOperand(Carry, AccMod);
 
-        Common_VISA_EMask_Ctrl ExecMask = GetAluEMask(Lo);
+        VISA_EMask_Ctrl ExecMask = GetAluEMask(Lo);
         V(vKernel->AppendVISAArithmeticInst(
             ISA_SUBB, Pred, ExecMask, ExecSize,
             L, AccOut, S0L, S1L));
@@ -2099,7 +2099,7 @@ namespace IGC
     VISA_VectorOpnd* dstOpnd = GetDestinationOperand(dst, m_encoderState.m_dstOperand);
     VISA_PredOpnd* predOpnd  = GetFlagOperand(m_encoderState.m_flag);
     SModifier carryOperand = m_encoderState.m_dstOperand;
-    Common_ISA_Exec_Size execSize = GetAluExecSize(dst);
+    VISA_Exec_Size execSize = GetAluExecSize(dst);
 
     switch (execSize) {
     default:
@@ -2136,8 +2136,8 @@ namespace IGC
     CVariable* urbHandle,
         CVariable* mask)
     {
-    Common_VISA_EMask_Ctrl emask = ConvertMaskToVisaType(m_encoderState.m_mask, m_encoderState.m_noMask);
-    Common_ISA_Exec_Size execSize = visaExecSize(m_encoderState.m_simdSize);
+    VISA_EMask_Ctrl emask = ConvertMaskToVisaType(m_encoderState.m_mask, m_encoderState.m_noMask);
+    VISA_Exec_Size execSize = visaExecSize(m_encoderState.m_simdSize);
     VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
     VISA_RawOpnd* urbhandle = GetRawSource(urbHandle);
     // Two possible cases: offset may be constant (immediate) or runtime value.
@@ -2349,8 +2349,8 @@ namespace IGC
         CVariable* sampleIndex,
         CVariable* r1Reg)
     {
-    Common_VISA_EMask_Ctrl emask = ConvertMaskToVisaType(m_encoderState.m_mask, m_encoderState.m_noMask);
-    Common_ISA_Exec_Size execSize = visaExecSize(m_encoderState.m_simdSize);
+    VISA_EMask_Ctrl emask = ConvertMaskToVisaType(m_encoderState.m_mask, m_encoderState.m_noMask);
+    VISA_Exec_Size execSize = visaExecSize(m_encoderState.m_simdSize);
     VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
     VISA_StateOpndHandle* surfOpnd = GetVISASurfaceOpnd(ESURFACE_NORMAL, bindingTableIndex);
 
@@ -3157,7 +3157,7 @@ namespace IGC
     assert(m_encoderState.m_dstOperand.subVar == 0);
 
     VISA_RawOpnd* pDstVar = nullptr;
-    Common_VISA_EMask_Ctrl mask;
+    VISA_EMask_Ctrl mask;
     if (opcode == ISA_SCATTER4_TYPED)
     {
         pDstVar = GetRawSource(pSrcDst, 0);
@@ -3200,7 +3200,7 @@ namespace IGC
 
     VISA_RawOpnd* dstVar = NULL;
 
-    Common_VISA_EMask_Ctrl mask;
+    VISA_EMask_Ctrl mask;
         if (opcode == ISA_GATHER)
     {
         dstVar = GetRawDestination(srcdst);
@@ -3312,7 +3312,7 @@ namespace IGC
     return surfOpnd;
     }
 
-    Common_VISA_EMask_Ctrl CEncoder::ConvertMaskToVisaType(e_mask mask, bool noMask)
+    VISA_EMask_Ctrl CEncoder::ConvertMaskToVisaType(e_mask mask, bool noMask)
     {
         switch (mask)
     {
@@ -3370,7 +3370,7 @@ namespace IGC
     }
     }
 
-    Common_ISA_Cond_Mod ConvertCondModToVisaType(e_predicate condMod)
+    VISA_Cond_Mod ConvertCondModToVisaType(e_predicate condMod)
     {
         switch (condMod)
     {
@@ -3392,24 +3392,24 @@ namespace IGC
     }
     }
 
-    Common_ISA_Oword_Num  ConvertSizeToVisaType(uint size)
+    VISA_Oword_Num  ConvertSizeToVisaType(uint size)
     {
         switch (size)
-    {
-    case 1:
-        return OWORD_NUM_1;
-    case 2:
-        return OWORD_NUM_2;
-    case 4:
-        return OWORD_NUM_4;
-    case 8:
-        return OWORD_NUM_8;
-    case 16:
-        return OWORD_NUM_16;
-    default:
+        {
+        case 1:
+            return OWORD_NUM_1;
+        case 2:
+            return OWORD_NUM_2;
+        case 4:
+            return OWORD_NUM_4;
+        case 8:
+            return OWORD_NUM_8;
+        case 16:
+            return OWORD_NUM_16;
+        default:
             assert(0 && "unreachable");
-        return OWORD_NUM_ILLEGAL;
-    }
+            return OWORD_NUM_ILLEGAL;
+        }
     }
 
     VISAChannelMask ConvertChannelMaskToVisaType(uint mask)
@@ -5084,9 +5084,9 @@ namespace IGC
     if (m_program->m_Platform->GetPlatformFamily() == IGFX_GEN8_CORE && thisSM == SIMDMode::SIMD16)
     {
         // BDW A64 gather does not support SIMD16, split it into 2 SIMD8
-        Common_VISA_EMask_Ctrl execMask = GetAluEMask(offset);
-        Common_ISA_Exec_Size fromExecSize = EXEC_SIZE_16;
-        Common_ISA_Exec_Size toExecSize = EXEC_SIZE_8;
+        VISA_EMask_Ctrl execMask = GetAluEMask(offset);
+        VISA_Exec_Size fromExecSize = EXEC_SIZE_16;
+        VISA_Exec_Size toExecSize = EXEC_SIZE_8;
 
         if (numElems == 1 || elemSize == 8)
         {   // No mov instructions (for packing) are needed.
@@ -5164,9 +5164,9 @@ namespace IGC
         if (m_program->m_Platform->GetPlatformFamily() == IGFX_GEN8_CORE && thisSM == SIMDMode::SIMD16)
     {
         // BDW A64 scatter does not support SIMD16, split it into 2 SIMD8
-        Common_VISA_EMask_Ctrl execMask = GetAluEMask(offset);
-        Common_ISA_Exec_Size fromExecSize = EXEC_SIZE_16;
-        Common_ISA_Exec_Size toExecSize = EXEC_SIZE_8;
+        VISA_EMask_Ctrl execMask = GetAluEMask(offset);
+        VISA_Exec_Size fromExecSize = EXEC_SIZE_16;
+        VISA_Exec_Size toExecSize = EXEC_SIZE_8;
 
         if (numElems == 1 || elemSize == 8)
         {   // No unpacking (mov instructions) are needed.
@@ -5466,9 +5466,9 @@ namespace IGC
     if (m_program->m_Platform->GetPlatformFamily() == IGFX_GEN8_CORE && m_encoderState.m_simdSize == SIMDMode::SIMD16)
     {
         // BDW A64 untyped does not support SIMD16, split it into 2 SIMD8
-        Common_VISA_EMask_Ctrl execMask = GetAluEMask(offset);
-        Common_ISA_Exec_Size fromExecSize = EXEC_SIZE_16;
-        Common_ISA_Exec_Size toExecSize = EXEC_SIZE_8;
+        VISA_EMask_Ctrl execMask = GetAluEMask(offset);
+        VISA_Exec_Size fromExecSize = EXEC_SIZE_16;
+        VISA_Exec_Size toExecSize = EXEC_SIZE_8;
 
         if (nd == 1)
         {
@@ -5559,9 +5559,9 @@ namespace IGC
     if (m_program->m_Platform->GetPlatformFamily() == IGFX_GEN8_CORE && m_encoderState.m_simdSize == SIMDMode::SIMD16)
     {
         // BDW A64 untyped does not support SIMD16, split it into 2 SIMD8
-        Common_VISA_EMask_Ctrl execMask = GetAluEMask(src);
-        Common_ISA_Exec_Size fromExecSize = EXEC_SIZE_16;
-        Common_ISA_Exec_Size toExecSize = EXEC_SIZE_8;
+        VISA_EMask_Ctrl execMask = GetAluEMask(src);
+        VISA_Exec_Size fromExecSize = EXEC_SIZE_16;
+        VISA_Exec_Size toExecSize = EXEC_SIZE_8;
 
         if (nd == 1)
         {
@@ -5641,9 +5641,9 @@ namespace IGC
     if (m_encoderState.m_simdSize == SIMDMode::SIMD16)
     {
         // Split SIMD16 atomic ops into two SIMD8 ones.
-        Common_VISA_EMask_Ctrl execMask = ConvertMaskToVisaType(m_encoderState.m_mask, m_encoderState.m_noMask);
-        Common_ISA_Exec_Size fromExecSize = visaExecSize(m_encoderState.m_simdSize);
-        Common_ISA_Exec_Size toExecSize = SplitExecSize(fromExecSize, 2);
+        VISA_EMask_Ctrl execMask = ConvertMaskToVisaType(m_encoderState.m_mask, m_encoderState.m_noMask);
+        VISA_Exec_Size fromExecSize = visaExecSize(m_encoderState.m_simdSize);
+        VISA_Exec_Size toExecSize = SplitExecSize(fromExecSize, 2);
 
         for (unsigned thePart = 0; thePart != 2; ++thePart)
         {

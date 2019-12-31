@@ -450,7 +450,7 @@ static void verifyRegion(
     REPORT_INSTRUCTION(options,width_val, "CISA region has width of 0");
 
     uint8_t exec_sz = 0;
-    switch (((Common_ISA_Exec_Size)(inst->execsize & 0xF)))
+    switch (((VISA_Exec_Size)(inst->execsize & 0xF)))
     {
     case EXEC_SIZE_1:  exec_sz = 1;  break;
     case EXEC_SIZE_2:  exec_sz = 2;  break;
@@ -871,7 +871,7 @@ static void verifyVectorOperand(
             {
                 uint32_t byteOffset = opnd.opnd_val.gen_opnd.row_offset * COMMON_ISA_GRF_REG_SIZE +
                     opnd.opnd_val.gen_opnd.col_offset *
-                    Get_Common_ISA_Type_Size(getPredefinedVarType(mapExternalToInternalPreDefVar(operand_index)));
+                    Get_VISA_Type_Size(getPredefinedVarType(mapExternalToInternalPreDefVar(operand_index)));
                 REPORT_INSTRUCTION(options, isReadWritePreDefinedVar(isaHeader, operand_index, byteOffset), "Not allowed to write to a read only variable");
             }
         }
@@ -937,7 +937,7 @@ static void verifyInstructionMove(
 
              if (OPERAND_PREDICATE == operand_class_src0)
              {
-                 REPORT_INSTRUCTION(options,EXEC_SIZE_1 == ((Common_ISA_Exec_Size)(inst->execsize & 0xF)),
+                 REPORT_INSTRUCTION(options,EXEC_SIZE_1 == ((VISA_Exec_Size)(inst->execsize & 0xF)),
                          "Execution size for a flag copy mov instruction should be 1, as it is a scalar copy.");
                  REPORT_INSTRUCTION(options,dstType == ISA_TYPE_UD || dstType == ISA_TYPE_UW || dstType == ISA_TYPE_UB,
                          "dst operand type for a flag copy mov instruction should be UD/UW/UB.");
@@ -1284,7 +1284,7 @@ static void verifyInstructionMisc(
 
             REPORT_INSTRUCTION(options,!(numOut < 1 || numOut > 8) , "Valid range for num_out parameter of URB write is [1,8]");
             REPORT_INSTRUCTION(options,globalOff <= 2047, "Valid range for global_offset parameter of URB write is [0,2047]");
-            REPORT_INSTRUCTION(options,((Common_ISA_Exec_Size)(inst->execsize & 0xF)) == EXEC_SIZE_8, "Only execution size of 8 is supported for URB write");
+            REPORT_INSTRUCTION(options,((VISA_Exec_Size)(inst->execsize & 0xF)) == EXEC_SIZE_8, "Only execution size of 8 is supported for URB write");
 
             break;
         }
@@ -1923,7 +1923,7 @@ static void verifyInstructionSampler(const common_isa_header& isaHeader,
 
             if (cpsEnable)
             {
-                auto execSize = (Common_ISA_Exec_Size)(inst->execsize & 0xF);
+                auto execSize = (VISA_Exec_Size)(inst->execsize & 0xF);
 
                 REPORT_INSTRUCTION(options,
                                    execSize == EXEC_SIZE_8 || execSize == EXEC_SIZE_16,
@@ -3084,7 +3084,7 @@ void verifyInstruction(
 
     if (hasExecSize(opcode))
     {
-        REPORT_INSTRUCTION(options,((Common_ISA_Exec_Size)(inst->execsize & 0xF)) < EXEC_SIZE_ILLEGAL, "CISA instruction uses an illegal execution size.");
+        REPORT_INSTRUCTION(options,((VISA_Exec_Size)(inst->execsize & 0xF)) < EXEC_SIZE_ILLEGAL, "CISA instruction uses an illegal execution size.");
     }
 
     if (hasPredicate(opcode))

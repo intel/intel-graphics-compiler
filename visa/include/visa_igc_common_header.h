@@ -148,7 +148,7 @@ typedef enum {
     ISA_CMP_L,         /* Less-than */
     ISA_CMP_LE,        /* Less-than-or-equal */
     ISA_CMP_UNDEF
-} Common_ISA_Cond_Mod;
+} VISA_Cond_Mod;
 
 typedef enum {
     MODIFIER_NONE = 0x0,
@@ -172,7 +172,7 @@ typedef enum {
     EXEC_SIZE_16 = 0x4,
     EXEC_SIZE_32 = 0x5,
     EXEC_SIZE_ILLEGAL = 0x6
-} Common_ISA_Exec_Size;
+} VISA_Exec_Size;
 
 // predicate control
 // Currently only support Any and all
@@ -201,7 +201,7 @@ typedef enum {
     vISA_EMASK_M7_NM    = 14,
     vISA_EMASK_M8_NM    = 15,
     vISA_NUM_EMASK      = 16
-} Common_VISA_EMask_Ctrl;
+} VISA_EMask_Ctrl;
 
 typedef enum {
     OWORD_NUM_1 = 0x0,
@@ -210,7 +210,7 @@ typedef enum {
     OWORD_NUM_8 = 0x3,
     OWORD_NUM_16 = 0x4,
     OWORD_NUM_ILLEGAL = 0x5
-} Common_ISA_Oword_Num;
+} VISA_Oword_Num;
 
 // media load inst modifiers
 typedef enum {
@@ -441,8 +441,6 @@ typedef enum {
     CHANNEL_MASK_NUM
 } VISAChannelMask;
 
-typedef VISAChannelMask COMMON_ISA_CHANNEL_MASK;
-
 typedef enum {
     CHANNEL_16_BIT_FULL        = 0,
     CHANNEL_16_BIT_DOWNSAMPLED = 1,
@@ -601,14 +599,14 @@ typedef enum
     SVM_BLOCK_NUM_2 = 0x1,
     SVM_BLOCK_NUM_4 = 0x2,
     SVM_BLOCK_NUM_8 = 0x3
-} Common_ISA_SVM_Block_Num;
+} VISA_SVM_Block_Num;
 
 typedef enum
 {
     SVM_BLOCK_TYPE_BYTE  = 0x0,
     SVM_BLOCK_TYPE_DWORD = 0x1,
     SVM_BLOCK_TYPE_QWORD = 0x2
-} Common_ISA_SVM_Block_Type;
+} VISA_SVM_Block_Type;
 
 
 typedef struct _vISA_RT_CONTROLS

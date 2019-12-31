@@ -100,7 +100,7 @@ short Common_ISA_Get_Region_Value( Common_ISA_Region_Val val )
     }
 }
 
-G4_opcode Get_G4_Opcode_From_Common_ISA_Opcode( ISA_Opcode opcode )
+G4_opcode GetGenOpcodeFromVISAOpcode( ISA_Opcode opcode )
 {
     switch(opcode)
     {
@@ -245,7 +245,7 @@ G4_opcode Get_G4_Opcode_From_Common_ISA_Opcode( ISA_Opcode opcode )
     return G4_illegal;
 }
 
-G4_Type Get_G4_Type_From_Common_ISA_Type( VISA_Type type )
+G4_Type GetGenTypeFromVISAType( VISA_Type type )
 {
     switch(type)
     {
@@ -375,7 +375,7 @@ G4_SubReg_Align Get_G4_SubRegAlign_From_Size( uint16_t size )
     }
 }
 
-G4_SrcModifier Get_G4_SrcMod_From_Common_ISA_Mod( VISA_Modifier mod )
+G4_SrcModifier GetGenSrcModFromVISAMod( VISA_Modifier mod )
 {
     switch( mod )
     {
@@ -395,7 +395,7 @@ G4_SrcModifier Get_G4_SrcMod_From_Common_ISA_Mod( VISA_Modifier mod )
     }
 }
 
-G4_CondModifier Get_G4_CondModifier_From_Common_ISA_CondModifier( Common_ISA_Cond_Mod cmod )
+G4_CondModifier Get_G4_CondModifier_From_Common_ISA_CondModifier( VISA_Cond_Mod cmod )
 {
     switch(cmod){
         case ISA_CMP_E:
@@ -510,7 +510,7 @@ bool hasLabelSrc(ISA_Opcode op)
         return false;
 }
 
-unsigned Get_Common_ISA_SVM_Block_Num(Common_ISA_SVM_Block_Num num)
+unsigned Get_Common_ISA_SVM_Block_Num(VISA_SVM_Block_Num num)
 {
     switch (num)
     {
@@ -523,7 +523,7 @@ unsigned Get_Common_ISA_SVM_Block_Num(Common_ISA_SVM_Block_Num num)
     return 0;
 }
 
-Common_ISA_SVM_Block_Num valueToVISASVMBlockNum(unsigned int value)
+VISA_SVM_Block_Num valueToVISASVMBlockNum(unsigned int value)
 {
     switch (value)
     {
@@ -541,7 +541,7 @@ Common_ISA_SVM_Block_Num valueToVISASVMBlockNum(unsigned int value)
     }
 }
 
-Common_ISA_SVM_Block_Type valueToVISASVMBlockType(unsigned int value)
+VISA_SVM_Block_Type valueToVISASVMBlockType(unsigned int value)
 {
     switch (value)
     {
@@ -559,7 +559,7 @@ Common_ISA_SVM_Block_Type valueToVISASVMBlockType(unsigned int value)
 
 }
 
-unsigned Get_Common_ISA_SVM_Block_Size(Common_ISA_SVM_Block_Type size)
+unsigned Get_Common_ISA_SVM_Block_Size(VISA_SVM_Block_Type size)
 {
     switch (size)
     {
@@ -571,7 +571,7 @@ unsigned Get_Common_ISA_SVM_Block_Size(Common_ISA_SVM_Block_Type size)
     return 0;
 }
 
-unsigned Get_Common_ISA_Oword_Num( Common_ISA_Oword_Num num )
+unsigned Get_VISA_Oword_Num( VISA_Oword_Num num )
 {
     switch(num){
         case OWORD_NUM_1:
@@ -590,7 +590,7 @@ unsigned Get_Common_ISA_Oword_Num( Common_ISA_Oword_Num num )
     }
 }
 
-unsigned Get_Common_ISA_Exec_Size( Common_ISA_Exec_Size size )
+unsigned Get_VISA_Exec_Size( VISA_Exec_Size size )
 {
     switch(size){
         case EXEC_SIZE_1:
@@ -766,7 +766,7 @@ G4_opcode Get_Pseudo_Opcode(ISA_Opcode op)
     return G4_illegal;
 }
 
-Common_VISA_EMask_Ctrl Get_Next_EMask(Common_VISA_EMask_Ctrl currEMask, int execSize)
+VISA_EMask_Ctrl Get_Next_EMask(VISA_EMask_Ctrl currEMask, int execSize)
 {
     switch (execSize) {
     default: // Next eMask is only valid for SIMD4, SIMD8, and SIMD16.
@@ -813,7 +813,7 @@ Common_VISA_EMask_Ctrl Get_Next_EMask(Common_VISA_EMask_Ctrl currEMask, int exec
     return vISA_NUM_EMASK;
 }
 
-unsigned int Get_Gen4_Emask( Common_VISA_EMask_Ctrl cisa_emask, int exec_size )
+unsigned int Get_Gen4_Emask( VISA_EMask_Ctrl cisa_emask, int exec_size )
 {
 
     switch( exec_size )
@@ -954,7 +954,7 @@ unsigned Get_Atomic_Op(VISAAtomicOps op) {
     return ~0U;
 }
 
-uint16_t Get_Common_ISA_Type_Size(VISA_Type type)
+uint16_t Get_VISA_Type_Size(VISA_Type type)
 {
     switch(type)
     {
@@ -1232,7 +1232,7 @@ unsigned long get_Size_Isa_Header( common_isa_header * m_header, int major_versi
     return size;
 }
 
-Common_ISA_Cond_Mod Get_Common_ISA_CondModifier_From_G4_CondModifier(G4_CondModifier  cmod )
+VISA_Cond_Mod Get_Common_ISA_CondModifier_From_G4_CondModifier(G4_CondModifier  cmod )
 {
     switch(cmod){
         //case ISA_CMP_NONE:
@@ -1263,7 +1263,7 @@ Common_ISA_Cond_Mod Get_Common_ISA_CondModifier_From_G4_CondModifier(G4_CondModi
     }
 }
 
-Common_ISA_Exec_Size Get_Common_ISA_Exec_Size_From_Raw_Size( unsigned int size )
+VISA_Exec_Size Get_VISA_Exec_Size_From_Raw_Size( unsigned int size )
 {
     switch(size){
         case 1:
@@ -1294,7 +1294,7 @@ int Get_Size_State_Info(state_info_t * t)
     return size;
 }
 
-Common_ISA_Oword_Num Get_Common_ISA_Oword_Num_From_Number( unsigned num )
+VISA_Oword_Num Get_VISA_Oword_Num_From_Number( unsigned num )
 {
     switch(num){
         case 1:

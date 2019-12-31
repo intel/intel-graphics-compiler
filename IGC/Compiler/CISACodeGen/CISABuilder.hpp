@@ -407,7 +407,7 @@ namespace IGC
 
         VISA_GenVar* GetVISAVariable(CVariable* var);
         VISA_GenVar* GetVISAVariable(CVariable* var, e_instance instance);
-        Common_VISA_EMask_Ctrl ConvertMaskToVisaType(e_mask mask, bool noMask);
+        VISA_EMask_Ctrl ConvertMaskToVisaType(e_mask mask, bool noMask);
 
         // Generic encoding functions
         void MinMax(CISA_MIN_MAX_SUB_OPCODE subopcode, CVariable* dst, CVariable* src0, CVariable* src1);
@@ -444,24 +444,24 @@ namespace IGC
             CVariable* pSrcDst,
             uint writeMask);
 
-        Common_ISA_Exec_Size  GetAluExecSize(CVariable* dst) const;
-        Common_VISA_EMask_Ctrl GetAluEMask(CVariable* dst);
+        VISA_Exec_Size  GetAluExecSize(CVariable* dst) const;
+        VISA_EMask_Ctrl GetAluEMask(CVariable* dst);
         bool IsSat();
 
         // Variable splitting facilities (if crosses 2 GRF boundary).
         bool NeedSplitting(CVariable* var, const SModifier& mod,
             unsigned& numParts, bool isSource = false) const;
-        SModifier SplitVariable(Common_ISA_Exec_Size fromExecSize,
-            Common_ISA_Exec_Size toExecSize,
+        SModifier SplitVariable(VISA_Exec_Size fromExecSize,
+            VISA_Exec_Size toExecSize,
             unsigned thePart,
             CVariable* var, const SModifier& mod,
             bool isSource = false) const;
-        Common_ISA_Exec_Size SplitExecSize(Common_ISA_Exec_Size fromExecSize,
+        VISA_Exec_Size SplitExecSize(VISA_Exec_Size fromExecSize,
             unsigned numParts) const;
-        Common_VISA_EMask_Ctrl SplitEMask(Common_ISA_Exec_Size fromExecSize,
-            Common_ISA_Exec_Size toExecSize,
+        VISA_EMask_Ctrl SplitEMask(VISA_Exec_Size fromExecSize,
+            VISA_Exec_Size toExecSize,
             unsigned thePart,
-            Common_VISA_EMask_Ctrl execMask) const;
+            VISA_EMask_Ctrl execMask) const;
 
         // Split SIMD16 message data payload(MDP) for scattered/untyped write
         // messages into two SIMD8 MDPs : V0 and V1.
@@ -477,7 +477,7 @@ namespace IGC
 
         uint32_t getGRFSize() const;
 
-        bool needsSplitting(Common_ISA_Exec_Size ExecSize) const
+        bool needsSplitting(VISA_Exec_Size ExecSize) const
         {
             return ExecSize == EXEC_SIZE_16;
         }
@@ -509,11 +509,11 @@ namespace IGC
         RMEncoding getEncoderRoundingMode_FP(ERoundingMode FP_RM);
         RMEncoding getEncoderRoundingMode_FPCvtInt(ERoundingMode FCvtI_RM);
 
-        unsigned GetRawOpndSplitOffset(Common_ISA_Exec_Size fromExecSize,
-            Common_ISA_Exec_Size toExecSize,
+        unsigned GetRawOpndSplitOffset(VISA_Exec_Size fromExecSize,
+            VISA_Exec_Size toExecSize,
             unsigned thePart, CVariable* var) const;
 
-        std::tuple<CVariable*, uint32_t> splitRawOperand(CVariable* var, bool isFirstHalf, Common_VISA_EMask_Ctrl execMask);
+        std::tuple<CVariable*, uint32_t> splitRawOperand(CVariable* var, bool isFirstHalf, VISA_EMask_Ctrl execMask);
 
         uint32_t getNumChannels(CVariable* var) const;
 
@@ -886,8 +886,8 @@ namespace IGC
     }
 
     VISA_Modifier ConvertModifierToVisaType(e_modifier modifier);
-    Common_ISA_Cond_Mod ConvertCondModToVisaType(e_predicate condMod);
-    Common_ISA_Oword_Num  ConvertSizeToVisaType(uint size);
+    VISA_Cond_Mod ConvertCondModToVisaType(e_predicate condMod);
+    VISA_Oword_Num  ConvertSizeToVisaType(uint size);
     VISAChannelMask ConvertChannelMaskToVisaType(uint mask);
     VISASourceSingleChannel ConvertSingleSourceChannel(uint srcChannel);
 

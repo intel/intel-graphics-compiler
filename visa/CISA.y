@@ -98,7 +98,7 @@ VISA_RawOpnd* rawOperandArray[16];
 
     VISA_Type              type;
     ISA_Opcode             opcode;
-    Common_ISA_Cond_Mod    mod;
+    VISA_Cond_Mod    mod;
     //G4_Type              g4_type;
     //G4_Operand*          opnd;
 
@@ -108,7 +108,7 @@ VISA_RawOpnd* rawOperandArray[16];
 
     struct {
         //G4_CondModifier        mod;
-        Common_ISA_Cond_Mod cisa_mod;
+        VISA_Cond_Mod cisa_mod;
     } cond_mod;
     struct {
         VISA_opnd * cisa_gen_opnd;
@@ -211,7 +211,7 @@ VISA_RawOpnd* rawOperandArray[16];
     } StateVar;
 
     struct {
-        Common_VISA_EMask_Ctrl emask;
+        VISA_EMask_Ctrl emask;
         int exec_size;
     } emask_exec_size;
 
@@ -239,7 +239,7 @@ VISA_RawOpnd* rawOperandArray[16];
     VISAChannelMask        s_channel; // Cannot use ChannelMask here as it's a member of union where non-trivial constructor is not allowed.
     CHANNEL_OUTPUT_FORMAT  s_channel_output;
     COMMON_ISA_VME_OP_MODE VME_type;
-    Common_VISA_EMask_Ctrl emask;
+    VISA_EMask_Ctrl emask;
     OutputFormatControl    cntrl;
     AVSExecMode            execMode;
     bool                   file_end;
@@ -411,7 +411,6 @@ VISA_RawOpnd* rawOperandArray[16];
 %token <opcode> FCALL
 %token <opcode> FADDR
 %token <opcode> SWITCHJMP_OP
-%token <opcode> SIMDCF_OP
 %token <opcode> MOVS_OP
 %token <opcode> SETP_OP
 %token <opcode> MOV_OP
@@ -819,7 +818,6 @@ CISAInst: LogicInstruction
         | SampleUnormInstruction
         | VMEInstruction
         | AVSInstruction
-        | CondtionInstruction
         | MovsInstruction
         | MovInstruction
         | SelInstruction
@@ -1240,11 +1238,6 @@ BranchInstruction : Predicate BRANCH_OP ExecSize TargetLabel
             pCisaBuilder->CISA_create_faddr_instruction($2, $3.cisa_gen_opnd, CISAlineno);
          }
 
-                      // 1        2         3
-CondtionInstruction : Predicate SIMDCF_OP ExecSize
-         {
-             pCisaBuilder->CISA_create_SIMD_CF_instruction($1.cisa_gen_opnd, $2, $3.emask, $3.exec_size, CISAlineno);
-         };
        // 1          2
 FILE : FILE_OP STRING_LITERAL
         {
@@ -1541,7 +1534,7 @@ DstStateOperand : {
                //  1
 DstAddrOperand : AddrVar
                {
-                   //G4_DstRegRegion dst(Direct, $1.opnd, 0, $1.elem, 1, Get_G4_Type_From_Common_ISA_Type(ISA_TYPE_UW), "");
+                   //G4_DstRegRegion dst(Direct, $1.opnd, 0, $1.elem, 1, GetGenTypeFromVISAType(ISA_TYPE_UW), "");
                    //$$.opnd = pBuilder->createDstRegRegion(dst);
                    $$.cisa_gen_opnd = pCisaBuilder->CISA_set_address_operand($1.cisa_decl, $1.elem, $1.row, true);
                };
@@ -1602,7 +1595,7 @@ DstGeneralOperand :  VAR TwoDimOffset DstRegion
                     //   1           2           3
 DstIndirectOperand: IndirectVar IndirectRegion DataType
                   {
-                      //G4_DstRegRegion dst($1.acc, $1.opnd, $1.row, $1.elem, $2.rgn->horzStride, Get_G4_Type_From_Common_ISA_Type($3), "");
+                      //G4_DstRegRegion dst($1.acc, $1.opnd, $1.row, $1.elem, $2.rgn->horzStride, GetGenTypeFromVISAType($3), "");
                       //dst.setImmAddrOff($1.immOff);
                       //$$.opnd = pBuilder->createDstRegRegion(dst);
                       $$.cisa_gen_opnd = pCisaBuilder->CISA_create_indirect_dst($1.cisa_decl, MODIFIER_NONE, $1.row, $1.elem, $1.immOff, $2.h_stride, $3);
@@ -1652,7 +1645,7 @@ SrcImmOperand: Imm
                     //   1           2           3
 SrcIndirectOperand: IndirectVar IndirectRegion DataType
                   {
-                      //G4_SrcRegRegion src(Mod_src_undef, $1.acc, $1.opnd, $1.row, $1.elem, $2.rgn, Get_G4_Type_From_Common_ISA_Type($3), "");
+                      //G4_SrcRegRegion src(Mod_src_undef, $1.acc, $1.opnd, $1.row, $1.elem, $2.rgn, GetGenTypeFromVISAType($3), "");
                       //src.setImmAddrOff($1.immOff);
                       //$$.opnd = pBuilder->createSrcRegRegion(src);
                       $$.cisa_gen_opnd = pCisaBuilder->CISA_create_indirect($1.cisa_decl, MODIFIER_NONE, $1.row, $1.elem, $1.immOff, $2.v_stride, $2.width, $2.h_stride, $3);
@@ -1661,7 +1654,7 @@ SrcIndirectOperand: IndirectVar IndirectRegion DataType
                     //   1           2           3            4
 SrcIndirectOperand_1: SrcModifier IndirectVar IndirectRegion DataType
                   {
-                      //G4_SrcRegRegion src($1.srcMod, $2.acc, $2.opnd, $2.row, $2.elem, $3.rgn, Get_G4_Type_From_Common_ISA_Type($4), "");
+                      //G4_SrcRegRegion src($1.srcMod, $2.acc, $2.opnd, $2.row, $2.elem, $3.rgn, GetGenTypeFromVISAType($4), "");
                       //src.setImmAddrOff($2.immOff);
                       //$$.opnd = pBuilder->createSrcRegRegion(src);
                       $$.cisa_gen_opnd = pCisaBuilder->CISA_create_indirect($2.cisa_decl, $1.mod, $2.row, $2.elem, $2.immOff, $3.v_stride, $3.width, $3.h_stride, $4);
@@ -1890,7 +1883,7 @@ Imm : Exp DataType
 #else
       //for CISA binary builder need original type. Don't want to modify all the G4_Imm
       //data structures now.
-      //$$.opnd = pBuilder->createImm($1, Get_G4_Type_From_Common_ISA_Type($2) );
+      //$$.opnd = pBuilder->createImm($1, GetGenTypeFromVISAType($2) );
       $$.cisa_gen_opnd = pCisaBuilder->CISA_create_immed($1, $2, CISAlineno);
 #endif
       };
