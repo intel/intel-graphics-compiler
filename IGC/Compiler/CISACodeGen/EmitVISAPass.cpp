@@ -4974,9 +4974,9 @@ void EmitPass::emitSimdBlockWrite(llvm::Instruction* inst, llvm::Value* ptrVal)
         if (useA64)
         {
             m_encoder->ScatterA64(data, ScatterOff, blkBits, nBlks);
-
         }
-        else {
+        else
+        {
             m_encoder->ByteScatter(data, resource, ScatterOff, blkBits, nBlks);
         }
         m_encoder->Push();
@@ -5012,7 +5012,6 @@ void EmitPass::emitSimdBlockWrite(llvm::Instruction* inst, llvm::Value* ptrVal)
         {
             bytesToRead = getBlockMsgSize(bytesRemaining, false);
             bytesRemaining -= bytesToRead;
-
             m_encoder->OWStoreA64(data, pTempVar, bytesToRead, srcOffset);
 
             srcOffset = srcOffset + bytesToRead;
@@ -5162,7 +5161,8 @@ void EmitPass::emitSimdBlockRead(llvm::Instruction* inst, llvm::Value* ptrVal)
         {
             m_encoder->GatherA64(gatherDst, gatherOff, blkBits, nBlks);
         }
-        else {
+        else
+        {
             m_encoder->SetNoMask();
             m_encoder->SetUniformSIMDSize(simdmode);
             m_encoder->ByteGather(gatherDst, resource, gatherOff, blkBits, nBlks);
@@ -5197,9 +5197,7 @@ void EmitPass::emitSimdBlockRead(llvm::Instruction* inst, llvm::Value* ptrVal)
         {
             bytesToRead = getBlockMsgSize(bytesRemaining, false);
             bytesRemaining -= bytesToRead;
-
             m_encoder->OWLoadA64(m_destination, pTempVar, bytesToRead, dstOffset);
-
             m_encoder->Push();
             dstOffset += bytesToRead;
 
