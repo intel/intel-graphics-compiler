@@ -29,9 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/CISACodeGen/CollectGeometryShaderProperties.hpp"
-#include "AdaptorCommon/ShaderTypesEnum.hpp"
-
-
+#include "ShaderTypesEnum.h"
 
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/Function.h"
@@ -129,7 +127,7 @@ bool RectListOptimizationPass::isGSTriStripPrimTopology(Function& F)
     auto pPrimTopology = F.getParent()->getGlobalVariable("GsOutputPrimitiveTopology");
     const unsigned int primitiveTopology = static_cast<unsigned int>(
         (llvm::cast<llvm::ConstantInt>(pPrimTopology->getInitializer())->getZExtValue()));
-    return (primitiveTopology == GFX3DPRIM_TRISTRIP);
+    return (primitiveTopology == USC::GFX3DPRIM_TRISTRIP);
 }
 
 bool RectListOptimizationPass::isGSOutputVertValid(Function& F)
@@ -318,7 +316,7 @@ void RectListOptimizationPass::analyzeForRectList(Function& F, GeometryShaderCon
                 m_rectListPerAttrib.insert(std::make_pair(it->first, rectList));
                 arit = m_rectListPerAttrib.find(it->first);
             }
-            for (unsigned int ch_id = 0; ch_id < NUM_SHADER_CHANNELS; ch_id++) {
+            for (unsigned int ch_id = 0; ch_id < USC::NUM_SHADER_CHANNELS; ch_id++) {
                 Value* channelV = inst->getOperand(ch_id);
                 channelToCoordMap::iterator chtocoordit = arit->second.channelToCoordM.find(ch_id);
                 if (chtocoordit != arit->second.channelToCoordM.end()) {
@@ -351,10 +349,10 @@ void RectListOptimizationPass::analyzeForRectList(Function& F, GeometryShaderCon
     assert(m_rectListPerAttrib.size() != 0 && "Empty attribute list, should not happen\n");
     for (atrribRectListMap::iterator it = m_rectListPerAttrib.begin(); it != m_rectListPerAttrib.end(); it++) {
         ATTRIB_SOURCELIST_ST* pAttrSrcList = &it->second;
-        channelToCoordMap::iterator ctCitXit = pAttrSrcList->channelToCoordM.find(SHADER_CHANNEL_X);
-        channelToCoordMap::iterator ctCitYit = pAttrSrcList->channelToCoordM.find(SHADER_CHANNEL_Y);
-        channelToCoordMap::iterator ctCitZit = pAttrSrcList->channelToCoordM.find(SHADER_CHANNEL_Z);
-        channelToCoordMap::iterator ctCitWit = pAttrSrcList->channelToCoordM.find(SHADER_CHANNEL_W);
+        channelToCoordMap::iterator ctCitXit = pAttrSrcList->channelToCoordM.find(USC::SHADER_CHANNEL_X);
+        channelToCoordMap::iterator ctCitYit = pAttrSrcList->channelToCoordM.find(USC::SHADER_CHANNEL_Y);
+        channelToCoordMap::iterator ctCitZit = pAttrSrcList->channelToCoordM.find(USC::SHADER_CHANNEL_Z);
+        channelToCoordMap::iterator ctCitWit = pAttrSrcList->channelToCoordM.find(USC::SHADER_CHANNEL_W);
         //reset the rectList to false for each iteration
         isRectList = false;
 

@@ -24,7 +24,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 #pragma once
-#include "usc.h"
+
 namespace USC
 {
 
@@ -95,6 +95,7 @@ enum SHADER_USAGE
     SHADER_USAGE_REQUESTED_COARSE_FRAGMENT_SIZE, // gl_RequestedCoarseFragmentSize
     SHADER_USAGE_ACTUAL_COARSE_FRAGMENT_SIZE, // gl_ActualCoarseFragmentSize, gl_ActualCoarseFragmentCount
     SHADER_USAGE_COARSE_FRAGMENT_MASK, // gl_FragmentMaskIn[]
+    SHADER_USAGE_RESERVED,
     SHADER_USAGE_BASEVERTEXARB,         // gl_BaseVertexARB
     SHADER_USAGE_BASEINSTANCEARB,       // gl_BaseInstanceARB
     SHADER_USAGE_DRAWIDARB,             // gl_DrawIDARB
@@ -1220,6 +1221,7 @@ const long  SHADER_PRINTF_DATA_SIZE_NOT_SET = -1;
 
 /*****************************************************************************\
 ENUM: SHADER_PRINTF_TYPE
+Type of printf argument. Changes to this enum must be co-ordinated with Runtime.
 \*****************************************************************************/
 enum SHADER_PRINTF_TYPE
 {
@@ -1232,6 +1234,12 @@ enum SHADER_PRINTF_TYPE
     SHADER_PRINTF_LONG,
     SHADER_PRINTF_POINTER,
     SHADER_PRINTF_DOUBLE,
+    SHADER_PRINTF_VECTOR_BYTE,
+    SHADER_PRINTF_VECTOR_SHORT,
+    SHADER_PRINTF_VECTOR_INT,
+    SHADER_PRINTF_VECTOR_LONG,
+    SHADER_PRINTF_VECTOR_FLOAT,
+    SHADER_PRINTF_VECTOR_DOUBLE,
     NUM_SHADER_PRINTF_TYPES
 };
 

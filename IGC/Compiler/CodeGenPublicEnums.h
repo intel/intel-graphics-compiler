@@ -250,30 +250,5 @@ namespace IGC
         ROUND_TO_ANY   // dont care
     };
 
-    //
-    // Type of printf argument.
-    // Note: changes to this enum must be co-ordinated with Runtime.
-    //
-    enum SHADER_PRINTF_TYPE
-    {
-        SHADER_PRINTF_INVALID,
-
-        SHADER_PRINTF_BYTE,
-        SHADER_PRINTF_SHORT,
-        SHADER_PRINTF_INT,
-        SHADER_PRINTF_FLOAT,
-        SHADER_PRINTF_STRING_LITERAL,
-        SHADER_PRINTF_LONG,
-        SHADER_PRINTF_POINTER,
-        SHADER_PRINTF_DOUBLE,
-        SHADER_PRINTF_VECTOR_BYTE,
-        SHADER_PRINTF_VECTOR_SHORT,
-        SHADER_PRINTF_VECTOR_INT,
-        SHADER_PRINTF_VECTOR_LONG,
-        SHADER_PRINTF_VECTOR_FLOAT,
-        SHADER_PRINTF_VECTOR_DOUBLE,
-
-        NUM_SHADER_PRINTF_TYPES
-    };
 
 }
