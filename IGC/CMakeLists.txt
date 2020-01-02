@@ -2907,23 +2907,6 @@ if(_igc_compiler_is_gnu_or_clang)
     )
 endif()
 
-if(ANDROID AND _igc_compiler_is_clang)
-  set(_igc_cxx_standard "-std=gnu++14")
-else()
-  set(_igc_cxx_standard "-std=c++14")
-endif()
-
-if(_igc_compiler_is_gnu_or_clang)
-  igc_config_flag_apply_settings(
-    CompilerOptions
-    CMAKE_CXX_FLAGS
-    ALL_PATTERN ""
-    SET_RAW
-      ${_igc_cxx_standard}
-    )
-endif()
-
-
 # ============================================ Linker options ==========================================
 
 foreach(_linkerFlagName IN ITEMS "CMAKE_EXE_LINKER_FLAGS" "CMAKE_SHARED_LINKER_FLAGS")
