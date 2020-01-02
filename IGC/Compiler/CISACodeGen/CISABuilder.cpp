@@ -3976,7 +3976,16 @@ namespace IGC
     if (IGC_IS_FLAG_ENABLED(ForceNoMaskToAnyhWA)) {
         SaveOption(vISA_forceNoMaskToAnyhWA, true);
     }
-    SaveOption(vISA_noMaskToAnyhWA, IGC_GET_FLAG_VALUE(NoMaskToAnyhWA));
+    if (m_program->m_Platform->getWATable().Wa_1407528679 != 0 &&
+        IGC_GET_FLAG_VALUE(NoMaskToAnyhWA) == 8)
+    {
+        // Temporary for testing WA
+        SaveOption(vISA_noMaskToAnyhWA, (uint32_t)7);
+    }
+    else if (IGC_GET_FLAG_VALUE(NoMaskToAnyhWA) != 8)
+    {
+        SaveOption(vISA_noMaskToAnyhWA, IGC_GET_FLAG_VALUE(NoMaskToAnyhWA));
+    }
 
     if (IGC_IS_FLAG_ENABLED(DisableCSEL))
     {
