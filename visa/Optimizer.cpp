@@ -11708,8 +11708,11 @@ void Optimizer::clearSendDependencies()
 
 void Optimizer::replaceNoMaskWithAnyhWA()
 {
-    if (builder.kernel.getOptions()->getTarget() == VISA_CM)
+    if (builder.kernel.getOptions()->getTarget() == VISA_CM ||
+        (builder.getuint32Option(vISA_noMaskToAnyhWA) & 0x7) == 0)
+    {
         return;
+    }
 
     // Save dmask for the shader. Need to read them again
     // whenever sr0.2 is modified in the shader.
