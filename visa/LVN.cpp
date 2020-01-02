@@ -335,7 +335,8 @@ bool LVN::canReplaceUses(INST_LIST_ITER inst_it, UseList& uses, G4_INST* lvnInst
         {
             G4_DstRegRegion* curDst = (*fwdInst_it)->getDst();
 
-            if (curDst)
+            // FIXME: why not use isWAWDep()?
+            if (curDst && !curDst->isNullReg())
             {
                 if (lvnTopDclAddresses &&
                     curDst->isIndirect())
