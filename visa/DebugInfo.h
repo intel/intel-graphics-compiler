@@ -37,7 +37,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // any CISA bytecode will be assigned CISA offset = 0xffffffff.
 // This includes pseudo nodes, G4_labels, mov introduced for copying
 // r0 for pre-emption support.
-#define UNMAPPABLE_VISA_INDEX 0xffffffff
+constexpr int UNMAPPABLE_VISA_INDEX = IR_Builder::OrphanVISAIndex;
 
 #define CALLER_SAVE_START 1
 #define CALLEE_SAVE_START 60

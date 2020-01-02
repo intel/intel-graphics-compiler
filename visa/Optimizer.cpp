@@ -8153,22 +8153,7 @@ public:
 
     void Optimizer::mapOrphans()
     {
-        auto catchAllCISAOff = UNMAPPABLE_VISA_INDEX;
-        for (auto bb : kernel.fg)
-        {
-            for (auto instIt = bb->begin(); instIt != bb->end();)
-            {
-                auto inst = (*instIt);
-                if (inst->opcode() == G4_opcode::G4_DebugInfoPlaceholder)
-                {
-                    catchAllCISAOff = catchAllCISAOff == UNMAPPABLE_VISA_INDEX ? inst->getCISAOff() : catchAllCISAOff;
-                    instIt = bb->erase(instIt);
-                    continue;
-                }
-                instIt++;
-            }
-        }
-
+        auto catchAllCISAOff = builder.debugInfoPlaceholder;
         if (catchAllCISAOff == UNMAPPABLE_VISA_INDEX)
             return;
 

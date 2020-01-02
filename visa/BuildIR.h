@@ -342,6 +342,9 @@ public:
     unsigned int curLine;
     int curCISAOffset;
 
+    static const int OrphanVISAIndex = 0xffffffff;
+    int debugInfoPlaceholder = OrphanVISAIndex; // used for debug info, catch all VISA offset for orphan instructions
+
 private:
 
     class GlobalImmPool

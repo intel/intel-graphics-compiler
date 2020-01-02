@@ -10901,6 +10901,6 @@ bool IR_Builder::checkIfRegionsAreConsecutive( G4_SrcRegRegion* first, G4_SrcReg
 
 int IR_Builder::generateDebugInfoPlaceholder()
 {
-    createInst(nullptr, G4_opcode::G4_DebugInfoPlaceholder, nullptr, false, 1, nullptr, nullptr, nullptr, G4_InstOption::InstOpt_WriteEnable);
+    debugInfoPlaceholder = curCISAOffset;
     return VISA_SUCCESS;
 }
