@@ -1267,18 +1267,25 @@ namespace IGC
     {
         Function* coarsePhase = nullptr;
         Function* pixelPhase = nullptr;
-        NamedMDNode* coarseNode = ctx->getModule()->getNamedMetadata(NAMED_METADATA_COARSE_PHASE);
-        NamedMDNode* pixelNode = ctx->getModule()->getNamedMetadata(NAMED_METADATA_PIXEL_PHASE);
-        if (coarseNode)
+        NamedMDNode* coarseNode = nullptr;
+        NamedMDNode* pixelNode = nullptr;
+        MetaDataUtils* pMdUtils = nullptr;
+        if (!HasSavedIR(ctx))
         {
-            coarsePhase = mdconst::dyn_extract<Function>(coarseNode->getOperand(0)->getOperand(0));
-        }
-        if (pixelNode)
-        {
-            pixelPhase = mdconst::dyn_extract<Function>(pixelNode->getOperand(0)->getOperand(0));
+            coarseNode = ctx->getModule()->getNamedMetadata(NAMED_METADATA_COARSE_PHASE);
+            pixelNode = ctx->getModule()->getNamedMetadata(NAMED_METADATA_PIXEL_PHASE);
+            if (coarseNode)
+            {
+                coarsePhase = mdconst::dyn_extract<Function>(coarseNode->getOperand(0)->getOperand(0));
+            }
+            if (pixelNode)
+            {
+                pixelPhase = mdconst::dyn_extract<Function>(pixelNode->getOperand(0)->getOperand(0));
+            }
+            pMdUtils = ctx->getMetaDataUtils();
         }
         CShaderProgram::KernelShaderMap shaders;
-        MetaDataUtils* pMdUtils = ctx->getMetaDataUtils();
+
         if (coarsePhase && pixelPhase)
         {
             //Multi stage PS, need to do separate compiler and link them
@@ -1335,7 +1342,7 @@ namespace IGC
             // Single PS
             CodeGen(ctx, shaders);
             // Assuming single shader information in metadata
-            Function* pFunc = getUniqueEntryFunc(pMdUtils, ctx->getModuleMetaData());
+            Function* pFunc = getUniqueEntryFunc(ctx->getMetaDataUtils(), ctx->getModuleMetaData());
             // gather data to send back to the driver
             shaders[pFunc]->FillProgram(&ctx->programOutput);
             COMPILER_SHADER_STATS_PRINT(shaders[pFunc]->m_shaderStats, ShaderType::PIXEL_SHADER, ctx->hash, "");
