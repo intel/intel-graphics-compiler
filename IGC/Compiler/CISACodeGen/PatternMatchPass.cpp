@@ -1947,7 +1947,7 @@ namespace IGC
         {
             return false;
         }
-        if (!isFpMad(I) && IGC_IS_FLAG_DISABLED(EnableIntegerMad))
+        if (!isFpMad(I) && !m_Platform.doIntegerMad())
         {
             return false;
         }

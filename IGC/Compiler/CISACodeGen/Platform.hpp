@@ -263,15 +263,22 @@ namespace IGC
         GFXCORE_FAMILY familyCheck = IGC_IS_FLAG_ENABLED(Use16ByteBindlessSampler) ? IGFX_GEN9_CORE : IGFX_GEN10_CORE;
         return (m_platformInfo.eRenderCoreFamily >= familyCheck) ? 4 : 5;
     }
+
     bool SupportCPS() const
     {
         return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE);
     }
+
     bool supportsThreadCombining() const
     {
         return !(!m_WaTable.WaEnablePooledEuFor2x6 &&
             m_platformInfo.eProductFamily == IGFX_BROXTON &&
             m_GTSystemInfo.SubSliceCount == 2);
+    }
+
+    bool doIntegerMad() const
+    {
+        return m_platformInfo.eRenderCoreFamily >= IGFX_GEN11_CORE && IGC_IS_FLAG_ENABLED(EnableIntegerMad);
     }
     bool supportsSIMD16TypedRW() const
     {
