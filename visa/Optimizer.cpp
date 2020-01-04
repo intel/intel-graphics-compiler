@@ -11909,12 +11909,13 @@ void Optimizer::replaceNoMaskWithAnyhWA()
         I0->addDefUse(I, Opnd_pred);
     };
 
-    // f0.0 : ce per this BB
+    // flagVar : ce per this BB
+    //    Note that sel does not update flag register at all.
     // Before:
-    //     sel.ge.f0.0  (1|M0)   r10.0<1>:f  r20.0<0;1,0>:f  0:f
+    //     (W) sel.ge.f0.0  (1|M0)   r10.0<1>:f  r20.0<0;1,0>:f  0:f
     // After
     //     (W) sel.ge.f0.0  (1|M0)  t:f  r20.0<0;1,0>:f   0:f
-    //     (W%f0.0) mov (1|M0)  r10.0<1>:f t:f
+    //     (W%flagVar) mov (1|M0)  r10.0<1>:f t:f
     //
     auto doFlagModifierSelInstWA = [&](
         G4_INST* flagVarDefInst,  // inst that defines flagVar
@@ -11927,6 +11928,7 @@ void Optimizer::replaceNoMaskWithAnyhWA()
         assert((P && !I->getPredicate()) && "ICE [sel]: expect flagModifier and no predicate!");
 
         G4_DstRegRegion* dst = I->getDst();
+        assert((dst && !dst->isNullReg()) && "ICE: expect dst to be non-null!");
         G4_Declare* saveDecl = builder.createTempVar(
             I->getExecSize(), dst->getType(), Any, "saveTmp");
         G4_DstRegRegion* tDst = builder.createDstRegRegion(
@@ -11962,24 +11964,30 @@ void Optimizer::replaceNoMaskWithAnyhWA()
     };
 
     //  Add WA for non-predicated inst with flagModifier.
-    //  flagVar : channel enable for this BB:
+    //    flagVar : channel enable for this BB.
+    //    Note that if 32-bit flag is used, flagVar and this instruction 'I' will
+    //    use both two 32-bit flags, leaving no flag for temporary. In this case, we
+    //    will do manual spill, ie,  save and restore the original flag (case 1 and 2).
     //
     //    Before:
-    //       I:  (W)  cmp (16|M16) (ne)P  ....
-    //    After:
-    //       I0: (W)           mov (1|M0) save:ud  f1.0<0;1,0>:ud
-    //       I1: (W&-flagVar)  mov (1|M0) P<1>:ud  0:ud
-    //       I:  (W&P)         cmp (16|M16) (ne)P  ....
-    //       I2: (w&-flagVar)  mov (1|M0)  P   save:ud
+    //       I:  (W)  cmp (16|M16) (ne)P  D ....   // 32-bit flag
+    //         or
+    //           (W)  cmp (16|M0) (ne)P   D ....   // 16-bit flag
     //
-    //  For the following case that 'I' uses 16-bit flag, use the following
-    //  sequence:
-    //    Before:
-    //       I:  (W)  cmp (16|M0) (ne)P  ....
     //    After:
-    //       I0: (W&flagVar)  sel (1|M0) nP<1>:uw  P<0;1,0>:uw  0:uw
-    //       I:  (W&nP)       cmp (16|M16) (ne)nP  ....
-    //       I1: (w&flagVar)  sel (1|M0)  P<1>:uw  nP<0;1,0>:uw  P<0;1,0>:uw
+    //      (1) D = null (common)
+    //           I0: (W)           mov (1|M0) save:ud  P<0;1,0>:ud
+    //           I:  (W)           cmp (16|M16) (ne)P  ....
+    //           I1: (W&-flagVar)  mov (1|M0)  P   save:ud
+    //      (2) 'I' uses 16-bit flag (common)
+    //           I0: (W)           mov  (1)  nP<1>:uw    flagVar.0<0;1,0>:uw
+    //           I:  (W&nP)        cmp (16|M0) (ne)nP  ....
+    //           I1: (W&flagVar)   sel (1|M0)  P<1>:uw  nP<0;1,0>:uw  P<0;1,0>:uw
+    //      (3) D != null (all the other cases, less common)
+    //           I0: (W)           mov (1|M0) save:ud  P<0;1,0>:ud
+    //           I1: (W)           mov (16|M16) (ne)P  null flagVar
+    //           I:  (W&P)         cmp (16|M16) (ne)P  D ...
+    //           I2: (W&-flagVar)  mov (1|M0)  P   save:ud
     //
     auto doFlagModifierInstWA = [&](
         G4_INST* flagVarDefInst,  // inst that defines flagVar
@@ -12001,22 +12009,47 @@ void Optimizer::replaceNoMaskWithAnyhWA()
         bool condModGlb = fg.globalOpndHT.isOpndGlobal(P);
         G4_Declare* modDcl = P->getTopDcl();
         G4_Type Ty = (modDcl->getWordSize() > 1) ? Type_UD : Type_UW;
-        if (Ty == Type_UW)
-        {
-            G4_Declare* nPDecl = builder.createTempFlag(1, "nP");
-            G4_RegVar* nPVar = nPDecl->getRegVar();
+        if (I->hasNULLDst())
+        {   // case 1
+            G4_Declare* saveDecl = builder.createTempVar(1, Ty, Any, "saveTmp");
+            G4_RegVar* saveVar = saveDecl->getRegVar();
             G4_SrcRegRegion* I0S0 = builder.createSrcRegRegion(
                 Mod_src_undef, Direct, modDcl->getRegVar(),
                 0, 0, builder.getRegionScalar(), Ty);
-            G4_Imm* I0S1 = builder.createImm(0, Ty);
-            G4_DstRegRegion* D0 = builder.createDstRegRegion(Direct, nPVar, 0, 0, 1, Ty);
-            G4_Predicate* flag0 = builder.createPredicate(
-                PredState_Plus, flagVar, 0, PRED_DEFAULT);
-            G4_INST* I0 = builder.createInternalInst(
-                flag0, G4_sel, nullptr, false,
-                1, D0, I0S0, I0S1, InstOpt_WriteEnable);
+            G4_DstRegRegion* D0 = builder.createDstRegRegion(
+                Direct, saveVar, 0, 0, 1, Ty);
+            G4_INST* I0 = builder.createMov(1, D0, I0S0, InstOpt_WriteEnable, false);
             currBB->insert(currII, I0);
-            flag0->setSameAsNoMask(true);
+
+            auto nextII = currII;
+            ++nextII;
+            G4_SrcRegRegion* I1S0 = builder.createSrcRegRegion(
+                Mod_src_undef, Direct, saveVar,
+                0, 0, builder.getRegionScalar(), Ty);
+            G4_DstRegRegion* D1 = builder.createDstRegRegion(
+                Direct, modDcl->getRegVar(), 0, 0, 1, Ty);
+            G4_INST* I1 = builder.createMov(1, D1, I1S0, InstOpt_WriteEnable, false);
+            G4_Predicate* flag = builder.createPredicate(
+                PredState_Minus, flagVar, 0, PRED_DEFAULT);
+            I1->setPredicate(flag);
+            currBB->insert(nextII, I1);
+
+            flagVarDefInst->addDefUse(I1, Opnd_pred);
+            I0->addDefUse(I1, Opnd_src0);
+
+            return;
+        }
+
+        if (I->getExecSize() == 16 && Ty == Type_UW)
+        {   // case 2
+            G4_Declare* nPDecl = builder.createTempFlag(1, "nP");
+            G4_RegVar* nPVar = nPDecl->getRegVar();
+            G4_SrcRegRegion* I0S0 = builder.createSrcRegRegion(
+                Mod_src_undef, Direct, flagVar,
+                0, 0, builder.getRegionScalar(), Ty);
+            G4_DstRegRegion* D0 = builder.createDstRegRegion(Direct, nPVar, 0, 0, 1, Ty);
+            G4_INST* I0 = builder.createMov(1, D0, I0S0, InstOpt_WriteEnable, false);
+            currBB->insert(currII, I0);
 
             // Use the new flag
             G4_Predicate* nP = builder.createPredicate(
@@ -12044,17 +12077,15 @@ void Optimizer::replaceNoMaskWithAnyhWA()
             ++nextII;
             currBB->insert(nextII, I1);
 
-            flagVarDefInst->addDefUse(I0, Opnd_pred);
+            flagVarDefInst->addDefUse(I0, Opnd_src0);
             flagVarDefInst->addDefUse(I1, Opnd_pred);
             I0->addDefUse(I, Opnd_pred);
             I->addDefUse(I1, Opnd_src0);
 
-            // update P's def use ?
             return;
         }
 
-        // Ty = Type_UD, 32bit flag. Since spill happens, manually save the
-        // original flag into a grf.
+        // case 3
         G4_Declare* saveDecl = builder.createTempVar(1, Ty, Any, "saveTmp");
         G4_RegVar* saveVar = saveDecl->getRegVar();
         G4_SrcRegRegion* I0S0 = builder.createSrcRegRegion(
@@ -12065,18 +12096,21 @@ void Optimizer::replaceNoMaskWithAnyhWA()
         G4_INST* I0 = builder.createMov(1, D0, I0S0, InstOpt_WriteEnable, false);
         currBB->insert(currII, I0);
 
-        G4_DstRegRegion* D1 = builder.createDstRegRegion(
-            Direct, modDcl->getRegVar(), 0, 0, 1, Ty);
-        G4_Imm* zero = builder.createImm(0, Ty);
-        G4_INST* I1 = builder.createMov(1, D1, zero, InstOpt_WriteEnable, false);
-        G4_Predicate* tP = builder.createPredicate(
-            PredState_Minus, flagVar, 0, PRED_DEFAULT);
-        I1->setPredicate(tP);
+        G4_DstRegRegion* D1 = builder.createNullDst(Ty);
+        G4_SrcRegRegion* I1S0 = builder.createSrcRegRegion(
+            Mod_src_undef, Direct, flagVar,
+            0, 0, builder.getRegionScalar(), Ty);
+        G4_INST* I1 = builder.createMov(I->getExecSize(),
+            D1, I1S0, (InstOpt_WriteEnable | I->getMaskOption()), false);
+        G4_CondMod* nM0 = builder.createCondMod(Mod_ne, modDcl->getRegVar(), 0);
+        I1->setCondMod(nM0);
         currBB->insert(currII, I1);
 
         G4_Predicate* nP = builder.createPredicate(
             PredState_Plus, modDcl->getRegVar(), 0, PRED_DEFAULT);
         I->setPredicate(nP);
+        G4_CondMod* nM = builder.createCondMod(Mod_ne, modDcl->getRegVar(), 0);
+        I1->setCondMod(nM);
 
         auto nextII = currII;
         ++nextII;
@@ -12091,9 +12125,9 @@ void Optimizer::replaceNoMaskWithAnyhWA()
         I2->setPredicate(flag2);
         currBB->insert(nextII, I2);
 
-        flagVarDefInst->addDefUse(I1, Opnd_pred);
+        flagVarDefInst->addDefUse(I1, Opnd_src0);
         flagVarDefInst->addDefUse(I2, Opnd_pred);
-        I0->addDefUse(I2, Opnd_src1);
+        I0->addDefUse(I2, Opnd_src0);
 
         // need this ?
         if (!condModGlb)
@@ -12112,7 +12146,7 @@ void Optimizer::replaceNoMaskWithAnyhWA()
     //       I0: (W)           mov (1|M0) save:uw  f1.0<0;1,0>:uw
     //       I1: (W&-flagVar)  mov (1|M0) P<1>:uw  0:uw | 0xFFFF (for -P)
     //       I:  (W&P)         and (16|M0) (ne)P  ....
-    //       I2: (w&-flagVar)  mov (1|M0)  P   save:uw
+    //       I2: (W&-flagVar)  mov (1|M0)  P   save:uw
     //
     auto doPredicateAndFlagModifierInstWA = [&](
         G4_INST* flagVarDefInst,  // inst that defines flagVar
