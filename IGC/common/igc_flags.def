@@ -50,7 +50,8 @@ DECLARE_IGC_REGKEY(bool, EnableSCFWA,                   true,  "Enable/Disable V
 DECLARE_IGC_REGKEY(DWORD, NoMaskToAnyhWA,               0,     "Control replacing NoMask with anyh predicate. Valid value: (two groups) \
                                                                    valid value:  bit[2]   : how to insert anyh - 0 (simple) | 1 (optim|3. \
                                                                                  bit[1:0] : which BB to insert - 0(off), 1(divergent BB), \
-                                                                                            2 (nested divergent BB", false)
+                                                                                            2 (nested divergent BB. \
+                                                                                 bit[3] : Use CF's break WA to enable this WA.", false)
 DECLARE_IGC_REGKEY(bool, ForceNoMaskToAnyhWA,           false, "Force replacing NoMask with any predicate", false)
 DECLARE_IGC_REGKEY(DWORD,UnifiedSendCycle,              0,     "Using unified send cycle.", false)
 DECLARE_IGC_REGKEY(DWORD,DisableMixMode,                0,     "Disables mix mode in vISA BE.", false)

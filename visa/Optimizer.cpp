@@ -11719,6 +11719,8 @@ void Optimizer::replaceNoMaskWithAnyhWA()
     G4_RegVar* dmaskVarUD = nullptr;
     std::vector<INST_LIST_ITER> NoMaskCandidates;
 
+    // Return condMod if a flag register is used. Since sel
+    // does not update flag register, return null for sel.
     auto getFlagModifier = [](G4_INST* I) -> G4_CondMod* {
         if (I->opcode() == G4_sel) {
             return nullptr;
@@ -11759,9 +11761,13 @@ void Optimizer::replaceNoMaskWithAnyhWA()
         return false;
     };
 
-    // Create a inst (flagDefInst) that defines a flag using ce0 and dmask,
-    // return that flag's G4_RegVar. Note that flagDefInst will be inserted
-    // a few insts before II in BB, not right before II if possible.
+    // For a BB, calculating its emask and storing the emask in a flag.
+    //
+    // flagDefInst: created to define an emask flag using 'ce0 AND dmask'.
+    //
+    // The function returns that the emask flag's G4_RegVar (refer to as flagVar).
+    // Note that flagDefInst will be inserted a few insts before II in BB,
+    // not right before II if possible.
     auto createFlagFromCE0 = [&](G4_INST*& flagDefInst,
         uint32_t flagBits, G4_BB* BB, INST_LIST_ITER& II) -> G4_RegVar*
     {
@@ -11770,9 +11776,9 @@ void Optimizer::replaceNoMaskWithAnyhWA()
         //    (w) and  flag:Ty  ce0.0<0;1,0>:Ty  dmaskVar:Ty
         //
         // Note that dmaskVar shall be inserted at the end of
-        // entry BB here.
+        // entry BB.
         //
-        // If sr0.2 (dmask) is modified in this shader other than entry BB,
+        // If sr0.2 (dmask) is modified in other BBs instead of entry BB,
         // dmaskVar must be updated right after the place where sr0.2 is
         // set. This is done at the end of replaceNoMaskWithAnyhWA().
         //
@@ -11805,10 +11811,10 @@ void Optimizer::replaceNoMaskWithAnyhWA()
             fg.globalOpndHT.addGlobalOpnd(Dst);
         }
 
-        G4_Type Ty = (flagBits == 32) ? Type_UD : Type_UW;
-        G4_Declare* newFlagDecl = builder.createTempFlag(
+        G4_Type Ty = (flagBits > 16) ? Type_UD : Type_UW;
+        G4_Declare* flagDecl = builder.createTempFlag(
             (Ty == Type_UD) ? 2 : 1, "newFlag");
-        G4_RegVar* newVar = newFlagDecl->getRegVar();
+        G4_RegVar* flagVar = flagDecl->getRegVar();
         G4_SrcRegRegion* ceSrc0 = builder.createSrcRegRegion(
             Mod_src_undef, Direct, builder.phyregpool.getMask0Reg(), 0, 0,
             builder.getRegionScalar(), Type_UD);
@@ -11816,7 +11822,7 @@ void Optimizer::replaceNoMaskWithAnyhWA()
             Mod_src_undef, Direct, dmaskVarUD, 0, 0,
             builder.getRegionScalar(), Type_UD);
         G4_DstRegRegion* tDst = builder.createNullDst(Type_UD);
-        G4_CondMod* condMod = builder.createCondMod(Mod_nz, newVar, 0);
+        G4_CondMod* condMod = builder.createCondMod(Mod_nz, flagVar, 0);
         flagDefInst = builder.createInternalInst(
             nullptr, G4_and, condMod, false,
             (flagBits > 16 ? 16 : flagBits), tDst, ceSrc0, dmaskSrc1,
@@ -11826,10 +11832,10 @@ void Optimizer::replaceNoMaskWithAnyhWA()
         if (flagBits == 32)
         {
             G4_SrcRegRegion* flagSrc = builder.createSrcRegRegion(
-                Mod_src_undef, Direct, newVar, 0, 0,
+                Mod_src_undef, Direct, flagVar, 0, 0,
                 builder.getRegionScalar(), Type_UW);
             G4_DstRegRegion* flagDst = builder.createDstRegRegion(
-                Direct, newVar, 0, 0, 1, Type_UW);
+                Direct, flagVar, 0, 0, 1, Type_UW);
             G4_INST* tInst = builder.createMov(2, flagDst, flagSrc, InstOpt_WriteEnable, false);
             BB->insert(II, tInst);
 
@@ -11837,26 +11843,25 @@ void Optimizer::replaceNoMaskWithAnyhWA()
             tInst->addDefUse(flagDefInst, Opnd_src0);
             flagDefInst = tInst;
         }
-        return newVar;
+        return flagVar;
     };
 
-    // f0.0 : predicate from flagVar (ce for this BB):
+    // flagVar : emask for this BB:
+    // currII:  iter to I
     //   positive predicate:
-    //        I (currII):  (w&P) <inst> (8|M0) ...
+    //        I :  (W&P) <inst> (8|M0) ...
     //      to:
-    //        I0:          (w&f0.0) sel (1|M0) tP P  0
-    //        I (currII):  (W&tP) <inst> (8|M0) ...
+    //        I0:  (W&flagVar) sel (1|M0) tP P  0
+    //        I :  (W&tP) <inst> (8|M0) ...
     //
-    //  negative predicate:
-    //        I (currII):  (w&-P) <inst> (8|M0) ...
+    //   negative predicate:
+    //        I :  (W&-P) <inst> (8|M0) ...
     //      to:
-    //        I0:          (w&f0.0) sel (1|M0) tP  P  0xFF
-    //        I (currII):  (W&-tP) <inst> (8|M0) ...
+    //        I0:  (W&flagVar) sel  (1|M0) tP  P  0xFF
+    //        I :  (W&-tP) <inst> (8|M0) ...
     //
-    // where P is the predicate of currII and f0.0 is a
-    // predicate from flagVar (ce for this BB). Also, tP's
-    // predCtrl would be the same as P's, ie,
-    //    tP.predCtrl = P.predCtrl
+    // where the predCtrl of tP at 'I' shall be the same as the original
+    // predCtrl /(anyh, anyv, etc) of P at 'I'
     //
     auto doPredicateInstWA = [&](
         G4_INST* flagVarDefInst,  // inst that defines flagVar
@@ -11868,17 +11873,16 @@ void Optimizer::replaceNoMaskWithAnyhWA()
         G4_Predicate* P = I->getPredicate();
         assert((P && !I->getCondMod()) && "ICE: expect predicate and no flagModifier!");
 
-        uint32_t flagBits = P->getRightBound();
-        assert((flagVar->getDeclare()->getRootDeclare()->getWordSize() >= flagBits) &&
+        uint32_t flagBits = P->getRightBound() + 1;
+        assert((16 * flagVar->getDeclare()->getRootDeclare()->getWordSize()) >= flagBits &&
             "ICE[vISA]: WA's flagVar should not be smaller!");
 
-        G4_Declare* PDcl = P->getTopDcl();
-        G4_Type Ty = (flagBits > 15) ? Type_UD : Type_UW;
+        G4_Type Ty = (flagBits > 16) ? Type_UD : Type_UW;
         G4_Declare* tPDecl = builder.createTempFlag(
             (Ty == Type_UD) ? 2 : 1, "tFlag");
         G4_RegVar* tPVar = tPDecl->getRegVar();
         G4_SrcRegRegion* Src0 = builder.createSrcRegRegion(
-            Mod_src_undef, Direct, PDcl->getRegVar(),
+            Mod_src_undef, Direct, P->getTopDcl()->getRegVar(),
             0, 0, builder.getRegionScalar(), Ty);
         G4_Imm* Src1;
         if (P->getState() == PredState_Plus) {
@@ -11909,13 +11913,14 @@ void Optimizer::replaceNoMaskWithAnyhWA()
         I0->addDefUse(I, Opnd_pred);
     };
 
-    // flagVar : ce per this BB
-    //    Note that sel does not update flag register at all.
+    // flagVar : emask for this BB
+    //    Note that sel does not update flag register. When condMod is
+    //    used, predicate is not allowed.
     // Before:
-    //     (W) sel.ge.f0.0  (1|M0)   r10.0<1>:f  r20.0<0;1,0>:f  0:f
+    //     I:  (W) sel.ge.f0.0  (1|M0)   r10.0<1>:f  r20.0<0;1,0>:f  0:f
     // After
-    //     (W) sel.ge.f0.0  (1|M0)  t:f  r20.0<0;1,0>:f   0:f
-    //     (W%flagVar) mov (1|M0)  r10.0<1>:f t:f
+    //     I:  (W) sel.ge.f0.0  (1|M0)  t:f  r20.0<0;1,0>:f   0:f
+    //     I0: (W%flagVar) mov (1|M0)  r10.0<1>:f t:f
     //
     auto doFlagModifierSelInstWA = [&](
         G4_INST* flagVarDefInst,  // inst that defines flagVar
@@ -11933,20 +11938,12 @@ void Optimizer::replaceNoMaskWithAnyhWA()
             I->getExecSize(), dst->getType(), Any, "saveTmp");
         G4_DstRegRegion* tDst = builder.createDstRegRegion(
             Direct, saveDecl->getRegVar(), 0, 0, 1, dst->getType());
-        G4_SrcRegRegion* tSrc;
-        if (I->getExecSize() == 1)
-        {
-            tSrc = builder.createSrcRegRegion(
-                Mod_src_undef, Direct, saveDecl->getRegVar(),
-                0, 0, builder.getRegionScalar(), dst->getType());
-        }
-        else
-        {
-            tSrc = builder.createSrcRegRegion(
-                Mod_src_undef, Direct, saveDecl->getRegVar(),
-                0, dst->getSubRegOff(), builder.getRegionStride1(), dst->getType());
-        }
         I->setDest(tDst);
+
+        G4_SrcRegRegion* tSrc = builder.createSrcRegRegion(
+            Mod_src_undef, Direct, saveDecl->getRegVar(), 0, 0,
+            I->getExecSize() == 1 ? builder.getRegionScalar() : builder.getRegionStride1(),
+            dst->getType());
 
         G4_INST* I0 = builder.createMov(
             I->getExecSize(), dst, tSrc, InstOpt_WriteEnable, false);
@@ -11960,19 +11957,21 @@ void Optimizer::replaceNoMaskWithAnyhWA()
         currBB->insert(nextII, I0);
 
         flagVarDefInst->addDefUse(I0, Opnd_pred);
+        // As I's dst must be global (otherwise, WA is not needed),
+        // no need to do "I->transferUse(I0)".
         I->addDefUse(I0, Opnd_src0);
     };
 
-    //  Add WA for non-predicated inst with flagModifier.
-    //    flagVar : channel enable for this BB.
-    //    Note that if 32-bit flag is used, flagVar and this instruction 'I' will
-    //    use both two 32-bit flags, leaving no flag for temporary. In this case, we
-    //    will do manual spill, ie,  save and restore the original flag (case 1 and 2).
+    //  Non-predicated inst with flagModifier.
+    //    flagVar : emask for this BB.
+    //    Note that if 32-bit flag is used, flagVar and this instruction I's condMod
+    //    take two flag registers, leaving no flag for temporary. In this case, we
+    //    will do manual spill, ie,  save and restore the original flag (case 1 and 3).
     //
     //    Before:
     //       I:  (W)  cmp (16|M16) (ne)P  D ....   // 32-bit flag
     //         or
-    //           (W)  cmp (16|M0) (ne)P   D ....   // 16-bit flag
+    //           (W)  cmp (16|M0)  (ne)P  D ....   // 16-bit flag
     //
     //    After:
     //      (1) D = null (common)
@@ -11982,10 +11981,10 @@ void Optimizer::replaceNoMaskWithAnyhWA()
     //      (2) 'I' uses 16-bit flag (common)
     //           I0: (W)           mov  (1)  nP<1>:uw    flagVar.0<0;1,0>:uw
     //           I:  (W&nP)        cmp (16|M0) (ne)nP  ....
-    //           I1: (W&flagVar)   sel (1|M0)  P<1>:uw  nP<0;1,0>:uw  P<0;1,0>:uw
-    //      (3) D != null (all the other cases, less common)
+    //           I1: (W&flagVar)   mov (1|M0)  P<1>:uw  nP<0;1,0>:uw
+    //      (3) otherwise(less common)
     //           I0: (W)           mov (1|M0) save:ud  P<0;1,0>:ud
-    //           I1: (W)           mov (16|M16) (ne)P  null flagVar
+    //           I1: (W)           mov (16|M16) (nz)P  null flagVar
     //           I:  (W&P)         cmp (16|M16) (ne)P  D ...
     //           I2: (W&-flagVar)  mov (1|M0)  P   save:ud
     //
@@ -12037,6 +12036,11 @@ void Optimizer::replaceNoMaskWithAnyhWA()
             flagVarDefInst->addDefUse(I1, Opnd_pred);
             I0->addDefUse(I1, Opnd_src0);
 
+            if (!condModGlb)
+            {
+                // Copy condMod uses to I1.
+                I->copyUsesTo(I1, false);
+            }
             return;
         }
 
@@ -12061,16 +12065,12 @@ void Optimizer::replaceNoMaskWithAnyhWA()
             G4_SrcRegRegion* I1S0 = builder.createSrcRegRegion(
                 Mod_src_undef, Direct, nPVar,
                 0, 0, builder.getRegionScalar(), Ty);
-            G4_SrcRegRegion* I1S1 = builder.createSrcRegRegion(
-                Mod_src_undef, Direct, modDcl->getRegVar(),
-                0, 0, builder.getRegionScalar(), Ty);
             G4_DstRegRegion* D1 = builder.createDstRegRegion(
                 Direct, modDcl->getRegVar(), 0, 0, 1, Ty);
             G4_Predicate* flag1 = builder.createPredicate(
                 PredState_Plus, flagVar, 0, PRED_DEFAULT);
-            G4_INST* I1 = builder.createInternalInst(
-                flag1, G4_sel, nullptr, false,
-                1, D1, I1S0, I1S1, InstOpt_WriteEnable);
+            G4_INST* I1 = builder.createMov(1, D1, I1S0, InstOpt_WriteEnable, false);
+            I1->setPredicate(flag1);
             flag1->setSameAsNoMask(true);
 
             auto nextII = currII;
@@ -12081,6 +12081,13 @@ void Optimizer::replaceNoMaskWithAnyhWA()
             flagVarDefInst->addDefUse(I1, Opnd_pred);
             I0->addDefUse(I, Opnd_pred);
             I->addDefUse(I1, Opnd_src0);
+
+            if (!condModGlb)
+            {
+                // Need to transfer condMod uses to I1 only. Here, use
+                // copyUsesTo() to achieve that, which is conservative.
+                I->copyUsesTo(I1, false);
+            }
 
             return;
         }
@@ -12102,15 +12109,14 @@ void Optimizer::replaceNoMaskWithAnyhWA()
             0, 0, builder.getRegionScalar(), Ty);
         G4_INST* I1 = builder.createMov(I->getExecSize(),
             D1, I1S0, (InstOpt_WriteEnable | I->getMaskOption()), false);
-        G4_CondMod* nM0 = builder.createCondMod(Mod_ne, modDcl->getRegVar(), 0);
+        G4_CondMod* nM0 = builder.createCondMod(Mod_nz, modDcl->getRegVar(), 0);
         I1->setCondMod(nM0);
         currBB->insert(currII, I1);
 
         G4_Predicate* nP = builder.createPredicate(
             PredState_Plus, modDcl->getRegVar(), 0, PRED_DEFAULT);
         I->setPredicate(nP);
-        G4_CondMod* nM = builder.createCondMod(Mod_ne, modDcl->getRegVar(), 0);
-        I1->setCondMod(nM);
+        // keep I's condMod unchanged
 
         auto nextII = currII;
         ++nextII;
@@ -12129,15 +12135,17 @@ void Optimizer::replaceNoMaskWithAnyhWA()
         flagVarDefInst->addDefUse(I2, Opnd_pred);
         I0->addDefUse(I2, Opnd_src0);
 
-        // need this ?
         if (!condModGlb)
         {
             I1->addDefUse(I, Opnd_pred);
+            // Need to copy uses of I's condMod to I2 only, here
+            // conservatively use copyUsesTo().
+            I->copyUsesTo(I2, false);
         }
     };
 
-    //  Add WA for predicated inst with flagModifier.
-    //  flagVar : channel enable for this BB:
+    //  Predicated inst with flagModifier.
+    //  flagVar : emask for this BB:
     //
     //    Before:
     //       I:  (W&[-]P)  and (16|M0) (ne)P  ....
@@ -12208,12 +12216,14 @@ void Optimizer::replaceNoMaskWithAnyhWA()
 
         flagVarDefInst->addDefUse(I1, Opnd_pred);
         flagVarDefInst->addDefUse(I2, Opnd_pred);
-        I0->addDefUse(I2, Opnd_src1);
+        I0->addDefUse(I2, Opnd_src0);
 
-        // need this ?
         if (!condModGlb)
         {
             I1->addDefUse(I, Opnd_pred);
+            // Need to copy uses of I's condMod to I2 only, here
+            // conservatively use copyUsesTo().
+            I->copyUsesTo(I2, false);
         }
     };
 
@@ -12236,14 +12246,14 @@ void Optimizer::replaceNoMaskWithAnyhWA()
                     continue;
                 }
 
-                uint32_t anylen = 16;
+                uint32_t flagbits = 16;
                 if ((I->getExecSize() + I->getMaskOffset()) > 16)
                 {
-                    anylen = 32;
+                    flagbits = 32;
                 }
 
                 G4_INST* flagDefInst = nullptr;
-                G4_RegVar* flagVar = createFlagFromCE0(flagDefInst, anylen, BB, II);
+                G4_RegVar* flagVar = createFlagFromCE0(flagDefInst, flagbits, BB, II);
 
                 G4_Predicate* pred = I->getPredicate();
                 G4_CondMod* condmod = I->getCondMod();
@@ -12286,13 +12296,13 @@ void Optimizer::replaceNoMaskWithAnyhWA()
         //
         //    BB:
         //       ......
-        //       (W) and (16|M0) (ne)f0.0  null<1>:ud  ce0.0:ud   dmask:ud
-        //       ** If any nomask inst uses bits beyond 16, need the following**
-        //       (w)  mov (2|M0)  f0.0<1>:uw   f0.0<0;1,0>:uw
+        //       (W) and (16|M0) (nz)f0.0  null<1>:ud  ce0.0:ud   dmask:ud
+        //       ** If any nomask inst uses bits beyond 16, need the following too **
+        //       (W)  mov (2|M0)  f0.0<1>:uw   f0.0<0;1,0>:uw
         //
-        //       (W&f0.0.any16h) inst0
+        //       (W&f0.0) inst0
         //       ......
-        //       (W&f0.0.any16h) inst1
+        //       (W&f0.0) inst1
         //
 
         //  1. Collect all candidates and check if 32 bit flag is needed
