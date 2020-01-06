@@ -47,7 +47,7 @@ DECLARE_IGC_REGKEY(bool, EnableVISADebug,               false, "Runs VISA in deb
 DECLARE_IGC_REGKEY(DWORD, EnableVISAStructurizer,       1,     "Enable/Disable VISA structurizer. See value defs in igc_flags.hpp.", false)
 DECLARE_IGC_REGKEY(bool, EnableVISAJmpi,                true,  "Enable/Disable VISA generating jmpi (scalar jump).", false)
 DECLARE_IGC_REGKEY(bool, EnableSCFWA,                   true,  "Enable/Disable VISA structrizer WA (temporary for debugging)", false)
-DECLARE_IGC_REGKEY(DWORD, NoMaskToAnyhWA,               8,     "Control replacing NoMask with anyh predicate. Valid value: (two groups) \
+DECLARE_IGC_REGKEY(DWORD, NoMaskToAnyhWA,               0,     "Control replacing NoMask with anyh predicate. Valid value: (two groups) \
                                                                    valid value:  bit[2]   : how to insert anyh - 0 (simple) | 1 (optim|3. \
                                                                                  bit[1:0] : which BB to insert - 0(off), 1(divergent BB), \
                                                                                             2 (nested divergent BB. \
