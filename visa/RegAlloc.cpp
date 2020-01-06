@@ -35,7 +35,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <fstream>
 #include <math.h>
 #include "DebugInfo.h"
-#include "VarSplit.h"
 
 using namespace std;
 using namespace vISA;
@@ -3756,14 +3755,7 @@ int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
     PointsToAnalysis pointsToAnalysis(kernel.Declares, kernel.fg.getNumBB());
     pointsToAnalysis.doPointsToAnalysis(kernel.fg);
 
-    // Run explicit variable split pass
-    VarSplitPass splitPass(kernel);
-    if(kernel.getOption(vISA_IntrinsicSplit))
-        splitPass.run();
-
     GlobalRA gra(kernel, regPool, pointsToAnalysis);
-    gra.setVarSplitPass(&splitPass);
-
     //
     // insert pseudo save/restore return address so that reg alloc
     // can assign registers to hold the return addresses
@@ -3802,8 +3794,6 @@ int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
     }
 
     int status = gra.coloringRegAlloc();
-
-    splitPass.replaceIntrinsics();
 
     recordRAStats(builder, kernel, status);
     if (status != VISA_SUCCESS)

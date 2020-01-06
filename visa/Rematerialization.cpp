@@ -436,9 +436,6 @@ namespace vISA
         if (!topdcl)
             return false;
 
-        if (src->getInst()->isSplitIntrinsic())
-            return false;
-
         // ADDRESS/FLAG spilled declare
         if (topdcl->getSpilledDeclare())
             return false;
