@@ -449,7 +449,6 @@ namespace IGC
 
         USC::GFXMEDIA_GPUWALKER_SIMD        SimdWidth;
 
-        unsigned int                        TgsmTotalByteCount;
         unsigned int                        ThreadGroupSize;
 
         void* ThreadPayloadData;
