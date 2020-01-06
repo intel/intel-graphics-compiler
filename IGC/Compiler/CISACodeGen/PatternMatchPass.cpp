@@ -2017,10 +2017,15 @@ namespace IGC
         }
 
         // Check integer mad profitability.
-        if (found && !isFpMad(I)) {
+        if (found && !isFpMad(I))
+        {
             auto isByteOrWordValue = [](Value* V) -> bool {
-                if (isa<Constant>(V))
-                    return true;
+                if (isa<ConstantInt>(V))
+                {
+                    // only 16-bit int immediate is supported
+                    APInt val = dyn_cast<ConstantInt>(V)->getValue();
+                    return val.sge(SHRT_MIN) && val.sle(SHRT_MAX);
+                }
                 // Trace the def-use chain and return the first non up-cast related value.
                 while (isa<ZExtInst>(V) || isa<SExtInst>(V) || isa<BitCastInst>(V))
                     V = cast<Instruction>(V)->getOperand(0);
