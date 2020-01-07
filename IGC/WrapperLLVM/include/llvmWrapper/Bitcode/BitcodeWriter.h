@@ -28,6 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define IGCLLVM_BITCODE_BITCODEWRITER_H
 
 #include <llvm/Bitcode/BitcodeWriter.h>
+#include <llvmWrapper/IR/Module.h>
 
 namespace IGCLLVM
 {
@@ -42,6 +43,16 @@ namespace IGCLLVM
     {
         llvm::WriteBitcodeToFile(*M, Out, ShouldPreserveUseListOrder, Index, GenerateHash);
     }
+#if LLVM_VERSION_MAJOR > 8
+    inline void WriteBitcodeToFile(const IGCLLVM::Module *M, llvm::raw_ostream &Out,
+        bool ShouldPreserveUseListOrder = false,
+        const llvm::ModuleSummaryIndex *Index = nullptr,
+        bool GenerateHash = false,
+        llvm::ModuleHash *ModHash = nullptr)
+    {
+        IGCLLVM::WriteBitcodeToFile((llvm::Module*)M, Out, ShouldPreserveUseListOrder, Index, GenerateHash);
+    }
+#endif
 #endif
 }
 

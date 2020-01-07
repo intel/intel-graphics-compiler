@@ -153,6 +153,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvmWrapper/Transforms/Utils.h>
 #include <llvmWrapper/Transforms/Scalar/InstSimplifyPass.h>
 #include <llvmWrapper/Transforms/Scalar.h>
+#include <llvmWrapper/Bitcode/BitcodeWriter.h>
 
 #include <llvm/Transforms/InstCombine/InstCombine.h>
 #include "common/LLVMWarningsPop.hpp"
@@ -170,7 +171,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "DebugInfo.hpp"
 
-#include <llvmWrapper/Bitcode/BitcodeWriter.h>
 #include "Compiler/CISACodeGen/HalfPromotion.h"
 
 /***********************************************************************************
@@ -1277,7 +1277,7 @@ namespace IGC
         serialize(*(pContext->getModuleMetaData()), pContext->getModule());
         // Serialize LLVM IR and save it to a string
         llvm::raw_string_ostream OStream(pContext->m_savedBitcodeString);
-        llvm::WriteBitcodeToFile(*pContext->getModule(), OStream, true);
+        IGCLLVM::WriteBitcodeToFile(pContext->getModule(), OStream, true);
         OStream.flush();
 
         // Store the results and pass it to stage 2 if staged compilation happens
