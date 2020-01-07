@@ -40,12 +40,6 @@ typedef size_t uintptr_t;
   #define cl_khr_byte_addressable_store
 #endif
 
-// All of our devices support cl_khr_3d_image_writes, so #define it
-// if it isn't already #defined.
-#if !defined(cl_khr_3d_image_writes)
-  #define cl_khr_3d_image_writes
-#endif
-
 #ifdef cl_khr_3d_image_writes
 #pragma OPENCL EXTENSION cl_khr_3d_image_writes : enable
 #endif
@@ -962,9 +956,12 @@ __CLFN_DECL_F_VSTOREN_HALF(vstorea_half, double, half)
  * values that are not in the range (0 ... image width -
  * 1, 0 ... image height - 1), respectively, is undefined.
  */
+
+#ifdef cl_khr_3d_image_writes
 void __attribute__((overloadable)) write_imagef(write_only image3d_t image, int4 coord, float4 color);
 void __attribute__((overloadable)) write_imagei(write_only image3d_t image, int4 coord, int4 color);
 void __attribute__((overloadable)) write_imageui(write_only image3d_t image, int4 coord, uint4 color);
+#endif
 #endif
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_1_2)
