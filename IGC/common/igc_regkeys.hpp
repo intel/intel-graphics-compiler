@@ -31,7 +31,7 @@ PURPOSE: Defines meta data for holding/defining regkey variables
 #pragma once
 #include "IGC/common/igc_debug.h"
 #include "IGC/common/igc_flags.hpp"
-#include <string.h>
+#include <string>
 
 typedef char debugString[256];
 
@@ -124,12 +124,12 @@ extern SRegKeysList g_RegKeyList;
 ( CheckHashRange(g_RegKeyList.name.hashes) ? g_RegKeyList.name.m_string : "" )
 #endif
 void DumpIGCRegistryKeyDefinitions();
-void LoadRegistryKeys();
+void LoadRegistryKeys(const std::string& options = "");
 void SetCurrentDebugHash(unsigned long long hash);
 #undef LINUX_RELEASE_MODE
 #else
 static inline void SetCurrentDebugHash(unsigned long long hash) {}
-static inline void LoadRegistryKeys() {}
+static inline void LoadRegistryKeys(const std::string& options = "") {}
 #define IGC_SET_FLAG_VALUE( name, regkeyValue ) ;
 #define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, releaseMode) \
     static const unsigned int regkeyName##default = (unsigned int)defaultValue;

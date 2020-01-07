@@ -394,7 +394,7 @@ bool CheckHashRange(const std::vector<HashRange>& hashes)
     return false;
 }
 
-static void LoadFromRegKeyOrEnvVar()
+static void LoadFromRegKeyOrEnvVarOrOptions(const std::string& options = "")
 {
     SRegKeyVariableMetaData* pRegKeyVariable = (SRegKeyVariableMetaData*)&g_RegKeyList;
     unsigned NUM_REGKEY_ENTRIES = sizeof(SRegKeysList) / sizeof(SRegKeyVariableMetaData);
@@ -402,6 +402,8 @@ static void LoadFromRegKeyOrEnvVar()
     {
         debugString value = { 0 };
         const char* name = pRegKeyVariable[i].GetName();
+        std::string nameWithEqual = name;
+        nameWithEqual = nameWithEqual + "=";
 
         bool isSet = ReadIGCRegistry(
             name,
@@ -411,6 +413,43 @@ static void LoadFromRegKeyOrEnvVar()
         if (isSet)
         {
             memcpy_s(pRegKeyVariable[i].m_string, sizeof(value), value, sizeof(value));
+        }
+
+        debugString valueFromOptions = { 0 };
+        std::size_t found = options.find(nameWithEqual);
+
+        if (found != std::string::npos)
+        {
+            std::size_t foundComma = options.find(',', found);
+            if (foundComma != std::string::npos)
+            {
+                std::string token = options.substr(found + nameWithEqual.size(), foundComma - (found + nameWithEqual.size()));
+                unsigned int size = sizeof(value);
+                void* pValueFromOptions = &valueFromOptions;
+
+                const char* envValFromOptions = token.c_str();
+                bool valueIsInt = false;
+                if (envValFromOptions != NULL)
+                {
+                    if (size >= sizeof(unsigned int))
+                    {
+                        // Try integer conversion
+                        char* pStopped = nullptr;
+                        unsigned int* puValFromOptions = (unsigned int*)pValueFromOptions;
+                        *puValFromOptions = strtoul(envValFromOptions, &pStopped, 0);
+                        if (pStopped == envValFromOptions + strlen(envValFromOptions))
+                        {
+                            valueIsInt = true;
+                        }
+                    }
+                    if (!valueIsInt)
+                    {
+                        // Just return the string
+                        strncpy_s((char*)pValueFromOptions, size, envValFromOptions, size);
+                    }
+                }
+                memcpy_s(pRegKeyVariable[i].m_string, sizeof(valueFromOptions), valueFromOptions, sizeof(valueFromOptions));
+            }
         }
     }
 }
@@ -435,7 +474,7 @@ Output:
     None
 
 \*****************************************************************************/
-void LoadRegistryKeys( void )
+void LoadRegistryKeys(const std::string& options)
 {
     // only load the debug flags once before compiling to avoid any multi-threading issue
     static std::mutex loadFlags;
@@ -447,7 +486,7 @@ void LoadRegistryKeys( void )
         // dump out IGC.xml for the registry manager
         DumpIGCRegistryKeyDefinitions();
         LoadDebugFlagsFromFile();
-        LoadFromRegKeyOrEnvVar();
+        LoadFromRegKeyOrEnvVarOrOptions(options);
 
         if(IGC_IS_FLAG_ENABLED(LLVMCommandLine))
         {

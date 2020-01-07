@@ -101,6 +101,8 @@ namespace FCL
     int32_t FCLDumpToCustomDir = 0;
     int32_t FCLShDumpPidDis = 0;
     int32_t FCLEnvKeysRead = 0;
+    std::string RegKeysFlagsFromOptions = "";
+
 
     /*****************************************************************************\
     FCLReadIGCEnv
@@ -204,10 +206,10 @@ namespace FCL
     {
         if (!FCLEnvKeysRead)
         {
-            FCLShDumpEn            = getFCLIGCBinaryKey("ShaderDumpEnable");
-            FCLDumpToCurrDir    = getFCLIGCBinaryKey("DumpToCurrentDir");
-            FCLDumpToCustomDir  = getFCLIGCBinaryKey("DumpToCustomDir");
-            FCLShDumpPidDis        = getFCLIGCBinaryKey("ShaderDumpPidDisable");
+            FCLShDumpEn            = getFCLIGCBinaryKey("ShaderDumpEnable") || (RegKeysFlagsFromOptions.find("ShaderDumpEnable=1") != std::string::npos);
+            FCLDumpToCurrDir    = getFCLIGCBinaryKey("DumpToCurrentDir") || (RegKeysFlagsFromOptions.find("DumpToCurrentDir=1") != std::string::npos);
+            FCLDumpToCustomDir  = getFCLIGCBinaryKey("DumpToCustomDir") || (RegKeysFlagsFromOptions.find("DumpToCustomDir=") != std::string::npos);
+            FCLShDumpPidDis        = getFCLIGCBinaryKey("ShaderDumpPidDisable") || (RegKeysFlagsFromOptions.find("ShaderDumpPidDisable=1") != std::string::npos);
 
             FCLEnvKeysRead = 1;
         }
@@ -236,8 +238,6 @@ namespace FCL
         FCLReadKeysFromEnv();
         return FCLDumpToCustomDir;
     }
-
-
 
 #define FCL_IGC_IS_FLAG_ENABLED(name) FCL::GetFCL##name()
 
@@ -300,10 +300,24 @@ namespace FCL
         {
             std::string dumpPath = "c:\\Intel\\IGC\\";        // default if something goes wrong
             char custom_dir[256];
+            std::string DumpToCustomDirFlagNameWithEqual = "DumpToCustomDir=";
+            std::size_t found = RegKeysFlagsFromOptions.find(DumpToCustomDirFlagNameWithEqual);
             FCLReadIGCRegistry("DumpToCustomDir", custom_dir, sizeof(custom_dir));
-            if (strlen(custom_dir) > 0)
+            if (strlen(custom_dir) > 0 && (found == std::string::npos))
             {
                 dumpPath = custom_dir;
+            }
+            else
+            {
+                std::size_t foundComma = RegKeysFlagsFromOptions.find(',', found);
+                if (foundComma != std::string::npos)
+                {
+                    std::string token = RegKeysFlagsFromOptions.substr(found + DumpToCustomDirFlagNameWithEqual.size(), foundComma - (found + DumpToCustomDirFlagNameWithEqual.size()));
+                    if (token.size() > 0)
+                    {
+                        dumpPath = token;
+                    }
+                }
             }
 
             char pathBuf[256];
@@ -320,10 +334,24 @@ namespace FCL
         {
             std::string dumpPath = "/tmp/IntelIGC/";        // default if something goes wrong
             char custom_dir[256];
+            std::string DumpToCustomDirFlagNameWithEqual = "DumpToCustomDir=";
+            std::size_t found = RegKeysFlagsFromOptions.find(DumpToCustomDirFlagNameWithEqual);
             FCLReadIGCRegistry("DumpToCustomDir", custom_dir, sizeof(custom_dir));
-            if (strlen(custom_dir) > 0)
+            if (strlen(custom_dir) > 0 && (found == std::string::npos))
             {
                 dumpPath = custom_dir;
+            }
+            else
+            {
+                std::size_t foundComma = RegKeysFlagsFromOptions.find(',', found);
+                if (foundComma != std::string::npos)
+                {
+                    std::string token = RegKeysFlagsFromOptions.substr(found + DumpToCustomDirFlagNameWithEqual.size(), foundComma - (found + DumpToCustomDirFlagNameWithEqual.size()));
+                    if (token.size() > 0)
+                    {
+                        dumpPath = token;
+                    }
+                }
             }
 
             char pathBuf[256];
@@ -1125,7 +1153,8 @@ namespace TC
     char *GetParam(char *Head, char *Tail) {
         static char Delim = ' ';
         static char Slash = '\\';
-        char Quote = 0;
+        char QuoteDouble = 0;
+        char QuoteSingle = 0;
         char PrevChar = 0;
         char *Pos = NULL;
         int Length = 0;
@@ -1136,7 +1165,8 @@ namespace TC
             goto ERROR_HANDLER;
         }
 
-        Quote = Delim;
+        QuoteDouble = Delim;
+        QuoteSingle = Delim;
         Pos = Head;
         Length = (int)strlen(Head);
 
@@ -1155,7 +1185,10 @@ namespace TC
         switch (*Pos)
         {
         case '\"':
-            Quote = *Pos;
+            QuoteDouble = *Pos;
+            break;
+        case '\'':
+            QuoteSingle = *Pos;
             break;
         default: break;
         }
@@ -1170,13 +1203,26 @@ namespace TC
             case '\"':
                 if (PrevChar != Slash)
                 {
-                    if (Quote == Delim)
+                    if (QuoteDouble == Delim)
                     {
-                        Quote = *Pos; // Open quote string
+                        QuoteDouble = *Pos; // Open quote string
                     }
                     else
                     {
-                        Quote = Delim; // Close quote string
+                        QuoteDouble = Delim; // Close quote string
+                    }
+                }
+                break;
+            case '\'':
+                if (PrevChar != Slash)
+                {
+                    if (QuoteSingle == Delim)
+                    {
+                        QuoteSingle = *Pos; // Open quote string
+                    }
+                    else
+                    {
+                        QuoteSingle = Delim; // Close quote string
                     }
                 }
                 break;
@@ -1184,7 +1230,7 @@ namespace TC
             }
         } while ((*Pos != 0)
             && ((*Pos != Delim)
-                || ((*Pos == Delim) && (Quote != Delim))));
+                || ((*Pos == Delim) && ((QuoteDouble != Delim) || (QuoteSingle != Delim)))));
         if (*Pos == Delim)
         {
             *Pos = 0; // finish Head
@@ -1299,6 +1345,7 @@ namespace TC
                             (strcmp(pParam, "-triple") == 0) || //used in NEO
                             (strcmp(pParam, "-dwarf-column-info") == 0) ||
                             (strcmp(pParam, "-cl-intel-no-prera-scheduling") == 0) || //temporary options
+                            (strcmp(pParam, "-igc_opts") == 0) || //temporary options
                             (strcmp(pParam, "-cl-intel-debug-info") == 0) ||
                             (strncmp(pParam, "-dump-opt-llvm", 14) == 0) ||
                             (strcmp(pParam, "-cl-no-subgroup-ifp") == 0);
@@ -1312,7 +1359,8 @@ namespace TC
                             // check to see if they used a space immediately after
                             // the define/include. If they did...
                             if ((strcmp(pParam, "-D") == 0) ||
-                                (strcmp(pParam, "-I") == 0))
+                                (strcmp(pParam, "-I") == 0) ||
+                                (strcmp(pParam, "-igc_opts") == 0))
                             {
                                 // ignore next token as it is the define/include
                                 ignoreNextToken = true;
@@ -1708,6 +1756,23 @@ namespace TC
             bool successTC = TranslateClang(&args, pOutputArgs, exceptString, pInputArgs->pInternalOptions);
 
 #if defined(IGC_DEBUG_VARIABLES)
+            if (pInputArgs->pOptions != NULL)
+            {
+                const std::string& igc_optsName = "-igc_opts";
+                const std::string& optionsWithFlags = (const char*)pInputArgs->pOptions;
+                std::size_t found = optionsWithFlags.find(igc_optsName);
+                if (found != std::string::npos)
+                {
+                    std::size_t foundFirstSingleQuote = optionsWithFlags.find("'", found);
+                    std::size_t foundSecondSingleQuote = optionsWithFlags.find("'", foundFirstSingleQuote + 1);
+                    if (foundFirstSingleQuote != std::string::npos && foundSecondSingleQuote != std::string::npos)
+                    {
+                        FCL::RegKeysFlagsFromOptions = optionsWithFlags.substr(foundFirstSingleQuote + 1, foundSecondSingleQuote - foundFirstSingleQuote - 1);
+                        FCL::RegKeysFlagsFromOptions = FCL::RegKeysFlagsFromOptions + ',';
+                    }
+                }
+            }
+
             if (FCL_IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
             {
                 // Works for all OSes. Creates dir if necessary.

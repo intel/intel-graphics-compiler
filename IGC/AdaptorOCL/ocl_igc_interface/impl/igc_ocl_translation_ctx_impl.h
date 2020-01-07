@@ -205,7 +205,24 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclTranslationCtx) : CIF::PimplBase
         TC::STB_TranslateOutputArgs output;
         CIF::SafeZeroOut(output);
 
-        LoadRegistryKeys();
+        std::string RegKeysFlagsFromOptions = "";
+        if (inputArgs.pOptions != NULL)
+        {
+            const std::string& igc_optsName = "-igc_opts";
+            const std::string& optionsWithFlags = (const char*)inputArgs.pOptions;
+            std::size_t found = optionsWithFlags.find(igc_optsName);
+            if (found != std::string::npos)
+            {
+                std::size_t foundFirstSingleQuote = optionsWithFlags.find("'", found);
+                std::size_t foundSecondSingleQuote = optionsWithFlags.find("'", foundFirstSingleQuote + 1);
+                if (foundFirstSingleQuote != std::string::npos && foundSecondSingleQuote)
+                {
+                    RegKeysFlagsFromOptions = optionsWithFlags.substr(foundFirstSingleQuote + 1, (foundSecondSingleQuote - foundFirstSingleQuote - 1));
+                    RegKeysFlagsFromOptions = RegKeysFlagsFromOptions + ',';
+                }
+            }
+        }
+        LoadRegistryKeys(RegKeysFlagsFromOptions);
 
         bool success = false;
         if (this->inType == CodeType::elf)
