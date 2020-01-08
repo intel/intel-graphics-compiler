@@ -845,6 +845,7 @@ namespace IGC
         virtual void resetOnRetry();
         virtual uint32_t getNumThreadsPerEU() const;
         virtual uint32_t getNumGRFPerThread() const;
+        virtual bool forceGlobalMemoryAllocation() const;
         bool isPOSH() const;
 
         CompilerStats& Stats()
@@ -1073,6 +1074,10 @@ namespace IGC
                 {
                     EnableTakeGlobalAddress = true;
                 }
+                if (strstr(options, "-cl-intel-force-global-mem-allocation"))
+                {
+                    IntelForceGlobalMemoryAllocation = true;
+                }
             }
 
 
@@ -1089,6 +1094,7 @@ namespace IGC
             bool PromoteStatelessToBindless = false;
             bool PreferBindlessImages = false;
             bool EnableTakeGlobalAddress = false;
+            bool IntelForceGlobalMemoryAllocation = false;
 
         };
 
@@ -1162,6 +1168,7 @@ namespace IGC
         float getProfilingTimerResolution();
         uint32_t getNumGRFPerThread() const;
         uint32_t getNumThreadsPerEU() const;
+        bool forceGlobalMemoryAllocation() const;
     private:
         llvm::DenseMap<llvm::Function*, std::string> m_hashes_per_kernel;
     };

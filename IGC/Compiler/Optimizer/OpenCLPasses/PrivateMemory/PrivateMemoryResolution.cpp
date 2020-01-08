@@ -361,7 +361,8 @@ bool PrivateMemoryResolution::safeToUseScratchSpace(llvm::Module& M) const
     bool supportsStatelessSpacePrivateMemory = Ctx.m_DriverInfo.supportsStatelessSpacePrivateMemory();
     bool bOCLLegacyStatelessCheck = true;
 
-    if ((modMD.compOpt.OptDisable && bOCLLegacyStatelessCheck) || !supportsScratchSpacePrivateMemory) {
+    if ((modMD.compOpt.OptDisable && bOCLLegacyStatelessCheck) || !supportsScratchSpacePrivateMemory
+        || Ctx.forceGlobalMemoryAllocation()) {
         return false;
     }
 

@@ -508,6 +508,12 @@ namespace IGC
         return CodeGenContext::getNumGRFPerThread();
     }
 
+    bool OpenCLProgramContext::forceGlobalMemoryAllocation() const
+    {
+        return m_InternalOptions.IntelForceGlobalMemoryAllocation;
+    }
+
+
     void CodeGenContext::initLLVMContextWrapper(bool createResourceDimTypes)
     {
         llvmCtxWrapper = new LLVMContextWrapper(createResourceDimTypes);
@@ -667,6 +673,11 @@ namespace IGC
             return IGC_GET_FLAG_VALUE(TotalGRFNum);
         }
         return 128;
+    }
+
+    bool CodeGenContext::forceGlobalMemoryAllocation() const
+    {
+        return false;
     }
 
     bool CodeGenContext::isPOSH() const
