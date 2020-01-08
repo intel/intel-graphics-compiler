@@ -6162,7 +6162,7 @@ bool HWConformity::fixAddcSubb(G4_BB* bb)
     {
         G4_INST* inst = *iter;
         if ((inst->opcode() == G4_addc || inst->opcode() == G4_subb) &&
-            inst->getExecSize() != 8)
+            inst->getExecSize() != builder.getNativeExecSize())
         {
             // find the matching carry move
             G4_INST* carryMov = NULL;
