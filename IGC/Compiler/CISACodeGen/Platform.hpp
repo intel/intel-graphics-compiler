@@ -485,11 +485,9 @@ namespace IGC
 
     bool WaDisableSendSrcDstOverlap() const
     {
-        // originally implemented due to HW restriction when pagefault was enabled
-        // however there seems to be an issue with overlap regardless
-        // So enabling for all platforms less than or equal to gen11
         return (!IGC_IS_FLAG_ENABLED(DisableSendSrcDstOverlapWA)) &&
-            (m_SkuTable.FtrWddm2Svm != 0 || m_platformInfo.eRenderCoreFamily <= IGFX_GEN11_CORE);
+            (m_SkuTable.FtrWddm2Svm != 0 || m_platformInfo.eRenderCoreFamily == IGFX_GEN10_CORE ||
+                m_platformInfo.eRenderCoreFamily == IGFX_GEN11_CORE);
 
     }
 
