@@ -1070,10 +1070,6 @@ namespace IGC
                 {
                     PreferBindlessImages = true;
                 }
-                if (strstr(options, "-cl-intel-enable-global-relocation"))
-                {
-                    EnableTakeGlobalAddress = true;
-                }
                 if (strstr(options, "-cl-intel-force-global-mem-allocation"))
                 {
                     IntelForceGlobalMemoryAllocation = true;
@@ -1093,7 +1089,6 @@ namespace IGC
             bool IntelEnablePreRAScheduling = true;
             bool PromoteStatelessToBindless = false;
             bool PreferBindlessImages = false;
-            bool EnableTakeGlobalAddress = false;
             bool IntelForceGlobalMemoryAllocation = false;
 
         };
@@ -1130,11 +1125,16 @@ namespace IGC
                     // the module metadata.
                     UniformWGS = true;
                 }
+                if (strstr(options, "-cl-take-global-address"))
+                {
+                    EnableTakeGlobalAddress = true;
+                }
             }
 
             bool CorrectlyRoundedSqrt;
             bool NoSubgroupIFP;
             bool UniformWGS;
+            bool EnableTakeGlobalAddress = false;
         };
 
         // output: shader information
