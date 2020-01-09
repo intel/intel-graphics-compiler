@@ -461,9 +461,10 @@ namespace IGC
 
         CVariable* GetExecutionMask();
         CVariable* GetExecutionMask(CVariable* &vecMaskVar);
+        CVariable* GetHalfExecutionMask();
         CVariable* GetDispatchMask();
         CVariable* UniformCopy(CVariable* var);
-        CVariable* UniformCopy(CVariable* var, CVariable*& LaneOffset, CVariable* eMask = nullptr);
+        CVariable* UniformCopy(CVariable* var, CVariable*& LaneOffset, CVariable* eMask = nullptr, bool doSub = false);
         // generate loop header to process sample instruction with varying resource/sampler
         bool ResourceLoopHeader(
             ResourceDescriptor& resource,
@@ -627,6 +628,16 @@ namespace IGC
         void ResetRoundingMode(llvm::Instruction* inst);
         // returns true if the instruction does not care about the rounding mode settings
         bool ignoreRoundingMode(llvm::Instruction* inst) const;
+
+        // A64 load/store with HWA that make sure the offset hi part is the same per LS call
+        void emitGatherA64(CVariable* dst, CVariable* offset, unsigned elemSize, unsigned numElems);
+        void emitGather4A64(CVariable* dst, CVariable* offset);
+        void emitScatterA64(CVariable* val, CVariable* offset, unsigned elementSize, unsigned numElems);
+        void emitScatter4A64(CVariable* src, CVariable* offset);
+
+        // Helper functions that create loop for above WA
+        void A64LSLoopHead(CVariable* addr, CVariable*& curMask, CVariable*& lsPred, uint& label);
+        void A64LSLoopTail(CVariable* curMask, CVariable* lsPred, uint label);
     };
 
 } // namespace IGC

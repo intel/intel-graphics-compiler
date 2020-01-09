@@ -374,6 +374,7 @@ DECLARE_IGC_REGKEY(bool, ForceNoFP64bRegioning, false, "force regioning rules fo
 DECLARE_IGC_REGKEY(bool, EnableOneStepElf, true, "Enable generation of direct elf mapping src->Gen ISA", false)
 DECLARE_IGC_REGKEY(bool, EmitDebugRanges, false, "Emit .debug_ranges section when instructions in a block are non-consecutive", false)
 DECLARE_IGC_REGKEY(bool, EmitDebugLoc, false, "Enable generation of .debug_loc section", false)
+DECLARE_IGC_REGKEY(bool, EnableA64WA, false, "Guarantee A64 load/store addres-hi is uniform", false)
 
 DECLARE_IGC_GROUP("Generating precompiled headers")
 DECLARE_IGC_REGKEY(bool, ApplyConservativeRastWAHeader, true,

@@ -4973,7 +4973,7 @@ void EmitPass::emitSimdBlockWrite(llvm::Instruction* inst, llvm::Value* ptrVal)
         m_encoder->SetUniformSIMDSize(simdmode);
         if (useA64)
         {
-            m_encoder->ScatterA64(data, ScatterOff, blkBits, nBlks);
+            emitScatterA64(data, ScatterOff, blkBits, nBlks);
         }
         else
         {
@@ -5159,7 +5159,7 @@ void EmitPass::emitSimdBlockRead(llvm::Instruction* inst, llvm::Value* ptrVal)
         m_encoder->SetUniformSIMDSize(simdmode);
         if (useA64)
         {
-            m_encoder->GatherA64(gatherDst, gatherOff, blkBits, nBlks);
+            emitGatherA64(gatherDst, gatherOff, blkBits, nBlks);
         }
         else
         {
@@ -10320,6 +10320,29 @@ CVariable* EmitPass::BroadcastIfUniform(CVariable* pVar)
     return pVar;
 }
 
+CVariable* EmitPass::GetHalfExecutionMask()
+{
+    bool isSecondHalf = m_encoder->IsSecondHalf();
+    bool isSubSpanDst = m_encoder->IsSubSpanDestination();
+    m_encoder->SetSecondHalf(false);
+    m_encoder->SetSubSpanDestination(false);
+    CVariable* flag = m_currShader->ImmToVariable(0, ISA_TYPE_BOOL);
+    m_encoder->SetSecondHalf(isSecondHalf);
+    m_encoder->SetSubSpanDestination(isSubSpanDst);
+
+    CVariable* dummyVar = m_currShader->GetNewVariable(1, ISA_TYPE_UW, EALIGN_WORD, true);
+    m_encoder->Cmp(EPREDICATE_EQ, flag, dummyVar, dummyVar);
+    m_encoder->Push();
+
+    VISA_Type maskType = m_currShader->m_dispatchSize > SIMDMode::SIMD16 ? ISA_TYPE_UD : ISA_TYPE_UW;;
+    CVariable* eMask = m_currShader->GetNewVariable(1, maskType, EALIGN_DWORD, true);
+    m_encoder->SetNoMask();
+    m_encoder->Cast(eMask, flag);
+
+    m_encoder->Push();
+    return eMask;
+}
+
 CVariable* EmitPass::GetExecutionMask(CVariable*& vecMaskVar)
 {
     bool isSecondHalf = m_encoder->IsSecondHalf();
@@ -10368,7 +10391,7 @@ CVariable* EmitPass::UniformCopy(CVariable* var)
 
 /// Uniform copy allowing to reuse the off calculated by a previous call
 /// This allow avoiding redundant code
-CVariable* EmitPass::UniformCopy(CVariable* var, CVariable*& off, CVariable* eMask)
+CVariable* EmitPass::UniformCopy(CVariable* var, CVariable*& off, CVariable* eMask, bool doSub)
 {
     assert(!var->IsUniform() && "Expect non-uniform source!");
 
@@ -10381,6 +10404,11 @@ CVariable* EmitPass::UniformCopy(CVariable* var, CVariable*& off, CVariable* eMa
         // Get offset to any 1s. For simplicity, use 'fbl' to find the lowest 1s.
         off = m_currShader->GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true);
         m_encoder->Fbl(off, eMask);
+
+        if (doSub && m_encoder->IsSecondHalf()) {
+            m_encoder->Add(off, off, m_currShader->ImmToVariable(-16, ISA_TYPE_W));
+        }
+
         m_encoder->Push();
 
         // Calculate byte offset
@@ -14236,6 +14264,156 @@ unsigned int EmitPass::GetScalarTypeSizeInRegister(Type* Ty) const
 }
 
 
+void EmitPass::A64LSLoopHead(CVariable* addr, CVariable*& curMask, CVariable*& lsPred, uint& label)
+{
+    // Create a loop to calculate LS's pred (lsPred) that make sure for every active lane of the LS,
+    // the address hi part must be the same
+    //
+    // pseudo code (including A64LSLoopHead and A64LSLoopTail):
+    //          addrHigh = packed addr hi part
+    //          curMask = executionMask
+    //      label:
+    //          uniformAddrHi = the_first_active_lane_of_CurMask(addrHigh)
+    //          lsPred = cmp(uniformAddrHi, addrHigh)
+    //          (lsPred) send // the original LS instruction
+    //          lsPred = ~lsPred
+    //          CurMask = lsPred & CurMask
+    //          lsPred = CurMask
+    //          (lsPred) jmp label
+
+    SIMDMode simdMode = m_encoder->GetSimdSize();
+    uint16_t execSize = numLanes(simdMode);
+    assert(simdMode == SIMDMode::SIMD8 || simdMode == SIMDMode::SIMD16);
+
+    // get address hi part
+    CVariable* addrAlias = m_currShader->GetNewAlias(addr, ISA_TYPE_UD, 0, execSize * 2);
+    CVariable* addrHigh = m_currShader->GetNewVariable(
+        execSize, ISA_TYPE_UD, EALIGN_GRF, false);
+    m_encoder->SetSrcSubReg(0, 1);
+    m_encoder->SetSrcRegion(0, 2, 1, 0);
+    m_encoder->Copy(addrHigh, addrAlias);
+    m_encoder->Push();
+
+    curMask = GetHalfExecutionMask();
+
+    // create loop
+    label = m_encoder->GetNewLabelID();
+    m_encoder->Label(label);
+    m_encoder->Push();
+
+    // Get the first active lane's address-hi
+    CVariable* ufoffset = nullptr;
+    CVariable* uniformAddrHi = UniformCopy(addrHigh, ufoffset, curMask, true);
+
+    // Set the predicate lsPred to true for all lanes with the same address_hi
+    lsPred = m_currShader->GetNewVariable(numLanes(m_currShader->m_dispatchSize), ISA_TYPE_BOOL, EALIGN_BYTE);
+    m_encoder->Cmp(EPREDICATE_EQ, lsPred, uniformAddrHi, addrHigh);
+    m_encoder->Push();
+}
+
+void EmitPass::A64LSLoopTail(CVariable* curMask, CVariable* lsPred, uint label)
+{
+    // Unset the bits in the mask for lanes that were executed
+    bool tmpSh = m_encoder->IsSecondHalf();
+    m_encoder->SetSecondHalf(false);
+
+    CVariable* tmpLsPred = m_currShader->GetNewVariable(1, curMask->GetType(), curMask->GetAlign(), true);
+    m_encoder->Cast(tmpLsPred, lsPred);
+
+    m_encoder->Not(tmpLsPred, tmpLsPred);
+    m_encoder->And(curMask, curMask, tmpLsPred);
+    m_encoder->Push();
+    m_encoder->SetP(lsPred, curMask);
+    m_encoder->Push();
+    m_encoder->Jump(lsPred, label);
+    m_encoder->Push();
+
+    m_encoder->SetSecondHalf(tmpSh);
+}
+
+void EmitPass::emitGatherA64(CVariable* dst, CVariable* offset, unsigned elemSize, unsigned numElems)
+{
+    if (IGC_IS_FLAG_ENABLED(EnableA64WA) && !offset->IsUniform()) {
+        CVariable* curMask = nullptr;
+        CVariable* lsPred = nullptr;
+        uint label = 0;
+        A64LSLoopHead(offset, curMask, lsPred, label);
+
+        // do send with pred
+        m_encoder->SetPredicate(lsPred);
+        m_encoder->GatherA64(dst, offset, elemSize, numElems);
+        m_encoder->Push();
+
+        A64LSLoopTail(curMask, lsPred, label);
+
+    } else {
+        m_encoder->GatherA64(dst, offset, elemSize, numElems);
+    }
+}
+
+void EmitPass::emitGather4A64(CVariable* dst, CVariable* offset)
+{
+    if (IGC_IS_FLAG_ENABLED(EnableA64WA) && !offset->IsUniform()) {
+        CVariable* curMask = nullptr;
+        CVariable* lsPred = nullptr;
+        uint label = 0;
+        A64LSLoopHead(offset, curMask, lsPred, label);
+
+        // do send with pred
+        m_encoder->SetPredicate(lsPred);
+        m_encoder->Gather4A64(dst, offset);
+        m_encoder->Push();
+
+        A64LSLoopTail(curMask, lsPred, label);
+
+    }
+    else {
+        m_encoder->Gather4A64(dst, offset);
+    }
+}
+
+void EmitPass::emitScatterA64(CVariable* val, CVariable* offset, unsigned elementSize, unsigned numElems)
+{
+    if (IGC_IS_FLAG_ENABLED(EnableA64WA) && !offset->IsUniform()) {
+        CVariable* curMask = nullptr;
+        CVariable* lsPred = nullptr;
+        uint label = 0;
+        A64LSLoopHead(offset, curMask, lsPred, label);
+
+        // do send with pred
+        m_encoder->SetPredicate(lsPred);
+        m_encoder->ScatterA64(val, offset, elementSize, numElems);
+        m_encoder->Push();
+
+        A64LSLoopTail(curMask, lsPred, label);
+
+    }
+    else {
+        m_encoder->ScatterA64(val, offset, elementSize, numElems);
+    }
+}
+
+void EmitPass::emitScatter4A64(CVariable* src, CVariable* offset)
+{
+    if (IGC_IS_FLAG_ENABLED(EnableA64WA) && !offset->IsUniform()) {
+        CVariable* curMask = nullptr;
+        CVariable* lsPred = nullptr;
+        uint label = 0;
+        A64LSLoopHead(offset, curMask, lsPred, label);
+
+        // do send with pred
+        m_encoder->SetPredicate(lsPred);
+        m_encoder->Scatter4A64(src, offset);
+        m_encoder->Push();
+
+        A64LSLoopTail(curMask, lsPred, label);
+
+    }
+    else {
+        m_encoder->Scatter4A64(src, offset);
+    }
+}
+
 void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOffset)
 {
     int immOffsetInt = 0;
@@ -14311,7 +14489,7 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
         }
         else
         {
-            m_encoder->GatherA64(gatherDst, eOffset, 8, totalBytes);
+            emitGatherA64(gatherDst, eOffset, 8, totalBytes);
         }
         m_encoder->Push();
 
@@ -14500,7 +14678,7 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
         }
         else
         {
-            m_encoder->GatherA64(gatherDst, gatherOff, blkBits, nBlks);
+            emitGatherA64(gatherDst, gatherOff, blkBits, nBlks);
         }
         m_encoder->Push();
 
@@ -14578,10 +14756,10 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
                 m_encoder->Gather4Scaled(subLoadDst, resource, addrVarSIMD8);
                 break;
             case VectorMessage::MESSAGE_A64_UNTYPED_SURFACE_RW:
-                m_encoder->Gather4A64(subLoadDst, addrVarSIMD8);
+                emitGather4A64(subLoadDst, addrVarSIMD8);
                 break;
             case VectorMessage::MESSAGE_A64_SCATTERED_RW:
-                m_encoder->GatherA64(subLoadDst, addrVarSIMD8, blkBits, numBlks);
+                emitGatherA64(subLoadDst, addrVarSIMD8, blkBits, numBlks);
                 break;
             default:
                 assert(0 && "Somethings wrong!");
@@ -14653,10 +14831,10 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
             m_encoder->Gather4Scaled(gatherDst, resource, rawAddrVar);
             break;
         case VectorMessage::MESSAGE_A64_UNTYPED_SURFACE_RW:
-            m_encoder->Gather4A64(gatherDst, rawAddrVar);
+            emitGather4A64(gatherDst, rawAddrVar);
             break;
         case VectorMessage::MESSAGE_A64_SCATTERED_RW:
-            m_encoder->GatherA64(gatherDst, rawAddrVar, blkBits, numBlks);
+            emitGatherA64(gatherDst, rawAddrVar, blkBits, numBlks);
             break;
         default:
             assert(false && "Internal Error: unexpected message kind for load!");
@@ -14905,7 +15083,7 @@ void EmitPass::emitVectorStore(StoreInst* inst, Value* offset, ConstantInt* immO
         }
         else
         {
-            m_encoder->ScatterA64(storedVar, eOffset, blkBits, nBlks);
+            emitScatterA64(storedVar, eOffset, blkBits, nBlks);
         }
         if (dstUniform)
         {
@@ -14965,10 +15143,10 @@ void EmitPass::emitVectorStore(StoreInst* inst, Value* offset, ConstantInt* immO
                 m_encoder->Scatter4Scaled(subStoredVar, resource, rawAddrVar);
                 break;
             case VectorMessage::MESSAGE_A64_UNTYPED_SURFACE_RW:
-                m_encoder->Scatter4A64(subStoredVar, rawAddrVar);
+                emitScatter4A64(subStoredVar, rawAddrVar);
                 break;
             case VectorMessage::MESSAGE_A64_SCATTERED_RW:
-                m_encoder->ScatterA64(subStoredVar, rawAddrVar, blkBits, numBlks);
+                emitScatterA64(subStoredVar, rawAddrVar, blkBits, numBlks);
                 break;
             default:
                 assert(false && "Internal Error: unexpected Message kind for store");
