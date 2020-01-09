@@ -70,11 +70,21 @@ enum {
 
 typedef unsigned short CG_CTX_STATS_t;
 
+// shader stat for opt customization
+typedef struct {
+    uint32_t        m_tempCount;
+    uint32_t        m_sampler;
+    uint32_t        m_inputCount;
+    uint32_t        m_dxbcCount;
+    uint32_t        m_ConstantBufferCount;
+} SHADER_STATS_t;
+
 typedef struct {
     CG_CTX_STATS_t  m_stats;              // record what simd has been generated
     void*           m_pixelShaderGen;     // Generated pixel shader output
     std::string     m_savedBitcodeString; // Serialized Bitcode
     void*           m_savedInstrTypes;
+    SHADER_STATS_t  m_savedShaderStats;
 } CG_CTX_t;
 
 #define IsRetry(stats)               (stats & (BIT_CG_RETRY))
