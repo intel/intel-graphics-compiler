@@ -901,8 +901,11 @@ void HWConformity::fixImmAndARFSrc(INST_LIST_ITER it, G4_BB *bb)
             inst->setSrc(src0, 1);
             inst->swapDefUse();
         }
-        /* Otherwise introduce a tmp */
-        inst->setSrc(insertMovBefore(it, 1, INST_FLOAT_SRC_ONLY(inst->opcode()) ? Type_F : src1->getType(), bb), 1);
+        else
+        {
+            /* Otherwise introduce a tmp */
+            inst->setSrc(insertMovBefore(it, 1, INST_FLOAT_SRC_ONLY(inst->opcode()) ? Type_F : src1->getType(), bb), 1);
+        }
     }
 
     src2 = inst->getSrc(2);

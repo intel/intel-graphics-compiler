@@ -10403,12 +10403,17 @@ CVariable* EmitPass::UniformCopy(CVariable* var, CVariable*& off, CVariable* eMa
     {
         // Get offset to any 1s. For simplicity, use 'fbl' to find the lowest 1s.
         off = m_currShader->GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true);
-        m_encoder->Fbl(off, eMask);
-
-        if (doSub && m_encoder->IsSecondHalf()) {
-            m_encoder->Add(off, off, m_currShader->ImmToVariable(-16, ISA_TYPE_W));
+        if (doSub && m_encoder->IsSecondHalf())
+        {
+            // here our eMask is UD but we only want the upper 16-bit
+            // use an UW alias to the high 16-bit instead
+            auto uwMask = m_currShader->GetNewAlias(eMask, ISA_TYPE_UW, 2, 1);
+            m_encoder->Fbl(off, uwMask);
         }
-
+        else
+        {
+            m_encoder->Fbl(off, eMask);
+        }
         m_encoder->Push();
 
         // Calculate byte offset
@@ -14320,7 +14325,7 @@ void EmitPass::A64LSLoopTail(CVariable* curMask, CVariable* lsPred, uint label)
     CVariable* tmpLsPred = m_currShader->GetNewVariable(1, curMask->GetType(), curMask->GetAlign(), true);
     m_encoder->Cast(tmpLsPred, lsPred);
 
-    m_encoder->Not(tmpLsPred, tmpLsPred);
+    m_encoder->SetSrcModifier(1, EMOD_NOT);
     m_encoder->And(curMask, curMask, tmpLsPred);
     m_encoder->Push();
     m_encoder->SetP(lsPred, curMask);

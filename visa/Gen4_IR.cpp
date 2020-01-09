@@ -1866,9 +1866,13 @@ G4_INST::MovType G4_INST::canPropagate() const
         return SuperMov;
     }
 
-    // Do not elminate MOV/COPY from flag registers.
-    if (src->isFlag()) {
-        return SuperMov;
+    // only support flag propagation for simd1 copy moves
+    if (src->isFlag())
+    {
+        if (getExecSize() != 1 || src->getType() != dst->getType())
+        {
+            return SuperMov;
+        }
     }
 
     // Do not propagate through copy of `acc0`, as some later phases (e.g., fixAddc) rely on finding this move
@@ -2195,6 +2199,12 @@ bool G4_INST::canPropagateTo(G4_INST *useInst, Gen4_Operand_Number opndNum, MovT
     // skip the instruction has no dst. e.g. G4_pseudo_fcall
     if (useInst->getDst() == nullptr)
         return false;
+
+    // limit flag copy propagation to opcode known to work for now
+    if (src->isFlag() && (useInst->opcode() != G4_not && useInst->opcode() != G4_and))
+    {
+        return false;
+    }
 
     if (isMixedMode())
     {
