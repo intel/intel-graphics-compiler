@@ -2075,9 +2075,9 @@ void Interference::buildInterferenceWithinBB(G4_BB* bb, BitSet& live)
                 markInterferenceForSend(bb, inst, dst);
             }
 
-            // FIXME: revisit this restriction.
             //r127 must not be used for return address when there is a src and dest overlap in send instruction.
-            if (kernel.fg.builder->needsToReserveR127() && liveAnalysis->livenessClass(G4_GRF) && !inst->isSplitSend())
+            //This applies to split-send as well
+            if (kernel.fg.builder->needsToReserveR127() && liveAnalysis->livenessClass(G4_GRF))
             {
                 if (dst->getBase()->isRegAllocPartaker() && !dst->getBase()->asRegVar()->isPhyRegAssigned())
                 {
