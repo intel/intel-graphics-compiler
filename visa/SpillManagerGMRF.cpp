@@ -101,8 +101,6 @@ static const unsigned SCRATCH_MSG_DESC_CHANNEL_MODE            = 16;
 static const unsigned SCRATCH_MSG_INVALIDATE_AFTER_READ        = 15;
 static const unsigned SCRATCH_MSG_DESC_BLOCK_SIZE            = 12;
 
-static const uint32_t GRF_ALIGN_MASK = 0xFFFFFFE0;
-
 // Macros
 
 #define LIMIT_SEND_EXEC_SIZE(EXEC_SIZE)(((EXEC_SIZE) > 16)? 16: (EXEC_SIZE))
@@ -3606,7 +3604,7 @@ void SpillManagerGRF::insertAddrTakenSpillAndFillCode( G4_Kernel* kernel, G4_BB*
                 spillRegOffset_ += numrows;
             }
 
-            if( numrows > 1 || (lr->getDcl()->getNumElems() * lr->getDcl()->getElemSize() == 32) )
+            if( numrows > 1 || (lr->getDcl()->getNumElems() * lr->getDcl()->getElemSize() == getGRFSize()) )
             {
                 if (useScratchMsg_ || useSplitSend())
                 {
