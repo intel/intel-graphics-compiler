@@ -1299,7 +1299,7 @@ namespace IGC
     {
         // For debugging
         DumpLLVMIR(pContext, "stage1SavedIR");
-
+        COMPILER_TIME_START(pContext, TIME_CG_SaveIR);
         // Save MetaData
         serialize(*(pContext->getModuleMetaData()), pContext->getModule());
         // Serialize LLVM IR and save it to a string
@@ -1309,16 +1309,19 @@ namespace IGC
 
         // Store the results and pass it to stage 2 if staged compilation happens
         pContext->m_savedInstrTypes = pContext->m_instrTypes;
+        COMPILER_TIME_END(pContext, TIME_CG_SaveIR);
     }
 
     bool UnpackBitcode( const char *bitcode, unsigned int bitcodeSize, CodeGenContext& cisaContext, bool upgradeIR = true);
 
     void RestoreIR(CodeGenContext* pContext)
     {
+        COMPILER_TIME_START(pContext, TIME_CG_RestoreIR);
         pContext->m_instrTypes = (*(SInstrTypes *)pContext->m_StagingCtx->m_savedInstrTypes);
         UnpackBitcode(pContext->m_StagingCtx->m_savedBitcodeString.c_str(),
             pContext->m_StagingCtx->m_savedBitcodeString.size(), *pContext, false);
         deserialize(*(pContext->getModuleMetaData()), pContext->getModule());
+        COMPILER_TIME_END(pContext, TIME_CG_RestoreIR);
 
         // For debugging
         DumpLLVMIR(pContext, "stage2RestoredIR");

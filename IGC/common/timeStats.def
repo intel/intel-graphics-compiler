@@ -23,6 +23,8 @@ DEFINE_TIME_STAT(        TIME_CG_Add_Analysis_Passes,            "CodeGen Add An
 DEFINE_TIME_STAT(        TIME_CG_Add_CodeGen_Passes,             "CodeGen Add CodeGen Passes",             TIME_CG_Add_Passes,                 false,         false,          false,          true )
 DEFINE_TIME_STAT(      TIME_CG_Legalization,                     "CodeGen Legalization",                   TIME_CodeGen,                       false,         false,          true,           true )
 DEFINE_TIME_STAT(      TIME_CG_Analysis,                         "CodeGen Analysis",                       TIME_CodeGen,                       false,         false,          true,           true )
+DEFINE_TIME_STAT(      TIME_CG_SaveIR,                           "CodeGen SaveIR",                         TIME_CodeGen,                       false,         false,          true,           true )
+DEFINE_TIME_STAT(      TIME_CG_RestoreIR,                        "CodeGen RestoreIR",                      TIME_CodeGen,                       false,         false,          true,           true )
 DEFINE_TIME_STAT(      TIME_CG_vISACompile,                      "vISACompile (by IGC)",                   TIME_CodeGen,                       false,         false,          false,          true )
 DEFINE_TIME_STAT(         TIME_VISA_TOTAL,                       "VISA Total",                             TIME_CG_vISACompile,                true,          false,          false,          true )
 DEFINE_TIME_STAT(           TIME_VISA_BUILDER,                   "VISA Builder",                           TIME_VISA_TOTAL,                    true,          false,          true,           true )
