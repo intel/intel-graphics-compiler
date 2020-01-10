@@ -32,6 +32,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "patch_g7.h"
 #include "patch_g8.h"
 #include "patch_g9.h"
+#include "visa/include/RelocationInfo.h"
 
 #include "../sp/sp_debug.h"
 
@@ -1516,6 +1517,18 @@ void DebugPatchList(
                              "\tNumEntries = %d\n",
                              pPatchItem->NumEntries);
 
+                vISA::GenSymEntry* entryPtr = (vISA::GenSymEntry*) (ptr + sizeof(iOpenCL::SPatchFunctionTableInfo));
+                for (unsigned i = 0; i < pPatchItem->NumEntries; i++)
+                {
+                    ICBE_DPF_STR(output, GFXDBG_HARDWARE,
+                        "\tSymbol(Entry %02d): %s\n\t  Offset = %d\n\t  Size = %d\n\t  Type = %d\n", i,
+                        entryPtr->s_name,
+                        entryPtr->s_offset,
+                        entryPtr->s_size,
+                        entryPtr->s_type);
+
+                    entryPtr++;
+                }
             }
             break;
         case iOpenCL::PATCH_TOKEN_PROGRAM_RELOCATION_TABLE:
@@ -1532,6 +1545,17 @@ void DebugPatchList(
                              "\tNumEntries = %d\n",
                              pPatchItem->NumEntries);
 
+                vISA::GenRelocEntry* entryPtr = (vISA::GenRelocEntry*) (ptr + sizeof(iOpenCL::SPatchFunctionTableInfo));
+                for (unsigned i = 0; i < pPatchItem->NumEntries; i++)
+                {
+                    ICBE_DPF_STR(output, GFXDBG_HARDWARE,
+                        "\tRelocSymbol(Entry %02d): %s\n\t  Offset = %d\n\t  Type = %d\n", i,
+                        entryPtr->r_symbol,
+                        entryPtr->r_offset,
+                        entryPtr->r_type);
+
+                    entryPtr++;
+                }
             }
             break;
 

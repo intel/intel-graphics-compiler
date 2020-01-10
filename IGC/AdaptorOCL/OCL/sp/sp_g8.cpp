@@ -2209,14 +2209,22 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
             patch.Size = sizeof(patch) + size;
             patch.NumEntries = entries;
 
-            retValue = AddPatchItem(patch, membuf);
-
+            std::streamsize tokenStart = membuf.Size();
+            if (!membuf.Write(patch))
+            {
+                retValue.Success = false;
+                return retValue;
+            }
             if (!membuf.Write((const char*)buffer, size))
             {
                 retValue.Success = false;
                 return retValue;
             }
             free(buffer);
+
+#if defined(_DEBUG) || defined(_INTERNAL) || defined(_RELEASE_INTERNAL)
+            DebugPatchList(membuf.GetLinearPointer() + tokenStart, patch.Size, m_oclStateDebugMessagePrintOut);
+#endif
         }
     }
 
@@ -2255,14 +2263,22 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
             patch.Size = sizeof(patch) + size;
             patch.NumEntries = entries;
 
-            retValue = AddPatchItem(patch, membuf);
-
+            std::streamsize tokenStart = membuf.Size();
+            if (!membuf.Write(patch))
+            {
+                retValue.Success = false;
+                return retValue;
+            }
             if (!membuf.Write((const char*)buffer, size))
             {
                 retValue.Success = false;
                 return retValue;
             }
             freeBlock(buffer);
+
+#if defined(_DEBUG) || defined(_INTERNAL) || defined(_RELEASE_INTERNAL)
+            DebugPatchList(membuf.GetLinearPointer() + tokenStart, patch.Size, m_oclStateDebugMessagePrintOut);
+#endif
         }
     }
 
