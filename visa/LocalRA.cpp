@@ -45,8 +45,6 @@ using namespace vISA;
 #define SPLIT_USE_CNT_THRESHOLD 2
 #define SPLIT_USE_DISTANCE_THRESHOLD 100
 
-#define GET_BUNDLE(r, o)  (((r + o) % 64) / 4)
-
 extern unsigned int getStackCallRegSize(bool reserveStackCallRegs);
 extern void getForbiddenGRFs(vector<unsigned int>& regNum, G4_Kernel& kernel, unsigned stackCallRegSize, unsigned reserveSpillSize, unsigned reservedRegNum);
 extern void getCallerSaveGRF(vector<unsigned int>& regNum, G4_Kernel* kernel);
