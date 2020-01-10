@@ -11946,17 +11946,33 @@ void Optimizer::replaceNoMaskWithAnyhWA()
 
         G4_DstRegRegion* dst = I->getDst();
         assert((dst && !dst->isNullReg()) && "ICE: expect dst to be non-null!");
+
+        // Create a temp that's big enough to hold data and possible gap
+        // b/w data due to alignment/hw restriction.
         G4_Declare* saveDecl = builder.createTempVar(
-            I->getExecSize(), dst->getType(), Any, "saveTmp");
+            I->getExecSize() * dst->getHorzStride(), dst->getType(), Any, "saveTmp");
+
         G4_DstRegRegion* tDst = builder.createDstRegRegion(
-            Direct, saveDecl->getRegVar(), 0, 0, 1, dst->getType());
+            Direct, saveDecl->getRegVar(), 0, 0, dst->getHorzStride(), dst->getType());
         I->setDest(tDst);
 
-        G4_SrcRegRegion* tSrc = builder.createSrcRegRegion(
-            Mod_src_undef, Direct, saveDecl->getRegVar(), 0, 0,
-            I->getExecSize() == 1 ? builder.getRegionScalar() : builder.getRegionStride1(),
-            dst->getType());
+        const RegionDesc* regionSave;
+        if (I->getExecSize() == 1) {
+            regionSave = builder.getRegionScalar();
+        }
+        else {
+            switch (dst->getHorzStride())
+            {
+            case 1: regionSave = builder.getRegionStride1(); break;
+            case 2: regionSave = builder.getRegionStride2(); break;
+            case 4: regionSave = builder.getRegionStride4(); break;
+            default:
+                assert(false && "ICE: unsupported dst horz stride!");
+            }
+        }
 
+        G4_SrcRegRegion* tSrc = builder.createSrcRegRegion(
+            Mod_src_undef, Direct, saveDecl->getRegVar(), 0, 0, regionSave, dst->getType());
         G4_INST* I0 = builder.createMov(
             I->getExecSize(), dst, tSrc, InstOpt_WriteEnable, false);
         G4_Predicate* flag0 = builder.createPredicate(
