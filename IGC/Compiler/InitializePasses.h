@@ -148,3 +148,5 @@ void initializeFixFastMathFlagsPass(llvm::PassRegistry&);
 void initializeFCmpPaternMatchPass(llvm::PassRegistry&);
 void initializeCodeAssumptionPass(llvm::PassRegistry&);
 void initializeIGCInstructionCombiningPassPass(llvm::PassRegistry&);
+void initializeIntDivConstantReductionPass(llvm::PassRegistry&);
+void initializeIntDivRemCombinePass(llvm::PassRegistry&);

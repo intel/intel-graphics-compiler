@@ -34,7 +34,5 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace llvm {class FunctionPass;}
 namespace IGC
 {
-  // replace div and rem with constant divisors with
-  // shifts+adds+muls
-  llvm::FunctionPass* createIntDivConstantReductionPass();
+    llvm::FunctionPass* createIntDivRemCombinePass();
 } // namespace IGC

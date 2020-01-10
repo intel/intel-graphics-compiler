@@ -92,6 +92,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/Optimizer/GatingSimilarSamples.hpp"
 #include "Compiler/Optimizer/IndirectCallOptimization.hpp"
 #include "Compiler/Optimizer/IntDivConstantReduction.hpp"
+#include "Compiler/Optimizer/IntDivRemCombine.hpp"
 #include "Compiler/MetaDataApi/PurgeMetaDataUtils.hpp"
 
 #include "Compiler/HandleLoadStoreInstructions.hpp"
@@ -1725,6 +1726,20 @@ namespace IGC
 
             mpm.add(llvm::createDeadCodeEliminationPass());
 
+            if (IGC_IS_FLAG_ENABLED(EnableIntDivRemCombine)) {
+                // simplify rem if the quotient is availble
+                //
+                // run GVN first so that stuff like the following can be
+                // reduced as well:
+                //  = foo / (2*x + 1)
+                //  = foo % (2*x + 1)
+                // can be reduced as well
+                if (IGC_IS_FLAG_ENABLED(EnableGVN)) {
+                    mpm.add(llvm::createGVNPass());
+                }
+                //
+                mpm.add(createIntDivRemCombinePass());
+            }
             if (IGC_IS_FLAG_ENABLED(EnableConstIntDivReduction)) {
                 // reduce division/remainder with a constant divisors/moduli to
                 // more efficient sequences of multiplies, shifts, and adds
