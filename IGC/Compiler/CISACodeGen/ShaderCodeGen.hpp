@@ -452,7 +452,6 @@ namespace IGC
         GenXFunctionGroupAnalysis* m_FGA;
         VariableReuseAnalysis* m_VRA;
 
-        uint m_currentBlock;
         uint m_numBlocks;
         IGC::IGCMD::MetaDataUtils* m_pMdUtils;
 

@@ -502,6 +502,8 @@ namespace IGC
         CVariable* GetSrcVariable(const SSource& source, bool fromConstPool = false);
         void SetSourceModifiers(unsigned int sourceIndex, const SSource& source);
 
+        SBasicBlock& getCurrentBlock() const { return m_pattern->m_blocks[m_currentBlock]; }
+
         CodeGenContext* m_pCtx;
         CVariable* m_destination;
         GenXFunctionGroupAnalysis* m_FGA;
@@ -558,6 +560,8 @@ namespace IGC
         //
         ERoundingMode m_roundingMode_FP;
         ERoundingMode m_roundingMode_FPCvtInt;
+
+        uint m_currentBlock = (uint) -1;
 
         // Used to relocate phi-mov to different BB. phiMovToBB is the map from "fromBB"
         // to "toBB" (meaning to move phi-mov from "fromBB" to "toBB"). See MovPhiSources.

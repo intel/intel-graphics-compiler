@@ -116,6 +116,9 @@ namespace IGC
         uint id;
         llvm::BasicBlock* bb;
         std::vector<SDAG> m_dags;
+        // caches the active lane mask (a flag variable) for this BB
+        // this is currently set only when we enable the A64 WA
+        CVariable* m_activeMask = nullptr;
     };
 
     class CodeGenPatternMatch : public llvm::FunctionPass, public llvm::InstVisitor<CodeGenPatternMatch>

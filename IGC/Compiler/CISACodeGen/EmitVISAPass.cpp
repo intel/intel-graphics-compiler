@@ -607,6 +607,8 @@ bool EmitPass::runOnFunction(llvm::Function& F)
     for (uint i = 0; i < m_pattern->m_numBlocks; i++)
     {
         SBasicBlock& block = m_pattern->m_blocks[i];
+        block.m_activeMask = nullptr;   // clear for each SIMD size
+        m_currentBlock = i;
         if (m_blockCoalescing->IsEmptyBlock(block.bb))
         {
             continue;
@@ -615,8 +617,8 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         if (i != 0)
         {
             IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->BeginEncodingMark();)
-                // create a label
-                m_encoder->Label(block.id);
+            // create a label
+            m_encoder->Label(block.id);
             m_encoder->Push();
             IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->EndEncodingMark();)
         }
@@ -10320,26 +10322,49 @@ CVariable* EmitPass::BroadcastIfUniform(CVariable* pVar)
     return pVar;
 }
 
+// Get either the 1st/2nd of the execution mask based on whether IsSecondHalf() is set
+// Note that for SIMD32 kernels we always return UD with one half zeroed-out
 CVariable* EmitPass::GetHalfExecutionMask()
 {
-    bool isSecondHalf = m_encoder->IsSecondHalf();
-    bool isSubSpanDst = m_encoder->IsSubSpanDestination();
-    m_encoder->SetSecondHalf(false);
-    m_encoder->SetSubSpanDestination(false);
-    CVariable* flag = m_currShader->ImmToVariable(0, ISA_TYPE_BOOL);
-    m_encoder->SetSecondHalf(isSecondHalf);
-    m_encoder->SetSubSpanDestination(isSubSpanDst);
+    auto& currBlock = getCurrentBlock();
+    if (!currBlock.m_activeMask)
+    {
+        bool isSecondHalf = m_encoder->IsSecondHalf();
+        bool isSubSpanDst = m_encoder->IsSubSpanDestination();
+        m_encoder->SetSecondHalf(false);
+        m_encoder->SetSubSpanDestination(false);
+        CVariable* flag = m_currShader->ImmToVariable(0, ISA_TYPE_BOOL);
+        CVariable* dummyVar = m_currShader->GetNewVariable(1, ISA_TYPE_UW, EALIGN_WORD, true);
+        m_encoder->Cmp(EPREDICATE_EQ, flag, dummyVar, dummyVar);
+        m_encoder->Push();
 
-    CVariable* dummyVar = m_currShader->GetNewVariable(1, ISA_TYPE_UW, EALIGN_WORD, true);
-    m_encoder->Cmp(EPREDICATE_EQ, flag, dummyVar, dummyVar);
-    m_encoder->Push();
+        if (m_currShader->m_dispatchSize > SIMDMode::SIMD16)
+        {
+            m_encoder->SetSecondHalf(true);
+            m_encoder->Cmp(EPREDICATE_EQ, flag, dummyVar, dummyVar);
+            m_encoder->Push();
+        }
+        m_encoder->SetSecondHalf(isSecondHalf);
+        m_encoder->SetSubSpanDestination(isSubSpanDst);
+        currBlock.m_activeMask = flag;
+    }
 
-    VISA_Type maskType = m_currShader->m_dispatchSize > SIMDMode::SIMD16 ? ISA_TYPE_UD : ISA_TYPE_UW;;
+    VISA_Type maskType = m_currShader->m_dispatchSize > SIMDMode::SIMD16 ? ISA_TYPE_UD : ISA_TYPE_UW;
     CVariable* eMask = m_currShader->GetNewVariable(1, maskType, EALIGN_DWORD, true);
     m_encoder->SetNoMask();
-    m_encoder->Cast(eMask, flag);
-
+    m_encoder->Cast(eMask, currBlock.m_activeMask);
     m_encoder->Push();
+
+    // for SIMD32, clear out the other half
+    if (maskType == ISA_TYPE_UD)
+    {
+        CVariable* halfMask = m_currShader->GetNewVariable(1, maskType, EALIGN_DWORD, true);
+        m_encoder->SetNoMask();
+        m_encoder->And(halfMask, eMask, m_currShader->ImmToVariable(m_encoder->IsSecondHalf() ? 0xFFFF0000 : 0xFFFF, ISA_TYPE_UD));
+        m_encoder->Push();
+        return halfMask;
+    }
+
     return eMask;
 }
 

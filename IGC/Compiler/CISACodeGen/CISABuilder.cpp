@@ -518,31 +518,31 @@ namespace IGC
 
     void CEncoder::Cmp(e_predicate p, CVariable* dst, CVariable* src0, CVariable* src1)
     {
-    VISA_Cond_Mod subOp = ConvertCondModToVisaType(p);
+        VISA_Cond_Mod subOp = ConvertCondModToVisaType(p);
 
-    bool flagDst = 0;
+        bool flagDst = 0;
         if (dst->GetType() == ISA_TYPE_BOOL)
-    {
-        flagDst = true;
-    }
+        {
+            flagDst = true;
+        }
 
-    unsigned numParts = 0;
+        unsigned numParts = 0;
 
-    // Due to a simulator quirk, we need to split the instruction even if the
-    // dst operand of the compare is null, if it "looks" too large,
-    // that is, if the execution size is 16 and the comparison type
-    // is QW.
-    bool bNeedSplitting = false;
-    if (flagDst && needsSplitting(GetAluExecSize(dst)) &&
-        (src0->GetElemSize() > 4 || src1->GetElemSize() > 4))
-    {
-        bNeedSplitting = true;
-        numParts = 2;
-    }
+        // Due to a simulator quirk, we need to split the instruction even if the
+        // dst operand of the compare is null, if it "looks" too large,
+        // that is, if the execution size is 16 and the comparison type
+        // is QW.
+        bool bNeedSplitting = false;
+        if (flagDst && needsSplitting(GetAluExecSize(dst)) &&
+            (src0->GetElemSize() > 4 || src1->GetElemSize() > 4))
+        {
+            bNeedSplitting = true;
+            numParts = 2;
+        }
 
-    bNeedSplitting = bNeedSplitting ||
-                     NeedSplitting(src0, m_encoderState.m_srcOperand[0], numParts, true) ||
-                     NeedSplitting(src1, m_encoderState.m_srcOperand[1], numParts, true);
+        bNeedSplitting = bNeedSplitting ||
+            NeedSplitting(src0, m_encoderState.m_srcOperand[0], numParts, true) ||
+            NeedSplitting(src1, m_encoderState.m_srcOperand[1], numParts, true);
 
     if (bNeedSplitting)
     {
