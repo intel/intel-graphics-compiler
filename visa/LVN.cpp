@@ -458,7 +458,7 @@ bool LVN::canReplaceUses(INST_LIST_ITER inst_it, UseList& uses, G4_INST* lvnInst
         }
 
         std::cerr << std::endl << std::endl << "Replace this occurence?";
-        scanf("%s", &shouldReplace);
+        scanf("%1s", &shouldReplace);
 
         canReplace = (shouldReplace[0] == 'y' ? true : false);
         if (canReplace)
