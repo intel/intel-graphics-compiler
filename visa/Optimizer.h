@@ -251,6 +251,13 @@ private:
     void setA0toTdrForSendc();
     void replaceRetWithJmpi();
     void replaceNoMaskWithAnyhWA();
+    typedef std::vector<vISA::G4_INST*> InstListType;
+    void expandIndirectCallWithRegTarget();
+    void createInstForJmpiSequence(InstListType& insts, G4_INST* fcall);
+    // create the instructions to calculate the jump target offset, return G4_Declare of the
+    // new created jmp target
+    G4_Declare* createInstsForCallTargetOffset(
+        InstListType& insts, G4_INST* fcall, int64_t adjust_off);
 
     void insertHashMovs();
     void insertDummyCompactInst();
