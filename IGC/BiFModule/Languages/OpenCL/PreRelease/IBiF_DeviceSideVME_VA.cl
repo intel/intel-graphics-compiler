@@ -986,7 +986,7 @@ intel_sub_group_avc_mce_get_inter_motion_vector_count(
 
 // ... IME functions ...
 
-ushort2 __builtin_spirv_intel_sub_group_ime_ref_window_size_i8_i8(
+ushort2 OVERLOADABLE intel_sub_group_avc_ime_ref_window_size(
     uchar search_window_config,
     char dual_ref )
 {
@@ -1023,22 +1023,27 @@ ushort2 __builtin_spirv_intel_sub_group_ime_ref_window_size_i8_i8(
     return ref_window_size;
 }
 
-// There is a bug in the specification:
-// intel_sub_group_ime_ref_window_size is used instead of intel_sub_group_avc_ime_ref_window_size.
-// Add this alias, to support fixed version as well.
-ushort2 __builtin_spirv_intel_sub_group_avc_ime_ref_window_size_i8_i8(
-    uchar search_window_config,
-    char dual_ref )
-{
-    return __builtin_spirv_intel_sub_group_ime_ref_window_size_i8_i8(search_window_config, dual_ref);
-}
-
+// This function is marked as a deprecated in specification, keeping for backward compatibility.
 INLINE ushort2 OVERLOADABLE
 intel_sub_group_ime_ref_window_size(
   uchar search_window_config,
   char  dual_ref )
 {
-    return __builtin_spirv_intel_sub_group_ime_ref_window_size_i8_i8(search_window_config, dual_ref);
+    return intel_sub_group_avc_ime_ref_window_size(search_window_config, dual_ref);
+}
+
+INLINE ushort2 __builtin_spirv_intel_sub_group_avc_ime_ref_window_size_i8_i8(
+    uchar search_window_config,
+    char dual_ref )
+{
+    return intel_sub_group_avc_ime_ref_window_size(search_window_config, dual_ref);
+}
+
+INLINE ushort2 __builtin_spirv_intel_sub_group_ime_ref_window_size_i8_i8(
+  uchar search_window_config,
+  char  dual_ref )
+{
+    return intel_sub_group_avc_ime_ref_window_size(search_window_config, dual_ref);
 }
 
 short2 __builtin_spirv_intel_sub_group_avc_ime_adjust_ref_offset_v2i16_v2i16_v2i16_v2i16(
