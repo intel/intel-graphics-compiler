@@ -155,7 +155,7 @@ void appendToShaderOverrideLogFile(std::string &binFileName, const char * messag
 {
     auto overridePath = std::string(IGC::Debug::GetShaderOverridePath());
     overridePath.append("OverrideLog.txt");
-    std::cout << std::endl << message << binFileName.c_str() << std::endl;
+    printf("\n%s %s\n", message, binFileName.c_str());
     std::ofstream os(overridePath.c_str(), std::ios::app);
     if(os.is_open())
     {
