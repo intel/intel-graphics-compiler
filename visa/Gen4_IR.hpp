@@ -802,6 +802,12 @@ public:
     void setSrc(G4_Operand* opnd, unsigned i);
     int getNumSrc() const;
 
+    void swapSrc(int src1, int src2)
+    {
+        assert(src1 >= 0 && src1 < getNumSrc() && src2 >= 0 && src2 < getNumSrc() && "illegal src number");
+        std::swap(srcs[src1], srcs[src2]);
+    }
+
     G4_Label* getLabel()
     {
         MUST_BE_TRUE( op == G4_label, "inst must be a label");

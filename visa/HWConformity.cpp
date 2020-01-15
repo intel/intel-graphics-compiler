@@ -3848,31 +3848,35 @@ bool HWConformity::generateAlign1Mad(G4_BB* bb, INST_LIST_ITER iter)
         }
     }
 
-    // try swapping src0 and src1 if src0 is D, as MAD only supports D + D * W,
-    // and pseudo-mad src0 becomes mad src2
+    // try swapping src0 (really src2) and src1 to see if we can save a move
+    // some conditions where swap may help:
+    // -- if src0 is D, as MAD only supports D + D * W
+    // -- if src1 is imm, as MAD src2 supports 16-bit imm
+    // -- if src0 is HF in a mix mode MAD, as MAD src1 supports HF
+    // -- if src1 is scalar, as MAD src2 has more region restrictions
     {
         G4_Operand* src0 = inst->getSrc(0);
         G4_Operand* src1 = inst->getSrc(1);
-        if (IS_DTYPE(src0->getType()) && src0->isSrcRegRegion())
+        if (IS_DTYPE(src0->getType()) && src0->isSrcRegRegion() && !IS_DTYPE(src1->getType()))
         {
-            if (!IS_DTYPE(src1->getType()))
-            {
-                inst->setSrc(src1, 0);
-                inst->setSrc(src0, 1);
-            }
+            inst->swapSrc(0, 1);
         }
         else if (src1->isImm() && getTypeSize(src1->getType()) == 2)
         {
             //swap src0 and src1 as src0 supports imm
-            inst->setSrc(src1, 0);
-            inst->setSrc(src0, 1);
-        } else if (!isGoodAlign1TernarySrc(inst, 0, true) &&
-                   src1->isSrcRegRegion() &&
-                   src1->asSrcRegRegion()->isScalar()) {
+            inst->swapSrc(0, 1);
+        }
+        else if (!isGoodAlign1TernarySrc(inst, 0, true) &&
+            src1->isSrcRegRegion() &&
+            src1->asSrcRegRegion()->isScalar())
+        {
             // Swap src0 and src1 if src1 is scalar but src0 is not a good Align1TernarySrc
             // when src2 regioning support is quite limited.
-            inst->setSrc(src1, 0);
-            inst->setSrc(src0, 1);
+            inst->swapSrc(0, 1);
+        }
+        else if (isLowPrecisionFloatTy(src0->getType()) && src1->getType() == Type_F)
+        {
+            inst->swapSrc(0, 1);
         }
     }
 
@@ -3910,12 +3914,8 @@ bool HWConformity::generateAlign1Mad(G4_BB* bb, INST_LIST_ITER iter)
     }
 
     inst->setOpcode(G4_mad);
-
     //swap src0 and src2 (vISA MAD is src0*src1+src2, while GEN MAD is src1*src2+src0)
-    G4_Operand* src0 = inst->getSrc(0);
-    G4_Operand* src2 = inst->getSrc(2);
-    inst->setSrc(src2, 0);
-    inst->setSrc(src0, 2);
+    inst->swapSrc(0, 2);
 
     return true;
 }
