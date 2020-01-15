@@ -565,7 +565,7 @@ std::string printVariableDecl(
 
     const var_info_t *var = header->getVar(declID);
     VISA_Type  isa_type = (VISA_Type)  ((var->bit_properties     ) & 0xF);
-    VISA_Align align    = (VISA_Align) ((var->bit_properties >> 4) & 0x7);
+    VISA_Align align    = var->getAlignment();
 
     unsigned numPreDefinedVars = Get_CISA_PreDefined_Var_Count();
     sstr << ".decl " << printVariableDeclName(header, declID+numPreDefinedVars, options)

@@ -273,8 +273,8 @@ static void verifyVariableDecl(
 {
     string declError = string(" Error in CISA variable decl: ") + printVariableDecl(isaHeader, header, declID, true, 0, options);
 
-    const var_info_t*      var      = header->getVar(declID);
-    VISA_Align align    = (VISA_Align)((var->bit_properties >> 4) & 0x7);
+    const var_info_t* var = header->getVar(declID);
+    VISA_Align align = var->getAlignment();
 
     unsigned numPreDefinedVars = Get_CISA_PreDefined_Var_Count();
 
@@ -334,6 +334,9 @@ static void verifyVariableDecl(
         {
             REPORT_HEADER(options,totalOffset < (currAliasVar->num_elements * (unsigned)CISATypeTable[currAliasVar->getType()].typeSize),
                               "Variable decl's alias offset exceeds the bounds of the aliased variable decl allocation size: %s", declError.c_str());
+            VISA_Align baseAlign = std::max(currAliasVar->getAlignment(), currAliasVar->getTypeAlignment());
+            REPORT_HEADER(options, baseAlign >= var->getTypeAlignment(),
+                "base variable must be at least type-aligned to this variable: %s", declError.c_str());
         }
     }
 

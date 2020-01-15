@@ -283,14 +283,41 @@ typedef struct {
     attribute_info_t* attributes;
     vISA::G4_Declare* dcl;
 
-    inline VISA_Type getType() const
+    VISA_Type getType() const
     {
         return (VISA_Type) (bit_properties & 0xF);
     }
-    inline VISA_Align getAlignment() const
+
+    VISA_Align getAlignment() const
     {
-        return (VISA_Align) ((bit_properties >> 4 ) & 0x7 );
+        return (VISA_Align) ((bit_properties >> 4 ) & 0x7);
     }
+
+    VISA_Align getTypeAlignment() const
+    {
+        VISA_Align typeAlign = ALIGN_WORD;
+        if (getSize() >= getGRFSize())
+        {
+            typeAlign = ALIGN_GRF;
+        }
+        else
+        {
+            switch (CISATypeTable[getType()].typeSize)
+            {
+                case 4:
+                    typeAlign = ALIGN_DWORD;
+                    break;
+                case 8:
+                    typeAlign = ALIGN_QWORD;
+                    break;
+                default:
+                    // nothing for other types
+                    break;
+            }
+        }
+        return typeAlign;
+    }
+
     unsigned int getSize() const
     {
         return num_elements * CISATypeTable[getType()].typeSize;
