@@ -3098,6 +3098,276 @@ void FlowGraph::processGoto(bool HasSIMDCF)
     }
 }
 
+// TGL NoMask WA : to identify which BB needs WA
+void FlowGraph::findNestedDivergentBBs()
+{
+    // Control-Flow state
+    //    Used for keeping the current state of control flow during
+    //    traversing BBs in the layout order. Assuming the current
+    //    BB is 'currBB', this class shows whether currBB is in SCF
+    //    and/or in any divergent branch.
+    class CFState
+    {
+        // The SCF nesting level for currBB
+        //    0: not in SCF; > 0: in SCF
+        int SCFNestingLevel;
+
+        // If a goto/break is encountered, the code will diverge from currBB to
+        // the joinBB (aka targetBB) of this goto/break.
+        //    LastDivergentBBId:  Id(LastDivergentBB).
+        //        LastDivergentBB is the fartherest joinBB of any goto/break so far.
+        //        That is, (currBB, LastDivergentBB) is a divergent code path. BOth
+        //        currBB and LastDivergentBB are not included in this divergent path.
+        //    LastNestedBBId:  Id(LastNestedBB).
+        //        LastNestedBB is the crrent fartherest join BB that is within
+        //        (currBB, LastDivergentBB). We have LastNestedBB if a goto/break is
+        //        encountered inside an already divergent code path.  As it happens
+        //        within a divergent path, it's called nested divergent (or just nested).
+        //
+        // The following is always true:
+        //    LastDivergentBBId >= LastNestedBBId
+        int LastDivergentBBId;
+        int LastNestedBBId;
+
+        void setLastDivergentBBId(G4_BB* toBB)
+        {
+            LastDivergentBBId = std::max(LastDivergentBBId, (int)toBB->getId());
+        }
+
+        void setLastNestedBBId(G4_BB* toBB)
+        {
+            LastNestedBBId = std::max(LastNestedBBId, (int)toBB->getId());
+            setLastDivergentBBId(toBB);
+        }
+
+        // Increase divergence level
+        void incDivergenceLevel(G4_BB* toBB)
+        {
+            if (isInDivergentBranch())
+            {
+                setLastNestedBBId(toBB);
+            }
+            else
+            {
+                setLastDivergentBBId(toBB);
+            }
+        }
+
+    public:
+        CFState() : SCFNestingLevel(0), LastNestedBBId(-1), LastDivergentBBId(-1)
+        {}
+
+        bool isInDivergentBranch() const
+        {
+            return (SCFNestingLevel > 0 || LastDivergentBBId > 0);
+        }
+        bool isInNestedDivergentBranch() const { return LastNestedBBId > 0; }
+
+        void pushSCF()
+        {
+            ++SCFNestingLevel;
+        }
+        void popSCF()
+        {
+            --SCFNestingLevel;
+            assert(SCFNestingLevel >= 0 && "ICE: mismatch SCF constructs!");
+        }
+
+        //  1. Backward goto
+        //     targetBB:
+        //               ....
+        //               [(p)] goto targetBB
+        //     joinBB:
+        //  2. forward goto
+        //                      ( [p]) goto targetBB
+        //                       ......
+        //     targetBB(joinBB):
+        //  3. break
+        //             do
+        //             ...
+        //             [(p)] break
+        //             ...
+        //     joinBB:
+        //             while
+        void pushBackwardGoto(G4_BB* joinBB) { setLastDivergentBBId(joinBB); }
+        void pushJoin(G4_BB* joinBB) { incDivergenceLevel(joinBB); }
+        void popJoinIfMatching(G4_BB* currBB)
+        {
+            if ((int)currBB->getId() == LastNestedBBId)
+            {
+                LastNestedBBId = -1;
+            }
+            if ((int)currBB->getId() == LastDivergentBBId)
+            {
+                LastDivergentBBId = -1;
+            }
+            assert(!(LastDivergentBBId == -1 && LastNestedBBId >= 0) &&
+                   "ICE:  something wrong in setting divergent BB Id!");
+        }
+    };
+
+    if (BBs.empty())
+    {
+        // Sanity check
+        return;
+    }
+
+    // Analyze function in topological order. As there is no recursion
+    // and no indirect call,  a function will be analyzed only if all
+    // its callers have been analyzed.
+    //
+    // If no subroutine, sortedFuncTable is empty. Here keep all
+    // functions in a dynamic arrays first (it works with and without
+    // subroutines), then scan functions in topological order.
+    struct StartEndIter {
+        BB_LIST_ITER StartI;
+        BB_LIST_ITER EndI;
+
+        // When a subroutine is entered, the fusedMask must not be 00, but it
+        // could be 01. This field shows it could be 01 if set to true.
+        bool  isInDivergentBranch;
+    };
+    int numFuncs = (int)sortedFuncTable.size();
+    StartEndIter* allFuncs = nullptr;
+    std::unordered_map<FuncInfo*, int> funcInfoIndex;
+    if (numFuncs == 0)
+    {
+        numFuncs = 1;
+        allFuncs = new StartEndIter[1];
+
+        BB_LIST_ITER lastI = BBs.end();
+        --lastI;
+        allFuncs[0].StartI = BBs.begin();
+        allFuncs[0].EndI = lastI;
+        allFuncs[0].isInDivergentBranch = false;
+    }
+    else
+    {
+        allFuncs = new StartEndIter[numFuncs];
+        for (int i = numFuncs; i > 0; --i)
+        {
+            unsigned ix = (unsigned)(i - 1);
+            FuncInfo* pFInfo = sortedFuncTable[ix];
+            G4_BB* StartBB = pFInfo->getInitBB();
+            G4_BB* EndBB = pFInfo->getExitBB();
+            allFuncs[numFuncs - i].StartI = std::find(BBs.begin(), BBs.end(), StartBB);
+            allFuncs[numFuncs - i].EndI = std::find(BBs.begin(), BBs.end(), EndBB);
+            allFuncs[numFuncs - i].isInDivergentBranch = false;
+
+            funcInfoIndex[pFInfo] = numFuncs - i;
+        }
+    }
+
+    for (int i = 0; i < numFuncs; ++i)
+    {
+        BB_LIST_ITER& IT = allFuncs[i].StartI;
+        BB_LIST_ITER& IE = allFuncs[i].EndI;
+        if (IT == IE)
+        {
+            // Sanity check
+            continue;
+        }
+        G4_BB* EndBB = *IE;
+
+        CFState cfs;
+        if (allFuncs[i].isInDivergentBranch)
+        {
+            // subroutine's divergent on entry. Mark (StartBB, EndBB) as divergent
+            cfs.pushJoin(EndBB);
+        }
+
+        for (; IT != IE; ++IT)
+        {
+            G4_BB* BB = *IT;
+            cfs.popJoinIfMatching(BB);
+
+            G4_INST* firstInst = BB->getFirstInst();
+            if (firstInst == nullptr)
+            {
+                // empty BB or BB with only label inst
+                continue;
+            }
+
+            if (firstInst->opcode() == G4_endif || firstInst->opcode() == G4_while)
+            {
+                cfs.popSCF();
+            }
+
+            for (auto iter = BB->Preds.begin(), iterEnd = BB->Preds.end(); iter != iterEnd; ++iter)
+            {
+                G4_BB* predBB = *iter;
+                G4_INST* lastInst = predBB->back();
+                if (lastInst->opcode() == G4_while &&
+                    lastInst->asCFInst()->getJip() == BB->getLabel())
+                {
+                    // BB is the start of a while loop
+                    cfs.pushSCF();
+                }
+                else if (lastInst->opcode() == G4_goto && lastInst->asCFInst()->isBackward() &&
+                    lastInst->asCFInst()->getUip() == BB->getLabel())
+                {
+                    BB_LIST_ITER predIter = std::find(BBs.begin(), BBs.end(), predBB);
+                    ++predIter;
+                    assert(predIter != BBs.end() && "ICE: missing join BB!");
+                    G4_BB* joinBB = *predIter;
+                    cfs.pushBackwardGoto(joinBB);
+                }
+            }
+
+            if ((builder->getuint32Option(vISA_noMaskToAnyhWA) & 0x3) > 1)
+            {
+                if (cfs.isInNestedDivergentBranch())
+                {
+                    setInNestedDivergentBranch(BB);
+                }
+            }
+            else if ((builder->getuint32Option(vISA_noMaskToAnyhWA) & 0x3) > 0)
+            {
+                if (cfs.isInDivergentBranch())
+                {
+                    setInNestedDivergentBranch(BB);
+                }
+            }
+
+            G4_INST* lastInst = BB->back();
+            if ((lastInst->opcode() == G4_goto && !lastInst->asCFInst()->isBackward()) ||
+                lastInst->opcode() == G4_break)
+            {
+                // forward goto/break : the last Succ BB is our target BB
+                // For break, it should be the BB right after while inst.
+                G4_BB* joinBB = BB->Succs.back();
+                cfs.pushJoin(joinBB);
+            }
+
+            // No G4_do, and G4_while's head was handled already.
+            if (lastInst->opcode() == G4_if)
+            {
+                cfs.pushSCF();
+            }
+
+            if (lastInst->opcode() == G4_call)
+            {
+                // If this function is already in divergent branch, the callee
+                // must be in a divergent branch!.
+                if (allFuncs[i].isInDivergentBranch ||
+                    cfs.isInDivergentBranch() ||
+                    lastInst->getPredicate() != nullptr)
+                {
+                    FuncInfo* calleeFunc = BB->getCalleeInfo();
+                    if (funcInfoIndex.count(calleeFunc))
+                    {
+                        int ix = funcInfoIndex[calleeFunc];
+                        allFuncs[ix].isInDivergentBranch = true;
+                    }
+                }
+            }
+        }
+    }
+
+    delete[] allFuncs;
+    return;
+}
+
 //
 // Evaluate AddrExp/AddrExpList to Imm
 //

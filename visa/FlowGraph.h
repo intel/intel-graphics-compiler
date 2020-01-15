@@ -1221,6 +1221,8 @@ public:
 
     void setABIForStackCallFunctionCalls();
 
+    // This is for TGL WA
+    void findNestedDivergentBBs();
 private:
     //
     // Flow group traversal routines

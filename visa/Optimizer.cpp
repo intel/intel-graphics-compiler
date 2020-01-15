@@ -11882,6 +11882,10 @@ void Optimizer::replaceNoMaskWithAnyhWA()
         return;
     }
 
+    // Identify BBs that need WA
+    fg.reassignBlockIDs();
+    fg.findNestedDivergentBBs();
+
     // Save dmask for the shader. Need to read them again
     // whenever sr0.2 is modified in the shader.
     G4_RegVar* dmaskVarUD = nullptr;
