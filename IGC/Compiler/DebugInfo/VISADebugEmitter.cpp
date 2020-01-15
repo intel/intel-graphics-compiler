@@ -254,14 +254,14 @@ void DebugEmitter::Finalize(void*& pBuffer, unsigned int& size, bool finalize)
             }
         }
 
-        void* genxISA = m_pVISAModule->m_pShader->ProgramOutput()->m_programBin;
+        auto genxISA = static_cast<const unsigned char*>(m_pVISAModule->m_pShader->ProgramOutput()->m_programBin);
         DebugLoc prevSrcLoc = DebugLoc();
         unsigned int pc = prevLastGenOff;
         for (auto item : GenISAToVISAIndex)
         {
             for (unsigned int i = pc; i != item.first; i++)
             {
-                m_pStreamEmitter->EmitInt8(((unsigned char*)genxISA)[i]);
+                m_pStreamEmitter->EmitInt8(genxISA[i]);
             }
 
             pc = item.first;
@@ -277,8 +277,8 @@ void DebugEmitter::Finalize(void*& pBuffer, unsigned int& size, bool finalize)
                 // optimizes some of those away. Src line
                 // mapping for all VISA instructions is the
                 // same. So lookup any one that still exists.
-                auto startIdx = (*sizeIt).second.first;
-                auto numVISAInsts = (*sizeIt).second.second;
+                auto startIdx = sizeIt->second.first;
+                auto numVISAInsts = sizeIt->second.second;
                 for (unsigned int visaId = startIdx;
                     visaId != (startIdx + numVISAInsts); visaId++)
                 {
@@ -293,23 +293,24 @@ void DebugEmitter::Finalize(void*& pBuffer, unsigned int& size, bool finalize)
             bool emptyLoc = true;
             if (instIt != VISAIndexToInst.end())
             {
-                auto loc = (*instIt).second->getDebugLoc();
+                auto loc = instIt->second->getDebugLoc();
                 if (loc)
                 {
-                    auto scope = loc->getScope();
-
-                    auto src = m_pDwarfDebug->getOrCreateSourceID(scope->getFilename(), scope->getDirectory(), m_pStreamEmitter->GetDwarfCompileUnitID());
                     if (loc != prevSrcLoc)
                     {
+                        auto scope = loc->getScope();
+                        auto src = m_pDwarfDebug->getOrCreateSourceID(scope->getFilename(), scope->getDirectory(), m_pStreamEmitter->GetDwarfCompileUnitID());
+
                         unsigned int Flags = 0;
                         if (!m_pDwarfDebug->isStmtExists(loc.getLine(), loc.getInlinedAt(), true))
                         {
                             Flags |= DWARF2_FLAG_IS_STMT;
                         }
                         m_pStreamEmitter->EmitDwarfLocDirective(src, loc.getLine(), loc.getCol(), Flags, 0, 0, scope->getFilename());
+
+                        prevSrcLoc = loc;
                     }
 
-                    prevSrcLoc = loc;
                     emptyLoc = false;
                 }
             }
@@ -317,7 +318,6 @@ void DebugEmitter::Finalize(void*& pBuffer, unsigned int& size, bool finalize)
             if (emptyLoc && prevSrcLoc)
             {
                 auto scope = prevSrcLoc->getScope();
-
                 auto src = m_pDwarfDebug->getOrCreateSourceID(scope->getFilename(), scope->getDirectory(), m_pStreamEmitter->GetDwarfCompileUnitID());
 
                 // Emit 0 as line# for unattributed lines
@@ -330,7 +330,7 @@ void DebugEmitter::Finalize(void*& pBuffer, unsigned int& size, bool finalize)
         {
             for (unsigned int i = pc; i != m_pVISAModule->getUnpaddedProgramSize(); i++)
             {
-                m_pStreamEmitter->EmitInt8(((unsigned char*)genxISA)[i]);
+                m_pStreamEmitter->EmitInt8(genxISA[i]);
                 lastGenOff++;
             }
         }

@@ -124,48 +124,46 @@ namespace IGC {
         ModuleAllocaInfo& operator=(const ModuleAllocaInfo&) = delete;
 
         /// \brief Return the offset of alloca instruction in private memory buffer.
-        unsigned getBufferOffset(AllocaInst* AI) {
+        unsigned getBufferOffset(AllocaInst* AI) const {
             Function* F = AI->getParent()->getParent();
             return getFuncAllocaInfo(F)->AllocaDesc[AI].first;
         }
 
         /// \brief Return the size of alloca instruction in private memory buffer.
-        unsigned getBufferSize(AllocaInst* AI) {
+        unsigned getBufferSize(AllocaInst* AI) const {
             Function* F = AI->getParent()->getParent();
             return getFuncAllocaInfo(F)->AllocaDesc[AI].second;
         }
 
         /// \brief Return all alloca instructions of a given function.
-        SmallVector<AllocaInst*, 8> & getAllocaInsts(Function * F) {
+        SmallVector<AllocaInst*, 8> & getAllocaInsts(Function * F) const {
             return getFuncAllocaInfo(F)->Allocas;
         }
 
         /// \brief Return the total private memory size per WI of a given function.
-        unsigned getTotalPrivateMemPerWI(Function* F) {
+        unsigned getTotalPrivateMemPerWI(Function* F) const {
             auto FI = getFuncAllocaInfo(F);
             return FI ? FI->TotalSize : 0;
         }
 
     private:
         /// \brief The module being analyzed.
-        Module* M;
+        Module* const M;
 
         /// \brief The DataLayout object.
-        const DataLayout* DL;
+        const DataLayout* const DL;
 
         /// \brief The optional function group analysis.
-        GenXFunctionGroupAnalysis* FGA;
+        GenXFunctionGroupAnalysis* const FGA;
 
         struct FunctionAllocaInfo {
-            FunctionAllocaInfo() : TotalSize(0) {}
-
             void setAllocaDesc(AllocaInst* AI, unsigned Offset, unsigned Size) {
                 AllocaDesc[AI] = std::make_pair(Offset, Size);
             }
 
             /// \brief Total amount of private memory size per kernel. All functions in
             /// a kernel will have the same size.
-            unsigned TotalSize;
+            unsigned TotalSize = 0;
 
             /// \brief Alloca instructions for a function.
             SmallVector<AllocaInst*, 8> Allocas;
@@ -174,7 +172,7 @@ namespace IGC {
             DenseMap<AllocaInst*, std::pair<unsigned, unsigned>> AllocaDesc;
         };
 
-        FunctionAllocaInfo* getFuncAllocaInfo(Function* F) {
+        FunctionAllocaInfo* getFuncAllocaInfo(Function* F) const {
             auto Iter = InfoMap.find(F);
             if (Iter != InfoMap.end())
                 return Iter->second;
@@ -210,8 +208,8 @@ namespace IGC {
 void ModuleAllocaInfo::analyze() {
     if (FGA && FGA->getModule()) {
         assert(FGA->getModule() == M);
-        for (auto I = FGA->begin(), E = FGA->end(); I != E; ++I)
-            analyze(*I);
+        for (auto FG : *FGA)
+            analyze(FG);
     }
     else {
         for (auto& F : M->getFunctionList()) {
@@ -227,6 +225,7 @@ void ModuleAllocaInfo::analyze() {
         }
     }
 }
+
 void ModuleAllocaInfo::analyze(FunctionGroup* FG)
 {
     // Calculate the size of private-memory we need to allocate to
@@ -235,11 +234,10 @@ void ModuleAllocaInfo::analyze(FunctionGroup* FG)
     // Note that the function order does affect the final total amount of
     // private memory due to possible alignment constraints.
     //
-    for (auto SubGI = FG->Functions.begin(), SubGE = FG->Functions.end(); SubGI != SubGE; ++SubGI) {
+    for (auto SubG : FG->Functions) {
         unsigned Offset = 0;
         unsigned Alignment = 0;
-        for (auto I = (*SubGI)->begin(), E = (*SubGI)->end(); I != E; ++I) {
-            Function* F = *I;
+        for (Function* F : *SubG) {
             if (F->empty())
                 continue;
             analyze(F, Offset, Alignment);
@@ -250,8 +248,7 @@ void ModuleAllocaInfo::analyze(FunctionGroup* FG)
             Offset = iSTD::Align(Offset, Alignment);
 
         // All functions in this group will get the same final size.
-        for (auto I = (*SubGI)->begin(), E = (*SubGI)->end(); I != E; ++I) {
-            Function* F = *I;
+        for (Function* F : *SubG) {
             if (F->empty())
                 continue;
             getOrCreateFuncAllocaInfo(F)->TotalSize = Offset;
@@ -481,9 +478,9 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module& M)
     bool bRet = safeToUseScratchSpace(M);
     modMD.compOpt.UseScratchSpacePrivateMemory = bRet;
 
-    for (Module::iterator I = M.begin(); I != M.end(); ++I)
+    for (Function& F : M)
     {
-        m_currFunction = &*I;
+        m_currFunction = &F;
 
         if (m_currFunction->isDeclaration())
         {
@@ -592,8 +589,7 @@ static void sinkAllocas(SmallVectorImpl<AllocaInst*>& Allocas) {
             // If DomBB has a use in it, insert it just before the first use.
             // Otherwise, append it to the end of the block, to reduce register pressure.
             Instruction* InsertPt = DomBB->getTerminator();
-            for (unsigned i = 0; i < UInsts.size(); ++i) {
-                Instruction* Use = UInsts[i];
+            for (Instruction* Use : UInsts) {
                 if (DomBB == Use->getParent() && DT.dominates(Use, InsertPt)) {
                     InsertPt = Use;
                 }
