@@ -3848,8 +3848,7 @@ namespace IGC
         SaveOption(vISA_ifCvt, false);
     }
 
-    if (IGC_IS_FLAG_DISABLED(EnableVISAStructurizer) ||
-        (IGC_IS_FLAG_ENABLED(EnableSCFWA) && m_program->m_Platform->getWATable().Wa_1407528679 != 0))
+    if (IGC_IS_FLAG_DISABLED(EnableVISAStructurizer))
     {
         SaveOption(vISA_EnableStructurizer, false);
     }
