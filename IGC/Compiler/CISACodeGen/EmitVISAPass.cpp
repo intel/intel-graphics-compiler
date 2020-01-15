@@ -789,7 +789,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
                 m_pCtx->m_retryManager.Disable();
             }
             m_currShader->ProgramOutput()->m_scratchSpaceUsedBySpills =
-                MAX(m_currShader->ProgramOutput()->m_scratchSpaceUsedBySpills, 32 * 1024);
+                MAX(m_currShader->ProgramOutput()->m_scratchSpaceUsedBySpills, 8 * 1024);
         }
     }
 
