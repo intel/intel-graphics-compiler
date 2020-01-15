@@ -527,9 +527,22 @@ namespace vISA
             }
         }
 
-        SBFootprint *getFootprint(Gen4_Operand_Number opndNum)
+        SBFootprint* getFirstFootprint(Gen4_Operand_Number opndNum)
         {
             return footprints[opndNum];
+        }
+
+        SBFootprint *getFootprint(Gen4_Operand_Number opndNum, G4_INST *inst)
+        {
+            SBFootprint *sbFp = footprints[opndNum];
+            while (sbFp->inst != inst)
+            {
+                sbFp = sbFp->next;
+            }
+
+            assert((sbFp != nullptr) && "null foot print found");
+
+            return sbFp;
         }
 
         void setDistance(unsigned distance)
@@ -786,7 +799,7 @@ namespace vISA
             }
 
             //Kill the same node in other bucket.
-            SBFootprint *footprint = bucketNode->node->getFootprint(bucketNode->opndNum);
+            SBFootprint *footprint = bucketNode->node->getFirstFootprint(bucketNode->opndNum);
             while (footprint)
             {
                 unsigned int startBucket = footprint->LeftB / G4_GRF_REG_NBYTES;
