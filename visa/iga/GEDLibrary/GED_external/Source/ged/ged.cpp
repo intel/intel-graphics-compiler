@@ -24,11 +24,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-#ifdef GED_BUILDING_EXECUTABLE
+#ifndef GED_BUILDING_EXECUTABLE
+#error must enable GED_BUILD_EXECUTABLE to build the GED standalone executable (disassembler)
+#endif
 
-# if !GED_DISASSEMBLY
-#  error Trying to build the GED standalone executable (disassembler) without the disassembly data.
-# endif // GED_DISASSEMBLY
+#ifndef GED_DISASSEMBLY
+#error must enable GED_DISASSEMBLY to build the GED standalone executable (disassembler)
+# endif
 
 #include <cstdio>
 #include <iostream>
@@ -253,4 +255,3 @@ int main(int argc, const char* argv[])
     return GED_ERROR_TYPE_SUCCESS;
 }
 
-#endif // GED_BUILDING_EXECUTABLE

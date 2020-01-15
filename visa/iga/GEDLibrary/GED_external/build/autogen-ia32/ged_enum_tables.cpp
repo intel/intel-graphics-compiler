@@ -833,6 +833,25 @@ const GED_DATA_TYPE* DataTypeTable13[16] =
 }; // DataTypeTable13[]
 const GED_DATA_TYPE* DataTypeTable14[16] =
 {
+    NULL, // 0
+    NULL, // 1
+    &DataTypeVar0, // 2
+    NULL, // 3
+    NULL, // 4
+    NULL, // 5
+    NULL, // 6
+    NULL, // 7
+    NULL, // 8
+    NULL, // 9
+    NULL, // 10
+    NULL, // 11
+    NULL, // 12
+    NULL, // 13
+    NULL, // 14
+    NULL // 15
+}; // DataTypeTable14[]
+const GED_DATA_TYPE* DataTypeTable15[16] =
+{
     &DataTypeVar11, // 0
     &DataTypeVar2, // 1
     &DataTypeVar0, // 2
@@ -849,8 +868,8 @@ const GED_DATA_TYPE* DataTypeTable14[16] =
     NULL, // 13
     NULL, // 14
     NULL // 15
-}; // DataTypeTable14[]
-const GED_DATA_TYPE* DataTypeTable15[16] =
+}; // DataTypeTable15[]
+const GED_DATA_TYPE* DataTypeTable16[16] =
 {
     &DataTypeVar11, // 0
     &DataTypeVar2, // 1
@@ -868,8 +887,8 @@ const GED_DATA_TYPE* DataTypeTable15[16] =
     NULL, // 13
     NULL, // 14
     NULL // 15
-}; // DataTypeTable15[]
-const GED_DATA_TYPE* DataTypeTable16[8] =
+}; // DataTypeTable16[]
+const GED_DATA_TYPE* DataTypeTable17[8] =
 {
     NULL, // 0
     &DataTypeVar10, // 1
@@ -879,8 +898,8 @@ const GED_DATA_TYPE* DataTypeTable16[8] =
     NULL, // 5
     NULL, // 6
     &DataTypeVar14 // 7
-}; // DataTypeTable16[]
-const GED_DATA_TYPE* DataTypeTable17[8] =
+}; // DataTypeTable17[]
+const GED_DATA_TYPE* DataTypeTable18[8] =
 {
     &DataTypeVar4, // 0
     &DataTypeVar2, // 1
@@ -890,8 +909,8 @@ const GED_DATA_TYPE* DataTypeTable17[8] =
     &DataTypeVar3, // 5
     &DataTypeVar1, // 6
     &DataTypeVar9 // 7
-}; // DataTypeTable17[]
-const GED_DATA_TYPE* DataTypeTable18[8] =
+}; // DataTypeTable18[]
+const GED_DATA_TYPE* DataTypeTable19[8] =
 {
     &DataTypeVar0, // 0
     &DataTypeVar1, // 1
@@ -901,8 +920,8 @@ const GED_DATA_TYPE* DataTypeTable18[8] =
     &DataTypeVar5, // 5
     &DataTypeVar6, // 6
     &DataTypeVar7 // 7
-}; // DataTypeTable18[]
-const GED_DATA_TYPE* DataTypeTable19[8] =
+}; // DataTypeTable19[]
+const GED_DATA_TYPE* DataTypeTable20[8] =
 {
     &DataTypeVar0, // 0
     NULL, // 1
@@ -912,8 +931,8 @@ const GED_DATA_TYPE* DataTypeTable19[8] =
     NULL, // 5
     NULL, // 6
     NULL // 7
-}; // DataTypeTable19[]
-const GED_DATA_TYPE* DataTypeTable20[8] =
+}; // DataTypeTable20[]
+const GED_DATA_TYPE* DataTypeTable21[8] =
 {
     NULL, // 0
     &DataTypeVar1, // 1
@@ -923,8 +942,8 @@ const GED_DATA_TYPE* DataTypeTable20[8] =
     NULL, // 5
     NULL, // 6
     NULL // 7
-}; // DataTypeTable20[]
-const GED_DATA_TYPE* DataTypeTable21[8] =
+}; // DataTypeTable21[]
+const GED_DATA_TYPE* DataTypeTable22[8] =
 {
     &DataTypeVar0, // 0
     &DataTypeVar1, // 1
@@ -934,14 +953,14 @@ const GED_DATA_TYPE* DataTypeTable21[8] =
     &DataTypeVar12, // 5
     &DataTypeVar13, // 6
     &DataTypeVar7 // 7
-}; // DataTypeTable21[]
-const GED_DATA_TYPE* DataTypeTable22[4] =
+}; // DataTypeTable22[]
+const GED_DATA_TYPE* DataTypeTable23[4] =
 {
     &DataTypeVar7, // 0
     &DataTypeVar1, // 1
     &DataTypeVar0, // 2
     &DataTypeVar6 // 3
-}; // DataTypeTable22[]
+}; // DataTypeTable23[]
 static GED_DEBUG_CTRL DebugCtrlVar0 = (GED_DEBUG_CTRL)0;
 static GED_DEBUG_CTRL DebugCtrlVar1 = (GED_DEBUG_CTRL)1;
 const GED_DEBUG_CTRL* DebugCtrlTable0[2] =

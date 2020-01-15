@@ -2421,7 +2421,7 @@ const ged_ins_field_entry_t DecodingTable327[2] =
 }; // DecodingTable327[]
 const ged_ins_field_entry_t DecodingTable328[2] =
 {
-    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_FRAGMENTED,     32, { 5, FragmentsTable34 }, RestrictionTable150 }, // 0
+    { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_FRAGMENTED,     32, { 5, FragmentsTable34 }, RestrictionTable151 }, // 0
     { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL } // 1
 }; // DecodingTable328[]
 const ged_ins_field_entry_t DecodingTable329[2] =
@@ -2702,8 +2702,8 @@ const ged_ins_field_entry_t DecodingTable341[4] =
 {
     { GED_INS_FIELD_Src1RegFile,                       GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     1, /* {  47,  47,   1,  15,     0x8000 } */ {  0xf012f2f, (void*)(g_uintptr_t)    0x8000 }, RestrictionTable144 }, // 0
     { GED_INS_FIELD_Src1RegFile,                       GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     1, /* {  47,  47,   1,  15,     0x8000 } */ {  0xf012f2f, (void*)(g_uintptr_t)    0x8000 }, RestrictionTable144 }, // 1
-    { GED_INS_FIELD_Src1RegFile,                       GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     1, /* {  47,  47,   1,  15,     0x8000 } */ {  0xf012f2f, (void*)(g_uintptr_t)    0x8000 }, RestrictionTable152 }, // 2
-    { GED_INS_FIELD_Src1RegFile,                       GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     1, /* {  47,  47,   1,  15,     0x8000 } */ {  0xf012f2f, (void*)(g_uintptr_t)    0x8000 }, RestrictionTable152 } // 3
+    { GED_INS_FIELD_Src1RegFile,                       GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     1, /* {  47,  47,   1,  15,     0x8000 } */ {  0xf012f2f, (void*)(g_uintptr_t)    0x8000 }, RestrictionTable153 }, // 2
+    { GED_INS_FIELD_Src1RegFile,                       GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     1, /* {  47,  47,   1,  15,     0x8000 } */ {  0xf012f2f, (void*)(g_uintptr_t)    0x8000 }, RestrictionTable153 } // 3
 }; // DecodingTable341[]
 const ged_ins_field_entry_t DecodingTable342[4] =
 {
@@ -12347,7 +12347,7 @@ const ged_ins_field_entry_t DecodingTable430[116] =
     { GED_INS_FIELD_MsgDesc,                           GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 73
     { GED_INS_FIELD_ExMsgDesc,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 74
     { GED_INS_FIELD_EOT,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 75
-    { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     4, /* {  92,  95,   2,  28, 0xf0000000 } */ { 0x1c025f5c, (void*)(g_uintptr_t)0xf0000000 }, RestrictionTable151 }, // 76
+    { GED_INS_FIELD_MathFC,                            GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     4, /* {  92,  95,   2,  28, 0xf0000000 } */ { 0x1c025f5c, (void*)(g_uintptr_t)0xf0000000 }, RestrictionTable152 }, // 76
     { GED_INS_FIELD_JIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 77
     { GED_INS_FIELD_UIP,                               GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 78
     { GED_INS_FIELD_ControlIndex,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 79
@@ -12766,11 +12766,11 @@ const ged_ins_field_entry_t DecodingTable434[116] =
     { GED_INS_FIELD_DebugCtrl,                         GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     1, /* {  30,  30,   0,  30, 0x40000000 } */ { 0x1e001e1e, (void*)(g_uintptr_t)0x40000000 }, RestrictionTable9 }, // 16
     { GED_INS_FIELD_Saturate,                          GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 17
     { GED_INS_FIELD_DstRegFile,                        GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     1, /* {  50,  50,   1,  18,    0x40000 } */ { 0x12013232, (void*)(g_uintptr_t)   0x40000 }, RestrictionTable108 }, // 18
-    { GED_INS_FIELD_DstDataType,                       GED_TABLE_ENTRY_TYPE_FIXED_VALUE,     4, { 0 }, NULL }, // 19
+    { GED_INS_FIELD_DstDataType,                       GED_TABLE_ENTRY_TYPE_FIXED_VALUE,     4, { 2 }, RestrictionTable139 }, // 19
     { GED_INS_FIELD_Src0RegFile,                       GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     1, /* {  66,  66,   2,   2,        0x4 } */ {  0x2024242, (void*)(g_uintptr_t)       0x4 }, RestrictionTable108 }, // 20
-    { GED_INS_FIELD_Src0DataType,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 21
+    { GED_INS_FIELD_Src0DataType,                      GED_TABLE_ENTRY_TYPE_FIXED_VALUE,     4, { 2 }, RestrictionTable150 }, // 21
     { GED_INS_FIELD_Src1RegFile,                       GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     1, /* {  98,  98,   3,   2,        0x4 } */ {  0x2036262, (void*)(g_uintptr_t)       0x4 }, RestrictionTable108 }, // 22
-    { GED_INS_FIELD_Src1DataType,                      GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 23
+    { GED_INS_FIELD_Src1DataType,                      GED_TABLE_ENTRY_TYPE_FIXED_VALUE,     4, { 2 }, RestrictionTable150 }, // 23
     { GED_INS_FIELD_DstChanEn,                         GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 24
     { GED_INS_FIELD_DstSubRegNum,                      GED_TABLE_ENTRY_TYPE_FIXED_VALUE,     5, { 0 }, NULL }, // 25
     { GED_INS_FIELD_DstAddrImm,                        GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 26
@@ -12779,7 +12779,7 @@ const ged_ins_field_entry_t DecodingTable434[116] =
     { GED_INS_FIELD_DstHorzStride,                     GED_TABLE_ENTRY_TYPE_FIXED_VALUE,     2, { 1 }, RestrictionTable26 }, // 29
     { GED_INS_FIELD_DstAddrMode,                       GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 30
     { GED_INS_FIELD_Src0ChanSel,                       GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 31
-    { GED_INS_FIELD_Src0SubRegNum,                     GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 32
+    { GED_INS_FIELD_Src0SubRegNum,                     GED_TABLE_ENTRY_TYPE_FIXED_VALUE,     5, { 0 }, NULL }, // 32
     { GED_INS_FIELD_Src0AddrImm,                       GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 33
     { GED_INS_FIELD_Src0RegNum,                        GED_TABLE_ENTRY_TYPE_NEXT_TABLE,      8, { GED_INS_FIELD_Src0RegFile,                       DecodingTable326 }, NULL }, // 34
     { GED_INS_FIELD_Src0AddrSubRegNum,                 GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 35
@@ -12791,7 +12791,7 @@ const ged_ins_field_entry_t DecodingTable434[116] =
     { GED_INS_FIELD_FlagSubRegNum,                     GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     1, /* {  22,  22,   0,  22,   0x400000 } */ { 0x16001616, (void*)(g_uintptr_t)  0x400000 }, NULL }, // 41
     { GED_INS_FIELD_FlagRegNum,                        GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     1, /* {  23,  23,   0,  23,   0x800000 } */ { 0x17001717, (void*)(g_uintptr_t)  0x800000 }, NULL }, // 42
     { GED_INS_FIELD_Src1ChanSel,                       GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 43
-    { GED_INS_FIELD_Src1SubRegNum,                     GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 44
+    { GED_INS_FIELD_Src1SubRegNum,                     GED_TABLE_ENTRY_TYPE_FIXED_VALUE,     5, { 0 }, NULL }, // 44
     { GED_INS_FIELD_Src1AddrImm,                       GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 45
     { GED_INS_FIELD_Src1RegNum,                        GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     8, /* { 104, 111,   3,   8,     0xff00 } */ {  0x8036f68, (void*)(g_uintptr_t)    0xff00 }, NULL }, // 46
     { GED_INS_FIELD_Src1AddrSubRegNum,                 GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 47
