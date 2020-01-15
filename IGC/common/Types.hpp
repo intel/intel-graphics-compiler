@@ -30,6 +30,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "AdaptorCommon/API/igc.h"
 #include "common/debug/Debug.hpp"
 
+#include "IGC/common/LLVMWarningsPush.hpp"
+#if LLVM_VERSION_MAJOR >= 10
+#include "llvm/Support/TypeSize.h"
+#endif
+#include "IGC/common/LLVMWarningsPop.hpp"
+
 // Forward declarations
 class ShaderHash;
 namespace USC
@@ -313,3 +319,30 @@ inline typename std::enable_if<
     return static_cast<TDst>(value);
 }
 
+#if LLVM_VERSION_MAJOR >= 10
+template <typename TDst>
+inline typename std::enable_if<
+    std::is_unsigned<TDst>::value,
+    TDst>::type int_cast(llvm::TypeSize value)
+{
+    static_assert(std::is_integral<TDst>::value,
+        "int_cast<>() should be used only for conversions between integer types.");
+
+    assert(value.getFixedSize() <= std::numeric_limits<TDst>::max());
+    return static_cast<TDst>(value.getFixedSize());
+}
+
+template <typename TDst>
+inline typename std::enable_if<
+    std::is_signed<TDst>::value,
+    TDst>::type int_cast(llvm::TypeSize value)
+{
+    static_assert(std::is_integral<TDst>::value,
+        "int_cast<>() should be used only for conversions between integer types.");
+
+    assert(value.getFixedSize() <= static_cast<typename std::make_unsigned<TDst>::type>(
+        std::numeric_limits<TDst>::max()));
+    return static_cast<TDst>(value.getFixedSize());
+}
+
+#endif

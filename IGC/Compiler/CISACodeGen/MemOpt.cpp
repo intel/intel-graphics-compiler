@@ -26,6 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/STLExtras.h>
 #include <llvmWrapper/Analysis/MemoryLocation.h>
+#include <llvmWrapper/Analysis/TargetLibraryInfo.h>
 #include <llvm/Analysis/AliasAnalysis.h>
 #include <llvm/Analysis/InstructionSimplify.h>
 #include <llvm/Analysis/ScalarEvolution.h>

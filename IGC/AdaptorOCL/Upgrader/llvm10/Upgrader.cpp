@@ -24,35 +24,42 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-#pragma once
+// vim:ts=2:sw=2:et:
+
+#pragma warning(disable:4141)
+#pragma warning(disable:4146)
+#pragma warning(disable:4244)
+#pragma warning(disable:4624)
+#pragma warning(disable:4800)
+
+#include "Upgrader.h"
 
 #include "common/LLVMWarningsPush.hpp"
-#include <llvm/IR/InstVisitor.h>
-#include <llvm/IR/IRBuilder.h>
-#include <llvm/Pass.h>
+#include "llvm/Bitcode/BitcodeReader.h"
+#include "llvm/Bitcode/BitcodeWriter.h"
+#include <llvm/Support/MemoryBuffer.h>
+#include <llvm/Support/raw_ostream.h>
 #include "common/LLVMWarningsPop.hpp"
 
-namespace IGC
-{
-    class ScalarizerCodeGen : public llvm::FunctionPass, public llvm::InstVisitor<ScalarizerCodeGen>
-    {
-    public:
-        static char ID;
+using namespace llvm;
 
-        ScalarizerCodeGen();
-        ~ScalarizerCodeGen() {}
+std::unique_ptr<MemoryBuffer>
+upgrader::upgradeBitcodeFile(MemoryBufferRef Buffer, LLVMContext &Context) {
+  auto ErrM = upgrader::parseBitcodeFile(Buffer, Context);
+  Module *M = ErrM.get().get();
+  if (!M)
+    return nullptr;
 
-        virtual llvm::StringRef getPassName() const
-        {
-            return "Scalarizer in Codegen";
-        }
+  SmallVector<char, 0> Buf;
+  Buf.reserve(1024*1024);
 
-        virtual bool runOnFunction(llvm::Function& F);
-        void visitBinaryOperator(llvm::BinaryOperator& I);
+  raw_svector_ostream OS(Buf);
+  WriteBitcodeToFile(*M, OS);
 
-    private:
-        llvm::IRBuilder<>* m_builder;
-    };
+  return MemoryBuffer::getMemBufferCopy(OS.str());
 }
 
-
+Expected<std::unique_ptr<Module>>
+upgrader::upgradeAndParseBitcodeFile(MemoryBufferRef Buffer, LLVMContext &Context) {
+  return upgrader::parseBitcodeFile(Buffer, Context);
+}

@@ -33,6 +33,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/Support/CommandLine.h>
 #include <llvm/IR/Function.h>
 #include <llvm/ADT/SmallVector.h>
+
+#include <llvmWrapper/IR/Intrinsics.h>
+
 #include "common/LLVMWarningsPop.hpp"
 
 #include "Compiler/CISACodeGen/helper.h"
@@ -557,7 +560,7 @@ void WAFMinFMax::visitCallInst(CallInst& I)
                 {
                     m_builder->SetInsertPoint(&I);
 
-                    Intrinsic::ID IID = Intrinsic::minnum;
+                    IGCLLVM::Intrinsic IID = Intrinsic::minnum;
                     Function* IFunc =
                         Intrinsic::getDeclaration(I.getParent()->getParent()->getParent(),
                             IID, I.getType());

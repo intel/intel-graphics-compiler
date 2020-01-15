@@ -36,6 +36,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/ADT/SCCIterator.h"
 #include <llvm/IR/Module.h>
 #include <llvmWrapper/IR/Function.h>
+#include <llvmWrapper/ADT/STLExtras.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/DerivedTypes.h>
 #include "llvm/IR/DIBuilder.h"
@@ -758,7 +759,7 @@ void BuiltinCallGraphAnalysis::traveseCallGraphSCC(const std::vector<CallGraphNo
         }
         if (argData == nullptr)
         {
-            argDetails.push_back(make_unique<ImplicitArgmentDetail>());
+            argDetails.push_back(IGCLLVM::make_unique<ImplicitArgmentDetail>());
             argData = argDetails[argDetails.size() - 1].get();
         }
 

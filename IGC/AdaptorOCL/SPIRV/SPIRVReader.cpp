@@ -67,6 +67,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvmWrapper/IR/IRBuilder.h"
 #include "llvmWrapper/IR/DIBuilder.h"
 #include "llvmWrapper/IR/Module.h"
+#include "llvmWrapper/Support/Alignment.h"
 
 #include <llvm/Support/ScaledNumber.h>
 #include <llvm/IR/LegacyPassManager.h>
@@ -2044,7 +2045,7 @@ SPIRVToLLVM::postProcessFunctionsWithAggregateArguments(Function* F) {
 
       builder.SetInsertPoint(&*FBegin);
       auto Alloca = builder.CreateAlloca(T);
-      Alloca->setAlignment(ptrSize);
+      Alloca->setAlignment(MaybeAlign(ptrSize));
 
       auto size = DL.getTypeAllocSize(T);
       builder.SetInsertPoint(CI);
@@ -2395,7 +2396,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
           GlobalVariable::ThreadLocalMode::NotThreadLocal,
           SPIRAS_Global);
 
-      pGV->setAlignment(std::max(4U, packetAlign));
+      pGV->setAlignment(MaybeAlign(std::max(4U, packetAlign)));
 
       auto *pStorageTy = transType(CPS->getType());
       return mapValue(CPS, ConstantExpr::getBitCast(pGV, pStorageTy));
@@ -2612,7 +2613,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
       pValue,
       pPointer,
       isVolatile,
-      alignment,
+      MaybeAlign(alignment),
       BB));
   }
   break;
@@ -2624,7 +2625,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
       transValue(BL->getSrc(), F, BB),
       BV->getName(),
       BL->hasDecorate(DecorationVolatile) || BL->SPIRVMemoryAccess::getVolatile() != 0,
-      BL->SPIRVMemoryAccess::getAlignment(),
+      MaybeAlign(BL->SPIRVMemoryAccess::getAlignment()),
       BB));
     }
     break;
@@ -2657,7 +2658,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
                   newDst = llvm::BitCastInst::CreatePointerCast(Dst,
                       Int8PointerTy, "", BB);
               }
-              CI = Builder.CreateMemSet(newDst, Src, Size, Align, IsVolatile);
+              CI = Builder.CreateMemSet(newDst, Src, Size, MaybeAlign(Align), IsVolatile);
           }
         }
       }
@@ -3758,13 +3759,13 @@ SPIRVToLLVM::transAlign(SPIRVValue *BV, Value *V) {
   if (auto AL = dyn_cast<AllocaInst>(V)) {
     SPIRVWord Align = 0;
     if (BV->hasAlignment(&Align))
-      AL->setAlignment(Align);
+      AL->setAlignment(MaybeAlign(Align));
     return true;
   }
   if (auto GV = dyn_cast<GlobalVariable>(V)) {
     SPIRVWord Align = 0;
     if (BV->hasAlignment(&Align))
-      GV->setAlignment(Align);
+      GV->setAlignment(MaybeAlign(Align));
     return true;
   }
   return true;

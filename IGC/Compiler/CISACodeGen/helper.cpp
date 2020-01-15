@@ -35,6 +35,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <llvmWrapper/Support/KnownBits.h>
 #include <llvmWrapper/IR/Instructions.h>
+#include <llvmWrapper/Support/Alignment.h>
 
 #include "common/LLVMWarningsPop.hpp"
 
@@ -226,7 +227,7 @@ namespace IGC
     {
         llvm::LoadInst* LI = new llvm::LoadInst(Ptr, "", Orig);
         LI->setVolatile(Orig->isVolatile());
-        LI->setAlignment(Orig->getAlignment());
+        LI->setAlignment(MaybeAlign(Orig->getAlignment()));
         if (LI->isAtomic())
         {
             LI->setAtomic(Orig->getOrdering(), IGCLLVM::getSyncScopeID(Orig));
@@ -246,7 +247,7 @@ namespace IGC
     {
         llvm::StoreInst* SI = new llvm::StoreInst(Val, Ptr, Orig);
         SI->setVolatile(Orig->isVolatile());
-        SI->setAlignment(Orig->getAlignment());
+        SI->setAlignment(MaybeAlign(Orig->getAlignment()));
         if (SI->isAtomic())
         {
             SI->setAtomic(Orig->getOrdering(), IGCLLVM::getSyncScopeID(Orig));

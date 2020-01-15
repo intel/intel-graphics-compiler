@@ -66,15 +66,15 @@ namespace
         int m_place;
     };
 
-    class MergeURBWrites : public BasicBlockPass
+    class MergeURBWrites : public FunctionPass
     {
     public:
         MergeURBWrites() :
-            BasicBlockPass(ID)
+            FunctionPass(ID)
         { }
 
         virtual bool doInitialization(Function& F);
-        virtual bool runOnBasicBlock(BasicBlock& BB);
+        virtual bool runOnFunction(Function& F);
 
         virtual void getAnalysisUsage(AnalysisUsage& AU) const
         {
@@ -136,11 +136,16 @@ bool MergeURBWrites::doInitialization(Function& F)
 ///    so e.g. we don't handle |aaaa|bbbbbbbb|cccc| -> |aaaabbbb|bbbbcccc|
 /// this will be addressed in the future.
 ///
-bool MergeURBWrites::runOnBasicBlock(BasicBlock& BB)
+bool MergeURBWrites::runOnFunction(Function& F)
 {
-    FillWriteList(BB);
-    MergeInstructions();
-    return m_bbModified;
+    bool fModified = false;
+    for (auto& BB : F)
+    {
+        FillWriteList(BB);
+        MergeInstructions();
+        fModified |= m_bbModified;
+    }
+    return fModified;
 }
 
 void MergeURBWrites::FillWriteList(BasicBlock& BB)
@@ -318,7 +323,7 @@ void MergeURBWrites::MergeInstructions()
 } // MergeInstructions
 
 
-llvm::BasicBlockPass* IGC::createMergeURBWritesPass()
+llvm::FunctionPass* IGC::createMergeURBWritesPass()
 {
     return new MergeURBWrites();
 }

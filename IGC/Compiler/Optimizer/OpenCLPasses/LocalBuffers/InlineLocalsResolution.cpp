@@ -34,6 +34,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Instructions.h>
+
+#include <llvmWrapper/Support/Alignment.h>
+
 #include "common/LLVMWarningsPop.hpp"
 
 using namespace llvm;
@@ -296,7 +299,7 @@ void InlineLocalsResolution::collectInfoOnSharedLocalMem(Module& M)
                 GlobalVariable::ThreadLocalMode::NotThreadLocal,
                 ADDRESS_SPACE_LOCAL);
 
-            m_pGV->setAlignment(maxAlignOnModule);
+            m_pGV->setAlignment(MaybeAlign(maxAlignOnModule));
 
             for (auto call : callsToReplace)
             {

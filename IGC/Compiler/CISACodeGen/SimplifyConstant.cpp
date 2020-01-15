@@ -35,6 +35,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/IRBuilder.h"
+
+#include "llvmWrapper/IR/Value.h"
+
 #include "common/LLVMWarningsPop.hpp"
 #include "common/Types.hpp"
 

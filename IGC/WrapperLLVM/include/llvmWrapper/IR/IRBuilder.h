@@ -71,9 +71,15 @@ namespace IGCLLVM
             llvm::MDNode *ScopeTag = nullptr,
             llvm::MDNode *NoAliasTag = nullptr)
         {
+#if LLVM_VERSION_MAJOR < 10
             return llvm::IRBuilder<T, Inserter>::CreateMemCpy(Dst, Align, Src, Align, Size,
                 isVolatile, TBAATag, TBAAStructTag, ScopeTag,
                 NoAliasTag);
+#else
+            return llvm::IRBuilder<T, Inserter>::CreateMemCpy(Dst, llvm::Align::None(), Src, llvm::Align::None(), Size,
+                isVolatile, TBAATag, TBAAStructTag, ScopeTag,
+                NoAliasTag);
+#endif
         }
 
         inline llvm::CallInst *CreateMemCpy(llvm::Value *Dst, llvm::Value *Src, llvm::Value *Size, unsigned Align,
@@ -82,9 +88,15 @@ namespace IGCLLVM
             llvm::MDNode *ScopeTag = nullptr,
             llvm::MDNode *NoAliasTag = nullptr)
         {
+#if LLVM_VERSION_MAJOR < 10
             return llvm::IRBuilder<T, Inserter>::CreateMemCpy(Dst, Align, Src, Align, Size,
                 isVolatile, TBAATag, TBAAStructTag, ScopeTag,
                 NoAliasTag);
+#else
+            return llvm::IRBuilder<T, Inserter>::CreateMemCpy(Dst, llvm::Align::None(), Src, llvm::Align::None(), Size,
+                isVolatile, TBAATag, TBAAStructTag, ScopeTag,
+                NoAliasTag);
+#endif
         }
 
         inline llvm::CallInst* CreateMemCpy(llvm::Value* Dst, unsigned DstAlign, llvm::Value* Src, unsigned SrcAlign,
@@ -93,9 +105,15 @@ namespace IGCLLVM
             llvm::MDNode* ScopeTag = nullptr,
             llvm::MDNode* NoAliasTag = nullptr)
         {
+#if LLVM_VERSION_MAJOR < 10
             return llvm::IRBuilder<T, Inserter>::CreateMemCpy(Dst, DstAlign, Src, SrcAlign, Size,
                 isVolatile, TBAATag, TBAAStructTag, ScopeTag,
                 NoAliasTag);
+#else
+            return llvm::IRBuilder<T, Inserter>::CreateMemCpy(Dst, llvm::Align::None(), Src, llvm::Align::None(), Size,
+                isVolatile, TBAATag, TBAAStructTag, ScopeTag,
+                NoAliasTag);
+#endif
         }
 
         inline llvm::AllocaInst *CreateAlloca(llvm::Type *Ty, llvm::Value *ArraySize = nullptr, const llvm::Twine &Name = "", unsigned AddrSpace = 0)

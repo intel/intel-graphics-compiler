@@ -45,11 +45,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Pass.h"
 #include "llvm/PassAnalysisSupport.h"
 #include "llvm/Analysis/TargetFolder.h"
+
+#include "llvmWrapper/IR/Instructions.h"
+#include "llvmWrapper/IR/Intrinsics.h"
+#include "llvmWrapper/Support/Alignment.h"
+
 #include "common/LLVMWarningsPop.hpp"
 
 #include "common/LLVMUtils.h"
-
-#include "llvmWrapper/IR/Instructions.h"
 
 #include "common/IGCIRBuilder.h"
 
@@ -162,7 +165,7 @@ namespace {
             unsigned Align = getAlignment(RefLD);
 
             NewLD->setVolatile(RefLD->isVolatile());
-            NewLD->setAlignment(unsigned(MinAlign(Align, Off)));
+            NewLD->setAlignment(MaybeAlign(unsigned(MinAlign(Align, Off))));
             NewLD->setOrdering(RefLD->getOrdering());
             IGCLLVM::CopySyncScopeID(NewLD, RefLD);
             copyKnownMetadata(NewLD, RefLD);
@@ -172,7 +175,7 @@ namespace {
             unsigned Align = getAlignment(RefST);
 
             NewST->setVolatile(RefST->isVolatile());
-            NewST->setAlignment(unsigned(MinAlign(Align, Off)));
+            NewST->setAlignment(MaybeAlign(unsigned(MinAlign(Align, Off))));
             NewST->setOrdering(RefST->getOrdering());
             IGCLLVM::CopySyncScopeID(NewST, RefST);
             copyKnownMetadata(NewST, RefST);
@@ -1275,7 +1278,7 @@ bool InstExpander::visitFPToUI(FPToUIInst& F2U) {
     if (!Emu->isInt64(&F2U))
         return false;
 
-    Intrinsic::ID IID;
+    IGCLLVM::Intrinsic IID;
     Value* Src = F2U.getOperand(0);
     Type* SrcTy = Src->getType();
 
@@ -1327,7 +1330,7 @@ bool InstExpander::visitFPToSI(FPToSIInst& F2S) {
     if (!Emu->isInt64(&F2S))
         return false;
 
-    Intrinsic::ID IID;
+    IGCLLVM::Intrinsic IID;
     Value* Src = F2S.getOperand(0);
     Type* SrcTy = Src->getType();
 
@@ -1414,7 +1417,7 @@ Value* InstExpander::convertUIToFP32(Type* DstTy, Value* Lo, Value* Hi, Instruct
     BuilderType::InsertPointGuard Guard(*IRB);
     IRB->SetInsertPoint(Pos);
 
-    Intrinsic::ID IID;
+    IGCLLVM::Intrinsic IID;
     IID = Intrinsic::ctlz;
     Function* Lzd = Intrinsic::getDeclaration(Emu->getModule(), IID, Lo->getType());
 
@@ -1520,7 +1523,7 @@ bool InstExpander::visitUIToFP(UIToFPInst& U2F) {
     }
 
     if (DstTy->isDoubleTy()) {
-        Intrinsic::ID IID = Intrinsic::fma;
+        IGCLLVM::Intrinsic IID = Intrinsic::fma;
         Function* Fma = Intrinsic::getDeclaration(Emu->getModule(), IID, DstTy);
         Value* FC0 = ConstantFP::get(DstTy, ldexp(1., 32));
         Value* LoF = IRB->CreateUIToFP(Lo, DstTy);
@@ -1569,7 +1572,7 @@ bool InstExpander::visitSIToFP(SIToFPInst& S2F) {
     }
 
     if (DstTy->isDoubleTy()) {
-        Intrinsic::ID IID = Intrinsic::fma;
+        IGCLLVM::Intrinsic IID = Intrinsic::fma;
         Function* Fma = Intrinsic::getDeclaration(Emu->getModule(), IID, DstTy);
         Value* FC0 = ConstantFP::get(DstTy, ldexp(1., 32));
         Value* LoF = IRB->CreateUIToFP(Lo, DstTy);

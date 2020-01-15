@@ -40,6 +40,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/GlobalValue.h"
 #include "llvmWrapper/MC/MCAsmBackend.h"
+#include "llvmWrapper/ADT/STLExtras.h"
 
 #include "llvm/MC/MCAsmInfoELF.h"
 
@@ -452,7 +453,7 @@ namespace IGC
             // Only i386 uses Rel instead of RelA.
             bool hasRelocationAddend = eMachine != ELF::EM_386;
             std::unique_ptr<MCELFObjectTargetWriter> pMOTW
-                = llvm::make_unique<VISAELFObjectWriter>(m_is64Bit, osABI, eMachine, hasRelocationAddend);
+                = IGCLLVM::make_unique<VISAELFObjectWriter>(m_is64Bit, osABI, eMachine, hasRelocationAddend);
             return createELFObjectWriter(std::move(pMOTW), os,  /*IsLittleEndian=*/true);
         }
 #endif
@@ -544,13 +545,13 @@ StreamEmitter::StreamEmitter(raw_pwrite_stream& outStream, const std::string& da
         is64Bit ? ELF::EM_X86_64 : ELF::EM_386;
     bool hasRelocationAddend = is64Bit;
     std::unique_ptr<MCAsmBackend> pAsmBackend
-        = llvm::make_unique<VISAAsmBackend>(GetTargetTriple(), is64Bit);
+        = IGCLLVM::make_unique<VISAAsmBackend>(GetTargetTriple(), is64Bit);
     std::unique_ptr<MCELFObjectTargetWriter> pTargetObjectWriter
-        = llvm::make_unique<VISAELFObjectWriter>(is64Bit, osABI, eMachine, hasRelocationAddend);
+        = IGCLLVM::make_unique<VISAELFObjectWriter>(is64Bit, osABI, eMachine, hasRelocationAddend);
     std::unique_ptr<MCObjectWriter> pObjectWriter
         = createELFObjectWriter(std::move(pTargetObjectWriter), outStream, true);
     std::unique_ptr<MCCodeEmitter> pCodeEmitter
-        = llvm::make_unique<VISAMCCodeEmitter>();
+        = IGCLLVM::make_unique<VISAMCCodeEmitter>();
 
     bool isRelaxAll = false;
     bool isNoExecStack = false;

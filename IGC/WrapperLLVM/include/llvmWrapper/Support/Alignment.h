@@ -24,35 +24,15 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-#pragma once
+#ifndef IGCLLVM_SUPPORT_ALIGNMENT_H
+#define IGCLLVM_SUPPORT_ALIGNMENT_H
 
-#include "common/LLVMWarningsPush.hpp"
-#include <llvm/IR/InstVisitor.h>
-#include <llvm/IR/IRBuilder.h>
-#include <llvm/Pass.h>
-#include "common/LLVMWarningsPop.hpp"
+#if LLVM_VERSION_MAJOR >= 10
+#include <llvm/Support/Alignment.h>
+#endif
 
-namespace IGC
-{
-    class ScalarizerCodeGen : public llvm::FunctionPass, public llvm::InstVisitor<ScalarizerCodeGen>
-    {
-    public:
-        static char ID;
+#if LLVM_VERSION_MAJOR < 10
+#define MaybeAlign(n) (n)
+#endif
 
-        ScalarizerCodeGen();
-        ~ScalarizerCodeGen() {}
-
-        virtual llvm::StringRef getPassName() const
-        {
-            return "Scalarizer in Codegen";
-        }
-
-        virtual bool runOnFunction(llvm::Function& F);
-        void visitBinaryOperator(llvm::BinaryOperator& I);
-
-    private:
-        llvm::IRBuilder<>* m_builder;
-    };
-}
-
-
+#endif

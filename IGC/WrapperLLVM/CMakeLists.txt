@@ -33,13 +33,16 @@ set(IGC_WrapperLLVM_HDR
 
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/Attributes.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/Argument.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/ADT/STLExtras.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/IRBuilder.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/DIBuilder.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/DebugInfoMetadata.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/Instructions.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/Intrinsics.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/Function.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/GlobalValue.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/ValueHandle.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/Value.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/InstrTypes.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/InstVisitor.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/Constant.h"	
@@ -51,6 +54,7 @@ set(IGC_WrapperLLVM_HDR
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/AsmParser/Parser.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Support/Debug.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Support/KnownBits.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Support/Alignment.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/Utils/Cloning.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/Utils/LoopUtils.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/Utils.h"
@@ -58,7 +62,8 @@ set(IGC_WrapperLLVM_HDR
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/BinaryFormat/Dwarf.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/MC/MCAsmBackend.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Analysis/InlineCost.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Analysis/InlineCost.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Analysis/MemoryLocation.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Analysis/TargetLibraryInfo.h"
   )
 
 include_directories(

@@ -86,12 +86,18 @@ const char* beginSymbol = ".begin";
 const char* endSymbol = ".end";
 
 bool DbgVariable::isBlockByrefVariable() const {
+#if LLVM_VERSION_MAJOR < 10
     assert(Var && "Invalid complex DbgVariable!");
     return Var->getType()
 #if LLVM_VERSION_MAJOR <= 8
         .resolve()
 #endif
         ->isBlockByrefStruct();
+#else
+    // isBlockByrefStruct is no more support by LLVM10 IR - more info in this commit below:
+    // https://github.com/llvm/llvm-project/commit/0779dffbd4a927d7bf9523482481248c51796907
+    return false;
+#endif
 }
 
 DIType* DbgVariable::getType() const
@@ -101,6 +107,10 @@ DIType* DbgVariable::getType() const
         .resolve()
 #endif
         ;
+ #if LLVM_VERSION_MAJOR < 10
+    // isBlockByrefStruct is no more support by LLVM10 IR - more info in this commit below:
+ 	// https://github.com/llvm/llvm-project/commit/0779dffbd4a927d7bf9523482481248c51796907
+ 
     // FIXME: isBlockByrefVariable should be reformulated in terms of complex
     // addresses instead.
     if (Ty->isBlockByrefStruct()) {
@@ -141,6 +151,7 @@ DIType* DbgVariable::getType() const
                 return resolve(DT->getBaseType());
         }
     }
+#endif
     return Ty;
 
 }

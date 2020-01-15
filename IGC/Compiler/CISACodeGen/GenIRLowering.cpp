@@ -42,6 +42,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/IR/PatternMatch.h>
 #include <llvm/Analysis/TargetFolder.h>
 #include "llvm/IR/GetElementPtrTypeIterator.h"
+
+#include "llvmWrapper/IR/Intrinsics.h"
+
 #include "common/LLVMWarningsPop.hpp"
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include "common/IGCIRBuilder.h"
@@ -936,7 +939,7 @@ bool GenIRLowering::combineSelectInst(SelectInst* Sel,
             return false;
     }
 
-    Intrinsic::ID IID =
+    IGCLLVM::Intrinsic IID =
         IsMax ? Intrinsic::maxnum : Intrinsic::minnum;
     Function* IFunc = Intrinsic::getDeclaration(
         Sel->getParent()->getParent()->getParent(), IID, LHS->getType());

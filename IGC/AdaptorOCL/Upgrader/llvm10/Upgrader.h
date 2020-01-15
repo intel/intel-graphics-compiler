@@ -24,35 +24,25 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-#pragma once
+// vim:ts=2:sw=2:et:
+#ifndef __DRIVERINTERFACE_UPGRADER_H__
+#define __DRIVERINTERFACE_UPGRADER_H__
 
 #include "common/LLVMWarningsPush.hpp"
-#include <llvm/IR/InstVisitor.h>
-#include <llvm/IR/IRBuilder.h>
-#include <llvm/Pass.h>
+#include <llvm/IR/LLVMContext.h>
+#include <llvm/Support/ErrorOr.h>
+#include <llvm/Support/Error.h>
+#include <llvm/Support/MemoryBuffer.h>
 #include "common/LLVMWarningsPop.hpp"
 
-namespace IGC
-{
-    class ScalarizerCodeGen : public llvm::FunctionPass, public llvm::InstVisitor<ScalarizerCodeGen>
-    {
-    public:
-        static char ID;
+namespace upgrader {
 
-        ScalarizerCodeGen();
-        ~ScalarizerCodeGen() {}
+llvm::Expected<std::unique_ptr<llvm::Module>> parseBitcodeFile(llvm::MemoryBufferRef Buffer, llvm::LLVMContext &Context);
 
-        virtual llvm::StringRef getPassName() const
-        {
-            return "Scalarizer in Codegen";
-        }
+std::unique_ptr<llvm::MemoryBuffer> upgradeBitcodeFile(llvm::MemoryBufferRef, llvm::LLVMContext &);
 
-        virtual bool runOnFunction(llvm::Function& F);
-        void visitBinaryOperator(llvm::BinaryOperator& I);
+llvm::Expected<std::unique_ptr<llvm::Module>> upgradeAndParseBitcodeFile(llvm::MemoryBufferRef, llvm::LLVMContext &);
 
-    private:
-        llvm::IRBuilder<>* m_builder;
-    };
-}
+} // End upgrader namespace
 
-
+#endif // __DRIVERINTERFACE_UPGRADER_H__

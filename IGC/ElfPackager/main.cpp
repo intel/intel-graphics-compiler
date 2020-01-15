@@ -46,8 +46,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Bitcode/BitcodeReader.h"
 #include "llvm/Bitcode/BitcodeWriterPass.h"
 #include "llvm/Support/SourceMgr.h"
+#include "llvm/Support/CommandLine.h"
 
-#include "llvmWrapper//IR/Module.h"
+#include "llvmWrapper/IR/Module.h"
+#include "llvmWrapper/ADT/STLExtras.h"
 
 #include "common/LLVMWarningsPop.hpp"
 #include "../GenISAIntrinsics/GenIntrinsics.h"
@@ -111,7 +113,7 @@ std::unique_ptr<IGCLLVM::Module> LocalCloneModule(
     std::map<const llvm::Function*, std::set<StringRef>> &FuncMap) {
     // First off, we need to create the new module.
     std::unique_ptr<IGCLLVM::Module> New =
-        llvm::make_unique<IGCLLVM::Module>(M->getModuleIdentifier(), M->getContext());
+        IGCLLVM::make_unique<IGCLLVM::Module>(M->getModuleIdentifier(), M->getContext());
     New->setDataLayout("");
     New->setTargetTriple("");
     New->setModuleInlineAsm(M->getModuleInlineAsm());

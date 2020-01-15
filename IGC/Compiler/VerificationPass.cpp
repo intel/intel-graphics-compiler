@@ -35,6 +35,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Module.h>
 #include <llvm/IR/InstIterator.h>
+
+#include <llvmWrapper/IR/Intrinsics.h>
+
 #include "common/LLVMWarningsPop.hpp"
 
 using namespace llvm;
@@ -229,7 +232,7 @@ bool VerificationPass::verifyInstCall(Instruction& inst)
 
     if (dyn_cast<IntrinsicInst>(instCall))
     {
-        Intrinsic::ID intrinID = (Intrinsic::ID) instCall->getCalledFunction()->getIntrinsicID();
+        IGCLLVM::Intrinsic intrinID = (IGCLLVM::Intrinsic) instCall->getCalledFunction()->getIntrinsicID();
         if (!m_IGC_IR_spec.IGCLLVMIntrinsics.count(intrinID))
         {
             m_messagesToDump << "Unsupported LLVM intrinsic:\n";

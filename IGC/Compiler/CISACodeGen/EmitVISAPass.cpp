@@ -49,6 +49,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "Compiler/IGCPassSupport.h"
 
+#include "common/LLVMWarningsPush.hpp"
+#include "llvmWrapper/IR/Intrinsics.h"
+#include "common/LLVMWarningsPop.hpp"
+
 using namespace llvm;
 using namespace IGC;
 using namespace IGC::IGCMD;
@@ -13599,8 +13603,8 @@ bool EmitPass::ignoreRoundingMode(llvm::Instruction* inst) const
         {
         default:
             break;
-        case Intrinsic::ID::exp2:
-        case Intrinsic::ID::sqrt:
+        case IGCLLVM::Intrinsic::exp2:
+        case IGCLLVM::Intrinsic::sqrt:
             return true;
         }
     }

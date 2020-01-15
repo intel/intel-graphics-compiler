@@ -33,6 +33,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/IGCPassSupport.h"
 #include "common/IGCIRBuilder.h"
 
+#include "common/LLVMWarningsPush.hpp"
+#include "llvmWrapper/Support/Alignment.h"
+#include "common/LLVMWarningsPop.hpp"
+
 #include <list>
 
 /// @brief ConstantCoalescing merges multiple constant loads into one load
@@ -944,7 +948,7 @@ void ConstantCoalescing::CombineTwoLoads(BufChunk* cov_chunk, Instruction* load,
             m_TT->RegisterNewValueAndAssignID(ptrcast);
             wiAns->incUpdateDepend(ptrcast, WIAnalysis::RANDOM);
             cov_chunk->chunkIO = irBuilder->CreateLoad(ptrcast, false);
-            cast<LoadInst>(cov_chunk->chunkIO)->setAlignment(4); // \todo, more precise
+            cast<LoadInst>(cov_chunk->chunkIO)->setAlignment(MaybeAlign(4)); // \todo, more precise
             wiAns->incUpdateDepend(cov_chunk->chunkIO, WIAnalysis::RANDOM);
         }
         else
@@ -952,7 +956,7 @@ void ConstantCoalescing::CombineTwoLoads(BufChunk* cov_chunk, Instruction* load,
             assert(isa<IntToPtrInst>(addr_ptr));
             addr_ptr->mutateType(PointerType::get(vty, addrSpace));
             cov_chunk->chunkIO = irBuilder->CreateLoad(addr_ptr, false);
-            cast<LoadInst>(cov_chunk->chunkIO)->setAlignment(4);  // \todo, more precise
+            cast<LoadInst>(cov_chunk->chunkIO)->setAlignment(MaybeAlign(4));  // \todo, more precise
             wiAns->incUpdateDepend(cov_chunk->chunkIO, WIAnalysis::RANDOM);
             // modify the address calculation if the chunk-start is changed
             if (eltid0 != cov_chunk->chunkStart)
@@ -1019,7 +1023,7 @@ void ConstantCoalescing::SetAlignment(Instruction* load, uint alignment)
 
     if (isa<LoadInst>(load))
     {
-        cast<LoadInst>(load)->setAlignment(alignment);
+        cast<LoadInst>(load)->setAlignment(MaybeAlign(alignment));
     }
     else
     {
@@ -1425,7 +1429,7 @@ Instruction* ConstantCoalescing::CreateChunkLoad(Instruction* seedi, BufChunk* c
         ptr->setDebugLoc(irBuilder->getCurrentDebugLocation());
         wiAns->incUpdateDepend(ptr, WIAnalysis::UNIFORM);
         chunkLoad = irBuilder->CreateLoad(ptr);
-        chunkLoad->setAlignment(alignment);
+        chunkLoad->setAlignment(MaybeAlign(alignment));
         chunk->chunkIO = chunkLoad;
     }
     else
@@ -2306,7 +2310,7 @@ void ConstantCoalescing::ChangePTRtoOWordBased(BufChunk* chunk)
     Instruction* owordPtr = irBuilder->CreateCall(l, attr);
     wiAns->incUpdateDepend(owordPtr, WIAnalysis::UNIFORM);
     load->setOperand(0, owordPtr);
-    load->setAlignment(16);
+    load->setAlignment(MaybeAlign(16));
 }
 
 char IGC::ConstantCoalescing::ID = 0;

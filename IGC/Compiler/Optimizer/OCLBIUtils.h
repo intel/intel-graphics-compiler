@@ -29,6 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/MetaDataApi/MetaDataApi.h"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/StringRef.h>
+#include <llvmWrapper/IR/Intrinsics.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include <map>
@@ -53,13 +54,13 @@ namespace IGC
         /// @param  Id          the wanted LLVM intrinsic
         /// @param  ptrTy       for intrinsic with overloaded types.
         /// @returns    llvm Function
-        llvm::Function* getFunctionDeclaration(llvm::Intrinsic::ID id, llvm::ArrayRef<llvm::Type*> Tys = llvm::None);
+        llvm::Function* getFunctionDeclaration(IGCLLVM::Intrinsic id, llvm::ArrayRef<llvm::Type*> Tys = llvm::None);
 
         /// @brief  Creates llvm function call for LLVM Intrinsic and replace the
         ///         current instruction with the new function call.
         /// @param  Id          the wanted LLVM intrinsic
         /// @param  ptrTy       for intrinsic with overloaded types.
-        void replaceCallInst(llvm::Intrinsic::ID intrinsicName, llvm::ArrayRef<llvm::Type*> Tys = llvm::None);
+        void replaceCallInst(IGCLLVM::Intrinsic intrinsicName, llvm::ArrayRef<llvm::Type*> Tys = llvm::None);
 
 
         /// @brief  Creates llvm function call for GenISA_ISA Intrinsic and replace the

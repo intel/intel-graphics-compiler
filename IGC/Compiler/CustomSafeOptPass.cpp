@@ -77,7 +77,8 @@ instead if the structure is small.
 #include "common/LLVMWarningsPush.hpp"
 
 #include "WrapperLLVM/Utils.h"
-#include "llvmWrapper/IR/IRBuilder.h"
+#include <llvmWrapper/IR/IRBuilder.h>
+#include <llvmWrapper/Analysis/TargetLibraryInfo.h>
 
 #include <llvm/ADT/Statistic.h>
 #include <llvm/ADT/SetVector.h>

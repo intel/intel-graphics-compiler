@@ -32,6 +32,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/LLVMWarningsPush.hpp"
 
 #include "llvmWrapper/IR/Attributes.h"
+#include "llvmWrapper/IR/Intrinsics.h"
+#include "llvmWrapper/Support/Alignment.h"
 
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Instruction.h>
@@ -336,7 +338,7 @@ static StoreInst* genStoreInternal(Value* Val, Value* Ptr, BasicBlock* InsertAtE
 {
     bool isVolatile = false;
     unsigned Align = 4;
-    auto SI = new llvm::StoreInst(Val, Ptr, isVolatile, Align, InsertAtEnd);
+    auto SI = new llvm::StoreInst(Val, Ptr, isVolatile, MaybeAlign(Align), InsertAtEnd);
     SI->setDebugLoc(DL);
     return SI;
 }

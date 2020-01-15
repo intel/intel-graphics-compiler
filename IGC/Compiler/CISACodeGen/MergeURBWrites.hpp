@@ -34,7 +34,7 @@ namespace IGC
 {
 
     class CShader;
-    llvm::BasicBlockPass* createMergeURBWritesPass();
+    llvm::FunctionPass* createMergeURBWritesPass();
 
 }
 

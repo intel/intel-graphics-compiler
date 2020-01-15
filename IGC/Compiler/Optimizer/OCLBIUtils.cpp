@@ -67,12 +67,12 @@ Function* CCommand::getFunctionDeclaration(GenISAIntrinsic::ID id, ArrayRef<Type
     return GenISAIntrinsic::getDeclaration(m_pFunc->getParent(), id, Tys);
 }
 
-Function* CCommand::getFunctionDeclaration(Intrinsic::ID id, ArrayRef<Type*> Tys)
+Function* CCommand::getFunctionDeclaration(IGCLLVM::Intrinsic id, ArrayRef<Type*> Tys)
 {
     return Intrinsic::getDeclaration(m_pFunc->getParent(), id, Tys);
 }
 
-void CCommand::replaceCallInst(Intrinsic::ID intrinsicName, ArrayRef<Type*> Tys)
+void CCommand::replaceCallInst(IGCLLVM::Intrinsic intrinsicName, ArrayRef<Type*> Tys)
 {
     Function* func = getFunctionDeclaration(intrinsicName, Tys);
     Instruction* newCall = CallInst::Create(func, m_args, m_pCallInst->getName(), m_pCallInst);
@@ -315,7 +315,7 @@ Value* CImagesBI::CImagesUtils::traceImageOrSamplerArgument(CallInst* pCallInst,
             }
             else if (CallInst * callInst = dyn_cast<CallInst>(U))
             {
-                if (callInst->getCalledFunction()->getIntrinsicID() == Intrinsic::ID::memcpy)
+                if (callInst->getCalledFunction()->getIntrinsicID() == Intrinsic::memcpy)
                 {
                     if (auto * leaf = findArgument(findAlloca(callInst->getOperand(1)), depth))
                         return leaf;
@@ -1227,14 +1227,14 @@ class CSimpleIntrinMapping : public CCommand
     // id - ID of the intrinsic to be replaced by the call
     const GenISAIntrinsic::ID isaId;
 
-    const Intrinsic::ID id;
+    const IGCLLVM::Intrinsic id;
     // isOverloadable - true if the mapped intrinsic is over-loadable
     const bool isOverloadable;
 protected:
     void createIntrinsicType(const CallInst* pCI, ArrayRef<Type*> overloadTypes)
     {
         m_args.append(pCI->op_begin(), pCI->op_begin() + pCI->getNumArgOperands());
-        assert(!(id != Intrinsic::ID::num_intrinsics && isaId != GenISAIntrinsic::ID::num_genisa_intrinsics) &&
+        assert(!(id != Intrinsic::num_intrinsics && isaId != GenISAIntrinsic::ID::num_genisa_intrinsics) &&
             "Both intrinsic id's cannot be valid at the same time");
 
         // GenISA intrinsics ID start after llvm intrinsics
@@ -1249,13 +1249,13 @@ protected:
     }
 public:
     CSimpleIntrinMapping(GenISAIntrinsic::ID intrinsicId, bool isOverloadable)
-        : isaId(intrinsicId), id(Intrinsic::ID::num_intrinsics), isOverloadable(isOverloadable) {}
+        : isaId(intrinsicId), id(Intrinsic::num_intrinsics), isOverloadable(isOverloadable) {}
 
-    CSimpleIntrinMapping(Intrinsic::ID intrinsicId, bool isOverloadable)
+    CSimpleIntrinMapping(IGCLLVM::Intrinsic intrinsicId, bool isOverloadable)
         : isaId(GenISAIntrinsic::ID::num_genisa_intrinsics), id(intrinsicId), isOverloadable(isOverloadable)
     {}
 
-    static std::unique_ptr<CSimpleIntrinMapping> create(Intrinsic::ID intrinsicId, bool isOverloadable = true)
+    static std::unique_ptr<CSimpleIntrinMapping> create(IGCLLVM::Intrinsic intrinsicId, bool isOverloadable = true)
     {
         return std::unique_ptr<CSimpleIntrinMapping>(new CSimpleIntrinMapping(intrinsicId, isOverloadable));
     }
@@ -1289,7 +1289,7 @@ public:
             tys[0] = m_pCallInst->getCalledFunction()->getReturnType();
             tys[1] = m_pCallInst->getArgOperand(0)->getType();
             m_args.append(m_pCallInst->op_begin(), m_pCallInst->op_begin() + m_pCallInst->getNumArgOperands());
-            assert(!(id != Intrinsic::ID::num_intrinsics && isaId != GenISAIntrinsic::ID::num_genisa_intrinsics) &&
+            assert(!(id != Intrinsic::num_intrinsics && isaId != GenISAIntrinsic::ID::num_genisa_intrinsics) &&
                 "Both intrinsic id's cannot be valid at the same time");
             replaceGenISACallInst(isaId, llvm::ArrayRef<llvm::Type*>(tys));
             break;
@@ -1346,13 +1346,13 @@ class CWaveBallotIntrinsic : public CCommand
 private:
     // id - ID of the intrinsic to be replaced by the call
     const GenISAIntrinsic::ID isaId;
-    const Intrinsic::ID id;
+    const IGCLLVM::Intrinsic id;
 
 public:
     CWaveBallotIntrinsic(GenISAIntrinsic::ID intrinsicId)
-        : isaId(intrinsicId), id(Intrinsic::ID::num_intrinsics) {}
+        : isaId(intrinsicId), id(Intrinsic::num_intrinsics) {}
 
-    CWaveBallotIntrinsic(Intrinsic::ID intrinsicId, bool isOverloadable)
+    CWaveBallotIntrinsic(IGCLLVM::Intrinsic intrinsicId, bool isOverloadable)
         : isaId(GenISAIntrinsic::ID::num_genisa_intrinsics), id(intrinsicId) {}
 
     static std::unique_ptr<CWaveBallotIntrinsic> create(GenISAIntrinsic::ID intrinsicId)

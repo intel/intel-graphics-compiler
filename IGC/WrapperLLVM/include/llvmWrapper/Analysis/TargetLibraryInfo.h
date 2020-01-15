@@ -24,35 +24,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-#pragma once
+#ifndef IGCLLVM_ANALYSIS_TARGETLIBRARYINFO_H
+#define IGCLLVM_ANALYSIS_TARGETLIBRARYINFO_H
 
-#include "common/LLVMWarningsPush.hpp"
-#include <llvm/IR/InstVisitor.h>
-#include <llvm/IR/IRBuilder.h>
-#include <llvm/Pass.h>
-#include "common/LLVMWarningsPop.hpp"
+#include <llvm/Analysis/TargetLibraryInfo.h>
 
-namespace IGC
-{
-    class ScalarizerCodeGen : public llvm::FunctionPass, public llvm::InstVisitor<ScalarizerCodeGen>
-    {
-    public:
-        static char ID;
+#if LLVM_VERSION_MAJOR >= 10
+#define getTLI() getTLI(F)
+#endif
 
-        ScalarizerCodeGen();
-        ~ScalarizerCodeGen() {}
-
-        virtual llvm::StringRef getPassName() const
-        {
-            return "Scalarizer in Codegen";
-        }
-
-        virtual bool runOnFunction(llvm::Function& F);
-        void visitBinaryOperator(llvm::BinaryOperator& I);
-
-    private:
-        llvm::IRBuilder<>* m_builder;
-    };
-}
-
-
+#endif

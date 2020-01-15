@@ -29,6 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/Analysis/InlineCost.h"
 #include "llvmWrapper/IR/InstrTypes.h"
+#include "llvmWrapper/Support/Alignment.h"
 
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/DenseMap.h"
@@ -50,6 +51,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/LLVMWarningsPop.hpp"
 #include "common/Types.hpp"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
+
 
 namespace IGC {
 
@@ -618,7 +620,7 @@ namespace IGC {
             unsigned Align = getAlignment(RefLd);
 
             NewLd->setVolatile(RefLd->isVolatile());
-            NewLd->setAlignment(int_cast<unsigned int>(MinAlign(Align, Off)));
+            NewLd->setAlignment(MaybeAlign(int_cast<unsigned int>(MinAlign(Align, Off))));
             NewLd->setOrdering(RefLd->getOrdering());
             IGCLLVM::CopySyncScopeID(NewLd, RefLd);
         }
@@ -630,7 +632,7 @@ namespace IGC {
             unsigned Align = getAlignment(RefSt);
 
             NewSt->setVolatile(RefSt->isVolatile());
-            NewSt->setAlignment(int_cast<unsigned int>(MinAlign(Align, Off)));
+            NewSt->setAlignment(MaybeAlign(int_cast<unsigned int>(MinAlign(Align, Off))));
             NewSt->setOrdering(RefSt->getOrdering());
             IGCLLVM::CopySyncScopeID(NewSt, RefSt);
         }

@@ -49,6 +49,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvmWrapper/IR/IRBuilder.h"
 #include "llvmWrapper/IR/ValueHandle.h"
 #include "llvmWrapper/Transforms/Utils.h"
+#include "llvmWrapper/Support/Alignment.h"
 
 #include "llvm/Pass.h"
 #include "llvm/IR/LegacyPassManager.h"
@@ -60,6 +61,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Utils/Cloning.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/Support/CommandLine.h"
 #include "llvm/IR/DIBuilder.h"
 #include "common/LLVMWarningsPop.hpp"
 
@@ -506,7 +508,7 @@ namespace //Anonymous
             if (dest->getType() != sourceType->getPointerTo())
                 destPtr = _builder.CreatePointerCast(dest, sourceType->getPointerTo(), "casted_ptr");
 
-            _builder.CreateStore(source, destPtr)->setAlignment(align);
+            _builder.CreateStore(source, destPtr)->setAlignment(MaybeAlign(align));
             return _DL->getTypeAllocSize(sourceType);
         }
 
@@ -978,7 +980,7 @@ namespace //Anonymous
 
             auto allocaInst = new AllocaInst(expectedNdrangeTy, 0, "converted_ndrange", &(*_deviceExecCall->getCallerFunc()->getEntryBlock().getFirstInsertionPt()));
             //TODO: fix bug in later IGC passes
-            allocaInst->setAlignment(4);
+            allocaInst->setAlignment(MaybeAlign(4));
 
             auto newName = "__builtin_IB_copyNDRangeTondrange";
             llvm::Value* args[2] = { allocaInst, nDRange };
@@ -2284,7 +2286,7 @@ namespace //Anonymous
             block_descriptor_val = builder.CreateAlloca(_captureStructType, nullptr, ".block_struct");
             auto dl = getFunction()->getParent()->getDataLayout();
             auto blockStructAlign = getPrefStructAlignment(_captureStructType, &dl);
-            cast<AllocaInst>(block_descriptor_val)->setAlignment(blockStructAlign);
+            cast<AllocaInst>(block_descriptor_val)->setAlignment(MaybeAlign(blockStructAlign));
             //IRBuilder: store arguments to structure
             StoreInstBuilder storeBuilder(builder);
             for (unsigned argIdx = 0; argIdx < getCaptureIndicies().size(); ++argIdx)
@@ -2528,7 +2530,7 @@ namespace //Anonymous
         auto arrayType = llvm::ArrayType::get(type, arrSize);
         auto allocaInst = new AllocaInst(arrayType, 0, name, &(*_deviceExecCall->getCallerFunc()->getEntryBlock().getFirstInsertionPt()));
         //TODO: fix bug in later IGC passes
-        allocaInst->setAlignment(8);
+        allocaInst->setAlignment(MaybeAlign(8));
         return allocaInst;
     }
 

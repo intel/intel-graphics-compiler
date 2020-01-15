@@ -36,6 +36,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/IR/InstIterator.h>
 #include <llvm/Support/MathExtras.h>
 #include <llvm/Transforms/Utils/Local.h>
+
+#include <llvmWrapper/Support/Alignment.h>
+
 #include "common/LLVMWarningsPop.hpp"
 
 using namespace llvm;
@@ -125,7 +128,7 @@ namespace
         {
             if (isa<LoadInst>(m_inst))
             {
-                getLoad()->setAlignment(alignment);
+                getLoad()->setAlignment(MaybeAlign(alignment));
             }
             else
             {
@@ -229,7 +232,7 @@ namespace
         {
             if (isa<StoreInst>(m_inst))
             {
-                getStore()->setAlignment(alignment);
+                getStore()->setAlignment(MaybeAlign(alignment));
             }
         }
         Value* getValueOperand() const

@@ -36,6 +36,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/LLVMWarningsPush.hpp"
 
 #include "llvmWrapper/IR/Instructions.h"
+#include "llvmWrapper/Support/Alignment.h"
 
 #include <llvmWrapper/IR/Function.h>
 #include <llvm/IR/Instructions.h>
@@ -508,7 +509,7 @@ void StatelessToStatefull::visitLoadInst(LoadInst& I)
         Instruction* pPtrToInt = IntToPtrInst::Create(Instruction::IntToPtr, offset, pTy, "", &I);
         pPtrToInt->setDebugLoc(DL);
 
-        Instruction* pLoad = new LoadInst(pPtrToInt, "", I.isVolatile(), I.getAlignment(), I.getOrdering(), IGCLLVM::getSyncScopeID(&I), &I);
+        Instruction* pLoad = new LoadInst(pPtrToInt, "", I.isVolatile(), MaybeAlign(I.getAlignment()), I.getOrdering(), IGCLLVM::getSyncScopeID(&I), &I);
         pLoad->setDebugLoc(DL);
 
         PointerType* ptrType = dyn_cast<PointerType>(ptr->getType());
@@ -558,7 +559,7 @@ void StatelessToStatefull::visitStoreInst(StoreInst& I)
             Instruction* pPtrToInt = IntToPtrInst::Create(Instruction::IntToPtr, offset, pTy, "", &I);
             pPtrToInt->setDebugLoc(DL);
 
-            Instruction* pStore = new StoreInst(dataVal, pPtrToInt, I.isVolatile(), I.getAlignment(), I.getOrdering(), IGCLLVM::getSyncScopeID(&I), &I);
+            Instruction* pStore = new StoreInst(dataVal, pPtrToInt, I.isVolatile(), MaybeAlign(I.getAlignment()), I.getOrdering(), IGCLLVM::getSyncScopeID(&I), &I);
             pStore->setDebugLoc(DL);
 
             I.eraseFromParent();
