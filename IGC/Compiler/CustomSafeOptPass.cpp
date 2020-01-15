@@ -2125,6 +2125,40 @@ void GenSpecificPattern::visitTruncInst(llvm::TruncInst& I)
     }
 }
 
+#if LLVM_VERSION_MAJOR >= 10
+void GenSpecificPattern::visitFNeg(llvm::UnaryOperator& I)
+{
+    /*
+    from
+    %22 = fneg float %a
+    to
+    %22 = fptoui float %a to i32
+    %23 = xor i32 %22, 2147483648
+    %24 = uitofp i32 %23 to float
+    GEN does not support natively negation
+    */
+
+    IRBuilder<> builder(&I);
+
+    unsigned long bitSizeOfFloat = I.getOperand(0)->getType()->getPrimitiveSizeInBits();
+    unsigned long bitToChange = 1 << (bitSizeOfFloat - 1);
+
+    Value* convertFPtoUI = builder.CreateFPToUI(
+        I.getOperand(0),
+        builder.getIntNTy(bitSizeOfFloat));
+
+    Value* native_neg = builder.CreateXor(
+        convertFPtoUI,
+        builder.getIntN(bitSizeOfFloat, bitToChange));
+
+    Value* convertUItoFP = builder.CreateUIToFP(
+        native_neg,
+        I.getOperand(0)->getType());
+
+    I.replaceAllUsesWith(convertUItoFP);
+}
+#endif
+
 // Register pass to igc-opt
 #define PASS_FLAG3 "igc-const-prop"
 #define PASS_DESCRIPTION3 "Custom Const-prop Pass"

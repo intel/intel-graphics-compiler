@@ -118,6 +118,9 @@ IGC_IR_LLVM_INSTRUCTION(ExtractValue)
 IGC_IR_LLVM_INSTRUCTION(InsertValue)
 IGC_IR_LLVM_INSTRUCTION(Unreachable)
 IGC_IR_LLVM_INSTRUCTION(AddrSpaceCast)
+#if LLVM_VERSION_MAJOR >= 10
+IGC_IR_LLVM_INSTRUCTION(FNeg)
+#endif
 
 // Specific verification for LLVM Instructions
 //--------------------------------------------
