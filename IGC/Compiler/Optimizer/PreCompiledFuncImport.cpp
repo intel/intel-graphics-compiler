@@ -462,6 +462,13 @@ bool PreCompiledFuncImport::runOnModule(Module& M)
             Func->removeFnAttr(llvm::Attribute::NoInline);
             Func->removeFnAttr(llvm::Attribute::AlwaysInline);
 
+            if (m_enableSubroutineCallForEmulation &&
+                (IGC_IS_FLAG_ENABLED(ForceSubroutineForEmulation)))
+            {
+                // Disable inlining completely.
+                continue;
+            }
+
             // Don't want to subroutine functions that are called only once
             if (Func->getNumUses() == 1)
             {
