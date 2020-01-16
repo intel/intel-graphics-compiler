@@ -1238,7 +1238,7 @@ protected:
             "Both intrinsic id's cannot be valid at the same time");
 
         // GenISA intrinsics ID start after llvm intrinsics
-        if (isaId != GenISAIntrinsic::num_genisa_intrinsics && isaId > static_cast<int>(Intrinsic::ID::num_intrinsics))
+        if (isaId != GenISAIntrinsic::num_genisa_intrinsics && isaId > static_cast<int>(Intrinsic::num_intrinsics))
         {
             replaceGenISACallInst(isaId, this->isOverloadable ? overloadTypes : None);
         }

@@ -42,6 +42,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 #include <vector>
 #include <stdarg.h>
+#include <mutex>
 
 // Forward declarations
 struct D3D10DDIARG_SIGNATURE_ENTRY;

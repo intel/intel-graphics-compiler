@@ -78,9 +78,7 @@ namespace IGC
         void visitExtractElementInst(llvm::ExtractElementInst& I);
         void visitLdptr(llvm::CallInst* inst);
         void visitLoadInst(llvm::LoadInst& I);
-#if LLVM_VERSION_MAJOR >= 10
-        void visitFNeg(llvm::UnaryOperator& I);
-#endif
+
         //
         // IEEE Floating point arithmetic is not associative.  Any pattern
         // match that changes the order or paramters is unsafe.
@@ -168,6 +166,9 @@ namespace IGC
         void visitSDiv(llvm::BinaryOperator& I);
         void visitTruncInst(llvm::TruncInst& I);
         void visitBitCastInst(llvm::BitCastInst& I);
+#if LLVM_VERSION_MAJOR >= 10
+        void visitFNeg(llvm::UnaryOperator& I);
+#endif
 
         template <typename MaskType> void matchReverse(llvm::BinaryOperator& I);
         void createBitcastExtractInsertPattern(llvm::BinaryOperator& I,

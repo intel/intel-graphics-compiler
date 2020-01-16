@@ -5832,10 +5832,14 @@ Error ModuleSummaryIndexBitcodeReader::parseEntireSummary(unsigned ID) {
   }
   const uint64_t Version = Record[0];
   const bool IsOldProfileFormat = Version == 1;
-  if (Version < 1 || Version > ModuleSummaryIndex::BitcodeSummaryVersion)
+  if (Version < 1 || Version >
+      //ModuleSummaryIndex::BitcodeSummaryVersion
+      8)
     return error("Invalid summary version " + Twine(Version) +
                  ". Version should be in the range [1-" +
-                 Twine(ModuleSummaryIndex::BitcodeSummaryVersion) +
+                 Twine(
+                   //ModuleSummaryIndex::BitcodeSummaryVersion
+                   8) +
                  "].");
   Record.clear();
 
