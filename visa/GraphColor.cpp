@@ -91,7 +91,7 @@ const char* GraphColor::StackCallStr = "StackCall";
 
 static const unsigned IN_LOOP_REFERENCE_COUNT_FACTOR = 4;
 
-#define BANK_CONFLICT_HEURISTIC_INST   0.05
+#define BANK_CONFLICT_HEURISTIC_INST   0.04
 #define BANK_CONFLICT_HEURISTIC_REF_COUNT  0.25
 #define BANK_CONFLICT_HEURISTIC_LOOP_ITERATION 5
 #define BANK_CONFLICT_SEND_INST_CYCLE          60 //Some send 200, some 400 we choose the small one
