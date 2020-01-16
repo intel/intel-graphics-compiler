@@ -2546,6 +2546,27 @@ G4_BB *FlowGraph::findLabelBB(char *label, int &label_offset)
     return NULL;
 }
 
+G4_BB* FlowGraph::findLabelBB(
+    BB_LIST_ITER StartIter, BB_LIST_ITER EndIter, const char* Label)
+{
+    for (BB_LIST_ITER it = StartIter; it != EndIter; ++it)
+    {
+        G4_BB* bb = *it;
+        G4_INST* first = bb->empty() ? NULL : bb->front();
+
+        if (first && first->isLabel())
+        {
+            const char* currLabel = first->getLabelStr();
+            if (strcmp(Label, currLabel) == 0)
+            {
+                return bb;
+            }
+        }
+    }
+    return NULL;
+}
+
+
 /*
 *  Mark blocks that are nested in SIMD control flow.
 *  Only structured CF is handled here, SIMD BBs due to goto/join
@@ -3056,25 +3077,46 @@ void FlowGraph::findNestedDivergentBBs()
     // Control-Flow state
     //    Used for keeping the current state of control flow during
     //    traversing BBs in the layout order. Assuming the current
-    //    BB is 'currBB', this class shows whether currBB is in SCF
-    //    and/or in any divergent branch.
+    //    BB is 'currBB', this class shows whether currBB is in any
+    //    divergent branch/nested divergent branch.
     class CFState
     {
-        // The SCF nesting level for currBB
-        //    0: not in SCF; > 0: in SCF
-        int SCFNestingLevel;
-
-        // If a goto/break is encountered, the code will diverge from currBB to
-        // the joinBB (aka targetBB) of this goto/break.
+        // If currBB is the head of loop or currBB has a cf inst such as goto/break/if,
+        // the code will diverge from currBB to the joinBB.  The following cases shows where
+        // joinBB is:
+        //     case 1: cf inst = goto
+        //          <currBB>    [(p)] goto L
+        //                           ...
+        //          <joinBB>    L:
+        //     case 2: cf inst = if
+        //          <currBB>    if
+        //                          ...
+        //          <joinBB>    endif
+        //
+        //         Note that else does not increase nor decrease divergence level.
+        //     case 3:  cf inst = break
+        //          <currBB>   break
+        //                     ...
+        //                     [(p)] while
+        //          <joinBB>
+        //     case 4:
+        //          <currBB>  L:
+        //                     ....
+        //                    [(p)] while/goto L
+        //          <joinBB>
+        // Case 1/2/3 will increase divergence level, while case 4 does not.
+        //
+        // The following are used for tracking nested divergence
         //    LastDivergentBBId:  Id(LastDivergentBB).
-        //        LastDivergentBB is the fartherest joinBB of any goto/break so far.
-        //        That is, (currBB, LastDivergentBB) is a divergent code path. BOth
-        //        currBB and LastDivergentBB are not included in this divergent path.
+        //        LastDivergentBB is the fartherest joinBB of any goto/break/if/while
+        //        so far, as described above.  That is, [currBB, LastDivergentBB) is
+        //        a divergent code path. LastDivergentBB is not included in this
+        //        divergent path.
         //    LastNestedBBId:  Id(LastNestedBB).
-        //        LastNestedBB is the crrent fartherest join BB that is within
-        //        (currBB, LastDivergentBB). We have LastNestedBB if a goto/break is
-        //        encountered inside an already divergent code path.  As it happens
-        //        within a divergent path, it's called nested divergent (or just nested).
+        //        LastNestedBB is the current fartherest join BB that is inside
+        //        [currBB, LastDivergentBB). We have LastNestedBB if a goto/break/if (no
+        //        loop) is encountered inside an already divergent code path. It is also
+        //        called nested divergent (or just nested).
         //
         // The following is always true:
         //    LastDivergentBBId >= LastNestedBBId
@@ -3106,42 +3148,14 @@ void FlowGraph::findNestedDivergentBBs()
         }
 
     public:
-        CFState() : SCFNestingLevel(0), LastNestedBBId(-1), LastDivergentBBId(-1)
-        {}
+        CFState() : LastNestedBBId(-1), LastDivergentBBId(-1) {}
 
-        bool isInDivergentBranch() const
-        {
-            return (SCFNestingLevel > 0 || LastDivergentBBId > 0);
-        }
+        bool isInDivergentBranch() const { return (LastDivergentBBId > 0);  }
         bool isInNestedDivergentBranch() const { return LastNestedBBId > 0; }
 
-        void pushSCF()
-        {
-            ++SCFNestingLevel;
-        }
-        void popSCF()
-        {
-            --SCFNestingLevel;
-            assert(SCFNestingLevel >= 0 && "ICE: mismatch SCF constructs!");
-        }
-
-        //  1. Backward goto
-        //     targetBB:
-        //               ....
-        //               [(p)] goto targetBB
-        //     joinBB:
-        //  2. forward goto
-        //                      ( [p]) goto targetBB
-        //                       ......
-        //     targetBB(joinBB):
-        //  3. break
-        //             do
-        //             ...
-        //             [(p)] break
-        //             ...
-        //     joinBB:
-        //             while
-        void pushBackwardGoto(G4_BB* joinBB) { setLastDivergentBBId(joinBB); }
+        //  pushLoop: for case 4
+        //  pushJoin: for case 1/2/3
+        void pushLoop(G4_BB* joinBB) { setLastDivergentBBId(joinBB); }
         void pushJoin(G4_BB* joinBB) { incDivergenceLevel(joinBB); }
         void popJoinIfMatching(G4_BB* currBB)
         {
@@ -3168,9 +3182,9 @@ void FlowGraph::findNestedDivergentBBs()
     // and no indirect call,  a function will be analyzed only if all
     // its callers have been analyzed.
     //
-    // If no subroutine, sortedFuncTable is empty. Here keep all
-    // functions in a dynamic arrays first (it works with and without
-    // subroutines), then scan functions in topological order.
+    // If no subroutine, sortedFuncTable is empty. Here keep all functions
+    // in a vector first (it works with and without subroutines), then scan
+    // functions in topological order.
     struct StartEndIter {
         BB_LIST_ITER StartI;
         BB_LIST_ITER EndI;
@@ -3181,16 +3195,13 @@ void FlowGraph::findNestedDivergentBBs()
     };
     int numFuncs = (int)sortedFuncTable.size();
     std::vector<StartEndIter> allFuncs;
-    std::unordered_map<FuncInfo*, int> funcInfoIndex;
+    std::unordered_map<FuncInfo*, uint32_t> funcInfoIndex;
     if (numFuncs == 0)
     {
         numFuncs = 1;
         allFuncs.resize(1);
-
-        BB_LIST_ITER lastI = BBs.end();
-        --lastI;
         allFuncs[0].StartI = BBs.begin();
-        allFuncs[0].EndI = lastI;
+        allFuncs[0].EndI = BBs.end();
         allFuncs[0].isInDivergentBranch = false;
     }
     else
@@ -3198,20 +3209,24 @@ void FlowGraph::findNestedDivergentBBs()
         allFuncs.resize(numFuncs);
         for (int i = numFuncs; i > 0; --i)
         {
-            unsigned ix = (unsigned)(i - 1);
+            uint32_t ix = (uint32_t)(i - 1);
             FuncInfo* pFInfo = sortedFuncTable[ix];
             G4_BB* StartBB = pFInfo->getInitBB();
             G4_BB* EndBB = pFInfo->getExitBB();
-            allFuncs[numFuncs - i].StartI = std::find(BBs.begin(), BBs.end(), StartBB);
-            allFuncs[numFuncs - i].EndI = std::find(BBs.begin(), BBs.end(), EndBB);
-            allFuncs[numFuncs - i].isInDivergentBranch = false;
+            uint32_t ui = (uint32_t)(numFuncs - i);
+            allFuncs[ui].StartI = std::find(BBs.begin(), BBs.end(), StartBB);
+            auto nextI = std::find(BBs.begin(), BBs.end(), EndBB);
+            assert(nextI != BBs.end() && "ICE: subroutine's end BB not found!");
+            allFuncs[ui].EndI = (++nextI);
+            allFuncs[ui].isInDivergentBranch = false;
 
-            funcInfoIndex[pFInfo] = numFuncs - i;
+            funcInfoIndex[pFInfo] = ui;
         }
     }
 
     for (int i = 0; i < numFuncs; ++i)
     {
+        // each function: [IT, IE)
         BB_LIST_ITER& IT = allFuncs[i].StartI;
         BB_LIST_ITER& IE = allFuncs[i].EndI;
         if (IT == IE)
@@ -3219,18 +3234,23 @@ void FlowGraph::findNestedDivergentBBs()
             // Sanity check
             continue;
         }
-        G4_BB* EndBB = *IE;
 
         CFState cfs;
         if (allFuncs[i].isInDivergentBranch)
         {
-            // subroutine's divergent on entry. Mark (StartBB, EndBB) as divergent
+            // subroutine's divergent on entry. Mark [StartBB, EndBB) as divergent
+            auto prevI = IE;
+            --prevI;
+            G4_BB* EndBB = *prevI;
             cfs.pushJoin(EndBB);
         }
 
         for (; IT != IE; ++IT)
         {
             G4_BB* BB = *IT;
+
+            // This handles cases in which BB has endif/while/join as well as others
+            // so we don't need to explicitly check whether BB has endif/while/join, etc.
             cfs.popJoinIfMatching(BB);
 
             G4_INST* firstInst = BB->getFirstInst();
@@ -3240,29 +3260,22 @@ void FlowGraph::findNestedDivergentBBs()
                 continue;
             }
 
-            if (firstInst->opcode() == G4_endif || firstInst->opcode() == G4_while)
-            {
-                cfs.popSCF();
-            }
-
+            // Handle loop
             for (auto iter = BB->Preds.begin(), iterEnd = BB->Preds.end(); iter != iterEnd; ++iter)
             {
                 G4_BB* predBB = *iter;
                 G4_INST* lastInst = predBB->back();
-                if (lastInst->opcode() == G4_while &&
-                    lastInst->asCFInst()->getJip() == BB->getLabel())
+                if ( (lastInst->opcode() == G4_while &&
+                      lastInst->asCFInst()->getJip() == BB->getLabel()) ||
+                     (lastInst->opcode() == G4_goto && lastInst->asCFInst()->isBackward() &&
+                      lastInst->asCFInst()->getUip() == BB->getLabel()) )
                 {
-                    // BB is the start of a while loop
-                    cfs.pushSCF();
-                }
-                else if (lastInst->opcode() == G4_goto && lastInst->asCFInst()->isBackward() &&
-                    lastInst->asCFInst()->getUip() == BB->getLabel())
-                {
+                    // joinBB is the BB right after goto/while
                     BB_LIST_ITER predIter = std::find(BBs.begin(), BBs.end(), predBB);
                     ++predIter;
                     assert(predIter != BBs.end() && "ICE: missing join BB!");
                     G4_BB* joinBB = *predIter;
-                    cfs.pushBackwardGoto(joinBB);
+                    cfs.pushLoop(joinBB);
                 }
             }
 
@@ -3290,14 +3303,14 @@ void FlowGraph::findNestedDivergentBBs()
                 G4_BB* joinBB = BB->Succs.back();
                 cfs.pushJoin(joinBB);
             }
-
-            // No G4_do, and G4_while's head was handled already.
-            if (lastInst->opcode() == G4_if)
+            else if (lastInst->opcode() == G4_if)
             {
-                cfs.pushSCF();
+                G4_Label* labelInst = lastInst->asCFInst()->getUip();
+                G4_BB* joinBB = findLabelBB(IT, IE, labelInst->getLabel());
+                assert(joinBB && "ICE(vISA) : missing endif label!");
+                cfs.pushJoin(joinBB);
             }
-
-            if (lastInst->opcode() == G4_call)
+            else if (lastInst->opcode() == G4_call)
             {
                 // If this function is already in divergent branch, the callee
                 // must be in a divergent branch!.
@@ -3314,6 +3327,10 @@ void FlowGraph::findNestedDivergentBBs()
                 }
             }
         }
+
+        // Once all BBs are precessed, cfs should be clear
+        assert((!cfs.isInDivergentBranch()) &&
+               "ICE(vISA): there is an error in divergence tracking!");
     }
     return;
 }

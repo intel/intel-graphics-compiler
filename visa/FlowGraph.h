@@ -1231,6 +1231,12 @@ private:
     // Use normalized region descriptors for each source operand if possible.
     void normalizeRegionDescriptors();
     G4_BB *findLabelBB(char *label, int &label_offset);
+
+    // Find the BB that has the given label from the range [StartIter, EndIter).
+    G4_BB* findLabelBB(
+        BB_LIST_ITER StartIter,
+        BB_LIST_ITER EndIter,
+        const char* Label);
 };
 
 }

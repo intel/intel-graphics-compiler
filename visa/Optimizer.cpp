@@ -11956,12 +11956,17 @@ void Optimizer::replaceNoMaskWithAnyhWA()
         //
         if (dmaskVarUD == nullptr)
         {
-            // (W) mov (1|M0) r10.0<1>:ud sr0.2.0<0;1,0>:ud
+            // Using dmask:
+            //     (W) mov (1|M0) r10.0<1>:ud sr0.2<0;1,0>:ud
+            // or using vmaks
+            //     (W) mov (1|M0) r10.0<1>:ud sr0.3<0;1,0>:ud
+            bool useVMask = builder.getOption(vISA_VME);
+
             G4_Declare* dmaskDecl = builder.createTempVar(1, Type_UD, Any, "DMaskUD");
             dmaskVarUD = dmaskDecl->getRegVar();
             G4_SrcRegRegion* Src = builder.createSrcRegRegion(
                 Mod_src_undef, Direct, builder.phyregpool.getSr0Reg(),
-                0, 2, builder.getRegionScalar(), Type_UD);
+                0, (useVMask ? 3 : 2), builder.getRegionScalar(), Type_UD);
             G4_DstRegRegion* Dst = builder.createDstRegRegion(
                 Direct, dmaskVarUD, 0, 0, 1, Type_UD);
             G4_INST* dmaskInst = builder.createMov(1, Dst, Src, InstOpt_WriteEnable, false);
@@ -12276,7 +12281,6 @@ void Optimizer::replaceNoMaskWithAnyhWA()
                 // copyUsesTo() to achieve that, which is conservative.
                 I->copyUsesTo(I1, false);
             }
-
             return;
         }
 
@@ -12561,7 +12565,9 @@ void Optimizer::replaceNoMaskWithAnyhWA()
 
     if (dmaskVarUD && fg.getSR0Modified())
     {
-        // modification made. Make sure that if sr0.2 is updated, reread dmask
+        // modification made. Make sure that if sr0.2 is updated, reread dmask/vmask
+        // Note that vmask is updated automatically when sr0.2 is set.
+        bool useVMask = builder.getOption(vISA_VME);
         auto BI = fg.begin();
         auto BE = fg.end();
         ++BI; // skip entryBB
@@ -12582,7 +12588,7 @@ void Optimizer::replaceNoMaskWithAnyhWA()
                 {
                     G4_SrcRegRegion* Src = builder.createSrcRegRegion(
                         Mod_src_undef, Direct, builder.phyregpool.getSr0Reg(),
-                        0, 2, builder.getRegionScalar(), Type_UD);
+                        0, (useVMask ? 3 : 2), builder.getRegionScalar(), Type_UD);
                     G4_DstRegRegion* Dst = builder.createDstRegRegion(
                         Direct, dmaskVarUD, 0, 0, 1, Type_UD);
                     G4_INST* dmaskI = builder.createMov(1, Dst, Src, InstOpt_WriteEnable, false);
