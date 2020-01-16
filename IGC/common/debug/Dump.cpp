@@ -291,6 +291,18 @@ std::string DumpName::AbsolutePath(OutputFolderName folder) const
                 << std::dec
                 << std::setfill(' ');
         }
+
+        if (m_hash->perShaderPsoHash != 0)
+        {
+            ss << "_"
+                << "pspso"
+                << std::hex
+                << std::setfill('0')
+                << std::setw(sizeof(m_hash->perShaderPsoHash) * CHAR_BIT / 4)
+                << m_hash->perShaderPsoHash
+                << std::dec
+                << std::setfill(' ');
+        }
         underscore = true;
     }
     if(m_pass.hasValue())
