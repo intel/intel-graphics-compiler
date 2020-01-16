@@ -2132,9 +2132,9 @@ void GenSpecificPattern::visitFNeg(llvm::UnaryOperator& I)
     from
     %22 = fneg float %a
     to
-    %22 = fptoui float %a to i32
+    %22 = bitcast float %a to i32
     %23 = xor i32 %22, 2147483648
-    %24 = uitofp i32 %23 to float
+    %24 = bitcast i32 %23 to float
     GEN does not support natively negation
     */
 
@@ -2143,19 +2143,19 @@ void GenSpecificPattern::visitFNeg(llvm::UnaryOperator& I)
     unsigned long bitSizeOfFloat = I.getOperand(0)->getType()->getPrimitiveSizeInBits();
     unsigned long bitToChange = 1 << (bitSizeOfFloat - 1);
 
-    Value* convertFPtoUI = builder.CreateFPToUI(
+    Value* bitcastFPtoUI = builder.CreateBitCast(
         I.getOperand(0),
         builder.getIntNTy(bitSizeOfFloat));
 
     Value* native_neg = builder.CreateXor(
-        convertFPtoUI,
+        bitcastFPtoUI,
         builder.getIntN(bitSizeOfFloat, bitToChange));
 
-    Value* convertUItoFP = builder.CreateUIToFP(
+    Value* bitcastUItoFP = builder.CreateBitCast(
         native_neg,
         I.getOperand(0)->getType());
 
-    I.replaceAllUsesWith(convertUItoFP);
+    I.replaceAllUsesWith(bitcastUItoFP);
 }
 #endif
 
