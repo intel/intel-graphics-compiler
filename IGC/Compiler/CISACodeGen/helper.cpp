@@ -332,7 +332,7 @@ namespace IGC
     /// Tries to trace a resource pointer (texture/sampler/buffer) back to
     /// the pointer source. Also returns a vector of all instructions in the search path
     ///
-    Value* TracePointerSource(Value* resourcePtr, bool hasBranching, bool fillList,
+    Value* TracePointerSource(Value* resourcePtr, bool hasBranching, bool enablePhiLoops, bool fillList,
         std::vector<Value*>& instList, llvm::SmallSet<PHINode*, 8> & visitedPHIs)
     {
         Value* srcPtr = nullptr;
@@ -397,7 +397,7 @@ namespace IGC
                     // All phi paths must be trace-able and trace back to the same source
                     Value* phiVal = inst->getIncomingValue(i);
                     std::vector<Value*> splitList;
-                    Value* phiSrcPtr = TracePointerSource(phiVal, true, fillList, splitList, visitedPHIs);
+                    Value* phiSrcPtr = TracePointerSource(phiVal, true, enablePhiLoops, fillList, splitList, visitedPHIs);
                     if (phiSrcPtr == nullptr)
                     {
                         // Incoming value not trace-able, bail out.
@@ -406,7 +406,10 @@ namespace IGC
                     else if (isa<PHINode>(phiSrcPtr) && phiSrcPtr == baseValue)
                     {
                         // Found a loop in one of the phi paths. We can still trace as long as all the other paths match
-                        continue;
+                        if (enablePhiLoops)
+                            continue;
+                        else
+                            return nullptr;
                     }
                     else if (srcPtr == nullptr)
                     {
@@ -432,8 +435,8 @@ namespace IGC
                 }
                 // Trace both operands of the select instruction. Both have to be traced back to the same
                 // source pointer, otherwise we can't determine which one to use.
-                Value* selectSrc0 = TracePointerSource(inst->getOperand(1), true, fillList, instList, visitedPHIs);
-                Value* selectSrc1 = TracePointerSource(inst->getOperand(2), true, false, instList, visitedPHIs);
+                Value* selectSrc0 = TracePointerSource(inst->getOperand(1), true, enablePhiLoops, fillList, instList, visitedPHIs);
+                Value* selectSrc1 = TracePointerSource(inst->getOperand(2), true, enablePhiLoops, false, instList, visitedPHIs);
                 if (selectSrc0 && selectSrc1 && selectSrc0 == selectSrc1)
                 {
                     srcPtr = selectSrc0;
@@ -469,13 +472,13 @@ namespace IGC
     {
         std::vector<Value*> tempList; //unused
         llvm::SmallSet<PHINode*, 8> visitedPHIs;
-        return TracePointerSource(resourcePtr, false, false, tempList, visitedPHIs);
+        return TracePointerSource(resourcePtr, false, true, false, tempList, visitedPHIs);
     }
 
-    Value* TracePointerSource(Value* resourcePtr, bool hasBranching, bool fillList, std::vector<Value*>& instList)
+    Value* TracePointerSource(Value* resourcePtr, bool hasBranching, bool enablePhiLoops, bool fillList, std::vector<Value*>& instList)
     {
         llvm::SmallSet<PHINode*, 8> visitedPHIs;
-        return TracePointerSource(resourcePtr, hasBranching, fillList, instList, visitedPHIs);
+        return TracePointerSource(resourcePtr, hasBranching, enablePhiLoops, fillList, instList, visitedPHIs);
     }
 
     static BufferAccessType getDefaultAccessType(BufferType bufTy)

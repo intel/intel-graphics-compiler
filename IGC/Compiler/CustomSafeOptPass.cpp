@@ -3078,7 +3078,7 @@ bool IGCIndirectICBPropagaion::runOnFunction(Function& F)
 bool IGCIndirectICBPropagaion::isICBOffseted(llvm::LoadInst* inst, uint offset) {
     Value* ptrVal = inst->getPointerOperand();
     std::vector<Value*> srcInstList;
-    IGC::TracePointerSource(ptrVal, false, true, srcInstList);
+    IGC::TracePointerSource(ptrVal, false, true, true, srcInstList);
     if (srcInstList.size())
     {
         CallInst* inst = dyn_cast<CallInst>(srcInstList.back());
