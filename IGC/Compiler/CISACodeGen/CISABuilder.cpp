@@ -3866,12 +3866,7 @@ namespace IGC
         SaveOption(vISA_forceNoMaskToAnyhWA, true);
     }
     if (m_program->m_Platform->getWATable().Wa_1407528679 != 0 &&
-        IGC_GET_FLAG_VALUE(NoMaskToAnyhWA) == 8)
-    {
-        // Temporary for testing WA
-        SaveOption(vISA_noMaskToAnyhWA, (uint32_t)7);
-    }
-    else if (IGC_GET_FLAG_VALUE(NoMaskToAnyhWA) != 8)
+        IGC_GET_FLAG_VALUE(NoMaskToAnyhWA) > 0)
     {
         SaveOption(vISA_noMaskToAnyhWA, IGC_GET_FLAG_VALUE(NoMaskToAnyhWA));
     }

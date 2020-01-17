@@ -11850,8 +11850,8 @@ void Optimizer::clearSendDependencies()
                 // OK, too many live sends. Retire the earliest live send.
                 G4_INST* SI = LiveSends.front();
                 G4_INST* MovInst = emitRetiringMov(builder, BB, SI, CurI);
-                retireSends(LiveSends, MovInst);
-                assert(LiveSends.size() < MAX_SENDS);
+retireSends(LiveSends, MovInst);
+assert(LiveSends.size() < MAX_SENDS);
             }
 
             // If this is EOT and send queue is not full, then nothing to do.
@@ -11890,6 +11890,7 @@ void Optimizer::replaceNoMaskWithAnyhWA()
     // whenever sr0.2 is modified in the shader.
     G4_RegVar* dmaskVarUD = nullptr;
     std::vector<INST_LIST_ITER> NoMaskCandidates;
+    uint32_t simdsize = fg.getKernel()->getSimdSize();
 
     // Return condMod if a flag register is used. Since sel
     // does not update flag register, return null for sel.
@@ -11923,7 +11924,7 @@ void Optimizer::replaceNoMaskWithAnyhWA()
 #endif
         {
             if (Inst->isSend() && Inst->getPredicate() &&
-                Inst->getExecSize() > cfg.getKernel()->getSimdSize())
+                Inst->getExecSize() > simdsize)
             {
                 // fused send, already correctly predicated, skip
                 return false;
@@ -11931,6 +11932,54 @@ void Optimizer::replaceNoMaskWithAnyhWA()
             return true;
         }
         return false;
+    };
+
+    auto createFlagFromCmp = [&](G4_INST*& flagDefInst,
+        uint32_t flagBits, G4_BB* BB, INST_LIST_ITER& II)->G4_RegVar*
+    {
+        //
+        //  I0:                    (W) mov (1|M0)  flag:Ty,  0
+        //  I1:                        cmp (16|M0) (eq)flag  r0:uw  r0:uw
+        //  flagDefInst: (W&flag.anyh) mov flag:Ty 0xFFFFFFFF:Ty
+        //
+        G4_Type Ty = (flagBits > 16) ? Type_UD : Type_UW;
+        G4_Declare* flagDecl = builder.createTempFlag((Ty == Type_UW ? 1 : 2), "cmpFlag");
+        G4_RegVar* flagVar = flagDecl->getRegVar();
+        G4_DstRegRegion* flag = builder.createDstRegRegion(
+            Direct, flagVar, 0, 0, 1, Ty);
+        G4_INST* I0 = builder.createMov(1, flag,
+            builder.createImm(0, Ty), InstOpt_WriteEnable, false);
+        BB->insert(II, I0);
+
+        G4_SrcRegRegion* r0_0 = builder.createSrcRegRegion(
+            Mod_src_undef, Direct,
+            builder.getRealR0()->getRegVar(), 0, 0,
+            builder.getRegionScalar(), Type_UW);
+        G4_SrcRegRegion* r0_1 = builder.createSrcRegRegion(
+            Mod_src_undef, Direct,
+            builder.getRealR0()->getRegVar(), 0, 0,
+            builder.getRegionScalar(), Type_UW);
+        G4_CondMod* flagCM = builder.createCondMod(Mod_e, flagVar, 0);
+        G4_DstRegRegion* nullDst = builder.createNullDst(Type_UW);
+        G4_INST* I1 = builder.createInternalInst(
+            NULL, G4_cmp, flagCM, false, simdsize, nullDst, r0_0, r0_1, InstOpt_M0);
+        BB->insert(II, I1);
+
+        G4_Imm* allone = builder.createImm(0xFFFFFFFF, Ty);
+        G4_DstRegRegion* tFlag = builder.createDstRegRegion(
+            Direct, flagVar, 0, 0, 1, Ty);
+        flagDefInst = builder.createMov(1, tFlag, allone, InstOpt_WriteEnable, false);
+        G4_Predicate* tP = builder.createPredicate(
+            PredState_Plus, flagVar, 0,
+            (simdsize == 8 ? PRED_ANY8H : (simdsize == 16 ? PRED_ANY16H : PRED_ANY32H)));
+        flagDefInst->setPredicate(tP);
+        tP->setSameAsNoMask(true);
+        BB->insert(II, flagDefInst);
+
+        // update DefUse
+        flagDefInst->addDefUse(I0, Opnd_pred);
+        flagDefInst->addDefUse(I1, Opnd_pred);
+        return flagVar;
     };
 
     // For a BB, calculating its emask and storing the emask in a flag.
@@ -11943,6 +11992,11 @@ void Optimizer::replaceNoMaskWithAnyhWA()
     auto createFlagFromCE0 = [&](G4_INST*& flagDefInst,
         uint32_t flagBits, G4_BB* BB, INST_LIST_ITER& II) -> G4_RegVar*
     {
+        if ((builder.getuint32Option(vISA_noMaskToAnyhWA) & 0x8) != 0)
+        {
+            return createFlagFromCmp(flagDefInst, flagBits, BB, II);
+        }
+
         //
         // This create an inst definging flag:
         //    (w) and  flag:Ty  ce0.0<0;1,0>:Ty  dmaskVar:Ty
