@@ -942,8 +942,8 @@ static void verifyInstructionMove(
              {
                  REPORT_INSTRUCTION(options,EXEC_SIZE_1 == ((VISA_Exec_Size)(inst->execsize & 0xF)),
                          "Execution size for a flag copy mov instruction should be 1, as it is a scalar copy.");
-                 REPORT_INSTRUCTION(options,dstType == ISA_TYPE_UD || dstType == ISA_TYPE_UW || dstType == ISA_TYPE_UB,
-                         "dst operand type for a flag copy mov instruction should be UD/UW/UB.");
+                 REPORT_INSTRUCTION(options, IsIntType(dstType) && dstType != ISA_TYPE_Q && dstType != ISA_TYPE_UQ,
+                         "dst operand type for a flag copy mov instruction should be non-64-bit integer.");
                  REPORT_INSTRUCTION(options,CISATypeTable[dstType].typeSize >= CISATypeTable[src0Type].typeSize,
                          "dst operand type for a flag copy mov instruction should be "
                          "greater than or equal to the size of the src0 operand's type size.");

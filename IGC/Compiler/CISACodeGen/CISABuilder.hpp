@@ -131,7 +131,7 @@ namespace IGC
     public:
         void InitEncoder(bool canAbortOnSpill, bool hasStackCall);
         void InitBuildParams(llvm::SmallVector<const char*, 10> & params);
-        void InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbortOnSpill, bool hasStackCall);
+        void InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbortOnSpill, bool hasStackCall, bool enableVISA_IR);
         SEncoderState CopyEncoderState();
         void SetEncoderState(SEncoderState& newState);
 

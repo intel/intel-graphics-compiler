@@ -3527,10 +3527,10 @@ namespace IGC
 
     void CEncoder::SaveOption(vISAOptions option, bool val)
     {
-    OptionValue entry;
-    entry.type = OpType::ET_BOOL;
-    entry.vBool = val;
-    m_visaUserOptions.push_back(std::make_pair(option, entry));
+        OptionValue entry;
+        entry.type = OpType::ET_BOOL;
+        entry.vBool = val;
+        m_visaUserOptions.push_back(std::make_pair(option, entry));
     }
     void CEncoder::SaveOption(vISAOptions option, uint32_t val)
     {
@@ -3637,518 +3637,523 @@ namespace IGC
         }
     }
     }
-    void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbortOnSpill, bool hasStackCall)
+    void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbortOnSpill, bool hasStackCall, bool enableVISA_IR)
     {
-    CodeGenContext* context = m_program->GetContext();
-    bool KernelDebugEnable = false;
-    bool ForceNonCoherentStatelessBti = false;
-    if (context->type == ShaderType::OPENCL_SHADER)
-    {
-        auto ClContext = static_cast<OpenCLProgramContext*>(context);
-        KernelDebugEnable = ClContext->m_InternalOptions.KernelDebugEnable;
-        ForceNonCoherentStatelessBti = ClContext->m_ShouldUseNonCoherentStatelessBTI;
-
-        if (ClContext->m_InternalOptions.DoReRA &&
-            !ClContext->gtpin_init)
+        CodeGenContext* context = m_program->GetContext();
+        bool KernelDebugEnable = false;
+        bool ForceNonCoherentStatelessBti = false;
+        if (context->type == ShaderType::OPENCL_SHADER)
         {
-            SaveOption(vISA_ReRAPostSchedule, true);
-        }
-    }
-
-    bool EnableBarrierInstCounterBits = false;
-    if (context->type == ShaderType::HULL_SHADER)
-    {
-        EnableBarrierInstCounterBits = true;
-    }
-    bool preserveR0 = false;
-    if (context->type == ShaderType::PIXEL_SHADER)
-    {
-        preserveR0 = !static_cast<CPixelShader*>(m_program)->IsLastPhase();
-    }
-    bool isOptDisabled = context->getModuleMetaData()->compOpt.OptDisable;
-
-    // Set up options. This must be done before creating any variable/instructions
-    // since some of the options affect IR building.
-    if (IGC_IS_FLAG_ENABLED(ForceNoFP64bRegioning))
-    {
-        SaveOption(vISA_forceNoFP64bRegioning, true);
-    }
-
-    if (IGC_IS_FLAG_ENABLED(DumpCompilerStats))
-    {
-        SaveOption(vISA_DumpCompilerStats, true);
-    }
-
-    if (IGC_IS_FLAG_ENABLED(ForceFFIDOverwrite) && m_program->m_Platform->WaOverwriteFFID())
-    {
-        unsigned int ffid[unsigned(ShaderType::END)] = {
-            0,
-            context->isPOSH() ? FFID_VSR : FFID_VS,
-            FFID_HS,
-            FFID_DS,
-            FFID_GS,
-            FFID_PS,
-            FFID_GP,
-            FFID_GP
-        };
-        SaveOption(vISA_setFFID, ffid[unsigned(context->type)]);
-    }
-
-    if (context->type == ShaderType::OPENCL_SHADER && context->m_floatDenormMode32 == FLOAT_DENORM_RETAIN &&
-        context->m_floatDenormMode64 == FLOAT_DENORM_RETAIN)
-    {
-        SaveOption(vISA_hasRNEandDenorm, true);
-    }
-
-    // need to fold ret into the previous RTWrite/URBWrite/etc
-    if (context->type != ShaderType::OPENCL_SHADER && context->type != ShaderType::COMPUTE_SHADER)
-    {
-        {
-            SaveOption(vISA_foldEOTtoPrevSend, true);
-        }
-    }
-
-    if (m_program->m_DriverInfo->clearScratchWriteBeforeEOT() &&
-        (context->type == ShaderType::PIXEL_SHADER || context->type == ShaderType::OPENCL_SHADER))
-    {
-        SaveOption(vISA_clearScratchWritesBeforeEOT, true);
-    }
-
-    bool clearHDCWritesBeforeEOT = m_program->m_DriverInfo->UsesSparseAliasedResidency() &&
-        context->platform.WaInsertHDCFenceBeforeEOTWhenSparseAliasedResources();
-    clearHDCWritesBeforeEOT |= context->type == ShaderType::PIXEL_SHADER &&
-        context->platform.NeedsHDCFenceBeforeEOTInPixelShader();
-    clearHDCWritesBeforeEOT |= IGC_IS_FLAG_ENABLED(ForceMemoryFenceBeforeEOT);
-
-    if (clearHDCWritesBeforeEOT)
-    {
-        SaveOption(vISA_clearHDCWritesBeforeEOT, true);
-    }
-
-    // Disable multi-threaded latencies in the vISA scheduler when not in 3D
-    if (context->type == ShaderType::OPENCL_SHADER)
-    {
-        if (m_program->m_Platform->singleThreadBasedInstScheduling())
-
-        {
-            SaveOption(vISA_useMultiThreadedLatencies, false);
-        }
-    }
-
-    auto enableScheduler = [=]() {
-        // Check if preRA scheduler is disabled from input.
-        if (isOptDisabled)
-            return false;
-        if (context->type == ShaderType::OPENCL_SHADER) {
             auto ClContext = static_cast<OpenCLProgramContext*>(context);
-            if (!ClContext->m_InternalOptions.IntelEnablePreRAScheduling)
-                return false;
+            KernelDebugEnable = ClContext->m_InternalOptions.KernelDebugEnable;
+            ForceNonCoherentStatelessBti = ClContext->m_ShouldUseNonCoherentStatelessBTI;
+
+            if (ClContext->m_InternalOptions.DoReRA &&
+                !ClContext->gtpin_init)
+            {
+                SaveOption(vISA_ReRAPostSchedule, true);
+            }
         }
 
-        // Check reg-key or compiler input
-        if (IGC_IS_FLAG_ENABLED(ForceVISAPreSched) || context->getModuleMetaData()->csInfo.forcedVISAPreRAScheduler)
-            return true;
-
-        // API check.
-        if (IGC_IS_FLAG_ENABLED(EnableVISAPreSched) &&
-            m_program->m_DriverInfo->enableVISAPreRAScheduler())
-            return true;
-
-        return false;
-    };
-
-    if (enableScheduler())
-    {
-        SaveOption(vISA_preRA_Schedule, true);
-        if (uint32_t Val = IGC_GET_FLAG_VALUE(VISAPreSchedCtrl))
+        bool EnableBarrierInstCounterBits = false;
+        if (context->type == ShaderType::HULL_SHADER)
         {
-            SaveOption(vISA_preRA_ScheduleCtrl, Val);
+            EnableBarrierInstCounterBits = true;
+        }
+        bool preserveR0 = false;
+        if (context->type == ShaderType::PIXEL_SHADER)
+        {
+            preserveR0 = !static_cast<CPixelShader*>(m_program)->IsLastPhase();
+        }
+        bool isOptDisabled = context->getModuleMetaData()->compOpt.OptDisable;
+
+        // Set up options. This must be done before creating any variable/instructions
+        // since some of the options affect IR building.
+        if (IGC_IS_FLAG_ENABLED(ForceNoFP64bRegioning))
+        {
+            SaveOption(vISA_forceNoFP64bRegioning, true);
+        }
+
+        if (IGC_IS_FLAG_ENABLED(DumpCompilerStats))
+        {
+            SaveOption(vISA_DumpCompilerStats, true);
+        }
+
+        if (IGC_IS_FLAG_ENABLED(ForceFFIDOverwrite) && m_program->m_Platform->WaOverwriteFFID())
+        {
+            unsigned int ffid[unsigned(ShaderType::END)] = {
+                0,
+                context->isPOSH() ? FFID_VSR : FFID_VS,
+                FFID_HS,
+                FFID_DS,
+                FFID_GS,
+                FFID_PS,
+                FFID_GP,
+                FFID_GP
+            };
+            SaveOption(vISA_setFFID, ffid[unsigned(context->type)]);
+        }
+
+        if (context->type == ShaderType::OPENCL_SHADER && context->m_floatDenormMode32 == FLOAT_DENORM_RETAIN &&
+            context->m_floatDenormMode64 == FLOAT_DENORM_RETAIN)
+        {
+            SaveOption(vISA_hasRNEandDenorm, true);
+        }
+
+        // need to fold ret into the previous RTWrite/URBWrite/etc
+        if (context->type != ShaderType::OPENCL_SHADER && context->type != ShaderType::COMPUTE_SHADER)
+        {
+            {
+                SaveOption(vISA_foldEOTtoPrevSend, true);
+            }
+        }
+
+        if (m_program->m_DriverInfo->clearScratchWriteBeforeEOT() &&
+            (context->type == ShaderType::PIXEL_SHADER || context->type == ShaderType::OPENCL_SHADER))
+        {
+            SaveOption(vISA_clearScratchWritesBeforeEOT, true);
+        }
+
+        bool clearHDCWritesBeforeEOT = m_program->m_DriverInfo->UsesSparseAliasedResidency() &&
+            context->platform.WaInsertHDCFenceBeforeEOTWhenSparseAliasedResources();
+        clearHDCWritesBeforeEOT |= context->type == ShaderType::PIXEL_SHADER &&
+            context->platform.NeedsHDCFenceBeforeEOTInPixelShader();
+        clearHDCWritesBeforeEOT |= IGC_IS_FLAG_ENABLED(ForceMemoryFenceBeforeEOT);
+
+        if (clearHDCWritesBeforeEOT)
+        {
+            SaveOption(vISA_clearHDCWritesBeforeEOT, true);
+        }
+
+        // Disable multi-threaded latencies in the vISA scheduler when not in 3D
+        if (context->type == ShaderType::OPENCL_SHADER)
+        {
+            if (m_program->m_Platform->singleThreadBasedInstScheduling())
+
+            {
+                SaveOption(vISA_useMultiThreadedLatencies, false);
+            }
+        }
+
+        auto enableScheduler = [=]() {
+            // Check if preRA scheduler is disabled from input.
+            if (isOptDisabled)
+                return false;
+            if (context->type == ShaderType::OPENCL_SHADER) {
+                auto ClContext = static_cast<OpenCLProgramContext*>(context);
+                if (!ClContext->m_InternalOptions.IntelEnablePreRAScheduling)
+                    return false;
+            }
+
+            // Check reg-key or compiler input
+            if (IGC_IS_FLAG_ENABLED(ForceVISAPreSched) || context->getModuleMetaData()->csInfo.forcedVISAPreRAScheduler)
+                return true;
+
+            // API check.
+            if (IGC_IS_FLAG_ENABLED(EnableVISAPreSched) &&
+                m_program->m_DriverInfo->enableVISAPreRAScheduler())
+                return true;
+
+            return false;
+        };
+
+        if (enableScheduler())
+        {
+            SaveOption(vISA_preRA_Schedule, true);
+            if (uint32_t Val = IGC_GET_FLAG_VALUE(VISAPreSchedCtrl))
+            {
+                SaveOption(vISA_preRA_ScheduleCtrl, Val);
+            }
+            else
+            {
+                uint32_t V = m_program->m_DriverInfo->getVISAPreRASchedulerCtrl();
+                SaveOption(vISA_preRA_ScheduleCtrl, V);
+            }
+
+            if (uint32_t Val = IGC_GET_FLAG_VALUE(VISAPreSchedRPThreshold))
+            {
+                SaveOption(vISA_preRA_ScheduleRPThreshold, Val);
+            }
         }
         else
         {
-            uint32_t V = m_program->m_DriverInfo->getVISAPreRASchedulerCtrl();
-            SaveOption(vISA_preRA_ScheduleCtrl, V);
+            SaveOption(vISA_preRA_Schedule, false);
         }
 
-        if (uint32_t Val = IGC_GET_FLAG_VALUE(VISAPreSchedRPThreshold))
+        if (IGC_IS_FLAG_ENABLED(ReplaceIndirectCallWithJmpi))
         {
-            SaveOption(vISA_preRA_ScheduleRPThreshold, Val);
+            SaveOption(vISA_replaceIndirectCallWithJmpi, true);
         }
-    }
-    else
-    {
-        SaveOption(vISA_preRA_Schedule, false);
-    }
 
-    if (IGC_IS_FLAG_ENABLED(ReplaceIndirectCallWithJmpi))
-    {
-        SaveOption(vISA_replaceIndirectCallWithJmpi, true);
-    }
-
-    if (IGC_IS_FLAG_ENABLED(FastSpill))
-    {
-        SaveOption(vISA_FastSpill, true);
-    }
-
-    SaveOption(vISA_NoVerifyvISA, true);
-
-    if (context->m_instrTypes.hasDebugInfo)
-    {
-        SaveOption(vISA_GenerateDebugInfo, true);
-    }
-
-    if (canAbortOnSpill)
-    {
-        SaveOption(vISA_AbortOnSpill, true);
-        if (AvoidRetryOnSmallSpill())
+        if (IGC_IS_FLAG_ENABLED(FastSpill))
         {
-            // 2 means #spill/fill is roughly 1% of #inst
-            // ToDo: tune the threshold
+            SaveOption(vISA_FastSpill, true);
+        }
+
+#ifdef _DEBUG
+        // enable vISA verifier if we are generating vISA IR
+        SaveOption(vISA_NoVerifyvISA, !enableVISA_IR);
+#else
+        SaveOption(vISA_NoVerifyvISA, true);
+#endif
+
+        if (context->m_instrTypes.hasDebugInfo)
+        {
+            SaveOption(vISA_GenerateDebugInfo, true);
+        }
+
+        if (canAbortOnSpill)
+        {
+            SaveOption(vISA_AbortOnSpill, true);
+            if (AvoidRetryOnSmallSpill())
+            {
+                // 2 means #spill/fill is roughly 1% of #inst
+                // ToDo: tune the threshold
                 if (m_program->m_dispatchSize == SIMDMode::SIMD8)
                     SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD8_SpillThreshold) * 2);
 
                 else if (m_program->m_dispatchSize == SIMDMode::SIMD16)
                     SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD16_SpillThreshold) * 2);
+            }
         }
-    }
 
-    if ((context->type == ShaderType::OPENCL_SHADER || context->type == ShaderType::COMPUTE_SHADER) &&
+        if ((context->type == ShaderType::OPENCL_SHADER || context->type == ShaderType::COMPUTE_SHADER) &&
             VISAPlatform >= GENX_SKL && IGC_IS_FLAG_ENABLED(EnablePreemption) && !hasStackCall)
-    {
-        SaveOption(vISA_enablePreemption, true);
-    }
-
-    uint scratchSpaceSizeTemp = m_program->m_ScratchSpaceSize;
-
-    SaveOption(vISA_SpillMemOffset, scratchSpaceSizeTemp);
-
-    if (IGC_IS_FLAG_ENABLED(forceGlobalRA))
-    {
-        SaveOption(vISA_LocalRA, false);
-        SaveOption(vISA_LocalBankConflictReduction, false);
-    }
-
-    if (IGC_IS_FLAG_ENABLED(disableVarSplit))
-    {
-        SaveOption(vISA_LocalDeclareSplitInGlobalRA, false);
-    }
-
-    if (IGC_IS_FLAG_ENABLED(disableRemat))
-    {
-        SaveOption(vISA_NoRemat, true);
-    }
-
-    if (ForceNonCoherentStatelessBti || IGC_IS_FLAG_ENABLED(ForceNonCoherentStatelessBTI))
-    {
-        SaveOption(vISA_noncoherentStateless, true);
-    }
-
-    if (IGC_IS_FLAG_ENABLED(DisableIfCvt))
-    {
-        SaveOption(vISA_ifCvt, false);
-    }
-
-    if (IGC_IS_FLAG_DISABLED(EnableVISAStructurizer))
-    {
-        SaveOption(vISA_EnableStructurizer, false);
-    }
-    else if (IGC_GET_FLAG_VALUE(EnableVISAStructurizer) == FLAG_SCF_UCFOnly)
-    {
-        SaveOption(vISA_StructurizeCF, false);
-    }
-
-    if (IGC_IS_FLAG_DISABLED(EnableVISAJmpi))
-    {
-        SaveOption(vISA_EnableScalarJmp, false);
-    }
-
-    if (IGC_IS_FLAG_ENABLED(ForceNoMaskToAnyhWA)) {
-        SaveOption(vISA_forceNoMaskToAnyhWA, true);
-    }
-    if (m_program->m_Platform->getWATable().Wa_1407528679 != 0 &&
-        IGC_GET_FLAG_VALUE(NoMaskToAnyhWA) > 0)
-    {
-        SaveOption(vISA_noMaskToAnyhWA, IGC_GET_FLAG_VALUE(NoMaskToAnyhWA));
-    }
-
-    if (IGC_IS_FLAG_ENABLED(DisableCSEL))
-    {
-        SaveOption(vISA_enableCSEL, false);
-    }
-    if (IGC_IS_FLAG_ENABLED(DisableFlagOpt))
-    {
-        SaveOption(vISA_LocalFlagOpt, false);
-    }
-
-    if (IGC_IS_FLAG_ENABLED(EnableVISAOutput))
-    {
-        SaveOption(vISA_outputToFile, true);
-        m_enableVISAdump = true;
-    }
-    if (IGC_IS_FLAG_ENABLED(EnableVISABinary))
-    {
-        SaveOption(vISA_GenerateBinary, true);
-        m_enableVISAdump = true;
-    }
-    if (IGC_IS_FLAG_ENABLED(EnableVISADumpCommonISA))
-    {
-        SaveOption(vISA_DumpvISA, true);
-        SaveOption(vISA_GenerateISAASM, true);
-        m_enableVISAdump = true;
-    }
-    if (IGC_IS_FLAG_ENABLED(EnableVISANoSchedule))
-    {
-        SaveOption(vISA_LocalScheduling, false);
-    }
-    if (IGC_IS_FLAG_ENABLED(EnableVISANoBXMLEncoder))
-    {
-        SaveOption(vISA_BXMLEncoder, false);
-    }
-    if (IGC_IS_FLAG_ENABLED(DisableMixMode))
-    {
-        SaveOption(vISA_DisableMixMode, true);
-    }
-    if (IGC_IS_FLAG_ENABLED(ForceMixMode))
-    {
-        SaveOption(vISA_ForceMixMode, true);
-    }
-    if (IGC_IS_FLAG_ENABLED(DisableHFMath))
-    {
-        SaveOption(vISA_DisableHFMath, true);
-    }
-
-    if (IGC_IS_FLAG_ENABLED(disableIGASyntax))
-    {
-        SaveOption(vISA_dumpNewSyntax, false);
-    }
-    if (IGC_IS_FLAG_ENABLED(disableCompaction)
-        )
-    {
-        SaveOption(vISA_Compaction, false);
-    }
-
-    // In Vulkan and OGL buffer variable memory reads and writes within
-    // a single shader invocation must be processed in order.
-    if (m_program->m_DriverInfo->DisableDpSendReordering())
-    {
-        SaveOption(vISA_ReorderDPSendToDifferentBti, false);
-    }
-
-    if (m_program->m_DriverInfo->UseALTMode())
-    {
-        SaveOption(vISA_ChangeMoveType, false);
-    }
-
-    if (IGC_IS_FLAG_ENABLED(DisableSendS))
-    {
-        SaveOption(vISA_UseSends, false);
-    }
-    if (m_program->m_DriverInfo->AllowUnsafeHalf())
-    {
-        SaveOption(vISA_enableUnsafeCP_DF, true);
-    }
-
-    if (IGC_GET_FLAG_VALUE(UnifiedSendCycle) != 0)
-    {
-        SaveOption(vISA_UnifiedSendCycle, IGC_GET_FLAG_VALUE(UnifiedSendCycle));
-    }
-
-    if (IGC_GET_FLAG_VALUE(ReservedRegisterNum) != 0 && (IGC_GET_FLAG_VALUE(TotalGRFNum) != 0))
-    {
-        assert(0 && "ReservedRegisterNum and TotalGRFNum registry keys cannot be used at the same time");
-    }
-
-    if (IGC_GET_FLAG_VALUE(ReservedRegisterNum) != 0)
-    {
-        SaveOption(vISA_ReservedGRFNum, IGC_GET_FLAG_VALUE(ReservedRegisterNum));
-    }
-    if (IGC_GET_FLAG_VALUE(GRFNumToUse) > 0)
-    {
-        SaveOption(vISA_GRFNumToUse, IGC_GET_FLAG_VALUE(GRFNumToUse));
-    }
-
-    SaveOption(vISA_TotalGRFNum, context->getNumGRFPerThread());
-
-
-
-    if (IGC_IS_FLAG_ENABLED(SystemThreadEnable))
-    {
-        /* Some tools only use 32bits hash, to maintain compatibility
-        across lot of unknown tool chains doing Compare for only LowerPart
-        */
-        if (IGC_GET_FLAG_VALUE(ShaderDebugHashCode) == (DWORD)context->hash.getAsmHash())
         {
+            SaveOption(vISA_enablePreemption, true);
+        }
+
+        uint scratchSpaceSizeTemp = m_program->m_ScratchSpaceSize;
+
+        SaveOption(vISA_SpillMemOffset, scratchSpaceSizeTemp);
+
+        if (IGC_IS_FLAG_ENABLED(forceGlobalRA))
+        {
+            SaveOption(vISA_LocalRA, false);
+            SaveOption(vISA_LocalBankConflictReduction, false);
+        }
+
+        if (IGC_IS_FLAG_ENABLED(disableVarSplit))
+        {
+            SaveOption(vISA_LocalDeclareSplitInGlobalRA, false);
+        }
+
+        if (IGC_IS_FLAG_ENABLED(disableRemat))
+        {
+            SaveOption(vISA_NoRemat, true);
+        }
+
+        if (ForceNonCoherentStatelessBti || IGC_IS_FLAG_ENABLED(ForceNonCoherentStatelessBTI))
+        {
+            SaveOption(vISA_noncoherentStateless, true);
+        }
+
+        if (IGC_IS_FLAG_ENABLED(DisableIfCvt))
+        {
+            SaveOption(vISA_ifCvt, false);
+        }
+
+        if (IGC_IS_FLAG_DISABLED(EnableVISAStructurizer))
+        {
+            SaveOption(vISA_EnableStructurizer, false);
+        }
+        else if (IGC_GET_FLAG_VALUE(EnableVISAStructurizer) == FLAG_SCF_UCFOnly)
+        {
+            SaveOption(vISA_StructurizeCF, false);
+        }
+
+        if (IGC_IS_FLAG_DISABLED(EnableVISAJmpi))
+        {
+            SaveOption(vISA_EnableScalarJmp, false);
+        }
+
+        if (IGC_IS_FLAG_ENABLED(ForceNoMaskToAnyhWA)) {
+            SaveOption(vISA_forceNoMaskToAnyhWA, true);
+        }
+        if (m_program->m_Platform->getWATable().Wa_1407528679 != 0 &&
+            IGC_GET_FLAG_VALUE(NoMaskToAnyhWA) > 0)
+        {
+            SaveOption(vISA_noMaskToAnyhWA, IGC_GET_FLAG_VALUE(NoMaskToAnyhWA));
+        }
+
+        if (IGC_IS_FLAG_ENABLED(DisableCSEL))
+        {
+            SaveOption(vISA_enableCSEL, false);
+        }
+        if (IGC_IS_FLAG_ENABLED(DisableFlagOpt))
+        {
+            SaveOption(vISA_LocalFlagOpt, false);
+        }
+
+        if (IGC_IS_FLAG_ENABLED(EnableVISAOutput))
+        {
+            SaveOption(vISA_outputToFile, true);
+            m_enableVISAdump = true;
+        }
+        if (IGC_IS_FLAG_ENABLED(EnableVISABinary))
+        {
+            SaveOption(vISA_GenerateBinary, true);
+            m_enableVISAdump = true;
+        }
+        if (IGC_IS_FLAG_ENABLED(EnableVISADumpCommonISA))
+        {
+            SaveOption(vISA_DumpvISA, true);
+            SaveOption(vISA_GenerateISAASM, true);
+            m_enableVISAdump = true;
+        }
+        if (IGC_IS_FLAG_ENABLED(EnableVISANoSchedule))
+        {
+            SaveOption(vISA_LocalScheduling, false);
+        }
+        if (IGC_IS_FLAG_ENABLED(EnableVISANoBXMLEncoder))
+        {
+            SaveOption(vISA_BXMLEncoder, false);
+        }
+        if (IGC_IS_FLAG_ENABLED(DisableMixMode))
+        {
+            SaveOption(vISA_DisableMixMode, true);
+        }
+        if (IGC_IS_FLAG_ENABLED(ForceMixMode))
+        {
+            SaveOption(vISA_ForceMixMode, true);
+        }
+        if (IGC_IS_FLAG_ENABLED(DisableHFMath))
+        {
+            SaveOption(vISA_DisableHFMath, true);
+        }
+
+        if (IGC_IS_FLAG_ENABLED(disableIGASyntax))
+        {
+            SaveOption(vISA_dumpNewSyntax, false);
+        }
+        if (IGC_IS_FLAG_ENABLED(disableCompaction)
+            )
+        {
+            SaveOption(vISA_Compaction, false);
+        }
+
+        // In Vulkan and OGL buffer variable memory reads and writes within
+        // a single shader invocation must be processed in order.
+        if (m_program->m_DriverInfo->DisableDpSendReordering())
+        {
+            SaveOption(vISA_ReorderDPSendToDifferentBti, false);
+        }
+
+        if (m_program->m_DriverInfo->UseALTMode())
+        {
+            SaveOption(vISA_ChangeMoveType, false);
+        }
+
+        if (IGC_IS_FLAG_ENABLED(DisableSendS))
+        {
+            SaveOption(vISA_UseSends, false);
+        }
+        if (m_program->m_DriverInfo->AllowUnsafeHalf())
+        {
+            SaveOption(vISA_enableUnsafeCP_DF, true);
+        }
+
+        if (IGC_GET_FLAG_VALUE(UnifiedSendCycle) != 0)
+        {
+            SaveOption(vISA_UnifiedSendCycle, IGC_GET_FLAG_VALUE(UnifiedSendCycle));
+        }
+
+        if (IGC_GET_FLAG_VALUE(ReservedRegisterNum) != 0 && (IGC_GET_FLAG_VALUE(TotalGRFNum) != 0))
+        {
+            assert(0 && "ReservedRegisterNum and TotalGRFNum registry keys cannot be used at the same time");
+        }
+
+        if (IGC_GET_FLAG_VALUE(ReservedRegisterNum) != 0)
+        {
+            SaveOption(vISA_ReservedGRFNum, IGC_GET_FLAG_VALUE(ReservedRegisterNum));
+        }
+        if (IGC_GET_FLAG_VALUE(GRFNumToUse) > 0)
+        {
+            SaveOption(vISA_GRFNumToUse, IGC_GET_FLAG_VALUE(GRFNumToUse));
+        }
+
+        SaveOption(vISA_TotalGRFNum, context->getNumGRFPerThread());
+
+
+
+        if (IGC_IS_FLAG_ENABLED(SystemThreadEnable))
+        {
+            /* Some tools only use 32bits hash, to maintain compatibility
+            across lot of unknown tool chains doing Compare for only LowerPart
+            */
+            if (IGC_GET_FLAG_VALUE(ShaderDebugHashCode) == (DWORD)context->hash.getAsmHash())
+            {
+                SaveOption(vISA_setStartBreakPoint, true);
+            }
+        }
+        else if (KernelDebugEnable)
+        {
+            SaveOption(vISA_AddKernelID, true);
             SaveOption(vISA_setStartBreakPoint, true);
         }
-    }
-    else if (KernelDebugEnable)
-    {
-        SaveOption(vISA_AddKernelID, true);
-        SaveOption(vISA_setStartBreakPoint, true);
-    }
 
-    if (EnableBarrierInstCounterBits)
-    {
-        SaveOption(VISA_EnableBarrierInstCounterBits, true);
-    }
-    if (preserveR0)
-    {
-        SaveOption(vISA_ReserveR0, true);
-    }
-    if (IGC_IS_FLAG_ENABLED(InitializeRegistersEnable))
-    {
-        SaveOption(vISA_InitPayload, true);
-    }
-    if (IGC_IS_FLAG_ENABLED(DumpPayloadToScratch))
-    {
-        SaveOption(vISA_dumpPayload, true);
-    }
-    if (IGC_IS_FLAG_ENABLED(ExpandPlane))
-    {
-        SaveOption(vISA_expandPlane, true);
-    }
-    if (IGC_IS_FLAG_ENABLED(EnableBCR))
-    {
-        SaveOption(vISA_enableBCR, true);
-    }
-    if (IGC_IS_FLAG_ENABLED(forceSamplerHeader))
-    {
-        SaveOption(vISA_forceSamplerHeader, true);
-    }
-    if (IGC_IS_FLAG_ENABLED(EnableIGAEncoder))
-    {
-        SaveOption(vISA_IGAEncoder, true);
-    }
-    else
-    {
-        SaveOption(vISA_IGAEncoder, false);
-    }
-
-    if (IGC_IS_FLAG_ENABLED(SetA0toTdrForSendc))
-    {
-        SaveOption(vISA_setA0toTdrForSendc, true);
-    }
-
-    if (IGC_IS_FLAG_ENABLED(EnableIGASWSB))
-    {
-        SaveOption(vISA_EnableIGASWSB, true);
-    }
-
-    if (IGC_IS_FLAG_ENABLED(EnableForceDebugSWSB) ||
-        IGC_IS_FLAG_ENABLED(EnableSWSBInstStall) ||
-        IGC_IS_FLAG_ENABLED(EnableSWSBTokenBarrier))
-    {
-        if (IGC_IS_FLAG_ENABLED(EnableSWSBInstStall))
+        if (EnableBarrierInstCounterBits)
         {
-            SaveOption(vISA_SWSBInstStall, IGC_GET_FLAG_VALUE(EnableSWSBInstStall));
-            SaveOption(vISA_SWSBInstStallEnd, IGC_GET_FLAG_VALUE(EnableSWSBInstStallEnd));
+            SaveOption(VISA_EnableBarrierInstCounterBits, true);
+        }
+        if (preserveR0)
+        {
+            SaveOption(vISA_ReserveR0, true);
+        }
+        if (IGC_IS_FLAG_ENABLED(InitializeRegistersEnable))
+        {
+            SaveOption(vISA_InitPayload, true);
+        }
+        if (IGC_IS_FLAG_ENABLED(DumpPayloadToScratch))
+        {
+            SaveOption(vISA_dumpPayload, true);
+        }
+        if (IGC_IS_FLAG_ENABLED(ExpandPlane))
+        {
+            SaveOption(vISA_expandPlane, true);
+        }
+        if (IGC_IS_FLAG_ENABLED(EnableBCR))
+        {
+            SaveOption(vISA_enableBCR, true);
+        }
+        if (IGC_IS_FLAG_ENABLED(forceSamplerHeader))
+        {
+            SaveOption(vISA_forceSamplerHeader, true);
+        }
+        if (IGC_IS_FLAG_ENABLED(EnableIGAEncoder))
+        {
+            SaveOption(vISA_IGAEncoder, true);
+        }
+        else
+        {
+            SaveOption(vISA_IGAEncoder, false);
         }
 
-        if (IGC_IS_FLAG_ENABLED(EnableSWSBTokenBarrier))
+        if (IGC_IS_FLAG_ENABLED(SetA0toTdrForSendc))
         {
-            SaveOption(vISA_SWSBTokenBarrier, IGC_GET_FLAG_VALUE(EnableSWSBTokenBarrier));
+            SaveOption(vISA_setA0toTdrForSendc, true);
         }
 
-        if (IGC_IS_FLAG_ENABLED(EnableForceDebugSWSB))
+        if (IGC_IS_FLAG_ENABLED(EnableIGASWSB))
         {
-            SaveOption(vISA_forceDebugSWSB, true);
+            SaveOption(vISA_EnableIGASWSB, true);
         }
-        SaveOption(vISA_Compaction, false);
-    }
 
-    if (IGC_IS_FLAG_ENABLED(EnableGroupScheduleForBC))
-    {
-        SaveOption(vISA_EnableGroupScheduleForBC, true);
-    }
-
-
-    if (IGC_GET_FLAG_VALUE(SWSBTokenNum) != 0)
-    {
-        SaveOption(vISA_SWSBTokenNum, IGC_GET_FLAG_VALUE(SWSBTokenNum));
-    }
-
-    if (IGC_IS_FLAG_ENABLED(EnableAccSub))
-    {
-        SaveOption(vISA_accSubstitution, true);
-        uint32_t numAcc = IGC_GET_FLAG_VALUE(NumGeneralAcc);
-        assert(numAcc >= 0 && numAcc <= 8 && "number of general acc should be [1-8] if set");
-        if (numAcc > 0)
+        if (IGC_IS_FLAG_ENABLED(EnableForceDebugSWSB) ||
+            IGC_IS_FLAG_ENABLED(EnableSWSBInstStall) ||
+            IGC_IS_FLAG_ENABLED(EnableSWSBTokenBarrier))
         {
-            SaveOption(vISA_numGeneralAcc, numAcc);
+            if (IGC_IS_FLAG_ENABLED(EnableSWSBInstStall))
+            {
+                SaveOption(vISA_SWSBInstStall, IGC_GET_FLAG_VALUE(EnableSWSBInstStall));
+                SaveOption(vISA_SWSBInstStallEnd, IGC_GET_FLAG_VALUE(EnableSWSBInstStallEnd));
+            }
+
+            if (IGC_IS_FLAG_ENABLED(EnableSWSBTokenBarrier))
+            {
+                SaveOption(vISA_SWSBTokenBarrier, IGC_GET_FLAG_VALUE(EnableSWSBTokenBarrier));
+            }
+
+            if (IGC_IS_FLAG_ENABLED(EnableForceDebugSWSB))
+            {
+                SaveOption(vISA_forceDebugSWSB, true);
+            }
+            SaveOption(vISA_Compaction, false);
         }
-    }
-    else
-    {
-        SaveOption(vISA_accSubstitution, false);
-    }
 
-    if (IGC_IS_FLAG_ENABLED(EnableNoDD))
-    {
-        SaveOption(vISA_EnableNoDD, true);
-    }
+        if (IGC_IS_FLAG_ENABLED(EnableGroupScheduleForBC))
+        {
+            SaveOption(vISA_EnableGroupScheduleForBC, true);
+        }
 
-    if (IGC_IS_FLAG_ENABLED(GlobalSendVarSplit))
-    {
-        SaveOption(vISA_GlobalSendVarSplit, true);
-    }
 
-    if (m_program->m_Platform->canFuseTypedWrite())
-    {
-        SaveOption(vISA_FuseTypedWrites, true);
-    }
+        if (IGC_GET_FLAG_VALUE(SWSBTokenNum) != 0)
+        {
+            SaveOption(vISA_SWSBTokenNum, IGC_GET_FLAG_VALUE(SWSBTokenNum));
+        }
 
-    if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable) && IGC_IS_FLAG_ENABLED(InterleaveSourceShader))
-    {
-        SaveOption(vISA_EmitLocation, true);
-    }
+        if (IGC_IS_FLAG_ENABLED(EnableAccSub))
+        {
+            SaveOption(vISA_accSubstitution, true);
+            uint32_t numAcc = IGC_GET_FLAG_VALUE(NumGeneralAcc);
+            assert(numAcc >= 0 && numAcc <= 8 && "number of general acc should be [1-8] if set");
+            if (numAcc > 0)
+            {
+                SaveOption(vISA_numGeneralAcc, numAcc);
+            }
+        }
+        else
+        {
+            SaveOption(vISA_accSubstitution, false);
+        }
 
-    if (context->type == ShaderType::PIXEL_SHADER && static_cast<CPixelShader*>(m_program)->NeedVMask())
-    {
-        SaveOption(vISA_VME, true);
-    }
+        if (IGC_IS_FLAG_ENABLED(EnableNoDD))
+        {
+            SaveOption(vISA_EnableNoDD, true);
+        }
 
-    // Enable SendFusion for SIMD8
-    // TODO: Re-enable SendFusion when VMask is enabled. The hardware should support this, but
-    //  more investigation needs to be done on whether simply replacing sr0.2 with sr0.3 is enough.
-    if (IGC_IS_FLAG_ENABLED(EnableSendFusion) &&
-        !(context->type == ShaderType::PIXEL_SHADER && static_cast<CPixelShader*>(m_program)->NeedVMask()) &&
-        m_program->GetContext()->platform.supportSplitSend() &&
-        m_program->m_dispatchSize == SIMDMode::SIMD8 &&
-        (IGC_GET_FLAG_VALUE(EnableSendFusion) == FLAG_LEVEL_2 ||   // 2: force send fusion
-            context->m_DriverInfo.AllowSendFusion()))
-    {
-        SaveOption(vISA_EnableSendFusion, true);
-        if (IGC_IS_FLAG_ENABLED(EnableAtomicFusion) &&
+        if (IGC_IS_FLAG_ENABLED(GlobalSendVarSplit))
+        {
+            SaveOption(vISA_GlobalSendVarSplit, true);
+        }
+
+        if (m_program->m_Platform->canFuseTypedWrite())
+        {
+            SaveOption(vISA_FuseTypedWrites, true);
+        }
+
+        if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable) && IGC_IS_FLAG_ENABLED(InterleaveSourceShader))
+        {
+            SaveOption(vISA_EmitLocation, true);
+        }
+
+        if (context->type == ShaderType::PIXEL_SHADER && static_cast<CPixelShader*>(m_program)->NeedVMask())
+        {
+            SaveOption(vISA_VME, true);
+        }
+
+        // Enable SendFusion for SIMD8
+        // TODO: Re-enable SendFusion when VMask is enabled. The hardware should support this, but
+        //  more investigation needs to be done on whether simply replacing sr0.2 with sr0.3 is enough.
+        if (IGC_IS_FLAG_ENABLED(EnableSendFusion) &&
+            !(context->type == ShaderType::PIXEL_SHADER && static_cast<CPixelShader*>(m_program)->NeedVMask()) &&
+            m_program->GetContext()->platform.supportSplitSend() &&
+            m_program->m_dispatchSize == SIMDMode::SIMD8 &&
+            (IGC_GET_FLAG_VALUE(EnableSendFusion) == FLAG_LEVEL_2 ||   // 2: force send fusion
+                context->m_DriverInfo.AllowSendFusion()))
+        {
+            SaveOption(vISA_EnableSendFusion, true);
+            if (IGC_IS_FLAG_ENABLED(EnableAtomicFusion) &&
+                context->type == ShaderType::OPENCL_SHADER)
+            {
+                SaveOption(vISA_EnableAtomicFusion, true);
+            }
+        }
+
+        if (context->getModuleMetaData()->compOpt.FastRelaxedMath ||
+            context->getModuleMetaData()->compOpt.UnsafeMathOptimizations)
+        {
+            SaveOption(vISA_unsafeMath, true);
+        }
+
+        // With statelessToStatefull on, it is possible that two different BTI messages
+        // (two kernel arguments) might refer to the same memory. To be safe, turn off
+        // visa DPSend reordering.
+        if (IGC_IS_FLAG_ENABLED(EnableStatelessToStatefull) &&
             context->type == ShaderType::OPENCL_SHADER)
         {
-            SaveOption(vISA_EnableAtomicFusion, true);
+            SaveOption(vISA_ReorderDPSendToDifferentBti, false);
         }
-    }
 
-    if (context->getModuleMetaData()->compOpt.FastRelaxedMath ||
-        context->getModuleMetaData()->compOpt.UnsafeMathOptimizations)
-    {
-        SaveOption(vISA_unsafeMath, true);
-    }
+        if (m_program->m_Platform->alignBindlessSampler())
+        {
+            SaveOption(vISA_alignBindlessSampler, true);
+        }
 
-    // With statelessToStatefull on, it is possible that two different BTI messages
-    // (two kernel arguments) might refer to the same memory. To be safe, turn off
-    // visa DPSend reordering.
-    if (IGC_IS_FLAG_ENABLED(EnableStatelessToStatefull) &&
-        context->type == ShaderType::OPENCL_SHADER)
-    {
-        SaveOption(vISA_ReorderDPSendToDifferentBti, false);
-    }
-
-    if (m_program->m_Platform->alignBindlessSampler())
-    {
-        SaveOption(vISA_alignBindlessSampler, true);
-    }
-
-    if (m_program->m_Platform->getWATable().Wa_14010017096 != 0)
-    {
-        SaveOption(vISA_clearAccBeforeEOT, true);
-    }
+        if (m_program->m_Platform->getWATable().Wa_14010017096 != 0)
+        {
+            SaveOption(vISA_clearAccBeforeEOT, true);
+        }
     }
 
     void CEncoder::InitEncoder(bool canAbortOnSpill, bool hasStackCall)
@@ -4182,7 +4187,7 @@ namespace IGC
         auto builderOpt = (enableVISADump || m_hasInlineAsm) ? VISA_BUILDER_BOTH : VISA_BUILDER_GEN;
         V(CreateVISABuilder(vbuilder, builderMode, builderOpt, VISAPlatform, params.size(), params.data(), &m_WaTable));
 
-        InitVISABuilderOptions(VISAPlatform, canAbortOnSpill, hasStackCall);
+        InitVISABuilderOptions(VISAPlatform, canAbortOnSpill, hasStackCall, builderOpt == VISA_BUILDER_BOTH);
 
         // Pass all build options to builder
         SetBuilderOptions(vbuilder);
