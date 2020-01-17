@@ -680,7 +680,8 @@ void BinaryEncodingIGA::DoAll()
                 flagReg = getIGAFlagReg(inst);
                 pred = getIGAPredication(inst->getPredicate());
             }
-            if (opSpec->supportsFlagModifier())
+            if (opSpec->supportsFlagModifier() ||
+                (inst->getCondMod() != nullptr && inst->getCondMod()->getMod() != G4_CondModifier::Mod_cond_undef))
             {
                 flagReg = getIGAFlagReg(inst);
                 condModifier = getIGAFlagModifier(inst);
