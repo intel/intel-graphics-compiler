@@ -534,7 +534,7 @@ void VectorPreProcess::createSplitVectorTypes(
     uint32_t* SVCounts,
     uint32_t& Len)
 {
-    uint32_t ebytes = ETy->getPrimitiveSizeInBits() / 8;
+    uint32_t ebytes = (unsigned int)ETy->getPrimitiveSizeInBits() / 8;
     if (ETy->isPointerTy())
     {
         ebytes = m_DL->getPointerTypeSize(ETy);
@@ -659,7 +659,7 @@ bool VectorPreProcess::splitStore(
             if (ETy->getPrimitiveSizeInBits() > tys[0]->getScalarSizeInBits())
             {
                 std::vector<Value*> splitScalars;
-                const uint32_t vectorSize = ETy->getPrimitiveSizeInBits() / tys[0]->getScalarSizeInBits();
+                const uint32_t vectorSize = (unsigned int)ETy->getPrimitiveSizeInBits() / tys[0]->getScalarSizeInBits();
                 Type* splitType = llvm::VectorType::get(tys[0], vectorSize);
                 for (uint32_t i = 0; i < nelts; i++)
                 {
@@ -823,7 +823,7 @@ bool VectorPreProcess::splitLoad(
     {
         if (svals[0]->getType()->getPrimitiveSizeInBits() < ETy->getPrimitiveSizeInBits())
         {
-            uint32_t scalarsPerElement = ETy->getPrimitiveSizeInBits() / svals[0]->getType()->getPrimitiveSizeInBits();
+            uint32_t scalarsPerElement = (unsigned int)ETy->getPrimitiveSizeInBits() / (unsigned int)svals[0]->getType()->getPrimitiveSizeInBits();
             assert(svals.size() % scalarsPerElement == 0 && scalarsPerElement > 1);
             ValVector mergedScalars;
             IRBuilder<> builder(LI->getParent());

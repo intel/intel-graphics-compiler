@@ -680,7 +680,7 @@ void Legalization::visitBitCastInst(llvm::BitCastInst& I)
             !pX->getType()->isIntegerTy(32))
             return;
 
-        uint numElt = pX->getType()->getPrimitiveSizeInBits() / pEltTy->getPrimitiveSizeInBits();
+        uint numElt = (unsigned int)pX->getType()->getPrimitiveSizeInBits() / (unsigned int)pEltTy->getPrimitiveSizeInBits();
         auto* pBCType = VectorType::get(pEltTy, numElt);
 
         SmallVector<uint32_t, 4> maskVals;
@@ -2070,7 +2070,7 @@ void GenOptLegalizer::visitStoreInst(StoreInst& I) {
 
                 // Convert i32 to <4 x i8>
                 Type* SrcTy = SV->getOperand(0)->getType();
-                unsigned numElements = SrcTy->getPrimitiveSizeInBits() / 8;
+                unsigned numElements = (unsigned int)SrcTy->getPrimitiveSizeInBits() / 8;
                 Type* NewVecTy = VectorType::get(m_Builder->getInt8Ty(), numElements);
                 Value* NewVec = m_Builder->CreateBitCast(SV->getOperand(0), NewVecTy);
                 // Create shufflevector to select elements for <3 x i8>

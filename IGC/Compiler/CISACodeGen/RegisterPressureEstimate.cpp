@@ -491,7 +491,7 @@ namespace IGC
                 for (unsigned number = Seg.Begin; number < Seg.End; number++)
                 {
                     Value* V = I->first;
-                    m_pRegisterPressureByInstruction[number] = m_pRegisterPressureByInstruction[number] + V->getType()->getPrimitiveSizeInBits() / 8;
+                    m_pRegisterPressureByInstruction[number] = m_pRegisterPressureByInstruction[number] + (unsigned int)V->getType()->getPrimitiveSizeInBits() / 8;
                 }
             }
         }
@@ -514,7 +514,7 @@ namespace IGC
                 if (I->second->contains(N))
                 {
                     Value* V = I->first;
-                    Presssure += V->getType()->getPrimitiveSizeInBits() / 8;
+                    Presssure += (unsigned int)V->getType()->getPrimitiveSizeInBits() / 8;
                 }
             }
 

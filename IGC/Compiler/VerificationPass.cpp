@@ -284,7 +284,7 @@ bool VerificationPass::verifyType(Type* type, Value* val)
 
     if (type->isFloatingPointTy())
     {
-        unsigned int typeSize = type->getPrimitiveSizeInBits();
+        unsigned int typeSize = (unsigned int)type->getPrimitiveSizeInBits();
         if (!m_IGC_IR_spec.FPTypeSizes.count(typeSize))
         {
             m_messagesToDump << "Unexpected FP type found in value:\n";

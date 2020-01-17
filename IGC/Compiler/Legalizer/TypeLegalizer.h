@@ -369,7 +369,7 @@ namespace IGC {
             /// getIntBitsTy() - Return an integer type with the same bits of the given
             /// type.
             IntegerType* getIntBitsTy(Type* Ty) const {
-                return getIntNTy(Ty->getPrimitiveSizeInBits());
+                return getIntNTy((unsigned int)Ty->getPrimitiveSizeInBits());
             }
 
             /// getAlignment() - Return the alignment of the memory access being
@@ -538,7 +538,7 @@ namespace IGC {
                 auto VI = Vals.begin(), VE = Vals.end();
 
                 Value* V = castToInt(*VI);
-                unsigned SrcWidth = V->getType()->getPrimitiveSizeInBits();
+                unsigned SrcWidth = (unsigned int)V->getType()->getPrimitiveSizeInBits();
                 unsigned SrcOff = 0;
 
                 unsigned Part = 0;
@@ -552,7 +552,7 @@ namespace IGC {
                             assert(VI != VE);
 
                             V = castToInt(*VI);
-                            SrcWidth = V->getType()->getPrimitiveSizeInBits();
+                            SrcWidth = (unsigned int)V->getType()->getPrimitiveSizeInBits();
                             SrcOff = 0;
                         }
 

@@ -3969,7 +3969,7 @@ void EmitPass::emitLdInstruction(llvm::Instruction* inst)
 static int GetOffsetIncrement(const DataLayout* m_DL, SIMDMode simdMode, Value* val)
 {
     int inc;
-    inc = int_cast<int>(numLanes(simdMode) * m_DL->getTypeAllocSize(val->getType()));
+    inc = int_cast<int>(numLanes(simdMode) * (unsigned int)m_DL->getTypeAllocSize(val->getType()));
     if (val->getType()->isHalfTy() && simdMode == SIMDMode::SIMD8)
     {
         //Since alloc size for half float is = 2 and if we have simd8 mode we'll get offset = 16
@@ -8897,7 +8897,7 @@ void EmitPass::emitLoad3DInner(LdRawIntrinsic* inst, ResourceDescriptor& resourc
         uint label = 0;
         CVariable* flag = nullptr;
         bool needLoop = ResourceLoopHeader(resource, flag, label);
-        uint sizeInBits = inst->getType()->getPrimitiveSizeInBits();
+        uint sizeInBits = (unsigned int)inst->getType()->getPrimitiveSizeInBits();
         assert((sizeInBits == 8 ||
             sizeInBits == 16 ||
             sizeInBits == 32 ||
@@ -9869,7 +9869,7 @@ void EmitPass::emitStore3DInner(Value* pllValToStore, Value* pllDstPtr, Value* p
 
     ResourceDescriptor resource = GetResourceVariable(pllDstPtr);
 
-    uint sizeInBits = pllValToStore->getType()->getPrimitiveSizeInBits();
+    uint sizeInBits = (unsigned int)pllValToStore->getType()->getPrimitiveSizeInBits();
     if (0 == sizeInBits && pllValToStore->getType()->isPointerTy()){
         sizeInBits = m_currShader->GetContext()->getRegisterPointerSizeInBits(pllValToStore->getType()->getPointerAddressSpace());
     }
@@ -10049,7 +10049,7 @@ void EmitPass::emitInsert(llvm::Instruction* inst)
         const uint vectorEntrySimdWidth = pInstVar->IsUniform() ?
             1 : numLanes(m_currShader->m_SIMDSize);
 
-        const uint vecTypeSize = pVecType->getVectorElementType()->getPrimitiveSizeInBits() / 8;
+        const uint vecTypeSize = (unsigned int)pVecType->getVectorElementType()->getPrimitiveSizeInBits() / 8;
 
         const uint offset = vectorEntrySimdWidth * vecTypeSize;
 
@@ -13958,8 +13958,8 @@ void EmitPass::emitVectorBitCast(llvm::BitCastInst* BCI)
     }
 
     uint32_t width = numLanes(m_currShader->m_SIMDSize);
-    uint32_t dstEltBytes = int_cast<uint32_t>(dstEltTy->getPrimitiveSizeInBits() / 8);
-    uint32_t srcEltBytes = int_cast<uint32_t>(srcEltTy->getPrimitiveSizeInBits() / 8);
+    uint32_t dstEltBytes = int_cast<uint32_t>((unsigned int)dstEltTy->getPrimitiveSizeInBits() / 8);
+    uint32_t srcEltBytes = int_cast<uint32_t>((unsigned int)srcEltTy->getPrimitiveSizeInBits() / 8);
     bool srcUniform = src->IsUniform();
     bool dstUniform = m_destination->IsUniform();
     if (srcUniform && dstUniform &&

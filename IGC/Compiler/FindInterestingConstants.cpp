@@ -245,7 +245,7 @@ bool FindInterestingConstants::getConstantAddress(llvm::LoadInst& I, unsigned& b
     {
         return false;
     }
-    size_in_bytes = I.getType()->getPrimitiveSizeInBits() / 8;
+    size_in_bytes = (unsigned int)I.getType()->getPrimitiveSizeInBits() / 8;
     return true;
 }
 
@@ -274,7 +274,7 @@ void FindInterestingConstants::addInterestingConstant(llvm::Type* loadTy, unsign
         {
             Type * srcEltTy = loadTy->getVectorElementType();
             unsigned srcNElts = loadTy->getVectorNumElements();
-            unsigned eltSize_in_bytes = srcEltTy->getPrimitiveSizeInBits() / 8;
+            unsigned eltSize_in_bytes = (unsigned int)srcEltTy->getPrimitiveSizeInBits() / 8;
             for (unsigned i = 0; i < srcNElts; i++)
             {
                 SConstantAddrValue cl;

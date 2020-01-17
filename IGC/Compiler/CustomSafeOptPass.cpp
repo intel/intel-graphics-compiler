@@ -1007,7 +1007,7 @@ void CustomSafeOptPass::visitExtractElementInst(ExtractElementInst& I)
             if (bitShift != 0)
             {
                 Type* vecType = I.getVectorOperand()->getType();
-                unsigned int eltSize = vecType->getVectorElementType()->getPrimitiveSizeInBits();
+                unsigned int eltSize = (unsigned int)vecType->getVectorElementType()->getPrimitiveSizeInBits();
                 if (bitShift % eltSize == 0)
                 {
                     int elOffset = (int)(bitShift / eltSize);
@@ -2140,7 +2140,7 @@ void GenSpecificPattern::visitFNeg(llvm::UnaryOperator& I)
 
     IRBuilder<> builder(&I);
 
-    unsigned long bitSizeOfFloat = I.getOperand(0)->getType()->getPrimitiveSizeInBits();
+    unsigned long bitSizeOfFloat = (unsigned int)I.getOperand(0)->getType()->getPrimitiveSizeInBits();
     unsigned long bitToChange = 1 << (bitSizeOfFloat - 1);
 
     Value* bitcastFPtoUI = builder.CreateBitCast(
@@ -2182,7 +2182,7 @@ IGCConstProp::IGCConstProp(bool enableMathConstProp,
 
 static Constant* GetConstantValue(Type* type, char* rawData)
 {
-    unsigned int size_in_bytes = type->getPrimitiveSizeInBits() / 8;
+    unsigned int size_in_bytes = (unsigned int)type->getPrimitiveSizeInBits() / 8;
     uint64_t returnConstant = 0;
     memcpy_s(&returnConstant, size_in_bytes, rawData, size_in_bytes);
     if (type->isIntegerTy())
@@ -2192,7 +2192,7 @@ static Constant* GetConstantValue(Type* type, char* rawData)
     else if (type->isFloatingPointTy())
     {
         return  ConstantFP::get(type->getContext(),
-            APFloat(type->getFltSemantics(), APInt(type->getPrimitiveSizeInBits(), returnConstant)));
+            APFloat(type->getFltSemantics(), APInt((unsigned int)type->getPrimitiveSizeInBits(), returnConstant)));
     }
     return nullptr;
 }
@@ -2231,7 +2231,7 @@ Constant* IGCConstProp::ReplaceFromDynConstants(unsigned bufId, unsigned eltId, 
     {
         Type * srcEltTy = type->getVectorElementType();
         uint32_t srcNElts = type->getVectorNumElements();
-        uint32_t eltSize_in_bytes = srcEltTy->getPrimitiveSizeInBits() / 8;
+        uint32_t eltSize_in_bytes = (unsigned int)srcEltTy->getPrimitiveSizeInBits() / 8;
         std::vector<uint32_t> constValVec;
 
         if (eltSize_in_bytes > 4)
@@ -2322,7 +2322,7 @@ Constant* IGCConstProp::replaceShaderConstant(LoadInst* inst)
     {
         Value* ptrVal = inst->getPointerOperand();
         unsigned eltId = 0;
-        size_in_bytes = inst->getType()->getPrimitiveSizeInBits() / 8;
+        size_in_bytes = (unsigned int)inst->getType()->getPrimitiveSizeInBits() / 8;
         if (!EvalConstantAddress(ptrVal, eltId, m_TD, pointerSrc))
         {
             return nullptr;
@@ -2339,7 +2339,7 @@ Constant* IGCConstProp::replaceShaderConstant(LoadInst* inst)
                 {
                     Type* srcEltTy = inst->getType()->getVectorElementType();
                     uint32_t srcNElts = inst->getType()->getVectorNumElements();
-                    uint32_t eltSize_in_bytes = srcEltTy->getPrimitiveSizeInBits() / 8;
+                    uint32_t eltSize_in_bytes = (unsigned int)srcEltTy->getPrimitiveSizeInBits() / 8;
                     IRBuilder<> builder(inst);
                     Value* vectorValue = UndefValue::get(inst->getType());
                     for (uint i = 0; i < srcNElts; i++)
@@ -3014,7 +3014,7 @@ bool IGCIndirectICBPropagaion::runOnFunction(Function& F)
 
                         m_builder.SetInsertPoint(inst);
 
-                        unsigned int size_in_bytes = inst->getType()->getPrimitiveSizeInBits() / 8;
+                        unsigned int size_in_bytes = (unsigned int)inst->getType()->getPrimitiveSizeInBits() / 8;
                         if (size_in_bytes)
                         {
                             Value* ICBbuffer = UndefValue::get(VectorType::get(inst->getType(), maxImmConstantSizePushed / size_in_bytes));

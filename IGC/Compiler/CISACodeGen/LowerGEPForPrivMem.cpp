@@ -400,7 +400,7 @@ static bool CheckUsesForSOAAlyout(Instruction* I, bool& vectorSOA)
                 baseT->getScalarSizeInBits() != 0 &&
                 baseT->getScalarSizeInBits() == sourceType->getScalarSizeInBits())
             {
-                vectorSOA &= baseT->getPrimitiveSizeInBits() == sourceType->getPrimitiveSizeInBits();
+                vectorSOA &= (unsigned int)baseT->getPrimitiveSizeInBits() == sourceType->getPrimitiveSizeInBits();
                 if (CheckUsesForSOAAlyout(pBitCast, vectorSOA))
                     continue;
             }

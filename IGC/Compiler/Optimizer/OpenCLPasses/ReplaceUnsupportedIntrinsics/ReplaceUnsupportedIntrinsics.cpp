@@ -192,8 +192,8 @@ namespace {
     {
         VectorType* VTy = dyn_cast<VectorType>(Ty);
         Type* ETy = VTy ? VTy->getElementType() : Ty;
-        uint32_t sBits = ScalarVal->getType()->getPrimitiveSizeInBits();
-        uint32_t nBits = ETy->getPrimitiveSizeInBits();
+        uint32_t sBits = (unsigned int)ScalarVal->getType()->getPrimitiveSizeInBits();
+        uint32_t nBits = (unsigned int)ETy->getPrimitiveSizeInBits();
         assert((nBits % sBits) == 0 && nBits <= 64 && "Type mismatch in replicateScalar!");
         uint32_t ratio = nBits / sBits;
 
@@ -403,7 +403,7 @@ namespace {
 
                 // getPrimitiveSizeInBits() should be enough, no need to
                 // use DataLayout to get target-dependent size.
-                uint32_t SZ = (VecTys[0]->getPrimitiveSizeInBits() / 8);
+                uint32_t SZ = (unsigned int)(VecTys[0]->getPrimitiveSizeInBits() / 8);
 
                 // To set alignment correctly
                 uint32_t adjust_align = getLargestPowerOfTwo(SZ);
@@ -448,7 +448,7 @@ namespace {
             }
             for (unsigned i = 1; i < Len; ++i)
             {
-                uint32_t SZ = VecTys[i]->getPrimitiveSizeInBits() / 8;
+                uint32_t SZ = (unsigned int)VecTys[i]->getPrimitiveSizeInBits() / 8;
                 uint32_t adjust_align = getLargestPowerOfTwo(SZ);
                 Align = adjust_align < Align ? adjust_align : Align;
                 NewSrc = BOfst > 0 ? Builder.CreateConstGEP1_32(Src, BOfst) : Src;
@@ -574,13 +574,13 @@ namespace {
                 SmallVector<uint, 8> byteOffsets{ 0 };
 
                 {
-                    uint32_t SZ = (VecTys[0]->getPrimitiveSizeInBits() / 8);
+                    uint32_t SZ = (unsigned int)(VecTys[0]->getPrimitiveSizeInBits() / 8);
                     uint32_t BOfst = NewCount * SZ;
 
                     for (unsigned i = 1; i < Len; i++)
                     {
                         byteOffsets.push_back(BOfst);
-                        uint32_t SZ = (VecTys[i]->getPrimitiveSizeInBits() / 8);
+                        uint32_t SZ = (unsigned int)(VecTys[i]->getPrimitiveSizeInBits() / 8);
                         BOfst += SZ;
                     }
                 }
@@ -604,7 +604,7 @@ namespace {
                 auto* vDst = B.CreateBitCast(SkipBitCast(Dst), PointerType::get(VecTys[0], DstAS), "memcpy_vdst");
                 // If NewCount is less than 6,  don't generate loop.
                 // Note that 6 is just an arbitrary number here.
-                uint32_t SZ = (VecTys[0]->getPrimitiveSizeInBits() / 8);
+                uint32_t SZ = (unsigned int)(VecTys[0]->getPrimitiveSizeInBits() / 8);
                 uint32_t newAlign = getLargestPowerOfTwo(Align + SZ);
                 if (NewCount < 6)
                 {
@@ -702,7 +702,7 @@ namespace {
 
                 // getPrimitiveSizeInBits() should be enough, no need to
                 // use DataLayout to get target-dependent size.
-                uint32_t SZ = (VecTys[0]->getPrimitiveSizeInBits() / 8);
+                uint32_t SZ = (unsigned int)(VecTys[0]->getPrimitiveSizeInBits() / 8);
 
                 // To set alignment correctly
                 uint32_t adjust_align = getLargestPowerOfTwo(SZ);
@@ -743,7 +743,7 @@ namespace {
             }
             for (unsigned i = 1; i < Len; ++i)
             {
-                uint32_t SZ = VecTys[i]->getPrimitiveSizeInBits() / 8;
+                uint32_t SZ = (unsigned int)VecTys[i]->getPrimitiveSizeInBits() / 8;
                 uint32_t adjust_align = getLargestPowerOfTwo(SZ);
                 Align = adjust_align < Align ? adjust_align : Align;
                 PointerType* PTy = PointerType::get(VecTys[i], AS);

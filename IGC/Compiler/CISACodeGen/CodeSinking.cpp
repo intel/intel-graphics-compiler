@@ -446,8 +446,8 @@ namespace IGC {
 
         if (auto CI = dyn_cast<CastInst>(Inst))
         {
-            unsigned SrcSize = CI->getSrcTy()->getPrimitiveSizeInBits();
-            unsigned DstSize = CI->getDestTy()->getPrimitiveSizeInBits();
+            unsigned SrcSize = (unsigned int)CI->getSrcTy()->getPrimitiveSizeInBits();
+            unsigned DstSize = (unsigned int)CI->getDestTy()->getPrimitiveSizeInBits();
             if (SrcSize == 0 || DstSize == 0)
             {
                 // Non-primitive types.

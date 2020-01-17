@@ -673,7 +673,7 @@ namespace IGC
     unsigned int PushAnalysis::AllocatePushedConstant(
         Instruction* load, unsigned int cbIdxOrGRFOffset, unsigned int offset, unsigned int maxSizeAllowed, bool isStateless)
     {
-        unsigned int size = load->getType()->getPrimitiveSizeInBits() / 8;
+        unsigned int size = (unsigned int)load->getType()->getPrimitiveSizeInBits() / 8;
         assert(isa<LoadInst>(load) && "Expected a load instruction");
         PushInfo& pushInfo = m_context->getModuleMetaData()->pushInfo;
 
@@ -765,7 +765,7 @@ namespace IGC
 
         for (unsigned int i = 0; i < num_elms; ++i)
         {
-            uint address = offset + i * (pScalarTy->getPrimitiveSizeInBits() / 8);
+            uint address = offset + i * ((unsigned int)pScalarTy->getPrimitiveSizeInBits() / 8);
             auto it = info.simplePushLoads.find(address);
             llvm::Value* value = nullptr;
             if (it != info.simplePushLoads.end())

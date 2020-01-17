@@ -1828,9 +1828,9 @@ namespace IGC
             PointerType* dPTy = dyn_cast<PointerType>(dTy);
             PointerType* sPTy = dyn_cast<PointerType>(sTy);
             uint32_t dBits = dPTy ? Ctx->getRegisterPointerSizeInBits(dPTy->getAddressSpace())
-                : dTy->getPrimitiveSizeInBits();
+                : (unsigned int)dTy->getPrimitiveSizeInBits();
             uint32_t sBits = sPTy ? Ctx->getRegisterPointerSizeInBits(sPTy->getAddressSpace())
-                : sTy->getPrimitiveSizeInBits();
+                : (unsigned int)sTy->getPrimitiveSizeInBits();
             if (dBits == 0 || sBits == 0 || dBits != sBits) {
                 // Not primitive type or not equal in size (inttoptr, etc)
                 return false;

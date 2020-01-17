@@ -1071,7 +1071,7 @@ bool MemOpt::mergeStore(StoreInst* LeadingStore,
                     Val =
                         Builder.CreatePtrToInt(Val,
                             Type::getIntNTy(Val->getContext(),
-                                LeadingStoreScalarType->getPrimitiveSizeInBits()));
+                            (unsigned int)LeadingStoreScalarType->getPrimitiveSizeInBits()));
                     // LeadingStoreScalarType may not be an integer type, bitcast it to
                     // the appropiate type.
                     Val = Builder.CreateBitCast(Val, LeadingStoreScalarType);
@@ -1440,7 +1440,7 @@ SymbolicPointer::getLinearExpression(Value* V, APInt& Scale, APInt& Offset,
         (isa<ZExtInst>(V) && Extension != EK_SignExt)) {
         Value* CastOp = cast<CastInst>(V)->getOperand(0);
         unsigned OldWidth = Scale.getBitWidth();
-        unsigned SmallWidth = CastOp->getType()->getPrimitiveSizeInBits();
+        unsigned SmallWidth = (unsigned int)CastOp->getType()->getPrimitiveSizeInBits();
         Scale = Scale.trunc(SmallWidth);
         Offset = Offset.trunc(SmallWidth);
         Extension = isa<SExtInst>(V) ? EK_SignExt : EK_ZeroExt;

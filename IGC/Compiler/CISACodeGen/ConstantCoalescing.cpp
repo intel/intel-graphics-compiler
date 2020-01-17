@@ -1984,7 +1984,7 @@ void ConstantCoalescing::ScatterToSampler(
     constexpr uint samplerElementSizeInBytes = sizeof(uint32_t);
     constexpr uint samplerLoadSizeInDwords = 4;
     constexpr uint samplerLoadSizeInBytes = samplerLoadSizeInDwords * samplerElementSizeInBytes;
-    const uint loadSizeInBytes = load->getType()->getPrimitiveSizeInBits() / 8;
+    const uint loadSizeInBytes = (unsigned int)load->getType()->getPrimitiveSizeInBits() / 8;
 
     assert(!load->getType()->isVectorTy() || load->getType()->getVectorNumElements() <= 4);
 
@@ -2131,7 +2131,7 @@ void ConstantCoalescing::ReplaceLoadWithSamplerLoad(
     Type* const dstTy = loadToReplace->getType();
     assert(srcTy->isVectorTy() && srcTy->getVectorElementType()->isFloatTy());
 
-    const uint dstSizeInBytes = dstTy->getPrimitiveSizeInBits() / 8;
+    const uint dstSizeInBytes = (unsigned int)dstTy->getPrimitiveSizeInBits() / 8;
 
     irBuilder->SetInsertPoint(loadToReplace);
 
@@ -2205,7 +2205,7 @@ void ConstantCoalescing::ReplaceLoadWithSamplerLoad(
         {
             assert(dstTy->isIntegerTy() || dstTy->isFloatingPointTy());
             assert(dstTy->getPrimitiveSizeInBits() < 64);
-            const uint offsetInBits = ((offsetInBytes % 4) * 8) + (dstTy->getPrimitiveSizeInBits() * i);
+            const uint offsetInBits = ((offsetInBytes % 4) * 8) + ((unsigned int)dstTy->getPrimitiveSizeInBits() * i);
 
             assert(offsetInBits + dstTy->getPrimitiveSizeInBits() <= 32);
             Value* result = irBuilder->CreateBitCast(srcData[offsetInBits / 32], irBuilder->getInt32Ty());
@@ -2217,7 +2217,7 @@ void ConstantCoalescing::ReplaceLoadWithSamplerLoad(
             }
             if (dstTy->getScalarSizeInBits() < 32)
             {
-                result = irBuilder->CreateZExtOrTrunc(result, IntegerType::get(dstTy->getContext(), dstTy->getPrimitiveSizeInBits()));
+                result = irBuilder->CreateZExtOrTrunc(result, IntegerType::get(dstTy->getContext(), (unsigned int)dstTy->getPrimitiveSizeInBits()));
                 wiAns->incUpdateDepend(result, WIAnalysis::RANDOM);
             }
             if (result->getType() != dstTy)

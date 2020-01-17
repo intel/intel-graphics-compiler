@@ -403,7 +403,7 @@ static bool checkSize(GlobalVariable* GV, VectorType*& DataType,
             }
         }
 
-        unsigned BaseSzInBits = BaseTy->getPrimitiveSizeInBits();
+        unsigned BaseSzInBits = (unsigned int)BaseTy->getPrimitiveSizeInBits();
         assert(BaseSzInBits >= 8);
         if (BaseSzInBits > 8 && Min >= 0 && Max <= UINT8_MAX) {
             BaseTy = Int8Ty;
@@ -425,7 +425,7 @@ static bool checkSize(GlobalVariable* GV, VectorType*& DataType,
 
     // Two GRFs by default.
     unsigned ThresholdInBits = IGC_GET_FLAG_VALUE(ConstantPromotionSize) * 256;
-    unsigned TotalSzInBits = BaseTy->getPrimitiveSizeInBits() * VS;
+    unsigned TotalSzInBits = (unsigned int)BaseTy->getPrimitiveSizeInBits() * VS;
     if (TotalSzInBits <= ThresholdInBits) {
         DataType = VectorType::get(BaseTy, VS);
         return true;

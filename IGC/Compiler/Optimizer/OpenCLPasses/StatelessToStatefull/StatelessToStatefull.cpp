@@ -317,7 +317,7 @@ bool StatelessToStatefull::getOffsetFromGEP(
                     Value* NewIdx = CastInst::CreateTruncOrBitCast(Idx, int32Ty, "", GEP);
                     cast<llvm::Instruction>(NewIdx)->setDebugLoc(GEP->getDebugLoc());
 
-                    APInt ElementSize = APInt(int32Ty->getPrimitiveSizeInBits(), DL->getTypeAllocSize(Ty));
+                    APInt ElementSize = APInt((unsigned int)int32Ty->getPrimitiveSizeInBits(), DL->getTypeAllocSize(Ty));
 
                     if (ElementSize != 1)
                     {

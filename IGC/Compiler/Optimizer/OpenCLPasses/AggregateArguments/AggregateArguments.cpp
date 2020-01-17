@@ -174,7 +174,7 @@ void AggregateArgumentsAnalysis::addImplictArgs(Type* type, uint64_t baseAllocaO
     {
         // ...finally we have found a basic type contained inside
         // the aggregate.  Add it to the list of implicit args.
-        unsigned int elementSize = type->getPrimitiveSizeInBits();
+        unsigned int elementSize = (unsigned int)type->getPrimitiveSizeInBits();
         if (PointerType *PT = dyn_cast<PointerType>(type)) {
             elementSize = m_pDL->getPointerSize(PT->getAddressSpace()) * 8;
         }

@@ -29,6 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #if LLVM_VERSION_MAJOR >= 10
 #include <llvm/Support/Alignment.h>
+using namespace llvm;
 #endif
 
 #if LLVM_VERSION_MAJOR < 10
