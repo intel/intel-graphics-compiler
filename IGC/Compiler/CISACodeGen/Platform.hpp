@@ -276,10 +276,6 @@ namespace IGC
             m_GTSystemInfo.SubSliceCount == 2);
     }
 
-    bool doIntegerMad() const
-    {
-        return m_platformInfo.eRenderCoreFamily >= IGFX_GEN11_CORE && IGC_IS_FLAG_ENABLED(EnableIntegerMad);
-    }
     bool supportsSIMD16TypedRW() const
     {
         return false;
@@ -389,6 +385,12 @@ namespace IGC
     {
         return IGC_IS_FLAG_ENABLED(FuseTypedWrite);
     }
+
+    bool doIntegerMad() const
+    {
+        return m_platformInfo.eRenderCoreFamily >= IGFX_GEN11_CORE && IGC_IS_FLAG_ENABLED(EnableIntegerMad);
+    }
+
     // ***** Below go accessor methods for testing WA data from WA_TABLE *****
 
     bool WaDoNotPushConstantsForAllPulledGSTopologies() const
