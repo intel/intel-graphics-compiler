@@ -6691,19 +6691,22 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
     // HW WAs that are done before RA.
     void Optimizer::preRA_HWWorkaround()
     {
-        // -forceNoMaskToAnyWA : to force running this WA pass.
+        // -forceNoMaskWA : to force running this WA pass on platform other than TGLLP.
         // By default, it is only on for TGL
-        // noMaskToAnyhWA:
-        //     bit[2]:  0 - simple insertion of flag. A new flag is added
-        //                  each time it is needed by reading ce0.0
-        //     bit[2]:  1 - optimized. May use the exisiting flag register
-        //                  or read ce0 once per each BB
+        // noMaskWA:
         //   bit[1:0]:  0 - off
-        //              1 - on, replacing nomask in divergent BB (conservative)
+        //              1 - on, replacing nomask in any divergent BB (conservative)
         //              2 - on, replacing nomask in nested divergent BB(aggressive)
+        //              3 - not used, will behave the same as 2
+        //     bit[2]:  0 - simple insertion of flag. A new flag is added
+        //                  each time it is needed by "emask flag".
+        //              1 - optimized. "emask flag" is created once per ech BB
+        //     bit[3]:  0 - "emask flag" is created using ce and dmask/vmask
+        //              1 - "emask flag" is created using cmp instructions.
         //
-        if ((builder.getuint32Option(vISA_noMaskToAnyhWA) & 0x3) > 0 &&
-            (getGenxPlatform() == GENX_TGLLP || builder.getOption(vISA_forceNoMaskToAnyhWA)))
+        if (builder.kernel.getOptions()->getTarget() != VISA_CM &&
+            (builder.getuint32Option(vISA_noMaskWA) & 0x3) > 0 &&
+            (getGenxPlatform() == GENX_TGLLP || builder.getOption(vISA_forceNoMaskWA)))
         {
             replaceNoMaskWithAnyhWA();
         }
@@ -11876,12 +11879,6 @@ assert(LiveSends.size() < MAX_SENDS);
 
 void Optimizer::replaceNoMaskWithAnyhWA()
 {
-    if (builder.kernel.getOptions()->getTarget() == VISA_CM ||
-        (builder.getuint32Option(vISA_noMaskToAnyhWA) & 0x7) == 0)
-    {
-        return;
-    }
-
     // Identify BBs that need WA
     fg.reassignBlockIDs();
     fg.findNestedDivergentBBs();
@@ -11934,6 +11931,8 @@ void Optimizer::replaceNoMaskWithAnyhWA()
         return false;
     };
 
+    // Use cmp to calculate emask flag. This is an alternative to
+    // createFlagFromCE0().
     auto createFlagFromCmp = [&](G4_INST*& flagDefInst,
         uint32_t flagBits, G4_BB* BB, INST_LIST_ITER& II)->G4_RegVar*
     {
@@ -11992,7 +11991,7 @@ void Optimizer::replaceNoMaskWithAnyhWA()
     auto createFlagFromCE0 = [&](G4_INST*& flagDefInst,
         uint32_t flagBits, G4_BB* BB, INST_LIST_ITER& II) -> G4_RegVar*
     {
-        if ((builder.getuint32Option(vISA_noMaskToAnyhWA) & 0x8) != 0)
+        if ((builder.getuint32Option(vISA_noMaskWA) & 0x8) != 0)
         {
             return createFlagFromCmp(flagDefInst, flagBits, BB, II);
         }
@@ -12397,7 +12396,7 @@ void Optimizer::replaceNoMaskWithAnyhWA()
     //       I:  (W&[-]P)  and (16|M0) (ne)P  ....
     //
     //    After:
-    //       I0: (W)           mov (1|M0) save:uw  f1.0<0;1,0>:uw
+    //       I0: (W)           mov (1|M0) save:uw  P
     //       I1: (W&-flagVar)  mov (1|M0) P<1>:uw  0:uw | 0xFFFF (for -P)
     //       I:  (W&P)         and (16|M0) (ne)P  ....
     //       I2: (W&-flagVar)  mov (1|M0)  P   save:uw
@@ -12481,9 +12480,9 @@ void Optimizer::replaceNoMaskWithAnyhWA()
             continue;
         }
 
-        if ((builder.getuint32Option(vISA_noMaskToAnyhWA) & 0x4) == 0)
+        if ((builder.getuint32Option(vISA_noMaskWA) & 0x4) == 0)
         {
-            // simple flag insertion: every time a flag is needed, read it from ce0
+            // simple flag insertion: every time a flag is needed, calcalate it.
             for (auto II = BB->begin(), IE = BB->end(); II != IE; ++II)
             {
                 G4_INST* I = *II;
@@ -12534,7 +12533,7 @@ void Optimizer::replaceNoMaskWithAnyhWA()
             continue;
         }
 
-        // Now, builder.getuint32Option(vISA_noMaskToAnyhWA) & 0x4) != 0
+        // Now, builder.getuint32Option(vISA_noMaskWA) & 0x4) != 0
         // (optimized version)
         //
         // For each BB that needs to modify NoMask, create a flag once right

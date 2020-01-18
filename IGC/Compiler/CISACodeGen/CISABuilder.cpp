@@ -3867,13 +3867,17 @@ namespace IGC
             SaveOption(vISA_EnableScalarJmp, false);
         }
 
-        if (IGC_IS_FLAG_ENABLED(ForceNoMaskToAnyhWA)) {
-            SaveOption(vISA_forceNoMaskToAnyhWA, true);
+        if (IGC_IS_FLAG_ENABLED(ForceNoMaskWA)) {
+            SaveOption(vISA_forceNoMaskWA, true);
+            // temporary disable ifcvt until ifcvt is fixed
+            SaveOption(vISA_ifCvt, false);
         }
         if (m_program->m_Platform->getWATable().Wa_1407528679 != 0 &&
-            IGC_GET_FLAG_VALUE(NoMaskToAnyhWA) > 0)
+            IGC_GET_FLAG_VALUE(NoMaskWA) > 0)
         {
-            SaveOption(vISA_noMaskToAnyhWA, IGC_GET_FLAG_VALUE(NoMaskToAnyhWA));
+            SaveOption(vISA_noMaskWA, IGC_GET_FLAG_VALUE(NoMaskWA));
+            // temporary disable ifcvt until ifcvt is fixed
+            SaveOption(vISA_ifCvt, false);
         }
 
         if (IGC_IS_FLAG_ENABLED(DisableCSEL))

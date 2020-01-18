@@ -3279,14 +3279,14 @@ void FlowGraph::findNestedDivergentBBs()
                 }
             }
 
-            if ((builder->getuint32Option(vISA_noMaskToAnyhWA) & 0x3) > 1)
+            if ((builder->getuint32Option(vISA_noMaskWA) & 0x3) > 1)
             {
                 if (cfs.isInNestedDivergentBranch())
                 {
                     setInNestedDivergentBranch(BB);
                 }
             }
-            else if ((builder->getuint32Option(vISA_noMaskToAnyhWA) & 0x3) > 0)
+            else if ((builder->getuint32Option(vISA_noMaskWA) & 0x3) > 0)
             {
                 if (cfs.isInDivergentBranch())
                 {
