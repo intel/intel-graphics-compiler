@@ -965,7 +965,7 @@ bool HWConformity::fixOpndType(INST_LIST_ITER it, G4_BB *bb)
 {
     /*
     * Check for instruction that only accept float/int operands, as well as
-    * instruction with mixed operand types.  Even though the CISA itself forbids
+    * instruction with mixed operand types.  Even though vISA itself forbids
     * mixed type instructions, optimizations such as copy propagation
     * may reintroduce them and so we do the checks here
     */
@@ -975,8 +975,9 @@ bool HWConformity::fixOpndType(INST_LIST_ITER it, G4_BB *bb)
     bool has_float = false;
     bool has_int = false;
 
-    if (inst->mayExceedTwoGRF())
+    if (inst->mayExceedTwoGRF() || inst->opcode() == G4_smov)
     {
+        // skip special instructions
         return false;
     }
 
@@ -1002,11 +1003,10 @@ bool HWConformity::fixOpndType(INST_LIST_ITER it, G4_BB *bb)
         {
             if (inst->getSrc(i) && !IS_FTYPE(inst->getSrc(i)->getType()) && !IS_DFTYPE(inst->getSrc(i)->getType()))
             {
-                if (!((inst->opcode() == G4_smov) && (i == 1)))
-                {
-                    inst->setSrc(insertMovBefore(it, i, Type_F, bb), i);
-                    changed = true;
-                }
+                // FIXME: we should probably either get rid of this or assert,
+                // it's unlikely that blinding casting int to float is the right thing here
+                inst->setSrc(insertMovBefore(it, i, Type_F, bb), i);
+                changed = true;
             }
         }
     }
