@@ -47,7 +47,7 @@ DECLARE_IGC_REGKEY(bool, EnableVISADebug,               false, "Runs VISA in deb
 DECLARE_IGC_REGKEY(DWORD, EnableVISAStructurizer,       1,     "Enable/Disable VISA structurizer. See value defs in igc_flags.hpp.", false)
 DECLARE_IGC_REGKEY(bool, EnableVISAJmpi,                true,  "Enable/Disable VISA generating jmpi (scalar jump).", false)
 DECLARE_IGC_REGKEY(bool, EnableSCFWA,                   true,  "Enable/Disable VISA structrizer WA (temporary for debugging)", false)
-DECLARE_IGC_REGKEY(DWORD, NoMaskWA,                     15,    "Add NoMask WA using software-computed emask flag. Valid value: (three groups) \
+DECLARE_IGC_REGKEY(DWORD, NoMaskWA,                     0,     "Add NoMask WA using software-computed emask flag. Valid value: (three groups) \
                                                                    valid value:  bit[1:0] : which BB to insert - 0(off), 1(divergent BB), \
                                                                                             2 (nested divergent BB), 3 (=2). \
                                                                                  bit[2]   : how to add WA - 0 (simple) | 1 (optim). \
