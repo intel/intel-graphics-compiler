@@ -57,6 +57,11 @@ DEFN_GET_KERNEL_WORK_GROUP_SIZE(2, constant)
 DEFN_GET_KERNEL_WORK_GROUP_SIZE(3, local)
 DEFN_GET_KERNEL_WORK_GROUP_SIZE(4, generic)
 
+uint __get_kernel_work_group_size_impl(uchar* Block, uchar* Params)
+{
+  return __builtin_IB_get_max_workgroup_size();
+}
+
 int OVERLOADABLE IGIL_RetainEvent( clk_event_t in_event );
 void __builtin_spirv_OpRetainEvent_i64(ClkEvent_t Event)
 {
