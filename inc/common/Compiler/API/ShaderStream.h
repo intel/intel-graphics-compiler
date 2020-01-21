@@ -106,7 +106,7 @@ struct s_shader
     struct resource_decl {
         SHADER_RESOURCE_TYPE           data_type;
         SHADER_RESOURCE_RETURN_TYPE    return_type;
-        SURFACE_FORMAT                 surface_format;
+        IGC::SURFACE_FORMAT            surface_format;
         SHADER_UAV_ACCESS_MODE         access_mode;
         unsigned int                   stride;
         unsigned int                   size_or_count;
@@ -293,7 +293,7 @@ char __fastcall InternalDeclareTypedView(
                                                s_shader::resource_array *const container, 
                                                unsigned int                     at,
                                                SHADER_RESOURCE_TYPE             data_type,
-                                               SURFACE_FORMAT                   surface_format,
+                                               IGC::SURFACE_FORMAT              surface_format,
                                                SHADER_UAV_ACCESS_MODE           access_mode,
                                                SHADER_RESOURCE_RETURN_TYPE      return_type,
                                                char                             access_coherency );
@@ -468,7 +468,7 @@ inline char DeclareTypedView(
                          s_shader *const               p_shader,
                          unsigned int                  at,
                          SHADER_RESOURCE_TYPE          data_type,
-                         const SURFACE_FORMAT          surface_format,
+                         const IGC::SURFACE_FORMAT     surface_format,
                          const SHADER_UAV_ACCESS_MODE  access_mode,
                          SHADER_RESOURCE_RETURN_TYPE   return_type,
                          char                          access_coherency )

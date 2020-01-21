@@ -236,7 +236,7 @@ struct STypedUAVReadEmulationEntry
 {
     bool                    m_Valid;
     bool                    m_DoubleHorizontalSize;
-    SURFACE_FORMAT          m_SubstituteFormat;
+    IGC::SURFACE_FORMAT     m_SubstituteFormat;
     unsigned int            m_UAVEmulationIndex;
 };
 

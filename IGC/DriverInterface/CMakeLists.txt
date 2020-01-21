@@ -50,7 +50,6 @@ endif(IGC_BUILD__SPIRV_ENABLED)
 
 set(IGC_BUILD__HDR__DriverInterface
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/customApi.hpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/SurfaceFormats.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/IRUpgrader/IRUpgrader.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/KernelAnnotations.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/CommandStream/SamplerTypes.h"

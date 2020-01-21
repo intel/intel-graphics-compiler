@@ -167,7 +167,7 @@ STRUCT: SShaderResourceDeclType
 struct SShaderResourceDeclType
 {
     unsigned int   ResourceType         : BITCOUNT( NUM_SHADER_RESOURCE_TYPES );
-    unsigned int   SurfaceFormat        : BITCOUNT( NUM_SURFACE_FORMATS );
+    unsigned int   SurfaceFormat        : BITCOUNT( IGC::NUM_SURFACE_FORMATS );
     unsigned int   UAVAccessMode        : BITCOUNT( NUM_SHADER_UAV_ACCESS_MODES );
     unsigned int   ReturnType           : BITCOUNT( NUM_SHADER_RESOURCE_RETURN_TYPES );
     unsigned int   AccessCoherency      : 1;

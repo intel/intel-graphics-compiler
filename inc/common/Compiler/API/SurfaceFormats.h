@@ -23,11 +23,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
-#ifndef STRUCTURE_ALINGMENT_VERIFICATION
-#pragma once
-#endif
 
-namespace USC
+#pragma once
+
+namespace IGC
 {
 
 /*****************************************************************************\
@@ -287,7 +286,10 @@ enum SURFACE_FORMAT
     SURFACE_FORMAT_R8G8B8_SINT_OGL_VIRT,
     SURFACE_FORMAT_R8G8B8_UINT_OGL_VIRT,
 
+    // Raw
+    SURFACE_FORMAT_RAW,
+
     NUM_SURFACE_FORMATS
 };
 
-} // namespace USC
+} // namespace IGC

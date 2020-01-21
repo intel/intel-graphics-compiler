@@ -36,7 +36,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/AsmParser/Parser.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/CodeGenPublicEnums.h"
-#include "../AdaptorCommon/SurfaceFormats.hpp"
+#include "inc/common/Compiler/API/SurfaceFormats.h"
 #include "inc/common/igfxfmid.h"
 #include "common/IGCIRBuilder.h"
 

@@ -38,7 +38,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../util/BinaryStream.h"
 
 #include "../Patch/patch_parser.h"
-
+#include "inc/common/Compiler/API/SurfaceFormats.h"
 #include "usc.h"
 #include "sp_debug.h"
 
@@ -201,7 +201,7 @@ private:
 
     RETVAL AddSurfaceState(
         const SURFACE_TYPE& type,
-        const SURFACE_FORMAT& surfaceFormat,
+        const IGC::SURFACE_FORMAT& surfaceFormat,
         const DWORD bufferLength,
         bool isMultiSampleImage,
         Util::BinaryStream& membuf );

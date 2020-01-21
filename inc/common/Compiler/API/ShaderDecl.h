@@ -257,7 +257,7 @@ public:
 
     void    SetSurfaceFormat(
                 const unsigned int number,
-                const SURFACE_FORMAT surfaceFormat );
+                const IGC::SURFACE_FORMAT surfaceFormat );
 
     void    SetUAVAccessMode(
                 const unsigned int number,
@@ -303,7 +303,7 @@ public:
                 const unsigned int number,
                 const unsigned int alignment );
 
-    SURFACE_FORMAT
+    IGC::SURFACE_FORMAT
             GetSurfaceFormat(
                 const unsigned int number ) const;
 
