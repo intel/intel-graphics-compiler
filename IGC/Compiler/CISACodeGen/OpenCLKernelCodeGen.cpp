@@ -45,6 +45,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/Stats.hpp"
 #include "common/SystemThread.h"
 #include "common/secure_mem.h"
+#include "common/MDFrameWork.h"
 
 #include <iStdLib/utility.h>
 
@@ -73,6 +74,7 @@ namespace IGC
         m_pBtiLayout = &(ctx->btiLayout);
         m_Platform = &(ctx->platform);
         m_DriverInfo = &(ctx->m_DriverInfo);
+
     }
 
     COpenCLKernel::~COpenCLKernel()
