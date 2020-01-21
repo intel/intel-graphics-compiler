@@ -148,6 +148,10 @@ private:
 
     IR_Builder& builder;
 
+    std::unordered_set<unsigned int> forbiddenGRFs;
+    const static unsigned int UndefHint = 0xffffffff;
+    unsigned int hint = UndefHint;
+
 public:
     LocalLiveRange(IR_Builder& b) : builder(b)
     {
@@ -226,6 +230,13 @@ public:
 
     void markSplit() { isSplit = true; }
     bool getSplit() { return isSplit; }
+
+    void addForbidden(unsigned int f) { forbiddenGRFs.insert(f); }
+    std::unordered_set<unsigned int>& getForbidden() { return forbiddenGRFs; }
+
+    void setHint(unsigned int h) { hint = h; }
+    bool hasHint() { return hint != UndefHint; }
+    unsigned int getHint() { return hint; }
 };
 
 class InputLiveRange
@@ -339,7 +350,8 @@ public:
     inline bool isWordBusy( int whichgrf, int word );
     inline bool isWordBusy( int whichgrf, int word, int howmany );
 
-    bool findFreeMultipleRegsForward(int regIdx, BankAlign align, int & regnum, int nrows, int lastRowSize, int endReg, unsigned short occupiedBundles, int instID, bool isHybridAlloc);
+    bool findFreeMultipleRegsForward(int regIdx, BankAlign align, int & regnum, int nrows, int lastRowSize, int endReg, unsigned short occupiedBundles,
+        int instID, bool isHybridAlloc, std::unordered_set<unsigned int>& forbidden, bool hintSet);
 
     void markPhyRegs( G4_Declare* topdcl );
 
@@ -427,9 +439,11 @@ public:
     void setSimpleGRFAvailable(bool simple) {simpleGRFAvailable = simple; }
     void setR0Forbidden() {r0Forbidden = true;}
     void setR1Forbidden() {r1Forbidden = true;}
-    bool findFreeMultipleRegsBackward(int regIdx, BankAlign align, int &regnum, int nrows, int lastRowSize, int endReg, int instID, bool isHybridAlloc);
+    bool findFreeMultipleRegsBackward(int regIdx, BankAlign align, int &regnum, int nrows, int lastRowSize, int endReg, int instID,
+        bool isHybridAlloc, std::unordered_set<unsigned int>& forbidden);
     bool findFreeSingleReg( int regIdx, G4_SubReg_Align subalign, int &regnum, int &subregnum, int size);
-    bool findFreeSingleReg(int regIdx, int size, BankAlign align, G4_SubReg_Align subalign, int &regnum, int &subregnum, int endReg, int instID, bool isHybridAlloc, bool forward);
+    bool findFreeSingleReg(int regIdx, int size, BankAlign align, G4_SubReg_Align subalign, int &regnum, int &subregnum, int endReg,
+        int instID, bool isHybridAlloc, bool forward, std::unordered_set<unsigned int>& forbidden);
 
 };
 
@@ -445,7 +459,8 @@ public:
         availableRegs.setTwoBanksRA(_twoBanksRA);
     }
 
-    int findFreeRegs(int size, BankAlign align, G4_SubReg_Align subalign, int & regnum, int & subregnum, int startRegNum, int endRegNum, unsigned short occupiedBundles, unsigned int instID, bool isHybridAlloc);
+    int findFreeRegs(int size, BankAlign align, G4_SubReg_Align subalign, int & regnum, int & subregnum, int startRegNum, int endRegNum,
+        unsigned short occupiedBundles, unsigned int instID, bool isHybridAlloc, std::unordered_set<unsigned int>& forbidden, bool hasHint);
 
     void freeRegs( int regnum, int subregnum, int numwords, int instID);
     PhyRegsLocalRA * getAvaialableRegs() { return &availableRegs; }
@@ -466,6 +481,7 @@ private:
     void expireRanges(unsigned int);
     void expireInputRanges(unsigned int, unsigned int, unsigned int);
     void expireAllActive();
+    void expireSplitParent(LocalLiveRange*);
     bool allocateRegsFromBanks(LocalLiveRange*);
     bool allocateRegs(LocalLiveRange*, G4_BB* bb, IR_Builder& builder, LLR_USE_MAP& LLRUseMap);
     void freeAllocedRegs(LocalLiveRange*, bool);
