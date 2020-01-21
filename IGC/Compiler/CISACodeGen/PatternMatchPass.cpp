@@ -2046,7 +2046,7 @@ namespace IGC
                 pattern->sources[i] = GetSource(sources[i], src_mod[i], false);
                 if (isa<Constant>(sources[i]) &&
                     (!m_Platform.support16BitImmSrcForMad() ||
-                    (sources[i]->getType()->getTypeID() != llvm::Type::HalfTyID) || i == 1))
+                    (!sources[i]->getType()->isHalfTy() && !sources[i]->getType()->isIntegerTy()) || i == 1))
                 {
                     //CNL+ mad instruction allows 16 bit immediate for src0 and src2
                     AddToConstantPool(I.getParent(), sources[i]);
