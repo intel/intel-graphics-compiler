@@ -5668,7 +5668,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
                 else
                 {
                     failed_alloc |= !regUsage.assignRegs(highInternalConflict, lr, lr->getForbidden(),
-                        align, gra.getSubRegAlign(lrVar->getDeclare()), heuristic, lr->getSpillCost(), false);
+                        align, gra.getSubRegAlign(lrVar->getDeclare()), heuristic, lr->getSpillCost());
                 }
             }
 
@@ -8866,8 +8866,6 @@ int GlobalRA::coloringRegAlloc()
         {
             std::cout << "--GRF RA iteration " << iterationNo << "--\n";
         }
-
-        setIterNo(iterationNo);
 
         resetGlobalRAStates();
 

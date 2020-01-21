@@ -198,8 +198,7 @@ public:
                     BankAlign  align,
                     G4_SubReg_Align subAlign,
                     ColorHeuristic colorHeuristic,
-                    float spillCost,
-                    bool hintSet);
+                    float             spillCost);
 
     bool assignGRFRegsFromBanks(LiveRange*     varBasis,
                              BankAlign  align,
