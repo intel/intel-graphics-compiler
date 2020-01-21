@@ -781,39 +781,10 @@ namespace IGC
 
         IGCPassManager PassMgr(ctx, "CG");
 
-        if (HasSavedIR(ctx))
-        {
-            IGC::RestoreIR(ctx);
-            COMPILER_TIME_START(ctx, TIME_CG_Add_Passes);
-            MetaDataUtils* pMdUtils = ctx->getMetaDataUtils();
-            PassMgr.add(new MetaDataUtilsWrapper(pMdUtils, ctx->getModuleMetaData()));
-            PassMgr.add(new CodeGenContextWrapper(ctx));
+        COMPILER_TIME_START(ctx, TIME_CG_Add_Passes);
+        AddLegalizationPasses(*ctx, PassMgr);
+        AddAnalysisPasses(*ctx, PassMgr);
 
-        }
-        else
-        {
-            if (IsStage1(ctx) && IGC_IS_FLAG_ENABLED(SaveRestoreIR))
-            {
-                COMPILER_TIME_START(ctx, TIME_CG_Add_Passes);
-                IGCPassManager PassMgrCommon(ctx, "CGCommon");
-                AddLegalizationPasses(*ctx, PassMgrCommon);
-                AddAnalysisPasses(*ctx, PassMgrCommon);
-                COMPILER_TIME_END(ctx, TIME_CG_Add_Passes);
-                PassMgrCommon.run(*(ctx->getModule()));
-
-                IGC::SaveIR(ctx);
-                COMPILER_TIME_START(ctx, TIME_CG_Add_Passes);
-                MetaDataUtils* pMdUtils = ctx->getMetaDataUtils();
-                PassMgr.add(new MetaDataUtilsWrapper(pMdUtils, ctx->getModuleMetaData()));
-                PassMgr.add(new CodeGenContextWrapper(ctx));
-            }
-            else
-            {
-                COMPILER_TIME_START(ctx, TIME_CG_Add_Passes);
-                AddLegalizationPasses(*ctx, PassMgr);
-                AddAnalysisPasses(*ctx, PassMgr);
-            }
-        }
         const PixelShaderInfo& psInfo = ctx->getModuleMetaData()->psInfo;
         bool useRegKeySimd = false;
         uint32_t pixelShaderSIMDMode =
@@ -1318,37 +1289,6 @@ namespace IGC
         }
     }
 
-    void SaveIR(CodeGenContext* pContext)
-    {
-        // For debugging
-        DumpLLVMIR(pContext, "stage1SavedIR");
-        COMPILER_TIME_START(pContext, TIME_CG_SaveIR);
-        // Save MetaData
-        serialize(*(pContext->getModuleMetaData()), pContext->getModule());
-        // Serialize LLVM IR and save it to a string
-        llvm::raw_string_ostream OStream(pContext->m_savedBitcodeString);
-        IGCLLVM::WriteBitcodeToFile(pContext->getModule(), OStream, true);
-        OStream.flush();
-
-        // Store the results and pass it to stage 2 if staged compilation happens
-        pContext->m_savedInstrTypes = pContext->m_instrTypes;
-        COMPILER_TIME_END(pContext, TIME_CG_SaveIR);
-    }
-
-    bool UnpackBitcode( const char *bitcode, unsigned int bitcodeSize, CodeGenContext& cisaContext, bool upgradeIR = true);
-
-    void RestoreIR(CodeGenContext* pContext)
-    {
-        COMPILER_TIME_START(pContext, TIME_CG_RestoreIR);
-        pContext->m_instrTypes = (*(SInstrTypes *)pContext->m_StagingCtx->m_savedInstrTypes);
-        UnpackBitcode(pContext->m_StagingCtx->m_savedBitcodeString.c_str(),
-            pContext->m_StagingCtx->m_savedBitcodeString.size(), *pContext, false);
-        deserialize(*(pContext->getModuleMetaData()), pContext->getModule());
-        COMPILER_TIME_END(pContext, TIME_CG_RestoreIR);
-
-        // For debugging
-        DumpLLVMIR(pContext, "stage2RestoredIR");
-    }
 
     void OptimizeIR(CodeGenContext* pContext)
     {

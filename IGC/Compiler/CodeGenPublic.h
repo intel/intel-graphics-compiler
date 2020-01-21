@@ -1191,8 +1191,6 @@ namespace IGC
     void CodeGen(GeometryShaderContext* ctx);
     void CodeGen(OpenCLProgramContext* ctx);
 
-    void SaveIR(CodeGenContext* ctx);
-    void RestoreIR(CodeGenContext* ctx);
     void OptimizeIR(CodeGenContext* ctx);
 
     /**
