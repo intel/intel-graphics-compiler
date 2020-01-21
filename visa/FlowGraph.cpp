@@ -1476,12 +1476,9 @@ void FlowGraph::decoupleInitBlock(G4_BB* bb, FuncInfoHashTable& funcInfoHashTabl
 {
     G4_BB* oldInitBB = bb;
     G4_BB* newInitBB = createNewBB();
-    BBs.insert(BBs.end(), newInitBB);
-
-    FuncInfoHashTable::iterator old_iter = funcInfoHashTable.find(oldInitBB->getId());
-    MUST_BE_TRUE(old_iter != funcInfoHashTable.end(), " Function info is not in hashtable.");
-    G4_BB* exitBB = (*old_iter).second->getExitBB();
-    unsigned funcId = (*old_iter).second->getId();
+    BB_LIST_ITER insertBefore = std::find(BBs.begin(), BBs.end(), bb);
+    MUST_BE_TRUE(insertBefore != BBs.end(), ERROR_FLOWGRAPH);
+    BBs.insert(insertBefore, newInitBB);
 
     BB_LIST_ITER kt = oldInitBB->Preds.begin();
     while (kt != oldInitBB->Preds.end())
@@ -1503,23 +1500,6 @@ void FlowGraph::decoupleInitBlock(G4_BB* bb, FuncInfoHashTable& funcInfoHashTabl
             (*kt)->Succs.insert(jt, newInitBB);
             (*kt)->Succs.erase(jt);
 
-            // update info in func table
-            FuncInfoHashTable::iterator calleeInfoLoc = funcInfoHashTable.find(newInitBB->getId());
-
-            if (calleeInfoLoc != funcInfoHashTable.end()) {
-                (*calleeInfoLoc).second->incrementCallCount();
-                (*kt)->setCalleeInfo((*calleeInfoLoc).second);
-            }
-            else {
-                FuncInfo *funcInfo = new (mem)FuncInfo(
-                    funcId, newInitBB, exitBB);
-                std::pair<FuncInfoHashTable::iterator, bool> loc =
-                    funcInfoHashTable.insert(
-                        std::make_pair(newInitBB->getId(), funcInfo));
-                MUST_BE_TRUE(loc.second, ERROR_FLOWGRAPH);
-                (*kt)->setCalleeInfo((*(loc.first)).second);
-            }
-
             BB_LIST_ITER tmp_kt = kt;
             ++kt;
             // erase this pred from old INIT BB's pred
@@ -1531,16 +1511,14 @@ void FlowGraph::decoupleInitBlock(G4_BB* bb, FuncInfoHashTable& funcInfoHashTabl
         }
     }
 
-    // Erase item from unordered_map using
-    // key rather than iterator since iterator may be
-    // invalid due to insert operation since last find.
-    {
-        FuncInfoHashTable::iterator calleeInfoLoc = funcInfoHashTable.find(oldInitBB->getId());
-        if (calleeInfoLoc != funcInfoHashTable.end()) {
-            (*calleeInfoLoc).second->~FuncInfo();
-        }
-        funcInfoHashTable.erase(oldInitBB->getId());
-    }
+    FuncInfoHashTable::iterator old_iter = funcInfoHashTable.find(oldInitBB->getId());
+    MUST_BE_TRUE(old_iter != funcInfoHashTable.end(), " Function info is not in hashtable.");
+    FuncInfo* funcInfo = (*old_iter).second;
+
+    // Erase the old item from unordered_map and add the new one.
+    funcInfo->updateInitBB(newInitBB);
+    funcInfoHashTable.erase(old_iter);
+    funcInfoHashTable.insert(std::make_pair(newInitBB->getId(), funcInfo));
 
     oldInitBB->unsetBBType(G4_BB_INIT_TYPE);
     newInitBB->setBBType(G4_BB_INIT_TYPE);
@@ -1557,7 +1535,10 @@ void FlowGraph::decoupleExitBlock(G4_BB* bb)
 {
     G4_BB* oldExitBB = bb;
     G4_BB* newExitBB = createNewBB();
-    BBs.insert(BBs.end(), newExitBB);
+    BB_LIST_ITER insertBefore = std::find(BBs.begin(), BBs.end(), bb);
+    MUST_BE_TRUE(insertBefore != BBs.end(), ERROR_FLOWGRAPH);
+    ++insertBefore;
+    BBs.insert(insertBefore, newExitBB);
 
     BB_LIST_ITER kt = oldExitBB->Succs.begin();
 
@@ -1606,7 +1587,9 @@ void FlowGraph::decoupleReturnBlock(G4_BB* bb)
 {
     G4_BB* oldRetBB = bb;
     G4_BB* newRetBB = createNewBB();
-    BBs.insert(BBs.end(), newRetBB);
+    BB_LIST_ITER insertBefore = std::find(BBs.begin(), BBs.end(), bb);
+    MUST_BE_TRUE(insertBefore != BBs.end(), ERROR_FLOWGRAPH);
+    BBs.insert(insertBefore, newRetBB);
     G4_BB* itsExitBB = oldRetBB->BBBeforeCall()->getCalleeInfo()->getExitBB();
 
     BB_LIST_ITER jt = itsExitBB->Succs.begin();
@@ -1651,7 +1634,7 @@ void FlowGraph::decoupleReturnBlock(G4_BB* bb)
     newRetBB->setBBBeforeCall(oldRetBB->BBBeforeCall());
     oldRetBB->BBBeforeCall()->setBBAfterCall(newRetBB);
 
-    bb->setBBBeforeCall(NULL);
+    oldRetBB->setBBBeforeCall(NULL);
 
     std::string str = "LABEL__EMPTYBB__" + std::to_string(newRetBB->getId());
     G4_Label* label = builder->createLabel(str, LABEL_BLOCK);
@@ -1659,24 +1642,35 @@ void FlowGraph::decoupleReturnBlock(G4_BB* bb)
     newRetBB->push_back(labelInst);
 }
 
+// Make sure that a BB is at most one of CALL/RETURN/EXIT/INIT. If any
+// BB is both, say INIT and CALL, decouple them by inserting a new BB.
+// [The above comments are post-added from reading the code.]
+//
+// The inserted BB must be in the original place so that each subroutine
+// has a list of consecutive BBs.
 void FlowGraph::normalizeSubRoutineBB(FuncInfoHashTable& funcInfoTable)
 {
-    for (BB_LIST_ITER it = BBs.begin(); it != BBs.end(); ++it)
+    BB_LIST_ITER nexti = BBs.begin();
+    for (BB_LIST_ITER it = nexti; it != BBs.end(); it = nexti)
     {
+        ++nexti;
+
         if (((*it)->getBBType() & G4_BB_CALL_TYPE))
         {
             G4_BB* callBB = (*it);
 
+            if (callBB->getBBType() & G4_BB_EXIT_TYPE)
+            {
+                // As call BB has RETURN BB as fall-thru, cannot be EXIT
+                MUST_BE_TRUE(false, ERROR_FLOWGRAPH);
+            }
+
+            // BB could be either INIT or RETURN, but not both.
             if (callBB->getBBType() & G4_BB_INIT_TYPE)
             {
                 decoupleInitBlock(callBB, funcInfoTable);
             }
-            if (callBB->getBBType() & G4_BB_EXIT_TYPE)
-            {
-                decoupleExitBlock(callBB);
-            }
-
-            if (callBB->getBBType() & G4_BB_RETURN_TYPE)
+            else if (callBB->getBBType() & G4_BB_RETURN_TYPE)
             {
                 decoupleReturnBlock(callBB);
             }
@@ -1684,7 +1678,16 @@ void FlowGraph::normalizeSubRoutineBB(FuncInfoHashTable& funcInfoTable)
         else if (((*it)->getBBType() & G4_BB_INIT_TYPE))
         {
             G4_BB* initBB = (*it);
-            if (initBB->getBBType() != G4_BB_INIT_TYPE)
+
+            if (initBB->getBBType() & G4_BB_RETURN_TYPE)
+            {
+                // As retrun BB must have a pred, it cannot be init BB
+                MUST_BE_TRUE(false, ERROR_FLOWGRAPH);
+            }
+
+            // Two possible combinations: INIT & CALL, or INIT & EXIT. INIT & CALL has
+            // been processed in the previous IF, here only INIT and EXIT is possible.
+            if (initBB->getBBType() & G4_BB_EXIT_TYPE)
             {
                 decoupleInitBlock(initBB, funcInfoTable);
             }
@@ -1693,15 +1696,8 @@ void FlowGraph::normalizeSubRoutineBB(FuncInfoHashTable& funcInfoTable)
         {
             G4_BB* exitBB = (*it);
 
-            if (exitBB->getBBType() & G4_BB_INIT_TYPE)
-            {
-                decoupleInitBlock(exitBB, funcInfoTable);
-            }
-            if (exitBB->getBBType() & G4_BB_CALL_TYPE)
-            {
-                decoupleExitBlock(exitBB);
-            }
-
+            // Only EXIT & RETURN are possible. (INIT & EXIT
+            // has been processed)
             if (exitBB->getBBType() & G4_BB_RETURN_TYPE)
             {
                 decoupleReturnBlock(exitBB);
@@ -1711,20 +1707,8 @@ void FlowGraph::normalizeSubRoutineBB(FuncInfoHashTable& funcInfoTable)
         {
             G4_BB* retBB = (*it);
 
-            if (retBB->getBBType() & G4_BB_INIT_TYPE)
-            {
-                MUST_BE_TRUE(false, ERROR_FLOWGRAPH);
-            }
-            if (retBB->getBBType() & G4_BB_EXIT_TYPE)
-            {
-                MUST_BE_TRUE(!(retBB->getBBType() & G4_BB_CALL_TYPE), ERROR_FLOWGRAPH);
-                decoupleReturnBlock(retBB);
-            }
-            else if (retBB->getBBType() & G4_BB_CALL_TYPE)
-            {
-                decoupleReturnBlock(retBB);
-            }
-            else if (retBB->Preds.size() > 1)
+            // Do we need to do this ?
+            if (retBB->Preds.size() > 1)
             {
                 decoupleReturnBlock(retBB);
             }

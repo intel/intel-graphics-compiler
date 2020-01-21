@@ -126,6 +126,11 @@ public:
         ++callCount;
     }
 
+    void updateInitBB(G4_BB* p_initBB)
+    {
+        initBB = p_initBB;
+    }
+
     void updateExitBB(G4_BB* p_exitBB)
     {
         exitBB = p_exitBB;
