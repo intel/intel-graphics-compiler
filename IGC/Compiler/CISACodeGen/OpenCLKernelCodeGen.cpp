@@ -759,6 +759,7 @@ namespace IGC
             locAnnotation->PayloadPosition = payloadPosition;
             locAnnotation->PayloadSizeInBytes = kernelArg->getAllocateSize();
             locAnnotation->ArgumentNumber = kernelArg->getAssociatedArgNo();
+            locAnnotation->LocationIndex = kernelArg->getLocationIndex();
             m_kernelInfo.m_localPointerArgument.push_back(locAnnotation);
         }
         break;

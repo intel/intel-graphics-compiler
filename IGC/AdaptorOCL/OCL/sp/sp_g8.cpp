@@ -1489,6 +1489,7 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
             patch.DataSize = localArg->PayloadSizeInBytes;
             patch.SourceOffset = localArg->Alignment;
             patch.Offset = localArg->PayloadPosition;
+            patch.LocationIndex = localArg->LocationIndex;
             patch.Type =  iOpenCL::DATA_PARAMETER_SUM_OF_LOCAL_MEMORY_OBJECT_ARGUMENT_SIZES;
 
             dataParameterStreamSize = std::max(
