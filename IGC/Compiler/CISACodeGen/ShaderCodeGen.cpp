@@ -1220,6 +1220,11 @@ namespace IGC
 
         mpm.run(*pContext->getModule());
 
+        // If the module does not contain called function declaration,
+        // indirect calls are the only way to detect function pointers usage.
+        if (pContext->m_instrTypes.hasIndirectCall)
+            pContext->m_enableFunctionPointer = true;
+
         if (pContext->getMetaDataUtils()->size_FunctionsInfo() == 1 &&
             !pContext->m_instrTypes.hasSubroutines)
         {
