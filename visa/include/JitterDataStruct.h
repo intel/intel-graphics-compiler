@@ -64,6 +64,7 @@ typedef struct {
 
     // number of spill/fill, weighted by loop
     unsigned int numGRFSpillFill;
+    bool aboveSpillThreshold;
 
     void* freeGRFInfo;
     unsigned int freeGRFInfoSize;

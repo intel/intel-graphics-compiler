@@ -9114,7 +9114,8 @@ int GlobalRA::coloringRegAlloc()
                     return (numSpill * 200) < (threshold * asmCount);
                 };
 
-                if (builder.getOption(vISA_AbortOnSpill) && !underSpillThreshold(GRFSpillFillCount, instNum))
+                bool aboveSpillThreshold = !underSpillThreshold(GRFSpillFillCount, instNum);
+                if (builder.getOption(vISA_AbortOnSpill) && aboveSpillThreshold)
                 {
                     // update jit metadata information
                     if (auto jitInfo = builder.getJitInfo())
@@ -9123,12 +9124,20 @@ int GlobalRA::coloringRegAlloc()
                         jitInfo->spillMemUsed = 0;
                         jitInfo->numAsmCount = instNum;
                         jitInfo->numGRFSpillFill = GRFSpillFillCount;
+                        jitInfo->aboveSpillThreshold = true;
                     }
 
                     // Early exit when -abortonspill is passed, instead of
                     // spending time inserting spill code and then aborting.
                     stopTimer(TIMER_GRF_GLOBAL_RA);
                     return VISA_SPILL;
+                }
+                else
+                {
+                    if (auto jitInfo = builder.getJitInfo())
+                    {
+                        jitInfo->aboveSpillThreshold = aboveSpillThreshold;
+                    }
                 }
 
                 if (iterationNo == 0 &&

@@ -3818,6 +3818,14 @@ namespace IGC
                     SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD16_SpillThreshold) * 2);
             }
         }
+        else if (IsStage1FastCompile(context->m_CgFlag, context->m_StagingCtx))
+        {
+            if (AvoidRetryOnSmallSpill())
+            {
+                if (m_program->m_dispatchSize == SIMDMode::SIMD8)
+                    SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD8_SpillThreshold) * 2);
+            }
+        }
 
         if ((context->type == ShaderType::OPENCL_SHADER || context->type == ShaderType::COMPUTE_SHADER) &&
             VISAPlatform >= GENX_SKL && IGC_IS_FLAG_ENABLED(EnablePreemption) && !hasStackCall && !context->m_enableFunctionPointer)
@@ -4787,7 +4795,8 @@ namespace IGC
         m_program->m_staticCycle = staticCycle;
     }
 
-    if (jitInfo->isSpill && AvoidRetryOnSmallSpill())
+    if (jitInfo->isSpill && AvoidRetryOnSmallSpill() &&
+        !jitInfo->aboveSpillThreshold)
     {
         context->m_retryManager.Disable();
     }
