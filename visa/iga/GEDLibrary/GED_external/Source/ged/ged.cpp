@@ -30,7 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #ifndef GED_DISASSEMBLY
 #error must enable GED_DISASSEMBLY to build the GED standalone executable (disassembler)
-# endif
+#endif
 
 #include <cstdio>
 #include <iostream>
