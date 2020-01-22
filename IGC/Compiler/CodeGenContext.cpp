@@ -93,11 +93,10 @@ namespace IGC
     bool RetryManager::IsFirstTry() {
         return (stateId == firstStateId);
     }
-    bool RetryManager::IsLastTry(CodeGenContext* cgCtx) {
+    bool RetryManager::IsLastTry() {
         return (!enabled ||
             IGC_IS_FLAG_ENABLED(DisableRecompilation) ||
             lastSpillSize < IGC_GET_FLAG_VALUE(AllowedSpillRegCount) ||
-            (cgCtx->getModuleMetaData()->csInfo.forcedSIMDSize != 0) ||
             (stateId < getStateCnt() && RetryTable[stateId].nextState >= getStateCnt()));
     }
     unsigned RetryManager::GetRetryId() const { return stateId; }
@@ -181,20 +180,31 @@ namespace IGC
 
     CShader* RetryManager::PickCSEntryForcedFromDriver(SIMDMode& simdMode, unsigned char forcedSIMDModeFromDriver)
     {
-        switch (forcedSIMDModeFromDriver)
+        if (forcedSIMDModeFromDriver == 8)
         {
-        case 8: simdMode = SIMDMode::SIMD8;
-            simdMode = SIMDMode::SIMD8;
-            return m_simdEntries[0];
-        case 16:simdMode = SIMDMode::SIMD16;
-            simdMode = SIMDMode::SIMD16;
-            return m_simdEntries[1];
-        case 32:simdMode = SIMDMode::SIMD32;
-            simdMode = SIMDMode::SIMD32;
-            return m_simdEntries[2];
-        default: simdMode = SIMDMode::UNKNOWN;
-            return nullptr;
+            if ((m_simdEntries[0] && m_simdEntries[0]->m_spillSize == 0) || IsLastTry())
+            {
+                simdMode = SIMDMode::SIMD8;
+                return m_simdEntries[0];
+            }
         }
+        else if (forcedSIMDModeFromDriver == 16)
+        {
+            if ((m_simdEntries[1] && m_simdEntries[1]->m_spillSize == 0) || IsLastTry())
+            {
+                simdMode = SIMDMode::SIMD16;
+                return m_simdEntries[1];
+            }
+        }
+        else if (forcedSIMDModeFromDriver == 32)
+        {
+            if ((m_simdEntries[2] && m_simdEntries[2]->m_spillSize == 0) || IsLastTry())
+            {
+                simdMode = SIMDMode::SIMD32;
+                return m_simdEntries[2];
+            }
+        }
+        return nullptr;
     }
 
     CShader* RetryManager::PickCSEntryByRegKey(SIMDMode& simdMode)
@@ -349,12 +359,15 @@ namespace IGC
 
     bool RetryManager::PickupCS(ComputeShaderContext* cgCtx)
     {
-        SIMDMode simdMode;
+        SIMDMode simdMode = SIMDMode::UNKNOWN;
         CComputeShader* shader = nullptr;
         SComputeShaderKernelProgram* pKernelProgram = &cgCtx->programOutput;
 
-        shader = static_cast<CComputeShader*>(
-            PickCSEntryForcedFromDriver(simdMode, cgCtx->getModuleMetaData()->csInfo.forcedSIMDSize));
+        if (cgCtx->getModuleMetaData()->csInfo.forcedSIMDSize != 0)
+        {
+            shader = static_cast<CComputeShader*>(
+                PickCSEntryForcedFromDriver(simdMode, cgCtx->getModuleMetaData()->csInfo.forcedSIMDSize));
+        }
         if (!shader)
         {
             shader = static_cast<CComputeShader*>(
@@ -365,7 +378,7 @@ namespace IGC
             shader = static_cast<CComputeShader*>(
                 PickCSEntryEarly(simdMode, cgCtx));
         }
-        if (!shader && IsLastTry(cgCtx))
+        if (!shader && IsLastTry())
         {
             shader = static_cast<CComputeShader*>(
                 PickCSEntryFinally(simdMode));

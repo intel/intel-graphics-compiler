@@ -1906,7 +1906,7 @@ namespace IGC
 
         if (pOutput->m_scratchSpaceUsedBySpills == 0 ||
             noRetry ||
-            ctx->m_retryManager.IsLastTry(ctx) ||
+            ctx->m_retryManager.IsLastTry() ||
             fullDebugInfo)
         {
             // Save the shader program to the state processor to be handled later

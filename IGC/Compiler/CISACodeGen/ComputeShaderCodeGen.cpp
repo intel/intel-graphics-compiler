@@ -220,7 +220,7 @@ namespace IGC
         ComputeShaderContext* pctx =
             static_cast<ComputeShaderContext*>(GetContext());
         RetryManager& retryMgr = GetContext()->m_retryManager;
-        bool isLastTry = retryMgr.IsLastTry(pctx);
+        bool isLastTry = retryMgr.IsLastTry();
 
         float spillThreshold = pctx->GetSpillThreshold();
 

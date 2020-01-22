@@ -795,11 +795,11 @@ namespace IGC
         if (IsStage1BestPerf(ctx->m_CgFlag, ctx->m_StagingCtx))
         {
             // don't retry SIMD16 for ForcePSBestSIMD
-            if( SimdEarlyCheck( ctx ) && ( !ctx->m_retryManager.IsLastTry( ctx ) ) )
+            if( SimdEarlyCheck( ctx ) && ( !ctx->m_retryManager.IsLastTry() ) )
             {
                 AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD16, true, ShaderDispatchMode::NOT_APPLICABLE, pSignature);
             }
-            AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD8, !ctx->m_retryManager.IsLastTry(ctx), ShaderDispatchMode::NOT_APPLICABLE, pSignature);
+            AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD8, !ctx->m_retryManager.IsLastTry(), ShaderDispatchMode::NOT_APPLICABLE, pSignature);
             useRegKeySimd = true;
         }
         else if (IsStage1FastCompile(ctx->m_CgFlag, ctx->m_StagingCtx))
@@ -849,7 +849,7 @@ namespace IGC
 
             // for versioned loop, in general SIMD16 with spill has better perf
             bool earlyExit16 = psInfo.hasVersionedLoop ? false : earlyExit;
-            AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD8, !ctx->m_retryManager.IsLastTry(ctx), ShaderDispatchMode::NOT_APPLICABLE, pSignature);
+            AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD8, !ctx->m_retryManager.IsLastTry(), ShaderDispatchMode::NOT_APPLICABLE, pSignature);
 
             if (enableSimd32 || IGC_GET_FLAG_VALUE(SkipTREarlyExitCheck))
             {
@@ -947,7 +947,7 @@ namespace IGC
                 if (ctx->m_enableSubroutine || !cgSimd16)
                 {
                     AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD8,
-                        !ctx->m_retryManager.IsLastTry(ctx));
+                        !ctx->m_retryManager.IsLastTry());
                     setEarlyExit16Stat = true;
                 }
                 else
@@ -962,7 +962,7 @@ namespace IGC
                         AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD32, true);
 
                     AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD8,
-                        !ctx->m_retryManager.IsLastTry(ctx));
+                        !ctx->m_retryManager.IsLastTry());
                 }
                 break;
             }
@@ -970,7 +970,7 @@ namespace IGC
             case SIMDMode::SIMD16:
             {
                 AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD16,
-                    !ctx->m_retryManager.IsLastTry(ctx));
+                    !ctx->m_retryManager.IsLastTry());
                 if (!ctx->m_enableSubroutine && maxSimdMode == SIMDMode::SIMD32)
                 {
                     AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD32, true);
@@ -981,7 +981,7 @@ namespace IGC
             case SIMDMode::SIMD32:
             {
                 AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD32,
-                    !ctx->m_retryManager.IsLastTry(ctx));
+                    !ctx->m_retryManager.IsLastTry());
                 break;
             }
 
