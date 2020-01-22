@@ -370,11 +370,10 @@ namespace IGC
 
     inline unsigned GetHwThreadsPerWG(const IGC::CPlatform& platform)
     {
-        unsigned hwThreadPerWorkgroup = platform.getMaxNumberThreadPerSubslice();
-
+        unsigned hwThreadPerWorkgroup = platform.getMaxNumberHWThreadForEachWG();
         if (platform.supportPooledEU())
         {
-            hwThreadPerWorkgroup = platform.getMaxNumberThreadPerWorkgroupPooledMax();
+            hwThreadPerWorkgroup = std::min(platform.getMaxNumberThreadPerWorkgroupPooledMax(), (unsigned)64);
         }
         return hwThreadPerWorkgroup;
     }
@@ -385,8 +384,7 @@ namespace IGC
         {
             hwThreadPerWorkgroup = 42; //On GT1 HW, there are 7 threads/EU and 6 EU/subslice, 42 is the minimum threads/workgroup any HW can support
         }
-        if ((threadGroupSize <= hwThreadPerWorkgroup * 8) &&
-            threadGroupSize <= 512)
+        if (threadGroupSize <= hwThreadPerWorkgroup * 8)
         {
             return SIMDMode::SIMD8;
         }

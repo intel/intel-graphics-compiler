@@ -391,6 +391,11 @@ namespace IGC
         return m_platformInfo.eRenderCoreFamily >= IGFX_GEN11_CORE && IGC_IS_FLAG_ENABLED(EnableIntegerMad);
     }
 
+    unsigned int getMaxNumberHWThreadForEachWG() const
+    {
+        return getMaxNumberThreadPerSubslice();
+    }
+
     // ***** Below go accessor methods for testing WA data from WA_TABLE *****
 
     bool WaDoNotPushConstantsForAllPulledGSTopologies() const
