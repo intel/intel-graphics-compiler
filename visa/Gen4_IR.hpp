@@ -803,6 +803,9 @@ public:
     void setSrc(G4_Operand* opnd, unsigned i);
     int getNumSrc() const;
 
+    // this assume we don't have to recompute bound for the swapped source
+    // Note that def-use chain is not maintained after this; call swapDefUse
+    // if you want to update the du-chain.
     void swapSrc(int src1, int src2)
     {
         assert(src1 >= 0 && src1 < getNumSrc() && src2 >= 0 && src2 < getNumSrc() && "illegal src number");

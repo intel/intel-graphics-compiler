@@ -2433,9 +2433,7 @@ void Optimizer::reassociateConst()
                 }
                 else if (inst->getSrc(0)->isImm() && !inst->getSrc(1)->isImm())
                 {
-                    auto tmp = inst->getSrc(0);
-                    inst->setSrc(inst->getSrc(1), 0);
-                    inst->setSrc(tmp, 1);
+                    inst->swapSrc(0, 1);
                     inst->swapDefUse(); // swap def/use for src0 and src1
                     return true;
                 }
@@ -3955,8 +3953,7 @@ bool Optimizer::foldCmpSel(G4_BB *BB, G4_INST *selInst, INST_LIST_ITER &selInst_
     // Normalize SEL's predicate state to Plus.
     if (G4_PredState::PredState_Minus == pred->getState())
     {
-        selInst->setSrc(sel_src0, 1);
-        selInst->setSrc(sel_src1, 0);
+        selInst->swapSrc(0, 1);
         selInst->swapDefUse();
         pred->setState(G4_PredState::PredState_Plus);
         std::swap(sel_src0, sel_src1);
@@ -4324,8 +4321,7 @@ void Optimizer::optimizeLogicOperation()
                                                               : PredState_Plus;
                             Pred->setState(State);
                             // Swap source operands.
-                            inst->setSrc(Src1, 0);
-                            inst->setSrc(Src0, 1);
+                            inst->swapSrc(0, 1);
                             inst->swapDefUse();
                         }
                         inst->setOpcode(G4_mov);
@@ -6438,8 +6434,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             src02Opnd = inst->getSrc(2);
             if (src1Opnd->getType() == src02Opnd->getType())
             {
-                inst->setSrc(src1Opnd, 2);
-                inst->setSrc(src02Opnd, 1);
+                inst->swapSrc(1, 2);
             }
         }
 
@@ -6449,8 +6444,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             src02Opnd = inst->getSrc(0);
             if (src1Opnd->getType() == src02Opnd->getType())
             {
-                inst->setSrc(src1Opnd, 0);
-                inst->setSrc(src02Opnd, 1);
+                inst->swapSrc(0, 1);
             }
         }
 

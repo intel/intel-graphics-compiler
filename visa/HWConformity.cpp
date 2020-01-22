@@ -758,16 +758,14 @@ void HWConformity::fixImmAndARFSrc(INST_LIST_ITER it, G4_BB *bb)
                 else
                 {
                     // swap operands
-                    inst->setSrc(src1, 0);
-                    inst->setSrc(src0, 1);
+                    inst->swapSrc(0, 1);
                     inst->swapDefUse();
                 }
             }
             else
             {
                 // swap operands
-                inst->setSrc(src1, 0);
-                inst->setSrc(src0, 1);
+                inst->swapSrc(0, 1);
                 inst->swapDefUse();
             }
         }
@@ -803,8 +801,7 @@ void HWConformity::fixImmAndARFSrc(INST_LIST_ITER it, G4_BB *bb)
                 inst->setPredicate(builder.createPredicate(
                     reverse, pred->getBase(), pred->getSubRegOff(), pred->getControl()));
             }
-            inst->setSrc(src1, 0);
-            inst->setSrc(src0, 1);
+            inst->swapSrc(0, 1);
             inst->swapDefUse();
         }
         else if (!inst->isMath())
@@ -835,7 +832,7 @@ void HWConformity::fixImmAndARFSrc(INST_LIST_ITER it, G4_BB *bb)
                         // change instruction into a MOV
                         inst->setOpcode(G4_mov);
                         inst->setSrc(newSrc, 0);
-                        inst->setSrc(NULL, 1);
+                        inst->setSrc(nullptr, 1);
                         return;
                     }
                 }
@@ -845,8 +842,7 @@ void HWConformity::fixImmAndARFSrc(INST_LIST_ITER it, G4_BB *bb)
                 G4_Type_Table[src0->getType()].byteSize != 8 &&
                 G4_Type_Table[src1->getType()].byteSize == 8)
             {
-                inst->setSrc(src1, 0);
-                inst->setSrc(src0, 1);
+                inst->swapSrc(0, 1);
                 inst->swapDefUse();
                 src0 = inst->getSrc(0);
                 src1 = inst->getSrc(1);
@@ -897,8 +893,7 @@ void HWConformity::fixImmAndARFSrc(INST_LIST_ITER it, G4_BB *bb)
         /* See if we can swap the src1 */
         if (INST_COMMUTATIVE(inst->opcode()) && !isARF(src0))
         {
-            inst->setSrc(src1, 0);
-            inst->setSrc(src0, 1);
+            inst->swapSrc(0, 1);
             inst->swapDefUse();
         }
         else
@@ -1021,8 +1016,7 @@ bool HWConformity::fixOpndType(INST_LIST_ITER it, G4_BB *bb)
             {
                 if (!IS_BTYPE(src0->getType()) && inst->canSwapSource())
                 {
-                    inst->setSrc(src1, 0);
-                    inst->setSrc(src0, 1);
+                    inst->swapSrc(0, 1);
                 }
                 else
                 {
@@ -1066,17 +1060,17 @@ void HWConformity::fixOpnds( INST_LIST_ITER it, G4_BB *bb, G4_Type& exType )
             // check if src0 uses VxH
             bool src0_use_VxH = false;
 
-            if( src0->isSrcRegRegion() && src0->asSrcRegRegion()->getRegAccess() != Direct &&
-                src0->asSrcRegRegion()->getRegion()->isRegionWH() ) // is this safe?
+            if (src0->isSrcRegRegion() && src0->asSrcRegRegion()->getRegAccess() != Direct &&
+                src0->asSrcRegRegion()->getRegion()->isRegionWH()) // is this safe?
             {
                 src0_use_VxH = true;
             }
-            if( src0_use_VxH )
+            if (src0_use_VxH)
             {
-                src0 = insertMovBefore( it, 0, src0->getType(), bb );
+                src0 = insertMovBefore(it, 0, src0->getType(), bb);
             }
-            inst->setSrc( src1, 0 );
-            inst->setSrc( src0, 1 );
+            inst->setSrc(src0, 1);
+            inst->setSrc(src1, 0);
             inst->swapDefUse();
             src0 = inst->getSrc(0);
             src1 = inst->getSrc(1);
@@ -1092,8 +1086,7 @@ void HWConformity::fixOpnds( INST_LIST_ITER it, G4_BB *bb, G4_Type& exType )
             }
             else
             {
-                inst->setSrc( src1, 0 );
-                inst->setSrc( src0, 1 );
+                inst->swapSrc(0, 1);
                 inst->swapDefUse();
             }
             src0 = inst->getSrc(0);
@@ -1137,8 +1130,7 @@ void HWConformity::fixOpnds( INST_LIST_ITER it, G4_BB *bb, G4_Type& exType )
             && !src0_use_VxH &&
             !(inst->opcode() == G4_mul && IS_DTYPE(src0->getType())))
         {
-            inst->setSrc( src1, 0 );
-            inst->setSrc( src0, 1 );
+            inst->swapSrc(0, 1);
             if( inst->opcode() == G4_cmp )
             {
                 // change condMod
@@ -2087,8 +2079,7 @@ bool HWConformity::fixMULInst( INST_LIST_ITER &i, G4_BB *bb )
 
     if (src0->isImm() && !src1->isImm())
     {
-        inst->setSrc( src1, 0 );
-        inst->setSrc( src0, 1 );
+        inst->swapSrc(0, 1);
         srcExchanged = true;
     }
 
@@ -2545,9 +2536,7 @@ void HWConformity::fixMULHInst( INST_LIST_ITER &i, G4_BB *bb )
 
     if (src0->isImm() && !src1->isImm())
     {
-        inst->setSrc( src1, 0 );
-        inst->setSrc( src0, 1 );
-
+        inst->swapSrc(0, 1);
         src0 = inst->getSrc(0);
         src1 = inst->getSrc(1);
     }
@@ -4008,10 +3997,7 @@ bool HWConformity::generateFPMad(G4_BB* bb, INST_LIST_ITER iter)
     inst->setOpcode(G4_mad);
 
     //swap src0 and src2 (vISA MAD is src0*src1+src2, while GEN MAD is src1*src2+src0)
-    G4_Operand* src0 = inst->getSrc(0);
-    G4_Operand* src2 = inst->getSrc(2);
-    inst->setSrc(src2, 0);
-    inst->setSrc(src0, 2);
+    inst->swapSrc(0, 2);
 
     return true;
 }
@@ -5368,7 +5354,7 @@ void HWConformity::addACCOpnd(
             0, 0, region, accTy);
 
         curInst->setImplAccSrc( accSrcOpnd );
-        curInst->setSrc( NULL, 2 );
+        curInst->setSrc(nullptr, 2 );
         curInst->setOpcode( G4_mac );
         curInst->fixMACSrc2DefUse();
     }
@@ -5610,7 +5596,7 @@ void HWConformity::fixSADA2Inst(G4_BB* bb)
 
             // create an implicit acc parameter for sada2
             inst->setOpcode( G4_sada2 );
-            inst->setSrc( NULL, 2 );
+            inst->setSrc(nullptr, 2 );
             G4_SrcRegRegion *accSrcOpnd = builder.createSrcRegRegion(
                 Mod_src_undef,
                 Direct,
@@ -5654,7 +5640,7 @@ void HWConformity::fixSADA2Inst(G4_BB* bb)
             // add (n) dst tmp<n;n,1>:w src2
 
             inst->setOpcode( G4_sad2 );
-            inst->setSrc( NULL, 2 );
+            inst->setSrc(nullptr, 2 );
 
             G4_SubReg_Align sad2TmpSubAlign = Get_G4_SubRegAlign_From_Type( dst->getType() );
 
