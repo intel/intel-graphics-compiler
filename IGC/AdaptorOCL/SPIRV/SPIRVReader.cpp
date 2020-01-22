@@ -1084,9 +1084,9 @@ public:
   bool transKernelMetadata();
   bool transSourceLanguage();
   bool transSourceExtension();
-  void addNamedBarrierArray();
-  void findNamedBarrierKernel(Function* F, llvm::SmallPtrSet<Function*, 4> &kernel_set);
-  Type *getNamedBarrierType();
+
+  Type* m_NamedBarrierType = nullptr;
+  Type* getNamedBarrierType();
   Value *transConvertInst(SPIRVValue* BV, Function* F, BasicBlock* BB);
   Instruction *transSPIRVBuiltinFromInst(SPIRVInstruction *BI, BasicBlock *BB);
   void transOCLVectorLoadStore(std::string& UnmangledName,
@@ -1892,25 +1892,6 @@ SPIRVToLLVM::transCmpInst(SPIRVValue* BV, BasicBlock* BB, Function* F) {
   return Inst;
 }
 
-void
-SPIRVToLLVM::findNamedBarrierKernel(Function* F, llvm::SmallPtrSet<Function*,4> &kernel_set)
-{
-    for (auto U : F->users())
-    {
-        if (auto CI = llvm::dyn_cast<llvm::CallInst>(U))
-        {
-            llvm::Function* func = CI->getParent()->getParent();
-            if (func->getCallingConv() == CallingConv::SPIR_KERNEL)
-            {
-                kernel_set.insert(func);
-            }
-            else
-                spirv_assert(0 && "Intialized called in User Function");
-        }
-    }
-}
-
-
 bool
 SPIRVToLLVM::postProcessOCL() {
   // I think we dont need it
@@ -1920,23 +1901,6 @@ SPIRVToLLVM::postProcessOCL() {
       if (F.getReturnType()->isStructTy())
       {
           structFuncs.push_back(&F);
-      }
-      if (F.getName().startswith("__builtin_spirv_OpNamedBarrierInitialize"))
-      {
-          //First find entry block
-          llvm::SmallPtrSet<Function*, 4> kernel_set;
-          findNamedBarrierKernel(&F, kernel_set);
-          for (auto element : kernel_set)
-          {
-              BasicBlock::iterator pInsertionPoint = element->getEntryBlock().begin();
-              while (isa<AllocaInst>(pInsertionPoint)) ++pInsertionPoint;
-              std::vector<Type *> ArgTys{Type::getInt32PtrTy(*Context, SPIRAS_Local)};
-              auto newName = "__intel_getInitializedNamedBarrierArray";
-              auto newFType = FunctionType::get(Type::getVoidTy(*Context), ArgTys, false);
-              auto newF = cast<Function>(M->getOrInsertFunction(newName, newFType));
-              Value* Arg_array[] = { m_named_barrier_id };
-              CallInst::Create(newF, Arg_array, "", &(*pInsertionPoint));
-          }
       }
   }
   for (auto structFunc : structFuncs)
@@ -3174,14 +3138,6 @@ SPIRVToLLVM::transSPIRVBuiltinFromInst(SPIRVInstruction *BI, BasicBlock *BB) {
           operands.push_back(val);
           break;
       }
-      case OpNamedBarrierInitialize:
-      {
-          auto ReuseGlobalIdValue = llvm::BitCastInst::CreatePointerCast(m_NamedBarrierVar,
-              getNamedBarrierType(), "", BB);
-          operands.push_back(ReuseGlobalIdValue);
-          operands.push_back(m_named_barrier_id);
-          break;
-      }
       default:
           break;
       }
@@ -3376,28 +3332,14 @@ SPIRVToLLVM::transSPIRVBuiltinFromInst(SPIRVInstruction *BI, BasicBlock *BB) {
   return Call;
 }
 
-
-void SPIRVToLLVM::addNamedBarrierArray()
-{
-  llvm::SmallVector<Type*, 3> NamedBarrierArray(3, Type::getInt32Ty(*Context));
-  Type *bufType = ArrayType::get(StructType::create(*Context, NamedBarrierArray, "struct.__namedBarrier"), uint64_t(8));
-  m_NamedBarrierVar = new GlobalVariable(*M, bufType, false,
-      GlobalVariable::InternalLinkage, ConstantAggregateZero::get(bufType),
-      "NamedBarrierArray", nullptr,
-      GlobalVariable::ThreadLocalMode::NotThreadLocal,
-      SPIRAS_Local);
-  m_named_barrier_id = new GlobalVariable(*M, Type::getInt32Ty(*Context), false,
-      GlobalVariable::InternalLinkage,
-      ConstantInt::get(Type::getInt32Ty(*Context), 0),
-      "NamedBarrierID", nullptr,
-      GlobalVariable::ThreadLocalMode::NotThreadLocal,
-      SPIRAS_Local);
-}
-
 Type* SPIRVToLLVM::getNamedBarrierType()
 {
-    auto newType = m_NamedBarrierVar->getType()->getPointerElementType()->getArrayElementType()->getPointerTo(SPIRAS_Local);
-    return newType;
+    if (!m_NamedBarrierType)
+    {
+        llvm::SmallVector<Type*, 3> NamedBarrierSturctType(3, Type::getInt32Ty(*Context));
+        m_NamedBarrierType = StructType::create(*Context, NamedBarrierSturctType, "struct.__namedBarrier")->getPointerTo(SPIRAS_Local);
+    }
+    return m_NamedBarrierType;
 }
 
 bool
@@ -3406,7 +3348,6 @@ SPIRVToLLVM::translate() {
     return false;
 
   compileUnit = DbgTran.createCompileUnit();
-  addNamedBarrierArray();
 
   for (unsigned I = 0, E = BM->getNumVariables(); I != E; ++I) {
     auto BV = BM->getVariable(I);

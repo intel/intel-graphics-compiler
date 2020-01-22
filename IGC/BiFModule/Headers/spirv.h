@@ -4107,12 +4107,15 @@ void __builtin_spirv_OpAtomicFlagClear_p4i32_i32_i32(volatile generic uint *Poin
 void __builtin_spirv_OpControlBarrier_i32_i32_i32(Scope_t Execution, Scope_t Memory, uint Semantics);
 void __builtin_spirv_OpMemoryBarrier_i32_i32(Scope_t Memory, uint Semantics);
 
+#ifndef NAMED_BARRIER_STRUCT_TYPE
+#define NAMED_BARRIER_STRUCT_TYPE
 typedef struct
 {
     int count;
     int orig_count;
     int inc;
 } __namedBarrier;
+#endif
 
 local __namedBarrier* __builtin_spirv_OpNamedBarrierInitialize_i32_p3__namedBarrier_p3i32(int Count, local __namedBarrier* nb_array, local uint* id);
 void __builtin_spirv_OpMemoryNamedBarrier_p3__namedBarrier_i32_i32(local __namedBarrier* NB, Scope_t Memory, uint Semantics);
