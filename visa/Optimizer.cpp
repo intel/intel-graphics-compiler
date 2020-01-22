@@ -11874,6 +11874,37 @@ void Optimizer::replaceNoMaskWithAnyhWA()
     std::vector<INST_LIST_ITER> NoMaskCandidates;
     uint32_t simdsize = fg.getKernel()->getSimdSize();
 
+    // When using cmp to generate emask, the default is to create
+    // all-one flag so it applies to all execution size and quarter
+    // control combination. Doing so needs 3 instructions for each BB.
+    // On the other hand, if anyh can be used, 2 insts would be needed
+    // so that we save 1 insts for each BB. The condition that anyh
+    // can be used is that M0 is used for all NoMask insts that needs
+    // WA and all its execsize is no larger than simdsize.
+    bool enableAnyh = false;
+    bool  useAnyh = false;  // default use all-one flag.
+    if ((builder.getuint32Option(vISA_noMaskWA) & 0x10) != 0)
+    {
+        enableAnyh = true;
+    }
+    if ((builder.getuint32Option(vISA_noMaskWA) & 0x8) == 0 ||
+        (builder.getuint32Option(vISA_noMaskWA) & 0x4) == 0)
+    {
+        // When reading ce or doing WA per inst, do not use anyh
+        enableAnyh = false;
+    }
+
+
+    auto getPredCtrl = [&](bool isUseAnyh) -> G4_Predicate_Control
+    {
+        if (isUseAnyh)
+        {
+            return simdsize == 8 ? PRED_ANY8H
+                                 : (simdsize == 16 ? PRED_ANY16H : PRED_ANY32H);
+        }
+        return PRED_DEFAULT;
+    };
+
     // Return condMod if a flag register is used. Since sel
     // does not update flag register, return null for sel.
     auto getFlagModifier = [](G4_INST* I) -> G4_CondMod* {
@@ -11948,6 +11979,12 @@ void Optimizer::replaceNoMaskWithAnyhWA()
         G4_INST* I1 = builder.createInternalInst(
             NULL, G4_cmp, flagCM, false, simdsize, nullDst, r0_0, r0_1, InstOpt_M0);
         BB->insert(II, I1);
+
+        if (useAnyh)
+        {
+            flagDefInst = I1;
+            return flagVar;
+        }
 
         G4_Imm* allone = builder.createImm(0xFFFFFFFF, Ty);
         G4_DstRegRegion* tFlag = builder.createDst(flagVar, 0, 0, 1, Ty);
@@ -12107,7 +12144,7 @@ void Optimizer::replaceNoMaskWithAnyhWA()
         }
         G4_DstRegRegion* tDst = builder.createDst(tPVar, 0, 0, 1, Ty);
         G4_Predicate* flag0 = builder.createPredicate(
-            PredState_Plus, flagVar, 0, PRED_DEFAULT);
+            PredState_Plus, flagVar, 0, getPredCtrl(useAnyh));
         G4_INST* I0 = builder.createInternalInst(
             flag0, G4_sel, nullptr, false,
             1, tDst, Src0, Src1, InstOpt_WriteEnable);
@@ -12177,7 +12214,7 @@ void Optimizer::replaceNoMaskWithAnyhWA()
         G4_INST* I0 = builder.createMov(
             I->getExecSize(), dst, tSrc, InstOpt_WriteEnable, false);
         G4_Predicate* flag0 = builder.createPredicate(
-            PredState_Plus, flagVar, 0, PRED_DEFAULT);
+            PredState_Plus, flagVar, 0, getPredCtrl(useAnyh));
         I0->setPredicate(flag0);
         flag0->setSameAsNoMask(true);
 
@@ -12257,7 +12294,7 @@ void Optimizer::replaceNoMaskWithAnyhWA()
                 modDcl->getRegVar(), 0, 0, 1, Ty);
             G4_INST* I1 = builder.createMov(1, D1, I1S0, InstOpt_WriteEnable, false);
             G4_Predicate* flag = builder.createPredicate(
-                PredState_Minus, flagVar, 0, PRED_DEFAULT);
+                PredState_Minus, flagVar, 0, getPredCtrl(useAnyh));
             I1->setPredicate(flag);
             currBB->insert(nextII, I1);
 
@@ -12284,10 +12321,12 @@ void Optimizer::replaceNoMaskWithAnyhWA()
             currBB->insert(currII, I0);
 
             // Use the new flag
+            // Note that if useAny is true, nP should use anyh
             G4_Predicate* nP = builder.createPredicate(
-                PredState_Plus, nPVar, 0, PRED_DEFAULT);
+                PredState_Plus, nPVar, 0, getPredCtrl(useAnyh));
             G4_CondMod* nM = builder.createCondMod(P->getMod(), nPVar, 0);
             I->setPredicate(nP);
+            nP->setSameAsNoMask(true);
             I->setCondMod(nM);
 
             G4_SrcRegRegion* I1S0 = builder.createSrcRegRegion(
@@ -12296,7 +12335,7 @@ void Optimizer::replaceNoMaskWithAnyhWA()
             G4_DstRegRegion* D1 = builder.createDst(
                 modDcl->getRegVar(), 0, 0, 1, Ty);
             G4_Predicate* flag1 = builder.createPredicate(
-                PredState_Plus, flagVar, 0, PRED_DEFAULT);
+                PredState_Plus, flagVar, 0, getPredCtrl(useAnyh));
             G4_INST* I1 = builder.createMov(1, D1, I1S0, InstOpt_WriteEnable, false);
             I1->setPredicate(flag1);
             flag1->setSameAsNoMask(true);
@@ -12354,7 +12393,7 @@ void Optimizer::replaceNoMaskWithAnyhWA()
             modDcl->getRegVar(), 0, 0, 1, Ty);
         G4_INST* I2 = builder.createMov(1, D2, I2S0, InstOpt_WriteEnable, false);
         G4_Predicate* flag2 = builder.createPredicate(
-            PredState_Minus, flagVar, 0, PRED_DEFAULT);
+            PredState_Minus, flagVar, 0, getPredCtrl(useAnyh));
         I2->setPredicate(flag2);
         currBB->insert(nextII, I2);
 
@@ -12422,7 +12461,7 @@ void Optimizer::replaceNoMaskWithAnyhWA()
         }
         G4_INST* I1 = builder.createMov(1, D1, immS0, InstOpt_WriteEnable, false);
         G4_Predicate* flag1 = builder.createPredicate(
-            PredState_Minus, flagVar, 0, PRED_DEFAULT);
+            PredState_Minus, flagVar, 0, getPredCtrl(useAnyh));
         I1->setPredicate(flag1);
         currBB->insert(currII, I1);
 
@@ -12437,7 +12476,7 @@ void Optimizer::replaceNoMaskWithAnyhWA()
             modDcl->getRegVar(), 0, 0, 1, Ty);
         G4_INST* I2 = builder.createMov(1, D2, I2S0, InstOpt_WriteEnable, false);
         G4_Predicate* flag2 = builder.createPredicate(
-            PredState_Minus, flagVar, 0, PRED_DEFAULT);
+            PredState_Minus, flagVar, 0, getPredCtrl(useAnyh));
         I2->setPredicate(flag2);
         currBB->insert(nextII, I2);
 
@@ -12488,7 +12527,7 @@ void Optimizer::replaceNoMaskWithAnyhWA()
                 {
                     // case 1: no predicate, no flagModifier (common case)
                     G4_Predicate* newPred = builder.createPredicate(
-                        PredState_Plus, flagVar, 0, PRED_DEFAULT);
+                        PredState_Plus, flagVar, 0, getPredCtrl(useAnyh));
                     newPred->setSameAsNoMask(true);
                     I->setPredicate(newPred);
 
@@ -12523,17 +12562,27 @@ void Optimizer::replaceNoMaskWithAnyhWA()
         //
         //    BB:
         //       ......
-        //       (W) and (16|M0) (nz)f0.0  null<1>:ud  ce0.0:ud   dmask:ud
-        //       ** If any nomask inst uses bits beyond 16, need the following too **
-        //       (W)  mov (2|M0)  f0.0<1>:uw   f0.0<0;1,0>:uw
+        //       if (using ce0)
+        //         (W) and (16|M0) (nz)f0.0  null<1>:ud  ce0.0:ud   dmask:ud
+        //         ** If any nomask inst uses bits beyond 16, need the following too **
+        //         (W)  mov (2|M0)  f0.0<1>:uw   f0.0<0;1,0>:uw
+        //       else // using cmp
+        //         (W) mov (1|M0)           f0.0:uw   0:uw  // or ud
+        //             cmp (16|M0) (eq)f0.0 null:uw  r0.0<0;1,0::uw  r0.0<0;1,0>:uw
+        //           if (!useAnyh)
+        //             (W&f0.0.any16h)  mov (1|M0) f0.0  0xFFFF:uw
         //
         //       (W&f0.0) inst0
         //       ......
         //       (W&f0.0) inst1
         //
+        //  If useAnyh,  the predicate would be (W & f0.0.any16h). The new flag,
+        //  either f0.0 (all-one) or f0.0.any16h (useAnyh) is equivalent to noMask.
 
         //  1. Collect all candidates and check if 32 bit flag is needed
+        //     and if useAnyh can be set to true.
         bool need32BitFlag = false;
+        useAnyh = enableAnyh; // need to reset for each BB
         for (auto II = BB->begin(), IE = BB->end(); II != IE; ++II)
         {
             G4_INST* I = *II;
@@ -12543,6 +12592,13 @@ void Optimizer::replaceNoMaskWithAnyhWA()
                 if ((I->getExecSize() + I->getMaskOffset()) > 16)
                 {
                     need32BitFlag = true;
+                }
+                if (enableAnyh)
+                {
+                    if (I->getExecSize() > simdsize || I->getMaskOffset() != 0)
+                    {
+                        useAnyh = false;
+                    }
                 }
             }
         }
@@ -12570,7 +12626,7 @@ void Optimizer::replaceNoMaskWithAnyhWA()
             {
                 // case 1: no predicate, no flagModifier (common case)
                 G4_Predicate* newPred = builder.createPredicate(
-                    PredState_Plus, flagVarForBB, 0, PRED_DEFAULT);
+                    PredState_Plus, flagVarForBB, 0, getPredCtrl(useAnyh));
                 newPred->setSameAsNoMask(true);
                 I->setPredicate(newPred);
 
