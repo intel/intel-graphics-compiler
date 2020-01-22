@@ -415,6 +415,11 @@
         return getGenxPlatform() == GENX_SKL ||
                getOption(vISA_replaceIndirectCallWithJmpi);
     }
+
+    bool canEncodeFullExtDesc() const
+    {
+        return getGenxPlatform() >= GENX_TGLLP;
+    }
     bool no64bitType() const
     {
         return getGenxPlatform() == GENX_ICLLP || isGen12LP();
@@ -544,11 +549,6 @@
     }
 
     bool noScalarByteToFloat() const
-    {
-        return false;
-    }
-
-    bool canEncodeFullExtDesc() const
     {
         return false;
     }
