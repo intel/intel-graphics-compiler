@@ -11264,7 +11264,6 @@ void EmitPass::emitPreOrPostFixOp(
         return;
     }
 
-    // This is to handle cases when not all lanes are enabled. In that case we fill the lanes with 0.
     bool isSimd32 = (m_currShader->m_dispatchSize == SIMDMode::SIMD32);
     int counter = 1;
     if (isSimd32)
@@ -11272,6 +11271,7 @@ void EmitPass::emitPreOrPostFixOp(
     CVariable* maskedSrc[2] = { 0 };
     for (int i = 0; i < counter; ++i)
     {
+        // This is to handle cases when not all lanes are enabled. In that case we fill the lanes with identity.
         CVariable* pSrcCopy = ScanReducePrepareSrc(type, identityValue, negateSrc, i == 1 /*secondHalf*/,
             pSrc, nullptr /*dst*/, Flag);
 
@@ -11557,12 +11557,15 @@ void EmitPass::emitPreOrPostFixOpScalar(
     CVariable* Flag,
     bool isPrefix)
 {
-    // This is to handle cases when not all lanes are enabled. In that case we fill the lanes with 0.
+    const bool isInt64Mul = (op == EOPCODE_MUL && CEncoder::IsIntegerType(type) &&
+        CEncoder::GetCISADataTypeSize(type) == 8);
+
     bool isSimd32 = (m_currShader->m_dispatchSize == SIMDMode::SIMD32);
     int counter = isSimd32 ? 2 : 1;
-    CVariable* pSrcCopy[2] = { nullptr };
+    CVariable* pSrcCopy[2] = {};
     for (int i = 0; i < counter; ++i)
     {
+        // This is to handle cases when not all lanes are enabled. In that case we fill the lanes with identity.
         pSrcCopy[i] = ScanReducePrepareSrc(type, identityValue, negateSrc, i == 1 /*secondHalf*/,
             src, nullptr /*dst*/, Flag);
 
@@ -11579,8 +11582,7 @@ void EmitPass::emitPreOrPostFixOpScalar(
         m_encoder->SetNoMask();
         if (isPrefix)
         {
-            // For case where we need the prefix shift the source by 1 lane
-
+            // For case where we need the prefix shift the source by 1 lane.
             if (i == 0)
             {
                 // (W) mov (1) result[0] identity
@@ -11589,7 +11591,7 @@ void EmitPass::emitPreOrPostFixOpScalar(
             }
             else
             {
-                // (W) mov (1) results[16], srcCopy[15]
+                // (W) mov (1) result[16] srcCopy[15]
                 m_encoder->SetSrcSubReg(0, 15);
                 m_encoder->SetSrcRegion(0, 0, 1, 0);
                 m_encoder->Copy(result[i], pSrcCopy[0]);
@@ -11597,42 +11599,78 @@ void EmitPass::emitPreOrPostFixOpScalar(
         }
         else
         {
-            // (W) mov (1) result[0/16]:ty srcCopy[0/16]:ty
+            // (W) mov (1) result[0/16] srcCopy[0/16]
             m_encoder->SetSrcSubReg(0, 0);
             m_encoder->SetSrcRegion(0, 0, 1, 0);
             m_encoder->Copy(result[i], pSrcCopy[i]);
             srcIdx = 1;
         }
         m_encoder->Push();
+
+        CVariable* tmpDst = isInt64Mul ? m_currShader->GetNewVariable(
+            1,
+            type,
+            IGC::EALIGN_GRF,
+            true) : nullptr;
+
         for (int dstIdx = 1; dstIdx < numLanes(m_currShader->m_SIMDSize); ++dstIdx, ++srcIdx)
         {
             // do the scan one by one
             // (W) op (1) result[dstIdx] srcCopy[srcIdx] result[dstIdx-1]
-            m_encoder->SetSimdSize(SIMDMode::SIMD1);
-            m_encoder->SetNoMask();
-            m_encoder->SetSrcSubReg(0, srcIdx);
-            m_encoder->SetSrcRegion(0, 0, 1, 0);
-            m_encoder->SetSrcRegion(1, 0, 1, 0);
-            m_encoder->SetSrcSubReg(1, dstIdx - 1);
-            m_encoder->SetDstRegion(1);
-            m_encoder->SetDstSubReg(dstIdx);
-            m_encoder->GenericAlu(op, result[i], pSrcCopy[i], result[i]);
-            m_encoder->Push();
+            if (isInt64Mul)
+            {
+                CVariable* pMulSrc[2] = {
+                    m_currShader->GetNewAlias(pSrcCopy[i], type, srcIdx * sizeof(QWORD), 1, true),
+                    m_currShader->GetNewAlias(result[i], type, (dstIdx - 1) * sizeof(QWORD), 1, true) };
+                Mul64(tmpDst, pMulSrc, SIMDMode::SIMD1, true /*noMask*/);
+                // (W) mov (1) result[dstIdx] tmpDst
+                m_encoder->SetSimdSize(SIMDMode::SIMD1);
+                m_encoder->SetNoMask();
+                m_encoder->SetDstSubReg(dstIdx);
+                m_encoder->Copy(result[i], tmpDst);
+                m_encoder->Push();
+            }
+            else
+            {
+                m_encoder->SetSimdSize(SIMDMode::SIMD1);
+                m_encoder->SetNoMask();
+                m_encoder->SetSrcSubReg(0, srcIdx);
+                m_encoder->SetSrcRegion(0, 0, 1, 0);
+                m_encoder->SetSrcRegion(1, 0, 1, 0);
+                m_encoder->SetSrcSubReg(1, dstIdx - 1);
+                m_encoder->SetDstSubReg(dstIdx);
+                m_encoder->GenericAlu(op, result[i], pSrcCopy[i], result[i]);
+                m_encoder->Push();
+            }
         }
+
+        m_encoder->SetSecondHalf(false);
     }
 
     if (isSimd32)
     {
-        // For SIMD32 we need to write the last element of the prev element to the next 16 elements
-        m_encoder->SetSimdSize(SIMDMode::SIMD16);
-        m_encoder->SetNoMask();
-        m_encoder->SetSrcRegion(0, 0, 1, 0);
-        m_encoder->SetSrcSubReg(0, 15);
-        m_encoder->GenericAlu(op, result[1], result[0], result[1]);
-        m_encoder->Push();
+        m_encoder->SetSecondHalf(true);
+
+        // For SIMD32 we need to write the last element of the prev element to the next 16 elements.
+        if (isInt64Mul)
+        {
+            CVariable* pMulSrc[2] = {
+                 m_currShader->GetNewAlias(result[0], type, 15 * sizeof(QWORD), 1, true),
+                 result[1] };
+            Mul64(result[1], pMulSrc, SIMDMode::SIMD16, true /*noMask*/);
+        }
+        else
+        {
+            m_encoder->SetSimdSize(SIMDMode::SIMD16);
+            m_encoder->SetNoMask();
+            m_encoder->SetSrcRegion(0, 0, 1, 0);
+            m_encoder->SetSrcSubReg(0, 15);
+            m_encoder->GenericAlu(op, result[1], result[0], result[1]);
+            m_encoder->Push();
+        }
+
+        m_encoder->SetSecondHalf(false);
     }
-    // reset second half state
-    m_encoder->SetSecondHalf(false);
 }
 
 /*
