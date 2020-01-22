@@ -1453,8 +1453,10 @@ FlagRegInfo DecoderBase::decodeFlagRegInfo(bool imm64Src0Overlaps) {
         // GEN12 SWSB overlaps CondModifier and Imm64 values
         GED_DECODE_RAW(GED_COND_MODIFIER, condMod, CondModifier);
         fri.modifier = GEDToIGATranslation::translate(condMod);
-    } else if (m_opSpec->isMathSubFunc() && m_opSpec->isMacro()) {
+    } else if (m_opSpec->hasImplicitFlagModifier()) {
         // math.inv and math.rsqrtm both implicitly support EO
+        // currently math is the only case, and its flagModifier must be EO
+        assert(m_opSpec->isMathSubFunc());
         fri.modifier = FlagModifier::EO;
     }
 
