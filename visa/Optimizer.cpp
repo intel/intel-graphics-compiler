@@ -8108,6 +8108,7 @@ public:
 
         bool hasUAVWrites = false;
         bool hasSLMWrites = false;
+        std::list<SFID> funcIDs;
         for (auto bb : kernel.fg)
         {
             for (auto inst : *bb)
@@ -8115,16 +8116,20 @@ public:
                 if (inst->isSend())
                 {
                     auto msgDesc = inst->asSendInst()->getMsgDesc();
-                    if (msgDesc->isDataPortWrite() && msgDesc->isHDC())
+                    if (msgDesc->isDataPortWrite())
                     {
-                        if (msgDesc->isSLMMessage())
+                        if (msgDesc->isHDC())
                         {
-                            hasSLMWrites = true;
+                            if (msgDesc->isSLMMessage())
+                            {
+                                hasSLMWrites = true;
+                            }
+                            else
+                            {
+                                hasUAVWrites = true;
+                            }
                         }
-                        else
-                        {
-                            hasUAVWrites = true;
-                        }
+
                     }
                 }
                 if (hasUAVWrites && hasSLMWrites)
@@ -8138,25 +8143,30 @@ public:
             }
         }
 
-        if (!hasUAVWrites && !hasSLMWrites)
+        if (hasUAVWrites && !hasSLMWrites && funcIDs.empty())
         {
             return;
         }
+
+        funcIDs.unique();
 
         for (auto bb : kernel.fg)
         {
             if (bb->isLastInstEOT())
             {
                 auto iter = std::prev(bb->end());
-                if (hasUAVWrites)
+
                 {
-                    auto fenceInst = builder.createFenceInstruction(0, true, true, false);
-                    bb->insert(iter, fenceInst);
-                }
-                if (hasSLMWrites)
-                {
-                    auto fenceInst = builder.createFenceInstruction(0, true, false, false);
-                    bb->insert(iter, fenceInst);
+                    if (hasUAVWrites)
+                    {
+                        auto fenceInst = builder.createFenceInstruction(0, true, true, false);
+                        bb->insert(iter, fenceInst);
+                    }
+                    if (hasSLMWrites)
+                    {
+                        auto fenceInst = builder.createFenceInstruction(0, true, false, false);
+                        bb->insert(iter, fenceInst);
+                    }
                 }
                 builder.instList.clear();
             }

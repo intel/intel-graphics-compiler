@@ -3716,7 +3716,9 @@ namespace IGC
 
         bool clearHDCWritesBeforeEOT = m_program->m_DriverInfo->UsesSparseAliasedResidency() &&
             context->platform.WaInsertHDCFenceBeforeEOTWhenSparseAliasedResources();
-        clearHDCWritesBeforeEOT |= context->type == ShaderType::PIXEL_SHADER &&
+        clearHDCWritesBeforeEOT |= ((context->type == ShaderType::PIXEL_SHADER) ||
+            (context->type == ShaderType::COMPUTE_SHADER) ||
+            (context->type == ShaderType::OPENCL_SHADER)) &&
             context->platform.NeedsHDCFenceBeforeEOTInPixelShader();
         clearHDCWritesBeforeEOT |= IGC_IS_FLAG_ENABLED(ForceMemoryFenceBeforeEOT);
 
