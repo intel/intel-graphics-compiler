@@ -1106,7 +1106,7 @@ public:
 
     G4_INST* createPseudoKill(G4_Declare* dcl, PseudoKillType ty)
     {
-        auto dstRgn = createDstRegRegion(Direct, dcl->getRegVar(), 0, 0, 1, Type_UD);
+        auto dstRgn = createDst(dcl->getRegVar(), 0, 0, 1, Type_UD);
         G4_INST* inst = createIntrinsicInst(nullptr, Intrinsic::PseudoKill, 1,
             dstRgn, createImm((unsigned int)ty, Type_UD), nullptr, nullptr, InstOpt_WriteEnable);
 
@@ -1414,6 +1414,8 @@ public:
     }
 
     // create a new dstregregion allocated in mem
+    // TODO: Avoid calling this directly since direct dst and indirect dst
+    // have different parameters. Will make it private in the future.
     G4_DstRegRegion* createDstRegRegion(G4_RegAccess a,
         G4_VarBase* b,
         short roff,
@@ -1424,6 +1426,30 @@ public:
     {
         G4_DstRegRegion* rgn = new (mem) G4_DstRegRegion(a, b, roff, sroff, hstride, ty, regSel);
         return rgn;
+    }
+
+    // create a direct DstRegRegion
+    G4_DstRegRegion* createDst(G4_VarBase* b,
+        short roff,
+        short sroff,
+        unsigned short hstride,
+        G4_Type        ty,
+        G4_AccRegSel regSel = ACC_UNDEFINED)
+    {
+        return createDstRegRegion(Direct, b, roff, sroff, hstride, ty, regSel);
+    }
+
+    // create a indirect DstRegRegion
+    // b is the address variable, which only supports subreg offset
+    G4_DstRegRegion* createIndirectDst(G4_VarBase* b,
+        short sroff,
+        uint16_t hstride,
+        G4_Type ty,
+        int16_t immOff)
+    {
+        auto dst = createDstRegRegion(IndirGRF, b, 0, sroff, hstride, ty);
+        dst->setImmAddrOff(immOff);
+        return dst;
     }
 
     //

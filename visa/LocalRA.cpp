@@ -2809,7 +2809,7 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder
 
                                     if (totalElems == 32)
                                     {
-                                        G4_DstRegRegion* dst = builder.createDstRegRegion(Direct, splitDcl->getRegVar(), 2, 0, 1, oldDcl->getElemType());
+                                        G4_DstRegRegion* dst = builder.createDst(splitDcl->getRegVar(), 2, 0, 1, oldDcl->getElemType());
                                         auto src = builder.createSrcRegRegion(Mod_src_undef, Direct, oldDcl->getRegVar(), 2, 0, builder.getRegionStride1(), oldDcl->getElemType());
                                         G4_INST* splitInst2 = builder.createMov(16, dst, src, InstOpt_WriteEnable, false);
                                         bb->insert(iter, splitInst2);
@@ -2839,7 +2839,7 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder
 
                                     if (totalElems == 32)
                                     {
-                                        G4_DstRegRegion* dst = builder.createDstRegRegion(Direct, newDcl->getRegVar(), 2, 0, 1, splitDcl->getElemType());
+                                        G4_DstRegRegion* dst = builder.createDst(newDcl->getRegVar(), 2, 0, 1, splitDcl->getElemType());
                                         auto src = builder.createSrcRegRegion(Mod_src_undef, Direct, splitDcl->getRegVar(), 2, 0, builder.getRegionStride1(), splitDcl->getElemType());
                                         G4_INST* movInst2 = builder.createMov(16, dst, src, InstOpt_WriteEnable, false);
                                         bb->insert(iter, movInst2);

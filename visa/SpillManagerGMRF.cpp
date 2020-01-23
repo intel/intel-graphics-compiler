@@ -1298,8 +1298,8 @@ SpillManagerGRF::createPostDstSpillRangeDeclare (
             "SP_GRF", spilledRegVar, getSpillIndex (spilledRegVar));
     unsigned short nRows = getSpillRowSizeForSendDst(sendOut, spilledRegion);
 
-      G4_DstRegRegion * normalizedPostDst = builder_->createDstRegRegion(
-        Direct, spilledRegVar, spilledRegion->getRegOff (), SUBREG_ORIGIN,
+      G4_DstRegRegion * normalizedPostDst = builder_->createDst(
+        spilledRegVar, spilledRegion->getRegOff (), SUBREG_ORIGIN,
         DEF_HORIZ_STRIDE, Type_UD);
 
     // We use the width as the user specified, the height however is
@@ -1540,14 +1540,14 @@ SpillManagerGRF::createSpillRangeDstRegion (
             subRegOff = spilledRegion->getSubRegOff() + off/spilledRegion->getElemSize();
         }
 
-        return builder_->createDstRegRegion(
-            Direct, spillRangeRegVar, (unsigned short) regOff, subRegOff,
+        return builder_->createDst(
+            spillRangeRegVar, (unsigned short) regOff, subRegOff,
             spilledRegion->getHorzStride (), spilledRegion->getType ());
     }
 
     else {
-        return builder_->createDstRegRegion(
-            Direct, spillRangeRegVar, (short) regOff, SUBREG_ORIGIN,
+        return builder_->createDst(
+            spillRangeRegVar, (short) regOff, SUBREG_ORIGIN,
             spilledRegion->getHorzStride (), spilledRegion->getType ());
     }
 }
@@ -1806,8 +1806,8 @@ SpillManagerGRF::createMPayloadBlockWriteDstRegion (
 {
     regOff += OWORD_PAYLOAD_WRITE_REG_OFFSET;
     subregOff += OWORD_PAYLOAD_WRITE_SUBREG_OFFSET;
-    return builder_->createDstRegRegion(
-        Direct, grfRange, (short) regOff, (short) subregOff, DEF_HORIZ_STRIDE, Type_UD);
+    return builder_->createDst(
+        grfRange, (short) regOff, (short) subregOff, DEF_HORIZ_STRIDE, Type_UD);
 }
 
 // Create a destination region for the GRF regvar for the input header
@@ -1820,8 +1820,8 @@ SpillManagerGRF::createMHeaderInputDstRegion (
     unsigned          subregOff
 )
 {
-    return builder_->createDstRegRegion(
-        Direct, grfRange, PAYLOAD_INPUT_REG_OFFSET, (short) subregOff,
+    return builder_->createDst(
+        grfRange, PAYLOAD_INPUT_REG_OFFSET, (short) subregOff,
         DEF_HORIZ_STRIDE, Type_UD);
 }
 
@@ -1834,8 +1834,8 @@ SpillManagerGRF::createMHeaderBlockOffsetDstRegion (
     G4_RegVar *       grfRange
 )
 {
-    return builder_->createDstRegRegion(
-        Direct, grfRange, OWORD_PAYLOAD_SPOFFSET_REG_OFFSET,
+    return builder_->createDst(
+        grfRange, OWORD_PAYLOAD_SPOFFSET_REG_OFFSET,
         OWORD_PAYLOAD_SPOFFSET_SUBREG_OFFSET, DEF_HORIZ_STRIDE,
         Type_UD);
 }
@@ -2525,8 +2525,8 @@ SpillManagerGRF::copyOut256BitWideRegVar (
             builder_->createSrcRegRegion(
             Mod_src_undef, Direct, srcRegDcl->getRegVar (),
             (short) i, SUBREG_ORIGIN, rDesc, Type_UD);
-        G4_DstRegRegion * dstRegRegion = builder_->createDstRegRegion(
-            Direct, dstRegDcl->getRegVar (), dstOff + i, SUBREG_ORIGIN,
+        G4_DstRegRegion * dstRegRegion = builder_->createDst(
+            dstRegDcl->getRegVar (), dstOff + i, SUBREG_ORIGIN,
             DEF_HORIZ_STRIDE, Type_UD);
         createMovInst (REG_DWORD_SIZE, dstRegRegion, srcRegRegion);
         numGRFMove ++;
@@ -2982,8 +2982,8 @@ SpillManagerGRF::createFillSendInstr (
             createFillSendMsgDesc (regOff, height, execSize);
     }
 
-    G4_DstRegRegion * postDst = builder_->createDstRegRegion(
-        Direct, fillRangeDcl->getRegVar (), (short) regOff, SUBREG_ORIGIN,
+    G4_DstRegRegion * postDst = builder_->createDst(
+        fillRangeDcl->getRegVar (), (short) regOff, SUBREG_ORIGIN,
         DEF_HORIZ_STRIDE, (execSize > 8)? Type_UW: Type_UD);
 
     G4_SrcRegRegion * payload = builder_->createSrcRegRegion(Mod_src_undef, Direct,
@@ -3047,8 +3047,8 @@ SpillManagerGRF::createFillSendInstr (
         execSize = 16;
     }
 
-    G4_DstRegRegion * postDst = builder_->createDstRegRegion(
-        Direct, fillRangeDcl->getRegVar (), (short) regOff, SUBREG_ORIGIN,
+    G4_DstRegRegion * postDst = builder_->createDst(
+        fillRangeDcl->getRegVar (), (short) regOff, SUBREG_ORIGIN,
         DEF_HORIZ_STRIDE, (execSize > 8)? Type_UW : Type_UD);
 
     G4_SrcRegRegion * payload = builder_->createSrcRegRegion(Mod_src_undef, Direct,
@@ -3093,8 +3093,8 @@ SpillManagerGRF::replaceSpilledRange (
 )
 {
     // we need to preserve accRegSel if it's set
-    G4_DstRegRegion * tmpRangeDstRegion = builder_->createDstRegRegion(
-        Direct, spillRangeDcl->getRegVar (), REG_ORIGIN, SUBREG_ORIGIN,
+    G4_DstRegRegion * tmpRangeDstRegion = builder_->createDst(
+        spillRangeDcl->getRegVar (), REG_ORIGIN, SUBREG_ORIGIN,
         spilledRegion->getHorzStride (), spilledRegion->getType(), spilledRegion->getAccRegSel() );
     spilledInst->setDest (tmpRangeDstRegion);
 }
@@ -3449,7 +3449,7 @@ SpillManagerGRF::insertFillGRFRangeCode (
         if (prevInst->isPseudoKill() &&
             GetTopDclFromRegRegion(prevInst->getDst()) == fillRangeDcl)
         {
-            prevInst->setDest(builder_->createDstRegRegion(Direct, GetTopDclFromRegRegion(dstRegion)->getRegVar(), 0, 0, 1, Type_UD));
+            prevInst->setDest(builder_->createDst(GetTopDclFromRegRegion(dstRegion)->getRegVar(), 0, 0, 1, Type_UD));
         }
         return nextIter;
     }
@@ -3642,7 +3642,7 @@ void SpillManagerGRF::insertAddrTakenSpillAndFillCode( G4_Kernel* kernel, G4_BB*
 
                         G4_SrcRegRegion* srcRex = kernel->fg.builder->createSrcRegRegion(Mod_src_undef, Direct, lr->getVar(), (short)i, 0, rd, Type_F);
 
-                        G4_DstRegRegion* dstRex = kernel->fg.builder->createDstRegRegion(Direct, temp->getRegVar(), (short)i, 0, 1, Type_F);
+                        G4_DstRegRegion* dstRex = kernel->fg.builder->createDst(temp->getRegVar(), (short)i, 0, 1, Type_F);
 
                         inst = kernel->fg.builder->createMov(curExSize, dstRex, srcRex, InstOpt_WriteEnable, false);
 
@@ -3653,7 +3653,7 @@ void SpillManagerGRF::insertAddrTakenSpillAndFillCode( G4_Kernel* kernel, G4_BB*
                             // Also insert spill code
                             G4_SrcRegRegion* srcRex = kernel->fg.builder->createSrcRegRegion(Mod_src_undef, Direct, temp->getRegVar(), (short)i, 0, rd, Type_F);
 
-                            G4_DstRegRegion* dstRex = kernel->fg.builder->createDstRegRegion(Direct, lr->getVar(), (short)i, 0, 1, Type_F);
+                            G4_DstRegRegion* dstRex = kernel->fg.builder->createDst(lr->getVar(), (short)i, 0, 1, Type_F);
 
                             inst = kernel->fg.builder->createMov(curExSize,
                                     dstRex, srcRex, InstOpt_WriteEnable, false);
@@ -3713,7 +3713,7 @@ void SpillManagerGRF::insertAddrTakenSpillAndFillCode( G4_Kernel* kernel, G4_BB*
 
                     G4_SrcRegRegion* srcRex = kernel->fg.builder->createSrcRegRegion(Mod_src_undef, Direct, lr->getVar(), 0, off, rd, type);
 
-                    G4_DstRegRegion* dstRex = kernel->fg.builder->createDstRegRegion(Direct, temp->getRegVar(), 0, off, 1, type);
+                    G4_DstRegRegion* dstRex = kernel->fg.builder->createDst(temp->getRegVar(), 0, off, 1, type);
 
                     inst = kernel->fg.builder->createMov( curExSize,
                             dstRex, srcRex, InstOpt_WriteEnable, false );
@@ -3725,7 +3725,7 @@ void SpillManagerGRF::insertAddrTakenSpillAndFillCode( G4_Kernel* kernel, G4_BB*
                         // Also insert spill code
                         G4_SrcRegRegion* srcRex = kernel->fg.builder->createSrcRegRegion(Mod_src_undef, Direct, temp->getRegVar(), 0, off, rd, type);
 
-                        G4_DstRegRegion* dstRex = kernel->fg.builder->createDstRegRegion(Direct, lr->getVar(), 0, off, 1, type);
+                        G4_DstRegRegion* dstRex = kernel->fg.builder->createDst(lr->getVar(), 0, off, 1, type);
 
                         inst = kernel->fg.builder->createMov( curExSize,
                                 dstRex, srcRex, InstOpt_WriteEnable, false );
@@ -4483,7 +4483,7 @@ void GlobalRA::expandSpillStackcall(uint32_t& numRows, uint32_t& offset, short& 
 
         auto payloadToUse = builder->createSrcWithNewRegOff(payload, rowOffsetOword / 2);
 
-        G4_DstRegRegion* dst = builder->createDstRegRegion(Direct, scratchRegDcl->getRegVar(), 0, 2, 1, Type_UD);
+        G4_DstRegRegion* dst = builder->createDst(scratchRegDcl->getRegVar(), 0, 2, 1, Type_UD);
 
         if (inst->asSpillIntrinsic()->isOffsetValid())
         {
@@ -4570,7 +4570,7 @@ void GlobalRA::expandSpillIntrinsic(G4_BB* bb)
          // oword msg
          uint8_t execSize = inst->getExecSize();
          auto numRowsOword = numRows * 2;
-         auto fillDst = builder->createDstRegRegion(Direct, resultRgn->getBase(), rowOffset,
+         auto fillDst = builder->createDst(resultRgn->getBase(), rowOffset,
              0, resultRgn->getHorzStride(), resultRgn->getType());
          auto sendSrc0 = builder->createSrcRegRegion(Mod_src_undef, Direct, header->getBase(),
              0, 0, builder->rgnpool.createRegion(8, 8, 1), Type_UD);
@@ -4586,7 +4586,7 @@ void GlobalRA::expandSpillIntrinsic(G4_BB* bb)
      {
          while (numRows >= 1)
          {
-             auto fillDst = builder->createDstRegRegion(Direct, resultRgn->getBase(), rowOffset,
+             auto fillDst = builder->createDst(resultRgn->getBase(), rowOffset,
                  0, resultRgn->getHorzStride(), resultRgn->getType());
 
              auto region = builder->getRegionStride1();
@@ -4655,10 +4655,10 @@ void GlobalRA::expandFillStackcall(uint32_t& numRows, uint32_t& offset, short& r
         };
 
         auto respSizeInOwords = getPayloadSizeOword(numRowsOword);
-        auto fillDst = builder->createDstRegRegion(Direct, resultRgn->getBase(), rowOffsetOword / 2,
+        auto fillDst = builder->createDst(resultRgn->getBase(), rowOffsetOword / 2,
             0, resultRgn->getHorzStride(), resultRgn->getType());
 
-        G4_DstRegRegion* dst = builder->createDstRegRegion(Direct, scratchRegDcl->getRegVar(), 0, 2, 1, Type_UD);
+        G4_DstRegRegion* dst = builder->createDst(scratchRegDcl->getRegVar(), 0, 2, 1, Type_UD);
 
         if (inst->asFillIntrinsic()->isOffsetValid())
         {

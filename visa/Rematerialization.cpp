@@ -847,7 +847,7 @@ namespace vISA
             auto newTemp = kernel.fg.builder->createTempVar(numElems, dst->getType(), Any, "REMAT_");
             newTemp->copyAlign(dst->getTopDcl());
             gra.copyAlignment(newTemp, dst->getTopDcl());
-            G4_DstRegRegion* newDst = kernel.fg.builder->createDstRegRegion(Direct, newTemp->getRegVar(), 0,
+            G4_DstRegRegion* newDst = kernel.fg.builder->createDst(newTemp->getRegVar(), 0,
                 (dst->getLeftBound() % G4_GRF_REG_NBYTES) / G4_Type_Table[dst->getType()].byteSize,
                 dst->getHorzStride(), dst->getType());
             G4_INST* dupOp = nullptr;
@@ -928,7 +928,7 @@ namespace vISA
 
             auto samplerDst = kernel.fg.builder->createTempVar(dst->getTopDcl()->getTotalElems(), dst->getTopDcl()->getElemType(),
                 gra.getSubRegAlign(dst->getTopDcl()), "REMAT_SAMPLER_");
-            auto samplerDstRgn = kernel.fg.builder->createDstRegRegion(Direct, samplerDst->getRegVar(), 0,
+            auto samplerDstRgn = kernel.fg.builder->createDst(samplerDst->getRegVar(), 0,
                 0, 1, samplerDst->getElemType());
 
             auto dstMsgDesc = dstInst->getMsgDesc();

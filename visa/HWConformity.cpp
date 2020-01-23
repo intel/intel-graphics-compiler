@@ -112,12 +112,12 @@ G4_DstRegRegion* HWConformity::insertMovAfter( INST_LIST_ITER& it, G4_DstRegRegi
 
     if (inst->hasNULLDst() )
     {
-        return builder.createDstRegRegion(Direct,
-                                dst->getBase(),
-                                0,
-                                0,
-                                1,
-                                type);
+        return builder.createDst(
+            dst->getBase(),
+            0,
+            0,
+            1,
+            type);
     }
 
     INST_LIST_ITER iter = it;
@@ -244,8 +244,7 @@ void HWConformity::broadcast(
          "move can't exceed 2 GRFs");
 
      G4_Declare* dcl = builder.createTempVar( execSize, type, align );
-     G4_DstRegRegion* dst = builder.createDstRegRegion(
-         Direct,
+     G4_DstRegRegion* dst = builder.createDst(
          dcl->getRegVar(),
          0,
          0,
@@ -1982,7 +1981,7 @@ void HWConformity::doGenerateMacl(INST_LIST_ITER it, G4_BB *bb)
 
     G4_DstRegRegion* origDst = mulInst->getDst();
     G4_Type accType = (IS_UNSIGNED_INT(src0->getType()) && IS_UNSIGNED_INT(src1->getType())) ? Type_UD : Type_D;
-    G4_DstRegRegion *accDstOpnd = builder.createDstRegRegion(Direct, builder.phyregpool.getAcc0Reg(), 0, 0, 1, accType);
+    G4_DstRegRegion *accDstOpnd = builder.createDst(builder.phyregpool.getAcc0Reg(), 0, 0, 1, accType);
     mulInst->setDest(accDstOpnd);
 
     uint32_t origOptions = mulInst->getOption();
@@ -2239,8 +2238,7 @@ bool HWConformity::fixMULInst( INST_LIST_ITER &i, G4_BB *bb )
             src1->compareOperand(next_inst->getSrc(1)) == Rel_eq)))
         {
             // change current mul inst
-            G4_DstRegRegion *acc_dst_opnd = builder.createDstRegRegion(
-                Direct,
+            G4_DstRegRegion *acc_dst_opnd = builder.createDst(
                 builder.phyregpool.getAcc0Reg(),
                 0,
                 0,
@@ -2318,7 +2316,7 @@ bool HWConformity::fixMULInst( INST_LIST_ITER &i, G4_BB *bb )
         }
     }
 
-    G4_DstRegRegion *acc_dst_opnd = builder.createDstRegRegion(Direct, builder.phyregpool.getAcc0Reg(), 0, 0, 1, tmp_type);
+    G4_DstRegRegion *acc_dst_opnd = builder.createDst(builder.phyregpool.getAcc0Reg(), 0, 0, 1, tmp_type);
     inst->setDest(acc_dst_opnd);
     fixMulSrc1(i, bb);
 
@@ -2429,7 +2427,7 @@ bool HWConformity::fixMULInst( INST_LIST_ITER &i, G4_BB *bb )
 
         MUST_BE_TRUE(high32BitDcl != NULL, "mach dst must not be null");
         G4_INST* highMove = builder.createInternalInst(pred, G4_mov, NULL, false, exec_size,
-            builder.createDstRegRegion(Direct, dstAlias->getRegVar(), 0, 1, 2, dstAlias->getElemType()),
+            builder.createDst(dstAlias->getRegVar(), 0, 1, 2, dstAlias->getElemType()),
             builder.Create_Src_Opnd_From_Dcl(high32BitDcl, builder.getRegionStride1()),
             NULL, inst_opt);
         bb->insert(iter, highMove);
@@ -2484,8 +2482,7 @@ bool HWConformity::fixMULInst( INST_LIST_ITER &i, G4_BB *bb )
             tmp_type,
             GRFALIGN);
 
-        G4_DstRegRegion *tmp_dst_opnd = builder.createDstRegRegion(
-            Direct,
+        G4_DstRegRegion *tmp_dst_opnd = builder.createDst(
             dcl->getRegVar(),
             0,
             0,
@@ -2646,8 +2643,7 @@ void HWConformity::fixMULHInst( INST_LIST_ITER &i, G4_BB *bb )
 
     assert(IS_DTYPE(src0->getType()) && "src0 must be DW type");
 
-    G4_DstRegRegion* acc_dst_opnd = builder.createDstRegRegion(
-        Direct,
+    G4_DstRegRegion* acc_dst_opnd = builder.createDst(
         builder.phyregpool.getAcc0Reg(),
         0,
         0,
@@ -2759,7 +2755,7 @@ void HWConformity::copyDwords(G4_Declare* dst,
         newSrc->getRegVar(), srcOffset / GENX_GRF_REG_SIZ,
         (srcOffset % GENX_GRF_REG_SIZ) / G4_Type_Table[Type_UD].byteSize,
         builder.getRegionStride1(), Type_UD);
-    G4_DstRegRegion* dstOpnd = builder.createDstRegRegion(Direct, newDst->getRegVar(),
+    G4_DstRegRegion* dstOpnd = builder.createDst(newDst->getRegVar(),
         dstOffset / GENX_GRF_REG_SIZ,
         (dstOffset % GENX_GRF_REG_SIZ) / G4_Type_Table[Type_UD].byteSize, 1, Type_UD);
 
@@ -2818,7 +2814,7 @@ void HWConformity::copyDwordsIndirect(G4_Declare* dst,
         newSrc->setRegion(builder.getRegionStride1());
     }
 
-    G4_DstRegRegion* dstOpnd = builder.createDstRegRegion(Direct, newDst->getRegVar(), 0, 0, 1, Type_UD);
+    G4_DstRegRegion* dstOpnd = builder.createDst(newDst->getRegVar(), 0, 0, 1, Type_UD);
 
     G4_INST* movInst = builder.createMov((uint8_t) numDwords, dstOpnd, newSrc, InstOpt_WriteEnable, false);
 
@@ -2918,7 +2914,7 @@ void HWConformity::fix64bInst( INST_LIST_ITER iter, G4_BB* bb )
             assert(inst->isRawMov() && dst->getHorzStride() == 1 && "expect only copy moves");
 
             // 1st half
-            auto newDst = builder.createDstRegRegion(Direct, dst->getBase(), dst->getRegOff(), dst->getSubRegOff() * 2,
+            auto newDst = builder.createDst(dst->getBase(), dst->getRegOff(), dst->getSubRegOff() * 2,
                 2, Type_UD);
             auto newSrc = builder.createSrcRegRegion(Mod_src_undef, Direct, src0RR->getBase(), src0RR->getRegOff(),
                 src0RR->getSubRegOff() * 2, src0RR->isScalar() ? builder.getRegionScalar() : builder.getRegionStride2(), Type_UD);
@@ -2926,7 +2922,7 @@ void HWConformity::fix64bInst( INST_LIST_ITER iter, G4_BB* bb )
             bb->insert(iter, newInst);
 
             // second half
-            newDst = builder.createDstRegRegion(Direct, dst->getBase(), dst->getRegOff(), dst->getSubRegOff() * 2 + 1,
+            newDst = builder.createDst(dst->getBase(), dst->getRegOff(), dst->getSubRegOff() * 2 + 1,
                 2, Type_UD);
             newSrc = builder.createSrcRegRegion(Mod_src_undef, Direct, src0RR->getBase(), src0RR->getRegOff(),
                 src0RR->getSubRegOff() * 2 + 1, src0RR->isScalar() ? builder.getRegionScalar() : builder.getRegionStride2(), Type_UD);
@@ -4511,7 +4507,7 @@ static bool replaceDstWithAcc(G4_INST* inst, int accNum, IR_Builder& builder)
     // at this point acc substitution must succeed
 
     G4_Areg* accReg = useAcc1 ? builder.phyregpool.getAcc1Reg() : builder.phyregpool.getAcc0Reg();
-    G4_DstRegRegion* accDst = builder.createDstRegRegion(Direct, accReg,
+    G4_DstRegRegion* accDst = builder.createDst(accReg,
         (short)accNum, 0, 1, dst->getType());
     accDst->setAccRegSel(inst->getDst()->getAccRegSel());
     inst->setDest(accDst);
@@ -5219,8 +5215,7 @@ bool HWConformity::convertMAD2MAC( INST_LIST_ITER iter, std::vector<G4_INST*> &m
                 useInst->setSrc( accSrcOpnd, (uint32_t)srcNum - 1 );
 
                 // change dst of the last MAD
-                G4_DstRegRegion *accDstOpnd = builder.createDstRegRegion(
-                                Direct,
+                G4_DstRegRegion *accDstOpnd = builder.createDst(
                                 builder.phyregpool.getAcc0Reg(),
                                 0,
                                 0,
@@ -5360,8 +5355,7 @@ void HWConformity::addACCOpnd(
     }
 
     // change dst for all in between MAD
-    G4_DstRegRegion *accDstOpnd = builder.createDstRegRegion(
-        Direct, builder.phyregpool.getAcc0Reg(), 0,
+    G4_DstRegRegion *accDstOpnd = builder.createDst(builder.phyregpool.getAcc0Reg(), 0,
         0, (unsigned short)dstStride, accTy);
     curInst->setDest(accDstOpnd);
 
@@ -5579,8 +5573,7 @@ void HWConformity::fixSADA2Inst(G4_BB* bb)
             // We have verified all conditions and can convert this instruction to sada2.
             // replace the destination for src2Dst to be acc0.
             // The actual acc0 offset will be fixed in a later pass
-            G4_DstRegRegion *accDstOpnd = builder.createDstRegRegion(
-                Direct,
+            G4_DstRegRegion *accDstOpnd = builder.createDst(
                 builder.phyregpool.getAcc0Reg(),
                 0,
                 0,
@@ -5790,7 +5783,7 @@ void HWConformity::fixSendInst(G4_BB* bb)
             short baseSubOff = src0->asSrcRegRegion()->getSubRegOff();
             for (uint16_t idx = 0; idx != rows; ++idx) {
                 G4_SrcRegRegion *src = builder.createSrcRegRegion(Mod_src_undef, Direct, base, baseOff + idx, baseSubOff + 0, region, type);
-                G4_DstRegRegion* dst = builder.createDstRegRegion(Direct, dcl->getRegVar(), idx, 0, 1, type);
+                G4_DstRegRegion* dst = builder.createDst(dcl->getRegVar(), idx, 0, 1, type);
 
                 G4_INST* newInst = builder.createMov(8, dst, src, InstOpt_WriteEnable, false);
 
@@ -5828,7 +5821,7 @@ void HWConformity::fixSendInst(G4_BB* bb)
                 for (uint16_t idx = 0; idx != rows; ++idx)
                 {
                     G4_SrcRegRegion *src = builder.createSrcRegRegion(Mod_src_undef, Direct, base, baseOff + idx, baseSubOff + 0, region, type);
-                    G4_DstRegRegion* dst = builder.createDstRegRegion(Direct, dcl->getRegVar(), idx, 0, 1, type);
+                    G4_DstRegRegion* dst = builder.createDst(dcl->getRegVar(), idx, 0, 1, type);
 
                     G4_INST* newInst = builder.createMov(8, dst, src, InstOpt_WriteEnable, false);
 
@@ -6885,8 +6878,7 @@ G4_Operand* HWConformity::fixPackedByteReference(IR_Builder& builder, G4_Operand
             dst_regoff = off / G4_GRF_REG_NBYTES;
             dst_subregoff = off % G4_GRF_REG_NBYTES;
 
-            G4_DstRegRegion* newDstOpnd = builder.createDstRegRegion(
-                Direct,
+            G4_DstRegRegion* newDstOpnd = builder.createDst(
                 opnd->getBase()->asRegVar(),
                 dst_regoff,
                 dst_subregoff,
@@ -7065,7 +7057,7 @@ static void expandPlaneMacro(IR_Builder& builder, INST_LIST_ITER it, G4_BB* bb, 
 
     G4_Declare* tmpVal = builder.hasNFType() ? nullptr : builder.createTempVar(8, Type_F, Any);
     G4_DstRegRegion* accDst = builder.hasNFType() ?
-        builder.createDstRegRegion(Direct, builder.phyregpool.getAcc0Reg(), 0, 0, 1, Type_NF) :
+        builder.createDst(builder.phyregpool.getAcc0Reg(), 0, 0, 1, Type_NF) :
         builder.Create_Dst_Opnd_From_Dcl(tmpVal, 1);
     G4_INST* madInst = builder.createInternalInst(nullptr, G4_mad, nullptr, false, 8, accDst,
         srcR, u, srcP, options | InstOpt_WriteEnable);
@@ -7076,7 +7068,7 @@ static void expandPlaneMacro(IR_Builder& builder, INST_LIST_ITER it, G4_BB* bb, 
     G4_SrcRegRegion* accSrc = builder.hasNFType() ?
         builder.createSrcRegRegion(Mod_src_undef, Direct, builder.phyregpool.getAcc0Reg(), 0, 0, builder.getRegionStride1(), Type_NF) :
         builder.Create_Src_Opnd_From_Dcl(tmpVal, builder.getRegionStride1());
-    G4_DstRegRegion* newDst = builder.createDstRegRegion(Direct, dst->getBase(),
+    G4_DstRegRegion* newDst = builder.createDst(dst->getBase(),
         dst->getRegOff() + (secondHalf ? 1 : 0), dst->getSubRegOff(), dst->getHorzStride(), dst->getType());
     G4_INST* secondMadInst = builder.createInternalInst(pred, G4_mad, condMod, inst->getSaturate(), 8, newDst,
         accSrc, v, srcQ, options);
@@ -7164,8 +7156,7 @@ bool HWConformity::fixPlaneInst(INST_LIST_ITER it, G4_BB* bb)
             // After:
             // mov (4) tmp(0,0):f (mod)src0(r)<4;4,1>:f
             // pln (16) dst, tmp(0,0)<0;1,0>, src1
-            G4_DstRegRegion* dstRgn = builder.createDstRegRegion(
-                Direct,
+            G4_DstRegRegion* dstRgn = builder.createDst(
                 tmpDcl->getRegVar(),
                 0,
                 0,
@@ -7221,8 +7212,7 @@ bool HWConformity::fixPlaneInst(INST_LIST_ITER it, G4_BB* bb)
             // pln (16) dst, src0, tmp(0,0)
             for (int i = 0; i < numGRFsToCopy; i += 2)
             {
-                G4_DstRegRegion* dstRgn = builder.createDstRegRegion(
-                    Direct,
+                G4_DstRegRegion* dstRgn = builder.createDst(
                     tmpDcl->getRegVar(),
                     (short)i,
                     0,

@@ -3476,7 +3476,7 @@ void CFGStructurizer::generateGotoJoin(G4_BB *gotoBB, G4_BB *jibBB, G4_BB *joinB
             // if predicate is SIMD32, we have to use a :ud dst type for the move
             uint8_t numFlags = gotoInst->getExecSize() > 16 ? 2 : 1;
             G4_Declare* tmpFlagDcl = CFG->builder->createTempFlag(numFlags);
-            G4_DstRegRegion* newPredDef = CFG->builder->createDstRegRegion(Direct, tmpFlagDcl->getRegVar(), 0, 0, 1,
+            G4_DstRegRegion* newPredDef = CFG->builder->createDst(tmpFlagDcl->getRegVar(), 0, 0, 1,
                 numFlags == 2 ? Type_UD : Type_UW);
             G4_INST *predInst = CFG->builder->createMov(1,
                 newPredDef,

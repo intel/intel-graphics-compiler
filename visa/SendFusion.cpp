@@ -904,8 +904,8 @@ void SendFusion::packPayload(
         G4_SrcRegRegion* S = Builder->createSrcRegRegion(
             Mod_src_undef, Direct, SVar, S_regoff, S_sregoff,
             Builder->getRegionStride1(), Ty);
-        G4_DstRegRegion* D = Builder->createDstRegRegion(
-            Direct, DVar, D_regoff, D_sregoff, 1, Ty);
+        G4_DstRegRegion* D = Builder->createDst(
+            DVar, D_regoff, D_sregoff, 1, Ty);
         G4_INST* nInst = Builder->createMov(ES, D, S, option, false);
         bb->insert(InsertBeforePos, nInst);
         return nInst;
@@ -1101,8 +1101,8 @@ void SendFusion::unpackPayload(
     {
         S = Builder->createSrcRegRegion(
             Mod_src_undef, Direct, Payload, 2*i, 0, stride1, Ty);
-        D = Builder->createDstRegRegion(
-            Direct, Dst0, Off0 + i, 0, 1, Ty);
+        D = Builder->createDst(
+            Dst0, Off0 + i, 0, 1, Ty);
         G4_INST* Inst0 = Builder->createMov(ExecSize, D, S, option, false);
         bb->insert(InsertBeforePos, Inst0);
 
@@ -1119,7 +1119,7 @@ void SendFusion::unpackPayload(
             (ExecSize == 8 ? 2*i + 1 : 2*i),
             (ExecSize == 8) ? 0 : ExecSize,
             stride1, Ty);
-        D = Builder->createDstRegRegion(Direct, Dst1, Off1 + i, 0, 1, Ty);
+        D = Builder->createDst(Dst1, Off1 + i, 0, 1, Ty);
         G4_INST* Inst1 = Builder->createMov(ExecSize, D, S, option, false);
         bb->insert(InsertBeforePos, Inst1);
 
@@ -1163,8 +1163,8 @@ void SendFusion::createDMask(G4_BB* bb, INST_LIST_ITER InsertBeforePos)
     G4_VarBase* sr0 = Builder->phyregpool.getSr0Reg();
     G4_SrcRegRegion* Src = Builder->createSrcRegRegion(
         Mod_src_undef, Direct, sr0, 0, 2, Builder->getRegionScalar(), Type_UD);
-    G4_DstRegRegion* Dst = Builder->createDstRegRegion(
-        Direct, dmaskDecl->getRegVar(), 0, 0, 1, Type_UD);
+    G4_DstRegRegion* Dst = Builder->createDst(
+        dmaskDecl->getRegVar(), 0, 0, 1, Type_UD);
     G4_INST* Inst = Builder->createMov(1, Dst, Src, InstOpt_WriteEnable, false);
     bb->insert(InsertBeforePos, Inst);
 
@@ -1184,8 +1184,8 @@ void SendFusion::createDMask(G4_BB* bb, INST_LIST_ITER InsertBeforePos)
 
         G4_SrcRegRegion* S = Builder->createSrcRegRegion(
             Mod_src_undef, Direct, sr0, 0, 2, Builder->getRegionScalar(), Type_UD);
-        G4_DstRegRegion* D = Builder->createDstRegRegion(
-            Direct, dmaskDecl->getRegVar(), 0, 0, 1, Type_UD);
+        G4_DstRegRegion* D = Builder->createDst(
+            dmaskDecl->getRegVar(), 0, 0, 1, Type_UD);
         G4_INST* Inst = Builder->createMov(1, D, S, InstOpt_WriteEnable, false);
         BB->insert(InsertPos, Inst);
     }
@@ -1218,8 +1218,8 @@ void SendFusion::createFlagPerBB(G4_BB* bb, INST_LIST_ITER InsertBeforePos)
         // (W) mov(1|M0) tmpDst1  WAce0:uw
         G4_Declare* flagDecl = Builder->createTempFlag(1, "WAce0");
         G4_RegVar* flagVar = flagDecl->getRegVar();
-        G4_DstRegRegion* flag = Builder->createDstRegRegion(
-            Direct, flagVar, 0, 0, 1, Type_UW);
+        G4_DstRegRegion* flag = Builder->createDst(
+            flagVar, 0, 0, 1, Type_UW);
 
         G4_INST* I0 = Builder->createMov(1, flag,
             Builder->createImm(0, Type_UW), InstOpt_WriteEnable, false);
@@ -1244,8 +1244,8 @@ void SendFusion::createFlagPerBB(G4_BB* bb, INST_LIST_ITER InsertBeforePos)
             Mod_src_undef, Direct,
             flagVar, 0, 0,
             Builder->getRegionScalar(), Type_UW);
-        G4_DstRegRegion* tmpDst1 = Builder->createDstRegRegion(
-            Direct, tmpDecl->getRegVar(), 0, 0, 1, Type_UW);
+        G4_DstRegRegion* tmpDst1 = Builder->createDst(
+            tmpDecl->getRegVar(), 0, 0, 1, Type_UW);
         Inst0 = Builder->createMov( 1, tmpDst1, flagSrc, InstOpt_WriteEnable, false);
         bb->insert(InsertBeforePos, Inst0);
 
@@ -1260,8 +1260,8 @@ void SendFusion::createFlagPerBB(G4_BB* bb, INST_LIST_ITER InsertBeforePos)
             Mod_src_undef, Direct, Builder->phyregpool.getMask0Reg(), 0, 0, scalar, Type_UD);
         G4_SrcRegRegion *dmaskSrc = Builder->createSrcRegRegion(
             Mod_src_undef, Direct, DMaskUD, 0, 0, scalar, Type_UD);
-        G4_DstRegRegion* tmpDst = Builder->createDstRegRegion(
-            Direct, tmpDecl->getRegVar(), 0, 0, 1, Type_UD);
+        G4_DstRegRegion* tmpDst = Builder->createDst(
+            tmpDecl->getRegVar(), 0, 0, 1, Type_UD);
         Inst0 = Builder->createInternalInst(
             NULL, G4_and, NULL, false, 1, tmpDst, ce0Src, dmaskSrc, InstOpt_WriteEnable);
         bb->insert(InsertBeforePos, Inst0);
@@ -1273,8 +1273,8 @@ void SendFusion::createFlagPerBB(G4_BB* bb, INST_LIST_ITER InsertBeforePos)
     tmpUBDecl->setAliasDeclare(tmpDecl, 0);
     G4_SrcRegRegion* S = Builder->createSrcRegRegion(
         Mod_src_undef, Direct, tmpUBDecl->getRegVar(), 0, 0, scalar, Type_UB);
-    G4_DstRegRegion* D = Builder->createDstRegRegion(
-        Direct, tmpUBDecl->getRegVar(), 0, 0, 1, Type_UB);
+    G4_DstRegRegion* D = Builder->createDst(
+        tmpUBDecl->getRegVar(), 0, 0, 1, Type_UB);
     G4_INST* Inst1 = Builder->createMov(2, D, S, InstOpt_WriteEnable, false);
     bb->insert(InsertBeforePos, Inst1);
 
@@ -1286,8 +1286,8 @@ void SendFusion::createFlagPerBB(G4_BB* bb, INST_LIST_ITER InsertBeforePos)
     tmpUW->setAliasDeclare(tmpDecl, 0);
     G4_SrcRegRegion* Src = Builder->createSrcRegRegion(
         Mod_src_undef, Direct, tmpUW->getRegVar(), 0, 0, scalar, Type_UW);
-    G4_DstRegRegion* flag = Builder->createDstRegRegion(
-        Direct, FlagPerBB, 0, 0, 1, Type_UW);
+    G4_DstRegRegion* flag = Builder->createDst(
+        FlagPerBB, 0, 0, 1, Type_UW);
     FlagDefPerBB = Builder->createMov(1, flag, Src, InstOpt_WriteEnable, false);
     bb->insert(InsertBeforePos, FlagDefPerBB);
 

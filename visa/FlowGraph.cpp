@@ -3036,7 +3036,7 @@ void FlowGraph::processGoto(bool HasSIMDCF)
                         // if predicate is SIMD32, we have to use a :ud dst type for the move
                         uint8_t execSize = lastInst->getExecSize() > 16 ? 2 : 1;
                         G4_Declare* tmpFlagDcl = builder->createTempFlag(execSize);
-                        G4_DstRegRegion* newPredDef = builder->createDstRegRegion(Direct, tmpFlagDcl->getRegVar(), 0, 0, 1, execSize == 2 ? Type_UD : Type_UW);
+                        G4_DstRegRegion* newPredDef = builder->createDst(tmpFlagDcl->getRegVar(), 0, 0, 1, execSize == 2 ? Type_UD : Type_UW);
                         G4_INST* predInst = builder->createMov(1, newPredDef, builder->createImm(0, Type_UW),
                             InstOpt_WriteEnable, false);
                         INST_LIST_ITER iter = bb->end();
@@ -6307,8 +6307,7 @@ bool FlowGraph::convertJmpiToGoto()
 
                     // Common dst and src0 operand for flag.
                     G4_Declare *newDcl = builder->createTempFlag(predSize > 16 ? 2 : 1);
-                    auto pDst = builder->createDstRegRegion(
-                        G4_RegAccess::Direct, newDcl->getRegVar(), 0, 0, 1, DstTy);
+                    auto pDst = builder->createDst(newDcl->getRegVar(), 0, 0, 1, DstTy);
                     auto pSrc0 = builder->createSrcRegRegion(
                         G4_SrcModifier::Mod_src_undef, G4_RegAccess::Direct,
                         pred->getBase(), 0, 0, builder->getRegionScalar(), SrcTy);

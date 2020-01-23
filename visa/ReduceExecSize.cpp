@@ -878,7 +878,7 @@ void HWConformity::splitInstruction(INST_LIST_ITER iter, G4_BB* bb, bool compOpt
     if (instPred || isSIMDCFInst)
     {
         maskDcl = builder.createTempVar(instExSize, Type_UW, Eight_Word);
-        G4_DstRegRegion * tmpMaskOpnd = builder.createDstRegRegion(Direct, maskDcl->getRegVar(), 0, 0, 1, Type_UW);
+        G4_DstRegRegion * tmpMaskOpnd = builder.createDst(maskDcl->getRegVar(), 0, 0, 1, Type_UW);
 
         G4_INST* firstMov = builder.createMov(instExSize,
             tmpMaskOpnd, builder.createImm(0, Type_UW), inst->getOption(), false);
@@ -1417,8 +1417,7 @@ void HWConformity::moveSrcToGRF( INST_LIST_ITER it, uint32_t srcNum, uint16_t nu
     }
 
     G4_Declare* dcl = builder.createTempVar( dclSize, src->getType(), GRFALIGN );
-    G4_DstRegRegion *dstRegion = builder.createDstRegRegion(
-                        Direct,
+    G4_DstRegRegion *dstRegion = builder.createDst(
                         dcl->getRegVar(),
                         0,
                         0,

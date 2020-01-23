@@ -1601,8 +1601,7 @@ int VISAKernelImpl::CreateVISAAddressOperand(VISA_VectorOpnd *&cisa_opnd, VISA_A
         }
         else
         {
-            cisa_opnd->g4opnd = m_builder->createDstRegRegion(
-                Direct,
+            cisa_opnd->g4opnd = m_builder->createDst(
                 dcl->getRegVar(),
                 0, //opnd->opnd_val.addr_opnd.index, // should we use 0 here?
                 (uint16_t)offset,
@@ -1763,14 +1762,13 @@ int VISAKernelImpl::CreateVISAIndirectGeneralOperand(VISA_VectorOpnd *& cisa_opn
         }
         else
         {
-            G4_DstRegRegion* dst = m_builder->createDstRegRegion(
-                IndirGRF,
+            auto dst = m_builder->createIndirectDst(
                 dcl->getRegVar(),
-                0, //opnd->opnd_val.addr_opnd.index, // should we use 0 here?
                 (uint16_t)addrOffset,
                 horizontalStride,
-                GetGenTypeFromVISAType(type));
-            dst->setImmAddrOff( immediateOffset );
+                GetGenTypeFromVISAType(type),
+                immediateOffset);
+
             cisa_opnd->g4opnd = dst;
         }
     }
@@ -1873,8 +1871,7 @@ int VISAKernelImpl::CreateVISAPredicateDstOperand(VISA_VectorOpnd *& opnd, VISA_
     {
         G4_Declare *dcl = decl->predVar.dcl;
 
-        opnd->g4opnd = m_builder->createDstRegRegion(
-            Direct,
+        opnd->g4opnd = m_builder->createDst(
             dcl->getRegVar(),
             0,
             0,
@@ -2003,7 +2000,7 @@ int VISAKernelImpl::CreateVISADstOperand(VISA_VectorOpnd *&cisa_opnd, VISA_GenVa
         //create reg region
         G4_Declare *dcl = cisa_decl->genVar.dcl;
 
-        cisa_opnd->g4opnd = m_builder->createDstRegRegion( Direct, dcl->getRegVar(), rowOffset, colOffset, hStride, dcl->getElemType());
+        cisa_opnd->g4opnd = m_builder->createDst(dcl->getRegVar(), rowOffset, colOffset, hStride, dcl->getElemType());
     }
 
     if(IS_VISA_BOTH_PATH)
@@ -2154,8 +2151,7 @@ int VISAKernelImpl::CreateVISAStateOperand(VISA_VectorOpnd *&cisa_opnd, CISA_GEN
         }
         else
         {
-            cisa_opnd->g4opnd = m_builder->createDstRegRegion(
-                Direct,
+            cisa_opnd->g4opnd = m_builder->createDst(
                 dcl->getRegVar(),
                 0,
                 offset,
@@ -2284,8 +2280,7 @@ int VISAKernelImpl::CreateGenRawDstOperand(VISA_RawOpnd *& cisa_opnd)
             short row_offset = offset/G4_GRF_REG_NBYTES;
             short col_offset = (offset%G4_GRF_REG_NBYTES)/G4_Type_Table[dcl->getElemType()].byteSize;
 
-            cisa_opnd->g4opnd = m_builder->createDstRegRegion(
-                Direct,
+            cisa_opnd->g4opnd = m_builder->createDst(
                 dcl->getRegVar(),
                 row_offset,
                 col_offset,

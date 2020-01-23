@@ -388,7 +388,7 @@ void Optimizer::insertDummyCompactInst()
     G4_Declare *dcl = builder.getBuiltinR0();
     auto src = builder.createSrcRegRegion(Mod_src_undef, Direct,
         dcl->getRegVar(), 0, 0, builder.getRegionScalar(), Type_F);
-    auto dst = builder.createDstRegRegion(Direct, dcl->getRegVar(), 0, 0, 1, Type_F);
+    auto dst = builder.createDst(dcl->getRegVar(), 0, 0, 1, Type_F);
     G4_INST *movInst = builder.createMov(1, dst, src, InstOpt_WriteEnable, false);
 
     auto bb = fg.getEntryBB();
@@ -3517,7 +3517,7 @@ static void expandPseudoLogic(IR_Builder& builder,
             {
                 auto src = Opnd->asSrcRegRegion();
                 auto newDcl = builder.createTempVar(tmpSize, Type_UW, Any);
-                auto newDst = builder.createDstRegRegion(Direct, newDcl->getRegVar(), 0, 0, 1, Type_UW);
+                auto newDst = builder.createDst(newDcl->getRegVar(), 0, 0, 1, Type_UW);
                 auto newPred = builder.createPredicate(PredState_Plus, src->getBase(), src->getSubRegOff());
                 auto newSel = builder.createInternalInst(newPred, G4_sel, nullptr, false, tmpSize, newDst,
                                                          builder.createImm(1, Type_UW),
@@ -3814,8 +3814,7 @@ bool Optimizer::foldCmpToCondMod(G4_BB* bb, INST_LIST_ITER& iter)
             // see if we can replace dst with null
             if (inst->supportsNullDst() && !fg.globalOpndHT.isOpndGlobal(inst->getDst()))
             {
-                inst->setDest(builder.createDstRegRegion(
-                    Direct,
+                inst->setDest(builder.createDst(
                     builder.phyregpool.getNullReg(),
                     0,
                     0,
@@ -5165,7 +5164,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                         // create new dst region to replace one in iVector[i]
                         G4_DstRegRegion *cDst = cInst->getDst();
                         G4_DstRegRegion *iDst = iInst->getDst();
-                        G4_DstRegRegion *newDstRegion = builder.createDstRegRegion(Direct, cDst->getTopDcl()->getRegVar(),
+                        G4_DstRegRegion *newDstRegion = builder.createDst(cDst->getTopDcl()->getRegVar(),
                                 iDst->getRegOff(), iDst->getSubRegOff(), iDst->getHorzStride(), iDst->getType());
                         iInst->setDest(newDstRegion);
 
@@ -5675,8 +5674,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             2,
             builder.getRegionScalar(),
             Type_UD);
-        G4_DstRegRegion *dst1_opnd = builder.createDstRegRegion(
-            Direct,
+        G4_DstRegRegion *dst1_opnd = builder.createDst(
             dcl->getRegVar(),
             0,
             0,
@@ -6600,8 +6598,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 case Type_F:
                     // must be acc1.0 as result of simd16 -> 8 split
                     assert(size == 8 && "only support simd16->simd8 for now");
-                    return createDstRegRegion(
-                        Direct,
+                    return createDst(
                         phyregpool.getAcc1Reg(),
                         0,
                         0,
@@ -6615,8 +6612,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                         start += 16;
                     }
                     G4_Areg* accReg = start >= 16 ? phyregpool.getAcc1Reg() : phyregpool.getAcc0Reg();
-                    return createDstRegRegion(
-                        Direct, accReg, 0, start % 16, hs, dstType);
+                    return createDst(accReg, 0, start % 16, hs, dstType);
                 }
                 default:
 
@@ -6640,7 +6636,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 subRegOff = newSubRegOff;
             }
             // create a new one
-            return createDstRegRegion(Direct, dst->getBase(), regOff, subRegOff, hs, dst->getType(),
+            return createDst(dst->getBase(), regOff, subRegOff, hs, dst->getType(),
                 dst->getAccRegSel());
         }
         else
@@ -6753,8 +6749,8 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                         nextIter++;
                         G4_DstRegRegion* dst = inst->getDst();
                         G4_Declare* fenceDcl = dst->getBase()->asRegVar()->getDeclare();
-                        G4_DstRegRegion* movDst = builder.createDstRegRegion(
-                            Direct, builder.phyregpool.getNullReg(), 0, 0, 1, fenceDcl->getElemType());
+                        G4_DstRegRegion* movDst = builder.createDst(
+                            builder.phyregpool.getNullReg(), 0, 0, 1, fenceDcl->getElemType());
                         G4_SrcRegRegion* movSrc = builder.Create_Src_Opnd_From_Dcl(fenceDcl, builder.createRegionDesc(8, 8, 1));
                         G4_INST* movInst = builder.createMov(8, movDst, movSrc, InstOpt_WriteEnable, false);
                         bb->insert(nextIter, movInst);
@@ -6870,7 +6866,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 {
                     // insert
                     // mov(8) tdr0:uw 0x0:uw {NoMask}
-                    G4_DstRegRegion* tdrDst = builder.createDstRegRegion(Direct, builder.phyregpool.getTDRReg(),
+                    G4_DstRegRegion* tdrDst = builder.createDst(builder.phyregpool.getTDRReg(),
                         0, 0, 1, Type_UW);
                     G4_Imm* src = builder.createImm(0, Type_UW);
                     G4_INST* movInst = builder.createMov(8, tdrDst, src, InstOpt_WriteEnable | InstOpt_Switch, false);
@@ -6881,7 +6877,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 {
                     // insert "(W) mov(16) acc0.0:f 0x0:f" before EOT
                     G4_INST* movInst = builder.createMov(16,
-                        builder.createDstRegRegion(Direct, builder.phyregpool.getAcc0Reg(),0, 0, 1, Type_F),
+                        builder.createDst(builder.phyregpool.getAcc0Reg(),0, 0, 1, Type_F),
                         builder.createImm(0, Type_F), InstOpt_WriteEnable, false);
                     // insert mov before contiguous send, in case that there are instruction combined set on continuous
                     // two send
@@ -6899,7 +6895,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     inst->isSend() && inst->getMsgDesc()->isBarrierMsg())
                 {
                     // mov (1) n0.0 0x0 {Switch}
-                    G4_DstRegRegion* n0Dst = builder.createDstRegRegion(Direct,
+                    G4_DstRegRegion* n0Dst = builder.createDst(
                         builder.phyregpool.getN0Reg(), 0, 0, 1, Type_UD);
                     auto movInst = builder.createMov(1, n0Dst,
                         builder.createImm(0, Type_UD), InstOpt_WriteEnable | InstOpt_Switch, false);
@@ -7850,8 +7846,7 @@ public:
             builder.getRegionStride1(),
             Type_UD);
 
-        G4_DstRegRegion* R0CopyOpnd = builder.createDstRegRegion(
-            Direct,
+        G4_DstRegRegion* R0CopyOpnd = builder.createDst(
             builder.getBuiltinR0()->getRegVar(),
             0,
             0,
@@ -7932,7 +7927,7 @@ public:
         {
             int reg_init = reg_offset + i;
             G4_Declare* tempDcl = builder.createHardwiredDeclare(16, Type_UD, reg_init, 0);
-            G4_DstRegRegion* dst = builder.createDstRegRegion(Direct, tempDcl->getRegVar(), 0, 0, 1, Type_UD);
+            G4_DstRegRegion* dst = builder.createDst(tempDcl->getRegVar(), 0, 0, 1, Type_UD);
             G4_Imm * src0 = builder.createImm(0, Type_UD);
             G4_INST* initInst = builder.createMov(16, dst, src0, InstOpt_WriteEnable, false);
             bb->insert(iter, initInst);
@@ -7942,7 +7937,7 @@ public:
         if ((num_reg_init % 2))
         {
             G4_Declare* tempDcl = builder.createHardwiredDeclare(8, Type_UD, 128 - (num_reg_init % 2), 0);
-            G4_DstRegRegion* dst = builder.createDstRegRegion(Direct, tempDcl->getRegVar(), 0, 0, 1, Type_UD);
+            G4_DstRegRegion* dst = builder.createDst(tempDcl->getRegVar(), 0, 0, 1, Type_UD);
             G4_Imm * src0 = builder.createImm(0, Type_UD);
             G4_INST* spIncInst = builder.createMov(8, dst, src0, InstOpt_WriteEnable, false);
             G4_BB* bb = kernel.fg.getEntryBB();
@@ -7959,7 +7954,7 @@ public:
             for (int i = 0; i < remainder_bytes - (remainder_bytes % exec_size); i += exec_size, sub_offset += exec_size)
             {
                 G4_Declare* tempDcl = builder.createHardwiredDeclare(exec_size, Type_UB, reg_offset - 1, sub_offset);
-                G4_DstRegRegion* dst = builder.createDstRegRegion(Direct, tempDcl->getRegVar(), 0, 0, 1, Type_UB);
+                G4_DstRegRegion* dst = builder.createDst(tempDcl->getRegVar(), 0, 0, 1, Type_UB);
 
                 G4_Declare* tempDclSrc = builder.createHardwiredDeclare(1, Type_UD, 126, 0);
                 G4_SrcRegRegion *src0 = builder.createSrcRegRegion(Mod_src_undef, Direct, tempDclSrc->getRegVar(), 0, 0, builder.getRegionScalar(), Type_UB);
@@ -7979,7 +7974,7 @@ public:
         {
             G4_Declare* tmpFlagDcl = builder.createTempFlag(2);
             tmpFlagDcl->getRegVar()->setPhyReg(builder.phyregpool.getFlagAreg(i), 0);
-            G4_DstRegRegion *tempPredVar = builder.createDstRegRegion(Direct, tmpFlagDcl->getRegVar(), 0, 0, 1, Type_UD);
+            G4_DstRegRegion *tempPredVar = builder.createDst(tmpFlagDcl->getRegVar(), 0, 0, 1, Type_UD);
             G4_INST *predInst = builder.createMov(1, tempPredVar, builder.createImm(0, Type_UW), InstOpt_WriteEnable, false);
             bb = kernel.fg.getEntryBB();
             bb->insert(iter, predInst);
@@ -8009,7 +8004,7 @@ public:
                 Mod_src_undef, Direct, builder.phyregpool.getSr0Reg(), 0, 0,
                 builder.getRegionScalar(), Type_UD);
             auto src1 = builder.createImm(0xF0FFFFFF, Type_UD);
-            auto dst = builder.createDstRegRegion(Direct, rtail->getRegVar(), 0, 0, 1, Type_UD);
+            auto dst = builder.createDst(rtail->getRegVar(), 0, 0, 1, Type_UD);
 
             return builder.createInternalInst(nullptr, G4_and, nullptr, false, 1,
                 dst, src0, src1, InstOpt_WriteEnable);
@@ -8022,7 +8017,7 @@ public:
                 Mod_src_undef, Direct, rtail->getRegVar(), 0, 0,
                 builder.getRegionScalar(), Type_UD);
             auto src1 = builder.createImm(imm, Type_UD);
-            auto dst = builder.createDstRegRegion(Direct,
+            auto dst = builder.createDst(
                 builder.phyregpool.getSr0Reg(), 0, 0, 1, Type_UD);
 
             return builder.createInternalInst(nullptr, G4_or, nullptr, false, 1,
@@ -8290,7 +8285,7 @@ public:
             auto insertIt = std::find_if(bb->begin(), bb->end(),
                 [](G4_INST* inst) { return !inst->isLabel(); });
             bb->insert(insertIt,
-                builder.createMov(16, builder.createDstRegRegion(Direct,
+                builder.createMov(16, builder.createDst(
                     builder.phyregpool.getAddrReg(), 0, 0, 1, Type_UW),
                     builder.createImm(0, Type_UW), InstOpt_WriteEnable, false));
         }
@@ -8523,7 +8518,7 @@ public:
             {
                 // "(W) mov(8) a0.0:uw tdr0.0:uw"
                 bb->insert(--bb->end(), builder.createMov(8,
-                    builder.createDstRegRegion(Direct, builder.phyregpool.getAddrReg(), 0, 0, 1, Type_UW),
+                    builder.createDst(builder.phyregpool.getAddrReg(), 0, 0, 1, Type_UW),
                     builder.createSrcRegRegion(Mod_src_undef, Direct, builder.phyregpool.getTDRReg(), 0,
                                                0, builder.getRegionScalar(), Type_UW),
                     InstOpt_WriteEnable, false));
@@ -9192,7 +9187,7 @@ bool BUNDLE_INFO::doMerge(IR_Builder& builder,
 #endif
             }
         }
-        G4_DstRegRegion* newDst = builder.createDstRegRegion(Direct, newDcl->getRegVar(), 0, 0, 1, dstType);
+        G4_DstRegRegion* newDst = builder.createDst(newDcl->getRegVar(), 0, 0, 1, dstType);
         newInst->setDest(newDst);
     }
     else
@@ -10557,8 +10552,7 @@ void MadSequenceInfo::processCandidates()
     G4_INST *src2Def = getSrc2Def();
     {
         // change dst of the last MAD
-        G4_DstRegRegion *accDstOpnd = builder.createDstRegRegion(
-            Direct, builder.phyregpool.getAcc0Reg(), 0, 0, 1, AdjustedType);
+        G4_DstRegRegion *accDstOpnd = builder.createDst(builder.phyregpool.getAcc0Reg(), 0, 0, 1, AdjustedType);
         src2Def->setDest(accDstOpnd);
 
         // Convert splat.
@@ -10589,8 +10583,7 @@ void MadSequenceInfo::processCandidates()
                 break;
 
             // Also update the destination.
-            G4_DstRegRegion *accDstOpnd = builder.createDstRegRegion(
-                Direct, builder.phyregpool.getAcc0Reg(), 0, 0, 1, AdjustedType);
+            G4_DstRegRegion *accDstOpnd = builder.createDst(builder.phyregpool.getAcc0Reg(), 0, 0, 1, AdjustedType);
             useInst->setDest(accDstOpnd);
 
             // move to the next pair.
@@ -10618,8 +10611,7 @@ void MadSequenceInfo::processCandidates()
         // destination.
         if (getLastMad() != inst || !lastMadUserChain.empty())
         {
-            G4_DstRegRegion *accDstOpnd = builder.createDstRegRegion(
-                Direct, builder.phyregpool.getAcc0Reg(), 0, 0, 1, AdjustedType);
+            G4_DstRegRegion *accDstOpnd = builder.createDst(builder.phyregpool.getAcc0Reg(), 0, 0, 1, AdjustedType);
             inst->setDest(accDstOpnd);
         }
         inst->setOpcode(G4_mac);
@@ -10915,7 +10907,7 @@ void Optimizer::splitVariables()
             G4_DstRegRegion *Dst = Inst->getDst();
             G4_Type Ty = Dst->getType();
             auto NewDcl = DclMap[Dst->getTopDcl()]->getDcl(builder, Ty, IsLow);
-            auto NewDst = builder.createDstRegRegion(Direct, NewDcl->getRegVar(), 0, 0, 1, Ty);
+            auto NewDst = builder.createDst(NewDcl->getRegVar(), 0, 0, 1, Ty);
             Inst->setDest(NewDst);
         }
 
@@ -11098,7 +11090,7 @@ void Optimizer::split4GRFVars()
                 {
                     bool isLow = dst->getLeftBound() < 2u * GENX_GRF_REG_SIZ;
                     auto NewDcl = DclMap[dstRootDcl]->getDcl(builder, dst->getType(), isLow);
-                    auto NewDst = builder.createDstRegRegion(Direct, NewDcl->getRegVar(),
+                    auto NewDst = builder.createDst(NewDcl->getRegVar(),
                         dst->getRegOff() - (isLow ? 0 : 2), dst->getSubRegOff(),
                         dst->getHorzStride(), dst->getType(), dst->getAccRegSel());
                     inst->setDest(NewDst);
@@ -11772,8 +11764,7 @@ static G4_INST* emitRetiringMov(IR_Builder& builder, G4_BB* BB, G4_INST* SI,
     Dcl->setGRFBaseOffset(RegNum * G4_GRF_REG_NBYTES);
     Dcl->getRegVar()->setPhyReg(builder.phyregpool.getGreg(RegNum), 0);
 
-    G4_DstRegRegion* MovDst = builder.createDstRegRegion(
-        Direct, Dcl->getRegVar(), 0, 0, 1, Type_F);
+    G4_DstRegRegion* MovDst = builder.createDst(Dcl->getRegVar(), 0, 0, 1, Type_F);
     G4_SrcRegRegion* MovSrc = builder.createSrcRegRegion(
         Mod_src_undef, Direct, Dcl->getRegVar(), 0, 0,
         builder.getRegionStride1(), Type_F);
@@ -11938,8 +11929,8 @@ void Optimizer::replaceNoMaskWithAnyhWA()
         G4_Type Ty = (flagBits > 16) ? Type_UD : Type_UW;
         G4_Declare* flagDecl = builder.createTempFlag((Ty == Type_UW ? 1 : 2), "cmpFlag");
         G4_RegVar* flagVar = flagDecl->getRegVar();
-        G4_DstRegRegion* flag = builder.createDstRegRegion(
-            Direct, flagVar, 0, 0, 1, Ty);
+        G4_DstRegRegion* flag = builder.createDst(
+            flagVar, 0, 0, 1, Ty);
         G4_INST* I0 = builder.createMov(1, flag,
             builder.createImm(0, Ty), InstOpt_WriteEnable, false);
         BB->insert(II, I0);
@@ -11959,8 +11950,7 @@ void Optimizer::replaceNoMaskWithAnyhWA()
         BB->insert(II, I1);
 
         G4_Imm* allone = builder.createImm(0xFFFFFFFF, Ty);
-        G4_DstRegRegion* tFlag = builder.createDstRegRegion(
-            Direct, flagVar, 0, 0, 1, Ty);
+        G4_DstRegRegion* tFlag = builder.createDst(flagVar, 0, 0, 1, Ty);
         flagDefInst = builder.createMov(1, tFlag, allone, InstOpt_WriteEnable, false);
         G4_Predicate* tP = builder.createPredicate(
             PredState_Plus, flagVar, 0,
@@ -12014,8 +12004,8 @@ void Optimizer::replaceNoMaskWithAnyhWA()
             G4_SrcRegRegion* Src = builder.createSrcRegRegion(
                 Mod_src_undef, Direct, builder.phyregpool.getSr0Reg(),
                 0, (useVMask ? 3 : 2), builder.getRegionScalar(), Type_UD);
-            G4_DstRegRegion* Dst = builder.createDstRegRegion(
-                Direct, dmaskVarUD, 0, 0, 1, Type_UD);
+            G4_DstRegRegion* Dst = builder.createDst(
+                dmaskVarUD, 0, 0, 1, Type_UD);
             G4_INST* dmaskInst = builder.createMov(1, Dst, Src, InstOpt_WriteEnable, false);
 
             G4_BB* entryBB = fg.getEntryBB();
@@ -12058,8 +12048,8 @@ void Optimizer::replaceNoMaskWithAnyhWA()
             G4_SrcRegRegion* flagSrc = builder.createSrcRegRegion(
                 Mod_src_undef, Direct, flagVar, 0, 0,
                 builder.getRegionScalar(), Type_UW);
-            G4_DstRegRegion* flagDst = builder.createDstRegRegion(
-                Direct, flagVar, 0, 0, 1, Type_UW);
+            G4_DstRegRegion* flagDst = builder.createDst(
+                flagVar, 0, 0, 1, Type_UW);
             G4_INST* tInst = builder.createMov(2, flagDst, flagSrc, InstOpt_WriteEnable, false);
             BB->insert(II, tInst);
 
@@ -12115,8 +12105,7 @@ void Optimizer::replaceNoMaskWithAnyhWA()
         else {
             Src1 = builder.createImm(I->getExecLaneMask(), Ty);
         }
-        G4_DstRegRegion* tDst = builder.createDstRegRegion(
-            Direct, tPVar, 0, 0, 1, Ty);
+        G4_DstRegRegion* tDst = builder.createDst(tPVar, 0, 0, 1, Ty);
         G4_Predicate* flag0 = builder.createPredicate(
             PredState_Plus, flagVar, 0, PRED_DEFAULT);
         G4_INST* I0 = builder.createInternalInst(
@@ -12164,8 +12153,8 @@ void Optimizer::replaceNoMaskWithAnyhWA()
         G4_Declare* saveDecl = builder.createTempVar(
             I->getExecSize() * dst->getHorzStride(), dst->getType(), Any, "saveTmp");
 
-        G4_DstRegRegion* tDst = builder.createDstRegRegion(
-            Direct, saveDecl->getRegVar(), 0, 0, dst->getHorzStride(), dst->getType());
+        G4_DstRegRegion* tDst = builder.createDst(
+            saveDecl->getRegVar(), 0, 0, dst->getHorzStride(), dst->getType());
         I->setDest(tDst);
 
         const RegionDesc* regionSave;
@@ -12255,8 +12244,7 @@ void Optimizer::replaceNoMaskWithAnyhWA()
             G4_SrcRegRegion* I0S0 = builder.createSrcRegRegion(
                 Mod_src_undef, Direct, modDcl->getRegVar(),
                 0, 0, builder.getRegionScalar(), Ty);
-            G4_DstRegRegion* D0 = builder.createDstRegRegion(
-                Direct, saveVar, 0, 0, 1, Ty);
+            G4_DstRegRegion* D0 = builder.createDst(saveVar, 0, 0, 1, Ty);
             G4_INST* I0 = builder.createMov(1, D0, I0S0, InstOpt_WriteEnable, false);
             currBB->insert(currII, I0);
 
@@ -12265,8 +12253,8 @@ void Optimizer::replaceNoMaskWithAnyhWA()
             G4_SrcRegRegion* I1S0 = builder.createSrcRegRegion(
                 Mod_src_undef, Direct, saveVar,
                 0, 0, builder.getRegionScalar(), Ty);
-            G4_DstRegRegion* D1 = builder.createDstRegRegion(
-                Direct, modDcl->getRegVar(), 0, 0, 1, Ty);
+            G4_DstRegRegion* D1 = builder.createDst(
+                modDcl->getRegVar(), 0, 0, 1, Ty);
             G4_INST* I1 = builder.createMov(1, D1, I1S0, InstOpt_WriteEnable, false);
             G4_Predicate* flag = builder.createPredicate(
                 PredState_Minus, flagVar, 0, PRED_DEFAULT);
@@ -12291,7 +12279,7 @@ void Optimizer::replaceNoMaskWithAnyhWA()
             G4_SrcRegRegion* I0S0 = builder.createSrcRegRegion(
                 Mod_src_undef, Direct, flagVar,
                 0, 0, builder.getRegionScalar(), Ty);
-            G4_DstRegRegion* D0 = builder.createDstRegRegion(Direct, nPVar, 0, 0, 1, Ty);
+            G4_DstRegRegion* D0 = builder.createDst(nPVar, 0, 0, 1, Ty);
             G4_INST* I0 = builder.createMov(1, D0, I0S0, InstOpt_WriteEnable, false);
             currBB->insert(currII, I0);
 
@@ -12305,8 +12293,8 @@ void Optimizer::replaceNoMaskWithAnyhWA()
             G4_SrcRegRegion* I1S0 = builder.createSrcRegRegion(
                 Mod_src_undef, Direct, nPVar,
                 0, 0, builder.getRegionScalar(), Ty);
-            G4_DstRegRegion* D1 = builder.createDstRegRegion(
-                Direct, modDcl->getRegVar(), 0, 0, 1, Ty);
+            G4_DstRegRegion* D1 = builder.createDst(
+                modDcl->getRegVar(), 0, 0, 1, Ty);
             G4_Predicate* flag1 = builder.createPredicate(
                 PredState_Plus, flagVar, 0, PRED_DEFAULT);
             G4_INST* I1 = builder.createMov(1, D1, I1S0, InstOpt_WriteEnable, false);
@@ -12337,8 +12325,8 @@ void Optimizer::replaceNoMaskWithAnyhWA()
         G4_SrcRegRegion* I0S0 = builder.createSrcRegRegion(
             Mod_src_undef, Direct, modDcl->getRegVar(),
             0, 0, builder.getRegionScalar(), Ty);
-        G4_DstRegRegion* D0 = builder.createDstRegRegion(
-            Direct, saveVar, 0, 0, 1, Ty);
+        G4_DstRegRegion* D0 = builder.createDst(
+            saveVar, 0, 0, 1, Ty);
         G4_INST* I0 = builder.createMov(1, D0, I0S0, InstOpt_WriteEnable, false);
         currBB->insert(currII, I0);
 
@@ -12362,8 +12350,8 @@ void Optimizer::replaceNoMaskWithAnyhWA()
         G4_SrcRegRegion* I2S0 = builder.createSrcRegRegion(
             Mod_src_undef, Direct, saveVar,
             0, 0, builder.getRegionScalar(), Ty);
-        G4_DstRegRegion* D2 = builder.createDstRegRegion(
-            Direct, modDcl->getRegVar(), 0, 0, 1, Ty);
+        G4_DstRegRegion* D2 = builder.createDst(
+            modDcl->getRegVar(), 0, 0, 1, Ty);
         G4_INST* I2 = builder.createMov(1, D2, I2S0, InstOpt_WriteEnable, false);
         G4_Predicate* flag2 = builder.createPredicate(
             PredState_Minus, flagVar, 0, PRED_DEFAULT);
@@ -12418,13 +12406,13 @@ void Optimizer::replaceNoMaskWithAnyhWA()
         G4_SrcRegRegion* I0S0 = builder.createSrcRegRegion(
             Mod_src_undef, Direct, modDcl->getRegVar(),
             0, 0, builder.getRegionScalar(), Ty);
-        G4_DstRegRegion* D0 = builder.createDstRegRegion(
-            Direct, saveVar, 0, 0, 1, Ty);
+        G4_DstRegRegion* D0 = builder.createDst(
+            saveVar, 0, 0, 1, Ty);
         G4_INST* I0 = builder.createMov(1, D0, I0S0, InstOpt_WriteEnable, false);
         currBB->insert(currII, I0);
 
-        G4_DstRegRegion* D1 = builder.createDstRegRegion(
-            Direct, modDcl->getRegVar(), 0, 0, 1, Ty);
+        G4_DstRegRegion* D1 = builder.createDst(
+            modDcl->getRegVar(), 0, 0, 1, Ty);
         G4_Imm* immS0;
         if (P->getState() == PredState_Plus) {
             immS0 = builder.createImm(0, Ty);
@@ -12445,8 +12433,8 @@ void Optimizer::replaceNoMaskWithAnyhWA()
         G4_SrcRegRegion* I2S0 = builder.createSrcRegRegion(
             Mod_src_undef, Direct, saveVar,
             0, 0, builder.getRegionScalar(), Ty);
-        G4_DstRegRegion* D2 = builder.createDstRegRegion(
-            Direct, modDcl->getRegVar(), 0, 0, 1, Ty);
+        G4_DstRegRegion* D2 = builder.createDst(
+            modDcl->getRegVar(), 0, 0, 1, Ty);
         G4_INST* I2 = builder.createMov(1, D2, I2S0, InstOpt_WriteEnable, false);
         G4_Predicate* flag2 = builder.createPredicate(
             PredState_Minus, flagVar, 0, PRED_DEFAULT);
@@ -12636,8 +12624,8 @@ void Optimizer::replaceNoMaskWithAnyhWA()
                     G4_SrcRegRegion* Src = builder.createSrcRegRegion(
                         Mod_src_undef, Direct, builder.phyregpool.getSr0Reg(),
                         0, (useVMask ? 3 : 2), builder.getRegionScalar(), Type_UD);
-                    G4_DstRegRegion* Dst = builder.createDstRegRegion(
-                        Direct, dmaskVarUD, 0, 0, 1, Type_UD);
+                    G4_DstRegRegion* Dst = builder.createDst(
+                        dmaskVarUD, 0, 0, 1, Type_UD);
                     G4_INST* dmaskI = builder.createMov(1, Dst, Src, InstOpt_WriteEnable, false);
 
                     BB->insert(NextI, dmaskI);

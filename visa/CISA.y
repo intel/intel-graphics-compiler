@@ -1534,8 +1534,6 @@ DstStateOperand : {
                //  1
 DstAddrOperand : AddrVar
                {
-                   //G4_DstRegRegion dst(Direct, $1.opnd, 0, $1.elem, 1, GetGenTypeFromVISAType(ISA_TYPE_UW), "");
-                   //$$.opnd = pBuilder->createDstRegRegion(dst);
                    $$.cisa_gen_opnd = pCisaBuilder->CISA_set_address_operand($1.cisa_decl, $1.elem, $1.row, true);
                };
 
@@ -1595,9 +1593,6 @@ DstGeneralOperand :  VAR TwoDimOffset DstRegion
                     //   1           2           3
 DstIndirectOperand: IndirectVar IndirectRegion DataType
                   {
-                      //G4_DstRegRegion dst($1.acc, $1.opnd, $1.row, $1.elem, $2.rgn->horzStride, GetGenTypeFromVISAType($3), "");
-                      //dst.setImmAddrOff($1.immOff);
-                      //$$.opnd = pBuilder->createDstRegRegion(dst);
                       $$.cisa_gen_opnd = pCisaBuilder->CISA_create_indirect_dst($1.cisa_decl, MODIFIER_NONE, $1.row, $1.elem, $1.immOff, $2.h_stride, $3);
                   };
 

@@ -250,7 +250,7 @@ G4_Operand* IR_Builder::emitSampleIndexGE16(
 
     // add the base pointer offset with r0.3 and put to M0.3
     G4_DstRegRegion* stateBaseRgn
-        = createDstRegRegion(Direct, headerDecl->getRegVar(),
+        = createDst(headerDecl->getRegVar(),
             0, 3, 1, Type_UD);
     G4_SrcRegRegion* src0
         = createSrcRegRegion(Mod_src_undef, Direct,
@@ -1196,14 +1196,12 @@ G4_Declare* IR_Builder::createSendPayloadDcl( unsigned num_elt, G4_Type type )
 
 void IR_Builder::Create_MOVR0_Inst( G4_Declare* dcl, short regOff, short subregOff, bool use_nomask )
 {
-    G4_DstRegRegion dst1(
-        Direct,
+    G4_DstRegRegion* dst1_opnd = createDst(
         dcl->getRegVar(),
         regOff,
         subregOff,
         1,
         dcl->getElemType());
-    G4_DstRegRegion* dst1_opnd = createDstRegRegion(dst1);
 
     // create r0 src
     G4_SrcRegRegion* r0_src_opnd = Create_Src_Opnd_From_Dcl(builtinR0, getRegionStride1());
@@ -1219,24 +1217,23 @@ void IR_Builder::Create_MOVR0_Inst( G4_Declare* dcl, short regOff, short subregO
 void IR_Builder::Create_ADD_Inst(G4_Declare* dcl, short regOff, short subregOff, uint8_t execsize,
     G4_Predicate* pred, G4_CondMod* condMod, G4_Operand* src0_opnd, G4_Operand* src1_opnd, G4_InstOption options)
 {
-
-    G4_DstRegRegion dst(Direct, dcl->getRegVar(), regOff, subregOff, 1, dcl->getElemType());
+    auto dst = createDst(dcl->getRegVar(), regOff, subregOff, 1, dcl->getElemType());
 
     if (src0_opnd->isImm() && src0_opnd->asImm()->isZero())
     {
-        createInst(pred, G4_mov, condMod, false, execsize, createDstRegRegion(dst), src1_opnd, NULL, options);
+        createInst(pred, G4_mov, condMod, false, execsize, dst, src1_opnd, NULL, options);
     }
     else if (src1_opnd->isImm() && src1_opnd->asImm()->isZero())
     {
-        createInst(pred, G4_mov, condMod, false, execsize, createDstRegRegion(dst), src0_opnd, NULL, options);
+        createInst(pred, G4_mov, condMod, false, execsize, dst, src0_opnd, NULL, options);
     }
     else if (src0_opnd->isImm() && !src1_opnd->isImm())
     {
-        createInst(pred, G4_add, condMod, false, execsize, createDstRegRegion(dst), src1_opnd, src0_opnd, options);
+        createInst(pred, G4_add, condMod, false, execsize, dst, src1_opnd, src0_opnd, options);
     }
     else
     {
-        createInst(pred, G4_add, condMod, false, execsize, createDstRegRegion(dst), src0_opnd, src1_opnd, options);
+        createInst(pred, G4_add, condMod, false, execsize, dst, src0_opnd, src1_opnd, options);
     }
 }
 
@@ -1253,14 +1250,12 @@ void IR_Builder::Create_MOV_Inst(
     G4_Operand* src_opnd,
     bool use_nomask )
 {
-    G4_DstRegRegion dst2(
-        Direct,
+    G4_DstRegRegion* dst2_opnd = createDst(
         dcl->getRegVar(),
         regOff,
         subregOff,
         1,
         dcl->getElemType());
-    G4_DstRegRegion* dst2_opnd = createDstRegRegion( dst2 );
 
     createInst(
         pred,
@@ -1391,14 +1386,12 @@ void IR_Builder::Create_MOV_Send_Src_Inst(
             }
         }
 
-        G4_DstRegRegion dst_region(
-            Direct,
+        dst = createDst(
             dst_dcl->getRegVar(),
             dst_regoff,
             dst_subregoff,
             1,
             dst_dcl->getElemType());
-        dst = createDstRegRegion( dst_region );
 
         if (scalar_src && src_opnd->isImm())
         {
@@ -1459,7 +1452,7 @@ void IR_Builder::Create_MOV_Send_Src_Inst(
 // create an opnd without regpoff and subregoff
 G4_DstRegRegion* IR_Builder::Create_Dst_Opnd_From_Dcl( G4_Declare* dcl, unsigned short hstride )
 {
-    return createDstRegRegion( Direct,
+    return createDst(
         dcl->getRegVar(),
         0,
         0,
@@ -1482,7 +1475,7 @@ G4_SrcRegRegion* IR_Builder::Create_Src_Opnd_From_Dcl(
 
 G4_DstRegRegion* IR_Builder::createNullDst(G4_Type dstType)
 {
-    return createDstRegRegion( Direct,
+    return createDst(
         phyregpool.getNullReg(),
         0,
         0,
@@ -1888,7 +1881,7 @@ void IR_Builder::initBuiltinSLMSpillAddr(int perThreadSLMSize)
     G4_DstRegRegion* dst = Create_Dst_Opnd_From_Dcl(builtinImmVector4, 1);
     instBuffer.push_back(createMov(8, dst, vec, InstOpt_WriteEnable, false));
     vec = createImm(0xFEDCBA98, Type_UV);
-    dst = createDstRegRegion(Direct, builtinImmVector4->getRegVar(), 0, 8, 1, Type_UW);
+    dst = createDst(builtinImmVector4->getRegVar(), 0, 8, 1, Type_UW);
     instBuffer.push_back(createMov(8, dst, vec, InstOpt_WriteEnable, false));
     G4_SrcRegRegion* mulSrc = Create_Src_Opnd_From_Dcl(builtinImmVector4, getRegionStride1());
     dst = Create_Dst_Opnd_From_Dcl(builtinImmVector4, 1);

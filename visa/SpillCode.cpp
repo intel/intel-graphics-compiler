@@ -196,7 +196,7 @@ void SpillManager::genRegMov(G4_BB* bb,
             //
             // create a0.aOff<1>
             //
-            G4_DstRegRegion* d = builder.createDstRegRegion(Direct,
+            G4_DstRegRegion* d = builder.createDst(
                                 dst,
                                 0,
                                 dSubRegOff,

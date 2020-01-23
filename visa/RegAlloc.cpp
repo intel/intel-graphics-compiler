@@ -3061,7 +3061,7 @@ void FlowGraph::setABIForStackCallFunctionCalls()
             // That function assumes r1.0 is reserved here and r1.2, r1.3 won't be used
             G4_Declare* r1_dst = builder->createDeclareNoLookup(n, G4_GRF, 8, 1, Type_UD);
             r1_dst->getRegVar()->setPhyReg(builder->phyregpool.getGreg(1), 0);
-            G4_DstRegRegion* dstRgn = builder->createDstRegRegion(Direct, r1_dst->getRegVar(), 0, 0, 1, Type_UD);
+            G4_DstRegRegion* dstRgn = builder->createDst(r1_dst->getRegVar(), 0, 0, 1, Type_UD);
             fcall->setDest(dstRgn);
         }
 
