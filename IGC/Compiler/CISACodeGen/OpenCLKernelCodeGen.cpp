@@ -2112,8 +2112,8 @@ namespace IGC
         CShader* simd8Program = m_parent->GetShader(SIMDMode::SIMD8);
         CShader* simd16Program = m_parent->GetShader(SIMDMode::SIMD16);
         CShader* simd32Program = m_parent->GetShader(SIMDMode::SIMD32);
-        CodeGenContext* pCtx = GetContext();
 
+        CodeGenContext* pCtx = GetContext();
         // Here we see if we have compiled a size for this shader already
         if ((simd8Program && simd8Program->ProgramOutput()->m_programSize > 0) ||
             (simd16Program && simd16Program->ProgramOutput()->m_programSize > 0) ||
@@ -2129,6 +2129,17 @@ namespace IGC
         ModuleMetaData* modMD = pCtx->getModuleMetaData();
         FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(&F);
         int simd_size = funcInfoMD->getSubGroupSize()->getSIMD_size();
+
+        // Finds the kernel and get the group simd size from the kernel
+        if (m_FGA)
+        {
+            llvm::Function* Kernel = &F;
+            auto FG = m_FGA->getGroup(&F);
+            Kernel = FG->getHead();
+            funcInfoMD = pMdUtils->getFunctionsInfoItem(Kernel);
+            simd_size = funcInfoMD->getSubGroupSize()->getSIMD_size();
+        }
+
         uint32_t groupSize = 0;
         if (modMD->csInfo.maxWorkGroupSize)
         {

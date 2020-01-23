@@ -254,34 +254,29 @@ bool EmitPass::canCompileCurrentShader(llvm::Function& F)
     // If uses subroutines/stackcall, we can only compile a single SIMD mode
     if (m_FGA && (!m_FGA->getGroup(&F)->isSingle() || m_FGA->getGroup(&F)->hasStackCall()))
     {
-        SIMDMode compiledSIMD = SIMDMode::UNKNOWN;
-
+        // Check if a specific SIMD size is enforced
         if (ctx->type == ShaderType::OPENCL_SHADER)
         {
-            // If SIMD sized is forced by IGC flag, compile the forced mode
             if (m_moduleMD->csInfo.forcedSIMDSize != 0)
             {
-                compiledSIMD = lanesToSIMDMode((unsigned)m_moduleMD->csInfo.forcedSIMDSize);
+                return m_SimdMode == lanesToSIMDMode((unsigned)m_moduleMD->csInfo.forcedSIMDSize);
             }
-            // If max work group size is set, we need to compile the least allowed SIMD
-            else if (ctx->m_DriverInfo.sendMultipleSIMDModes() && m_moduleMD->csInfo.maxWorkGroupSize != 0)
+
+            if (ctx->m_DriverInfo.sendMultipleSIMDModes() && m_moduleMD->csInfo.maxWorkGroupSize != 0)
             {
-                compiledSIMD = getLeastSIMDAllowed(m_moduleMD->csInfo.maxWorkGroupSize, GetHwThreadsPerWG(ctx->platform));
+                return m_SimdMode == getLeastSIMDAllowed(m_moduleMD->csInfo.maxWorkGroupSize, GetHwThreadsPerWG(ctx->platform));
             }
         }
-        if (compiledSIMD != SIMDMode::UNKNOWN)
+
+        if (ctx->m_enableFunctionPointer)
         {
-            return (m_SimdMode == compiledSIMD);
-        }
-        else if (ctx->m_enableFunctionPointer)
-        {
-            // Can compile SIMD8 and SIMD16 for function pointers
+            // Can compile both SIMD8 and SIMD16 for function pointers
             return (m_SimdMode == SIMDMode::SIMD8 || m_SimdMode == SIMDMode::SIMD16);
         }
         else
         {
-            // Default SIMD8
-            return m_SimdMode == SIMDMode::SIMD8;
+            // Can't support SIMD32 due to slicing
+            return m_SimdMode != SIMDMode::SIMD32;
         }
     }
     else if(m_moduleMD->compOpt.IsLibraryCompilation == true)
