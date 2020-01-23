@@ -1268,6 +1268,9 @@ static std::string getCommandLine(const STB_TranslateInputArgs* pInputArgs,
     if (strstr(pInputArgs->pInternalOptions, "-dumpvisa") != nullptr)
         cmd.append(" -dumpvisa");
 
+    if (strstr(pInputArgs->pOptions, "-no_vector_decomposition") != nullptr)
+        cmd.append(" -no_vector_decomposition");
+
     return move(cmd);
 }
 
