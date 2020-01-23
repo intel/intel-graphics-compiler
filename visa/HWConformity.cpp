@@ -3434,16 +3434,29 @@ bool HWConformity::isGoodAlign1TernarySrc(G4_INST* inst, int srcPos, bool canBeI
         return false;
     }
 
-    if (inst->opcode() == G4_pseudo_mad && isSrc2)
+    // mad specific checks
+    if (inst->opcode() == G4_pseudo_mad)
     {
-        if (IS_DTYPE(src->getType()))
+        if (isSrc2)
         {
-            return false;
-        }
+            if (IS_DTYPE(src->getType()))
+            {
+                return false;
+            }
 
-        if (builder.noSrc2Regioning() && IS_BTYPE(src->getType()))
+            if (builder.noSrc2Regioning() && IS_BTYPE(src->getType()))
+            {
+                return false;
+            }
+        }
+        else if (srcPos == 1)
         {
-            return false;
+            if (IS_DTYPE(src->getType()) && src->isSrcRegRegion() &&
+                src->asSrcRegRegion()->getModifier() != Mod_src_undef)
+            {
+                // no source modifier for DW multiply
+                return false;
+            }
         }
     }
 
@@ -3465,7 +3478,6 @@ bool HWConformity::isGoodAlign1TernarySrc(G4_INST* inst, int srcPos, bool canBeI
     }
     else if (src->isSrcRegRegion())
     {
-
         if (src->asSrcRegRegion()->getRegAccess() != Direct)
         {
             return false;
