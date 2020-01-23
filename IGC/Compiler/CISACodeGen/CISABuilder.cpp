@@ -3716,9 +3716,7 @@ namespace IGC
 
         bool clearHDCWritesBeforeEOT = m_program->m_DriverInfo->UsesSparseAliasedResidency() &&
             context->platform.WaInsertHDCFenceBeforeEOTWhenSparseAliasedResources();
-        clearHDCWritesBeforeEOT |= ((context->type == ShaderType::PIXEL_SHADER) ||
-            (context->type == ShaderType::COMPUTE_SHADER) ||
-            (context->type == ShaderType::OPENCL_SHADER)) &&
+        clearHDCWritesBeforeEOT |= context->type == ShaderType::PIXEL_SHADER &&
             context->platform.NeedsHDCFenceBeforeEOTInPixelShader();
         clearHDCWritesBeforeEOT |= IGC_IS_FLAG_ENABLED(ForceMemoryFenceBeforeEOT);
 
@@ -3726,7 +3724,6 @@ namespace IGC
         {
             SaveOption(vISA_clearHDCWritesBeforeEOT, true);
         }
-
 
         // Disable multi-threaded latencies in the vISA scheduler when not in 3D
         if (context->type == ShaderType::OPENCL_SHADER)
