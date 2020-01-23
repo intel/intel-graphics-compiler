@@ -368,11 +368,9 @@ KernelArg::AccessQual KernelArg::calcAccessQual(const Argument* arg, const Strin
 unsigned int KernelArg::calcAssociatedArgNo(const ImplicitArg& implicitArg, const Argument* arg, unsigned int ExplicitArgNo) const
 {
     ImplicitArg::ArgType argType = implicitArg.getArgType();
-    if (((argType >= ImplicitArg::IMAGE_HEIGHT) &&
-        (argType <= ImplicitArg::SAMPLER_SNAP_WA)) ||
-        ((argType >= ImplicitArg::CONSTANT_REG_FP32) &&
-        (argType <= ImplicitArg::CONSTANT_REG_BYTE)) ||
-            (argType == ImplicitArg::GET_OBJECT_ID) ||
+    if ((ImplicitArgs::isImplicitImage(argType)) ||
+        (ImplicitArgs::isImplicitStruct(argType)) ||
+        (argType == ImplicitArg::GET_OBJECT_ID) ||
         (argType == ImplicitArg::GET_BLOCK_SIMD_SIZE) ||
         (argType == ImplicitArg::BUFFER_OFFSET)
         )

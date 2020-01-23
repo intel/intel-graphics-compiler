@@ -314,15 +314,15 @@ namespace IGC
         ///         In case the argument doesn't exist, return nullptr
         llvm::Argument* getNumberedImplicitArg(llvm::Function &F, ImplicitArg::ArgType argType, int argNum);
 
-    private:
-        /// @brief   Returns true if the given argument type is an image or sampler.
+        /// @brief  Returns true if the given argument type is an image or sampler.
         /// @param  argType The argument type to check.
         static bool isImplicitImage(ImplicitArg::ArgType argType);
 
-        /// @brief   Returns true if the given argument type is a struct
+        /// @brief  Returns true if the given argument type is a struct
         /// @param  argType The argument type to check.
         static bool isImplicitStruct(ImplicitArg::ArgType argType);
 
+    private:
         /// @brief  Returns a map between operand numbers in the implicit metadata nodes to
         ///         implicit argument types.
         static std::map<int, ImplicitArg::ArgType> initIndexToArgMap();
