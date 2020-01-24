@@ -407,7 +407,8 @@ bool HWConformity::reduceExecSize( INST_LIST_ITER iter, G4_BB* bb )
     bool evenSplitDst = false;
 
     // separate the checks for BDW to make it more maintainable
-    if (genX == GENX_BDW || genX == GENX_CHV)
+    // For CM use pre-BDW region rules due to HW bugs.
+    if (!builder.getOptions()->isTargetCM() && (genX == GENX_BDW || genX == GENX_CHV))
     {
         // for BDW we check the following rules:
         // Rule 3D
@@ -428,16 +429,16 @@ bool HWConformity::reduceExecSize( INST_LIST_ITER iter, G4_BB* bb )
         else
         {
             // rule 3D
-            G4_Operand* srcs[3];
+            G4_Operand *srcs[3];
             uint8_t eleInFirstGRF[3];
 
-            for (int i = 0; i < inst->getNumSrc(); i++)
+            for( int i = 0; i < inst->getNumSrc(); i++ )
             {
                 srcs[i] = inst->getSrc(i);
                 if (srcs[i] && srcs[i]->isSrcRegRegion())
                 {
                     bool indirectSrc = srcs[i]->asSrcRegRegion()->getRegAccess() != Direct;
-                    if (!indirectSrc && srcs[i]->asSrcRegRegion()->isScalar())
+                    if( !indirectSrc && srcs[i]->asSrcRegRegion()->isScalar() )
                     {
                         continue;
                     }
@@ -448,11 +449,11 @@ bool HWConformity::reduceExecSize( INST_LIST_ITER iter, G4_BB* bb )
                         continue;
                     }
 
-                    if (srcs[i]->crossGRF())
+                    if( srcs[i]->crossGRF() )
                     {
                         twoGRFSrc[i] = true;
 
-                        if (!nullDst && dst)
+                        if( !nullDst && dst )
                         {
                             // check if dst can be entirely contained in one oword
                             int dstRegionSize = dst->getRightBound() - dst->getLeftBound() + 1;
@@ -474,7 +475,7 @@ bool HWConformity::reduceExecSize( INST_LIST_ITER iter, G4_BB* bb )
                                     {
                                         // technically if dst and src are both evenly split the instruction is
                                         // still ok, but this case should be rare so we ignore it
-                                        G4_DstRegRegion* newDst = insertMovAfter(iter, dst, dst->getType(), bb);
+                                        G4_DstRegRegion* newDst = insertMovAfter( iter, dst, dst->getType(), bb);
                                         bool alignTmpDst = builder.isOpndAligned(newDst, dstOffset, 16);
                                         MUST_BE_TRUE(alignTmpDst, "must be able to oword align tmp dst");
                                         inst->setDest(newDst);
@@ -488,9 +489,9 @@ bool HWConformity::reduceExecSize( INST_LIST_ITER iter, G4_BB* bb )
                                 // check if src is evenly split across the two GRFs
                                 bool sameSubregOff, vertCrossGRF, contRegion;
                                 evenTwoGRFSrc[i] = srcs[i]->asSrcRegRegion()->evenlySplitCrossGRF(
-                                    execSize, sameSubregOff, vertCrossGRF, contRegion, eleInFirstGRF[i]);
+                                    execSize, sameSubregOff, vertCrossGRF, contRegion, eleInFirstGRF[i] );
                                 bool coverTwoGRF = srcs[i]->asSrcRegRegion()->coverTwoGRF();
-                                const RegionDesc* rd = srcs[i]->asSrcRegRegion()->getRegion();
+                                const RegionDesc *rd = srcs[i]->asSrcRegRegion()->getRegion();
                                 uint16_t stride = 0;
                                 fullTwoGRFSrc[i] = coverTwoGRF && rd->isSingleStride(inst->getExecSize(), stride) && (stride == 1);
 
@@ -500,10 +501,10 @@ bool HWConformity::reduceExecSize( INST_LIST_ITER iter, G4_BB* bb )
                                     // if the instruction is predicated
                                     splitOp = true;
                                     // compensation OPT
-                                    if (!forceEvenSplit && !hasBadTwoGRFSrc && minExSize == 1 && goodOneGRFDst &&
-                                        contRegion && eleInFirstGRF[i] > (execSize >> 1))
+                                    if( !forceEvenSplit && !hasBadTwoGRFSrc && minExSize == 1 && goodOneGRFDst &&
+                                        contRegion && eleInFirstGRF[i] > ( execSize >> 1 ) )
                                     {
-                                        if (!useFlag && ((!compOpt && numInFirstMov == 0) || numInFirstMov == eleInFirstGRF[i]))
+                                        if( !useFlag && ( ( !compOpt && numInFirstMov == 0 ) || numInFirstMov == eleInFirstGRF[i] ) )
                                         {
                                             compOpt = true;
                                             numInFirstMov = eleInFirstGRF[i];
@@ -547,28 +548,185 @@ bool HWConformity::reduceExecSize( INST_LIST_ITER iter, G4_BB* bb )
             }
         }
     }
+    else
+    {
+        // pre-BDW checks
 
-    if (!splitOp)
+        // Check if the instruction will use int ACC later. if yes, compressed instruction
+        // is split into 2 one-GRF instructions.
+
+        bool mayUseIntAcc = op == G4_pseudo_sada2 ||
+        ( op == G4_mul && IS_DTYPE( inst->getSrc(0)->getType() ) && IS_DTYPE( inst->getSrc(1)->getType() ) );
+
+        if( crossGRFDst )
+        {
+            // rule 3D
+            goodTwoGRFDst = inst->goodTwoGRFDst( evenSplitDst ) && !specialCondForComprInst && !mayUseIntAcc;
+            splitOp = !goodTwoGRFDst;
+        }
+
+        G4_Operand *srcs[3];
+        uint8_t eleInFirstGRF[3];
+        for (int i = 0; i < inst->getNumSrc(); i++)
+        {
+            srcs[i] = inst->getSrc(i);
+
+            if( srcs[i] && srcs[i]->isSrcRegRegion() &&
+                !( inst->opcode() == G4_math && i == 1 && srcs[i]->isNullReg() ) )
+            {
+                bool indirectSrc = ( srcs[i]->isSrcRegRegion() &&
+                    srcs[i]->asSrcRegRegion()->getRegAccess() != Direct );
+
+                if( !indirectSrc && srcs[i]->asSrcRegRegion()->isScalar() )
+                {
+                    continue;
+                }
+                if (inst->opcode() == G4_pln && i == 1)
+                {
+                    continue;
+                }
+
+                if( crossGRFDst && indirectSrc )
+                {
+                    // Assumption: all indirect operand follow GenX requirement ( no cross-GRF indexing ... )
+                    // pre_BDW rule 6D: When a Vx1 or a VxH addressing mode is used on src0,
+                    // the destination must use ONLY one register.
+                    // Vx1 is not handled now. only vxh is considered here
+                    // if( srcs[i]->asSrcRegRegion()->getRegion()->isRegionWH() )
+                    {
+                        splitOp = true;
+                    }
+                }
+                else if( srcs[i]->crossGRF() )
+                {
+                    twoGRFSrc[i] = true;
+                    bool sameSubregOff, vertCrossGRF, contRegion;
+                    evenTwoGRFSrc[i] = srcs[i]->asSrcRegRegion()->evenlySplitCrossGRF(
+                        execSize, sameSubregOff, vertCrossGRF, contRegion, eleInFirstGRF[i] );
+                    bool coverTwoGRF = srcs[i]->asSrcRegRegion()->coverTwoGRF();
+                    const RegionDesc *rd = srcs[i]->asSrcRegRegion()->getRegion();
+                    uint16_t stride = 0;
+                    fullTwoGRFSrc[i] = coverTwoGRF && rd->isSingleStride(inst->getExecSize(), stride) && (stride == 1);
+
+                    if (dst && !crossGRFDst)
+                    {
+                        // destination requirements are:
+                        // -- The destination region is entirely contained in the lower OWord of a register.
+                        // -- The destination region is entirely contained in the upper OWord of a register.
+                        // -- The destination elements are evenly split between the two OWords of a register.
+                        int dstRegionSize = dst->getRightBound() - dst->getLeftBound() + 1;
+
+                        // round up dst region size to next power of two
+                        int dstAlign = Round_Up_Pow2(dstRegionSize);
+
+                        bool dstOwordAligned = false;
+                        dstOwordAligned = builder.isOpndAligned(dst, dstAlign);
+                        if (dstOwordAligned)
+                        {
+                            // If we can align dst to its size, it must fit in one OWord
+                            goodOneGRFDst = true;
+                        }
+                        else
+                        {
+                            // if we can't, it may still be in one OWord or evenly split
+                            goodOneGRFDst = dst->goodOneGRFDst( execSize );
+                        }
+                    }
+
+                    // region can be fixed later in fixCompressedInst().
+                    // rule 3E and 3F
+                    // 2-GRF src should follow below implicit rules, no matter the dst size:
+                    // pre-BDW
+                    // 1. Data must be evenly split between source registers.
+                    // 2. Same subregister number in the two GRFs( occupy whole two GRFs ) if dst is two-GRF.
+                    if( !evenTwoGRFSrc[i] ||
+                        ( ( ( goodTwoGRFDst || ( goodOneGRFDst && !contRegion ) ) && !sameSubregOff ) ||
+                        ( goodTwoGRFDst && IS_WTYPE( srcs[i]->getType() ) && !( srcs[i]->asSrcRegRegion()->checkGRFAlign() && coverTwoGRF ) ) ) )
+                    {
+                        splitOp = true;
+                        // compensation OPT
+                        if( !forceEvenSplit && !hasBadTwoGRFSrc && minExSize == 1 && goodOneGRFDst &&
+                            contRegion && eleInFirstGRF[i] > ( execSize >> 1 ) )
+                        {
+                            if( !useFlag && ( ( !compOpt && numInFirstMov == 0 ) || numInFirstMov == eleInFirstGRF[i] ) )
+                            {
+                                compOpt = true;
+                                numInFirstMov = eleInFirstGRF[i];
+                            }
+                            else
+                            {
+                                compOpt = false;
+                                hasBadTwoGRFSrc = true;
+                                badTwoGRFSrc[i] = true;
+                            }
+                        }
+                        else
+                        {
+                            hasBadTwoGRFSrc = true;
+                            badTwoGRFSrc[i] = true;
+                        }
+                    }
+                    // rule 3C and 3D
+                    // mul (4) r8.3<1>:f r2.3<4;4,1>:f r31.0<8;2,4>:f {Align1}
+                    else if( dst && !crossGRFDst && !goodOneGRFDst )
+                    {
+                        splitOp = true;
+                    }
+                }
+            }
+        }
+
+        // the only reason for split is due to 32-bit flag
+        // split inst into two SIMD 16 instructions
+        if( !splitOp && execSize == 32 &&
+             (packedByteDst || ( inst->getPredicate() || inst->getCondMod() )) )
+        {
+            if( forceEvenSplit )
+            {
+                if( builder.getOption(vISA_OptReport) )
+                {
+                    printf( "\nFix Inst Size for:\n" );
+                    inst->emit( std::cout );
+                    printf( "\nsplit into: \n" );
+                }
+                // FIXME: try to use evenlySplitInst() instead.
+                splitSIMD32Inst( iter, bb );
+                return insertMOV;
+            }
+        }
+
+        // You will need to do this ONLY when destination spans 2 registers, src1 is a word or byte and you expect channels to be turned off !!
+        // currrently for instruction with pred or emask on pre-BDW
+        bool specialCondForShootDown = ( dst && goodTwoGRFDst &&
+            ( inst->getPredicate() || ( bb->isInSimdFlow() && !inst->isWriteEnableInst() ) ) &&
+            oneGRFSrc[1] && ( IS_BTYPE( srcs[1]->getType() ) || IS_WTYPE( srcs[1]->getType() ) ) );
+        if( specialCondForShootDown )
+        {
+            splitOp = true;
+        }
+    }
+
+    if( !splitOp )
     {
         return insertMOV;
     }
 
-    if (builder.getOption(vISA_OptReport))
+    if( builder.getOption(vISA_OptReport) )
     {
-        printf("\nFix Inst Size for:\n");
-        inst->emit(std::cout);
-        printf("\nsplit into: \n");
+        printf( "\nFix Inst Size for:\n" );
+        inst->emit( std::cout );
+        printf( "\nsplit into: \n" );
     }
 
-    MUST_BE_TRUE((inst->opcode() != G4_smov), "Error in splitting smov instruction");
+    MUST_BE_TRUE( (inst->opcode() != G4_smov), "Error in splitting smov instruction" );
 
     // split instruction like:
     // mad (8) V24(2,0)<2> V20(2,0)<16;8,2> V20(2,0)<16;8,2> V23(2,0)<16;8,2>
-    if (splitOp && crossGRFDst && evenSplitDst && !hasBadTwoGRFSrc && (execSize >= 16 || !useFlag))
+    if (splitOp && crossGRFDst && evenSplitDst && !hasBadTwoGRFSrc && ( execSize >= 16 || !useFlag ))
     {
-        if (minExSize == 1 || execSize > minExSize)
+        if( minExSize == 1 || execSize > minExSize )
         {
-            evenlySplitInst(iter, bb);
+            evenlySplitInst( iter, bb );
             return insertMOV;
         }
     }
@@ -576,33 +734,33 @@ bool HWConformity::reduceExecSize( INST_LIST_ITER iter, G4_BB* bb )
     // For inst with pred, condMod, or with mask in SIMDCF BB, we insert MOVs with nomask for src/dst
     // to avoid instruction spliting. inserted MOVs may be split into multiple instructions.
     // ATTN: We do not include sel here because the condMod generated by sel is never used.
-    if (useFlag &&
-        !(inst->opcode() == G4_sel && !(inst->getPredicate()) && inst->getCondMod()))
+    if( useFlag &&
+        !( inst->opcode() == G4_sel && !(inst->getPredicate()) && inst->getCondMod() ) )
     {
         // if there is predicate or cond modifier, we keep the original instruction and
         // perform spliting on new MOV instructions.
-        if (!nullDst && !crossGRFDst && !goodOneGRFDst)
+        if( !nullDst && !crossGRFDst && !goodOneGRFDst )
         {
             // try to move 2-GRF src into 1GRF tmp to avoid spliting.
             // this is unnecessary in non-SIMDCF/nonPred/nonCondMod cases because we can do compensation.
             for (int i = 0; i < inst->getNumSrc(); i++)
             {
-                if (twoGRFSrc[i] && !fullTwoGRFSrc[i])
+                if( twoGRFSrc[i] && !fullTwoGRFSrc[i] )
                 {
-                    moveSrcToGRF(iter, i, 1, bb);
+                    moveSrcToGRF( iter, i, 1, bb );
                     twoGRFSrc[i] = false;
                     badTwoGRFSrc[i] = false;
                     INST_LIST_ITER tmpIter = iter;
                     tmpIter--;
-                    if (builder.getOption(vISA_OptReport))
+                    if( builder.getOption(vISA_OptReport) )
                     {
-                        (*tmpIter)->emit(std::cout);
+                        (*tmpIter)->emit( std::cout );
                         std::cout << std::endl;
                     }
-                    reduceExecSize(tmpIter, bb);
+                    reduceExecSize( tmpIter, bb );
                 }
             }
-            if (!fullTwoGRFSrc[0] && !fullTwoGRFSrc[1] && !fullTwoGRFSrc[2])
+            if( !fullTwoGRFSrc[0] && !fullTwoGRFSrc[1] && !fullTwoGRFSrc[2] )
             {
                 return insertMOV;
             }
@@ -610,10 +768,10 @@ bool HWConformity::reduceExecSize( INST_LIST_ITER iter, G4_BB* bb )
         //FIXME: another option is that if original exec size is 16 and will be split into
         // two simd8, we can use quarter control in some cases.
 
-        if (!nullDst &&
-            ((!crossGRFDst && !goodOneGRFDst) ||
-            (crossGRFDst && !goodTwoGRFDst) ||
-                (goodTwoGRFDst && specialCondForComprInst)))
+        if( !nullDst &&
+            ( ( !crossGRFDst && !goodOneGRFDst ) ||
+               ( crossGRFDst && !goodTwoGRFDst ) ||
+            ( goodTwoGRFDst && specialCondForComprInst ) ) )
         {
             // TODO: NULL dst
             // use temp dst.
@@ -646,42 +804,42 @@ bool HWConformity::reduceExecSize( INST_LIST_ITER iter, G4_BB* bb )
             // Have to introduce a temp that supports splitting instead
             if ((bb->isInSimdFlow() && !inst->isWriteEnableInst()) || inst->getPredicate())
             {
-                saveDst(iter, scale, bb);
+                saveDst( iter, scale, bb );
                 INST_LIST_ITER tmpIter = iter;
                 tmpIter--;
-                if (builder.getOption(vISA_OptReport))
+                if( builder.getOption(vISA_OptReport) )
                 {
-                    (*tmpIter)->emit(std::cout);
+                    (*tmpIter)->emit( std::cout );
                     std::cout << std::endl;
                     inst->emit(std::cout);
                     std::cout << std::endl;
                 }
                 // Fix up the move to load dst.  We can split the move instruction as it is NoMask
-                reduceExecSize(tmpIter, bb);
+                reduceExecSize( tmpIter, bb );
 
                 // source may also be bad, so we have to call reduceExecSize() on iter again
-                reduceExecSize(iter, bb);
+                reduceExecSize( iter, bb );
 
                 // generate MOV after inst
                 // if the dst is bad, it will be fixed by the next call to reduceExecSize()
-                restoreDst(iter, dst, bb);
+                restoreDst( iter, dst, bb );
 
-                if (builder.getOption(vISA_OptReport))
+                if( builder.getOption(vISA_OptReport) )
                 {
                     tmpIter = iter;
                     tmpIter++;
-                    (*tmpIter)->emit(std::cout);
+                    (*tmpIter)->emit( std::cout );
                     std::cout << std::endl;
                 }
             }
             else
             {
-                insertMovAfter(iter, scale, bb);
-                if (builder.getOption(vISA_OptReport))
+                insertMovAfter( iter, scale, bb );
+                if( builder.getOption(vISA_OptReport) )
                 {
                     INST_LIST_ITER tmpIter = iter;
                     tmpIter++;
-                    (*tmpIter)->emit(std::cout);
+                    (*tmpIter)->emit( std::cout );
                     std::cout << std::endl;
                 }
             }
@@ -691,11 +849,11 @@ bool HWConformity::reduceExecSize( INST_LIST_ITER iter, G4_BB* bb )
             insertMOV = true;
         }
 
-        removeBadSrc(iter, bb, crossGRFDst, oneGRFSrc, badTwoGRFSrc);
+        removeBadSrc( iter, bb, crossGRFDst, oneGRFSrc, badTwoGRFSrc );
         return insertMOV;
     }
 
-    if (!nullDst && !crossGRFDst && !goodOneGRFDst && !hasBadTwoGRFSrc)
+    if( !nullDst && !crossGRFDst && !goodOneGRFDst && !hasBadTwoGRFSrc )
     {
         // insert a temp dst and a MOV
         // example:
@@ -705,14 +863,14 @@ bool HWConformity::reduceExecSize( INST_LIST_ITER iter, G4_BB* bb )
         // mov (8) r5.3<1>:b r6.0<8;8,1>:w
         // In some cases spliting the instruction generates the same number of instruction
         // without dependency, but needs more analysis.
-        inst->setDest(insertMovAfter(iter, dst, dst->getType(), bb));
-        if (builder.getOption(vISA_OptReport))
+        inst->setDest( insertMovAfter( iter, dst, dst->getType(), bb ) );
+        if( builder.getOption(vISA_OptReport) )
         {
             inst->emit(std::cout);
             std::cout << std::endl;
             INST_LIST_ITER tmpIter = iter;
             tmpIter++;
-            (*tmpIter)->emit(std::cout);
+            (*tmpIter)->emit( std::cout );
             std::cout << std::endl;
         }
         return true;
@@ -723,13 +881,13 @@ bool HWConformity::reduceExecSize( INST_LIST_ITER iter, G4_BB* bb )
     // they do not need spliting
     // 2. instructions generated in MAC opt. there is a check to make
     // sure only evenly spliting will happen to them.
-    if (useAcc)
+    if( useAcc )
     {
-        evenlySplitInst(iter, bb);
+        evenlySplitInst( iter, bb );
         return insertMOV;
     }
     // split the instruction into a list of instructions
-    splitInstruction(iter, bb, compOpt, numInFirstMov, false, true);
+    splitInstruction( iter, bb, compOpt, numInFirstMov, false, true );
     return true;
 }
 
