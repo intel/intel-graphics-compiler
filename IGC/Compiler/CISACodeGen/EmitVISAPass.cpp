@@ -14555,14 +14555,18 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
             m_encoder->SetNoMask();
             m_encoder->SetUniformSIMDSize(SIMDMode::SIMD1);
         }
-        if (useA32)
+
         {
-            m_encoder->ByteGather(gatherDst, resource, eOffset, 8, totalBytes);
+            if (useA32)
+            {
+                m_encoder->ByteGather(gatherDst, resource, eOffset, 8, totalBytes);
+            }
+            else
+            {
+                emitGatherA64(gatherDst, eOffset, 8, totalBytes);
+            }
         }
-        else
-        {
-            emitGatherA64(gatherDst, eOffset, 8, totalBytes);
-        }
+
         m_encoder->Push();
 
         if (needTemporary)
@@ -15140,7 +15144,6 @@ void EmitPass::emitVectorStore(StoreInst* inst, Value* offset, ConstantInt* immO
                 storedVar = BroadcastAndExtend(storedVar);
             }
 
-
             // use either A32 byte scatter or A64 scatter messages.
             //   A32 should use byte as block size always here.
             //   A64 uses byte/DW/QW as block size based on align and element size.
@@ -15149,14 +15152,20 @@ void EmitPass::emitVectorStore(StoreInst* inst, Value* offset, ConstantInt* immO
             nBlks = (totalBytes * 8) / blkBits;
         }
         setPredicateForDiscard();
-        if (useA32)
+
         {
-            m_encoder->ByteScatter(storedVar, resource, eOffset, blkBits, nBlks);
+            if (useA32)
+            {
+                {
+                    m_encoder->ByteScatter(storedVar, resource, eOffset, blkBits, nBlks);
+                }
+            }
+            else
+            {
+                emitScatterA64(storedVar, eOffset, blkBits, nBlks);
+            }
         }
-        else
-        {
-            emitScatterA64(storedVar, eOffset, blkBits, nBlks);
-        }
+
         if (dstUniform)
         {
             m_encoder->SetNoMask();
