@@ -126,14 +126,20 @@ namespace IGC
         {
             if (llvm::ConstantFP * cfp = llvm::dyn_cast<llvm::ConstantFP>(value))
             {
-                if (cfp->getValueAPF().convertToDouble() ==
-                    cmpConst->getValueAPF().convertToDouble())
+                if (cfp->getType() == cmpConst->getType())
                 {
-                    return irb.getInt1(false);
+                    if (cfp->getType()->isFloatTy() &&
+                        (cfp->getValueAPF().convertToFloat() == cmpConst->getValueAPF().convertToFloat()))
+                    {
+                        return irb.getInt1(false);
+                    }
+                    else if (cfp->getType()->isDoubleTy() &&
+                        (cfp->getValueAPF().convertToDouble() == cmpConst->getValueAPF().convertToDouble()))
+                    {
+                        return irb.getInt1(false);
+                    }
                 }
-                {
-                    return irb.getInt1(true);
-                }
+                return irb.getInt1(true);
             }
             else
             {
