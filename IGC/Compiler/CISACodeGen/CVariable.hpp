@@ -54,10 +54,12 @@ namespace IGC {
         // Copy Ctor
         CVariable(const CVariable& V)
         {
-            m_immediateValue = V.m_immediateValue;
+            // the only differences
             m_alias = nullptr;
-            m_nbElement = V.m_nbElement;
             m_aliasOffset = 0;
+            // everything else is the same
+            m_immediateValue = V.m_immediateValue;
+            m_nbElement = V.m_nbElement;
             m_numberOfInstance = V.m_numberOfInstance;
             m_type = V.m_type;
             m_varType = V.m_varType;
@@ -68,10 +70,11 @@ namespace IGC {
             m_uniformVector = V.m_uniformVector;
             m_undef = V.m_undef;
             m_isUnpacked = V.m_isUnpacked;
+            visaGenVariable[0] = V.visaGenVariable[0];
+            visaGenVariable[1] = V.visaGenVariable[1];
         }
 
-        e_alignment GetAlign() const
-        {
+        e_alignment GetAlign() const {
             assert(!m_isImmediate && "Calling GetAlign() on an immediate returns undefined result");
             return m_align;
         }
@@ -80,9 +83,9 @@ namespace IGC {
         uint16_t GetNumberElement() const { return m_nbElement; }
         bool IsUniform() const { return m_uniform; }
 
-        uint GetSize() { return m_nbElement * CEncoder::GetCISADataTypeSize(m_type); }
+        uint GetSize() const { return m_nbElement * CEncoder::GetCISADataTypeSize(m_type); }
 
-        uint GetElemSize() { return CEncoder::GetCISADataTypeSize(m_type); }
+        uint GetElemSize() const { return CEncoder::GetCISADataTypeSize(m_type); }
         CVariable* GetAlias() { return m_alias; }
         uint16_t GetAliasOffset() const { return m_aliasOffset; }
         VISA_Type GetType() const { return m_type; }
@@ -100,8 +103,7 @@ namespace IGC {
         bool IsVectorUniform() const { return m_uniformVector; }
         uint8_t GetNumberInstance() const { return m_numberOfInstance; }
         bool IsUndef() const { return m_undef; }
-        bool IsGRFAligned(e_alignment requiredAlign = EALIGN_GRF) const
-        {
+        bool IsGRFAligned(e_alignment requiredAlign = EALIGN_GRF) const {
             e_alignment align = GetAlign();
             if (requiredAlign == EALIGN_GRF)
                 return align == EALIGN_GRF || align == EALIGN_2GRF;
@@ -109,11 +111,11 @@ namespace IGC {
         }
 
         void setisUnpacked() { m_isUnpacked = true; }
-        bool isUnpacked() { return m_isUnpacked; }
-        uint8_t getOffsetMultiplier() { return (m_isUnpacked) ? 2 : 1; }
+        bool isUnpacked() const { return m_isUnpacked; }
+        uint8_t getOffsetMultiplier() const { return (m_isUnpacked) ? 2 : 1; }
         void ResolveAlias();
 
-        // 4 bytes
+        // two pointers wide
         union {
             VISA_GenVar* visaGenVariable[2];
             VISA_SurfaceVar* visaSurfVariable;
@@ -146,7 +148,7 @@ namespace IGC {
         // 8 bytes
         uint64_t m_immediateValue;
 
-        // 4 bytes - pointer
+        // 4 or 8 sizeof pointer
         CVariable* m_alias;
 
         // 2 bytes types

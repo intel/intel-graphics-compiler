@@ -65,6 +65,7 @@ CVariable::CVariable(uint16_t nbElement, bool uniform, VISA_Type type,
     m_undef(false),
     m_isUnpacked(false)
 {
+    visaGenVariable[0] = visaGenVariable[1] = nullptr;
 }
 
 static unsigned
@@ -108,6 +109,7 @@ CVariable::CVariable(CVariable* var, VISA_Type type, uint16_t offset,
     m_undef(false),
     m_isUnpacked(false)
 {
+    visaGenVariable[0] = visaGenVariable[1] = nullptr;
     if (numElements)
     {
         m_nbElement = numElements;
@@ -139,24 +141,13 @@ CVariable::CVariable(uint64_t immediate, VISA_Type type) :
     m_undef(false),
     m_isUnpacked(false)
 {
-
+    visaGenVariable[0] = visaGenVariable[1] = nullptr;
 }
 
 /// CVariable constructor, for undef
 ///
-CVariable::CVariable(VISA_Type type) :
-    m_immediateValue(0),
-    m_alias(nullptr),
-    m_nbElement(0),
-    m_numberOfInstance(1),
-    m_type(type),
-    m_varType(EVARTYPE_GENERAL),
-    m_uniform(true),
-    m_isImmediate(true),
-    m_subspanUse(false),
-    m_uniformVector(false),
-    m_undef(true),
-    m_isUnpacked(false)
-{
-    // undef variable are represented as immediate but can considered as trash data
+CVariable::CVariable(VISA_Type type) : CVariable(0, type) {
+    // undef variable are represented as immediate
+    // fields are all the same but nbElement
+    m_nbElement = 0;
 }
