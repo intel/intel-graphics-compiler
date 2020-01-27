@@ -227,12 +227,16 @@ namespace llvm {
                     while (InstOrig != Inst)
                     {
                         Value* Op0 = NULL;
-                        if (Inst == NULL || isa<PHINode>(Inst))
+                        if (Inst == NULL || isa<PHINode>(Inst)) {
+                            count = 0;
                             break;
+                        }
                         if (Inst->getNumOperands() > 0)
                             Op0 = Inst->getOperand(0);
-                        if (!(Op0 && isa<Instruction>(Op0) && isa<IntegerType>(Op0->getType())))
+                        if (!(Op0 && isa<Instruction>(Op0) && isa<IntegerType>(Op0->getType()))) {
+                            count = 0;
                             break;
+                        }
                         Inst = cast<Instruction>(Op0);
                         count++;
                     }
