@@ -25,6 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 #pragma once
 
+#include "ShaderTypesEnum.h"
 #include "usc_config.h"
 #include "ShaderToken.h"
 #include "ErrorCode.h"
@@ -121,7 +122,7 @@ public:
 
     void    SetSourceImmediateValue(
                 const unsigned int index,
-                const SHADER_CHANNEL channel,
+                const IGC::SHADER_CHANNEL channel,
                 const void* value );
 
     void    SetSourceIndirectRegister(
@@ -137,7 +138,7 @@ public:
                 const long offset );
 
     void    SetResourceType(
-                const SHADER_RESOURCE_TYPE  resType );
+                const IGC::SHADER_RESOURCE_TYPE  resType );
 
     void    SetSourceAccessRegister(
                 const unsigned int index,
@@ -201,7 +202,7 @@ public:
 
     unsigned int                            GetSourceImmediateValue(
                                                 const unsigned int index,
-                                                const SHADER_CHANNEL channel ) const;
+                                                const IGC::SHADER_CHANNEL channel ) const;
 
     const SShaderSourceRegisterToken&       GetSourceIndirectRegister(
                                                 const unsigned int index ) const;
@@ -212,7 +213,7 @@ public:
     long                                    GetSourceIndirectOffset(
                                                 const unsigned int index ) const;
 
-    SHADER_RESOURCE_TYPE                    GetResourceType( void ) const;
+    IGC::SHADER_RESOURCE_TYPE               GetResourceType( void ) const;
 
 
     const SShaderSourceRegisterToken&       GetSourceAccessRegister(
@@ -275,7 +276,7 @@ public:
     bool                                ReturnsMappingStatus( void ) const;
 
     ErrorCode                           WriteToStream( void* pTokenStream, const unsigned int streamSize ) const;
-    ErrorCode                           ReadFromStream( const void* pTokenStream, SHADER_VERSION_TYPE shaderVersion );
+    ErrorCode                           ReadFromStream( const void* pTokenStream, IGC::SHADER_VERSION_TYPE shaderVersion );
 
     bool                                HasAddressSpaceArgument( void ) const;
 
@@ -300,7 +301,7 @@ public:
 
     unsigned long long  Hash( void ) const;
 
-    ErrorCode  Compile( SHADER_VERSION_TYPE shaderVersion );
+    ErrorCode  Compile( IGC::SHADER_VERSION_TYPE shaderVersion );
 
     bool UsesPrecision( void ) const;
 
@@ -339,7 +340,7 @@ protected:
     SShaderSourceRegisterToken          m_PredicateRegister;
 
     SShaderSourceRegisterToken          m_SourceRegister[MAX_INSTRUCTION_SOURCE_REGISTERS];
-    unsigned int                        m_SourceImmediateValue[MAX_INSTRUCTION_SOURCE_REGISTERS][NUM_SHADER_CHANNELS];
+    unsigned int                        m_SourceImmediateValue[MAX_INSTRUCTION_SOURCE_REGISTERS][IGC::NUM_SHADER_CHANNELS];
     SShaderSourceRegisterToken          m_SourceIndirectRegister[MAX_INSTRUCTION_SOURCE_REGISTERS];
     long                                m_SourceIndirectRegisterOffset[MAX_INSTRUCTION_SOURCE_REGISTERS];
     long                                m_SourceIndirectOffset[MAX_INSTRUCTION_SOURCE_REGISTERS];
@@ -373,7 +374,7 @@ protected:
 
     unsigned int                        m_Label;
 
-    SHADER_RESOURCE_TYPE                m_ResourceType;
+    IGC::SHADER_RESOURCE_TYPE           m_ResourceType;
     unsigned int                        m_Length;
 
     unsigned int                        m_AddressableStreamOutNo;

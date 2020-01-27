@@ -24,12 +24,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 #pragma once
-
+#include "ShaderTypesEnum.h"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "GeometryShaderProperties.hpp"
 #include "Compiler/CodeGenPublic.h"
-
-#include "ShaderTypesEnum.h"
 #include "Compiler/CISACodeGen/ShaderUnits.hpp"
 
 namespace IGC
@@ -63,7 +61,7 @@ namespace IGC
         CVariable* GetInstanceID();
 
         /// Returns the number of vertices of the particular input primitive type.
-        static uint GetInputPrimitiveVertexCount(USC::GSHADER_INPUT_PRIMITIVE_TYPE inpPrimType);
+        static uint GetInputPrimitiveVertexCount(IGC::GSHADER_INPUT_PRIMITIVE_TYPE inpPrimType);
 
         /// Returns a variable that stores URB write handle register
         CVariable* GetURBOutputHandle() override;
@@ -79,7 +77,7 @@ namespace IGC
     private:
         /// False if we expect to see also vertices adjacent to the input as part of the input.
         /// field 3DSTATE_GS::DiscardAdjacency.
-        static bool DiscardAdjacency(USC::GSHADER_INPUT_PRIMITIVE_TYPE inpPrimType);
+        static bool DiscardAdjacency(IGC::GSHADER_INPUT_PRIMITIVE_TYPE inpPrimType);
 
         /// Returns the index of a channel where the data with given SGV usage is placed.
         static Unit<Element> GetLocalOffset(SGVUsage usage);

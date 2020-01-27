@@ -25,19 +25,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 #pragma once
 
-namespace USC
-{
-
-/*****************************************************************************\
-MACRO: BIT
-\*****************************************************************************/
 #ifndef BIT
-#define BIT( n )    ( 1 << (n) )
+#define BIT(n) (1 << (n))
 #endif
 
-/*****************************************************************************\
-ENUM: SHADER_USAGE
-\*****************************************************************************/
+namespace IGC
+{
+
 enum SHADER_USAGE
 {
     SHADER_USAGE_UNKNOWN,
@@ -104,9 +98,6 @@ enum SHADER_USAGE
     NUM_SHADER_USAGES
 };
 
-/*****************************************************************************\
-ENUM: SHADER_INTERPOLATION_MODE
-\*****************************************************************************/
 enum SHADER_INTERPOLATION_MODE
 {
     SHADER_INTERPOLATION_UNKNOWN,
@@ -121,9 +112,6 @@ enum SHADER_INTERPOLATION_MODE
     NUM_SHADER_INTERPOLATION_MODES
 };
 
-/*****************************************************************************\
-ENUM: SHADER_RESOURCE_TYPE
-\*****************************************************************************/
 enum SHADER_RESOURCE_TYPE
 {
     SHADER_RESOURCE_INVALID,
@@ -140,12 +128,9 @@ enum SHADER_RESOURCE_TYPE
     NUM_SHADER_RESOURCE_TYPES
 };
 
-/*****************************************************************************\
-ENUM: SHADER_RESOURCE_RETURN_TYPE
-\*****************************************************************************/
 enum SHADER_RESOURCE_RETURN_TYPE
 {
-    SHADER_RESOURCE_RETURN_UNKNOWN = 0,
+    SHADER_RESOURCE_RETURN_UNKNOWN,
     SHADER_RESOURCE_RETURN_FLOAT,
     SHADER_RESOURCE_RETURN_UNORM,
     SHADER_RESOURCE_RETURN_SNORM,
@@ -156,9 +141,6 @@ enum SHADER_RESOURCE_RETURN_TYPE
     NUM_SHADER_RESOURCE_RETURN_TYPES
 };
 
-/*****************************************************************************\
-ENUM: SHADER_SAMPLER_TYPE
-\*****************************************************************************/
 enum SHADER_SAMPLER_TYPE
 {
     SHADER_SAMPLER_TYPE_TEXTURE,
@@ -175,21 +157,15 @@ enum SHADER_SAMPLER_TYPE
     NUM_SHADER_SAMPLER_TYPES
 };
 
-/*****************************************************************************\
-ENUM: SHADER_UAV_ACCESS_MODE
-\*****************************************************************************/
 enum SHADER_UAV_ACCESS_MODE
 {
-    SHADER_UAV_ACCESS_MODE_UNKNOWN = 0,
+    SHADER_UAV_ACCESS_MODE_UNKNOWN,
     SHADER_UAV_ACCESS_MODE_RW,
     SHADER_UAV_ACCESS_MODE_RO,
     SHADER_UAV_ACCESS_MODE_WO,
     NUM_SHADER_UAV_ACCESS_MODES
 };
 
-/*****************************************************************************\
-ENUM: SHADER_OPCODE
-\*****************************************************************************/
 enum SHADER_OPCODE
 {
     SHADER_OPCODE_NOP,
@@ -947,9 +923,6 @@ enum SHADER_OPCODE
     NUM_SHADER_OPCODES
 };
 
-/*****************************************************************************\
-ENUM: SHADER_OPCODE_TYPE
-\*****************************************************************************/
 enum SHADER_OPCODE_TYPE
 {
     SHADER_OPCODE_TYPE_NULL,
@@ -968,9 +941,6 @@ enum SHADER_OPCODE_TYPE
     NUM_SHADER_OPCODE_TYPES
 };
 
-/*****************************************************************************\
-ENUM: SHADER_CHANNEL
-\*****************************************************************************/
 enum SHADER_CHANNEL
 {
     SHADER_CHANNEL_X = 0,
@@ -982,29 +952,23 @@ enum SHADER_CHANNEL
     BITS_FOR_SHADER_CHANNEL = 2
 };
 
-inline SHADER_CHANNEL& operator ++(SHADER_CHANNEL& rChannel)
+inline IGC::SHADER_CHANNEL& operator ++(IGC::SHADER_CHANNEL& rChannel)
 {
     unsigned int& a = (unsigned int&)rChannel;
     ++a;
     return rChannel;
 }
 
-inline SHADER_CHANNEL operator ++(SHADER_CHANNEL& rChannel,int)
+inline IGC::SHADER_CHANNEL operator ++(IGC::SHADER_CHANNEL& rChannel,int)
 {
-    SHADER_CHANNEL a = rChannel;
+    IGC::SHADER_CHANNEL a = rChannel;
     ++rChannel;
     return a;
 }
 
-/*****************************************************************************\
-ENUM: EXT_TEXTURE_SWIZZLE
-    Extended swizzle augmented by the possibility of setting a channel
-    to either zero or one.
-    Used for texture swizzling (cf. OpenGL GL_EXT_texture_swizzle extension).
-\*****************************************************************************/
 enum EXT_TEXTURE_SWIZZLE
 {
-    EXT_TEXTURE_SWIZZLE_RED = 0,
+    EXT_TEXTURE_SWIZZLE_RED,
     EXT_TEXTURE_SWIZZLE_GREEN,
     EXT_TEXTURE_SWIZZLE_BLUE,
     EXT_TEXTURE_SWIZZLE_ALPHA,
@@ -1013,45 +977,39 @@ enum EXT_TEXTURE_SWIZZLE
     NUM_EXT_TEXTURE_SWIZZLES
 };
 
-/*****************************************************************************\
-ENUM: SHADER_MASK
-\*****************************************************************************/
 enum SHADER_MASK
 {
     SHADER_MASK_EMPTY = 0,
-    SHADER_MASK_X       = BIT(SHADER_CHANNEL_X),
-    SHADER_MASK_Y       = BIT(SHADER_CHANNEL_Y),
-    SHADER_MASK_XY      = BIT(SHADER_CHANNEL_X) | BIT(SHADER_CHANNEL_Y),
-    SHADER_MASK_Z       = BIT(SHADER_CHANNEL_Z),
-    SHADER_MASK_XZ      = BIT(SHADER_CHANNEL_X) | BIT(SHADER_CHANNEL_Z),
-    SHADER_MASK_YZ      = BIT(SHADER_CHANNEL_Y) | BIT(SHADER_CHANNEL_Z),
-    SHADER_MASK_XYZ     = BIT(SHADER_CHANNEL_X) | BIT(SHADER_CHANNEL_Y) | BIT(SHADER_CHANNEL_Z),
-    SHADER_MASK_W       = BIT(SHADER_CHANNEL_W),
-    SHADER_MASK_XW      = BIT(SHADER_CHANNEL_X) | BIT(SHADER_CHANNEL_W),
-    SHADER_MASK_YW      = BIT(SHADER_CHANNEL_Y) | BIT(SHADER_CHANNEL_W),
-    SHADER_MASK_XYW     = BIT(SHADER_CHANNEL_X) | BIT(SHADER_CHANNEL_Y) | BIT(SHADER_CHANNEL_W),
-    SHADER_MASK_ZW      = BIT(SHADER_CHANNEL_Z) | BIT(SHADER_CHANNEL_W),
-    SHADER_MASK_XZW     = BIT(SHADER_CHANNEL_X) | BIT(SHADER_CHANNEL_Z) | BIT(SHADER_CHANNEL_W),
-    SHADER_MASK_YZW     = BIT(SHADER_CHANNEL_Y) | BIT(SHADER_CHANNEL_Z) | BIT(SHADER_CHANNEL_W),
-    SHADER_MASK_XYZW    = BIT(SHADER_CHANNEL_X) | BIT(SHADER_CHANNEL_Y) | BIT(SHADER_CHANNEL_Z) | BIT(SHADER_CHANNEL_W),
+    SHADER_MASK_X       = BIT(IGC::SHADER_CHANNEL_X),
+    SHADER_MASK_Y       = BIT(IGC::SHADER_CHANNEL_Y),
+    SHADER_MASK_XY      = BIT(IGC::SHADER_CHANNEL_X) | BIT(IGC::SHADER_CHANNEL_Y),
+    SHADER_MASK_Z       = BIT(IGC::SHADER_CHANNEL_Z),
+    SHADER_MASK_XZ      = BIT(IGC::SHADER_CHANNEL_X) | BIT(IGC::SHADER_CHANNEL_Z),
+    SHADER_MASK_YZ      = BIT(IGC::SHADER_CHANNEL_Y) | BIT(IGC::SHADER_CHANNEL_Z),
+    SHADER_MASK_XYZ     = BIT(IGC::SHADER_CHANNEL_X) | BIT(IGC::SHADER_CHANNEL_Y) | BIT(IGC::SHADER_CHANNEL_Z),
+    SHADER_MASK_W       = BIT(IGC::SHADER_CHANNEL_W),
+    SHADER_MASK_XW      = BIT(IGC::SHADER_CHANNEL_X) | BIT(IGC::SHADER_CHANNEL_W),
+    SHADER_MASK_YW      = BIT(IGC::SHADER_CHANNEL_Y) | BIT(IGC::SHADER_CHANNEL_W),
+    SHADER_MASK_XYW     = BIT(IGC::SHADER_CHANNEL_X) | BIT(IGC::SHADER_CHANNEL_Y) | BIT(IGC::SHADER_CHANNEL_W),
+    SHADER_MASK_ZW      = BIT(IGC::SHADER_CHANNEL_Z) | BIT(IGC::SHADER_CHANNEL_W),
+    SHADER_MASK_XZW     = BIT(IGC::SHADER_CHANNEL_X) | BIT(IGC::SHADER_CHANNEL_Z) | BIT(IGC::SHADER_CHANNEL_W),
+    SHADER_MASK_YZW     = BIT(IGC::SHADER_CHANNEL_Y) | BIT(IGC::SHADER_CHANNEL_Z) | BIT(IGC::SHADER_CHANNEL_W),
+    SHADER_MASK_XYZW    = BIT(IGC::SHADER_CHANNEL_X) | BIT(IGC::SHADER_CHANNEL_Y) | BIT(IGC::SHADER_CHANNEL_Z) | BIT(IGC::SHADER_CHANNEL_W),
     NUM_SHADER_MASKS
 };
 
-inline SHADER_MASK& operator +=(SHADER_MASK& rMask,unsigned int a)
+inline IGC::SHADER_MASK& operator += (IGC::SHADER_MASK& rMask, unsigned int a)
 {
-    rMask = (SHADER_MASK)((unsigned int)rMask + a);
+    rMask = (IGC::SHADER_MASK)((unsigned int)rMask + a);
     return rMask;
 }
 
-inline SHADER_MASK& operator |=(SHADER_MASK& rMask,unsigned int a)
+inline IGC::SHADER_MASK& operator |= (IGC::SHADER_MASK& rMask, unsigned int a)
 {
-    rMask = (SHADER_MASK)((unsigned int)rMask | a);
+    rMask = (IGC::SHADER_MASK)((unsigned int)rMask | a);
     return rMask;
 }
 
-/*****************************************************************************\
-ENUM: SHADER_COMPARISON
-\*****************************************************************************/
 enum SHADER_COMPARISON
 {                           // < = >
     SHADER_COMPARISON_NONE, // 0 0 0
@@ -1065,20 +1023,14 @@ enum SHADER_COMPARISON
     NUM_SHADER_COMPARISONS
 };
 
-/*****************************************************************************\
-ENUM: SHADER_CONDITIONAL
-\*****************************************************************************/
 enum SHADER_CONDITIONAL
 {
     SHADER_CONDITIONAL_NONE,
-    SHADER_CONDITIONAL_Z,   // _z
-    SHADER_CONDITIONAL_NZ,  // _nz
+    SHADER_CONDITIONAL_Z,
+    SHADER_CONDITIONAL_NZ,
     NUM_SHADER_CONDITIONALS
 };
 
-/*****************************************************************************\
-ENUM: SHADER_QTR_CTRL
-\*****************************************************************************/
 enum SHADER_QTR_CTRL
 {
     SHADER_QTR_CTRL_1Q = 0,
@@ -1089,18 +1041,8 @@ enum SHADER_QTR_CTRL
     SHADER_QTR_CTRL_2H = 3
 };
 
-/*****************************************************************************\
-CONST:
-    const unsigned int numberOfShaderSyncBits
-
-    Determines number of bits used for SHADER_SYNC
-
-\*****************************************************************************/
 const unsigned int cNumberOfShaderSyncBits = 6;
 
-/*****************************************************************************\
-UNION: SHADER_SYNC
-\*****************************************************************************/
 union SHADER_SYNC
 {
     struct _BasicType
@@ -1113,31 +1055,31 @@ union SHADER_SYNC
        unsigned int COMPUTE_SHADER_SYNC_IMAGE : 1;
     } ShaderSyncFields;
 
-    int unsigned AllShaderSyncFields : cNumberOfShaderSyncBits;
+    int unsigned AllShaderSyncFields : IGC::cNumberOfShaderSyncBits;
 
-    bool operator == ( const SHADER_SYNC& toCheck ) const
+    bool operator == (const SHADER_SYNC& toCheck) const
     {
-        return ( AllShaderSyncFields == toCheck.AllShaderSyncFields );
+        return (AllShaderSyncFields == toCheck.AllShaderSyncFields);
     }
 
-    bool operator != ( const SHADER_SYNC& toCheck ) const
+    bool operator != (const SHADER_SYNC& toCheck) const
     {
-        return !( AllShaderSyncFields == toCheck.AllShaderSyncFields );
+        return (AllShaderSyncFields != toCheck.AllShaderSyncFields);
     }
 
-    SHADER_SYNC operator | ( const SHADER_SYNC& toCheck ) const
+    SHADER_SYNC operator | (const SHADER_SYNC& toCheck) const
     {
         SHADER_SYNC ret;
-        ret.AllShaderSyncFields = ( AllShaderSyncFields | toCheck.AllShaderSyncFields );
+        ret.AllShaderSyncFields = (AllShaderSyncFields | toCheck.AllShaderSyncFields);
         return ret;
     }
 
-    operator unsigned int( ) const
+    operator unsigned int() const
     {
         return AllShaderSyncFields;
     }
 
-    static SHADER_SYNC Create( unsigned int allShaderSyncFields )
+    static SHADER_SYNC Create(unsigned int allShaderSyncFields)
     {
         SHADER_SYNC ret;
         ret.AllShaderSyncFields = allShaderSyncFields;
@@ -1145,28 +1087,25 @@ union SHADER_SYNC
     }
 };
 
-const SHADER_SYNC SHADER_SYNC_NO_FLAGS =                                    { { 0, 0, 0, 0, 0, 0 } };
-const SHADER_SYNC COMPUTE_SHADER_SYNC_THREADS_IN_GROUP =                    { { 1, 0, 0, 0, 0, 0 } };
-const SHADER_SYNC COMPUTE_SHADER_SYNC_THREAD_GROUP_SHARED_MEMORY =          { { 0, 1, 0, 0, 0, 0 } };
-const SHADER_SYNC COMPUTE_SHADER_SYNC_G_T =                                 { { 1, 1, 0, 0, 0, 0 } };
-const SHADER_SYNC COMPUTE_SHADER_SYNC_UNORDERED_ACCESS_VIEW_MEMORY_GROUP =  { { 0, 0, 1, 0, 0, 0 } };
-const SHADER_SYNC COMPUTE_SHADER_SYNC_UGROUP_T =                            { { 1, 0, 1, 0, 0, 0 } };
-const SHADER_SYNC COMPUTE_SHADER_SYNC_UGROUP_G =                            { { 0, 1, 1, 0, 0, 0 } };
-const SHADER_SYNC COMPUTE_SHADER_SYNC_UGROUP_G_T =                          { { 1, 1, 1, 0, 0, 0 } };
-const SHADER_SYNC SHADER_SYNC_UNORDERED_ACCESS_VIEW_MEMORY_GLOBAL =         { { 0, 0, 0, 1, 0, 0 } };
-const SHADER_SYNC COMPUTE_SHADER_SHADER_SYNC_UGLOBAL_T =                    { { 1, 0, 0, 1, 0, 0 } };
-const SHADER_SYNC COMPUTE_SHADER_SHADER_SYNC_UGLOBAL_G =                    { { 0, 1, 0, 1, 0, 0 } };
-const SHADER_SYNC COMPUTE_SHADER_SHADER_SYNC_UGLOBAL_G_T =                  { { 1, 1, 0, 1, 0, 0 } };
-const SHADER_SYNC PIXEL_SHADER_SYNC_PIXEL_BARRIER =                         { { 0, 0, 0, 0, 1, 0 } };
-const SHADER_SYNC COMPUTE_SHADER_SYNC_COUNT_ANY =                           { { 1, 0, 1, 1, 0, 0 } };
-const SHADER_SYNC COMPUTE_SHADER_SYNC_COUNT_ALL =                           { { 0, 1, 1, 1, 0, 0 } };
-const SHADER_SYNC COMPUTE_SHADER_SYNC_IMAGE =                               { { 0, 0, 0, 0, 0, 1 } };
-const SHADER_SYNC NUM_SHADER_SYNCS_INIT =                                   { { 1, 1, 1, 1, 1, 1 } };
-const unsigned int NUM_SHADER_SYNCS = NUM_SHADER_SYNCS_INIT.AllShaderSyncFields + 1;
+const IGC::SHADER_SYNC SHADER_SYNC_NO_FLAGS =                                    { { 0, 0, 0, 0, 0, 0 } };
+const IGC::SHADER_SYNC COMPUTE_SHADER_SYNC_THREADS_IN_GROUP =                    { { 1, 0, 0, 0, 0, 0 } };
+const IGC::SHADER_SYNC COMPUTE_SHADER_SYNC_THREAD_GROUP_SHARED_MEMORY =          { { 0, 1, 0, 0, 0, 0 } };
+const IGC::SHADER_SYNC COMPUTE_SHADER_SYNC_G_T =                                 { { 1, 1, 0, 0, 0, 0 } };
+const IGC::SHADER_SYNC COMPUTE_SHADER_SYNC_UNORDERED_ACCESS_VIEW_MEMORY_GROUP =  { { 0, 0, 1, 0, 0, 0 } };
+const IGC::SHADER_SYNC COMPUTE_SHADER_SYNC_UGROUP_T =                            { { 1, 0, 1, 0, 0, 0 } };
+const IGC::SHADER_SYNC COMPUTE_SHADER_SYNC_UGROUP_G =                            { { 0, 1, 1, 0, 0, 0 } };
+const IGC::SHADER_SYNC COMPUTE_SHADER_SYNC_UGROUP_G_T =                          { { 1, 1, 1, 0, 0, 0 } };
+const IGC::SHADER_SYNC SHADER_SYNC_UNORDERED_ACCESS_VIEW_MEMORY_GLOBAL =         { { 0, 0, 0, 1, 0, 0 } };
+const IGC::SHADER_SYNC COMPUTE_SHADER_SHADER_SYNC_UGLOBAL_T =                    { { 1, 0, 0, 1, 0, 0 } };
+const IGC::SHADER_SYNC COMPUTE_SHADER_SHADER_SYNC_UGLOBAL_G =                    { { 0, 1, 0, 1, 0, 0 } };
+const IGC::SHADER_SYNC COMPUTE_SHADER_SHADER_SYNC_UGLOBAL_G_T =                  { { 1, 1, 0, 1, 0, 0 } };
+const IGC::SHADER_SYNC PIXEL_SHADER_SYNC_PIXEL_BARRIER =                         { { 0, 0, 0, 0, 1, 0 } };
+const IGC::SHADER_SYNC COMPUTE_SHADER_SYNC_COUNT_ANY =                           { { 1, 0, 1, 1, 0, 0 } };
+const IGC::SHADER_SYNC COMPUTE_SHADER_SYNC_COUNT_ALL =                           { { 0, 1, 1, 1, 0, 0 } };
+const IGC::SHADER_SYNC COMPUTE_SHADER_SYNC_IMAGE =                               { { 0, 0, 0, 0, 0, 1 } };
+const IGC::SHADER_SYNC NUM_SHADER_SYNCS_INIT =                                   { { 1, 1, 1, 1, 1, 1 } };
+const unsigned int NUM_SHADER_SYNCS = IGC::NUM_SHADER_SYNCS_INIT.AllShaderSyncFields + 1;
 
-/*****************************************************************************\
-ENUM: SHADER_REGISTER_FILE
-\*****************************************************************************/
 enum SHADER_REGISTER_FILE
 {
     SHADER_REGFILE_INVALID,
@@ -1214,15 +1153,10 @@ enum SHADER_REGISTER_FILE
     NUM_SHADER_REGISTER_FILES
 };
 
-/*****************************************************************************\
-CONST: Indicates that printf data size was not explicitly set.
-\*****************************************************************************/
+// Indicates that printf data size was not explicitly set.
 const long  SHADER_PRINTF_DATA_SIZE_NOT_SET = -1;
 
-/*****************************************************************************\
-ENUM: SHADER_PRINTF_TYPE
-Type of printf argument. Changes to this enum must be co-ordinated with Runtime.
-\*****************************************************************************/
+// Type of printf argument. Changes to this enum must be co-ordinated with Runtime.
 enum SHADER_PRINTF_TYPE
 {
     SHADER_PRINTF_INVALID,
@@ -1243,9 +1177,6 @@ enum SHADER_PRINTF_TYPE
     NUM_SHADER_PRINTF_TYPES
 };
 
-/*****************************************************************************\
-ENUM: GSHADER_INPUT_PRIMITIVE_TYPE
-\*****************************************************************************/
 enum GSHADER_INPUT_PRIMITIVE_TYPE
 {
     GSHADER_INPUT_POINT,
@@ -1290,9 +1221,6 @@ enum GSHADER_INPUT_PRIMITIVE_TYPE
     NUM_GSHADER_INPUT_PRIMITIVE_TYPES
 };
 
-/*****************************************************************************\
-ENUM: PRIMITIVE_TOPOLOGY_TYPE
-\*****************************************************************************/
 enum PRIMITIVE_TOPOLOGY_TYPE
 {
     PRIMITIVE_TOPOLOGY_POINTLIST,
@@ -1352,20 +1280,14 @@ enum PRIMITIVE_TOPOLOGY_TYPE
     NUM_PRIMITIVE_TOPOLOGY_TYPES
 };
 
-/*****************************************************************************\
-ENUM: CLEAR_PS
-\*****************************************************************************/
 enum CLEAR_PS
 {
-    NO_REPLICATEDATA_CLEAR,     // for cases where replicate data can not be used
-    REPLICATEDATA_CLEAR,        // for color buffer clears where replicate data can be used
-    REPLICATEDATA_FASTCLEAR,    // for fast clear of MCS surfaces
+    NO_REPLICATEDATA_CLEAR,  // for cases where replicate data can not be used
+    REPLICATEDATA_CLEAR,     // for color buffer clears where replicate data can be used
+    REPLICATEDATA_FASTCLEAR, // for fast clear of MCS surfaces
     NUM_CLEAR_PS
 };
 
-/*****************************************************************************\
-ENUM: SHADER_VERSION_TYPE
-\*****************************************************************************/
 enum SHADER_VERSION_TYPE
 {
     SHADER_VERSION_1_0,
@@ -1377,91 +1299,71 @@ enum SHADER_VERSION_TYPE
     NUM_SHADER_VERSION_TYPES
 };
 
-/*****************************************************************************\
-ENUM: USC_PLANAR_YUV_FORMAT
-
-  Specifies if a texture is in one of the planar YUV formats.
-  Such formats require a special handling and therefore are a NOS.
-  Cf. USC_OPENGL_PLANAR_YUV_FORMAT in opengl_usc.h
-\*****************************************************************************/
-enum USC_PLANAR_YUV_FORMAT
+// Specifies if a texture is in one of the planar YUV formats.
+// Such formats require a special handling and therefore are a NOS.
+// Check USC_OPENGL_PLANAR_YUV_FORMAT in opengl_usc.h
+enum PLANAR_YUV_FORMAT
 {
-    USC_PLANAR_YUV_FORMAT_NONE = 0,
-    USC_PLANAR_YUV_FORMAT_YV12,
-    USC_PLANAR_YUV_FORMAT_NV12,
-    USC_PLANAR_YUV_FORMAT_NV21,
-    USC_PLANAR_YUV_FORMAT_P010,
-    USC_NUM_PLANAR_YUV_FORMATS
+    PLANAR_YUV_FORMAT_NONE,
+    PLANAR_YUV_FORMAT_YV12,
+    PLANAR_YUV_FORMAT_NV12,
+    PLANAR_YUV_FORMAT_NV21,
+    PLANAR_YUV_FORMAT_P010,
+    NUM_PLANAR_YUV_FORMATS
 };
 
-/*****************************************************************************\
-ENUM: USC_FLOAT_PRECISION
-\*****************************************************************************/
-enum USC_FLOAT_PRECISION
+enum FLOAT_PRECISION
 {
-    USC_FLOAT16,
-    USC_FLOAT32,
-    USC_FLOAT64,
-    USC_FLOAT_NUM_PRECISIONS
+    FLOAT_PRECISION_16,
+    FLOAT_PRECISION_32,
+    FLOAT_PRECISION_64,
+    NUM_FLOAT_PRECISIONS
 };
 
-/*****************************************************************************\
-ENUM: USC_FLOAT DENORM MODE
-\*****************************************************************************/
-enum USC_FLOAT_DENORM_MODE
+enum FLOAT_DENORM_MODE
 {
-    USC_FLOAT_DENORM_DEFAULT = 0,         // left default mode (not defined by the user)
-    USC_FLOAT_DENORM_FORCE_FLUSH_TO_ZERO, // forces user defined flushing denorms to zero
-    USC_FLOAT_DENORM_FORCE_RETAIN_DENORMS,// forces user defined retaining to denorms
-    USC_FLOAT_DENORM_NUM_MODES
+    FLOAT_DENORM_MODE_DEFAULT,        // default mode (not defined by the user)
+    FLOAT_DENORM_MODE_FLUSH_TO_ZERO,  // forces user defined flushing denorms to zero
+    FLOAT_DENORM_MODE_RETAIN_DENORMS, // forces user defined retaining to denorms
+    NUM_FLOAT_DENORM_MODES
 };
 
-/*****************************************************************************\
-ENUM: USC_EARLY_DEPTH_STENCIL_TEST_MODE
-\*****************************************************************************/
-enum USC_EARLY_DEPTH_STENCIL_TEST_MODE
+enum EARLY_DEPTH_STENCIL_TEST_MODE
 {
-    USC_EARLY_DEPTH_STENCIL_TEST_MODE_DEFAULT = 0, // not the same as POST, because driver might choose which one is more optimal
-    USC_EARLY_DEPTH_STENCIL_TEST_MODE_POST_PS,
-    USC_EARLY_DEPTH_STENCIL_TEST_MODE_PRE_PS,
-    USC_EARLY_DEPTH_STENCIL_TEST_NUM_MODES
+    EARLY_DEPTH_STENCIL_TEST_MODE_DEFAULT,
+    EARLY_DEPTH_STENCIL_TEST_MODE_POST_PS,
+    EARLY_DEPTH_STENCIL_TEST_MODE_PRE_PS,
+    NUM_EARLY_DEPTH_STENCIL_TEST_MODES
 };
 
-
-/*****************************************************************************\
-ENUM: USC_SHADING_RATE
-\*****************************************************************************/
-enum USC_SHADING_RATE
+enum SHADING_RATE
 {
-    USC_SHADING_RATE_DEFAULT,
-    USC_SHADING_RATE_PIXEL,
-    USC_SHADING_RATE_SAMPLE,
-    USC_SHADING_RATE_COARSE,
-    USC_NUM_SHADING_RATES
+    SHADING_RATE_DEFAULT,
+    SHADING_RATE_PIXEL,
+    SHADING_RATE_SAMPLE,
+    SHADING_RATE_COARSE,
+    NUM_SHADING_RATES
 };
 
-/*****************************************************************************\
-ENUM: USC_BLEND_EQUATION_ADVANCED_MODE
-\*****************************************************************************/
-enum USC_BLEND_EQUATION_ADVANCED_MODE
+enum BLEND_EQUATION_ADVANCED_MODE
 {
-    USC_BLEND_EQUATION_ADVANCED_NONE = 0,
-    USC_BLEND_EQUATION_ADVANCED_MULTIPLY,
-    USC_BLEND_EQUATION_ADVANCED_SCREEN,
-    USC_BLEND_EQUATION_ADVANCED_OVERLAY,
-    USC_BLEND_EQUATION_ADVANCED_DARKEN,
-    USC_BLEND_EQUATION_ADVANCED_LIGHTEN,
-    USC_BLEND_EQUATION_ADVANCED_COLORDODGE,
-    USC_BLEND_EQUATION_ADVANCED_COLORBURN,
-    USC_BLEND_EQUATION_ADVANCED_HARDLIGHT,
-    USC_BLEND_EQUATION_ADVANCED_SOFTLIGHT,
-    USC_BLEND_EQUATION_ADVANCED_DIFFERENCE,
-    USC_BLEND_EQUATION_ADVANCED_EXCLUSION,
-    USC_BLEND_EQUATION_ADVANCED_HSL_HUE,
-    USC_BLEND_EQUATION_ADVANCED_HSL_SATURATION,
-    USC_BLEND_EQUATION_ADVANCED_HSL_COLOR,
-    USC_BLEND_EQUATION_ADVANCED_HSL_LUMINOSITY,
-    USC_NUM_BLEND_EQUATION_ADVANCED_MODES
+    BLEND_EQUATION_ADVANCED_NONE,
+    BLEND_EQUATION_ADVANCED_MULTIPLY,
+    BLEND_EQUATION_ADVANCED_SCREEN,
+    BLEND_EQUATION_ADVANCED_OVERLAY,
+    BLEND_EQUATION_ADVANCED_DARKEN,
+    BLEND_EQUATION_ADVANCED_LIGHTEN,
+    BLEND_EQUATION_ADVANCED_COLORDODGE,
+    BLEND_EQUATION_ADVANCED_COLORBURN,
+    BLEND_EQUATION_ADVANCED_HARDLIGHT,
+    BLEND_EQUATION_ADVANCED_SOFTLIGHT,
+    BLEND_EQUATION_ADVANCED_DIFFERENCE,
+    BLEND_EQUATION_ADVANCED_EXCLUSION,
+    BLEND_EQUATION_ADVANCED_HSL_HUE,
+    BLEND_EQUATION_ADVANCED_HSL_SATURATION,
+    BLEND_EQUATION_ADVANCED_HSL_COLOR,
+    BLEND_EQUATION_ADVANCED_HSL_LUMINOSITY,
+    NUM_BLEND_EQUATION_ADVANCED_MODES
 };
 
-}
+} // namespace IGC

@@ -28,7 +28,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ShaderTypesEnum.h"
 #include "ShaderTypesConst.h"
 #include "SurfaceFormats.h"
-
 #include "usc_config.h"
 
 /*****************************************************************************
@@ -155,10 +154,10 @@ STRUCT: SShaderResourceDeclType
 \*****************************************************************************/
 struct SShaderSamplerDeclType
 {
-    unsigned int    SamplerType     : BITCOUNT( NUM_SHADER_SAMPLER_TYPES );
-    unsigned int    LBound; // SHADER_VERSION_4_0
-    unsigned int    UBound; // SHADER_VERSION_4_0
-    unsigned int    Space;  // SHADER_VERSION_4_0
+    unsigned int    SamplerType     : BITCOUNT( IGC::NUM_SHADER_SAMPLER_TYPES );
+    unsigned int    LBound; // IGC::SHADER_VERSION_4_0
+    unsigned int    UBound; // IGC::SHADER_VERSION_4_0
+    unsigned int    Space;  // IGC::SHADER_VERSION_4_0
 };
 
 /*****************************************************************************\
@@ -166,10 +165,10 @@ STRUCT: SShaderResourceDeclType
 \*****************************************************************************/
 struct SShaderResourceDeclType
 {
-    unsigned int   ResourceType         : BITCOUNT( NUM_SHADER_RESOURCE_TYPES );
+    unsigned int   ResourceType         : BITCOUNT( IGC::NUM_SHADER_RESOURCE_TYPES );
     unsigned int   SurfaceFormat        : BITCOUNT( IGC::NUM_SURFACE_FORMATS );
-    unsigned int   UAVAccessMode        : BITCOUNT( NUM_SHADER_UAV_ACCESS_MODES );
-    unsigned int   ReturnType           : BITCOUNT( NUM_SHADER_RESOURCE_RETURN_TYPES );
+    unsigned int   UAVAccessMode        : BITCOUNT( IGC::NUM_SHADER_UAV_ACCESS_MODES );
+    unsigned int   ReturnType           : BITCOUNT( IGC::NUM_SHADER_RESOURCE_RETURN_TYPES );
     unsigned int   AccessCoherency      : 1;
     unsigned int   RasterizerOrdered    : 1;
     unsigned int   IsVariable           : 1;
@@ -177,9 +176,9 @@ struct SShaderResourceDeclType
     unsigned int   ByteOrStructCount;
     unsigned int   Offset;
     unsigned int   Alignment;
-    unsigned int   LBound; // SHADER_VERSION_4_0
-    unsigned int   UBound; // SHADER_VERSION_4_0
-    unsigned int   Space;  // SHADER_VERSION_4_0
+    unsigned int   LBound; // IGC::SHADER_VERSION_4_0
+    unsigned int   UBound; // IGC::SHADER_VERSION_4_0
+    unsigned int   Space;  // IGC::SHADER_VERSION_4_0
 };
 
 /*****************************************************************************\
@@ -187,10 +186,10 @@ STRUCT: SShaderConstantBufferDeclType
 \*****************************************************************************/
 struct SShaderConstantBufferDeclType
 {
-    unsigned int   LBound; // SHADER_VERSION_4_0
-    unsigned int   UBound; // SHADER_VERSION_4_0
-    unsigned int   Space;  // SHADER_VERSION_4_0
-    unsigned int   Size;   // SHADER_VERSION_4_0. Count of 16-byte vectors. 0 if not known.
+    unsigned int   LBound; // IGC::SHADER_VERSION_4_0
+    unsigned int   UBound; // IGC::SHADER_VERSION_4_0
+    unsigned int   Space;  // IGC::SHADER_VERSION_4_0
+    unsigned int   Size;   // IGC::SHADER_VERSION_4_0. Count of 16-byte vectors. 0 if not known.
 };
 
 /*****************************************************************************\
@@ -198,8 +197,8 @@ STRUCT: SShaderInputDeclType
 \*****************************************************************************/
 struct SShaderInputDeclType
 {
-    unsigned int   Mask                : NUM_SHADER_CHANNELS;
-    unsigned int   InterpolationMode   : BITCOUNT( NUM_SHADER_INTERPOLATION_MODES );
+    unsigned int   Mask                : IGC::NUM_SHADER_CHANNELS;
+    unsigned int   InterpolationMode   : BITCOUNT( IGC::NUM_SHADER_INTERPOLATION_MODES );
     unsigned int   IsIndexed           : 1;
 
     union
@@ -212,14 +211,14 @@ struct SShaderInputDeclType
             unsigned int W : 1;
         } Channel;
 
-        unsigned int   Value   : NUM_SHADER_CHANNELS;
+        unsigned int   Value   : IGC::NUM_SHADER_CHANNELS;
     } PrimIDMask;
 
-    unsigned char  Usage[NUM_SHADER_CHANNELS];
-    unsigned char  UsageIndex[NUM_SHADER_CHANNELS];
+    unsigned char  Usage[IGC::NUM_SHADER_CHANNELS];
+    unsigned char  UsageIndex[IGC::NUM_SHADER_CHANNELS];
 
-    bool HasUsesFullPrecision[NUM_SHADER_CHANNELS];
-    bool HasUsesLowPrecision[NUM_SHADER_CHANNELS];
+    bool HasUsesFullPrecision[IGC::NUM_SHADER_CHANNELS];
+    bool HasUsesLowPrecision[IGC::NUM_SHADER_CHANNELS];
 };
 
 /*****************************************************************************\
@@ -227,12 +226,12 @@ STRUCT: SShaderOutputDeclType
 \*****************************************************************************/
 struct SShaderOutputDeclType
 {
-    unsigned int   Mask        : NUM_SHADER_CHANNELS;
+    unsigned int   Mask        : IGC::NUM_SHADER_CHANNELS;
     unsigned int   IsIndexed   : 1;
     unsigned int   IsInvariant : 1;
 
-    unsigned char  Usage[NUM_SHADER_CHANNELS];
-    unsigned char  UsageIndex[NUM_SHADER_CHANNELS];
+    unsigned char  Usage[IGC::NUM_SHADER_CHANNELS];
+    unsigned char  UsageIndex[IGC::NUM_SHADER_CHANNELS];
 };
 
 /*****************************************************************************\
@@ -240,8 +239,8 @@ STRUCT: SShaderOpcodeCaps
 \*****************************************************************************/
 struct SShaderOpcodeCaps
 {
-    SHADER_OPCODE opcode;
-    SHADER_VERSION_TYPE  Version;
+    IGC::SHADER_OPCODE opcode;
+    IGC::SHADER_VERSION_TYPE  Version;
     bool SupportsPredicate;
     bool SupportsResource;
     bool SupportsComparison;
@@ -345,10 +344,10 @@ struct SOfflineCompileData
     } PS;
 };
 
-bool OpcodeSupportsPredicate(SHADER_OPCODE opcode);
-bool OpcodeSupportsResource(SHADER_OPCODE opcode);
-bool OpcodeSupportsComparison(SHADER_OPCODE opcode);
-bool OpcodeSupportsConditional(SHADER_OPCODE opcode);
+bool OpcodeSupportsPredicate(IGC::SHADER_OPCODE opcode);
+bool OpcodeSupportsResource(IGC::SHADER_OPCODE opcode);
+bool OpcodeSupportsComparison(IGC::SHADER_OPCODE opcode);
+bool OpcodeSupportsConditional(IGC::SHADER_OPCODE opcode);
 
 /*****************************************************************************\
 STRUCT: SInterfaceThisData

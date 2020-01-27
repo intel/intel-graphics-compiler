@@ -24,7 +24,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 #pragma once
-
+#include "ShaderTypesEnum.h"
 #include "ShaderTypes.h"
 #include "ShaderToken.h"
 #include "ErrorCode.h"
@@ -67,8 +67,8 @@ public:
     // Shader Input Declarations
     virtual void    DeclareInput(
         const unsigned int number,
-        const SHADER_USAGE usage,
-        const SHADER_MASK mask ) = 0;
+        const IGC::SHADER_USAGE usage,
+        const IGC::SHADER_MASK mask ) = 0;
 
     virtual void    DeclareIndexedInput(
                         const unsigned int min,
@@ -80,9 +80,9 @@ public:
 
     virtual void    DeclareOutput(
                         const unsigned int number,
-                        const SHADER_USAGE usage,
+                        const IGC::SHADER_USAGE usage,
                         const unsigned int usageIndex,
-                        const SHADER_MASK mask ) = 0;
+                        const IGC::SHADER_MASK mask ) = 0;
 
     // Shader register declarations 
     virtual void    DeclareTemporaryRegister(
@@ -110,12 +110,12 @@ public:
 
     virtual void    DeclareSampler( 
                 const unsigned int number,
-                const SHADER_SAMPLER_TYPE type ) = 0;
+                const IGC::SHADER_SAMPLER_TYPE type ) = 0;
 
     virtual void    DeclareUAVTyped(
                 const unsigned int number, 
-                const SHADER_RESOURCE_TYPE dimension,
-                const SHADER_RESOURCE_RETURN_TYPE returnType,
+                const IGC::SHADER_RESOURCE_TYPE dimension,
+                const IGC::SHADER_RESOURCE_RETURN_TYPE returnType,
                 const bool globallyCoherent ) = 0;
     
     virtual void    DeclareUAVRaw(
@@ -133,8 +133,8 @@ public:
 
     virtual void    DeclareResource( 
                 const unsigned int number, 
-                const SHADER_RESOURCE_TYPE resourceType,
-                const SHADER_RESOURCE_RETURN_TYPE returnType ) = 0;
+                const IGC::SHADER_RESOURCE_TYPE resourceType,
+                const IGC::SHADER_RESOURCE_RETURN_TYPE returnType ) = 0;
     
     virtual void    DeclareResourceRaw(
                 const unsigned int number ) = 0;
@@ -180,10 +180,10 @@ public:
     virtual void    DeclareString( const unsigned int number ) = 0;
 
     virtual void    DeclareFloatDenormMode(
-                const USC_FLOAT_PRECISION floatPrecision,
-                const USC_FLOAT_DENORM_MODE denormMode ) = 0;
+                const IGC::FLOAT_PRECISION floatPrecision,
+                const IGC::FLOAT_DENORM_MODE denormMode ) = 0;
 
-    virtual void    DeclareEarlyDepthStencilTestMode( USC::USC_EARLY_DEPTH_STENCIL_TEST_MODE testMode ) = 0;
+    virtual void    DeclareEarlyDepthStencilTestMode( IGC::EARLY_DEPTH_STENCIL_TEST_MODE testMode ) = 0;
 
     // Shader Thread Group Dimensions Declaration Accessors Functions
     virtual bool DeclaresFixedThreadGroupDimensions( void ) const = 0;
