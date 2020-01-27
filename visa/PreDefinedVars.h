@@ -1,6 +1,7 @@
 #ifndef _PREDEFINEDVARS_H_
 #define _PREDEFINEDVARS_H_
 #include <array>
+#include <stdint.h>
 enum class PreDefinedVarsInternal
 {
     VAR_NULL             = 0,
