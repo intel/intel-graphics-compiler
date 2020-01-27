@@ -4091,7 +4091,10 @@ void G4_Kernel::emit_asm(std::ostream& output, bool beforeRegAlloc, void * binar
                     continue;
                 }
 
-                (*itBB)->emitInstructionInfo(output, itInst);
+                if (!(getOptions()->getOption(vISA_disableInstDebugInfo)))
+                {
+                    (*itBB)->emitInstructionInfo(output, itInst);
+                }
                 output << std::endl;
 
                 auto errString = errorToStringMap.find(pc);
@@ -5337,7 +5340,10 @@ void G4_BB::emitBasicInstruction(std::ostream& output, INST_LIST_ITER &it)
 void G4_BB::emitInstruction(std::ostream& output, INST_LIST_ITER &it)
 {
     //prints out instruction line
-    emitInstructionInfo(output, it);
+    if (!(parent->getKernel()->getOptions()->getOption(vISA_disableInstDebugInfo)))
+    {
+        emitInstructionInfo(output, it);
+    }
 
     emitBasicInstruction(output, it);
 
