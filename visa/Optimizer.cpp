@@ -6700,6 +6700,8 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         {
             replaceNoMaskWithAnyhWA();
         }
+
+        insertFenceAtEntry();
     }
 
     /*
@@ -8172,6 +8174,13 @@ public:
             }
         }
     }
+
+    // some platform/shaders require a memory fence at kernel entry
+    // this needs to be called before RA since fence may have a (dummy) destination.
+    void Optimizer::insertFenceAtEntry()
+    {
+    }
+
 
     void Optimizer::mapOrphans()
     {

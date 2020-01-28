@@ -251,6 +251,8 @@ private:
     void setA0toTdrForSendc();
     void replaceRetWithJmpi();
     void replaceNoMaskWithAnyhWA();
+    void insertFenceAtEntry();
+
     typedef std::vector<vISA::G4_INST*> InstListType;
     void expandIndirectCallWithRegTarget();
     void createInstForJmpiSequence(InstListType& insts, G4_INST* fcall);
