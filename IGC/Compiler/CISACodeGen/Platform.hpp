@@ -275,6 +275,11 @@ namespace IGC
             m_platformInfo.eProductFamily == IGFX_BROXTON &&
             m_GTSystemInfo.SubSliceCount == 2);
     }
+    bool enableMaxWorkGroupSizeCalculation() const
+    {
+        return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN11_CORE) &&
+            IGC_IS_FLAG_ENABLED(EnableMaxWGSizeCalculation);
+    }
 
     bool supportsSIMD16TypedRW() const
     {
