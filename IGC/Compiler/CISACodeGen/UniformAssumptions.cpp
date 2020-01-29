@@ -197,11 +197,20 @@ namespace IGC {
                         newAssumption->setOperand(0, src);
                         if (auto srcInst = dyn_cast<Instruction>(src))
                         {
-                            newAssumption->insertAfter(srcInst);
+                            if (isa<PHINode>(srcInst))
+                            {
+                                newAssumption->insertBefore(
+                                    srcInst->getParent()->getFirstNonPHI());
+                            }
+                            else
+                            {
+                                newAssumption->insertAfter(srcInst);
+                            }
                         }
                         else
                         {
-                            newAssumption->insertBefore(F.getEntryBlock().getFirstNonPHI());
+                            newAssumption->insertBefore(
+                                F.getEntryBlock().getFirstNonPHI());
                         }
                         check_further = true;
                     }
