@@ -190,7 +190,8 @@ public:
 
     unsigned int getAllocHint() const { return allocHint; }
     bool hasAllocHint() const { return allocHint != UndefHint; }
-    void setAllocHint(unsigned int h) { allocHint = h; }
+    void setAllocHint(unsigned int h);
+    void resetAllocHint() { allocHint = UndefHint; }
 
     // From VarBasis
     public:

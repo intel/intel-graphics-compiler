@@ -5546,7 +5546,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
 
     auto& varSplitPass = *gra.getVarSplitPass();
 
-    auto assignColor = [&](LiveRange* lr)
+    auto assignColor = [&](LiveRange* lr, bool ignoreChildrenIntf = false)
     {
         auto lrVar = lr->getVar();
 
@@ -5599,6 +5599,9 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
                     }
 
                     if (skipParentIntf && lrTemp->getDcl() == parentDcl)
+                        continue;
+
+                    if (ignoreChildrenIntf && varSplitPass.isParentChildRelation(lr->getDcl(), lrTemp->getDcl()))
                         continue;
 
                     regUsage.updateRegUsage(lrTemp);
@@ -5726,7 +5729,8 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
             else
             {
                 // Allocation succeeded, set hint if this is a split/child dcl
-                if (varSplitPass.isSplitDcl(dcl) || varSplitPass.isPartialDcl(dcl))
+                if (!ignoreChildrenIntf &&
+                    (varSplitPass.isSplitDcl(dcl) || varSplitPass.isPartialDcl(dcl)))
                 {
                     varSplitPass.writeHints(dcl, lrs);
                 }
@@ -5749,12 +5753,12 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
         if (!ret)
             return false;
 
-        if (gra.getIterNo() == 0)
+        if (gra.getIterNo() < 3)
         {
-            if(varSplitPass.isSplitDcl(lr->getDcl()))
+            if (varSplitPass.isSplitDcl(lr->getDcl()))
             {
                 // Try allocating children, out of order in hopes
-                // of getting a coalescable assignment
+                // of getting a coalesceable assignment
                 auto children = varSplitPass.getChildren(lr->getDcl());
                 for (auto child : *children)
                 {
@@ -5765,8 +5769,42 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
                         {
                             assignColor(childLR);
                         }
+                        else
+                        {
+                            // retry allocating as per hint
+                            auto oldPhyReg = childLR->getPhyReg();
+                            auto oldPhySubReg = childLR->getPhyRegOff();
+                            auto hint = childLR->getAllocHint();
+                            if (oldPhyReg->asGreg()->getRegNum() == hint)
+                                continue;
+                            childLR->resetPhyReg();
+                            bool success = assignColor(childLR);
+                            if (!success || childLR->getPhyReg()->asGreg()->getRegNum() != hint)
+                                childLR->setPhyReg(oldPhyReg, oldPhySubReg);
+                        }
                     }
                 }
+            }
+
+            // if all children are assigned consecutive GRFs but parent isnt
+            // then try re-assigning parent
+            if (varSplitPass.isPartialDcl(lr->getDcl()) &&
+                varSplitPass.reallocParent(lr->getDcl(), getLiveRanges()))
+            {
+                auto parentDcl = varSplitPass.getParentDcl(lr->getDcl());
+                auto parentLR = getLiveRanges()[parentDcl->getRegVar()->getId()];
+                auto oldPhyReg = parentLR->getPhyReg();
+                auto oldPhySubReg = parentLR->getPhyRegOff();
+                parentLR->resetPhyReg();
+                varSplitPass.writeHints(lr->getDcl(), getLiveRanges());
+                assignColor(parentLR, true);
+                // If parent's assigned GRF is non-coalesceable assignment then
+                // undo it as it is risky to keep this because parent's intf
+                // doesnt include children.
+                auto newParentAssignment = parentLR->getPhyReg();
+                if ((newParentAssignment && newParentAssignment->asGreg()->getRegNum() != parentLR->getAllocHint()) ||
+                    !newParentAssignment)
+                    parentLR->setPhyReg(oldPhyReg, oldPhySubReg);
             }
         }
     }
@@ -6233,6 +6271,7 @@ void GraphColor::resetTemporaryRegisterAssignments()
     {
         if (lrs[i]->getVar()->getPhyReg() == NULL) {
             lrs[i]->resetPhyReg();
+            lrs[i]->resetAllocHint();
         }
     }
 }
@@ -11980,4 +12019,10 @@ bool Interference::dumpIntf(const char* s) const
         }
     }
     return false;
+}
+
+void LiveRange::setAllocHint(unsigned int h)
+{
+    if((h + dcl->getNumRows()) <= gra.kernel.getNumRegTotal())
+        allocHint = h;
 }

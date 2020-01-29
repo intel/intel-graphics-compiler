@@ -78,6 +78,9 @@ public:
     unsigned int getIdealAllocation(G4_Declare*, LiveRange**);
     bool isChildDclUnused(G4_Declare*);
     void writeHints(G4_Declare*, LiveRange**);
+    void undo(G4_Declare*);
+    bool reallocParent(G4_Declare*, LiveRange**);
+    bool isParentChildRelation(G4_Declare*, G4_Declare*);
 
 private:
     G4_Kernel& kernel;
@@ -91,6 +94,9 @@ private:
     std::unordered_map<G4_Declare*, std::vector<G4_Declare*>> splitChildren;
     // Store child dcls that are never referenced in CFG
     std::unordered_set<G4_Declare*> unusedDcls;
+    // Store pre-split regions for undo
+    // <new src/dst region, <old src inst, old src rgn, old src#>>
+    std::unordered_map<G4_Operand*, std::tuple<G4_INST*, G4_Operand*, unsigned int>> preSplit;
 };
 };
 #endif

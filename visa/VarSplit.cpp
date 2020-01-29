@@ -46,7 +46,8 @@ void VarSplitPass::findSplitCandidates()
     auto canSplit = [](G4_INST* inst)
     {
         // Insert any new split candidates here
-        return (inst->isSend() && inst->getMsgDesc()->isSampler() && inst->getMsgDesc()->ResponseLength() > 2);
+        return (inst->isSend() && inst->getMsgDesc()->isSampler() && inst->getMsgDesc()->ResponseLength() > 2 &&
+            !inst->getDst()->getTopDcl()->getRegVar()->isRegVarTransient());
     };
 
     // Find all dcls that can be split in to smaller chunks
@@ -143,6 +144,62 @@ void VarSplitPass::findSplitCandidates()
         itemIt++;
     }
 
+    // Apply split cost heuristic
+    std::unordered_map<G4_INST*, unsigned int> instId;
+    for (auto bb : kernel.fg.getBBList())
+    {
+        for (auto inst : bb->getInstList())
+        {
+            instId[inst] = instId.size();
+        }
+    }
+    for (auto itemIt = splitVars.begin(); itemIt != splitVars.end();)
+    {
+        auto item = (*itemIt);
+
+        if (item.second.srcs.size() > 0)
+        {
+            // Dont emit split if all uses are closeby
+            unsigned int idx = instId[item.second.srcs.front().first->getInst()];
+            bool split = true;
+            if (item.second.srcs.size() > 1)
+            {
+                for (auto src : item.second.srcs)
+                {
+                    if ((instId[src.first->getInst()] - idx) < 2)
+                    {
+                        split = false;
+                    }
+                    else
+                    {
+                        split = true;
+                        break;
+                    }
+                    idx = instId[src.first->getInst()];
+                }
+            }
+            else
+            {
+                if ((idx - instId[item.second.def.first->getInst()]) < 2)
+                {
+                    split = false;
+                }
+            }
+
+            // split if def-first use distance > 8
+            if (!split &&
+                (instId[item.second.srcs.front().first->getInst()] - instId[item.second.def.first->getInst()]) > 8)
+                split = true;
+
+            if (!split)
+            {
+                itemIt = splitVars.erase(itemIt);
+                continue;
+            }
+        }
+        ++itemIt;
+    }
+
     // Each entry in splitVars map is a split candidate
 }
 
@@ -205,7 +262,8 @@ void VarSplitPass::split()
             auto srcRgn = kernel.fg.builder->createSrcRegRegion(Mod_src_undef, Direct, dstDcl->getRegVar(),
                 item.second.def.first->getRegOff() + (i * numRows), item.second.def.first->getSubRegOff(), kernel.fg.builder->getRegionStride1(), Type_UD);
             unsigned int esize = (getGRFSize() / G4_Type_Table[Type_UD].byteSize) * numRows;
-            auto intrin = kernel.fg.builder->createIntrinsicInst(nullptr, Intrinsic::Split, esize, dstRgn, srcRgn, nullptr, nullptr, item.second.def.first->getInst()->getOption(), item.second.def.first->getInst()->getLineNo());
+            auto intrin = kernel.fg.builder->createIntrinsicInst(nullptr, Intrinsic::Split, esize, dstRgn, srcRgn, nullptr, nullptr,
+                item.second.def.first->getInst()->getOption() | G4_InstOption::InstOpt_WriteEnable, item.second.def.first->getInst()->getLineNo());
             item.second.def.second->insert(it, intrin);
             splitDcls.push_back(std::make_tuple(lb, rb, splitDcl));
 #ifdef DEBUG_VERBOSE_ON
@@ -249,6 +307,8 @@ void VarSplitPass::split()
 
             auto newSrc = kernel.fg.builder->createSrcRegRegion(srcRgn->getModifier(), srcRgn->getRegAccess(), dcl->getRegVar(), 0, srcRgn->getSubRegOff(), srcRgn->getRegion(), srcRgn->getType());
             auto opndNum = getOpndNum(srcRgn);
+            auto tup = std::make_tuple(srcRgn->getInst(), srcRgn, opndNum);
+            preSplit.insert(std::make_pair(newSrc, tup));
             srcRgn->getInst()->setSrc(newSrc, opndNum);
         }
     }
@@ -362,16 +422,16 @@ unsigned int VarSplitPass::getSiblingNum(G4_Declare* d)
 
 unsigned int VarSplitPass::getIdealAllocation(G4_Declare* dcl, LiveRange** lrs)
 {
-    // This function is invoked when assigning GRFs to parent or child dcl.
-    // If parent is already allocated a GRF then check which child dcl is,
-    // and return GRF number that will allow coalescing.
+    // This function is invoked when assigning GRFs to parent.
     unsigned int idealGRF = 0;
     if (isSplitDcl(dcl))
     {
+        // <ideal reg num for parent, num children with this assignment for coalescing>
+        std::unordered_map<unsigned int, unsigned int> idealParentReg;
         // This is parent dcl
         auto children = getChildren(dcl);
         // Try coalescing with first child that is allocated
-        unsigned int childNo = 0;
+        unsigned int numRowsOffset = 0;
         for (auto child : *children)
         {
             if (child->getRegVar()->isRegAllocPartaker())
@@ -382,48 +442,34 @@ unsigned int VarSplitPass::getIdealAllocation(G4_Declare* dcl, LiveRange** lrs)
                 if (phyReg && !isChildDclUnused(child))
                 {
                     auto regNum = phyReg->asGreg()->getRegNum();
-                    if (regNum >= (childNo * child->getNumRows()))
+                    if (regNum >= numRowsOffset)
                     {
-                        idealGRF = regNum - (childNo * child->getNumRows());
-                        break;
+                        idealGRF = regNum - numRowsOffset;
+                        idealParentReg[idealGRF] = idealParentReg[idealGRF] + 1;
                     }
                 }
             }
-            childNo++;
+            numRowsOffset += child->getNumRows();
         }
-    }
-    else if (isPartialDcl(dcl))
-    {
-        // First try coalescing with parent, if it already allocated
-        auto parent = getParentDcl(dcl);
-        auto lr = lrs[parent->getRegVar()->getId()];
-        auto phyRegParent = lr->getPhyReg();
-        if (phyRegParent)
+        std::pair<unsigned int, unsigned int> state;
+        if (idealParentReg.size() > 0)
         {
-            idealGRF = phyRegParent->asGreg()->getRegNum() + (getSiblingNum(dcl) * dcl->getNumRows());
+            state.first = idealParentReg.begin()->first;
+            state.second = idealParentReg.begin()->second;
         }
-        else
+
+        for(auto arg : idealParentReg)
         {
-            // Check whether any other sibling is allocated
-            auto siblings = getSiblings(dcl);
-            unsigned int i = 0;
-            for (auto sibling : siblings)
+            if (arg.second > state.second)
             {
-                if (sibling->getRegVar()->isRegAllocPartaker())
-                {
-                    auto phyRegSibling = lrs[sibling->getRegVar()->getId()]->getPhyReg();
-                    if (phyRegSibling)
-                    {
-                        unsigned int parentGRF = phyRegSibling->asGreg()->getRegNum() - (i * sibling->getNumRows());
-                        idealGRF = parentGRF + (getSiblingNum(dcl) * sibling->getNumRows());
-                    }
-                }
-                i++;
+                state.first = arg.first;
+                state.second = arg.second;
             }
         }
+        idealGRF = state.first;
     }
 
-    idealGRF = idealGRF >= getGRFSize() ? 0 : idealGRF;
+    idealGRF = idealGRF >= kernel.getNumRegTotal() ? 0 : idealGRF;
 
     return idealGRF;
 }
@@ -462,21 +508,170 @@ void VarSplitPass::writeHints(G4_Declare* dcl, LiveRange** lrs)
         // Write hint to parent if its empty
         auto parentDcl = getParentDcl(dcl);
         auto idealParentGRF = getIdealAllocation(parentDcl, lrs);
-        if (idealParentGRF != 0)
+
+        if (idealParentGRF != 0 && parentDcl->getRegVar()->isRegAllocPartaker())
         {
             lrs[parentDcl->getRegVar()->getId()]->setAllocHint(idealParentGRF);
-            auto siblings = getSiblings(dcl);
+            auto children = getChildren(getParentDcl(dcl));
             unsigned int i = 0;
-            for (auto sibling : siblings)
+            for (auto child : *children)
             {
-                if (sibling->getRegVar()->isRegAllocPartaker())
+                if (child->getRegVar()->isRegAllocPartaker())
                 {
-                    lrs[sibling->getRegVar()->getId()]->setAllocHint(idealParentGRF + (i * sibling->getNumRows()));
+                    lrs[child->getRegVar()->getId()]->setAllocHint(idealParentGRF + (i * child->getNumRows()));
                 }
                 i++;
             }
         }
     }
+}
+
+void VarSplitPass::undo(G4_Declare* parentDcl)
+{
+    // Undo split for parentDcl
+
+    if (!isSplitDcl(parentDcl))
+        return;
+
+    auto children = getChildren(parentDcl);
+
+    // Skip doing anything if any child was spilled
+    for (auto child : *children)
+    {
+        if (child->isSpilled())
+            return;
+    }
+
+    for (auto& split : preSplit)
+    {
+        auto srcRgn = split.first;
+
+        if (!srcRgn->getTopDcl() ||
+            getParentDcl(srcRgn->getTopDcl()) != parentDcl)
+            continue;
+
+        // parentDcl is parent of split
+        auto inst = std::get<0>(split.second);
+        auto opnd = std::get<1>(split.second);
+        auto srcNum = std::get<2>(split.second);
+
+        inst->setSrc(opnd, srcNum);
+    }
+
+    // remove explicit variable split instructions
+    for (auto child : *children)
+    {
+        unusedDcls.erase(child);
+    }
+
+    for (auto bb : kernel.fg.getBBList())
+    {
+        for (auto instIt = bb->begin(); instIt != bb->end();)
+        {
+            auto inst = (*instIt);
+            if (inst->isSplitIntrinsic() &&
+                inst->getSrc(0)->getTopDcl() == parentDcl)
+            {
+                instIt = bb->erase(instIt);
+                continue;
+            }
+            ++instIt;
+        }
+    }
+
+    // fix other data structures
+    for (auto childIt = splitParentDcl.begin(); childIt != splitParentDcl.end();)
+    {
+        auto child = (*childIt);
+        if (child.second == parentDcl)
+        {
+            childIt = splitParentDcl.erase(childIt);
+            continue;
+        }
+        ++childIt;
+    }
+
+    splitChildren.erase(parentDcl);
+}
+
+bool VarSplitPass::reallocParent(G4_Declare* child, LiveRange** lrs)
+{
+    // Given a child, lookup all siblings. If all children
+    // are assigned consecutive GRFs but parent isnt then
+    // return true.
+    bool ret = true;
+
+    if (!child->getRegVar()->isRegAllocPartaker())
+        return false;
+
+    auto parent = getParentDcl(child);
+    auto children = getChildren(parent);
+
+    auto baseRegNum = 0;
+    const unsigned int UnInit = 0xffffffff;
+    unsigned int nextRegNumExpected = UnInit;
+    for (auto child : *children)
+    {
+        if (!child->getRegVar()->isRegAllocPartaker() ||
+            isChildDclUnused(child))
+        {
+            if (nextRegNumExpected != UnInit)
+            {
+                nextRegNumExpected += child->getNumRows();
+            }
+            continue;
+        }
+
+        auto id = child->getRegVar()->getId();
+        auto phyReg = lrs[id]->getPhyReg();
+        if (phyReg)
+        {
+            if (nextRegNumExpected == UnInit)
+            {
+                baseRegNum = phyReg->asGreg()->getRegNum();
+                nextRegNumExpected = baseRegNum + (child->getByteSize() / G4_GRF_REG_NBYTES);
+                continue;
+            }
+            else if (nextRegNumExpected != phyReg->asGreg()->getRegNum())
+            {
+                return false;
+            }
+        }
+        else
+        {
+            return false;
+        }
+        nextRegNumExpected += child->getNumRows();
+    }
+
+    G4_VarBase* parentPhyReg = nullptr;
+
+    if (parent->getRegVar()->isRegAllocPartaker())
+        parentPhyReg = lrs[parent->getRegVar()->getId()]->getPhyReg();
+
+    if (!parentPhyReg)
+        return false;
+
+    if (parentPhyReg->asGreg()->getRegNum() == baseRegNum)
+        return false;
+
+    return ret;
+}
+
+bool VarSplitPass::isParentChildRelation(G4_Declare* parent, G4_Declare* child)
+{
+    if (!isSplitDcl(parent))
+        return false;
+
+    auto children = getChildren(parent);
+
+    for(auto c : *children)
+    {
+        if (c == child)
+            return true;
+    }
+
+    return false;
 }
 
 };
