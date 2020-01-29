@@ -438,7 +438,8 @@ namespace IGC
 
         mpm.add(new ReplaceUnsupportedIntrinsics());
 
-        if (IGC_IS_FLAG_DISABLED(DisablePromoteToDirectAS))
+        if (IGC_IS_FLAG_DISABLED(DisablePromoteToDirectAS) &&
+            !ctx.getModuleMetaData()->compOpt.IsLibraryCompilation)
         {
             // Promotes indirect resource access to direct
             mpm.add(new BreakConstantExpr());

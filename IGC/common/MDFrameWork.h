@@ -215,6 +215,7 @@ namespace IGC
         bool PreferBindlessImages                       = false;
         bool disableMathRefactoring                     = false;
         bool EnableTakeGlobalAddress                    = false;
+        bool IsLibraryCompilation                       = false;
     };
 
     struct ComputeShaderInfo
