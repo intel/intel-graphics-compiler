@@ -9780,7 +9780,20 @@ int IR_Builder::translateVISASVMScatterWriteInst(
 
     G4_SrcRegRegion *msgs[2] = {0, 0};
     unsigned sizes[2] = {0, 0};
+
+    // adjust src type
+    // PreparePayload takes src type to calculate src1 size. The src type have to be DW
+    // for byte scatter read
+    G4_Type srcType = src->getType();
+    if ((blockSize == SVM_BLOCK_TYPE_BYTE) &&
+        (numBlocks == SVM_BLOCK_NUM_1 || numBlocks == SVM_BLOCK_NUM_2) &&
+        (G4_Type_Table[srcType].byteSize != 4))
+        src->setType(Type_UD);
+
     preparePayload(msgs, sizes, exSize, useSplitSend, sources, len);
+
+    // set the type back in case we changed it for preparePayload
+    src->setType(srcType);
 
     unsigned desc = 0;
     desc |= getA64BTI();
