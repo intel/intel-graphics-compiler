@@ -4905,6 +4905,17 @@ static uint32_t getBlockMsgSize(uint32_t bytesRemaining, bool do256Byte)
 
 void EmitPass::emitSimdBlockWrite(llvm::Instruction* inst, llvm::Value* ptrVal)
 {
+    emitLegacySimdBlockWrite(inst, ptrVal);
+
+}
+
+void EmitPass::emitSimdBlockRead(llvm::Instruction* inst, llvm::Value* ptrVal)
+{
+    emitLegacySimdBlockRead(inst, ptrVal);
+}
+
+void EmitPass::emitLegacySimdBlockWrite(llvm::Instruction* inst, llvm::Value* ptrVal)
+{
     Value* llPtr = inst->getOperand(0);
     Value* dataPtr = inst->getOperand(1);
 
@@ -5091,7 +5102,7 @@ void EmitPass::emitSimdBlockWrite(llvm::Instruction* inst, llvm::Value* ptrVal)
     }
 }
 
-void EmitPass::emitSimdBlockRead(llvm::Instruction* inst, llvm::Value* ptrVal)
+void EmitPass::emitLegacySimdBlockRead(llvm::Instruction* inst, llvm::Value* ptrVal)
 {
     Value* llPtr = inst->getOperand(0);
     PointerType* ptrType = cast<PointerType>(llPtr->getType());
@@ -5277,6 +5288,7 @@ void EmitPass::emitSimdBlockRead(llvm::Instruction* inst, llvm::Value* ptrVal)
         }
     }
 }
+
 
 void EmitPass::emitMediaBlockIO(const llvm::GenIntrinsicInst* inst, bool isRead)
 {
@@ -14556,15 +14568,13 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
             m_encoder->SetUniformSIMDSize(SIMDMode::SIMD1);
         }
 
+        if (useA32)
         {
-            if (useA32)
-            {
-                m_encoder->ByteGather(gatherDst, resource, eOffset, 8, totalBytes);
-            }
-            else
-            {
-                emitGatherA64(gatherDst, eOffset, 8, totalBytes);
-            }
+            m_encoder->ByteGather(gatherDst, resource, eOffset, 8, totalBytes);
+        }
+        else
+        {
+            emitGatherA64(gatherDst, eOffset, 8, totalBytes);
         }
 
         m_encoder->Push();
@@ -15153,17 +15163,15 @@ void EmitPass::emitVectorStore(StoreInst* inst, Value* offset, ConstantInt* immO
         }
         setPredicateForDiscard();
 
+        if (useA32)
         {
-            if (useA32)
             {
-                {
-                    m_encoder->ByteScatter(storedVar, resource, eOffset, blkBits, nBlks);
-                }
+                m_encoder->ByteScatter(storedVar, resource, eOffset, blkBits, nBlks);
             }
-            else
-            {
-                emitScatterA64(storedVar, eOffset, blkBits, nBlks);
-            }
+        }
+        else
+        {
+            emitScatterA64(storedVar, eOffset, blkBits, nBlks);
         }
 
         if (dstUniform)
@@ -15179,7 +15187,6 @@ void EmitPass::emitVectorStore(StoreInst* inst, Value* offset, ConstantInt* immO
         storedVar = BroadcastIfUniform(storedVar);
 
         VectorMessage VecMessInfo(this);
-
         VecMessInfo.getInfo(Ty, align, useA32);
 
         for (uint32_t i = 0; i < VecMessInfo.numInsts; ++i)
@@ -15240,6 +15247,7 @@ void EmitPass::emitVectorStore(StoreInst* inst, Value* offset, ConstantInt* immO
         ResetVMask(false);
     }
 }
+
 
 void EmitPass::emitVectorCopy(CVariable* Dst, CVariable* Src, uint32_t nElts,
     uint32_t DstSubRegOffset, uint32_t SrcSubRegOffset)

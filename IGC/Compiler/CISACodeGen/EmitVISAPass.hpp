@@ -211,6 +211,8 @@ namespace IGC
         void emitSimdShuffleDown(llvm::Instruction* inst);
         void emitSimdBlockRead(llvm::Instruction* inst, llvm::Value* ptrVal = nullptr);
         void emitSimdBlockWrite(llvm::Instruction* inst, llvm::Value* ptrVal = nullptr);
+        void emitLegacySimdBlockWrite(llvm::Instruction* inst, llvm::Value* ptrVal = nullptr);
+        void emitLegacySimdBlockRead(llvm::Instruction* inst, llvm::Value* ptrVal = nullptr);
         void emitSimdMediaBlockRead(llvm::Instruction* inst);
         void emitSimdMediaBlockWrite(llvm::Instruction* inst);
         void emitMediaBlockIO(const llvm::GenIntrinsicInst* inst, bool isRead);

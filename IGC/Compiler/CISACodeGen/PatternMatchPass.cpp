@@ -2195,7 +2195,7 @@ namespace IGC
             {
                 if (isa<LoadInst>(inst))
                 {
-                    pass->emitVectorLoad(cast<LoadInst>(inst), offset, immOffset);
+                    pass->emitLoad(cast<LoadInst>(inst), offset, immOffset);
                 }
                 else if (isa<StoreInst>(inst))
                 {
