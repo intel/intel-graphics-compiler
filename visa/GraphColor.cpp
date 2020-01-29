@@ -8885,8 +8885,7 @@ int GlobalRA::coloringRegAlloc()
             addStoreRestoreForFP();
         }
     }
-
-    if (builder.getOption(vISA_LocalRA) && !isReRAPass() && canDoLRA(kernel))
+    if (builder.getOption(vISA_LocalRA) && !isReRAPass() && canDoLRA(kernel) && !hasStackCall)
     {
         startTimer(TIMER_LOCAL_RA);
         copyMissingAlignment();
