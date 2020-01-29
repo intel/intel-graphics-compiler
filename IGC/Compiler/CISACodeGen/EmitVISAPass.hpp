@@ -644,6 +644,9 @@ namespace IGC
         // Helper functions that create loop for above WA
         void A64LSLoopHead(CVariable* addr, CVariable*& curMask, CVariable*& lsPred, uint& label);
         void A64LSLoopTail(CVariable* curMask, CVariable* lsPred, uint label);
+
+        // Helper function to check if A64 WA is required
+        bool hasA64WAEnable() const;
     };
 
 } // namespace IGC

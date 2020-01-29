@@ -1348,7 +1348,8 @@ namespace TC
                             (strcmp(pParam, "-igc_opts") == 0) || //temporary options
                             (strcmp(pParam, "-cl-intel-debug-info") == 0) ||
                             (strncmp(pParam, "-dump-opt-llvm", 14) == 0) ||
-                            (strcmp(pParam, "-cl-no-subgroup-ifp") == 0);
+                            (strcmp(pParam, "-cl-no-subgroup-ifp") == 0) ||
+                            (strcmp(pParam, "-cl-intel-disable-a64WA") == 0); //temporary options;
 
 
 

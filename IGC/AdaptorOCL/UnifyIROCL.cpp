@@ -243,6 +243,9 @@ static void CommonOCLBasedPasses(
     CompilerOpts.GreaterThan4GBBufferRequired =
         pContext->m_InternalOptions.IntelGreaterThan4GBBufferRequired;
 
+    CompilerOpts.DisableA64WA =
+        pContext->m_InternalOptions.IntelDisableA64WA;
+
     CompilerOpts.HasBufferOffsetArg =
         pContext->m_InternalOptions.IntelHasBufferOffsetArg;
 

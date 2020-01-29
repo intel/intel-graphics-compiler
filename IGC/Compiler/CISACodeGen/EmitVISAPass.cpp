@@ -14415,9 +14415,16 @@ void EmitPass::A64LSLoopTail(CVariable* curMask, CVariable* lsPred, uint label)
     m_encoder->SetSecondHalf(tmpSh);
 }
 
+bool EmitPass::hasA64WAEnable() const
+{
+    if (m_pCtx->getModuleMetaData()->compOpt.DisableA64WA)
+        return false;
+    return m_currShader->m_Platform->WaEnableA64WA();
+}
+
 void EmitPass::emitGatherA64(CVariable* dst, CVariable* offset, unsigned elemSize, unsigned numElems)
 {
-    if (IGC_IS_FLAG_ENABLED(EnableA64WA) && !offset->IsUniform()) {
+    if (hasA64WAEnable() && !offset->IsUniform()) {
         CVariable* curMask = nullptr;
         CVariable* lsPred = nullptr;
         uint label = 0;
@@ -14437,7 +14444,7 @@ void EmitPass::emitGatherA64(CVariable* dst, CVariable* offset, unsigned elemSiz
 
 void EmitPass::emitGather4A64(CVariable* dst, CVariable* offset)
 {
-    if (IGC_IS_FLAG_ENABLED(EnableA64WA) && !offset->IsUniform()) {
+    if (hasA64WAEnable() && !offset->IsUniform()) {
         CVariable* curMask = nullptr;
         CVariable* lsPred = nullptr;
         uint label = 0;
@@ -14458,7 +14465,7 @@ void EmitPass::emitGather4A64(CVariable* dst, CVariable* offset)
 
 void EmitPass::emitScatterA64(CVariable* val, CVariable* offset, unsigned elementSize, unsigned numElems)
 {
-    if (IGC_IS_FLAG_ENABLED(EnableA64WA) && !offset->IsUniform()) {
+    if (hasA64WAEnable() && !offset->IsUniform()) {
         CVariable* curMask = nullptr;
         CVariable* lsPred = nullptr;
         uint label = 0;
@@ -14479,7 +14486,7 @@ void EmitPass::emitScatterA64(CVariable* val, CVariable* offset, unsigned elemen
 
 void EmitPass::emitScatter4A64(CVariable* src, CVariable* offset)
 {
-    if (IGC_IS_FLAG_ENABLED(EnableA64WA) && !offset->IsUniform()) {
+    if (hasA64WAEnable() && !offset->IsUniform()) {
         CVariable* curMask = nullptr;
         CVariable* lsPred = nullptr;
         uint label = 0;

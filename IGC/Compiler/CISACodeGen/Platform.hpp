@@ -508,6 +508,15 @@ namespace IGC
         return IGFX_GEN11_CORE >= m_platformInfo.eRenderCoreFamily;
     }
 
+    bool WaEnableA64WA() const
+    {
+        if (IGC_IS_FLAG_ENABLED(EnableA64WA)) {
+            if (m_platformInfo.eProductFamily == IGFX_TIGERLAKE_LP)
+                return true;
+        }
+        return false;
+    }
+
         const SCompilerHwCaps& GetCaps() { return m_caps; }
     };
 
