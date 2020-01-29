@@ -1045,6 +1045,8 @@ TrivialLocalMemoryOpsElimination::TrivialLocalMemoryOpsElimination() : FunctionP
 bool TrivialLocalMemoryOpsElimination::runOnFunction(Function& F)
 {
     bool change = false;
+
+
     visit(F);
     if (!abortPass && (m_LocalLoadsToRemove.empty() ^ m_LocalStoresToRemove.empty()))
     {

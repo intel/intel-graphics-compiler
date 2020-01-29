@@ -25,6 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 #pragma once
 #include "Compiler/CodeGenContextWrapper.hpp"
+#include "common/MDFrameWork.h"
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
@@ -110,6 +111,12 @@ namespace IGC
         TrivialLocalMemoryOpsElimination();
 
         ~TrivialLocalMemoryOpsElimination() {}
+
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
+        {
+            AU.addRequired<CodeGenContextWrapper>();
+            AU.setPreservesCFG();
+        }
 
         virtual bool runOnFunction(llvm::Function& F) override;
 
