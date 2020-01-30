@@ -14417,7 +14417,9 @@ void EmitPass::A64LSLoopTail(CVariable* curMask, CVariable* lsPred, uint label)
 
 bool EmitPass::hasA64WAEnable() const
 {
-    if (m_pCtx->getModuleMetaData()->compOpt.DisableA64WA)
+    // check if the WA is disable by compiler flag or if the API can't support it
+    if (m_pCtx->getModuleMetaData()->compOpt.DisableA64WA ||
+        (!m_pCtx->m_DriverInfo.EnableA64WA()))
         return false;
     return m_currShader->m_Platform->WaEnableA64WA();
 }
