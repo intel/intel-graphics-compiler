@@ -5176,7 +5176,7 @@ void EmitPass::emitLegacySimdBlockRead(llvm::Instruction* inst, llvm::Value* ptr
         m_encoder->SetUniformSIMDSize(simdmode);
         if (useA64)
         {
-            emitGatherA64(gatherDst, gatherOff, blkBits, nBlks);
+            emitGatherA64(inst, gatherDst, gatherOff, blkBits, nBlks);
         }
         else
         {
@@ -14422,7 +14422,7 @@ bool EmitPass::hasA64WAEnable() const
     return m_currShader->m_Platform->WaEnableA64WA();
 }
 
-void EmitPass::emitGatherA64(CVariable* dst, CVariable* offset, unsigned elemSize, unsigned numElems)
+void EmitPass::emitGatherA64(Value* loadInst, CVariable* dst, CVariable* offset, unsigned elemSize, unsigned numElems)
 {
     if (hasA64WAEnable() && !offset->IsUniform()) {
         CVariable* curMask = nullptr;
@@ -14431,6 +14431,11 @@ void EmitPass::emitGatherA64(CVariable* dst, CVariable* offset, unsigned elemSiz
         A64LSLoopHead(offset, curMask, lsPred, label);
 
         // do send with pred
+        if (isa<LoadInst>(loadInst) && !m_currShader->IsCoalesced(loadInst))
+        {
+            // load inst is the single def of the vISA variable and therefore a kill
+            m_encoder->Lifetime(LIFETIME_START, dst);
+        }
         m_encoder->SetPredicate(lsPred);
         m_encoder->GatherA64(dst, offset, elemSize, numElems);
         m_encoder->Push();
@@ -14442,7 +14447,7 @@ void EmitPass::emitGatherA64(CVariable* dst, CVariable* offset, unsigned elemSiz
     }
 }
 
-void EmitPass::emitGather4A64(CVariable* dst, CVariable* offset)
+void EmitPass::emitGather4A64(Value* loadInst, CVariable* dst, CVariable* offset)
 {
     if (hasA64WAEnable() && !offset->IsUniform()) {
         CVariable* curMask = nullptr;
@@ -14451,6 +14456,11 @@ void EmitPass::emitGather4A64(CVariable* dst, CVariable* offset)
         A64LSLoopHead(offset, curMask, lsPred, label);
 
         // do send with pred
+        if (isa<LoadInst>(loadInst) && !m_currShader->IsCoalesced(loadInst))
+        {
+            // load inst is the single def of the vISA variable and therefore a kill
+            m_encoder->Lifetime(LIFETIME_START, dst);
+        }
         m_encoder->SetPredicate(lsPred);
         m_encoder->Gather4A64(dst, offset);
         m_encoder->Push();
@@ -14581,7 +14591,7 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
         }
         else
         {
-            emitGatherA64(gatherDst, eOffset, 8, totalBytes);
+            emitGatherA64(inst, gatherDst, eOffset, 8, totalBytes);
         }
 
         m_encoder->Push();
@@ -14771,7 +14781,7 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
         }
         else
         {
-            emitGatherA64(gatherDst, gatherOff, blkBits, nBlks);
+            emitGatherA64(inst, gatherDst, gatherOff, blkBits, nBlks);
         }
         m_encoder->Push();
 
@@ -14849,10 +14859,10 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
                 m_encoder->Gather4Scaled(subLoadDst, resource, addrVarSIMD8);
                 break;
             case VectorMessage::MESSAGE_A64_UNTYPED_SURFACE_RW:
-                emitGather4A64(subLoadDst, addrVarSIMD8);
+                emitGather4A64(inst, subLoadDst, addrVarSIMD8);
                 break;
             case VectorMessage::MESSAGE_A64_SCATTERED_RW:
-                emitGatherA64(subLoadDst, addrVarSIMD8, blkBits, numBlks);
+                emitGatherA64(inst, subLoadDst, addrVarSIMD8, blkBits, numBlks);
                 break;
             default:
                 assert(0 && "Somethings wrong!");
@@ -14924,10 +14934,10 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
             m_encoder->Gather4Scaled(gatherDst, resource, rawAddrVar);
             break;
         case VectorMessage::MESSAGE_A64_UNTYPED_SURFACE_RW:
-            emitGather4A64(gatherDst, rawAddrVar);
+            emitGather4A64(inst, gatherDst, rawAddrVar);
             break;
         case VectorMessage::MESSAGE_A64_SCATTERED_RW:
-            emitGatherA64(gatherDst, rawAddrVar, blkBits, numBlks);
+            emitGatherA64(inst, gatherDst, rawAddrVar, blkBits, numBlks);
             break;
         default:
             assert(false && "Internal Error: unexpected message kind for load!");
