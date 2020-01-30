@@ -380,14 +380,17 @@ namespace llvm {
             }
         }
 
-        int estimateUnrolledInstCount = (instCount + sendMessage * 4) * TripCount;
-        int unrollLimitInstCount = MAX(LoopUnrollThreshold - totalInstCountInShader, 0);
+        unsigned int estimateUnrolledInstCount = (instCount + sendMessage * 4) * TripCount;
+        unsigned int unrollLimitInstCount = LoopUnrollThreshold > totalInstCountInShader ? LoopUnrollThreshold - totalInstCountInShader : 0;
+        bool limitUnrolling = (estimateUnrolledInstCount > unrollLimitInstCount) ||
+                              (TripCount > unrollLimitInstCount) ||
+                              (instCount + sendMessage * 4 > unrollLimitInstCount);
 
         // if the loop doesn't have sample, skip the unrolling parameter change
         if (!sendMessage)
         {
             // if the estimated unrolled instruction count is larger than the unrolling threshold, limit unrolling.
-            if (estimateUnrolledInstCount > unrollLimitInstCount)
+            if (limitUnrolling)
             {
                 UP.Count = MIN(unrollLimitInstCount / (instCount + sendMessage * 4), 4);
                 if (TripCount != 0)
@@ -399,7 +402,7 @@ namespace llvm {
         }
 
         // if the TripCount is known, and the estimated unrolled count exceed LoopUnrollThreshold, set the unrolling count to 4
-        if (estimateUnrolledInstCount > unrollLimitInstCount)
+        if (limitUnrolling)
         {
             UP.Count = MIN(TripCount, 4);
             UP.MaxCount = UP.Count;
