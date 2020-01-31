@@ -322,8 +322,8 @@ short    __builtin_IB_image_atomic_inc_i16(int, int4);
 short    __builtin_IB_image_atomic_cmpxchg_i16(int, int4, short, short);
 
 
-void __builtin_IB_kmp_acquire_lock(__global int *);
-void __builtin_IB_kmp_release_lock(__global int *);
+void __builtin_IB_kmp_acquire_lock(int *);
+void __builtin_IB_kmp_release_lock(int *);
 
 int      __builtin_IB_image_atomic_add_i32(int, int4, int);
 int      __builtin_IB_image_atomic_sub_i32(int, int4, int);

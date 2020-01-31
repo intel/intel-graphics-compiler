@@ -1646,7 +1646,7 @@ void __builtin_spirv_OpAtomicFlagClear_p4i32_i32_i32( volatile __generic uint *P
 #define KMP_LOCK_FREE 0
 #define KMP_LOCK_BUSY 1
 
-void __builtin_IB_kmp_acquire_lock(__global int *lock)
+void __builtin_IB_kmp_acquire_lock(int *lock)
 {
   volatile atomic_uint *lck = (volatile atomic_uint *)lock;
   uint expected = KMP_LOCK_FREE;
@@ -1658,7 +1658,7 @@ void __builtin_IB_kmp_acquire_lock(__global int *lock)
   }
 }
 
-void __builtin_IB_kmp_release_lock(__global int *lock)
+void __builtin_IB_kmp_release_lock(int *lock)
 {
   volatile atomic_uint *lck = (volatile atomic_uint *)lock;
   atomic_store_explicit(lck, KMP_LOCK_FREE, memory_order_release);
