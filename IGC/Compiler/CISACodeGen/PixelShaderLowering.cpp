@@ -67,10 +67,8 @@ namespace IGC
 
         hasDiscard = (mod->getNamedMetadata("KillPixel") != nullptr);
         m_modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-        IGCMD::MetaDataUtils* pMdUtils =
-            getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
 
-        if (!hasDiscard || pMdUtils->findFunctionsInfoItem(&F) == pMdUtils->end_FunctionsInfo())
+        if (!hasDiscard)
         {
             return false;
         }
@@ -1203,37 +1201,34 @@ namespace IGC
         llvm::DenseMap<llvm::Value*, llvm::PHINode*>& valueToPhiMap)
     {
         unsigned numPredBB = predBB.size();
-        if (numPredBB > 1)
+        for (unsigned i = 0; i < call->getNumArgOperands(); i++)
         {
-            for (unsigned i = 0; i < call->getNumArgOperands(); i++)
+            if (Instruction * inst = dyn_cast<Instruction>(call->getArgOperand(i)))
             {
-                if (Instruction * inst = dyn_cast<Instruction>(call->getArgOperand(i)))
+                auto it = valueToPhiMap.find(inst);
+                if (it != valueToPhiMap.end())
                 {
-                    auto it = valueToPhiMap.find(inst);
-                    if (it != valueToPhiMap.end())
-                    {
-                        call->setArgOperand(i, it->second);
-                        continue;
-                    }
-
-                    PHINode* phi = PHINode::Create(
-                        inst->getType(), numPredBB, "", &(*toBB->begin()));
-                    valueToPhiMap[inst] = phi;
-                    for (unsigned j = 0; j < numPredBB; j++)
-                    {
-                        Value* inVal;
-                        if (predBB[j] == call->getParent())
-                        {
-                            inVal = inst;
-                        }
-                        else
-                        {
-                            inVal = UndefValue::get(inst->getType());
-                        }
-                        phi->addIncoming(inVal, predBB[j]);
-                    }
-                    call->setArgOperand(i, phi);
+                    call->setArgOperand(i, it->second);
+                    continue;
                 }
+
+                PHINode* phi = PHINode::Create(
+                    inst->getType(), numPredBB, "", &(*toBB->begin()));
+                valueToPhiMap[inst] = phi;
+                for (unsigned j = 0; j < numPredBB; j++)
+                {
+                    Value* inVal;
+                    if (predBB[j] == call->getParent())
+                    {
+                        inVal = inst;
+                    }
+                    else
+                    {
+                        inVal = UndefValue::get(inst->getType());
+                    }
+                    phi->addIncoming(inVal, predBB[j]);
+                }
+                call->setArgOperand(i, phi);
             }
         }
 
