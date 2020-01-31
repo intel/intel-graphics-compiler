@@ -1439,7 +1439,6 @@ namespace IGC
                 // disable loop unroll for excessive large shaders
                 if (pContext->m_instrTypes.hasLoop)
                 {
-                    mpm.add(createIndVarSimplifyPass());
                     mpm.add(createLoopDeadCodeEliminationPass());
                     mpm.add(createLoopCanonicalization());
                     mpm.add(llvm::createLoopDeletionPass());
