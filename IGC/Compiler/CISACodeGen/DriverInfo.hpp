@@ -271,9 +271,6 @@ namespace IGC
         /// Check for flush to zero for DP emulated function
         virtual bool DPEmulationFlushToZero() const { return false; }
 
-        /// check if the API support A64 WA. Corresponding RegKey for A64 WA is EnableA64WA
-        virtual bool EnableA64WA() const { return true; }
-
 
 
     };
