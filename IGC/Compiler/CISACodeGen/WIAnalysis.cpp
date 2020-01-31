@@ -441,7 +441,7 @@ void WIAnalysisRunner::updateArgsDependency(llvm::Function* pF)
     // For a subroutine, conservatively assume that all user provided arguments
     // are random. Note that all other functions are treated as kernels.
     // To enable subroutine for other FEs, we need to update this check.
-    bool IsSubroutine = !isEntryFunc(m_pMdUtils, pF);
+    bool IsSubroutine = !isEntryFunc(m_pMdUtils, pF) || isPixelPhaseFunction(pF);
 
     ImplicitArgs implicitArgs(*pF, m_pMdUtils);
     unsigned implicitArgStart = (unsigned)(IGCLLVM::GetFuncArgSize(pF)
