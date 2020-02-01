@@ -904,15 +904,17 @@ inline bool isPartialContext (
     bool          isInSimdFlow
 )
 {
-    if ((ctxt->getPredicate () != NULL && ctxt->opcode() != G4_sel) ||
-        (isInSimdFlow == true &&
-         ctxt->isWriteEnableInst() == false &&
-         region->getElemSize() != 4 ) ) {
+    if (ctxt->isPartialWrite())
+    {
         return true;
     }
 
-    if (ctxt->getDst()) {
-        return false;
+    if (isInSimdFlow && !ctxt->isWriteEnableInst())
+    {
+        if (region->getElemSize() != 4)
+        {
+            return true;
+        }
     }
 
     return false;
