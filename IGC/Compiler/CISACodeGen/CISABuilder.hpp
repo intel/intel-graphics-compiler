@@ -474,6 +474,7 @@ namespace IGC
 
         void CreateSymbolTable(void*& buffer, unsigned& bufferSize, unsigned& tableEntries);
         void CreateRelocationTable(void*& buffer, unsigned& bufferSize, unsigned& tableEntries);
+        void CreateFuncAttributeTable(void*& buffer, unsigned& bufferSize, unsigned& tableEntries);
 
         uint32_t getGRFSize() const;
 
@@ -573,6 +574,31 @@ namespace IGC
         VISA_SamplerVar* samplervar;
 
         CShader* m_program;
+
+        // Keep a map between a function and its per-function attributes needed for function pointer support
+        struct FuncAttrib
+        {
+            bool isKernel = false;
+            bool hasBarrier = false;
+            unsigned argumentStackSize = 0;
+            unsigned allocaStackSize = 0;
+        };
+        llvm::SmallDenseMap<llvm::Function*, FuncAttrib> funcAttributeMap;
+
+    public:
+        // Used by EmitVISAPass to set function attributes
+        void SetFunctionIsKernel(llvm::Function* F) {
+            funcAttributeMap[F].isKernel = true;
+        }
+        void SetFunctionHasBarrier(llvm::Function* F) {
+            funcAttributeMap[F].hasBarrier = true;
+        }
+        void SetFunctionMaxArgumentStackSize(llvm::Function* F, unsigned size) {
+            funcAttributeMap[F].argumentStackSize = MAX(funcAttributeMap[F].argumentStackSize, size);
+        }
+        void SetFunctionAllocaStackSize(llvm::Function* F, unsigned size) {
+            funcAttributeMap[F].allocaStackSize = size;
+        }
     };
 
     inline void CEncoder::Jump(uint label)

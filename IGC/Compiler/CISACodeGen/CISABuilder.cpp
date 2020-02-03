@@ -4725,6 +4725,42 @@ namespace IGC
         assert(sizeof(vISA::GenRelocEntry) * tableEntries == bufferSize);
     }
 
+    void CEncoder::CreateFuncAttributeTable(void*& buffer, unsigned& bufferSize, unsigned& tableEntries)
+    {
+        buffer = nullptr;
+        bufferSize = 0;
+        tableEntries = 0;
+
+        std::vector<vISA::GenFuncAttribEntry> attribTable;
+        for (auto it : funcAttributeMap)
+        {
+            vISA::GenFuncAttribEntry entry;
+            Function* F = it.first;
+
+            // Ignore internal functions
+            if (!isEntryFunc(m_program->GetContext()->getMetaDataUtils(), F) &&
+                !F->hasFnAttribute("IndirectlyCalled"))
+                continue;
+
+            assert(F->getName().size() <= vISA::MAX_SYMBOL_NAME_LENGTH);
+            strcpy_s(entry.f_name, vISA::MAX_SYMBOL_NAME_LENGTH, F->getName().str().c_str());
+            entry.f_isKernel = it.second.isKernel ? 1 : 0;
+            entry.f_hasBarrier = it.second.hasBarrier ? 1 : 0;
+            entry.f_privateMemPerThread = (uint32_t) (it.second.argumentStackSize + it.second.allocaStackSize);
+
+            attribTable.push_back(entry);
+        }
+
+        if (!attribTable.empty())
+        {
+            tableEntries = attribTable.size();
+            bufferSize = tableEntries * sizeof(vISA::GenFuncAttribEntry);
+            buffer = (void*)malloc(bufferSize);
+            assert(buffer && "Table cannot be allocated");
+            memcpy_s(buffer, bufferSize, attribTable.data(), bufferSize);
+        }
+    }
+
     void CEncoder::Compile(bool hasSymbolTable)
     {
         CodeGenContext* context = m_program->GetContext();
@@ -5010,6 +5046,13 @@ namespace IGC
             CreateRelocationTable(pOutput->m_funcRelocationTable,
                 pOutput->m_funcRelocationTableSize,
                 pOutput->m_funcRelocationTableEntries);
+
+            if (IGC_IS_FLAG_ENABLED(EnableRuntimeFuncAttributePatching))
+            {
+                CreateFuncAttributeTable(pOutput->m_funcAttributeTable,
+                    pOutput->m_funcAttributeTableSize,
+                    pOutput->m_funcAttributeTableEntries);
+            }
         }
 
         if (jitInfo->isSpill == true)

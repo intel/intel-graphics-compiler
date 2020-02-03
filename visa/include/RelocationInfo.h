@@ -44,21 +44,21 @@ enum GenSymType {
     S_FUNC             = 2,    // The symbol is associated with a function
     S_GLOBAL_VAR       = 3,    // The symbol is associated with a global variable in global address space
     S_GLOBAL_VAR_CONST = 4,    // The symbol is associated with a global variable in constant address space
-    S_CONST_SAMPLER   = 5      // The symbol is associated with a constant sampler
+    S_CONST_SAMPLER    = 5     // The symbol is associated with a constant sampler
 };
 
 /// GenSymEntry - An symbol table entry
 typedef struct {
     uint32_t   s_type;            // The symbol's type
     uint32_t   s_offset;          // The binary offset of this symbol. This field is ignored if s_type is S_UNDEF
-    uint32_t   s_size;
+    uint32_t   s_size;            // The size in bytes of the function binary
     char       s_name[MAX_SYMBOL_NAME_LENGTH]; // The symbol's name
 } GenSymEntry;
 
 /// GenRelocType - Specify the relocation's type
 enum GenRelocType {
-    R_NONE     = 0,
-    R_SYM_ADDR = 1,      //64-bit type
+    R_NONE = 0,
+    R_SYM_ADDR = 1,      //64-bit type address
     R_SYM_ADDR_32 = 2,   //lower 32-bit of 64-bit address.
     R_SYM_ADDR_32_HI = 3 //higher 32bits of 64-bit address
 };
@@ -69,6 +69,14 @@ typedef struct {
     uint32_t   r_offset;      // The binary offset of the relocated target
     char       r_symbol[MAX_SYMBOL_NAME_LENGTH]; // The relocation target symbol's name
 } GenRelocEntry;
+
+/// GenFuncAttribEntry - Per-function attribute entry
+typedef struct {
+    uint8_t    f_isKernel;      // Is the function a kernel
+    uint8_t    f_hasBarrier;    // Does the function use barriers
+    uint32_t   f_privateMemPerThread; // Total private memory (in bytes) used by this function per thread
+    char       f_name[MAX_SYMBOL_NAME_LENGTH]; // The function's name
+} GenFuncAttribEntry;
 
 }
 

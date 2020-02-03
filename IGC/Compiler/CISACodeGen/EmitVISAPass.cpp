@@ -9564,8 +9564,14 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
             // end of reading return value from stack
         }
     }
-    //  update stack pointer after the call
 
+    // Set the max stack sized pushed in the parent function for this call's args
+    if (offsetS > 0)
+    {
+        m_encoder->SetFunctionMaxArgumentStackSize(inst->getParent()->getParent(), offsetS);
+    }
+
+    //  update stack pointer after the call
     CVariable* pSP = m_currShader->GetSP();
     CVariable* pPopSize = m_currShader->ImmToVariable((uint64_t)(~offsetS + 1), ISA_TYPE_D);
     emitAddSP(pSP, pSP, pPopSize);
@@ -9747,6 +9753,9 @@ void EmitPass::emitStackFuncEntry(Function* F, bool ptr64bits)
             CVariable* pSP = m_currShader->GetSP();
             unsigned totalAllocaSize = funcMDItr->second.privateMemoryPerWI * numLanes(m_currShader->m_dispatchSize);
             emitAddSP(pSP, pSP, m_currShader->ImmToVariable(totalAllocaSize, ISA_TYPE_UD));
+
+            // Set the per-function private mem size
+            m_encoder->SetFunctionAllocaStackSize(F, totalAllocaSize);
         }
     }
 }
@@ -13034,6 +13043,9 @@ void EmitPass::emitThreadGroupBarrier(llvm::Instruction* inst)
         m_currShader->SetHasBarrier();
         m_encoder->Barrier(BarrierKind);
         m_encoder->Push();
+
+        // Set if barrier was used for this function
+        m_encoder->SetFunctionHasBarrier(inst->getParent()->getParent());
     }
 }
 

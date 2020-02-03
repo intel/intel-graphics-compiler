@@ -280,13 +280,26 @@ void CShader::InitKernelStack(CVariable*& stackBase, CVariable*& stackAllocSize,
     encoder.SetSrcSubReg(0, 5);
     encoder.And(pHWTID, GetR0(), ImmToVariable(0x1ff, ISA_TYPE_UD));
     encoder.Push();
-    // hard-code per-workitem private-memory size to 8k
-    CVariable* pSize = ImmToVariable(8 * 1024 * numLanes(m_dispatchSize), ISA_TYPE_UD);
+
+    CVariable* pSize = nullptr;
+    if (IGC_IS_FLAG_ENABLED(EnableRuntimeFuncAttributePatching))
+    {
+        // Experimental: Patch private memory size
+        pSize = GetNewVariable(1, ISA_TYPE_UD, CVariable::getAlignment(getGRFSize()), true);
+        std::string patchName = "INTEL_PATCH_PRIVATE_MEMORY_SIZE";
+        encoder.AddVISASymbol(patchName, pSize);
+    }
+    else
+    {
+        // hard-code per-workitem private-memory size to 8k
+        pSize = ImmToVariable(8 * 1024 * numLanes(m_dispatchSize), ISA_TYPE_UD);
+    }
+
     CVariable* pTemp = GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, 1);
     encoder.Mul(pTemp, pHWTID, pSize);
     encoder.Push();
-    // reserve space for alloca
 
+    // reserve space for alloca
     auto funcMDItr = m_ModuleMetadata->FuncMD.find(entry);
     if (funcMDItr != m_ModuleMetadata->FuncMD.end())
     {
@@ -295,8 +308,13 @@ void CShader::InitKernelStack(CVariable*& stackBase, CVariable*& stackAllocSize,
             unsigned totalAllocaSize = funcMDItr->second.privateMemoryPerWI * numLanes(m_dispatchSize);
             encoder.Add(pTemp, pTemp, ImmToVariable(totalAllocaSize, ISA_TYPE_UD));
             encoder.Push();
+
+            // Set the total alloca size for the entry function
+            encoder.SetFunctionAllocaStackSize(entry, totalAllocaSize);
         }
     }
+    // Indicate this is the kernel function
+    encoder.SetFunctionIsKernel(entry);
 
     // modify private-memory size to a large setting
     m_ModuleMetadata->FuncMD[entry].privateMemoryPerWI = 8192;
