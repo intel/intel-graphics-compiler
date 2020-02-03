@@ -210,7 +210,7 @@ void LocalRA::preLocalRAAnalysis()
                 pregs->setGRFUnavailable(regNum);
             }
 
-            numRegLRA = 125 - numRowsReserved;
+            numRegLRA = (kernel.getNumRegTotal() - 3) - numRowsReserved;
         }
 
         if (builder.getOption(vISA_Debug))

@@ -6794,6 +6794,10 @@ void GraphColor::addCallerSaveRestoreCode()
 
             INST_LIST_ITER insertSaveIt = (*it)->end();
             --insertSaveIt, --insertSaveIt;
+            while ((*insertSaveIt)->isPseudoKill())
+            {
+                --insertSaveIt;
+            }
             MUST_BE_TRUE((*insertSaveIt)->opcode() == G4_pseudo_caller_save, ERROR_REGALLOC);
             INST_LIST_ITER rmIt = insertSaveIt;
             if (insertSaveIt == (*it)->begin())
