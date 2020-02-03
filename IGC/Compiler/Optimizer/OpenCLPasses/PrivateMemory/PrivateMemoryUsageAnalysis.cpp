@@ -64,6 +64,8 @@ bool PrivateMemoryUsageAnalysis::runOnModule(Module& M)
             continue;
         if (pMdUtils->findFunctionsInfoItem(pFunc) == pMdUtils->end_FunctionsInfo())
             continue;
+        if (pFunc->hasFnAttribute("IndirectlyCalled"))
+            continue;
         if (runOnFunction(*pFunc))
         {
             changed = true;

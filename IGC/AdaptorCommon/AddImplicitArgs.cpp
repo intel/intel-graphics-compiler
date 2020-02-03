@@ -79,10 +79,6 @@ bool AddImplicitArgs::runOnModule(Module &M)
     // Set all implicit args needed by indirect calls
     if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer))
     {
-        m_IndirectImplicitArgs.push_back(ImplicitArg::R0);
-        m_IndirectImplicitArgs.push_back(ImplicitArg::PAYLOAD_HEADER);
-        m_IndirectImplicitArgs.push_back(ImplicitArg::PRIVATE_BASE);
-
         // Check if any indirect functions uses GAS, if so we have to add the implicit arg to all indirect functions
         // Lazy Method. Can be removed once we can support GAS without using implicit args
         if (ctx->m_instrTypes.hasGenericAddressSpacePointers)
@@ -553,63 +549,6 @@ void AddImplicitArgs::FixIndirectCalls(Module& M)
     std::vector<Instruction*> list_delete;
     std::vector<Function*> funcs_delete;
 
-    // First handle direct calls to function declarations
-    for (auto& F : M)
-    {
-        Function* pFunc = &F;
-        // Handle external function calls
-        if (pFunc->hasFnAttribute("IndirectlyCalled") && pFunc->isDeclaration() && pFunc->getNumUses() > 0)
-        {
-            SmallVector<Type*, 8> argTy;
-            // original arg types
-            for (auto& args : pFunc->args()) argTy.push_back(args.getType());
-            // implicit arg types
-            // HACK: manually set implicit arg types
-            argTy.push_back(VectorType::get(Type::getInt32Ty(pFunc->getContext()), 8)); // R0
-            argTy.push_back(VectorType::get(Type::getInt32Ty(pFunc->getContext()), 8)); // payload_header
-            argTy.push_back(Type::getInt8PtrTy(pFunc->getContext(), 0)); // private_base
-
-            FunctionType* fTy = FunctionType::get(pFunc->getReturnType(), argTy, false);
-            Function* pNewFunc = Function::Create(fTy, pFunc->getLinkage());
-            pNewFunc->copyAttributesFrom(pFunc);
-            pNewFunc->setSubprogram(pFunc->getSubprogram());
-            M.getFunctionList().insert(pFunc->getIterator(), pNewFunc);
-            pNewFunc->takeName(pFunc);
-
-            // Modify each call instruction. Direct calls only.
-            for (auto user : pFunc->users())
-            {
-                if (CallInst* call = dyn_cast<CallInst>(user))
-                {
-                    Function* parentF = call->getParent()->getParent();
-                    ImplicitArgs implicitArgs(*parentF, m_pMdUtils);
-                    SmallVector<Value*, 8> args(call->arg_operands());
-                    for (auto IA : m_IndirectImplicitArgs)
-                    {
-                        args.push_back(implicitArgs.getImplicitArg(*parentF, IA));
-                    }
-
-                    IRBuilder<> builder(call);
-                    CallInst* newCall = builder.CreateCall(pNewFunc, args);
-                    call->replaceAllUsesWith(newCall);
-                    newCall->copyMetadata(*call);
-                    list_delete.push_back(call);
-                }
-            }
-            funcs_delete.push_back(pFunc);
-        }
-    }
-    for (auto i : list_delete)
-    {
-        i->eraseFromParent();
-    }
-    for (auto func : funcs_delete)
-    {
-        func->eraseFromParent();
-    }
-    list_delete.clear();
-    funcs_delete.clear();
-
     // Handle all indirect calls
     for (auto &F : M)
     {
@@ -621,6 +560,7 @@ void AddImplicitArgs::FixIndirectCalls(Module& M)
                 {
                     if (call->isInlineAsm()) continue;
                     if (call->getCalledFunction() != nullptr) continue;
+                    if (m_IndirectImplicitArgs.empty()) continue;
 
                     SmallVector<Value*, 8> args;
                     SmallVector<Type*, 8> argTys;
