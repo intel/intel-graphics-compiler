@@ -55,14 +55,22 @@ namespace GenISAIntrinsic {
   /// Intrinsic::getDeclaration(M, ID) - Create or insert an LLVM Function
   /// declaration for an intrinsic, and return it.
   ///
-  /// The Tys parameter is for intrinsics with overloaded types (e.g., those
-  /// using iAny, fAny, vAny, or iPTRAny).  For a declaration of an overloaded
-  /// intrinsic, Tys must provide exactly one type for each overloaded type in
-  /// the intrinsic.
+  /// The OverloadedTys parameter is for intrinsics with overloaded types
+  /// (i.e., those using iAny, fAny, vAny, or iPTRAny).  For a declaration of
+  /// an overloaded intrinsic, Tys must provide exactly one type for each
+  /// overloaded type in the intrinsic in order of dst then srcs.
+  ///
+  /// For instance, consider the following overloaded function.
+  ///    uint2 foo(size_t offset, int bar, const __global uint2 *p);
+  ///    uint4 foo(size_t offset, int bar, const __global uint4 *p);
+  /// Such a function has two overloaded type parameters: dst and src2.
+  /// Thus the type array should two elements:
+  ///    Type Ts[2]{int2, int2}: to resolve to the first instance.
+  ///    Type Ts[2]{int4, int4}: to resolve to the second.
 #if defined(ANDROID) || defined(__linux__)
-  __attribute__ ((visibility ("default"))) Function *getDeclaration(Module *M, ID id, ArrayRef<Type*> Tys = None);
+  __attribute__ ((visibility ("default"))) Function *getDeclaration(Module *M, ID id, ArrayRef<Type*> OverloadedTys = None);
 #else
-  Function *getDeclaration(Module *M, ID id, ArrayRef<Type*> Tys = None);
+  Function *getDeclaration(Module *M, ID id, ArrayRef<Type*> OverloadedTys = None);
 #endif
   IGCLLVM::AttributeSet getGenIntrinsicAttributes(LLVMContext& C, GenISAIntrinsic::ID id);
 

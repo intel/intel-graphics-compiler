@@ -506,31 +506,43 @@ bool GenISAIntrinsic::isOverloaded(GenISAIntrinsic::ID id) {
 #include "IntrinsicGenISA.gen"
 #undef GET_INTRINSIC_GENERATOR_GLOBAL
 
-IGCLLVM::AttributeSet GenISAIntrinsic::getGenIntrinsicAttributes(LLVMContext& C, GenISAIntrinsic::ID id)
+IGCLLVM::AttributeSet GenISAIntrinsic::getGenIntrinsicAttributes(
+    LLVMContext& C, GenISAIntrinsic::ID id)
 {
     return getAttributes(C, (GenISAIntrinsic::ID)(id - 1));
 }
 
-Function *GenISAIntrinsic::getDeclaration(Module *Module, GenISAIntrinsic::ID id, ArrayRef<Type*> Tys) {
+Function *GenISAIntrinsic::getDeclaration(
+    Module *Module, GenISAIntrinsic::ID id, ArrayRef<Type*> Tys)
+{
     // There can never be multiple globals with the same name of different types,
     // because intrinsics must be a specific type.
     IGCLLVM::Module* M = (IGCLLVM::Module*)Module;
 
     Function *F =
-        cast<Function>(M->getOrInsertFunction(getName((GenISAIntrinsic::ID)(id-Intrinsic::num_intrinsics), Tys),
-                       getType(M->getContext(),
-                       (GenISAIntrinsic::ID)(id-Intrinsic::num_intrinsics), Tys),
-                       getAttributes(M->getContext(),(GenISAIntrinsic::ID)(id-1))));
+        cast<Function>(
+            M->getOrInsertFunction(
+                getName((GenISAIntrinsic::ID)(id-Intrinsic::num_intrinsics), Tys),
+                getType(
+                    M->getContext(),
+                    (GenISAIntrinsic::ID)(id-Intrinsic::num_intrinsics),
+                    Tys),
+                getAttributes(M->getContext(),(GenISAIntrinsic::ID)(id - 1))));
 
-    //Since Function::isIntrinsic() will return true due to llvm. prefix, Module::getOrInsertFunction fails to add the attributes.
-    //explicitly adding the attribute to handle this problem.
-    //This since is setup on the function declaration, attribute assignment is global and hence this approach suffices.
+    // Since Function::isIntrinsic() will return true due to llvm.* prefix,
+    // Module::getOrInsertFunction fails to add the attributes.
+    // explicitly adding the attribute to handle this problem.
+    // This since is setup on the function declaration, attribute assignment
+    // is global and hence this approach suffices.
     F->setAttributes(getAttributes(M->getContext(), (GenISAIntrinsic::ID)(id - 1)));
     return F;
 }
 
-void GenISAIntrinsic::getIntrinsicInfoTableEntries(GenISAIntrinsic::ID id,
-                                             SmallVectorImpl<IITDescriptor> &T, ArrayRef<Type*> Tys){
+void GenISAIntrinsic::getIntrinsicInfoTableEntries(
+    GenISAIntrinsic::ID id,
+    SmallVectorImpl<IITDescriptor> &T,
+    ArrayRef<Type*> Tys)
+{
   // Check to see if the intrinsic's type was expressible by the table.
   unsigned TableVal = IIT_Table[id-1];
 
