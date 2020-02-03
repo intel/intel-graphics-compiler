@@ -123,7 +123,11 @@ extern SRegKeysList g_RegKeyList;
 #define IGC_GET_REGKEYSTRING( name )               \
 ( CheckHashRange(g_RegKeyList.name.hashes) ? g_RegKeyList.name.m_string : "" )
 #endif
+
+
+
 void DumpIGCRegistryKeyDefinitions();
+void DumpIGCRegistryKeyDefinitions3(std::string driverRegistryPath, unsigned long pciBus, unsigned long pciDevice, unsigned long pciFunction);
 void LoadRegistryKeys(const std::string& options = "");
 void SetCurrentDebugHash(unsigned long long hash);
 #undef LINUX_RELEASE_MODE

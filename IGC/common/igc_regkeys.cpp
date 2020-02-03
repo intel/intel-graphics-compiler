@@ -23,6 +23,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+
 #include "igc_regkeys.hpp"
 #if defined(IGC_DEBUG_VARIABLES)
 
@@ -176,10 +177,12 @@ static const char* ConvertType(const char* flagType)
     }                                  \
     firstGroup = false;                \
     fprintf(fp, "  <Group name=\"%s\">\n", groupName);
+
 void DumpIGCRegistryKeyDefinitions()
 {
 #ifdef _WIN32
     // Create the directory path
+
     iSTD::DirectoryCreate("C:\\Intel");
     iSTD::DirectoryCreate("C:\\Intel\\IGfx");
     iSTD::DirectoryCreate("C:\\Intel\\IGfx\\GfxRegistryManager");
@@ -205,6 +208,65 @@ void DumpIGCRegistryKeyDefinitions()
 }
 #undef DECLARE_IGC_REGKEY
 #undef DECLARE_IGC_GROUP
+
+void DumpIGCRegistryKeyDefinitions3(std::string driverRegistryPath, unsigned long pciBus, unsigned long pciDevice, unsigned long pciFunction)
+{
+#ifdef _WIN32
+    // Create the directory path
+
+    iSTD::DirectoryCreate("C:\\Intel");
+    iSTD::DirectoryCreate("C:\\Intel\\IGfx");
+    iSTD::DirectoryCreate("C:\\Intel\\IGfx\\GfxRegistryManager");
+    iSTD::DirectoryCreate("C:\\Intel\\IGfx\\GfxRegistryManager\\Keys");
+
+    if (driverRegistryPath.empty())
+    {
+        assert(!"Failed to find the driver registry path, cannot create the debug variable XML file.");
+        return;
+    }
+
+    std::string registryKeyPath = "HKLM\\SYSTEM\\ControlSet001\\Control\\Class\\" + driverRegistryPath + "\\IGC";
+
+#define DECLARE_IGC_REGKEY( dataType, regkeyName, defaultValue, descriptionText, releaseMode ) \
+    fprintf(fp, "    <Key name=\"%s\" type=\"%s\" location=\"%s\\%s\" description=\"%s\" />\n", \
+        #regkeyName,                                                                             \
+        ConvertType(#dataType),                                                                               \
+        registryKeyPath.c_str(),                                                              \
+        "",                                                                                     \
+        descriptionText);
+
+#define DECLARE_IGC_GROUP( groupName ) \
+    if(!firstGroup)                    \
+    {                                  \
+        fprintf(fp, "  </Group>\n");   \
+    }                                  \
+    firstGroup = false;                \
+    fprintf(fp, "  <Group name=\"%s\">\n", groupName);
+
+    std::string xmlPath = "C:\\Intel\\IGfx\\GfxRegistryManager\\Keys\\IGC." + std::to_string(pciBus) + "." + std::to_string(pciDevice) + "." + std::to_string(pciFunction) + ".xml";
+
+    // Create the XML file to hold the debug variable definitions
+    FILE* fp = fopen(xmlPath.c_str(), "w");
+
+    if (fp == NULL)
+    {
+        return;
+    }
+    bool firstGroup = true;
+    // Generate the XML
+    fprintf(fp, "<RegistryKeys>\n");
+#include "igc_regkeys.def"
+    fprintf(fp, "  </Group>\n");
+    fprintf(fp, "</RegistryKeys>\n");
+
+    fclose(fp);
+    fp = NULL;
+#endif
+}
+
+#undef DECLARE_IGC_REGKEY
+#undef DECLARE_IGC_GROUP
+
 
 /// Function taken from LLVM CommandLine.cpp file
 /// ParseCStringVector - Break INPUT up wherever one or more
