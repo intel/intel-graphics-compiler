@@ -392,35 +392,22 @@ private:
         return b;
     }
 
-    iga::RegRef getIGAFlagReg(G4_INST *inst)
+    void getIGAFlagInfo(
+        G4_INST* inst, const iga::OpSpec* opSpec, iga::Predication& pred,
+        iga::FlagModifier& condMod, iga::RegRef& flagReg);
+
+    iga::RegRef getIGAFlagReg(G4_VarBase* g4Base)
     {
         iga::RegRef reg = iga::REGREF_INVALID;
-        G4_Predicate* predG4 = inst->getPredicate();
         bool flagRegNumValid = true;
-        if (predG4)
-        {
-            reg.regNum =
-                (uint8_t)predG4->getBase()->ExRegNum(flagRegNumValid);
-            reg.subRegNum = (uint8_t)predG4->getBase()->asRegVar()->getPhyRegOff();
-        }
-
-        G4_CondMod* condModG4 = inst->getCondMod();
-        if (condModG4)
-        {
-            G4_VarBase* flagReg = condModG4->getBase();
-            if (flagReg != NULL)
-            {
-                reg.regNum = (uint8_t)flagReg->ExRegNum(flagRegNumValid);
-                reg.subRegNum = (uint8_t)flagReg->asRegVar()->getPhyRegOff();
-            }
-        }
+        reg.regNum = (uint8_t)g4Base->ExRegNum(flagRegNumValid);
         ASSERT_USER(flagRegNumValid, "Unable to retrieve flag Reg Num for predicate or conditional modifier.");
+        reg.subRegNum = (uint8_t)g4Base->asRegVar()->getPhyRegOff();
         return reg;
     }
 
-    iga::FlagModifier getIGAFlagModifier(G4_INST *inst) const
+    iga::FlagModifier getIGAFlagModifier(G4_CondMod* cMod) const
     {
-        auto cMod = inst->getCondMod();
         if (cMod == nullptr)
         {
             return iga::FlagModifier::NONE;

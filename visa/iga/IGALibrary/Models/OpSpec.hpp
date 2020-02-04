@@ -597,6 +597,11 @@ namespace iga
         bool supportsFlagModifier() const {
             return hasAttrs(Attr::SUPPORTS_FLAGMODIFIER);
         }
+        bool hasImplicitFlagModifier() const {
+            // math.invm and math.sqtrm has implicit flag modifier, which
+            // that flag register must be exisited
+            return isMathSubFunc() && isMacro();
+        }
         bool supportsSaturation() const {
             return hasAttrs(Attr::SUPPORTS_SATURATION);
         }
