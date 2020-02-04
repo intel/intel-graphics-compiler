@@ -636,10 +636,11 @@ namespace IGC
         bool ignoreRoundingMode(llvm::Instruction* inst) const;
 
         // A64 load/store with HWA that make sure the offset hi part is the same per LS call
-        void emitGatherA64(llvm::Value* loadInst, CVariable* dst, CVariable* offset, unsigned elemSize, unsigned numElems);
-        void emitGather4A64(llvm::Value* loadInst, CVariable* dst, CVariable* offset);
-        void emitScatterA64(CVariable* val, CVariable* offset, unsigned elementSize, unsigned numElems);
-        void emitScatter4A64(CVariable* src, CVariable* offset);
+        // addrUnifrom: if the load/store address is uniform, we can skip A64 WA
+        void emitGatherA64(llvm::Value* loadInst, CVariable* dst, CVariable* offset, unsigned elemSize, unsigned numElems, bool addrUniform);
+        void emitGather4A64(llvm::Value* loadInst, CVariable* dst, CVariable* offset, bool addrUniform);
+        void emitScatterA64(CVariable* val, CVariable* offset, unsigned elementSize, unsigned numElems, bool addrUniform);
+        void emitScatter4A64(CVariable* src, CVariable* offset, bool addrUniform);
 
         // Helper functions that create loop for above WA
         void A64LSLoopHead(CVariable* addr, CVariable*& curMask, CVariable*& lsPred, uint& label);

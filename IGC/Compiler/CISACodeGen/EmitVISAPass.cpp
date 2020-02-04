@@ -4995,7 +4995,7 @@ void EmitPass::emitLegacySimdBlockWrite(llvm::Instruction* inst, llvm::Value* pt
         m_encoder->SetUniformSIMDSize(simdmode);
         if (useA64)
         {
-            emitScatterA64(data, ScatterOff, blkBits, nBlks);
+            emitScatterA64(data, ScatterOff, blkBits, nBlks, true);
         }
         else
         {
@@ -5181,7 +5181,7 @@ void EmitPass::emitLegacySimdBlockRead(llvm::Instruction* inst, llvm::Value* ptr
         m_encoder->SetUniformSIMDSize(simdmode);
         if (useA64)
         {
-            emitGatherA64(inst, gatherDst, gatherOff, blkBits, nBlks);
+            emitGatherA64(inst, gatherDst, gatherOff, blkBits, nBlks, true);
         }
         else
         {
@@ -14438,9 +14438,9 @@ bool EmitPass::hasA64WAEnable() const
     return m_currShader->m_Platform->WaEnableA64WA();
 }
 
-void EmitPass::emitGatherA64(Value* loadInst, CVariable* dst, CVariable* offset, unsigned elemSize, unsigned numElems)
+void EmitPass::emitGatherA64(Value* loadInst, CVariable* dst, CVariable* offset, unsigned elemSize, unsigned numElems, bool addrUniform)
 {
-    if (hasA64WAEnable() && !offset->IsUniform()) {
+    if (hasA64WAEnable() && !offset->IsUniform() && !addrUniform) {
         CVariable* curMask = nullptr;
         CVariable* lsPred = nullptr;
         uint label = 0;
@@ -14463,9 +14463,9 @@ void EmitPass::emitGatherA64(Value* loadInst, CVariable* dst, CVariable* offset,
     }
 }
 
-void EmitPass::emitGather4A64(Value* loadInst, CVariable* dst, CVariable* offset)
+void EmitPass::emitGather4A64(Value* loadInst, CVariable* dst, CVariable* offset, bool addrUniform)
 {
-    if (hasA64WAEnable() && !offset->IsUniform()) {
+    if (hasA64WAEnable() && !offset->IsUniform() && !addrUniform) {
         CVariable* curMask = nullptr;
         CVariable* lsPred = nullptr;
         uint label = 0;
@@ -14489,9 +14489,9 @@ void EmitPass::emitGather4A64(Value* loadInst, CVariable* dst, CVariable* offset
     }
 }
 
-void EmitPass::emitScatterA64(CVariable* val, CVariable* offset, unsigned elementSize, unsigned numElems)
+void EmitPass::emitScatterA64(CVariable* val, CVariable* offset, unsigned elementSize, unsigned numElems, bool addrUniform)
 {
-    if (hasA64WAEnable() && !offset->IsUniform()) {
+    if (hasA64WAEnable() && !offset->IsUniform() && !addrUniform) {
         CVariable* curMask = nullptr;
         CVariable* lsPred = nullptr;
         uint label = 0;
@@ -14510,9 +14510,9 @@ void EmitPass::emitScatterA64(CVariable* val, CVariable* offset, unsigned elemen
     }
 }
 
-void EmitPass::emitScatter4A64(CVariable* src, CVariable* offset)
+void EmitPass::emitScatter4A64(CVariable* src, CVariable* offset, bool addrUniform)
 {
-    if (hasA64WAEnable() && !offset->IsUniform()) {
+    if (hasA64WAEnable() && !offset->IsUniform() && !addrUniform) {
         CVariable* curMask = nullptr;
         CVariable* lsPred = nullptr;
         uint label = 0;
@@ -14607,7 +14607,7 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
         }
         else
         {
-            emitGatherA64(inst, gatherDst, eOffset, 8, totalBytes);
+            emitGatherA64(inst, gatherDst, eOffset, 8, totalBytes, srcUniform);
         }
 
         m_encoder->Push();
@@ -14797,7 +14797,7 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
         }
         else
         {
-            emitGatherA64(inst, gatherDst, gatherOff, blkBits, nBlks);
+            emitGatherA64(inst, gatherDst, gatherOff, blkBits, nBlks, srcUniform);
         }
         m_encoder->Push();
 
@@ -14875,10 +14875,10 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
                 m_encoder->Gather4Scaled(subLoadDst, resource, addrVarSIMD8);
                 break;
             case VectorMessage::MESSAGE_A64_UNTYPED_SURFACE_RW:
-                emitGather4A64(inst, subLoadDst, addrVarSIMD8);
+                emitGather4A64(inst, subLoadDst, addrVarSIMD8, true);
                 break;
             case VectorMessage::MESSAGE_A64_SCATTERED_RW:
-                emitGatherA64(inst, subLoadDst, addrVarSIMD8, blkBits, numBlks);
+                emitGatherA64(inst, subLoadDst, addrVarSIMD8, blkBits, numBlks, true);
                 break;
             default:
                 assert(0 && "Somethings wrong!");
@@ -14950,10 +14950,10 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
             m_encoder->Gather4Scaled(gatherDst, resource, rawAddrVar);
             break;
         case VectorMessage::MESSAGE_A64_UNTYPED_SURFACE_RW:
-            emitGather4A64(inst, gatherDst, rawAddrVar);
+            emitGather4A64(inst, gatherDst, rawAddrVar, false);
             break;
         case VectorMessage::MESSAGE_A64_SCATTERED_RW:
-            emitGatherA64(inst, gatherDst, rawAddrVar, blkBits, numBlks);
+            emitGatherA64(inst, gatherDst, rawAddrVar, blkBits, numBlks, false);
             break;
         default:
             assert(false && "Internal Error: unexpected message kind for load!");
@@ -15204,7 +15204,7 @@ void EmitPass::emitVectorStore(StoreInst* inst, Value* offset, ConstantInt* immO
         }
         else
         {
-            emitScatterA64(storedVar, eOffset, blkBits, nBlks);
+            emitScatterA64(storedVar, eOffset, blkBits, nBlks, true);
         }
 
         if (dstUniform)
@@ -15264,10 +15264,10 @@ void EmitPass::emitVectorStore(StoreInst* inst, Value* offset, ConstantInt* immO
                 m_encoder->Scatter4Scaled(subStoredVar, resource, rawAddrVar);
                 break;
             case VectorMessage::MESSAGE_A64_UNTYPED_SURFACE_RW:
-                emitScatter4A64(subStoredVar, rawAddrVar);
+                emitScatter4A64(subStoredVar, rawAddrVar, false);
                 break;
             case VectorMessage::MESSAGE_A64_SCATTERED_RW:
-                emitScatterA64(subStoredVar, rawAddrVar, blkBits, numBlks);
+                emitScatterA64(subStoredVar, rawAddrVar, blkBits, numBlks, false);
                 break;
             default:
                 assert(false && "Internal Error: unexpected Message kind for store");
