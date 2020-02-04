@@ -1113,6 +1113,9 @@ public:
         return inst;
     }
 
+    static const unsigned int HWORD_BYTE_SIZE = 32;
+
+    // For spill/fill intrinsic creation methods below, offset is in hword units.
     G4_INST* createSpill(
         G4_DstRegRegion* dst, G4_SrcRegRegion* header, G4_SrcRegRegion* payload,
         unsigned int execSize,
@@ -1124,7 +1127,7 @@ public:
         spill->asSpillIntrinsic()->setSrcFilename(srcFilename);
         spill->asSpillIntrinsic()->setCISAOff(CISAoff);
         spill->asSpillIntrinsic()->setFP(fp);
-        spill->asSpillIntrinsic()->setOffset(offset);
+        spill->asSpillIntrinsic()->setOffset((offset * HWORD_BYTE_SIZE) / G4_GRF_REG_NBYTES);
         spill->asSpillIntrinsic()->setNumRows(numRows);
         return spill;
     }
@@ -1144,7 +1147,7 @@ public:
         spill->asSpillIntrinsic()->setSrcFilename(srcFilename);
         spill->asSpillIntrinsic()->setCISAOff(CISAoff);
         spill->asSpillIntrinsic()->setFP(fp);
-        spill->asSpillIntrinsic()->setOffset(offset);
+        spill->asSpillIntrinsic()->setOffset((offset * HWORD_BYTE_SIZE) / G4_GRF_REG_NBYTES);
         spill->asSpillIntrinsic()->setNumRows(numRows);
         return spill;
     }
@@ -1157,7 +1160,7 @@ public:
         fill->asFillIntrinsic()->setSrcFilename(srcFilename);
         fill->asFillIntrinsic()->setCISAOff(CISAoff);
         fill->asFillIntrinsic()->setFP(fp);
-        fill->asFillIntrinsic()->setOffset(offset);
+        fill->asFillIntrinsic()->setOffset((offset * HWORD_BYTE_SIZE) / G4_GRF_REG_NBYTES);
         fill->asFillIntrinsic()->setNumRows(numRows);
         return fill;
     }
@@ -1173,7 +1176,7 @@ public:
         fill->asFillIntrinsic()->setSrcFilename(srcFilename);
         fill->asFillIntrinsic()->setCISAOff(CISAoff);
         fill->asFillIntrinsic()->setFP(fp);
-        fill->asFillIntrinsic()->setOffset(offset);
+        fill->asFillIntrinsic()->setOffset((offset * HWORD_BYTE_SIZE) / G4_GRF_REG_NBYTES);
         fill->asFillIntrinsic()->setNumRows(numRows);
         return fill;
     }
