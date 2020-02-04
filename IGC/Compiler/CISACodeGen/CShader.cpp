@@ -353,7 +353,7 @@ void CShader::CreateImplicitArgs()
 
     // Push Args are only for entry function
     unsigned numPushArgsEntry = m_ModuleMetadata->pushInfo.pushAnalysisWIInfos.size();
-    unsigned numPushArgs = (isEntryFunc(m_pMdUtils, entry) && !isNonEntryMultirateShader(m_pMdUtils, entry) ? numPushArgsEntry : 0);
+    unsigned numPushArgs = (isEntryFunc(m_pMdUtils, entry) ? numPushArgsEntry : 0);
     unsigned numFuncArgs = IGCLLVM::GetFuncArgSize(entry) - numImplicitArgs - numPushArgs;
 
     // Create symbol for every arguments [5/2019]
@@ -2090,7 +2090,7 @@ CVariable* CShader::getOrCreateArgumentSymbol(
     ImplicitArgs implicitArgs(*F, m_pMdUtils);
     unsigned numImplicitArgs = implicitArgs.size();
     unsigned numPushArgsEntry = m_ModuleMetadata->pushInfo.pushAnalysisWIInfos.size();
-    unsigned numPushArgs = (isEntryFunc(m_pMdUtils, F) && !isNonEntryMultirateShader(m_pMdUtils, F) ? numPushArgsEntry : 0);
+    unsigned numPushArgs = (isEntryFunc(m_pMdUtils, F) ? numPushArgsEntry : 0);
     unsigned numFuncArgs = IGCLLVM::GetFuncArgSize(F) - numImplicitArgs - numPushArgs;
 
     CVariable* var = nullptr;
@@ -2125,7 +2125,7 @@ CVariable* CShader::getOrCreateArgumentSymbol(
                 uint32_t nIAs = (uint32_t)IAs.size();
                 uint32_t iArgIx = IAs.getArgIndex(ArgType);
                 uint32_t argIx = (uint32_t)IGCLLVM::GetFuncArgSize(K) - nIAs + iArgIx;
-                if (isEntryFunc(m_pMdUtils, &K) && !isNonEntryMultirateShader(m_pMdUtils , &K)) {
+                if (isEntryFunc(m_pMdUtils, &K)) {
                     argIx = argIx - numPushArgsEntry;
                 }
                 Function::arg_iterator arg = K.arg_begin();

@@ -137,16 +137,11 @@ void LinkMultiRateShader::GetPixelPhaseOutput(
 {
     Function* phaseInput = GenISAIntrinsic::getDeclaration(
         pixelPhase->getParent(),
-        GenISAIntrinsic::GenISA_PHASE_OUTPUT,
-        Type::getFloatTy(pixelPhase->getContext()));
-    Function* phaseHalfInput = GenISAIntrinsic::getDeclaration(
-        pixelPhase->getParent(),
-        GenISAIntrinsic::GenISA_PHASE_OUTPUT,
-        Type::getHalfTy(pixelPhase->getContext()));
-    SmallVector<Instruction*, 10> phaseIntrinsics;
-    auto getPhaseInputs = [&phaseIntrinsics, &outputs, &linkSignature, pixelPhase](User* user)
+        GenISAIntrinsic::GenISA_PHASE_OUTPUT);
+    SmallVector<Instruction*, 10> phaseIntrinsic;
+    for (auto I = phaseInput->user_begin(), E = phaseInput->user_end(); I != E; ++I)
     {
-        if (Instruction * inst = dyn_cast<Instruction>(user))
+        if (Instruction * inst = dyn_cast<Instruction>(*I))
         {
             if (inst->getParent()->getParent() == pixelPhase)
             {
@@ -157,21 +152,13 @@ void LinkMultiRateShader::GetPixelPhaseOutput(
                     unsigned int location = it->second;
                     outputs[location + 1] = inst->getOperand(0);
                 }
-                phaseIntrinsics.push_back(inst);
+                phaseIntrinsic.push_back(inst);
             }
         }
-    };
-    for (auto* user : phaseInput->users())
-    {
-        getPhaseInputs(user);
     }
-    for (auto* user : phaseHalfInput->users())
+    for (auto it = phaseIntrinsic.begin(), itEnd = phaseIntrinsic.end(); it != itEnd; ++it)
     {
-        getPhaseInputs(user);
-    }
-    for (auto phaseIntrinsic : phaseIntrinsics)
-    {
-        phaseIntrinsic->eraseFromParent();
+        (*it)->eraseFromParent();
     }
 }
 
@@ -235,22 +222,15 @@ Function* LinkMultiRateShader::PatchSamplePhaseSignature(
     FuncUpgrader.SetFunctionToUpgrade(samplePhase);
 
     // find all the phase inputs
-    Function* phaseInput = GenISAIntrinsic::getDeclaration(
-        M,
-        GenISAIntrinsic::GenISA_PHASE_INPUT,
-        builder.getFloatTy());
-    Function* phaseHalfInput = GenISAIntrinsic::getDeclaration(
-        M,
-        GenISAIntrinsic::GenISA_PHASE_INPUT,
-        builder.getHalfTy());
+    Function* phaseInput = GenISAIntrinsic::getDeclaration(M, GenISAIntrinsic::GenISA_PHASE_INPUT);
     Value* sampleIndex = FuncUpgrader.AddArgument("", builder.getInt32Ty());
 
     SmallVector<Type*, 10> funcSignature;
     funcSignature.push_back(builder.getInt32Ty());
     unsigned int inputLocation = 0;
-    auto getLinkInfo = [samplePhase, &linkArguments, &linkSignature, &FuncUpgrader, &funcSignature, &inputLocation](User* user)
+    for (auto I = phaseInput->user_begin(), E = phaseInput->user_end(); I != E; ++I)
     {
-        if (Instruction * inst = dyn_cast<Instruction>(user))
+        if (Instruction * inst = dyn_cast<Instruction>(*I))
         {
             if (inst->getParent()->getParent() == samplePhase)
             {
@@ -271,14 +251,6 @@ Function* LinkMultiRateShader::PatchSamplePhaseSignature(
                 inst->replaceAllUsesWith(arg);
             }
         }
-    };
-    for (auto* user : phaseInput->users())
-    {
-        getLinkInfo(user);
-    }
-    for (auto* user : phaseHalfInput->users())
-    {
-        getLinkInfo(user);
     }
 
     Function* newSamplePhase = FuncUpgrader.RebuildFunction();

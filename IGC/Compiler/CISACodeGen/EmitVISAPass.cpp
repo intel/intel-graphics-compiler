@@ -7017,8 +7017,7 @@ void EmitPass::getCoarsePixelSize(CVariable* destination, const uint component)
     assert(component < 2);
 
     CPixelShader* const psProgram = static_cast<CPixelShader*>(m_currShader);
-    CVariable* r1 = psProgram->GetPhase() == PSPHASE_PIXEL ? psProgram->GetCoarseR1() : psProgram->GetR1();
-    CVariable* const coarsePixelSize = m_currShader->BitCast(r1, ISA_TYPE_UB);
+    CVariable* const coarsePixelSize = m_currShader->BitCast(psProgram->GetR1(), ISA_TYPE_UB);
     m_encoder->SetSrcRegion(0, 0, 1, 0);
     m_encoder->SetSrcSubReg(0, (component == 0) ? 0 : 1);
     m_encoder->Cast(destination, coarsePixelSize);
@@ -13154,7 +13153,7 @@ void EmitPass::emitPhaseInput(llvm::GenIntrinsicInst* inst)
     assert(psProgram->GetPhase() == PSPHASE_PIXEL);
 
     unsigned int inputIndex = (unsigned int)cast<llvm::ConstantInt>(inst->getOperand(0))->getZExtValue();
-    CVariable* input = psProgram->GetCoarseInput(inputIndex, m_destination->GetType());
+    CVariable* input = psProgram->GetCoarseInput(inputIndex);
 
     // address variable represents register a0
     CVariable* pDstArrElm = m_currShader->GetNewAddressVariable(
@@ -13166,8 +13165,7 @@ void EmitPass::emitPhaseInput(llvm::GenIntrinsicInst* inst)
     // we add offsets to the base that is the beginning of the vector variable
     CVariable* index = psProgram->GetCoarseParentIndex();
     CVariable* byteAddress = psProgram->GetNewVariable(numLanes(m_SimdMode), ISA_TYPE_UW, EALIGN_OWORD);
-    DWORD shiftAmount = iSTD::Log2(CEncoder::GetCISADataTypeSize(input->GetType()));
-    m_encoder->Shl(byteAddress, index, psProgram->ImmToVariable(shiftAmount, ISA_TYPE_UW));
+    m_encoder->Shl(byteAddress, index, psProgram->ImmToVariable(2, ISA_TYPE_UW));
     m_encoder->Push();
 
     m_encoder->AddrAdd(pDstArrElm, input, byteAddress);
