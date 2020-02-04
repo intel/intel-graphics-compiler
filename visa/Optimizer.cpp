@@ -11971,16 +11971,28 @@ void Optimizer::replaceNoMaskWithAnyhWA()
     auto createFlagFromCmp = [&](G4_INST*& flagDefInst,
         uint32_t flagBits, G4_BB* BB, INST_LIST_ITER& II)->G4_RegVar*
     {
+        //  Ty  (for flag):  big enough to hold flag for either anyh or all one flag.
+        //                   if useAnyh
+        //                      Ty = (simdsize > 16> ? UD : UW
+        //                   else
+        //                      Ty = max(simdsize, flagBits) > 16 ? UD : UW
         //
-        //  I0:                    (W) mov (1|M0)  flag:Ty,  0
-        //  I1:                        cmp (16|M0) (eq)flag  r0:uw  r0:uw
-        //  flagDefInst: (W&flag.anyh) mov flag:Ty 0xFFFFFFFF:Ty
+        //  if useAnyh
+        //    I0:               (W) mov (1|M0)  flag:Ty,  0
+        //    flagDefInst:          cmp (simdsize|M0) (eq)flag  r0:uw  r0:uw
+        //  else
+        //    I0:               (W) mov (1|M0)  flag:Ty,  0
+        //    I1:                   cmp (simdsize|M0) (eq)flag  r0:uw  r0:uw
+        //    flagDefInst: (W&flag.anyh) mov flag:Ty 0xFFFFFFFF:Ty
         //
-        G4_Type Ty = (flagBits > 16) ? Type_UD : Type_UW;
+        G4_Type Ty = (simdsize > 16) ? Type_UD : Type_UW;
+        if (!useAnyh && flagBits == 32 && flagBits > simdsize)
+        {
+            Ty = Type_UD;
+        }
         G4_Declare* flagDecl = builder.createTempFlag((Ty == Type_UW ? 1 : 2), "cmpFlag");
         G4_RegVar* flagVar = flagDecl->getRegVar();
-        G4_DstRegRegion* flag = builder.createDst(
-            flagVar, 0, 0, 1, Ty);
+        G4_DstRegRegion* flag = builder.createDst(flagVar, 0, 0, 1, Ty);
         G4_INST* I0 = builder.createMov(1, flag,
             builder.createImm(0, Ty), InstOpt_WriteEnable, false);
         BB->insert(II, I0);
@@ -12025,7 +12037,7 @@ void Optimizer::replaceNoMaskWithAnyhWA()
     //
     // flagDefInst: created to define an emask flag using 'ce0 AND dmask'.
     //
-    // The function returns that the emask flag's G4_RegVar (refer to as flagVar).
+    // The function returns that emask flag's G4_RegVar (refer to as flagVar).
     // Note that flagDefInst will be inserted a few insts before II in BB,
     // not right before II if possible.
     auto createFlagFromCE0 = [&](G4_INST*& flagDefInst,
