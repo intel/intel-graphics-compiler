@@ -284,6 +284,11 @@ bool EmitPass::canCompileCurrentShader(llvm::Function& F)
             return m_SimdMode == SIMDMode::SIMD8;
         }
     }
+    else if(m_moduleMD->compOpt.IsLibraryCompilation == true)
+    {
+        return (m_SimdMode == SIMDMode::SIMD8 || m_SimdMode == SIMDMode::SIMD16);
+    }
+
     return true;
 }
 
