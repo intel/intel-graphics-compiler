@@ -495,6 +495,7 @@ void SubGroupFuncsResolution::subGroupReduce(WaveOps op, CallInst& CI)
         arg->getType());
     Instruction* waveAllCall = IRB.CreateCall(waveAll, args);
     CI.replaceAllUsesWith(waveAllCall);
+    CI.eraseFromParent();
 }
 
 void SubGroupFuncsResolution::subGroupScan(WaveOps op, CallInst& CI)
@@ -508,6 +509,7 @@ void SubGroupFuncsResolution::subGroupScan(WaveOps op, CallInst& CI)
         arg->getType());
     Instruction* waveScanCall = IRB.CreateCall(waveScan, args);
     CI.replaceAllUsesWith(waveScanCall);
+    CI.eraseFromParent();
 }
 
 void SubGroupFuncsResolution::visitCallInst(CallInst& CI)

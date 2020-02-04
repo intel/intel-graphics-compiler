@@ -1089,7 +1089,7 @@ namespace IGC
         {
             // Checks for some rare cases that are not handled by the splitter, but should be detected and reported.
             // Example: mov (8|M0)    r4.0<1>:q     r31.0<2;1,0>:q
-            constexpr unsigned maxBlockSize = 64; // size of 2 GRFs in bytes
+            unsigned maxBlockSize = getGRFSize() * 2; // size of 2 GRFs in bytes
             // For uniform variables (which implies simdSize==1) the emitter may set regions with width>1.
             // As it may happen in various places, we detect it here.
             assert(var->IsUniform() || GrfRegionSize(simdSize, elemSize, mod, isSource) <= maxBlockSize);

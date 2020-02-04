@@ -11106,24 +11106,31 @@ void EmitPass::emitReductionAll(
     CVariable* temp = srcH1;
     if (m_currShader->m_dispatchSize == SIMDMode::SIMD32)
     {
-        CVariable* srcH2 = ScanReducePrepareSrc(type, identityValue, negate, true /*secondHalf*/, src, nullptr /*dst*/);
-
-        temp = m_currShader->GetNewVariable(
-            numLanes(SIMDMode::SIMD16),
-            type,
-            IGC::EALIGN_GRF,
-            false);
-        if (isInt64Mul)
+        if (m_currShader->m_numberInstance == 1)
         {
-            CVariable* tmpMulSrc[2] = { srcH1, srcH2 };
-            Mul64(temp, tmpMulSrc, SIMDMode::SIMD16, true /*noMask*/);
+            temp = ReductionReduceHelper(op, type, SIMDMode::SIMD16, temp);
         }
         else
         {
-            m_encoder->SetNoMask();
-            m_encoder->SetSimdSize(SIMDMode::SIMD16);
-            m_encoder->GenericAlu(op, temp, srcH1, srcH2);
-            m_encoder->Push();
+            CVariable* srcH2 = ScanReducePrepareSrc(type, identityValue, negate, true /*secondHalf*/, src, nullptr /*dst*/);
+
+            temp = m_currShader->GetNewVariable(
+                numLanes(SIMDMode::SIMD16),
+                type,
+                IGC::EALIGN_GRF,
+                false);
+            if (isInt64Mul)
+            {
+                CVariable* tmpMulSrc[2] = { srcH1, srcH2 };
+                Mul64(temp, tmpMulSrc, SIMDMode::SIMD16, true /*noMask*/);
+            }
+            else
+            {
+                m_encoder->SetNoMask();
+                m_encoder->SetSimdSize(SIMDMode::SIMD16);
+                m_encoder->GenericAlu(op, temp, srcH1, srcH2);
+                m_encoder->Push();
+            }
         }
     }
     if (m_currShader->m_dispatchSize >= SIMDMode::SIMD16)
@@ -11281,10 +11288,9 @@ void EmitPass::emitPreOrPostFixOp(
         return;
     }
 
-    bool isSimd32 = (m_currShader->m_dispatchSize == SIMDMode::SIMD32);
-    int counter = 1;
-    if (isSimd32)
-        counter = 2;
+    bool isSimd32 = m_currShader->m_numberInstance == 2;
+    int counter = isSimd32 ? 2 : 1;
+
     CVariable* maskedSrc[2] = { 0 };
     for (int i = 0; i < counter; ++i)
     {
@@ -11425,6 +11431,7 @@ void EmitPass::emitPreOrPostFixOp(
             }
         }
     };
+
 
     for (int i = 0; i < counter; ++i)
     {
@@ -11577,7 +11584,7 @@ void EmitPass::emitPreOrPostFixOpScalar(
     const bool isInt64Mul = (op == EOPCODE_MUL && CEncoder::IsIntegerType(type) &&
         CEncoder::GetCISADataTypeSize(type) == 8);
 
-    bool isSimd32 = (m_currShader->m_dispatchSize == SIMDMode::SIMD32);
+    bool isSimd32 = m_currShader->m_numberInstance == 2;
     int counter = isSimd32 ? 2 : 1;
     CVariable* pSrcCopy[2] = {};
     for (int i = 0; i < counter; ++i)
@@ -11777,8 +11784,10 @@ void EmitPass::emitScalarAtomics(
         emitPreOrPostFixOp(op, identityValue, type, negateSrc, pSrc, pSrcsArr);
 
         CVariable* pSrcCopy = pSrcsArr[0];
-        if (m_currShader->m_dispatchSize == SIMDMode::SIMD32)
+        if (m_currShader->m_numberInstance == 2)
+        {
             pSrcCopy = pSrcsArr[1];
+        }
 
         m_encoder->SetSrcRegion(0, 0, 1, 0);
         m_encoder->SetSrcSubReg(0, numLanes(m_currShader->m_SIMDSize) - 1);
@@ -11828,7 +11837,7 @@ void EmitPass::emitScalarAtomics(
 
     if (returnsImmValue)
     {
-        unsigned int counter = m_currShader->m_dispatchSize == SIMDMode::SIMD32 ? 2 : 1;
+        unsigned int counter = m_currShader->m_numberInstance;
         assert(op == EOPCODE_ADD && "we can only get the return value for add right now");
         for (unsigned int i = 0; i < counter; ++i)
         {
@@ -13152,8 +13161,10 @@ void EmitPass::emitUniformAtomicCounter(llvm::GenIntrinsicInst* pInsn)
         IID == GenISAIntrinsic::GenISA_atomiccounterinc ? 1 : -1, ISA_TYPE_D);
     emitPreOrPostFixOp(EOPCODE_ADD, 0, ISA_TYPE_D, false, src, prefixVar);
     CVariable* pSrcCopy = prefixVar[0];
-    if (m_currShader->m_dispatchSize == SIMDMode::SIMD32)
+    if (m_currShader->m_numberInstance == 2)
+    {
         pSrcCopy = prefixVar[1];
+    }
 
     CVariable* pHeader = nullptr;
     if (hasheader)
@@ -13232,7 +13243,7 @@ void EmitPass::emitUniformAtomicCounter(llvm::GenIntrinsicInst* pInsn)
 
     if (returnsImmValue)
     {
-        unsigned int counter = m_currShader->m_dispatchSize == SIMDMode::SIMD32 ? 2 : 1;
+        unsigned int counter = m_currShader->m_numberInstance;
         for (unsigned int i = 0; i < counter; ++i)
         {
             m_encoder->SetSecondHalf(i == 1);
@@ -13342,7 +13353,7 @@ void EmitPass::emitAtomicCounter(llvm::GenIntrinsicInst* pInsn)
     if (IID == GenISAIntrinsic::GenISA_atomiccounterpredec &&
         !m_currShader->m_Platform->hasAtomicPreDec())
     {
-        unsigned int counter = m_currShader->m_dispatchSize == SIMDMode::SIMD32 ? 2 : 1;
+        unsigned int counter = m_currShader->m_numberInstance;
         for (unsigned int i = 0; i < counter; ++i)
         {
             m_encoder->SetSecondHalf(i == 1);
@@ -16393,7 +16404,7 @@ void EmitPass::emitScan(
     if (Flag)
         m_encoder->SetPredicate(Flag);
     m_encoder->Copy(m_destination, dst[0]);
-    if (m_currShader->m_dispatchSize == SIMDMode::SIMD32)
+    if (m_currShader->m_numberInstance == 2)
     {
         m_encoder->SetSecondHalf(true);
         m_encoder->Copy(m_destination, dst[1]);
