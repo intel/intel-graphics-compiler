@@ -570,6 +570,10 @@ TYPE __builtin_spirv_##FUNC_NAME##_p1##TYPE_ABBR(const __global ELEM_TYPE* p)   
 INLINE TYPE OVERLOADABLE  FUNC_NAME( const __local ELEM_TYPE* p )                                          \
 {                                                                                                          \
     return INTERNAL_FUNC(p);                                                                               \
+}                                                                                                          \
+TYPE __builtin_spirv_##FUNC_NAME##_p3##TYPE_ABBR(const __local ELEM_TYPE* p)                               \
+{                                                                                                          \
+    return INTERNAL_FUNC(p);                                                                               \
 }
 
 #if SUPPORT_ACCESS_QUAL_OVERLOAD
@@ -611,6 +615,10 @@ TYPE __builtin_spirv_##FUNC_NAME##_p1##PTR_TYPE##_##TYPE_ABBR(__global ELEM_TYPE
 
 #define  DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(FUNC_NAME, TYPE, ELEM_TYPE, PTR_TYPE, TYPE_ABBR, INTERNAL_FUNC)    \
 INLINE void OVERLOADABLE  FUNC_NAME( __local ELEM_TYPE* p, TYPE data )                                             \
+{                                                                                                                  \
+    INTERNAL_FUNC(p, data);                                                                                        \
+}                                                                                                                  \
+TYPE __builtin_spirv_##FUNC_NAME##_p3##PTR_TYPE##_##TYPE_ABBR(__local ELEM_TYPE* p, TYPE data)                     \
 {                                                                                                                  \
     INTERNAL_FUNC(p, data);                                                                                        \
 }
