@@ -217,6 +217,7 @@ namespace IGC
         bool disableMathRefactoring                     = false;
         bool EnableTakeGlobalAddress                    = false;
         bool IsLibraryCompilation                       = false;
+        bool FastVISACompile                            = false;
     };
 
     struct ComputeShaderInfo

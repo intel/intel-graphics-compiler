@@ -3677,6 +3677,11 @@ namespace IGC
         {
             params.push_back("-debug");
         }
+        if (context->getModuleMetaData()->compOpt.FastVISACompile)
+        {
+            params.push_back("-fasterRA");
+            params.push_back("-noLocalSplit");
+        }
         // Ensure VISA_Opts has the same scope as CreateVISABuilder so that valid
         // strings are checked by vISA and freed out of this function.
         if (IGC_IS_FLAG_ENABLED(VISAOptions))
