@@ -1431,6 +1431,41 @@ void LocalRA::calculateInputIntervals()
 #endif
 }
 
+bool LocalRA::hasDstSrcOverlapPotential(G4_DstRegRegion* dst, G4_SrcRegRegion* src)
+{
+    int dstOpndNumRows = 0;
+
+    if (dst->getBase()->isRegVar() && dst->getBase()->isRegAllocPartaker())
+    {
+        G4_Declare* dstDcl = dst->getBase()->asRegVar()->getDeclare();
+        int dstOffset = (dstDcl->getOffsetFromBase() + dst->getLeftBound()) / G4_GRF_REG_NBYTES;
+        G4_DstRegRegion* dstRgn = dst;
+        dstOpndNumRows = dstRgn->getSubRegOff() + dstRgn->getLinearizedEnd() - dstRgn->getLinearizedStart() + 1 > G4_GRF_REG_NBYTES;
+
+        if (src != NULL &&
+            src->isSrcRegRegion() &&
+            src->asSrcRegRegion()->getBase()->isRegVar())
+        {
+            G4_SrcRegRegion* srcRgn = src->asSrcRegRegion();
+            G4_Declare* srcDcl = src->getBase()->asRegVar()->getDeclare();
+            int srcOffset = (srcDcl->getOffsetFromBase() + src->getLeftBound()) / G4_GRF_REG_NBYTES;
+            bool srcOpndNumRows = srcRgn->getSubRegOff() + srcRgn->getLinearizedEnd() - srcRgn->getLinearizedStart() + 1 > G4_GRF_REG_NBYTES;
+
+            if (dstOpndNumRows || srcOpndNumRows)
+            {
+                if (!(gra.isEvenAligned(dstDcl) && gra.isEvenAligned(srcDcl) &&
+                    srcOffset % 2 == dstOffset % 2 &&
+                    dstOpndNumRows && srcOpndNumRows))
+                {
+                    return true;
+                }
+            }
+        }
+    }
+
+    return false;
+}
+
 // Function to calculate local live intervals in ascending order of starting point
 // in basic block bb.
 //
@@ -1507,6 +1542,12 @@ void LocalRA::calculateLiveIntervals(G4_BB* bb, std::vector<LocalLiveRange*>& li
                             (curInst->isSplitSend() && i == 1)))
                            )
                         {
+#ifdef DEBUG_VERBOSE_ON
+                            if (curInst->getDst() != NULL && hasDstSrcOverlapPotential(curInst->getDst(), src->asSrcRegRegion()))
+                            {
+                                curInst->dump();
+                            }
+#endif
                             lr->setLastRef(curInst, idx + 1);
                         }
                         else

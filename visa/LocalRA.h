@@ -95,6 +95,7 @@ namespace vISA
         void setLexicalID(bool includePseudo);
         void markReferences(unsigned int& numRowsEOT, bool& lifetimeOpFound);
         void calculateInputIntervals();
+        bool hasDstSrcOverlapPotential(G4_DstRegRegion* dst, G4_SrcRegRegion* src);
         void calculateLiveIntervals(G4_BB* bb, std::vector<LocalLiveRange*>& liveIntervals);
         void printAddressTakenDecls();
         void printLocalRACandidates();

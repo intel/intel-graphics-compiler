@@ -588,5 +588,10 @@
         return true;
     }
 
+    bool avoidDstSrcOverlap()
+    {
+        return false;
+    }
+
 
     // end HW capabilities

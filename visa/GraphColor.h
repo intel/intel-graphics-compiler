@@ -517,6 +517,8 @@ namespace vISA
 
         void buildInterferenceAmongLiveIns();
 
+        void markInterferenceToAvoidDstSrcOvrelap(G4_BB* bb, G4_INST* inst);
+
         void generateSparseIntfGraph();
         bool isStrongEdgeBetween(G4_Declare*, G4_Declare*);
     };

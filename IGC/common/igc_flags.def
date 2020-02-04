@@ -76,6 +76,7 @@ DECLARE_IGC_REGKEY(bool, GlobalSendVarSplit, false, "Enable global send variable
 DECLARE_IGC_REGKEY(DWORD,EnableSendFusion,              1,     "Enable(!=0)/disable(0)/force(2) send fusion. Valid for simd8 shader/kernel only.", false)
 DECLARE_IGC_REGKEY(bool, EnableAtomicFusion,            false, "To enable/disable atomic send fusion (simd8 shaders). Valid if EnableSendFusion is on.", false)
 DECLARE_IGC_REGKEY(bool, Use16ByteBindlessSampler,      false, "True if 16-byte aligned bindless sampler state is used", false)
+DECLARE_IGC_REGKEY(bool, AvoidDstSrcGRFOverlap,               false,  "avoid GRF overlap for destination and source operands of an SIMD16/SIMD32 instruction ", false)
 
 DECLARE_IGC_GROUP("IGC Optimization")
 DECLARE_IGC_REGKEY(bool, AllowMem2Reg,                  false, "Setting this to true makes IGC run mem2reg even when optimizations are disabled", false)

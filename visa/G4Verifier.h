@@ -90,11 +90,16 @@ private:
     /// Assert if this is a violation and verification control is VC_ASSERT.
     void assertIfEnable() const;
 
+    bool dataHazardCheck(G4_Operand* opnd1, G4_Operand* opnd2);
+
     void verifyOpcode(G4_INST* inst);
 
     void verifyOpnd(G4_Operand* opnd, G4_INST* inst);
 
     void verifySend(G4_INST* inst);
+
+    void verifyDstSrcOverlap(G4_INST* inst);
+
 };
 }
 /// Interface.

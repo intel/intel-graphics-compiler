@@ -96,6 +96,8 @@ bool G4Verifier::verifyInst(G4_INST *inst)
         verifySend(inst);
     }
 
+    verifyDstSrcOverlap(inst);
+
     if (passIndex == Optimizer::PI_cleanMessageHeader ||
         passIndex == Optimizer::PI_renameRegister ||
         passIndex == Optimizer::PI_newLocalDefHoisting ||
@@ -212,6 +214,83 @@ void G4Verifier::assertIfEnable() const
         *ptr = 0;
     }
 #endif
+}
+
+bool G4Verifier::dataHazardCheck(G4_Operand *dst, G4_Operand *src)
+{
+    G4_RegVar* dstVar = static_cast<G4_RegVar*>(dst->asDstRegRegion()->getBase());
+    G4_RegVar* srcVar = static_cast<G4_RegVar*>(src->asSrcRegRegion()->getBase());
+    if (!dstVar->isRegVar() || !dstVar->isGreg() || !srcVar->isRegVar() || !srcVar->isGreg())
+    {
+        return false;
+    }
+
+    int dstStart = dst->getLinearizedStart();
+    int dstEnd = dst->getLinearizedEnd();
+    int srcStart = src->getLinearizedStart();
+    int srcEnd = src->getLinearizedEnd();
+
+    if (dstEnd < srcStart ||
+        srcEnd < dstStart)
+    {
+        return false;
+    }
+
+    int dstReg = dstStart / GENX_GRF_REG_SIZ;
+    int dstRegNum = (dstEnd - dstStart + GENX_GRF_REG_SIZ) / GENX_GRF_REG_SIZ;
+    int srcReg = srcStart / GENX_GRF_REG_SIZ;
+    int srcRegNum = (srcEnd - srcStart + GENX_GRF_REG_SIZ) / GENX_GRF_REG_SIZ;
+    int srcReg2 = -1;
+
+    if (srcRegNum > 1)
+    {
+        srcReg2 = srcReg + 1;
+    }
+
+    if (dstRegNum >= 2 && srcRegNum == 1)
+    {
+        srcReg2 = srcReg;
+    }
+
+    if (dstReg == srcReg2)
+    {
+        return true;
+    }
+
+    return false;
+}
+
+void G4Verifier::verifyDstSrcOverlap(G4_INST* inst)
+{
+    if (passIndex == Optimizer::PI_regAlloc && kernel.fg.builder->avoidDstSrcOverlap())
+    {
+        G4_DstRegRegion* dst = inst->getDst();
+
+        if (inst->isSend() || dst == NULL || dst->isNullReg() || inst->opcode() == G4_madm)
+        {
+            return;
+        }
+
+        int dstStart = dst->getLinearizedStart() / GENX_GRF_REG_SIZ;
+        int dstEnd = dst->getLinearizedEnd() / GENX_GRF_REG_SIZ;
+
+        for (int i = 0; i < inst->getNumSrc(); i++)
+        {
+            G4_Operand* src = inst->getSrc(i);
+            if (src != NULL && !src->isNullReg() && src->getTopDcl() && src->getTopDcl()->getRegFile() == G4_GRF)
+            {
+                bool noOverlap = dataHazardCheck(dst, src);
+
+                int srcStart = src->getLinearizedStart() / GENX_GRF_REG_SIZ;
+                int srcEnd = src->getLinearizedEnd() / GENX_GRF_REG_SIZ;
+                if (dstEnd != dstStart ||
+                    srcStart != srcEnd)  //Any operand is more than 2 GRF
+                {
+                    MUST_BE_TRUE(!noOverlap, "dst and src0 overlap");
+                }
+            }
+        }
+    }
 }
 
 void G4Verifier::verifySend(G4_INST* inst)

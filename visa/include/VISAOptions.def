@@ -220,6 +220,7 @@ DEF_VISA_OPTION(vISA_clearAccBeforeEOT,             ET_BOOL,  "-clearAccBeforeEO
 DEF_VISA_OPTION(vISA_replaceIndirectCallWithJmpi,   ET_BOOL,  "-replaceIndirectCallWithJmpi",  UNUSED, false)
 DEF_VISA_OPTION(vISA_noMaskWA,                      ET_INT32, "-noMaskWA",  "USAGE: -noMaskWA <[0:1]=0 (off)|1|2|3(3=2), [2:3]=any>\n", 0)
 DEF_VISA_OPTION(vISA_forceNoMaskWA,                 ET_BOOL,  "-forceNoMaskWA",  UNUSED, false)
+DEF_VISA_OPTION(vISA_DstSrcOverlapWA,                 ET_BOOL,  "-dstSrcOverlapWA",  UNUSED, false)
 
 //=== HW debugging options ===
 DEF_VISA_OPTION(vISA_GenerateDebugInfo,   ET_BOOL,  "-generateDebugInfo", UNUSED, false)

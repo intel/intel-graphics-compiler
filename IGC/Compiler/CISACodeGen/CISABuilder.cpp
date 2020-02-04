@@ -4139,6 +4139,11 @@ namespace IGC
             SaveOption(vISA_setA0toTdrForSendc, true);
         }
 
+        if (IGC_IS_FLAG_ENABLED(AvoidDstSrcGRFOverlap))
+        {
+            SaveOption(vISA_DstSrcOverlapWA, true);
+        }
+
         if (IGC_IS_FLAG_ENABLED(EnableIGASWSB))
         {
             SaveOption(vISA_EnableIGASWSB, true);

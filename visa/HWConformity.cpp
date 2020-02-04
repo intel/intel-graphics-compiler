@@ -2725,7 +2725,7 @@ void HWConformity::copyDwords(G4_Declare* dst,
 {
 
     MUST_BE_TRUE(numDwords == 1 || numDwords == 2 || numDwords == 4 ||
-        numDwords == 8 || numDwords == 16, "invalid number of dwords to copy");
+        numDwords == 8 || numDwords == 16 || numDwords == 32, "invalid number of dwords to copy");
 
     G4_Declare* newDst = dst;
 
@@ -2756,7 +2756,7 @@ void HWConformity::copyDwords(G4_Declare* dst,
 
     INST_LIST_ITER movPos = bb->insert(iter, movInst);
 
-    if (numDwords == 16 &&
+    if (numDwords == NUM_DWORDS_PER_GRF * 2 &&
         ((dstOffset % GENX_GRF_REG_SIZ) != 0 || (srcOffset % GENX_GRF_REG_SIZ) != 0))
     {
         // move crosses 2 GRF boundary, needs splitting
@@ -2825,13 +2825,13 @@ void HWConformity::copyRegs(G4_Declare* dst,
     INST_LIST_ITER iter)
 {
     int numByteCopied = 0;
-    for (; numRegs >= 2; numRegs -= 2, numByteCopied += 64)
+    for (; numRegs >= 2; numRegs -= 2, numByteCopied += G4_GRF_REG_NBYTES * 2)
     {
-        copyDwords(dst, dstOffset + numByteCopied, src, srcOffset + numByteCopied, 16, bb, iter);
+        copyDwords(dst, dstOffset + numByteCopied, src, srcOffset + numByteCopied, NUM_DWORDS_PER_GRF * 2, bb, iter);
     }
     if (numRegs != 0)
     {
-        copyDwords(dst, dstOffset + numByteCopied, src, srcOffset + numByteCopied, 8, bb, iter);
+        copyDwords(dst, dstOffset + numByteCopied, src, srcOffset + numByteCopied, NUM_DWORDS_PER_GRF, bb, iter);
     }
 }
 
@@ -5900,6 +5900,53 @@ void HWConformity::fixSendInst(G4_BB* bb)
 
 }
 
+void HWConformity::fixOverlapInst(G4_BB* bb)
+{
+    for (INST_LIST_ITER i = bb->begin(), end = bb->end(); i != end; i++)
+    {
+        G4_INST* inst = *i;
+
+        if (inst->isSend() || inst->opcode() == G4_madm)
+        {
+            continue;
+        }
+
+        if (inst->getDst() != NULL)
+        {
+            // create copy if dst and src0/src1 overlap due to being the same variable
+            G4_Operand* dst = inst->getDst();
+            if (dst != NULL && dst->isDstRegRegion() && dst->getTopDcl() && dst->getTopDcl()->getRegFile() == G4_GRF)
+            {
+                int dstSize = (dst->getLinearizedEnd() - dst->getLinearizedStart() + 1) / G4_GRF_REG_NBYTES;
+                int srcSize = 1;
+
+                bool srcOverlap = false;
+                for (int i = 0; i < inst->getNumSrc(); i++)
+                {
+                    G4_Operand* src = inst->getSrc(i);
+                    if (src != NULL && !src->isNullReg() && src->getTopDcl() && src->getTopDcl()->getRegFile() == G4_GRF)
+                    {
+                        srcOverlap |= inst->getDst()->compareOperand(inst->getSrc(i)) == Rel_interfere;
+                        if (srcOverlap)
+                        {
+                            srcSize = (src->getLinearizedEnd() - src->getLinearizedStart() + 1) / G4_GRF_REG_NBYTES;
+                            break;
+                        }
+                    }
+                }
+
+                if (srcOverlap && (dstSize > 1 || srcSize > 1))
+                {
+                    G4_AccRegSel accSel = inst->getDst()->getAccRegSel();
+                    G4_DstRegRegion* newDst = insertMovAfter(i, inst->getDst(), inst->getDst()->getType(), bb);
+                    newDst->setAccRegSel(accSel);
+                    inst->setDest(newDst);
+                }
+            }
+        }
+    }
+}
+
 //
 // Fix sel and csel instructions:
 //  -- set their cond mod to null as they don't modify it.  They will be hard-coded to f0.0 in Gen asm
@@ -6267,6 +6314,11 @@ void HWConformity::chkHWConformity()
 #endif
 
         fixSendInst( bb );
+
+        if (builder.avoidDstSrcOverlap())
+        {
+            fixOverlapInst(bb);
+        }
 
 #ifdef _DEBUG
         verifyG4Kernel(kernel, Optimizer::PI_HWConformityChk, false);
