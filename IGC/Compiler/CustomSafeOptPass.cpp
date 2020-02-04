@@ -2373,7 +2373,7 @@ Constant* IGCConstProp::ConstantFoldCallInstruction(CallInst* inst)
     if (inst)
     {
         llvm::Type* type = inst->getType();
-        // used for GenISA_sqrt and GenISA_rsq
+        // used for GenISA_sqrt, GenISA_rsq and GenISA_ROUNDNE
         ConstantFP* C0 = dyn_cast<ConstantFP>(inst->getOperand(0));
         EOPCODE igcop = GetOpCode(inst);
 
@@ -2410,6 +2410,18 @@ Constant* IGCConstProp::ConstantFoldCallInstruction(CallInst* inst)
                 if (C0value > 0.0)
                 {
                     C = ConstantFP::get(type, 1. / sqrt(C0value));
+                }
+            }
+            break;
+        case llvm_roundne:
+            if (C0)
+            {
+                auto APF = C0->getValueAPF();
+                double C0value = type->isFloatTy() ? APF.convertToFloat() :
+                    APF.convertToDouble();
+                if (C0value > 0.0)
+                {
+                    C = ConstantFP::get(type, round(C0value));
                 }
             }
             break;
