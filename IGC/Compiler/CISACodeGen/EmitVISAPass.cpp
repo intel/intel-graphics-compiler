@@ -8729,6 +8729,8 @@ void EmitPass::emitExtract(llvm::Instruction* inst)
             pOffset3 = pOffset2;
         }
 
+        {
+
 
             // address variable represents register a0
             CVariable* pDstArrElm = m_currShader->GetNewAddressVariable(
@@ -8744,6 +8746,7 @@ void EmitPass::emitExtract(llvm::Instruction* inst)
             // finally, we move the indirectly addressed values to the destination register
             m_encoder->Copy(m_destination, pDstArrElm);
             m_encoder->Push();
+        }
     }
 }
 
@@ -11172,7 +11175,7 @@ void EmitPass::emitReductionClustered(const e_opcode op, const uint64_t identity
 
     const auto dispatchSize = static_cast<decltype(clusterSize)>(
         numLanes(m_currShader->m_dispatchSize));
-    const bool isSimd32 = m_currShader->m_dispatchSize == SIMDMode::SIMD32;
+    const bool isSimd32 = m_currShader->m_numberInstance == 2;
     const bool useReduceAll = clusterSize >= dispatchSize;
 
     if(clusterSize == 1)
