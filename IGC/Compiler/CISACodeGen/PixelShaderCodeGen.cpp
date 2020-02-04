@@ -52,6 +52,12 @@ namespace IGC
         return m_R1;
     }
 
+    CVariable* CPixelShader::GetCoarseR1()
+    {
+        assert(m_phase == PSPHASE_PIXEL);
+        return m_CoarseR1;
+    }
+
     void CPixelShader::AllocatePayload()
     {
         if (m_phase == PSPHASE_COARSE)
@@ -74,6 +80,8 @@ namespace IGC
 
     void CPixelShader::AllocatePixelPhasePayload()
     {
+        unsigned int r1Offset = GetDispatchSignature().r1;
+        AllocateInput(m_CoarseR1, r1Offset);
         for (uint i = 0; i < setup.size(); i++)
         {
             if (setup[i])
@@ -126,6 +134,10 @@ namespace IGC
         offset += getGRFSize();
 
         assert(m_R1);
+        if (m_Signature)
+        {
+            GetDispatchSignature().r1 = offset;
+        }
         for (uint i = 0; i < m_R1->GetNumberInstance(); i++)
         {
             AllocateInput(m_R1, offset, i);
@@ -651,6 +663,7 @@ namespace IGC
         m_NeedPSSync = false;
         m_CoarseoMask = nullptr;
         m_CoarseMaskInput = nullptr;
+        m_CoarseR1 = nullptr;
 
         m_CoarseOutput.clear();
         m_CoarseInput.clear();
@@ -980,6 +993,7 @@ namespace IGC
         if (m_phase == PSPHASE_PIXEL)
         {
             uint responseLength = 2;
+            m_CoarseR1 = m_R1;
             m_PixelPhasePayload = GetNewVariable(responseLength * (getGRFSize() >> 2), ISA_TYPE_D, EALIGN_GRF);
             m_PixelPhaseCounter = GetNewAlias(m_PixelPhasePayload, ISA_TYPE_UW, 0, 1);
             m_CoarseParentIndex = GetNewAlias(m_PixelPhasePayload, ISA_TYPE_UW, getGRFSize(), numLanes(m_SIMDSize));
@@ -1015,7 +1029,6 @@ namespace IGC
                 encoder.Push();
             }
             encoder.SetPredicate(m_KillPixelMask);
-            encoder.SetInversePredicate(true);
             encoder.Copy(m_CoarseoMask, ImmToVariable(0x0, ISA_TYPE_UD));
             encoder.Push();
         }
@@ -1044,13 +1057,13 @@ namespace IGC
         m_CoarseOutput[index] = output;
     }
 
-    CVariable* CPixelShader::GetCoarseInput(unsigned int index)
+    CVariable* CPixelShader::GetCoarseInput(unsigned int index, VISA_Type type)
     {
         auto it = m_CoarseInput.find(index);
         CVariable* coarseInput = nullptr;
         if (it == m_CoarseInput.end())
         {
-            coarseInput = GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_F, EALIGN_GRF);
+            coarseInput = GetNewVariable(numLanes(m_SIMDSize), type, EALIGN_GRF);
             m_CoarseInput[index] = coarseInput;
         }
         else
@@ -1362,6 +1375,7 @@ namespace IGC
             // if there is no pixel phase we have nothing to do
             return;
         }
+        encoder.MarkAsOutput(m_R1);
         Function* pixelPhase = mdconst::dyn_extract<Function>(pixelNode->getOperand(0)->getOperand(0));
         for (auto BB = pixelPhase->begin(), BE = pixelPhase->end(); BB != BE; ++BB)
         {
