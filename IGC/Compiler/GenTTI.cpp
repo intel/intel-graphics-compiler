@@ -137,7 +137,7 @@ namespace llvm {
         // For OCL shaders, do a two-step loop unrolling. The first
         // unrolling is simple and full, and the second runs after
         // LICM, which allows partial unrolling. Same for other APIs?
-        if (lowPressure || (ctx->type == ShaderType::OPENCL_SHADER))
+        if (lowPressure || (ctx->type == ShaderType::OPENCL_SHADER) || (IGC_GET_FLAG_VALUE(SetLoopUnrollThreshold)))
         {
             UP.Threshold = LoopUnrollThreshold;
             UP.PartialThreshold = LoopUnrollThreshold;
