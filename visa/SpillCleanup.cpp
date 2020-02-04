@@ -445,7 +445,20 @@ void CoalesceSpillFills::sendsInRange(std::list<INST_LIST_ITER>& instList,
     {
         unsigned scratchOffset, sizeInGrfUnit, lastScratchOffset;
         auto inst = *(*iter);
-        getScratchMsgInfo(inst, scratchOffset, sizeInGrfUnit);
+        if (inst->isSpillIntrinsic())
+        {
+            scratchOffset = inst->asSpillIntrinsic()->getOffset();
+            sizeInGrfUnit = inst->asSpillIntrinsic()->getNumRows();
+        }
+        else if (inst->isFillIntrinsic())
+        {
+            scratchOffset = inst->asFillIntrinsic()->getOffset();
+            sizeInGrfUnit = inst->asFillIntrinsic()->getNumRows();
+        }
+        else
+        {
+            MUST_BE_TRUE(false, "unknown inst type");
+        }
         lastScratchOffset = scratchOffset + sizeInGrfUnit - 1;
 
         if (min == 0xffffffff && max == 0)
