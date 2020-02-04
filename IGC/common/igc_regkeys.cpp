@@ -31,11 +31,21 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/ADT/StringRef.h>
 #include <llvm/Support/CommandLine.h>
 #include "common/LLVMWarningsPop.hpp"
-#include "common/SysUtils.hpp"
 #include "3d/common/iStdLib/File.h"
 #include "secure_mem.h"
 #include "secure_string.h"
 
+#if defined(_WIN64) || defined(_WIN32)
+#include <devguid.h>  // for GUID_DEVCLASS_DISPLAY
+#include <initguid.h> // for DEVPKEY_*
+#include <Devpkey.h>  // for DEVPKEY_*
+#include <SetupAPI.h>
+#include <Shlwapi.h>
+#include <algorithm>
+#endif
+
+#include <list>
+#include <vector>
 #include <string>
 #include <cassert>
 #include <utility>
@@ -48,6 +58,207 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 SRegKeysList g_RegKeyList;
 
+#if defined(_WIN64) || defined(_WIN32)
+#if _DEBUG
+#define DBGOUT stdout  // change to stderr if debugger output is preferred
+#define DBG(fmt, ...) { \
+    fprintf_s(DBGOUT, fmt, __VA_ARGS__); \
+    }
+#define DBGERR(fmt, ...) { \
+    fprintf_s(DBGOUT, "%s [%d] --> ", __FUNCTION__, __LINE__); \
+    fprintf_s(DBGOUT, fmt, __VA_ARGS__); \
+    }
+#else
+#define DBG(fmt, ...)
+#define DBGERR(fmt, ...)
+#endif
+
+/********************************************************************************************/
+/* Function: ConvertDoubleNullTermStringToVector                                            */
+/*                                                                                          */
+/* Converts a Unicode string with embedded null characters                                  */
+/* into a vector of strings                                                                 */
+/*                                                                                          */
+/********************************************************************************************/
+static void ConvertDoubleNullTermStringToVector(std::vector<wchar_t>& input_str, std::vector<std::wstring>& output_vec)
+{
+    // Remove terminating null character to avoid adding empty string at the end
+    input_str.resize(input_str.size() - 1);
+
+    std::wstring str;
+    std::for_each(input_str.cbegin(), input_str.cend(), [&](const wchar_t& w)
+        {
+            if (w != L'\0')
+            {
+                str += w;
+            }
+            else
+            {
+                output_vec.push_back(str);
+                str = L"";
+            }
+        });
+}
+
+
+/*********************************************************************************************/
+/* GetPropertyFromDevice                                                                     */
+/*                                                                                           */
+/* This function can be used to request a value of any device property.                      */
+/* There are many types of properties values. Refer to devpkey.h for more details.           */
+/* Function SetupDiGetDeviceProperty() inside GetPropertyFromDevice() fills a property value */
+/* in a correct format, but always returns the value as a pointer to a string of bytes.      */
+/* The string of bytes must be casted outside of the function GetPropertyFromDevice()        */
+/* to get a value in a format suitable for the given type of property.                       */
+/*                                                                                           */
+/*********************************************************************************************/
+static bool GetPropertyFromDevice(
+    DEVINST devInst,
+    const DEVPROPKEY& PropertyKey,
+    std::vector<BYTE>& PropertyData)
+{
+    unsigned long propertySize = 0;
+    DEVPROPTYPE propertyType;
+
+    // request a size, in bytes, required for a buffer in which property value will be stored.
+    // CM_Get_DevNode_PropertyW() returns false and ERROR_INSUFFICIENT_BUFFER for the call
+    CONFIGRET status = CM_Get_DevNode_PropertyW(devInst, &PropertyKey, &propertyType, NULL, &propertySize, 0);
+    if (status != CR_BUFFER_SMALL)
+    {
+        DBGERR("CM_Get_DevNode_PropertyW() failed with the error code 0x%02x\n", status);
+        return false;
+    }
+
+    // allocate memory for the buffer
+    PropertyData.clear();
+    PropertyData.resize(propertySize, 0);
+
+    // fill in the buffer with property value
+    status = CM_Get_DevNode_PropertyW(devInst, &PropertyKey, &propertyType, &PropertyData[0], &propertySize, 0);
+    if (status != CR_SUCCESS)
+    {
+        DBGERR("CM_Get_DevNode_PropertyW() failed with the error code 0x%02x\n", status);
+        PropertyData.clear();
+        return false;
+    }
+
+    return true;
+}
+
+/********************************************************************************************/
+/* ObtainDeviceInstance                                                                     */
+/*                                                                                          */
+/* Obtains a device instance for the Intel graphics adapter                                 */
+/********************************************************************************************/
+static HRESULT ObtainDeviceInstances(std::vector<DEVINST>* pDevInstances)
+{
+    CONFIGRET cr = CR_SUCCESS;
+
+    ULONG DeviceIDListSize = 0;
+    std::vector<wchar_t> DeviceIDList;
+    std::vector<std::wstring> Devices;
+    std::wstring IntelDeviceID;
+    wchar_t DisplayDevClassGUID[40];
+
+    do
+    {
+        if (pDevInstances == nullptr)
+        {
+            cr = CR_INVALID_POINTER;
+            break;
+        }
+
+        StringFromGUID2(GUID_DEVCLASS_DISPLAY, DisplayDevClassGUID, sizeof(DisplayDevClassGUID));
+
+        do
+        {
+            cr = CM_Get_Device_ID_List_SizeW(
+                &DeviceIDListSize,
+                DisplayDevClassGUID,
+                CM_GETIDLIST_FILTER_CLASS); // we don't want to use CM_GETIDLIST_FILTER_PRESENT in order to support safe mode.
+            if (cr != CR_SUCCESS)
+            {
+                break;
+            }
+
+            DeviceIDList.resize(DeviceIDListSize);
+
+            cr = CM_Get_Device_ID_ListW(
+                DisplayDevClassGUID,
+                DeviceIDList.data(),
+                DeviceIDListSize,
+                CM_GETIDLIST_FILTER_CLASS);
+
+        } while (cr == CR_BUFFER_SMALL);
+
+        if (cr != CR_SUCCESS)
+        {
+            break;
+        }
+
+        ConvertDoubleNullTermStringToVector(DeviceIDList, Devices);
+
+        for (auto device : Devices)
+        {
+            if ((device.find(L"VEN_8086") != std::wstring::npos) ||
+                (device.find(L"ven_8086") != std::wstring::npos))
+            {
+                // Found an intel device, add it to the list
+                DEVINST devInst;
+                CONFIGRET crLocateDevNode = CM_Locate_DevNodeW(
+                    &devInst,
+                    const_cast<wchar_t*>(device.c_str()),
+                    CM_LOCATE_DEVNODE_NORMAL);
+                if (crLocateDevNode == CR_NO_SUCH_DEVNODE)
+                {
+                    // There can be many drivers on the system from past installs.
+                    // CR_NO_SUCH_DEVNODE is returned for drivers that don't match any devices.
+                    // It's ok to skip these.
+                    continue;
+                }
+                else
+                {
+                    if (crLocateDevNode == CR_SUCCESS)
+                    {
+                        pDevInstances->push_back(devInst);
+                    }
+
+                    // Update the overall status
+                    cr |= crLocateDevNode;
+                }
+            }
+        }
+
+    } while (FALSE);
+
+    return HRESULT_FROM_WIN32(CM_MapCrToWin32Err(cr, ERROR_FILE_NOT_FOUND));
+}
+
+/************************************************************************/
+/* GetIntelDriverPaths                                                  */
+/*                                                                      */
+/* Build a list of Intel graphics driver installation paths.            */
+/*                                                                      */
+/************************************************************************/
+static size_t GetIntelDriverPaths(std::vector<DEVINST>& drivers)
+{
+    drivers.clear();
+    HRESULT hr = ObtainDeviceInstances(&drivers);
+    if (FAILED(hr))
+    {
+        DBGERR("Failed to find any graphics device instances\n");
+        return 0;
+    }
+    return drivers.size();
+}
+
+
+std::string getNewRegistryPath(DEVINST deviceInstance)
+{
+    DEVICE_INFO devInfo(deviceInstance);
+    return devInfo.driverRegistryPath;
+}
+#endif
 
 /*****************************************************************************\
 ReadIGCEnv
@@ -94,7 +305,8 @@ ReadIGCRegistry
 static bool ReadIGCRegistry(
     const char*  pName,
     void*        pValue,
-    unsigned int size )
+    unsigned int size ,
+    std::string registrykeypath)
 {
     // All platforms can retrieve settings from environment
     if( ReadIGCEnv( pName, pValue, size ) )
@@ -108,7 +320,7 @@ static bool ReadIGCRegistry(
 
     success = RegOpenKeyExA(
         HKEY_LOCAL_MACHINE,
-        IGC_REGISTRY_KEY,
+        registrykeypath.c_str(),
         0,
         KEY_READ,
         &uscKey );
@@ -456,7 +668,7 @@ bool CheckHashRange(const std::vector<HashRange>& hashes)
     return false;
 }
 
-static void LoadFromRegKeyOrEnvVarOrOptions(const std::string& options = "")
+static void LoadFromRegKeyOrEnvVarOrOptions(const std::string& options = "", std::string registrykeypath = IGC_REGISTRY_KEY)
 {
     SRegKeyVariableMetaData* pRegKeyVariable = (SRegKeyVariableMetaData*)&g_RegKeyList;
     unsigned NUM_REGKEY_ENTRIES = sizeof(SRegKeysList) / sizeof(SRegKeyVariableMetaData);
@@ -470,7 +682,7 @@ static void LoadFromRegKeyOrEnvVarOrOptions(const std::string& options = "")
         bool isSet = ReadIGCRegistry(
             name,
             &value,
-            sizeof(value));
+            sizeof(value), registrykeypath);
 
         if (isSet)
         {
@@ -546,7 +758,18 @@ void LoadRegistryKeys(const std::string& options)
     {
         flagsSet = true;
         // dump out IGC.xml for the registry manager
-        DumpIGCRegistryKeyDefinitions();
+#if defined(_WIN64) || defined(_WIN32)
+        std::vector<DEVINST> drivers;
+        std::list<std::string> registrypaths;
+        GetIntelDriverPaths(drivers);
+        for (auto driverInfo : drivers)
+        {
+            std::string driverStoreRegKeyPath = getNewRegistryPath(driverInfo);
+            std::string registryKeyPath = "SYSTEM\\ControlSet001\\Control\\Class\\" + driverStoreRegKeyPath + "\\IGC";
+            LoadFromRegKeyOrEnvVarOrOptions(options, registryKeyPath);
+        }
+#endif
+        //DumpIGCRegistryKeyDefinitions();
         LoadDebugFlagsFromFile();
         LoadFromRegKeyOrEnvVarOrOptions(options);
 

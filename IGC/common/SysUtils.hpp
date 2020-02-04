@@ -30,6 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #if defined _WIN32
 #include <Windows.h>
+#include <cfgmgr32.h>
 #else
 #include <sys/stat.h>
 #include <unistd.h>
