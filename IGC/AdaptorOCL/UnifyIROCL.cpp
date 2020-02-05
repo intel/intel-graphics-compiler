@@ -279,6 +279,10 @@ static void CommonOCLBasedPasses(
     mpm.add(new MetaDataUtilsWrapper(pMdUtils, pContext->getModuleMetaData()));
     mpm.add(new CodeGenContextWrapper(pContext));
 
+    // Run GlobalDCE before ErrorCheck to remove dead functions which may contain fp64 types
+    mpm.add(createProcessFuncAttributesPass());
+    mpm.add(createGlobalDCEPass());
+
     mpm.add(new ErrorCheck());
 
     mpm.add(new ClampLoopUnroll(256));
