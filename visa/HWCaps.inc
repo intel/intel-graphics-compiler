@@ -583,5 +583,10 @@
         return true;
     }
 
+    bool hasMaskForScratchMsg() const
+    {
+        return true;
+    }
+
 
     // end HW capabilities

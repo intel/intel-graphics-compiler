@@ -5884,17 +5884,18 @@ bool GlobalRA::isUnalignedRegion(
 }
 
 bool GlobalRA::shouldPreloadDst(
-    G4_DstRegRegion * spilledRangeRegion,
-    uint8_t           execSize,
     G4_INST *         instContext,
     G4_BB*            curBB
 )
 {
     // Check for partial and unaligned regions and add pre-load code, if
     // necessary.
+    auto spilledRangeRegion = instContext->getDst();
+    uint8_t execSize = instContext->getExecSize();
+
     if (isPartialRegion(spilledRangeRegion, execSize) ||
         isUnalignedRegion(spilledRangeRegion, execSize) ||
-        isPartialContext(spilledRangeRegion, instContext, curBB->isInSimdFlow())) {
+        instContext->isPartialWriteForSpill(curBB->isInSimdFlow())) {
         return true;
     }
     // No pre-load for whole and aligned region writes
@@ -5915,7 +5916,6 @@ void GlobalRA::determineSpillRegSize(unsigned& spillRegSize, unsigned& indrSpill
             unsigned currentIndrSpillRegSize = 0;
 
             G4_INST* curInst = (*inst_it);
-            uint8_t execSize = curInst->getExecSize();
 
             if (curInst->isPseudoKill() ||
                 curInst->opcode() == G4_pseudo_lifetime_end ||
@@ -5972,7 +5972,7 @@ void GlobalRA::determineSpillRegSize(unsigned& spillRegSize, unsigned& indrSpill
                                 dstSpillRegSize = 1;
                             }
 
-                            if (shouldPreloadDst(dst, execSize, curInst, curBB))
+                            if (shouldPreloadDst(curInst, curBB))
                             {
                                 dstSpillRegSize *= 3;
                             }

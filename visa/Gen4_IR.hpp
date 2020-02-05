@@ -176,6 +176,8 @@ class G4_VarBase;
 
 class G4_SpillIntrinsic;
 class G4_FillIntrinsic;
+
+
 }
 void associateOpndWithInst(vISA::G4_Operand*, vISA::G4_INST*);
 
@@ -753,6 +755,7 @@ public:
     }
 
     bool isPartialWrite() const;
+    bool isPartialWriteForSpill(bool inSIMDCF) const;
     bool isArithAddr() const;
     bool isMovAddr() const;
     bool isAccSrcInst() const;

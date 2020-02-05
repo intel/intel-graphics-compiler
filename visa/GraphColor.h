@@ -716,7 +716,7 @@ namespace vISA
         static unsigned owordMask();
         static bool owordAligned(unsigned offset);
         template <class REGION_TYPE> bool isUnalignedRegion(REGION_TYPE * region, unsigned execSize);
-        bool shouldPreloadDst(G4_DstRegRegion* spilledRangeRegion, uint8_t execSize, G4_INST* instContext, G4_BB* curBB);
+        bool shouldPreloadDst(G4_INST* instContext, G4_BB* curBB);
         static unsigned sendBlockSizeCode(unsigned owordSize);
         void updateDefSet(std::set<G4_Declare*>& defs, G4_Declare* referencedDcl);
         void detectUndefinedUses(LivenessAnalysis& liveAnalysis, G4_Kernel& kernel);

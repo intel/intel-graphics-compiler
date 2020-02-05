@@ -2546,17 +2546,17 @@ SpillManagerGRF::copyOut256BitWideRegVar (
 
 bool
 SpillManagerGRF::shouldPreloadSpillRange (
-    G4_DstRegRegion * spilledRangeRegion,
-    uint8_t     execSize,
     G4_INST *         instContext
 )
 {
     // Check for partial and unaligned regions and add pre-load code, if
     // necessary.
+    auto spilledRangeRegion = instContext->getDst();
+    uint8_t execSize = instContext->getExecSize();
 
     if (isPartialRegion (spilledRangeRegion, execSize) ||
         isUnalignedRegion (spilledRangeRegion, execSize) ||
-        isPartialContext (spilledRangeRegion, instContext, inSIMDCFContext_))
+        instContext->isPartialWriteForSpill(inSIMDCFContext_))
     {
 #if 0
         // special check for scalar variables: no need for pre-fill if instruction is not predicated
@@ -2569,10 +2569,9 @@ SpillManagerGRF::shouldPreloadSpillRange (
 #endif
         return true;
     }
-
     // No pre-load for whole and aligned region writes
-
-    else {
+    else
+    {
         return false;
     }
 }
@@ -3196,7 +3195,6 @@ SpillManagerGRF::sendOutSpilledRegVarPortions (
 
 INST_LIST::iterator
 SpillManagerGRF::insertSpillRangeCode (
-    G4_DstRegRegion *   spilledRegion,
     INST_LIST::iterator spilledInstIter,
     G4_BB* bb
 )
@@ -3208,6 +3206,7 @@ SpillManagerGRF::insertSpillRangeCode (
     bool optimizeSplitLLR = false;
     G4_INST* inst = *spilledInstIter;
     G4_INST* spillSendInst = NULL;
+    auto spilledRegion = inst->getDst();
 
     // Handle send instructions (special treatment)
     // Create the spill range for the whole post destination, assign spill
@@ -3259,8 +3258,7 @@ SpillManagerGRF::insertSpillRangeCode (
         // Unaligned region specific handling.
 
         unsigned int spillSendOption = InstOpt_WriteEnable;
-        if (shouldPreloadSpillRange (
-                spilledRegion, execSize, *spilledInstIter)) {
+        if (shouldPreloadSpillRange (*spilledInstIter)) {
 
             // Preload the segment aligned spill range from memory to use
             // as an overlay
@@ -3960,7 +3958,7 @@ SpillManagerGRF::insertSpillFillCode (
                             continue;
                         }
 
-                        insertSpillRangeCode(inst->getDst(), jt, (*it));
+                        insertSpillRangeCode(jt, (*it));
                     }
                     else
                     {

@@ -647,8 +647,6 @@ private:
 
     bool
     shouldPreloadSpillRange (
-        G4_DstRegRegion * spilledRangeRegion,
-        uint8_t     execSize,
         G4_INST *         instContext
     );
 
@@ -736,7 +734,6 @@ private:
 
     INST_LIST::iterator
     insertSpillRangeCode (
-        G4_DstRegRegion *   spilledRegion,
         INST_LIST::iterator spilledInstIter,
         G4_BB* bb
     );
@@ -892,32 +889,6 @@ bool isPartialRegion (
     {
         return false;
     }
-}
-
-// Check if the instruction context is partial or not, i.e does it possibly
-// disable some channels or not.
-
-template <class REGION_TYPE>
-inline bool isPartialContext (
-    REGION_TYPE * region,
-    vISA::G4_INST *     ctxt,
-    bool          isInSimdFlow
-)
-{
-    if (ctxt->isPartialWrite())
-    {
-        return true;
-    }
-
-    if (isInSimdFlow && !ctxt->isWriteEnableInst())
-    {
-        if (region->getElemSize() != 4)
-        {
-            return true;
-        }
-    }
-
-    return false;
 }
 
 #endif // __SPILLMANAGERGMRF_H__

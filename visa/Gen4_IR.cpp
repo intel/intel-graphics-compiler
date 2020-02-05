@@ -3331,6 +3331,31 @@ bool G4_INST::isPartialWrite() const
     return (aPred != NULL && op != G4_sel) || op == G4_smov;
 }
 
+bool G4_INST::isPartialWriteForSpill(bool inSIMDCF) const
+{
+    if (!getDst() || hasNULLDst())
+    {
+        // inst does not write to GRF
+        return false;
+    }
+
+    if (isPartialWrite())
+    {
+        return true;
+    }
+
+    if (inSIMDCF && !isWriteEnableInst())
+    {
+        if (!(builder.hasMaskForScratchMsg() && getDst()->getElemSize() == 4))
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+
 bool G4_INST::isAccSrcInst() const
 {
     if (srcs[0] && srcs[0]->isSrcRegRegion() && srcs[0]->asSrcRegRegion()->getBase()->isAccReg())
