@@ -146,8 +146,10 @@ CVariable::CVariable(uint64_t immediate, VISA_Type type) :
 
 /// CVariable constructor, for undef
 ///
-CVariable::CVariable(VISA_Type type) : CVariable(0, type) {
-    // undef variable are represented as immediate
-    // fields are all the same but nbElement
+CVariable::CVariable(VISA_Type type)
+    : CVariable(0, type) // undef variable are represented as immediate
+{
+    // fields are all the same as immediate except for these
     m_nbElement = 0;
+    m_undef = true;
 }
