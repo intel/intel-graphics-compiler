@@ -1730,4 +1730,5 @@ namespace IGC
         DumpLLVMIR(pContext, "optimized");
         MEM_SNAPSHOT(IGC::SMS_AFTER_OPTIMIZER);
     } // OptimizeIR
+
 }  // namespace IGC

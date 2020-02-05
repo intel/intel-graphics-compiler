@@ -11827,11 +11827,19 @@ void EmitPass::emitScalarAtomics(
 
         if (isA64)
         {
-            m_encoder->AtomicRawA64(uniformAtomicOp, resource, pReturnVal, pDstAddr, pFinalAtomicSrcVal, nullptr, is16Bit ? 16 : 32);
+            m_encoder->AtomicRawA64(
+                uniformAtomicOp, resource,
+                pReturnVal, pDstAddr,
+                pFinalAtomicSrcVal, nullptr,
+                is16Bit ? 16 : 32);
         }
         else
         {
-            m_encoder->DwordAtomicRaw(uniformAtomicOp, resource, pReturnVal, pDstAddr, pFinalAtomicSrcVal, nullptr, is16Bit);
+            m_encoder->DwordAtomicRaw(
+                uniformAtomicOp, resource,
+                pReturnVal, pDstAddr,
+                pFinalAtomicSrcVal,
+                nullptr, is16Bit);
         }
     m_encoder->Push();
 
@@ -12024,7 +12032,10 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst* pInsn)
 
     {
         CVariable* pDst = returnsImmValue ?
-            m_currShader->GetNewVariable(numLanes(m_currShader->m_SIMDSize), bitwidth != 64 ? ISA_TYPE_UD : ISA_TYPE_UQ, EALIGN_GRF) :
+            m_currShader->GetNewVariable(
+                numLanes(m_currShader->m_SIMDSize),
+                bitwidth != 64 ? ISA_TYPE_UD : ISA_TYPE_UQ,
+                EALIGN_GRF) :
             nullptr;
 
         PointerType* PtrTy = dyn_cast<PointerType>(pllDstAddr->getType());
@@ -12103,7 +12114,7 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst* pInsn)
                 m_encoder->Push();
             }
             ResourceLoop(needLoop, flag, label);
-        }
+            }
 
 
     }
