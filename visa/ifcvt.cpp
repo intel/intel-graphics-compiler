@@ -125,30 +125,10 @@ namespace {
         }
 
         /// getEMaskBits() -
-        unsigned getEMaskBits(unsigned maskOpt, unsigned execSize) const {
+        unsigned getEMaskBits(unsigned maskOffset, unsigned execSize) const
+        {
             uint64_t Val = ((uint64_t)1 << execSize) - 1;
-            switch (maskOpt) {
-            case InstOpt_NoOpt:
-                return unsigned(Val);
-            case InstOpt_M0:
-                return unsigned(Val << 0);
-            case InstOpt_M4:
-                return unsigned(Val << 4);
-            case InstOpt_M8:
-                return unsigned(Val<< 8);
-            case InstOpt_M12:
-                return unsigned(Val << 12);
-            case InstOpt_M16:
-                return unsigned(Val << 16);
-            case InstOpt_M20:
-                return unsigned(Val << 20);
-            case InstOpt_M24:
-                return unsigned(Val << 24);
-            case InstOpt_M28:
-                return unsigned(Val << 28);
-            }
-            ASSERT_USER(false, "Invalid mask option!");
-            return 0;
+            return (uint32_t) (Val << maskOffset);
         }
 
         /// getnnerMostIf - If the given BB is the head of an innermost IF
@@ -317,10 +297,9 @@ namespace {
                         "Unexpected 'NoMask' in 'if' emask.");
 
             unsigned maskBits =
-                getEMaskBits(maskOpt & InstOpt_QuarterMasks, I->getExecSize());
+                getEMaskBits(I->getMaskOffset(), I->getExecSize());
             unsigned ifMaskBits =
-                getEMaskBits(ifMaskOpt & InstOpt_QuarterMasks,
-                             ifInst->getExecSize());
+                getEMaskBits(ifInst->getMaskOffset(), ifInst->getExecSize());
             // Skip if emask bits in 'if' cannot cover the one from the given
             // instruction.
             if ((~ifMaskBits) & maskBits)

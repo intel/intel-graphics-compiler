@@ -6795,7 +6795,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     inst->isSplitSend() &&
                     !(inst->getSrc(1)->isNullReg()))
                 {
-                    inst->setOptions(inst->getOption() | InstOpt_NoPreempt);
+                    inst->setOptionOn(InstOpt_NoPreempt);
                 }
 
                 if (inst->isSend() && !inst->isNoPreemptInst() && builder.needsNoPreemptR2ForSend())
@@ -6806,7 +6806,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                         unsigned LB = Src0->getLinearizedStart();
                         if (LB == 2 * GENX_GRF_REG_SIZ)
                         {
-                            inst->setOptions(inst->getOption() | InstOpt_NoPreempt);
+                            inst->setOptionOn(InstOpt_NoPreempt);
                         }
                     }
                 }

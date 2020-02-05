@@ -658,8 +658,9 @@ void BinaryEncodingIGA::DoAll()
                         nullptr, G4_nop, nullptr, false, 1, nullptr, nullptr, nullptr, InstOpt_NoCompact));
         }
         // set all instruction to be NoCompact
-        for (auto inst : *first_bb) {
-            inst->setOptions(inst->getOption() | InstOpt_NoCompact);
+        for (auto inst : *first_bb)
+        {
+            inst->setOptionOn(InstOpt_NoCompact);
         }
     }
 

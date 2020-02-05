@@ -1048,7 +1048,7 @@ void HWConformity::splitInstruction(INST_LIST_ITER iter, G4_BB* bb, bool compOpt
 
         if (isSIMDCFInst)
         {
-            firstMov->setOptions((inst->getOption() & ~InstOpt_Masks) | InstOpt_WriteEnable);
+            firstMov->setNoMask(true);
         }
     }
 
@@ -1634,11 +1634,11 @@ void HWConformity::saveDst( INST_LIST_ITER& it, uint8_t stride, G4_BB *bb )
     unsigned int new_option = inst->getOption();
 
     G4_INST* newInst = builder.createMov(execSize, tmpDstOpnd, srcRegion, new_option, false);
-    if( bb->isInSimdFlow() )
+    if (bb->isInSimdFlow())
     {
-        newInst->setOptions( ( inst->getOption() & ~InstOpt_Masks ) | InstOpt_WriteEnable );
+        newInst->setNoMask(true);
     }
-    bb->insert( it, newInst );
+    bb->insert(it, newInst);
     inst->setDest(builder.duplicateOperand( tmpDstOpnd ) );
 }
 
@@ -1658,7 +1658,7 @@ void HWConformity::restoreDst( INST_LIST_ITER& it, G4_DstRegRegion *origDst, G4_
     G4_INST* newInst = builder.createMov(execSize, origDst, srcRegion, new_option, false);
     if (bb->isInSimdFlow())
     {
-        newInst->setOptions((inst->getOption() & ~InstOpt_Masks) | InstOpt_WriteEnable);
+        newInst->setNoMask(true);
     }
     INST_LIST_ITER iter = it;
     iter++;

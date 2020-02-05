@@ -848,13 +848,18 @@ public:
 
     void computeARFRightBound();
 
+    static bool isMaskOption(G4_InstOption opt)
+    {
+        return (opt & InstOpt_QuarterMasks) != 0;
+    }
+
     void setOptions(unsigned int o)
     {
         unsigned int oldMaskOffset = getMaskOffset();
         option = o;
         unsigned int newMaskOffset = getMaskOffset();
 
-        if( oldMaskOffset != newMaskOffset )
+        if (oldMaskOffset != newMaskOffset)
         {
             // Change in mask offset requires change in
             // bounds for pred/cond mod/impl acc src/dst
@@ -862,32 +867,16 @@ public:
         }
     }
 
-    void setOptionOn(unsigned int o)
+    void setOptionOn(G4_InstOption o)
     {
-        unsigned int oldMaskOffset = getMaskOffset();
+        assert(!isMaskOption(o) && "use setMaskOption() to change emask instead");
         option |= o;
-        unsigned int newMaskOffset = getMaskOffset();
-
-        if( oldMaskOffset != newMaskOffset )
-        {
-            // Change in mask offset requires change in
-            // bounds for pred/cond mod/impl acc src/dst
-            computeARFRightBound();
-        }
     }
 
-    void setOptionOff(unsigned int o)
+    void setOptionOff(G4_InstOption o)
     {
-        unsigned int oldMaskOffset = getMaskOffset();
+        assert(!isMaskOption(o) && "use setMaskOption() to change emask instead");
         option &= (~o);
-        unsigned int newMaskOffset = getMaskOffset();
-
-        if( oldMaskOffset != newMaskOffset )
-        {
-            // Change in mask offset requires change in
-            // bounds for pred/cond mod/impl acc src/dst
-            computeARFRightBound();
-        }
     }
     unsigned int getOption() const {return option;}
     unsigned int getMaskOption() const {return option & InstOpt_Masks;}
@@ -897,6 +886,19 @@ public:
         // note that this does not clear NoMask
         MUST_BE_TRUE(opt & InstOpt_QuarterMasks, "opt is not a valid mask option");
         setOptions((option & ~InstOpt_QuarterMasks) | opt);
+    }
+
+    void setNoMask(bool clearEMask)
+    {
+        if (clearEMask)
+        {
+            // Clear the M0/M4/M8 emask as well
+            setOptions((getOption() & ~InstOpt_Masks) | InstOpt_WriteEnable);
+        }
+        else
+        {
+            setOptionOn(InstOpt_WriteEnable);
+        }
     }
 
     bool is1QInst() const { return execSize == 8 && getMaskOffset() == 0; }

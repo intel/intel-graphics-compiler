@@ -207,10 +207,10 @@ G4_DstRegRegion* HWConformity::insertMovAfter( INST_LIST_ITER& it, G4_DstRegRegi
         inst->setSaturate(false);
     }
 
-    inst->setExecSize( newExecSize );
+    inst->setExecSize(newExecSize);
     if (newExecSize == 1)
     {
-        inst->setOptions((inst->getOption() & ~InstOpt_Masks ) | InstOpt_WriteEnable);
+        inst->setNoMask(true);
     }
 
     return builder.Create_Dst_Opnd_From_Dcl( dcl, scale);
@@ -945,7 +945,7 @@ bool HWConformity::fixLine(INST_LIST_ITER it, G4_BB *bb)
             G4_INST* newInst = builder.createMov(mov_size, new_dst_opnd, src0, InstOpt_NoOpt, false);
             if (bb->isInSimdFlow())
             {
-                newInst->setOptions((newInst->getOption() & ~InstOpt_Masks) | InstOpt_WriteEnable);
+                newInst->setNoMask(true);
             }
             bb->insert(it, newInst);
             inst->setSrc(new_src0_opnd, 0);
@@ -2322,7 +2322,7 @@ bool HWConformity::fixMULInst( INST_LIST_ITER &i, G4_BB *bb )
 
     if (bb->isInSimdFlow())
     {
-        inst->setOptions((inst->getOption() & ~InstOpt_Masks) | InstOpt_WriteEnable);
+        inst->setNoMask(true);
     }
 
     if (pred != NULL) {
@@ -2663,7 +2663,7 @@ void HWConformity::fixMULHInst( INST_LIST_ITER &i, G4_BB *bb )
 
     if (bb->isInSimdFlow())
     {
-        newMul->setOptions( ( inst_opt & ~InstOpt_Masks ) | InstOpt_WriteEnable );
+        newMul->setNoMask(true);
     }
     inst->setOpcode( G4_mach );
 

@@ -1985,7 +1985,7 @@ int IR_Builder::translateVISASyncInst(ISA_Opcode opcode, unsigned int mask)
                 G4_DstRegRegion* dstOpnd = createDst(getBuiltinR0()->getRegVar(), 0, 0, 1, Type_UD);
 
                 G4_INST* nop = createMov(1, dstOpnd, srcOpnd, InstOpt_NoOpt, true);
-                nop->setOptions(nop->getOption() | InstOpt_Switch);
+                nop->setOptionOn(InstOpt_Switch);
             }
         }
         break;
@@ -7634,8 +7634,8 @@ int IR_Builder::translateVISAURBWrite3DInst(
         // shl (8) M2.0<1>:ud cmask<8;8,1>:ud 0x10:uw
         auto payloadUDRegRgnRow2 = createDst(payloadUD->getRegVar(), regOff++, 0, 1, Type_UD);
 
-        G4_INST* channelMaskInst = createInst(nullptr, G4_shl, nullptr, false, 8, payloadUDRegRgnRow2, channelMask, createImm(16, Type_UW), 0);
-        channelMaskInst->setOptionOn( instOpt );
+        createInst(nullptr, G4_shl, nullptr, false, 8, payloadUDRegRgnRow2, channelMask, createImm(16, Type_UW),
+            instOpt);
     }
 
     G4_Declare* vertexDataDcl = numOut == 0 ? NULL : vertexData->getBase()->asRegVar()->getDeclare();
@@ -7653,8 +7653,7 @@ int IR_Builder::translateVISAURBWrite3DInst(
 
             G4_SrcRegRegion* vertexSrcRegRgnRowi = createSrcRegRegion(Mod_src_undef, Direct, vertexDataDcl->getRegVar(), startSrcRow++, 0, getRegionStride1(), Type_F);
 
-            G4_INST* vertexDataMovInst = createMov( 8, payloadTypedRegRowRgni, vertexSrcRegRgnRowi, InstOpt_NoOpt, true );
-            vertexDataMovInst->setOptionOn( instOpt );
+            createMov( 8, payloadTypedRegRowRgni, vertexSrcRegRgnRowi, instOpt, true );
         }
     }
     else
@@ -10795,8 +10794,7 @@ void IR_Builder::Copy_SrcRegRegion_To_Payload( G4_Declare* payload, unsigned int
 
     G4_SrcRegRegion* srcRgn = createSrcRegRegion( *src );
     srcRgn->setType( payload->getElemType() );
-    G4_INST* refCopy = createMov(exec_size, payloadDstRgn, srcRgn, InstOpt_NoOpt, true );
-    refCopy->setOptionOn(emask);
+    createMov(exec_size, payloadDstRgn, srcRgn, emask, true );
     if (G4_Type_Table[payload->getElemType()].byteSize == 2)
     {
         // for half float each source occupies 1 GRF regardless of execution size

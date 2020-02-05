@@ -1118,7 +1118,13 @@ uint16_t G4_INST::getMaskOffset() const
 {
     unsigned maskOption = (this->getOption() & InstOpt_QuarterMasks);
 
-    switch(maskOption)
+    if (!builder.hasNibCtrl())
+    {
+        assert(maskOption != InstOpt_M4 && maskOption != InstOpt_M12 && maskOption != InstOpt_M20 &&
+            maskOption != InstOpt_M28 && "nibCtrl is not supported on this platform");
+    }
+
+    switch (maskOption)
     {
     case InstOpt_NoOpt:
         return 0;
@@ -1139,7 +1145,7 @@ uint16_t G4_INST::getMaskOffset() const
     case InstOpt_M28:
         return 28;
     default:
-        MUST_BE_TRUE( 0, "Incorrect instruction execution mask" );
+        MUST_BE_TRUE(0, "Incorrect instruction execution mask");
         return 0;
     }
 }
