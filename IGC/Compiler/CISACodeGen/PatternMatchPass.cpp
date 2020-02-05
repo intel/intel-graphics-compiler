@@ -2202,8 +2202,6 @@ namespace IGC
             Instruction* inst;
             Value* offset;
             ConstantInt* immOffset;
-            const CPlatform&             m_Platform;
-            LoadStorePointerPattern(const CPlatform& platform) : m_Platform(platform) {}
             virtual void Emit(EmitPass* pass, const DstModifier& modifier)
             {
                 if (isa<LoadInst>(inst))
@@ -2212,15 +2210,7 @@ namespace IGC
                 }
                 else if (isa<StoreInst>(inst))
                 {
-                    if (m_Platform.GetPlatformFamily() >= IGFX_GEN12_CORE)
-                    {
-                        pass->emitStore3D(cast<StoreInst>(inst), offset);
-                    }
-                    else
-                    {
-                        pass->emitStore(cast<StoreInst>(inst), offset, immOffset);
-                    }
-
+                    pass->emitStore3D(cast<StoreInst>(inst), offset);
                 }
             }
         };
@@ -2241,7 +2231,7 @@ namespace IGC
 
         if (i2p || (ptr && ptr->getIntrinsicID() == GenISAIntrinsic::GenISA_OWordPtr))
         {
-            LoadStorePointerPattern* pattern = new (m_allocator) LoadStorePointerPattern(m_Platform);
+            LoadStorePointerPattern* pattern = new (m_allocator) LoadStorePointerPattern();
             pattern->inst = &I;
             uint numSources = GetNbSources(I);
             for (uint i = 0; i < numSources; i++)
