@@ -24,7 +24,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 #pragma once
-#include "ShaderTypesEnum.h"
 #include "usc_config.h"
 #include "ShaderTypes.h"
 
@@ -59,8 +58,8 @@ union SShaderWriteMask
     unsigned char   Value   : 4;
 #endif
 
-    inline void EnableChannel  ( IGC::SHADER_CHANNEL channel ) { Value |=  BIT(channel); }
-    inline void DisableChannel ( IGC::SHADER_CHANNEL channel ) { Value &= ~BIT(channel); }
+    inline void EnableChannel  ( SHADER_CHANNEL channel ) { Value |=  BIT(channel); }
+    inline void DisableChannel ( SHADER_CHANNEL channel ) { Value &= ~BIT(channel); }
     inline bool Contains( const SShaderWriteMask wm ) const;
     void Set( const int i, const bool val )             { Value = ( Value & (~(1<<i)) ) + (val<<i); }
 
@@ -81,13 +80,13 @@ STRUCT: SExtTextureSwizzle
 \*****************************************************************************/
 struct SExtTextureSwizzle
 {
-    IGC::EXT_TEXTURE_SWIZZLE R;
-    IGC::EXT_TEXTURE_SWIZZLE G;
-    IGC::EXT_TEXTURE_SWIZZLE B;
-    IGC::EXT_TEXTURE_SWIZZLE A;
+    EXT_TEXTURE_SWIZZLE R;
+    EXT_TEXTURE_SWIZZLE G;
+    EXT_TEXTURE_SWIZZLE B;
+    EXT_TEXTURE_SWIZZLE A;
 
     inline bool IsDefault() const;
-    inline const IGC::EXT_TEXTURE_SWIZZLE & operator[] (unsigned int i) const;
+    inline const EXT_TEXTURE_SWIZZLE & operator[] (unsigned int i) const;
 };
 
 /*****************************************************************************\
@@ -108,10 +107,10 @@ Output:
 \*****************************************************************************/
 inline bool SExtTextureSwizzle::IsDefault() const
 { 
-    return ( R == IGC::EXT_TEXTURE_SWIZZLE_RED   ) && 
-           ( G == IGC::EXT_TEXTURE_SWIZZLE_GREEN ) && 
-           ( B == IGC::EXT_TEXTURE_SWIZZLE_BLUE  ) && 
-           ( A == IGC::EXT_TEXTURE_SWIZZLE_ALPHA );
+    return ( R == EXT_TEXTURE_SWIZZLE_RED   ) && 
+           ( G == EXT_TEXTURE_SWIZZLE_GREEN ) && 
+           ( B == EXT_TEXTURE_SWIZZLE_BLUE  ) && 
+           ( A == EXT_TEXTURE_SWIZZLE_ALPHA );
 }
 
 /*****************************************************************************\
@@ -132,7 +131,7 @@ Output:
     const reference to the i-th member of the structure.
 
 \*****************************************************************************/
-inline const IGC::EXT_TEXTURE_SWIZZLE & SExtTextureSwizzle::operator[] (unsigned int i) const
+inline const EXT_TEXTURE_SWIZZLE & SExtTextureSwizzle::operator[] (unsigned int i) const
 {
     switch ( i )
     {
@@ -171,9 +170,9 @@ extern const SShaderWriteMask g_cShaderWriteMaskW;
 /*****************************************************************************\
 CONST: g_cShaderWriteMask[channel] - writemasks with only "channel" Set
 \*****************************************************************************/
-USC_API extern const SShaderWriteMask g_cShaderWriteMask[ IGC::NUM_SHADER_CHANNELS ];
+USC_API extern const SShaderWriteMask g_cShaderWriteMask[ NUM_SHADER_CHANNELS ];
 
-typedef const SShaderWriteMask  (&tSShaderWriteMaskHelper)[IGC::NUM_SHADER_CHANNELS];
+typedef const SShaderWriteMask  (&tSShaderWriteMaskHelper)[NUM_SHADER_CHANNELS];
 tSShaderWriteMaskHelper USC_API_CALL getShaderWriteMask();
 
 /*****************************************************************************\
@@ -188,20 +187,20 @@ union SShaderSwizzle
 {
     struct
     {
-        unsigned char   X   : IGC::BITS_FOR_SHADER_CHANNEL;
-        unsigned char   Y   : IGC::BITS_FOR_SHADER_CHANNEL;
-        unsigned char   Z   : IGC::BITS_FOR_SHADER_CHANNEL;
-        unsigned char   W   : IGC::BITS_FOR_SHADER_CHANNEL;
+        unsigned char   X   : BITS_FOR_SHADER_CHANNEL;
+        unsigned char   Y   : BITS_FOR_SHADER_CHANNEL;
+        unsigned char   Z   : BITS_FOR_SHADER_CHANNEL;
+        unsigned char   W   : BITS_FOR_SHADER_CHANNEL;
     };
     unsigned char   Value;
 
-    void    Replicate( IGC::SHADER_CHANNEL channel )         { X=Y=Z=W=channel; }
+    void    Replicate( SHADER_CHANNEL channel )         { X=Y=Z=W=channel; }
     bool    IsReplicate( void ) const                   { return X==Y && X==Z && X==W; }
     inline bool IsIntersecting( const SShaderWriteMask wm ) const;
     inline SShaderWriteMask Channels( void ) const;
-    void Set( const int i, const IGC::SHADER_CHANNEL val )   { Value = static_cast<unsigned char>( ( Value & (~(((1<<IGC::BITS_FOR_SHADER_CHANNEL)-1)<<(i*IGC::BITS_FOR_SHADER_CHANNEL))) ) | (val<<(i*IGC::BITS_FOR_SHADER_CHANNEL)) ); }
+    void Set( const int i, const SHADER_CHANNEL val )   { Value = static_cast<unsigned char>( ( Value & (~(((1<<BITS_FOR_SHADER_CHANNEL)-1)<<(i*BITS_FOR_SHADER_CHANNEL))) ) | (val<<(i*BITS_FOR_SHADER_CHANNEL)) ); }
 
-    IGC::SHADER_CHANNEL operator[] ( const int i ) const     { return (IGC::SHADER_CHANNEL)( ( Value>>(i*IGC::BITS_FOR_SHADER_CHANNEL) )&((1<<IGC::BITS_FOR_SHADER_CHANNEL)-1) ); }
+    SHADER_CHANNEL operator[] ( const int i ) const     { return (SHADER_CHANNEL)( ( Value>>(i*BITS_FOR_SHADER_CHANNEL) )&((1<<BITS_FOR_SHADER_CHANNEL)-1) ); }
     bool operator== ( const SShaderSwizzle& o ) const   { return Value==o.Value; }
     bool operator!= ( const SShaderSwizzle& o ) const   { return Value!=o.Value; }
 };
@@ -215,10 +214,10 @@ inline SShaderWriteMask operator * ( SShaderSwizzle swizzle, SShaderWriteMask wr
     SShaderWriteMask resultWritemask = 
     {
         {
-            static_cast<unsigned char>(writemask[ swizzle[IGC::SHADER_CHANNEL_X] ]),
-            static_cast<unsigned char>(writemask[ swizzle[IGC::SHADER_CHANNEL_Y] ]),
-            static_cast<unsigned char>(writemask[ swizzle[IGC::SHADER_CHANNEL_Z] ]),
-            static_cast<unsigned char>(writemask[ swizzle[IGC::SHADER_CHANNEL_W] ])
+            static_cast<unsigned char>(writemask[ swizzle[SHADER_CHANNEL_X] ]),
+            static_cast<unsigned char>(writemask[ swizzle[SHADER_CHANNEL_Y] ]),
+            static_cast<unsigned char>(writemask[ swizzle[SHADER_CHANNEL_Z] ]),
+            static_cast<unsigned char>(writemask[ swizzle[SHADER_CHANNEL_W] ])
         }
     };
 
@@ -252,10 +251,10 @@ inline SShaderWriteMask operator & ( SShaderWriteMask writemaskA, SShaderWriteMa
     SShaderWriteMask resultWritemask = 
     {
         {
-            static_cast<unsigned char>(writemaskA[ IGC::SHADER_CHANNEL_X ] && writemaskB[ IGC::SHADER_CHANNEL_X ]),
-            static_cast<unsigned char>(writemaskA[ IGC::SHADER_CHANNEL_Y ] && writemaskB[ IGC::SHADER_CHANNEL_Y ]),
-            static_cast<unsigned char>(writemaskA[ IGC::SHADER_CHANNEL_Z ] && writemaskB[ IGC::SHADER_CHANNEL_Z ]),
-            static_cast<unsigned char>(writemaskA[ IGC::SHADER_CHANNEL_W ] && writemaskB[ IGC::SHADER_CHANNEL_W ])
+            static_cast<unsigned char>(writemaskA[ SHADER_CHANNEL_X ] && writemaskB[ SHADER_CHANNEL_X ]),
+            static_cast<unsigned char>(writemaskA[ SHADER_CHANNEL_Y ] && writemaskB[ SHADER_CHANNEL_Y ]),
+            static_cast<unsigned char>(writemaskA[ SHADER_CHANNEL_Z ] && writemaskB[ SHADER_CHANNEL_Z ]),
+            static_cast<unsigned char>(writemaskA[ SHADER_CHANNEL_W ] && writemaskB[ SHADER_CHANNEL_W ])
         }
     };
 
@@ -271,10 +270,10 @@ inline SShaderWriteMask operator | ( SShaderWriteMask writemaskA, SShaderWriteMa
     SShaderWriteMask resultWritemask = 
     {
         {
-            static_cast<unsigned char>(writemaskA[ IGC::SHADER_CHANNEL_X ] || writemaskB[ IGC::SHADER_CHANNEL_X ]),
-            static_cast<unsigned char>(writemaskA[ IGC::SHADER_CHANNEL_Y ] || writemaskB[ IGC::SHADER_CHANNEL_Y ]),
-            static_cast<unsigned char>(writemaskA[ IGC::SHADER_CHANNEL_Z ] || writemaskB[ IGC::SHADER_CHANNEL_Z ]),
-            static_cast<unsigned char>(writemaskA[ IGC::SHADER_CHANNEL_W ] || writemaskB[ IGC::SHADER_CHANNEL_W ])
+            static_cast<unsigned char>(writemaskA[ SHADER_CHANNEL_X ] || writemaskB[ SHADER_CHANNEL_X ]),
+            static_cast<unsigned char>(writemaskA[ SHADER_CHANNEL_Y ] || writemaskB[ SHADER_CHANNEL_Y ]),
+            static_cast<unsigned char>(writemaskA[ SHADER_CHANNEL_Z ] || writemaskB[ SHADER_CHANNEL_Z ]),
+            static_cast<unsigned char>(writemaskA[ SHADER_CHANNEL_W ] || writemaskB[ SHADER_CHANNEL_W ])
         }
     };
 
@@ -289,10 +288,10 @@ inline SShaderWriteMask operator ^ ( SShaderWriteMask writemaskA, SShaderWriteMa
     SShaderWriteMask resultWritemask = 
     {
         {
-                static_cast<unsigned char>(!( writemaskA[ IGC::SHADER_CHANNEL_X ] == writemaskB[ IGC::SHADER_CHANNEL_X ] )),
-                static_cast<unsigned char>(!( writemaskA[ IGC::SHADER_CHANNEL_Y ] == writemaskB[ IGC::SHADER_CHANNEL_Y ] )),
-                static_cast<unsigned char>(!( writemaskA[ IGC::SHADER_CHANNEL_Z ] == writemaskB[ IGC::SHADER_CHANNEL_Z ] )),
-                static_cast<unsigned char>(!( writemaskA[ IGC::SHADER_CHANNEL_W ] == writemaskB[ IGC::SHADER_CHANNEL_W ] ))
+                static_cast<unsigned char>(!( writemaskA[ SHADER_CHANNEL_X ] == writemaskB[ SHADER_CHANNEL_X ] )),
+                static_cast<unsigned char>(!( writemaskA[ SHADER_CHANNEL_Y ] == writemaskB[ SHADER_CHANNEL_Y ] )),
+                static_cast<unsigned char>(!( writemaskA[ SHADER_CHANNEL_Z ] == writemaskB[ SHADER_CHANNEL_Z ] )),
+                static_cast<unsigned char>(!( writemaskA[ SHADER_CHANNEL_W ] == writemaskB[ SHADER_CHANNEL_W ] ))
         }
     };
 
@@ -336,10 +335,10 @@ inline SShaderSwizzle operator * ( SShaderSwizzle A, SShaderSwizzle B )
     SShaderSwizzle resultSw = 
     {
         {
-            static_cast<unsigned char>(A[ B[IGC::SHADER_CHANNEL_X] ]),
-            static_cast<unsigned char>(A[ B[IGC::SHADER_CHANNEL_Y] ]),
-            static_cast<unsigned char>(A[ B[IGC::SHADER_CHANNEL_Z] ]),
-            static_cast<unsigned char>(A[ B[IGC::SHADER_CHANNEL_W] ])
+            static_cast<unsigned char>(A[ B[SHADER_CHANNEL_X] ]),
+            static_cast<unsigned char>(A[ B[SHADER_CHANNEL_Y] ]),
+            static_cast<unsigned char>(A[ B[SHADER_CHANNEL_Z] ]),
+            static_cast<unsigned char>(A[ B[SHADER_CHANNEL_W] ])
         }
     };
 
@@ -365,7 +364,7 @@ extern const SShaderSwizzle g_cShaderSwizzleYZZZ;
 extern const SShaderSwizzle g_cShaderSwizzleZWXY;
 extern const SShaderSwizzle g_cShaderSwizzleXYXY;
 extern const SShaderSwizzle g_cShaderSwizzleZWZW;
-extern const SShaderSwizzle g_cReplicateShaderSwizzles[ IGC::NUM_SHADER_CHANNELS ];
+extern const SShaderSwizzle g_cReplicateShaderSwizzles[ NUM_SHADER_CHANNELS ];
 
 /*****************************************************************************\
 
@@ -427,29 +426,29 @@ union SShaderOpcodeToken
     struct
     {
         // If adding new fields below, update Hash() method too.
-        unsigned int   m_Opcode            : BITCOUNT( IGC::NUM_SHADER_OPCODES );       // IGC::SHADER_OPCODE
-        unsigned int   m_Comparison        : BITCOUNT( IGC::NUM_SHADER_COMPARISONS );   // IGC::SHADER_COMPARISON
-        unsigned int   m_Conditional       : BITCOUNT( IGC::NUM_SHADER_CONDITIONALS );  // IGC::SHADER_CONDITIONAL
+        unsigned int   m_Opcode            : BITCOUNT( NUM_SHADER_OPCODES );       // SHADER_OPCODE
+        unsigned int   m_Comparison        : BITCOUNT( NUM_SHADER_COMPARISONS );   // SHADER_COMPARISON
+        unsigned int   m_Conditional       : BITCOUNT( NUM_SHADER_CONDITIONALS );  // SHADER_CONDITIONAL
         unsigned int   m_PartialPrecision  : 1;                                    // bool
         unsigned int   m_Predicate         : 1;                                    // bool
         unsigned int   m_Comment           : 1;                                    // bool
-        unsigned int   m_Sync              : IGC::cNumberOfShaderSyncBits; // IGC::SHADER_SYNC
+        unsigned int   m_Sync              : cNumberOfShaderSyncBits;              // SHADER_SYNC
         unsigned int   m_ResourceType      : 1;                                    // bool
         unsigned int   m_Precise           : 1;                                    // bool
         unsigned int   m_Feedback          : 1;                                    // bool
     };
     unsigned int Value;
 
-    void                SetOpcode( IGC::SHADER_OPCODE opcode )                   { m_Opcode = opcode; }
-    IGC::SHADER_OPCODE       GetOpcode( void ) const                             { return (IGC::SHADER_OPCODE)m_Opcode; }
+    void                SetOpcode( SHADER_OPCODE opcode )                   { m_Opcode = opcode; }
+    SHADER_OPCODE       GetOpcode( void ) const                             { return (SHADER_OPCODE)m_Opcode; }
 
-    IGC::SHADER_OPCODE_TYPE  GetOpcodeType( unsigned int registerNumber ) const;
+    SHADER_OPCODE_TYPE  GetOpcodeType( unsigned int registerNumber ) const;
 
-    void                SetComparison( IGC::SHADER_COMPARISON comparison )       { m_Comparison = comparison; } 
-    IGC::SHADER_COMPARISON   GetComparison( void ) const                         { return (IGC::SHADER_COMPARISON)m_Comparison; }
+    void                SetComparison( SHADER_COMPARISON comparison )       { m_Comparison = comparison; } 
+    SHADER_COMPARISON   GetComparison( void ) const                         { return (SHADER_COMPARISON)m_Comparison; }
 
-    void                SetConditional( IGC::SHADER_CONDITIONAL conditional )    { m_Conditional = conditional; }
-    IGC::SHADER_CONDITIONAL  GetConditional( void ) const                        { return (IGC::SHADER_CONDITIONAL)m_Conditional; }
+    void                SetConditional( SHADER_CONDITIONAL conditional )    { m_Conditional = conditional; }
+    SHADER_CONDITIONAL  GetConditional( void ) const                        { return (SHADER_CONDITIONAL)m_Conditional; }
 
     void                SetResourceTypeEnable( bool usesResourceType )      { m_ResourceType = usesResourceType; }
     bool                GetResourceTypeEnable( void ) const                 { return m_ResourceType; }
@@ -463,8 +462,8 @@ union SShaderOpcodeToken
     void                SetCommentEnable( bool enable )                     { m_Comment = enable; }
     bool                GetCommentEnable( void ) const                      { return m_Comment; }
     
-    void                SetSync( IGC::SHADER_SYNC sync )                         { m_Sync = sync; }
-    IGC::SHADER_SYNC         GetSync( void ) const                               { return IGC::SHADER_SYNC::Create(m_Sync); }
+    void                SetSync( SHADER_SYNC sync )                         { m_Sync = sync; }
+    SHADER_SYNC         GetSync( void ) const                               { return SHADER_SYNC::Create(m_Sync); }
 
     void                SetPreciseEnable( const bool precise )              { m_Precise = precise; }
     bool                GetPreciseEnable( void ) const                      { return m_Precise; }
@@ -511,8 +510,8 @@ union SShaderDestinationRegisterToken
     {
         // If adding new fields below, update Hash() method too.
         unsigned int   m_Number;
-        unsigned int   m_File              : BITCOUNT(IGC::NUM_SHADER_REGISTER_FILES);       // IGC::SHADER_REGISTER_FILE
-        unsigned int   m_WriteMask         : BITCOUNT(IGC::NUM_SHADER_MASKS);                // SShaderWriteMask
+        unsigned int   m_File              : BITCOUNT(NUM_SHADER_REGISTER_FILES);       // SHADER_REGISTER_FILE
+        unsigned int   m_WriteMask         : BITCOUNT(NUM_SHADER_MASKS);                // SShaderWriteMask
         unsigned int   m_Saturate          : 1;                                         // bool
         unsigned int   m_IndirectRegister  : 1;                                         // bool
         unsigned int   m_IndirectOffset    : 1;                                         // bool
@@ -523,8 +522,8 @@ union SShaderDestinationRegisterToken
 
     unsigned long long   Value;
 
-    void                    SetFile( IGC::SHADER_REGISTER_FILE file )            { m_File = file; }
-    IGC::SHADER_REGISTER_FILE    GetFile( void ) const                           { return (IGC::SHADER_REGISTER_FILE)m_File; }
+    void                    SetFile( SHADER_REGISTER_FILE file )            { m_File = file; }
+    SHADER_REGISTER_FILE    GetFile( void ) const                           { return (SHADER_REGISTER_FILE)m_File; }
 
     void                    SetNumber( unsigned int number )                { m_Number = number; }
     unsigned int            GetNumber( void ) const                         { return m_Number; }
@@ -573,8 +572,8 @@ union SShaderSourceRegisterToken
     {
         // If adding new fields below, update Hash() method too.
         unsigned int   m_Number;
-        unsigned int   m_File              : BITCOUNT( IGC::NUM_SHADER_REGISTER_FILES );                    // IGC::SHADER_REGISTER_FILE
-        unsigned int   m_Swizzle           : BITCOUNT( IGC::NUM_SHADER_CHANNELS ) * IGC::NUM_SHADER_CHANNELS;    // SShaderSwizzle
+        unsigned int   m_File              : BITCOUNT( NUM_SHADER_REGISTER_FILES );                    // SHADER_REGISTER_FILE
+        unsigned int   m_Swizzle           : BITCOUNT( NUM_SHADER_CHANNELS ) * NUM_SHADER_CHANNELS;    // SShaderSwizzle
         unsigned int   m_Negate            : 1;                                                        // bool
         unsigned int   m_Absolute          : 1;                                                        // bool
         unsigned int   m_AddressOffset     : 1;                                                        // bool
@@ -587,8 +586,8 @@ union SShaderSourceRegisterToken
     };
     unsigned long long   Value;
 
-    void                    SetFile( IGC::SHADER_REGISTER_FILE file )            { m_File = file; }
-    IGC::SHADER_REGISTER_FILE    GetFile( void ) const                           { return (IGC::SHADER_REGISTER_FILE)m_File; }
+    void                    SetFile( SHADER_REGISTER_FILE file )            { m_File = file; }
+    SHADER_REGISTER_FILE    GetFile( void ) const                           { return (SHADER_REGISTER_FILE)m_File; }
 
     void                    SetNumber( unsigned int number )                { m_Number = number; }
     unsigned int            GetNumber( void ) const                         { return m_Number; }

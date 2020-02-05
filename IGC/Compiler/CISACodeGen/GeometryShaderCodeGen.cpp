@@ -23,19 +23,22 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+#include "Compiler/CISACodeGen/GeometryShaderCodeGen.hpp"
+
+#include "Compiler/CISACodeGen/messageEncoding.hpp"
+#include "Compiler/CISACodeGen/EmitVISAPass.hpp"
+#include "Compiler/CISACodeGen/CollectGeometryShaderProperties.hpp"
+
+#include "common/Types.hpp"
+#include "common/debug/Debug.hpp"
+#include "common/secure_mem.h"
+
+#include <iStdLib/utility.h>
+
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/PassAnalysisSupport.h>
 #include <llvm/Analysis/PostDominators.h>
 #include "common/LLVMWarningsPop.hpp"
-#include "ShaderTypesEnum.h"
-#include "Compiler/CISACodeGen/GeometryShaderCodeGen.hpp"
-#include "Compiler/CISACodeGen/messageEncoding.hpp"
-#include "Compiler/CISACodeGen/EmitVISAPass.hpp"
-#include "Compiler/CISACodeGen/CollectGeometryShaderProperties.hpp"
-#include "common/Types.hpp"
-#include "common/debug/Debug.hpp"
-#include "common/secure_mem.h"
-#include <iStdLib/utility.h>
 
 using namespace llvm;
 
@@ -44,52 +47,52 @@ Geometry Shader CodeGen
 ************************************************************************************/
 namespace IGC
 {
-    bool CGeometryShader::DiscardAdjacency(IGC::GSHADER_INPUT_PRIMITIVE_TYPE inpPrimType)
+    bool CGeometryShader::DiscardAdjacency(USC::GSHADER_INPUT_PRIMITIVE_TYPE inpPrimType)
     {
         bool discAdj = false;
         switch (inpPrimType)
         {
-        case IGC::GSHADER_INPUT_POINT:
-        case IGC::GSHADER_INPUT_PATCHLIST_1:
-        case IGC::GSHADER_INPUT_PATCHLIST_2:
-        case IGC::GSHADER_INPUT_PATCHLIST_3:
-        case IGC::GSHADER_INPUT_PATCHLIST_4:
-        case IGC::GSHADER_INPUT_PATCHLIST_5:
-        case IGC::GSHADER_INPUT_PATCHLIST_6:
-        case IGC::GSHADER_INPUT_PATCHLIST_7:
-        case IGC::GSHADER_INPUT_PATCHLIST_8:
-        case IGC::GSHADER_INPUT_PATCHLIST_9:
-        case IGC::GSHADER_INPUT_PATCHLIST_10:
-        case IGC::GSHADER_INPUT_PATCHLIST_11:
-        case IGC::GSHADER_INPUT_PATCHLIST_12:
-        case IGC::GSHADER_INPUT_PATCHLIST_13:
-        case IGC::GSHADER_INPUT_PATCHLIST_14:
-        case IGC::GSHADER_INPUT_PATCHLIST_15:
-        case IGC::GSHADER_INPUT_PATCHLIST_16:
-        case IGC::GSHADER_INPUT_PATCHLIST_17:
-        case IGC::GSHADER_INPUT_PATCHLIST_18:
-        case IGC::GSHADER_INPUT_PATCHLIST_19:
-        case IGC::GSHADER_INPUT_PATCHLIST_20:
-        case IGC::GSHADER_INPUT_PATCHLIST_21:
-        case IGC::GSHADER_INPUT_PATCHLIST_22:
-        case IGC::GSHADER_INPUT_PATCHLIST_23:
-        case IGC::GSHADER_INPUT_PATCHLIST_24:
-        case IGC::GSHADER_INPUT_PATCHLIST_25:
-        case IGC::GSHADER_INPUT_PATCHLIST_26:
-        case IGC::GSHADER_INPUT_PATCHLIST_27:
-        case IGC::GSHADER_INPUT_PATCHLIST_28:
-        case IGC::GSHADER_INPUT_PATCHLIST_29:
-        case IGC::GSHADER_INPUT_PATCHLIST_30:
-        case IGC::GSHADER_INPUT_PATCHLIST_31:
-        case IGC::GSHADER_INPUT_PATCHLIST_32:
-        case IGC::GSHADER_INPUT_LINE_ADJ:
-        case IGC::GSHADER_INPUT_TRIANGLE_ADJ:
+        case USC::GSHADER_INPUT_POINT:
+        case USC::GSHADER_INPUT_PATCHLIST_1:
+        case USC::GSHADER_INPUT_PATCHLIST_2:
+        case USC::GSHADER_INPUT_PATCHLIST_3:
+        case USC::GSHADER_INPUT_PATCHLIST_4:
+        case USC::GSHADER_INPUT_PATCHLIST_5:
+        case USC::GSHADER_INPUT_PATCHLIST_6:
+        case USC::GSHADER_INPUT_PATCHLIST_7:
+        case USC::GSHADER_INPUT_PATCHLIST_8:
+        case USC::GSHADER_INPUT_PATCHLIST_9:
+        case USC::GSHADER_INPUT_PATCHLIST_10:
+        case USC::GSHADER_INPUT_PATCHLIST_11:
+        case USC::GSHADER_INPUT_PATCHLIST_12:
+        case USC::GSHADER_INPUT_PATCHLIST_13:
+        case USC::GSHADER_INPUT_PATCHLIST_14:
+        case USC::GSHADER_INPUT_PATCHLIST_15:
+        case USC::GSHADER_INPUT_PATCHLIST_16:
+        case USC::GSHADER_INPUT_PATCHLIST_17:
+        case USC::GSHADER_INPUT_PATCHLIST_18:
+        case USC::GSHADER_INPUT_PATCHLIST_19:
+        case USC::GSHADER_INPUT_PATCHLIST_20:
+        case USC::GSHADER_INPUT_PATCHLIST_21:
+        case USC::GSHADER_INPUT_PATCHLIST_22:
+        case USC::GSHADER_INPUT_PATCHLIST_23:
+        case USC::GSHADER_INPUT_PATCHLIST_24:
+        case USC::GSHADER_INPUT_PATCHLIST_25:
+        case USC::GSHADER_INPUT_PATCHLIST_26:
+        case USC::GSHADER_INPUT_PATCHLIST_27:
+        case USC::GSHADER_INPUT_PATCHLIST_28:
+        case USC::GSHADER_INPUT_PATCHLIST_29:
+        case USC::GSHADER_INPUT_PATCHLIST_30:
+        case USC::GSHADER_INPUT_PATCHLIST_31:
+        case USC::GSHADER_INPUT_PATCHLIST_32:
+        case USC::GSHADER_INPUT_LINE_ADJ:
+        case USC::GSHADER_INPUT_TRIANGLE_ADJ:
             discAdj = false;
             break;
-        case IGC::GSHADER_INPUT_LINE:
-        case IGC::GSHADER_INPUT_TRIANGLE:
-        case IGC::GSHADER_INPUT_RECTANGLE:
-        case IGC::GSHADER_INPUT_QUAD:
+        case USC::GSHADER_INPUT_LINE:
+        case USC::GSHADER_INPUT_TRIANGLE:
+        case USC::GSHADER_INPUT_RECTANGLE:
+        case USC::GSHADER_INPUT_QUAD:
             discAdj = true;
             break;
         default:
@@ -102,47 +105,48 @@ namespace IGC
     }
 
     /// Returns the number of vertices each primitive type consists of.
-    uint CGeometryShader::GetInputPrimitiveVertexCount(IGC::GSHADER_INPUT_PRIMITIVE_TYPE inpPrimType)
+    uint CGeometryShader::GetInputPrimitiveVertexCount(USC::GSHADER_INPUT_PRIMITIVE_TYPE inpPrimType)
     {
         switch (inpPrimType)
         {
-        case IGC::GSHADER_INPUT_POINT: return 1;
-        case IGC::GSHADER_INPUT_LINE: return 2;
-        case IGC::GSHADER_INPUT_LINE_ADJ: return 4;
-        case IGC::GSHADER_INPUT_TRIANGLE: return 3;
-        case IGC::GSHADER_INPUT_TRIANGLE_ADJ: return 6;
-        case IGC::GSHADER_INPUT_PATCHLIST_1: return 1;
-        case IGC::GSHADER_INPUT_PATCHLIST_2: return 2;
-        case IGC::GSHADER_INPUT_PATCHLIST_3: return 3;
-        case IGC::GSHADER_INPUT_PATCHLIST_4: return 4;
-        case IGC::GSHADER_INPUT_PATCHLIST_5: return 5;
-        case IGC::GSHADER_INPUT_PATCHLIST_6: return 6;
-        case IGC::GSHADER_INPUT_PATCHLIST_7: return 7;
-        case IGC::GSHADER_INPUT_PATCHLIST_8: return 8;
-        case IGC::GSHADER_INPUT_PATCHLIST_9: return 9;
-        case IGC::GSHADER_INPUT_PATCHLIST_10: return 10;
-        case IGC::GSHADER_INPUT_PATCHLIST_11: return 11;
-        case IGC::GSHADER_INPUT_PATCHLIST_12: return 12;
-        case IGC::GSHADER_INPUT_PATCHLIST_13: return 13;
-        case IGC::GSHADER_INPUT_PATCHLIST_14: return 14;
-        case IGC::GSHADER_INPUT_PATCHLIST_15: return 15;
-        case IGC::GSHADER_INPUT_PATCHLIST_16: return 16;
-        case IGC::GSHADER_INPUT_PATCHLIST_17: return 17;
-        case IGC::GSHADER_INPUT_PATCHLIST_18: return 18;
-        case IGC::GSHADER_INPUT_PATCHLIST_19: return 19;
-        case IGC::GSHADER_INPUT_PATCHLIST_20: return 20;
-        case IGC::GSHADER_INPUT_PATCHLIST_21: return 21;
-        case IGC::GSHADER_INPUT_PATCHLIST_22: return 22;
-        case IGC::GSHADER_INPUT_PATCHLIST_23: return 23;
-        case IGC::GSHADER_INPUT_PATCHLIST_24: return 24;
-        case IGC::GSHADER_INPUT_PATCHLIST_25: return 25;
-        case IGC::GSHADER_INPUT_PATCHLIST_26: return 26;
-        case IGC::GSHADER_INPUT_PATCHLIST_27: return 27;
-        case IGC::GSHADER_INPUT_PATCHLIST_28: return 28;
-        case IGC::GSHADER_INPUT_PATCHLIST_29: return 29;
-        case IGC::GSHADER_INPUT_PATCHLIST_30: return 30;
-        case IGC::GSHADER_INPUT_PATCHLIST_31: return 31;
-        case IGC::GSHADER_INPUT_PATCHLIST_32: return 32;
+        case USC::GSHADER_INPUT_POINT: return 1;
+        case USC::GSHADER_INPUT_LINE: return 2;
+        case USC::GSHADER_INPUT_LINE_ADJ: return 4;
+        case USC::GSHADER_INPUT_TRIANGLE: return 3;
+        case USC::GSHADER_INPUT_TRIANGLE_ADJ: return 6;
+
+        case USC::GSHADER_INPUT_PATCHLIST_1: return 1;
+        case USC::GSHADER_INPUT_PATCHLIST_2: return 2;
+        case USC::GSHADER_INPUT_PATCHLIST_3: return 3;
+        case USC::GSHADER_INPUT_PATCHLIST_4: return 4;
+        case USC::GSHADER_INPUT_PATCHLIST_5: return 5;
+        case USC::GSHADER_INPUT_PATCHLIST_6: return 6;
+        case USC::GSHADER_INPUT_PATCHLIST_7: return 7;
+        case USC::GSHADER_INPUT_PATCHLIST_8: return 8;
+        case USC::GSHADER_INPUT_PATCHLIST_9: return 9;
+        case USC::GSHADER_INPUT_PATCHLIST_10: return 10;
+        case USC::GSHADER_INPUT_PATCHLIST_11: return 11;
+        case USC::GSHADER_INPUT_PATCHLIST_12: return 12;
+        case USC::GSHADER_INPUT_PATCHLIST_13: return 13;
+        case USC::GSHADER_INPUT_PATCHLIST_14: return 14;
+        case USC::GSHADER_INPUT_PATCHLIST_15: return 15;
+        case USC::GSHADER_INPUT_PATCHLIST_16: return 16;
+        case USC::GSHADER_INPUT_PATCHLIST_17: return 17;
+        case USC::GSHADER_INPUT_PATCHLIST_18: return 18;
+        case USC::GSHADER_INPUT_PATCHLIST_19: return 19;
+        case USC::GSHADER_INPUT_PATCHLIST_20: return 20;
+        case USC::GSHADER_INPUT_PATCHLIST_21: return 21;
+        case USC::GSHADER_INPUT_PATCHLIST_22: return 22;
+        case USC::GSHADER_INPUT_PATCHLIST_23: return 23;
+        case USC::GSHADER_INPUT_PATCHLIST_24: return 24;
+        case USC::GSHADER_INPUT_PATCHLIST_25: return 25;
+        case USC::GSHADER_INPUT_PATCHLIST_26: return 26;
+        case USC::GSHADER_INPUT_PATCHLIST_27: return 27;
+        case USC::GSHADER_INPUT_PATCHLIST_28: return 28;
+        case USC::GSHADER_INPUT_PATCHLIST_29: return 29;
+        case USC::GSHADER_INPUT_PATCHLIST_30: return 30;
+        case USC::GSHADER_INPUT_PATCHLIST_31: return 31;
+        case USC::GSHADER_INPUT_PATCHLIST_32: return 32;
 
         default:
             assert(0 && "Input primitive type not implemented");

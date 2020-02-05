@@ -110,12 +110,12 @@ const unsigned int  PrintfBufferSize = 4 * MB;
   |--------------------------------------------------------------------|
 */
 
-// For vector arguments, 2 type identifiers are used: 1st is IGC::SHADER_PRINTF_VECTOR_*  and 2nd is the vector length.
+// For vector arguments, 2 type identifiers are used: 1st is SHADER_PRINTF_VECTOR_*  and 2nd is the vector length.
 // These 2 type identifiers are followed by the elements of the vector.
 // Example: float4
 //
 // |------------------------------|
-// |  IGC::SHADER_PRINTF_VECTOR_FLOAT  |
+// |  SHADER_PRINTF_VECTOR_FLOAT  |
 // |------------------------------|
 // |             0x4              |
 // |------------------------------|
@@ -475,7 +475,7 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst& printfCall, Function& F)
     {
         SPrintfArgDescriptor* argDesc = &m_argDescriptors[i];
         Value* printfArg = argDesc->value;
-        IGC::SHADER_PRINTF_TYPE dataType = argDesc->argType;
+        USC::SHADER_PRINTF_TYPE dataType = argDesc->argType;
 
         // We don't store the dataType for format string (which is the first entry in m_argDescriptors).
         if (i != 0)
@@ -569,20 +569,20 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst& printfCall, Function& F)
     m_argDescriptors.clear();
 }
 
-Value* OpenCLPrintfResolution::fixupPrintfArg(CallInst& printfCall, Value* arg, IGC::SHADER_PRINTF_TYPE& argDataType)
+Value* OpenCLPrintfResolution::fixupPrintfArg(CallInst& printfCall, Value* arg, USC::SHADER_PRINTF_TYPE& argDataType)
 {
     // For string argument, add the string to the metadata and put the string index
     // into the vector of arguments.
     switch (argDataType)
     {
-    case IGC::SHADER_PRINTF_STRING_LITERAL:
+    case USC::SHADER_PRINTF_STRING_LITERAL:
     {
         Function* F = printfCall.getParent()->getParent();
         uint stringIndex = processPrintfString(arg, *F);
         return ConstantInt::get(m_int32Type, stringIndex);
     }
     break;
-    case IGC::SHADER_PRINTF_POINTER:
+    case USC::SHADER_PRINTF_POINTER:
     {
         Instruction* tmp = CastInst::Create(Instruction::CastOps::PtrToInt,
             arg,
@@ -593,17 +593,17 @@ Value* OpenCLPrintfResolution::fixupPrintfArg(CallInst& printfCall, Value* arg, 
         return tmp;
     }
     break;
-    case IGC::SHADER_PRINTF_FLOAT:
-    case IGC::SHADER_PRINTF_VECTOR_FLOAT:
-    case IGC::SHADER_PRINTF_DOUBLE:
-    case IGC::SHADER_PRINTF_VECTOR_DOUBLE:
+    case USC::SHADER_PRINTF_FLOAT:
+    case USC::SHADER_PRINTF_VECTOR_FLOAT:
+    case USC::SHADER_PRINTF_DOUBLE:
+    case USC::SHADER_PRINTF_VECTOR_DOUBLE:
         // Cast halfs back to float. Cast doubles to floats if the platform does not support double fp type.
         if (arg->getType()->getScalarType()->isHalfTy() || (!m_fp64Supported && arg->getType()->getScalarType()->isDoubleTy()))
         {
-            if (argDataType == IGC::SHADER_PRINTF_DOUBLE)
-                argDataType = IGC::SHADER_PRINTF_FLOAT;
-            if (argDataType == IGC::SHADER_PRINTF_VECTOR_DOUBLE)
-                argDataType = IGC::SHADER_PRINTF_VECTOR_FLOAT;
+            if (argDataType == USC::SHADER_PRINTF_DOUBLE)
+                argDataType = USC::SHADER_PRINTF_FLOAT;
+            if (argDataType == USC::SHADER_PRINTF_VECTOR_DOUBLE)
+                argDataType = USC::SHADER_PRINTF_VECTOR_FLOAT;
 
             if (ConstantFP * constVal = dyn_cast<ConstantFP>(arg))
             {
@@ -652,7 +652,7 @@ void OpenCLPrintfResolution::preprocessPrintfArgs(CallInst& printfCall)
     {
         Value* arg = printfCall.getOperand(i);
         Type* argType = arg->getType();
-        IGC::SHADER_PRINTF_TYPE argDataType = getPrintfArgDataType(arg);
+        USC::SHADER_PRINTF_TYPE argDataType = getPrintfArgDataType(arg);
         arg = fixupPrintfArg(printfCall, arg, argDataType);
         uint vecSize = 0;
         if (argType->isVectorTy()) {
@@ -695,15 +695,15 @@ CallInst* OpenCLPrintfResolution::genAtomicAdd(Value* outputBufferPtr,
     return CallInst::Create(m_atomicAddFunc, args, name, &printfCall);
 }
 
-unsigned int OpenCLPrintfResolution::getArgTypeSize(IGC::SHADER_PRINTF_TYPE argType, uint vecSize)
+unsigned int OpenCLPrintfResolution::getArgTypeSize(USC::SHADER_PRINTF_TYPE argType, uint vecSize)
 {
     switch (argType) {
-    case IGC::SHADER_PRINTF_LONG:
-    case IGC::SHADER_PRINTF_DOUBLE:
-    case IGC::SHADER_PRINTF_POINTER:    // Runtime expects 64 bit value for pointer regardless of its actual size.
+    case USC::SHADER_PRINTF_LONG:
+    case USC::SHADER_PRINTF_DOUBLE:
+    case USC::SHADER_PRINTF_POINTER:    // Runtime expects 64 bit value for pointer regardless of its actual size.
         return 8;
-    case IGC::SHADER_PRINTF_VECTOR_LONG:
-    case IGC::SHADER_PRINTF_VECTOR_DOUBLE:
+    case USC::SHADER_PRINTF_VECTOR_LONG:
+    case USC::SHADER_PRINTF_VECTOR_DOUBLE:
         return vecSize * 8;
 
     default:
@@ -740,13 +740,13 @@ unsigned int OpenCLPrintfResolution::getTotalDataSize()
     return dataSize;
 }
 
-IGC::SHADER_PRINTF_TYPE OpenCLPrintfResolution::getPrintfArgDataType(Value* printfArg)
+USC::SHADER_PRINTF_TYPE OpenCLPrintfResolution::getPrintfArgDataType(Value* printfArg)
 {
     Type* argType = printfArg->getType();
 
     if (argIsString(printfArg))
     {
-        return IGC::SHADER_PRINTF_STRING_LITERAL;
+        return USC::SHADER_PRINTF_STRING_LITERAL;
     }
     else if (argType->isVectorTy())
     {
@@ -754,9 +754,9 @@ IGC::SHADER_PRINTF_TYPE OpenCLPrintfResolution::getPrintfArgDataType(Value* prin
         if (elemType->isFloatingPointTy())
         {
             if (elemType->isDoubleTy())
-                return IGC::SHADER_PRINTF_VECTOR_DOUBLE;
+                return USC::SHADER_PRINTF_VECTOR_DOUBLE;
             else
-                return IGC::SHADER_PRINTF_VECTOR_FLOAT;
+                return USC::SHADER_PRINTF_VECTOR_FLOAT;
         }
         else if (elemType->isIntegerTy())
         {
@@ -764,13 +764,13 @@ IGC::SHADER_PRINTF_TYPE OpenCLPrintfResolution::getPrintfArgDataType(Value* prin
             switch (typeSize)
             {
             case 8:
-                return IGC::SHADER_PRINTF_VECTOR_BYTE;
+                return USC::SHADER_PRINTF_VECTOR_BYTE;
             case 16:
-                return IGC::SHADER_PRINTF_VECTOR_SHORT;
+                return USC::SHADER_PRINTF_VECTOR_SHORT;
             case 32:
-                return IGC::SHADER_PRINTF_VECTOR_INT;
+                return USC::SHADER_PRINTF_VECTOR_INT;
             case 64:
-                return IGC::SHADER_PRINTF_VECTOR_LONG;
+                return USC::SHADER_PRINTF_VECTOR_LONG;
             }
         }
     }
@@ -778,14 +778,14 @@ IGC::SHADER_PRINTF_TYPE OpenCLPrintfResolution::getPrintfArgDataType(Value* prin
     {
         if (argType->isPointerTy())
         {
-            return IGC::SHADER_PRINTF_POINTER;
+            return USC::SHADER_PRINTF_POINTER;
         }
         else if (argType->isFloatingPointTy())
         {
             if (argType->isDoubleTy())
-                return IGC::SHADER_PRINTF_DOUBLE;
+                return USC::SHADER_PRINTF_DOUBLE;
             else
-                return IGC::SHADER_PRINTF_FLOAT;
+                return USC::SHADER_PRINTF_FLOAT;
         }
         else if (argType->isIntegerTy())
         {
@@ -793,17 +793,17 @@ IGC::SHADER_PRINTF_TYPE OpenCLPrintfResolution::getPrintfArgDataType(Value* prin
             switch (typeSize)
             {
             case 8:
-                return IGC::SHADER_PRINTF_BYTE;
+                return USC::SHADER_PRINTF_BYTE;
             case 16:
-                return IGC::SHADER_PRINTF_SHORT;
+                return USC::SHADER_PRINTF_SHORT;
             case 32:
-                return IGC::SHADER_PRINTF_INT;
+                return USC::SHADER_PRINTF_INT;
             case 64:
-                return IGC::SHADER_PRINTF_LONG;
+                return USC::SHADER_PRINTF_LONG;
             }
         }
     }
-    return IGC::SHADER_PRINTF_INVALID;
+    return USC::SHADER_PRINTF_INVALID;
 }
 
 Instruction* OpenCLPrintfResolution::generateCastToPtr(SPrintfArgDescriptor* argDesc,
@@ -813,28 +813,28 @@ Instruction* OpenCLPrintfResolution::generateCastToPtr(SPrintfArgDescriptor* arg
 
     switch (argDesc->argType)
     {
-    case IGC::SHADER_PRINTF_BYTE:
-    case IGC::SHADER_PRINTF_SHORT:
-    case IGC::SHADER_PRINTF_INT:
-    case IGC::SHADER_PRINTF_LONG:
-    case IGC::SHADER_PRINTF_FLOAT:
-    case IGC::SHADER_PRINTF_DOUBLE:
-    case IGC::SHADER_PRINTF_VECTOR_BYTE:
-    case IGC::SHADER_PRINTF_VECTOR_SHORT:
-    case IGC::SHADER_PRINTF_VECTOR_INT:
-    case IGC::SHADER_PRINTF_VECTOR_LONG:
-    case IGC::SHADER_PRINTF_VECTOR_FLOAT:
-    case IGC::SHADER_PRINTF_VECTOR_DOUBLE: {
+    case USC::SHADER_PRINTF_BYTE:
+    case USC::SHADER_PRINTF_SHORT:
+    case USC::SHADER_PRINTF_INT:
+    case USC::SHADER_PRINTF_LONG:
+    case USC::SHADER_PRINTF_FLOAT:
+    case USC::SHADER_PRINTF_DOUBLE:
+    case USC::SHADER_PRINTF_VECTOR_BYTE:
+    case USC::SHADER_PRINTF_VECTOR_SHORT:
+    case USC::SHADER_PRINTF_VECTOR_INT:
+    case USC::SHADER_PRINTF_VECTOR_LONG:
+    case USC::SHADER_PRINTF_VECTOR_FLOAT:
+    case USC::SHADER_PRINTF_VECTOR_DOUBLE: {
         Type* origType = argDesc->value->getType();
         castedType = origType->getPointerTo(ADDRESS_SPACE_GLOBAL);
         break;
     }
 
-    case IGC::SHADER_PRINTF_STRING_LITERAL:
+    case USC::SHADER_PRINTF_STRING_LITERAL:
         castedType = Type::getInt32PtrTy(*m_context, ADDRESS_SPACE_GLOBAL);
         break;
 
-    case IGC::SHADER_PRINTF_POINTER:
+    case USC::SHADER_PRINTF_POINTER:
         castedType = m_ptrSizeIntType->getPointerTo(ADDRESS_SPACE_GLOBAL);
         break;
 

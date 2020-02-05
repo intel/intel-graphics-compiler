@@ -24,7 +24,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 #pragma once
-#include "ShaderTypesEnum.h"
 #include "usc_config.h"
 #include "usc.h"
 #include "ShaderToken.h"
@@ -206,7 +205,7 @@ public:
 
     void                SetSamplerType(
                             const unsigned int number,
-                            IGC::SHADER_SAMPLER_TYPE type );
+                            USC::SHADER_SAMPLER_TYPE type );
 
     virtual void    SetBounds(
                 const unsigned int number,
@@ -217,7 +216,7 @@ public:
                 const unsigned int number,
                 const unsigned int space );
 
-    IGC::SHADER_SAMPLER_TYPE GetSamplerType(
+    SHADER_SAMPLER_TYPE GetSamplerType(
                             const unsigned int number ) const;
 
     virtual unsigned int GetLBound( const unsigned int number ) const;
@@ -254,7 +253,7 @@ public:
 
     void    SetResourceType(
                 const unsigned int number,
-                const IGC::SHADER_RESOURCE_TYPE type );
+                const SHADER_RESOURCE_TYPE type );
 
     void    SetSurfaceFormat(
                 const unsigned int number,
@@ -262,11 +261,11 @@ public:
 
     void    SetUAVAccessMode(
                 const unsigned int number,
-                const IGC::SHADER_UAV_ACCESS_MODE accessMode );
+                const SHADER_UAV_ACCESS_MODE accessMode );
 
     void    SetReturnType(
                 const unsigned int number,
-                const IGC::SHADER_RESOURCE_RETURN_TYPE type );
+                const SHADER_RESOURCE_RETURN_TYPE type );
 
     virtual void    SetBounds(
                 const unsigned int number,
@@ -308,7 +307,7 @@ public:
             GetSurfaceFormat(
                 const unsigned int number ) const;
 
-    IGC::SHADER_RESOURCE_TYPE
+    SHADER_RESOURCE_TYPE
             GetResourceType(
                 const unsigned int number ) const;
 
@@ -330,7 +329,7 @@ public:
     unsigned int   GetAlignment(
                 const unsigned int number ) const;
 
-    IGC::SHADER_RESOURCE_RETURN_TYPE
+    SHADER_RESOURCE_RETURN_TYPE
             GetReturnType(
                 const unsigned int number ) const;
 
@@ -450,21 +449,21 @@ public:
 
     void    SetMask(
                 const unsigned int number,
-                const IGC::SHADER_MASK mask );
+                const SHADER_MASK mask );
 
     void    SetUsage(
                 const unsigned int number,
-                const IGC::SHADER_CHANNEL channel,
-                const IGC::SHADER_USAGE usage );
+                const SHADER_CHANNEL channel,
+                const SHADER_USAGE usage );
 
     void    SetUsageIndex(
                 const unsigned int number,
-                const IGC::SHADER_CHANNEL channel,
+                const SHADER_CHANNEL channel,
                 const unsigned int usageIndex );
 
     void    SetInterpolationMode(
                 const unsigned int number,
-                const IGC::SHADER_INTERPOLATION_MODE mode );
+                const SHADER_INTERPOLATION_MODE mode );
 
     void    SetIndexed(
                 const unsigned int number,
@@ -475,18 +474,18 @@ public:
                 SShaderSwizzle swizzle,
                 bool lowPrecision );
 
-    IGC::SHADER_MASK     GetMask(
+    SHADER_MASK     GetMask(
                         const unsigned int number ) const;
 
-    IGC::SHADER_USAGE    GetUsage(
+    SHADER_USAGE    GetUsage(
                         const unsigned int number,
-                        const IGC::SHADER_CHANNEL channel ) const;
+                        const SHADER_CHANNEL channel ) const;
 
     unsigned int           GetUsageIndex(
                         const unsigned int number,
-                        const IGC::SHADER_CHANNEL channel ) const;
+                        const SHADER_CHANNEL channel ) const;
 
-    IGC::SHADER_INTERPOLATION_MODE   GetInterpolationMode(
+    SHADER_INTERPOLATION_MODE   GetInterpolationMode(
                                     const unsigned int number ) const;
 
     bool            IsIndexed(
@@ -571,7 +570,7 @@ Function:
     CShaderInputDecl::GetInstanceIDRegisterNum
 
 Description:
-    Returns the register index which has usage IGC::SHADER_USAGE_INSTANCE_ID or
+    Returns the register index which has usage SHADER_USAGE_INSTANCE_ID or
     SHADER_REGISTER_INDEX_NONE if no such register exist.
 
 Input:
@@ -592,7 +591,7 @@ Function:
     CShaderInputDecl::GetVertexIDRegisterNum
 
 Description:
-    Returns the register index which has usage IGC::SHADER_USAGE_VERTEX_ID or
+    Returns the register index which has usage SHADER_USAGE_VERTEX_ID or
     SHADER_REGISTER_INDEX_NONE if no such register exist.
 
 Input:
@@ -626,28 +625,28 @@ public:
 
     void    SetMask(
                 const unsigned int number,
-                const IGC::SHADER_MASK mask );
+                const SHADER_MASK mask );
 
     void    SetUsage(
                 const unsigned int number,
-                const IGC::SHADER_CHANNEL channel,
-                const IGC::SHADER_USAGE usage,
+                const SHADER_CHANNEL channel,
+                const SHADER_USAGE usage,
                 const unsigned int usageIndex );
 
     void    SetIndexed(
                 const unsigned int number,
                 const bool indexed );
 
-    IGC::SHADER_MASK     GetMask(
+    SHADER_MASK     GetMask(
                         const unsigned int number ) const;
 
-    IGC::SHADER_USAGE    GetUsage(
+    SHADER_USAGE    GetUsage(
                         const unsigned int number,
-                        const IGC::SHADER_CHANNEL channel ) const;
+                        const SHADER_CHANNEL channel ) const;
 
     unsigned int           GetUsageIndex(
                         const unsigned int number,
-                        const IGC::SHADER_CHANNEL channel ) const;
+                        const SHADER_CHANNEL channel ) const;
 
     bool            IsIndexed(
                         const unsigned int number ) const;
@@ -850,7 +849,7 @@ public:
     void    SetCached(
                 const unsigned int number,
                 const SIMD_MODE simdMode,
-                const IGC::SHADER_CHANNEL channel );
+                const SHADER_CHANNEL channel );
     void    SetReadChannels(
                 const unsigned int number,
                 const SShaderWriteMask mask );
@@ -864,7 +863,7 @@ public:
     bool             IsCached(
                          const unsigned int number,
                          const SIMD_MODE simdMode,
-                         const IGC::SHADER_CHANNEL channel ) const;    
+                         const SHADER_CHANNEL channel ) const;    
     unsigned int     GetNumCachedTemps( const SIMD_MODE simdMode ) const;
     bool             HasCachedTemps( void ) const;
     SShaderWriteMask GetReadChannels(

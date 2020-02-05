@@ -25,7 +25,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 #pragma once
 
-#include "ShaderTypesEnum.h"
 #include "ShaderInstruction.h"
 #include "usc_gen7_types.h"
 
@@ -35,7 +34,7 @@ namespace USC
 struct s_shader
 {
     // version
-    IGC::SHADER_VERSION_TYPE version;
+    SHADER_VERSION_TYPE version;
     
     // shader type
     SHADER_TYPE shader_type;
@@ -47,13 +46,13 @@ struct s_shader
     struct common_decl_channel {
         char                           is_active;
         char                           is_indexed;
-        IGC::SHADER_USAGE                   usage;
+        SHADER_USAGE                   usage;
         unsigned int                   usage_index;
     };
 
     // input channel declarations
     struct in_decl_channel : public common_decl_channel {
-        IGC::SHADER_INTERPOLATION_MODE      interpolation_mode;
+        SHADER_INTERPOLATION_MODE      interpolation_mode;
     };
 
     // output channel declarations
@@ -105,10 +104,10 @@ struct s_shader
 
     // resources and views
     struct resource_decl {
-        IGC::SHADER_RESOURCE_TYPE           data_type;
-        IGC::SHADER_RESOURCE_RETURN_TYPE    return_type;
+        SHADER_RESOURCE_TYPE           data_type;
+        SHADER_RESOURCE_RETURN_TYPE    return_type;
         IGC::SURFACE_FORMAT            surface_format;
-        IGC::SHADER_UAV_ACCESS_MODE         access_mode;
+        SHADER_UAV_ACCESS_MODE         access_mode;
         unsigned int                   stride;
         unsigned int                   size_or_count;
         unsigned int                   offset;
@@ -121,7 +120,7 @@ struct s_shader
 
     // active samplers
     struct sampler_decl {
-        IGC::SHADER_SAMPLER_TYPE             type;
+        SHADER_SAMPLER_TYPE             type;
     };
     struct sampler_array : public common_data {
             sampler_decl              **p_decl;
@@ -181,12 +180,12 @@ struct s_shader
     } subroutine_info;
 
     struct float_denorm_mode {
-        IGC::FLOAT_DENORM_MODE float16_denorm_mode;
-        IGC::FLOAT_DENORM_MODE float32_denorm_mode;
-        IGC::FLOAT_DENORM_MODE float64_denorm_mode;
+        USC_FLOAT_DENORM_MODE float16_denorm_mode;
+        USC_FLOAT_DENORM_MODE float32_denorm_mode;
+        USC_FLOAT_DENORM_MODE float64_denorm_mode;
     } denorm_modes;
 
-   IGC::EARLY_DEPTH_STENCIL_TEST_MODE early_depth_stencil_test_mode;
+   USC_EARLY_DEPTH_STENCIL_TEST_MODE early_depth_stencil_test_mode;
 
     // instruction pointer stream
     struct stream : public common_data
@@ -215,7 +214,7 @@ struct s_shader
         {
             unsigned int                            input_control_point_count;
             USC::TESSELLATOR_DOMAIN_TYPE            tess_domain;
-            IGC::SHADER_MASK                             domain_mask;
+            SHADER_MASK                             domain_mask;
             USC::TESSELLATOR_PARTITIONING_TYPE      tess_partitioning;
             USC::TESSELLATOR_OUTPUT_PRIMITIVE_TYPE  tess_outputprimitive;
             char                                    declares_input_primitive_id;
@@ -225,8 +224,8 @@ struct s_shader
         {
             unsigned int                        max_output_vertex_count;
             unsigned int                        invocation_count;
-            IGC::PRIMITIVE_TOPOLOGY_TYPE             output_type;
-            IGC::GSHADER_INPUT_PRIMITIVE_TYPE        input_type;
+            PRIMITIVE_TOPOLOGY_TYPE             output_type;
+            GSHADER_INPUT_PRIMITIVE_TYPE        input_type;
             char                                declares_input_primitive_id;
             char                                declares_invocation_id;
         } geometry_shader;
@@ -235,12 +234,12 @@ struct s_shader
         {
             char position_center;
             char position_inverted;
-            IGC::CLEAR_PS clear_shader_type;
+            CLEAR_PS clear_shader_type;
             char declared_ostencil;
             // multi rate shading
             bool is_multi_rate_shader;
             bool is_shading_phase;
-            IGC::SHADING_RATE shading_rate;
+            USC_SHADING_RATE shading_rate;
             unsigned int num_shading_phases;
             s_shader* shading_phase[MAX_NUM_SHADING_PHASES];
         } pixel_shader;
@@ -258,17 +257,17 @@ struct s_shader
 char __fastcall InternalDeclareIn( 
                                         s_shader::in_decl *const       container, 
                                         unsigned int                   at,
-                                        IGC::SHADER_CHANNEL                 channel, 
-                                        IGC::SHADER_INTERPOLATION_MODE      interpolation_mode, 
-                                        IGC::SHADER_USAGE                   usage, 
+                                        SHADER_CHANNEL                 channel, 
+                                        SHADER_INTERPOLATION_MODE      interpolation_mode, 
+                                        SHADER_USAGE                   usage, 
                                         unsigned int                   usage_index );
 
 // internal function for declaring register type 
 char __fastcall InternalDeclareOut( 
                                         s_shader::out_decl *const      container, 
                                         unsigned int                   at,
-                                        IGC::SHADER_CHANNEL                 channel, 
-                                        IGC::SHADER_USAGE                   usage, 
+                                        SHADER_CHANNEL                 channel, 
+                                        SHADER_USAGE                   usage, 
                                         unsigned int                   usage_index );
 
 
@@ -282,8 +281,8 @@ char __fastcall InternalDeclareBool(
 char __fastcall InternalDeclareResourceView(
                                                s_shader::resource_array *const  container, 
                                                unsigned int                     at,
-                                               IGC::SHADER_RESOURCE_TYPE             data_type,
-                                               IGC::SHADER_RESOURCE_RETURN_TYPE      return_type,
+                                               SHADER_RESOURCE_TYPE             data_type,
+                                               SHADER_RESOURCE_RETURN_TYPE      return_type,
                                                unsigned int                     stride,
                                                unsigned int                     size_or_count,
                                                unsigned int                     offset,
@@ -292,17 +291,17 @@ char __fastcall InternalDeclareResourceView(
 // internal function for declaring typed resource view
 char __fastcall InternalDeclareTypedView(
                                                s_shader::resource_array *const container, 
-                                               unsigned int at,
-                                               IGC::SHADER_RESOURCE_TYPE data_type,
-                                               IGC::SURFACE_FORMAT surface_format,
-                                               IGC::SHADER_UAV_ACCESS_MODE access_mode,
-                                               IGC::SHADER_RESOURCE_RETURN_TYPE return_type,
-                                               char access_coherency );
+                                               unsigned int                     at,
+                                               SHADER_RESOURCE_TYPE             data_type,
+                                               IGC::SURFACE_FORMAT              surface_format,
+                                               SHADER_UAV_ACCESS_MODE           access_mode,
+                                               SHADER_RESOURCE_RETURN_TYPE      return_type,
+                                               char                             access_coherency );
 
 char __fastcall InternalDeclareSampler(
                     s_shader::sampler_array *const         container, 
                     unsigned int                           at,
-                    IGC::SHADER_SAMPLER_TYPE                    type );
+                    SHADER_SAMPLER_TYPE                    type );
 
 char __fastcall InternalDeclareTGSM(
                     s_shader::tgsm_array *const            container, 
@@ -334,13 +333,13 @@ char __fastcall InternalDeclareInterface(
 // internal function for declaring denorm handling mode in s_shader
 char __fastcall InternalDeclareFloatDenormMode(
                     s_shader::float_denorm_mode * modes,
-                    IGC::FLOAT_PRECISION floatPrecision,
-                    IGC::FLOAT_DENORM_MODE denormMode);
+                    USC::USC_FLOAT_PRECISION floatPrecision,
+                    USC::USC_FLOAT_DENORM_MODE denormMode);
 
 // internal function for declaring early depth-stencil test handling mode in s_shader
 char __fastcall InternalDeclareEarlyDepthStencilTestMode( 
-                    IGC::EARLY_DEPTH_STENCIL_TEST_MODE * p_testMode,
-                    IGC::EARLY_DEPTH_STENCIL_TEST_MODE testMode);
+                    USC_EARLY_DEPTH_STENCIL_TEST_MODE * p_testMode,
+                    USC_EARLY_DEPTH_STENCIL_TEST_MODE testMode);
 
 // internal function for declaring immediate constant buffer with inlined data in s_shader
 char __fastcall InternalDeclareImmConstantBuffer(
@@ -352,9 +351,9 @@ char __fastcall InternalDeclareImmConstantBuffer(
 inline char DeclareRegisterInput(
                                    s_shader *const             p_shader,
                                    unsigned int                at,
-                                   IGC::SHADER_CHANNEL              channel, 
-                                   IGC::SHADER_INTERPOLATION_MODE   interpolation_mode, 
-                                   IGC::SHADER_USAGE                usage, 
+                                   SHADER_CHANNEL              channel, 
+                                   SHADER_INTERPOLATION_MODE   interpolation_mode, 
+                                   SHADER_USAGE                usage, 
                                    unsigned int                usage_index ) 
 {
     return 0!=p_shader
@@ -367,8 +366,8 @@ inline char DeclareRegisterInput(
 inline char DeclareRegisterOutput(
                                     s_shader *const                p_shader,
                                     unsigned int                   at,
-                                    IGC::SHADER_CHANNEL                 channel, 
-                                    IGC::SHADER_USAGE                   usage, 
+                                    SHADER_CHANNEL                 channel, 
+                                    SHADER_USAGE                   usage, 
                                     unsigned int                   usage_index )
 {
     return 0!=p_shader
@@ -381,9 +380,9 @@ inline char DeclareRegisterOutput(
 inline char DeclarePatchConstantInput(
                                         s_shader *const               p_shader,
                                         unsigned int                  at,
-                                        IGC::SHADER_CHANNEL                channel, 
-                                        IGC::SHADER_INTERPOLATION_MODE     interpolation_mode, 
-                                        IGC::SHADER_USAGE                  usage, 
+                                        SHADER_CHANNEL                channel, 
+                                        SHADER_INTERPOLATION_MODE     interpolation_mode, 
+                                        SHADER_USAGE                  usage, 
                                         unsigned int                  usage_index )
 {
     return 0!=p_shader
@@ -396,8 +395,8 @@ inline char DeclarePatchConstantInput(
 inline char DeclarePatchConstantOutput(
                                    s_shader *const               p_shader,
                                    unsigned int                  at,
-                                   IGC::SHADER_CHANNEL                channel, 
-                                   IGC::SHADER_USAGE                  usage, 
+                                   SHADER_CHANNEL                channel, 
+                                   SHADER_USAGE                  usage, 
                                    unsigned int                  usage_index )
 {
     return 0!=p_shader
@@ -436,8 +435,8 @@ char __fastcall DeclareRegisterIndexedTemp(
 inline char DeclareResource(
                              s_shader *const               p_shader,
                              unsigned int                  at,
-                             IGC::SHADER_RESOURCE_TYPE          data_type,
-                             IGC::SHADER_RESOURCE_RETURN_TYPE   return_type,
+                             SHADER_RESOURCE_TYPE          data_type,
+                             SHADER_RESOURCE_RETURN_TYPE   return_type,
                              unsigned int                  stride,
                              unsigned int                  size_or_count,
                              unsigned int                  offset,
@@ -452,8 +451,8 @@ inline char DeclareResource(
 inline char DeclareView(
                          s_shader *const               p_shader,
                          unsigned int                  at,
-                         IGC::SHADER_RESOURCE_TYPE          data_type,
-                         IGC::SHADER_RESOURCE_RETURN_TYPE   return_type,
+                         SHADER_RESOURCE_TYPE          data_type,
+                         SHADER_RESOURCE_RETURN_TYPE   return_type,
                          unsigned int                  stride,
                          unsigned int                  size_or_count,
                          unsigned int                  offset,
@@ -468,10 +467,10 @@ inline char DeclareView(
 inline char DeclareTypedView(
                          s_shader *const               p_shader,
                          unsigned int                  at,
-                         IGC::SHADER_RESOURCE_TYPE          data_type,
+                         SHADER_RESOURCE_TYPE          data_type,
                          const IGC::SURFACE_FORMAT     surface_format,
-                         const IGC::SHADER_UAV_ACCESS_MODE  access_mode,
-                         IGC::SHADER_RESOURCE_RETURN_TYPE   return_type,
+                         const SHADER_UAV_ACCESS_MODE  access_mode,
+                         SHADER_RESOURCE_RETURN_TYPE   return_type,
                          char                          access_coherency )
 {
     return 0!=p_shader
@@ -483,7 +482,7 @@ inline char DeclareTypedView(
 inline char DeclareSampler(
                             s_shader *const p_shader,
                             unsigned int    at,
-                            IGC::SHADER_SAMPLER_TYPE type )
+                            SHADER_SAMPLER_TYPE type )
 {
     return 0!=p_shader
     ? InternalDeclareSampler( &p_shader->sampler, at, type )
@@ -537,9 +536,9 @@ inline char DeclareRegisterTGSM(
 inline char DeclareSignatureInput(
                                     s_shader *const            p_shader,
                                     unsigned int               at,
-                                    IGC::SHADER_CHANNEL             channel, 
-                                    IGC::SHADER_INTERPOLATION_MODE  interpolation_mode, 
-                                    IGC::SHADER_USAGE               usage, 
+                                    SHADER_CHANNEL             channel, 
+                                    SHADER_INTERPOLATION_MODE  interpolation_mode, 
+                                    SHADER_USAGE               usage, 
                                     unsigned int               usage_index )
 {
     return 0!=p_shader
@@ -551,8 +550,8 @@ inline char DeclareSignatureInput(
 inline char DeclareSignatureOutput(
                                      s_shader *const               p_shader,
                                      unsigned int                  at,
-                                     IGC::SHADER_CHANNEL                channel, 
-                                     IGC::SHADER_USAGE                  usage, 
+                                     SHADER_CHANNEL                channel, 
+                                     SHADER_USAGE                  usage, 
                                      unsigned int                  usage_index )
 {
     return 0!=p_shader
@@ -564,9 +563,9 @@ inline char DeclareSignatureOutput(
 inline char DeclareSignaturePatchConstantInput(
                                                  s_shader *const               p_shader,
                                                  unsigned int                  at,
-                                                 IGC::SHADER_CHANNEL                channel, 
-                                                 IGC::SHADER_INTERPOLATION_MODE     interpolation_mode, 
-                                                 IGC::SHADER_USAGE                  usage, 
+                                                 SHADER_CHANNEL                channel, 
+                                                 SHADER_INTERPOLATION_MODE     interpolation_mode, 
+                                                 SHADER_USAGE                  usage, 
                                                  unsigned int                  usage_index )
 {
     return 0!=p_shader
@@ -578,8 +577,8 @@ inline char DeclareSignaturePatchConstantInput(
 inline char DeclareSignaturePatchConstant( 
                                              s_shader *const               p_shader,
                                              unsigned int                  at,
-                                             IGC::SHADER_CHANNEL                channel, 
-                                             IGC::SHADER_USAGE                  usage, 
+                                             SHADER_CHANNEL                channel, 
+                                             SHADER_USAGE                  usage, 
                                              unsigned int                  usage_index )
 {
     return 0!=p_shader
@@ -626,8 +625,8 @@ inline char DeclareInterface(
 // declare the way of handling of floating point denormalized numbers
 inline char DeclareFloatDenormMode( 
                                      s_shader * const p_shader,
-                                     const IGC::FLOAT_PRECISION precision,
-                                     const IGC::FLOAT_DENORM_MODE denormMode)
+                                     const USC_FLOAT_PRECISION precision,
+                                     const USC_FLOAT_DENORM_MODE denormMode)
 {
     return 0 != p_shader ?
         InternalDeclareFloatDenormMode( &p_shader->denorm_modes, precision, denormMode ) :
@@ -637,7 +636,7 @@ inline char DeclareFloatDenormMode(
 
 inline char DeclareEarlyDepthStencilTestMode(
     s_shader * const p_shader,
-    const IGC::EARLY_DEPTH_STENCIL_TEST_MODE testMode)
+    const USC_EARLY_DEPTH_STENCIL_TEST_MODE testMode)
 {
     return 0 != p_shader ?
         InternalDeclareEarlyDepthStencilTestMode(&p_shader->early_depth_stencil_test_mode, testMode) :
