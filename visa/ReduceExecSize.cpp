@@ -1584,10 +1584,6 @@ void HWConformity::moveSrcToGRF( INST_LIST_ITER it, uint32_t srcNum, uint16_t nu
     G4_INST* newInst = builder.createMov(
         execSize, dstRegion, src, (bb->isInSimdFlow() ? InstOpt_WriteEnable : InstOpt_NoOpt), false);
 
-    if( bb->isInSimdFlow() )
-    {
-        newInst->setOptionOn( InstOpt_WriteEnable );
-    }
     // insert instruction and maintain def-use chain
     bb->insert( it, newInst );
     inst->transferDef( newInst, Gen4_Operand_Number(srcNum + 1), Opnd_src0 );
@@ -1634,10 +1630,8 @@ void HWConformity::saveDst( INST_LIST_ITER& it, uint8_t stride, G4_BB *bb )
     unsigned int new_option = inst->getOption();
 
     G4_INST* newInst = builder.createMov(execSize, tmpDstOpnd, srcRegion, new_option, false);
-    if (bb->isInSimdFlow())
-    {
-        newInst->setNoMask(true);
-    }
+    newInst->setNoMask(true);
+
     bb->insert(it, newInst);
     inst->setDest(builder.duplicateOperand( tmpDstOpnd ) );
 }
@@ -1656,10 +1650,8 @@ void HWConformity::restoreDst( INST_LIST_ITER& it, G4_DstRegRegion *origDst, G4_
     unsigned int new_option = inst->getOption();
 
     G4_INST* newInst = builder.createMov(execSize, origDst, srcRegion, new_option, false);
-    if (bb->isInSimdFlow())
-    {
-        newInst->setNoMask(true);
-    }
+    newInst->setNoMask(true);
+
     INST_LIST_ITER iter = it;
     iter++;
     bb->insert( iter, newInst );
@@ -1730,25 +1722,24 @@ void  HWConformity::removeBadSrc( INST_LIST_ITER& iter, G4_BB *bb, bool crossGRF
     for (int i = 0; i < inst->getNumSrc(); i++)
     {
 
-        if( badTwoGRFSrc[i] )
+        if (badTwoGRFSrc[i])
         {
-            if( !crossGRFDst ||
-                ( dst && IS_DTYPE( dst->getType() ) && IS_WTYPE(inst->getSrc(i)->getType()) ) )
+            if (!crossGRFDst ||
+                (dst && IS_DTYPE(dst->getType()) && IS_WTYPE(inst->getSrc(i)->getType())))
             {
-                //moveSrcToGRF( iter, i, 1, bb, invDUTab );
-                inst->setSrc( insertMovBefore( iter, i, inst->getSrc(i)->getType(), bb ), i );
+                inst->setSrc(insertMovBefore(iter, i, inst->getSrc(i)->getType(), bb), i);
             }
             else
             {
-                moveSrcToGRF( iter, i, 2, bb );
+                moveSrcToGRF(iter, i, 2, bb);
             }
             badTwoGRFSrc[i] = false;
             INST_LIST_ITER tmpIter = iter;
             tmpIter--;
-            reduceExecSize( tmpIter, bb );
-            if( builder.getOption(vISA_OptReport) )
+            reduceExecSize(tmpIter, bb);
+            if (builder.getOption(vISA_OptReport))
             {
-                (*tmpIter)->emit( std::cout );
+                (*tmpIter)->emit(std::cout);
                 std::cout << std::endl;
             }
         }

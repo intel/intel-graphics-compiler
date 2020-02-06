@@ -943,10 +943,8 @@ bool HWConformity::fixLine(INST_LIST_ITER it, G4_BB *bb)
             new_dst_opnd = builder.Create_Dst_Opnd_From_Dcl(src0_dcl, 1);
 
             G4_INST* newInst = builder.createMov(mov_size, new_dst_opnd, src0, InstOpt_NoOpt, false);
-            if (bb->isInSimdFlow())
-            {
-                newInst->setNoMask(true);
-            }
+            newInst->setNoMask(true);
+
             bb->insert(it, newInst);
             inst->setSrc(new_src0_opnd, 0);
             return true;
@@ -2320,10 +2318,7 @@ bool HWConformity::fixMULInst( INST_LIST_ITER &i, G4_BB *bb )
     inst->setDest(acc_dst_opnd);
     fixMulSrc1(i, bb);
 
-    if (bb->isInSimdFlow())
-    {
-        inst->setNoMask(true);
-    }
+    inst->setNoMask(true);
 
     if (pred != NULL) {
         // conditional modifier cannot be used
@@ -2661,10 +2656,8 @@ void HWConformity::fixMULHInst( INST_LIST_ITER &i, G4_BB *bb )
     iter--;
     fixMulSrc1(iter, bb);
 
-    if (bb->isInSimdFlow())
-    {
-        newMul->setNoMask(true);
-    }
+    newMul->setNoMask(true);
+
     inst->setOpcode( G4_mach );
 
     if (src1->isImm() && src0->getType() != src1->getType())
