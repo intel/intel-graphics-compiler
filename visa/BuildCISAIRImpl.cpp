@@ -886,6 +886,7 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
         for( iter = m_kernels.begin(), i = 0; iter != end; iter++, i++ )
         {
             VISAKernelImpl* kernel = (*iter);
+            kernel->processAttributes();
             kernel->getIRBuilder()->setIsKernel(kernel->getIsKernel());
             kernel->getIRBuilder()->setCUnitId(i);
             if( kernel->getIsKernel() == false )

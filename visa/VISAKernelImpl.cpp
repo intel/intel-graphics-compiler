@@ -456,27 +456,12 @@ int VISAKernelImpl::InitializeFastPath()
     }
     m_jitInfo = (FINALIZER_INFO*)m_mem.alloc(sizeof(FINALIZER_INFO));
 
-    int feSPSize = 32;
-    if (!getIntKernelAttributeValue("FESPSize", feSPSize))
-    {
-        feSPSize = 32;
-    }
-    int spillMemOffset = 0;
-    if (getIntKernelAttributeValue("SpillMemOffset", spillMemOffset))
-    {
-        if (spillMemOffset > 0)
-        {
-            getOptions()->setOption(vISA_SpillMemOffset, (uint32_t)spillMemOffset);
-        }
-    }
-
     void* addr = m_kernelMem->alloc(sizeof(class IR_Builder));
     m_builder = new(addr)IR_Builder(m_instListNodeAllocator,
         *m_phyRegPool,
         *m_kernel,
         *m_kernelMem,
         m_options,
-        (feSPSize == 64),
         m_jitInfo,
         m_pWaTable
         );
@@ -8146,6 +8131,23 @@ int VISAKernelImpl::getVISAOffset() const
     }
     // ToDo: we should probably move vISA offset in VISKernelImpl so that we have it in vISA path too
     return -1;
+}
+
+void VISAKernelImpl::processAttributes()
+{
+  int feSPSize = 32;
+  if (getIntKernelAttributeValue("FESPSize", feSPSize) && feSPSize == 64)
+  {
+    m_builder->set64BitFEStackVars();
+  }
+  int spillMemOffset = 0;
+  if (getIntKernelAttributeValue("SpillMemOffset", spillMemOffset))
+  {
+    if (spillMemOffset > 0)
+    {
+      getOptions()->setOption(vISA_SpillMemOffset, (uint32_t)spillMemOffset);
+    }
+  }
 }
 
 void VISAKernelImpl::computeFCInfo(BinaryEncodingBase* binEncodingInstance)

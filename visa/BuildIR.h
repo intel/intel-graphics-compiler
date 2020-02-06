@@ -875,13 +875,13 @@ public:
     void initBuiltinSLMSpillAddr(int perThreadSLMSize);
 
     IR_Builder(INST_LIST_NODE_ALLOCATOR &alloc, PhyRegPool &pregs, G4_Kernel &k,
-        Mem_Manager &m, Options *options, bool isFESP64Bits,
+        Mem_Manager &m, Options *options,
         FINALIZER_INFO *jitInfo = NULL, PVISA_WA_TABLE pWaTable = NULL)
         : curFile(NULL), curLine(0), curCISAOffset(-1), immPool(*this), func_id(-1), metaData(jitInfo),
         isKernel(false), cunit(0),
         builtinSamplerHeaderInitialized(false), m_pWaTable(pWaTable), m_options(options), CanonicalRegionStride0(0, 1, 0),
         CanonicalRegionStride1(1, 1, 0), CanonicalRegionStride2(2, 1, 0), CanonicalRegionStride4(4, 1, 0),
-        use64BitFEStackVars(isFESP64Bits), mem(m), phyregpool(pregs), hashtable(m), rgnpool(m), dclpool(m),
+        use64BitFEStackVars(false), mem(m), phyregpool(pregs), hashtable(m), rgnpool(m), dclpool(m),
         instList(alloc), kernel(k)
     {
         num_general_dcl = 0;

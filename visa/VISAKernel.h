@@ -230,6 +230,8 @@ public:
 
     int getVISAOffset() const;
 
+    void processAttributes();
+
     /***************** START EXPOSED APIS *************************/
     VISA_BUILDER_API int CreateVISAGenVar(VISA_GenVar *& decl, const char *varName, int numberElements, VISA_Type dataType,
         VISA_Align varAlign, VISA_GenVar *parentDecl = NULL, int aliasOffset = 0);
