@@ -486,14 +486,13 @@ private:
 
 } // namespace
 
-static unsigned getRPReductionThreshold(G4_Kernel &kernel)
+static unsigned getRPReductionThreshold(unsigned NumGrfs, unsigned simdSize)
 {
-    unsigned NumGrfs = kernel.getNumRegTotal();
     float Ratio = NumGrfs / 128.0f;
 
     // For SIMD32 kernels, use a higher threshold for rp reduction,
     // as it may not be beneficial.
-    if (kernel.getSimdSize() == 32)
+    if (simdSize == 32)
         return unsigned(PRESSURE_REDUCTION_THRESHOLD_SIMD32 * Ratio);
 
     // For all other kernels, use the default threshold.
@@ -531,7 +530,7 @@ bool preRA_Scheduler::run()
             return false;
     }
 
-    unsigned Threshold = getRPReductionThreshold(kernel);
+    unsigned Threshold = getRPReductionThreshold(kernel.getNumRegTotal(), kernel.getSimdSize());
     unsigned SchedCtrl = m_options->getuInt32Option(vISA_preRA_ScheduleCtrl);
 
     LatencyTable LT(kernel.fg.builder);

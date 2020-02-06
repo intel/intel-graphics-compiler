@@ -5119,7 +5119,7 @@ void SWSB::dumpTokenLiveInfo()
         std::cerr << std::endl;
         if (BBVector[i]->killedTokens != nullptr)
         {
-            uint32_t totalTokenNum = kernel.getOptions()->getuInt32Option(vISA_SWSBTokenNum);
+            uint32_t totalTokenNum = kernel.getNumSWSBTokens();
             for (uint32_t k = 0; k < totalTokenNum; k++)
             {
                 if (BBVector[i]->killedTokens->isSet(k))

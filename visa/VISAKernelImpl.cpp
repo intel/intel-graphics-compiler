@@ -1494,7 +1494,7 @@ int VISAKernelImpl::CreateVISAInputVar(CISA_GEN_VAR *decl,
             dcl->getRegVar()->setPhyReg(m_phyRegPool->getGreg(regNum), subRegNum);
             dcl->setRegFile( G4_INPUT );
             unsigned int reservedGRFNum = m_options->getuInt32Option(vISA_ReservedGRFNum);
-            if (regNum + dcl->getNumRows() > m_builder->getOptions()->getuInt32Option(vISA_TotalGRFNum) - reservedGRFNum) {
+            if (regNum + dcl->getNumRows() > m_kernel->getNumRegTotal() - reservedGRFNum) {
                 MUST_BE_TRUE(false, "INPUT payload execeeds the regsiter number");
             }
         }

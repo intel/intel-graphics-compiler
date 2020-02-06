@@ -164,7 +164,7 @@ DEF_VISA_OPTION(vISA_SWSBTokenBarrier,    ET_INT32, "-SWSBTokenBarrier",  UNUSED
 DEF_VISA_OPTION(vISA_EnableSwitch,      ET_BOOL,  "-enableSwitch",    UNUSED, false)
 DEF_VISA_OPTION(vISA_EnableISBIDBUNDLE,      ET_BOOL,  "-SBIDBundle",    UNUSED, false)
 DEF_VISA_OPTION(vISA_EnableGroupScheduleForBC,      ET_BOOL,  "-groupScheduleForBC",    UNUSED, true)
-DEF_VISA_OPTION(vISA_SWSBTokenNum,        ET_INT32, "-SWSBTokenNum",      "USAGE: -SWSBTokenNum <tokenNum>\n", 16)
+DEF_VISA_OPTION(vISA_SWSBTokenNum,        ET_INT32, "-SWSBTokenNum",      "USAGE: -SWSBTokenNum <tokenNum>\n", 0)
 DEF_VISA_OPTION(vISA_EnableSendTokenReduction,      ET_BOOL,  "-SendTokenReduction",    UNUSED, false)
 DEF_VISA_OPTION(vISA_GlobalTokenAllocation,      ET_BOOL,  "-globalTokenAllocation",    UNUSED, false)
 DEF_VISA_OPTION(vISA_DistPropTokenAllocation,      ET_BOOL,  "-distPropTokenAllocation",    UNUSED, false)

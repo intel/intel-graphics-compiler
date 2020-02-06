@@ -1509,9 +1509,9 @@ public:
                 (major == COMMON_ISA_MAJOR_VER && minor <= COMMON_ISA_MINOR_VER),
             "CISA version not supported by this JIT-compiler");
 
-        setKernelParameters();
 
         name = NULL;
+        numThreads = 0;
         simdSize = 0;
         hasAddrTaken = false;
         kernelDbgInfo = nullptr;
@@ -1524,6 +1524,8 @@ public:
         {
             gtPinInfo = nullptr;
         }
+
+        setKernelParameters();
     }
 
     ~G4_Kernel();
@@ -1539,6 +1541,13 @@ public:
 
     void setNumThreads(int nThreads) { numThreads = nThreads; }
     uint32_t getNumThreads() const { return numThreads; }
+
+    void updateKernelByNumThreads(int nThreads)
+    {
+        numThreads = nThreads;
+        m_options->setOption(vISA_TotalGRFNum, (uint32_t)0);
+        setKernelParameters();
+    }
 
     void setNumSWSBTokens(int nSWSBs) { numSWSBTokens = nSWSBs; }
     uint32_t getNumSWSBTokens() const { return numSWSBTokens; }

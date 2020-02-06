@@ -3356,10 +3356,10 @@ void G4_Kernel::evalAddrExp()
 
 void G4_Kernel::setKernelParameters()
 {
-    unsigned numThreads = m_options->getuInt32Option(vISA_HWThreadNumberPerEU);
+    unsigned overrideGRFNum = m_options->getuInt32Option(vISA_TotalGRFNum);
+
 
     // Set the number of GRFs
-    unsigned overrideGRFNum = m_options->getuInt32Option(vISA_TotalGRFNum);
     if (overrideGRFNum > 0)
     {
         // User-provided number of GRFs
