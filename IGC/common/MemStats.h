@@ -101,6 +101,6 @@ static const SShaderMemorySnapshotInfo g_cShaderMemorySnapshot[] =
     { "COMPILE_END", true },
 };
 
-C_ASSERT( ( sizeof( g_cShaderMemorySnapshot ) / sizeof( *g_cShaderMemorySnapshot ) ) == MAX_SHADER_MEMORY_SNAPSHOT );
+static_assert((sizeof(g_cShaderMemorySnapshot) / sizeof(*g_cShaderMemorySnapshot)) == MAX_SHADER_MEMORY_SNAPSHOT);
 
 }

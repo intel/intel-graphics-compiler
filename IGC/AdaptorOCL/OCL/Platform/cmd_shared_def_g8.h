@@ -50,7 +50,7 @@ struct SSharedStateBindingTableState
     } DW0;
 };
 
-C_ASSERT( SIZE32(SSharedStateBindingTableState) == 1 );
+static_assert(SIZE32(SSharedStateBindingTableState) == 1);
 
 /*****************************************************************************\
 STRUCT: SGfxSamplerIndirectState (SAMPLER_INDIRECT_STATE)
@@ -79,7 +79,7 @@ struct SGfxSamplerIndirectState
     DWORD   _Unused7;
     DWORD   _Unused8;
 };
-C_ASSERT(SIZE32(SGfxSamplerIndirectState) == 12);
+static_assert(SIZE32(SGfxSamplerIndirectState) == 12);
 
 /*****************************************************************************\
 STRUCT: SSharedStateSamplerState ( SAMPLER_STATE )
@@ -333,7 +333,7 @@ struct SSharedStateSamplerState
     } DW3;
 };
 
-C_ASSERT( SIZE32(SSharedStateSamplerState) == 4 );
+static_assert(SIZE32(SSharedStateSamplerState) == 4);
 
 /*****************************************************************************\
 STRUCT: SSharedStateSearchPathLUTState
@@ -367,7 +367,7 @@ struct SSharedStateSearchPathLUTState
     } DW0;
 };
 
-C_ASSERT( SIZE32(SSharedStateSearchPathLUTState) == 1 );
+static_assert(SIZE32(SSharedStateSearchPathLUTState) == 1);
 
 /*****************************************************************************\
 STRUCT: SSharedStateRDLUTSet
@@ -431,7 +431,7 @@ struct SSharedStateRDLUTSet
     } DW3;
 };
 
-C_ASSERT( SIZE32(SSharedStateRDLUTSet) == 4 );
+static_assert(SIZE32(SSharedStateRDLUTSet) == 4);
 
 /*****************************************************************************\
 STRUCT: SSharedStateVmeState ( VME_STATE )
@@ -473,7 +473,7 @@ struct SSharedStateVmeState
     struct SSharedStateRDLUTSet   RdLutSet[ g_cNumMBModeSetsGen6 ];
 };
 
-C_ASSERT( SIZE32(SSharedStateVmeState) == 32 );
+static_assert(SIZE32(SSharedStateVmeState) == 32);
 
 /*****************************************************************************\
 STRUCT: SSamplerStateErodeDilateMinMaxFilter ( SAMPLER_STATE Erode/Dilate/MinMaxFilter )
@@ -490,7 +490,7 @@ struct SSamplerStateErodeDilateMinMaxFilter
     DWORD DW7;
 };
 
-C_ASSERT( SIZE32(SSamplerStateErodeDilateMinMaxFilter) == 8 );
+static_assert(SIZE32(SSamplerStateErodeDilateMinMaxFilter) == 8);
 
 /*****************************************************************************\
 STRUCT: SSharedStateSurfaceState ( SURFACE_STATE )
@@ -1242,7 +1242,7 @@ struct SSharedStateSurfaceState
     } DW15;
 };
 
-C_ASSERT( SIZE32(SSharedStateSurfaceState) == 16 );
+static_assert(SIZE32(SSharedStateSurfaceState) == 16);
 
 /*****************************************************************************\
 UNION: SSurfaceStateBufferLength
@@ -1260,7 +1260,7 @@ union SSurfaceStateBufferLength
     DWORD Length;
 };
 
-C_ASSERT( SIZE32(SSurfaceStateBufferLength) == 1 );
+static_assert(SIZE32(SSurfaceStateBufferLength) == 1);
 
 }  // namespace G6HWC
 

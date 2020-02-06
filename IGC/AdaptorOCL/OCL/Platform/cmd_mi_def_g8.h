@@ -48,7 +48,7 @@ struct SMIARBCheck
         DWORD       Value;
     } DW0;
 };
-C_ASSERT( SIZE32(SMIARBCheck) == 1 );
+static_assert(SIZE32(SMIARBCheck) == 1);
 
 /*****************************************************************************\
 STRUCT: SMIARBOnOff (MI_ARB_ON_OFF)
@@ -68,7 +68,7 @@ struct SMIARBOnOff
         DWORD       Value;
     } DW0;
 };
-C_ASSERT( SIZE32(SMIARBOnOff) == 1 );
+static_assert(SIZE32(SMIARBOnOff) == 1);
 
 /*****************************************************************************\
 STRUCT: SMIBatchBufferEnd (MI_BATCH_BUFFER_END)
@@ -88,7 +88,7 @@ struct SMIBatchBufferEnd
     } DW0;
 };
 
-C_ASSERT( SIZE32(SMIBatchBufferEnd) == 1 );
+static_assert(SIZE32(SMIBatchBufferEnd) == 1);
 
 /*****************************************************************************\
 STRUCT: SMIBatchBufferStart (MI_BATCH_BUFFER_START)
@@ -125,7 +125,7 @@ struct SMIBatchBufferStart
     } DW1;
 };
 
-C_ASSERT( SIZE32(SMIBatchBufferStart) == 2 );
+static_assert(SIZE32(SMIBatchBufferStart) == 2);
 
 
 /*****************************************************************************\
@@ -190,7 +190,7 @@ struct SMIDisplayFlip
     } DW3;
 };
 
-C_ASSERT( SIZE32(SMIDisplayFlip) == 4 );
+static_assert(SIZE32(SMIDisplayFlip) == 4);
 
 /*****************************************************************************\
 STRUCT: SMIFlush (MI_FLUSH)
@@ -217,7 +217,7 @@ struct SMIFlush
     } DW0;
 };
 
-C_ASSERT( SIZE32(SMIFlush) == 1 );
+static_assert(SIZE32(SMIFlush) == 1);
 
 /*****************************************************************************\
 STRUCT: SMILoadRegisterImmediate (MI_LOAD_REGISTER_IMM)
@@ -264,7 +264,7 @@ struct SMILoadRegisterImmediate
     } DW2;
 };
 
-C_ASSERT( SIZE32(SMILoadRegisterImmediate) == 3 );
+static_assert(SIZE32(SMILoadRegisterImmediate) == 3);
 
 /*****************************************************************************\
 STRUCT: SMILoadScanLinesExclusive (MI_LOAD_SCAN_LINES_EXCL)
@@ -298,7 +298,7 @@ struct SMILoadScanLinesExclusive
     } DW1;
 };
 
-C_ASSERT( SIZE32(SMILoadScanLinesExclusive) == 2 );
+static_assert(SIZE32(SMILoadScanLinesExclusive) == 2);
 
 /*****************************************************************************\
 STRUCT: SMILoadScanLinesInclusive (MI_LOAD_SCAN_LINES_INCL)
@@ -332,7 +332,7 @@ struct SMILoadScanLinesInclusive
     } DW1;
 };
 
-C_ASSERT( SIZE32(SMILoadScanLinesInclusive) == 2 );
+static_assert(SIZE32(SMILoadScanLinesInclusive) == 2);
 
 /*****************************************************************************\
 STRUCT: SMINoop (MI_NOOP)
@@ -353,7 +353,7 @@ struct SMINoop
     } DW0;
 };
 
-C_ASSERT( SIZE32(SMINoop) == 1 );
+static_assert(SIZE32(SMINoop) == 1);
 
 /*****************************************************************************\
 STRUCT: SMIOverlayFlip (MI_OVERLAY_FLIP)
@@ -387,7 +387,7 @@ struct SMIOverlayFlip
     } DW1;
 };
 
-C_ASSERT( SIZE32(SMIOverlayFlip) == 2 );
+static_assert(SIZE32(SMIOverlayFlip) == 2);
 
 /*****************************************************************************\
 STRUCT: SMIProbeHeader (MI_PROBE)
@@ -407,7 +407,7 @@ struct SMIProbeHeader
         DWORD       Value;
     } DW0;
 };
-C_ASSERT( SIZE32(SMIProbeHeader) == 1 );
+static_assert(SIZE32(SMIProbeHeader) == 1);
 
 /*****************************************************************************\
 STRUCT: SMIProbeState (MI_PROBE)
@@ -426,7 +426,7 @@ struct SMIProbeState
         DWORD       Value;
     } DW0;
 };
-C_ASSERT( SIZE32(SMIProbeState) == 1 );
+static_assert(SIZE32(SMIProbeState) == 1);
 
 /*****************************************************************************\
 STRUCT: SMIProbe (MI_PROBE)
@@ -455,7 +455,7 @@ struct SMIReportHead
     } DW0;
 };
 
-C_ASSERT( SIZE32(SMIReportHead) == 1 );
+static_assert(SIZE32(SMIReportHead) == 1);
 
 /*****************************************************************************\
 STRUCT: SMIReportNonCE (MI_REPORT_NONCE)
@@ -486,7 +486,7 @@ struct SMIReportNonCE
     } DW1;
 };
 
-C_ASSERT( SIZE32(SMIReportNonCE) == 2 );
+static_assert(SIZE32(SMIReportNonCE) == 2);
 
 /*****************************************************************************\
 STRUCT: SMISemaphoreMBox (MI_SEMAPHORE_MBOX)
@@ -532,7 +532,7 @@ struct SMISemaphoreMBox
     } DW2;
 };
 
-C_ASSERT( SIZE32(SMISemaphoreMBox) == 3 );
+static_assert(SIZE32(SMISemaphoreMBox) == 3);
 
 /*****************************************************************************\
 STRUCT: SMISetContext (MI_SET_CONTEXT)
@@ -571,7 +571,7 @@ struct SMISetContext
     } DW1;
 };
 
-C_ASSERT( SIZE32(SMISetContext) == 2 );
+static_assert(SIZE32(SMISetContext) == 2);
 
 
 /*****************************************************************************\
@@ -647,7 +647,7 @@ struct SMIStoreDataImmediate
     } QW2;
 };
 
-C_ASSERT( SIZE32(SMIStoreDataImmediate) == 5 );
+static_assert(SIZE32(SMIStoreDataImmediate) == 5);
 
 
 /*****************************************************************************\
@@ -704,7 +704,7 @@ struct SMIStoreDataIndexed
     } QW2;
 };
 
-C_ASSERT( SIZE32(SMIStoreDataIndexed) == 4 );
+static_assert(SIZE32(SMIStoreDataIndexed) == 4);
 
 
 /*****************************************************************************\
@@ -750,7 +750,7 @@ struct SMIStoreRegisterMemory
     } DW2;
 };
 
-C_ASSERT( SIZE32(SMIStoreRegisterMemory) == 3 );
+static_assert(SIZE32(SMIStoreRegisterMemory) == 3);
 
 
 /*****************************************************************************\
@@ -784,7 +784,7 @@ struct SMIUpdateGTTHeader
     } DW1;
 };
 
-C_ASSERT( SIZE32(SMIUpdateGTTHeader) == 2 );
+static_assert(SIZE32(SMIUpdateGTTHeader) == 2);
 
 /*****************************************************************************\
 STRUCT: SMIUpdateGTTState (MI_UPDATE_GTT)
@@ -802,7 +802,7 @@ struct SMIUpdateGTTState
     } DW0;
 };
 
-C_ASSERT( SIZE32(SMIUpdateGTTState) == 1 );
+static_assert(SIZE32(SMIUpdateGTTState) == 1);
 
 /*****************************************************************************\
 STRUCT: SMIUpdateGTT (MI_UPDATE_GTT)
@@ -831,7 +831,7 @@ struct SMIUnProbe
         DWORD       Value;
     } DW0;
 };
-C_ASSERT( SIZE32(SMIUnProbe) == 1 );
+static_assert(SIZE32(SMIUnProbe) == 1);
 
 /*****************************************************************************\
 STRUCT: SMIUserInterrupt (MI_USER_INTERRUPT)
@@ -851,7 +851,7 @@ struct SMIUserInterrupt
     } DW0;
 };
 
-C_ASSERT( SIZE32(SMIUserInterrupt) == 1 );
+static_assert(SIZE32(SMIUserInterrupt) == 1);
 
 /*****************************************************************************\
 STRUCT: SMIWaitForEvent (MI_WAIT_FOR_EVENT)
@@ -887,7 +887,7 @@ struct SMIWaitForEvent
     } DW0;
 };
 
-C_ASSERT( SIZE32(SMIWaitForEvent) == 1 );
+static_assert(SIZE32(SMIWaitForEvent) == 1);
 
 } //namespace G6HWC
 

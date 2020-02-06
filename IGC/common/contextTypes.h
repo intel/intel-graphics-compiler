@@ -82,7 +82,7 @@ struct RETVAL
     operator ErrorCode();                   // convertion operator to ErrorCode API type
 };
 
-C_ASSERT( sizeof( RETVAL ) == sizeof( ErrorCode ) );
+static_assert(sizeof(RETVAL) == sizeof(ErrorCode));
 
 
 inline RETVAL& RETVAL::operator = (const ErrorCode& errorCode)
@@ -111,7 +111,7 @@ const RETVAL g_cInitRetVal =
     false,  // Busy
 };
 
-C_ASSERT(sizeof(g_cInitRetVal) == sizeof(g_cInitErrorCode));
+static_assert(sizeof(g_cInitRetVal) == sizeof(g_cInitErrorCode));
 
 #endif
 

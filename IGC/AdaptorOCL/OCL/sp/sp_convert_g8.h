@@ -48,8 +48,8 @@ static const G6HWC::GFXSHAREDSTATE_TEXCOORDMODE g_cConvertSamplerTextureAddressM
     G6HWC::GFXSHAREDSTATE_TEXCOORDMODE_MIRROR_101      // SAMPLER_TEXTURE_ADDRESS_MODE_MIRROR101
 };
 
-C_ASSERT( sizeof(g_cConvertSamplerTextureAddressMode) ==
-    sizeof(G6HWC::GFXSHAREDSTATE_TEXCOORDMODE) * NUM_SAMPLER_TEXTURE_ADDRESS_MODES );
+static_assert(sizeof(g_cConvertSamplerTextureAddressMode) ==
+    sizeof(G6HWC::GFXSHAREDSTATE_TEXCOORDMODE) * NUM_SAMPLER_TEXTURE_ADDRESS_MODES);
 
 /*****************************************************************************\
 CONST: g_cConvertSamplerMapFilter
@@ -64,8 +64,8 @@ static const G6HWC::GFXSHAREDSTATE_MAPFILTER g_cConvertSamplerMapFilter[] =
     G6HWC::GFXSHAREDSTATE_MAPFILTER_MONO            // SAMPLER_MAPFILTER_MONO
 };
 
-C_ASSERT( sizeof(g_cConvertSamplerMapFilter) ==
-    sizeof(G6HWC::GFXSHAREDSTATE_MAPFILTER) * NUM_SAMPLER_MAPFILTER_TYPES );
+static_assert(sizeof(g_cConvertSamplerMapFilter) ==
+    sizeof(G6HWC::GFXSHAREDSTATE_MAPFILTER) * NUM_SAMPLER_MAPFILTER_TYPES);
 
 /*****************************************************************************\
 CONST: g_cConvertSamplerMipFilter
@@ -77,7 +77,7 @@ static const G6HWC::GFXSHAREDSTATE_MIPFILTER g_cConvertSamplerMipFilter[] =
     G6HWC::GFXSHAREDSTATE_MIPFILTER_NONE            // SAMPLER_MIPFILTER_NONE
 };
 
-C_ASSERT(sizeof(g_cConvertSamplerMipFilter) ==
+static_assert(sizeof(g_cConvertSamplerMipFilter) ==
     sizeof(G6HWC::GFXSHAREDSTATE_MAPFILTER) * NUM_SAMPLER_MIPFILTER_TYPES);
 
 /*****************************************************************************\
@@ -95,7 +95,7 @@ static const G6HWC::GFXSHAREDSTATE_PREFILTER_OPERATION g_cConvertCompareFunc[] =
     G6HWC::GFXSHAREDSTATE_PREFILTER_GREATER    // SAMPLER_COMPARE_FUNC_GREATER_EQUAL
 };
 
-C_ASSERT(sizeof(g_cConvertCompareFunc) ==
+static_assert(sizeof(g_cConvertCompareFunc) ==
     sizeof(G6HWC::GFXSHAREDSTATE_PREFILTER_OPERATION) * NUM_SAMPLER_COMPARE_FUNC_TYPES);
 
 /*****************************************************************************\
@@ -303,8 +303,8 @@ static const G6HWC::GFXSHAREDSTATE_SURFACEFORMAT g_cConvertSurfaceFormat[] =
     G6HWC::GFXSHAREDSTATE_SURFACEFORMAT_RAW,                        // IGC::SURFACE_FORMAT_RAW
 };
 
-C_ASSERT( sizeof(g_cConvertSurfaceFormat) ==
-    sizeof(G6HWC::GFXSHAREDSTATE_SURFACEFORMAT) * IGC::NUM_SURFACE_FORMATS );
+static_assert(sizeof(g_cConvertSurfaceFormat) ==
+    sizeof(G6HWC::GFXSHAREDSTATE_SURFACEFORMAT) * IGC::NUM_SURFACE_FORMATS);
 
 /*****************************************************************************\
 CONST: g_cConvertSurfaceMipMapLayout
@@ -315,8 +315,8 @@ static const G6HWC::GFXSHAREDSTATE_SURFACE_MIPMAPLAYOUT g_cConvertSurfaceMipMapL
     G6HWC::GFXSHAREDSTATE_SURFACE_MIPMAPLAYOUT_RIGHT,   // RESOURCE_MIPMAP_LAYOUT_RIGHT
 };
 
-C_ASSERT( sizeof(g_cConvertSurfaceMipMapLayout) ==
-    sizeof(G6HWC::GFXSHAREDSTATE_SURFACE_MIPMAPLAYOUT) * NUM_RESOURCE_MIPMAP_LAYOUT_MODES );
+static_assert(sizeof(g_cConvertSurfaceMipMapLayout) ==
+    sizeof(G6HWC::GFXSHAREDSTATE_SURFACE_MIPMAPLAYOUT) * NUM_RESOURCE_MIPMAP_LAYOUT_MODES);
 
 /*****************************************************************************\
 CONST: g_cConvertSurfaceType
@@ -338,8 +338,8 @@ static const G6HWC::GFXSHAREDSTATE_SURFACETYPE g_cConvertSurfaceType[] =
     G6HWC::GFXSHAREDSTATE_SURFACETYPE_2D        // SURFACE_2D_MEDIA_BLOCK
 };
 
-C_ASSERT( sizeof(g_cConvertSurfaceType) ==
-    sizeof(G6HWC::GFXSHAREDSTATE_SURFACETYPE) * NUM_SURFACE_TYPES );
+static_assert(sizeof(g_cConvertSurfaceType) ==
+    sizeof(G6HWC::GFXSHAREDSTATE_SURFACETYPE) * NUM_SURFACE_TYPES);
 
 #if 0
 /*****************************************************************************\
@@ -359,8 +359,8 @@ static const iOpenCL::IMAGE_MEMORY_OBJECT_TYPE g_cConvertResourceType[] =
     iOpenCL::IMAGE_MEMORY_OBJECT_2D_MEDIA,  // SHADER_RESOURCE_2D_MEDIA
 };
 
-C_ASSERT( sizeof(g_cConvertResourceType) ==
-    sizeof(iOpenCL::IMAGE_MEMORY_OBJECT_TYPE) * USC::NUM_SHADER_RESOURCE_TYPES );
+static_assert(sizeof(g_cConvertResourceType) ==
+    sizeof(iOpenCL::IMAGE_MEMORY_OBJECT_TYPE) * USC::NUM_SHADER_RESOURCE_TYPES);
 #endif
 
 } // namespace iOpenCL

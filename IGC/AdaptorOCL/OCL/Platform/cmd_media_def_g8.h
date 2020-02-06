@@ -209,7 +209,7 @@ struct SMediaStateInterfaceDescriptorData
     } DW7;
 };
 
-C_ASSERT( SIZE32( SMediaStateInterfaceDescriptorData ) == 8 );
+static_assert(SIZE32(SMediaStateInterfaceDescriptorData) == 8);
 
 /*****************************************************************************\
 STRUCT: SMediaStateMediaInterfaceDescriptorLoad (MEDIA_INTERFACE_DESCRIPTOR_LOAD)
@@ -260,7 +260,7 @@ struct SMediaStateMediaInterfaceDescriptorLoad
     } DW3;
 };
 
-C_ASSERT( SIZE32( SMediaStateMediaInterfaceDescriptorLoad ) == 4 );
+static_assert(SIZE32(SMediaStateMediaInterfaceDescriptorLoad) == 4);
 
 /*****************************************************************************\
 STRUCT: SMediaStateMediaVFEState (MEDIA_VFE_STATE)
@@ -497,7 +497,7 @@ struct SMediaStateMediaVFEState
     } DW8;
 };
 
-C_ASSERT( SIZE32( SMediaStateMediaVFEState ) == 9 );
+static_assert(SIZE32(SMediaStateMediaVFEState) == 9);
 
 /*****************************************************************************\
 STRUCT: SMediaStateMediaCURBELoad (MEDIA_CURBE_LOAD)
@@ -549,7 +549,7 @@ struct SMediaStateMediaCURBELoad
     } DW3;
 };
 
-C_ASSERT( SIZE32( SMediaStateMediaCURBELoad ) == 4 );
+static_assert(SIZE32(SMediaStateMediaCURBELoad) == 4);
 
 /*****************************************************************************\
 STRUCT: SMediaStateMediaStateFlush (MEDIA_STATE_FLUSH)
@@ -592,7 +592,7 @@ struct SMediaStateMediaStateFlush
     } DW1;
 };
 
-C_ASSERT( SIZE32( SMediaStateMediaStateFlush ) == 2 );
+static_assert(SIZE32(SMediaStateMediaStateFlush) == 2);
 
 /*****************************************************************************\
 STRUCT: SMediaStateGPGPUWalker (GPGPU_WALKER)
@@ -833,7 +833,7 @@ struct SMediaStateGPGPUWalker
     } DW14;
 };
 
-C_ASSERT( SIZE32( SMediaStateGPGPUWalker ) == 15 );
+static_assert(SIZE32(SMediaStateGPGPUWalker) == 15);
 
 }  // namespace G6HWC
 

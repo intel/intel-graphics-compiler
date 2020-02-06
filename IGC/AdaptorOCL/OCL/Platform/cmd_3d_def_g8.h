@@ -157,7 +157,7 @@ struct S3DPipeControl
 
 };
 
-C_ASSERT( SIZE32(S3DPipeControl) == 6 );
+static_assert(SIZE32(S3DPipeControl) == 6);
 
 }  // namespace G6HWC
 

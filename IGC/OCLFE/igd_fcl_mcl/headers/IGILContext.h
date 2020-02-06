@@ -68,8 +68,6 @@ typedef int INT; */
 
 #define HANDLE void*
 
-#define C_ASSERT(e)
-
 #include "GlobalData.h"
 
 #ifdef VER_H
@@ -84,8 +82,6 @@ typedef int INT; */
 #undef INT
 #undef UINT
 #undef HANDLE
-
-#undef C_ASSERT
 
 class IGILContext : public llvm::LLVMContext
 {

@@ -35,8 +35,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     typedef unsigned __int64    UINT64;         //  64-bits,    8-bytes
     typedef unsigned long       ULONG;          //  32-bits,    4-bytes
 
-    #define C_ASSERT(e) typedef char __C_ASSERT__[(e)?1:-1]
-
 #else // if !defined(_WIN32)
 
     typedef std::uint64_t            QWORD;          //  64-bits,    8-bytes
@@ -45,14 +43,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     typedef std::uint64_t            UINT64;         //  64-bits,    8-bytes
     typedef unsigned int        ULONG;
 
-    #ifndef C_ASSERT
-        #define __UNIQUENAME( a1, a2 )  __CONCAT( a1, a2 )
-            #define UNIQUENAME( __text )    __UNIQUENAME( __text, __COUNTER__ )
-
-        #define STATIC_ASSERT(e)  typedef char UNIQUENAME(STATIC_ASSERT_)[(e)?1:-1]
-
-        #define C_ASSERT(e) STATIC_ASSERT(e)
-     #endif
 #endif
 
 typedef unsigned int            UINT32;         //  32-bits,    4-bytes
