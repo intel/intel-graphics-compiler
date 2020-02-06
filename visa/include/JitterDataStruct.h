@@ -75,6 +75,8 @@ typedef struct {
     // for compute (GP or GP1), skip this offset to set FFID_GP1.
     // Will set FFID_GP if not skip
     uint32_t offsetToSkipSetFFIDGP = 0;
+
+    bool hasStackcalls = false;
 } FINALIZER_INFO;
 
 #endif // JITTERDATASTRUCT_

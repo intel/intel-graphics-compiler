@@ -9500,6 +9500,7 @@ int GlobalRA::coloringRegAlloc()
         uint32_t scratchSize = kernel.fg.getHasStackCalls() ? 8 * 1024 : 0;
         spillMemUsed = std::max(spillMemUsed, scratchSize);
         jitInfo->isSpill = spillMemUsed > 0;
+        jitInfo->hasStackcalls = kernel.fg.getHasStackCalls();
         jitInfo->spillMemUsed = spillMemUsed;
         jitInfo->numGRFSpillFill = GRFSpillFillCount;
         jitInfo->numBytesScratchGtpin = kernel.getGTPinData()->getNumBytesScratchUse();
