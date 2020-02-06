@@ -10088,48 +10088,63 @@ void EmitPass::emitInsert(llvm::Instruction* inst)
         m_encoder->Push();
 
         // a0 = addressof(vector variable) + offset2 <-- address of element to insert at
-        CVariable* pDstArrElm = m_currShader->GetNewAddressVariable(
-            pIndexVar->IsUniform() ? 1 : numLanes(m_currShader->m_SIMDSize),
-            m_destination->GetType(),
-            pIndexVar->IsUniform(),
-            pInstVar->IsUniform());
-
-        m_encoder->AddrAdd(pDstArrElm, m_destination, pOffset2);
-        m_encoder->Push();
-
-        // If pIndexVar is uniform, we are using 1x1 indirect addressing and
-        // a single copy is what we need.
         if (pIndexVar->IsUniform())
         {
+            CVariable* pDstArrElm = m_currShader->GetNewAddressVariable(1, m_destination->GetType(), true, pInstVar->IsUniform());
+            m_encoder->AddrAdd(pDstArrElm, m_destination, pOffset2);
+            m_encoder->Push();
             m_encoder->Copy(pDstArrElm, pElemVar);
             m_encoder->Push();
         }
         else
         {
-            // Handle the case when the index is non-uniform - we need to lookup a different value
-            // for each simd lane.
-            // Since HW doesn't support writing to more than two consecutive GRFs, we need to simulate
-            // scattered write by a sequence of instructions, each one writing to a single simd-lane.
-            for (uint lane = 0; lane < numLanes(m_currShader->m_SIMDSize); ++lane)
+            int loopCount = (m_currShader->m_dispatchSize == SIMDMode::SIMD32 && m_currShader->m_numberInstance == 1) ? 2 : 1;
+            for (int i = 0; i < loopCount; ++i)
             {
-                CVariable* immMask = m_currShader->ImmToVariable(1ULL << lane, ISA_TYPE_UD);
-                CVariable* dstPred = m_currShader->GetNewVariable(
-                    numLanes(m_SimdMode),
-                    ISA_TYPE_BOOL,
-                    EALIGN_BYTE);
-
-                m_encoder->SetP(dstPred, immMask);
-                m_encoder->Push();
-
-                m_encoder->SetPredicate(dstPred);
-                if (!pElemVar->IsUniform())
+                if (i == 1)
                 {
-                    m_encoder->SetSrcSubReg(0, lane);
+                    // explicitly set second half as we are manually splitting
+                    m_encoder->SetSecondHalf(true);
                 }
-                m_encoder->SetSrcRegion(0, 0, 1, 0);
-                m_encoder->SetDstSubReg(lane);
-                m_encoder->Copy(pDstArrElm, pElemVar);
+                SIMDMode simdMode = std::min(m_currShader->m_SIMDSize, SIMDMode::SIMD16);
+                CVariable* pDstArrElm = m_currShader->GetNewAddressVariable(
+                    numLanes(simdMode),
+                    m_destination->GetType(),
+                    false,
+                    pInstVar->IsUniform());
+
+                m_encoder->SetSimdSize(simdMode);
+                m_encoder->AddrAdd(pDstArrElm, m_destination, pOffset2);
                 m_encoder->Push();
+
+                // Handle the case when the index is non-uniform - we need to lookup a different value
+                // for each simd lane.
+                // Since HW doesn't support scattered GRF writes, we need to simulate
+                // scattered write by a sequence of instructions, each one writing to a single simd-lane.
+                for (uint lane = 0; lane < numLanes(simdMode); ++lane)
+                {
+                    uint position = lane + i * 16;
+                    CVariable* immMask = m_currShader->ImmToVariable(1ULL << lane, ISA_TYPE_UD);
+                    CVariable* dstPred = m_currShader->GetNewVariable(
+                        numLanes(m_SimdMode),
+                        ISA_TYPE_BOOL,
+                        EALIGN_BYTE);
+
+                    m_encoder->SetSimdSize(simdMode);
+                    m_encoder->SetP(dstPred, immMask);
+                    m_encoder->Push();
+
+                    m_encoder->SetPredicate(dstPred);
+                    if (!pElemVar->IsUniform())
+                    {
+                        m_encoder->SetSrcSubReg(0, position);
+                    }
+                    m_encoder->SetSrcRegion(0, 0, 1, 0);
+                    m_encoder->SetDstSubReg(lane);
+                    m_encoder->SetSimdSize(simdMode);
+                    m_encoder->Copy(pDstArrElm, pElemVar);
+                    m_encoder->Push();
+                }
             }
         }
     }
