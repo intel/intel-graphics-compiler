@@ -4839,6 +4839,32 @@ void EmitPass::emitSimdShuffleDown(llvm::Instruction* inst)
         m_encoder->Push();
     }
 
+    if (m_SimdMode == SIMDMode::SIMD32)
+    {
+        m_encoder->SetDstSubVar(0);
+        m_encoder->SetDstSubReg(8);
+        m_encoder->SetSimdSize(SIMDMode::SIMD8);
+        m_encoder->SetNoMask();
+        CVariable* imm1 = m_currShader->ImmToVariable(0x8, ISA_TYPE_UD);
+        m_encoder->Add(pLaneId, pLaneId, imm1);
+        m_encoder->Push();
+
+        m_encoder->SetDstSubVar(1);
+        m_encoder->SetSimdSize(SIMDMode::SIMD8);
+        m_encoder->SetNoMask();
+        imm1 = m_currShader->ImmToVariable(0x10, ISA_TYPE_UD);
+        m_encoder->Add(pLaneId, pLaneId, imm1);
+        m_encoder->Push();
+
+        m_encoder->SetDstSubVar(1);
+        m_encoder->SetDstSubReg(8);
+        m_encoder->SetSimdSize(SIMDMode::SIMD8);
+        m_encoder->SetNoMask();
+        imm1 = m_currShader->ImmToVariable(0x18, ISA_TYPE_UD);
+        m_encoder->Add(pLaneId, pLaneId, imm1);
+        m_encoder->Push();
+    }
+
     CVariable* pShuffleIdx = m_currShader->GetNewVariable(
         numLanes(m_SimdMode),
         ISA_TYPE_UD,
@@ -5485,7 +5511,6 @@ void EmitPass::emitSimdMediaBlockRead(llvm::Instruction* inst)
     CVariable* srcbti = m_currShader->ImmToVariable(bindingTableIndex, ISA_TYPE_UD);
     uint32_t maxWidth = 32;
 
-
     if (totalWidth < maxWidth)
     {
         numPasses = 1;
@@ -5720,7 +5745,6 @@ void EmitPass::emitSimdMediaBlockWrite(llvm::Instruction* inst)
 
     CVariable* srcbti = m_currShader->ImmToVariable(bindingTableIndex, ISA_TYPE_UD);
     uint32_t maxWidth = 32;
-
 
     if (totalWidth < maxWidth)
     {
