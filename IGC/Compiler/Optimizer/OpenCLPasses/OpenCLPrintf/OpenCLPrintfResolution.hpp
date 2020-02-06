@@ -100,7 +100,7 @@ namespace IGC
 
         // If printfArg is string, adds the string into metadata.
         // Returns the string index if the argument is string, and -1 otherwise.
-        int  processPrintfString(llvm::Value* printfArg, llvm::Function& F);
+        llvm::Value* processPrintfString(llvm::Value* printfArg, llvm::Function& F);
 
         // Replaces a printf call with a sequence of IR instrictions.
         void expandPrintfCall(llvm::CallInst& printfCall, llvm::Function& F);
