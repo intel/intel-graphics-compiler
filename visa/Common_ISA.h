@@ -48,39 +48,21 @@ class G4_Declare;
 #define COMMON_ISA_MAJOR_VER 3
 #define COMMON_ISA_MINOR_VER 6
 
-
 #define COMMON_ISA_MAX_ADDRESS_SIZE     16
 #define COMMON_ISA_MAX_SURFACE_SIZE     128
 #define COMMON_ISA_MAX_SAMPLER_SIZE     128
-#define COMMON_ISA_MAX_VARIABLE_SIZE    8192
+#define COMMON_ISA_MAX_VARIABLE_SIZE    (256 * getGRFSize())
 #define COMMON_ISA_MAX_NUM_SURFACES     256
 #define COMMON_ISA_MAX_NUM_SAMPLERS     32
 #define COMMON_ISA_MAX_NUM_INPUTS       256
 
-#define COMMON_ISA_MAX_NUM_KERNELS      512
-#define COMMON_ISA_MAX_NUM_EXTERN_FUNCS      512
-#define COMMON_ISA_MAX_NUM_GLOBAL_FUNCS      512
-#define COMMON_ISA_MAX_NUM_STATIC_FUNCS      512
-#define COMMON_ISA_MAX_NUM_FUNCS       \
-      COMMON_ISA_MAX_NUM_EXTERN_FUNCS+COMMON_ISA_MAX_NUM_GLOBAL_FUNCS+COMMON_ISA_MAX_NUM_STATIC_FUN
-#define COMMON_ISA_MAX_NUM_EXTERN_VARS      16384
-#define COMMON_ISA_MAX_NUM_GLOBAL_VARS      16384
-#define COMMON_ISA_MAX_NUM_STATIC_VARS      16384
-// max number of global variables
-#define COMMON_ISA_MAX_NUM_VARS     \
-      COMMON_ISA_MAX_NUM_EXTERN_VARS+COMMON_ISA_MAX_NUM_GLOBAL_VARS+COMMON_ISA_MAX_NUM_STATIC_VARS;
-
-// CISA3+: V0-V31 are reserved
+// V0-V31 are reserved
 #define COMMON_ISA_NUM_PREDEFINED_VAR_VER_3   32
 // reserve p0 for the case of no predication
 #define COMMON_ISA_NUM_PREDEFINED_PRED  1
-// CISA2.0: T0 is reserved to present SLM access
-#define COMMON_ISA_NUM_PREDEFINED_SURF_VER_2    1
-#define COMMON_ISA_NUM_PREDEFINED_SURF_VER_2_1  5
-#define COMMON_ISA_NUM_PREDEFINED_SURF_VER_3_1  6
 
-//Max number of kernels in a common isa file
-#define MAX_NUM_KERNELS 512
+// Reserve T0-T5 as special surfaces
+#define COMMON_ISA_NUM_PREDEFINED_SURF_VER_3_1  6
 
 // bfi can have 7 operands
 #define COMMON_ISA_MAX_NUM_OPND_ARITH_LOGIC 7
@@ -93,11 +75,9 @@ class G4_Declare;
 
 #define  COMMON_ISA_GRF_REG_SIZE (getGRFSize()) /// # of bytes in a CISA GRF register
 
-#define COMMON_ISA_MAX_ADDRREG_WIDTH   8
 #define COMMON_ISA_MAX_FILENAME_LENGTH   1023
 
 #define COMMON_ISA_MAX_KERNEL_NAME_LEN  255
-#define COMMON_ISA_MAX_ADDRESS_OFFSET   4096
 
 #define SEND_GT_MSG_TYPE_BIT                        14
 #define SEND_GT_MSG_LENGTH_BIT_OFFSET               25
@@ -730,8 +710,6 @@ typedef struct _CISA_INST
     char*          inline_cisa; /// Just a pointer to a char buffer containing inline cisa isaasm.
 } CISA_INST;
 
-//Max number of kernels in a common isa file
-#define MAX_NUM_KERNELS 512
 #define READ_FIELD_FROM_BUF( dst, type ) \
     dst = *((type *) &buf[byte_pos]); \
     byte_pos += sizeof(type);

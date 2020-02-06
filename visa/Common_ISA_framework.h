@@ -51,12 +51,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // reserve p0 for the case of no predication
 #define COMMON_ISA_NUM_PREDEFINED_PRED      1
-// reserve t0 for SLM access
-#define COMMON_ISA_NUM_PREDEFINED_SURF      COMMON_ISA_NUM_PREDEFINED_SURF_VER_2
-// T0-T4
-#define COMMON_ISA_NUM_PREDEFINED_SURF_2_1  COMMON_ISA_NUM_PREDEFINED_SURF_VER_2_1
-// add T5 (stateless)
-#define COMMON_ISA_NUM_PREDEFINED_SURF_3_1  COMMON_ISA_NUM_PREDEFINED_SURF_VER_3_1
 
 #if 0
 #define DEBUG_PRINT_SIZE(msg, value) {std::cout<< msg << value << std::endl; }
