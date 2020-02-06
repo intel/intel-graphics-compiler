@@ -289,3 +289,9 @@ LegalizeAction InstLegalChecker::visitLandingPadInst(LandingPadInst&) {
     // FIXME: Do we support it?
     return Legal;
 }
+
+#if LLVM_VERSION_MAJOR >= 10
+LegalizeAction InstLegalChecker::visitFNeg(llvm::UnaryOperator& I) {
+    return Legal;
+}
+#endif

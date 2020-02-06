@@ -110,6 +110,9 @@ namespace IGC {
             LegalizeAction visitExtractValueInst(ExtractValueInst& I);
             LegalizeAction visitInsertValueInst(InsertValueInst& I);
             LegalizeAction visitLandingPadInst(LandingPadInst&);
+#if LLVM_VERSION_MAJOR >= 10
+            LegalizeAction visitFNeg(llvm::UnaryOperator& I);
+#endif
         };
 
     } // End Legalizer namespace

@@ -2005,7 +2005,7 @@ void GenSpecificPattern::visitCastInst(CastInst& I)
         if ((srcVal = dyn_cast<Instruction>(srcVal->getOperand(0))))
         {
             // need fast math to know that we can ignore Nan
-            if (srcVal->isFast())
+            if (isa<FPMathOperator>(srcVal) && srcVal->isFast())
             {
                 IRBuilder<> builder(&I);
                 Function* func = Intrinsic::getDeclaration(
