@@ -277,8 +277,31 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         // Remove noinline attr if present.
         F->removeFnAttr(llvm::Attribute::NoInline);
 
-        // Add AlwaysInline attribute to force inlining all calls.
-        F->addFnAttr(llvm::Attribute::AlwaysInline);
+        if (IGC_IS_FLAG_ENABLED(DisableAddingAlwaysAttribute))
+        {
+            // Add always attribute if function has an argument with opaque type
+            // Curently, ExtensionArgAnalysis assumes that all functions with image arguments to be inlined
+            // This patch makes sure that we add always inline for such cases
+            for (auto& arg : F->args())
+            {
+                if (containsOpaque(arg.getType()))
+                {
+                    F->addFnAttr(llvm::Attribute::AlwaysInline);
+                    break;
+                }
+            }
+
+            // Add always attribtue if function is a builtin
+            if (F->hasFnAttribute(llvm::Attribute::Builtin))
+            {
+                F->addFnAttr(llvm::Attribute::AlwaysInline);
+            }
+        }
+        else
+        {
+            // Add AlwaysInline attribute to force inlining all calls.
+            F->addFnAttr(llvm::Attribute::AlwaysInline);
+        }
 
         // Go through call sites and remove NoInline atrributes.
         for (auto I : F->users()) {
