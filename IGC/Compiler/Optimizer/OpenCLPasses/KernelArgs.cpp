@@ -1026,6 +1026,11 @@ bool KernelArgs::const_iterator::operator!=(const const_iterator& iterator)
     return (m_major != iterator.m_major) || (m_minor != iterator.m_minor);
 }
 
+bool KernelArgs::const_iterator::operator==(const const_iterator& iterator)
+{
+    return (m_major == iterator.m_major) && (m_minor == iterator.m_minor);
+}
+
 KernelArgs::KernelArgs(const Function& F, const DataLayout* DL, MetaDataUtils* pMdUtils, ModuleMetaData* moduleMD, unsigned int GRFSize, KernelArgsOrder::InputType layout)
     : m_KernelArgsOrder(layout),
     m_args(m_KernelArgsOrder)
@@ -1182,5 +1187,10 @@ void KernelArgs::checkForZeroPerThreadData()
         KernelArg kernelArg = KernelArg(KernelArg::ArgType::R1, KernelArg::AccessQual::NONE, 32, 4, 32, false, nullptr, 0);
         addAllocationArg(kernelArg);
     }
+}
+
+bool KernelArgs::empty()
+{
+    return m_args.empty() ? true : begin() == end();
 }
 

@@ -98,9 +98,21 @@ CIF_DEFINE_INTERFACE_VER(IgcFeaturesAndWorkarounds, 1){
 
 };
 
+CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(IgcFeaturesAndWorkarounds, 2, 1) {
+  CIF_INHERIT_CONSTRUCTOR();
+
+  virtual void SetMaxOCLParamSize(uint32_t s);
+  virtual uint32_t GetMaxOCLParamSize() const;
+};
+
+
 CIF_GENERATE_VERSIONS_LIST(IgcFeaturesAndWorkarounds);
 CIF_MARK_LATEST_VERSION(IgcFeaturesAndWorkaroundsLatest, IgcFeaturesAndWorkarounds);
-using IgcFeaturesAndWorkaroundsTagOCL = IgcFeaturesAndWorkaroundsLatest; // Note : can tag with different version for
+
+using IgcFeaturesAndWorkaroundsTagOCL = IgcFeaturesAndWorkarounds<1>; // transition time - remove this using
+                                                                      // and uncomment the one below when finished
+
+//using IgcFeaturesAndWorkaroundsTagOCL = IgcFeaturesAndWorkaroundsLatest; // Note : can tag with different version for
                                                                         //        transition periods
 }
 

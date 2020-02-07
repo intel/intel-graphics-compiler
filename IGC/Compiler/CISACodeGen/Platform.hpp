@@ -40,6 +40,7 @@ namespace IGC
     WA_TABLE m_WaTable;
     SKU_FEATURE_TABLE m_SkuTable;
     GT_SYSTEM_INFO      m_GTSystemInfo;
+    OCLCaps m_OCLCaps;
 
     public:
     CPlatform(PLATFORM platform) {
@@ -47,6 +48,9 @@ namespace IGC
         m_GTSystemInfo = { 0 };
     }
     CPlatform() {}
+
+    void setOclCaps(OCLCaps& caps) { m_OCLCaps = caps; }
+    uint32_t getMaxOCLParameteSize() const { return m_OCLCaps.MaxParameterSize;  }
 
         WA_TABLE const& getWATable() const { return m_WaTable; }
     SKU_FEATURE_TABLE const& getSkuTable() const { return m_SkuTable; }

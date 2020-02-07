@@ -67,6 +67,14 @@ DEFINE_GET_SET(IgcFeaturesAndWorkarounds, 1, FtrWddm2Svm, bool);
 DEFINE_GET_SET(IgcFeaturesAndWorkarounds, 1, FtrPooledEuEnabled, bool);
 DEFINE_GET_SET(IgcFeaturesAndWorkarounds, 1, FtrResourceStreamer, bool);
 
+uint32_t CIF_GET_INTERFACE_CLASS(IgcFeaturesAndWorkarounds, 2)::GetMaxOCLParamSize() const {
+    return CIF_GET_PIMPL()->OCLCaps.MaxParameterSize;
+}
+void CIF_GET_INTERFACE_CLASS(IgcFeaturesAndWorkarounds, 2)::SetMaxOCLParamSize(uint32_t s) {
+    assert(s >= OCLCaps::MINIMAL_MAX_PARAMETER_SIZE);
+    CIF_GET_PIMPL()->OCLCaps.MaxParameterSize = s;
+}
+
 }
 
 #include "cif/macros/disable.h"

@@ -436,11 +436,17 @@ namespace IGC
             /// @return The element the iterator points to
             const KernelArg& operator*();
 
-            // @brief  Checks whether this iterator and the given iterator are different
+            /// @brief  Checks whether this iterator and the given iterator are different
             ///         by checking if they point to the same element
             /// @param  iterator    An iterator to compare this iterator
             /// @return true if the iterators pare different, false otherwise
             bool operator!=(const const_iterator& iterator);
+
+            /// @brief  Checks whether this iterator and the given iterator are same
+            ///         by checking if they point to the same element
+            /// @param  iterator    An iterator to compare this iterator
+            /// @return true if the iterators are same, false otherwise
+            bool operator==(const const_iterator& iterator);
 
         private:
             AllocationArgs::const_iterator          m_major;
@@ -470,6 +476,10 @@ namespace IGC
         /// #brief Check if we need to insert dummy per-thread data for OpenCL
         ///
         void checkForZeroPerThreadData();
+
+        /// @brief  Checks if there are any kernel arguments
+        /// @return true if there are no arguments, false otherwise
+        bool empty();
 
     private:
         /// @brief  Check if the given argument needs to be allocated and add it to the allocation args container.

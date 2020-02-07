@@ -108,6 +108,7 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclDeviceCtx) : CIF::PimplBase
 
         igcPlatform.reset(new IGC::CPlatform(platform->p));
         igcPlatform->SetGTSystemInfo(gtSystemInfo->gsi);
+        igcPlatform->setOclCaps(igcFeaturesAndWorkarounds->OCLCaps);
         IGC::SetWorkaroundTable(&igcFeaturesAndWorkarounds->FeTable, igcPlatform.get());
         IGC::SetCompilerCaps(&igcFeaturesAndWorkarounds->FeTable, igcPlatform.get());
         return *igcPlatform;

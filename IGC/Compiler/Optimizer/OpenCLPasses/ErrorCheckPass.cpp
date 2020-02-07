@@ -25,6 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 
 #include "Compiler/Optimizer/OpenCLPasses/ErrorCheckPass.h"
+#include "Compiler/Optimizer/OpenCLPasses/KernelArgs.hpp"
 #include "Compiler/IGCPassSupport.h"
 
 #include "common/LLVMWarningsPush.hpp"
@@ -60,7 +61,49 @@ bool ErrorCheck::runOnFunction(Function& F)
     // add more checks as needed later
     visit(F);
 
+    if (isEntryFunc(getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(), &F))
+    {
+        checkArgsSize(F);
+    }
+
     return m_hasError;
+}
+
+void ErrorCheck::checkArgsSize(Function& F)
+{
+    auto Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    auto MdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    auto ModMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+
+    auto DL = F.getParent()->getDataLayout();
+    KernelArgs KernelArgs(F, &DL, MdUtils, ModMD, Ctx->platform.getGRFSize());
+    auto MaxParamSize = Ctx->platform.getMaxOCLParameteSize();
+    uint64_t TotalSize = 0;
+
+    if (KernelArgs.empty())
+    {
+        return;
+    }
+
+    for (auto& KernelArg : KernelArgs)
+    {
+        auto Arg = KernelArg.getArg();
+        Type* ArgType = Arg->getType();
+        ArgType = Arg->hasByValAttr() ? ArgType->getPointerElementType() : ArgType;
+        if (!KernelArg.isImplicitArg())
+        {
+            TotalSize += DL.getTypeAllocSize(ArgType);
+        }
+    }
+
+    if (TotalSize > MaxParamSize)
+    {
+        std::string ErrorMsg = "Total size of kernel arguments exceeds limit! Total arguments size: "
+            + std::to_string(TotalSize) + ", limit: " + std::to_string(MaxParamSize);
+
+        Ctx->EmitError(ErrorMsg.c_str());
+        m_hasError = true;
+    }
 }
 
 void ErrorCheck::visitInstruction(llvm::Instruction& I)

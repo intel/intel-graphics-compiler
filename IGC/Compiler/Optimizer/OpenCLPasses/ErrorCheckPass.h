@@ -60,6 +60,8 @@ namespace IGC
 
     private:
         bool m_hasError = false;
+
+        void checkArgsSize(llvm::Function& F);
     };
 
 } // namespace IGC

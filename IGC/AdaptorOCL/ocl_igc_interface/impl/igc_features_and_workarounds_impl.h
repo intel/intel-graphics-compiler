@@ -31,18 +31,23 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "cif/export/pimpl_base.h"
 #include "cif/helpers/memory.h"
 
+#include "Compiler/compiler_caps.h"
 #include "usc.h"
 
 #include "cif/macros/enable.h"
 
+
 namespace IGC {
 
 CIF_DECLARE_INTERFACE_PIMPL(IgcFeaturesAndWorkarounds) : CIF::PimplBase {
+
   CIF_PIMPL_DECLARE_CONSTRUCTOR() {
       CIF::SafeZeroOut(FeTable);
+      OCLCaps.MaxParameterSize = OCLCaps::MINIMAL_MAX_PARAMETER_SIZE;
   }
 
   _SUscSkuFeatureTable FeTable;
+  OCLCaps OCLCaps;
 
   // VISA-WA - OPEN : Maybe IGC would prefer to get WA table instead of generating one on its own?
 };
