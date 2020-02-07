@@ -134,69 +134,33 @@ const unsigned int  PrintfBufferSize = 4 * MB;
 // found anything that is not :
 // * a CastInst
 // * a GEP with non-zero indices
-// * a SelectInst
-// * a PHINode
-// In case of select or phi instruction two operands are added to the vector.
-// In another case only one is added.
-inline SmallVector<Value*, 2> getGlobalVariable(Value* const v)
+inline GlobalVariable* getGlobalVariable(Value* const v)
 {
-    SmallVector<Value *, 2> curr;
-    curr.push_back(v);
-
-    while (nullptr != curr.front() || nullptr != curr.back())
+    Value* curr = v;
+    while (nullptr != curr)
     {
-        if (curr.size() == 1 && isa<GlobalVariable>(curr.front()))
-        {
-            break;
-        }
-        else if (curr.size() == 2 && (isa<GlobalVariable>(curr.front()) && isa<GlobalVariable>(curr.back())))
+        if (isa<GlobalVariable>(curr))
         {
             break;
         }
 
-        if (CastInst* castInst = dyn_cast<CastInst>(curr.front()))
+        if (CastInst * castInst = dyn_cast<CastInst>(curr))
         {
-            curr.pop_back();
-            curr.push_back(castInst->getOperand(0));
+            curr = castInst->getOperand(0);
         }
-        else if (GetElementPtrInst* getElemPtrInst = dyn_cast<GetElementPtrInst>(curr.front()))
+        else if (GetElementPtrInst * getElemPtrInst = dyn_cast<GetElementPtrInst>(curr))
         {
-            if (curr.size() == 2)
-            {
-                if (GetElementPtrInst* getElemPtrInst2 = dyn_cast<GetElementPtrInst>(curr.back()))
-                {
-                    curr.pop_back();
-                    curr.pop_back();
-                    curr.push_back(getElemPtrInst->hasAllZeroIndices() ? getElemPtrInst->getPointerOperand() : nullptr);
-                    curr.push_back(getElemPtrInst2->hasAllZeroIndices() ? getElemPtrInst2->getPointerOperand() : nullptr);
-                }
-            }
-            else
-            {
-                curr.pop_back();
-                curr.push_back(getElemPtrInst->hasAllZeroIndices() ? getElemPtrInst->getPointerOperand() : nullptr);
-            }
-        }
-        else if (SelectInst* selectInst = dyn_cast<SelectInst>(curr.front()))
-        {
-            curr.pop_back();
-            curr.push_back(selectInst->getOperand(1));
-            curr.push_back(selectInst->getOperand(2));
-        }
-        else if (PHINode* phiNode = dyn_cast<PHINode>(curr.front()))
-        {
-            curr.pop_back();
-            curr.push_back(phiNode->getOperand(0));
-            curr.push_back(phiNode->getOperand(1));
+            curr = getElemPtrInst->hasAllZeroIndices() ? getElemPtrInst->getPointerOperand() : nullptr;
         }
         else
         {
             // Unhandled value type
-            assert((false == isa<ConstantExpr>(curr.front())));
-            curr.front() = nullptr;
+            assert((false == isa<ConstantExpr>(curr)));
+            curr = nullptr;
         }
     }
-    return curr;
+
+    return dyn_cast_or_null<GlobalVariable>(curr);
 }
 
 OpenCLPrintfResolution::OpenCLPrintfResolution() : FunctionPass(ID), m_atomicAddFunc(nullptr)
@@ -318,97 +282,51 @@ std::string OpenCLPrintfResolution::getEscapedString(const ConstantDataSequentia
     return Name;
 }
 
-Value* OpenCLPrintfResolution::processPrintfString(Value* printfArg, Function& F)
+int OpenCLPrintfResolution::processPrintfString(Value* printfArg, Function& F)
 {
-    GlobalVariable* formatString = nullptr;
-    SmallVector<Value*, 2> curr = getGlobalVariable(printfArg);
-    SmallVector<unsigned int, 2> sv;
-    for (auto curr_i : curr)
+    GlobalVariable* formatString = getGlobalVariable(printfArg);
+
+    ConstantDataArray* formatStringConst = ((nullptr != formatString) && (formatString->hasInitializer())) ?
+        dyn_cast<ConstantDataArray>(formatString->getInitializer()) :
+        nullptr;
+
+    if (nullptr == formatStringConst)
     {
-        auto& curr_e = *curr_i;
-
-        formatString = dyn_cast_or_null<GlobalVariable>(&curr_e);
-        ConstantDataArray* formatStringConst = ((nullptr != formatString) && (formatString->hasInitializer())) ?
-            dyn_cast<ConstantDataArray>(formatString->getInitializer()) :
-            nullptr;
-
-        if (nullptr == formatStringConst)
-        {
-            assert(0 && "Unexpected printf argument (expected string literal)");
-            return 0;
-        }
-
-        // Add new metadata node and put the printf string into it.
-        // The first element of metadata node is the string index,
-        // the second element is the string itself.
-        NamedMDNode* namedMDNode = m_module->getOrInsertNamedMetadata(getPrintfStringsMDNodeName(F));
-        SmallVector<Metadata*, 2>  args;
-        Metadata* stringIndexVal = ConstantAsMetadata::get(
-            ConstantInt::get(m_int32Type, m_stringIndex));
-
-        sv.push_back(m_stringIndex++);
-
-        std::string escaped_string = getEscapedString(formatStringConst);
-        MDString* final_string = MDString::get(*m_context, escaped_string);
-
-        args.push_back(stringIndexVal);
-        args.push_back(final_string);
-
-        MDNode* itemMDNode = MDNode::get(*m_context, args);
-        namedMDNode->addOperand(itemMDNode);
+        assert(0 && "Unexpected printf argument (expected string literal)");
+        return 0;
     }
 
-    // Checks if the vector have two elements.
-    // If it has it adds a new phi/select instruction that is responsible
-    // for the correct execution of the basic instruction.
-    // This information is forwarded to the store instruction.
-    if (curr.size() == 2)
-    {
-        if (GetElementPtrInst* getElemPtrInst = dyn_cast<GetElementPtrInst>(printfArg))
-        {
-            if (PHINode* phiNode = dyn_cast<PHINode>(getElemPtrInst->getPointerOperand()))
-            {
-                PHINode* phiNode2 = PHINode::Create(m_int32Type, 2, "", phiNode);
-                phiNode2->addIncoming(ConstantInt::get(m_int32Type, sv.front()), phiNode->getIncomingBlock(0));
-                phiNode2->addIncoming(ConstantInt::get(m_int32Type, sv.back()), phiNode->getIncomingBlock(1));
-                return phiNode2;
-            }
-        }
-        else if (SelectInst* selectInst = dyn_cast<SelectInst>(printfArg))
-        {
-            SelectInst* selectInst2 = SelectInst::Create(selectInst->getOperand(0), ConstantInt::get(m_int32Type, sv.front()),
-                ConstantInt::get(m_int32Type, sv.back()), "", selectInst);
-            return selectInst2;
-        }
-        else
-        {
-            assert(0 && "Instructions in the vector are not supported!");
-        }
-    }
-    return ConstantInt::get(m_int32Type, m_stringIndex - 1);
+    // Add new metadata node and put the printf string into it.
+    // The first element of metadata node is the string index,
+    // the second element is the string itself.
+    NamedMDNode* namedMDNode = m_module->getOrInsertNamedMetadata(getPrintfStringsMDNodeName(F));
+    SmallVector<Metadata*, 2>  args;
+    Metadata* stringIndexVal = ConstantAsMetadata::get(
+        ConstantInt::get(m_int32Type, m_stringIndex++));
+
+    std::string escaped_string = getEscapedString(formatStringConst);
+    MDString* final_string = MDString::get(*m_context, escaped_string);
+
+    args.push_back(stringIndexVal);
+    args.push_back(final_string);
+
+    MDNode* itemMDNode = MDNode::get(*m_context, args);
+    namedMDNode->addOperand(itemMDNode);
+
+    return m_stringIndex - 1;
 }
 
 
 bool OpenCLPrintfResolution::argIsString(Value* printfArg)
 {
-    GlobalVariable* formatString = nullptr;
-    SmallVector<Value*, 2> curr = getGlobalVariable(printfArg);
-
-    for (auto curr_i : curr)
+    GlobalVariable* formatString = getGlobalVariable(printfArg);
+    if (nullptr == formatString)
     {
-        auto& curr_e = *curr_i;
-        formatString = dyn_cast_or_null<GlobalVariable>(&curr_e);
-        if (nullptr == formatString)
-        {
-            return false;
-        }
-        ConstantDataArray* formatStringConst = dyn_cast<ConstantDataArray>(formatString->getInitializer());
-        if ((nullptr == formatStringConst) && !formatStringConst->isCString())
-        {
-            return false;
-        }
+        return false;
     }
-    return true;
+
+    ConstantDataArray* formatStringConst = dyn_cast<ConstantDataArray>(formatString->getInitializer());
+    return ((nullptr != formatStringConst) && formatStringConst->isCString());
 }
 
 std::string OpenCLPrintfResolution::getPrintfStringsMDNodeName(Function& F)
@@ -660,7 +578,8 @@ Value* OpenCLPrintfResolution::fixupPrintfArg(CallInst& printfCall, Value* arg, 
     case USC::SHADER_PRINTF_STRING_LITERAL:
     {
         Function* F = printfCall.getParent()->getParent();
-        return processPrintfString(arg, *F);
+        uint stringIndex = processPrintfString(arg, *F);
+        return ConstantInt::get(m_int32Type, stringIndex);
     }
     break;
     case USC::SHADER_PRINTF_POINTER:
