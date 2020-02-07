@@ -2016,6 +2016,20 @@ namespace IGC
             }
         }
 
+        if (found)
+        {
+            uint8_t numConstant = 0;
+            for (int i = 0; i < 3; i++)
+            {
+                if (isa<Constant>(sources[i]))
+                    numConstant++;
+
+                // Only one immediate is supported
+                if (numConstant > 1)
+                    return false;
+            }
+        }
+
         // Check integer mad profitability.
         if (found && !isFpMad(I))
         {
