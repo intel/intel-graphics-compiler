@@ -1455,6 +1455,9 @@ namespace IGC
 
                     mpm.add(CreateHoistFMulInLoopPass());
 
+                    mpm.add(createIndVarSimplifyPass());
+                    mpm.add(llvm::createLoopDeletionPass());
+
                     if (!pContext->m_retryManager.IsFirstTry())
                     {
                         mpm.add(new DisableLoopUnrollOnRetry());
