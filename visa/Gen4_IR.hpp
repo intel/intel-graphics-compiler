@@ -1357,6 +1357,18 @@ public:
         G4_SendMsgDescriptor* md);
 
     bool isSendc() const { return op == G4_sendc || op == G4_sendsc; }
+    void setSendc()
+    {
+        // no effect if op is already G4_sendc/G4_sendsc
+        if (op == G4_send)
+        {
+            op = G4_sendc;
+        }
+        else if (op == G4_sends)
+        {
+            op = G4_sendsc;
+        }
+    }
     bool mayExceedTwoGRF() const override { return true; }
 
     G4_Operand* getMsgDescOperand() const
