@@ -742,7 +742,7 @@ bool PrivateMemoryResolution::resolveAllocaInstuctions(bool stackCall)
     // Creates intrinsics that will be lowered in the CodeGen and will handle the simd size
     Function* simdSizeFunc = GenISAIntrinsic::getDeclaration(m_currFunction->getParent(), GenISAIntrinsic::GenISA_simdSize);
 
-    Instruction* pEntryPoint = &(*m_currFunction->getEntryBlock().getFirstInsertionPt());
+    llvm::IRBuilder<> entryBuilder(&*m_currFunction->getEntryBlock().getFirstInsertionPt());
     ImplicitArgs implicitArgs(*m_currFunction, m_pMdUtils);
 
     // This declaration will invoke constructor of DebugLoc class and result in an empty DebugLoc
@@ -753,9 +753,9 @@ bool PrivateMemoryResolution::resolveAllocaInstuctions(bool stackCall)
     {
         // Creates intrinsics that will be lowered in the CodeGen and will handle the stack-pointer
         Function* stackAllocaFunc = GenISAIntrinsic::getDeclaration(m_currFunction->getParent(), GenISAIntrinsic::GenISA_StackAlloca);
-        Instruction* simdLaneId16 = CallInst::Create(simdLaneIdFunc, VALUE_NAME("simdLaneId16"), pEntryPoint);
-        Value* simdLaneId = ZExtInst::CreateIntegerCast(simdLaneId16, typeInt32, false, VALUE_NAME("simdLaneId"), pEntryPoint);
-        Instruction* simdSize = CallInst::Create(simdSizeFunc, VALUE_NAME("simdSize"), pEntryPoint);
+        Instruction* simdLaneId16 = entryBuilder.CreateCall(simdLaneIdFunc, llvm::None, VALUE_NAME("simdLaneId16"));
+        Value* simdLaneId = entryBuilder.CreateIntCast(simdLaneId16, typeInt32, false, VALUE_NAME("simdLaneId"));
+        Instruction* simdSize = entryBuilder.CreateCall(simdSizeFunc, llvm::None, VALUE_NAME("simdSize"));
         for (auto pAI : allocaInsts)
         {
             bool isUniform = pAI->getMetadata("uniform") != nullptr;
@@ -790,16 +790,16 @@ bool PrivateMemoryResolution::resolveAllocaInstuctions(bool stackCall)
         // private base from threadid as we did previously.  In this case, we only need
         // PrivateMemoryUsageAnalysis pass, no need to run AddImplicitArgs pass.
 
-        Instruction* simdLaneId16 = CallInst::Create(simdLaneIdFunc, VALUE_NAME("simdLaneId16"), pEntryPoint);
-        Value* simdLaneId = ZExtInst::CreateIntegerCast(simdLaneId16, typeInt32, false, VALUE_NAME("simdLaneId"), pEntryPoint);
-        Instruction* simdSize = CallInst::Create(simdSizeFunc, VALUE_NAME("simdSize"), pEntryPoint);
+        Instruction* simdLaneId16 = entryBuilder.CreateCall(simdLaneIdFunc, llvm::None, VALUE_NAME("simdLaneId16"));
+        Value* simdLaneId = entryBuilder.CreateIntCast(simdLaneId16, typeInt32, false, VALUE_NAME("simdLaneId"));
+        Instruction* simdSize = entryBuilder.CreateCall(simdSizeFunc, llvm::None, VALUE_NAME("simdSize"));
 
         Value* privateBase = nullptr;
         if (modMD->compOpt.UseScratchSpacePrivateMemory)
         {
             Argument* r0Arg = implicitArgs.getArgInFunc(*m_currFunction, ImplicitArg::R0);
-            ExtractElementInst* r0_5 = ExtractElementInst::Create(r0Arg, ConstantInt::get(typeInt32, 5), VALUE_NAME("r0.5"), pEntryPoint);
-            privateBase = BinaryOperator::CreateAnd(r0_5, ConstantInt::get(typeInt32, 0xFFFFFC00), VALUE_NAME("privateBase"), pEntryPoint);
+            Value* r0_5 = entryBuilder.CreateExtractElement(r0Arg, ConstantInt::get(typeInt32, 5), VALUE_NAME("r0.5"));
+            privateBase = entryBuilder.CreateAnd(r0_5, ConstantInt::get(typeInt32, 0xFFFFFC00), VALUE_NAME("privateBase"));
         }
 
         for (auto pAI : allocaInsts)
@@ -914,30 +914,30 @@ bool PrivateMemoryResolution::resolveAllocaInstuctions(bool stackCall)
 
     ConstantInt* totalPrivateMemPerWIValue = ConstantInt::get(typeInt32, totalPrivateMemPerWI);
 
-    Instruction* simdLaneId16 = CallInst::Create(simdLaneIdFunc, VALUE_NAME("simdLaneId16"), pEntryPoint);
-    Value* simdLaneId = ZExtInst::CreateIntegerCast(simdLaneId16, typeInt32, false, VALUE_NAME("simdLaneId"), pEntryPoint);
-    Instruction* simdSize = CallInst::Create(simdSizeFunc, VALUE_NAME("simdSize"), pEntryPoint);
-    BinaryOperator* totalPrivateMemPerThread = BinaryOperator::CreateMul(simdSize, totalPrivateMemPerWIValue, VALUE_NAME("totalPrivateMemPerThread"), pEntryPoint);
-    ExtractElementInst* r0_5 = ExtractElementInst::Create(r0Arg, ConstantInt::get(typeInt32, 5), VALUE_NAME("r0.5"), pEntryPoint);
+    Instruction* simdLaneId16 = entryBuilder.CreateCall(simdLaneIdFunc, llvm::None, VALUE_NAME("simdLaneId16"));
+    Value* simdLaneId = entryBuilder.CreateIntCast(simdLaneId16, typeInt32, false, VALUE_NAME("simdLaneId"));
+    Instruction* simdSize = entryBuilder.CreateCall(simdSizeFunc, llvm::None, VALUE_NAME("simdSize"));
+    Value* totalPrivateMemPerThread = entryBuilder.CreateMul(simdSize, totalPrivateMemPerWIValue, VALUE_NAME("totalPrivateMemPerThread"));
+    Value* r0_5 = entryBuilder.CreateExtractElement(r0Arg, ConstantInt::get(typeInt32, 5), VALUE_NAME("r0.5"));
     ConstantInt* FFTIDMask = ConstantInt::get(typeInt32, Ctx.platform.getFFTIDBitMask());
-    Value* threadId = BinaryOperator::CreateAnd(r0_5, FFTIDMask, VALUE_NAME("threadId"), pEntryPoint);
+    Value* threadId = entryBuilder.CreateAnd(r0_5, FFTIDMask, VALUE_NAME("threadId"));
     {
         if (Ctx.platform.supportTwoStackTSG() && IGC_IS_FLAG_ENABLED(EnableGen11TwoStackTSG))
         {
             // Gen11 , 2 - stack configuration : (FFTID[9:0] << 1) | FFSID[0]) * scratch_size
-            BinaryOperator* shlThreadID = BinaryOperator::CreateShl(threadId, ConstantInt::get(typeInt32, 1), VALUE_NAME("shlThreadID"), pEntryPoint);
+            Value* shlThreadID = entryBuilder.CreateShl(threadId, ConstantInt::get(typeInt32, 1), VALUE_NAME("shlThreadID"));
 
             // FFSID - r0.0 bit 16
-            ExtractElementInst* r0_0 = ExtractElementInst::Create(r0Arg, ConstantInt::get(typeInt32, 0), VALUE_NAME("r0.0"), pEntryPoint);
-            BinaryOperator* FFSIDbit = BinaryOperator::CreateLShr(r0_0, ConstantInt::get(typeInt32, 16), VALUE_NAME("FFSIDbit"), pEntryPoint);
-            BinaryOperator* FFSID = BinaryOperator::CreateAnd(FFSIDbit, ConstantInt::get(typeInt32, 1), VALUE_NAME("FFSID"), pEntryPoint);
+            Value* r0_0 = entryBuilder.CreateExtractElement(r0Arg, ConstantInt::get(typeInt32, 0), VALUE_NAME("r0.0"));
+            Value* FFSIDbit = entryBuilder.CreateLShr(r0_0, ConstantInt::get(typeInt32, 16), VALUE_NAME("FFSIDbit"));
+            Value* FFSID = entryBuilder.CreateAnd(FFSIDbit, ConstantInt::get(typeInt32, 1), VALUE_NAME("FFSID"));
 
-            threadId = BinaryOperator::CreateOr(FFSID, shlThreadID, VALUE_NAME("threadId"), pEntryPoint);
+            threadId = entryBuilder.CreateOr(FFSID, shlThreadID, VALUE_NAME("threadId"));
         }
     }
 
 
-    Instruction* perThreadOffset = BinaryOperator::CreateMul(threadId, totalPrivateMemPerThread, VALUE_NAME("perThreadOffset"), pEntryPoint);
+    Value* perThreadOffset = entryBuilder.CreateMul(threadId, totalPrivateMemPerThread, VALUE_NAME("perThreadOffset"));
 
     for (auto pAI : allocaInsts)
     {
