@@ -213,6 +213,7 @@ namespace IGC
         bool hasSel;
         bool hasPointer;
         bool hasLocalLoadStore;
+        bool hasBufferStore;
         bool hasSubroutines;
         bool hasPrimitiveAlloca;
         bool hasNonPrimitiveAlloca;
@@ -225,6 +226,7 @@ namespace IGC
         bool hasAtomics;
         bool hasBarrier;        //<! true if module has thread group barrier
         bool hasDiscard;
+        bool hasTypedwrite;
         bool mayHaveIndirectOperands;  //<! true if code may have indirect operands like r5[a0].
         bool hasUniformAssumptions;
         unsigned int numSample;

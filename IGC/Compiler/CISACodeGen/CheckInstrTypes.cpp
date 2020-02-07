@@ -72,6 +72,7 @@ CheckInstrTypes::CheckInstrTypes(IGC::SInstrTypes* instrList) : FunctionPass(ID)
     instrList->hasPointer = false;
     instrList->hasGenericAddressSpacePointers = false;
     instrList->hasLocalLoadStore = false;
+    instrList->hasBufferStore = false;
     instrList->hasSubroutines = false;
     instrList->hasPrimitiveAlloca = false;
     instrList->hasNonPrimitiveAlloca = false;
@@ -83,6 +84,7 @@ CheckInstrTypes::CheckInstrTypes(IGC::SInstrTypes* instrList) : FunctionPass(ID)
     instrList->hasAtomics = false;
     instrList->hasBarrier = false;
     instrList->hasDiscard = false;
+    instrList->hasTypedwrite = false;
     instrList->mayHaveIndirectOperands = false;
     instrList->hasUniformAssumptions = false;
     instrList->numSample = 0;
@@ -231,6 +233,9 @@ void CheckInstrTypes::visitCallInst(CallInst& C)
         case GenISAIntrinsic::GenISA_is_uniform:
             g_InstrTypes->hasUniformAssumptions = true;
             break;
+        case GenISAIntrinsic::GenISA_typedwrite:
+            g_InstrTypes->hasTypedwrite = true;
+            break;
         default:
             break;
         }
@@ -323,6 +328,10 @@ void CheckInstrTypes::visitStoreInst(StoreInst& I)
     if (as == ADDRESS_SPACE_GENERIC)
     {
         g_InstrTypes->hasGenericAddressSpacePointers = true;
+    }
+    if (as == ADDRESS_SPACE_GLOBAL)
+    {
+        g_InstrTypes->hasBufferStore = true;
     }
 }
 
