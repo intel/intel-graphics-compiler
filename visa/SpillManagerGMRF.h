@@ -253,6 +253,9 @@ private:
     ) const;
 
     unsigned
+    grfMask() const;
+
+    unsigned
     hwordMask () const;
 
     unsigned

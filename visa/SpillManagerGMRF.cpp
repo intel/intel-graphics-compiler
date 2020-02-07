@@ -323,6 +323,18 @@ bool isDisContRegion (
     return region->getRegion()->isContiguous(execSize);
 }
 
+// Get a GRF aligned mask
+
+unsigned SpillManagerGRF::grfMask() const
+{
+    unsigned mask = 0;
+    mask = (mask - 1);
+    MUST_BE_TRUE(std::log2(G4_GRF_REG_NBYTES) == (float)((int)(std::log2(G4_GRF_REG_NBYTES))), "expected integral value");
+    unsigned int bits = (unsigned int)std::log2(G4_GRF_REG_NBYTES);
+    mask = mask << bits;
+    return mask;
+}
+
 // Get an hexal word mask with the lower 5 bits zeroed.
 
 inline unsigned
@@ -770,9 +782,9 @@ SpillManagerGRF::calculateEncAlignedSegment (
 
     if( useScratchMsg_ )
     {
-        unsigned hwordLB = regionDisp & hwordMask ();
-        unsigned hwordRB = hwordLB + HWORD_BYTE_SIZE;
-        unsigned blockSize = HWORD_BYTE_SIZE;
+        unsigned hwordLB = regionDisp & grfMask();
+        unsigned hwordRB = hwordLB + G4_GRF_REG_NBYTES;
+        unsigned blockSize = G4_GRF_REG_NBYTES;
 
         while (regionDisp + regionByteSize > hwordRB) {
             hwordRB += blockSize;
@@ -781,7 +793,7 @@ SpillManagerGRF::calculateEncAlignedSegment (
         assert ((hwordRB - hwordLB)/ REG_BYTE_SIZE <= 4);
         start = hwordLB;
         end = hwordRB;
-        type = hwordMask ();
+        type = grfMask ();
     }
     else
     {
@@ -1384,7 +1396,6 @@ static unsigned short getSpillRowSizeForSendSrc(
     }
     else
     {
-        assert(filledRegion->getLinearizedStart() % GENX_GRF_REG_SIZ == 0);
         nRows = (filledRegion->getLinearizedEnd() - filledRegion->getLinearizedStart() + 1) / GENX_GRF_REG_SIZ;
     }
 
@@ -1408,7 +1419,7 @@ SpillManagerGRF::createSendFillRangeDeclare (
     G4_SrcRegRegion * normalizedSendSrc =
         builder_->createSrcRegRegion(
         filledRegion->getModifier(), Direct, filledRegVar,
-        filledRegion->getRegOff(), SUBREG_ORIGIN, filledRegion->getRegion(),
+        filledRegion->getRegOff(), filledRegion->getSubRegOff(), filledRegion->getRegion(),
         filledRegion->getType());
     unsigned short width = REG_BYTE_SIZE / filledRegion->getElemSize ();
     assert (REG_BYTE_SIZE % filledRegion->getElemSize () == 0);
