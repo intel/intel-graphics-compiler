@@ -1863,13 +1863,6 @@ int IR_Builder::translateVISAWaitInst(G4_Operand* mask)
     return VISA_SUCCESS;
 }
 
-// create a default SLM fence (no flush)
-G4_INST* IR_Builder::createSLMFence()
-{
-    bool commitEnable = needsFenceCommitEnable();
-    return createFenceInstruction(0, commitEnable, false, false);
-}
-
 void IR_Builder::generateBarrierSend()
 {
 

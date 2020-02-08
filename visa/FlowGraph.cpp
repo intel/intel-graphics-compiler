@@ -1002,7 +1002,7 @@ void FlowGraph::handleWait()
                     G4_INST* nextInst = *nextIter;
                     if (nextInst->isSend())
                     {
-                        nextInst->asSendInst()->setSendc();
+                        nextInst->setOpcode(nextInst->isSplitSend() ? G4_sendsc : G4_sendc);
                         sunk = true;
                         break;
                     }
@@ -1014,8 +1014,8 @@ void FlowGraph::handleWait()
                 }
                 if (!sunk)
                 {
-                    auto fenceInst = builder->createSLMFence();
-                    fenceInst->asSendInst()->setSendc();
+                    bool commitEnable = builder->needsFenceCommitEnable();
+                    G4_INST* fenceInst = builder->createFenceInstruction(0, commitEnable, false, true);
                     bb->insert(iter, fenceInst);
                 }
                 iter = bb->erase(iter);

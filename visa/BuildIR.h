@@ -1917,8 +1917,6 @@ public:
     G4_INST* createFenceInstruction(
         uint8_t flushParam, bool commitEnable, bool globalMemFence, bool isSendc);
 
-    G4_INST* createSLMFence();
-
     // short hand for creating a dstRegRegion
     G4_DstRegRegion* Create_Dst_Opnd_From_Dcl(G4_Declare* dcl, unsigned short hstride);
     G4_SrcRegRegion* Create_Src_Opnd_From_Dcl(G4_Declare* dcl, const RegionDesc* rd);
