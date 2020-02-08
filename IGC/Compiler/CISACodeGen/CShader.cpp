@@ -1174,6 +1174,15 @@ void CShader::GetSimdOffsetBase(CVariable*& pVar)
         encoder.Add(pVar, pVar, ImmToVariable(16, ISA_TYPE_W));
         encoder.Push();
     }
+    else if (m_SIMDSize == SIMDMode::SIMD32)
+    {
+        // (W) add (16) V1(16) V1(0) 16:w
+        encoder.SetSimdSize(SIMDMode::SIMD16);
+        encoder.SetNoMask();
+        encoder.SetDstSubReg(16);
+        encoder.Add(pVar, pVar, ImmToVariable(16, ISA_TYPE_W));
+        encoder.Push();
+    }
 }
 
 CVariable* CShader::GetPerLaneOffsetsReg(uint typeSizeInBytes)
