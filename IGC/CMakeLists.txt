@@ -3349,7 +3349,8 @@ include_directories(
 
     "${IGC_BUILD__IGC_SRC_DIR}/AdaptorOCL/ocl_igc_shared/executable_format"
     "${IGC_BUILD__IGC_SRC_DIR}/AdaptorOCL"
-  )
+    )
+
 
   include_directories(
       "${IGC_BUILD__COMMON_COMPILER_DIR}/common"
@@ -3512,7 +3513,8 @@ set(IGC_BUILD__SRC__IGC__igc_lib
 set(IGC_BUILD__HDR__IGC__igc_common
     ${IGC_BUILD__HDR__IGC_AdaptorOCL} # currently empty
     ${IGC_BUILD__HDR__IGC_common}
-    ${IGC_BUILD__HDR__IGC_Common_CLElfLib})
+    ${IGC_BUILD__HDR__IGC_Common_CLElfLib}
+    )
 
 
 set(IGC_BUILD__HDR__IGC__igc_dll
@@ -3561,6 +3563,7 @@ target_include_directories(${IGC_BUILD__PROJ__igc_dll} INTERFACE
   "${CMAKE_CURRENT_SOURCE_DIR}/AdaptorOCL/"
   "${IGC_BUILD__IGC_BIN_DIR}/AdaptorOCL/"
 )
+
 
 #IGC_DLL
 igc_target_flag_property_add_once_config_var("${IGC_BUILD__PROJ__igc_dll}" LINK_FLAGS IGC_BUILD__EXPORT_SYMBOLS_LINK_FLAGS)
@@ -3679,7 +3682,6 @@ endforeach()
 add_dependencies("${IGC_BUILD__PROJ__fcl_dll}"     "${IGC_BUILD__PROJ__BiFModule_OCL}")
 add_dependencies("${IGC_BUILD__PROJ__fcl_dll}"     "${IGC_BUILD__PROJ__ElfPackager}")
 
-
 if(LLVM_ON_WIN32)
   if(IGC_OPTION__USCLAUNCHER_TOOL)
     add_dependencies("${IGC_BUILD__PROJ__ILAdapter}"           "${IGC_BUILD__PROJ__GenISAIntrinsics}")
@@ -3719,6 +3721,7 @@ foreach(_libBuildSuffix ${IGC_BUILD__MAIN_IGC_LIB_SUFFIXES})
     endif()
 
   endif()
+
 
   list(APPEND _targetLinkLineCommon
       "${IGC_BUILD__PROJ__AdaptorOGL}"
