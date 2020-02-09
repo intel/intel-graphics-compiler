@@ -10447,7 +10447,7 @@ CVariable* EmitPass::GetExecutionMask(CVariable*& vecMaskVar)
     m_encoder->Cmp(EPREDICATE_EQ, flag, dummyVar, dummyVar);
     m_encoder->Push();
 
-    if (m_currShader->m_dispatchSize > SIMDMode::SIMD16)
+    if (m_currShader->m_dispatchSize > SIMDMode::SIMD16 && m_SimdMode != SIMDMode::SIMD32)
     {
         m_encoder->SetSecondHalf(true);
         m_encoder->Cmp(EPREDICATE_EQ, flag, dummyVar, dummyVar);
@@ -12076,6 +12076,7 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst* pInsn)
         m_encoder->SetNoMask();
     }
 
+    // We are generating non-scalar atomics at this point
     {
         CVariable* pDst = returnsImmValue ?
             m_currShader->GetNewVariable(
