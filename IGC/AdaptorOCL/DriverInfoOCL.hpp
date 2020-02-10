@@ -69,6 +69,10 @@ namespace TC
         bool splitUnalignedVectors() const override { return false; }
 
         bool supportsStatelessSpacePrivateMemory() const override { return true; }
+
+        bool NeedFP64(PRODUCT_FAMILY productFamily) const override { 
+            return false;
+        }
     };
 
     // In case some cpas are specific to NEO

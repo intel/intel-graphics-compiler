@@ -26,6 +26,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 #include "common/igc_regkeys.hpp"
 #include "common/Types.hpp"
+#include "inc/common/igfxfmid.h"
+
 /*
 This provides hook to query whether a feature is supported by the runtime we are compiling for
 This file has default value, then each adapter can overload any of the query to tell the backend
@@ -125,7 +127,7 @@ namespace IGC
         virtual bool NeedI64BitDivRem() const { return false; }
 
         /// Must support FP64
-        virtual bool NeedFP64() const { return false; }
+        virtual bool NeedFP64(PRODUCT_FAMILY productFamily) const { return false; }
 
         /// Must support of f32 IEEE divide (also sqrt)
         virtual bool NeedIEEESPDiv() const { return false; }
