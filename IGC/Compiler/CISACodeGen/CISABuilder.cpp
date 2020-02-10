@@ -3779,7 +3779,7 @@ namespace IGC
             SaveOption(vISA_DumpCompilerStats, true);
         }
 
-        if (IGC_IS_FLAG_ENABLED(ForceFFIDOverwrite) && m_program->m_Platform->WaOverwriteFFID())
+        if (IGC_IS_FLAG_ENABLED(ForceFFIDOverwrite)/*|| m_program->m_Platform->WaOverwriteFFID()*/)
         {
             unsigned int ffid[unsigned(ShaderType::END)] = {
                 0,
