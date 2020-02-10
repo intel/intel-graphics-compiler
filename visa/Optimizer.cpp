@@ -8145,13 +8145,12 @@ public:
             }
         }
 
-        if (hasUAVWrites && !hasSLMWrites && funcIDs.empty())
+        if ((!hasUAVWrites) && (!hasSLMWrites) && funcIDs.empty())
         {
             return;
         }
 
         funcIDs.unique();
-
         for (auto bb : kernel.fg)
         {
             if (bb->isLastInstEOT())
