@@ -105,6 +105,7 @@ namespace {
     public:
         static char ID;
         Module* m_module = nullptr;
+        CodeGenContext* m_ctx = nullptr;
 
         GenericAddressDynamicResolution()
             : FunctionPass(ID)
@@ -132,6 +133,7 @@ namespace {
     private:
         Type* getPointerAsIntType(LLVMContext& Ctx, unsigned AS);
         void resolveGAS(Instruction& I, Value* pointerOperand);
+        void resolveGASWithoutBranches(Instruction& I, Value* pointerOperand);
     };
 
 } // namespace
@@ -151,10 +153,8 @@ char GenericAddressDynamicResolution::ID = 0;
 bool GenericAddressDynamicResolution::runOnFunction(Function& F)
 {
     m_module = F.getParent();
+    m_ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     bool modified = false;
-
-    DataLayout dataLayout = F.getParent()->getDataLayout();
-
     bool changed = false;
 
     // iterate for all the intrinisics used by to_local, to_global, and to_private
@@ -224,8 +224,14 @@ bool GenericAddressDynamicResolution::visitLoadStoreInst(Instruction& I)
     }
 
     if (pointerAddressSpace == ADDRESS_SPACE_GENERIC) {
-        // Add runtime check to see whether I is a load/store on local addrspace.
-        resolveGAS(I, pointerOperand);
+        if (m_ctx->forceGlobalMemoryAllocation() && m_ctx->hasNoLocalToGenericCast())
+        {
+            resolveGASWithoutBranches(I, pointerOperand);
+        }
+        else
+        {
+            resolveGAS(I, pointerOperand);
+        }
         changed = true;
     }
 
@@ -252,16 +258,18 @@ void GenericAddressDynamicResolution::resolveGAS(Instruction& I, Value* pointerO
     // Three cases for private, local and global pointers
     BasicBlock* currentBlock = I.getParent();
     BasicBlock* convergeBlock = currentBlock->splitBasicBlock(&I);
-    BasicBlock* privateBlock = BasicBlock::Create(I.getContext(), "PrivateBlock", convergeBlock->getParent(), convergeBlock);
-    BasicBlock* localBlock = BasicBlock::Create(I.getContext(), "LocalBlock", convergeBlock->getParent(), convergeBlock);
-    BasicBlock* globalBlock = BasicBlock::Create(I.getContext(), "GlobalBlock", convergeBlock->getParent(), convergeBlock);
 
+    BasicBlock* privateBlock = nullptr;
+    BasicBlock* localBlock = nullptr;
+    BasicBlock* globalBlock = nullptr;
 
     Value* localLoad = nullptr;
     Value* privateLoad = nullptr;
     Value* globalLoad = nullptr;
 
-    // Private
+
+    // Private branch
+    privateBlock = BasicBlock::Create(I.getContext(), "PrivateBlock", convergeBlock->getParent(), convergeBlock);
     {
         IRBuilder<> privateBuilder(privateBlock);
         PointerType* ptrType = pointerType->getElementType()->getPointerTo(ADDRESS_SPACE_PRIVATE);
@@ -278,23 +286,29 @@ void GenericAddressDynamicResolution::resolveGAS(Instruction& I, Value* pointerO
         privateBuilder.CreateBr(convergeBlock);
     }
 
-    // Local
+    // Local Branch
+    if (!m_ctx->hasNoLocalToGenericCast())
     {
-        IRBuilder<> localBuilder(localBlock);
-        PointerType* localPtrType = pointerType->getElementType()->getPointerTo(ADDRESS_SPACE_LOCAL);
-        Value* localPtr = localBuilder.CreateAddrSpaceCast(pointerOperand, localPtrType);
-        if (LoadInst* LI = dyn_cast<LoadInst>(&I))
+        localBlock = BasicBlock::Create(I.getContext(), "LocalBlock", convergeBlock->getParent(), convergeBlock);
+        // Local
         {
-            localLoad = localBuilder.CreateAlignedLoad(localPtr, LI->getAlignment(), LI->isVolatile(), "localLoad");
+            IRBuilder<> localBuilder(localBlock);
+            PointerType* localPtrType = pointerType->getElementType()->getPointerTo(ADDRESS_SPACE_LOCAL);
+            Value* localPtr = localBuilder.CreateAddrSpaceCast(pointerOperand, localPtrType);
+            if (LoadInst* LI = dyn_cast<LoadInst>(&I))
+            {
+                localLoad = localBuilder.CreateAlignedLoad(localPtr, LI->getAlignment(), LI->isVolatile(), "localLoad");
+            }
+            else if (StoreInst* SI = dyn_cast<StoreInst>(&I))
+            {
+                localBuilder.CreateAlignedStore(I.getOperand(0), localPtr, SI->getAlignment(), SI->isVolatile());
+            }
+            localBuilder.CreateBr(convergeBlock);
         }
-        else if (StoreInst* SI = dyn_cast<StoreInst>(&I))
-        {
-            localBuilder.CreateAlignedStore(I.getOperand(0), localPtr, SI->getAlignment(), SI->isVolatile());
-        }
-        localBuilder.CreateBr(convergeBlock);
     }
 
-    // Global
+    // Global Branch
+    globalBlock = BasicBlock::Create(I.getContext(), "GlobalBlock", convergeBlock->getParent(), convergeBlock);
     {
         IRBuilder<> globalBuilder(globalBlock);
         PointerType* ptrType = pointerType->getElementType()->getPointerTo(ADDRESS_SPACE_GLOBAL);
@@ -314,22 +328,66 @@ void GenericAddressDynamicResolution::resolveGAS(Instruction& I, Value* pointerO
     currentBlock->getTerminator()->eraseFromParent();
     builder.SetInsertPoint(currentBlock);
 
-
-    SwitchInst* switchTag = builder.CreateSwitch(tag, globalBlock, 2);
-    // Based on tag there are two cases 000/111: private, 001: local, 010 global
-    switchTag->addCase(privateTag, privateBlock);
-    switchTag->addCase(localTag, localBlock);
-
-    if ((privateLoad != nullptr) && (localLoad != nullptr) && (globalLoad != nullptr))
+    // Local branch can be saved if there are no local to generic casts
+    if (m_ctx->hasNoLocalToGenericCast())
     {
-        IRBuilder<> phiBuilder(&(*convergeBlock->begin()));
-        PHINode* phi = phiBuilder.CreatePHI(I.getType(), 3, I.getName());
-        phi->addIncoming(privateLoad, privateBlock);
-        phi->addIncoming(localLoad, localBlock);
-        phi->addIncoming(globalLoad, globalBlock);
-        I.replaceAllUsesWith(phi);
+        SwitchInst* switchTag = builder.CreateSwitch(tag, globalBlock, 1);
+        // Based on tag there are two cases 001: private, 000/111: global
+        switchTag->addCase(privateTag, privateBlock);
+
+        if ((privateLoad != nullptr) && (globalLoad != nullptr))
+        {
+            IRBuilder<> phiBuilder(&(*convergeBlock->begin()));
+            PHINode* phi = phiBuilder.CreatePHI(I.getType(), 2, I.getName());
+            phi->addIncoming(privateLoad, privateBlock);
+            phi->addIncoming(globalLoad, globalBlock);
+            I.replaceAllUsesWith(phi);
+        }
+    }
+    else
+    {
+        SwitchInst* switchTag = builder.CreateSwitch(tag, globalBlock, 2);
+        // Based on tag there are two cases 001: private, 010: local, 000/111: global
+        switchTag->addCase(privateTag, privateBlock);
+        switchTag->addCase(localTag, localBlock);
+
+        if ((privateLoad != nullptr) && (localLoad != nullptr) && (globalLoad != nullptr))
+        {
+            IRBuilder<> phiBuilder(&(*convergeBlock->begin()));
+            PHINode* phi = phiBuilder.CreatePHI(I.getType(), 3, I.getName());
+            phi->addIncoming(privateLoad, privateBlock);
+            phi->addIncoming(localLoad, localBlock);
+            phi->addIncoming(globalLoad, globalBlock);
+            I.replaceAllUsesWith(phi);
+        }
     }
 
+    I.eraseFromParent();
+}
+
+void GenericAddressDynamicResolution::resolveGASWithoutBranches(Instruction& I, Value* pointerOperand)
+{
+    IRBuilder<> builder(&I);
+    PointerType* pointerType = dyn_cast<PointerType>(pointerOperand->getType());
+
+    Value* nonLocalLoad = nullptr;
+
+    PointerType* ptrType = pointerType->getElementType()->getPointerTo(ADDRESS_SPACE_GLOBAL);
+    Value* globalPtr = builder.CreateAddrSpaceCast(pointerOperand, ptrType);
+
+    if (LoadInst* LI = dyn_cast<LoadInst>(&I))
+    {
+        nonLocalLoad = builder.CreateAlignedLoad(globalPtr, LI->getAlignment(), LI->isVolatile(), "globalOrPrivateLoad");
+    }
+    else if (StoreInst* SI = dyn_cast<StoreInst>(&I))
+    {
+        builder.CreateAlignedStore(I.getOperand(0), globalPtr, SI->getAlignment(), SI->isVolatile());
+    }
+
+    if (nonLocalLoad != nullptr)
+    {
+        I.replaceAllUsesWith(nonLocalLoad);
+    }
     I.eraseFromParent();
 }
 

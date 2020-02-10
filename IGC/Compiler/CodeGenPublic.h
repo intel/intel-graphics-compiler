@@ -861,6 +861,7 @@ namespace IGC
         virtual uint32_t getNumThreadsPerEU() const;
         virtual uint32_t getNumGRFPerThread() const;
         virtual bool forceGlobalMemoryAllocation() const;
+        virtual bool hasNoLocalToGenericCast() const;
         bool isPOSH() const;
 
         CompilerStats& Stats()
@@ -1094,6 +1095,10 @@ namespace IGC
                 {
                     IntelForceGlobalMemoryAllocation = true;
                 }
+                if (strstr(options, "-cl-intel-no-local-to-generic"))
+                {
+                    hasNoLocalToGeneric = true;
+                }
             }
 
 
@@ -1111,6 +1116,7 @@ namespace IGC
             bool PromoteStatelessToBindless = false;
             bool PreferBindlessImages = false;
             bool IntelForceGlobalMemoryAllocation = false;
+            bool hasNoLocalToGeneric = false;
 
         };
 
@@ -1190,6 +1196,7 @@ namespace IGC
         uint32_t getNumGRFPerThread() const;
         uint32_t getNumThreadsPerEU() const;
         bool forceGlobalMemoryAllocation() const;
+        bool hasNoLocalToGenericCast() const;
     private:
         llvm::DenseMap<llvm::Function*, std::string> m_hashes_per_kernel;
     };

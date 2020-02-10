@@ -526,6 +526,10 @@ namespace IGC
         return m_InternalOptions.IntelForceGlobalMemoryAllocation;
     }
 
+    bool OpenCLProgramContext::hasNoLocalToGenericCast() const
+    {
+        return m_InternalOptions.hasNoLocalToGeneric;
+    }
 
     void CodeGenContext::initLLVMContextWrapper(bool createResourceDimTypes)
     {
@@ -689,6 +693,11 @@ namespace IGC
     }
 
     bool CodeGenContext::forceGlobalMemoryAllocation() const
+    {
+        return false;
+    }
+
+    bool CodeGenContext::hasNoLocalToGenericCast() const
     {
         return false;
     }

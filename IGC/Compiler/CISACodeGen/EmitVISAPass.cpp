@@ -8381,8 +8381,15 @@ void EmitPass::emitAddrSpaceCast(llvm::AddrSpaceCastInst* addrSpaceCast)
     //   64bit operation support.
 
     CVariable* srcV = GetSymbol(addrSpaceCast->getOperand(0));
-    unsigned sourceAddrSpace = addrSpaceCast->getSrcAddressSpace();
-    unsigned destAddrSpace = addrSpaceCast->getDestAddressSpace();
+
+    if (m_pCtx->forceGlobalMemoryAllocation() && m_pCtx->hasNoLocalToGenericCast())
+    {
+        // If forcing global memory allocacion and there are no generic pointers to local AS,
+        // there is no need to tag generic pointers.
+        m_encoder->Cast(m_destination, srcV);
+        m_encoder->Push();
+        return;
+    }
 
     if (srcV->IsImmediate() && srcV->GetImmediateValue() == 0x0)
     {
@@ -8391,6 +8398,9 @@ void EmitPass::emitAddrSpaceCast(llvm::AddrSpaceCastInst* addrSpaceCast)
         m_encoder->Push();
         return;
     }
+
+    unsigned sourceAddrSpace = addrSpaceCast->getSrcAddressSpace();
+    unsigned destAddrSpace = addrSpaceCast->getDestAddressSpace();
 
     if (destAddrSpace == ADDRESS_SPACE_GENERIC)
     {
