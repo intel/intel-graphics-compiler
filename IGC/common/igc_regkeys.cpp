@@ -172,6 +172,7 @@ static HRESULT ObtainDeviceInstances(std::vector<DEVINST>* pDevInstances)
 
         do
         {
+            DeviceIDListSize = 0;
             cr = CM_Get_Device_ID_List_SizeW(
                 &DeviceIDListSize,
                 DisplayDevClassGUID,
@@ -181,7 +182,12 @@ static HRESULT ObtainDeviceInstances(std::vector<DEVINST>* pDevInstances)
                 break;
             }
 
-            DeviceIDList.resize(DeviceIDListSize);
+            if (DeviceIDList.max_size() >= DeviceIDListSize && DeviceIDListSize > 0)
+                DeviceIDList.resize(DeviceIDListSize);
+            else
+            {
+                return E_ABORT;
+            }
 
             cr = CM_Get_Device_ID_ListW(
                 DisplayDevClassGUID,
