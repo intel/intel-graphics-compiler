@@ -251,6 +251,9 @@ namespace IGC
         SIMDMode m_dispatchSize;
         /// SIMD Size is the default size of instructions
         ShaderDispatchMode m_ShaderDispatchMode;
+        /// the default emit size for this shader. This is the default size for variables as well
+        /// as the default execution size for each instruction. encoder may override it explicitly
+        /// via CEncoder::SetSIMDSize
         SIMDMode m_SIMDSize;
         uint8_t m_numberInstance;
         PushInfo pushInfo;

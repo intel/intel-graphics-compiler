@@ -10447,7 +10447,7 @@ CVariable* EmitPass::GetExecutionMask(CVariable*& vecMaskVar)
     m_encoder->Cmp(EPREDICATE_EQ, flag, dummyVar, dummyVar);
     m_encoder->Push();
 
-    if (m_currShader->m_dispatchSize > SIMDMode::SIMD16)
+    if (m_currShader->m_dispatchSize > SIMDMode::SIMD16 && m_currShader->m_SIMDSize != SIMDMode::SIMD32)
     {
         m_encoder->SetSecondHalf(true);
         m_encoder->Cmp(EPREDICATE_EQ, flag, dummyVar, dummyVar);
