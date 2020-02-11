@@ -3703,6 +3703,7 @@ static void recordRAStats(IR_Builder& builder,
 #endif // COMPILER_STATS_ENABLE
 }
 
+
 int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
 {
     if (kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc())

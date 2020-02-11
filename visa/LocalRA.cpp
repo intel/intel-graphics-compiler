@@ -1246,6 +1246,10 @@ void LocalRA::markReferences(unsigned int& numRowsEOT,
             {
                 curInst->setLexicalId(id);
                 lifetimeOpFound = true;
+                if (curInst->opcode() == G4_pseudo_lifetime_end)
+                {
+                    markReferencesInInst(inst_it);
+                }
                 continue;
             }
 

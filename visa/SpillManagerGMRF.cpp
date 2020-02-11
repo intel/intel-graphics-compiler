@@ -104,7 +104,6 @@ static const unsigned SCRATCH_MSG_DESC_BLOCK_SIZE            = 12;
 // Macros
 
 #define LIMIT_SEND_EXEC_SIZE(EXEC_SIZE)(((EXEC_SIZE) > 16)? 16: (EXEC_SIZE))
-#define ROUND(x,y)    ((x) + ((y - x % y) % y))
 #define SPILL_PAYLOAD_HEIGHT_LIMIT 4
 
 extern unsigned int getStackCallRegSize(bool reserveStackCallRegs);
@@ -4393,6 +4392,23 @@ static unsigned int getPayloadSizeOword(unsigned int numOwords)
     return 1u;
 }
 
+unsigned int GlobalRA::owordToGRFSize(unsigned int numOwords)
+{
+    unsigned int GRFSize = numOwords / (2 * (G4_GRF_REG_NBYTES / HWORD_BYTE_SIZE));
+
+    return GRFSize;
+}
+
+unsigned int GlobalRA::hwordToGRFSize(unsigned int numHwords)
+{
+    return owordToGRFSize(numHwords * 2);
+}
+
+unsigned int GlobalRA::GRFSizeToOwords(unsigned int numGRFs)
+{
+    return numGRFs * (G4_GRF_REG_NBYTES / OWORD_BYTE_SIZE);
+}
+
 
 void GlobalRA::expandSpillNonStackcall(uint32_t& numRows, uint32_t& offset, short& rowOffset, G4_SrcRegRegion* header, G4_SrcRegRegion* payload, G4_BB* bb, INST_LIST_ITER& instIt)
 {
@@ -4473,7 +4489,7 @@ void GlobalRA::expandSpillStackcall(uint32_t& numRows, uint32_t& offset, short& 
             G4_DstRegRegion* dst = builder->createNullDst((execSize > 8) ? Type_UW : Type_UD);
             auto sendSrc0 = builder->createSrcRegRegion(Mod_src_undef, Direct, scratchRegDcl->getRegVar(),
                 0, 0, builder->rgnpool.createRegion(8, 8, 1), Type_UD);
-            unsigned messageLength = owordSize / 2;
+            unsigned messageLength = owordToGRFSize(owordSize);
             G4_Imm* descImm = createMsgDesc(owordSize, true, true);
             G4_INST* sendInst = nullptr;
             {

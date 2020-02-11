@@ -1113,6 +1113,8 @@ public:
         return inst;
     }
 
+    // numRows is in hword units
+    // offset is in hword units
     G4_INST* createSpill(
         G4_DstRegRegion* dst, G4_SrcRegRegion* header, G4_SrcRegRegion* payload,
         unsigned int execSize,

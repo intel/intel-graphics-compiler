@@ -39,6 +39,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define BITS_DWORD 32
 #define SCRATCH_MSG_LIMIT (128 * 1024)
+#define ROUND(x,y)    ((x) + ((y - x % y) % y))
 
 extern unsigned int BitMask[BITS_DWORD];
 namespace vISA
@@ -825,6 +826,10 @@ namespace vISA
             retDecls[retLoc] = dcl;
             return dcl;
         }
+
+        static unsigned int owordToGRFSize(unsigned int numOwords);
+        static unsigned int hwordToGRFSize(unsigned int numHwords);
+        static unsigned int GRFSizeToOwords(unsigned int numGRFs);
 
         // RA specific fields
         G4_Declare* getGRFDclForHRA(int GRFNum) const { return GRFDclsForHRA[GRFNum]; }

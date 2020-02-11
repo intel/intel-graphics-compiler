@@ -49,7 +49,6 @@ using namespace vISA;
 
 #define MIN(x,y)    (((x)<(y))? (x):(y))
 #define MAX(x,y)    (((x)<(y))? (y):(x))
-#define ROUND(x,y)    ((x) + ((y - x % y) % y))
 
 unsigned int BitMask[BITS_DWORD] =
 {
@@ -6607,7 +6606,7 @@ G4_Imm* GlobalRA::createMsgDesc(unsigned owordSize, bool writeType, bool isSplit
         unsigned messageLength = 1;
         if (!isSplitSend)
         {
-            messageLength += ROUND(owordSize, 2) / 2;
+            messageLength += owordToGRFSize(ROUND(owordSize, G4_GRF_REG_NBYTES/OWORD_BYTE_SIZE));
         }
         message |= messageLength << SEND_MSG_LENGTH_BIT_OFFSET;
     }
@@ -6615,7 +6614,7 @@ G4_Imm* GlobalRA::createMsgDesc(unsigned owordSize, bool writeType, bool isSplit
     {
         unsigned messageType = SEND_OWORD_READ_TYPE;
         message |= messageType << SEND_MSG_TYPE_BIT_OFFSET;
-        unsigned responseLength = ROUND(owordSize, 2) / 2;
+        unsigned responseLength = owordToGRFSize(ROUND(owordSize, G4_GRF_REG_NBYTES / OWORD_BYTE_SIZE));
         message |= responseLength << SEND_RSP_LENGTH_BIT_OFFSET;
         unsigned messageLength = 1;
         message |= messageLength << SEND_MSG_LENGTH_BIT_OFFSET;
@@ -6668,7 +6667,7 @@ void GraphColor::saveRegs(
     else if (owordSize > 8)
     {
         saveRegs(startReg, 8, scratchRegDcl, framePtr, frameOwordOffset, bb, insertIt);
-        saveRegs(startReg + 4, owordSize - 8, scratchRegDcl, framePtr, frameOwordOffset + 8, bb, insertIt);
+        saveRegs(startReg + GlobalRA::owordToGRFSize(8), owordSize - 8, scratchRegDcl, framePtr, frameOwordOffset + 8, bb, insertIt);
     }
     //
     // Split into chunks of sizes 4 and remaining owords.
@@ -6676,7 +6675,7 @@ void GraphColor::saveRegs(
     else if (owordSize > 4)
     {
         saveRegs(startReg, 4, scratchRegDcl, framePtr, frameOwordOffset, bb, insertIt);
-        saveRegs(startReg + 2, owordSize - 4, scratchRegDcl, framePtr, frameOwordOffset + 4, bb, insertIt);
+        saveRegs(startReg + GlobalRA::owordToGRFSize(4), owordSize - 4, scratchRegDcl, framePtr, frameOwordOffset + 4, bb, insertIt);
     }
     //
     // Split into chunks of sizes 2 and remaining owords.
@@ -6684,7 +6683,7 @@ void GraphColor::saveRegs(
     else if (owordSize > 2)
     {
         saveRegs(startReg, 2, scratchRegDcl, framePtr, frameOwordOffset, bb, insertIt);
-        saveRegs(startReg + 1, owordSize - 2, scratchRegDcl, framePtr, frameOwordOffset + 2, bb, insertIt);
+        saveRegs(startReg + GlobalRA::owordToGRFSize(2), owordSize - 2, scratchRegDcl, framePtr, frameOwordOffset + 2, bb, insertIt);
     }
     else
     {
@@ -6711,7 +6710,8 @@ void GraphColor::saveActiveRegs(
         if (startPos < saveRegs.size() && saveRegs[startPos]) {
             unsigned endPos = startPos + 1;
             for (; endPos < saveRegs.size() && saveRegs[endPos] == true; endPos++);
-            unsigned owordSize = (endPos - startPos) * 2;
+            unsigned owordSize = (endPos - startPos) * GlobalRA::GRFSizeToOwords(1);
+            owordSize = std::max(owordSize, GlobalRA::GRFSizeToOwords(1));
             this->saveRegs(startPos + startReg, owordSize, scratchRegDcl, framePtr, frameOwordPos, bb, insertIt);
             frameOwordPos += owordSize;
             startPos = endPos;
@@ -6751,7 +6751,7 @@ void GraphColor::restoreRegs(
     else if (owordSize > 8)
     {
         restoreRegs(startReg, 8, scratchRegDcl, framePtr, frameOwordOffset, bb, insertIt);
-        restoreRegs(startReg + 4, owordSize - 8, scratchRegDcl, framePtr, frameOwordOffset + 8, bb, insertIt);
+        restoreRegs(startReg + GlobalRA::owordToGRFSize(8), owordSize - 8, scratchRegDcl, framePtr, frameOwordOffset + 8, bb, insertIt);
     }
     //
     // Split into chunks of sizes 4 and remaining owords.
@@ -6759,7 +6759,7 @@ void GraphColor::restoreRegs(
     else if (owordSize > 4)
     {
         restoreRegs(startReg, 4, scratchRegDcl, framePtr, frameOwordOffset, bb, insertIt);
-        restoreRegs(startReg + 2, owordSize - 4, scratchRegDcl, framePtr, frameOwordOffset + 4, bb, insertIt);
+        restoreRegs(startReg + GlobalRA::owordToGRFSize(4), owordSize - 4, scratchRegDcl, framePtr, frameOwordOffset + 4, bb, insertIt);
     }
     //
     // Split into chunks of sizes 2 and remaining owords.
@@ -6767,7 +6767,7 @@ void GraphColor::restoreRegs(
     else if (owordSize > 2)
     {
         restoreRegs(startReg, 2, scratchRegDcl, framePtr, frameOwordOffset, bb, insertIt);
-        restoreRegs(startReg + 1, owordSize - 2, scratchRegDcl, framePtr, frameOwordOffset + 2, bb, insertIt);
+        restoreRegs(startReg + GlobalRA::owordToGRFSize(2), owordSize - 2, scratchRegDcl, framePtr, frameOwordOffset + 2, bb, insertIt);
     }
     else
     {
@@ -6794,7 +6794,8 @@ void GraphColor::restoreActiveRegs(
         if (startPos < restoreRegs.size() && restoreRegs[startPos]) {
             unsigned endPos = startPos + 1;
             for (; endPos < restoreRegs.size() && restoreRegs[endPos] == true; endPos++);
-            unsigned owordSize = (endPos - startPos) * 2;
+            unsigned owordSize = (endPos - startPos) * GlobalRA::GRFSizeToOwords(1);
+            owordSize = std::max(owordSize, GlobalRA::GRFSizeToOwords(1));
             this->restoreRegs(startPos + startReg, owordSize, scratchRegDcl, framePtr, frameOwordPos, bb, insertIt);
             frameOwordPos += owordSize;
             startPos = endPos;
