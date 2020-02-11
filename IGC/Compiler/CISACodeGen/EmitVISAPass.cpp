@@ -15998,36 +15998,38 @@ SamplerDescriptor EmitPass::GetSamplerVariable(Value* sampleOp)
     unsigned int samplerIdx = 0;
     BufferType sampType = BUFFER_TYPE_UNKNOWN;
 
-    if (isa<GenIntrinsicInst>(sampleOp)) // from GetBufferPtr
+    if (GenIntrinsicInst* sample = dyn_cast<GenIntrinsicInst>(sampleOp))
     {
-        Value* bufTyVal = cast<GenIntrinsicInst>(sampleOp)->getOperand(1);
-        assert(isa<ConstantInt>(bufTyVal));
-        sampType = (BufferType)(cast<ConstantInt>(bufTyVal)->getZExtValue());
+        if (sample->getIntrinsicID() == GenISAIntrinsic::GenISA_GetBufferPtr)
+        {
+            Value* bufTyVal = cast<GenIntrinsicInst>(sampleOp)->getOperand(1);
+            assert(isa<ConstantInt>(bufTyVal));
+            sampType = (BufferType)(cast<ConstantInt>(bufTyVal)->getZExtValue());
+            sampler.m_sampler = GetSymbol(sampleOp);
+            assert(sampType == SAMPLER);
+            sampler.m_samplerType = ESAMPLER_NORMAL;
+            return sampler;
+        }
+    }
+
+    bool isBindless = false;
+    bool directIdx = false;
+
+    sampType = DecodeAS4GFXResource(
+        sampleOp->getType()->getPointerAddressSpace(),
+        directIdx, samplerIdx);
+    isBindless = (sampType == BINDLESS_SAMPLER);
+    sampler.m_samplerType =
+        isBindless ? ESAMPLER_BINDLESS : ESAMPLER_NORMAL;
+
+    if (isBindless || !directIdx)
+    {
         sampler.m_sampler = GetSymbol(sampleOp);
-        assert(sampType == SAMPLER);
-        sampler.m_samplerType = ESAMPLER_NORMAL;
     }
     else
     {
-        bool isBindless = false;
-        bool directIdx = false;
-
-        sampType = DecodeAS4GFXResource(
-            sampleOp->getType()->getPointerAddressSpace(),
-            directIdx, samplerIdx);
-        isBindless = (sampType == BINDLESS_SAMPLER);
-        sampler.m_samplerType =
-            isBindless ? ESAMPLER_BINDLESS : ESAMPLER_NORMAL;
-
-        if (isBindless || !directIdx)
-        {
-            sampler.m_sampler = GetSymbol(sampleOp);
-        }
-        else
-        {
-            sampler.m_sampler = m_currShader->ImmToVariable(
-                samplerIdx, ISA_TYPE_UD);
-        }
+        sampler.m_sampler = m_currShader->ImmToVariable(
+            samplerIdx, ISA_TYPE_UD);
     }
     return sampler;
 }
