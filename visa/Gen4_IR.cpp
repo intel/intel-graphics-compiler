@@ -1865,6 +1865,12 @@ G4_INST::MovType G4_INST::canPropagate() const
         return SuperMov;
     }
 
+    // Retain side effect of writing to debug register.
+    if (dst->isDbgReg())
+    {
+        return SuperMov;
+    }
+
     G4_Operand *src = srcs[0];
 
     if (src->isRelocImm())
