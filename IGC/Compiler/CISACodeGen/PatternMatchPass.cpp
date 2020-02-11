@@ -3393,12 +3393,11 @@ namespace IGC
         //   2) both operands are instructions.
         Instruction* LHS = dyn_cast<Instruction>(OrInst->getOperand(0));
         Instruction* RHS = dyn_cast<Instruction>(OrInst->getOperand(1));
-        if (!LHS || !RHS ||
-            (typeWidth != 16 && typeWidth != 32))
+        bool typeWidthSupported = typeWidth == 16 || typeWidth == 32;
+
+        if (!LHS || !RHS || !typeWidthSupported)
         {
-            {
-                return false;
-            }
+            return false;
         }
 
         // Make adjustment so that LHS is shl.
