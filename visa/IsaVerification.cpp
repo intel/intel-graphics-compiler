@@ -453,7 +453,7 @@ static void verifyRegion(
     REPORT_INSTRUCTION(options,width_val, "CISA region has width of 0");
 
     uint8_t exec_sz = 0;
-    switch (((VISA_Exec_Size)(inst->execsize & 0xF)))
+    switch (inst->getExecSize())
     {
     case EXEC_SIZE_1:  exec_sz = 1;  break;
     case EXEC_SIZE_2:  exec_sz = 2;  break;
@@ -461,7 +461,7 @@ static void verifyRegion(
     case EXEC_SIZE_8:  exec_sz = 8;  break;
     case EXEC_SIZE_16: exec_sz = 16; break;
     case EXEC_SIZE_32: exec_sz = 32; break;
-    default: REPORT_INSTRUCTION(options,false, "Invalid execution size");
+    default: REPORT_INSTRUCTION(options, false, "Invalid execution size");
     }
 
     if (i == dstIndex)
@@ -907,8 +907,14 @@ static void verifyInstructionSVM(
     const common_isa_header& isaHeader,
     const print_format_provider_t* header,
     const CISA_INST* inst,
-    ERROR_LIST)
+    ERROR_LIST,
+    Options *options)
 {
+    if (hasExecSize((ISA_Opcode)inst->opcode))
+    {
+        REPORT_INSTRUCTION(options, EXEC_SIZE_32 != inst->getExecSize(),
+            "Execution size should not be SIMD32 for SVM messages.");
+    }
 }
 
 static void verifyInstructionMove(
@@ -940,7 +946,7 @@ static void verifyInstructionMove(
 
              if (OPERAND_PREDICATE == operand_class_src0)
              {
-                 REPORT_INSTRUCTION(options,EXEC_SIZE_1 == ((VISA_Exec_Size)(inst->execsize & 0xF)),
+                 REPORT_INSTRUCTION(options,EXEC_SIZE_1 == inst->getExecSize(),
                          "Execution size for a flag copy mov instruction should be 1, as it is a scalar copy.");
                  REPORT_INSTRUCTION(options, IsIntType(dstType) && dstType != ISA_TYPE_Q && dstType != ISA_TYPE_UQ,
                          "dst operand type for a flag copy mov instruction should be non-64-bit integer.");
@@ -1287,7 +1293,7 @@ static void verifyInstructionMisc(
 
             REPORT_INSTRUCTION(options,!(numOut < 1 || numOut > 8) , "Valid range for num_out parameter of URB write is [1,8]");
             REPORT_INSTRUCTION(options,globalOff <= 2047, "Valid range for global_offset parameter of URB write is [0,2047]");
-            REPORT_INSTRUCTION(options,((VISA_Exec_Size)(inst->execsize & 0xF)) == EXEC_SIZE_8, "Only execution size of 8 is supported for URB write");
+            REPORT_INSTRUCTION(options, inst->getExecSize() == EXEC_SIZE_8, "Only execution size of 8 is supported for URB write");
 
             break;
         }
@@ -1926,7 +1932,7 @@ static void verifyInstructionSampler(const common_isa_header& isaHeader,
 
             if (cpsEnable)
             {
-                auto execSize = (VISA_Exec_Size)(inst->execsize & 0xF);
+                auto execSize = inst->getExecSize();
 
                 REPORT_INSTRUCTION(options,
                                    execSize == EXEC_SIZE_8 || execSize == EXEC_SIZE_16,
@@ -3087,7 +3093,11 @@ void verifyInstruction(
 
     if (hasExecSize(opcode))
     {
-        REPORT_INSTRUCTION(options,((VISA_Exec_Size)(inst->execsize & 0xF)) < EXEC_SIZE_ILLEGAL, "CISA instruction uses an illegal execution size.");
+        auto execSize = inst->getExecSize();
+        REPORT_INSTRUCTION(options, execSize < EXEC_SIZE_ILLEGAL, "vISA instruction uses an illegal execution size.");
+        // check for illegal combinations of emask and execution size
+        REPORT_INSTRUCTION(options, Get_VISA_Exec_Size(execSize) + getvISAMaskOffset(inst->getExecMask()) <= 32,
+            "vISA instruction has illegal combination of execution size and mask");
     }
 
     if (hasPredicate(opcode))
@@ -3098,7 +3108,7 @@ void verifyInstruction(
 
     switch (ISA_Inst_Table[opcode].type)
     {
-        case ISA_Inst_SVM:       verifyInstructionSVM         (isaHeader, header, inst, error_list); break;
+        case ISA_Inst_SVM:       verifyInstructionSVM         (isaHeader, header, inst, error_list, options); break;
         case ISA_Inst_Mov:       verifyInstructionMove        (isaHeader, header, inst, error_list, options); break;
         case ISA_Inst_Sync:      verifyInstructionSync        (isaHeader, header, inst, error_list, options); break;
         case ISA_Inst_Flow:      verifyInstructionControlFlow (isaHeader, header, inst, error_list, options); break;

@@ -42,7 +42,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  G4_Type GetGenTypeFromVISAType( VISA_Type );
  G4_SubReg_Align Get_G4_SubRegAlign_From_Type( G4_Type ty );
  G4_SubReg_Align Get_G4_SubRegAlign_From_Size( uint16_t size );
- int Get_G4_ExecSize_From_Common_ISA_ExecSize( VISA_Exec_Size );
  G4_SrcModifier GetGenSrcModFromVISAMod( VISA_Modifier );
  G4_CondModifier Get_G4_CondModifier_From_Common_ISA_CondModifier( VISA_Cond_Mod );
  bool hasPredicate(ISA_Opcode op);
@@ -151,6 +150,40 @@ int Get_PreDefined_Surf_Index( int index );
 inline bool isShiftOp(ISA_Opcode op)
 {
     return op == ISA_SHL || op == ISA_SHR || op == ISA_ASR || op == ISA_ROL || op == ISA_ROR;
+}
+
+inline uint32_t getvISAMaskOffset(VISA_EMask_Ctrl emask)
+{
+    switch (emask)
+    {
+        case vISA_EMASK_M1:
+        case vISA_EMASK_M1_NM:
+            return 0;
+        case vISA_EMASK_M2:
+        case vISA_EMASK_M2_NM:
+            return 4;
+        case vISA_EMASK_M3:
+        case vISA_EMASK_M3_NM:
+            return 8;
+        case vISA_EMASK_M4:
+        case vISA_EMASK_M4_NM:
+            return 12;
+        case vISA_EMASK_M5:
+        case vISA_EMASK_M5_NM:
+            return 16;
+        case vISA_EMASK_M6:
+        case vISA_EMASK_M6_NM:
+            return 20;
+        case vISA_EMASK_M7:
+        case vISA_EMASK_M7_NM:
+            return 24;
+        case vISA_EMASK_M8:
+        case vISA_EMASK_M8_NM:
+            return 28;
+        default:
+            assert(false && "illegal vISA execution mask control");
+            return 0;
+    }
 }
 
 

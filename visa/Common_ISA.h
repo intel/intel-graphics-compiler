@@ -707,7 +707,10 @@ typedef struct _CISA_INST
     CISA_opnd**    opnd_array;
     unsigned       opnd_count;
     unsigned       id;
-    char*          inline_cisa; /// Just a pointer to a char buffer containing inline cisa isaasm.
+
+    VISA_Exec_Size getExecSize() const { return (VISA_Exec_Size) (execsize & 0xF); }
+    VISA_EMask_Ctrl getExecMask() const { return (VISA_EMask_Ctrl) (execsize >> 4); }
+
 } CISA_INST;
 
 #define READ_FIELD_FROM_BUF( dst, type ) \
