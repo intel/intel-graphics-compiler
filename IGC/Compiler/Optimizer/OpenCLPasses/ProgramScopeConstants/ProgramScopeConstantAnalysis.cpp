@@ -56,8 +56,8 @@ ProgramScopeConstantAnalysis::ProgramScopeConstantAnalysis() : ModulePass(ID)
 
 bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
 {
-    DataVector inlineConstantBuffer;
-    DataVector inlineGlobalBuffer;
+    bool hasInlineConstantBuffer = false;
+    bool hasInlineGlobalBuffer = false;
 
     unsigned globalBufferAlignment = 0;
     unsigned constantBufferAlignment = 0;
@@ -101,9 +101,6 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
             continue;
         }
 
-        DataVector& inlineProgramScopeBuffer = (AS == ADDRESS_SPACE_GLOBAL) ? inlineGlobalBuffer : inlineConstantBuffer;
-        unsigned& bufferAlignment = (AS == ADDRESS_SPACE_GLOBAL) ? globalBufferAlignment : constantBufferAlignment;
-
         // The only way to get a null initializer is via an external variable.
         // Linking has already occurred; everything should be resolved.
         Constant* initializer = globalVar->getInitializer();
@@ -124,6 +121,31 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
                 continue;
         }
 
+        DataVector* inlineProgramScopeBuffer = nullptr;
+        unsigned& bufferAlignment = (AS == ADDRESS_SPACE_GLOBAL) ? globalBufferAlignment : constantBufferAlignment;
+        if (AS == ADDRESS_SPACE_GLOBAL)
+        {
+            if (!hasInlineGlobalBuffer)
+            {
+                InlineProgramScopeBuffer ilpsb;
+                ilpsb.alignment = bufferAlignment;
+                modMd->inlineGlobalBuffers.push_back(ilpsb);
+                hasInlineGlobalBuffer = true;
+            }
+            inlineProgramScopeBuffer = &modMd->inlineGlobalBuffers.back().Buffer;
+        }
+        else
+        {
+            if (!hasInlineConstantBuffer)
+            {
+                InlineProgramScopeBuffer ilpsb;
+                ilpsb.alignment = bufferAlignment;
+                modMd->inlineConstantBuffers.push_back(ilpsb);
+                hasInlineConstantBuffer = true;
+            }
+            inlineProgramScopeBuffer = &modMd->inlineConstantBuffers.back().Buffer;
+        }
+
         // Align the buffer.
         // If this is the first constant, set the initial alignment, otherwise add padding.
         if (!bufferAlignment)
@@ -132,14 +154,14 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
         }
         else
         {
-            alignBuffer(inlineProgramScopeBuffer, m_DL->getPreferredAlignment(globalVar));
+            alignBuffer(*inlineProgramScopeBuffer, m_DL->getPreferredAlignment(globalVar));
         }
 
         // Ok, buffer is aligned, remember where this inline variable starts.
-        inlineProgramScopeOffsets[globalVar] = inlineProgramScopeBuffer.size();
+        inlineProgramScopeOffsets[globalVar] = inlineProgramScopeBuffer->size();
 
         // Add the data to the buffer
-        addData(initializer, inlineProgramScopeBuffer, pointerOffsetInfoList, inlineProgramScopeOffsets, AS);
+        addData(initializer, *inlineProgramScopeBuffer, pointerOffsetInfoList, inlineProgramScopeOffsets, AS);
     }
 
     if (inlineProgramScopeOffsets.size())
@@ -154,17 +176,8 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
         IGC::appendToUsed(M, globalArray);
     }
 
-    if (inlineConstantBuffer.size() > 0)
+    if (hasInlineConstantBuffer)
     {
-        // If we found something, add everything to the metadata.
-        InlineProgramScopeBuffer ilpsb;
-        for (unsigned char v : inlineConstantBuffer)
-        {
-            ilpsb.Buffer.push_back(v);
-        }
-        ilpsb.alignment = constantBufferAlignment;
-        modMd->inlineConstantBuffers.push_back(ilpsb);
-
         // Just add the implicit argument to each function if a constant
         // buffer has been created.  This will technically burn a patch
         // token on kernels that don't actually use the buffer but it saves
@@ -185,17 +198,8 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
         mdUtils->save(C);
     }
 
-    if (inlineGlobalBuffer.size() > 0)
+    if (hasInlineGlobalBuffer)
     {
-        // If we found something, add everything to the metadata.
-        InlineProgramScopeBuffer ilpsb;
-        for (unsigned char v : inlineGlobalBuffer)
-        {
-            ilpsb.Buffer.push_back(v);
-        }
-        ilpsb.alignment = globalBufferAlignment;
-        modMd->inlineGlobalBuffers.push_back(ilpsb);
-
         for (auto& pFunc : M)
         {
             if (pFunc.isDeclaration()) continue;

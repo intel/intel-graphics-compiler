@@ -1814,10 +1814,7 @@ namespace IGC
 
             size_t bufferSize = (ipsbMDHandle.Buffer).size();
             initConstant->InlineData.resize(bufferSize);
-            for (size_t i = 0; i < bufferSize; ++i)
-            {
-                initConstant->InlineData[i] = (ipsbMDHandle.Buffer)[i];
-            }
+            memcpy_s(initConstant->InlineData.data(), bufferSize, ipsbMDHandle.Buffer.data(), bufferSize);
 
             ctx->m_programInfo.m_initConstantAnnotation.push_back(std::move(initConstant));
         }
@@ -1831,10 +1828,7 @@ namespace IGC
 
             size_t bufferSize = (ipsbMDHandle.Buffer).size();
             initGlobal->InlineData.resize(bufferSize);
-            for (size_t i = 0; i < bufferSize; ++i)
-            {
-                initGlobal->InlineData[i] = (ipsbMDHandle.Buffer)[i];
-            }
+            memcpy_s(initGlobal->InlineData.data(), bufferSize, ipsbMDHandle.Buffer.data(), bufferSize);
 
             ctx->m_programInfo.m_initGlobalAnnotation.push_back(std::move(initGlobal));
         }
