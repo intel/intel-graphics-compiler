@@ -259,9 +259,8 @@ namespace IGC
 
     unsigned int GetLogBindlessSamplerSize() const
     {
-        // On Gen10+ bindless sampler are 16Bytes instead of 32bytes before
-        GFXCORE_FAMILY familyCheck = IGC_IS_FLAG_ENABLED(Use16ByteBindlessSampler) ? IGFX_GEN9_CORE : IGFX_GEN10_CORE;
-        return (m_platformInfo.eRenderCoreFamily >= familyCheck) ? 4 : 5;
+        // Samplers are 16 bytes
+        return 4;
     }
 
     bool SupportCPS() const
@@ -489,10 +488,7 @@ namespace IGC
 
     bool alignBindlessSampler() const
     {
-        return IGC_IS_FLAG_ENABLED(Use16ByteBindlessSampler) &&
-            (m_platformInfo.eProductFamily == IGFX_SKYLAKE ||
-                m_platformInfo.eProductFamily == IGFX_KABYLAKE ||
-                m_platformInfo.eProductFamily == IGFX_COFFEELAKE);
+            return true;
     }
 
     bool WaDisableSendSrcDstOverlap() const
