@@ -277,7 +277,8 @@ void G4Verifier::verifyDstSrcOverlap(G4_INST* inst)
         for (int i = 0; i < inst->getNumSrc(); i++)
         {
             G4_Operand* src = inst->getSrc(i);
-            if (src != NULL && !src->isNullReg() && src->getTopDcl() && src->getTopDcl()->getRegFile() == G4_GRF)
+            if (src != NULL && !src->isNullReg() && src->getTopDcl() &&
+                (src->getTopDcl()->getRegFile() == G4_GRF || src->getTopDcl()->getRegFile() == G4_INPUT))
             {
                 bool noOverlap = dataHazardCheck(dst, src);
 
