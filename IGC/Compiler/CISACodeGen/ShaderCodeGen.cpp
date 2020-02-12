@@ -795,12 +795,26 @@ namespace IGC
         bool earlyExit =
             ctx->getCompilerOption().pixelShaderDoNotAbortOnSpill ? false : true;
 
+        // for versioned loop, in general SIMD16 with spill has better perf
+        bool earlyExit16 = psInfo.hasVersionedLoop ? false : earlyExit;
+        bool enableSimd32 = false;
+
+        if (psInfo.ForceEnableSimd32) // UMD forced compilation of simd32.
+        {
+            enableSimd32 = true;
+        }
+        // heuristic based on performance measures.
+        else if (SimdEarlyCheck(ctx))
+        {
+            enableSimd32 = true;
+        }
+
         if (IsStage1BestPerf(ctx->m_CgFlag, ctx->m_StagingCtx))
         {
             // don't retry SIMD16 for ForcePSBestSIMD
-            if( SimdEarlyCheck( ctx ) && ( !ctx->m_retryManager.IsLastTry() ) )
+            if (enableSimd32 || IGC_GET_FLAG_VALUE(SkipTREarlyExitCheck))
             {
-                AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD16, true, ShaderDispatchMode::NOT_APPLICABLE, pSignature);
+                AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD16, earlyExit16, ShaderDispatchMode::NOT_APPLICABLE, pSignature);
             }
             AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD8, !ctx->m_retryManager.IsLastTry(), ShaderDispatchMode::NOT_APPLICABLE, pSignature);
             useRegKeySimd = true;
@@ -838,20 +852,6 @@ namespace IGC
 
         if (!useRegKeySimd)
         {
-            bool enableSimd32 = false;
-
-            if (psInfo.ForceEnableSimd32) // UMD forced compilation of simd32.
-            {
-                enableSimd32 = true;
-            }
-            // heuristic based on performance measures.
-            else if (SimdEarlyCheck(ctx))
-            {
-                enableSimd32 = true;
-            }
-
-            // for versioned loop, in general SIMD16 with spill has better perf
-            bool earlyExit16 = psInfo.hasVersionedLoop ? false : earlyExit;
             AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD8, !ctx->m_retryManager.IsLastTry(), ShaderDispatchMode::NOT_APPLICABLE, pSignature);
 
             if (enableSimd32 || IGC_GET_FLAG_VALUE(SkipTREarlyExitCheck))

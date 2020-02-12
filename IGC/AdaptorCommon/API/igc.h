@@ -127,7 +127,7 @@ typedef enum {
      !(!IsRetry(stats) && !DoSimd16(stats))) || \
     ((IsStage1BestPerf(flag, prev_ctx_ptr)) && \
      ( IGC_IS_FLAG_ENABLED(ExtraRetrySIMD16) && !HasSimdSpill(8, stats)) || \
-     (!IGC_IS_FLAG_ENABLED(ExtraRetrySIMD16) && !HasSimd(8, stats)))) \
+     (!IGC_IS_FLAG_ENABLED(ExtraRetrySIMD16) && (!HasSimd(8, stats) || DoSimd32(stats))))) \
     )
 
 // Return true when simd MODE has been generated previously
