@@ -465,6 +465,26 @@ namespace IGC
         CVariable* src1,
         bool is16Bit)
     {
+
+        // Fix types for dword atomics
+        VISA_Type type = ISA_TYPE_UD;
+        if (atomic_op == EATOMIC_IMAX || atomic_op == EATOMIC_IMIN || atomic_op == EATOMIC_PREDEC)
+        {
+            type = ISA_TYPE_D;
+        }
+        else if (atomic_op == EATOMIC_FMAX || atomic_op == EATOMIC_FMIN || atomic_op == EATOMIC_FCMPWR)
+        {
+            type = ISA_TYPE_F;
+        }
+        if (src0 && src0->GetType() != type)
+            src0 = m_program->BitCast(src0, type);
+        if (src1 && src1->GetType() != type)
+            src1 = m_program->BitCast(src1, type);
+        if (dst && dst->GetType() != type)
+            dst = m_program->BitCast(dst, type);
+        if (elem_offset->GetType() != ISA_TYPE_UD)
+            elem_offset = m_program->BitCast(elem_offset, ISA_TYPE_UD);
+
         assert(m_encoderState.m_flag.var == nullptr && "predicate not supported");
         VISA_StateOpndHandle* pSurfStateOpndHandle = GetVISASurfaceOpnd(resource);
         VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
