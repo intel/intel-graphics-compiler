@@ -334,7 +334,7 @@ typedef struct _G4_Inst_Info
 } G4_Inst_Info;
 
 // ToDo: make this into G4_INST so that not everyone and their grandma are directly reading it
-extern const G4_Inst_Info G4_Inst_Table[G4_NUM_OPCODE];
+extern const G4_Inst_Info G4_Inst_Table[G4_NUM_OPCODE+1];
 
 // Relation between two regions. The comparison is based on memory locations
 // regions reference, which are described by the left-bound, the right bound,
