@@ -53,7 +53,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define TRACE(str)
 #endif
 static VISA_Type               str2type(const char *str, int str_len);
-static VISA_Cond_Mod     str2cond(const char *str);
+static VISA_Cond_Mod           str2cond(const char *str);
 static VISAAtomicOps           str2atomic_opcode(const char *op_str);
 static ISA_Opcode              str2opcode(const char* op_str);
 static VISASampler3DSubOpCode  str2SampleOpcode(const char* str);
