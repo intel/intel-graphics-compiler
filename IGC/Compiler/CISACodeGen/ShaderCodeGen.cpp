@@ -626,7 +626,7 @@ namespace IGC
 
         // TODO: move to use instruction flags
         // to figure out if we need to preserve Nan
-        bool preserveNan = !ctx.m_DriverInfo.IgnoreNan();
+        bool preserveNan = !ctx.getCompilerOption().NoNaNs;
 
         // Legalizer does not handle constant expressions
         mpm.add(new BreakConstantExpr());

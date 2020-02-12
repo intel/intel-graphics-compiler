@@ -95,9 +95,6 @@ namespace IGC
         /// The driver implements single instance vertex dispatch feature
         virtual bool SupportsSingleInstanceVertexDispatch() const { return false; }
 
-        /// We can safely ignore Nan
-        virtual bool IgnoreNan() const { return false; }
-
         // Allow branch swapping for better Nan perf
         virtual bool BranchSwapping() const { return false; }
 

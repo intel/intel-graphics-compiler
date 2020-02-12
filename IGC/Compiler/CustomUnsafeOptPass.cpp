@@ -1996,7 +1996,7 @@ void CustomUnsafeOptPass::visitFCmpInst(FCmpInst& FC)
     }
     if (FC.getPredicate() == CmpInst::FCMP_UNO)
     {
-        if (m_ctx->m_DriverInfo.IgnoreNan())
+        if (m_ctx->getCompilerOption().NoNaNs)
         {
             FC.replaceAllUsesWith(ConstantInt::getFalse(FC.getType()));
             FC.eraseFromParent();
@@ -2006,7 +2006,7 @@ void CustomUnsafeOptPass::visitFCmpInst(FCmpInst& FC)
     }
     else if (FC.getPredicate() == CmpInst::FCMP_ORD)
     {
-        if (m_ctx->m_DriverInfo.IgnoreNan())
+        if (m_ctx->getCompilerOption().NoNaNs)
         {
             FC.replaceAllUsesWith(ConstantInt::getTrue(FC.getType()));
             FC.eraseFromParent();

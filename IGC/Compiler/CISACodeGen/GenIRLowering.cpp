@@ -286,9 +286,6 @@ bool GenIRLowering::runOnFunction(Function& F) {
     if (FII == MDU->end_FunctionsInfo())
         return false;
 
-    CodeGenContextWrapper* pCtxWrapper = &getAnalysis<CodeGenContextWrapper>();
-    CodeGenContext* ctx = pCtxWrapper->getCodeGenContext();
-
     auto &DL = F.getParent()->getDataLayout();
 
     BuilderTy TheBuilder(F.getContext(), TargetFolder(DL));
@@ -397,7 +394,7 @@ bool GenIRLowering::runOnFunction(Function& F) {
                 break;
             case Instruction::Select:
                 // Enable the pattern match only when NaNs can be ignored.
-                if (ctx->m_DriverInfo.IgnoreNan() ||
+                if (modMD->compOpt.NoNaNs ||
                     modMD->compOpt.FiniteMathOnly)
                 {
                     Changed |= combineSelectInst(cast<SelectInst>(Inst), BI);

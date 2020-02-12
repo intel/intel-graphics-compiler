@@ -190,6 +190,7 @@ namespace IGC
         bool OptDisable                                 = false;
         bool MadEnable                                  = false;
         bool NoSignedZeros                              = false;
+        bool NoNaNs                                     = false;
 
         // default rounding modes
         unsigned FloatRoundingMode                      = IGC::ROUND_TO_NEAREST_EVEN;

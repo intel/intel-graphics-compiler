@@ -1725,7 +1725,7 @@ void GenSpecificPattern::visitCmpInst(CmpInst& I)
     else
     {
         CodeGenContext* pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-        if (pCtx->m_DriverInfo.IgnoreNan())
+        if (pCtx->getCompilerOption().NoNaNs)
         {
             if (I.getPredicate() == CmpInst::FCMP_ORD)
             {
