@@ -1252,8 +1252,20 @@ namespace IGC
 
             if (useDualSrcBlend(colors))
             {
-                moveRTWriteToBlock(colors[0].inst, predBB, m_ReturnBlock, valueToPhiMap);
-                moveRTWriteToBlock(colors[1].inst, predBB, m_ReturnBlock, valueToPhiMap);
+                // For SIMD16 PS thread with two output colors must send
+                // messages in the following sequence for each RT: SIMD8 dual
+                // source RTW message (low); SIMD8 dual source RTW message
+                // (high); SIMD16 single src RTW message with second color.
+                CallInst* const dualSourceRTW =
+                    isa<RTDualBlendSourceIntrinsic>(colors[0].inst) ? colors[0].inst : colors[1].inst;
+                CallInst* const singleSourceRTW =
+                    isa<RTDualBlendSourceIntrinsic>(colors[0].inst) ? colors[1].inst : colors[0].inst;
+
+                assert(isa<RTWritIntrinsic>(singleSourceRTW));
+                assert(isa<RTDualBlendSourceIntrinsic>(dualSourceRTW));
+
+                moveRTWriteToBlock(dualSourceRTW, predBB, m_ReturnBlock, valueToPhiMap);
+                moveRTWriteToBlock(singleSourceRTW, predBB, m_ReturnBlock, valueToPhiMap);
             }
             else
             {
