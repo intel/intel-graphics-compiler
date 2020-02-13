@@ -3407,10 +3407,10 @@ add_subdirectory(GenISAIntrinsics)
 
 # SPIRV-Tools are only inlcuded in Windows Debug and ReleaseInternal builds.
 if(LLVM_ON_WIN32 AND (CMAKE_CONFIGURATION_TYPES OR ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug") OR ("${CMAKE_BUILD_TYPE}" STREQUAL "ReleaseInternal")))
-    set(IGC_BUILD__SPIRV-Tools ON)
+    set(IGC_BUILD__SPIRV_TOOLS_ENABLED ON)
 endif()
 
-if(IGC_BUILD__SPIRV-Tools)
+if(IGC_BUILD__SPIRV_TOOLS_ENABLED)
     message(STATUS "============================ SPIRV-Tools project ============================")
     set(IGC_BUILD__SPIRV-Headers_DIR "${BS_DIR_EXTERNAL_COMPONENTS}/build-tools/SPIRV-Headers")
     set(IGC_BUILD__SPIRV-Tools_DIR "${BS_DIR_EXTERNAL_COMPONENTS}/build-tools/SPIRV-Tools")
@@ -3727,7 +3727,7 @@ foreach(_libBuildSuffix ${IGC_BUILD__MAIN_IGC_LIB_SUFFIXES})
       "${IGC_BUILD__PROJ__AdaptorOGL}"
   )
 
-  if(IGC_BUILD__SPIRV-Tools)
+  if(IGC_BUILD__SPIRV_TOOLS_ENABLED)
     list(APPEND _targetLinkLineDebugAndReleaseInternalOnly
         "${IGC_BUILD__PROJ__SPIRV-Tools}"
     )
@@ -3790,7 +3790,7 @@ foreach(_libBuildSuffix ${IGC_BUILD__MAIN_IGC_LIB_SUFFIXES})
   endif()
 endforeach()
 
-if(IGC_BUILD__SPIRV-Tools)
+if(IGC_BUILD__SPIRV_TOOLS_ENABLED)
     # Build only in Debug and ReleaseInternal
     set_property(TARGET ${IGC_BUILD__PROJ__SPIRV-Tools} PROPERTY EXCLUDE_FROM_DEFAULT_BUILD_RELEASE TRUE)
 endif()

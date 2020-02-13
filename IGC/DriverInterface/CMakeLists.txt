@@ -1,6 +1,6 @@
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
 
-if(IGC_BUILD__SPIRV-Tools)
+if(IGC_BUILD__SPIRV_TOOLS_ENABLED)
     include_directories("${IGC_BUILD__SPIRV-Tools_DIR}/include")
 endif()
 
