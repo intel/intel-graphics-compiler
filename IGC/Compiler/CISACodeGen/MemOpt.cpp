@@ -80,6 +80,8 @@ namespace {
         CodeGenContext* CGC;
         TargetLibraryInfo* TLI;
 
+        bool AllowNegativeSymPtrsForLoad = false;
+
         // Map of profit vector lengths per scalar type. Each entry specifies the
         // profit vector length of a given scalar type.
         // NOTE: Prepare the profit vector lengths in the *DESCENDING* order.
@@ -94,9 +96,9 @@ namespace {
     public:
         static char ID;
 
-        MemOpt() :
+        MemOpt(bool AllowNegativeSymPtrsForLoad = false) :
             FunctionPass(ID), DL(nullptr), AA(nullptr), SE(nullptr), WI(nullptr),
-            CGC(nullptr) {
+            CGC(nullptr), AllowNegativeSymPtrsForLoad(AllowNegativeSymPtrsForLoad) {
             initializeMemOptPass(*PassRegistry::getPassRegistry());
         }
 
@@ -354,8 +356,8 @@ namespace {
     };
 }
 
-FunctionPass* createMemOptPass() {
-    return new MemOpt();
+FunctionPass* createMemOptPass(bool AllowNegativeSymPtrsForLoad) {
+    return new MemOpt(AllowNegativeSymPtrsForLoad);
 }
 
 #define PASS_FLAG     "igc-memopt"
@@ -616,8 +618,7 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
                 continue;
             }
             else {
-                if (CGC->type != ShaderType::OPENCL_SHADER &&
-                    LeadingSymPtr.Offset < 0)
+                if (!AllowNegativeSymPtrsForLoad && LeadingSymPtr.Offset < 0)
                     continue;
             }
         }

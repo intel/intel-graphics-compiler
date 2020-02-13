@@ -508,7 +508,9 @@ namespace IGC
             ctx.m_instrTypes.hasLoadStore && IGC_IS_FLAG_DISABLED(DisableMemOpt)) {
             if (IGC_IS_FLAG_ENABLED(EnableAdvMemOpt))
               mpm.add(createAdvMemOptPass());
-            mpm.add(createMemOptPass());
+            bool AllowNegativeSymPtrsForLoad =
+                ctx.type == ShaderType::OPENCL_SHADER;
+            mpm.add(createMemOptPass(AllowNegativeSymPtrsForLoad));
             mpm.add(createIGCInstructionCombiningPass());
         }
 
