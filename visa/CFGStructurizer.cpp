@@ -3099,8 +3099,9 @@ void CFGStructurizer::convertIf(ANodeHG *node, G4_BB *nextJoinBB)
     MUST_BE_TRUE(end->getPhysicalSucc() == exit,
         "Landing BB should have been inserted during construction of hammock graph");
 
+    bool isUniform = isGotoScalarJmp(gotoInst);
     ANodeKind kind = ANKIND_GOTOJOIN;
-    if (doScalarJmp && isGotoScalarJmp(gotoInst))
+    if (doScalarJmp && isUniform)
     {
         kind = ANKIND_JMPI;
     }
@@ -3201,6 +3202,10 @@ void CFGStructurizer::convertIf(ANodeHG *node, G4_BB *nextJoinBB)
             gotoInst->getLineNo(), gotoInst->getCISAOff(), gotoInst->getSrcFilename());
         begin->pop_back();
         begin->push_back(ifInst);
+        if (isUniform)
+        {
+            ifInst->asCFInst()->setUniform(true);
+        }
 
         if (thenNode->isHammock())
         {
@@ -3339,6 +3344,10 @@ void CFGStructurizer::convertIf(ANodeHG *node, G4_BB *nextJoinBB)
             newThenLastBB->pop_back();
         }
         newThenLastBB->push_back(elseInst);
+        if (isUniform)
+        {
+            ifInst->asCFInst()->setUniform(true);
+        }
 
         (void)convertPST(thenNode, node->getHasBreak() ? newThenLastBB : nullptr);
 
@@ -3383,8 +3392,9 @@ void CFGStructurizer::convertDoWhile(ANodeHG *node, G4_BB *nextJoinBB)
     // need to check it out to avoid generating them.
     //
 
+    bool isUniform = isGotoScalarJmp(gotoInst);
     ANodeKind ndkind = ANKIND_GOTOJOIN;
-    if (doScalarJmp && isGotoScalarJmp(gotoInst) &&
+    if (doScalarJmp && isUniform &&
         (!doStructCF || !node->getHasBreak()))
     {
         // If loop has break, favor structured CF, not jmpi
@@ -3419,6 +3429,10 @@ void CFGStructurizer::convertDoWhile(ANodeHG *node, G4_BB *nextJoinBB)
             gotoInst->getLineNo(), gotoInst->getCISAOff(), gotoInst->getSrcFilename());
         end->pop_back();
         end->push_back(whileInst);
+        if (isUniform)
+        {
+            whileInst->asCFInst()->setUniform(true);
+        }
 
         convertChildren(node, node->getHasBreak() ? end : nullptr);
     }
@@ -3450,7 +3464,6 @@ void CFGStructurizer::generateGotoJoin(G4_BB *gotoBB, G4_BB *jibBB, G4_BB *joinB
     G4_Label *nextJoinLabel = jibBB ? jibBB->getLabel() : nullptr;
     uint8_t execSize = gotoInst->getExecSize();
     execSize = execSize > 1 ? execSize : kernelExecSize;
-
 
     if (gotoInst->getExecSize() == 1)
     {   // For simd1 goto, convert it to a goto with the right execSize.
@@ -3505,6 +3518,7 @@ void CFGStructurizer::convertGoto(ANodeBB *node, G4_BB *nextJoinBB)
     }
     node->setVisited(true);
 
+    bool isUniform = isGotoScalarJmp(gotoInst);
     G4_BB *exitbb = node->getExitBB();
     ANodeHG *innermostWhile = getInnerMostWhile(node);
     ANodeKind kind = ANKIND_GOTOJOIN;
@@ -3520,7 +3534,7 @@ void CFGStructurizer::convertGoto(ANodeBB *node, G4_BB *nextJoinBB)
         // nextJoinBB, if any, must be after getBeginBB(). So, if nextJoinBB
         // is before exitbb, nextJoinBB is in the middle of [beginbb, exitbb]
         bool hasJoinInMiddle = nextJoinBB && isBefore(nextJoinBB, exitbb);
-        if (doScalarJmp && isGotoScalarJmp(gotoInst) &&
+        if (doScalarJmp && isUniform &&
             (gotoInst->asCFInst()->isBackward() || !hasJoinInMiddle))
         {
             kind = ANKIND_JMPI;
@@ -3599,6 +3613,10 @@ void CFGStructurizer::convertGoto(ANodeBB *node, G4_BB *nextJoinBB)
             gotoInst->getSrcFilename());
         beginbb->pop_back();
         beginbb->push_back(breakInst);
+        if (isUniform)
+        {
+            breakInst->asCFInst()->setUniform(true);
+        }
         return;
     }
 
