@@ -506,21 +506,23 @@ void VarSplitPass::writeHints(G4_Declare* dcl, LiveRange** lrs)
     else if (isChild)
     {
         // Write hint to parent if its empty
-        auto parentDcl = getParentDcl(dcl);
-        auto idealParentGRF = getIdealAllocation(parentDcl, lrs);
-
-        if (idealParentGRF != 0 && parentDcl->getRegVar()->isRegAllocPartaker())
+        if (auto parentDcl = getParentDcl(dcl))
         {
-            lrs[parentDcl->getRegVar()->getId()]->setAllocHint(idealParentGRF);
-            auto children = getChildren(getParentDcl(dcl));
-            unsigned int i = 0;
-            for (auto child : *children)
+            auto idealParentGRF = getIdealAllocation(parentDcl, lrs);
+
+            if (idealParentGRF != 0 && parentDcl->getRegVar()->isRegAllocPartaker())
             {
-                if (child->getRegVar()->isRegAllocPartaker())
+                lrs[parentDcl->getRegVar()->getId()]->setAllocHint(idealParentGRF);
+                auto children = getChildren(getParentDcl(dcl));
+                unsigned int i = 0;
+                for (auto child : *children)
                 {
-                    lrs[child->getRegVar()->getId()]->setAllocHint(idealParentGRF + (i * child->getNumRows()));
+                    if (child->getRegVar()->isRegAllocPartaker())
+                    {
+                        lrs[child->getRegVar()->getId()]->setAllocHint(idealParentGRF + (i * child->getNumRows()));
+                    }
+                    i++;
                 }
-                i++;
             }
         }
     }
@@ -605,6 +607,10 @@ bool VarSplitPass::reallocParent(G4_Declare* child, LiveRange** lrs)
         return false;
 
     auto parent = getParentDcl(child);
+
+    if (parent == nullptr)
+        return false;
+
     auto children = getChildren(parent);
 
     auto baseRegNum = 0;

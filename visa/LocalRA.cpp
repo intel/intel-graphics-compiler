@@ -2592,6 +2592,9 @@ void LinearScan::expireSplitParent(LocalLiveRange* lr)
     // lr is a partial dcl
     auto parentDcl = varSplit->getParentDcl(lr->getTopDcl());
 
+    if (parentDcl == nullptr)
+        return;
+
     // Now check whether parent in in active set
     LocalLiveRange* parentLR = nullptr;
     for (auto activeLR : active)

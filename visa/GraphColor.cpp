@@ -5133,9 +5133,11 @@ void GraphColor::createLiveRanges(unsigned reserveSpillSize)
         }
         if (dcl->getIsPartialDcl())
         {
-            G4_Declare * parentDcl = this->gra.getSplittedDeclare(dcl);
-            lrs[var->getId()]->setParentLRID(parentDcl->getRegVar()->getId());
-            lrs[var->getId()]->setIsPartialDcl();
+            if (G4_Declare * parentDcl = this->gra.getSplittedDeclare(dcl))
+            {
+                lrs[var->getId()]->setParentLRID(parentDcl->getRegVar()->getId());
+                lrs[var->getId()]->setIsPartialDcl();
+            }
         }
         if (dcl->getIsSplittedDcl())
         {
@@ -5700,19 +5702,22 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
                 if (varSplitPass.isPartialDcl(lr->getDcl()))
                 {
                     parentDcl = varSplitPass.getParentDcl(lr->getDcl());
-                    auto parentGRF = parentDcl->getRegVar()->getPhyReg();
-                    if (!parentGRF && parentDcl->getRegVar()->isRegAllocPartaker())
+                    if (parentDcl)
                     {
-                        parentGRF = lrs[parentDcl->getRegVar()->getId()]->getPhyReg();
-                    }
-                    if (parentGRF)
-                    {
-                        auto siblingNum = varSplitPass.getSiblingNum(lr->getDcl());
-                        auto parentGRFNum = parentGRF->asGreg()->getRegNum();
-                        auto forbiddenStart = parentGRFNum + ((siblingNum + 1) * lr->getDcl()->getNumRows());
-                        auto forbiddenEnd = parentGRFNum + parentDcl->getNumRows();
-                        lr->markForbidden(forbiddenStart, forbiddenEnd - forbiddenStart);
-                        skipParentIntf = true;
+                        auto parentGRF = parentDcl->getRegVar()->getPhyReg();
+                        if (!parentGRF && parentDcl->getRegVar()->isRegAllocPartaker())
+                        {
+                            parentGRF = lrs[parentDcl->getRegVar()->getId()]->getPhyReg();
+                        }
+                        if (parentGRF)
+                        {
+                            auto siblingNum = varSplitPass.getSiblingNum(lr->getDcl());
+                            auto parentGRFNum = parentGRF->asGreg()->getRegNum();
+                            auto forbiddenStart = parentGRFNum + ((siblingNum + 1) * lr->getDcl()->getNumRows());
+                            auto forbiddenEnd = parentGRFNum + parentDcl->getNumRows();
+                            lr->markForbidden(forbiddenStart, forbiddenEnd - forbiddenStart);
+                            skipParentIntf = true;
+                        }
                     }
                 }
             }
