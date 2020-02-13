@@ -425,7 +425,7 @@ static void populateKernelInfo(const cmc_kernel_info* info,
     kInfo.m_executionEnivronment.NumGRFRequired = info->NumGRFRequired;
 
     // Allocate spill-fill buffer
-    if (JITInfo.isSpill) {
+    if (JITInfo.isSpill || JITInfo.hasStackcalls) {
         kInfo.m_executionEnivronment.PerThreadScratchSpace += JITInfo.spillMemUsed;
     }
 
