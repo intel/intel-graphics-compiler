@@ -355,6 +355,15 @@ private:
         } \
     } while (0)
 
+#define COMPILER_TIME_SUM3( pointerDst, pointerSrc, shaderStage ) \
+    do \
+    { \
+        if( (pointerSrc) && (pointerDst) && (pointerDst)->m_sumCompilerTimeStats) \
+        { \
+            (pointerDst)->m_sumCompilerTimeStats[shaderStage].sumWith( (pointerSrc)->m_compilerTimeStats ); \
+        } \
+    } while (0)
+
 #define COMPILER_TIME_SUM_PRINT( pointer ) \
     do \
     { \
@@ -363,6 +372,24 @@ private:
             if ( IGC::Debug::GetDebugFlag( IGC::Debug::DebugFlag::TIME_STATS_SUM ) ) \
             { \
                 (pointer)->m_sumCompilerTimeStats->printSumTime(); \
+            } \
+        } \
+    } while (0)
+
+#define COMPILER_TIME_SUM_PRINT2( pointer, size ) \
+    do \
+    { \
+        if( (pointer) && (pointer)->m_sumCompilerTimeStats ) \
+        { \
+            if ( IGC::Debug::GetDebugFlag( IGC::Debug::DebugFlag::TIME_STATS_SUM ) ) \
+            { \
+                for(int i = 1; i < size; i++) \
+                { \
+                    if((pointer)->m_sumCompilerTimeStats[i].getCompileTime(TIME_TOTAL) == 0) \
+                        continue; \
+                    llvm::dbgs() << ShaderTypeString[i] << "Compile Time"; \
+                    (pointer)->m_sumCompilerTimeStats[i].printSumTime(); \
+                } \
             } \
         } \
     } while (0)
@@ -376,12 +403,31 @@ private:
         }                                           \
     } while (0)
 
+#define COMPILER_TIME_INIT2( pointer, statName, size)     \
+    do                                              \
+    {                                               \
+        if (pointer)                                \
+        {                                           \
+            (pointer)->statName = new TimeStats[size];  \
+        }                                           \
+    } while (0)
+
 #define COMPILER_TIME_DEL( pointer, statName ) \
     do \
     { \
         if( pointer) \
         { \
             delete (pointer)->statName; \
+            (pointer)->statName = nullptr; \
+        } \
+    } while (0)
+
+#define COMPILER_TIME_DEL2( pointer, statName ) \
+    do \
+    { \
+        if( pointer) \
+        { \
+            delete [](pointer)->statName; \
             (pointer)->statName = nullptr; \
         } \
     } while (0)
