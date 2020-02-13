@@ -565,7 +565,7 @@ SpillManagerGRF::calculateSpillDisp (
             if (useScratchMsg_)
             {
                 if(curLocEnd % G4_GRF_REG_NBYTES != 0)
-                    curLocEnd = (curLocEnd&(owordMask()<<1)) + G4_GRF_REG_NBYTES;
+                    curLocEnd = ROUND(curLocEnd, G4_GRF_REG_NBYTES);
             }
             else
             {
@@ -685,7 +685,7 @@ G4_RegVar * regVar
 
             if ((spillAreaOffset_) % G4_GRF_REG_NBYTES != 0)
             {
-                (spillAreaOffset_) = ((spillAreaOffset_)&(owordMask() << 1)) + G4_GRF_REG_NBYTES;
+                (spillAreaOffset_) = ROUND(spillAreaOffset_, G4_GRF_REG_NBYTES);
             }
 
             regVar->setDisp(spillAreaOffset_);
