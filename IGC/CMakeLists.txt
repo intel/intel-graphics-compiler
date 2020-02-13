@@ -3455,10 +3455,6 @@ endif()
 
 
 
-if(IGC_BUILD__VULKAN_FRONTEND_ENABLED)
-  add_subdirectory(VulkanFrontend)
-  igc_sg_define(IGC__VulkanFrontend)
-endif()
 
 add_subdirectory(Compiler)
 add_subdirectory(DriverInterface)
@@ -3735,11 +3731,6 @@ foreach(_libBuildSuffix ${IGC_BUILD__MAIN_IGC_LIB_SUFFIXES})
     )
   endif()
 
-  if(IGC_BUILD__VULKAN_FRONTEND_ENABLED)
-    list(APPEND _targetLinkLineCommon
-      "${IGC_BUILD__PROJ__VulkanFrontend}"
-    )
-  endif()
 
 
   list(APPEND _targetLinkLineCommon
@@ -3869,10 +3860,6 @@ if(_targetIsStatic)
 unset(_targetIsStatic)
 unset(_targetLinkLine)
 
-if(LLVM_ON_WIN32 AND IGC_BUILD__VULKAN_FRONTEND_ENABLED)
-  add_subdirectory(VulkanFrontend/ULT)
-  igc_sg_define(IGC__VulkanFrontendULT)
-endif()
 
 
 win_static_runtime()
