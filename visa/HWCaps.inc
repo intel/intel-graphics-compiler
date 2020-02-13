@@ -521,12 +521,6 @@
         return Type_HF;
     }
 
-    unsigned getHWThreadNumberPerEU() const
-    {
-        unsigned Val = getOptions()->getuInt32Option(vISA_HWThreadNumberPerEU);
-        return (Val != 0) ? Val : 7;
-    }
-
     // each flag register is 16-bit
     uint32_t getNumFlagRegisters(void)
     {

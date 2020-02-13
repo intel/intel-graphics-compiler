@@ -3416,8 +3416,16 @@ void G4_Kernel::setKernelParameters()
         default:
             numAcc = 2;
         }
+    }
 
-
+    // Set number of threads if it was not defined before
+    if (numThreads == 0)
+    {
+        switch (getGenxPlatform())
+        {
+        default:
+            numThreads = 7;
+        }
     }
 }
 

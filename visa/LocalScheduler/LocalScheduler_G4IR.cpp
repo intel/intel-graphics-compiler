@@ -236,7 +236,7 @@ G4_BB_Schedule::G4_BB_Schedule(G4_Kernel* k, Mem_Manager& m, G4_BB* block,
     // Update the listing of the basic block with the reordered code.
     INST_LIST_ITER inst_it = bb->begin();
     Node *prevNode = nullptr;
-    unsigned HWThreadsPerEU = getBuilder()->getHWThreadNumberPerEU();
+    unsigned HWThreadsPerEU = k->getNumThreads();
     size_t scheduleInstSize = 0;
     for (Node *currNode : scheduledNodes) {
         for (G4_INST *inst : *currNode->getInstructions()) {
@@ -1195,7 +1195,7 @@ DDD::DDD(Mem_Manager& m, G4_BB* bb, const LatencyTable& lt, G4_Kernel* k)
     , kernel(k)
 {
     Node* lastBarrier = nullptr;
-    HWthreadsPerEU = getBuilder()->getHWThreadNumberPerEU();
+    HWthreadsPerEU = k->getNumThreads();
     useMTLatencies = getBuilder()->useMultiThreadLatency();
     totalGRFNum = kernel->getNumRegTotal();
     bool BTIIsRestrict = getOptions()->getOption(vISA_ReorderDPSendToDifferentBti);
