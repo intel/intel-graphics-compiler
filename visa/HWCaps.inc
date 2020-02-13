@@ -420,6 +420,12 @@
     {
         return getGenxPlatform() >= GENX_TGLLP;
     }
+
+    bool needSwap64ImmLoHi() const
+    {
+        return getGenxPlatform() >= GENX_TGLLP;
+    }
+
     bool no64bitType() const
     {
         return getGenxPlatform() == GENX_ICLLP || isGen12LP();

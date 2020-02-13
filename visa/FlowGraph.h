@@ -1427,6 +1427,8 @@ public:
 
     void doRelocation(const G4_Kernel& k, void* binary, uint32_t binarySize);
 
+    uint32_t getTargetOffset(const IR_Builder& builder) const;
+
     void dump() const;
 };
 

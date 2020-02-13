@@ -6678,6 +6678,28 @@ void RelocationEntry::doRelocation(const G4_Kernel& kernel, void* binary, uint32
     // we have only dynamic relocations now, which cannot be resolved at compilation time
 }
 
+uint32_t RelocationEntry::getTargetOffset(const IR_Builder& builder) const
+{
+    // currently we only support relocation on mov instruction
+    assert(inst->isMov());
+    assert(inst->isCompactedInst() == false);
+    auto src0 = inst->getSrc(0);
+    assert(src0->isRelocImm() && ((src0->getType() == Type_UD) || (src0->getType() == Type_UQ)));
+
+    // When src0 type is 64 bits:
+    //  On PreGen12:
+    //   Src0.imm[31:0] mapped to Instruction [95:64]
+    //   Src0.imm[63:32] mapped to Instruction [127:96]
+    //  On Gen12+:
+    //   Src0.imm[31:0] mapped to Instruction [127:96]
+    //   Src0.imm[63:32] mapped to Instruction [95:64]
+
+    // When src0 type is 32 bits:
+    //   Src0.imm[31:0] mapped to instruction [127:96]
+
+    return (src0->getType() == Type_UD) ? 12 : 8;
+}
+
 void RelocationEntry::dump() const
 {
     std::cerr << "Relocation entry: " << getTypeString() << "\n";

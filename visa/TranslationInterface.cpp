@@ -2402,7 +2402,7 @@ int IR_Builder::translateVISACFSymbolInst(const std::string& symbolName, G4_DstR
         RelocationEntry relocEntry = RelocationEntry::createSymbolAddrReloc(mov, 0, symbolName, GenRelocType::R_SYM_ADDR_32);
         kernel.addRelocation(relocEntry);
     }
-    else if (no64bitType())
+    else if (no64bitType() || needSwap64ImmLoHi())
     {
         auto* funcAddrLow = createRelocImm(Type_UD);
         auto* funcAddrHigh = createRelocImm(Type_UD);
