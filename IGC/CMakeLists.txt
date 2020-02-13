@@ -3405,10 +3405,10 @@ igc_sg_define(IGC__Common_CLElfLib)
 
 add_subdirectory(GenISAIntrinsics)
 
-# SPIRV-Tools are only inlcuded in Windows Debug and ReleaseInternal builds.
 if(LLVM_ON_WIN32 AND (CMAKE_CONFIGURATION_TYPES OR ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug") OR ("${CMAKE_BUILD_TYPE}" STREQUAL "ReleaseInternal")))
     set(IGC_BUILD__SPIRV_TOOLS_ENABLED ON)
 endif()
+
 
 if(IGC_BUILD__SPIRV_TOOLS_ENABLED)
     message(STATUS "============================ SPIRV-Tools project ============================")
@@ -3554,6 +3554,7 @@ add_library("${IGC_BUILD__PROJ__igc_dll}" SHARED
 add_dependencies("${IGC_BUILD__PROJ__fcl_dll}" opencl-clang-lib)
 
 add_dependencies("${IGC_BUILD__PROJ__igc_dll}" "${IGC_BUILD__PROJ_NAME_PREFIX}ElfPackager")
+
 
 target_include_directories(${IGC_BUILD__PROJ__igc_dll} INTERFACE
   "${CMAKE_CURRENT_SOURCE_DIR}/AdaptorOCL/ocl_igc_shared"
@@ -3726,6 +3727,7 @@ foreach(_libBuildSuffix ${IGC_BUILD__MAIN_IGC_LIB_SUFFIXES})
   list(APPEND _targetLinkLineCommon
       "${IGC_BUILD__PROJ__AdaptorOGL}"
   )
+
 
   if(IGC_BUILD__SPIRV_TOOLS_ENABLED)
     list(APPEND _targetLinkLineDebugAndReleaseInternalOnly
