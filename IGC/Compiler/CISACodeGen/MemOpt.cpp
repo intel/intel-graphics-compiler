@@ -1160,6 +1160,9 @@ bool MemOpt::isSafeToMergeStores(
     // Arrange CheckList as the outer loop to favor the case where there are
     // back-to-back stores only.
     for (auto* I : CheckList) {
+        if (I->getMetadata(LLVMContext::MD_invariant_load))
+            continue;
+
         MemoryLocation A = getLocation(I);
 
         for (auto& S : Stores) {
