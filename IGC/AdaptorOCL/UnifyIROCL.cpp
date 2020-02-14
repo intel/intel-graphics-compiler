@@ -279,8 +279,6 @@ static void CommonOCLBasedPasses(
     mpm.add(new MetaDataUtilsWrapper(pMdUtils, pContext->getModuleMetaData()));
     mpm.add(new CodeGenContextWrapper(pContext));
 
-    mpm.add(new ErrorCheck());
-
     mpm.add(new ClampLoopUnroll(256));
 
     mpm.add(new MoveStaticAllocas());
@@ -347,6 +345,9 @@ static void CommonOCLBasedPasses(
         }
         // The inliner sometimes fails to delete unused functions, this cleans up the remaining mess.
         mpm.add(createGlobalDCEPass());
+
+        // Check after GlobalDCE in case of doubles in dead functions
+        mpm.add(new ErrorCheck());
 
         if (IGC_GET_FLAG_VALUE(FunctionControl) != FLAG_FCALL_FORCE_INLINE)
         {
