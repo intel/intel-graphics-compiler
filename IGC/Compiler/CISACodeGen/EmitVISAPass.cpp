@@ -3926,7 +3926,25 @@ void EmitPass::emitLdInstruction(llvm::Instruction* inst)
     {
         if (feedbackEnable)
         {
-            emitFeedbackEnable(false);
+            CVariable* flag = m_currShader->GetNewVariable(numLanes(m_currShader->m_dispatchSize), ISA_TYPE_BOOL, EALIGN_BYTE);
+            uint subvar = numLanes(simdSize) / (getGRFSize() >> 2) * 4;
+
+            if (needPacking)
+            {
+                subvar /= 2;
+            }
+
+            m_encoder->SetSrcSubVar(0, subvar);
+            m_encoder->SetSrcRegion(0, 0, 1, 0);
+            CVariable* newdestination = m_currShader->BitCast(dst, ISA_TYPE_UD);
+            m_encoder->SetP(flag, newdestination);
+            m_encoder->Push();
+
+            CVariable* pred = m_currShader->ImmToVariable(0xFFFFFFFF, dst->GetType());
+            CVariable* zero = m_currShader->ImmToVariable(0x0, dst->GetType());
+            m_encoder->SetDstSubVar(subvar);
+            m_encoder->Select(flag, dst, pred, zero);
+            m_encoder->Push();
         }
 
         if (m_destination->IsUniform())
@@ -6739,31 +6757,6 @@ void EmitPass::emitSurfaceInfo(GenIntrinsicInst* inst)
     ResetVMask(false);
 }
 
-void EmitPass::emitFeedbackEnable(bool isHFPacked)
-{
-    // if feedback is enabled we always return all 4 channels
-    CVariable* flag = m_currShader->GetNewVariable(numLanes(m_currShader->m_dispatchSize), ISA_TYPE_BOOL, EALIGN_BYTE);
-    uint typeSize = CEncoder::GetCISADataTypeSize(m_destination->GetType());
-    uint subvar = (numLanes(m_currShader->m_SIMDSize) * typeSize * 4) / getGRFSize();
-    if (!isHFPacked)
-    {
-        // if HF destination is not packed yet, each channel takes at least 1 GRF.
-        subvar = std::max(4u, subvar);
-    }
-
-    m_encoder->SetSrcSubVar(0, subvar);
-    m_encoder->SetSrcRegion(0, 0, 1, 0);
-    CVariable* newdestination = m_currShader->BitCast(m_destination, ISA_TYPE_UD);
-    m_encoder->SetP(flag, newdestination);
-    m_encoder->Push();
-
-    CVariable* pred = m_currShader->ImmToVariable(0xFFFFFFFF, m_destination->GetType());
-    CVariable* zero = m_currShader->ImmToVariable(0x0, m_destination->GetType());
-    m_encoder->SetDstSubVar(subvar);
-    m_encoder->Select(flag, m_destination, pred, zero);
-    m_encoder->Push();
-}
-
 void EmitPass::emitGather4Instruction(SamplerGatherIntrinsic* inst)
 {
     EOPCODE opCode = GetOpCode(inst);
@@ -6851,9 +6844,28 @@ void EmitPass::emitGather4Instruction(SamplerGatherIntrinsic* inst)
             PackSIMD8HFRet(dst);
         }
 
+
         if (feedbackEnable)
         {
-            emitFeedbackEnable(true);
+            CVariable* flag = m_currShader->GetNewVariable(numLanes(m_currShader->m_dispatchSize), ISA_TYPE_BOOL, EALIGN_BYTE);
+            uint subvar = numLanes(m_currShader->m_SIMDSize) / (getGRFSize() >> 2) * 4;
+
+            if (simd8HFRet)
+            {
+                subvar /= 2;
+            }
+
+            m_encoder->SetSrcSubVar(0, subvar);
+            m_encoder->SetSrcRegion(0, 0, 1, 0);
+            CVariable* newdestination = m_currShader->BitCast(m_destination, ISA_TYPE_UD);
+            m_encoder->SetP(flag, newdestination);
+            m_encoder->Push();
+
+            CVariable* pred = m_currShader->ImmToVariable(0xFFFFFFFF, m_destination->GetType());
+            CVariable* zero = m_currShader->ImmToVariable(0x0, m_destination->GetType());
+            m_encoder->SetDstSubVar(subvar);
+            m_encoder->Select(flag, m_destination, pred, zero);
+            m_encoder->Push();
         }
     }
 }
@@ -6930,7 +6942,25 @@ void EmitPass::emitLdmsInstruction(llvm::Instruction* inst)
 
     if (feedbackEnable)
     {
-        emitFeedbackEnable(true);
+        CVariable* flag = m_currShader->GetNewVariable(numLanes(m_currShader->m_dispatchSize), ISA_TYPE_BOOL, EALIGN_BYTE);
+        uint subvar = numLanes(m_currShader->m_SIMDSize) / (getGRFSize() >> 2) * 4;
+
+        if (simd8HFRet)
+        {
+            subvar /= 2;
+        }
+
+        m_encoder->SetSrcSubVar(0, subvar);
+        m_encoder->SetSrcRegion(0, 0, 1, 0);
+        CVariable* newdestination = m_currShader->BitCast(m_destination, ISA_TYPE_UD);
+        m_encoder->SetP(flag, newdestination);
+        m_encoder->Push();
+
+        CVariable* pred = m_currShader->ImmToVariable(0xFFFFFFFF, m_destination->GetType());
+        CVariable* zero = m_currShader->ImmToVariable(0x0, m_destination->GetType());
+        m_encoder->SetDstSubVar(subvar);
+        m_encoder->Select(flag, m_destination, pred, zero);
+        m_encoder->Push();
     }
 }
 
