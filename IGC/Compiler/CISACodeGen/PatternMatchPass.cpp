@@ -2019,6 +2019,17 @@ namespace IGC
         // Check integer mad profitability.
         if (found && !isFpMad(I))
         {
+            uint8_t numConstant = 0;
+            for (int i = 0; i < 3; i++)
+            {
+                if (isa<Constant>(sources[i]))
+                    numConstant++;
+
+                // Only one immediate is supported
+                if (numConstant > 1)
+                    return false;
+            }
+
             auto isByteOrWordValue = [](Value* V) -> bool {
                 if (isa<ConstantInt>(V))
                 {
