@@ -3804,6 +3804,10 @@ int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
 
     int status = gra.coloringRegAlloc();
 
+    if (auto jitInfo = builder.getJitInfo())
+    {
+        jitInfo->numBytesScratchGtpin = kernel.getGTPinData()->getNumBytesScratchUse();
+    }
     splitPass.replaceIntrinsics();
 
     recordRAStats(builder, kernel, status);
@@ -3820,7 +3824,6 @@ int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
 
         gra.verifyRA(liveAnalysis);
     }
-
 
     return status;
 }

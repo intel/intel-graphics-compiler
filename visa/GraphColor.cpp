@@ -9509,7 +9509,6 @@ int GlobalRA::coloringRegAlloc()
         jitInfo->hasStackcalls = kernel.fg.getHasStackCalls();
         jitInfo->spillMemUsed = spillMemUsed;
         jitInfo->numGRFSpillFill = GRFSpillFillCount;
-        jitInfo->numBytesScratchGtpin = kernel.getGTPinData()->getNumBytesScratchUse();
     }
 
     kernel.getGTPinData()->setScratchNextFree(spillMemUsed);
