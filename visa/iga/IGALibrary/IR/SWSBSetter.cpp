@@ -380,7 +380,7 @@ void SWSBAnalyzer::calculateDependence(DepSet &currDep, SWSB &distanceDependency
                             }
                         }
                     } // end of if (prevDepClass == DEP_CLASS::IN_ORDER)
-                    else // prev is out of order
+                    else if (prevDepClass == DEP_CLASS::OUT_OF_ORDER) // prev is out of order
                     {
                         /* For out of order we don't know how long it will finish
                          * so need to test for SBID.
@@ -439,6 +439,8 @@ void SWSBAnalyzer::calculateDependence(DepSet &currDep, SWSB &distanceDependency
                             activeSBID.push_back(depSBID);
                         }
                     }
+                    // for the instruction in "OTHER" DEP_CLASS, such as sync, we don't need
+                    // to consider their dependency that is implied by hardware
                 }
             }
         }

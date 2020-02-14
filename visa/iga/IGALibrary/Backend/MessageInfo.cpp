@@ -2349,6 +2349,12 @@ void DescDecoder::tryDecode() {
                 ss << val << " data registers written";
             });
     }
+    if (platform <= Platform::GEN11) {
+        getDescBitsField("SFID", 32+0, 4,
+            [] (std::stringstream &ss, uint32_t val) {
+                ss << val << " shared function ID";
+            });
+    }
 
     switch (sfid) {
     case SFID::DCRO: tryDecodeDCRO(); break;
