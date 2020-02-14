@@ -501,7 +501,7 @@ namespace IGC
 
     bool WaInsertHDCFenceBeforeEOTWhenSparseAliasedResources() const
     {
-        return IGFX_GEN11_CORE >= m_platformInfo.eRenderCoreFamily;
+        return m_WaTable.Wa_1807084924 != 0;
     }
 
     bool WaEnableA64WA() const
