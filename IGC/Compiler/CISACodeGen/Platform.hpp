@@ -506,9 +506,8 @@ namespace IGC
 
     bool WaEnableA64WA() const
     {
-        if (IGC_IS_FLAG_ENABLED(EnableA64WA)) {
-            if (m_platformInfo.eProductFamily == IGFX_TIGERLAKE_LP)
-                return true;
+        if (IGC_IS_FLAG_ENABLED(EnableA64WA) && m_WaTable.Wa_14010595310) {
+            return true;
         }
         return false;
     }
