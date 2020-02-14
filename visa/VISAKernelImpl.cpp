@@ -779,10 +779,12 @@ int VISAKernelImpl::CreateVISAGenVar(VISA_GenVar *& decl, const char *varName, i
         }
 
         // force subalign to be GRF if total size is larger than or equal to GRF
-        if (info->dcl->getSubRegAlign() != GRFALIGN)
+        if ((info->dcl->getSubRegAlign() != GRFALIGN) ||
+            (varAlign == ALIGN_2_GRF))
         {
             setDeclAlignment(info->dcl, varAlign);
         }
+
         info->name_index = -1;
     }
 
