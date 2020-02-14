@@ -1457,14 +1457,6 @@ namespace IGC
 
                     mpm.add(CreateHoistFMulInLoopPass());
 
-                    mpm.add(llvm::createIndVarSimplifyPass());
-                    // There is LLVM bug - stack overflow due to recursive function call for huge loops
-                    // transformed by Loop Rotation Pass. So we are using this restriction for the time being.
-                    if (pContext->m_instrTypes.numLoopInsts < LOOP_INST_THRESHOLD)
-                    {
-                        mpm.add(llvm::createLoopDeletionPass());
-                    }
-
                     if (!pContext->m_retryManager.IsFirstTry())
                     {
                         mpm.add(new DisableLoopUnrollOnRetry());
