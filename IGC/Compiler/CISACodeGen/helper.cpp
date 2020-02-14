@@ -773,6 +773,7 @@ namespace IGC
             break;
         case GenISAIntrinsic::GenISA_intatomictyped:
         case GenISAIntrinsic::GenISA_icmpxchgatomictyped:
+            overloadedTys.push_back(pIntr->getType());
             overloadedTys.push_back(newPtr->getType());
             break;
         case GenISAIntrinsic::GenISA_atomiccounterinc:
