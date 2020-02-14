@@ -1897,11 +1897,49 @@ void FlowGraph::AssignDFSBasedIds(G4_BB* bb, unsigned &preId, unsigned &postId, 
 static _THREAD int dotDumpCount = 0;
 
 //
+// Remove redundant goto/jmpi
 // Remove the fall through edges between subroutine and its non-caller preds
-// Remove basic blocks that only contain a label, funcation lebels are untouched.
+// Remove basic blocks that only contain a label, funcation labels are untouched.
 //
 void FlowGraph::removeRedundantLabels()
 {
+    // Remove redundant goto
+    //    goto L0
+    //      ....
+    //    goto L1     <-- redundant goto
+    // L0: <empty BB>
+    // L1:
+    BB_LIST_ITER Next = BBs.begin(), IE = BBs.end();
+    for (BB_LIST_ITER II = Next; II != IE; II = Next)
+    {
+        ++Next;
+
+        G4_BB* BB = *II;
+        G4_opcode lastop = BB->getLastOpcode();
+        if (BB->Succs.size() == 1 && (lastop == G4_goto || lastop == G4_jmpi))
+        {
+            G4_BB* SuccBB = BB->Succs.back();
+            auto iter = Next;
+            G4_BB* BB1 = nullptr;
+            // Skip over empty BBs
+            for (auto iter = Next; iter != IE; ++iter)
+            {
+                BB1 = *iter;
+                if (BB1 != SuccBB &&
+                    (BB1->empty() ||
+                     (BB1->size() == 1 && BB1->getLastOpcode() == G4_label)))
+                {
+                    continue;
+                }
+                break;
+            }
+            if (BB1 && SuccBB == BB1)
+            {
+                BB->pop_back();
+            }
+        }
+    }
+
     for (BB_LIST_ITER it = BBs.begin(); it != BBs.end();)
     {
         G4_BB* bb = *it;
