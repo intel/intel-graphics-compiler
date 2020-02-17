@@ -1897,11 +1897,58 @@ void FlowGraph::AssignDFSBasedIds(G4_BB* bb, unsigned &preId, unsigned &postId, 
 static _THREAD int dotDumpCount = 0;
 
 //
+// Remove redundant goto/jmpi
 // Remove the fall through edges between subroutine and its non-caller preds
-// Remove basic blocks that only contain a label, funcation lebels are untouched.
+// Remove basic blocks that only contain a label, function labels are untouched.
+// Remove empty blocks.
 //
 void FlowGraph::removeRedundantLabels()
 {
+    // first,  remove redundant goto
+    //    goto L0
+    //      ....
+    //    goto L1     <-- redundant goto
+    // L0: <empty BB>
+    // L1:
+    BB_LIST_ITER Next = BBs.begin(), IE = BBs.end();
+    for (BB_LIST_ITER II = Next; II != IE; II = Next)
+    {
+        ++Next;
+
+        G4_BB* BB = *II;
+        G4_opcode lastop = BB->getLastOpcode();
+        if (BB->Succs.size() == 1 && (lastop == G4_goto || lastop == G4_jmpi))
+        {
+            G4_BB* SuccBB = BB->Succs.back();
+            G4_BB* BB1 = nullptr;
+            // Skip over empty BBs
+            for (auto iter = Next; iter != IE; ++iter)
+            {
+                BB1 = *iter;
+                if (BB1 != SuccBB &&
+                    (BB1->empty() ||
+                     (BB1->size() == 1 && BB1->getLastOpcode() == G4_label)))
+                {
+                    continue;
+                }
+                break;
+            }
+            if (BB1 && SuccBB == BB1)
+            {
+                // Remove goto and its fall-thru will be its succ.
+                G4_BB* fallThruBB = *Next;
+                if (fallThruBB != SuccBB)
+                {
+                    // Reconnect succ/pred for BB
+                    removePredSuccEdges(BB, SuccBB);
+                    addPredSuccEdges(BB, fallThruBB);
+                }
+                BB->pop_back();
+            }
+        }
+    }
+
+
     for (BB_LIST_ITER it = BBs.begin(); it != BBs.end();)
     {
         G4_BB* bb = *it;
@@ -1921,6 +1968,37 @@ void FlowGraph::removeRedundantLabels()
             }
 
             bb->clear();
+            BB_LIST_ITER rt = it++;
+            BBs.erase(rt);
+
+            continue;
+        }
+
+        // Remove empty blocks
+        if (bb->size() == 0)
+        {
+            // Handle this case by connecting Pred to Succ and delete bb!
+            //   Pred:
+            //   bb:
+            //     <empty>
+            //   Succ:
+            assert(bb->Preds.size() < 2 && "Empty BB has at most 1 pred!");
+            assert(bb->Succs.size() < 2 && "Empty BB has at most 1 succ!");
+            G4_BB* Pred = bb->Preds.size() == 1 ? bb->Preds.back() : nullptr;
+            G4_BB* Succ = bb->Succs.size() == 1 ? bb->Succs.back() : nullptr;
+            if (Pred)
+            {
+                removePredSuccEdges(Pred, bb);
+            }
+            if (Succ)
+            {
+                removePredSuccEdges(bb, Succ);
+            }
+            if (Pred && Succ)
+            {
+                addPredSuccEdges(Pred, Succ);
+            }
+
             BB_LIST_ITER rt = it++;
             BBs.erase(rt);
 
@@ -5396,25 +5474,25 @@ void G4_BB::resetLocalId()
 
 void G4_BB::dump(bool printCFG = false) const
 {
+    std::cerr << "BB" << getId();
     if (printCFG)
     {
-        std::cerr << "BB" << getId() << "\n";
-        std::cerr << "Pred: ";
+        if (getBBType())
+        {
+            std::cerr << ";  BB type: " << getBBType();
+        }
+        std::cerr << "        Pred: ";
         for (auto pred : Preds)
         {
             std::cerr << pred->getId() << " ";
         }
-        std::cerr << "\nSucc: ";
+        std::cerr << "  Succ: ";
         for (auto succ : Succs)
         {
             std::cerr << succ->getId() << " ";
         }
-        std::cerr << "\n";
-        if (getBBType())
-        {
-            std::cerr << "BB type: " << getBBType() << "\n";
-        }
     }
+    std::cerr << "\n";
     for (auto& x : instList)
         x->dump();
     std::cerr << "\n";
@@ -6401,6 +6479,19 @@ bool FlowGraph::convertJmpiToGoto()
         }
     }
     return Changed;
+}
+
+void FlowGraph::dump(bool printCFG) const
+{
+    const char* kname = nullptr;
+    if (getKernel()) {
+        kname = getKernel()->getName();
+    }
+    kname = kname ? kname : "unnamed";
+    std::cerr << "\n\nCFG: " << kname << "\n\n";
+    for (auto BB : BBs) {
+        BB->dump(printCFG);
+    }
 }
 
 FlowGraph::~FlowGraph()

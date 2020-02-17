@@ -1228,6 +1228,8 @@ public:
 
     // This is for TGL WA
     void findNestedDivergentBBs();
+
+    void dump(bool printCFG) const;
 private:
     //
     // Flow group traversal routines
