@@ -349,7 +349,9 @@ void SubGroupFuncsResolution::simdBlockRead(llvm::CallInst& CI)
         return;
     }
 
-    switch (CI.getType()->getScalarType()->getScalarSizeInBits())
+    unsigned int scalarSizeInBits = CI.getType()->getScalarType()->getScalarSizeInBits();
+
+    switch (scalarSizeInBits)
     {
     case 8:
         types[1] = Type::getInt8PtrTy(C, AS);
@@ -377,8 +379,8 @@ void SubGroupFuncsResolution::simdBlockRead(llvm::CallInst& CI)
     }
 
     if (use && isa<BitCastInst>(use) &&
-        (use->getType()->getScalarType()->isFloatTy() ||
-            use->getType()->getScalarType()->isDoubleTy()))
+        ((use->getType()->getScalarType()->isFloatTy() && scalarSizeInBits == 32) ||
+            (use->getType()->getScalarType()->isDoubleTy() && scalarSizeInBits == 64)))
     {
         BitCastInst* bitCast = cast<BitCastInst>(use);
         types[0] = bitCast->getType();
