@@ -36,10 +36,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma pack(push,1)
 
-#define GT_MAX_SLICE                   (4) 
+#define GT_MAX_SLICE                   (4)
 #define GT_MAX_SUBSLICE_PER_SLICE      (8)
 #define GT_MAX_VDBOX                   (2)
 #define GT_MAX_VEBOX                   (2)
+#define GT_MAX_SUBSLICE_PER_DSS        (2) // Currently max value based on Gen12
+#define GT_MAX_DUALSUBSLICE_PER_SLICE  (6) // Currently max value based on Gen12LP
 
 typedef struct GT_SUBSLICE_INFO
 {
@@ -48,11 +50,19 @@ typedef struct GT_SUBSLICE_INFO
     uint32_t            EuEnabledMask;      // Mask of EUs enabled on this SubSlice
 } GT_SUBSLICE_INFO;
 
+typedef struct GT_DUALSUBSLICE_INFO
+{
+    bool Enabled;                                       // Bool to determine if this SS is enabled.
+    GT_SUBSLICE_INFO SubSlice[GT_MAX_SUBSLICE_PER_DSS]; // SS details that belong to this DualSubSlice.
+} GT_DUALSUBSLICE_INFO;
+
 typedef struct GT_SLICE_INFO
 {
     bool                 Enabled;                                    // Bool to determine if this slice is enabled.
     GT_SUBSLICE_INFO     SubSliceInfo[GT_MAX_SUBSLICE_PER_SLICE];    // SS details that belong to this slice.
+    GT_DUALSUBSLICE_INFO DSSInfo[GT_MAX_DUALSUBSLICE_PER_SLICE];     // Gen12 : DSS details that belong to this slice.
     uint32_t             SubSliceEnabledCount;                       // No. of SS enabled in this slice
+    uint32_t             DualSubSliceEnabledCount;                   // No. of DSS enabled in this slice
 } GT_SLICE_INFO;
 
 typedef struct GT_VEBOX_INFO
@@ -136,10 +146,11 @@ typedef struct GT_SYSTEM_INFO
     uint32_t        ThreadCount;                    // total no of system threads available
     uint32_t        SliceCount;                     // Total no. of enabled slices
     uint32_t        SubSliceCount;                  // Total no. of enabled subslices
+    uint32_t        DualSubSliceCount;              // Total no. of enabled dualsubslices
     uint64_t        L3CacheSizeInKb;                // Total L3 cache size in kilo bytes
     uint64_t        LLCCacheSizeInKb;               // Total LLC cache size in kilo bytes
     uint64_t        EdramSizeInKb;                  // Total EDRAM size in kilo bytes
-    uint32_t        L3BankCount;                    // Total L3 banks across all slices. This is not bank count per slice. 
+    uint32_t        L3BankCount;                    // Total L3 banks across all slices. This is not bank count per slice.
     uint32_t        MaxFillRate;                    // Fillrate with Alphablend (in Pix/Clk)
     uint32_t        EuCountPerPoolMax;              // Max EU count per pool
     uint32_t        EuCountPerPoolMin;              // Min EU count per pool
@@ -153,7 +164,7 @@ typedef struct GT_SYSTEM_INFO
     uint32_t        TotalVsThreads_Pocs;            // Total threads in VS for POCS
 
     // Note: The CSR size requirement is not clear at this moment. Till then the driver will set
-    // the maximum size that should be sufficient for all platform SKUs. 
+    // the maximum size that should be sufficient for all platform SKUs.
     uint32_t        CsrSizeInMb;                    // Total size that driver needs to allocate for CSR.
 
     /*------------------------------------*/
@@ -161,9 +172,10 @@ typedef struct GT_SYSTEM_INFO
     // Threads scratch space has to be allocated based on native die config. So allocation has to be
     // done even for unfused or non-enabled slices/subslices/EUs. Since H/W doesn't provide us a way to know
     // about the native die config S/W will allocate based on max EU/S/SS.
-    uint32_t        MaxEuPerSubSlice;               // Max available EUs per sub-slice. 
+    uint32_t        MaxEuPerSubSlice;               // Max available EUs per sub-slice.
     uint32_t        MaxSlicesSupported;             // Max slices this platfrom can have.
     uint32_t        MaxSubSlicesSupported;          // Max total sub-slices this platform can have (not per slice)
+    uint32_t        MaxDualSubSlicesSupported;      // Max total dual sub-slices this platform can have (not per slice)
     /*------------------------------------*/
 
     // Flag to determine if hashing is enabled. If enabled then one of the L3 banks will be disabled.
