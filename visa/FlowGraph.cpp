@@ -4252,27 +4252,12 @@ void G4_BB::emitInstructionInfo(std::ostream& output, INST_LIST_ITER &it)
         output << "// File: " << curFilename << "\n";
     }
 
-    auto getSrcLine = [](std::string fileName, int srcLine)
-    {
-        std::ifstream ifs(fileName);
-        if (!ifs)
-        {
-            return std::string("Can't find src file");
-        }
-        std::string line;
-        int i = 0;
-        for (; i < srcLine && std::getline(ifs, line); i++)
-        {
-        }
-        return i == srcLine ? line : "Invalid line no";
-    };
-
     if (emitLineNo)
     {
         output << "\n// Line " << curSrcLineNo << ":\t";
         if (curFilename)
         {
-            std::string curLine = getSrcLine(std::string(curFilename), curSrcLineNo);
+            std::string curLine = parent->getKernel()->getDebugSrcLine(std::string(curFilename), curSrcLineNo);
             auto isNotSpace = [](int ch) { return !std::isspace(ch); };
             curLine.erase(curLine.begin(), std::find_if(curLine.begin(), curLine.end(), isNotSpace));
             curLine.erase(std::find_if(curLine.rbegin(), curLine.rend(), isNotSpace).base(), curLine.end());
@@ -4290,6 +4275,37 @@ void G4_BB::emitInstructionInfo(std::ostream& output, INST_LIST_ITER &it)
         prevSrcLineNo = curSrcLineNo;
     }
 }
+
+std::string G4_Kernel::getDebugSrcLine(const std::string& fileName, int srcLine)
+{
+    auto iter = debugSrcLineMap.find(fileName);
+    if (iter == debugSrcLineMap.end())
+    {
+        std::ifstream ifs(fileName);
+        if (!ifs)
+        {
+            return "Can't find src file";
+        }
+        std::string line;
+        std::vector<std::string> srcLines;
+        while (std::getline(ifs, line))
+        {
+            srcLines.push_back(line);
+        }
+        debugSrcLineMap[fileName] = srcLines;
+    }
+    iter = debugSrcLineMap.find(fileName);
+    if (iter == debugSrcLineMap.end())
+    {
+        return "Can't find src file";
+    }
+    auto lines = iter->second;
+    if (srcLine > (int) lines.size() || srcLine <= 0)
+    {
+        return "invalid line number";
+    }
+    return lines[srcLine - 1];
+};
 
 void G4_BB::emitBankConflict(std::ostream& output, G4_INST *inst)
 {
