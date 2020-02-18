@@ -792,6 +792,51 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                                 __func##_##__abbrsargtype##_##__abbrsargtype##_##__abbrvargtype(x, y, z.sf) );                       \
     }
 
+#define GENERATE_VECTOR_FUNCTIONS_3ARGS_SVS( __func, __rettype, __sarg0type, __vargtype, __sarg1type, __abbrsarg0type, __abbrvargtype,__abbrsarg1type ) \
+    __rettype##2 __func##_##__abbrsarg0type##_v2##__abbrvargtype##_##__abbrsarg1type( __sarg0type x, __vargtype##2 y, __sarg1type z ) { \
+        return (__rettype##2)( __func##_##__abbrsarg0type##_##__abbrvargtype##_##__abbrsarg1type(x, y.s0, z),                          \
+                               __func##_##__abbrsarg0type##_##__abbrvargtype##_##__abbrsarg1type(x, y.s1, z) );                        \
+    }                                                                                                        \
+    __rettype##3 __func##_##__abbrsarg0type##_v3##__abbrvargtype##_##__abbrsarg1type( __sarg0type x, __vargtype##3 y, __sarg1type z ) { \
+        return (__rettype##3)( __func##_##__abbrsarg0type##_##__abbrvargtype##_##__abbrsarg1type(x, y.s0, z),                          \
+                               __func##_##__abbrsarg0type##_##__abbrvargtype##_##__abbrsarg1type(x, y.s1, z),                          \
+                               __func##_##__abbrsarg0type##_##__abbrvargtype##_##__abbrsarg1type(x, y.s2, z) );                        \
+    }                                                                                                        \
+    __rettype##4 __func##_##__abbrsarg0type##_v4##__abbrvargtype##_##__abbrsarg1type( __sarg0type x, __vargtype##4 y, __sarg1type z ) { \
+        return (__rettype##4)( __func##_##__abbrsarg0type##_##__abbrvargtype##_##__abbrsarg1type(x, y.s0, z),                          \
+                               __func##_##__abbrsarg0type##_##__abbrvargtype##_##__abbrsarg1type(x, y.s1, z),                          \
+                               __func##_##__abbrsarg0type##_##__abbrvargtype##_##__abbrsarg1type(x, y.s2, z),                          \
+                               __func##_##__abbrsarg0type##_##__abbrvargtype##_##__abbrsarg1type(x, y.s3, z) );                        \
+    }                                                                                                        \
+    __rettype##8 __func##_##__abbrsarg0type##_v8##__abbrvargtype##_##__abbrsarg1type( __sarg0type x, __vargtype##8 y, __sarg1type z ) { \
+        return (__rettype##8)( __func##_##__abbrsarg0type##_##__abbrvargtype##_##__abbrsarg1type(x, y.s0, z),                          \
+                               __func##_##__abbrsarg0type##_##__abbrvargtype##_##__abbrsarg1type(x, y.s1, z),                          \
+                               __func##_##__abbrsarg0type##_##__abbrvargtype##_##__abbrsarg1type(x, y.s2, z),                          \
+                               __func##_##__abbrsarg0type##_##__abbrvargtype##_##__abbrsarg1type(x, y.s3, z),                          \
+                               __func##_##__abbrsarg0type##_##__abbrvargtype##_##__abbrsarg1type(x, y.s4, z),                          \
+                               __func##_##__abbrsarg0type##_##__abbrvargtype##_##__abbrsarg1type(x, y.s5, z),                          \
+                               __func##_##__abbrsarg0type##_##__abbrvargtype##_##__abbrsarg1type(x, y.s6, z),                          \
+                               __func##_##__abbrsarg0type##_##__abbrvargtype##_##__abbrsarg1type(x, y.s7, z) );                        \
+    }                                                                                                        \
+    __rettype##16 __func##_##__abbrsarg0type##_v16##__abbrvargtype##_##__abbrsarg1type( __sarg0type x, __vargtype##16 y, __sarg1type z ) { \
+        return (__rettype##16)( __func##_##__abbrsarg0type##_##__abbrvargtype##_##__abbrsarg1type(x, y.s0, z),                         \
+                                __func##_##__abbrsarg0type##_##__abbrvargtype##_##__abbrsarg1type(x, y.s1, z),                         \
+                                __func##_##__abbrsarg0type##_##__abbrvargtype##_##__abbrsarg1type(x, y.s2, z),                         \
+                                __func##_##__abbrsarg0type##_##__abbrvargtype##_##__abbrsarg1type(x, y.s3, z),                         \
+                                __func##_##__abbrsarg0type##_##__abbrvargtype##_##__abbrsarg1type(x, y.s4, z),                         \
+                                __func##_##__abbrsarg0type##_##__abbrvargtype##_##__abbrsarg1type(x, y.s5, z),                         \
+                                __func##_##__abbrsarg0type##_##__abbrvargtype##_##__abbrsarg1type(x, y.s6, z),                         \
+                                __func##_##__abbrsarg0type##_##__abbrvargtype##_##__abbrsarg1type(x, y.s7, z),                         \
+                                __func##_##__abbrsarg0type##_##__abbrvargtype##_##__abbrsarg1type(x, y.s8, z),                         \
+                                __func##_##__abbrsarg0type##_##__abbrvargtype##_##__abbrsarg1type(x, y.s9, z),                         \
+                                __func##_##__abbrsarg0type##_##__abbrvargtype##_##__abbrsarg1type(x, y.sa, z),                         \
+                                __func##_##__abbrsarg0type##_##__abbrvargtype##_##__abbrsarg1type(x, y.sb, z),                         \
+                                __func##_##__abbrsarg0type##_##__abbrvargtype##_##__abbrsarg1type(x, y.sc, z),                         \
+                                __func##_##__abbrsarg0type##_##__abbrvargtype##_##__abbrsarg1type(x, y.sd, z),                         \
+                                __func##_##__abbrsarg0type##_##__abbrvargtype##_##__abbrsarg1type(x, y.se, z),                         \
+                                __func##_##__abbrsarg0type##_##__abbrvargtype##_##__abbrsarg1type(x, y.sf, z) );                       \
+    }
+
 #define GENERATE_CONVERSIONS_FUNCTIONS_VECTORS( __func, __rettype, __argtype, __abbrrettype, __abbrargtype )      \
     __rettype##2 __func##_v2##__abbrrettype##_v2##__abbrargtype( __argtype##2 x ) {                 \
         return (__rettype##2)( __func##_##__abbrrettype##_##__abbrargtype(x.s0),                                \

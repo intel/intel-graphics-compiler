@@ -732,6 +732,11 @@ int __builtin_IB_dp4a_uu(int c, int a, int b) __attribute__((const));
 int __builtin_IB_dp4a_su(int c, int a, int b) __attribute__((const));
 int __builtin_IB_dp4a_us(int c, int a, int b) __attribute__((const));
 
+char __builtin_IB_sub_group_reduce_OpGroupIAdd_i8(char x) __attribute__((const));
+char __builtin_IB_sub_group_reduce_OpGroupSMax_i8(char x) __attribute__((const));
+uchar __builtin_IB_sub_group_reduce_OpGroupUMax_i8(uchar x) __attribute__((const));
+char __builtin_IB_sub_group_reduce_OpGroupSMin_i8(char x) __attribute__((const));
+uchar __builtin_IB_sub_group_reduce_OpGroupUMin_i8(uchar x) __attribute__((const));
 short __builtin_IB_sub_group_reduce_OpGroupIAdd_i16(short x) __attribute__((const));
 short __builtin_IB_sub_group_reduce_OpGroupSMax_i16(short x) __attribute__((const));
 ushort __builtin_IB_sub_group_reduce_OpGroupUMax_i16(ushort x) __attribute__((const));
@@ -758,6 +763,11 @@ double __builtin_IB_sub_group_reduce_OpGroupFMax_f64(double x) __attribute__((co
 double __builtin_IB_sub_group_reduce_OpGroupFMin_f64(double x) __attribute__((const));
 
 // inclusive scan
+char __builtin_IB_sub_group_scan_OpGroupIAdd_i8(char x) __attribute__((const));
+char __builtin_IB_sub_group_scan_OpGroupSMax_i8(char x) __attribute__((const));
+uchar __builtin_IB_sub_group_scan_OpGroupUMax_i8(uchar x) __attribute__((const));
+char __builtin_IB_sub_group_scan_OpGroupSMin_i8(char x) __attribute__((const));
+uchar __builtin_IB_sub_group_scan_OpGroupUMin_i8(uchar x) __attribute__((const));
 short __builtin_IB_sub_group_scan_OpGroupIAdd_i16(short x) __attribute__((const));
 short __builtin_IB_sub_group_scan_OpGroupSMax_i16(short x) __attribute__((const));
 ushort __builtin_IB_sub_group_scan_OpGroupUMax_i16(ushort x) __attribute__((const));

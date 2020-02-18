@@ -1042,6 +1042,46 @@ bool __builtin_spirv_OpGroupAny_i32_i1(uint Execution, bool Predicate)
     return ret;                                                                         \
 }
 
+#define DEFN_SUB_GROUP_BROADCAST_VEC(__vargtype, __abbrvargtype)                                                                          \
+GENERATE_VECTOR_FUNCTIONS_3ARGS_SVS(__builtin_spirv_OpGroupBroadcast, __vargtype, uint, __vargtype, uint3, i32, __abbrvargtype, v3i32)    \
+GENERATE_VECTOR_FUNCTIONS_3ARGS_SVS(__builtin_spirv_OpGroupBroadcast, __vargtype, uint, __vargtype, ulong3, i32, __abbrvargtype, v3i64)   \
+GENERATE_VECTOR_FUNCTIONS_3ARGS_SVS(__builtin_spirv_OpGroupBroadcast, __vargtype, uint, __vargtype, uint2, i32, __abbrvargtype, v2i32)    \
+GENERATE_VECTOR_FUNCTIONS_3ARGS_SVS(__builtin_spirv_OpGroupBroadcast, __vargtype, uint, __vargtype, ulong2, i32, __abbrvargtype, v2i64)   \
+GENERATE_VECTOR_FUNCTIONS_3ARGS_SVS(__builtin_spirv_OpGroupBroadcast, __vargtype, uint, __vargtype, uint, i32, __abbrvargtype, i32)       \
+GENERATE_VECTOR_FUNCTIONS_3ARGS_SVS(__builtin_spirv_OpGroupBroadcast, __vargtype, uint, __vargtype, ulong, i32, __abbrvargtype, i64)
+
+uchar __builtin_spirv_OpGroupBroadcast_i32_i8_v3i32(uint Execution, uchar Value, uint3 LocalId)
+{
+    if (Execution == Workgroup)
+    {
+        BROADCAST_WORKGROUP(uchar)
+    }
+    else if (Execution == Subgroup)
+    {
+        return __builtin_IB_simd_shuffle_b(Value, LocalId.s0);
+    }
+    else
+    {
+        return 0;
+    }
+}
+
+uchar __builtin_spirv_OpGroupBroadcast_i32_i8_v3i64(uint Execution, uchar Value, ulong3 LocalId)
+{
+    if (Execution == Workgroup)
+    {
+        BROADCAST_WORKGROUP(uchar)
+    }
+    else if (Execution == Subgroup)
+    {
+        return __builtin_IB_simd_shuffle_b(Value, (uint)LocalId.s0);
+    }
+    else
+    {
+        return 0;
+    }
+}
+
 ushort __builtin_spirv_OpGroupBroadcast_i32_i16_v3i32(uint Execution, ushort Value, uint3 LocalId)
 {
     if (Execution == Workgroup)
@@ -1239,6 +1279,26 @@ double __builtin_spirv_OpGroupBroadcast_i32_f64_v3i64(uint Execution, double Val
 
 #endif // defined(cl_khr_fp64)
 
+uchar __builtin_spirv_OpGroupBroadcast_i32_i8_v2i32(uint Execution, uchar Value, uint2 LocalId)
+{
+    return __builtin_spirv_OpGroupBroadcast_i32_i8_v3i32(Execution,Value,(uint3)(LocalId.s0,LocalId.s1,0));
+}
+
+uchar __builtin_spirv_OpGroupBroadcast_i32_i8_v2i64(uint Execution, uchar Value, ulong2 LocalId)
+{
+    return __builtin_spirv_OpGroupBroadcast_i32_i8_v3i64(Execution,Value,(ulong3)(LocalId.s0,LocalId.s1,0));
+}
+
+ushort __builtin_spirv_OpGroupBroadcast_i32_i16_v2i32(uint Execution, ushort Value, uint2 LocalId)
+{
+    return __builtin_spirv_OpGroupBroadcast_i32_i16_v3i32(Execution,Value,(uint3)(LocalId.s0,LocalId.s1,0));
+}
+
+ushort __builtin_spirv_OpGroupBroadcast_i32_i16_v2i64(uint Execution, ushort Value, ulong2 LocalId)
+{
+    return __builtin_spirv_OpGroupBroadcast_i32_i16_v3i64(Execution,Value,(ulong3)(LocalId.s0,LocalId.s1,0));
+}
+
 uint __builtin_spirv_OpGroupBroadcast_i32_i32_v2i32(uint Execution, uint Value, uint2 LocalId)
 {
     return __builtin_spirv_OpGroupBroadcast_i32_i32_v3i32(Execution,Value,(uint3)(LocalId.s0,LocalId.s1,0));
@@ -1292,6 +1352,26 @@ double __builtin_spirv_OpGroupBroadcast_i32_f64_v2i64(uint Execution, double Val
 }
 
 #endif
+
+uchar __builtin_spirv_OpGroupBroadcast_i32_i8_i32(uint Execution, uchar Value, uint LocalId)
+{
+    return __builtin_spirv_OpGroupBroadcast_i32_i8_v3i32(Execution,Value,(uint3)(LocalId,0,0));
+}
+
+uchar __builtin_spirv_OpGroupBroadcast_i32_i8_i64(uint Execution, uchar Value, ulong LocalId)
+{
+    return __builtin_spirv_OpGroupBroadcast_i32_i8_v3i64(Execution,Value,(ulong3)(LocalId,0,0));
+}
+
+ushort __builtin_spirv_OpGroupBroadcast_i32_i16_i32(uint Execution, ushort Value, uint LocalId)
+{
+    return __builtin_spirv_OpGroupBroadcast_i32_i16_v3i32(Execution,Value,(uint3)(LocalId,0,0));
+}
+
+ushort __builtin_spirv_OpGroupBroadcast_i32_i16_i64(uint Execution, ushort Value, ulong LocalId)
+{
+    return __builtin_spirv_OpGroupBroadcast_i32_i16_v3i64(Execution,Value,(ulong3)(LocalId,0,0));
+}
 
 uint __builtin_spirv_OpGroupBroadcast_i32_i32_i32(uint Execution, uint Value, uint LocalId)
 {
@@ -1347,6 +1427,19 @@ double __builtin_spirv_OpGroupBroadcast_i32_f64_i64(uint Execution, double Value
 
 #endif
 
+DEFN_SUB_GROUP_BROADCAST_VEC(uchar, i8)
+DEFN_SUB_GROUP_BROADCAST_VEC(ushort, i16)
+DEFN_SUB_GROUP_BROADCAST_VEC(uint, i32)
+DEFN_SUB_GROUP_BROADCAST_VEC(ulong, i64)
+DEFN_SUB_GROUP_BROADCAST_VEC(float, f32)
+#if defined(cl_khr_fp16)
+DEFN_SUB_GROUP_BROADCAST_VEC(half, f16)
+#endif // defined(cl_khr_fp16)
+#if defined(cl_khr_fp64)
+DEFN_SUB_GROUP_BROADCAST_VEC(double, f64)
+#endif // defined(cl_khr_fp64)
+
+static uchar    OVERLOADABLE __intel_add(uchar lhs, uchar rhs)  { return lhs + rhs; }
 static ushort   OVERLOADABLE __intel_add(ushort lhs, ushort rhs){ return lhs + rhs; }
 static uint     OVERLOADABLE __intel_add(uint lhs, uint rhs)    { return lhs + rhs; }
 static ulong    OVERLOADABLE __intel_add(ulong lhs, ulong rhs)  { return lhs + rhs; }
@@ -1614,6 +1707,7 @@ type  __builtin_spirv_##func##_i32_i32_##type_abbr(uint Execution, uint Operatio
 }
 
 // ---- Add ----
+DEFN_BUILTIN_SPIRV_FUNC(OpGroupIAdd, uchar,  i8,  __intel_add, 0)
 DEFN_BUILTIN_SPIRV_FUNC(OpGroupIAdd, ushort, i16, __intel_add, 0)
 DEFN_BUILTIN_SPIRV_FUNC(OpGroupIAdd, uint,   i32, __intel_add, 0)
 DEFN_BUILTIN_SPIRV_FUNC(OpGroupIAdd, ulong,  i64, __intel_add, 0)
@@ -1628,9 +1722,11 @@ DEFN_BUILTIN_SPIRV_FUNC(OpGroupFMin, float,  f32, __builtin_spirv_OpenCL_fmin_f3
 #if defined(cl_khr_fp64)
 DEFN_BUILTIN_SPIRV_FUNC(OpGroupFMin, double, f64, __builtin_spirv_OpenCL_fmin_f64_f64, INFINITY)
 #endif
+DEFN_BUILTIN_SPIRV_FUNC(OpGroupUMin, uchar,  i8,  __builtin_spirv_OpenCL_u_min_i8_i8,   UCHAR_MAX)
 DEFN_BUILTIN_SPIRV_FUNC(OpGroupUMin, ushort, i16, __builtin_spirv_OpenCL_u_min_i16_i16, USHRT_MAX)
 DEFN_BUILTIN_SPIRV_FUNC(OpGroupUMin, uint,   i32, __builtin_spirv_OpenCL_u_min_i32_i32, UINT_MAX)
 DEFN_BUILTIN_SPIRV_FUNC(OpGroupUMin, ulong,  i64, __builtin_spirv_OpenCL_u_min_i64_i64, ULONG_MAX)
+DEFN_BUILTIN_SPIRV_FUNC(OpGroupSMin, char,   i8,  __builtin_spirv_OpenCL_s_min_i8_i8,   CHAR_MAX)
 DEFN_BUILTIN_SPIRV_FUNC(OpGroupSMin, short,  i16, __builtin_spirv_OpenCL_s_min_i16_i16, SHRT_MAX)
 DEFN_BUILTIN_SPIRV_FUNC(OpGroupSMin, int,    i32, __builtin_spirv_OpenCL_s_min_i32_i32, INT_MAX)
 DEFN_BUILTIN_SPIRV_FUNC(OpGroupSMin, long,   i64, __builtin_spirv_OpenCL_s_min_i64_i64, LONG_MAX)
@@ -1640,9 +1736,11 @@ DEFN_BUILTIN_SPIRV_FUNC(OpGroupFMax, float,  f32, __builtin_spirv_OpenCL_fmax_f3
 #if defined(cl_khr_fp64)
 DEFN_BUILTIN_SPIRV_FUNC(OpGroupFMax, double, f64, __builtin_spirv_OpenCL_fmax_f64_f64, -INFINITY)
 #endif
+DEFN_BUILTIN_SPIRV_FUNC(OpGroupUMax, uchar,  i8,  __builtin_spirv_OpenCL_u_max_i8_i8,   0)
 DEFN_BUILTIN_SPIRV_FUNC(OpGroupUMax, ushort, i16, __builtin_spirv_OpenCL_u_max_i16_i16, 0)
 DEFN_BUILTIN_SPIRV_FUNC(OpGroupUMax, uint,   i32, __builtin_spirv_OpenCL_u_max_i32_i32, 0)
 DEFN_BUILTIN_SPIRV_FUNC(OpGroupUMax, ulong,  i64, __builtin_spirv_OpenCL_u_max_i64_i64, 0)
+DEFN_BUILTIN_SPIRV_FUNC(OpGroupSMax, char,   i8,  __builtin_spirv_OpenCL_s_max_i8_i8,   CHAR_MIN)
 DEFN_BUILTIN_SPIRV_FUNC(OpGroupSMax, short,  i16, __builtin_spirv_OpenCL_s_max_i16_i16, SHRT_MIN)
 DEFN_BUILTIN_SPIRV_FUNC(OpGroupSMax, int,    i32, __builtin_spirv_OpenCL_s_max_i32_i32, INT_MIN)
 DEFN_BUILTIN_SPIRV_FUNC(OpGroupSMax, long,   i64, __builtin_spirv_OpenCL_s_max_i64_i64, LONG_MIN)

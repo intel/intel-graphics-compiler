@@ -4301,41 +4301,32 @@ void __builtin_spirv_OpGroupWaitEvents_i32_i32_p4i64(uint Execution, uint NumEve
 
 bool __builtin_spirv_OpGroupAll_i32_i1(uint Execution, bool Predicate);
 bool __builtin_spirv_OpGroupAny_i32_i1(uint Execution, bool Predicate);
-uchar __builtin_spirv_OpGroupBroadcast_i32_i8_v3i32(uint Execution, uchar Value, uint3 LocalId);
-ushort __builtin_spirv_OpGroupBroadcast_i32_i16_v3i32(uint Execution, ushort Value, uint3 LocalId);
-uint __builtin_spirv_OpGroupBroadcast_i32_i32_v3i32(uint Execution, uint Value, uint3 LocalId);
-ulong __builtin_spirv_OpGroupBroadcast_i32_i64_v3i32(uint Execution, ulong Value, uint3 LocalId);
-half __builtin_spirv_OpGroupBroadcast_i32_f16_v3i32(uint Execution, half Value, uint3 LocalId);
-float __builtin_spirv_OpGroupBroadcast_i32_f32_v3i32(uint Execution, float Value, uint3 LocalId);
-uchar __builtin_spirv_OpGroupBroadcast_i32_i8_v3i64(uint Execution, uchar Value, ulong3 LocalId);
-ushort __builtin_spirv_OpGroupBroadcast_i32_i16_v3i64(uint Execution, ushort Value, ulong3 LocalId);
-uint __builtin_spirv_OpGroupBroadcast_i32_i32_v3i64(uint Execution, uint Value, ulong3 LocalId);
-ulong __builtin_spirv_OpGroupBroadcast_i32_i64_v3i64(uint Execution, ulong Value, ulong3 LocalId);
-half __builtin_spirv_OpGroupBroadcast_i32_f16_v3i64(uint Execution, half Value, ulong3 LocalId);
-float __builtin_spirv_OpGroupBroadcast_i32_f32_v3i64(uint Execution, float Value, ulong3 LocalId);
-uint __builtin_spirv_OpGroupBroadcast_i32_i32_v2i32(uint Execution, uint Value, uint2 LocalId);
-ulong __builtin_spirv_OpGroupBroadcast_i32_i64_v2i32(uint Execution, ulong Value, uint2 LocalId);
-half __builtin_spirv_OpGroupBroadcast_i32_f16_v2i32(uint Execution, half Value, uint2 LocalId);
-float __builtin_spirv_OpGroupBroadcast_i32_f32_v2i32(uint Execution, float Value, uint2 LocalId);
-uint __builtin_spirv_OpGroupBroadcast_i32_i32_v2i64(uint Execution, uint Value, ulong2 LocalId);
-ulong __builtin_spirv_OpGroupBroadcast_i32_i64_v2i64(uint Execution, ulong Value, ulong2 LocalId);
-half __builtin_spirv_OpGroupBroadcast_i32_f16_v2i64(uint Execution, half Value, ulong2 LocalId);
-float __builtin_spirv_OpGroupBroadcast_i32_f32_v2i64(uint Execution, float Value, ulong2 LocalId);
-uint __builtin_spirv_OpGroupBroadcast_i32_i32_i32(uint Execution, uint Value, uint LocalId);
-ulong __builtin_spirv_OpGroupBroadcast_i32_i64_i32(uint Execution, ulong Value, uint LocalId);
-half __builtin_spirv_OpGroupBroadcast_i32_f16_i32(uint Execution, half Value, uint LocalId);
-float __builtin_spirv_OpGroupBroadcast_i32_f32_i32(uint Execution, float Value, uint LocalId);
-uint __builtin_spirv_OpGroupBroadcast_i32_i32_i64(uint Execution, uint Value, ulong LocalId);
-ulong __builtin_spirv_OpGroupBroadcast_i32_i64_i64(uint Execution, ulong Value, ulong LocalId);
-half __builtin_spirv_OpGroupBroadcast_i32_f16_i64(uint Execution, half Value, ulong LocalId);
-float __builtin_spirv_OpGroupBroadcast_i32_f32_i64(uint Execution, float Value, ulong LocalId);
+#define DECL_SUB_GROUP_BROADCAST_BASE(TYPE, TYPE_ABBR)                                                      \
+TYPE __builtin_spirv_OpGroupBroadcast_i32_##TYPE_ABBR##_v3i32(uint Execution, TYPE Value, uint3 LocalId);   \
+TYPE __builtin_spirv_OpGroupBroadcast_i32_##TYPE_ABBR##_v3i64(uint Execution, TYPE Value, ulong3 LocalId);  \
+TYPE __builtin_spirv_OpGroupBroadcast_i32_##TYPE_ABBR##_v2i32(uint Execution, TYPE Value, uint2 LocalId);   \
+TYPE __builtin_spirv_OpGroupBroadcast_i32_##TYPE_ABBR##_v2i64(uint Execution, TYPE Value, ulong2 LocalId);  \
+TYPE __builtin_spirv_OpGroupBroadcast_i32_##TYPE_ABBR##_i32(uint Execution, TYPE Value, uint LocalId);      \
+TYPE __builtin_spirv_OpGroupBroadcast_i32_##TYPE_ABBR##_i64(uint Execution, TYPE Value, ulong LocalId);
+
+#define DECL_SUB_GROUP_BROADCAST(TYPE, TYPE_ABBR)       \
+DECL_SUB_GROUP_BROADCAST_BASE(TYPE, TYPE_ABBR)          \
+DECL_SUB_GROUP_BROADCAST_BASE(TYPE##2, v2##TYPE_ABBR)   \
+DECL_SUB_GROUP_BROADCAST_BASE(TYPE##3, v3##TYPE_ABBR)   \
+DECL_SUB_GROUP_BROADCAST_BASE(TYPE##4, v4##TYPE_ABBR)   \
+DECL_SUB_GROUP_BROADCAST_BASE(TYPE##8, v8##TYPE_ABBR)   \
+DECL_SUB_GROUP_BROADCAST_BASE(TYPE##16, v16##TYPE_ABBR)
+
+DECL_SUB_GROUP_BROADCAST(uchar, i8)
+DECL_SUB_GROUP_BROADCAST(ushort, i16)
+DECL_SUB_GROUP_BROADCAST(uint, i32)
+DECL_SUB_GROUP_BROADCAST(ulong, i64)
+DECL_SUB_GROUP_BROADCAST(float, f32)
+#if defined(cl_khr_fp16)
+DECL_SUB_GROUP_BROADCAST(half, f16)
+#endif // defined(cl_khr_fp16)
 #if defined(cl_khr_fp64)
-double __builtin_spirv_OpGroupBroadcast_i32_f64_i32(uint Execution, double Value, uint LocalId);
-double __builtin_spirv_OpGroupBroadcast_i32_f64_v2i32(uint Execution, double Value, uint2 LocalId);
-double __builtin_spirv_OpGroupBroadcast_i32_f64_v3i32(uint Execution, double Value, uint3 LocalId);
-double __builtin_spirv_OpGroupBroadcast_i32_f64_v2i64(uint Execution, double Value, ulong2 LocalId);
-double __builtin_spirv_OpGroupBroadcast_i32_f64_v3i64(uint Execution, double Value, ulong3 LocalId);
-double __builtin_spirv_OpGroupBroadcast_i32_f64_i64(uint Execution, double Value, ulong LocalId);
+DECL_SUB_GROUP_BROADCAST(double, f64)
 #endif // defined(cl_khr_fp64)
 
 uchar  __builtin_spirv_OpGroupIAdd_i32_i32_i8(uint Execution, uint Operation, uchar X);

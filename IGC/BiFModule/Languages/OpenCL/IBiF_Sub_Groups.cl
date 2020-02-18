@@ -373,11 +373,11 @@ INLINE double OVERLOADABLE intel_sub_group_shuffle_xor( double x, uint c )
 
 #endif // defined(cl_khr_fp64)
 
-#define  DEFN_SUB_GROUP_BROADCAST(TYPE, TYPE_ABBR)                                         \
-INLINE TYPE OVERLOADABLE  sub_group_broadcast( TYPE x, uint sub_group_local_id )           \
-{                                                                                          \
-    uint3 local_id = (uint3)(sub_group_local_id,0,0);                                      \
-    return __builtin_spirv_OpGroupBroadcast_i32_##TYPE_ABBR##_v3i32(Subgroup,x,local_id);  \
+#define  DEFN_SUB_GROUP_BROADCAST(TYPE, SPV_TYPE, TYPE_ABBR)                                                         \
+INLINE TYPE OVERLOADABLE  sub_group_broadcast( TYPE x, uint sub_group_local_id )                                     \
+{                                                                                                                    \
+    uint3 local_id = (uint3)(sub_group_local_id,0,0);                                                                \
+    return as_##TYPE(__builtin_spirv_OpGroupBroadcast_i32_##TYPE_ABBR##_v3i32(Subgroup,as_##SPV_TYPE(x),local_id));  \
 }
 
 #define  DEFN_INTEL_SUB_GROUP_BROADCAST(TYPE, TYPE_ABBR)                                   \
@@ -387,21 +387,47 @@ INLINE TYPE OVERLOADABLE  intel_sub_group_broadcast( TYPE x, uint sub_group_loca
     return __builtin_spirv_OpGroupBroadcast_i32_##TYPE_ABBR##_v3i32(Subgroup,x,local_id);  \
 }
 
-DEFN_SUB_GROUP_BROADCAST(int,    i32)
-DEFN_SUB_GROUP_BROADCAST(uint,   i32)
-DEFN_SUB_GROUP_BROADCAST(long,   i64)
-DEFN_SUB_GROUP_BROADCAST(ulong,  i64)
-DEFN_SUB_GROUP_BROADCAST(float,  f32)
+DEFN_SUB_GROUP_BROADCAST(int,   uint,  i32)
+DEFN_SUB_GROUP_BROADCAST(uint,  uint,  i32)
+DEFN_SUB_GROUP_BROADCAST(long,  ulong,  i64)
+DEFN_SUB_GROUP_BROADCAST(ulong, ulong,  i64)
+DEFN_SUB_GROUP_BROADCAST(float, float, f32)
 #if defined(cl_khr_fp16)
-DEFN_SUB_GROUP_BROADCAST(half,   f16)
+DEFN_SUB_GROUP_BROADCAST(half,  half, f16)
 #endif // cl_khr_fp16
 #if defined(cl_khr_fp64)
-DEFN_SUB_GROUP_BROADCAST(double, f64)
+DEFN_SUB_GROUP_BROADCAST(double, double, f64)
 #endif // cl_khr_fp64
 
-#ifdef cl_intel_subgroups_char
-DEFN_SUB_GROUP_BROADCAST(char,   i8)
-#endif // cl_intel_subgroups_char
+#if defined(cl_khr_subgroup_extended_types)
+DEFN_SUB_GROUP_BROADCAST(char,   uchar, i8)
+DEFN_SUB_GROUP_BROADCAST(uchar,  uchar, i8)
+DEFN_SUB_GROUP_BROADCAST(short,  ushort, i16)
+DEFN_SUB_GROUP_BROADCAST(ushort, ushort, i16)
+
+#define DEFN_SUB_GROUP_BROADCAST_VEC(TYPE, SPV_TYPE, TYPE_ABBR)  \
+DEFN_SUB_GROUP_BROADCAST(TYPE##2,  SPV_TYPE##2,  v2##TYPE_ABBR) \
+DEFN_SUB_GROUP_BROADCAST(TYPE##3,  SPV_TYPE##3,  v3##TYPE_ABBR) \
+DEFN_SUB_GROUP_BROADCAST(TYPE##4,  SPV_TYPE##4,  v4##TYPE_ABBR) \
+DEFN_SUB_GROUP_BROADCAST(TYPE##8,  SPV_TYPE##8,  v8##TYPE_ABBR) \
+DEFN_SUB_GROUP_BROADCAST(TYPE##16, SPV_TYPE##16, v16##TYPE_ABBR)
+
+DEFN_SUB_GROUP_BROADCAST_VEC(char, uchar, i8)
+DEFN_SUB_GROUP_BROADCAST_VEC(uchar, uchar, i8)
+DEFN_SUB_GROUP_BROADCAST_VEC(short, ushort, i16)
+DEFN_SUB_GROUP_BROADCAST_VEC(ushort, ushort, i16)
+DEFN_SUB_GROUP_BROADCAST_VEC(int, uint, i32)
+DEFN_SUB_GROUP_BROADCAST_VEC(uint, uint, i32)
+DEFN_SUB_GROUP_BROADCAST_VEC(long, ulong, i64)
+DEFN_SUB_GROUP_BROADCAST_VEC(ulong, ulong, i64)
+DEFN_SUB_GROUP_BROADCAST_VEC(float, float, f32)
+#if defined(cl_khr_fp16)
+DEFN_SUB_GROUP_BROADCAST_VEC(half, half, f16)
+#endif // defined(cl_khr_fp16)
+#if defined(cl_khr_fp64)
+DEFN_SUB_GROUP_BROADCAST_VEC(double, double, f64)
+#endif // defined(cl_khr_fp64)
+#endif
 
 #if defined(cl_intel_subgroups_short)
 DEFN_INTEL_SUB_GROUP_BROADCAST(short,  i16)
