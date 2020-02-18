@@ -760,6 +760,7 @@ namespace IGC
             locAnnotation->PayloadSizeInBytes = kernelArg->getAllocateSize();
             locAnnotation->ArgumentNumber = kernelArg->getAssociatedArgNo();
             locAnnotation->LocationIndex = kernelArg->getLocationIndex();
+            locAnnotation->LocationCount = kernelArg->getLocationCount();
             m_kernelInfo.m_localPointerArgument.push_back(locAnnotation);
         }
         break;
@@ -1280,7 +1281,6 @@ namespace IGC
         }
         break;
         default:
-            // OCLTODO: What about PTR_LOCAL? no annotation?
             // Do nothing
             break;
         }

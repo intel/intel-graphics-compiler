@@ -103,6 +103,7 @@ struct LocalArgumentAnnotation : KernelArgumentAnnotation
     DWORD  PayloadPosition;
     DWORD  PayloadSizeInBytes;
     DWORD  LocationIndex;
+    DWORD  LocationCount;
 };
 
 
