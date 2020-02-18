@@ -654,10 +654,18 @@ void ScalarizeFunction::scalarizeInstruction(ExtractElementInst* EI)
 
     // Connect the "extracted" value to all its consumers
     uint64_t scalarIndex = cast<ConstantInt>(scalarIndexVal)->getZExtValue();
-    assert(NULL != operand[static_cast<unsigned int>(scalarIndex)] && "SCM error");
+    if (static_cast<unsigned int>(scalarIndex) < vectorValue->getType()->getVectorNumElements())
+    {
+        assert(NULL != operand[static_cast<unsigned int>(scalarIndex)] && "SCM error");
 
-    // Replace all users of this inst, with the extracted scalar value
-    EI->replaceAllUsesWith(operand[static_cast<unsigned int>(scalarIndex)]);
+        // Replace all users of this inst, with the extracted scalar value
+        EI->replaceAllUsesWith(operand[static_cast<unsigned int>(scalarIndex)]);
+    }
+    else
+    {
+        assert(0 && "The instruction extractElement is out of bounds.");
+        EI->replaceAllUsesWith(UndefValue::get(vectorValue->getType()->getVectorElementType()));
+    }
 
     // Remove original instruction
     m_removedInsts.insert(EI);
