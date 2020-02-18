@@ -2419,9 +2419,18 @@ Constant* IGCConstProp::ConstantFoldCallInstruction(CallInst* inst)
                 auto APF = C0->getValueAPF();
                 double C0value = type->isFloatTy() ? APF.convertToFloat() :
                     APF.convertToDouble();
+                double C0value_intPart = trunc(C0value);
+                double C0value_fractPart = C0value - C0value_intPart;
                 if (C0value > 0.0)
                 {
-                    C = ConstantFP::get(type, round(C0value));
+                    if (C0value_fractPart == .5 && fmod(C0value_intPart, 2) == 0)
+                    {
+                        C = ConstantFP::get(type, trunc(C0value));
+                    }
+                    else
+                    {
+                        C = ConstantFP::get(type, round(C0value));
+                    }
                 }
             }
             break;
