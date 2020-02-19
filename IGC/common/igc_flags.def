@@ -276,6 +276,7 @@ DECLARE_IGC_REGKEY(DWORD, EnableIntDivRemCombine,       0x0,   "Given div/rem pa
 DECLARE_IGC_REGKEY(bool, EnableRecursionOpenCL,         false, "Enable recursion with OpenCL user functions", false)
 DECLARE_IGC_REGKEY(bool, DisableBufferToResPromotionAir,true,  "Disable promoting beffers to resources", false)
 DECLARE_IGC_REGKEY(bool, ForceDPEmulation,              false, "Force double emulation for testing purpose", false)
+DECLARE_IGC_REGKEY(bool, EnableDPEmulation,             false, "Enforce double precision floating point operations emulation on platforms that do not support it natively", true)
 DECLARE_IGC_REGKEY(bool, DPEmuNeedI64Emu,               true,  "Double Emulation needs I64 emulation. Unsetting it to disable I64 Emulation for testing.", false)
 DECLARE_IGC_REGKEY(bool, ForceSPDivEmulation,           false, "Force SP Div emulation for testing purpose", false)
 DECLARE_IGC_REGKEY(bool, EnableGen11TwoStackTSG,        false, "Enable Two stack TSG gen11 feature", false)
