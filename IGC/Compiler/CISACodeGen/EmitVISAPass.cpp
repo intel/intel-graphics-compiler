@@ -11738,7 +11738,7 @@ void EmitPass::emitScalarAtomics(
     CVariable* pDstAddr,
     CVariable* pSrc,
     bool isA64,
-    bool is16Bit)
+    int bitWidth)
 {
     e_opcode op = EOPCODE_ADD;
     // find the value for which opcode(x, identity) == x
@@ -11773,7 +11773,11 @@ void EmitPass::emitScalarAtomics(
         break;
     }
 
-    VISA_Type type = is16Bit ? ISA_TYPE_W : ISA_TYPE_D;
+    VISA_Type type =
+        bitWidth == 16 ? ISA_TYPE_W :
+        bitWidth == 32 ? ISA_TYPE_D :
+                         ISA_TYPE_Q;
+    assert(bitWidth == 16 || bitWidth == 32 || bitWidth == 64 && "invalid bitsize");
     if (atomic_op == EATOMIC_INC || atomic_op == EATOMIC_DEC)
     {
         if (atomic_op == EATOMIC_INC)
@@ -11843,7 +11847,7 @@ void EmitPass::emitScalarAtomics(
         m_currShader->GetNewVariable(1, ISA_TYPE_UD, IGC::EALIGN_GRF, true) :
         nullptr;
 
-    if (is16Bit)
+    if (bitWidth == 16)
     {
         CVariable* pCastAtomicSrcVal =
             m_currShader->GetNewVariable(1, ISA_TYPE_UD, IGC::EALIGN_GRF, true);
@@ -11858,7 +11862,7 @@ void EmitPass::emitScalarAtomics(
                 uniformAtomicOp, resource,
                 pReturnVal, pDstAddr,
                 pFinalAtomicSrcVal, nullptr,
-                is16Bit ? 16 : 32);
+                bitWidth);
         }
         else
         {
@@ -11866,7 +11870,7 @@ void EmitPass::emitScalarAtomics(
                 uniformAtomicOp, resource,
                 pReturnVal, pDstAddr,
                 pFinalAtomicSrcVal,
-                nullptr, is16Bit);
+                nullptr, bitWidth == 16);
         }
     m_encoder->Push();
 
@@ -12028,7 +12032,7 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst* pInsn)
         e_alignment uniformAlign = isA64 ? EALIGN_2GRF : EALIGN_GRF;
         // Re-align the pointer if it's not GRF aligned.
         pDstAddr = ReAlignUniformVariable(pDstAddr, uniformAlign);
-        emitScalarAtomics(pInsn, resource, atomic_op, pDstAddr, pSrc0, isA64, is16Bit);
+        emitScalarAtomics(pInsn, resource, atomic_op, pDstAddr, pSrc0, isA64, bitwidth);
         ResetVMask();
         return;
     }

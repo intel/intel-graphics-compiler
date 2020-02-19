@@ -248,7 +248,7 @@ namespace IGC
             CVariable* pDstAddr,
             CVariable* pSrc,
             bool isA64,
-            bool is16Bit);
+            int bitSize);
 
         /// reduction and prefix/postfix facilities
         CVariable* ScanReducePrepareSrc(VISA_Type type, uint64_t identityValue, bool negate, bool secondHalf,
