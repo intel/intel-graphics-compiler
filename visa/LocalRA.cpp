@@ -850,7 +850,7 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign)
         {
             if (kernel.getOption(vISA_GenerateDebugInfo))
             {
-                uint32_t start = 0;
+                uint32_t start = 0, end = UNMAPPABLE_VISA_INDEX;
                 for (auto rit = kernel.fg.rbegin();
                     rit != kernel.fg.rend();
                     rit++)
@@ -859,13 +859,22 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign)
 
                     if (bb->size() > 0)
                     {
-                        break;
+                        for (auto inst : bb->getInstList())
+                        {
+                            if (inst->getCISAOff() != UNMAPPABLE_VISA_INDEX)
+                            {
+                                end = bb->back()->getCISAOff();
+                                break;
+                            }
+                        }
+                        if(end != UNMAPPABLE_VISA_INDEX)
+                            break;
                     }
                 }
 
                 for (auto dcl : unallocatedRanges)
                 {
-                    updateDebugInfo(kernel, dcl, start);
+                    updateDebugInfo(kernel, dcl, start, end);
                 }
 
                 // unallocatedRanges doesnt contain input dcls
@@ -873,7 +882,7 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign)
                 {
                     if (dcl->isInput())
                     {
-                        updateDebugInfo(kernel, dcl, start);
+                        updateDebugInfo(kernel, dcl, start, end);
                     }
                 }
             }
