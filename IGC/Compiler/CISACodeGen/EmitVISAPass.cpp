@@ -9870,6 +9870,30 @@ void EmitPass::emitStoreRawIndexed(GenIntrinsicInst* inst)
     m_currShader->isMessageTargetDataCacheDataPort = true;
 }
 
+void EmitPass::emitStore3D(StoreInst* inst, Value* elmIdxV)
+{
+    Value* ptrVal = inst->getPointerOperand();
+    Value* pllElmIdx = nullptr;
+    if (elmIdxV)
+    {
+        pllElmIdx = elmIdxV;
+    }
+    else if (isa<ConstantPointerNull>(ptrVal))
+    {
+        pllElmIdx = ConstantInt::get(Type::getInt32Ty(inst->getContext()), 0);
+    }
+    else
+    {
+        pllElmIdx = inst->getPointerOperand();
+    }
+
+    // Only support for scratch space added currently during emitStore
+    Value* pllValToStore = inst->getValueOperand();
+    Value* pllDstPtr = inst->getPointerOperand();
+
+    emitStore3DInner(pllValToStore, pllDstPtr, pllElmIdx);
+}
+
 void EmitPass::emitStore3DInner(Value* pllValToStore, Value* pllDstPtr, Value* pllElmIdx)
 {
     assert(pllDstPtr != nullptr);

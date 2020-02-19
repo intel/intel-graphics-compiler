@@ -148,6 +148,7 @@ namespace IGC
 
         // TODO: unify the functions below and clean up
         void emitStore(llvm::StoreInst* inst, llvm::Value* offset = nullptr, llvm::ConstantInt* immOffset = nullptr);
+        void emitStore3D(llvm::StoreInst* inst, llvm::Value* elemIdxV = nullptr);
         void emitStore3DInner(llvm::Value* pllValToStore, llvm::Value* pllDstPtr, llvm::Value* pllElmIdx);
 
         void emitLoad(llvm::LoadInst* inst, llvm::Value* offset = nullptr, llvm::ConstantInt* immOffset = nullptr);   // single load, no pattern
