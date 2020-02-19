@@ -69,7 +69,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "AdaptorOCL/SPIRV/libSPIRV/SPIRVValue.h"
 #endif
 
-#ifdef IGC_BUILD_SPIRV_TOOLS
+#ifdef IGC_SPIRV_TOOLS_ENABLED
 #include "spirv-tools/libspirv.h"
 #endif
 
@@ -815,7 +815,7 @@ bool TranslateBuild(
         {
             DumpShaderFile(pOutputFolder, (char *)pInputArgs->pInput, pInputArgs->InputSize, hash, ".spv");
 
-            #ifdef IGC_BUILD_SPIRV_TOOLS
+            #ifdef IGC_SPIRV_TOOLS_ENABLED
 
             const spv_target_env target_env = SPV_ENV_UNIVERSAL_1_3;
             spv_context context = spvContextCreate(target_env);

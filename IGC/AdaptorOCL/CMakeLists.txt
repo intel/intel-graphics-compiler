@@ -140,10 +140,6 @@ add_library("${IGC_BUILD__PROJ__AdaptorOCL}" STATIC
   )
 
 add_dependencies("${IGC_BUILD__PROJ__AdaptorOCL}" "${IGC_BUILD__PROJ__GenISAIntrinsics}")
-if(IGC_BUILD__SPIRV_TOOLS_ENABLED)
-    target_compile_definitions("${IGC_BUILD__PROJ__AdaptorOCL}" PRIVATE $<$<NOT:$<CONFIG:Release>>:IGC_BUILD_SPIRV_TOOLS>)
-    target_include_directories("${IGC_BUILD__PROJ__AdaptorOCL}" PRIVATE $<$<NOT:$<CONFIG:Release>>:${IGC_BUILD__SPIRV-Tools_DIR}/include>)
-endif()
 set_property(TARGET "${IGC_BUILD__PROJ__AdaptorOCL}" PROPERTY PROJECT_LABEL "${IGC_BUILD__PROJ_LABEL__AdaptorOCL}")
 
 

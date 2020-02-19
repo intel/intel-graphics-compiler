@@ -3405,7 +3405,7 @@ igc_sg_define(IGC__Common_CLElfLib)
 
 add_subdirectory(GenISAIntrinsics)
 
-if(LLVM_ON_WIN32 AND (CMAKE_CONFIGURATION_TYPES OR ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug") OR ("${CMAKE_BUILD_TYPE}" STREQUAL "ReleaseInternal")))
+if(CMAKE_SYSTEM_NAME MATCHES "Windows")
     set(IGC_BUILD__SPIRV_TOOLS_ENABLED ON)
 endif()
 
@@ -3431,7 +3431,8 @@ if(IGC_BUILD__SPIRV_TOOLS_ENABLED)
     message(STATUS "Option SPIRV_SKIP_EXECUTABLES: ${SPIRV_SKIP_EXECUTABLES}")
     message(STATUS "Option SPIRV_HEADERS_SKIP_INSTALL: ${SPIRV_HEADERS_SKIP_INSTALL}")
     message(STATUS "Option SPIRV_HEADERS_SKIP_EXAMPLES: ${SPIRV_HEADERS_SKIP_EXAMPLES}")
-    add_subdirectory("${IGC_BUILD__SPIRV-Tools_DIR}" "${IGC_BUILD__SPIRV-Tools_OUTPUT_DIR}" EXCLUDE_FROM_ALL)
+    # add_subdirectory("${IGC_BUILD__SPIRV-Headers_DIR}" "${IGC_BUILD__SPIRV-Headers_OUTPUT_DIR}")
+    add_subdirectory("${IGC_BUILD__SPIRV-Tools_DIR}" "${IGC_BUILD__SPIRV-Tools_OUTPUT_DIR}")
     set(IGC_BUILD__PROJ__SPIRV-Tools "SPIRV-Tools")
     unset(IGC_BUILD__SPIRV-Headers_OUTPUT_DIR)
     unset(IGC_BUILD__SPIRV-Tools_OUTPUT_DIR)
@@ -3443,6 +3444,8 @@ if(IGC_BUILD__SPIRV_TOOLS_ENABLED)
     unset(SPIRV_HEADERS_SKIP_EXAMPLES)
     include_directories("${IGC_BUILD__SPIRV-Headers_DIR}/include")
     include_directories("${IGC_BUILD__SPIRV-Tools_DIR}/include")
+    set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS_DEBUG IGC_SPIRV_TOOLS_ENABLED)
+    set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS_RELEASEINTERNAL IGC_SPIRV_TOOLS_ENABLED)
     message(STATUS "=============================================================================")
 endif()
 
@@ -3782,11 +3785,6 @@ foreach(_libBuildSuffix ${IGC_BUILD__MAIN_IGC_LIB_SUFFIXES})
       )
   endif()
 endforeach()
-
-if(IGC_BUILD__SPIRV_TOOLS_ENABLED)
-    # Build only in Debug and ReleaseInternal
-    set_property(TARGET ${IGC_BUILD__PROJ__SPIRV-Tools} PROPERTY EXCLUDE_FROM_DEFAULT_BUILD_RELEASE TRUE)
-endif()
 
 #FCL
   get_property(_targetType TARGET "${IGC_BUILD__PROJ__fcl_dll}" PROPERTY TYPE)
