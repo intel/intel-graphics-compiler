@@ -43,8 +43,7 @@ enum class cmc_arg_kind : int32_t {
     Sampler,
     Image1d,
     Image2d,
-    Image3d,
-    PrintBuffer // IMPLICIT_PRINTF_BUFFER
+    Image3d
 };
 
 struct cmc_arg_info {
@@ -67,11 +66,6 @@ struct cmc_arg_info {
     cmc_access_kind access = cmc_access_kind::undef;
 };
 
-struct cmc_ocl_print_string {
-    static constexpr unsigned max_width = 128;
-    char s[max_width];
-};
-
 // compilation interface bewteen cmc and igc
 struct cmc_kernel_info {
     /// The kernel name.
@@ -82,12 +76,6 @@ struct cmc_kernel_info {
 
     /// The kernel argument info.
     cmc_arg_info *arg_descs;
-
-    /// number of format strings in the kernel
-    unsigned num_print_strings;
-
-    /// The kernel format string storage
-    cmc_ocl_print_string *print_string_descs;
 
     // ThreadPayload
     bool HasLocalIDx = false;

@@ -353,17 +353,6 @@ static void generatePatchTokens(const cmc_kernel_info *info, CMKernel& kernel)
     // Setup argument to BTI mapping.
     kernel.m_kernelInfo.m_argIndexMap.clear();
 
-    for (unsigned i = 0; i < info->num_print_strings; i++) {
-        assert(info->print_string_descs);
-        cmc_ocl_print_string& SI = info->print_string_descs[i];
-        iOpenCL::PrintfStringAnnotation* stringAnnotation = new iOpenCL::PrintfStringAnnotation;
-        stringAnnotation->Index = i;
-        stringAnnotation->StringSize = sizeof(SI.s);
-        stringAnnotation->StringData = new char[cmc_ocl_print_string::max_width];
-        std::copy(SI.s, SI.s + cmc_ocl_print_string::max_width, stringAnnotation->StringData);
-        kernel.m_kernelInfo.m_printfStringAnnotations.push_back(stringAnnotation);
-    }
-
     for (unsigned i = 0; i < info->num_args; ++i) {
         assert(info->arg_descs);
         cmc_arg_info& AI = info->arg_descs[i];
@@ -407,14 +396,6 @@ static void generatePatchTokens(const cmc_kernel_info *info, CMKernel& kernel)
         case cmc_arg_kind::Image3d:
             kernel.createImageAnnotation(AI.index, AI.BTI, 3, isWriteable);
             kernel.m_kernelInfo.m_argIndexMap[AI.index] = AI.BTI;
-            break;
-        case cmc_arg_kind::PrintBuffer:
-            kernel.m_kernelInfo.m_printfBufferAnnotation = new iOpenCL::PrintfBufferAnnotation();
-            kernel.m_kernelInfo.m_printfBufferAnnotation->AnnotationSize = sizeof(kernel.m_kernelInfo.m_printfBufferAnnotation);
-            kernel.m_kernelInfo.m_argIndexMap[AI.index] = 255;
-            kernel.m_kernelInfo.m_printfBufferAnnotation->PayloadPosition = AI.offset - constantPayloadStart;
-            kernel.m_kernelInfo.m_printfBufferAnnotation->Index = 0;
-            kernel.m_kernelInfo.m_printfBufferAnnotation->DataSize = 8;
             break;
         }
     }
