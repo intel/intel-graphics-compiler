@@ -6398,6 +6398,12 @@ bool HWConformity::canSplitInst( G4_INST *inst, G4_INST *use_op )
             // don't split inst with explicit acc
             return false;
         }
+        if (src->isSrcRegRegion() && src->asSrcRegRegion()->getRegion()->vertStride == 32 && src->asSrcRegRegion()->getRegion()->width == 1)
+        {
+            // don't split the source into even/odd since verstride can't exceed 32
+            // ToDo: check for horizontal stride as well?
+            return false;
+        }
     }
 
     return true;
@@ -6603,9 +6609,9 @@ G4_INST* HWConformity::splitInstWithByteDst( G4_INST *expand_op )
         expand_sec_half_op->setDest( expand_op->getDst() );
     }
 
-    for( int k = 0, n_srcs = expand_op->getNumSrc(); k < n_srcs; k++ )
+    for (int k = 0, n_srcs = expand_op->getNumSrc(); k < n_srcs; k++)
     {
-        G4_Operand *expand_src = expand_op->getSrc(k);
+        G4_Operand* expand_src = expand_op->getSrc(k);
 
         if (!expand_src)
             continue;
@@ -6613,52 +6619,54 @@ G4_INST* HWConformity::splitInstWithByteDst( G4_INST *expand_op )
         if ((expand_op->isMath() && k == 1 && expand_src->isNullReg()) ||
             expand_src->isImm()) {
             expand_sec_half_op->setSrc(expand_src, k);
-        } else if (expand_src->isSrcRegRegion()) {
-            G4_SrcRegRegion *expandSrcRegion = expand_src->asSrcRegRegion();
+        }
+        else if (expand_src->isSrcRegRegion()) {
+            G4_SrcRegRegion* expandSrcRegion = expand_src->asSrcRegRegion();
 
             if (expandSrcRegion->isScalar()) {
                 expand_sec_half_op->setSrc(builder.duplicateOperand(expand_src), k);
-            } else {
+            }
+            else {
                 short secondSubRegOffDiff = 0, secondAddrImmedDiff = 0;
 
                 const RegionDesc* origRegion = expandSrcRegion->getRegion();
                 const RegionDesc* newRegion = NULL;
 
-                if( origRegion->width == 1 )
+                if (origRegion->width == 1)
                 {
                     newRegion = builder.createRegionDesc(origRegion->vertStride * 2, origRegion->width, origRegion->horzStride);
                     secondSubRegOffDiff = origRegion->vertStride;
                 }
                 else
                 {
-                    unsigned short newWD = origRegion->width/2;
+                    unsigned short newWD = origRegion->width / 2;
                     secondSubRegOffDiff = origRegion->horzStride;
                     newRegion = builder.createRegionDesc(
                         (newWD == 1 && newExecSize == 1) ? 0 : origRegion->vertStride,
-                        newWD, (newWD== 1) ? 0 : origRegion->horzStride * 2);
+                        newWD, (newWD == 1) ? 0 : origRegion->horzStride * 2);
                 }
-                secondAddrImmedDiff = (short) (secondSubRegOffDiff * G4_Type_Table[expand_src->getType()].byteSize);
-                expandSrcRegion->setRegion( newRegion );
+                secondAddrImmedDiff = (short)(secondSubRegOffDiff * G4_Type_Table[expand_src->getType()].byteSize);
+                expandSrcRegion->setRegion(newRegion);
 
-                bool directSrc = ( expandSrcRegion->getRegAccess() == Direct );
-                if( secondAddrImmedDiff >= GENX_GRF_REG_SIZ )
+                bool directSrc = (expandSrcRegion->getRegAccess() == Direct);
+                if (secondAddrImmedDiff >= GENX_GRF_REG_SIZ)
                 {
                     secondSubRegOffDiff =
-                        (short)((secondAddrImmedDiff - GENX_GRF_REG_SIZ ) / G4_Type_Table[expand_src->getType()].byteSize);
+                        (short)((secondAddrImmedDiff - GENX_GRF_REG_SIZ) / G4_Type_Table[expand_src->getType()].byteSize);
                 }
-                G4_SrcRegRegion *secondSrcOpnd = builder.createSrcRegRegion(
+                G4_SrcRegRegion* secondSrcOpnd = builder.createSrcRegRegion(
                     expandSrcRegion->getModifier(),
                     expandSrcRegion->getRegAccess(),
                     expandSrcRegion->getBase(),
-                    expandSrcRegion->getRegOff() + ( ( directSrc && secondAddrImmedDiff >= GENX_GRF_REG_SIZ ) ? 1 : 0 ),
-                    expandSrcRegion->getSubRegOff() + ( directSrc ? secondSubRegOffDiff : 0 ),
+                    expandSrcRegion->getRegOff() + ((directSrc && secondAddrImmedDiff >= GENX_GRF_REG_SIZ) ? 1 : 0),
+                    expandSrcRegion->getSubRegOff() + (directSrc ? secondSubRegOffDiff : 0),
                     newRegion,
                     expandSrcRegion->getType());
                 if (expandSrcRegion->getRegAccess() != Direct)
                 {
-                    secondSrcOpnd->setImmAddrOff( expandSrcRegion->getAddrImm() + secondAddrImmedDiff );
+                    secondSrcOpnd->setImmAddrOff(expandSrcRegion->getAddrImm() + secondAddrImmedDiff);
                 }
-                expand_sec_half_op->setSrc( secondSrcOpnd, k );
+                expand_sec_half_op->setSrc(secondSrcOpnd, k);
             }
         }
     }
