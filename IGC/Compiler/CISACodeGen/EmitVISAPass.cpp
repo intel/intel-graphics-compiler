@@ -275,8 +275,20 @@ bool EmitPass::canCompileCurrentShader(llvm::Function& F)
         }
         else
         {
-            // Can't support SIMD32 due to slicing
-            return m_SimdMode != SIMDMode::SIMD32;
+            // Check if there is a required sub group size specified
+            MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+            FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(&F);
+            int simd_size = funcInfoMD->getSubGroupSize()->getSIMD_size();
+            if (simd_size)
+            {
+                // Can't support SIMD32 due to slicing
+                return m_SimdMode != SIMDMode::SIMD32;
+            }
+            // If no sub group size is specified, only allow SIMD8
+            else
+            {
+                return m_SimdMode == SIMDMode::SIMD8;
+            }
         }
     }
     else if(m_moduleMD->compOpt.IsLibraryCompilation == true)
