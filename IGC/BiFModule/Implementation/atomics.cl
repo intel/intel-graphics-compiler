@@ -952,13 +952,13 @@ uint __builtin_spirv_OpAtomicISub_p0i32_i32_i32_i32( volatile __private uint *Po
 
 uint __builtin_spirv_OpAtomicISub_p1i32_i32_i32_i32( volatile __global uint *Pointer, uint Scope, uint Semantics, uint Value )
 {
-    atomic_operation_1op( __builtin_IB_atomic_add_global_i32, uint, (global int*)Pointer, Scope, Semantics, -as_int(Value) );
+    atomic_operation_1op( __builtin_IB_atomic_sub_global_i32, uint, (global int*)Pointer, Scope, Semantics, Value );
 }
 
 
 uint __builtin_spirv_OpAtomicISub_p3i32_i32_i32_i32( volatile __local uint *Pointer, uint Scope, uint Semantics, uint Value )
 {
-    atomic_operation_1op( __builtin_IB_atomic_add_local_i32, uint, (local int*)Pointer, Scope, Semantics, -as_int(Value) );
+    atomic_operation_1op( __builtin_IB_atomic_sub_local_i32, uint, (local int*)Pointer, Scope, Semantics, Value );
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
@@ -967,11 +967,11 @@ uint __builtin_spirv_OpAtomicISub_p4i32_i32_i32_i32( volatile __generic uint *Po
 {
     if(__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
-        atomic_operation_1op( __builtin_IB_atomic_add_local_i32, uint, (__local int*)Pointer, Scope, Semantics, -as_int(Value) );
+        atomic_operation_1op( __builtin_IB_atomic_sub_local_i32, uint, (__local int*)Pointer, Scope, Semantics, Value );
     }
     else
     {
-        atomic_operation_1op( __builtin_IB_atomic_add_global_i32, uint, (__global int*)Pointer, Scope, Semantics, -as_int(Value) );
+        atomic_operation_1op( __builtin_IB_atomic_sub_global_i32, uint, (__global int*)Pointer, Scope, Semantics, Value );
     }
 }
 
@@ -988,7 +988,7 @@ ulong __builtin_spirv_OpAtomicISub_p0i64_i32_i32_i64( volatile __private ulong *
 
 ulong __builtin_spirv_OpAtomicISub_p1i64_i32_i32_i64( volatile __global ulong *Pointer, uint Scope, uint Semantics, ulong Value )
 {
-    atomic_operation_1op( __builtin_IB_atomic_add_global_i64, ulong, (global long*)Pointer, Scope, Semantics, -as_long(Value) );
+    atomic_operation_1op( __builtin_IB_atomic_sub_global_i64, ulong, (global long*)Pointer, Scope, Semantics, Value );
 }
 
 
