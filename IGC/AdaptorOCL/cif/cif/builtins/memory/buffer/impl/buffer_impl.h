@@ -32,6 +32,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "cif/macros/enable.h"
 
+#include "cif/helpers/memory.h"
+
 namespace CIF {
 
 namespace Builtins {

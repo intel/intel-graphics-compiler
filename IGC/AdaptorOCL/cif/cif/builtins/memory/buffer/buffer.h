@@ -31,7 +31,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "cif/common/id.h"
 #include "cif/common/cif.h"
 #include "cif/common/cif_main.h"
-#include "cif/helpers/memory.h"
 
 #include "cif/macros/enable.h"
 
