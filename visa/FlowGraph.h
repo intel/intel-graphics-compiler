@@ -763,6 +763,7 @@ public:
 
     std::unordered_map<G4_InstCF*, struct PseudoDcls> fcallToPseudoDclMap;
 
+    // offset in unit of OW
     unsigned                    callerSaveAreaOffset = 0;
     unsigned                    calleeSaveAreaOffset = 0;
     unsigned                    paramOverflowAreaOffset = 0;

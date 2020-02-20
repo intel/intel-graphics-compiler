@@ -42,8 +42,9 @@ typedef struct {
     int numGRFUsed;
     int numAsmCount;
 
-    // Kernel specific area.
-    unsigned int spillMemUsed;
+    // spillMemUsed is the scratch size in byte of entire vISA stack for this function/kernel
+    // It contains spill size and caller/callee save size.
+    unsigned int spillMemUsed = 0;
 
     // Debug info is callee allocated
     // and populated only if
