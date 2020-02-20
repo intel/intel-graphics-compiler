@@ -587,17 +587,20 @@ namespace IGC
 
     public:
         // Used by EmitVISAPass to set function attributes
-        void SetFunctionIsKernel(llvm::Function* F) {
-            funcAttributeMap[F].isKernel = true;
+        void InitFuncAttribute(llvm::Function* F, bool isKernel = false) {
+            funcAttributeMap[F].isKernel = isKernel;
         }
         void SetFunctionHasBarrier(llvm::Function* F) {
-            funcAttributeMap[F].hasBarrier = true;
+            if (funcAttributeMap.find(F) != funcAttributeMap.end())
+                funcAttributeMap[F].hasBarrier = true;
         }
         void SetFunctionMaxArgumentStackSize(llvm::Function* F, unsigned size) {
-            funcAttributeMap[F].argumentStackSize = MAX(funcAttributeMap[F].argumentStackSize, size);
+            if (funcAttributeMap.find(F) != funcAttributeMap.end())
+                funcAttributeMap[F].argumentStackSize = MAX(funcAttributeMap[F].argumentStackSize, size);
         }
         void SetFunctionAllocaStackSize(llvm::Function* F, unsigned size) {
-            funcAttributeMap[F].allocaStackSize = size;
+            if (funcAttributeMap.find(F) != funcAttributeMap.end())
+                funcAttributeMap[F].allocaStackSize = size;
         }
     };
 

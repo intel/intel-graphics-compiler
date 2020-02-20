@@ -4765,16 +4765,27 @@ namespace IGC
             vISA::GenFuncAttribEntry entry;
             Function* F = it.first;
 
-            // Ignore internal functions
-            if (!isEntryFunc(m_program->GetContext()->getMetaDataUtils(), F) &&
-                !F->hasFnAttribute("IndirectlyCalled"))
-                continue;
-
             assert(F->getName().size() <= vISA::MAX_SYMBOL_NAME_LENGTH);
             strcpy_s(entry.f_name, vISA::MAX_SYMBOL_NAME_LENGTH, F->getName().str().c_str());
             entry.f_isKernel = it.second.isKernel ? 1 : 0;
             entry.f_hasBarrier = it.second.hasBarrier ? 1 : 0;
             entry.f_privateMemPerThread = (uint32_t) (it.second.argumentStackSize + it.second.allocaStackSize);
+
+            // Get spill mem usage from visa
+            VISAKernel* visaFunc = nullptr;
+            if (it.second.isKernel)
+            {
+                visaFunc = vMainKernel;
+            }
+            else
+            {
+                auto Iter = stackFuncMap.find(F);
+                assert(Iter != stackFuncMap.end() && "vISA function not found");
+                visaFunc = Iter->second;
+            }
+            FINALIZER_INFO* jitInfo;
+            visaFunc->GetJitInfo(jitInfo);
+            entry.f_spillMemPerThread = jitInfo->spillMemUsed;
 
             attribTable.push_back(entry);
         }

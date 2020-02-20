@@ -504,6 +504,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         m_currShader->PreCompile();
         if (hasStackCall)
         {
+            m_encoder->InitFuncAttribute(&F, true);
             CVariable* pStackBase = nullptr;
             CVariable* pStackSize = nullptr;
             m_currShader->InitKernelStack(pStackBase, pStackSize, ptr64bits);
@@ -520,6 +521,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         m_currShader->BeginFunction(&F);
         if (m_FGA && m_FGA->useStackCall(&F))
         {
+            m_encoder->InitFuncAttribute(&F, false);
             emitStackFuncEntry(&F, ptr64bits);
         }
     }

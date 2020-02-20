@@ -313,8 +313,6 @@ void CShader::InitKernelStack(CVariable*& stackBase, CVariable*& stackAllocSize,
             encoder.SetFunctionAllocaStackSize(entry, totalAllocaSize);
         }
     }
-    // Indicate this is the kernel function
-    encoder.SetFunctionIsKernel(entry);
 
     // modify private-memory size to a large setting
     m_ModuleMetadata->FuncMD[entry].privateMemoryPerWI = 8192;
