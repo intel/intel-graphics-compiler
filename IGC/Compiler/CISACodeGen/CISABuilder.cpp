@@ -3993,7 +3993,7 @@ namespace IGC
             SaveOption(vISA_forceNoMaskWA, true);
             SaveOption(vISA_EnableScalarJmp, false);
         }
-        if (m_program->m_Platform->getWATable().Wa_1407528679 != 0 &&
+        if (m_program->m_Platform->getWATable().Wa_1808850743 != 0 &&
             IGC_GET_FLAG_VALUE(NoMaskWA) > 0)
         {
             SaveOption(vISA_noMaskWA, IGC_GET_FLAG_VALUE(NoMaskWA));

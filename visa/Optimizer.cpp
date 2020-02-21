@@ -6695,8 +6695,8 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         //              1 - "emask flag" is created using cmp instructions.
         //
         if (builder.kernel.getOptions()->getTarget() != VISA_CM &&
-            (builder.getuint32Option(vISA_noMaskWA) & 0x3) > 0 &&
-            (getGenxPlatform() == GENX_TGLLP || builder.getOption(vISA_forceNoMaskWA)))
+            ((builder.getuint32Option(vISA_noMaskWA) & 0x3) > 0 ||
+             builder.getOption(vISA_forceNoMaskWA)))
         {
             replaceNoMaskWithAnyhWA();
         }
