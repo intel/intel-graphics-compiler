@@ -101,6 +101,7 @@ namespace IGC
         {
             NOS_TEXT,                   //!< Non-orthogonal states (numan readable)
 
+            CIS_TEXT,                   //!< Compiler input structure (human readable)
             COS_TEXT,                   //!< Compiler output structure (human readable)
 
             ASM_TEXT,                   //!< Input assembly (human readable)
