@@ -8741,8 +8741,6 @@ void EmitPass::emitExtract(llvm::Instruction* inst)
         }
 
         {
-
-
             // address variable represents register a0
             CVariable* pDstArrElm = m_currShader->GetNewAddressVariable(
                 pIndexVar->IsUniform() ? 1 : numLanes(m_currShader->m_SIMDSize),
