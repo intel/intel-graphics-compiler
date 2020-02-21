@@ -5987,7 +5987,7 @@ int IR_Builder::translateVISARawSendInst(G4_Predicate *predOpnd, VISA_Exec_Size 
     }
 
     // bit[0-3] of the exDesc (always imm) holds the SFID
-    G4_SendMsgDescriptor *sendMsgDesc = createSendMsgDesc(static_cast<SFID>(exDesc & 0xF), desc, exDesc, 0,
+    G4_SendMsgDescriptor *sendMsgDesc = createSendMsgDesc(intToSFID(exDesc & 0xF), desc, exDesc, 0,
         getSendAccessType(isRead, isWrite), nullptr, isValidFuncCtrl);
 
     if (isExDescEOT(exDesc))
