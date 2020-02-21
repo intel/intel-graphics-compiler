@@ -3414,8 +3414,8 @@ if(IGC_BUILD__SPIRV_TOOLS_ENABLED)
     message(STATUS "============================ SPIRV-Tools project ============================")
     set(IGC_BUILD__SPIRV-Headers_DIR "${BS_DIR_EXTERNAL_COMPONENTS}/build-tools/SPIRV-Headers")
     set(IGC_BUILD__SPIRV-Tools_DIR "${BS_DIR_EXTERNAL_COMPONENTS}/build-tools/SPIRV-Tools")
-    set(IGC_BUILD__SPIRV-Headers_OUTPUT_DIR "${IGC_BUILD__TOOLS_OUTPUT_DIR}/SPIRV-Headers")
-    set(IGC_BUILD__SPIRV-Tools_OUTPUT_DIR "${IGC_BUILD__TOOLS_OUTPUT_DIR}/SPIRV-Tools")
+    set(IGC_BUILD__SPIRV-Headers_OUTPUT_DIR "${IGC_OPTION__OUTPUT_DIR}/SPIRV-Headers")
+    set(IGC_BUILD__SPIRV-Tools_OUTPUT_DIR "${IGC_OPTION__OUTPUT_DIR}/SPIRV-Tools")
     set(SPIRV-Headers_SOURCE_DIR "${IGC_BUILD__SPIRV-Headers_DIR}")
     option(SKIP_SPIRV_TOOLS_INSTALL "Skip SPIRV-Tools installation" ON)
     option(SPIRV_SKIP_TESTS "Skip building SPIRV-Tools tests along with the library" ON)
@@ -3432,8 +3432,8 @@ if(IGC_BUILD__SPIRV_TOOLS_ENABLED)
     message(STATUS "Option SPIRV_HEADERS_SKIP_INSTALL: ${SPIRV_HEADERS_SKIP_INSTALL}")
     message(STATUS "Option SPIRV_HEADERS_SKIP_EXAMPLES: ${SPIRV_HEADERS_SKIP_EXAMPLES}")
     # add_subdirectory("${IGC_BUILD__SPIRV-Headers_DIR}" "${IGC_BUILD__SPIRV-Headers_OUTPUT_DIR}")
-    add_subdirectory("${IGC_BUILD__SPIRV-Tools_DIR}" "${IGC_BUILD__SPIRV-Tools_OUTPUT_DIR}")
-    set(IGC_BUILD__PROJ__SPIRV-Tools "SPIRV-Tools")
+    add_subdirectory("${IGC_BUILD__SPIRV-Tools_DIR}" "${IGC_BUILD__SPIRV-Tools_OUTPUT_DIR}" EXCLUDE_FROM_ALL)
+    set(IGC_BUILD__PROJ__SPIRV-Tools "SPIRV-Tools") # same name as in subdirectory
     unset(IGC_BUILD__SPIRV-Headers_OUTPUT_DIR)
     unset(IGC_BUILD__SPIRV-Tools_OUTPUT_DIR)
     unset(SPIRV-Headers_SOURCE_DIR)
@@ -3444,8 +3444,10 @@ if(IGC_BUILD__SPIRV_TOOLS_ENABLED)
     unset(SPIRV_HEADERS_SKIP_EXAMPLES)
     include_directories("${IGC_BUILD__SPIRV-Headers_DIR}/include")
     include_directories("${IGC_BUILD__SPIRV-Tools_DIR}/include")
+    set_target_properties("${IGC_BUILD__PROJ__SPIRV-Tools}" PROPERTIES EXCLUDE_FROM_DEFAULT_BUILD_RELEASE TRUE)
     set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS_DEBUG IGC_SPIRV_TOOLS_ENABLED)
     set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS_RELEASEINTERNAL IGC_SPIRV_TOOLS_ENABLED)
+    igc_sg_define(IGC__SPIRV-Tools)
     message(STATUS "=============================================================================")
 endif()
 
@@ -3774,9 +3776,9 @@ foreach(_libBuildSuffix ${IGC_BUILD__MAIN_IGC_LIB_SUFFIXES})
       )
   else()
     target_link_libraries("${IGC_BUILD__PROJ${_libBuildSuffix}}" PRIVATE
-        ${_targetLinkLineCommon}
-        $<$<NOT:$<CONFIG:Release>>:${_targetLinkLineDebugAndReleaseInternalOnly}>
-        ${CMAKE_DL_LIBS}
+        "${_targetLinkLineCommon}"
+        "$<$<NOT:$<CONFIG:Release>>:${_targetLinkLineDebugAndReleaseInternalOnly}>"
+        "${CMAKE_DL_LIBS}"
       )
     # Link line for shared / dynamic library requires only library project (all static libs are linked inside).
     set_property(TARGET "${IGC_BUILD__PROJ${_libBuildSuffix}}" PROPERTY LINK_INTERFACE_LIBRARIES "")
