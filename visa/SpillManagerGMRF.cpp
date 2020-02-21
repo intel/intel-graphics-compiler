@@ -4560,7 +4560,8 @@ void GlobalRA::expandSpillIntrinsic(G4_BB* bb)
         {
             bool isOffBP = inst->asSpillIntrinsic()->isOffBP();
             uint32_t numRows = inst->asSpillIntrinsic()->getNumRows();
-            uint32_t offset = inst->asSpillIntrinsic()->getOffset();
+            uint32_t offset = inst->asSpillIntrinsic()->getOffset() *
+                (G4_GRF_REG_NBYTES / HWORD_BYTE_SIZE);
             auto header = inst->getSrc(0)->asSrcRegRegion();
             auto payload = inst->getSrc(1)->asSrcRegRegion();
             auto spillIt = instIt;
@@ -4728,7 +4729,8 @@ void GlobalRA::expandFillIntrinsic(G4_BB* bb)
         {
             bool isOffBP = inst->asFillIntrinsic()->isOffBP();
             uint32_t numRows = inst->asFillIntrinsic()->getNumRows();
-            uint32_t offset = inst->asFillIntrinsic()->getOffset();
+            uint32_t offset = inst->asFillIntrinsic()->getOffset() *
+                (G4_GRF_REG_NBYTES / HWORD_BYTE_SIZE);
             auto header = inst->getSrc(0)->asSrcRegRegion();
             auto resultRgn = inst->getDst()->asDstRegRegion();
             auto fillIt = instIt;

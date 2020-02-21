@@ -1113,6 +1113,8 @@ public:
         return inst;
     }
 
+    static const unsigned int HWORD_BYTE_SIZE = 32;
+
     // numRows is in hword units
     // offset is in hword units
     G4_INST* createSpill(
@@ -1126,7 +1128,8 @@ public:
         spill->asSpillIntrinsic()->setSrcFilename(srcFilename);
         spill->asSpillIntrinsic()->setCISAOff(CISAoff);
         spill->asSpillIntrinsic()->setFP(fp);
-        spill->asSpillIntrinsic()->setOffset(offset);
+        spill->asSpillIntrinsic()->setOffset((uint32_t)
+            (((uint64_t)offset * HWORD_BYTE_SIZE) / G4_GRF_REG_NBYTES));
         spill->asSpillIntrinsic()->setNumRows(numRows);
         return spill;
     }
@@ -1146,7 +1149,8 @@ public:
         spill->asSpillIntrinsic()->setSrcFilename(srcFilename);
         spill->asSpillIntrinsic()->setCISAOff(CISAoff);
         spill->asSpillIntrinsic()->setFP(fp);
-        spill->asSpillIntrinsic()->setOffset(offset);
+        spill->asSpillIntrinsic()->setOffset((uint32_t)
+            (((uint64_t)offset * HWORD_BYTE_SIZE) / G4_GRF_REG_NBYTES));
         spill->asSpillIntrinsic()->setNumRows(numRows);
         return spill;
     }
@@ -1159,7 +1163,8 @@ public:
         fill->asFillIntrinsic()->setSrcFilename(srcFilename);
         fill->asFillIntrinsic()->setCISAOff(CISAoff);
         fill->asFillIntrinsic()->setFP(fp);
-        fill->asFillIntrinsic()->setOffset(offset);
+        fill->asFillIntrinsic()->setOffset((uint32_t)
+            (((uint64_t)offset * HWORD_BYTE_SIZE) / G4_GRF_REG_NBYTES));
         fill->asFillIntrinsic()->setNumRows(numRows);
         return fill;
     }
@@ -1175,7 +1180,8 @@ public:
         fill->asFillIntrinsic()->setSrcFilename(srcFilename);
         fill->asFillIntrinsic()->setCISAOff(CISAoff);
         fill->asFillIntrinsic()->setFP(fp);
-        fill->asFillIntrinsic()->setOffset(offset);
+        fill->asFillIntrinsic()->setOffset((uint32_t)
+            (((uint64_t)offset * HWORD_BYTE_SIZE) / G4_GRF_REG_NBYTES));
         fill->asFillIntrinsic()->setNumRows(numRows);
         return fill;
     }
