@@ -5718,7 +5718,7 @@ void HWConformity::fixSendInst(G4_BB* bb)
             continue;
         }
 
-        if (inst->getExecSize() < 8)
+        if (inst->getExecSize() < builder.getNativeExecSize())
         {
             // A64 messages require a minimum msg len of two for address (src0), which is inconsistent
             // with our input IR as it allows <2 GRF address variables (e.g., simd1 A64 scatter r/w).
