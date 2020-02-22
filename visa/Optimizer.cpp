@@ -6474,10 +6474,10 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 if (start > 0)
                 {
                     // just change immediate offset
-                    uint16_t subRegOff = src->getSubRegOff() + start;
-                    G4_SrcRegRegion* newSrc = createSrcRegRegion(src->getModifier(), src->getRegAccess(), src->getBase(),
-                        src->getRegOff(), subRegOff, src->getRegion(), src->getType(), src->getAccRegSel());
-                    newSrc->setImmAddrOff(src->getAddrImm());
+                    assert((start % src->getRegion()->width == 0) && "illegal starting offset and width combination");
+                    uint16_t subRegOff = src->getSubRegOff() + start / src->getRegion()->width;
+                    auto newSrc = createIndirectSrc(src->getModifier(), src->getBase(), src->getRegOff(), subRegOff, src->getRegion(),
+                        src->getType(), src->getAddrImm());
                     return newSrc;
                 }
                 else
@@ -6492,10 +6492,8 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 short numRows = start / wd;
                 short numCols = start % wd;
                 short newOff = (numRows * vs + numCols * hs) * G4_Type_Table[src->getType()].byteSize;
-
-                G4_SrcRegRegion* newSrc = createSrcRegRegion(src->getModifier(), src->getRegAccess(), src->getBase(),
-                    src->getRegOff(), src->getSubRegOff(), rd, src->getType(), src->getAccRegSel());
-                newSrc->setImmAddrOff(src->getAddrImm() + newOff);
+                auto newSrc = createIndirectSrc(src->getModifier(), src->getBase(), src->getRegOff(), src->getSubRegOff(), rd,
+                    src->getType(), src->getAddrImm() + newOff);
                 return newSrc;
 
             }
