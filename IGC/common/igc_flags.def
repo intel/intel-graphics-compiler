@@ -213,7 +213,6 @@ DECLARE_IGC_REGKEY(bool, EnableRTmaskPso,               false, "Enable render ta
 
 DECLARE_IGC_GROUP("Shader dumping")
 DECLARE_IGC_REGKEY(bool, EnableCosDump, false, "Enable cos dump", true)
-DECLARE_IGC_REGKEY(bool, EnableCisDump, false, "Enable cis dump", true)
 DECLARE_IGC_REGKEY(bool, DumpLLVMIR,                    false, "dump LLVM IR", true)
 DECLARE_IGC_REGKEY(bool, QualityMetricsEnable,          false, "Enable Quality Metrics for IGC", true)
 DECLARE_IGC_REGKEY(bool, ShaderDumpEnable,              false, "dump LLVM IR, visaasm, and GenISA", true)
