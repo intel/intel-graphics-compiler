@@ -82,7 +82,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 
 # ================================================ Flags ===============================================
 
-
 # Escapes text for regular expressions.
 #
 # @param retValName Name of variable placeholder where result will be returned.
@@ -3309,9 +3308,15 @@ else()
         "LLVMDemangle"
         )
 
-    if(LLVM_VERSION_MAJOR EQUAL 8)
+    if(LLVM_VERSION_MAJOR GREATER_EQUAL 8)
         list(APPEND IGC_BUILD__LLVM_LIBS_TO_LINK
           "LLVMInstCombine"
+          )
+    endif()
+
+    if(LLVM_VERSION_MAJOR GREATER_EQUAL 9)
+        list(APPEND IGC_BUILD__LLVM_LIBS_TO_LINK
+          "LLVMBitstreamReader"
           )
     endif()
 
