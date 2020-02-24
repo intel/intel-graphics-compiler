@@ -348,7 +348,7 @@ namespace IGC
                     }
                     else if (bufType == UAV)
                     {
-                        m_uavLoaded |= BIT(typeBti);
+                        m_uavLoaded |= (uint64_t)1 << (typeBti);
                     }
                     else if (bufType == RENDER_TARGET)
                     {
@@ -380,7 +380,8 @@ namespace IGC
                     }
                     else if (bufType == UAV)
                     {
-                        m_uavLoaded |= BITMASK_RANGE(0, m_pBtiLayout->GetUavIndexSize());
+                        //m_uavLoaded |= BITMASK_RANGE(0, m_pBtiLayout->GetUavIndexSize());
+                        m_uavLoaded |= ((~((0xffffffffffffffff) << (m_pBtiLayout->GetUavIndexSize() + 1))) & (~((0xffffffffffffffff) << 0)));
                     }
                     else if (bufType == RENDER_TARGET)
                     {
@@ -497,12 +498,12 @@ namespace IGC
         CVariable* m_RETV;
 
         std::vector<USC::SConstantGatherEntry> gatherMap;
-        uint m_ConstantBufferLength;
-        uint m_constantBufferMask;
-        uint m_constantBufferLoaded;
-        uint m_uavLoaded;
-        uint m_shaderResourceLoaded[4];
-        uint m_renderTargetLoaded;
+        uint     m_ConstantBufferLength;
+        uint     m_constantBufferMask;
+        uint     m_constantBufferLoaded;
+        uint64_t m_uavLoaded;
+        uint     m_shaderResourceLoaded[4];
+        uint     m_renderTargetLoaded;
 
         int  m_cbSlot;
         uint m_statelessCBPushedSize;
