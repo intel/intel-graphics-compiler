@@ -232,20 +232,20 @@ G4_Operand* IR_Builder::emitSampleIndexGE16(
 
     // calculate the sampler state base pointer offset based on
     // sample index, for putting to msg header M0.3
-    createInst(NULL, G4_shr, NULL, false, 1,
+    createBinOp(G4_shr, 1,
         t0Dst, sampler, createImm(4, Type_UD),
-        InstOpt_WriteEnable, 0);
-    createInst(NULL, G4_shl, NULL, false, 1,
+        InstOpt_WriteEnable, true);
+    createBinOp(G4_shl, 1,
         baseAdjDst, t0Src, createImm(8, Type_UD),
-        InstOpt_WriteEnable, 0);
+        InstOpt_WriteEnable, true);
 
     // get low 4 bits of sample index for putting into msg descriptor
     G4_SrcRegRegion* sampler2Src
         = createSrcRegRegion(Mod_src_undef, Direct,
         sampler->getTopDcl()->getRegVar(), 0, 0, getRegionScalar(), Type_UD);
-    createInst(NULL, G4_and, NULL, false, 1,
+    createBinOp(G4_and, 1,
         idxLowDst, sampler2Src, createImm(0xf, Type_UD),
-        InstOpt_WriteEnable, 0);
+        InstOpt_WriteEnable, true);
     samplerIdx = idxLowSrc;
 
     // add the base pointer offset with r0.3 and put to M0.3
@@ -255,8 +255,8 @@ G4_Operand* IR_Builder::emitSampleIndexGE16(
     G4_SrcRegRegion* src0
         = createSrcRegRegion(Mod_src_undef, Direct,
             builtinR0->getRegVar(), 0, 3, getRegionScalar(), Type_UD);
-    createInst(NULL, G4_add, NULL, false, 1, stateBaseRgn,
-        src0, baseAdjSrc, InstOpt_WriteEnable, 0);
+    createBinOp(G4_add, 1, stateBaseRgn,
+        src0, baseAdjSrc, InstOpt_WriteEnable, true);
 
     return samplerIdx;
 }
@@ -366,6 +366,19 @@ G4_INST* IR_Builder::createMov(uint8_t execSize, G4_DstRegRegion* dst,
     else
     {
         return createInternalInst(nullptr, G4_mov, nullptr, false, execSize, dst, src0, nullptr, option);
+    }
+}
+
+G4_INST* IR_Builder::createBinOp(G4_opcode op, uint8_t execSize, G4_DstRegRegion* dst,
+    G4_Operand* src0, G4_Operand* src1, uint32_t option, bool appendToInstList)
+{
+    if (appendToInstList)
+    {
+        return createInst(nullptr, op, nullptr, false, execSize, dst, src0, src1, option);
+    }
+    else
+    {
+        return createInternalInst(nullptr, op, nullptr, false, execSize, dst, src0, src1, option);
     }
 }
 
@@ -864,7 +877,7 @@ G4_SrcRegRegion* IR_Builder::createBindlessExDesc(uint32_t exdesc)
     }
     else
     {
-        createInst(NULL, G4_add, NULL, false, 1, dst, T252, createImm(exdesc, Type_UD), InstOpt_WriteEnable);
+        createBinOp(G4_add, 1, dst, T252, createImm(exdesc, Type_UD), InstOpt_WriteEnable, true);
     }
     return Create_Src_Opnd_From_Dcl(exDescDecl, getRegionScalar());
 }
@@ -897,17 +910,14 @@ G4_InstSend *IR_Builder::Create_Send_Inst_For_CISA(G4_Predicate *pred,
         {
             //add (1) a0.0:ud bti:ud desc:ud
             // create source for bti
-            createInst(
-                NULL,
+            createBinOp(
                 G4_add,
-                NULL,
-                false,
                 1,
                 addr_dst_opnd,
                 bti,
                 createImm( desc, Type_UD ),
                 InstOpt_WriteEnable,
-                0 );
+                true);
         }
 
         if (needSamplerMove)
@@ -915,49 +925,40 @@ G4_InstSend *IR_Builder::Create_Send_Inst_For_CISA(G4_Predicate *pred,
             G4_Declare *dcl1 = createTempVar(1, Type_UD, Any );
             G4_DstRegRegion* tmp_dst_opnd = Create_Dst_Opnd_From_Dcl(dcl1, 1);
 
-            createInst(
-                NULL,
+            createBinOp(
                 G4_shl,
-                NULL,
-                false,
                 1,
                 tmp_dst_opnd,
                 sti,
                 createImm( 8, Type_UD ),
                 InstOpt_WriteEnable,
-                0 );
+                true );
 
             G4_SrcRegRegion* tmp_src_opnd = Create_Src_Opnd_From_Dcl(dcl1, getRegionScalar());
 
             if( !bti || bti->isImm() )
             {
-                createInst(
-                    NULL,
+                createBinOp(
                     G4_add,
-                    NULL,
-                    false,
                     1,
                     addr_dst_opnd,
                     tmp_src_opnd,
                     createImm( desc, Type_UD ),
                     InstOpt_WriteEnable,
-                    0 );
+                    true);
             }
             else
             {
                 G4_SrcRegRegion* addr_src_opnd = Create_Src_Opnd_From_Dcl(builtinA0, getRegionScalar());
 
-                createInst(
-                    NULL,
+                createBinOp(
                     G4_add,
-                    NULL,
-                    false,
                     1,
                     duplicateOperand( addr_dst_opnd ),
                     addr_src_opnd,
                     tmp_src_opnd,
                     InstOpt_WriteEnable,
-                    0 );
+                    true );
             }
         }
 
@@ -1066,8 +1067,8 @@ G4_InstSend *IR_Builder::Create_SplitSend_Inst(G4_Predicate *pred,
         //add (1) a0.0:ud bti:ud desc:ud
         G4_DstRegRegion* addrDstOpnd = Create_Dst_Opnd_From_Dcl(builtinA0, 1);
 
-        createInst(nullptr, G4_add, nullptr, false, 1, addrDstOpnd, bti,
-            createImm(desc, Type_UD), InstOpt_WriteEnable, 0);
+        createBinOp(G4_add, 1, addrDstOpnd, bti,
+            createImm(desc, Type_UD), InstOpt_WriteEnable, true);
     }
 
     if (needsSamplerMove)
@@ -1092,8 +1093,8 @@ G4_InstSend *IR_Builder::Create_SplitSend_Inst(G4_Predicate *pred,
         {
             // shl (1) tmp:ud sti:ud 0x8:uw
             G4_DstRegRegion* tmpDstOpnd = Create_Dst_Opnd_From_Dcl(dcl1, 1);
-            createInst(nullptr, G4_shl, nullptr, false, 1, tmpDstOpnd, sti,
-                createImm(8, Type_UD), InstOpt_WriteEnable, 0);
+            createBinOp(G4_shl, 1, tmpDstOpnd, sti,
+                createImm(8, Type_UD), InstOpt_WriteEnable, true);
         }
 
         G4_SrcRegRegion* tmpSrcOpnd = Create_Src_Opnd_From_Dcl(dcl1, getRegionScalar());
@@ -1101,17 +1102,17 @@ G4_InstSend *IR_Builder::Create_SplitSend_Inst(G4_Predicate *pred,
         if (!needsSurfaceMove)
         {
             // add (1) a0.0 tmp:ud desc:ud
-            createInst(nullptr, G4_add, nullptr, false, 1, addrDstOpnd, tmpSrcOpnd,
+            createBinOp(G4_add, 1, addrDstOpnd, tmpSrcOpnd,
                 createImm(desc, Type_UD),
                 InstOpt_WriteEnable,
-                0);
+                true);
         }
         else
         {
             // add (1) a0.0 a0.0:ud tmp:ud
             G4_SrcRegRegion* addrSrcOpnd = Create_Src_Opnd_From_Dcl(builtinA0, getRegionScalar());
-            createInst(nullptr, G4_add, nullptr, false, 1, addrDstOpnd, addrSrcOpnd,
-                tmpSrcOpnd, InstOpt_WriteEnable, 0);
+            createBinOp(G4_add, 1, addrDstOpnd, addrSrcOpnd,
+                tmpSrcOpnd, InstOpt_WriteEnable, true);
         }
     }
 
@@ -1165,8 +1166,8 @@ G4_InstSend *IR_Builder::Create_SplitSend_Inst_For_RTWrite(G4_Predicate *pred,
     {
         //add (1) a0.0:ud bti:ud desc:ud
         G4_DstRegRegion* addrDstOpnd = Create_Dst_Opnd_From_Dcl(builtinA0, 1);
-        createInst(nullptr, G4_add, nullptr, false, 1, addrDstOpnd, bti,
-            createImm(desc, Type_UD), InstOpt_WriteEnable, 0);
+        createBinOp(G4_add, 1, addrDstOpnd, bti,
+            createImm(desc, Type_UD), InstOpt_WriteEnable, true);
         descOpnd = Create_Src_Opnd_From_Dcl(builtinA0, getRegionScalar());
     }
     else

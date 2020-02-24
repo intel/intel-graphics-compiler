@@ -1817,6 +1817,9 @@ public:
     G4_INST* createMov(uint8_t execSize, G4_DstRegRegion* dst,
         G4_Operand* src0, uint32_t option, bool appendToInstList);
 
+    G4_INST* createBinOp(G4_opcode op, uint8_t execSize, G4_DstRegRegion* dst,
+        G4_Operand* src0, G4_Operand* src1, uint32_t option, bool appendToInstList);
+
     G4_MathOp Get_MathFuncCtrl(ISA_Opcode op, G4_Type type);
     void resizePredefinedStackVars();
 
