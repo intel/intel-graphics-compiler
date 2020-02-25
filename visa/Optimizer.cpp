@@ -858,10 +858,6 @@ bool Optimizer::isCopyPropProfitable(G4_INST* movInst) const
 
 void Optimizer::reRAPostSchedule()
 {
-    // No rera for stackcall functions
-    if (kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc())
-        return;
-
     std::vector<Assignment> assignments;
     auto finalizerInfo = *builder.getJitInfo();
     auto oldRAType = kernel.getRAType();

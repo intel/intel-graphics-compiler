@@ -6634,7 +6634,6 @@ void* gtPinData::getGTPinInfoBuffer(unsigned int &bufferSize)
     gtpin::igc::igc_init_t t;
     std::vector<unsigned char> buffer;
     unsigned int numTokens = 0;
-    auto stackABI = kernel.fg.getIsStackCallFunc() || kernel.fg.getHasStackCalls();
     bufferSize = 0;
 
     memset(&t, 0, sizeof(t));
@@ -6642,16 +6641,12 @@ void* gtPinData::getGTPinInfoBuffer(unsigned int &bufferSize)
     t.version = gtpin::igc::GTPIN_IGC_INTERFACE_VERSION;
     if (gtpin_init->grf_info)
     {
-        if (!stackABI)
-            t.grf_info = 1;
+        t.grf_info = 1;
         numTokens++;
     }
 
     if (gtpin_init->re_ra)
-    {
-        if(!stackABI)
-            t.re_ra = 1;
-    }
+        t.re_ra = 1;
 
     if (gtpin_init->srcline_mapping && kernel.getOptions()->getOption(vISA_GenerateDebugInfo))
         t.srcline_mapping = 1;
