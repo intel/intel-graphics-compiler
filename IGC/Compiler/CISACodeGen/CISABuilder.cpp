@@ -3683,24 +3683,26 @@ namespace IGC
         }
     }
 
-    void CEncoder::InitBuildParams(llvm::SmallVector<const char*, 10>& params)
+    void CEncoder::InitBuildParams(llvm::SmallVector<std::unique_ptr< char, std::function<void(char*)>>, 10>& params)
     {
         CodeGenContext* context = m_program->GetContext();
         bool isOptDisabled = context->getModuleMetaData()->compOpt.OptDisable;
-
+        typedef std::unique_ptr< char, std::function<void(char*)>> param_uptr;
+        auto literal_deleter = [](char* val) {};
+        auto dup_deleter = [](char* val) {free(val); };
         // create vbuilder->Compile() params
         if (IGC_IS_FLAG_ENABLED(EnableVISADotAll))
         {
-            params.push_back("-dotAll");
+            params.push_back(param_uptr("-dotAll", literal_deleter));
         }
         if (IGC_IS_FLAG_ENABLED(EnableVISADebug) || isOptDisabled)
         {
-            params.push_back("-debug");
+            params.push_back(param_uptr("-debug", literal_deleter));
         }
         if (context->getModuleMetaData()->compOpt.FastVISACompile)
         {
-            params.push_back("-fasterRA");
-            params.push_back("-noLocalSplit");
+            params.push_back(param_uptr("-fasterRA", literal_deleter));
+            params.push_back(param_uptr("-noLocalSplit", literal_deleter));
         }
         // Ensure VISA_Opts has the same scope as CreateVISABuilder so that valid
         // strings are checked by vISA and freed out of this function.
@@ -3724,7 +3726,7 @@ namespace IGC
                 // note that the memory should be freed once
                 // params has been read, but since this is only for
                 // debugging, do not bother freeing memory.
-                params.push_back(_strdup(opt.c_str()));
+                params.push_back(param_uptr(_strdup(opt.c_str()), dup_deleter));
                 if (opt == "-output" || opt == "-binary" || opt == "-dumpvisa" || opt == "-dumpcommonisa")
                 {
                     m_enableVISAdump = true;
@@ -3736,11 +3738,11 @@ namespace IGC
         {
             QWORD AssemblyHash = { 0 };
             AssemblyHash = context->hash.getAsmHash();
-            params.push_back("-hashmovs");
+            params.push_back(param_uptr("-hashmovs", literal_deleter));
             std::string Low = std::to_string((DWORD)AssemblyHash);
             std::string High = std::to_string((DWORD)(AssemblyHash >> 32));
-            params.push_back(_strdup(Low.c_str()));
-            params.push_back(_strdup(High.c_str()));
+            params.push_back(param_uptr(_strdup(Low.c_str()), dup_deleter));
+            params.push_back(param_uptr(_strdup(High.c_str()), dup_deleter));
 
             QWORD NosHash = { 0 };
             NosHash = context->hash.getNosHash();
@@ -3749,11 +3751,11 @@ namespace IGC
             QWORD hashToUse = NosHash != 0 ? NosHash : PsoHash;
             if (hashToUse)
             {
-                params.push_back("-hashmovs1");
+                params.push_back(param_uptr("-hashmovs1", literal_deleter));
                 std::string Low = std::to_string((DWORD)hashToUse);
                 std::string High = std::to_string((DWORD)(hashToUse >> 32));
-                params.push_back(_strdup(Low.c_str()));
-                params.push_back(_strdup(High.c_str()));
+                params.push_back(param_uptr(_strdup(Low.c_str()), dup_deleter));
+                params.push_back(param_uptr(_strdup(High.c_str()), dup_deleter));
             }
         }
     }
@@ -4305,10 +4307,15 @@ namespace IGC
         SetVISAWaTable(m_program->m_Platform->getWATable());
 
         llvm::SmallVector<const char*, 10> params;
+        llvm::SmallVector<std::unique_ptr< char, std::function<void(char*)>>, 10> params2;
         if (!m_hasInlineAsm)
         {
             // Asm text writer mode doesnt need dump params
-            InitBuildParams(params);
+            InitBuildParams(params2);
+            for (size_t i = 0; i < params2.size(); i++)
+            {
+                params.push_back((params2[i].get()));
+            }
         }
 
         COMPILER_TIME_START(m_program->GetContext(), TIME_CG_vISACompile);
@@ -4845,7 +4852,12 @@ namespace IGC
                 V(vbuilder->WriteVISAHeader());
 
             llvm::SmallVector<const char*, 10> params;
-            InitBuildParams(params);
+            llvm::SmallVector<std::unique_ptr< char, std::function<void( char*)>>, 10> params2;
+            InitBuildParams(params2);
+            for (size_t i = 0; i < params2.size(); i++)
+            {
+                params.push_back((params2[i].get()));
+            }
 
             // Create a new builder for parsing the visaasm
             TARGET_PLATFORM VISAPlatform = GetVISAPlatform(&(context->platform));
