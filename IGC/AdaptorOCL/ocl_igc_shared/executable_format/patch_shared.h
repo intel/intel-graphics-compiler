@@ -210,7 +210,7 @@ struct SPatchExecutionEnvironment :
     uint32_t    WorkgroupWalkOrderDims; // dim0 : [0 : 1]; dim1 : [2 : 3]; dim2 : [4 : 5]
     uint32_t    HasGlobalAtomics;
     uint32_t    reserved;
-    uint32_t    reserved2;
+    uint32_t    StatelessWritesCount;
 };
 
 // Update CURRENT_ICBE_VERSION when modifying the patch list
