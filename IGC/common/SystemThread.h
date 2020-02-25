@@ -49,22 +49,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/Platform.hpp"
 #include "common/debug/Debug.hpp"
 
-#include "common/SIPKernels/Gen10SIPCSR.h"
-#include "common/SIPKernels/Gen10SIPCSRDebug.h"
-#include "common/SIPKernels/Gen10SIPDebug.h"
-#include "common/SIPKernels/Gen10SIPDebugBindless.h"
-#include "common/SIPKernels/Gen9BXTSIPCSR.h"
-#include "common/SIPKernels/Gen9SIPCSR.h"
-#include "common/SIPKernels/Gen9SIPCSRDebug.h"
-#include "common/SIPKernels/Gen9SIPCSRDebugLocal.h"
-#include "common/SIPKernels/Gen9SIPDebug.h"
-#include "common/SIPKernels/Gen9SIPDebugBindless.h"
-#include "common/SIPKernels/Gen9GLVSIPCSR.h"
-#include "common/SIPKernels/Gen11HPSIPCSR.h"
-#include "common/SIPKernels/Gen11SIPCSR.h"
-#include "common/SIPKernels/Gen11LKFSIPCSR.h"
-#include "common/SIPKernels/Gen12LPSIPCSR.h"
-
 
 namespace SIP
 {
