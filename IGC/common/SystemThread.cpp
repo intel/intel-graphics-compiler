@@ -43,8 +43,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/SIPKernels/Gen9GLVSIPCSR.h"
 #include "common/SIPKernels/Gen11HPSIPCSR.h"
 #include "common/SIPKernels/Gen11SIPCSR.h"
+#include "common/SIPKernels/Gen11SIPCSRDebug.h"
 #include "common/SIPKernels/Gen11LKFSIPCSR.h"
 #include "common/SIPKernels/Gen12LPSIPCSR.h"
+#include "common/SIPKernels/Gen12LPSIPCSRDebug.h"
 
 using namespace llvm;
 using namespace USC;
@@ -191,11 +193,15 @@ void populateSIPKernelInfo(std::map< unsigned char, std::pair<void*, unsigned in
 
     SIPKernelInfo[GEN11_SIP_CSR] = std::make_pair((void*)&Gen11SIPCSR, (int)sizeof(Gen11SIPCSR));
 
+    SIPKernelInfo[GEN11_SIP_CSR_DEBUG] = std::make_pair((void*)&Gen11SIPCSRDebug, (int)sizeof(Gen11SIPCSRDebug));
+
     SIPKernelInfo[GEN11_HP_SIP_CSR] = std::make_pair((void*)&Gen11HPSIPCSR, (int)sizeof(Gen11HPSIPCSR));
 
     SIPKernelInfo[GEN11_LKF_SIP_CSR] = std::make_pair((void*)&Gen11LKFSIPCSR, (int)sizeof(Gen11LKFSIPCSR));
 
     SIPKernelInfo[GEN12_LP_CSR] = std::make_pair((void*)&Gen12LPSIPCSR, (int)sizeof(Gen12LPSIPCSR));
+
+    SIPKernelInfo[GEN12_LP_CSR_DEBUG] = std::make_pair((void*)&Gen12LPSIPCSRDebug, (int)sizeof(Gen12LPSIPCSRDebug));
 }
 
 CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
@@ -284,7 +290,7 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
         }
         else if (mode == SYSTEM_THREAD_MODE_DEBUG)
         {
-            SIPIndex = GEN10_SIP_DEBUG;
+            SIPIndex = GEN11_SIP_CSR_DEBUG;
         }
         else if (mode == SYSTEM_THREAD_MODE_CSR)
         {
@@ -306,7 +312,7 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
         }
         else if (mode == (SYSTEM_THREAD_MODE_CSR | SYSTEM_THREAD_MODE_DEBUG))
         {
-            SIPIndex = GEN10_SIP_CSR_DEBUG;
+            SIPIndex = GEN11_SIP_CSR_DEBUG;
         }
         break;
     }
@@ -323,7 +329,7 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
         }
         else if (mode == SYSTEM_THREAD_MODE_DEBUG)
         {
-            SIPIndex = GEN10_SIP_DEBUG;
+            SIPIndex = GEN12_LP_CSR_DEBUG;
         }
         else if (mode == SYSTEM_THREAD_MODE_CSR)
         {
@@ -335,7 +341,7 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
         }
         else if (mode == (SYSTEM_THREAD_MODE_CSR | SYSTEM_THREAD_MODE_DEBUG))
         {
-            SIPIndex = GEN10_SIP_CSR_DEBUG;
+            SIPIndex = GEN12_LP_CSR_DEBUG;
         }
         break;
     }
