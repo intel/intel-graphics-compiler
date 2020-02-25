@@ -179,15 +179,33 @@ inline SmallVector<Value*, 2> getGlobalVariable(Value* const v)
         }
         else if (SelectInst* selectInst = dyn_cast<SelectInst>(curr.front()))
         {
-            curr.pop_back();
-            curr.push_back(selectInst->getOperand(1));
-            curr.push_back(selectInst->getOperand(2));
+            if (curr.size() == 2)
+            {
+                //  Nested select instruction is not supported
+                curr.front() = nullptr;
+                curr.back() = nullptr;
+            }
+            else
+            {
+                curr.pop_back();
+                curr.push_back(selectInst->getOperand(1));
+                curr.push_back(selectInst->getOperand(2));
+            }
         }
         else if (PHINode* phiNode = dyn_cast<PHINode>(curr.front()))
         {
-            curr.pop_back();
-            curr.push_back(phiNode->getOperand(0));
-            curr.push_back(phiNode->getOperand(1));
+            if (curr.size() == 2)
+            {
+                //  Nested phi instruction is not supported
+                curr.front() = nullptr;
+                curr.back() = nullptr;
+            }
+            else
+            {
+                curr.pop_back();
+                curr.push_back(phiNode->getOperand(0));
+                curr.push_back(phiNode->getOperand(1));
+            }
         }
         else
         {
