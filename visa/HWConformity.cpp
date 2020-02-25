@@ -1396,6 +1396,8 @@ static bool canReplaceMovSrcType(IR_Builder& builder, G4_INST* inst, uint32_t ex
 //    Use two instructions and F (Float) as an intermediate type.
 // -- There is no direct conversion from HF to Q/UQ or Q/UQ to HF.
 //    Use two instructions and F (Float) or a word integer type or a DWord integer type as an intermediate type.
+// -- There is no direct scalar conversion from B/UB to HF or F.
+//    Use two instructions and a WORD or DWORD intermediate type respectively.
 // returns true if a move is inserted
 bool HWConformity::fixMov(INST_LIST_ITER i, G4_BB* bb)
 {
@@ -1410,8 +1412,10 @@ bool HWConformity::fixMov(INST_LIST_ITER i, G4_BB* bb)
     G4_Type srcType = inst->getSrc(0)->getType();
     auto src = inst->getSrc(0);
 
-    bool scalarByteToFloat = builder.noScalarByteToFloat() && IS_BTYPE(srcType) &&
-        IS_FTYPE(dstType) && src->isSrcRegRegion() && src->asSrcRegRegion()->isScalar();
+    bool scalarByteToFloat = builder.noScalarByteToFloat() &&
+        IS_BTYPE(srcType) &&
+        (IS_FTYPE(dstType) || IS_HFTYPE(dstType)) &&
+        (src->isSrcRegRegion() && src->asSrcRegRegion()->isScalar());
     bool dstByteSrc64b = IS_BTYPE(dstType) && (IS_DFTYPE(srcType) || IS_QTYPE(srcType));
 
     if (scalarByteToFloat || dstByteSrc64b)
