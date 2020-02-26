@@ -428,6 +428,14 @@ static void populateKernelInfo(const cmc_kernel_info* info,
     if (JITInfo.isSpill || JITInfo.hasStackcalls) {
         kInfo.m_executionEnivronment.PerThreadScratchSpace += JITInfo.spillMemUsed;
     }
+    if (!JITInfo.hasStackcalls && info->ThreadPrivateMemSize) {
+        // CM stack calls and thread-private memory use the same value to control
+        // scratch space. Consequently, if we have stack calls, there is no need
+        // to add this value for thread-private memory. It should be fixed if
+        // these features begin to calculate the required space separately.
+        kInfo.m_executionEnivronment.PerThreadScratchSpace +=
+            info->ThreadPrivateMemSize;
+    }
 
     // ThreadPayload
     kInfo.m_threadPayload.HasLocalIDx = info->HasLocalIDx;

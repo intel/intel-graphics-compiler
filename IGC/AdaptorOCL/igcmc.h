@@ -90,6 +90,7 @@ struct cmc_kernel_info {
     uint32_t GRFByteSize = 32;
     uint32_t HasBarriers = 0;
     bool HasReadWriteImages = false;
+    uint32_t ThreadPrivateMemSize = 0;
 };
 
 struct cmc_compile_info {
