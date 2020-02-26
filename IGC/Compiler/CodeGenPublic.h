@@ -135,6 +135,10 @@ namespace IGC
             {
                 IGC::aligned_free(m_debugDataGenISA);
             }
+            if (m_funcAttributeTable)
+            {
+                IGC::aligned_free(m_funcAttributeTable);
+            }
         }
 
         void init(bool setSeparatePvtSpillT, bool roundPower2KBytes, unsigned int scratchSpaceSizeLimitT)
