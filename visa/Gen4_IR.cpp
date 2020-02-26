@@ -236,7 +236,7 @@ short Operand_Type_Rank( G4_Type type )
 
 G4_SendMsgDescriptor::G4_SendMsgDescriptor(
     uint32_t fCtrl, uint32_t regs2rcv,
-    uint32_t regs2snd, uint32_t fID, bool isEot, uint16_t extMsgLen,
+    uint32_t regs2snd, SFID fID, uint16_t extMsgLen,
     uint32_t extFCtrl, SendAccess access,
     G4_Operand *bti, G4_Operand *sti,
     IR_Builder& builder)
@@ -250,14 +250,13 @@ G4_SendMsgDescriptor::G4_SendMsgDescriptor(
     desc.layout.msgLength = regs2snd;
 
     extDesc.value = 0;
-    extDesc.layout.funcID = fID;
-    extDesc.layout.eot = isEot;
+    extDesc.layout.funcID = SFIDtoInt(fID);
     extDesc.layout.extMsgLength = extMsgLen;
     extDesc.layout.extFuncCtrl = extFCtrl;
 
     src1Len = extMsgLen; // [10:6]
-    eotAfterMessage = isEot; // [5]
-    sfid = intToSFID(fID);
+    eotAfterMessage = false; // [5]
+    sfid = fID;
 
     accessType = access;
     funcCtrlValid = true;
@@ -277,11 +276,6 @@ G4_SendMsgDescriptor::G4_SendMsgDescriptor(
     uint32_t totalMaxLength = builder.getMaxSendMessageLength();
     MUST_BE_TRUE(extDesc.layout.extMsgLength + desc.layout.msgLength < totalMaxLength,
         "combined message length may not exceed the maximum");
-
-    if (extDesc.layout.extMsgLength + desc.layout.msgLength >= 16)
-    {
-        MUST_BE_TRUE(!isEot, "cm_sends can't set eot if message length is greater than 16");
-    }
 }
 
 G4_SendMsgDescriptor::G4_SendMsgDescriptor(
@@ -623,55 +617,6 @@ bool G4_SendMsgDescriptor::isHdcTypedSurfaceWrite() const
 {
     return isHDC() &&
         getHdcMessageType() == DC1_TYPED_SURFACE_WRITE;
-}
-
-bool G4_SendMsgDescriptor::isReadOnlyMessage(uint32_t msgDesc,
-                                             uint32_t extDesc)
-{
-    SFID funcID = intToSFID(extDesc & 0xF);
-    unsigned subFuncID = (msgDesc >> 14) & 0x1F;
-
-    switch (funcID) {
-    default:
-        break;
-    case SFID::DP_DC:
-        switch (subFuncID) {
-        case DC_OWORD_BLOCK_READ:
-        case DC_ALIGNED_OWORD_BLOCK_READ:
-        case DC_DWORD_SCATTERED_READ:
-        case DC_BYTE_SCATTERED_READ:
-            return true;
-        default:
-            return false;
-        }
-    case SFID::DP_DC1:
-        switch (subFuncID) {
-        case DC1_UNTYPED_SURFACE_READ:
-        case DC1_MEDIA_BLOCK_READ:
-        case DC1_TYPED_SURFACE_READ:
-        case DC1_A64_SCATTERED_READ:
-        case DC1_A64_UNTYPED_SURFACE_READ:
-        case DC1_A64_BLOCK_READ:
-            return true;
-        default:
-            return false;
-        }
-    case SFID::DP_DC2:
-        switch (subFuncID) {
-        case DC2_UNTYPED_SURFACE_READ:
-        case DC2_A64_SCATTERED_READ:
-        case DC2_A64_UNTYPED_SURFACE_READ:
-        case DC2_BYTE_SCATTERED_READ:
-            return true;
-        default:
-            return false;
-        }
-    case SFID::SAMPLER:
-        return true;
-    }
-
-    // Unknown.
-    return false;
 }
 
 const char* G4_SendMsgDescriptor::getDescType() const

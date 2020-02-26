@@ -101,10 +101,6 @@ public:
         PointsToAnalysis& pointsToAnalysis
     );
 
-    void
-    fixSpillFillCode    (
-        G4_Kernel*         kernel
-    );
     unsigned getNumGRFSpill() const { return numGRFSpill; }
     unsigned getNumGRFFill() const { return numGRFFill; }
     unsigned getNumGRFMove() const { return numGRFMove; }

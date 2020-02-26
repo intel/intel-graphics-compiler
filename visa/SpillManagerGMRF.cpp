@@ -4179,156 +4179,6 @@ void SpillManagerGRF::saveRestoreA0(G4_BB* bb)
     }
 }
 
-// Replace Scratch Block Read/Write message with OWord Block Read/Write message
-void
-SpillManagerGRF::fixSpillFillCode (
-    G4_Kernel * kernel
-)
-{
-    FlowGraph& fg = kernel->fg;
-
-    unsigned statelessSurfaceIndex = 0xFF;
-
-    for( BB_LIST_ITER it = fg.begin(), bbend = fg.end(); it != bbend; it++ )
-    {
-        INST_LIST::iterator jt = (*it)->begin ();
-
-        while( jt != (*it)->end () )
-        {
-            INST_LIST::iterator kt = jt;
-            ++kt;
-            G4_INST * inst = *jt;
-
-            if (inst->isSend())
-            {
-                if( inst->getMsgDesc()->isScratchRead() )
-                {
-                    // Fix fill message
-                    G4_Operand * curDst = inst->getSrc(0);
-                    G4_Declare * mRangeDcl = NULL;
-
-                    if( curDst->getTopDcl() == builder_->getBuiltinR0() )
-                    {
-                        G4_Operand * postDst = inst->getDst ();
-                        G4_RegVar * fillRegVar = postDst->getTopDcl()->getRegVar()->getBaseRegVar ();
-
-                        const char * name =
-                            createImplicitRangeName (
-                                "FL_MSG", fillRegVar,
-                                getMsgFillIndex (fillRegVar));
-
-                        mRangeDcl =
-                            createRangeDeclare (
-                                name,
-                                G4_GRF,
-                                REG_DWORD_SIZE, 1, Type_UD,
-                                DeclareType::Tmp, fillRegVar, NULL, 0);
-
-                        G4_DstRegRegion * mHeaderInputDstRegion =
-                            createMHeaderInputDstRegion (mRangeDcl->getRegVar ());
-                        G4_SrcRegRegion * inputPayload = createInputPayloadSrcRegion ();
-
-                        G4_INST * movInst = builder_->createMov( REG_DWORD_SIZE,
-                            mHeaderInputDstRegion, inputPayload, InstOpt_WriteEnable, false);
-                        (*it)->insert( jt, movInst );
-
-                        curDst = createMHeaderInputDstRegion (mRangeDcl->getRegVar ());
-
-                        G4_SrcRegRegion* curSrcOpnd = builder_->createSrcRegRegion(Mod_src_undef, Direct, mRangeDcl->getRegVar(), 0, 0,
-                            builder_->getRegionStride1(), Type_UD );
-                        inst->setSrc( curSrcOpnd, 0 );
-                    }
-                    else
-                    {
-                        mRangeDcl = curDst->getTopDcl();
-                    }
-
-                    unsigned offset = inst->getMsgDesc()->getScratchRWOffset();
-                    offset = offset * (G4_GRF_REG_NBYTES / OWORD_BYTE_SIZE);
-                    G4_Imm * offsetImm = builder_->createImm (offset, Type_UD);
-                    G4_DstRegRegion * mHeaderOffsetDstRegion =
-                        createMHeaderBlockOffsetDstRegion (mRangeDcl->getRegVar ());
-
-                    G4_INST* mov_inst = builder_->createMov (SCALAR_EXEC_SIZE, mHeaderOffsetDstRegion,
-                        offsetImm, InstOpt_WriteEnable, false);
-                    (*it)->insert( jt, mov_inst );
-
-                    unsigned segmentByteSize = inst->getMsgDesc()->ResponseLength() * REG_BYTE_SIZE;
-                    unsigned responseLength = cdiv (segmentByteSize, REG_BYTE_SIZE);
-                    responseLength = responseLength << getSendRspLengthBitOffset ();
-                    unsigned message = statelessSurfaceIndex | responseLength;
-
-                    unsigned headerPresent = 0x80000;
-                    message |= headerPresent;
-                    unsigned messageType = getSendOwordReadType ();
-                    message |= messageType << getSendReadTypeBitOffset ();
-                    unsigned messageLength = OWORD_PAYLOAD_HEADER_MIN_HEIGHT;
-                    message |= messageLength << getSendMsgLengthBitOffset ();
-                    unsigned segmentOwordSize =
-                        cdiv (segmentByteSize, OWORD_BYTE_SIZE);
-                    message |= blockSendBlockSizeCode (segmentOwordSize);
-                    unsigned char execSize = LIMIT_SEND_EXEC_SIZE (segmentOwordSize * DWORD_BYTE_SIZE);
-
-                    G4_Operand * msg = builder_->createImm (message, Type_UD);
-                    unsigned int regs2snd = ( message >> getSendMsgLengthBitOffset() ) & 0xF;
-                    unsigned int regs2rcv = ( message >> getSendRspLengthBitOffset() ) & 0x1F;
-                    G4_SendMsgDescriptor * msgDesc = builder_->createSendMsgDesc( message,
-                        regs2rcv, regs2snd, inst->getMsgDesc()->getFuncId(), inst->getMsgDesc()->isEOTInst(),
-                        0, inst->getMsgDesc()->getExtFuncCtrl(), SendAccess::READ_ONLY);
-
-                    inst->setSrc( msg, 1 );
-                    inst->asSendInst()->setMsgDesc( msgDesc );
-                    inst->setExecSize( execSize );
-                }
-                else  if( inst->getMsgDesc()->isScratchWrite() )
-                {
-                    // Fix spill message
-                    G4_Operand * curDst = inst->getSrc(0);
-                    G4_Declare * mRangeDcl = curDst->getTopDcl();
-
-                    unsigned offset = inst->getMsgDesc()->getScratchRWOffset();
-                    offset = offset * (G4_GRF_REG_NBYTES / OWORD_BYTE_SIZE);
-                    G4_Imm * offsetImm = builder_->createImm (offset, Type_UD);
-                    G4_DstRegRegion * mHeaderOffsetDstRegion =
-                        createMHeaderBlockOffsetDstRegion (mRangeDcl->getRegVar ());
-
-                    G4_INST* mov_inst = builder_->createMov (SCALAR_EXEC_SIZE, mHeaderOffsetDstRegion,
-                        offsetImm, InstOpt_WriteEnable, false);
-                    (*it)->insert( jt, mov_inst );
-
-                    unsigned segmentByteSize = (inst->getMsgDesc()->MessageLength() - SCRATCH_PAYLOAD_HEADER_MAX_HEIGHT) * REG_BYTE_SIZE;
-                    unsigned writePayloadCount = cdiv (segmentByteSize, REG_BYTE_SIZE);
-                    unsigned message = statelessSurfaceIndex;
-
-                    unsigned headerPresent = 0x80000;
-                    message |= headerPresent;
-                    unsigned messageType = getSendOwordWriteType();
-                    message |= messageType << getSendWriteTypeBitOffset ();
-                    unsigned payloadHeaderCount = OWORD_PAYLOAD_HEADER_MAX_HEIGHT;
-                    unsigned messageLength = writePayloadCount + payloadHeaderCount;
-                    message |= messageLength << getSendMsgLengthBitOffset ();
-                    unsigned segmentOwordSize = cdiv(segmentByteSize, OWORD_BYTE_SIZE);
-                    message |= blockSendBlockSizeCode (segmentOwordSize);
-                    unsigned char execSize = LIMIT_SEND_EXEC_SIZE (segmentOwordSize * DWORD_BYTE_SIZE);
-
-                    G4_Operand * msg = builder_->createImm (message, Type_UD);
-                    unsigned int regs2snd = ( message >> getSendMsgLengthBitOffset() ) & 0xF;
-                    unsigned int regs2rcv = ( message >> getSendRspLengthBitOffset() ) & 0x1F;
-                    G4_SendMsgDescriptor * msgDesc = builder_->createSendMsgDesc( message,
-                        regs2rcv, regs2snd, inst->getMsgDesc()->getFuncId(), inst->getMsgDesc()->isEOTInst(), 0,
-                        inst->getMsgDesc()->getExtFuncCtrl(), SendAccess::WRITE_ONLY);
-
-                    inst->setSrc( msg, 1 );
-                    inst->asSendInst()->setMsgDesc( msgDesc );
-                    inst->setExecSize( execSize );
-                }
-            }
-
-            jt = kt;
-        }
-    }
-}
-
 uint32_t computeSpillMsgDesc(unsigned int payloadSize, unsigned int offsetInGrfUnits)
 {
     // Compute msg descriptor given payload size and offset.
@@ -4422,7 +4272,7 @@ void GlobalRA::expandSpillNonStackcall(uint32_t& numRows, uint32_t& offset, shor
         unsigned int execSize = inst->getExecSize(); //(numRows > 1) ? 16 : 8;
         uint32_t spillMsgDesc = SpillManagerGRF::createSpillSendMsgDescOWord(numRows, execSize);
         G4_SendMsgDescriptor* msgDesc = kernel.fg.builder->createSendMsgDesc(spillMsgDesc & 0x000FFFFFu,
-            0, 1, SFID::DP_DC, false, numRows, 0, SendAccess::WRITE_ONLY);
+            0, 1, SFID::DP_DC, numRows, 0, SendAccess::WRITE_ONLY);
         G4_Imm* msgDescImm = builder->createImm(msgDesc->getDesc(), Type_UD);
         G4_Imm* extDesc = builder->createImm(msgDesc->getExtendedDesc(), Type_UD);
         auto sendInst = builder->createInternalSplitSendInst(nullptr, G4_sends, execSize,
@@ -4620,7 +4470,7 @@ void GlobalRA::expandSpillIntrinsic(G4_BB* bb)
              uint32_t fillMsgDesc = computeFillMsgDesc(getPayloadSizeGRF(numRows), offset);
 
              G4_SendMsgDescriptor* msgDesc = kernel.fg.builder->createSendMsgDesc(fillMsgDesc,
-                 getPayloadSizeGRF(numRows), 1, SFID::DP_DC, false, 0, 0, SendAccess::READ_ONLY);
+                 getPayloadSizeGRF(numRows), 1, SFID::DP_DC, 0, 0, SendAccess::READ_ONLY);
 
              G4_Imm* msgDescImm = builder->createImm(msgDesc->getDesc(), Type_UD);
 

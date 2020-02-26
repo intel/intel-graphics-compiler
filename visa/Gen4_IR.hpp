@@ -300,8 +300,8 @@ public:
     static const int SLMIndex = 0xFE;
 
     G4_SendMsgDescriptor(uint32_t fCtrl, uint32_t regs2rcv, uint32_t regs2snd,
-        uint32_t fID, bool isEot, uint16_t extMsgLength, uint32_t extFCtrl,
-        SendAccess access, G4_Operand *bti, G4_Operand *sti, IR_Builder& builder);
+        SFID fID, uint16_t extMsgLength, uint32_t extFCtrl,
+        SendAccess access, G4_Operand* bti, G4_Operand* sti, IR_Builder& builder);
 
     /// Construct a object with descriptor and extended descriptor values.
     /// used in IR_Builder::createSendMsgDesc(uint32_t desc, uint32_t extDesc, SendAccess access)
@@ -378,16 +378,18 @@ public:
     }
 
     /* Info methods */
+    // common for all sends
     uint16_t ResponseLength() const { return desc.layout.rspLength; }
     uint16_t MessageLength() const { return desc.layout.msgLength; }
     uint16_t extMessageLength() const { return (uint16_t)src1Len; }
-
-    bool isCPSEnabled() const {return extDesc.layout.cps != 0;}
     bool isDataPortRead() const { return accessType != SendAccess::WRITE_ONLY; }
     bool isDataPortWrite() const { return accessType != SendAccess::READ_ONLY; }
     SendAccess getAccess() const { return accessType; }
-    bool isValidFuncCtrl() const { return funcCtrlValid;  }
-    bool isSampler() const {return getFuncId() == SFID::SAMPLER;}
+    bool isValidFuncCtrl() const { return funcCtrlValid; }
+    bool isHeaderPresent() const;
+    void setHeaderPresent(bool val);
+
+    // for HDC messages only (DC0/DC1/DC2)
     bool isHDC() const
     {
         auto funcID = getFuncId();
@@ -397,43 +399,19 @@ public:
             funcID == SFID::DP_DC2 ||
             funcID == SFID::DP_CC;
     }
-    // isHDC() must be true
+
     uint32_t getHdcMessageType() const;
-
-    bool isThreadMessage() const {
-        return getFuncId() == SFID::GATEWAY || getFuncId() == SFID::SPAWNER;
-    }
-
     bool isAtomicMessage() const;
     uint16_t getHdcAtomicOp() const;
 
     bool isSLMMessage() const;
 
-    bool isBarrierMsg() const;
-    bool isFence() const;
-
-    bool isSendBarrier() const {
-        return isAtomicMessage() || isBarrierMsg();  // atomic write or explicit barrier
-    }
-
-    /////////////////////////////////////////////////////////
-    // the following may only be called on HDC messages
     unsigned int getEnabledChannelNum() const;
     unsigned int getBlockNum() const;
     unsigned int getBlockSize() const;
-    // true if the message is either oword read or unaligned oword read
     bool isOwordLoad() const;
 
-    // introduced to replace direct access to desc bits
     bool isHdcTypedSurfaceWrite() const;
-
-    // TODO: this should be eliminated; it only supports a subset of messages
-    // and can produce a false negative on newer messages; it also doesn't
-    // support the SFID separate from the descriptor
-    //
-    // read-only implies that it doesn't write (e.g. an atomic)
-    static bool isReadOnlyMessage(uint32_t msgDesc, uint32_t exDesc);
-
 
     // return offset in unit of GRF
     uint16_t getScratchRWOffset() const
@@ -442,19 +420,6 @@ public:
         return (getFuncCtrl() & 0xFFFu);
     }
 
-    // number of GRFs to read/write
-    //
-    // Block Size indicates the number of simd-8 registers to be read|written.
-    //  11: 8 registers
-    //  10: 4 registers
-    //  01: 2 registers
-    //  00: 1 register
-    uint16_t getScratchRWSize() const
-    {
-        MUST_BE_TRUE(isScratchRW(), "Message is not scratch space R/W.");
-        uint16_t bitV = ((getFuncCtrl() & 0x3000u) >> 12);
-        return  0x1 << bitV;
-    }
     bool isScratchRW() const
     {
         // scratch msg: DC0, bit 18 = 1
@@ -462,23 +427,38 @@ public:
     }
     bool isScratchRead() const
     {
-        if( !isScratchRW() )
-            return false;
-        return ((getFuncCtrl() & 0x20000u) == 0);
+        return isScratchRW() && (getFuncCtrl() & 0x20000u) == 0;
     }
     bool isScratchWrite() const
     {
-        if( !isScratchRW() )
-            return false;
-        return ((getFuncCtrl ()& 0x20000u) != 0);
+        return isScratchRW() && (getFuncCtrl() & 0x20000u) != 0;
+    }
+    uint16_t getScratchRWSize() const
+    {
+        MUST_BE_TRUE(isScratchRW(), "Message is not scratch space R/W.");
+        uint16_t bitV = ((getFuncCtrl() & 0x3000u) >> 12);
+        return  0x1 << bitV;
     }
 
-    bool isHeaderPresent() const;
-    void setHeaderPresent(bool val);
+    bool isA64Message() const;
 
+    // for sampler mesasges only
+    bool isSampler() const { return getFuncId() == SFID::SAMPLER; }
+    bool isCPSEnabled() const { return extDesc.layout.cps != 0; }
     bool is16BitInput() const;
     bool is16BitReturn() const;
-    bool isA64Message() const;
+
+    bool isThreadMessage() const
+    {
+        return getFuncId() == SFID::GATEWAY || getFuncId() == SFID::SPAWNER;
+    }
+
+    bool isBarrierMsg() const;
+    bool isFence() const;
+
+    bool isSendBarrier() const {
+        return isAtomicMessage() || isBarrierMsg();  // atomic write or explicit barrier
+    }
 
     const G4_Operand *getBti() const {return m_bti;}
           G4_Operand *getBti()       {return m_bti;}

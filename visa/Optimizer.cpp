@@ -7791,7 +7791,7 @@ public:
             msgDescImm |= i;
 
             G4_SendMsgDescriptor* desc = kernel.fg.builder->createSendMsgDesc(
-                msgDescImm, 0, 1, funcID, false, msgSize, extFuncCtrl, SendAccess::WRITE_ONLY);
+                msgDescImm, 0, 1, funcID, msgSize, extFuncCtrl, SendAccess::WRITE_ONLY);
             const RegionDesc* region = kernel.fg.builder->getRegionStride1();
             G4_SrcRegRegion* headerOpnd = kernel.fg.builder->Create_Src_Opnd_From_Dcl(kernel.fg.builder->getBuiltinR0(), region);
             G4_Declare* tempDcl = builder.createHardwiredDeclare(msgSize * 8, Type_UD, i, 0);

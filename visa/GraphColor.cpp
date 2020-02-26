@@ -9381,12 +9381,7 @@ int GlobalRA::coloringRegAlloc()
                 }
 
                 scratchOffset = std::max(scratchOffset, spillGRF.getNextScratchOffset());
-#ifdef FIX_SCRATCH_SPILL_MESSAGE
-                if (scratchOffset >= SCRATCH_MSG_LIMIT && useScratchMsgForSpill)
-                {
-                    spillGRF.fixSpillFillCode(&kernel);
-                }
-#endif
+
                 bool disableSpillCoalecse = builder.getOption(vISA_DisableSpillCoalescing) ||
                     builder.getOption(vISA_FastSpill) || builder.getOption(vISA_Debug) ||
                     !useScratchMsgForSpill;

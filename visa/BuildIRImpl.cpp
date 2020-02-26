@@ -145,7 +145,6 @@ G4_SendMsgDescriptor* IR_Builder::createSendMsgDesc(
     unsigned regs2rcv,
     unsigned regs2snd,
     SFID funcID,
-    bool eot,
     unsigned extMsgLength,
     uint16_t extFuncCtrl,
     SendAccess access,
@@ -153,7 +152,7 @@ G4_SendMsgDescriptor* IR_Builder::createSendMsgDesc(
     G4_Operand *sti)
 {
     G4_SendMsgDescriptor* msgDesc = new (mem) G4_SendMsgDescriptor(
-        funcCtrl, regs2rcv, regs2snd, SFIDtoInt(funcID), eot, (uint16_t) extMsgLength,
+        funcCtrl, regs2rcv, regs2snd, funcID, (uint16_t) extMsgLength,
         extFuncCtrl, access, bti, sti, *this);
     return msgDesc;
 }
@@ -842,7 +841,6 @@ G4_InstSend* IR_Builder::Create_Send_Inst_For_CISA(
     unsigned execsize,
     unsigned fc,
     SFID tf_id,
-    bool eot,
     bool header_present,
     SendAccess access,
     G4_Operand* bti,
@@ -852,7 +850,7 @@ G4_InstSend* IR_Builder::Create_Send_Inst_For_CISA(
 {
     G4_SendMsgDescriptor* msgDesc =
         createSendMsgDesc(fc, regs2rcv, regs2snd, tf_id,
-                          eot, 0, 0, access, bti, sti);
+                          0, 0, access, bti, sti);
 
     msgDesc->setHeaderPresent(header_present);
 
@@ -997,9 +995,7 @@ G4_InstSend* IR_Builder::Create_SplitSend_Inst_For_CISA(
     unsigned regs2rcv,
     unsigned execsize,
     unsigned fc,
-    unsigned exFuncCtrl,
     SFID tf_id,
-    bool eot,
     bool header_present,
     SendAccess access,
     G4_Operand* bti,
@@ -1008,8 +1004,8 @@ G4_InstSend* IR_Builder::Create_SplitSend_Inst_For_CISA(
     bool is_sendc)
 {
     G4_SendMsgDescriptor *msgDesc =
-        createSendMsgDesc(fc, regs2rcv, regs2snd1, tf_id, eot, regs2snd2,
-                          (uint16_t)exFuncCtrl, access, bti, sti);
+        createSendMsgDesc(fc, regs2rcv, regs2snd1, tf_id, regs2snd2,
+                          0, access, bti, sti);
 
     msgDesc->setHeaderPresent(header_present);
 

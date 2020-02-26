@@ -1323,12 +1323,11 @@ public:
         unsigned regs2rcv,
         unsigned regs2snd,
         SFID funcID,
-        bool eot,
         unsigned extMsgLength,
         uint16_t extFuncCtrl,
         SendAccess access,
-        G4_Operand *bti = nullptr,
-        G4_Operand *sti = nullptr);
+        G4_Operand* bti = nullptr,
+        G4_Operand* sti = nullptr);
 
     G4_Operand* emitSampleIndexGE16(
         G4_Operand* sampler, G4_Declare* headerDecl);
@@ -1862,32 +1861,31 @@ public:
         unsigned option);
 
     G4_InstSend* Create_Send_Inst_For_CISA(
-                        G4_Predicate* pred,
-                        G4_DstRegRegion *postDst,
-                        G4_SrcRegRegion *payload,
-                        unsigned regs2snd,
-                        unsigned regs2rcv,
-                        unsigned execsize,
-                        unsigned fc,
-                        SFID tf_id,
-                        bool eot,
-                        bool head_present,
-                        SendAccess access,
-                        G4_Operand *bti,
-                        G4_Operand *sti,
-                        unsigned int option,
-                        bool is_sendc);
-
-    G4_InstSend* Create_SplitSend_Inst_For_CISA(G4_Predicate* pred, G4_DstRegRegion *dst,
-        G4_SrcRegRegion *src1, unsigned regs2snd1,
-        G4_SrcRegRegion *src2, unsigned regs2snd2,
+        G4_Predicate* pred,
+        G4_DstRegRegion* postDst,
+        G4_SrcRegRegion* payload,
+        unsigned regs2snd,
         unsigned regs2rcv,
         unsigned execsize,
-        unsigned fc, unsigned exFuncCtrl,
-        SFID tf_id, bool eot,
+        unsigned fc,
+        SFID tf_id,
         bool head_present,
         SendAccess access,
-        G4_Operand *bti, G4_Operand *sti,
+        G4_Operand* bti,
+        G4_Operand* sti,
+        unsigned int option,
+        bool is_sendc);
+
+    G4_InstSend* Create_SplitSend_Inst_For_CISA(G4_Predicate* pred, G4_DstRegRegion* dst,
+        G4_SrcRegRegion* src1, unsigned regs2snd1,
+        G4_SrcRegRegion* src2, unsigned regs2snd2,
+        unsigned regs2rcv,
+        unsigned execsize,
+        unsigned fc,
+        SFID tf_id,
+        bool head_present,
+        SendAccess access,
+        G4_Operand* bti, G4_Operand* sti,
         unsigned option,
         bool is_sendc);
 

@@ -1459,7 +1459,6 @@ void SendFusion::doFusion(
         G4_SendMsgDescriptor* newDesc = Builder->createSendMsgDesc(
             newFC, newRspLen, msgLen,
             desc->getFuncId(),
-            false,
             msgLen,
             desc->getExtFuncCtrl(),
             desc->getAccess(),
@@ -1509,7 +1508,6 @@ void SendFusion::doFusion(
     G4_SendMsgDescriptor* newDesc = Builder->createSendMsgDesc(
         newFC, newRspLen, newMsgLen,
         desc->getFuncId(),
-        false,
         newExtMsgLen,
         desc->getExtFuncCtrl(),
         desc->getAccess(),
