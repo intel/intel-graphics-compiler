@@ -866,7 +866,6 @@ namespace IGC
         virtual uint32_t getNumGRFPerThread() const;
         virtual bool forceGlobalMemoryAllocation() const;
         virtual bool hasNoLocalToGenericCast() const;
-        virtual int16_t getVectorCoalescingControl() const;
         bool isPOSH() const;
 
         CompilerStats& Stats()
@@ -1104,20 +1103,6 @@ namespace IGC
                 {
                     hasNoLocalToGeneric = true;
                 }
-                if (const char* O = strstr(options, "-cl-intel-vector-coalesing"))
-                {
-                    // -cl-intel-vector-coalescing=<0-5>.
-                    const char* optionVal = O + strlen("-cl-intel-vector-coalesing");
-                    if (*optionVal != 0 && *optionVal == '=' && isdigit(*(optionVal+1)))
-                    {
-                        ++optionVal;
-                        int16_t val = (int16_t)atoi(optionVal);
-                        if (val >= 0 && val <= 5)
-                        {
-                            VectorCoalescingControl = val;
-                        }
-                    }
-                }
             }
 
 
@@ -1136,7 +1121,6 @@ namespace IGC
             bool PreferBindlessImages = false;
             bool IntelForceGlobalMemoryAllocation = false;
             bool hasNoLocalToGeneric = false;
-            int16_t VectorCoalescingControl = -1; // -1: not set from cmdline
 
         };
 
@@ -1213,11 +1197,10 @@ namespace IGC
         bool isSPIRV() const;
         void setAsSPIRV();
         float getProfilingTimerResolution();
-        uint32_t getNumGRFPerThread() const override;
-        uint32_t getNumThreadsPerEU() const override;
-        bool forceGlobalMemoryAllocation() const override;
-        bool hasNoLocalToGenericCast() const override;
-        int16_t getVectorCoalescingControl() const override;
+        uint32_t getNumGRFPerThread() const;
+        uint32_t getNumThreadsPerEU() const;
+        bool forceGlobalMemoryAllocation() const;
+        bool hasNoLocalToGenericCast() const;
     private:
         llvm::DenseMap<llvm::Function*, std::string> m_hashes_per_kernel;
     };

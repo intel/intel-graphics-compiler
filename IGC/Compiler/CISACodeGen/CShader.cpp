@@ -448,7 +448,7 @@ void CShader::CreateAliasVars()
 {
     // Create CVariables for vector aliasing (This is more
     // efficient than doing it on-fly inside getSymbol()).
-    if (GetContext()->getVectorCoalescingControl() > 0 &&
+    if (IGC_IS_FLAG_ENABLED(VATemp) &&
         !m_VRA->m_aliasMap.empty())
     {
         // For each vector alias root, generate cvariable

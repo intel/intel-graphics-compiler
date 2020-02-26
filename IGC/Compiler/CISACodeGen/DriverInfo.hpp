@@ -255,6 +255,9 @@ namespace IGC
         /// Does not emit an error if recursive functions calls are detected.
         virtual bool AllowRecursion() const { return false; }
 
+        /// Allow aggressive vector value aliasing
+        virtual bool EnableVecAliasing() const { return false; }
+
         /// Restrict dessa aliasing level. -1 : no restriction; max level otherwise.
         virtual int DessaAliasLevel() const { return -1; }
 

@@ -265,7 +265,7 @@ namespace IGC {
         void visitExtractElementInst(llvm::ExtractElementInst& I);
 
         bool isAliasedValue(llvm::Value* V) {
-            if (m_pCtx->getVectorCoalescingControl() > 0) {
+            if (IGC_GET_FLAG_VALUE(VATemp) > 0) {
                 return isAliased(V);
             }
             return false;
