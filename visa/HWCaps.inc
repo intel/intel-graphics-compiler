@@ -412,7 +412,7 @@
 
     bool needReplaceIndirectCallWithJmpi() const
     {
-        return getGenxPlatform() == GENX_SKL ||
+        return getGenxPlatform() <= GENX_ICLLP ||
                getOption(vISA_replaceIndirectCallWithJmpi);
     }
 
