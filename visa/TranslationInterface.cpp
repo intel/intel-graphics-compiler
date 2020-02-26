@@ -8753,6 +8753,20 @@ int IR_Builder::splitSampleInst(VISASampler3DSubOpCode actualop,
     emask = Get_Next_EMask(emask, execSize);
     uint32_t instOpt2 = Get_Gen4_Emask(emask, execSize);
 
+    auto dupPredicate = [this](G4_Predicate* pred)
+    {
+        G4_Predicate* pred2 = nullptr;
+        if (pred)
+        {
+            pred2 = createPredicate(
+                pred->getState(),
+                pred->getBase(),
+                0);
+        }
+
+        return pred2;
+    };
+
     {
         /**************** SECOND HALF OF THE SEND *********************/
         // re-create payload declare so the two sends may be issued independently
@@ -8820,14 +8834,7 @@ int IR_Builder::splitSampleInst(VISASampler3DSubOpCode actualop,
         // sampler may be null for 3d load (specifically ld2dms_w)
         G4_Operand* sampler2 = sampler == nullptr ? nullptr : duplicateOperand(sampler);
 
-        G4_Predicate* pred2 = NULL;
-        if (pred != NULL)
-        {
-            pred2 = createPredicate(
-                pred->getState(),
-                pred->getBase(),
-                0);
-        }
+        G4_Predicate* pred2 = dupPredicate(pred);
 
         G4_SendMsgDescriptor *msgDesc2 = createSampleMsgDesc(desc, cpsEnable, 0, surface2, sampler2);
         msgDesc2->setHeaderPresent(useHeader);
@@ -8835,7 +8842,7 @@ int IR_Builder::splitSampleInst(VISASampler3DSubOpCode actualop,
         if (forceSplitSend)
         {
             sendInst = Create_SplitSend_Inst(
-                pred, dst2, srcToUse2, createNullSrc(Type_UD), execSize, msgDesc2, instOpt2, false);
+                pred2, dst2, srcToUse2, createNullSrc(Type_UD), execSize, msgDesc2, instOpt2, false);
         }
         else
         {
@@ -8858,8 +8865,10 @@ int IR_Builder::splitSampleInst(VISASampler3DSubOpCode actualop,
                 G4_SrcRegRegion *src0Ptr = createSrcRegRegion(Mod_src_undef, Direct, tempDstUD->getRegVar(),
                     short(i), 0, getRegionScalar(), Type_UD);
 
+                G4_Predicate* pred2 = dupPredicate(pred);
+
                 // Copy the write mask message W4.0 into the dst. (No mask?)
-                createInst(pred, G4_mov, NULL, false, 1, origDstPtr, src0Ptr,
+                createInst(pred2, G4_mov, NULL, false, 1, origDstPtr, src0Ptr,
                     NULL, NULL, InstOpt_WriteEnable, 0, true);
                 // Skip the remaining part of the loop.
                 break;
@@ -8894,8 +8903,10 @@ int IR_Builder::splitSampleInst(VISASampler3DSubOpCode actualop,
                 G4_SrcRegRegion *src0Ptr = createSrcRegRegion(Mod_src_undef, Direct, tempDst2UD->getRegVar(),
                     short(i), 0, getRegionScalar(),
                     Type_UB);
+
+                G4_Predicate* pred2 = dupPredicate(pred);
                 // write to dst.0[8:15]
-                createInst(pred, G4_mov, NULL, false, 1, origDstPtr, src0Ptr, NULL, InstOpt_WriteEnable);
+                createInst(pred2, G4_mov, NULL, false, 1, origDstPtr, src0Ptr, NULL, InstOpt_WriteEnable);
 
                 // Skip the remaining part of the loop.
                 break;
