@@ -508,7 +508,6 @@ namespace IGC
         KernelArgsOrder m_KernelArgsOrder;
         /// @brief  Contains all the kernel arguments that need to be allocated or annotated, sorted by their type
         AllocationArgs m_args;
-
     };
 
 } // namespace IGC

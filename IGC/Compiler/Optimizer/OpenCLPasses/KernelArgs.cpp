@@ -1150,12 +1150,14 @@ void KernelArgs::addAllocationArg(KernelArg& kernelArg)
 
 KernelArgs::const_iterator KernelArgs::begin()
 {
-    return const_iterator(m_args.begin(), m_args.end(), (*m_args.begin()).second.begin());
+    auto iter = m_args.empty() ? std::vector<KernelArg>().end() : (*m_args.begin()).second.begin();
+    return const_iterator(m_args.begin(), m_args.end(), iter);
 }
 
 KernelArgs::const_iterator KernelArgs::end()
 {
-    return const_iterator(m_args.end(), m_args.end(), (*(--m_args.end())).second.end());
+    auto iter = m_args.empty() ? std::vector<KernelArg>().end() : (*(--m_args.end())).second.end();
+    return const_iterator(m_args.end(), m_args.end(), iter);
 }
 
 void KernelArgs::checkForZeroPerThreadData()
