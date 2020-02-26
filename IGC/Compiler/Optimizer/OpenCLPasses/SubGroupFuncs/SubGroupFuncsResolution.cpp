@@ -562,9 +562,11 @@ void SubGroupFuncsResolution::visitCallInst(CallInst& CI)
         CheckSIMDSize(CI, "Shuffle not supported in SIMD32");
 
         // Creates intrinsics that will be lowered in the CodeGen and will handle the sub_group_shuffle function
-        Value* args[2];
+        IRBuilder<> IRB(&CI);
+        Value* args[3];
         args[0] = CI.getArgOperand(0);
         args[1] = CI.getArgOperand(1);
+        args[2] = IRB.getInt32(0);
 
         Function* simdShuffleFunc = GenISAIntrinsic::getDeclaration(CI.getCalledFunction()->getParent(),
             GenISAIntrinsic::GenISA_WaveShuffleIndex, args[0]->getType());

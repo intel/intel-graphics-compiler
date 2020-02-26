@@ -4373,14 +4373,14 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::create_waveBallot
 }
 
 template<bool preserveNames, typename T, typename Inserter>
-inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::create_waveshuffleIndex(llvm::Value* src, llvm::Value* index)
+inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::create_waveshuffleIndex(llvm::Value* src, llvm::Value* index, llvm::Value* helperLaneMode)
 {
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
     llvm::Function* pFunc = llvm::GenISAIntrinsic::getDeclaration(
         module,
         llvm::GenISAIntrinsic::GenISA_WaveShuffleIndex,
         src->getType());
-    return this->CreateCall2(pFunc, src, index);
+    return this->CreateCall3(pFunc, src, index, (helperLaneMode ? helperLaneMode : this->getInt32(0)));
 }
 
 template<bool preserveNames, typename T, typename Inserter>

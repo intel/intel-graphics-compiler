@@ -3792,7 +3792,14 @@ namespace IGC
 
     bool CodeGenPatternMatch::MatchWaveShuffleIndex(llvm::GenIntrinsicInst& I)
     {
-        HandleSubspanUse(I.getArgOperand(0));
+        llvm::Value* helperLaneMode = I.getOperand(2);
+        assert(helperLaneMode);
+        if (int_cast<int>(cast<ConstantInt>(helperLaneMode)->getSExtValue()) == 1)
+        {
+            //only if helperLaneMode==1, we enable helper lane under some shuffleindex cases (not for all cases).
+            HandleSubspanUse(I.getArgOperand(0));
+            HandleSubspanUse(&I);
+        }
         return MatchSingleInstruction(I);
     }
 

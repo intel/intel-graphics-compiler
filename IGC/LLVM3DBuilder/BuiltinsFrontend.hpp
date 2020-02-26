@@ -762,7 +762,7 @@ public:
     llvm::CallInst* create_countbits(llvm::Value* src);
     llvm::Value* create_waveBallot(llvm::Value* src);
     llvm::Value* create_waveInverseBallot(llvm::Value* src);
-    llvm::Value* create_waveshuffleIndex(llvm::Value* src, llvm::Value* index);
+    llvm::Value* create_waveshuffleIndex(llvm::Value* src, llvm::Value* index, llvm::Value* helperLaneMode = nullptr);
     llvm::Value* create_waveAll(llvm::Value* src, llvm::Value* type);
     llvm::Value* create_wavePrefix(
         llvm::Value* src, llvm::Value* type, bool inclusive,

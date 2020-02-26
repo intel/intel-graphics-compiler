@@ -283,8 +283,9 @@ Imported_Intrinsics = \
     "GenISA_WaveBallot": ["int",["bool"],"Convergent,InaccessibleMemOnly"],
     # For each active lane n, return value of n-th bit from the input bitfield. Signature: (bitfield)->bool
     "GenISA_WaveInverseBallot": ["bool",["int"],"Convergent,InaccessibleMemOnly"],
-    # Read from a specific lane. Signature: (value, lane)->value
-    "GenISA_WaveShuffleIndex": ["anyint",[0,"int"],"Convergent,NoMem"],
+    # Read from a specific lane. Signature: (value, lane, helperLaneMode)->value
+    # helperLaneMode is to tell if helper lane could be used under some situations. 0: not used; 1: used.
+    "GenISA_WaveShuffleIndex": ["anyint",[0,"int", "int"],"Convergent,NoMem"],
     # Accumulate all the active lanes. Signature: (value, op)->result; where op is one of IGC::WaveOps
     "GenISA_WaveAll": ["anyint",[0,"char"],"Convergent,InaccessibleMemOnly"],
     # Accumulate all active lanes within consecutive input clusters and broadcast the result to associated output clusters.
