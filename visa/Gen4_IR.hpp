@@ -1219,7 +1219,7 @@ class G4_InstCF : public G4_INST
     bool isBackwardBr;
 
     // True if this branch is a uniform (all active lanes goes to the same target)
-    // Valid for if/while/break/goto only. This could be encoded in instOpt
+    // Valid for if/while/break/goto/jmpi only. This could be encoded in instOpt
     bool isUniformBr;
 
 public:
@@ -1237,7 +1237,8 @@ public:
         G4_INST(builder, prd, op, nullptr, false, size, nullptr, nullptr, nullptr, instOpt),
         jip(jipLabel), uip(uipLabel), isBackwardBr(false), isUniformBr(false)
     {
-        isUniformBr = (op == G4_goto && (size == 1 || prd == nullptr));
+        isUniformBr = (op == G4_jmpi ||
+                       (op == G4_goto && (size == 1 || prd == nullptr)));
     }
 
     // used by jump/call/ret
