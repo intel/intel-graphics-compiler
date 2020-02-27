@@ -1388,49 +1388,56 @@ CISA_opnd_type getOperandType(const CISA_INST* inst, unsigned i)
     return inst->opnd_array[i]->opnd_type;
 }
 
-int64_t typecastVals(const void *value, VISA_Type isaType)
+int64_t typecastVals(const void* value, VISA_Type isaType)
 {
     int64_t retVal = 0;
-    switch(isaType)
+    switch (isaType)
     {
     case ISA_TYPE_UD:
     case ISA_TYPE_UV:
     case ISA_TYPE_VF:
-        {
-            retVal = (int64_t)(*((unsigned int *)value));
-            break;
-        }
+    {
+        retVal = (int64_t)(*((unsigned int*)value));
+        break;
+    }
     case ISA_TYPE_D:
     case ISA_TYPE_V:
-        {
-            retVal = (int64_t)(*((int *)value));
-            break;
-        }
+    {
+        retVal = (int64_t)(*((int*)value));
+        break;
+    }
     case ISA_TYPE_UW:
-        {
-            retVal = (int64_t)(*((uint16_t *)value));
-            break;
-        }
+    {
+        retVal = (int64_t)(*((uint16_t*)value));
+        break;
+    }
     case ISA_TYPE_W:
-        {
-            retVal = (int64_t)(*((int16_t *)value));
-            break;
-        }
+    {
+        retVal = (int64_t)(*((int16_t*)value));
+        break;
+    }
     case ISA_TYPE_UB:
-        {
-            retVal = (int64_t)(*((uint8_t *)value));
-            break;
-        }
+    {
+        retVal = (int64_t)(*((uint8_t*)value));
+        break;
+    }
     case ISA_TYPE_B:
-        {
-            retVal = (int64_t)(*((int8_t *)value));
-            break;
-        }
+    {
+        retVal = (int64_t)(*((int8_t*)value));
+        break;
+    }
+    case ISA_TYPE_HF:
+    {
+        // clear higher bits
+        retVal = (int64_t)(*((uint16_t*)value));
+        break;
+    }
+
     default:
-        {
-            assert( 0 );
-            return -1;
-        }
+    {
+        assert(0);
+        return -1;
+    }
     }
     return retVal;
 }

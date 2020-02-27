@@ -2008,31 +2008,31 @@ int VISAKernelImpl::CreateVISADstOperand(VISA_VectorOpnd *&cisa_opnd, VISA_GenVa
     return VISA_SUCCESS;
 }
 
-int VISAKernelImpl::CreateVISAImmediate(VISA_VectorOpnd *&cisa_opnd, const void *value, VISA_Type isaType)
+int VISAKernelImpl::CreateVISAImmediate(VISA_VectorOpnd*& cisa_opnd, const void* value, VISA_Type isaType)
 {
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
     startTimer(TIMER_VISA_BUILDER_CREATE_OPND);
 #endif
-    cisa_opnd = (VISA_VectorOpnd *)getOpndFromPool();
-    if(IS_GEN_BOTH_PATH)
+    cisa_opnd = (VISA_VectorOpnd*)getOpndFromPool();
+    if (IS_GEN_BOTH_PATH)
     {
         G4_Type g4type = GetGenTypeFromVISAType(isaType);
 
-        if( isaType == ISA_TYPE_Q ) {
-            cisa_opnd->g4opnd = m_builder->createImmWithLowerType(*(int64_t *)value, Type_Q);
+        if (isaType == ISA_TYPE_Q) {
+            cisa_opnd->g4opnd = m_builder->createImmWithLowerType(*(int64_t*)value, Type_Q);
         }
-        else if( isaType == ISA_TYPE_UQ) {
-            cisa_opnd->g4opnd = m_builder->createImmWithLowerType(*(int64_t *)value, Type_UQ);
+        else if (isaType == ISA_TYPE_UQ) {
+            cisa_opnd->g4opnd = m_builder->createImmWithLowerType(*(int64_t*)value, Type_UQ);
         }
-        else if( isaType == ISA_TYPE_DF )
+        else if (isaType == ISA_TYPE_DF)
         {
             cisa_opnd->g4opnd = m_builder->createDFImm(*(double*)value);
         }
-        else if( isaType == ISA_TYPE_F )
+        else if (isaType == ISA_TYPE_F)
         {
             cisa_opnd->g4opnd = m_builder->createImm(*(float*)(value));
         }
-        else if( isaType == ISA_TYPE_HF )
+        else if (isaType == ISA_TYPE_HF)
         {
             cisa_opnd->g4opnd = m_builder->createImmWithLowerType(*(unsigned*)(value), Type_HF);
         }
@@ -2040,13 +2040,11 @@ int VISAKernelImpl::CreateVISAImmediate(VISA_VectorOpnd *&cisa_opnd, const void 
         {
             int64_t tmpValue = typecastVals(value, isaType);
             cisa_opnd->g4opnd = m_builder->createImmWithLowerType(
-                tmpValue, g4type );
+                tmpValue, g4type);
         }
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
-        //memset(cisa_opnd, 0, sizeof(VISA_opnd));
-
         cisa_opnd->opnd_type = CISA_OPND_VECTOR;
         cisa_opnd->tag = OPERAND_IMMEDIATE;
         cisa_opnd->_opnd.v_opnd.tag = OPERAND_IMMEDIATE;
@@ -2054,24 +2052,24 @@ int VISAKernelImpl::CreateVISAImmediate(VISA_VectorOpnd *&cisa_opnd, const void 
 
         int size = CISATypeTable[isaType].typeSize;
 
-        if( size == 0 )
+        if (size == 0)
         {
-            assert( 0 );
+            assert(0);
             return VISA_FAILURE;
         }
-        if(isaType == ISA_TYPE_DF)
+        if (isaType == ISA_TYPE_DF)
         {
             cisa_opnd->_opnd.v_opnd.opnd_val.const_opnd._val.dval = *((double*)value);
         }
-        else if(isaType == ISA_TYPE_F)
+        else if (isaType == ISA_TYPE_F)
         {
             cisa_opnd->_opnd.v_opnd.opnd_val.const_opnd._val.fval = *((float*)value);
         }
-        else if(isaType == ISA_TYPE_Q || isaType == ISA_TYPE_UQ || isaType == ISA_TYPE_HF)
+        else if (isaType == ISA_TYPE_Q || isaType == ISA_TYPE_UQ)
         {
             cisa_opnd->_opnd.v_opnd.opnd_val.const_opnd._val.lval = *((uint64_t*)value);
         }
-        else if( isaType == ISA_TYPE_V || isaType == ISA_TYPE_UV )
+        else if (isaType == ISA_TYPE_V || isaType == ISA_TYPE_UV)
         {
             int size = Get_VISA_Type_Size(isaType);
             memcpy_s(&cisa_opnd->_opnd.v_opnd.opnd_val.const_opnd._val, size, value, size);
