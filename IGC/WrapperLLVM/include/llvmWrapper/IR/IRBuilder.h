@@ -76,7 +76,7 @@ namespace IGCLLVM
                 isVolatile, TBAATag, TBAAStructTag, ScopeTag,
                 NoAliasTag);
 #else
-            return llvm::IRBuilder<T, Inserter>::CreateMemCpy(Dst, llvm::Align::None(), Src, llvm::Align::None(), Size,
+            return llvm::IRBuilder<T, Inserter>::CreateMemCpy(Dst, llvm::Align(Align), Src, llvm::Align(Align), Size,
                 isVolatile, TBAATag, TBAAStructTag, ScopeTag,
                 NoAliasTag);
 #endif
@@ -93,7 +93,7 @@ namespace IGCLLVM
                 isVolatile, TBAATag, TBAAStructTag, ScopeTag,
                 NoAliasTag);
 #else
-            return llvm::IRBuilder<T, Inserter>::CreateMemCpy(Dst, llvm::Align::None(), Src, llvm::Align::None(), Size,
+            return llvm::IRBuilder<T, Inserter>::CreateMemCpy(Dst, llvm::Align(Align), Src, llvm::Align(Align), Size,
                 isVolatile, TBAATag, TBAAStructTag, ScopeTag,
                 NoAliasTag);
 #endif
@@ -110,7 +110,7 @@ namespace IGCLLVM
                 isVolatile, TBAATag, TBAAStructTag, ScopeTag,
                 NoAliasTag);
 #else
-            return llvm::IRBuilder<T, Inserter>::CreateMemCpy(Dst, llvm::Align::None(), Src, llvm::Align::None(), Size,
+            return llvm::IRBuilder<T, Inserter>::CreateMemCpy(Dst, llvm::Align(DstAlign), Src, llvm::Align(SrcAlign), Size,
                 isVolatile, TBAATag, TBAAStructTag, ScopeTag,
                 NoAliasTag);
 #endif
