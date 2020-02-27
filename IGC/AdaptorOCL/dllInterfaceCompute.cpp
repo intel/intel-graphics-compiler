@@ -1271,6 +1271,18 @@ static std::string getCommandLine(const STB_TranslateInputArgs* pInputArgs,
     if (strstr(pInputArgs->pOptions, "-no_vector_decomposition") != nullptr)
         cmd.append(" -no_vector_decomposition");
 
+    const char StackMemSzOpt[] = "-stack-mem-size=";
+    if (const char *OptBegin = strstr(pInputArgs->pOptions, StackMemSzOpt)) {
+        const char *OptEnd = strstr(OptBegin, " ");
+        unsigned Count = 0;
+        if (OptEnd)
+            Count = static_cast<unsigned>(OptEnd - OptBegin);
+        else
+            Count = strlen(OptBegin);
+        cmd += " ";
+        cmd.append(OptBegin, Count);
+    }
+
     return move(cmd);
 }
 
