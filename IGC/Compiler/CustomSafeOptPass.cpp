@@ -2351,6 +2351,17 @@ Constant* IGCConstProp::replaceShaderConstant(LoadInst* inst)
     return nullptr;
 }
 
+llvm::Constant* IGC::IGCConstantFolder::CreateCanonicalize(llvm::Constant* C0, bool flushDenorms /*= true*/) const
+{
+    assert(llvm::isa<ConstantFP>(C0));
+    auto APF = llvm::cast<ConstantFP>(C0)->getValueAPF();
+    if (flushDenorms && APF.isDenormal())
+    {
+        APF = APFloat::getZero(APF.getSemantics(), APF.isNegative());
+    }
+    return ConstantFP::get(C0->getContext(), APF);
+}
+
 Constant* IGCConstProp::ConstantFoldCallInstruction(CallInst* inst)
 {
     Constant* C = nullptr;
@@ -2453,6 +2464,22 @@ Constant* IGCConstProp::ConstantFoldCallInstruction(CallInst* inst)
                 C = ConstantFP::get(inst->getContext(), minnum(One, maxnum(zero, A)));
             }
         }
+        break;
+        case llvm_canonicalize:
+        {
+            // If the instruction should be emitted anyway, then remove the condition.
+            // Please, be aware of the fact that clients can understand the term canonical FP value in other way.
+            if (C0)
+            {
+                IGCConstantFolder constantFolder;
+                CodeGenContext* pCodeGenContext = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+                bool flushVal = pCodeGenContext->m_floatDenormMode16 == ::IGC::FLOAT_DENORM_FLUSH_TO_ZERO && inst->getType()->isHalfTy();
+                flushVal = flushVal || (pCodeGenContext->m_floatDenormMode32 == ::IGC::FLOAT_DENORM_FLUSH_TO_ZERO && inst->getType()->isFloatTy());
+                flushVal = flushVal || (pCodeGenContext->m_floatDenormMode64 == ::IGC::FLOAT_DENORM_FLUSH_TO_ZERO && inst->getType()->isDoubleTy());
+                C = constantFolder.CreateCanonicalize(C0, flushVal);
+            }
+        }
+        break;
         default:
             break;
         }
@@ -2934,7 +2961,6 @@ bool IGCConstProp::runOnFunction(Function& F)
     return Changed;
 }
 
-
 namespace {
 
     class IGCIndirectICBPropagaion : public FunctionPass
@@ -2945,7 +2971,7 @@ namespace {
         {
             initializeIGCIndirectICBPropagaionPass(*PassRegistry::getPassRegistry());
         }
-        virtual llvm::StringRef getPassName() const { return "Indirect ICB Propagaion"; }
+        virtual llvm::StringRef getPassName() const { return "Indirect ICB Propagation"; }
         virtual bool runOnFunction(Function& F);
         virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const
         {
@@ -4187,4 +4213,3 @@ bool LogicalAndToBranch::runOnFunction(Function& F)
 
     return changed;
 }
-

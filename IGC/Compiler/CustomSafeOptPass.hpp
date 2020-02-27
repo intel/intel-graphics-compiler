@@ -33,6 +33,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/Analysis/TargetLibraryInfo.h>
 #include <llvm/Analysis/LoopPass.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/IR/ConstantFolder.h>
 #include "common/LLVMWarningsPop.hpp"
 
 namespace llvm
@@ -201,6 +202,16 @@ namespace IGC
         void visitSelectInst(llvm::SelectInst& I);
     };
 
+    class IGCConstantFolder : public llvm::ConstantFolder
+    {
+    public:
+        IGCConstantFolder() :
+            ConstantFolder()
+        {}
+
+        llvm::Constant* CreateCanonicalize(llvm::Constant* C0, bool flushDenorms = true) const;
+    };
+
     class IGCConstProp : public llvm::FunctionPass
     {
     public:
@@ -225,13 +236,14 @@ namespace IGC
             // specialized const-prop with shader-const replacement
             return "const-prop with shader-const replacement";
         }
+
     private:
         llvm::Module* module;
         llvm::Constant* ReplaceFromDynConstants(unsigned bufId, unsigned eltId, unsigned int size_in_bytes, llvm::LoadInst* inst);
         llvm::Constant* replaceShaderConstant(llvm::LoadInst* inst);
-        llvm::Constant* ConstantFoldCallInstruction(llvm::CallInst* inst);
         llvm::Constant* ConstantFoldCmpInst(llvm::CmpInst* inst);
         llvm::Constant* ConstantFoldExtractElement(llvm::ExtractElementInst* inst);
+        llvm::Constant* ConstantFoldCallInstruction(llvm::CallInst* inst);
         bool simplifyAdd(llvm::BinaryOperator* BO);
         bool simplifyGEP(llvm::GetElementPtrInst* GEP);
         bool m_enableMathConstProp;

@@ -2993,6 +2993,52 @@ namespace IGC
         return true;
     }
 
+    bool CodeGenPatternMatch::MatchCanonicalizeInstruction(llvm::Instruction& I)
+    {
+        struct CanonicalizeInstPattern : Pattern
+        {
+            CanonicalizeInstPattern(llvm::Instruction* pInst, bool isNeeded) : m_pInst(pInst), m_IsNeeded(isNeeded) {}
+
+            llvm::Instruction* m_pInst;
+            bool m_IsNeeded;
+
+            virtual void Emit(EmitPass* pass, const DstModifier& modifier)
+            {
+                assert(modifier.sat == false && modifier.flag == nullptr);
+                if (m_IsNeeded)
+                {
+                    pass->emitCanonicalize(m_pInst);
+                }
+            }
+        };
+
+        assert(I.getNumOperands() == 1);
+        bool isNeeded = true;
+
+        // FAdd, FSub, FMul, FDiv instructions flush subnormals to zero.
+        // However, mix mode and math instructions preserve subnormals.
+        // Other instructions also preserve subnormals.
+        if (llvm::BinaryOperator * pBianaryOperator = llvm::dyn_cast<llvm::BinaryOperator>(I.getOperand(0)))
+        {
+            switch (pBianaryOperator->getOpcode())
+            {
+            case llvm::BinaryOperator::BinaryOps::FAdd:
+            case llvm::BinaryOperator::BinaryOps::FMul:
+            case llvm::BinaryOperator::BinaryOps::FSub:
+            case llvm::BinaryOperator::BinaryOps::FDiv:
+                isNeeded = false;
+            default:
+                break;
+            }
+        }
+
+        CanonicalizeInstPattern* pattern = new (m_allocator) CanonicalizeInstPattern(&I, isNeeded);
+        MarkAsSource(I.getOperand(0));
+
+        AddPattern(pattern);
+        return true;
+    }
+
     bool CodeGenPatternMatch::MatchBranch(llvm::BranchInst& I)
     {
         struct CondBrInstPattern : Pattern

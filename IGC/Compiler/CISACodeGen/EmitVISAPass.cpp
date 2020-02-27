@@ -8004,6 +8004,10 @@ void EmitPass::EmitIntrinsicMessage(llvm::IntrinsicInst* inst)
         emitSqrt(inst);
         break;
 
+    case Intrinsic::canonicalize:
+        emitCanonicalize(inst);
+        break;
+
     default:
         inst->print(IGC::Debug::ods());
         assert(0 && "unknown intrinsic");
@@ -15653,6 +15657,26 @@ void EmitPass::emitSqrt(Instruction* inst)
     src0 = BroadcastIfUniform(src0);
 
     m_encoder->Sqrt(m_destination, src0);
+}
+
+void IGC::EmitPass::emitCanonicalize(llvm::Instruction* inst)
+{
+    // Force to flush denormal fp value to zero. Select one of two possible solutions:
+    // 1. add inputVal, -0.0
+    // 2. mul inputVal, 1.0
+    // A normalized fp value isn't changed.
+    // The operation is done only if particular flags are set.
+    // If the instruction should be emitted anyway, flushing a subnormal to zero has to implemented in other way.
+    CodeGenContext* pCodeGenContext = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    bool flushVal = pCodeGenContext->m_floatDenormMode16 == ::IGC::FLOAT_DENORM_FLUSH_TO_ZERO && inst->getType()->isHalfTy();
+    flushVal = flushVal || (pCodeGenContext->m_floatDenormMode32 == ::IGC::FLOAT_DENORM_FLUSH_TO_ZERO && inst->getType()->isFloatTy());
+    flushVal = flushVal || (pCodeGenContext->m_floatDenormMode64 == ::IGC::FLOAT_DENORM_FLUSH_TO_ZERO && inst->getType()->isDoubleTy());
+    if (flushVal)
+    {
+        CVariable* inputVal = GetSymbol(inst->getOperand(0));
+        CVariable* negativeZero = m_currShader->GetScalarConstant(llvm::ConstantFP::get(inst->getType(), -0.0));
+        m_encoder->Add(m_destination, inputVal, negativeZero);
+    }
 }
 
 // emit llvm.bswap

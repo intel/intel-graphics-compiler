@@ -129,6 +129,7 @@ DECLARE_OPCODE(FPExt, Instruction, llvm_fpext, true, false, false, false, false,
 DECLARE_OPCODE(GenISA_f32tof16_rtz, GenISAIntrinsic, llvm_f32tof16_rtz, true, false, false, false, true, false, false)
 DECLARE_OPCODE(fabs, Intrinsic, llvm_fabs, false, false, true, false, true, false, false)
 DECLARE_OPCODE(GenISA_fsat, GenISAIntrinsic, llvm_fsat, true, false, true, true, true, false, false)
+DECLARE_OPCODE(canonicalize, Intrinsic, llvm_canonicalize, true, true, true, true, false, false, false)
 
 // GS Intrinsics
 DECLARE_OPCODE(GenISA_OUTPUTGS, GenISAIntrinsic, llvm_output_gs, false, false, false, false, false, false, false)

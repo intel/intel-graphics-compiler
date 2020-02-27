@@ -196,6 +196,7 @@ namespace IGC
         bool MatchCmpSext(llvm::Instruction& I);
         bool MatchModifier(llvm::Instruction& I, bool SupportSrc0Mod = true);
         bool MatchSingleInstruction(llvm::Instruction& I);
+        bool MatchCanonicalizeInstruction(llvm::Instruction& I);
         bool MatchBranch(llvm::BranchInst& I);
         bool MatchShuffleBroadCast(llvm::GenIntrinsicInst& I);
         bool MatchWaveShuffleIndex(llvm::GenIntrinsicInst& I);

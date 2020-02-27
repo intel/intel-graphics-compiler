@@ -4046,7 +4046,8 @@ namespace IGC
         {
             SaveOption(vISA_BXMLEncoder, false);
         }
-        if (IGC_IS_FLAG_ENABLED(DisableMixMode))
+        if (IGC_IS_FLAG_ENABLED(DisableMixMode) ||
+            context->getModuleMetaData()->disableMixMode)
         {
             SaveOption(vISA_DisableMixMode, true);
         }
