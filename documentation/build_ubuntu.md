@@ -51,9 +51,9 @@ Download all dependencies and create workspace folder as below:
 You can use following commands:
 ```shell
 $ cd <workspace>
-$ git clone -b release/8.x https://github.com/llvm/llvm-project llvm-project
-$ git clone -b ocl-open-80 https://github.com/intel/opencl-clang llvm-project/llvm/projects/opencl-clang
-$ git clone -b llvm_release_80 https://github.com/KhronosGroup/SPIRV-LLVM-Translator llvm-project/llvm/projects/llvm-spirv
+$ git clone -b release/9.x https://github.com/llvm/llvm-project llvm-project
+$ git clone -b ocl-open-90 https://github.com/intel/opencl-clang llvm-project/llvm/projects/opencl-clang
+$ git clone -b llvm_release_90 https://github.com/KhronosGroup/SPIRV-LLVM-Translator llvm-project/llvm/projects/llvm-spirv
 $ git clone https://github.com/intel/llvm-patches llvm_patches
 $ mv llvm-project/clang llvm-project/llvm/tools/
 ```
@@ -68,7 +68,7 @@ All dependencies will be build in the next step.
 $ cd <workspace>
 $ git clone https://github.com/intel/intel-graphics-compiler igc
   [If using specific release]
-$ cd igc && git checkout -b tag igc-1.0.10
+$ cd igc && git checkout -b tag igc-<version>
 ```
 
 2. Prepare workspace and build
@@ -111,12 +111,16 @@ which are needed for [enqueue_kernel](https://www.khronos.org/registry/OpenCL/sd
 
 ### LLVM9/Clang9
 
+No additional steps are needed.
+
+### LLVM10/Clang10
+
 You can either use prebuilt packages or build from sources:
 ```shell
 $ cd <workspace>
-$ git clone -b release/9.x https://github.com/llvm/llvm-project llvm-project
-$ git clone -b ocl-open-90 https://github.com/intel/opencl-clang llvm-project/llvm/projects/opencl-clang
-$ git clone -b llvm_release_90 https://github.com/KhronosGroup/SPIRV-LLVM-Translator llvm-project/llvm/projects/llvm-spirv
+$ git clone -b release/10.x https://github.com/llvm/llvm-project llvm-project
+$ git clone -b ocl-open-100 https://github.com/intel/opencl-clang llvm-project/llvm/projects/opencl-clang
+$ git clone -b llvm_release_100 https://github.com/KhronosGroup/SPIRV-LLVM-Translator llvm-project/llvm/projects/llvm-spirv
 $ git clone https://github.com/intel/llvm-patches llvm_patches
 $ git clone https://github.com/intel/intel-graphics-compiler igc
 $ mv llvm-project/clang llvm-project/llvm/tools/
@@ -128,16 +132,10 @@ Latest known configuration that compiles successfully:
 
 ```
 <workspace>
-      |- igc                               (master 6c0df5ac943c94303912c91d55a7e1818fc265c7)
-      |- llvm_patches                      (master 3906cc086f675847ca99b08107d18e083803d53c)
-      |- llvm-project                      (release/9.x fa0bc006900f17df3c11a40a3eb69e6330433b0e)
-            |- llvm/projects/opencl-clang  (ocl-open-90 6f8c329bea44321aef1a1716dd206c1f7bed23cf)
-            |- llvm/projects/llvm-spirv    (llvm_release_90 beaa8850f47d2b436917881c1de19f3427629b89)
-            |- llvm/tools/clang            (release/9.x fa0bc006900f17df3c11a40a3eb69e6330433b0e)
+      |- igc                               (master f94e38306fa0b84f23306d4b5c4da1c52fa5a956)
+      |- llvm_patches                      (master 1c93162ab33af968c22fe1cbfb12ea87f5a25bfa)
+      |- llvm-project                      (release/10.x 4e6ec0fff658cbe29e70f46491917202baa061c0)
+            |- llvm/projects/opencl-clang  (ocl-open-100 0a5a9f67b56431ef7b9436d1af812df6dfb44975)
+            |- llvm/projects/llvm-spirv    (llvm_release_100 6af878027f2eb002e96d0ed86a091de7fd7fe314)
+            |- llvm/tools/clang            (release/10.x 4e6ec0fff658cbe29e70f46491917202baa061c0)
 ```
-
-- https://github.com/intel/intel-graphics-compiler/commit/6c0df5ac943c94303912c91d55a7e1818fc265c7
-- https://github.com/intel/llvm-patches/commit/3906cc086f675847ca99b08107d18e083803d53c
-- https://github.com/llvm/llvm-project/commit/fa0bc006900f17df3c11a40a3eb69e6330433b0e
-- https://github.com/intel/opencl-clang/commit/6f8c329bea44321aef1a1716dd206c1f7bed23cf
-- https://github.com/KhronosGroup/SPIRV-LLVM-Translator/commit/beaa8850f47d2b436917881c1de19f3427629b89

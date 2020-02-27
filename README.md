@@ -1,6 +1,7 @@
 # Intel&reg; Graphics Compiler for OpenCL&trade;
 
-Linux (Ubuntu): [![Linux Build Status](https://travis-ci.com/intel/intel-graphics-compiler.svg?branch=master)](https://travis-ci.com/intel/intel-graphics-compiler)
+![GitHub release (latest by date)](https://img.shields.io/github/v/release/intel/intel-graphics-compiler?label=Latest%20release)
+![Travis (.com) branch](https://img.shields.io/travis/com/intel/intel-graphics-compiler/master?label=Ubuntu%20build)
 
 ## Introduction
 
@@ -29,7 +30,8 @@ https://opensource.org/licenses/MIT
 
 IGC is supported on the following 64 bit Linux operating systems:
 
-* Ubuntu 16.04, 18.04, 19.04
+* Ubuntu 18.04
+* Ubuntu 19.04
 
 ## Building
 
@@ -44,6 +46,7 @@ IGC is supported on the following 64 bit Linux operating systems:
 * Intel Core Processors supporting Gen8 graphics devices
 * Intel Core Processors supporting Gen9 graphics devices
 * Intel Core Processors supporting Gen11 graphics devices
+* Intel Core Processors supporting Gen12 graphics devices
 * Intel Atom Processors supporting Gen9 graphics devices
 
 ## How to provide feedback
