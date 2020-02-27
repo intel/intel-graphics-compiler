@@ -1182,6 +1182,10 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
                 // TODO: do the same for SIMD8 and SIMD16 if possible.
                 return WIAnalysis::UNIFORM;
             }
+            else
+            {
+                return WIAnalysis::RANDOM;
+            }
         }
 
         // Iterate over all input dependencies. If all are uniform - propagate it.

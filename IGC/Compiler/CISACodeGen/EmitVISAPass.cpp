@@ -11164,6 +11164,9 @@ void EmitPass::emitReductionClustered(const e_opcode op, const uint64_t identity
     assert(iSTD::BitCount(clusterSize) == 1 && "Cluster size must be a power of two.");
     assert(!is64bitType || CEncoder::GetCISADataTypeSize(type) == 8 && "Unsupported 64-bit type.");
     assert(!is64bitType || !m_currShader->m_Platform->hasNo64BitInst() && "64-bit emulation is not supported.");
+    // Src might be uniform, as its value will be broadcasted during src preparation.
+    // Dst uniformness depends on actual support in WIAnalysis, so far implemented for 32-clusters only.
+    assert(!dst->IsUniform() || clusterSize == 32);
 
     const auto dispatchSize = static_cast<decltype(clusterSize)>(
         numLanes(m_currShader->m_dispatchSize));
