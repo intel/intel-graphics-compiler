@@ -436,7 +436,16 @@ namespace IGC
         // control flow instructions cannot be broken down into lower SIMD
         VISA_EMask_Ctrl emask = m_encoderState.m_noMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1;
         VISA_Exec_Size execSize = visaExecSize(m_program->m_dispatchSize);
-        if (flag == nullptr || flag->IsUniform())
+
+        // As uniform maybe thread-uniform, it will not work for scalar jump
+        // for two threads whose flags are different. Once we improve uniform
+        // analysis to have global (uniform among all threads), not just local
+        // uniform (within a thread), we can still generate scalar jump when flag
+        // is a global uniform.
+        //
+        // For now, just disable uniform goto if EU fusion is on.
+        if (flag == nullptr ||
+            (!m_program->m_Platform->hasFusedEU() && flag->IsUniform()))
         {
             execSize = EXEC_SIZE_1;
         }

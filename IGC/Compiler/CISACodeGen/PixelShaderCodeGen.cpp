@@ -1123,6 +1123,15 @@ namespace IGC
             // Coarse pixel shader doesn't support SIMD32
             return false;
         }
+
+        if (GetContext()->platform.hasFusedEU() &&
+            simdMode == SIMDMode::SIMD32 &&
+            IsPerSample() && !IsStage1(ctx))
+        {
+            //Fused SIMD32 not enabled when dispatch rate is per sample
+            return false;
+        }
+
         if (simdMode == SIMDMode::SIMD16 && EP.m_ShaderMode == ShaderDispatchMode::NOT_APPLICABLE)
         {
             if (IsStage1BestPerf(ctx->m_CgFlag, ctx->m_StagingCtx))
